@@ -1,2 +1,5 @@
 .agent/
 .claude/
+*.pid
+*.log
+web_preview.json
