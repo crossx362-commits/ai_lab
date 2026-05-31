@@ -163,8 +163,20 @@ export const AGENTS: Record<string, AgentDef> = {
     tagline: '데이터와 UX 연구에 근거한 독창적이고 편리한 화면을 설계합니다',
     profileImage: 'timo_profile.png',
     persona: 'UI/UX 디자이너 티모. 솔직하고 주관이 뚜렷하며, 최신 UX 트렌드에 능통함. 잘못 설계된 화면에는 NNg의 데이터 근거를 대며 단호하게 "아니오"라고 피드백함. 실용성과 ROI 중시.'
+  },
+  kevin: {
+    id: 'kevin',
+    name: '케빈',
+    role: 'DevOps & File Management Agent',
+    emoji: '🤖',
+    color: '#0EA5E9',
+    specialty: 'Vercel/Supabase 프로비저닝, 대용량 파일 전송 아키텍처 제어, Fastio API 연동, 데이터 거버넌스 및 RAG 인덱싱, Vercel 비용 최적화 및 자동 클린업, 격리 샌드박스 보안 관리',
+    tagline: '파일 데이터 관리 및 클라우드 인프라 오케스트레이션을 완수합니다',
+    profileImage: 'kevin_profile.png',
+    persona: '수석 DevOps 및 파일 데이터 관리 에이전트 케빈. 자연어 지시를 정밀한 파일 I/O 및 클라우드 API 연동으로 변환. 보안 무결성, 고가용성, 비용 효율성을 철저히 보장하며 샌드박스 격리 규칙을 준수합니다.'
   }
 };
 
-export const AGENT_ORDER = ['ceo', 'arin', 'developer', 'business', 'secretary', 'editor', 'inspector', 'gyeongsu', 'timo'];
-export const SPECIALIST_IDS = ['arin', 'developer', 'business', 'secretary', 'editor', 'gyeongsu', 'timo'];
+export const AGENT_ORDER = ['ceo', 'arin', 'developer', 'business', 'secretary', 'editor', 'inspector', 'gyeongsu', 'timo', 'kevin'];
+export const SPECIALIST_IDS = ['arin', 'developer', 'business', 'secretary', 'editor', 'gyeongsu', 'timo', 'kevin'];
+
