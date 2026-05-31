@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>펫과나 — AI 건강분석·산책·사주 반려동물 케어 올인원</title>
+    <meta name="description" content="사진 한 장으로 AI 건강분석, 산책 GPS 기록, 반려동물 사주팔자까지. 펫과나에서 반려동물의 모든 케어를 한 곳에서.">
+    <!-- OG / 카카오·인스타 링크 공유 -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="펫과나 — AI 반려동물 케어 올인원">
+    <meta property="og:description" content="AI 건강분석·산책 GPS·사주팔자·소셜 피드. 우리 반려동물의 모든 케어를 한 앱에서.">
+    <meta property="og:image" content="https://placehold.co/1200x630/e37736/ffffff?text=🐾+Pet%26Na">
+    <meta property="og:locale" content="ko_KR">
+    <!-- 트위터 카드 -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="펫과나 — AI 반려동물 케어 올인원">
+    <meta name="twitter:description" content="AI 건강분석·산책 GPS·사주팔자·소셜 피드">
+    <meta name="twitter:image" content="https://placehold.co/1200x630/e37736/ffffff?text=🐾+Pet%26Na">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Tailwind CSS (Local Offline Play CDN) -->
+    <script src="js/tailwind.js"></script>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fdf8f3',
+                            100: '#fbeee0',
+                            200: '#f7d8be',
+                            300: '#f2bd92',
+                            400: '#eb9b63',
+                            500: '#e37736',
+                            600: '#d55d24',
+                            700: '#b1451c',
+                            800: '#8e371a',
+                            900: '#732f18',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome Icons (Optimized CDN) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <meta name="theme-color" content="#e37736"><!-- 🔧 성능: 브라우저 테마 색상 설정 (Android/iOS 기본 브라우저에서 앱처럼 표시) -->
+    <!-- Leaflet.js Map Library & CSS (Local Offline Files) -->
+    <link rel="stylesheet" href="css/leaflet.css">
+    <script src="js/leaflet.js"></script>
+    <meta name="msapplication-navbutton-color" content="#e37736">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><!-- 🔧 UX: 모바일 웹앱 (PWA) 설정 -->
+    <!-- Chart.js for data visualization (Local Offline Files) -->
+    <script src="js/chart.umd.min.js" defer></script>
+    <meta name="apple-mobile-web-app-title" content="펫과나">
+    <link rel="stylesheet" href="css/style.css?v=124">
+</head>
+
+<body class="text-gray-800">
+
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-amber-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('mypet')">
+                <span class="text-2xl">🐾</span>
+                <span class="brand-font text-2xl font-black text-brand-600 tracking-tight">Pet&Na <span
+                        class="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full ml-1">펫과나</span></span>
+            </div>
+            <nav class="hidden md:flex items-center space-x-1 min-w-0 flex-1 mx-2 no-scrollbar overflow-x-auto scroll-mask" role="tablist" aria-label="주요 메뉴">
+                <button onclick="switchTab('mypet')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-bold transition-all text-brand-600 bg-brand-50 whitespace-nowrap"
+                    data-tab="mypet" role="tab" aria-selected="true" aria-controls="tab-mypet">
+                    <i class="fa-solid fa-house-user mr-1.5" aria-hidden="true"></i>마이펫 룸
+                </button>
+                <button onclick="switchTab('walk')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-medium transition-all text-gray-500 hover:text-brand-600 hover:bg-brand-50/60 whitespace-nowrap"
+                    data-tab="walk" role="tab" aria-selected="false" aria-controls="tab-walk">
+                    <i class="fa-solid fa-map-location-dot mr-1.5" aria-hidden="true"></i>산책 & 일정
+                </button>
+                <button onclick="switchTab('saju')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-medium transition-all text-gray-500 hover:text-brand-600 hover:bg-brand-50/60 whitespace-nowrap"
+                    data-tab="saju" role="tab" aria-selected="false" aria-controls="tab-saju">
+                    <i class="fa-solid fa-yin-yang mr-1.5" aria-hidden="true"></i>사주/운세
+                </button>
+
+                <button onclick="switchTab('social')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-medium transition-all text-gray-500 hover:text-brand-600 hover:bg-brand-50/60 whitespace-nowrap relative"
+                    data-tab="social" role="tab" aria-selected="false" aria-controls="tab-social">
+                    <i class="fa-solid fa-user-group mr-1.5" aria-hidden="true"></i>소셜 & 피드
+                    <span id="social-global-unread"
+                        class="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center jelly-badge hidden"
+                        aria-live="polite" aria-label="읽지 않은 알림">0</span>
+                </button>
+                <button onclick="switchTab('album')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-medium transition-all text-gray-500 hover:text-brand-600 hover:bg-brand-50/60 whitespace-nowrap"
+                    data-tab="album" role="tab" aria-selected="false" aria-controls="tab-album">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-1.5" aria-hidden="true"></i>일기장
+                </button>
+                <button onclick="switchTab('shop')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-medium transition-all text-gray-500 hover:text-brand-600 hover:bg-brand-50/60 whitespace-nowrap"
+                    data-tab="shop" role="tab" aria-selected="false" aria-controls="tab-shop">
+                    <i class="fa-solid fa-store mr-1.5" aria-hidden="true"></i>펫 라이프
+                </button>
+
+                <button onclick="switchTab('settings')"
+                    class="tab-btn brand-font px-3 py-2 rounded-full text-xs font-medium transition-all text-gray-500 hover:text-brand-600 hover:bg-brand-50/60 whitespace-nowrap"
+                    data-tab="settings" role="tab" aria-selected="false" aria-controls="tab-settings">
+                    <i class="fa-solid fa-gear mr-1.5" aria-hidden="true"></i>설정
+                </button>
+
+            </nav>
+            <div class="flex items-center space-x-3">
+                <!-- 우체통 버튼 -->
+                <button onclick="switchTab('mailbox')"
+                    class="relative p-2.5 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+                    aria-label="우체통 열기">
+                    <i class="fa-solid fa-envelope text-brand-600" aria-hidden="true"></i>
+                    <span id="mailbox-count-badge"
+                        class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center jelly-badge hidden"
+                        aria-live="polite" aria-label="읽지 않은 편지">0</span>
+                </button>
+                <button onclick="switchTab('cart')"
+                    class="relative p-2.5 bg-brand-50 hover:bg-brand-100 rounded-full transition-colors"
+                    aria-label="장바구니 열기">
+                    <i class="fa-solid fa-basket-shopping text-brand-600" aria-hidden="true"></i>
+                    <span id="cart-count-badge"
+                        class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center jelly-badge hidden"
+                        aria-live="polite" aria-label="장바구니 상품 수">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 컨텐츠 컨테이너 -->
+    <main class="max-w-6xl mx-auto px-4 py-6 pb-[72px] md:pb-12 min-h-[calc(100vh-140px)]">
+        <!-- 1. 마이펫 룸 (기본 화면) -->
+        <div id="tab-mypet" class="tab-content block" role="tabpanel" aria-labelledby="mypet-heading"></div>
+
+        <!-- 2. 산책 & 일정 -->
+        <div id="tab-walk" class="tab-content hidden" role="tabpanel" aria-labelledby="walk-heading"></div>
+
+        <!-- 3. 소셜 & 피드 통합 룸 -->
+        <div id="tab-social" class="tab-content hidden" role="tabpanel" aria-labelledby="social-heading"></div>
+
+        <!-- 5. 일기장 (꾸미기 캔버스 도화지) -->
+        <div id="tab-album" class="tab-content hidden" role="tabpanel" aria-labelledby="album-heading"></div>
+
+        <!-- 6. 펫샵 (힐링스페이스·돌보미·훈련소·굿즈) -->
+        <div id="tab-shop" class="tab-content hidden" role="tabpanel" aria-labelledby="shop-heading"></div>
+
+        <!-- 7. 사주·지능 -->
+        <div id="tab-saju" class="tab-content hidden" role="tabpanel" aria-labelledby="saju-heading"></div>
+
+        <!-- 8. 설정 -->
+        <div id="tab-settings" class="tab-content hidden" aria-labelledby="settings-heading"></div>
+
+        <!-- 9. 우체통 -->
+        <div id="tab-mailbox" class="tab-content hidden" aria-labelledby="mailbox-heading"></div>
+
+        <!-- 10. 장바구니 -->
+        <div id="tab-cart" class="tab-content hidden" aria-labelledby="cart-heading"></div>
+    </main>
+
+    <!-- 모바일 바텀 네비게이션 (5탭: 핵심 4 + 더보기) -->
+    <div id="mobile-navbar"
+        class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-100 flex items-center justify-around py-1 px-2 h-[60px] z-40 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
+        <button onclick="switchTab('mypet')"
+            class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-12 text-brand-500" data-tab="mypet">
+            <i class="fa-solid fa-house-user text-base"></i>
+            <span class="font-bold text-[9px] mt-0.5 leading-none">마이펫</span>
+        </button>
+        <button onclick="switchTab('walk')"
+            class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-12 text-gray-400" data-tab="walk">
+            <i class="fa-solid fa-map-location-dot text-base"></i>
+            <span class="font-bold text-[9px] mt-0.5 leading-none">산책</span>
+        </button>
+        <button onclick="switchTab('social')"
+            class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-12 text-gray-400 relative" data-tab="social">
+            <i class="fa-solid fa-user-group text-base"></i>
+            <span class="font-bold text-[9px] mt-0.5 leading-none">소셜</span>
+            <span id="social-mobile-unread"
+                class="absolute top-1.5 right-3 bg-red-500 text-white text-[7px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center hidden">0</span>
+        </button>
+        <button onclick="switchTab('saju')"
+            class="mobile-tab-btn flex flex-col items-center justify-center flex-1 h-12 text-gray-400" data-tab="saju">
+            <i class="fa-solid fa-yin-yang text-base"></i>
+            <span class="font-bold text-[9px] mt-0.5 leading-none">사주</span>
+        </button>
+        <button onclick="toggleMoreDrawer()"
+            class="flex flex-col items-center justify-center flex-1 h-12 text-gray-400 relative" id="more-drawer-btn">
+            <i class="fa-solid fa-ellipsis text-base"></i>
+            <span class="font-bold text-[9px] mt-0.5 leading-none">더보기</span>
+            <span id="more-drawer-dot" class="absolute top-1.5 right-3 bg-red-500 w-2 h-2 rounded-full hidden"></span>
+        </button>
+    </div>
+
+    <!-- 더보기 드로어 배경 -->
+    <div id="more-drawer-backdrop" class="md:hidden fixed inset-0 bg-black/30 z-40 hidden" onclick="toggleMoreDrawer()"></div>
+    <!-- 더보기 드로어 -->
+    <div id="more-drawer" class="md:hidden fixed bottom-[60px] left-0 right-0 bg-white/98 backdrop-blur-md border-t border-amber-100 z-50 translate-y-full transition-transform duration-300 ease-out rounded-t-3xl shadow-2xl">
+        <div class="flex items-center justify-between px-4 pt-3 pb-1">
+            <div class="flex-1 flex justify-center">
+                <div class="w-10 h-1 bg-gray-200 rounded-full"></div>
+            </div>
+            <button onclick="toggleMoreDrawer()" aria-label="닫기"
+                class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </div>
+        <!-- 펫과 함께 사는 삶 중심 배치: 일기장→우체통→펫샵→장바구니→설정 -->
+        <div class="grid grid-cols-5 gap-1 px-4 py-3">
+            <button onclick="switchTab('album'); toggleMoreDrawer()"
+                class="flex flex-col items-center justify-center py-3 px-1 rounded-2xl hover:bg-brand-50 transition-colors text-gray-600">
+                <i class="fa-solid fa-book-open text-lg text-brand-500 mb-1.5"></i>
+                <span class="font-bold text-[10px] leading-none">일기장</span>
+            </button>
+            <button onclick="switchTab('mailbox'); toggleMoreDrawer()"
+                class="flex flex-col items-center justify-center py-3 px-1 rounded-2xl hover:bg-brand-50 transition-colors text-gray-600 relative">
+                <i class="fa-solid fa-envelope text-lg text-brand-500 mb-1.5"></i>
+                <span class="font-bold text-[10px] leading-none">우체통</span>
+                <span id="mailbox-mobile-badge"
+                    class="absolute top-2 right-1 bg-red-500 text-white text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center jelly-badge hidden">0</span>
+            </button>
+            <button onclick="switchTab('shop'); toggleMoreDrawer()"
+                class="flex flex-col items-center justify-center py-3 px-1 rounded-2xl hover:bg-brand-50 transition-colors text-gray-600">
+                <i class="fa-solid fa-store text-lg text-brand-500 mb-1.5"></i>
+                <span class="font-bold text-[10px] leading-none">펫 라이프</span>
+            </button>
+            <button onclick="switchTab('cart'); toggleMoreDrawer()"
+                class="flex flex-col items-center justify-center py-3 px-1 rounded-2xl hover:bg-brand-50 transition-colors text-gray-600 relative">
+                <i class="fa-solid fa-cart-shopping text-lg text-brand-500 mb-1.5"></i>
+                <span class="font-bold text-[10px] leading-none">장바구니</span>
+                <span id="cart-mobile-badge"
+                    class="absolute top-2 right-1 bg-red-500 text-white text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center jelly-badge hidden">0</span>
+            </button>
+            <button onclick="switchTab('settings'); toggleMoreDrawer()"
+                class="flex flex-col items-center justify-center py-3 px-1 rounded-2xl hover:bg-brand-50 transition-colors text-gray-600">
+                <i class="fa-solid fa-gear text-lg text-brand-500 mb-1.5"></i>
+                <span class="font-bold text-[10px] leading-none">설정</span>
+            </button>
+        </div>
+        <div class="h-safe-bottom pb-3"></div>
+    </div>
+
+    <!-- 모달/사이드바 템플릿 인젝션 영역 -->
+    <div id="modal-container"></div>
+
+    <!-- Core Templates -->
+    <script src="js/templates/mypet.js?v=130"></script>
+    <script src="js/templates/walk.js?v=130"></script>
+    <script src="js/templates/social.js?v=130"></script>
+    <script src="js/templates/album.js?v=130"></script>
+    <script src="js/templates/cart.js?v=130"></script>
+    <script src="js/templates/shop.js?v=130"></script>
+    <script src="js/templates/saju.js?v=130"></script>
+    <script src="js/templates/settings.js?v=130"></script>
+    <script src="js/templates/modals.js?v=130"></script>
+
+    <!-- Environment Configuration (Frontend) -->
+    <script>
+        window._env_ = {
+            SUPABASE_URL: "",
+            SUPABASE_ANON_KEY: "",
+            GEMINI_API_KEY: "AIzaSyBwIHOlWNdtEkweRPQaQd1dcPf44hugjoU",
+            STRIPE_PAYMENT_LINK: "",      // 프리미엄 구독 Payment Link
+            STRIPE_SHOP_PAYMENT_LINK: ""  // 쇼핑몰 결제 Payment Link
+        };
+    </script>
+
+    <!-- Supabase Cloud Sync Engine -->
+    <script src="js/supabase-js.js"></script>
+    <script src="js/supabase.js?v=130"></script>
+
+    <!-- Core Logic Scripts -->
+    <!-- (1) 전역 상태 및 유틸 데이터 -->
+    <script src="js/state.js?v=130"></script>
+
+    <!-- AI Health Analysis Module -->
+    <script src="js/ai-health.js"></script>
+    <script src="js/freemium.js"></script>
+    <script src="js/achievements.js"></script>
+    <script src="js/share-card.js"></script>
+    <script src="js/health-dashboard.js"></script>
+
+    <!-- (2) 각 영역 독립 컨트롤러 -->
+    <script src="js/mypet.js?v=130"></script>
+    <script src="js/walk.js?v=130"></script>
+    <script src="js/saju.js?v=130"></script>
+    <script src="js/social.js?v=130"></script>
+    <script src="js/album.js?v=130"></script>
+    <script src="js/shop.js?v=130"></script>
+    <script src="js/settings.js?v=130"></script>
+    <script src="js/mailbox.js?v=130"></script>
+
+    <!-- (3) 메인 라우터 및 부트스트랩 진입점 -->
+    <script src="js/app.js?v=130"></script>
+    <!-- 🔒 펫과나 프리미엄 로그인 & 랜딩 스크린 오버레이 -->
+    <div id="login-landing-overlay"
+        class="fixed inset-0 z-50 bg-gradient-to-br from-[#1a120b] via-[#3a2212] to-[#120c08] flex items-center justify-center p-4 transition-all duration-500">
+        <!-- Floating bubbles in the background -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+            <div class="absolute w-72 h-72 rounded-full bg-brand-500/20 blur-3xl -top-10 -left-10 animate-pulse"></div>
+            <div class="absolute w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl -bottom-20 -right-20 animate-pulse"
+                style="animation-delay: 2s;"></div>
+            <div class="absolute text-7xl text-brand-300/10 top-1/4 left-10 rotate-12">🐾</div>
+            <div class="absolute text-5xl text-brand-200/10 bottom-1/4 right-12 -rotate-12">🦴</div>
+            <div class="absolute text-6xl text-amber-200/10 top-1/3 right-1/4 rotate-45">🐈</div>
+        </div>
+
+        <div
+            class="bg-white/95 backdrop-blur-2xl rounded-[36px] shadow-2xl border border-amber-100/60 p-6 md:p-8 max-w-md w-full relative z-10 transition-transform duration-500 scale-100 flex flex-col gap-6">
+            <!-- Header section -->
+            <div class="text-center space-y-2">
+                <div
+                    class="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-brand-200/50">
+                    <svg viewBox="0 0 64 64" class="w-12 h-12">
+                        <defs>
+                            <linearGradient id="paw-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#e37736" />
+                                <stop offset="100%" stop-color="#fca366" />
+                            </linearGradient>
+                            <filter id="logo-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#732f18"
+                                    flood-opacity="0.2" />
+                            </filter>
+                        </defs>
+                        <!-- outer dash border -->
+                        <circle cx="32" cy="32" r="30" fill="none" stroke="url(#paw-grad)" stroke-width="1.5"
+                            stroke-dasharray="3 2" opacity="0.6" />
+                        <!-- inner badge body -->
+                        <circle cx="32" cy="32" r="26" fill="#fff5f0" filter="url(#logo-shadow)" />
+                        <!-- main pad (heart styled paw jelly) -->
+                        <path
+                            d="M 32,28 C 25,28 21,35 25,41 C 27,44 30,46 32,46 C 34,46 37,44 39,41 C 43,35 39,28 32,28 Z"
+                            fill="url(#paw-grad)" />
+                        <!-- toe jellies -->
+                        <ellipse cx="21" cy="29" rx="3.5" ry="5" transform="rotate(-15 21 29)" fill="url(#paw-grad)" />
+                        <ellipse cx="29" cy="23" rx="4" ry="5.5" fill="url(#paw-grad)" />
+                        <ellipse cx="35" cy="23" rx="4" ry="5.5" fill="url(#paw-grad)" />
+                        <ellipse cx="43" cy="29" rx="3.5" ry="5" transform="rotate(15 43 29)" fill="url(#paw-grad)" />
+                        <!-- little white highlight inside -->
+                        <path
+                            d="M 32,36 C 31,34 29,34 29,36 C 29,38 32,41 32,41 C 32,41 35,38 35,36 C 35,34 33,34 32,36 Z"
+                            fill="#ffffff" opacity="0.9" />
+                        <!-- mini stars -->
+                        <polygon points="12,18 13.5,15 15,18 13.5,17" fill="#e37736" opacity="0.8" />
+                        <polygon points="52,18 53.5,15 55,18 53.5,17" fill="#e37736" opacity="0.8" />
+                    </svg>
+                </div>
+                <h1 class="brand-font text-3xl font-black text-brand-600 tracking-tight mt-3">Pet & Na</h1>
+                <p class="text-xs text-gray-500 font-bold">반려동물과의 성향 분석부터 커스텀 비디오 일기장까지 🐶✨</p>
+            </div>
+
+            <!-- Login form section -->
+            <div id="login-form-section" class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-600">집사 이메일 주소</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-gray-400"></i>
+                        <input type="email" id="login-email-input" value="butler@petna.co.kr"
+                            placeholder="email@example.com"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-password-input')?.focus();}"
+                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-600">비밀번호</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-gray-400"></i>
+                        <input type="password" id="login-password-input" value="123456" placeholder="••••••••"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();executeLogin();}"
+                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs font-bold text-gray-500">
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked
+                            class="rounded border-gray-300 text-brand-500 focus:ring-brand-500 w-4 h-4">
+                        <span>로그인 유지</span>
+                    </label>
+                    <a href="#" class="hover:text-brand-600 transition-colors">비밀번호 재설정</a>
+                </div>
+
+                <button id="login-submit-btn" onclick="executeLogin()"
+                    class="w-full bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md shadow-brand-500/15 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> 이메일 주소로 로그인하기
+                </button>
+
+                <div class="text-center text-xs font-bold text-gray-500 mt-2">
+                    아직 계정이 없으신가요?
+                    <button onclick="toggleAuthForm('signup')"
+                        class="text-brand-600 hover:underline outline-none ml-1">회원가입하기</button>
+                </div>
+            </div>
+
+            <!-- Sign Up form section (hidden by default) -->
+            <div id="signup-form-section" class="space-y-4 hidden">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-600">이름 / 닉네임</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-gray-400"></i>
+                        <input type="text" id="signup-nickname-input" placeholder="보호자님의 멋진 닉네임"
+                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-600">이메일 주소</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-gray-400"></i>
+                        <input type="email" id="signup-email-input" placeholder="email@example.com"
+                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-600">비밀번호</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-gray-400"></i>
+                        <input type="password" id="signup-password-input" placeholder="최소 6자리 비밀번호"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();executeSignUp();}"
+                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
+                    </div>
+                </div>
+
+                <button onclick="executeSignUp()"
+                    class="w-full bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md shadow-brand-500/15 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> 집사 계정 회원가입하기
+                </button>
+
+                <div class="text-center text-xs font-bold text-gray-500 mt-2">
+                    이미 계정이 있으신가요?
+                    <button onclick="toggleAuthForm('login')"
+                        class="text-brand-600 hover:underline outline-none ml-1">로그인하기</button>
+                </div>
+            </div>
+
+            <!-- Social login section -->
+            <div class="space-y-3.5">
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-gray-200/80"></div>
+                    <span class="flex-shrink mx-3 text-[10px] text-gray-400 font-bold uppercase">SNS 간편 로그인</span>
+                    <div class="flex-grow border-t border-gray-200/80"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="executeSocialLogin('kakao')"
+                        class="py-2.5 rounded-xl border border-yellow-200 bg-[#FFE812] hover:bg-[#FEE500] text-[#3C1E1E] font-black text-[11px] flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 shadow-sm">
+                        <i class="fa-solid fa-comment text-lg"></i>카카오 로그인
+                    </button>
+                    <button onclick="executeSocialLogin('google')"
+                        class="py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-black text-[11px] flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 shadow-sm">
+                        <i class="fa-brands fa-google text-rose-500 text-lg"></i>구글 로그인
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-3 bg-gray-50/50 rounded-xl p-3 border border-gray-100/50">
+                <p class="text-[9.5px] text-center text-gray-400 font-medium leading-[1.4]">
+                    로그인 시 펫과나의 <a href="#" class="underline hover:text-brand-500 font-bold">이용약관</a> 및 <a href="#"
+                        class="underline hover:text-brand-500 font-bold">개인정보처리방침</a>에 동의하게 됩니다.
+                </p>
+                <div class="mt-2 pt-2 border-t border-gray-200/50 flex items-start gap-1.5 justify-center">
+                    <i class="fa-solid fa-circle-info mt-0.5 text-[8px] text-gray-400"></i>
+                    <p class="text-[9px] text-left text-gray-400/90 leading-[1.3] font-medium tracking-tight">
+                        본 서비스가 제공하는 건강 데이터 및 통계는 참고용 정보이며, <br>전문 수의사의 의학적 진단이나 법적 효력을 대체할 수 없습니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,594 @@
+:root {
+    --color-bg-app: #fbf8f5;
+    --color-text-main: #1f2937;
+    --color-bg-card: #ffffff;
+    --color-border-card: #fef3c7;
+    --color-bg-header: rgba(255, 255, 255, 0.9);
+}
+
+body.theme-dark {
+    --color-bg-app: #15151e;
+    --color-text-main: #f3f4f6;
+    --color-bg-card: #1f1f2e;
+    --color-border-card: #2d2d3f;
+    --color-bg-header: rgba(31, 31, 46, 0.85);
+}
+
+body.theme-sepia {
+    --color-bg-app: #faf5e8;
+    --color-text-main: #4a2f13;
+    --color-bg-card: #f4ecd8;
+    --color-border-card: #e4d2a3;
+    --color-bg-header: rgba(244, 236, 216, 0.85);
+}
+
+html {
+    font-size: 13.5px;
+}
+
+@media (min-width: 320px) {
+    html {
+        font-size: calc(13.5px + (14.5 - 13.5) * ((100vw - 320px) / (480 - 320)));
+    }
+}
+
+@media (min-width: 480px) {
+    html {
+        font-size: calc(14.5px + (15.5 - 14.5) * ((100vw - 480px) / (768 - 480)));
+    }
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: calc(15.5px + (17.0 - 15.5) * ((100vw - 768px) / (1280 - 768)));
+    }
+}
+
+@media (min-width: 1280px) {
+    html {
+        font-size: 17px;
+    }
+}
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: var(--color-bg-app);
+    color: var(--color-text-main);
+    transition: background-color 0.3s, color 0.3s;
+    word-break: keep-all !important;
+    word-wrap: break-word !important;
+}
+
+/* 탭 버튼 한 줄 유지 및 네비게이션 가로 스크롤 보정 */
+.tab-btn {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.tab-btn:hover {
+    transform: scale(1.06) translateY(-1px);
+}
+
+.tab-btn:active {
+    transform: scale(0.94);
+}
+
+header button.relative {
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+header button.relative:hover {
+    transform: scale(1.12) translateY(-1px);
+}
+
+header button.relative:active {
+    transform: scale(0.9);
+}
+
+header nav {
+    display: flex !important;
+    justify-content: safe center !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
+header nav::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* 🔮 테마별 정밀 고대비 스타일 오버라이드 */
+body.theme-dark {
+    background-color: var(--color-bg-app) !important;
+    color: var(--color-text-main) !important;
+}
+body.theme-dark,
+body.theme-dark.text-gray-800,
+body.theme-dark .text-gray-800,
+body.theme-dark .text-gray-900 {
+    color: var(--color-text-main) !important;
+}
+body.theme-dark .bg-white {
+    background-color: var(--color-bg-card) !important;
+    color: var(--color-text-main) !important;
+    border-color: var(--color-border-card) !important;
+}
+/* 다크모드 상단 헤더 & 모바일 네비바 보정 */
+body.theme-dark header,
+body.theme-dark .bg-white\/90 {
+    background-color: var(--color-bg-header) !important;
+    border-color: var(--color-border-card) !important;
+}
+body.theme-dark #mobile-navbar,
+body.theme-dark .bg-white\/95 {
+    background-color: var(--color-bg-header) !important;
+    border-color: var(--color-border-card) !important;
+}
+/* 다크모드 활성 탭 버튼 보정 */
+body.theme-dark .tab-btn.text-brand-600 {
+    color: #f2bd92 !important;
+    background-color: rgba(227, 119, 54, 0.15) !important;
+}
+body.theme-dark .mobile-tab-btn.text-brand-500 {
+    color: #f2bd92 !important;
+}
+/* 다크모드 텍스트 고대비 보정 (WCAG AA 4.5:1 이상 확보) */
+body.theme-dark .text-gray-700,
+body.theme-dark .text-gray-600,
+body.theme-dark .text-gray-500 {
+    color: #d1d1e0 !important; /* vs #1f1f2e → 8.3:1 ✅ */
+}
+body.theme-dark .text-gray-400 {
+    color: #b8b8cc !important; /* vs #1f1f2e → 5.8:1 ✅ (기존 #9ca3af는 4.2:1로 AAA 미달) */
+}
+/* 다크모드 프리셋 테마 컬러 보정 */
+body.theme-dark .text-brand-700,
+body.theme-dark .text-brand-600,
+body.theme-dark .text-brand-500 {
+    color: #f2bd92 !important;
+}
+body.theme-dark .text-indigo-600,
+body.theme-dark .text-indigo-700 {
+    color: #818cf8 !important;
+}
+body.theme-dark .text-amber-600,
+body.theme-dark .text-amber-700 {
+    color: #fbbf24 !important;
+}
+body.theme-dark .text-rose-600,
+body.theme-dark .text-rose-700 {
+    color: #f43f5e !important;
+}
+body.theme-dark .text-sky-600,
+body.theme-dark .text-sky-700 {
+    color: #38bdf8 !important;
+}
+body.theme-dark .text-emerald-600,
+body.theme-dark .text-emerald-800 {
+    color: #34d399 !important;
+}
+/* 다크모드 경계선 보정 */
+body.theme-dark .border-amber-50,
+body.theme-dark .border-amber-100,
+body.theme-dark .border-gray-200,
+body.theme-dark .border-gray-100,
+body.theme-dark .border-gray-100\/50,
+body.theme-dark .border-indigo-100\/50,
+body.theme-dark .border-amber-100\/50 {
+    border-color: #2d2d3f !important;
+}
+/* 다크모드 배경색 박스 보정 */
+body.theme-dark .bg-gray-50,
+body.theme-dark .bg-gray-50\/70,
+body.theme-dark .bg-gray-50\/50,
+body.theme-dark .bg-gray-50\/30,
+body.theme-dark .bg-gray-100,
+body.theme-dark .bg-brand-50,
+body.theme-dark .bg-amber-50,
+body.theme-dark .bg-indigo-50,
+body.theme-dark .bg-sky-50,
+body.theme-dark .bg-pink-50,
+body.theme-dark .bg-emerald-50,
+body.theme-dark .bg-blue-50,
+body.theme-dark .bg-rose-50,
+body.theme-dark .bg-yellow-50\/20,
+body.theme-dark .bg-emerald-50\/20,
+body.theme-dark .bg-rose-50\/20,
+body.theme-dark .bg-indigo-50\/40,
+body.theme-dark .bg-amber-50\/40,
+body.theme-dark .bg-amber-50\/30,
+body.theme-dark .bg-amber-50\/50,
+body.theme-dark .bg-indigo-50\/30 {
+    background-color: #262635 !important;
+    color: #e2e2e9 !important;
+    background-image: none !important;
+}
+body.theme-dark select,
+body.theme-dark input,
+body.theme-dark textarea {
+    background-color: #15151e !important;
+    color: #e2e2e9 !important;
+    border-color: #2d2d3f !important;
+}
+body.theme-dark .bg-gradient-to-br {
+    background-color: #1f1f2e !important;
+    background-image: none !important;
+    border-color: #2d2d3f !important;
+}
+/* 다크모드 프리셋/결제 수단 버튼 색상 */
+body.theme-dark .donation-preset-btn,
+body.theme-dark .donation-method-btn {
+    background-color: #1c1c28 !important;
+    color: #e2e2e9 !important;
+    border-color: #2d2d3f !important;
+}
+body.theme-dark .donation-preset-btn:hover,
+body.theme-dark .donation-method-btn:hover {
+    background-color: #262635 !important;
+}
+body.theme-dark .donation-preset-btn.border-brand-500,
+body.theme-dark .donation-method-btn.border-brand-500 {
+    border-color: #f59e0b !important;
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important;
+}
+body.theme-dark table th {
+    background-color: #262635 !important;
+    color: #9ca3af !important;
+    border-color: #2d2d3f !important;
+}
+body.theme-dark table td {
+    color: #d1d1e0 !important;
+    border-color: #2d2d3f !important;
+}
+body.theme-dark tr.hover\:bg-gray-50\/50:hover {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+body.theme-dark #inquiry-detail-reply-box {
+    background-color: #1c1c28 !important;
+    border-color: #2d2d3f !important;
+}
+
+/* 🔮 세피아 테마 정밀 스타일 오버라이드 */
+body.theme-sepia,
+body.theme-sepia.text-gray-800,
+body.theme-sepia .text-gray-800,
+body.theme-sepia .text-gray-900 {
+    color: var(--color-text-main) !important;
+}
+/* 세피아 상단 헤더 & 모바일 네비바 보정 */
+body.theme-sepia header,
+body.theme-sepia .bg-white\/90 {
+    background-color: var(--color-bg-header) !important;
+    border-color: var(--color-border-card) !important;
+}
+body.theme-sepia #mobile-navbar,
+body.theme-sepia .bg-white\/95 {
+    background-color: var(--color-bg-header) !important;
+    border-color: var(--color-border-card) !important;
+}
+/* 세피아 활성 탭 버튼 보정 */
+body.theme-sepia .tab-btn.text-brand-600 {
+    color: #b1451c !important;
+    background-color: rgba(177, 69, 28, 0.1) !important;
+}
+body.theme-sepia .mobile-tab-btn.text-brand-500 {
+    color: #b1451c !important;
+}
+body.theme-sepia .text-gray-700, 
+body.theme-sepia .text-gray-600, 
+body.theme-sepia .text-gray-500 {
+    color: #5d4631 !important;
+}
+body.theme-sepia select,
+body.theme-sepia input,
+body.theme-sepia textarea {
+    background-color: #faf5e8 !important;
+    color: #4a2f13 !important;
+    border-color: #e4d2a3 !important;
+}
+body.theme-sepia .donation-preset-btn,
+body.theme-sepia .donation-method-btn {
+    background-color: #faf5e8 !important;
+    color: #4a2f13 !important;
+    border-color: #e4d2a3 !important;
+}
+body.theme-sepia .donation-preset-btn.border-brand-500,
+body.theme-sepia .donation-method-btn.border-brand-500 {
+    border-color: #f59e0b !important;
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    color: #b45309 !important;
+}
+body.theme-sepia table th {
+    background-color: #f1e6c9 !important;
+    color: #5d4631 !important;
+    border-color: #e4d2a3 !important;
+}
+body.theme-sepia table td {
+    color: #4a2f13 !important;
+    border-color: #e4d2a3 !important;
+}
+body.theme-sepia .border-amber-50,
+body.theme-sepia .border-amber-100,
+body.theme-sepia .border-gray-200,
+body.theme-sepia .border-gray-100 {
+    border-color: #e4d2a3 !important;
+}
+
+.brand-font {
+    font-family: 'Fredoka', 'Noto Sans KR', sans-serif;
+}
+
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar,
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* 펫 움직임 애니메이션 키프레임 */
+@keyframes petTailWag {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(15deg); }
+}
+
+@keyframes petEarTwitch {
+    0%, 90%, 100% { transform: rotate(0deg); }
+    3%, 7% { transform: rotate(-8deg); }
+    5% { transform: rotate(8deg); }
+}
+
+@keyframes petBlink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+}
+
+@keyframes petPanting {
+    0%, 100% { transform: translateY(0) scaleY(1); }
+    50% { transform: translateY(1px) scaleY(1.15); }
+}
+
+@keyframes petFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.animate-tail {
+    animation: petTailWag 0.6s infinite ease-in-out;
+    transform-origin: 40px 65px;
+}
+
+.animate-ear-left {
+    animation: petEarTwitch 3s infinite ease-in-out;
+    transform-origin: 32px 30px;
+}
+
+.animate-ear-right {
+    animation: petEarTwitch 3s infinite ease-in-out;
+    transform-origin: 68px 30px;
+}
+
+.animate-eye {
+    animation: petBlink 4s infinite ease-in-out;
+    transform-origin: center;
+}
+
+.animate-tongue {
+    animation: petPanting 0.3s infinite ease-in-out;
+    transform-origin: 50px 58px;
+}
+
+.animate-pet-body {
+    animation: petFloat 4s infinite ease-in-out;
+}
+
+/* 스티커 꾸미기 드래그 기능용 스타일 */
+.sticker-active {
+    border: 2px dashed #e37736;
+    background: rgba(227, 119, 54, 0.08);
+    cursor: move;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 16px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* 🔮 Fallback display utility rules to ensure dynamic tab swapping works reliably */
+.tab-content.hidden {
+    display: none !important;
+}
+.tab-content.block {
+    display: block !important;
+}
+
+/* 유동적 한글 줄바꿈 가독성 클래스 */
+.keep-all {
+    word-break: keep-all !important;
+    word-wrap: break-word !important;
+}
+
+/* 펫 그래픽 무대 반응형 리사이징 */
+#pet-graphic-container {
+    width: clamp(48px, 11vw, 72px) !important;
+    height: clamp(48px, 11vw, 72px) !important;
+    max-width: 72px !important;
+    max-height: 72px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease-in-out;
+    border-radius: 1rem !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.18) !important;
+}
+
+@media (min-width: 768px) {
+    #pet-graphic-container {
+        width: 88px !important;
+        height: 88px !important;
+        max-width: 88px !important;
+        max-height: 88px !important;
+    }
+}
+
+#pet-graphic-container svg {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+#pet-graphic-container:hover {
+    transform: scale(1.06) !important;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
+}
+
+/* 모바일 네비게이션 액티브 탭 콤팩트 스케일링 */
+.mobile-tab-btn {
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 4px 2px;
+}
+.mobile-tab-btn i {
+    font-size: 1.15rem;
+    opacity: 0.65;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.mobile-tab-btn span {
+    font-size: 0px;
+    opacity: 0;
+    max-height: 0px;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translateY(4px);
+}
+.mobile-tab-btn.text-brand-500 {
+    transform: translateY(-4px) scale(1.08);
+}
+.mobile-tab-btn.text-brand-500 i {
+    opacity: 1;
+    transform: scale(1.22);
+    filter: drop-shadow(0 3px 6px rgba(227, 119, 54, 0.3));
+}
+.mobile-tab-btn.text-brand-500 span {
+    font-size: 8px;
+    opacity: 1;
+    max-height: 12px;
+    margin-top: 2px;
+    transform: translateY(0);
+}
+
+/* 🍮 젤리처럼 통통 튀는 알림 뱃지 애니메이션 */
+@keyframes jellyBounce {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.25, 0.75); }
+    40% { transform: scale(0.75, 1.25); }
+    50% { transform: scale(1.15, 0.85); }
+    65% { transform: scale(0.95, 1.05); }
+    75% { transform: scale(1.05, 0.95); }
+}
+
+.jelly-badge {
+    animation: jellyBounce 1.8s infinite ease-in-out;
+    transform-origin: center;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45) !important;
+}
+
+/* 🌟 스크롤 페이드 마스크 효과 (Scroll Affordance) */
+.scroll-mask {
+    position: relative;
+    mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+
+/* ♿ 키보드 접근성 포커스 스타일 보강 */
+.tab-btn:focus-visible,
+.mobile-tab-btn:focus-visible,
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid #e37736 !important;
+    outline-offset: 2px !important;
+}
+
+/* 멀티펫 스와이프 카드 */
+#pet-stage-list {
+    flex-direction: row !important;
+    gap: 10px !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 2px;
+    max-width: 100%;
+}
+/* 더보기 드로어 */
+#more-drawer.open { transform: translateY(0); }
+#more-drawer-backdrop.open { display: block; }
+
+/* 안전 영역 (iPhone 홈 인디케이터) */
+.h-safe-bottom { height: env(safe-area-inset-bottom, 0px); }
+
+/* ── 다크모드: 신규 UI 요소 ────────────────────────────────── */
+body.theme-dark .bg-emerald-50   { background-color: rgba(16,185,129,0.12) !important; }
+body.theme-dark .bg-emerald-100  { background-color: rgba(16,185,129,0.18) !important; }
+body.theme-dark .border-emerald-100 { border-color: rgba(16,185,129,0.25) !important; }
+body.theme-dark .text-emerald-700 { color: #6ee7b7 !important; }
+
+/* 더보기 드로어 */
+body.theme-dark #more-drawer { background-color: rgba(31,31,46,0.98) !important; border-color: #2d2d3f !important; }
+body.theme-dark #more-drawer button { color: #d1d1e0 !important; }
+body.theme-dark #more-drawer button:hover { background-color: rgba(227,119,54,0.12) !important; }
+
+/* 일일 챌린지 */
+body.theme-dark #daily-challenges .bg-gray-50 { background-color: #1a1a2e !important; }
+body.theme-dark #daily-challenges .border-gray-100 { border-color: #2d2d3f !important; }
+body.theme-dark #daily-challenges .text-gray-700 { color: #d1d1e0 !important; }
+body.theme-dark #daily-challenges .text-gray-400 { color: #9ca3af !important; }
+body.theme-dark #daily-challenges .bg-gray-100 { background-color: #2d2d3f !important; }
+
+/* 업적 배지 */
+body.theme-dark #achievement-badges .text-gray-700 { color: #d1d1e0 !important; }
+
+/* 건강 캘린더 */
+body.theme-dark #health-calendar .bg-gray-100 { background-color: #2d2d3f !important; }
+
+/* 프리미엄 모달 */
+body.theme-dark #premium-modal > div { background-color: var(--color-bg-card) !important; }
+body.theme-dark #premium-modal .bg-violet-50 { background-color: rgba(139,92,246,0.15) !important; }
+
+/* 온보딩 카드 그라데이션 (다크) */
+body.theme-dark #pet-room-card .bg-gradient-to-br { background: linear-gradient(135deg,rgba(227,119,54,0.08),rgba(139,92,246,0.08)) !important; }
+
+/* 음성 문진 결과 */
+body.theme-dark #ai-voice-result { background-color: rgba(31,31,46,0.9) !important; border-color: #2d2d3f !important; }
+body.theme-dark #ai-voice-result * { color: #d1d1e0 !important; }
+
+/* 일기장 + 성장 기록 다크모드 */
+body.theme-dark #diary-stats-row .bg-brand-50    { background-color: rgba(227,119,54,0.15) !important; }
+body.theme-dark #diary-stats-row .bg-amber-50    { background-color: rgba(245,158,11,0.15) !important; }
+body.theme-dark #diary-on-this-day > div         { background: rgba(245,158,11,0.08) !important; border-color: rgba(245,158,11,0.2) !important; }
+body.theme-dark #weight-log-modal > div          { background-color: var(--color-bg-card) !important; }
+body.theme-dark #growth-latest                   { color: #9ca3af !important; }
+
+/* sepia 테마 신규 요소 */
+body.theme-sepia #more-drawer { background-color: rgba(244,236,216,0.98) !important; }
+body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.08) !important; }
+
+#pet-stage-list::-webkit-scrollbar { display: none; }
+.pet-swipe-card {
+    scroll-snap-align: center;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+
+

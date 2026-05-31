@@ -1,0 +1,32 @@
+node_modules/
+out/
+*.vsix
+.vscode-test/
+preview.html
+.DS_Store
+releases/
+.env
+**/.env
+*.bak.*
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Temp generated files
+temp_generated.jpg
+test_gemini_output.jpg
+
+# Secrets
+*client_secret*.json
+*token*.pickle
+token.pickle
+client_secret.json
+
+# Outputs
+**/output/
+output/
+
+*.log
