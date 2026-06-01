@@ -7,3 +7,5 @@ web_preview.json
 .env
 *.env
 
+
+.vercel
