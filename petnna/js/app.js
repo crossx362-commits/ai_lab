@@ -739,40 +739,38 @@ function triggerWithdrawal() {
         title: "회원 탈퇴 경고 ⚠️",
         message: "탈퇴 시 모든 사주, 앨범, 산책 기록 등이 완전히 삭제되며 복구할 수 없습니다. 탈퇴하시겠습니까?",
         type: "confirm",
-        onConfirm: () => {
-            // 세션 및 회원정보 백업
-            const currentEmail = settings_email;
-            const currentNickname = settings_nickname;
-            const currentAvatar = settings_avatar;
-            const currentPhotoUrl = settings_photo_url;
-            const currentTheme = settings_theme;
-            const currentUnit = settings_unit;
-            const registeredUsers = localStorage.getItem('petna_registered_users');
+        onConfirm: async () => {
+            try {
+                // Supabase 연동 시 실제 계정 삭제
+                if (typeof isSupabaseConnected !== 'undefined' && isSupabaseConnected && supabaseClient) {
+                    const { error } = await supabaseClient.auth.admin.deleteUser(
+                        supabaseClient.auth.getSession()?.data?.session?.user?.id
+                    );
+                    if (error) {
+                        console.error('Supabase 계정 삭제 실패:', error);
+                    }
+                }
 
-            localStorage.clear();
+                // 모든 로컬 데이터 완전 삭제
+                localStorage.clear();
+                sessionStorage.clear();
 
-            // 세션 및 유저 정보 복원
-            localStorage.setItem('petna_is_logged_in', 'true');
-            localStorage.setItem('petna_user_email', currentEmail);
-            localStorage.setItem('petna_user_nickname', currentNickname);
-            if (currentNickname) localStorage.setItem('petna_user_nickname_' + currentEmail, currentNickname);
-            if (currentAvatar) localStorage.setItem('petna_user_avatar_' + currentEmail, currentAvatar);
-            if (currentPhotoUrl) localStorage.setItem('petna_user_photo_url_' + currentEmail, currentPhotoUrl);
-            if (currentTheme) localStorage.setItem('petna_app_theme', currentTheme);
-            if (currentUnit) localStorage.setItem('petna_app_unit', currentUnit);
-            if (registeredUsers) localStorage.setItem('petna_registered_users', registeredUsers);
+                // 메모리 변수 즉시 초기화
+                pets = JSON.parse(JSON.stringify(INITIAL_PETS));
+                walks = [];
+                meals = [];
+                schedules = JSON.parse(JSON.stringify(INITIAL_SCHEDULES));
+                posts = JSON.parse(JSON.stringify(INITIAL_POSTS));
+                albums = JSON.parse(JSON.stringify(INITIAL_ALBUM));
+                cart = [];
 
-            // 메모리 변수 즉시 초기화 (차트/리스트가 빈 상태를 즉시 반영)
-            pets = JSON.parse(JSON.stringify(INITIAL_PETS));
-            walks = [];
-            meals = [];
-            schedules = JSON.parse(JSON.stringify(INITIAL_SCHEDULES));
-            posts = JSON.parse(JSON.stringify(INITIAL_POSTS));
-            albums = JSON.parse(JSON.stringify(INITIAL_ALBUM));
-            cart = [];
+                showToast("회원 탈퇴가 완료되었습니다. 로그인 화면으로 이동합니다.");
 
-            // 상태를 로컬 스토리지에 동기화 저장
-            if (typeof saveState === 'function') saveState();
+                // 로그아웃 처리: 로그인 화면으로 강제 이동
+                setTimeout(() => {
+                    localStorage.setItem('petna_is_logged_in', 'false');
+                    window.location.reload();
+                }, 1500);
 
             // 모든 컴포넌트 즉시 재렌더링 (페이지 리로드 없이)
             if (typeof renderMyPets === 'function') renderMyPets();
