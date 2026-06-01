@@ -4,8 +4,9 @@
   "MY_CHANNEL_ID": "",
   "WATCHED_CHANNELS": [],
   "COMPETITOR_CHANNELS": [],
-  "TELEGRAM_BOT_TOKEN": "8931513831:AAFvmd8uyUkOsHFbKluTCg3Cx_26LHYC0l0",
-  "TELEGRAM_CHAT_ID": "6897522491",
+  "TELEGRAM_BOT_TOKEN": "",
+  "TELEGRAM_CHAT_ID": "",
   "OLLAMA_URL": "http://127.0.0.1:11434",
-  "MODEL": ""
+  "MODEL": "",
+  "_comment": "⚠️ TELEGRAM_BOT_TOKEN과 TELEGRAM_CHAT_ID는 루트 .env 파일에서 관리합니다. 이 파일의 값들은 환경 변수로 우선 참조됩니다."
 }
