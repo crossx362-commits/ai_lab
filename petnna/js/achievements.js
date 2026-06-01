@@ -38,6 +38,37 @@ function checkNewAchievements() {
     return unlocked.length;
 }
 
+function showAchievementDetail(achievementId) {
+    const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+    if (!achievement) return;
+
+    const unlocked = getUnlockedAchievements();
+    const isUnlocked = unlocked.some(u => u.id === achievementId);
+
+    if (typeof showCustomDialog === 'function') {
+        showCustomDialog({
+            title: `${achievement.emoji} ${achievement.name}`,
+            message: `
+                <div class="text-center space-y-3">
+                    <div class="text-5xl mb-3">${achievement.emoji}</div>
+                    <div class="text-sm font-bold text-gray-700">${achievement.name}</div>
+                    <div class="text-xs text-gray-500 leading-relaxed">${achievement.desc}</div>
+                    <div class="mt-4 pt-3 border-t border-gray-100">
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                            isUnlocked
+                                ? 'bg-amber-100 text-amber-600'
+                                : 'bg-gray-100 text-gray-400'
+                        }">
+                            ${isUnlocked ? '✅ 달성 완료!' : '🔒 미달성'}
+                        </span>
+                    </div>
+                </div>
+            `,
+            type: 'info'
+        });
+    }
+}
+
 function renderAchievementBadges() {
     const el = document.getElementById('achievement-badges');
     if (!el) return;
@@ -49,7 +80,9 @@ function renderAchievementBadges() {
     }
     const badges = ACHIEVEMENTS.map(a => {
         const done = unlocked.some(u => u.id === a.id);
-        return `<div class="flex flex-col items-center gap-1 ${done ? '' : 'opacity-30'}" title="${a.name}: ${a.desc}">
+        return `<div class="flex flex-col items-center gap-1 cursor-pointer hover:scale-110 transition-transform ${done ? '' : 'opacity-30'}"
+                     onclick="showAchievementDetail('${a.id}')"
+                     title="${a.name}: ${a.desc}">
             <span class="text-xl">${a.emoji}</span>
             <span class="text-[8px] font-black text-center leading-tight ${done ? 'text-gray-700' : 'text-gray-400'}">${a.name}</span>
         </div>`;
