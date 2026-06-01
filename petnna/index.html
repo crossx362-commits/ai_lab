@@ -59,6 +59,39 @@
 
     <!-- (3) 메인 라우터 및 부트스트랩 진입점 -->
     <script src="js/app.js?v=130"></script>
+</head>
+
+<body class="text-gray-800">
+    <!-- Header with tab buttons -->
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-amber-50 shadow-sm" style="display:none;">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <nav class="flex items-center gap-2">
+                <button class="tab-btn" data-tab="mypet" onclick="switchTab('mypet')">🏠 마이펫</button>
+                <button class="tab-btn" data-tab="walk" onclick="switchTab('walk')">🗺️ 산책</button>
+                <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')">☯️ 사주</button>
+                <button class="tab-btn" data-tab="social" onclick="switchTab('social')">👥 소셜</button>
+                <button class="tab-btn" data-tab="album" onclick="switchTab('album')">📖 일기장</button>
+                <button class="tab-btn" data-tab="shop" onclick="switchTab('shop')">🛍️ 쇼핑</button>
+                <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 설정</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main style="display:none;">
+        <div id="tab-mypet" class="tab-content"></div>
+        <div id="tab-walk" class="tab-content hidden"></div>
+        <div id="tab-saju" class="tab-content hidden"></div>
+        <div id="tab-social" class="tab-content hidden"></div>
+        <div id="tab-album" class="tab-content hidden"></div>
+        <div id="tab-shop" class="tab-content hidden"></div>
+        <div id="tab-settings" class="tab-content hidden"></div>
+        <div id="tab-mailbox" class="tab-content hidden"></div>
+        <div id="tab-cart" class="tab-content hidden"></div>
+    </main>
+
+    <div id="modal-container"></div>
+
     <!-- 🔒 펫과나 프리미엄 로그인 & 랜딩 스크린 오버레이 -->
     <div id="login-landing-overlay"
         class="fixed inset-0 z-50 bg-gradient-to-br from-[#1a120b] via-[#3a2212] to-[#120c08] flex items-center justify-center p-4 transition-all duration-500">
