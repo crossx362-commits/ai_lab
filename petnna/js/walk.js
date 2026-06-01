@@ -1970,20 +1970,39 @@ function startGpsWalk() {
                 const elapsedSec = Math.max((now - _gpsLastTime) / 1000, 0.1);
                 const speedMps   = distM / elapsedSec;
 
-                // 🔇 노이즈 필터: 3m 미만 이동 무시
-                if (distM < GPS_MIN_MOVE_METERS) return;
+                // 🔇 개선된 노이즈 필터: GPS 정확도 기반 적응형 필터링
+                const accuracy = pos.coords.accuracy || 50; // 정확도 (미터)
+                const minMoveThreshold = Math.max(GPS_MIN_MOVE_METERS, accuracy * 0.5);
 
-                // 🚨 이상 점프 감지: 초당 15m 초과 이동 무시
-                if (speedMps > GPS_MAX_SPEED_MPS) {
-                    console.warn(`[GPS] 이상 좌표 무시 — 속도 ${speedMps.toFixed(1)}m/s`);
+                if (distM < minMoveThreshold) return;
+
+                // 🚨 개선된 이상 점프 감지: 정확도 고려 및 다단계 검증
+                const maxAllowedSpeed = accuracy > 20 ? GPS_MAX_SPEED_MPS * 0.7 : GPS_MAX_SPEED_MPS;
+
+                if (speedMps > maxAllowedSpeed) {
+                    console.warn(`[GPS] 이상 좌표 무시 — 속도 ${speedMps.toFixed(1)}m/s, 정확도 ${accuracy.toFixed(1)}m`);
                     return;
                 }
 
-                // ✅ 정상 이동 — 거리·칼로리 누적
+                // ✅ 정상 이동 — 거리·칼로리 누적 (개선된 알고리즘)
                 walkDistanceRun += distKm;
-                walkCaloriesRun  = Math.round(walkDistanceRun * 70);
+
+                // 칼로리 계산 최적화: 체중, 속도, 지형 고려
+                const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+                const petWeight = pet?.weight || 8; // kg
+                const walkSpeedKmh = (distKm / elapsedSec) * 3600;
+
+                // MET (Metabolic Equivalent) 기반 칼로리 계산
+                // 느린 산책: 2.5 MET, 보통: 3.5 MET, 빠른: 4.5 MET
+                let met = 3.5;
+                if (walkSpeedKmh < 3) met = 2.5;
+                else if (walkSpeedKmh > 5) met = 4.5;
+
+                const caloriesBurned = (met * petWeight * (elapsedSec / 3600));
+                walkCaloriesRun += caloriesBurned;
+
                 document.getElementById('walk-distance-display').innerText = `${walkDistanceRun.toFixed(2)} km`;
-                document.getElementById('walk-calories-display').innerText = `${walkCaloriesRun} kcal`;
+                document.getElementById('walk-calories-display').innerText = `${Math.round(walkCaloriesRun)} kcal`;
             }
 
             _gpsLastTime = now;

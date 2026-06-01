@@ -635,7 +635,7 @@ function scrollToEntry(id) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function exportDiaryPDF() {
+async function exportDiaryPDF() {
     if (typeof isPremium === 'function' && !isPremium()) {
         if (typeof showPremiumModal === 'function') showPremiumModal();
         return;
@@ -644,11 +644,90 @@ function exportDiaryPDF() {
         if (typeof showToast === 'function') showToast('일기가 없습니다. 먼저 일기를 써보세요!');
         return;
     }
+
     const pet = typeof getActivePet === 'function' ? getActivePet() : null;
     const petName = pet?.name || '반려동물';
     const now = new Date();
 
-    const entries = albums.slice(0, 50).map(a => {
+    // jsPDF가 로드되었는지 확인
+    if (typeof window.jspdf === 'undefined') {
+        // fallback to print method
+        exportDiaryPDFLegacy();
+        return;
+    }
+
+    if (typeof showToast === 'function') showToast('📄 PDF를 생성하는 중입니다...');
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 15;
+        let yPosition = margin;
+
+        // 한글 폰트 설정 (기본 폰트 사용)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.text(`📖 ${petName}의 소중한 일기장`, margin, yPosition);
+
+        yPosition += 10;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`총 ${albums.length}편 · 생성일: ${now.toLocaleDateString('ko-KR')} · 펫과나`, margin, yPosition);
+
+        yPosition += 15;
+
+        const maxEntries = Math.min(albums.length, 50);
+        for (let i = 0; i < maxEntries; i++) {
+            const a = albums[i];
+            const d = new Date(a.id);
+            const dateLabel = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
+
+            // 페이지 넘김 체크
+            if (yPosition > pageHeight - 40) {
+                doc.addPage();
+                yPosition = margin;
+            }
+
+            // 일기 제목
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${dateLabel} - ${a.mood || '일기'}`, margin, yPosition);
+            yPosition += 8;
+
+            // 일기 내용
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const text = a.text || '내용 없음';
+            const splitText = doc.splitTextToSize(text, pageWidth - (margin * 2));
+            doc.text(splitText, margin, yPosition);
+            yPosition += splitText.length * 5 + 10;
+        }
+
+        // 푸터
+        const footerY = pageHeight - 10;
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('🐾 펫과나 (Pet & Na) — 펫과 함께 사는 삶', pageWidth / 2, footerY, { align: 'center' });
+
+        // PDF 저장
+        doc.save(`${petName}_일기장_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.pdf`);
+
+        if (typeof showToast === 'function') showToast('✅ PDF 다운로드가 완료되었습니다!');
+    } catch (error) {
+        console.error('PDF 생성 실패:', error);
+        if (typeof showToast === 'function') showToast('PDF 생성에 실패했습니다. 브라우저 인쇄 기능을 사용해주세요.');
+        exportDiaryPDFLegacy();
+    }
+}
+
+function exportDiaryPDFLegacy() {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const petName = pet?.name || '반려동물';
+    const now = new Date();
+
+    const entries = (Array.isArray(albums) ? albums : []).slice(0, 50).map(a => {
         const d = new Date(a.id);
         const dateLabel = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
         const moodEmoji = { happy: '😊', sad: '😢', excited: '🎉', tired: '😴', sick: '🤒' }[a.mood] || '📝';
@@ -727,7 +806,7 @@ function closeFriendInviteModal() {
     }
 }
 
-function sendFriendInvite(friendName, friendEmail, btnEl) {
+async function sendFriendInvite(friendName, friendEmail, btnEl) {
     if (sharedFriends.some(f => f.email === friendEmail)) {
         showToast("이미 공유 중인 친구입니다.");
         return;
@@ -737,13 +816,26 @@ function sendFriendInvite(friendName, friendEmail, btnEl) {
     btnEl.disabled = true;
     btnEl.classList.add('opacity-50', 'cursor-not-allowed');
 
-    setTimeout(() => {
+    setTimeout(async () => {
         btnEl.innerText = "수락 완료!";
         btnEl.classList.remove('bg-brand-500', 'hover:bg-brand-600', 'opacity-50', 'cursor-not-allowed');
         btnEl.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
 
         sharedFriends.push({ name: friendName, email: friendEmail });
         localStorage.setItem('petna_shared_friends', JSON.stringify(sharedFriends));
+
+        // Supabase 연동: 친구 일기 가져오기
+        if (typeof fetchFriendDiaries === 'function') {
+            try {
+                const friendDiaries = await fetchFriendDiaries([friendEmail]);
+                if (friendDiaries && friendDiaries.length > 0) {
+                    console.log(`📚 ${friendName}님의 일기 ${friendDiaries.length}개를 가져왔습니다.`);
+                }
+            } catch (e) {
+                console.error("친구 일기 가져오기 실패:", e);
+            }
+        }
+
         showToast(`🎉 ${friendName}님이 교환 일기 초대를 수락했습니다!`);
 
         setTimeout(() => {
