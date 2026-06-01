@@ -263,12 +263,14 @@
 
     <!-- Environment Configuration (Frontend) -->
     <script>
-        window._env_ = {
+        // Environment variables injected at build time by Vercel
+        // See vercel.json and package.json build script
+        window._env_ = window._env_ || {
             SUPABASE_URL: "",
             SUPABASE_ANON_KEY: "",
-            GEMINI_API_KEY: "AIzaSyBwIHOlWNdtEkweRPQaQd1dcPf44hugjoU",
-            STRIPE_PAYMENT_LINK: "",      // 프리미엄 구독 Payment Link
-            STRIPE_SHOP_PAYMENT_LINK: ""  // 쇼핑몰 결제 Payment Link
+            GEMINI_API_KEY: "",
+            STRIPE_PAYMENT_LINK: "",      // 프리미엄 구독 Payment Link (필요시 추가)
+            STRIPE_SHOP_PAYMENT_LINK: ""  // 쇼핑몰 결제 Payment Link (필요시 추가)
         };
     </script>
 

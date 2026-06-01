@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "build": "node inject-env.js",
     "cap:init": "npx cap init",
     "cap:add-android": "npx cap add android",
     "cap:sync": "npx cap sync",
