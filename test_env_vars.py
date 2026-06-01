@@ -52,12 +52,15 @@ def test_supabase():
 
     try:
         req = urllib.request.Request(
-            f"{url}/rest/v1/",
-            headers={"apikey": key, "Authorization": f"Bearer {key}"}
+            f"{url}/auth/v1/health",
+            headers={"apikey": key}
         )
         with urllib.request.urlopen(req, timeout=10) as r:
-            print(f"  ✅ Supabase API 정상 - {url}")
-            return True
+            data = json.loads(r.read())
+            if "version" in data:
+                print(f"  ✅ Supabase API 정상 - {data.get('name', 'GoTrue')} {data.get('version', '')}")
+                return True
+            return False
     except Exception as e:
         print(f"  ❌ Supabase API 실패: {e}")
         return False
