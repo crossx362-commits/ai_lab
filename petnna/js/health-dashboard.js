@@ -15,6 +15,54 @@ function saveHealthHistoryToday() {
     if (typeof saveState === 'function') saveState();
 }
 
+// 일주일치 랜덤 건강 데이터 생성
+function generateWeeklyHealthData() {
+    if (typeof healthLogs === 'undefined') return;
+    if (!healthLogs.history) healthLogs.history = [];
+
+    const poopTypes = ['normal', 'soft', 'hard', 'liquid'];
+    const today = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        // 이미 데이터가 있으면 건너뛰기
+        const exists = healthLogs.history.find(h => h.date === dateStr);
+        if (exists) continue;
+
+        // 랜덤 데이터 생성
+        const entry = {
+            date: dateStr,
+            food: Math.floor(Math.random() * 50) + 30,      // 30-80
+            water: Math.floor(Math.random() * 150) + 100,   // 100-250
+            poop: Math.random() > 0.2 ? poopTypes[Math.floor(Math.random() * poopTypes.length)] : null,
+            condition: Math.random() > 0.7 ? (Math.random() > 0.5 ? 'good' : 'tired') : null
+        };
+
+        healthLogs.history.unshift(entry);
+    }
+
+    // 중복 제거 및 정렬
+    const uniqueDates = {};
+    healthLogs.history = healthLogs.history.filter(h => {
+        if (uniqueDates[h.date]) return false;
+        uniqueDates[h.date] = true;
+        return true;
+    });
+
+    healthLogs.history.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (healthLogs.history.length > 90) {
+        healthLogs.history = healthLogs.history.slice(0, 90);
+    }
+
+    if (typeof saveState === 'function') saveState();
+    if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
+    if (typeof showToast === 'function') showToast("일주일치 건강 데이터가 생성되었습니다! 📊");
+}
+
 function getLast7DaysHealthData() {
     const history = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
     const days = Array.from({ length: 7 }, (_, i) => {

@@ -540,9 +540,14 @@ const MODALS_TEMPLATE = `
                 <input type="range" id="water-amount-slider" min="0" max="1000" value="0" step="50" oninput="document.getElementById('water-amount-disp').innerText = this.value + 'ml'" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500">
             </div>
             
-            <button onclick="saveHealthLog()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
-                <i class="fa-solid fa-save"></i>건강 일지 안전하게 보관하기
-            </button>
+            <div class="space-y-2">
+                <button onclick="saveHealthLog()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
+                    <i class="fa-solid fa-save"></i>건강 일지 안전하게 보관하기
+                </button>
+                <button onclick="generateWeeklyHealthData()" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
+                    <i class="fa-solid fa-dice"></i>일주일치 데이터 랜덤 생성
+                </button>
+            </div>
         </div>
     </div>
 </div>
