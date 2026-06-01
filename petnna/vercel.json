@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build || true",
+  "outputDirectory": ".",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':!*.md' ':!docs/'",
   "crons": [
     {
