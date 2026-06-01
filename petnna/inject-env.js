@@ -29,17 +29,20 @@ const envScript = `
         window._env_ = ${JSON.stringify(env, null, 8)};
     </script>`;
 
-// Replace the placeholder
-const regex = /<script>\s*\/\/ Environment variables[\s\S]*?window\._env_[\s\S]*?<\/script>/;
+// Replace the placeholder - 더 유연한 정규식
+const regex = /<script>[\s\S]*?\/\/ Environment variables[\s\S]*?window\._env_[\s\S]*?};[\s\S]*?<\/script>/;
 
 if (regex.test(html)) {
   html = html.replace(regex, envScript.trim());
   fs.writeFileSync(indexPath, html, 'utf8');
   console.log('✅ Environment variables injected into index.html');
-  console.log(`   SUPABASE_URL: ${env.SUPABASE_URL ? 'Set' : 'Empty'}`);
-  console.log(`   SUPABASE_ANON_KEY: ${env.SUPABASE_ANON_KEY ? 'Set' : 'Empty'}`);
-  console.log(`   GEMINI_API_KEY: ${env.GEMINI_API_KEY ? 'Set' : 'Empty'}`);
+  console.log(`   SUPABASE_URL: ${env.SUPABASE_URL ? 'Set ✓' : 'Empty ✗'}`);
+  console.log(`   SUPABASE_ANON_KEY: ${env.SUPABASE_ANON_KEY ? 'Set ✓' : 'Empty ✗'}`);
+  console.log(`   GEMINI_API_KEY: ${env.GEMINI_API_KEY ? 'Set ✓' : 'Empty ✗'}`);
+  console.log(`   STRIPE_PAYMENT_LINK: ${env.STRIPE_PAYMENT_LINK ? 'Set ✓' : 'Empty ✗'}`);
+  console.log(`   STRIPE_SHOP_PAYMENT_LINK: ${env.STRIPE_SHOP_PAYMENT_LINK ? 'Set ✓' : 'Empty ✗'}`);
 } else {
   console.log('⚠️  Could not find environment variable placeholder in index.html');
+  console.log('   Searching for pattern: <script>...// Environment variables...window._env_...</script>');
   console.log('   Skipping injection');
 }

@@ -607,10 +607,11 @@ function runCommandCaptured(
     captureStream: 'both' | 'stdout' = 'both'
 ): Promise<{ exitCode: number; output: string; timedOut: boolean }> {
     return new Promise((resolve) => {
+        const env = { ...process.env, SUPPRESS_TELEGRAM: '1' };
         const child = spawn(cmd, {
             cwd,
             shell: true,
-            env: process.env,
+            env: env,
             stdio: ['ignore', 'pipe', 'pipe']
         });
         let buf = '';
@@ -1892,7 +1893,7 @@ function _renderTelegramHistory(maxTurns = 8): string {
    heartbeat on every successful poll; followers see the fresh heartbeat and
    skip polling entirely. If the leader dies, its lock goes stale (>15s) and
    any other window can take over on its next tick. */
-const TELEGRAM_LOCK_TTL_MS = 15000;
+const TELEGRAM_LOCK_TTL_MS = 45000;
 function _telegramLockPath(): string {
   /* v2.89.24 — 유저 레벨로 이동. 이전엔 `_company/_shared/`(워크스페이스 단위)에
      있어서 안티그래비티 창마다 다른 워크스페이스면 락도 따로따로 → 두 창이
