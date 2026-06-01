@@ -647,3 +647,30 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 .pet-active-ring {
     animation: activePetPulse 2s ease-in-out infinite;
 }
+
+/* 탭 버튼 스타일 */
+.tab-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.tab-btn:hover {
+    background-color: rgba(251, 146, 60, 0.1);
+}
+
+.mobile-tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}

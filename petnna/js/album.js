@@ -926,19 +926,22 @@ function renderAlbumGallery() {
             if (friendCountBadge) friendCountBadge.innerText = '0명';
         } else {
             if (friendCountBadge) friendCountBadge.innerText = `${sharedFriends.length}명`;
-            friendListContainer.innerHTML = sharedFriends.map(f => `
+            friendListContainer.innerHTML = sharedFriends.map(f => {
+                const friendName = typeof f === 'string' ? f : (f.name || f.email || '친구');
+                return `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-500 flex items-center justify-center font-black overflow-hidden shadow-sm">
-                            ${f.slice(0, 1)}
+                            ${friendName.slice(0, 1)}
                         </div>
                         <div>
-                            <span class="block text-[11px] font-bold text-gray-800">${f}</span>
+                            <span class="block text-[11px] font-bold text-gray-800">${friendName}</span>
                         </div>
                     </div>
                     <span class="text-[9px] font-bold text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded border border-brand-100">구독중</span>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
     }
 
