@@ -317,32 +317,21 @@ document.addEventListener('DOMContentLoaded', function () {
     applyThemeStyles(settings_theme);
 
     // 🔓 로그인 세션 확인 및 레이아웃 상태 설정
-    // 자동 로그인 해제 요청으로 무조건 false 처리
-    const isLoggedIn = localStorage.getItem('petna_is_logged_in') === 'true';
+    // 자동 로그인 비활성화 - 항상 로그인 화면 표시
+    const isLoggedIn = false; // 자동 로그인 비활성화
     const loginOverlay = document.getElementById('login-landing-overlay');
     const headerEl = document.querySelector('header');
     const mainEl = document.querySelector('main');
     const mobileNavbarEl = document.getElementById('mobile-navbar');
 
-    if (isLoggedIn) {
-        if (loginOverlay) loginOverlay.style.display = 'none';
-        if (headerEl) headerEl.style.display = 'block';
-        if (mainEl) mainEl.style.display = 'block';
-        if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
-        
-        const email = localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
-        setTimeout(() => {
-            executeLogin(email, "", true);
-        }, 100);
-    } else {
-        if (loginOverlay) {
-            loginOverlay.style.display = 'flex';
-            loginOverlay.classList.remove('opacity-0', 'scale-95');
-        }
-        if (headerEl) headerEl.style.display = 'none';
-        if (mainEl) mainEl.style.display = 'none';
-        if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
+    // 항상 로그인 화면 표시
+    if (loginOverlay) {
+        loginOverlay.style.display = 'flex';
+        loginOverlay.classList.remove('opacity-0', 'scale-95');
     }
+    if (headerEl) headerEl.style.display = 'none';
+    if (mainEl) mainEl.style.display = 'none';
+    if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
 
     renderWalkHistory();
     updateCartBadge();
