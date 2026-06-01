@@ -936,17 +936,18 @@ function addWalkToAlbum(walkId) {
         ]
     };
 
+    // 일기장에 추가 (앨범 아님)
     albums.unshift(walkAlbumItem);
     saveState();
 
-    // 즉시 갤러리 업데이트 (현재 앨범 탭이 열려있으면)
+    // 즉시 일기장 업데이트
     if (typeof renderAlbumGallery === 'function') {
         renderAlbumGallery();
     }
 
     showCustomDialog({
-        title: "앨범 추가 완료! 📸",
-        message: `"${w.date}" 산책 기록이 소장 갤러리에 성공적으로 추가되었습니다!\n일기장 탭에서 바로 확인해보세요.`,
+        title: "일기장 추가 완료! 📖",
+        message: `"${w.date}" 산책 기록이 일기장에 성공적으로 추가되었습니다!\n일기장 탭에서 바로 확인해보세요.`,
         icon: "✅",
         type: "alert"
     });

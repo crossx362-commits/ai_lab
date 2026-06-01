@@ -1,7 +1,7 @@
 """
 duplicate_guard.py — 가희(콘텐츠 검수관) 소유 중앙 중복 감지 모듈
 
-모든 에이전트(아린·숙자·루나)의 중복 감지 로직이 이곳에 집중됨.
+모든 에이전트(아린·루나)의 중복 감지 로직이 이곳에 집중됨.
 에이전트는 자체 중복 체크를 하지 않고 이 모듈을 import해서 사용한다.
 
 소유: 가희 (assets/tool-seeds/가희_검수관/)
@@ -168,11 +168,9 @@ def is_hashtag_duplicate(new_caption: str, overlap_threshold: float = 0.80,
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 숙자 — Blog 제목 중복
 # ══════════════════════════════════════════════════════════════════════════════
 
 def get_recent_blog_titles(days: int = 30) -> list[str]:
-    """숙자가 최근 N일간 발행한 블로그 제목 목록 반환."""
     titles: list[str] = []
     if os.path.exists(_BLOG_MEM_FILE):
         try:

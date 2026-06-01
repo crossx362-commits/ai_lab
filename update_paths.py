@@ -13,14 +13,14 @@ content = content.replace(
 
 # Fix tool-seeds paths mapping
 path_map = {
-    '"루나_디렉터"': '", ".agent", "skills", "루나", "tools"',
-    '"아린_관리자"': '", ".agent", "skills", "아린", "tools"',
-    '"현빈_전략가"': '", ".agent", "skills", "현빈", "tools"',
-    '"영숙_비서"': '", ".agent", "skills", "영숙", "tools"',
-    '"예원_CEO"': '", ".agent", "skills", "예원", "tools"',
-    '"코다리_개발자"': '", ".agent", "skills", "코다리", "tools"',
-    '"가희_검수관"': '", ".agent", "skills", "가희", "tools"',
-    '"경수_수사관"': '", ".agent", "skills", "경수", "tools"'
+    '"루나_디렉터"': '", ".agent", "skills", "루나_디렉터", "tools"',
+    '"아린_관리자"': '", ".agent", "skills", "아린_관리자", "tools"',
+    '"현빈_전략가"': '", ".agent", "skills", "현빈_전략가", "tools"',
+    '"영숙_비서"': '", ".agent", "skills", "영숙_비서", "tools"',
+    '"예원_CEO"': '", ".agent", "skills", "예원_CEO", "tools"',
+    '"코다리_개발자"': '", ".agent", "skills", "코다리_개발자", "tools"',
+    '"가희_검수관"': '", ".agent", "skills", "가희_검수관", "tools"',
+    '"경수_수사관"': '", ".agent", "skills", "경수_수사관", "tools"'
 }
 
 for old, new in path_map.items():

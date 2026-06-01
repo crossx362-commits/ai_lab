@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Standalone 24h autonomous cycle for Connect AI Lab.
+ * Standalone 24h autonomous cycle for AI Team Lab.
  *
  * Runs OUTSIDE the VS Code extension lifecycle so the company keeps working
  * even when the IDE is closed. Reads the brain folder, asks the local LLM to
@@ -27,7 +27,7 @@ const os = require('os');
 const axios = require('axios');
 
 // ───────────────────────── Config (env-overridable) ─────────────────────────
-const BRAIN_DIR = (process.env.BRAIN_DIR || path.join(os.homedir(), '.connect-ai-brain')).replace(/^~/, os.homedir());
+const BRAIN_DIR = (process.env.BRAIN_DIR || path.join(os.homedir(), '.ai-team-brain')).replace(/^~/, os.homedir());
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const LMSTUDIO_URL = process.env.LMSTUDIO_URL || 'http://127.0.0.1:1234';
 const MODEL = process.env.MODEL || 'gemma4:e2b';
@@ -151,7 +151,7 @@ runCycle().catch((e) => {
 # Then: launchctl load ~/Library/LaunchAgents/com.connectai.cycle.plist
 
 # Linux/macOS cron — every 30 minutes
-# */30 * * * * /usr/local/bin/node /path/to/cycle.js >> ~/.connect-ai-brain/cycle.log 2>&1
+# */30 * * * * /usr/local/bin/node /path/to/cycle.js >> ~/.ai-team-brain/cycle.log 2>&1
 
 # Windows Task Scheduler — create a task that runs node.exe with this script as arg
 # every 30 min, with working directory set to the brain folder.
