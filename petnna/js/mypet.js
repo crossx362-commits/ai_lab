@@ -32,74 +32,109 @@ function setActivePet(idx) {
 
 function renderPetStageList() {
     const list = document.getElementById('pet-stage-list');
+    const svg = document.getElementById('leash-svg');
     if (!list) return;
 
     list.innerHTML = '';
+    if (svg) svg.innerHTML = '';
+
     const count = pets ? pets.length : 0;
+    if (count === 0) return;
 
-    // 마리수에 관계없이 고정 사이즈
-    const sz = { circle: 'w-7 h-7', emoji: 'text-sm', label: 'text-[10px]', border: 'border-2' };
+    // 집사 중앙 위치 (%)
+    const butlerX = 50;
+    const butlerY = 50;
 
-    // ── 리드줄 동적 업데이트 (마리수만큼 🦮 표시) ─────────────────────────────
-    const leashLines = document.getElementById('leash-lines');
-    if (leashLines) {
-        if (count <= 1) {
-            leashLines.innerHTML = `
-                <div class="flex items-center gap-0.5">
-                    <div class="w-5 border-t-2 border-dashed border-gray-300"></div>
-                    <span class="text-base">🦮</span>
-                    <div class="w-5 border-t-2 border-dashed border-gray-300"></div>
-                </div>`;
-        } else {
-            leashLines.innerHTML = Array.from({ length: count }, (_, i) => {
-                const isActive = i === activePetIndex;
-                return `
-                <div class="flex items-center gap-0.5">
-                    <div class="w-4 border-t-2 border-dashed ${isActive ? 'border-amber-400' : 'border-gray-200'}"></div>
-                    <span class="text-sm ${isActive ? '' : 'opacity-40'}">🦮</span>
-                    <div class="w-4 border-t-2 border-dashed ${isActive ? 'border-amber-400' : 'border-gray-200'}"></div>
-                </div>`;
-            }).join('');
-        }
-    }
+    // 펫 크기
+    const sz = { circle: 'w-14 h-14', emoji: 'text-2xl', label: 'text-[11px]', border: 'border-3' };
 
-    // ── 펫 목록 렌더링 ─────────────────────────────────────────────────────────
+    // ── 펫 불규칙 배치 (원형 + 랜덤) ─────────────────────────────────────────────
     if (pets && pets.length > 0) {
+        const radius = count === 1 ? 30 : 38; // 반경 (%)
+        const angleStep = (Math.PI * 2) / count;
+
         pets.forEach((pet, idx) => {
             const isActive = idx === activePetIndex;
+
+            // 각도 계산 (원형 배치 + pet.id 기반 일관된 랜덤)
+            const baseAngle = angleStep * idx - Math.PI / 2; // 12시 방향부터
+            const seed = (pet.id || idx) * 137.508; // 황금각
+            const randomOffset = Math.sin(seed) * 0.4;
+            const angle = baseAngle + randomOffset;
+
+            // 위치 계산 (약간의 반경 변화)
+            const radiusVariation = radius + Math.cos(seed) * 5;
+            const petX = butlerX + Math.cos(angle) * radiusVariation;
+            const petY = butlerY + Math.sin(angle) * radiusVariation;
+
+            // SVG 목줄 그리기 (곡선)
+            if (svg) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const controlX = (butlerX + petX) / 2 + Math.sin(angle) * 3;
+                const controlY = (butlerY + petY) / 2 - 8;
+                const d = `M ${butlerX}% ${butlerY}% Q ${controlX}% ${controlY}% ${petX}% ${petY}%`;
+                line.setAttribute('d', d);
+                line.setAttribute('stroke', isActive ? '#f59e0b' : '#d1d5db');
+                line.setAttribute('stroke-width', isActive ? '2.5' : '1.5');
+                line.setAttribute('stroke-dasharray', '5 3');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('opacity', isActive ? '0.9' : '0.4');
+                line.setAttribute('class', 'transition-all duration-300');
+                svg.appendChild(line);
+
+                // 목줄에 🦮 아이콘
+                const leashMidX = (butlerX + petX) / 2;
+                const leashMidY = (butlerY + petY) / 2 - 5;
+                const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                foreignObject.setAttribute('x', `${leashMidX - 1.5}%`);
+                foreignObject.setAttribute('y', `${leashMidY - 1.5}%`);
+                foreignObject.setAttribute('width', '3%');
+                foreignObject.setAttribute('height', '3%');
+                foreignObject.innerHTML = `<div style="font-size: ${isActive ? '16px' : '12px'}; opacity: ${isActive ? 1 : 0.5}; transition: all 0.3s;">🦮</div>`;
+                svg.appendChild(foreignObject);
+            }
+
+            // 펫 컨테이너
             const wrapper = document.createElement('div');
-            wrapper.className = 'pet-swipe-card';
+            wrapper.className = 'absolute transition-all duration-500';
+            wrapper.style.left = `${petX}%`;
+            wrapper.style.top = `${petY}%`;
+            wrapper.style.transform = 'translate(-50%, -50%)';
             wrapper.onclick = () => setActivePet(idx);
 
-            // 아바타 네모
+            const container = document.createElement('div');
+            container.className = 'flex flex-col items-center gap-1 cursor-pointer';
+
+            // 아바타
             const circle = document.createElement('div');
             circle.className = `flex items-center justify-center rounded-2xl overflow-hidden transition-all shrink-0
                 ${isActive
-                    ? `${sz.circle} ${sz.border} border-amber-400 ring-2 ring-amber-300/50 shadow-lg bg-amber-50 cursor-pointer hover:border-amber-500`
-                    : `${sz.circle} ${sz.border} border-amber-200 opacity-55 bg-amber-50/40 hover:opacity-85`}`;
+                    ? `${sz.circle} ${sz.border} border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-110`
+                    : `${sz.circle} ${sz.border} border-amber-200 opacity-60 bg-amber-50/40 hover:opacity-90 hover:scale-105`}`;
             circle.id = isActive ? 'pet-graphic-container' : `pet-circle-${idx}`;
             circle.title = isActive ? `${pet.name || '펫'} 사진 변경` : `${pet.name || '펫'} 선택`;
             if (isActive) circle.onclick = (e) => { e.stopPropagation(); triggerPetPhotoUploadDirect(); };
 
             const emojiMap = { cat: '🐈', rabbit: '🐰', hamster: '🐹', dog: '🐕' };
             if (pet.type === 'custom' && pet.imageUrl) {
-                circle.innerHTML = `<img loading="lazy" src="${pet.imageUrl}" class="w-full h-full object-cover rounded-xl">`;
+                circle.innerHTML = `<img loading="lazy" src="${pet.imageUrl}" class="w-full h-full object-cover">`;
             } else {
                 circle.innerHTML = `<span class="${sz.emoji}">${emojiMap[pet.type] || '🐕'}</span>`;
             }
-            wrapper.appendChild(circle);
+            container.appendChild(circle);
 
-            // 이름 + 목걸이 태그
-            const info = document.createElement('div');
-            info.className = 'flex flex-col gap-0.5';
-            info.innerHTML = `
-                <span class="${isActive ? 'text-amber-700' : 'text-gray-400'} ${sz.label} font-black transition-all" ${isActive ? 'id="pet-stage-name"' : ''}>${pet.name || '펫'}</span>
-                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full border transition-all w-fit
-                    ${isActive ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-gray-300 bg-gray-50 border-gray-100'}">
-                    🏷️ ${isActive ? '활성' : '대기'}
-                </span>`;
-            wrapper.appendChild(info);
+            // 이름 태그
+            const nameTag = document.createElement('span');
+            nameTag.className = `${sz.label} font-black px-2 py-0.5 rounded-full border-2 transition-all ${
+                isActive
+                    ? 'text-amber-700 bg-amber-50 border-amber-300'
+                    : 'text-gray-400 bg-white/80 border-gray-200'
+            }`;
+            if (isActive) nameTag.id = 'pet-stage-name';
+            nameTag.textContent = pet.name || '펫';
+            container.appendChild(nameTag);
 
+            wrapper.appendChild(container);
             list.appendChild(wrapper);
         });
     }

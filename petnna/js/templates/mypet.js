@@ -153,42 +153,39 @@ const MYPET_TEMPLATE = `
             <!-- 메인 콘텐츠 -->
             <div class="px-5 pb-5 space-y-4">
 
-                <!-- 스테이지: 집사(좌) | 리드줄(중) | 펫컬럼(우) -->
-                <div class="flex items-center justify-center gap-3 pt-3 pb-2">
+                <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
+                <div class="relative w-full min-h-[280px] flex items-center justify-center pt-3 pb-2">
+                    <!-- SVG 목줄 연결선 -->
+                    <svg id="leash-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
+                        <!-- JS로 동적 생성 -->
+                    </svg>
 
-                    <!-- 집사 (주인 — 큰 원) -->
-                    <div class="flex flex-col items-center gap-1.5 shrink-0">
-                        <span class="text-[10px] font-black text-brand-600 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            👑 집사
-                        </span>
-                        <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
-                            class="w-40 h-40 flex items-center justify-center rounded-full bg-white border-4 border-brand-400 shadow-xl overflow-hidden cursor-pointer hover:border-brand-500 transition-all"
-                            title="집사 사진 변경">
-                            <span id="butler-stage-avatar" class="text-7xl">🧔</span>
-                            <img loading="lazy" id="butler-stage-image" class="hidden w-full h-full object-cover rounded-full">
-                        </div>
-                        <input type="file" id="butler-direct-upload" accept="image/*" class="hidden" onchange="uploadButlerPhotoDirect(event)">
-                        <span id="butler-stage-name" class="text-xs text-gray-600 font-black">집사</span>
-                    </div>
-
-                    <!-- 리드줄 + 말풍선 (마리수에 따라 JS가 동적 업데이트) -->
-                    <div id="leash-section" class="flex flex-col items-center gap-1.5 shrink-0">
-                        <div id="pet-speech-bubble" class="relative bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center max-w-[100px] shadow-sm">
-                            <span id="pet-bubble-text">산책 가요! 🐕</span>
-                            <div class="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-amber-50 border-l border-b border-amber-200 rotate-45"></div>
-                        </div>
-                        <div id="leash-lines" class="flex flex-col items-center gap-1">
-                            <div class="flex items-center gap-0.5">
-                                <div class="w-5 border-t-2 border-dashed border-gray-300"></div>
-                                <span class="text-base">🦮</span>
-                                <div class="w-5 border-t-2 border-dashed border-gray-300"></div>
+                    <!-- 집사 (중앙) -->
+                    <div class="absolute" style="left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 10;">
+                        <div class="flex flex-col items-center gap-1.5">
+                            <span class="text-[10px] font-black text-brand-600 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                👑 집사
+                            </span>
+                            <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
+                                class="w-32 h-32 flex items-center justify-center rounded-full bg-white border-4 border-brand-400 shadow-xl overflow-hidden cursor-pointer hover:border-brand-500 transition-all"
+                                title="집사 사진 변경">
+                                <span id="butler-stage-avatar" class="text-6xl">🧔</span>
+                                <img loading="lazy" id="butler-stage-image" class="hidden w-full h-full object-cover rounded-full">
                             </div>
+                            <input type="file" id="butler-direct-upload" accept="image/*" class="hidden" onchange="uploadButlerPhotoDirect(event)">
+                            <span id="butler-stage-name" class="text-xs text-gray-600 font-black">집사</span>
                         </div>
                     </div>
 
-                    <!-- 반려동물 컬럼 (JS 동적 렌더링, 마리수 따라 크기 자동 조절) -->
-                    <div id="pet-stage-list" class="flex flex-col items-center gap-2">
-                        <!-- renderPetStageList() -->
+                    <!-- 말풍선 (집사 머리 위) -->
+                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 5%; transform: translateX(-50%); z-index: 11;">
+                        <span id="pet-bubble-text">산책 가요! 🐕</span>
+                        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
+                    </div>
+
+                    <!-- 반려동물들 (불규칙 배치) -->
+                    <div id="pet-stage-list" class="absolute inset-0" style="z-index: 5;">
+                        <!-- renderPetStageList() - 각 펫을 원형으로 배치 -->
                     </div>
                 </div>
 
