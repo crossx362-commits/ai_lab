@@ -75,6 +75,11 @@ def _call_ai_for_yeongsuk(original_message: str) -> str:
 
 def send_telegram_message(message: str, parse_mode: str = "HTML") -> bool:
     """텔레그램 메시지 전송. 실패 시 False 반환 (예외 미전파)."""
+    # 중복 전송 방지: telegram_bot.py의 route()에서 실행될 때는 전송 생략
+    if os.getenv("SUPPRESS_TELEGRAM") == "1":
+        print(f"  [Telegram 전송 생략] {message[:50]}")
+        return True
+
     # 영숙이 톤으로 일괄 변환
     message = _call_ai_for_yeongsuk(message)
 

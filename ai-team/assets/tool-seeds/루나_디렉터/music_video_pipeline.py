@@ -275,8 +275,8 @@ def run_pipeline(publish_hhmm: str = None):
     cp = load_checkpoint()
     if cp:
         print(f"  - [Checkpoint] 재개: 단계='{cp.get('step')}', 저장={cp.get('saved_at','?')}")
-    else:
-        send_telegram_message("🎬 루나: K-POP × 시티팝 뮤직비디오 파이프라인 기동합니다.")
+    # else:
+    #     send_telegram_message("🎬 루나: K-POP × 시티팝 뮤직비디오 파이프라인 기동합니다.")  # 중복 방지: telegram_bot.py에서 전송
 
     analyzer  = TrendAnalyzer()
     generator = VideoGenerator()
@@ -603,7 +603,7 @@ def run_pipeline(publish_hhmm: str = None):
                f"- 제목: {title}\n"
                f"- 링크: https://youtu.be/{video_id}\n"
                f"- 예약(KST): {publish_time_kst_str}")
-        send_telegram_message(msg)
+        # send_telegram_message(msg)  # 중복 방지: telegram_bot.py에서 전송
         print(f"\n{msg}")
 
         # 가희 사후 검수 (업로드 후 메타데이터 확인) + 실패 시 자동 수정

@@ -461,7 +461,7 @@ def main(dry_run=False):
         print("❌ 에러: .env 파일에서 계정 정보를 읽을 수 없습니다.")
         sys.exit(1)
 
-    send_telegram_message("🌸 아린 인스타: 금일 포스팅 제작 및 자동 업로드 파이프라인을 기동합니다.")
+    # send_telegram_message("🌸 아린 인스타: 금일 포스팅 제작 및 자동 업로드 파이프라인을 기동합니다.")  # 중복 방지: telegram_bot.py에서 전송
 
     # 1. 트렌드 수집 (KR·US·JP + 카테고리 큐레이션)
     trends = get_trends()
@@ -680,7 +680,7 @@ def main(dry_run=False):
     # 업로드 성공 후 처리 (루프 밖)
     if post_id:
         print(f"🎉 성공적으로 자동 포스팅이 완료되었습니다! (ID: {post_id})")
-        send_telegram_message(f"✅ 아린 인스타: 금일 자동 포스팅 발행 완료!\n- 트렌드 주제: {selected_trend}\n- 업로드 타임: {post_data['best_time']}\n- 포스팅 ID: {post_id}\n- 이미지: {image_url}")
+        # send_telegram_message(f"✅ 아린 인스타: 금일 자동 포스팅 발행 완료!\n- 트렌드 주제: {selected_trend}\n- 업로드 타임: {post_data['best_time']}\n- 포스팅 ID: {post_id}\n- 이미지: {image_url}")  # 중복 방지: telegram_bot.py에서 전송
         _record_to_history({
             "agent": "아린",
             "status": "published",
@@ -696,7 +696,7 @@ def main(dry_run=False):
         })
     else:
         print("❌ 자동 포스팅에 실패했습니다.")
-        send_telegram_message(f"❌ 아린 인스타: 인스타그램 업로드 API 오류로 포스팅 실패\n- 트렌드 주제: {selected_trend}")
+        # send_telegram_message(f"❌ 아린 인스타: 인스타그램 업로드 API 오류로 포스팅 실패\n- 트렌드 주제: {selected_trend}")  # 중복 방지: telegram_bot.py에서 전송
 
     # 깃 동기화
     git_sync()
