@@ -4,8 +4,11 @@
 *.log
 web_preview.json
 .superpowers/
+
+# 환경 변수 (암호화되지 않은 파일들)
 .env
 *.env
+.env.key
 
-
+# Vercel
 .vercel

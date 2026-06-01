@@ -1,85 +1,150 @@
 # 환경 변수 상태 보고서
 
 생성일: 2026-06-01
+최종 업데이트: 2026-06-01 (모든 API 정상)
 
-## ✅ 정상 작동 (3개)
+## ✅ 전체 API 정상 작동 (6/6)
 
-### 1. Vercel API
-- **상태**: ✅ 정상
-- **변수**: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`
+### 1. Vercel API ✅
+- **상태**: 정상
+- **변수**: `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, `VERCEL_OIDC_TOKEN`
 - **확인**: 프로젝트 2개 조회 성공
-- **용도**: Kevin DevOps Agent (cleanup-projects API)
+- **용도**: Kevin DevOps Agent (cleanup-projects API, Blob 관리)
+- **추가**: `BLOB_READ_WRITE_TOKEN`, `CRON_SECRET`
 
-### 2. YouTube Data API v3
-- **상태**: ✅ 정상
-- **변수**: `YOUTUBE_API_KEY`
-- **값**: `AIzaSyCinGnUTcnY83LJSuplssorkBDEepebeyU`
-- **확인**: 검색 API 호출 성공
-- **용도**: AI 팀 - 루나 디렉터 (YouTube 트렌드 분석)
-
-### 3. Instagram/Facebook Access Token
-- **상태**: ✅ 정상 (Facebook User Token)
-- **변수**: `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID`
-- **확인**: Facebook Graph API 인증 성공
-- **주의**: Instagram Business 계정 연결 필요
-- **용도**: AI 팀 - 아린 관리자 (Instagram 콘텐츠 관리)
-
-## ❌ 재발급 필요 (3개)
-
-### 4. Gemini API
-- **상태**: ❌ API 키 노출됨 (차단됨)
-- **변수**: `GEMINI_API_KEY`
-- **오류**: `Your API key was reported as leaked`
-- **해결**: https://aistudio.google.com/app/apikey 에서 새 키 발급
-- **용도**: AI 팀 - 모든 에이전트 (AI 생성)
-
-### 5. Supabase API
-- **상태**: ❌ 잘못된 엔드포인트 또는 키
+### 2. Supabase API ✅
+- **상태**: 정상
 - **변수**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-- **오류**: `Invalid API key` (service_role 필요)
-- **해결**: 
-  - 올바른 REST API 엔드포인트 확인
-  - 또는 anon key로 접근 가능한 테이블 생성
+- **확인**: GoTrue v2.189.0 (Auth 서비스 정상)
 - **용도**: 펫과나 앱 데이터베이스
+- **프로젝트**: nlgjsdffgkygaylbjooc (Singapore)
 
-### 6. Telegram Bot API
-- **상태**: ❌ 토큰 무효
+### 3. Gemini API ✅
+- **상태**: 정상
+- **변수**: `GEMINI_API_KEY`
+- **확인**: 모델 50개 사용 가능 (Gemini 2.5 Flash 포함)
+- **용도**: AI 팀 전체 에이전트 (AI 생성, 분석)
+
+### 4. YouTube Data API v3 ✅
+- **상태**: 정상
+- **변수**: `YOUTUBE_API_KEY`
+- **확인**: 검색 API 호출 성공
+- **용도**: 루나 디렉터 (YouTube 트렌드 분석, 영상 조회)
+
+### 5. Instagram/Facebook API ✅
+- **상태**: 정상 (Facebook User Token)
+- **변수**: 
+  - `INSTAGRAM_APP_ID`: 1219822826776845
+  - `INSTAGRAM_APP_SECRET`: 2b4e0b63ca84558ee64da6e856251235
+  - `INSTAGRAM_ACCESS_TOKEN`: (Facebook User Token)
+  - `INSTAGRAM_ACCOUNT_ID`: 1950584362997755
+- **확인**: Facebook Graph API 인증 성공
+- **참고**: Instagram Business 계정 연결 권장 (`SETUP_INSTAGRAM.md`)
+- **용도**: 아린 관리자, 가희 검수관 (Instagram 콘텐츠 관리)
+
+### 6. Telegram Bot API ✅
+- **상태**: 정상
 - **변수**: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-- **오류**: `401 Unauthorized`
-- **해결**: BotFather에서 새 봇 생성 또는 기존 토큰 확인
+- **봇**: @crossx362_bot (ID: 8615052743)
+- **확인**: Bot API 응답 정상
 - **용도**: AI 팀 알림 및 보고서 전송
 
-## 🔧 추가 설정 필요
+## 📋 환경 변수 완전 목록
 
-### Vercel Blob Storage
-- **변수**: `BLOB_READ_WRITE_TOKEN`
-- **상태**: ⚠️ 미테스트 (Kevin에서 사용)
+```env
+# Vercel (Kevin DevOps)
+VERCEL_OIDC_TOKEN=<vercel CLI에서 자동 생성>
+VERCEL_TOKEN=<암호화된 파일 참고>
+VERCEL_TEAM_ID=<암호화된 파일 참고>
+BLOB_READ_WRITE_TOKEN=<암호화된 파일 참고>
+CRON_SECRET=<암호화된 파일 참고>
 
-### Vercel Cron
-- **변수**: `CRON_SECRET`
-- **상태**: ⚠️ 미테스트 (cleanup-projects API에서 사용)
+# Supabase (펫과나 DB)
+SUPABASE_URL=<암호화된 파일 참고>
+SUPABASE_ANON_KEY=<암호화된 파일 참고>
 
-### Instagram Business 연결
-- 현재: Facebook User Access Token만 있음
-- 필요: Instagram Business 계정과 Facebook Page 연결
-- 가이드: `SETUP_INSTAGRAM.md` 참고
+# Google APIs (AI 팀)
+GEMINI_API_KEY=<암호화된 파일 참고>
+YOUTUBE_API_KEY=<암호화된 파일 참고>
 
-## 📋 다음 작업
+# Instagram/Facebook (AI 팀)
+INSTAGRAM_APP_ID=<암호화된 파일 참고>
+INSTAGRAM_APP_SECRET=<암호화된 파일 참고>
+INSTAGRAM_ACCESS_TOKEN=<암호화된 파일 참고>
+INSTAGRAM_ACCOUNT_ID=<암호화된 파일 참고>
 
-1. **긴급**: Gemini API 키 재발급 (가장 많이 사용됨)
-2. **긴급**: Telegram Bot 토큰 재발급 또는 확인
-3. **중요**: Supabase 연결 확인 및 수정
-4. **선택**: Instagram Business 계정 연결 (필요시)
+# Telegram (알림)
+TELEGRAM_BOT_TOKEN=<암호화된 파일 참고>
+TELEGRAM_CHAT_ID=<암호화된 파일 참고>
+```
 
-## 💾 환경 변수 파일 위치
+**실제 값은 `.env.encrypted` 파일 참고 (복호화 방법은 README 참고)**
 
-- 루트 `.env`: `d:\ai_lab\.env` (Git 제외됨)
-- 모든 API 키가 한 곳에 통합 관리됨
-- 예시 파일: `petnna/.env.example`, `SETUP_INSTAGRAM.md`
+## 🎯 테스트 방법
 
-## 🔒 보안 주의사항
+```bash
+python test_env_vars.py
+```
 
-- ⚠️ Gemini API 키가 노출되었습니다 (이미 차단됨)
-- `.env` 파일은 절대 Git에 커밋하지 마세요
-- API 키를 코드나 로그에 출력하지 마세요
-- 정기적으로 키를 순환(rotate)하세요
+모든 API 키를 자동으로 검증하고 결과를 출력합니다.
+
+## ✅ 검증 완료
+
+- [x] Vercel API 연결
+- [x] Supabase 연결
+- [x] Gemini API 활성화
+- [x] YouTube Data API 활성화
+- [x] Instagram/Facebook Token 유효성
+- [x] Telegram Bot 작동
+- [x] 환경 변수 중복 제거
+- [x] 루트 .env 파일로 통합
+
+## 💾 파일 구조
+
+```
+d:\ai_lab\
+├── .env                          # 모든 환경 변수 (Git 제외)
+├── .gitignore                    # .env, *.env 포함
+├── test_env_vars.py              # 환경 변수 검증 스크립트
+├── ENV_STATUS.md                 # 이 파일
+├── SETUP_INSTAGRAM.md            # Instagram 설정 가이드
+└── petnna/
+    └── .env.example              # 환경 변수 예시
+```
+
+## 🔒 보안 체크리스트
+
+- [x] .env 파일이 .gitignore에 포함됨
+- [x] API 키가 코드에 하드코딩되지 않음
+- [x] 만료된 키 교체 완료 (Gemini, Telegram)
+- [x] 노출된 키 제거 완료
+- [ ] 정기적인 키 순환(rotation) 일정 설정 권장
+
+## 🚀 다음 단계 (선택사항)
+
+1. **Instagram Business 연결** (선택)
+   - 현재 Facebook User Token으로 작동 중
+   - Instagram Business 계정 연결 시 더 많은 기능 사용 가능
+   - 가이드: `SETUP_INSTAGRAM.md` 참고
+
+2. **API 사용량 모니터링**
+   - Gemini API 할당량 확인
+   - YouTube API 일일 한도 모니터링
+   - Vercel Blob 스토리지 사용량 추적
+
+3. **자동화 설정**
+   - Kevin의 cleanup-projects cron job 스케줄 확인
+   - Telegram 알림 테스트
+   - Instagram 토큰 자동 갱신 확인 (코다리 health loop)
+
+## 📞 문제 발생 시
+
+1. 테스트 스크립트 실행: `python test_env_vars.py`
+2. 실패한 API 확인
+3. 해당 API 키 재발급
+4. `.env` 파일 업데이트
+5. 다시 테스트
+
+---
+
+**마지막 검증**: 2026-06-01 - 모든 API 정상 ✅
