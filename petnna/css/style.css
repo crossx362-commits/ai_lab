@@ -592,3 +592,58 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 
 
 
+
+/* 펫 애니메이션 효과 */
+@keyframes petBounce {
+    0%, 100% {
+        transform: translate(-50%, -50%) translateY(0px);
+    }
+    50% {
+        transform: translate(-50%, -50%) translateY(-8px);
+    }
+}
+
+@keyframes petWiggle {
+    0%, 100% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    25% {
+        transform: translate(-50%, -50%) rotate(-3deg);
+    }
+    75% {
+        transform: translate(-50%, -50%) rotate(3deg);
+    }
+}
+
+@keyframes leashWave {
+    0%, 100% {
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dashoffset: 8;
+    }
+}
+
+/* 펫 hover 효과 강화 */
+.pet-stage-container:hover {
+    animation: petWiggle 0.5s ease-in-out;
+}
+
+/* 목줄 흔들림 */
+#leash-svg path {
+    animation: leashWave 2s linear infinite;
+}
+
+/* 활성 펫 펄스 효과 */
+@keyframes activePetPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(251, 146, 60, 0);
+    }
+}
+
+.pet-active-ring {
+    animation: activePetPulse 2s ease-in-out infinite;
+}

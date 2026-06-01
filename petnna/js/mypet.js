@@ -48,24 +48,35 @@ function renderPetStageList() {
     // 펫 크기
     const sz = { circle: 'w-14 h-14', emoji: 'text-2xl', label: 'text-[11px]', border: 'border-3' };
 
-    // ── 펫 불규칙 배치 (원형 + 랜덤) ─────────────────────────────────────────────
+    // ── 펫 불규칙 배치 (비대칭 + 큰 랜덤 범위) ───────────────────────────────────
     if (pets && pets.length > 0) {
-        const radius = count === 1 ? 30 : 38; // 반경 (%)
+        const baseRadius = count === 1 ? 32 : 36; // 기본 반경 (%)
         const angleStep = (Math.PI * 2) / count;
 
         pets.forEach((pet, idx) => {
             const isActive = idx === activePetIndex;
 
-            // 각도 계산 (원형 배치 + pet.id 기반 일관된 랜덤)
+            // 각도 계산 (원형 배치 + 큰 랜덤 오프셋)
             const baseAngle = angleStep * idx - Math.PI / 2; // 12시 방향부터
-            const seed = (pet.id || idx) * 137.508; // 황금각
-            const randomOffset = Math.sin(seed) * 0.4;
-            const angle = baseAngle + randomOffset;
+            const seed1 = (pet.id || idx) * 137.508; // 황금각
+            const seed2 = (pet.id || idx) * 213.123; // 두 번째 시드
 
-            // 위치 계산 (약간의 반경 변화)
-            const radiusVariation = radius + Math.cos(seed) * 5;
-            const petX = butlerX + Math.cos(angle) * radiusVariation;
-            const petY = butlerY + Math.sin(angle) * radiusVariation;
+            // 더 큰 각도 랜덤 (±0.8 라디안 = ±45도)
+            const randomAngleOffset = Math.sin(seed1) * 0.8;
+            const angle = baseAngle + randomAngleOffset;
+
+            // 비대칭 반경 변화 (25% ~ 45%)
+            const minRadius = 25;
+            const maxRadius = 45;
+            const radiusRange = maxRadius - minRadius;
+            const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * radiusRange);
+
+            // 비대칭 X, Y 오프셋 (타원형 효과)
+            const xStretch = 1 + Math.cos(seed1) * 0.15; // X축 늘림/줄임
+            const yStretch = 1 + Math.sin(seed2) * 0.12; // Y축 독립적 변화
+
+            const petX = butlerX + Math.cos(angle) * radiusVariation * xStretch;
+            const petY = butlerY + Math.sin(angle) * radiusVariation * yStretch;
 
             // SVG 목줄 그리기 (곡선)
             if (svg) {
@@ -94,25 +105,32 @@ function renderPetStageList() {
                 svg.appendChild(foreignObject);
             }
 
-            // 펫 컨테이너
+            // 펫 컨테이너 (애니메이션 추가)
             const wrapper = document.createElement('div');
             wrapper.className = 'absolute transition-all duration-500';
             wrapper.style.left = `${petX}%`;
             wrapper.style.top = `${petY}%`;
             wrapper.style.transform = 'translate(-50%, -50%)';
+
+            // 랜덤 idle 애니메이션 (각 펫마다 다른 타이밍)
+            const animDelay = (pet.id || idx) % 5; // 0~4초 딜레이
+            const animDuration = 3 + ((pet.id || idx) % 3); // 3~5초 주기
+            wrapper.style.animation = `petBounce ${animDuration}s ease-in-out ${animDelay}s infinite`;
+
             wrapper.onclick = () => setActivePet(idx);
 
             const container = document.createElement('div');
-            container.className = 'flex flex-col items-center gap-1 cursor-pointer';
+            container.className = `flex flex-col items-center gap-1 cursor-pointer pet-stage-container ${isActive ? 'pet-active-ring' : ''}`;
 
             // 아바타
             const circle = document.createElement('div');
             circle.className = `flex items-center justify-center rounded-2xl overflow-hidden transition-all shrink-0
                 ${isActive
-                    ? `${sz.circle} ${sz.border} border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-110`
-                    : `${sz.circle} ${sz.border} border-amber-200 opacity-60 bg-amber-50/40 hover:opacity-90 hover:scale-105`}`;
+                    ? `${sz.circle} ${sz.border} border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-110 hover:rotate-6`
+                    : `${sz.circle} ${sz.border} border-amber-200 opacity-60 bg-amber-50/40 hover:opacity-90 hover:scale-110 hover:rotate-3`}`;
             circle.id = isActive ? 'pet-graphic-container' : `pet-circle-${idx}`;
             circle.title = isActive ? `${pet.name || '펫'} 사진 변경` : `${pet.name || '펫'} 선택`;
+            circle.style.transition = 'all 0.3s ease-out';
             if (isActive) circle.onclick = (e) => { e.stopPropagation(); triggerPetPhotoUploadDirect(); };
 
             const emojiMap = { cat: '🐈', rabbit: '🐰', hamster: '🐹', dog: '🐕' };
