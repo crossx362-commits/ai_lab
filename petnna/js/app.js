@@ -760,15 +760,11 @@ function triggerWithdrawal() {
                     localStorage.setItem('petna_is_logged_in', 'false');
                     window.location.reload();
                 }, 1500);
-
-            // 모든 컴포넌트 즉시 재렌더링 (페이지 리로드 없이)
-            if (typeof renderMyPets === 'function') renderMyPets();
-            if (typeof renderWalkHistory === 'function') renderWalkHistory();
-            if (typeof renderStatsChart === 'function') renderStatsChart();
-            if (typeof renderMealLogsList === 'function') renderMealLogsList();
-            if (typeof renderSettings === 'function') renderSettings();
-
-            showToast("🗑️ 회원 탈퇴가 완료되었습니다. 모든 데이터가 삭제되었습니다.");
+                // reload() 후 코드는 실행되지 않으므로 제거됨
+            } catch (e) {
+                console.error('회원 탈퇴 중 오류:', e);
+                showToast("⚠️ 회원 탈퇴 중 오류가 발생했습니다.");
+            }
         }
     });
 }
