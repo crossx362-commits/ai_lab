@@ -108,7 +108,7 @@ def get_agent_checkpoints() -> dict:
     checkpoints = {}
 
     # 루나 checkpoint
-    luna_cp = os.path.join(PROJECT_ROOT, "ai-team", "assets", "tool-seeds", "루나_디렉터", "output", "music_video_checkpoint.json")
+    luna_cp = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "output", "music_video_checkpoint.json")
     if os.path.exists(luna_cp):
         try:
             with open(luna_cp, "r", encoding="utf-8") as f:
@@ -129,7 +129,7 @@ def get_agent_logs() -> dict:
     logs = {}
 
     # 루나 로그
-    luna_log = os.path.join(PROJECT_ROOT, "ai-team", "assets", "tool-seeds", "루나_디렉터", "output", "pipeline.log")
+    luna_log = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "output", "pipeline.log")
     if os.path.exists(luna_log):
         try:
             with open(luna_log, "r", encoding="utf-8", errors="ignore") as f:
@@ -141,7 +141,7 @@ def get_agent_logs() -> dict:
         logs["루나"] = ["로그 파일 없음"]
 
     # 아린 로그
-    arin_log = os.path.join(PROJECT_ROOT, "ai-team", "assets", "tool-seeds", "아린_관리자", "pipeline.log")
+    arin_log = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "pipeline.log")
     if os.path.exists(arin_log):
         try:
             with open(arin_log, "r", encoding="utf-8", errors="ignore") as f:
@@ -350,7 +350,7 @@ def collect_research_data() -> dict:
     research_data = {}
 
     # 루나 리서치
-    luna_knowledge = os.path.join(PROJECT_ROOT, "ai-team", "assets", "tool-seeds", "루나_디렉터", "knowledge")
+    luna_knowledge = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "knowledge")
     if os.path.exists(luna_knowledge):
         try:
             files = os.listdir(luna_knowledge)
@@ -364,7 +364,7 @@ def collect_research_data() -> dict:
         research_data["루나"] = {"상태": "knowledge 폴더 없음"}
 
     # 아린 리서치
-    arin_knowledge = os.path.join(PROJECT_ROOT, "ai-team", "assets", "tool-seeds", "아린_관리자", "knowledge")
+    arin_knowledge = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "knowledge")
     if os.path.exists(arin_knowledge):
         try:
             files = os.listdir(arin_knowledge)
@@ -378,7 +378,7 @@ def collect_research_data() -> dict:
         research_data["아린"] = {"상태": "knowledge 폴더 없음"}
 
     # 현빈 리서치
-    hyunbin_research = os.path.join(PROJECT_ROOT, "ai-team", "assets", "tool-seeds", "현빈_전략가", "research_results")
+    hyunbin_research = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "현빈_전략가", "research_results")
     if os.path.exists(hyunbin_research):
         try:
             files = os.listdir(hyunbin_research)
