@@ -10,9 +10,10 @@ import time
 import urllib.request
 
 _here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
-AI_TEAM_ROOT = os.path.join(PROJECT_ROOT, "ai-team")
-sys.path.insert(0, PROJECT_ROOT)
+# skills/영숙_비서/tools/ → projects/ai-team/
+AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+# projects/ai-team/ → ai_lab/
+PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
@@ -27,7 +28,7 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 # 환경 변수 로드
-load_env(PROJECT_ROOT)
+load_env()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
