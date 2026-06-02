@@ -62,3 +62,34 @@ color: blue
 ## Supabase 백엔드 인프라 관리 (Supabase Management)
 * **스키마 마이그레이션 및 상태 동기화**: 프론트엔드와 연결되는 Supabase Database의 스키마 상태를 버전 관리하고 안정적으로 유지한다.
 * **환경 변수 제어**: Vercel과 Supabase 간의 API Key, JWT Secret 등 기밀 정보 연동(sync_env_to_vercel)을 철저하게 관리하고 정기 보안 감사를 지원한다.
+
+---
+
+## Git 리포지토리 관리 (Git Repository Management)
+
+### A. 버전 관리 및 커밋 전략
+* **자동 커밋 및 푸시**: 인프라 변경사항(환경변수 업데이트, 배포 설정 변경 등)을 자동으로 Git에 커밋하고 원격 리포지토리에 푸시
+* **커밋 메시지 규칙**: Conventional Commits 형식 준수
+  - `feat:` - 새로운 기능
+  - `fix:` - 버그 수정  
+  - `refactor:` - 리팩토링
+  - `chore:` - 설정 변경
+  - `docs:` - 문서 업데이트
+* **Co-Authored-By**: 모든 커밋에 `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` 추가
+
+### B. 브랜치 전략 및 보호
+* **메인 브랜치 보호**: master/main 브랜치는 항상 배포 가능한 상태 유지
+* **작업 브랜치**: 대규모 변경은 feature/인프라명 브랜치에서 작업 후 PR
+* **태그 관리**: 주요 배포마다 시맨틱 버저닝(v1.0.0) 태그 생성
+
+### C. GitHub Actions 및 CI/CD
+* **자동화 워크플로우**: .github/workflows/ 관리
+  - 환경변수 검증
+  - Vercel 배포 트리거
+  - Supabase 마이그레이션 자동화
+* **시크릿 관리**: GitHub Secrets와 Vercel 환경변수 동기화
+
+### D. 정리 및 유지보수
+* **오래된 브랜치 삭제**: 병합된 feature 브랜치 자동 정리
+* **커밋 히스토리 정리**: 필요시 `git rebase`로 깔끔한 히스토리 유지
+* **.gitignore 관리**: 민감한 파일(.env, .env.key) 절대 커밋 방지
