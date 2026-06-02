@@ -79,12 +79,12 @@ User: "안녕"
 
 CHAT_HISTORY = []
 
-def _api(method: str, payload: dict) -> dict:
+def _api(method: str, payload: dict, timeout: int = 15) -> dict:
     url  = f"https://api.telegram.org/bot{TOKEN}/{method}"
     data = json.dumps(payload).encode("utf-8")
     req  = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
     except Exception as e:
         print(f"  [API Error] {method}: {e}")
@@ -95,7 +95,8 @@ def send_message(text: str):
     _api("sendMessage", {"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"})
 
 def get_updates(offset: int) -> list:
-    res = _api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": ["message"]})
+    # long polling timeout=30 → HTTP timeout은 반드시 더 길어야 함
+    res = _api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": ["message"]}, timeout=40)
     return res.get("result", [])
 
 def format_ceo_report(ceo_result: str) -> str:
