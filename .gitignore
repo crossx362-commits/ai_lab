@@ -6,6 +6,14 @@
 *.tmp
 *.old
 .temp/
+
+# 파이프라인 작업물 (바이너리, 업로드 전 임시 파일)
+output/
+reports/uploads/
+*.mp4
+*.mp3
+*.wav
+fix_agent_paths.py
 web_preview.json
 .superpowers/
 
