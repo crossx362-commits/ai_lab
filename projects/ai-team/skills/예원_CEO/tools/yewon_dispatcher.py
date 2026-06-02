@@ -4,9 +4,10 @@ import json
 import importlib.util
 
 _here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+# skills/예원_CEO/tools → skills/예원_CEO → skills → ai-team → projects → ai_lab
+PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "ai-team"))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 
@@ -42,42 +43,62 @@ def dispatch_and_execute(ceo_message: str) -> str:
         
         # Execute based on agent
         if "노션" in ceo_message or "영숙" in agent:
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, ".agent", "skills", "영숙_비서", "tools"))
+            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools"))
             import notion_summarizer
             return notion_summarizer.run_notion_report()
-            
+
         elif "현빈" in agent or "딥서치" in ceo_message or "리서치" in ceo_message:
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, ".agent", "skills", "현빈_전략가", "tools"))
+            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "현빈_전략가", "tools"))
             import business_research
             return business_research.run_research()
-            
+
         elif "케빈" in agent or "클린업" in ceo_message or "서버" in ceo_message:
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, ".agent", "skills", "케빈_인프라", "tools"))
+            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools"))
             import vercel_manager
             return vercel_manager.run_vercel_cleanup()
-            
+
         elif "로율" in agent or "세무" in ceo_message or "법률" in ceo_message:
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, ".agent", "skills", "로율_변호사", "tools"))
+            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "로율_변호사", "tools"))
             import tax_simulator
             return tax_simulator.run_simulation(100000000)
-            
+
         elif "루나" in agent or "유튜브" in ceo_message:
             # We would run the subprocess pipeline here.
             # For brevity in the refactored code, we return a mock success or call the script.
             import subprocess
-            script = os.path.join(PROJECT_ROOT, ".agent", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
+            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
             if os.path.exists(script):
                 subprocess.run([sys.executable, script], cwd=os.path.dirname(script))
                 return f"✅ 루나_디렉터 파이프라인 실행 완료"
             return "❌ 루나 파이프라인 스크립트를 찾을 수 없습니다."
-            
+
         elif "아린" in agent or "인스타" in ceo_message:
             import subprocess
-            script = os.path.join(PROJECT_ROOT, ".agent", "skills", "아린_관리자", "tools", "auto_pipeline.py")
+            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py")
+            print(f"  [디버그] PROJECT_ROOT: {PROJECT_ROOT}")
+            print(f"  [디버그] 아린 스크립트 경로: {script}")
+            print(f"  [디버그] 파일 존재 여부: {os.path.exists(script)}")
+
             if os.path.exists(script):
-                subprocess.run([sys.executable, script], cwd=os.path.dirname(script))
-                return f"✅ 아린_관리자 파이프라인 실행 완료"
-            return "❌ 아린 파이프라인 스크립트를 찾을 수 없습니다."
+                print(f"  [예원 CEO] 아린 파이프라인 실행 중...")
+                result = subprocess.run(
+                    [sys.executable, script],
+                    cwd=os.path.dirname(script),
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='replace'
+                )
+
+                if result.returncode == 0:
+                    print(f"  [예원 CEO] 아린 파이프라인 성공")
+                    return f"✅ 아린_관리자 파이프라인 실행 완료\n\n{result.stdout[:500]}"
+                else:
+                    print(f"  [예원 CEO] 아린 파이프라인 실패 (코드: {result.returncode})")
+                    error_msg = result.stderr[:500] if result.stderr else "알 수 없는 오류"
+                    return f"❌ 아린 파이프라인 실행 실패\n\n에러: {error_msg}"
+
+            return f"❌ 아린 파이프라인 스크립트를 찾을 수 없습니다.\n경로: {script}"
             
         else:
             return f"⚠️ 예원 CEO가 작업을 분배했지만({agent}), 매핑된 자동화 파이프라인이 아직 없습니다."
