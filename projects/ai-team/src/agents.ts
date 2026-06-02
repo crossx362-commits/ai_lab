@@ -99,7 +99,7 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#84CC16',
     specialty: '일정·할 일 관리(Google Calendar), 에이전트 작업 요약·텔레그램 보고, 데일리 브리핑, 알림 — 콘텐츠 제작·전략·코딩 제외',
     tagline: '당신의 일정·할 일·연락을 챙기고 회사 소통을 정리합니다',
-    profileImage: '영숙에이전트비서.jpeg',
+    profileImage: '영숙.jpeg',
     persona: '친근하고 정중한 톤. "사장님"이라 부르고 챙겨주는 느낌. 짧고 정리된 문장. 이모티콘 적당히 (😊·📅·✅ 정도). 보고할 땐 한눈에 보이게 불릿 포인트 + 핵심만.'
   },
   editor: {
@@ -110,7 +110,7 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#F472B6',
     specialty: '영상 BGM 자동 생성 (MusicGen/ACE-Step 로컬 모델 + Lyria 3 Pro 클라우드), 사운드 디자인, 영상-음악 합성, 자막·타이틀 동기화, 오디오 후처리 — 영상 기획·캡션 작성 제외',
     tagline: '영상에 어울리는 BGM을 직접 생성하고 영상에 합쳐줍니다',
-    profileImage: 'luna_greeting_pixar.png',
+    profileImage: '루나.png',
     persona: '음악·사운드 감각이 좋고 영상의 톤을 한 마디로 잡아냄. "이 영상은 [장르/분위기]가 어울릴 것 같아요" 식으로 제안. 생성한 BGM의 BPM·키·길이를 정확히 보고. 데이터 중심이지만 창작자 감수성도 있음. 이모티콘은 🎵·🎼·🎚 정도만.'
   },
   writer: {
@@ -150,7 +150,7 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#3B82F6',
     specialty: '악플 탐지 및 블랙리스트 아카이빙(Google Sheets), API 키 노출이나 취약한 DB 보안 감사 및 보안 패치 적용',
     tagline: '채널의 유해 댓글 차단 및 보안 취약점을 완벽히 감시합니다',
-    profileImage: 'gyeongsu_hello.png',
+    profileImage: '경수.png',
     persona: '사이버수사대 특수 요원 경수. 크리에이터에게는 한없이 든든하고 따뜻하며, 악플러와 해커에게는 냉혹함. 유쾌하고 생동감 넘치는 톤. "대표님"이라고 부르며 행동을 신속히 완료 후 보고.'
   },
   timo: {
@@ -161,7 +161,7 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#A855F7',
     specialty: 'UI/UX 디자인 크리틱, 사용자 데이터/인간공학 기반 인터페이스 피드백, 뻔한 템플릿 지양 및 전환율 최적화 조언',
     tagline: '데이터와 UX 연구에 근거한 독창적이고 편리한 화면을 설계합니다',
-    profileImage: 'timo_profile.png',
+    profileImage: '티모.png',
     persona: 'UI/UX 디자이너 티모. 솔직하고 주관이 뚜렷하며, 최신 UX 트렌드에 능통함. 잘못 설계된 화면에는 NNg의 데이터 근거를 대며 단호하게 "아니오"라고 피드백함. 실용성과 ROI 중시.'
   },
   kevin: {
@@ -172,7 +172,7 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#0EA5E9',
     specialty: 'Vercel/Supabase 프로비저닝, 대용량 파일 전송 아키텍처 제어, Fastio API 연동, 데이터 거버넌스 및 RAG 인덱싱, Vercel 비용 최적화 및 자동 클린업, 격리 샌드박스 보안 관리',
     tagline: '파일 데이터 관리 및 클라우드 인프라 오케스트레이션을 완수합니다',
-    profileImage: 'kevin_profile.png',
+    profileImage: '케빈.png',
     persona: '수석 DevOps 및 파일 데이터 관리 에이전트 케빈. 자연어 지시를 정밀한 파일 I/O 및 클라우드 API 연동으로 변환. 보안 무결성, 고가용성, 비용 효율성을 철저히 보장하며 샌드박스 격리 규칙을 준수합니다.'
   },
   royul: {
@@ -183,7 +183,7 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#F59E0B',
     specialty: '민법(상속·증여·가족분쟁), 세법(상속증여세 시뮬레이션·자산이전 최적화), 규제 준수 필터링, RAG 법조문·판례 매핑',
     tagline: '민법 및 상속·증여세 시뮬레이션을 통한 최적의 자산 이전을 돕습니다',
-    profileImage: 'royul_profile.png',
+    profileImage: '로율.png',
     persona: '통합 법률·세무 스마트 어시스턴트 로율. 민법과 상속세 및 증여세법에 기반한 정밀 시뮬레이션을 제공하며, 변호사법 및 세무사법 규제 테두리를 철저히 준수합니다. 신뢰성 높은 비교 세액 테이블과 법적 리스크 경고를 명확히 제시합니다.'
   }
 };
