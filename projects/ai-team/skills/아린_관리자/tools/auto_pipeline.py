@@ -240,7 +240,8 @@ def analyze_optimal_time(trend_topic):
 
 def update_ics_calendar(trend_topic, post_date, post_time):
     """Appends or creates a daily post event to the instagram_posting_schedule.ics file."""
-    ics_path = "instagram_posting_schedule.ics"
+    # 절대경로 고정: 실행 위치에 무관하게 항상 tools/ 폴더에 저장
+    ics_path = os.path.join(_here, "instagram_posting_schedule.ics")
     event_uid = f"arin-insta-post-{int(time.time())}@auto.uploader"
     
     formatted_start = f"{post_date}T{post_time.replace(':', '')}00"
@@ -251,7 +252,7 @@ def update_ics_calendar(trend_topic, post_date, post_time):
     event_block = (
         "BEGIN:VEVENT\n"
         f"UID:{event_uid}\n"
-        f"DTSTAMP:{datetime.datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}\n"
+        f"DTSTAMP:{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}\n"
         f"DTSTART;TZID=Asia/Seoul:{formatted_start}\n"
         f"DTEND;TZID=Asia/Seoul:{formatted_end}\n"
         f"SUMMARY:아린 인스타 자동 포스팅 - {trend_topic}\n"
@@ -412,7 +413,10 @@ def git_sync():
         if status.stdout.strip():
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             subprocess.run(["git", "commit", "-m", f"Auto-sync: Arin pipeline executed at {timestamp}"], cwd=git_root, check=True)
-            subprocess.run(["git", "push", "origin", "main"], cwd=git_root, check=True)
+            # 현재 브랜치명 동적 감지 (main/master 혼용 환경 대응)
+            branch_result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=git_root, capture_output=True, text=True)
+            current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "master"
+            subprocess.run(["git", "push", "origin", current_branch], cwd=git_root, check=True)
             print("✅ Git 동기화 완료!")
             send_telegram_message("💾 [Git 동기화 완료] 아린 에이전트 소스 및 설정이 GitHub에 백업되었습니다.")
         else:

@@ -1,13 +1,13 @@
 # 📚 인스타 이미지 프롬프트 설계 지식서
 # knowledge/insta_prompt_craft_knowledge.md
-# 최종 수정: 2026-05-26
+# 최종 수정: 2026-06-02
 
 ---
 
 ## 1. 개요 (Overview)
 
-인스타그램 자동화 파이프라인에서 **Gemini 나노바나나 2**(`gemini-3.1-flash-image-preview`)가
-최고 퀄리티 이미지를 생성하려면, 단순 키워드가 아닌
+인스타그램 자동화 파이프라인에서 **Gemini**(`gemini-2.5-flash-image`)가
+최고 품질 이미지를 생성하려면, 단순 키워드가 아닌
 **카테고리 + 스타일 가이드 + 상세 서사 묘사** 3단계 구조의 프롬프트가 필요합니다.
 
 이 지식서는 `prompt_crafter.py` 모듈의 설계 근거와 원리를 기록합니다.
@@ -142,7 +142,7 @@ auto_pipeline.py
         craft_insta_prompt(image_prompt)      ← prompt_crafter.py 적용
               │
               ▼
-        _generate_image_gemini(crafted_prompt) ← Gemini 나노바나나 2 호출
+        _generate_image_gemini(crafted_prompt) ← Gemini gemini-2.5-flash-image 호출
 ```
 
 ---
@@ -169,6 +169,5 @@ prompt = craft_insta_prompt("오늘의 핫 트렌드 키워드", topic_type="per
 |------|------|
 | `prompt_crafter.py` | 핵심 Python 모듈 |
 | `auto_pipeline.py` | 파이프라인 (prompt_crafter 연동) |
-| `.agent/skills/insta-prompt-crafter/SKILL.md` | 에이전트 실행 지시서 |
-| `.agent/skills/insta-uploader/SKILL.md` | 업로드 에이전트 지시서 |
-| `uploader.py` | Instagram Graph API 업로더 |
+| `SKILL.md` | 에이전트 실행 지시서 (`skills/아린_관리자/SKILL.md`) |
+| `uploader.py` | Instagram Graph API 업로더 + 토큰 자동 갱신 |
