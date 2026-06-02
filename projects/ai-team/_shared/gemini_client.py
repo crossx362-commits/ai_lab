@@ -1,24 +1,22 @@
 """
 gemini_client.py — 공통 Gemini API 클라이언트
 
-Ollama(1순위) → Gemini API(2순위) 패턴을 모든 에이전트에서 각자 구현하던 것을 병합.
-텍스트 생성 / 이미지 생성 / Vision(이미지→텍스트) 지원.
+Vision(이미지→텍스트) / 웹서치(Google Search Grounding) 전용.
+텍스트 생성은 Ollama만 사용 — Gemini 텍스트 폴백 제거됨.
 """
 import os
 import json
 import base64
 import urllib.request
-import urllib.error
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_TEXT_MODEL  = "gemini-3.5-flash"
 
 
 def _api_key() -> str:
     return os.getenv("GEMINI_API_KEY", "")
 
 
-# ── 텍스트 생성 ───────────────────────────────────────────────────────────────
+# ── 텍스트 생성 (Ollama 전용 래퍼) ───────────────────────────────────────────
 
 def text(
     prompt: str,
@@ -27,54 +25,21 @@ def text(
     temperature: float = 0.7,
     json_mode: bool = False,
     task: str = "",
-    lm_first: bool = True,
+    lm_first: bool = True,  # 하위 호환성 유지 (무시됨)
 ) -> str | None:
-    """Ollama(lm_first=True일 때 1순위) → Gemini 텍스트 생성.
-
-    task="blog"  → Ollama Qwen 전용
-    task="coding"→ Ollama DeepSeek 전용
-    task=""      → Ollama 자동 선택
-    """
-    # 1순위: Ollama
-    if lm_first:
-        try:
-            from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-            if lm_available():
-                res = lm_chat(
-                    prompt, system=system,
-                    max_tokens=max_tokens, temperature=temperature,
-                    json_mode=json_mode, task=task,
-                )
-                if res:
-                    return res.strip()
-        except Exception:
-            pass
-
-    # 2순위: Gemini API
-    api_key = _api_key()
-    if not api_key:
-        return None
-    print(f"  [Gemini API → {_TEXT_MODEL}]")
+    """Ollama 텍스트 생성. Gemini 폴백 없음."""
     try:
-        # gemini-3.5-flash는 내부 thinking 토큰 소모 → 최소 2000 보장
-        effective_tokens = max(max_tokens, 2000)
-        payload: dict = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": effective_tokens, "temperature": temperature},
-        }
-        if system:
-            payload["systemInstruction"] = {"parts": [{"text": system}]}
-        if json_mode:
-            payload["generationConfig"]["responseMimeType"] = "application/json"
-
-        url = f"{_BASE}/{_TEXT_MODEL}:generateContent?key={api_key}"
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            res = json.loads(r.read())
-        return res["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except Exception as e:
-        print(f"  [Gemini 텍스트] 실패: {e}")
+        from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+        if lm_available():
+            res = lm_chat(
+                prompt, system=system,
+                max_tokens=max_tokens, temperature=temperature,
+                json_mode=json_mode, task=task,
+            )
+            if res:
+                return res.strip()
+    except Exception:
+        pass
     return None
 
 
@@ -96,7 +61,7 @@ def vision(img_bytes: bytes, prompt: str, max_tokens: int = 800) -> str | None:
             }],
             "generationConfig": {"maxOutputTokens": max_tokens},
         }).encode("utf-8")
-        url = f"{_BASE}/{_TEXT_MODEL}:generateContent?key={api_key}"
+        url = f"{_BASE}/gemini-2.5-flash:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=30) as r:
             res = json.loads(r.read())
@@ -120,7 +85,7 @@ def web_search(query: str, max_tokens: int = 1500) -> str | None:
             "tools": [{"google_search": {}}],
             "generationConfig": {"maxOutputTokens": max_tokens},
         }).encode("utf-8")
-        url = f"{_BASE}/gemini-3.5-flash:generateContent?key={api_key}"
+        url = f"{_BASE}/gemini-2.5-flash:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=30) as r:
             res = json.loads(r.read())

@@ -1,6 +1,5 @@
 import os
 import sys
-import base64
 import json
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -362,22 +361,7 @@ def generate_caption_from_image(img_bytes: bytes) -> str:
     except Exception as e:
         print(f"  [Ollama Vision] 실패: {e}")
 
-    # 2순위: Gemini Vision 폴백
-    try:
-        api_url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
-        )
-        img_b64 = base64.b64encode(img_bytes).decode()
-        payload = {"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}]}]}
-        res = requests.post(api_url, json=payload, timeout=30)
-        res.raise_for_status()
-        caption = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-        print("✅ Gemini Vision 캡션 생성 완료! (폴백)")
-        return caption.strip()
-    except Exception as e:
-        print(f"⚠️ Vision 캡션 실패 ({e}), 템플릿 캡션으로 대체합니다.")
-        return None
+    return None
 
 
 def git_sync():
