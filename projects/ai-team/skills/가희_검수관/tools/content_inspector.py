@@ -526,6 +526,13 @@ def inspect_video(video_id: str, mode: str = "EXISTING_CONTENT",
         violations += dup["violations"]
         warnings   += dup["warnings"]
 
+    # 3-1. 이전 작업물 반복 단어 체크 (루나)
+    title = info.get("title", "").lower()
+    overused_luna = _get_overused_words("루나", recent_n=10, threshold=0.5)
+    repeated = [w for w in overused_luna if w in title and len(w) >= 3]
+    if repeated:
+        warnings.append(f"이전 영상 반복 단어 자제 필요: {', '.join(repeated[:5])}")
+
     # 4. Ollama AI 분석
     ai = _analyze_with_ollama(info)
     violations += ai.get("violations", [])
@@ -824,13 +831,50 @@ def _check_instagram_posts() -> list[dict]:
     return results
 
 
-def inspect_caption(caption: str) -> dict:
+_GENERIC_WORDS = {
+    "official", "music", "video", "luna", "arin", "bgm", "the", "and",
+    "for", "with", "from", "live", "mix", "ver", "full", "new", "top",
+    "류나", "아린", "유튜브", "인스타", "공식", "영상",
+}
+
+def _get_overused_words(agent: str, recent_n: int = 10, threshold: float = 0.3) -> list[str]:
+    """최근 N개 작업물에서 threshold 이상 비율로 반복된 창작 단어 반환."""
+    hist_path = os.path.join(_root, "reports", "history", "upload_history.json")
+    if not os.path.exists(hist_path):
+        return []
+    try:
+        data = json.load(open(hist_path, encoding="utf-8"))
+        records = [d for d in data if d.get("agent") == agent][-recent_n:]
+        if len(records) < 3:
+            return []
+        from collections import Counter
+        word_doc_count: Counter = Counter()
+        for rec in records:
+            meta = rec.get("metadata", {})
+            text = " ".join([
+                meta.get("youtube_title", ""),
+                meta.get("caption", ""),
+                meta.get("title", ""),
+            ]).lower()
+            words = set(re.findall(r'[a-z]{3,}|[가-힣]{2,}', text))
+            words -= _GENERIC_WORDS
+            for w in words:
+                word_doc_count[w] += 1
+        total = len(records)
+        return [w for w, cnt in word_doc_count.items() if cnt / total >= threshold]
+    except Exception:
+        return []
+
+
+def inspect_caption(caption: str, agent: str = "아린") -> dict:
     """인스타 캡션 업로드 전 사전 검수. 결과: {'pass': bool, 'issues': list[str]}"""
     _BANNED = [
         "미래", "인공지능", "ai", "기계", "테크", "로봇", "첨단기술",
         "4차산업", "딥러닝", "머신러닝", "ai 생성", "인공지능이 만든",
         "오늘의 ai", "체험해보세요", "경험해보세요", "lofi", "lo-fi",
         "chill beats", "study beats",
+        "이재명", "정치", "선거", "국회", "대통령", "여당", "야당", "민주당", "국민의힘",
+        "정당", "투표", "정권", "탄핵", "집회", "시위", "정부", "보수", "진보", "좌파", "우파",
     ]
     issues = []
     lower = caption.lower()
@@ -841,6 +885,13 @@ def inspect_caption(caption: str) -> dict:
     hits = [kw for kw in _BANNED if kw in lower]
     if hits:
         issues.append(f"금지 키워드: {', '.join(hits)}")
+
+    # 이전 작업물 중복 단어 검수
+    overused = _get_overused_words(agent)
+    repeated = [w for w in overused if w in lower and len(w) >= 3]
+    if repeated:
+        issues.append(f"이전 작업물 반복 단어 자제 필요: {', '.join(repeated[:5])}")
+
     return {"pass": len(issues) == 0, "issues": issues}
 
 
