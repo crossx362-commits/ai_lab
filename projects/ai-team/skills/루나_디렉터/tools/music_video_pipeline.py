@@ -84,6 +84,63 @@ _BANNED_TITLE_WORDS = [
 ]
 
 
+# ── 지식·스킬 로더 ────────────────────────────────────────────────────────────
+
+def _load_luna_knowledge() -> str:
+    """SKILL.md 규칙 + title_patterns.json + luna_research 스타일 인사이트를 컴팩트하게 로드."""
+    lines = []
+
+    # 1. SKILL.md 핵심 규칙
+    skill_path = os.path.join(os.path.dirname(_here), "SKILL.md")
+    if os.path.exists(skill_path):
+        content = open(skill_path, encoding="utf-8").read()
+        # 체크리스트 규칙 섹션만 추출
+        for line in content.splitlines():
+            if any(k in line for k in ["금지", "필수", "최소", "이상", "이하", "절대", "반드시"]):
+                lines.append(line.strip())
+
+    # 2. youtube_title_optimization.md 핵심 섹션
+    title_opt = os.path.join(_here, "knowledge", "youtube_title_optimization.md")
+    if os.path.exists(title_opt):
+        content = open(title_opt, encoding="utf-8").read()
+        capture = False
+        for line in content.splitlines():
+            if "전략" in line or "공식" in line or "패턴" in line or "권장" in line:
+                capture = True
+            if capture and line.strip():
+                lines.append(line.strip())
+            if capture and line.startswith("---"):
+                capture = False
+            if len(lines) > 30:
+                break
+
+    # 3. title_patterns.json — 최근 학습된 실제 한국 인기 제목 패턴
+    pat_path = os.path.join(_here, "knowledge", "title_patterns.json")
+    if os.path.exists(pat_path):
+        try:
+            pats = json.load(open(pat_path, encoding="utf-8"))
+            latest_key = sorted(pats.keys())[-1]
+            kr = pats[latest_key].get("kr_top_titles", [])[:5]
+            if kr:
+                lines.append(f"최근 한국 인기 제목 예시: {', '.join(kr[:5])}")
+        except Exception:
+            pass
+
+    # 4. luna_research 스타일 인사이트
+    res_path = os.path.join(_root, "reports", "research", "luna_research.json")
+    if os.path.exists(res_path):
+        try:
+            res = json.load(open(res_path, encoding="utf-8"))
+            insights = res.get("title_insights", [])[:3]
+            for ins in insights:
+                if isinstance(ins, dict):
+                    lines.append(f"학습 인사이트: {ins.get('pattern', '')} — {ins.get('example', '')}")
+        except Exception:
+            pass
+
+    return "\n".join(lines[:40]) if lines else ""
+
+
 # ── 헬퍼 함수 ─────────────────────────────────────────────────────────────────
 
 def load_checkpoint() -> dict:
@@ -235,20 +292,23 @@ def _assert_not_banned(theme: dict):
 
 
 def _auto_generate_metadata(music_prompt: str, yt_titles: list, draft_title: str = "") -> dict:
-    """제목 + 음악 프롬프트 기반으로 고유한 메타데이터 생성 (Ollama)."""
+    """제목 + 음악 프롬프트 기반으로 고유한 메타데이터 생성 (SKILL 지식 반영)."""
     try:
         yt_sample = "\n".join(f"- {t}" for t in yt_titles[:15]) if yt_titles else "(없음)"
+        knowledge = _load_luna_knowledge()
+        knowledge_block = f"\n[루나 스킬 지식 — 반드시 준수]\n{knowledge}\n" if knowledge else ""
         prompt = (
             f"[음악 제목]\n{draft_title}\n\n"
             f"[음악 프롬프트]\n{music_prompt[:300]}\n\n"
-            f"[유튜브 인기 제목 참고]\n{yt_sample}\n\n"
-            "위 음악 제목과 프롬프트를 반영해 유튜브 메타데이터를 생성하라.\n\n"
+            f"[유튜브 인기 제목 참고]\n{yt_sample}\n"
+            f"{knowledge_block}\n"
+            "위 음악 제목·프롬프트·스킬 지식을 전부 반영해 유튜브 메타데이터를 생성하라.\n\n"
             "규칙:\n"
-            "- title: 트렌드 분석 기반 자연스러운 곡명. LUNA·Official·MV 등 고정 태그 일절 금지. 곡명만.\n"
-            "- description: 이 곡만의 분위기·감성·스토리를 반영한 심플한 2~3문장 + 📌 추천상황 1줄\n"
-            "  + youtube.com/@luna_official + 이 곡 내용 반영 해시태그 8개 이상\n"
+            "- title: 트렌드 기반 자연스러운 곡명. LUNA·Official·MV 등 고정 태그 일절 금지. 곡명만.\n"
+            "- description: 이 곡만의 분위기·감성·스토리 2~3문장 + 📌 추천상황 1줄\n"
+            "  + youtube.com/@류나-l7h + 해시태그 10개 이상\n"
             "  ⚠️ 다른 영상과 같은 문장 금지. 타임라인(00:00) 금지.\n"
-            "- tags: 최소 20개, lofi/lo-fi 금지, 시티팝/citypop/LUNA/루나/드라이브bgm 필수\n\n"
+            "- tags: 최소 20개, lofi/lo-fi 절대 금지, 시티팝/citypop/LUNA/루나/드라이브bgm 필수\n\n"
             "JSON만 반환:\n"
             '{"title":"...","description":"...","tags":["..."]}'
         )
