@@ -23,7 +23,7 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 from _shared.env_loader import load_env
-load_env()
+load_env(start_path=_here)
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 VEO_MODEL_ID = "veo-3.1-generate-preview"
