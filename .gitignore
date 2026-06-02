@@ -2,6 +2,10 @@
 .claude/
 *.pid
 *.log
+*.bak
+*.tmp
+*.old
+.temp/
 web_preview.json
 .superpowers/
 
