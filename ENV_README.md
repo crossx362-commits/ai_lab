@@ -91,8 +91,12 @@ python encrypt_env.py encrypt
 - `INSTAGRAM_ACCOUNT_ID` - 계정 ID
 
 ### Telegram (알림)
-- `TELEGRAM_BOT_TOKEN` - Bot Token
-- `TELEGRAM_CHAT_ID` - Chat ID
+- `TELEGRAM_BOT_TOKEN` - Bot Token (필수)
+- `TELEGRAM_CHAT_ID` - Chat ID (필수)
+
+### Notion (영숙 비서)
+- `NOTION_API_KEY` - Notion Integration API 키 (선택)
+- `NOTION_DATABASE_ID` - Notion 데이터베이스 ID (선택)
 
 ## ✅ 검증 방법
 

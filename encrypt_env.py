@@ -52,11 +52,11 @@ def encrypt_file(input_file: str, output_file: str, key_file: str):
     with open(key_file, 'wb') as f:
         f.write(key)
 
-    print(f"✅ 암호화 완료!")
+    print(f"암호화 완료!")
     print(f"   입력: {input_file}")
     print(f"   출력: {output_file}")
     print(f"   키 파일: {key_file}")
-    print(f"\n⚠️  주의: {key_file}는 안전한 곳에 보관하세요!")
+    print(f"\n주의: {key_file}는 안전한 곳에 보관하세요!")
 
 
 if __name__ == "__main__":
@@ -67,13 +67,13 @@ if __name__ == "__main__":
 
     # 파일 존재 확인
     if not os.path.exists(env_file):
-        print(f"❌ 오류: {env_file} 파일을 찾을 수 없습니다.")
+        print(f"오류: {env_file} 파일을 찾을 수 없습니다.")
         exit(1)
 
     # 암호화 실행
     encrypt_file(env_file, encrypted_file, key_file)
 
-    print(f"\n📋 다음 단계:")
+    print(f"\n다음 단계:")
     print(f"1. {encrypted_file}를 Git에 커밋")
     print(f"2. {key_file}는 .gitignore에 추가 (이미 추가됨)")
     print(f"3. 원본 {env_file}는 로컬에만 보관")

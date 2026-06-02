@@ -1,0 +1,154 @@
+{
+  "generated_at": "2026-06-02",
+  "total_env_vars": 12,
+  "total_files": 12,
+  "environment_variables": {
+    "VAR_NAME": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "기타"
+      ],
+      "files": [
+        "scan_env_usage.py"
+      ]
+    },
+    "TELEGRAM_BOT_TOKEN": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "기타"
+      ],
+      "files": [
+        "scripts\\send_to_yeongsuk.py"
+      ]
+    },
+    "TELEGRAM_CHAT_ID": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "기타"
+      ],
+      "files": [
+        "scripts\\send_to_yeongsuk.py"
+      ]
+    },
+    "SUPPRESS_TELEGRAM": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "_shared (공용)"
+      ],
+      "files": [
+        "projects\\ai-team\\_shared\\telegram_notifier.py"
+      ]
+    },
+    "INSTAGRAM_ACCOUNT_ID": {
+      "usage_count": 3,
+      "used_by_agents": [
+        "경수_수사관",
+        "아린_관리자"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\경수_수사관\\tools\\comment_forensics.py",
+        "projects\\ai-team\\skills\\아린_관리자\\tools\\auto_pipeline.py",
+        "projects\\ai-team\\skills\\아린_관리자\\tools\\uploader.py"
+      ]
+    },
+    "INSTAGRAM_ACCESS_TOKEN": {
+      "usage_count": 2,
+      "used_by_agents": [
+        "경수_수사관",
+        "아린_관리자"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\경수_수사관\\tools\\comment_forensics.py",
+        "projects\\ai-team\\skills\\아린_관리자\\tools\\uploader.py"
+      ]
+    },
+    "GEMINI_API_KEY": {
+      "usage_count": 3,
+      "used_by_agents": [
+        "루나_디렉터"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\루나_디렉터\\tools\\lyria_music_gen.py",
+        "projects\\ai-team\\skills\\루나_디렉터\\tools\\veo_video_maker.py",
+        "projects\\ai-team\\skills\\루나_디렉터\\tools\\src\\lyria_music_generator.py"
+      ]
+    },
+    "GEMINI_API_KEYS": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "루나_디렉터"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\루나_디렉터\\tools\\lyria_music_gen.py"
+      ]
+    },
+    "VERCEL_TOKEN": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "케빈_인프라"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\케빈_인프라\\tools\\vercel_manager.py"
+      ]
+    },
+    "VERCEL_TEAM_ID": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "케빈_인프라"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\케빈_인프라\\tools\\vercel_manager.py"
+      ]
+    },
+    "BRAIN_ROOT": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "코다리_개발자"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\코다리_개발자\\tools\\pack_apply.py"
+      ]
+    },
+    "OUTPUT": {
+      "usage_count": 1,
+      "used_by_agents": [
+        "현빈_전략가"
+      ],
+      "files": [
+        "projects\\ai-team\\skills\\현빈_전략가\\tools\\paypal_revenue.py"
+      ]
+    }
+  },
+  "agent_dependencies": {
+    "기타": [
+      "TELEGRAM_BOT_TOKEN",
+      "TELEGRAM_CHAT_ID",
+      "VAR_NAME"
+    ],
+    "_shared (공용)": [
+      "SUPPRESS_TELEGRAM"
+    ],
+    "경수_수사관": [
+      "INSTAGRAM_ACCESS_TOKEN",
+      "INSTAGRAM_ACCOUNT_ID"
+    ],
+    "루나_디렉터": [
+      "GEMINI_API_KEY",
+      "GEMINI_API_KEYS"
+    ],
+    "아린_관리자": [
+      "INSTAGRAM_ACCESS_TOKEN",
+      "INSTAGRAM_ACCOUNT_ID"
+    ],
+    "케빈_인프라": [
+      "VERCEL_TEAM_ID",
+      "VERCEL_TOKEN"
+    ],
+    "코다리_개발자": [
+      "BRAIN_ROOT"
+    ],
+    "현빈_전략가": [
+      "OUTPUT"
+    ]
+  }
+}
