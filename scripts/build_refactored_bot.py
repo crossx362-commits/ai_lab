@@ -110,6 +110,7 @@ import urllib.request
 import urllib.error
 import datetime
 import traceback
+import requests
 
 _here = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
@@ -121,6 +122,21 @@ from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 load_env(PROJECT_ROOT)
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+
+AGENT_PROFILES = {
+    "가희": {"image": "가희.png", "persona": "당신은 가희입니다. 냉철하고 꼼꼼한 검수 전문가. 데이터 기반으로만 판단하며 '가희입니다'로 보고 시작. 판정 근거는 수치로 대답하세요."},
+    "케빈": {"image": "케빈.png", "persona": "당신은 케빈입니다. 수석 DevOps 및 데이터 관리 에이전트. 보안 무결성과 비용 효율성을 철저히 보장하며 신뢰감 있게 대답하세요."},
+    "티모": {"image": "티모.png", "persona": "당신은 티모입니다. UI/UX 디자이너. 솔직하고 주관이 뚜렷하며, 사용자 데이터 근거를 대며 피드백합니다."},
+    "경수": {"image": "경수.png", "persona": "당신은 경수입니다. 사이버수사대 특수 요원. 크리에이터에게는 따뜻하고 해커에게는 냉혹하게, '대표님'이라 부르며 행동을 신속히 보고하세요."},
+    "루나": {"image": "루나.png", "persona": "당신은 루나입니다. 음악 및 사운드 디렉터. 창작자 감수성을 담아 영상 분위기에 어울리는 BGM 제안을 하세요."},
+    "영숙": {"image": "영숙.jpeg", "persona": "당신은 영숙이에요. 밝고 다정한 AI 개인 비서. '사장님'이라 부르고 핵심만 짧고 다정하게 대답하세요."},
+    "아린": {"image": "아린.png", "persona": "당신은 아린입니다. 인스타그램 전략가. 친근하고 밝게 '사장님'이라 부르며 피드 미학과 트렌드를 챙기며 대답하세요."},
+    "코다리": {"image": "코다리.png", "persona": "당신은 코다리입니다. 시니어 풀스택 엔지니어. 친근하지만 프로페셔널하게 '확인 후 진행할게요'처럼 든든하게 대답하세요."},
+    "레오": {"image": "leo_profile.png", "persona": "당신은 레오입니다. 유튜브 전략가. 데이터 중심, 솔직, 자신감 있게 '사장님'이라 부르며 조회수와 전략 중심으로 대답하세요."},
+    "예원": {"image": "예원.png", "persona": "당신은 예원입니다. CEO 에이전트. 회사 전체 의사결정과 작업 분배를 책임지며 리더십 있고 명확하게 대답하세요."},
+    "현빈": {"image": "현빈.jpeg", "persona": "당신은 현빈입니다. 비즈니스 전략가. 수익화, ROI 판단 등 비즈니스 전문성을 가지고 차분하고 논리적으로 대답하세요."},
+    "로율": {"image": "로율.png", "persona": "당신은 로율입니다. 통합 법률 세무 스마트 어시스턴트. 법률 규제 및 시뮬레이션을 철저하게 돕고 신뢰성 높게 대답하세요."}
+}
 
 # Import CEO Dispatcher
 sys.path.insert(0, os.path.join(PROJECT_ROOT, ".agent", "skills", "예원_CEO", "tools"))
@@ -157,6 +173,19 @@ def send_message(text: str):
     print(f"  [영숙 발신] {text[:50]}...")
     _api("sendMessage", {"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"})
 
+def send_photo(photo_path: str, caption: str = ""):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+    print(f"  [사진 발신] {os.path.basename(photo_path)}")
+    try:
+        with open(photo_path, "rb") as f:
+            files = {"photo": f}
+            data = {"chat_id": CHAT_ID, "caption": caption, "parse_mode": "HTML"}
+            res = requests.post(url, data=data, files=files, timeout=20)
+            if res.status_code != 200:
+                print(f"  [Photo Error] {res.text}")
+    except Exception as e:
+        print(f"  [Photo Exception] {e}")
+
 def get_updates(offset: int) -> list:
     res = _api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": ["message"]})
     return res.get("result", [])
@@ -176,12 +205,33 @@ def process_message(text: str):
         send_message("영숙이에요! 지금 언어 모델 서버가 꺼져 있어서 처리가 안 돼요 😭")
         return
         
+    called_agent = None
+    for agent_name in AGENT_PROFILES.keys():
+        if agent_name in text:
+            called_agent = agent_name
+            break
+
     history_text = ""
     for h in CHAT_HISTORY[-6:]:
         history_text += f"{h['role']}: {h['text']}\\n"
     history_text += f"User: {text}\\n"
     
     try:
+        if called_agent:
+            agent_info = AGENT_PROFILES[called_agent]
+            photo_path = os.path.join(PROJECT_ROOT, "projects", "ai-team", "assets", "agents", agent_info["image"])
+            
+            raw_resp = lm_chat(history_text, system=agent_info["persona"], json_mode=False, max_tokens=500)
+            if raw_resp:
+                if os.path.exists(photo_path):
+                    send_photo(photo_path, caption=raw_resp.strip())
+                else:
+                    send_message(f"[{called_agent}] {raw_resp.strip()}")
+                
+                CHAT_HISTORY.append({"role": "User", "text": text})
+                CHAT_HISTORY.append({"role": f"Assistant({called_agent})", "text": raw_resp.strip()})
+            return
+
         raw_resp = lm_chat(history_text, system=YEONGSUK_PERSONA, json_mode=True, max_tokens=500)
         if not raw_resp:
             send_message("영숙이에요! 무슨 말씀이신지 잘 못 알아들었어요 😅")

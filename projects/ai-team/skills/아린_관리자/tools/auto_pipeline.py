@@ -22,8 +22,9 @@ from uploader import InstaUploader, load_env, ensure_token_fresh
 from _shared.telegram_notifier import send_telegram_message
 from prompt_crafter import craft_insta_prompt
 import importlib.util as _ilu
-_gahee_spec = _ilu.spec_from_file_location("content_inspector",
-    os.path.join(os.path.dirname(__file__), "..", "가희_검수관", "content_inspector.py"))
+# skills/아린_관리자/tools/ → skills/가희_검수관/tools/
+_gahee_path = os.path.join(os.path.dirname(__file__), "..", "..", "가희_검수관", "tools", "content_inspector.py")
+_gahee_spec = _ilu.spec_from_file_location("content_inspector", _gahee_path)
 _gahee = _ilu.module_from_spec(_gahee_spec)
 _gahee_spec.loader.exec_module(_gahee)
 gahee_inspect_caption     = _gahee.inspect_caption
