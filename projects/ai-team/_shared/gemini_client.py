@@ -56,9 +56,11 @@ def text(
         return None
     print(f"  [Gemini API → {_TEXT_MODEL}]")
     try:
+        # gemini-3.5-flash는 내부 thinking 토큰 소모 → 최소 2000 보장
+        effective_tokens = max(max_tokens, 2000)
         payload: dict = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperature},
+            "generationConfig": {"maxOutputTokens": effective_tokens, "temperature": temperature},
         }
         if system:
             payload["systemInstruction"] = {"parts": [{"text": system}]}
