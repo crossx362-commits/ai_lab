@@ -117,14 +117,19 @@ def test_instagram():
         print("  ❌ INSTAGRAM_ACCESS_TOKEN 없음")
         return False
 
-    # Facebook Graph API로 테스트 (제공된 토큰이 Facebook 토큰)
+    # IGA 형식: graph.instagram.com 사용
+    # EAA 형식: graph.facebook.com 사용 (하위 호환)
+    if token.startswith("IGA") or token.startswith("IGQ"):
+        test_url = f"https://graph.instagram.com/v23.0/me?fields=id,username&access_token={token}"
+    else:
+        test_url = f"https://graph.facebook.com/v21.0/me?access_token={token}"
+
     try:
-        url = f"https://graph.facebook.com/v21.0/me?access_token={token}"
-        with urllib.request.urlopen(url, timeout=10) as r:
+        with urllib.request.urlopen(test_url, timeout=10) as r:
             data = json.loads(r.read())
             if "id" in data:
-                print(f"  ⚠️  Facebook User Access Token - ID: {data.get('id')}")
-                print(f"     Instagram Business 계정 연결 필요 (SETUP_INSTAGRAM.md 참고)")
+                username = data.get("username") or data.get("name") or "알 수 없음"
+                print(f"  ✅ Instagram API 정상 - 계정: @{username} (ID: {data.get('id')})")
                 return True
             else:
                 print(f"  ❌ 토큰 무효")
@@ -132,6 +137,7 @@ def test_instagram():
     except Exception as e:
         print(f"  ❌ Instagram/Facebook API 실패: {e}")
         return False
+
 
 def test_telegram():
     """Telegram Bot API 테스트"""
