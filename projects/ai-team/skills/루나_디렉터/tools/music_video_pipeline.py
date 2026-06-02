@@ -58,7 +58,8 @@ generate_long_take = _veo_mod.generate_long_take
 
 # ── 상수 ──────────────────────────────────────────────────────────────────────
 KST                      = datetime.timezone(datetime.timedelta(hours=9))
-CHECKPOINT_FILE          = "output/music_video_checkpoint.json"
+_OUT_DIR                 = os.path.join(_root, "reports", "uploads", "luna")
+CHECKPOINT_FILE          = os.path.join(_OUT_DIR, "music_video_checkpoint.json")
 CHECKPOINT_MAX_AGE_HOURS = 36
 
 # ffmpeg — macOS/Linux: "ffmpeg" / Windows Winget 자동 감지
@@ -106,7 +107,7 @@ def load_checkpoint() -> dict:
 
 def save_checkpoint(state: dict):
     state["saved_at"] = datetime.datetime.now().isoformat()
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(_OUT_DIR, exist_ok=True)
     with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
 
@@ -267,7 +268,7 @@ def _auto_generate_metadata(music_prompt: str, yt_titles: list, draft_title: str
 def run_pipeline(publish_hhmm: str = None):
     """publish_hhmm: 'HH:MM' 형식 KST 시간. 없으면 기존 로직(오늘/내일 19:00) 사용."""
     load_env()
-    os.makedirs("output", exist_ok=True)
+    os.makedirs(_OUT_DIR, exist_ok=True)
 
     print("=" * 60)
     print("  [루나] AI 음악 & 비디오 통합 파이프라인 기동")
@@ -285,7 +286,7 @@ def run_pipeline(publish_hhmm: str = None):
     uploader  = YouTubeUploader()
     uploader.authenticate()
 
-    db_path = "output/uploaded_music.json"
+    db_path = os.path.join(_OUT_DIR, "uploaded_music.json")
     uploaded_files = []
     if os.path.exists(db_path):
         try:
@@ -347,7 +348,7 @@ def run_pipeline(publish_hhmm: str = None):
     print(f"  - 제목: {title}")
 
     # ── ②③ 음악 + 비주얼 생성 ─────────────────────────────────────────────────
-    video_path = "output/final_video.mp4"
+    video_path = os.path.join(_OUT_DIR, "final_video.mp4")
     audio_path = ""
     full_music_prompt = cp.get("full_music_prompt", "")  # 체크포인트에서 복원 시도
 
@@ -372,7 +373,7 @@ def run_pipeline(publish_hhmm: str = None):
 
         # ③ Lyria 3 Pro 완곡 생성
         send_telegram_message(f"🎵 [루나] 음원 생성 중 (lyria-3-pro-preview)...")
-        full_audio_path = os.path.join("output", "full_track.mp3")
+        full_audio_path = os.path.join(_OUT_DIR, "full_track.mp3")
         print(f"\n🎵 [완곡 생성 — lyria-3-pro-preview]")
         full_track = music_gen.generate_music(full_music_prompt, output_path=full_audio_path, is_pro=True)
         if not full_track or not os.path.exists(full_track):
@@ -402,7 +403,7 @@ def run_pipeline(publish_hhmm: str = None):
             print(f"\n🖼️  [{part_name.upper()} 비주얼 생성 중...]")
             send_telegram_message(f"🖼️ [루나] 비주얼 '{part_name}' 생성 중...")
 
-            img_path = os.path.join("output", f"visual_{part_name}.png")
+            img_path = os.path.join(_OUT_DIR, f"visual_{part_name}.png")
             result = generate_visual(visual_prompt, img_path)
             if not result:
                 print(f"⚠️ Gemini 실패 → Pollinations 시도...")
@@ -410,7 +411,7 @@ def run_pipeline(publish_hhmm: str = None):
             part_image_path = result if (result and os.path.exists(result)) else None
             parts_images[part_name] = part_image_path
 
-            vid_path  = os.path.join("output", f"video_{part_name}.mp4")
+            vid_path  = os.path.join(_OUT_DIR, f"video_{part_name}.mp4")
             video_ok  = False
             # Veo 사용 명시 요청 없을 시 호출 금지
             # is_ad = (theme.get("is_ad") or "[AD]" in theme.get("title","")
@@ -447,12 +448,12 @@ def run_pipeline(publish_hhmm: str = None):
 
         send_telegram_message("🎬 [루나] 3단계: 생성된 비주얼 소스 합성을 위한 FFmpeg 병합 작업을 시작합니다.")
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        list_file = "output/video_list.txt"
+        list_file = os.path.join(_OUT_DIR, "video_list.txt")
         with open(list_file, "w", encoding="utf-8") as lf:
             for p in successful_parts:
                 lf.write(f"file '{os.path.basename(parts_videos[p])}'\n")
 
-        silent_video = "output/visual_only.mp4"
+        silent_video = os.path.join(_OUT_DIR, "visual_only.mp4")
         try:
             # [병목 관리] 무거운 렌더링 전 시스템 자원 체크
             wait_for_resources(task_name="비주얼 병합(FFmpeg)")
@@ -490,7 +491,7 @@ def run_pipeline(publish_hhmm: str = None):
 
         print(f"✅ 최종 영상 완성: {video_path}")
 
-        merged_path = os.path.join("output", f"bgm_merged_{ts}.mp3")
+        merged_path = os.path.join(_OUT_DIR, f"bgm_merged_{ts}.mp3")
         if full_track and os.path.exists(full_track):
             shutil.copy(full_track, merged_path)
             audio_path = merged_path
@@ -556,7 +557,7 @@ def run_pipeline(publish_hhmm: str = None):
 
     # ── ⑧ YouTube 업로드 ──────────────────────────────────────────────────────
     # 썸네일 추출 및 보정
-    thumb_path = "output/best_scene_thumbnail.png"
+    thumb_path = os.path.join(_OUT_DIR, "best_scene_thumbnail.png")
     print(f"🎬 썸네일 추출 중 (5초 지점)...")
     try:
         subprocess.run(

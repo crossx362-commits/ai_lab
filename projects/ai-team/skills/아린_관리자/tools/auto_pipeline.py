@@ -19,6 +19,8 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, "reports")):
         break
     _root = os.path.dirname(_root)
+_OUT_DIR = os.path.join(_root, "reports", "uploads", "arin")
+os.makedirs(_OUT_DIR, exist_ok=True)
 if _here not in sys.path:
     sys.path.insert(0, _here)
 if _root not in sys.path:
@@ -359,7 +361,7 @@ def _generate_image_pollinations(prompt):
 def generate_and_upload_image(prompt):
     """Generates an image using Gemini 3.1 Flash Image Preview and uploads it to Catbox.moe for a static public URL."""
     print(f"🎨 Gemini AI로 이미지 생성 중 (프롬프트: {prompt[:80]}...)")
-    temp_filename = "temp_generated.jpg"
+    temp_filename = os.path.join(_OUT_DIR, "temp_generated.jpg")
 
     try:
         img_bytes = _generate_image_gemini(prompt)
@@ -567,7 +569,7 @@ def main(dry_run=False):
         print(f"✅ 유사 이미지 없음 (최고 유사도 {ratio:.0%}) — 진행합니다.")
 
     # 4. 이미지 생성 (img_bytes 보관 — Vision 캡션에 재사용)
-    temp_filename = "temp_generated.jpg"
+    temp_filename = os.path.join(_OUT_DIR, "temp_generated.jpg")
     img_bytes = None
     image_url = None
     try:
