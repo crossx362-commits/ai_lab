@@ -340,35 +340,40 @@ def generate_and_upload_image(prompt):
 
 
 def generate_caption_from_image(img_bytes: bytes) -> str:
-    """생성된 이미지를 Gemini Vision으로 직접 분석하여
-    이미지 내용에 기반한 감성적 한국어 인스타 캡션을 자동 생성합니다."""
-    print("👁️ Gemini Vision으로 이미지 분석 및 캡션 작성 중...")
+    """이미지 분석 → 감성 인스타 캡션 생성. Ollama 우선, 실패 시 Gemini Vision 폴백."""
+    prompt = (
+        "이 사진 보고 인스타 캡션 써줘. "
+        "진짜 사람이 폰으로 찍고 올린 것처럼 자연스럽게. "
+        "딱딱한 문어체 금지, 평소 친구한테 말하듯이. "
+        "짧고 감성적으로 1~2문장. 이모지 1개. "
+        "마지막에 해시태그 6~8개. "
+        "캡션만 출력, 다른 말 없이."
+    )
+
+    # 1순위: Ollama Vision
+    try:
+        from _shared.ollama_client import chat_vision, is_available
+        if is_available():
+            print("👁️ Ollama Vision으로 이미지 분석 중...")
+            result = chat_vision(prompt, img_bytes, max_tokens=300)
+            if result:
+                print("✅ Ollama Vision 캡션 생성 완료!")
+                return result.strip()
+    except Exception as e:
+        print(f"  [Ollama Vision] 실패: {e}")
+
+    # 2순위: Gemini Vision 폴백
     try:
         api_url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
             f"gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
         )
         img_b64 = base64.b64encode(img_bytes).decode()
-        prompt = (
-            "이 사진 보고 인스타 캡션 써줘. "
-            "진짜 사람이 폰으로 찍고 올린 것처럼 자연스럽게. "
-            "딱딱한 문어체 금지, 평소 친구한테 말하듯이. "
-            "짧고 감성적으로 1~2문장. 이모지 1개. "
-            "마지막에 해시태그 6~8개. "
-            "캡션만 출력, 다른 말 없이."
-        )
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt},
-                    {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}
-                ]
-            }]
-        }
+        payload = {"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": img_b64}}]}]}
         res = requests.post(api_url, json=payload, timeout=30)
         res.raise_for_status()
         caption = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-        print("✅ Gemini Vision 캡션 생성 완료!")
+        print("✅ Gemini Vision 캡션 생성 완료! (폴백)")
         return caption.strip()
     except Exception as e:
         print(f"⚠️ Vision 캡션 실패 ({e}), 템플릿 캡션으로 대체합니다.")

@@ -154,6 +154,33 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
         return None
 
 
+def chat_vision(prompt: str, image_bytes: bytes, max_tokens: int = 500) -> str | None:
+    """이미지 + 텍스트를 Ollama 비전 모델에 전송. gemma3 계열 지원."""
+    import base64 as _b64
+    model_id = _detect_model("")
+    if model_id is None:
+        return None
+    img_b64 = _b64.b64encode(image_bytes).decode()
+    payload = {
+        "model": model_id,
+        "messages": [{"role": "user", "content": prompt, "images": [img_b64]}],
+        "max_tokens": max_tokens,
+        "stream": False,
+    }
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            _endpoint(), data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=120) as r:
+            res = json.loads(r.read())
+        return res["choices"][0]["message"].get("content", "").strip() or None
+    except Exception as e:
+        print(f"  [Ollama Vision] 오류: {e}")
+        return None
+
+
 def is_available() -> bool:
     """Ollama 서버가 응답하고 모델이 로드돼 있는지 확인."""
     return bool(_list_models())
