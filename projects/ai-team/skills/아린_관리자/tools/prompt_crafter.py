@@ -177,13 +177,13 @@ def detect_category(topic: str) -> str:
     topic_lower = topic.lower()
     for category in [
         "season_spring", "season_summer", "season_autumn", "season_winter",
-        "mountain", "food", "person", "travel", "animal", "landscape",
+        "mountain", "food", "travel", "animal", "landscape", "person",
     ]:
         for kw in CATEGORY_KEYWORDS[category]:
             if kw in topic_lower:
                 return category
-    # 기본값: landscape 대신 person(패션/감성 인물) 우선 — 더 멋진 사진 생성
-    return "person"
+    # 기본값: landscape (자연풍경) — 매핑 안 되는 트렌드는 감성 풍경 사진으로
+    return "landscape"
 
 
 def build_narrative(topic: str, category: str) -> str:
