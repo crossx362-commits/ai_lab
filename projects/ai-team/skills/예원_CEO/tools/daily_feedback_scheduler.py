@@ -1,21 +1,20 @@
 """
-daily_feedback_scheduler.py — 예원 CEO: 매일 자동 피드백 평가 스케줄러
+daily_feedback_scheduler.py — 예원 CEO: 피드백 평가 도구
 
 기능:
-  - 매일 자동으로 Instagram·YouTube 콘텐츠 성과 평가
+  - Instagram·YouTube 콘텐츠 성과 평가
   - 성공/실패 기준에 따라 보상(Reward) / 패널티(Punishment) 기록
-  - 텔레그램으로 일일 보고서 전송
+  - 텔레그램으로 일일/주간 보고서 전송
   - 주간 트렌드 분석 및 개선 제안
 
-실행 시간:
-  - 매일 오전 9시 KST (밤새 업로드된 콘텐츠 평가)
-  - 주간 리포트: 매주 월요일 오전 10시
+⚠️ 스케줄 관리: 영숙 비서의 schedule_manager.py에서 중앙 관리
+  - 매일 오전 9시: 영숙 → 예원 일일 평가
+  - 매주 월요일 9시: 영숙 → 예원 주간 리포트
 """
 import os
 import sys
 import json
 import datetime
-import time
 from typing import Dict, List
 
 # 프로젝트 루트 경로 설정
@@ -276,51 +275,34 @@ def run_weekly_evaluation():
     print("\n✅ 주간 리포트 완료 — 텔레그램 전송됨")
 
 
+# ⚠️ DEPRECATED: 독립 스케줄러 제거됨
+# 스케줄은 영숙 비서의 schedule_manager.py에서 중앙 관리
+# 이 함수는 더 이상 사용되지 않음
 def schedule_loop():
-    """스케줄 루프 (백그라운드 실행)."""
-    print("🕐 스케줄러 시작 — 매일 09:00 KST 평가 실행")
+    """
+    [DEPRECATED] 독립 스케줄 루프 - 더 이상 사용하지 않음
 
-    last_daily_run = None
-    last_weekly_run = None
+    스케줄은 영숙 비서가 중앙 관리:
+    - skills/영숙_비서/tools/schedule_manager.py
+    - skills/영숙_비서/tools/schedules.json
 
-    while True:
-        now = datetime.datetime.now()
-
-        # 매일 09:00 실행
-        if now.hour == 9 and now.minute < 5:
-            today = now.date()
-            if last_daily_run != today:
-                print(f"\n[{now.isoformat()}] 일일 평가 실행...")
-                try:
-                    run_daily_evaluation()
-                    last_daily_run = today
-                except Exception as e:
-                    print(f"❌ 일일 평가 실패: {e}")
-                    send_telegram_message(f"⚠️ 예원 CEO: 일일 평가 실패\n{str(e)}")
-
-        # 매주 월요일 10:00 실행
-        if now.weekday() == 0 and now.hour == 10 and now.minute < 5:
-            week_key = f"{now.year}-W{now.isocalendar()[1]}"
-            if last_weekly_run != week_key:
-                print(f"\n[{now.isoformat()}] 주간 리포트 실행...")
-                try:
-                    run_weekly_evaluation()
-                    last_weekly_run = week_key
-                except Exception as e:
-                    print(f"❌ 주간 리포트 실패: {e}")
-                    send_telegram_message(f"⚠️ 예원 CEO: 주간 리포트 실패\n{str(e)}")
-
-        # 1분 대기
-        time.sleep(60)
+    영숙이 스케줄 시간에 CEO에게 보고 후 이 스크립트 호출
+    """
+    print("⚠️  이 스케줄러는 더 이상 사용되지 않습니다.")
+    print("    영숙 비서의 schedule_manager.py를 사용하세요.")
+    print()
+    print("실행 방법:")
+    print("  --daily   일일 평가 즉시 실행")
+    print("  --weekly  주간 리포트 즉시 실행")
+    return
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="예원 CEO 피드백 스케줄러")
+    parser = argparse.ArgumentParser(description="예원 CEO 피드백 평가 도구 (영숙 스케줄러에서 호출)")
     parser.add_argument("--daily", action="store_true", help="일일 평가 즉시 실행")
     parser.add_argument("--weekly", action="store_true", help="주간 리포트 즉시 실행")
-    parser.add_argument("--daemon", action="store_true", help="스케줄러 데몬 모드 (백그라운드)")
 
     args = parser.parse_args()
 
@@ -328,8 +310,6 @@ if __name__ == "__main__":
         run_daily_evaluation()
     elif args.weekly:
         run_weekly_evaluation()
-    elif args.daemon:
-        schedule_loop()
     else:
         # 기본: 일일 평가
         run_daily_evaluation()

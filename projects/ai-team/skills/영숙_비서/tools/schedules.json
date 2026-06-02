@@ -1,0 +1,206 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-06-02",
+  "schedules": [
+    {
+      "id": "gahee_morning_inspection",
+      "agent": "가희",
+      "task": "아침 콘텐츠 검수",
+      "cron": "0 7 * * *",
+      "description": "YouTube + Instagram 검수",
+      "command": "가희 검수 돌려",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "gahee_afternoon_inspection",
+      "agent": "가희",
+      "task": "오후 콘텐츠 검수",
+      "cron": "0 13 * * *",
+      "description": "YouTube + Instagram 검수",
+      "command": "가희 검수 돌려",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "gahee_night_inspection",
+      "agent": "가희",
+      "task": "저녁 콘텐츠 검수",
+      "cron": "0 21 * * *",
+      "description": "YouTube + Instagram 검수",
+      "command": "가희 검수 돌려",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "luna_daily_video",
+      "agent": "루나",
+      "task": "YouTube 음악 영상 제작",
+      "cron": "0 19 * * *",
+      "description": "시티팝×K-POP 뮤직비디오 자동 생성 및 업로드",
+      "command": "루나 영상 만들어줘",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "arin_golden_time_lunch",
+      "agent": "아린",
+      "task": "Instagram 점심 골든타임",
+      "cron": "30 11 * * 1-5",
+      "description": "평일 점심시간 Instagram 포스팅",
+      "command": "아린 인스타 올려",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "arin_golden_time_dinner",
+      "agent": "아린",
+      "task": "Instagram 저녁 골든타임",
+      "cron": "0 18 * * 1-5",
+      "description": "평일 퇴근시간 Instagram 포스팅",
+      "command": "아린 인스타 올려",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "arin_weekend_afternoon",
+      "agent": "아린",
+      "task": "Instagram 주말 오후",
+      "cron": "0 14 * * 0,6",
+      "description": "주말 오후 Instagram 포스팅",
+      "command": "아린 인스타 올려",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "yeongsuk_upload_check",
+      "agent": "영숙",
+      "task": "업로드 현황 점검",
+      "cron": "0 3 * * *",
+      "description": "일일 업로드 누락 확인 및 자동 실행",
+      "command": "업로드 현황 확인",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "yeongsuk_report_cleanup",
+      "agent": "영숙",
+      "task": "리포트 정리",
+      "cron": "0 4 * * *",
+      "description": "가희 검수 리포트 필터링 및 정리",
+      "command": "리포트 정리해줘",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "yewon_weekly_audit",
+      "agent": "예원",
+      "task": "주간 스킬 감사",
+      "cron": "0 9 * * 1",
+      "description": "전체 에이전트 스킬 검토 및 개선사항 도출",
+      "command": "예원 주간 감사 실행",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "yewon_daily_feedback",
+      "agent": "예원",
+      "task": "일일 피드백 평가",
+      "cron": "0 9 * * *",
+      "description": "Instagram·YouTube 성과 평가 및 인사이트",
+      "command": "예원 피드백 평가",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "kodari_health_check",
+      "agent": "코다리",
+      "task": "시스템 헬스체크",
+      "cron": "0 */2 * * *",
+      "description": "Ollama, 텔레그램 봇 상태 확인 및 자동 수복",
+      "command": "코다리 헬스체크 실행",
+      "enabled": true,
+      "priority": "critical"
+    },
+    {
+      "id": "kevin_hourly_monitor",
+      "agent": "케빈",
+      "task": "Petnna 모니터링",
+      "cron": "0 * * * *",
+      "description": "Petnna PWA 헬스체크",
+      "command": "케빈 Petnna 모니터링",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "kevin_daily_report",
+      "agent": "케빈",
+      "task": "일일 헬스 리포트",
+      "cron": "0 6 * * *",
+      "description": "Vercel + Supabase 전체 상태 보고",
+      "command": "케빈 일일 리포트",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "timo_review_tuesday",
+      "agent": "티모",
+      "task": "화요일 디자인 검토",
+      "cron": "0 10 * * 2",
+      "description": "Petnna UI/UX 검토",
+      "command": "티모 디자인 검토",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "timo_review_friday",
+      "agent": "티모",
+      "task": "금요일 디자인 검토",
+      "cron": "0 10 * * 5",
+      "description": "Petnna UI/UX 검토",
+      "command": "티모 디자인 검토",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
+      "id": "hyunbin_hourly_research",
+      "agent": "현빈",
+      "task": "시간당 시장 분석",
+      "cron": "0 * * * *",
+      "description": "시장 트렌드 실시간 수집",
+      "command": "현빈 시장 분석",
+      "enabled": true,
+      "priority": "low"
+    },
+    {
+      "id": "lolaw_weekly_review",
+      "agent": "로율",
+      "task": "주간 법률 검토",
+      "cron": "0 10 * * 1",
+      "description": "Petnna 프로젝트 법률 감사",
+      "command": "로율 법률 검토",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "lolaw_monthly_audit",
+      "agent": "로율",
+      "task": "월간 심층 감사",
+      "cron": "0 10 1 * *",
+      "description": "전체 프로젝트 컴플라이언스 감사",
+      "command": "로율 월간 감사",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "gyeongsu_realtime_monitor",
+      "agent": "경수",
+      "task": "악플 실시간 모니터링",
+      "cron": "*/30 * * * *",
+      "description": "30분마다 악플·보안 위협 감지",
+      "command": "경수 악플 체크",
+      "enabled": true,
+      "priority": "critical"
+    }
+  ]
+}

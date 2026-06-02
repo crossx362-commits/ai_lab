@@ -215,5 +215,31 @@
             "trend_topic": "경복궁",
             "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Active outdoor lifestyle photo, adventure energy, bright vivid natural colors, A dynamic 경복궁의 정문 앞에서 운석이 떨어지는 장면을 DLRS로 촬영한 것처럼 만들어보세요. outdoor portrait, bold composition, warm golden tones, full of life, masterpiece, highly detailed, tack sharp focus, professional composition, award-winning"
         }
+    },
+    {
+        "agent": "아린",
+        "status": "published",
+        "uploaded_at": "2026-06-02T14:49:26.955183",
+        "metadata": {
+            "platform": "instagram",
+            "post_id": "17856691644660116",
+            "caption": "웃음이 끊이질 않던 오후 😌 햇살 가득한 오후의 숲에서 행복 충전 완!\n#오후의숲 #카페스타그램 #햇살맛집 #웃음꽃 #힐링 #일상의행복 #소확행",
+            "image_url": "https://files.catbox.moe/etyq85.jpg",
+            "trend_topic": "이의 리",
+            "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Candid lifestyle portrait, warm golden afternoon sunlight, genuine unposed laughter, A joyful photorealistic DSLR photo, 인물 사진, 장면/배경 묘사,  tones,  atmosph lifestyle moment, genuine unposed smile, vibrant sun-drenched setting, stunning realism, exquisite detail, ultra-sharp, beautiful natural colors, perfect lighting, 8K"
+        }
+    },
+    {
+        "agent": "아린",
+        "status": "published",
+        "uploaded_at": "2026-06-02T15:07:19.396645",
+        "metadata": {
+            "platform": "instagram",
+            "post_id": "18071345159333695",
+            "caption": "그냥 웃음이 터져버린 순간! 이 순간 그대로 간직하고 싶어 ✨\n#행복 #웃음 #자연 #힐링 #햇살 #순간 #일상 #기분전환",
+            "image_url": "https://files.catbox.moe/nlfaw7.jpg",
+            "trend_topic": "전인지",
+            "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Active outdoor lifestyle photo, adventure energy, bright vivid natural colors, A joyful photorealistic DSLR photo, 사진 스타일, 공간/장면에 대한 묘사, 빨강, 파랑 tone lifestyle moment, genuine unposed smile, vibrant sun-drenched setting, visually striking, dynamic range, lush colors, precise detail, deeply immersive scene"
+        }
     }
 ]

@@ -6,15 +6,17 @@ content_inspector.py — 가희: YouTube·Instagram 콘텐츠 품질·정책 위
   EXISTING_CONTENT — 채널 전체 사후 스캔
   POST_UPLOAD      — 업로드 직후 실제 게시물 검수 + 수정 요청
 
-정기 검수 (하루 3회): morning(07:00) / afternoon(13:00) / night(21:00) KST
+⚠️ 정기 검수 스케줄: 영숙 비서의 schedule_manager.py에서 중앙 관리
+  - 07:00 / 13:00 / 21:00 KST (하루 3회)
+  - 영숙이 스케줄 시간에 CEO에게 보고 후 가희 호출
 
 실행:
   python content_inspector.py                          # 채널 전체 스캔
   python content_inspector.py --id <VIDEO_ID>          # YouTube 단건 검수
   python content_inspector.py --new                    # 오늘 신규 업로드 사전 검수
-  python content_inspector.py --schedule morning       # 오전 정기 검수 (YouTube+Instagram)
-  python content_inspector.py --schedule afternoon     # 오후 정기 검수
-  python content_inspector.py --schedule night         # 야간 정기 검수
+  python content_inspector.py --schedule morning       # 오전 정기 검수 (영숙이 호출)
+  python content_inspector.py --schedule afternoon     # 오후 정기 검수 (영숙이 호출)
+  python content_inspector.py --schedule night         # 야간 정기 검수 (영숙이 호출)
   python content_inspector.py --pre-upload <CAPTION>   # 인스타 캡션 업로드 전 검수
   python content_inspector.py --post-upload <POST_ID>  # 인스타 업로드 후 검수
   python content_inspector.py --full                   # YouTube+Instagram+Blog 전체 감사
