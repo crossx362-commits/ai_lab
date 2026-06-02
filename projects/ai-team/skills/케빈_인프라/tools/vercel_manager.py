@@ -4,12 +4,11 @@ import json
 import urllib.request
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-from _shared.env_loader import load_env
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import load_env, find_project_root
+_root = find_project_root(_here)
 
 def run_vercel_cleanup():
     load_env(_root)
