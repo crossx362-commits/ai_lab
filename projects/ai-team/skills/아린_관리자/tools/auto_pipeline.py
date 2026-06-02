@@ -506,6 +506,7 @@ def main(dry_run=False):
         fresh_trends = trends[:1]
     selected_trend = fresh_trends[0]
     print(f"✅ 선택된 트렌드: {selected_trend}")
+    send_telegram_message(f"📸 [아린] 1단계: 오늘의 구글 트렌드 분석 완료. 타겟 키워드 '{selected_trend}' 선정 완료.")
 
     # 2. 상위 트렌드에서 시각적 키워드 추출
     print("🔑 키워드 추출 중...")
@@ -532,7 +533,10 @@ def main(dry_run=False):
         print("🧪 드라이 런 모드입니다. 실제 업로드는 수행하지 않고 종료합니다.")
         # 드라이런인 경우라도 변경된 calendar 파일 저장을 위해 git_sync를 수행
         git_sync()
+        send_telegram_message(f"📸 [아린] 2단계: 기획 수립 완료 (업로드 시간: {post_data['best_time']}). 드라이 런으로 종료합니다.")
         return
+
+    send_telegram_message(f"📸 [아린] 2단계: 포스팅 기획 완료. 업로드 시간 {post_data['best_time']} 매핑. 이미지 생성을 시작합니다.")
         
     # 3. 프롬프트 크래프터로 Gemini 최적화 프롬프트 고도화
     raw_prompt = post_data['image_prompt']
@@ -664,6 +668,7 @@ def main(dry_run=False):
 
     for attempt in range(1, MAX_RETRIES + 1):
         # 가희 사전 검수
+        send_telegram_message(f"📸 [아린] 3단계: 가희(Inspector) 사전 검수 진행 중 (시도 {attempt}/{MAX_RETRIES})...")
         pre_check = gahee_inspect_caption(final_caption)
         if not pre_check["pass"]:
             issues_str = ", ".join(pre_check["issues"])
@@ -676,15 +681,18 @@ def main(dry_run=False):
             print(f"  수정된 캡션 (앞 80자): {final_caption[:80]}")
             continue
         print(f"  ✅ [가희] 사전 검수 통과 (시도 {attempt})")
+        send_telegram_message(f"📸 [아린] 사전 검수 통과 완료. 인스타그램 업로드를 시도합니다.")
 
         # 업로드
         print(f"  📤 업로드 중 (시도 {attempt})...")
         post_id = uploader.upload_image(image_url, final_caption)
         if not post_id:
             print(f"  ❌ 업로드 실패")
+            send_telegram_message(f"🚨 [아린] 인스타그램 이미지 발행 실패 (시도 {attempt}/{MAX_RETRIES})")
             break
 
         # 가희 사후 검수
+        send_telegram_message(f"📸 [아린] 4단계: 가희(Inspector) 사후 검수 진행 중...")
         post_check = gahee_inspect_post_upload(post_id)
         if not post_check["pass"]:
             issues_str = ", ".join(post_check["issues"])
@@ -706,12 +714,13 @@ def main(dry_run=False):
                 send_telegram_message(f"🚨 <b>[가희]</b> 사후 검수 {MAX_RETRIES}회 실패 — 수동 확인 필요\nID: {post_id}")
         else:
             print(f"  ✅ [가희] 사후 검수 통과")
+            send_telegram_message(f"📸 [아린] 사후 검수 최종 통과 완료.")
         break  # 검수 통과 or 최대 재시도 도달
 
     # 업로드 성공 후 처리 (루프 밖)
     if post_id:
         print(f"🎉 성공적으로 자동 포스팅이 완료되었습니다! (ID: {post_id})")
-        # send_telegram_message(f"✅ 아린 인스타: 금일 자동 포스팅 발행 완료!\n- 트렌드 주제: {selected_trend}\n- 업로드 타임: {post_data['best_time']}\n- 포스팅 ID: {post_id}\n- 이미지: {image_url}")  # 중복 방지: telegram_bot.py에서 전송
+        send_telegram_message(f"📸 [아린] 5단계: 금일 자동 인스타그램 포스팅 발행 완료!\n- 주제: {selected_trend}\n- 업로드 타임: {post_data['best_time']}\n- ID: {post_id}")
         _record_to_history({
             "agent": "아린",
             "status": "published",
