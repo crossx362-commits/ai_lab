@@ -22,13 +22,6 @@
       "created_at": "2026-05-29T14:18:27.165234"
     },
     {
-      "keyword": "nostalgia, cityscapes, neon lights",
-      "mood": "melancholic, reflective, hopeful",
-      "visual_prompt": "Urban landscapes, night scenes, vintage aesthetics",
-      "title_pattern": "[City Name] Nights / [Color] Sunset",
-      "created_at": "2026-05-29T15:21:00.696789"
-    },
-    {
       "keyword": "futurism, vibrant color",
       "mood": "energetic, playful",
       "visual_prompt": "Cyberpunk aesthetics, holographic elements, dynamic choreography",
@@ -78,13 +71,6 @@
       "created_at": "2026-05-30T06:58:47.531290"
     },
     {
-      "keyword": "nostalgia, urban landscape, neon lights, youthful longing",
-      "mood": "melancholy, dreamy, bittersweet",
-      "visual_prompt": "Cityscapes, retro cars, fashion, late-night vibes",
-      "title_pattern": "[City/Place] + [Evocative Word/Phrase]",
-      "created_at": "2026-05-30T09:03:50.096509"
-    },
-    {
       "keyword": "modern K-Pop aesthetics, futuristic, vibrant colors",
       "mood": "energetic, confident, experimental",
       "visual_prompt": "Sharp choreography, dynamic sets, digital effects, fashion",
@@ -92,32 +78,11 @@
       "created_at": "2026-05-30T09:03:50.096509"
     },
     {
-      "keyword": "nostalgia, city lights, neon",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Urban landscapes, retro aesthetics, nighttime scenes",
-      "title_pattern": "[City/Place] + [Time/Feeling]",
-      "created_at": "2026-05-30T13:45:32.248132"
-    },
-    {
-      "keyword": "nostalgia, urban landscapes, neon lights",
-      "mood": "melancholy, longing, bittersweet",
-      "visual_prompt": "Retro cityscapes, vintage cars, rain-slicked streets",
-      "title_pattern": "[Number]-something / [Place] Nights",
-      "created_at": "2026-05-30T14:46:42.157217"
-    },
-    {
       "keyword": "youth, vibrancy, futuristic",
       "mood": "energetic, playful, confident",
       "visual_prompt": "Bright colors, holographic elements, dance-focused scenes",
       "title_pattern": "[Adjective] / [Abstract Noun]",
       "created_at": "2026-05-30T14:46:42.157217"
-    },
-    {
-      "keyword": "nostalgia, cityscapes, neon lights, retro fashion",
-      "mood": "melancholy, longing, bittersweet",
-      "visual_prompt": "Vibrant cityscapes, neon signs, vintage cars, stylish fashion",
-      "title_pattern": "[Artist] - [Song Title] (feat. [Artist])",
-      "created_at": "2026-05-30T16:04:54.104278"
     },
     {
       "keyword": "futurism, technology, vibrant colors, ethereal beauty",
@@ -239,13 +204,6 @@
       "created_at": "2026-05-31T03:03:01.222709"
     },
     {
-      "keyword": "city lights, nightlife, neon",
-      "mood": "energetic, playful",
-      "visual_prompt": "Neon-lit cityscapes, stylish individuals, vibrant colors",
-      "title_pattern": "[City Pop/J-Pop keywords]",
-      "created_at": "2026-05-31T04:07:58.570103"
-    },
-    {
       "keyword": "youthful exuberance, confidence",
       "mood": "energetic, playful",
       "visual_prompt": "bright colors, dynamic choreography, futuristic elements",
@@ -285,13 +243,6 @@
       "mood": "melancholy, reflective",
       "visual_prompt": "Urban landscapes, youthful energy, bittersweet memories",
       "title_pattern": "[Number]-something | [Artist] - Topic",
-      "created_at": "2026-05-31T08:22:41.261860"
-    },
-    {
-      "keyword": "city lights, neon, nightlife",
-      "mood": "energetic, vibrant, seductive",
-      "visual_prompt": "Neon-lit streets, stylish fashion, futuristic aesthetics",
-      "title_pattern": "[Descriptive Word] | [Artist] - Topic",
       "created_at": "2026-05-31T08:22:41.261860"
     },
     {

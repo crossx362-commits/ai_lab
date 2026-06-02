@@ -74,7 +74,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
             import tax_simulator
             return tax_simulator.run_simulation(100000000)
 
-        elif _match(agent, ["루나"], ["유튜브 영상", "뮤직비디오"]):
+        elif _match(agent, ["루나"], ["유튜브", "뮤직비디오", "음악 영상"]):
             import subprocess
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
             if os.path.exists(script):

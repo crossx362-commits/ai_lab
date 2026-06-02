@@ -408,8 +408,16 @@ class TrendAnalyzer:
             return kw.lower() in used_keywords or any(kw.lower() in u for u in used_keywords)
 
         # ── 학습 테마 우선 사용 (70% 확률, 학습 테마가 있을 때) ──────────────
-        # 사용된 키워드 제외 후 선택
-        fresh_learned = [t for t in learned if not _is_used(t.get("keyword", ""))]
+        # 사용된 키워드 + neon 과다 편중 제외 후 선택
+        _OVERUSED = ["neon", "bloom", "stardust", "starlight", "city dream"]
+        fresh_learned = [
+            t for t in learned
+            if not _is_used(t.get("keyword", ""))
+            and not any(ov in t.get("keyword", "").lower() for ov in _OVERUSED)
+        ]
+        if not fresh_learned:
+            # 과다 편중 필터 없이 재시도
+            fresh_learned = [t for t in learned if not _is_used(t.get("keyword", ""))]
         if not fresh_learned and learned:
             print("[Info] ⚠️ 모든 학습 테마가 최근 사용됨 — 기본 테마 폴백")
         if fresh_learned and random.random() < 0.7:
