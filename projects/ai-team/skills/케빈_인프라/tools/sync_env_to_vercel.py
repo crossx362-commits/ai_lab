@@ -11,11 +11,13 @@ import urllib.parse
 # .env 파일 로드
 def load_env():
     env_vars = {}
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    # skills/케빈_인프라/tools/ → ai_lab/ (.env 최상위 위치)
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+    env_path = os.path.join(root_dir, ".env")
 
     if not os.path.exists(env_path):
-        print("❌ .env 파일이 없습니다.")
-        print("   먼저 복호화하세요: python encrypt_env.py decrypt")
+        print(f"❌ .env 파일이 없습니다: {env_path}")
+        print("   먼저 복호화하세요: python decrypt_env.py")
         sys.exit(1)
 
     with open(env_path, "r", encoding="utf-8") as f:
