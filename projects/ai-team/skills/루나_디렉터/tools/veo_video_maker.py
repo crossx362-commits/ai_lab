@@ -25,6 +25,16 @@ if _root not in sys.path:
 from _shared.env_loader import load_env
 load_env(start_path=_here)
 
+# 상위 프로세스에서 env가 이미 존재하지만 잘못 매핑된 경우 등을 대비해 직접 .env 강제 로드 적용
+_env_p = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..", ".env"))
+if os.path.exists(_env_p):
+    with open(_env_p, "r", encoding="utf-8") as _f:
+        for _l in _f:
+            _l = _l.strip()
+            if _l and not _l.startswith("#") and "=" in _l:
+                _k, _v = _l.split("=", 1)
+                os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
+
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 VEO_MODEL_ID = "veo-3.1-generate-preview"
 
