@@ -443,7 +443,7 @@ def main(dry_run=False):
         fresh_trends = [t for t in trends if not _has_banned_content(t)]
     if not fresh_trends:
         fresh_trends = trends[:1]
-    selected_trend = fresh_trends[0]
+    selected_trend = random.choice(fresh_trends)
     print(f"✅ 선택된 트렌드: {selected_trend}")
     send_telegram_message(f"📸 [아린] 1단계: 오늘의 구글 트렌드 분석 완료. 타겟 키워드 '{selected_trend}' 선정 완료.")
 

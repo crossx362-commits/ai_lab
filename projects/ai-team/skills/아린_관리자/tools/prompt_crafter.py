@@ -3,6 +3,7 @@ prompt_crafter.py — 인스타그램용 고퀄리티 이미지 프롬프트 제
 테마: 자연(산/바다/사계절)/동물/인물/음식/여행 — tech/미래 테마 제외
 """
 import random
+import datetime
 
 # ─── 카테고리 판별 키워드 맵 ──────────────────────────────────────────────────
 CATEGORY_KEYWORDS = {
@@ -182,8 +183,18 @@ def detect_category(topic: str) -> str:
         for kw in CATEGORY_KEYWORDS[category]:
             if kw in topic_lower:
                 return category
-    # 기본값: landscape (자연풍경) — 매핑 안 되는 트렌드는 감성 풍경 사진으로
-    return "landscape"
+    # 매핑 안 되는 트렌드 → 현재 계절 가중치 적용 랜덤 선택
+    month = datetime.date.today().month
+    if month in (3, 4, 5):
+        seasonal = ["season_spring"] * 4
+    elif month in (6, 7, 8):
+        seasonal = ["season_summer"] * 4
+    elif month in (9, 10, 11):
+        seasonal = ["season_autumn"] * 4
+    else:
+        seasonal = ["season_winter"] * 4
+    pool = seasonal + ["mountain", "landscape", "landscape", "food", "travel", "animal", "animal", "person"]
+    return random.choice(pool)
 
 
 def build_narrative(topic: str, category: str) -> str:

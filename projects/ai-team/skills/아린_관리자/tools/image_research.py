@@ -67,6 +67,15 @@ def _set_research_goal() -> str:
         result = lm_chat(prompt, max_tokens=60, temperature=0.95)
         if result:
             return result.strip()
+    # Fallback: use a random learned prompt if available
+    try:
+        random_prompt = get_random_learned_prompt()
+        if random_prompt and isinstance(random_prompt, dict):
+            theme = random_prompt.get("theme")
+            if theme:
+                return theme
+    except Exception:
+        pass
     return "자연/여행 감성 이미지 트렌드"
 
 
