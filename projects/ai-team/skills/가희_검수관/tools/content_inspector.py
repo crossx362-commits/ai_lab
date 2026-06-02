@@ -644,7 +644,7 @@ def _save_inspection_results(results: list, timestamp: str):
     existing_ids: set = set()
     if os.path.exists(log_path):
         try:
-            with open(log_path) as f:
+            with open(log_path, encoding="utf-8") as f:
                 for line in f:
                     rec = json.loads(line.strip())
                     if not rec.get("resolved"):

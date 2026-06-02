@@ -31,7 +31,7 @@ def _load_issues_from_log():
     if not os.path.exists(_INSPECT_LOG):
         return yt, insta
     try:
-        with open(_INSPECT_LOG) as f:
+        with open(_INSPECT_LOG, encoding="utf-8") as f:
             for line in f:
                 rec = json.loads(line.strip())
                 if rec.get("resolved"):

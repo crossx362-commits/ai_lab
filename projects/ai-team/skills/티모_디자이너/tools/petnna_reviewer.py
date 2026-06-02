@@ -24,7 +24,7 @@ from _shared.telegram_notifier import send_telegram_message
 load_env()
 
 # petnna 프로젝트 경로
-PETNNA_ROOT = os.path.join(os.path.dirname(_root), "petnna")
+PETNNA_ROOT = os.path.join(_root, "projects", "petnna")
 
 REVIEW_TARGETS = [
     ("templates/mypet.js",  "마이펫 하루방 · 날씨 · 운세 화면"),
