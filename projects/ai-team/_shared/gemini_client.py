@@ -11,7 +11,7 @@ import urllib.request
 import urllib.error
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_TEXT_MODEL  = "gemini-2.5-flash"
+_TEXT_MODEL  = "gemini-3.5-flash"
 
 
 def _api_key() -> str:
@@ -118,7 +118,7 @@ def web_search(query: str, max_tokens: int = 1500) -> str | None:
             "tools": [{"google_search": {}}],
             "generationConfig": {"maxOutputTokens": max_tokens},
         }).encode("utf-8")
-        url = f"{_BASE}/gemini-2.5-flash:generateContent?key={api_key}"
+        url = f"{_BASE}/gemini-3.5-flash:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=30) as r:
             res = json.loads(r.read())
