@@ -9,7 +9,6 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
 sys.path.insert(0, _here)
 
 from src.youtube_uploader import YouTubeUploader
@@ -18,7 +17,7 @@ from _shared.telegram_notifier import send_telegram_message
 from _shared.env_loader import load_env
 load_env()
 
-HISTORY_FILE = os.path.join(_root, ".agent", "memory", "upload_history.json")
+HISTORY_FILE = os.path.join(_root, "reports", "history", "upload_history.json")
 KNOWLEDGE_FILE = os.path.join(_here, "knowledge", "title_patterns.json")
 
 # ── Step 1: 어제 미국 유튜브 상위 100개 음악 제목 수집 ───────────────────────

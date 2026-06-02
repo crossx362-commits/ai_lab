@@ -21,8 +21,6 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
-
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 from _shared.env_loader import load_env
 

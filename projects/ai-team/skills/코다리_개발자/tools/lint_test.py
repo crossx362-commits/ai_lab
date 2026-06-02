@@ -20,7 +20,6 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
 CONFIG = os.path.join(HERE, "lint_test.json")
 WEB_INIT_CFG = os.path.join(HERE, "web_init.json")
 

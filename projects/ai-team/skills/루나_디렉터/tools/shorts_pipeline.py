@@ -10,14 +10,12 @@ Phase 3 (14:00 KST): YouTube Shorts 업로드 (Private 예약 → 14:00 공개)
 import os, sys, json, time, datetime, subprocess, urllib.request, urllib.parse, base64, xml.etree.ElementTree as ET
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-if _root not in sys.path:
-    sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 sys.path.insert(0, _here)
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 
 from src.lyria_music_generator import LyriaMusicGenerator
 from src.trend_analyzer import generate_music_prompt_from_title, _generate_optimized_title
@@ -444,7 +442,7 @@ def run_upload(content: dict) -> bool:
         uploader.add_video_to_playlist(video_id, "시티팝 숏츠")
 
         # 히스토리 기록
-        history_path = os.path.join(_root, ".agent", "memory", "upload_history.json")
+        history_path = os.path.join(_root, "reports", "history", "upload_history.json")
         try:
             history = json.load(open(history_path, encoding="utf-8")) if os.path.exists(history_path) else []
             history.append({

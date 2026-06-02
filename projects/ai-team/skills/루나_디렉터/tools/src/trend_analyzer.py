@@ -6,13 +6,13 @@ import os
 import random
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
-for _ in range(4):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-_RESEARCH_FILE   = os.path.join(_root, ".agent", "memory", "luna_research.json")
-_HISTORY_FILE    = os.path.join(_root, ".agent", "memory", "upload_history.json")
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
+_RESEARCH_FILE   = os.path.join(_root, "reports", "research", "luna_research.json")
+_HISTORY_FILE    = os.path.join(_root, "reports", "history", "upload_history.json")
 _USED_KEYWORDS_DAYS = 30  # 최근 N일 이내 사용된 키워드/제목 중복 금지
 
 # 루나 금지 장르 (2026-05-28 사장님 지시)

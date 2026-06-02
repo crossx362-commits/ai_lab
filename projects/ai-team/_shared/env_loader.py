@@ -7,15 +7,25 @@ env_loader.py — 공통 환경변수 로드
 import os
 
 
-def _find_root(start: str) -> str:
-    """현재 경로에서 위로 올라가며 reports 또는 projects 디렉토리를 가진 루트 반환."""
-    root = start
-    for _ in range(8):
-        # reports/ 또는 projects/ 폴더가 있으면 ai_lab 루트
-        if os.path.isdir(os.path.join(root, "reports")) or os.path.isdir(os.path.join(root, "projects")):
+def find_project_root(start: str | None = None) -> str:
+    """프로젝트 루트 자동 탐색 (ENV_MANIFEST.json 또는 .env.encrypted 기준).
+    ai-team/ 내부에도 reports/ 폴더가 있어 기존 방식은 오판함.
+    """
+    root = start or os.path.dirname(os.path.abspath(__file__))
+    for _ in range(10):
+        if (os.path.isfile(os.path.join(root, "ENV_MANIFEST.json")) or
+                os.path.isfile(os.path.join(root, ".env.encrypted"))):
             return root
-        root = os.path.dirname(root)
-    return start
+        parent = os.path.dirname(root)
+        if parent == root:
+            break
+        root = parent
+    return start or os.path.dirname(os.path.abspath(__file__))
+
+
+def _find_root(start: str) -> str:
+    """내부 호환용 — find_project_root() 를 사용하세요."""
+    return find_project_root(start)
 
 
 def load_env(start_path: str | None = None) -> None:

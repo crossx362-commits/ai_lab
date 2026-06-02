@@ -15,14 +15,15 @@ import difflib
 
 # ── 공통 경로 탐색 ────────────────────────────────────────────────────────────
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
+try:
+    from env_loader import find_project_root
+except ImportError:
+    from _shared.env_loader import find_project_root
 
-_HISTORY_FILE   = os.path.join(_root, ".agent", "memory", "upload_history.json")
-_BLOG_MEM_FILE  = os.path.join(_root, ".agent", "memory", "sukja_blog.json")
+_root = find_project_root(_here)
+
+_HISTORY_FILE   = os.path.join(_root, "reports", "history", "upload_history.json")
+_BLOG_MEM_FILE  = os.path.join(_root, "reports", "history", "sukja_blog.json")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

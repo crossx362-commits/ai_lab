@@ -23,17 +23,16 @@ import sys
 import importlib.util
 import subprocess
 
-# 프로젝트 루트 경로 설정 (중복 없이 1회)
+# 프로젝트 루트 경로 설정
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-if _root not in sys.path:
-    sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))  # skills/루나_디렉터/tools → ai-team
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+if _here not in sys.path:
+    sys.path.insert(0, _here)  # src.* 모듈 접근용
 
-from _shared.env_loader import load_env
+from _shared.env_loader import load_env, find_project_root
+_root = find_project_root(_here)
 from src.trend_analyzer import TrendAnalyzer, generate_music_prompt_from_title, _generate_optimized_title
 from src.video_generator import VideoGenerator
 from src.lyria_music_generator import LyriaMusicGenerator
@@ -217,7 +216,7 @@ def _is_duplicate_on_channel(video_path: str, uploader) -> bool:
 
 
 def _record_to_history(record: dict):
-    mem_path = os.path.join(_root, ".agent", "memory", "upload_history.json")
+    mem_path = os.path.join(_root, "reports", "history", "upload_history.json")
     try:
         history = json.load(open(mem_path, encoding="utf-8")) if os.path.exists(mem_path) else []
         history.append(record)

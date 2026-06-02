@@ -13,21 +13,23 @@ import datetime
 import subprocess
 
 _here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
-sys.path.insert(0, PROJECT_ROOT)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+sys.path.insert(0, _ai_team_root)
 from _shared.telegram_notifier import send_telegram_message as _send_telegram
+from _shared.env_loader import find_project_root
+PROJECT_ROOT = find_project_root(_here)
 
-MEM_FILE = os.path.join(PROJECT_ROOT, ".agent", "memory", "upload_history.json")
+MEM_FILE = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
 
 # 에이전트별 파이프라인 정의
 PIPELINES = {
     "루나_디렉터": {
-        "script": os.path.join(PROJECT_ROOT, "assets", "tool-seeds", "루나_디렉터", "music_video_pipeline.py"),
-        "cwd":    os.path.join(PROJECT_ROOT, "assets", "tool-seeds", "루나_디렉터"),
+        "script": os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py"),
+        "cwd":    os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools"),
     },
     "아린_관리자": {
-        "script": os.path.join(PROJECT_ROOT, "assets", "tool-seeds", "아린_관리자", "auto_pipeline.py"),
-        "cwd":    os.path.join(PROJECT_ROOT, "assets", "tool-seeds", "아린_관리자"),
+        "script": os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py"),
+        "cwd":    os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools"),
     },
 }
 

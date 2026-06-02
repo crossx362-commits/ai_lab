@@ -13,7 +13,6 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
 from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import is_available, chat as lm_chat

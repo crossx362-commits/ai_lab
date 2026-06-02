@@ -17,7 +17,7 @@ def _find_project_root() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     root = here
     for _ in range(10):
-        if os.path.isdir(os.path.join(root, ".agent")):
+        if os.path.isfile(os.path.join(root, "ENV_MANIFEST.json")) or os.path.isfile(os.path.join(root, ".env.encrypted")):
             return root
         parent = os.path.dirname(root)
         if parent == root:

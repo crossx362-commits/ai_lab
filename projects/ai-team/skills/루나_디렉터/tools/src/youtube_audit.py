@@ -11,18 +11,17 @@ import os
 import sys
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 
 
 def run_audit():
     """가희 전체 감사를 트리거한다."""
     inspector_path = os.path.join(
-        _root, "assets", "tool-seeds", "가희_검수관", "content_inspector.py"
+        _root, "projects", "ai-team", "skills", "가희_검수관", "tools", "content_inspector.py"
     )
     import importlib.util
     spec = importlib.util.spec_from_file_location("content_inspector", inspector_path)

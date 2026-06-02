@@ -4,17 +4,14 @@ import json
 import datetime
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
-sys.path.insert(0, os.path.join(_root, 'ai-team'))
-
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 
-MEMORY_FILE = os.path.join(_root, ".agent", "memory", "hyunbin_research.json")
+MEMORY_FILE = os.path.join(_root, "reports", "research", "hyunbin_research.json")
 
 def _load_memory():
     if os.path.exists(MEMORY_FILE):

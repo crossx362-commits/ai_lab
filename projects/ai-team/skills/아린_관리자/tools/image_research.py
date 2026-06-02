@@ -11,16 +11,15 @@ import datetime
 
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent", "tools")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 
-RESEARCH_FILE = os.path.join(_root, ".agent", "memory", "arin_research.json")
+RESEARCH_FILE = os.path.join(_root, "reports", "research", "arin_research.json")
 MAX_PROMPTS   = 60
 
 
@@ -206,7 +205,8 @@ def run_research() -> bool:
         f"📊 총 리서치 횟수: {count}회 | 누적 학습 프롬프트: {total}개\n"
         f"학습된 프롬프트가 다음 인스타그램 포스팅에 반영됩니다!"
     )
-    store_knowledge('아린', 'Instagram Trend Research', report, ['Trend', 'Instagram'])\n    send_telegram_message(msg)
+    store_knowledge('아린', 'Instagram Trend Research', report, ['Trend', 'Instagram'])
+    send_telegram_message(msg)
 
     return True
 

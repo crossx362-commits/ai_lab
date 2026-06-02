@@ -63,13 +63,22 @@ def dispatch_and_execute(ceo_message: str) -> str:
             return tax_simulator.run_simulation(100000000)
 
         elif "루나" in agent or "유튜브" in ceo_message:
-            # We would run the subprocess pipeline here.
-            # For brevity in the refactored code, we return a mock success or call the script.
             import subprocess
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
             if os.path.exists(script):
-                subprocess.run([sys.executable, script], cwd=os.path.dirname(script))
-                return f"✅ 루나_디렉터 파이프라인 실행 완료"
+                result = subprocess.run(
+                    [sys.executable, script],
+                    cwd=os.path.dirname(script),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                if result.returncode == 0:
+                    return f"✅ 루나_디렉터 파이프라인 실행 완료"
+                else:
+                    error_msg = result.stderr[:500] if result.stderr else result.stdout[:500] or "알 수 없는 오류"
+                    return f"❌ 루나 파이프라인 실행 실패\n\n에러: {error_msg}"
             return "❌ 루나 파이프라인 스크립트를 찾을 수 없습니다."
 
         elif "아린" in agent or "인스타" in ceo_message:

@@ -26,15 +26,12 @@ import argparse
 
 # 프로젝트 루트 경로 설정
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-if _root not in sys.path:
-    sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env_loader import load_env, find_project_root
+_root = find_project_root(_here)
 
 def _get_duration(file_path: str) -> float | None:
     """ffprobe를 사용하여 생성된 오디오 파일의 실제 길이를 확인"""

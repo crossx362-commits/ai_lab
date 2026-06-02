@@ -3,14 +3,18 @@ import json
 import pickle
 from datetime import datetime
 
-# 프로젝트 루트 (.agent/ 가 있는 위치) 자동 탐색
+import sys as _sys
 _here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+if _ai_team_root not in _sys.path:
+    _sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import find_project_root
+PROJECT_ROOT = find_project_root(_here)
 
-MEM_FILE   = os.path.join(PROJECT_ROOT, ".agent", "memory", "upload_history.json")
-REWARD_DIR = os.path.join(PROJECT_ROOT, ".agent", "memory", "reward")
-PUNISH_DIR = os.path.join(PROJECT_ROOT, ".agent", "memory", "punishment")
-TOKEN_FILE = os.path.join(PROJECT_ROOT, ".agent", "credentials", "youtube_token.pickle")
+MEM_FILE   = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
+REWARD_DIR = os.path.join(PROJECT_ROOT, "reports", "learning", "reward")
+PUNISH_DIR = os.path.join(PROJECT_ROOT, "reports", "learning", "punishment")
+TOKEN_FILE = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle")
 
 VIEWS_THRESHOLD = 10_000
 

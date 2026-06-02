@@ -17,13 +17,12 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
 from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 import _shared.gemini_client as _gc
 
-_BOT_SCRIPT = os.path.join(_root, ".agent", "skills", "영숙_비서", "tools", "telegram_receiver.py")
-_LOG_FILE   = os.path.join(_root, ".agent", "skills", "영숙_비서", "tools", "telegram_receiver.log")
+_BOT_SCRIPT = os.path.join(_root, "projects", "ai-team", "skills", "영숙_비서", "tools", "telegram_receiver.py")
+_LOG_FILE   = os.path.join(_root, "projects", "ai-team", "skills", "영숙_비서", "tools", "telegram_receiver.log")
 
 
 def _get_bot_pid() -> int | None:

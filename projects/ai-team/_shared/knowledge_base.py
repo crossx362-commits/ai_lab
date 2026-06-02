@@ -5,12 +5,11 @@ import glob
 
 def get_kb_dir():
     _here = os.path.dirname(os.path.abspath(__file__))
-    _root = _here
-    for _ in range(6):
-        if os.path.isdir(os.path.join(_root, ".agent")):
-            break
-        _root = os.path.dirname(_root)
-    kb_path = os.path.join(_root, ".agent", "memory", "knowledge_base")
+    try:
+        from env_loader import find_project_root
+    except ImportError:
+        from _shared.env_loader import find_project_root
+    kb_path = os.path.join(find_project_root(_here), "reports", "knowledge_base")
     os.makedirs(kb_path, exist_ok=True)
     return kb_path
 

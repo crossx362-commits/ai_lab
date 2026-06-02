@@ -13,8 +13,6 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
-
 from _shared.env_loader import load_env
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 from _shared.telegram_notifier import send_telegram_message
@@ -23,7 +21,7 @@ load_env()
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
 # ─── 가희 검수 결과 로드 (inspection_log.jsonl 우선, 없으면 하드코딩 fallback) ──
-_INSPECT_LOG = os.path.join(_root, ".agent", "memory", "gahee_inspection_log.jsonl")
+_INSPECT_LOG = os.path.join(_root, "reports", "learning", "gahee_inspection_log.jsonl")
 
 def _load_issues_from_log():
     """최신 미해결 검수 이슈를 gahee_inspection_log.jsonl에서 로드."""
@@ -98,7 +96,7 @@ def _get_youtube():
     import pickle
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
-    token_file = os.path.join(_root, ".agent", "credentials", "youtube_token.pickle")
+    token_file = os.path.join(_root, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle")
     if not os.path.exists(token_file):
         return None
     try:

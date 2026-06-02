@@ -11,13 +11,11 @@ import urllib.parse
 import datetime
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
-for _ in range(4):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
-from _shared.env_loader import load_env as _load_env
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import load_env as _load_env, find_project_root
+_root = find_project_root(_here)
 from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 

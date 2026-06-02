@@ -28,13 +28,11 @@ import re
 import datetime
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
-sys.path.insert(0, os.path.join(_root, 'ai-team'))
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 
 from _shared.env_loader import load_env as _load_env
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
@@ -125,7 +123,7 @@ def _get_channel_videos(max_results: int = 30) -> list[str]:
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
 
-    token_file = os.path.join(_root, ".agent", "credentials", "youtube_token.pickle")
+    token_file = os.path.join(_root, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle")
     if not os.path.exists(token_file):
         return []
     try:
@@ -237,7 +235,7 @@ def _get_youtube_write():
     import pickle
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
-    token_file = os.path.join(_root, ".agent", "credentials", "youtube_token.pickle")
+    token_file = os.path.join(_root, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle")
     if not os.path.exists(token_file):
         return None
     try:
@@ -267,7 +265,7 @@ def _generate_unique_title(original: str, used: set) -> str:
 
 def _generate_new_thumbnail(keyword: str, video_id: str) -> str | None:
     """Pollinations으로 새 썸네일 생성. 실패 시 None."""
-    out_dir = os.path.join(_root, ".agent", "skills", "가희_검수관", "tools", "output")
+    out_dir = os.path.join(_here, "output")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"thumb_{video_id}.jpg")
     variations = [
@@ -619,19 +617,10 @@ def run_scan(target_id: str = None, new_only: bool = False):
           f"REJECT:{sum(1 for r in results if r['status']=='REJECT')}")
 
 
-_INSPECT_LOG = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    *[".."] * 10,  # 임시 — 실제 경로는 _root 기준으로 아래에서 재설정
-    ".agent", "memory", "gahee_inspection_log.jsonl"
-)
+_INSPECT_LOG = os.path.join(_root, "reports", "learning", "gahee_inspection_log.jsonl")
 
 def _get_inspect_log_path() -> str:
-    root = os.path.dirname(os.path.abspath(__file__))
-    for _ in range(6):
-        if os.path.isdir(os.path.join(root, ".agent")):
-            break
-        root = os.path.dirname(root)
-    return os.path.join(root, ".agent", "memory", "gahee_inspection_log.jsonl")
+    return _INSPECT_LOG
 
 
 def _save_inspection_results(results: list, timestamp: str):
@@ -742,7 +731,7 @@ def _report_if_needed(results: list, timestamp: str):
 
 def _check_blog_posts() -> list[dict]:
     import pickle, re
-    token_file = os.path.join(_root, ".agent", "credentials", "token_sukja.pickle")
+    token_file = os.path.join(_root, "projects", "ai-team", "skills", "루나_디렉터", "tools", "token_sukja.pickle")
     BLOG_ID    = "2377962046418550821"
     results    = []
     if not os.path.exists(token_file):
@@ -791,7 +780,9 @@ def _check_instagram_posts() -> list[dict]:
         "미래", "인공지능", "ai", "기계", "테크", "로봇", "첨단기술",
         "4차산업", "딥러닝", "머신러닝", "ai 생성", "인공지능이 만든",
         "오늘의 ai", "체험해보세요", "경험해보세요",
-        "lofi", "lo-fi", "chill beats", "study beats"
+        "lofi", "lo-fi", "chill beats", "study beats",
+        "이재명", "정치", "선거", "국회", "대통령", "여당", "야당", "민주당", "국민의힘",
+        "정당", "투표", "정권", "탄핵", "집회", "시위", "정부", "보수", "진보", "좌파", "우파",
     ]
 
     try:
@@ -879,7 +870,7 @@ def _check_scheduled_videos() -> list[dict]:
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
 
-    token_file = os.path.join(_root, ".agent", "credentials", "youtube_token.pickle")
+    token_file = os.path.join(_root, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle")
     if not os.path.exists(token_file):
         return []
     results = []

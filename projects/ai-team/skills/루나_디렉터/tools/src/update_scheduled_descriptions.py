@@ -100,7 +100,7 @@ def main():
         if os.path.isdir(os.path.join(root, ".agent")):
             break
         root = os.path.dirname(root)
-    token_file = os.path.join(root, ".agent", "credentials", "youtube_token_update.pickle")
+    token_file = os.path.join(root, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token_update.pickle")
     
     uploader = YouTubeUploader(token_file=token_file)
     uploader.scopes = [
@@ -118,7 +118,7 @@ def main():
     # 1. 로컬 업로드 기록에서 비디오 ID 읽어오기
     video_ids = []
     
-    history_path = os.path.join(root, ".agent", "memory", "upload_history.json")
+    history_path = os.path.join(root, "reports", "history", "upload_history.json")
     if os.path.exists(history_path):
         try:
             with open(history_path, "r", encoding="utf-8") as f:

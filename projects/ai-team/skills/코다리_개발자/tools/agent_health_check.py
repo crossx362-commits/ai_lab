@@ -14,8 +14,6 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
-
 from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 from _shared.resource_utils import get_resource_report_html, get_heavy_processes_report
@@ -45,9 +43,9 @@ def run_check():
 
     # 2. 에이전트별 주요 메모리 파일 점검
     agents_to_check = {
-        "루나 (리서치)": os.path.join(_root, ".agent", "memory", "luna_research.json"),
-        "현빈 (비즈니스)": os.path.join(_root, ".agent", "memory", "hyunbin_research.json"),
-        "아린 (인스타)": os.path.join(_root, ".agent", "memory", "arin_research.json"),
+        "루나 (리서치)": os.path.join(_root, "reports", "research", "luna_research.json"),
+        "현빈 (비즈니스)": os.path.join(_root, "reports", "research", "hyunbin_research.json"),
+        "아린 (인스타)": os.path.join(_root, "reports", "research", "arin_research.json"),
     }
     
     status_lines = []

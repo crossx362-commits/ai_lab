@@ -18,17 +18,16 @@ import json
 import datetime
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 from _shared.telegram_notifier import send_telegram_message
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 
-SKILLS_DIR = os.path.join(_root, ".agent", "skills")
+SKILLS_DIR = os.path.join(_root, "projects", "ai-team", "skills")
 DRY_RUN    = "--check" in sys.argv
 
 AGENTS = ["루나", "아린", "가희", "현빈", "영숙", "경수", "코다리", "티모"]

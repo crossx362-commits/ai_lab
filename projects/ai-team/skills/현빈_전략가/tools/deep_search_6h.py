@@ -17,17 +17,14 @@ if hasattr(sys.stdout, "reconfigure"):
 
 # ── 프로젝트 루트 탐색 ────────────────────────────────────────────────────────
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-
-sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 try:
     from _shared.telegram_notifier import send_telegram_message
 except ImportError:
-    # telegram_bot.py 내부에서 호출될 때 send를 직접 쓸 수 있게 로깅만 함
     def send_telegram_message(msg):
         print(msg)
 
@@ -44,7 +41,7 @@ DEFAULT_TOPICS = [
     {"hour": 6, "topic": "10x 가치 혁신: AI 능동형(Proactive) 추천 엔진", "prompt": "사용자 질문을 기다리지 않고 선제적으로 비즈니스 인사이트와 콘텐츠를 추천하는 AI 엔진 기획 (상세 생략)"}
 ]
 
-MEMORY_FILE = os.path.join(_root, ".agent", "memory", "hyunbin_research.json")
+MEMORY_FILE = os.path.join(_root, "reports", "research", "hyunbin_research.json")
 
 def _load_memory():
     if os.path.exists(MEMORY_FILE):
@@ -139,7 +136,7 @@ def run_deep_research(custom_topic=None):
         report_md += f"## ⏰ Hour {r['hour']}. {r['topic']}\n\n{r['analysis']}\n\n---\n\n"
         combined_insight += f"{r['topic']} 요약: {r['analysis'][:100]}...\n"
         
-    report_path = os.path.join(_root, ".agent", "memory", f"deep_research_{int(time.time())}.md")
+    report_path = os.path.join(_root, "reports", "research", f"deep_research_{int(time.time())}.md")
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_md)

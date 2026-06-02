@@ -44,12 +44,16 @@ _BANNED_PHRASES = [
     "오늘의 AI", "오늘의 인공지능",
 ]
 _BANNED_TOPICS = ["미래", "인공지능", "ai", "기계", "테크", "로봇", "첨단기술", "4차산업", "딥러닝", "머신러닝"]
+_BANNED_POLITICAL = [
+    "이재명", "정치", "선거", "국회", "대통령", "여당", "야당", "민주당", "국민의힘",
+    "정당", "투표", "정권", "탄핵", "집회", "시위", "정부", "보수", "진보", "좌파", "우파",
+]
 
 
 def _has_banned_content(text: str) -> bool:
     """캡션에 금지 문구/주제 포함 여부 확인."""
     lower = text.lower()
-    return any(p.lower() in lower for p in _BANNED_PHRASES + _BANNED_TOPICS)
+    return any(p.lower() in lower for p in _BANNED_PHRASES + _BANNED_TOPICS + _BANNED_POLITICAL)
 
 
 def _clean_caption(caption: str) -> str | None:

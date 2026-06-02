@@ -12,15 +12,9 @@ class YouTubeUploader:
     YouTube Data API v3를 활용하여 생성된 비디오를 예약 업로드합니다.
     """
     def __init__(self, client_secrets_file: str = None, token_file: str = None):
-        # 프로젝트 루트 동적 검색
-        root = os.path.dirname(os.path.abspath(__file__))
-        for _ in range(10):
-            if os.path.exists(os.path.join(root, ".agent")):
-                break
-            root = os.path.dirname(root)
-            
-        self.client_secrets_file = client_secrets_file or os.path.join(root, ".agent", "credentials", "client_secret.json")
-        self.token_file = token_file or os.path.join(root, ".agent", "credentials", "youtube_token.pickle")
+        _tools_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+        self.client_secrets_file = client_secrets_file or os.path.join(_tools_dir, "client_secret.json")
+        self.token_file = token_file or os.path.join(_tools_dir, "youtube_token.pickle")
         # YouTube Data API 업로드 권한 범위 지정
         self.scopes = [
             "https://www.googleapis.com/auth/youtube",

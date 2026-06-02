@@ -14,15 +14,12 @@ except ImportError:
     exit(1)
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(10):
-    if os.path.exists(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-if _root not in sys.path:
-    sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env_loader import load_env, find_project_root
+_root = find_project_root(_here)
 load_env(start_path=_here)
 
 # 상위 프로세스에서 env가 이미 존재하지만 잘못 매핑된 경우 등을 대비해 직접 .env 강제 로드 적용

@@ -9,17 +9,16 @@ import os, subprocess, time, shutil
 
 # ─── 경로 설정 (프로젝트 루트 탐색) ──────────────────────────────────────────
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+import sys
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env_loader import load_env, find_project_root
 load_env()
+_root = find_project_root(_here)
 
-# 파이프라인이 사용하는 실제 출력 폴더 (루트/output)
-OUTPUT_DIR = os.path.join(_root, "output")
+OUTPUT_DIR = os.path.join(_here, "output")
 ARCHIVE_DIR = os.path.join(OUTPUT_DIR, "archives")
 
 # ffprobe 경로 동기화 (pipeline.py와 동일 로직)

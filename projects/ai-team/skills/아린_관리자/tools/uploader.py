@@ -7,15 +7,12 @@ import requests
 import time
 
 _here_uploader = os.path.dirname(os.path.abspath(__file__))
-_root_uploader = _here_uploader
-for _ in range(10):
-    if os.path.exists(os.path.join(_root_uploader, ".agent")):
-        break
-    _root_uploader = os.path.dirname(_root_uploader)
-if _root_uploader not in sys.path:
-    sys.path.insert(0, _root_uploader)
+_ai_team_root = os.path.abspath(os.path.join(_here_uploader, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env_loader import load_env, find_project_root
+_root_uploader = find_project_root(_here_uploader)
 
 _APP_ID     = "1219822826776845"
 _APP_SECRET = "2b4e0b63ca84558ee64da6e856251235"
@@ -23,7 +20,7 @@ _REFRESH_BEFORE_DAYS = 10
 
 
 def _get_env_path() -> str:
-    return os.path.join(_root_uploader, ".env")
+    return os.path.join(_root_uploader, ".env")  # ai_lab root
 
 
 def _inspect_token(token: str) -> dict:
