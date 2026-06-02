@@ -88,7 +88,7 @@ def ensure_token_fresh() -> str:
 
     if not info.get("is_valid", False):
         # 토큰 무효 → 갱신 강제 시도 (최근 만료된 경우 복구 가능)
-        print("  [아린] 토큰 무효 — 갱신 강제 시도 중...")
+        print("  [아린] 토큰 무효 - 갱신 강제 시도 중...")
         new_token = _refresh_long_lived(token)
         if new_token:
             _update_env_token(env_path, new_token)
@@ -101,7 +101,7 @@ def ensure_token_fresh() -> str:
             _sys.path.insert(0, _root_path)
             from _shared.telegram_notifier import send_telegram_message
             send_telegram_message(
-                "🚨 <b>[아린]</b> Instagram 토큰 만료 — 즉시 재발급 필요\n\n"
+                "🚨 <b>[아린]</b> Instagram 토큰 만료 - 즉시 재발급 필요\n\n"
                 "📋 재발급 방법:\n"
                 "1. developers.facebook.com/tools/explorer\n"
                 "2. 앱 선택 → User 토큰 생성\n"
@@ -110,7 +110,7 @@ def ensure_token_fresh() -> str:
             )
         except Exception:
             pass
-        print("  [아린] 토큰 재발급 실패 — 수동 발급 필요 (텔레그램 알림 발송)")
+        print("  [아린] 토큰 재발급 실패 - 수동 발급 필요 (텔레그램 알림 발송)")
         return token
 
     print(f"  [아린] 토큰 유효 (계정: {info.get('username', info.get('user_id', ''))})")
