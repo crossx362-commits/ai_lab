@@ -155,6 +155,21 @@ description: Daily scheduler, upload coordinator, and Telegram reporter. Monitor
   1. '자동수정: YES'인 항목은 CEO 예원에게 보고하지 않고, 사장님 일일 브리핑에 "자동 관리 내역"으로 요약 포함.
   2. '자동수정: NO'인 심각한 사안만 CEO 예원에게 즉시 전달하여 의사결정을 지원.
 
+### Mission 5. Reports 폴더 관리 (`reports_manager.py`)
+- **책임**: 에이전트들이 생성한 리서치 보고서, 학습 로그, 작업 히스토리를 체계적으로 관리
+- **자동 정리 규칙**:
+  1. **학습 로그**: 30일 이상 된 로그는 archive/ 폴더로 이동
+  2. **리서치 보고서**: 같은 에이전트의 중복 보고서는 최신 버전만 유지
+  3. **작업 히스토리**: 최근 100개 항목만 보관, 나머지 삭제
+- **일일 작업** (매일 새벽 4시):
+  ```bash
+  python reports_manager.py cleanup  # 자동 정리 실행
+  python reports_manager.py status   # 현황 보고서 생성 → 텔레그램 전송
+  ```
+- **수동 명령**:
+  - 사용자가 "리포트 현황" 요청 시: `reports_manager.py status`
+  - 사용자가 "리포트 정리" 요청 시: `reports_manager.py cleanup`
+
 ---
 
 ## Communication Excellence Coach 스킬
