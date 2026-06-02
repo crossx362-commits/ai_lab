@@ -108,9 +108,12 @@ def get_updates(offset: int) -> list:
     return res.get("result", [])
 
 def format_ceo_report(ceo_result: str) -> str:
-    prompt = f"당신은 영숙 비서입니다. 아래 CEO의 업무 처리 결과를 사장님께 보고할 다정한 텍스트로 요약해주세요.\n\n결과:\n{ceo_result}"
+    # 오류는 요약 없이 그대로 전달 (숨김 방지)
+    if ceo_result.startswith("❌") or "실패" in ceo_result or "오류" in ceo_result:
+        return ceo_result
+    prompt = f"당신은 영숙 비서입니다. 아래 CEO의 업무 처리 결과를 사장님께 보고할 다정한 텍스트로 요약해주세요. 성공/실패 여부와 핵심 결과는 반드시 포함.\n\n결과:\n{ceo_result}"
     if lm_available():
-        res = lm_chat(prompt, max_tokens=500)
+        res = lm_chat(prompt, max_tokens=300)
         if res:
             return res.strip()
     return ceo_result
