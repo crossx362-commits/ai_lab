@@ -147,7 +147,8 @@ def generate_music_prompt_from_keyword(keyword: str) -> str:
             "- 선호 장르: 일본 시티팝×케이팝 퓨전, 감성 힙합·R&B·Pop\n"
             "- 금지: lofi, lo-fi, study beats, chill beats\n"
             "- BPM 110 이상, 신나고 에너제틱하게\n"
-            "- 키워드 감성을 가사/주제에 반드시 반영"
+            "- 키워드 감성을 가사/주제에 반드시 반영\n"
+            "- **가사/주제(lyrics_theme)는 반드시 한국어로 작성** (예: '서울 밤거리를 달리며', '네온빛 아래 설레는 감정')"
         )
         result = _lm(prompt, task='', max_tokens=200)
         if result and result.strip() and len(result.strip()) > 30:
@@ -185,7 +186,8 @@ def generate_music_prompt_from_title(title: str, keyword: str) -> str:
             "- 선호 장르: 일본 시티팝×케이팝 퓨전, 감성 힙합·R&B·Pop\n"
             "- 금지: lofi, lo-fi, study beats, chill beats\n"
             "- BPM 110 이상, 신나고 에너제틱하게\n"
-            "- 제목의 분위기·감성을 가사/주제에 그대로 반영할 것"
+            "- 제목의 분위기·감성을 가사/주제에 그대로 반영할 것\n"
+            "- **가사/주제(lyrics_theme)는 반드시 한국어로 작성** (예: '빛나는 서울의 밤', '설레는 도시 드라이브')"
         )
         result = _lm(prompt, task='', max_tokens=200)
         if result and result.strip() and len(result.strip()) > 30:
@@ -221,7 +223,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Medium-fast tempo (118 BPM), stylish, energetic, smooth K-pop production with city pop warmth",
                 "instruments": "DX7 electric piano, punchy K-pop kick drum, slap bass, analog brass synth, twinkling glockenspiel",
                 "vocal_style": "Clear powerful K-pop female lead vocals, tight harmonic backing, call-and-response ad-libs",
-                "lyrics_theme": "Midnight Seoul drive, K-pop star in city lights, blending Korean soul with Tokyo retro romance"
+                "lyrics_theme": "자정의 서울 드라이브, 도시 불빛 속 케이팝 스타, 한국 감성과 도쿄 레트로의 만남"
             },
             {
                 "keyword": "Seoul Neon City Pop",
@@ -231,7 +233,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Fast tempo (122 BPM), glamorous, bold hook-driven, city pop groove with K-pop precision",
                 "instruments": "Bright synth lead, K-pop snare punch, groovy slap bass, DX7 pads, shimmering cymbals",
                 "vocal_style": "Confident powerful lead vocals with airy falsetto, group harmony chorus, K-pop precision",
-                "lyrics_theme": "Shining under Seoul neon lights, idol dreams meeting city pop nostalgia, unstoppable night"
+                "lyrics_theme": "서울 네온 불빛 아래 빛나는 아이돌의 꿈, 시티팝 향수와 멈출 수 없는 밤"
             },
             {
                 "keyword": "K-Wave Retro Romance",
@@ -241,7 +243,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Medium-slow tempo (100 BPM), dreamy, deeply melodic, emotional K-pop balladry with city pop warmth",
                 "instruments": "Warm Rhodes piano, soft slap bass, orchestra strings, light snare brush, airy synth pad",
                 "vocal_style": "Emotional, breathy K-pop female lead, soaring high notes, gentle harmonies",
-                "lyrics_theme": "A timeless romance across Seoul and Tokyo, longing for yesterday under city lights"
+                "lyrics_theme": "서울과 도쿄를 넘나드는 영원한 로맨스, 도시 불빛 아래 그리운 어제를 향한 그리움"
             },
             {
                 "keyword": "K-Pop Disco Funk City",
@@ -251,7 +253,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Fast tempo (128 BPM), highly groovy, feel-good, K-pop energy with disco city pop flair",
                 "instruments": "Funky rhythm guitar, bass groove, bright brass hits, K-pop drum kit, wah synth",
                 "vocal_style": "Bright playful lead vocals, catchy ad-libs, strong group chorus chant",
-                "lyrics_theme": "Neon disco night, K-pop groove meets city pop dance floor, unstoppable feel-good energy"
+                "lyrics_theme": "네온 디스코 나이트, 케이팝 그루브가 시티팝 댄스 플로어와 만나는 멈출 수 없는 신남"
             },
             {
                 "keyword": "Retro Japanese City Pop",
@@ -261,7 +263,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Medium-tempo (115 BPM), nostalgic, upbeat, breezy, romantic",
                 "instruments": "Slap bass guitar, electric piano (DX7), brass synthesizer section, vintage drum machine",
                 "vocal_style": "Sweet and smooth female lead vocals, jazzy backing harmonies",
-                "lyrics_theme": "Late night drive in Tokyo, neon street lights, fading summer romance"
+                "lyrics_theme": "도쿄 심야 드라이브, 네온 가로등 아래 스러지는 여름 로맨스"
             },
             {
                 "keyword": "Midnight Tokyo City Pop Drive",
@@ -271,7 +273,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Slow-medium tempo (100 BPM), groovy, melancholic, nocturnal, smooth",
                 "instruments": "Jazzy guitar chords, warm sub-bass, nostalgic synth pads, saxophone solos",
                 "vocal_style": "Soft whispery male lead vocals, smooth vocal echo effect",
-                "lyrics_theme": "Rainy midnight drive, lonely city streets, nostalgia for yesterday"
+                "lyrics_theme": "빗속 자정 드라이브, 텅 빈 도시 거리, 어제를 그리워하는 외로운 감성"
             },
             {
                 "keyword": "Sparkling City Pop Dance",
@@ -281,7 +283,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Fast-tempo (120 BPM), sparkling, cheerful, highly groovy, energetic",
                 "instruments": "Funky rhythm guitar scratch, bright brass chords, driving disco drums, funky slap bass",
                 "vocal_style": "Passionate bright female lead vocals, upbeat group choruses",
-                "lyrics_theme": "Sparkling dance floor by the beach, tropical night breeze, endless weekend celebration"
+                "lyrics_theme": "해변가 반짝이는 댄스 플로어, 열대의 밤바람, 끝없는 주말 축제"
             },
             {
                 "keyword": "Golden Morning Espresso",
@@ -291,7 +293,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Medium-slow tempo (95 BPM), warm, cozy, premium, nostalgic morning vibe",
                 "instruments": "Electric marimba synth, DX7 Rhodes piano, acoustic double bass, vintage hi-hats",
                 "vocal_style": "Clear passionate female lead vocals, mellow hums",
-                "lyrics_theme": "First warm coffee cup on a golden morning, chasing sweet dreams"
+                "lyrics_theme": "황금빛 아침 첫 번째 따뜻한 커피 한 잔, 달콤한 꿈을 쫓는 설레는 하루"
             },
             {
                 "keyword": "Dewy Rose Skincare",
@@ -301,7 +303,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Slow tempo (85 BPM), pure, silky, luxury, soft, relaxing",
                 "instruments": "Warm analog synthesizer pads, delicate chimes, smooth fretless bass, echo snare",
                 "vocal_style": "Soft whispering female backing vocals, dreamy harmony",
-                "lyrics_theme": "Silky smooth touch, fresh morning dew on rose petals, pure luxury routine"
+                "lyrics_theme": "부드러운 실크 감촉, 장미 꽃잎 위 신선한 아침 이슬, 순수한 럭셔리 루틴"
             },
             {
                 "keyword": "Tokyo Neon Perfume",
@@ -311,7 +313,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Slow-medium tempo (105 BPM), nocturnal, dramatic, sensual, high-end",
                 "instruments": "Mellow saxophone solo, slap bass highlights, warm Rhodes chords, gated synth drums",
                 "vocal_style": "Sensual deep female lead vocals, jazzy backing echoes",
-                "lyrics_theme": "Scent of city lights, mysterious perfume in Shibuya night breeze"
+                "lyrics_theme": "도시 불빛의 향기, 시부야 밤바람 속 신비로운 향수"
             },
             {
                 "keyword": "Artisan Gold Chocolate",
@@ -321,7 +323,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Medium tempo (110 BPM), rich, sweet, highly groovy, romantic",
                 "instruments": "Funky rhythm guitar scratching, electric bass groove, warm brass hits, vintage synth clavinet",
                 "vocal_style": "Passionate bright male lead vocals, upbeat group choruses",
-                "lyrics_theme": "Sweet chocolate melting in love, golden sunset romance"
+                "lyrics_theme": "사랑에 녹아드는 달콤한 초콜릿, 황금빛 노을 아래 로맨스"
             },
             {
                 "keyword": "Pure Glacial Water",
@@ -331,7 +333,7 @@ class TrendAnalyzer:
                 "tempo_mood": "Fast-tempo (125 BPM), highly refreshing, breezy, energetic, sparkling",
                 "instruments": "Bright digital keyboard, driving disco bass guitar, snappy snare, crystal chimes",
                 "vocal_style": "Cheerful energetic female lead vocals, bright high notes",
-                "lyrics_theme": "Pure mountain breeze, refreshing ice splash on a hot summer afternoon"
+                "lyrics_theme": "맑은 산바람, 뜨거운 여름 오후 시원한 물빛 속 청량한 해방감"
             }
         ]
 
@@ -415,7 +417,7 @@ class TrendAnalyzer:
             keyword        = picked.get("keyword", "City Night Drive")
             genre_era      = picked.get("genre_era", "Japanese City Pop (1980s Retro)")
             vocal_style    = picked.get("vocal_style", "Sweet and smooth female lead vocals, jazzy backing harmonies")
-            core_topic     = picked.get("music_theme") or picked.get("lyrics_theme", "Late night drive in Tokyo")
+            core_topic     = picked.get("music_theme") or picked.get("lyrics_theme", "도쿄 심야 드라이브, 네온 불빛 아래 설레는 밤")
             base_instruments = picked.get("instruments", "Slap bass, DX7 piano, brass synthesizer, drum machine")
             mood           = picked.get("mood", "nostalgic, upbeat, breezy, romantic")
             learned_visual = picked.get("visual_prompt", "")
@@ -433,7 +435,7 @@ class TrendAnalyzer:
                 keyword = fallback["keyword"]
                 genre_era = fallback.get("genre_era", "K-Pop × Japanese City Pop Fusion (80s Retro)")
                 vocal_style = fallback.get("vocal_style", "Clear powerful K-pop female lead vocals")
-                core_topic = fallback.get("lyrics_theme", "Seoul neon night drive, K-pop meets city pop")
+                core_topic = fallback.get("lyrics_theme", "서울 네온 야간 드라이브, 케이팝과 시티팝의 만남")
                 base_instruments = fallback.get("instruments", "DX7 piano, slap bass, analog brass")
                 mood = fallback.get("mood", "stylish, energetic, nostalgic")
                 learned_visual = ""

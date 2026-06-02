@@ -18,6 +18,7 @@ description: AI Music & Video Director. Handles Japanese City Pop BGM generation
 | 공통 AI 호출 / 환경변수 / 텔레그램 | `_shared/공통_스킬_지식.md` |
 
 ### 3단계: 반영 체크
+- [ ] **가사/주제(lyrics_theme)는 반드시 한국어로 작성** (2026-06-03 사장님 지시)
 - [ ] 장르 금지 목록 확인: `Lofi / Lo-fi / Study Beats / Chill Beats / Sleep Music / White Noise`
 - [ ] 곡명에 `LUNA·Official·MV` 등 고정 태그 포함 여부 — **절대 금지**
 - [ ] 음악 길이 2분(120초) 이상 확인 (`lyria-3-pro-preview`, clip 금지)
