@@ -90,11 +90,10 @@ CHAT_HISTORY = []  # 대화 기록
 
 # ─── 실제 데이터 확인 ─────────────────────────────────────────────────────
 def get_upload_history() -> dict:
-    """upload_history.json 읽기"""
-    history_file = os.path.join(PROJECT_ROOT, ".agent", "memory", "upload_history.json")
+    """upload_history.json 읽기 — reports/history/ 기준"""
+    history_file = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
     if not os.path.exists(history_file):
         return {"status": "파일 없음", "data": []}
-
     try:
         with open(history_file, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -107,20 +106,18 @@ def get_agent_checkpoints() -> dict:
     """각 에이전트 checkpoint 파일 확인"""
     checkpoints = {}
 
-    # 루나 checkpoint
-    luna_cp = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "output", "music_video_checkpoint.json")
+    # 루나 checkpoint — reports/uploads/luna/ 기준
+    luna_cp = os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "music_video_checkpoint.json")
     if os.path.exists(luna_cp):
         try:
             with open(luna_cp, "r", encoding="utf-8") as f:
                 checkpoints["루나"] = json.load(f)
-        except:
+        except Exception:
             checkpoints["루나"] = "읽기 실패"
     else:
         checkpoints["루나"] = "checkpoint 없음 (작업 안 함 또는 완료)"
 
-    # 아린은 checkpoint 파일 없음 (직접 실행)
-    checkpoints["아린"] = "checkpoint 미사용"
-
+    checkpoints["아린"] = "checkpoint 미사용 (직접 실행)"
     return checkpoints
 
 
@@ -128,26 +125,31 @@ def get_agent_logs() -> dict:
     """최근 로그 파일 분석"""
     logs = {}
 
-    # 루나 로그
-    luna_log = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "output", "pipeline.log")
-    if os.path.exists(luna_log):
-        try:
-            with open(luna_log, "r", encoding="utf-8", errors="ignore") as f:
-                lines = f.readlines()
-                logs["루나"] = lines[-10:] if len(lines) > 10 else lines  # 최근 10줄
-        except:
-            logs["루나"] = ["로그 읽기 실패"]
+    # 루나 로그 — reports/uploads/luna/ 기준, 없으면 tmp 폴백
+    luna_log_candidates = [
+        os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "pipeline.log"),
+        "/tmp/luna_out.log",
+    ]
+    for luna_log in luna_log_candidates:
+        if os.path.exists(luna_log):
+            try:
+                with open(luna_log, "r", encoding="utf-8", errors="ignore") as f:
+                    lines = f.readlines()
+                logs["루나"] = lines[-10:] if len(lines) > 10 else lines
+            except Exception:
+                logs["루나"] = ["로그 읽기 실패"]
+            break
     else:
         logs["루나"] = ["로그 파일 없음"]
 
-    # 아린 로그
-    arin_log = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "pipeline.log")
+    # 아린 로그 — reports/uploads/arin/ 기준
+    arin_log = os.path.join(PROJECT_ROOT, "reports", "uploads", "arin", "pipeline.log")
     if os.path.exists(arin_log):
         try:
             with open(arin_log, "r", encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
-                logs["아린"] = lines[-10:] if len(lines) > 10 else lines
-        except:
+            logs["아린"] = lines[-10:] if len(lines) > 10 else lines
+        except Exception:
             logs["아린"] = ["로그 읽기 실패"]
     else:
         logs["아린"] = ["로그 파일 없음"]
