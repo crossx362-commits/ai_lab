@@ -9,6 +9,10 @@ import json
 import urllib.request
 import urllib.error
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # .env 파일 로드 (최상위 디렉토리)
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
 env_path = os.path.join(root_dir, ".env")
