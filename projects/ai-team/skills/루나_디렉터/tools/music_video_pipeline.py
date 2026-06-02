@@ -413,16 +413,17 @@ def run_pipeline(publish_hhmm: str = None):
 
             vid_path  = os.path.join("output", f"video_{part_name}.mp4")
             video_ok  = False
-            is_ad = (theme.get("is_ad") or "[AD]" in theme.get("title","")
-                     or any(k in theme["keyword"].lower()
-                            for k in ["skincare","perfume","espresso","chocolate","glacial water"]))
-
-            if is_ad:
-                api_key = os.getenv("GEMINI_API_KEY","")
-                if api_key:
-                    r = generate_video_veo(visual_prompt, vid_path, api_key)
-                    if r and os.path.exists(r):
-                        video_ok = True
+            # Veo 사용 명시 요청 없을 시 호출 금지
+            # is_ad = (theme.get("is_ad") or "[AD]" in theme.get("title","")
+            #          or any(k in theme["keyword"].lower()
+            #                 for k in ["skincare","perfume","espresso","chocolate","glacial water"]))
+            # 
+            # if is_ad:
+            #     api_key = os.getenv("GEMINI_API_KEY","")
+            #     if api_key:
+            #         r = generate_video_veo(visual_prompt, vid_path, api_key)
+            #         if r and os.path.exists(r):
+            #             video_ok = True
 
             if not video_ok and part_image_path:
                 ok = generator.generate_video(part_image_path, full_track, vid_path, duration=None)
