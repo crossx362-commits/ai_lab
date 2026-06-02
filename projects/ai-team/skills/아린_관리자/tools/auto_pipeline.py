@@ -747,4 +747,12 @@ def main(dry_run=False):
 
 if __name__ == "__main__":
     is_dry = "--dry-run" in sys.argv
-    main(dry_run=is_dry)
+    try:
+        main(dry_run=is_dry)
+    except Exception as _e:
+        try:
+            from _shared.agent_council import convene_from_exception
+            convene_from_exception(_e, context_file=__file__, caller_agent="아린_관리자")
+        except Exception as _ce:
+            print(f"[Council] 회의 소집 실패: {_ce}")
+        raise

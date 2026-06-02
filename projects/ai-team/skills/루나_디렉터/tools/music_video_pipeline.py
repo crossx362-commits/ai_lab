@@ -669,11 +669,21 @@ def run_pipeline(publish_hhmm: str = None):
 
 
 if __name__ == "__main__":
-    import io, argparse
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    import argparse
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser()
     ap.add_argument("--publish-at", dest="publish_at", default=None,
                     help="KST 업로드 시간 HH:MM (예: 19:30)")
     args = ap.parse_args()
-    run_pipeline(publish_hhmm=args.publish_at)
+    try:
+        run_pipeline(publish_hhmm=args.publish_at)
+    except Exception as _e:
+        try:
+            from _shared.agent_council import convene_from_exception
+            convene_from_exception(_e, context_file=__file__, caller_agent="루나_디렉터")
+        except Exception as _ce:
+            print(f"[Council] 회의 소집 실패: {_ce}")
+        raise

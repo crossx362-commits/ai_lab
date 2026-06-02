@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import json
 import re
 import os
+import sys
 import random
 
 _here = os.path.dirname(os.path.abspath(__file__))

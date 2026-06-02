@@ -151,3 +151,28 @@ def vision(img_bytes: bytes, prompt: str, max_tokens: int = 800) -> str | None:
     except Exception as e:
         print(f"  [Gemini Vision] 실패: {e}")
     return None
+
+
+# ── 웹 서치 (Google Search Grounding) ────────────────────────────────────────
+
+def web_search(query: str, max_tokens: int = 1500) -> str | None:
+    """Gemini Google Search Grounding으로 실시간 웹 검색 후 요약 반환."""
+    api_key = _api_key()
+    if not api_key:
+        return None
+    print(f"  [Gemini 웹서치] {query[:60]}")
+    try:
+        payload = json.dumps({
+            "contents": [{"parts": [{"text": query}]}],
+            "tools": [{"google_search": {}}],
+            "generationConfig": {"maxOutputTokens": max_tokens},
+        }).encode("utf-8")
+        url = f"{_BASE}/gemini-2.5-flash:generateContent?key={api_key}"
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            res = json.loads(r.read())
+        parts = res.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+        return " ".join(p.get("text", "") for p in parts).strip() or None
+    except Exception as e:
+        print(f"  [Gemini 웹서치] 실패: {e}")
+    return None

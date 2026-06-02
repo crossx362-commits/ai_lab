@@ -165,16 +165,40 @@ def process_message(text: str):
         # 2. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
         if mode == "dispatch" and "dispatch_to_ceo" in decision:
             ceo_msg = decision["dispatch_to_ceo"]
-            # Synchronously (or could be threaded) call CEO
-            ceo_result = yewon_dispatcher.dispatch_and_execute(ceo_msg)
-            
+            try:
+                ceo_result = yewon_dispatcher.dispatch_and_execute(ceo_msg)
+            except Exception as dispatch_err:
+                # 디스패치 실패 → 에이전트 회의 자동 소집
+                try:
+                    from _shared.agent_council import convene_from_exception
+                    convene_from_exception(dispatch_err, caller_agent="영숙_디스패처")
+                except Exception:
+                    pass
+                ceo_result = f"❌ 디스패치 오류: {dispatch_err}"
+
+            # 파이프라인이 실패 메시지 반환 시 회의 소집
+            if ceo_result and ceo_result.startswith("❌"):
+                try:
+                    from _shared.agent_council import convene
+                    convene(
+                        problem_summary=f"파이프라인 실패: {ceo_result[:300]}",
+                        caller_agent="영숙_디스패처",
+                    )
+                except Exception:
+                    pass
+
             # 3. 결과 수신 후 최종 포매팅 및 발신 (CEO 예원 -> 영숙 -> 사용자)
             final_report = format_ceo_report(ceo_result)
             send_message(f"🔔 <b>[영숙이의 업무 보고]</b>\n\n{final_report}")
-            
+
     except Exception as e:
         print(f"  [오류] 영숙 메시지 처리 실패: {e}")
         traceback.print_exc()
+        try:
+            from _shared.agent_council import convene_from_exception
+            convene_from_exception(e, caller_agent="영숙_리시버")
+        except Exception:
+            pass
 
 def main_loop():
     print("🚀 영숙 전용 텔레그램 리시버가 시작되었습니다!")
