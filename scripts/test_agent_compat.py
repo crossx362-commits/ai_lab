@@ -6,7 +6,7 @@ import sys
 import os
 
 # env_loader 테스트
-sys.path.insert(0, 'ai-team/_shared')
+sys.path.insert(0, 'projects/ai-team/_shared')
 from env_loader import load_env
 
 print("=" * 60)
@@ -35,17 +35,22 @@ for key, purpose in required_vars.items():
         print(f"  MISS {key:25s} (  0 chars) - {purpose}")
         all_ok = False
 
-# telegram_bot.py 테스트
-print("\n[Testing telegram_bot.py]")
+# telegram_receiver.py & yewon_dispatcher.py 테스트
+print("\n[Testing Refactored Bot Scripts]")
 try:
-    sys.path.insert(0, '.agent/tools')
-    # telegram_bot 임포트 테스트만 (실행 안함)
+    # telegram_receiver 임포트 테스트만 (실행 안함)
     import importlib.util
-    spec = importlib.util.spec_from_file_location("telegram_bot", ".agent/tools/telegram_bot.py")
-    if spec and spec.loader:
-        print("  OK   telegram_bot.py can be imported")
+    spec_rec = importlib.util.spec_from_file_location("telegram_receiver", ".agent/skills/영숙_비서/tools/telegram_receiver.py")
+    if spec_rec and spec_rec.loader:
+        print("  OK   telegram_receiver.py can be imported")
     else:
-        print("  FAIL telegram_bot.py import failed")
+        print("  FAIL telegram_receiver.py import failed")
+        
+    spec_disp = importlib.util.spec_from_file_location("yewon_dispatcher", ".agent/skills/예원_CEO/tools/yewon_dispatcher.py")
+    if spec_disp and spec_disp.loader:
+        print("  OK   yewon_dispatcher.py can be imported")
+    else:
+        print("  FAIL yewon_dispatcher.py import failed")
 except Exception as e:
     print(f"  FAIL {e}")
 
@@ -60,9 +65,9 @@ except Exception as e:
 # 에이전트 스크립트 샘플 테스트
 print("\n[Testing Sample Agent Scripts]")
 test_scripts = [
-    "ai-team/assets/tool-seeds/코다리_개발자/instagram_token_refresher.py",
-    "ai-team/assets/tool-seeds/루나_디렉터/lyria_music_gen.py",
-    "ai-team/assets/tool-seeds/아린_관리자/uploader.py",
+    "projects/ai-team/skills/코다리_개발자/tools/instagram_token_refresher.py",
+    "projects/ai-team/skills/루나_디렉터/tools/lyria_music_gen.py",
+    "projects/ai-team/skills/아린_관리자/tools/uploader.py",
 ]
 
 for script in test_scripts:

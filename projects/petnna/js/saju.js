@@ -289,7 +289,7 @@ function deleteSajuData() {
 
 function startSajuAnalysis() {
     const petNameEl = document.getElementById('saju-pet-name');
-    const petName = petNameEl ? petNameEl.value.trim() : (typeof pets !== 'undefined' && getSajuPet()?.name : "댕이");
+    const petName = petNameEl ? petNameEl.value.trim() : ((typeof pets !== 'undefined' && getSajuPet()?.name) || "댕이");
     
     const petBirthEl = document.getElementById('saju-pet-birth');
     const petBirth = petBirthEl ? petBirthEl.value : "";

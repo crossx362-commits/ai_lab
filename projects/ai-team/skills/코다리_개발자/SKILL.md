@@ -42,12 +42,12 @@ description: [개발] Vite+React+TypeScript+Tailwind 웹 프로젝트 초기화,
 ---
 
 ### Mission 6. 텔레그램 봇 진단·자동 수복 (`telegram_health_check.py`)
-2시간마다 자동 실행 (`_kodari_health_loop` 스레드 — telegram_bot.py).
+2시간마다 자동 실행 (`_kodari_health_loop` 스레드 — telegram_receiver.py).
 
 **체크 패턴 (공통 3단계):**
-1. **프로세스 확인** — `pgrep -f telegram_bot.py`
+1. **프로세스 확인** — `pgrep -f telegram_receiver.py`
 2. **API 응답 확인** — Telegram `getMe` 엔드포인트 호출
-3. **로그 분석** — `/tmp/telegram_bot.log` 최근 60줄 → Ollama DeepSeek 분석
+3. **로그 분석** — `.agent/skills/영숙_비서/tools/telegram_receiver.log` 최근 60줄 → Ollama DeepSeek 분석
 
 **판단 및 조치:**
 | 상황 | 조치 |

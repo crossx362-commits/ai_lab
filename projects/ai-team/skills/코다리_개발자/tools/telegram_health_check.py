@@ -22,13 +22,13 @@ from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 import _shared.gemini_client as _gc
 
-_BOT_SCRIPT = os.path.join(_root, ".agent", "tools", "telegram_bot.py")
-_LOG_FILE   = os.path.join(_root, ".agent", "tools", "telegram_bot.log")
+_BOT_SCRIPT = os.path.join(_root, ".agent", "skills", "영숙_비서", "tools", "telegram_receiver.py")
+_LOG_FILE   = os.path.join(_root, ".agent", "skills", "영숙_비서", "tools", "telegram_receiver.log")
 
 
 def _get_bot_pid() -> int | None:
     try:
-        r = subprocess.run(["pgrep", "-f", "telegram_bot.py"],
+        r = subprocess.run(["pgrep", "-f", "telegram_receiver.py"],
                            capture_output=True, text=True)
         pids = [int(p) for p in r.stdout.strip().split() if p.strip()]
         return pids[0] if pids else None

@@ -571,7 +571,10 @@ const DIARY_FREE_LIMIT = 30;
 
 function calcDiaryStreak() {
     if (!albums || albums.length === 0) return 0;
-    const toDay = (ts) => new Date(Number(ts)).toISOString().split('T')[0];
+    const toDay = (ts) => {
+        const d = new Date(Number(ts));
+        return isNaN(d.getTime()) ? new Date().toISOString().split('T')[0] : d.toISOString().split('T')[0];
+    };
     const today = toDay(Date.now());
     const days = [...new Set(albums.map(a => toDay(a.id)))].sort().reverse();
     if (!days.length) return 0;
@@ -1024,7 +1027,7 @@ function renderAlbumGallery() {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-500 flex items-center justify-center font-black overflow-hidden shadow-sm">
-                            ${friendName.slice(0, 1)}
+                            ${String(friendName).slice(0, 1)}
                         </div>
                         <div>
                             <span class="block text-[11px] font-bold text-gray-800">${friendName}</span>
