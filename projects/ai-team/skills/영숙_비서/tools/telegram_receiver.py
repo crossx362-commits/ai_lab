@@ -4,7 +4,6 @@ import json
 import time
 import urllib.request
 import urllib.error
-import datetime
 import traceback
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -48,8 +47,9 @@ YEONGSUK_PERSONA = """
 {"mode": "status", "agent": "루나 또는 아린 또는 전체", "text": "확인해볼게요!"}
 
 ## C) dispatch — 새 작업 실행 지시
-다음에만 dispatch 사용:
-- "만들어", "올려", "제작해", "포스팅해", "업로드해", "실행해", "시작해" 등 **실행 동사**
+**에이전트 이름(루나·아린·가희·코다리·현빈·케빈·경수·로율)이 포함된 모든 메시지는 status가 아니면 무조건 dispatch.**
+- "해", "해줘", "시작해", "만들어", "올려", "제작해", "포스팅해", "실행해" 등 실행 동사
+- 에이전트 이름만 단독으로 와도 ("아린", "루나") → dispatch
 - 리서치·분석·코딩 등 새 작업 요청
 {"mode": "dispatch", "text": "바로 처리할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 [에이전트이름]에게 [구체적 작업]을 지시하셨습니다. [에이전트이름] 파이프라인을 실행해주세요."}
 
