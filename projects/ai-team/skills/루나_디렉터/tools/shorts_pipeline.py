@@ -180,7 +180,7 @@ def _generate_image_9x16(prompt: str, output_path: str) -> str:
     if api_key:
         url = (
             "https://generativelanguage.googleapis.com/v1beta/models"
-            f"/gemini-2.5-flash-image:generateContent?key={api_key}"
+            f"/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
         )
         payload = json.dumps({
             "contents": [{"parts": [{"text": prompt}]}],

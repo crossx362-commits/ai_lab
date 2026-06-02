@@ -74,7 +74,7 @@ def _record_to_history(record: dict):
 
 # ─── Gemini API 설정 ───────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image"
+GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 GEMINI_IMAGE_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_IMAGE_MODEL}:generateContent?key={{key}}"

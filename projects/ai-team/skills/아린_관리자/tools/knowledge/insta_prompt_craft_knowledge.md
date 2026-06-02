@@ -6,7 +6,7 @@
 
 ## 1. 개요 (Overview)
 
-인스타그램 자동화 파이프라인에서 **Gemini**(`gemini-2.5-flash-image`)가
+인스타그램 자동화 파이프라인에서 **Gemini**(`gemini-3.1-flash-image-preview`)가
 최고 품질 이미지를 생성하려면, 단순 키워드가 아닌
 **카테고리 + 스타일 가이드 + 상세 서사 묘사** 3단계 구조의 프롬프트가 필요합니다.
 
@@ -142,7 +142,7 @@ auto_pipeline.py
         craft_insta_prompt(image_prompt)      ← prompt_crafter.py 적용
               │
               ▼
-        _generate_image_gemini(crafted_prompt) ← Gemini gemini-2.5-flash-image 호출
+        _generate_image_gemini(crafted_prompt) ← Gemini gemini-3.1-flash-image-preview 호출
 ```
 
 ---

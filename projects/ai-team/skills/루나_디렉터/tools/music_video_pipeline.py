@@ -47,6 +47,7 @@ from _shared.telegram_notifier import send_telegram_message
 from _shared.resource_utils import wait_for_resources
 from _shared.ollama_client import chat as _lm_chat
 from src.youtube_uploader import YouTubeUploader
+from src.optimal_time_analyzer import get_optimal_time_smart
 
 # veo_video_maker 동적 임포트
 _veo_spec = importlib.util.spec_from_file_location(
@@ -125,7 +126,7 @@ def generate_visual(prompt: str, output_path: str) -> str:
         return ""
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models"
-        f"/gemini-2.5-flash-image:generateContent?key={api_key}"
+        f"/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
     )
     payload = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
@@ -292,19 +293,24 @@ def run_pipeline(publish_hhmm: str = None):
         except Exception:
             pass
 
-    # ── 예약 시간 ──────────────────────────────────────────────────────────────
+    # ── 예약 시간 (매일 최적 시간 자동 분석) ────────────────────────────────────
     if cp.get("publish_at_utc"):
         publish_at_utc       = cp["publish_at_utc"]
         publish_time_kst_str = cp.get("publish_time_kst_str", publish_at_utc)
     else:
         now_kst = datetime.datetime.now(KST)
         if publish_hhmm:
+            # 수동 지정 시간
             h, m = int(publish_hhmm[:2]), int(publish_hhmm[3:])
             pub_kst = now_kst.replace(hour=h, minute=m, second=0, microsecond=0)
             if pub_kst <= now_kst:
                 pub_kst += datetime.timedelta(days=1)
         else:
-            pub_kst = now_kst.replace(hour=19, minute=0, second=0, microsecond=0)
+            # 자동 최적 시간 분석 (YouTube Analytics + Ollama)
+            print("  📊 최적 업로드 시간 분석 중...")
+            optimal_time_str = get_optimal_time_smart(uploader.youtube)
+            h, m = int(optimal_time_str[:2]), int(optimal_time_str[3:])
+            pub_kst = now_kst.replace(hour=h, minute=m, second=0, microsecond=0)
             if pub_kst <= now_kst:
                 pub_kst += datetime.timedelta(days=1)
         publish_at_utc       = pub_kst.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

@@ -13,7 +13,7 @@ import urllib.error
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 _TEXT_MODEL  = "gemini-2.5-flash"
-_IMAGE_MODEL = "gemini-2.5-flash-image"
+_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 
 def _api_key() -> str:
