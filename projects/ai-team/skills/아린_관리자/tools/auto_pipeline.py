@@ -1,6 +1,5 @@
 import os
 import sys
-import io
 import base64
 import json
 import urllib.parse
@@ -10,8 +9,9 @@ import time
 import random
 
 # UTF-8 인코딩 설정 (이모지 출력 지원)
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 # 아린 폴더 + 프로젝트 루트 모두 path에 추가
 _here = os.path.dirname(os.path.abspath(__file__))
 _root = _here
