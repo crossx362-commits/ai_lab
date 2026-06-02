@@ -62,6 +62,42 @@ color: blue
 ## Supabase 백엔드 인프라 관리 (Supabase Management)
 * **스키마 마이그레이션 및 상태 동기화**: 프론트엔드와 연결되는 Supabase Database의 스키마 상태를 버전 관리하고 안정적으로 유지한다.
 * **환경 변수 제어**: Vercel과 Supabase 간의 API Key, JWT Secret 등 기밀 정보 연동(sync_env_to_vercel)을 철저하게 관리하고 정기 보안 감사를 지원한다.
+* **Supabase 모니터링** (`supabase_manager.py`):
+  - 프로젝트 상태 실시간 체크
+  - 연결 테스트 및 헬스 체크
+  - 스키마 동기화 가이드
+  - 설정 자동 백업
+
+---
+
+## Petnna PWA 모니터링 (Petnna Application Monitoring)
+
+### A. 헬스 체크 및 가용성 모니터링
+* **배포 상태 체크** (`petnna_monitor.py`):
+  - Vercel 프로덕션 배포 상태 (HTTP 200 확인)
+  - 응답 시간 및 가용성 모니터링
+  - 로그인 기능 정상 작동 여부
+* **핵심 파일 검증**:
+  - index.html, manifest.json, sw.js (PWA 필수)
+  - JavaScript 번들 (app.js, supabase.js)
+  - CSS 스타일시트
+* **Service Worker 상태**:
+  - PWA 캐시 설정 확인
+  - 오프라인 기능 정상 작동
+* **Supabase 통합 검증**:
+  - DB 연결 정상 여부
+  - 인증 시스템 작동 확인
+  - 실시간 업데이트 기능 체크
+
+### B. 정기 모니터링 스케줄
+* **매 시간**: 빠른 헬스 체크 (`petnna_monitor.py test`)
+* **매일 오전 6시**: 전체 헬스 리포트 (`petnna_monitor.py health`)
+* **배포 후**: 즉시 검증 실행
+
+### C. 알림 규칙
+* **긴급 (🚨)**: 배포 다운, 로그인 실패, DB 연결 끊김 → 즉시 텔레그램 알림
+* **경고 (⚠️)**: 파일 누락, 느린 응답 → 일일 리포트에 포함
+* **정상 (✅)**: 모든 체크 통과 → 로그만 기록
 
 ---
 
