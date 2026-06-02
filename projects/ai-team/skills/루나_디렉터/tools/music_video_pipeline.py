@@ -71,6 +71,7 @@ FFMPEG = next(
     ] if os.path.exists(p)),
     "ffmpeg",
 )
+FFPROBE = FFMPEG.replace("ffmpeg.exe", "ffprobe.exe") if "ffmpeg.exe" in FFMPEG else "ffprobe"
 
 # 금지 장르
 _BANNED_GENRES = [
@@ -171,7 +172,7 @@ def _get_local_video_duration(video_path: str) -> int:
     """ffprobe로 로컬 영상 길이(초) 반환. 실패 시 0."""
     try:
         result = subprocess.run(
-            [FFMPEG.replace("ffmpeg", "ffprobe") if "ffmpeg" in FFMPEG else "ffprobe",
+            [FFPROBE,
              "-v", "error", "-show_entries", "format=duration",
              "-of", "default=noprint_wrappers=1:nokey=1", video_path],
             capture_output=True, text=True, timeout=10
@@ -322,6 +323,7 @@ def run_pipeline(publish_hhmm: str = None):
     if cp.get("theme"):
         theme = cp["theme"]
         print(f"  - [Checkpoint] 테마 복원: {theme['keyword']}")
+        send_telegram_message(f"🎬 [루나] 이전 작업을 복원했습니다. 테마: {theme['keyword']}")
     else:
         for _attempt in range(5):
             theme = analyzer.select_best_theme(idx=random.randint(1, 100))
@@ -337,6 +339,7 @@ def run_pipeline(publish_hhmm: str = None):
         cp = {"step": "theme", "theme": theme,
               "publish_at_utc": publish_at_utc, "publish_time_kst_str": publish_time_kst_str}
         save_checkpoint(cp)
+        send_telegram_message(f"🎬 [루나] 1단계: 오늘의 테마를 '{theme['keyword']}'로 결정했습니다.")
 
     # ── ① 제목 선정 (키워드 → 유튜브 최적화 제목) ────────────────────────────────
     yt_titles_for_title = theme.get("_yt_top_titles", [])
@@ -356,8 +359,10 @@ def run_pipeline(publish_hhmm: str = None):
         audio_path        = cp["audio_path"]
         full_music_prompt = cp.get("full_music_prompt", full_music_prompt)
         print(f"  - [Checkpoint] 비디오/오디오 복원: {video_path}")
+        send_telegram_message(f"🎬 [루나] 2단계: 기존 생성 완료된 비디오/오디오를 복원하여 합성 및 검수 단계로 진입합니다.")
     else:
         print("🎬 [루나] 완곡 1트랙 + 5단 비주얼 시퀀스 시작...")
+        send_telegram_message(f"🎬 [루나] 2단계: 음악 및 이미지/비디오 생성 작업을 시작합니다.\n곡명: {title}")
         order        = ["intro", "verse", "chorus", "bridge", "outro"]
         parts_images = {}
         parts_videos = {}
@@ -367,6 +372,7 @@ def run_pipeline(publish_hhmm: str = None):
         print(f"  [음악 프롬프트] {full_music_prompt[:100]}...")
 
         # ③ Lyria 3 Pro 완곡 생성
+        send_telegram_message(f"🎵 [루나] 음원 생성 중 (lyria-3-pro-preview)...")
         full_audio_path = os.path.join("output", "full_track.mp3")
         print(f"\n🎵 [완곡 생성 — lyria-3-pro-preview]")
         full_track = music_gen.generate_music(full_music_prompt, output_path=full_audio_path, is_pro=True)
@@ -380,7 +386,7 @@ def run_pipeline(publish_hhmm: str = None):
         # [전진 배치 검수] 비디오 합성 전 음원 길이 체크 (120초 미만 차단)
         if full_track:
             try:
-                probe_cmd = [FFMPEG, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", full_track]
+                probe_cmd = [FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", full_track]
                 track_dur = float(subprocess.check_output(probe_cmd).decode().strip())
                 if track_dur < 120:
                     print(f"⚠️  [Early Check] 음원 길이 미달({track_dur:.1f}s). 비주얼 합성을 중단하고 재시도를 권장합니다.")
@@ -391,9 +397,11 @@ def run_pipeline(publish_hhmm: str = None):
                 print(f"  [Warning] 초기 길이 확인 실패: {e}")
 
         # ④ 5단 비주얼 생성
+        send_telegram_message(f"🖼️ [루나] 5단 비주얼 시퀀스 생성 시작...")
         for part_name in order:
             visual_prompt = theme["visual_parts"][part_name]
             print(f"\n🖼️  [{part_name.upper()} 비주얼 생성 중...]")
+            send_telegram_message(f"🖼️ [루나] 비주얼 '{part_name}' 생성 중...")
 
             img_path = os.path.join("output", f"visual_{part_name}.png")
             result = generate_visual(visual_prompt, img_path)
@@ -437,6 +445,7 @@ def run_pipeline(publish_hhmm: str = None):
             send_telegram_message("❌ 루나: 모든 파트 실패 — 파이프라인 중단.")
             return
 
+        send_telegram_message("🎬 [루나] 3단계: 생성된 비주얼 소스 합성을 위한 FFmpeg 병합 작업을 시작합니다.")
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         list_file = "output/video_list.txt"
         with open(list_file, "w", encoding="utf-8") as lf:
@@ -534,7 +543,7 @@ def run_pipeline(publish_hhmm: str = None):
 
     # ⑦-2 영상 길이 최종 검수 (120초 미만 금지)
     try:
-        probe_cmd = [FFMPEG, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path]
+        probe_cmd = [FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path]
         final_duration = float(subprocess.check_output(probe_cmd).decode().strip())
         if final_duration < 120:
             send_telegram_message(f"🚨 <b>[가희]</b> 업로드 중단 — 영상 길이가 너무 짧음 ({final_duration:.1f}초).")
@@ -575,12 +584,14 @@ def run_pipeline(publish_hhmm: str = None):
         clear_checkpoint()
         return
 
+    send_telegram_message(f"🎬 [루나] 4단계: 가희 검수 통과 완료. 유튜브 업로드를 시작합니다.")
     video_id = uploader.upload_video(
         video_path=video_path, title=title, description=description,
         tags=tags, privacy_status="private", publish_at=publish_at_utc,
     )
 
     if video_id:
+        send_telegram_message(f"🎬 [루나] 유튜브 영상 업로드 완료. 썸네일 등록 및 재생목록 추가 중...")
         uploader.upload_thumbnail(video_id, image_path)
         uploader.add_video_to_playlist(video_id, theme.get("playlist_title", "도시 드라이브 시티팝"))
 
