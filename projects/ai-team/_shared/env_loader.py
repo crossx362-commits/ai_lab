@@ -8,10 +8,11 @@ import os
 
 
 def _find_root(start: str) -> str:
-    """현재 경로에서 위로 올라가며 .agent 디렉토리를 가진 루트 반환."""
+    """현재 경로에서 위로 올라가며 reports 또는 projects 디렉토리를 가진 루트 반환."""
     root = start
     for _ in range(8):
-        if os.path.isdir(os.path.join(root, ".agent")):
+        # reports/ 또는 projects/ 폴더가 있으면 ai_lab 루트
+        if os.path.isdir(os.path.join(root, "reports")) or os.path.isdir(os.path.join(root, "projects")):
             return root
         root = os.path.dirname(root)
     return start
