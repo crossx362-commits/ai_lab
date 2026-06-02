@@ -17,7 +17,7 @@ import json
 import datetime
 import urllib.request
 import urllib.parse
-import base64
+
 import random
 import sys
 import importlib.util
@@ -178,32 +178,8 @@ def clear_checkpoint():
 
 
 def generate_visual(prompt: str, output_path: str) -> str:
-    """Gemini로 비디오 기준 이미지 생성. 실패 시 빈 문자열 반환."""
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        return ""
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models"
-        f"/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
-    )
-    payload = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
-    }).encode()
-    try:
-        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            res = json.loads(r.read())
-        for cand in res.get("candidates", []):
-            for part in cand.get("content", {}).get("parts", []):
-                if "inlineData" in part:
-                    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-                    with open(output_path, "wb") as f:
-                        f.write(base64.b64decode(part["inlineData"]["data"]))
-                    return output_path
-    except Exception as e:
-        print(f"  [Warning] Gemini 비주얼 생성 실패: {e}")
-    return ""
+    """Pollinations로 이미지 생성 (Gemini 삭제됨)."""
+    return _generate_image_pollinations_fallback(prompt, output_path)
 
 
 def _generate_image_pollinations_fallback(prompt: str, output_path: str) -> str:
@@ -464,10 +440,7 @@ def run_pipeline(publish_hhmm: str = None):
             send_telegram_message(f"🖼️ [루나] 비주얼 '{part_name}' 생성 중...")
 
             img_path = os.path.join(_OUT_DIR, f"visual_{part_name}.png")
-            result = generate_visual(visual_prompt, img_path)
-            if not result:
-                print(f"⚠️ Gemini 실패 → Pollinations 시도...")
-                result = _generate_image_pollinations_fallback(visual_prompt, img_path)
+            result = _generate_image_pollinations_fallback(visual_prompt, img_path)
             part_image_path = result if (result and os.path.exists(result)) else None
             parts_images[part_name] = part_image_path
 

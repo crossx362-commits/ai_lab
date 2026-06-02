@@ -7,7 +7,7 @@ Phase 3 (14:00 KST): YouTube Shorts 업로드 (Private 예약 → 14:00 공개)
 
 실행: python shorts_pipeline.py
 """
-import os, sys, json, time, datetime, subprocess, urllib.request, urllib.parse, base64, xml.etree.ElementTree as ET
+import os, sys, json, time, datetime, subprocess, urllib.request, urllib.parse, xml.etree.ElementTree as ET
 
 _here = os.path.dirname(os.path.abspath(__file__))
 _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
@@ -171,34 +171,7 @@ def _extract_citypop_keyword(trends: list[str], yt_music: list[str]) -> str:
 # ── Phase 2: Shorts 콘텐츠 생성 ──────────────────────────────────────────────
 
 def _generate_image_9x16(prompt: str, output_path: str) -> str:
-    """9:16 비주얼 이미지 생성 — Gemini 1순위, Pollinations 폴백."""
-    api_key = os.getenv("GEMINI_API_KEY", "")
-
-    # 1순위: Gemini
-    if api_key:
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models"
-            f"/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
-        )
-        payload = json.dumps({
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
-        }).encode()
-        try:
-            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=60) as r:
-                res = json.loads(r.read())
-            for cand in res.get("candidates", []):
-                for part in cand.get("content", {}).get("parts", []):
-                    if "inlineData" in part:
-                        with open(output_path, "wb") as f:
-                            f.write(base64.b64decode(part["inlineData"]["data"]))
-                        print(f"    [Gemini 이미지] 완료: {output_path}")
-                        return output_path
-        except Exception as e:
-            print(f"    [Gemini 이미지] 실패: {e}")
-
-    # 2순위: Pollinations (세로형)
+    """9:16 비주얼 이미지 생성 — Pollinations."""
     try:
         encoded = urllib.parse.quote(prompt[:400])
         url = f"https://image.pollinations.ai/prompt/{encoded}?width=720&height=1280&model=flux&nologo=true"
@@ -212,7 +185,6 @@ def _generate_image_9x16(prompt: str, output_path: str) -> str:
             return output_path
     except Exception as e:
         print(f"    [Pollinations 이미지] 실패: {e}")
-
     return ""
 
 

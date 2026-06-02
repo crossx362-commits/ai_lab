@@ -78,14 +78,7 @@ def _record_to_history(record: dict):
     except Exception as e:
         print(f"  [Warning] 히스토리 기록 실패: {e}")
 
-# ─── Gemini API 설정 ───────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-# Imagen 3 (나노바나나) 최신 모델 - 실사풍 고퀄리티
-GEMINI_IMAGE_MODEL = "imagen-3.0-generate-001"
-GEMINI_IMAGE_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_IMAGE_MODEL}:predict?key={{key}}"
-)
 
 def get_trends():
     """KR·US·JP 구글 트렌드 + 카테고리 큐레이션으로 20개+ 후보 수집."""
@@ -296,55 +289,6 @@ def update_ics_calendar(trend_topic, post_date, post_time):
     print(f"📅 새 캘린더 파일이 생성되고 일정이 추가되었습니다! ({post_date} {post_time})")
 
 
-def _generate_image_gemini(prompt):
-    """Calls Imagen 3 (나노바나나) API - 실사풍 고퀄리티 이미지 생성."""
-    api_url = GEMINI_IMAGE_URL.format(key=GEMINI_API_KEY)
-
-    # 실사풍 고퀄리티 프롬프트 강화
-    enhanced_prompt = (
-        f"{prompt}, "
-        "photorealistic, ultra high quality, professional photography, "
-        "DSLR camera, sharp focus, natural lighting, cinematic composition, "
-        "8K resolution, detailed textures, hyperrealistic, "
-        "award-winning photography style"
-    )
-
-    payload = {
-        "instances": [
-            {
-                "prompt": enhanced_prompt
-            }
-        ],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": "1:1",
-            "safetyFilterLevel": "block_some",
-            "personGeneration": "allow_adult"
-        }
-    }
-
-    headers = {"Content-Type": "application/json"}
-    res = requests.post(api_url, headers=headers, json=payload, timeout=90)
-    res.raise_for_status()
-    data = res.json()
-
-    # Imagen 3 응답 파싱
-    if "predictions" in data and len(data["predictions"]) > 0:
-        prediction = data["predictions"][0]
-
-        # bytesBase64Encoded 또는 image 필드에서 이미지 추출
-        if "bytesBase64Encoded" in prediction:
-            img_bytes = base64.b64decode(prediction["bytesBase64Encoded"])
-            return img_bytes
-        elif "image" in prediction:
-            # 이미지가 직접 포함된 경우
-            if "bytesBase64Encoded" in prediction["image"]:
-                img_bytes = base64.b64decode(prediction["image"]["bytesBase64Encoded"])
-                return img_bytes
-
-    raise ValueError(f"Imagen 3 응답에서 이미지 데이터를 찾지 못했습니다. 응답: {json.dumps(data)[:300]}")
-
-
 def _generate_image_pollinations(prompt):
     """Pollinations.ai로 이미지 생성 후 bytes 반환 (나노바나나 429 폴백)."""
     seed = random.randint(1, 999999)
@@ -359,15 +303,15 @@ def _generate_image_pollinations(prompt):
 
 
 def generate_and_upload_image(prompt):
-    """Generates an image using Gemini 3.1 Flash Image Preview and uploads it to Catbox.moe for a static public URL."""
-    print(f"🎨 Gemini AI로 이미지 생성 중 (프롬프트: {prompt[:80]}...)")
+    """Pollinations으로 이미지 생성 후 Catbox.moe 업로드."""
+    print(f"🎨 Pollinations으로 이미지 생성 중 (프롬프트: {prompt[:80]}...)")
     temp_filename = os.path.join(_OUT_DIR, "temp_generated.jpg")
 
     try:
-        img_bytes = _generate_image_gemini(prompt)
+        img_bytes = _generate_image_pollinations(prompt)
         with open(temp_filename, "wb") as f:
             f.write(img_bytes)
-        print(f"✅ Gemini 이미지 생성 완료! ({len(img_bytes):,} bytes)")
+        print(f"✅ 이미지 생성 완료! ({len(img_bytes):,} bytes)")
 
         print("📤 이미지를 퍼블릭 서버에 업로드 중...")
         # Upload to Catbox.moe
@@ -573,13 +517,8 @@ def main(dry_run=False):
     img_bytes = None
     image_url = None
     try:
-        try:
-            img_bytes = _generate_image_gemini(crafted_prompt)
-            print(f"✅ 나노바나나 이미지 생성 완료! ({len(img_bytes):,} bytes)")
-        except Exception as gemini_err:
-            print(f"⚠️ 나노바나나 실패 ({gemini_err}), Pollinations.ai 폴백 시도...")
-            img_bytes = _generate_image_pollinations(crafted_prompt)
-            print(f"✅ Pollinations.ai 이미지 생성 완료! ({len(img_bytes):,} bytes)")
+        img_bytes = _generate_image_pollinations(crafted_prompt)
+        print(f"✅ Pollinations.ai 이미지 생성 완료! ({len(img_bytes):,} bytes)")
 
         with open(temp_filename, "wb") as f:
             f.write(img_bytes)

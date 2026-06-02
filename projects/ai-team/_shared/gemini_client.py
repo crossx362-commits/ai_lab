@@ -6,14 +6,12 @@ Ollama(1순위) → Gemini API(2순위) 패턴을 모든 에이전트에서 각�
 """
 import os
 import json
-import time
 import base64
 import urllib.request
 import urllib.error
 
 _BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 _TEXT_MODEL  = "gemini-2.5-flash"
-_IMAGE_MODEL = "gemini-3.1-flash-image-preview"
 
 
 def _api_key() -> str:
@@ -75,53 +73,6 @@ def text(
         return res["candidates"][0]["content"]["parts"][0]["text"].strip()
     except Exception as e:
         print(f"  [Gemini 텍스트] 실패: {e}")
-    return None
-
-
-# ── 이미지 생성 ───────────────────────────────────────────────────────────────
-
-def _imagen_request(url: str, payload: bytes, max_retry: int = 3) -> bytes | None:
-    """Imagen API 호출 — 429 시 백오프 재시도."""
-    wait = 30
-    for attempt in range(max_retry):
-        try:
-            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=90) as r:
-                return r.read()
-        except urllib.error.HTTPError as e:
-            if e.code == 429:
-                print(f"  [Gemini 이미지] 429 Rate Limit — {wait}초 대기 ({attempt+1}/{max_retry})...")
-                time.sleep(wait)
-                wait *= 2
-            else:
-                print(f"  [Gemini 이미지] HTTP {e.code}")
-                return None
-        except Exception as e:
-            print(f"  [Gemini 이미지] 오류: {e}")
-            return None
-    return None
-
-
-def image(prompt: str) -> bytes | None:
-    """Gemini Flash Image Preview로 이미지 생성 → raw bytes 반환."""
-    api_key = _api_key()
-    if not api_key:
-        return None
-    try:
-        payload = json.dumps({
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]},
-        }).encode("utf-8")
-        url = f"{_BASE}/{_IMAGE_MODEL}:generateContent?key={api_key}"
-        raw = _imagen_request(url, payload)
-        if not raw:
-            return None
-        res = json.loads(raw)
-        for part in res.get("candidates", [{}])[0].get("content", {}).get("parts", []):
-            if "inlineData" in part:
-                return base64.b64decode(part["inlineData"]["data"])
-    except Exception as e:
-        print(f"  [Gemini 이미지] 파싱 실패: {e}")
     return None
 
 
