@@ -34,37 +34,47 @@ YEONGSUK_PERSONA = """
 당신은 영숙이에요. 30대 초반, 밝고 따뜻한 AI 개인 비서입니다.
 사장님의 텔레그램 메시지를 가장 먼저 받고 응답합니다.
 
-# 업무 판단 기준
-다음 중 하나라도 해당되면 **반드시 dispatch 모드**를 사용하세요:
-- "~해줘", "~만들어줘", "~해", "~분석해줘", "~작성해줘" 등 작업 요청 동사
-- YouTube/Instagram 콘텐츠 제작·업로드 요청
-- 리서치·분석·검수·평가 요청
-- 일정·스케줄·자동화 설정 요청
-- 에이전트 이름 언급 (루나, 아린, 예원, 가희, 코다리 등)
-- 파일 작성·수정·삭제 요청
+# 응답 모드 3가지
 
-# 일반 대화 기준
-다음은 reply 모드로 직접 답변하세요:
-- 인사·안부 ("안녕", "잘 지내?", "뭐해?")
-- 단순 질문 ("현재 시간", "날씨", "상태 확인")
-- 감사·칭찬 ("고마워", "잘했어", "수고했어")
+## A) reply — 직접 대화
+- 인사·안부·감사·칭찬 ("안녕", "잘했어", "고마워")
+- 시간·날씨 등 단순 사실 질문
 
-# 응답 형식 (JSON만 반환)
+## B) status — 에이전트 현황 조회 (실행 아님!)
+다음 중 하나라도 해당되면 반드시 status 모드:
+- "현황", "어때", "확인해줘", "알려줘", "파악해", "어떻게 됐어", "업로드됐어" + 에이전트 이름
+- "루나 요즘", "아린 오늘", "업로드 현황", "진행 상황"
+- 실행이 아닌 **조회/확인** 요청
+{"mode": "status", "agent": "루나 또는 아린 또는 전체", "text": "확인해볼게요!"}
 
-옵션 A) 일반 대화:
-{"mode": "reply", "text": "사장님께 드릴 다정하고 간결한 답변"}
+## C) dispatch — 새 작업 실행 지시
+다음에만 dispatch 사용:
+- "만들어", "올려", "제작해", "포스팅해", "업로드해", "실행해", "시작해" 등 **실행 동사**
+- 리서치·분석·코딩 등 새 작업 요청
+{"mode": "dispatch", "text": "바로 처리할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 [에이전트이름]에게 [구체적 작업]을 지시하셨습니다. [에이전트이름] 파이프라인을 실행해주세요."}
 
-옵션 B) 업무 지시:
-{"mode": "dispatch", "text": "네, 예원 CEO님께 전달해서 바로 처리할게요! 🚀", "dispatch_to_ceo": "예원 대표님, 사장님께서 [구체적 요청 내용]을 요청하셨습니다. 적절한 에이전트에게 배분해주세요."}
+# dispatch_to_ceo 필수 규칙
+- 에이전트 이름을 **반드시 명시**: "루나에게", "아린에게"
+- 작업 유형 명시: "영상 제작", "인스타 포스팅", "딥서치" 등
+- 예: "예원 대표님, 사장님께서 루나에게 새 뮤직비디오 제작을 지시하셨습니다. 루나 파이프라인을 실행해주세요."
 
 # 예시
-User: "루나 영상 제작해줘"
-→ {"mode": "dispatch", "text": "네, 루나에게 영상 제작 지시할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 루나 영상 제작을 요청하셨습니다."}
+User: "루나 업로드 현황 파악해"
+→ {"mode": "status", "agent": "루나", "text": "루나 현황 바로 확인할게요!"}
 
-User: "오늘 뭐했어?"
-→ {"mode": "reply", "text": "오늘도 열심히 일했어요! 텔레그램 메시지 확인하고, 일정 체크하고 있었답니다 😊"}
+User: "아린 오늘 포스팅했어?"
+→ {"mode": "status", "agent": "아린", "text": "아린 오늘 활동 확인해볼게요!"}
 
-**중요**: 작업 요청은 무조건 dispatch! 망설이지 말고 CEO에게 전달하세요.
+User: "루나 영상 만들어"
+→ {"mode": "dispatch", "text": "루나에게 영상 제작 지시할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 루나에게 새 뮤직비디오 제작을 지시하셨습니다. 루나 파이프라인을 실행해주세요."}
+
+User: "아린 인스타 올려"
+→ {"mode": "dispatch", "text": "아린에게 포스팅 지시할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 아린에게 인스타그램 포스팅을 지시하셨습니다. 아린 파이프라인을 실행해주세요."}
+
+User: "안녕"
+→ {"mode": "reply", "text": "안녕하세요 사장님! 오늘도 좋은 하루 되세요 😊"}
+
+**핵심**: 조회/확인 = status, 실행/제작/업로드 = dispatch, 대화 = reply
 """
 
 CHAT_HISTORY = []
@@ -120,6 +130,82 @@ def _web_search_analyze(query: str) -> str:
         return "분석 실패"
 
 
+def _handle_status_query(agent: str):
+    """에이전트 현황을 실제 데이터에서 읽어 텔레그램으로 보고."""
+    import json as _json
+
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+    lines = []
+
+    def _read_history(agent_name: str):
+        hist_path = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
+        if not os.path.exists(hist_path):
+            return []
+        try:
+            data = _json.load(open(hist_path, encoding="utf-8"))
+            return [d for d in data if d.get("agent") == agent_name] if isinstance(data, list) else []
+        except Exception:
+            return []
+
+    def _read_log_tail(log_path: str, n: int = 5) -> list:
+        candidates = [
+            log_path,
+            log_path.replace("reports/uploads", "/tmp").replace("/pipeline.log", "_out.log"),
+        ]
+        for p in candidates:
+            if os.path.exists(p):
+                try:
+                    rows = open(p, encoding="utf-8", errors="ignore").readlines()
+                    return [r.strip() for r in rows[-n:] if r.strip()]
+                except Exception:
+                    pass
+        return []
+
+    # 루나 현황
+    if "루나" in agent or "전체" in agent:
+        luna_hist = _read_history("루나")
+        if luna_hist:
+            last = luna_hist[-1]
+            meta = last.get("metadata", {})
+            title = meta.get("youtube_title") or meta.get("title", "?")
+            vid = meta.get("video_id", "")
+            url = f"https://youtu.be/{vid}" if vid else "없음"
+            date = last.get("uploaded_at", "")[:10]
+            lines.append(f"🎬 루나 최근 업로드")
+            lines.append(f"  [{date}] {title[:50]}")
+            lines.append(f"  {url}")
+            lines.append(f"  누적 {len(luna_hist)}개 업로드")
+        else:
+            lines.append("🎬 루나: 업로드 기록 없음")
+
+        log_rows = _read_log_tail(os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "pipeline.log"))
+        if log_rows:
+            lines.append(f"  📋 최근 로그: {log_rows[-1][:80]}")
+
+    # 아린 현황
+    if "아린" in agent or "전체" in agent:
+        arin_hist = _read_history("아린")
+        if arin_hist:
+            last = arin_hist[-1]
+            meta = last.get("metadata", {})
+            caption = meta.get("caption", "?")[:40]
+            date = last.get("uploaded_at", "")[:10]
+            lines.append(f"📸 아린 최근 포스팅")
+            lines.append(f"  [{date}] {caption}")
+            lines.append(f"  누적 {len(arin_hist)}개 포스팅")
+        else:
+            lines.append("📸 아린: 포스팅 기록 없음")
+
+        log_rows = _read_log_tail(os.path.join(PROJECT_ROOT, "reports", "uploads", "arin", "pipeline.log"))
+        if log_rows:
+            lines.append(f"  📋 최근 로그: {log_rows[-1][:80]}")
+
+    if not lines:
+        lines.append("⚠️ 조회할 에이전트를 특정해주세요 (루나 / 아린 / 전체)")
+
+    send_message("📊 <b>[영숙이의 현황 보고]</b>\n\n" + "\n".join(lines))
+
+
 def process_message(text: str):
     print(f"\n📩 [영숙 수신] {text}")
 
@@ -158,11 +244,16 @@ def process_message(text: str):
 
         # 1. 텔레그램 1차 응답 (영숙 -> 사용자)
         send_message(reply_text)
-        
+
         CHAT_HISTORY.append({"role": "User", "text": text})
         CHAT_HISTORY.append({"role": "Assistant", "text": reply_text})
-        
-        # 2. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
+
+        # 2a. 현황 조회 모드 — 실제 데이터 읽어서 보고 (파이프라인 실행 안 함)
+        if mode == "status":
+            _handle_status_query(decision.get("agent", "전체"))
+            return
+
+        # 2b. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
         if mode == "dispatch" and "dispatch_to_ceo" in decision:
             ceo_msg = decision["dispatch_to_ceo"]
             try:
