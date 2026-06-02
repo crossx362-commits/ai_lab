@@ -628,7 +628,7 @@ def run_pipeline(publish_hhmm: str = None):
         try:
             import importlib.util as _ilu
             _spec = _ilu.spec_from_file_location("content_inspector",
-                os.path.join(_root, "assets", "tool-seeds", "가희_검수관", "content_inspector.py"))
+                os.path.join(_root, "projects", "ai-team", "skills", "가희_검수관", "tools", "content_inspector.py"))
             _ci = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_ci)
             post_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
             status = post_check.get("status", "PASS")
