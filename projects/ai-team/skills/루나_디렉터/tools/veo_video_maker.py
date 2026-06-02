@@ -30,14 +30,14 @@ VEO_MODEL_ID = "veo-3.1-generate-preview"
 
 
 def _record_to_history(record: dict):
-    """통합 에이전트 메모리(.agent/memory/upload_history.json)에 레코드 추가."""
+    """통합 에이전트 메모리(reports/history/upload_history.json)에 레코드 추가."""
     here = os.path.dirname(os.path.abspath(__file__))
     root = here
     for _ in range(6):
-        if os.path.isdir(os.path.join(root, ".agent")):
+        if os.path.isdir(os.path.join(root, "reports")):
             break
         root = os.path.dirname(root)
-    mem_path = os.path.join(root, ".agent", "memory", "upload_history.json")
+    mem_path = os.path.join(root, "reports", "history", "upload_history.json")
     try:
         if os.path.exists(mem_path):
             with open(mem_path, "r", encoding="utf-8") as _f:

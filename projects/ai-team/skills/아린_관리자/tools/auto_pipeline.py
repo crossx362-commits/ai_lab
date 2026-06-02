@@ -11,7 +11,7 @@ import random
 _here = os.path.dirname(os.path.abspath(__file__))
 _root = _here
 for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
+    if os.path.isdir(os.path.join(_root, "reports")):
         break
     _root = os.path.dirname(_root)
 if _here not in sys.path:
@@ -54,10 +54,10 @@ def _clean_caption(caption: str) -> str | None:
 
 
 def _record_to_history(record: dict):
-    """통합 에이전트 메모리(.agent/memory/upload_history.json)에 레코드 추가."""
+    """통합 에이전트 메모리(reports/history/upload_history.json)에 레코드 추가."""
     # sys.path[0]에 이미 프로젝트 루트가 있음 (_shared import 시 삽입됨)
     root = _root
-    mem_path = os.path.join(root, ".agent", "memory", "upload_history.json")
+    mem_path = os.path.join(root, "reports", "history", "upload_history.json")
     try:
         history = json.load(open(mem_path, "r", encoding="utf-8")) if os.path.exists(mem_path) else []
         history.append(record)
