@@ -9,8 +9,9 @@ import json
 import urllib.request
 import urllib.error
 
-# .env 파일 로드
-env_path = os.path.join(os.path.dirname(__file__), ".env")
+# .env 파일 로드 (최상위 디렉토리)
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+env_path = os.path.join(root_dir, ".env")
 if os.path.exists(env_path):
     with open(env_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -19,6 +20,8 @@ if os.path.exists(env_path):
                 key, value = line.split("=", 1)
                 value = value.strip('"').strip("'")
                 os.environ[key] = value
+else:
+    print(f"⚠️ .env 파일을 찾을 수 없습니다: {env_path}")
 
 def test_vercel():
     """Vercel API 테스트"""

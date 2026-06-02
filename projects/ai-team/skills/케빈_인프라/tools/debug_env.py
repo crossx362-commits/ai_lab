@@ -6,14 +6,15 @@ for key in ['GEMINI_API_KEY', 'YOUTUBE_API_KEY', 'TELEGRAM_BOT_TOKEN']:
     if key in os.environ:
         del os.environ[key]
 
-sys.path.insert(0, 'ai-team/_shared')
-from env_loader import _find_root, load_env
+# ai-team/_shared 경로 추가
+ai_team_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+sys.path.insert(0, ai_team_root)
+from _shared.env_loader import load_env
 
 current = os.getcwd()
 print(f'Current dir: {current}')
-root = _find_root(current)
-print(f'Found root: {root}')
-env_path = os.path.join(root, '.env')
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+env_path = os.path.join(root_dir, '.env')
 print(f'Env path: {env_path}')
 print(f'Env exists: {os.path.exists(env_path)}')
 
