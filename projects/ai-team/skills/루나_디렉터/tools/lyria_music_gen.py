@@ -76,9 +76,14 @@ def generate_music_with_lyria(
         print(f"❌ [루나] 금지된 장르(lofi 등)가 프롬프트에 포함되어 생성할 수 없습니다: {prompt}")
         return None
 
-    api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEYS") or "").split(",")[0].strip()
+    # 음악 전용 키 우선, 없으면 일반 키 사용
+    api_key = (
+        os.getenv("GEMINI_MUSIC_KEY") or
+        os.getenv("GEMINI_API_KEY") or
+        os.getenv("GEMINI_API_KEYS") or ""
+    ).split(",")[0].strip()
     if not api_key:
-        print("❌ 인증 에러: .env 파일에 GEMINI_API_KEY를 설정해주세요!")
+        print("❌ 인증 에러: .env 파일에 GEMINI_MUSIC_KEY 또는 GEMINI_API_KEY를 설정해주세요!")
         return None
 
     if is_pro:
