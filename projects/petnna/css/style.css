@@ -674,3 +674,6 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     transition: all 0.2s ease;
     cursor: pointer;
 }
+
+/* hidden 클래스가 flex/grid 등 display 클래스를 항상 이김 */
+.hidden { display: none !important; }

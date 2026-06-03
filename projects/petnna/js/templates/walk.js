@@ -113,8 +113,8 @@ const WALK_TEMPLATE = `
         </div>
 
         <!-- 경로 그리기 패널 -->
-        <div id="route-draw-banner" class="hidden mt-3 p-4 bg-brand-50 border border-brand-200 rounded-2xl animate-fade-in"
-            style="display:flex;flex-direction:column;gap:10px;" onclick="event.stopPropagation();">
+        <div id="route-draw-banner" class="hidden mt-3 p-4 bg-brand-50 border border-brand-200 rounded-2xl animate-fade-in flex flex-col gap-2.5"
+            onclick="event.stopPropagation();">
             <div class="flex items-center gap-2.5">
                 <span class="text-2xl">🎨</span>
                 <div>
