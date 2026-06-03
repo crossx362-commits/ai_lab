@@ -45,6 +45,8 @@
     </script>
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="css/leaflet.css">
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/style.css">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -61,6 +63,9 @@
     <!-- Supabase Cloud Sync Engine -->
     <script src="js/supabase-js.js"></script>
     <script src="js/supabase.js?v=130"></script>
+
+    <!-- Leaflet Map JS -->
+    <script src="js/leaflet.js"></script>
 
     <!-- PDF Export Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -109,10 +114,10 @@
             <nav class="flex items-center gap-2">
                 <button class="tab-btn" data-tab="mypet" onclick="switchTab('mypet')">🏠 마이펫</button>
                 <button class="tab-btn" data-tab="walk" onclick="switchTab('walk')">🗺️ 산책</button>
-                <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')">☯️ 사주</button>
+                <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')">🔮 운세</button>
                 <button class="tab-btn" data-tab="social" onclick="switchTab('social')">👥 소셜</button>
                 <button class="tab-btn" data-tab="album" onclick="switchTab('album')">📖 일기장</button>
-                <button class="tab-btn" data-tab="shop" onclick="switchTab('shop')">🛍️ 쇼핑</button>
+                <button class="tab-btn" data-tab="shop" onclick="switchTab('shop')">🐾 펫라이프</button>
                 <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 설정</button>
             </nav>
         </div>
