@@ -525,7 +525,7 @@ def generate_caption_from_image(img_bytes: bytes) -> tuple[str | None, str | Non
 def git_sync():
     print("📤 Git 동기화 진행 중...")
     try:
-        git_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        git_root = _root
         subprocess.run(["git", "add", "."], cwd=git_root, check=True)
         status = subprocess.run(["git", "status", "--porcelain"], cwd=git_root, capture_output=True, text=True)
         if status.stdout.strip():
