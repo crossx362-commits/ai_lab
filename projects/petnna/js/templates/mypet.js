@@ -547,11 +547,23 @@ const MYPET_TEMPLATE = `
                 <h3 class="text-lg font-black text-gray-900">펫과나 프리미엄</h3>
                 <p class="text-xs text-gray-400 font-medium">이번 달 무료 AI 분석 3회를 모두 사용했습니다</p>
             </div>
+            <!-- 구독 플랜 선택 탭 -->
+            <div class="flex gap-2 bg-gray-100 p-1 rounded-2xl">
+                <button id="premium-plan-monthly" onclick="selectPremiumPlan('monthly')"
+                    class="flex-1 py-2 text-xs font-black rounded-xl bg-white text-violet-700 shadow-sm transition-all">
+                    월간 구독
+                </button>
+                <button id="premium-plan-yearly" onclick="selectPremiumPlan('yearly')"
+                    class="flex-1 py-2 text-xs font-bold rounded-xl text-gray-400 transition-all relative">
+                    연간 구독
+                    <span class="absolute -top-2 -right-1 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">-30%</span>
+                </button>
+            </div>
             <!-- 가격 배지 -->
             <div class="flex justify-center">
-                <div class="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-6 py-3 rounded-2xl text-center shadow-lg">
-                    <span class="block text-2xl font-black">월 5,900원</span>
-                    <span class="text-xs font-bold opacity-80">TTcare 대비 올인원 · 해지 언제든 가능</span>
+                <div id="premium-price-badge" class="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-6 py-3 rounded-2xl text-center shadow-lg w-full">
+                    <span id="premium-price-main" class="block text-2xl font-black">월 5,900원</span>
+                    <span id="premium-price-sub" class="text-xs font-bold opacity-80">TTcare 대비 올인원 · 해지 언제든 가능</span>
                 </div>
             </div>
             <!-- 혜택 -->
@@ -571,6 +583,10 @@ const MYPET_TEMPLATE = `
                 <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
                     <span class="text-lg">🎙️</span>
                     <span class="text-[11px] font-black text-violet-700">음성 문진 무제한</span>
+                </div>
+                <div id="premium-yearly-bonus" class="hidden flex items-center gap-2 bg-rose-50 rounded-xl p-2.5">
+                    <span class="text-lg">📋</span>
+                    <span class="text-[11px] font-black text-rose-700">건강 리포트 PDF 매월 자동 발송</span>
                 </div>
                 <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
                     <span class="text-lg">📅</span>

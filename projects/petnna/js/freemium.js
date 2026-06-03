@@ -54,9 +54,40 @@ function incrementAIUsage() {
     localStorage.setItem(key, String(getMonthlyAiUsage() + 1));
 }
 
+// 연간/월간 플랜 선택 상태
+let _premiumPlanSelected = 'monthly'; // 'monthly' | 'yearly'
+
+// 구독 플랜 탭 전환 UI
+function selectPremiumPlan(plan) {
+    _premiumPlanSelected = plan;
+    const monthly = document.getElementById('premium-plan-monthly');
+    const yearly = document.getElementById('premium-plan-yearly');
+    const priceMain = document.getElementById('premium-price-main');
+    const priceSub = document.getElementById('premium-price-sub');
+    const yearlyBonus = document.getElementById('premium-yearly-bonus');
+    if (!monthly || !yearly || !priceMain || !priceSub) return;
+
+    if (plan === 'yearly') {
+        monthly.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-gray-400 transition-all';
+        yearly.className = 'flex-1 py-2 text-xs font-black rounded-xl bg-white text-violet-700 shadow-sm transition-all relative';
+        priceMain.textContent = '연 49,000원';
+        priceSub.textContent = '월 4,083원 · 월간 대비 30% 절약 🎉';
+        if (yearlyBonus) yearlyBonus.classList.remove('hidden');
+    } else {
+        monthly.className = 'flex-1 py-2 text-xs font-black rounded-xl bg-white text-violet-700 shadow-sm transition-all';
+        yearly.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-gray-400 transition-all relative';
+        priceMain.textContent = '월 5,900원';
+        priceSub.textContent = 'TTcare 대비 올인원 · 해지 언제든 가능';
+        if (yearlyBonus) yearlyBonus.classList.add('hidden');
+    }
+}
+
 // Stripe Payment Link 결제 시작
 function startStripeCheckout() {
-    const paymentLink = window._env_?.STRIPE_PAYMENT_LINK || "";
+    const isYearly = _premiumPlanSelected === 'yearly';
+    const paymentLink = isYearly
+        ? (window._env_?.STRIPE_PAYMENT_LINK_YEARLY || window._env_?.STRIPE_PAYMENT_LINK || "")
+        : (window._env_?.STRIPE_PAYMENT_LINK || "");
     if (!paymentLink) {
         // 결제 링크 미설정 시 이메일 웨이팅 리스트로 fallback
         showPremiumWaitlist();
@@ -64,7 +95,7 @@ function startStripeCheckout() {
     }
     const returnUrl = encodeURIComponent(window.location.href.split('?')[0] + '?premium=activated');
     window.open(`${paymentLink}?client_reference_id=${encodeURIComponent(settings_email || 'guest')}&success_url=${returnUrl}`, '_blank');
-    showToast("Stripe 결제 페이지로 이동합니다. 결제 완료 후 돌아와 주세요! 💳");
+    showToast(`Stripe 결제 페이지로 이동합니다. ${isYearly ? '연간(49,000원)' : '월간(5,900원)'} 결제 완료 후 돌아와 주세요! 💳`);
 }
 
 // 결제 완료 후 URL 파라미터로 프리미엄 활성화

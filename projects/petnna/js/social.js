@@ -380,14 +380,38 @@ function renderFeed() {
 
         let commentsListHtml = '';
         if (post.comments && post.comments.length > 0) {
+            const commentItems = post.comments.map((c, ci) => {
+                const repliesHtml = (c.replies && c.replies.length > 0)
+                    ? c.replies.map(r => `
+                        <div class="flex items-start gap-1.5 ml-4 mt-1">
+                            <i class="fa-solid fa-reply text-[8px] text-brand-400 mt-1 shrink-0"></i>
+                            <span class="font-bold text-brand-600 shrink-0 mr-1">${escapeHtml(r.author)}</span>
+                            <span class="text-gray-500 leading-normal">${escapeHtml(r.text)}</span>
+                        </div>
+                    `).join('')
+                    : '';
+                return `
+                    <div class="space-y-0.5">
+                        <div class="flex items-start justify-between gap-1">
+                            <div class="flex items-start gap-1 flex-grow">
+                                <span class="font-bold text-gray-700 shrink-0">👤 ${escapeHtml(c.author)}</span>
+                                <span class="text-gray-500 leading-normal flex-grow">${escapeHtml(c.text)}</span>
+                            </div>
+                            <button onclick="toggleFeedReplyInput(${post.id}, ${ci})" class="shrink-0 text-[10px] text-brand-500 font-bold hover:underline ml-1">답글</button>
+                        </div>
+                        ${repliesHtml}
+                        <div id="reply-form-${post.id}-${ci}" class="hidden ml-4 mt-1">
+                            <div class="flex items-center gap-1.5">
+                                <input type="text" id="reply-input-${post.id}-${ci}" placeholder="답글을 입력하세요..." class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 bg-white" onkeydown="if(event.key==='Enter') submitFeedReply(${post.id}, ${ci})">
+                                <button onclick="submitFeedReply(${post.id}, ${ci})" class="bg-brand-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0">등록</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
             commentsListHtml = `
                 <div class="space-y-2 bg-gray-50/50 p-3 rounded-2xl text-[11px] border border-gray-100/30">
-                    ${post.comments.map(c => `
-                        <div class="flex justify-between">
-                            <span class="font-bold text-gray-700 shrink-0 mr-2">👤 ${c.author}</span>
-                            <span class="text-gray-500 leading-normal flex-grow">${escapeHtml(c.text)}</span>
-                        </div>
-                    `).join('')}
+                    ${commentItems}
                 </div>
             `;
         }
@@ -452,6 +476,35 @@ function submitFeedComment(postId) {
     renderFeed();
     showToast("따뜻한 이웃 덧글이 등록되었습니다!");
 
+    if (typeof updatePostCommentsInSupabase === 'function') {
+        updatePostCommentsInSupabase(postId, p.comments);
+    }
+}
+
+function toggleFeedReplyInput(postId, commentIdx) {
+    const form = document.getElementById(`reply-form-${postId}-${commentIdx}`);
+    if (!form) return;
+    const isHidden = form.classList.toggle('hidden');
+    if (!isHidden) {
+        const input = document.getElementById(`reply-input-${postId}-${commentIdx}`);
+        if (input) input.focus();
+    }
+}
+
+function submitFeedReply(postId, commentIdx) {
+    const input = document.getElementById(`reply-input-${postId}-${commentIdx}`);
+    if (!input || !input.value.trim()) return;
+    const text = input.value.trim();
+    const p = posts.find(item => item.id === postId);
+    if (!p || !p.comments || !p.comments[commentIdx]) return;
+    if (!p.comments[commentIdx].replies) p.comments[commentIdx].replies = [];
+    p.comments[commentIdx].replies.push({
+        author: settings_nickname || '나',
+        text: text
+    });
+    saveState();
+    renderFeed();
+    showToast("답글이 등록되었습니다!");
     if (typeof updatePostCommentsInSupabase === 'function') {
         updatePostCommentsInSupabase(postId, p.comments);
     }

@@ -623,6 +623,7 @@ function stopAndSaveWalk() {
             renderWalkHistory();
             renderMyPets();
             showToast("🏆 안심 산책 성료! 역사관에 기록이 등록되었습니다. 펫 행복지수가 올라갔어요!");
+            _promptRegisterWalkPlace();
 
             // 🔔 알림 설정이 활성화되어 있고 권한이 허용된 경우 브라우저 알림 전송
             if (settings_notifications_enabled && settings_notification_permission_granted) {
@@ -735,6 +736,7 @@ function discardWalk() {
             renderWalkHistory();
             renderMyPets();
             showToast("🏆 안심 산책 성료! 역사관에 기록이 등록되었습니다. 펫 행복지수가 올라갔어요!");
+            _promptRegisterWalkPlace();
 
             // 🔔 알림 설정이 활성화되어 있고 권한이 허용된 경우 브라우저 알림 전송
             if (settings_notifications_enabled && settings_notification_permission_granted) {
@@ -2129,4 +2131,43 @@ async function generateRandomRoute() {
     _routingBusy = false;
     const via = roadCoords ? '도로 경로' : '직선 경로';
     showToast(`🎲 '${name}' 생성 완료! ${totalDist.toFixed(2)}km (${via})`);
+}
+
+// 산책 완료 후 장소 등록 유도
+function _promptRegisterWalkPlace() {
+    setTimeout(() => {
+        showCustomDialog({
+            title: "장소 등록하기 📍",
+            message: "방금 다녀온 산책 장소를 동네 지도에 등록할까요? 이웃 집사들과 핫플레이스를 공유해요!",
+            icon: "🗺️",
+            type: "confirm",
+            onConfirm: () => {
+                showCustomDialog({
+                    title: "장소 이름 입력 ✏️",
+                    message: "등록할 장소 이름을 입력해 주세요.",
+                    icon: "📍",
+                    type: "prompt",
+                    placeholder: "예: 우리 동네 댕댕이 공원",
+                    onConfirm: (name) => {
+                        if (!name || !name.trim()) return;
+                        const center = mapInstance ? mapInstance.getCenter() : { lat: 37.5665, lng: 126.9780 };
+                        const newPlace = {
+                            id: Date.now(),
+                            name: name.trim(),
+                            lat: center.lat,
+                            lng: center.lng,
+                            category: "park",
+                            desc: "이웃 집사가 산책 완료 후 직접 등록한 반려동물 친화 공간입니다.",
+                            rating: 5.0,
+                            reviews: [{ author: settings_nickname || "집사", rating: 5, comment: "우리 동네 좋은 산책 장소예요!" }]
+                        };
+                        places.push(newPlace);
+                        saveState();
+                        if (typeof renderMapPlacesPins === 'function') renderMapPlacesPins();
+                        showToast(`'${newPlace.name}' 장소가 동네 지도에 등록되었습니다! 🎉`);
+                    }
+                });
+            }
+        });
+    }, 800);
 }
