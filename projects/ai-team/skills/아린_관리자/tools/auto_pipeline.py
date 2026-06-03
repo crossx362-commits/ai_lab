@@ -531,17 +531,18 @@ def git_sync():
         if status.stdout.strip():
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             subprocess.run(["git", "commit", "-m", f"Auto-sync: Arin pipeline executed at {timestamp}"], cwd=git_root, check=True)
-            # 현재 브랜치명 동적 감지 (main/master 혼용 환경 대응)
-            branch_result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=git_root, capture_output=True, text=True)
-            current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "master"
-            subprocess.run(["git", "push", "origin", current_branch], cwd=git_root, check=True)
-            print("✅ Git 동기화 완료!")
-            send_telegram_message("💾 [Git 동기화 완료] 아린 에이전트 소스 및 설정이 GitHub에 백업되었습니다.")
-        else:
-            print("ℹ️ 변경된 파일이 없어 Git 동기화를 건너뜁니다.")
+        # 브랜치명 동적 감지
+        branch_result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=git_root, capture_output=True, text=True)
+        current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "master"
+        # remote에 먼저 커밋이 있을 경우 pull --rebase 후 push
+        subprocess.run(["git", "pull", "--rebase", "origin", current_branch], cwd=git_root, check=True)
+        subprocess.run(["git", "push", "origin", current_branch], cwd=git_root, check=True)
+        print("✅ Git 동기화 완료!")
+        send_telegram_message("💾 [Git 동기화 완료] 아린 에이전트 소스 및 설정이 GitHub에 백업되었습니다.")
     except Exception as e:
         print(f"❌ Git 동기화 실패: {e}")
         send_telegram_message(f"⚠️ [Git 동기화 실패] 오류 발생: {e}")
+
 
 # ── 중복 감지 — 가희 duplicate_guard 위임 ─────────────────────────────────────
 from _shared.duplicate_guard import (
