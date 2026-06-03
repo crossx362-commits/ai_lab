@@ -27,7 +27,7 @@ def text(
     task: str = "",
     lm_first: bool = True,  # 하위 호환성 유지 (무시됨)
 ) -> str | None:
-    """Ollama 텍스트 생성. Gemini 폴백 없음."""
+    """Ollama 텍스트 생성, 실패 시 Gemini API 폴백."""
     try:
         from _shared.ollama_client import chat as lm_chat, is_available as lm_available
         if lm_available():
@@ -40,6 +40,34 @@ def text(
                 return res.strip()
     except Exception:
         pass
+
+    # Gemini API 폴백
+    api_key = _api_key()
+    if not api_key:
+        return None
+    try:
+        parts = []
+        if system:
+            parts.append({"text": f"{system}\n\n{prompt}"})
+        else:
+            parts.append({"text": prompt})
+        payload = json.dumps({
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": temperature,
+                **({"responseMimeType": "application/json"} if json_mode else {}),
+            },
+        }).encode("utf-8")
+        url = f"{_BASE}/gemini-2.5-flash:generateContent?key={api_key}"
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            res = json.loads(r.read())
+        result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+        print(f"  [Gemini 폴백] 텍스트 생성 완료")
+        return result
+    except Exception as e:
+        print(f"  [Gemini 폴백] 실패: {e}")
     return None
 
 
