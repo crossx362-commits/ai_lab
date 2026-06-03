@@ -97,7 +97,7 @@ def _load_luna_knowledge() -> str:
     if os.path.exists(title_opt):
         import re as _re
         content = open(title_opt, encoding="utf-8").read()
-        for section_pat in [r"# 3\. 메타데이터 생성 규칙.*?(?=\n# |\Z)", r"# 4\. 반복 콘텐츠 방지 규칙.*?(?=\n# |\Z)"]:
+        for section_pat in [r"## 3\. 더보기란.*?(?=\n## |\n# |\Z)", r"## 6\. 반복 콘텐츠 방지.*?(?=\n## |\n# |\Z)"]:
             m = _re.search(section_pat, content, _re.DOTALL)
             if m:
                 for line in m.group().splitlines():

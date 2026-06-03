@@ -105,17 +105,15 @@ def _load_title_knowledge() -> str:
         return ""
     text = open(opt_path, encoding="utf-8").read()
     parts = []
-    # # 1. 제목 생성 규칙 섹션
-    m1 = re.search(r"# 1\. 제목 생성 규칙.*?(?=\n# )", text, re.DOTALL)
+    # ## 1. 제목 생성 규칙
+    m1 = re.search(r"## 1\. 제목 생성 규칙.*?(?=\n## |\n# |\Z)", text, re.DOTALL)
     if m1:
-        lines = [l.strip() for l in m1.group().splitlines() if l.strip()]
-        parts.extend(lines[:30])
-    # # 4. 반복 콘텐츠 방지 규칙 섹션
-    m4 = re.search(r"# 4\. 반복 콘텐츠 방지 규칙.*?(?=\n# |\Z)", text, re.DOTALL)
-    if m4:
-        lines = [l.strip() for l in m4.group().splitlines() if l.strip()]
-        parts.extend(lines[:15])
-    return "\n".join(parts)
+        parts.extend(l.strip() for l in m1.group().splitlines() if l.strip())
+    # ## 6. 반복 콘텐츠 방지
+    m6 = re.search(r"## 6\. 반복 콘텐츠 방지.*?(?=\n## |\n# |\Z)", text, re.DOTALL)
+    if m6:
+        parts.extend(l.strip() for l in m6.group().splitlines() if l.strip())
+    return "\n".join(parts[:35])
 
 
 def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
@@ -221,7 +219,7 @@ def generate_music_prompt_from_keyword(keyword: str) -> str:
         f"Medium-fast tempo 118 BPM energetic groove, "
         f"DX7 electric piano + punchy kick drum + slap bass + brass synth, "
         f"Powerful K-pop female vocals with city pop smoothness, "
-        f"{keyword} — neon city lights and midnight drive"
+        f"{keyword}"
     )
 
 
@@ -237,16 +235,17 @@ def generate_music_prompt_from_title(title: str, keyword: str) -> str:
         _sys.path.insert(0, _root)
         from _shared.ollama_client import chat as _lm
         prompt = (
-            f"유튜브 음악 영상 제목: '{title}'\n\n"
-            "위 제목의 분위기·키워드·감성을 분석해서 아래 5단 템플릿으로 "
-            "영어 음악 생성 프롬프트를 1개 작성해. 프롬프트 1줄만 출력.\n\n"
-            "템플릿: [장르/시대], [템포/무드], [특정악기], [보컬스타일], [가사/주제]\n\n"
+            f"확정된 유튜브 영상 제목: '{title}'\n\n"
+            "위 제목의 핵심 콘셉트와 무드를 프롬프트 첫머리에 연계하여, "
+            "아래 구조로 영어 음악 생성 프롬프트를 1개 작성해. 프롬프트 1줄만 출력.\n\n"
+            "구조: [제목 콘셉트 연계], [장르/시대], [템포/무드], [주요악기], [보컬스타일], [주제/가사]\n\n"
             "규칙:\n"
-            "- 선호 장르: 일본 시티팝×케이팝 퓨전, 감성 힙합·R&B·Pop\n"
-            "- 금지: lofi, lo-fi, study beats, chill beats\n"
-            "- BPM 110 이상, 신나고 에너제틱하게\n"
-            "- 제목의 분위기·감성을 가사/주제에 그대로 반영할 것\n"
-            "- **가사/주제(lyrics_theme)는 반드시 한국어로 작성** (예: '빛나는 서울의 밤', '설레는 도시 드라이브')"
+            "- 1순위 장르: Japanese City Pop × K-Pop Fusion\n"
+            "- 2순위 장르: Emotional Hip-Hop × R&B × Pop\n"
+            "- 금지: lofi, lo-fi, study beats, chill beats, sleep music\n"
+            "- 시티팝 110~150 BPM, K-Pop 댄스 120~170 BPM, R&B 90~140 BPM\n"
+            "- 에너제틱·자신감·몰입감 우선, 수면유도·공부용BGM 지양\n"
+            "- 가사/주제(lyrics_theme)는 반드시 한국어로 작성"
         )
         result = _lm(prompt, task='', max_tokens=200)
         if result and result.strip() and len(result.strip()) > 30:
