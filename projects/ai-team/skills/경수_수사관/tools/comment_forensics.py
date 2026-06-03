@@ -9,11 +9,13 @@ import requests
 _here = os.path.dirname(os.path.abspath(__file__))
 _root = _here
 for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
+    if os.path.isdir(os.path.join(_root, "reports")):
         break
     _root = os.path.dirname(_root)
+_ai_team_root = os.path.join(_root, "projects", "ai-team")
 
 sys.path.insert(0, _root)
+sys.path.insert(0, _ai_team_root)
 from _shared.telegram_notifier import send_telegram_message
 from _shared.env_loader import load_env as _load_env
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available

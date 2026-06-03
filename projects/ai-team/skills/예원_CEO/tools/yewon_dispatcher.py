@@ -46,6 +46,27 @@ def dispatch_and_execute(ceo_message: str) -> str:
         
         decision = json.loads(raw)
         agent = decision.get("agent", "").lower()
+
+        # ── Ollama 오분류 보정: 메시지에 에이전트명이 명시된 경우 강제 재매핑 ──
+        _agent_keywords = {
+            "로율": ["로율", "법률 검토", "월간 감사", "월간 심층 감사", "주간 법률", "lolaw"],
+            "경수": ["경수", "악플 체크", "악플 모니터", "comment_forensics"],
+            "현빈": ["현빈", "시장 분석", "딥서치"],
+            "아린": ["아린", "인스타그램 포스팅", "petnna_social_upload"],
+            "루나": ["루나", "뮤직비디오", "음악 영상"],
+            "티모": ["티모", "디자인 검토", "UI", "UX"],
+            "케빈": ["케빈", "인프라", "모니터링", "vercel"],
+            "코다리": ["코다리", "헬스체크", "개발"],
+            "가희": ["가희", "콘텐츠 검수"],
+            "영숙": ["영숙", "노션 보고", "업로드 현황", "리포트 정리"],
+        }
+        for true_agent, keywords in _agent_keywords.items():
+            if any(k in ceo_message for k in keywords):
+                if agent != true_agent:
+                    print(f"  [예원 보정] Ollama '{agent}' → '{true_agent}' (메시지 키워드 매칭)")
+                    agent = true_agent
+                break
+
         print(f"  [예원 CEO] 분배 결정: {agent}")
 
         def _match(agent: str, names: list, msg_keywords: list = None) -> bool:
@@ -63,6 +84,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
             return False
 
         # Execute based on agent (agent 필드 최우선, 키워드는 agent 미매핑시만 폴백)
+
         # ─ 로율 최우선 체크 (secretary 오라우팅 방지) ─
         if _match(agent, ["로율", "lolaw", "legal", "lawyer"], ["세무 시뮬레이션", "법률 자문", "로율", "법률 검토", "월간 감사", "월간 심층 감사", "주간 법률 검토"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "로율_변호사", "tools"))
