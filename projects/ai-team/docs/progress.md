@@ -12,3 +12,8 @@
 
 ### ⏳ 백그라운드 진행 상황 (코다리 개발자 작성 대기)
 *(여기에 코다리가 백그라운드 작업 수행 내역을 작성합니다.)*
+
+
+## 2026-06-03 18:16 — 코다리(Ollama/gemma3:12b)
+- TASK | js/share-card.js | `generateShareCard()` 함수에 saju 결과 템플릿 추가하여 인스타그램 공유 카드 생성
+- TASK | social.js | `insertHashtags()` 함수에 챌린지 해시태그 자동 삽입 기능 구현
