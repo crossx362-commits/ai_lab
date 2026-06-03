@@ -16,7 +16,7 @@ from datetime import datetime
 SCRIPT_DIR = Path(__file__).parent
 SUPABASE_DIR = SCRIPT_DIR / "supabase"
 TEMP_DIR = SUPABASE_DIR / ".temp"
-ROOT_DIR = Path(__file__).parent.parent.parent.parent.parent
+ROOT_DIR = Path(__file__).parent.parent.parent.parent.parent.parent  # tools→케빈→skills→ai-team→projects→ai_lab
 ENV_PATH = ROOT_DIR / ".env"
 
 
@@ -79,31 +79,18 @@ def check_supabase_connection():
         }
 
     try:
-        # REST API 헬스체크
-        health_url = f"{supabase_url}/rest/v1/"
-        req = urllib.request.Request(
-            health_url,
-            headers={
-                'apikey': supabase_key,
-                'Authorization': f'Bearer {supabase_key}'
-            }
-        )
+        # Storage 상태 엔드포인트 — anon 키 없이 접근 가능, 프로젝트 활성 여부 확인
+        health_url = f"{supabase_url}/storage/v1/status"
+        req = urllib.request.Request(health_url)
 
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=8) as response:
             if response.status == 200:
                 return {
                     'status': 'ok',
-                    'message': 'Supabase 연결 정상',
+                    'message': 'Supabase 연결 정상 (storage 200)',
                     'url': supabase_url
                 }
     except urllib.error.HTTPError as e:
-        if e.code == 404:
-            # 404는 정상 (루트 경로에 아무것도 없음)
-            return {
-                'status': 'ok',
-                'message': 'Supabase 연결 정상',
-                'url': supabase_url
-            }
         return {
             'status': 'error',
             'message': f'HTTP Error {e.code}: {e.reason}'
