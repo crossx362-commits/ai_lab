@@ -360,49 +360,66 @@ def _clean_vision_caption(text: str) -> str | None:
     return text
 
 
-def generate_caption_from_image(img_bytes: bytes) -> str:
-    """이미지 분석 → 감성 인스타 캡션 생성. Ollama 우선, 실패 시 Gemini Vision 폴백."""
-    prompt = (
-        "아래 사진을 보고 인스타그램 캡션을 작성해줘.\n\n"
-        "규칙:\n"
-        "- 진짜 사람이 폰으로 찍어서 올린 것처럼 자연스럽고 짧게\n"
-        "- 1~2문장 + 이모지 1개\n"
-        "- 마지막 줄에 해시태그 6~8개\n"
-        "- 번호, 제목, 설명 레이블(예: '1. 사진 느낌:') 절대 쓰지 말 것\n"
-        "- 캡션 텍스트만 출력, 다른 말 일절 없이\n\n"
-        "출력 예시:\n"
-        "오늘 이 순간 너무 좋았다 🌊\n"
-        "#바다 #여름 #힐링 #감성 #일상 #파도 #여행"
+def generate_caption_from_image(img_bytes: bytes) -> tuple[str | None, str | None]:
+    """이미지 분석 → (캡션, alt_text) 동시 반환. Ollama 우선, 실패 시 Gemini Vision 폴백.
+    alt_text: 인스타 Explore 탭 검색 인덱싱용 150자 이내 이미지 묘사 (영어).
+    """
+    caption_prompt = (
+        "아래 사진을 보고 인스타그램용 두 가지를 JSON으로만 반환해줘.\n\n"
+        "1. caption: 진짜 사람이 폰으로 찍어 올린 것처럼 자연스러운 한국어 캡션.\n"
+        "   - 1~2문장 + 이모지 1개 + 마지막 줄 해시태그 6~8개\n"
+        "   - 번호/레이블/설명 형식 절대 금지\n"
+        "2. alt_text: 인스타그램 검색 인덱싱용 영어 이미지 묘사. 150자 이내, 시각적 요소 중심.\n\n"
+        '{"caption": "...", "alt_text": "..."}'
+    )
+    plain_prompt = (
+        "아래 사진을 보고 인스타그램 캡션을 작성해줘.\n"
+        "- 진짜 사람이 폰으로 찍어 올린 것처럼 자연스럽고 짧게\n"
+        "- 1~2문장 + 이모지 1개 + 마지막 줄 해시태그 6~8개\n"
+        "- 번호/레이블 절대 금지. 캡션 텍스트만 출력."
     )
 
-    # 1순위: Ollama Vision
+    def _parse_result(raw: str) -> tuple[str | None, str | None]:
+        """JSON 또는 plain text 응답에서 caption, alt_text 추출."""
+        raw = raw.strip()
+        try:
+            import json as _json
+            data = _json.loads(raw)
+            cap = _clean_vision_caption(data.get("caption", ""))
+            alt = (data.get("alt_text") or "")[:150] or None
+            return cap, alt
+        except Exception:
+            cleaned = _clean_vision_caption(raw)
+            return cleaned, None
+
+    # 1순위: Gemini Vision (JSON 응답 안정적)
+    try:
+        from _shared.gemini_client import vision as gemini_vision
+        print("👁️ Gemini Vision으로 이미지 분석 중...")
+        result = gemini_vision(img_bytes, caption_prompt, max_tokens=400)
+        if result:
+            cap, alt = _parse_result(result)
+            if cap:
+                print(f"✅ Gemini Vision 완료! alt_text: {'있음' if alt else '없음'}")
+                return cap, alt
+    except Exception as e:
+        print(f"  [Gemini Vision] 실패: {e}")
+
+    # 2순위: Ollama Vision 폴백
     try:
         from _shared.ollama_client import chat_vision, is_available
         if is_available():
             print("👁️ Ollama Vision으로 이미지 분석 중...")
-            result = chat_vision(prompt, img_bytes, max_tokens=300)
+            result = chat_vision(plain_prompt, img_bytes, max_tokens=300)
             if result:
                 cleaned = _clean_vision_caption(result.strip())
                 if cleaned:
                     print("✅ Ollama Vision 캡션 생성 완료!")
-                    return cleaned
+                    return cleaned, None
     except Exception as e:
         print(f"  [Ollama Vision] 실패: {e}")
 
-    # 2순위: Gemini Vision 폴백
-    try:
-        from _shared.gemini_client import vision as gemini_vision
-        print("👁️ Gemini Vision으로 이미지 분석 중...")
-        result = gemini_vision(img_bytes, prompt, max_tokens=300)
-        if result:
-            cleaned = _clean_vision_caption(result.strip())
-            if cleaned:
-                print("✅ Gemini Vision 캡션 생성 완료!")
-                return cleaned
-    except Exception as e:
-        print(f"  [Gemini Vision] 실패: {e}")
-
-    return None
+    return None, None
 
 
 def git_sync():
@@ -576,13 +593,13 @@ def main(dry_run=False):
         send_telegram_message(f"❌ 아린 인스타: 이미지 실패 - {e}")
         sys.exit(1)
 
-    # 5. Gemini Vision으로 이미지 보고 캡션 작성
-    vision_caption = generate_caption_from_image(img_bytes) if img_bytes else None
-    # 금지 문구 포함 시 템플릿 캡션으로 대체
+    # 5. Gemini Vision으로 이미지 보고 캡션 + alt_text 작성
+    vision_caption, vision_alt_text = generate_caption_from_image(img_bytes) if img_bytes else (None, None)
     if vision_caption and _has_banned_content(vision_caption):
         print("⚠️ Vision 캡션에 금지 문구 감지 — 템플릿 캡션으로 대체합니다.")
         vision_caption = None
     final_caption = vision_caption if vision_caption else post_data["caption"]
+    final_alt_text = vision_alt_text or ""
 
     # ── 캡션 중복 체크 ──────────────────────────────────────────────────────
     cap_dup, cap_ratio = _is_caption_duplicate(final_caption)
@@ -660,7 +677,7 @@ def main(dry_run=False):
 
         # 업로드
         print(f"  📤 업로드 중 (시도 {attempt})...")
-        post_id = uploader.upload_image(image_url, final_caption)
+        post_id = uploader.upload_image(image_url, final_caption, alt_text=final_alt_text)
         if not post_id:
             print(f"  ❌ 업로드 실패")
             send_telegram_message(f"🚨 [아린] 인스타그램 이미지 발행 실패 (시도 {attempt}/{MAX_RETRIES})")

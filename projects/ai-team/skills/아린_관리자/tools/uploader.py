@@ -129,13 +129,16 @@ class InstaUploader:
         self.version = "v23.0"
         self.base_url = f"https://graph.instagram.com/{self.version}/{self.acc_id}"
 
-    def upload_image(self, image_url, caption=""):
+    def upload_image(self, image_url, caption="", alt_text=""):
         print(f"📸 1단계: 미디어 컨테이너 생성 요청 중... (버전: {self.version})")
-        res = requests.post(f"{self.base_url}/media", data={
+        payload = {
             "image_url": image_url,
             "caption": caption,
-            "access_token": self.token
-        }).json()
+            "access_token": self.token,
+        }
+        if alt_text:
+            payload["alt_text"] = alt_text[:150]
+        res = requests.post(f"{self.base_url}/media", data=payload).json()
 
         if "error" in res:
             print("❌ 오류 발생:")
