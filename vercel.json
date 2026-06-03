@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd projects/petnna && npm run build || true",
+  "outputDirectory": "projects/petnna",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- projects/petnna ':!*.md' ':!docs/'",
+  "crons": [
+    {
+      "path": "/api/cleanup-projects",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
