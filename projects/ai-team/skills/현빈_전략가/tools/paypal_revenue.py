@@ -21,8 +21,15 @@ config (paypal_revenue.json):
 import os, sys, json, base64, urllib.request, urllib.parse, urllib.error
 from datetime import datetime, timedelta, timezone
 
-
 HERE = os.path.dirname(os.path.abspath(__file__))
+_ai_team_root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+try:
+    from _shared.env_loader import load_env
+    load_env()
+except Exception:
+    pass
 CONFIG = os.path.join(HERE, "paypal_revenue.json")
 
 

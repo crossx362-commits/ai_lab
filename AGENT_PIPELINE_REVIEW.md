@@ -77,9 +77,9 @@ YouTube 업로드는 OAuth 2.0 pickle 파일 사용.
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` | 케빈, petnna |
 
 ### `load_env()` 미적용 파일
-- `_shared/telegram_notifier.py` — `SUPPRESS_TELEGRAM`
-- `코다리_개발자/tools/pack_apply.py` — `BRAIN_ROOT`
-- `현빈_전략가/tools/paypal_revenue.py` — `OUTPUT`
+- ✅ `_shared/telegram_notifier.py` — 이미 적용됨 (`_load_env` 내부 호출)
+- ✅ `코다리_개발자/tools/pack_apply.py` — 적용 완료
+- ✅ `현빈_전략가/tools/paypal_revenue.py` — 적용 완료
 
 ---
 
