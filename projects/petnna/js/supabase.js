@@ -127,6 +127,7 @@ const SupabaseService = {
                 const email = user.email;
 
                 // 상태 저장 (계정 분리 대응)
+                localStorage.setItem('petna_is_logged_in', 'true');
                 localStorage.setItem('petna_user_email', email);
                 if (typeof settings_email !== 'undefined') settings_email = email;
 
