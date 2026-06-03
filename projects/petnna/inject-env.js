@@ -43,8 +43,8 @@ const envScript = `
         window._env_ = ${JSON.stringify(env, null, 8)};
     </script>`;
 
-// Replace the placeholder - 더 유연한 정규식 (주석 있거나 없어도 매치)
-const regex = /<script>[\s\S]*?window\._env_\s*=\s*\{[\s\S]*?\};?[\s\S]*?<\/script>/;
+// window._env_ 블록만 정확히 매치 (다른 <script> 블록 삼키지 않도록)
+const regex = /<script>\s*window\._env_\s*=\s*\{[\s\S]*?\};\s*<\/script>/;
 
 if (regex.test(html)) {
   html = html.replace(regex, envScript.trim());

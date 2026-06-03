@@ -241,5 +241,19 @@
             "trend_topic": "전인지",
             "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Active outdoor lifestyle photo, adventure energy, bright vivid natural colors, A joyful photorealistic DSLR photo, 사진 스타일, 공간/장면에 대한 묘사, 빨강, 파랑 tone lifestyle moment, genuine unposed smile, vibrant sun-drenched setting, visually striking, dynamic range, lush colors, precise detail, deeply immersive scene"
         }
+    },
+    {
+        "agent": "루나",
+        "status": "published",
+        "uploaded_at": "2026-06-03T06:27:08.005789+09:00",
+        "metadata": {
+            "platform": "youtube",
+            "video_id": "ZUm1RGffGvg",
+            "youtube_title": "Neon Bloom",
+            "music_prompt": "Japanese City Pop x K-Pop fusion, 120 BPM energetic & vibrant, shimmering synths & driving bassline, ethereal vocals with subtle autotune, 가사/주제(lyrics_theme): '새하얀 미래 도시의 젊음, 꿈을 향해 질주하는 순간들'",
+            "video_file": "final_video.mp4",
+            "audio_file": "bgm_merged_20260603_062204.mp3",
+            "publish_at": "2026-06-03T10:00:00Z"
+        }
     }
 ]
