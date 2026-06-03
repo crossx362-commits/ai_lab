@@ -79,42 +79,101 @@ def _save_title_pattern_knowledge(patterns: dict):
         print(f"[Warning] 제목 패턴 지식화 저장 실패: {e}")
 
 
-def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
-    """어제 미국 유튜브 상위 100개 제목 패턴을 Ollama가 분석 후 LUNA 제목 생성.
-    분석 결과는 knowledge/title_patterns.json에 누적 지식화.
-    """
-    if yt_titles:
-        try:
-            import sys
-            sys.path.insert(0, _root)
-            from _shared.ollama_client import chat as _lm_chat
-            sample = "\n".join(f"- {t}" for t in yt_titles[:50])
-            prompt = (
-                f"아래는 미국 유튜브에서 조회수가 가장 높은 음악 영상 제목들이야:\n\n"
-                f"{sample}\n\n"
-                f"이 제목들의 패턴(구조, 길이, 키워드 배치, 특수문자 사용 등)을 분석해서 "
-                f"'{keyword}' 테마의 시티팝/K-POP 뮤직비디오 제목을 1개 만들어줘.\n\n"
-                "조건:\n"
-                "- 수집된 제목 패턴을 그대로 반영해서 자연스럽게 생성\n"
-                "- 고정 공식 없음\n"
-                "- lofi/lo-fi 금지\n"
-                "- 제목 1줄만 출력"
-            )
-            result = _lm_chat(prompt, task="", max_tokens=120)
-            if result and result.strip():
-                title = result.strip().split("\n")[0].strip()
-                _save_title_pattern_knowledge({
-                    "keyword": keyword,
-                    "generated_title": title,
-                    "sample_count": len(yt_titles),
-                    "top_5_samples": yt_titles[:5],
-                })
-                return title
-        except Exception as e:
-            print(f"[Warning] 제목 생성 실패: {e}")
+def _load_used_title_words(n: int = 30) -> list[str]:
+    """최근 n일 생성된 제목에서 반복 단어 추출."""
+    if not os.path.exists(_TITLE_KNOWLEDGE_FILE):
+        return []
+    try:
+        with open(_TITLE_KNOWLEDGE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        recent = sorted(data.keys())[-n:]
+        titles = [data[k].get("generated_title", "") for k in recent if data[k].get("generated_title")]
+        words = []
+        for t in titles:
+            words += re.findall(r"[A-Za-z가-힣]{2,}", t)
+        from collections import Counter
+        counts = Counter(w.lower() for w in words)
+        return [w for w, c in counts.items() if c >= 2]
+    except Exception:
+        return []
 
-    # 폴백: 키워드 그대로 반환
-    return keyword
+
+def _load_title_knowledge() -> str:
+    """youtube_title_optimization.md에서 제목 생성 규칙 + 반복 금지 표현 추출."""
+    opt_path = os.path.join(os.path.dirname(_TITLE_KNOWLEDGE_FILE), "youtube_title_optimization.md")
+    if not os.path.exists(opt_path):
+        return ""
+    text = open(opt_path, encoding="utf-8").read()
+    parts = []
+    # # 1. 제목 생성 규칙 섹션
+    m1 = re.search(r"# 1\. 제목 생성 규칙.*?(?=\n# )", text, re.DOTALL)
+    if m1:
+        lines = [l.strip() for l in m1.group().splitlines() if l.strip()]
+        parts.extend(lines[:30])
+    # # 4. 반복 콘텐츠 방지 규칙 섹션
+    m4 = re.search(r"# 4\. 반복 콘텐츠 방지 규칙.*?(?=\n# |\Z)", text, re.DOTALL)
+    if m4:
+        lines = [l.strip() for l in m4.group().splitlines() if l.strip()]
+        parts.extend(lines[:15])
+    return "\n".join(parts)
+
+
+def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
+    """Ollama로 LUNA 뮤직비디오 제목 생성.
+    - yt_titles 있으면 패턴 참고, 없으면 knowledge 기반으로만 생성
+    - title_patterns.json 반복 단어 자동 금지
+    - 결과는 지식 파일에 누적 저장
+    """
+    try:
+        import sys
+        sys.path.insert(0, _root)
+        from _shared.ollama_client import chat as _lm_chat, is_available as _lm_available
+        if not _lm_available():
+            return keyword
+
+        overused = _load_used_title_words()
+        avoid_clause = (
+            f"- 아래 단어들은 최근 제목에서 반복 사용됐으므로 반드시 제외: {', '.join(overused)}\n"
+            if overused else ""
+        )
+        knowledge = _load_title_knowledge()
+        knowledge_block = f"\n[제목 최적화 지식 — 반드시 준수]\n{knowledge}\n" if knowledge else ""
+
+        if yt_titles:
+            sample = "\n".join(f"- {t}" for t in yt_titles[:50])
+            context = (
+                f"아래는 미국 유튜브 상위 음악 영상 제목들이야:\n{sample}\n\n"
+                f"이 제목들의 패턴(구조·길이·특수문자 사용)을 참고해서 "
+            )
+        else:
+            context = "유튜브 트렌드 제목 참고 없이 창의적으로 "
+
+        prompt = (
+            f"{context}'{keyword}' 테마의 시티팝/K-POP 뮤직비디오 제목을 1개 만들어줘.\n"
+            f"{knowledge_block}\n"
+            "조건:\n"
+            "- 고정 공식 없음. 매번 다른 구조 사용\n"
+            "- LUNA 또는 아티스트명 포함 가능\n"
+            "- lofi/lo-fi 금지\n"
+            f"{avoid_clause}"
+            "- 제목 1줄만 출력"
+        )
+        result = _lm_chat(prompt, task="", max_tokens=120)
+        if result and result.strip():
+            title = result.strip().split("\n")[0].strip()
+            _save_title_pattern_knowledge({
+                "keyword": keyword,
+                "generated_title": title,
+                "sample_count": len(yt_titles),
+                "top_5_samples": yt_titles[:5],
+            })
+            return title
+    except Exception as e:
+        print(f"[Warning] 제목 생성 실패: {e}")
+
+    # 폴백: 스킬 규칙 기반 조합
+    kw_upper = keyword.upper()[:30]
+    return f"{kw_upper} [Official Music Video]"
 
 
 def _build_music_prompt(genre_era: str, mood: str, instruments: str,

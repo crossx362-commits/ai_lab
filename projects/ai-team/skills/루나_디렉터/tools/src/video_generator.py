@@ -2,21 +2,19 @@ import os
 import subprocess
 import sys
 
+_here_vg = os.path.dirname(os.path.abspath(__file__))
+_ai_team_vg = os.path.abspath(os.path.join(_here_vg, "..", "..", "..", ".."))
+if _ai_team_vg not in sys.path:
+    sys.path.insert(0, _ai_team_vg)
+from _shared.ffmpeg_utils import get_ffmpeg_path
+
 class VideoGenerator:
     """
     ffmpeg을 사용하여 이미지와 WAV 오디오를 결합하여 고품질 MP4 동영상을 생성합니다.
     """
     def __init__(self, ffmpeg_path: str = "ffmpeg"):
-        # Gyan.FFmpeg winget default installation path fallback detection
-        winget_ffmpeg = r"C:\Users\cross\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.1-full_build\bin\ffmpeg.exe"
-        if ffmpeg_path == "ffmpeg" and not self._is_command_available("ffmpeg") and os.path.exists(winget_ffmpeg):
-            self.ffmpeg_path = winget_ffmpeg
-        else:
-            self.ffmpeg_path = ffmpeg_path
+        self.ffmpeg_path = get_ffmpeg_path() if ffmpeg_path == "ffmpeg" else ffmpeg_path
 
-    def _is_command_available(self, cmd: str) -> bool:
-        import shutil
-        return shutil.which(cmd) is not None
 
     def generate_video(self, image_path: str, audio_path: str, output_path: str, duration: int = None) -> bool:
         """

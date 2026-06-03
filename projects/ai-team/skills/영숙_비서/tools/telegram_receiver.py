@@ -138,19 +138,19 @@ def _handle_status_query(agent: str):
         except Exception:
             return []
 
-    def _read_log_tail(log_path: str, n: int = 5) -> list:
-        candidates = [
-            log_path,
-            log_path.replace("reports/uploads", "/tmp").replace("/pipeline.log", "_out.log"),
-        ]
-        for p in candidates:
-            if os.path.exists(p):
-                try:
-                    rows = open(p, encoding="utf-8", errors="ignore").readlines()
-                    return [r.strip() for r in rows[-n:] if r.strip()]
-                except Exception:
-                    pass
-        return []
+    # 노이즈 줄 필터 — Ollama 내부 로그, 빈 줄 제거
+    _NOISE = ("[로컬 AI", "[Ollama]", "자동 감지:", "reconfigure", "[AI →")
+
+    def _read_log_meaningful(log_path: str, n: int = 8) -> list:
+        """pipeline.log에서 노이즈 제외 후 의미있는 마지막 n줄 반환."""
+        if not os.path.exists(log_path):
+            return []
+        try:
+            rows = open(log_path, encoding="utf-8", errors="ignore").readlines()
+            clean = [r.strip() for r in rows if r.strip() and not any(r.strip().startswith(x) for x in _NOISE)]
+            return clean[-n:]
+        except Exception:
+            return []
 
     # 루나 현황
     if "루나" in agent or "전체" in agent:
@@ -161,17 +161,21 @@ def _handle_status_query(agent: str):
             title = meta.get("youtube_title") or meta.get("title", "?")
             vid = meta.get("video_id", "")
             url = f"https://youtu.be/{vid}" if vid else "없음"
-            date = last.get("uploaded_at", "")[:10]
-            lines.append(f"🎬 루나 최근 업로드")
-            lines.append(f"  [{date}] {title[:50]}")
+            date = last.get("uploaded_at", "")[:16].replace("T", " ")
+            status = last.get("status", "?")
+            lines.append(f"🎬 <b>루나</b> 최근 업로드 ({status})")
+            lines.append(f"  {date}")
+            lines.append(f"  {title[:50]}")
             lines.append(f"  {url}")
-            lines.append(f"  누적 {len(luna_hist)}개 업로드")
+            lines.append(f"  누적 {len(luna_hist)}개")
         else:
             lines.append("🎬 루나: 업로드 기록 없음")
 
-        log_rows = _read_log_tail(os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "pipeline.log"))
+        log_rows = _read_log_meaningful(os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "pipeline.log"))
         if log_rows:
-            lines.append(f"  📋 최근 로그: {log_rows[-1][:80]}")
+            lines.append("  📋 최근 로그:")
+            for row in log_rows[-4:]:
+                lines.append(f"    {row[:90]}")
 
     # 아린 현황
     if "아린" in agent or "전체" in agent:
@@ -179,22 +183,29 @@ def _handle_status_query(agent: str):
         if arin_hist:
             last = arin_hist[-1]
             meta = last.get("metadata", {})
-            caption = meta.get("caption", "?")[:40]
-            date = last.get("uploaded_at", "")[:10]
-            lines.append(f"📸 아린 최근 포스팅")
-            lines.append(f"  [{date}] {caption}")
-            lines.append(f"  누적 {len(arin_hist)}개 포스팅")
+            caption = meta.get("caption", "?")[:50].replace("\n", " ")
+            date = last.get("uploaded_at", "")[:16].replace("T", " ")
+            status = last.get("status", "?")
+            post_id = meta.get("post_id", "")
+            lines.append(f"📸 <b>아린</b> 최근 포스팅 ({status})")
+            lines.append(f"  {date}")
+            lines.append(f"  {caption}")
+            if post_id:
+                lines.append(f"  ID: {post_id}")
+            lines.append(f"  누적 {len(arin_hist)}개")
         else:
             lines.append("📸 아린: 포스팅 기록 없음")
 
-        log_rows = _read_log_tail(os.path.join(PROJECT_ROOT, "reports", "uploads", "arin", "pipeline.log"))
+        log_rows = _read_log_meaningful(os.path.join(PROJECT_ROOT, "reports", "uploads", "arin", "pipeline.log"))
         if log_rows:
-            lines.append(f"  📋 최근 로그: {log_rows[-1][:80]}")
+            lines.append("  📋 최근 로그:")
+            for row in log_rows[-4:]:
+                lines.append(f"    {row[:90]}")
 
     if not lines:
         lines.append("⚠️ 조회할 에이전트를 특정해주세요 (루나 / 아린 / 전체)")
 
-    send_message("📊 <b>[영숙이의 현황 보고]</b>\n\n" + "\n".join(lines))
+    send_message("📊 <b>[현황 보고]</b>\n\n" + "\n".join(lines))
 
 
 def process_message(text: str):

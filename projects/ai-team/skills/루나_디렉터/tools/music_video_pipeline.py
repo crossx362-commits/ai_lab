@@ -38,13 +38,14 @@ from src.video_generator import VideoGenerator
 from src.lyria_music_generator import LyriaMusicGenerator
 from src.fallback_generators import (
     generate_music_pollinations,
-    generate_video_veo,
     generate_video_ken_burns,
     generate_simple_slideshow,
 )
 from _shared.telegram_notifier import send_telegram_message
 from _shared.resource_utils import wait_for_resources
 from _shared.ollama_client import chat as _lm_chat
+from _shared.ffmpeg_utils import get_ffmpeg_path, get_ffprobe_path, enhance_thumbnail
+from _shared.history_recorder import record_to_history as _record_to_history_shared
 from src.youtube_uploader import YouTubeUploader
 from src.optimal_time_analyzer import get_optimal_time_smart
 
@@ -62,16 +63,8 @@ _OUT_DIR                 = os.path.join(_root, "reports", "uploads", "luna")
 CHECKPOINT_FILE          = os.path.join(_OUT_DIR, "music_video_checkpoint.json")
 CHECKPOINT_MAX_AGE_HOURS = 36
 
-# ffmpeg — macOS/Linux: "ffmpeg" / Windows Winget 자동 감지
-FFMPEG = next(
-    (p for p in [
-        r"C:\Users\cross\AppData\Local\Microsoft\WinGet\Packages"
-        r"\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
-        r"\ffmpeg-8.1.1-full_build\bin\ffmpeg.exe"
-    ] if os.path.exists(p)),
-    "ffmpeg",
-)
-FFPROBE = FFMPEG.replace("ffmpeg.exe", "ffprobe.exe") if "ffmpeg.exe" in FFMPEG else "ffprobe"
+FFMPEG  = get_ffmpeg_path()
+FFPROBE = get_ffprobe_path()
 
 # 금지 장르
 _BANNED_GENRES = [
@@ -99,20 +92,19 @@ def _load_luna_knowledge() -> str:
             if any(k in line for k in ["금지", "필수", "최소", "이상", "이하", "절대", "반드시"]):
                 lines.append(line.strip())
 
-    # 2. youtube_title_optimization.md 핵심 섹션
+    # 2. youtube_title_optimization.md — 메타데이터·Description 규칙 섹션
     title_opt = os.path.join(_here, "knowledge", "youtube_title_optimization.md")
     if os.path.exists(title_opt):
+        import re as _re
         content = open(title_opt, encoding="utf-8").read()
-        capture = False
-        for line in content.splitlines():
-            if "전략" in line or "공식" in line or "패턴" in line or "권장" in line:
-                capture = True
-            if capture and line.strip():
-                lines.append(line.strip())
-            if capture and line.startswith("---"):
-                capture = False
-            if len(lines) > 30:
-                break
+        for section_pat in [r"# 3\. 메타데이터 생성 규칙.*?(?=\n# |\Z)", r"# 4\. 반복 콘텐츠 방지 규칙.*?(?=\n# |\Z)"]:
+            m = _re.search(section_pat, content, _re.DOTALL)
+            if m:
+                for line in m.group().splitlines():
+                    if line.strip():
+                        lines.append(line.strip())
+                    if len(lines) > 40:
+                        break
 
     # 3. title_patterns.json — 최근 학습된 실제 한국 인기 제목 패턴
     pat_path = os.path.join(_here, "knowledge", "title_patterns.json")
@@ -250,14 +242,7 @@ def _is_duplicate_on_channel(video_path: str, uploader) -> bool:
 
 
 def _record_to_history(record: dict):
-    mem_path = os.path.join(_root, "reports", "history", "upload_history.json")
-    try:
-        history = json.load(open(mem_path, encoding="utf-8")) if os.path.exists(mem_path) else []
-        history.append(record)
-        with open(mem_path, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"  [Warning] 히스토리 기록 실패: {e}")
+    _record_to_history_shared(record, caller_file=__file__)
 
 
 def _assert_not_banned(theme: dict):
@@ -268,7 +253,7 @@ def _assert_not_banned(theme: dict):
 
 
 def _auto_generate_metadata(music_prompt: str, yt_titles: list, draft_title: str = "") -> dict:
-    """제목 + 음악 프롬프트 기반으로 고유한 메타데이터 생성 (SKILL 지식 반영)."""
+    """음악 프롬프트 기반으로 description·tags 생성. 제목은 생성하지 않음 (①단계 제목 유지)."""
     try:
         yt_sample = "\n".join(f"- {t}" for t in yt_titles[:15]) if yt_titles else "(없음)"
         knowledge = _load_luna_knowledge()
@@ -278,21 +263,19 @@ def _auto_generate_metadata(music_prompt: str, yt_titles: list, draft_title: str
             f"[음악 프롬프트]\n{music_prompt[:300]}\n\n"
             f"[유튜브 인기 제목 참고]\n{yt_sample}\n"
             f"{knowledge_block}\n"
-            "위 음악 제목·프롬프트·스킬 지식을 전부 반영해 유튜브 메타데이터를 생성하라.\n\n"
+            "위 음악 제목·프롬프트·스킬 지식을 반영해 유튜브 description과 tags만 생성하라.\n\n"
             "규칙:\n"
-            "- title: 트렌드 기반 자연스러운 곡명. LUNA·Official·MV 등 고정 태그 일절 금지. 곡명만.\n"
             "- description: 이 곡만의 분위기·감성·스토리 2~3문장 + 📌 추천상황 1줄\n"
             "  + youtube.com/@류나-l7h + 해시태그 10개 이상\n"
             "  ⚠️ 다른 영상과 같은 문장 금지. 타임라인(00:00) 금지.\n"
             "- tags: 최소 20개, lofi/lo-fi 절대 금지, 시티팝/citypop/LUNA/루나/드라이브bgm 필수\n\n"
             "JSON만 반환:\n"
-            '{"title":"...","description":"...","tags":["..."]}'
+            '{"description":"...","tags":["..."]}'
         )
         raw = _lm_chat(prompt, task="", max_tokens=600, json_mode=True)
         if raw:
             data = json.loads(raw.strip())
-            if data.get("title") and data.get("description") and data.get("tags"):
-                print(f"  [Auto Meta] 제목: {data['title']}")
+            if data.get("description") and data.get("tags"):
                 return data
     except Exception as e:
         print(f"  [Auto Meta] 실패: {e}")
@@ -562,7 +545,6 @@ def run_pipeline(publish_hhmm: str = None):
     yt_titles = theme.get("_yt_top_titles", [])
     auto_meta = _auto_generate_metadata(full_music_prompt, yt_titles, draft_title=title)
     if auto_meta:
-        title       = auto_meta.get("title", title)
         description = auto_meta.get("description", description)
         tags        = auto_meta.get("tags", tags)
 
@@ -598,15 +580,8 @@ def run_pipeline(publish_hhmm: str = None):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
         )
         print(f"✅ 썸네일 추출 완료")
-        try:
-            from PIL import Image, ImageEnhance
-            img = Image.open(thumb_path)
-            img = ImageEnhance.Color(img).enhance(1.3)
-            img = ImageEnhance.Contrast(img).enhance(1.2)
-            img.save(thumb_path)
+        if enhance_thumbnail(thumb_path):
             print("✨ 썸네일 채도/대비 보정 완료")
-        except Exception as e:
-            print(f"⚠️ 썸네일 보정 실패: {e}")
         image_path = thumb_path
     except Exception as e:
         print(f"⚠️ 썸네일 추출 실패: {e}")
@@ -678,14 +653,14 @@ def run_pipeline(publish_hhmm: str = None):
                     fixed_meta = _auto_generate_metadata(
                         full_music_prompt, theme.get("_yt_top_titles", []) or [], draft_title=title
                     )
-                    fixed_title = fixed_meta.get("title", title)
-                    _ci._update_yt_metadata(uploader.youtube, video_id, fixed_title)
+                    fixed_desc = fixed_meta.get("description", description)
+                    _ci._update_yt_metadata(uploader.youtube, video_id, title, description=fixed_desc)
                     # 수정 후 재검수
                     re_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
                     re_status = re_check.get("status", "PASS")
                     if re_status == "PASS":
-                        send_telegram_message(f"✅ <b>[가희]</b> 루나 재검수 통과 — 제목 수정 완료\n새 제목: {fixed_title}")
-                        print(f"  [가희] 재검수 통과 ✅ — {fixed_title}")
+                        send_telegram_message(f"✅ <b>[가희]</b> 루나 재검수 통과 — description 수정 완료\n제목: {title}")
+                        print(f"  [가희] 재검수 통과 ✅ — {title}")
                     else:
                         send_telegram_message(f"🚨 <b>[가희]</b> 루나 재검수도 실패 — 수동 확인 필요\nhttps://youtu.be/{video_id}")
                 except Exception as fix_err:

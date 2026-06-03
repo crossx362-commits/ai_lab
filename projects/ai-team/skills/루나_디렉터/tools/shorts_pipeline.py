@@ -23,15 +23,12 @@ from src.youtube_uploader import YouTubeUploader
 from _shared.env_loader import load_env
 from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.ffmpeg_utils import get_ffmpeg_path, enhance_thumbnail
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
 OUTPUT_DIR    = os.path.join(_here, "output")
 RESEARCH_FILE = os.path.join(OUTPUT_DIR, "shorts_research.json")
-FFMPEG = next((p for p in [
-    r"C:\Users\cross\AppData\Local\Microsoft\WinGet\Packages"
-    r"\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
-    r"\ffmpeg-8.1.1-full_build\bin\ffmpeg.exe"
-] if os.path.exists(p)), "ffmpeg")
+FFMPEG = get_ffmpeg_path()
 
 BANNED = ["lofi", "lo-fi", "study beats", "chill beats", "sleep music", "white noise"]
 
@@ -317,15 +314,7 @@ def run_generation(research: dict) -> dict:
             [FFMPEG, "-y", "-ss", "5", "-i", video_path, "-vframes", "1", thumb_path],
             capture_output=True, check=True, timeout=30
         )
-        # PIL 보정
-        try:
-            from PIL import Image, ImageEnhance
-            img_obj = Image.open(thumb_path)
-            img_obj = ImageEnhance.Color(img_obj).enhance(1.4)
-            img_obj = ImageEnhance.Contrast(img_obj).enhance(1.15)
-            img_obj.save(thumb_path)
-        except Exception:
-            pass
+        enhance_thumbnail(thumb_path)
         print(f"  ✅ 썸네일 추출 완료")
     except Exception as e:
         print(f"  ⚠️ 썸네일 추출 실패: {e}")

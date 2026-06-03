@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import io
-import json
 import datetime
 
 try:
@@ -19,6 +18,7 @@ if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
 from _shared.env_loader import load_env, find_project_root
+from _shared.history_recorder import record_to_history as _record_to_history_shared
 _root = find_project_root(_here)
 load_env(start_path=_here)
 
@@ -37,25 +37,7 @@ VEO_MODEL_ID = "veo-3.1-generate-preview"
 
 
 def _record_to_history(record: dict):
-    """통합 에이전트 메모리(reports/history/upload_history.json)에 레코드 추가."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    root = here
-    for _ in range(6):
-        if os.path.isdir(os.path.join(root, "reports")):
-            break
-        root = os.path.dirname(root)
-    mem_path = os.path.join(root, "reports", "history", "upload_history.json")
-    try:
-        if os.path.exists(mem_path):
-            with open(mem_path, "r", encoding="utf-8") as _f:
-                history = json.load(_f)
-        else:
-            history = []
-        history.append(record)
-        with open(mem_path, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"  [Warning] 히스토리 기록 실패: {e}")
+    _record_to_history_shared(record, caller_file=__file__)
 
 
 def wait_for_active(vid_data):
