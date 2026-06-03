@@ -78,6 +78,55 @@ def _record_to_history(record: dict):
         print(f"  [Warning] 히스토리 기록 실패: {e}")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# Imagen 3.0 (나노바나나2) 최신 모델 - 실사풍 고퀄리티
+GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002"
+GEMINI_IMAGE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_IMAGE_MODEL}:predict?key={{key}}"
+
+def _generate_image_gemini(prompt) -> bytes | None:
+    """Calls Imagen 3.0 (나노바나나2) API - 실사풍 고퀄리티 이미지 생성."""
+    if not GEMINI_API_KEY:
+        print("  ⚠️ GEMINI_API_KEY 환경변수가 설정되지 않아 Gemini Imagen을 건너뜁니다.")
+        return None
+        
+    enhanced_prompt = (
+        f"{prompt}, "
+        "photorealistic, ultra high quality, professional photography, "
+        "DSLR camera, sharp focus, natural lighting, cinematic composition, "
+        "8K resolution, detailed textures, hyperrealistic, "
+        "award-winning photography style"
+    )
+
+    payload = {
+        "instances": [{"prompt": enhanced_prompt}],
+        "parameters": {
+            "sampleCount": 1,
+            "aspectRatio": "1:1",
+            "safetyFilterLevel": "block_some",
+            "personGeneration": "allow_adult"
+        }
+    }
+    
+    url = GEMINI_IMAGE_URL.format(key=GEMINI_API_KEY)
+    headers = {"Content-Type": "application/json"}
+    
+    try:
+        print(f"🍋 Gemini Imagen ({GEMINI_IMAGE_MODEL}) 호출 중...")
+        res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
+        if res.status_code == 200:
+            res_data = res.json()
+            predictions = res_data.get("predictions", [])
+            if predictions:
+                import base64
+                b64_data = predictions[0].get("bytesBase64Encoded", "")
+                if b64_data:
+                    return base64.b64decode(b64_data)
+            print(f"  ⚠️ Imagen 응답 데이터 형식이 올바르지 않습니다: {res.text[:100]}")
+        else:
+            print(f"  ⚠️ Imagen API 에러 (status={res.status_code}): {res.text[:150]}")
+    except Exception as e:
+        print(f"  ❌ Imagen API 호출 예외 발생: {e}")
+        
+    return None
 
 def get_trends():
     """KR·US·JP 구글 트렌드 + 카테고리 큐레이션으로 20개+ 후보 수집."""
@@ -564,8 +613,16 @@ def main(dry_run=False):
     img_bytes = None
     image_url = None
     try:
-        img_bytes = _generate_image_pollinations(crafted_prompt)
-        print(f"✅ Pollinations.ai 이미지 생성 완료! ({len(img_bytes):,} bytes)")
+        # 1순위: 나노바나나2 (Imagen 3.0) 생성 시도
+        img_bytes = _generate_image_gemini(crafted_prompt)
+        
+        # 2순위 폴백: Pollinations.ai
+        if not img_bytes:
+            print("  ⚠️ 나노바나나2 생성 실패로 Pollinations.ai 폴백을 진행합니다.")
+            img_bytes = _generate_image_pollinations(crafted_prompt)
+            print(f"✅ Pollinations.ai 이미지 생성 완료! ({len(img_bytes):,} bytes)")
+        else:
+            print(f"✅ 나노바나나2 (Imagen 3.0) 이미지 생성 완료! ({len(img_bytes):,} bytes)")
 
         with open(temp_filename, "wb") as f:
             f.write(img_bytes)
