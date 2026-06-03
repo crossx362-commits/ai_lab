@@ -161,18 +161,113 @@ function renderPetStageList() {
 
 let mypetWidgetInitialized = false;
 function initMypetWeatherWidget() {
+    async function fetchAndApplyWeather() {
+        let lat = 37.5665, lng = 126.9780; // 서울 기본값
+        try {
+            const pos = await new Promise((res, rej) =>
+                navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+        } catch (_) { /* 실패 시 서울 기본값 유지 */ }
+
+        try {
+            const [wxRes, aqRes] = await Promise.all([
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weathercode&timezone=Asia/Seoul`),
+                fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10&timezone=Asia/Seoul`)
+            ]);
+            const wx = await wxRes.json();
+            const aq = await aqRes.json();
+
+            const temp = Math.round(wx.current.temperature_2m);
+            const humidity = Math.round(wx.current.relative_humidity_2m);
+            const code = wx.current.weathercode;
+            const pm10 = aq.current.pm10;
+
+            const weatherTempEl = document.getElementById('mypet-weather-temp');
+            const weatherIconEl = document.getElementById('mypet-weather-icon');
+            const weatherDescEl = document.getElementById('mypet-weather-desc');
+            const humidityEl = document.getElementById('mypet-weather-humidity');
+            const dustEl = document.getElementById('mypet-weather-dust');
+            const uvEl = document.getElementById('mypet-weather-uv');
+
+            if (weatherTempEl) weatherTempEl.innerText = `${temp}°C`;
+            if (humidityEl) humidityEl.innerText = `습도 ${humidity}%`;
+
+            // weathercode → 아이콘/설명
+            let iconClass = 'fa-solid fa-sun text-amber-400 animate-pulse';
+            let descText = '맑음 ☀️';
+            if (code <= 2) {
+                iconClass = 'fa-solid fa-sun text-amber-400 animate-pulse';
+                descText = '맑음 ☀️';
+            } else if (code === 3) {
+                iconClass = 'fa-solid fa-cloud text-gray-400';
+                descText = '흐림 ☁️';
+            } else if (code >= 45 && code <= 67) {
+                iconClass = 'fa-solid fa-cloud-rain text-blue-400';
+                descText = '비 🌧️';
+            } else if (code >= 71 && code <= 77) {
+                iconClass = 'fa-solid fa-snowflake text-blue-200';
+                descText = '눈 ❄️';
+            } else {
+                iconClass = 'fa-solid fa-cloud-sun text-orange-300';
+                descText = '흐림';
+            }
+            if (weatherIconEl) weatherIconEl.className = `${iconClass} text-2xl`;
+            if (weatherDescEl) weatherDescEl.innerText = descText;
+
+            // pm10 → 미세먼지 등급
+            if (dustEl) {
+                let dustText, dustColorClass;
+                if (pm10 <= 30) {
+                    dustText = `좋음 (${Math.round(pm10)}㎍/㎥)`;
+                    dustColorClass = 'text-emerald-600 font-extrabold';
+                } else if (pm10 <= 80) {
+                    dustText = `보통 (${Math.round(pm10)}㎍/㎥)`;
+                    dustColorClass = 'text-amber-500 font-extrabold';
+                } else {
+                    dustText = `나쁨 (${Math.round(pm10)}㎍/㎥) ⚠️`;
+                    dustColorClass = 'text-rose-500 font-extrabold';
+                }
+                dustEl.innerText = `미세먼지 ${dustText}`;
+                dustEl.className = dustColorClass;
+            }
+
+            // UV는 시간 기반 유지
+            if (uvEl) {
+                const h = new Date().getHours();
+                let uvText = '낮음';
+                if (h >= 10 && h <= 15) uvText = '높음 ⚠️';
+                else if ((h >= 8 && h < 10) || (h > 15 && h <= 17)) uvText = '보통';
+                uvEl.innerText = `자외선 ${uvText}`;
+            }
+        } catch (err) {
+            console.warn('[PETNA] 날씨 API 오류, 폴백 표시', err);
+            // API 실패 시 기존 Math.sin 폴백
+            const now = new Date();
+            const hour = now.getHours();
+            const temp = Math.round(18 + 7 * Math.sin((hour - 8) / 24 * 2 * Math.PI));
+            const weatherTempEl = document.getElementById('mypet-weather-temp');
+            if (weatherTempEl) weatherTempEl.innerText = `${temp}°C`;
+            const humidityEl = document.getElementById('mypet-weather-humidity');
+            if (humidityEl) {
+                const humidity = Math.round(60 - 15 * Math.sin((hour - 8) / 24 * 2 * Math.PI));
+                humidityEl.innerText = `습도 ${humidity}%`;
+            }
+        }
+    }
+
     function updateClockAndWeather() {
         const timeEl = document.getElementById('mypet-time-display');
         const dateEl = document.getElementById('mypet-date-display');
-        
+
         const now = new Date();
-        
+
         if (timeEl && dateEl) {
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             timeEl.innerText = `${hours}:${minutes}:${seconds}`;
-            
+
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const date = String(now.getDate()).padStart(2, '0');
@@ -180,70 +275,8 @@ function initMypetWeatherWidget() {
             const day = days[now.getDay()];
             dateEl.innerText = `${year}. ${month}. ${date} (${day})`;
         }
-        
-        const weatherIconEl = document.getElementById('mypet-weather-icon');
-        const weatherTempEl = document.getElementById('mypet-weather-temp');
-        const weatherDescEl = document.getElementById('mypet-weather-desc');
-        
-        if (weatherIconEl && weatherTempEl && weatherDescEl) {
-            const hour = now.getHours();
-            // 시간대별 자연스러운 온도 변화 곡선 모사 (오후 2시 부근 최대, 새벽 4시 부근 최소)
-            const temp = Math.round(18 + 7 * Math.sin((hour - 8) / 24 * 2 * Math.PI));
-            weatherTempEl.innerText = `${temp}°C`;
-            
-            let iconClass = "fa-solid fa-sun text-amber-400 animate-pulse";
-            let descText = "맑음 (서울)";
-            
-            if (hour >= 20 || hour < 6) {
-                iconClass = "fa-solid fa-moon text-indigo-200 animate-pulse";
-                descText = "맑은 밤 (서울)";
-            } else if (hour >= 18 && hour < 20) {
-                iconClass = "fa-solid fa-cloud-sun text-orange-300";
-                descText = "노을빛 흐림 (서울)";
-            } else if (temp > 23) {
-                iconClass = "fa-solid fa-sun text-amber-400 animate-bounce";
-                descText = "화창함 (서울)";
-            } else {
-                iconClass = "fa-solid fa-cloud text-gray-300";
-                descText = "구름 조금 (서울)";
-            }
-            
-            weatherIconEl.className = `${iconClass} text-2xl`;
-            weatherDescEl.innerText = descText;
-        }
-
-        // 실시간 상세 기상 지표 업데이트
-        const humidityEl = document.getElementById('mypet-weather-humidity');
-        const uvEl = document.getElementById('mypet-weather-uv');
-        const dustEl = document.getElementById('mypet-weather-dust');
-        const hour = now.getHours();
-        
-        if (humidityEl) {
-            const humidity = Math.round(60 - 15 * Math.sin((hour - 8) / 24 * 2 * Math.PI));
-            humidityEl.innerText = `습도 ${humidity}%`;
-        }
-        if (uvEl) {
-            let uvText = "낮음";
-            if (hour >= 10 && hour <= 15) uvText = "높음 ⚠️";
-            else if ((hour >= 8 && hour < 10) || (hour > 15 && hour <= 17)) uvText = "보통";
-            uvEl.innerText = `자외선 ${uvText}`;
-        }
-        if (dustEl) {
-            const seed = now.getDate() + now.getMonth();
-            let dustText = "좋음 (15㎛/㎥)";
-            let dustColorClass = "text-emerald-600 font-extrabold";
-            if (seed % 3 === 0) {
-                dustText = "나쁨 (81㎛/㎥) ⚠️";
-                dustColorClass = "text-rose-500 font-extrabold";
-            } else if (seed % 3 === 1) {
-                dustText = "보통 (38㎛/㎥)";
-                dustColorClass = "text-amber-500 font-extrabold";
-            }
-            dustEl.innerText = `미세먼지 ${dustText}`;
-            dustEl.className = dustColorClass;
-        }
     }
-    
+
     function updateTodayFortune() {
         const today = new Date();
         const dateNum = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate();
@@ -290,6 +323,8 @@ function initMypetWeatherWidget() {
     if (mypetWidgetInitialized) return;
     mypetWidgetInitialized = true;
     setInterval(updateClockAndWeather, 1000);
+    fetchAndApplyWeather();
+    setInterval(fetchAndApplyWeather, 1800000); // 30분마다 날씨 갱신
 }
 
 function showWeeklyWeatherDetail(dayLabel, dateStr, weather) {

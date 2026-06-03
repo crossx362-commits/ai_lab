@@ -69,6 +69,8 @@ function startStripeCheckout() {
 
 // 결제 완료 후 URL 파라미터로 프리미엄 활성화
 function checkPremiumFromUrl() {
+    const isLocal = ['localhost', '127.0.0.1'].some(h => location.hostname.includes(h));
+    if (!isLocal) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('premium') === 'activated') {
         localStorage.setItem("petna_premium", "stripe_verified");

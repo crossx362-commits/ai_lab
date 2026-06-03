@@ -10,9 +10,9 @@ const INITIAL_POSTS = [
 ];
 
 const INITIAL_FRIENDS = [
-    { id: 501, nickname: "초코언니", petName: "초코", petBreed: "말티즈", petType: "dog", personality: "얌전하고 애교가 많음", avatar: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&q=80&w=150", status: "online", chemistry: 95, unread: 0 },
-    { id: 502, nickname: "샤미마미", petName: "나비", petBreed: "샴 고양이", petType: "cat", personality: "도도하고 도망치기 명수", avatar: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150", status: "online", chemistry: 84, unread: 0 },
-    { id: 503, nickname: "귀쫑긋집사", petName: "솜이", petBreed: "드워프 토끼", petType: "rabbit", personality: "겁이 많고 당근 러버", avatar: "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&q=80&w=150", status: "offline", chemistry: 72, unread: 0 }
+    { id: 501, nickname: "초코언니", petName: "초코", petBreed: "말티즈", petType: "dog", personality: "얌전하고 애교가 많음", avatar: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&q=80&w=150", status: "online", chemistry: 95, unread: 0, petBirthday: "2026-06-03" },
+    { id: 502, nickname: "샤미마미", petName: "나비", petBreed: "샴 고양이", petType: "cat", personality: "도도하고 도망치기 명수", avatar: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150", status: "online", chemistry: 84, unread: 0, petBirthday: "2025-11-20" },
+    { id: 503, nickname: "귀쫑긋집사", petName: "솜이", petBreed: "드워프 토끼", petType: "rabbit", personality: "겁이 많고 당근 러버", avatar: "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&q=80&w=150", status: "offline", chemistry: 72, unread: 0, petBirthday: "2025-03-15" }
 ];
 
 const INITIAL_CHATS = {

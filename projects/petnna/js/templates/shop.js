@@ -14,9 +14,10 @@ const SHOP_TEMPLATE = `
     </div>
 
     <!-- 힐링스페이스 연결 -->
-    <div class="bg-white rounded-3xl p-5 border border-emerald-100 shadow-sm">
+    <div class="bg-white rounded-3xl p-5 border-2 border-emerald-300 shadow-md">
         <h3 class="font-black text-gray-800 text-sm flex items-center gap-2 mb-3">
             <i class="fa-solid fa-spa text-emerald-500"></i> 힐링스페이스 연결 🌿
+            <span class="ml-auto inline-flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">🌟 지금 바로 이용 가능</span>
         </h3>
         <div class="space-y-2">
 

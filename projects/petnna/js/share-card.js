@@ -388,3 +388,67 @@ async function shareWelcomeCard(pet) {
         `🐾 ${petName}이(가) 펫과나 가족이 됐어요! #펫과나 #반려동물 #새가족`
     );
 }
+
+function generateCompatChallengeCard(pet, compatScore) {
+    const petName = pet?.name || '우리 펫';
+    const score = Math.round(compatScore) || 0;
+
+    const S = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = S; canvas.height = S;
+    const ctx = canvas.getContext('2d');
+
+    // 배경 그라데이션 — 보라-핑크
+    const grad = ctx.createLinearGradient(0, 0, S, S);
+    grad.addColorStop(0, '#f5f3ff');
+    grad.addColorStop(1, '#fce7f3');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, S, S);
+
+    // 헤더 배너
+    ctx.fillStyle = '#7c3aed';
+    ctx.beginPath();
+    ctx.roundRect(40, 40, S - 80, 150, 28);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 52px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('☯️ 조화도 챌린지', S / 2, 140);
+
+    // 큰 숫자 — 점수
+    ctx.fillStyle = '#6d28d9';
+    ctx.font = 'bold 280px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${score}%`, S / 2, 580);
+
+    // 서브 문구
+    ctx.fillStyle = '#4c1d95';
+    ctx.font = 'bold 54px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(`우리 ${petName}와 나는 조화도 ${score}%!`, S / 2, 680);
+
+    // 해시태그
+    ctx.fillStyle = '#7c3aed';
+    ctx.font = '40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText('당신의 펫과 조화도는? #펫과나 #조화도챌린지', S / 2, 760);
+
+    // 하단 브랜드
+    ctx.fillStyle = '#7c3aed';
+    ctx.beginPath();
+    ctx.roundRect(40, S - 140, S - 80, 100, 24);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText('Pet & Na — AI 반려동물 케어 올인원', S / 2, S - 75);
+
+    return canvas;
+}
+
+async function shareCompatChallenge(pet, compatScore) {
+    const canvas = generateCompatChallengeCard(pet, compatScore);
+    const petName = pet?.name || '우리 펫';
+    await _downloadOrShare(
+        canvas, 'petna-compat-challenge.png',
+        `${petName}와 나의 조화도 ${Math.round(compatScore)}%! ☯️`,
+        `☯️ 우리 ${petName}와 나는 조화도 ${Math.round(compatScore)}%! 당신의 펫과 조화도는? #펫과나 #조화도챌린지`
+    );
+}

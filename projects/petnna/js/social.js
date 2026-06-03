@@ -146,6 +146,23 @@ function renderFeed() {
 
     feedContainer.innerHTML = '';
 
+    // 오늘 생일인 친구 펫 확인
+    const _bToday = new Date();
+    const _bTodayMD = `${String(_bToday.getMonth()+1).padStart(2,'0')}-${String(_bToday.getDate()).padStart(2,'0')}`;
+    const birthdayFriends = friends.filter(f => f.petBirthday && f.petBirthday.slice(5) === _bTodayMD);
+    birthdayFriends.forEach(f => {
+        const bdCard = document.createElement('div');
+        bdCard.className = "bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-4 mb-3 flex items-center justify-between";
+        bdCard.innerHTML = `
+            <div>
+                <span class="text-sm font-black text-pink-700">🎂 ${escapeHtml(f.petName)}의 생일이에요!</span>
+                <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(f.nickname)}님의 반려동물 ${escapeHtml(f.petName)}의 생일입니다</p>
+            </div>
+            <button onclick="openWriteLetterModal && openWriteLetterModal()" class="bg-pink-500 text-white text-xs font-bold px-3 py-2 rounded-xl shrink-0">축하 편지 보내기 💌</button>
+        `;
+        feedContainer.appendChild(bdCard);
+    });
+
     const blockedList = typeof getBlockedNeighbors === 'function' ? getBlockedNeighbors() : [];
     const visiblePosts = posts.filter(post => !blockedList.some(b => b.petName === post.petName));
 
