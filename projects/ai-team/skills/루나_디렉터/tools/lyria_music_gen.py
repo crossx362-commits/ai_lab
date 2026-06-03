@@ -12,10 +12,10 @@
 환경 변수 (.env):
   GEMINI_API_KEY=your_key_here
 
-프롬프트 공식 (장르/시대 + 템포/무드 + 악기 + 보컬 + 가사/주제):
-  예) J-Pop City Pop × K-Pop (1980s Retro), Medium-fast 118 BPM,
+프롬프트 6단 구조 (제목콘셉트 + 장르/시대 + 템포/무드 + 악기 + 보컬 + 한국어가사):
+  예) Connects with 'City Dreams' vibe, J-Pop × K-Pop Fusion (1980s Retro), 120 BPM Energetic,
       DX7 piano + slap bass + brass synth,
-      Powerful K-pop female vocals, Midnight Seoul drive
+      Powerful K-pop female vocals, 서울 밤거리를 달리는 자유로운 청춘
 """
 
 import os
