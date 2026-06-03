@@ -325,19 +325,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (isLoggedIn) {
         // 이전 세션 복원
-        const savedEmail = localStorage.getItem('petna_user_email') || '';
-        if (savedEmail) {
-            settings_email = savedEmail;
-            settings_nickname = localStorage.getItem('petna_user_nickname_' + savedEmail) || localStorage.getItem('petna_user_nickname') || '집사';
-            settings_avatar = localStorage.getItem('petna_user_avatar_' + savedEmail) || localStorage.getItem('petna_user_avatar') || '🧔';
-            settings_photo_url = localStorage.getItem('petna_user_photo_url_' + savedEmail) || '';
-            if (typeof loadState === 'function') loadState(savedEmail);
-        }
+        try {
+            const savedEmail = localStorage.getItem('petna_user_email') || '';
+            if (savedEmail) {
+                settings_email = savedEmail;
+                settings_nickname = localStorage.getItem('petna_user_nickname_' + savedEmail) || localStorage.getItem('petna_user_nickname') || '집사';
+                settings_avatar = localStorage.getItem('petna_user_avatar_' + savedEmail) || localStorage.getItem('petna_user_avatar') || '🧔';
+                settings_photo_url = localStorage.getItem('petna_user_photo_url_' + savedEmail) || '';
+                try { if (typeof loadState === 'function') loadState(savedEmail); } catch(e) { console.warn('loadState 오류:', e); }
+            }
+        } catch(e) { console.warn('세션 복원 오류:', e); }
+
         if (loginOverlay) loginOverlay.style.display = 'none';
         if (headerEl) headerEl.style.display = 'block';
         if (mainEl) mainEl.style.display = 'block';
         if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
-        switchTab('mypet');
+        try { switchTab('mypet'); } catch(e) { console.warn('switchTab 오류:', e); }
     } else {
         if (loginOverlay) {
             loginOverlay.style.display = 'flex';
