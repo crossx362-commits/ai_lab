@@ -147,6 +147,18 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 return f"{'✅' if result.returncode == 0 else '❌'} 경수 수사 완료\n\n{result.stdout[:500]}"
             return "❌ 경수 스크립트를 찾을 수 없습니다."
 
+        elif _match(agent, ["티모", "timo", "designer", "디자이너"], ["UI", "UX", "petnna 검토", "디자인 검토"]):
+            import subprocess
+            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "티모_디자이너", "tools", "petnna_reviewer.py")
+            if os.path.exists(script):
+                result = subprocess.run(
+                    [sys.executable, script],
+                    cwd=os.path.dirname(script),
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                return f"{'✅' if result.returncode == 0 else '❌'} 티모 UI/UX 검토 완료\n\n{result.stdout[:500]}"
+            return "❌ 티모 스크립트를 찾을 수 없습니다."
+
         else:
             return f"⚠️ 예원 CEO: '{decision.get('agent', '?')}' 에이전트에 대한 파이프라인이 아직 없습니다. action={decision.get('action', '')}"
 

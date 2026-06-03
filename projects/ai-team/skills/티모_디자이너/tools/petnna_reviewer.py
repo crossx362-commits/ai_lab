@@ -1,21 +1,16 @@
 """
 petnna_reviewer.py — 티모: petnna 프로젝트 UI/UX 지속 검토 및 개선 보고
-
-Ollama로 petnna 각 모듈을 분석하여 개선이 필요한 부분을 텔레그램으로 보고.
+SKILL.md Section 4(AI Slop 타파) + Section 5(7대 심사 기준 + 출력 템플릿) 반영
 """
 import os
 import sys
-import json
 import datetime
-import glob
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(8):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+_project_root = os.path.abspath(os.path.join(_ai_team_root, "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
 from _shared.env_loader import load_env
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
@@ -23,8 +18,7 @@ from _shared.telegram_notifier import send_telegram_message
 
 load_env()
 
-# petnna 프로젝트 경로
-PETNNA_ROOT = os.path.join(_root, "projects", "petnna")
+PETNNA_ROOT = os.path.join(_project_root, "projects", "petnna")
 
 REVIEW_TARGETS = [
     ("templates/mypet.js",  "마이펫 하루방 · 날씨 · 운세 화면"),
@@ -35,38 +29,69 @@ REVIEW_TARGETS = [
     ("css/style.css",       "전체 스타일시트"),
 ]
 
-REVIEW_PROMPT = """당신은 15년 경력의 시니어 UI/UX 디자이너 티모입니다.
-아래 petnna 앱의 {name} 코드를 분석하고, 실제 사용자 경험 관점에서 개선이 필요한 부분을 찾아주세요.
+# ─── SKILL.md Section 4 + Section 5 통합 프롬프트 ────────────────────────────
+REVIEW_PROMPT = """당신은 15년 경력 수석 UI/UX 디자이너 티모입니다.
+아래 petnna 앱의 {name} 코드를 분석하세요.
 
-평가 기준:
-1. 시각적 계층 구조 (정보 우선순위가 명확한가)
-2. 텍스트 가독성 (폰트 크기·대비·줄간격)
-3. 터치 타겟 크기 (모바일 44px 이상)
-4. 빈 상태 처리 (데이터 없을 때 안내)
-5. 반응형 레이아웃 (모바일 우선)
-6. 일관성 (같은 액션에 같은 UI 패턴)
-7. 접근성 (색상 대비, 의미있는 라벨)
+# 7대 심사 기준 (SKILL.md Section 5)
+1. 시각적 계층 구조 — 정보 우선순위 및 시선 흐름
+2. 텍스트 가독성 — 폰트 토큰 규격, 명도 대비 4.5:1 만족
+3. 터치 타겟 — 모바일 최소 44×44px
+4. 빈 상태 처리 — 데이터 누락 시 친절한 유도 UX
+5. 반응형 레이아웃 — 모바일 퍼스트
+6. 일관성 — 동일 도메인 내 인터랙션 패턴 일치
+7. 웹 접근성(WCAG) — 키보드 탭 네비게이션, 스크린 리더 라벨링
+
+# AI Slop 체크 (SKILL.md Section 4)
+- 금지 폰트: Inter, Roboto, Open Sans, Lato, Montserrat, Arial, Helvetica → 발견 시 즉시 지적
+- 금지 패턴: 흰 배경 위 보라색/블루 그라디언트, 어중간한 파스텔 톤 남발
+- 금지 레이아웃: 상단 햄버거 메뉴(→ 하단 바로 교체 권고)
+- 애니메이션 300ms 초과 시 지적, prefers-reduced-motion 누락 시 지적
 
 코드:
 ```
 {code}
 ```
 
-다음 형식으로 간결하게 답해주세요 (한국어):
-🔴 즉시 수정: (심각한 문제 1~2개)
-🟡 개선 권장: (중요 개선사항 2~3개)
-🟢 잘 된 점: (유지해야 할 강점 1개)
+아래 형식으로 정확히 답하세요 (한국어):
+
+## 🎯 Verdict
+[종합 한 줄 평 및 UX 위험도: Critical/High/Medium/Low]
+
+## 🔍 Critical Issues
+- **[이슈명]** — 무엇이 문제인가
+  - **데이터 근거**: [NN Group / WCAG / 오피셜 출처]
+  - **Fix 코드**: (CSS/JS 스니펫)
+  - **우선순위**: Critical / High / Medium
+
+## 🎨 Aesthetic Assessment
+- Typography:
+- Color & Atmosphere:
+- Visual Hierarchy:
+
+## ✅ What's Working
+- 잘 설계된 강점 1~2개
+
+## 🚀 Implementation Priority
+1. Critical: 즉시 수정 항목
+2. High: 개선 권장 항목
+3. Medium: 폴리싱 항목
+
+## 💡 One Big Win
+- 이 피드백 적용 시 가장 핵심적인 지표 상승 가치 1가지
 """
 
 
 def read_file(rel_path: str) -> str | None:
-    full = os.path.join(PETNNA_ROOT, "js", rel_path)
-    if not os.path.exists(full):
-        full = os.path.join(PETNNA_ROOT, rel_path)
-    if not os.path.exists(full):
-        return None
-    with open(full, "r", encoding="utf-8") as f:
-        return f.read()[:8000]  # Ollama 컨텍스트 제한
+    for base in [
+        os.path.join(PETNNA_ROOT, "js"),
+        PETNNA_ROOT,
+    ]:
+        full = os.path.join(base, rel_path)
+        if os.path.exists(full):
+            with open(full, "r", encoding="utf-8") as f:
+                return f.read()[:8000]
+    return None
 
 
 def run_review() -> str:
@@ -74,37 +99,32 @@ def run_review() -> str:
         return f"❌ petnna 프로젝트 경로를 찾을 수 없습니다: {PETNNA_ROOT}"
 
     if not lm_available():
-        return "❌ [티모] Ollama 미실행 — petnna 검토 불가. Ollama를 먼저 실행해주세요."
+        return "❌ [티모] Ollama 미실행 — petnna 검토 불가."
 
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    report_lines = [f"🎨 <b>[티모] petnna UI/UX 검토 보고</b>\n📅 {now}\n"]
-
-    issues_found = False
+    lines = [f"🎨 <b>[티모] petnna UI/UX 검토 보고</b>\n📅 {now}\n"]
+    critical_count = 0
 
     for rel_path, name in REVIEW_TARGETS:
         code = read_file(rel_path)
         if not code:
-            report_lines.append(f"⚠️ <b>{name}</b>: 파일 없음 ({rel_path})")
+            lines.append(f"⚠️ <b>{name}</b>: 파일 없음 ({rel_path})")
             continue
 
-        prompt = REVIEW_PROMPT.format(name=name, code=code)
-        result = lm_chat(prompt, max_tokens=600, temperature=0.3)
-
+        result = lm_chat(REVIEW_PROMPT.format(name=name, code=code), max_tokens=700, temperature=0.3)
         if not result:
-            report_lines.append(f"⚠️ <b>{name}</b>: Ollama 응답 없음")
+            lines.append(f"⚠️ <b>{name}</b>: Ollama 응답 없음")
             continue
 
-        if "🔴" in result:
-            issues_found = True
+        if "Critical" in result:
+            critical_count += 1
 
-        report_lines.append(f"\n📌 <b>{name}</b>\n{result.strip()}")
+        lines.append(f"\n📌 <b>{name}</b>\n{result.strip()}")
 
-    report_lines.append(
-        "\n─────────────────────\n"
-        "📊 검토 완료. 즉시 수정(🔴) 항목이 있으면 코다리에게 수정 요청 권장."
-    )
+    summary = f"Critical 항목 {critical_count}건 — 코다리에게 즉시 수정 요청 권장." if critical_count else "Critical 없음 ✅"
+    lines.append(f"\n─────────────────────\n📊 검토 완료. {summary}")
 
-    return "\n".join(report_lines)
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
