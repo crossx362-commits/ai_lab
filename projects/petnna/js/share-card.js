@@ -316,3 +316,75 @@ async function shareSajuCard() {
         `🔯 ${petName}의 사주팔자 궁합이 ${score}%! #펫과나 #반려동물사주 #럭키맥싱`
     );
 }
+
+// ─── 신규 펫 탄생 카드 ────────────────────────────────────────────────────────
+function generateWelcomeCard(pet) {
+    const petName = pet?.name || '새 친구';
+    const petEmoji = pet?.type === 'cat' ? '🐱' : pet?.type === 'rabbit' ? '🐰' : pet?.type === 'hamster' ? '🐹' : '🐶';
+    const breed = pet?.breed || '';
+
+    const S = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = S; canvas.height = S;
+    const ctx = canvas.getContext('2d');
+
+    // 배경 그라데이션 — 따뜻한 오렌지/골든
+    const grad = ctx.createLinearGradient(0, 0, S, S);
+    grad.addColorStop(0, '#fff7ed');
+    grad.addColorStop(1, '#fde68a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, S, S);
+
+    // 헤더 배너
+    ctx.fillStyle = '#e37736';
+    ctx.beginPath();
+    ctx.roundRect(40, 40, S - 80, 150, 28);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 52px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐾 펫과나에 합류했어요!', S / 2, 140);
+
+    // 펫 이모지 크게
+    ctx.font = '220px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(petEmoji, S / 2, 430);
+
+    // 펫 이름
+    ctx.fillStyle = '#92400e';
+    ctx.font = 'bold 80px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(petName, S / 2, 560);
+
+    if (breed) {
+        ctx.fillStyle = '#b45309';
+        ctx.font = '38px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        ctx.fillText(breed, S / 2, 620);
+    }
+
+    // 소개 문구
+    ctx.fillStyle = '#78350f';
+    ctx.font = '42px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(`${petName}이(가) 펫과나 가족이 됐어요! 🎉`, S / 2, 720);
+
+    // 하단 브랜드
+    ctx.fillStyle = '#e37736';
+    ctx.beginPath();
+    ctx.roundRect(40, S - 140, S - 80, 100, 24);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText('Pet & Na — AI 반려동물 케어 올인원', S / 2, S - 75);
+
+    return canvas;
+}
+
+async function shareWelcomeCard(pet) {
+    const canvas = generateWelcomeCard(pet);
+    const petName = pet?.name || '새 친구';
+    await _downloadOrShare(
+        canvas, 'petna-welcome.png',
+        `${petName}이(가) 펫과나에 합류했어요! 🐾`,
+        `🐾 ${petName}이(가) 펫과나 가족이 됐어요! #펫과나 #반려동물 #새가족`
+    );
+}

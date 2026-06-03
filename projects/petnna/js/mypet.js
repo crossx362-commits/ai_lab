@@ -1390,6 +1390,19 @@ function submitPetRegistration() {
     closePetRegistrationModal();
     renderMyPets();
     showToast(`'${name}'이(가) 새 펫으로 추가되었습니다! 🐾🎉`);
+
+    // 탄생 카드 자동 생성 — 등록 직후 공유 유도
+    setTimeout(() => {
+        if (typeof shareWelcomeCard === 'function') {
+            showCustomDialog({
+                title: `🐾 ${name} 탄생 카드`,
+                message: `${name}이(가) 펫과나 가족이 됐어요!\n탄생 카드를 만들어 친구들과 공유해볼까요?`,
+                type: 'confirm',
+                onConfirm: () => shareWelcomeCard(newPet)
+            });
+        }
+    }, 1200);
+
 }
 
 // 🔒 집사 프로필 토글 및 업로드 관련 헬퍼 함수들 (Butler Settings Helpers)

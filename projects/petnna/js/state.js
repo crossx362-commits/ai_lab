@@ -36,43 +36,21 @@ const INITIAL_PRODUCTS = [
 ];
 
 const INITIAL_PLACES = [
-    {
-        id: 1,
-        name: "송도 센트럴파크 반려견 놀이터 (도그파크)",
-        lat: 37.3945,
-        lng: 126.6380,
-        category: "park",
-        desc: "대형견/중소형견 전용 구역이 완벽 분리된 친환경 야외 인조잔디 반려견 오프리쉬 운동장입니다.",
-        rating: 4.9,
-        reviews: [
-            { author: "코코누나", rating: 5, comment: "안전 펜스도 튼튼하고 다른 댕댕이 보호자분들도 에티켓이 정말 훌륭합니다!" },
-            { author: "해피아빠", rating: 4, comment: "음수대가 가까워서 뛰놀고 물먹이기 최고예요. 주말엔 사람 많으니 주의하세요." }
-        ]
-    },
-    {
-        id: 2,
-        name: "카페 멍멍랜드 (애견 동반 브런치)",
-        lat: 37.3915,
-        lng: 126.6432,
-        category: "cafe",
-        desc: "엄선된 프리미엄 원두로 만든 집사용 아메리카노와 무염 락토프리 댕스무디, 황태 컵케이크를 파는 카페.",
-        rating: 4.7,
-        reviews: [
-            { author: "체리맘", rating: 5, comment: "강아지 전용 하이체어가 있어서 편해요! 댕푸치노 엄청 잘먹습니다." }
-        ]
-    },
-    {
-        id: 3,
-        name: "24시 스마트 동물의료센터",
-        lat: 37.3882,
-        lng: 126.6348,
-        category: "hospital",
-        desc: "대학병원급 정밀 검진 장비와 외과 수술 전문의가 연중무휴 야간 응급 진료를 대기하고 있는 종합 동물의료시설.",
-        rating: 4.5,
-        reviews: [
-            { author: "푸들맘", rating: 4, comment: "한밤중에 긴급 치료 받았는데 정말 신속하고 꼼꼼히 치료해주셨어요." }
-        ]
-    }
+    // 서울
+    { id: 1, name: "서울숲 반려견 놀이터", lat: 37.5445, lng: 127.0374, category: "park", desc: "성수동 서울숲 내 대형 오프리쉬 운동장. 한강 뷰와 함께 신나게 뛰어놀 수 있습니다.", rating: 4.8, reviews: [{ author: "초코맘", rating: 5, comment: "드넓어서 강아지가 정말 좋아해요!" }] },
+    { id: 2, name: "망원 한강공원 반려동물 구역", lat: 37.5551, lng: 126.9008, category: "park", desc: "한강변 드넓은 잔디밭에서 반려동물과 피크닉을 즐길 수 있습니다.", rating: 4.7, reviews: [{ author: "뽀삐아빠", rating: 5, comment: "한강 뷰 최고! 주차도 편해요." }] },
+    { id: 3, name: "댕댕이카페 홍대점", lat: 37.5565, lng: 126.9236, category: "cafe", desc: "홍대 인근 반려동물 동반 가능 브런치 카페. 펫 전용 메뉴 다양.", rating: 4.6, reviews: [{ author: "체리누나", rating: 5, comment: "강아지 케이크가 너무 귀엽고 맛있어요!" }] },
+    { id: 4, name: "24시 서울 동물병원 강남", lat: 37.4979, lng: 127.0276, category: "hospital", desc: "강남구 야간 응급 진료 가능 동물병원. MRI·CT 보유 종합 의료시설.", rating: 4.8, reviews: [{ author: "푸들맘", rating: 5, comment: "야간에도 빠르게 처치해 주셨어요." }] },
+    // 인천·송도
+    { id: 5, name: "송도 센트럴파크 도그파크", lat: 37.3945, lng: 126.6380, category: "park", desc: "대형견/중소형견 전용 구역 분리된 오프리쉬 운동장. 인조잔디 완비.", rating: 4.9, reviews: [{ author: "코코누나", rating: 5, comment: "안전 펜스도 튼튼하고 에티켓도 좋아요!" }] },
+    { id: 6, name: "카페 멍멍랜드 송도", lat: 37.3915, lng: 126.6432, category: "cafe", desc: "무염 댕스무디, 황태 컵케이크 등 펫 전용 메뉴가 풍부한 브런치 카페.", rating: 4.7, reviews: [{ author: "해피맘", rating: 5, comment: "댕푸치노 최고!" }] },
+    { id: 7, name: "스마트 동물의료센터 송도", lat: 37.3882, lng: 126.6348, category: "hospital", desc: "연중무휴 야간 응급 진료 종합 동물의료시설.", rating: 4.5, reviews: [{ author: "비숑맘", rating: 4, comment: "야간에도 꼼꼼히 치료해 주셨어요." }] },
+    // 경기
+    { id: 8, name: "판교 반려견 공원", lat: 37.3943, lng: 127.1097, category: "park", desc: "판교테크노밸리 인근 쾌적한 반려동물 테마파크. 수영장 시설 보유.", rating: 4.7, reviews: [{ author: "말티즈맘", rating: 5, comment: "수영장이 있어서 여름에 최고예요!" }] },
+    { id: 9, name: "일산 호수공원 펫존", lat: 37.6599, lng: 126.7700, category: "park", desc: "호수를 끼고 산책 가능한 대규모 반려동물 허용 공원.", rating: 4.6, reviews: [{ author: "토리아빠", rating: 5, comment: "산책 코스가 아름다워요." }] },
+    // 부산
+    { id: 10, name: "해운대 반려견 해수욕장 구역", lat: 35.1588, lng: 129.1603, category: "park", desc: "해운대 해수욕장 내 반려동물 허용 구역. 바다 수영 가능!", rating: 4.9, reviews: [{ author: "제주강아지", rating: 5, comment: "바다에서 수영하는 강아지 모습이 너무 귀여워요!" }] },
+    { id: 11, name: "광안리 펫 프렌들리 카페", lat: 35.1532, lng: 129.1182, category: "cafe", desc: "광안대교 뷰를 즐기며 반려동물과 함께하는 오션뷰 카페.", rating: 4.8, reviews: [{ author: "코기맘", rating: 5, comment: "뷰가 진짜 예술이에요!" }] }
 ];
 
 const INITIAL_SCHEDULES = [
