@@ -99,21 +99,29 @@ def _load_used_title_words(n: int = 30) -> list[str]:
 
 
 def _load_title_knowledge() -> str:
-    """youtube_title_optimization.md에서 제목 생성 규칙 + 반복 금지 표현 추출."""
-    opt_path = os.path.join(os.path.dirname(_TITLE_KNOWLEDGE_FILE), "youtube_title_optimization.md")
-    if not os.path.exists(opt_path):
-        return ""
-    text = open(opt_path, encoding="utf-8").read()
+    """SKILL.md + youtube_title_optimization.md에서 제목 생성 규칙 추출."""
     parts = []
-    # ## 1. 제목 생성 규칙
-    m1 = re.search(r"## 1\. 제목 생성 규칙.*?(?=\n## |\n# |\Z)", text, re.DOTALL)
-    if m1:
-        parts.extend(l.strip() for l in m1.group().splitlines() if l.strip())
-    # ## 6. 반복 콘텐츠 방지
-    m6 = re.search(r"## 6\. 반복 콘텐츠 방지.*?(?=\n## |\n# |\Z)", text, re.DOTALL)
-    if m6:
-        parts.extend(l.strip() for l in m6.group().splitlines() if l.strip())
-    return "\n".join(parts[:35])
+    knowledge_dir = os.path.dirname(_TITLE_KNOWLEDGE_FILE)
+
+    # 1. SKILL.md Section 3 — 제목 최적화 핵심 규칙
+    skill_path = os.path.join(knowledge_dir, "..", "..", "SKILL.md")
+    if os.path.exists(skill_path):
+        m = re.search(r"### 1\. 제목 최적화 규칙.*?(?=\n### |\n## |\Z)",
+                      open(skill_path, encoding="utf-8").read(), re.DOTALL)
+        if m:
+            parts.extend(l.strip() for l in m.group().splitlines() if l.strip())
+
+    # 2. youtube_title_optimization.md — ## 1. 제목 생성 규칙 + ## 6. 반복 방지
+    opt_path = os.path.join(knowledge_dir, "youtube_title_optimization.md")
+    if os.path.exists(opt_path):
+        text = open(opt_path, encoding="utf-8").read()
+        for pat in [r"## 1\. 제목 생성 규칙.*?(?=\n## |\n# |\Z)",
+                    r"## 6\. 반복 콘텐츠 방지.*?(?=\n## |\n# |\Z)"]:
+            m = re.search(pat, text, re.DOTALL)
+            if m:
+                parts.extend(l.strip() for l in m.group().splitlines() if l.strip())
+
+    return "\n".join(parts[:40])
 
 
 def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
@@ -151,8 +159,9 @@ def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
             f"{knowledge_block}\n"
             "조건:\n"
             "- 고정 공식 없음. 매번 다른 구조 사용\n"
-            "- LUNA 또는 아티스트명 포함 가능\n"
-            "- lofi/lo-fi 금지\n"
+            "- LUNA, Official, MV, Music Video 등 고정 태그 삽입 절대 금지 (채널명이므로)\n"
+            "- 영어+한국어 혼합 또는 영어 단독, 5~8단어 이내 콤팩트하게\n"
+            "- lofi/lo-fi/study beats/chill beats/sleep music 금지\n"
             f"{avoid_clause}"
             "- 제목 1줄만 출력"
         )
@@ -198,14 +207,14 @@ def generate_music_prompt_from_keyword(keyword: str) -> str:
         from _shared.ollama_client import chat as _lm
         prompt = (
             f"음악 키워드/테마: '{keyword}'\n\n"
-            "아래 5단 템플릿으로 영어 음악 생성 프롬프트를 1개 작성해. 프롬프트 1줄만 출력.\n\n"
-            "템플릿: [장르/시대], [템포/무드], [특정악기], [보컬스타일], [가사/주제]\n\n"
+            "아래 6단 구조로 영어 음악 생성 프롬프트를 1개 작성해. 프롬프트 1줄만 출력.\n\n"
+            "구조: [키워드 연계 콘셉트], [장르/시대], [템포/무드], [주요악기], [보컬스타일], [주제/가사]\n\n"
             "규칙:\n"
-            "- 선호 장르: 일본 시티팝×케이팝 퓨전, 감성 힙합·R&B·Pop\n"
-            "- 금지: lofi, lo-fi, study beats, chill beats\n"
-            "- BPM 110 이상, 신나고 에너제틱하게\n"
-            "- 키워드 감성을 가사/주제에 반드시 반영\n"
-            "- **가사/주제(lyrics_theme)는 반드시 한국어로 작성** (예: '서울 밤거리를 달리며', '네온빛 아래 설레는 감정')"
+            "- 1순위: Japanese City Pop × K-Pop Fusion (110~150 BPM)\n"
+            "- 2순위: Emotional Hip-Hop × R&B × Pop (90~150 BPM)\n"
+            "- 금지: lofi, lo-fi, study beats, chill beats, sleep music\n"
+            "- 에너제틱·자신감·몰입감 우선, 수면유도·공부용BGM 지양\n"
+            "- 가사/주제(lyrics_theme)는 반드시 한국어로 작성"
         )
         result = _lm(prompt, task='', max_tokens=200)
         if result and result.strip() and len(result.strip()) > 30:
