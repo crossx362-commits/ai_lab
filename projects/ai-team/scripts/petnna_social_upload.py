@@ -3,7 +3,7 @@
 petnna_social_upload.py
 사람처럼 Supabase Auth 로그인 → JWT 획득 → 에이전트 게시물 소셜 피드 업로드
 
-Usage: cd /Users/junholee/ai_lab && python3 projects/ai-team/scripts/petnna_social_upload.py
+Usage: python3 projects/ai-team/scripts/petnna_social_upload.py
 """
 import json, os, sys, time, urllib.request, urllib.parse
 from datetime import datetime

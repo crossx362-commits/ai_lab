@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 kodari_ollama.py — 공용 ollama_client 사용 펫과나 자율 개발
-Usage: cd /Users/junholee/ai_lab && python3 projects/ai-team/scripts/kodari_ollama.py
+Usage: python3 projects/ai-team/scripts/kodari_ollama.py
 """
 import os
 import re
@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path("/Users/junholee/ai_lab")
+ROOT = Path(__file__).resolve().parents[3]   # scripts/→ai-team/→projects/→ai_lab/
 PETNNA = ROOT / "projects/petnna"
 AI_TEAM = ROOT / "projects/ai-team"
 
