@@ -11,14 +11,28 @@ const path = require('path');
 
 const indexPath = path.join(__dirname, 'index.html');
 
+// 로컬 개발 시 .env 파일에서 폴백 로드
+const envFilePath = path.join(__dirname, '..', '..', '.env');
+if (fs.existsSync(envFilePath)) {
+  fs.readFileSync(envFilePath, 'utf8').split('\n').forEach(line => {
+    line = line.trim();
+    if (!line || line.startsWith('#') || !line.includes('=')) return;
+    const [key, ...rest] = line.split('=');
+    const value = rest.join('=').replace(/^["']|["']$/g, '').trim();
+    if (!process.env[key.trim()]) process.env[key.trim()] = value;
+  });
+}
+
 // Read index.html
 let html = fs.readFileSync(indexPath, 'utf8');
 
-// Environment variables from Vercel
+// Environment variables
+// GEMINI_API_KEY는 로컬 .env 폴백 제외 — Vercel 빌드 시에만 주입 (git 노출 방지)
+const isVercelBuild = !!process.env.VERCEL;
 const env = {
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GEMINI_API_KEY: isVercelBuild ? (process.env.GEMINI_API_KEY || '') : '',
   STRIPE_PAYMENT_LINK: process.env.STRIPE_PAYMENT_LINK || '',
   STRIPE_SHOP_PAYMENT_LINK: process.env.STRIPE_SHOP_PAYMENT_LINK || ''
 };
