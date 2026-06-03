@@ -63,7 +63,13 @@ def dispatch_and_execute(ceo_message: str) -> str:
             return False
 
         # Execute based on agent (agent 필드 최우선, 키워드는 agent 미매핑시만 폴백)
-        if _match(agent, ["영숙", "secretary", "notion"], ["노션 보고", "영숙", "업로드 현황", "리포트 정리"]):
+        # ─ 로율 최우선 체크 (secretary 오라우팅 방지) ─
+        if _match(agent, ["로율", "lolaw", "legal", "lawyer"], ["세무 시뮬레이션", "법률 자문", "로율", "법률 검토", "월간 감사", "월간 심층 감사", "주간 법률 검토"]):
+            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "로율_변호사", "tools"))
+            import tax_simulator
+            return tax_simulator.run_simulation(100000000)
+
+        elif _match(agent, ["영숙", "secretary", "notion"], ["노션 보고", "영숙", "업로드 현황", "리포트 정리"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools"))
             if "리포트 정리" in ceo_message or "cleanup" in ceo_message:
                 import subprocess
@@ -107,10 +113,6 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 import vercel_manager
                 return vercel_manager.run_vercel_cleanup()
 
-        elif _match(agent, ["로율", "lolaw", "legal", "lawyer"], ["세무 시뮬레이션", "법률 자문", "로율", "법률 검토", "월간 감사"]):
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "로율_변호사", "tools"))
-            import tax_simulator
-            return tax_simulator.run_simulation(100000000)
 
         elif _match(agent, ["루나", "luna"], ["유튜브", "뮤직비디오", "음악 영상", "루나"]):
             import subprocess

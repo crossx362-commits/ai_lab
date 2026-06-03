@@ -22,9 +22,10 @@ try:
     from google_auth_oauthlib.flow import InstalledAppFlow
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
+    _GOOGLE_API_AVAILABLE = True
 except ImportError:
-    print("❌ pip install google-api-python-client google-auth-oauthlib")
-    sys.exit(1)
+    print("⚠️ google-api-python-client 미설치 — YouTube 수사 건너뜁니다.")
+    _GOOGLE_API_AVAILABLE = False
 
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
@@ -282,9 +283,12 @@ def main(max_videos=5):
     yt_count = 0
     
     try:
-        youtube, sheets = authenticate()
-        # 1. YouTube 수사
-        yt_count = scan_comments(youtube, sheets, max_videos=max_videos)
+        if _GOOGLE_API_AVAILABLE:
+            youtube, sheets = authenticate()
+            # 1. YouTube 수사
+            yt_count = scan_comments(youtube, sheets, max_videos=max_videos)
+        else:
+            print("⚠️ [YouTube 수사 스킵] google-api-python-client 미설치")
     except Exception as e:
         print(f"⚠️ [YouTube 수사 스킵] 구글 API 인증 실패 또는 누락: {e}")
         sheets = None
