@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os, re
 
-AI_TEAM = "/Users/junholee/ai_lab/projects/ai-team"
+AI_TEAM = os.path.abspath(os.path.join(os.path.dirname(__file__), "projects", "ai-team"))
 
 FILE_DEPTHS = {
     "skills/루나_디렉터/tools/audit_output.py": 3,
