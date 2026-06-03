@@ -342,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (headerEl) headerEl.style.display = 'block';
         if (mainEl) mainEl.style.display = 'block';
         if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+        document.body.classList.add('logged-in');
         try { switchTab('mypet'); } catch(e) { console.warn('switchTab 오류:', e); }
     } else {
         if (loginOverlay) {
@@ -351,6 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (headerEl) headerEl.style.display = 'none';
         if (mainEl) mainEl.style.display = 'none';
         if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
+        document.body.classList.remove('logged-in');
     }
 
     renderWalkHistory();
@@ -637,6 +639,7 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
             if (headerEl) headerEl.style.display = 'block';
             if (mainEl) mainEl.style.display = 'block';
             if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+            document.body.classList.add('logged-in');
             
             showToast("성공적으로 로그인되었습니다! 환영합니다! 🐾✨");
             setTimeout(() => {
@@ -741,6 +744,7 @@ function triggerLogout() {
             if (headerEl) headerEl.style.display = 'none';
             if (mainEl) mainEl.style.display = 'none';
             if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
+            document.body.classList.remove('logged-in');
             
             showToast("성공적으로 로그아웃되었습니다.");
         }

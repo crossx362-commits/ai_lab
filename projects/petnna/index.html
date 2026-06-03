@@ -315,6 +315,39 @@
             </div>
         </div>
     </div>
+    
+    <!-- 📱 모바일 하단 네비게이션 바 -->
+    <div id="mobile-navbar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-50 shadow-lg z-40 py-2 px-3 hidden flex justify-around items-center h-safe-bottom">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="mypet" onclick="switchTab('mypet')">
+            <i class="fa-solid fa-house"></i>
+            <span>마이펫</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="walk" onclick="switchTab('walk')">
+            <i class="fa-solid fa-route"></i>
+            <span>산책</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="saju" onclick="switchTab('saju')">
+            <i class="fa-solid fa-yin-yang"></i>
+            <span>조화도</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="social" onclick="switchTab('social')">
+            <i class="fa-solid fa-users"></i>
+            <span>소셜</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="album" onclick="switchTab('album')">
+            <i class="fa-solid fa-book-open"></i>
+            <span>일기장</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="shop" onclick="switchTab('shop')">
+            <i class="fa-solid fa-paw"></i>
+            <span>펫라이프</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="settings" onclick="switchTab('settings')">
+            <i class="fa-solid fa-gear"></i>
+            <span>설정</span>
+        </button>
+    </div>
+
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(() => {});

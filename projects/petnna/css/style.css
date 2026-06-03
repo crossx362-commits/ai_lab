@@ -677,3 +677,25 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 
 /* hidden 클래스가 flex/grid 등 display 클래스를 항상 이김 */
 .hidden { display: none !important; }
+
+/* Responsive Layout Control (Mobile vs Desktop) */
+@media (min-width: 768px) {
+    body.logged-in header {
+        display: block !important;
+    }
+    #mobile-navbar {
+        display: none !important;
+    }
+}
+
+@media (max-width: 767px) {
+    header {
+        display: none !important;
+    }
+    body.logged-in #mobile-navbar {
+        display: flex !important;
+    }
+    body.logged-in {
+        padding-bottom: 72px !important;
+    }
+}

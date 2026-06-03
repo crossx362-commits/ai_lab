@@ -170,6 +170,7 @@ const SupabaseService = {
                         if (headerEl) headerEl.style.display = 'block';
                         if (mainEl) mainEl.style.display = 'block';
                         if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+                        document.body.classList.add('logged-in');
                         if (typeof showToast === 'function') showToast(`환영합니다, ${nickname}님! 🐾✨`);
                         if (typeof switchTab === 'function') switchTab('mypet');
                     }, 300);

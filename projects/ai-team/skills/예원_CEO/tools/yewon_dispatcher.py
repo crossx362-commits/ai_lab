@@ -50,38 +50,69 @@ def dispatch_and_execute(ceo_message: str) -> str:
 
         def _match(agent: str, names: list, msg_keywords: list = None) -> bool:
             """agent 필드 우선, 없으면 ceo_message 키워드 폴백."""
-            if any(n in agent for n in names):
+            all_names = [n.lower() for n in names]
+            agent_lower = agent.lower()
+            if any(n in agent_lower for n in all_names):
                 return True
             if msg_keywords:
                 # agent가 다른 이름으로 매핑되지 않은 경우에만 키워드 폴백
-                all_known = ["루나", "아린", "현빈", "케빈", "로율", "코다리", "가희", "경수", "영숙", "티모"]
-                agent_matched = any(n in agent for n in all_known)
+                all_known = ["루나", "luna", "아린", "arin", "현빈", "business", "케빈", "kevin", "로율", "legal", "코다리", "developer", "가희", "inspector", "경수", "cyber", "영숙", "secretary", "티모", "timo"]
+                agent_matched = any(n in agent_lower for n in all_known)
                 if not agent_matched:
                     return any(k in ceo_message for k in msg_keywords)
             return False
 
         # Execute based on agent (agent 필드 최우선, 키워드는 agent 미매핑시만 폴백)
-        if _match(agent, ["영숙", "노션"], ["노션 보고", "영숙"]):
+        if _match(agent, ["영숙", "secretary", "notion"], ["노션 보고", "영숙", "업로드 현황", "리포트 정리"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools"))
-            import notion_summarizer
-            return notion_summarizer.run_notion_report()
+            if "리포트 정리" in ceo_message or "cleanup" in ceo_message:
+                import subprocess
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools", "reports_manager.py")
+                result = subprocess.run(
+                    [sys.executable, script, "cleanup"],
+                    cwd=os.path.dirname(script),
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                return f"{'✅' if result.returncode == 0 else '❌'} 영숙 리포트 정리 완료\n\n{result.stdout[:500]}"
+            elif "업로드 현황" in ceo_message or "status" in ceo_message:
+                import subprocess
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools", "reports_manager.py")
+                result = subprocess.run(
+                    [sys.executable, script, "status"],
+                    cwd=os.path.dirname(script),
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                return f"{'✅' if result.returncode == 0 else '❌'} 영숙 업로드 현황 보고\n\n{result.stdout[:500]}"
+            else:
+                import notion_summarizer
+                return notion_summarizer.run_notion_report()
 
-        elif _match(agent, ["현빈"], ["딥서치"]):
+        elif _match(agent, ["현빈", "business", "research"], ["시장 분석", "딥서치", "현빈"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "현빈_전략가", "tools"))
             import business_research
             return business_research.run_research()
 
-        elif _match(agent, ["케빈"], ["vercel 클린업", "서버 정리"]):
+        elif _match(agent, ["케빈", "kevin", "devops", "infra"], ["vercel 클린업", "서버 정리", "모니터링", "리포트", "케빈"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools"))
-            import vercel_manager
-            return vercel_manager.run_vercel_cleanup()
+            if "모니터링" in ceo_message or "monitor" in ceo_message or "리포트" in ceo_message or "report" in ceo_message:
+                import subprocess
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools", "petnna_monitor.py")
+                result = subprocess.run(
+                    [sys.executable, script, "health"],
+                    cwd=os.path.dirname(script),
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                return f"{'✅' if result.returncode == 0 else '❌'} 케빈 모니터링 완료\n\n{result.stdout[:500]}"
+            else:
+                import vercel_manager
+                return vercel_manager.run_vercel_cleanup()
 
-        elif _match(agent, ["로율"], ["세무 시뮬레이션", "법률 자문"]):
+        elif _match(agent, ["로율", "lolaw", "legal", "lawyer"], ["세무 시뮬레이션", "법률 자문", "로율", "법률 검토", "월간 감사"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "로율_변호사", "tools"))
             import tax_simulator
             return tax_simulator.run_simulation(100000000)
 
-        elif _match(agent, ["루나"], ["유튜브", "뮤직비디오", "음악 영상"]):
+        elif _match(agent, ["루나", "luna"], ["유튜브", "뮤직비디오", "음악 영상", "루나"]):
             import subprocess
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
             if os.path.exists(script):
@@ -100,9 +131,12 @@ def dispatch_and_execute(ceo_message: str) -> str:
                     return f"❌ 루나 파이프라인 실행 실패\n\n에러: {error_msg}"
             return "❌ 루나 파이프라인 스크립트를 찾을 수 없습니다."
 
-        elif _match(agent, ["아린"], ["인스타그램 포스팅", "인스타 업로드"]):
+        elif _match(agent, ["아린", "arin"], ["인스타그램 포스팅", "인스타 올려", "펫과나 소셜 피드", "petnna_social_upload", "아린"]):
             import subprocess
-            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py")
+            if "petnna_social_upload.py" in ceo_message or "펫과나" in ceo_message:
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts", "petnna_social_upload.py")
+            else:
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py")
             if os.path.exists(script):
                 result = subprocess.run(
                     [sys.executable, script],
@@ -119,7 +153,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
                     return f"❌ 아린 파이프라인 실행 실패\n\n에러: {error_msg}"
             return f"❌ 아린 파이프라인 스크립트를 찾을 수 없습니다."
 
-        elif _match(agent, ["가희"], ["콘텐츠 검수", "업로드 검수"]):
+        elif _match(agent, ["가희", "inspector"], ["콘텐츠 검수", "업로드 검수", "가희"]):
             import subprocess
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "가희_검수관", "tools", "content_inspector.py")
             if os.path.exists(script):
@@ -132,10 +166,20 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 return f"{'✅' if result.returncode == 0 else '❌'} 가희 검수 완료\n\n{out}"
             return "❌ 가희 스크립트를 찾을 수 없습니다."
 
-        elif _match(agent, ["코다리"], ["코딩", "개발", "웹 구축"]):
-            return "🛠️ 코다리: 코딩 작업은 텔레그램으로 구체적인 요청사항을 보내주세요."
+        elif _match(agent, ["코다리", "kodari", "developer"], ["코딩", "개발", "웹 구축", "헬스체크", "health_check"]):
+            if "헬스체크" in ceo_message or "health_check" in ceo_message or "health" in ceo_message:
+                import subprocess
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "코다리_개발자", "tools", "agent_health_check.py")
+                result = subprocess.run(
+                    [sys.executable, script],
+                    cwd=os.path.dirname(script),
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                return f"{'✅' if result.returncode == 0 else '❌'} 코다리 헬스체크 완료\n\n{result.stdout[:500]}"
+            else:
+                return "🛠️ 코다리: 코딩 작업은 텔레그램으로 구체적인 요청사항을 보내주세요."
 
-        elif _match(agent, ["경수"], ["악플", "댓글 수사"]):
+        elif _match(agent, ["경수", "cyber", "gyeongsu"], ["악플", "댓글 수사", "경수"]):
             import subprocess
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "경수_수사관", "tools", "comment_forensics.py")
             if os.path.exists(script):
@@ -147,7 +191,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 return f"{'✅' if result.returncode == 0 else '❌'} 경수 수사 완료\n\n{result.stdout[:500]}"
             return "❌ 경수 스크립트를 찾을 수 없습니다."
 
-        elif _match(agent, ["티모", "timo", "designer", "디자이너"], ["UI", "UX", "petnna 검토", "디자인 검토"]):
+        elif _match(agent, ["티모", "timo", "designer", "디자이너"], ["UI", "UX", "petnna 검토", "디자인 검토", "티모"]):
             import subprocess
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "티모_디자이너", "tools", "petnna_reviewer.py")
             if os.path.exists(script):

@@ -109,6 +109,9 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
         "max_tokens": max_tokens,
         "stream": False,
     }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+        payload["format"] = "json"
 
     try:
         data = json.dumps(payload).encode("utf-8")

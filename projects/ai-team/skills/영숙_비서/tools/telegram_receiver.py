@@ -14,9 +14,9 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 _here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "ai-team"))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
 from _shared.env_loader import load_env
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
@@ -26,7 +26,7 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 # Import CEO Dispatcher
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "ai-team", "skills", "예원_CEO", "tools"))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
 import yewon_dispatcher
 
 YEONGSUK_PERSONA = """
@@ -37,12 +37,13 @@ YEONGSUK_PERSONA = """
 - 거짓 완료 보고 절대 금지 — 확인되지 않은 상태에서 "이미 처리했어요" 금지.
 - 동사형 요청(분석해줘, 만들어줘, 써줘, 포스팅해 등)은 무조건 dispatch.
 - URL 임의 생성 금지.
+- 텔레그램으로 작업 진행 여부를 사장님께 되묻지 마십시오. (예: "진행할까요?", "할까요?" 같은 질문 금지)
+- 에이전트 작업에 대한 모든 결정은 예원 CEO가 내리므로, 작업 지시나 동사형 요청은 즉시 dispatch로 분류하여 예원 대표님께 보냅니다.
 
 # 모드 판단
 
-## reply / ask — 일상 대화 또는 질문
+## reply — 일상 대화 또는 단순 답변
 → {"mode": "reply", "text": "친근한 답변"}
-→ {"mode": "ask", "text": "확인이 필요한 질문"}
 
 ## status — 에이전트 현황 조회
 트리거: 현황, 작업 현황, 어때, 어떻게 됐어, 확인해줘, 알려줘, 파악해, 업로드됐어, 진행 상황, 요즘, 오늘, 포스팅했어
@@ -218,7 +219,7 @@ def _handle_status_query(agent: str):
     if not lines:
         lines.append("⚠️ 조회할 에이전트를 특정해주세요 (루나 / 아린 / 전체)")
 
-    send_message("📊 <b>[현황 보고]</b>\n\n" + "\n".join(lines))
+    return "📊 <b>[현황 보고]</b>\n\n" + "\n".join(lines)
 
 
 # ── 캘린더 핸들러 ─────────────────────────────────────────────────────────────
@@ -251,30 +252,28 @@ def _gcal_service():
 
 
 def _handle_calendar_list(days_ahead: int = 7):  # noqa: ARG001
-    """캘린더 일정 조회 → 텔레그램 발송."""
+    """캘린더 일정 조회."""
     cache = os.path.join(os.path.dirname(_here), "..", "..", "..", "_shared", "calendar_cache.md")
     cache = os.path.abspath(cache)
     if os.path.exists(cache):
         content = open(cache, encoding="utf-8").read()
-        send_message(f"📅 <b>[일정 조회]</b>\n\n{content[:1500]}")
-        return
+        return f"📅 <b>[일정 조회]</b>\n\n{content[:1500]}"
     # iCal 직접 조회
     try:
         import subprocess, sys as _sys
         cal_py = os.path.join(_here, "google_calendar.py")
         result = subprocess.run([_sys.executable, cal_py], capture_output=True, text=True, timeout=20)
         out = (result.stdout or "일정 없음").strip()
-        send_message(f"📅 <b>[일정 조회]</b>\n\n{out[:1000]}")
+        return f"📅 <b>[일정 조회]</b>\n\n{out[:1000]}"
     except Exception as e:
-        send_message(f"📅 캘린더 조회 실패: {e}")
+        return f"📅 캘린더 조회 실패: {e}"
 
 
 def _handle_calendar_create(event: dict):
     """Google Calendar 이벤트 생성."""
     svc = _gcal_service()
     if not svc:
-        send_message("⚠️ 캘린더 연동이 설정되지 않았어요.\n명령 팔레트 → 'AI Team: Google Calendar 자동 일정 연결' 실행해주세요.")
-        return
+        return "⚠️ 캘린더 연동이 설정되지 않았어요.\n명령 팔레트 → 'AI Team: Google Calendar 자동 일정 연결' 실행해주세요."
     try:
         start = event.get("start", "")
         dur   = int(event.get("duration_minutes", 60))
@@ -293,17 +292,16 @@ def _handle_calendar_create(event: dict):
             ]},
         }
         svc.events().insert(calendarId="primary", body=body).execute()
-        send_message(f"✅ 📅 <b>{event.get('title', '일정')}</b> 등록 완료!\n{dt_start.strftime('%m/%d %H:%M')} ({dur}분)")
+        return f"✅ 📅 <b>{event.get('title', '일정')}</b> 등록 완료!\n{dt_start.strftime('%m/%d %H:%M')} ({dur}분)"
     except Exception as e:
-        send_message(f"❌ 일정 생성 실패: {e}")
+        return f"❌ 일정 생성 실패: {e}"
 
 
 def _handle_calendar_delete(query: str, days_ahead: int, delete_all: bool):
     """키워드로 일정 검색 후 삭제."""
     svc = _gcal_service()
     if not svc:
-        send_message("⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결).")
-        return
+        return "⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결)."
     try:
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
@@ -314,23 +312,21 @@ def _handle_calendar_delete(query: str, days_ahead: int, delete_all: bool):
         ).execute()
         items = result.get("items", [])
         if not items:
-            send_message(f"📅 '{query}' 관련 일정을 찾지 못했어요.")
-            return
+            return f"📅 '{query}' 관련 일정을 찾지 못했어요."
         targets = items if delete_all else items[:1]
         for ev in targets:
             svc.events().delete(calendarId="primary", eventId=ev["id"]).execute()
         names = ", ".join(ev.get("summary", "?") for ev in targets)
-        send_message(f"✅ 📅 일정 취소 완료: {names}")
+        return f"✅ 📅 일정 취소 완료: {names}"
     except Exception as e:
-        send_message(f"❌ 일정 취소 실패: {e}")
+        return f"❌ 일정 취소 실패: {e}"
 
 
 def _handle_calendar_update(query: str, days_ahead: int, patch: dict):
     """키워드로 일정 검색 후 수정."""
     svc = _gcal_service()
     if not svc:
-        send_message("⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결).")
-        return
+        return "⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결)."
     try:
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
@@ -341,8 +337,7 @@ def _handle_calendar_update(query: str, days_ahead: int, patch: dict):
         ).execute()
         items = result.get("items", [])
         if not items:
-            send_message(f"📅 '{query}' 관련 일정을 찾지 못했어요.")
-            return
+            return f"📅 '{query}' 관련 일정을 찾지 못했어요."
         ev = items[0]
         if "start" in patch:
             dt = datetime.fromisoformat(patch["start"])
@@ -352,10 +347,20 @@ def _handle_calendar_update(query: str, days_ahead: int, patch: dict):
         if "title" in patch:
             ev["summary"] = patch["title"]
         svc.events().update(calendarId="primary", eventId=ev["id"], body=ev).execute()
-        send_message(f"✅ 📅 일정 수정 완료: {ev.get('summary', '?')}")
+        return f"✅ 📅 일정 수정 완료: {ev.get('summary', '?')}"
     except Exception as e:
-        send_message(f"❌ 일정 수정 실패: {e}")
+        return f"❌ 일정 수정 실패: {e}"
 
+
+def extract_json(text: str) -> str:
+    if not text:
+        return ""
+    text = text.strip()
+    first_brace = text.find("{")
+    last_brace = text.rfind("}")
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        return text[first_brace:last_brace+1]
+    return ""
 
 def process_message(text: str):
     print(f"\n📩 [영숙 수신] {text}")
@@ -372,8 +377,10 @@ def process_message(text: str):
     try:
         raw_resp = lm_chat(history_text, system=YEONGSUK_PERSONA, json_mode=True, max_tokens=500)
 
+        json_str = extract_json(raw_resp)
+
         # JSON 파싱 실패 시 웹 서치 분석
-        if not raw_resp or not raw_resp.strip().startswith("{"):
+        if not json_str:
             print(f"  [이해 실패] JSON 아님, 웹 서치 분석 시작...")
             send_message("잠깐만요, 정확히 이해하기 위해 분석 중이에요... 🔍")
 
@@ -384,42 +391,45 @@ def process_message(text: str):
             # 분석 결과를 바탕으로 재시도
             enhanced_prompt = f"{history_text}\n\n[분석 결과]\n{analysis}\n\n위 분석을 참고해서 응답해줘."
             raw_resp = lm_chat(enhanced_prompt, system=YEONGSUK_PERSONA, json_mode=True, max_tokens=500)
+            json_str = extract_json(raw_resp)
 
-        if not raw_resp:
+        if not json_str:
             send_message("영숙이에요! 여러 번 시도했지만 잘 이해가 안 돼요 😅\n좀 더 구체적으로 말씀해주실 수 있을까요?")
             return
 
-        decision = json.loads(raw_resp.strip())
+        decision = json.loads(json_str)
         mode = decision.get("mode", "reply")
         reply_text = decision.get("text", "네 알겠습니다!")
 
-        # 1. 텔레그램 1차 응답 (영숙 -> 사용자)
-        send_message(reply_text)
-
-        CHAT_HISTORY.append({"role": "User", "text": text})
-        CHAT_HISTORY.append({"role": "Assistant", "text": reply_text})
+        final_message = ""
+        assistant_log_text = reply_text
 
         # 2a. 현황 조회
         if mode == "status":
-            _handle_status_query(decision.get("agent", "전체"))
-            return
+            status_report = _handle_status_query(decision.get("agent", "전체"))
+            final_message = f"{reply_text}\n\n{status_report}"
+            assistant_log_text = final_message
 
         # 2b. 캘린더 모드
-        if mode == "calendar_list":
-            _handle_calendar_list(decision.get("days_ahead", 7))
-            return
-        if mode == "calendar_create":
-            _handle_calendar_create(decision.get("event", {}))
-            return
-        if mode == "calendar_delete":
-            _handle_calendar_delete(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("delete_all", False))
-            return
-        if mode == "calendar_update":
-            _handle_calendar_update(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("patch", {}))
-            return
+        elif mode == "calendar_list":
+            cal_report = _handle_calendar_list(decision.get("days_ahead", 7))
+            final_message = f"{reply_text}\n\n{cal_report}"
+            assistant_log_text = final_message
+        elif mode == "calendar_create":
+            cal_report = _handle_calendar_create(decision.get("event", {}))
+            final_message = f"{reply_text}\n\n{cal_report}"
+            assistant_log_text = final_message
+        elif mode == "calendar_delete":
+            cal_report = _handle_calendar_delete(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("delete_all", False))
+            final_message = f"{reply_text}\n\n{cal_report}"
+            assistant_log_text = final_message
+        elif mode == "calendar_update":
+            cal_report = _handle_calendar_update(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("patch", {}))
+            final_message = f"{reply_text}\n\n{cal_report}"
+            assistant_log_text = final_message
 
         # 2c. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
-        if mode == "dispatch" and "dispatch_to_ceo" in decision:
+        elif mode == "dispatch" and "dispatch_to_ceo" in decision:
             ceo_msg = decision["dispatch_to_ceo"]
             try:
                 ceo_result = yewon_dispatcher.dispatch_and_execute(ceo_msg)
@@ -443,9 +453,19 @@ def process_message(text: str):
                 except Exception:
                     pass
 
-            # 3. 결과 수신 후 최종 포매팅 및 발신 (CEO 예원 -> 영숙 -> 사용자)
+            # 결과 수신 후 최종 포매팅
             final_report = format_ceo_report(ceo_result)
-            send_message(f"🔔 <b>[영숙이의 업무 보고]</b>\n\n{final_report}")
+            final_message = f"{reply_text}\n\n🔔 <b>[영숙이의 업무 보고]</b>\n\n{final_report}"
+            assistant_log_text = final_message
+
+        else:
+            final_message = reply_text
+
+        # 3. 텔레그램 메시지 1회 종합 발송
+        send_message(final_message)
+
+        CHAT_HISTORY.append({"role": "User", "text": text})
+        CHAT_HISTORY.append({"role": "Assistant", "text": assistant_log_text})
 
     except Exception as e:
         print(f"  [오류] 영숙 메시지 처리 실패: {e}")

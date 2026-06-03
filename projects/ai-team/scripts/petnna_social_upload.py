@@ -121,6 +121,78 @@ def supabase_post(access_token: str, row: dict) -> bool:
         return False
 
 
+
+def supabase_get_recent_posts(access_token: str) -> list:
+    """최근 10개의 소셜 피드 게시물을 가져옵니다. (최대 3회 재시도)"""
+    url = f"{SB_URL}/rest/v1/posts?select=*&order=id.desc&limit=10"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "apikey":        SB_ANON,
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type":  "application/json",
+        },
+        method="GET",
+    )
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return json.loads(r.read())
+        except Exception as e:
+            print(f"  ⚠️ 최근 포스트 가져오기 시도 {attempt + 1}/3 실패: {e}")
+            if attempt < 2:
+                time.sleep(2)
+    print("  ❌ 최근 포스트 가져오기 최종 실패")
+    return []
+
+
+def supabase_update_comments(access_token: str, post_id: int, comments: list) -> bool:
+    """게시물의 댓글 필드를 업데이트(PATCH)합니다. (최대 3회 재시도)"""
+    url = f"{SB_URL}/rest/v1/posts?id=eq.{post_id}"
+    payload = json.dumps({"comments": json.dumps(comments)}).encode()
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "apikey":        SB_ANON,
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type":  "application/json",
+            "Prefer":        "return=minimal",
+        },
+        method="PATCH",
+    )
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                if r.status in (200, 204):
+                    return True
+        except Exception as e:
+            print(f"  ⚠️ 댓글 업데이트 시도 {attempt + 1}/3 실패: {e}")
+            if attempt < 2:
+                time.sleep(2)
+    print("  ❌ 댓글 업데이트 최종 실패")
+    return False
+
+
+def generate_comment(agent_name: str, post_author: str, post_content: str) -> str:
+    """Ollama/Gemini 모델을 사용해 게시물에 달 대댓글을 작성합니다."""
+    result = lm.chat(
+        prompt=f"""펫과나 앱 소셜 피드 게시물에 달 댓글을 작성하세요.
+        
+댓글 작성 에이전트: {agent_name}
+게시물 작성자: {post_author}
+게시물 내용: {post_content}
+
+요구사항:
+- 게시물 내용에 성실히 공감하며, 에이전트 캐릭터의 관점에서 다정하고 친근한 피드백을 한 줄로 전달하세요.
+- 1-2줄 이내, 적절한 이모지 1-2개 사용.
+- 다른 설명 없이 댓글 내용만 출력하세요.""",
+        task="",
+        temperature=0.8,
+    )
+    return (result or "정말 좋은 팁이네요! 감사합니다 🐾").strip()
+
+
 # ── 유틸 ─────────────────────────────────────────────────────────────────────
 def load_history() -> dict:
     try:
@@ -240,6 +312,52 @@ def main():
             success += 1
 
         time.sleep(2)
+
+    # 3. 댓글 달기 (피드백 인터랙션)
+    print("\n💬 이웃 피드 댓글 인터랙션 진행 중...")
+    recent_posts = supabase_get_recent_posts(access_token)
+    if recent_posts:
+        for name in batch:
+            # 50% 확률로 댓글 작성
+            import random
+            if random.random() > 0.5:
+                continue
+            
+            cfg = AGENTS[name]
+            my_nickname = f"{cfg['emoji']} {cfg['nickname']}"
+            
+            # 내가 쓰지 않은 최근 글 찾기
+            other_posts = [p for p in recent_posts if p.get("pet_name") != my_nickname]
+            if not other_posts:
+                continue
+                
+            target_post = random.choice(other_posts)
+            post_id = target_post["id"]
+            post_author = target_post.get("pet_name", "이웃 집사")
+            post_content = target_post.get("content", "")
+            
+            # 기존 댓글 로드
+            raw_comments = target_post.get("comments")
+            try:
+                comments_list = json.loads(raw_comments) if isinstance(raw_comments, str) else (raw_comments or [])
+            except Exception:
+                comments_list = []
+                
+            # 이미 내가 댓글을 달았는지 확인
+            if any(c.get("author") == my_nickname for c in comments_list):
+                continue
+                
+            print(f"  💬 [{cfg['emoji']} {name}]가 [{post_author}]의 글에 댓글 작성 중...")
+            comment_text = generate_comment(name, post_author, post_content)
+            
+            comments_list.append({
+                "author": my_nickname,
+                "text": comment_text,
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+            })
+            
+            ok = supabase_update_comments(access_token, post_id, comments_list)
+            print(f"  {'✅ 댓글 작성 완료' if ok else '⚠️  댓글 작성 실패'}: \"{comment_text}\"")
 
     save_history(history)
     print(f"\n🎉 완료: {success}/{len(batch)}개 업로드")
