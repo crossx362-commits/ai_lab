@@ -30,11 +30,7 @@ from prompt_crafter import craft_insta_prompt
 import importlib
 from analysis import run_analysis_and_deepsearch
 from decision import make_decision
-# Add 예원_CEO directory to sys.path for direct import
-_ceo_path = os.path.join(_root, "skills", "예원_CEO")
-if _ceo_path not in sys.path:
-    sys.path.insert(0, _ceo_path)
-from approval import await_approval
+from youtube_generator import generate_youtube_assets
 import importlib.util as _ilu
 # skills/아린_관리자/tools/ → skills/가희_검수관/tools/
 _gahee_path = os.path.join(os.path.dirname(__file__), "..", "..", "가희_검수관", "tools", "content_inspector.py")
@@ -43,6 +39,24 @@ _gahee = _ilu.module_from_spec(_gahee_spec)
 _gahee_spec.loader.exec_module(_gahee)
 gahee_inspect_caption     = _gahee.inspect_caption
 gahee_inspect_post_upload = _gahee.inspect_post_upload
+# 예원 CEO approval
+_ceo_path = os.path.join(os.path.dirname(__file__), "..", "..", "예원_CEO")
+if _ceo_path not in sys.path:
+    sys.path.insert(0, _ceo_path)
+from approval import await_approval
+# 경수 검수관 modules
+_kyungsoo_path = os.path.join(os.path.dirname(__file__), "..", "..", "경수_수사관", "tools")
+_kyungsoo_spec = _ilu.spec_from_file_location("approval_kyungsoo",
+    os.path.join(_kyungsoo_path, "approval_kyungsoo.py"))
+_kyungsoo_mod = _ilu.module_from_spec(_kyungsoo_spec)
+_kyungsoo_spec.loader.exec_module(_kyungsoo_mod)
+await_kyungsoo_approval = _kyungsoo_mod.await_approval
+_kyungsoo_ci_spec = _ilu.spec_from_file_location("kyungsoo_content_inspector",
+    os.path.join(_kyungsoo_path, "content_inspector.py"))
+_kyungsoo_ci_mod = _ilu.module_from_spec(_kyungsoo_ci_spec)
+_kyungsoo_ci_spec.loader.exec_module(_kyungsoo_ci_mod)
+kyungsoo_inspect_caption = _kyungsoo_ci_mod.inspect_caption
+kyungsoo_inspect_youtube  = _kyungsoo_ci_mod.inspect_youtube
 import subprocess
 import datetime
 
@@ -86,16 +100,15 @@ def _record_to_history(record: dict):
         print(f"  [Warning] 히스토리 기록 실패: {e}")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-# Imagen 3.0 (나노바나나2) 최신 모델 - 실사풍 고퀄리티
+# 나노바나나2 = Imagen 3.0 generate-002 (최고 품질)
 GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002"
-GEMINI_IMAGE_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_IMAGE_MODEL}:predict?key={{key}}"
 
 def _generate_image_gemini(prompt) -> bytes | None:
-    """Calls Imagen 3.0 (나노바나나2) API - 실사풍 고퀄리티 이미지 생성."""
+    """나노바나나2 (Imagen 3.0 generate-002) API 호출 - 실사풍 고퀄리티."""
     if not GEMINI_API_KEY:
-        print("  ⚠️ GEMINI_API_KEY 환경변수가 설정되지 않아 Gemini Imagen을 건너뜁니다.")
+        print("  ⚠️ GEMINI_API_KEY 미설정 — Imagen 건너뜁니다.")
         return None
-        
+
     enhanced_prompt = (
         f"{prompt}, "
         "photorealistic, ultra high quality, professional photography, "
@@ -113,28 +126,38 @@ def _generate_image_gemini(prompt) -> bytes | None:
             "personGeneration": "allow_adult"
         }
     }
-    
-    url = GEMINI_IMAGE_URL.format(key=GEMINI_API_KEY)
     headers = {"Content-Type": "application/json"}
-    
-    try:
-        print(f"🍋 Gemini Imagen ({GEMINI_IMAGE_MODEL}) 호출 중...")
-        res = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
-        if res.status_code == 200:
-            res_data = res.json()
-            predictions = res_data.get("predictions", [])
-            if predictions:
+
+    # v1beta → v1 순서로 시도
+    for api_ver in ("v1beta", "v1"):
+        url = (
+            f"https://generativelanguage.googleapis.com/{api_ver}/models/"
+            f"{GEMINI_IMAGE_MODEL}:predict?key={GEMINI_API_KEY}"
+        )
+        try:
+            print(f"🍋 나노바나나2 ({GEMINI_IMAGE_MODEL}, {api_ver}) 호출 중...")
+            res = requests.post(url, headers=headers,
+                                data=json.dumps(payload), timeout=60)
+            if res.status_code == 200:
                 import base64
-                b64_data = predictions[0].get("bytesBase64Encoded", "")
-                if b64_data:
-                    return base64.b64decode(b64_data)
-            print(f"  ⚠️ Imagen 응답 데이터 형식이 올바르지 않습니다: {res.text[:100]}")
-        else:
-            print(f"  ⚠️ Imagen API 에러 (status={res.status_code}): {res.text[:150]}")
-    except Exception as e:
-        print(f"  ❌ Imagen API 호출 예외 발생: {e}")
-        
+                predictions = res.json().get("predictions", [])
+                if predictions:
+                    b64 = predictions[0].get("bytesBase64Encoded", "")
+                    if b64:
+                        return base64.b64decode(b64)
+                print(f"  ⚠️ Imagen 응답 형식 이상: {res.text[:100]}")
+                return None
+            elif res.status_code == 404:
+                print(f"  ⚠️ {api_ver} 404 — 다음 버전 시도...")
+                continue
+            else:
+                print(f"  ⚠️ Imagen API 에러 ({api_ver}, {res.status_code}): {res.text[:150]}")
+                return None
+        except Exception as e:
+            print(f"  ❌ Imagen 예외 ({api_ver}): {e}")
+
     return None
+
 
 def get_trends():
     """KR·US·JP 구글 트렌드 + 카테고리 큐레이션으로 20개+ 후보 수집."""
@@ -294,6 +317,37 @@ def analyze_optimal_time(trend_topic):
     print(f"⏰ 오늘 트렌드 '{trend_topic}'의 알고리즘 최적 업로드 분석 시간: {optimal_time}")
     return optimal_time
 
+def _generate_image_pollinations(prompt):
+    """Stable Diffusion via Hugging Face로 이미지 생성 (Pollinations 폴백 대체)."""
+    # 1순위: Hugging Face Inference API (stabilityai/stable-diffusion-2-1)
+    hf_token = os.getenv("HF_API_TOKEN", "")
+    if hf_token:
+        try:
+            hf_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+            print(f"\U0001f338 HuggingFace SD2.1 이미지 생성 중...")
+            res = requests.post(
+                hf_url,
+                headers={"Authorization": f"Bearer {hf_token}"},
+                json={"inputs": prompt[:500]},
+                timeout=90
+            )
+            if res.status_code == 200 and res.content:
+                return res.content
+            print(f"  ⚠️ HuggingFace 응답 이상: {res.status_code}")
+        except Exception as e:
+            print(f"  ⚠️ HuggingFace 실패: {e}")
+
+    # 2순위: Picsum (placeholder 이미지 실외 없음) → Lorem Picsum 1024x1024 랜덤 고화질
+    seed = random.randint(1, 999)
+    try:
+        fallback_url = f"https://picsum.photos/seed/{seed}/1024/1024"
+        print(f"\U0001f338 Picsum 폴백 이미지 사용 (seed={seed})...")
+        res = requests.get(fallback_url, timeout=30)
+        res.raise_for_status()
+        return res.content
+    except Exception as e:
+        raise RuntimeError(f"이미지 생성 전체 실패: {e}")
+
 def update_ics_calendar(trend_topic, post_date, post_time):
     """Appends or creates a daily post event to the instagram_posting_schedule.ics file."""
     # 절대경로 고정: 실행 위치에 무관하게 항상 tools/ 폴더에 저장
@@ -345,17 +399,6 @@ def update_ics_calendar(trend_topic, post_date, post_time):
     print(f"📅 새 캘린더 파일이 생성되고 일정이 추가되었습니다! ({post_date} {post_time})")
 
 
-def _generate_image_pollinations(prompt):
-    """Pollinations.ai로 이미지 생성 후 bytes 반환 (나노바나나 429 폴백)."""
-    seed = random.randint(1, 999999)
-    url = (
-        f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}"
-        f"?width=1024&height=1024&model=flux&nologo=true&seed={seed}"
-    )
-    print(f"🌸 Pollinations.ai 폴백으로 이미지 생성 중... (seed={seed})")
-    res = requests.get(url, timeout=60)
-    res.raise_for_status()
-    return res.content
 
 
 def generate_and_upload_image(prompt):
@@ -806,10 +849,58 @@ def main(dry_run=False):
         })
     else:
         print("❌ 자동 포스팅에 실패했습니다.")
-        # send_telegram_message(f"❌ 아린 인스타: 인스타그램 업로드 API 오류로 포스팅 실패\n- 트렌드 주제: {selected_trend}")  # 중복 방지: telegram_bot.py에서 전송
+
+    # ─── YouTube 파이프라인 (경수 검수 포함) ─────────────────────────────────
+    send_telegram_message("🎬 [아린] YouTube 콘텐츠 생성 단계를 시작합니다...")
+    try:
+        yt_data = generate_youtube_assets(post_data, img_bytes)
+
+        # 경수 YouTube 메타데이터 검수
+        send_telegram_message("🔍 [경수] YouTube 메타데이터 검수 중...")
+        yt_check = kyungsoo_inspect_youtube(
+            yt_data["title"], yt_data["description"], yt_data["tags"]
+        )
+        if not yt_check["pass"]:
+            issues_str = ", ".join(yt_check["issues"])
+            print(f"⚠️ [경수] YouTube 검수 실패: {issues_str}")
+            send_telegram_message(f"⚠️ [경수] YouTube 검수 실패\n사유: {issues_str}")
+        else:
+            print(f"✅ [경수] YouTube 메타데이터 검수 통과 (점수: {yt_check['score']})")
+            send_telegram_message(
+                f"✅ [경수] YouTube 메타데이터 검수 통과 (점수: {yt_check['score']})"
+            )
+
+        # 경수 인스타 캡션 재검수
+        insta_check = kyungsoo_inspect_caption(final_caption)
+        if not insta_check["pass"]:
+            issues_str = ", ".join(insta_check["issues"])
+            print(f"⚠️ [경수] 인스타 캡션 재검수 이슈: {issues_str}")
+            send_telegram_message(f"⚠️ [경수] 인스타 캡션 이슈\n{issues_str}")
+        else:
+            print(f"✅ [경수] 인스타 캡션 재검수 통과 (점수: {insta_check['score']})")
+
+        # 경수 최종 승인 전송
+        approved = await_kyungsoo_approval(yt_data["decision"], channel="YouTube")
+        if approved:
+            print("✅ [경수] YouTube 콘텐츠 승인 완료")
+            send_telegram_message(
+                f"🎬 [아린] YouTube 콘텐츠 생성 완료!\n"
+                f"📌 제목: {yt_data['title']}\n"
+                f"🏷️ 태그: {', '.join(yt_data['tags'][:5])}\n"
+                f"🎞️ 영상: {'생성됨' if yt_data.get('video_path') else '이미지 없음 (건너뜀)'}"
+            )
+            if not dry_run and yt_data.get("video_path"):
+                print(f"  📁 YouTube 영상 파일: {yt_data['video_path']}")
+                print("  ℹ️  실제 YouTube 업로드는 OAuth 인증 후 youtube_uploader.py로 수행합니다.")
+        else:
+            print("❌ [경수] YouTube 콘텐츠 미승인")
+    except Exception as e:
+        print(f"⚠️ YouTube 파이프라인 오류: {e}")
+        send_telegram_message(f"⚠️ [아린] YouTube 파이프라인 오류: {e}")
 
     # 깃 동기화
     git_sync()
+
 
 if __name__ == "__main__":
     is_dry = "--dry-run" in sys.argv
