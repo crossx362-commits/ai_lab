@@ -1079,6 +1079,12 @@ def run_full_audit():
     if issues_found:
         send_telegram_message(msg)
 
+    # ── 펫과나 서비스 검수 및 보고서 생성 ─────────────────────────────────────
+    try:
+        _check_petnna_service_and_generate_report("전체 감사")
+    except Exception as e:
+        print(f"  [가희] 펫과나 검수 보고서 생성 중 예외 발생: {e}")
+
     return all_results
 
 
@@ -1195,6 +1201,12 @@ def run_scheduled_scan(slot: str = "morning"):
         print(msg)
         send_telegram_message(msg)
 
+    # ── 5. 펫과나 서비스 검수 및 보고서 생성 ──────────────────────────────────
+    try:
+        _check_petnna_service_and_generate_report(slot_label)
+    except Exception as e:
+        print(f"  [가희] 펫과나 검수 보고서 생성 중 예외 발생: {e}")
+
     print(f"\n{'='*55}")
     print(f"✅ [가희] {slot_label} 검수 종료")
     print(f"{'='*55}\n")
@@ -1253,3 +1265,187 @@ if __name__ == "__main__":
             if idx + 1 < len(args):
                 target = args[idx + 1]
         run_scan(target_id=target, new_only=new_only)
+
+
+def _check_petnna_service_and_generate_report(slot_label: str = "정기") -> str:
+    """펫과나 서비스 및 소셜 피드를 검수하고 마크다운 보고서를 작성합니다."""
+    _load_env()
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_anon = os.getenv("SUPABASE_ANON_KEY", "")
+    agent_email = os.getenv("PETNNA_AGENT_EMAIL", "butler@petna.co.kr")
+    agent_pass = os.getenv("PETNNA_AGENT_PASS", "123456")
+    
+    kst_now = datetime.datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S KST")
+    date_fn = datetime.datetime.now(KST).strftime("%Y%m%d_%H%M%S")
+    
+    report_lines = []
+    report_lines.append("# 🐾 펫과나 서비스 및 콘텐츠 정기 검수 보고서\n")
+    report_lines.append(f"- **검수 일시**: {kst_now}")
+    report_lines.append(f"- **검수 시점**: {slot_label} 검수")
+    report_lines.append("- **검수원**: 가희 (Gahee - 품질 검수관)")
+    report_lines.append("- **검수 모델**: Local Ollama (gemma3:12b)\n")
+    
+    # 1. 서비스 가용성 체크
+    app_url = "https://petnna.vercel.app/"
+    try:
+        req = urllib.request.Request(app_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            status_code = r.status
+        if status_code == 200:
+            report_lines.append("## 1. 펫과나 서비스 가용성 검수")
+            report_lines.append(f"- **서비스 URL**: {app_url}")
+            report_lines.append("- **가용 상태**: ✅ 정상 (HTTP 200 OK)\n")
+        else:
+            report_lines.append("## 1. 펫과나 서비스 가용성 검수")
+            report_lines.append(f"- **서비스 URL**: {app_url}")
+            report_lines.append(f"- **가용 상태**: ⚠️ 불안정 (HTTP {status_code})\n")
+    except Exception as e:
+        report_lines.append("## 1. 펫과나 서비스 가용성 검수")
+        report_lines.append(f"- **서비스 URL**: {app_url}")
+        report_lines.append(f"- **가용 상태**: ❌ 접속 불가 (에러: {e})\n")
+
+    # 2. Supabase 피드 & 댓글 품질 검수
+    feed_success = False
+    posts = []
+    if sb_url and sb_anon:
+        # 로그인 진행
+        login_url = f"{sb_url}/auth/v1/token?grant_type=password"
+        payload = json.dumps({"email": agent_email, "password": agent_pass}).encode()
+        login_req = urllib.request.Request(
+            login_url, data=payload,
+            headers={"apikey": sb_anon, "Content-Type": "application/json"},
+            method="POST",
+        )
+        access_token = ""
+        try:
+            with urllib.request.urlopen(login_req, timeout=15) as r:
+                login_data = json.loads(r.read())
+            access_token = login_data.get("access_token", "")
+        except Exception as e:
+            report_lines.append("## 2. 펫과나 소셜 피드 & 댓글 품질 검수")
+            report_lines.append(f"- **검수 상태**: ❌ Supabase Auth 로그인 실패 ({e})\n")
+            
+        if access_token:
+            # 피드 10개 가져오기
+            feed_url = f"{sb_url}/rest/v1/posts?select=*&order=id.desc&limit=10"
+            feed_req = urllib.request.Request(
+                feed_url,
+                headers={
+                    "apikey": sb_anon,
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                method="GET",
+            )
+            try:
+                with urllib.request.urlopen(feed_req, timeout=15) as r:
+                    posts = json.loads(r.read())
+                feed_success = True
+            except Exception as e:
+                report_lines.append("## 2. 펫과나 소셜 피드 & 댓글 품질 검수")
+                report_lines.append(f"- **검수 상태**: ❌ 피드 데이터 로드 실패 ({e})\n")
+    else:
+        report_lines.append("## 2. 펫과나 소셜 피드 & 댓글 품질 검수")
+        report_lines.append("- **검수 상태**: ⚠️ Supabase 환경변수가 설정되지 않아 검수를 건너뜁니다.\n")
+
+    if feed_success:
+        report_lines.append("## 2. 펫과나 소셜 피드 & 댓글 품질 검수")
+        report_lines.append(f"- **최근 피드 개수**: {len(posts)}개 로드됨")
+        report_lines.append("\n### [피드별 품질 분석]")
+        
+        banned_keywords = ["미래", "인공지능", "ai", "기계", "테크", "로봇", "첨단기술", "4차산업", "이재명", "정치", "선거"]
+        violations_count = 0
+        warnings_count = 0
+        
+        for idx, post in enumerate(posts, 1):
+            author = post.get("pet_name", "알 수 없는 집사")
+            content = post.get("content", "")
+            pid = post.get("id", "N/A")
+            
+            # 금지 키워드 검사
+            hits = [kw for kw in banned_keywords if kw in content.lower()]
+            verdict = "PASS"
+            reason = "정상 콘텐츠"
+            
+            if not content.strip():
+                verdict = "REJECT"
+                reason = "내용 없는 빈 게시물"
+                violations_count += 1
+            elif hits:
+                verdict = "REJECT"
+                reason = f"금지 키워드 포함 ({', '.join(hits)})"
+                violations_count += 1
+            elif len(content) < 10:
+                verdict = "REVIEW"
+                reason = "텍스트가 너무 짧음 (10자 미만)"
+                warnings_count += 1
+                
+            report_lines.append(f"{idx}. **[{verdict}]** 피드 ID: {pid} (작성자: {author})")
+            report_lines.append(f"   - **내용**: \"{content[:80]}...\"")
+            report_lines.append(f"   - **상태 판정**: {reason}")
+            
+            # 댓글(인터랙션) 검수
+            raw_comments = post.get("comments")
+            comments = []
+            if raw_comments:
+                try:
+                    comments = json.loads(raw_comments) if isinstance(raw_comments, str) else (raw_comments or [])
+                except Exception:
+                    pass
+            if comments:
+                report_lines.append("   - **댓글 피드백**: ")
+                for c in comments:
+                    c_author = c.get("author", "이웃")
+                    c_text = c.get("text", "")
+                    c_hits = [kw for kw in banned_keywords if kw in c_text.lower()]
+                    c_verdict = "OK"
+                    if c_hits:
+                        c_verdict = "WARNING"
+                        warnings_count += 1
+                    report_lines.append(f"     • [{c_verdict}] {c_author}: \"{c_text}\"")
+            report_lines.append("")
+            
+        report_lines.append("## 3. 정책 위반 및 감지 현황 요약")
+        report_lines.append(f"- **규칙 위반(REJECT) 건수**: {violations_count}건")
+        report_lines.append(f"- **잠재적 위험(REVIEW) 건수**: {warnings_count}건\n")
+
+    # 4. 종합 평가
+    report_lines.append("## 4. 종합 평가 및 조치 권고 사항")
+    if feed_success:
+        if violations_count == 0 and warnings_count == 0:
+            report_lines.append("- **종합 의견**: 펫과나 서비스가 전반적으로 매우 깨끗하고 규정에 맞게 활성화되어 있습니다. 에이전트들이 정책 가이드라인을 철저히 지키며 건전한 소셜 피드 활동과 풍부한 피드백(댓글)을 남기고 있습니다.")
+            report_lines.append("- **권고 사항**: 현재 가동 상태를 유지하십시오. 인공지능 관련 용어나 민감한 키워드의 노출을 지속적으로 억제해야 합니다.")
+        else:
+            report_lines.append(f"- **종합 의견**: 펫과나 서비스의 품질 검사 중 총 {violations_count}건의 규칙 위반과 {warnings_count}건의 경고 사항이 감지되었습니다. 에이전트들이 생성하는 텍스트 필터링의 추가 보완이 요구됩니다.")
+            report_lines.append("- **권고 사항**: 위반 건에 대해서는 작성 에이전트에게 해당 포스팅의 삭제 및 재작성을 요청하고, 로컬 Ollama 모델의 프롬프트 가이드를 더욱 강화해 주십시오.")
+    else:
+        report_lines.append("- **종합 의견**: DB 또는 통신 장애로 소셜 피드 분석을 온전히 끝마치지 못했습니다. 서비스 접속은 양호하나 Supabase 연동 계정 정보를 다시 한번 확인해주십시오.")
+
+    # 마크다운 텍스트 취합
+    report_text = "\n".join(report_lines)
+    
+    # 보고서 파일 저장
+    ins_dir = os.path.join(_root, "reports", "inspection")
+    os.makedirs(ins_dir, exist_ok=True)
+    
+    # 1. 최신 보고서 파일 저장 (단일 덮어쓰기)
+    latest_report_path = os.path.join(ins_dir, "petnna_inspection_report.md")
+    try:
+        with open(latest_report_path, "w", encoding="utf-8") as f:
+            f.write(report_text)
+        print(f"  [가희] 최신 검수 보고서 저장 완료: {latest_report_path}")
+    except Exception as e:
+        print(f"  [가희] 최신 검수 보고서 저장 실패: {e}")
+        
+    # 2. 히스토리용 아카이브 저장
+    archive_dir = os.path.join(ins_dir, "archive")
+    os.makedirs(archive_dir, exist_ok=True)
+    archive_path = os.path.join(archive_dir, f"petnna_inspection_report_{date_fn}.md")
+    try:
+        with open(archive_path, "w", encoding="utf-8") as f:
+            f.write(report_text)
+        print(f"  [가희] 아카이브 검수 보고서 저장 완료: {archive_path}")
+    except Exception as e:
+        print(f"  [가희] 아카이브 검수 보고서 저장 실패: {e}")
+        
+    return report_text

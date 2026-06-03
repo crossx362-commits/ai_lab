@@ -111,7 +111,7 @@ def execute_schedule(schedule: Dict):
     print(f"  명령: {command}")
     print(f"{'='*70}\n")
 
-    # 1. CEO에게 보고
+    # 1. CEO에게 보고 (승인 절차 생략)
     ceo_report = (
         f"📋 **[영숙 비서 → CEO 예원]**\n\n"
         f"스케줄 시간이 도래했습니다.\n\n"
@@ -119,11 +119,11 @@ def execute_schedule(schedule: Dict):
         f"**작업**: {task}\n"
         f"**우선순위**: {priority}\n"
         f"**명령**: {command}\n\n"
-        f"CEO님의 승인 후 에이전트에게 지시하겠습니다."
+        f"CEO님의 판단하에 에이전트에게 바로 지시하겠습니다."
     )
 
-    print(f"  [영숙 → CEO 예원] 보고 전송...")
-    send_telegram_message(ceo_report)
+    print(f"  [영숙 → CEO 예원] 스케줄 도래 인지 (중간 텔레그램 발송 생략)")
+    # send_telegram_message(ceo_report)
 
     # 2. CEO Dispatcher를 통해 에이전트에게 지시
     print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")

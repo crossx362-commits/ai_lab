@@ -250,13 +250,18 @@ def get_image(agent_cfg: dict, uploaded_set: set) -> tuple[str | None, str]:
 
 # ── 메인 ─────────────────────────────────────────────────────────────────────
 def main():
-    if not lm.is_available():
-        print("⚠️  Ollama 미실행 — Gemini 폴백 시도...")
+    import random
+    
+    # 1. '시간날 때' 접속하는 무작위성 시뮬레이션 (70% 확률로 스킵)
+    # schedule_manager가 30분 간격으로 가동할 예정이며, 매 실행 시 약 30% 확률로 에이전트가 접속함
+    if random.random() > 0.35:
+        print("☕ 에이전트들이 지금은 다른 업무로 바빠서 펫과나에 접속하지 않았습니다. (스킵)")
+        return
 
-    print(f"\n🚀 펫과나 에이전트 소셜 업로드 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"\n🚀 [사람처럼] 펫과나 에이전트 접속 시뮬레이션 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
-    # 1. 로그인 (사람처럼)
-    print("\n📲 펫과나 로그인 중...")
+    # 2. 로그인 (사람처럼)
+    print("📲 펫과나 로그인 중...")
     access_token, _ = supabase_login()
     if not access_token:
         print("❌ 로그인 실패 — 중단")
@@ -266,101 +271,113 @@ def main():
     uploaded_set = set(history.get("uploaded", []))
     agent_names = list(AGENTS.keys())
 
-    # 2. 로테이션 배치 (3개씩)
-    idx = history.get("last_agent_idx", 0) % len(agent_names)
-    batch = agent_names[idx : idx + 3]
-    history["last_agent_idx"] = (idx + 3) % len(agent_names)
-    print(f"📋 이번 배치: {', '.join(batch)}\n")
+    # 3. 이번에 펫과나에 들어올 에이전트 1명 무작위 선정
+    active_agent_name = random.choice(agent_names)
+    cfg = AGENTS[active_agent_name]
+    my_nickname = f"{cfg['emoji']} {cfg['nickname']}"
+    print(f"👤 [{cfg['emoji']} {active_agent_name}]님이 펫과나 앱에 접속했습니다.")
+    
+    # 접속 직후 5~15초간 피드를 둘러보는 자연스러운 딜레이
+    browse_time = random.randint(5, 15)
+    print(f"  👀 피드를 둘러보는 중... ({browse_time}초 대기)")
+    time.sleep(browse_time)
 
-    success = 0
-    for name in batch:
-        print(f"\n{'='*50}")
-        cfg = AGENTS[name]
-        today_key = f"{name}_{datetime.now().strftime('%Y-%m-%d')}"
+    # 4. 행동 결정 (40% 확률로 글 업로드, 60% 확률로 단순 댓글 작성)
+    action = "comment"
+    if random.random() < 0.40:
+        action = "post"
 
+    today_key = f"{active_agent_name}_{datetime.now().strftime('%Y-%m-%d')}"
+
+    if action == "post":
+        # 오늘 이미 글을 올렸다면 댓글 달기로 자동 전환
         if today_key in uploaded_set:
-            print(f"[{cfg['emoji']} {name}] ⏭️  오늘 이미 업로드됨")
-            continue
-
-        print(f"[{cfg['emoji']} {name}] {cfg['pet_angle']}")
-
-        # 이미지
-        img_url, img_key = get_image(cfg, uploaded_set)
-
-        # 캡션
-        print(f"  🤖 캡션 생성 중...")
-        caption = generate_caption(name, cfg["pet_angle"])
-        print(f"  📝 {caption[:80]}...")
-
-        # 포스팅 (로그인된 JWT 사용 — user_id는 auth.uid() 기본값)
-        row = {
-            "pet_name":  f"{cfg['emoji']} {cfg['nickname']}",
-            "pet_avatar": cfg["emoji"],
-            "content":   caption,
-            "image":     img_url,
-            "is_video":  False,
-            "likes":     0,
-            "comments":  json.dumps([]),
-        }
-        ok = supabase_post(access_token, row)
-        print(f"  {'✅ 포스팅 완료' if ok else '⚠️  포스팅 실패'}")
-
-        if ok:
-            history["uploaded"].append(today_key)
-            if img_key:
-                history["uploaded"].append(img_key)
-            success += 1
-
-        time.sleep(2)
-
-    # 3. 댓글 달기 (피드백 인터랙션)
-    print("\n💬 이웃 피드 댓글 인터랙션 진행 중...")
-    recent_posts = supabase_get_recent_posts(access_token)
-    if recent_posts:
-        for name in batch:
-            # 50% 확률로 댓글 작성
-            import random
-            if random.random() > 0.5:
-                continue
+            print(f"  💡 [{active_agent_name}]님은 오늘 이미 게시물을 작성하여 댓글 달기 활동으로 전환합니다.")
+            action = "comment"
+        else:
+            print(f"  📝 [{active_agent_name}]님이 새 글을 작성하기 시작했습니다.")
+            img_url, img_key = get_image(cfg, uploaded_set)
             
-            cfg = AGENTS[name]
-            my_nickname = f"{cfg['emoji']} {cfg['nickname']}"
+            # 글 작성 생각 딜레이
+            time.sleep(random.randint(5, 12))
             
-            # 내가 쓰지 않은 최근 글 찾기
+            caption = generate_caption(active_agent_name, cfg["pet_angle"])
+            
+            # 글 등록
+            row = {
+                "pet_name":  my_nickname,
+                "pet_avatar": cfg["emoji"],
+                "content":   caption,
+                "image":     img_url,
+                "is_video":  False,
+                "likes":     0,
+                "comments":  json.dumps([]),
+            }
+            ok = supabase_post(access_token, row)
+            if ok:
+                print(f"  ✅ [{active_agent_name}] 글 업로드 성공: \"{caption[:50]}...\"")
+                history["uploaded"].append(today_key)
+                if img_key:
+                    history["uploaded"].append(img_key)
+                save_history(history)
+            else:
+                print(f"  ⚠️ [{active_agent_name}] 글 업로드 실패")
+                
+            # 포스팅 등록 후 피드 복귀 대기
+            time.sleep(random.randint(3, 8))
+
+    # 5. 댓글 달기 (소셜 피드 인터랙션)
+    # 댓글 전용 행동이거나, 글 작성을 성공적으로 완료한 후 일정 확률로 수행
+    should_comment = (action == "comment" and random.random() < 0.85) or (action == "post" and random.random() < 0.40)
+    
+    if should_comment:
+        print("  💬 다른 이웃들의 글을 읽으며 공감 댓글을 찾고 있습니다...")
+        recent_posts = supabase_get_recent_posts(access_token)
+        if recent_posts:
+            # 내가 쓰지 않은 최근 글 중 아직 내 댓글이 없는 글 필터링
             other_posts = [p for p in recent_posts if p.get("pet_name") != my_nickname]
-            if not other_posts:
-                continue
+            if other_posts:
+                # 무작위로 댓글 달 타겟 글 선정
+                target_post = random.choice(other_posts)
+                post_id = target_post["id"]
+                post_author = target_post.get("pet_name", "이웃 집사")
+                post_content = target_post.get("content", "")
                 
-            target_post = random.choice(other_posts)
-            post_id = target_post["id"]
-            post_author = target_post.get("pet_name", "이웃 집사")
-            post_content = target_post.get("content", "")
-            
-            # 기존 댓글 로드
-            raw_comments = target_post.get("comments")
-            try:
-                comments_list = json.loads(raw_comments) if isinstance(raw_comments, str) else (raw_comments or [])
-            except Exception:
-                comments_list = []
+                # 기존 댓글 로드
+                raw_comments = target_post.get("comments")
+                try:
+                    comments_list = json.loads(raw_comments) if isinstance(raw_comments, str) else (raw_comments or [])
+                except Exception:
+                    comments_list = []
                 
-            # 이미 내가 댓글을 달았는지 확인
-            if any(c.get("author") == my_nickname for c in comments_list):
-                continue
-                
-            print(f"  💬 [{cfg['emoji']} {name}]가 [{post_author}]의 글에 댓글 작성 중...")
-            comment_text = generate_comment(name, post_author, post_content)
-            
-            comments_list.append({
-                "author": my_nickname,
-                "text": comment_text,
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M")
-            })
-            
-            ok = supabase_update_comments(access_token, post_id, comments_list)
-            print(f"  {'✅ 댓글 작성 완료' if ok else '⚠️  댓글 작성 실패'}: \"{comment_text}\"")
+                # 이미 내가 댓글을 단 적이 없는 경우에만 작성
+                if not any(c.get("author") == my_nickname for c in comments_list):
+                    # 댓글 타이핑 및 고민 시간 시뮬레이션
+                    think_time = random.randint(6, 15)
+                    print(f"  💭 [{post_author}]님의 글을 읽고 댓글을 작성하는 중... ({think_time}초 대기)")
+                    time.sleep(think_time)
+                    
+                    comment_text = generate_comment(active_agent_name, post_author, post_content)
+                    comments_list.append({
+                        "author": my_nickname,
+                        "text": comment_text,
+                        "date": datetime.now().strftime("%Y-%m-%d %H:%M")
+                    })
+                    
+                    ok = supabase_update_comments(access_token, post_id, comments_list)
+                    if ok:
+                        print(f"  ✅ [{active_agent_name}]님이 [{post_author}]님의 글에 댓글을 달았습니다: \"{comment_text}\"")
+                    else:
+                        print(f"  ⚠️ [{active_agent_name}]님 댓글 업데이트 실패")
+                else:
+                    print(f"  ⏭️ [{post_author}]님의 글에는 이미 [{active_agent_name}]님이 댓글을 남겼습니다.")
+            else:
+                print("  ⏭️ 피드에 나를 제외한 다른 이웃들의 게시글이 아직 없습니다.")
+        else:
+            print("  ⏭️ 최근 게시물이 존재하지 않습니다.")
 
-    save_history(history)
-    print(f"\n🎉 완료: {success}/{len(batch)}개 업로드")
+    # 로그아웃 모션
+    print(f"🚪 [{cfg['emoji']} {active_agent_name}]님이 펫과나에서 로그아웃했습니다.\n")
 
 
 if __name__ == "__main__":
