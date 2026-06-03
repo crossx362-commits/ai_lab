@@ -59,11 +59,18 @@ const SupabaseService = {
                 if (lib && lib.createClient) {
                     this.client = lib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     this.isConnected = true;
-                    
+
                     // 전역 브릿지 변수 동기화
                     supabaseClient = this.client;
                     isSupabaseConnected = true;
-                    
+
+                    // OAuth 콜백 확실히 처리: SIGNED_IN 이벤트로 세션 수립 시점에 로그인 완료
+                    this.client.auth.onAuthStateChange((event, session) => {
+                        if (event === 'SIGNED_IN' && session && session.user) {
+                            this._completeOAuthLogin(session);
+                        }
+                    });
+
                     if (typeof AppLogger !== 'undefined') {
                         AppLogger.info("Supabase Service: 클라이언트가 성공적으로 연결되었습니다.");
                     } else {
@@ -110,6 +117,47 @@ const SupabaseService = {
         }
     },
 
+    _completeOAuthLogin(session) {
+        const user = session.user;
+        const nickname =
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.user_metadata?.preferred_username ||
+            user.email?.split('@')[0] || '집사';
+        const email = user.email;
+
+        localStorage.setItem('petna_is_logged_in', 'true');
+        localStorage.setItem('petna_user_email', email);
+        if (typeof settings_email !== 'undefined') settings_email = email;
+
+        const savedNickname = localStorage.getItem('petna_user_nickname_' + email) || nickname;
+        localStorage.setItem('petna_user_nickname_' + email, savedNickname);
+        localStorage.setItem('petna_user_nickname', savedNickname);
+        if (typeof settings_nickname !== 'undefined') settings_nickname = savedNickname;
+
+        if (!localStorage.getItem('petna_user_avatar_' + email)) {
+            localStorage.setItem('petna_user_avatar_' + email, '🧔');
+        }
+
+        const loginOverlay = document.getElementById('login-landing-overlay');
+        if (loginOverlay && loginOverlay.style.display !== 'none') {
+            loginOverlay.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                loginOverlay.style.display = 'none';
+                const headerEl = document.querySelector('header');
+                const mainEl = document.querySelector('main');
+                const mobileNavbarEl = document.getElementById('mobile-navbar');
+                if (headerEl) headerEl.style.display = 'block';
+                if (mainEl) mainEl.style.display = 'block';
+                if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+                document.body.classList.add('logged-in');
+                if (typeof showToast === 'function') showToast(`환영합니다, ${savedNickname}님! 🐾✨`);
+                if (typeof switchTab === 'function') switchTab('mypet');
+                if (typeof loadState === 'function') loadState(email);
+            }, 300);
+        }
+    },
+
     async handleOAuthCallback() {
         if (!this.isConnected || !this.client) return;
 
@@ -118,68 +166,12 @@ const SupabaseService = {
             if (error) throw error;
 
             if (session && session.user) {
-                const user = session.user;
-                const nickname =
-                    user.user_metadata?.full_name ||
-                    user.user_metadata?.name ||
-                    user.user_metadata?.preferred_username ||
-                    user.email.split('@')[0];
-                const email = user.email;
-
-                // 상태 저장 (계정 분리 대응)
-                localStorage.setItem('petna_is_logged_in', 'true');
-                localStorage.setItem('petna_user_email', email);
-                if (typeof settings_email !== 'undefined') settings_email = email;
-
-                const savedNickname = localStorage.getItem('petna_user_nickname_' + email);
-                const savedAvatar = localStorage.getItem('petna_user_avatar_' + email);
-                const savedPhotoUrl = localStorage.getItem('petna_user_photo_url_' + email);
-
-                const finalNickname = savedNickname || nickname;
-                localStorage.setItem('petna_user_nickname_' + email, finalNickname);
-                if (typeof settings_nickname !== 'undefined') settings_nickname = finalNickname;
-
-                if (savedAvatar) {
-                    if (typeof settings_avatar !== 'undefined') settings_avatar = savedAvatar;
-                } else {
-                    localStorage.setItem('petna_user_avatar_' + email, '🧔');
-                    if (typeof settings_avatar !== 'undefined') settings_avatar = '🧔';
-                }
-
-                if (savedPhotoUrl) {
-                    if (typeof settings_photo_url !== 'undefined') settings_photo_url = savedPhotoUrl;
-                } else {
-                    if (typeof settings_photo_url !== 'undefined') settings_photo_url = "";
-                }
-
-                // 설정 화면 닉네임/이메일 반영
-                const nicknameEl = document.getElementById('settings-display-nickname');
-                const emailEl = document.getElementById('settings-connected-email');
-                if (nicknameEl) nicknameEl.innerText = nickname;
-                if (emailEl) emailEl.innerText = email;
-
-                // 소셜 로그인 세션이면 로그인 오버레이를 닫고 메인으로 진입
-                const loginOverlay = document.getElementById('login-landing-overlay');
-                if (loginOverlay && loginOverlay.style.display !== 'none') {
-                    loginOverlay.classList.add('opacity-0', 'scale-95');
-                    setTimeout(() => {
-                        loginOverlay.style.display = 'none';
-                        const headerEl = document.querySelector('header');
-                        const mainEl = document.querySelector('main');
-                        const mobileNavbarEl = document.getElementById('mobile-navbar');
-                        if (headerEl) headerEl.style.display = 'block';
-                        if (mainEl) mainEl.style.display = 'block';
-                        if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
-                        document.body.classList.add('logged-in');
-                        if (typeof showToast === 'function') showToast(`환영합니다, ${nickname}님! 🐾✨`);
-                        if (typeof switchTab === 'function') switchTab('mypet');
-                    }, 300);
-                }
-                
+                this._completeOAuthLogin(session);
+                const _email = session.user.email;
                 if (typeof AppLogger !== 'undefined') {
-                    AppLogger.info(`OAuth 세션 감지 완료: ${email} (${nickname})`);
+                    AppLogger.info(`OAuth 세션 감지 완료: ${_email}`);
                 } else {
-                    console.log(`🟢 OAuth 세션 감지 완료: ${email} (${nickname})`);
+                    console.log(`🟢 OAuth 세션 감지 완료: ${_email}`);
                 }
             }
         } catch (e) {
