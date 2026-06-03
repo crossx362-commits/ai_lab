@@ -72,21 +72,53 @@ def check_service_worker() -> dict:
 
 
 def check_supabase_integration() -> dict:
-    """Supabase 클라이언트 파일 설정 확인."""
+    """Supabase 클라이언트 파일 + Auth 설정 확인."""
     f = PETNNA_DIR / "js" / "supabase.js"
     if not f.exists():
         return {"severity": "critical", "message": "supabase.js 없음 — DB 연결 불가"}
     try:
         content = f.read_text(encoding="utf-8")
         checks = {
-            "url":    "SUPABASE_URL"   in content or "supabaseUrl"  in content,
+            "url":    "SUPABASE_URL" in content or "supabaseUrl" in content,
             "key":    "SUPABASE_ANON_KEY" in content or "supabaseKey" in content,
-            "client": "createClient"   in content,
+            "client": "createClient" in content,
         }
-        ok = all(checks.values())
-        return {"severity": "normal" if ok else "critical", "checks": checks}
+        if not all(checks.values()):
+            return {"severity": "critical", "checks": checks}
     except Exception as e:
         return {"severity": "warning", "message": f"읽기 실패: {e}"}
+
+    # index.html의 window._env_ 주입 여부 확인
+    idx = PETNNA_DIR / "index.html"
+    try:
+        html = idx.read_text(encoding="utf-8")
+        import re
+        m = re.search(r'"SUPABASE_URL":\s*"([^"]+)"', html)
+        url_injected = bool(m and m.group(1).startswith("https://"))
+        if not url_injected:
+            return {"severity": "critical", "message": "index.html window._env_ SUPABASE_URL 미주입 — 로그인 불가"}
+    except Exception:
+        pass
+
+    # Supabase Auth Site URL 설정 확인
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_ANON_KEY", "")
+    if sb_url and sb_key:
+        try:
+            req = urllib.request.Request(
+                f"{sb_url}/auth/v1/settings",
+                headers={"apikey": sb_key}
+            )
+            with urllib.request.urlopen(req, timeout=8) as r:
+                import json
+                auth_cfg = json.loads(r.read())
+            site_url = auth_cfg.get("site_url") or ""
+            if not site_url:
+                return {"severity": "critical", "message": "Supabase Site URL 미설정 — OAuth 로그인 불가. 대시보드 → Authentication → URL Configuration에서 설정 필요"}
+        except Exception:
+            pass
+
+    return {"severity": "normal", "checks": checks}
 
 
 # ── 보고 함수 ─────────────────────────────────────────────────────────────────

@@ -476,18 +476,26 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
                 });
                 
                 if (error) {
-                    // Supabase 인증 실패 시 에러 메시지 한국어 변환
                     const errorMsg = error.message || '';
+                    // 자격증명 오류 → 로컬 계정 폴백 시도 (기존 로컬 가입자 대응)
                     if (errorMsg.includes('Invalid login credentials') || errorMsg.includes('invalid_credentials')) {
-                        showToast("🔐 이메일 또는 비밀번호가 올바르지 않습니다.");
+                        // 로컬 저장소에 계정이 있으면 로컬 인증으로 진행
+                        const localUsers = JSON.parse(localStorage.getItem('petna_registered_users') || '[]');
+                        if (!localUsers.some(u => u.email === finalEmail)) {
+                            showToast("🔐 이메일 또는 비밀번호가 올바르지 않습니다.");
+                            return;
+                        }
+                        // 로컬 폴백으로 계속 진행 (supabaseAuthSuccess = false)
                     } else if (errorMsg.includes('Email not confirmed')) {
                         showToast("📩 이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.");
+                        return;
                     } else if (errorMsg.includes('Too many requests') || errorMsg.includes('rate_limit')) {
                         showToast("⏳ 로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.");
+                        return;
                     } else {
                         showToast(`로그인 실패: ${errorMsg}`);
+                        return;
                     }
-                    return;
                 }
                 
                 // Supabase 인증 성공 → 세션에서 닉네임 추출
