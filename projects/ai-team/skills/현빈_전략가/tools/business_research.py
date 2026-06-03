@@ -54,12 +54,18 @@ def run_research():
 
     # 3. 중복 확인 (단순 시간 체크)
     memory = _load_memory()
+    # 파일이 dict로 저장된 경우 list로 초기화
+    if not isinstance(memory, list):
+        memory = []
     now = datetime.datetime.now()
-    if memory and isinstance(memory, list):
-        last_time = datetime.datetime.fromisoformat(memory[-1]['timestamp'])
-        if (now - last_time).total_seconds() < 3600:
-            return "⚠️ 최근 1시간 이내에 리서치를 수행했습니다. 잠시 후 다시 시도해주세요."
-    
+    if memory:
+        try:
+            last_time = datetime.datetime.fromisoformat(memory[-1]['timestamp'])
+            if (now - last_time).total_seconds() < 3600:
+                return "⚠️ 최근 1시간 이내에 리서치를 수행했습니다. 잠시 후 다시 시도해주세요."
+        except (KeyError, TypeError, ValueError):
+            pass
+
     # 4. 저장
     memory.append({
         "timestamp": now.isoformat(),
@@ -67,6 +73,7 @@ def run_research():
         "content": result[:100]
     })
     _save_memory(memory)
+
 
     return f"👔 **[현빈의 비즈니스 리서치]**\n주제: {topic}\n\n{result}"
 
