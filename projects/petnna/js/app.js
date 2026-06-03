@@ -501,7 +501,8 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
                     if (errorMsg.includes('Invalid login credentials') || errorMsg.includes('invalid_credentials')) {
                         // 로컬 저장소에 계정이 있으면 로컬 인증으로 진행
                         const localUsers = JSON.parse(localStorage.getItem('petna_registered_users') || '[]');
-                        if (!localUsers.some(u => u.email === finalEmail)) {
+                        const isDemoAccount = finalEmail === "butler@petna.co.kr";
+                        if (!isDemoAccount && !localUsers.some(u => u.email === finalEmail)) {
                             showToast("🔐 이메일 또는 비밀번호가 올바르지 않습니다.");
                             return;
                         }

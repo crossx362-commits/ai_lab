@@ -83,7 +83,7 @@ function renderPetStageList() {
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 const controlX = (butlerX + petX) / 2 + Math.sin(angle) * 3;
                 const controlY = (butlerY + petY) / 2 - 8;
-                const d = `M ${butlerX}% ${butlerY}% Q ${controlX}% ${controlY}% ${petX}% ${petY}%`;
+                const d = `M ${butlerX} ${butlerY} Q ${controlX} ${controlY} ${petX} ${petY}`;
                 line.setAttribute('d', d);
                 line.setAttribute('stroke', isActive ? '#f59e0b' : '#d1d5db');
                 line.setAttribute('stroke-width', isActive ? '2.5' : '1.5');

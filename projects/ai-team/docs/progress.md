@@ -1,15 +1,14 @@
-# 펫과나 개발 진행 현황
+# 펫과나 개발 및 진행 현황 보고서
 
-## 2026-06-03 — 회의록 기반 일괄 구현
-- 구현: 탄생 카드, INITIAL_PLACES 전국 확장, 날씨 API, 조화도 서브탭 등
-- 다음 우선순위: Stripe 연결, Gemini AI 건강분석 QA
+본 문서는 코다리 개발자가 수행하는 진행 상황 및 완료 세부 정보를 기록하는 공식 보고서입니다.
 
-## 2026-06-03 — 코다리 자율 개발
-- 구현: 프리미엄 연간 구독 옵션(월간/연간 탭 전환 UI), 산책 완료 후 "장소 등록하기" 버튼, 피드 댓글 답글 스레드
-- 변경 파일: js/freemium.js, js/templates/mypet.js, js/walk.js, js/social.js
-- 상태: 완료
+---
 
+## 2026-06-03 — 회의록 기반 기능 구현 및 버그 수정
 
-## 2026-06-03 17:56 — 코다리(Ollama/gemma3:12b)
-- TASK | js/freemium.js | `showPremiumModal()` 함수에 연간 구독 옵션 UI 추가 및 Stripe 연동 로직 구현
-- TASK | js/walk.js | 산책 완료 후 "장소 등록하기" 버튼 추가 및 Supabase places 테이블 연동 로직 구현
+### 🛠️ 완료된 사전 버그 수정 (Antigravity 반영)
+- **데모 계정 로그인 버그 해결**: Supabase Auth 연동 조건에서 데모 계정(`butler@petna.co.kr`)의 local fallback 인증이 차단되던 흐름을 우회할 수 있도록 예외처리 적용.
+- **SVG Leash Curve 좌표 렌더링 정상화**: `mypet.js` 내 SVG 경로 `d` 속성에 정의된 퍼센트 단위(`%`)를 걷어내고, SVG element에 `viewBox="0 0 100 100"` 및 `preserveAspectRatio="none"`을 부여하여 표준 렌더링에 적합하도록 전면 수정.
+
+### ⏳ 백그라운드 진행 상황 (코다리 개발자 작성 대기)
+*(여기에 코다리가 백그라운드 작업 수행 내역을 작성합니다.)*
