@@ -1,9 +1,16 @@
 """
 prompt_crafter.py — 인스타그램용 고퀄리티 이미지 프롬프트 제작 모듈
 테마: 자연(산/바다/사계절)/동물/인물/음식/여행 — tech/미래 테마 제외
+지식 파일: knowledge/insta_prompt_craft_knowledge.md
 """
 import random
 import datetime
+
+# ─── 지식 파일 기반 품질 공통 수식어 (knowledge §3 원칙 3) ──────────────────────
+_KNOWLEDGE_QUALITY_SUFFIX = (
+    "masterpiece, exquisite and intricate details, vibrant and rich tones, "
+    "sharp focus, perfect artistic composition, cinematic ambience"
+)
 
 # ─── 카테고리 판별 키워드 맵 ──────────────────────────────────────────────────
 CATEGORY_KEYWORDS = {
@@ -282,7 +289,8 @@ def craft_insta_prompt(topic: str, topic_type: str = "auto") -> str:
     pool = TYPE_PROMPT_POOLS.get(category, TYPE_PROMPT_POOLS["landscape"])
     type_prompt = random.choice(pool)
     narrative = build_narrative(topic, category)
-    quality = random.choice(QUALITY_SUFFIX_POOL)
+    # knowledge §3 원칙3: 품질 수식어 풀 + 지식 파일 공통 수식어 중 랜덤 선택
+    quality = random.choice(QUALITY_SUFFIX_POOL + [_KNOWLEDGE_QUALITY_SUFFIX])
     # 실사화 수식어 — 모든 이미지에 전역 적용 (CEO 지시 2026-05-28)
     realism = "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture,"
     final_prompt = f"{realism} {type_prompt} {narrative}, {quality}"

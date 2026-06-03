@@ -33,30 +33,43 @@ YEONGSUK_PERSONA = """
 당신은 영숙이에요. 사장님 텔레그램 메시지를 받아 모드를 판단하고 JSON 1개만 반환합니다.
 
 # 절대 규칙
-- "text" 필드는 반드시 **한 문장** (20자 이내). 긴 답변 금지.
 - JSON 외 다른 텍스트 출력 금지.
+- 거짓 완료 보고 절대 금지 — 확인되지 않은 상태에서 "이미 처리했어요" 금지.
+- 동사형 요청(분석해줘, 만들어줘, 써줘, 포스팅해 등)은 무조건 dispatch.
+- URL 임의 생성 금지.
 
 # 모드 판단
 
-## status — 조회/확인 (실행 아님)
-트리거 키워드: 현황, 작업 현황, 어때, 어떻게 됐어, 확인해줘, 알려줘, 파악해, 업로드됐어, 진행 상황, 왜, 어떻게, 뭐가, 요즘, 오늘, 포스팅했어
+## reply / ask — 일상 대화 또는 질문
+→ {"mode": "reply", "text": "친근한 답변"}
+→ {"mode": "ask", "text": "확인이 필요한 질문"}
+
+## status — 에이전트 현황 조회
+트리거: 현황, 작업 현황, 어때, 어떻게 됐어, 확인해줘, 알려줘, 파악해, 업로드됐어, 진행 상황, 요즘, 오늘, 포스팅했어
 → {"mode": "status", "agent": "루나|아린|전체", "text": "확인할게요!"}
 
-## dispatch — 실행 지시
-트리거: 해줘, 만들어, 올려, 제작해, 포스팅해, 실행해, 시작해
-→ {"mode": "dispatch", "text": "바로 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 [에이전트]에게 [작업]을 지시하셨습니다. [에이전트] 파이프라인을 실행해주세요."}
+## dispatch — 실행 지시 (동사형 요청 전부)
+→ {"mode": "dispatch", "text": "바로 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 [에이전트]에게 [작업]을 지시하셨습니다."}
 
-## reply — 일상 대화
-트리거: 안녕, 고마워, 잘했어, 수고해
-→ {"mode": "reply", "text": "감사해요 사장님!"}
+## calendar_create — 일정 생성
+→ {"mode": "calendar_create", "text": "📅 [일정명] 등록할게요!", "event": {"title": "...", "start": "2026-06-04T15:00:00", "duration_minutes": 60, "description": "", "location": ""}}
+
+## calendar_list — 일정 조회
+→ {"mode": "calendar_list", "text": "📅 일정 조회할게요!", "days_ahead": 7}
+
+## calendar_delete — 일정 삭제
+→ {"mode": "calendar_delete", "text": "📅 [일정명] 취소할게요!", "query": "키워드", "days_ahead": 7, "delete_all": false}
+
+## calendar_update — 일정 수정
+→ {"mode": "calendar_update", "text": "📅 일정 수정할게요!", "query": "키워드", "days_ahead": 7, "patch": {"start": "...", "duration_minutes": 90}}
 
 # 예시
 "작업 현황" → {"mode": "status", "agent": "전체", "text": "현황 확인할게요!"}
-"루나 업로드 현황" → {"mode": "status", "agent": "루나", "text": "루나 현황 확인할게요!"}
-"아린 오늘 포스팅했어?" → {"mode": "status", "agent": "아린", "text": "아린 확인할게요!"}
 "루나 영상 만들어" → {"mode": "dispatch", "text": "루나 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 루나에게 뮤직비디오 제작을 지시하셨습니다. 루나 파이프라인을 실행해주세요."}
-"아린 인스타 올려" → {"mode": "dispatch", "text": "아린 포스팅 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 아린에게 인스타그램 포스팅을 지시하셨습니다. 아린 파이프라인을 실행해주세요."}
-"안녕" → {"mode": "reply", "text": "안녕하세요 사장님!"}
+"내일 오후 3시 회의 잡아줘" → {"mode": "calendar_create", "text": "📅 내일 15:00 회의 등록할게요!", "event": {"title": "회의", "start": "2026-06-04T15:00:00", "duration_minutes": 60}}
+"이번 주 일정 알려줘" → {"mode": "calendar_list", "text": "📅 이번 주 일정 조회할게요!", "days_ahead": 7}
+"광고주 미팅 취소해" → {"mode": "calendar_delete", "text": "📅 광고주 미팅 취소할게요!", "query": "광고주", "days_ahead": 7, "delete_all": false}
+"안녕" → {"mode": "reply", "text": "안녕하세요 사장님! 😊"}
 """
 
 CHAT_HISTORY = []
@@ -208,6 +221,142 @@ def _handle_status_query(agent: str):
     send_message("📊 <b>[현황 보고]</b>\n\n" + "\n".join(lines))
 
 
+# ── 캘린더 핸들러 ─────────────────────────────────────────────────────────────
+
+def _gcal_service():
+    """Google Calendar API 서비스 객체 반환. 인증 실패 시 None."""
+    import importlib.util
+    if not importlib.util.find_spec("googleapiclient"):
+        return None
+    try:
+        import json as _j
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        cfg_path = os.path.join(_here, "google_calendar_write.json")
+        if not os.path.exists(cfg_path):
+            return None
+        cfg = _j.load(open(cfg_path, encoding="utf-8"))
+        creds = Credentials(
+            token=None,
+            refresh_token=cfg.get("REFRESH_TOKEN", ""),
+            client_id=cfg.get("CLIENT_ID", ""),
+            client_secret=cfg.get("CLIENT_SECRET", ""),
+            token_uri="https://oauth2.googleapis.com/token",
+            scopes=["https://www.googleapis.com/auth/calendar.events"],
+        )
+        return build("calendar", "v3", credentials=creds, cache_discovery=False)
+    except Exception as e:
+        print(f"  [캘린더 인증] 실패: {e}")
+        return None
+
+
+def _handle_calendar_list(days_ahead: int = 7):  # noqa: ARG001
+    """캘린더 일정 조회 → 텔레그램 발송."""
+    cache = os.path.join(os.path.dirname(_here), "..", "..", "..", "_shared", "calendar_cache.md")
+    cache = os.path.abspath(cache)
+    if os.path.exists(cache):
+        content = open(cache, encoding="utf-8").read()
+        send_message(f"📅 <b>[일정 조회]</b>\n\n{content[:1500]}")
+        return
+    # iCal 직접 조회
+    try:
+        import subprocess, sys as _sys
+        cal_py = os.path.join(_here, "google_calendar.py")
+        result = subprocess.run([_sys.executable, cal_py], capture_output=True, text=True, timeout=20)
+        out = (result.stdout or "일정 없음").strip()
+        send_message(f"📅 <b>[일정 조회]</b>\n\n{out[:1000]}")
+    except Exception as e:
+        send_message(f"📅 캘린더 조회 실패: {e}")
+
+
+def _handle_calendar_create(event: dict):
+    """Google Calendar 이벤트 생성."""
+    svc = _gcal_service()
+    if not svc:
+        send_message("⚠️ 캘린더 연동이 설정되지 않았어요.\n명령 팔레트 → 'AI Team: Google Calendar 자동 일정 연결' 실행해주세요.")
+        return
+    try:
+        start = event.get("start", "")
+        dur   = int(event.get("duration_minutes", 60))
+        from datetime import datetime, timedelta
+        dt_start = datetime.fromisoformat(start)
+        dt_end   = dt_start + timedelta(minutes=dur)
+        body = {
+            "summary":     event.get("title", "일정"),
+            "description": event.get("description", ""),
+            "location":    event.get("location", ""),
+            "start": {"dateTime": dt_start.isoformat(), "timeZone": "Asia/Seoul"},
+            "end":   {"dateTime": dt_end.isoformat(),   "timeZone": "Asia/Seoul"},
+            "reminders": {"useDefault": False, "overrides": [
+                {"method": "popup", "minutes": 60},
+                {"method": "popup", "minutes": 5},
+            ]},
+        }
+        svc.events().insert(calendarId="primary", body=body).execute()
+        send_message(f"✅ 📅 <b>{event.get('title', '일정')}</b> 등록 완료!\n{dt_start.strftime('%m/%d %H:%M')} ({dur}분)")
+    except Exception as e:
+        send_message(f"❌ 일정 생성 실패: {e}")
+
+
+def _handle_calendar_delete(query: str, days_ahead: int, delete_all: bool):
+    """키워드로 일정 검색 후 삭제."""
+    svc = _gcal_service()
+    if not svc:
+        send_message("⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결).")
+        return
+    try:
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        end = now + timedelta(days=days_ahead)
+        result = svc.events().list(
+            calendarId="primary", timeMin=now.isoformat(), timeMax=end.isoformat(),
+            q=query, maxResults=10, singleEvents=True, orderBy="startTime"
+        ).execute()
+        items = result.get("items", [])
+        if not items:
+            send_message(f"📅 '{query}' 관련 일정을 찾지 못했어요.")
+            return
+        targets = items if delete_all else items[:1]
+        for ev in targets:
+            svc.events().delete(calendarId="primary", eventId=ev["id"]).execute()
+        names = ", ".join(ev.get("summary", "?") for ev in targets)
+        send_message(f"✅ 📅 일정 취소 완료: {names}")
+    except Exception as e:
+        send_message(f"❌ 일정 취소 실패: {e}")
+
+
+def _handle_calendar_update(query: str, days_ahead: int, patch: dict):
+    """키워드로 일정 검색 후 수정."""
+    svc = _gcal_service()
+    if not svc:
+        send_message("⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결).")
+        return
+    try:
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        end = now + timedelta(days=days_ahead)
+        result = svc.events().list(
+            calendarId="primary", timeMin=now.isoformat(), timeMax=end.isoformat(),
+            q=query, maxResults=5, singleEvents=True, orderBy="startTime"
+        ).execute()
+        items = result.get("items", [])
+        if not items:
+            send_message(f"📅 '{query}' 관련 일정을 찾지 못했어요.")
+            return
+        ev = items[0]
+        if "start" in patch:
+            dt = datetime.fromisoformat(patch["start"])
+            dur = int(patch.get("duration_minutes", 60))
+            ev["start"] = {"dateTime": dt.isoformat(), "timeZone": "Asia/Seoul"}
+            ev["end"]   = {"dateTime": (dt + timedelta(minutes=dur)).isoformat(), "timeZone": "Asia/Seoul"}
+        if "title" in patch:
+            ev["summary"] = patch["title"]
+        svc.events().update(calendarId="primary", eventId=ev["id"], body=ev).execute()
+        send_message(f"✅ 📅 일정 수정 완료: {ev.get('summary', '?')}")
+    except Exception as e:
+        send_message(f"❌ 일정 수정 실패: {e}")
+
+
 def process_message(text: str):
     print(f"\n📩 [영숙 수신] {text}")
 
@@ -250,12 +399,26 @@ def process_message(text: str):
         CHAT_HISTORY.append({"role": "User", "text": text})
         CHAT_HISTORY.append({"role": "Assistant", "text": reply_text})
 
-        # 2a. 현황 조회 모드 — 실제 데이터 읽어서 보고 (파이프라인 실행 안 함)
+        # 2a. 현황 조회
         if mode == "status":
             _handle_status_query(decision.get("agent", "전체"))
             return
 
-        # 2b. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
+        # 2b. 캘린더 모드
+        if mode == "calendar_list":
+            _handle_calendar_list(decision.get("days_ahead", 7))
+            return
+        if mode == "calendar_create":
+            _handle_calendar_create(decision.get("event", {}))
+            return
+        if mode == "calendar_delete":
+            _handle_calendar_delete(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("delete_all", False))
+            return
+        if mode == "calendar_update":
+            _handle_calendar_update(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("patch", {}))
+            return
+
+        # 2c. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
         if mode == "dispatch" and "dispatch_to_ceo" in decision:
             ceo_msg = decision["dispatch_to_ceo"]
             try:
