@@ -23,6 +23,8 @@ const TabControllers = {
                 activePet.tempSpeechText = null;
             }
             if (typeof renderMyPets === 'function') renderMyPets();
+            if (typeof renderCalendar === 'function') renderCalendar();
+            if (typeof renderMealLogsList === 'function') renderMealLogsList();
         },
         destroy() {
             if (typeof AppLogger !== 'undefined') {
