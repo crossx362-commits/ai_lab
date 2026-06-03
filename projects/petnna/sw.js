@@ -1,4 +1,4 @@
-const CACHE = 'petna-v5';
+const CACHE = 'petna-v6';
 const STATIC = [
     './',
     './index.html',

@@ -1,9 +1,16 @@
 const SHOP_TEMPLATE = `
 <div class="space-y-6 animate-fade-in">
 
-    <!-- 일반 상품 (준비 중) -->
-    <div class="hidden">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="shop-product-list"></div>
+    <!-- 펫과나 스토어 준비 중 배너 -->
+    <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-5 border border-amber-100 shadow-sm text-center space-y-3">
+        <div class="text-4xl">🛒</div>
+        <div>
+            <p class="text-sm font-black text-gray-800">펫과나 스토어 오픈 준비 중</p>
+            <p class="text-xs text-gray-400 mt-1">반려동물 맞춤 용품·간식·장난감을 곧 만나보세요!</p>
+        </div>
+        <div class="inline-flex items-center gap-1.5 bg-brand-500 text-white text-xs font-black px-4 py-2 rounded-xl">
+            <i class="fa-solid fa-bell"></i> 오픈 알림 신청
+        </div>
     </div>
 
     <!-- 힐링스페이스 연결 -->
@@ -27,7 +34,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-healing-spa" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-healing-spa" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://banjjakpet.com/" target="_blank" rel="noopener"
+                    <a href="https://banjjakpet.com/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-emerald-800">반짝</span>
@@ -35,7 +42,7 @@ const SHOP_TEMPLATE = `
                         </div>
                         <i class="fa-solid fa-arrow-up-right-from-square text-emerald-400 text-xs"></i>
                     </a>
-                    <a href="https://www.petvip.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://www.petvip.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-emerald-800">펫VIP</span>
@@ -60,7 +67,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-healing-camping" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-healing-camping" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://www.camfit.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://www.camfit.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-emerald-800">캠핏</span>
@@ -93,7 +100,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-healing-therapy" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-healing-therapy" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://healschool.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://healschool.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-emerald-800">더힐테라피센터</span>
@@ -128,7 +135,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-care-sitter" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-care-sitter" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://wayopet.com/" target="_blank" rel="noopener"
+                    <a href="https://wayopet.com/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-sky-800">와요 (WAYO)</span>
@@ -136,7 +143,7 @@ const SHOP_TEMPLATE = `
                         </div>
                         <i class="fa-solid fa-arrow-up-right-from-square text-sky-400 text-xs"></i>
                     </a>
-                    <a href="https://petplanet.co/" target="_blank" rel="noopener"
+                    <a href="https://petplanet.co/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-sky-800">펫플래닛</span>
@@ -161,7 +168,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-care-hotel" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-care-hotel" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://www.petliz.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://www.petliz.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-sky-800">Petliz</span>
@@ -186,7 +193,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-care-walk" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-care-walk" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://wayopet.com/" target="_blank" rel="noopener"
+                    <a href="https://wayopet.com/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-sky-800">와요 — 산책 대행</span>
@@ -211,7 +218,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-care-hospital" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-care-hospital" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://www.petmeup.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://www.petmeup.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-sky-800">펫미업</span>
@@ -219,7 +226,7 @@ const SHOP_TEMPLATE = `
                         </div>
                         <i class="fa-solid fa-arrow-up-right-from-square text-sky-400 text-xs"></i>
                     </a>
-                    <a href="https://hospital.fitpetmall.com/" target="_blank" rel="noopener"
+                    <a href="https://hospital.fitpetmall.com/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-sky-50 hover:bg-sky-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-sky-800">핏펫 병원 검색</span>
@@ -254,7 +261,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-train-visit" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-train-visit" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://wayopet.com/trainer" target="_blank" rel="noopener"
+                    <a href="https://wayopet.com/trainer?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-orange-800">와요 — 훈련사</span>
@@ -270,7 +277,7 @@ const SHOP_TEMPLATE = `
                         </div>
                         <i class="fa-solid fa-arrow-up-right-from-square text-orange-400 text-xs"></i>
                     </a>
-                    <a href="https://www.petvip.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://www.petvip.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-orange-800">펫VIP</span>
@@ -295,7 +302,7 @@ const SHOP_TEMPLATE = `
                     <i id="icon-train-online" class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform"></i>
                 </button>
                 <div id="section-train-online" class="hidden px-4 py-3 space-y-2 bg-white border-t border-gray-100">
-                    <a href="https://ebspetedu.co.kr/" target="_blank" rel="noopener"
+                    <a href="https://ebspetedu.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
                         class="flex items-center justify-between p-3 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors">
                         <div>
                             <span class="block text-xs font-black text-orange-800">EBS 펫에듀</span>

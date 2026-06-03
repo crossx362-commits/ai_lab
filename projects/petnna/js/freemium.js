@@ -106,6 +106,8 @@ function showPremiumWaitlist() {
 
 // 테스트 전용 — 프로덕션 배포 전 반드시 이 버튼 숨기거나 제거
 function activatePremiumDemo() {
+    const isLocal = ['localhost', '127.0.0.1'].some(h => location.hostname.includes(h));
+    if (!isLocal) return;
     console.warn("[PETNA] activatePremiumDemo: 테스트 전용. 프로덕션에서 제거 필요.");
     localStorage.setItem("petna_premium", "demo");
     closePremiumModal();
