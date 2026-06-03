@@ -94,6 +94,40 @@ def read_file(rel_path: str) -> str | None:
     return None
 
 
+def check_structure() -> list[str]:
+    """index.html 구조 정합성 검사 — 템플릿 로드, 변수 참조 등."""
+    issues = []
+    idx = os.path.join(PETNNA_ROOT, "index.html")
+    if not os.path.exists(idx):
+        return ["❌ index.html 없음"]
+
+    html = open(idx, encoding="utf-8").read()
+
+    # 1. templates/*.js 로드 여부 확인
+    required_templates = [
+        "templates/mypet.js", "templates/walk.js", "templates/saju.js",
+        "templates/social.js", "templates/album.js", "templates/shop.js",
+        "templates/settings.js", "templates/modals.js", "templates/cart.js",
+    ]
+    for t in required_templates:
+        if t not in html:
+            issues.append(f"🚨 {t} 미로드 — 로그인 후 빈 화면 발생")
+
+    # 2. window._env_ SUPABASE 주입 여부
+    import re
+    m = re.search(r'"SUPABASE_URL":\s*"([^"]*)"', html)
+    if not m or not m.group(1).startswith("https://"):
+        issues.append("🚨 window._env_ SUPABASE_URL 미주입 — 로그인 불가")
+
+    # 3. app.js가 templates보다 뒤에 로드되는지 확인
+    tmpl_pos = html.find("templates/mypet.js")
+    app_pos  = html.find("js/app.js")
+    if tmpl_pos > 0 and app_pos > 0 and tmpl_pos > app_pos:
+        issues.append("🚨 templates/mypet.js가 app.js 이후에 로드됨 — TEMPLATE 변수 미정의")
+
+    return issues
+
+
 def run_review() -> str:
     if not os.path.isdir(PETNNA_ROOT):
         return f"❌ petnna 프로젝트 경로를 찾을 수 없습니다: {PETNNA_ROOT}"
@@ -104,6 +138,15 @@ def run_review() -> str:
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [f"🎨 <b>[티모] petnna UI/UX 검토 보고</b>\n📅 {now}\n"]
     critical_count = 0
+
+    # 구조 정합성 먼저 체크
+    struct_issues = check_structure()
+    if struct_issues:
+        critical_count += len(struct_issues)
+        lines.append("🔍 <b>구조 정합성 검사</b>")
+        for iss in struct_issues:
+            lines.append(f"  {iss}")
+        lines.append("")
 
     for rel_path, name in REVIEW_TARGETS:
         code = read_file(rel_path)
