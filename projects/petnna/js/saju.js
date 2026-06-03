@@ -959,12 +959,15 @@ function startArcadeGame() {
     
     document.getElementById('arcade-score-display').innerText = arcadeScore;
     updateLivesDisplay();
-    document.getElementById('arcade-play-area').innerHTML = ''; // 오버레이가 삭제되지 않도록 주의해야 함
-    
-    // 오버레이 다시 추가 (innerHTML 초기화 시 날아가는 문제 방지)
-    document.getElementById('arcade-play-area').appendChild(startOverlay);
-    document.getElementById('arcade-play-area').appendChild(gameoverOverlay);
-    
+
+    // innerHTML 대신 game item만 선택 제거 — overlay DOM 노드 보존
+    const playArea = document.getElementById('arcade-play-area');
+    Array.from(playArea.children).forEach(child => {
+        if (child.id !== 'arcade-start-overlay' && child.id !== 'arcade-gameover-overlay') {
+            playArea.removeChild(child);
+        }
+    });
+
     if(arcadeSpawnTimer) clearTimeout(arcadeSpawnTimer);
     
     // 첫 아이템 스폰 시작
@@ -1001,20 +1004,20 @@ function spawnArcadeItem() {
     // Random position
     const left = Math.random() * 80; // 0 to 80%
     item.style.left = left + '%';
-    item.style.top = '-50px';
-    
-    // 점수에 비례하여 떨어지는 속도 증가 (최소 0.65배 — 완화, 기본 3~5초)
+    item.style.top = '-12%';
+
     let speedMultiplier = Math.max(0.65, 1.0 - (arcadeScore / 400));
-    const duration = (Math.random() * 2000 + 3000) * speedMultiplier; // 3~5초 * 배율
-    
-    item.style.transition = `top ${duration}ms linear`;
+    const duration = (Math.random() * 2000 + 3000) * speedMultiplier;
+
     item.clicked = false;
-    
     playArea.appendChild(item);
-    
-    // Start falling on next frame
+
+    // 한 프레임 뒤에 transition 설정 후 낙하 시작 (단위 % 통일)
     requestAnimationFrame(() => {
-        item.style.top = '120%';
+        requestAnimationFrame(() => {
+            item.style.transition = `top ${duration}ms linear`;
+            item.style.top = '112%';
+        });
     });
     
     // Touch event
