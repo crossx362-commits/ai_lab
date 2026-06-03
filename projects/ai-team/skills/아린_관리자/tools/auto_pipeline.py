@@ -526,6 +526,8 @@ def git_sync():
     print("📤 Git 동기화 진행 중...")
     try:
         git_root = _root
+        env = os.environ.copy()
+        env["GIT_TERMINAL_PROMPT"] = "0"
         subprocess.run(["git", "add", "."], cwd=git_root, check=True)
         status = subprocess.run(["git", "status", "--porcelain"], cwd=git_root, capture_output=True, text=True)
         if status.stdout.strip():
@@ -535,8 +537,8 @@ def git_sync():
         branch_result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=git_root, capture_output=True, text=True)
         current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "master"
         # remote에 먼저 커밋이 있을 경우 pull --rebase 후 push
-        subprocess.run(["git", "pull", "--rebase", "origin", current_branch], cwd=git_root, check=True)
-        subprocess.run(["git", "push", "origin", current_branch], cwd=git_root, check=True)
+        subprocess.run(["git", "pull", "--rebase", "origin", current_branch], cwd=git_root, check=True, env=env)
+        subprocess.run(["git", "push", "origin", current_branch], cwd=git_root, check=True, env=env)
         print("✅ Git 동기화 완료!")
         send_telegram_message("💾 [Git 동기화 완료] 아린 에이전트 소스 및 설정이 GitHub에 백업되었습니다.")
     except Exception as e:
