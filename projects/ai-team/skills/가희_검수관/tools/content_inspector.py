@@ -808,6 +808,10 @@ def _check_instagram_posts() -> list[dict]:
             elif len(caption) < 50:
                 issues.append("캡션 너무 짧음 (50자 미만)")
 
+            # 구조화 포맷 유출 감지
+            if _is_structured_caption(caption):
+                issues.append("캡션 구조화 포맷 유출 (번호+레이블 형식)")
+
             # 금지 키워드 검사
             hit = [kw for kw in _BANNED_KEYWORDS if kw in lower]
             if hit:
@@ -866,6 +870,11 @@ def _get_overused_words(agent: str, recent_n: int = 10, threshold: float = 0.3) 
         return []
 
 
+def _is_structured_caption(caption: str) -> bool:
+    """'1. 사진 느낌 설명:' 같은 구조화 포맷이 캡션에 그대로 유출됐는지 감지."""
+    return bool(re.search(r"^\s*\d+\.\s", caption, re.MULTILINE))
+
+
 def inspect_caption(caption: str, agent: str = "아린") -> dict:
     """인스타 캡션 업로드 전 사전 검수. 결과: {'pass': bool, 'issues': list[str]}"""
     _BANNED = [
@@ -882,6 +891,11 @@ def inspect_caption(caption: str, agent: str = "아린") -> dict:
         issues.append("캡션 없음")
     elif len(caption) < 50:
         issues.append(f"캡션 너무 짧음 ({len(caption)}자)")
+
+    # 구조화 포맷 유출 감지 ("1. 사진 느낌 설명:" 등)
+    if _is_structured_caption(caption):
+        issues.append("캡션 구조화 포맷 유출 (번호+레이블 형식)")
+
     hits = [kw for kw in _BANNED if kw in lower]
     if hits:
         issues.append(f"금지 키워드: {', '.join(hits)}")

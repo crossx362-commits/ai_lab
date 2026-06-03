@@ -338,15 +338,41 @@ def generate_and_upload_image(prompt):
     return None
 
 
+def _clean_vision_caption(text: str) -> str | None:
+    """Vision 모델이 구조화 포맷으로 응답했을 경우 순수 캡션만 추출."""
+    import re
+    # "1. 사진 느낌 설명:" 등 번호+제목 포맷 감지
+    if re.search(r"^\s*\d+\.", text, re.MULTILINE):
+        # 해시태그 줄 추출 후 재조합
+        hashtags = " ".join(re.findall(r"#\S+", text))
+        # 첫 번째 설명 문장 추출 (번호/레이블 제거)
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        desc_lines = [re.sub(r"^\d+\.\s*[^:：]+[:：]\s*", "", l) for l in lines
+                      if not re.match(r"^\d+\.", l) and not l.startswith("#")]
+        body = " ".join(desc_lines[:2]).strip()
+        if not body or not hashtags:
+            return None
+        # 이모지가 없으면 기본 추가
+        emoji = re.search(r"[\U0001F300-\U0001FFFF]", body)
+        if not emoji:
+            body += " 🌿"
+        return f"{body}\n\n{hashtags}"
+    return text
+
+
 def generate_caption_from_image(img_bytes: bytes) -> str:
     """이미지 분석 → 감성 인스타 캡션 생성. Ollama 우선, 실패 시 Gemini Vision 폴백."""
     prompt = (
-        "이 사진 보고 인스타 캡션 써줘. "
-        "진짜 사람이 폰으로 찍고 올린 것처럼 자연스럽게. "
-        "딱딱한 문어체 금지, 평소 친구한테 말하듯이. "
-        "짧고 감성적으로 1~2문장. 이모지 1개. "
-        "마지막에 해시태그 6~8개. "
-        "캡션만 출력, 다른 말 없이."
+        "아래 사진을 보고 인스타그램 캡션을 작성해줘.\n\n"
+        "규칙:\n"
+        "- 진짜 사람이 폰으로 찍어서 올린 것처럼 자연스럽고 짧게\n"
+        "- 1~2문장 + 이모지 1개\n"
+        "- 마지막 줄에 해시태그 6~8개\n"
+        "- 번호, 제목, 설명 레이블(예: '1. 사진 느낌:') 절대 쓰지 말 것\n"
+        "- 캡션 텍스트만 출력, 다른 말 일절 없이\n\n"
+        "출력 예시:\n"
+        "오늘 이 순간 너무 좋았다 🌊\n"
+        "#바다 #여름 #힐링 #감성 #일상 #파도 #여행"
     )
 
     # 1순위: Ollama Vision
@@ -356,10 +382,25 @@ def generate_caption_from_image(img_bytes: bytes) -> str:
             print("👁️ Ollama Vision으로 이미지 분석 중...")
             result = chat_vision(prompt, img_bytes, max_tokens=300)
             if result:
-                print("✅ Ollama Vision 캡션 생성 완료!")
-                return result.strip()
+                cleaned = _clean_vision_caption(result.strip())
+                if cleaned:
+                    print("✅ Ollama Vision 캡션 생성 완료!")
+                    return cleaned
     except Exception as e:
         print(f"  [Ollama Vision] 실패: {e}")
+
+    # 2순위: Gemini Vision 폴백
+    try:
+        from _shared.gemini_client import vision as gemini_vision
+        print("👁️ Gemini Vision으로 이미지 분석 중...")
+        result = gemini_vision(img_bytes, prompt, max_tokens=300)
+        if result:
+            cleaned = _clean_vision_caption(result.strip())
+            if cleaned:
+                print("✅ Gemini Vision 캡션 생성 완료!")
+                return cleaned
+    except Exception as e:
+        print(f"  [Gemini Vision] 실패: {e}")
 
     return None
 
