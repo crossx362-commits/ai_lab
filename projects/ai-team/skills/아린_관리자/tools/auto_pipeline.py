@@ -27,6 +27,14 @@ if _root not in sys.path:
 from uploader import InstaUploader, load_env, ensure_token_fresh
 from _shared.telegram_notifier import send_telegram_message
 from prompt_crafter import craft_insta_prompt
+import importlib
+from analysis import run_analysis_and_deepsearch
+from decision import make_decision
+# Add 예원_CEO directory to sys.path for direct import
+_ceo_path = os.path.join(_root, "skills", "예원_CEO")
+if _ceo_path not in sys.path:
+    sys.path.insert(0, _ceo_path)
+from approval import await_approval
 import importlib.util as _ilu
 # skills/아린_관리자/tools/ → skills/가희_검수관/tools/
 _gahee_path = os.path.join(os.path.dirname(__file__), "..", "..", "가희_검수관", "tools", "content_inspector.py")
@@ -562,6 +570,19 @@ def main(dry_run=False):
 
     # 3. 키워드 기반 이미지 프롬프트·제목·디스크립션·태그 생성
     post_data = _generate_full_content(selected_trend, keywords)
+
+    # ---------------------------------------------------
+    # 2a. 분석·딥서치 및 의사결정
+    # ---------------------------------------------------
+    # 실행 중인 리포트 경로 (예시) – 필요에 따라 조정
+    report_path = os.path.join(_root, "reports", "research", "sample_research_report.md")
+    analysis_result = run_analysis_and_deepsearch(report_path)
+    decision = make_decision(analysis_result)
+    # 승인 요청 – Ye-won(CEO)에게 전달
+    if not await_approval(decision):
+        print("❌ 승인 거부 또는 타임아웃 – 파이프라인 중단.")
+        send_telegram_message("🚨 아린 인스타: 승인 거부로 포스팅 중단.")
+        sys.exit(0)
     
     print("\n========================================")
     print("📋 생성된 포스팅 기획 정보")

@@ -1213,60 +1213,6 @@ def run_scheduled_scan(slot: str = "morning"):
     return correction_requests
 
 
-if __name__ == "__main__":
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
-
-    args = sys.argv[1:]
-
-    if "--full" in args:
-        run_full_audit()
-
-    elif "--schedule" in args:
-        idx  = args.index("--schedule")
-        slot = args[idx + 1] if idx + 1 < len(args) else "morning"
-        run_scheduled_scan(slot)
-
-    elif "--pre-upload" in args:
-        # 인스타 캡션 업로드 전 검수
-        idx     = args.index("--pre-upload")
-        caption = args[idx + 1] if idx + 1 < len(args) else ""
-        _load_env()
-        result  = inspect_caption(caption)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result["pass"]:
-            request_correction(
-                "Instagram", "아린", "PRE_UPLOAD", result["issues"],
-                f"캡션 업로드 전 검수 실패: {'; '.join(result['issues'])} — 수정 후 재시도 요망"
-            )
-
-    elif "--post-upload" in args:
-        # 인스타 업로드 후 검수
-        idx     = args.index("--post-upload")
-        post_id = args[idx + 1] if idx + 1 < len(args) else ""
-        _load_env()
-        result  = inspect_post_upload(post_id)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        if not result["pass"]:
-            request_correction(
-                "Instagram", "아린", post_id, result["issues"],
-                f"업로드 후 검수 실패 (ID:{post_id}): {'; '.join(result['issues'])} — 즉시 수정 요망"
-            )
-
-    else:
-        target   = None
-        new_only = "--new" in args
-        if "--id" in args:
-            idx = args.index("--id")
-            if idx + 1 < len(args):
-                target = args[idx + 1]
-        run_scan(target_id=target, new_only=new_only)
-
-
 def _check_petnna_service_and_generate_report(slot_label: str = "정기") -> str:
     """펫과나 서비스 및 소셜 피드를 검수하고 마크다운 보고서를 작성합니다."""
     _load_env()
@@ -1449,3 +1395,57 @@ def _check_petnna_service_and_generate_report(slot_label: str = "정기") -> str
         print(f"  [가희] 아카이브 검수 보고서 저장 실패: {e}")
         
     return report_text
+
+
+if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+    args = sys.argv[1:]
+
+    if "--full" in args:
+        run_full_audit()
+
+    elif "--schedule" in args:
+        idx  = args.index("--schedule")
+        slot = args[idx + 1] if idx + 1 < len(args) else "morning"
+        run_scheduled_scan(slot)
+
+    elif "--pre-upload" in args:
+        # 인스타 캡션 업로드 전 검수
+        idx     = args.index("--pre-upload")
+        caption = args[idx + 1] if idx + 1 < len(args) else ""
+        _load_env()
+        result  = inspect_caption(caption)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if not result["pass"]:
+            request_correction(
+                "Instagram", "아린", "PRE_UPLOAD", result["issues"],
+                f"캡션 업로드 전 검수 실패: {'; '.join(result['issues'])} — 수정 후 재시도 요망"
+            )
+
+    elif "--post-upload" in args:
+        # 인스타 업로드 후 검수
+        idx     = args.index("--post-upload")
+        post_id = args[idx + 1] if idx + 1 < len(args) else ""
+        _load_env()
+        result  = inspect_post_upload(post_id)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        if not result["pass"]:
+            request_correction(
+                "Instagram", "아린", post_id, result["issues"],
+                f"업로드 후 검수 실패 (ID:{post_id}): {'; '.join(result['issues'])} — 즉시 수정 요망"
+            )
+
+    else:
+        target   = None
+        new_only = "--new" in args
+        if "--id" in args:
+            idx = args.index("--id")
+            if idx + 1 < len(args):
+                target = args[idx + 1]
+        run_scan(target_id=target, new_only=new_only)
