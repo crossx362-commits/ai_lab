@@ -9,24 +9,9 @@ const INITIAL_POSTS = [
     { id: 201, petName: "초코", petAvatar: "https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?auto=format&fit=crop&q=80&w=150", content: "송도 센트럴파크 놀이터 다녀왔어요! 🌳 날씨 너무 좋고 댕댕이 친구들도 많아서 초코가 완전히 신났었네요 🐶 꼬리가 프로펠러처럼 돌아갔답니다!", image: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=400", isVideo: false, likes: 5, liked: false, comments: [{ author: "체리맘", text: "초코 너무 활기차고 이쁘네요! 부러워요 ㅎㅎ" }] }
 ];
 
-const INITIAL_FRIENDS = [
-    { id: 501, nickname: "초코언니", petName: "초코", petBreed: "말티즈", petType: "dog", personality: "얌전하고 애교가 많음", avatar: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&q=80&w=150", status: "online", chemistry: 95, unread: 0, petBirthday: "2026-06-03" },
-    { id: 502, nickname: "샤미마미", petName: "나비", petBreed: "샴 고양이", petType: "cat", personality: "도도하고 도망치기 명수", avatar: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=150", status: "online", chemistry: 84, unread: 0, petBirthday: "2025-11-20" },
-    { id: 503, nickname: "귀쫑긋집사", petName: "솜이", petBreed: "드워프 토끼", petType: "rabbit", personality: "겁이 많고 당근 러버", avatar: "https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&q=80&w=150", status: "offline", chemistry: 72, unread: 0, petBirthday: "2025-03-15" }
-];
+const INITIAL_FRIENDS = [];
 
-const INITIAL_CHATS = {
-    501: [
-        { sender: "friend", time: "어제", text: "안녕하세요! 혹시 송도 센트럴파크 잔디 구역 가보셨나요? 댕이가 거기서 친구들 엄청 좋아해요 🐶" },
-        { sender: "me", time: "어제", text: "아 네! 센트럴파크 놀이터 자주 갑니다 ㅎㅎ 담에 마주치면 비스킷 선물할게요!" }
-    ],
-    502: [
-        { sender: "friend", time: "오후 2:15", text: "집사님네 고양이도 상자 조그마한 거에 억지로 들어가려 하나요? 나비가 맨날 택배박스 전세 냈어요 📦" }
-    ],
-    503: [
-        { sender: "friend", time: "3일 전", text: "토끼 발톱 정리하기 꿀팁 있을까요? 너무 버둥거려서 스파하듯이 감싸서 하고 있는데 쉽지 않네요 🐰" }
-    ]
-};
+const INITIAL_CHATS = {};
 
 const INITIAL_PRODUCTS = [
     { id: 1, name: "유기농 락토프리 산양유 6개입", price: 12500, category: "food", desc: "영양 만점, 소화가 잘 되는 신선한 펫 전용 밀크입니다.", image: "https://images.unsplash.com/photo-1527156278757-0cebb01a3570?auto=format&fit=crop&q=80&w=200" },
@@ -70,10 +55,7 @@ const INITIAL_ALBUM = [
     { url: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=300", isVideo: false }
 ];
 
-const INITIAL_LETTERS = [
-    { id: 1, sender: "초코언니", petName: "초코", content: "오늘 센트럴파크에서 본 댕이가 너무 귀여웠어요! 담에 보면 간식 나눠먹어요 ㅎㅎ", date: "2026-05-18", isRead: false },
-    { id: 2, sender: "샤미마미", petName: "나비", content: "안녕하세요! 고양이 모래 정보 공유해주셔서 감사해요. 덕분에 나비가 아주 좋아하네요.", date: "2026-05-17", isRead: true }
-];
+const INITIAL_LETTERS = [];
 
 const INITIAL_HEALTH_LOGS = {
     today: {
@@ -194,10 +176,8 @@ const AppStore = {
         ],
         friends: INITIAL_FRIENDS,
         chatHistories: INITIAL_CHATS,
-        activeChatFriendId: 502,
-        friendRequests: [
-            { id: 601, nickname: "웰시코기_쿵", petName: "쿵이", petBreed: "웰시코기", personality: "엉덩이가 매력적이고 활발함", avatar: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=150" }
-        ],
+        activeChatFriendId: null,
+        friendRequests: [],
         letters: INITIAL_LETTERS,
         healthLogs: INITIAL_HEALTH_LOGS,
         settings_email: localStorage.getItem('petna_user_email') || "butler@petna.co.kr",
