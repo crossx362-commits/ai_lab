@@ -317,21 +317,36 @@ document.addEventListener('DOMContentLoaded', function () {
     applyThemeStyles(settings_theme);
 
     // 🔓 로그인 세션 확인 및 레이아웃 상태 설정
-    // 자동 로그인 비활성화 - 항상 로그인 화면 표시
-    const isLoggedIn = false; // 자동 로그인 비활성화
+    const isLoggedIn = localStorage.getItem('petna_is_logged_in') === 'true';
     const loginOverlay = document.getElementById('login-landing-overlay');
     const headerEl = document.querySelector('header');
     const mainEl = document.querySelector('main');
     const mobileNavbarEl = document.getElementById('mobile-navbar');
 
-    // 항상 로그인 화면 표시
-    if (loginOverlay) {
-        loginOverlay.style.display = 'flex';
-        loginOverlay.classList.remove('opacity-0', 'scale-95');
+    if (isLoggedIn) {
+        // 이전 세션 복원
+        const savedEmail = localStorage.getItem('petna_user_email') || '';
+        if (savedEmail) {
+            settings_email = savedEmail;
+            settings_nickname = localStorage.getItem('petna_user_nickname_' + savedEmail) || localStorage.getItem('petna_user_nickname') || '집사';
+            settings_avatar = localStorage.getItem('petna_user_avatar_' + savedEmail) || localStorage.getItem('petna_user_avatar') || '🧔';
+            settings_photo_url = localStorage.getItem('petna_user_photo_url_' + savedEmail) || '';
+            if (typeof loadState === 'function') loadState(savedEmail);
+        }
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        if (headerEl) headerEl.style.display = 'block';
+        if (mainEl) mainEl.style.display = 'block';
+        if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+        switchTab('mypet');
+    } else {
+        if (loginOverlay) {
+            loginOverlay.style.display = 'flex';
+            loginOverlay.classList.remove('opacity-0', 'scale-95');
+        }
+        if (headerEl) headerEl.style.display = 'none';
+        if (mainEl) mainEl.style.display = 'none';
+        if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
     }
-    if (headerEl) headerEl.style.display = 'none';
-    if (mainEl) mainEl.style.display = 'none';
-    if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
 
     renderWalkHistory();
     updateCartBadge();
