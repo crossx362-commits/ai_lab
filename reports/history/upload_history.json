@@ -269,5 +269,19 @@
             "audio_file": "bgm_merged_20260604_092549.mp3",
             "publish_at": "2026-06-04T10:00:00Z"
         }
+    },
+    {
+        "agent": "루나",
+        "status": "published",
+        "uploaded_at": "2026-06-04T15:13:09.930229+09:00",
+        "metadata": {
+            "platform": "youtube",
+            "video_id": "D5Rjbhb79DA",
+            "youtube_title": "modern, energetic, vibrant",
+            "music_prompt": "J-Pop City Pop × K-Pop Fusion (1980s Retro), Medium-fast tempo 118 BPM energetic groove, DX7 electric piano + punchy kick drum + slap bass + brass synth, Powerful K-pop female vocals with city pop smoothness, modern, energetic, vibrant",
+            "video_file": "final_video.mp4",
+            "audio_file": "bgm_merged_20260604_151147.mp3",
+            "publish_at": "2026-06-04T10:00:00Z"
+        }
     }
 ]

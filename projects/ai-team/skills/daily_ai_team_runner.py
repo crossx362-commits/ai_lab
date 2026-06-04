@@ -1,0 +1,295 @@
+"""
+daily_ai_team_runner.py — AI 팀 일일 자동 실행 시스템
+
+Notion 리포트를 읽고 Ollama를 통해 에이전트들이 자율적으로 작업하며,
+결과를 다시 Notion에 기록합니다.
+"""
+import sys
+import os
+import json
+import datetime
+import urllib.request
+
+_here = os.path.dirname(os.path.abspath(__file__))
+_ai_team_root = os.path.abspath(os.path.join(_here, ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+
+from _shared.env_loader import load_env
+load_env()
+
+from _shared.notion_report_manager import NotionReportManager
+from _shared.ollama_client import chat as ollama_chat
+from _shared.telegram_notifier import send_telegram_message
+
+
+def read_notion_report() -> str:
+    """Notion 리포트 전체 읽기."""
+    token = os.getenv('NOTION_API_KEY', '').strip('"')
+    db_id = os.getenv('NOTION_DATABASE_ID', '').strip('"')
+
+    if not token or not db_id:
+        return ""
+
+    try:
+        # 최근 10개 페이지 읽기
+        url = f'https://api.notion.com/v1/databases/{db_id}/query'
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Notion-Version': '2022-06-28'
+        }
+
+        payload = json.dumps({'page_size': 10, 'sorts': [{'timestamp': 'created_time', 'direction': 'descending'}]}).encode('utf-8')
+
+        req = urllib.request.Request(url, data=payload, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read())
+
+        # 페이지 내용 추출
+        report_content = []
+
+        for page in data.get('results', []):
+            page_id = page.get('id', '')
+
+            # 블록 내용 읽기
+            blocks_url = f'https://api.notion.com/v1/blocks/{page_id}/children'
+            req2 = urllib.request.Request(blocks_url, headers=headers)
+
+            try:
+                with urllib.request.urlopen(req2, timeout=30) as resp:
+                    blocks_data = json.loads(resp.read())
+
+                # 블록 텍스트 추출
+                for block in blocks_data.get('results', []):
+                    block_type = block.get('type')
+
+                    text_content = None
+                    if block_type in ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item']:
+                        texts = block.get(block_type, {}).get('rich_text', [])
+                        if texts:
+                            text_content = ' '.join([t.get('plain_text', '') for t in texts])
+
+                    if text_content:
+                        report_content.append(text_content)
+
+            except Exception as e:
+                print(f"  [Warning] 페이지 {page_id} 블록 읽기 실패: {e}")
+
+        return '\n'.join(report_content)
+
+    except Exception as e:
+        print(f"  [Error] Notion 리포트 읽기 실패: {e}")
+        return ""
+
+
+def analyze_with_ollama(report_content: str) -> dict:
+    """Ollama로 리포트 분석 및 작업 계획 수립."""
+
+    prompt = f"""다음은 AI 팀 통합 리서치 리포트입니다. 이 내용을 분석하여 오늘 각 에이전트가 수행해야 할 작업을 JSON 형식으로 제시해주세요.
+
+리포트 내용:
+{report_content[:3000]}
+
+에이전트 목록:
+- 루나: 시티팝 뮤직비디오 제작 (Imagen 4.0 + Lyria 3 Pro)
+- 아린: 인스타그램 트렌드 포스팅 (구글 트렌드 기반)
+- 가희: 콘텐츠 품질 검수 (YouTube, Instagram 메타데이터 검증)
+
+다음 JSON 형식으로 응답해주세요:
+{{
+  "tasks": [
+    {{
+      "agent": "루나",
+      "action": "뮤직비디오 생성",
+      "priority": "high",
+      "description": "작업 상세 설명",
+      "reason": "리포트에서 도출한 이유"
+    }}
+  ],
+  "summary": "오늘의 작업 요약"
+}}
+"""
+
+    try:
+        response = ollama_chat(
+            prompt,
+            system="당신은 AI 팀의 일일 작업 계획을 수립하는 PM입니다. 리포트를 분석하여 우선순위 높은 작업을 식별하세요.",
+            json_mode=True,
+            temperature=0.7,
+            max_tokens=2000
+        )
+
+        if response:
+            return json.loads(response)
+
+    except Exception as e:
+        print(f"  [Warning] Ollama 분석 실패: {e}")
+
+    # 폴백: 기본 작업
+    return {
+        "tasks": [
+            {
+                "agent": "루나",
+                "action": "일일 뮤직비디오 생성",
+                "priority": "medium",
+                "description": "Imagen 4.0으로 고품질 시티팝 뮤직비디오 제작",
+                "reason": "일일 정기 콘텐츠 제작"
+            },
+            {
+                "agent": "아린",
+                "action": "트렌드 인스타 포스팅",
+                "priority": "medium",
+                "description": "구글 트렌드 기반 이미지 생성 및 업로드",
+                "reason": "일일 정기 콘텐츠 제작"
+            }
+        ],
+        "summary": "일일 정기 콘텐츠 제작 작업"
+    }
+
+
+def execute_agent_pipeline(agent_name: str, task_info: dict) -> tuple[bool, str]:
+    """에이전트 파이프라인 실행."""
+    import subprocess
+
+    print(f"\n{'='*60}")
+    print(f"  [{agent_name}] {task_info['action']} 실행")
+    print(f"{'='*60}")
+
+    pipeline_map = {
+        "루나": "skills/루나_디렉터/tools/music_video_pipeline.py",
+        "아린": "skills/아린_관리자/tools/auto_pipeline.py",
+    }
+
+    pipeline_path = pipeline_map.get(agent_name)
+    if not pipeline_path:
+        return False, f"지원하지 않는 에이전트: {agent_name}"
+
+    full_path = os.path.join(_ai_team_root, pipeline_path)
+
+    if not os.path.exists(full_path):
+        return False, f"파이프라인 파일 없음: {full_path}"
+
+    try:
+        result = subprocess.run(
+            [sys.executable, full_path],
+            capture_output=True,
+            text=True,
+            timeout=3600,  # 1시간
+            cwd=os.path.dirname(full_path)
+        )
+
+        if result.returncode == 0:
+            # 성공 - URL 추출
+            output = result.stdout
+
+            # YouTube URL 추출
+            import re
+            video_url = None
+            for line in output.split('\n'):
+                if 'youtu.be' in line or 'youtube.com' in line:
+                    match = re.search(r'https://youtu\.be/([a-zA-Z0-9_-]+)', line)
+                    if match:
+                        video_url = match.group(0)
+                        break
+
+            result_msg = f"{task_info['action']} 완료"
+            if video_url:
+                result_msg += f"\nURL: {video_url}"
+
+            return True, result_msg
+        else:
+            return False, f"파이프라인 실패 (exit {result.returncode})"
+
+    except subprocess.TimeoutExpired:
+        return False, "타임아웃 (1시간 초과)"
+    except Exception as e:
+        return False, f"실행 오류: {str(e)}"
+
+
+def run_daily_automation():
+    """일일 자동화 실행."""
+
+    print("="*60)
+    print(f"  AI 팀 일일 자동 실행")
+    print(f"  {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*60)
+
+    # 1. Notion 리포트 읽기
+    print("\n[1/4] Notion 리포트 읽기...")
+    report_content = read_notion_report()
+
+    if report_content:
+        print(f"  리포트 읽기 완료 ({len(report_content)} 문자)")
+    else:
+        print("  리포트 없음 - 기본 작업으로 진행")
+
+    # 2. Ollama로 작업 분석
+    print("\n[2/4] Ollama로 작업 분석...")
+    plan = analyze_with_ollama(report_content)
+
+    print(f"  요약: {plan.get('summary', 'N/A')}")
+    print(f"  작업 {len(plan.get('tasks', []))}개 식별")
+
+    # 텔레그램 알림
+    send_telegram_message(
+        f"🤖 AI 팀 일일 작업 시작\n\n"
+        f"📋 {plan.get('summary', 'N/A')}\n"
+        f"📌 작업: {len(plan.get('tasks', []))}개"
+    )
+
+    # 3. 작업 실행
+    print("\n[3/4] 작업 실행...")
+
+    results = []
+    for task in plan.get('tasks', []):
+        agent = task.get('agent', '')
+
+        if agent in ["루나", "아린"]:
+            success, result_msg = execute_agent_pipeline(agent, task)
+
+            results.append({
+                "agent": agent,
+                "task": task.get('action', ''),
+                "success": success,
+                "result": result_msg
+            })
+
+            # 개별 결과 알림
+            icon = "✅" if success else "❌"
+            send_telegram_message(
+                f"{icon} [{agent}] {task.get('action', '')}\n"
+                f"결과: {result_msg[:200]}"
+            )
+
+    # 4. Notion에 결과 기록
+    print("\n[4/4] Notion에 결과 기록...")
+
+    manager = NotionReportManager()
+
+    for result in results:
+        if result['success']:
+            manager.create_report_entry(
+                agent_name=result['agent'],
+                task_title=f"{result['task']} ({datetime.datetime.now().strftime('%Y-%m-%d')})",
+                result=result['result'],
+                metadata={"priority": "Medium"}
+            )
+
+    # 최종 요약
+    success_count = sum(1 for r in results if r['success'])
+
+    print("\n" + "="*60)
+    print(f"  완료: {success_count}/{len(results)} 성공")
+    print("="*60)
+
+    send_telegram_message(
+        f"📊 AI 팀 일일 작업 완료\n\n"
+        f"✅ 성공: {success_count}\n"
+        f"❌ 실패: {len(results) - success_count}\n"
+        f"⏰ {datetime.datetime.now().strftime('%H:%M')}"
+    )
+
+
+if __name__ == "__main__":
+    run_daily_automation()

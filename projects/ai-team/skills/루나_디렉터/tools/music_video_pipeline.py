@@ -972,6 +972,31 @@ def run_pipeline(publish_hhmm: str = None):
     else:
         send_telegram_message(f"❌ 루나: YouTube 업로드 실패 — {title}")
 
+    # ── Notion 리포트 작성 ────────────────────────────────────────────────────
+    try:
+        from _shared.notion_report_manager import NotionReportManager
+        manager = NotionReportManager()
+
+        if video_id and manager.token:
+            report_result = (
+                f"뮤직비디오 생성 완료\n"
+                f"제목: {title}\n"
+                f"영상 길이: {final_duration:.1f}초\n"
+                f"이미지: Imagen 4.0 (5개 파트)\n"
+                f"음악: Lyria 3 Pro\n"
+                f"예약 업로드: {publish_time_kst_str}"
+            )
+
+            manager.create_report_entry(
+                agent_name="루나",
+                task_title=f"뮤직비디오 '{title[:40]}'",
+                result=report_result,
+                metadata={"url": f"https://youtu.be/{video_id}", "priority": "High"}
+            )
+            print("  [Notion] 리포트 작성 완료")
+    except Exception as e:
+        print(f"  [Warning] Notion 리포트 실패: {e}")
+
     print("=" * 60)
     print("  [루나] 파이프라인 실행 완료")
     print("=" * 60)
