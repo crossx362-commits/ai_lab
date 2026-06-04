@@ -46,6 +46,7 @@ _approval_spec = _ilu.spec_from_file_location("approval_yewon", _approval_path)
 _approval_mod = _ilu.module_from_spec(_approval_spec)
 _approval_spec.loader.exec_module(_approval_mod)
 await_approval = _approval_mod.await_approval
+ceo_coaching_on_rejection = _approval_mod.ceo_coaching_on_rejection
 # 경수 검수관 modules
 _kyungsoo_path = os.path.join(os.path.dirname(__file__), "..", "..", "경수_수사관", "tools")
 _kyungsoo_spec = _ilu.spec_from_file_location("approval_kyungsoo",
@@ -787,7 +788,22 @@ def main(dry_run=False):
     from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 
     def _fix_caption_ollama(bad_caption: str, issues: list) -> str:
-        """가희 지적 사항을 Ollama로 수정한 새 캡션 반환."""
+        """가희 지적 사항을 예원 CEO의 코칭을 받아 수정한 새 캡션 반환."""
+        try:
+            print("👑 [가희-피드백] 예원 CEO 코칭 호출 중...")
+            coached = ceo_coaching_on_rejection(
+                agent="아린",
+                title=bad_caption,
+                description="",
+                issues=issues
+            )
+            # title, caption, description 중 적절한 필드 반환
+            corrected_caption = coached.get("title") or coached.get("caption") or coached.get("description")
+            if corrected_caption:
+                return corrected_caption.strip()
+        except Exception as err:
+            print(f"  ⚠️ 예원 CEO 코칭 호출 실패, 기본 Ollama 교정 사용: {err}")
+            
         if not lm_available():
             return bad_caption
         issues_str = ", ".join(issues)

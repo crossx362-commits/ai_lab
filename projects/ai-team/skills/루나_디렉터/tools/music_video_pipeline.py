@@ -56,6 +56,7 @@ _approval_spec = _ilu.spec_from_file_location("approval", _approval_path)
 _approval_mod = _ilu.module_from_spec(_approval_spec)
 _approval_spec.loader.exec_module(_approval_mod)
 await_approval = _approval_mod.await_approval
+ceo_coaching_on_rejection = _approval_mod.ceo_coaching_on_rejection
 
 # veo_video_maker 동적 임포트
 _veo_spec = importlib.util.spec_from_file_location(
@@ -947,33 +948,17 @@ def run_pipeline(publish_hhmm: str = None):
                 )
                 print(f"  [가희] 사후 검수 이상 (시도 {attempt}/15): {issues}")
                 
-                # 피드백 기반 자동 수정
+                # 피드백 기반 자동 수정: 예원 CEO의 코칭을 통한 교정 진행
                 try:
-                    # 제목 수정이 필요한 경우
-                    if any("제목" in iss or "neon" in iss.lower() or "네온" in iss or "중복" in iss for iss in issues):
-                        print(f"  [가희-피드백] 제목 수정 진행 중...")
-                        title_prompt = (
-                            f"유튜브 시티팝 음악 영상 제목을 아래 위반 피드백을 피해서 다시 지어줘.\n"
-                            f"이전 거절된 제목: {title}\n"
-                            f"피드백: {', '.join(issues)}\n"
-                            f"조건: 'neon', '네온', 'lofi' 절대 금지, 한글 필수, 동일 단어 반복 금지, 1줄만 출력."
-                        )
-                        for _ in range(5):
-                            res_t = _lm_chat(title_prompt, task="", max_tokens=100)
-                            if res_t and res_t.strip():
-                                new_t = res_t.strip().split("\n")[0]
-                                new_t = re.sub(r'^["\'“]+|["\'”]+$', '', new_t).strip()
-                                if not any(k in new_t.lower() for k in ["neon", "네온", "lofi"]):
-                                    title = new_t
-                                    break
-                        else:
-                            title = theme["keyword"].replace("Neon", "").replace("neon", "").replace("네온", "").upper()
-
-                    # 설명문 수정 (또는 기본 재생성)
-                    fixed_meta = _auto_generate_metadata(
-                        full_music_prompt, theme.get("_yt_top_titles", []) or [], draft_title=title
+                    print("👑 [가희-피드백] 예원 CEO 코칭 호출 중...")
+                    coached = ceo_coaching_on_rejection(
+                        agent="루나",
+                        title=title,
+                        description=description,
+                        issues=issues
                     )
-                    description = fixed_meta.get("description", description)
+                    title = coached.get("title", title)
+                    description = coached.get("description", description)
                     
                     # 유튜브 메타데이터 업데이트
                     _ci._update_yt_metadata(uploader.youtube, video_id, title, description=description)

@@ -20,6 +20,14 @@ from _shared.telegram_notifier import send_telegram_message
 load_env()
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
+# 예원 CEO approval (동적 임포트)
+import importlib.util as _ilu
+_approval_path = os.path.join(_root, "projects", "ai-team", "skills", "예원_CEO", "approval.py")
+_approval_spec = _ilu.spec_from_file_location("approval_yewon", _approval_path)
+_approval_mod = _ilu.module_from_spec(_approval_spec)
+_approval_spec.loader.exec_module(_approval_mod)
+ceo_coaching_on_rejection = _approval_mod.ceo_coaching_on_rejection
+
 # ─── 가희 검수 결과 로드 (inspection_log.jsonl 우선, 없으면 하드코딩 fallback) ──
 _INSPECT_LOG = os.path.join(_root, "reports", "learning", "gahee_inspection_log.jsonl")
 
@@ -212,9 +220,21 @@ def fix_youtube_title(youtube, video_id: str, old_title: str, fix_type: str) -> 
             issues = violations + warnings
             print(f"  [가희-재검수] 실패 (시도 {attempt}/15): {issues}")
             
-            # 이슈 분석 및 수정 내용 생성
-            # 제목 이슈 해결 (LUNA 접두어, neon/네온, 단어 중복 등)
-            if any("제목" in iss or "neon" in iss.lower() or "네온" in iss or "중복" in iss or "prefix" in iss.lower() for iss in issues):
+            # 피드백 기반 자동 수정: 예원 CEO 코칭 적용
+            try:
+                print("👑 [가희-피드백] 예원 CEO 코칭 호출 중...")
+                coached = ceo_coaching_on_rejection(
+                    agent="루나",
+                    title=title,
+                    description=description,
+                    issues=issues
+                )
+                title = coached.get("title", title)
+                description = coached.get("description", description)
+                snippet["title"] = title
+                snippet["description"] = description
+            except Exception as fix_err:
+                print(f"  ⚠️ 예원 CEO 코칭 호출 실패, 기존 로직 사용: {fix_err}")
                 if lm_available():
                     prompt = (
                         f"유튜브 시티팝 음악 영상 제목을 아래 위반 피드백을 피해서 다시 지어줘.\n"
@@ -229,23 +249,7 @@ def fix_youtube_title(youtube, video_id: str, old_title: str, fix_type: str) -> 
                     new_title = re.sub(r"^LUNA\s*[-–]\s*", "", title).strip()
                     new_title = new_title.replace("Neon", "").replace("neon", "").replace("네온", "").strip()
                 snippet["title"] = new_title
-                
-            # 설명문 이슈 해결
-            if any("설명" in iss or "중복" in iss or "desc" in iss.lower() for iss in issues):
-                if lm_available():
-                    prompt = (
-                        f"유튜브 음악 설명문을 아래 위반 피드백을 피해서 완전히 다채로운 표현으로 새로 써줘.\n"
-                        f"이전 거절된 설명문: {description[:150]}...\n"
-                        f"피드백: {', '.join(issues)}\n"
-                        f"조건: 동일 단어(예: 감성, 오늘, 하루 등) 2회 중복 엄격 금지, 'neon/네온' 금지, 2~3줄로 작성."
-                    )
-                    new_desc = lm_chat(prompt, max_tokens=300, temperature=0.9)
-                    if new_desc and new_desc.strip():
-                        snippet["description"] = new_desc.strip()
-                else:
-                    # 폴백: 중복 단어가 있을 경우 단순 제거 또는 리셋
-                    snippet["description"] = "감성적인 시티팝 사운드와 함께하는 편안한 도심 속 여정입니다."
-                        
+
             # AI 공시 누락 해결
             if fix_type == "add_music_keyword_and_ai_disclosure" or any("ai" in str(i).lower() for i in issues):
                 ai_notice = "※ This music is AI-generated. / 이 음악은 AI로 생성되었습니다."
@@ -324,22 +328,34 @@ def fix_instagram_post(post_id: str, old_caption: str) -> bool:
             break
         print(f"  ⚠️ [가희-인스타로컬] 캡션 위반 (시도 {attempt}/15): {check['issues']}")
         
-        if lm_available():
-            prompt = (
-                f"이 인스타 캡션을 아래 피드백 문제를 해결해서 다시 작성해줘.\n"
-                f"피드백: {', '.join(check['issues'])}\n"
-                f"원본: {final_caption}\n\n"
-                f"조건: 'neon', '네온', 'AI', '인공지능', '미래' 금지, 한글 필수, 동일 단어 반복 금지, 캡션 본문만 출력."
+        # 예원 CEO 코칭 적용
+        try:
+            print("👑 [가희-인스타로컬-피드백] 예원 CEO 코칭 호출 중...")
+            coached = ceo_coaching_on_rejection(
+                agent="아린",
+                title=final_caption,
+                description="",
+                issues=check["issues"]
             )
-            result = lm_chat(prompt, max_tokens=300, temperature=0.9)
-            if result and result.strip():
-                final_caption = result.strip()
+            corrected_caption = coached.get("title") or coached.get("caption") or coached.get("description")
+            if corrected_caption:
+                final_caption = corrected_caption.strip()
+        except Exception as err:
+            print(f"  ⚠️ 예원 CEO 코칭 호출 실패, 기존 로직 사용: {err}")
+            if lm_available():
+                prompt = (
+                    f"이 인스타 캡션을 아래 피드백 문제를 해결해서 다시 작성해줘.\n"
+                    f"피드백: {', '.join(check['issues'])}\n"
+                    f"원본: {final_caption}\n\n"
+                    f"조건: 'neon', '네온', 'AI', '인공지능', '미래' 금지, 한글 필수, 동일 단어 반복 금지, 캡션 본문만 출력."
+                )
+                result = lm_chat(prompt, max_tokens=300, temperature=0.9)
+                if result and result.strip():
+                    final_caption = result.strip()
             else:
-                break
-        else:
-            lines = [l for l in final_caption.split("\n")
-                     if not any(kw in l.lower() for kw in _BANNED)]
-            final_caption = "\n".join(lines).strip()
+                lines = [l for l in final_caption.split("\n")
+                         if not any(kw in l.lower() for kw in _BANNED)]
+                final_caption = "\n".join(lines).strip()
             
     if not passed:
         print("  ❌ [가희-인스타로컬] 캡션 자동 수정 실패 (최대 시도 초과)")
