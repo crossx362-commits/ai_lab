@@ -27,3 +27,8 @@
 ## 2026-06-05 00:02 — 코다리(Ollama/gemma2:latest)
 - **TASK | js/social.js | `switchSocialSubTab()` 함수를 활용하여 조화도 탭을 서브탭으로 구현.**
 - **TASK | js/mypet.js |  `doubleClick()` 이벤트 리스너를 통해 펫 스테이지 풀스크린 모드 토글 기능 구현.**
+
+
+## 2026-06-05 00:08 — 코다리(Ollama/gemma2:latest)
+- TASK | js/state.js | `INITIAL_PETS`에 생일 필드 추가하고,  생일 날짜와 현재 날짜 비교하여 친구 펫 생일인 경우 피드에 알림 카드 노출
+- TASK | js/walk.js | 산책 완료 후 "이 장소 등록하기" 버튼 추가하고,  Supabase `places` 테이블에 새로운 위치 정보 저장
