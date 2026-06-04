@@ -237,7 +237,7 @@ const MYPET_TEMPLATE = `
                 </div>
 
                 <!-- 건강 트렌드 대시보드 + 스트릭 + 캘린더 -->
-                <div class="bg-white border border-gray-100 rounded-2xl p-4 space-y-3">
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="text-base">📊</span>
@@ -455,17 +455,17 @@ const MYPET_TEMPLATE = `
     <div class="lg:col-span-4 space-y-4">
 
         <!-- 일일 챌린지 -->
-        <div class="bg-white border border-gray-100 rounded-2xl p-4">
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="daily-challenges"></div>
         </div>
 
         <!-- 업적 배지 -->
-        <div class="bg-white border border-gray-100 rounded-2xl p-4">
+        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="achievement-badges"></div>
         </div>
 
         <!-- 돌봄 스케줄러 📅 -->
-        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
+        <div class="bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
             <div class="flex justify-between items-center pb-2 border-b">
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
                     <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅

@@ -64,7 +64,8 @@ function showAchievementDetail(achievementId) {
                     </div>
                 </div>
             `,
-            type: 'info'
+            type: 'info',
+            allowHtml: true
         });
     }
 }

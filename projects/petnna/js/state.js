@@ -331,7 +331,7 @@ function saveState() {
     AppStore.save();
 }
 
-function showCustomDialog({ title, message, icon = "🐾", type = "alert", placeholder = "", val = "", multiline = false, onConfirm = null, onCancel = null }) {
+function showCustomDialog({ title, message, icon = "🐾", type = "alert", placeholder = "", val = "", multiline = false, onConfirm = null, onCancel = null, allowHtml = false }) {
     const modal = document.getElementById('custom-dialog-modal');
     if (!modal) return;
     const titleEl = document.getElementById('dialog-title');
@@ -344,7 +344,13 @@ function showCustomDialog({ title, message, icon = "🐾", type = "alert", place
     if (existingInput) existingInput.remove();
 
     if (titleEl) titleEl.innerText = title;
-    if (msgEl) msgEl.innerText = message;
+    if (msgEl) {
+        if (allowHtml) {
+            msgEl.innerHTML = message;
+        } else {
+            msgEl.innerText = message;
+        }
+    }
     if (iconContainer) iconContainer.innerText = icon;
 
     let promptInput = null;
