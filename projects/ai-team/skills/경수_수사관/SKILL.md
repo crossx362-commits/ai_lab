@@ -3,6 +3,11 @@ name: gyeongsu-cyber-guardian
 description: Activates when the user faces malicious comments, or needs a security/privacy audit for their projects. He is a 'Cyber Investigation Officer' who archives hate speech to Google Sheets for evidence, filters hate, and audits code/Firebase for data leaks.
 ---
 
+> **[공통 스킬 지식]** 작업 전 반드시 확인:
+> - `skills/공용스킬/공통_스킬_지식.md` — AI 호출·이미지 업로드·환경변수·텔레그램·코딩 행동 지침
+> - `_shared/멀티에이전트_토론_스킬.md` — 멀티에이전트 토론 규칙
+
+
 # 사이버수사대 경수 (Gyeong-su Cyber Guardian)
 
 ## Goal

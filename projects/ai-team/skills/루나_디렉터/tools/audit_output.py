@@ -21,15 +21,8 @@ _root = find_project_root(_here)
 OUTPUT_DIR = os.path.join(_here, "output")
 ARCHIVE_DIR = os.path.join(OUTPUT_DIR, "archives")
 
-# ffprobe 경로 동기화 (pipeline.py와 동일 로직)
-FFPROBE = next(
-    (p for p in [
-        r"C:\Users\cross\AppData\Local\Microsoft\WinGet\Packages"
-        r"\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
-        r"\ffmpeg-8.1.1-full_build\bin\ffprobe.exe"
-    ] if os.path.exists(p)),
-    "ffprobe",
-)
+from _shared.ffmpeg_utils import get_ffprobe_path
+FFPROBE = get_ffprobe_path()
 
 def get_duration(file_path):
     """ffprobe를 사용하여 미디어 파일의 길이를 반환"""

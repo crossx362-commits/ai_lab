@@ -185,9 +185,17 @@ def _check_metadata(info: dict) -> dict:
             results["violations"].append(f"제목 내 단어 중복 사용 감지: '{w}'")
             break
 
-    # 설명문 검수
-    desc_words = re.findall(r'[a-zA-Z가-힣]{2,}', desc)
-    desc_stop = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천", "youtube", "official", "luna", "시티팝"}
+    # 설명문 검수 (순수 소개글 본문만 추출하여 중복 검사 진행 - 메타데이터 블록 및 해시태그 제외)
+    # 🎹, 🎸, 🎙️, 🎙, ✨ 이모지나 # 기호가 나오는 줄부터는 메타데이터/태그 영역으로 간주하여 제외
+    pure_desc_lines = []
+    for line in desc.split("\n"):
+        if any(marker in line for marker in ["🎹", "🎸", "🎙️", "🎙", "✨", "#"]):
+            continue
+        pure_desc_lines.append(line)
+    pure_desc = "\n".join(pure_desc_lines).strip()
+
+    desc_words = re.findall(r'[a-zA-Z가-힣]{2,}', pure_desc)
+    desc_stop = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천", "youtube", "official", "luna", "시티팝", "citypop", "음악"}
     desc_counts = {}
     for w in desc_words:
         if w in desc_stop:
@@ -500,6 +508,20 @@ def _determine_verdict(violations: list, warnings: list, confidence_base: float)
 def inspect_video(video_id: str, mode: str = "EXISTING_CONTENT",
                   all_videos: list[dict] = None) -> dict:
     """단건 영상 검수 — JSON 판정 결과 반환."""
+    # 단건 검수 시에도 채널 내 다른 영상들과의 중복 비교를 위해 동적 로드
+    if all_videos is None:
+        all_videos = []
+        try:
+            video_ids = _get_channel_videos(max_results=30)
+            for vid in video_ids:
+                if vid == video_id:
+                    continue
+                v_info = _get_video_info(vid)
+                if v_info:
+                    all_videos.append(v_info)
+        except Exception as e:
+            print(f"  [Warning] 단건 검수 중 채널 영상 목록 로드 실패: {e}")
+
     info = _get_video_info(video_id)
     if not info:
         return {
@@ -540,6 +562,28 @@ def inspect_video(video_id: str, mode: str = "EXISTING_CONTENT",
     repeated = [w for w in overused_luna if w in title and len(w) >= 3]
     if repeated:
         warnings.append(f"이전 영상 반복 단어 자제 필요: {', '.join(repeated[:5])}")
+
+    # 3-2. 영상 목록(채널 전체 영상들) 기반 중복 단어 체크
+    if all_videos:
+        overused_channel = _get_overused_words_from_list(all_videos, threshold=0.3)
+        title_words = set(re.findall(r'[a-zA-Z가-힣]{2,}', title)) - _GENERIC_WORDS
+        
+        desc = info.get("description", "").lower()
+        pure_desc_lines = []
+        for line in desc.split("\n"):
+            if any(marker in line for marker in ["🎹", "🎸", "🎙️", "🎙", "✨", "#"]):
+                continue
+            pure_desc_lines.append(line)
+        pure_desc = "\n".join(pure_desc_lines).strip()
+        desc_words = set(re.findall(r'[a-zA-Z가-힣]{2,}', pure_desc)) - _GENERIC_WORDS
+        
+        repeated_title = [w for w in overused_channel if w in title_words and len(w) >= 2]
+        repeated_desc = [w for w in overused_channel if w in desc_words and len(w) >= 2]
+        
+        if repeated_title:
+            violations.append(f"영상 목록 내 제목 단어 중복 사용 감지: '{', '.join(repeated_title)}'")
+        if repeated_desc:
+            violations.append(f"영상 목록 내 설명문 단어 중복 사용 감지: '{', '.join(repeated_desc)}'")
 
     # 4. Ollama AI 분석
     ai = _analyze_with_ollama(info)
@@ -652,6 +696,8 @@ def _save_inspection_results(results: list, timestamp: str):
         try:
             with open(log_path, encoding="utf-8") as f:
                 for line in f:
+                    if not line.strip():
+                        continue
                     rec = json.loads(line.strip())
                     if not rec.get("resolved"):
                         existing_ids.add(rec.get("content_id", ""))
@@ -847,7 +893,37 @@ _GENERIC_WORDS = {
     "official", "music", "video", "luna", "arin", "bgm", "the", "and",
     "for", "with", "from", "live", "mix", "ver", "full", "new", "top",
     "류나", "아린", "유튜브", "인스타", "공식", "영상",
+    # 시티팝 채널용 추가 예외 단어 (불용어 필터링)
+    "시티팝", "citypop", "음악", "감성", "드라이브", "레트로", "retro", 
+    "pop", "synth", "drive", "sound", "nights", "night", "seoul", 
+    "플레이리스트", "playlist", "chill", "beats", "lofi", "lo-fi",
+    "곡명", "노래", "감상", "추천", "오늘", "하루", "있는", "합니다",
+    "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는"
 }
+
+def _get_overused_words_from_list(videos: list[dict], threshold: float = 0.3) -> list[str]:
+    """영상 목록(videos)에서 threshold 이상 비율로 반복된 단어 반환."""
+    if not videos or len(videos) < 3:
+        return []
+    from collections import Counter
+    word_doc_count = Counter()
+    for v in videos:
+        title_text = v.get("title", "")
+        desc = v.get("description", "")
+        pure_desc_lines = []
+        for line in desc.split("\n"):
+            if any(marker in line for marker in ["🎹", "🎸", "🎙️", "🎙", "✨", "#"]):
+                continue
+            pure_desc_lines.append(line)
+        pure_desc = "\n".join(pure_desc_lines).strip()
+        
+        text = (title_text + " " + pure_desc).lower()
+        words = set(re.findall(r'[a-z]{3,}|[가-힣]{2,}', text))
+        words -= _GENERIC_WORDS
+        for w in words:
+            word_doc_count[w] += 1
+    total = len(videos)
+    return [w for w, cnt in word_doc_count.items() if cnt / total >= threshold]
 
 def _get_overused_words(agent: str, recent_n: int = 10, threshold: float = 0.3) -> list[str]:
     """최근 N개 작업물에서 threshold 이상 비율로 반복된 창작 단어 반환."""

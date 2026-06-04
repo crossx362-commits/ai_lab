@@ -14,7 +14,7 @@ if _ai_team_root not in sys.path:
 from _shared.env_loader import load_env, find_project_root
 _root_uploader = find_project_root(_here_uploader)
 
-_APP_ID     = "1219822826776845"
+_APP_ID     = "2275852172945683"
 _APP_SECRET = "2b4e0b63ca84558ee64da6e856251235"
 _REFRESH_BEFORE_DAYS = 10
 

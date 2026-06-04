@@ -2,20 +2,28 @@
 ffmpeg_utils.py — FFmpeg/FFprobe 경로 감지 및 썸네일 보정 공통 유틸
 """
 import os
+import glob
 
-_WINGET_BASE = (
-    r"C:\Users\cross\AppData\Local\Microsoft\WinGet\Packages"
-    r"\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe"
-    r"\ffmpeg-8.1.1-full_build\bin"
-)
+def _find_winget_ffmpeg_bin() -> str:
+    local_app = os.environ.get("LOCALAPPDATA", "")
+    if not local_app:
+        return ""
+    pattern = os.path.join(
+        local_app, "Microsoft", "WinGet", "Packages",
+        "Gyan.FFmpeg_*", "*", "bin"
+    )
+    matches = glob.glob(pattern)
+    return matches[0] if matches else ""
+
+_WINGET_BIN = _find_winget_ffmpeg_bin()
 
 def get_ffmpeg_path() -> str:
-    win = os.path.join(_WINGET_BASE, "ffmpeg.exe")
-    return win if os.path.exists(win) else "ffmpeg"
+    win = os.path.join(_WINGET_BIN, "ffmpeg.exe") if _WINGET_BIN else ""
+    return win if win and os.path.exists(win) else "ffmpeg"
 
 def get_ffprobe_path() -> str:
-    win = os.path.join(_WINGET_BASE, "ffprobe.exe")
-    return win if os.path.exists(win) else "ffprobe"
+    win = os.path.join(_WINGET_BIN, "ffprobe.exe") if _WINGET_BIN else ""
+    return win if win and os.path.exists(win) else "ffprobe"
 
 def enhance_thumbnail(img_path: str, color: float = 1.3, contrast: float = 1.2) -> bool:
     """PIL로 썸네일 채도·대비 보정. 성공 시 True."""

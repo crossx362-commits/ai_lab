@@ -503,17 +503,24 @@ def generate_caption_from_image(img_bytes: bytes) -> tuple[str | None, str | Non
     )
 
     def _parse_result(raw: str) -> tuple[str | None, str | None]:
-        """JSON 또는 plain text 응답에서 caption, alt_text 추출."""
+        """JSON 또는 plain text 응답에서 caption, alt_text 추출. 실패 시 None 반환."""
+        import json as _json, re as _re
         raw = raw.strip()
+        # 마크다운 코드블록 제거
+        raw = _re.sub(r"^```(?:json)?\s*\n?", "", raw)
+        raw = _re.sub(r"\n?```\s*$", "", raw).strip()
         try:
-            import json as _json
             data = _json.loads(raw)
-            cap = _clean_vision_caption(data.get("caption", ""))
+            if not isinstance(data, dict):
+                return None, None
+            cap = _clean_vision_caption(data.get("caption", "") or "")
             alt = (data.get("alt_text") or "")[:150] or None
+            if not cap or len(cap.strip()) < 10:
+                return None, alt
             return cap, alt
         except Exception:
-            cleaned = _clean_vision_caption(raw)
-            return cleaned, None
+            # JSON 파싱 실패 시 raw 반환하지 않음 — 원본 기획 캡션 사용
+            return None, None
 
     # 1순위: Gemini Vision (JSON 응답 안정적)
     try:
@@ -745,6 +752,10 @@ def main(dry_run=False):
     if vision_caption and _has_banned_content(vision_caption):
         print("⚠️ Vision 캡션에 금지 문구 감지 — 템플릿 캡션으로 대체합니다.")
         vision_caption = None
+    # Vision 캡션이 너무 짧으면 원본 기획 캡션 사용 (JSON 파싱 실패 등 방어)
+    if vision_caption and len(vision_caption.strip()) < 20:
+        print(f"⚠️ Vision 캡션 너무 짧음 ({len(vision_caption.strip())}자) — 원본 캡션 사용")
+        vision_caption = None
     final_caption = vision_caption if vision_caption else post_data["caption"]
     final_alt_text = vision_alt_text or ""
 
@@ -788,33 +799,29 @@ def main(dry_run=False):
     from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 
     def _fix_caption_ollama(bad_caption: str, issues: list) -> str:
-        """가희 지적 사항을 예원 CEO의 코칭을 받아 수정한 새 캡션 반환."""
-        try:
-            print("👑 [가희-피드백] 예원 CEO 코칭 호출 중...")
-            coached = ceo_coaching_on_rejection(
-                agent="아린",
-                title=bad_caption,
-                description="",
-                issues=issues
-            )
-            # title, caption, description 중 적절한 필드 반환
-            corrected_caption = coached.get("title") or coached.get("caption") or coached.get("description")
-            if corrected_caption:
-                return corrected_caption.strip()
-        except Exception as err:
-            print(f"  ⚠️ 예원 CEO 코칭 호출 실패, 기본 Ollama 교정 사용: {err}")
-            
+        """가희 지적 사항을 Ollama로 직접 수정한 새 캡션 반환 (최소 50자 보장)."""
         if not lm_available():
             return bad_caption
         issues_str = ", ".join(issues)
+        # 원본 기획 캡션을 베이스로 수정 (짧은 bad_caption 사용 금지)
+        base = bad_caption if len(bad_caption) >= 30 else post_data.get("caption", bad_caption)
         prompt = (
-            f"이 인스타 캡션 고쳐줘. 문제: {issues_str}\n"
-            f"원본: {bad_caption}\n\n"
-            "진짜 사람이 쓴 것처럼 짧고 자연스럽게. AI·인공지능·미래·테크 금지. "
-            "해시태그 5~8개. 캡션만 출력."
+            f"인스타그램 캡션을 수정해줘.\n"
+            f"문제점: {issues_str}\n"
+            f"원본:\n{base}\n\n"
+            "규칙:\n"
+            "- 반드시 50자 이상 작성\n"
+            "- 진짜 사람이 쓴 것처럼 자연스러운 한국어\n"
+            "- 이모지 1~2개 포함\n"
+            "- 해시태그 5~8개 마지막 줄에\n"
+            "- AI·인공지능·테크·로봇 금지\n"
+            "- 캡션 텍스트만 출력 (설명 없이)"
         )
-        result = lm_chat(prompt, task="", max_tokens=300, temperature=0.9)
-        return result.strip() if (result and result.strip()) else bad_caption
+        result = lm_chat(prompt, task="", max_tokens=400, temperature=0.8)
+        if result and len(result.strip()) >= 20:
+            return result.strip()
+        # Ollama도 짧게 반환 시 원본 기획 캡션으로 복귀
+        return post_data.get("caption", bad_caption)
 
     uploader = InstaUploader(account_id, access_token)
     post_id = None

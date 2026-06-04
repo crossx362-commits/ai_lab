@@ -171,12 +171,17 @@ def execute_agent_pipeline(agent_name: str, task_info: dict) -> tuple[bool, str]
         return False, f"파이프라인 파일 없음: {full_path}"
 
     try:
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
         result = subprocess.run(
             [sys.executable, full_path],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             timeout=3600,  # 1시간
-            cwd=os.path.dirname(full_path)
+            cwd=os.path.dirname(full_path),
+            env=env
         )
 
         if result.returncode == 0:
@@ -262,19 +267,58 @@ def run_daily_automation():
                 f"결과: {result_msg[:200]}"
             )
 
-    # 4. Notion에 결과 기록
+    # 4. Notion에 결과 기록 (전체 에이전트)
     print("\n[4/4] Notion에 결과 기록...")
 
     manager = NotionReportManager()
+    today = datetime.datetime.now().strftime('%Y-%m-%d')
 
+    # 루나/아린 파이프라인 결과 기록
     for result in results:
-        if result['success']:
+        try:
             manager.create_report_entry(
                 agent_name=result['agent'],
-                task_title=f"{result['task']} ({datetime.datetime.now().strftime('%Y-%m-%d')})",
+                task_title=f"{result['task']} ({today})",
                 result=result['result'],
-                metadata={"priority": "Medium"}
+                metadata={"priority": "Medium", "status": "완료" if result['success'] else "실패"}
             )
+        except Exception as e:
+            print(f"  [Notion] {result['agent']} 기록 실패: {e}")
+
+    # 다른 에이전트 리포트 파일 → Notion 반영
+    agent_report_map = {
+        "현빈": "reports/research/hyunbin_research.json",
+        "루나": "reports/research/luna_research.json",
+        "아린": "reports/research/arin_research.json",
+        "케빈": "reports/history/kevin_monitor_log.md",
+        "가희": "reports/inspection/gahee_inspection_log.md",
+        "경수": "reports/inspection/kyungsoo_audit_log.md",
+        "코다리": "projects/ai-team/docs/progress.md",
+        "영숙": "reports/history/yeongsuk_daily_brief.md",
+        "티모": "reports/learning/timo_review.md",
+    }
+
+    _root_dir = os.path.abspath(os.path.join(_ai_team_root, ".."))
+    for agent_name, rel_path in agent_report_map.items():
+        full = os.path.join(_root_dir, rel_path)
+        if not os.path.exists(full):
+            continue
+        try:
+            with open(full, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+            # 최근 500자만 발췌
+            snippet = content.strip()[-500:] if len(content) > 500 else content.strip()
+            if not snippet:
+                continue
+            manager.create_report_entry(
+                agent_name=agent_name,
+                task_title=f"{agent_name} 일일 활동 보고 ({today})",
+                result=snippet,
+                metadata={"priority": "Low", "status": "자동기록"}
+            )
+            print(f"  [Notion] {agent_name} 보고 기록 완료")
+        except Exception as e:
+            print(f"  [Notion] {agent_name} 기록 실패: {e}")
 
     # 최종 요약
     success_count = sum(1 for r in results if r['success'])
@@ -287,7 +331,8 @@ def run_daily_automation():
         f"📊 AI 팀 일일 작업 완료\n\n"
         f"✅ 성공: {success_count}\n"
         f"❌ 실패: {len(results) - success_count}\n"
-        f"⏰ {datetime.datetime.now().strftime('%H:%M')}"
+        f"⏰ {datetime.datetime.now().strftime('%H:%M')}\n"
+        f"📝 Notion 활동 보고 업데이트 완료"
     )
 
 
