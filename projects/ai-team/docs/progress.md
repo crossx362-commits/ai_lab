@@ -17,3 +17,8 @@
 ## 2026-06-03 18:16 — 코다리(Ollama/gemma3:12b)
 - TASK | js/share-card.js | `generateShareCard()` 함수에 saju 결과 템플릿 추가하여 인스타그램 공유 카드 생성
 - TASK | social.js | `insertHashtags()` 함수에 챌린지 해시태그 자동 삽입 기능 구현
+
+
+## 2026-06-04 22:24 — 코다리(Ollama/gemma2:latest)
+- - TASK | js/social.js | `insertHashtags()` 함수에 "릴스 내보내기" 버튼 추가하여 인스타그램 공유 기능 구현
+- - TASK | js/mypet.js | 펫 스테이지 풀스크린 모드 (`templates/mypet.js` 최상단 컨테이너)를 위한 `doubleClick()` 이벤트 리스너 추가
