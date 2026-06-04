@@ -2,7 +2,7 @@
 # 사용법: powershell -ExecutionPolicy Bypass .\start_telegram_bot.ps1
 
 $ErrorActionPreference = "Stop"
-$BotPath = "d:\ai_lab\projects\ai-team\skills\영숙_비서\tools"
+$BotPath = $PSScriptRoot
 $ScriptName = "telegram_receiver.py"
 
 Write-Host "=" * 60

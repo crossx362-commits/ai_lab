@@ -12,6 +12,14 @@ import urllib.error
 from pathlib import Path
 from datetime import datetime
 
+# UTF-8 인코딩 설정
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 # 경로 설정
 SCRIPT_DIR = Path(__file__).parent
 SUPABASE_DIR = SCRIPT_DIR / "supabase"
@@ -200,14 +208,94 @@ def backup_config():
     return f"✅ 설정 백업 완료: {backup_file.name}"
 
 
+def set_site_url(site_url: str) -> dict:
+    """Supabase Management API를 사용하여 프로젝트의 Site URL 및 redirect URL 목록을 업데이트합니다."""
+    env_vars = load_env()
+    token = env_vars.get("SUPABASE_ACCESS_TOKEN", "").strip()
+    
+    if not token:
+        return {
+            "status": "error",
+            "message": "SUPABASE_ACCESS_TOKEN이 .env 파일에 설정되어 있지 않습니다.\n"
+                       "🔧 해결 방법:\n"
+                       "  1. https://supabase.com/dashboard/account/tokens 에서 개인 엑세스 토큰(PAT)을 생성합니다.\n"
+                       "  2. 프로젝트 루트의 .env 파일에 SUPABASE_ACCESS_TOKEN=\"토큰값\" 을 추가합니다."
+        }
+        
+    project_info = get_project_info()
+    project_ref = project_info.get("ref") if project_info else env_vars.get("SUPABASE_PROJECT_REF")
+    if not project_ref:
+        ref_file = TEMP_DIR / "project-ref"
+        if ref_file.exists():
+            project_ref = ref_file.read_text().strip()
+            
+    if not project_ref:
+        return {
+            "status": "error",
+            "message": "Supabase 프로젝트 참조 ID(ref)를 찾을 수 없습니다."
+        }
+
+    url = f"https://api.supabase.com/v1/projects/{project_ref}/config/auth"
+    
+    # 리다이렉션 허용 리스트 빌드 (localhost 및 설정할 사이트 URL 포함)
+    additional_urls = [
+        "http://localhost:3000/**",
+        "http://localhost:5173/**",
+        f"{site_url.rstrip('/')}/**"
+    ]
+    
+    payload = {
+        "site_url": site_url,
+        "additional_redirect_urls": additional_urls
+    }
+    
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            method="PATCH"
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            result = json.loads(response.read().decode())
+            return {
+                "status": "ok",
+                "message": f"Supabase Site URL이 성공적으로 설정되었습니다: {site_url}\n"
+                           f"허용된 리다이렉트 URL: {', '.join(additional_urls)}",
+                "data": result
+            }
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        try:
+            err_json = json.loads(error_body)
+            msg = err_json.get("message", error_body)
+        except Exception:
+            msg = error_body
+        return {
+            "status": "error",
+            "message": f"API 오류 (HTTP {e.code}): {msg}"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"요청 중 오류 발생: {str(e)}"
+        }
+
+
 def main():
     """CLI 인터페이스"""
     if len(sys.argv) < 2:
         print("사용법:")
-        print("  python supabase_manager.py status    - 상태 보고서")
-        print("  python supabase_manager.py test      - 연결 테스트")
-        print("  python supabase_manager.py schema    - 스키마 동기화 가이드")
-        print("  python supabase_manager.py backup    - 설정 백업")
+        print("  python supabase_manager.py status             - 상태 보고서")
+        print("  python supabase_manager.py test               - 연결 테스트")
+        print("  python supabase_manager.py schema             - 스키마 동기화 가이드")
+        print("  python supabase_manager.py backup             - 설정 백업")
+        print("  python supabase_manager.py set-url [site_url]  - Supabase Site URL 설정 (OAuth용)")
         return
 
     command = sys.argv[1].lower()
@@ -228,6 +316,18 @@ def main():
 
     elif command == "backup":
         print(backup_config())
+
+    elif command == "set-url":
+        env_vars = load_env()
+        default_url = env_vars.get("PETNNA_URL", "https://petnna.vercel.app")
+        site_url = sys.argv[2] if len(sys.argv) > 2 else default_url
+        
+        print(f"Supabase Site URL 설정 시작 (대상: {site_url})...")
+        res = set_site_url(site_url)
+        if res["status"] == "ok":
+            print(f"✅ {res['message']}")
+        else:
+            print(f"❌ {res['message']}")
 
     else:
         print(f"❌ 알 수 없는 명령어: {command}")

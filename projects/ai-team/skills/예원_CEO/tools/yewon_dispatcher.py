@@ -120,7 +120,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
             import business_research
             return business_research.run_research()
 
-        elif _match(agent, ["케빈", "kevin", "devops", "infra"], ["vercel 클린업", "서버 정리", "모니터링", "리포트", "케빈"]):
+        elif _match(agent, ["케빈", "kevin", "devops", "infra"], ["vercel 클린업", "서버 정리", "모니터링", "리포트", "케빈", "supabase", "oauth"]):
             sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools"))
             if "모니터링" in ceo_message or "monitor" in ceo_message or "리포트" in ceo_message or "report" in ceo_message:
                 import subprocess
@@ -131,14 +131,37 @@ def dispatch_and_execute(ceo_message: str) -> str:
                     capture_output=True, text=True, encoding="utf-8", errors="replace",
                 )
                 return f"{'✅' if result.returncode == 0 else '❌'} 케빈 모니터링 완료\n\n{result.stdout[:500]}"
+            elif "supabase" in ceo_message.lower() or "oauth" in ceo_message.lower():
+                import subprocess
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools", "supabase_manager.py")
+                if "설정" in ceo_message or "set" in ceo_message or "url" in ceo_message:
+                    result = subprocess.run(
+                        [sys.executable, script, "set-url"],
+                        cwd=os.path.dirname(script),
+                        capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    )
+                    return f"Supabase Site URL 설정 결과:\n{result.stdout}"
+                else:
+                    result = subprocess.run(
+                        [sys.executable, script, "status"],
+                        cwd=os.path.dirname(script),
+                        capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    )
+                    return f"Supabase 상태 보고:\n{result.stdout}"
             else:
                 import vercel_manager
                 return vercel_manager.run_vercel_cleanup()
 
 
-        elif _match(agent, ["루나", "luna"], ["유튜브", "뮤직비디오", "음악 영상", "루나"]):
+        elif _match(agent, ["루나", "luna"], ["유튜브", "뮤직비디오", "음악 영상", "루나", "숏츠", "shorts"]):
             import subprocess
-            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
+            if "숏츠" in ceo_message or "shorts" in ceo_message.lower():
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "shorts_pipeline.py")
+                pipe_name = "루나_디렉터 숏츠 파이프라인"
+            else:
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
+                pipe_name = "루나_디렉터 뮤직비디오 파이프라인"
+
             if os.path.exists(script):
                 result = subprocess.run(
                     [sys.executable, script],
@@ -149,11 +172,11 @@ def dispatch_and_execute(ceo_message: str) -> str:
                     errors="replace",
                 )
                 if result.returncode == 0:
-                    return f"✅ 루나_디렉터 파이프라인 실행 완료"
+                    return f"✅ {pipe_name} 실행 완료"
                 else:
                     error_msg = result.stderr[:500] if result.stderr else result.stdout[:500] or "알 수 없는 오류"
-                    return f"❌ 루나 파이프라인 실행 실패\n\n에러: {error_msg}"
-            return "❌ 루나 파이프라인 스크립트를 찾을 수 없습니다."
+                    return f"❌ {pipe_name} 실행 실패\n\n에러: {error_msg}"
+            return f"❌ {pipe_name} 스크립트를 찾을 수 없습니다."
 
         elif _match(agent, ["아린", "arin"], ["인스타그램 포스팅", "인스타 올려", "펫과나 소셜 피드", "petnna_social_upload", "아린"]):
             import subprocess

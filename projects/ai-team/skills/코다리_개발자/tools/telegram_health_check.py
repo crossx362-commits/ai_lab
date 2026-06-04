@@ -12,11 +12,11 @@ import urllib.request
 import urllib.error
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
+# tools -> 코다리_개발자 -> skills -> ai-team
+_ai_team = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+sys.path.insert(0, _ai_team)
+_root = os.path.abspath(os.path.join(_ai_team, ".."))
+
 from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 import _shared.gemini_client as _gc
@@ -27,10 +27,19 @@ _LOG_FILE   = os.path.join(_root, "projects", "ai-team", "skills", "영숙_비�
 
 def _get_bot_pid() -> int | None:
     try:
-        r = subprocess.run(["pgrep", "-f", "telegram_receiver.py"],
-                           capture_output=True, text=True)
-        pids = [int(p) for p in r.stdout.strip().split() if p.strip()]
-        return pids[0] if pids else None
+        if sys.platform == "win32":
+            # Windows: PowerShell을 사용하여 telegram_receiver.py가 CommandLine에 포함된 python 프로세스를 검색합니다.
+            cmd = ["powershell", "-NoProfile", "-Command", "Get-WmiObject Win32_Process | Where-Object { $_.Name -match 'python' -and $_.CommandLine -like '*telegram_receiver.py*' } | Select-Object -ExpandProperty ProcessId"]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
+            pids = [int(p) for p in r.stdout.strip().split() if p.strip().isdigit()]
+            # 현재 헬스체크 프로세스 자신의 PID는 제외
+            pids = [p for p in pids if p != os.getpid()]
+            return pids[0] if pids else None
+        else:
+            r = subprocess.run(["pgrep", "-f", "telegram_receiver.py"],
+                               capture_output=True, text=True)
+            pids = [int(p) for p in r.stdout.strip().split() if p.strip()]
+            return pids[0] if pids else None
     except Exception:
         return None
 
@@ -76,16 +85,27 @@ def _restart_bot() -> int | None:
     pid = _get_bot_pid()
     if pid:
         try:
-            os.kill(pid, signal.SIGTERM)
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
             time.sleep(2)
         except Exception:
             pass
     log_fd = open(_LOG_FILE, "a", encoding="utf-8")
-    proc = subprocess.Popen(
-        [sys.executable, _BOT_SCRIPT],
-        stdout=log_fd, stderr=log_fd,
-        start_new_session=True,
-    )
+    if sys.platform == "win32":
+        # Windows: 백그라운드 분리 실행 (DETACHED_PROCESS = 0x00000008)
+        proc = subprocess.Popen(
+            [sys.executable, _BOT_SCRIPT],
+            stdout=log_fd, stderr=log_fd,
+            creationflags=0x00000008,
+        )
+    else:
+        proc = subprocess.Popen(
+            [sys.executable, _BOT_SCRIPT],
+            stdout=log_fd, stderr=log_fd,
+            start_new_session=True,
+        )
     time.sleep(4)
     return _get_bot_pid()
 

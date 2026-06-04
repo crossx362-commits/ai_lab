@@ -43,6 +43,16 @@
       "priority": "high"
     },
     {
+      "id": "luna_daily_shorts",
+      "agent": "루나",
+      "task": "YouTube 숏츠 영상 제작",
+      "cron": "0 9 * * *",
+      "description": "트렌드 기반 시티팝 YouTube Shorts 자동 생성 및 업로드",
+      "command": "루나 숏츠 만들어줘",
+      "enabled": true,
+      "priority": "medium"
+    },
+    {
       "id": "arin_golden_time_lunch",
       "agent": "아린",
       "task": "Instagram 점심 골든타임",
