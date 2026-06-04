@@ -39,3 +39,9 @@
 - PWA 파일: OK (6/6)
 - 모니터 스크립트: cffi 2.0.0 업그레이드로 petnna_monitor.py 실행 복구됨
 - 조치: Vercel 403 다일 연속 감지 — 대시보드 Password Protection / 배포 일시정지 여부 수동 확인 필요
+
+## 2026-06-04 UTC — 케빈 헬스 체크
+- 배포: FAIL (petnna_monitor.py — _cffi_backend 모듈 손상, 환경 이슈)
+- 핵심의존성: OK (Tailwind: OK, FontAwesome: OK, Leaflet: OK, Gemini API Key: EMPTY)
+- Supabase: OK (profiles/albums/routes/posts/pets 모두 참조 확인)
+- 조치: GEMINI_API_KEY 빈 값 확인됨 — 보안상 코드 직접 삽입 불가, 운영자 수동 설정 필요. cryptography/_cffi_backend 환경 손상은 시스템 레벨 이슈로 재배포 또는 패키지 재설치 필요.
