@@ -110,15 +110,16 @@ Ollama로 정책·스팸·일관성 분석
 판정 결과 JSON 생성
        ↓
 PASS: 조용히 기록
-REVIEW/REJECT: 판정 즉시 3단 자동 처리
+REVIEW/REJECT: 판정 즉시 자동 수정 및 검수 반복 루프 가동 (최대 15회)
   1. 🔒 YouTube 즉시 비공개 전환
-  2. 📝 .agent/memory/gahee_inspection_log.jsonl 에 이슈 저장
-  3. ⚡ fix_issues.py 자동 호출 → 핀포인트 수정 즉시 실행
-     - 쇼츠 위반 → 비공개 유지 + 텔레그램 알림
-     - LUNA 제목 접두어/형식 → YouTube API 직접 수정
-     - Instagram 금지 키워드 → Ollama 캡션 재생성 후 수정
-  4. 수정 완료 후 재공개 (쇼츠 위반 제외)
-경수 에스컬레이션: 정책 위반·사칭 시
+  2. 📝 gahee_inspection_log.jsonl 에 이슈 저장
+  3. ⚡ 통과할 때까지 피드백 루프 작동:
+     - Ollama로 피드백을 반영해 제목/설명문/캡션을 재생성하여 업데이트
+     - 가희가 재검수하여 완전히 PASS할 때까지 반복 (최대 15회)
+  4. 수정 통과 완료 시:
+     - YouTube 예약 업로드 일정(publishAt) 자동 복원 및 공개 전환
+     - 인스타그램 통과 캡션 최종 반영 업로드
+  5. 15회 초과 실패 시: 수동 조치 에스컬레이션 및 예원 CEO 보고
 ```
 
 ### 경수 에스컬레이션 기준

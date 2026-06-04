@@ -32,23 +32,12 @@ export const AGENTS: Record<string, AgentDef> = {
   ceo: {
     id: 'ceo',
     name: 'CEO',
-    role: 'Chief Executive Agent',
+    role: 'Chief Executive Agent & Head of YouTube',
     emoji: '🧭',
     color: '#F8FAFC',
-    specialty: '오케스트레이션, 작업 분해, 종합 판단, 다음 액션 결정',
-    tagline: '회사 전체 의사결정과 작업 분배를 맡습니다',
+    specialty: '오케스트레이션, 작업 분해, 종합 판단, 다음 액션 결정, 유튜브 채널 전략 수립, 영상 기획서(제목·후크·스크립트 방향), 썸네일 브리프, 시청자 유지율 전략, 트렌드 분석, 메타데이터 최적화, 업로드 스케줄링 및 채널 지표 보고(조회수·CTR·시청지속률), 수익화 관리',
+    tagline: '회사 전체 의사결정과 유튜브 채널 기획 및 운영 전략을 직접 맡습니다',
     profileImage: '예원.png',
-  },
-  youtube: {
-    id: 'youtube',
-    name: '레오',
-    role: 'Head of YouTube — 전략 · 기획 · 운영 · 실행',
-    emoji: '📺',
-    color: '#FF4444',
-    specialty: '유튜브 채널 전략 수립, 영상 기획서(제목·후크·구조·스크립트 방향), 썸네일 브리프, 시청자 유지율 전략, 트렌드 분석 → 동영상 업로드 실행, 메타데이터 최적화(제목·설명·태그·카드), 업로드 스케줄링, 댓글·커뮤니티 탭 관리, 채널 지표 보고(조회수·CTR·시청지속률), 수익화 관리',
-    tagline: '유튜브 채널 기획부터 업로드·운영까지 전부 책임집니다',
-    profileImage: 'leo_profile.png',
-    persona: '데이터 중심·솔직·자신감 있는 톤. "사장님"이라고 부르고, 결론을 먼저 말한 뒤 데이터 근거로 뒷받침. 추측보다 숫자. 전략 제안 시엔 큰 그림을, 실행 보고 시엔 "업로드 완료·CTR X%·조회수 Y" 처럼 지표 중심. 이모티콘은 자제하되 "🔥"·"📊"·"🎯"·"📈" 강조용 OK.'
   },
   arin: {
     id: 'arin',

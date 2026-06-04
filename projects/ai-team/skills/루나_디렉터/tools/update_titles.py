@@ -3,12 +3,17 @@ update_titles.py — 어제 미국 유튜브 상위 100개 패턴 분석 → 기
 """
 import os, sys, json, datetime
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
+from _shared.env_loader import find_project_root
+_root = find_project_root(_here)
 sys.path.insert(0, _here)
 
 from src.youtube_uploader import YouTubeUploader
@@ -44,32 +49,11 @@ def fetch_us_yesterday_titles(youtube) -> list[str]:
     return titles[:100]
 
 
-# ── Step 2: Ollama 패턴 분석 → 각 영상 새 제목 생성 ────────────────────────
+# ── Step 2: YouTube API로 메타데이터 (제목, 설명, 태그) 업데이트 ────────────
 
-def generate_new_title(keyword: str, us_titles: list[str]) -> str:
-    sample = "\n".join(f"- {t}" for t in us_titles[:50])
-    prompt = (
-        f"아래는 미국 유튜브에서 조회수가 가장 높은 음악 영상 제목들이야:\n\n"
-        f"{sample}\n\n"
-        f"이 제목들의 패턴(구조, 길이, 키워드 배치, 특수문자 사용 등)을 분석해서 "
-        f"'{keyword}' 테마의 시티팝/K-POP 뮤직비디오 제목을 1개 만들어줘.\n\n"
-        "조건:\n"
-        "- 수집된 제목 패턴을 그대로 반영해서 자연스럽게 생성\n"
-        "- 고정 공식 없음\n"
-        "- lofi/lo-fi 금지\n"
-        "- 제목 1줄만 출력"
-    )
-    result = lm_chat(prompt, task="", max_tokens=120)
-    if result and result.strip():
-        return result.strip().split("\n")[0].strip()
-    return keyword
-
-
-# ── Step 3: YouTube API로 제목 업데이트 ─────────────────────────────────────
-
-def update_video_title(youtube, video_id: str, new_title: str) -> bool:
+def update_video_metadata(youtube, video_id: str, new_title: str, new_description: str, new_tags: list[str]) -> bool:
     try:
-        # 기존 snippet 가져오기 (description, tags, categoryId 보존)
+        # 기존 snippet 가져오기 (categoryId 등 보존)
         res = youtube.videos().list(part="snippet", id=video_id).execute()
         items = res.get("items", [])
         if not items:
@@ -77,7 +61,11 @@ def update_video_title(youtube, video_id: str, new_title: str) -> bool:
             return False
         snippet = items[0]["snippet"]
         old_title = snippet.get("title", "")
+        
         snippet["title"] = new_title
+        snippet["description"] = new_description
+        snippet["tags"] = new_tags
+        
         youtube.videos().update(
             part="snippet",
             body={"id": video_id, "snippet": snippet}
@@ -95,8 +83,10 @@ def update_video_title(youtube, video_id: str, new_title: str) -> bool:
 
 def main():
     print("=" * 60)
-    print("  [루나] 제목 일괄 수정 — 미국 유튜브 패턴 기반")
+    print("  [루나] 제목 및 디스크립션 일괄 수정 - 최적화 지식 전면 반영")
     print("=" * 60)
+
+    from src.trend_analyzer import TrendAnalyzer, _generate_optimized_title
 
     # YouTube 인증 먼저
     uploader = YouTubeUploader()
@@ -148,24 +138,29 @@ def main():
     except Exception as e:
         print(f"  [Warning] 지식화 저장 실패: {e}")
 
-    # YouTube 인증
-    uploader = YouTubeUploader()
-    uploader.authenticate()
-    if not uploader.youtube:
-        print("❌ YouTube 인증 실패")
-        return
-
-    # Step 2+3: 각 영상 새 제목 생성 → 업데이트
+    # Step 2: 각 영상 메타데이터 생성 → 업데이트
     results = []
+    analyzer = TrendAnalyzer()
+    
     for v in videos:
         print(f"\n  🎯 키워드: {v['keyword']}")
-        new_title = generate_new_title(v["keyword"], us_titles)
-        ok = update_video_title(uploader.youtube, v["id"], new_title)
+        # 지식 가이드에 맞춰 검증 통과된 제목 생성
+        new_title = _generate_optimized_title(v["keyword"], us_titles)
+        # 지식 가이드에 맞춰 디스크립션 및 태그 생성
+        meta = analyzer.build_metadata_for_keyword(v["keyword"], new_title, us_titles)
+        
+        ok = update_video_metadata(
+            uploader.youtube, 
+            v["id"], 
+            new_title, 
+            meta["description"], 
+            meta["tags"]
+        )
         results.append({"id": v["id"], "old": v["old_title"], "new": new_title, "ok": ok})
 
     # 결과 보고
     ok_count = sum(1 for r in results if r["ok"])
-    report = f"✅ <b>[루나]</b> 제목 일괄 수정 완료 ({ok_count}/{len(results)})\n\n"
+    report = f"✅ <b>[루나]</b> 유튜브 영상 메타데이터 일괄 수정 완료 ({ok_count}/{len(results)})\n\n"
     for r in results:
         icon = "✅" if r["ok"] else "❌"
         report += f"{icon} {r['new'][:50]}\n"

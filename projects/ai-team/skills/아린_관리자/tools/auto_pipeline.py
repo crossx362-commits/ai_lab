@@ -102,8 +102,8 @@ def _record_to_history(record: dict):
         print(f"  [Warning] 히스토리 기록 실패: {e}")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-# 나노바나나2 = Imagen 3.0 generate-002 (최고 품질)
-GEMINI_IMAGE_MODEL = "imagen-3.0-generate-002"
+# 나노바나나2 = Imagen 4.0 generate-001 (최신 고품질)
+GEMINI_IMAGE_MODEL = "imagen-4.0-generate-001"
 
 def _generate_image_gemini(prompt) -> bytes | None:
     """나노바나나2 (Imagen 3.0 generate-002) API 호출 - 실사풍 고퀄리티."""
@@ -802,7 +802,7 @@ def main(dry_run=False):
 
     uploader = InstaUploader(account_id, access_token)
     post_id = None
-    MAX_RETRIES = 3
+    MAX_RETRIES = 15
 
     for attempt in range(1, MAX_RETRIES + 1):
         # 가희 사전 검수

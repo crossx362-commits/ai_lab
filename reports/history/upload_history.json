@@ -183,7 +183,7 @@
         "metadata": {
             "platform": "youtube",
             "video_id": "hk205UDU3s0",
-            "youtube_title": "LUNA - Neon City Lights #Shorts (밤하늘의 속삭임)",
+            "youtube_title": "하얀 비치의 꿈",
             "music_prompt": "Japanese City Pop & K-Pop Fusion, Upbeat & Energetic Tempo, Synth Lead & Electric Bass, Smooth & Melodic Vocals, Late-night city lights, neon signs, youthful dreams, vibrant nightlife, bittersweet longing.",
             "video_file": "shorts_final.mp4",
             "publish_at": "2026-05-31T05:00:00Z",
@@ -249,11 +249,25 @@
         "metadata": {
             "platform": "youtube",
             "video_id": "ZUm1RGffGvg",
-            "youtube_title": "Neon Bloom",
+            "youtube_title": "**City Dreams, Pinky Bloom | 도시의꿈 핑크빛**",
             "music_prompt": "Japanese City Pop x K-Pop fusion, 120 BPM energetic & vibrant, shimmering synths & driving bassline, ethereal vocals with subtle autotune, 가사/주제(lyrics_theme): '새하얀 미래 도시의 젊음, 꿈을 향해 질주하는 순간들'",
             "video_file": "final_video.mp4",
             "audio_file": "bgm_merged_20260603_062204.mp3",
             "publish_at": "2026-06-03T10:00:00Z"
+        }
+    },
+    {
+        "agent": "루나",
+        "status": "published",
+        "uploaded_at": "2026-06-04T09:26:49.059633+09:00",
+        "metadata": {
+            "platform": "youtube",
+            "video_id": "DRY-RUN-SUCCESS-ID",
+            "youtube_title": "'그림자와의 만남'",
+            "music_prompt": "\"그림자와의 만남\"에서 연관된 프롬프트: \"야망과 그늘을 추구하는 밤\" - Japanese City Pop × K-Pop Fusion, 130 BPM, Electric Piano, 강렬한 보컬 스타일, 그림자/자신감/다시起 立",
+            "video_file": "final_video.mp4",
+            "audio_file": "bgm_merged_20260604_092549.mp3",
+            "publish_at": "2026-06-04T10:00:00Z"
         }
     }
 ]

@@ -125,23 +125,23 @@ def web_search(query: str, max_tokens: int = 1500) -> str | None:
     return None
 
 
-# ── 이미지 생성 (Imagen 3) ───────────────────────────────────────────────────
+# ── 이미지 생성 (Imagen 4) ───────────────────────────────────────────────────
 
 def generate_image(
     prompt: str,
     output_path: str,
     aspect_ratio: str = "16:9",
-    model: str = "imagen-3.0-generate-001",
+    model: str = "imagen-4.0-generate-001",
     negative_prompt: str = "",
     num_images: int = 1,
 ) -> str | None:
-    """Gemini Imagen 3으로 이미지 생성.
+    """Gemini Imagen 4로 이미지 생성.
 
     Args:
         prompt: 이미지 생성 프롬프트
         output_path: 저장할 파일 경로
         aspect_ratio: "1:1", "3:4", "4:3", "9:16", "16:9" 중 하나
-        model: imagen-3.0-generate-001 (기본) 또는 imagen-3.0-fast-generate-001
+        model: imagen-4.0-generate-001 (기본), imagen-4.0-ultra-generate-001 (고품질), imagen-4.0-fast-generate-001 (빠름)
         negative_prompt: 제외할 요소 (선택)
         num_images: 생성할 이미지 수 (1-4, 기본 1)
 
@@ -154,26 +154,22 @@ def generate_image(
         return None
 
     try:
-        # API 요청 구성
+        # Imagen 4.0 API 형식 (predict 메서드 사용)
         request_data = {
-            "instances": [
-                {
-                    "prompt": prompt,
-                }
-            ],
+            "instances": [{
+                "prompt": prompt,
+            }],
             "parameters": {
-                "sampleCount": num_images,
                 "aspectRatio": aspect_ratio,
-                "negativePrompt": negative_prompt if negative_prompt else None,
+                "sampleCount": num_images,
             }
         }
 
-        # None 값 제거
-        if not negative_prompt:
-            del request_data["parameters"]["negativePrompt"]
+        if negative_prompt:
+            request_data["parameters"]["negativePrompt"] = negative_prompt
 
         payload = json.dumps(request_data).encode("utf-8")
-        url = f"{_IMAGEN_BASE}/publishers/google/models/{model}:predict?key={api_key}"
+        url = f"{_BASE}/{model}:predict?key={api_key}"
 
         req = urllib.request.Request(
             url,
@@ -189,13 +185,15 @@ def generate_image(
             # 첫 번째 이미지 사용
             img_data = res["predictions"][0]
 
-            # bytesBase64Encoded 또는 images 필드에서 이미지 추출
-            if "bytesBase64Encoded" in img_data:
-                img_b64 = img_data["bytesBase64Encoded"]
-            elif "images" in img_data and len(img_data["images"]) > 0:
-                img_b64 = img_data["images"][0]
-            else:
-                print("  [Imagen] 응답에 이미지 데이터 없음")
+            # 이미지 Base64 데이터 추출 (여러 필드명 시도)
+            img_b64 = None
+            for field in ["bytesBase64Encoded", "imageBytes", "image"]:
+                if field in img_data:
+                    img_b64 = img_data[field]
+                    break
+
+            if not img_b64:
+                print(f"  [Imagen] 응답에 이미지 데이터 없음. 응답 키: {list(img_data.keys())}")
                 return None
 
             # Base64 디코딩 및 저장
@@ -207,10 +205,11 @@ def generate_image(
             with open(output_path, "wb") as f:
                 f.write(img_bytes)
 
-            if os.path.exists(output_path):
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 5000:
+                print(f"  [Imagen 4.0] 이미지 생성 완료: {output_path} ({os.path.getsize(output_path):,} bytes)")
                 return output_path
             else:
-                print(f"  [Imagen] 파일 저장 실패: {output_path}")
+                print(f"  [Imagen] 파일 저장 실패 또는 파일이 너무 작음: {output_path}")
                 return None
         else:
             print(f"  [Imagen] API 응답 형식 오류: {res}")

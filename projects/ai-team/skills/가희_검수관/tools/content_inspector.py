@@ -165,6 +165,38 @@ def _check_metadata(info: dict) -> dict:
     if len(tags) > 30:
         results["violations"].append(f"태그 과다 도배 ({len(tags)}개)")
 
+    # 네온(neon) 클리셰 감지 시 REJECT
+    banned_keywords = ["네온", "neon", "neon-lit"]
+    for kw in banned_keywords:
+        if kw in title or kw in desc:
+            results["violations"].append(f"금지 클리셰 단어 포함 ('{kw}')")
+
+    # 동일 텍스트 내에서 단어 중복 검수 (2자 이상 한글/영어 단어가 2회 이상 반복될 때 REJECT)
+    # 제목 검수
+    import re
+    title_words = re.findall(r'[a-zA-Z가-힣]{2,}', title)
+    title_stop = {"official", "music", "video", "luna", "bgm", "시티팝", "citypop"}
+    title_counts = {}
+    for w in title_words:
+        if w in title_stop:
+            continue
+        title_counts[w] = title_counts.get(w, 0) + 1
+        if title_counts[w] > 1:
+            results["violations"].append(f"제목 내 단어 중복 사용 감지: '{w}'")
+            break
+
+    # 설명문 검수
+    desc_words = re.findall(r'[a-zA-Z가-힣]{2,}', desc)
+    desc_stop = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천", "youtube", "official", "luna", "시티팝"}
+    desc_counts = {}
+    for w in desc_words:
+        if w in desc_stop:
+            continue
+        desc_counts[w] = desc_counts.get(w, 0) + 1
+        if desc_counts[w] > 1:
+            results["violations"].append(f"설명문 내 단어 중복 사용 감지: '{w}'")
+            break
+
     # 스팸 키워드 집중 도배
     spam_hits = sum(1 for kw in SPAM_KEYWORDS if kw in title or kw in desc)
     if spam_hits >= 4:
@@ -264,32 +296,8 @@ def _generate_unique_title(original: str, used: set) -> str:
 
 
 def _generate_new_thumbnail(keyword: str, video_id: str) -> str | None:
-    """Pollinations으로 새 썸네일 생성. 실패 시 None."""
-    out_dir = os.path.join(_here, "output")
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"thumb_{video_id}.jpg")
-    variations = [
-        f"K-pop city pop aesthetic, {keyword}, neon Seoul night, retro 80s anime style",
-        f"Japanese city pop, {keyword}, pastel neon, cinematic retro, fresh composition",
-        f"Retro 80s K-pop fusion, {keyword}, golden hour, warm tones, new angle",
-    ]
-    prompt = random.choice(variations)
-    for model in ("flux", "turbo"):
-        encoded = urllib.parse.quote(prompt[:400])
-        seed = random.randint(1000, 99999)
-        url = (f"https://image.pollinations.ai/prompt/{encoded}"
-               f"?width=1280&height=720&model={model}&nologo=true&seed={seed}")
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=90) as r:
-                data = r.read()
-            if len(data) > 10000:
-                with open(out_path, "wb") as f:
-                    f.write(data)
-                print(f"    ✅ 새 썸네일 생성 ({model})")
-                return out_path
-        except Exception as e:
-            print(f"    ⚠️ Pollinations {model}: {e}")
+    """새 썸네일 생성 비활성화 (사장님 지시: 음악 영상 이미지는 새로 생성하지 않는다)"""
+    print(f"    [가희] 썸네일 신규 생성 스킵: {video_id}")
     return None
 
 
@@ -884,6 +892,7 @@ def inspect_caption(caption: str, agent: str = "아린") -> dict:
         "chill beats", "study beats",
         "이재명", "정치", "선거", "국회", "대통령", "여당", "야당", "민주당", "국민의힘",
         "정당", "투표", "정권", "탄핵", "집회", "시위", "정부", "보수", "진보", "좌파", "우파",
+        "네온", "neon", "neon-lit"
     ]
     issues = []
     lower = caption.lower()
@@ -899,6 +908,19 @@ def inspect_caption(caption: str, agent: str = "아린") -> dict:
     hits = [kw for kw in _BANNED if kw in lower]
     if hits:
         issues.append(f"금지 키워드: {', '.join(hits)}")
+
+    # 동일 캡션 내 중복 단어 검수 추가
+    import re
+    words = re.findall(r'[a-zA-Z가-힣]{2,}', lower)
+    stop_words = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천", "오늘", "하루"}
+    counts = {}
+    for w in words:
+        if w in stop_words or w.startswith("#"):
+            continue
+        counts[w] = counts.get(w, 0) + 1
+        if counts[w] > 1:
+            issues.append(f"캡션 내 단어 중복 사용 감지: '{w}'")
+            break
 
     # 이전 작업물 중복 단어 검수
     overused = _get_overused_words(agent)

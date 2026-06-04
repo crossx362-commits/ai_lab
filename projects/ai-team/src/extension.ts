@@ -757,7 +757,6 @@ function _loadPrompt(file: string): string {
 const _TOOL_SEEDS_DIR = path.join(__dirname, '..', 'assets', 'tool-seeds');
 // 에이전트 ID → 실제 폴더명 매핑 (폴더는 이름+직책 형태로 변경됨)
 const _TOOL_SEED_FOLDER_MAP: Record<string, string> = {
-    'youtube':   '레오_유튜브관리자',
     'arin':      '아린_인스타관리자',
     'editor':    '루나_사운드디렉터',
     'secretary': '영숙_개인비서',

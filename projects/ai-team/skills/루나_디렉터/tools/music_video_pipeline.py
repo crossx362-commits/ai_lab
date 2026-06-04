@@ -179,55 +179,152 @@ def clear_checkpoint():
 
 
 def generate_visual(prompt: str, output_path: str) -> str:
-    """이미지 생성 폴백 체인: 나노바나나2 (1순위) → Gemini Imagen 3 (2순위) → 단색 배경."""
-    # 1. 나노바나나2 시도 (Flux Schnell - 빠르고 고품질)
+    """이미지 생성 폴백 체인: Imagen → HuggingFace FLUX → Picsum."""
+    # 1. Imagen 시도 (유료, 고품질)
     result = _generate_image_nanobanana(prompt, output_path)
     if result:
         return result
 
-    # 2. Gemini Imagen 3 시도
-    result = _generate_image_gemini(prompt, output_path)
+    # 2. HuggingFace FLUX 시도 (무료, 고품질)
+    result = _generate_image_huggingface(prompt, output_path)
     if result:
         return result
 
-    # 3. 단색 배경 폴백 (FFmpeg로 생성)
-    return _generate_solid_color_background(output_path)
+    # 3. Picsum 폴백 (무료 랜덤 이미지)
+    return _generate_image_picsum(output_path)
 
 
 def _generate_image_nanobanana(prompt: str, output_path: str) -> str:
-    """나노바나나2 (Imagen 3.0 generate-002) - 최고 품질 실사풍."""
-    try:
-        from _shared.gemini_client import generate_image
-        result = generate_image(
-            prompt=prompt,
-            output_path=output_path,
-            aspect_ratio="16:9",
-            model="imagen-3.0-generate-002"  # 아린과 동일한 모델
-        )
-        if result and os.path.exists(result):
-            print(f"    [나노바나나2 (Imagen 3.0-002)] 완료: {output_path}")
-            return result
-    except Exception as e:
-        print(f"    [나노바나나2] 실패: {e}")
+    """나노바나나2 (Imagen 3.0 generate-002) - 아린과 동일한 방식."""
+    import base64
+    import json
+    import urllib.request
+    import urllib.error
+
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        print(f"    [나노바나나2] API 키 없음")
+        return ""
+
+    # Try Imagen 4.0 first, fallback to 3.0
+    models_to_try = ["imagen-4.0-generate-001", "imagen-3.0-generate-002", "imagen-3.0-generate-001"]
+    payload = {
+        "instances": [{"prompt": prompt}],
+        "parameters": {
+            "sampleCount": 1,
+            "aspectRatio": "16:9",
+            "safetyFilterLevel": "block_some",
+            "personGeneration": "allow_adult"
+        }
+    }
+    headers = {"Content-Type": "application/json"}
+
+    # Try multiple models and API versions
+    for model in models_to_try:
+        for api_ver in ("v1beta", "v1"):
+            url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model}:predict?key={api_key}"
+            try:
+                print(f"    [Imagen ({model}, {api_ver})] 호출...")
+                request_data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(url, data=request_data, headers=headers)
+
+                with urllib.request.urlopen(req, timeout=60) as response:
+                    res = json.loads(response.read())
+
+                predictions = res.get("predictions", [])
+                if predictions:
+                    b64 = predictions[0].get("bytesBase64Encoded", "")
+                    if b64:
+                        img_bytes = base64.b64decode(b64)
+                        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+                        with open(output_path, "wb") as f:
+                            f.write(img_bytes)
+
+                        if os.path.exists(output_path) and os.path.getsize(output_path) > 5000:
+                            print(f"    [Imagen {model}] OK: {output_path} ({len(img_bytes):,} bytes)")
+                            return output_path
+
+                print(f"    [Imagen] Bad response ({model}, {api_ver})")
+
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode('utf-8') if e.fp else ""
+                if e.code == 404:
+                    continue  # Try next model/version
+                else:
+                    print(f"    [Imagen] HTTP {e.code} ({model}, {api_ver}): {error_body[:100]}")
+            except Exception as e:
+                print(f"    [Imagen] Error ({model}, {api_ver}): {e}")
+
     return ""
 
 
-def _generate_image_gemini(prompt: str, output_path: str) -> str:
-    """Gemini Imagen 3 (generate-001) - 2순위 폴백."""
+def _generate_image_huggingface(prompt: str, output_path: str) -> str:
+    """HuggingFace Stable Diffusion 2.1 - 아린과 동일한 방식."""
+    import urllib.request
+    import json
+
+    hf_token = os.getenv("HF_API_TOKEN", "")
+    if not hf_token:
+        print(f"    [HuggingFace] HF_API_TOKEN 없음 - 건너뜀")
+        return ""
+
     try:
-        from _shared.gemini_client import generate_image
-        result = generate_image(
-            prompt=prompt,
-            output_path=output_path,
-            aspect_ratio="16:9",
-            model="imagen-3.0-generate-001"
-        )
-        if result and os.path.exists(result):
-            print(f"    [Gemini Imagen 3.0-001] 완료: {output_path}")
-            return result
+        hf_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+        print(f"    [HuggingFace SD2.1] 이미지 생성 중...")
+
+        payload = json.dumps({"inputs": prompt[:500]}).encode("utf-8")
+        headers = {
+            "Authorization": f"Bearer {hf_token}",
+            "Content-Type": "application/json"
+        }
+
+        req = urllib.request.Request(hf_url, data=payload, headers=headers)
+        with urllib.request.urlopen(req, timeout=90) as response:
+            img_bytes = response.read()
+
+        if len(img_bytes) > 5000:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+            with open(output_path, "wb") as f:
+                f.write(img_bytes)
+
+            if os.path.exists(output_path):
+                print(f"    [HuggingFace SD2.1] 완료: {output_path} ({len(img_bytes):,} bytes)")
+                return output_path
+        else:
+            print(f"    [HuggingFace] 응답 이상 (너무 작음)")
     except Exception as e:
-        print(f"    [Gemini Imagen] 실패: {e}")
+        print(f"    [HuggingFace] 실패: {e}")
+
     return ""
+
+
+def _generate_image_picsum(output_path: str) -> str:
+    """Picsum 폴백 - 무료 랜덤 고품질 이미지."""
+    import urllib.request
+    import random
+
+    try:
+        seed = random.randint(1, 1000)
+        url = f"https://picsum.photos/seed/{seed}/1280/720"
+        print(f"    [Picsum 폴백] seed={seed} 이미지 다운로드 중...")
+
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as response:
+            img_bytes = response.read()
+
+        if len(img_bytes) > 5000:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+            with open(output_path, "wb") as f:
+                f.write(img_bytes)
+
+            if os.path.exists(output_path):
+                print(f"    [Picsum] 완료: {output_path} ({len(img_bytes):,} bytes)")
+                return output_path
+    except Exception as e:
+        print(f"    [Picsum] 실패: {e}")
+
+    # 최종 폴백: 단색 배경
+    return _generate_solid_color_background(output_path)
 
 
 def _generate_solid_color_background(output_path: str, color: str = "#1a1a2e") -> str:
@@ -803,41 +900,88 @@ def run_pipeline(publish_hhmm: str = None):
         # send_telegram_message(msg)  # 중복 방지: telegram_bot.py에서 전송
         print(f"\n{msg}")
 
-        # 가희 사후 검수 (업로드 후 메타데이터 확인) + 실패 시 자동 수정
+        # 가희 사후 검수 (업로드 후 메타데이터 확인) + 통과할 때까지 자동 수정 루프
         try:
             import importlib.util as _ilu
             _spec = _ilu.spec_from_file_location("content_inspector",
                 os.path.join(_root, "projects", "ai-team", "skills", "가희_검수관", "tools", "content_inspector.py"))
             _ci = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_ci)
-            post_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
-            status = post_check.get("status", "PASS")
-            if status != "PASS":
+            
+            passed = False
+            for attempt in range(1, 16):
+                post_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
+                status = post_check.get("status", "PASS")
+                if status == "PASS":
+                    passed = True
+                    send_telegram_message(f"✅ <b>[가희]</b> 루나 검수 최종 통과 완료! (시도 {attempt}/15)\n제목: {title}\nhttps://youtu.be/{video_id}")
+                    print(f"  [가희] 사후 검수 최종 통과 ✅ — {title}")
+                    
+                    # 통과 시 비공개 해제 및 예약 일정 복원
+                    try:
+                        if publish_at_utc:
+                            uploader.youtube.videos().update(
+                                part="status",
+                                body={
+                                    "id": video_id,
+                                    "status": {
+                                        "privacyStatus": "private",
+                                        "publishAt": publish_at_utc
+                                    }
+                                }
+                            ).execute()
+                            print(f"  [가희] 영상 예약 일정 복원 완료: {publish_at_utc}")
+                        else:
+                            _ci.restore_youtube_public(uploader.youtube, video_id)
+                    except Exception as status_err:
+                        print(f"  [가희] 상태 복원 실패: {status_err}")
+                        _ci.restore_youtube_public(uploader.youtube, video_id)
+                    break
+                    
                 violations = post_check.get("violations", [])
+                warnings = post_check.get("warnings", [])
+                issues = violations + warnings
                 send_telegram_message(
-                    f"⚠️ <b>[가희]</b> 루나 사후 검수 이상 ({status})\n"
+                    f"⚠️ <b>[가희]</b> 루나 사후 검수 이상 감지 (시도 {attempt}/15)\n"
                     f"영상: https://youtu.be/{video_id}\n"
-                    f"위반: {violations}"
+                    f"위반/경고: {issues}"
                 )
-                print(f"  [가희] 사후 검수: {status} — {violations}")
-                # 자동 수정: 제목·설명 재생성 후 YouTube API로 업데이트
+                print(f"  [가희] 사후 검수 이상 (시도 {attempt}/15): {issues}")
+                
+                # 피드백 기반 자동 수정
                 try:
+                    # 제목 수정이 필요한 경우
+                    if any("제목" in iss or "neon" in iss.lower() or "네온" in iss or "중복" in iss for iss in issues):
+                        print(f"  [가희-피드백] 제목 수정 진행 중...")
+                        title_prompt = (
+                            f"유튜브 시티팝 음악 영상 제목을 아래 위반 피드백을 피해서 다시 지어줘.\n"
+                            f"이전 거절된 제목: {title}\n"
+                            f"피드백: {', '.join(issues)}\n"
+                            f"조건: 'neon', '네온', 'lofi' 절대 금지, 한글 필수, 동일 단어 반복 금지, 1줄만 출력."
+                        )
+                        for _ in range(5):
+                            res_t = _lm_chat(title_prompt, task="", max_tokens=100)
+                            if res_t and res_t.strip():
+                                new_t = res_t.strip().split("\n")[0]
+                                new_t = re.sub(r'^["\'“]+|["\'”]+$', '', new_t).strip()
+                                if not any(k in new_t.lower() for k in ["neon", "네온", "lofi"]):
+                                    title = new_t
+                                    break
+                        else:
+                            title = theme["keyword"].replace("Neon", "").replace("neon", "").replace("네온", "").upper()
+
+                    # 설명문 수정 (또는 기본 재생성)
                     fixed_meta = _auto_generate_metadata(
                         full_music_prompt, theme.get("_yt_top_titles", []) or [], draft_title=title
                     )
-                    fixed_desc = fixed_meta.get("description", description)
-                    _ci._update_yt_metadata(uploader.youtube, video_id, title, description=fixed_desc)
-                    # 수정 후 재검수
-                    re_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
-                    re_status = re_check.get("status", "PASS")
-                    if re_status == "PASS":
-                        send_telegram_message(f"✅ <b>[가희]</b> 루나 재검수 통과 — description 수정 완료\n제목: {title}")
-                        print(f"  [가희] 재검수 통과 ✅ — {title}")
-                    else:
-                        send_telegram_message(f"🚨 <b>[가희]</b> 루나 재검수도 실패 — 수동 확인 필요\nhttps://youtu.be/{video_id}")
+                    description = fixed_meta.get("description", description)
+                    
+                    # 유튜브 메타데이터 업데이트
+                    _ci._update_yt_metadata(uploader.youtube, video_id, title, description=description)
                 except Exception as fix_err:
-                    print(f"  [가희] 자동 수정 실패: {fix_err}")
-            else:
-                print(f"  [가희] 사후 검수 통과 ✅")
+                    print(f"  [가희] 자동 수정 루프 에러: {fix_err}")
+                    
+            if not passed:
+                send_telegram_message(f"🚨 <b>[가희]</b> 루나 검수 최대 시도(15회) 초과 실패 — 수동 확인 필요\nhttps://youtu.be/{video_id}")
         except Exception as e:
             print(f"  [가희] 사후 검수 호출 실패: {e}")
     else:

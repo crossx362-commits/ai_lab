@@ -29,11 +29,29 @@ def _find_root(start: str) -> str:
 
 
 def load_env(start_path: str | None = None) -> None:
-    """프로젝트 루트 .env 를 읽어 환경변수로 등록 (이미 설정된 값은 덮어쓰지 않음).
+    """프로젝트 루트 .env 또는 .env.encrypted를 읽어 환경변수로 등록.
+
+    우선순위:
+    1. .env.encrypted (암호화된 환경변수)
+    2. .env (평문 환경변수)
 
     start_path: 탐색 시작 경로. None 이면 이 파일 위치 기준.
     """
     root = _find_root(start_path or os.path.dirname(os.path.abspath(__file__)))
+
+    # 1순위: 암호화된 환경변수 로드
+    encrypted_path = os.path.join(root, ".env.encrypted")
+    if os.path.exists(encrypted_path):
+        try:
+            from _shared.env_crypto import load_encrypted_env
+            env_vars = load_encrypted_env(encrypted_path)
+            for k, v in env_vars.items():
+                os.environ.setdefault(k, v.strip('"').strip("'"))
+            return  # 암호화 파일 로드 성공 시 평문 .env 건너뜀
+        except Exception as e:
+            print(f"  [Warning] 암호화된 환경변수 로드 실패, 평문 .env로 폴백: {e}")
+
+    # 2순위: 평문 .env 로드
     env_path = os.path.join(root, ".env")
     if not os.path.exists(env_path):
         return

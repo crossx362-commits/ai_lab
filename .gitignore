@@ -28,3 +28,5 @@ youtube_token.pickle
 
 # Vercel
 .vercel
+.env.backup*
+.env_backup_secure/

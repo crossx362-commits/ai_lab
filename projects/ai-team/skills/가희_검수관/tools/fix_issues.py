@@ -183,49 +183,82 @@ def fix_luna_title_prefix(youtube, video_id: str) -> bool:
 
 
 def fix_youtube_title(youtube, video_id: str, old_title: str, fix_type: str) -> bool:
-    """fix_type 라우터 — 가희 판정에 따라 적절한 수정 함수 호출."""
+    """통과할 때까지 제목/설명 수정 루프 실행 (최대 15회)"""
+    import content_inspector as _ci
+    import re
+
     if fix_type == "make_private_shorts_violation":
         return make_private_shorts_violation(youtube, video_id)
-    if fix_type == "fix_luna_title_prefix":
-        return fix_luna_title_prefix(youtube, video_id)
-
-    # 기본: 음악 키워드 추가 + AI 공시
-    try:
-        res = youtube.videos().list(part="snippet", id=video_id).execute()
-        items = res.get("items", [])
-        if not items:
-            print(f"  ❌ 영상 없음: {video_id}")
+        
+    for attempt in range(1, 16):
+        try:
+            res = youtube.videos().list(part="snippet", id=video_id).execute()
+            items = res.get("items", [])
+            if not items:
+                print(f"  ❌ 영상 없음: {video_id}")
+                return False
+            snippet = items[0]["snippet"]
+            title = snippet.get("title", "")
+            description = snippet.get("description", "")
+            
+            re_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
+            status = re_check.get("status", "PASS")
+            if status == "PASS":
+                print(f"  ✅ [{video_id}] 검수 통과 완료! (시도 {attempt}/15)")
+                return True
+                
+            violations = re_check.get("violations", [])
+            warnings = re_check.get("warnings", [])
+            issues = violations + warnings
+            print(f"  [가희-재검수] 실패 (시도 {attempt}/15): {issues}")
+            
+            # 이슈 분석 및 수정 내용 생성
+            # 제목 이슈 해결 (LUNA 접두어, neon/네온, 단어 중복 등)
+            if any("제목" in iss or "neon" in iss.lower() or "네온" in iss or "중복" in iss or "prefix" in iss.lower() for iss in issues):
+                if lm_available():
+                    prompt = (
+                        f"유튜브 시티팝 음악 영상 제목을 아래 위반 피드백을 피해서 다시 지어줘.\n"
+                        f"이전 거절된 제목: {title}\n"
+                        f"피드백: {', '.join(issues)}\n"
+                        f"조건: 'neon', '네온', 'lofi', 'luna' 접두어 절대 금지, 한글 필수, 동일 단어 반복 금지, 1줄만 출력."
+                    )
+                    new_title = lm_chat(prompt, max_tokens=80, temperature=0.9)
+                    new_title = new_title.strip().split("\n")[0] if new_title else title
+                    new_title = re.sub(r'^["\'“]+|["\'”]+$', '', new_title).strip()
+                else:
+                    new_title = re.sub(r"^LUNA\s*[-–]\s*", "", title).strip()
+                    new_title = new_title.replace("Neon", "").replace("neon", "").replace("네온", "").strip()
+                snippet["title"] = new_title
+                
+            # 설명문 이슈 해결
+            if any("설명" in iss or "중복" in iss or "desc" in iss.lower() for iss in issues):
+                if lm_available():
+                    prompt = (
+                        f"유튜브 음악 설명문을 아래 위반 피드백을 피해서 완전히 다채로운 표현으로 새로 써줘.\n"
+                        f"이전 거절된 설명문: {description[:150]}...\n"
+                        f"피드백: {', '.join(issues)}\n"
+                        f"조건: 동일 단어(예: 감성, 오늘, 하루 등) 2회 중복 엄격 금지, 'neon/네온' 금지, 2~3줄로 작성."
+                    )
+                    new_desc = lm_chat(prompt, max_tokens=300, temperature=0.9)
+                    if new_desc and new_desc.strip():
+                        snippet["description"] = new_desc.strip()
+                else:
+                    # 폴백: 중복 단어가 있을 경우 단순 제거 또는 리셋
+                    snippet["description"] = "감성적인 시티팝 사운드와 함께하는 편안한 도심 속 여정입니다."
+                        
+            # AI 공시 누락 해결
+            if fix_type == "add_music_keyword_and_ai_disclosure" or any("ai" in str(i).lower() for i in issues):
+                ai_notice = "※ This music is AI-generated. / 이 음악은 AI로 생성되었습니다."
+                if ai_notice not in snippet.get("description", ""):
+                    snippet["description"] = ai_notice + "\n\n" + snippet.get("description", "")
+                    
+            youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
+            print(f"  [수정 적용] 제목: '{snippet['title'][:40]}'")
+        except Exception as e:
+            print(f"  ❌ 유튜브 API 업데이트 실패: {e}")
             return False
-        snippet = items[0]["snippet"]
-        old = snippet.get("title", "")
-
-        if lm_available():
-            prompt = (
-                f"다음 유튜브 음악 영상 제목에 음악 관련 키워드(BGM, Music, MV 중 하나)를 "
-                f"자연스럽게 추가해줘. 제목 1줄만 출력.\n원본: {old}"
-            )
-            new_title = lm_chat(prompt, max_tokens=80, temperature=0.3)
-            new_title = new_title.strip().split("\n")[0] if new_title else old
-        else:
-            new_title = old.rstrip() + " | BGM"
-
-        snippet["title"] = new_title
-
-        if fix_type == "add_music_keyword_and_ai_disclosure":
-            desc = snippet.get("description", "")
-            ai_notice = "※ This music is AI-generated. / 이 음악은 AI로 생성되었습니다."
-            if ai_notice not in desc:
-                snippet["description"] = ai_notice + "\n\n" + desc
-
-        youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
-        print(f"  ✅ [{video_id}] 수정 완료")
-        print(f"     이전: {old[:55]}")
-        print(f"     변경: {new_title[:55]}")
-        return True
-
-    except Exception as e:
-        print(f"  ❌ [{video_id}] 수정 실패: {e}")
-        return False
+            
+    return False
 
 
 def restore_youtube_public(youtube, video_id: str) -> bool:
@@ -270,17 +303,50 @@ def regenerate_caption(old_caption: str) -> str:
 
 
 def fix_instagram_post(post_id: str, old_caption: str) -> bool:
-    """Instagram Graph API로 캡션 수정."""
+    """Instagram Graph API로 캡션 수정 (로컬 검수 통과할 때까지 15회 루프)."""
     import urllib.request, urllib.parse
-    token      = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
+    import content_inspector as _ci
+    
+    token = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
     if not token:
         print(f"  ⚠️ Instagram 토큰 없음 — 캡션 재생성만 출력")
         new_cap = regenerate_caption(old_caption)
         print(f"  📝 재생성 캡션:\n{new_cap[:200]}")
         return False
+        
+    final_caption = old_caption
+    passed = False
+    for attempt in range(1, 16):
+        check = _ci.inspect_caption(final_caption)
+        if check["pass"]:
+            passed = True
+            print(f"  ✅ [가희-인스타로컬] 캡션 통과! (시도 {attempt}/15)")
+            break
+        print(f"  ⚠️ [가희-인스타로컬] 캡션 위반 (시도 {attempt}/15): {check['issues']}")
+        
+        if lm_available():
+            prompt = (
+                f"이 인스타 캡션을 아래 피드백 문제를 해결해서 다시 작성해줘.\n"
+                f"피드백: {', '.join(check['issues'])}\n"
+                f"원본: {final_caption}\n\n"
+                f"조건: 'neon', '네온', 'AI', '인공지능', '미래' 금지, 한글 필수, 동일 단어 반복 금지, 캡션 본문만 출력."
+            )
+            result = lm_chat(prompt, max_tokens=300, temperature=0.9)
+            if result and result.strip():
+                final_caption = result.strip()
+            else:
+                break
+        else:
+            lines = [l for l in final_caption.split("\n")
+                     if not any(kw in l.lower() for kw in _BANNED)]
+            final_caption = "\n".join(lines).strip()
+            
+    if not passed:
+        print("  ❌ [가희-인스타로컬] 캡션 자동 수정 실패 (최대 시도 초과)")
+        return False
+        
     try:
-        new_caption = regenerate_caption(old_caption)
-        data = urllib.parse.urlencode({"caption": new_caption, "access_token": token}).encode()
+        data = urllib.parse.urlencode({"caption": final_caption, "access_token": token}).encode()
         req  = urllib.request.Request(
             f"https://graph.instagram.com/v23.0/{post_id}",
             data=data, method="POST"
@@ -289,7 +355,7 @@ def fix_instagram_post(post_id: str, old_caption: str) -> bool:
             result = json.loads(r.read())
         if result.get("success") or result.get("id"):
             print(f"  ✅ Instagram [{post_id}] 캡션 수정 완료")
-            print(f"  📝 새 캡션: {new_caption[:100]}")
+            print(f"  📝 새 캡션: {final_caption[:100]}")
             return True
         print(f"  ⚠️ Instagram 수정 응답: {result}")
         return False
