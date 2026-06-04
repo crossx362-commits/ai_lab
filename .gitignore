@@ -17,10 +17,14 @@ fix_agent_paths.py
 web_preview.json
 .superpowers/
 
-# 환경 변수 (암호화되지 않은 파일들)
+# 환경 변수 및 자격 증명 (암호화되지 않은 원본 파일들)
 .env
 *.env
 .env.key
+client_secret.json
+client_secret.json.template
+*.pickle
+youtube_token.pickle
 
 # Vercel
 .vercel

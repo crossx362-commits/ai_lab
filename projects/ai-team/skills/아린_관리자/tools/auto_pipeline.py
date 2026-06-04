@@ -39,11 +39,13 @@ _gahee = _ilu.module_from_spec(_gahee_spec)
 _gahee_spec.loader.exec_module(_gahee)
 gahee_inspect_caption     = _gahee.inspect_caption
 gahee_inspect_post_upload = _gahee.inspect_post_upload
-# 예원 CEO approval
-_ceo_path = os.path.join(os.path.dirname(__file__), "..", "..", "예원_CEO")
-if _ceo_path not in sys.path:
-    sys.path.insert(0, _ceo_path)
-from approval import await_approval
+# 예원 CEO approval (동적 임포트)
+import importlib.util as _ilu
+_approval_path = os.path.join(os.path.dirname(__file__), "..", "..", "예원_CEO", "approval.py")
+_approval_spec = _ilu.spec_from_file_location("approval_yewon", _approval_path)
+_approval_mod = _ilu.module_from_spec(_approval_spec)
+_approval_spec.loader.exec_module(_approval_mod)
+await_approval = _approval_mod.await_approval
 # 경수 검수관 modules
 _kyungsoo_path = os.path.join(os.path.dirname(__file__), "..", "..", "경수_수사관", "tools")
 _kyungsoo_spec = _ilu.spec_from_file_location("approval_kyungsoo",
@@ -261,26 +263,46 @@ def _generate_full_content(selected_trend: str, keywords: dict) -> dict:
             "image_prompt: 영어, Gemini Imagen용, DSLR 스타일, 150자 이내.\n"
             "title+description: 진짜 사람이 폰으로 찍고 올린 것처럼 짧고 자연스러운 한국어. "
             "딱딱한 문어체 금지, 친구한테 말하듯. 이모지 1개. AI·기술·인공지능 단어 금지.\n"
+            "  ⚠️ 동일 단어(예: 감성, 오늘, 하루 등 2글자 이상의 의미 있는 단어)를 본문 내에 2회 이상 중복해서 반복 사용하는 것을 엄격히 금지합니다.\n"
             "hashtags: 한국어 8개 배열. AI·기술·미래 금지.\n"
             "JSON만 반환:\n"
             '{"image_prompt":"...","title":"...","description":"...","hashtags":["#..."]}'
         )
-        try:
-            raw = lm_chat(prompt, max_tokens=400, temperature=0.7, json_mode=True)
-            if raw:
-                data = json.loads(raw.strip())
-                caption = (
-                    f"{data.get('title','')}\n\n"
-                    f"{data.get('description','')}\n\n"
-                    + " ".join(data.get("hashtags", []))
-                )
-                return {
-                    "image_prompt": data.get("image_prompt", scene),
-                    "caption":      caption,
-                    "best_time":    optimal_time,
-                }
-        except Exception as e:
-            print(f"  ⚠️ 콘텐츠 생성 실패 ({e}), 템플릿 사용")
+        for attempt in range(3):
+            try:
+                raw = lm_chat(prompt, max_tokens=400, temperature=0.7, json_mode=True)
+                if raw:
+                    data = json.loads(raw.strip())
+                    title = data.get('title','')
+                    desc = data.get('description','')
+                    full_text = f"{title} {desc}"
+                    import re
+                    words = re.findall(r'[a-zA-Z가-힣]{2,}', full_text.lower())
+                    stop_words = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천"}
+                    counts = {}
+                    repeated = []
+                    for w in words:
+                        if w in stop_words:
+                            continue
+                        counts[w] = counts.get(w, 0) + 1
+                        if counts[w] > 1:
+                            repeated.append(w)
+                    if not repeated:
+                        caption = (
+                            f"{title}\n\n"
+                            f"{desc}\n\n"
+                            + " ".join(data.get("hashtags", []))
+                        )
+                        return {
+                            "image_prompt": data.get("image_prompt", scene),
+                            "caption":      caption,
+                            "best_time":    optimal_time,
+                        }
+                    else:
+                        print(f"  ⚠️ [중복 단어 발견] 재생성 시도 {attempt+1}: {list(set(repeated))}")
+                        prompt += f"\n⚠️ 피드백: 이전 문장에서 {list(set(repeated))} 단어들이 2회 이상 중복되어 나타났습니다. 이 단어들의 반복 사용을 피하고 다른 다채로운 표현으로 대체해 주세요."
+            except Exception as e:
+                print(f"  ⚠️ 콘텐츠 생성 시도 실패: {e}")
 
     # 템플릿 폴백
     caption = (

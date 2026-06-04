@@ -124,10 +124,102 @@ def _load_title_knowledge() -> str:
     return "\n".join(parts[:40])
 
 
+def _load_all_used_titles() -> list[str]:
+    """업로드 히스토리(upload_history.json)에서 기존 업로드된 모든 실제 영상 제목 로드."""
+    if not os.path.exists(_HISTORY_FILE):
+        return []
+    try:
+        with open(_HISTORY_FILE, "r", encoding="utf-8") as f:
+            history = json.load(f)
+        titles = []
+        for r in history:
+            title = r.get("metadata", {}).get("youtube_title", "")
+            if title:
+                titles.append(title.lower().strip())
+        return titles
+    except Exception:
+        return []
+
+
+def _is_similar_to_existing(title: str, existing_titles: list[str]) -> tuple[bool, str]:
+    """기존 제목들과 자카드 유사도 및 부분매칭을 통해 중복/유사 제목 여부 판별."""
+    title_clean = re.sub(r"[^가-힣A-Za-z0-9]", "", title.lower())
+    title_words = set(re.findall(r"[A-Za-z가-힣]{2,}", title.lower()))
+    
+    for ext in existing_titles:
+        ext_clean = re.sub(r"[^가-힣A-Za-z0-9]", "", ext)
+        # 1. 완전 일치 또는 포함 관계
+        if title_clean == ext_clean or title_clean in ext_clean or ext_clean in title_clean:
+            return True, f"기존 제목 '{ext}'과 완전 일치 또는 포함 관계"
+            
+        # 2. 자카드 유사도 (50% 이상 단어 중복 시 차단)
+        ext_words = set(re.findall(r"[A-Za-z가-힣]{2,}", ext))
+        if title_words and ext_words:
+            intersection = title_words.intersection(ext_words)
+            union = title_words.union(ext_words)
+            similarity = len(intersection) / len(union)
+            if similarity >= 0.5:
+                return True, f"기존 제목 '{ext}'과 단어 유사도 {int(similarity*100)}% 중복"
+                
+    return False, ""
+
+
+def _validate_title(title: str, overused: set[str]) -> tuple[bool, str]:
+    title_lower = title.lower()
+    
+    # 0. 기존 업로드 제목들과의 중복/유사성 검사
+    existing_titles = _load_all_used_titles()
+    is_dup, reason = _is_similar_to_existing(title, existing_titles)
+    if is_dup:
+        return False, reason
+    
+    # 한글 포함 여부 검사 (제목은 반드시 한글 위주여야 함)
+    if not re.search(r"[가-힣]", title):
+        return False, "한글(한국어)이 포함되어 있지 않음 (한글 제목 필수 규칙 위반)"
+
+    # 문장형 응답이나 AI의 잡설 섞였는지 검사 (길이 및 단어 개수)
+    if len(title) > 50:
+        return False, "제목 길이가 너무 길어(50자 초과) 잡다한 설명이 포함된 것으로 의심됨"
+        
+    words_count = len(title.split())
+    if words_count > 10:
+        return False, f"단어 수가 너무 많아({words_count}개) 잡다한 설명이 포함된 것으로 의심됨"
+
+    # AI의 상투적인 서술/안내식 한국어 표현 차단
+    ai_talk_patterns = ["추천합니다", "생성해", "보겠습니다", "타이틀은", "제목은", "다음과 같다", "다음은", "관련된", "네!", "입니다", "합니다", "생성했습니다"]
+    for pattern in ai_talk_patterns:
+        if pattern in title_lower:
+            return False, f"AI 잡설 패턴 '{pattern}' 포함됨"
+
+    # 1. 고정 태그 검사
+    for tag in ["luna", "official", "mv", "music video"]:
+        if tag in title_lower:
+            return False, f"고정 태그 '{tag}' 포함 금지 규칙 위반"
+            
+    # 2. 금지 장르 검사
+    for bg in ["lofi", "lo-fi", "study beats", "chill beats", "sleep music", "white noise"]:
+        if bg in title_lower:
+            return False, f"금지 장르 키워드 '{bg}' 포함 금지 규칙 위반"
+            
+    # 3. 클리셰 단어 검사 (특히 neon/네온 강력 배제)
+    cliches = ["neon", "네온", "네온 아래", "감성 충전", "늦은 밤 드라이브", "벚꽃 흩날리는 거리", "여름 바닷가", "조용한 밤", "편안한 휴식"]
+    for cl in cliches:
+        if cl in title_lower:
+            return False, f"클리셰/금지 단어 '{cl}' 포함 금지 규칙 위반"
+            
+    # 4. 최근 중복 사용 단어 검사 (단어 단위 매칭)
+    words = re.findall(r"[A-Za-z가-힣]{2,}", title_lower)
+    for w in words:
+        if w in overused:
+            return False, f"최근 중복 사용된 단어 '{w}' 포함 금지 규칙 위반"
+            
+    return True, ""
+
+
 def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
     """Ollama로 LUNA 뮤직비디오 제목 생성.
     - yt_titles 있으면 패턴 참고, 없으면 knowledge 기반으로만 생성
-    - title_patterns.json 반복 단어 자동 금지
+    - title_patterns.json 반복 단어 자동 금지 및 클리셰 필터링 적용
     - 결과는 지식 파일에 누적 저장
     """
     try:
@@ -138,6 +230,8 @@ def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
             return keyword
 
         overused = _load_used_title_words()
+        overused_set = set(w.lower() for w in overused)
+        
         avoid_clause = (
             f"- 아래 단어들은 최근 제목에서 반복 사용됐으므로 반드시 제외: {', '.join(overused)}\n"
             if overused else ""
@@ -154,33 +248,45 @@ def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
         else:
             context = "유튜브 트렌드 제목 참고 없이 창의적으로 "
 
-        prompt = (
-            f"{context}'{keyword}' 테마의 시티팝/K-POP 뮤직비디오 제목을 1개 만들어줘.\n"
-            f"{knowledge_block}\n"
-            "조건:\n"
-            "- 고정 공식 없음. 매번 다른 구조 사용\n"
-            "- LUNA, Official, MV, Music Video 등 고정 태그 삽입 절대 금지 (채널명이므로)\n"
-            "- 영어+한국어 혼합 또는 영어 단독, 5~8단어 이내 콤팩트하게\n"
-            "- lofi/lo-fi/study beats/chill beats/sleep music 금지\n"
-            f"{avoid_clause}"
-            "- 제목 1줄만 출력"
-        )
-        result = _lm_chat(prompt, task="", max_tokens=120)
-        if result and result.strip():
-            title = result.strip().split("\n")[0].strip()
-            _save_title_pattern_knowledge({
-                "keyword": keyword,
-                "generated_title": title,
-                "sample_count": len(yt_titles),
-                "top_5_samples": yt_titles[:5],
-            })
-            return title
+        feedback_msg = ""
+        for attempt in range(5):
+            prompt = (
+                f"{context}'{keyword}' 테마의 시티팝/K-POP 뮤직비디오 제목을 1개 만들어줘.\n"
+                f"{knowledge_block}\n"
+                "조건:\n"
+                "- 고정 공식 없음. 매번 다른 구조 사용\n"
+                "- LUNA, Official, MV, Music Video 등 고정 태그 삽입 절대 금지 (채널명이므로)\n"
+                "- 반드시 감성적인 한국어(한글) 위주로 작성 (영어 단독 제목 절대 금지, 필요 시 영문 고유명사나 피처링 명칭만 최소 혼용 허용)\n"
+                "- lofi/lo-fi/study beats/chill beats/sleep music 금지\n"
+                "- 클리셰 단어 절대 금지: 'neon', '네온', '네온 아래', '감성 충전', '늦은 밤 드라이브', '벚꽃 흩날리는 거리', '여름 바닷가', '조용한 밤', '편안한 휴식'\n"
+                f"{avoid_clause}"
+                f"{feedback_msg}"
+                "- 제목 1줄만 출력 (설명이나 다른 텍스트는 일체 제외)"
+            )
+            result = _lm_chat(prompt, task="", max_tokens=120)
+            if result and result.strip():
+                title = result.strip().split("\n")[0].strip()
+                title = re.sub(r'^["\'“]+|["\'”]+$', '', title).strip()
+                
+                is_valid, reason = _validate_title(title, overused_set)
+                if is_valid:
+                    _save_title_pattern_knowledge({
+                        "keyword": keyword,
+                        "generated_title": title,
+                        "sample_count": len(yt_titles),
+                        "top_5_samples": yt_titles[:5],
+                    })
+                    return title
+                else:
+                    print(f"[Warning] 제목 검증 실패 (시도 {attempt+1}/5): {reason} -> '{title}'")
+                    feedback_msg = f"\n[이전 생성 실패 피드백]\n- 직전에 생성했던 '{title}'은 '{reason}'으로 인해 거절되었습니다. 동일한 실수를 반복하지 말고 완전히 새로운 단어와 구조로 작성하십시오.\n"
+            
     except Exception as e:
         print(f"[Warning] 제목 생성 실패: {e}")
 
-    # 폴백: 스킬 규칙 기반 조합
+    # 폴백: 스킬 규칙 기반 조합 (네온/클리셰 배제)
     kw_upper = keyword.upper()[:30]
-    return f"{kw_upper} [Official Music Video]"
+    return f"{kw_upper}"
 
 
 def _build_music_prompt(genre_era: str, mood: str, instruments: str,
@@ -547,97 +653,16 @@ class TrendAnalyzer:
             "outro": _build_music_prompt(genre_era, "Gentle peaceful fade-out mood", "mellow fretless bass, fading warm digital piano keys", f"sweet final whispering {vocal_style}", "fading into cool quiet night breeze")
         }
 
-
         # 유튜브 100대 음악 분석 알고리즘 최적화 타이틀 생성
-        # 제목 형식: 🎵 [장르/무드] | [컨셉 설명]  (참고: EIKeuvi0g5E 스타일)
         clean_kw = re.sub(r'[^a-zA-Z0-9\s]', '', keyword).strip().upper()
         if not clean_kw:
             clean_kw = "CITY NIGHTS"
 
-        # 유튜브 상위 100개 분석 → 지식 파일 공식 기반 제목 생성 (항상 적용)
-        # 공식: LUNA - [곡명 영문 대문자] [Official Music Video] (한글 감성 설명)
         title = _generate_optimized_title(keyword, yt_top_titles)
-        
-        # 테마 감성 설명구 매칭 (음악별 개별화 및 플레이리스트가 아닌 '음악'으로 변경)
-        kw_lower = keyword.lower()
-        if "espresso" in kw_lower or "morning" in kw_lower:
-            mood_desc = "따뜻한 아침 햇살이 비치는 창가, 갓 추출한 에스프레소의 향긋함과 함께 설레는 하루를 시작하는 기분.\n80s 감성을 담은 류나의 모닝 시티팝 음악입니다."
-            rec_situations = "아침 커피 타임 / 등교 및 출근길 / 아침 음악 / 독서 시간"
-            hashtags = "#시티팝 #citypop #모닝음악 #커피음악 #류나 #80s #jpop #감성음악 #힐링음악 #출근길음악"
-        elif "rose" in kw_lower or "skincare" in kw_lower or "dewy" in kw_lower:
-            mood_desc = "장미 꽃잎에 맺힌 촉촉한 이슬처럼, 하루의 피로를 부드럽게 씻어내고 나만의 휴식을 취하는 기분.\n80s 감성을 담은 류나의 실키 앰비언트 시티팝 음악입니다."
-            rec_situations = "휴식 및 스킨케어 / 요가 및 명상 / 샤워 시간 / 조용한 밤"
-            hashtags = "#시티팝 #citypop #릴랙싱음악 #스킨케어 #류나 #80s #ambient #감성음악 #힐링음악 #휴식"
-        elif "perfume" in kw_lower or "shibuya" in kw_lower or "midnight" in kw_lower or "neon" in kw_lower:
-            mood_desc = "은은하게 퍼지는 향수 향기와 함께 화려한 네온빛 도시 야경 속을 질주하는 기분.\n80s 감성을 담은 류나의 센슈얼 심야 시티팝 음악입니다."
-            rec_situations = "심야 드라이브 / 밤거리 산책 / 세련된 무드 연출 / 퇴근길"
-            hashtags = "#시티팝 #citypop #밤드라이브 #퇴근길음악 #류나 #80s #nocturnal #감성음악 #새벽감성 #도시야경"
-        elif "chocolate" in kw_lower or "sweet" in kw_lower:
-            mood_desc = "달콤하게 녹아내리는 수제 초콜릿처럼, 노을빛 아래 연인과 사랑을 속삭이는 기분.\n80s 감성을 담은 류나의 스위트 R&B 시티팝 음악입니다."
-            rec_situations = "연인과의 데이트 / 노을빛 산책 / 디저트 타임 / 달콤한 휴식"
-            hashtags = "#시티팝 #citypop #데이트음악 #달콤한노래 #류나 #80s #rnb #감성음악 #로맨틱시티팝 #디저트음악"
-        elif "water" in kw_lower or "glacial" in kw_lower or "beach" in kw_lower or "disco" in kw_lower:
-            mood_desc = "무더운 뜨거운 태양 아래, 가슴 속을 얼릴 듯 짜릿하고 시원한 탄산 음료 한 모금의 기분.\n80s 감성을 담은 류나의 서머 댄스 시티팝 음악입니다."
-            rec_situations = "여름 휴가길 / 드라이브 / 홈파티 / 리프레시 타임"
-            hashtags = "#시티팝 #citypop #여름시티팝 #드라이브음악 #류나 #80s #disco #청량한음악 #신나는음악 #여가길"
-        elif "spring" in kw_lower or "cherry" in kw_lower or "bloom" in kw_lower or "봄" in kw_lower:
-            mood_desc = "벚꽃이 눈부시게 흩날리는 봄날 오후, 창문을 열고 바람을 느끼며 드라이브하고 싶은 기분.\n80s 감성을 담은 류나의 봄 시티팝 음악입니다."
-            rec_situations = "봄날 드라이브 / 봄 나들이 / 기분 전환 / 설레는 날"
-            hashtags = "#시티팝 #citypop #봄음악 #드라이브음악 #류나 #80s #jpop #감성음악 #봄시티팝 #설레는음악"
-        else: # 키워드 기반 동적 무드 설명구 매칭 (음악에 맞게 자동 커스텀)
-            clean_word = keyword.replace("Retro ", "").replace("Japanese ", "").replace("City Pop", "").strip()
-            if not clean_word:
-                clean_word = "City Night"
-            mood_desc = f"도시의 네온사인 불빛 사이로 '{clean_word}'의 짙은 여운이 어리는 밤, 감각적인 비트와 함께 감성을 채워주는 기분.\n80s 감성을 담은 류나의 '{clean_word}' 테마 시티팝 음악입니다."
-            rec_situations = f"야간 드라이브 / 밤거리 산책 / 나만의 휴식 시간 / 감성 충전이 필요할 때"
-            
-            safe_kw = re.sub(r'[^a-zA-Z0-9가-힣]', '', clean_word).lower()
-            hashtags = f"#시티팝 #citypop #류나 #80s #retro #감성음악 #밤드라이브 #{safe_kw}음악"
 
-        # 디스크립션 형식: 참고 영상(EIKeuvi0g5E) 스타일 — 짧은 감성 소개 + 채널 링크 + 해시태그
-        description = (
-            f"{mood_desc}\n\n"
-            f"📌 추천 상황: {rec_situations}\n\n"
-            f"🎵 More from LUNA: youtube.com/@luna_official\n\n"
-            f"{hashtags}"
-        )
-
-
-
-
-        
-        # 키워드별 맞춤형 SEO 태그 — 참고 영상(EIKeuvi0g5E) 스타일 기준
-        base_tags = [
-            "시티팝", "시티팝 bgm", "일본 시티팝", "일본시티팝무드음악",
-            "city pop", "citypop", "citypop BGM", "japanese city pop", "retro city pop",
-            "LUNA", "루나", "AI LUNA", "AI 음악",
-            "80s", "80s retro", "80s japanese",
-            "감성 음악", "감성음악", "드라이브 bgm", "드라이브 음악",
-        ]
-        if keyword.lower() not in [t.lower() for t in base_tags]:
-            base_tags.append(keyword.lower())
-        if clean_kw.lower() not in [t.lower() for t in base_tags]:
-            base_tags.append(clean_kw.lower())
-            
-        if "espresso" in kw_lower or "morning" in kw_lower:
-            base_tags.extend(["모닝 시티팝", "커피 음악", "아침 BGM", "출근길 음악", "coffee bgm", "morning city pop"])
-        elif "rose" in kw_lower or "skincare" in kw_lower or "dewy" in kw_lower:
-            base_tags.extend(["릴랙싱 음악", "스킨케어 bgm", "조용한 음악", "힐링 시티팝", "relaxing bgm", "dreamy city pop"])
-        elif "perfume" in kw_lower or "shibuya" in kw_lower or "midnight" in kw_lower or "neon" in kw_lower:
-            base_tags.extend(["심야 드라이브", "밤드라이브 BGM", "퇴근길 음악", "새벽감성 시티팝", "night drive", "nocturnal bgm"])
-        elif "chocolate" in kw_lower or "sweet" in kw_lower:
-            base_tags.extend(["데이트 음악", "달콤한 노래", "로맨틱 시티팝", "디저트 음악", "sweet pop", "romantic bgm"])
-        elif "water" in kw_lower or "glacial" in kw_lower or "beach" in kw_lower or "disco" in kw_lower:
-            base_tags.extend(["여름 시티팝", "드라이브 음악", "청량한 BGM", "신나는 시티팝", "summer city pop", "disco synth"])
-        elif "spring" in kw_lower or "cherry" in kw_lower or "bloom" in kw_lower or "봄" in kw_lower:
-            base_tags.extend(["봄 시티팝", "봄 음악", "벚꽃 드라이브", "설레는 노래", "spring drive", "cherry blossom bgm"])
-        else:
-            clean_word = keyword.replace("Retro ", "").replace("Japanese ", "").replace("City Pop", "").strip()
-            if clean_word:
-                base_tags.extend([clean_word.lower(), f"{clean_word.lower()} bgm", f"{clean_word.lower()} 음악"])
-            base_tags.extend(["밤드라이브 BGM", "감성 시티팝 BGM", "작업용 BGM"])
-            
-        tags = list(dict.fromkeys([t.strip() for t in base_tags if t.strip()]))
+        meta = self.build_metadata_for_keyword(keyword, title, yt_top_titles)
+        description = meta["description"]
+        tags = meta["tags"]
 
         # VEO 비주얼 및 이미지 프롬프트 (학습 비주얼이 있으면 chorus에 반영)
         style = f"a luxurious retro 80s anime visual showing '{keyword}', neon glowing signs, Tokyo midnight street, pastel tone sunset beach, highly aesthetic"
@@ -684,6 +709,123 @@ class TrendAnalyzer:
             "playlist_title": playlist_title,
             "_yt_top_titles": yt_top_titles,   # 파이프라인 메타데이터 자동생성용
         }
+
+    def build_metadata_for_keyword(self, keyword: str, title: str, yt_top_titles: list[str]) -> dict:
+        """지식 가이드라인에 맞춘 설명문(Description) 및 태그(Tags) 동적 생성 (루나 브랜딩 제거 및 중복 원천 차단)."""
+        try:
+            from _shared.ollama_client import chat as _lm_chat, is_available as _lm_available
+            has_llm = _lm_available()
+        except Exception:
+            has_llm = False
+
+        mood_desc = ""
+        rec_situations = ""
+        hashtags = ""
+        kw_lower = keyword.lower()
+
+        # 1. 설명글(mood_desc) 동적 생성 (LLM 활용하여 중복 전면 제거)
+        if has_llm:
+            try:
+                desc_prompt = (
+                    f"유튜브 음악 영상 제목: '{title}'\n"
+                    f"음악 테마 키워드: '{keyword}'\n\n"
+                    "위 정보를 바탕으로 이 80년대 시티팝/K-POP 음악이 전달하는 도시적인 야경, 청춘, 자유로움, 혹은 로맨틱한 정서를 한 편의 이야기처럼 묘사하는 감성적인 한국어 소개글을 2~3문장 내외로 작성해줘.\n"
+                    "조건:\n"
+                    "- 반드시 한국어로 작성\n"
+                    "- 기존의 상투적인 클리셰('네온 아래', '감성 충전', '늦은 밤 드라이브', '편안한 휴식') 절대 사용 금지\n"
+                    "- 다른 영상들과 표현이 겹치지 않게 완전히 새롭고 창의적인 문장으로 작성\n"
+                    "- 부연 설명 없이 소개 본문 문장만 출력"
+                )
+                result = _lm_chat(desc_prompt, task="", max_tokens=150)
+                if result and result.strip():
+                    mood_desc = result.strip().split("\n")[0].strip()
+            except Exception as e:
+                print(f"[Warning] 동적 설명글 생성 실패: {e}")
+
+        # LLM 실패 시에만 최소한의 폴백 적용
+        if not mood_desc:
+            clean_word = keyword.replace("Retro ", "").replace("Japanese ", "").replace("City Pop", "").strip()
+            mood_desc = f"도시의 아늑한 불빛 사이로 아른거리는 '{clean_word}'의 여운을 담은 시간. 80s 시티팝의 부드러운 선율과 감성적인 멜로디가 녹아든 음악입니다."
+
+        # 2. 추천 상황(rec_situations) 동적 생성
+        if has_llm:
+            try:
+                sit_prompt = (
+                    f"음악 테마: '{keyword}', 분위기: '{mood_desc}'\n\n"
+                    "이 음악의 분위기와 가장 잘 어울리는 추천 상황 4가지를 쉼표(,)로 구분해서 한글로 적어줘.\n"
+                    "예시: 아침 커피 타임, 밤거리 산책, 나만의 휴식, 홈파티\n"
+                    "조건: 쉼표로 구분된 단어 4개만 딱 출력"
+                )
+                result = _lm_chat(sit_prompt, task="", max_tokens=60)
+                if result and result.strip():
+                    rec_situations = result.strip().replace("\n", " ")
+            except Exception:
+                pass
+        if not rec_situations:
+            rec_situations = "드라이브, 밤거리 산책, 나만의 휴식, 작업실 BGM"
+
+        # 3. 해시태그(hashtags) 동적 생성
+        if has_llm:
+            try:
+                hash_prompt = (
+                    f"음악 테마: '{keyword}'\n\n"
+                    "이 시티팝/K-POP 음악 영상에 달 해시태그 8개를 공백으로 구분해서 작성해줘.\n"
+                    "조건:\n"
+                    "- '#루나', '#luna', '#류나' 등 특정 브랜딩 절대 포함 금지\n"
+                    "- 예시: #시티팝 #citypop #감성음악 #밤드라이브\n"
+                    "- 해시태그 8개만 공백 구분하여 한 줄로 딱 출력"
+                )
+                result = _lm_chat(hash_prompt, task="", max_tokens=80)
+                if result and result.strip():
+                    hashtags = result.strip().replace("\n", " ")
+            except Exception:
+                pass
+        if not hashtags:
+            hashtags = "#시티팝 #citypop #80s #retro #감성음악 #밤드라이브"
+
+        # 디스크립션 형식: 🌟 [곡명] 적용 및 필수 메타데이터 블록 삽입 (LUNA/루나 관련 노출 제거)
+        description = (
+            f"🌟 {title}\n\n"
+            f"{mood_desc}\n\n"
+            f"📌 추천 상황: {rec_situations}\n\n"
+            f"🎹 Genre / Era: Japanese City Pop (1980s Retro)\n"
+            f"🎸 Instruments: DX7 Rhodes, slap bass, analog synth, drum machine\n"
+            f"🎙️ Vocal Style: Sweet and smooth female lead vocals, jazzy backing harmonies\n"
+            f"✨ Theme: {keyword} 감성 시티팝 음악\n\n"
+            f"{hashtags}"
+        )
+
+        # 키워드별 맞춤형 SEO 태그 (LUNA, 루나, AI LUNA 제거)
+        base_tags = [
+            "시티팝", "시티팝 bgm", "일본 시티팝", "일본시티팝무드음악",
+            "city pop", "citypop", "citypop BGM", "japanese city pop", "retro city pop",
+            "80s", "80s retro", "80s japanese",
+            "감성 음악", "감성음악", "드라이브 bgm", "드라이브 음악",
+        ]
+        if keyword.lower() not in [t.lower() for t in base_tags]:
+            base_tags.append(keyword.lower())
+            
+        if "espresso" in kw_lower or "morning" in kw_lower:
+            base_tags.extend(["모닝 시티팝", "커피 음악", "아침 BGM", "출근길 음악", "coffee bgm", "morning city pop"])
+        elif "rose" in kw_lower or "skincare" in kw_lower or "dewy" in kw_lower:
+            base_tags.extend(["릴랙싱 음악", "스킨케어 bgm", "조용한 음악", "힐링 시티팝", "relaxing bgm", "dreamy city pop"])
+        elif "perfume" in kw_lower or "shibuya" in kw_lower or "midnight" in kw_lower or "neon" in kw_lower:
+            base_tags.extend(["심야 드라이브", "밤드라이브 BGM", "퇴근길 음악", "새벽감성 시티팝", "night drive", "nocturnal bgm"])
+        elif "chocolate" in kw_lower or "sweet" in kw_lower:
+            base_tags.extend(["데이트 음악", "달콤한 노래", "로맨틱 시티팝", "디저트 음악", "sweet pop", "romantic bgm"])
+        elif "water" in kw_lower or "glacial" in kw_lower or "beach" in kw_lower or "disco" in kw_lower:
+            base_tags.extend(["여름 시티팝", "드라이브 음악", "청량한 BGM", "신나는 시티팝", "summer city pop", "disco synth"])
+        elif "spring" in kw_lower or "cherry" in kw_lower or "bloom" in kw_lower or "봄" in kw_lower:
+            base_tags.extend(["봄 시티팝", "봄 음악", "벚꽃 드라이브", "설레는 노래", "spring drive", "cherry blossom bgm"])
+        else:
+            clean_word = keyword.replace("Retro ", "").replace("Japanese ", "").replace("City Pop", "").strip()
+            if clean_word:
+                base_tags.extend([clean_word.lower(), f"{clean_word.lower()} bgm", f"{clean_word.lower()} 음악"])
+            base_tags.extend(["밤드라이브 BGM", "감성 시티팝 BGM", "작업용 BGM"])
+            
+        tags = list(dict.fromkeys([t.strip() for t in base_tags if t.strip()]))
+
+        return {"description": description, "tags": tags}
 
 
 

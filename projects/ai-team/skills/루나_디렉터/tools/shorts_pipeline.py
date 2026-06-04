@@ -25,12 +25,20 @@ from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 from _shared.ffmpeg_utils import get_ffmpeg_path, enhance_thumbnail
 
+# 예원 CEO approval (동적 임포트)
+import importlib.util as _ilu
+_approval_path = os.path.join(os.path.dirname(__file__), "..", "..", "예원_CEO", "approval.py")
+_approval_spec = _ilu.spec_from_file_location("approval", _approval_path)
+_approval_mod = _ilu.module_from_spec(_approval_spec)
+_approval_spec.loader.exec_module(_approval_mod)
+await_approval = _approval_mod.await_approval
+
 KST = datetime.timezone(datetime.timedelta(hours=9))
 OUTPUT_DIR    = os.path.join(_here, "output")
 RESEARCH_FILE = os.path.join(OUTPUT_DIR, "shorts_research.json")
 FFMPEG = get_ffmpeg_path()
 
-BANNED = ["lofi", "lo-fi", "study beats", "chill beats", "sleep music", "white noise"]
+BANNED = ["lofi", "lo-fi", "study beats", "chill beats", "sleep music", "white noise", "neon", "네온", "neon-lit"]
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -137,17 +145,49 @@ def run_research() -> dict:
     return results
 
 
+def _load_luna_knowledge() -> str:
+    """SKILL.md 규칙 + youtube_title_optimization.md 가이드라인을 로드."""
+    lines = []
+    
+    # 1. SKILL.md 핵심 규칙
+    skill_path = os.path.join(os.path.dirname(_here), "SKILL.md")
+    if os.path.exists(skill_path):
+        try:
+            content = open(skill_path, encoding="utf-8").read()
+            for line in content.splitlines():
+                if any(k in line for k in ["금지", "필수", "최소", "이상", "이하", "절대", "반드시"]):
+                    lines.append(line.strip())
+        except Exception:
+            pass
+
+    # 2. youtube_title_optimization.md — 클리셰 방지 및 제목 최적화 규칙
+    title_opt = os.path.join(_here, "knowledge", "youtube_title_optimization.md")
+    if os.path.exists(title_opt):
+        try:
+            content = open(title_opt, encoding="utf-8").read()
+            for line in content.splitlines():
+                if any(k in line for k in ["금지", "반복", "클리셰", "네온", "neon", "lofi"]):
+                    lines.append(line.strip())
+        except Exception:
+            pass
+
+    return "\n".join(lines[:40]) if lines else ""
+
+
 def _extract_citypop_keyword(trends: list[str], yt_music: list[str]) -> str:
     """트렌딩 목록에서 시티팝과 결합할 최적 키워드 추출."""
     if lm_available():
         sample_trends = "\n".join(f"- {t}" for t in trends[:15])
         sample_music  = "\n".join(f"- {t}" for t in yt_music[:10])
+        knowledge = _load_luna_knowledge()
+        knowledge_block = f"\n[최적화 가이드 및 반복 방지 규칙]\n{knowledge}\n" if knowledge else ""
         prompt = (
             f"[현재 한국 트렌딩]\n{sample_trends}\n\n"
             f"[유튜브 인기 음악]\n{sample_music}\n\n"
+            f"{knowledge_block}\n"
             "위 데이터를 분석해서 시티팝/K-POP 음악 숏츠와 결합하면 조회수가 높을 영어 키워드를 1개만 출력해.\n"
-            "조건: 감성적이고 밤/도시/드라이브/여름/여행 느낌, lofi 금지, 단어 2~4개\n"
-            "예시: Midnight Seoul Drive / Neon Tokyo Night / Summer City Cruise\n"
+            "조건: 감성적이고 밤/도시/드라이브/여름/여행 느낌, lofi 및 neon(네온) 관련 단어 금지, 단어 2~4개\n"
+            "예시: Midnight Seoul Drive / Tokyo Summer Cruise / Golden Hour Drive\n"
             "키워드만 출력 (설명 없이):"
         )
         result = lm_chat(prompt, task="", max_tokens=30)
@@ -159,8 +199,8 @@ def _extract_citypop_keyword(trends: list[str], yt_music: list[str]) -> str:
     # 폴백: 미리 정의된 감성 키워드에서 랜덤 선택
     import random
     fallbacks = [
-        "Midnight Seoul Drive", "Neon City Night", "Tokyo Summer Cruise",
-        "Golden Hour Drive", "Seoul Neon Romance", "City Pop Midnight",
+        "Midnight Seoul Drive", "Pastel City Glow", "Tokyo Summer Cruise",
+        "Golden Hour Drive", "Seoul Retro Romance", "City Pop Midnight",
     ]
     return random.choice(fallbacks)
 
@@ -168,20 +208,54 @@ def _extract_citypop_keyword(trends: list[str], yt_music: list[str]) -> str:
 # ── Phase 2: Shorts 콘텐츠 생성 ──────────────────────────────────────────────
 
 def _generate_image_9x16(prompt: str, output_path: str) -> str:
-    """9:16 비주얼 이미지 생성 — Pollinations."""
+    """9:16 비주얼 이미지 생성 — 나노바나나2 (1순위) → Gemini (2순위) → 단색 배경."""
+    # 1. 나노바나나2 시도 (Imagen 3.0 generate-002 - 아린과 동일)
     try:
-        encoded = urllib.parse.quote(prompt[:400])
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width=720&height=1280&model=flux&nologo=true"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=90) as r:
-            data = r.read()
-        if len(data) > 5000:
-            with open(output_path, "wb") as f:
-                f.write(data)
-            print(f"    [Pollinations 이미지] 완료: {output_path}")
+        from _shared.gemini_client import generate_image
+        result = generate_image(
+            prompt=prompt,
+            output_path=output_path,
+            aspect_ratio="9:16",
+            model="imagen-3.0-generate-002"
+        )
+        if result and os.path.exists(result):
+            print(f"    [나노바나나2 (Imagen 3.0-002)] 완료: {output_path}")
+            return result
+    except Exception as e:
+        print(f"    [나노바나나2] 실패: {e}")
+
+    # 2. Gemini Imagen 3 시도 (generate-001 폴백)
+    try:
+        from _shared.gemini_client import generate_image
+        result = generate_image(
+            prompt=prompt,
+            output_path=output_path,
+            aspect_ratio="9:16",
+            model="imagen-3.0-generate-001"
+        )
+        if result and os.path.exists(result):
+            print(f"    [Gemini Imagen 3.0-001] 완료: {output_path}")
+            return result
+    except Exception as e:
+        print(f"    [Gemini Imagen] 실패: {e}")
+
+    # 3. 단색 배경 폴백 (FFmpeg)
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        cmd = [
+            FFMPEG, "-y",
+            "-f", "lavfi",
+            "-i", "color=c=#1a1a2e:s=720x1280:d=1",
+            "-frames:v", "1",
+            output_path
+        ]
+        subprocess.run(cmd, capture_output=True, check=True, timeout=10)
+        if os.path.exists(output_path):
+            print(f"    [단색 배경] 생성: {output_path}")
             return output_path
     except Exception as e:
-        print(f"    [Pollinations 이미지] 실패: {e}")
+        print(f"    [단색 배경] 실패: {e}")
+
     return ""
 
 
@@ -217,28 +291,49 @@ def _generate_metadata(title: str, keyword: str, music_prompt: str, yt_titles: l
     """선정된 제목 + 음악 프롬프트 기반 Shorts 메타데이터 생성. 고정 공식 없음."""
     if lm_available():
         sample = "\n".join(f"- {t}" for t in yt_titles[:15])
+        knowledge = _load_luna_knowledge()
+        knowledge_block = f"\n[최적화 가이드 및 반복 방지 규칙]\n{knowledge}\n" if knowledge else ""
         prompt = (
             f"[영상 제목] {title}\n"
             f"[트렌딩 키워드] {keyword}\n"
             f"[음악 프롬프트] {music_prompt[:200]}\n"
             f"[유튜브 인기 제목 참고]\n{sample}\n\n"
+            f"{knowledge_block}\n"
             "YouTube Shorts 메타데이터를 생성하라.\n\n"
             "규칙:\n"
             "- title: 위 [영상 제목]을 그대로 사용. 단, #Shorts 태그가 없으면 끝에 추가.\n"
             "- description: 곡의 분위기·감성 2문장 + #Shorts #시티팝 #citypop + youtube.com/@luna_official\n"
             "  ⚠️ 타임라인 금지. 각 영상마다 고유한 문장.\n"
+            "  ⚠️ 동일 단어(예: 감성, 오늘, 하루 등 2글자 이상의 단어)를 본문 내에 2회 이상 중복해서 반복 사용하는 것을 엄격히 금지합니다.\n"
             "- tags: 최소 15개, #Shorts/#쇼츠 포함, lofi 금지, citypop/시티팝/드라이브bgm 필수\n"
             "  트렌딩 키워드도 tags에 포함.\n\n"
             'JSON만 반환: {"title":"...","description":"...","tags":["..."]}'
         )
-        raw = lm_chat(prompt, task="", max_tokens=600, json_mode=True)
-        if raw:
-            try:
-                data = json.loads(raw.strip())
-                if data.get("title") and data.get("description") and data.get("tags"):
-                    return data
-            except Exception:
-                pass
+        for attempt in range(3):
+            raw = lm_chat(prompt, task="", max_tokens=600, json_mode=True)
+            if raw:
+                try:
+                    data = json.loads(raw.strip())
+                    desc = data.get("description", "")
+                    if data.get("title") and desc and data.get("tags"):
+                        import re
+                        words = re.findall(r'[a-zA-Z가-힣]{2,}', desc.lower())
+                        stop_words = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천"}
+                        counts = {}
+                        repeated = []
+                        for w in words:
+                            if w in stop_words:
+                                continue
+                            counts[w] = counts.get(w, 0) + 1
+                            if counts[w] > 1:
+                                repeated.append(w)
+                        if not repeated:
+                            return data
+                        else:
+                            print(f"  ⚠️ [중복 단어 발견] 재생성 시도 {attempt+1}: {list(set(repeated))}")
+                            prompt += f"\n⚠️ 피드백: 이전 문장에서 {list(set(repeated))} 단어들이 2회 이상 중복되어 나타났습니다. 이 단어들의 반복 사용을 피하고 다른 다채로운 표현으로 대체해 주세요."
+                except Exception:
+                    pass
 
     # 폴백: 선정된 제목 그대로 사용
     final_title = title if "#Shorts" in title else f"{title} #Shorts"
@@ -288,9 +383,9 @@ def run_generation(research: dict) -> dict:
     # ③ 9:16 비주얼 생성
     visual_prompt = (
         f"Cinematic vertical 9:16 city pop aesthetic, {keyword.lower()}, "
-        "neon-lit urban street at night, retro 80s Japanese city vibes, "
+        "retro light urban street at night, retro 80s Japanese city vibes, "
         "warm pink and purple tones, rain reflections on asphalt, "
-        "vintage car, dreamy bokeh lights, lofi city atmosphere, "
+        "vintage car, dreamy bokeh lights, retro city atmosphere, "
         "phone wallpaper composition, no text, no watermark"
     )
     image_path = os.path.join(OUTPUT_DIR, "shorts_visual.jpg")
@@ -384,6 +479,19 @@ def run_upload(content: dict) -> bool:
     if pub_kst <= now_kst:
         pub_kst += datetime.timedelta(days=1)
     publish_at_utc = pub_kst.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # 예원 CEO 최종 업로드 승인 검수
+    decision_data = {
+        "title": meta.get("title"),
+        "platform": "youtube_shorts",
+        "description": meta.get("description"),
+        "publish_time_kst": pub_kst.strftime("%Y-%m-%d %H:%M:%S")
+    }
+    print("⏳ 예원 CEO의 숏츠 업로드 승인을 기다리는 중...")
+    if not await_approval(decision_data):
+        print("❌ 승인 거부 또는 타임아웃 - 업로드를 중단합니다.")
+        send_telegram_message(f"🚨 루나 숏츠: 예원 CEO 승인 거부로 업로드 중단.\n제목: {meta.get('title')}")
+        return False
 
     uploader = YouTubeUploader()
     uploader.authenticate()

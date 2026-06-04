@@ -49,6 +49,14 @@ from _shared.history_recorder import record_to_history as _record_to_history_sha
 from src.youtube_uploader import YouTubeUploader
 from src.optimal_time_analyzer import get_optimal_time_smart
 
+# 예원 CEO approval (동적 임포트)
+import importlib.util as _ilu
+_approval_path = os.path.join(os.path.dirname(__file__), "..", "..", "예원_CEO", "approval.py")
+_approval_spec = _ilu.spec_from_file_location("approval", _approval_path)
+_approval_mod = _ilu.module_from_spec(_approval_spec)
+_approval_spec.loader.exec_module(_approval_mod)
+await_approval = _approval_mod.await_approval
+
 # veo_video_maker 동적 임포트
 _veo_spec = importlib.util.spec_from_file_location(
     "veo_video_maker", os.path.join(_here, "veo_video_maker.py")
@@ -59,7 +67,7 @@ generate_long_take = _veo_mod.generate_long_take
 
 # ── 상수 ──────────────────────────────────────────────────────────────────────
 KST                      = datetime.timezone(datetime.timedelta(hours=9))
-_OUT_DIR                 = os.path.join(_root, "reports", "uploads", "luna")
+_OUT_DIR                 = os.path.join(_root, "output", "luna")
 CHECKPOINT_FILE          = os.path.join(_OUT_DIR, "music_video_checkpoint.json")
 CHECKPOINT_MAX_AGE_HOURS = 36
 
@@ -74,6 +82,7 @@ _BANNED_GENRES = [
 _BANNED_TITLE_WORDS = [
     "lofi", "lo-fi", "lo fi", "study beats", "chill beats", "sleep music",
     "white noise", "인공지능", "ai 생성", "미래", "로봇", "테크",
+    "네온", "neon", "neon-lit",
 ]
 
 
@@ -170,11 +179,79 @@ def clear_checkpoint():
 
 
 def generate_visual(prompt: str, output_path: str) -> str:
-    """Pollinations로 이미지 생성 (Gemini 삭제됨)."""
-    return _generate_image_pollinations_fallback(prompt, output_path)
+    """이미지 생성 폴백 체인: 나노바나나2 (1순위) → Gemini Imagen 3 (2순위) → 단색 배경."""
+    # 1. 나노바나나2 시도 (Flux Schnell - 빠르고 고품질)
+    result = _generate_image_nanobanana(prompt, output_path)
+    if result:
+        return result
+
+    # 2. Gemini Imagen 3 시도
+    result = _generate_image_gemini(prompt, output_path)
+    if result:
+        return result
+
+    # 3. 단색 배경 폴백 (FFmpeg로 생성)
+    return _generate_solid_color_background(output_path)
+
+
+def _generate_image_nanobanana(prompt: str, output_path: str) -> str:
+    """나노바나나2 (Imagen 3.0 generate-002) - 최고 품질 실사풍."""
+    try:
+        from _shared.gemini_client import generate_image
+        result = generate_image(
+            prompt=prompt,
+            output_path=output_path,
+            aspect_ratio="16:9",
+            model="imagen-3.0-generate-002"  # 아린과 동일한 모델
+        )
+        if result and os.path.exists(result):
+            print(f"    [나노바나나2 (Imagen 3.0-002)] 완료: {output_path}")
+            return result
+    except Exception as e:
+        print(f"    [나노바나나2] 실패: {e}")
+    return ""
+
+
+def _generate_image_gemini(prompt: str, output_path: str) -> str:
+    """Gemini Imagen 3 (generate-001) - 2순위 폴백."""
+    try:
+        from _shared.gemini_client import generate_image
+        result = generate_image(
+            prompt=prompt,
+            output_path=output_path,
+            aspect_ratio="16:9",
+            model="imagen-3.0-generate-001"
+        )
+        if result and os.path.exists(result):
+            print(f"    [Gemini Imagen 3.0-001] 완료: {output_path}")
+            return result
+    except Exception as e:
+        print(f"    [Gemini Imagen] 실패: {e}")
+    return ""
+
+
+def _generate_solid_color_background(output_path: str, color: str = "#1a1a2e") -> str:
+    """FFmpeg로 단색 배경 이미지 생성 (1280x720)."""
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        cmd = [
+            FFMPEG, "-y",
+            "-f", "lavfi",
+            "-i", f"color=c={color}:s=1280x720:d=1",
+            "-frames:v", "1",
+            output_path
+        ]
+        subprocess.run(cmd, capture_output=True, check=True, timeout=10)
+        if os.path.exists(output_path):
+            print(f"    [단색 배경] 생성: {output_path}")
+            return output_path
+    except Exception as e:
+        print(f"    [단색 배경] 실패: {e}")
+    return ""
 
 
 def _generate_image_pollinations_fallback(prompt: str, output_path: str) -> str:
+    """Pollinations.ai 이미지 생성 (현재 402 오류로 비활성화)."""
     try:
         encoded = urllib.parse.quote(prompt[:400])
         url = f"https://image.pollinations.ai/prompt/{encoded}?width=1280&height=720&model=flux&nologo=true"
@@ -252,31 +329,112 @@ def _assert_not_banned(theme: dict):
                 raise ValueError(f"금지 장르: '{b}' in '{field[:40]}'")
 
 
+def _load_recent_upload_content(days: int = 30) -> dict:
+    """최근 N일 업로드 히스토리에서 제목·설명·태그 로드하여 중복 방지용 참고 데이터 반환."""
+    try:
+        history_path = os.path.join(_root, "reports", "history", "upload_history.json")
+        if not os.path.exists(history_path):
+            return {"titles": [], "descriptions": [], "tags": []}
+
+        with open(history_path, "r", encoding="utf-8") as f:
+            history = json.load(f)
+
+        import datetime
+        cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
+        recent = []
+        for record in history:
+            if record.get("agent") != "루나":
+                continue
+            try:
+                uploaded_at = datetime.datetime.fromisoformat(record.get("uploaded_at", ""))
+                if uploaded_at >= cutoff:
+                    recent.append(record)
+            except Exception:
+                continue
+
+        titles = []
+        descriptions = []
+        tags = []
+        for rec in recent:
+            meta = rec.get("metadata", {})
+            if meta.get("youtube_title"):
+                titles.append(meta["youtube_title"])
+            if meta.get("youtube_description"):
+                descriptions.append(meta["youtube_description"])
+            if meta.get("tags"):
+                tags.extend(meta["tags"])
+
+        return {"titles": titles, "descriptions": descriptions, "tags": list(set(tags))}
+    except Exception as e:
+        print(f"  [Warning] 히스토리 로드 실패: {e}")
+        return {"titles": [], "descriptions": [], "tags": []}
+
+
 def _auto_generate_metadata(music_prompt: str, yt_titles: list, draft_title: str = "") -> dict:
     """음악 프롬프트 기반으로 description·tags 생성. 제목은 생성하지 않음 (①단계 제목 유지)."""
     try:
+        # 최근 업로드 내용 로드 (중복 방지)
+        recent_content = _load_recent_upload_content(30)
+        avoid_titles = "\n".join(f"  - {t}" for t in recent_content["titles"][-10:]) if recent_content["titles"] else "(없음)"
+        avoid_desc_samples = "\n".join(f"  - {d[:50]}..." for d in recent_content["descriptions"][-5:]) if recent_content["descriptions"] else "(없음)"
+
         yt_sample = "\n".join(f"- {t}" for t in yt_titles[:15]) if yt_titles else "(없음)"
         knowledge = _load_luna_knowledge()
         knowledge_block = f"\n[루나 스킬 지식 — 반드시 준수]\n{knowledge}\n" if knowledge else ""
+
+        avoid_clause = (
+            f"\n[⚠️ 최근 30일 업로드 내용 — 절대 중복 금지]\n"
+            f"최근 제목들:\n{avoid_titles}\n\n"
+            f"최근 설명문 예시:\n{avoid_desc_samples}\n\n"
+            f"위 내용과 동일하거나 유사한 제목·문구·표현을 절대 사용하지 말 것!\n"
+        )
+
         prompt = (
             f"[음악 제목]\n{draft_title}\n\n"
             f"[음악 프롬프트]\n{music_prompt[:300]}\n\n"
             f"[유튜브 인기 제목 참고]\n{yt_sample}\n"
             f"{knowledge_block}\n"
+            f"{avoid_clause}\n"
             "위 음악 제목·프롬프트·스킬 지식을 반영해 유튜브 description과 tags만 생성하라.\n\n"
             "규칙:\n"
-            "- description: 이 곡만의 분위기·감성·스토리 2~3문장 + 📌 추천상황 1줄\n"
-            "  + youtube.com/@류나-l7h + 해시태그 10개 이상\n"
+            "- description: 이 곡만의 분위기·감성·스토리 2~3문장 (최근 업로드와 완전히 다른 표현)\n"
+            "  + 📌 추천상황 1줄 (최근과 다른 상황 제안)\n"
+            "  + 필수 메타데이터 블록:\n"
+            "    🎹 Genre / Era: \n"
+            "    🎸 Instruments: \n"
+            "    🎙️ Vocal Style: \n"
+            "    ✨ Theme: \n"
+            "  + youtube.com/@류나-l7h\n"
+            "  + 해시태그 5~8개 (절대 10개 이하)\n"
             "  ⚠️ 다른 영상과 같은 문장 금지. 타임라인(00:00) 금지.\n"
+            "  ⚠️ 동일 단어(예: 감성, 오늘, 하루 등 2글자 이상의 단어)를 본문 내에 2회 이상 중복해서 반복 사용하는 것을 엄격히 금지합니다.\n"
             "- tags: 최소 20개, lofi/lo-fi 절대 금지, 시티팝/citypop/LUNA/루나/드라이브bgm 필수\n\n"
             "JSON만 반환:\n"
             '{"description":"...","tags":["..."]}'
         )
-        raw = _lm_chat(prompt, task="", max_tokens=600, json_mode=True)
-        if raw:
-            data = json.loads(raw.strip())
-            if data.get("description") and data.get("tags"):
-                return data
+        for attempt in range(3):
+            raw = _lm_chat(prompt, task="", max_tokens=600, json_mode=True)
+            if raw:
+                data = json.loads(raw.strip())
+                desc = data.get("description", "")
+                if desc and data.get("tags"):
+                    import re
+                    words = re.findall(r'[a-zA-Z가-힣]{2,}', desc.lower())
+                    stop_words = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천"}
+                    counts = {}
+                    repeated = []
+                    for w in words:
+                        if w in stop_words:
+                            continue
+                        counts[w] = counts.get(w, 0) + 1
+                        if counts[w] > 1:
+                            repeated.append(w)
+                    if not repeated:
+                        return data
+                    else:
+                        print(f"  ⚠️ [중복 단어 발견] 재생성 시도 {attempt+1}: {list(set(repeated))}")
+                        prompt += f"\n⚠️ 피드백: 이전 문장에서 {list(set(repeated))} 단어들이 2회 이상 중복되어 나타났습니다. 이 단어들의 반복 사용을 피하고 다른 다채로운 표현으로 대체해 주세요."
+        return data
     except Exception as e:
         print(f"  [Auto Meta] 실패: {e}")
     return {}
@@ -423,7 +581,7 @@ def run_pipeline(publish_hhmm: str = None):
             send_telegram_message(f"🖼️ [루나] 비주얼 '{part_name}' 생성 중...")
 
             img_path = os.path.join(_OUT_DIR, f"visual_{part_name}.png")
-            result = _generate_image_pollinations_fallback(visual_prompt, img_path)
+            result = generate_visual(visual_prompt, img_path)
             part_image_path = result if (result and os.path.exists(result)) else None
             parts_images[part_name] = part_image_path
 
@@ -591,6 +749,19 @@ def run_pipeline(publish_hhmm: str = None):
         send_telegram_message(f"⚠️ 루나: 채널에 동일 영상 존재 — 업로드 중단.\n제목: {title}")
         print(f"  [중복 차단] 채널에 동일 길이 영상 존재 — 업로드 건너뜀.")
         clear_checkpoint()
+        return
+
+    # 예원 CEO 최종 업로드 승인 검수
+    decision_data = {
+        "title": title,
+        "platform": "youtube",
+        "description": description,
+        "publish_time_kst": publish_time_kst_str
+    }
+    print("⏳ 예원 CEO의 업로드 승인을 기다리는 중...")
+    if not await_approval(decision_data):
+        print("❌ 승인 거부 또는 타임아웃 - 업로드를 중단합니다.")
+        send_telegram_message(f"🚨 루나 뮤직비디오: 예원 CEO 승인 거부로 업로드 중단.\n제목: {title}")
         return
 
     send_telegram_message(f"🎬 [루나] 4단계: 가희 검수 통과 완료. 유튜브 업로드를 시작합니다.")

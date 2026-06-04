@@ -1,6 +1,5 @@
 import os
 import pickle
-import sys
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -13,7 +12,25 @@ class YouTubeUploader:
     """
     def __init__(self, client_secrets_file: str = None, token_file: str = None):
         _tools_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-        self.client_secrets_file = client_secrets_file or os.path.join(_tools_dir, "client_secret.json")
+
+        # 프로젝트 루트 찾기 (find_project_root 사용)
+        try:
+            import sys as _sys
+            _ai_team_root = os.path.abspath(os.path.join(_tools_dir, "..", "..", ".."))
+            if _ai_team_root not in _sys.path:
+                _sys.path.insert(0, _ai_team_root)
+            from _shared.env_loader import find_project_root
+            _root = find_project_root(_tools_dir)
+        except:
+            # 폴백: 수동 계산
+            _root = os.path.abspath(os.path.join(_tools_dir, "..", "..", "..", ".."))
+
+        # 1순위: 최상위 폴더 (환경 변수 관리 위치)
+        _root_secret = os.path.join(_root, "client_secret.json")
+        # 2순위: tools 폴더 (하위 호환성)
+        _tools_secret = os.path.join(_tools_dir, "client_secret.json")
+
+        self.client_secrets_file = client_secrets_file or (_root_secret if os.path.exists(_root_secret) else _tools_secret)
         self.token_file = token_file or os.path.join(_tools_dir, "youtube_token.pickle")
         # YouTube Data API 업로드 권한 범위 지정
         self.scopes = [
