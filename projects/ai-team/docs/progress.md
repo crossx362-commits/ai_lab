@@ -22,3 +22,8 @@
 ## 2026-06-04 22:24 — 코다리(Ollama/gemma2:latest)
 - - TASK | js/social.js | `insertHashtags()` 함수에 "릴스 내보내기" 버튼 추가하여 인스타그램 공유 기능 구현
 - - TASK | js/mypet.js | 펫 스테이지 풀스크린 모드 (`templates/mypet.js` 최상단 컨테이너)를 위한 `doubleClick()` 이벤트 리스너 추가
+
+
+## 2026-06-05 00:02 — 코다리(Ollama/gemma2:latest)
+- **TASK | js/social.js | `switchSocialSubTab()` 함수를 활용하여 조화도 탭을 서브탭으로 구현.**
+- **TASK | js/mypet.js |  `doubleClick()` 이벤트 리스너를 통해 펫 스테이지 풀스크린 모드 토글 기능 구현.**
