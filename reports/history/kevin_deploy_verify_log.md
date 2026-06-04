@@ -18,3 +18,33 @@
 - **조치 필요**: Vercel CLI/대시보드에서 직접 확인 필요 (이 환경에서 Vercel 대시보드 접근 불가)
   - `vercel --prod` 재배포보다 **Deployment Protection 설정 확인**이 우선
 
+
+## 2026-06-04 12:06 UTC — 배포 검증
+
+### HTTP 상태
+- **루트 `/`**: 403 | Latency: ~0.09s
+- **핵심 자산 전체** (`/css/style.css`, `/js/app.js`, `/js/supabase.js`, `/manifest.json`, `/sw.js`): 모두 403
+
+### 오류 원인
+- `x-deny-reason: host_not_allowed` — Vercel이 `petnna.vercel.app` 도메인을 프로젝트 allowlist에서 거부
+- 코드 문제 아님 — **Vercel 대시보드 설정 문제**
+
+### 로컬 버전 핵심 요소 (정상)
+- Tailwind config: OK
+- Font Awesome: OK
+- Supabase ref: OK
+- Brand color (brand-500): OK
+- Tailwind ref: OK
+
+### 로컬 vs 배포 일치 여부
+- 로컬 코드: 정상 (모든 요소 존재)
+- 배포 접근: 불가 (403 — `host_not_allowed`)
+
+### 필요 조치 (코드로 해결 불가)
+1. **Vercel 대시보드** → 해당 프로젝트 → Settings → Domains 에서 `petnna.vercel.app` 도메인 연결 확인
+2. **Deployment Protection** 설정 확인 — Vercel Pro 기능으로 allowlist 외 접근 차단 시 발생
+3. `vercel --prod` 재배포 후에도 동일 오류 예상 (도메인 미연결이 원인)
+
+### 조치
+- 코드 수정 불필요 — Vercel 계정/프로젝트 설정에서 해결 필요
+- 로그 저장 완료
