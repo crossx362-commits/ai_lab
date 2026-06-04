@@ -369,13 +369,19 @@ def process_message(text: str):
         send_message("영숙이에요! 지금 언어 모델 서버가 꺼져 있어서 처리가 안 돼요 😭")
         return
 
+    import datetime
+    kst = datetime.timezone(datetime.timedelta(hours=9))
+    now_kst = datetime.datetime.now(kst)
+    current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 일정 조율 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
+    system_prompt = YEONGSUK_PERSONA + current_time_context
+
     history_text = ""
     for h in CHAT_HISTORY[-6:]:
         history_text += f"{h['role']}: {h['text']}\n"
     history_text += f"User: {text}\n"
 
     try:
-        raw_resp = lm_chat(history_text, system=YEONGSUK_PERSONA, json_mode=True, max_tokens=500)
+        raw_resp = lm_chat(history_text, system=system_prompt, json_mode=True, max_tokens=500)
 
         json_str = extract_json(raw_resp)
 
@@ -390,7 +396,7 @@ def process_message(text: str):
 
             # 분석 결과를 바탕으로 재시도
             enhanced_prompt = f"{history_text}\n\n[분석 결과]\n{analysis}\n\n위 분석을 참고해서 응답해줘."
-            raw_resp = lm_chat(enhanced_prompt, system=YEONGSUK_PERSONA, json_mode=True, max_tokens=500)
+            raw_resp = lm_chat(enhanced_prompt, system=system_prompt, json_mode=True, max_tokens=500)
             json_str = extract_json(raw_resp)
 
         if not json_str:

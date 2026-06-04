@@ -589,10 +589,16 @@ def handle_message(text: str) -> str:
     if needs_status:
         history_text += f"\n[실제 데이터]\n{get_agent_status()}\n"
 
+    import datetime
+    kst = datetime.timezone(datetime.timedelta(hours=9))
+    now_kst = datetime.datetime.now(kst)
+    current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 대화 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
+    system_prompt = YEONGSUK_PERSONA + current_time_context
+
     try:
         response = lm_chat(
             history_text,
-            system=YEONGSUK_PERSONA,
+            system=system_prompt,
             json_mode=False,
             max_tokens=500,
             temperature=0.85
