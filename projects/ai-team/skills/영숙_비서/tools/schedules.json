@@ -206,8 +206,8 @@
       "id": "gyeongsu_realtime_monitor",
       "agent": "경수",
       "task": "악플 실시간 모니터링",
-      "cron": "*/30 * * * *",
-      "description": "30분마다 악플·보안 위협 감지",
+      "cron": "0 22 * * *",
+      "description": "매일 밤 10시 악플·보안 위협 감지",
       "command": "경수 악플 체크",
       "enabled": true,
       "priority": "critical"
