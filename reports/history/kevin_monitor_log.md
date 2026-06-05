@@ -45,3 +45,10 @@
 - 핵심의존성: OK (Tailwind: OK, FontAwesome: OK, Leaflet: OK, Gemini API Key: EMPTY)
 - Supabase: OK (profiles/albums/routes/posts/pets 모두 참조 확인)
 - 조치: GEMINI_API_KEY 빈 값 확인됨 — 보안상 코드 직접 삽입 불가, 운영자 수동 설정 필요. cryptography/_cffi_backend 환경 손상은 시스템 레벨 이슈로 재배포 또는 패키지 재설치 필요.
+
+## 2026-06-05 UTC — 케빈 헬스 체크
+- 배포: FAIL (petnna_monitor.py — `_cffi_backend` / cryptography 모듈 오류)
+- 핵심의존성: OK (tailwind.config, font-awesome, leaflet 모두 확인됨)
+- Gemini API Key: EMPTY (`""` — 런타임 주입 여부 확인 필요)
+- Supabase: OK (profiles, albums, routes, posts, pets 모두 참조됨)
+- 조치: petnna_monitor.py 실행 환경의 cryptography 패키지 재설치 필요 (`pip install cryptography`). Gemini 키는 별도 확인 요망.
