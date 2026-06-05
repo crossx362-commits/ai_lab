@@ -115,28 +115,49 @@ def main():
 
     print(f"  수정 대상: {len(videos)}개 영상\n")
 
-    # Step 1: 미국 유튜브 인기 차트 수집 (OAuth 사용)
-    print("  📡 미국 유튜브 인기 음악 상위 100개 수집 중...")
-    us_titles = fetch_us_yesterday_titles(uploader.youtube)
+    # Step 1: 미국 유튜브 인기 차트 수집 (1일 1회 캐싱)
+    today_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    us_titles = []
+    cached = False
 
-    if not us_titles:
-        print("  ⚠️ 수집 실패 — 폴백 패턴으로 진행")
-
-    # 패턴 지식화 저장
+    # 캐시 확인 (오늘 이미 조회했는지)
     try:
-        existing = {}
         if os.path.exists(KNOWLEDGE_FILE):
             with open(KNOWLEDGE_FILE, "r", encoding="utf-8") as f:
                 existing = json.load(f)
-        today_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
-        existing[today_str] = {"us_top_titles": us_titles[:10], "count": len(us_titles)}
-        keys = sorted(existing.keys())[-30:]
-        existing = {k: existing[k] for k in keys}
-        with open(KNOWLEDGE_FILE, "w", encoding="utf-8") as f:
-            json.dump(existing, f, indent=2, ensure_ascii=False)
-        print(f"  📚 패턴 지식화 저장 완료 ({KNOWLEDGE_FILE})")
+            if today_str in existing and "us_top_100" in existing[today_str]:
+                us_titles = existing[today_str]["us_top_100"]
+                cached = True
+                print(f"  ✅ 캐시된 미국 유튜브 탑 100 사용 ({len(us_titles)}개)")
     except Exception as e:
-        print(f"  [Warning] 지식화 저장 실패: {e}")
+        print(f"  [Warning] 캐시 로드 실패: {e}")
+
+    # 캐시 없으면 API 조회 (1회만)
+    if not cached:
+        print("  📡 미국 유튜브 인기 음악 상위 100개 수집 중 (1회만)...")
+        us_titles = fetch_us_yesterday_titles(uploader.youtube)
+
+        if not us_titles:
+            print("  ⚠️ 수집 실패 — 폴백 패턴으로 진행")
+
+        # 패턴 지식화 저장 (전체 100개 저장)
+        try:
+            existing = {}
+            if os.path.exists(KNOWLEDGE_FILE):
+                with open(KNOWLEDGE_FILE, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            existing[today_str] = {
+                "us_top_100": us_titles,  # 전체 100개 저장
+                "us_top_titles": us_titles[:10],  # 상위 10개 요약
+                "count": len(us_titles)
+            }
+            keys = sorted(existing.keys())[-30:]  # 최근 30일만 유지
+            existing = {k: existing[k] for k in keys}
+            with open(KNOWLEDGE_FILE, "w", encoding="utf-8") as f:
+                json.dump(existing, f, indent=2, ensure_ascii=False)
+            print(f"  📚 패턴 지식화 저장 완료 ({KNOWLEDGE_FILE}) - 다음 실행부터 캐시 사용")
+        except Exception as e:
+            print(f"  [Warning] 지식화 저장 실패: {e}")
 
     # Step 2: 각 영상 메타데이터 생성 → 업데이트
     results = []
