@@ -43,15 +43,21 @@ def _endpoint() -> str:
 
 
 def _list_models() -> list:
-    """Ollama에 로드된 텍스트 모델 목록 반환 (임베딩 제외)."""
-    try:
-        url = _endpoint().replace("/chat/completions", "/models")
-        with urllib.request.urlopen(url, timeout=3) as r:
-            data = json.loads(r.read())
-        return [m["id"] for m in data.get("data", [])
-                if "embed" not in m.get("id", "").lower()]
-    except Exception:
-        return []
+    """Ollama에 로드된 텍스트 모델 목록 반환 (임베딩 제외). 타임아웃 시 재시도."""
+    for attempt in range(3):
+        try:
+            url = _endpoint().replace("/chat/completions", "/models")
+            timeout = 10 if attempt == 0 else 5  # 첫 시도 10초, 재시도 5초
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                data = json.loads(r.read())
+            return [m["id"] for m in data.get("data", [])
+                    if "embed" not in m.get("id", "").lower()]
+        except Exception as e:
+            if attempt < 2:
+                print(f"  [Ollama] 모델 목록 조회 재시도 ({attempt + 1}/3): {e}")
+                time.sleep(2)
+            continue
+    return []
 
 
 def _pick_model(models: list, task: str) -> str | None:
