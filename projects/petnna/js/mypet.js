@@ -50,7 +50,8 @@ function renderPetStageList() {
 
     // ── 펫 불규칙 배치 (비대칭 + 큰 랜덤 범위) ───────────────────────────────────
     if (pets && pets.length > 0) {
-        const baseRadius = count === 1 ? 32 : 36; // 기본 반경 (%)
+        const isMobile = window.innerWidth < 768;
+        const baseRadius = count === 1 ? (isMobile ? 26 : 30) : (isMobile ? 30 : 34); // 기본 반경 (%)
         const angleStep = (Math.PI * 2) / count;
 
         pets.forEach((pet, idx) => {
@@ -65,15 +66,15 @@ function renderPetStageList() {
             const randomAngleOffset = Math.sin(seed1) * 0.8;
             const angle = baseAngle + randomAngleOffset;
 
-            // 비대칭 반경 변화 (25% ~ 45%)
-            const minRadius = 25;
-            const maxRadius = 45;
+            // 비대칭 반경 변화 (모바일에서는 좁게, 데스크탑에서는 넓게 안전 범위 유지)
+            const minRadius = isMobile ? 20 : 25;
+            const maxRadius = isMobile ? 35 : 40;
             const radiusRange = maxRadius - minRadius;
             const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * radiusRange);
 
             // 비대칭 X, Y 오프셋 (타원형 효과)
-            const xStretch = 1 + Math.cos(seed1) * 0.15; // X축 늘림/줄임
-            const yStretch = 1 + Math.sin(seed2) * 0.12; // Y축 독립적 변화
+            const xStretch = 1 + Math.cos(seed1) * 0.10; // X축 늘림/줄임
+            const yStretch = 1 + Math.sin(seed2) * 0.08; // Y축 독립적 변화
 
             const petX = butlerX + Math.cos(angle) * radiusVariation * xStretch;
             const petY = butlerY + Math.sin(angle) * radiusVariation * yStretch;

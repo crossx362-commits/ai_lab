@@ -154,7 +154,7 @@ const MYPET_TEMPLATE = `
             <div class="px-5 pb-5 space-y-4">
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
-                <div class="relative w-full min-h-[280px] flex items-center justify-center pt-3 pb-2">
+                <div class="relative w-full h-[340px] md:h-[400px] flex items-center justify-center pt-3 pb-2">
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
                         <!-- JS로 동적 생성 -->

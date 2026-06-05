@@ -171,3 +171,27 @@ CREATE INDEX IF NOT EXISTS idx_routes_email    ON public.routes  (email);
 -- CREATE POLICY "comments_insert_own" ON public.comments FOR INSERT WITH CHECK (auth.uid() = user_id);
 -- CREATE POLICY "comments_delete_own" ON public.comments FOR DELETE USING (auth.uid() = user_id);
 -- CREATE INDEX IF NOT EXISTS idx_comments_post_id ON public.comments (post_id);
+
+-- ============================================================
+-- 6. Storage Bucket 및 RLS 정책 설정 (공용 미디어 버킷)
+-- ============================================================
+-- public bucket 'petnna-media' 생성
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('petnna-media', 'petnna-media', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS 정책 설정
+-- 누구나 조회 가능
+CREATE POLICY "Public Read Access"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'petnna-media');
+
+-- 인증된 사용자만 업로드 가능
+CREATE POLICY "Authenticated Upload"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'petnna-media' AND auth.role() = 'authenticated');
+
+-- 본인 업로드 소유물만 삭제 가능
+CREATE POLICY "Owner Delete"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'petnna-media' AND auth.uid() = owner);

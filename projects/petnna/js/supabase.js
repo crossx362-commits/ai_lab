@@ -117,6 +117,59 @@ const SupabaseService = {
         }
     },
 
+    async uploadMedia(fileOrBase64, path) {
+        if (!this.isConnected || !this.client) return null;
+
+        try {
+            let fileBody;
+            let contentType = 'image/png';
+
+            if (typeof fileOrBase64 === 'string') {
+                if (fileOrBase64.startsWith('data:')) {
+                    const parts = fileOrBase64.split(',');
+                    const match = parts[0].match(/data:(.*?);base64/);
+                    if (match) contentType = match[1];
+                    const bstr = atob(parts[1]);
+                    let n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    while (n--) {
+                        u8arr[n] = bstr.charCodeAt(n);
+                    }
+                    fileBody = new Blob([u8arr], { type: contentType });
+                } else if (fileOrBase64.startsWith('http://') || fileOrBase64.startsWith('https://')) {
+                    return fileOrBase64;
+                } else {
+                    return null;
+                }
+            } else {
+                fileBody = fileOrBase64;
+                contentType = fileOrBase64.type || 'image/png';
+            }
+
+            const { data, error } = await this.client.storage
+                .from('petnna-media')
+                .upload(path, fileBody, {
+                    contentType: contentType,
+                    upsert: true
+                });
+
+            if (error) throw error;
+
+            const { data: { publicUrl } } = this.client.storage
+                .from('petnna-media')
+                .getPublicUrl(path);
+
+            return publicUrl;
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') {
+                AppLogger.error(`Supabase 미디어 업로드 실패 (${path})`, e);
+            } else {
+                console.error(`🔴 Supabase 미디어 업로드 실패 (${path}):`, e.message);
+            }
+            return null;
+        }
+    },
+
     _completeOAuthLogin(session) {
         const user = session.user;
         const nickname =
@@ -302,6 +355,17 @@ const SupabaseService = {
         if (!this.isConnected || !this.client) return;
         
         try {
+            let imageUrl = newPost.image;
+            if (newPost.image && newPost.image.startsWith('data:')) {
+                const ext = newPost.image.split(';')[0].split('/')[1] || 'png';
+                const path = `posts/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
+                const uploadedUrl = await this.uploadMedia(newPost.image, path);
+                if (uploadedUrl) {
+                    imageUrl = uploadedUrl;
+                    newPost.image = uploadedUrl;
+                }
+            }
+
             const { data, error } = await this.client
                 .from('posts')
                 .insert([
@@ -309,7 +373,7 @@ const SupabaseService = {
                         pet_name: newPost.petName,
                         pet_avatar: newPost.petAvatar,
                         content: newPost.content,
-                        image: newPost.image || null,
+                        image: imageUrl || null,
                         is_video: newPost.isVideo || false,
                         video_url: newPost.videoUrl || null,
                         likes: newPost.likes || 0,
@@ -539,6 +603,17 @@ const SupabaseService = {
         if (!this.isConnected || !this.client) return;
         
         try {
+            let imageUrl = pet.imageUrl;
+            if (pet.imageUrl && pet.imageUrl.startsWith('data:')) {
+                const ext = pet.imageUrl.split(';')[0].split('/')[1] || 'png';
+                const path = `pets/${pet.id}_${Date.now()}.${ext}`;
+                const uploadedUrl = await this.uploadMedia(pet.imageUrl, path);
+                if (uploadedUrl) {
+                    imageUrl = uploadedUrl;
+                    pet.imageUrl = uploadedUrl;
+                }
+            }
+
             const { error } = await this.client
                 .from('pets')
                 .upsert([
@@ -547,7 +622,7 @@ const SupabaseService = {
                         name: pet.name,
                         breed: pet.breed || null,
                         type: pet.type || null,
-                        imageUrl: pet.imageUrl || null,
+                        imageUrl: imageUrl || null,
                         age: pet.age || null,
                         weight: pet.weight || null,
                         gender: pet.gender || null,
@@ -610,6 +685,21 @@ const SupabaseService = {
         if (!this.isConnected || !this.client) return;
         const email = profile.email || (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
+            let photoUrl = profile.photo_url;
+            if (profile.photo_url && profile.photo_url.startsWith('data:')) {
+                const ext = profile.photo_url.split(';')[0].split('/')[1] || 'png';
+                const safeEmail = email.replace(/[^a-zA-Z0-9]/g, '_');
+                const path = `profiles/${safeEmail}_profile.${ext}`;
+                const uploadedUrl = await this.uploadMedia(profile.photo_url, path);
+                if (uploadedUrl) {
+                    photoUrl = uploadedUrl;
+                    profile.photo_url = uploadedUrl;
+                    if (typeof settings_photo_url !== 'undefined' && email === localStorage.getItem('petna_user_email')) {
+                        settings_photo_url = uploadedUrl;
+                    }
+                }
+            }
+
             const { error } = await this.client
                 .from('profiles')
                 .upsert([
@@ -617,7 +707,7 @@ const SupabaseService = {
                         email: email,
                         nickname: profile.nickname !== undefined ? profile.nickname : (typeof settings_nickname !== 'undefined' ? settings_nickname : null),
                         avatar: profile.avatar !== undefined ? profile.avatar : (typeof settings_avatar !== 'undefined' ? settings_avatar : null),
-                        photo_url: profile.photo_url !== undefined ? profile.photo_url : (typeof settings_photo_url !== 'undefined' ? settings_photo_url : null),
+                        photo_url: photoUrl !== undefined ? photoUrl : (typeof settings_photo_url !== 'undefined' ? settings_photo_url : null),
                         theme: profile.theme !== undefined ? profile.theme : (typeof settings_theme !== 'undefined' ? settings_theme : null),
                         unit: profile.unit !== undefined ? profile.unit : (typeof settings_unit !== 'undefined' ? settings_unit : null),
                         notifications_enabled: profile.notifications_enabled !== undefined ? profile.notifications_enabled : (typeof settings_notifications_enabled !== 'undefined' ? settings_notifications_enabled : true)
@@ -701,6 +791,15 @@ const SupabaseService = {
         if (!this.isConnected || !this.client) return;
         const email = albumItem.email || (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
+            if (albumItem.url && albumItem.url.startsWith('data:')) {
+                const ext = albumItem.url.split(';')[0].split('/')[1] || 'png';
+                const path = `albums/${albumItem.id}_${Date.now()}.${ext}`;
+                const uploadedUrl = await this.uploadMedia(albumItem.url, path);
+                if (uploadedUrl) {
+                    albumItem.url = uploadedUrl;
+                }
+            }
+
             const { error } = await this.client
                 .from('albums')
                 .upsert([

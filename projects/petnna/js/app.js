@@ -262,6 +262,23 @@ const AppRouter = {
             }
         });
 
+        // 5.1. 모바일 상단 헤더 페이지 타이틀 업데이트
+        const mobileTitles = {
+            mypet: '🏠 마이펫',
+            walk: '🗺️ 산책',
+            saju: '☯️ 조화도',
+            social: '👥 소셜 피드',
+            album: '📖 일기장',
+            shop: '🐾 펫라이프',
+            settings: '⚙️ 설정',
+            mailbox: '📮 우체통',
+            cart: '🛒 장바구니'
+        };
+        const mobileTitleEl = document.getElementById('mobile-page-title');
+        if (mobileTitleEl && mobileTitles[tabName]) {
+            mobileTitleEl.textContent = mobileTitles[tabName];
+        }
+
         this.currentTab = tabName;
 
         // 6. 대상 탭 init & render 실행
@@ -324,6 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const headerEl = document.querySelector('header');
     const mainEl = document.querySelector('main');
     const mobileNavbarEl = document.getElementById('mobile-navbar');
+    const mobileHeaderEl = document.getElementById('mobile-header');
 
     if (isLoggedIn) {
         // 이전 세션 복원
@@ -342,6 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (headerEl) headerEl.style.display = 'block';
         if (mainEl) mainEl.style.display = 'block';
         if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+        if (mobileHeaderEl) mobileHeaderEl.style.display = 'flex';
         document.body.classList.add('logged-in');
         try { switchTab('mypet'); } catch(e) { console.warn('switchTab 오류:', e); }
     } else {
@@ -352,6 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (headerEl) headerEl.style.display = 'none';
         if (mainEl) mainEl.style.display = 'none';
         if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
+        if (mobileHeaderEl) mobileHeaderEl.style.display = 'none';
         document.body.classList.remove('logged-in');
     }
 
@@ -635,10 +655,12 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
             const headerEl = document.querySelector('header');
             const mainEl = document.querySelector('main');
             const mobileNavbarEl = document.getElementById('mobile-navbar');
+            const mobileHeaderEl = document.getElementById('mobile-header');
             
             if (headerEl) headerEl.style.display = 'block';
             if (mainEl) mainEl.style.display = 'block';
             if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
+            if (mobileHeaderEl) mobileHeaderEl.style.display = 'flex';
             document.body.classList.add('logged-in');
             
             showToast("성공적으로 로그인되었습니다! 환영합니다! 🐾✨");
@@ -740,10 +762,12 @@ function triggerLogout() {
             const headerEl = document.querySelector('header');
             const mainEl = document.querySelector('main');
             const mobileNavbarEl = document.getElementById('mobile-navbar');
+            const mobileHeaderEl = document.getElementById('mobile-header');
             
             if (headerEl) headerEl.style.display = 'none';
             if (mainEl) mainEl.style.display = 'none';
             if (mobileNavbarEl) mobileNavbarEl.classList.add('hidden');
+            if (mobileHeaderEl) mobileHeaderEl.style.display = 'none';
             document.body.classList.remove('logged-in');
             
             showToast("성공적으로 로그아웃되었습니다.");
