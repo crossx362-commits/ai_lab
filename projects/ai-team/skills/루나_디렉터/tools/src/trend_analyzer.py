@@ -218,7 +218,7 @@ def _validate_title(title: str, overused: set[str]) -> tuple[bool, str]:
 
 def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
     """Ollama로 LUNA 뮤직비디오 제목 생성.
-    - yt_titles 있으면 패턴 참고, 없으면 knowledge 기반으로만 생성
+    - Top100 패턴 분석(fetch_yt_top100.get_title_pattern_analysis) 결과를 참고하여 알고리즘적으로 분석된 구조로 생성
     - title_patterns.json 반복 단어 자동 금지 및 클리셰 필터링 적용
     - 결과는 지식 파일에 누적 저장
     """
@@ -239,14 +239,20 @@ def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
         knowledge = _load_title_knowledge()
         knowledge_block = f"\n[제목 최적화 지식 — 반드시 준수]\n{knowledge}\n" if knowledge else ""
 
-        if yt_titles:
-            sample = "\n".join(f"- {t}" for t in yt_titles[:50])
-            context = (
-                f"아래는 미국 유튜브 상위 음악 영상 제목들이야:\n{sample}\n\n"
-                f"이 제목들의 패턴(구조·길이·특수문자 사용)을 참고해서 "
-            )
-        else:
-            context = "유튜브 트렌드 제목 참고 없이 창의적으로 "
+        # Top100 패턴 분석 결과 가져오기
+        pattern_hint = "유튜브 트렌드 제목 참고 없이 창의적으로"
+        try:
+            _luna_tools = os.path.join(_root, "projects", "ai-team", "skills", "루나_디렉터", "tools")
+            if _luna_tools not in sys.path:
+                sys.path.insert(0, _luna_tools)
+            from knowledge.fetch_yt_top100 import get_title_pattern_analysis
+            analysis = get_title_pattern_analysis()
+            if analysis and "prompt_hint" in analysis:
+                pattern_hint = f"미국 YouTube Top100 패턴 참고: {analysis['prompt_hint']}"
+        except Exception as pe:
+            print(f"[Warning] 패턴 분석 로드 실패: {pe}")
+
+        context = f"아래 분석된 최신 유튜브 트렌드 스타일을 반영해서: {pattern_hint}\n"
 
         feedback_msg = ""
         for attempt in range(5):
@@ -254,7 +260,7 @@ def _generate_optimized_title(keyword: str, yt_titles: list[str]) -> str:
                 f"{context}'{keyword}' 테마의 시티팝/K-POP 뮤직비디오 제목을 1개 만들어줘.\n"
                 f"{knowledge_block}\n"
                 "조건:\n"
-                "- 고정 공식 없음. 매번 다른 구조 사용\n"
+                "- 고정 공식 없음. 분석된 Top100 패턴의 구조, 길이, 언어 비율, 구분자 스타일 등을 적극 차용하여 구조화할 것\n"
                 "- LUNA, Official, MV, Music Video 등 고정 태그 삽입 절대 금지 (채널명이므로)\n"
                 "- 반드시 감성적인 한국어(한글) 위주로 작성 (영어 단독 제목 절대 금지, 필요 시 영문 고유명사나 피처링 명칭만 최소 혼용 허용)\n"
                 "- lofi/lo-fi/study beats/chill beats/sleep music 금지\n"
@@ -564,13 +570,18 @@ class TrendAnalyzer:
         trends = self.fetch_google_trends()
         learned = self.load_learned_themes()
 
-        # ── 유튜브 상위 제목 수집 (알고리즘 최적화용) ────────────────────────
-        yt_api_key = os.getenv("YOUTUBE_API_KEY", "")
+        # ── 유튜브 상위 제목 수집 (하루 1회 캐시 보장) ────────────────────────
         yt_top_titles: list[str] = []
-        if yt_api_key:
-            yt_top_titles = _fetch_yt_top_titles(yt_api_key, n=100)
+        try:
+            _top100_path = os.path.join(os.path.dirname(_here), "knowledge")
+            if _top100_path not in sys.path:
+                sys.path.insert(0, _top100_path)
+            from fetch_yt_top100 import get_yt_top100_titles
+            yt_top_titles = get_yt_top100_titles()
             if yt_top_titles:
-                print(f"[Info] 📊 유튜브 상위 {len(yt_top_titles)}개 제목 수집 완료")
+                print(f"[Info] 유튜브 상위 {len(yt_top_titles)}개 제목 로드 (캐시/신규 페치 자동)")
+        except Exception as _e:
+            print(f"[Warning] fetch_yt_top100 스킬 로드 실패: {_e}")
 
         # ── 최근 사용된 키워드 로드 (중복 방지) ──────────────────────────────
         used_keywords = _load_used_keywords()
@@ -783,11 +794,10 @@ class TrendAnalyzer:
         if not hashtags:
             hashtags = "#시티팝 #citypop #80s #retro #감성음악 #밤드라이브"
 
-        # 디스크립션 형식: 🌟 [곡명] 적용 및 필수 메타데이터 블록 삽입 (LUNA/루나 관련 노출 제거)
+        # 디스크립션 형식: 생성된 음악에 대한 설명에 초점을 맞추도록 단순화 및 최적화
         description = (
             f"🌟 {title}\n\n"
             f"{mood_desc}\n\n"
-            f"📌 추천 상황: {rec_situations}\n\n"
             f"🎹 Genre / Era: Japanese City Pop (1980s Retro)\n"
             f"🎸 Instruments: DX7 Rhodes, slap bass, analog synth, drum machine\n"
             f"🎙️ Vocal Style: Sweet and smooth female lead vocals, jazzy backing harmonies\n"
@@ -797,33 +807,31 @@ class TrendAnalyzer:
 
         # 키워드별 맞춤형 SEO 태그 (LUNA, 루나, AI LUNA 제거)
         base_tags = [
-            "시티팝", "시티팝 bgm", "일본 시티팝", "일본시티팝무드음악",
-            "city pop", "citypop", "citypop BGM", "japanese city pop", "retro city pop",
-            "80s", "80s retro", "80s japanese",
-            "감성 음악", "감성음악", "드라이브 bgm", "드라이브 음악",
+            "시티팝", "city pop", "citypop", "드라이브 음악",
         ]
         if keyword.lower() not in [t.lower() for t in base_tags]:
             base_tags.append(keyword.lower())
             
         if "espresso" in kw_lower or "morning" in kw_lower:
-            base_tags.extend(["모닝 시티팝", "커피 음악", "아침 BGM", "출근길 음악", "coffee bgm", "morning city pop"])
+            base_tags.extend(["모닝 시티팝", "아침 BGM", "coffee bgm"])
         elif "rose" in kw_lower or "skincare" in kw_lower or "dewy" in kw_lower:
-            base_tags.extend(["릴랙싱 음악", "스킨케어 bgm", "조용한 음악", "힐링 시티팝", "relaxing bgm", "dreamy city pop"])
+            base_tags.extend(["릴랙싱 음악", "힐링 시티팝", "dreamy city pop"])
         elif "perfume" in kw_lower or "shibuya" in kw_lower or "midnight" in kw_lower or "neon" in kw_lower:
-            base_tags.extend(["심야 드라이브", "밤드라이브 BGM", "퇴근길 음악", "새벽감성 시티팝", "night drive", "nocturnal bgm"])
+            base_tags.extend(["심야 드라이브", "밤드라이브 BGM", "night drive"])
         elif "chocolate" in kw_lower or "sweet" in kw_lower:
-            base_tags.extend(["데이트 음악", "달콤한 노래", "로맨틱 시티팝", "디저트 음악", "sweet pop", "romantic bgm"])
+            base_tags.extend(["로맨틱 시티팝", "sweet pop", "romantic bgm"])
         elif "water" in kw_lower or "glacial" in kw_lower or "beach" in kw_lower or "disco" in kw_lower:
-            base_tags.extend(["여름 시티팝", "드라이브 음악", "청량한 BGM", "신나는 시티팝", "summer city pop", "disco synth"])
+            base_tags.extend(["여름 시티팝", "summer city pop", "disco synth"])
         elif "spring" in kw_lower or "cherry" in kw_lower or "bloom" in kw_lower or "봄" in kw_lower:
-            base_tags.extend(["봄 시티팝", "봄 음악", "벚꽃 드라이브", "설레는 노래", "spring drive", "cherry blossom bgm"])
+            base_tags.extend(["봄 시티팝", "봄 음악", "spring drive"])
         else:
             clean_word = keyword.replace("Retro ", "").replace("Japanese ", "").replace("City Pop", "").strip()
             if clean_word:
-                base_tags.extend([clean_word.lower(), f"{clean_word.lower()} bgm", f"{clean_word.lower()} 음악"])
-            base_tags.extend(["밤드라이브 BGM", "감성 시티팝 BGM", "작업용 BGM"])
+                base_tags.extend([clean_word.lower(), f"{clean_word.lower()} 음악"])
+            base_tags.extend(["밤드라이브 BGM", "작업용 BGM"])
             
-        tags = list(dict.fromkeys([t.strip() for t in base_tags if t.strip()]))
+        # 태그 중복 제거 후 최대 10개로 제한
+        tags = list(dict.fromkeys([t.strip() for t in base_tags if t.strip()]))[:10]
 
         return {"description": description, "tags": tags}
 

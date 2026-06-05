@@ -222,18 +222,16 @@ def generate_luna_optimized_metadata(title: str, description: str, issues: list)
             if "|" in keyword:
                 keyword = keyword.split("|")[-1].strip()
                 
-        # title_patterns.json 로드하여 us_top_titles 추출
-        knowledge_file = os.path.join(luna_tools_path, "knowledge", "title_patterns.json")
+        # fetch_yt_top100 스킬로 Top 100 제목 로드 (하루 1회 캐시 보장)
         yt_top_titles = []
-        if os.path.exists(knowledge_file):
-            try:
-                with open(knowledge_file, "r", encoding="utf-8") as f:
-                    patterns = json.load(f)
-                if patterns:
-                    latest_date = sorted(patterns.keys())[-1]
-                    yt_top_titles = patterns[latest_date].get("us_top_titles", [])
-            except Exception as e:
-                print(f"  [Warning] title_patterns.json 로드 실패: {e}")
+        try:
+            _top100_skill_path = os.path.join(luna_tools_path, "knowledge")
+            if _top100_skill_path not in sys.path:
+                sys.path.insert(0, _top100_skill_path)
+            from fetch_yt_top100 import get_yt_top100_titles
+            yt_top_titles = get_yt_top100_titles()
+        except Exception as e:
+            print(f"  [Warning] fetch_yt_top100 스킬 로드 실패: {e}")
                 
         # 루나의 제목 생성 함수 호출 (루나의 지식 가이드라인 및 필터 가드레일이 내부적으로 적용됨)
         new_title = _generate_optimized_title(keyword, yt_top_titles)
@@ -262,8 +260,8 @@ def generate_luna_optimized_metadata(title: str, description: str, issues: list)
                            "🎸 Instruments: Synthesizer, Electric Guitar\n"
                            "🎙️ Vocal Style: Melodic, Smooth\n"
                            "✨ Theme: Night Drive, Dreamy City\n\n"
-                           "#루나 #luna #시티팝 #드라이브bgm",
-            "tags": ["시티팝", "citypop", "LUNA", "루나", "드라이브 bgm", "Retro K-Pop", "Retro Pop", "도시감성", "신스팝", "Retro Synth", "City Light", "Night Drive"]
+                           "#시티팝 #citypop #드라이브bgm",
+            "tags": ["시티팝", "citypop", "드라이브 bgm", "Retro K-Pop", "Retro Pop", "도시감성", "신스팝", "Retro Synth", "City Light", "Night Drive"][:10]
         }
 
     # 중복 단어 배제 룰 동적 생성
@@ -292,23 +290,22 @@ def generate_luna_optimized_metadata(title: str, description: str, issues: list)
         f"   - 동일 텍스트 내 단어 중복 사용 절대 금지.\n"
         f"2. [설명글(Description) 규칙]:\n"
         f"   - 타임라인/트랙리스트 형식(예: 00:00) 절대 금지.\n"
-        f"   - 음악의 장면/감정을 자연스러운 이야기로 묘사 (2~3문장).\n"
-        f"   - 추천 상황 4가지 제안 (예: 퇴근길, 심야 드라이브 등).\n"
-        f"   - 설명글 하단에 필수 메타데이터 블록 포함:\n"
+        f"   - 오직 이 곡(음악) 자체의 장르, 악기, 분위기, 곡에 대한 묘사 중심의 설명글 작성 (2~3문장).\n"
+        f"   - 설명글 하단에 필수 메타데이터 블록 포함 (LUNA, 루나, AI LUNA 등 특정 브랜딩 절대 표기 금지):\n"
         f"     🎹 Genre / Era: [장르 및 시대]\n"
         f"     🎸 Instruments: [사용 악기]\n"
         f"     🎙️ Vocal Style: [보컬 스타일]\n"
         f"     ✨ Theme: [곡 테마]\n"
-        f"   - 해시태그 8~12개 포함 (#루나 #luna #시티팝 필수 포함).\n"
+        f"   - 해시태그 5~8개 포함 (#루나 #luna 등 특정 브랜딩 절대 금지, #시티팝 #citypop 등 음악 성격 관련 해시태그 사용).\n"
         f"3. [태그(Tag) 규칙]:\n"
-        f"   - 20개 이상의 콤마(,)로 구분된 태그 키워드 목록 작성.\n"
-        f"   - 필수 포함 태그: '시티팝', 'citypop', 'LUNA', '루나', '드라이브 bgm'.\n"
+        f"   - 10개 이하의 콤마(,)로 구분된 태그 키워드 목록 작성.\n"
+        f"   - 필수 포함 태그: '시티팝', 'citypop', '드라이브 bgm'.\n"
         f"   - 샵(#) 기호 접두사 금지.\n\n"
         f"반드시 아래의 JSON 포맷으로만 응답해야 하며 다른 설명은 일체 배제하십시오:\n"
         f'{{\n'
         f'  "title": "최적화된 제목",\n'
         f'  "description": "최적화된 설명글",\n'
-        f'  "tags": ["태그1", "태그2", "태그3", ..., "태그20"]\n'
+        f'  "tags": ["태그1", "태그2", ..., "태그10"]\n'
         f'}}'
     )
 
@@ -319,7 +316,7 @@ def generate_luna_optimized_metadata(title: str, description: str, issues: list)
             return {
                 "title": data.get("title", title),
                 "description": data.get("description", description),
-                "tags": data.get("tags", ["시티팝", "citypop", "LUNA", "루나", "드라이브 bgm"])
+                "tags": data.get("tags", ["시티팝", "citypop", "드라이브 bgm"])[:10]
             }
     except Exception as e:
         print(f"  [루나 최적화 호출 실패] {e}")
@@ -327,7 +324,7 @@ def generate_luna_optimized_metadata(title: str, description: str, issues: list)
     return {
         "title": title,
         "description": description,
-        "tags": ["시티팝", "citypop", "LUNA", "루나", "드라이브 bgm"]
+        "tags": ["시티팝", "citypop", "드라이브 bgm"]
     }
 
 
@@ -436,20 +433,31 @@ _BANNED = [
 
 def regenerate_caption(old_caption: str) -> str:
     """금지 키워드 없이 Ollama로 캡션 재생성."""
+    _MIN_CAPTION_LEN = 50  # 인스타 캡션 최소 50자
+
     if lm_available():
-        prompt = (
-            f"이 인스타 캡션 다시 써줘. "
-            f"진짜 사람이 쓴 것처럼 짧고 자연스럽게, 친구한테 말하듯. "
-            f"AI·인공지능·미래·테크 단어 빼고. 이모지 1개, 해시태그 유지. 캡션만 출력.\n\n"
-            f"원본:\n{old_caption[:300]}"
-        )
-        result = lm_chat(prompt, max_tokens=200, temperature=0.7)
-        if result and result.strip():
-            return result.strip()
-    # Ollama 없으면 금지 키워드만 제거
+        for _attempt in range(3):
+            prompt = (
+                f"아래 인스타 캡션을 자연스러운 한국어로 다시 써줘.\n"
+                f"조건:\n"
+                f"- 반드시 50자 이상 작성 (짧으면 안 됨)\n"
+                f"- 진짜 사람이 쓴 것처럼, 친구한테 말하듯 자연스럽게\n"
+                f"- 금지 단어: AI, 인공지능, 미래, 테크, 로봇, neon, 네온, lofi\n"
+                f"- 이모지 1~2개 포함, 해시태그 유지\n"
+                f"- 캡션 본문만 출력 (설명·번호·따옴표 제외)\n\n"
+                f"원본 캡션:\n{old_caption[:300]}"
+            )
+            result = lm_chat(prompt, max_tokens=300, temperature=0.8)
+            if result and len(result.strip()) >= _MIN_CAPTION_LEN:
+                return result.strip()
+            elif result:
+                print(f"  [캡션재생성] 응답 너무 짧음 ({len(result.strip())}자), 재시도 {_attempt+1}/3...")
+
+    # Ollama 없거나 실패 시 금지 키워드만 제거 후 기본 캡션 합성
     lines = [l for l in old_caption.split("\n")
              if not any(kw in l.lower() for kw in _BANNED)]
-    return "\n".join(lines).strip() or "오늘도 좋은 하루 🌿 #일상 #감성"
+    cleaned = "\n".join(lines).strip()
+    return cleaned if len(cleaned) >= _MIN_CAPTION_LEN else "오늘 하루도 따뜻하게 보내세요 🌿 소소한 일상을 기록하는 중이에요. #일상 #감성 #힐링"
 
 
 def fix_instagram_post(post_id: str, old_caption: str) -> bool:
@@ -484,24 +492,38 @@ def fix_instagram_post(post_id: str, old_caption: str) -> bool:
                 issues=check["issues"]
             )
             corrected_caption = coached.get("title") or coached.get("caption") or coached.get("description")
-            if corrected_caption:
+            # 응답이 너무 짧으면 무시 (5자 수준의 지시문 응답 방지)
+            if corrected_caption and len(corrected_caption.strip()) >= 30:
                 final_caption = corrected_caption.strip()
+            else:
+                raise ValueError(f"CEO 응답 너무 짧음 ({len((corrected_caption or '').strip())}자) — 직접 재생성")
         except Exception as err:
-            print(f"  ⚠️ 예원 CEO 코칭 호출 실패, 기존 로직 사용: {err}")
+            print(f"  ⚠️ CEO 코칭 우회, 직접 재생성: {err}")
+            issues_str = ', '.join(check['issues'])
             if lm_available():
                 prompt = (
-                    f"이 인스타 캡션을 아래 피드백 문제를 해결해서 다시 작성해줘.\n"
-                    f"피드백: {', '.join(check['issues'])}\n"
-                    f"원본: {final_caption}\n\n"
-                    f"조건: 'neon', '네온', 'AI', '인공지능', '미래' 금지, 한글 필수, 동일 단어 반복 금지, 캡션 본문만 출력."
+                    f"인스타그램 캡션을 다시 작성해줘.\n"
+                    f"피드백: {issues_str}\n"
+                    f"원본: {final_caption[:200]}\n\n"
+                    f"조건:\n"
+                    f"- 반드시 50자 이상 한국어로 작성\n"
+                    f"- 금지 단어: neon, 네온, AI, 인공지능, 미래, lofi\n"
+                    f"- 동일 단어 반복 금지, 이모지 1~2개, 해시태그 포함\n"
+                    f"- 캡션 본문만 출력"
                 )
-                result = lm_chat(prompt, max_tokens=300, temperature=0.9)
-                if result and result.strip():
+                result = lm_chat(prompt, max_tokens=400, temperature=0.9)
+                if result and len(result.strip()) >= 30:
                     final_caption = result.strip()
+                else:
+                    # 최후 수단: 금지어 제거 + 기본 구문 붙이기
+                    lines = [l for l in final_caption.split("\n")
+                             if not any(kw in l.lower() for kw in _BANNED)]
+                    base = "\n".join(lines).strip()
+                    final_caption = base if len(base) >= 30 else "오늘 하루도 따뜻하게 보내세요 🌿 소소한 일상을 기록하는 중이에요. #일상 #감성 #힐링"
             else:
                 lines = [l for l in final_caption.split("\n")
                          if not any(kw in l.lower() for kw in _BANNED)]
-                final_caption = "\n".join(lines).strip()
+                final_caption = "\n".join(lines).strip() or "오늘도 따뜻한 하루 🌿 #일상 #감성"
             
     if not passed:
         # Fallback: generate a longer caption if LLM couldn't satisfy length

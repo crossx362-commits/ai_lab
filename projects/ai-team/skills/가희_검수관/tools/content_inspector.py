@@ -1081,8 +1081,8 @@ def run_full_audit():
     all_results = []
 
     # 1. YouTube 공개 영상 (루나) — 품질 검수
-    print("── YouTube 공개 영상 (루나) 검수 중...")
-    video_ids = _get_channel_videos(max_results=30)
+    print("── YouTube 공개 영상 (루나) 검수 중... (채널 전체, 최대 200개)")
+    video_ids = _get_channel_videos(max_results=200)
     yt_infos  = [_get_video_info(v) for v in video_ids if v]
     yt_infos  = [v for v in yt_infos if v]
     yt_results = [inspect_video(v["id"], "EXISTING_CONTENT", yt_infos) for v in yt_infos]
