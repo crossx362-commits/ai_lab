@@ -452,7 +452,7 @@ body.theme-sepia .border-gray-100 {
 .mobile-tab-btn {
     transition: all 0.2s ease;
     padding: 0 !important;
-    height: 100% !important;
+    height: auto !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -484,7 +484,7 @@ body.theme-sepia .border-gray-100 {
     display: block !important;
 }
 .mobile-tab-btn.text-brand-500 {
-    transform: translateY(-1px);
+    transform: none !important;
 }
 .mobile-tab-btn.text-brand-500 i {
     opacity: 1;
@@ -546,7 +546,7 @@ a:focus-visible {
 #mobile-navbar {
     height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
     padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-    align-items: stretch !important; /* 자식 요소들을 상하로 꽉 채움 */
+    align-items: center !important; /* 수직 중앙 정렬로 복구 */
 }
 
 /* ── 다크모드: 신규 UI 요소 ────────────────────────────────── */
