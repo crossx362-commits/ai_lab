@@ -37,7 +37,9 @@ JSON만 반환:
 def dispatch_and_execute(ceo_message: str) -> str:
     print(f"  [예원 CEO] 수신된 업무 지시: {ceo_message}")
     if not lm_available():
-        return "❌ 예원 CEO (Ollama) 서버가 오프라인입니다. 작업을 분배할 수 없습니다."
+        # lm_available() 내부에서 코다리에게 복구 요청 완료
+        print("  [예원 CEO] Ollama 연결 실패 → 코다리 복구 진행 중")
+        return None  # 텔레그램 메시지 없이 조용히 복구 대기
         
     try:
         raw = lm_chat(ceo_message, system=_YEWON_DISPATCH_SYSTEM, json_mode=True, max_tokens=200, task="")

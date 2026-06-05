@@ -132,6 +132,12 @@ def execute_schedule(schedule: Dict):
 
     try:
         result = yewon_dispatcher.dispatch_and_execute(dispatch_message)
+
+        # result가 None이면 코다리가 복구 중 → 텔레그램 메시지 없이 조용히 종료
+        if result is None:
+            print(f"  [예원 CEO] Ollama 복구 대기 중 → 텔레그램 알림 생략")
+            return
+
         print(f"  [예원 CEO 응답]\n{result}\n")
 
         # 3. 결과를 텔레그램으로 보고

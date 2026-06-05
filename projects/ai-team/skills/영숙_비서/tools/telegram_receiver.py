@@ -439,6 +439,12 @@ def process_message(text: str):
             ceo_msg = decision["dispatch_to_ceo"]
             try:
                 ceo_result = yewon_dispatcher.dispatch_and_execute(ceo_msg)
+
+                # None 반환 = 코다리 복구 중 → 텔레그램 메시지 없이 종료
+                if ceo_result is None:
+                    print("  [영숙 디스패처] Ollama 복구 대기 중 → 텔레그램 알림 생략")
+                    return
+
             except Exception as dispatch_err:
                 # 디스패치 실패 → 에이전트 회의 자동 소집
                 try:
