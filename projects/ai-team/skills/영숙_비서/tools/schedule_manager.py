@@ -125,45 +125,57 @@ def execute_schedule(schedule: Dict):
     print(f"  [영숙 → CEO 예원] 스케줄 도래 인지 (중간 텔레그램 발송 생략)")
     # send_telegram_message(ceo_report)
 
-    # 2. CEO Dispatcher를 통해 에이전트에게 지시
-    print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")
+    # 2. Python 스크립트는 직접 실행, 그 외는 CEO Dispatcher로 전달
+    if command.startswith("python"):
+        print(f"  [영숙] Python 스크립트 직접 실행: {command}")
+        try:
+            import subprocess
+            cmd_parts = command.split()
+            result = subprocess.run(
+                cmd_parts,
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=300
+            )
+            if result.returncode == 0:
+                result_text = f"✅ 실행 완료\n\n{result.stdout[:500]}"
+            else:
+                result_text = f"❌ 실행 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
+        except Exception as e:
+            result_text = f"❌ 실행 오류: {str(e)[:300]}"
+    else:
+        print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")
+        dispatch_message = f"영숙 비서 스케줄러: {agent} 에이전트에게 '{task}' 작업을 지시해주세요. 명령: {command}"
 
-    dispatch_message = f"영숙 비서 스케줄러: {agent} 에이전트에게 '{task}' 작업을 지시해주세요. 명령: {command}"
+        try:
+            result = yewon_dispatcher.dispatch_and_execute(dispatch_message)
 
-    try:
-        result = yewon_dispatcher.dispatch_and_execute(dispatch_message)
+            # result가 None이면 코다리가 복구 중 → 텔레그램 메시지 없이 조용히 종료
+            if result is None:
+                print(f"  [예원 CEO] Ollama 복구 대기 중 → 텔레그램 알림 생략")
+                return
 
-        # result가 None이면 코다리가 복구 중 → 텔레그램 메시지 없이 조용히 종료
-        if result is None:
-            print(f"  [예원 CEO] Ollama 복구 대기 중 → 텔레그램 알림 생략")
-            return
+            result_text = result
+        except Exception as e:
+            result_text = f"❌ Dispatcher 오류: {str(e)[:300]}"
 
-        print(f"  [예원 CEO 응답]\n{result}\n")
+    print(f"  [실행 결과]\n{result_text}\n")
 
-        # 3. 결과를 텔레그램으로 보고
-        final_report = (
-            f"✅ **[영숙 비서 → 사장님]**\n\n"
-            f"스케줄 작업이 완료되었습니다.\n\n"
-            f"**에이전트**: {agent}\n"
-            f"**작업**: {task}\n"
-            f"**시간**: {now_kst}\n\n"
-            f"**실행 결과**:\n{result[:500]}"
-        )
+    # 3. 결과를 텔레그램으로 보고
+    final_report = (
+        f"✅ **[영숙 비서 → 사장님]**\n\n"
+        f"스케줄 작업이 완료되었습니다.\n\n"
+        f"**에이전트**: {agent}\n"
+        f"**작업**: {task}\n"
+        f"**시간**: {now_kst}\n\n"
+        f"**실행 결과**:\n{result_text[:500]}"
+    )
 
-        send_telegram_message(final_report)
-        print(f"  [영숙 → 사장님] 최종 보고 완료")
-
-    except Exception as e:
-        error_msg = (
-            f"❌ **[영숙 비서 → 사장님]**\n\n"
-            f"스케줄 작업 중 오류가 발생했습니다.\n\n"
-            f"**에이전트**: {agent}\n"
-            f"**작업**: {task}\n"
-            f"**에러**: {str(e)[:300]}"
-        )
-
-        send_telegram_message(error_msg)
-        print(f"  ❌ 오류 발생: {e}")
+    send_telegram_message(final_report)
+    print(f"  [영숙 → 사장님] 최종 보고 완료")
 
 
 def check_and_run_schedules():

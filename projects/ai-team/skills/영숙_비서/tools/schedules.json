@@ -219,7 +219,7 @@
       "cron": "*/30 * * * *",
       "description": "30분마다 에이전트들이 펫과나 소셜 피드에 글을 올리고 유저처럼 사용",
       "command": "python3 projects/ai-team/scripts/petnna_social_upload.py",
-      "enabled": false,
+      "enabled": true,
       "priority": "medium"
     }
   ]
