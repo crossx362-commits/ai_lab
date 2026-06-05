@@ -125,42 +125,21 @@ def execute_schedule(schedule: Dict):
     print(f"  [영숙 → CEO 예원] 스케줄 도래 인지 (중간 텔레그램 발송 생략)")
     # send_telegram_message(ceo_report)
 
-    # 2. Python 스크립트는 직접 실행, 그 외는 CEO Dispatcher로 전달
-    if command.startswith("python"):
-        print(f"  [영숙] Python 스크립트 직접 실행: {command}")
-        try:
-            import subprocess
-            cmd_parts = command.split()
-            result = subprocess.run(
-                cmd_parts,
-                cwd=PROJECT_ROOT,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=300
-            )
-            if result.returncode == 0:
-                result_text = f"✅ 실행 완료\n\n{result.stdout[:500]}"
-            else:
-                result_text = f"❌ 실행 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
-        except Exception as e:
-            result_text = f"❌ 실행 오류: {str(e)[:300]}"
-    else:
-        print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")
-        dispatch_message = f"영숙 비서 스케줄러: {agent} 에이전트에게 '{task}' 작업을 지시해주세요. 명령: {command}"
+    # 2. CEO Dispatcher를 통해 에이전트에게 지시 (Ollama가 지능적으로 판단)
+    print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")
+    dispatch_message = f"영숙 비서 스케줄러: {agent} 에이전트에게 '{task}' 작업을 지시해주세요. 명령: {command}"
 
-        try:
-            result = yewon_dispatcher.dispatch_and_execute(dispatch_message)
+    try:
+        result = yewon_dispatcher.dispatch_and_execute(dispatch_message)
 
-            # result가 None이면 코다리가 복구 중 → 텔레그램 메시지 없이 조용히 종료
-            if result is None:
-                print(f"  [예원 CEO] Ollama 복구 대기 중 → 텔레그램 알림 생략")
-                return
+        # result가 None이면 코다리가 복구 중 → 텔레그램 메시지 없이 조용히 종료
+        if result is None:
+            print(f"  [예원 CEO] Ollama 복구 대기 중 → 텔레그램 알림 생략")
+            return
 
-            result_text = result
-        except Exception as e:
-            result_text = f"❌ Dispatcher 오류: {str(e)[:300]}"
+        result_text = result
+    except Exception as e:
+        result_text = f"❌ Dispatcher 오류: {str(e)[:300]}"
 
     print(f"  [실행 결과]\n{result_text}\n")
 

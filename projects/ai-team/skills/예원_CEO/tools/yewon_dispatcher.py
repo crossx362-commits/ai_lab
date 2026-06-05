@@ -36,11 +36,42 @@ JSON만 반환:
 
 def dispatch_and_execute(ceo_message: str) -> str:
     print(f"  [예원 CEO] 수신된 업무 지시: {ceo_message}")
+
+    # ── Python 스크립트 직접 실행 (Ollama 불필요) ──
+    if ".py" in ceo_message and ("python" in ceo_message.lower() or "projects/" in ceo_message):
+        print("  [예원 CEO] Python 스크립트 감지 → 직접 실행")
+        import subprocess
+        # 명령어에서 python 경로 추출
+        parts = ceo_message.split()
+        script_idx = next((i for i, p in enumerate(parts) if ".py" in p), None)
+        if script_idx is not None:
+            if "python" in parts[script_idx - 1].lower():
+                cmd = parts[script_idx - 1:script_idx + 1]
+            else:
+                cmd = [sys.executable, parts[script_idx]]
+
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=PROJECT_ROOT,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=300
+                )
+                if result.returncode == 0:
+                    return f"✅ Python 스크립트 실행 완료\n\n{result.stdout[:500]}"
+                else:
+                    return f"❌ Python 스크립트 실행 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
+            except Exception as e:
+                return f"❌ Python 스크립트 실행 오류: {str(e)[:300]}"
+
     if not lm_available():
         # lm_available() 내부에서 코다리에게 복구 요청 완료
         print("  [예원 CEO] Ollama 연결 실패 → 코다리 복구 진행 중")
         return None  # 텔레그램 메시지 없이 조용히 복구 대기
-        
+
     try:
         raw = lm_chat(ceo_message, system=_YEWON_DISPATCH_SYSTEM, json_mode=True, max_tokens=200, task="")
         if not raw:
