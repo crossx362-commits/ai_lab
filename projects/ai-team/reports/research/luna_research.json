@@ -1,0 +1,29 @@
+{
+  "learned_themes": [
+    {
+      "date": "2026-06-05T09:07:05.435307",
+      "themes": "[\"city pop night drive\", \"pet cafe lounge BGM\", \"80s retro K-pop fusion\"]",
+      "source": "luna_director_knowledge",
+      "keywords": [
+        "city pop night drive",
+        "pet cafe lounge BGM",
+        "80s retro K-pop fusion"
+      ],
+      "meta": {
+        "genre_priority": "Japanese City Pop x K-Pop Fusion",
+        "bpm_range": "110-150",
+        "mood": "Energetic, Nostalgic, Retro",
+        "target_market": "Global / KR",
+        "trending_niches": [
+          "city pop night drive",
+          "pet cafe ambient BGM (non-lofi)",
+          "80s K-pop retro revival",
+          "neon tokyo aesthetic",
+          "urban late night commute"
+        ]
+      }
+    }
+  ],
+  "last_updated": "2026-06-05T09:07:05.435354",
+  "agent": "luna"
+}
