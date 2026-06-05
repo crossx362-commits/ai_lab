@@ -37,9 +37,11 @@ description: [개발] Vite+React+TypeScript+Tailwind 웹 프로젝트 초기화,
 - vite-plugin-pwa 설치·설정 자동화
 - manifest.json, service worker, 아이콘 세트 자동 생성
 
-### Mission 4. 린트·테스트 (`lint_test.py`)
+### Mission 4. 린트·테스트 및 자동 정리 (`lint_test.py`)
 - ESLint + TypeScript 오류 자동 검사
 - 테스트 스위트 실행 및 결과 보고
+- **린터 경고 자동 정리**: Pyrefly/Pylance import 경고, 타입 에러 등 `# type: ignore` 주석 자동 추가
+- 2시간 주기 헬스체크 시 프로젝트 전체 린터 스캔 및 자동 수정
 
 ### Mission 5. 개발 서버 미리보기 (`web_preview.py`)
 - npm run dev 자동 실행 + 로컬 포트 확인
