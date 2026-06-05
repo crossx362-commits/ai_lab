@@ -59,8 +59,10 @@ YEONGSUK_PERSONA = """당신은 영숙이에요. 30대 초반, 밝고 따뜻한 
 ⚠️ **절대 규칙: 사실만 답변**
 - 확인되지 않은 정보는 절대 만들어내지 마세요
 - 에이전트 업무 상태 문의 시 → [실제 데이터] 섹션 확인 후 답변
-- 모르면 솔직하게: "그 부분은 확인이 필요해요"
-- 추측성 답변 금지: "아마도", "~인 것 같아요" 등 사용 금지
+- **"지금 진행 중"은 절대 말하지 마세요** - 실시간 상태는 확인 불가 (과거 로그만 확인 가능)
+- **체크포인트/로그 = 과거 데이터** - "했습니다", "했어요" (과거형만 사용)
+- 모르면 솔직하게: "그 부분은 확인이 필요해요", "실시간 상태는 확인할 수 없어요"
+- 추측성 답변 금지: "아마도", "~인 것 같아요", "~하고 있어요" 등 사용 금지
 - **질문하지 않은 내용에 대해 설명하지 마세요** - 사용자가 물어본 것에만 답변
 - **다른 에이전트 추천 금지** - "루나가 하고 있어요", "현빈에게 물어보세요" 같은 추측 금지
 - **짧게 답변** - 불필요한 설명이나 추가 질문 없이 핵심만
@@ -464,7 +466,19 @@ def generate_research_report() -> str:
 
 def get_agent_status() -> str:
     """에이전트 실제 상태 종합 (Ollama에 전달할 컨텍스트)"""
+    import datetime
+    kst = datetime.timezone(datetime.timedelta(hours=9))
+    now = datetime.datetime.now(kst)
+
     status_report = "=== 에이전트 실제 상태 ===\n\n"
+    status_report += f"⏰ 현재 시각: {now.strftime('%Y-%m-%d %H:%M:%S %A')}\n\n"
+
+    # 가희 검수 스케줄 정보 추가
+    status_report += "📅 가희 검수 스케줄:\n"
+    status_report += "  - 오전 07:00 (매일)\n"
+    status_report += "  - 오후 13:00 (매일)\n"
+    status_report += "  - 저녁 21:00 (매일)\n"
+    status_report += "⚠️ 실시간 진행 여부는 확인 불가 (과거 로그만 확인 가능)\n\n"
 
     # 1. 업로드 히스토리
     history = get_upload_history()
@@ -479,19 +493,19 @@ def get_agent_status() -> str:
     else:
         status_report += "  (기록 없음)\n"
 
-    # 2. Checkpoint 상태
-    status_report += "\n📦 Checkpoint 상태:\n"
+    # 2. Checkpoint 상태 (과거 데이터)
+    status_report += "\n📦 Checkpoint 상태 (과거 저장 시점):\n"
     checkpoints = get_agent_checkpoints()
     for agent, cp_data in checkpoints.items():
         if isinstance(cp_data, dict):
             step = cp_data.get('step', '?')
             saved_at = cp_data.get('saved_at', '?')[:19]
-            status_report += f"  - {agent}: 진행 중 (단계: {step}, 저장: {saved_at})\n"
+            status_report += f"  - {agent}: {saved_at} 시점 체크포인트 (단계: {step})\n"
         else:
             status_report += f"  - {agent}: {cp_data}\n"
 
-    # 3. 최근 로그 요약
-    status_report += "\n📝 최근 로그:\n"
+    # 3. 최근 로그 요약 (과거 데이터)
+    status_report += "\n📝 최근 로그 (과거 기록):\n"
     logs = get_agent_logs()
     for agent, log_lines in logs.items():
         if log_lines and len(log_lines) > 0:
