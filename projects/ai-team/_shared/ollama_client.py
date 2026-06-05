@@ -18,6 +18,33 @@ import time
 
 _cache: dict = {}
 _CACHE_TTL = 60  # 1분 — 모델 변경 시 빠르게 반영
+_recovery_triggered = False  # 복구 중복 호출 방지
+
+
+def _trigger_kodari_recovery():
+    """Ollama 연결 실패 시 코다리 헬스체크·자동 복구 호출 (1회만)."""
+    global _recovery_triggered
+    if _recovery_triggered:
+        return
+    _recovery_triggered = True
+    try:
+        import threading, importlib.util as _ilu
+        _here = os.path.dirname(os.path.abspath(__file__))
+        _check_path = os.path.join(_here, "..", "skills", "코다리_개발자", "tools", "ollama_health_check.py")
+        if not os.path.exists(_check_path):
+            return
+        def _run():
+            global _recovery_triggered
+            spec = _ilu.spec_from_file_location("ollama_health_check", _check_path)
+            mod = _ilu.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            mod.run_check()
+            _recovery_triggered = False  # 복구 후 다음 실패에도 재시도 허용
+        threading.Thread(target=_run, daemon=True).start()
+        print("  [코다리] Ollama 연결 실패 감지 → 자동 복구 시작...")
+    except Exception as e:
+        _recovery_triggered = False
+        print(f"  [코다리] 복구 훅 실행 실패: {e}")
 
 
 def _request_kodari_fix():
@@ -187,6 +214,7 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
             text = "\n".join(l for l in lines if not l.strip().startswith("```")).strip()
         return text
     except urllib.error.URLError:
+        _trigger_kodari_recovery()
         return None
     except Exception as e:
         print(f"  [Ollama] 오류: {e}")

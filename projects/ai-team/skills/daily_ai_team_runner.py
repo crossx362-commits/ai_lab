@@ -84,67 +84,59 @@ def read_notion_report() -> str:
 
 
 def analyze_with_ollama(report_content: str) -> dict:
-    """Ollama로 리포트 분석 및 작업 계획 수립."""
+    """예원 CEO 디스패처가 리포트를 읽고 자율 판단으로 작업 계획 수립."""
 
-    prompt = f"""다음은 AI 팀 통합 리서치 리포트입니다. 이 내용을 분석하여 오늘 각 에이전트가 수행해야 할 작업을 JSON 형식으로 제시해주세요.
+    # 예원 CEO 디스패처 동적 로드
+    _dispatcher_path = os.path.join(_ai_team_root, "skills", "예원_CEO", "tools", "yewon_dispatcher.py")
+    try:
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location("yewon_dispatcher", _dispatcher_path)
+        _mod = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
 
-리포트 내용:
-{report_content[:3000]}
+        # 예원 CEO에게 리포트 전달 → 자율 판단
+        ceo_prompt = (
+            f"다음은 AI팀 Notion 활동 리포트입니다. 오늘 우선순위 높은 작업을 판단하고 "
+            f"적합한 에이전트에게 배분해주세요.\n\n리포트:\n{report_content[:2000]}"
+        )
+        result = _mod.dispatch_and_execute(ceo_prompt)
+        print(f"  [예원 CEO] 판단 완료: {result[:100]}")
 
-에이전트 목록:
-- 루나: 시티팝 뮤직비디오 제작 (Imagen 4.0 + Lyria 3 Pro)
-- 아린: 인스타그램 트렌드 포스팅 (구글 트렌드 기반)
-- 가희: 콘텐츠 품질 검수 (YouTube, Instagram 메타데이터 검증)
+        # 디스패처 결과를 태스크 형태로 변환
+        tasks = []
+        for agent in ["루나", "아린"]:
+            if agent in result:
+                tasks.append({
+                    "agent": agent,
+                    "action": f"{agent} 일일 파이프라인 실행",
+                    "priority": "high",
+                    "description": result[:200],
+                    "reason": "예원 CEO 자율 판단"
+                })
+        if tasks:
+            return {"tasks": tasks, "summary": f"예원 CEO 지시: {result[:100]}"}
 
-다음 JSON 형식으로 응답해주세요:
-{{
-  "tasks": [
-    {{
-      "agent": "루나",
-      "action": "뮤직비디오 생성",
-      "priority": "high",
-      "description": "작업 상세 설명",
-      "reason": "리포트에서 도출한 이유"
-    }}
-  ],
-  "summary": "오늘의 작업 요약"
-}}
-"""
+    except Exception as e:
+        print(f"  [예원 CEO 디스패처 실패, Ollama 폴백] {e}")
+
+    # 폴백: Ollama 직접 분석
+    prompt = f"""AI팀 리포트를 분석하여 오늘 할 작업을 JSON으로 반환하세요.
+리포트: {report_content[:2000]}
+JSON: {{"tasks":[{{"agent":"루나","action":"뮤직비디오 생성","priority":"medium","description":"","reason":""}}],"summary":""}}"""
 
     try:
-        response = ollama_chat(
-            prompt,
-            system="당신은 AI 팀의 일일 작업 계획을 수립하는 PM입니다. 리포트를 분석하여 우선순위 높은 작업을 식별하세요.",
-            json_mode=True,
-            temperature=0.7,
-            max_tokens=2000
-        )
-
+        response = ollama_chat(prompt, json_mode=True, temperature=0.5, max_tokens=1000)
         if response:
             return json.loads(response)
-
     except Exception as e:
         print(f"  [Warning] Ollama 분석 실패: {e}")
 
-    # 폴백: 기본 작업
     return {
         "tasks": [
-            {
-                "agent": "루나",
-                "action": "일일 뮤직비디오 생성",
-                "priority": "medium",
-                "description": "Imagen 4.0으로 고품질 시티팝 뮤직비디오 제작",
-                "reason": "일일 정기 콘텐츠 제작"
-            },
-            {
-                "agent": "아린",
-                "action": "트렌드 인스타 포스팅",
-                "priority": "medium",
-                "description": "구글 트렌드 기반 이미지 생성 및 업로드",
-                "reason": "일일 정기 콘텐츠 제작"
-            }
+            {"agent": "루나", "action": "일일 뮤직비디오 생성", "priority": "medium", "description": "", "reason": "정기"},
+            {"agent": "아린", "action": "트렌드 인스타 포스팅", "priority": "medium", "description": "", "reason": "정기"},
         ],
-        "summary": "일일 정기 콘텐츠 제작 작업"
+        "summary": "일일 정기 콘텐츠 제작"
     }
 
 

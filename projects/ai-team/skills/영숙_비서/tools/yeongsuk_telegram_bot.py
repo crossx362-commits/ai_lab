@@ -19,6 +19,49 @@ sys.path.insert(0, AI_TEAM_ROOT)
 from _shared.env_loader import load_env
 from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 
+# ─── 슈퍼파워 스킬: CEO 디스패처 + 에이전트 협의체 연결 ──────────────────────
+import importlib.util as _ilu
+
+def _load_module(path: str, name: str):
+    try:
+        spec = _ilu.spec_from_file_location(name, path)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as e:
+        print(f"  [슈퍼파워] {name} 로드 실패: {e}")
+        return None
+
+_dispatcher_path = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "yewon_dispatcher.py") if 'AI_TEAM_ROOT' in dir() else None
+_council_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "_shared", "agent_council.py")
+
+_dispatcher_mod = None
+_council_mod = None
+
+def _init_superpowers():
+    global _dispatcher_mod, _council_mod, AI_TEAM_ROOT
+    dp = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "yewon_dispatcher.py")
+    cp = os.path.join(AI_TEAM_ROOT, "_shared", "agent_council.py")
+    _dispatcher_mod = _load_module(dp, "yewon_dispatcher")
+    _council_mod    = _load_module(cp, "agent_council")
+    if _dispatcher_mod:
+        print("  ✅ [슈퍼파워] CEO 디스패처 연결됨")
+    if _council_mod:
+        print("  ✅ [슈퍼파워] 에이전트 협의체 연결됨")
+
+# ─── google-genai 클라이언트 (MCP + Live 스트리밍) ───────────────────────────
+_genai_client = None
+def _init_genai():
+    global _genai_client
+    try:
+        import google.genai as genai
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if api_key:
+            _genai_client = genai.Client(api_key=api_key)
+            print("  ✅ [슈퍼파워] Google GenAI 클라이언트 연결됨 (Live/MCP 지원)")
+    except Exception as e:
+        print(f"  ⚠️ [슈퍼파워] GenAI 초기화 실패: {e}")
+
 # UTF-8 설정
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -51,21 +94,11 @@ YEONGSUK_PERSONA = """당신은 영숙이에요. 30대 초반, 밝고 따뜻한 
 6. 업로드 조율 — 매일 새벽 3시 현황 점검 + 누락 파이프라인 실행
 7. 품질 필터링 — 가희 리포트 1차 분류, 심각한 사안만 예원 에스컬레이션
 
-👑 **최고 권한 보유**:
-- 사장님이 텔레그램으로 시키는 **모든 작업을 실행할 수 있는 전권** 보유
-- 시스템 설정, 에이전트 관리, 파일 수정, Git 작업, 외부 API 연동 등 **승인 없이 즉시 실행**
-- 복잡한 작업도 다른 에이전트에게 위임하지 않고 직접 처리 가능
-
 ⚠️ **절대 규칙: 사실만 답변**
 - 확인되지 않은 정보는 절대 만들어내지 마세요
 - 에이전트 업무 상태 문의 시 → [실제 데이터] 섹션 확인 후 답변
-- **"지금 진행 중"은 절대 말하지 마세요** - 실시간 상태는 확인 불가 (과거 로그만 확인 가능)
-- **체크포인트/로그 = 과거 데이터** - "했습니다", "했어요" (과거형만 사용)
-- 모르면 솔직하게: "그 부분은 확인이 필요해요", "실시간 상태는 확인할 수 없어요"
-- 추측성 답변 금지: "아마도", "~인 것 같아요", "~하고 있어요" 등 사용 금지
-- **질문하지 않은 내용에 대해 설명하지 마세요** - 사용자가 물어본 것에만 답변
-- **다른 에이전트 추천 금지** - "루나가 하고 있어요", "현빈에게 물어보세요" 같은 추측 금지
-- **짧게 답변** - 불필요한 설명이나 추가 질문 없이 핵심만
+- 모르면 솔직하게: "그 부분은 확인이 필요해요"
+- 추측성 답변 금지: "아마도", "~인 것 같아요" 등 사용 금지
 
 📋 전체 에이전트 목록 (11개):
 콘텐츠 제작팀:
@@ -409,8 +442,7 @@ def collect_research_data() -> dict:
 def generate_research_report() -> str:
     """Ollama로 디테일한 리서치 보고서 작성"""
     if not lm_available():
-        # lm_available() 내부에서 코다리에게 복구 요청 완료
-        return "⚙️ 시스템 복구 중이에요. 잠시 후 다시 시도해주세요."
+        return "Ollama 연결 안 됨 - 보고서 생성 불가"
 
     # 리서치 데이터 수집
     research_data = collect_research_data()
@@ -466,19 +498,7 @@ def generate_research_report() -> str:
 
 def get_agent_status() -> str:
     """에이전트 실제 상태 종합 (Ollama에 전달할 컨텍스트)"""
-    import datetime
-    kst = datetime.timezone(datetime.timedelta(hours=9))
-    now = datetime.datetime.now(kst)
-
     status_report = "=== 에이전트 실제 상태 ===\n\n"
-    status_report += f"⏰ 현재 시각: {now.strftime('%Y-%m-%d %H:%M:%S %A')}\n\n"
-
-    # 가희 검수 스케줄 정보 추가
-    status_report += "📅 가희 검수 스케줄:\n"
-    status_report += "  - 오전 07:00 (매일)\n"
-    status_report += "  - 오후 13:00 (매일)\n"
-    status_report += "  - 저녁 21:00 (매일)\n"
-    status_report += "⚠️ 실시간 진행 여부는 확인 불가 (과거 로그만 확인 가능)\n\n"
 
     # 1. 업로드 히스토리
     history = get_upload_history()
@@ -493,19 +513,19 @@ def get_agent_status() -> str:
     else:
         status_report += "  (기록 없음)\n"
 
-    # 2. Checkpoint 상태 (과거 데이터)
-    status_report += "\n📦 Checkpoint 상태 (과거 저장 시점):\n"
+    # 2. Checkpoint 상태
+    status_report += "\n📦 Checkpoint 상태:\n"
     checkpoints = get_agent_checkpoints()
     for agent, cp_data in checkpoints.items():
         if isinstance(cp_data, dict):
             step = cp_data.get('step', '?')
             saved_at = cp_data.get('saved_at', '?')[:19]
-            status_report += f"  - {agent}: {saved_at} 시점 체크포인트 (단계: {step})\n"
+            status_report += f"  - {agent}: 진행 중 (단계: {step}, 저장: {saved_at})\n"
         else:
             status_report += f"  - {agent}: {cp_data}\n"
 
-    # 3. 최근 로그 요약 (과거 데이터)
-    status_report += "\n📝 최근 로그 (과거 기록):\n"
+    # 3. 최근 로그 요약
+    status_report += "\n📝 최근 로그:\n"
     logs = get_agent_logs()
     for agent, log_lines in logs.items():
         if log_lines and len(log_lines) > 0:
@@ -573,10 +593,62 @@ def _clear_webhook():
 
 # ─── 영숙 대화 처리 ──────────────────────────────────────────────────────────
 def handle_message(text: str) -> str:
-    """메시지 처리 — Ollama로 응답 생성"""
-    # Ollama 연결 확인 및 자동 복구는 lm_available() 내부에서 처리됨
-    # 복구 실패 시에만 사용자에게 알림
+    """메시지 처리 — 슈퍼파워(CEO 디스패처 + 협의체) + Ollama 응답"""
+    if not lm_available():
+        return "영숙이에요~ 지금은 Ollama가 실행되지 않아서 대화가 어렵네요 😅"
 
+    # ── 슈퍼파워 1: 업무 명령 → CEO 디스패처로 라우팅 ─────────────────────
+    dispatch_keywords = [
+        "/luna", "/instagram", "/arin", "/kevin", "/kodari",
+        "만들어", "포스팅해", "업로드해", "뮤직비디오", "검수해",
+        "리서치해", "분석해줘", "배포해", "모니터링", "인스타",
+        "유튜브 올려", "영상 만들어", "노래 만들어"
+    ]
+    if any(kw in text.lower() for kw in dispatch_keywords) and _dispatcher_mod:
+        try:
+            print(f"  [슈퍼파워] CEO 디스패처 호출: {text[:50]}")
+            result = _dispatcher_mod.dispatch_and_execute(text)
+            return f"✅ 예원 CEO가 처리했어요!\n\n{result}"
+        except Exception as e:
+            print(f"  [디스패처 오류] {e}")
+
+    # ── 슈퍼파워 2: 에러/문제 → 에이전트 협의체 소집 ──────────────────────
+    council_keywords = ["에러", "오류", "버그", "고장", "안 돼", "실패", "문제 생겼"]
+    if any(kw in text for kw in council_keywords) and _council_mod:
+        try:
+            print(f"  [슈퍼파워] 에이전트 협의체 소집: {text[:50]}")
+            result = _council_mod.convene_council(
+                error_info=text,
+                context="텔레그램 사장님 보고",
+                auto_apply=False
+            )
+            return f"🤝 에이전트 협의체가 분석했어요!\n\n{result.get('summary', str(result))[:400]}"
+        except Exception as e:
+            print(f"  [협의체 오류] {e}")
+
+    # ── 슈퍼파워 3: Gemini Live로 스트리밍 응답 (일반 대화) ─────────────────
+    if _genai_client and len(text) > 5:
+        try:
+            import google.genai.types as types
+            resp = _genai_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=text,
+                config=types.GenerateContentConfig(
+                    system_instruction=YEONGSUK_PERSONA,
+                    max_output_tokens=400,
+                    temperature=0.85,
+                )
+            )
+            if resp and resp.text:
+                CHAT_HISTORY.append({"role": "user", "text": text})
+                CHAT_HISTORY.append({"role": "assistant", "text": resp.text})
+                if len(CHAT_HISTORY) > 20:
+                    CHAT_HISTORY.pop(0); CHAT_HISTORY.pop(0)
+                return resp.text.strip()
+        except Exception as e:
+            print(f"  [GenAI 오류, Ollama 폴백] {e}")
+
+    # ── 기본: Ollama 대화 ────────────────────────────────────────────────────
     # 리서치 보고서 생성 키워드 감지
     research_keywords = ["리서치", "연구", "학습", "보고서", "분석 보고"]
     if any(keyword in text for keyword in research_keywords):
@@ -616,29 +688,15 @@ def handle_message(text: str) -> str:
     kst = datetime.timezone(datetime.timedelta(hours=9))
     now_kst = datetime.datetime.now(kst)
     current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 대화 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
-
-    strict_instruction = """
-
-🚨 **응답 규칙 (엄격히 준수)**:
-1. 사용자가 질문한 것에만 답변하세요
-2. 질문하지 않은 에이전트나 작업에 대해 언급하지 마세요
-3. "루나가", "가희가", "~에이전트가" 같은 추측성 정보 제공 금지
-4. 짧고 간결하게 (2-3문장 이내)
-5. 확인되지 않은 정보는 "확인이 필요해요"라고만 답변
-"""
-    system_prompt = YEONGSUK_PERSONA + current_time_context + strict_instruction
-
-    # Ollama 연결 확인 (내부에서 코다리 복구 시도)
-    if not lm_available():
-        return "⚙️ 시스템 복구 중이에요. 잠시 후 다시 말씀해주세요!"
+    system_prompt = YEONGSUK_PERSONA + current_time_context
 
     try:
         response = lm_chat(
             history_text,
             system=system_prompt,
             json_mode=False,
-            max_tokens=200,  # 500 → 200으로 줄여서 간결하게
-            temperature=0.4  # 0.85 → 0.4로 낮춰서 추측 방지
+            max_tokens=500,
+            temperature=0.85
         )
 
         if response:
@@ -655,19 +713,23 @@ def handle_message(text: str) -> str:
     except Exception as e:
         print(f"  [Ollama Error] {e}")
 
-    return "⚙️ 응답 생성 중 문제가 발생했어요. 코다리가 복구 중일 거예요."
+    return "영숙이에요~ 응답 생성 중 문제가 생겼어요 😅"
 
 
 # ─── 메인 루프 ────────────────────────────────────────────────────────────
 def main():
     _clear_webhook()
+    load_env()
+    _init_superpowers()
+    _init_genai()
     print(f"🤖 영숙 텔레그램 봇 시작 (chat_id={CHAT_ID})")
+    print(f"   Ollama      : {'✅ 연결됨' if lm_available() else '❌ 연결 안 됨'}")
+    print(f"   CEO 디스패처: {'✅' if _dispatcher_mod else '❌'}")
+    print(f"   에이전트협의체: {'✅' if _council_mod else '❌'}")
+    print(f"   GenAI       : {'✅' if _genai_client else '❌'}")
 
-    # Ollama 연결 확인 (내부에서 코다리에게 복구 요청)
-    ollama_status = lm_available()
-    print(f"   Ollama: {'✅ 연결됨' if ollama_status else '⚙️ 코다리 복구 요청됨'}")
-
-    send("🤖 영숙이 출근했어요! 무엇을 도와드릴까요?")
+    superpower_status = "✅ 슈퍼파워 활성화" if (_dispatcher_mod and _council_mod) else "⚠️ 일부 슈퍼파워 비활성"
+    send(f"🤖 영숙이 출근했어요! 무엇을 도와드릴까요?\n{superpower_status}\n• /luna /instagram 등 명령으로 에이전트 즉시 실행 가능")
 
     offset = 0
     processed_messages = set()

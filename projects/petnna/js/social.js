@@ -1474,12 +1474,19 @@ function shareAlbumToActiveChat() {
 }
 
 // 7. 실시간 좋아요/댓글 알림 로그 매니저
-let likeNotifications = JSON.parse(localStorage.getItem('petna_like_notifications')) || [
-    { id: 1, type: "like", name: "송이 집사", pet: "🐶 송이", action: "님이 내 '산책 코스 자랑' 글에 하트를 보냈습니다. ❤️", time: "2분 전", isRead: false },
-    { id: 2, type: "comment", name: "바람 집사", pet: "🐰 코코", action: "님이 내 '귀여운 토끼 세수' 영상에 댓글을 남겼습니다.", comment: "영상이 끊김 없이 너무 부드럽고 귀여워요! 구간 편집 대박 ㅠㅠ 🌸", time: "15분 전", isRead: true },
-    { id: 3, type: "like", name: "치즈 집사", pet: "🐱 나비", action: "님이 집사 프로필에 따뜻한 응원의 좋아요를 남겼습니다.", time: "1시간 전", isRead: true },
-    { id: 4, type: "comment", name: "토리 집사", pet: "🐹 토리", action: "님이 내 신규 자랑 발행글에 댓글을 작성했습니다.", comment: "댕이 눈이 정말 보석 같네요! 간식 백만 번 주고 싶다... 🍖", time: "3시간 전", isRead: true }
-];
+// 봇 알림 초기화: localStorage의 NPC 봇 알림 데이터 제거
+(function clearBotNotifications() {
+    try {
+        const stored = JSON.parse(localStorage.getItem('petna_like_notifications') || '[]');
+        const BOT_NAMES = ['송이','바람','치즈','토리','초코','해피','나비','보리','하늘','구름'];
+        const cleaned = stored.filter(n => !BOT_NAMES.some(b => (n.name||'').includes(b)));
+        if (cleaned.length !== stored.length) {
+            localStorage.setItem('petna_like_notifications', JSON.stringify(cleaned));
+        }
+    } catch(e) {}
+})();
+
+let likeNotifications = JSON.parse(localStorage.getItem('petna_like_notifications')) || [];
 
 function saveLikeNotifications() {
     localStorage.setItem('petna_like_notifications', JSON.stringify(likeNotifications));

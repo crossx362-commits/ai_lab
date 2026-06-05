@@ -7,20 +7,17 @@ import sys
 import subprocess
 import time
 
-if hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
 _here = os.path.dirname(os.path.abspath(__file__))
-_ai_team = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+_root = _here
+for _ in range(8):
+    if os.path.isfile(os.path.join(_root, "ENV_MANIFEST.json")):
+        break
+    _root = os.path.dirname(_root)
+_ai_team = os.path.join(_root, "projects", "ai-team")
 if _ai_team not in sys.path:
     sys.path.insert(0, _ai_team)
-_root = os.path.abspath(os.path.join(_ai_team, ".."))
+
 from _shared.env_loader import load_env as _load_env
-from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import is_available, chat as lm_chat
 from _shared.resource_utils import get_system_load
 import _shared.gemini_client as _gc
@@ -28,22 +25,62 @@ import _shared.gemini_client as _gc
 _OLLAMA_PORT    = 11434
 _TEST_PROMPT    = "파이썬에서 1+1을 출력하는 한 줄 코드만 반환하세요."
 _EXPECTED_WORDS = ["print", "1+1", "2"]
+_LOG_FILE       = os.path.join(_root, "reports", "history", "kodari_ollama_log.md")
+
+
+def _kodari_log(msg: str, level: str = "info"):
+    """코다리 내부 로그 파일에 기록 (텔레그램 미사용)."""
+    import datetime
+    os.makedirs(os.path.dirname(_LOG_FILE), exist_ok=True)
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    icon = {"info": "ℹ️", "warn": "⚠️", "error": "❌", "critical": "🚨"}.get(level, "•")
+    with open(_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"\n- [{ts}] {icon} [{level.upper()}] {msg}")
+
+
+def _escalate_if_critical(msg: str):
+    """자동 복구 불가 시 예원 CEO 디스패처 통해 코다리에 업무 전달."""
+    try:
+        import importlib.util as _ilu
+        _dp = os.path.join(_ai_team, "skills", "예원_CEO", "tools", "yewon_dispatcher.py")
+        spec = _ilu.spec_from_file_location("yewon_dispatcher", _dp)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.dispatch_and_execute(f"코다리야, Ollama 서버가 다운되어 자동 복구에 실패했어. 직접 확인하고 고쳐줘: {msg}")
+        print("  [코다리] CEO 디스패처를 통해 복구 업무 전달 완료")
+    except Exception as e:
+        print(f"  [코다리] 디스패처 전달 실패: {e}")
 
 
 def _proc_running() -> bool:
     try:
-        r = subprocess.run(["pgrep", "-f", "ollama"],
-                           capture_output=True, text=True)
-        return bool(r.stdout.strip())
+        if sys.platform == "win32":
+            r = subprocess.run(
+                ["tasklist", "/fi", "imagename eq ollama.exe"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace"
+            )
+            return "ollama.exe" in r.stdout.lower()
+        else:
+            r = subprocess.run(["pgrep", "-f", "ollama"], capture_output=True, text=True)
+            return bool(r.stdout.strip())
     except Exception:
         return False
 
 
 def _port_in_use() -> bool:
     try:
-        r = subprocess.run(["lsof", "-i", f":{_OLLAMA_PORT}", "-sTCP:LISTEN"],
-                           capture_output=True, text=True)
-        return bool(r.stdout.strip())
+        if sys.platform == "win32":
+            r = subprocess.run(
+                ["netstat", "-ano"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace"
+            )
+            return f":{_OLLAMA_PORT} " in r.stdout
+        else:
+            r = subprocess.run(
+                ["lsof", "-i", f":{_OLLAMA_PORT}", "-sTCP:LISTEN"],
+                capture_output=True, text=True
+            )
+            return bool(r.stdout.strip())
     except Exception:
         return False
 
@@ -99,43 +136,40 @@ def run_check():
         if _validate_response(resp):
             print("  [코다리] Ollama 정상 (코딩 모델 응답 확인)")
             return
-        print(
-            f"⚠️ [코다리] Ollama API 응답하나 코딩 모델 출력 품질 이상\n\n"
-            f"📋 테스트 응답:\n{(resp or '')[:400]}\n\n"
-            "모델이 올바르게 로드됐는지 확인하세요."
-        )
+        # 품질 이상 → 코다리 내부 로그만
+        _kodari_log("Ollama API 응답하나 코딩 모델 출력 품질 이상", level="warn")
         return
 
     diag  = _gather_diagnostics()
     cause = _analyze_cause(diag)
 
-    diag_text = (
-        f"🔍 진단 정보:\n"
-        f"• Ollama 프로세스: {'실행 중' if diag['proc_running'] else '없음'}\n"
-        f"• 포트 {_OLLAMA_PORT}: {'열려 있음' if diag['port_in_use'] else '닫혀 있음'}\n"
-        f"• CPU 사용률: {diag['cpu_usage']}%\n"
-        f"• RAM 사용률: {diag['ram_usage']}%\n\n"
-        f"🧠 원인 분석:\n{cause}"
+    diag_msg = (
+        f"Ollama API 무응답\n"
+        f"프로세스: {'실행중' if diag['proc_running'] else '없음'} | "
+        f"포트{_OLLAMA_PORT}: {'열림' if diag['port_in_use'] else '닫힘'} | "
+        f"CPU:{diag['cpu_usage']}% RAM:{diag['ram_usage']}%\n"
+        f"원인: {cause}"
     )
-
-    print(
-        f"🚨 [코다리] Ollama API 무응답\n\n"
-        f"{diag_text}\n\n"
-        f"🔄 재시작 시도 중..."
-    )
+    _kodari_log(diag_msg, level="error")
+    print(f"  [코다리] {diag_msg}")
+    print("  [코다리] Ollama 재시작 시도 중...")
 
     recovered = _try_restart()
 
     if recovered:
-        print("✅ [코다리] Ollama 재시작 완료 — API 정상")
+        _kodari_log("Ollama 재시작 완료 — API 정상", level="info")
+        print("  [코다리] ✅ Ollama 재시작 완료")
     else:
-        print(
-            "❌ [코다리] Ollama 자동 재시작 실패\n\n"
-            "수동 조치 필요:\n"
-            "1. 터미널에서 `ollama serve` 실행\n"
-            "2. `ollama list` 로 모델 확인\n"
-            "3. 필요 시 `ollama pull <모델명>` 으로 재설치"
+        err_msg = (
+            "Ollama 자동 재시작 실패 — 수동 조치 필요\n"
+            "1. `ollama serve` 실행\n"
+            "2. `ollama list` 모델 확인\n"
+            "3. 필요 시 `ollama pull <모델명>`"
         )
+        _kodari_log(err_msg, level="critical")
+        print(f"  [코다리] ❌ {err_msg}")
+        # 수동 조치 불가능한 경우에만 사장님께 전달 (critical 레벨)
+        _escalate_if_critical(err_msg)
 
 
 if __name__ == "__main__":

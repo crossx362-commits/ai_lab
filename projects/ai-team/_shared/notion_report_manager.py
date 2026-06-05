@@ -191,7 +191,7 @@ class NotionReportManager:
             import urllib.request
 
             properties = {
-                "Name": {
+                "제목": {
                     "title": [
                         {
                             "text": {
@@ -200,17 +200,17 @@ class NotionReportManager:
                         }
                     ]
                 },
-                "Agent": {
+                "에이전트": {
                     "select": {
                         "name": agent_name
                     }
                 },
-                "Status": {
-                    "status": {
-                        "name": "Done"
+                "상태": {
+                    "select": {
+                        "name": "완료"
                     }
                 },
-                "Result": {
+                "내용": {
                     "rich_text": [
                         {
                             "text": {
@@ -219,7 +219,7 @@ class NotionReportManager:
                         }
                     ]
                 },
-                "Completed": {
+                "날짜": {
                     "date": {
                         "start": datetime.datetime.now().isoformat()
                     }
@@ -234,7 +234,7 @@ class NotionReportManager:
                             "url": value
                         }
                     elif key == "priority":
-                        properties["Priority"] = {
+                        properties["우선순위"] = {
                             "select": {
                                 "name": value
                             }

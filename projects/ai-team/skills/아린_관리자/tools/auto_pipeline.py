@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import urllib.parse
 import xml.etree.ElementTree as ET
 import requests
 import time
@@ -27,11 +26,9 @@ if _root not in sys.path:
 from uploader import InstaUploader, load_env, ensure_token_fresh
 from _shared.telegram_notifier import send_telegram_message
 from prompt_crafter import craft_insta_prompt
-import importlib
+import importlib.util as _ilu
 from analysis import run_analysis_and_deepsearch
 from decision import make_decision
-from youtube_generator import generate_youtube_assets
-import importlib.util as _ilu
 # skills/아린_관리자/tools/ → skills/가희_검수관/tools/
 _gahee_path = os.path.join(os.path.dirname(__file__), "..", "..", "가희_검수관", "tools", "content_inspector.py")
 _gahee_spec = _ilu.spec_from_file_location("content_inspector", _gahee_path)
@@ -898,53 +895,7 @@ def main(dry_run=False):
     else:
         print("❌ 자동 포스팅에 실패했습니다.")
 
-    # ─── YouTube 파이프라인 (경수 검수 포함) ─────────────────────────────────
-    send_telegram_message("🎬 [아린] YouTube 콘텐츠 생성 단계를 시작합니다...")
-    try:
-        yt_data = generate_youtube_assets(post_data, img_bytes)
-
-        # 경수 YouTube 메타데이터 검수
-        send_telegram_message("🔍 [경수] YouTube 메타데이터 검수 중...")
-        yt_check = kyungsoo_inspect_youtube(
-            yt_data["title"], yt_data["description"], yt_data["tags"]
-        )
-        if not yt_check["pass"]:
-            issues_str = ", ".join(yt_check["issues"])
-            print(f"⚠️ [경수] YouTube 검수 실패: {issues_str}")
-            send_telegram_message(f"⚠️ [경수] YouTube 검수 실패\n사유: {issues_str}")
-        else:
-            print(f"✅ [경수] YouTube 메타데이터 검수 통과 (점수: {yt_check['score']})")
-            send_telegram_message(
-                f"✅ [경수] YouTube 메타데이터 검수 통과 (점수: {yt_check['score']})"
-            )
-
-        # 경수 인스타 캡션 재검수
-        insta_check = kyungsoo_inspect_caption(final_caption)
-        if not insta_check["pass"]:
-            issues_str = ", ".join(insta_check["issues"])
-            print(f"⚠️ [경수] 인스타 캡션 재검수 이슈: {issues_str}")
-            send_telegram_message(f"⚠️ [경수] 인스타 캡션 이슈\n{issues_str}")
-        else:
-            print(f"✅ [경수] 인스타 캡션 재검수 통과 (점수: {insta_check['score']})")
-
-        # 경수 최종 승인 전송
-        approved = await_kyungsoo_approval(yt_data["decision"], channel="YouTube")
-        if approved:
-            print("✅ [경수] YouTube 콘텐츠 승인 완료")
-            send_telegram_message(
-                f"🎬 [아린] YouTube 콘텐츠 생성 완료!\n"
-                f"📌 제목: {yt_data['title']}\n"
-                f"🏷️ 태그: {', '.join(yt_data['tags'][:5])}\n"
-                f"🎞️ 영상: {'생성됨' if yt_data.get('video_path') else '이미지 없음 (건너뜀)'}"
-            )
-            if not dry_run and yt_data.get("video_path"):
-                print(f"  📁 YouTube 영상 파일: {yt_data['video_path']}")
-                print("  ℹ️  실제 YouTube 업로드는 OAuth 인증 후 youtube_uploader.py로 수행합니다.")
-        else:
-            print("❌ [경수] YouTube 콘텐츠 미승인")
-    except Exception as e:
-        print(f"⚠️ YouTube 파이프라인 오류: {e}")
-        send_telegram_message(f"⚠️ [아린] YouTube 파이프라인 오류: {e}")
+    # 아린은 인스타그램 전담 — YouTube 영상 생성 없음 (사장님 지시)
 
     # 깃 동기화
     git_sync()

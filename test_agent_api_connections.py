@@ -55,7 +55,7 @@ def test_telegram():
 
         # 간단한 getMe API 호출로 봇 연결만 확인
         import urllib.request
-import json
+        import json
         url = f"https://api.telegram.org/bot{bot_token}/getMe"
         with urllib.request.urlopen(url, timeout=5) as response:
             data = json.loads(response.read())

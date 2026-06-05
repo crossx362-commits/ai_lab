@@ -172,13 +172,20 @@ def update_video(uploader, video_id, new_title, new_description):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="YouTube 영상 메타데이터 업데이트")
+    parser.add_argument("--id", dest="video_id", help="단건 업데이트: 특정 video_id만 처리 (없으면 전체)")
+    args = parser.parse_args()
+
     print("=" * 70)
-    print("  YouTube 채널 전체 영상 메타데이터 업데이트")
+    if args.video_id:
+        print(f"  YouTube 단건 영상 메타데이터 업데이트 (ID: {args.video_id})")
+    else:
+        print("  YouTube 채널 전체 영상 메타데이터 업데이트")
     print("  SKILL 규칙 준수 (한국어 중심, 메타데이터 블록, 해시태그 10개 이하)")
     print("=" * 70)
     print()
 
-    # YouTube 인증
     uploader = YouTubeUploader()
     if not uploader.authenticate():
         print('❌ YouTube 인증 실패')
@@ -187,18 +194,18 @@ def main():
     print('✅ YouTube 인증 성공')
     print()
 
-    # 모든 영상 목록 가져오기
-    print('📋 업로드 영상 목록 가져오는 중...')
-    videos = get_all_uploaded_videos(uploader)
+    if args.video_id:
+        # 단건 모드
+        videos = [{"video_id": args.video_id, "title": args.video_id}]
+    else:
+        print('📋 업로드 영상 목록 가져오는 중...')
+        videos = get_all_uploaded_videos(uploader)
+        if not videos:
+            print('❌ 영상이 없습니다.')
+            return
+        print(f'✅ 총 {len(videos)}개 영상 발견')
+        print()
 
-    if not videos:
-        print('❌ 영상이 없습니다.')
-        return
-
-    print(f'✅ 총 {len(videos)}개 영상 발견')
-    print()
-
-    # 각 영상 업데이트
     success_count = 0
     fail_count = 0
 
@@ -209,14 +216,11 @@ def main():
         print(f"[{idx}/{len(videos)}] 처리 중...")
         print(f"  기존 제목: {old_title}")
 
-        # 새 제목 생성
         new_title = generate_new_title(old_title)
         print(f"  새 제목: {new_title}")
 
-        # 새 설명문 생성
         new_description = generate_description(new_title)
 
-        # 업데이트
         if update_video(uploader, video_id, new_title, new_description):
             print(f"  ✅ 업데이트 완료: https://youtu.be/{video_id}")
             success_count += 1
@@ -225,11 +229,9 @@ def main():
 
         print()
 
-        # API 할당량 보호 (1초 대기)
         if idx < len(videos):
             time.sleep(1)
 
-    # 결과 요약
     print("=" * 70)
     print("  업데이트 완료")
     print("=" * 70)
