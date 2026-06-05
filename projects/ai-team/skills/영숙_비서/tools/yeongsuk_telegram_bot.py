@@ -61,6 +61,9 @@ YEONGSUK_PERSONA = """당신은 영숙이에요. 30대 초반, 밝고 따뜻한 
 - 에이전트 업무 상태 문의 시 → [실제 데이터] 섹션 확인 후 답변
 - 모르면 솔직하게: "그 부분은 확인이 필요해요"
 - 추측성 답변 금지: "아마도", "~인 것 같아요" 등 사용 금지
+- **질문하지 않은 내용에 대해 설명하지 마세요** - 사용자가 물어본 것에만 답변
+- **다른 에이전트 추천 금지** - "루나가 하고 있어요", "현빈에게 물어보세요" 같은 추측 금지
+- **짧게 답변** - 불필요한 설명이나 추가 질문 없이 핵심만
 
 📋 전체 에이전트 목록 (11개):
 콘텐츠 제작팀:
@@ -599,7 +602,17 @@ def handle_message(text: str) -> str:
     kst = datetime.timezone(datetime.timedelta(hours=9))
     now_kst = datetime.datetime.now(kst)
     current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 대화 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
-    system_prompt = YEONGSUK_PERSONA + current_time_context
+
+    strict_instruction = """
+
+🚨 **응답 규칙 (엄격히 준수)**:
+1. 사용자가 질문한 것에만 답변하세요
+2. 질문하지 않은 에이전트나 작업에 대해 언급하지 마세요
+3. "루나가", "가희가", "~에이전트가" 같은 추측성 정보 제공 금지
+4. 짧고 간결하게 (2-3문장 이내)
+5. 확인되지 않은 정보는 "확인이 필요해요"라고만 답변
+"""
+    system_prompt = YEONGSUK_PERSONA + current_time_context + strict_instruction
 
     # Ollama 연결 확인 (내부에서 코다리 복구 시도)
     if not lm_available():
@@ -610,8 +623,8 @@ def handle_message(text: str) -> str:
             history_text,
             system=system_prompt,
             json_mode=False,
-            max_tokens=500,
-            temperature=0.85
+            max_tokens=200,  # 500 → 200으로 줄여서 간결하게
+            temperature=0.4  # 0.85 → 0.4로 낮춰서 추측 방지
         )
 
         if response:
