@@ -848,8 +848,6 @@ def _check_instagram_posts() -> list[dict]:
 
             if not caption:
                 issues.append("캡션 없음")
-            elif len(caption) < 50:
-                issues.append("캡션 너무 짧음 (50자 미만)")
 
             # 구조화 포맷 유출 감지
             if _is_structured_caption(caption):
@@ -963,8 +961,6 @@ def inspect_caption(caption: str, agent: str = "아린") -> dict:
     lower = caption.lower()
     if not caption.strip():
         issues.append("캡션 없음")
-    elif len(caption) < 50:
-        issues.append(f"캡션 너무 짧음 ({len(caption)}자)")
 
     # 구조화 포맷 유출 감지 ("1. 사진 느낌 설명:" 등)
     if _is_structured_caption(caption):

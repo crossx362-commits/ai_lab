@@ -30,12 +30,25 @@ _root = find_project_root(_here)
 SKILLS_DIR = os.path.join(_root, "projects", "ai-team", "skills")
 DRY_RUN    = "--check" in sys.argv
 
-AGENTS = ["루나", "아린", "가희", "현빈", "영숙", "경수", "코다리", "티모"]
+AGENT_FOLDER_MAP = {
+    "루나": "루나_디렉터",
+    "아린": "아린_관리자",
+    "가희": "가희_검수관",
+    "현빈": "현빈_전략가",
+    "영숙": "영숙_비서",
+    "경수": "경수_수사관",
+    "코다리": "코다리_개발자",
+    "티모": "티모_디자이너",
+    "로율": "로율_변호사",
+    "케빈": "케빈_인프라",
+}
+AGENTS = list(AGENT_FOLDER_MAP.keys())
 
 
 def _read_skill(agent: str) -> str | None:
     """에이전트 SKILL.md 읽기."""
-    path = os.path.join(SKILLS_DIR, agent, "SKILL.md")
+    folder = AGENT_FOLDER_MAP.get(agent, agent)
+    path = os.path.join(SKILLS_DIR, folder, "SKILL.md")
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
