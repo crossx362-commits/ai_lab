@@ -11,8 +11,36 @@ let trimEnd = 5;
 // 이웃 답장 대기 전역 상태
 let activeReplyNotificationId = null;
 
+// AI팀 에이전트 이웃 자동 등록 (사장님 이웃 목록에 항상 표시)
+const AI_AGENT_FRIENDS = [
+    { id: 'agent_arin',    nickname: '아린',   petName: '📸 아린이',  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=arin',    status: 'online', chemistry: 87, personality: '감성적·비주얼 중시', unread: 0 },
+    { id: 'agent_luna',    nickname: '루나',   petName: '🎵 루나',    avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=luna',    status: 'online', chemistry: 92, personality: '시티팝 감성 디렉터',  unread: 0 },
+    { id: 'agent_hyunbin', nickname: '현빈',   petName: '💡 현빈이',  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=hyunbin', status: 'online', chemistry: 79, personality: '분석적·전략적',     unread: 0 },
+    { id: 'agent_gahee',   nickname: '가희',   petName: '✅ 가희봄',  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=gahee',   status: 'online', chemistry: 83, personality: '꼼꼼·건강 관심',    unread: 0 },
+    { id: 'agent_timo',    nickname: '티모',   petName: '🎨 티모냥',  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=timo',    status: 'online', chemistry: 76, personality: '감각적·디자인 중시', unread: 0 },
+    { id: 'agent_kevin',   nickname: '케빈',   petName: '⚙️ 케빈',    avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=kevin',   status: 'online', chemistry: 81, personality: '인프라·안정 중시', unread: 0 },
+    { id: 'agent_kodari',  nickname: '코다리',  petName: '💻 코다리',  avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=kodari',  status: 'online', chemistry: 88, personality: '개발·구현 전문가',  unread: 0 },
+];
+
+function ensureAgentFriends() {
+    const existing = (friends || []).map(f => f.id);
+    let added = false;
+    AI_AGENT_FRIENDS.forEach(agent => {
+        if (!existing.includes(agent.id)) {
+            friends.push(agent);
+            added = true;
+        }
+    });
+    if (added) {
+        try {
+            localStorage.setItem(AppConstants.StorageKeys.FRIENDS, JSON.stringify(friends));
+        } catch(e) {}
+    }
+}
+
 // 1. 소셜 & 피드 메인 렌더링 진입점
 function renderSocialRoom() {
+    ensureAgentFriends();
     const reqList = document.getElementById('friend-requests-list');
     const reqCount = document.getElementById('req-count');
     const friendsList = document.getElementById('friends-list');
@@ -1573,12 +1601,13 @@ function submitNeighborReply(id) {
     showToast(`💌 ${found.name} (${found.pet}) 님에게 감사의 마음이 배달되었습니다!`);
 }
 
-// 8. 실시간 알림 시뮬레이션 엔진 병합
+// 8. 실시간 알림 시뮬레이션 엔진 — 비활성화 (사장님 지시: 봇 알림 금지)
 let likeSimulationInterval = null;
 
 function initLikeNotificationSimulation() {
+    return; // 봇 알림 비활성화
     if (likeSimulationInterval) clearInterval(likeSimulationInterval);
-    
+
     likeSimulationInterval = setInterval(() => {
         const petPool = [
             { name: "초코", type: "🐶" },
