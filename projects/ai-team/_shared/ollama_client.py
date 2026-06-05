@@ -21,7 +21,7 @@ _CACHE_TTL = 60  # 1분 — 모델 변경 시 빠르게 반영
 
 
 def _request_kodari_fix():
-    print("  [Ollama Client] Ollama 연결 불가 — 코다리에게 헬스체크 및 자동 복구 요청...")
+    print("  [Ollama Client] Ollama 연결 불가 - 코다리에게 헬스체크 및 자동 복구 요청...")
     try:
         import sys
         import os
