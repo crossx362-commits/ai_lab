@@ -142,8 +142,7 @@ def run_audit() -> bool:
     if not lm_available():
         msg = f"⚠️ [CEO 예원] 스킬 감사 실패 ({timestamp}) — Ollama 미실행"
         print(msg)
-        if not DRY_RUN:
-            send_telegram_message(msg)
+        # Ollama 관련 에러는 텔레그램 메시지를 전송하지 않음
         return False
 
     print(f"📋 [CEO 예원] 스킬 감사 시작 ({timestamp})")

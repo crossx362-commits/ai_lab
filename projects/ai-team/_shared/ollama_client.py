@@ -20,6 +20,24 @@ _cache: dict = {}
 _CACHE_TTL = 60  # 1분 — 모델 변경 시 빠르게 반영
 
 
+def _request_kodari_fix():
+    print("  [Ollama Client] Ollama 연결 불가 — 코다리에게 헬스체크 및 자동 복구 요청...")
+    try:
+        import sys
+        import os
+        import subprocess
+        # Get projects/ai-team directory path
+        here = os.path.dirname(os.path.abspath(__file__))
+        script_path = os.path.abspath(os.path.join(here, "..", "skills", "코다리_개발자", "tools", "ollama_health_check.py"))
+        if os.path.exists(script_path):
+            # Run the script synchronously to let it try to restart Ollama
+            subprocess.run([sys.executable, script_path], capture_output=True, text=True, encoding="utf-8")
+        else:
+            print("  ❌ [Ollama Client] 코다리 헬스체크 스크립트를 찾을 수 없습니다.")
+    except Exception as e:
+        print(f"  ❌ [Ollama Client] 코다리 복구 요청 실패: {e}")
+
+
 def _endpoint() -> str:
     return os.getenv("OLLAMA_URL", "http://localhost:11434/v1/chat/completions")
 
@@ -56,7 +74,7 @@ def _pick_model(models: list, task: str) -> str | None:
 
 
 def _detect_model(task: str = "") -> str | None:
-    """Ollama에서 자동 모델 감지. 60초 캐시."""
+    """Ollama에서 자동 모델 감지. 60초 캐시. 연결 실패 시 코다리에게 복구 요청 후 대기."""
     explicit = os.getenv("OLLAMA_MODEL", "")
     if explicit:
         return explicit
@@ -67,6 +85,18 @@ def _detect_model(task: str = "") -> str | None:
         return entry[0]
 
     models = _list_models()
+    
+    if not models:
+        max_retries = 30
+        for i in range(max_retries):
+            _request_kodari_fix()
+            print(f"  [Ollama Client] Ollama 복구 대기 중... ({i+1}/{max_retries})")
+            time.sleep(10)
+            models = _list_models()
+            if models:
+                print("  [Ollama Client] ✅ Ollama 연결 복구 완료! 작업을 재개합니다.")
+                break
+
     model_id = _pick_model(models, task)
 
     if model_id:
@@ -185,5 +215,19 @@ def chat_vision(prompt: str, image_bytes: bytes, max_tokens: int = 500) -> str |
 
 
 def is_available() -> bool:
-    """Ollama 서버가 응답하고 모델이 로드돼 있는지 확인."""
-    return bool(_list_models())
+    """Ollama 서버가 응답하고 모델이 로드돼 있는지 확인. 연결 실패 시 코다리에게 복구를 요청하고 대기."""
+    models = _list_models()
+    if bool(models):
+        return True
+        
+    max_retries = 30
+    for i in range(max_retries):
+        _request_kodari_fix()
+        print(f"  [Ollama Client] Ollama 복구 대기 중... ({i+1}/{max_retries})")
+        time.sleep(10)
+        models = _list_models()
+        if bool(models):
+            print("  [Ollama Client] ✅ Ollama 연결 복구 완료! 작업을 재개합니다.")
+            return True
+            
+    return False

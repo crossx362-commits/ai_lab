@@ -7,13 +7,19 @@ import sys
 import datetime
 import json
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # 프로젝트 루트 경로 설정
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
+_ai_team = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team not in sys.path:
+    sys.path.insert(0, _ai_team)
+_root = os.path.abspath(os.path.join(_ai_team, ".."))
 from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 from _shared.resource_utils import get_resource_report_html, get_heavy_processes_report
@@ -56,6 +62,14 @@ def run_check():
         icon = "🟢" if ok else "🟡"
         if not ok: has_issues = True
         status_lines.append(f"{icon} <b>{name}</b>: {msg}")
+
+    # 2.5 Ollama 상태 점검 및 자동 수복
+    print("  [코다리] Ollama 상태 점검 및 수복 시작...")
+    try:
+        import ollama_health_check
+        ollama_health_check.run_check()
+    except Exception as e:
+        print(f"  ❌ [코다리] Ollama 헬스체크 실행 오류: {e}")
 
     # 3. 통합 리포트 생성 및 전송
     full_report = (

@@ -456,7 +456,8 @@ def _fix_channel_duplicates(videos: list[dict]) -> dict:
 def _analyze_with_ollama(info: dict) -> dict:
     """Ollama로 콘텐츠 정책·품질 종합 분석."""
     if not lm_available():
-        return {"warnings": ["Ollama 미연결 — AI 분석 건너뜀"]}
+        # Ollama 관련 연결 오류는 경고를 추가하지 않음 (텔레그램 방지)
+        return {}
 
     prompt = (
         f"유튜브 음악 영상 콘텐츠를 정책 위반 관점에서 분석해줘.\n\n"

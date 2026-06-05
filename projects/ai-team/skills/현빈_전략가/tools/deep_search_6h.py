@@ -86,7 +86,7 @@ def run_deep_research(custom_topic=None):
     if not lm_available():
         msg = "❌ Ollama 로컬 서버를 사용할 수 없습니다."
         _log(msg)
-        send_telegram_message(f"⚠️ [현빈] 6시간 딥서치 실패 — Ollama 미가동")
+        # Ollama 관련 에러는 텔레그램 메시지를 전송하지 않음
         return msg
         
     topics = generate_dynamic_topics(custom_topic) if custom_topic else DEFAULT_TOPICS

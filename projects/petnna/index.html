@@ -48,7 +48,7 @@
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="css/leaflet.css">
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=132">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>
         window._env_ = {
@@ -123,8 +123,15 @@
         </div>
     </header>
 
+    <!-- 📱 모바일 상단 헤더 -->
+    <div id="mobile-header" class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-amber-50 shadow-sm px-4 py-3 flex items-center justify-between md:hidden" style="display:none;">
+        <span class="text-xs font-black text-brand-500">🐾 펫과나</span>
+        <h1 id="mobile-page-title" class="text-sm font-black text-gray-800">마이펫</h1>
+        <div class="w-12"></div>
+    </div>
+
     <!-- Main content -->
-    <main style="display:none;">
+    <main style="display:none;" class="max-w-6xl mx-auto px-4 py-6 w-full">
         <div id="tab-mypet" class="tab-content"></div>
         <div id="tab-walk" class="tab-content hidden"></div>
         <div id="tab-saju" class="tab-content hidden"></div>
@@ -317,7 +324,7 @@
     </div>
     
     <!-- 📱 모바일 하단 네비게이션 바 -->
-    <div id="mobile-navbar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-50 shadow-lg z-40 py-2 px-3 hidden flex justify-around items-center h-safe-bottom">
+    <div id="mobile-navbar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-50 shadow-lg z-40 px-3 hidden flex justify-around items-center">
         <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="mypet" onclick="switchTab('mypet')">
             <i class="fa-solid fa-house"></i>
             <span>마이펫</span>

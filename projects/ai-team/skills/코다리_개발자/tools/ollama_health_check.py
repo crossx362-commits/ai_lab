@@ -7,12 +7,18 @@ import sys
 import subprocess
 import time
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 _here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, ".agent")):
-        break
-    _root = os.path.dirname(_root)
+_ai_team = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+if _ai_team not in sys.path:
+    sys.path.insert(0, _ai_team)
+_root = os.path.abspath(os.path.join(_ai_team, ".."))
 from _shared.env_loader import load_env as _load_env
 from _shared.telegram_notifier import send_telegram_message
 from _shared.ollama_client import is_available, chat as lm_chat
@@ -93,9 +99,9 @@ def run_check():
         if _validate_response(resp):
             print("  [코다리] Ollama 정상 (코딩 모델 응답 확인)")
             return
-        send_telegram_message(
-            f"⚠️ <b>[코다리]</b> Ollama API 응답하나 코딩 모델 출력 품질 이상\n\n"
-            f"📋 테스트 응답:\n<code>{(resp or '')[:400]}</code>\n\n"
+        print(
+            f"⚠️ [코다리] Ollama API 응답하나 코딩 모델 출력 품질 이상\n\n"
+            f"📋 테스트 응답:\n{(resp or '')[:400]}\n\n"
             "모델이 올바르게 로드됐는지 확인하세요."
         )
         return
@@ -112,8 +118,8 @@ def run_check():
         f"🧠 원인 분석:\n{cause}"
     )
 
-    send_telegram_message(
-        f"🚨 <b>[코다리]</b> Ollama API 무응답\n\n"
+    print(
+        f"🚨 [코다리] Ollama API 무응답\n\n"
         f"{diag_text}\n\n"
         f"🔄 재시작 시도 중..."
     )
@@ -121,10 +127,10 @@ def run_check():
     recovered = _try_restart()
 
     if recovered:
-        send_telegram_message("✅ <b>[코다리]</b> Ollama 재시작 완료 — API 정상")
+        print("✅ [코다리] Ollama 재시작 완료 — API 정상")
     else:
-        send_telegram_message(
-            "❌ <b>[코다리]</b> Ollama 자동 재시작 실패\n\n"
+        print(
+            "❌ [코다리] Ollama 자동 재시작 실패\n\n"
             "수동 조치 필요:\n"
             "1. 터미널에서 `ollama serve` 실행\n"
             "2. `ollama list` 로 모델 확인\n"

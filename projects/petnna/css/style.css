@@ -448,39 +448,54 @@ body.theme-sepia .border-gray-100 {
     box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
 }
 
-/* 모바일 네비게이션 액티브 탭 콤팩트 스케일링 */
+/* 모바일 네비게이션 버튼 (Fitts's Law 반영 및 수직 중앙 맞춤 설계) */
 .mobile-tab-btn {
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    padding: 4px 2px;
+    transition: all 0.2s ease;
+    padding: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
 }
 .mobile-tab-btn i {
-    font-size: 1.15rem;
-    opacity: 0.65;
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 1.4rem !important;
+    height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0.6;
+    transition: all 0.2s ease;
 }
 .mobile-tab-btn span {
-    font-size: 0px;
-    opacity: 0;
-    max-height: 0px;
-    overflow: hidden;
-    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    transform: translateY(4px);
+    font-size: 9.5px !important;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    margin-top: 4px !important;
+    font-weight: 700 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    line-height: 1.2 !important;
+    display: block !important;
 }
 .mobile-tab-btn.text-brand-500 {
-    transform: translateY(-4px) scale(1.08);
+    transform: translateY(-1px);
 }
 .mobile-tab-btn.text-brand-500 i {
     opacity: 1;
-    transform: scale(1.22);
-    filter: drop-shadow(0 3px 6px rgba(227, 119, 54, 0.3));
+    transform: scale(1.1);
+    filter: drop-shadow(0 2px 4px rgba(227, 119, 54, 0.2));
 }
 .mobile-tab-btn.text-brand-500 span {
-    font-size: 8px;
     opacity: 1;
-    max-height: 12px;
-    margin-top: 2px;
-    transform: translateY(0);
+    font-weight: 900 !important;
 }
+
 
 /* 🍮 젤리처럼 통통 튀는 알림 뱃지 애니메이션 */
 @keyframes jellyBounce {
@@ -514,17 +529,11 @@ a:focus-visible {
     outline-offset: 2px !important;
 }
 
-/* 멀티펫 스와이프 카드 */
+/* 멀티펫 스테이지 리스트 */
 #pet-stage-list {
-    flex-direction: row !important;
-    gap: 10px !important;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding: 4px 2px;
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
 }
 /* 더보기 드로어 */
 #more-drawer.open { transform: translateY(0); }
@@ -532,6 +541,13 @@ a:focus-visible {
 
 /* 안전 영역 (iPhone 홈 인디케이터) */
 .h-safe-bottom { height: env(safe-area-inset-bottom, 0px); }
+
+/* 모바일 하단 네비게이션 구체적 높이와 안전 영역 패딩 계산 */
+#mobile-navbar {
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    align-items: stretch !important; /* 자식 요소들을 상하로 꽉 채움 */
+}
 
 /* ── 다크모드: 신규 UI 요소 ────────────────────────────────── */
 body.theme-dark .bg-emerald-50   { background-color: rgba(16,185,129,0.12) !important; }
@@ -663,17 +679,6 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     background-color: rgba(251, 146, 60, 0.1);
 }
 
-.mobile-tab-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
 
 /* hidden 클래스가 flex/grid 등 display 클래스를 항상 이김 */
 .hidden { display: none !important; }
@@ -686,6 +691,9 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     #mobile-navbar {
         display: none !important;
     }
+    #mobile-header {
+        display: none !important;
+    }
 }
 
 @media (max-width: 767px) {
@@ -695,7 +703,10 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     body.logged-in #mobile-navbar {
         display: flex !important;
     }
+    body.logged-in #mobile-header {
+        display: flex !important;
+    }
     body.logged-in {
-        padding-bottom: 72px !important;
+        padding-bottom: 80px !important;
     }
 }
