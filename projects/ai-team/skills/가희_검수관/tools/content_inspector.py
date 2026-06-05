@@ -310,21 +310,9 @@ def _generate_new_thumbnail(keyword: str, video_id: str) -> str | None:
 
 
 def _set_youtube_private(video_id: str) -> bool:
-    """YouTube 영상을 비공개로 전환. 성공 시 True."""
-    youtube = _get_youtube_write()
-    if not youtube:
-        print(f"    ⚠️ YouTube 인증 없음 — 비공개 전환 불가: {video_id}")
-        return False
-    try:
-        youtube.videos().update(
-            part="status",
-            body={"id": video_id, "status": {"privacyStatus": "private"}},
-        ).execute()
-        print(f"    🔒 비공개 전환 완료: {video_id}")
-        return True
-    except Exception as e:
-        print(f"    ❌ 비공개 전환 실패 ({video_id}): {e}")
-        return False
+    """YouTube 영상을 비공개로 전환 (비활성화됨 - 공개 상태 유지)."""
+    print(f"    ⚠️ 비공개 전환 비활성화 - 영상 {video_id}는 공개 상태 유지")
+    return False  # 비공개 전환 하지 않음
 
 
 def _upload_yt_thumbnail(youtube, video_id: str, img_path: str) -> bool:

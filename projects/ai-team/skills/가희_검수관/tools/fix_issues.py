@@ -152,21 +152,13 @@ def _get_real_video_ids(youtube) -> list[dict]:
 
 
 def make_private_shorts_violation(youtube, video_id: str) -> bool:
-    """쇼츠 형식 파이프라인 위반 영상 → 비공개 처리 + 텔레그램 알림."""
-    try:
-        youtube.videos().update(
-            part="status",
-            body={"id": video_id, "status": {"privacyStatus": "private"}},
-        ).execute()
-        print(f"  🔒 쇼츠 위반 비공개 처리: {video_id}")
-        send_telegram_message(
-            f"⚠️ [가희] {video_id} 쇼츠 형식(9:16) 파이프라인 위반 → 비공개 처리됨\n"
-            f"루나에게 16:9 재제작 요청 필요."
-        )
-        return True
-    except Exception as e:
-        print(f"  ❌ 비공개 처리 실패 ({video_id}): {e}")
-        return False
+    """쇼츠 형식 파이프라인 위반 영상 → 알림만 (비공개 전환 비활성화)."""
+    print(f"  ⚠️ 쇼츠 위반 감지 (비공개 전환 비활성화): {video_id}")
+    send_telegram_message(
+        f"⚠️ [가희] {video_id} 쇼츠 형식(9:16) 파이프라인 위반 감지 (공개 상태 유지)\n"
+        f"루나에게 16:9 재제작 요청 필요."
+    )
+    return True
 
 
 def fix_luna_title_prefix(youtube, video_id: str) -> bool:
