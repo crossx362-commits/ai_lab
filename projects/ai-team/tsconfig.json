@@ -5,7 +5,11 @@
     "outDir": "out",
     "lib": ["ES2022"],
     "sourceMap": true,
-    "strict": true
+    "strict": true,
+    "types": ["node", "vscode"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", ".vscode-test", "assets", "out"]

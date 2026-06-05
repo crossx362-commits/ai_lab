@@ -399,7 +399,8 @@ def collect_research_data() -> dict:
 def generate_research_report() -> str:
     """Ollama로 디테일한 리서치 보고서 작성"""
     if not lm_available():
-        return "Ollama 연결 안 됨 - 보고서 생성 불가"
+        # lm_available() 내부에서 코다리에게 복구 요청 완료
+        return "⚙️ 시스템 복구 중이에요. 잠시 후 다시 시도해주세요."
 
     # 리서치 데이터 수집
     research_data = collect_research_data()
@@ -551,8 +552,8 @@ def _clear_webhook():
 # ─── 영숙 대화 처리 ──────────────────────────────────────────────────────────
 def handle_message(text: str) -> str:
     """메시지 처리 — Ollama로 응답 생성"""
-    if not lm_available():
-        return "영숙이에요~ 지금은 Ollama가 실행되지 않아서 대화가 어렵네요 😅"
+    # Ollama 연결 확인 및 자동 복구는 lm_available() 내부에서 처리됨
+    # 복구 실패 시에만 사용자에게 알림
 
     # 리서치 보고서 생성 키워드 감지
     research_keywords = ["리서치", "연구", "학습", "보고서", "분석 보고"]
@@ -595,6 +596,10 @@ def handle_message(text: str) -> str:
     current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 대화 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
     system_prompt = YEONGSUK_PERSONA + current_time_context
 
+    # Ollama 연결 확인 (내부에서 코다리 복구 시도)
+    if not lm_available():
+        return "⚙️ 시스템 복구 중이에요. 잠시 후 다시 말씀해주세요!"
+
     try:
         response = lm_chat(
             history_text,
@@ -618,14 +623,17 @@ def handle_message(text: str) -> str:
     except Exception as e:
         print(f"  [Ollama Error] {e}")
 
-    return "영숙이에요~ 응답 생성 중 문제가 생겼어요 😅"
+    return "⚙️ 응답 생성 중 문제가 발생했어요. 코다리가 복구 중일 거예요."
 
 
 # ─── 메인 루프 ────────────────────────────────────────────────────────────
 def main():
     _clear_webhook()
     print(f"🤖 영숙 텔레그램 봇 시작 (chat_id={CHAT_ID})")
-    print(f"   Ollama: {'✅ 연결됨' if lm_available() else '❌ 연결 안 됨'}")
+
+    # Ollama 연결 확인 (내부에서 코다리에게 복구 요청)
+    ollama_status = lm_available()
+    print(f"   Ollama: {'✅ 연결됨' if ollama_status else '⚙️ 코다리 복구 요청됨'}")
 
     send("🤖 영숙이 출근했어요! 무엇을 도와드릴까요?")
 
