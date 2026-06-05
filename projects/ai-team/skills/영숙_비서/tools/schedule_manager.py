@@ -29,7 +29,7 @@ from _shared.ollama_client import is_available as lm_available
 
 # CEO Dispatcher import
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
-import yewon_dispatcher
+import yewon_dispatcher  # type: ignore
 
 SCHEDULES_FILE = os.path.join(_here, "schedules.json")
 LAST_RUN_FILE = os.path.join(_here, "last_run.json")
