@@ -48,3 +48,11 @@
 ### 조치
 - 코드 수정 불필요 — Vercel 계정/프로젝트 설정에서 해결 필요
 - 로그 저장 완료
+
+## 2026-06-05 UTC — 배포 검증
+
+- HTTP 상태: 403 Forbidden | Latency: 0.053s
+- 코어 자산: 전체 403 (/, /css/style.css, /js/app.js, /js/supabase.js, /manifest.json, /sw.js)
+- 로컬 파일: tailwind.config OK | font-awesome OK
+- 최신 로컬 커밋: feat(petnna): 모바일 UI 개선 및 Supabase 미디어 스토리지 통합
+- 조치: 이상 감지 — Vercel 배포 접근 차단(403). Vercel 대시보드에서 Password Protection 또는 도메인 설정 확인 필요
