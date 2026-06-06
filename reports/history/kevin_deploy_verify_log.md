@@ -1,4 +1,14 @@
 
+## 2026-06-06 — 배포 검증
+- **HTTP 상태**: 403 | Latency: 0.055s
+- **핵심 자산** (`/`, `/css/style.css`, `/js/app.js`, `/js/supabase.js`, `/manifest.json`, `/sw.js`): 전체 403
+- **로컬 파일 상태**:
+  - Tailwind config: OK
+  - Font Awesome: OK
+- **최신 로컬 커밋**: `76068cf` fix(petnna): localStorage 봇 알림 초기화 — NPC 알림 데이터 자동 제거
+- **일치 여부**: 로컬 코드 정상 — 배포 접근 차단 지속
+- **조치**: 이전과 동일한 `host_not_allowed` 403 — Vercel Deployment Protection 설정 확인 필요
+
 ## 2026-06-04 10:05 UTC — 배포 검증
 
 - **HTTP 상태**: 403 (host_not_allowed) | Latency: 0.061s
