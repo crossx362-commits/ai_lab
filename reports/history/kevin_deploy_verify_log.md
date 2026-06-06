@@ -56,3 +56,14 @@
 - 로컬 파일: tailwind.config OK | font-awesome OK
 - 최신 로컬 커밋: feat(petnna): 모바일 UI 개선 및 Supabase 미디어 스토리지 통합
 - 조치: 이상 감지 — Vercel 배포 접근 차단(403). Vercel 대시보드에서 Password Protection 또는 도메인 설정 확인 필요
+
+## 2026-06-06 10:03 UTC — 배포 검증
+
+- **HTTP 상태**: 403 | Latency: 0.054s
+- **x-deny-reason**: `host_not_allowed` (Vercel Deployment Protection 차단)
+- **코어 자산 응답**: 전체 403 (/, /css/style.css, /js/app.js, /js/supabase.js, /manifest.json, /sw.js)
+- **배포 응답 본문**: `Host not in allowlist`
+- **로컬 파일 상태**: ✅ 정상 (tailwind.config OK, font-awesome OK)
+- **최신 로컬 커밋**: `76068cf fix(petnna): localStorage 봇 알림 초기화 — NPC 알림 데이터 자동 제거`
+- **판정**: 코드/빌드 이상 없음. Vercel 대시보드의 Deployment Protection 설정에서 IP/도메인 allowlist 문제. 외부 접근 차단 상태.
+- **조치**: Vercel 대시보드 → Project Settings → Deployment Protection 에서 허용 범위 확인 및 수정 필요.
