@@ -52,3 +52,9 @@
 - Gemini API Key: EMPTY (`""` — 런타임 주입 여부 확인 필요)
 - Supabase: OK (profiles, albums, routes, posts, pets 모두 참조됨)
 - 조치: petnna_monitor.py 실행 환경의 cryptography 패키지 재설치 필요 (`pip install cryptography`). Gemini 키는 별도 확인 요망.
+
+## 2026-06-06 UTC — 케빈 헬스 체크
+- 배포: FAIL (petnna_monitor.py — cffi 백엔드 모듈 누락)
+- 핵심의존성: OK (Tailwind, FontAwesome, Leaflet 확인) / GEMINI_API_KEY: EMPTY
+- Supabase: OK (profiles, albums, routes, posts, pets 모두 참조)
+- 조치: GEMINI_API_KEY 미설정 확인됨 — 설정 필요 / monitor 스크립트 cffi 오류 별도 조치 필요
