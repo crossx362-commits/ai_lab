@@ -74,7 +74,7 @@ def _list_models() -> list:
     for attempt in range(3):
         try:
             url = _endpoint().replace("/chat/completions", "/models")
-            timeout = 10 if attempt == 0 else 5  # 첫 시도 10초, 재시도 5초
+            timeout = 45 if attempt == 0 else 15  # 첫 시도 45초, 재시도 15초 (콜드 스타트 대응)
             with urllib.request.urlopen(url, timeout=timeout) as r:
                 data = json.loads(r.read())
             return [m["id"] for m in data.get("data", [])

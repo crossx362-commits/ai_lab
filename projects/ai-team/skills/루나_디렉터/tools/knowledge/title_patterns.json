@@ -39,8 +39,8 @@
     "top_5_samples": []
   },
   "2026-06-05": {
-    "keyword": "윌 스미스",
-    "generated_title": "새로운 시티팝/K-POP 뮤직비디오 제목: LA FAMA / City Dreams",
+    "keyword": "nostalgia, youth, urban",
+    "generated_title": "그린라이트 아래 한낮의 설렘  |  우리들의 이야기",
     "sample_count": 30,
     "top_5_samples": [
       "IShowSpeed - World Cup (Champions) [Official Music Video]",
@@ -49,11 +49,5 @@
       "Drake - Janice STFU",
       "KATSEYE - PINKY UP (Live From The American Music Awards/2026)"
     ]
-  },
-  "2026-06-09": {
-    "keyword": "cpi",
-    "generated_title": "그림자\" / \"아름다운 추억의 밤",
-    "sample_count": 0,
-    "top_5_samples": []
   }
 }

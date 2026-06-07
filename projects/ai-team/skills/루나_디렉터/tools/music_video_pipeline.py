@@ -609,8 +609,8 @@ def run_pipeline(publish_hhmm: str = None):
                 print(f"  ⚠️ [금지 장르] {e} — 재선정 중...")
         else:
             send_telegram_message("⚠️ [루나] 금지 장르 회피 실패 — 기본 테마 강제 적용")
-            theme["keyword"]   = "K-Pop City Pop Night Drive"
-            theme["genre_era"] = "K-Pop × Japanese City Pop Fusion (80s Retro)"
+            theme["keyword"]   = "Korean Female Hip-Hop"
+            theme["genre_era"] = "Korean Female Hip-Hop × R&B (Contemporary)"
         cp = {"step": "theme", "theme": theme,
               "publish_at_utc": publish_at_utc, "publish_time_kst_str": publish_time_kst_str}
         save_checkpoint(cp)

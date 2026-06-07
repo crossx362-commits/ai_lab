@@ -322,11 +322,12 @@ def generate_music_prompt_from_keyword(keyword: str) -> str:
             "아래 6단 구조로 영어 음악 생성 프롬프트를 1개 작성해. 프롬프트 1줄만 출력.\n\n"
             "구조: [키워드 연계 콘셉트], [장르/시대], [템포/무드], [주요악기], [보컬스타일], [주제/가사]\n\n"
             "규칙:\n"
-            "- 1순위: Japanese City Pop × K-Pop Fusion (110~150 BPM)\n"
-            "- 2순위: Emotional Hip-Hop × R&B × Pop (90~150 BPM)\n"
-            "- 금지: lofi, lo-fi, study beats, chill beats, sleep music\n"
-            "- 에너제틱·자신감·몰입감 우선, 수면유도·공부용BGM 지양\n"
-            "- 가사/주제(lyrics_theme)는 반드시 한국어로 작성"
+            "- 1순위: Korean Female Hip-Hop × R&B (여성 힙합·알앤비, 95~130 BPM)\n"
+            "- 2순위: K-Pop Girl Group (걸그룹 팝·댄스, 115~150 BPM)\n"
+            "- 3순위: Korean R&B Pop (감성 알앤비·팝, 80~110 BPM)\n"
+            "- 보컬: 강인하고 자신감 넘치는 한국 여성 보컬, 랩·훅 혼합\n"
+            "- 가사/주제(lyrics_theme)는 반드시 한국어로 작성\n"
+            "- 금지: lofi, lo-fi, study beats, chill beats, sleep music, citypop, city pop"
         )
         result = _lm(prompt, task='', max_tokens=200)
         if result and result.strip() and len(result.strip()) > 30:
@@ -336,10 +337,10 @@ def generate_music_prompt_from_keyword(keyword: str) -> str:
     except Exception as e:
         print(f"  [음악 프롬프트 생성] 실패: {e}")
     return (
-        f"J-Pop City Pop × K-Pop Fusion (1980s Retro), "
-        f"Medium-fast tempo 118 BPM energetic groove, "
-        f"DX7 electric piano + punchy kick drum + slap bass + brass synth, "
-        f"Powerful K-pop female vocals with city pop smoothness, "
+        f"Korean Female Hip-Hop × R&B, "
+        f"Confident energetic 100 BPM groove with punchy 808 bass, "
+        f"Piano chops + trap hi-hats + thick bass line + synth lead, "
+        f"강인하고 자신감 넘치는 한국 여성 래퍼·보컬, 랩 버스 + 감성 훅, "
         f"{keyword}"
     )
 
@@ -361,12 +362,12 @@ def generate_music_prompt_from_title(title: str, keyword: str) -> str:
             "아래 구조로 영어 음악 생성 프롬프트를 1개 작성해. 프롬프트 1줄만 출력.\n\n"
             "구조: [제목 콘셉트 연계], [장르/시대], [템포/무드], [주요악기], [보컬스타일], [주제/가사]\n\n"
             "규칙:\n"
-            "- 1순위 장르: Japanese City Pop × K-Pop Fusion\n"
-            "- 2순위 장르: Emotional Hip-Hop × R&B × Pop\n"
-            "- 금지: lofi, lo-fi, study beats, chill beats, sleep music\n"
-            "- 시티팝 110~150 BPM, K-Pop 댄스 120~170 BPM, R&B 90~140 BPM\n"
-            "- 에너제틱·자신감·몰입감 우선, 수면유도·공부용BGM 지양\n"
-            "- 가사/주제(lyrics_theme)는 반드시 한국어로 작성"
+            "- 1순위 장르: Korean Female Hip-Hop × R&B (여성 힙합·알앤비)\n"
+            "- 2순위 장르: K-Pop Girl Group (걸그룹 팝·댄스)\n"
+            "- 3순위 장르: Korean R&B Pop (감성 알앤비)\n"
+            "- 보컬: 강인·자신감·매력적인 한국 여성 보컬, 랩+훅 구성\n"
+            "- 가사/주제(lyrics_theme)는 반드시 한국어로 작성\n"
+            "- 금지: lofi, lo-fi, study beats, chill beats, sleep music, city pop, citypop"
         )
         result = _lm(prompt, task='', max_tokens=200)
         if result and result.strip() and len(result.strip()) > 30:
@@ -393,55 +394,55 @@ class TrendAnalyzer:
         # 기본 fallback 테마 (장르/시대, 템포/무드, 특정 악기, 보컬 스타일, 가사/주제 정의)
         # 음악 테마를 주로 일본 시티팝 무드(1980s Retro Japanese City Pop) 위주로 변경
         self.default_themes = [
-            # ── K-POP × 시티팝 융합 테마 (2026-05-28 추가) ──────────────────
+            # ── 여성 힙합 × R&B × 걸그룹 테마 (2026-06-05 변경) ──────────────
             {
-                "keyword": "K-Pop City Pop Night Drive",
-                "mood": "stylish, energetic, nostalgic, urban chic",
-                "style": "Seoul neon night skyline, K-pop idol silhouette, retro 80s Tokyo street, holographic glow",
-                "genre_era": "K-Pop × Japanese City Pop Fusion (80s Retro)",
-                "tempo_mood": "Medium-fast tempo (118 BPM), stylish, energetic, smooth K-pop production with city pop warmth",
-                "instruments": "DX7 electric piano, punchy K-pop kick drum, slap bass, analog brass synth, twinkling glockenspiel",
-                "vocal_style": "Clear powerful K-pop female lead vocals, tight harmonic backing, call-and-response ad-libs",
-                "lyrics_theme": "자정의 서울 드라이브, 도시 불빛 속 케이팝 스타, 한국 감성과 도쿄 레트로의 만남"
+                "keyword": "Korean Girl Group Bop",
+                "mood": "fierce, confident, addictive, empowering",
+                "style": "K-pop girl group stage, holographic outfit, urban Seoul backdrop, dynamic dance formation",
+                "genre_era": "K-Pop Girl Group Dance Pop (2020s)",
+                "tempo_mood": "Fast tempo (130 BPM), fierce, high-energy, addictive hook-driven girl group anthem",
+                "instruments": "Hard-hitting 808 kick, trap hi-hats, synth lead, punchy claps, thick bass drop",
+                "vocal_style": "Powerful Korean girl group vocals, sharp rap verse + melodic chorus, tight harmonies",
+                "lyrics_theme": "자신감 넘치는 걸그룹의 무대, 당당하고 빛나는 여성의 에너지, 멈출 수 없는 열정"
             },
             {
-                "keyword": "Seoul Neon City Pop",
-                "mood": "glamorous, bold, retro-futuristic, addictive",
-                "style": "Gangnam district neon signs, idol aesthetic, pastel city pop sunset, retro anime vibe",
-                "genre_era": "K-Pop × City Pop Synthwave (Late 80s Fusion)",
-                "tempo_mood": "Fast tempo (122 BPM), glamorous, bold hook-driven, city pop groove with K-pop precision",
-                "instruments": "Bright synth lead, K-pop snare punch, groovy slap bass, DX7 pads, shimmering cymbals",
-                "vocal_style": "Confident powerful lead vocals with airy falsetto, group harmony chorus, K-pop precision",
-                "lyrics_theme": "서울 네온 불빛 아래 빛나는 아이돌의 꿈, 시티팝 향수와 멈출 수 없는 밤"
+                "keyword": "Korean Female Hip-Hop",
+                "mood": "bold, swag, cool, authentic",
+                "style": "Korean female rapper in urban streetwear, Seoul underground hip-hop vibe, city graffiti backdrop",
+                "genre_era": "Korean Female Hip-Hop (Contemporary)",
+                "tempo_mood": "Mid-tempo (98 BPM), swag-filled, authentic, hard-hitting Korean hip-hop flow",
+                "instruments": "Boom-bap drums, deep 808 bass, jazz-sampled piano chops, vinyl scratch, brass stabs",
+                "vocal_style": "Confident Korean female rapper, hard-hitting rap verses, melodic hook with attitude",
+                "lyrics_theme": "나만의 길을 가는 강한 여성, 한국 힙합 문화, 자유와 자신감의 가사"
             },
             {
-                "keyword": "K-Wave Retro Romance",
-                "mood": "dreamy, romantic, soft-powerful, melodic",
-                "style": "cherry blossom in Seoul alley, soft city lights, K-drama aesthetic meets 80s Tokyo",
-                "genre_era": "K-Pop Ballad × Soft City Pop (80s Inspired)",
-                "tempo_mood": "Medium-slow tempo (100 BPM), dreamy, deeply melodic, emotional K-pop balladry with city pop warmth",
-                "instruments": "Warm Rhodes piano, soft slap bass, orchestra strings, light snare brush, airy synth pad",
-                "vocal_style": "Emotional, breathy K-pop female lead, soaring high notes, gentle harmonies",
-                "lyrics_theme": "서울과 도쿄를 넘나드는 영원한 로맨스, 도시 불빛 아래 그리운 어제를 향한 그리움"
+                "keyword": "Korean R&B Girl Vibe",
+                "mood": "sensual, emotional, smooth, soulful",
+                "style": "Korean R&B singer in soft-lit studio, urban Seoul night, moody atmospheric visuals",
+                "genre_era": "Korean R&B × Soul Pop (Modern)",
+                "tempo_mood": "Mid-tempo (90 BPM), smooth, soulful, emotionally rich Korean R&B groove",
+                "instruments": "Rhodes piano, warm bass guitar, soft trap kick, lush string pads, muted guitar",
+                "vocal_style": "Silky smooth Korean female R&B vocals, emotional runs and ad-libs, breathy whisper-to-belt",
+                "lyrics_theme": "감성적인 밤, 사랑과 자아를 탐구하는 한국 알앤비, 내 마음 깊은 곳의 이야기"
             },
             {
-                "keyword": "K-Pop Disco Funk City",
-                "mood": "playful, energetic, groovy, feel-good",
-                "style": "retro disco hall with K-pop dancers, flashy mirror ball, pastel neon city backdrop",
-                "genre_era": "K-Pop × City Pop Disco Funk (80s)",
-                "tempo_mood": "Fast tempo (128 BPM), highly groovy, feel-good, K-pop energy with disco city pop flair",
-                "instruments": "Funky rhythm guitar, bass groove, bright brass hits, K-pop drum kit, wah synth",
-                "vocal_style": "Bright playful lead vocals, catchy ad-libs, strong group chorus chant",
-                "lyrics_theme": "네온 디스코 나이트, 케이팝 그루브가 시티팝 댄스 플로어와 만나는 멈출 수 없는 신남"
+                "keyword": "K-Pop Girl Crush",
+                "mood": "fierce, cool, charismatic, unstoppable",
+                "style": "girl crush concept, dark urban aesthetic, powerful stage presence, Seoul city night",
+                "genre_era": "K-Pop Girl Crush Hip-Hop Pop (2020s)",
+                "tempo_mood": "Fast tempo (120 BPM), charismatic, fierce, girl crush energy with hip-hop edge",
+                "instruments": "Heavy bass, electric guitar riff, punchy snare, synth brass, trap percussion",
+                "vocal_style": "Sharp powerful Korean female vocals, rap-vocal hybrid, fierce delivery with melodic chorus",
+                "lyrics_theme": "걸크러시 에너지, 두려움 없는 자신감, 세상을 지배하는 강한 여성의 이야기"
             },
             {
-                "keyword": "Retro Japanese City Pop",
-                "mood": "nostalgic, upbeat, breezy, romantic",
-                "style": "80s Tokyo city neon lights street, retro anime style",
-                "genre_era": "Japanese City Pop (1980s Retro)",
-                "tempo_mood": "Medium-tempo (115 BPM), nostalgic, upbeat, breezy, romantic",
-                "instruments": "Slap bass guitar, electric piano (DX7), brass synthesizer section, vintage drum machine",
-                "vocal_style": "Sweet and smooth female lead vocals, jazzy backing harmonies",
+                "keyword": "Korean Ballad R&B",
+                "mood": "emotional, heartfelt, powerful, healing",
+                "style": "emotional ballad atmosphere, soft Seoul evening, intimate singer-songwriter vibe",
+                "genre_era": "Korean R&B Ballad (Contemporary)",
+                "tempo_mood": "Slow-medium tempo (75 BPM), deeply emotional, heartfelt Korean R&B ballad",
+                "instruments": "Grand piano, warm cello, soft bass, brushed drums, ambient synth pad",
+                "vocal_style": "Powerful emotional Korean female belting, raw vulnerability, soaring climax",
                 "lyrics_theme": "도쿄 심야 드라이브, 네온 가로등 아래 스러지는 여름 로맨스"
             },
             {
@@ -682,14 +683,51 @@ class TrendAnalyzer:
             f"glowing pastel neon colors, retro 1980s anime style, detail-rich, Ghibli atmosphere, night neon drive mood"
         )
 
-        # 기승전결 5단 테마 맞춤 비주얼 프롬프트
-        visual_parts = {
-            "intro": f"A beautiful cinematic retro visualizer background, slow calm night, establishing shot of Tokyo skyline with twinkling stars, soft glowing streetlights, pastel retro 1980s anime style, detail-rich, Ghibli atmosphere, inspired by '{keyword}'",
-            "verse": f"A classic sportscar driving smoothly on a rainy night in Shibuya, neon signs reflecting on the wet street, retro 1980s anime style, cozy melancholic atmosphere, detail-rich, inspired by '{keyword}'",
-            "chorus": learned_visual if learned_visual else f"A stunning pastel sunset beach view, warm orange and pink horizon, gentle retro waves washing the shore, palm trees silhouette, sparkling neon pastel lights, nostalgic 1980s anime visual, inspired by '{keyword}'",
-            "bridge": f"Interior of a cozy warm retro Tokyo cafe, a coffee cup on the wooden table, warm steam rising, window view of neon city lights bokeh in the background, highly aesthetic, retro anime style, inspired by '{keyword}'",
-            "outro": f"Early morning dawn sunrise over the city, soft blue and golden sky, empty clean street, fading neon signs, quiet and peaceful exit, retro 1980s anime style, Ghibli atmosphere, inspired by '{keyword}'"
-        }
+        # 동적 5단 비주얼 프롬프트 생성 (제목 및 가사/테마 연계)
+        visual_parts = {}
+        try:
+            from _shared.ollama_client import chat as _lm_chat, is_available as _lm_available
+            has_llm = _lm_available()
+        except Exception:
+            has_llm = False
+
+        if has_llm:
+            try:
+                vis_prompt = (
+                    f"확정된 음악 제목: '{title}'\n"
+                    f"음악 장르/시대: '{genre_era}'\n"
+                    f"무드: '{mood}'\n"
+                    f"가사 주제/스토리: '{core_topic}'\n\n"
+                    "위 정보를 반영하여, 유튜브 뮤직비디오의 흐름에 맞춰 생성될 5단 구성(intro, verse, chorus, bridge, outro)의 이미지 생성용 영어 프롬프트를 JSON 형식으로 작성해줘.\n"
+                    "조건:\n"
+                    "- 각 프롬프트는 80년대 레트로 애니메이션 스타일(1980s retro anime style, Ghibli atmosphere, aesthetic, detail-rich)을 기본 무드로 삼아 작성할 것\n"
+                    "- 각 프롬프트는 음악의 제목, 무드, 가사 스토리 흐름에 완벽히 정렬되고 시각적으로 조화를 이루어야 함 (단순히 동일한 도쿄 거리나 스포츠카의 무의미한 반복 금지)\n"
+                    "- intro: 곡의 도입부 분위기를 나타내는 차분하고 서정적인 배경이나 오브젝트 묘사\n"
+                    "- verse: 전개되는 가사와 무드에 어울리는 풍경이나 상황 묘사\n"
+                    "- chorus: 타이틀과 핵심 감성이 극대화되는 가장 화려하고 감동적인 메인 시각 묘사\n"
+                    "- bridge: 노래의 성찰적이거나 전환되는 분위기에 어울리는 디테일하고 고요한 실내/소품/배경 묘사\n"
+                    "- outro: 여운을 남기며 새벽, 밤하늘, 또는 조용한 풍경으로 마무리되는 연출\n"
+                    "반드시 JSON 형식으로만 응답:\n"
+                    '{"intro":"...","verse":"...","chorus":"...","bridge":"...","outro":"..."}'
+                )
+                vis_raw = _lm_chat(vis_prompt, task="", max_tokens=1000, json_mode=True)
+                if vis_raw:
+                    vis_data = json.loads(vis_raw.strip())
+                    if all(k in vis_data for k in ["intro", "verse", "chorus", "bridge", "outro"]):
+                        visual_parts = vis_data
+                        print("  [TrendAnalyzer] ✅ 제목 및 음악 연계형 동적 비주얼 프롬프트 생성 완료")
+            except Exception as e:
+                print(f"  [Warning] 동적 비주얼 프롬프트 생성 실패: {e}")
+
+        # 폴백 (기존 템플릿 사용하되 키워드 및 제목 무드 결합)
+        if not visual_parts:
+            visual_parts = {
+                "intro": f"A beautiful cinematic retro visualizer background, slow calm night, establishing shot of Tokyo skyline with twinkling stars, soft glowing streetlights, pastel retro 1980s anime style, detail-rich, Ghibli atmosphere, inspired by '{keyword}', matching the title '{title}'",
+                "verse": f"A classic sportscar driving smoothly on a rainy night in Shibuya, neon signs reflecting on the wet street, retro 1980s anime style, cozy melancholic atmosphere, detail-rich, inspired by '{keyword}', matching the title '{title}'",
+                "chorus": learned_visual if learned_visual else f"A stunning pastel sunset beach view, warm orange and pink horizon, gentle retro waves washing the shore, palm trees silhouette, sparkling neon pastel lights, nostalgic 1980s anime visual, inspired by '{keyword}', matching the title '{title}'",
+                "bridge": f"Interior of a cozy warm retro Tokyo cafe, a coffee cup on the wooden table, warm steam rising, window view of neon city lights bokeh in the background, highly aesthetic, retro anime style, inspired by '{keyword}', matching the title '{title}'",
+                "outro": f"Early morning dawn sunrise over the city, soft blue and golden sky, empty clean street, fading neon signs, quiet and peaceful exit, retro 1980s anime style, Ghibli atmosphere, inspired by '{keyword}', matching the title '{title}'"
+            }
 
         # 플레이리스트 자동 매핑 (무드별 분류)
         kw_l = keyword.lower()

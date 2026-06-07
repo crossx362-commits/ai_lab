@@ -144,7 +144,7 @@ python mermaid_generator.py --interactive              # 대화형
 ## Section 3. 절대 금지 규칙
 
 1. **중복 코드 취급 금지**: 이미 존재하는 컴포넌트·함수·설정과 동일·유사한 코드를 중복 생성하지 않는다. 기존 코드를 재사용·확장.
-2. **모델 혼용 금지**: coding 작업에는 반드시 DeepSeek 계열만 사용. Qwen·Gemma 혼용 금지.
+2. **모델 혼용 금지 (DeepSeek 적극 활용)**: coding 관련 작업(코드 작성, 버그 수정, 빌드 오류 해결, 코드 분석 등) 수행 시에는 반드시 로컬 Ollama에 탑재된 DeepSeek 계열 모델(예: `deepseek-coder`, `deepseek` 관련 모델)을 활용하여 작업(API 호출 시 `task="coding"` 명시)해야 합니다. 코딩 작업에 Qwen, Gemma 등 타 모델을 혼용하는 것을 금지하며, 로컬 Ollama의 DeepSeek이 구동 불가능한 극단적인 경우에만 Gemini API를 폴백으로 사용합니다.
 3. **보안**: `.env` 파일·API 키를 코드에 하드코딩 금지. 항상 환경변수·placeholder 사용.
 4. **진행 상황 보고서 작성 의무**: 작업 진행 및 완료 시에는 반드시 `projects/ai-team/docs/progress.md` 등의 보고서 문서에 진행 상황 및 완료된 세부 내용을 항상 성실하게 기록하고 공유해야 한다.
 
