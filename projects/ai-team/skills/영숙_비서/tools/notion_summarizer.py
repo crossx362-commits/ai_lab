@@ -11,7 +11,7 @@ sys.path.insert(0, _root)
 
 from _shared.knowledge_base import get_kb_dir
 from _shared.notion_client import create_notion_page
-from _shared.gemini_client import text as llm_text
+from _shared.ollama_client import chat as ollama_chat
 import glob
 import datetime
 
@@ -39,8 +39,8 @@ def run_notion_report():
     )
     
     print("  [영숙] 지식 통합 분석 중...")
-    summary = llm_text(prompt, task="")
-    
+    summary = ollama_chat(prompt, task="", max_tokens=1000)
+
     if not summary:
         return "❌ 리서치 자료를 분석하는 데 실패했습니다 (AI 응답 오류)."
         

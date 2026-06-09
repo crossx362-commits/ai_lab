@@ -49,18 +49,7 @@ def _init_superpowers():
     if _council_mod:
         print("  ✅ [슈퍼파워] 에이전트 협의체 연결됨")
 
-# ─── google-genai 클라이언트 (MCP + Live 스트리밍) ───────────────────────────
-_genai_client = None
-def _init_genai():
-    global _genai_client
-    try:
-        import google.genai as genai
-        api_key = os.getenv("GEMINI_API_KEY", "")
-        if api_key:
-            _genai_client = genai.Client(api_key=api_key)
-            print("  ✅ [슈퍼파워] Google GenAI 클라이언트 연결됨 (Live/MCP 지원)")
-    except Exception as e:
-        print(f"  ⚠️ [슈퍼파워] GenAI 초기화 실패: {e}")
+# ─── Gemini 제거: Ollama만 사용 ──────────────────────────────────────────────
 
 # UTF-8 설정
 if hasattr(sys.stdout, "reconfigure"):
@@ -626,29 +615,7 @@ def handle_message(text: str) -> str:
         except Exception as e:
             print(f"  [협의체 오류] {e}")
 
-    # ── 슈퍼파워 3: Gemini Live로 스트리밍 응답 (일반 대화) ─────────────────
-    if _genai_client and len(text) > 5:
-        try:
-            import google.genai.types as types
-            resp = _genai_client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=text,
-                config=types.GenerateContentConfig(
-                    system_instruction=YEONGSUK_PERSONA,
-                    max_output_tokens=400,
-                    temperature=0.85,
-                )
-            )
-            if resp and resp.text:
-                CHAT_HISTORY.append({"role": "user", "text": text})
-                CHAT_HISTORY.append({"role": "assistant", "text": resp.text})
-                if len(CHAT_HISTORY) > 20:
-                    CHAT_HISTORY.pop(0); CHAT_HISTORY.pop(0)
-                return resp.text.strip()
-        except Exception as e:
-            print(f"  [GenAI 오류, Ollama 폴백] {e}")
-
-    # ── 기본: Ollama 대화 ────────────────────────────────────────────────────
+    # ── Ollama 대화 ──────────────────────────────────────────────────────────
     # 리서치 보고서 생성 키워드 감지
     research_keywords = ["리서치", "연구", "학습", "보고서", "분석 보고"]
     if any(keyword in text for keyword in research_keywords):
@@ -721,12 +688,10 @@ def main():
     _clear_webhook()
     load_env()
     _init_superpowers()
-    _init_genai()
     print(f"🤖 영숙 텔레그램 봇 시작 (chat_id={CHAT_ID})")
     print(f"   Ollama      : {'✅ 연결됨' if lm_available() else '❌ 연결 안 됨'}")
     print(f"   CEO 디스패처: {'✅' if _dispatcher_mod else '❌'}")
     print(f"   에이전트협의체: {'✅' if _council_mod else '❌'}")
-    print(f"   GenAI       : {'✅' if _genai_client else '❌'}")
 
     superpower_status = "✅ 슈퍼파워 활성화" if (_dispatcher_mod and _council_mod) else "⚠️ 일부 슈퍼파워 비활성"
     send(f"🤖 영숙이 출근했어요! 무엇을 도와드릴까요?\n{superpower_status}\n• /luna /instagram 등 명령으로 에이전트 즉시 실행 가능")
