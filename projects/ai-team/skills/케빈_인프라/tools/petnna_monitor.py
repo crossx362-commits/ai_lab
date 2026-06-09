@@ -14,6 +14,11 @@ import urllib.error
 import datetime
 from pathlib import Path
 
+# UTF-8 인코딩 설정
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 _here = os.path.dirname(os.path.abspath(__file__))
 _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 _project_root = os.path.abspath(os.path.join(_ai_team_root, "..", ".."))
