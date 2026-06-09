@@ -112,11 +112,8 @@ def format_ceo_report(ceo_result: str) -> str:
     return ceo_result
 
 def _web_search_analyze(query: str) -> str:
-    """메시지 이해 실패 시 웹 서치로 맥락 분석."""
+    """메시지 이해 실패 시 Ollama로 맥락 분석."""
     try:
-        # Gemini API로 웹 검색 (간단한 구글 검색 시뮬레이션)
-        from _shared import gemini_client as _gc
-
         search_prompt = f"""
 다음 사용자 메시지를 분석해서 의도를 파악하고, 어떤 작업을 요청하는지 명확히 설명해줘:
 
@@ -128,10 +125,12 @@ def _web_search_analyze(query: str) -> str:
 3. 관련 에이전트: (루나/아린/예원/코다리 등)
 """
 
-        result = _gc.text(search_prompt, lm_first=True, max_tokens=300)
-        return result if result else "분석 실패"
+        if lm_available():
+            result = lm_chat(search_prompt, max_tokens=300)
+            return result if result else "분석 실패"
+        return "분석 실패 (Ollama 미사용 가능)"
     except Exception as e:
-        print(f"  [웹 서치 실패] {e}")
+        print(f"  [분석 실패] {e}")
         return "분석 실패"
 
 
