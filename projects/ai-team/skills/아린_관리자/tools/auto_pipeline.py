@@ -481,17 +481,9 @@ def _clean_vision_caption(text: str) -> str | None:
 
 
 def generate_caption_from_image(img_bytes: bytes) -> tuple[str | None, str | None]:
-    """이미지 분석 → (캡션, alt_text) 동시 반환. Ollama 우선, 실패 시 Gemini Vision 폴백.
+    """이미지 분석 → (캡션, alt_text) 동시 반환. Ollama Vision 사용.
     alt_text: 인스타 Explore 탭 검색 인덱싱용 150자 이내 이미지 묘사 (영어).
     """
-    caption_prompt = (
-        "아래 사진을 보고 인스타그램용 두 가지를 JSON으로만 반환해줘.\n\n"
-        "1. caption: 진짜 사람이 폰으로 찍어 올린 것처럼 자연스러운 한국어 캡션.\n"
-        "   - 1~2문장 + 이모지 1개 + 마지막 줄 해시태그 6~8개\n"
-        "   - 번호/레이블/설명 형식 절대 금지\n"
-        "2. alt_text: 인스타그램 검색 인덱싱용 영어 이미지 묘사. 150자 이내, 시각적 요소 중심.\n\n"
-        '{"caption": "...", "alt_text": "..."}'
-    )
     plain_prompt = (
         "아래 사진을 보고 인스타그램 캡션을 작성해줘.\n"
         "- 진짜 사람이 폰으로 찍어 올린 것처럼 자연스럽고 짧게\n"
@@ -499,40 +491,7 @@ def generate_caption_from_image(img_bytes: bytes) -> tuple[str | None, str | Non
         "- 번호/레이블 절대 금지. 캡션 텍스트만 출력."
     )
 
-    def _parse_result(raw: str) -> tuple[str | None, str | None]:
-        """JSON 또는 plain text 응답에서 caption, alt_text 추출. 실패 시 None 반환."""
-        import json as _json, re as _re
-        raw = raw.strip()
-        # 마크다운 코드블록 제거
-        raw = _re.sub(r"^```(?:json)?\s*\n?", "", raw)
-        raw = _re.sub(r"\n?```\s*$", "", raw).strip()
-        try:
-            data = _json.loads(raw)
-            if not isinstance(data, dict):
-                return None, None
-            cap = _clean_vision_caption(data.get("caption", "") or "")
-            alt = (data.get("alt_text") or "")[:150] or None
-            if not cap or len(cap.strip()) < 10:
-                return None, alt
-            return cap, alt
-        except Exception:
-            # JSON 파싱 실패 시 raw 반환하지 않음 — 원본 기획 캡션 사용
-            return None, None
-
-    # 1순위: Gemini Vision (JSON 응답 안정적)
-    try:
-        from _shared.gemini_client import vision as gemini_vision
-        print("👁️ Gemini Vision으로 이미지 분석 중...")
-        result = gemini_vision(img_bytes, caption_prompt, max_tokens=400)
-        if result:
-            cap, alt = _parse_result(result)
-            if cap:
-                print(f"✅ Gemini Vision 완료! alt_text: {'있음' if alt else '없음'}")
-                return cap, alt
-    except Exception as e:
-        print(f"  [Gemini Vision] 실패: {e}")
-
-    # 2순위: Ollama Vision 폴백
+    # Ollama Vision으로 이미지 분석 (Gemini Vision 사용 안 함)
     try:
         from _shared.ollama_client import chat_vision, is_available
         if is_available():
