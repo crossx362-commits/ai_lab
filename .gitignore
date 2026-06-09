@@ -26,7 +26,22 @@ client_secret.json.template
 *.pickle
 youtube_token.pickle
 
-# Vercel
-.vercel
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Backups & Archives
+.backups/
+.archive/
 .env.backup*
 .env_backup_secure/
+
+# Logs
+.logs/
+*.log
+
+# Vercel
+.vercel

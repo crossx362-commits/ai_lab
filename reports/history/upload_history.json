@@ -311,5 +311,33 @@
             "audio_file": "",
             "publish_at": "2026-06-09T10:00:00Z"
         }
+    },
+    {
+        "agent": "루나",
+        "status": "published",
+        "uploaded_at": "2026-06-09T09:52:10.403893+09:00",
+        "metadata": {
+            "platform": "youtube",
+            "video_id": "DRY-RUN-SUCCESS-ID",
+            "youtube_title": "새로운 타이틀: \"라일락의 여름",
+            "music_prompt": "라일락의 여름을 상상할 때 떠오르는 느낌과 분위기를 반영한 영어 음악 생성 프롬프트:",
+            "video_file": "final_video.mp4",
+            "audio_file": "",
+            "publish_at": "2026-06-09T10:00:00Z"
+        }
+    },
+    {
+        "agent": "루나",
+        "status": "published",
+        "uploaded_at": "2026-06-09T10:13:37.073666+09:00",
+        "metadata": {
+            "platform": "youtube",
+            "video_id": "6q7db1_YNAA",
+            "youtube_title": "CPI - City Pop Invasion",
+            "music_prompt": "City Pop Invasion - Japanese City Pop × K-Pop Fusion",
+            "video_file": "final_video.mp4",
+            "audio_file": "",
+            "publish_at": "2026-06-09T10:00:00Z"
+        }
     }
 ]

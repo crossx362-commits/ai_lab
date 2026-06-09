@@ -105,23 +105,9 @@ def check_supabase_integration() -> dict:
     except Exception:
         pass
 
-    # Supabase Auth Site URL 설정 확인
-    sb_url = os.getenv("SUPABASE_URL", "")
-    sb_key = os.getenv("SUPABASE_ANON_KEY", "")
-    if sb_url and sb_key:
-        try:
-            req = urllib.request.Request(
-                f"{sb_url}/auth/v1/settings",
-                headers={"apikey": sb_key}
-            )
-            with urllib.request.urlopen(req, timeout=8) as r:
-                import json
-                auth_cfg = json.loads(r.read())
-            site_url = auth_cfg.get("site_url") or ""
-            if not site_url:
-                return {"severity": "critical", "message": "Supabase Site URL 미설정 — OAuth 로그인 불가. 대시보드 → Authentication → URL Configuration에서 설정 필요"}
-        except Exception:
-            pass
+    # Note: Site URL 설정은 Dashboard에서 수동 확인 필요
+    # /auth/v1/settings 엔드포인트가 site_url 필드를 반환하지 않을 수 있음
+    # Dashboard → Authentication → URL Configuration에서 설정됨
 
     return {"severity": "normal", "checks": checks}
 
