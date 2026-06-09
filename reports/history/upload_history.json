@@ -297,5 +297,19 @@
             "audio_file": "",
             "publish_at": "2026-06-09T10:00:00Z"
         }
+    },
+    {
+        "agent": "루나",
+        "status": "published",
+        "uploaded_at": "2026-06-09T09:46:37.614466+09:00",
+        "metadata": {
+            "platform": "youtube",
+            "video_id": "DRY-RUN-SUCCESS-ID",
+            "youtube_title": "**타이틀:** `하얀 밤에, 나의 별은`",
+            "music_prompt": "'하얀 밤에, 나의 별은': Emotive City Pop × K-Pop Fusion, 128 BPM, Pulsating Synth, Hypnotic Vocal Hook, Poignant Lyrics Theme: Longing for a Lost Love in the Midnight Sky.",
+            "video_file": "final_video.mp4",
+            "audio_file": "",
+            "publish_at": "2026-06-09T10:00:00Z"
+        }
     }
 ]
