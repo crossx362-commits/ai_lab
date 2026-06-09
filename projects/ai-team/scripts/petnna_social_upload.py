@@ -9,13 +9,18 @@ import json, os, sys, time, urllib.request, urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+# UTF-8 인코딩 설정
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 ROOT    = Path(__file__).resolve().parents[3]  # .../ai_lab
 AI_TEAM = ROOT / "projects/ai-team"
 UPLOADS = ROOT / "reports/uploads"
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env_loader import load_env
-from _shared import gemini_client as lm
+from _shared.ollama_client import chat as ollama_chat
 from _shared.image_uploader import upload_image
 load_env()
 
@@ -175,10 +180,10 @@ def supabase_update_comments(access_token: str, post_id: int, comments: list) ->
 
 
 def generate_comment(agent_name: str, post_author: str, post_content: str) -> str:
-    """Ollama/Gemini 모델을 사용해 게시물에 달 대댓글을 작성합니다."""
-    result = lm.text(
-        prompt=f"""펫과나 앱 소셜 피드 게시물에 달 댓글을 작성하세요.
-        
+    """Ollama 모델을 사용해 게시물에 달 대댓글을 작성합니다."""
+    result = ollama_chat(
+        f"""펫과나 앱 소셜 피드 게시물에 달 댓글을 작성하세요.
+
 댓글 작성 에이전트: {agent_name}
 게시물 작성자: {post_author}
 게시물 내용: {post_content}
@@ -208,8 +213,8 @@ def save_history(h: dict):
 
 def generate_caption(agent_name: str, pet_angle: str) -> str:
     today = datetime.now().strftime("%m월 %d일")
-    result = lm.text(
-        prompt=f"""펫과나 반려동물 케어 앱 소셜 피드 게시물 캡션을 작성하세요.
+    result = ollama_chat(
+        f"""펫과나 반려동물 케어 앱 소셜 피드 게시물 캡션을 작성하세요.
 
 에이전트: {agent_name}
 주제: {pet_angle}
