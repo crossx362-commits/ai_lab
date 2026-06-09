@@ -1,6 +1,6 @@
 """
 fix_captions.py — 기존 인스타 포스팅 캡션 수정 스크립트
-구조화 포맷("1. 사진 느낌 설명:") 또는 사진과 맞지 않는 캡션을 Gemini Vision으로 재생성 후 업데이트.
+구조화 포맷("1. 사진 느낌 설명:") 또는 사진과 맞지 않는 캡션을 Ollama Vision으로 재생성 후 업데이트.
 """
 import os
 import sys
@@ -51,8 +51,12 @@ def _fetch_image_bytes(url: str) -> bytes | None:
 
 
 def _regenerate_caption(img_bytes: bytes) -> str | None:
-    from _shared.gemini_client import vision as gemini_vision
-    result = gemini_vision(img_bytes, CAPTION_PROMPT, max_tokens=300)
+    """Ollama Vision으로 캡션 재생성."""
+    from _shared.ollama_client import chat_vision, is_available
+    if not is_available():
+        print("  ⚠️ Ollama 서버 미사용 가능")
+        return None
+    result = chat_vision(CAPTION_PROMPT, img_bytes, max_tokens=300)
     if result:
         return _clean_vision_caption(result.strip())
     return None
