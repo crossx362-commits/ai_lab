@@ -265,6 +265,7 @@ const AppRouter = {
         // 5.1. 모바일 상단 헤더 페이지 타이틀 업데이트
         const mobileTitles = {
             mypet: '🏠 마이펫',
+            health: '🏥 건강',
             walk: '🗺️ 산책',
             saju: '☯️ 조화도',
             social: '👥 소셜 피드',
@@ -332,13 +333,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Inject templates dynamically before state setup and rendering
     document.getElementById('tab-mypet').innerHTML = MYPET_TEMPLATE;
             if(typeof initMypetClock === 'function') initMypetClock();
+    document.getElementById('tab-health').innerHTML = HEALTH_TEMPLATE;
     document.getElementById('tab-walk').innerHTML = WALK_TEMPLATE;
     document.getElementById('tab-social').innerHTML = SOCIAL_TEMPLATE;
     document.getElementById('tab-album').innerHTML = ALBUM_TEMPLATE;
     document.getElementById('tab-shop').innerHTML = SHOP_TEMPLATE;
-    
+
     document.getElementById('tab-saju').innerHTML = SAJU_TEMPLATE;
-    
+
     document.getElementById('tab-settings').innerHTML = SETTINGS_TEMPLATE;
     document.getElementById('tab-mailbox').innerHTML = MAILBOX_TEMPLATE;
     document.getElementById('tab-cart').innerHTML = CART_TEMPLATE;

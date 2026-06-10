@@ -88,6 +88,7 @@
 
     <!-- (2) HTML 템플릿 정의 (app.js 보다 반드시 먼저 로드) -->
     <script src="js/templates/mypet.js?v=130"></script>
+    <script src="js/templates/health.js"></script>
     <script src="js/templates/walk.js?v=130"></script>
     <script src="js/templates/saju.js?v=130"></script>
     <script src="js/templates/social.js?v=130"></script>
@@ -99,6 +100,7 @@
 
     <!-- (3) 각 영역 독립 컨트롤러 -->
     <script src="js/mypet.js?v=130"></script>
+    <script src="js/health.js"></script>
     <script src="js/room-harmony.js"></script>
     <script src="js/nearby-places.js"></script>
     <script src="js/walk.js?v=130"></script>
@@ -119,6 +121,7 @@
         <div class="max-w-6xl mx-auto px-4 py-3">
             <nav class="flex items-center gap-2">
                 <button class="tab-btn" data-tab="mypet" onclick="switchTab('mypet')">🏠 마이펫</button>
+                <button class="tab-btn" data-tab="health" onclick="switchTab('health')">🏥 건강</button>
                 <button class="tab-btn" data-tab="walk" onclick="switchTab('walk')">🗺️ 산책</button>
                 <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')">☯️ 조화도</button>
                 <button class="tab-btn" data-tab="social" onclick="switchTab('social')">👥 소셜</button>
@@ -139,6 +142,7 @@
     <!-- Main content -->
     <main style="display:none;" class="max-w-6xl mx-auto px-4 py-6 w-full">
         <div id="tab-mypet" class="tab-content"></div>
+        <div id="tab-health" class="tab-content hidden"></div>
         <div id="tab-walk" class="tab-content hidden"></div>
         <div id="tab-saju" class="tab-content hidden"></div>
         <div id="tab-social" class="tab-content hidden"></div>
@@ -330,34 +334,34 @@
     </div>
     
     <!-- 📱 모바일 하단 네비게이션 바 -->
-    <div id="mobile-navbar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-50 shadow-lg z-40 px-3 hidden flex justify-around items-center">
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="mypet" onclick="switchTab('mypet')">
+    <div id="mobile-navbar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-50 shadow-lg z-40 px-2 hidden flex justify-around items-center" style="padding-top:6px;padding-bottom:6px;">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="mypet" onclick="switchTab('mypet')" style="font-size:20px;gap:2px;padding:4px 8px;">
             <i class="fa-solid fa-house"></i>
-            <span>마이펫</span>
+            <span style="font-size:9px;">마이펫</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="walk" onclick="switchTab('walk')">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="health" onclick="switchTab('health')" style="font-size:20px;gap:2px;padding:4px 8px;">
+            <i class="fa-solid fa-heart-pulse"></i>
+            <span style="font-size:9px;">건강</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="walk" onclick="switchTab('walk')" style="font-size:20px;gap:2px;padding:4px 8px;">
             <i class="fa-solid fa-route"></i>
-            <span>산책</span>
+            <span style="font-size:9px;">산책</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="saju" onclick="switchTab('saju')">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="saju" onclick="switchTab('saju')" style="font-size:20px;gap:2px;padding:4px 8px;">
             <i class="fa-solid fa-yin-yang"></i>
-            <span>조화도</span>
+            <span style="font-size:9px;">조화도</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="social" onclick="switchTab('social')">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="social" onclick="switchTab('social')" style="font-size:20px;gap:2px;padding:4px 8px;">
             <i class="fa-solid fa-users"></i>
-            <span>소셜</span>
+            <span style="font-size:9px;">소셜</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="album" onclick="switchTab('album')">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="album" onclick="switchTab('album')" style="font-size:20px;gap:2px;padding:4px 8px;">
             <i class="fa-solid fa-book-open"></i>
-            <span>일기장</span>
+            <span style="font-size:9px;">일기</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="shop" onclick="switchTab('shop')">
-            <i class="fa-solid fa-paw"></i>
-            <span>펫라이프</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="settings" onclick="switchTab('settings')">
+        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="settings" onclick="switchTab('settings')" style="font-size:20px;gap:2px;padding:4px 8px;">
             <i class="fa-solid fa-gear"></i>
-            <span>설정</span>
+            <span style="font-size:9px;">설정</span>
         </button>
     </div>
 
