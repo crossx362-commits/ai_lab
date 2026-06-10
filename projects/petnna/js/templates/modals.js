@@ -1100,5 +1100,106 @@ const MODALS_TEMPLATE = `
         </div>
     </div>
 </div>
+
+<!-- 돌봄 일정 추가 모달 -->
+<div id="care-schedule-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
+    <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl relative border border-sky-100 max-h-[90vh] overflow-y-auto no-scrollbar">
+        <button onclick="closeCareScheduleModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
+            <i class="fa-solid fa-calendar-plus text-sky-500 mr-2"></i>돌봄 일정 추가
+        </h4>
+
+        <div class="space-y-3 text-xs">
+            <!-- 일정 타입 -->
+            <div>
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">일정 유형</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="selectCareType('feed', this)" data-type="feed" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">🍖</span>
+                        <span class="text-[9px] font-bold">식사</span>
+                    </button>
+                    <button onclick="selectCareType('water', this)" data-type="water" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">💧</span>
+                        <span class="text-[9px] font-bold">음수</span>
+                    </button>
+                    <button onclick="selectCareType('walk', this)" data-type="walk" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">🚶</span>
+                        <span class="text-[9px] font-bold">산책</span>
+                    </button>
+                    <button onclick="selectCareType('medicine', this)" data-type="medicine" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">💊</span>
+                        <span class="text-[9px] font-bold">투약</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2">
+                    <button onclick="selectCareType('vet', this)" data-type="vet" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">🏥</span>
+                        <span class="text-[9px] font-bold">병원</span>
+                    </button>
+                    <button onclick="selectCareType('groom', this)" data-type="groom" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">✂️</span>
+                        <span class="text-[9px] font-bold">미용</span>
+                    </button>
+                    <button onclick="selectCareType('play', this)" data-type="play" class="care-type-btn flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-200 bg-white hover:bg-sky-50 transition-all">
+                        <span class="text-lg">🎾</span>
+                        <span class="text-[9px] font-bold">놀이</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 일정 제목 -->
+            <div>
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">일정 제목</label>
+                <input id="care-schedule-title" type="text" placeholder="예: 아침 식사, 저녁 산책" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
+            </div>
+
+            <!-- 시간 -->
+            <div>
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">시간</label>
+                <input id="care-schedule-time" type="time" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
+            </div>
+
+            <!-- 반복 설정 -->
+            <div>
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">반복</label>
+                <select id="care-schedule-repeat" onchange="toggleRepeatDays()" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
+                    <option value="daily">매일</option>
+                    <option value="weekly">매주 (요일 선택)</option>
+                    <option value="once">한 번만</option>
+                </select>
+            </div>
+
+            <!-- 요일 선택 (주간 반복 시) -->
+            <div id="care-schedule-repeat-days" class="hidden">
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">반복 요일</label>
+                <div class="flex gap-1.5">
+                    <button onclick="toggleRepeatDay(0, this)" data-day="0" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">일</button>
+                    <button onclick="toggleRepeatDay(1, this)" data-day="1" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">월</button>
+                    <button onclick="toggleRepeatDay(2, this)" data-day="2" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">화</button>
+                    <button onclick="toggleRepeatDay(3, this)" data-day="3" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">수</button>
+                    <button onclick="toggleRepeatDay(4, this)" data-day="4" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">목</button>
+                    <button onclick="toggleRepeatDay(5, this)" data-day="5" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">금</button>
+                    <button onclick="toggleRepeatDay(6, this)" data-day="6" class="repeat-day-btn flex-1 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold hover:bg-sky-50 transition-all">토</button>
+                </div>
+            </div>
+
+            <!-- 날짜 (한 번만 선택 시) -->
+            <div id="care-schedule-date-field" class="hidden">
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">날짜</label>
+                <input id="care-schedule-date" type="date" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
+            </div>
+
+            <!-- 메모 -->
+            <div>
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">메모 (선택)</label>
+                <textarea id="care-schedule-notes" rows="2" placeholder="세부 사항을 입력하세요" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors resize-none"></textarea>
+            </div>
+        </div>
+
+        <button onclick="submitCareSchedule()" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none mt-4">
+            <i class="fa-solid fa-check"></i> 일정 추가하기
+        </button>
+    </div>
+</div>
 `;
 

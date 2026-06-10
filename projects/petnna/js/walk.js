@@ -1424,33 +1424,46 @@ function startRouteDrawingMode() {
         showToast("⚠️ 산책 중에는 경로를 설계할 수 없습니다. 산책을 먼저 종료해주세요.");
         return;
     }
-    
+
     closePlacePanel();
-    
+
     if (sharedOverlayLine) mapInstance.removeLayer(sharedOverlayLine);
     sharedOverlayMarkers.forEach(m => mapInstance.removeLayer(m));
     sharedOverlayMarkers = [];
     if (simulationWalkLine) mapInstance.removeLayer(simulationWalkLine);
     if (simulationMarkerInstance) mapInstance.removeLayer(simulationMarkerInstance);
-    
+
     editingRouteId = null;
     isDrawingRouteMode = true;
     drawingRoutePoints = [];
     drawingRouteMarkers = [];
-    
+
+    // 현재 위치를 첫 번째 포인트로 자동 추가
+    if (typeof myLocationMarker !== 'undefined' && myLocationMarker) {
+        const pos = myLocationMarker.getLatLng();
+        drawingRoutePoints.push([pos.lat, pos.lng]);
+        reRenderDrawingRoute();
+    }
+
     if (mapInstance) {
         mapInstance.doubleClickZoom.disable();
     }
-    
+
     const banner = document.getElementById('route-draw-banner');
     if (banner) banner.classList.remove('hidden');
-    
+
     const desc = document.getElementById('route-draw-banner-desc');
-    if (desc) desc.innerText = "지도 위를 차례대로 클릭해 나만의 산책 경로를 그려보세요.";
-    
+    if (desc) {
+        if (drawingRoutePoints.length > 0) {
+            desc.innerText = "현재 위치에서 시작합니다. 지도를 클릭해 다음 지점을 추가하세요.";
+        } else {
+            desc.innerText = "지도 위를 차례대로 클릭해 나만의 산책 경로를 그려보세요.";
+        }
+    }
+
     document.getElementById('walk-overlay').classList.add('hidden');
-    
-    showToast("🎨 지도 위를 클릭해 산책 경로를 그리기 시작합니다.");
+
+    showToast(drawingRoutePoints.length > 0 ? "🎨 현재 위치에서 경로 그리기 시작!" : "🎨 지도 위를 클릭해 산책 경로를 그리기 시작합니다.");
 }
 
 // ── OSRM 도로 경로 계산 ──────────────────────────────────────────────────────
@@ -1826,15 +1839,15 @@ function renderCustomRoutesList() {
 
         item.innerHTML = `
             <div class="space-y-1 min-w-0 flex-1 mr-2">
-                <div class="flex items-center gap-1.5">
-                    <button onclick="toggleRouteFavorite(${r.id})" class="flex-shrink-0 text-base leading-none transition-transform hover:scale-125 active:scale-95" title="즐겨찾기">
+                <div class="flex items-center gap-1">
+                    <button onclick="toggleRouteFavorite(${r.id})" class="flex-shrink-0 text-sm leading-none transition-transform hover:scale-125 active:scale-95" title="즐겨찾기">
                         ${r.favorite ? '⭐' : '☆'}
                     </button>
-                    <span class="font-extrabold text-gray-800 truncate block text-[11px]">${r.name}</span>
+                    <span class="font-extrabold text-gray-800 truncate block text-[10px] leading-tight max-w-full">${r.name}</span>
                 </div>
-                <span class="text-[10px] text-brand-600 font-bold font-mono pl-0.5">📏 ${r.distance} km</span>
+                <span class="text-[9px] text-brand-600 font-bold font-mono pl-0.5">📏 ${r.distance} km</span>
             </div>
-            <div class="flex flex-col gap-1 shrink-0 w-[72px]">
+            <div class="flex flex-col gap-1 shrink-0 w-[68px]">
                 <button onclick="loadCustomRouteOnMap(${r.id})"
                     class="w-full ${isLoaded ? 'bg-brand-500 text-white border-brand-500' : 'bg-white hover:bg-brand-50 text-brand-700 border-brand-200'} font-bold text-[10px] px-2 py-1 rounded-lg border transition-colors">
                     ${isLoaded ? '숨기기' : '지도 표시'}
@@ -2076,9 +2089,17 @@ async function generateRandomRoute() {
     _routingBusy = true;
     showToast('🗺️ 도로를 따라 산책 경로 생성 중...');
 
-    const center = mapInstance.getCenter();
-    const lat = center.lat;
-    const lng = center.lng;
+    // 현재 위치 사용 (GPS 위치 우선, 없으면 지도 중심)
+    let lat, lng;
+    if (typeof myLocationMarker !== 'undefined' && myLocationMarker) {
+        const pos = myLocationMarker.getLatLng();
+        lat = pos.lat;
+        lng = pos.lng;
+    } else {
+        const center = mapInstance.getCenter();
+        lat = center.lat;
+        lng = center.lng;
+    }
 
     // 반경 250~700m 랜덤, 경유지 4~6개 (OSRM 좌표 수 제한 고려)
     const radiusM = 250 + Math.random() * 450;

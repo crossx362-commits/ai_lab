@@ -201,74 +201,74 @@ const MYPET_TEMPLATE = `
                 <input type="file" id="pet-direct-upload" accept="image/*" class="hidden" onchange="uploadPetPhotoDirect(event)">
 
                 <!-- AI 건강 분석 (10항목 + 음성문진) -->
-                <div class="bg-gradient-to-br from-violet-50 to-purple-50/60 border border-violet-100 rounded-2xl p-4 space-y-3">
+                <div class="bg-gradient-to-br from-violet-50 to-purple-50/60 border border-violet-100 rounded-2xl p-3 space-y-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span class="text-lg">🏥</span>
-                            <span class="text-xs font-black text-violet-700">AI 건강 분석</span>
-                            <span id="ai-health-usage-badge" class="text-[10px] font-black text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full"></span>
+                            <span class="text-sm">🏥</span>
+                            <span class="text-[11px] font-black text-violet-700">AI 건강 분석</span>
+                            <span id="ai-health-usage-badge" class="text-[9px] font-black text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded-full"></span>
                         </div>
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1">
                             <button id="ai-voice-btn"
                                 onclick="startVoiceConsultation()"
-                                class="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500 hover:bg-violet-600 text-white font-black text-[10px] rounded-xl transition-all shadow-sm">
-                                <i class="fa-solid fa-microphone text-xs"></i> 증상 말하기
+                                class="flex items-center gap-1 px-2 py-1 bg-violet-500 hover:bg-violet-600 text-white font-black text-[9px] rounded-xl transition-all shadow-sm">
+                                <i class="fa-solid fa-microphone text-[10px]"></i> 증상 말하기
                             </button>
                             <button id="ai-health-analyze-btn"
                                 onclick="triggerAiHealthAnalysis()"
-                                class="flex items-center gap-1 px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-black text-[10px] rounded-xl transition-all shadow-sm">
-                                <i class="fa-solid fa-camera text-xs"></i> 사진 분석
+                                class="flex items-center gap-1 px-2 py-1 bg-violet-600 hover:bg-violet-700 text-white font-black text-[9px] rounded-xl transition-all shadow-sm">
+                                <i class="fa-solid fa-camera text-[10px]"></i> 사진 분석
                             </button>
                         </div>
                     </div>
                     <input type="file" id="ai-health-photo-input" accept="image/*" class="hidden"
                         onchange="runAiHealthAnalysis(event)">
                     <div id="ai-voice-result" class="hidden bg-white/80 border border-violet-100 rounded-xl"></div>
-                    <div id="ai-health-result" class="hidden space-y-2"></div>
+                    <div id="ai-health-result" class="hidden space-y-1.5"></div>
                     <div id="ai-health-share-btn-wrap" class="hidden flex justify-end">
                         <button onclick="shareHealthCard()"
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-violet-100 hover:bg-violet-200 text-violet-700 font-black text-[11px] rounded-xl transition-all">
-                            <i class="fa-solid fa-share-nodes text-xs"></i> 공유 카드 저장
+                            class="flex items-center gap-1 px-2.5 py-1 bg-violet-100 hover:bg-violet-200 text-violet-700 font-black text-[10px] rounded-xl transition-all">
+                            <i class="fa-solid fa-share-nodes text-[10px]"></i> 공유 카드 저장
                         </button>
                     </div>
-                    <p class="text-[10px] text-violet-400 font-medium">
+                    <p class="text-[9px] text-violet-400 font-medium">
                         ※ 참고용 AI 분석 · 의학적 진단 아님 · 이상 시 수의사 상담
                     </p>
                 </div>
 
                 <!-- 건강 트렌드 대시보드 + 스트릭 + 캘린더 -->
-                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-4 space-y-3">
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-3 space-y-2">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span class="text-base">📊</span>
-                            <span class="text-xs font-black text-gray-700">7일 건강 트렌드</span>
+                            <span class="text-sm">📊</span>
+                            <span class="text-[11px] font-black text-gray-700">7일 건강 트렌드</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center gap-1.5">
-                                <span class="text-[10px] text-gray-400 font-bold">건강점수</span>
-                                <span id="health-score-value" class="text-2xl font-black text-emerald-500">--</span>
+                        <div class="flex items-center gap-1.5">
+                            <div class="flex items-center gap-1">
+                                <span class="text-[9px] text-gray-400 font-bold">건강점수</span>
+                                <span id="health-score-value" class="text-lg font-black text-emerald-500">--</span>
                             </div>
                             <button onclick="generateWeeklyHealthData()"
-                                class="flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black text-[9px] rounded-lg transition-all border border-emerald-200"
+                                class="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black text-[8px] rounded-lg transition-all border border-emerald-200"
                                 title="일주일치 데모 데이터 생성 (누를 때마다 추가)">
-                                <i class="fa-solid fa-database text-[9px]"></i> 데모
+                                <i class="fa-solid fa-database text-[8px]"></i> 데모
                             </button>
                             <button onclick="generateHealthReportPDF()"
-                                class="flex items-center gap-1 px-2 py-1 bg-violet-50 hover:bg-violet-100 text-violet-600 font-black text-[9px] rounded-lg transition-all border border-violet-100">
-                                <i class="fa-solid fa-file-pdf text-[9px]"></i> 리포트
-                                <span class="text-[8px] bg-amber-100 text-amber-700 px-1 rounded font-black">PRO</span>
+                                class="flex items-center gap-1 px-1.5 py-0.5 bg-violet-50 hover:bg-violet-100 text-violet-600 font-black text-[8px] rounded-lg transition-all border border-violet-100">
+                                <i class="fa-solid fa-file-pdf text-[8px]"></i> 리포트
+                                <span class="text-[7px] bg-amber-100 text-amber-700 px-1 rounded font-black">PRO</span>
                             </button>
                         </div>
                     </div>
-                    <div id="health-streak-badge" class="flex items-center gap-1 min-h-[18px]"></div>
+                    <div id="health-streak-badge" class="flex items-center gap-1 min-h-[14px]"></div>
 
                     <!-- 사용법 안내 (데이터 없을 때만 표시) -->
-                    <div id="health-tutorial" class="hidden bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-emerald-200/50">
+                    <div id="health-tutorial" class="hidden bg-white/60 backdrop-blur-sm p-2 rounded-xl border border-emerald-200/50">
                         <div class="flex items-start gap-2">
-                            <span class="text-lg">💡</span>
-                            <div class="flex-1 space-y-1.5">
-                                <p class="text-[11px] font-bold text-emerald-700">건강 트렌드 사용법</p>
-                                <ul class="text-[10px] text-gray-600 space-y-1 leading-relaxed">
+                            <span class="text-sm">💡</span>
+                            <div class="flex-1 space-y-1">
+                                <p class="text-[10px] font-bold text-emerald-700">건강 트렌드 사용법</p>
+                                <ul class="text-[9px] text-gray-600 space-y-0.5 leading-relaxed">
                                     <li class="flex items-start gap-1">
                                         <span class="text-emerald-500 mt-0.5">•</span>
                                         <span><strong class="text-emerald-600">식사/물</strong> 탭에서 매일 기록하면 자동으로 차트가 생성됩니다</span>
@@ -286,79 +286,95 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
 
-                    <div style="height:110px">
+                    <div style="height:80px">
                         <canvas id="health-trend-chart"></canvas>
                     </div>
                     <!-- 90일 캘린더 히트맵 -->
-                    <div id="health-calendar" class="pt-1"></div>
+                    <div id="health-calendar" class="pt-0.5"></div>
                 </div>
 
                 <!-- 컨디션 2칸 (앰버 톤 통일) -->
-                <div class="grid grid-cols-2 gap-2.5">
-                    <div class="bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                        <div class="flex justify-between items-center mb-2">
-                            <div class="flex items-center gap-1.5">
-                                <span id="butler-condition-emoji">🧔</span>
-                                <span class="text-xs font-black text-gray-600">집사</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <div class="flex items-center gap-1">
+                                <span id="butler-condition-emoji" class="text-sm">🧔</span>
+                                <span class="text-[11px] font-black text-gray-600">집사</span>
                             </div>
                             <span class="font-mono text-sm font-extrabold text-gray-700" id="butler-condition-pct">85%</span>
                         </div>
-                        <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mb-1.5">
+                        <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="butler-condition-bar" class="bg-brand-400 h-full transition-all duration-700" style="width:85%"></div>
                         </div>
-                        <p id="butler-condition-desc" class="text-[11px] text-gray-500 font-medium leading-snug keep-all">로딩 중...</p>
+                        <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all">로딩 중...</p>
                     </div>
-                    <div class="bg-amber-50/60 p-3 rounded-2xl border border-amber-100">
-                        <div class="flex justify-between items-center mb-2">
-                            <div class="flex items-center gap-1.5">
-                                <span id="pet-condition-emoji">🐕</span>
-                                <span class="text-xs font-black text-amber-700">펫</span>
+                    <div class="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-100">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <div class="flex items-center gap-1">
+                                <span id="pet-condition-emoji" class="text-sm">🐕</span>
+                                <span class="text-[11px] font-black text-amber-700">펫</span>
                             </div>
                             <span class="font-mono text-sm font-extrabold text-amber-600" id="pet-condition-pct">90%</span>
                         </div>
-                        <div class="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden mb-1.5">
+                        <div class="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="pet-condition-bar" class="bg-amber-400 h-full transition-all duration-700" style="width:90%"></div>
                         </div>
-                        <p id="pet-condition-desc" class="text-[11px] text-amber-800/70 font-medium leading-snug keep-all">로딩 중...</p>
+                        <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all">로딩 중...</p>
                     </div>
                 </div>
 
                 <!-- 건강 + 바로가기 아이콘 바 -->
-                <div class="bg-gray-50 rounded-2xl border border-gray-100 px-4 py-3">
+                <div class="bg-gray-50 rounded-2xl border border-gray-100 px-3 py-2.5">
                     <div class="flex items-center justify-between">
                         <!-- 건강 3칸 -->
-                        <div class="flex gap-5">
+                        <div class="flex gap-4">
                             <div class="text-center">
-                                <span id="health-log-poop" class="text-xl leading-none block">-</span>
-                                <span class="text-[10px] text-gray-400 font-bold mt-0.5 block">배변</span>
+                                <span id="health-log-poop" class="text-lg leading-none block">-</span>
+                                <span class="text-[9px] text-gray-400 font-bold mt-0.5 block">배변</span>
                             </div>
                             <div class="text-center">
                                 <span id="health-log-food" class="text-sm font-black text-gray-700 block">-g</span>
-                                <span class="text-[10px] text-gray-400 font-bold mt-0.5 block">식사</span>
+                                <span class="text-[9px] text-gray-400 font-bold mt-0.5 block">식사</span>
                             </div>
                             <div class="text-center">
                                 <span id="health-log-water" class="text-sm font-black text-gray-700 block">-ml</span>
-                                <span class="text-[10px] text-gray-400 font-bold mt-0.5 block">음수</span>
+                                <span class="text-[9px] text-gray-400 font-bold mt-0.5 block">음수</span>
                             </div>
                         </div>
                         <!-- 아이콘 버튼 3개 -->
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5">
                             <button onclick="openHealthLogModal()" title="건강 기록"
-                                class="w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 flex items-center justify-center transition-all">
-                                <i class="fa-solid fa-notes-medical text-brand-400 text-base"></i>
+                                class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 flex items-center justify-center transition-all">
+                                <i class="fa-solid fa-notes-medical text-brand-400 text-sm"></i>
                             </button>
                             <button onclick="openHealthReportModal()" title="맞춤 건강 조언"
-                                class="w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
-                                <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-base"></i>
+                                class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
+                                <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-sm"></i>
                             </button>
-                            <button onclick="switchTab('mailbox')" title="우체통" class="relative w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
-                                <i class="fa-solid fa-envelope text-amber-400 text-base"></i>
+                            <button onclick="switchTab('mailbox')" title="우체통" class="relative w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
+                                <i class="fa-solid fa-envelope text-amber-400 text-sm"></i>
                                 <span id="mailbox-unread-count-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
                             </button>
                         </div>
                     </div>
                     <!-- 사주 조언 한 줄 -->
-                    <p id="personalized-health-tip" class="text-[11px] text-gray-400 font-medium mt-2.5 pt-2.5 border-t border-gray-100 keep-all leading-relaxed">✨ 분석 중...</p>
+                    <p id="personalized-health-tip" class="text-[10px] text-gray-400 font-medium mt-2 pt-2 border-t border-gray-100 keep-all leading-relaxed">✨ 분석 중...</p>
+                </div>
+
+                <!-- 오늘의 돌봄 스케줄 -->
+                <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-2xl p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm">📅</span>
+                            <span class="text-[11px] font-black text-gray-700">오늘의 돌봄 일정</span>
+                            <span id="care-completion-badge" class="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"></span>
+                        </div>
+                        <button onclick="openCareScheduleModal()"
+                            class="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 hover:bg-sky-100 text-sky-600 font-black text-[8px] rounded-lg transition-all border border-sky-200">
+                            <i class="fa-solid fa-plus text-[8px]"></i> 추가
+                        </button>
+                    </div>
+                    <div id="care-scheduler-container" class="space-y-1.5"></div>
                 </div>
 
             </div>

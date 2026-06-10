@@ -918,6 +918,8 @@ function renderMyPets() {
     if (typeof renderDailyChallenges === 'function') renderDailyChallenges();
     if (typeof renderAchievementBadges === 'function') renderAchievementBadges();
     if (typeof checkNewAchievements === 'function') setTimeout(checkNewAchievements, 800);
+    if (typeof renderCareScheduler === 'function') renderCareScheduler();
+    if (typeof updateCareCompletionBadge === 'function') updateCareCompletionBadge();
 }
 
 function getPast7DaysLabels() {

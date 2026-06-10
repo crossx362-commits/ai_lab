@@ -1020,26 +1020,31 @@ function spawnArcadeItem() {
         });
     });
     
-    // Touch event
-    item.onmousedown = item.ontouchstart = (e) => {
+    // Touch event - 개선된 이벤트 핸들러
+    const handleClick = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if(!gameActive || item.clicked) return;
-        
+
         item.clicked = true;
         arcadeScore += points;
         const scoreDisplay = document.getElementById('arcade-score-display');
         if(scoreDisplay) scoreDisplay.innerText = arcadeScore;
-        
+
         // Pop effect
         item.innerText = '✨';
         item.style.transition = 'all 0.2s';
         item.classList.add('scale-150', 'opacity-0');
-        
+
         setTimeout(() => {
             if(item.parentNode) item.parentNode.removeChild(item);
         }, 200);
     };
+
+    // 마우스와 터치 이벤트 모두 지원
+    item.addEventListener('mousedown', handleClick);
+    item.addEventListener('touchstart', handleClick, { passive: false });
+    item.addEventListener('click', handleClick);
     
     // Cleanup after fall (Missed item logic)
     setTimeout(() => {
