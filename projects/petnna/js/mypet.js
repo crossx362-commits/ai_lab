@@ -921,6 +921,10 @@ function renderMyPets() {
     if (typeof renderCareScheduler === 'function') renderCareScheduler();
     if (typeof updateCareCompletionBadge === 'function') updateCareCompletionBadge();
     if (typeof updateReportDashboard === 'function') updateReportDashboard();
+
+    // ── 📊 현빈 패치: 산책 streak 배너 + 월간 리포트 카드 갱신 ──
+    if (typeof renderWalkStreakBanner === 'function') renderWalkStreakBanner();
+    if (typeof renderMonthlyReport === 'function') renderMonthlyReport('monthly-report-card');
 }
 
 function getPast7DaysLabels() {

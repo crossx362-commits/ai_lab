@@ -529,6 +529,16 @@ const MYPET_TEMPLATE = `
     <!-- 우측 사이드바 컬럼 -->
     <div class="lg:col-span-4 space-y-4">
 
+        <!-- 산책 streak 배너 (현빈: Duolingo 스타일) -->
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
+            <div id="walk-streak-banner">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-fire text-gray-300"></i>
+                    <span>산책을 시작하면 streak이 쌓여요!</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 일일 챌린지 -->
         <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="daily-challenges"></div>
@@ -538,6 +548,14 @@ const MYPET_TEMPLATE = `
         <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="achievement-badges"></div>
         </div>
+
+        <!-- 월간 리포트 (현빈: PetDesk 벤치마크) -->
+        <div class="bg-white border border-brand-100 rounded-2xl p-4 shadow-sm">
+            <div id="monthly-report-card">
+                <div class="text-[11px] text-gray-400 text-center py-2">리포트 로딩 중...</div>
+            </div>
+        </div>
+
 
         <!-- 돌봄 스케줄러 📅 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
