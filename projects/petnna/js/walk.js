@@ -15,6 +15,9 @@ const WalkModule = {
     isSimulationActive: false,
     lastMapInteractionTime: 0,
 
+    myLocationMarker: null,
+    myLocationCircle: null,
+
     walkDistanceRun: 0,
     walkCaloriesRun: 0,
     walkSecondsRun: 0,
@@ -98,10 +101,6 @@ function initWalkSimulator() {
         maxZoom: 20
     }).addTo(mapInstance);
 
-    // 📍 내 현재 위치 마커 변수
-    let myLocationMarker = null;
-    let myLocationCircle = null;
-
     // 📍 현재 위치 이동 함수
     function moveToMyLocation() {
         if (!navigator.geolocation) {
@@ -121,8 +120,8 @@ function initWalkSimulator() {
                 mapInstance.setView([lat, lng], 17);
 
                 // 기존 위치 마커 제거
-                if (myLocationMarker) mapInstance.removeLayer(myLocationMarker);
-                if (myLocationCircle) mapInstance.removeLayer(myLocationCircle);
+                if (WalkModule.myLocationMarker) mapInstance.removeLayer(WalkModule.myLocationMarker);
+                if (WalkModule.myLocationCircle) mapInstance.removeLayer(WalkModule.myLocationCircle);
 
                 // 현재 위치 마커 (파란 점)
                 const myIcon = L.divIcon({
@@ -145,12 +144,12 @@ function initWalkSimulator() {
                     iconAnchor: [9, 9]
                 });
 
-                myLocationMarker = L.marker([lat, lng], { icon: myIcon, zIndexOffset: 1000 })
+                WalkModule.myLocationMarker = L.marker([lat, lng], { icon: myIcon, zIndexOffset: 1000 })
                     .addTo(mapInstance)
                     .bindPopup("📍 현재 내 위치");
 
                 // 위치 정확도 원
-                myLocationCircle = L.circle([lat, lng], {
+                WalkModule.myLocationCircle = L.circle([lat, lng], {
                     radius: accuracy,
                     color: '#2563eb',
                     fillColor: '#93c5fd',
@@ -1439,8 +1438,8 @@ function startRouteDrawingMode() {
     drawingRouteMarkers = [];
 
     // 현재 위치를 첫 번째 포인트로 자동 추가
-    if (typeof myLocationMarker !== 'undefined' && myLocationMarker) {
-        const pos = myLocationMarker.getLatLng();
+    if (WalkModule.myLocationMarker) {
+        const pos = WalkModule.myLocationMarker.getLatLng();
         drawingRoutePoints.push([pos.lat, pos.lng]);
         reRenderDrawingRoute();
     }
@@ -2091,8 +2090,8 @@ async function generateRandomRoute() {
 
     // 현재 위치 사용 (GPS 위치 우선, 없으면 지도 중심)
     let lat, lng;
-    if (typeof myLocationMarker !== 'undefined' && myLocationMarker) {
-        const pos = myLocationMarker.getLatLng();
+    if (WalkModule.myLocationMarker) {
+        const pos = WalkModule.myLocationMarker.getLatLng();
         lat = pos.lat;
         lng = pos.lng;
     } else {
