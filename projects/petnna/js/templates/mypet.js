@@ -45,15 +45,27 @@ const MYPET_TEMPLATE = `
 
             <!-- 헤더 -->
             <div class="flex items-center justify-between px-5 pt-4 pb-3">
-                <div>
+                <div class="flex-1">
                     <h2 class="text-lg font-black text-gray-800 keep-all" id="pet-room-name-wrapper">
                         <span id="pet-room-name">댕이의 하루 방 🏠</span>
                     </h2>
-                    <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold mt-0.5">
-                        🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
-                    </p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
+                            🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
+                        </p>
+                        <!-- 영혼 조화도 배지 -->
+                        <div id="room-harmony-badge" class="hidden flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-rose-100 to-pink-100 rounded-full border border-rose-200">
+                            <span class="text-[10px]">💖</span>
+                            <span id="room-harmony-score" class="text-[10px] font-black text-rose-700">--점</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <!-- 사주 분석 버튼 -->
+                    <button onclick="switchTab('saju')" id="room-saju-btn"
+                        class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 border border-violet-200 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-yin-yang text-violet-500 text-sm"></i>
+                    </button>
                     <!-- 설정 버튼 -->
                     <button onclick="toggleRoomSettings()" id="room-settings-btn"
                         class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all">
@@ -380,9 +392,9 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 🔮 펫 & 집사 평생 사주 결과 카드 -->
-        <div id="mypet-saju-card"
-            class="bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
+        <!-- 🔮 펫 & 집사 평생 사주 결과 카드 (방에 통합되어 숨김 처리) -->
+        <div id="mypet-saju-card" style="display:none;"
+            class="hidden bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
                     <i class="fa-solid fa-yin-yang text-amber-500 mr-2"></i>펫 & 집사 평생 사주 & 영혼 조화도 🔮✨
