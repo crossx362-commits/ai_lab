@@ -44,33 +44,46 @@ const MYPET_TEMPLATE = `
         <div id="pet-room-card" class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
 
             <!-- 헤더 -->
-            <div class="flex items-center justify-between px-5 pt-4 pb-3">
-                <div class="flex-1">
-                    <h2 class="text-lg font-black text-gray-800 keep-all" id="pet-room-name-wrapper">
-                        <span id="pet-room-name">댕이의 하루 방 🏠</span>
-                    </h2>
-                    <div class="flex items-center gap-2 mt-1">
-                        <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
-                            🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
-                        </p>
-                        <!-- 영혼 조화도 배지 -->
-                        <div id="room-harmony-badge" class="hidden flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-rose-100 to-pink-100 rounded-full border border-rose-200">
-                            <span class="text-[10px]">💖</span>
-                            <span id="room-harmony-score" class="text-[10px] font-black text-rose-700">--점</span>
+            <div class="px-5 pt-4 pb-3">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex-1">
+                        <h2 class="text-lg font-black text-gray-800 keep-all" id="pet-room-name-wrapper">
+                            <span id="pet-room-name">댕이의 하루 방 🏠</span>
+                        </h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
+                                🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
+                            </p>
+                            <!-- 영혼 조화도 배지 -->
+                            <div id="room-harmony-badge" class="hidden flex items-center gap-1 px-2 py-0.5 bg-white/80 backdrop-blur-sm rounded-full border shadow-sm">
+                                <span id="room-harmony-icon" class="text-[10px]">💖</span>
+                                <span id="room-harmony-score" class="text-[10px] font-black">--점</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <!-- 사주 분석 버튼 -->
+                        <button onclick="switchTab('saju')" id="room-saju-btn"
+                            class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 border border-violet-200 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-yin-yang text-violet-500 text-sm"></i>
+                        </button>
+                        <!-- 설정 버튼 -->
+                        <button onclick="toggleRoomSettings()" id="room-settings-btn"
+                            class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-gear text-gray-400 hover:text-amber-500 text-sm" id="room-settings-icon"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <!-- 사주 분석 버튼 -->
-                    <button onclick="switchTab('saju')" id="room-saju-btn"
-                        class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 border border-violet-200 flex items-center justify-center transition-all">
-                        <i class="fa-solid fa-yin-yang text-violet-500 text-sm"></i>
-                    </button>
-                    <!-- 설정 버튼 -->
-                    <button onclick="toggleRoomSettings()" id="room-settings-btn"
-                        class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all">
-                        <i class="fa-solid fa-gear text-gray-400 hover:text-amber-500 text-sm" id="room-settings-icon"></i>
-                    </button>
+
+                <!-- 조화도 설명 박스 -->
+                <div id="room-harmony-message" class="hidden bg-white/60 backdrop-blur-sm border rounded-xl p-2.5 mt-2">
+                    <div class="flex items-center gap-2">
+                        <span id="room-harmony-message-icon" class="text-lg">💖✨</span>
+                        <div class="flex-1">
+                            <p id="room-harmony-message-title" class="text-[11px] font-black text-gray-800">완벽한 조화</p>
+                            <p id="room-harmony-message-text" class="text-[10px] text-gray-600 leading-snug">영혼의 단짝! 완벽한 듀오입니다</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

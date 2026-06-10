@@ -58,7 +58,14 @@ function updateRoomThemeByHarmony() {
     const roomCard = document.getElementById('pet-room-card');
     const harmonyBadge = document.getElementById('room-harmony-badge');
     const harmonyScore = document.getElementById('room-harmony-score');
+    const harmonyIcon = document.getElementById('room-harmony-icon');
     const sajuBtn = document.getElementById('room-saju-btn');
+
+    // 조화도 설명 요소
+    const harmonyMessage = document.getElementById('room-harmony-message');
+    const harmonyMessageIcon = document.getElementById('room-harmony-message-icon');
+    const harmonyMessageTitle = document.getElementById('room-harmony-message-title');
+    const harmonyMessageText = document.getElementById('room-harmony-message-text');
 
     if (!roomCard) return;
 
@@ -73,6 +80,7 @@ function updateRoomThemeByHarmony() {
         roomCard.className = 'bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden transition-all duration-500';
 
         if (harmonyBadge) harmonyBadge.classList.add('hidden');
+        if (harmonyMessage) harmonyMessage.classList.add('hidden');
         if (sajuBtn) sajuBtn.classList.remove('hidden'); // 사주 분석 버튼 표시
 
         return;
@@ -92,9 +100,31 @@ function updateRoomThemeByHarmony() {
         harmonyBadge.className = `flex items-center gap-1 px-2 py-0.5 bg-white/80 backdrop-blur-sm rounded-full border ${theme.borderColor} shadow-sm`;
     }
 
+    if (harmonyIcon) {
+        harmonyIcon.textContent = theme.icon.split('')[0]; // 첫 번째 이모지만
+    }
+
     if (harmonyScore) {
         harmonyScore.textContent = `${score}점`;
         harmonyScore.className = 'text-[10px] font-black bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent';
+    }
+
+    // 조화도 설명 박스 표시
+    if (harmonyMessage) {
+        harmonyMessage.classList.remove('hidden');
+        harmonyMessage.className = `bg-white/60 backdrop-blur-sm border ${theme.borderColor} rounded-xl p-2.5 mt-2 transition-all duration-500`;
+    }
+
+    if (harmonyMessageIcon) {
+        harmonyMessageIcon.textContent = theme.icon;
+    }
+
+    if (harmonyMessageTitle) {
+        harmonyMessageTitle.textContent = theme.name;
+    }
+
+    if (harmonyMessageText) {
+        harmonyMessageText.textContent = theme.message;
     }
 
     // 사주 분석 버튼 유지 (재분석 가능)
