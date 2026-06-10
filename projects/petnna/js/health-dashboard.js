@@ -67,7 +67,10 @@ function generateWeeklyHealthData() {
 
     if (typeof saveState === 'function') saveState();
     if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
+    if (typeof renderHealthTrendChart === 'function') renderHealthTrendChart();
+    if (typeof renderHealthCalendar === 'function') renderHealthCalendar();
     if (typeof updateHealthTutorialVisibility === 'function') updateHealthTutorialVisibility();
+    if (typeof updateReportDashboard === 'function') updateReportDashboard();
     if (typeof showToast === 'function') {
         const weekCount = Math.floor(healthLogs.history.length / 7);
         showToast(`일주일치 데모 데이터 추가 완료! 📊 (총 ${healthLogs.history.length}일, ${weekCount}주)`);
