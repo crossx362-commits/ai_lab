@@ -237,9 +237,9 @@ const MYPET_TEMPLATE = `
                 </div>
 
                 <!-- 건강 트렌드 대시보드 + 스트릭 + 캘린더 -->
-                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-3 space-y-2">
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5">
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1.5">
                             <span class="text-sm">📊</span>
                             <span class="text-[11px] font-black text-gray-700">7일 건강 트렌드</span>
                         </div>
@@ -260,15 +260,15 @@ const MYPET_TEMPLATE = `
                             </button>
                         </div>
                     </div>
-                    <div id="health-streak-badge" class="flex items-center gap-1 min-h-[14px]"></div>
+                    <div id="health-streak-badge" class="flex items-center gap-1 min-h-[12px]"></div>
 
                     <!-- 사용법 안내 (데이터 없을 때만 표시) -->
                     <div id="health-tutorial" class="hidden bg-white/60 backdrop-blur-sm p-2 rounded-xl border border-emerald-200/50">
-                        <div class="flex items-start gap-2">
+                        <div class="flex items-start gap-1.5">
                             <span class="text-sm">💡</span>
-                            <div class="flex-1 space-y-1">
+                            <div class="flex-1 space-y-0.5">
                                 <p class="text-[10px] font-bold text-emerald-700">건강 트렌드 사용법</p>
-                                <ul class="text-[9px] text-gray-600 space-y-0.5 leading-relaxed">
+                                <ul class="text-[9px] text-gray-600 space-y-0.5 leading-tight">
                                     <li class="flex items-start gap-1">
                                         <span class="text-emerald-500 mt-0.5">•</span>
                                         <span><strong class="text-emerald-600">식사/물</strong> 탭에서 매일 기록하면 자동으로 차트가 생성됩니다</span>
@@ -286,11 +286,11 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
 
-                    <div style="height:80px">
+                    <div style="height:70px">
                         <canvas id="health-trend-chart"></canvas>
                     </div>
                     <!-- 90일 캘린더 히트맵 -->
-                    <div id="health-calendar" class="pt-0.5"></div>
+                    <div id="health-calendar" class="pt-0"></div>
                 </div>
 
                 <!-- 컨디션 2칸 (앰버 톤 통일) -->
