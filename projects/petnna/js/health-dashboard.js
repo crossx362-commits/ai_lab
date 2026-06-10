@@ -188,7 +188,11 @@ function generateHealthReportPDF() {
   <div class="card"><div class="val" style="color:#f59e0b">${streak}일</div><div class="lbl">연속 기록</div></div>
   <div class="card"><div class="val" style="color:#10b981">${recordDays}일</div><div class="lbl">이달 기록일</div></div>
   <div class="card"><div class="val" style="color:#3b82f6">${analyses.length}회</div><div class="lbl">AI 분석 횟수</div></div>
-  <div class="card"><div class="val" style="color:#0ea5e9">${typeof getWeeklyCareCompletionRate === 'function' ? getWeeklyCareCompletionRate() : 0}%</div><div class="lbl">일정 준수율</div></div>
+  <div class="card"><div class="val" style="color:#0ea5e9">${(() => {
+    if (typeof getWeeklyCareCompletionRate !== 'function') return '-';
+    const rate = getWeeklyCareCompletionRate();
+    return rate > 0 ? rate + '%' : '-';
+  })()}</div><div class="lbl">일정 준수율</div></div>
 </div>
 
 <div class="section">
@@ -213,14 +217,22 @@ ${latestAI ? `<div class="section">
 </div>` : ''}
 
 <div class="section">
-  <h2>📊 주간 돌봄 활동 통계</h2>
-  <div class="grid" style="grid-template-columns:repeat(4,1fr)">
-    ${typeof getWeeklyCareStats === 'function' ? Object.entries(getWeeklyCareStats()).map(([type, count]) => {
-      const icons = { feed: '🍖', water: '💧', walk: '🚶', medicine: '💊', vet: '🏥', groom: '✂️', play: '🎾' };
-      const names = { feed: '식사', water: '음수', walk: '산책', medicine: '투약', vet: '병원', groom: '미용', play: '놀이' };
-      return `<div class="card"><div class="val">${icons[type] || '📋'} ${count}회</div><div class="lbl">${names[type] || type}</div></div>`;
-    }).join('') : '<div class="card"><div class="val">-</div><div class="lbl">데이터 없음</div></div>'}
-  </div>
+  <h2>📊 주간 돌봄 활동 통계 (최근 7일)</h2>
+  ${(() => {
+    if (typeof getWeeklyCareStats !== 'function') {
+      return '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:20px;">돌봄 스케줄러 기능을 사용하여 활동을 기록해보세요.</p>';
+    }
+    const stats = getWeeklyCareStats();
+    const entries = Object.entries(stats);
+    if (entries.length === 0) {
+      return '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:20px;">📅 아직 기록된 돌봄 활동이 없습니다.<br>마이펫 탭에서 오늘의 돌봄 일정을 완료해보세요!</p>';
+    }
+    const icons = { feed: '🍖', water: '💧', walk: '🚶', medicine: '💊', vet: '🏥', groom: '✂️', play: '🎾' };
+    const names = { feed: '식사', water: '음수', walk: '산책', medicine: '투약', vet: '병원', groom: '미용', play: '놀이' };
+    return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">${entries.map(([type, count]) =>
+      `<div class="card"><div class="val">${icons[type] || '📋'} ${count}회</div><div class="lbl">${names[type] || type}</div></div>`
+    ).join('')}</div>`;
+  })()}
 </div>
 
 <div class="section">
