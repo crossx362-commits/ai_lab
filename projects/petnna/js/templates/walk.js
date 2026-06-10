@@ -143,6 +143,67 @@ const WALK_TEMPLATE = `
     <!-- ── 오른쪽 컬럼: 산책기록 + 나만의 산책로 ── -->
     <div class="w-full sm:w-72 flex-shrink-0 flex flex-col gap-4">
 
+        <!-- 나만의 맞춤 산책로 (고도화) -->
+        <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
+
+            <!-- 헤더 + 새 경로 버튼 -->
+            <div class="flex items-center justify-between">
+                <h4 class="font-black text-gray-800 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-map-location text-brand-500 text-base"></i>
+                    나만의 산책로
+                </h4>
+                <div class="flex gap-1.5">
+                    <button onclick="generateRandomRoute()"
+                        class="bg-violet-500 hover:bg-violet-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow-sm">
+                        <i class="fa-solid fa-shuffle text-xs"></i> 랜덤
+                    </button>
+                    <button onclick="startRouteDrawingMode()"
+                        class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow-sm">
+                        <i class="fa-solid fa-plus text-xs"></i> 직접
+                    </button>
+                </div>
+            </div>
+
+            <!-- 필터 탭 -->
+            <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
+                <button onclick="filterCustomRoutes('all')"
+                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-brand-500 text-white transition-all"
+                    data-filter="all">전체</button>
+                <button onclick="filterCustomRoutes('favorite')"
+                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 transition-all"
+                    data-filter="favorite">⭐ 즐겨찾기</button>
+                <button onclick="filterCustomRoutes('short')"
+                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 transition-all"
+                    data-filter="short">🏃 단거리</button>
+                <button onclick="filterCustomRoutes('long')"
+                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 transition-all"
+                    data-filter="long">🌿 장거리</button>
+            </div>
+
+            <!-- 정렬 + 공유코드 가져오기 -->
+            <div class="flex gap-2">
+                <select onchange="sortCustomRoutes(this.value)"
+                    class="flex-1 text-[10px] font-bold border border-gray-200 rounded-xl px-2.5 py-2 outline-none focus:border-brand-400 text-gray-600 bg-gray-50">
+                    <option value="recent">최근 생성순</option>
+                    <option value="distance">거리순</option>
+                    <option value="name">이름순</option>
+                </select>
+                <button onclick="promptImportTrailCode()"
+                    class="flex-shrink-0 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10px] px-3 py-2 rounded-xl flex items-center gap-1 transition-all">
+                    <i class="fa-solid fa-file-import text-xs"></i> 가져오기
+                </button>
+            </div>
+
+            <!-- 경로 리스트 -->
+            <div id="custom-routes-list" class="space-y-2 max-h-[320px] overflow-y-auto no-scrollbar"></div>
+
+            <!-- 빈 상태 안내 (경로 없을 때 JS로 show/hide) -->
+            <div id="custom-routes-empty" class="hidden text-center py-6 space-y-2">
+                <span class="text-4xl">🗺️</span>
+                <p class="text-[11px] text-gray-400 font-semibold">아직 저장된 산책로가 없어요</p>
+                <p class="text-[10px] text-gray-300">지도에서 경로를 그려 나만의 코스를 만들어보세요!</p>
+            </div>
+
         <!-- 산책기록: 실시간 수치 + 제어 버튼 + 마킹 버튼 -->
         <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
 
@@ -222,67 +283,6 @@ const WALK_TEMPLATE = `
             </div>
 
         </div>
-
-        <!-- 나만의 맞춤 산책로 (고도화) -->
-        <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
-
-            <!-- 헤더 + 새 경로 버튼 -->
-            <div class="flex items-center justify-between">
-                <h4 class="font-black text-gray-800 text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-map-location text-brand-500 text-base"></i>
-                    나만의 산책로
-                </h4>
-                <div class="flex gap-1.5">
-                    <button onclick="generateRandomRoute()"
-                        class="bg-violet-500 hover:bg-violet-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow-sm">
-                        <i class="fa-solid fa-shuffle text-xs"></i> 랜덤
-                    </button>
-                    <button onclick="startRouteDrawingMode()"
-                        class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow-sm">
-                        <i class="fa-solid fa-plus text-xs"></i> 직접
-                    </button>
-                </div>
-            </div>
-
-            <!-- 필터 탭 -->
-            <div class="flex gap-1.5 overflow-x-auto no-scrollbar">
-                <button onclick="filterCustomRoutes('all')"
-                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-brand-500 text-white transition-all"
-                    data-filter="all">전체</button>
-                <button onclick="filterCustomRoutes('favorite')"
-                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 transition-all"
-                    data-filter="favorite">⭐ 즐겨찾기</button>
-                <button onclick="filterCustomRoutes('short')"
-                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 transition-all"
-                    data-filter="short">🏃 단거리</button>
-                <button onclick="filterCustomRoutes('long')"
-                    class="route-filter-btn flex-shrink-0 text-[10px] font-bold py-1.5 px-3 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 transition-all"
-                    data-filter="long">🌿 장거리</button>
-            </div>
-
-            <!-- 정렬 + 공유코드 가져오기 -->
-            <div class="flex gap-2">
-                <select onchange="sortCustomRoutes(this.value)"
-                    class="flex-1 text-[10px] font-bold border border-gray-200 rounded-xl px-2.5 py-2 outline-none focus:border-brand-400 text-gray-600 bg-gray-50">
-                    <option value="recent">최근 생성순</option>
-                    <option value="distance">거리순</option>
-                    <option value="name">이름순</option>
-                </select>
-                <button onclick="promptImportTrailCode()"
-                    class="flex-shrink-0 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10px] px-3 py-2 rounded-xl flex items-center gap-1 transition-all">
-                    <i class="fa-solid fa-file-import text-xs"></i> 가져오기
-                </button>
-            </div>
-
-            <!-- 경로 리스트 -->
-            <div id="custom-routes-list" class="space-y-2 max-h-[320px] overflow-y-auto no-scrollbar"></div>
-
-            <!-- 빈 상태 안내 (경로 없을 때 JS로 show/hide) -->
-            <div id="custom-routes-empty" class="hidden text-center py-6 space-y-2">
-                <span class="text-4xl">🗺️</span>
-                <p class="text-[11px] text-gray-400 font-semibold">아직 저장된 산책로가 없어요</p>
-                <p class="text-[10px] text-gray-300">지도에서 경로를 그려 나만의 코스를 만들어보세요!</p>
-            </div>
 
         </div>
 
