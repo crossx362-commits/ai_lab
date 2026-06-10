@@ -122,6 +122,20 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
+    <!-- AI 수의사 채팅 진입 버튼 -->
+    <div class="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">🏥</div>
+            <div>
+                <p class="font-black text-white text-sm">AI 수의사 상담</p>
+                <p class="text-[10px] text-emerald-100">증상을 말하면 AI가 즉시 답변해요</p>
+            </div>
+        </div>
+        <button onclick="openVetChatModal()" class="px-4 py-2 bg-white text-emerald-600 font-black text-xs rounded-xl shadow-sm hover:bg-emerald-50 transition-all outline-none">
+            상담 시작
+        </button>
+    </div>
+
     <!-- AI 건강 분석 -->
     <div class="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-5 shadow-sm">
         <div class="flex items-center justify-between mb-3">

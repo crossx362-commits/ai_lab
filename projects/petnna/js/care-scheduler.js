@@ -197,8 +197,16 @@ function renderCareScheduler() {
     // 부모 박스 크기 동적 조절
     const parentBox = container.closest('.bg-gradient-to-br');
 
+    const autoReminderBtn = `
+        <div class="mb-2">
+            <button onclick="triggerAgeBasedReminders()"
+                class="w-full flex items-center justify-center gap-1.5 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-[10px] font-bold rounded-xl transition-all">
+                🔔 월령별 알림 자동 추가
+            </button>
+        </div>`;
+
     if (todaySchedules.length === 0) {
-        container.innerHTML = `
+        container.innerHTML = autoReminderBtn + `
             <div class="text-center py-3 text-gray-400 text-xs">
                 <div class="text-lg mb-1">📅</div>
                 <p class="text-[10px]">오늘 일정이 없습니다</p>
@@ -249,7 +257,98 @@ function renderCareScheduler() {
         `;
     }).join('');
 
-    container.innerHTML = html;
+    container.innerHTML = autoReminderBtn + html;
+}
+
+function getPetAgeInMonths(pet) {
+    if (pet.birthDate) {
+        const birth = new Date(pet.birthDate);
+        const now = new Date();
+        return (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+    }
+    if (pet.age) {
+        const yearMatch = pet.age.match(/(\d+)살/);
+        const monthMatch = pet.age.match(/(\d+)개월/);
+        if (yearMatch) return parseInt(yearMatch[1]) * 12;
+        if (monthMatch) return parseInt(monthMatch[1]);
+    }
+    return null;
+}
+
+function checkAndAddAgeBasedReminders(pet) {
+    if (!pet) return 0;
+
+    const ageMonths = getPetAgeInMonths(pet);
+    if (ageMonths === null) return 0;
+
+    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+    const existingTitles = new Set(careSchedules.schedules.map(s => s.title));
+
+    const reminders = [];
+
+    if (ageMonths <= 6) {
+        reminders.push(
+            { type: 'medicine', title: '종합백신 1차', time: '10:00', repeat: 'once', notes: '0~6개월 권장' },
+            { type: 'medicine', title: '종합백신 2차', time: '10:00', repeat: 'once', notes: '1차 접종 후 4주 뒤' },
+            { type: 'medicine', title: '종합백신 3차', time: '10:00', repeat: 'once', notes: '2차 접종 후 4주 뒤' },
+            { type: 'vet', title: '광견병 예방접종', time: '10:00', repeat: 'once', notes: '0~6개월 권장' }
+        );
+    }
+
+    if (ageMonths > 6 && ageMonths <= 12) {
+        reminders.push(
+            { type: 'vet', title: '중성화 수술 상담', time: '10:00', repeat: 'once', notes: '6~12개월 권장' },
+            { type: 'medicine', title: '심장사상충 예방약', time: '09:00', repeat: 'monthly', notes: '매월 1회 투약' }
+        );
+    }
+
+    if (ageMonths > 12 && ageMonths < 84) {
+        reminders.push(
+            { type: 'medicine', title: '심장사상충 예방약', time: '09:00', repeat: 'monthly', notes: '매월 1회 투약' },
+            { type: 'medicine', title: '벼룩/진드기 예방약', time: '09:00', repeat: 'monthly', notes: '매월 1회 투약' },
+            { type: 'vet', title: '연간 건강검진', time: '10:00', repeat: 'once', notes: '연 1회 권장' }
+        );
+    }
+
+    if (ageMonths >= 84) {
+        reminders.push(
+            { type: 'medicine', title: '심장사상충 예방약', time: '09:00', repeat: 'monthly', notes: '매월 1회 투약' },
+            { type: 'medicine', title: '벼룩/진드기 예방약', time: '09:00', repeat: 'monthly', notes: '매월 1회 투약' },
+            { type: 'vet', title: '노령견 건강검진 (상반기)', time: '10:00', repeat: 'once', notes: '7살 이상 연 2회 권장' },
+            { type: 'vet', title: '노령견 건강검진 (하반기)', time: '10:00', repeat: 'once', notes: '7살 이상 연 2회 권장' },
+            { type: 'medicine', title: '관절 영양제', time: '08:00', repeat: 'daily', notes: '7살 이상 매일 급여' }
+        );
+    }
+
+    let addedCount = 0;
+    reminders.forEach(reminder => {
+        if (!existingTitles.has(reminder.title)) {
+            const scheduleData = {
+                petId: pet.id,
+                type: reminder.type,
+                title: reminder.title,
+                time: reminder.time,
+                repeat: reminder.repeat,
+                repeatDays: [0, 1, 2, 3, 4, 5, 6],
+                date: reminder.repeat === 'once' ? new Date().toISOString().split('T')[0] : null,
+                notes: reminder.notes
+            };
+            const cs = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+            cs.schedules.push({
+                id: Date.now() + addedCount,
+                ...scheduleData,
+                completed: false,
+                lastCompleted: null,
+                createdAt: new Date().toISOString()
+            });
+            existingTitles.add(reminder.title);
+            if (typeof AppStore !== 'undefined') AppStore.setState('careSchedules', cs);
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0 && typeof renderCareScheduler === 'function') renderCareScheduler();
+    return addedCount;
 }
 
 // 돌봄 완료 배지 업데이트

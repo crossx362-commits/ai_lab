@@ -3,6 +3,34 @@
 let selectedCareType = 'feed';
 let selectedRepeatDays = [0, 1, 2, 3, 4, 5, 6]; // 기본값: 매일
 
+function triggerAgeBasedReminders() {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    if (!pet) {
+        if (typeof showToast === 'function') showToast('활성 반려동물을 찾을 수 없습니다 🐾');
+        return;
+    }
+    const count = typeof checkAndAddAgeBasedReminders === 'function' ? checkAndAddAgeBasedReminders(pet) : 0;
+    if (typeof showToast === 'function') {
+        if (count > 0) {
+            showToast(`${count}개의 월령별 알림을 추가했습니다 🔔`);
+        } else {
+            showToast('추가할 새 알림이 없습니다 ✅');
+        }
+    }
+}
+
+function runDailyAgeReminderCheck() {
+    const today = new Date().toISOString().split('T')[0];
+    const lastCheckKey = 'petna_age_reminder_last_check';
+    const lastCheck = localStorage.getItem(lastCheckKey);
+    if (lastCheck === today) return;
+    localStorage.setItem(lastCheckKey, today);
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    if (pet && typeof checkAndAddAgeBasedReminders === 'function') {
+        checkAndAddAgeBasedReminders(pet);
+    }
+}
+
 // 돌봄 일정 추가 모달 열기
 function openCareScheduleModal() {
     const modal = document.getElementById('care-schedule-modal');

@@ -710,6 +710,58 @@ function stopAndSaveWalk() {
                 } catch(e) { console.warn('[코다리] 자동 일기 생성 오류:', e); }
             })();
 
+            (function _offerWalkSocialShare() {
+                try {
+                    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+                    const petName = pet ? (pet.name || '우리 아이') : '우리 아이';
+                    const [mm, ss] = completedSession.duration.split(':').map(Number);
+                    const durText = mm > 0 ? `${mm}분 ${ss || 0}초` : `${ss}초`;
+                    const distKm = parseFloat(completedSession.distance) || 0;
+                    const kcal = parseInt(completedSession.calories) || 0;
+                    const walkStreak = (() => {
+                        if (typeof walks === 'undefined' || walks.length === 0) return 1;
+                        const now = new Date();
+                        const savedDates = walks.map(w => w.savedAt ? w.savedAt.split('T')[0] : null).filter(Boolean);
+                        let streak = 1;
+                        let checkDate = new Date(now);
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        for (let i = 0; i < 60; i++) {
+                            const ds = checkDate.toISOString().split('T')[0];
+                            if (savedDates.includes(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+                            else break;
+                        }
+                        return streak;
+                    })();
+                    setTimeout(() => {
+                        showCustomDialog({
+                            title: "소셜 피드 공유 📢",
+                            message: `${petName}의 산책 기록을 이웃에게 공유할까요?\n${distKm.toFixed(1)}km · ${durText} · ${kcal}kcal`,
+                            icon: "🐾",
+                            type: "confirm",
+                            onConfirm: () => {
+                                if (typeof posts !== 'undefined') {
+                                    posts.unshift({
+                                        id: Date.now(),
+                                        petName: petName,
+                                        petAvatar: pet?.imageUrl || '🐾',
+                                        content: `🐾 ${distKm.toFixed(1)}km 산책 완료! ${kcal} kcal 소모했어요 🔥\n${walkStreak >= 2 ? `${walkStreak}일 연속 산책 중! 🏃` : ''}`,
+                                        image: null,
+                                        isVideo: false,
+                                        likes: 0,
+                                        liked: false,
+                                        comments: [],
+                                        savedAt: new Date().toISOString(),
+                                        isWalkPost: true
+                                    });
+                                    if (typeof saveState === 'function') saveState();
+                                    if (typeof showToast === 'function') showToast("소셜 피드에 공유됐어요! 📢");
+                                }
+                            }
+                        });
+                    }, 3000);
+                } catch(e) {}
+            })();
+
             showToast("🏆 안심 산책 성료! 역사관에 기록이 등록되었습니다. 펫 행복지수가 올라갔어요!");
             _promptRegisterWalkPlace();
 
@@ -823,6 +875,59 @@ function discardWalk() {
             _setWalkStatusBadge('idle');
             renderWalkHistory();
             renderMyPets();
+
+            (function _offerWalkSocialShare() {
+                try {
+                    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+                    const petName = pet ? (pet.name || '우리 아이') : '우리 아이';
+                    const [mm, ss] = completedSession.duration.split(':').map(Number);
+                    const durText = mm > 0 ? `${mm}분 ${ss || 0}초` : `${ss}초`;
+                    const distKm = parseFloat(completedSession.distance) || 0;
+                    const kcal = parseInt(completedSession.calories) || 0;
+                    const walkStreak = (() => {
+                        if (typeof walks === 'undefined' || walks.length === 0) return 1;
+                        const now = new Date();
+                        const savedDates = walks.map(w => w.savedAt ? w.savedAt.split('T')[0] : null).filter(Boolean);
+                        let streak = 1;
+                        let checkDate = new Date(now);
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        for (let i = 0; i < 60; i++) {
+                            const ds = checkDate.toISOString().split('T')[0];
+                            if (savedDates.includes(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+                            else break;
+                        }
+                        return streak;
+                    })();
+                    setTimeout(() => {
+                        showCustomDialog({
+                            title: "소셜 피드 공유 📢",
+                            message: `${petName}의 산책 기록을 이웃에게 공유할까요?\n${distKm.toFixed(1)}km · ${durText} · ${kcal}kcal`,
+                            icon: "🐾",
+                            type: "confirm",
+                            onConfirm: () => {
+                                if (typeof posts !== 'undefined') {
+                                    posts.unshift({
+                                        id: Date.now(),
+                                        petName: petName,
+                                        petAvatar: pet?.imageUrl || '🐾',
+                                        content: `🐾 ${distKm.toFixed(1)}km 산책 완료! ${kcal} kcal 소모했어요 🔥\n${walkStreak >= 2 ? `${walkStreak}일 연속 산책 중! 🏃` : ''}`,
+                                        image: null,
+                                        isVideo: false,
+                                        likes: 0,
+                                        liked: false,
+                                        comments: [],
+                                        savedAt: new Date().toISOString(),
+                                        isWalkPost: true
+                                    });
+                                    if (typeof saveState === 'function') saveState();
+                                    if (typeof showToast === 'function') showToast("소셜 피드에 공유됐어요! 📢");
+                                }
+                            }
+                        });
+                    }, 3000);
+                } catch(e) {}
+            })();
+
             showToast("🏆 안심 산책 성료! 역사관에 기록이 등록되었습니다. 펫 행복지수가 올라갔어요!");
             _promptRegisterWalkPlace();
 

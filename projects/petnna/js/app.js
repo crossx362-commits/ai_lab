@@ -25,6 +25,7 @@ const TabControllers = {
             if (typeof renderMyPets === 'function') renderMyPets();
             if (typeof renderCalendar === 'function') renderCalendar();
             if (typeof renderMealLogsList === 'function') renderMealLogsList();
+            if (typeof runDailyAgeReminderCheck === 'function') runDailyAgeReminderCheck();
         },
         destroy() {
             if (typeof AppLogger !== 'undefined') {

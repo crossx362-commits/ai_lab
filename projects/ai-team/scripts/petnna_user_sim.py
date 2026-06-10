@@ -156,8 +156,8 @@ def simulate_session(agent: dict) -> dict:
                 comment_on_post(token, post["id"], existing, cmt.strip()[:80])
                 log["actions"].append(f"💬 댓글: {cmt[:50]}...")
 
-    # 5. 새 게시물 작성 (33% 확률)
-    if random.random() > 0.67:
+    # 5. 새 게시물 작성 (50% 확률)
+    if random.random() > 0.5:
         content = lm.chat(
             f"펫과나 반려동물 소셜 피드 게시물을 2줄로 써주세요. "
             f"에이전트: {name} ({agent['style']}). 반려동물: {agent['pet_name']}({agent['pet_type']}). "
@@ -177,8 +177,9 @@ def main():
     if not lm.is_available():
         print("⚠️  Ollama 미실행")
 
-    # 이번 배치: 랜덤 3명
-    batch = random.sample(AGENT_USERS, min(3, len(AGENT_USERS)))
+    # 이번 배치: 전체 7명
+    batch = AGENT_USERS[:]
+    random.shuffle(batch)
     session_logs = []
 
     for agent in batch:
@@ -196,7 +197,8 @@ def main():
         for log in session_logs:
             f.write(f"- **{log['agent']}**: {' | '.join(log['actions'])}\n")
 
-    print(f"\n✅ 완료 — {len(batch)}명 세션")
+    posts_created = sum(1 for log in session_logs if any("게시물 작성" in a for a in log["actions"]))
+    print(f"\n✅ 완료 — {len(batch)}명 세션, 게시물 {posts_created}개 작성")
 
 
 if __name__ == "__main__":

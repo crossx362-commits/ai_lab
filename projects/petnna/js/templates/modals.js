@@ -1201,5 +1201,27 @@ const MODALS_TEMPLATE = `
         </button>
     </div>
 </div>
+
+<!-- AI 수의사 채팅 모달 -->
+<div id="vet-chat-modal" class="fixed inset-0 z-[110] hidden items-end justify-center bg-black/50">
+    <div class="bg-white rounded-t-3xl w-full max-w-lg p-4 h-[80vh] flex flex-col shadow-2xl">
+        <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-lg">🏥</div>
+                <div>
+                    <h3 class="font-black text-gray-800 text-sm">AI 수의사 상담</h3>
+                    <p class="text-[10px] text-emerald-600 font-medium">Gemini 기반 · 참고용 상담</p>
+                </div>
+            </div>
+            <button onclick="closeVetChatModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold transition-colors outline-none">✕</button>
+        </div>
+        <div id="vet-chat-messages" class="flex-1 overflow-y-auto space-y-2 mb-3 no-scrollbar"></div>
+        <div class="flex gap-2">
+            <input id="vet-chat-input" type="text" placeholder="증상이나 질문을 입력하세요..." class="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm outline-none focus:border-emerald-400 transition-colors" onkeydown="handleVetChatKeydown(event)" />
+            <button onclick="sendVetChatMessage(document.getElementById('vet-chat-input').value)" class="bg-brand-500 hover:bg-brand-600 text-white rounded-full px-4 py-2 text-sm font-bold transition-colors outline-none">전송</button>
+        </div>
+        <p class="text-[9px] text-gray-400 text-center mt-2">※ AI 상담은 참고용이며 의학적 진단이 아닙니다</p>
+    </div>
+</div>
 `;
 
