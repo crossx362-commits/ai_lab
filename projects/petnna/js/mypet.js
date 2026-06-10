@@ -1732,16 +1732,42 @@ function uploadPetPhotoDirect(event) {
 // ==========================================
 let currentHealthLog = { poop: null, food: 0, water: 0 };
 
+// 건강 퀵 요약 업데이트
+function updateHealthQuickSummary() {
+    const scoreEl = document.getElementById('health-quick-score');
+    const streakEl = document.getElementById('health-quick-streak');
+    const todayEl = document.getElementById('health-quick-today');
+
+    if (!scoreEl || !streakEl || !todayEl) return;
+
+    // 건강 점수
+    const score = (typeof calcHealthScore === 'function') ? calcHealthScore() : 0;
+    scoreEl.textContent = score || '--';
+
+    // 연속 기록
+    const streak = (typeof calcHealthStreak === 'function') ? calcHealthStreak() : 0;
+    streakEl.textContent = streak ? `${streak}일` : '--일';
+
+    // 오늘 기록 여부
+    const logs = (typeof healthLogs !== 'undefined' && healthLogs?.today) ? healthLogs.today : null;
+    const hasToday = logs && (logs.food > 0 || logs.water > 0 || logs.poop);
+    todayEl.textContent = hasToday ? '완료' : '미기록';
+    todayEl.className = hasToday ? 'text-lg font-black text-emerald-600' : 'text-lg font-black text-gray-400';
+}
+
 function renderHealthDashboard() {
     if (typeof healthLogs === 'undefined') return;
     const logs = healthLogs?.today;
-    
+
+    // 건강 퀵 요약 업데이트
+    updateHealthQuickSummary();
+
     // UI 업데이트 (건강 기록 데이터)
     if (logs) {
         const poopDisp = document.getElementById('health-log-poop');
         const foodDisp = document.getElementById('health-log-food');
         const waterDisp = document.getElementById('health-log-water');
-        
+
         if (poopDisp) {
             const poopIcons = { 'null': '-', 'normal': '💩', 'hard': '🪨', 'liquid': '💦' };
             poopDisp.innerText = poopIcons[logs.poop] || '-';

@@ -225,44 +225,42 @@ const MYPET_TEMPLATE = `
                 </div>
                 <input type="file" id="pet-direct-upload" accept="image/*" class="hidden" onchange="uploadPetPhotoDirect(event)">
 
-                <!-- AI 건강 분석 (10항목 + 음성문진) -->
-                <div class="bg-gradient-to-br from-violet-50 to-purple-50/60 border border-violet-100 rounded-2xl p-3 space-y-2 transition-all duration-300">
+                <!-- 건강 퀵 요약 (건강 탭 바로가기) -->
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-3 space-y-2 transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="text-sm">🏥</span>
-                            <span class="text-[11px] font-black text-violet-700">AI 건강 분석</span>
-                            <span id="ai-health-usage-badge" class="text-[9px] font-black text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded-full"></span>
+                            <span class="text-[11px] font-black text-gray-700">건강 요약</span>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <button id="ai-voice-btn"
-                                onclick="startVoiceConsultation()"
-                                class="flex items-center gap-1 px-2 py-1 bg-violet-500 hover:bg-violet-600 text-white font-black text-[9px] rounded-xl transition-all shadow-sm">
-                                <i class="fa-solid fa-microphone text-[10px]"></i> 증상 말하기
-                            </button>
-                            <button id="ai-health-analyze-btn"
-                                onclick="triggerAiHealthAnalysis()"
-                                class="flex items-center gap-1 px-2 py-1 bg-violet-600 hover:bg-violet-700 text-white font-black text-[9px] rounded-xl transition-all shadow-sm">
-                                <i class="fa-solid fa-camera text-[10px]"></i> 사진 분석
-                            </button>
-                        </div>
-                    </div>
-                    <input type="file" id="ai-health-photo-input" accept="image/*" class="hidden"
-                        onchange="runAiHealthAnalysis(event)">
-                    <div id="ai-voice-result" class="hidden bg-white/80 border border-violet-100 rounded-xl"></div>
-                    <div id="ai-health-result" class="hidden space-y-1.5"></div>
-                    <div id="ai-health-share-btn-wrap" class="hidden flex justify-end">
-                        <button onclick="shareHealthCard()"
-                            class="flex items-center gap-1 px-2.5 py-1 bg-violet-100 hover:bg-violet-200 text-violet-700 font-black text-[10px] rounded-xl transition-all">
-                            <i class="fa-solid fa-share-nodes text-[10px]"></i> 공유 카드 저장
+                        <button onclick="switchTab('health')"
+                            class="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[9px] rounded-xl transition-all shadow-sm">
+                            <i class="fa-solid fa-heart-pulse text-[10px]"></i> 건강 탭으로
                         </button>
                     </div>
-                    <p class="text-[9px] text-violet-400 font-medium">
-                        ※ 참고용 AI 분석 · 의학적 진단 아님 · 이상 시 수의사 상담
+
+                    <!-- 3개 요약 카드 -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-white/60 backdrop-blur-sm border border-emerald-200 rounded-lg p-2 text-center">
+                            <div id="health-quick-score" class="text-lg font-black text-emerald-600">--</div>
+                            <div class="text-[9px] text-gray-500 font-bold">건강점수</div>
+                        </div>
+                        <div class="bg-white/60 backdrop-blur-sm border border-emerald-200 rounded-lg p-2 text-center">
+                            <div id="health-quick-streak" class="text-lg font-black text-amber-600">--일</div>
+                            <div class="text-[9px] text-gray-500 font-bold">연속기록</div>
+                        </div>
+                        <div class="bg-white/60 backdrop-blur-sm border border-emerald-200 rounded-lg p-2 text-center">
+                            <div id="health-quick-today" class="text-lg font-black text-teal-600">--</div>
+                            <div class="text-[9px] text-gray-500 font-bold">오늘기록</div>
+                        </div>
+                    </div>
+
+                    <p class="text-[9px] text-emerald-600 font-medium text-center">
+                        💡 건강 탭에서 AI 분석, 차트, 식사 일지를 확인하세요
                     </p>
                 </div>
 
-                <!-- 건강 트렌드 대시보드 + 스트릭 + 캘린더 -->
-                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5 transition-all duration-300">
+                <!-- 건강 트렌드 대시보드 (숨김 처리 - 건강 탭으로 이동) -->
+                <div class="hidden bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5 transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-1.5">
                             <span class="text-sm">📊</span>
