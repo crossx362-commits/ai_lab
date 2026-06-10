@@ -304,7 +304,19 @@ def run_research() -> bool:
         f"📊 총 리서치 횟수: {count}회 | 누적 학습 테마: {total}개\n"
         f"분석 내용이 다음 뮤직비디오 생성에 반영됩니다!"
     )
-    store_knowledge('루나', 'YouTube Music/Video Trend', report, ['Trend', 'YouTube'])\n    send_telegram_message(msg)
+    # 지식 공유 시스템에 등록
+    from _shared.knowledge_base import store_knowledge
+    report = (
+        f"🎯 오늘의 리서치 목표: {goal}\n"
+        f"💡 새 학습 테마: {themes_str}\n"
+        f"📊 총 리서치 횟수: {count}회 | 누적 학습 테마: {total}개\n"
+    )
+    try:
+        store_knowledge('루나', 'YouTube Music/Video Trend', report, ['Trend', 'YouTube'])
+    except Exception as e:
+        print(f"  [루나 리서치] 지식 저장 실패: {e}")
+        
+    send_telegram_message(msg)
 
     return True
 

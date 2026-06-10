@@ -214,7 +214,18 @@ def run_research() -> bool:
         f"📊 총 리서치 횟수: {count}회 | 누적 학습 프롬프트: {total}개\n"
         f"학습된 프롬프트가 다음 인스타그램 포스팅에 반영됩니다!"
     )
-    store_knowledge('아린', 'Instagram Trend Research', report, ['Trend', 'Instagram'])
+    # 지식 공유 시스템에 등록
+    from _shared.knowledge_base import store_knowledge
+    report = (
+        f"🎯 오늘의 이미지 리서치 목표: {goal}\n"
+        f"💡 새 학습 프롬프트 테마: {themes_str}\n"
+        f"📊 총 리서치 횟수: {count}회 | 누적 학습 프롬프트: {total}개\n"
+    )
+    try:
+        store_knowledge('아린', 'Instagram Trend Research', report, ['Trend', 'Instagram'])
+    except Exception as e:
+        print(f"  [아린 리서치] 지식 저장 실패: {e}")
+        
     send_telegram_message(msg)
 
     return True
