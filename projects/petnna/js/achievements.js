@@ -121,7 +121,7 @@ function getDailyChallenges() {
             label: '건강 기록 완료',
             desc: '식사·음수·배변 중 하나라도 기록',
             done: todayEntry.food > 0 || todayEntry.water > 0 || todayEntry.poop !== null,
-            action: () => { if (typeof switchTab === 'function') switchTab('mypet'); },
+            action: 'openHealthLogModal',
             actionLabel: '기록하기'
         },
         {
@@ -130,7 +130,7 @@ function getDailyChallenges() {
             label: 'AI 건강 분석',
             desc: '오늘 사진으로 AI 건강 분석',
             done: hasAiToday,
-            action: () => { if (typeof triggerAiHealthAnalysis === 'function') triggerAiHealthAnalysis(); },
+            action: 'triggerAiHealthAnalysis',
             actionLabel: '분석하기'
         },
         {
@@ -139,7 +139,7 @@ function getDailyChallenges() {
             label: '산책 기록',
             desc: '오늘 산책을 기록해요',
             done: hasWalkToday,
-            action: () => { if (typeof switchTab === 'function') switchTab('walk'); },
+            action: "switchTab('walk')",
             actionLabel: '산책하기'
         },
     ];
@@ -159,7 +159,7 @@ function renderDailyChallenges() {
                 <p class="text-[11px] font-black ${c.done ? 'text-emerald-700 line-through' : 'text-gray-700'}">${c.label}</p>
                 <p class="text-[9px] text-gray-400 font-medium truncate">${c.desc}</p>
             </div>
-            ${!c.done ? `<button onclick="(${c.action.toString()})()" class="text-[9px] font-black px-2 py-1 bg-brand-500 text-white rounded-lg whitespace-nowrap flex-shrink-0">${c.actionLabel}</button>` : ''}
+            ${!c.done ? `<button onclick="${c.action.includes('(') ? c.action : c.action + '()'}" class="text-[9px] font-black px-2 py-1 bg-brand-500 text-white rounded-lg whitespace-nowrap flex-shrink-0 hover:bg-brand-600 transition-colors">${c.actionLabel}</button>` : ''}
         </div>`).join('');
 
     el.innerHTML = `
@@ -171,5 +171,5 @@ function renderDailyChallenges() {
             <div class="bg-gradient-to-r from-brand-400 to-amber-400 h-full rounded-full transition-all duration-500" style="width:${progressPct}%"></div>
         </div>
         <div class="space-y-1.5">${items}</div>
-        ${doneCount === challenges.length ? `<p class="text-[10px] text-emerald-600 font-black text-center mt-2">🎉 오늘 챌린지 모두 완료! 내일도 화이팅!</p>` : ''}`;
+        ${doneCount === challenges.length ? '<p class="text-[10px] text-emerald-600 font-black text-center mt-2">🎉 오늘 챌린지 모두 완료! 내일도 화이팅!</p>' : ''}`;
 }
