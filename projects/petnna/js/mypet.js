@@ -1395,15 +1395,82 @@ function selectRegPresetPhoto(url) {
 }
 
 function submitPetRegistration() {
-    const name = document.getElementById('reg-pet-name').value.trim() || "초코";
-    const type = document.getElementById('reg-pet-type').value;
-    const breed = document.getElementById('reg-pet-breed').value.trim() || "말티즈";
-    const age = document.getElementById('reg-pet-age').value.trim() || "1살";
-    const weight = document.getElementById('reg-pet-weight').value.trim() || "3.5";
-    const gender = document.getElementById('reg-pet-gender').value;
-    const personality = document.getElementById('reg-pet-personality').value.trim() || "활기차고 영특함";
+    // ── 🔍 가희 검수관: 입력값 검증 강화 ────────────────────────────────────
+    function _setFieldError(id, msg) {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        el.classList.add('field-error');
+        // 기존 오류 메시지 제거 후 재삽입
+        const existing = el.parentNode.querySelector('.field-error-msg');
+        if (existing) existing.remove();
+        const errEl = document.createElement('p');
+        errEl.className = 'field-error-msg';
+        errEl.innerHTML = `⚠️ ${msg}`;
+        el.parentNode.appendChild(errEl);
+        setTimeout(() => { el.classList.remove('field-error'); }, 2000);
+        el.focus();
+        return true;
+    }
+    function _clearFieldError(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('field-error');
+        const msg = el.parentNode.querySelector('.field-error-msg');
+        if (msg) msg.remove();
+    }
 
-    let finalUrl = tempRegisteredPhotoUrl || document.getElementById('reg-pet-photo-url').value.trim() || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300";
+    const nameEl    = document.getElementById('reg-pet-name');
+    const weightEl  = document.getElementById('reg-pet-weight');
+    const ageEl     = document.getElementById('reg-pet-age');
+
+    const name    = nameEl    ? nameEl.value.trim()   : '';
+    const weight  = weightEl  ? weightEl.value.trim() : '';
+    const age     = ageEl     ? ageEl.value.trim()    : '';
+
+    // 1) 이름 검증: 필수, 1~20자, 숫자만으로 구성 불가
+    _clearFieldError('reg-pet-name');
+    if (!name) {
+        _setFieldError('reg-pet-name', '펫 이름을 입력해주세요.');
+        return;
+    }
+    if (name.length > 20) {
+        _setFieldError('reg-pet-name', '이름은 20자 이내로 입력해주세요.');
+        return;
+    }
+    if (/^[0-9]+$/.test(name)) {
+        _setFieldError('reg-pet-name', '이름은 숫자만으로 구성할 수 없어요.');
+        return;
+    }
+
+    // 2) 체중 검증: 입력된 경우 0.1 ~ 100 사이 숫자
+    _clearFieldError('reg-pet-weight');
+    if (weight) {
+        const w = parseFloat(weight);
+        if (isNaN(w) || w < 0.1 || w > 100) {
+            _setFieldError('reg-pet-weight', '체중은 0.1 ~ 100 kg 사이로 입력해주세요.');
+            return;
+        }
+    }
+
+    // 3) 나이 검증: 너무 큰 숫자 방지 (선택 필드)
+    _clearFieldError('reg-pet-age');
+    if (age) {
+        const ageNum = parseInt(age.replace(/[^0-9]/g, ''));
+        if (!isNaN(ageNum) && ageNum > 50) {
+            _setFieldError('reg-pet-age', '나이가 너무 커요. 올바른 나이를 입력해주세요.');
+            return;
+        }
+    }
+    // ── 가희 검증 완료 ───────────────────────────────────────────────────────
+
+    const type        = document.getElementById('reg-pet-type').value;
+    const breed       = document.getElementById('reg-pet-breed').value.trim() || '말티즈';
+    const finalAge    = age || '1살';
+    const finalWeight = weight || '3.5';
+    const gender      = document.getElementById('reg-pet-gender').value;
+    const personality = document.getElementById('reg-pet-personality').value.trim() || '활기차고 영특함';
+
+    let finalUrl = tempRegisteredPhotoUrl || document.getElementById('reg-pet-photo-url').value.trim() || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300';
 
     const newPet = {
         id: Date.now(),
@@ -1411,8 +1478,8 @@ function submitPetRegistration() {
         type: type,
         breed: breed,
         imageUrl: finalUrl,
-        age: age,
-        weight: weight,
+        age: finalAge,
+        weight: finalWeight,
         gender: gender,
         personality: personality,
         hunger: 70,
@@ -1428,6 +1495,10 @@ function submitPetRegistration() {
     }
     closePetRegistrationModal();
     renderMyPets();
+
+    // 업적 체크 (첫 펫 등록)
+    if (typeof checkNewAchievements === 'function') checkNewAchievements();
+
     showToast(`'${name}'이(가) 새 펫으로 추가되었습니다! 🐾🎉`);
 
     // 탄생 카드 자동 생성 — 등록 직후 공유 유도
@@ -1443,6 +1514,7 @@ function submitPetRegistration() {
     }, 1200);
 
 }
+
 
 // 🔒 집사 프로필 토글 및 업로드 관련 헬퍼 함수들 (Butler Settings Helpers)
 function toggleRoomSettings() {

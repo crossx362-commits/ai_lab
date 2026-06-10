@@ -632,6 +632,84 @@ function stopAndSaveWalk() {
             _setWalkStatusBadge('idle');
             renderWalkHistory();
             renderMyPets();
+
+            // ── 🔧 코다리: 산책 완료 → 자동 일기 Draft 생성 (Woofz 자동 로깅 벤치마크) ──
+            (function _autoWalkDiaryDraft() {
+                try {
+                    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+                    const petName = pet ? (pet.name || '우리 아이') : '우리 아이';
+                    const now = new Date();
+                    const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+                    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+                    // 날씨 위젯 데이터 활용
+                    const wxDesc = document.getElementById('mypet-weather-desc');
+                    const wxTemp = document.getElementById('mypet-weather-temp');
+                    const weatherText = wxDesc ? wxDesc.innerText : '맑음';
+                    const tempText = wxTemp ? wxTemp.innerText : '';
+
+                    // 연속 산책 streak 계산
+                    const walkStreak = (() => {
+                        if (typeof walks === 'undefined' || walks.length === 0) return 1;
+                        const todayStr = now.toISOString().split('T')[0];
+                        const savedDates = walks
+                            .map(w => w.savedAt ? w.savedAt.split('T')[0] : null)
+                            .filter(Boolean);
+                        let streak = 1;
+                        let checkDate = new Date(now);
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        for (let i = 0; i < 60; i++) {
+                            const ds = checkDate.toISOString().split('T')[0];
+                            if (savedDates.includes(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+                            else break;
+                        }
+                        return streak;
+                    })();
+
+                    // 소요 시간 텍스트
+                    const [mm, ss] = completedSession.duration.split(':').map(Number);
+                    const durText = mm > 0 ? `${mm}분 ${ss || 0}초` : `${ss}초`;
+                    const distKm = parseFloat(completedSession.distance) || 0;
+                    const kcal = parseInt(completedSession.calories) || 0;
+
+                    // 스티커 구성
+                    const stickers = [
+                        { type:'text', content:`🐾 ${distKm.toFixed(1)}km 산책 완료!`, left:50, top:18, scale:1.3, rotate:0, zIndex:'20', bubbleTheme:'bg-brand-500 text-white border-brand-600', fontSize:'text-xs' },
+                        { type:'text', content:`${weatherText}${tempText?' '+tempText:''} · ⏱️ ${durText}`, left:50, top:47, scale:1.0, rotate:0, zIndex:'20', bubbleTheme:'bg-white/95 text-brand-700 border-amber-200/60', fontSize:'text-[10px]' },
+                        { type:'text', content: walkStreak >= 2 ? `🔥 ${walkStreak}일 연속 산책!` : `🔥 ${kcal} kcal 소모`, left:50, top:76, scale:0.95, rotate:-2, zIndex:'20', bubbleTheme:'bg-amber-100/95 text-amber-900 border-amber-300', fontSize:'text-[10px]' }
+                    ];
+
+                    const draftItem = {
+                        url:'', isVideo:false, start:0, end:0, filter:'natural',
+                        isWalkCard:true, isAutoDraft:true,
+                        savedAt: now.toISOString(),
+                        walkData: {
+                            id: completedSession.id, date: dateStr, time: timeStr,
+                            distance: completedSession.distance, duration: completedSession.duration,
+                            calories: completedSession.calories, poop: completedSession.poop,
+                            pee: completedSession.pee, sniff: completedSession.sniff,
+                            weather: weatherText, streak: walkStreak,
+                            petName: petName
+                        },
+                        stickers
+                    };
+
+                    if (typeof albums !== 'undefined') {
+                        albums.unshift(draftItem);
+                        if (typeof saveState === 'function') saveState();
+                        if (typeof renderAlbumGallery === 'function') renderAlbumGallery();
+                    }
+
+                    // 업적 체크 (산책 streak 달성 여부)
+                    if (typeof checkNewAchievements === 'function') checkNewAchievements();
+
+                    setTimeout(() => {
+                        if (typeof showToast === 'function')
+                            showToast(`📖 산책 일기 자동 저장됨${walkStreak >= 3 ? ` · 🔥 ${walkStreak}일 연속!` : ''}`);
+                    }, 2200);
+                } catch(e) { console.warn('[코다리] 자동 일기 생성 오류:', e); }
+            })();
+
             showToast("🏆 안심 산책 성료! 역사관에 기록이 등록되었습니다. 펫 행복지수가 올라갔어요!");
             _promptRegisterWalkPlace();
 
