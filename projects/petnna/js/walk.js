@@ -216,7 +216,18 @@ function initWalkSimulator() {
     // 🚀 지도 최초 로드 시 자동으로 내 위치 이동
     moveToMyLocation();
 
-    renderMapPlacesPins();
+    // 실제 주변 장소 로드 (공원, 카페, 병원)
+    if (typeof loadAndRenderNearbyPlaces === 'function') {
+        setTimeout(() => loadAndRenderNearbyPlaces(), 2000); // GPS 위치 확보 후 로드
+    } else {
+        renderMapPlacesPins(); // 폴백: 기존 방식
+    }
+
+    // 지도 이동 시 자동 갱신 설정
+    if (typeof setupAutoRefreshPlaces === 'function') {
+        setupAutoRefreshPlaces();
+    }
+
     renderCustomRoutesList();
 
     mapInstance.on('click', function (e) {

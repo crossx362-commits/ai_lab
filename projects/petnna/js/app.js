@@ -316,6 +316,17 @@ function switchTab(tabName) {
     AppRouter.switchTab(tabName);
 }
 
+// 페이지 벗어날 때 확인창 표시
+window.addEventListener('beforeunload', function (e) {
+    // 로그아웃, 회원탈퇴 등 특정 작업 제외
+    if (window._allowPageExit) return;
+
+    // 페이지 이탈 확인 메시지
+    e.preventDefault();
+    e.returnValue = '변경사항이 저장되지 않을 수 있습니다. 페이지를 떠나시겠습니까?';
+    return e.returnValue;
+});
+
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof checkPremiumFromUrl === 'function') checkPremiumFromUrl();
     // Inject templates dynamically before state setup and rendering
