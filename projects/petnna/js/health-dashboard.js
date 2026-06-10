@@ -115,6 +115,18 @@ function renderHealthCalendar() {
     const history = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
     const today = new Date();
 
+    const hasAnyRecord = history.length > 0;
+
+    // 데이터 없으면 숨김 처리 (공간 절약)
+    if (!hasAnyRecord) {
+        el.innerHTML = '';
+        el.style.display = 'none';
+        return;
+    }
+
+    // 데이터 있으면 표시
+    el.style.display = 'block';
+
     const cells = Array.from({ length: 90 }, (_, i) => {
         const d = new Date(today);
         d.setDate(today.getDate() - (89 - i));

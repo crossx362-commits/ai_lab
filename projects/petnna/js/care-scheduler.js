@@ -193,13 +193,28 @@ function renderCareScheduler() {
     if (!container) return;
 
     const todaySchedules = getTodaySchedules();
+
+    // 부모 박스 크기 동적 조절
+    const parentBox = container.closest('.bg-gradient-to-br');
+
     if (todaySchedules.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-6 text-gray-400 text-sm">
-                <div class="text-2xl mb-2">📅</div>
-                <p>오늘 일정이 없습니다</p>
+            <div class="text-center py-3 text-gray-400 text-xs">
+                <div class="text-lg mb-1">📅</div>
+                <p class="text-[10px]">오늘 일정이 없습니다</p>
             </div>`;
+        // 빈 상태: 박스 padding 축소
+        if (parentBox) {
+            parentBox.classList.remove('p-3');
+            parentBox.classList.add('p-2');
+        }
         return;
+    }
+
+    // 데이터 있음: 박스 padding 복원
+    if (parentBox) {
+        parentBox.classList.remove('p-2');
+        parentBox.classList.add('p-3');
     }
 
     const now = new Date();

@@ -201,7 +201,7 @@ const MYPET_TEMPLATE = `
                 <input type="file" id="pet-direct-upload" accept="image/*" class="hidden" onchange="uploadPetPhotoDirect(event)">
 
                 <!-- AI 건강 분석 (10항목 + 음성문진) -->
-                <div class="bg-gradient-to-br from-violet-50 to-purple-50/60 border border-violet-100 rounded-2xl p-3 space-y-2">
+                <div class="bg-gradient-to-br from-violet-50 to-purple-50/60 border border-violet-100 rounded-2xl p-3 space-y-2 transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="text-sm">🏥</span>
@@ -237,7 +237,7 @@ const MYPET_TEMPLATE = `
                 </div>
 
                 <!-- 건강 트렌드 대시보드 + 스트릭 + 캘린더 -->
-                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5">
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5 transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-1.5">
                             <span class="text-sm">📊</span>
@@ -286,7 +286,7 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
 
-                    <div style="height:70px">
+                    <div style="min-height:70px; max-height:120px;">
                         <canvas id="health-trend-chart"></canvas>
                     </div>
                     <!-- 90일 캘린더 히트맵 -->
@@ -362,7 +362,7 @@ const MYPET_TEMPLATE = `
                 </div>
 
                 <!-- 오늘의 돌봄 스케줄 -->
-                <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-2xl p-3 space-y-2">
+                <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-2xl p-3 space-y-2 transition-all duration-300">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="text-sm">📅</span>
