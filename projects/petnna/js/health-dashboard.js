@@ -13,9 +13,10 @@ function saveHealthHistoryToday() {
         if (healthLogs.history.length > 90) healthLogs.history.splice(90);
     }
     if (typeof saveState === 'function') saveState();
+    if (typeof updateHealthTutorialVisibility === 'function') updateHealthTutorialVisibility();
 }
 
-// 일주일치 랜덤 건강 데이터 생성
+// 일주일치 랜덤 건강 데이터 생성 (누를 때마다 새로운 주 추가)
 function generateWeeklyHealthData() {
     if (typeof healthLogs === 'undefined') return;
     if (!healthLogs.history) healthLogs.history = [];
@@ -23,16 +24,21 @@ function generateWeeklyHealthData() {
     const poopTypes = ['normal', 'soft', 'hard', 'liquid'];
     const today = new Date();
 
+    // 기존 데이터가 있으면 가장 오래된 날짜 이전 주를 생성
+    let startOffset = 0;
+    if (healthLogs.history.length > 0) {
+        const oldestDate = new Date(healthLogs.history[healthLogs.history.length - 1].date);
+        const daysDiff = Math.floor((today - oldestDate) / (1000 * 60 * 60 * 24));
+        startOffset = daysDiff + 7; // 가장 오래된 날짜보다 1주 더 이전
+    }
+
+    let addedCount = 0;
     for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
-        date.setDate(date.getDate() - i);
+        date.setDate(date.getDate() - (i + startOffset));
         const dateStr = date.toISOString().split('T')[0];
 
-        // 이미 데이터가 있으면 건너뛰기
-        const exists = healthLogs.history.find(h => h.date === dateStr);
-        if (exists) continue;
-
-        // 랜덤 데이터 생성
+        // 중복 체크 제거 - 항상 추가
         const entry = {
             date: dateStr,
             food: Math.floor(Math.random() * 50) + 30,      // 30-80
@@ -41,7 +47,8 @@ function generateWeeklyHealthData() {
             condition: Math.random() > 0.7 ? (Math.random() > 0.5 ? 'good' : 'tired') : null
         };
 
-        healthLogs.history.unshift(entry);
+        healthLogs.history.push(entry);
+        addedCount++;
     }
 
     // 중복 제거 및 정렬
@@ -60,7 +67,11 @@ function generateWeeklyHealthData() {
 
     if (typeof saveState === 'function') saveState();
     if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
-    if (typeof showToast === 'function') showToast("일주일치 건강 데이터가 생성되었습니다! 📊");
+    if (typeof updateHealthTutorialVisibility === 'function') updateHealthTutorialVisibility();
+    if (typeof showToast === 'function') {
+        const weekCount = Math.floor(healthLogs.history.length / 7);
+        showToast(`일주일치 데모 데이터 추가 완료! 📊 (총 ${healthLogs.history.length}일, ${weekCount}주)`);
+    }
 }
 
 function getLast7DaysHealthData() {

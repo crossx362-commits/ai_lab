@@ -243,11 +243,16 @@ const MYPET_TEMPLATE = `
                             <span class="text-base">📊</span>
                             <span class="text-xs font-black text-gray-700">7일 건강 트렌드</span>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
                             <div class="flex items-center gap-1.5">
                                 <span class="text-[10px] text-gray-400 font-bold">건강점수</span>
                                 <span id="health-score-value" class="text-2xl font-black text-emerald-500">--</span>
                             </div>
+                            <button onclick="generateWeeklyHealthData()"
+                                class="flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black text-[9px] rounded-lg transition-all border border-emerald-200"
+                                title="일주일치 데모 데이터 생성 (누를 때마다 추가)">
+                                <i class="fa-solid fa-database text-[9px]"></i> 데모
+                            </button>
                             <button onclick="generateHealthReportPDF()"
                                 class="flex items-center gap-1 px-2 py-1 bg-violet-50 hover:bg-violet-100 text-violet-600 font-black text-[9px] rounded-lg transition-all border border-violet-100">
                                 <i class="fa-solid fa-file-pdf text-[9px]"></i> 리포트
@@ -256,6 +261,31 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
                     <div id="health-streak-badge" class="flex items-center gap-1 min-h-[18px]"></div>
+
+                    <!-- 사용법 안내 (데이터 없을 때만 표시) -->
+                    <div id="health-tutorial" class="hidden bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-emerald-200/50">
+                        <div class="flex items-start gap-2">
+                            <span class="text-lg">💡</span>
+                            <div class="flex-1 space-y-1.5">
+                                <p class="text-[11px] font-bold text-emerald-700">건강 트렌드 사용법</p>
+                                <ul class="text-[10px] text-gray-600 space-y-1 leading-relaxed">
+                                    <li class="flex items-start gap-1">
+                                        <span class="text-emerald-500 mt-0.5">•</span>
+                                        <span><strong class="text-emerald-600">식사/물</strong> 탭에서 매일 기록하면 자동으로 차트가 생성됩니다</span>
+                                    </li>
+                                    <li class="flex items-start gap-1">
+                                        <span class="text-emerald-500 mt-0.5">•</span>
+                                        <span><strong class="text-emerald-600">데모 버튼</strong>을 누르면 일주일치 샘플 데이터를 추가할 수 있습니다</span>
+                                    </li>
+                                    <li class="flex items-start gap-1">
+                                        <span class="text-emerald-500 mt-0.5">•</span>
+                                        <span>7일간 기록이 쌓이면 <strong class="text-emerald-600">건강점수</strong>와 <strong class="text-emerald-600">연속 기록</strong> 배지가 표시됩니다</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="height:110px">
                         <canvas id="health-trend-chart"></canvas>
                     </div>
