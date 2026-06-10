@@ -384,21 +384,7 @@ const MYPET_TEMPLATE = `
                     <p id="personalized-health-tip" class="text-[10px] text-gray-400 font-medium mt-2 pt-2 border-t border-gray-100 keep-all leading-relaxed">✨ 분석 중...</p>
                 </div>
 
-                <!-- 오늘의 돌봄 스케줄 -->
-                <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-2xl p-3 space-y-2 transition-all duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm">📅</span>
-                            <span class="text-[11px] font-black text-gray-700">오늘의 돌봄 일정</span>
-                            <span id="care-completion-badge" class="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"></span>
-                        </div>
-                        <button onclick="openCareScheduleModal()"
-                            class="flex items-center gap-1 px-1.5 py-0.5 bg-sky-50 hover:bg-sky-100 text-sky-600 font-black text-[8px] rounded-lg transition-all border border-sky-200">
-                            <i class="fa-solid fa-plus text-[8px]"></i> 추가
-                        </button>
-                    </div>
-                    <div id="care-scheduler-container" class="space-y-1.5"></div>
-                </div>
+                <!-- 오늘의 돌봄 스케줄 (제거 - 우측 돌봄 스케줄러로 통합) -->
 
             </div>
         </div>
@@ -559,10 +545,19 @@ const MYPET_TEMPLATE = `
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
                     <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
                 </h3>
-                <button onclick="openScheduleModal()"
+                <button onclick="openCareScheduleModal()"
                     class="text-brand-600 hover:text-brand-700 font-black text-xs">
-                    <i class="fa-solid fa-plus mr-1"></i>일정 등록
+                    <i class="fa-solid fa-plus mr-1"></i>일정 추가
                 </button>
+            </div>
+
+            <!-- 오늘의 일정 -->
+            <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black text-gray-700">📅 오늘의 일정</span>
+                    <span id="care-completion-badge" class="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"></span>
+                </div>
+                <div id="care-scheduler-container" class="space-y-1.5"></div>
             </div>
 
             <!-- 달력 헤더 -->
