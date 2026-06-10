@@ -2106,7 +2106,11 @@ async function generateRandomRoute() {
     const latPerM = 1 / 111000;
     const lngPerM = 1 / (111000 * Math.cos(lat * Math.PI / 180));
 
-    const waypoints = [];
+    // 🔵 시작점: 현재 위치
+    const startPoint = [lat, lng];
+    const waypoints = [startPoint];
+
+    // 경유지 생성 (현재 위치 주변)
     for (let i = 0; i < pointCount; i++) {
         const angle = (i / pointCount) * 2 * Math.PI;
         const r = radiusM * (0.65 + Math.random() * 0.7);
@@ -2115,7 +2119,9 @@ async function generateRandomRoute() {
             lng + Math.cos(angle) * r * lngPerM
         ]);
     }
-    waypoints.push(waypoints[0]); // 시작점 복귀
+
+    // 🔵 종료점: 현재 위치로 복귀
+    waypoints.push(startPoint);
 
     // OSRM으로 도로 경로 계산
     const roadCoords = await routeViaOSRM(waypoints);
