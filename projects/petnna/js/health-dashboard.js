@@ -158,7 +158,7 @@ function generateHealthReportPDF() {
 
     const html = `<!DOCTYPE html><html lang="ko"><head>
 <meta charset="UTF-8">
-<title>${petName} 월간 건강 리포트 — ${monthStr}</title>
+<title>${petName} 월간 종합 케어 리포트 — ${monthStr}</title>
 <style>
   body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;margin:0;padding:32px;color:#1f2937;background:#fff}
   h1{font-size:24px;font-weight:900;color:#7c3aed;margin-bottom:4px}
@@ -180,7 +180,7 @@ function generateHealthReportPDF() {
 </head><body>
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
   <span style="font-size:36px">🐾</span>
-  <div><h1>${petName}의 월간 건강 리포트</h1><p class="sub">${monthStr} · 펫과나 AI 케어 리포트 · 생성일: ${now.toLocaleDateString('ko-KR')}</p></div>
+  <div><h1>${petName}의 월간 종합 케어 리포트</h1><p class="sub">${monthStr} · 건강 + 돌봄 통합 분석 · 생성일: ${now.toLocaleDateString('ko-KR')}</p></div>
 </div>
 
 <div class="grid" style="grid-template-columns:repeat(5,1fr)">

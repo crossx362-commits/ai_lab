@@ -920,6 +920,7 @@ function renderMyPets() {
     if (typeof checkNewAchievements === 'function') setTimeout(checkNewAchievements, 800);
     if (typeof renderCareScheduler === 'function') renderCareScheduler();
     if (typeof updateCareCompletionBadge === 'function') updateCareCompletionBadge();
+    if (typeof updateReportDashboard === 'function') updateReportDashboard();
 }
 
 function getPast7DaysLabels() {
