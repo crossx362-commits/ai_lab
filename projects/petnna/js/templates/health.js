@@ -28,46 +28,76 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 건강 요약 카드 4개 - 티모 디자인 고도화 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- 건강 점수 -->
-        <div class="group bg-white rounded-2xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300 border-2 border-violet-100 hover:border-violet-300 hover:-translate-y-1">
-            <div class="w-12 h-12 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-star text-white text-xl"></i>
+    <!-- 건강 요약 + 6월 리포트 통합 카드 -->
+    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-violet-100 space-y-5">
+        <!-- 제목 -->
+        <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
+                <i class="fa-solid fa-chart-pie text-white text-lg"></i>
             </div>
-            <div class="text-3xl font-black bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent" id="health-summary-score">--</div>
-            <div class="text-xs text-gray-700 font-bold mt-1.5">건강 점수</div>
-            <div class="text-[9px] text-gray-400 mt-0.5 font-medium">최근 7일 평균</div>
+            <div>
+                <h2 class="text-base font-black text-gray-800">📊 6월 리포트</h2>
+                <p class="text-[10px] text-gray-500 font-medium">건강 요약 · 활동 · 분석</p>
+            </div>
         </div>
 
-        <!-- 연속 기록 -->
-        <div class="group bg-white rounded-2xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300 border-2 border-emerald-100 hover:border-emerald-300 hover:-translate-y-1">
-            <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-fire text-white text-xl"></i>
+        <!-- 통합 카드 그리드 -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <!-- 건강 점수 -->
+            <div class="bg-gradient-to-br from-violet-50 to-purple-50 border-2 border-violet-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-violet-600" id="health-summary-score">--</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">건강 점수</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">7일 평균</div>
             </div>
-            <div class="text-3xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent" id="health-summary-streak">--일</div>
-            <div class="text-xs text-gray-700 font-bold mt-1.5">연속 기록</div>
-            <div class="text-[9px] text-gray-400 mt-0.5 font-medium">꾸준히 기록중!</div>
-        </div>
 
-        <!-- 평균 식사량 -->
-        <div class="group bg-white rounded-2xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300 border-2 border-amber-100 hover:border-amber-300 hover:-translate-y-1">
-            <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-bowl-food text-white text-xl"></i>
+            <!-- 연속 기록 -->
+            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-emerald-600" id="health-summary-streak">--일</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">연속 기록</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">꾸준히!</div>
             </div>
-            <div class="text-3xl font-black bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent" id="health-summary-food">--g</div>
-            <div class="text-xs text-gray-700 font-bold mt-1.5">평균 식사량</div>
-            <div class="text-[9px] text-gray-400 mt-0.5 font-medium">7일 평균</div>
-        </div>
 
-        <!-- 평균 음수량 -->
-        <div class="group bg-white rounded-2xl p-5 text-center shadow-md hover:shadow-xl transition-all duration-300 border-2 border-sky-100 hover:border-sky-300 hover:-translate-y-1">
-            <div class="w-12 h-12 bg-gradient-to-br from-sky-400 to-blue-500 rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-droplet text-white text-xl"></i>
+            <!-- 이번 달 산책 -->
+            <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-orange-600" id="report-walk-count">0회</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">이번 달 산책</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">6월</div>
             </div>
-            <div class="text-3xl font-black bg-gradient-to-r from-sky-600 to-blue-600 bg-clip-text text-transparent" id="health-summary-water">--ml</div>
-            <div class="text-xs text-gray-700 font-bold mt-1.5">평균 음수량</div>
-            <div class="text-[9px] text-gray-400 mt-0.5 font-medium">7일 평균</div>
+
+            <!-- 총 산책 거리 -->
+            <div class="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-amber-600" id="report-walk-distance">0.0km</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">총 산책 거리</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
+            </div>
+
+            <!-- 건강 기록 -->
+            <div class="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-sky-600" id="report-health-log-count">6회</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">건강 기록</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
+            </div>
+
+            <!-- AI 분석 -->
+            <div class="bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-rose-600" id="report-ai-count-monthly">0회</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">AI 분석</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
+            </div>
+
+            <!-- 평균 식사량 -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-amber-600" id="health-summary-food">--g</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">평균 식사량</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">7일 평균</div>
+            </div>
+
+            <!-- 평균 음수량 -->
+            <div class="bg-gradient-to-br from-sky-50 to-cyan-50 border-2 border-sky-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
+                <div class="text-3xl font-black text-sky-600" id="health-summary-water">--ml</div>
+                <div class="text-xs text-gray-700 font-bold mt-1.5">평균 음수량</div>
+                <div class="text-[9px] text-gray-400 mt-0.5">7일 평균</div>
+            </div>
         </div>
     </div>
 
