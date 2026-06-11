@@ -1996,7 +1996,11 @@ function deleteNeighbor() {
 
 async function generateSocialCaption() {
     const apiKey = window._env_?.GEMINI_API_KEY || "";
-    if (!apiKey) { showToast("AI 캡션 생성에 GEMINI_API_KEY가 필요합니다."); return; }
+    if (!apiKey) {
+        showToast("⚠️ AI 캡션 기능은 GEMINI_API_KEY 설정 후 사용 가능합니다.");
+        console.warn("GEMINI_API_KEY not set. Please add it to your environment.");
+        return;
+    }
 
     const textArea = document.getElementById('feed-input-content');
     if (!textArea) return;
