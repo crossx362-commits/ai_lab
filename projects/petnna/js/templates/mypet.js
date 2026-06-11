@@ -41,77 +41,64 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 건강 요약 + 6월 리포트 통합 카드 -->
-        <div class="card-modern p-6 space-y-5 cursor-pointer hover:shadow-xl transition-shadow" onclick="openMonthlyReportModal()">
+        <div class="card-modern p-5 space-y-4 cursor-pointer hover:shadow-xl transition-shadow" onclick="openMonthlyReportModal()">
             <!-- 제목 -->
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 bg-violet-100 rounded-xl flex items-center justify-center">
-                    <i class="fa-solid fa-chart-pie text-violet-600 text-lg"></i>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-3xl">📊</span>
+                    <h2 class="text-base font-bold text-gray-900">건강 요약</h2>
                 </div>
-                <div class="flex-1">
-                    <h2 class="text-lg font-bold text-gray-900">건강 요약 · 활동</h2>
-                    <p class="text-sm text-gray-500 mt-0.5">건강 점수 · 산책 · 기록</p>
-                </div>
-                <div class="text-violet-500">
-                    <i class="fa-solid fa-arrow-up-right-from-square text-sm"></i>
-                </div>
+                <i class="fa-solid fa-arrow-up-right-from-square text-violet-500 text-xs"></i>
             </div>
 
             <!-- 통합 카드 그리드 -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-4 gap-2">
                 <!-- 건강 점수 -->
-                <div class="card-modern bg-violet-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-violet-600 mb-2" id="mypet-health-summary-score">--</div>
-                    <div class="text-sm font-semibold text-gray-700">건강 점수</div>
-                    <div class="text-xs text-gray-500 mt-1">7일 평균</div>
+                <div class="bg-violet-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">💯</div>
+                    <div class="text-2xl font-bold text-violet-600" id="mypet-health-summary-score">--</div>
                 </div>
 
                 <!-- 연속 기록 -->
-                <div class="card-modern bg-emerald-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-emerald-600 mb-2" id="mypet-health-summary-streak">--일</div>
-                    <div class="text-sm font-semibold text-gray-700">연속 기록</div>
-                    <div class="text-xs text-gray-500 mt-1">꾸준히!</div>
+                <div class="bg-emerald-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">🔥</div>
+                    <div class="text-2xl font-bold text-emerald-600" id="mypet-health-summary-streak">--일</div>
                 </div>
 
                 <!-- 이번 달 산책 -->
-                <div class="card-modern bg-orange-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-orange-600 mb-2" id="mypet-report-walk-count">0회</div>
-                    <div class="text-sm font-semibold text-gray-700">이번 달 산책</div>
-                    <div class="text-xs text-gray-500 mt-1">6월</div>
+                <div class="bg-orange-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">🚶</div>
+                    <div class="text-2xl font-bold text-orange-600" id="mypet-report-walk-count">0회</div>
                 </div>
 
                 <!-- 총 산책 거리 -->
-                <div class="card-modern bg-amber-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-amber-600 mb-2" id="mypet-report-walk-distance">0.0km</div>
-                    <div class="text-sm font-semibold text-gray-700">총 산책 거리</div>
-                    <div class="text-xs text-gray-500 mt-1">이번 달</div>
+                <div class="bg-amber-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">📍</div>
+                    <div class="text-2xl font-bold text-amber-600" id="mypet-report-walk-distance">0.0km</div>
                 </div>
 
                 <!-- 건강 기록 -->
-                <div class="card-modern bg-sky-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-sky-600 mb-2" id="mypet-report-health-log-count">6회</div>
-                    <div class="text-sm font-semibold text-gray-700">건강 기록</div>
-                    <div class="text-xs text-gray-500 mt-1">이번 달</div>
+                <div class="bg-sky-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">📝</div>
+                    <div class="text-2xl font-bold text-sky-600" id="mypet-report-health-log-count">6회</div>
                 </div>
 
                 <!-- AI 분석 -->
-                <div class="card-modern bg-rose-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-rose-600 mb-2" id="mypet-report-ai-count-monthly">0회</div>
-                    <div class="text-sm font-semibold text-gray-700">AI 분석</div>
-                    <div class="text-xs text-gray-500 mt-1">이번 달</div>
+                <div class="bg-rose-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">🤖</div>
+                    <div class="text-2xl font-bold text-rose-600" id="mypet-report-ai-count-monthly">0회</div>
                 </div>
 
                 <!-- 평균 식사량 -->
-                <div class="card-modern bg-amber-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-amber-600 mb-2" id="mypet-health-summary-food">--g</div>
-                    <div class="text-sm font-semibold text-gray-700">평균 식사량</div>
-                    <div class="text-xs text-gray-500 mt-1">7일 평균</div>
+                <div class="bg-amber-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">🍖</div>
+                    <div class="text-2xl font-bold text-amber-600" id="mypet-health-summary-food">--g</div>
                 </div>
 
                 <!-- 평균 음수량 -->
-                <div class="card-modern bg-sky-50/50 p-5 text-center group">
-                    <div class="text-4xl font-bold text-sky-600 mb-2" id="mypet-health-summary-water">--ml</div>
-                    <div class="text-sm font-semibold text-gray-700">평균 음수량</div>
-                    <div class="text-xs text-gray-500 mt-1">7일 평균</div>
+                <div class="bg-sky-50/50 rounded-xl p-3 text-center">
+                    <div class="text-3xl mb-1">💧</div>
+                    <div class="text-2xl font-bold text-sky-600" id="mypet-health-summary-water">--ml</div>
                 </div>
             </div>
         </div>
