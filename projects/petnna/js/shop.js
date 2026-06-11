@@ -74,6 +74,45 @@ function selectIslandShop(shopId) {
         const rewardBadgeEl = document.getElementById('quest-reward-badge');
         if (rewardBadgeEl) rewardBadgeEl.innerText = data.rewardBadge;
     }
+
+    // --- 지시선(Connector Line) 및 정보 말풍선(Callout Bubble) 동적 렌더링 ---
+    const pinGroup = document.getElementById('pin-' + shopId);
+    const connectorLine = document.getElementById('map-connector-line');
+    const calloutBubble = document.getElementById('map-callout');
+    const calloutText = document.getElementById('map-callout-text');
+
+    if (pinGroup) {
+        // 모든 핀에서 스케일/링 효과 복원 및 강조 클래스 제거
+        document.querySelectorAll('.map-pin-group').forEach(pin => {
+            pin.style.transform = '';
+            const pr = pin.querySelector('.pin-pulse-ring');
+            if (pr) pr.style.display = 'block';
+        });
+
+        // 클릭된 핀 강조
+        pinGroup.style.transform = 'scale(1.35) translateY(-5px)';
+        const activeRing = pinGroup.querySelector('.pin-pulse-ring');
+        if (activeRing) activeRing.style.display = 'none'; // 펄스 정지
+
+        const circle = pinGroup.querySelector('circle');
+        if (circle) {
+            const cx = parseFloat(circle.getAttribute('cx'));
+            const cy = parseFloat(circle.getAttribute('cy'));
+
+            // 말풍선 위치 이동 및 노출
+            if (calloutBubble && calloutText) {
+                calloutBubble.setAttribute('transform', `translate(${cx}, ${cy})`);
+                calloutText.textContent = data.title;
+                calloutBubble.style.display = 'block';
+            }
+
+            // 지시선(Connector Line) 연산: 핀 중심에서 지도의 오른쪽 경계면(1000)까지 수평선 생성
+            if (connectorLine) {
+                connectorLine.setAttribute('d', `M ${cx} ${cy} L 1000 ${cy}`);
+                connectorLine.setAttribute('opacity', '0.8');
+            }
+        }
+    }
     
     if (typeof showToast === 'function') {
         showToast(`🗺️ ${data.title} 영토가 활성화되었습니다!`);
@@ -89,6 +128,19 @@ function closeQuestPanel() {
         activeState.style.display = 'none';
         activeState.classList.add('hidden');
     }
+
+    // 말풍선 및 지시선 제거
+    const calloutBubble = document.getElementById('map-callout');
+    const connectorLine = document.getElementById('map-connector-line');
+    if (calloutBubble) calloutBubble.style.display = 'none';
+    if (connectorLine) connectorLine.setAttribute('opacity', '0');
+
+    // 모든 핀 스타일 복원
+    document.querySelectorAll('.map-pin-group').forEach(pin => {
+        pin.style.transform = '';
+        const pr = pin.querySelector('.pin-pulse-ring');
+        if (pr) pr.style.display = 'block';
+    });
 }
 
 function openActiveQuestLink() {
@@ -106,38 +158,41 @@ function openActiveQuestLink() {
 }
 
 function applyMapFilters() {
+    // Leaflet 지도 필터 적용
+    if (typeof applyPetlifeMapFilters === 'function') {
+        applyPetlifeMapFilters();
+    }
+
+    // 기존 SVG 맵 필터 (하위 호환)
     const fSpa     = document.getElementById('f-spa')?.checked;
     const fMedical = document.getElementById('f-medical')?.checked;
     const fHotel   = document.getElementById('f-hotel')?.checked;
     const fShop    = document.getElementById('f-shop')?.checked;
 
-    // 이전 버전 필터 ID 호환
-    const spaCamping  = document.getElementById('filter-spa-camping')?.checked ?? fSpa;
-    const medicalCare = document.getElementById('filter-medical-care')?.checked ?? fMedical;
-    const hotelResort = document.getElementById('filter-hotel-resort')?.checked ?? fHotel;
-    const shoppingPlaza = document.getElementById('filter-shopping-plaza')?.checked ?? fShop;
-
     let activeCount = 0;
     const filterNodes = document.querySelectorAll('.filter-node');
 
     filterNodes.forEach(node => {
-        // data-cat 우선 (새 SVG 방식), 없으면 data-category (구버전)
-        const cat = node.getAttribute('data-cat') || node.getAttribute('data-category') || '';
+        const cat = node.getAttribute('data-cat') || '';
         let show = true;
 
-        if ((cat === 'spa' || cat === 'spa-camping') && !(fSpa ?? spaCamping)) show = false;
-        if ((cat === 'medical' || cat === 'medical-care') && !(fMedical ?? medicalCare)) show = false;
-        if ((cat === 'hotel' || cat === 'hotel-resort') && !(fHotel ?? hotelResort)) show = false;
-        if ((cat === 'shop' || cat === 'shopping-plaza') && !(fShop ?? shoppingPlaza)) show = false;
+        if (cat === 'spa' && !fSpa) show = false;
+        if (cat === 'medical' && !fMedical) show = false;
+        if (cat === 'hotel' && !fHotel) show = false;
+        if (cat === 'shop' && !fShop) show = false;
 
         if (show) {
             node.style.opacity = '1';
             node.style.pointerEvents = 'auto';
-            node.style.transform = '';
             activeCount++;
         } else {
-            node.style.opacity = '0.1';
+            node.style.opacity = '0.15';
             node.style.pointerEvents = 'none';
+            // 만약 숨겨지는 핀이 현재 선택된 핀이라면 상세창 닫기
+            const pinId = node.getAttribute('id');
+            if (pinId && activeShopId && pinId.includes(activeShopId)) {
+                closeQuestPanel();
+            }
         }
     });
 

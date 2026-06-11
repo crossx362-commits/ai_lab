@@ -103,6 +103,10 @@ const TabControllers = {
         },
         render() {
             if (typeof renderShop === 'function') renderShop();
+            // 펫라이프 지도 초기화
+            setTimeout(() => {
+                if (typeof initPetlifeMap === 'function') initPetlifeMap();
+            }, 150);
         },
         destroy() {
             if (typeof AppLogger !== 'undefined') {
@@ -338,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('tab-walk').innerHTML = WALK_TEMPLATE;
     document.getElementById('tab-social').innerHTML = SOCIAL_TEMPLATE;
     document.getElementById('tab-album').innerHTML = ALBUM_TEMPLATE;
-    document.getElementById('tab-shop').innerHTML = SHOP_TEMPLATE;
+    document.getElementById('tab-shop').innerHTML = SHOP_ISLAND_TEMPLATE;
 
     document.getElementById('tab-saju').innerHTML = SAJU_TEMPLATE;
 
