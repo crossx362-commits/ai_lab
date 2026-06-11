@@ -177,7 +177,7 @@ const HEALTH_TEMPLATE = `
                     <div>
                         <h2 class="text-base font-black text-gray-800">AI 건강 분석</h2>
                         <p class="text-[10px] text-violet-700 font-bold">
-                            사진으로 10가지 항목 자동 분석 · 이번 달 <span id="ai-usage-count-health">0</span>/3회 사용
+                            사진으로 10가지 항목 자동 분석 · 이번 달 <span id="ai-usage-count-health">0</span>/5회 사용
                         </p>
                     </div>
                 </div>

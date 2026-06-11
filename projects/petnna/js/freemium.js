@@ -1,6 +1,6 @@
 // freemium.js — 월별 AI 분석 횟수 추적 + 프리미엄 게이트
 
-const FREE_LIMIT = 3;
+const FREE_LIMIT = 5; // 월 무료 AI 분석 횟수
 const PREMIUM_PRICE = "5,900원";
 const PREMIUM_PRICE_NUM = 5900;
 
