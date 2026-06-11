@@ -1,25 +1,31 @@
 :root {
-    --color-bg-app: #fbf8f5;
-    --color-text-main: #1f2937;
+    --color-bg-app: #f8fafc;
+    --color-text-main: #0f172a;
     --color-bg-card: #ffffff;
-    --color-border-card: #fef3c7;
-    --color-bg-header: rgba(255, 255, 255, 0.9);
+    --color-border-card: #e2e8f0;
+    --color-bg-header: rgba(255, 255, 255, 0.8);
+    --color-accent: #8b5cf6;
+    --color-accent-light: #a78bfa;
 }
 
 body.theme-dark {
-    --color-bg-app: #15151e;
-    --color-text-main: #f3f4f6;
-    --color-bg-card: #1f1f2e;
-    --color-border-card: #2d2d3f;
-    --color-bg-header: rgba(31, 31, 46, 0.85);
+    --color-bg-app: #0f172a;
+    --color-text-main: #f1f5f9;
+    --color-bg-card: #1e293b;
+    --color-border-card: #334155;
+    --color-bg-header: rgba(30, 41, 59, 0.8);
+    --color-accent: #a78bfa;
+    --color-accent-light: #c4b5fd;
 }
 
 body.theme-sepia {
-    --color-bg-app: #faf5e8;
-    --color-text-main: #4a2f13;
-    --color-bg-card: #f4ecd8;
-    --color-border-card: #e4d2a3;
-    --color-bg-header: rgba(244, 236, 216, 0.85);
+    --color-bg-app: #faf8f3;
+    --color-text-main: #292524;
+    --color-bg-card: #fefdf8;
+    --color-border-card: #e7e5e4;
+    --color-bg-header: rgba(254, 253, 248, 0.8);
+    --color-accent: #92400e;
+    --color-accent-light: #b45309;
 }
 
 html {
@@ -51,12 +57,14 @@ html {
 }
 
 body {
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
     background-color: var(--color-bg-app);
     color: var(--color-text-main);
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color 0.3s ease, color 0.3s ease;
     word-break: keep-all !important;
     word-wrap: break-word !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* 탭 버튼 한 줄 유지 및 네비게이션 가로 스크롤 보정 */

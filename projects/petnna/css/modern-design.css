@@ -1,0 +1,160 @@
+/* 티모 현대적 디자인 시스템 */
+
+/* 글래스모피즘 효과 */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark .glass {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 부드러운 그림자 시스템 */
+.shadow-soft {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-soft-lg {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-dark .shadow-soft,
+body.theme-dark .shadow-soft-lg {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 현대적 버튼 스타일 */
+.btn-modern {
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    letter-spacing: -0.01em;
+}
+
+.btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.btn-modern:active {
+    transform: translateY(0);
+}
+
+/* 통일된 카드 스타일 */
+.card-modern {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border-card);
+    border-radius: 16px;
+    transition: all 0.25s ease;
+}
+
+.card-modern:hover {
+    border-color: var(--color-accent-light);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.08);
+    transform: translateY(-2px);
+}
+
+/* 세련된 입력 필드 */
+.input-modern {
+    background: var(--color-bg-card);
+    border: 1.5px solid var(--color-border-card);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.input-modern:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+/* 현대적 배지 */
+.badge-modern {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--color-accent);
+}
+
+/* 미니멀 구분선 */
+.divider-modern {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-border-card), transparent);
+    border: none;
+    margin: 1.5rem 0;
+}
+
+/* 부드러운 애니메이션 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 스켈레톤 로딩 */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--color-border-card) 25%,
+        rgba(139, 92, 246, 0.05) 50%,
+        var(--color-border-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* 반응형 간격 시스템 */
+.section-spacing {
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem);
+}
+
+/* 모던 스크롤바 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border-card);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-light);
+}
+
+body.theme-dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+body.theme-dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}

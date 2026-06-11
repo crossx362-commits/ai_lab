@@ -3,84 +3,78 @@
 const HEALTH_TEMPLATE = `
 <div class="space-y-5 animate-fade-in">
 
-    <!-- 헤더 - 티모 디자인 -->
-    <div class="bg-gradient-to-br from-emerald-400 via-teal-400 to-cyan-400 rounded-3xl px-6 py-5 shadow-lg relative overflow-hidden">
-        <!-- 배경 패턴 -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -mr-16 -mt-16"></div>
-            <div class="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full -ml-12 -mb-12"></div>
-        </div>
-
-        <div class="relative flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-inner">
+    <!-- 헤더 - 현대적 미니멀 -->
+    <div class="glass rounded-2xl px-6 py-6 shadow-soft-lg border border-violet-100/50">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-soft">
                     <i class="fa-solid fa-heart-pulse text-white text-2xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-black text-white drop-shadow-sm">건강 종합 대시보드</h1>
-                    <p class="text-xs text-white/90 mt-0.5 font-medium">🐾 <span id="health-pet-name">댕이</span>의 건강을 한눈에</p>
+                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">건강 대시보드</h1>
+                    <p class="text-sm text-gray-500 mt-1"><span id="health-pet-name" class="font-semibold text-violet-600">댕이</span>의 건강 관리</p>
                 </div>
             </div>
             <button onclick="generateWeeklyHealthData()"
-                class="px-4 py-2.5 bg-white/95 hover:bg-white text-emerald-600 font-black text-xs rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105">
-                <i class="fa-solid fa-database text-xs mr-1"></i>데모 데이터
+                class="btn-modern px-5 py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm border border-violet-200/50">
+                <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
             </button>
         </div>
     </div>
 
     <!-- 건강 요약 + 6월 리포트 통합 카드 -->
-    <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-violet-100 space-y-5">
+    <div class="card-modern p-6 space-y-5">
         <!-- 제목 -->
-        <div class="flex items-center gap-2.5">
-            <div class="w-10 h-10 bg-gradient-to-br from-violet-400 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
-                <i class="fa-solid fa-chart-pie text-white text-lg"></i>
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 bg-violet-100 rounded-xl flex items-center justify-center">
+                <i class="fa-solid fa-chart-pie text-violet-600 text-lg"></i>
             </div>
             <div>
-                <h2 class="text-base font-black text-gray-800">📊 6월 리포트</h2>
-                <p class="text-[10px] text-gray-500 font-medium">건강 요약 · 활동 · 분석</p>
+                <h2 class="text-lg font-bold text-gray-900">6월 리포트</h2>
+                <p class="text-sm text-gray-500 mt-0.5">건강 요약 · 활동 · 분석</p>
             </div>
         </div>
 
         <!-- 통합 카드 그리드 -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- 건강 점수 -->
-            <div class="bg-gradient-to-br from-violet-50 to-purple-50 border-2 border-violet-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-violet-600" id="health-summary-score">--</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">건강 점수</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">7일 평균</div>
+            <div class="card-modern bg-violet-50/50 p-5 text-center group">
+                <div class="text-4xl font-bold text-violet-600 mb-2" id="health-summary-score">--</div>
+                <div class="text-sm font-semibold text-gray-700">건강 점수</div>
+                <div class="text-xs text-gray-500 mt-1">7일 평균</div>
             </div>
 
             <!-- 연속 기록 -->
-            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-emerald-600" id="health-summary-streak">--일</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">연속 기록</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">꾸준히!</div>
+            <div class="card-modern bg-emerald-50/50 p-5 text-center group">
+                <div class="text-4xl font-bold text-emerald-600 mb-2" id="health-summary-streak">--일</div>
+                <div class="text-sm font-semibold text-gray-700">연속 기록</div>
+                <div class="text-xs text-gray-500 mt-1">꾸준히!</div>
             </div>
 
             <!-- 이번 달 산책 -->
-            <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-orange-600" id="report-walk-count">0회</div>
+            <div class="card-modern bg-orange-50/50 p-5 text-center group">
+                <div class="text-4xl font-bold text-orange-600 mb-2" id="report-walk-count">0회</div>
                 <div class="text-xs text-gray-700 font-bold mt-1.5">이번 달 산책</div>
                 <div class="text-[9px] text-gray-400 mt-0.5">6월</div>
             </div>
 
             <!-- 총 산책 거리 -->
-            <div class="bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-amber-600" id="report-walk-distance">0.0km</div>
+            <div class="card-modern bg-amber-50/50 p-5 text-center group">
+                <div class="text-4xl font-bold text-amber-600 mb-2" id="report-walk-distance">0.0km</div>
                 <div class="text-xs text-gray-700 font-bold mt-1.5">총 산책 거리</div>
                 <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
             </div>
 
             <!-- 건강 기록 -->
-            <div class="bg-gradient-to-br from-sky-50 to-blue-50 border-2 border-sky-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-sky-600" id="report-health-log-count">6회</div>
+            <div class="card-modern bg-sky-50/50 p-5 text-center group">
+                <div class="text-4xl font-bold text-sky-600 mb-2" id="report-health-log-count">6회</div>
                 <div class="text-xs text-gray-700 font-bold mt-1.5">건강 기록</div>
                 <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
             </div>
 
             <!-- AI 분석 -->
-            <div class="bg-gradient-to-br from-rose-50 to-pink-50 border-2 border-rose-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-rose-600" id="report-ai-count-monthly">0회</div>
+            <div class="card-modern bg-rose-50/50 p-5 text-center group">
+                <div class="text-4xl font-bold text-rose-600 mb-2" id="report-ai-count-monthly">0회</div>
                 <div class="text-xs text-gray-700 font-bold mt-1.5">AI 분석</div>
                 <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
             </div>
