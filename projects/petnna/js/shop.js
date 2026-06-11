@@ -158,10 +158,8 @@ function openActiveQuestLink() {
 }
 
 function applyMapFilters() {
-    // Leaflet 지도 필터 적용
-    if (typeof applyPetlifeMapFilters === 'function') {
-        applyPetlifeMapFilters();
-    }
+    // 피지 섬 핀 필터 적용
+    filterPetlifePins();
 
     // 기존 SVG 맵 필터 (하위 호환)
     const fSpa     = document.getElementById('f-spa')?.checked;
@@ -202,6 +200,144 @@ function applyMapFilters() {
     if (statBar) statBar.style.width = `${(activeCount / 6) * 100}%`;
     if (statLabel) statLabel.innerText = `${activeCount} / 6 활성`;
 }
+
+// 펫라이프 핀 렌더링
+function renderPetlifePins() {
+    const container = document.getElementById('petlife-pins-container');
+    if (!container || typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
+
+    container.innerHTML = '';
+
+    PETLIFE_REAL_LOCATIONS.forEach((location, index) => {
+        const pin = document.createElement('div');
+        pin.className = 'petlife-pin';
+        pin.style.left = location.position.left;
+        pin.style.top = location.position.top;
+        pin.style.background = location.color;
+        pin.style.animationDelay = `${index * 0.1}s`;
+        pin.innerHTML = `<span>${location.emoji}</span>`;
+        pin.onclick = () => openPetlifePopup(location);
+        container.appendChild(pin);
+    });
+}
+
+// 가맹점 상세 팝업 열기
+function openPetlifePopup(location) {
+    const popup = document.getElementById('location-popup');
+    if (!popup) return;
+
+    // 데이터 채우기
+    document.getElementById('popup-emoji').textContent = location.emoji;
+    document.getElementById('popup-name').textContent = location.name;
+    document.getElementById('popup-category').textContent = CATEGORY_NAMES[location.category] || location.category;
+    document.getElementById('popup-description').textContent = location.description;
+    document.getElementById('popup-address').textContent = location.address;
+
+    const phoneLink = document.getElementById('popup-phone');
+    phoneLink.textContent = location.phone;
+    phoneLink.href = `tel:${location.phone.replace(/[^0-9]/g, '')}`;
+
+    document.getElementById('popup-hours').textContent = location.hours;
+
+    // 서비스 태그
+    const servicesContainer = document.getElementById('popup-services');
+    servicesContainer.innerHTML = location.services.map(service =>
+        `<span class="service-tag">${service}</span>`
+    ).join('');
+
+    // 버튼 링크
+    const websiteBtn = document.getElementById('popup-website-btn');
+    websiteBtn.href = location.website;
+    if (location.website === '#') {
+        websiteBtn.style.display = 'none';
+    } else {
+        websiteBtn.style.display = 'flex';
+    }
+
+    const phoneBtn = document.getElementById('popup-phone-btn');
+    phoneBtn.href = `tel:${location.phone.replace(/[^0-9]/g, '')}`;
+
+    // 팝업 표시
+    popup.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    if (typeof showToast === 'function') {
+        showToast(`${location.emoji} ${location.name} 정보를 확인하세요!`);
+    }
+}
+
+// 가맹점 팝업 닫기
+function closePetlifePopup() {
+    const popup = document.getElementById('location-popup');
+    if (popup) {
+        popup.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+// 핀 필터링
+function filterPetlifePins() {
+    if (typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
+
+    const fSpa = document.getElementById('f-spa')?.checked;
+    const fMedical = document.getElementById('f-medical')?.checked;
+    const fHotel = document.getElementById('f-hotel')?.checked;
+    const fShop = document.getElementById('f-shop')?.checked;
+
+    const pins = document.querySelectorAll('.petlife-pin');
+    let activeCount = 0;
+
+    pins.forEach((pin, index) => {
+        const location = PETLIFE_REAL_LOCATIONS[index];
+        if (!location) return;
+
+        let show = true;
+
+        // 카테고리별 필터링
+        if (location.category === 'grooming' && !fSpa) show = false;
+        if (location.category === 'hospital' && !fMedical) show = false;
+        if (location.category === 'hotel' && !fHotel) show = false;
+        if (location.category === 'shop' && !fShop) show = false;
+        if (location.category === 'cafe' && !fShop) show = false;
+        if (location.category === 'training' && !fMedical) show = false;
+
+        if (show) {
+            pin.style.opacity = '1';
+            pin.style.pointerEvents = 'auto';
+            activeCount++;
+        } else {
+            pin.style.opacity = '0.15';
+            pin.style.pointerEvents = 'none';
+        }
+    });
+
+    // 통계 바 업데이트
+    const statBar = document.getElementById('stat-bar');
+    const statLabel = document.getElementById('stat-label');
+    if (statBar) statBar.style.width = `${(activeCount / PETLIFE_REAL_LOCATIONS.length) * 100}%`;
+    if (statLabel) statLabel.innerText = `${activeCount} / ${PETLIFE_REAL_LOCATIONS.length} 활성`;
+}
+
+// 팝업 외부 클릭 시 닫기
+document.addEventListener('click', function(e) {
+    const popup = document.getElementById('location-popup');
+    if (popup && e.target === popup) {
+        closePetlifePopup();
+    }
+});
+
+// ESC 키로 팝업 닫기
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePetlifePopup();
+    }
+});
+
+// 전역 함수 등록
+window.renderPetlifePins = renderPetlifePins;
+window.openPetlifePopup = openPetlifePopup;
+window.closePetlifePopup = closePetlifePopup;
+window.filterPetlifePins = filterPetlifePins;
 
 function toggleShopSection(id) {
     const section = document.getElementById('section-' + id);

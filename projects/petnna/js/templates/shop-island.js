@@ -53,20 +53,70 @@ const SHOP_ISLAND_TEMPLATE = `
       </div>
     </div>
 
-    <!-- 중앙: 인터랙티브 펫라이프 지도 (Leaflet) -->
+    <!-- 중앙: 피지 섬 펫라이프 지도 -->
     <div class="iw-map-container">
-      <!-- 지도 컨트롤 -->
-      <div class="map-controls">
-        <button onclick="moveToMyLocation()" class="map-control-btn" title="내 위치">
-          <i class="fa-solid fa-location-crosshairs"></i>
-        </button>
-        <button onclick="toggleMapStyle()" class="map-control-btn" title="지도 스타일">
-          <i class="fa-solid fa-map"></i>
-        </button>
+      <!-- 피지 섬 배경 지도 -->
+      <div id="petlife-map" class="fiji-map-wrapper">
+        <!-- 배경 이미지 (사용자 제공 이미지로 교체 예정) -->
+        <div class="fiji-map-bg" style="
+          background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 50%, #38bdf8 100%);
+          background-image: url('https://api.placeholder.co/1400x800/bae6fd/7dd3fc?text=Fiji+Pet+Life+Map');
+          background-size: cover;
+          background-position: center;
+          width: 100%;
+          height: 100%;
+          min-height: 600px;
+          border-radius: 24px;
+          position: relative;
+        ">
+          <!-- 가맹점 핀 오버레이 -->
+          <div id="petlife-pins-container" class="pins-overlay"></div>
+        </div>
       </div>
 
-      <!-- Leaflet 지도 -->
-      <div id="petlife-map" style="width:100%;height:100%;min-height:500px;border-radius:24px;"></div>
+      <!-- 가맹점 상세 팝업 모달 -->
+      <div id="location-popup" class="location-popup hidden">
+        <div class="popup-content">
+          <button onclick="closePetlifePopup()" class="popup-close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <div class="popup-header">
+            <span id="popup-emoji" class="popup-emoji">🏥</span>
+            <div>
+              <h3 id="popup-name" class="popup-name">가맹점명</h3>
+              <span id="popup-category" class="popup-category-badge">카테고리</span>
+            </div>
+          </div>
+          <div class="popup-body">
+            <p id="popup-description" class="popup-desc"></p>
+
+            <div class="popup-info-grid">
+              <div class="popup-info-item">
+                <i class="fa-solid fa-location-dot"></i>
+                <span id="popup-address"></span>
+              </div>
+              <div class="popup-info-item">
+                <i class="fa-solid fa-phone"></i>
+                <a id="popup-phone" href="tel:"></a>
+              </div>
+              <div class="popup-info-item">
+                <i class="fa-solid fa-clock"></i>
+                <span id="popup-hours"></span>
+              </div>
+            </div>
+
+            <div id="popup-services" class="popup-services"></div>
+          </div>
+          <div class="popup-footer">
+            <a id="popup-website-btn" href="#" target="_blank" rel="noopener" class="popup-btn-primary">
+              <i class="fa-solid fa-globe"></i> 웹사이트 방문
+            </a>
+            <a id="popup-phone-btn" href="tel:" class="popup-btn-secondary">
+              <i class="fa-solid fa-phone"></i> 전화 예약
+            </a>
+          </div>
+        </div>
+      </div>
 
       <!-- 구 SVG 지도는 주석 처리 -->
       <!--
@@ -782,6 +832,321 @@ const SHOP_ISLAND_TEMPLATE = `
   border: 1.5px solid #e2e8f0;
   border-radius: 24px;
   box-shadow: 0 4px 12px rgba(148,163,184,0.05);
+}
+
+/* ===== 피지 지도 스타일 ===== */
+.fiji-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+}
+
+.pins-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 가맹점 핀 스타일 */
+.petlife-pin {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 4px solid white;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 0 rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: auto;
+  animation: pin-drop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.petlife-pin span {
+  font-size: 24px;
+  transform: rotate(45deg);
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.petlife-pin:hover {
+  transform: rotate(-45deg) scale(1.3) translateY(-8px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 0 12px rgba(255,255,255,0.3);
+  z-index: 100;
+}
+
+.petlife-pin::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50% 50% 50% 0;
+  background: inherit;
+  transform: translate(-50%, -50%);
+  animation: pin-pulse 2.5s infinite;
+  opacity: 0;
+}
+
+@keyframes pin-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes pin-drop {
+  0% {
+    transform: rotate(-45deg) translateY(-150px) scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(-45deg) translateY(15px) scale(1.15);
+  }
+  100% {
+    transform: rotate(-45deg) translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ===== 가맹점 상세 팝업 ===== */
+.location-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: fade-in 0.3s ease;
+}
+
+.location-popup.hidden {
+  display: none;
+}
+
+.popup-content {
+  background: white;
+  border-radius: 28px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  position: relative;
+  animation: slide-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.popup-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.05);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #64748b;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.popup-close:hover {
+  background: rgba(0,0,0,0.1);
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 32px 20px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.popup-emoji {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.popup-name {
+  font-size: 20px;
+  font-weight: 950;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.popup-category-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  color: #166534;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.popup-body {
+  padding: 24px 32px;
+}
+
+.popup-desc {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #475569;
+  margin: 0 0 20px;
+}
+
+.popup-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.popup-info-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #64748b;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.popup-info-item i {
+  color: #22c55e;
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+
+.popup-info-item a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.popup-info-item a:hover {
+  text-decoration: underline;
+}
+
+.popup-services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.service-tag {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.popup-footer {
+  padding: 20px 32px 32px;
+  display: flex;
+  gap: 12px;
+}
+
+.popup-btn-primary,
+.popup-btn-secondary {
+  flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.popup-btn-primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  box-shadow: 0 4px 14px rgba(34,197,94,0.25);
+}
+
+.popup-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34,197,94,0.35);
+}
+
+.popup-btn-secondary {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.popup-btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+/* 반응형 */
+@media (max-width: 640px) {
+  .popup-content {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 28px 28px 0 0;
+  }
+
+  .popup-footer {
+    flex-direction: column;
+  }
 }
 </style>
 `;
