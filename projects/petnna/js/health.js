@@ -1,5 +1,37 @@
 // health.js — 건강 탭 컨트롤러
 
+// 식사 탭 전환 함수
+let activeMealTab = 'food';
+
+function switchMealTab(tab) {
+    activeMealTab = tab;
+
+    // 탭 버튼 스타일 업데이트
+    ['food', 'time', 'water'].forEach(t => {
+        const btn = document.getElementById(`meal-tab-${t}`);
+        const content = document.getElementById(`meal-content-${t}`);
+
+        if (t === tab) {
+            btn?.classList.add('bg-white', 'text-amber-600', 'shadow-sm');
+            btn?.classList.remove('text-gray-500', 'hover:text-gray-700');
+            content?.classList.remove('hidden');
+        } else {
+            btn?.classList.remove('bg-white', 'text-amber-600', 'shadow-sm');
+            btn?.classList.add('text-gray-500', 'hover:text-gray-700');
+            content?.classList.add('hidden');
+        }
+    });
+
+    // 음수 탭일 때 오늘 음수량 동기화
+    if (tab === 'water') {
+        const waterEl = document.getElementById('health-today-water-tab');
+        const waterMain = document.getElementById('health-today-water');
+        if (waterEl && waterMain) {
+            waterEl.textContent = waterMain.textContent;
+        }
+    }
+}
+
 function renderHealthTab() {
     const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
     const petName = pet?.name || '댕이';

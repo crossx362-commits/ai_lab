@@ -605,36 +605,7 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 식사 일지 & 밥 먹는 시간 관리 -->
-        <div class="bg-white rounded-3xl p-4 sm:p-5 border border-amber-100 shadow-sm space-y-4 animate-fade-in">
-            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
-                <h3 class="font-black text-gray-800 text-sm flex items-center">
-                    <i class="fa-solid fa-bowl-food text-brand-500 mr-2"></i>식사 일지 & 밥 먹는 시간 🍖
-                </h3>
-                <button onclick="toggleMealForm(true)" class="text-brand-600 hover:text-brand-700 font-black text-xs">
-                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
-                </button>
-            </div>
-            <div id="meal-form" class="hidden bg-brand-50/50 border border-brand-100 p-3 rounded-2xl space-y-2.5">
-                <span class="block text-[10px] text-brand-800 font-bold"><i class="fa-solid fa-clock mr-1"></i> 새로운 배식 활동 기록</span>
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <select id="meal-type" class="border rounded-lg p-1.5 outline-none bg-white">
-                        <option value="아침">🌅 아침 밥</option>
-                        <option value="점심">☀️ 점심 밥</option>
-                        <option value="저녁">🌙 저녁 밥</option>
-                        <option value="간식">🍖 간식 공급</option>
-                    </select>
-                    <input type="time" id="meal-time" class="border rounded-lg p-1.5 outline-none bg-white">
-                </div>
-                <input type="text" id="meal-notes" placeholder="사료명, 칼로리 혹은 반응 기재 (예: 연어 습식 80g)"
-                    class="w-full text-xs border rounded-lg p-2 outline-none bg-white">
-                <div class="flex space-x-2 text-[10px]">
-                    <button onclick="toggleMealForm(false)" class="w-1/2 bg-white border font-bold py-1.5 rounded-lg">취소</button>
-                    <button onclick="saveMealRecord()" class="w-1/2 bg-brand-500 text-white font-bold py-1.5 rounded-lg">저장하기</button>
-                </div>
-            </div>
-            <div id="meal-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
-        </div>
+        <!-- 식사 일지는 건강 탭으로 통합 -->
     </div>
 
     <!-- 프리미엄 업그레이드 모달 -->

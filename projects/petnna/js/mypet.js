@@ -1324,15 +1324,29 @@ function renderMealLogsList() {
         else if (m.type === "아침") badgeColor = "bg-sky-100 text-sky-800";
         else if (m.type === "점심") badgeColor = "bg-emerald-100 text-emerald-800";
 
+        // 시간을 시와 분으로 분리
+        const timeParts = m.time.split(':');
+        const hour = timeParts[0] || '00';
+        const minute = timeParts[1] || '00';
+
         const row = document.createElement('div');
-        row.className = "flex items-center justify-between p-2.5 bg-gray-50/70 border border-gray-100 rounded-xl";
+        row.className = "flex items-center justify-between p-3 bg-gray-50/70 border border-gray-100 rounded-xl";
         row.innerHTML = `
-            <div class="flex items-center space-x-2">
-                <span class="text-[10px] font-black px-1.5 py-0.5 rounded-md ${badgeColor}">${m.type}</span>
-                <span class="text-[11px] font-mono font-bold text-gray-700">${m.time}</span>
-                <span class="text-[10px] text-gray-500 font-medium truncate max-w-[140px]">${escapeHtml(m.notes)}</span>
+            <div class="flex items-center gap-3 flex-1">
+                <div class="flex flex-col items-center justify-center min-w-[50px]">
+                    <div class="text-[18px] font-black text-gray-700 leading-none">${hour}</div>
+                    <div class="text-[10px] text-gray-400 font-bold">시간</div>
+                </div>
+                <div class="flex flex-col items-center justify-center min-w-[50px] border-l border-gray-200 pl-3">
+                    <div class="text-[18px] font-black text-gray-700 leading-none">${minute}</div>
+                    <div class="text-[10px] text-gray-400 font-bold">분</div>
+                </div>
+                <div class="flex flex-col gap-1 flex-1 min-w-0">
+                    <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${badgeColor} inline-block w-fit">${m.type}</span>
+                    <span class="text-[10px] text-gray-500 font-medium truncate">${escapeHtml(m.notes)}</span>
+                </div>
             </div>
-            <button onclick="deleteMealLog(${m.id})" class="text-gray-300 hover:text-red-500 transition-colors text-[10px]"><i class="fa-solid fa-trash-can"></i></button>
+            <button onclick="deleteMealLog(${m.id})" class="text-gray-300 hover:text-red-500 transition-colors text-sm ml-2"><i class="fa-solid fa-trash-can"></i></button>
         `;
         listContainer.appendChild(row);
     });
