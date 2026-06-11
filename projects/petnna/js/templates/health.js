@@ -22,78 +22,42 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 건강 요약 + 6월 리포트 통합 카드 -->
-    <div class="card-modern p-6 space-y-5">
-        <!-- 제목 -->
-        <div class="flex items-center gap-3">
-            <div class="w-11 h-11 bg-violet-100 rounded-xl flex items-center justify-center">
-                <i class="fa-solid fa-chart-pie text-violet-600 text-lg"></i>
-            </div>
+    <!-- 월간 종합 케어 리포트 (맨 위로 이동) -->
+    <div class="bg-white rounded-2xl p-5 border shadow-lg space-y-3">
+        <div class="flex justify-between items-center">
             <div>
-                <h2 class="text-lg font-bold text-gray-900">6월 리포트</h2>
-                <p class="text-sm text-gray-500 mt-0.5">건강 요약 · 활동 · 분석</p>
+                <h3 class="font-bold text-gray-800 text-base flex items-center">
+                    <i class="fa-solid fa-chart-line text-violet-500 mr-2"></i>월간 종합 케어 리포트 📊
+                </h3>
+                <p class="text-[11px] text-gray-400 mt-0.5">건강 트렌드 + 돌봄 일정 준수율 + AI 분석을 통합한 종합 리포트
+                </p>
             </div>
+            <button onclick="generateHealthReportPDF()"
+                class="flex items-center gap-1.5 px-3 py-2 bg-violet-500 hover:bg-violet-600 text-white font-bold text-[11px] rounded-xl transition-all shadow-sm">
+                <i class="fa-solid fa-file-pdf text-sm"></i> PDF 리포트
+                <span class="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">PRO</span>
+            </button>
         </div>
-
-        <!-- 통합 카드 그리드 -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- 건강 점수 -->
-            <div class="card-modern bg-violet-50/50 p-5 text-center group">
-                <div class="text-4xl font-bold text-violet-600 mb-2" id="health-summary-score">--</div>
-                <div class="text-sm font-semibold text-gray-700">건강 점수</div>
-                <div class="text-xs text-gray-500 mt-1">7일 평균</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-violet-50 p-3 rounded-xl border border-violet-100 text-center">
+                <div id="report-health-score" class="text-2xl font-bold text-violet-600">--</div>
+                <div class="text-[10px] text-gray-500 font-bold mt-1">건강 점수</div>
             </div>
-
-            <!-- 연속 기록 -->
-            <div class="card-modern bg-emerald-50/50 p-5 text-center group">
-                <div class="text-4xl font-bold text-emerald-600 mb-2" id="health-summary-streak">--일</div>
-                <div class="text-sm font-semibold text-gray-700">연속 기록</div>
-                <div class="text-xs text-gray-500 mt-1">꾸준히!</div>
+            <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center">
+                <div id="report-care-rate" class="text-2xl font-bold text-emerald-600">--%</div>
+                <div class="text-[10px] text-gray-500 font-bold mt-1">일정 준수율</div>
             </div>
-
-            <!-- 이번 달 산책 -->
-            <div class="card-modern bg-orange-50/50 p-5 text-center group">
-                <div class="text-4xl font-bold text-orange-600 mb-2" id="report-walk-count">0회</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">이번 달 산책</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">6월</div>
+            <div class="bg-amber-50 p-3 rounded-xl border border-amber-100 text-center">
+                <div id="report-streak" class="text-2xl font-bold text-amber-600">--일</div>
+                <div class="text-[10px] text-gray-500 font-bold mt-1">연속 기록</div>
             </div>
-
-            <!-- 총 산책 거리 -->
-            <div class="card-modern bg-amber-50/50 p-5 text-center group">
-                <div class="text-4xl font-bold text-amber-600 mb-2" id="report-walk-distance">0.0km</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">총 산책 거리</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
-            </div>
-
-            <!-- 건강 기록 -->
-            <div class="card-modern bg-sky-50/50 p-5 text-center group">
-                <div class="text-4xl font-bold text-sky-600 mb-2" id="report-health-log-count">6회</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">건강 기록</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
-            </div>
-
-            <!-- AI 분석 -->
-            <div class="card-modern bg-rose-50/50 p-5 text-center group">
-                <div class="text-4xl font-bold text-rose-600 mb-2" id="report-ai-count-monthly">0회</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">AI 분석</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">이번 달</div>
-            </div>
-
-            <!-- 평균 식사량 -->
-            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-amber-600" id="health-summary-food">--g</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">평균 식사량</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">7일 평균</div>
-            </div>
-
-            <!-- 평균 음수량 -->
-            <div class="bg-gradient-to-br from-sky-50 to-cyan-50 border-2 border-sky-200 rounded-2xl p-4 text-center hover:shadow-md transition-all hover:-translate-y-0.5">
-                <div class="text-3xl font-black text-sky-600" id="health-summary-water">--ml</div>
-                <div class="text-xs text-gray-700 font-bold mt-1.5">평균 음수량</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">7일 평균</div>
+            <div class="bg-sky-50 p-3 rounded-xl border border-sky-100 text-center">
+                <div id="report-ai-count" class="text-2xl font-bold text-sky-600">--회</div>
+                <div class="text-[10px] text-gray-500 font-bold mt-1">AI 분석</div>
             </div>
         </div>
     </div>
+
 
     <!-- 오늘의 건강 기록 - 상단 배치 + 강조 색상 -->
     <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-3xl p-6 shadow-lg">
@@ -324,41 +288,6 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 월간 종합 케어 리포트 (건강 + 돌봄 통합) -->
-    <div class="bg-white rounded-3xl p-5 border shadow-lg space-y-3">
-        <div class="flex justify-between items-center">
-            <div>
-                <h3 class="font-black text-gray-800 text-base flex items-center">
-                    <i class="fa-solid fa-chart-line text-violet-500 mr-2"></i>월간 종합 케어 리포트 📊
-                </h3>
-                <p class="text-[11px] text-gray-400 mt-0.5">건강 트렌드 + 돌봄 일정 준수율 + AI 분석을 통합한 종합 리포트
-                </p>
-            </div>
-            <button onclick="generateHealthReportPDF()"
-                class="flex items-center gap-1.5 px-3 py-2 bg-violet-500 hover:bg-violet-600 text-white font-black text-[11px] rounded-xl transition-all shadow-sm">
-                <i class="fa-solid fa-file-pdf text-sm"></i> PDF 리포트
-                <span class="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-black">PRO</span>
-            </button>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="bg-violet-50 p-3 rounded-xl border border-violet-100 text-center">
-                <div id="report-health-score" class="text-2xl font-black text-violet-600">--</div>
-                <div class="text-[10px] text-gray-500 font-bold mt-1">건강 점수</div>
-            </div>
-            <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center">
-                <div id="report-care-rate" class="text-2xl font-black text-emerald-600">--%</div>
-                <div class="text-[10px] text-gray-500 font-bold mt-1">일정 준수율</div>
-            </div>
-            <div class="bg-amber-50 p-3 rounded-xl border border-amber-100 text-center">
-                <div id="report-streak" class="text-2xl font-black text-amber-600">--일</div>
-                <div class="text-[10px] text-gray-500 font-bold mt-1">연속 기록</div>
-            </div>
-            <div class="bg-sky-50 p-3 rounded-xl border border-sky-100 text-center">
-                <div id="report-ai-count" class="text-2xl font-black text-sky-600">--회</div>
-                <div class="text-[10px] text-gray-500 font-bold mt-1">AI 분석</div>
-            </div>
-        </div>
-    </div>
 
 </div>
 `;
