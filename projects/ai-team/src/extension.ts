@@ -797,6 +797,32 @@ const SYSTEM_PROMPT = _loadPrompt('system.md');
    moved to src/agents.ts. extension.ts only imports them now. ~118 lines saved. */
 import { AgentDef, AGENTS, AGENT_ORDER, SPECIALIST_IDS } from './agents';
 
+
+/* 교차검증 도메인 → 소집 에이전트 매핑. agents.ts의 councilDomains 값과 키가 일치해야 함. */
+const COUNCIL_MAP: Record<string, string[]> = {
+    content_publish: ['arin', 'inspector', 'writer'],
+    code_deploy:     ['developer', 'gyeongsu', 'kevin'],
+    business:        ['business', 'royul', 'researcher'],
+    video_quality:   ['inspector', 'editor'],
+};
+
+/**
+ * 프롬프트에서 고위험 도메인을 감지해 소집할 에이전트 ID 목록을 반환.
+ * 해당 없으면 null.
+ */
+function _detectHighRisk(prompt: string): { domain: string; agentIds: string[] } | null {
+    const p = prompt;
+    if (/발행|업로드|포스팅|스케줄|게시|publish|upload/i.test(p))
+        return { domain: 'content_publish', agentIds: COUNCIL_MAP.content_publish };
+    if (/배포|deploy|api\s*연동|커밋|push|release/i.test(p))
+        return { domain: 'code_deploy', agentIds: COUNCIL_MAP.code_deploy };
+    if (/계약|수익화|가격|요금|협찬|파트너십|비즈니스\s*결정|투자/i.test(p))
+        return { domain: 'business', agentIds: COUNCIL_MAP.business };
+    if (/영상\s*품질|품질\s*검수|bgm\s*검수|audio\s*검수/i.test(p))
+        return { domain: 'video_quality', agentIds: COUNCIL_MAP.video_quality };
+    return null;
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Connected campus world (Phase B-1 — multi-zone layout).
 //
