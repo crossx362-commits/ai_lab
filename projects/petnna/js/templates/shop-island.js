@@ -57,12 +57,12 @@ const SHOP_ISLAND_TEMPLATE = `
     <div class="iw-map-container">
       <!-- 피지 섬 배경 지도 -->
       <div id="petlife-map" class="fiji-map-wrapper">
-        <!-- 배경 이미지 (사용자 제공 이미지로 교체 예정) -->
+        <!-- 피지 섬 구글맵 배경 이미지 -->
         <div class="fiji-map-bg" style="
-          background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 50%, #38bdf8 100%);
-          background-image: url('https://api.placeholder.co/1400x800/bae6fd/7dd3fc?text=Fiji+Pet+Life+Map');
+          background-image: url('map.png');
           background-size: cover;
           background-position: center;
+          background-color: #bae6fd;
           width: 100%;
           height: 100%;
           min-height: 600px;
