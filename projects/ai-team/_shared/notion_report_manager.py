@@ -214,7 +214,7 @@ class NotionReportManager:
                     "rich_text": [
                         {
                             "text": {
-                                "content": result[:2000]
+                                "content": "본문 리포트 참조"
                             }
                         }
                     ]
@@ -240,10 +240,191 @@ class NotionReportManager:
                             }
                         }
 
+            # Parse markdown and build blocks for children
+            children_blocks = []
+            lines = result.split("\n")
+            in_code_block = False
+            code_lines = []
+
+            for line in lines:
+                stripped = line.strip()
+                
+                # Code blocks (like Mermaid)
+                if stripped.startswith("```"):
+                    if in_code_block:
+                        in_code_block = False
+                        lang = code_lines[0] if code_lines else "plain text"
+                        if lang.startswith("mermaid"):
+                            lang = "mermaid"
+                        elif lang.startswith("python"):
+                            lang = "python"
+                        else:
+                            lang = "plain text"
+                        
+                        code_content = "\n".join(code_lines[1:])
+                        children_blocks.append({
+                            "object": "block",
+                            "type": "code",
+                            "code": {
+                                "language": lang,
+                                "rich_text": [{"type": "text", "text": {"content": code_content[:2000]}}]
+                            }
+                        })
+                        code_lines = []
+                    else:
+                        in_code_block = True
+                        code_lines.append(stripped.replace("```", ""))
+                    continue
+
+                if in_code_block:
+                    code_lines.append(line)
+                    continue
+
+                # Empty lines
+                if not stripped:
+                    continue
+
+                # Headings
+                if stripped.startswith("### "):
+                    children_blocks.append({
+                        "object": "block",
+                        "type": "heading_3",
+                        "heading_3": {
+                            "rich_text": [{"type": "text", "text": {"content": stripped[4:]}}]
+                        }
+                    })
+                elif stripped.startswith("## "):
+                    children_blocks.append({
+                        "object": "block",
+                        "type": "heading_2",
+                        "heading_2": {
+                            "rich_text": [{"type": "text", "text": {"content": stripped[3:]}}]
+                        }
+                    })
+                elif stripped.startswith("# "):
+                    children_blocks.append({
+                        "object": "block",
+                        "type": "heading_1",
+                        "heading_1": {
+                            "rich_text": [{"type": "text", "text": {"content": stripped[2:]}}]
+                        }
+                    })
+                # Tables
+                elif stripped.startswith("|"):
+                    # Split rows, ignoring boundary lines like |---|---|
+                    if "---" in stripped:
+                        continue
+                    cells = [c.strip() for c in stripped.split("|")[1:-1]]
+                    if not cells:
+                        continue
+                    
+                    # If the last block is a table, append row to it
+                    if children_blocks and children_blocks[-1]["type"] == "table":
+                        children_blocks[-1]["table"]["rows"].append({
+                            "type": "table_row",
+                            "table_row": {
+                                "cells": [[{"type": "text", "text": {"content": cell}}] for cell in cells]
+                            }
+                        })
+                    else:
+                        children_blocks.append({
+                            "object": "block",
+                            "type": "table",
+                            "table": {
+                                "table_width": len(cells),
+                                "has_column_header": True,
+                                "has_row_header": False,
+                                "rows": [
+                                    {
+                                        "type": "table_row",
+                                        "table_row": {
+                                            "cells": [[{"type": "text", "text": {"content": cell}}] for cell in cells]
+                                        }
+                                    }
+                                ]
+                            }
+                        })
+                # Bullet list items
+                elif stripped.startswith("* ") or stripped.startswith("- "):
+                    children_blocks.append({
+                        "object": "block",
+                        "type": "bulleted_list_item",
+                        "bulleted_list_item": {
+                            "rich_text": [{"type": "text", "text": {"content": stripped[2:]}}]
+                        }
+                    })
+                # Callouts/Quotes
+                elif stripped.startswith("> "):
+                    children_blocks.append({
+                        "object": "block",
+                        "type": "callout",
+                        "callout": {
+                            "icon": {"type": "emoji", "emoji": "💡"},
+                            "rich_text": [{"type": "text", "text": {"content": stripped[2:]}}]
+                        }
+                    })
+                # Paragraph
+                else:
+                    # Parse simple bold formatting **text**
+                    content_parts = []
+                    parts = stripped.split("**")
+                    for idx, part in enumerate(parts):
+                        if idx % 2 == 1:
+                            content_parts.append({
+                                "type": "text",
+                                "text": {"content": part},
+                                "annotations": {"bold": True}
+                            })
+                        else:
+                            content_parts.append({
+                                "type": "text",
+                                "text": {"content": part}
+                            })
+                    
+                    children_blocks.append({
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": content_parts if content_parts else [{"type": "text", "text": {"content": stripped[:2000]}}]
+                        }
+                    })
+
+            # For Notion API, we must separate table block rows creation. 
+            # In Notion API v1, children of pages cannot define rows inside table directly, 
+            # we need to create table block first, then append table_row blocks as children.
+            # However, to keep it simple, we convert markdown tables into structured bulleted text lists or standard paragraphs to render beautifully.
+            # Let's fallback tables to structured formatting or bulleted lists for maximum Notion compatibility.
+            final_blocks = []
+            for block in children_blocks:
+                if block["type"] == "table":
+                    # Convert table representation to callout table block style
+                    rows = block["table"]["rows"]
+                    table_text = ""
+                    for r_idx, row in enumerate(rows):
+                        cells = [cell[0]["text"]["content"] for cell in row["table_row"]["cells"]]
+                        table_text += " | ".join(cells) + "\n"
+                        if r_idx == 0:
+                            table_text += "---" * len(cells) + "\n"
+                    
+                    final_blocks.append({
+                        "object": "block",
+                        "type": "code",
+                        "code": {
+                            "language": "plain text",
+                            "rich_text": [{"type": "text", "text": {"content": table_text[:2000]}}]
+                        }
+                    })
+                else:
+                    final_blocks.append(block)
+
+            # Limit blocks to 100 per request (Notion API limit)
+            children_blocks = final_blocks[:95]
+
             url = f"https://api.notion.com/v1/pages"
             payload = json.dumps({
                 "parent": {"database_id": self.database_id},
-                "properties": properties
+                "properties": properties,
+                "children": children_blocks
             }).encode("utf-8")
 
             req = urllib.request.Request(url, data=payload, headers=self.headers, method="POST")

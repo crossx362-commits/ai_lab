@@ -1,3 +1,153 @@
+// 선택된 상점 퀘스트 데이터
+const SHOP_QUEST_DATA = {
+    'healing-spa': {
+        badge: 'SPA & HOTSPRING',
+        title: '포레스트 힐 펫 스파',
+        emoji: '🛁',
+        desc: '최고급 천연 허브 탄산천 스파와 아로마 케어를 통해 반려동물의 누적된 피로를 완벽히 씻어내고 모질을 개선합니다.',
+        reward: '스파 서비스 이용 시 탄산스파 15% 즉시 할인',
+        rewardBadge: '상생 혜택'
+    },
+    'healing-camping': {
+        badge: 'CAMPING',
+        title: '도그빌 오션 캠핑장',
+        emoji: '🏕️',
+        desc: '드넓은 바다가 보이는 잔디밭 위에서 반려동물과 함께 자유롭게 뛰어놀고 펫 전용 글램핑 텐트와 안전한 울타리를 즐길 수 있는 최고의 캠핑 사이트입니다.',
+        reward: '캠핑장 예약 시 웰컴 펫 바비큐 키트 무료 증정',
+        rewardBadge: '상생 혜택'
+    },
+    'healing-therapy': {
+        badge: 'THERAPY',
+        title: '아로마 펫 테라피 살롱',
+        emoji: '🌸',
+        desc: '반려동물 사주 및 스트레스 진단 분석에 따른 맞춤형 천연 아로마 오일 도포와 1:1 관절 테라피 마사지로 심신을 안정시킵니다.',
+        reward: '첫 방문 시 사주 맞춤형 아로마 미스트 1병 증정',
+        rewardBadge: '상생 혜택'
+    },
+    'healing-hospital': {
+        badge: 'EMERGENCY',
+        title: '24시 센트럴 메디컬 센터',
+        emoji: '🏥',
+        desc: '석박사 수의사 의료진들이 상주하는 24시간 응급 진료 및 안심 외과 전문 수술실을 갖춘 영남권 최대 규모의 동물 메디컬 종합 병원입니다.',
+        reward: '첫 방문 정밀 혈액검사 및 엑스레이 20% 우대',
+        rewardBadge: '의료 지원'
+    },
+    'healing-hotel': {
+        badge: 'PET HOTEL',
+        title: '가든 테라스 펫 리조트',
+        emoji: '🏨',
+        desc: '1인 1실 친환경 개별 바닥 난방 객실과 넓은 개별 테라스, 전담 훈련사가 상주하는 놀이 케어 및 24시간 안심 CCTV 밀착 돌봄 서비스를 제공합니다.',
+        reward: '2박 이상 숙박 시 무료 펫 스파 케어 1회 연계',
+        rewardBadge: '돌봄 혜택'
+    },
+    'healing-shopping': {
+        badge: 'SHOPPING',
+        title: '펫라이프 프리미엄 멀티샵',
+        emoji: '🛒',
+        desc: '엄선된 유기농 홀리스틱 사료, 천연 수제 간식, 해외 명품 프리미엄 반려동물 어패럴 및 지능 개발 토이까지 한자리에 모은 플래그십 스퀘어입니다.',
+        reward: '3만원 이상 안심 결제 시 5,000원 즉시 캐시백',
+        rewardBadge: '쇼핑 혜택'
+    }
+};
+
+let activeShopId = null;
+
+function selectIslandShop(shopId) {
+    const data = SHOP_QUEST_DATA[shopId];
+    if (!data) return;
+
+    activeShopId = shopId;
+
+    const defaultState = document.getElementById('quest-default-state');
+    const activeState = document.getElementById('quest-active-state');
+    
+    if (defaultState && activeState) {
+        defaultState.style.display = 'none';
+        activeState.style.display = 'flex';
+        activeState.classList.remove('hidden');
+
+        document.getElementById('quest-badge').innerText = data.badge;
+        document.getElementById('quest-title').innerText = data.title;
+        document.getElementById('quest-emoji').innerText = data.emoji;
+        document.getElementById('quest-desc').innerText = data.desc;
+        document.getElementById('quest-reward-name').innerText = data.reward;
+        const rewardBadgeEl = document.getElementById('quest-reward-badge');
+        if (rewardBadgeEl) rewardBadgeEl.innerText = data.rewardBadge;
+    }
+    
+    if (typeof showToast === 'function') {
+        showToast(`🗺️ ${data.title} 영토가 활성화되었습니다!`);
+    }
+}
+
+function closeQuestPanel() {
+    activeShopId = null;
+    const defaultState = document.getElementById('quest-default-state');
+    const activeState = document.getElementById('quest-active-state');
+    if (defaultState && activeState) {
+        defaultState.style.display = '';
+        activeState.style.display = 'none';
+        activeState.classList.add('hidden');
+    }
+}
+
+function openActiveQuestLink() {
+    if (!activeShopId) return;
+    
+    const targetSection = document.getElementById('section-' + activeShopId);
+    if (targetSection) {
+        if (targetSection.classList.contains('hidden')) {
+            toggleShopSection(activeShopId);
+        }
+        targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        showToast("가맹점 상세 정보 영역을 찾을 수 없습니다.");
+    }
+}
+
+function applyMapFilters() {
+    const fSpa     = document.getElementById('f-spa')?.checked;
+    const fMedical = document.getElementById('f-medical')?.checked;
+    const fHotel   = document.getElementById('f-hotel')?.checked;
+    const fShop    = document.getElementById('f-shop')?.checked;
+
+    // 이전 버전 필터 ID 호환
+    const spaCamping  = document.getElementById('filter-spa-camping')?.checked ?? fSpa;
+    const medicalCare = document.getElementById('filter-medical-care')?.checked ?? fMedical;
+    const hotelResort = document.getElementById('filter-hotel-resort')?.checked ?? fHotel;
+    const shoppingPlaza = document.getElementById('filter-shopping-plaza')?.checked ?? fShop;
+
+    let activeCount = 0;
+    const filterNodes = document.querySelectorAll('.filter-node');
+
+    filterNodes.forEach(node => {
+        // data-cat 우선 (새 SVG 방식), 없으면 data-category (구버전)
+        const cat = node.getAttribute('data-cat') || node.getAttribute('data-category') || '';
+        let show = true;
+
+        if ((cat === 'spa' || cat === 'spa-camping') && !(fSpa ?? spaCamping)) show = false;
+        if ((cat === 'medical' || cat === 'medical-care') && !(fMedical ?? medicalCare)) show = false;
+        if ((cat === 'hotel' || cat === 'hotel-resort') && !(fHotel ?? hotelResort)) show = false;
+        if ((cat === 'shop' || cat === 'shopping-plaza') && !(fShop ?? shoppingPlaza)) show = false;
+
+        if (show) {
+            node.style.opacity = '1';
+            node.style.pointerEvents = 'auto';
+            node.style.transform = '';
+            activeCount++;
+        } else {
+            node.style.opacity = '0.1';
+            node.style.pointerEvents = 'none';
+        }
+    });
+
+    // SVG 맵 통계 바
+    const statBar = document.getElementById('stat-bar');
+    const statLabel = document.getElementById('stat-label');
+    if (statBar) statBar.style.width = `${(activeCount / 6) * 100}%`;
+    if (statLabel) statLabel.innerText = `${activeCount} / 6 활성`;
+}
+
 function toggleShopSection(id) {
     const section = document.getElementById('section-' + id);
     const icon    = document.getElementById('icon-' + id);
