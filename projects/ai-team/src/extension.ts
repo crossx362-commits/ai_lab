@@ -20793,6 +20793,37 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
         }
     }
 
+    /**
+     * 고위험 판단 시 관련 에이전트를 병렬 호출해 전문가 의견을 수집.
+     * 타임아웃(30s) 또는 LLM 실패한 에이전트는 조용히 제외 — 메인 흐름 블록 없음.
+     */
+    private async _runCouncil(
+        task: string,
+        agentIds: string[],
+        modelName: string
+    ): Promise<Array<{ agentId: string; opinion: string }>> {
+        const COUNCIL_TIMEOUT_MS = 30_000;
+        const results = await Promise.all(
+            agentIds.map(async (id): Promise<{ agentId: string; opinion: string }> => {
+                if (!AGENTS[id] || !isAgentActive(id)) return { agentId: id, opinion: '' };
+                const sys = buildSpecialistPrompt(id);
+                const usr = `[교차검증 요청]\n${task}\n\n당신의 전문 영역에서 이 결정에 대한 핵심 의견을 2-3문장으로 간결하게 제시하라. 찬성/반대/보완 모두 가능. 불확실하면 명시할 것.`;
+                try {
+                    const opinion = await Promise.race<string>([
+                        this._callAgentLLM(sys, usr, modelName, id, false),
+                        new Promise<string>((_, reject) =>
+                            setTimeout(() => reject(new Error('council-timeout')), COUNCIL_TIMEOUT_MS)
+                        ),
+                    ]);
+                    return { agentId: id, opinion: String(opinion).trim().slice(0, 800) };
+                } catch {
+                    return { agentId: id, opinion: '' };
+                }
+            })
+        );
+        return results.filter(r => r.opinion.length > 20);
+    }
+
     // 단일 에이전트 LLM 호출. broadcast=true이면 토큰을 webview로 스트리밍.
     private async _callAgentLLM(
         systemPrompt: string,
