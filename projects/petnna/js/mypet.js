@@ -855,6 +855,25 @@ function renderMyPets() {
                     harmonyBox.classList.add('hidden');
                 }
             }
+
+            // 상단 조화도 배지 업데이트
+            const roomHarmonyBadge = document.getElementById('room-harmony-badge');
+            const roomHarmonyScore = document.getElementById('room-harmony-score');
+            const roomHarmonyIcon = document.getElementById('room-harmony-icon');
+
+            if (current.harmonyData && roomHarmonyBadge && roomHarmonyScore) {
+                roomHarmonyScore.textContent = `${current.harmonyData.avgScore}점`;
+                roomHarmonyScore.classList.add('text-rose-600');
+                roomHarmonyBadge.classList.add('cursor-pointer', 'hover:shadow-md', 'transition-shadow');
+                roomHarmonyBadge.onclick = () => switchTab('saju');
+            } else if (roomHarmonyScore) {
+                roomHarmonyScore.textContent = '조화도 측정하기';
+                roomHarmonyScore.classList.add('text-rose-600');
+                if (roomHarmonyBadge) {
+                    roomHarmonyBadge.classList.add('cursor-pointer', 'hover:shadow-md', 'transition-shadow');
+                    roomHarmonyBadge.onclick = () => switchTab('saju');
+                }
+            }
         } else {
             if (sajuNoResult) sajuNoResult.classList.remove('hidden');
             if (sajuHasResult) sajuHasResult.classList.add('hidden');

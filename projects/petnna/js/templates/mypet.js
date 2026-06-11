@@ -127,10 +127,10 @@ const MYPET_TEMPLATE = `
                             <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
                                 🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
                             </p>
-                            <!-- 영혼 조화도 배지 -->
-                            <div id="room-harmony-badge" class="hidden flex items-center gap-1 px-2 py-0.5 bg-white/80 backdrop-blur-sm rounded-full border shadow-sm">
+                            <!-- 영혼 조화도 배지 (항상 표시) -->
+                            <div id="room-harmony-badge" class="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm">
                                 <span id="room-harmony-icon" class="text-[10px]">💖</span>
-                                <span id="room-harmony-score" class="text-[10px] font-black">--점</span>
+                                <span id="room-harmony-score" class="text-[10px] font-bold text-rose-600">조화도 측정하기</span>
                             </div>
                         </div>
                     </div>
