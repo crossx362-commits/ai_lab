@@ -10,3 +10,9 @@
 - **티모**: [모션 디자인](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260611_모션_디자인.md)
 - **로율**: [AI 규제](projects/ai-team/skills/로율_변호사/knowledge/learned_20260611_AI_규제.md)
 - **현빈**: [AI 윤리](projects/ai-team/skills/현빈_전략가/knowledge/learned_20260611_AI_윤리.md)
+
+
+## 2026-06-11 16:02 자가학습
+- **예원**: [데이터분석](projects/ai-team/skills/예원_CEO/knowledge/learned_20260611_데이터분석.md)
+- **로율**: [AI 법률 준수](projects/ai-team/skills/로율_변호사/knowledge/learned_20260611_AI_법률_준수.md)
+- **케빈**: [IaC](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260611_IaC.md)
