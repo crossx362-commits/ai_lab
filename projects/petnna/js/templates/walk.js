@@ -6,7 +6,7 @@ const WALK_TEMPLATE = `
         <!-- ── 헤더 ────────────────────────────────────────────────── -->
         <div class="flex items-center justify-between mb-3">
             <div>
-                <h2 class="text-base font-black text-gray-800 flex items-center gap-2">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
                     <i class="fa-solid fa-map-location-dot text-brand-500 text-lg"></i>
                     동동안심 반려 지도
                 </h2>
@@ -60,7 +60,7 @@ const WALK_TEMPLATE = `
                 class="hidden absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 text-center pointer-events-none transition-opacity duration-300"
                 style="z-index: 9990;">
                 <span class="text-5xl mb-3">⏸️</span>
-                <h4 class="font-black text-base mb-1">산책 일시정지</h4>
+                <h4 class="font-bold text-base mb-1">산책 일시정지</h4>
                 <p class="text-xs text-white/80 leading-snug">'산책 시작' 버튼을 눌러 재개하세요.</p>
             </div>
 
@@ -71,8 +71,8 @@ const WALK_TEMPLATE = `
                 <div class="space-y-3.5">
                     <div class="flex justify-between items-start pb-2 border-b">
                         <div>
-                            <span id="p-detail-badge" class="bg-emerald-100 text-emerald-800 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">PARK</span>
-                            <h4 id="p-detail-name" class="font-black text-xs text-gray-800 mt-1">센트럴 파크</h4>
+                            <span id="p-detail-badge" class="bg-emerald-100 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">PARK</span>
+                            <h4 id="p-detail-name" class="font-bold text-xs text-gray-800 mt-1">센트럴 파크</h4>
                         </div>
                         <button onclick="closePlacePanel()" class="text-gray-400 hover:text-gray-600 p-1">
                             <i class="fa-solid fa-xmark text-base"></i>
@@ -91,7 +91,7 @@ const WALK_TEMPLATE = `
                     </div>
                 </div>
                 <div class="mt-4 pt-3 border-t border-gray-100 space-y-2.5">
-                    <span class="block text-[10px] text-brand-700 font-black flex items-center gap-1">
+                    <span class="block text-[10px] text-brand-700 font-bold flex items-center gap-1">
                         <i class="fa-solid fa-pen-nib text-xs"></i> 후기 남기기
                     </span>
                     <div class="grid grid-cols-2 gap-1.5">
@@ -118,7 +118,7 @@ const WALK_TEMPLATE = `
             <div class="flex items-center gap-2.5">
                 <span class="text-2xl">🎨</span>
                 <div>
-                    <span class="block text-[10px] font-black text-brand-700 uppercase tracking-wider">Route Builder</span>
+                    <span class="block text-[10px] font-bold text-brand-700 uppercase tracking-wider">Route Builder</span>
                     <p id="route-draw-banner-desc" class="text-xs font-bold text-gray-700">지도를 클릭해 경로를 그려주세요.</p>
                 </div>
             </div>
@@ -148,7 +148,7 @@ const WALK_TEMPLATE = `
 
             <!-- 헤더 + 새 경로 버튼 -->
             <div class="flex items-center justify-between">
-                <h4 class="font-black text-gray-800 text-sm flex items-center gap-2">
+                <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
                     <i class="fa-solid fa-map-location text-brand-500 text-base"></i>
                     나만의 산책로
                 </h4>
@@ -225,17 +225,17 @@ const WALK_TEMPLATE = `
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="bg-white py-3 px-1 rounded-xl border border-amber-100/60 shadow-sm overflow-hidden">
                         <i class="fa-regular fa-clock text-gray-400 text-sm mb-1 block"></i>
-                        <span id="walk-time-display" class="text-sm font-black text-gray-800 font-mono block leading-none truncate">00:00</span>
+                        <span id="walk-time-display" class="text-sm font-bold text-gray-800 font-mono block leading-none truncate">00:00</span>
                         <span class="text-[9px] text-gray-500 font-semibold mt-0.5 block">시간</span>
                     </div>
                     <div class="bg-white py-3 px-1 rounded-xl border border-amber-100/60 shadow-sm overflow-hidden">
                         <i class="fa-solid fa-location-dot text-brand-400 text-sm mb-1 block"></i>
-                        <span id="walk-distance-display" class="text-sm font-black text-brand-600 font-mono block leading-none truncate">0.00</span>
+                        <span id="walk-distance-display" class="text-sm font-bold text-brand-600 font-mono block leading-none truncate">0.00</span>
                         <span class="text-[9px] text-gray-500 font-semibold mt-0.5 block">km</span>
                     </div>
                     <div class="bg-white py-3 px-1 rounded-xl border border-amber-100/60 shadow-sm overflow-hidden">
                         <i class="fa-solid fa-fire text-rose-400 text-sm mb-1 block"></i>
-                        <span id="walk-calories-display" class="text-sm font-black text-rose-500 font-mono block leading-none truncate">0</span>
+                        <span id="walk-calories-display" class="text-sm font-bold text-rose-500 font-mono block leading-none truncate">0</span>
                         <span class="text-[9px] text-gray-500 font-semibold mt-0.5 block">kcal</span>
                     </div>
                 </div>
@@ -243,17 +243,17 @@ const WALK_TEMPLATE = `
                 <!-- 제어 버튼 3개 (Critical: min-h-[48px]) -->
                 <div class="grid grid-cols-3 gap-2">
                     <button id="walk-start-btn" onclick="toggleWalk()"
-                        class="bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-black text-xs rounded-xl shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
+                        class="bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
                         <i class="fa-solid fa-play text-xl"></i>
                         <span>시작</span>
                     </button>
                     <button id="walk-stop-btn" onclick="discardWalk()" disabled
-                        class="bg-gray-700 hover:bg-gray-800 text-white font-black text-xs rounded-xl opacity-40 transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
+                        class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs rounded-xl opacity-40 transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
                         <i class="fa-solid fa-flag-checkered text-xl"></i>
                         <span>정지</span>
                     </button>
                     <button id="walk-save-btn" onclick="stopAndSaveWalk()" disabled
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl opacity-40 shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl opacity-40 shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
                         <i class="fa-solid fa-floppy-disk text-xl"></i>
                         <span>저장 💾</span>
                     </button>
@@ -263,21 +263,21 @@ const WALK_TEMPLATE = `
             <!-- ── 마킹 버튼 (Critical: min-h-[56px], disabled 명확 표현) ── -->
             <div class="grid grid-cols-3 gap-2">
                 <button id="btn-mark-poop" onclick="placeMarking('poop')" disabled
-                    class="opacity-40 grayscale cursor-not-allowed bg-amber-100 text-amber-800 font-black rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-amber-200">
+                    class="opacity-40 grayscale cursor-not-allowed bg-amber-100 text-amber-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-amber-200">
                     <span class="text-3xl leading-none">💩</span>
-                    <span class="text-[10px] font-black">응가</span>
+                    <span class="text-[10px] font-bold">응가</span>
                     <span class="text-[9px] font-bold bg-amber-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-poop-count" class="font-mono">0</span>회</span>
                 </button>
                 <button id="btn-mark-pee" onclick="placeMarking('pee')" disabled
-                    class="opacity-40 grayscale cursor-not-allowed bg-sky-100 text-sky-800 font-black rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-sky-200">
+                    class="opacity-40 grayscale cursor-not-allowed bg-sky-100 text-sky-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-sky-200">
                     <span class="text-3xl leading-none">💦</span>
-                    <span class="text-[10px] font-black">쉬야</span>
+                    <span class="text-[10px] font-bold">쉬야</span>
                     <span class="text-[9px] font-bold bg-sky-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-pee-count" class="font-mono">0</span>회</span>
                 </button>
                 <button id="btn-mark-sniff" onclick="placeMarking('sniff')" disabled
-                    class="opacity-40 grayscale cursor-not-allowed bg-emerald-100 text-emerald-800 font-black rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-emerald-200">
+                    class="opacity-40 grayscale cursor-not-allowed bg-emerald-100 text-emerald-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-emerald-200">
                     <span class="text-3xl leading-none">👃</span>
-                    <span class="text-[10px] font-black">킁킁</span>
+                    <span class="text-[10px] font-bold">킁킁</span>
                     <span class="text-[9px] font-bold bg-emerald-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-sniff-count" class="font-mono">0</span>회</span>
                 </button>
             </div>
@@ -291,7 +291,7 @@ const WALK_TEMPLATE = `
 
     <!-- 산책 완료 역사관 -->
     <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
-        <h4 class="font-black text-gray-800 text-sm flex items-center gap-2">
+        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
             <i class="fa-solid fa-route text-indigo-500 text-lg"></i>
             산책 완료 역사관 🏆
         </h4>

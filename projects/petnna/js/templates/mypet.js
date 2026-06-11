@@ -7,20 +7,20 @@ const MYPET_TEMPLATE = `
     <div class="lg:col-span-8 space-y-4">
 
         <!-- 날짜 & 날씨 -->
-        <div class="bg-gradient-to-r from-sky-50 to-teal-50/60 border border-sky-200/60 rounded-2xl px-4 py-3 shadow-sm animate-fade-in">
-            <div class="flex items-center gap-4 flex-wrap">
+        <div class="glass rounded-xl px-5 py-4 shadow-soft">
+            <div class="flex items-center gap-5 flex-wrap">
                 <div>
-                    <span id="mypet-date-display" class="block text-xs font-bold text-gray-400">2026. 05. 23 (토)</span>
-                    <span id="mypet-time-display" class="text-xl font-black font-mono text-gray-700">14:30:00</span>
+                    <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
+                    <span id="mypet-time-display" class="text-2xl font-bold font-mono text-gray-900 mt-0.5">14:30:00</span>
                 </div>
-                <div class="flex items-center gap-2 border-l border-sky-200/60 pl-4">
-                    <i class="fa-solid fa-sun text-2xl text-amber-400" id="mypet-weather-icon"></i>
+                <div class="flex items-center gap-3 border-l border-gray-200 pl-5">
+                    <i class="fa-solid fa-sun text-3xl text-amber-400" id="mypet-weather-icon"></i>
                     <div>
-                        <span id="mypet-weather-temp" class="block text-base font-black text-gray-800">24°C</span>
-                        <span id="mypet-weather-desc" class="block text-xs font-bold text-gray-400">맑음 (서울)</span>
+                        <span id="mypet-weather-temp" class="block text-lg font-bold text-gray-900">24°C</span>
+                        <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-3 border-l border-sky-200/60 pl-4 text-xs font-bold text-gray-500">
+                <div class="flex items-center gap-4 border-l border-gray-200 pl-5 text-sm font-medium text-gray-600">
                     <span>😷 <span id="mypet-weather-dust">--</span></span>
                     <span>💧 <span id="mypet-weather-humidity">--%</span></span>
                 </div>
@@ -29,25 +29,25 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 오늘의 운세 (집사 + 펫) -->
-        <div class="grid grid-cols-2 gap-3">
-            <div class="bg-gradient-to-br from-indigo-50 to-purple-50/60 border border-indigo-100 rounded-2xl p-3.5 space-y-1.5">
-                <span class="block text-xs font-black text-indigo-600">🧔 집사 오늘의 운세</span>
-                <p id="mypet-butler-fortune-text" class="text-sm font-bold text-gray-700 leading-snug keep-all">로딩 중...</p>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="card-modern bg-violet-50/50 p-4 space-y-2">
+                <span class="block text-sm font-semibold text-violet-600">🧔 집사 오늘의 운세</span>
+                <p id="mypet-butler-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
             </div>
-            <div class="bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-100 rounded-2xl p-3.5 space-y-1.5">
-                <span class="block text-xs font-black text-amber-600">🐾 펫 오늘의 운세</span>
-                <p id="mypet-fortune-text" class="text-sm font-bold text-gray-700 leading-snug keep-all">로딩 중...</p>
+            <div class="card-modern bg-amber-50/50 p-4 space-y-2">
+                <span class="block text-sm font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
+                <p id="mypet-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
             </div>
         </div>
 
         <!-- 댕이의 하루 방 -->
-        <div id="pet-room-card" class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+        <div id="pet-room-card" class="card-modern overflow-hidden">
 
             <!-- 헤더 -->
-            <div class="px-5 pt-4 pb-3">
+            <div class="px-6 pt-5 pb-4 border-b border-gray-100">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex-1">
-                        <h2 class="text-lg font-black text-gray-800 keep-all" id="pet-room-name-wrapper">
+                        <h2 class="text-xl font-bold text-gray-900 keep-all" id="pet-room-name-wrapper">
                             <span id="pet-room-name">댕이의 하루 방 🏠</span>
                         </h2>
                         <div class="flex items-center gap-2 mt-1">
