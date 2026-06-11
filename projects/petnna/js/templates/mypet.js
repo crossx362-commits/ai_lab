@@ -41,15 +41,18 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 건강 요약 + 6월 리포트 통합 카드 -->
-        <div class="card-modern p-6 space-y-5">
+        <div class="card-modern p-6 space-y-5 cursor-pointer hover:shadow-xl transition-shadow" onclick="openMonthlyReportModal()">
             <!-- 제목 -->
             <div class="flex items-center gap-3">
                 <div class="w-11 h-11 bg-violet-100 rounded-xl flex items-center justify-center">
                     <i class="fa-solid fa-chart-pie text-violet-600 text-lg"></i>
                 </div>
-                <div>
+                <div class="flex-1">
                     <h2 class="text-lg font-bold text-gray-900">건강 요약 · 활동</h2>
                     <p class="text-sm text-gray-500 mt-0.5">건강 점수 · 산책 · 기록</p>
+                </div>
+                <div class="text-violet-500">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-sm"></i>
                 </div>
             </div>
 

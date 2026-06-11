@@ -1,5 +1,8 @@
 const MODALS_TEMPLATE = `
 <!-- 다목적 모달 레이어들 -->
+
+${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
+
 <!-- 후원 결제 모달 -->
 <div id="donation-payment-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative border border-amber-100 max-h-[90vh] overflow-y-auto no-scrollbar">
