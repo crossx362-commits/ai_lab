@@ -681,6 +681,13 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
             setTimeout(() => {
                 scheduleStreakReminder();
                 scheduleAiReminder();
+
+                // 온보딩 체크 (아린)
+                if (typeof shouldShowOnboarding === 'function' && shouldShowOnboarding()) {
+                    setTimeout(() => {
+                        if (typeof startOnboarding === 'function') startOnboarding();
+                    }, 1000);
+                }
             }, 2000);
             switchTab('mypet');
         }, 300);
