@@ -66,6 +66,7 @@ function generateWeeklyHealthData() {
     }
 
     if (typeof saveState === 'function') saveState();
+    if (typeof renderHealthTab === 'function') renderHealthTab();
     if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
     if (typeof renderHealthTrendChart === 'function') renderHealthTrendChart();
     if (typeof renderHealthCalendar === 'function') renderHealthCalendar();
