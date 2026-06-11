@@ -33,6 +33,26 @@ const TabControllers = {
             }
         }
     },
+    health: {
+        initialized: false,
+        init() {
+            if (this.initialized) return;
+            this.initialized = true;
+            if (typeof AppLogger !== 'undefined') {
+                AppLogger.info('TabControllers: health initialized');
+            }
+        },
+        render() {
+            // 건강 탭 렌더링 로직
+            if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
+            if (typeof renderHealthAnalyses === 'function') renderHealthAnalyses();
+        },
+        destroy() {
+            if (typeof AppLogger !== 'undefined') {
+                AppLogger.info('TabControllers: health destroyed');
+            }
+        }
+    },
     walk: {
         initialized: false,
         init() {
@@ -336,20 +356,26 @@ function switchTab(tabName) {
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof checkPremiumFromUrl === 'function') checkPremiumFromUrl();
     // Inject templates dynamically before state setup and rendering
-    document.getElementById('tab-mypet').innerHTML = MYPET_TEMPLATE;
-            if(typeof initMypetClock === 'function') initMypetClock();
-    document.getElementById('tab-health').innerHTML = HEALTH_TEMPLATE;
-    document.getElementById('tab-walk').innerHTML = WALK_TEMPLATE;
-    document.getElementById('tab-social').innerHTML = SOCIAL_TEMPLATE;
-    document.getElementById('tab-album').innerHTML = ALBUM_TEMPLATE;
-    document.getElementById('tab-shop').innerHTML = SHOP_ISLAND_TEMPLATE;
+    try {
+        document.getElementById('tab-mypet').innerHTML = MYPET_TEMPLATE;
+        if(typeof initMypetClock === 'function') initMypetClock();
 
-    document.getElementById('tab-saju').innerHTML = SAJU_TEMPLATE;
+        if (typeof HEALTH_TEMPLATE !== 'undefined') {
+            document.getElementById('tab-health').innerHTML = HEALTH_TEMPLATE;
+        }
 
-    document.getElementById('tab-settings').innerHTML = SETTINGS_TEMPLATE;
-    document.getElementById('tab-mailbox').innerHTML = MAILBOX_TEMPLATE;
-    document.getElementById('tab-cart').innerHTML = CART_TEMPLATE;
-    document.getElementById('modal-container').innerHTML = MODALS_TEMPLATE;
+        document.getElementById('tab-walk').innerHTML = WALK_TEMPLATE;
+        document.getElementById('tab-social').innerHTML = SOCIAL_TEMPLATE;
+        document.getElementById('tab-album').innerHTML = ALBUM_TEMPLATE;
+        document.getElementById('tab-shop').innerHTML = SHOP_ISLAND_TEMPLATE;
+        document.getElementById('tab-saju').innerHTML = SAJU_TEMPLATE;
+        document.getElementById('tab-settings').innerHTML = SETTINGS_TEMPLATE;
+        document.getElementById('tab-mailbox').innerHTML = MAILBOX_TEMPLATE;
+        document.getElementById('tab-cart').innerHTML = CART_TEMPLATE;
+        document.getElementById('modal-container').innerHTML = MODALS_TEMPLATE;
+    } catch(e) {
+        console.error('템플릿 초기화 오류:', e);
+    }
 
     applyThemeStyles(settings_theme);
 
