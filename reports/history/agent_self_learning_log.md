@@ -16,3 +16,9 @@
 - **예원**: [데이터분석](projects/ai-team/skills/예원_CEO/knowledge/learned_20260611_데이터분석.md)
 - **로율**: [AI 법률 준수](projects/ai-team/skills/로율_변호사/knowledge/learned_20260611_AI_법률_준수.md)
 - **케빈**: [IaC](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260611_IaC.md)
+
+
+## 2026-06-12 02:01 자가학습
+- **루나**: [숏폼 편집](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260612_숏폼_편집.md)
+- **예원**: [데이터분석](projects/ai-team/skills/예원_CEO/knowledge/learned_20260612_데이터분석.md)
+- **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
