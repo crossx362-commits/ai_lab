@@ -20344,6 +20344,31 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
                 }
 
                 outputs[t.agent] = out;
+                /* 교차검증 자기요청 — [COUNCIL_NEEDED: 이유] 태그 감지 */
+                const councilTagMatch = out.match(/^\[COUNCIL_NEEDED:\s*([^\]]+)\]/);
+                if (councilTagMatch) {
+                    const reason = councilTagMatch[1].trim();
+                    post({ type: 'response', value: `🗣️ ${a.emoji} ${a.name}이(가) 교차검증 요청: ${reason}` });
+                    /* 현재 에이전트를 제외한 고위험 연관 에이전트 소집 (또는 전 도메인 fallback) */
+                    const selfDomains = AGENTS[t.agent]?.councilDomains || [];
+                    const fallbackIds = selfDomains.length > 0
+                        ? selfDomains.flatMap(d => COUNCIL_MAP[d] || []).filter(id => id !== t.agent && isAgentActive(id))
+                        : SPECIALIST_IDS.filter(id => id !== t.agent && id !== 'ceo' && isAgentActive(id)).slice(0, 3);
+                    const uniqueFallbackIds = [...new Set(fallbackIds)];
+                    if (uniqueFallbackIds.length > 0) {
+                        try {
+                            const selfOpinions = await this._runCouncil(
+                                `[${a.name} 자기요청 이유: ${reason}]\n${prompt}`,
+                                uniqueFallbackIds,
+                                modelName
+                            );
+                            if (selfOpinions.length > 0) {
+                                const extra = selfOpinions.map(o => `${AGENTS[o.agentId]?.name}: ${o.opinion}`).join('\n');
+                                outputs[t.agent] = `${out}\n\n[교차검증 추가 의견]\n${extra}`;
+                            }
+                        } catch { /* 실패 무시 */ }
+                    }
+                }
                 /* v2.89.51 — 작업 라운드 메타데이터 수집. CEO 보고에 도구·데이터·핵심 인용. */
                 {
                     /* prefetch summary: realtimeData 첫 의미있는 줄 (### 헤딩 다음) */
