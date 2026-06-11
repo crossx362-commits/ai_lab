@@ -3,7 +3,7 @@
 // ====================================================
 
 const PETLIFE_REAL_LOCATIONS = [
-    // 🏥 동물병원
+    // 🏥 동물병원 (동쪽 섬들)
     {
         id: 'hospital-snc',
         name: 'SNC 동물메디컬센터',
@@ -16,7 +16,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://www.sncamc.co.kr/',
         services: ['24시 응급진료', '외과수술', '내과진료', '건강검진', '입원케어'],
         color: '#dc2626',
-        position: { left: '85%', top: '45%' } // 동쪽 라우 제도
+        position: { left: '88%', top: '52%' } // 동쪽 라우 제도
     },
     {
         id: 'hospital-central',
@@ -30,7 +30,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'http://www.cenamc.kr/',
         services: ['24시 응급', 'CT/MRI', '심장검사', '안과진료'],
         color: '#dc2626',
-        position: { left: '78%', top: '52%' }
+        position: { left: '83%', top: '48%' } // 동쪽 섬
     },
     {
         id: 'hospital-24in',
@@ -44,10 +44,10 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://amc24in.com/',
         services: ['응급진료', '외과', '내과', '피부과'],
         color: '#e11d48',
-        position: { left: '72%', top: '38%' }
+        position: { left: '76%', top: '35%' } // 타베우니 섬
     },
 
-    // 🏨 펫호텔 & 위탁
+    // 🏨 펫호텔 & 위탁 (서쪽 야사와 제도)
     {
         id: 'hotel-dogs',
         name: '호텔 독스',
@@ -60,7 +60,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://hoteldogs.co.kr/hoteling',
         services: ['24시간 CCTV', '비밀번호 견사', '자동 급식', '24시간 입퇴실'],
         color: '#4f46e5',
-        position: { left: '18%', top: '28%' } // 서쪽 야사와 제도
+        position: { left: '12%', top: '25%' } // 서쪽 야사와 제도 위쪽
     },
     {
         id: 'hotel-ijoa',
@@ -74,10 +74,10 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://www.ijoapetpark.com/ijoa/hotel.php',
         services: ['펫호텔', '수영장', '놀이공원', '카페'],
         color: '#4f46e5',
-        position: { left: '25%', top: '35%' }
+        position: { left: '14%', top: '35%' } // 서쪽 야사와 제도 아래쪽
     },
 
-    // 🛁 애견미용 & 그루밍
+    // 🛁 애견미용 & 그루밍 (중앙 비티레부 섬)
     {
         id: 'grooming-character',
         name: '캐릭터그루밍',
@@ -90,7 +90,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://charactergrooming.imweb.me/',
         services: ['전견종 미용', '목욕', '스파', '네일케어'],
         color: '#0d9488',
-        position: { left: '38%', top: '55%' } // 중앙 비티레부 서부
+        position: { left: '32%', top: '52%' } // 비티레부 Nadi 지역
     },
     {
         id: 'grooming-banjjak',
@@ -104,7 +104,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://banjjakpet.com/',
         services: ['미용샵 검색', '온라인 예약', '리뷰 확인'],
         color: '#0d9488',
-        position: { left: '32%', top: '48%' }
+        position: { left: '38%', top: '48%' } // 비티레부 중앙
     },
     {
         id: 'grooming-petvip',
@@ -118,10 +118,10 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://www.petvip.co.kr/',
         services: ['출장미용', '방문목욕', '부분미용', '방문훈련'],
         color: '#14b8a6',
-        position: { left: '42%', top: '62%' }
+        position: { left: '44%', top: '56%' } // 비티레부 Suva 지역
     },
 
-    // 🍽️ 애견동반 카페 & 레스토랑
+    // 🍽️ 애견동반 카페 & 레스토랑 (북쪽 바누아레부)
     {
         id: 'cafe-kongti',
         name: '꽁티 드 툴레아',
@@ -134,7 +134,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: '#',
         services: ['브런치', '커피', '디저트', '반려견 동반'],
         color: '#f59e0b',
-        position: { left: '55%', top: '25%' } // 북동 바누아레부
+        position: { left: '58%', top: '28%' } // 바누아레부 동쪽
     },
     {
         id: 'cafe-slowforest',
@@ -148,7 +148,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: '#',
         services: ['루프탑', '반려견 동반', '커피', '디저트'],
         color: '#f59e0b',
-        position: { left: '48%', top: '18%' }
+        position: { left: '52%', top: '25%' } // 바누아레부 중앙
     },
     {
         id: 'cafe-bottlefactory',
@@ -162,10 +162,10 @@ const PETLIFE_REAL_LOCATIONS = [
         website: '#',
         services: ['친환경', '실내동반', '커피', '브런치'],
         color: '#10b981',
-        position: { left: '28%', top: '42%' }
+        position: { left: '26%', top: '44%' } // 비티레부 서쪽 해안
     },
 
-    // 🎓 애견훈련소 & 교육
+    // 🎓 애견훈련소 & 교육 (바누아레부 섬)
     {
         id: 'training-esac',
         name: '이삭애견훈련소',
@@ -178,7 +178,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://esac2000.co.kr/',
         services: ['기본훈련', '문제행동교정', '전문가과정', '1:1 맞춤'],
         color: '#8b5cf6',
-        position: { left: '62%', top: '32%' }
+        position: { left: '64%', top: '32%' } // 바누아레부 동쪽
     },
     {
         id: 'training-dogmaru',
@@ -192,10 +192,10 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://dmhomeschool.co.kr/',
         services: ['배변훈련', '입질교정', '분리불안', '짖음훈련'],
         color: '#8b5cf6',
-        position: { left: '68%', top: '28%' }
+        position: { left: '68%', top: '27%' } // 타베우니 근처
     },
 
-    // 🛒 펫샵 & 용품
+    // 🛒 펫샵 & 용품 (비티레부 남동쪽)
     {
         id: 'shop-minipet',
         name: '미니펫 강남직영점',
@@ -208,7 +208,7 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://minipetmall.co.kr/',
         services: ['분양', '펫용품', '사료', '간식'],
         color: '#d97706',
-        position: { left: '52%', top: '58%' } // 중앙 비티레부 동부
+        position: { left: '48%', top: '60%' } // 비티레부 남동쪽
     }
 ];
 
