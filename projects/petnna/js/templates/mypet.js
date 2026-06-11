@@ -110,18 +110,20 @@ const MYPET_TEMPLATE = `
             <div class="px-6 pt-5 pb-4 border-b border-gray-100">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex-1">
-                        <h2 class="text-xl font-bold text-gray-900 keep-all" id="pet-room-name-wrapper">
-                            <span id="pet-room-name">댕이의 하루 방 🏠</span>
-                        </h2>
-                        <div class="flex items-center gap-2 mt-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-xl font-bold text-gray-900 keep-all" id="pet-room-name-wrapper">
+                                <span id="pet-room-name">댕이의 하루 방 🏠</span>
+                            </h2>
+                            <!-- 영혼 조화도 배지 (방 제목 옆에 표시) -->
+                            <div id="room-harmony-badge" class="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm">
+                                <span id="room-harmony-icon" class="text-sm">💖</span>
+                                <span id="room-harmony-score" class="text-xs font-bold text-rose-600">조화도 측정하기</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
                             <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
                                 🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
                             </p>
-                            <!-- 영혼 조화도 배지 (항상 표시) -->
-                            <div id="room-harmony-badge" class="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm">
-                                <span id="room-harmony-icon" class="text-[10px]">💖</span>
-                                <span id="room-harmony-score" class="text-[10px] font-bold text-rose-600">조화도 측정하기</span>
-                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
