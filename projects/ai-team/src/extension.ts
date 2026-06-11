@@ -20602,6 +20602,24 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
                 const onlyOutput = onlyAgent ? (outputs[onlyAgent] || '') : '';
                 finalReport = onlyOutput.trim() || '_(에이전트 산출물 없음)_';
             } else {
+                /* 교차검증 — 고위험 태스크이면 메인 specialist 외 전문가 병렬 의견 수집 */
+                let councilBlock = '';
+                const _highRisk = _detectHighRisk(prompt);
+                if (_highRisk) {
+                    const councilIds = _highRisk.agentIds.filter(id => !plan.tasks.some(t => t.agent === id) && isAgentActive(id));
+                    if (councilIds.length > 0) {
+                        const names = councilIds.map(id => `${AGENTS[id]?.emoji || ''} ${AGENTS[id]?.name || id}`).join(', ');
+                        post({ type: 'response', value: `🗣️ 교차검증 중 — ${names} 의견 수집` });
+                        try {
+                            const opinions = await this._runCouncil(prompt, councilIds, modelName);
+                            if (opinions.length > 0) {
+                                councilBlock = `\n\n[교차검증 전문가 의견 (${_highRisk.domain})]\n` +
+                                    opinions.map(o => `${AGENTS[o.agentId]?.emoji || ''} **${AGENTS[o.agentId]?.name || o.agentId}**: ${o.opinion}`).join('\n\n');
+                            }
+                        } catch { /* 교차검증 실패해도 메인 보고서는 계속 */ }
+                    }
+                }
+
                 post({ type: 'agentStart', agent: 'ceo', task: '종합 보고서 작성' });
                 _updateActiveDispatchStep(prompt, 'CEO 종합 보고서 작성 중');
                 /* v2.89.46 — 산출물 없는 에이전트는 reportInput에서 제외 (CEO가 placeholder
@@ -20609,8 +20627,10 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
                 const validTasks = plan.tasks.filter(t => nonEmptyOutputs.some(o => o.agent === t.agent));
                 const reportInput = `[원 명령]\n${prompt}\n\n[브리프]\n${plan.brief}\n\n` +
                     `[응답 도착: ${validTasks.length}/${plan.tasks.length}명]\n\n` +
-                    `[유효한 에이전트 산출물]\n${validTasks.map(t => `\n## ${AGENTS[t.agent]?.emoji} ${AGENTS[t.agent]?.name}\n${(outputs[t.agent] || '').slice(0, 2000)}`).join('\n')}\n\n` +
-                    `규칙: 위 산출물 안의 실제 내용·숫자만 인용해 보고서 작성. "산출물을 기다리고 있습니다", "데이터가 제공되면" 같은 placeholder 표현 절대 금지 — 산출물은 이미 위에 있음.`;
+                    `[유효한 에이전트 산출물]\n${validTasks.map(t => `\n## ${AGENTS[t.agent]?.emoji} ${AGENTS[t.agent]?.name}\n${(outputs[t.agent] || '').slice(0, 2000)}`).join('\n')}` +
+                    `${councilBlock}\n\n` +
+                    `규칙: 위 산출물 안의 실제 내용·숫자만 인용해 보고서 작성. "산출물을 기다리고 있습니다", "데이터가 제공되면" 같은 placeholder 표현 절대 금지 — 산출물은 이미 위에 있음.` +
+                    (councilBlock ? '\n\n[교차검증 의견을 종합 결론에 반드시 반영할 것]' : '');
                 let ceoNarrative = '';
                 try {
                     ceoNarrative = await this._callAgentLLM(
@@ -20657,7 +20677,8 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
                     breakdownLines.push('');
                 }
                 if (ceoNarrative && ceoNarrative.trim()) {
-                    finalReport = `${breakdownLines.join('\n')}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n## 👔 CEO 종합\n\n${ceoNarrative.trim()}`;
+                    const councilPrefix = councilBlock ? '📋 종합 결론 (교차검증 반영):\n\n' : '';
+                    finalReport = `${breakdownLines.join('\n')}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n## 👔 CEO 종합\n\n${councilPrefix}${ceoNarrative.trim()}`;
                 } else {
                     /* CEO LLM 실패해도 메타 보고서는 항상 보임 */
                     finalReport = `${breakdownLines.join('\n')}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n_(CEO 종합 단계 스킵 — 위 작업 라운드 메타가 답입니다)_`;
