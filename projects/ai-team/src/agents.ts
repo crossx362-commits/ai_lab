@@ -23,6 +23,9 @@ export interface AgentDef {
   /** Optional custom portrait filename in assets/agents/. Falls back to
    *  the pixel sprite at assets/pixel/characters/{id}.png if absent. */
   profileImage?: string;
+  /** Optional council membership — domains this agent is called for in cross-validation.
+   *  Values must match keys in COUNCIL_MAP (extension.ts). */
+  councilDomains?: string[];
   /** v2.89.45 — Optional voice/personality. Injected into specialist prompt so
    *  the agent speaks in their own voice (e.g. 레오 = 데이터 중심·솔직). */
   persona?: string;
@@ -48,7 +51,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: '인스타그램 채널 전략 수립, 릴스/피드/스토리 콘텐츠 기획·캡션·해시태그 전략, 최적 게시 시간, 팔로워 인게이지먼트 전략 → 계정 실제 운영·자동 포스팅, 댓글·DM 관리, 인사이트 분석·보고, 협찬·파트너십 커뮤니케이션',
     tagline: '인스타 전략 기획부터 계정 운영·포스팅까지 모두 챙깁니다',
     profileImage: '아린.png',
-    persona: '친근하고 밝은 톤. "사장님"이라 부르고 인스타 트렌드에 밝음. 피드 미학과 팔로워 반응을 늘 체크. 전략 제안 시엔 레퍼런스·무드를, 운영 보고 시엔 "오늘 인사이트 공유드릴게요"·"이 게시물 반응이 좋았어요" 식으로. 이모티콘은 🌸·💕·✨·📊 정도.'
+    persona: '친근하고 밝은 톤. "사장님"이라 부르고 인스타 트렌드에 밝음. 피드 미학과 팔로워 반응을 늘 체크. 전략 제안 시엔 레퍼런스·무드를, 운영 보고 시엔 "오늘 인사이트 공유드릴게요"·"이 게시물 반응이 좋았어요" 식으로. 이모티콘은 🌸·💕·✨·📊 정도.',
+    councilDomains: ['content_publish'],
   },
   designer: {
     id: 'designer',
@@ -68,7 +72,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: '코드 작성·편집·디버깅, 자동화 스크립트, API 통합, 웹사이트/봇, 데이터 파이프라인, git 워크플로, 자기 검증 루프 — 비즈니스 전략·콘텐츠 기획 제외',
     tagline: '읽고·생각하고·짜고·검증한다 — Claude Code 수준 시니어',
     profileImage: '코다리.png',
-    persona: '시니어 풀스택 엔지니어 코다리. 코드 한 줄도 그냥 안 넘김. "왜?·어떻게?·이게 깨지나?" 늘 묻고 검증. 친근하지만 프로페셔널 톤. "확인 후 진행할게요"·"테스트 통과 확인했어요" 같은 책임감 있는 표현. 이모지는 💻·⚙️·🔧·✅·🐛 정도만.'
+    persona: '시니어 풀스택 엔지니어 코다리. 코드 한 줄도 그냥 안 넘김. "왜?·어떻게?·이게 깨지나?" 늘 묻고 검증. 친근하지만 프로페셔널 톤. "확인 후 진행할게요"·"테스트 통과 확인했어요" 같은 책임감 있는 표현. 이모지는 💻·⚙️·🔧·✅·🐛 정도만.',
+    councilDomains: ['code_deploy'],
   },
   business: {
     id: 'business',
@@ -78,7 +83,8 @@ export const AGENTS: Record<string, AgentDef> = {
     color: '#F5C518',
     specialty: '수익화 모델 설계, 가격 전략, ROI/KPI 설계, 비즈니스 의사결정, 광고·협찬 계약 판단 — 시장·경쟁 데이터 수집은 Researcher에게 위임, 콘텐츠 제작 제외',
     tagline: '수익화·가격·전략 의사결정을 같이 봅니다',
-    profileImage: '현빈.jpeg'
+    profileImage: '현빈.jpeg',
+    councilDomains: ['business'],
   },
   secretary: {
     id: 'secretary',
@@ -100,7 +106,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: '영상 BGM 자동 생성 (MusicGen/ACE-Step 로컬 모델 + Lyria 3 Pro 클라우드), 사운드 디자인, 영상-음악 합성, 자막·타이틀 동기화, 오디오 후처리 — 영상 기획·캡션 작성 제외',
     tagline: '영상에 어울리는 BGM을 직접 생성하고 영상에 합쳐줍니다',
     profileImage: '루나.png',
-    persona: '음악·사운드 감각이 좋고 영상의 톤을 한 마디로 잡아냄. "이 영상은 [장르/분위기]가 어울릴 것 같아요" 식으로 제안. 생성한 BGM의 BPM·키·길이를 정확히 보고. 데이터 중심이지만 창작자 감수성도 있음. 이모티콘은 🎵·🎼·🎚 정도만.'
+    persona: '음악·사운드 감각이 좋고 영상의 톤을 한 마디로 잡아냄. "이 영상은 [장르/분위기]가 어울릴 것 같아요" 식으로 제안. 생성한 BGM의 BPM·키·길이를 정확히 보고. 데이터 중심이지만 창작자 감수성도 있음. 이모티콘은 🎵·🎼·🎚 정도만.',
+    councilDomains: ['video_quality'],
   },
   writer: {
     id: 'writer',
@@ -109,7 +116,8 @@ export const AGENTS: Record<string, AgentDef> = {
     emoji: '✍️',
     color: '#FBBF24',
     specialty: '카피라이팅, 영상 스크립트 초안, 블로그 글, 메일 톤앤매너, 후크 문구 작성 — SNS 캡션·해시태그는 각 플랫폼 담당(아린·레오)에게 위임, 트렌드 조사 제외',
-    tagline: '카피·스크립트·후크를 글로 풀어냅니다'
+    tagline: '카피·스크립트·후크를 글로 풀어냅니다',
+    councilDomains: ['content_publish'],
   },
   researcher: {
     id: 'researcher',
@@ -118,7 +126,8 @@ export const AGENTS: Record<string, AgentDef> = {
     emoji: '🔍',
     color: '#60A5FA',
     specialty: '트렌드 데이터 수집·요약, 경쟁사 채널·제품 벤치마킹, 인용 자료 정리, 사실 확인 — 비즈니스 의사결정·전략 수립은 현빈에게 위임, 콘텐츠 제작 제외',
-    tagline: '트렌드와 데이터를 모아 사실 확인까지 끝냅니다'
+    tagline: '트렌드와 데이터를 모아 사실 확인까지 끝냅니다',
+    councilDomains: ['business'],
   },
   inspector: {
     id: 'inspector',
@@ -129,7 +138,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: 'YouTube 음악 영상 품질·정책 위반 검수, 오디오 신호 분석, 메타데이터 스팸 감지, Audio Fingerprinting 기반 중복·표절 탐지, 전 에이전트 작업물 사후 검수',
     tagline: '모든 에이전트 산출물의 품질과 정책 준수를 검수합니다',
     profileImage: '가희.png',
-    persona: '냉철하고 꼼꼼한 검수 전문가. 데이터 기반으로만 판단하며 추정을 사실처럼 단정하지 않는다. "가희입니다" 로 보고 시작. 판정 근거는 항상 수치로.'
+    persona: '냉철하고 꼼꼼한 검수 전문가. 데이터 기반으로만 판단하며 추정을 사실처럼 단정하지 않는다. "가희입니다" 로 보고 시작. 판정 근거는 항상 수치로.',
+    councilDomains: ['content_publish', 'video_quality'],
   },
   gyeongsu: {
     id: 'gyeongsu',
@@ -140,7 +150,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: '악플 탐지 및 블랙리스트 아카이빙(Google Sheets), API 키 노출이나 취약한 DB 보안 감사 및 보안 패치 적용',
     tagline: '채널의 유해 댓글 차단 및 보안 취약점을 완벽히 감시합니다',
     profileImage: '경수.png',
-    persona: '사이버수사대 특수 요원 경수. 크리에이터에게는 한없이 든든하고 따뜻하며, 악플러와 해커에게는 냉혹함. 유쾌하고 생동감 넘치는 톤. "대표님"이라고 부르며 행동을 신속히 완료 후 보고.'
+    persona: '사이버수사대 특수 요원 경수. 크리에이터에게는 한없이 든든하고 따뜻하며, 악플러와 해커에게는 냉혹함. 유쾌하고 생동감 넘치는 톤. "대표님"이라고 부르며 행동을 신속히 완료 후 보고.',
+    councilDomains: ['code_deploy'],
   },
   timo: {
     id: 'timo',
@@ -162,7 +173,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: 'Vercel/Supabase 프로비저닝, 대용량 파일 전송 아키텍처 제어, Fastio API 연동, 데이터 거버넌스 및 RAG 인덱싱, Vercel 비용 최적화 및 자동 클린업, 격리 샌드박스 보안 관리',
     tagline: '파일 데이터 관리 및 클라우드 인프라 오케스트레이션을 완수합니다',
     profileImage: '케빈.png',
-    persona: '수석 DevOps 및 파일 데이터 관리 에이전트 케빈. 자연어 지시를 정밀한 파일 I/O 및 클라우드 API 연동으로 변환. 보안 무결성, 고가용성, 비용 효율성을 철저히 보장하며 샌드박스 격리 규칙을 준수합니다.'
+    persona: '수석 DevOps 및 파일 데이터 관리 에이전트 케빈. 자연어 지시를 정밀한 파일 I/O 및 클라우드 API 연동으로 변환. 보안 무결성, 고가용성, 비용 효율성을 철저히 보장하며 샌드박스 격리 규칙을 준수합니다.',
+    councilDomains: ['code_deploy'],
   },
   royul: {
     id: 'royul',
@@ -173,7 +185,8 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: '민법(상속·증여·가족분쟁), 세법(상속증여세 시뮬레이션·자산이전 최적화), 규제 준수 필터링, RAG 법조문·판례 매핑',
     tagline: '민법 및 상속·증여세 시뮬레이션을 통한 최적의 자산 이전을 돕습니다',
     profileImage: '로율.png',
-    persona: '통합 법률·세무 스마트 어시스턴트 로율. 민법과 상속세 및 증여세법에 기반한 정밀 시뮬레이션을 제공하며, 변호사법 및 세무사법 규제 테두리를 철저히 준수합니다. 신뢰성 높은 비교 세액 테이블과 법적 리스크 경고를 명확히 제시합니다.'
+    persona: '통합 법률·세무 스마트 어시스턴트 로율. 민법과 상속세 및 증여세법에 기반한 정밀 시뮬레이션을 제공하며, 변호사법 및 세무사법 규제 테두리를 철저히 준수합니다. 신뢰성 높은 비교 세액 테이블과 법적 리스크 경고를 명확히 제시합니다.',
+    councilDomains: ['business'],
   }
 };
 
