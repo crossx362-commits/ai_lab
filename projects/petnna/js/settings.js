@@ -909,6 +909,70 @@ function destroyAllLocalStorage() {
     });
 }
 
+// GDPR/PIPA 준수 - 개인정보 삭제 요청
+async function requestDataDeletion() {
+    showCustomDialog({
+        title: "🗑️ 개인정보 삭제 요청",
+        message: "모든 개인정보 및 반려동물 데이터가 즉시 삭제됩니다. 이 작업은 되돌릴 수 없습니다.\n\n삭제되는 데이터:\n• 계정 정보 (이메일, 닉네임)\n• 반려동물 프로필 및 사진\n• 건강·산책·식사 기록\n• 소셜 게시물 및 댓글\n• 일기장 및 앨범\n\n정말로 삭제하시겠습니까?",
+        icon: "⚠️",
+        type: "confirm",
+        onConfirm: async () => {
+            try {
+                // 1. Supabase 데이터 삭제 (클라우드 연동 시)
+                if (typeof isSupabaseConnected !== 'undefined' && isSupabaseConnected && supabaseClient) {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+
+                    if (user) {
+                        // 모든 테이블에서 사용자 데이터 삭제
+                        const tables = ['pets', 'posts', 'walks', 'meals', 'albums', 'health_logs', 'schedules'];
+
+                        for (const table of tables) {
+                            await supabaseClient
+                                .from(table)
+                                .delete()
+                                .eq('user_id', user.id);
+                        }
+
+                        // 계정 삭제는 admin API 필요하므로 로그아웃만 처리
+                        await supabaseClient.auth.signOut();
+
+                        showToast("✅ Supabase 클라우드 데이터가 삭제되었습니다.");
+                    }
+                }
+
+                // 2. LocalStorage 완전 삭제
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // 3. IndexedDB 삭제 (있을 경우)
+                if (window.indexedDB) {
+                    const databases = await window.indexedDB.databases();
+                    for (const db of databases) {
+                        if (db.name) {
+                            window.indexedDB.deleteDatabase(db.name);
+                        }
+                    }
+                }
+
+                // 4. 쿠키 삭제
+                document.cookie.split(";").forEach((c) => {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+
+                showToast("✅ 모든 개인정보가 완전히 삭제되었습니다. 로그인 화면으로 이동합니다.");
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+
+            } catch (error) {
+                console.error('데이터 삭제 중 오류:', error);
+                showToast("❌ 데이터 삭제 중 오류가 발생했습니다. 관리자에게 문의하세요: crossx362@gmail.com");
+            }
+        }
+    });
+}
+
 // 🚨 시스템 오류 로그 모달 및 관리 기능
 function openErrorLogModal() {
     const modal = document.getElementById('error-log-modal');

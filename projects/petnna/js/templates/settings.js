@@ -305,13 +305,58 @@ const SETTINGS_TEMPLATE = `
             </div>
         </div>
 
+        <!-- ⚖️ 법적 고지 및 약관 -->
+        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
+            <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
+                <i class="fa-solid fa-scale-balanced text-brand-500 mr-2"></i>법적 고지 및 약관 ⚖️
+            </h3>
+            <div class="space-y-2.5 text-xs">
+                <a href="/TERMS_OF_SERVICE.md" target="_blank" class="flex items-center justify-between bg-gray-50/60 p-3.5 rounded-xl border border-gray-100 hover:bg-brand-50 hover:border-brand-200 transition-all group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-lg">📋</div>
+                        <div>
+                            <span class="block font-black text-gray-700 group-hover:text-brand-600">서비스 이용약관</span>
+                            <span class="text-[10px] text-gray-400 font-medium">펫과나 서비스 이용 규정</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-external-link text-gray-300 group-hover:text-brand-500"></i>
+                </a>
+
+                <a href="/PRIVACY_POLICY.md" target="_blank" class="flex items-center justify-between bg-gray-50/60 p-3.5 rounded-xl border border-gray-100 hover:bg-brand-50 hover:border-brand-200 transition-all group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-lg">🔒</div>
+                        <div>
+                            <span class="block font-black text-gray-700 group-hover:text-brand-600">개인정보처리방침</span>
+                            <span class="text-[10px] text-gray-400 font-medium">개인정보 수집 및 이용 안내</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-external-link text-gray-300 group-hover:text-brand-500"></i>
+                </a>
+
+                <button onclick="requestDataDeletion()" class="w-full flex items-center justify-between bg-rose-50/60 p-3.5 rounded-xl border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-all group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center text-lg">🗑️</div>
+                        <div class="text-left">
+                            <span class="block font-black text-rose-600">개인정보 삭제 요청</span>
+                            <span class="text-[10px] text-rose-400 font-medium">GDPR/PIPA 준수 - 즉시 처리</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-rose-300 group-hover:text-rose-500"></i>
+                </button>
+            </div>
+
+            <p class="text-[9px] text-gray-400 font-medium leading-relaxed pt-2 border-t">
+                💡 AI 건강 분석은 참고용 정보이며, 의학적 진단을 대체하지 않습니다. 반려동물에게 이상 증상이 있을 경우 반드시 전문 수의사와 상담하시기 바랍니다.
+            </p>
+        </div>
+
         <!-- ℹ️ 앱 버전 정보 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm text-center space-y-2">
             <span class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">App Version Info</span>
             <div class="flex flex-col justify-center items-center">
                 <span class="text-xl">🐾</span>
                 <span class="text-xs font-black text-gray-700 mt-1">펫과나 (Pet&Na)</span>
-                <span id="settings-app-version" class="text-[10px] text-brand-600 font-mono font-bold mt-1">v1.2.4</span>
+                <span id="settings-app-version" class="text-[10px] text-brand-600 font-mono font-bold mt-1">v1.3.0</span>
             </div>
             <p class="text-[9px] text-gray-400 font-medium">© 2026 Pet&Na. All rights reserved.</p>
         </div>
