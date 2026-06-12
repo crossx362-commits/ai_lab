@@ -36,9 +36,6 @@ function renderHealthTab() {
     // 펫 선택 드롭다운 초기화
     updateHealthPetSelector();
 
-    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
-    const petName = pet?.name || '댕이';
-
     // 건강 요약 카드 업데이트
     updateHealthSummaryCards();
 
