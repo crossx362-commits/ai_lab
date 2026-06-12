@@ -1,4 +1,4 @@
-const CACHE = 'petna-v11';
+const CACHE = 'petna-v12';
 const STATIC = [
     './',
     './index.html',
@@ -39,7 +39,7 @@ self.addEventListener('activate', e => {
     );
 });
 
-// Cache-first for static, network-first for API
+// Network-first for static, fallback to cache
 self.addEventListener('fetch', e => {
     if (e.request.url.includes('generativelanguage.googleapis.com') ||
         e.request.url.includes('supabase.co') ||
@@ -48,7 +48,15 @@ self.addEventListener('fetch', e => {
         return;
     }
     e.respondWith(
-        caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
+        fetch(e.request)
+            .then(res => {
+                if (res && res.status === 200 && e.request.method === 'GET') {
+                    const resCopy = res.clone();
+                    caches.open(CACHE).then(c => c.put(e.request, resCopy));
+                }
+                return res;
+            })
+            .catch(() => caches.match(e.request))
     );
 });
 
