@@ -70,19 +70,12 @@ function updateRoomThemeByHarmony() {
     if (!roomCard) return;
 
     // 사주 결과에서 조화도 가져오기
-    const petSaju = (typeof AppStore !== 'undefined') ? AppStore.getState('petSaju') : null;
-    const butlerSaju = (typeof AppStore !== 'undefined') ? AppStore.getState('butlerSaju') : null;
     const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
 
     // 조화도 계산 완료 여부 확인
     if (!harmonyResult || !harmonyResult.avgScore) {
-        // 조화도 미분석 상태: 기본 테마
-        roomCard.className = 'bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden transition-all duration-500';
-
-        if (harmonyBadge) harmonyBadge.classList.add('hidden');
-        if (harmonyMessage) harmonyMessage.classList.add('hidden');
-        if (sajuBtn) sajuBtn.classList.remove('hidden'); // 사주 분석 버튼 표시
-
+        // 조화도 미분석 상태: 배지와 설명 카드는 항상 표시
+        // 아무것도 숨기지 않음
         return;
     }
 
