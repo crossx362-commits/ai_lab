@@ -1,29 +1,42 @@
 // health.js — 건강 탭 템플릿 (티모 디자인 반영 + 아이콘 중심 UI)
 
 const HEALTH_TEMPLATE = `
-<div class="space-y-5 animate-fade-in">
+<div class="space-y-4 animate-fade-in">
 
     <!-- 헤더 -->
-    <div class="glass rounded-2xl px-6 py-6 shadow-soft-lg border border-violet-100/50">
+    <div class="glass rounded-2xl px-6 py-5 shadow-soft-lg border border-violet-100/50">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-soft">
-                    <span class="text-4xl">❤️</span>
+                <div class="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-soft">
+                    <span class="text-3xl">❤️</span>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">건강 대시보드</h1>
-                    <p class="text-sm text-gray-500 mt-1"><span id="health-pet-name" class="font-semibold text-violet-600">댕이</span>의 건강 관리</p>
+                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">건강 대시보드</h1>
+                    <p class="text-xs text-gray-500 mt-1">펫별 건강 관리 및 기록</p>
                 </div>
             </div>
-            <button onclick="generateWeeklyHealthData()"
-                class="btn-modern px-5 py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm border border-violet-200/50">
-                <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
-            </button>
+            <div class="flex items-center gap-3">
+                <!-- 펫 선택 드롭다운 -->
+                <select id="health-pet-selector" onchange="onHealthPetChange()"
+                    class="px-4 py-2 bg-white border border-violet-200 rounded-xl text-sm font-bold text-violet-700 hover:border-violet-300 transition-colors cursor-pointer">
+                    <option value="">펫 선택</option>
+                </select>
+                <button onclick="generateWeeklyHealthData()"
+                    class="btn-modern px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm border border-violet-200/50">
+                    <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
+                </button>
+            </div>
         </div>
     </div>
 
+    <!-- 2컬럼 레이아웃 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
+    <div class="lg:col-span-8 space-y-4">
+
     <!-- 📊 월간 종합 리포트 -->
-    <div class="card-modern p-6">
+    <div class="card-modern p-5">
         <div class="flex justify-between items-center mb-5">
             <div class="flex items-center gap-3">
                 <span class="text-4xl">📊</span>
@@ -246,6 +259,12 @@ const HEALTH_TEMPLATE = `
             </p>
         </div>
 
+    </div>
+    <!-- /왼쪽 컬럼 끝 -->
+
+    <!-- 오른쪽 컬럼 (돌봄 스케줄러) -->
+    <div class="lg:col-span-4 space-y-4">
+
         <!-- 돌봄 스케줄러 📅 -->
         <div class="card-modern p-5 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b">
@@ -294,7 +313,12 @@ const HEALTH_TEMPLATE = `
                 </div>
             </div>
         </div>
+
     </div>
+    <!-- /오른쪽 컬럼 끝 -->
+
+    </div>
+    <!-- /2컬럼 레이아웃 끝 -->
 
     <!-- 🍖 영양 관리 섹션 -->
     <div class="card-modern p-6">
