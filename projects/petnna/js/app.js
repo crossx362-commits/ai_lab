@@ -306,6 +306,9 @@ const AppRouter = {
         }
 
         this.currentTab = tabName;
+        if (localStorage.getItem('petna_is_logged_in') === 'true') {
+            localStorage.setItem('petna_active_tab', tabName);
+        }
 
         // 6. 대상 탭 init & render 실행
         const controller = TabControllers[tabName];
@@ -406,7 +409,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
         if (mobileHeaderEl) mobileHeaderEl.style.display = 'flex';
         document.body.classList.add('logged-in');
-        try { switchTab('mypet'); } catch(e) { console.warn('switchTab 오류:', e); }
+        try {
+            const activeTab = localStorage.getItem('petna_active_tab') || 'mypet';
+            switchTab(activeTab);
+        } catch(e) {
+            console.warn('switchTab 오류:', e);
+        }
     } else {
         if (loginOverlay) {
             loginOverlay.style.display = 'flex';
