@@ -73,7 +73,14 @@ const MYPET_TEMPLATE = `
                             </p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-3">
+                        <!-- 조화도 설명 카드 -->
+                        <div id="harmony-description-card" class="hidden bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl px-4 py-2.5 max-w-xs">
+                            <p class="text-[11px] text-rose-700 font-medium leading-relaxed">
+                                <span class="font-black">💖 영혼의 조화도</span>
+                                <span class="text-gray-600 ml-1">집사와 펫의 궁합을 분석하여 최고의 케어 방법을 제안합니다</span>
+                            </p>
+                        </div>
                         <!-- 사주 분석 버튼 -->
                         <button onclick="switchTab('saju')" id="room-saju-btn"
                             class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 border border-violet-200 flex items-center justify-center transition-all">
