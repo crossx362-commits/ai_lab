@@ -22,3 +22,9 @@
 - **루나**: [숏폼 편집](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260612_숏폼_편집.md)
 - **예원**: [데이터분석](projects/ai-team/skills/예원_CEO/knowledge/learned_20260612_데이터분석.md)
 - **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
+
+
+## 2026-06-12 10:01 자가학습
+- **코다리**: [서버리스](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260612_서버리스.md)
+- **경수**: [머신러닝](projects/ai-team/skills/경수_수사관/knowledge/learned_20260612_머신러닝.md)
+- **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
