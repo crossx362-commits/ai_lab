@@ -452,9 +452,14 @@ const SAJU_TEMPLATE = `
                         <span class="font-black text-rose-800 flex items-center gap-1.5 border-b pb-1.5"><i class="fa-solid fa-hand-holding-heart"></i> 종합 처방 및 가이드라인</span>
                         <p class="text-gray-600 text-[11px] leading-relaxed keep-all whitespace-pre-line" id="harmony-res-solution">솔루션 내용...</p>
                     </div>
-                    <div class="mt-4 pt-3 border-t flex gap-2">
-                        <button onclick="resetHarmonyTest()" class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-[10px] border transition-colors text-center shadow-sm">다시 측정하기</button>
-                        <button onclick="saveHarmonyToWidget()" class="flex-grow bg-rose-500 hover:bg-rose-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">마이룸 위젯에 등록</button>
+                    <div class="mt-4 pt-3 border-t space-y-2">
+                        <div class="flex gap-2">
+                            <button onclick="resetHarmonyTest()" class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-[10px] border transition-colors text-center shadow-sm">다시 측정하기</button>
+                            <button onclick="saveHarmonyToWidget()" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">마이룸 등록</button>
+                        </div>
+                        <button onclick="shareHarmonyToSocial()" class="w-full bg-violet-500 hover:bg-violet-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">
+                            <i class="fa-solid fa-share-nodes mr-1"></i>소셜 피드에 자랑하기
+                        </button>
                     </div>
                 </div>
             </div>

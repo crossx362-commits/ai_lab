@@ -213,6 +213,79 @@ function saveHarmonyToWidget() {
 
 window.saveHarmonyToWidget = saveHarmonyToWidget;
 
+// 조화도를 소셜 피드에 공유
+function shareHarmonyToSocial() {
+    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const ownerName = (typeof settings_nickname !== 'undefined' && settings_nickname) ? settings_nickname : '집사';
+
+    if (!harmonyResult || !harmonyResult.avgScore) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ 조화도를 먼저 측정해주세요!');
+        }
+        return;
+    }
+
+    const score = Math.round(harmonyResult.avgScore);
+    const petName = pet?.name || '댕이';
+    const petAvatar = pet?.imageUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300';
+
+    // 점수별 메시지
+    let message = '';
+    let emoji = '💖';
+    if (score >= 90) {
+        message = `${ownerName}와 ${petName}는 영혼의 단짝! 완벽한 듀오입니다 💖✨`;
+        emoji = '💖✨';
+    } else if (score >= 75) {
+        message = `${ownerName}와 ${petName}는 서로를 잘 이해하는 최고의 파트너 💛🌟`;
+        emoji = '💛🌟';
+    } else if (score >= 60) {
+        message = `${ownerName}와 ${petName}는 서로에게 긍정적인 영향을 주는 관계 💚🍀`;
+        emoji = '💚🍀';
+    } else if (score >= 40) {
+        message = `${ownerName}와 ${petName}는 노력하면 더욱 발전할 수 있는 관계 💙⭐`;
+        emoji = '💙⭐';
+    } else {
+        message = `${ownerName}와 ${petName}는 서로 다른 성향, 이해와 배려가 필요해요 🤍🌈`;
+        emoji = '🤍🌈';
+    }
+
+    // 소셜 피드 포스트 생성
+    const newPost = {
+        id: Date.now(),
+        petName: petName,
+        petAvatar: petAvatar,
+        content: `${emoji} 영혼의 조화도 측정 결과: ${score}점!\n\n${message}`,
+        image: null,
+        isVideo: false,
+        videoUrl: null,
+        likes: 0,
+        liked: false,
+        comments: [],
+        attachedWalk: null,
+        attachedAiHealth: null
+    };
+
+    // posts 배열에 추가
+    if (typeof posts !== 'undefined') {
+        posts.unshift(newPost);
+    }
+
+    if (typeof saveState === 'function') saveState();
+    if (typeof showToast === 'function') {
+        showToast(`✅ 조화도가 소셜 피드에 공유되었습니다!`);
+    }
+
+    // 소셜 탭으로 이동
+    setTimeout(() => {
+        if (typeof switchTab === 'function') {
+            switchTab('social');
+        }
+    }, 1500);
+}
+
+window.shareHarmonyToSocial = shareHarmonyToSocial;
+
 function saveIqResult() {
     if (typeof saveState === 'function') saveState();
     if (typeof showToast === 'function') showToast('IQ 결과가 저장되었습니다! 🧠');
