@@ -454,7 +454,7 @@ const SAJU_TEMPLATE = `
                     </div>
                     <div class="mt-4 pt-3 border-t flex gap-2">
                         <button onclick="resetHarmonyTest()" class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-[10px] border transition-colors text-center shadow-sm">다시 측정하기</button>
-                        <button onclick="saveIqToWidget()" class="flex-grow bg-rose-500 hover:bg-rose-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">마이룸 위젯에 등록</button>
+                        <button onclick="saveHarmonyToWidget()" class="flex-grow bg-rose-500 hover:bg-rose-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">마이룸 위젯에 등록</button>
                     </div>
                 </div>
             </div>
