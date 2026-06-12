@@ -8,64 +8,6 @@ let petlifeMyLocationMarker = null;
 let petlifeMyLocationCircle = null;
 let currentMapStyle = 'voyager'; // voyager, satellite, dark
 
-// 펫라이프 가맹점 데이터 (좌표 기반)
-const PETLIFE_LOCATIONS = [
-    {
-        id: 'healing-spa',
-        name: '포레스트 힐 펫 스파',
-        emoji: '🛁',
-        category: 'spa',
-        lat: 37.5665,
-        lng: 126.9780,
-        color: '#0d9488'
-    },
-    {
-        id: 'healing-camping',
-        name: '도그빌 오션 캠핑장',
-        emoji: '🏕️',
-        category: 'spa',
-        lat: 37.5700,
-        lng: 126.9820,
-        color: '#15803d'
-    },
-    {
-        id: 'healing-therapy',
-        name: '아로마 펫 테라피 살롱',
-        emoji: '🌸',
-        category: 'medical',
-        lat: 37.5630,
-        lng: 126.9750,
-        color: '#e11d48'
-    },
-    {
-        id: 'healing-hospital',
-        name: '24시 센트럴 메디컬 센터',
-        emoji: '🏥',
-        category: 'medical',
-        lat: 37.5680,
-        lng: 126.9850,
-        color: '#dc2626'
-    },
-    {
-        id: 'healing-hotel',
-        name: '가든 테라스 펫 리조트',
-        emoji: '🏨',
-        category: 'hotel',
-        lat: 37.5640,
-        lng: 126.9720,
-        color: '#4f46e5'
-    },
-    {
-        id: 'healing-shopping',
-        name: '펫라이프 프리미엄 멀티샵',
-        emoji: '🛒',
-        category: 'shop',
-        lat: 37.5710,
-        lng: 126.9790,
-        color: '#d97706'
-    }
-];
-
 // 지도 타일 레이어 스타일
 const MAP_TILES = {
     voyager: {
@@ -136,8 +78,14 @@ function renderPetlifeMarkers() {
     petlifeMarkers.forEach(marker => petlifeMap.removeLayer(marker));
     petlifeMarkers = [];
 
+    // PETLIFE_REAL_LOCATIONS 사용 (실제 GPS 좌표)
+    if (typeof PETLIFE_REAL_LOCATIONS === 'undefined') {
+        console.error('PETLIFE_REAL_LOCATIONS not loaded');
+        return;
+    }
+
     // 새 마커 생성
-    PETLIFE_LOCATIONS.forEach(location => {
+    PETLIFE_REAL_LOCATIONS.forEach(location => {
         const icon = L.divIcon({
             html: `
                 <div class="petlife-marker" style="
@@ -339,6 +287,8 @@ function adjustColorBrightness(hex, percent) {
 
 // 펫라이프 지도 필터 적용
 function applyPetlifeMapFilters() {
+    if (typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
+
     const fSpa = document.getElementById('f-spa')?.checked;
     const fMedical = document.getElementById('f-medical')?.checked;
     const fHotel = document.getElementById('f-hotel')?.checked;
@@ -347,7 +297,7 @@ function applyPetlifeMapFilters() {
     let activeCount = 0;
 
     petlifeMarkers.forEach((marker, index) => {
-        const location = PETLIFE_LOCATIONS[index];
+        const location = PETLIFE_REAL_LOCATIONS[index];
         if (!location) return;
 
         let show = true;
@@ -370,8 +320,9 @@ function applyPetlifeMapFilters() {
     // 통계 바 업데이트
     const statBar = document.getElementById('stat-bar');
     const statLabel = document.getElementById('stat-label');
-    if (statBar) statBar.style.width = `${(activeCount / PETLIFE_LOCATIONS.length) * 100}%`;
-    if (statLabel) statLabel.innerText = `${activeCount} / ${PETLIFE_LOCATIONS.length} 활성`;
+    const totalCount = typeof PETLIFE_REAL_LOCATIONS !== 'undefined' ? PETLIFE_REAL_LOCATIONS.length : 0;
+    if (statBar) statBar.style.width = `${(activeCount / totalCount) * 100}%`;
+    if (statLabel) statLabel.innerText = `${activeCount} / ${totalCount} 활성`;
 }
 
 // 전역 함수 등록
