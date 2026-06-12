@@ -221,8 +221,151 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://minipetmall.co.kr/',
         services: ['분양', '펫용품', '사료', '간식'],
         color: '#d97706',
-        lat: 37.5100, // 강남구
+        lat: 37.5100,
         lng: 127.0600
+    },
+    {
+        id: 'shop-thedogs',
+        name: '더독스',
+        category: 'shop',
+        emoji: '🛍️',
+        address: '서울 금천구 두산로 70',
+        phone: '010-9221-9253',
+        hours: '평일 10:00 - 19:00',
+        description: '반려동물 용품 전문 쇼핑몰',
+        website: 'http://www.thedogs.co.kr/',
+        services: ['사료', '간식', '장난감', '용품'],
+        color: '#d97706',
+        lat: 37.4790,
+        lng: 126.8959
+    },
+    {
+        id: 'shop-seoulreptile',
+        name: '서울렙타일',
+        category: 'shop',
+        emoji: '🦎',
+        address: '서울 중구 충정로역 인근',
+        phone: '문의필요',
+        hours: '평일 11:00 - 20:00',
+        description: '양서·파충류 분양 및 용품 전문점',
+        website: 'https://www.seoulreptile.co.kr/',
+        services: ['파충류분양', '용품', '사료', '도소매'],
+        color: '#84cc16',
+        lat: 37.5600,
+        lng: 126.9634
+    },
+
+    // 🏥 추가 동물병원
+    {
+        id: 'hospital-kangnam',
+        name: '강남동물병원',
+        category: 'hospital',
+        emoji: '🏥',
+        address: '서울 강남구 봉은사로 205',
+        phone: '02-514-7582',
+        hours: '평일 09:00 - 21:00',
+        description: '차병원사거리 근처, 언주역 4번 출구 인근 동물병원',
+        website: '#',
+        services: ['일반진료', '예방접종', '건강검진', '수술'],
+        color: '#dc2626',
+        lat: 37.5145,
+        lng: 127.0470
+    },
+    {
+        id: 'hospital-namc',
+        name: '우리곁N 동물의료센터',
+        category: 'hospital',
+        emoji: '🏥',
+        address: '서울시 (위치 문의)',
+        phone: '문의필요',
+        hours: '24시간 운영',
+        description: '24시간 응급 진료 동물병원',
+        website: 'https://www.namc.co.kr/',
+        services: ['24시 응급', '외과', '내과', '영상진단'],
+        color: '#dc2626',
+        lat: 37.5500,
+        lng: 126.9900
+    },
+
+    // 🎓 추가 훈련소
+    {
+        id: 'training-starmong',
+        name: '스타몽 강아지유치원',
+        category: 'training',
+        emoji: '🎓',
+        address: '서울 (지점별 상이)',
+        phone: '문의필요',
+        hours: '평일 08:00 - 19:00',
+        description: '강아지유치원, 반려견훈련, 견주교육 전문',
+        website: 'https://starmong.co.kr/',
+        services: ['유치원', '훈련', '호텔', '미용', '견주교육'],
+        color: '#8b5cf6',
+        lat: 37.5300,
+        lng: 127.0200
+    },
+
+    // ☕ 추가 애견카페
+    {
+        id: 'cafe-nolo',
+        name: '놀로스퀘어',
+        category: 'cafe',
+        emoji: '☕',
+        address: '서울 강남구 청담동 46',
+        phone: '문의필요',
+        hours: '11:00 - 22:00',
+        description: '청담동 반려견 동반 카페',
+        website: '#',
+        services: ['커피', '브런치', '반려견 동반', '놀이공간'],
+        color: '#f59e0b',
+        lat: 37.5240,
+        lng: 127.0470
+    },
+    {
+        id: 'cafe-twojentle',
+        name: '두젠틀 강남점',
+        category: 'cafe',
+        emoji: '🐕',
+        address: '서울 강남구 역삼동',
+        phone: '문의필요',
+        hours: '10:00 - 22:00',
+        description: '역삼역 근처 넓은 공간의 애견카페',
+        website: '#',
+        services: ['커피', '음료', '반려견 놀이공간'],
+        color: '#f59e0b',
+        lat: 37.5000,
+        lng: 127.0360
+    },
+    {
+        id: 'cafe-hwamokto',
+        name: '카페 화목토',
+        category: 'cafe',
+        emoji: '🌼',
+        address: '서울 양천구 신정동',
+        phone: '문의필요',
+        hours: '11:00 - 21:00',
+        description: '플라워샵과 도예공방이 함께하는 테마카페',
+        website: '#',
+        services: ['커피', '플라워샵', '도예체험', '반려견 동반'],
+        color: '#f59e0b',
+        lat: 37.5175,
+        lng: 126.8560
+    },
+
+    // 🛁 추가 미용샵
+    {
+        id: 'grooming-mimi',
+        name: '미미살롱펫',
+        category: 'grooming',
+        emoji: '✨',
+        address: '서울 전역 방문미용',
+        phone: '문의필요',
+        hours: '예약제',
+        description: '프리미엄 방문 반려동물 미용 서비스',
+        website: 'http://mimisalon.pet/',
+        services: ['방문미용', '프리미엄케어', '목욕', '스파'],
+        color: '#14b8a6',
+        lat: 37.5600,
+        lng: 127.0100
     }
 ];
 
