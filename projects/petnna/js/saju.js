@@ -937,7 +937,9 @@ let currentSpawnRate = 800; // 초기 스폰 속도 (ms)
 function updateLivesDisplay() {
     const livesDisplay = document.getElementById('arcade-lives-display');
     if(livesDisplay) {
-        livesDisplay.innerText = '❤️'.repeat(arcadeLives) + '💔'.repeat(3 - arcadeLives);
+        const hearts = Math.max(0, arcadeLives);
+        const broken = Math.max(0, 3 - hearts);
+        livesDisplay.innerText = '❤️'.repeat(hearts) + '💔'.repeat(broken);
     }
 }
 
@@ -953,7 +955,7 @@ function startArcadeGame() {
     if (startBest) startBest.innerText = arcadeBestScore;
 
     arcadeScore = 0;
-    arcadeLives = 5;
+    arcadeLives = 3;
     gameActive = true;
     currentSpawnRate = 1400; // 난이도 초기화 (완화)
     
@@ -998,7 +1000,7 @@ function spawnArcadeItem() {
     const points = isSpecial ? 5 : 1;
     const size = isSpecial ? 'text-5xl' : 'text-4xl'; // 더 크게 — 터치 쉽게
 
-    item.className = `absolute cursor-pointer select-none transition-transform hover:scale-125 ${size} p-2`; // p-2로 터치 영역 확보
+    item.className = `absolute cursor-pointer select-none hover:scale-125 ${size} p-2 z-10`; // p-2로 터치 영역 확보, z-10으로 오버레이 위에 표시
     item.innerText = emoji;
     
     // Random position
@@ -1033,7 +1035,7 @@ function spawnArcadeItem() {
 
         // Pop effect
         item.innerText = '✨';
-        item.style.transition = 'all 0.2s';
+        item.style.transition = 'transform 0.2s, opacity 0.2s';
         item.classList.add('scale-150', 'opacity-0');
 
         setTimeout(() => {
@@ -1050,15 +1052,18 @@ function spawnArcadeItem() {
     setTimeout(() => {
         if(!item.clicked && gameActive) {
             // 놓쳤을 경우 라이프 감소
-            arcadeLives--;
+            arcadeLives = Math.max(0, arcadeLives - 1);
             updateLivesDisplay();
             
             if(arcadeLives <= 0) {
                 endArcadeGame();
+                return;
             }
         }
-        if(item.parentNode) item.parentNode.removeChild(item);
-    }, duration);
+        if(item.parentNode) {
+            try { item.parentNode.removeChild(item); } catch(e) {}
+        }
+    }, duration + 100);
 }
 
 function endArcadeGame() {

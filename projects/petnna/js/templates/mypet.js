@@ -290,39 +290,7 @@ const MYPET_TEMPLATE = `
                 </div>
                 <input type="file" id="pet-direct-upload" accept="image/*" class="hidden" onchange="uploadPetPhotoDirect(event)">
 
-                <!-- 건강 퀵 요약 (건강 탭 바로가기) -->
-                <div class="bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-3 space-y-2 transition-all duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm">🏥</span>
-                            <span class="text-[11px] font-black text-gray-700">건강 요약</span>
-                        </div>
-                        <button onclick="switchTab('health')"
-                            class="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[9px] rounded-xl transition-all shadow-sm">
-                            <i class="fa-solid fa-heart-pulse text-[10px]"></i> 건강 탭으로
-                        </button>
-                    </div>
 
-                    <!-- 3개 요약 카드 -->
-                    <div class="grid grid-cols-3 gap-2">
-                        <div class="bg-white/60 backdrop-blur-sm border border-emerald-200 rounded-lg p-2 text-center">
-                            <div id="health-quick-score" class="text-lg font-black text-emerald-600">--</div>
-                            <div class="text-[9px] text-gray-500 font-bold">건강점수</div>
-                        </div>
-                        <div class="bg-white/60 backdrop-blur-sm border border-emerald-200 rounded-lg p-2 text-center">
-                            <div id="health-quick-streak" class="text-lg font-black text-amber-600">--일</div>
-                            <div class="text-[9px] text-gray-500 font-bold">연속기록</div>
-                        </div>
-                        <div class="bg-white/60 backdrop-blur-sm border border-emerald-200 rounded-lg p-2 text-center">
-                            <div id="health-quick-today" class="text-lg font-black text-teal-600">--</div>
-                            <div class="text-[9px] text-gray-500 font-bold">오늘기록</div>
-                        </div>
-                    </div>
-
-                    <p class="text-[9px] text-emerald-600 font-medium text-center">
-                        💡 건강 탭에서 AI 분석, 차트, 식사 일지를 확인하세요
-                    </p>
-                </div>
 
                 <!-- 건강 트렌드 대시보드 (숨김 처리 - 건강 탭으로 이동) -->
                 <div class="hidden bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5 transition-all duration-300">
@@ -454,24 +422,15 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 🔮 펫 & 집사 평생 사주 결과 카드 (방에 통합되어 숨김 처리) -->
-        <div id="mypet-saju-card" style="display:none;"
-            class="hidden bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
+        <!-- 💖 펫 & 집사 영혼 조화도 카드 -->
+        <div id="mypet-saju-card"
+            class="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
-                    <i class="fa-solid fa-yin-yang text-amber-500 mr-2"></i>펫 & 집사 평생 사주 & 영혼 조화도 🔮✨
+                    <i class="fa-solid fa-heart-pulse text-rose-500 mr-2"></i>펫 &amp; 집사 영혼 조화도 💖
                 </h3>
+                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[10px] font-black text-rose-500 hover:text-rose-700 border border-rose-200 px-2 py-0.5 rounded-lg hover:bg-rose-50 transition-all">조화도 분석 →</button>
             </div>
-
-            <!-- 결과가 없을 때의 UI -->
-            <div id="mypet-saju-no-result" class="space-y-3">
-                <!-- 오늘의 운세 미리보기 -->
-                <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 space-y-2">
-                    <p class="text-[10px] font-black text-amber-700 flex items-center gap-1.5">🍀 오늘의 운세</p>
-                    <p id="mypet-fortune-preview" class="text-xs text-gray-600 leading-relaxed font-medium"></p>
-                    <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('fortune'), 200)"
-                        class="text-[10px] font-black text-amber-600 hover:text-amber-700">자세히 보기 →</button>
-                </div>
                 <!-- 사주 분석 유도 -->
                 <div class="bg-amber-50/40 border border-amber-100/50 rounded-2xl p-4 text-center space-y-2.5">
                     <p class="text-[11px] text-gray-500 leading-relaxed">
@@ -580,12 +539,8 @@ const MYPET_TEMPLATE = `
             <div id="achievement-badges"></div>
         </div>
 
-        <!-- 월간 리포트 (현빈: PetDesk 벤치마크) -->
-        <div class="bg-white border border-brand-100 rounded-2xl p-4 shadow-sm">
-            <div id="monthly-report-card">
-                <div class="text-[11px] text-gray-400 text-center py-2">리포트 로딩 중...</div>
-            </div>
-        </div>
+        <!-- 월간 리포트 제거됨 -->
+
 
 
         <!-- 돌봄 스케줄러 📅 -->
