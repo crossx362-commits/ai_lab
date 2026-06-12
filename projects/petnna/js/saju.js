@@ -180,6 +180,39 @@ function saveIqToWidget() {
     if (typeof showToast === 'function') showToast('마이룸 위젯에 IQ 점수가 저장되었습니다! 🧠');
 }
 
+// 조화도를 마이룸에 등록
+function saveHarmonyToWidget() {
+    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+
+    if (!harmonyResult || !harmonyResult.avgScore) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ 조화도를 먼저 측정해주세요!');
+        }
+        return;
+    }
+
+    // 상태 저장
+    if (typeof saveState === 'function') saveState();
+
+    // 방 조화도 업데이트
+    if (typeof updateRoomThemeByHarmony === 'function') {
+        updateRoomThemeByHarmony();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`💖 조화도 ${Math.round(harmonyResult.avgScore)}점이 마이룸에 등록되었습니다!`);
+    }
+
+    // 마이펫 탭으로 이동
+    setTimeout(() => {
+        if (typeof switchTab === 'function') {
+            switchTab('mypet');
+        }
+    }, 1500);
+}
+
+window.saveHarmonyToWidget = saveHarmonyToWidget;
+
 function saveIqResult() {
     if (typeof saveState === 'function') saveState();
     if (typeof showToast === 'function') showToast('IQ 결과가 저장되었습니다! 🧠');

@@ -80,10 +80,10 @@ const MYPET_TEMPLATE = `
                     </div>
                     <div class="flex items-center gap-3">
                         <!-- 조화도 설명 카드 -->
-                        <div id="harmony-description-card" class="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl px-4 py-2.5 max-w-xs">
+                        <div id="harmony-description-card" class="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl px-4 py-2.5 max-w-md">
                             <p class="text-[11px] font-medium leading-relaxed">
                                 <span class="font-black text-rose-700">💖 영혼의 조화도</span>
-                                <span class="text-gray-600 ml-1">집사와 펫의 궁합을 분석하여 최고의 케어 방법을 제안합니다</span>
+                                <span class="text-gray-600 ml-1">집사와 펫의 생년월일로 사주팔자 궁합을 분석해 0~100점으로 채점합니다. 조화도 탭에서 측정하고 마이룸에 등록하세요!</span>
                             </p>
                         </div>
                         <!-- 사주 분석 버튼 -->
