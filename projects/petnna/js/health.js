@@ -33,12 +33,11 @@ function switchMealTab(tab) {
 }
 
 function renderHealthTab() {
+    // 펫 선택 드롭다운 초기화
+    updateHealthPetSelector();
+
     const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
     const petName = pet?.name || '댕이';
-
-    // 펫 이름 업데이트
-    const petNameEl = document.getElementById('health-pet-name');
-    if (petNameEl) petNameEl.textContent = petName;
 
     // 건강 요약 카드 업데이트
     updateHealthSummaryCards();
@@ -57,6 +56,52 @@ function renderHealthTab() {
     // 식사 일지 렌더링
     if (typeof renderMealLogsList === 'function') renderMealLogsList();
 }
+
+// 펫 선택 드롭다운 업데이트
+function updateHealthPetSelector() {
+    const selector = document.getElementById('health-pet-selector');
+    if (!selector) return;
+
+    const pets = (typeof AppStore !== 'undefined') ? AppStore.getState('pets') : [];
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+
+    selector.innerHTML = '<option value="">펫 선택</option>';
+
+    pets.forEach(pet => {
+        const option = document.createElement('option');
+        option.value = pet.id;
+        option.textContent = `${pet.name} (${pet.type || '반려동물'})`;
+        if (activePet && pet.id === activePet.id) {
+            option.selected = true;
+        }
+        selector.appendChild(option);
+    });
+}
+
+// 펫 변경 핸들러
+function onHealthPetChange() {
+    const selector = document.getElementById('health-pet-selector');
+    if (!selector) return;
+
+    const petId = parseInt(selector.value);
+    if (!petId) return;
+
+    // 활성 펫 변경
+    if (typeof setActivePet === 'function') {
+        setActivePet(petId);
+    }
+
+    // 건강 탭 새로고침
+    renderHealthTab();
+
+    if (typeof showToast === 'function') {
+        const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+        showToast(`${pet?.name || '펫'}의 건강 정보로 전환되었습니다`);
+    }
+}
+
+// 전역 함수 등록
+window.onHealthPetChange = onHealthPetChange;
 
 // 건강 요약 카드 업데이트
 function updateHealthSummaryCards() {
