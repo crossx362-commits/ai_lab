@@ -55,7 +55,7 @@ const MYPET_TEMPLATE = `
                             <!-- 영혼 조화도 배지 (방 제목 옆) — 클릭 시 조화도 탭 이동 -->
                             <div id="room-harmony-badge" onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-shadow">
                                 <span id="room-harmony-icon" class="text-sm">💖</span>
-                                <span id="room-harmony-score" class="text-xs font-bold text-rose-600">조화도 측정하기</span>
+                                <span id="room-harmony-score" class="text-xs font-bold text-rose-600">조화도 보기</span>
                             </div>
                         </div>
                         <!-- 조화도 한 줄 메시지 (배지 아래) -->
@@ -75,9 +75,9 @@ const MYPET_TEMPLATE = `
                     </div>
                     <div class="flex items-center gap-3">
                         <!-- 조화도 설명 카드 -->
-                        <div id="harmony-description-card" class="hidden bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl px-4 py-2.5 max-w-xs">
-                            <p class="text-[11px] text-rose-700 font-medium leading-relaxed">
-                                <span class="font-black">💖 영혼의 조화도</span>
+                        <div id="harmony-description-card" class="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl px-4 py-2.5 max-w-xs">
+                            <p class="text-[11px] font-medium leading-relaxed">
+                                <span class="font-black text-rose-700">💖 영혼의 조화도</span>
                                 <span class="text-gray-600 ml-1">집사와 펫의 궁합을 분석하여 최고의 케어 방법을 제안합니다</span>
                             </p>
                         </div>
