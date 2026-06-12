@@ -203,6 +203,7 @@ const WALK_TEMPLATE = `
                 <p class="text-[11px] text-gray-400 font-semibold">아직 저장된 산책로가 없어요</p>
                 <p class="text-[10px] text-gray-300">지도에서 경로를 그려 나만의 코스를 만들어보세요!</p>
             </div>
+        </div>
 
         <!-- 산책기록: 실시간 수치 + 제어 버튼 + 마킹 버튼 -->
         <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
@@ -281,8 +282,6 @@ const WALK_TEMPLATE = `
                     <span class="text-[9px] font-bold bg-emerald-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-sniff-count" class="font-mono">0</span>회</span>
                 </button>
             </div>
-
-        </div>
 
         </div>
 

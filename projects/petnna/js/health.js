@@ -63,22 +63,27 @@ function updateHealthSummaryCards() {
     const score = (typeof calcHealthScore === 'function') ? calcHealthScore() : 0;
     const streak = (typeof calcHealthStreak === 'function') ? calcHealthStreak() : 0;
 
-    const scoreEl = document.getElementById('health-summary-score');
-    const streakEl = document.getElementById('health-summary-streak');
+    const scoreEl = document.getElementById('report-health-score');
+    const streakEl = document.getElementById('report-streak');
 
     if (scoreEl) scoreEl.textContent = score || '--';
     if (streakEl) streakEl.textContent = streak ? `${streak}일` : '--일';
 
-    // 평균 식사량/음수량
-    const last7Days = (typeof getLast7DaysHealthData === 'function') ? getLast7DaysHealthData() : [];
-    const avgFood = last7Days.length ? Math.round(last7Days.reduce((s, d) => s + d.food, 0) / 7) : 0;
-    const avgWater = last7Days.length ? Math.round(last7Days.reduce((s, d) => s + d.water, 0) / 7) : 0;
+    // 준수율
+    const rateEl = document.getElementById('report-care-rate');
+    if (rateEl) {
+        const rate = (typeof getWeeklyCareCompletionRate === 'function') ? getWeeklyCareCompletionRate() : 0;
+        rateEl.textContent = rate ? `${rate}%` : '--%';
+    }
 
-    const foodEl = document.getElementById('health-summary-food');
-    const waterEl = document.getElementById('health-summary-water');
-
-    if (foodEl) foodEl.textContent = avgFood ? `${avgFood}g` : '--g';
-    if (waterEl) waterEl.textContent = avgWater ? `${avgWater}ml` : '--ml';
+    // AI 분석 횟수
+    const aiCountEl = document.getElementById('report-ai-count');
+    if (aiCountEl) {
+        const analyses = (typeof getHealthAnalyses === 'function') ? getHealthAnalyses() : [];
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        const monthlyCount = analyses.filter(a => a.date && a.date.startsWith(thisMonth)).length;
+        aiCountEl.textContent = `${monthlyCount}회`;
+    }
 }
 
 // 오늘의 건강 기록 표시
