@@ -1,44 +1,45 @@
 const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
     
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-    <!-- 왼쪽 주 컬럼 -->
-    <div class="lg:col-span-8 space-y-4">
-
-        <!-- 날짜 & 날씨 -->
-        <div class="glass rounded-xl px-5 py-4 shadow-soft">
-            <div class="flex items-center gap-5 flex-wrap">
+    <!-- 날짜 & 날씨 -->
+    <div class="glass rounded-xl px-5 py-4 shadow-soft">
+        <div class="flex items-center gap-5 flex-wrap">
+            <div>
+                <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
+                <span id="mypet-time-display" class="text-2xl font-bold font-mono text-gray-900 mt-0.5">14:30:00</span>
+            </div>
+            <div class="flex items-center gap-3 border-l border-gray-200 pl-5">
+                <i class="fa-solid fa-sun text-3xl text-amber-400" id="mypet-weather-icon"></i>
                 <div>
-                    <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
-                    <span id="mypet-time-display" class="text-2xl font-bold font-mono text-gray-900 mt-0.5">14:30:00</span>
-                </div>
-                <div class="flex items-center gap-3 border-l border-gray-200 pl-5">
-                    <i class="fa-solid fa-sun text-3xl text-amber-400" id="mypet-weather-icon"></i>
-                    <div>
-                        <span id="mypet-weather-temp" class="block text-lg font-bold text-gray-900">24°C</span>
-                        <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4 border-l border-gray-200 pl-5 text-sm font-medium text-gray-600">
-                    <span>😷 <span id="mypet-weather-dust">--</span></span>
-                    <span>💧 <span id="mypet-weather-humidity">--%</span></span>
+                    <span id="mypet-weather-temp" class="block text-lg font-bold text-gray-900">24°C</span>
+                    <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
                 </div>
             </div>
-            <div id="mypet-weekly-weather-container" class="hidden"></div>
+            <div class="flex items-center gap-4 border-l border-gray-200 pl-5 text-sm font-medium text-gray-600">
+                <span>😷 <span id="mypet-weather-dust">--</span></span>
+                <span>💧 <span id="mypet-weather-humidity">--%</span></span>
+            </div>
         </div>
+        <div id="mypet-weekly-weather-container" class="hidden"></div>
+    </div>
 
-        <!-- 오늘의 운세 (집사 + 펫) -->
-        <div class="grid grid-cols-2 gap-4">
-            <div class="card-modern bg-violet-50/50 p-4 space-y-2">
-                <span class="block text-sm font-semibold text-violet-600">🧔 집사 오늘의 운세</span>
-                <p id="mypet-butler-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
-            </div>
-            <div class="card-modern bg-amber-50/50 p-4 space-y-2">
-                <span class="block text-sm font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
-                <p id="mypet-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
-            </div>
+    <!-- 오늘의 운세 (집사 + 펫) -->
+    <div class="grid grid-cols-2 gap-4">
+        <div class="card-modern bg-violet-50/50 p-4 space-y-2">
+            <span class="block text-sm font-semibold text-violet-600">🧔 집사 오늘의 운세</span>
+            <p id="mypet-butler-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
         </div>
+        <div class="card-modern bg-amber-50/50 p-4 space-y-2">
+            <span class="block text-sm font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
+            <p id="mypet-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+        </div>
+    </div>
+
+    <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- 왼쪽: 댕이의 하루 방 -->
+    <div class="lg:col-span-8 space-y-4">
 
         <!-- 댕이의 하루 방 -->
         <div id="pet-room-card" class="card-modern overflow-hidden">
@@ -51,11 +52,20 @@ const MYPET_TEMPLATE = `
                             <h2 class="text-xl font-bold text-gray-900 keep-all" id="pet-room-name-wrapper">
                                 <span id="pet-room-name">댕이의 하루 방 🏠</span>
                             </h2>
-                            <!-- 영혼 조화도 배지 (방 제목 옆에 표시) -->
-                            <div id="room-harmony-badge" class="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm">
+                            <!-- 영혼 조화도 배지 (방 제목 옆) — 클릭 시 조화도 탭 이동 -->
+                            <div id="room-harmony-badge" onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-shadow">
                                 <span id="room-harmony-icon" class="text-sm">💖</span>
                                 <span id="room-harmony-score" class="text-xs font-bold text-rose-600">조화도 측정하기</span>
                             </div>
+                        </div>
+                        <!-- 조화도 한 줄 메시지 (배지 아래) -->
+                        <div id="room-harmony-message" class="hidden mt-1.5">
+                            <p class="text-[11px] text-rose-600/80 font-medium leading-snug flex items-center gap-1">
+                                <span id="room-harmony-message-icon" class="text-sm">💖✨</span>
+                                <span id="room-harmony-message-title" class="font-black text-rose-700">완벽한 조화</span>
+                                <span class="text-gray-400">·</span>
+                                <span id="room-harmony-message-text" class="text-gray-500">영혼의 단짝! 완벽한 듀오입니다</span>
+                            </p>
                         </div>
                         <div class="flex items-center gap-2 mt-2">
                             <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
@@ -74,17 +84,6 @@ const MYPET_TEMPLATE = `
                             class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all">
                             <i class="fa-solid fa-gear text-gray-400 hover:text-amber-500 text-sm" id="room-settings-icon"></i>
                         </button>
-                    </div>
-                </div>
-
-                <!-- 조화도 설명 박스 -->
-                <div id="room-harmony-message" class="hidden bg-white/60 backdrop-blur-sm border rounded-xl p-2.5 mt-2">
-                    <div class="flex items-center gap-2">
-                        <span id="room-harmony-message-icon" class="text-lg">💖✨</span>
-                        <div class="flex-1">
-                            <p id="room-harmony-message-title" class="text-[11px] font-black text-gray-800">완벽한 조화</p>
-                            <p id="room-harmony-message-text" class="text-[10px] text-gray-600 leading-snug">영혼의 단짝! 완벽한 듀오입니다</p>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -227,66 +226,7 @@ const MYPET_TEMPLATE = `
                 </div>
                 <input type="file" id="pet-direct-upload" accept="image/*" class="hidden" onchange="uploadPetPhotoDirect(event)">
 
-
-
-                <!-- 건강 트렌드 대시보드 (숨김 처리 - 건강 탭으로 이동) -->
-                <div class="hidden bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5 transition-all duration-300">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-sm">📊</span>
-                            <span class="text-[11px] font-black text-gray-700">7일 건강 트렌드</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <div class="flex items-center gap-1">
-                                <span class="text-[9px] text-gray-400 font-bold">건강점수</span>
-                                <span id="health-score-value" class="text-lg font-black text-emerald-500">--</span>
-                            </div>
-                            <button onclick="generateWeeklyHealthData()"
-                                class="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-black text-[8px] rounded-lg transition-all border border-emerald-200"
-                                title="일주일치 데모 데이터 생성 (누를 때마다 추가)">
-                                <i class="fa-solid fa-database text-[8px]"></i> 데모
-                            </button>
-                            <button onclick="generateHealthReportPDF()"
-                                class="flex items-center gap-1 px-1.5 py-0.5 bg-violet-50 hover:bg-violet-100 text-violet-600 font-black text-[8px] rounded-lg transition-all border border-violet-100">
-                                <i class="fa-solid fa-file-pdf text-[8px]"></i> 리포트
-                                <span class="text-[7px] bg-amber-100 text-amber-700 px-1 rounded font-black">PRO</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div id="health-streak-badge" class="flex items-center gap-1 min-h-[12px]"></div>
-
-                    <!-- 사용법 안내 (데이터 없을 때만 표시) -->
-                    <div id="health-tutorial" class="hidden bg-white/60 backdrop-blur-sm p-2 rounded-xl border border-emerald-200/50">
-                        <div class="flex items-start gap-1.5">
-                            <span class="text-sm">💡</span>
-                            <div class="flex-1 space-y-0.5">
-                                <p class="text-[10px] font-bold text-emerald-700">건강 트렌드 사용법</p>
-                                <ul class="text-[9px] text-gray-600 space-y-0.5 leading-tight">
-                                    <li class="flex items-start gap-1">
-                                        <span class="text-emerald-500 mt-0.5">•</span>
-                                        <span><strong class="text-emerald-600">식사/물</strong> 탭에서 매일 기록하면 자동으로 차트가 생성됩니다</span>
-                                    </li>
-                                    <li class="flex items-start gap-1">
-                                        <span class="text-emerald-500 mt-0.5">•</span>
-                                        <span><strong class="text-emerald-600">데모 버튼</strong>을 누르면 일주일치 샘플 데이터를 추가할 수 있습니다</span>
-                                    </li>
-                                    <li class="flex items-start gap-1">
-                                        <span class="text-emerald-500 mt-0.5">•</span>
-                                        <span>7일간 기록이 쌓이면 <strong class="text-emerald-600">건강점수</strong>와 <strong class="text-emerald-600">연속 기록</strong> 배지가 표시됩니다</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="min-height:70px; max-height:120px;">
-                        <canvas id="health-trend-chart"></canvas>
-                    </div>
-                    <!-- 90일 캘린더 히트맵 -->
-                    <div id="health-calendar" class="pt-0"></div>
-                </div>
-
-                <!-- 컨디션 2칸 (앰버 톤 통일) -->
+                <!-- 컨디션 2칸 -->
                 <div class="grid grid-cols-2 gap-2">
                     <div class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100">
                         <div class="flex justify-between items-center mb-1.5">
@@ -354,109 +294,30 @@ const MYPET_TEMPLATE = `
                     <p id="personalized-health-tip" class="text-[10px] text-gray-400 font-medium mt-2 pt-2 border-t border-gray-100 keep-all leading-relaxed">✨ 분석 중...</p>
                 </div>
 
-                <!-- 오늘의 돌봄 스케줄 (제거 - 우측 돌봄 스케줄러로 통합) -->
-
             </div>
         </div>
 
-        <!-- 💖 펫 & 집사 영혼 조화도 카드 -->
-        <div id="mypet-saju-card"
-            class="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-4">
-            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
-                <h3 class="font-black text-gray-800 text-sm flex items-center">
-                    <i class="fa-solid fa-heart-pulse text-rose-500 mr-2"></i>펫 &amp; 집사 영혼 조화도 💖
-                </h3>
-                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[10px] font-black text-rose-500 hover:text-rose-700 border border-rose-200 px-2 py-0.5 rounded-lg hover:bg-rose-50 transition-all">조화도 분석 →</button>
-            </div>
-                <!-- 사주 분석 유도 -->
-                <div class="bg-amber-50/40 border border-amber-100/50 rounded-2xl p-4 text-center space-y-2.5">
-                    <p class="text-[11px] text-gray-500 leading-relaxed">
-                        사주·영혼 조화도를 분석하면<br>여기에 결과가 표시됩니다
-                    </p>
-                    <button onclick="switchTab('saju')"
-                        class="mx-auto bg-brand-500 hover:bg-brand-600 text-white font-black py-2 px-5 rounded-xl text-xs transition-colors shadow-sm">
-                        사주 & 조화도 분석하기 🔮
-                    </button>
-                </div>
-            </div>
+        <!-- 건강 요약 카드 (이전 위치에서 제거됨) -->
 
-            <!-- 결과가 있을 때의 UI (한 화면에 모두 노출) -->
+        <!-- 사주/조화도 결과 카드 (숨김 — 배지에 통합) -->
+        <div id="mypet-saju-card" style="display:none;">
+            <!-- 결과가 없을 때의 UI -->
+            <div id="mypet-saju-no-result" class="space-y-3"></div>
+
+            <!-- 결과가 있을 때의 UI -->
             <div id="mypet-saju-has-result" class="hidden space-y-4 text-xs">
-                <!-- 영혼 조화도 (종합 분석 결과) -->
-                <div id="mypet-harmony-display-box" class="hidden bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 rounded-2xl p-4 space-y-2.5">
-                    <div class="flex justify-between items-center pb-1.5 border-b border-rose-200/30">
-                        <span class="font-black text-rose-800 text-[11px] flex items-center gap-1.5">
-                            <span>💖</span> 펫 & 집사 영혼 조화도
-                        </span>
-                        <span id="mypet-harmony-avg-score" class="bg-rose-500 text-white font-extrabold font-mono text-[10px] px-2.5 py-0.5 rounded-full shadow-sm">92점 (5단계)</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-xl shadow-sm shrink-0">
-                            💞
-                        </div>
-                        <div>
-                            <h4 id="mypet-harmony-title" class="font-black text-rose-700 text-xs">"영혼의 단짝, 완벽한 듀오!"</h4>
-                            <p id="mypet-harmony-solution" class="text-[10px] text-gray-500 leading-relaxed line-clamp-2 mt-0.5">솔루션 내용...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="mypet-saju-grid-section">
-                    <!-- 펫 사주 -->
-                    <div class="bg-brand-50/30 border border-brand-100/50 rounded-2xl p-4 space-y-2">
-                        <span class="font-black text-brand-800 text-[11px] flex items-center gap-1">
-                            <span>🐾</span> <span id="mypet-saju-pet-name-label">댕이</span>의 사주
-                        </span>
-                        <h4 id="mypet-saju-pet-summary" class="font-black text-brand-700 text-xs">목(木)의 지혜로운 수호견</h4>
-                        <p id="mypet-saju-pet-desc" class="text-[10px] text-gray-500 leading-relaxed line-clamp-3">설명...</p>
-                    </div>
-                    <!-- 집사 사주 -->
-                    <div class="bg-indigo-50/30 border border-indigo-100/50 rounded-2xl p-4 space-y-2">
-                        <span class="font-black text-indigo-800 text-[11px] flex items-center gap-1">
-                            <span>🧔</span> 집사 사주
-                        </span>
-                        <h4 id="mypet-saju-owner-summary" class="font-black text-indigo-700 text-xs">화(火)의 따뜻한 영혼</h4>
-                        <p id="mypet-saju-owner-desc" class="text-[10px] text-gray-500 leading-relaxed line-clamp-3">설명...</p>
-                    </div>
-                </div>
-
-                <!-- 조화 및 전생 인연 (관계) -->
-                <div class="bg-rose-50/20 border border-rose-100/50 rounded-2xl p-4 space-y-3" id="mypet-saju-compat-section">
-                    <div class="flex justify-between items-center border-b border-rose-100/30 pb-2">
-                        <span class="font-black text-rose-800 text-[11px] flex items-center gap-1">
-                            <span>💖</span> 펫과 집사의 전생 인연 & 궁합
-                        </span>
-                        <span id="mypet-saju-compat-score" class="bg-rose-100 text-rose-600 font-bold font-mono text-[10px] px-2 py-0.5 rounded-full">96점</span>
-                    </div>
-                    <h4 id="mypet-saju-compat-title" class="font-black text-rose-600 text-xs">"수어지교(水魚之交)"</h4>
-                    <p id="mypet-saju-past-desc" class="text-[10px] text-gray-500 leading-relaxed line-clamp-3">전생 인연설 스토리...</p>
-
-                    <div class="bg-emerald-50/30 p-2.5 rounded-xl border border-emerald-100/40 text-[10px] text-gray-600 space-y-1">
-                        <strong class="text-emerald-800 block">🌿 현생 시너지 & 케어 조언</strong>
-                        <p id="mypet-saju-synergy-desc" class="leading-relaxed line-clamp-2">조언...</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-2" id="mypet-saju-buttons-section">
-                    <button onclick="switchTab('saju')"
-                        class="flex-1 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold py-2 rounded-xl text-[10px] transition-colors text-center shadow-sm">
-                        상세 사주서록(만세력) 보기 🔍
-                    </button>
-                    <button onclick="shareSajuToFeed()"
-                        class="flex-grow bg-brand-500 hover:bg-brand-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm">
-                        내 피드에 자랑하기 📢
-                    </button>
-                </div>
+                <div id="mypet-harmony-display-box" class="hidden"></div>
+                <div id="mypet-saju-grid-section" class="hidden"></div>
+                <div id="mypet-saju-compat-section" class="hidden"></div>
+                <div id="mypet-saju-buttons-section" class="hidden"></div>
             </div>
         </div>
-
-        <!-- 월간 종합 케어 리포트 제거 (건강 탭으로 이동) -->
     </div>
 
-    <!-- 우측 사이드바 컬럼 -->
+    <!-- 오른쪽: 챌린지 + 업적 + 돌봄 스케줄러 -->
     <div class="lg:col-span-4 space-y-4">
 
-        <!-- 산책 streak 배너 (현빈: Duolingo 스타일) -->
+        <!-- 산책 streak 배너 -->
         <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
             <div id="walk-streak-banner">
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
@@ -475,10 +336,6 @@ const MYPET_TEMPLATE = `
         <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="achievement-badges"></div>
         </div>
-
-        <!-- 월간 리포트 제거됨 -->
-
-
 
         <!-- 돌봄 스케줄러 📅 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
@@ -528,8 +385,9 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 식사 일지는 건강 탭으로 통합 -->
     </div>
+
+    </div><!-- /grid -->
 
     <!-- 프리미엄 업그레이드 모달 -->
     <div id="premium-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-end justify-center">
