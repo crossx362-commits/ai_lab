@@ -34,3 +34,9 @@
 - **경수**: [AI 윤리](projects/ai-team/skills/경수_수사관/knowledge/learned_20260612_AI_윤리.md)
 - **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
 - **루나**: [AI 시각화](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260612_AI_시각화.md)
+
+
+## 2026-06-13 02:01 자가학습
+- **티모**: [모션 디자인](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260613_모션_디자인.md)
+- **케빈**: [IaC](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260613_IaC.md)
+- **가희**: [챗봇 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260613_챗봇_윤리.md)
