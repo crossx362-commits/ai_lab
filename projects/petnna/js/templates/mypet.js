@@ -36,10 +36,10 @@ const MYPET_TEMPLATE = `
     </div>
 
     <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
     <!-- 왼쪽: 댕이의 하루 방 -->
-    <div class="lg:col-span-8 space-y-4">
+    <div class="lg:col-span-9 space-y-4">
 
         <!-- 댕이의 하루 방 -->
         <div id="pet-room-card" class="card-modern overflow-hidden">
@@ -321,8 +321,8 @@ const MYPET_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 오른쪽: 챌린지 + 업적 + 돌봄 스케줄러 -->
-    <div class="lg:col-span-4 space-y-4">
+    <!-- 오른쪽: 챌린지 + 업적 -->
+    <div class="lg:col-span-3 space-y-3">
 
         <!-- 산책 streak 배너 -->
         <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
@@ -340,56 +340,8 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 업적 배지 -->
-        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
+        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
             <div id="achievement-badges"></div>
-        </div>
-
-        <!-- 돌봄 스케줄러 📅 -->
-        <div class="bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
-            <div class="flex justify-between items-center pb-2 border-b">
-                <h3 class="font-black text-gray-800 text-sm flex items-center">
-                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
-                </h3>
-                <button onclick="openCareScheduleModal()"
-                    class="text-brand-600 hover:text-brand-700 font-black text-xs">
-                    <i class="fa-solid fa-plus mr-1"></i>일정 추가
-                </button>
-            </div>
-
-            <!-- 오늘의 일정 -->
-            <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-3 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-black text-gray-700">📅 오늘의 일정</span>
-                    <span id="care-completion-badge" class="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"></span>
-                </div>
-                <div id="care-scheduler-container" class="space-y-1.5"></div>
-            </div>
-
-            <!-- 달력 헤더 -->
-            <div class="flex justify-between items-center">
-                <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600"><i
-                        class="fa-solid fa-chevron-left"></i></button>
-                <span id="calendar-month-year" class="font-black text-xs text-gray-700">2026년 5월</span>
-                <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600"><i
-                        class="fa-solid fa-chevron-right"></i></button>
-            </div>
-
-            <!-- 달력 그리드 -->
-            <div
-                class="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider border-b pb-2">
-                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
-            </div>
-            <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-xs">
-                <!-- 날짜들 동적 수립 -->
-            </div>
-
-            <!-- 다가오는 주요 돌봄 checklist -->
-            <div class="space-y-2.5 pt-4 border-t border-gray-100">
-                <span class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">다가오는 핵심 돌봄 3</span>
-                <div id="upcoming-schedules" class="space-y-2">
-                    <!-- JS 동적 수립 -->
-                </div>
-            </div>
         </div>
 
     </div>
