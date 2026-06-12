@@ -51,8 +51,21 @@ const SHOP_QUEST_DATA = {
 };
 
 let activeShopId = null;
+let activeLocation = null;
 
-function selectIslandShop(shopId) {
+function getQuestIdByCategory(category) {
+    switch(category) {
+        case 'grooming': return 'healing-spa';
+        case 'hospital': return 'healing-hospital';
+        case 'hotel': return 'healing-hotel';
+        case 'cafe':
+        case 'shop': return 'healing-shopping';
+        case 'training': return 'healing-therapy';
+        default: return 'healing-spa';
+    }
+}
+
+function selectIslandShop(shopId, location = null) {
     const data = SHOP_QUEST_DATA[shopId];
     if (!data) return;
 
@@ -75,52 +88,61 @@ function selectIslandShop(shopId) {
         if (rewardBadgeEl) rewardBadgeEl.innerText = data.rewardBadge;
     }
 
-    // --- 지시선(Connector Line) 및 정보 말풍선(Callout Bubble) 동적 렌더링 ---
-    const pinGroup = document.getElementById('pin-' + shopId);
-    const connectorLine = document.getElementById('map-connector-line');
-    const calloutBubble = document.getElementById('map-callout');
-    const calloutText = document.getElementById('map-callout-text');
+    // 모든 핀 스타일 복원
+    document.querySelectorAll('.petlife-pin').forEach(p => {
+        p.classList.remove('active');
+        p.style.transform = '';
+    });
 
-    if (pinGroup) {
-        // 모든 핀에서 스케일/링 효과 복원 및 강조 클래스 제거
-        document.querySelectorAll('.map-pin-group').forEach(pin => {
-            pin.style.transform = '';
-            const pr = pin.querySelector('.pin-pulse-ring');
-            if (pr) pr.style.display = 'block';
-        });
-
-        // 클릭된 핀 강조
-        pinGroup.style.transform = 'scale(1.35) translateY(-5px)';
-        const activeRing = pinGroup.querySelector('.pin-pulse-ring');
-        if (activeRing) activeRing.style.display = 'none'; // 펄스 정지
-
-        const circle = pinGroup.querySelector('circle');
-        if (circle) {
-            const cx = parseFloat(circle.getAttribute('cx'));
-            const cy = parseFloat(circle.getAttribute('cy'));
-
-            // 말풍선 위치 이동 및 노출
-            if (calloutBubble && calloutText) {
-                calloutBubble.setAttribute('transform', `translate(${cx}, ${cy})`);
-                calloutText.textContent = data.title;
-                calloutBubble.style.display = 'block';
-            }
-
-            // 지시선(Connector Line) 연산: 핀 중심에서 지도의 오른쪽 경계면(1000)까지 수평선 생성
-            if (connectorLine) {
-                connectorLine.setAttribute('d', `M ${cx} ${cy} L 1000 ${cy}`);
-                connectorLine.setAttribute('opacity', '0.8');
-            }
-        }
+    // 만약 location이 전달되지 않았다면 해당 카테고리에 속하는 첫 번째 가맹점 찾기
+    if (!location && typeof PETLIFE_REAL_LOCATIONS !== 'undefined') {
+        location = PETLIFE_REAL_LOCATIONS.find(loc => getQuestIdByCategory(loc.category) === shopId);
     }
-    
-    if (typeof showToast === 'function') {
-        showToast(`🗺️ ${data.title} 영토가 활성화되었습니다!`);
+
+    activeLocation = location;
+
+    if (location) {
+        const pinEl = document.getElementById(`petlife-pin-${location.id}`);
+        if (pinEl) {
+            pinEl.classList.add('active');
+            pinEl.style.transform = 'translate(-50%, -50%) scale(1.3) translateY(-4px)';
+        }
+
+        // 지시선(Connector Line) 및 정보 말풍선(Callout Bubble) 동적 렌더링
+        const connectorLine = document.getElementById('map-connector-line');
+        const calloutBubble = document.getElementById('map-html-callout');
+        const calloutText = document.getElementById('map-callout-text');
+
+        const leftPct = parseFloat(location.position.left);
+        const topPct = parseFloat(location.position.top);
+
+        if (calloutBubble && calloutText) {
+            calloutBubble.style.left = location.position.left;
+            calloutBubble.style.top = location.position.top;
+            calloutText.textContent = location.name;
+            calloutBubble.classList.remove('hidden');
+            calloutBubble.style.display = 'block';
+        }
+
+        if (connectorLine) {
+            // viewBox가 0 0 100 100이므로 퍼센트 수치 그대로 사용 가능
+            connectorLine.setAttribute('d', `M ${leftPct} ${topPct} L 100 ${topPct}`);
+            connectorLine.setAttribute('opacity', '0.8');
+        }
+        
+        if (typeof showToast === 'function') {
+            showToast(`🗺️ ${location.name} 영토가 활성화되었습니다!`);
+        }
+    } else {
+        if (typeof showToast === 'function') {
+            showToast(`🗺️ ${data.title} 영토가 활성화되었습니다!`);
+        }
     }
 }
 
 function closeQuestPanel() {
     activeShopId = null;
+    activeLocation = null;
     const defaultState = document.getElementById('quest-default-state');
     const activeState = document.getElementById('quest-active-state');
     if (defaultState && activeState) {
@@ -132,73 +154,36 @@ function closeQuestPanel() {
     // 말풍선 및 지시선 제거
     const calloutBubble = document.getElementById('map-callout');
     const connectorLine = document.getElementById('map-connector-line');
-    if (calloutBubble) calloutBubble.style.display = 'none';
+    if (calloutBubble) {
+        calloutBubble.classList.add('hidden');
+        calloutBubble.style.display = 'none';
+    }
     if (connectorLine) connectorLine.setAttribute('opacity', '0');
 
     // 모든 핀 스타일 복원
-    document.querySelectorAll('.map-pin-group').forEach(pin => {
+    document.querySelectorAll('.petlife-pin').forEach(pin => {
         pin.style.transform = '';
-        const pr = pin.querySelector('.pin-pulse-ring');
-        if (pr) pr.style.display = 'block';
+        pin.classList.remove('active');
     });
 }
 
 function openActiveQuestLink() {
-    if (!activeShopId) return;
-    
-    const targetSection = document.getElementById('section-' + activeShopId);
-    if (targetSection) {
-        if (targetSection.classList.contains('hidden')) {
-            toggleShopSection(activeShopId);
+    if (activeLocation) {
+        openPetlifePopup(activeLocation);
+    } else if (activeShopId) {
+        const targetSection = document.getElementById('section-' + activeShopId);
+        if (targetSection) {
+            if (targetSection.classList.contains('hidden')) {
+                toggleShopSection(activeShopId);
+            }
+            targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-        showToast("가맹점 상세 정보 영역을 찾을 수 없습니다.");
     }
 }
 
 function applyMapFilters() {
-    // 피지 섬 핀 필터 적용
+    // 펫라이프 핀 필터 적용
     filterPetlifePins();
-
-    // 기존 SVG 맵 필터 (하위 호환)
-    const fSpa     = document.getElementById('f-spa')?.checked;
-    const fMedical = document.getElementById('f-medical')?.checked;
-    const fHotel   = document.getElementById('f-hotel')?.checked;
-    const fShop    = document.getElementById('f-shop')?.checked;
-
-    let activeCount = 0;
-    const filterNodes = document.querySelectorAll('.filter-node');
-
-    filterNodes.forEach(node => {
-        const cat = node.getAttribute('data-cat') || '';
-        let show = true;
-
-        if (cat === 'spa' && !fSpa) show = false;
-        if (cat === 'medical' && !fMedical) show = false;
-        if (cat === 'hotel' && !fHotel) show = false;
-        if (cat === 'shop' && !fShop) show = false;
-
-        if (show) {
-            node.style.opacity = '1';
-            node.style.pointerEvents = 'auto';
-            activeCount++;
-        } else {
-            node.style.opacity = '0.15';
-            node.style.pointerEvents = 'none';
-            // 만약 숨겨지는 핀이 현재 선택된 핀이라면 상세창 닫기
-            const pinId = node.getAttribute('id');
-            if (pinId && activeShopId && pinId.includes(activeShopId)) {
-                closeQuestPanel();
-            }
-        }
-    });
-
-    // SVG 맵 통계 바
-    const statBar = document.getElementById('stat-bar');
-    const statLabel = document.getElementById('stat-label');
-    if (statBar) statBar.style.width = `${(activeCount / 6) * 100}%`;
-    if (statLabel) statLabel.innerText = `${activeCount} / 6 활성`;
 }
 
 // 펫라이프 핀 렌더링
@@ -211,14 +196,22 @@ function renderPetlifePins() {
     PETLIFE_REAL_LOCATIONS.forEach((location, index) => {
         const pin = document.createElement('div');
         pin.className = 'petlife-pin';
+        pin.id = `petlife-pin-${location.id}`;
         pin.style.left = location.position.left;
         pin.style.top = location.position.top;
         pin.style.background = location.color;
-        pin.style.animationDelay = `${index * 0.1}s`;
+        pin.style.animationDelay = `${index * 0.05}s`;
         pin.innerHTML = `<span>${location.emoji}</span>`;
-        pin.onclick = () => openPetlifePopup(location);
+        
+        const questId = getQuestIdByCategory(location.category);
+        pin.onclick = () => {
+            selectIslandShop(questId, location);
+        };
         container.appendChild(pin);
     });
+
+    // 초기 필터링 적용
+    filterPetlifePins();
 }
 
 // 가맹점 상세 팝업 열기

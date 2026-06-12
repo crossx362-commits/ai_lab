@@ -5,12 +5,12 @@ const SHOP_ISLAND_TEMPLATE = `
 
   <!-- 헤더 -->
   <div class="iw-header">
-    <div class="iw-header-icon">🌏</div>
+    <div class="iw-header-icon">🍌</div>
     <div>
-      <h1 class="iw-title">펫 라이프 아일랜드</h1>
-      <p class="iw-subtitle">다도해 섬의 핀을 눌러 상상 속 펫 가맹점 퀘스트를 탐험하세요</p>
+      <h1 class="iw-title">나노바나나 아일랜드 (펫 라이프)</h1>
+      <p class="iw-subtitle">나노바나나 이미지 지도를 탐험하고 핀을 클릭하여 상세 퀘스트를 진행하세요</p>
     </div>
-    <span class="iw-badge">PET WORLD MAP</span>
+    <span class="iw-badge">BANANA WORLD MAP</span>
   </div>
 
   <!-- 3-Col 레이아웃 -->
@@ -24,98 +24,63 @@ const SHOP_ISLAND_TEMPLATE = `
           <input type="checkbox" checked id="f-spa" onchange="applyMapFilters()">
           <span class="filter-dot" style="background:#0d9488"></span>
           <span>힐링 & 스파</span>
-          <span class="filter-count">2</span>
+          <span class="filter-count">3</span>
         </label>
         <label class="filter-item">
           <input type="checkbox" checked id="f-medical" onchange="applyMapFilters()">
           <span class="filter-dot" style="background:#e11d48"></span>
           <span>메디컬 케어</span>
-          <span class="filter-count">2</span>
+          <span class="filter-count">5</span>
         </label>
         <label class="filter-item">
           <input type="checkbox" checked id="f-hotel" onchange="applyMapFilters()">
           <span class="filter-dot" style="background:#4f46e5"></span>
           <span>스테이 & 돌봄</span>
-          <span class="filter-count">1</span>
+          <span class="filter-count">2</span>
         </label>
         <label class="filter-item">
           <input type="checkbox" checked id="f-shop" onchange="applyMapFilters()">
           <span class="filter-dot" style="background:#d97706"></span>
-          <span>쇼핑 광장</span>
-          <span class="filter-count">1</span>
+          <span>쇼핑 & 카페</span>
+          <span class="filter-count">4</span>
         </label>
       </div>
       <div class="panel-divider"></div>
       <p class="panel-section-label">활성 영토</p>
       <div class="active-stat">
         <div class="stat-bar-bg"><div class="stat-bar-fill" id="stat-bar"></div></div>
-        <span class="stat-text" id="stat-label">6 / 6 활성</span>
+        <span class="stat-text" id="stat-label">14 / 14 활성</span>
       </div>
     </div>
 
-    <!-- 중앙: 피지 섬 펫라이프 지도 -->
-    <div class="iw-map-container">
-      <!-- 피지 섬 배경 지도 -->
-      <div id="petlife-map" class="fiji-map-wrapper">
-        <!-- 피지 섬 구글맵 배경 이미지 -->
-        <div class="fiji-map-bg" style="
-          background-image: url('map.png');
-          background-size: cover;
-          background-position: center;
-          background-color: #bae6fd;
-          width: 100%;
-          height: 100%;
-          min-height: 600px;
-          border-radius: 24px;
-          position: relative;
-        ">
-          <!-- 가맹점 핀 오버레이 -->
-          <div id="petlife-pins-container" class="pins-overlay"></div>
+    <!-- 중앙: 나노바나나 이미지 기반 월드맵 -->
+    <div class="iw-map-container" id="petlife-map-container">
+      <!-- 배경 이미지 지도 -->
+      <div class="fiji-map-bg" style="
+        background-image: url('map.png');
+        background-size: cover;
+        background-position: center;
+        background-color: #bae6fd;
+        width: 100%;
+        height: 100%;
+        min-height: 480px;
+        position: relative;
+      ">
+        <!-- SVG 지시선 레이어 -->
+        <svg id="map-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:10;">
+          <path id="map-connector-line" d="" stroke="#4f46e5" stroke-width="0.5" stroke-dasharray="1.5,1" fill="none" opacity="0" style="transition: opacity 0.3s ease, d 0.3s ease;" />
+        </svg>
+
+        <!-- HTML 정보 말풍선 -->
+        <div id="map-html-callout" class="map-callout hidden" style="position:absolute; z-index:20; pointer-events:none; transform: translate(-50%, -100%); margin-top: -12px; transition: left 0.3s ease, top 0.3s ease;">
+          <div class="callout-box">
+            <span id="map-callout-text">가맹점명</span>
+          </div>
+          <div class="callout-arrow"></div>
         </div>
-      </div>
 
-      <!-- 가맹점 상세 팝업 모달 -->
-      <div id="location-popup" class="location-popup hidden">
-        <div class="popup-content">
-          <button onclick="closePetlifePopup()" class="popup-close">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-          <div class="popup-header">
-            <span id="popup-emoji" class="popup-emoji">🏥</span>
-            <div>
-              <h3 id="popup-name" class="popup-name">가맹점명</h3>
-              <span id="popup-category" class="popup-category-badge">카테고리</span>
-            </div>
-          </div>
-          <div class="popup-body">
-            <p id="popup-description" class="popup-desc"></p>
-
-            <div class="popup-info-grid">
-              <div class="popup-info-item">
-                <i class="fa-solid fa-location-dot"></i>
-                <span id="popup-address"></span>
-              </div>
-              <div class="popup-info-item">
-                <i class="fa-solid fa-phone"></i>
-                <a id="popup-phone" href="tel:"></a>
-              </div>
-              <div class="popup-info-item">
-                <i class="fa-solid fa-clock"></i>
-                <span id="popup-hours"></span>
-              </div>
-            </div>
-
-            <div id="popup-services" class="popup-services"></div>
-          </div>
-          <div class="popup-footer">
-            <a id="popup-website-btn" href="#" target="_blank" rel="noopener" class="popup-btn-primary">
-              <i class="fa-solid fa-globe"></i> 웹사이트 방문
-            </a>
-            <a id="popup-phone-btn" href="tel:" class="popup-btn-secondary">
-              <i class="fa-solid fa-phone"></i> 전화 예약
-            </a>
-          </div>
-        </div>
+        <!-- 동적 가맹점 핀 컨테이너 -->
+        <div id="petlife-pins-container" class="pins-overlay" style="position:absolute; inset:0; z-index:5;"></div>
       </div>
     </div>
 
@@ -126,7 +91,7 @@ const SHOP_ISLAND_TEMPLATE = `
         <p class="panel-section-label">가맹점 상세 정보</p>
         <div class="quest-empty">
           <span style="font-size:2.8rem">🗺️</span>
-          <p>지도상의 <strong>가맹점 핀</strong>을<br>선택하여 새로운 상생 혜택<br>퀘스트 정보를 탐험하세요!</p>
+          <p>지도의 <strong>가맹점 핀</strong>을<br>선택하여 상생 혜택<br>퀘스트 정보를 탐험하세요!</p>
         </div>
       </div>
 
@@ -180,6 +145,14 @@ const SHOP_ISLAND_TEMPLATE = `
                   </div>
                   <i class="fa-solid fa-arrow-up-right-from-square text-emerald-400 text-xs"></i>
               </a>
+              <a href="https://www.petvip.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
+                  class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors">
+                  <div>
+                      <span class="block text-xs font-black text-emerald-800">펫VIP 출장 미용</span>
+                      <span class="text-[10px] text-gray-400">집으로 찾아가는 고급 탄산천 스파 및 위생 케어</span>
+                  </div>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-emerald-400 text-xs"></i>
+              </a>
           </div>
       </div>
 
@@ -226,6 +199,14 @@ const SHOP_ISLAND_TEMPLATE = `
                   </div>
                   <i class="fa-solid fa-arrow-up-right-from-square text-pink-400 text-xs"></i>
               </a>
+              <a href="https://dmhomeschool.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
+                  class="flex items-center justify-between p-3 rounded-xl bg-pink-50 hover:bg-pink-100 transition-colors">
+                  <div>
+                      <span class="block text-xs font-black text-pink-800">도그마루 홈스쿨 교육 신청</span>
+                      <span class="text-[10px] text-gray-400">배변/분리불안 행동교정 및 1:1 맞춤형 훈련 케어</span>
+                  </div>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-pink-400 text-xs"></i>
+              </a>
           </div>
       </div>
 
@@ -246,6 +227,14 @@ const SHOP_ISLAND_TEMPLATE = `
                   <div>
                       <span class="block text-xs font-black text-indigo-800">펫리즈 호텔 예약</span>
                       <span class="text-[10px] text-gray-400">개별 테라스와 24시 안심 CCTV 케어 연계 서비스</span>
+                  </div>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400 text-xs"></i>
+              </a>
+              <a href="https://hoteldogs.co.kr/hoteling" target="_blank" rel="noopener"
+                  class="flex items-center justify-between p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                  <div>
+                      <span class="block text-xs font-black text-indigo-800">호텔 독스 예약</span>
+                      <span class="text-[10px] text-gray-400">24시간 스마트 안심 비대면 펫 위탁 케어</span>
                   </div>
                   <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400 text-xs"></i>
               </a>
@@ -272,6 +261,14 @@ const SHOP_ISLAND_TEMPLATE = `
                   </div>
                   <i class="fa-solid fa-arrow-up-right-from-square text-red-400 text-xs"></i>
               </a>
+              <a href="https://www.sncamc.co.kr/" target="_blank" rel="noopener"
+                  class="flex items-center justify-between p-3 rounded-xl bg-red-50 hover:bg-red-100 transition-colors">
+                  <div>
+                      <span class="block text-xs font-black text-red-800">SNC 동물메디컬센터</span>
+                      <span class="text-[10px] text-gray-400">최신 장비 연계 24시간 동물 종합 병원</span>
+                  </div>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-red-400 text-xs"></i>
+              </a>
           </div>
       </div>
 
@@ -287,11 +284,11 @@ const SHOP_ISLAND_TEMPLATE = `
               </button>
           </div>
           <div class="space-y-2">
-              <a href="#" onclick="switchTab('shop'); showToast('스토어 탭으로 연결합니다.'); return false;"
+              <a href="https://minipetmall.co.kr/" target="_blank" rel="noopener"
                   class="flex items-center justify-between p-3 rounded-xl bg-amber-50 hover:bg-amber-100 transition-colors">
                   <div>
-                      <span class="block text-xs font-black text-amber-800">프리미엄 멀티샵 즉시 구경하기</span>
-                      <span class="text-[10px] text-gray-400">유기농 홀리스틱 사료 및 명품 프리미엄 의류 플래그십</span>
+                      <span class="block text-xs font-black text-amber-800">미니펫 용품점 이동</span>
+                      <span class="text-[10px] text-gray-400">유기농 홀리스틱 사료 및 영양 보충제 간식 편집 스퀘어</span>
                   </div>
                   <i class="fa-solid fa-arrow-up-right-from-square text-amber-400 text-xs"></i>
               </a>
@@ -429,81 +426,68 @@ const SHOP_ISLAND_TEMPLATE = `
   overflow: hidden;
   border: 3px solid #7dd3fc;
   box-shadow: inset 0 0 50px rgba(14,165,233,0.15), 0 10px 30px rgba(14,165,233,0.08);
-  min-height: 450px;
+  min-height: 480px;
   position: relative;
 }
 
-/* 지도 컨트롤 버튼 */
-.map-controls {
+/* 가맹점 핀 디자인 */
+.petlife-pin {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.map-control-btn {
-  width: 40px;
-  height: 40px;
-  background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  color: #64748b;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-size: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  transform: translate(-50%, -50%);
+  transition: all 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: bounce-in 0.4s ease-out;
+}
+.petlife-pin:hover {
+  transform: translate(-50%, -50%) scale(1.25) translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.35);
+  z-index: 100;
+}
+.petlife-pin.active {
+  transform: translate(-50%, -50%) scale(1.3) translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  border-color: #4f46e5;
+  z-index: 100;
 }
 
-.map-control-btn:hover {
-  background: #f8fafc;
-  border-color: #22c55e;
-  color: #22c55e;
-  transform: scale(1.05);
+@keyframes bounce-in {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  70% { transform: translate(-50%, -50%) scale(1.1); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
-/* SVG 핀 인터랙션 */
-.map-pin-group { transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-origin: bottom center; }
-.map-pin-group:hover { transform: scale(1.3) translateY(-6px); }
-
-/* 미세 펄스 애니메이션 */
-.pin-pulse-ring {
-  animation: pin-pulse 2s infinite ease-out;
-  transform-origin: center;
+/* 말풍선 스타일 */
+.map-callout {
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
 }
-@keyframes pin-pulse {
-  0% { r: 20; opacity: 0.9; stroke-width: 2.5; }
-  100% { r: 35; opacity: 0; stroke-width: 0.5; }
+.callout-box {
+  background: white;
+  border: 2px solid #4f46e5;
+  border-radius: 12px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: #1e293b;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.8);
 }
-
-/* 바다 배경 파도 애니메이션 */
-.wave-ani-1 { animation: wave-drift 8s infinite ease-in-out; }
-.wave-ani-2 { animation: wave-drift 10s infinite ease-in-out; animation-delay: 1.5s; }
-.wave-ani-3 { animation: wave-drift 12s infinite ease-in-out; animation-delay: 3s; }
-@keyframes wave-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(15px, -5px); }
-}
-
-/* 돛단배 움직임 */
-.boat-ani { animation: boat-sail 25s infinite linear; }
-@keyframes boat-sail {
-  0% { transform: translate(680px, 310px); }
-  50% { transform: translate(500px, 340px) scaleX(-1); }
-  100% { transform: translate(680px, 310px); }
-}
-
-/* 구름 움직임 */
-.cloud-ani-1 { animation: cloud-float 90s infinite linear; }
-.cloud-ani-2 { animation: cloud-float 120s infinite linear; animation-delay: -30s; }
-@keyframes cloud-float {
-  0% { transform: translate(-150px, 0); }
-  100% { transform: translate(1100px, 0); }
+.callout-arrow {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #4f46e5;
+  margin: 0 auto;
 }
 
 /* ===== 우측 퀘스트 패널 ===== */
@@ -601,321 +585,6 @@ const SHOP_ISLAND_TEMPLATE = `
   border: 1.5px solid #e2e8f0;
   border-radius: 24px;
   box-shadow: 0 4px 12px rgba(148,163,184,0.05);
-}
-
-/* ===== 피지 지도 스타일 ===== */
-.fiji-map-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 600px;
-}
-
-.pins-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-/* 가맹점 핀 스타일 */
-.petlife-pin {
-  position: absolute;
-  width: 50px;
-  height: 50px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  border: 4px solid white;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 0 rgba(255,255,255,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  pointer-events: auto;
-  animation: pin-drop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.petlife-pin span {
-  font-size: 24px;
-  transform: rotate(45deg);
-  line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-}
-
-.petlife-pin:hover {
-  transform: rotate(-45deg) scale(1.3) translateY(-8px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.4), 0 0 0 12px rgba(255,255,255,0.3);
-  z-index: 100;
-}
-
-.petlife-pin::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  border-radius: 50% 50% 50% 0;
-  background: inherit;
-  transform: translate(-50%, -50%);
-  animation: pin-pulse 2.5s infinite;
-  opacity: 0;
-}
-
-@keyframes pin-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.7;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(2.2);
-    opacity: 0;
-  }
-}
-
-@keyframes pin-drop {
-  0% {
-    transform: rotate(-45deg) translateY(-150px) scale(0);
-    opacity: 0;
-  }
-  60% {
-    transform: rotate(-45deg) translateY(15px) scale(1.15);
-  }
-  100% {
-    transform: rotate(-45deg) translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-/* ===== 가맹점 상세 팝업 ===== */
-.location-popup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-  animation: fade-in 0.3s ease;
-}
-
-.location-popup.hidden {
-  display: none;
-}
-
-.popup-content {
-  background: white;
-  border-radius: 28px;
-  max-width: 500px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  position: relative;
-  animation: slide-up 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slide-up {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.popup-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.05);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: #64748b;
-  transition: all 0.2s;
-  z-index: 10;
-}
-
-.popup-close:hover {
-  background: rgba(0,0,0,0.1);
-  color: #0f172a;
-  transform: rotate(90deg);
-}
-
-.popup-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 32px 32px 20px;
-  border-bottom: 2px solid #f1f5f9;
-}
-
-.popup-emoji {
-  font-size: 48px;
-  line-height: 1;
-}
-
-.popup-name {
-  font-size: 20px;
-  font-weight: 950;
-  color: #0f172a;
-  margin: 0 0 6px;
-  letter-spacing: -0.02em;
-}
-
-.popup-category-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  color: #166534;
-  font-size: 11px;
-  font-weight: 900;
-  padding: 4px 12px;
-  border-radius: 12px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.popup-body {
-  padding: 24px 32px;
-}
-
-.popup-desc {
-  font-size: 15px;
-  line-height: 1.7;
-  color: #475569;
-  margin: 0 0 20px;
-}
-
-.popup-info-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.popup-info-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  color: #64748b;
-  padding: 10px 14px;
-  background: #f8fafc;
-  border-radius: 12px;
-}
-
-.popup-info-item i {
-  color: #22c55e;
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
-}
-
-.popup-info-item a {
-  color: #2563eb;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.popup-info-item a:hover {
-  text-decoration: underline;
-}
-
-.popup-services {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.service-tag {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: white;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 6px 14px;
-  border-radius: 999px;
-  letter-spacing: 0.02em;
-}
-
-.popup-footer {
-  padding: 20px 32px 32px;
-  display: flex;
-  gap: 12px;
-}
-
-.popup-btn-primary,
-.popup-btn-secondary {
-  flex: 1;
-  padding: 14px;
-  border-radius: 14px;
-  font-size: 14px;
-  font-weight: 900;
-  text-align: center;
-  text-decoration: none;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.popup-btn-primary {
-  background: linear-gradient(135deg, #22c55e, #16a34a);
-  color: white;
-  box-shadow: 0 4px 14px rgba(34,197,94,0.25);
-}
-
-.popup-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(34,197,94,0.35);
-}
-
-.popup-btn-secondary {
-  background: white;
-  color: #64748b;
-  border: 2px solid #e2e8f0;
-}
-
-.popup-btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #0f172a;
-}
-
-/* 반응형 */
-@media (max-width: 640px) {
-  .popup-content {
-    max-width: 100%;
-    margin: 0;
-    border-radius: 28px 28px 0 0;
-  }
-
-  .popup-footer {
-    flex-direction: column;
-  }
 }
 </style>
 `;
