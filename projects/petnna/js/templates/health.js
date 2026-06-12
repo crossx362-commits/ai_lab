@@ -35,45 +35,6 @@ const HEALTH_TEMPLATE = `
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">
 
-    <!-- 📊 월간 종합 리포트 -->
-    <div class="card-modern p-5">
-        <div class="flex justify-between items-center mb-5">
-            <div class="flex items-center gap-3">
-                <span class="text-4xl">📊</span>
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900">월간 종합 리포트</h3>
-                    <p class="text-xs text-gray-500">건강 + 일정 + AI 분석 통합</p>
-                </div>
-            </div>
-            <button onclick="generateHealthReportPDF()"
-                class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-4 py-2.5 text-sm">
-                <i class="fa-solid fa-file-pdf mr-1.5"></i>PDF
-                <span class="text-[10px] bg-amber-400 text-gray-900 px-2 py-0.5 rounded-full ml-2 font-bold">PRO</span>
-            </button>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="card-modern bg-violet-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">💯</div>
-                <div id="report-health-score" class="text-3xl font-bold text-violet-600 mb-1">--</div>
-                <div class="text-xs text-gray-600 font-semibold">건강점수</div>
-            </div>
-            <div class="card-modern bg-emerald-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">📅</div>
-                <div id="report-care-rate" class="text-3xl font-bold text-emerald-600 mb-1">--%</div>
-                <div class="text-xs text-gray-600 font-semibold">준수율</div>
-            </div>
-            <div class="card-modern bg-amber-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">🔥</div>
-                <div id="report-streak" class="text-3xl font-bold text-amber-600 mb-1">--일</div>
-                <div class="text-xs text-gray-600 font-semibold">연속기록</div>
-            </div>
-            <div class="card-modern bg-sky-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">🤖</div>
-                <div id="report-ai-count" class="text-3xl font-bold text-sky-600 mb-1">--회</div>
-                <div class="text-xs text-gray-600 font-semibold">AI분석</div>
-            </div>
-        </div>
-    </div>
 
     <!-- 📋 오늘의 건강 기록 -->
     <div class="card-modern p-6">
@@ -262,8 +223,47 @@ const HEALTH_TEMPLATE = `
     </div>
     <!-- /왼쪽 컬럼 끝 -->
 
-    <!-- 오른쪽 컬럼 (돌봄 스케줄러) -->
+    <!-- 오른쪽 컬럼 (월간 리포트 + 돌봄 스케줄러) -->
     <div class="lg:col-span-4 space-y-4">
+
+        <!-- 📊 월간 종합 리포트 -->
+        <div class="card-modern p-4">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-3xl">📊</span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">월간 리포트</h3>
+                        <p class="text-[10px] text-gray-500">이번 달 요약</p>
+                    </div>
+                </div>
+                <button onclick="generateHealthReportPDF()"
+                    class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-3 py-2 text-xs">
+                    <i class="fa-solid fa-file-pdf mr-1"></i>PDF
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="card-modern bg-violet-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">💯</div>
+                    <div id="report-health-score" class="text-xl font-bold text-violet-600">--</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">건강점수</div>
+                </div>
+                <div class="card-modern bg-emerald-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">📅</div>
+                    <div id="report-care-rate" class="text-xl font-bold text-emerald-600">--%</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">준수율</div>
+                </div>
+                <div class="card-modern bg-amber-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">🔥</div>
+                    <div id="report-streak" class="text-xl font-bold text-amber-600">--일</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">연속기록</div>
+                </div>
+                <div class="card-modern bg-sky-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">🤖</div>
+                    <div id="report-ai-count" class="text-xl font-bold text-sky-600">--회</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">AI분석</div>
+                </div>
+            </div>
+        </div>
 
         <!-- 돌봄 스케줄러 📅 -->
         <div class="card-modern p-5 space-y-4">
