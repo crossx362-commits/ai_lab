@@ -124,14 +124,14 @@ function renderAchievementBadges() {
         </div>`;
     }).join('');
     el.innerHTML = `
-        <div class="flex items-center justify-between mb-2">
-            <span class="text-[11px] font-black text-gray-700">🏅 업적 (${unlocked.length}/${total})</span>
+        <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] font-black text-gray-700">🏅 업적 (${unlocked.length}/${total})</span>
             <div class="flex-1 mx-2 bg-gray-100 rounded-full h-1.5 overflow-hidden">
                 <div class="bg-amber-400 h-full rounded-full transition-all" style="width:${Math.round(unlocked.length/total*100)}%"></div>
             </div>
-            <span class="text-[10px] font-bold text-amber-500">${Math.round(unlocked.length/total*100)}%</span>
+            <span class="text-[9px] font-bold text-amber-500">${Math.round(unlocked.length/total*100)}%</span>
         </div>
-        <div class="grid grid-cols-6 gap-2">${badges}</div>`;
+        <div class="grid grid-cols-6 gap-1.5">${badges}</div>`;
 }
 
 // ─── 일일 챌린지 ────────────────────────────────────────────────────
@@ -187,15 +187,23 @@ function renderDailyChallenges() {
     const doneCount = challenges.filter(c => c.done).length;
     const progressPct = Math.round(doneCount / challenges.length * 100);
 
-    const items = challenges.map(c => `
-        <div class="flex items-center gap-2.5 p-2.5 rounded-xl ${c.done ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-100'}">
-            <span class="text-lg">${c.done ? '✅' : c.emoji}</span>
+    const items = challenges.map(c => {
+        // 준비 중인 기능 체크
+        const notReady = c.id === 'health_log' || c.id === 'ai_analysis';
+        const buttonAction = notReady
+            ? `showToast('🚧 준비 중인 기능입니다')`
+            : (c.action.includes('(') ? c.action : c.action + '()');
+
+        return `
+        <div class="flex items-center gap-2 p-2 rounded-xl ${c.done ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-100'}">
+            <span class="text-base">${c.done ? '✅' : c.emoji}</span>
             <div class="flex-1 min-w-0">
-                <p class="text-[11px] font-black ${c.done ? 'text-emerald-700 line-through' : 'text-gray-700'}">${c.label}</p>
-                <p class="text-[9px] text-gray-400 font-medium truncate">${c.desc}</p>
+                <p class="text-[10px] font-black ${c.done ? 'text-emerald-700 line-through' : 'text-gray-700'}">${c.label}</p>
+                <p class="text-[8px] text-gray-400 font-medium truncate">${c.desc}</p>
             </div>
-            ${!c.done ? `<button onclick="${c.action.includes('(') ? c.action : c.action + '()'}" class="text-[9px] font-black px-2 py-1 bg-brand-500 text-white rounded-lg whitespace-nowrap flex-shrink-0 hover:bg-brand-600 transition-colors">${c.actionLabel}</button>` : ''}
-        </div>`).join('');
+            ${!c.done ? `<button onclick="${buttonAction}" class="text-[9px] font-black px-2 py-1 ${notReady ? 'bg-gray-400' : 'bg-brand-500 hover:bg-brand-600'} text-white rounded-lg whitespace-nowrap flex-shrink-0 transition-colors">${c.actionLabel}</button>` : ''}
+        </div>`;
+    }).join('');
 
     el.innerHTML = `
         <div class="flex items-center justify-between mb-2">

@@ -51,49 +51,44 @@ const MYPET_TEMPLATE = `
 
             <!-- 헤더 -->
             <div class="px-6 pt-5 pb-4 border-b border-gray-100">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h2 class="text-xl font-bold text-gray-900 keep-all" id="pet-room-name-wrapper">
-                                <span id="pet-room-name">댕이의 하루 방 🏠</span>
-                            </h2>
-                            <!-- 영혼 조화도 배지 (방 제목 옆) — 클릭 시 조화도 탭 이동 -->
-                            <div id="room-harmony-badge" onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-                                <span id="room-harmony-icon" class="text-sm">💖</span>
-                                <span id="room-harmony-score" class="text-xs font-bold text-rose-600">조화도 보기</span>
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <h2 class="text-xl font-bold text-gray-900 keep-all mb-1.5" id="pet-room-name-wrapper">
+                            <span id="pet-room-name">댕이의 하루 방 🏠</span>
+                        </h2>
+                        <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
+                            🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
+                        </p>
+                    </div>
+                    <div class="flex items-start gap-2 shrink-0">
+                        <!-- 사주 정보 카드 -->
+                        <div id="room-saju-card" class="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-xl px-3.5 py-3 max-w-sm shadow-soft">
+                            <div class="text-[10px] leading-relaxed space-y-1.5">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="font-black text-violet-700">🔮 사주 분석</span>
+                                    <span id="room-saju-score" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">미측정</span>
+                                </div>
+                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5">
+                                    <div class="text-[9px] text-gray-500 border-b border-violet-100/50 pb-1">
+                                        <span class="font-bold text-violet-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
+                                        <div id="room-saju-owner-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
+                                    </div>
+                                    <div class="text-[9px] text-gray-500 border-b border-violet-100/50 pb-1">
+                                        <span class="font-bold text-amber-600">🐾 펫</span>: <span id="room-saju-pet">--년생</span>
+                                        <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
+                                    </div>
+                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5">
+                                        조화도 탭에서 사주 궁합을 분석해보세요
+                                    </div>
+                                </div>
+                                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[9px] font-bold text-violet-500 hover:text-violet-600 mt-1">
+                                    조화도 분석하기 →
+                                </button>
                             </div>
                         </div>
-                        <!-- 조화도 한 줄 메시지 (배지 아래) -->
-                        <div id="room-harmony-message" class="hidden mt-1.5">
-                            <p class="text-[11px] text-rose-600/80 font-medium leading-snug flex items-center gap-1">
-                                <span id="room-harmony-message-icon" class="text-sm">💖✨</span>
-                                <span id="room-harmony-message-title" class="font-black text-rose-700">완벽한 조화</span>
-                                <span class="text-gray-400">·</span>
-                                <span id="room-harmony-message-text" class="text-gray-500">영혼의 단짝! 완벽한 듀오입니다</span>
-                            </p>
-                        </div>
-                        <div class="flex items-center gap-2 mt-2">
-                            <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
-                                🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
-                            </p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <!-- 조화도 설명 카드 -->
-                        <div id="harmony-description-card" class="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-xl px-4 py-2.5 max-w-md">
-                            <p class="text-[11px] font-medium leading-relaxed">
-                                <span class="font-black text-rose-700">💖 영혼의 조화도</span>
-                                <span class="text-gray-600 ml-1">집사 사주와 펫 사주를 생년월일로 분석해 궁합을 0~100점으로 채점합니다. 조화도 탭에서 측정하고 마이룸에 등록하세요!</span>
-                            </p>
-                        </div>
-                        <!-- 사주 분석 버튼 -->
-                        <button onclick="switchTab('saju')" id="room-saju-btn"
-                            class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 border border-violet-200 flex items-center justify-center transition-all">
-                            <i class="fa-solid fa-yin-yang text-violet-500 text-sm"></i>
-                        </button>
                         <!-- 설정 버튼 -->
                         <button onclick="toggleRoomSettings()" id="room-settings-btn"
-                            class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all">
+                            class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all shrink-0">
                             <i class="fa-solid fa-gear text-gray-400 hover:text-amber-500 text-sm" id="room-settings-icon"></i>
                         </button>
                     </div>
@@ -327,10 +322,10 @@ const MYPET_TEMPLATE = `
     </div>
 
     <!-- 오른쪽: 챌린지 + 업적 -->
-    <div class="lg:col-span-3 space-y-3">
+    <div class="lg:col-span-3 space-y-2.5">
 
         <!-- 산책 streak 배너 -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
             <div id="walk-streak-banner">
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
                     <i class="fa-solid fa-fire text-gray-300"></i>
@@ -340,13 +335,37 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 일일 챌린지 -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-3 shadow-sm">
             <div id="daily-challenges"></div>
         </div>
 
         <!-- 업적 배지 -->
-        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
+        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
             <div id="achievement-badges"></div>
+        </div>
+
+        <!-- 조화도 카드 -->
+        <div id="harmony-widget-card" class="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-3 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-[10px] font-black text-gray-700">
+                    <span id="harmony-widget-icon">💖</span> 영혼의 조화도
+                </h3>
+                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[8px] font-bold text-rose-500 hover:text-rose-600">측정하기</button>
+            </div>
+            <div class="text-center mb-2">
+                <div id="harmony-widget-score" class="text-2xl font-black text-rose-600 mb-0.5">--점</div>
+                <div id="harmony-widget-title" class="text-[9px] font-bold text-gray-700">조화도를 측정해보세요</div>
+            </div>
+            <div class="space-y-1 pt-2 border-t border-rose-100">
+                <div class="flex items-center justify-between text-[9px]">
+                    <span class="text-gray-500">👤 집사</span>
+                    <span id="harmony-widget-butler" class="font-bold text-gray-700">--년생</span>
+                </div>
+                <div class="flex items-center justify-between text-[9px]">
+                    <span class="text-gray-500">🐾 펫</span>
+                    <span id="harmony-widget-pet" class="font-bold text-gray-700">--년생</span>
+                </div>
+            </div>
         </div>
 
     </div>

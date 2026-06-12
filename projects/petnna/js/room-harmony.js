@@ -56,26 +56,87 @@ function getThemeByHarmonyScore(score) {
 // 방 테마 업데이트 (조화도 기반)
 function updateRoomThemeByHarmony() {
     const roomCard = document.getElementById('pet-room-card');
-    const harmonyBadge = document.getElementById('room-harmony-badge');
-    const harmonyScore = document.getElementById('room-harmony-score');
-    const harmonyIcon = document.getElementById('room-harmony-icon');
     const sajuBtn = document.getElementById('room-saju-btn');
 
-    // 조화도 설명 요소
-    const harmonyMessage = document.getElementById('room-harmony-message');
-    const harmonyMessageIcon = document.getElementById('room-harmony-message-icon');
-    const harmonyMessageTitle = document.getElementById('room-harmony-message-title');
-    const harmonyMessageText = document.getElementById('room-harmony-message-text');
+    // 펫 객체 가져오기
+    const currentPet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const sajuData = currentPet?.sajuData;
+    const harmonyResult = currentPet?.harmonyData || (typeof AppStore !== 'undefined' ? AppStore.getState('harmonyResult') : null);
+    const petSaju = sajuData?.petBirth ? { year: sajuData.petBirth.split('-')[0] } : ((typeof AppStore !== 'undefined') ? AppStore.getState('petSaju') : null);
+    const butlerSaju = sajuData?.ownerBirth ? { year: sajuData.ownerBirth.split('-')[0] } : ((typeof AppStore !== 'undefined') ? AppStore.getState('butlerSaju') : null);
 
-    if (!roomCard) return;
+    // 헤더 오른쪽 사주 카드 업데이트 (항상 실행)
+    const roomSajuCard = document.getElementById('room-saju-card');
+    if (roomSajuCard) {
+        const butlerYear = butlerSaju?.year || '--';
+        const petYear = petSaju?.year || '--';
+        const butlerEl = document.getElementById('room-saju-butler');
+        const petEl = document.getElementById('room-saju-pet');
+        const scoreEl = document.getElementById('room-saju-score');
+        const messageEl = document.getElementById('room-saju-message');
+        const ownerSummaryEl = document.getElementById('room-saju-owner-summary');
+        const petSummaryEl = document.getElementById('room-saju-pet-summary');
 
-    // 사주 결과에서 조화도 가져오기
-    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+        if (butlerEl) butlerEl.textContent = `${butlerYear}년생`;
+        if (petEl) petEl.textContent = `${petYear}년생`;
+
+        // 요약 텍스트 업데이트
+        if (sajuData) {
+            const colorize = (text) => {
+                if (!text) return "";
+                return text.replace('木 (나무)', '<span class="text-emerald-600 font-bold">木 (나무)</span>')
+                           .replace('火 (불)', '<span class="text-rose-600 font-bold">火 (불)</span>')
+                           .replace('土 (흙)', '<span class="text-amber-700 font-bold">土 (흙)</span>')
+                           .replace('金 (쇠)', '<span class="text-gray-600 font-bold">金 (쇠)</span>')
+                           .replace('水 (물)', '<span class="text-sky-600 font-bold">水 (물)</span>');
+            };
+            if (ownerSummaryEl) ownerSummaryEl.innerHTML = colorize(sajuData.ownerSummary);
+            if (petSummaryEl) petSummaryEl.innerHTML = colorize(sajuData.petSummary);
+        } else {
+            if (ownerSummaryEl) ownerSummaryEl.textContent = '';
+            if (petSummaryEl) petSummaryEl.textContent = '';
+        }
+
+        // 조화도 결과가 있으면 점수와 메시지 표시
+        let score = 0;
+        let message = '조화도 탭에서 사주 궁합을 분석해보세요';
+        let isMeasured = false;
+
+        if (harmonyResult && harmonyResult.avgScore) {
+            score = Math.round(harmonyResult.avgScore);
+            isMeasured = true;
+            if (score >= 90) message = '영혼의 단짝! 완벽한 듀오입니다';
+            else if (score >= 75) message = '서로를 잘 이해하는 최고의 파트너';
+            else if (score >= 60) message = '서로에게 긍정적인 영향을 주는 관계';
+            else if (score >= 40) message = '노력하면 더욱 발전할 수 있는 관계';
+            else message = '서로 다른 성향, 이해와 배려가 필요해요';
+        } else if (sajuData && sajuData.compatScore) {
+            score = Math.round(sajuData.compatScore);
+            isMeasured = true;
+            message = sajuData.compatTitle ? `${sajuData.compatTitle}: ${sajuData.pastDesc || ''}` : '사주 궁합 분석 완료!';
+        }
+
+        if (isMeasured) {
+            if (scoreEl) {
+                scoreEl.textContent = `${score}점`;
+                scoreEl.className = 'text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full';
+            }
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
+        } else {
+            if (scoreEl) {
+                scoreEl.textContent = '미측정';
+                scoreEl.className = 'text-[9px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full';
+            }
+            if (messageEl) {
+                messageEl.textContent = '조화도 탭에서 사주 궁합을 분석해보세요';
+            }
+        }
+    }
 
     // 조화도 계산 완료 여부 확인
-    if (!harmonyResult || !harmonyResult.avgScore) {
-        // 조화도 미분석 상태: 배지와 설명 카드는 항상 표시
-        // 아무것도 숨기지 않음
+    if (!harmonyResult || !harmonyResult.avgScore || !roomCard) {
         return;
     }
 
@@ -86,56 +147,25 @@ function updateRoomThemeByHarmony() {
     // 방 배경 테마 변경
     roomCard.className = `bg-gradient-to-br ${theme.bgGradient} rounded-3xl border ${theme.borderColor} shadow-lg overflow-hidden transition-all duration-500`;
 
-    // 조화도 배지 표시
-    if (harmonyBadge) {
-        harmonyBadge.classList.remove('hidden');
-        harmonyBadge.classList.add('flex');
-        harmonyBadge.className = `flex items-center gap-1 px-2 py-0.5 bg-white/80 backdrop-blur-sm rounded-full border ${theme.borderColor} shadow-sm`;
-    }
+    // 조화도 위젯 카드 업데이트 (오른쪽 사이드바)
+    const harmonyWidgetCard = document.getElementById('harmony-widget-card');
+    if (harmonyWidgetCard) {
+        const widgetIcon = document.getElementById('harmony-widget-icon');
+        const widgetScore = document.getElementById('harmony-widget-score');
+        const widgetTitle = document.getElementById('harmony-widget-title');
+        const widgetButler = document.getElementById('harmony-widget-butler');
+        const widgetPet = document.getElementById('harmony-widget-pet');
 
-    if (harmonyIcon) {
-        harmonyIcon.textContent = theme.icon.split('')[0]; // 첫 번째 이모지만
-    }
+        if (widgetIcon) widgetIcon.textContent = theme.icon.split('')[0];
+        if (widgetScore) widgetScore.textContent = `${score}점`;
+        if (widgetTitle) widgetTitle.textContent = theme.name;
 
-    if (harmonyScore) {
-        harmonyScore.textContent = `${score}점`;
-        harmonyScore.className = 'text-[10px] font-black bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent';
-    }
-
-    // 조화도 설명 박스 표시
-    if (harmonyMessage) {
-        harmonyMessage.classList.remove('hidden');
-        harmonyMessage.className = `bg-white/60 backdrop-blur-sm border ${theme.borderColor} rounded-xl p-2.5 mt-2 transition-all duration-500`;
-    }
-
-    if (harmonyMessageIcon) {
-        harmonyMessageIcon.textContent = theme.icon;
-    }
-
-    if (harmonyMessageTitle) {
-        harmonyMessageTitle.textContent = theme.name;
-    }
-
-    if (harmonyMessageText) {
-        harmonyMessageText.textContent = theme.message;
-    }
-
-    // 오른쪽 조화도 설명 카드 표시
-    const harmonyDescCard = document.getElementById('harmony-description-card');
-    if (harmonyDescCard) {
-        harmonyDescCard.classList.remove('hidden');
-        harmonyDescCard.innerHTML = `
-            <p class="text-[11px] font-medium leading-relaxed">
-                <span class="font-black text-rose-700">${theme.icon} ${theme.name}</span>
-                <span class="text-gray-600 ml-1">${theme.message}</span>
-            </p>
-        `;
-    }
-
-    // 사주 분석 버튼 유지 (재분석 가능)
-    if (sajuBtn) {
-        sajuBtn.classList.remove('hidden');
-        sajuBtn.title = `조화도 ${score}점 - 클릭하여 상세 보기`;
+        if (widgetButler && butlerSaju) {
+            widgetButler.textContent = `${butlerSaju.year || butlerYear}년생`;
+        }
+        if (widgetPet && petSaju) {
+            widgetPet.textContent = `${petSaju.year || petYear}년생`;
+        }
     }
 
     console.log(`✨ Room theme updated: ${theme.name} (${score}점)`);

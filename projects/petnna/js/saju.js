@@ -484,6 +484,8 @@ function startSajuAnalysis() {
         else window.savedSajuScore = compatibility;
 
         const sajuData = {
+            petBirth: petBirth,
+            ownerBirth: ownerBirth,
             petSummary: `${petElement.el}의 기운을 가진 펫`,
             petDesc: `[${petElement.desc}]\n\n${petReading}`,
             ownerSummary: `${ownerElement.el}의 기운을 가진 집사`,
@@ -496,6 +498,19 @@ function startSajuAnalysis() {
         
         if (typeof pets !== 'undefined' && pets.length > 0) {
             getSajuPet().sajuData = sajuData;
+            
+            // Also store in AppStore immediately
+            if (typeof AppStore !== 'undefined') {
+                AppStore.setState('petSaju', {
+                    year: petBirth.split('-')[0],
+                    birthDate: petBirth
+                });
+                AppStore.setState('butlerSaju', {
+                    year: ownerBirth.split('-')[0],
+                    birthDate: ownerBirth
+                });
+            }
+            
             if (typeof saveState === 'function') saveState();
             if (typeof updatePetInSupabase === 'function') {
                 try { updatePetInSupabase(getSajuPet()); } catch(e) {}

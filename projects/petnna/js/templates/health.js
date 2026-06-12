@@ -268,6 +268,55 @@ const HEALTH_TEMPLATE = `
             </div>
         </div>
 
+        <!-- 돌봄 스케줄러 📅 -->
+        <div class="card-modern p-5 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b">
+                <h3 class="font-black text-gray-800 text-base flex items-center">
+                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
+                </h3>
+                <button onclick="openCareScheduleModal()"
+                    class="text-brand-600 hover:text-brand-700 font-black text-sm">
+                    <i class="fa-solid fa-plus mr-1.5"></i>일정 추가
+                </button>
+            </div>
+
+            <!-- 오늘의 일정 -->
+            <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-4 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-black text-gray-700">📅 오늘의 일정</span>
+                    <span id="care-completion-badge-health" class="text-xs font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"></span>
+                </div>
+                <div id="care-scheduler-container-health" class="space-y-2"></div>
+            </div>
+
+            <!-- 달력 헤더 -->
+            <div class="flex justify-between items-center">
+                <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span id="calendar-month-year-health" class="font-black text-sm text-gray-700">2026년 6월</span>
+                <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- 달력 그리드 -->
+            <div class="grid grid-cols-7 gap-1.5 text-center text-xs text-gray-400 font-bold uppercase tracking-wider border-b pb-2">
+                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+            </div>
+            <div id="calendar-days-health" class="grid grid-cols-7 gap-1.5 text-center text-sm">
+                <!-- 날짜들 동적 생성 -->
+            </div>
+
+            <!-- 다가오는 주요 돌봄 -->
+            <div class="space-y-3 pt-4 border-t border-gray-100">
+                <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">다가오는 핵심 돌봄 3</span>
+                <div id="upcoming-schedules-health" class="space-y-2.5">
+                    <!-- JS 동적 생성 -->
+                </div>
+            </div>
+        </div>
+
         <!-- 🍖 영양 관리 섹션 -->
         <div class="card-modern p-5">
             <div class="flex items-center justify-between mb-4">
@@ -336,55 +385,6 @@ const HEALTH_TEMPLATE = `
                     <div class="text-3xl font-bold text-sky-600 mb-1" id="health-today-water-tab">-- ml</div>
                     <p class="text-xs font-semibold text-gray-700 mb-1">오늘 음수량</p>
                     <p class="text-[10px] text-gray-500 mt-2">수분 섭취 습관이 중요합니다.</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 돌봄 스케줄러 📅 -->
-        <div class="card-modern p-5 space-y-4">
-            <div class="flex justify-between items-center pb-2 border-b">
-                <h3 class="font-black text-gray-800 text-base flex items-center">
-                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
-                </h3>
-                <button onclick="openCareScheduleModal()"
-                    class="text-brand-600 hover:text-brand-700 font-black text-sm">
-                    <i class="fa-solid fa-plus mr-1.5"></i>일정 추가
-                </button>
-            </div>
-
-            <!-- 오늘의 일정 -->
-            <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-4 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-black text-gray-700">📅 오늘의 일정</span>
-                    <span id="care-completion-badge-health" class="text-xs font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"></span>
-                </div>
-                <div id="care-scheduler-container-health" class="space-y-2"></div>
-            </div>
-
-            <!-- 달력 헤더 -->
-            <div class="flex justify-between items-center">
-                <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600 transition-colors">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </button>
-                <span id="calendar-month-year-health" class="font-black text-sm text-gray-700">2026년 6월</span>
-                <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600 transition-colors">
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
-            </div>
-
-            <!-- 달력 그리드 -->
-            <div class="grid grid-cols-7 gap-1.5 text-center text-xs text-gray-400 font-bold uppercase tracking-wider border-b pb-2">
-                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
-            </div>
-            <div id="calendar-days-health" class="grid grid-cols-7 gap-1.5 text-center text-sm">
-                <!-- 날짜들 동적 생성 -->
-            </div>
-
-            <!-- 다가오는 주요 돌봄 -->
-            <div class="space-y-3 pt-4 border-t border-gray-100">
-                <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">다가오는 핵심 돌봄 3</span>
-                <div id="upcoming-schedules-health" class="space-y-2.5">
-                    <!-- JS 동적 생성 -->
                 </div>
             </div>
         </div>
