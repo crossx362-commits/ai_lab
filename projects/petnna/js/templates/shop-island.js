@@ -5,12 +5,12 @@ const SHOP_ISLAND_TEMPLATE = `
 
   <!-- 헤더 -->
   <div class="iw-header">
-    <div class="iw-header-icon">🍌</div>
+    <div class="iw-header-icon">🗺️</div>
     <div>
-      <h1 class="iw-title">나노바나나 아일랜드 (펫 라이프)</h1>
-      <p class="iw-subtitle">나노바나나 이미지 지도를 탐험하고 핀을 클릭하여 상세 퀘스트를 진행하세요</p>
+      <h1 class="iw-title">펫 라이프 실시간 지도</h1>
+      <p class="iw-subtitle">현재 위치 기반으로 주변 펫 가맹점을 찾아보세요</p>
     </div>
-    <span class="iw-badge">BANANA WORLD MAP</span>
+    <span class="iw-badge">REAL-TIME MAP</span>
   </div>
 
   <!-- 3-Col 레이아웃 -->
@@ -53,35 +53,20 @@ const SHOP_ISLAND_TEMPLATE = `
       </div>
     </div>
 
-    <!-- 중앙: 나노바나나 이미지 기반 월드맵 -->
-    <div class="iw-map-container" id="petlife-map-container">
-      <!-- 배경 이미지 지도 -->
-      <div class="fiji-map-bg" style="
-        background-image: url('map.png');
-        background-size: cover;
-        background-position: center;
-        background-color: #bae6fd;
-        width: 100%;
-        height: 100%;
-        min-height: 480px;
-        position: relative;
-      ">
-        <!-- SVG 지시선 레이어 -->
-        <svg id="map-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:10;">
-          <path id="map-connector-line" d="" stroke="#4f46e5" stroke-width="0.5" stroke-dasharray="1.5,1" fill="none" opacity="0" style="transition: opacity 0.3s ease, d 0.3s ease;" />
-        </svg>
-
-        <!-- HTML 정보 말풍선 -->
-        <div id="map-html-callout" class="map-callout hidden" style="position:absolute; z-index:20; pointer-events:none; transform: translate(-50%, -100%); margin-top: -12px; transition: left 0.3s ease, top 0.3s ease;">
-          <div class="callout-box">
-            <span id="map-callout-text">가맹점명</span>
-          </div>
-          <div class="callout-arrow"></div>
-        </div>
-
-        <!-- 동적 가맹점 핀 컨테이너 -->
-        <div id="petlife-pins-container" class="pins-overlay" style="position:absolute; inset:0; z-index:5;"></div>
+    <!-- 중앙: 실시간 Leaflet 지도 -->
+    <div class="iw-map-container">
+      <!-- 지도 컨트롤 -->
+      <div class="map-controls">
+        <button onclick="moveToMyLocation()" class="map-control-btn" title="내 위치">
+          <i class="fa-solid fa-location-crosshairs"></i>
+        </button>
+        <button onclick="toggleMapStyle()" class="map-control-btn" title="지도 스타일">
+          <i class="fa-solid fa-map"></i>
+        </button>
       </div>
+
+      <!-- Leaflet 지도 -->
+      <div id="petlife-map" style="width:100%;height:100%;min-height:500px;border-radius:24px;"></div>
     </div>
 
     <!-- 우측: 가맹점 상세 퀘스트 정보창 패널 -->

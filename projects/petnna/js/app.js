@@ -123,9 +123,9 @@ const TabControllers = {
         },
         render() {
             if (typeof renderShop === 'function') renderShop();
-            // 펫라이프 핀 렌더링
+            // 펫라이프 실시간 지도 초기화
             setTimeout(() => {
-                if (typeof renderPetlifePins === 'function') renderPetlifePins();
+                if (typeof initPetlifeMap === 'function') initPetlifeMap();
             }, 150);
         },
         destroy() {
