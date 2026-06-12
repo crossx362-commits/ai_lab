@@ -3,7 +3,7 @@
 // ====================================================
 
 const PETLIFE_REAL_LOCATIONS = [
-    // 🏥 동물병원 (동쪽 섬들)
+    // 🏥 동물병원
     {
         id: 'hospital-snc',
         name: 'SNC 동물메디컬센터',
@@ -16,7 +16,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://www.sncamc.co.kr/',
         services: ['24시 응급진료', '외과수술', '내과진료', '건강검진', '입원케어'],
         color: '#dc2626',
-        position: { left: '89%', top: '64%' } // 동쪽 바나나 열도 아래쪽
+        lat: 37.4979, // 강남구 역삼동
+        lng: 127.0376
     },
     {
         id: 'hospital-central',
@@ -30,7 +31,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'http://www.cenamc.kr/',
         services: ['24시 응급', 'CT/MRI', '심장검사', '안과진료'],
         color: '#dc2626',
-        position: { left: '90%', top: '54%' } // 동쪽 바나나 열도 중앙
+        lat: 37.5635, // 성동구
+        lng: 127.0376
     },
     {
         id: 'hospital-24in',
@@ -44,23 +46,25 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://amc24in.com/',
         services: ['응급진료', '외과', '내과', '피부과'],
         color: '#e11d48',
-        position: { left: '89%', top: '44%' } // 동쪽 바나나 열도 위쪽
+        lat: 37.5326, // 영등포구
+        lng: 126.9026
     },
 
-    // 🏨 펫호텔 & 위탁 (서쪽 야사와 제도)
+    // 🏨 펫호텔 & 위탁
     {
         id: 'hotel-dogs',
         name: '호텔 독스',
         category: 'hotel',
         emoji: '🏨',
-        address: '서울 전역 (스마트 호텔)',
+        address: '서울 강남구 (스마트 호텔)',
         phone: '1661-9974',
         hours: '24시간 입/퇴실 가능',
         description: '24시간 CCTV, 비밀번호 견사, 스마트 자동화 펫호텔',
         website: 'https://hoteldogs.co.kr/hoteling',
         services: ['24시간 CCTV', '비밀번호 견사', '자동 급식', '24시간 입퇴실'],
         color: '#4f46e5',
-        position: { left: '12%', top: '42%' } // 서쪽 바나나 섬 위쪽
+        lat: 37.5172, // 강남구 중심
+        lng: 127.0473
     },
     {
         id: 'hotel-ijoa',
@@ -74,10 +78,11 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://www.ijoapetpark.com/ijoa/hotel.php',
         services: ['펫호텔', '수영장', '놀이공원', '카페'],
         color: '#4f46e5',
-        position: { left: '15%', top: '54%' } // 서쪽 바나나 섬 아래쪽
+        lat: 37.4138, // 경기도 광주시
+        lng: 127.2558
     },
 
-    // 🛁 애견미용 & 그루밍 (중앙 비티레부 섬)
+    // 🛁 애견미용 & 그루밍
     {
         id: 'grooming-character',
         name: '캐릭터그루밍',
@@ -90,7 +95,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://charactergrooming.imweb.me/',
         services: ['전견종 미용', '목욕', '스파', '네일케어'],
         color: '#0d9488',
-        position: { left: '34%', top: '38%' } // 중앙 메인 바나나 위쪽 굴곡
+        lat: 37.4920, // 강남구 도곡동
+        lng: 127.0541
     },
     {
         id: 'grooming-banjjak',
@@ -104,7 +110,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://banjjakpet.com/',
         services: ['미용샵 검색', '온라인 예약', '리뷰 확인'],
         color: '#0d9488',
-        position: { left: '39%', top: '48%' } // 중앙 메인 바나나 허리
+        lat: 37.5665, // 서울 중심
+        lng: 126.9780
     },
     {
         id: 'grooming-petvip',
@@ -118,10 +125,11 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://www.petvip.co.kr/',
         services: ['출장미용', '방문목욕', '부분미용', '방문훈련'],
         color: '#14b8a6',
-        position: { left: '45%', top: '57%' } // 중앙 메인 바나나 중심가
+        lat: 37.5400, // 서울 중남부
+        lng: 127.0000
     },
 
-    // 🍽️ 애견동반 카페 & 레스토랑 (북쪽 바누아레부)
+    // 🍽️ 애견동반 카페 & 레스토랑
     {
         id: 'cafe-kongti',
         name: '꽁티 드 툴레아',
@@ -134,7 +142,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: '#',
         services: ['브런치', '커피', '디저트', '반려견 동반'],
         color: '#f59e0b',
-        position: { left: '66%', top: '20%' } // 북쪽 바나나 숲속 오른쪽
+        lat: 37.5220, // 도산공원
+        lng: 127.0409
     },
     {
         id: 'cafe-slowforest',
@@ -148,7 +157,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: '#',
         services: ['루프탑', '반려견 동반', '커피', '디저트'],
         color: '#f59e0b',
-        position: { left: '58%', top: '22%' } // 북쪽 바나나 숲속 왼쪽
+        lat: 37.5858, // 종로구 삼청동
+        lng: 126.9831
     },
     {
         id: 'cafe-bottlefactory',
@@ -162,10 +172,11 @@ const PETLIFE_REAL_LOCATIONS = [
         website: '#',
         services: ['친환경', '실내동반', '커피', '브런치'],
         color: '#10b981',
-        position: { left: '36%', top: '52%' } // 중앙 메인 바나나 왼쪽 골짜기
+        lat: 37.5683, // 서대문구 연희동
+        lng: 126.9283
     },
 
-    // 🎓 애견훈련소 & 교육 (바누아레부 섬)
+    // 🎓 애견훈련소 & 교육
     {
         id: 'training-esac',
         name: '이삭애견훈련소',
@@ -178,7 +189,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://esac2000.co.kr/',
         services: ['기본훈련', '문제행동교정', '전문가과정', '1:1 맞춤'],
         color: '#8b5cf6',
-        position: { left: '74%', top: '26%' } // 북쪽 바나나 오른쪽 끝
+        lat: 37.4500, // 경기도 성남
+        lng: 127.1500
     },
     {
         id: 'training-dogmaru',
@@ -192,10 +204,11 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://dmhomeschool.co.kr/',
         services: ['배변훈련', '입질교정', '분리불안', '짖음훈련'],
         color: '#8b5cf6',
-        position: { left: '78%', top: '34%' } // 북쪽 바나나와 동쪽 열도 사이 교두보
+        lat: 37.5500, // 서울 중부
+        lng: 127.0500
     },
 
-    // 🛒 펫샵 & 용품 (비티레부 남동쪽)
+    // 🛒 펫샵 & 용품
     {
         id: 'shop-minipet',
         name: '미니펫 강남직영점',
@@ -208,7 +221,8 @@ const PETLIFE_REAL_LOCATIONS = [
         website: 'https://minipetmall.co.kr/',
         services: ['분양', '펫용품', '사료', '간식'],
         color: '#d97706',
-        position: { left: '54%', top: '68%' } // 중앙 메인 바나나 우측 하단 꼬리
+        lat: 37.5100, // 강남구
+        lng: 127.0600
     }
 ];
 
