@@ -127,6 +127,18 @@ function updateRoomThemeByHarmony() {
         harmonyMessageText.textContent = theme.message;
     }
 
+    // 오른쪽 조화도 설명 카드 표시
+    const harmonyDescCard = document.getElementById('harmony-description-card');
+    if (harmonyDescCard) {
+        harmonyDescCard.classList.remove('hidden');
+        harmonyDescCard.innerHTML = `
+            <p class="text-[11px] font-medium leading-relaxed">
+                <span class="font-black text-rose-700">${theme.icon} ${theme.name}</span>
+                <span class="text-gray-600 ml-1">${theme.message}</span>
+            </p>
+        `;
+    }
+
     // 사주 분석 버튼 유지 (재분석 가능)
     if (sajuBtn) {
         sajuBtn.classList.remove('hidden');
