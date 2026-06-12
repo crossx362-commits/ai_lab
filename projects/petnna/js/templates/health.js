@@ -226,7 +226,7 @@ const HEALTH_TEMPLATE = `
     </div>
     <!-- /왼쪽 컬럼 끝 -->
 
-    <!-- 오른쪽 컬럼 (월간 리포트 + 돌봄 스케줄러) -->
+    <!-- 오른쪽 컬럼 (월간 리포트 + 영양관리 + 돌봄 스케줄러) -->
     <div class="lg:col-span-4 space-y-4">
 
         <!-- 📊 월간 종합 리포트 -->
@@ -264,6 +264,78 @@ const HEALTH_TEMPLATE = `
                     <div class="text-2xl mb-1">🤖</div>
                     <div id="report-ai-count" class="text-xl font-bold text-sky-600">--회</div>
                     <div class="text-[10px] text-gray-600 font-semibold">AI분석</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🍖 영양 관리 섹션 -->
+        <div class="card-modern p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-3xl">🍖</span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">영양 관리</h3>
+                        <p class="text-[10px] text-gray-500">식사 · 시간 · 음수</p>
+                    </div>
+                </div>
+                <button onclick="toggleMealForm(true)" class="btn-modern bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-xs">
+                    <i class="fa-solid fa-plus mr-1"></i>기록
+                </button>
+            </div>
+
+            <!-- 탭 버튼 (밥먹/시간/음수) -->
+            <div class="flex gap-2 mb-3 p-1 bg-gray-100 rounded-xl">
+                <button id="meal-tab-food" onclick="switchMealTab('food')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all bg-white text-amber-600 shadow-sm">
+                    🍽️ 밥먹
+                </button>
+                <button id="meal-tab-time" onclick="switchMealTab('time')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
+                    ⏰ 시간
+                </button>
+                <button id="meal-tab-water" onclick="switchMealTab('water')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
+                    💧 음수
+                </button>
+            </div>
+
+            <!-- 기록 추가 폼 -->
+            <div id="meal-form" class="hidden card-modern bg-amber-50/50 p-3 space-y-2 mb-3">
+                <div class="flex items-center gap-2 text-amber-800 font-bold text-[10px]">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>새로운 기록 추가</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <select id="meal-type" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
+                        <option value="아침">🌅 아침 밥</option>
+                        <option value="점심">☀️ 점심 밥</option>
+                        <option value="저녁">🌙 저녁 밥</option>
+                        <option value="간식">🍖 간식 공급</option>
+                    </select>
+                    <input type="time" id="meal-time" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
+                </div>
+                <input type="text" id="meal-notes" placeholder="사료명, 양 (예: 연어 습식 80g)"
+                    class="w-full text-[11px] border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all">
+                <div class="flex gap-2 text-xs">
+                    <button onclick="toggleMealForm(false)" class="flex-1 btn-modern bg-gray-100 hover:bg-gray-200 text-gray-700 py-2">취소</button>
+                    <button onclick="saveMealRecord()" class="flex-1 btn-modern bg-amber-500 hover:bg-amber-600 text-white py-2">저장하기</button>
+                </div>
+            </div>
+
+            <!-- 탭 컨텐츠 -->
+            <div id="meal-content-food" class="meal-tab-content">
+                <div id="meal-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+            </div>
+            <div id="meal-content-time" class="meal-tab-content hidden">
+                <div class="text-center py-6 text-gray-400">
+                    <div class="text-4xl mb-2">⏰</div>
+                    <p class="text-xs font-medium">밥 먹는 시간 분석</p>
+                    <p class="text-[10px] mt-1">곧 업데이트 예정</p>
+                </div>
+            </div>
+            <div id="meal-content-water" class="meal-tab-content hidden">
+                <div class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-center">
+                    <div class="text-4xl mb-2">💧</div>
+                    <div class="text-3xl font-bold text-sky-600 mb-1" id="health-today-water-tab">-- ml</div>
+                    <p class="text-xs font-semibold text-gray-700 mb-1">오늘 음수량</p>
+                    <p class="text-[10px] text-gray-500 mt-2">수분 섭취 습관이 중요합니다.</p>
                 </div>
             </div>
         </div>
@@ -322,78 +394,6 @@ const HEALTH_TEMPLATE = `
 
     </div>
     <!-- /2컬럼 레이아웃 끝 -->
-
-    <!-- 🍖 영양 관리 섹션 -->
-    <div class="card-modern p-6">
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
-                <div class="text-4xl">🍖</div>
-                <div>
-                    <h2 class="text-lg font-bold text-gray-900">영양 관리</h2>
-                    <p class="text-xs text-gray-500">식사 · 시간 · 음수</p>
-                </div>
-            </div>
-            <button onclick="toggleMealForm(true)" class="btn-modern bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 text-sm">
-                <i class="fa-solid fa-plus mr-1.5"></i>기록
-            </button>
-        </div>
-
-        <!-- 탭 버튼 (밥먹/시간/음수) -->
-        <div class="flex gap-2 mb-4 p-1 bg-gray-100 rounded-xl">
-            <button id="meal-tab-food" onclick="switchMealTab('food')" class="flex-1 py-2.5 rounded-lg font-bold text-xs transition-all bg-white text-amber-600 shadow-sm">
-                🍽️ 밥먹
-            </button>
-            <button id="meal-tab-time" onclick="switchMealTab('time')" class="flex-1 py-2.5 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
-                ⏰ 시간
-            </button>
-            <button id="meal-tab-water" onclick="switchMealTab('water')" class="flex-1 py-2.5 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
-                💧 음수
-            </button>
-        </div>
-
-        <!-- 기록 추가 폼 -->
-        <div id="meal-form" class="hidden card-modern bg-amber-50/50 p-4 space-y-3 mb-4">
-            <div class="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span>새로운 기록 추가</span>
-            </div>
-            <div class="grid grid-cols-2 gap-3 text-xs">
-                <select id="meal-type" class="border-2 border-amber-200 rounded-xl p-2.5 outline-none bg-white font-medium focus:border-amber-400 transition-all">
-                    <option value="아침">🌅 아침 밥</option>
-                    <option value="점심">☀️ 점심 밥</option>
-                    <option value="저녁">🌙 저녁 밥</option>
-                    <option value="간식">🍖 간식 공급</option>
-                </select>
-                <input type="time" id="meal-time" class="border-2 border-amber-200 rounded-xl p-2.5 outline-none bg-white font-medium focus:border-amber-400 transition-all">
-            </div>
-            <input type="text" id="meal-notes" placeholder="사료명, 양, 칼로리 (예: 연어 습식 80g, 120kcal)"
-                class="w-full text-xs border-2 border-amber-200 rounded-xl p-2.5 outline-none bg-white font-medium focus:border-amber-400 transition-all">
-            <div class="flex gap-2 text-xs">
-                <button onclick="toggleMealForm(false)" class="flex-1 btn-modern bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5">취소</button>
-                <button onclick="saveMealRecord()" class="flex-1 btn-modern bg-amber-500 hover:bg-amber-600 text-white py-2.5">저장하기</button>
-            </div>
-        </div>
-
-        <!-- 탭 컨텐츠 -->
-        <div id="meal-content-food" class="meal-tab-content">
-            <div id="meal-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
-        </div>
-        <div id="meal-content-time" class="meal-tab-content hidden">
-            <div class="text-center py-8 text-gray-400">
-                <div class="text-5xl mb-3">⏰</div>
-                <p class="text-sm font-medium">밥 먹는 시간 분석</p>
-                <p class="text-xs mt-1">곧 업데이트 예정입니다</p>
-            </div>
-        </div>
-        <div id="meal-content-water" class="meal-tab-content hidden">
-            <div class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-5 text-center">
-                <div class="text-5xl mb-3">💧</div>
-                <div class="text-4xl font-bold text-sky-600 mb-2" id="health-today-water-tab">-- ml</div>
-                <p class="text-sm font-semibold text-gray-700 mb-1">오늘 음수량</p>
-                <p class="text-xs text-gray-500 mt-3">체력 소모가 큰 타입이므로 수분 섭취 습관이 중요합니다.</p>
-            </div>
-        </div>
-    </div>
 
 </div>
 `;
