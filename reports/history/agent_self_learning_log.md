@@ -46,3 +46,9 @@
 - **현빈**: [행동경제학 전략](projects/ai-team/skills/현빈_전략가/knowledge/learned_20260613_행동경제학_전략.md)
 - **루나**: [숏폼 스토리텔링](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260613_숏폼_스토리텔링.md)
 - **예원**: [시스템 사고](projects/ai-team/skills/예원_CEO/knowledge/learned_20260613_시스템_사고.md)
+
+
+## 2026-06-13 16:23 자가학습
+- **가희**: [AI 콘텐츠 검증](projects/ai-team/skills/가희_검수관/knowledge/learned_20260613_AI_콘텐츠_검증.md)
+- **루나**: [AI 영상 제작](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260613_AI_영상_제작.md)
+- **경수**: [제로 트러스트 보안](projects/ai-team/skills/경수_수사관/knowledge/learned_20260613_제로_트러스트_보안.md)
