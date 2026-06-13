@@ -821,11 +821,14 @@ async function sendFriendInvite(friendName, friendEmail, btnEl) {
 
     setTimeout(async () => {
         btnEl.innerText = "수락 완료!";
-        btnEl.classList.remove('bg-brand-500', 'hover:bg-brand-600', 'opacity-50', 'cursor-not-allowed');
+        btnEl.classList.remove('bg-brand-500', 'hover:bg-brand-600', 'bg-violet-500', 'hover:bg-violet-600', 'bg-blue-500', 'hover:bg-blue-600', 'opacity-50', 'cursor-not-allowed');
         btnEl.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
 
         sharedFriends.push({ name: friendName, email: friendEmail });
         localStorage.setItem('petna_shared_friends', JSON.stringify(sharedFriends));
+
+        // 친구 목록 즉시 업데이트
+        updateFriendListDisplay();
 
         // Supabase 연동: 친구 일기 가져오기
         if (typeof fetchFriendDiaries === 'function') {
@@ -1009,12 +1012,11 @@ function getSharedDiaryMocks() {
 
 
 
-function renderAlbumGallery() {
-    const container = document.getElementById('diary-timeline-container');
-    const emptyState = document.getElementById('diary-empty-state');
+// 친구 목록 표시 업데이트 (별도 함수로 분리)
+function updateFriendListDisplay() {
     const friendListContainer = document.getElementById('diary-shared-friends-list');
     const friendCountBadge = document.getElementById('diary-friend-count');
-    
+
     if (friendListContainer) {
         if (sharedFriends.length === 0) {
             friendListContainer.innerHTML = '<div class="text-center py-4 text-[10px] text-gray-400">아직 공유 중인 친구가 없습니다.</div>';
@@ -1023,11 +1025,15 @@ function renderAlbumGallery() {
             if (friendCountBadge) friendCountBadge.innerText = `${sharedFriends.length}명`;
             friendListContainer.innerHTML = sharedFriends.map(f => {
                 const friendName = typeof f === 'string' ? f : (f.name || f.email || '친구');
+                const isAI = friendName.includes('AI') || friendName.includes('에이전트') || friendName.includes('도우미') || friendName.includes('전문가');
+                const avatarBg = isAI ? 'bg-gradient-to-br from-violet-400 to-purple-500 text-white' : 'bg-brand-100 text-brand-500';
+                const avatarContent = isAI ? '🤖' : String(friendName).slice(0, 1);
+
                 return `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-500 flex items-center justify-center font-black overflow-hidden shadow-sm">
-                            ${String(friendName).slice(0, 1)}
+                        <div class="w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center font-black overflow-hidden shadow-sm">
+                            ${avatarContent}
                         </div>
                         <div>
                             <span class="block text-[11px] font-bold text-gray-800">${friendName}</span>
@@ -1039,6 +1045,14 @@ function renderAlbumGallery() {
             }).join('');
         }
     }
+}
+
+function renderAlbumGallery() {
+    const container = document.getElementById('diary-timeline-container');
+    const emptyState = document.getElementById('diary-empty-state');
+
+    // 친구 목록 업데이트
+    updateFriendListDisplay();
 
     if (!container) return;
 

@@ -33,6 +33,26 @@ const TabControllers = {
             }
         }
     },
+    health: {
+        initialized: false,
+        init() {
+            if (this.initialized) return;
+            this.initialized = true;
+            if (typeof AppLogger !== 'undefined') {
+                AppLogger.info('TabControllers: health initialized');
+            }
+        },
+        render() {
+            // 건강 탭 렌더링 로직
+            if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
+            if (typeof renderHealthAnalyses === 'function') renderHealthAnalyses();
+        },
+        destroy() {
+            if (typeof AppLogger !== 'undefined') {
+                AppLogger.info('TabControllers: health destroyed');
+            }
+        }
+    },
     walk: {
         initialized: false,
         init() {
@@ -103,6 +123,10 @@ const TabControllers = {
         },
         render() {
             if (typeof renderShop === 'function') renderShop();
+            // 펫라이프 실시간 지도 초기화
+            setTimeout(() => {
+                if (typeof initPetlifeMap === 'function') initPetlifeMap();
+            }, 150);
         },
         destroy() {
             if (typeof AppLogger !== 'undefined') {
@@ -282,6 +306,9 @@ const AppRouter = {
         }
 
         this.currentTab = tabName;
+        if (localStorage.getItem('petna_is_logged_in') === 'true') {
+            localStorage.setItem('petna_active_tab', tabName);
+        }
 
         // 6. 대상 탭 init & render 실행
         const controller = TabControllers[tabName];
@@ -318,34 +345,40 @@ function switchTab(tabName) {
     AppRouter.switchTab(tabName);
 }
 
-// 페이지 벗어날 때 확인창 표시
-window.addEventListener('beforeunload', function (e) {
-    // 로그아웃, 회원탈퇴 등 특정 작업 제외
-    if (window._allowPageExit) return;
-
-    // 페이지 이탈 확인 메시지
-    e.preventDefault();
-    e.returnValue = '변경사항이 저장되지 않을 수 있습니다. 페이지를 떠나시겠습니까?';
-    return e.returnValue;
-});
+// 페이지 벗어날 때 확인창 표시 (비활성화됨)
+// window.addEventListener('beforeunload', function (e) {
+//     // 로그아웃, 회원탈퇴 등 특정 작업 제외
+//     if (window._allowPageExit) return;
+//
+//     // 페이지 이탈 확인 메시지
+//     e.preventDefault();
+//     e.returnValue = '변경사항이 저장되지 않을 수 있습니다. 페이지를 떠나시겠습니까?';
+//     return e.returnValue;
+// });
 
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof checkPremiumFromUrl === 'function') checkPremiumFromUrl();
     // Inject templates dynamically before state setup and rendering
-    document.getElementById('tab-mypet').innerHTML = MYPET_TEMPLATE;
-            if(typeof initMypetClock === 'function') initMypetClock();
-    document.getElementById('tab-health').innerHTML = HEALTH_TEMPLATE;
-    document.getElementById('tab-walk').innerHTML = WALK_TEMPLATE;
-    document.getElementById('tab-social').innerHTML = SOCIAL_TEMPLATE;
-    document.getElementById('tab-album').innerHTML = ALBUM_TEMPLATE;
-    document.getElementById('tab-shop').innerHTML = SHOP_TEMPLATE;
+    try {
+        document.getElementById('tab-mypet').innerHTML = MYPET_TEMPLATE;
+        if(typeof initMypetClock === 'function') initMypetClock();
 
-    document.getElementById('tab-saju').innerHTML = SAJU_TEMPLATE;
+        if (typeof HEALTH_TEMPLATE !== 'undefined') {
+            document.getElementById('tab-health').innerHTML = HEALTH_TEMPLATE;
+        }
 
-    document.getElementById('tab-settings').innerHTML = SETTINGS_TEMPLATE;
-    document.getElementById('tab-mailbox').innerHTML = MAILBOX_TEMPLATE;
-    document.getElementById('tab-cart').innerHTML = CART_TEMPLATE;
-    document.getElementById('modal-container').innerHTML = MODALS_TEMPLATE;
+        document.getElementById('tab-walk').innerHTML = WALK_TEMPLATE;
+        document.getElementById('tab-social').innerHTML = SOCIAL_TEMPLATE;
+        document.getElementById('tab-album').innerHTML = ALBUM_TEMPLATE;
+        document.getElementById('tab-shop').innerHTML = SHOP_ISLAND_TEMPLATE;
+        document.getElementById('tab-saju').innerHTML = SAJU_TEMPLATE;
+        document.getElementById('tab-settings').innerHTML = SETTINGS_TEMPLATE;
+        document.getElementById('tab-mailbox').innerHTML = MAILBOX_TEMPLATE;
+        document.getElementById('tab-cart').innerHTML = CART_TEMPLATE;
+        document.getElementById('modal-container').innerHTML = MODALS_TEMPLATE;
+    } catch(e) {
+        console.error('템플릿 초기화 오류:', e);
+    }
 
     applyThemeStyles(settings_theme);
 
@@ -376,7 +409,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (mobileNavbarEl) mobileNavbarEl.classList.remove('hidden');
         if (mobileHeaderEl) mobileHeaderEl.style.display = 'flex';
         document.body.classList.add('logged-in');
-        try { switchTab('mypet'); } catch(e) { console.warn('switchTab 오류:', e); }
+        try {
+            const activeTab = localStorage.getItem('petna_active_tab') || 'mypet';
+            switchTab(activeTab);
+        } catch(e) {
+            console.warn('switchTab 오류:', e);
+        }
     } else {
         if (loginOverlay) {
             loginOverlay.style.display = 'flex';

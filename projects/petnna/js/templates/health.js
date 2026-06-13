@@ -1,66 +1,40 @@
 // health.js — 건강 탭 템플릿 (티모 디자인 반영 + 아이콘 중심 UI)
 
 const HEALTH_TEMPLATE = `
-<div class="space-y-5 animate-fade-in">
+<div class="space-y-4 animate-fade-in">
 
     <!-- 헤더 -->
-    <div class="glass rounded-2xl px-6 py-6 shadow-soft-lg border border-violet-100/50">
+    <div class="glass rounded-2xl px-6 py-5 shadow-soft-lg border border-violet-100/50">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-soft">
-                    <span class="text-4xl">❤️</span>
+                <div class="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-soft">
+                    <span class="text-3xl">❤️</span>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">건강 대시보드</h1>
-                    <p class="text-sm text-gray-500 mt-1"><span id="health-pet-name" class="font-semibold text-violet-600">댕이</span>의 건강 관리</p>
+                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">건강 대시보드</h1>
+                    <p class="text-xs text-gray-500 mt-1">펫별 건강 관리 및 기록</p>
                 </div>
             </div>
-            <button onclick="generateWeeklyHealthData()"
-                class="btn-modern px-5 py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm border border-violet-200/50">
-                <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
-            </button>
+            <div class="flex items-center gap-3">
+                <!-- 펫 선택 드롭다운 -->
+                <select id="health-pet-selector" onchange="onHealthPetChange()"
+                    class="px-4 py-2 bg-white border border-violet-200 rounded-xl text-sm font-bold text-violet-700 hover:border-violet-300 transition-colors cursor-pointer">
+                    <option value="">펫 선택</option>
+                </select>
+                <button onclick="generateWeeklyHealthData()"
+                    class="btn-modern px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm border border-violet-200/50">
+                    <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- 📊 월간 종합 리포트 -->
-    <div class="card-modern p-6">
-        <div class="flex justify-between items-center mb-5">
-            <div class="flex items-center gap-3">
-                <span class="text-4xl">📊</span>
-                <div>
-                    <h3 class="text-lg font-bold text-gray-900">월간 종합 리포트</h3>
-                    <p class="text-xs text-gray-500">건강 + 일정 + AI 분석 통합</p>
-                </div>
-            </div>
-            <button onclick="generateHealthReportPDF()"
-                class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-4 py-2.5 text-sm">
-                <i class="fa-solid fa-file-pdf mr-1.5"></i>PDF
-                <span class="text-[10px] bg-amber-400 text-gray-900 px-2 py-0.5 rounded-full ml-2 font-bold">PRO</span>
-            </button>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="card-modern bg-violet-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">💯</div>
-                <div id="report-health-score" class="text-3xl font-bold text-violet-600 mb-1">--</div>
-                <div class="text-xs text-gray-600 font-semibold">건강점수</div>
-            </div>
-            <div class="card-modern bg-emerald-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">📅</div>
-                <div id="report-care-rate" class="text-3xl font-bold text-emerald-600 mb-1">--%</div>
-                <div class="text-xs text-gray-600 font-semibold">준수율</div>
-            </div>
-            <div class="card-modern bg-amber-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">🔥</div>
-                <div id="report-streak" class="text-3xl font-bold text-amber-600 mb-1">--일</div>
-                <div class="text-xs text-gray-600 font-semibold">연속기록</div>
-            </div>
-            <div class="card-modern bg-sky-50/50 p-4 text-center">
-                <div class="text-4xl mb-2">🤖</div>
-                <div id="report-ai-count" class="text-3xl font-bold text-sky-600 mb-1">--회</div>
-                <div class="text-xs text-gray-600 font-semibold">AI분석</div>
-            </div>
-        </div>
-    </div>
+    <!-- 2컬럼 레이아웃 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
+    <div class="lg:col-span-8 space-y-4">
+
 
     <!-- 📋 오늘의 건강 기록 -->
     <div class="card-modern p-6">
@@ -245,79 +219,181 @@ const HEALTH_TEMPLATE = `
                 AI 분석은 참고용이며 의학적 진단이 아닙니다. 이상 시 수의사와 상담하세요.
             </p>
         </div>
-    </div>
 
-    <!-- 🍖 영양 관리 섹션 -->
-    <div class="card-modern p-6">
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
-                <div class="text-4xl">🍖</div>
-                <div>
-                    <h2 class="text-lg font-bold text-gray-900">영양 관리</h2>
-                    <p class="text-xs text-gray-500">식사 · 시간 · 음수</p>
+    </div>
+    <!-- /AI 기능 섹션 끝 -->
+
+    </div>
+    <!-- /왼쪽 컬럼 끝 -->
+
+    <!-- 오른쪽 컬럼 (월간 리포트 + 영양관리 + 돌봄 스케줄러) -->
+    <div class="lg:col-span-4 space-y-4">
+
+        <!-- 📊 월간 종합 리포트 -->
+        <div class="card-modern p-4">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-3xl">📊</span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">월간 리포트</h3>
+                        <p class="text-[10px] text-gray-500">이번 달 요약</p>
+                    </div>
+                </div>
+                <button onclick="generateHealthReportPDF()"
+                    class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-3 py-2 text-xs">
+                    <i class="fa-solid fa-file-pdf mr-1"></i>PDF
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="card-modern bg-violet-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">💯</div>
+                    <div id="report-health-score" class="text-xl font-bold text-violet-600">--</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">건강점수</div>
+                </div>
+                <div class="card-modern bg-emerald-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">📅</div>
+                    <div id="report-care-rate" class="text-xl font-bold text-emerald-600">--%</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">준수율</div>
+                </div>
+                <div class="card-modern bg-amber-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">🔥</div>
+                    <div id="report-streak" class="text-xl font-bold text-amber-600">--일</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">연속기록</div>
+                </div>
+                <div class="card-modern bg-sky-50/50 p-3 text-center">
+                    <div class="text-2xl mb-1">🤖</div>
+                    <div id="report-ai-count" class="text-xl font-bold text-sky-600">--회</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">AI분석</div>
                 </div>
             </div>
-            <button onclick="toggleMealForm(true)" class="btn-modern bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 text-sm">
-                <i class="fa-solid fa-plus mr-1.5"></i>기록
-            </button>
         </div>
 
-        <!-- 탭 버튼 (밥먹/시간/음수) -->
-        <div class="flex gap-2 mb-4 p-1 bg-gray-100 rounded-xl">
-            <button id="meal-tab-food" onclick="switchMealTab('food')" class="flex-1 py-2.5 rounded-lg font-bold text-xs transition-all bg-white text-amber-600 shadow-sm">
-                🍽️ 밥먹
-            </button>
-            <button id="meal-tab-time" onclick="switchMealTab('time')" class="flex-1 py-2.5 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
-                ⏰ 시간
-            </button>
-            <button id="meal-tab-water" onclick="switchMealTab('water')" class="flex-1 py-2.5 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
-                💧 음수
-            </button>
+        <!-- 돌봄 스케줄러 📅 -->
+        <div class="card-modern p-5 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b">
+                <h3 class="font-black text-gray-800 text-base flex items-center">
+                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
+                </h3>
+                <button onclick="openCareScheduleModal()"
+                    class="text-brand-600 hover:text-brand-700 font-black text-sm">
+                    <i class="fa-solid fa-plus mr-1.5"></i>일정 추가
+                </button>
+            </div>
+
+            <!-- 오늘의 일정 -->
+            <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-4 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-black text-gray-700">📅 오늘의 일정</span>
+                    <span id="care-completion-badge-health" class="text-xs font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"></span>
+                </div>
+                <div id="care-scheduler-container-health" class="space-y-2"></div>
+            </div>
+
+            <!-- 달력 헤더 -->
+            <div class="flex justify-between items-center">
+                <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span id="calendar-month-year-health" class="font-black text-sm text-gray-700">2026년 6월</span>
+                <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- 달력 그리드 -->
+            <div class="grid grid-cols-7 gap-1.5 text-center text-xs text-gray-400 font-bold uppercase tracking-wider border-b pb-2">
+                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+            </div>
+            <div id="calendar-days-health" class="grid grid-cols-7 gap-1.5 text-center text-sm">
+                <!-- 날짜들 동적 생성 -->
+            </div>
+
+            <!-- 다가오는 주요 돌봄 -->
+            <div class="space-y-3 pt-4 border-t border-gray-100">
+                <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">다가오는 핵심 돌봄 3</span>
+                <div id="upcoming-schedules-health" class="space-y-2.5">
+                    <!-- JS 동적 생성 -->
+                </div>
+            </div>
         </div>
 
-        <!-- 기록 추가 폼 -->
-        <div id="meal-form" class="hidden card-modern bg-amber-50/50 p-4 space-y-3 mb-4">
-            <div class="flex items-center gap-2 text-amber-800 font-bold text-xs">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span>새로운 기록 추가</span>
+        <!-- 🍖 영양 관리 섹션 -->
+        <div class="card-modern p-5">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-3xl">🍖</span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">영양 관리</h3>
+                        <p class="text-[10px] text-gray-500">식사 · 시간 · 음수</p>
+                    </div>
+                </div>
+                <button onclick="toggleMealForm(true)" class="btn-modern bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-xs">
+                    <i class="fa-solid fa-plus mr-1"></i>기록
+                </button>
             </div>
-            <div class="grid grid-cols-2 gap-3 text-xs">
-                <select id="meal-type" class="border-2 border-amber-200 rounded-xl p-2.5 outline-none bg-white font-medium focus:border-amber-400 transition-all">
-                    <option value="아침">🌅 아침 밥</option>
-                    <option value="점심">☀️ 점심 밥</option>
-                    <option value="저녁">🌙 저녁 밥</option>
-                    <option value="간식">🍖 간식 공급</option>
-                </select>
-                <input type="time" id="meal-time" class="border-2 border-amber-200 rounded-xl p-2.5 outline-none bg-white font-medium focus:border-amber-400 transition-all">
+
+            <!-- 탭 버튼 (밥먹/시간/음수) -->
+            <div class="flex gap-2 mb-3 p-1 bg-gray-100 rounded-xl">
+                <button id="meal-tab-food" onclick="switchMealTab('food')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all bg-white text-amber-600 shadow-sm">
+                    🍽️ 밥먹
+                </button>
+                <button id="meal-tab-time" onclick="switchMealTab('time')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
+                    ⏰ 시간
+                </button>
+                <button id="meal-tab-water" onclick="switchMealTab('water')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
+                    💧 음수
+                </button>
             </div>
-            <input type="text" id="meal-notes" placeholder="사료명, 양, 칼로리 (예: 연어 습식 80g, 120kcal)"
-                class="w-full text-xs border-2 border-amber-200 rounded-xl p-2.5 outline-none bg-white font-medium focus:border-amber-400 transition-all">
-            <div class="flex gap-2 text-xs">
-                <button onclick="toggleMealForm(false)" class="flex-1 btn-modern bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5">취소</button>
-                <button onclick="saveMealRecord()" class="flex-1 btn-modern bg-amber-500 hover:bg-amber-600 text-white py-2.5">저장하기</button>
+
+            <!-- 기록 추가 폼 -->
+            <div id="meal-form" class="hidden card-modern bg-amber-50/50 p-3 space-y-2 mb-3">
+                <div class="flex items-center gap-2 text-amber-800 font-bold text-[10px]">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>새로운 기록 추가</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <select id="meal-type" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
+                        <option value="아침">🌅 아침 밥</option>
+                        <option value="점심">☀️ 점심 밥</option>
+                        <option value="저녁">🌙 저녁 밥</option>
+                        <option value="간식">🍖 간식 공급</option>
+                    </select>
+                    <input type="time" id="meal-time" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
+                </div>
+                <input type="text" id="meal-notes" placeholder="사료명, 양 (예: 연어 습식 80g)"
+                    class="w-full text-[11px] border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all">
+                <div class="flex gap-2 text-xs">
+                    <button onclick="toggleMealForm(false)" class="flex-1 btn-modern bg-gray-100 hover:bg-gray-200 text-gray-700 py-2">취소</button>
+                    <button onclick="saveMealRecord()" class="flex-1 btn-modern bg-amber-500 hover:bg-amber-600 text-white py-2">저장하기</button>
+                </div>
+            </div>
+
+            <!-- 탭 컨텐츠 -->
+            <div id="meal-content-food" class="meal-tab-content">
+                <div id="meal-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+            </div>
+            <div id="meal-content-time" class="meal-tab-content hidden">
+                <div class="text-center py-6 text-gray-400">
+                    <div class="text-4xl mb-2">⏰</div>
+                    <p class="text-xs font-medium">밥 먹는 시간 분석</p>
+                    <p class="text-[10px] mt-1">곧 업데이트 예정</p>
+                </div>
+            </div>
+            <div id="meal-content-water" class="meal-tab-content hidden">
+                <div class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-center">
+                    <div class="text-4xl mb-2">💧</div>
+                    <div class="text-3xl font-bold text-sky-600 mb-1" id="health-today-water-tab">-- ml</div>
+                    <p class="text-xs font-semibold text-gray-700 mb-1">오늘 음수량</p>
+                    <p class="text-[10px] text-gray-500 mt-2">수분 섭취 습관이 중요합니다.</p>
+                </div>
             </div>
         </div>
 
-        <!-- 탭 컨텐츠 -->
-        <div id="meal-content-food" class="meal-tab-content">
-            <div id="meal-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
-        </div>
-        <div id="meal-content-time" class="meal-tab-content hidden">
-            <div class="text-center py-8 text-gray-400">
-                <div class="text-5xl mb-3">⏰</div>
-                <p class="text-sm font-medium">밥 먹는 시간 분석</p>
-                <p class="text-xs mt-1">곧 업데이트 예정입니다</p>
-            </div>
-        </div>
-        <div id="meal-content-water" class="meal-tab-content hidden">
-            <div class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-5 text-center">
-                <div class="text-5xl mb-3">💧</div>
-                <div class="text-4xl font-bold text-sky-600 mb-2" id="health-today-water-tab">-- ml</div>
-                <p class="text-sm font-semibold text-gray-700 mb-1">오늘 음수량</p>
-                <p class="text-xs text-gray-500 mt-3">체력 소모가 큰 타입이므로 수분 섭취 습관이 중요합니다.</p>
-            </div>
-        </div>
     </div>
+    <!-- /오른쪽 컬럼 끝 -->
+
+    </div>
+    <!-- /2컬럼 레이아웃 끝 -->
 
 </div>
 `;

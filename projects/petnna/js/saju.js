@@ -180,6 +180,112 @@ function saveIqToWidget() {
     if (typeof showToast === 'function') showToast('마이룸 위젯에 IQ 점수가 저장되었습니다! 🧠');
 }
 
+// 조화도를 마이룸에 등록
+function saveHarmonyToWidget() {
+    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+
+    if (!harmonyResult || !harmonyResult.avgScore) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ 조화도를 먼저 측정해주세요!');
+        }
+        return;
+    }
+
+    // 상태 저장
+    if (typeof saveState === 'function') saveState();
+
+    // 방 조화도 업데이트
+    if (typeof updateRoomThemeByHarmony === 'function') {
+        updateRoomThemeByHarmony();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`💖 조화도 ${Math.round(harmonyResult.avgScore)}점이 마이룸에 등록되었습니다!`);
+    }
+
+    // 마이펫 탭으로 이동
+    setTimeout(() => {
+        if (typeof switchTab === 'function') {
+            switchTab('mypet');
+        }
+    }, 1500);
+}
+
+window.saveHarmonyToWidget = saveHarmonyToWidget;
+
+// 조화도를 소셜 피드에 공유
+function shareHarmonyToSocial() {
+    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const ownerName = (typeof settings_nickname !== 'undefined' && settings_nickname) ? settings_nickname : '집사';
+
+    if (!harmonyResult || !harmonyResult.avgScore) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ 조화도를 먼저 측정해주세요!');
+        }
+        return;
+    }
+
+    const score = Math.round(harmonyResult.avgScore);
+    const petName = pet?.name || '댕이';
+    const petAvatar = pet?.imageUrl || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300';
+
+    // 점수별 메시지
+    let message = '';
+    let emoji = '💖';
+    if (score >= 90) {
+        message = `${ownerName}와 ${petName}는 영혼의 단짝! 완벽한 듀오입니다 💖✨`;
+        emoji = '💖✨';
+    } else if (score >= 75) {
+        message = `${ownerName}와 ${petName}는 서로를 잘 이해하는 최고의 파트너 💛🌟`;
+        emoji = '💛🌟';
+    } else if (score >= 60) {
+        message = `${ownerName}와 ${petName}는 서로에게 긍정적인 영향을 주는 관계 💚🍀`;
+        emoji = '💚🍀';
+    } else if (score >= 40) {
+        message = `${ownerName}와 ${petName}는 노력하면 더욱 발전할 수 있는 관계 💙⭐`;
+        emoji = '💙⭐';
+    } else {
+        message = `${ownerName}와 ${petName}는 서로 다른 성향, 이해와 배려가 필요해요 🤍🌈`;
+        emoji = '🤍🌈';
+    }
+
+    // 소셜 피드 포스트 생성
+    const newPost = {
+        id: Date.now(),
+        petName: petName,
+        petAvatar: petAvatar,
+        content: `${emoji} 영혼의 조화도 측정 결과: ${score}점!\n\n${message}`,
+        image: null,
+        isVideo: false,
+        videoUrl: null,
+        likes: 0,
+        liked: false,
+        comments: [],
+        attachedWalk: null,
+        attachedAiHealth: null
+    };
+
+    // posts 배열에 추가
+    if (typeof posts !== 'undefined') {
+        posts.unshift(newPost);
+    }
+
+    if (typeof saveState === 'function') saveState();
+    if (typeof showToast === 'function') {
+        showToast(`✅ 조화도가 소셜 피드에 공유되었습니다!`);
+    }
+
+    // 소셜 탭으로 이동
+    setTimeout(() => {
+        if (typeof switchTab === 'function') {
+            switchTab('social');
+        }
+    }, 1500);
+}
+
+window.shareHarmonyToSocial = shareHarmonyToSocial;
+
 function saveIqResult() {
     if (typeof saveState === 'function') saveState();
     if (typeof showToast === 'function') showToast('IQ 결과가 저장되었습니다! 🧠');
@@ -378,6 +484,8 @@ function startSajuAnalysis() {
         else window.savedSajuScore = compatibility;
 
         const sajuData = {
+            petBirth: petBirth,
+            ownerBirth: ownerBirth,
             petSummary: `${petElement.el}의 기운을 가진 펫`,
             petDesc: `[${petElement.desc}]\n\n${petReading}`,
             ownerSummary: `${ownerElement.el}의 기운을 가진 집사`,
@@ -390,6 +498,19 @@ function startSajuAnalysis() {
         
         if (typeof pets !== 'undefined' && pets.length > 0) {
             getSajuPet().sajuData = sajuData;
+            
+            // Also store in AppStore immediately
+            if (typeof AppStore !== 'undefined') {
+                AppStore.setState('petSaju', {
+                    year: petBirth.split('-')[0],
+                    birthDate: petBirth
+                });
+                AppStore.setState('butlerSaju', {
+                    year: ownerBirth.split('-')[0],
+                    birthDate: ownerBirth
+                });
+            }
+            
             if (typeof saveState === 'function') saveState();
             if (typeof updatePetInSupabase === 'function') {
                 try { updatePetInSupabase(getSajuPet()); } catch(e) {}
@@ -937,7 +1058,9 @@ let currentSpawnRate = 800; // 초기 스폰 속도 (ms)
 function updateLivesDisplay() {
     const livesDisplay = document.getElementById('arcade-lives-display');
     if(livesDisplay) {
-        livesDisplay.innerText = '❤️'.repeat(arcadeLives) + '💔'.repeat(3 - arcadeLives);
+        const hearts = Math.max(0, arcadeLives);
+        const broken = Math.max(0, 3 - hearts);
+        livesDisplay.innerText = '❤️'.repeat(hearts) + '💔'.repeat(broken);
     }
 }
 
@@ -953,7 +1076,7 @@ function startArcadeGame() {
     if (startBest) startBest.innerText = arcadeBestScore;
 
     arcadeScore = 0;
-    arcadeLives = 5;
+    arcadeLives = 3;
     gameActive = true;
     currentSpawnRate = 1400; // 난이도 초기화 (완화)
     
@@ -998,7 +1121,7 @@ function spawnArcadeItem() {
     const points = isSpecial ? 5 : 1;
     const size = isSpecial ? 'text-5xl' : 'text-4xl'; // 더 크게 — 터치 쉽게
 
-    item.className = `absolute cursor-pointer select-none transition-transform hover:scale-125 ${size} p-2`; // p-2로 터치 영역 확보
+    item.className = `absolute cursor-pointer select-none hover:scale-125 ${size} p-2 z-10`; // p-2로 터치 영역 확보, z-10으로 오버레이 위에 표시
     item.innerText = emoji;
     
     // Random position
@@ -1033,7 +1156,7 @@ function spawnArcadeItem() {
 
         // Pop effect
         item.innerText = '✨';
-        item.style.transition = 'all 0.2s';
+        item.style.transition = 'transform 0.2s, opacity 0.2s';
         item.classList.add('scale-150', 'opacity-0');
 
         setTimeout(() => {
@@ -1050,15 +1173,18 @@ function spawnArcadeItem() {
     setTimeout(() => {
         if(!item.clicked && gameActive) {
             // 놓쳤을 경우 라이프 감소
-            arcadeLives--;
+            arcadeLives = Math.max(0, arcadeLives - 1);
             updateLivesDisplay();
             
             if(arcadeLives <= 0) {
                 endArcadeGame();
+                return;
             }
         }
-        if(item.parentNode) item.parentNode.removeChild(item);
-    }, duration);
+        if(item.parentNode) {
+            try { item.parentNode.removeChild(item); } catch(e) {}
+        }
+    }, duration + 100);
 }
 
 function endArcadeGame() {

@@ -33,12 +33,8 @@ function switchMealTab(tab) {
 }
 
 function renderHealthTab() {
-    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
-    const petName = pet?.name || '댕이';
-
-    // 펫 이름 업데이트
-    const petNameEl = document.getElementById('health-pet-name');
-    if (petNameEl) petNameEl.textContent = petName;
+    // 펫 선택 드롭다운 초기화
+    updateHealthPetSelector();
 
     // 건강 요약 카드 업데이트
     updateHealthSummaryCards();
@@ -58,27 +54,78 @@ function renderHealthTab() {
     if (typeof renderMealLogsList === 'function') renderMealLogsList();
 }
 
+// 펫 선택 드롭다운 업데이트
+function updateHealthPetSelector() {
+    const selector = document.getElementById('health-pet-selector');
+    if (!selector) return;
+
+    const pets = (typeof AppStore !== 'undefined') ? AppStore.getState('pets') : [];
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+
+    selector.innerHTML = '<option value="">펫 선택</option>';
+
+    pets.forEach(pet => {
+        const option = document.createElement('option');
+        option.value = pet.id;
+        option.textContent = `${pet.name} (${pet.type || '반려동물'})`;
+        if (activePet && pet.id === activePet.id) {
+            option.selected = true;
+        }
+        selector.appendChild(option);
+    });
+}
+
+// 펫 변경 핸들러
+function onHealthPetChange() {
+    const selector = document.getElementById('health-pet-selector');
+    if (!selector) return;
+
+    const petId = parseInt(selector.value);
+    if (!petId) return;
+
+    // 활성 펫 변경
+    if (typeof setActivePet === 'function') {
+        setActivePet(petId);
+    }
+
+    // 건강 탭 새로고침
+    renderHealthTab();
+
+    if (typeof showToast === 'function') {
+        const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+        showToast(`${pet?.name || '펫'}의 건강 정보로 전환되었습니다`);
+    }
+}
+
+// 전역 함수 등록
+window.onHealthPetChange = onHealthPetChange;
+
 // 건강 요약 카드 업데이트
 function updateHealthSummaryCards() {
     const score = (typeof calcHealthScore === 'function') ? calcHealthScore() : 0;
     const streak = (typeof calcHealthStreak === 'function') ? calcHealthStreak() : 0;
 
-    const scoreEl = document.getElementById('health-summary-score');
-    const streakEl = document.getElementById('health-summary-streak');
+    const scoreEl = document.getElementById('report-health-score');
+    const streakEl = document.getElementById('report-streak');
 
     if (scoreEl) scoreEl.textContent = score || '--';
     if (streakEl) streakEl.textContent = streak ? `${streak}일` : '--일';
 
-    // 평균 식사량/음수량
-    const last7Days = (typeof getLast7DaysHealthData === 'function') ? getLast7DaysHealthData() : [];
-    const avgFood = last7Days.length ? Math.round(last7Days.reduce((s, d) => s + d.food, 0) / 7) : 0;
-    const avgWater = last7Days.length ? Math.round(last7Days.reduce((s, d) => s + d.water, 0) / 7) : 0;
+    // 준수율
+    const rateEl = document.getElementById('report-care-rate');
+    if (rateEl) {
+        const rate = (typeof getWeeklyCareCompletionRate === 'function') ? getWeeklyCareCompletionRate() : 0;
+        rateEl.textContent = rate ? `${rate}%` : '--%';
+    }
 
-    const foodEl = document.getElementById('health-summary-food');
-    const waterEl = document.getElementById('health-summary-water');
-
-    if (foodEl) foodEl.textContent = avgFood ? `${avgFood}g` : '--g';
-    if (waterEl) waterEl.textContent = avgWater ? `${avgWater}ml` : '--ml';
+    // AI 분석 횟수
+    const aiCountEl = document.getElementById('report-ai-count');
+    if (aiCountEl) {
+        const analyses = (typeof getHealthAnalyses === 'function') ? getHealthAnalyses() : [];
+        const thisMonth = new Date().toISOString().slice(0, 7);
+        const monthlyCount = analyses.filter(a => a.date && a.date.startsWith(thisMonth)).length;
+        aiCountEl.textContent = `${monthlyCount}회`;
+    }
 }
 
 // 오늘의 건강 기록 표시

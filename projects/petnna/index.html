@@ -48,8 +48,8 @@
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="css/leaflet.css">
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css?v=134">
-    <link rel="stylesheet" href="css/modern-design.css?v=1">
+    <link rel="stylesheet" href="css/style.css?v=135">
+    <link rel="stylesheet" href="css/modern-design.css?v=135">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>
         window._env_ = {
@@ -63,7 +63,7 @@
 
     <!-- Supabase Cloud Sync Engine -->
     <script src="js/supabase-js.js"></script>
-    <script src="js/supabase.js?v=130"></script>
+    <script src="js/supabase.js?v=135"></script>
 
     <!-- Leaflet Map JS -->
     <script src="js/leaflet.js"></script>
@@ -74,50 +74,53 @@
 
     <!-- Core Logic Scripts -->
     <!-- (1) 전역 상태 및 유틸 데이터 -->
-    <script src="js/state.js?v=130"></script>
+    <script src="js/state.js?v=135"></script>
 
     <!-- AI Health Analysis Module -->
-    <script src="js/ai-health.js"></script>
-    <script src="js/vet-chat.js"></script>
-    <script src="js/freemium.js"></script>
-    <script src="js/achievements.js"></script>
-    <script src="js/share-card.js"></script>
-    <script src="js/health-dashboard.js"></script>
-    <script src="js/health-tutorial.js"></script>
-    <script src="js/care-scheduler.js"></script>
-    <script src="js/care-scheduler-ui.js"></script>
-    <script src="js/report-dashboard.js"></script>
-    <script src="js/pet-emotion.js"></script>
-    <parameter name="js/onboarding.js"></script>
-    <script src="js/monthly-report-modal.js"></script>
+    <script src="js/ai-health.js?v=135"></script>
+    <script src="js/vet-chat.js?v=135"></script>
+    <script src="js/freemium.js?v=135"></script>
+    <script src="js/achievements.js?v=135"></script>
+    <script src="js/share-card.js?v=135"></script>
+    <script src="js/health-dashboard.js?v=135"></script>
+    <script src="js/health-tutorial.js?v=135"></script>
+    <script src="js/care-scheduler.js?v=135"></script>
+    <script src="js/care-scheduler-ui.js?v=135"></script>
+    <script src="js/report-dashboard.js?v=135"></script>
+    <script src="js/pet-emotion.js?v=135"></script>
+    <script src="js/onboarding.js?v=135"></script>
+    <script src="js/monthly-report-modal.js?v=135"></script>
 
     <!-- (2) HTML 템플릿 정의 (app.js 보다 반드시 먼저 로드) -->
-    <script src="js/templates/mypet.js?v=130"></script>
-    <script src="js/templates/health.js"></script>
-    <script src="js/templates/walk.js?v=130"></script>
-    <script src="js/templates/saju.js?v=130"></script>
-    <script src="js/templates/social.js?v=130"></script>
-    <script src="js/templates/album.js?v=130"></script>
-    <script src="js/templates/shop.js?v=130"></script>
-    <script src="js/templates/settings.js?v=130"></script>
-    <script src="js/templates/cart.js?v=130"></script>
-    <script src="js/templates/modals.js?v=130"></script>
+    <script src="js/templates/mypet.js?v=135"></script>
+    <script src="js/templates/health.js?v=135"></script>
+    <script src="js/templates/walk.js?v=135"></script>
+    <script src="js/templates/saju.js?v=135"></script>
+    <script src="js/templates/social.js?v=135"></script>
+    <script src="js/templates/album.js?v=135"></script>
+    <script src="js/templates/shop.js?v=135"></script>
+    <script src="js/templates/shop-island.js?v=135"></script>
+    <script src="js/templates/settings.js?v=135"></script>
+    <script src="js/templates/cart.js?v=135"></script>
+    <script src="js/templates/modals.js?v=135"></script>
 
     <!-- (3) 각 영역 독립 컨트롤러 -->
-    <script src="js/mypet.js?v=130"></script>
-    <script src="js/health.js"></script>
-    <script src="js/room-harmony.js"></script>
-    <script src="js/nearby-places.js"></script>
-    <script src="js/walk.js?v=130"></script>
-    <script src="js/saju.js?v=130"></script>
-    <script src="js/social.js?v=130"></script>
-    <script src="js/album.js?v=130"></script>
-    <script src="js/shop.js?v=130"></script>
-    <script src="js/settings.js?v=130"></script>
-    <script src="js/mailbox.js?v=130"></script>
+    <script src="js/mypet.js?v=135"></script>
+    <script src="js/health.js?v=135"></script>
+    <script src="js/room-harmony.js?v=135"></script>
+    <script src="js/nearby-places.js?v=135"></script>
+    <script src="js/walk.js?v=135"></script>
+    <script src="js/saju.js?v=135"></script>
+    <script src="js/social.js?v=135"></script>
+    <script src="js/album.js?v=135"></script>
+    <script src="js/petlife-locations.js?v=135"></script>
+    <script src="js/petlife-map.js?v=135"></script>
+    <script src="js/shop.js?v=135"></script>
+    <script src="js/settings.js?v=135"></script>
+    <script src="js/mailbox.js?v=135"></script>
 
     <!-- (4) 메인 라우터 및 부트스트랩 진입점 -->
-    <script src="js/app.js?v=130"></script>
+    <script src="js/app.js?v=135"></script>
 </head>
 
 <body class="text-gray-800 bg-slate-50">
@@ -158,223 +161,57 @@
         <div id="tab-cart" class="tab-content hidden"></div>
     </main>
 
-    <div id="modal-container"></div>
+    <!-- 📱 모바일 하단 네비게이션 -->
+    <nav id="mobile-nav" class="mobile-bottom-nav" style="display:none;">
+        <button class="nav-btn active" data-tab="mypet" onclick="switchTab('mypet')">
+            <span class="text-2xl">🏠</span>
+            <span class="text-[10px] font-bold mt-0.5">마이펫</span>
+        </button>
+        <button class="nav-btn" data-tab="health" onclick="switchTab('health')">
+            <span class="text-2xl">🏥</span>
+            <span class="text-[10px] font-bold mt-0.5">건강</span>
+        </button>
+        <button class="nav-btn" data-tab="walk" onclick="switchTab('walk')">
+            <span class="text-2xl">🗺️</span>
+            <span class="text-[10px] font-bold mt-0.5">산책</span>
+        </button>
+        <button class="nav-btn" data-tab="social" onclick="switchTab('social')">
+            <span class="text-2xl">👥</span>
+            <span class="text-[10px] font-bold mt-0.5">소셜</span>
+        </button>
+        <button class="nav-btn" data-tab="album" onclick="switchTab('album')">
+            <span class="text-2xl">📖</span>
+            <span class="text-[10px] font-bold mt-0.5">일기장</span>
+        </button>
+        <button class="nav-btn" data-tab="shop" onclick="switchTab('shop')">
+            <span class="text-2xl">🐾</span>
+            <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
+        </button>
+    </nav>
 
-    <!-- 🔒 펫과나 프리미엄 로그인 & 랜딩 스크린 오버레이 -->
-    <div id="login-landing-overlay"
-        class="fixed inset-0 z-50 bg-gradient-to-br from-[#1a120b] via-[#3a2212] to-[#120c08] flex items-center justify-center p-4 transition-all duration-500">
-        <!-- Floating bubbles in the background -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-            <div class="absolute w-72 h-72 rounded-full bg-brand-500/20 blur-3xl -top-10 -left-10 animate-pulse"></div>
-            <div class="absolute w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl -bottom-20 -right-20 animate-pulse"
-                style="animation-delay: 2s;"></div>
-            <div class="absolute text-7xl text-brand-300/10 top-1/4 left-10 rotate-12">🐾</div>
-            <div class="absolute text-5xl text-brand-200/10 bottom-1/4 right-12 -rotate-12">🦴</div>
-            <div class="absolute text-6xl text-amber-200/10 top-1/3 right-1/4 rotate-45">🐈</div>
-        </div>
-
-        <div
-            class="bg-white/95 backdrop-blur-2xl rounded-[36px] shadow-2xl border border-amber-100/60 p-6 md:p-8 max-w-md w-full relative z-10 transition-transform duration-500 scale-100 flex flex-col gap-6">
-            <!-- Header section -->
-            <div class="text-center space-y-2">
-                <div
-                    class="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-brand-200/50">
-                    <svg viewBox="0 0 64 64" class="w-12 h-12">
-                        <defs>
-                            <linearGradient id="paw-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="#e37736" />
-                                <stop offset="100%" stop-color="#fca366" />
-                            </linearGradient>
-                            <filter id="logo-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#732f18"
-                                    flood-opacity="0.2" />
-                            </filter>
-                        </defs>
-                        <!-- outer dash border -->
-                        <circle cx="32" cy="32" r="30" fill="none" stroke="url(#paw-grad)" stroke-width="1.5"
-                            stroke-dasharray="3 2" opacity="0.6" />
-                        <!-- inner badge body -->
-                        <circle cx="32" cy="32" r="26" fill="#fff5f0" filter="url(#logo-shadow)" />
-                        <!-- main pad (heart styled paw jelly) -->
-                        <path
-                            d="M 32,28 C 25,28 21,35 25,41 C 27,44 30,46 32,46 C 34,46 37,44 39,41 C 43,35 39,28 32,28 Z"
-                            fill="url(#paw-grad)" />
-                        <!-- toe jellies -->
-                        <ellipse cx="21" cy="29" rx="3.5" ry="5" transform="rotate(-15 21 29)" fill="url(#paw-grad)" />
-                        <ellipse cx="29" cy="23" rx="4" ry="5.5" fill="url(#paw-grad)" />
-                        <ellipse cx="35" cy="23" rx="4" ry="5.5" fill="url(#paw-grad)" />
-                        <ellipse cx="43" cy="29" rx="3.5" ry="5" transform="rotate(15 43 29)" fill="url(#paw-grad)" />
-                        <!-- little white highlight inside -->
-                        <path
-                            d="M 32,36 C 31,34 29,34 29,36 C 29,38 32,41 32,41 C 32,41 35,38 35,36 C 35,34 33,34 32,36 Z"
-                            fill="#ffffff" opacity="0.9" />
-                        <!-- mini stars -->
-                        <polygon points="12,18 13.5,15 15,18 13.5,17" fill="#e37736" opacity="0.8" />
-                        <polygon points="52,18 53.5,15 55,18 53.5,17" fill="#e37736" opacity="0.8" />
-                    </svg>
-                </div>
-                <h1 class="brand-font text-3xl font-black text-brand-600 tracking-tight mt-3">Pet & Na</h1>
-                <p class="text-xs text-gray-500 font-bold">반려동물과의 성향 분석부터 커스텀 비디오 일기장까지 🐶✨</p>
+    <!-- ⚠️ 로그인 유도 모달 -->
+    <div id="login-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-scale-in">
+            <div class="text-center mb-6">
+                <div class="text-6xl mb-4">🐾</div>
+                <h2 class="text-2xl font-black text-gray-900 mb-2">펫과나에 오신 것을 환영합니다!</h2>
+                <p class="text-sm text-gray-600">구글 계정으로 로그인하고<br>반려동물의 건강을 관리해보세요.</p>
             </div>
-
-            <!-- Login form section -->
-            <div id="login-form-section" class="space-y-4">
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-gray-600">집사 이메일 주소</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-gray-400"></i>
-                        <input type="email" id="login-email-input" value="butler@petna.co.kr"
-                            placeholder="email@example.com"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('login-password-input')?.focus();}"
-                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
-                    </div>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-gray-600">비밀번호</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-gray-400"></i>
-                        <input type="password" id="login-password-input" value="123456" placeholder="••••••••"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();executeLogin();}"
-                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-center text-xs font-bold text-gray-500">
-                    <label class="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked
-                            class="rounded border-gray-300 text-brand-500 focus:ring-brand-500 w-4 h-4">
-                        <span>로그인 유지</span>
-                    </label>
-                    <a href="#" class="hover:text-brand-600 transition-colors">비밀번호 재설정</a>
-                </div>
-
-                <button id="login-submit-btn" onclick="executeLogin()"
-                    class="w-full bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md shadow-brand-500/15 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> 이메일 주소로 로그인하기
-                </button>
-
-                <div class="text-center text-xs font-bold text-gray-500 mt-2">
-                    아직 계정이 없으신가요?
-                    <button onclick="toggleAuthForm('signup')"
-                        class="text-brand-600 hover:underline outline-none ml-1">회원가입하기</button>
-                </div>
-            </div>
-
-            <!-- Sign Up form section (hidden by default) -->
-            <div id="signup-form-section" class="space-y-4 hidden">
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-gray-600">이름 / 닉네임</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-gray-400"></i>
-                        <input type="text" id="signup-nickname-input" placeholder="보호자님의 멋진 닉네임"
-                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
-                    </div>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-gray-600">이메일 주소</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-envelope absolute left-3.5 top-3.5 text-gray-400"></i>
-                        <input type="email" id="signup-email-input" placeholder="email@example.com"
-                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
-                    </div>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-gray-600">비밀번호</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-gray-400"></i>
-                        <input type="password" id="signup-password-input" placeholder="최소 6자리 비밀번호"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();executeSignUp();}"
-                            class="w-full text-xs border border-gray-200 rounded-xl py-3 pl-10 pr-4 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-gray-50/30 font-medium">
-                    </div>
-                </div>
-
-                <button onclick="executeSignUp()"
-                    class="w-full bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3.5 rounded-xl transition-all shadow-md shadow-brand-500/15 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-user-plus"></i> 집사 계정 회원가입하기
-                </button>
-
-                <div class="text-center text-xs font-bold text-gray-500 mt-2">
-                    이미 계정이 있으신가요?
-                    <button onclick="toggleAuthForm('login')"
-                        class="text-brand-600 hover:underline outline-none ml-1">로그인하기</button>
-                </div>
-            </div>
-
-            <!-- Social login section -->
-            <div class="space-y-3.5">
-                <div class="relative flex py-1 items-center">
-                    <div class="flex-grow border-t border-gray-200/80"></div>
-                    <span class="flex-shrink mx-3 text-[10px] text-gray-400 font-bold uppercase">SNS 간편 로그인</span>
-                    <div class="flex-grow border-t border-gray-200/80"></div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="executeSocialLogin('kakao')"
-                        class="py-2.5 rounded-xl border border-yellow-200 bg-[#FFE812] hover:bg-[#FEE500] text-[#3C1E1E] font-black text-[11px] flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 shadow-sm">
-                        <i class="fa-solid fa-comment text-lg"></i>카카오 로그인
-                    </button>
-                    <button onclick="executeSocialLogin('google')"
-                        class="py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-black text-[11px] flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 shadow-sm">
-                        <i class="fa-brands fa-google text-rose-500 text-lg"></i>구글 로그인
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-3 bg-gray-50/50 rounded-xl p-3 border border-gray-100/50">
-                <p class="text-[9.5px] text-center text-gray-400 font-medium leading-[1.4]">
-                    로그인 시 펫과나의 <a href="#" class="underline hover:text-brand-500 font-bold">이용약관</a> 및 <a href="#"
-                        class="underline hover:text-brand-500 font-bold">개인정보처리방침</a>에 동의하게 됩니다.
-                </p>
-                <div class="mt-2 pt-2 border-t border-gray-200/50 flex items-start gap-1.5 justify-center">
-                    <i class="fa-solid fa-circle-info mt-0.5 text-[8px] text-gray-400"></i>
-                    <p class="text-[9px] text-left text-gray-400/90 leading-[1.3] font-medium tracking-tight">
-                        본 서비스가 제공하는 건강 데이터 및 통계는 참고용 정보이며, <br>전문 수의사의 의학적 진단이나 법적 효력을 대체할 수 없습니다.
-                    </p>
-                </div>
-            </div>
+            <button id="google-login-btn" class="w-full bg-gradient-to-r from-violet-600 to-purple-600 text-white py-4 rounded-2xl font-bold text-lg hover:shadow-xl transition-all duration-300 hover:scale-105 mb-3">
+                <i class="fab fa-google mr-2"></i>구글로 시작하기
+            </button>
+            <p class="text-xs text-center text-gray-500 mt-4">
+                로그인하면 <a href="#" class="text-violet-600 underline">이용약관</a> 및 <a href="#" class="text-violet-600 underline">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
+            </p>
         </div>
     </div>
-    
-    <!-- 📱 모바일 하단 네비게이션 바 -->
-    <div id="mobile-navbar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-amber-50 shadow-lg z-40 px-2 hidden flex justify-around items-center" style="padding-top:6px;padding-bottom:6px;">
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="mypet" onclick="switchTab('mypet')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-house"></i>
-            <span style="font-size:9px;">마이펫</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="health" onclick="switchTab('health')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-heart-pulse"></i>
-            <span style="font-size:9px;">건강</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="walk" onclick="switchTab('walk')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-route"></i>
-            <span style="font-size:9px;">산책</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="saju" onclick="switchTab('saju')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-yin-yang"></i>
-            <span style="font-size:9px;">조화도</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="social" onclick="switchTab('social')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-users"></i>
-            <span style="font-size:9px;">소셜</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="album" onclick="switchTab('album')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-book-open"></i>
-            <span style="font-size:9px;">일기</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400 flex flex-col items-center" data-tab="settings" onclick="switchTab('settings')" style="font-size:20px;gap:2px;padding:4px 8px;">
-            <i class="fa-solid fa-gear"></i>
-            <span style="font-size:9px;">설정</span>
-        </button>
-    </div>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
-        }
-    </script>
+    <!-- 🔔 알림 토스트 -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- 🎉 업적 팝업 컨테이너 -->
+    <div id="achievement-popup-container"></div>
+
 </body>
 
 </html>

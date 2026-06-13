@@ -1,94 +1,94 @@
-const MYPET_TEMPLATE = `
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
+with open('js/templates/mypet.js', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# === NEW TEMPLATE ===
+new_template = r'''const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
     
     <!-- 날짜 & 날씨 -->
-    <div class="glass rounded-xl px-4 py-3 shadow-soft">
-        <div class="flex items-center justify-between gap-4">
-            <!-- 날짜/시간 -->
-            <div class="flex items-center gap-4">
+    <div class="glass rounded-xl px-5 py-4 shadow-soft">
+        <div class="flex items-center gap-5 flex-wrap">
+            <div>
+                <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
+                <span id="mypet-time-display" class="text-2xl font-bold font-mono text-gray-900 mt-0.5">14:30:00</span>
+            </div>
+            <div class="flex items-center gap-3 border-l border-gray-200 pl-5">
+                <i class="fa-solid fa-sun text-3xl text-amber-400" id="mypet-weather-icon"></i>
                 <div>
-                    <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
-                    <span id="mypet-time-display" class="text-xl font-bold font-mono text-gray-900">14:30:00</span>
-                </div>
-                <!-- 날씨 -->
-                <div class="flex items-center gap-2.5 border-l border-gray-200 pl-4">
-                    <i class="fa-solid fa-sun text-2xl text-amber-400" id="mypet-weather-icon"></i>
-                    <div>
-                        <span id="mypet-weather-temp" class="block text-base font-bold text-gray-900">24°C</span>
-                        <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
-                    </div>
+                    <span id="mypet-weather-temp" class="block text-lg font-bold text-gray-900">24°C</span>
+                    <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
                 </div>
             </div>
-            <!-- 미세먼지/습도 -->
-            <div class="flex items-center gap-3 text-sm font-medium text-gray-600">
-                <span class="flex items-center gap-1">😷 <span id="mypet-weather-dust">--</span></span>
-                <span class="flex items-center gap-1">💧 <span id="mypet-weather-humidity">--%</span></span>
+            <div class="flex items-center gap-4 border-l border-gray-200 pl-5 text-sm font-medium text-gray-600">
+                <span>😷 <span id="mypet-weather-dust">--</span></span>
+                <span>💧 <span id="mypet-weather-humidity">--%</span></span>
             </div>
         </div>
         <div id="mypet-weekly-weather-container" class="hidden"></div>
     </div>
 
     <!-- 오늘의 운세 (집사 + 펫) -->
-    <div class="grid grid-cols-2 gap-3">
-        <div class="card-modern bg-violet-50/50 p-3.5 space-y-1.5">
-            <span class="block text-xs font-semibold text-violet-600">🧔 집사 오늘의 운세</span>
-            <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+    <div class="grid grid-cols-2 gap-4">
+        <div class="card-modern bg-violet-50/50 p-4 space-y-2">
+            <span class="block text-sm font-semibold text-violet-600">🧔 집사 오늘의 운세</span>
+            <p id="mypet-butler-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
         </div>
-        <div class="card-modern bg-amber-50/50 p-3.5 space-y-1.5">
-            <span class="block text-xs font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
-            <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+        <div class="card-modern bg-amber-50/50 p-4 space-y-2">
+            <span class="block text-sm font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
+            <p id="mypet-fortune-text" class="text-sm font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
         </div>
     </div>
 
     <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
     <!-- 왼쪽: 댕이의 하루 방 -->
-    <div class="lg:col-span-9 space-y-4">
+    <div class="lg:col-span-8 space-y-4">
 
         <!-- 댕이의 하루 방 -->
         <div id="pet-room-card" class="card-modern overflow-hidden">
 
             <!-- 헤더 -->
             <div class="px-6 pt-5 pb-4 border-b border-gray-100">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <h2 class="text-xl font-bold text-gray-900 keep-all mb-1.5" id="pet-room-name-wrapper">
-                            <span id="pet-room-name">댕이의 하루 방 🏠</span>
-                        </h2>
-                        <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
-                            🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
-                        </p>
-                    </div>
-                    <div class="flex items-start gap-2 shrink-0">
-                        <!-- 사주 정보 카드 -->
-                        <div id="room-saju-card" class="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-xl px-3.5 py-3 max-w-sm shadow-soft">
-                            <div class="text-[10px] leading-relaxed space-y-1.5">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="font-black text-violet-700">🔮 사주 분석</span>
-                                    <span id="room-saju-score" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">미측정</span>
-                                </div>
-                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5">
-                                    <div class="text-[9px] text-gray-500 border-b border-violet-100/50 pb-1">
-                                        <span class="font-bold text-violet-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
-                                        <div id="room-saju-owner-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
-                                    </div>
-                                    <div class="text-[9px] text-gray-500 border-b border-violet-100/50 pb-1">
-                                        <span class="font-bold text-amber-600">🐾 펫</span>: <span id="room-saju-pet">--년생</span>
-                                        <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
-                                    </div>
-                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5">
-                                        조화도 탭에서 사주 궁합을 분석해보세요
-                                    </div>
-                                </div>
-                                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[9px] font-bold text-violet-500 hover:text-violet-600 mt-1">
-                                    조화도 분석하기 →
-                                </button>
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-xl font-bold text-gray-900 keep-all" id="pet-room-name-wrapper">
+                                <span id="pet-room-name">댕이의 하루 방 🏠</span>
+                            </h2>
+                            <!-- 영혼 조화도 배지 (방 제목 옆) — 클릭 시 조화도 탭 이동 -->
+                            <div id="room-harmony-badge" onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                                <span id="room-harmony-icon" class="text-sm">💖</span>
+                                <span id="room-harmony-score" class="text-xs font-bold text-rose-600">조화도 측정하기</span>
                             </div>
                         </div>
+                        <!-- 조화도 한 줄 메시지 (배지 아래) -->
+                        <div id="room-harmony-message" class="hidden mt-1.5">
+                            <p class="text-[11px] text-rose-600/80 font-medium leading-snug flex items-center gap-1">
+                                <span id="room-harmony-message-icon" class="text-sm">💖✨</span>
+                                <span id="room-harmony-message-title" class="font-black text-rose-700">완벽한 조화</span>
+                                <span class="text-gray-400">·</span>
+                                <span id="room-harmony-message-text" class="text-gray-500">영혼의 단짝! 완벽한 듀오입니다</span>
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
+                                🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- 사주 분석 버튼 -->
+                        <button onclick="switchTab('saju')" id="room-saju-btn"
+                            class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 border border-violet-200 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-yin-yang text-violet-500 text-sm"></i>
+                        </button>
                         <!-- 설정 버튼 -->
                         <button onclick="toggleRoomSettings()" id="room-settings-btn"
-                            class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all shrink-0">
+                            class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all">
                             <i class="fa-solid fa-gear text-gray-400 hover:text-amber-500 text-sm" id="room-settings-icon"></i>
                         </button>
                     </div>
@@ -321,11 +321,11 @@ const MYPET_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 오른쪽: 챌린지 + 업적 -->
-    <div class="lg:col-span-3 space-y-2.5">
+    <!-- 오른쪽: 챌린지 + 업적 + 돌봄 스케줄러 -->
+    <div class="lg:col-span-4 space-y-4">
 
         <!-- 산책 streak 배너 -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-3.5 shadow-sm">
             <div id="walk-streak-banner">
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
                     <i class="fa-solid fa-fire text-gray-300"></i>
@@ -335,35 +335,59 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 일일 챌린지 -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-3 shadow-sm">
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="daily-challenges"></div>
         </div>
 
         <!-- 업적 배지 -->
-        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-2xl p-4 shadow-sm">
             <div id="achievement-badges"></div>
         </div>
 
-        <!-- 조화도 카드 -->
-        <div id="harmony-widget-card" class="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-3 shadow-sm">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-[10px] font-black text-gray-700">
-                    <span id="harmony-widget-icon">💖</span> 영혼의 조화도
+        <!-- 돌봄 스케줄러 📅 -->
+        <div class="bg-white rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b">
+                <h3 class="font-black text-gray-800 text-sm flex items-center">
+                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
                 </h3>
-                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[8px] font-bold text-rose-500 hover:text-rose-600">측정하기</button>
+                <button onclick="openCareScheduleModal()"
+                    class="text-brand-600 hover:text-brand-700 font-black text-xs">
+                    <i class="fa-solid fa-plus mr-1"></i>일정 추가
+                </button>
             </div>
-            <div class="text-center mb-2">
-                <div id="harmony-widget-score" class="text-2xl font-black text-rose-600 mb-0.5">--점</div>
-                <div id="harmony-widget-title" class="text-[9px] font-bold text-gray-700">조화도를 측정해보세요</div>
-            </div>
-            <div class="space-y-1 pt-2 border-t border-rose-100">
-                <div class="flex items-center justify-between text-[9px]">
-                    <span class="text-gray-500">👤 집사</span>
-                    <span id="harmony-widget-butler" class="font-bold text-gray-700">--년생</span>
+
+            <!-- 오늘의 일정 -->
+            <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black text-gray-700">📅 오늘의 일정</span>
+                    <span id="care-completion-badge" class="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"></span>
                 </div>
-                <div class="flex items-center justify-between text-[9px]">
-                    <span class="text-gray-500">🐾 펫</span>
-                    <span id="harmony-widget-pet" class="font-bold text-gray-700">--년생</span>
+                <div id="care-scheduler-container" class="space-y-1.5"></div>
+            </div>
+
+            <!-- 달력 헤더 -->
+            <div class="flex justify-between items-center">
+                <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600"><i
+                        class="fa-solid fa-chevron-left"></i></button>
+                <span id="calendar-month-year" class="font-black text-xs text-gray-700">2026년 5월</span>
+                <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600"><i
+                        class="fa-solid fa-chevron-right"></i></button>
+            </div>
+
+            <!-- 달력 그리드 -->
+            <div
+                class="grid grid-cols-7 gap-1 text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider border-b pb-2">
+                <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+            </div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-xs">
+                <!-- 날짜들 동적 수립 -->
+            </div>
+
+            <!-- 다가오는 주요 돌봄 checklist -->
+            <div class="space-y-2.5 pt-4 border-t border-gray-100">
+                <span class="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">다가오는 핵심 돌봄 3</span>
+                <div id="upcoming-schedules" class="space-y-2">
+                    <!-- JS 동적 수립 -->
                 </div>
             </div>
         </div>
@@ -449,3 +473,9 @@ const MYPET_TEMPLATE = `
 
 </div>
 `;
+'''
+
+with open('js/templates/mypet.js', 'w', encoding='utf-8') as f:
+    f.write(new_template)
+
+print("mypet.js template fully rewritten!")

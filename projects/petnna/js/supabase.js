@@ -378,8 +378,9 @@ const SupabaseService = {
                         video_url: newPost.videoUrl || null,
                         likes: newPost.likes || 0,
                         comments: JSON.stringify(newPost.comments || []),
-                        attached_walk: newPost.attachedWalk ? JSON.stringify(newPost.attachedWalk) : null,
-                        attached_ai_health: newPost.attachedAiHealth ? JSON.stringify(newPost.attachedAiHealth) : null
+                        attached_walk: newPost.attachedWalk ? JSON.stringify(newPost.attachedWalk) : null
+                        // attached_ai_health는 스키마에 컬럼이 없으므로 주석 처리
+                        // TODO: Supabase에서 attached_ai_health 컬럼 추가 필요
                     }
                 ])
                 .select();
@@ -452,7 +453,7 @@ const SupabaseService = {
                         liked: localPost ? localPost.liked : false,
                         comments: _parse(item.comments) || [],
                         attachedWalk: _parse(item.attached_walk),
-                        attachedAiHealth: _parse(item.attached_ai_health)
+                        attachedAiHealth: localPost ? localPost.attachedAiHealth : null // DB에 컬럼 없음, 로컬 데이터 사용
                     };
                 });
                 

@@ -322,27 +322,27 @@ const ALBUM_TEMPLATE = `
             </div>
 
             <div class="space-y-2">
-                <p class="text-[10px] font-bold text-gray-500">🏘️ 주변 이웃 (예시)</p>
-                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <p class="text-[10px] font-bold text-gray-500">🤖 AI 에이전트 (예시)</p>
+                <div class="flex justify-between items-center bg-gradient-to-r from-violet-50 to-purple-50 p-3 rounded-xl border border-violet-200">
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden"><img loading="lazy" src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=100" class="w-full h-full object-cover"></div>
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-xs font-black">🤖</div>
                         <div>
-                            <span class="block text-xs font-black text-gray-800">동네 냥이맘</span>
-                            <span class="block text-[9px] text-gray-400">nyanmom@petna.co.kr</span>
+                            <span class="block text-xs font-black text-gray-800">펫케어 AI 도우미</span>
+                            <span class="block text-[9px] text-gray-400">ai-helper@petna.co.kr</span>
                         </div>
                     </div>
-                    <button onclick="sendFriendInvite('동네 냥이맘', 'nyanmom@petna.co.kr', this)" class="bg-brand-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-sm hover:bg-brand-600 transition-colors">초대하기</button>
+                    <button onclick="sendFriendInvite('펫케어 AI 도우미', 'ai-helper@petna.co.kr', this)" class="bg-violet-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-sm hover:bg-violet-600 transition-colors">초대하기</button>
                 </div>
 
-                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200">
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden"><img loading="lazy" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100" class="w-full h-full object-cover"></div>
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white text-xs font-black">🧠</div>
                         <div>
-                            <span class="block text-xs font-black text-gray-800">이웃집 집사</span>
-                            <span class="block text-[9px] text-gray-400">neighbor@petna.co.kr</span>
+                            <span class="block text-xs font-black text-gray-800">건강 분석 전문가</span>
+                            <span class="block text-[9px] text-gray-400">health-ai@petna.co.kr</span>
                         </div>
                     </div>
-                    <button onclick="sendFriendInvite('이웃집 집사', 'neighbor@petna.co.kr', this)" class="bg-brand-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-sm hover:bg-brand-600 transition-colors">초대하기</button>
+                    <button onclick="sendFriendInvite('건강 분석 전문가', 'health-ai@petna.co.kr', this)" class="bg-blue-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-sm hover:bg-blue-600 transition-colors">초대하기</button>
                 </div>
             </div>
             

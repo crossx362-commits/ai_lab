@@ -51,8 +51,21 @@ const SHOP_QUEST_DATA = {
 };
 
 let activeShopId = null;
+let activeLocation = null;
 
-function selectIslandShop(shopId) {
+function getQuestIdByCategory(category) {
+    switch(category) {
+        case 'grooming': return 'healing-spa';
+        case 'hospital': return 'healing-hospital';
+        case 'hotel': return 'healing-hotel';
+        case 'cafe':
+        case 'shop': return 'healing-shopping';
+        case 'training': return 'healing-therapy';
+        default: return 'healing-spa';
+    }
+}
+
+function selectIslandShop(shopId, location = null) {
     const data = SHOP_QUEST_DATA[shopId];
     if (!data) return;
 
@@ -74,14 +87,62 @@ function selectIslandShop(shopId) {
         const rewardBadgeEl = document.getElementById('quest-reward-badge');
         if (rewardBadgeEl) rewardBadgeEl.innerText = data.rewardBadge;
     }
-    
-    if (typeof showToast === 'function') {
-        showToast(`🗺️ ${data.title} 영토가 활성화되었습니다!`);
+
+    // 모든 핀 스타일 복원
+    document.querySelectorAll('.petlife-pin').forEach(p => {
+        p.classList.remove('active');
+        p.style.transform = '';
+    });
+
+    // 만약 location이 전달되지 않았다면 해당 카테고리에 속하는 첫 번째 가맹점 찾기
+    if (!location && typeof PETLIFE_REAL_LOCATIONS !== 'undefined') {
+        location = PETLIFE_REAL_LOCATIONS.find(loc => getQuestIdByCategory(loc.category) === shopId);
+    }
+
+    activeLocation = location;
+
+    if (location) {
+        const pinEl = document.getElementById(`petlife-pin-${location.id}`);
+        if (pinEl) {
+            pinEl.classList.add('active');
+            pinEl.style.transform = 'translate(-50%, -50%) scale(1.3) translateY(-4px)';
+        }
+
+        // 지시선(Connector Line) 및 정보 말풍선(Callout Bubble) 동적 렌더링
+        const connectorLine = document.getElementById('map-connector-line');
+        const calloutBubble = document.getElementById('map-html-callout');
+        const calloutText = document.getElementById('map-callout-text');
+
+        const leftPct = parseFloat(location.position.left);
+        const topPct = parseFloat(location.position.top);
+
+        if (calloutBubble && calloutText) {
+            calloutBubble.style.left = location.position.left;
+            calloutBubble.style.top = location.position.top;
+            calloutText.textContent = location.name;
+            calloutBubble.classList.remove('hidden');
+            calloutBubble.style.display = 'block';
+        }
+
+        if (connectorLine) {
+            // viewBox가 0 0 100 100이므로 퍼센트 수치 그대로 사용 가능
+            connectorLine.setAttribute('d', `M ${leftPct} ${topPct} L 100 ${topPct}`);
+            connectorLine.setAttribute('opacity', '0.8');
+        }
+        
+        if (typeof showToast === 'function') {
+            showToast(`🗺️ ${location.name} 영토가 활성화되었습니다!`);
+        }
+    } else {
+        if (typeof showToast === 'function') {
+            showToast(`🗺️ ${data.title} 영토가 활성화되었습니다!`);
+        }
     }
 }
 
 function closeQuestPanel() {
     activeShopId = null;
+    activeLocation = null;
     const defaultState = document.getElementById('quest-default-state');
     const activeState = document.getElementById('quest-active-state');
     if (defaultState && activeState) {
@@ -89,64 +150,187 @@ function closeQuestPanel() {
         activeState.style.display = 'none';
         activeState.classList.add('hidden');
     }
+
+    // 말풍선 및 지시선 제거
+    const calloutBubble = document.getElementById('map-callout');
+    const connectorLine = document.getElementById('map-connector-line');
+    if (calloutBubble) {
+        calloutBubble.classList.add('hidden');
+        calloutBubble.style.display = 'none';
+    }
+    if (connectorLine) connectorLine.setAttribute('opacity', '0');
+
+    // 모든 핀 스타일 복원
+    document.querySelectorAll('.petlife-pin').forEach(pin => {
+        pin.style.transform = '';
+        pin.classList.remove('active');
+    });
 }
 
 function openActiveQuestLink() {
-    if (!activeShopId) return;
-    
-    const targetSection = document.getElementById('section-' + activeShopId);
-    if (targetSection) {
-        if (targetSection.classList.contains('hidden')) {
-            toggleShopSection(activeShopId);
+    if (activeLocation) {
+        openPetlifePopup(activeLocation);
+    } else if (activeShopId) {
+        const targetSection = document.getElementById('section-' + activeShopId);
+        if (targetSection) {
+            if (targetSection.classList.contains('hidden')) {
+                toggleShopSection(activeShopId);
+            }
+            targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-        showToast("가맹점 상세 정보 영역을 찾을 수 없습니다.");
     }
 }
 
 function applyMapFilters() {
-    const fSpa     = document.getElementById('f-spa')?.checked;
+    // 펫라이프 핀 필터 적용
+    filterPetlifePins();
+}
+
+// 펫라이프 핀 렌더링
+function renderPetlifePins() {
+    const container = document.getElementById('petlife-pins-container');
+    if (!container || typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
+
+    container.innerHTML = '';
+
+    PETLIFE_REAL_LOCATIONS.forEach((location, index) => {
+        const pin = document.createElement('div');
+        pin.className = 'petlife-pin';
+        pin.id = `petlife-pin-${location.id}`;
+        pin.style.left = location.position.left;
+        pin.style.top = location.position.top;
+        pin.style.background = location.color;
+        pin.style.animationDelay = `${index * 0.05}s`;
+        pin.innerHTML = `<span>${location.emoji}</span>`;
+        
+        const questId = getQuestIdByCategory(location.category);
+        pin.onclick = () => {
+            selectIslandShop(questId, location);
+        };
+        container.appendChild(pin);
+    });
+
+    // 초기 필터링 적용
+    filterPetlifePins();
+}
+
+// 가맹점 상세 팝업 열기
+function openPetlifePopup(location) {
+    const popup = document.getElementById('location-popup');
+    if (!popup) return;
+
+    // 데이터 채우기
+    document.getElementById('popup-emoji').textContent = location.emoji;
+    document.getElementById('popup-name').textContent = location.name;
+    document.getElementById('popup-category').textContent = CATEGORY_NAMES[location.category] || location.category;
+    document.getElementById('popup-description').textContent = location.description;
+    document.getElementById('popup-address').textContent = location.address;
+
+    const phoneLink = document.getElementById('popup-phone');
+    phoneLink.textContent = location.phone;
+    phoneLink.href = `tel:${location.phone.replace(/[^0-9]/g, '')}`;
+
+    document.getElementById('popup-hours').textContent = location.hours;
+
+    // 서비스 태그
+    const servicesContainer = document.getElementById('popup-services');
+    servicesContainer.innerHTML = location.services.map(service =>
+        `<span class="service-tag">${service}</span>`
+    ).join('');
+
+    // 버튼 링크
+    const websiteBtn = document.getElementById('popup-website-btn');
+    websiteBtn.href = location.website;
+    if (location.website === '#') {
+        websiteBtn.style.display = 'none';
+    } else {
+        websiteBtn.style.display = 'flex';
+    }
+
+    const phoneBtn = document.getElementById('popup-phone-btn');
+    phoneBtn.href = `tel:${location.phone.replace(/[^0-9]/g, '')}`;
+
+    // 팝업 표시
+    popup.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    if (typeof showToast === 'function') {
+        showToast(`${location.emoji} ${location.name} 정보를 확인하세요!`);
+    }
+}
+
+// 가맹점 팝업 닫기
+function closePetlifePopup() {
+    const popup = document.getElementById('location-popup');
+    if (popup) {
+        popup.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+// 핀 필터링
+function filterPetlifePins() {
+    if (typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
+
+    const fSpa = document.getElementById('f-spa')?.checked;
     const fMedical = document.getElementById('f-medical')?.checked;
-    const fHotel   = document.getElementById('f-hotel')?.checked;
-    const fShop    = document.getElementById('f-shop')?.checked;
+    const fHotel = document.getElementById('f-hotel')?.checked;
+    const fShop = document.getElementById('f-shop')?.checked;
 
-    // 이전 버전 필터 ID 호환
-    const spaCamping  = document.getElementById('filter-spa-camping')?.checked ?? fSpa;
-    const medicalCare = document.getElementById('filter-medical-care')?.checked ?? fMedical;
-    const hotelResort = document.getElementById('filter-hotel-resort')?.checked ?? fHotel;
-    const shoppingPlaza = document.getElementById('filter-shopping-plaza')?.checked ?? fShop;
-
+    const pins = document.querySelectorAll('.petlife-pin');
     let activeCount = 0;
-    const filterNodes = document.querySelectorAll('.filter-node');
 
-    filterNodes.forEach(node => {
-        // data-cat 우선 (새 SVG 방식), 없으면 data-category (구버전)
-        const cat = node.getAttribute('data-cat') || node.getAttribute('data-category') || '';
+    pins.forEach((pin, index) => {
+        const location = PETLIFE_REAL_LOCATIONS[index];
+        if (!location) return;
+
         let show = true;
 
-        if ((cat === 'spa' || cat === 'spa-camping') && !(fSpa ?? spaCamping)) show = false;
-        if ((cat === 'medical' || cat === 'medical-care') && !(fMedical ?? medicalCare)) show = false;
-        if ((cat === 'hotel' || cat === 'hotel-resort') && !(fHotel ?? hotelResort)) show = false;
-        if ((cat === 'shop' || cat === 'shopping-plaza') && !(fShop ?? shoppingPlaza)) show = false;
+        // 카테고리별 필터링
+        if (location.category === 'grooming' && !fSpa) show = false;
+        if (location.category === 'hospital' && !fMedical) show = false;
+        if (location.category === 'hotel' && !fHotel) show = false;
+        if (location.category === 'shop' && !fShop) show = false;
+        if (location.category === 'cafe' && !fShop) show = false;
+        if (location.category === 'training' && !fMedical) show = false;
 
         if (show) {
-            node.style.opacity = '1';
-            node.style.pointerEvents = 'auto';
-            node.style.transform = '';
+            pin.style.opacity = '1';
+            pin.style.pointerEvents = 'auto';
             activeCount++;
         } else {
-            node.style.opacity = '0.1';
-            node.style.pointerEvents = 'none';
+            pin.style.opacity = '0.15';
+            pin.style.pointerEvents = 'none';
         }
     });
 
-    // SVG 맵 통계 바
+    // 통계 바 업데이트
     const statBar = document.getElementById('stat-bar');
     const statLabel = document.getElementById('stat-label');
-    if (statBar) statBar.style.width = `${(activeCount / 6) * 100}%`;
-    if (statLabel) statLabel.innerText = `${activeCount} / 6 활성`;
+    if (statBar) statBar.style.width = `${(activeCount / PETLIFE_REAL_LOCATIONS.length) * 100}%`;
+    if (statLabel) statLabel.innerText = `${activeCount} / ${PETLIFE_REAL_LOCATIONS.length} 활성`;
 }
+
+// 팝업 외부 클릭 시 닫기
+document.addEventListener('click', function(e) {
+    const popup = document.getElementById('location-popup');
+    if (popup && e.target === popup) {
+        closePetlifePopup();
+    }
+});
+
+// ESC 키로 팝업 닫기
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePetlifePopup();
+    }
+});
+
+// 전역 함수 등록
+window.renderPetlifePins = renderPetlifePins;
+window.openPetlifePopup = openPetlifePopup;
+window.closePetlifePopup = closePetlifePopup;
+window.filterPetlifePins = filterPetlifePins;
 
 function toggleShopSection(id) {
     const section = document.getElementById('section-' + id);
