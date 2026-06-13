@@ -370,21 +370,26 @@ const HEALTH_TEMPLATE = `
 
             <!-- 탭 컨텐츠 -->
             <div id="meal-content-food" class="meal-tab-content">
-                <div id="meal-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                <div id="meal-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
             </div>
             <div id="meal-content-time" class="meal-tab-content hidden">
-                <div class="text-center py-6 text-gray-400">
-                    <div class="text-4xl mb-2">⏰</div>
-                    <p class="text-xs font-medium">밥 먹는 시간 분석</p>
-                    <p class="text-[10px] mt-1">곧 업데이트 예정</p>
-                </div>
+                <div id="meal-timeline" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
             </div>
             <div id="meal-content-water" class="meal-tab-content hidden">
-                <div class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-center">
-                    <div class="text-4xl mb-2">💧</div>
-                    <div class="text-3xl font-bold text-sky-600 mb-1" id="health-today-water-tab">-- ml</div>
-                    <p class="text-xs font-semibold text-gray-700 mb-1">오늘 음수량</p>
-                    <p class="text-[10px] text-gray-500 mt-2">수분 섭취 습관이 중요합니다.</p>
+                <div class="p-3 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-gray-600">오늘 음수량</span>
+                        <span class="text-lg font-black text-sky-600" id="health-today-water-tab">-- ml</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2.5">
+                        <div id="water-progress-bar" class="bg-gradient-to-r from-sky-400 to-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-gray-400">
+                        <span>0ml</span>
+                        <span id="water-goal-label" class="font-semibold text-sky-500">목표: -- ml</span>
+                        <span id="water-goal-max">--ml</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 text-center">체중 기반 권장 음수량 (50ml/kg)</p>
                 </div>
             </div>
         </div>

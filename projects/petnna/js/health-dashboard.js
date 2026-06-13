@@ -67,10 +67,9 @@ function generateWeeklyHealthData() {
 
     if (typeof saveState === 'function') saveState();
     if (typeof renderHealthTab === 'function') renderHealthTab();
-    if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
-    if (typeof renderHealthTrendChart === 'function') renderHealthTrendChart();
-    if (typeof renderHealthCalendar === 'function') renderHealthCalendar();
-    if (typeof updateHealthTutorialVisibility === 'function') updateHealthTutorialVisibility();
+    if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
+    if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
+    if (typeof updateHealthTutorialMainVisibility === 'function') updateHealthTutorialMainVisibility();
     if (typeof updateReportDashboard === 'function') updateReportDashboard();
     if (typeof showToast === 'function') {
         const weekCount = Math.floor(healthLogs.history.length / 7);

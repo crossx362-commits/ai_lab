@@ -22,13 +22,32 @@ function switchMealTab(tab) {
         }
     });
 
-    // 음수 탭일 때 오늘 음수량 동기화
+    // 음수 탭: 오늘 음수량 + 프로그레스 바 업데이트
     if (tab === 'water') {
         const waterEl = document.getElementById('health-today-water-tab');
         const waterMain = document.getElementById('health-today-water');
-        if (waterEl && waterMain) {
-            waterEl.textContent = waterMain.textContent;
-        }
+        if (waterEl && waterMain) waterEl.textContent = waterMain.textContent;
+
+        // 체중 기반 목표 (50ml/kg), 펫 데이터에서 추출
+        const pet = (typeof pets !== 'undefined' && pets.length > 0) ? pets[0] : null;
+        const weight = pet ? parseFloat(pet.weight) : 0;
+        const goalMl = weight > 0 ? Math.round(weight * 50) : 300;
+
+        const currentText = (waterEl?.textContent || '0').replace(/[^0-9]/g, '');
+        const currentMl = parseInt(currentText) || 0;
+        const pct = Math.min(100, Math.round((currentMl / goalMl) * 100));
+
+        const bar = document.getElementById('water-progress-bar');
+        const goalLabel = document.getElementById('water-goal-label');
+        const goalMax = document.getElementById('water-goal-max');
+        if (bar) bar.style.width = `${pct}%`;
+        if (goalLabel) goalLabel.textContent = `${pct}% 달성`;
+        if (goalMax) goalMax.textContent = `${goalMl}ml`;
+    }
+
+    // 시간 탭: 타임라인 렌더
+    if (tab === 'time' && typeof renderMealTimeline === 'function') {
+        renderMealTimeline();
     }
 }
 

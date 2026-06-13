@@ -1335,41 +1335,83 @@ function renderMealLogsList() {
     listContainer.innerHTML = '';
 
     if (!meals || meals.length === 0) {
-        listContainer.innerHTML = `<div class="text-center py-4 text-gray-400 text-[10px]">등록된 밥 기록이 없습니다. 식사 일지를 써보세요!</div>`;
+        listContainer.innerHTML = `
+            <div class="text-center py-6 text-gray-400">
+                <div class="text-3xl mb-1.5">🍽️</div>
+                <p class="text-xs font-semibold">아직 식사 기록이 없어요</p>
+                <p class="text-[10px] mt-0.5 text-gray-300">기록 버튼으로 추가해보세요</p>
+            </div>`;
         return;
     }
 
-    meals.forEach(m => {
-        let badgeColor = "bg-amber-100 text-amber-800";
-        if (m.type === "간식") badgeColor = "bg-rose-100 text-rose-800";
-        else if (m.type === "아침") badgeColor = "bg-sky-100 text-sky-800";
-        else if (m.type === "점심") badgeColor = "bg-emerald-100 text-emerald-800";
+    const sorted = [...meals].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
-        // 시간을 시와 분으로 분리
-        const timeParts = m.time.split(':');
-        const hour = timeParts[0] || '00';
-        const minute = timeParts[1] || '00';
+    sorted.forEach(m => {
+        let icon = '🌙'; let bg = 'bg-amber-50 border-amber-100'; let badge = 'bg-amber-100 text-amber-700';
+        if (m.type === '아침') { icon = '🌅'; bg = 'bg-sky-50 border-sky-100'; badge = 'bg-sky-100 text-sky-700'; }
+        else if (m.type === '점심') { icon = '☀️'; bg = 'bg-emerald-50 border-emerald-100'; badge = 'bg-emerald-100 text-emerald-700'; }
+        else if (m.type === '간식') { icon = '🍖'; bg = 'bg-rose-50 border-rose-100'; badge = 'bg-rose-100 text-rose-700'; }
 
         const row = document.createElement('div');
-        row.className = "flex items-center justify-between p-3 bg-gray-50/70 border border-gray-100 rounded-xl";
+        row.className = `flex items-center gap-2.5 p-2.5 ${bg} border rounded-xl`;
         row.innerHTML = `
-            <div class="flex items-center gap-3 flex-1">
-                <div class="flex flex-col items-center justify-center min-w-[50px]">
-                    <div class="text-[18px] font-black text-gray-700 leading-none">${hour}</div>
-                    <div class="text-[10px] text-gray-400 font-bold">시간</div>
+            <span class="text-xl leading-none">${icon}</span>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${badge}">${m.type}</span>
+                    <span class="text-[10px] text-gray-400">${m.time || ''}</span>
                 </div>
-                <div class="flex flex-col items-center justify-center min-w-[50px] border-l border-gray-200 pl-3">
-                    <div class="text-[18px] font-black text-gray-700 leading-none">${minute}</div>
-                    <div class="text-[10px] text-gray-400 font-bold">분</div>
-                </div>
-                <div class="flex flex-col gap-1 flex-1 min-w-0">
-                    <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${badgeColor} inline-block w-fit">${m.type}</span>
-                    <span class="text-[10px] text-gray-500 font-medium truncate">${escapeHtml(m.notes)}</span>
-                </div>
+                <p class="text-[11px] text-gray-600 font-medium truncate">${escapeHtml(m.notes || '내용 없음')}</p>
             </div>
-            <button onclick="deleteMealLog(${m.id})" class="text-gray-300 hover:text-red-500 transition-colors text-sm ml-2"><i class="fa-solid fa-trash-can"></i></button>
+            <button onclick="deleteMealLog(${m.id})" class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
         `;
         listContainer.appendChild(row);
+    });
+
+    renderMealTimeline();
+}
+
+function renderMealTimeline() {
+    const el = document.getElementById('meal-timeline');
+    if (!el) return;
+
+    el.innerHTML = '';
+
+    if (!meals || meals.length === 0) {
+        el.innerHTML = `
+            <div class="text-center py-6 text-gray-400">
+                <div class="text-3xl mb-1.5">⏰</div>
+                <p class="text-xs font-semibold">식사 기록이 없어요</p>
+            </div>`;
+        return;
+    }
+
+    const sorted = [...meals].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    sorted.forEach((m, i) => {
+        let dot = 'bg-amber-400'; let icon = '🌙';
+        if (m.type === '아침') { dot = 'bg-sky-400'; icon = '🌅'; }
+        else if (m.type === '점심') { dot = 'bg-emerald-400'; icon = '☀️'; }
+        else if (m.type === '간식') { dot = 'bg-rose-400'; icon = '🍖'; }
+
+        const isLast = i === sorted.length - 1;
+        const row = document.createElement('div');
+        row.className = 'flex items-start gap-2.5';
+        row.innerHTML = `
+            <div class="flex flex-col items-center flex-shrink-0">
+                <div class="w-2.5 h-2.5 rounded-full ${dot} mt-1 ring-2 ring-white shadow-sm"></div>
+                ${!isLast ? '<div class="w-px flex-1 bg-gray-200 mt-0.5" style="min-height:20px"></div>' : ''}
+            </div>
+            <div class="pb-2 flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] font-bold text-gray-700">${m.time || '--:--'}</span>
+                    <span class="text-[10px] text-gray-400">${icon} ${m.type}</span>
+                </div>
+                <p class="text-[11px] text-gray-500 truncate mt-0.5">${escapeHtml(m.notes || '내용 없음')}</p>
+            </div>
+        `;
+        el.appendChild(row);
     });
 }
 
