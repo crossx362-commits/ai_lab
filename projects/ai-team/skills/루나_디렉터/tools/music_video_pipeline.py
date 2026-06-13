@@ -196,66 +196,7 @@ def generate_visual(prompt: str, output_path: str) -> str:
 
 
 def _generate_image_nanobanana(prompt: str, output_path: str) -> str:
-    """나노바나나2 (Imagen 3.0 generate-002) - 아린과 동일한 방식."""
-    import base64
-    import json
-    import urllib.request
-    import urllib.error
-
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        print(f"    [나노바나나2] API 키 없음")
-        return ""
-
-    # Try Imagen 4.0 first, fallback to 3.0
-    models_to_try = ["imagen-4.0-generate-001", "imagen-3.0-generate-002", "imagen-3.0-generate-001"]
-    payload = {
-        "instances": [{"prompt": prompt}],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": "16:9",
-            "safetyFilterLevel": "block_some",
-            "personGeneration": "allow_adult"
-        }
-    }
-    headers = {"Content-Type": "application/json"}
-
-    # Try multiple models and API versions
-    for model in models_to_try:
-        for api_ver in ("v1beta", "v1"):
-            url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model}:predict?key={api_key}"
-            try:
-                print(f"    [Imagen ({model}, {api_ver})] 호출...")
-                request_data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(url, data=request_data, headers=headers)
-
-                with urllib.request.urlopen(req, timeout=60) as response:
-                    res = json.loads(response.read())
-
-                predictions = res.get("predictions", [])
-                if predictions:
-                    b64 = predictions[0].get("bytesBase64Encoded", "")
-                    if b64:
-                        img_bytes = base64.b64decode(b64)
-                        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-                        with open(output_path, "wb") as f:
-                            f.write(img_bytes)
-
-                        if os.path.exists(output_path) and os.path.getsize(output_path) > 5000:
-                            print(f"    [Imagen {model}] OK: {output_path} ({len(img_bytes):,} bytes)")
-                            return output_path
-
-                print(f"    [Imagen] Bad response ({model}, {api_ver})")
-
-            except urllib.error.HTTPError as e:
-                error_body = e.read().decode('utf-8') if e.fp else ""
-                if e.code == 404:
-                    continue  # Try next model/version
-                else:
-                    print(f"    [Imagen] HTTP {e.code} ({model}, {api_ver}): {error_body[:100]}")
-            except Exception as e:
-                print(f"    [Imagen] Error ({model}, {api_ver}): {e}")
-
+    """Gemini Imagen 비활성화 — 빈 문자열 반환."""
     return ""
 
 

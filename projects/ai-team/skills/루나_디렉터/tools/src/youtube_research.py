@@ -242,12 +242,7 @@ def _merge_research(existing: dict, new_data: dict) -> dict:
 def run_research() -> bool:
     """1회 리서치 사이클: 목표 설정 → 수집 → 분석 → 저장. 성공 시 True 반환."""
     _load_env()
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
-    yt_key     = os.getenv("YOUTUBE_API_KEY", "")
-
-    if not gemini_key:
-        print("  [루나 리서치] GEMINI_API_KEY 없음 — 건너뜀")
-        return False
+    yt_key = os.getenv("YOUTUBE_API_KEY", "")
 
     # 0단계: Ollama로 오늘의 리서치 목표 설정
     goal = _set_research_goal()

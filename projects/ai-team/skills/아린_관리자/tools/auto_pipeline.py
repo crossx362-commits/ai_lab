@@ -104,58 +104,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_IMAGE_MODEL = "imagen-4.0-generate-001"
 
 def _generate_image_gemini(prompt) -> bytes | None:
-    """나노바나나2 (Imagen 3.0 generate-002) API 호출 - 실사풍 고퀄리티."""
-    if not GEMINI_API_KEY:
-        print("  ⚠️ GEMINI_API_KEY 미설정 — Imagen 건너뜁니다.")
-        return None
-
-    enhanced_prompt = (
-        f"{prompt}, "
-        "photorealistic, ultra high quality, professional photography, "
-        "DSLR camera, sharp focus, natural lighting, cinematic composition, "
-        "8K resolution, detailed textures, hyperrealistic, "
-        "award-winning photography style"
-    )
-
-    payload = {
-        "instances": [{"prompt": enhanced_prompt}],
-        "parameters": {
-            "sampleCount": 1,
-            "aspectRatio": "1:1",
-            "safetyFilterLevel": "block_some",
-            "personGeneration": "allow_adult"
-        }
-    }
-    headers = {"Content-Type": "application/json"}
-
-    # v1beta → v1 순서로 시도
-    for api_ver in ("v1beta", "v1"):
-        url = (
-            f"https://generativelanguage.googleapis.com/{api_ver}/models/"
-            f"{GEMINI_IMAGE_MODEL}:predict?key={GEMINI_API_KEY}"
-        )
-        try:
-            print(f"🍋 나노바나나2 ({GEMINI_IMAGE_MODEL}, {api_ver}) 호출 중...")
-            res = requests.post(url, headers=headers,
-                                data=json.dumps(payload), timeout=60)
-            if res.status_code == 200:
-                import base64
-                predictions = res.json().get("predictions", [])
-                if predictions:
-                    b64 = predictions[0].get("bytesBase64Encoded", "")
-                    if b64:
-                        return base64.b64decode(b64)
-                print(f"  ⚠️ Imagen 응답 형식 이상: {res.text[:100]}")
-                return None
-            elif res.status_code == 404:
-                print(f"  ⚠️ {api_ver} 404 — 다음 버전 시도...")
-                continue
-            else:
-                print(f"  ⚠️ Imagen API 에러 ({api_ver}, {res.status_code}): {res.text[:150]}")
-                return None
-        except Exception as e:
-            print(f"  ❌ Imagen 예외 ({api_ver}): {e}")
-
+    """Gemini Imagen 비활성화 — Pollinations 폴백으로 넘어감."""
     return None
 
 

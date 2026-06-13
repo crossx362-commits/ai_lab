@@ -180,10 +180,6 @@ def _merge_and_save(existing: dict, new_prompts: list[dict], new_trends: list[di
 def run_research() -> bool:
     """1회 아린 이미지 리서치 사이클. 성공 시 True 반환."""
     _load_env()
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        print("  [아린 리서치] GEMINI_API_KEY 없음")
-        return False
 
     # 0단계: Ollama로 오늘의 리서치 목표 설정
     goal = _set_research_goal()
