@@ -52,3 +52,9 @@
 - **가희**: [AI 콘텐츠 검증](projects/ai-team/skills/가희_검수관/knowledge/learned_20260613_AI_콘텐츠_검증.md)
 - **루나**: [AI 영상 제작](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260613_AI_영상_제작.md)
 - **경수**: [제로 트러스트 보안](projects/ai-team/skills/경수_수사관/knowledge/learned_20260613_제로_트러스트_보안.md)
+
+
+## 2026-06-14 02:13 자가학습
+- **케빈**: [LLMOps](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260614_LLMOps.md)
+- **영숙**: [생성형 AI 활용법](projects/ai-team/skills/영숙_비서/knowledge/learned_20260614_생성형_AI_활용법.md)
+- **로율**: [AI 저작권법](projects/ai-team/skills/로율_변호사/knowledge/learned_20260614_AI_저작권법.md)
