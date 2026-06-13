@@ -26,8 +26,19 @@ const AI_AGENT_FRIENDS = [
     { id: 'agent_yewon',    nickname: '예원',   petName: '👑 예원대표', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=yewon',    status: 'online', chemistry: 95, personality: 'CEO·의사결정 리더',  unread: 0 },
 ];
 
+const BOT_NAMES = ['송이','바람','치즈','토리','초코','해피','나비','보리','하늘','구름'];
+
 function ensureAgentFriends() {
-    const existing = (friends || []).map(f => f.id);
+    // 봇(비에이전트) 항목 제거 — id가 agent_ 로 시작하지 않고 봇 이름 목록에 해당하는 항목
+    const before = friends.length;
+    friends = friends.filter(f => {
+        if (String(f.id).startsWith('agent_')) return true;
+        return !BOT_NAMES.some(b => (f.nickname || '').includes(b));
+    });
+    const removed = before !== friends.length;
+
+    // 에이전트 자동 등록
+    const existing = friends.map(f => f.id);
     let added = false;
     AI_AGENT_FRIENDS.forEach(agent => {
         if (!existing.includes(agent.id)) {
@@ -35,7 +46,8 @@ function ensureAgentFriends() {
             added = true;
         }
     });
-    if (added) {
+
+    if (added || removed) {
         try {
             localStorage.setItem(AppConstants.StorageKeys.FRIENDS, JSON.stringify(friends));
         } catch(e) {}
@@ -1482,7 +1494,6 @@ function shareAlbumToActiveChat() {
 (function clearBotNotifications() {
     try {
         const stored = JSON.parse(localStorage.getItem('petna_like_notifications') || '[]');
-        const BOT_NAMES = ['송이','바람','치즈','토리','초코','해피','나비','보리','하늘','구름'];
         const cleaned = stored.filter(n => !BOT_NAMES.some(b => (n.name||'').includes(b)));
         if (cleaned.length !== stored.length) {
             localStorage.setItem('petna_like_notifications', JSON.stringify(cleaned));
