@@ -162,6 +162,9 @@ function generateSajuShareCard() {
     const score = sajuData.compatScore || 0;
     const nickname = typeof settings_nickname !== 'undefined' ? settings_nickname : '집사';
 
+    const petBirthYear = sajuData.petBirth ? sajuData.petBirth.split('-')[0] : null;
+    const ownerBirthYear = sajuData.ownerBirth ? sajuData.ownerBirth.split('-')[0] : null;
+
     const W = 1080, H = 1920;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
@@ -197,10 +200,21 @@ function generateSajuShareCard() {
     ctx.fillStyle = '#fef3c7';
     ctx.font = 'bold 64px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${petName} × ${nickname}`, W / 2, 210);
+    ctx.fillText(`${petName} × ${nickname}`, W / 2, 200);
+
+    // 년생 표시
+    if (petBirthYear || ownerBirthYear) {
+        ctx.font = '30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        ctx.fillStyle = '#fcd34d';
+        const yearParts = [];
+        if (petBirthYear) yearParts.push(`🐾 ${petBirthYear}년생`);
+        if (ownerBirthYear) yearParts.push(`👑 ${ownerBirthYear}년생`);
+        ctx.fillText(yearParts.join('  ·  '), W / 2, 248);
+    }
+
     ctx.font = 'bold 38px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.fillStyle = '#fbbf24';
-    ctx.fillText('반려동물 사주 궁합 분석', W / 2, 280);
+    ctx.fillText('반려동물 사주 궁합 분석', W / 2, 300);
 
     // 궁합 점수 원형
     const cx = W / 2, cy = 560, r = 160;
@@ -238,8 +252,8 @@ function generateSajuShareCard() {
     // 오행 정보
     const elementY = 880;
     [
-        { label: `🐾 ${petName}`, text: sajuData.petSummary || '─' },
-        { label: `👑 ${nickname}`, text: sajuData.ownerSummary || '─' }
+        { label: petBirthYear ? `🐾 ${petName} (${petBirthYear}년생)` : `🐾 ${petName}`, text: sajuData.petSummary || '─' },
+        { label: ownerBirthYear ? `👑 ${nickname} (${ownerBirthYear}년생)` : `👑 ${nickname}`, text: sajuData.ownerSummary || '─' }
     ].forEach((item, i) => {
         const bx = 80 + i * (W / 2 - 60), by = elementY, bw = W / 2 - 120, bh = 160;
         ctx.fillStyle = 'rgba(255,255,255,0.06)';
