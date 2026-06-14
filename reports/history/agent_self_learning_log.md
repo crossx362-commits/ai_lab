@@ -76,3 +76,9 @@
 - **가희**: [수의 기초 의학](projects/ai-team/skills/가희_검수관/knowledge/learned_20260614_수의_기초_의학.md)
 - **티모**: [디자인 시스템](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260614_디자인_시스템.md)
 - **루나**: [AI 영상 제작 기술](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260614_AI_영상_제작_기술.md)
+
+
+## 2026-06-15 02:13 자가학습
+- **아린**: [숏폼 마케팅 전략](projects/ai-team/skills/아린_관리자/knowledge/learned_20260615_숏폼_마케팅_전략.md)
+- **코다리**: [Rust 프로그래밍](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260615_Rust_프로그래밍.md)
+- **로율**: no_topic
