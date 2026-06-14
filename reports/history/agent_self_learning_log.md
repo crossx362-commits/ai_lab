@@ -64,3 +64,9 @@
 - **영숙**: [생성형 AI 활용법](projects/ai-team/skills/영숙_비서/knowledge/learned_20260614_생성형_AI_활용법.md)
 - **케빈**: [플랫폼 엔지니어링](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260614_플랫폼_엔지니어링.md)
 - **현빈**: [그로스 해킹](projects/ai-team/skills/현빈_전략가/knowledge/learned_20260614_그로스_해킹.md)
+
+
+## 2026-06-14 16:20 자가학습
+- **현빈**: [AI 비즈니스 전략](projects/ai-team/skills/현빈_전략가/knowledge/learned_20260614_AI_비즈니스_전략.md)
+- **루나**: no_topic
+- **로율**: no_topic
