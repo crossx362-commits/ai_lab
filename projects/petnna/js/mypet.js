@@ -60,29 +60,29 @@ function renderPetStageList() {
         pets.forEach((pet, idx) => {
             const isActive = idx === activePetIndex;
 
-            // 각도 계산 (하단/측면 240° 범위 + 작은 랜덤 오프셋)
+            // 각도 계산 (하단/측면 240° 범위)
             const baseAngle = safeStart + angleStep * (idx + 0.5);
-            const seed1 = (pet.id || idx) * 137.508; // 황금각
-            const seed2 = (pet.id || idx) * 213.123; // 두 번째 시드
+            // 시드를 2π 범위로 정규화 — 큰 timestamp ID에서도 sin/cos 안정적
+            const seed1 = ((pet.id || idx) * 137.508) % (Math.PI * 2);
+            const seed2 = ((pet.id || idx) * 213.123) % (Math.PI * 2);
 
-            const randomAngleOffset = Math.sin(seed1) * 0.4; // ±23° (상단 침범 방지)
+            const randomAngleOffset = Math.sin(seed1) * 0.25; // ±14° (작게 유지)
             const angle = baseAngle + randomAngleOffset;
 
-            // 비대칭 반경 변화 (모바일에서는 좁게, 데스크탑에서는 넓게 안전 범위 유지)
+            // 반경 변화
             const minRadius = isMobile ? 20 : 25;
-            const maxRadius = isMobile ? 35 : 40;
-            const radiusRange = maxRadius - minRadius;
-            const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * radiusRange);
+            const maxRadius = isMobile ? 33 : 38;
+            const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * (maxRadius - minRadius));
 
-            // 비대칭 X, Y 오프셋 (타원형 효과)
-            const xStretch = 1 + Math.cos(seed1) * 0.10; // X축 늘림/줄임
-            const yStretch = 1 + Math.sin(seed2) * 0.08; // Y축 독립적 변화
+            // 타원형 효과
+            const xStretch = 1 + Math.cos(seed1) * 0.08;
+            const yStretch = 1 + Math.sin(seed2) * 0.06;
 
             const rawPetX = butlerX + Math.cos(angle) * radiusVariation * xStretch;
             const rawPetY = butlerY + Math.sin(angle) * radiusVariation * yStretch;
-            // 상단 말풍선 영역(~22%) 및 화면 경계 클램프
+            // 말풍선 영역(상단 30%) 및 화면 경계 클램프
             const petX = Math.max(6, Math.min(92, rawPetX));
-            const petY = Math.max(22, Math.min(88, rawPetY));
+            const petY = Math.max(30, Math.min(88, rawPetY));
 
             // SVG 목줄 그리기 (곡선)
             if (svg) {

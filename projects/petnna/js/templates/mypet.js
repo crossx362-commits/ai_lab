@@ -210,10 +210,10 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
 
-                    <!-- 말풍선 (집사 오른쪽 위) -->
-                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 62%; top: 12%; transform: translateX(-50%); z-index: 11;">
+                    <!-- 말풍선 (집사 위, 폭 제한) -->
+                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 4%; transform: translateX(-50%); z-index: 11; max-width: 160px; white-space: normal; line-height: 1.4;">
                         <span id="pet-bubble-text">산책 가요! 🐕</span>
-                        <div class="absolute -bottom-1.5 left-1/4 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
+                        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
                     </div>
 
                     <!-- 반려동물들 (불규칙 배치) -->
