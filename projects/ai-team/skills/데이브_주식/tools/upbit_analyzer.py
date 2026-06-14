@@ -168,6 +168,44 @@ def calc_indicators(df: pd.DataFrame) -> dict:
     result["OBV_추세"] = "상승" if obv.iloc[-1] > obv.iloc[-5] else "하락"
     result["OBV_5일변화"] = int(obv.iloc[-1] - obv.iloc[-5])
 
+    # OBV 다이버전스 (세력 매집/배분 탐지)
+    price_trend_5 = "상승" if close.iloc[-1] > close.iloc[-5] else "하락"
+    obv_trend_5 = "상승" if obv.iloc[-1] > obv.iloc[-5] else "하락"
+    if price_trend_5 == "하락" and obv_trend_5 == "상승":
+        result["OBV_다이버전스"] = "✅ 상승 다이버전스(세력 매집 신호)"
+    elif price_trend_5 == "상승" and obv_trend_5 == "하락":
+        result["OBV_다이버전스"] = "⚠️ 하락 다이버전스(세력 배분 신호)"
+    else:
+        result["OBV_다이버전스"] = "없음"
+
+    # CVD (Cumulative Volume Delta) — 매수/매도 압력 누적
+    buy_vol = volume.where(close.diff() > 0, 0)
+    sell_vol = volume.where(close.diff() <= 0, 0)
+    cvd = (buy_vol - sell_vol).cumsum()
+    cvd_trend = "상승(매수 우위)" if cvd.iloc[-1] > cvd.iloc[-5] else "하락(매도 우위)"
+    if price_trend_5 == "상승" and "하락" in cvd_trend:
+        result["CVD_다이버전스"] = "⚠️ 하락 다이버전스(고래 미참여 상승 — 세력 배분 의심)"
+    elif price_trend_5 == "하락" and "상승" in cvd_trend:
+        result["CVD_다이버전스"] = "✅ 상승 다이버전스(저가 매집 중)"
+    else:
+        result["CVD_다이버전스"] = "없음"
+    result["CVD_추세"] = cvd_trend
+
+    # 세력 매집 패턴 탐지
+    price_change_5d = (close.iloc[-1] - close.iloc[-5]) / close.iloc[-5] * 100
+    avg_vol_20 = volume.rolling(20).mean().iloc[-1]
+    recent_vol_5_avg = volume.iloc[-5:].mean()
+    recent_vol_ratio = recent_vol_5_avg / avg_vol_20 if avg_vol_20 > 0 else 1.0
+    if recent_vol_ratio >= 2.0 and abs(price_change_5d) < 3.0:
+        result["세력매집패턴"] = "✅ 바닥 매집(거래량↑ 가격 정체 — 매집 강력 의심)"
+    elif price_change_5d < -5.0 and recent_vol_ratio >= 1.5:
+        result["세력매집패턴"] = "⚠️ 세력 손털기(급락+거래량 — shakeout 의심)"
+    elif price_change_5d > 5.0 and recent_vol_ratio < 0.8:
+        result["세력매집패턴"] = "⚠️ 거래량 없는 상승(수급 취약 — 가짜 펌핑 의심)"
+    else:
+        result["세력매집패턴"] = "중립"
+
+
     # 거래량 회전율
     avg_vol = volume.rolling(20).mean().iloc[-1]
     today_vol = volume.iloc[-1]
@@ -243,6 +281,13 @@ def calc_indicators(df: pd.DataFrame) -> dict:
     result["거래대금_24h"] = round(float(today_value), 0)
     result["유동성_상태"] = "✅ 충분" if today_value >= 1000000000.0 else "❌ 부족 (10억 미만)"
 
+    # 워시트레이딩(통정매매) 탐지 — 거래량 급증 + 가격 변화 미미
+    last_price_change_pct = abs(close.diff().iloc[-1] / close.iloc[-2]) if close.iloc[-2] != 0 else 0
+    if ratio >= 3.0 and last_price_change_pct < 0.01:
+        result["통정매매의심"] = "⚠️ 워시트레이딩 의심(거래량↑↑ 가격변화 1% 미만)"
+    else:
+        result["통정매매의심"] = "정상"
+
     return result
 
 def _calc_atr(records: list, period: int = 10) -> float:
@@ -257,6 +302,34 @@ def _calc_atr(records: list, period: int = 10) -> float:
         tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
         trs.append(tr)
     return round(float(np.mean(trs[-period:])), 0)
+
+def get_kimchi_premium(ticker="KRW-BTC"):
+    """김치 프리미엄 계산 (업비트 vs 바이낸스 가격 괴리율)."""
+    try:
+        import requests
+        binance_symbol = ticker.replace("KRW-", "") + "USDT"
+        b_resp = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={binance_symbol}", timeout=5)
+        binance_usd = float(b_resp.json()["price"])
+
+        fx_resp = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=5)
+        usd_krw = float(fx_resp.json()["rates"]["KRW"])
+
+        binance_krw = binance_usd * usd_krw
+        upbit_krw = float(pyupbit.get_current_price(ticker))
+        premium = (upbit_krw - binance_krw) / binance_krw * 100
+
+        if premium > 3:
+            status = "🔴 과열(김프 3%↑ — 한국 FOMO 과잉, 고점 주의)"
+        elif premium < -2:
+            status = "🟢 역프리미엄(글로벌 대비 저평가 — 매집 기회 가능)"
+        else:
+            status = "🟡 정상 범위"
+
+        return {"김치프리미엄": round(premium, 2), "상태": status,
+                "업비트가": upbit_krw, "바이낸스환산가": round(binance_krw, 0)}
+    except Exception as e:
+        return {"김치프리미엄": None, "상태": "조회불가", "error": str(e)}
+
 
 def get_upbit_data(ticker="KRW-BTC"):
     """업비트에서 일봉 시세 데이터를 추출하고 보조지표 및 Supertrend를 분석합니다."""
@@ -281,17 +354,19 @@ def get_upbit_data(ticker="KRW-BTC"):
         current_trend = df_supertrend['Trend'].iloc[-1]
         
         indicators = calc_indicators(df)
-        
+        kimchi = get_kimchi_premium(ticker)
+
         # 매물대는 최근 30일치 데이터로만 계산
         volume_profile = analyze_volume_profile(df.tail(30))
-        
+
         return {
             "ticker": ticker,
             "현재가": current_price,
             "현재추세": current_trend,
             "최근 30일 슈퍼트렌드 분석": df_supertrend.tail(30).to_dict(orient='records'),
             "보조지표": indicators,
-            "매물대 상위 3구간": volume_profile
+            "매물대 상위 3구간": volume_profile,
+            "김치프리미엄": kimchi,
         }
     except Exception as e:
         return {"error": f"가상자산 시세 조회 중 오류 발생: {e}"}
@@ -308,16 +383,15 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
     current_trend = data["현재추세"]
     indicators = data["보조지표"]
     volume_profile = data["매물대 상위 3구간"]
+    kimchi = data.get("김치프리미엄", {})
     
     records = data["최근 30일 슈퍼트렌드 분석"]
     atr = _calc_atr(records)
     
     # POC 분석
-    poc_str = "N/A"
     poc_status = "N/A"
     if volume_profile:
         poc_item = volume_profile[0]
-        poc_str = poc_item["가격대"]
         poc_mid = (poc_item["lo"] + poc_item["hi"]) / 2
         if current_price > poc_mid:
             poc_status = f"현재가({current_price:,.0f}원) > POC({poc_mid:,.0f}원) — [매물대 지지 형성]"
@@ -331,8 +405,6 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
     if not is_simulated:
         try:
             krw_balance = float(upbit_client.get_balance("KRW"))
-            # 대상 티커 잔고 (예: BTC)
-            currency = ticker.split("-")[1]
             crypto_balance = float(upbit_client.get_balance(ticker))
             avg_buy_price = float(upbit_client.get_avg_buy_price(ticker))
         except Exception as e:
@@ -351,23 +423,6 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
 
     today_str = datetime.datetime.now().strftime("%Y년 %m월 %d일 (%a)")
     
-    # 시나리오 사전 계산
-    # 추가 매수 가정 (예수금의 50% 투입)
-    add_funds = krw_balance * 0.5
-    add_shares = add_funds / current_price
-    new_avg = avg_buy_price
-    if crypto_balance + add_shares > 0:
-        new_avg = round((avg_buy_price * crypto_balance + current_price * add_shares) / (crypto_balance + add_shares))
-    
-    # 탈출 목표가: 현재가 대비 15% 상승 지점
-    exit_target = round(current_price * 1.15, -1)
-    loss_exit_direct = 0.0
-    loss_exit_after_avg = 0.0
-    if avg_buy_price > 0:
-        loss_exit_direct = round((exit_target - avg_buy_price) / avg_buy_price * 100, 1)
-    if new_avg > 0:
-        loss_exit_after_avg = round((exit_target - new_avg) / new_avg * 100, 1)
-
     # 매물대 문자열 변환
     vp_rows = "\n".join(
         f"  {v['가격대']} — 누적거래량 {v['누적거래량']:,}"
@@ -413,6 +468,13 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
 - 보유 수량: {crypto_balance} {ticker.split('-')[1]}
 - 평균 매수 단가: {avg_buy_price:,.0f}원
 - 현재 손실률: {loss_now}%
+
+[세력 탐지 지표 (신규 주입)]:
+- 김치 프리미엄: {kimchi.get('김치프리미엄', 'N/A')}% → {kimchi.get('상태', 'N/A')}
+- OBV 다이버전스: {indicators.get('OBV_다이버전스', 'N/A')}
+- CVD 추세: {indicators.get('CVD_추세', 'N/A')} | CVD 다이버전스: {indicators.get('CVD_다이버전스', 'N/A')}
+- 세력 매집 패턴: {indicators.get('세력매집패턴', 'N/A')}
+- 워시트레이딩 의심 여부: {indicators.get('통정매매의심', 'N/A')}
 
 [매크로 & 온체인 추가 분석 재료 (자가 탐색 시 반영)]:
 1. 미국 친크립토 규제 완화 및 정책 환경 우호성 여부 분석

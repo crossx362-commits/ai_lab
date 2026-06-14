@@ -521,6 +521,21 @@ def run_upload(content: dict) -> bool:
         send_telegram_message(f"🚨 루나 숏츠: 예원 CEO 승인 거부로 업로드 중단.\n제목: {meta.get('title')}")
         return False
 
+    # 업로드 전 오디오 트랙 검증
+    try:
+        import subprocess as _sp
+        _probe = _sp.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a",
+             "-show_entries", "stream=codec_type", "-of", "csv=p=0", video_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if "audio" not in _probe.stdout:
+            send_telegram_message(f"🔇 [루나 숏츠] 오디오 없는 영상 — 업로드 중단.\n제목: {meta.get('title')}")
+            print(f"❌ 오디오 트랙 없음 — 업로드 중단: {video_path}")
+            return False
+    except Exception as _e:
+        print(f"⚠️ 오디오 검증 실패 ({_e}) — 업로드 계속")
+
     uploader = YouTubeUploader()
     uploader.authenticate()
 

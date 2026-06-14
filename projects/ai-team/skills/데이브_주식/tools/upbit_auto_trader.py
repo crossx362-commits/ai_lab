@@ -6,7 +6,6 @@ import os
 import sys
 import time
 import datetime
-import re
 
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
@@ -26,6 +25,8 @@ TICKERS = ["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-ADA", "K
 # 티커별 최근 LLM 분석 실행 시점 기록 (실시간 무한 루프로 인한 중복 LLM 과부하 방지 쿨다운용)
 last_llm_time = {}
 LLM_COOLDOWN_SECONDS = 300  # 동일 종목에 대한 LLM 재분석은 최소 5분 쿨다운 적용
+last_report_time = 0
+REPORT_INTERVAL_SECONDS = 4 * 3600  # 4시간마다 현황 보고
 
 def parse_decision_from_report(report: str) -> str:
     """리포트 텍스트에서 최종 결정을 파싱합니다."""
@@ -101,7 +102,42 @@ def calculate_confluence_score(ticker: str) -> dict:
         if indicators["VolumeSpike"] == "✅ 급증":
             score += 2
             reasons.append(f"거래량 급증 ({indicators['Volume_배율']}배)")
-            
+
+        # 6. OBV 다이버전스 (세력 매집 신호)
+        obv_div = indicators.get("OBV_다이버전스", "")
+        if "상승 다이버전스" in obv_div:
+            score += 2
+            reasons.append("OBV 상승 다이버전스(매집)")
+        elif "하락 다이버전스" in obv_div:
+            score -= 2
+            reasons.append("OBV 하락 다이버전스(배분경고)")
+
+        # 7. CVD 다이버전스
+        cvd_div = indicators.get("CVD_다이버전스", "")
+        if "상승 다이버전스" in cvd_div:
+            score += 2
+            reasons.append("CVD 상승 다이버전스(저가매집)")
+        elif "하락 다이버전스" in cvd_div:
+            score -= 1
+            reasons.append("CVD 하락 다이버전스(고래 미참여)")
+
+        # 8. 세력 매집 패턴
+        seoryok = indicators.get("세력매집패턴", "")
+        if "바닥 매집" in seoryok:
+            score += 2
+            reasons.append("세력 바닥 매집 패턴")
+        elif "손털기" in seoryok:
+            score += 1
+            reasons.append("세력 손털기(shakeout — 반등 기대)")
+        elif "가짜 펌핑" in seoryok or "수급 취약" in seoryok:
+            score -= 2
+            reasons.append("거래량 없는 상승(펌핑 의심)")
+
+        # 9. 워시트레이딩 패널티
+        if "워시트레이딩" in indicators.get("통정매매의심", ""):
+            score -= 3
+            reasons.append("통정매매 의심(신뢰도 하락)")
+
         return {
             "ticker": ticker,
             "score": score,
@@ -170,9 +206,9 @@ def run_auto_trade_cycle(sim_mode=False):
             atr = pos["atr"]
             
             profit_ratio = (current_price - avg_buy_price) / avg_buy_price
-            tp_price = avg_buy_price * 1.025
-            sl_atr = avg_buy_price - 2 * atr
-            sl_fixed = avg_buy_price * 0.985
+            tp_price = avg_buy_price * 1.05   # 익절 +5%
+            sl_atr = avg_buy_price - 1.5 * atr
+            sl_fixed = avg_buy_price * 0.98   # 손절 -2%
             sl_price = max(sl_atr, sl_fixed)
             
             print(f"  [{ticker}] 수익률: {profit_ratio*100:.2f}% | 익절가: {tp_price:,.0f}원 | 손절가: {sl_price:,.0f}원 (현재가: {current_price:,.0f}원)")
@@ -216,25 +252,25 @@ def run_auto_trade_cycle(sim_mode=False):
             
         best = scanned[0]
         # 최소 진입 점수 문턱값 (11점 이상)
-        if best["score"] >= 11:
+        if best["score"] >= 3:
             best_ticker = best["ticker"]
-            
+
             # 동일 종목에 대한 LLM 분석 쿨다운 감시
             now = time.time()
             last_run = last_llm_time.get(best_ticker, 0)
             if now - last_run < LLM_COOLDOWN_SECONDS:
                 print(f"[AutoTrader] 최우수 코인 {best_ticker} ({best['score']}점) 포착되었으나, 최근 분석 이력으로 인해 쿨다운 중입니다. (남은 시간: {int(LLM_COOLDOWN_SECONDS - (now - last_run))}초)")
                 return
-                
+
             print(f"[AutoTrader] 💥 최우수 코인 진입 조건 달성! {best_ticker} ({best['score']}점) -> LLM 최종 검증 진행...")
             last_llm_time[best_ticker] = now  # 쿨다운 갱신
-            
+
             report = upbit_analyzer.run_analysis(f"실시간 퀀트 스캔 {best['score']}점 달성. 신규 진입 최종 검증 요청.", best_ticker)
             decision = parse_decision_from_report(report)
-            
+
             print(f"[AutoTrader] LLM 최종 결정: {decision}")
             if decision == "BUY":
-                buy_amount = krw_balance * 0.3
+                buy_amount = krw_balance * 0.95
                 if buy_amount < 5000.0:
                     print(f"[AutoTrader] 매수 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {buy_amount:.0f}원)")
                     return
@@ -250,21 +286,71 @@ def run_auto_trade_cycle(sim_mode=False):
         else:
             print(f"[AutoTrader] 현재 최소 진입 점수(11점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
 
+def send_status_report(sim_mode=False):
+    """4시간마다 현황 보고 텔레그램 전송."""
+    global last_report_time
+    now = time.time()
+    if now - last_report_time < REPORT_INTERVAL_SECONDS:
+        return
+    last_report_time = now
+
+    try:
+        upbit_client = upbit_analyzer.get_upbit_client()
+        if upbit_client is None or sim_mode:
+            krw = 0.0
+            holdings = []
+        else:
+            krw = float(upbit_client.get_balance("KRW"))
+            holdings = []
+            for ticker in TICKERS:
+                bal = float(upbit_client.get_balance(ticker))
+                if bal * float(pyupbit.get_current_price(ticker)) >= 5000:
+                    cur = float(pyupbit.get_current_price(ticker))
+                    avg = float(upbit_client.get_avg_buy_price(ticker))
+                    pnl = (cur - avg) / avg * 100
+                    holdings.append(f"  • {ticker.split('-')[1]}: {bal:.6f}개 | 평단 {avg:,.0f}원 | 현재 {cur:,.0f}원 | {pnl:+.2f}%")
+
+        # 상위 코인 스코어 요약
+        scores = []
+        for ticker in TICKERS:
+            r = calculate_confluence_score(ticker)
+            if "error" not in r:
+                scores.append(f"  • {ticker.split('-')[1]}: {r['score']}점")
+        scores.sort(reverse=True)
+
+        holding_str = "\n".join(holdings) if holdings else "  • 없음"
+        score_str = "\n".join(scores[:5])
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        msg = (
+            f"📊 [데이브] 4시간 현황 보고 — {now_str}\n"
+            f"\n💰 예수금: {krw:,.0f}원"
+            f"\n\n📦 보유 포지션:\n{holding_str}"
+            f"\n\n🔍 퀀트 스코어 TOP5:\n{score_str}"
+            f"\n\n🤖 데몬 정상 가동 중 (10초 주기 감시)"
+        )
+        send_telegram_message(msg)
+        print(f"[Report] 4시간 현황 보고 전송 완료")
+    except Exception as e:
+        print(f"[Report] 현황 보고 오류: {e}")
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     sim = "--sim" in args
-    
+
     if "--once" in args:
         run_auto_trade_cycle(sim_mode=sim)
     else:
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
         send_telegram_message("🤖 데이브 업비트 실시간 자동 매매 데몬 가동을 시작합니다 (실시간 10초 시세 감시 및 실시간 다중 퀀트 스캔).")
-        
+        last_report_time = time.time() - REPORT_INTERVAL_SECONDS  # 시작 즉시 첫 보고
+
         while True:
             try:
                 run_auto_trade_cycle(sim_mode=sim)
+                send_status_report(sim_mode=sim)
             except Exception as e:
                 print(f"[Daemon Error] {e}")
-            
-            # 실시간 10초 주기
+
             time.sleep(10)

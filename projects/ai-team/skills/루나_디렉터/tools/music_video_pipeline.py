@@ -686,19 +686,35 @@ def run_pipeline(publish_hhmm: str = None):
                 return
             silent_video = video_path
 
-        if full_track and os.path.exists(full_track) and silent_video != video_path:
+        # 오디오 트랙 유무 확인 (silent_video == video_path 폴백이어도 오디오 합성 시도)
+        def _has_audio(path: str) -> bool:
             try:
-                # [병목 관리] 오디오 합성 전 체크
+                r = subprocess.run(
+                    [FFMPEG.replace("ffmpeg", "ffprobe"), "-v", "error", "-select_streams", "a",
+                     "-show_entries", "stream=codec_type", "-of", "csv=p=0", path],
+                    capture_output=True, text=True, timeout=10
+                )
+                return "audio" in r.stdout
+            except Exception:
+                return False
+
+        src_for_audio = silent_video if silent_video != video_path else (video_path if os.path.exists(video_path) else None)
+        needs_audio_merge = full_track and os.path.exists(full_track) and src_for_audio and not _has_audio(src_for_audio)
+
+        if full_track and os.path.exists(full_track) and (silent_video != video_path or needs_audio_merge):
+            try:
                 wait_for_resources(task_name="오디오 믹싱(FFmpeg)")
                 print("🎬 비주얼과 오디오 합성 중 (루핑 적용)...")
-                ok = generator.merge_video_audio(silent_video, full_track, video_path)
+                merge_src = silent_video if silent_video != video_path else video_path
+                ok = generator.merge_video_audio(merge_src, full_track, video_path)
                 if ok:
                     print(f"✅ 오디오 합성 완료: {video_path}")
                 else:
                     raise RuntimeError("merge_video_audio returned False")
             except Exception as e:
                 print(f"⚠️ 오디오 합성 실패 ({e}) — 무음 영상 사용")
-                shutil.copy(silent_video, video_path)
+                if silent_video != video_path:
+                    shutil.copy(silent_video, video_path)
         elif silent_video != video_path:
             shutil.copy(silent_video, video_path)
 
@@ -783,6 +799,20 @@ def run_pipeline(publish_hhmm: str = None):
     except Exception as e:
         print(f"⚠️ 썸네일 추출 실패: {e}")
         image_path = thumb_path
+
+    # 업로드 전 오디오 트랙 검증
+    try:
+        probe = subprocess.run(
+            [FFMPEG.replace("ffmpeg", "ffprobe"), "-v", "error", "-select_streams", "a",
+             "-show_entries", "stream=codec_type", "-of", "csv=p=0", video_path],
+            capture_output=True, text=True, timeout=10
+        )
+        if "audio" not in probe.stdout:
+            send_telegram_message(f"🔇 [루나] 오디오 없는 영상 감지 — 업로드 중단.\n제목: {title}\n원인: 음악 생성 또는 합성 실패")
+            print(f"❌ 오디오 트랙 없음 — 업로드 중단: {video_path}")
+            return
+    except Exception as e:
+        print(f"⚠️ 오디오 검증 실패 ({e}) — 업로드 계속")
 
     if _is_duplicate_on_channel(video_path, uploader):
         send_telegram_message(f"⚠️ 루나: 채널에 동일 영상 존재 — 업로드 중단.\n제목: {title}")
