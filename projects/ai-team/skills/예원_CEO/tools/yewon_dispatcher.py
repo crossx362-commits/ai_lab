@@ -94,7 +94,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
             "코다리": ["코다리", "헬스체크", "개발"],
             "가희": ["가희", "콘텐츠 검수"],
             "영숙": ["영숙", "노션 보고", "업로드 현황", "리포트 정리"],
-            "데이브": ["데이브", "주식", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit"],
+            "데이브": ["데이브", "주식", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit", "자동매매", "자동 매매", "투자 자동화"],
         }
         for true_agent, keywords in _agent_keywords.items():
             if any(k in ceo_message for k in keywords):
@@ -301,8 +301,23 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 return f"{'✅' if result.returncode == 0 else '❌'} 티모 UI/UX 검토 완료\n\n{result.stdout[:500]}"
             return "❌ 티모 스크립트를 찾을 수 없습니다."
 
-        elif _match(agent, ["데이브", "dave"], ["주식", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit"]):
+        elif _match(agent, ["데이브", "dave"], ["주식", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit", "자동매매", "자동 매매", "투자 자동화"]):
             import subprocess
+            is_auto = any(k in ceo_message for k in ["자동매매", "자동 매매", "자동화", "auto"])
+            if is_auto:
+                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", "upbit_auto_trader.py")
+                if os.path.exists(script):
+                    # 백그라운드 데몬으로 실행 (Popen)
+                    subprocess.Popen(
+                        [sys.executable, script],
+                        cwd=os.path.dirname(script),
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
+                    )
+                    return "✅ 데이브 업비트 자동 매매 데몬을 백그라운드에서 가동하기 시작했습니다. (1시간 주기로 분석 및 포지션 감시를 수행합니다)"
+                return "❌ 데이브 자동 매매 스크립트를 찾을 수 없습니다."
+
             is_crypto = any(k in ceo_message.lower() for k in ["업비트", "가상자산", "비트코인", "btc", "upbit"])
             tool_name = "upbit_analyzer.py" if is_crypto else "stock_analyzer.py"
             script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", tool_name)
