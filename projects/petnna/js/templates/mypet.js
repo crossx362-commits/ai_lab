@@ -193,8 +193,8 @@ const MYPET_TEMPLATE = `
                         <!-- JS로 동적 생성 -->
                     </svg>
 
-                    <!-- 집사 (중앙) -->
-                    <div class="absolute" style="left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 10;">
+                    <!-- 집사 (중앙 약간 위) -->
+                    <div class="absolute" style="left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 10;">
                         <div class="flex flex-col items-center gap-1.5">
                             <span class="text-[10px] font-black text-brand-600 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 👑 집사
@@ -210,10 +210,10 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
 
-                    <!-- 말풍선 (집사 머리 위) -->
-                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 5%; transform: translateX(-50%); z-index: 11;">
+                    <!-- 말풍선 (집사 오른쪽 위) -->
+                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 62%; top: 12%; transform: translateX(-50%); z-index: 11;">
                         <span id="pet-bubble-text">산책 가요! 🐕</span>
-                        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
+                        <div class="absolute -bottom-1.5 left-1/4 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
                     </div>
 
                     <!-- 반려동물들 (불규칙 배치) -->
