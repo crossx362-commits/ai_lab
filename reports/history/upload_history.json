@@ -339,5 +339,57 @@
             "audio_file": "",
             "publish_at": "2026-06-09T10:00:00Z"
         }
+    },
+    {
+        "agent": "아린",
+        "status": "published",
+        "uploaded_at": "2026-06-12T18:32:41.522096",
+        "metadata": {
+            "platform": "instagram",
+            "post_id": "17983465367844765",
+            "caption": "따스한 햇살이 쏟아지는 카페, 정말 힐링되는 시간이에요.☕️ 좋아하는 음악을 들으며 창밖 풍경을 감상하니, 평화로운 오후네요. 다들 오늘 하루도 행복하게 보내시길 바라요! 긍정적인 에너지 가득 충전하고, 곧 또 새로운 소식 들려드릴게요!😊\n\n#카페투어 #오후의여유 #일상기록 #데일리그램 #힐링타임 #감성사진 #행복한하루 #소확행",
+            "image_url": "https://files.catbox.moe/1g80hn.jpg",
+            "trend_topic": "시장 골목 로컬 음식",
+            "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Vibrant summer beach photography, crystal turquoise water, white sand, tropical warmth, 8K, A vibrant summer day at DSLR style photograph. A narrow, vibrant market alley filled, sparkling ocean waves, warm sun on golden sand, breathtaking, photojournalistic quality, vivid colors, textural richness, superb composition"
+        }
+    },
+    {
+        "agent": "아린",
+        "status": "published",
+        "uploaded_at": "2026-06-13T15:58:57.147772",
+        "metadata": {
+            "platform": "instagram",
+            "post_id": "18083034116556481",
+            "caption": "*   *Option 1:* \"몽환적인 분위기가 머무는 순간 🌿 arirang의 골든, 소프트 빛이 마음속",
+            "image_url": "https://files.catbox.moe/ph2m6g.jpg",
+            "trend_topic": "arirang",
+            "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Dramatic summer storm photography, lightning over the ocean, powerful cloud formations, A dramatic summer sunset at photorealistic DSLR photo, DSLR 사진, arirang, 골든, 소프트 tones, , fiery orange and purple sky over calm water, masterpiece, highly detailed, tack sharp focus, professional composition, award-winning"
+        }
+    },
+    {
+        "agent": "아린",
+        "status": "published",
+        "uploaded_at": "2026-06-14T08:59:23.795640",
+        "metadata": {
+            "platform": "instagram",
+            "post_id": "18014837870904927",
+            "caption": "와, 이 분위기 미쳤다!🔥\n\n여름 스포츠 경기장 현장 완전 대박이지? 시원한 바람 맞으면서 응원하는 이 느낌, 정말 최고야! 같이 즐기자!\n\n#여름스포츠 #경기장뷰 #응원열기 #바이브뿜뿜 #여름날씨 #활동적인순간 #에너지뿜뿜 #주말이벤트",
+            "image_url": "https://files.catbox.moe/80h5ca.jpg",
+            "trend_topic": "날씨",
+            "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Sunflower field photography, endless golden blooms, bright blue summer sky, joyful and radiant, A dramatic summer sunset at Dynamic summer sports stadium atmosphere, bright sunlight, c, fiery orange and purple sky over calm water, masterpiece, exquisite and intricate details, vibrant and rich tones, sharp focus, perfect artistic composition, cinematic ambience"
+        }
+    },
+    {
+        "agent": "아린",
+        "status": "published",
+        "uploaded_at": "2026-06-14T19:05:14.618908",
+        "metadata": {
+            "platform": "instagram",
+            "post_id": "17868846144623533",
+            "caption": "몽환적 한 순간 🌿\n\n비 내리는 도시의 창가에 놓인 세련된 스마트폰과 고급스러운 소품들의 딥 블루, 실버 빛이 마음을 물들입니다.\n오늘 하루도 이런 풍경 하나 마음에 담아요.\n\n#감성 #갤럭시Z시리즈와디지털아트워크 #힐링 #자연 #일상 #풍경 #감성사진 #사진스타그램",
+            "image_url": "https://files.catbox.moe/31huie.jpg",
+            "trend_topic": "erie insurance",
+            "image_prompt": "photorealistic, shot on Sony A7R V DSLR, 85mm f/1.4 lens, natural lighting, hyper-detailed skin/texture, Summer forest waterfall, lush green canopy, cool mist, shafts of sunlight through trees, A dramatic summer sunset at photorealistic DSLR photo, 시네마틱 매크로, 비 내리는 도시의 창가에 놓인 세련된 스마, fiery orange and purple sky over calm water, breathtaking, photojournalistic quality, vivid colors, textural richness, superb composition"
+        }
     }
 ]

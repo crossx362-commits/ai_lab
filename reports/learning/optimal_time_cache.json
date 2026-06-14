@@ -1,6 +1,6 @@
 {
-  "optimal_time": "19:00",
-  "updated_at": "2026-06-02T15:33:34.022204",
-  "reason": "폴백(요일별 기본값)",
-  "hourly_data": null
+    "optimal_time": "19:00",
+    "updated_at": "2026-06-09T09:35:30.558714",
+    "reason": "폴백(요일별 기본값)",
+    "hourly_data": null
 }

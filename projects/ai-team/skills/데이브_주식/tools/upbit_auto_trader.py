@@ -19,8 +19,12 @@ load_env()
 import pyupbit
 import upbit_analyzer
 
-# 감시 대상 8대 메이저 코인
-TICKERS = ["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-ADA", "KRW-AVAX", "KRW-DOT"]
+# 감시 대상 — 고변동성 알트 우선 (소액 수익 극대화)
+TICKERS = [
+    "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-SHIB",
+    "KRW-ADA", "KRW-AVAX", "KRW-MATIC", "KRW-LINK",
+    "KRW-BTC", "KRW-ETH",
+]
 
 # 티커별 최근 LLM 분석 실행 시점 기록 (실시간 무한 루프로 인한 중복 LLM 과부하 방지 쿨다운용)
 last_llm_time = {}
@@ -214,24 +218,35 @@ def run_auto_trade_cycle(sim_mode=False):
             atr = pos["atr"]
             
             profit_ratio = (current_price - avg_buy_price) / avg_buy_price
-            tp_price = avg_buy_price * 1.05   # 익절 +5%
-            sl_atr = avg_buy_price - 1.5 * atr
-            sl_fixed = avg_buy_price * 0.98   # 손절 -2%
+
+            # 트레일링 스탑: 최고가 대비 -3% 이탈 시 청산 (수익 극대화)
+            trail_key = f"peak_{ticker}"
+            if not hasattr(run_auto_trade_cycle, '_peaks'):
+                run_auto_trade_cycle._peaks = {}
+            peak = run_auto_trade_cycle._peaks.get(ticker, avg_buy_price)
+            if current_price > peak:
+                run_auto_trade_cycle._peaks[ticker] = current_price
+                peak = current_price
+            trailing_sl = peak * 0.97   # 최고가 대비 -3%
+
+            # 손절: ATR 기준 or -2% 중 높은 값
+            sl_atr   = avg_buy_price - 1.5 * atr
+            sl_fixed = avg_buy_price * 0.98
             sl_price = max(sl_atr, sl_fixed)
-            
-            print(f"  [{ticker}] 수익률: {profit_ratio*100:.2f}% | 익절가: {tp_price:,.0f}원 | 손절가: {sl_price:,.0f}원 (현재가: {current_price:,.0f}원)")
-            
-            if current_price >= tp_price:
-                msg = f"🎉 [데이브] 실시간 목표 익절가 도달! (+2.5% 이상)\n📌 대상: {ticker}\n💰 매도가: {current_price:,}원 (평단: {avg_buy_price:,}원)\n📈 수익률: {profit_ratio*100:.2f}%\n🚨 전량 시장가 매도를 집행합니다."
+
+            # 수익 중이면 트레일링, 손실이면 고정 손절
+            effective_sl = trailing_sl if profit_ratio > 0.03 else sl_price
+
+            print(f"  [{ticker}] 수익률: {profit_ratio*100:.2f}% | 최고가: {peak:,.0f} | 트레일SL: {trailing_sl:,.0f} | 손절가: {sl_price:,.0f} (현재: {current_price:,.0f})")
+
+            if current_price <= effective_sl:
+                if profit_ratio > 0:
+                    msg = f"✅ [데이브] 트레일링 스탑 익절!\n📌 {ticker}\n💰 매도가: {current_price:,}원\n📈 수익률: {profit_ratio*100:.2f}% (최고가 {peak:,.0f}원 대비 -3%)"
+                else:
+                    msg = f"🚨 [데이브] 손절 집행\n📌 {ticker}\n💰 매도가: {current_price:,}원\n📉 수익률: {profit_ratio*100:.2f}%"
                 print(msg)
                 send_telegram_message(msg)
-                if not sim_mode:
-                    res = upbit_analyzer.execute_sell_all(ticker)
-                    print(res)
-            elif current_price <= sl_price:
-                msg = f"🚨 [데이브] 실시간 손절가 도달! (-1.5% 이하 또는 ATR 기준 이탈)\n📌 대상: {ticker}\n💰 매도가: {current_price:,}원 (평단: {avg_buy_price:,}원)\n📉 수익률: {profit_ratio*100:.2f}%\n🚨 손실 방지를 위해 전량 시장가 매도를 집행합니다."
-                print(msg)
-                send_telegram_message(msg)
+                run_auto_trade_cycle._peaks.pop(ticker, None)
                 if not sim_mode:
                     res = upbit_analyzer.execute_sell_all(ticker)
                     print(res)

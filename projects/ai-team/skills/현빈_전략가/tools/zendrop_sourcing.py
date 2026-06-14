@@ -161,8 +161,21 @@ def get_existing_titles() -> set:
 
 
 def add_to_shopify(data: dict, sell_price: float) -> bool:
-    title  = data["title"]
-    images = data.get("images", [])
+    title      = data["title"]
+    images     = data.get("images", [])
+    source_url = data.get("source_url", "")
+
+    # 알리 URL을 태그로 저장해서 주문 발송 시 추적 가능하게
+    ali_item_id = ""
+    import re as _re
+    m = _re.search(r"aliexpress\.com/item/(\d+)", source_url)
+    if m:
+        ali_item_id = m.group(1)
+
+    tags = "dropship,aliexpress,pet"
+    if ali_item_id:
+        tags += f",ali:{ali_item_id}"
+
     shipping_notice = (
         "<div style='background:#fff8e1;border-left:4px solid #ffc107;padding:12px 16px;"
         "margin:16px 0;border-radius:4px;font-size:14px;'>"
@@ -175,7 +188,7 @@ def add_to_shopify(data: dict, sell_price: float) -> bool:
             "title": title,
             "body_html": shipping_notice,
             "vendor": "SwiftCart",
-            "tags": "dropship,aliexpress,pet",
+            "tags": tags,
             "status": "draft",
             "variants": [{
                 "price": str(sell_price),

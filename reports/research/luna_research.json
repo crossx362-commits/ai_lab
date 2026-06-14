@@ -1,331 +1,360 @@
 {
-  "learned_themes": [
-    {
-      "keyword": "youthful exuberance, playful",
-      "mood": "bright, carefree, vibrant",
-      "visual_prompt": "Group choreography, youthful fashion, colorful sets, dynamic camera work",
-      "title_pattern": "[Catchy Phrase] / [Descriptive Word]",
-      "created_at": "2026-05-29T13:15:19.323399"
-    },
-    {
-      "keyword": "nostalgia, longing, urban nightlife",
-      "mood": "melancholic, bittersweet, reflective",
-      "visual_prompt": "Neon lights, cityscapes, retro fashion",
-      "title_pattern": "[Number]-something, [Location] Nights",
-      "created_at": "2026-05-29T14:18:27.165234"
-    },
-    {
-      "keyword": "youthful energy, vibrant colors, confidence",
-      "mood": "upbeat, playful, energetic",
-      "visual_prompt": "Dynamic choreography, bright sets, modern fashion",
-      "title_pattern": "[Adjective] [Noun]",
-      "created_at": "2026-05-29T14:18:27.165234"
-    },
-    {
-      "keyword": "futurism, vibrant color",
-      "mood": "energetic, playful",
-      "visual_prompt": "Cyberpunk aesthetics, holographic elements, dynamic choreography",
-      "title_pattern": "[Keyword]",
-      "created_at": "2026-05-29T16:23:43.815601"
-    },
-    {
-      "keyword": "nostalgia, youth, urban",
-      "mood": "melancholy, hopeful",
-      "visual_prompt": "Cityscapes, neon lights, youthful energy",
-      "title_pattern": "[Number]-something, [Adjective] Boy",
-      "created_at": "2026-05-29T17:26:12.273020"
-    },
-    {
-      "keyword": "youthful exuberance, confidence, futuristic",
-      "mood": "energetic, playful",
-      "visual_prompt": "dynamic choreography, futuristic aesthetics, vibrant colors",
-      "title_pattern": "[Action] [Noun]",
-      "created_at": "2026-05-29T20:34:10.337855"
-    },
-    {
-      "keyword": "nostalgia, city lights, nighttime",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Neon cityscapes, retro cars, longing gaze",
-      "title_pattern": "[City/Place] + [Time of Day]",
-      "created_at": "2026-05-29T21:51:28.118673"
-    },
-    {
-      "keyword": "youth, vibrant, energetic",
-      "mood": "optimistic, playful",
-      "visual_prompt": "Bright colors, dynamic dance, youthful fashion",
-      "title_pattern": "[Adjective] + [Noun]",
-      "created_at": "2026-05-29T21:51:28.118673"
-    },
-    {
-      "keyword": "nostalgia, city lights, urban romance",
-      "mood": "melancholy, longing, reflective",
-      "visual_prompt": "Neon cityscapes, retro cars, night views",
-      "title_pattern": "[Feeling] + [Place/Time]",
-      "created_at": "2026-05-30T06:58:47.531290"
-    },
-    {
-      "keyword": "youth, rebellion, vibrant energy",
-      "mood": "playful, confident, energetic",
-      "visual_prompt": "Bold colors, dynamic choreography, futuristic elements",
-      "title_pattern": "[Action] + [Adjective]",
-      "created_at": "2026-05-30T06:58:47.531290"
-    },
-    {
-      "keyword": "modern K-Pop aesthetics, futuristic, vibrant colors",
-      "mood": "energetic, confident, experimental",
-      "visual_prompt": "Sharp choreography, dynamic sets, digital effects, fashion",
-      "title_pattern": "[Adjective] + [Noun]",
-      "created_at": "2026-05-30T09:03:50.096509"
-    },
-    {
-      "keyword": "youth, vibrancy, futuristic",
-      "mood": "energetic, playful, confident",
-      "visual_prompt": "Bright colors, holographic elements, dance-focused scenes",
-      "title_pattern": "[Adjective] / [Abstract Noun]",
-      "created_at": "2026-05-30T14:46:42.157217"
-    },
-    {
-      "keyword": "futurism, technology, vibrant colors, ethereal beauty",
-      "mood": "energetic, mysterious, futuristic",
-      "visual_prompt": "Cyberpunk aesthetics, holographic effects, futuristic cityscapes, dynamic movement",
-      "title_pattern": "[Artist] - [Song Title] MV",
-      "created_at": "2026-05-30T16:04:54.104278"
-    },
-    {
-      "keyword": "nightlife, urban, confidence",
-      "mood": "energetic, sensual",
-      "visual_prompt": "City lights, dynamic choreography, fashionable settings",
-      "title_pattern": "[Action]",
-      "created_at": "2026-05-30T17:07:25.299169"
-    },
-    {
-      "keyword": "nostalgia",
-      "mood": "melancholy",
-      "visual_prompt": "cityscapes, neon lights, vintage cars",
-      "title_pattern": "*twenty*",
-      "created_at": "2026-05-30T18:33:11.642877"
-    },
-    {
-      "keyword": "youthful energy",
-      "mood": "optimistic",
-      "visual_prompt": "dynamic dance sequences, vibrant colors, modern fashion",
-      "title_pattern": "*boom*",
-      "created_at": "2026-05-30T18:33:11.642877"
-    },
-    {
-      "keyword": "nostalgia, youth, longing",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Urban landscapes, youthful characters, cinematic scenes",
-      "title_pattern": "[Number]-something, or descriptive phrases",
-      "created_at": "2026-05-30T19:37:48.615793"
-    },
-    {
-      "keyword": "futurism, technology, confidence",
-      "mood": "energetic, assertive",
-      "visual_prompt": "Cyberpunk aesthetics, neon lights, dynamic choreography",
-      "title_pattern": "[Abstract word/color]",
-      "created_at": "2026-05-30T19:37:48.615793"
-    },
-    {
-      "keyword": "nostalgia, city lights, retro fashion",
-      "mood": "melancholy, longing",
-      "visual_prompt": "Neon cityscapes, vintage cars, romantic atmosphere",
-      "title_pattern": "[City/Place] + [Time Period/Emotion]",
-      "created_at": "2026-05-30T20:42:27.381060"
-    },
-    {
-      "keyword": "youth, vibrant colors, energetic dance",
-      "mood": "optimistic, playful",
-      "visual_prompt": "Bright hues, dynamic choreography, youthful exuberance",
-      "title_pattern": "[Action Verb] + [Adjective/Noun]",
-      "created_at": "2026-05-30T20:42:27.381060"
-    },
-    {
-      "keyword": "nostalgia, urban romance",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Neon cityscapes, retro fashion, longing gazes",
-      "title_pattern": "[City/Place] + [Emotion/Activity]",
-      "created_at": "2026-05-30T21:46:51.244248"
-    },
-    {
-      "keyword": "futurism, empowerment",
-      "mood": "energetic, confident",
-      "visual_prompt": "Cyberpunk aesthetics, bold choreography, vibrant colors",
-      "title_pattern": "[Action Verb] + [Abstract Noun]",
-      "created_at": "2026-05-30T21:46:51.244248"
-    },
-    {
-      "keyword": "City Pop",
-      "mood": "Nostalgic, Romantic, Urban",
-      "visual_prompt": "Neon lights, retro cars, cityscapes, melancholic beauty",
-      "title_pattern": "[Artist] - [Song Title]",
-      "created_at": "2026-05-30T23:53:16.093700"
-    },
-    {
-      "keyword": "J-Pop",
-      "mood": "Energetic, Youthful, Vibrant",
-      "visual_prompt": "Colorful sets, dynamic choreography, youthful performers, trending visuals",
-      "title_pattern": "[Artist] - [Song Title]",
-      "created_at": "2026-05-30T23:53:16.093700"
-    },
-    {
-      "keyword": "modern K-Pop, confidence, energy",
-      "mood": "upbeat, powerful, vibrant",
-      "visual_prompt": "Dynamic choreography, futuristic sets, bold fashion",
-      "title_pattern": "[Action Verb] or [Adjective] + [Noun]",
-      "created_at": "2026-05-31T00:56:23.027858"
-    },
-    {
-      "keyword": "nostalgia, youthful energy",
-      "mood": "optimistic, bittersweet",
-      "visual_prompt": "Vibrant cityscapes, youthful fashion, neon lights",
-      "title_pattern": "[Number]-something",
-      "created_at": "2026-05-31T01:59:28.328417"
-    },
-    {
-      "keyword": "urban sophistication, longing",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Night city views, stylish aesthetics, emotional close-ups",
-      "title_pattern": "[Descriptive word]",
-      "created_at": "2026-05-31T01:59:28.328417"
-    },
-    {
-      "keyword": "nostalgia, cityscapes, youthful romance",
-      "mood": "melancholy, bittersweet, hopeful",
-      "visual_prompt": "Neon lights, retro cars, urban landscapes, youthful energy",
-      "title_pattern": "[Number]-something, [Adjective] Boy, [Color]",
-      "created_at": "2026-05-31T03:03:01.222709"
-    },
-    {
-      "keyword": "modern K-Pop, vibrant energy, futuristic aesthetics",
-      "mood": "confident, playful, energetic",
-      "visual_prompt": "Dynamic choreography, bold colors, futuristic sets, fashion",
-      "title_pattern": "[Action Verb] | [Artist Name], [Abstract Noun]",
-      "created_at": "2026-05-31T03:03:01.222709"
-    },
-    {
-      "keyword": "youthful exuberance, confidence",
-      "mood": "energetic, playful",
-      "visual_prompt": "bright colors, dynamic choreography, futuristic elements",
-      "title_pattern": "[Catchy Word] (e.g., BOOMPALA, BUMPA)",
-      "created_at": "2026-05-31T05:12:18.723913"
-    },
-    {
-      "keyword": "nostalgia, melancholic romance",
-      "mood": "reflective, bittersweet",
-      "visual_prompt": "Urban landscapes, neon lights, rainy scenes",
-      "title_pattern": "[Number]-something, [Color] [Noun]",
-      "created_at": "2026-05-31T06:15:42.474546"
-    },
-    {
-      "keyword": "youthful energy, vibrant",
-      "mood": "optimistic, playful",
-      "visual_prompt": "Dynamic choreography, bright colors, futuristic settings",
-      "title_pattern": "[Action] [Noun], [Adjective] [Noun]",
-      "created_at": "2026-05-31T06:15:42.474546"
-    },
-    {
-      "keyword": "nostalgia, longing, youth",
-      "mood": "melancholy, bittersweet, reflective",
-      "visual_prompt": "retro aesthetics, urban landscapes, youthful moments",
-      "title_pattern": "[Number]-something, [Emotion] [Noun]",
-      "created_at": "2026-05-31T07:19:05.442548"
-    },
-    {
-      "keyword": "modern, energetic, vibrant",
-      "mood": "optimistic, confident, playful",
-      "visual_prompt": "dynamic choreography, neon lights, futuristic settings",
-      "title_pattern": "[Adjective] [Noun]",
-      "created_at": "2026-05-31T07:19:05.442548"
-    },
-    {
-      "keyword": "nostalgia, youth, coming-of-age",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Urban landscapes, youthful energy, bittersweet memories",
-      "title_pattern": "[Number]-something | [Artist] - Topic",
-      "created_at": "2026-05-31T08:22:41.261860"
-    },
-    {
-      "keyword": "nostalgia, urban",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Cityscapes, neon lights, retro fashion",
-      "title_pattern": "[City/Location] + [Emotion/Activity]",
-      "created_at": "2026-05-31T09:25:53.528873"
-    },
-    {
-      "keyword": "youth, vibrancy",
-      "mood": "energetic, playful",
-      "visual_prompt": "Bright colors, youthful dance, modern city",
-      "title_pattern": "[Action] + [Adjective]",
-      "created_at": "2026-05-31T09:25:53.528873"
-    },
-    {
-      "keyword": "nostalgia, youth, romance",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Urban landscapes, vintage aesthetics, youthful scenes",
-      "title_pattern": "[Age]-[Age] or [Emotion] Boy",
-      "created_at": "2026-05-31T10:27:24.252734"
-    },
-    {
-      "keyword": "youthful energy, city life, fashion",
-      "mood": "optimistic, vibrant",
-      "visual_prompt": "Neon lights, stylish clothing, modern cityscapes",
-      "title_pattern": "[Adjective]",
-      "created_at": "2026-05-31T10:27:24.252734"
-    },
-    {
-      "keyword": "nostalgia, youth, bittersweet memories",
-      "mood": "melancholic, reflective",
-      "visual_prompt": "urban landscapes, neon lights, vintage fashion",
-      "title_pattern": "[Age]-something, [Age]-one",
-      "created_at": "2026-05-31T11:29:09.692971"
-    },
-    {
-      "keyword": "youthful energy, vibrant colors, futuristic",
-      "mood": "optimistic, energetic",
-      "visual_prompt": "dynamic choreography, neon aesthetics, digital effects",
-      "title_pattern": "[Abstract Noun]",
-      "created_at": "2026-05-31T11:29:09.692971"
-    },
-    {
-      "keyword": "nostalgia, longing",
-      "mood": "melancholy, reflective",
-      "visual_prompt": "Urban landscapes, neon lights, youthful memories",
-      "title_pattern": "[Young Adult] - [Emotion]",
-      "created_at": "2026-05-31T12:30:12.222443"
-    },
-    {
-      "keyword": "youthful energy, vibrancy",
-      "mood": "optimistic, energetic",
-      "visual_prompt": "Dynamic choreography, bright colors, futuristic settings",
-      "title_pattern": "[Energetic Action]",
-      "created_at": "2026-05-31T12:30:12.222443"
-    }
-  ],
-  "style_insights": [
-    "Frequent use of youthful themes and aesthetics.",
-    "Frequent use of 'Topic' in titles suggests curated playlists or label promotion.",
-    "Visuals often emphasize youthful energy and urban settings.",
-    "Frequent use of urban environments and neon lighting.",
-    "Themes of youthful energy and contemporary fashion are prevalent.",
-    "Blend of pop, R&B, and electronic elements prevalent.",
-    "Emphasis on catchy melodies and relatable lyrics.",
-    "Influence of Western pop music production techniques is prevalent.",
-    "Frequent use of catchy hooks and repetitive melodies.",
-    "Korean and Japanese artists often collaborate with international artists."
-  ],
-  "title_insights": [
-    "Many titles are simple and descriptive.",
-    "'Topic' is a common suffix.",
-    "Titles often combine action words with descriptive adjectives.",
-    "Many titles evoke a sense of location or experience.",
-    "Titles often evoke emotions or represent significant life stages.",
-    "Use of numbers (e.g., Twenty-five, Twenty-one) to signify age or time.",
-    "Combination of Korean and English words in titles is common.",
-    "Titles often evoke emotional states or tell brief stories.",
-    "Numerals frequently appear as part of the title.",
-    "Titles are sometimes abstract or symbolic."
-  ],
-  "research_count": 58,
-  "last_updated": "2026-05-31T12:30:12.223554"
+    "learned_themes": [
+        {
+            "keyword": "youthful exuberance, playful",
+            "mood": "bright, carefree, vibrant",
+            "visual_prompt": "Group choreography, youthful fashion, colorful sets, dynamic camera work",
+            "title_pattern": "[Catchy Phrase] / [Descriptive Word]",
+            "created_at": "2026-05-29T13:15:19.323399"
+        },
+        {
+            "keyword": "nostalgia, longing, urban nightlife",
+            "mood": "melancholic, bittersweet, reflective",
+            "visual_prompt": "Neon lights, cityscapes, retro fashion",
+            "title_pattern": "[Number]-something, [Location] Nights",
+            "created_at": "2026-05-29T14:18:27.165234"
+        },
+        {
+            "keyword": "youthful energy, vibrant colors, confidence",
+            "mood": "upbeat, playful, energetic",
+            "visual_prompt": "Dynamic choreography, bright sets, modern fashion",
+            "title_pattern": "[Adjective] [Noun]",
+            "created_at": "2026-05-29T14:18:27.165234"
+        },
+        {
+            "keyword": "futurism, vibrant color",
+            "mood": "energetic, playful",
+            "visual_prompt": "Cyberpunk aesthetics, holographic elements, dynamic choreography",
+            "title_pattern": "[Keyword]",
+            "created_at": "2026-05-29T16:23:43.815601"
+        },
+        {
+            "keyword": "nostalgia, youth, urban",
+            "mood": "melancholy, hopeful",
+            "visual_prompt": "Cityscapes, neon lights, youthful energy",
+            "title_pattern": "[Number]-something, [Adjective] Boy",
+            "created_at": "2026-05-29T17:26:12.273020"
+        },
+        {
+            "keyword": "youthful exuberance, confidence, futuristic",
+            "mood": "energetic, playful",
+            "visual_prompt": "dynamic choreography, futuristic aesthetics, vibrant colors",
+            "title_pattern": "[Action] [Noun]",
+            "created_at": "2026-05-29T20:34:10.337855"
+        },
+        {
+            "keyword": "nostalgia, city lights, nighttime",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Neon cityscapes, retro cars, longing gaze",
+            "title_pattern": "[City/Place] + [Time of Day]",
+            "created_at": "2026-05-29T21:51:28.118673"
+        },
+        {
+            "keyword": "youth, vibrant, energetic",
+            "mood": "optimistic, playful",
+            "visual_prompt": "Bright colors, dynamic dance, youthful fashion",
+            "title_pattern": "[Adjective] + [Noun]",
+            "created_at": "2026-05-29T21:51:28.118673"
+        },
+        {
+            "keyword": "nostalgia, city lights, urban romance",
+            "mood": "melancholy, longing, reflective",
+            "visual_prompt": "Neon cityscapes, retro cars, night views",
+            "title_pattern": "[Feeling] + [Place/Time]",
+            "created_at": "2026-05-30T06:58:47.531290"
+        },
+        {
+            "keyword": "youth, rebellion, vibrant energy",
+            "mood": "playful, confident, energetic",
+            "visual_prompt": "Bold colors, dynamic choreography, futuristic elements",
+            "title_pattern": "[Action] + [Adjective]",
+            "created_at": "2026-05-30T06:58:47.531290"
+        },
+        {
+            "keyword": "modern K-Pop aesthetics, futuristic, vibrant colors",
+            "mood": "energetic, confident, experimental",
+            "visual_prompt": "Sharp choreography, dynamic sets, digital effects, fashion",
+            "title_pattern": "[Adjective] + [Noun]",
+            "created_at": "2026-05-30T09:03:50.096509"
+        },
+        {
+            "keyword": "youth, vibrancy, futuristic",
+            "mood": "energetic, playful, confident",
+            "visual_prompt": "Bright colors, holographic elements, dance-focused scenes",
+            "title_pattern": "[Adjective] / [Abstract Noun]",
+            "created_at": "2026-05-30T14:46:42.157217"
+        },
+        {
+            "keyword": "futurism, technology, vibrant colors, ethereal beauty",
+            "mood": "energetic, mysterious, futuristic",
+            "visual_prompt": "Cyberpunk aesthetics, holographic effects, futuristic cityscapes, dynamic movement",
+            "title_pattern": "[Artist] - [Song Title] MV",
+            "created_at": "2026-05-30T16:04:54.104278"
+        },
+        {
+            "keyword": "nightlife, urban, confidence",
+            "mood": "energetic, sensual",
+            "visual_prompt": "City lights, dynamic choreography, fashionable settings",
+            "title_pattern": "[Action]",
+            "created_at": "2026-05-30T17:07:25.299169"
+        },
+        {
+            "keyword": "nostalgia",
+            "mood": "melancholy",
+            "visual_prompt": "cityscapes, neon lights, vintage cars",
+            "title_pattern": "*twenty*",
+            "created_at": "2026-05-30T18:33:11.642877"
+        },
+        {
+            "keyword": "youthful energy",
+            "mood": "optimistic",
+            "visual_prompt": "dynamic dance sequences, vibrant colors, modern fashion",
+            "title_pattern": "*boom*",
+            "created_at": "2026-05-30T18:33:11.642877"
+        },
+        {
+            "keyword": "nostalgia, youth, longing",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Urban landscapes, youthful characters, cinematic scenes",
+            "title_pattern": "[Number]-something, or descriptive phrases",
+            "created_at": "2026-05-30T19:37:48.615793"
+        },
+        {
+            "keyword": "futurism, technology, confidence",
+            "mood": "energetic, assertive",
+            "visual_prompt": "Cyberpunk aesthetics, neon lights, dynamic choreography",
+            "title_pattern": "[Abstract word/color]",
+            "created_at": "2026-05-30T19:37:48.615793"
+        },
+        {
+            "keyword": "nostalgia, city lights, retro fashion",
+            "mood": "melancholy, longing",
+            "visual_prompt": "Neon cityscapes, vintage cars, romantic atmosphere",
+            "title_pattern": "[City/Place] + [Time Period/Emotion]",
+            "created_at": "2026-05-30T20:42:27.381060"
+        },
+        {
+            "keyword": "youth, vibrant colors, energetic dance",
+            "mood": "optimistic, playful",
+            "visual_prompt": "Bright hues, dynamic choreography, youthful exuberance",
+            "title_pattern": "[Action Verb] + [Adjective/Noun]",
+            "created_at": "2026-05-30T20:42:27.381060"
+        },
+        {
+            "keyword": "nostalgia, urban romance",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Neon cityscapes, retro fashion, longing gazes",
+            "title_pattern": "[City/Place] + [Emotion/Activity]",
+            "created_at": "2026-05-30T21:46:51.244248"
+        },
+        {
+            "keyword": "futurism, empowerment",
+            "mood": "energetic, confident",
+            "visual_prompt": "Cyberpunk aesthetics, bold choreography, vibrant colors",
+            "title_pattern": "[Action Verb] + [Abstract Noun]",
+            "created_at": "2026-05-30T21:46:51.244248"
+        },
+        {
+            "keyword": "City Pop",
+            "mood": "Nostalgic, Romantic, Urban",
+            "visual_prompt": "Neon lights, retro cars, cityscapes, melancholic beauty",
+            "title_pattern": "[Artist] - [Song Title]",
+            "created_at": "2026-05-30T23:53:16.093700"
+        },
+        {
+            "keyword": "J-Pop",
+            "mood": "Energetic, Youthful, Vibrant",
+            "visual_prompt": "Colorful sets, dynamic choreography, youthful performers, trending visuals",
+            "title_pattern": "[Artist] - [Song Title]",
+            "created_at": "2026-05-30T23:53:16.093700"
+        },
+        {
+            "keyword": "modern K-Pop, confidence, energy",
+            "mood": "upbeat, powerful, vibrant",
+            "visual_prompt": "Dynamic choreography, futuristic sets, bold fashion",
+            "title_pattern": "[Action Verb] or [Adjective] + [Noun]",
+            "created_at": "2026-05-31T00:56:23.027858"
+        },
+        {
+            "keyword": "nostalgia, youthful energy",
+            "mood": "optimistic, bittersweet",
+            "visual_prompt": "Vibrant cityscapes, youthful fashion, neon lights",
+            "title_pattern": "[Number]-something",
+            "created_at": "2026-05-31T01:59:28.328417"
+        },
+        {
+            "keyword": "urban sophistication, longing",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Night city views, stylish aesthetics, emotional close-ups",
+            "title_pattern": "[Descriptive word]",
+            "created_at": "2026-05-31T01:59:28.328417"
+        },
+        {
+            "keyword": "nostalgia, cityscapes, youthful romance",
+            "mood": "melancholy, bittersweet, hopeful",
+            "visual_prompt": "Neon lights, retro cars, urban landscapes, youthful energy",
+            "title_pattern": "[Number]-something, [Adjective] Boy, [Color]",
+            "created_at": "2026-05-31T03:03:01.222709"
+        },
+        {
+            "keyword": "modern K-Pop, vibrant energy, futuristic aesthetics",
+            "mood": "confident, playful, energetic",
+            "visual_prompt": "Dynamic choreography, bold colors, futuristic sets, fashion",
+            "title_pattern": "[Action Verb] | [Artist Name], [Abstract Noun]",
+            "created_at": "2026-05-31T03:03:01.222709"
+        },
+        {
+            "keyword": "youthful exuberance, confidence",
+            "mood": "energetic, playful",
+            "visual_prompt": "bright colors, dynamic choreography, futuristic elements",
+            "title_pattern": "[Catchy Word] (e.g., BOOMPALA, BUMPA)",
+            "created_at": "2026-05-31T05:12:18.723913"
+        },
+        {
+            "keyword": "nostalgia, melancholic romance",
+            "mood": "reflective, bittersweet",
+            "visual_prompt": "Urban landscapes, neon lights, rainy scenes",
+            "title_pattern": "[Number]-something, [Color] [Noun]",
+            "created_at": "2026-05-31T06:15:42.474546"
+        },
+        {
+            "keyword": "youthful energy, vibrant",
+            "mood": "optimistic, playful",
+            "visual_prompt": "Dynamic choreography, bright colors, futuristic settings",
+            "title_pattern": "[Action] [Noun], [Adjective] [Noun]",
+            "created_at": "2026-05-31T06:15:42.474546"
+        },
+        {
+            "keyword": "nostalgia, longing, youth",
+            "mood": "melancholy, bittersweet, reflective",
+            "visual_prompt": "retro aesthetics, urban landscapes, youthful moments",
+            "title_pattern": "[Number]-something, [Emotion] [Noun]",
+            "created_at": "2026-05-31T07:19:05.442548"
+        },
+        {
+            "keyword": "modern, energetic, vibrant",
+            "mood": "optimistic, confident, playful",
+            "visual_prompt": "dynamic choreography, neon lights, futuristic settings",
+            "title_pattern": "[Adjective] [Noun]",
+            "created_at": "2026-05-31T07:19:05.442548"
+        },
+        {
+            "keyword": "nostalgia, youth, coming-of-age",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Urban landscapes, youthful energy, bittersweet memories",
+            "title_pattern": "[Number]-something | [Artist] - Topic",
+            "created_at": "2026-05-31T08:22:41.261860"
+        },
+        {
+            "keyword": "nostalgia, urban",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Cityscapes, neon lights, retro fashion",
+            "title_pattern": "[City/Location] + [Emotion/Activity]",
+            "created_at": "2026-05-31T09:25:53.528873"
+        },
+        {
+            "keyword": "youth, vibrancy",
+            "mood": "energetic, playful",
+            "visual_prompt": "Bright colors, youthful dance, modern city",
+            "title_pattern": "[Action] + [Adjective]",
+            "created_at": "2026-05-31T09:25:53.528873"
+        },
+        {
+            "keyword": "nostalgia, youth, romance",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Urban landscapes, vintage aesthetics, youthful scenes",
+            "title_pattern": "[Age]-[Age] or [Emotion] Boy",
+            "created_at": "2026-05-31T10:27:24.252734"
+        },
+        {
+            "keyword": "youthful energy, city life, fashion",
+            "mood": "optimistic, vibrant",
+            "visual_prompt": "Neon lights, stylish clothing, modern cityscapes",
+            "title_pattern": "[Adjective]",
+            "created_at": "2026-05-31T10:27:24.252734"
+        },
+        {
+            "keyword": "nostalgia, youth, bittersweet memories",
+            "mood": "melancholic, reflective",
+            "visual_prompt": "urban landscapes, neon lights, vintage fashion",
+            "title_pattern": "[Age]-something, [Age]-one",
+            "created_at": "2026-05-31T11:29:09.692971"
+        },
+        {
+            "keyword": "youthful energy, vibrant colors, futuristic",
+            "mood": "optimistic, energetic",
+            "visual_prompt": "dynamic choreography, neon aesthetics, digital effects",
+            "title_pattern": "[Abstract Noun]",
+            "created_at": "2026-05-31T11:29:09.692971"
+        },
+        {
+            "keyword": "nostalgia, longing",
+            "mood": "melancholy, reflective",
+            "visual_prompt": "Urban landscapes, neon lights, youthful memories",
+            "title_pattern": "[Young Adult] - [Emotion]",
+            "created_at": "2026-05-31T12:30:12.222443"
+        },
+        {
+            "keyword": "youthful energy, vibrancy",
+            "mood": "optimistic, energetic",
+            "visual_prompt": "Dynamic choreography, bright colors, futuristic settings",
+            "title_pattern": "[Energetic Action]",
+            "created_at": "2026-05-31T12:30:12.222443"
+        },
+        {
+            "date": "2026-06-05T09:07:05.435307",
+            "themes": "[\"city pop night drive\", \"pet cafe lounge BGM\", \"80s retro K-pop fusion\"]",
+            "source": "luna_director_knowledge",
+            "keywords": [
+                "city pop night drive",
+                "pet cafe lounge BGM",
+                "80s retro K-pop fusion"
+            ],
+            "meta": {
+                "genre_priority": "Japanese City Pop x K-Pop Fusion",
+                "bpm_range": "110-150",
+                "mood": "Energetic, Nostalgic, Retro",
+                "target_market": "Global / KR",
+                "trending_niches": [
+                    "city pop night drive",
+                    "pet cafe ambient BGM (non-lofi)",
+                    "80s K-pop retro revival",
+                    "neon tokyo aesthetic",
+                    "urban late night commute"
+                ]
+            }
+        },
+        {
+            "date": "2026-06-06T10:04:06.044608",
+            "themes": "[\"city_pop_night_drive\", \"pet_cafe_bgm\", \"retro_japanese_pop\"]",
+            "source": "ollama_research"
+        }
+    ],
+    "style_insights": [
+        "Frequent use of youthful themes and aesthetics.",
+        "Frequent use of 'Topic' in titles suggests curated playlists or label promotion.",
+        "Visuals often emphasize youthful energy and urban settings.",
+        "Frequent use of urban environments and neon lighting.",
+        "Themes of youthful energy and contemporary fashion are prevalent.",
+        "Blend of pop, R&B, and electronic elements prevalent.",
+        "Emphasis on catchy melodies and relatable lyrics.",
+        "Influence of Western pop music production techniques is prevalent.",
+        "Frequent use of catchy hooks and repetitive melodies.",
+        "Korean and Japanese artists often collaborate with international artists."
+    ],
+    "title_insights": [
+        "Many titles are simple and descriptive.",
+        "'Topic' is a common suffix.",
+        "Titles often combine action words with descriptive adjectives.",
+        "Many titles evoke a sense of location or experience.",
+        "Titles often evoke emotions or represent significant life stages.",
+        "Use of numbers (e.g., Twenty-five, Twenty-one) to signify age or time.",
+        "Combination of Korean and English words in titles is common.",
+        "Titles often evoke emotional states or tell brief stories.",
+        "Numerals frequently appear as part of the title.",
+        "Titles are sometimes abstract or symbolic."
+    ],
+    "research_count": 58,
+    "last_updated": "2026-06-06T10:04:06.044608",
+    "agent": "luna"
 }

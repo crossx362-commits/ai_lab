@@ -7,7 +7,7 @@ shopify_manager.py
 - 매출 일일 보고 (텔레그램)
 - 가격 최적화 (마진 보호)
 """
-import os, sys, json, time, urllib.request, urllib.error
+import os, sys, json, time, urllib.request, urllib.error, urllib.parse
 from datetime import datetime, timedelta, timezone
 
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -189,18 +189,23 @@ def send_daily_report():
 
 
 def send_order_alert(order: dict):
-    items = ", ".join(
-        f"{i['title']}×{i['quantity']}" for i in order.get("line_items", [])
-    )
-    name    = order.get("shipping_address", {}).get("name", "?")
+    addr    = order.get("shipping_address", {})
+    name    = addr.get("name", "?")
+    address = f"{addr.get('address1','')} {addr.get('city','')} {addr.get('province','')} {addr.get('country','')} {addr.get('zip','')}".strip()
     total   = order.get("total_price", "?")
     oid     = order.get("order_number", "?")
+
+    items_str = "\n".join(
+        f"  • {i['title']} × {i['quantity']}" for i in order.get("line_items", [])
+    )
+
     send_telegram_message(
-        f"🛒 <b>[현빈] 신규 주문 #{oid}</b>\n"
-        f"고객: {name}\n"
-        f"상품: {items}\n"
-        f"금액: ${total}\n"
-        f"⚡ 드랍쉽 공급사에서 즉시 이행 처리 필요"
+        f"🛒 <b>[현빈] 신규 주문 #{oid}</b>\n\n"
+        f"👤 고객: {name}\n"
+        f"📍 주소: {address}\n\n"
+        f"📦 주문 상품:\n{items_str}\n\n"
+        f"💰 결제금액: ${total}\n\n"
+        f"✅ DSers에서 자동 발주 처리됩니다"
     )
 
 
