@@ -58,3 +58,9 @@
 - **케빈**: [LLMOps](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260614_LLMOps.md)
 - **영숙**: [생성형 AI 활용법](projects/ai-team/skills/영숙_비서/knowledge/learned_20260614_생성형_AI_활용법.md)
 - **로율**: [AI 저작권법](projects/ai-team/skills/로율_변호사/knowledge/learned_20260614_AI_저작권법.md)
+
+
+## 2026-06-14 10:18 자가학습
+- **영숙**: [생성형 AI 활용법](projects/ai-team/skills/영숙_비서/knowledge/learned_20260614_생성형_AI_활용법.md)
+- **케빈**: [플랫폼 엔지니어링](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260614_플랫폼_엔지니어링.md)
+- **현빈**: [그로스 해킹](projects/ai-team/skills/현빈_전략가/knowledge/learned_20260614_그로스_해킹.md)
