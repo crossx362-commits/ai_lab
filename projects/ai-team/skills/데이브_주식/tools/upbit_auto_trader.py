@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-데이브 업비트 다중 코인 자동 매매 봇 (실시간 감시 및 랭킹 선택형 진입)
+데이브 업비트 다중 코인 자동 매매 봇 (완전 실시간 분석 및 진입 고도화 버전)
 """
 import os
 import sys
@@ -22,6 +22,10 @@ import upbit_analyzer
 
 # 감시 대상 8대 메이저 코인
 TICKERS = ["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-ADA", "KRW-AVAX", "KRW-DOT"]
+
+# 티커별 최근 LLM 분석 실행 시점 기록 (실시간 무한 루프로 인한 중복 LLM 과부하 방지 쿨다운용)
+last_llm_time = {}
+LLM_COOLDOWN_SECONDS = 300  # 동일 종목에 대한 LLM 재분석은 최소 5분 쿨다운 적용
 
 def parse_decision_from_report(report: str) -> str:
     """리포트 텍스트에서 최종 결정을 파싱합니다."""
@@ -109,8 +113,8 @@ def calculate_confluence_score(ticker: str) -> dict:
     except Exception as e:
         return {"ticker": ticker, "score": 0, "error": str(e)}
 
-def run_auto_trade_cycle(sim_mode=False, should_analyze=False):
-    print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 다중 코인 자동 매매 모니터링 시작 ---")
+def run_auto_trade_cycle(sim_mode=False):
+    print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 실시간 다중 코인 자동 매매 감시 ---")
     
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
@@ -125,7 +129,7 @@ def run_auto_trade_cycle(sim_mode=False, should_analyze=False):
             krw_balance = float(upbit_client.get_balance("KRW"))
         except Exception as e:
             print(f"[AutoTrader] KRW 잔고 조회 실패: {e}")
-            return False
+            return
 
     # 1. 보유 중인 모든 코인에 대한 실시간 시세 감시 (10초 주기)
     for ticker in TICKERS:
@@ -137,12 +141,10 @@ def run_auto_trade_cycle(sim_mode=False, should_analyze=False):
                 btc_balance = float(upbit_client.get_balance(ticker))
                 avg_buy_price = float(upbit_client.get_avg_buy_price(ticker))
                 
-            # 시세 조회
             current_price = float(pyupbit.get_current_price(ticker))
             
             # 최소 주문 단위(5,000원) 이상의 포지션 보유 확인
             if btc_balance * current_price >= 5000.0:
-                # 30일 데이터로 ATR 구하기
                 df = pyupbit.get_ohlcv(ticker, interval="day", count=30)
                 df_supertrend = upbit_analyzer.calculate_supertrend(df.reset_index().rename(columns={"index": "Date", "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}))
                 atr = upbit_analyzer._calc_atr(df_supertrend.to_dict(orient='records'))
@@ -189,39 +191,45 @@ def run_auto_trade_cycle(sim_mode=False, should_analyze=False):
                 if not sim_mode:
                     res = upbit_analyzer.execute_sell_all(ticker)
                     print(res)
-        return False # 분석은 안 돌렸으므로 False
 
-    # 3. 포지션 미보유 시 신규 진입 분석 (1시간 주기)
-    else:
-        if not should_analyze:
-            print("[AutoTrader] 포지션 미보유 상태. 신규 진입 분석 대기 중 (1시간 주기)")
-            return False
-            
-        print("[AutoTrader] 포지션 미보유 상태 & 분석 주기 도달 -> 전체 코인 퀀트 스캔 시작...")
+    # 3. 포지션 미보유 시 혹은 예수금이 충분히 남아있을 시 신규 진입 분석 (완전 실시간화)
+    # 보유 포지션이 있더라도 추가 매수 여력이 있다면 진입 후보 탐색
+    if not held_positions or (krw_balance >= 10000.0):
+        print("[AutoTrader] 실시간 전체 코인 퀀트 스캔 시작...")
         scanned = []
         for ticker in TICKERS:
             res = calculate_confluence_score(ticker)
             if "error" not in res:
                 scanned.append(res)
                 
-        # 점수 순 정렬
         scanned.sort(key=lambda x: x["score"], reverse=True)
         
-        # 스캔 스코어 보드 출력
-        print("\n=== [퀀트 스코어 랭킹] ===")
+        # 스캔 스코어 보드 출력 (10초마다 실시간으로 보임)
+        print("\n=== [실시간 퀀트 스코어 랭킹] ===")
         for item in scanned[:5]:
             print(f"  - {item['ticker']}: {item['score']}점 | {', '.join(item['reasons'])}")
         print("=========================\n")
         
         if not scanned:
             print("[AutoTrader] 스캔 가능한 코인 데이터가 없습니다.")
-            return True
+            return
             
         best = scanned[0]
         # 최소 진입 점수 문턱값 (11점 이상)
         if best["score"] >= 11:
-            print(f"[AutoTrader] 최우수 코인 포착: {best['ticker']} ({best['score']}점) -> LLM 최종 Confluence 검증 실행...")
-            report = upbit_analyzer.run_analysis(f"퀀트 스캔 점수 {best['score']}점으로 1위 달성. 신규 진입 검증 수행.", best["ticker"])
+            best_ticker = best["ticker"]
+            
+            # 동일 종목에 대한 LLM 분석 쿨다운 감시
+            now = time.time()
+            last_run = last_llm_time.get(best_ticker, 0)
+            if now - last_run < LLM_COOLDOWN_SECONDS:
+                print(f"[AutoTrader] 최우수 코인 {best_ticker} ({best['score']}점) 포착되었으나, 최근 분석 이력으로 인해 쿨다운 중입니다. (남은 시간: {int(LLM_COOLDOWN_SECONDS - (now - last_run))}초)")
+                return
+                
+            print(f"[AutoTrader] 💥 최우수 코인 진입 조건 달성! {best_ticker} ({best['score']}점) -> LLM 최종 검증 진행...")
+            last_llm_time[best_ticker] = now  # 쿨다운 갱신
+            
+            report = upbit_analyzer.run_analysis(f"실시간 퀀트 스캔 {best['score']}점 달성. 신규 진입 최종 검증 요청.", best_ticker)
             decision = parse_decision_from_report(report)
             
             print(f"[AutoTrader] LLM 최종 결정: {decision}")
@@ -229,41 +237,34 @@ def run_auto_trade_cycle(sim_mode=False, should_analyze=False):
                 buy_amount = krw_balance * 0.3
                 if buy_amount < 5000.0:
                     print(f"[AutoTrader] 매수 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {buy_amount:.0f}원)")
-                    return True
+                    return
                     
-                msg = f"⚡ [데이브] 다중 종목 스캔 1위 + Confluence 합치 완료!\n📌 대상: {best['ticker']} (스캔 점수: {best['score']}점)\n💰 투입 금액: {buy_amount:,.0f}원 (예수금의 30%)\n📊 현재가: {best['current_price']:,}원\n🚨 시장가 매수를 집행합니다."
+                msg = f"⚡ [데이브] 실시간 스캔 1위 + Confluence 합치 완료!\n📌 대상: {best_ticker} (스캔 점수: {best['score']}점)\n💰 투입 금액: {buy_amount:,.0f}원 (예수금의 30%)\n📊 현재가: {best['current_price']:,}원\n🚨 시장가 매수를 집행합니다."
                 print(msg)
                 send_telegram_message(msg)
                 if not sim_mode:
-                    res = upbit_analyzer.execute_buy(best["ticker"], buy_amount)
+                    res = upbit_analyzer.execute_buy(best_ticker, buy_amount)
                     print(res)
             else:
-                print(f"[AutoTrader] {best['ticker']} 분석 결과가 HOLD로 결정되어 진입하지 않습니다.")
+                print(f"[AutoTrader] {best_ticker} 분석 결과가 HOLD로 결정되어 진입하지 않습니다.")
         else:
             print(f"[AutoTrader] 현재 최소 진입 점수(11점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
-            
-        return True
 
 if __name__ == "__main__":
     args = sys.argv[1:]
     sim = "--sim" in args
     
     if "--once" in args:
-        run_auto_trade_cycle(sim_mode=sim, should_analyze=True)
+        run_auto_trade_cycle(sim_mode=sim)
     else:
-        print("🤖 데이브 업비트 다중 코인 자동 매매 데몬 시작 (시세 감시: 10초, 신규 분석: 1시간)")
-        send_telegram_message("🤖 데이브 업비트 다중 코인 자동 매매 데몬 가동을 시작합니다 (실시간 10초 시세 감시 및 1시간 주기 다중 스캔).")
-        
-        last_analysis_time = datetime.datetime.now() - datetime.timedelta(hours=2)
+        print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
+        send_telegram_message("🤖 데이브 업비트 실시간 자동 매매 데몬 가동을 시작합니다 (실시간 10초 시세 감시 및 실시간 다중 퀀트 스캔).")
         
         while True:
             try:
-                now = datetime.datetime.now()
-                should_analyze = (now - last_analysis_time) >= datetime.timedelta(hours=1)
-                analysis_executed = run_auto_trade_cycle(sim_mode=sim, should_analyze=should_analyze)
-                if analysis_executed:
-                    last_analysis_time = now
+                run_auto_trade_cycle(sim_mode=sim)
             except Exception as e:
                 print(f"[Daemon Error] {e}")
             
+            # 실시간 10초 주기
             time.sleep(10)
