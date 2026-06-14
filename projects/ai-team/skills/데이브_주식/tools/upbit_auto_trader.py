@@ -284,7 +284,7 @@ def run_auto_trade_cycle(sim_mode=False):
             else:
                 print(f"[AutoTrader] {best_ticker} 분석 결과가 HOLD로 결정되어 진입하지 않습니다.")
         else:
-            print(f"[AutoTrader] 현재 최소 진입 점수(11점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
+            print(f"[AutoTrader] 현재 최소 진입 점수(3점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
 
 def send_status_report(sim_mode=False):
     """4시간마다 현황 보고 텔레그램 전송."""

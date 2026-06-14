@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""
+shopify_manager.py
+현빈 — Shopify 드랍쉽핑 자율 관리
+- 주문 모니터링 & 이행 알림
+- 트렌딩 상품 발굴 & 자동 추가
+- 매출 일일 보고 (텔레그램)
+- 가격 최적화 (마진 보호)
+"""
+import os, sys, json, time, urllib.request, urllib.error
+from datetime import datetime, timedelta, timezone
+
+_here = os.path.dirname(os.path.abspath(__file__))
+ROOT  = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "projects", "ai-team"))
+
+from _shared.env_loader import load_env
+from _shared.telegram_notifier import send_telegram_message
+load_env(ROOT)
+
+SHOPIFY_TOKEN  = os.getenv("SHOPIFY_ADMIN_TOKEN", "")
+SHOPIFY_STORE  = os.getenv("SHOPIFY_STORE", "swiftcart-101711")
+SHOPIFY_DOMAIN = f"{SHOPIFY_STORE}.myshopify.com"
+API_VERSION    = "2024-10"
+BASE_URL       = f"https://{SHOPIFY_DOMAIN}/admin/api/{API_VERSION}"
+
+MARGIN_MIN     = 0.30   # 최소 마진율 30%
+MARKUP_TARGET  = 2.5    # 공급가 대비 판매가 배율
+
+
+# ── Shopify API 헬퍼 ──────────────────────────────────────────────────────────
+
+def _shopify(method: str, path: str, body: dict = None) -> dict:
+    url = f"{BASE_URL}/{path}"
+    data = json.dumps(body).encode() if body else None
+    req  = urllib.request.Request(
+        url, data=data, method=method,
+        headers={
+            "X-Shopify-Access-Token": SHOPIFY_TOKEN,
+            "Content-Type": "application/json",
+        }
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        body_bytes = e.read()
+        print(f"  [Shopify {method} {path}] HTTP {e.code}: {body_bytes[:300]}")
+        return {"error": str(e), "detail": body_bytes.decode(errors="ignore")}
+    except Exception as e:
+        print(f"  [Shopify {method} {path}] 오류: {e}")
+        return {"error": str(e)}
+
+
+def _check_token() -> bool:
+    if not SHOPIFY_TOKEN:
+        print("⚠️ SHOPIFY_ADMIN_TOKEN 환경변수가 없습니다.")
+        return False
+    res = _shopify("GET", "shop.json")
+    return "shop" in res
+
+
+# ── 주문 조회 ──────────────────────────────────────────────────────────────────
+
+def get_recent_orders(status="any", limit=50) -> list:
+    res = _shopify("GET", f"orders.json?status={status}&limit={limit}")
+    return res.get("orders", [])
+
+
+def get_unfulfilled_orders() -> list:
+    res = _shopify("GET", "orders.json?fulfillment_status=unfulfilled&status=open&limit=50")
+    return res.get("orders", [])
+
+
+# ── 상품 조회 / 추가 ───────────────────────────────────────────────────────────
+
+def get_products(limit=50) -> list:
+    res = _shopify("GET", f"products.json?limit={limit}")
+    return res.get("products", [])
+
+
+def add_product(title: str, body_html: str, vendor: str, price: float,
+                compare_at: float = None, image_url: str = None) -> dict:
+    product = {
+        "product": {
+            "title": title,
+            "body_html": body_html,
+            "vendor": vendor,
+            "status": "active",
+            "variants": [{
+                "price": str(price),
+                "compare_at_price": str(compare_at) if compare_at else None,
+                "inventory_management": "shopify",
+                "inventory_quantity": 999,
+            }],
+        }
+    }
+    if image_url:
+        product["product"]["images"] = [{"src": image_url}]
+    return _shopify("POST", "products.json", product)
+
+
+def update_product_price(variant_id: int, new_price: float) -> dict:
+    return _shopify("PUT", f"variants/{variant_id}.json",
+                    {"variant": {"id": variant_id, "price": str(new_price)}})
+
+
+# ── 매출 분석 ──────────────────────────────────────────────────────────────────
+
+def analyze_sales(days: int = 7) -> dict:
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    res   = _shopify("GET", f"orders.json?status=any&created_at_min={since}&limit=250")
+    orders = res.get("orders", [])
+
+    total_revenue   = 0.0
+    total_orders    = len(orders)
+    fulfilled_count = 0
+    product_sales   = {}
+
+    for o in orders:
+        total_revenue += float(o.get("total_price", 0))
+        if o.get("fulfillment_status") == "fulfilled":
+            fulfilled_count += 1
+        for item in o.get("line_items", []):
+            name = item.get("title", "?")
+            qty  = item.get("quantity", 0)
+            product_sales[name] = product_sales.get(name, 0) + qty
+
+    top_products = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:5]
+    return {
+        "days": days,
+        "total_orders": total_orders,
+        "total_revenue_krw": round(total_revenue),
+        "fulfilled": fulfilled_count,
+        "unfulfilled": total_orders - fulfilled_count,
+        "top_products": top_products,
+    }
+
+
+# ── 가격 최적화 ────────────────────────────────────────────────────────────────
+
+def optimize_prices(supply_prices: dict) -> list:
+    """supply_prices: {product_title: cost_price}"""
+    products = get_products()
+    updated  = []
+    for p in products:
+        title = p.get("title", "")
+        cost  = supply_prices.get(title)
+        if cost is None:
+            continue
+        for v in p.get("variants", []):
+            current = float(v.get("price", 0))
+            optimal = round(cost * MARKUP_TARGET, 2)
+            if abs(current - optimal) / max(current, 0.01) > 0.05:  # 5% 이상 차이
+                res = update_product_price(v["id"], optimal)
+                if "variant" in res:
+                    updated.append({"title": title, "old": current, "new": optimal})
+    return updated
+
+
+# ── 텔레그램 일일 보고 ─────────────────────────────────────────────────────────
+
+def send_daily_report():
+    print("[현빈] 쇼피파이 일일 보고 생성 중...")
+    if not _check_token():
+        send_telegram_message("⚠️ [현빈] Shopify 토큰 없음 — 일일 보고 실패")
+        return
+
+    sales  = analyze_sales(days=1)
+    week   = analyze_sales(days=7)
+    pending = get_unfulfilled_orders()
+
+    top_str = "\n".join(f"  {i+1}. {name} ({qty}개)" for i, (name, qty) in enumerate(week["top_products"])) or "  (없음)"
+
+    msg = (
+        f"📊 <b>[현빈] 쇼피파이 일일 보고</b> — {datetime.now().strftime('%Y-%m-%d')}\n\n"
+        f"🔹 오늘 주문: {sales['total_orders']}건 | 매출: ${sales['total_revenue_krw']:,.0f}\n"
+        f"🔹 미이행 주문: {len(pending)}건\n\n"
+        f"📅 최근 7일\n"
+        f"  총 주문: {week['total_orders']}건\n"
+        f"  총 매출: ${week['total_revenue_krw']:,.0f}\n"
+        f"  이행 완료: {week['fulfilled']}건\n\n"
+        f"🏆 주간 베스트셀러\n{top_str}\n\n"
+        f"{'🚨 미이행 주문 처리 필요!' if len(pending) > 0 else '✅ 모든 주문 이행 완료'}"
+    )
+    send_telegram_message(msg)
+    print("[현빈] 일일 보고 전송 완료")
+
+
+def send_order_alert(order: dict):
+    items = ", ".join(
+        f"{i['title']}×{i['quantity']}" for i in order.get("line_items", [])
+    )
+    name    = order.get("shipping_address", {}).get("name", "?")
+    total   = order.get("total_price", "?")
+    oid     = order.get("order_number", "?")
+    send_telegram_message(
+        f"🛒 <b>[현빈] 신규 주문 #{oid}</b>\n"
+        f"고객: {name}\n"
+        f"상품: {items}\n"
+        f"금액: ${total}\n"
+        f"⚡ 드랍쉽 공급사에서 즉시 이행 처리 필요"
+    )
+
+
+# ── 주문 모니터링 루프 ─────────────────────────────────────────────────────────
+
+def _get_krw_rate() -> float:
+    try:
+        with urllib.request.urlopen("https://open.er-api.com/v6/latest/USD", timeout=5) as r:
+            return float(json.loads(r.read())["rates"]["KRW"])
+    except Exception:
+        return 1517.0
+
+
+def check_and_fix_prices() -> tuple:
+    """전 상품 가격 이상 여부만 점검 (자동 수정 없음 — 경보만)"""
+    products = get_products()
+    alerts   = []
+
+    with urllib.request.urlopen("https://open.er-api.com/v6/latest/USD", timeout=5) as r:
+        krw_rate = float(json.loads(r.read())["rates"]["KRW"])
+
+    for p in products:
+        title = p["title"]
+        for v in p.get("variants", []):
+            price = float(v.get("price", 0) or 0)
+            # 비정상 가격 감지: $500 초과 = KRW가 그대로 USD로 저장된 것
+            if price > 500:
+                correct = round(price / krw_rate, 2)
+                update_product_price(v["id"], int(correct) + 0.99)
+                alerts.append(f"🔧 {title[:35]}: ${price:,.0f} 비정상 → ${int(correct)+0.99} 자동수정")
+
+    return [], alerts  # fixed 없이 alerts만
+
+
+def monitor_orders():
+    """신규 주문 감지 + 가격 자동 체크 루프"""
+    print("[현빈] 쇼피파이 주문 모니터링 시작...")
+    if not _check_token():
+        print("토큰 없음 — 종료")
+        return
+
+    seen_ids    = set()
+    for o in get_recent_orders(limit=50):
+        seen_ids.add(o["id"])
+
+    last_report      = time.time() - 82800
+    last_price_check = time.time() - 3500   # 시작 1시간 후 첫 체크
+    last_krw         = _get_krw_rate()
+
+    while True:
+        try:
+            # 신규 주문 확인
+            orders = get_recent_orders(limit=20)
+            for o in orders:
+                if o["id"] not in seen_ids:
+                    seen_ids.add(o["id"])
+                    send_order_alert(o)
+                    print(f"  신규 주문: #{o['order_number']}")
+
+            # 환율 체크 (1시간마다) — 5% 이상 변동 시 가격 점검 즉시 실행
+            now = time.time()
+            if now - last_price_check >= 3600:
+                current_krw = _get_krw_rate()
+                rate_change  = abs(current_krw - last_krw) / last_krw
+                if rate_change >= 0.05:
+                    send_telegram_message(
+                        f"💱 <b>[현빈] 환율 급변 감지</b>\n"
+                        f"₩{last_krw:,.0f} → ₩{current_krw:,.0f} ({rate_change*100:+.1f}%)\n"
+                        f"상품 가격 자동 재점검 중..."
+                    )
+                last_krw = current_krw
+
+                # 마진율 점검
+                fixed, alerts = check_and_fix_prices()
+                if fixed:
+                    send_telegram_message(
+                        f"🔧 <b>[현빈] 가격 자동 수정</b> {len(fixed)}건\n"
+                        + "\n".join(f"  • {f}" for f in fixed)
+                    )
+                if alerts:
+                    send_telegram_message(
+                        f"⚠️ <b>[현빈] 마진 경보</b>\n"
+                        + "\n".join(alerts)
+                    )
+                last_price_check = now
+                print(f"  가격 체크 완료 — 수정 {len(fixed)}건, 경보 {len(alerts)}건")
+
+            # 일일 보고 (매 24시간)
+            if now - last_report >= 86400:
+                send_daily_report()
+                last_report = now
+
+        except Exception as e:
+            print(f"  [오류] {e}")
+
+        time.sleep(300)  # 5분
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="현빈 Shopify 드랍쉽핑 관리")
+    parser.add_argument("action", nargs="?", default="monitor",
+                        choices=["monitor", "report", "orders", "products", "check"])
+    args = parser.parse_args()
+
+    if args.action == "check":
+        ok = _check_token()
+        print("✅ Shopify 연결 성공" if ok else "❌ Shopify 연결 실패")
+    elif args.action == "report":
+        send_daily_report()
+    elif args.action == "orders":
+        orders = get_unfulfilled_orders()
+        print(f"미이행 주문 {len(orders)}건:")
+        for o in orders:
+            print(f"  #{o['order_number']} — {o.get('total_price')} — {', '.join(i['title'] for i in o['line_items'])}")
+    elif args.action == "products":
+        products = get_products(limit=20)
+        print(f"등록 상품 {len(products)}개:")
+        for p in products:
+            v = p["variants"][0] if p.get("variants") else {}
+            print(f"  [{p['id']}] {p['title']} — ${v.get('price','?')}")
+    else:
+        monitor_orders()

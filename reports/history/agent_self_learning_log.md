@@ -70,3 +70,9 @@
 - **현빈**: [AI 비즈니스 전략](projects/ai-team/skills/현빈_전략가/knowledge/learned_20260614_AI_비즈니스_전략.md)
 - **루나**: no_topic
 - **로율**: no_topic
+
+
+## 2026-06-14 21:04 자가학습
+- **가희**: [수의 기초 의학](projects/ai-team/skills/가희_검수관/knowledge/learned_20260614_수의_기초_의학.md)
+- **티모**: [디자인 시스템](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260614_디자인_시스템.md)
+- **루나**: [AI 영상 제작 기술](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260614_AI_영상_제작_기술.md)

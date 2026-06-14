@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Shopify OAuth — 브라우저 링크 한 번으로 Admin API 토큰 자동 발급 & .env 저장"""
+import os, sys, json, hashlib, secrets, threading, urllib.parse, urllib.request, webbrowser
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+_here = os.path.dirname(os.path.abspath(__file__))
+ROOT  = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "projects", "ai-team"))
+
+from _shared.env_loader import load_env
+load_env(ROOT)
+
+STORE       = os.getenv("SHOPIFY_STORE", "swiftcart-101711")
+CLIENT_ID   = os.getenv("SHOPIFY_CLIENT_ID", "4f951b6e431d3152fdf4634fa4f0f6e6")
+CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET", "")
+DOMAIN      = f"{STORE}.myshopify.com"
+PORT        = 3456
+REDIRECT    = f"http://localhost:{PORT}/callback"
+SCOPES      = "read_orders,write_orders,read_products,write_products,read_inventory,write_inventory"
+STATE       = secrets.token_hex(16)
+ENV_FILE    = os.path.join(ROOT, ".env")
+
+result_token = [None]
+server_done  = threading.Event()
+
+
+class CallbackHandler(BaseHTTPRequestHandler):
+    def log_message(self, *_): pass
+
+    def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+
+        if parsed.path != "/callback":
+            self._respond(404, "Not found")
+            return
+
+        state = params.get("state", [""])[0]
+        code  = params.get("code", [""])[0]
+
+        if state != STATE or not code:
+            self._respond(400, "❌ 상태값 불일치 또는 코드 없음")
+            server_done.set()
+            return
+
+        # 코드 → 액세스 토큰 교환
+        token = exchange_code(code)
+        if token:
+            save_token(token)
+            result_token[0] = token
+            self._respond(200, f"✅ 토큰 발급 완료! 창을 닫아도 됩니다.\n\ntoken: {token[:20]}...")
+        else:
+            self._respond(500, "❌ 토큰 교환 실패")
+        server_done.set()
+
+    def _respond(self, code, body):
+        self.send_response(code)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(body.encode())
+
+
+def exchange_code(code: str) -> str | None:
+    url  = f"https://{DOMAIN}/admin/oauth/access_token"
+    data = urllib.parse.urlencode({
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "code": code,
+    }).encode()
+    req = urllib.request.Request(url, data=data,
+                                  headers={"Content-Type": "application/x-www-form-urlencoded"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            body = json.loads(r.read())
+            return body.get("access_token")
+    except Exception as e:
+        print(f"  토큰 교환 오류: {e}")
+        return None
+
+
+def save_token(token: str):
+    with open(ENV_FILE, "r", encoding="utf-8") as f:
+        content = f.read()
+    if 'SHOPIFY_ADMIN_TOKEN=""' in content:
+        content = content.replace('SHOPIFY_ADMIN_TOKEN=""', f'SHOPIFY_ADMIN_TOKEN="{token}"')
+    elif "SHOPIFY_ADMIN_TOKEN=" in content:
+        lines = content.splitlines()
+        new_lines = []
+        for line in lines:
+            if line.startswith("SHOPIFY_ADMIN_TOKEN="):
+                new_lines.append(f'SHOPIFY_ADMIN_TOKEN="{token}"')
+            else:
+                new_lines.append(line)
+        content = "\n".join(new_lines) + "\n"
+    else:
+        content += f'\nSHOPIFY_ADMIN_TOKEN="{token}"\n'
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"  ✅ .env 저장 완료")
+
+
+def main():
+    auth_url = (
+        f"https://{DOMAIN}/admin/oauth/authorize"
+        f"?client_id={CLIENT_ID}"
+        f"&scope={urllib.parse.quote(SCOPES)}"
+        f"&redirect_uri={urllib.parse.quote(REDIRECT)}"
+        f"&state={STATE}"
+    )
+
+    server = HTTPServer(("localhost", PORT), CallbackHandler)
+    t = threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+
+    print(f"\n🔗 브라우저에서 아래 링크를 열어주세요:\n\n{auth_url}\n")
+    webbrowser.open(auth_url)
+
+    print("⏳ 승인 대기 중...")
+    server_done.wait(timeout=120)
+    server.shutdown()
+
+    if result_token[0]:
+        print(f"\n✅ 토큰 발급 완료: {result_token[0][:20]}...")
+        print("현빈 쇼피파이 모니터를 시작합니다...")
+        os.execv(sys.executable, [sys.executable, os.path.join(_here, "shopify_manager.py"), "monitor"])
+    else:
+        print("❌ 토큰 발급 실패 또는 타임아웃")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""
+shopify_design.py
+티모 — Shopify 스토어 페이지 디자인 자율 관리
+- 스토어 페이지(About, FAQ, Contact) AI 작성 & 게시
+- 메인 테마 메타필드 / 배너 문구 업데이트
+- 주간 디자인 리뷰 보고 (텔레그램)
+- 상품 컬렉션 SEO 메타 자동 최적화
+"""
+import os, sys, json, urllib.request
+
+_here = os.path.dirname(os.path.abspath(__file__))
+ROOT  = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "projects", "ai-team"))
+
+from _shared.env_loader import load_env
+from _shared.telegram_notifier import send_telegram_message
+import _shared.ollama_client as lm
+load_env(ROOT)
+
+SHOPIFY_TOKEN  = os.getenv("SHOPIFY_ADMIN_TOKEN", "")
+SHOPIFY_DOMAIN = f"{os.getenv('SHOPIFY_STORE', 'swiftcart-101711')}.myshopify.com"
+BASE_URL       = f"https://{SHOPIFY_DOMAIN}/admin/api/2024-10"
+GEMINI_KEY     = os.getenv("GEMINI_API_KEY", "")
+
+
+def _shopify(method, path, body=None):
+    url  = f"{BASE_URL}/{path}"
+    data = json.dumps(body).encode() if body else None
+    req  = urllib.request.Request(url, data=data, method=method,
+           headers={"X-Shopify-Access-Token": SHOPIFY_TOKEN,
+                    "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read())
+    except Exception as e:
+        print(f"  [Shopify {method}] {path}: {e}")
+        return {}
+
+
+def _ai(prompt: str) -> str:
+    """Ollama 우선, 실패 시 Gemini 폴백"""
+    if lm.is_available():
+        result = lm.chat(prompt, max_tokens=800)
+        if result:
+            return result.strip()
+    # Gemini 폴백
+    url  = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    req  = urllib.request.Request(url, data=json.dumps(body).encode(),
+           headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read())
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except Exception as e:
+        print(f"  [AI] 실패: {e}")
+        return ""
+
+
+# ── 페이지 관리 ────────────────────────────────────────────────────────────────
+
+def get_pages() -> list:
+    return _shopify("GET", "pages.json").get("pages", [])
+
+
+def upsert_page(title: str, body_html: str) -> bool:
+    """페이지 있으면 업데이트, 없으면 생성"""
+    pages = get_pages()
+    existing = next((p for p in pages if p["title"].lower() == title.lower()), None)
+    if existing:
+        res = _shopify("PUT", f"pages/{existing['id']}.json",
+                       {"page": {"id": existing["id"], "body_html": body_html}})
+    else:
+        res = _shopify("POST", "pages.json",
+                       {"page": {"title": title, "body_html": body_html, "published": True}})
+    return "page" in res
+
+
+def create_essential_pages():
+    """About Us, FAQ, Contact — AI가 드랍쉽핑 스토어에 맞게 작성"""
+    store_name  = "SwiftCart"
+    niche       = "premium pet care products"
+
+    pages = {
+        "About Us": _ai(
+            f"Write an 'About Us' page for a Shopify dropshipping store called '{store_name}' "
+            f"selling {niche}. Friendly, trustworthy tone. 3 short paragraphs. "
+            f"Mention fast shipping, quality curation, pet lover community. "
+            f"Format as HTML with <h2>, <p> tags. English only."
+        ),
+        "FAQ": _ai(
+            f"Write an FAQ page for a Shopify dropshipping store '{store_name}' selling {niche}. "
+            f"Include 6 questions: shipping time, returns, order tracking, payment methods, "
+            f"product quality, contact info. Use <h3> for questions, <p> for answers. HTML only."
+        ),
+        "Contact Us": _ai(
+            f"Write a 'Contact Us' page for '{store_name}'. "
+            f"Include: email support@swiftcart.store, response time 24-48 hours, "
+            f"friendly message encouraging customers to reach out. "
+            f"Short, 2 paragraphs. HTML with <p> tags only."
+        ),
+    }
+
+    results = []
+    for title, html in pages.items():
+        if html:
+            ok = upsert_page(title, html)
+            status = "✅" if ok else "❌"
+            print(f"  {status} {title}")
+            results.append(f"{status} {title}")
+
+    return results
+
+
+# ── SEO 메타 최적화 ────────────────────────────────────────────────────────────
+
+def optimize_product_seo():
+    """전체 상품 SEO 제목 & 메타 디스크립션 최적화"""
+    products = _shopify("GET", "products.json?limit=50").get("products", [])
+    updated  = []
+
+    for p in products:
+        pid   = p["id"]
+        title = p["title"]
+
+        meta = _ai(
+            f"For Shopify product: '{title}'\n"
+            f"Write:\n"
+            f"1. SEO title (max 60 chars, include main keyword)\n"
+            f"2. Meta description (max 155 chars, benefit-focused)\n"
+            f"Format:\nTITLE: ...\nMETA: ..."
+        )
+        if not meta:
+            continue
+
+        lines   = {l.split(":")[0].strip(): ":".join(l.split(":")[1:]).strip()
+                   for l in meta.splitlines() if ":" in l}
+        seo_title = lines.get("TITLE", "")[:60]
+        seo_desc  = lines.get("META", "")[:155]
+
+        if seo_title:
+            _shopify("PUT", f"products/{pid}.json", {
+                "product": {
+                    "id": pid,
+                    "metafields_global_title_tag":       seo_title,
+                    "metafields_global_description_tag": seo_desc,
+                }
+            })
+            print(f"  ✅ SEO 최적화: {title[:40]}")
+            updated.append(title)
+
+    return updated
+
+
+# ── 주간 디자인 리뷰 ───────────────────────────────────────────────────────────
+
+def send_design_review():
+    """주간 스토어 디자인 현황 보고"""
+    products = _shopify("GET", "products.json?limit=50").get("products", [])
+    pages    = get_pages()
+    theme    = _shopify("GET", "themes.json").get("themes", [])
+    active   = next((t for t in theme if t.get("role") == "main"), {})
+
+    no_img   = [p["title"] for p in products if not p.get("images")]
+    no_desc  = [p["title"] for p in products if not p.get("body_html", "").strip()]
+
+    msg = (
+        f"🎨 <b>[티모] Shopify 주간 디자인 리뷰</b>\n\n"
+        f"🖼 활성 테마: {active.get('name', '?')}\n"
+        f"📄 등록 페이지: {len(pages)}개\n"
+        f"📦 전체 상품: {len(products)}개\n\n"
+    )
+    if no_img:
+        msg += f"⚠️ 이미지 없는 상품 ({len(no_img)}개):\n" + \
+               "\n".join(f"  • {t}" for t in no_img) + "\n\n"
+    if no_desc:
+        msg += f"⚠️ 설명 없는 상품 ({len(no_desc)}개):\n" + \
+               "\n".join(f"  • {t}" for t in no_desc) + "\n\n"
+
+    if not no_img and not no_desc:
+        msg += "✅ 모든 상품 이미지·설명 완비\n\n"
+
+    page_titles = [p["title"] for p in pages]
+    essential   = ["About Us", "FAQ", "Contact Us"]
+    missing     = [e for e in essential if e not in page_titles]
+    if missing:
+        msg += f"⚠️ 필수 페이지 미생성: {', '.join(missing)}"
+    else:
+        msg += "✅ 필수 페이지(About/FAQ/Contact) 완비"
+
+    send_telegram_message(msg)
+    print("[티모] 디자인 리뷰 전송 완료")
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+    p = argparse.ArgumentParser(description="티모 Shopify 디자인 관리")
+    p.add_argument("action", nargs="?", default="review",
+                   choices=["review", "pages", "seo", "all"])
+    args = p.parse_args()
+
+    if args.action == "review":
+        send_design_review()
+    elif args.action == "pages":
+        print("[티모] 필수 페이지 생성 중...")
+        results = create_essential_pages()
+        send_telegram_message("📄 <b>[티모] 필수 페이지 생성 완료</b>\n" + "\n".join(results))
+    elif args.action == "seo":
+        print("[티모] SEO 최적화 중...")
+        updated = optimize_product_seo()
+        send_telegram_message(f"🔍 <b>[티모] SEO 최적화 완료</b> — {len(updated)}개 상품")
+    elif args.action == "all":
+        print("[티모] 전체 디자인 세팅 시작...")
+        create_essential_pages()
+        optimize_product_seo()
+        send_design_review()

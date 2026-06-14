@@ -2057,10 +2057,14 @@ function saveHealthLog() {
             date: new Date().toISOString().split('T')[0],
             ...currentHealthLog
         };
-        if (typeof saveState === 'function') saveState();
+        if (typeof saveHealthHistoryToday === 'function') saveHealthHistoryToday();
+        else if (typeof saveState === 'function') saveState();
     }
-    
-    renderHealthDashboard();
+
+    // 화면 갱신 — 건강 탭 표시 ID(health-today-*)와 대시보드 모두 업데이트
+    if (typeof renderHealthTab === 'function') renderHealthTab();
+    else renderHealthDashboard();
+
     closeHealthLogModal();
     if (typeof showToast === 'function') showToast("오늘의 스마트 건강 기록 일지가 저장되었습니다! 📝");
 }
