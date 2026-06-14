@@ -60,7 +60,10 @@ function updateRoomThemeByHarmony() {
 
     // 펫 객체 가져오기
     const currentPet = (typeof getActivePet === 'function') ? getActivePet() : null;
-    const sajuData = currentPet?.sajuData;
+    // 현재 펫에 sajuData 없으면 다른 펫에서 탐색 (펫 인덱스 불일치 대응)
+    const allPets = (typeof AppStore !== 'undefined') ? (AppStore.getState('pets') || []) : [];
+    const sajuData = currentPet?.sajuData?.petBirth ? currentPet.sajuData
+        : allPets.find(p => p?.sajuData?.petBirth)?.sajuData || currentPet?.sajuData;
     const harmonyResult = currentPet?.harmonyData || (typeof AppStore !== 'undefined' ? AppStore.getState('harmonyResult') : null);
     const petSaju = sajuData?.petBirth ? { year: sajuData.petBirth.split('-')[0] } : ((typeof AppStore !== 'undefined') ? AppStore.getState('petSaju') : null);
     const butlerSaju = sajuData?.ownerBirth ? { year: sajuData.ownerBirth.split('-')[0] } : ((typeof AppStore !== 'undefined') ? AppStore.getState('butlerSaju') : null);

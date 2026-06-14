@@ -187,7 +187,7 @@ const MYPET_TEMPLATE = `
             <div class="px-5 pb-5 space-y-4">
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
-                <div class="relative w-full h-[340px] md:h-[400px] flex items-center justify-center pt-3 pb-2">
+                <div class="relative w-full h-[260px] md:h-[300px] flex items-center justify-center pt-3 pb-2">
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
                         <!-- JS로 동적 생성 -->
@@ -210,8 +210,8 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
 
-                    <!-- 말풍선 (집사 머리 위) -->
-                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 5%; transform: translateX(-50%); z-index: 11;">
+                    <!-- 말풍선 (집사 위, 폭 제한) -->
+                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 4%; transform: translateX(-50%); z-index: 11; max-width: 160px; white-space: normal; line-height: 1.4;">
                         <span id="pet-bubble-text">산책 가요! 🐕</span>
                         <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
                     </div>

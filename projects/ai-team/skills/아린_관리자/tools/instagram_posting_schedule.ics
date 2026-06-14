@@ -974,72 +974,42 @@ STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT
 BEGIN:VEVENT
-UID:arin-insta-post-1780965630@auto.uploader
-DTSTAMP:20260609T004030Z
-DTSTART;TZID=Asia/Seoul:20260609T184300
-DTEND;TZID=Asia/Seoul:20260609T194300
-SUMMARY:아린 인스타 자동 포스팅 - ファーストサマーウイカ
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (18:43)\n트렌드: ファーストサマーウイカ
+UID:arin-insta-post-1780825723@auto.uploader
+DTSTAMP:20260607T094843Z
+DTSTART;TZID=Asia/Seoul:20260607T143200
+DTEND;TZID=Asia/Seoul:20260607T153200
+SUMMARY:아린 인스타 자동 포스팅 - 캐머런 스미스
+DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (14:32)\n트렌드: 캐머런 스미스
 STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT
 BEGIN:VEVENT
-UID:arin-insta-post-1780965689@auto.uploader
-DTSTAMP:20260609T004129Z
-DTSTART;TZID=Asia/Seoul:20260609T191800
-DTEND;TZID=Asia/Seoul:20260609T201800
-SUMMARY:아린 인스타 자동 포스팅 - 수박 빙수 여름 디저트
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (19:18)\n트렌드: 수박 빙수 여름 디저트
+UID:arin-insta-post-1781367761@auto.uploader
+DTSTAMP:20260613T162241Z
+DTSTART;TZID=Asia/Seoul:20260614T135000
+DTEND;TZID=Asia/Seoul:20260614T145000
+SUMMARY:아린 인스타 자동 포스팅 - empty seats world cup
+DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (13:50)\n트렌드: empty seats world cup
 STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT
 BEGIN:VEVENT
-UID:arin-insta-post-1781170248@auto.uploader
-DTSTAMP:20260611T093048Z
-DTSTART;TZID=Asia/Seoul:20260611T184700
-DTEND;TZID=Asia/Seoul:20260611T194700
-SUMMARY:아린 인스타 자동 포스팅 - lottery results today
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (18:47)\n트렌드: lottery results today
+UID:arin-insta-post-1781394824@auto.uploader
+DTSTAMP:20260613T235344Z
+DTSTART;TZID=Asia/Seoul:20260614T143400
+DTEND;TZID=Asia/Seoul:20260614T153400
+SUMMARY:아린 인스타 자동 포스팅 - fifa world cup
+DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (14:34)\n트렌드: fifa world cup
 STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT
 BEGIN:VEVENT
-UID:arin-insta-post-1781181518@auto.uploader
-DTSTAMP:20260611T123838Z
-DTSTART;TZID=Asia/Seoul:20260611T185700
-DTEND;TZID=Asia/Seoul:20260611T195700
-SUMMARY:아린 인스타 자동 포스팅 - 尾崎豊
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (18:57)\n트렌드: 尾崎豊
-STATUS:CONFIRMED
-SEQUENCE:0
-END:VEVENT
-BEGIN:VEVENT
-UID:arin-insta-post-1781181943@auto.uploader
-DTSTAMP:20260611T124543Z
-DTSTART;TZID=Asia/Seoul:20260611T191100
-DTEND;TZID=Asia/Seoul:20260611T201100
-SUMMARY:아린 인스타 자동 포스팅 - 멜론
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (19:11)\n트렌드: 멜론
-STATUS:CONFIRMED
-SEQUENCE:0
-END:VEVENT
-BEGIN:VEVENT
-UID:arin-insta-post-1781256644@auto.uploader
-DTSTAMP:20260612T093044Z
-DTSTART;TZID=Asia/Seoul:20260612T184800
-DTEND;TZID=Asia/Seoul:20260612T194800
-SUMMARY:아린 인스타 자동 포스팅 - 시장 골목 로컬 음식
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (18:48)\n트렌드: 시장 골목 로컬 음식
-STATUS:CONFIRMED
-SEQUENCE:0
-END:VEVENT
-BEGIN:VEVENT
-UID:arin-insta-post-1781333192@auto.uploader
-DTSTAMP:20260613T064632Z
-DTSTART;TZID=Asia/Seoul:20260613T143100
-DTEND;TZID=Asia/Seoul:20260613T153100
-SUMMARY:아린 인스타 자동 포스팅 - arirang
-DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (14:31)\n트렌드: arirang
+UID:arin-insta-post-1781395013@auto.uploader
+DTSTAMP:20260613T235653Z
+DTSTART;TZID=Asia/Seoul:20260614T151600
+DTEND;TZID=Asia/Seoul:20260614T161600
+SUMMARY:아린 인스타 자동 포스팅 - 날씨
+DESCRIPTION:알고리즘 최적화 본문 및 AI 아트워크 자동 업로드 시간 (15:16)\n트렌드: 날씨
 STATUS:CONFIRMED
 SEQUENCE:0
 END:VEVENT

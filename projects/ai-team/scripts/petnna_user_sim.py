@@ -10,6 +10,10 @@ import json, os, sys, time, random, urllib.request, urllib.error
 from datetime import datetime
 from pathlib import Path
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 ROOT    = Path(__file__).resolve().parents[3]   # scripts/→ai-team/→projects/→ai_lab/
 AI_TEAM = ROOT / "projects/ai-team"
 sys.path.insert(0, str(AI_TEAM))

@@ -885,7 +885,14 @@ _GENERIC_WORDS = {
     "pop", "synth", "drive", "sound", "nights", "night", "seoul", 
     "플레이리스트", "playlist", "chill", "beats", "lofi", "lo-fi",
     "곡명", "노래", "감상", "추천", "오늘", "하루", "있는", "합니다",
-    "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는"
+    "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는",
+    # 인스타그램 캡션 특성상 반복될 수밖에 없는 일상/감성 단어 (오탐 방지)
+    "오늘의", "풍경", "사진", "장면", "순간", "일상", "힐링", "자연",
+    "가을", "봄", "여름", "겨울", "하늘", "바다", "산", "꽃", "숲",
+    "행복", "웃음", "감사", "설레", "아름", "예쁜", "좋아", "기분",
+    "여행", "카페", "산책", "나들이", "오후", "저녁", "아침", "햇살",
+    "사람", "친구", "가족", "혼자", "함께", "우리", "그때", "그곳",
+    "느낌", "생각", "마음", "기억", "향기", "바람", "빛", "색"
 }
 
 def _get_overused_words_from_list(videos: list[dict], threshold: float = 0.3) -> list[str]:
@@ -970,21 +977,31 @@ def inspect_caption(caption: str, agent: str = "아린") -> dict:
     if hits:
         issues.append(f"금지 키워드: {', '.join(hits)}")
 
-    # 동일 캡션 내 중복 단어 검수 추가
+    # 동일 캡션 내 중복 단어 검수 (캡션이 길어졌으므로 3회 초과로 중복 사용되는 경우에만 감지)
     import re
     words = re.findall(r'[a-zA-Z가-힣]{2,}', lower)
-    stop_words = {"있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", "추천", "오늘", "하루"}
+    stop_words = {
+        "있는", "합니다", "한다", "그리고", "에서", "으로", "이다", "하고", "했다", "하는", 
+        "추천", "오늘", "하루", "우리", "함께", "좋은", "그의", "그녀", "도시", "음악", "시간",
+        # 인스타 캡션용 일반 단어 (반복될 수밖에 없는 생활/감성 어휘)
+        "오늘의", "풍경", "사진", "장면", "순간", "일상", "힐링", "자연", "행복", "웃음",
+        "여행", "카페", "산책", "오후", "저녁", "아침", "햇살", "느낌", "생각", "마음",
+        "기억", "향기", "바람", "사람", "친구", "가족", "아름", "예쁜", "좋아", "기분",
+        "가을", "봄", "여름", "겨울", "하늘", "바다", "산", "꽃", "숲", "색", "빛"
+    }
     counts = {}
     for w in words:
         if w in stop_words or w.startswith("#"):
             continue
         counts[w] = counts.get(w, 0) + 1
-        if counts[w] > 1:
-            issues.append(f"캡션 내 단어 중복 사용 감지: '{w}'")
+        if counts[w] > 3:  # 4회 이상 사용 시 과도한 중복으로 판단
+            issues.append(f"캡션 내 단어 과도한 중복 사용 감지: '{w}' (4회 이상)")
             break
 
     # 이전 작업물 중복 단어 검수
-    overused = _get_overused_words(agent)
+    # 인스타그램 캡션은 주제 특성상 단어 겹침이 많으므로 threshold를 높게 설정 (0.5 = 절반 이상)
+    _caption_threshold = 0.5 if agent == "아린" else 0.3
+    overused = _get_overused_words(agent, threshold=_caption_threshold)
     repeated = [w for w in overused if w in lower and len(w) >= 3]
     if repeated:
         issues.append(f"이전 작업물 반복 단어 자제 필요: {', '.join(repeated[:5])}")

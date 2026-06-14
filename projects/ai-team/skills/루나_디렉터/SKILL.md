@@ -53,17 +53,19 @@ description: AI Music & Video Director. Handles Japanese City Pop BGM generation
   ```
   *예시:* Connects with 'City Dreams' title vibe, 1980s Retro K-Pop & City Pop Fusion, 120 BPM Energetic & Nostalgic, Synthesizer & Electric Guitar, Smooth & Melodic Vocals, 서울의 네온사인 거리를 드라이브하는 새벽 감성의 가사
 
-- **장르 선호도 및 BPM 가이드라인**:
-  1. **1순위 (Japanese City Pop × K-Pop Fusion)**: 80~90년대 시티팝 감성 + 현대 K-Pop 에너지, 강한 후렴구, 높은 대중성 (BPM 110~150)
-  2. **2순위 (Emotional Hip-Hop × R&B × Pop)**: 멜로딕 랩, 중독성 있는 후렴구, 감성적이지만 에너지 있는 구성 (Hip-Hop: 110~150 BPM / R&B Pop: 90~140 BPM)
-  3. **3순위 (기타 자유 장르)**: 새로운 음악적 시도 허용 (K-Pop Dance 시 120~170 BPM)
+- **장르 선호도 및 BPM 가이드라인** (2026-06-05 사장님 지시):
+  1. **1순위 (Korean Female Hip-Hop × R&B)**: 한국 여성 힙합·알앤비, 강인하고 자신감 넘치는 래퍼·보컬, 랩 버스 + 감성 훅 (BPM 90~130)
+  2. **2순위 (K-Pop Girl Group)**: 걸그룹 댄스팝·걸크러시, 중독성 강한 훅, 파워풀 퍼포먼스 (BPM 115~150)
+  3. **3순위 (Korean R&B Ballad)**: 감성 알앤비·발라드, 소울풀 보컬, 감정 깊은 구성 (BPM 75~110)
 - **분위기 방향성**:
   - **선호**: 에너제틱, 자신감 있는, 희망적인, 몰입감 있는, 중독성 있는, 대중적인 팝 감성
   - **지양**: 수면 유도, 백색소음 성향, 지나치게 정적인 구성, 공부용 BGM 스타일, 무기력한 분위기
 
 ### Mission 3. Veo 3.1 Cinematic Video Generation
 - **행동**: `.agent/tools/veo_video_maker.py`의 롱테이크 연장 기법을 활용하여 시계열을 늘려가는 고화질 16:9 배경 영상을 제작합니다.
-- **규칙**: 음원의 정서적 흐름에 어울리는 감각적 일러스트/실사풍 베이스 이미지로부터 롱테이크 확장 렌더링을 유도하며, 최종 병합 시 영상 루핑(Looping) 옵션을 활성화하여 음악 전체 분량을 부드럽게 채우도록 합니다.
+- **규칙**: 
+  - 베이스 이미지 생성 시 고정된 기본 템플릿의 기계적 반복을 배제하고, **선정된 곡의 제목, 분위기(Mood), 가사/스토리 주제에 유기적으로 부합하는 동적 비주얼 프롬프트를 LLM을 통해 생성**하여 사용합니다.
+  - 음원의 정서적 흐름에 어울리는 감각적 일러스트/실사풍 베이스 이미지로부터 롱테이크 확장 렌더링을 유도하며, 최종 병합 시 영상 루핑(Looping) 옵션을 활성화하여 음악 전체 분량을 부드럽게 채우도록 합니다.
 
 ### Mission 4. Audio-Video Synthesizing
 - **행동**: 생성된 2분(120초) 이상의 완곡 음악 트랙과 Veo 비디오 트랙을 고화질로 렌더링하여 하나의 완결된 감성 뮤직비디오 파일(`final_video.mp4`)로 최종 병합합니다.
@@ -98,6 +100,7 @@ graph LR
 ```
 
 - **AI 엔진 우선순위**: 1순위 Ollama (로컬 로드 및 패턴 분석) | 2순위 Gemini API (폴백 처리)
+- **JSON 출력 규격 준수 (중요)**: Ollama 또는 Gemini를 통해 JSON 출력을 요구할 때는 반드시 불필요한 마크다운 코드 블록(```json 등)이나 설명 텍스트 없이 순수 JSON 포맷만 반환하도록 명시적 프롬프트 주문(`You must respond with valid JSON only. No explanations, no markdown fences, no extra text — pure JSON.`)을 인스턴스 전송 시 강제 적용하고, 출력 결과에 대해 엄격한 형식 검증과 파싱 예외 처리를 수행해야 합니다.
 
 ---
 

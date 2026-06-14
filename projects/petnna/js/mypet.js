@@ -41,43 +41,41 @@ function renderPetStageList() {
     const count = pets ? pets.length : 0;
     if (count === 0) return;
 
-    // 집사 중앙 위치 (%)
+    // 집사 위치 (%)
     const butlerX = 50;
     const butlerY = 50;
 
     // 펫 크기
     const sz = { circle: 'w-14 h-14', emoji: 'text-2xl', label: 'text-[11px]', border: 'border-3' };
 
-    // ── 펫 불규칙 배치 (비대칭 + 큰 랜덤 범위) ───────────────────────────────────
+    // ── 펫 배치 (360° 원형, 시드 정규화로 timestamp ID 안정화) ───────────────────
     if (pets && pets.length > 0) {
         const isMobile = window.innerWidth < 768;
-        const baseRadius = count === 1 ? (isMobile ? 26 : 30) : (isMobile ? 30 : 34); // 기본 반경 (%)
+        const baseRadius = count === 1 ? (isMobile ? 26 : 30) : (isMobile ? 30 : 34);
         const angleStep = (Math.PI * 2) / count;
 
         pets.forEach((pet, idx) => {
             const isActive = idx === activePetIndex;
 
-            // 각도 계산 (원형 배치 + 큰 랜덤 오프셋)
             const baseAngle = angleStep * idx - Math.PI / 2; // 12시 방향부터
-            const seed1 = (pet.id || idx) * 137.508; // 황금각
-            const seed2 = (pet.id || idx) * 213.123; // 두 번째 시드
+            // 시드 정규화 — timestamp ID에서도 sin/cos 안정적
+            const seed1 = ((pet.id || idx) * 137.508) % (Math.PI * 2);
+            const seed2 = ((pet.id || idx) * 213.123) % (Math.PI * 2);
 
-            // 더 큰 각도 랜덤 (±0.8 라디안 = ±45도)
-            const randomAngleOffset = Math.sin(seed1) * 0.8;
+            const randomAngleOffset = Math.sin(seed1) * 0.6;
             const angle = baseAngle + randomAngleOffset;
 
-            // 비대칭 반경 변화 (모바일에서는 좁게, 데스크탑에서는 넓게 안전 범위 유지)
             const minRadius = isMobile ? 20 : 25;
             const maxRadius = isMobile ? 35 : 40;
-            const radiusRange = maxRadius - minRadius;
-            const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * radiusRange);
+            const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * (maxRadius - minRadius));
 
-            // 비대칭 X, Y 오프셋 (타원형 효과)
-            const xStretch = 1 + Math.cos(seed1) * 0.10; // X축 늘림/줄임
-            const yStretch = 1 + Math.sin(seed2) * 0.08; // Y축 독립적 변화
+            const xStretch = 1 + Math.cos(seed1) * 0.10;
+            const yStretch = 1 + Math.sin(seed2) * 0.08;
 
-            const petX = butlerX + Math.cos(angle) * radiusVariation * xStretch;
-            const petY = butlerY + Math.sin(angle) * radiusVariation * yStretch;
+            const rawPetX = butlerX + Math.cos(angle) * radiusVariation * xStretch;
+            const rawPetY = butlerY + Math.sin(angle) * radiusVariation * yStretch;
+            const petX = Math.max(6, Math.min(92, rawPetX));
+            const petY = Math.max(8, Math.min(90, rawPetY));
 
             // SVG 목줄 그리기 (곡선)
             if (svg) {

@@ -380,14 +380,42 @@ def run_generation(research: dict) -> dict:
         return {}
     print(f"  ✅ 음악 생성 완료: {result}")
 
-    # ③ 9:16 비주얼 생성
-    visual_prompt = (
-        f"Cinematic vertical 9:16 city pop aesthetic, {keyword.lower()}, "
-        "retro light urban street at night, retro 80s Japanese city vibes, "
-        "warm pink and purple tones, rain reflections on asphalt, "
-        "vintage car, dreamy bokeh lights, retro city atmosphere, "
-        "phone wallpaper composition, no text, no watermark"
-    )
+    # ③ 9:16 비주얼 생성 (음악 제목 및 트렌드 키워드 무드 연계)
+    visual_prompt = ""
+    try:
+        from _shared.ollama_client import chat as _lm_chat, is_available as _lm_available
+        has_llm = _lm_available()
+    except Exception:
+        has_llm = False
+
+    if has_llm:
+        try:
+            vis_prompt = (
+                f"유튜브 쇼츠 음악 제목: '{title}'\n"
+                f"트렌드 키워드: '{keyword}'\n"
+                f"음악 분위기/프롬프트: '{music_prompt}'\n\n"
+                "위 정보를 반영하여, 숏츠 영상(9:16 화면비)에 들어갈 이미지 생성을 위한 고품질 영어 프롬프트를 1개 작성해줘.\n"
+                "조건:\n"
+                "- 80년대 레트로 애니메이션 스타일(1980s retro anime style, Ghibli atmosphere, aesthetic)이어야 함\n"
+                "- 음악의 제목, 무드, 키워드가 연상시키는 구체적이고 감성적인 비주얼 묘사가 들어가야 함\n"
+                "- 텍스트나 워터마크가 나타나지 않도록 할 것\n"
+                "- 최종 생성용 영어 프롬프트 1줄만 딱 출력 (설명이나 다른 텍스트는 일체 제외)"
+            )
+            vis_raw = _lm_chat(vis_prompt, task="", max_tokens=250)
+            if vis_raw and vis_raw.strip():
+                visual_prompt = vis_raw.strip().split("\n")[0].strip()
+                print(f"  [Shorts] ✅ 동적 비주얼 프롬프트 생성 완료: {visual_prompt[:100]}...")
+        except Exception as e:
+            print(f"  [Warning] Shorts 동적 비주얼 프롬프트 생성 실패: {e}")
+
+    if not visual_prompt:
+        visual_prompt = (
+            f"Cinematic vertical 9:16 city pop aesthetic, {keyword.lower()}, "
+            "retro light urban street at night, retro 80s Japanese city vibes, "
+            "warm pink and purple tones, rain reflections on asphalt, "
+            "vintage car, dreamy bokeh lights, retro city atmosphere, "
+            "phone wallpaper composition, no text, no watermark, matching the title '{title}'"
+        )
     image_path = os.path.join(OUTPUT_DIR, "shorts_visual.jpg")
     print("  🖼️  9:16 비주얼 생성 중...")
     img = _generate_image_9x16(visual_prompt, image_path)
