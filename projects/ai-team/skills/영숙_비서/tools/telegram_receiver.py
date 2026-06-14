@@ -46,8 +46,8 @@ YEONGSUK_PERSONA = """
 → {"mode": "reply", "text": "친근한 답변"}
 
 ## status — 에이전트 현황 조회
-트리거: 현황, 작업 현황, 어때, 어떻게 됐어, 확인해줘, 알려줘, 파악해, 업로드됐어, 진행 상황, 요즘, 오늘, 포스팅했어
-→ {"mode": "status", "agent": "루나|아린|전체", "text": "확인할게요!"}
+트리거: 현황, 작업 현황, 어때, 어떻게 됐어, 확인해줘, 알려줘, 파악해, 업로드됐어, 진행 상황, 요즘, 오늘, 포스팅했어, 투자 현황
+→ {"mode": "status", "agent": "루나|아린|데이브|전체", "text": "확인할게요!"}
 
 ## dispatch — 실행 지시 (동사형 요청 전부)
 → {"mode": "dispatch", "text": "바로 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 [에이전트]에게 [작업]을 지시하셨습니다."}
@@ -215,8 +215,47 @@ def _handle_status_query(agent: str):
             for row in log_rows[-4:]:
                 lines.append(f"    {row[:90]}")
 
+    # 데이브 현황
+    if "데이브" in agent or "전체" in agent:
+        import datetime
+        dave_path = os.path.join(PROJECT_ROOT, "reports", "research", "dave_upbit_analysis.md")
+        if os.path.exists(dave_path):
+            try:
+                content = open(dave_path, encoding="utf-8").read()
+                decision = "알 수 없음"
+                for line in content.split("\n"):
+                    if "최종 결정 (Decision):" in line:
+                        decision = line.split("최종 결정 (Decision):")[1].strip()
+                        break
+                mtime = os.path.getmtime(dave_path)
+                date = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+                lines.append(f"📈 <b>데이브 (가상자산)</b> 최근 분석 ({date})")
+                lines.append(f"  최종 결정: {decision}")
+            except Exception as e:
+                lines.append(f"📈 데이브 (가상자산): 로드 오류 ({e})")
+        else:
+            lines.append("📈 데이브 (가상자산): 분석 기록 없음")
+
+        dave_stock_path = os.path.join(PROJECT_ROOT, "reports", "research", "dave_stock_analysis.md")
+        if os.path.exists(dave_stock_path):
+            try:
+                content = open(dave_stock_path, encoding="utf-8").read()
+                decision = "알 수 없음"
+                for line in content.split("\n"):
+                    if "결론:" in line:
+                        decision = line.replace("## 결론:", "").strip()
+                        break
+                mtime = os.path.getmtime(dave_stock_path)
+                date = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+                lines.append(f"📉 <b>데이브 (주식)</b> 최근 분석 ({date})")
+                lines.append(f"  결론: {decision}")
+            except Exception as e:
+                lines.append(f"📉 데이브 (주식): 로드 오류 ({e})")
+        else:
+            lines.append("📉 데이브 (주식): 분석 기록 없음")
+
     if not lines:
-        lines.append("⚠️ 조회할 에이전트를 특정해주세요 (루나 / 아린 / 전체)")
+        lines.append("⚠️ 조회할 에이전트를 특정해주세요 (루나 / 아린 / 데이브 / 전체)")
 
     return "📊 <b>[현황 보고]</b>\n\n" + "\n".join(lines)
 

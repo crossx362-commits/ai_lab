@@ -94,7 +94,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
             "코다리": ["코다리", "헬스체크", "개발"],
             "가희": ["가희", "콘텐츠 검수"],
             "영숙": ["영숙", "노션 보고", "업로드 현황", "리포트 정리"],
-            "데이브": ["데이브", "주식", "거래량", "물타기", "매도 타점", "우리기술"],
+            "데이브": ["데이브", "주식", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit"],
         }
         for true_agent, keywords in _agent_keywords.items():
             if any(k in ceo_message for k in keywords):
@@ -301,19 +301,45 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 return f"{'✅' if result.returncode == 0 else '❌'} 티모 UI/UX 검토 완료\n\n{result.stdout[:500]}"
             return "❌ 티모 스크립트를 찾을 수 없습니다."
 
-        elif _match(agent, ["데이브", "dave"], ["주식", "거래량", "물타기", "매도 타점", "우리기술"]):
+        elif _match(agent, ["데이브", "dave"], ["주식", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit"]):
             import subprocess
-            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", "stock_analyzer.py")
+            is_crypto = any(k in ceo_message.lower() for k in ["업비트", "가상자산", "비트코인", "btc", "upbit"])
+            tool_name = "upbit_analyzer.py" if is_crypto else "stock_analyzer.py"
+            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", tool_name)
             if os.path.exists(script):
+                cmd = [sys.executable, script]
+                if is_crypto:
+                    import re
+                    # 자연어 매수/매도 파싱
+                    if any(k in ceo_message for k in ["사줘", "매수", "구입", "살래"]):
+                        # 금액 추출 (원, 만원 등)
+                        money_match = re.search(r'(\d+)\s*원', ceo_message)
+                        if not money_match:
+                            money_match = re.search(r'(\d+)\s*(?:만원|만\s*원)', ceo_message)
+                            if money_match:
+                                amount = float(money_match.group(1)) * 10000
+                            else:
+                                money_match = re.search(r'\b(\d{4,10})\b', ceo_message)
+                                amount = float(money_match.group(1)) if money_match else 5000.0
+                        else:
+                            amount = float(money_match.group(1))
+                        cmd += ["--buy", "KRW-BTC", str(amount)]
+                    elif any(k in ceo_message for k in ["전부 팔아", "전량 매도", "모두 팔아", "싹 다 팔아", "팔아줘", "매도해"]):
+                        cmd += ["--sell-all", "KRW-BTC"]
+                    else:
+                        cmd += ["KRW-BTC", ceo_message]
+                else:
+                    cmd += [ceo_message]
+
                 result = subprocess.run(
-                    [sys.executable, script, ceo_message],
+                    cmd,
                     cwd=os.path.dirname(script),
                     capture_output=True, text=True, encoding="utf-8", errors="replace",
                 )
                 if result.returncode == 0:
-                    return f"✅ 데이브 주식 분석 완료\n\n{result.stdout[:1000]}"
+                    return f"✅ 데이브 실행 완료\n\n{result.stdout[:1000]}"
                 else:
-                    return f"❌ 데이브 주식 분석 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
+                    return f"❌ 데이브 실행 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
             return "❌ 데이브 스크립트를 찾을 수 없습니다."
 
         else:

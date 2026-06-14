@@ -289,6 +289,7 @@ def run_daily_automation():
         "영숙": "reports/history/yeongsuk_daily_brief.md",
         "티모": "reports/learning/timo_review.md",
         "데이브": "reports/research/dave_stock_analysis.md",
+        "데이브(가상자산)": "reports/research/dave_upbit_analysis.md",
     }
 
     _root_dir = os.path.abspath(os.path.join(_ai_team_root, ".."))
