@@ -43,9 +43,7 @@ const TabControllers = {
             }
         },
         render() {
-            // 건강 탭 렌더링 로직
-            if (typeof renderHealthDashboard === 'function') renderHealthDashboard();
-            if (typeof renderHealthAnalyses === 'function') renderHealthAnalyses();
+            if (typeof renderHealthTab === 'function') renderHealthTab();
         },
         destroy() {
             if (typeof AppLogger !== 'undefined') {

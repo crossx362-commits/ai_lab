@@ -46,7 +46,7 @@ body.theme-dark .shadow-soft-lg {
 
 /* 통일된 카드 스타일 */
 .card-modern {
-    background: var(--color-bg-card);
+    background-color: var(--color-bg-card);
     border: 1px solid var(--color-border-card);
     border-radius: 16px;
     transition: all 0.25s ease;
