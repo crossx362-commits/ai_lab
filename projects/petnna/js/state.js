@@ -101,6 +101,8 @@ const AppConstants = {
         LETTERS: 'petna_letters',
         HEALTH_LOGS: 'petna_health_logs',
         CUSTOM_ROUTES: 'petna_custom_routes',
+        PET_SAJU: 'petna_pet_saju',
+        BUTLER_SAJU: 'petna_butler_saju',
     }
 };
 
@@ -198,7 +200,9 @@ const AppStore = {
         settings_notification_permission_granted: localStorage.getItem('petna_notification_permission_granted') === 'true',
         settings_unit: localStorage.getItem('petna_app_unit') || "metric",
         statsChart: null,
-        customRoutes: []
+        customRoutes: [],
+        petSaju: null,
+        butlerSaju: null,
     },
 
     getState(key) {
@@ -210,7 +214,8 @@ const AppStore = {
         // 데이터 상태 변경 시에만 저장 (settings_* 단순 변경은 호출자가 직접 save() 호출)
         const autoSaveKeys = new Set([
             'pets', 'posts', 'schedules', 'walks', 'albums',
-            'cart', 'places', 'meals', 'friends', 'chatHistories', 'letters', 'healthLogs', 'careSchedules', 'customRoutes'
+            'cart', 'places', 'meals', 'friends', 'chatHistories', 'letters', 'healthLogs', 'careSchedules', 'customRoutes',
+            'petSaju', 'butlerSaju',
         ]);
         if (autoSaveKeys.has(key)) {
             this.save();
@@ -242,7 +247,9 @@ const AppStore = {
                 letters: { key: AppConstants.StorageKeys.LETTERS, fallback: INITIAL_LETTERS },
                 healthLogs: { key: AppConstants.StorageKeys.HEALTH_LOGS, fallback: INITIAL_HEALTH_LOGS },
                 careSchedules: { key: AppConstants.StorageKeys.CARE_SCHEDULES, fallback: INITIAL_CARE_SCHEDULES },
-                customRoutes: { key: AppConstants.StorageKeys.CUSTOM_ROUTES, fallback: [] }
+                customRoutes: { key: AppConstants.StorageKeys.CUSTOM_ROUTES, fallback: [] },
+                petSaju: { key: AppConstants.StorageKeys.PET_SAJU, fallback: null },
+                butlerSaju: { key: AppConstants.StorageKeys.BUTLER_SAJU, fallback: null },
             };
 
             Object.keys(schema).forEach(stateKey => {
@@ -287,7 +294,9 @@ const AppStore = {
                 letters: AppConstants.StorageKeys.LETTERS,
                 healthLogs: AppConstants.StorageKeys.HEALTH_LOGS,
                 careSchedules: AppConstants.StorageKeys.CARE_SCHEDULES,
-                customRoutes: AppConstants.StorageKeys.CUSTOM_ROUTES
+                customRoutes: AppConstants.StorageKeys.CUSTOM_ROUTES,
+                petSaju: AppConstants.StorageKeys.PET_SAJU,
+                butlerSaju: AppConstants.StorageKeys.BUTLER_SAJU,
             };
 
             Object.keys(schema).forEach(stateKey => {
