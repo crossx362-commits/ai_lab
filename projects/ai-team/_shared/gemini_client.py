@@ -9,7 +9,7 @@ def text(
     temperature: float = 0.7,
     json_mode: bool = False,
     task: str = "",
-    lm_first: bool = True,
+    lm_first: bool = False,
 ) -> str | None:
     """텍스트 생성 (Ollama/Gemini)."""
     if lm_first:

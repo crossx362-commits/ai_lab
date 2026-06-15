@@ -9,7 +9,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.gemini_client import text as gemini_text
 
 _YEWON_DISPATCH_SYSTEM = """당신은 CEO 예원입니다. 사장님 명령을 분석해 최적의 에이전트에게 배분합니다.
 
@@ -67,13 +67,8 @@ def dispatch_and_execute(ceo_message: str) -> str:
             except Exception as e:
                 return f"❌ Python 스크립트 실행 오류: {str(e)[:300]}"
 
-    if not lm_available():
-        # lm_available() 내부에서 코다리에게 복구 요청 완료
-        print("  [예원 CEO] Ollama 연결 실패 → 코다리 복구 진행 중")
-        return None  # 텔레그램 메시지 없이 조용히 복구 대기
-
     try:
-        raw = lm_chat(ceo_message, system=_YEWON_DISPATCH_SYSTEM, json_mode=True, max_tokens=200, task="")
+        raw = gemini_text(ceo_message, system=_YEWON_DISPATCH_SYSTEM, json_mode=True, max_tokens=200, task="", lm_first=False)
         if not raw:
             return "❌ 예원 CEO의 지시를 해석할 수 없습니다."
         
