@@ -88,3 +88,9 @@
 - **티모**: [모션 그래픽스](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260615_모션_그래픽스.md)
 - **가희**: no_topic
 - **코다리**: [분산 시스템 설계](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260615_분산_시스템_설계.md)
+
+
+## 2026-06-15 16:24 자가학습
+- **루나**: no_doc
+- **영숙**: [데이터 시각화](projects/ai-team/skills/영숙_비서/knowledge/learned_20260615_데이터_시각화.md)
+- **데이브**: no_doc
