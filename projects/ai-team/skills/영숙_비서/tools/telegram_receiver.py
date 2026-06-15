@@ -38,7 +38,7 @@ try:
 except:
     yewon_dispatcher = None
 
-SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 필요시 도구(get_agent_status, list_calendar, dispatch) 즉시 호출."
+SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 단, 현황 보고(get_agent_status) 도구를 호출하는 경우에는 예외적으로 모든 에이전트의 내용을 줄이거나 생략하지 말고 상세하게 다 답변해야 함. 필요시 도구(get_agent_status, list_calendar, dispatch) 즉시 호출."
 HISTORY = []
 
 def tg_api(method, data, timeout=20):
@@ -59,7 +59,7 @@ def get_updates(offset):
     return res.get("result", [])
 
 def get_agent_status(agent: str = "전체"):
-    """에이전트 현황. Args: agent ('루나'/'아린'/'데이브'/'전체')"""
+    """에이전트 현황. Args: agent ('예원'/'영숙'/'루나'/'아린'/'가희'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
     from _shared.agent_status import get_status_report
     return get_status_report(agent, PROJECT_ROOT)
 
@@ -95,6 +95,9 @@ TOOL_MAP = {"get_agent_status": get_agent_status, "list_calendar": list_calendar
 def process(msg):
     global HISTORY
     print(f"\n📩 {msg}")
+
+    if "현황" in msg or "상태" in msg:
+        HISTORY = []
 
     if not client:
         send_msg("Gemini API 키 없음")
