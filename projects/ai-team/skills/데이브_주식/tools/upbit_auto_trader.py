@@ -19,10 +19,11 @@ load_env()
 import pyupbit
 import upbit_analyzer
 
-# 감시 대상 — 고변동성 알트 우선 (소액 수익 극대화)
+# 감시 대상 — 거래량 상위 고변동성 알트 우선 (소액 수익 극대화)
 TICKERS = [
-    "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-SHIB",
-    "KRW-ADA", "KRW-AVAX", "KRW-MATIC", "KRW-LINK",
+    "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-NEAR",
+    "KRW-SUI", "KRW-SEI", "KRW-STX", "KRW-HBAR",
+    "KRW-ADA", "KRW-AVAX", "KRW-LINK", "KRW-PEPE",
     "KRW-BTC", "KRW-ETH",
 ]
 
@@ -53,9 +54,10 @@ def parse_decision_from_report(report: str) -> str:
     return "HOLD"
 
 def calculate_confluence_score(ticker: str) -> dict:
-    """Ollama 호출 없이 기술 지표만으로 빠르게 정합성 점수를 계산합니다. (만점: 15점)"""
+    """일봉 + 4시간봉 복합 점수 계산 (소액 단타 최적화)"""
     try:
         df = pyupbit.get_ohlcv(ticker, interval="day", count=300)
+        df4h = pyupbit.get_ohlcv(ticker, interval="minute240", count=100)
         if df is None or df.empty:
             return {"ticker": ticker, "score": 0, "error": "데이터 없음"}
             
@@ -149,6 +151,28 @@ def calculate_confluence_score(ticker: str) -> dict:
         if "워시트레이딩" in indicators.get("통정매매의심", ""):
             score -= 3
             reasons.append("통정매매 의심(신뢰도 하락)")
+
+        # 10. 4시간봉 단기 모멘텀 보너스 (소액 단타 신호)
+        if df4h is not None and not df4h.empty:
+            try:
+                c = df4h["close"].values
+                # 4h EMA20 상향 돌파
+                ema20_4h = sum(c[-20:]) / 20
+                if c[-1] > ema20_4h and c[-2] <= ema20_4h:
+                    score += 2
+                    reasons.append("4h EMA20 상향돌파")
+                # 4h 최근 3봉 연속 상승
+                elif c[-1] > c[-2] > c[-3]:
+                    score += 1
+                    reasons.append("4h 3봉 연속상승")
+                # 4h 거래량 급증
+                v = df4h["volume"].values
+                avg_vol = sum(v[-20:-1]) / 19
+                if v[-1] > avg_vol * 2:
+                    score += 1
+                    reasons.append("4h 거래량 2배 급증")
+            except Exception:
+                pass
 
         return {
             "ticker": ticker,
