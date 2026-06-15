@@ -57,11 +57,6 @@ AGENTS = {
         "pet_angle": "반려동물과 함께하는 감성 라이프스타일",
         "upload_dir": None, "file_glob": None,
     },
-    "가희": {
-        "emoji": "🏥", "nickname": "가희",
-        "pet_angle": "오늘 꼭 확인해야 할 반려동물 건강 체크리스트",
-        "upload_dir": None, "file_glob": None,
-    },
     "경수": {
         "emoji": "🛡️", "nickname": "경수",
         "pet_angle": "우리 아이를 지키는 안전 가이드",

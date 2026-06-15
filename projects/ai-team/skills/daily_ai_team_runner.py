@@ -104,7 +104,7 @@ def analyze_with_ollama(report_content: str) -> dict:
 
         # 디스패처 결과를 태스크 형태로 변환
         tasks = []
-        for agent in ["루나", "아린"]:
+        for agent in []:
             if agent in result:
                 tasks.append({
                     "agent": agent,
@@ -132,11 +132,8 @@ JSON: {{"tasks":[{{"agent":"루나","action":"뮤직비디오 생성","priority"
         print(f"  [Warning] Ollama 분석 실패: {e}")
 
     return {
-        "tasks": [
-            {"agent": "루나", "action": "일일 뮤직비디오 생성", "priority": "medium", "description": "", "reason": "정기"},
-            {"agent": "아린", "action": "트렌드 인스타 포스팅", "priority": "medium", "description": "", "reason": "정기"},
-        ],
-        "summary": "일일 정기 콘텐츠 제작"
+        "tasks": [],
+        "summary": "일일 정기 콘텐츠 제작 (비활성화됨)"
     }
 
 
@@ -242,7 +239,7 @@ def run_daily_automation():
     for task in plan.get('tasks', []):
         agent = task.get('agent', '')
 
-        if agent in ["루나", "아린"]:
+        if agent in []:
             success, result_msg = execute_agent_pipeline(agent, task)
 
             results.append({
