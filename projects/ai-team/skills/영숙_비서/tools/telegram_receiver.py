@@ -38,7 +38,7 @@ try:
 except:
     yewon_dispatcher = None
 
-SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 단, 현황 보고(get_agent_status) 도구를 호출하는 경우에는 예외적으로 모든 에이전트의 내용을 줄이거나 생략하지 말고 상세하게 다 답변해야 함. 필요시 도구(get_agent_status, list_calendar, dispatch) 즉시 호출."
+SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 단, 현황 보고(get_agent_status) 도구를 호출하는 경우에는 예외적으로 모든 에이전트의 내용을 줄이거나 생략하지 말고 상세하게 다 답변해야 함. 일반적인 질문이나 상태 분석 요청은 도구를 쓰지 말고 제미니가 직접 아는 선에서 즉시 답변하세요. 파이썬 스크립트 실행이나 특정 에이전트 구동 명령인 경우에만 dispatch 도구를 호출하세요."
 HISTORY = []
 
 def tg_api(method, data, timeout=20):
@@ -73,7 +73,7 @@ def list_calendar(days: int = 7):
     return "📅 캘린더 미설정"
 
 def dispatch(cmd: str):
-    """에이전트 실행. Args: cmd (명령)"""
+    """에이전트 스크립트를 실제로 구동/실행(run/execute)하는 명시적 명령에만 호출하세요. 단순 분석/설명 질문에는 절대 호출 금지. Args: cmd (실행 명령)"""
     if not yewon_dispatcher: return "❌ 디스패처 없음"
     try:
         print(f"🎯 {cmd}")
