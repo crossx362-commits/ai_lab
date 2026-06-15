@@ -167,13 +167,18 @@ def process(msg):
             HISTORY.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
             HISTORY.append(types.Content(role="user", parts=fn_parts))
 
+            # 현황 보고의 경우 줄이지 말고 모든 에이전트의 내용을 상세히 전달하도록 설정
+            is_status = any(tr["name"] in ["get_agent_status", "get_status_report"] for tr in tool_results)
+            max_tok = 1000 if is_status else 100
+            sys_inst = SYSTEM + time_ctx + ("\n현황 보고는 모든 에이전트의 내용을 줄이지 말고 상세하게 보고하세요." if is_status else "\n도구 결과로 간결히 답변")
+
             try:
                 final = client.models.generate_content(
                     model=model_name,
                     contents=HISTORY,
                     config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
-                        max_output_tokens=100,  # 최종 답변 토큰 수 최소화
+                        system_instruction=sys_inst,
+                        max_output_tokens=max_tok,
                         temperature=0.7
                     )
                 )
@@ -186,8 +191,8 @@ def process(msg):
                         model=model_name,
                         contents=HISTORY,
                         config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
-                            max_output_tokens=100,
+                            system_instruction=sys_inst,
+                            max_output_tokens=max_tok,
                             temperature=0.7
                         )
                     )
