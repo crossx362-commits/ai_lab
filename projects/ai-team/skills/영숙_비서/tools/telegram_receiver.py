@@ -58,7 +58,7 @@ def get_updates(offset):
     res = tg_api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": ["message"]}, timeout=40)
     return res.get("result", [])
 
-def get_agent_status(agent="전체"):
+def get_agent_status(agent: str = "전체"):
     """에이전트 현황. Args: agent ('루나'/'아린'/'데이브'/'전체')"""
     lines = []
     hist_path = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
@@ -112,7 +112,7 @@ def get_agent_status(agent="전체"):
 
     return "\n\n".join(lines) if lines else "조회 대상 지정 필요"
 
-def list_calendar(days=7):
+def list_calendar(days: int = 7):
     """캘린더 일정. Args: days (조회 일수)"""
     cache = os.path.join(PROJECT_ROOT, "projects", "ai-team", "_shared", "calendar_cache.md")
     if os.path.exists(cache):
@@ -120,7 +120,7 @@ def list_calendar(days=7):
             return f"📅 일정:\n{f.read()[:800]}"
     return "📅 캘린더 미설정"
 
-def dispatch(cmd):
+def dispatch(cmd: str):
     """에이전트 실행. Args: cmd (명령)"""
     if not yewon_dispatcher: return "❌ 디스패처 없음"
     try:
