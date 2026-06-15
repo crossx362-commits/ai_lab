@@ -26,6 +26,8 @@ def text(
                     return res.strip()
         except Exception:
             pass
+        # lm_first가 True인 경우 (Ollama 우선), Ollama 실패 시 Gemini API 폴백을 완전히 차단
+        return None
 
     # 2. Gemini API 사용
     api_key = os.getenv("GEMINI_API_KEY", "")
