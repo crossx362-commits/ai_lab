@@ -85,9 +85,9 @@ def generate_music_with_lyria(
         os.getenv("GEMINI_API_KEYS") or ""
     ).split(",")[0].strip()
 
-    if not api_key:
-        print("❌ 인증 에러: .env 파일에 GEMINI_API_KEY를 설정해주세요!")
-        return None
+    # Luna (루나) 에이전트의 제미니 API 호출 차단 정책 적용
+    print("❌ [루나] 제미니 API 사용이 정책에 의해 차단되었습니다.")
+    return None
 
     model_id = "lyria-3-pro-preview" if is_pro else "lyria-3-clip-preview"
     contents = (

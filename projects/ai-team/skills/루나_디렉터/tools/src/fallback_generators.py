@@ -41,38 +41,9 @@ def generate_music_pollinations(prompt: str, output_path: str) -> str:
 # ─── 영상 폴백 1: VEO 3.1 ────────────────────────────────────────────────────
 
 def generate_video_veo(visual_prompt: str, output_path: str, api_key: str) -> str:
-    """VEO 3.1로 AI 영상 생성. 성공 시 output_path 반환."""
-    try:
-        from google import genai
-        from google.genai import types
-        client = genai.Client(api_key=api_key)
-        print(f"    [VEO] 생성 요청: {visual_prompt[:60]}...")
-        op = client.models.generate_videos(
-            model="veo-3.1-generate-preview",
-            prompt=visual_prompt,
-            config=types.GenerateVideoConfig(
-                aspect_ratio="16:9",
-                duration_seconds=8,
-                number_of_videos=1,
-            ),
-        )
-        # 완료 대기 (최대 5분)
-        for _ in range(30):
-            time.sleep(10)
-            op = client.operations.get(op)
-            if op.done:
-                break
-        if not op.done or not op.response:
-            print("    [VEO] 타임아웃 또는 응답 없음")
-            return ""
-        video_obj = op.response.generated_videos[0].video
-        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-        client.files.download(file=video_obj, download_path=output_path)
-        print(f"    [VEO] 완료: {output_path}")
-        return output_path
-    except Exception as e:
-        print(f"    [VEO] 실패: {e}")
-        return ""
+    """VEO 3.1로 AI 영상 생성. (정책에 의해 Gemini 호출 차단)"""
+    print("❌ [루나] VEO 비디오 생성 기능이 정책에 의해 차단되었습니다.")
+    return ""
 
 
 # ─── 영상 폴백 2: Ken Burns 애니메이션 슬라이드쇼 ────────────────────────────

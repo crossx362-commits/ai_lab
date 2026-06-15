@@ -12,6 +12,17 @@ def text(
     lm_first: bool = False,
 ) -> str | None:
     """텍스트 생성 (Ollama/Gemini)."""
+    import inspect
+    allowed = False
+    for frame in inspect.stack():
+        f_path = frame.filename.lower()
+        if any(k in f_path for k in ["dave", "데이브", "영숙", "yeongsuk", "yewon", "예원", "telegram_receiver"]):
+            allowed = True
+            break
+    if not allowed:
+        # 허용되지 않은 에이전트는 Gemini API 사용을 차단하고 Ollama만 사용하도록 강제
+        lm_first = True
+
     if lm_first:
         # 1. Ollama 시도
         try:

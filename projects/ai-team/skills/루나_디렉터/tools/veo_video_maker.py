@@ -32,7 +32,9 @@ if os.path.exists(_env_p):
                 _k, _v = _l.split("=", 1)
                 os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# Luna (루나) 에이전트의 제미니 API 호출 차단 정책 적용
+print("❌ [루나] 제미니 API 사용이 정책에 의해 차단되었습니다.")
+client = None
 VEO_MODEL_ID = "veo-3.1-generate-preview"
 
 

@@ -44,12 +44,7 @@ class VeoMusicVideoGenerator:
     """루나 파이프라인 전용 — 음악 테마로 뮤직비디오 영상(무음) 생성"""
 
     def __init__(self, api_key: str = None):
-        if genai is None:
-            raise ImportError("pip install google-genai pillow")
-        key = api_key or os.getenv("GEMINI_API_KEY", "")
-        if not key:
-            raise ValueError("GEMINI_API_KEY 환경변수 필요")
-        self.client = genai.Client(api_key=key)
+        raise ValueError("❌ [루나] Veo 뮤직비디오 생성 기능이 정책에 의해 차단되었습니다.")
 
     def _wait_active(self, vid_data):
         file_name = "files/" + vid_data.uri.split("files/")[-1].split(":")[0]
