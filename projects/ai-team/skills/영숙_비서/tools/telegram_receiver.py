@@ -110,8 +110,24 @@ def process(msg):
     global HISTORY
     print(f"\n📩 {msg}")
 
-    if "현황" in msg or "상태" in msg:
-        HISTORY = []
+    # 1. 자주 사용하는 시스템 명령은 LLM을 거치지 않고 즉시 반환하여 딜레이와 토큰 최소화
+    msg_clean = msg.strip().replace(" ", "").lower()
+    if any(k in msg_clean for k in ["현황", "상태", "다들뭐해"]):
+        try:
+            status_report = get_agent_status("전체")
+            send_msg(status_report)
+            HISTORY = [] # 대화 컨텍스트 초기화
+            return
+        except Exception as se:
+            print(f"❌ 현황 조회 실패: {se}")
+
+    if any(k in msg_clean for k in ["일정", "캘린더"]):
+        try:
+            cal_report = list_calendar()
+            send_msg(cal_report)
+            return
+        except Exception as ce:
+            print(f"❌ 일정 조회 실패: {ce}")
 
     if not client:
         send_msg("Gemini API 키 없음")
@@ -229,6 +245,11 @@ def process(msg):
     except Exception as e:
         print(f"❌ {model_name} 최종 오류: {e}")
         try:
+            # 429나 quota 초과 오류인 경우 유저에게 빠른 상태 공지 후 Ollama 구동
+            err_msg = str(e)
+            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower():
+                send_msg("⚠️ 제미니 API 일일 할당량이 초과되어 로컬 AI로 연산을 시도합니다. (처리에 약 1~2분 정도 소요될 수 있으니 잠시만 기다려 주세요.)")
+            
             print("🔄 Gemini 오류 감지 → 로컬 Ollama 최종 폴백 진행...")
             from _shared.ollama_client import chat as lm_chat
             prompt_context = "\n".join([f"{'User' if p.role == 'user' else 'Model'}: {p.parts[0].text}" for p in HISTORY])
