@@ -160,16 +160,34 @@ def process(msg):
 
     model_name = "gemini-2.5-flash"
     try:
-        resp = client.models.generate_content(
-            model=model_name,
-            contents=HISTORY,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM + time_ctx,
-                tools=TOOLS,
-                max_output_tokens=120,  # 답변 길이 제한으로 토큰 사용량 최소화
-                temperature=0.7
+        try:
+            resp = client.models.generate_content(
+                model=model_name,
+                contents=HISTORY,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM + time_ctx,
+                    tools=TOOLS,
+                    max_output_tokens=120,  # 답변 길이 제한으로 토큰 사용량 최소화
+                    temperature=0.7
+                )
             )
-        )
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
+                print("🔄 Gemini Flash 할당량 초과. Gemini Pro로 전환 시도...")
+                model_name = "gemini-2.5-pro"
+                resp = client.models.generate_content(
+                    model=model_name,
+                    contents=HISTORY,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM + time_ctx,
+                        tools=TOOLS,
+                        max_output_tokens=120,
+                        temperature=0.7
+                    )
+                )
+            else:
+                raise e
 
         answer = ""
         tool_results = []
@@ -197,15 +215,32 @@ def process(msg):
             HISTORY.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
             HISTORY.append(types.Content(role="user", parts=fn_parts))
 
-            final = client.models.generate_content(
-                model=model_name,
-                contents=HISTORY,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
-                    max_output_tokens=100,  # 최종 답변 토큰 수 최소화
-                    temperature=0.7
+            try:
+                final = client.models.generate_content(
+                    model=model_name,
+                    contents=HISTORY,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
+                        max_output_tokens=100,  # 최종 답변 토큰 수 최소화
+                        temperature=0.7
+                    )
                 )
-            )
+            except Exception as fe:
+                ferr = str(fe)
+                if ("429" in ferr or "RESOURCE_EXHAUSTED" in ferr or "quota" in ferr.lower()) and model_name == "gemini-2.5-flash":
+                    print("🔄 Gemini Flash 할당량 초과 (최종 답변). Gemini Pro로 전환 시도...")
+                    model_name = "gemini-2.5-pro"
+                    final = client.models.generate_content(
+                        model=model_name,
+                        contents=HISTORY,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
+                            max_output_tokens=100,
+                            temperature=0.7
+                        )
+                    )
+                else:
+                    raise fe
             answer = final.text.strip() if final.text else "\n\n".join([tr["result"] for tr in tool_results])
 
         if not answer:
@@ -219,7 +254,7 @@ def process(msg):
             HISTORY = HISTORY[-6:]
 
     except Exception as e:
-        print(f"❌ {model_name} 오류: {e}")
+        print(f"❌ {model_name} 최종 오류: {e}")
         send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
 def main():
