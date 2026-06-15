@@ -429,4 +429,4 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"[Daemon Error] {e}")
 
-            time.sleep(10)
+            time.sleep(30)

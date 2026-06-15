@@ -236,16 +236,34 @@ def run_analysis(query: str = "", stock_code: str = "032820") -> str:
         return "❌ [데이브] GEMINI_API_KEY 환경변수가 설정되지 않았습니다."
 
     try:
+        import time
         client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
-                max_output_tokens=2000,
-                temperature=0.7
-            )
-        )
+        
+        max_retries = 5
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
+                        max_output_tokens=2000,
+                        temperature=0.7
+                    )
+                )
+                break
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
+                    if attempt < max_retries - 1:
+                        print(f"[Dave] 구글 API 요청 제한(429) 감지. 5초 뒤 재시도합니다... ({attempt+1}/{max_retries})")
+                        time.sleep(5)
+                        continue
+                raise e
+
+        if not response:
+            return "❌ [데이브] 분석을 수행할 수 없습니다 (제미니 응답 없음)."
         report = response.text
 
         # 영숙 보고 섹션 후처리 제거

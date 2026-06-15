@@ -606,12 +606,30 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
     )
         
     print(f"[Dave] Calling Gemini 2.5 Flash for {ticker}...")
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=config
-    )
     
+    max_retries = 5
+    response = None
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=config
+            )
+            break
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
+                if attempt < max_retries - 1:
+                    print(f"[Dave] 구글 API 요청 제한(429) 감지. 5초 뒤 재시도합니다... ({attempt+1}/{max_retries})")
+                    import time
+                    time.sleep(5)
+                    continue
+            raise e
+
+    if not response:
+        raise Exception("제미니로부터 응답을 수신하지 못했습니다.")
+        
     return TradeDecision.model_validate_json(response.text)
 
 def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
