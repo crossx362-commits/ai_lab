@@ -597,22 +597,13 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
         raise Exception("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
 
     client = genai.Client(api_key=api_key)
-    cache_name = get_dave_context_cache(client)
     
-    if cache_name:
-        config = types.GenerateContentConfig(
-            cached_content=cache_name,
-            response_mime_type="application/json",
-            response_schema=TradeDecision,
-            temperature=0.2
-        )
-    else:
-        config = types.GenerateContentConfig(
-            system_instruction=load_system_instruction(),
-            response_mime_type="application/json",
-            response_schema=TradeDecision,
-            temperature=0.2
-        )
+    config = types.GenerateContentConfig(
+        system_instruction=load_system_instruction(),
+        response_mime_type="application/json",
+        response_schema=TradeDecision,
+        temperature=0.2
+    )
         
     print(f"[Dave] Calling Gemini 2.5 Flash for {ticker}...")
     response = client.models.generate_content(
