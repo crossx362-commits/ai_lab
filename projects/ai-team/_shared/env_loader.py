@@ -45,9 +45,10 @@ def load_env(start_path: str | None = None) -> None:
         try:
             from _shared.env_crypto import load_encrypted_env
             env_vars = load_encrypted_env(encrypted_path)
-            for k, v in env_vars.items():
-                os.environ[k] = v.strip('"').strip("'")
-            return  # 암호화 파일 로드 성공 시 평문 .env 건너뜀
+            if env_vars:
+                for k, v in env_vars.items():
+                    os.environ[k] = v.strip('"').strip("'")
+                return  # 암호화 파일 로드 성공 시 평문 .env 건너뜀
         except Exception as e:
             print(f"  [Warning] 암호화된 환경변수 로드 실패, 평문 .env로 폴백: {e}")
 

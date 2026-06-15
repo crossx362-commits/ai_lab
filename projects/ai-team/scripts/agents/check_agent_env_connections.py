@@ -14,7 +14,10 @@ if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 # 프로젝트 루트 설정
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'projects', 'ai-team'))
+_here = os.path.dirname(os.path.abspath(__file__))
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
 from _shared.env_loader import load_env
 
@@ -27,12 +30,12 @@ AGENTS = {
         "path": "projects/ai-team/skills/루나_디렉터/tools",
         "required_env": [
             "GEMINI_API_KEY",
-            "GEMINI_MUSIC_KEY",
             "YOUTUBE_API_KEY",
             "TELEGRAM_BOT_TOKEN",
             "TELEGRAM_CHAT_ID",
         ],
         "optional_env": [
+            "GEMINI_MUSIC_KEY",
             "OLLAMA_URL",
         ],
         "files": [
@@ -124,14 +127,15 @@ def check_env_var(var_name: str) -> tuple[bool, str]:
 
 def check_file(file_path: str, agent_path: str = None) -> bool:
     """파일 존재 체크"""
+    workspace_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", ".."))
     # 최상위 폴더 파일 (client_secret.json)
     if file_path == "client_secret.json":
-        root_path = os.path.join(os.path.dirname(__file__), file_path)
+        root_path = os.path.join(workspace_root, file_path)
         return os.path.exists(root_path)
 
     # 에이전트 폴더 파일
     if agent_path:
-        full_path = os.path.join(os.path.dirname(__file__), agent_path, file_path)
+        full_path = os.path.join(workspace_root, agent_path, file_path)
         return os.path.exists(full_path)
 
     return False

@@ -13,7 +13,10 @@ if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 # 프로젝트 루트 설정
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'projects', 'ai-team'))
+_here = os.path.dirname(os.path.abspath(__file__))
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", ".."))
+if _ai_team_root not in sys.path:
+    sys.path.insert(0, _ai_team_root)
 
 from _shared.env_loader import load_env
 
