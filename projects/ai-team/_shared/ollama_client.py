@@ -202,7 +202,7 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
             _endpoint(), data=data,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with urllib.request.urlopen(req, timeout=120) as r:
             res = json.loads(r.read())
         msg  = res["choices"][0]["message"]
         text = msg.get("content", "").strip()
@@ -219,7 +219,7 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
                     _endpoint(), data=data2,
                     headers={"Content-Type": "application/json"},
                 )
-                with urllib.request.urlopen(req2, timeout=20) as r2:
+                with urllib.request.urlopen(req2, timeout=120) as r2:
                     res2 = json.loads(r2.read())
                 text = res2["choices"][0]["message"].get("content", "").strip()
                 if not text:
