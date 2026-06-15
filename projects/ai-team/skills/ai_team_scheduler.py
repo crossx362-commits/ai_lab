@@ -124,11 +124,12 @@ def run_scheduler(interval_minutes: int = 30, max_iterations: int = None):
     print("  AI 팀 자동 작업 스케줄러 시작")
     print("="*60)
     print(f"  확인 주기: {interval_minutes}분")
-    print(f"  Notion 연동: {'활성화' if os.getenv('NOTION_TOKEN') else '비활성화'}")
+    notion_token = os.getenv('NOTION_API_KEY') or os.getenv('NOTION_TOKEN')
+    print(f"  Notion 연동: {'활성화' if notion_token else '비활성화'}")
     print("="*60)
 
-    if not os.getenv('NOTION_TOKEN'):
-        print("\n[WARNING] NOTION_TOKEN이 설정되지 않았습니다.")
+    if not notion_token:
+        print("\n[WARNING] NOTION_API_KEY 또는 NOTION_TOKEN이 설정되지 않았습니다.")
         print("설정 방법은 NOTION_SETUP.md를 참고하세요.\n")
         return
 
