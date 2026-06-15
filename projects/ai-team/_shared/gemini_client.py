@@ -1,11 +1,6 @@
-"""
-gemini_client.py — 공통 Gemini API 클라이언트 (유료 API 비활성화)
-
-모든 Gemini/Imagen API 호출 제거됨. 텍스트 생성은 Ollama 전용.
-vision/web_search/generate_image는 None 반환 (호출부 기존 폴백 로직 유지).
-"""
-
-# ── 텍스트 생성 (Ollama 전용 래퍼) ───────────────────────────────────────────
+import os
+import json
+import urllib.request
 
 def text(
     prompt: str,
@@ -16,20 +11,82 @@ def text(
     task: str = "",
     lm_first: bool = True,
 ) -> str | None:
-    """Ollama 텍스트 생성 전용. Gemini 폴백 제거됨."""
+    """텍스트 생성 (Ollama/Gemini)."""
+    if lm_first:
+        # 1. Ollama 시도
+        try:
+            from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+            if lm_available():
+                res = lm_chat(
+                    prompt, system=system,
+                    max_tokens=max_tokens, temperature=temperature,
+                    json_mode=json_mode, task=task,
+                )
+                if res:
+                    return res.strip()
+        except Exception:
+            pass
+
+    # 2. Gemini API 사용
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        # 만약 lm_first가 False여서 여기로 왔는데 API 키가 없으면 Ollama로 폴백
+        if not lm_first:
+            try:
+                from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+                if lm_available():
+                    res = lm_chat(
+                        prompt, system=system,
+                        max_tokens=max_tokens, temperature=temperature,
+                        json_mode=json_mode, task=task,
+                    )
+                    if res:
+                        return res.strip()
+            except Exception:
+                pass
+        return None
+
     try:
-        from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-        if lm_available():
-            res = lm_chat(
-                prompt, system=system,
-                max_tokens=max_tokens, temperature=temperature,
-                json_mode=json_mode, task=task,
-            )
-            if res:
-                return res.strip()
-    except Exception:
-        pass
+        parts = [{"text": prompt}]
+        payload = {
+            "contents": [{"parts": parts}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": temperature,
+            }
+        }
+        if system:
+            payload["systemInstruction"] = {
+                "parts": [{"text": system}]
+            }
+        if json_mode:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+        
+        with urllib.request.urlopen(req, timeout=60) as r:
+            res = json.loads(r.read())
+        
+        result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+        print(f"  [Gemini API] 텍스트 생성 완료")
+        return result
+    except Exception as e:
+        print(f"  [Gemini API] 실패: {e}")
+        # 실패 시 Ollama로 폴백
+        if not lm_first:
+            try:
+                from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+                if lm_available():
+                    return lm_chat(
+                        prompt, system=system,
+                        max_tokens=max_tokens, temperature=temperature,
+                        json_mode=json_mode, task=task,
+                    )
+            except Exception:
+                pass
     return None
+
 
 
 # ── Vision (이미지 → 텍스트) ─────────────────────────────────────────────────

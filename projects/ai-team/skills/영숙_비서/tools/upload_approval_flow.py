@@ -29,9 +29,7 @@ from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
 import yewon_dispatcher
 
-# 가희 검수관 import
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "가희_검수관", "tools"))
-import content_inspector
+# upload_approval_flow.py (Gahee bypassed)
 
 
 def request_upload_approval(
@@ -120,62 +118,9 @@ def request_upload_approval(
         }
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # Step 3: 예원 → 가희 검수 지시
+    # Step 3: 영숙 최종 승인 → 에이전트 업로드 지시
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    print("━━━ Step 3: 예원 → 가희 검수 지시 ━━━")
-
-    gahee_instruction = (
-        f"📋 **[예원 CEO → 가희 검수관]**\n\n"
-        f"{agent}의 {platform} 콘텐츠를 검수해주세요.\n"
-        f"CEO 피드백: 승인\n\n"
-        f"**제목**: {content_info.get('title', content_info.get('caption', 'N/A')[:100])}"
-    )
-    send_telegram_message(gahee_instruction)
-
-    gahee_result = _run_gahee_inspection(platform, content_info)
-
-    print(f"  가희 검수 결과: {gahee_result['status']}")
-    if gahee_result.get('issues'):
-        print(f"  발견된 문제: {len(gahee_result['issues'])}개")
-    print()
-
-    if not gahee_result['pass']:
-        # 가희 검수 실패 시 반려
-        rejection_report = (
-            f"❌ **[영숙 비서 → 사장님]**\n\n"
-            f"{agent} 업로드가 가희 검수에서 반려되었습니다.\n\n"
-            f"**문제점**:\n" + "\n".join(f"- {issue}" for issue in gahee_result['issues'][:5]) + "\n\n"
-            f"**조치**: {agent}에게 수정 요청 후 재검수"
-        )
-        send_telegram_message(rejection_report)
-
-        return {
-            "approved": False,
-            "stage": "가희_검수",
-            "message": "품질 기준 미달",
-            "issues": gahee_result['issues']
-        }
-
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # Step 4: 가희 → 영숙 검수 통과 보고
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    print("━━━ Step 4: 가희 → 영숙 검수 통과 보고 ━━━")
-
-    gahee_report = (
-        f"✅ **[가희 검수관 → 영숙 비서]**\n\n"
-        f"{agent}의 {platform} 콘텐츠 검수가 완료되었습니다.\n\n"
-        f"**검수 결과**: 통과\n"
-        f"**상태**: {gahee_result['status']}\n"
-        f"**제목**: {content_info.get('title', content_info.get('caption', 'N/A')[:100]}\n\n"
-        f"업로드 승인 요청드립니다."
-    )
-    send_telegram_message(gahee_report)
-    print(f"  ✅ 가희 → 영숙 보고 완료\n")
-
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # Step 5: 영숙 최종 승인 → 에이전트 업로드 지시
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    print("━━━ Step 5: 영숙 최종 승인 → 업로드 지시 ━━━")
+    print("━━━ Step 3: 영숙 최종 승인 → 업로드 지시 ━━━")
 
     # 사장님께 최종 승인 보고
     final_approval = (
@@ -184,9 +129,7 @@ def request_upload_approval(
         f"**검토 단계**:\n"
         f"1. ✅ 영숙 → 사장님 보고\n"
         f"2. ✅ 예원 CEO 피드백: 승인 (점수: {ceo_feedback.get('score', 'N/A')}/10)\n"
-        f"3. ✅ 가희 품질 검수: 통과\n"
-        f"4. ✅ 가희 → 영숙 보고\n"
-        f"5. ✅ 영숙 최종 승인\n\n"
+        f"3. ✅ 영숙 최종 승인\n\n"
         f"**제목**: {content_info.get('title', content_info.get('caption', 'N/A')[:100]}\n\n"
         f"지금 {agent}에게 업로드 지시를 내립니다! 🚀"
     )
@@ -204,7 +147,6 @@ def request_upload_approval(
         "stage": "최종_승인",
         "message": "업로드 승인 및 지시 완료",
         "ceo_feedback": ceo_feedback['comment'],
-        "gahee_status": gahee_result['status'],
         "upload_command": upload_command
     }
 
@@ -283,58 +225,7 @@ JSON만 반환:
         }
 
 
-def _run_gahee_inspection(platform: str, content_info: Dict) -> Dict:
-    """가희 검수 실행"""
-
-    try:
-        if platform == "YouTube":
-            # YouTube 영상 검수 (제목/설명 기반)
-            # 실제로는 video_id로 검수하지만, 여기서는 제목/설명만 체크
-            result = {
-                "pass": True,
-                "status": "PASS",
-                "violations": [],
-                "warnings": [],
-                "issues": []
-            }
-
-            title = content_info.get('title', '')
-            description = content_info.get('description', '')
-
-            # 간단한 금지 키워드 체크
-            banned = ["AI", "인공지능", "기계", "로봇", "테크", "미래"]
-            found_banned = [b for b in banned if b.lower() in title.lower() or b.lower() in description.lower()]
-
-            if found_banned:
-                result['pass'] = False
-                result['status'] = "REJECT"
-                result['issues'] = [f"금지 키워드 발견: {', '.join(found_banned)}"]
-
-            return result
-
-        else:  # Instagram
-            # Instagram 캡션 검수
-            caption = content_info.get('caption', '')
-            result = content_inspector.inspect_caption(caption)
-
-            return {
-                "pass": result.get('pass', False),
-                "status": "PASS" if result.get('pass') else "REJECT",
-                "issues": result.get('issues', []),
-                "violations": [],
-                "warnings": []
-            }
-
-    except Exception as e:
-        print(f"  ⚠️ 가희 검수 실패: {e}")
-        # 에러 시 통과 처리 (안전 장치)
-        return {
-            "pass": True,
-            "status": "PASS",
-            "issues": [],
-            "violations": [],
-            "warnings": []
-        }
+# _run_gahee_inspection bypassed
 
 
 def _issue_upload_command(agent: str, platform: str, content_info: Dict) -> str:

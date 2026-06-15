@@ -19,9 +19,14 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
 from _shared.env_loader import load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-
 load_env(PROJECT_ROOT)
+
+from google import genai
+from google.genai import types
+
+# Initialize google-genai client
+client = genai.Client()
+
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
@@ -29,51 +34,13 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
 import yewon_dispatcher
 
-YEONGSUK_PERSONA = """
-당신은 영숙이에요. 사장님 텔레그램 메시지를 받아 모드를 판단하고 JSON 1개만 반환합니다.
+YEONGSUK_PERSONA = """당신은 영숙입니다. 사장님(User)의 개인 비서이며, 사장님의 지시를 받아 작업을 수행합니다.
+규칙:
+- 핵심만 짧고 직관적으로 답하십시오. 미사여구와 불필요한 인사는 생략하십시오.
+- 작업을 지시받으면 알맞은 도구(Tool)를 실행하여 작업을 처리하십시오.
+- 제공된 도구 외에 임의로 상태를 완료 처리하거나 정보를 만들어내지 마십시오."""
 
-# 절대 규칙
-- JSON 외 다른 텍스트 출력 금지.
-- 거짓 완료 보고 절대 금지 — 확인되지 않은 상태에서 "이미 처리했어요" 금지.
-- 동사형 요청(분석해줘, 만들어줘, 써줘, 포스팅해 등)은 무조건 dispatch.
-- URL 임의 생성 금지.
-- 텔레그램으로 작업 진행 여부를 사장님께 되묻지 마십시오. (예: "진행할까요?", "할까요?" 같은 질문 금지)
-- 에이전트 작업에 대한 모든 결정은 예원 CEO가 내리므로, 작업 지시나 동사형 요청은 즉시 dispatch로 분류하여 예원 대표님께 보냅니다.
-
-# 모드 판단
-
-## reply — 일상 대화 또는 단순 답변
-→ {"mode": "reply", "text": "친근한 답변"}
-
-## status — 에이전트 현황 조회
-트리거: 현황, 작업 현황, 어때, 어떻게 됐어, 확인해줘, 알려줘, 파악해, 업로드됐어, 진행 상황, 요즘, 오늘, 포스팅했어, 투자 현황
-→ {"mode": "status", "agent": "루나|아린|데이브|전체", "text": "확인할게요!"}
-
-## dispatch — 실행 지시 (동사형 요청 전부)
-→ {"mode": "dispatch", "text": "바로 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 [에이전트]에게 [작업]을 지시하셨습니다."}
-
-## calendar_create — 일정 생성
-→ {"mode": "calendar_create", "text": "📅 [일정명] 등록할게요!", "event": {"title": "...", "start": "2026-06-04T15:00:00", "duration_minutes": 60, "description": "", "location": ""}}
-
-## calendar_list — 일정 조회
-→ {"mode": "calendar_list", "text": "📅 일정 조회할게요!", "days_ahead": 7}
-
-## calendar_delete — 일정 삭제
-→ {"mode": "calendar_delete", "text": "📅 [일정명] 취소할게요!", "query": "키워드", "days_ahead": 7, "delete_all": false}
-
-## calendar_update — 일정 수정
-→ {"mode": "calendar_update", "text": "📅 일정 수정할게요!", "query": "키워드", "days_ahead": 7, "patch": {"start": "...", "duration_minutes": 90}}
-
-# 예시
-"작업 현황" → {"mode": "status", "agent": "전체", "text": "현황 확인할게요!"}
-"루나 영상 만들어" → {"mode": "dispatch", "text": "루나 실행할게요!", "dispatch_to_ceo": "예원 대표님, 사장님께서 루나에게 뮤직비디오 제작을 지시하셨습니다. 루나 파이프라인을 실행해주세요."}
-"내일 오후 3시 회의 잡아줘" → {"mode": "calendar_create", "text": "📅 내일 15:00 회의 등록할게요!", "event": {"title": "회의", "start": "2026-06-04T15:00:00", "duration_minutes": 60}}
-"이번 주 일정 알려줘" → {"mode": "calendar_list", "text": "📅 이번 주 일정 조회할게요!", "days_ahead": 7}
-"광고주 미팅 취소해" → {"mode": "calendar_delete", "text": "📅 광고주 미팅 취소할게요!", "query": "광고주", "days_ahead": 7, "delete_all": false}
-"안녕" → {"mode": "reply", "text": "안녕하세요 사장님! 😊"}
-"""
-
-CHAT_HISTORY = []
+CHAT_HISTORY = [] # 대화 기록 (GenAI SDK Content 구조 저장)
 
 def _api(method: str, payload: dict, timeout: int = 15) -> dict:
     url  = f"https://api.telegram.org/bot{TOKEN}/{method}"
@@ -91,12 +58,10 @@ def send_message(text: str):
     _api("sendMessage", {"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"})
 
 def get_updates(offset: int) -> list:
-    # long polling timeout=30 → HTTP timeout은 반드시 더 길어야 함
     res = _api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": ["message"]}, timeout=40)
     return res.get("result", [])
 
 def format_ceo_report(ceo_result: str) -> str:
-    # 오류는 요약 없이 그대로 전달 (숨김 방지)
     if ceo_result.startswith("❌") or "실패" in ceo_result or "오류" in ceo_result:
         return ceo_result
     prompt = (
@@ -105,39 +70,23 @@ def format_ceo_report(ceo_result: str) -> str:
         "이모지 1개만, 인사말·칭찬·감사 문구 없이 결과만.\n\n"
         f"결과:\n{ceo_result}"
     )
-    if lm_available():
-        res = lm_chat(prompt, max_tokens=150)
-        if res:
-            return res.strip()
+    try:
+        res = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                max_output_tokens=100,
+                temperature=0.7
+            )
+        )
+        if res.text:
+            return res.text.strip()
+    except Exception as e:
+        print(f"  [Gemini 요약 실패] {e}")
     return ceo_result
 
-def _web_search_analyze(query: str) -> str:
-    """메시지 이해 실패 시 Ollama로 맥락 분석."""
-    try:
-        search_prompt = f"""
-다음 사용자 메시지를 분석해서 의도를 파악하고, 어떤 작업을 요청하는지 명확히 설명해줘:
-
-사용자 메시지: "{query}"
-
-분석 결과를 다음 형식으로 반환:
-1. 핵심 의도: (한 줄)
-2. 요청 작업: (구체적으로)
-3. 관련 에이전트: (루나/아린/예원/코다리 등)
-"""
-
-        if lm_available():
-            result = lm_chat(search_prompt, max_tokens=300)
-            return result if result else "분석 실패"
-        return "분석 실패 (Ollama 미사용 가능)"
-    except Exception as e:
-        print(f"  [분석 실패] {e}")
-        return "분석 실패"
-
-
-def _handle_status_query(agent: str):
-    """에이전트 현황을 실제 데이터에서 읽어 텔레그램으로 보고."""
-    import json as _json
-
+def _handle_status_query(agent: str) -> str:
+    """에이전트 현황을 실제 데이터에서 읽어 반환."""
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
     lines = []
 
@@ -146,20 +95,20 @@ def _handle_status_query(agent: str):
         if not os.path.exists(hist_path):
             return []
         try:
-            data = _json.load(open(hist_path, encoding="utf-8"))
+            with open(hist_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
             return [d for d in data if d.get("agent") == agent_name] if isinstance(data, list) else []
         except Exception:
             return []
 
-    # 노이즈 줄 필터 — Ollama 내부 로그, 빈 줄 제거
     _NOISE = ("[로컬 AI", "[Ollama]", "자동 감지:", "reconfigure", "[AI →")
 
     def _read_log_meaningful(log_path: str, n: int = 8) -> list:
-        """pipeline.log에서 노이즈 제외 후 의미있는 마지막 n줄 반환."""
         if not os.path.exists(log_path):
             return []
         try:
-            rows = open(log_path, encoding="utf-8", errors="ignore").readlines()
+            with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+                rows = f.readlines()
             clean = [r.strip() for r in rows if r.strip() and not any(r.strip().startswith(x) for x in _NOISE)]
             return clean[-n:]
         except Exception:
@@ -221,7 +170,8 @@ def _handle_status_query(agent: str):
         dave_path = os.path.join(PROJECT_ROOT, "reports", "research", "dave_upbit_analysis.md")
         if os.path.exists(dave_path):
             try:
-                content = open(dave_path, encoding="utf-8").read()
+                with open(dave_path, "r", encoding="utf-8") as f:
+                    content = f.read()
                 decision = "알 수 없음"
                 for line in content.split("\n"):
                     if "최종 결정 (Decision):" in line:
@@ -239,7 +189,8 @@ def _handle_status_query(agent: str):
         dave_stock_path = os.path.join(PROJECT_ROOT, "reports", "research", "dave_stock_analysis.md")
         if os.path.exists(dave_stock_path):
             try:
-                content = open(dave_stock_path, encoding="utf-8").read()
+                with open(dave_stock_path, "r", encoding="utf-8") as f:
+                    content = f.read()
                 decision = "알 수 없음"
                 for line in content.split("\n"):
                     if "결론:" in line:
@@ -259,22 +210,18 @@ def _handle_status_query(agent: str):
 
     return "📊 <b>[현황 보고]</b>\n\n" + "\n".join(lines)
 
-
-# ── 캘린더 핸들러 ─────────────────────────────────────────────────────────────
-
 def _gcal_service():
-    """Google Calendar API 서비스 객체 반환. 인증 실패 시 None."""
     import importlib.util
     if not importlib.util.find_spec("googleapiclient"):
         return None
     try:
-        import json as _j
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
         cfg_path = os.path.join(_here, "google_calendar_write.json")
         if not os.path.exists(cfg_path):
             return None
-        cfg = _j.load(open(cfg_path, encoding="utf-8"))
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
         creds = Credentials(
             token=None,
             refresh_token=cfg.get("REFRESH_TOKEN", ""),
@@ -288,30 +235,26 @@ def _gcal_service():
         print(f"  [캘린더 인증] 실패: {e}")
         return None
 
-
-def _handle_calendar_list(days_ahead: int = 7):  # noqa: ARG001
-    """캘린더 일정 조회."""
+def _handle_calendar_list(days_ahead: int = 7):
     cache = os.path.join(os.path.dirname(_here), "..", "..", "..", "_shared", "calendar_cache.md")
     cache = os.path.abspath(cache)
     if os.path.exists(cache):
-        content = open(cache, encoding="utf-8").read()
+        with open(cache, "r", encoding="utf-8") as f:
+            content = f.read()
         return f"📅 <b>[일정 조회]</b>\n\n{content[:1500]}"
-    # iCal 직접 조회
     try:
-        import subprocess, sys as _sys
+        import subprocess
         cal_py = os.path.join(_here, "google_calendar.py")
-        result = subprocess.run([_sys.executable, cal_py], capture_output=True, text=True, timeout=20)
+        result = subprocess.run([sys.executable, cal_py], capture_output=True, text=True, timeout=20)
         out = (result.stdout or "일정 없음").strip()
         return f"📅 <b>[일정 조회]</b>\n\n{out[:1000]}"
     except Exception as e:
         return f"📅 캘린더 조회 실패: {e}"
 
-
 def _handle_calendar_create(event: dict):
-    """Google Calendar 이벤트 생성."""
     svc = _gcal_service()
     if not svc:
-        return "⚠️ 캘린더 연동이 설정되지 않았어요.\n명령 팔레트 → 'AI Team: Google Calendar 자동 일정 연결' 실행해주세요."
+        return "⚠️ 캘린더 연동이 설정되지 않았어요."
     try:
         start = event.get("start", "")
         dur   = int(event.get("duration_minutes", 60))
@@ -334,12 +277,10 @@ def _handle_calendar_create(event: dict):
     except Exception as e:
         return f"❌ 일정 생성 실패: {e}"
 
-
 def _handle_calendar_delete(query: str, days_ahead: int, delete_all: bool):
-    """키워드로 일정 검색 후 삭제."""
     svc = _gcal_service()
     if not svc:
-        return "⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결)."
+        return "⚠️ 캘린더 연동 설정 필요."
     try:
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
@@ -359,12 +300,10 @@ def _handle_calendar_delete(query: str, days_ahead: int, delete_all: bool):
     except Exception as e:
         return f"❌ 일정 취소 실패: {e}"
 
-
 def _handle_calendar_update(query: str, days_ahead: int, patch: dict):
-    """키워드로 일정 검색 후 수정."""
     svc = _gcal_service()
     if not svc:
-        return "⚠️ 캘린더 연동 설정 필요 (명령 팔레트 → Google Calendar 연결)."
+        return "⚠️ 캘린더 연동 설정 필요."
     try:
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
@@ -390,132 +329,169 @@ def _handle_calendar_update(query: str, days_ahead: int, patch: dict):
         return f"❌ 일정 수정 실패: {e}"
 
 
-def extract_json(text: str) -> str:
-    if not text:
-        return ""
-    text = text.strip()
-    first_brace = text.find("{")
-    last_brace = text.rfind("}")
-    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-        return text[first_brace:last_brace+1]
-    return ""
+# ─── 구글 제미니 전용 Tool 정의 (Function Calling) ───────────────────────────
+
+def get_agent_status(agent: str) -> str:
+    """에이전트의 현재 작업 현황 및 최근 로그를 조회합니다.
+    Args:
+        agent: 조회 대상 에이전트 ('루나', '아린', '데이브', '전체')
+    """
+    return _handle_status_query(agent)
+
+def list_calendar_events(days_ahead: int = 7) -> str:
+    """구글 캘린더 일정을 조회합니다.
+    Args:
+        days_ahead: 조회할 미래의 일수 (기본 7일)
+    """
+    return _handle_calendar_list(days_ahead)
+
+def create_calendar_event(title: str, start_iso: str, duration_minutes: int = 60, description: str = "", location: str = "") -> str:
+    """구글 캘린더에 일정을 생성/등록합니다.
+    Args:
+        title: 일정 제목
+        start_iso: 시작 일시 (KST 기준, YYYY-MM-DDTHH:MM:SS 형식)
+        duration_minutes: 일정 지속 시간(분) (기본 60분)
+        description: 일정 상세 설명 (선택)
+        location: 일정 장소 (선택)
+    """
+    event = {
+        "title": title,
+        "start": start_iso,
+        "duration_minutes": duration_minutes,
+        "description": description,
+        "location": location
+    }
+    return _handle_calendar_create(event)
+
+def delete_calendar_event(query: str, days_ahead: int = 7, delete_all: bool = False) -> str:
+    """키워드로 구글 캘린더 일정을 검색해서 삭제합니다.
+    Args:
+        query: 삭제할 일정의 검색 키워드
+        days_ahead: 검색 대상 미래 일수 (기본 7일)
+        delete_all: 검색된 일정을 모두 삭제할지 여부 (기본 False: 첫 번째 항목만 삭제)
+    """
+    return _handle_calendar_delete(query, days_ahead, delete_all)
+
+def update_calendar_event(query: str, start_iso: str = None, duration_minutes: int = None, title: str = None, days_ahead: int = 7) -> str:
+    """키워드로 구글 캘린더 일정을 검색해서 수정합니다.
+    Args:
+        query: 수정할 일정의 검색 키워드
+        start_iso: 새 시작 일시 (KST 기준, YYYY-MM-DDTHH:MM:SS 형식)
+        duration_minutes: 새 지속 시간(분)
+        title: 새 일정 제목
+        days_ahead: 검색 대상 미래 일수 (기본 7일)
+    """
+    patch = {}
+    if start_iso:
+        patch["start"] = start_iso
+    if duration_minutes is not None:
+        patch["duration_minutes"] = duration_minutes
+    if title:
+        patch["title"] = title
+    return _handle_calendar_update(query, days_ahead, patch)
+
+def dispatch_to_agents(instruction: str) -> str:
+    """에이전트 실행 지시 및 동사형 요청(예: 루나 영상 만들기, 인스타 포스팅 등)을 예원 CEO에게 전달하여 실행합니다.
+    Args:
+        instruction: 사장님이 지시하신 구체적인 실행 명령 구문
+    """
+    try:
+        ceo_result = yewon_dispatcher.dispatch_and_execute(instruction)
+        if ceo_result is None:
+            return "⚠️ CEO가 복구 대기 중이라 실행되지 않았습니다."
+    except Exception as dispatch_err:
+        try:
+            from _shared.agent_council import convene_from_exception
+            convene_from_exception(dispatch_err, caller_agent="영숙_디스패처")
+        except Exception:
+            pass
+        ceo_result = f"❌ 디스패치 오류: {dispatch_err}"
+
+    if ceo_result and ceo_result.startswith("❌"):
+        try:
+            from _shared.agent_council import convene
+            convene(problem_summary=f"파이프라인 실패: {ceo_result[:300]}", caller_agent="영숙_디스패처")
+        except Exception:
+            pass
+
+    return format_ceo_report(ceo_result)
+
+
+# Tool mapping dictionary
+TOOLS_MAP = {
+    "get_agent_status": get_agent_status,
+    "list_calendar_events": list_calendar_events,
+    "create_calendar_event": create_calendar_event,
+    "delete_calendar_event": delete_calendar_event,
+    "update_calendar_event": update_calendar_event,
+    "dispatch_to_agents": dispatch_to_agents
+}
+
 
 def process_message(text: str):
     print(f"\n📩 [영숙 수신] {text}")
+    global CHAT_HISTORY
 
-    if not lm_available():
-        send_message("영숙이에요! 지금 언어 모델 서버가 꺼져 있어서 처리가 안 돼요 😭")
+    # 1. API 키 확인
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        send_message("영숙이에요! 지금 Gemini API 키가 설정되지 않아서 처리가 안 돼요 😭")
         return
 
+    # 2. 한국 표준시 컨텍스트 추가
     import datetime
     kst = datetime.timezone(datetime.timedelta(hours=9))
     now_kst = datetime.datetime.now(kst)
     current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 일정 조율 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
     system_prompt = YEONGSUK_PERSONA + current_time_context
 
-    history_text = ""
-    for h in CHAT_HISTORY[-6:]:
-        history_text += f"{h['role']}: {h['text']}\n"
-    history_text += f"User: {text}\n"
+    # 3. 신규 사용자 메시지를 히스토리에 누적
+    CHAT_HISTORY.append(types.Content(role="user", parts=[types.Part.from_text(text=text)]))
+
+    # 최근 3개 턴(6개 Content)만 유지하여 토큰 최적화
+    if len(CHAT_HISTORY) > 6:
+        CHAT_HISTORY = CHAT_HISTORY[-6:]
 
     try:
-        raw_resp = lm_chat(history_text, system=system_prompt, json_mode=True, max_tokens=500)
+        # 4. 제미니 API 호출 (Function Calling 구성)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=CHAT_HISTORY,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                tools=list(TOOLS_MAP.values()),
+                max_output_tokens=300,
+                temperature=0.7
+            )
+        )
 
-        json_str = extract_json(raw_resp)
+        final_reply = ""
 
-        # JSON 파싱 실패 시 웹 서치 분석
-        if not json_str:
-            print(f"  [이해 실패] JSON 아님, 웹 서치 분석 시작...")
-            send_message("잠깐만요, 정확히 이해하기 위해 분석 중이에요... 🔍")
+        # 5. Function Calling 발생 시 실행
+        if response.function_calls:
+            for call in response.function_calls:
+                name = call.name
+                args = call.args
+                print(f"  [Gemini Tool Call] {name}({args})")
 
-            # 웹 서치로 맥락 분석
-            analysis = _web_search_analyze(text)
-            print(f"  [분석 결과]\n{analysis}")
-
-            # 분석 결과를 바탕으로 재시도
-            enhanced_prompt = f"{history_text}\n\n[분석 결과]\n{analysis}\n\n위 분석을 참고해서 응답해줘."
-            raw_resp = lm_chat(enhanced_prompt, system=system_prompt, json_mode=True, max_tokens=500)
-            json_str = extract_json(raw_resp)
-
-        if not json_str:
-            send_message("영숙이에요! 여러 번 시도했지만 잘 이해가 안 돼요 😅\n좀 더 구체적으로 말씀해주실 수 있을까요?")
-            return
-
-        decision = json.loads(json_str)
-        mode = decision.get("mode", "reply")
-        reply_text = decision.get("text", "네 알겠습니다!")
-
-        final_message = ""
-        assistant_log_text = reply_text
-
-        # 2a. 현황 조회
-        if mode == "status":
-            status_report = _handle_status_query(decision.get("agent", "전체"))
-            final_message = f"{reply_text}\n\n{status_report}"
-            assistant_log_text = final_message
-
-        # 2b. 캘린더 모드
-        elif mode == "calendar_list":
-            cal_report = _handle_calendar_list(decision.get("days_ahead", 7))
-            final_message = f"{reply_text}\n\n{cal_report}"
-            assistant_log_text = final_message
-        elif mode == "calendar_create":
-            cal_report = _handle_calendar_create(decision.get("event", {}))
-            final_message = f"{reply_text}\n\n{cal_report}"
-            assistant_log_text = final_message
-        elif mode == "calendar_delete":
-            cal_report = _handle_calendar_delete(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("delete_all", False))
-            final_message = f"{reply_text}\n\n{cal_report}"
-            assistant_log_text = final_message
-        elif mode == "calendar_update":
-            cal_report = _handle_calendar_update(decision.get("query", ""), decision.get("days_ahead", 7), decision.get("patch", {}))
-            final_message = f"{reply_text}\n\n{cal_report}"
-            assistant_log_text = final_message
-
-        # 2c. 업무 분배 요청 시 (영숙 -> CEO 예원 -> 서브 에이전트)
-        elif mode == "dispatch" and "dispatch_to_ceo" in decision:
-            ceo_msg = decision["dispatch_to_ceo"]
-            try:
-                ceo_result = yewon_dispatcher.dispatch_and_execute(ceo_msg)
-
-                # None 반환 = 코다리 복구 중 → 텔레그램 메시지 없이 종료
-                if ceo_result is None:
-                    print("  [영숙 디스패처] Ollama 복구 대기 중 → 텔레그램 알림 생략")
-                    return
-
-            except Exception as dispatch_err:
-                # 디스패치 실패 → 에이전트 회의 자동 소집
-                try:
-                    from _shared.agent_council import convene_from_exception
-                    convene_from_exception(dispatch_err, caller_agent="영숙_디스패처")
-                except Exception:
-                    pass
-                ceo_result = f"❌ 디스패치 오류: {dispatch_err}"
-
-            # 파이프라인이 실패 메시지 반환 시 회의 소집
-            if ceo_result and ceo_result.startswith("❌"):
-                try:
-                    from _shared.agent_council import convene
-                    convene(
-                        problem_summary=f"파이프라인 실패: {ceo_result[:300]}",
-                        caller_agent="영숙_디스패처",
-                    )
-                except Exception:
-                    pass
-
-            # 결과 수신 후 최종 포매팅
-            final_report = format_ceo_report(ceo_result)
-            final_message = f"{reply_text}\n\n🔔 <b>[영숙이의 업무 보고]</b>\n\n{final_report}"
-            assistant_log_text = final_message
-
+                if name in TOOLS_MAP:
+                    try:
+                        # 도구 실행
+                        tool_result = TOOLS_MAP[name](**args)
+                        final_reply += f"{tool_result}\n"
+                    except Exception as e:
+                        final_reply += f"❌ 도구 실행 오류 ({name}): {e}\n"
+                else:
+                    final_reply += f"⚠️ 지원하지 않는 도구입니다: {name}\n"
         else:
-            final_message = reply_text
+            final_reply = response.text or "네 알겠습니다!"
 
-        # 3. 텔레그램 메시지 1회 종합 발송
-        send_message(final_message)
+        # 6. 최종 텔레그램 메시지 발송
+        send_message(final_reply.strip())
 
-        CHAT_HISTORY.append({"role": "User", "text": text})
-        CHAT_HISTORY.append({"role": "Assistant", "text": assistant_log_text})
+        # 7. 어시스턴트의 최종 응답을 히스토리에 누적
+        CHAT_HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=final_reply)]))
+        if len(CHAT_HISTORY) > 6:
+            CHAT_HISTORY = CHAT_HISTORY[-6:]
 
     except Exception as e:
         print(f"  [오류] 영숙 메시지 처리 실패: {e}")
@@ -528,7 +504,6 @@ def process_message(text: str):
 
 def main_loop():
     print("🚀 영숙 전용 텔레그램 리시버가 시작되었습니다!")
-    # Clear webhook
     _api("deleteWebhook", {"drop_pending_updates": True})
     
     offset = 0

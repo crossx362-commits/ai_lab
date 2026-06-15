@@ -59,17 +59,6 @@ AGENTS = {
         ],
         "files": []
     },
-    "가희_검수관": {
-        "path": "projects/ai-team/skills/가희_검수관/tools",
-        "required_env": [
-            "GEMINI_API_KEY",
-            "YOUTUBE_API_KEY",
-            "TELEGRAM_BOT_TOKEN",
-            "TELEGRAM_CHAT_ID",
-        ],
-        "optional_env": [],
-        "files": []
-    },
     "경수_수사관": {
         "path": "projects/ai-team/skills/경수_수사관/tools",
         "required_env": [

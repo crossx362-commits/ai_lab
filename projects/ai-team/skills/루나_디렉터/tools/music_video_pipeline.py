@@ -761,13 +761,13 @@ def run_pipeline(publish_hhmm: str = None):
         description = auto_meta.get("description", description)
         tags        = auto_meta.get("tags", tags)
 
-    # ── ⑦ 가희 사전 검수 ──────────────────────────────────────────────────────
+    # ── ⑦ 자체 사전 검수 ──────────────────────────────────────────────────────
     issues = [w for w in _BANNED_TITLE_WORDS if w in title.lower()]
     if issues:
         send_telegram_message(
-            f"🚨 <b>[가희]</b> 업로드 중단 — 금지 키워드: {issues}\n제목: {title}"
+            f"🚨 [루나] 업로드 중단 — 금지 키워드: {issues}\n제목: {title}"
         )
-        print(f"  [가희] 업로드 차단: {issues}")
+        print(f"  [루나] 업로드 차단: {issues}")
         return
 
     # ⑦-2 영상 길이 최종 검수 (120초 미만 금지)
@@ -775,13 +775,13 @@ def run_pipeline(publish_hhmm: str = None):
         probe_cmd = [FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", video_path]
         final_duration = float(subprocess.check_output(probe_cmd).decode().strip())
         if final_duration < 120:
-            send_telegram_message(f"🚨 <b>[가희]</b> 업로드 중단 — 영상 길이가 너무 짧음 ({final_duration:.1f}초).")
-            print(f"  [가희] 업로드 차단: 너무 짧은 영상 ({final_duration}s)")
+            send_telegram_message(f"🚨 [루나] 업로드 중단 — 영상 길이가 너무 짧음 ({final_duration:.1f}초).")
+            print(f"  [루나] 업로드 차단: 너무 짧은 영상 ({final_duration}s)")
             return
     except Exception as e:
         print(f"  [Warning] 최종 길이 확인 실패: {e}")
 
-    print(f"  [가희] 사전 검수 통과 ✅ — {title[:60]}")
+    print(f"  [루나] 사전 검수 통과 ✅ — {title[:60]}")
 
     # ── ⑧ YouTube 업로드 ──────────────────────────────────────────────────────
     # 썸네일 추출 및 보정
@@ -833,7 +833,7 @@ def run_pipeline(publish_hhmm: str = None):
         send_telegram_message(f"🚨 루나 뮤직비디오: 예원 CEO 승인 거부로 업로드 중단.\n제목: {title}")
         return
 
-    send_telegram_message(f"🎬 [루나] 4단계: 가희 검수 통과 완료. 유튜브 업로드를 시작합니다.")
+    send_telegram_message(f"🎬 [루나] 4단계: 유튜브 업로드를 시작합니다.")
     video_id = uploader.upload_video(
         video_path=video_path, title=title, description=description,
         tags=tags, privacy_status="private", publish_at=publish_at_utc,
@@ -871,75 +871,6 @@ def run_pipeline(publish_hhmm: str = None):
                f"- 예약(KST): {publish_time_kst_str}")
         # send_telegram_message(msg)  # 중복 방지: telegram_bot.py에서 전송
         print(f"\n{msg}")
-
-        # 가희 사후 검수 (업로드 후 메타데이터 확인) + 통과할 때까지 자동 수정 루프
-        try:
-            import importlib.util as _ilu
-            _spec = _ilu.spec_from_file_location("content_inspector",
-                os.path.join(_root, "projects", "ai-team", "skills", "가희_검수관", "tools", "content_inspector.py"))
-            _ci = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_ci)
-            
-            passed = False
-            for attempt in range(1, 16):
-                post_check = _ci.inspect_video(video_id, mode="NEW_UPLOAD")
-                status = post_check.get("status", "PASS")
-                if status == "PASS":
-                    passed = True
-                    send_telegram_message(f"✅ <b>[가희]</b> 루나 검수 최종 통과 완료! (시도 {attempt}/15)\n제목: {title}\nhttps://youtu.be/{video_id}")
-                    print(f"  [가희] 사후 검수 최종 통과 ✅ — {title}")
-                    
-                    # 통과 시 비공개 해제 및 예약 일정 복원
-                    try:
-                        if publish_at_utc:
-                            uploader.youtube.videos().update(
-                                part="status",
-                                body={
-                                    "id": video_id,
-                                    "status": {
-                                        "privacyStatus": "private",
-                                        "publishAt": publish_at_utc
-                                    }
-                                }
-                            ).execute()
-                            print(f"  [가희] 영상 예약 일정 복원 완료: {publish_at_utc}")
-                        else:
-                            _ci.restore_youtube_public(uploader.youtube, video_id)
-                    except Exception as status_err:
-                        print(f"  [가희] 상태 복원 실패: {status_err}")
-                        _ci.restore_youtube_public(uploader.youtube, video_id)
-                    break
-                    
-                violations = post_check.get("violations", [])
-                warnings = post_check.get("warnings", [])
-                issues = violations + warnings
-                send_telegram_message(
-                    f"⚠️ <b>[가희]</b> 루나 사후 검수 이상 감지 (시도 {attempt}/15)\n"
-                    f"영상: https://youtu.be/{video_id}\n"
-                    f"위반/경고: {issues}"
-                )
-                print(f"  [가희] 사후 검수 이상 (시도 {attempt}/15): {issues}")
-                
-                # 피드백 기반 자동 수정: 예원 CEO의 코칭을 통한 교정 진행
-                try:
-                    print("👑 [가희-피드백] 예원 CEO 코칭 호출 중...")
-                    coached = ceo_coaching_on_rejection(
-                        agent="루나",
-                        title=title,
-                        description=description,
-                        issues=issues
-                    )
-                    title = coached.get("title", title)
-                    description = coached.get("description", description)
-                    
-                    # 유튜브 메타데이터 업데이트
-                    _ci._update_yt_metadata(uploader.youtube, video_id, title, description=description)
-                except Exception as fix_err:
-                    print(f"  [가희] 자동 수정 루프 에러: {fix_err}")
-                    
-            if not passed:
-                send_telegram_message(f"🚨 <b>[가희]</b> 루나 검수 최대 시도(15회) 초과 실패 — 수동 확인 필요\nhttps://youtu.be/{video_id}")
-        except Exception as e:
-            print(f"  [가희] 사후 검수 호출 실패: {e}")
     else:
         send_telegram_message(f"❌ 루나: YouTube 업로드 실패 — {title}")
 

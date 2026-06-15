@@ -29,13 +29,6 @@ from prompt_crafter import craft_insta_prompt
 import importlib.util as _ilu
 from analysis import run_analysis_and_deepsearch
 from decision import make_decision
-# skills/아린_관리자/tools/ → skills/가희_검수관/tools/
-_gahee_path = os.path.join(os.path.dirname(__file__), "..", "..", "가희_검수관", "tools", "content_inspector.py")
-_gahee_spec = _ilu.spec_from_file_location("content_inspector", _gahee_path)
-_gahee = _ilu.module_from_spec(_gahee_spec)
-_gahee_spec.loader.exec_module(_gahee)
-gahee_inspect_caption     = _gahee.inspect_caption
-gahee_inspect_post_upload = _gahee.inspect_post_upload
 # 예원 CEO approval (동적 임포트)
 import importlib.util as _ilu
 _approval_path = os.path.join(os.path.dirname(__file__), "..", "..", "예원_CEO", "approval.py")
@@ -700,88 +693,21 @@ def main(dry_run=False):
 
     print(f"\n📝 최종 캡션:\n{final_caption}\n")
 
-    # 6. 가희 검수 + 업로드 루프 (사전→업로드→사후, 실패 시 수정 재업)
-    from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-
-    def _fix_caption_ollama(bad_caption: str, issues: list) -> str:
-        """가희 지적 사항을 Ollama로 직접 수정한 새 캡션 반환 (최소 50자 보장)."""
-        if not lm_available():
-            return bad_caption
-        issues_str = ", ".join(issues)
-        # 원본 기획 캡션을 베이스로 수정 (짧은 bad_caption 사용 금지)
-        base = bad_caption if len(bad_caption) >= 30 else post_data.get("caption", bad_caption)
-        prompt = (
-            f"인스타그램 캡션을 수정해줘.\n"
-            f"문제점: {issues_str}\n"
-            f"원본:\n{base}\n\n"
-            "규칙:\n"
-            "- 반드시 50자 이상 작성\n"
-            "- 진짜 사람이 쓴 것처럼 자연스러운 한국어\n"
-            "- 이모지 1~2개 포함\n"
-            "- 해시태그 5~8개 마지막 줄에\n"
-            "- AI·인공지능·테크·로봇 금지\n"
-            "- 캡션 텍스트만 출력 (설명 없이)"
-        )
-        result = lm_chat(prompt, task="", max_tokens=400, temperature=0.8)
-        if result and len(result.strip()) >= 20:
-            return result.strip()
-        # Ollama도 짧게 반환 시 원본 기획 캡션으로 복귀
-        return post_data.get("caption", bad_caption)
-
+    # 6. 업로드 루프 (실패 시 재시도)
     uploader = InstaUploader(account_id, access_token)
     post_id = None
-    MAX_RETRIES = 15
+    MAX_RETRIES = 3
 
     for attempt in range(1, MAX_RETRIES + 1):
-        # 가희 사전 검수
-        send_telegram_message(f"📸 [아린] 3단계: 가희(Inspector) 사전 검수 진행 중 (시도 {attempt}/{MAX_RETRIES})...")
-        pre_check = gahee_inspect_caption(final_caption)
-        if not pre_check["pass"]:
-            issues_str = ", ".join(pre_check["issues"])
-            print(f"🚨 [가희] 사전 검수 실패 (시도 {attempt}): {issues_str}")
-            if attempt == MAX_RETRIES:
-                send_telegram_message(f"🚨 <b>[가희]</b> 사전 검수 {MAX_RETRIES}회 실패 — 업로드 중단\n{issues_str}")
-                return
-            print(f"  ✍️  Ollama로 캡션 수정 중...")
-            final_caption = _fix_caption_ollama(final_caption, pre_check["issues"])
-            print(f"  수정된 캡션 (앞 80자): {final_caption[:80]}")
-            continue
-        print(f"  ✅ [가희] 사전 검수 통과 (시도 {attempt})")
-        send_telegram_message(f"📸 [아린] 사전 검수 통과 완료. 인스타그램 업로드를 시도합니다.")
-
-        # 업로드
-        print(f"  📤 업로드 중 (시도 {attempt})...")
+        print(f"  📤 업로드 중 (시도 {attempt}/{MAX_RETRIES})...")
+        send_telegram_message(f"📸 [아린] 3단계: 인스타그램 업로드 진행 중 (시도 {attempt}/{MAX_RETRIES})...")
         post_id = uploader.upload_image(image_url, final_caption, alt_text=final_alt_text)
         if not post_id:
             print(f"  ❌ 업로드 실패")
             send_telegram_message(f"🚨 [아린] 인스타그램 이미지 발행 실패 (시도 {attempt}/{MAX_RETRIES})")
-            break
-
-        # 가희 사후 검수
-        send_telegram_message(f"📸 [아린] 4단계: 가희(Inspector) 사후 검수 진행 중...")
-        post_check = gahee_inspect_post_upload(post_id)
-        if not post_check["pass"]:
-            issues_str = ", ".join(post_check["issues"])
-            print(f"⚠️ [가희] 사후 검수 이상 (시도 {attempt}): {issues_str}")
-            send_telegram_message(f"⚠️ <b>[가희]</b> 사후 검수 이상 (시도 {attempt})\nID: {post_id}\n사유: {issues_str}")
-            if attempt < MAX_RETRIES:
-                # 삭제 후 캡션 수정해서 재업
-                token_env = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
-                del_r = requests.delete(f"https://graph.instagram.com/v23.0/{post_id}",
-                                    params={"access_token": token_env}, timeout=10).json()
-                if "error" not in del_r:
-                    print(f"  🗑️  기존 포스팅 삭제 완료")
-                else:
-                    print(f"  ⚠️  삭제 불가 (API 제한) — 수정 캡션으로 재업")
-                final_caption = _fix_caption_ollama(final_caption, post_check["issues"])
-                post_id = None
-                continue
-            else:
-                send_telegram_message(f"🚨 <b>[가희]</b> 사후 검수 {MAX_RETRIES}회 실패 — 수동 확인 필요\nID: {post_id}")
-        else:
-            print(f"  ✅ [가희] 사후 검수 통과")
-            send_telegram_message(f"📸 [아린] 사후 검수 최종 통과 완료.")
-        break  # 검수 통과 or 최대 재시도 도달
+            time.sleep(10)
+            continue
+        break
 
     # 업로드 성공 후 처리 (루프 밖)
     if post_id:

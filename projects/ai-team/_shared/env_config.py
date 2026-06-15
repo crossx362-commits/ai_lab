@@ -54,7 +54,7 @@ ENV_CONFIG = {
     "GEMINI_API_KEY": {
         "required": True,
         "description": "Google Gemini API 키",
-        "agents": ["루나_디렉터", "아린_관리자", "가희_검수관", "영숙_비서", "현빈_전략가", "로율_변호사"],
+        "agents": ["루나_디렉터", "아린_관리자", "영숙_비서", "현빈_전략가", "로율_변호사"],
         "setup_url": "https://aistudio.google.com/app/apikey",
         "validation": lambda x: x and (x.startswith("AI") or x.startswith("AQ")),
     },
@@ -141,7 +141,6 @@ AGENT_REQUIRED_VARS = {
     "루나_디렉터": ["GEMINI_API_KEY", "YOUTUBE_API_KEY"],
     "아린_관리자": ["GEMINI_API_KEY", "INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET",
                      "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID"],
-    "가희_검수관": ["GEMINI_API_KEY"],
     "영숙_비서": ["GEMINI_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
     "현빈_전략가": ["GEMINI_API_KEY"],
     "코다리_개발자": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",

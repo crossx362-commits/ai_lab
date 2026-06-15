@@ -1,8 +1,3 @@
-"""
-영숙 텔레그램 봇 — Ollama 기반 멀티에이전트 조율 시스템
-
-영숙이 유일한 텔레그램 인터페이스로, 다른 에이전트들의 보고를 취합해서 전달합니다.
-"""
 import os
 import sys
 import json
@@ -17,7 +12,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+load_env()
+
+from google import genai
+from google.genai import types
+
+# Initialize google-genai client
+client = genai.Client()
 
 # ─── 슈퍼파워 스킬: CEO 디스패처 + 에이전트 협의체 연결 ──────────────────────
 import importlib.util as _ilu
@@ -32,24 +33,20 @@ def _load_module(path: str, name: str):
         print(f"  [슈퍼파워] {name} 로드 실패: {e}")
         return None
 
-_dispatcher_path = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "yewon_dispatcher.py") if 'AI_TEAM_ROOT' in dir() else None
-_council_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "_shared", "agent_council.py")
+_dispatcher_path = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "yewon_dispatcher.py")
+_council_path = os.path.join(AI_TEAM_ROOT, "_shared", "agent_council.py")
 
 _dispatcher_mod = None
 _council_mod = None
 
 def _init_superpowers():
-    global _dispatcher_mod, _council_mod, AI_TEAM_ROOT
-    dp = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "yewon_dispatcher.py")
-    cp = os.path.join(AI_TEAM_ROOT, "_shared", "agent_council.py")
-    _dispatcher_mod = _load_module(dp, "yewon_dispatcher")
-    _council_mod    = _load_module(cp, "agent_council")
+    global _dispatcher_mod, _council_mod
+    _dispatcher_mod = _load_module(_dispatcher_path, "yewon_dispatcher")
+    _council_mod    = _load_module(_council_path, "agent_council")
     if _dispatcher_mod:
         print("  ✅ [슈퍼파워] CEO 디스패처 연결됨")
     if _council_mod:
         print("  ✅ [슈퍼파워] 에이전트 협의체 연결됨")
-
-# ─── Gemini 제거: Ollama만 사용 ──────────────────────────────────────────────
 
 # UTF-8 설정
 if hasattr(sys.stdout, "reconfigure"):
@@ -58,9 +55,6 @@ if hasattr(sys.stdout, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
-
-# 환경 변수 로드
-load_env()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
@@ -72,57 +66,16 @@ if not TOKEN or not CHAT_ID:
     sys.exit(1)
 
 # ─── 영숙 페르소나 ───────────────────────────────────────────────────────────
-YEONGSUK_PERSONA = """당신은 영숙이에요. 30대 초반, 밝고 따뜻한 AI 비서입니다.
+YEONGSUK_PERSONA = """당신은 영숙입니다. 밝고 따뜻한 AI 비서입니다.
+규칙:
+- 핵심만 짧고 직관적으로 답하십시오. 미사여구와 불필요한 인사는 생략하십시오.
+- 작업을 지시받으면 알맞은 도구(Tool)를 실행하여 작업을 처리하십시오.
+- 제공된 도구 외에 임의로 상태를 완료 처리하거나 정보를 만들어내지 마십시오."""
 
-🎯 핵심 역할 (7가지):
-1. 텔레그램 인터페이스 — 사장님의 유일한 소통 창구, 24시간 대기
-2. 멀티에이전트 조율 — 11개 에이전트 보고 취합 및 지능적 전달 (Ollama 기반)
-3. 상태 모니터링 — upload_history/checkpoint/로그 실제 데이터 확인 후 보고
-4. YouTube 추천 — 3~8시간 랜덤 간격 음악·힐링·정보 영상 추천
-5. 캘린더 관리 — Google Calendar 자연어 처리 (일정 CRUD)
-6. 업로드 조율 — 매일 새벽 3시 현황 점검 + 누락 파이프라인 실행
-7. 품질 필터링 — 가희 리포트 1차 분류, 심각한 사안만 예원 에스컬레이션
-
-⚠️ **절대 규칙: 사실만 답변**
-- 확인되지 않은 정보는 절대 만들어내지 마세요
-- 에이전트 업무 상태 문의 시 → [실제 데이터] 섹션 확인 후 답변
-- 모르면 솔직하게: "그 부분은 확인이 필요해요"
-- 추측성 답변 금지: "아마도", "~인 것 같아요" 등 사용 금지
-
-📋 전체 에이전트 목록 (11개):
-콘텐츠 제작팀:
-- 루나: YouTube 뮤직비디오 (매일 저녁 7시 + 1시간 주기 리서치)
-- 아린: Instagram 포스팅 (매일 + 1시간 주기 트렌드 학습)
-- 티모: 디자인 리뷰 (업로드 전 + 주간 트렌드 분석)
-
-품질 관리팀:
-- 가희: 콘텐츠 검수 (7시/13시/21시 + 업로드 전후)
-- 경수: 악플 수집, 보안 감사 (매일 6시 + 매주 수요일)
-
-경영 지원팀:
-- 예원(CEO): 에이전트 관리감독 (매주 월요일 + 2시간마다)
-- 영숙(나): 텔레그램 인터페이스 + 멀티에이전트 조율
-- 현빈: 비즈니스 분석 (1시간 주기)
-
-기술 지원팀:
-- 코다리: 시스템 헬스체크 (2시간 주기)
-- 케빈: 인프라 관리 (매일 새벽 2시 백업 + 2시간 주기 체크)
-
-전문 상담팀:
-- 로율: 법률·세무 상담 (매주 화요일 리스크 스캔 + 요청 시)
-
-말투:
-- 자연스럽고 친근함
-- 이모지 적절히 사용
-- 짧고 따뜻하게 (모바일 화면 고려)
-- "~요", "~해요" 존댓말 사용
-"""
-
-CHAT_HISTORY = []  # 대화 기록
+CHAT_HISTORY = []  # 대화 기록 (GenAI SDK Content 구조 저장)
 
 # ─── 실제 데이터 확인 ─────────────────────────────────────────────────────
 def get_upload_history() -> dict:
-    """upload_history.json 읽기 — reports/history/ 기준"""
     history_file = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
     if not os.path.exists(history_file):
         return {"status": "파일 없음", "data": []}
@@ -133,12 +86,8 @@ def get_upload_history() -> dict:
     except Exception as e:
         return {"status": f"읽기 실패: {e}", "data": []}
 
-
 def get_agent_checkpoints() -> dict:
-    """각 에이전트 checkpoint 파일 확인"""
     checkpoints = {}
-
-    # 루나 checkpoint — reports/uploads/luna/ 기준
     luna_cp = os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "music_video_checkpoint.json")
     if os.path.exists(luna_cp):
         try:
@@ -152,12 +101,8 @@ def get_agent_checkpoints() -> dict:
     checkpoints["아린"] = "checkpoint 미사용 (직접 실행)"
     return checkpoints
 
-
 def get_agent_logs() -> dict:
-    """최근 로그 파일 분석"""
     logs = {}
-
-    # 루나 로그 — reports/uploads/luna/ 기준, 없으면 tmp 폴백
     luna_log_candidates = [
         os.path.join(PROJECT_ROOT, "reports", "uploads", "luna", "pipeline.log"),
         "/tmp/luna_out.log",
@@ -174,7 +119,6 @@ def get_agent_logs() -> dict:
     else:
         logs["루나"] = ["로그 파일 없음"]
 
-    # 아린 로그 — reports/uploads/arin/ 기준
     arin_log = os.path.join(PROJECT_ROOT, "reports", "uploads", "arin", "pipeline.log")
     if os.path.exists(arin_log):
         try:
@@ -188,9 +132,7 @@ def get_agent_logs() -> dict:
 
     return logs
 
-
 def create_notion_page(title: str, content: str) -> bool:
-    """노션에 페이지 생성 (티모의 디자인 적용)"""
     if not NOTION_API_KEY or not NOTION_DATABASE_ID:
         print("  [Notion] API 키 또는 Database ID 없음")
         return False
@@ -202,7 +144,6 @@ def create_notion_page(title: str, content: str) -> bool:
         "Notion-Version": "2022-06-28"
     }
 
-    # 티모의 디자인 시스템
     section_icons = {
         "개요": "📊",
         "루나": "🎬",
@@ -212,10 +153,7 @@ def create_notion_page(title: str, content: str) -> bool:
         "제언": "💡"
     }
 
-    # 내용을 블록으로 분할 (티모의 디자인 적용)
     blocks = []
-
-    # 헤더 Callout 추가 (티모 디자인)
     blocks.append({
         "object": "block",
         "type": "callout",
@@ -226,20 +164,16 @@ def create_notion_page(title: str, content: str) -> bool:
         }
     })
 
-    # 구분선
     blocks.append({"object": "block", "type": "divider", "divider": {}})
-
     paragraphs = content.split('\n\n')
 
     for para in paragraphs:
         if not para.strip():
             continue
 
-        # 제목 처리 (티모: 아이콘 추가)
         if para.startswith('## '):
             heading_text = para.replace('##', '').strip()
             icon = next((emoji for keyword, emoji in section_icons.items() if keyword in heading_text), "📌")
-
             blocks.append({
                 "object": "block",
                 "type": "heading_2",
@@ -248,7 +182,6 @@ def create_notion_page(title: str, content: str) -> bool:
                     "color": "blue"
                 }
             })
-
         elif para.startswith('# '):
             heading_text = para.replace('#', '').strip()
             blocks.append({
@@ -259,8 +192,6 @@ def create_notion_page(title: str, content: str) -> bool:
                     "color": "default"
                 }
             })
-
-        # 리스트 항목 (티모: 불릿 리스트)
         elif para.startswith('- '):
             blocks.append({
                 "object": "block",
@@ -269,8 +200,6 @@ def create_notion_page(title: str, content: str) -> bool:
                     "rich_text": [{"type": "text", "text": {"content": para[2:].strip()[:2000]}}]
                 }
             })
-
-        # 중요 포인트 강조 (티모: Callout)
         elif "추천" in para or "제안" in para or "인사이트" in para:
             blocks.append({
                 "object": "block",
@@ -281,8 +210,6 @@ def create_notion_page(title: str, content: str) -> bool:
                     "rich_text": [{"type": "text", "text": {"content": para[:2000]}}]
                 }
             })
-
-        # 일반 텍스트
         else:
             blocks.append({
                 "object": "block",
@@ -292,7 +219,6 @@ def create_notion_page(title: str, content: str) -> bool:
                 }
             })
 
-        # 섹션 구분선 추가 (티모 디자인)
         if para.startswith('## '):
             blocks.append({"object": "block", "type": "divider", "divider": {}})
 
@@ -303,7 +229,7 @@ def create_notion_page(title: str, content: str) -> bool:
                 "title": [{"text": {"content": title}}]
             }
         },
-        "children": blocks[:100]  # 노션 API 제한: 100개 블록
+        "children": blocks[:100]
     }
 
     try:
@@ -317,13 +243,9 @@ def create_notion_page(title: str, content: str) -> bool:
         print(f"  [Notion] 페이지 생성 실패: {e}")
         return False
 
-
 def get_recent_git_changes() -> dict:
-    """최근 Git 변경사항 확인"""
     try:
         import subprocess
-
-        # 최근 5개 커밋
         result = subprocess.run(
             ["git", "log", "--oneline", "-5"],
             cwd=PROJECT_ROOT,
@@ -331,7 +253,6 @@ def get_recent_git_changes() -> dict:
             text=True,
             timeout=5
         )
-
         if result.returncode == 0:
             commits = result.stdout.strip().split('\n')
             return {
@@ -345,45 +266,24 @@ def get_recent_git_changes() -> dict:
         return {"success": False, "error": str(e)}
 
 def log_changes_to_notion(changes_summary: str) -> bool:
-    """수정사항을 노션에 기록"""
     if not NOTION_API_KEY or not NOTION_DATABASE_ID:
         print("  [Notion] API 키 또는 Database ID 없음")
         return False
 
     title = f"🔧 시스템 수정 로그 — {time.strftime('%Y-%m-%d %H:%M')}"
-
-    # Git 변경사항 수집
     git_changes = get_recent_git_changes()
-
-    content = f"""## 📝 수정 요약
-{changes_summary}
-
-## 🔄 최근 Git 커밋
-"""
-
+    content = f"## 📝 수정 요약\n{changes_summary}\n\n## 🔄 최근 Git 커밋\n"
     if git_changes.get("success") and git_changes.get("recent_commits"):
         for commit in git_changes["recent_commits"]:
             content += f"- {commit}\n"
     else:
         content += "_(Git 로그 조회 실패)_\n"
 
-    content += f"""
-
-## ⏰ 기록 시각
-{time.strftime('%Y년 %m월 %d일 %H시 %M분')}
-
----
-**작성자:** 영숙 (AI 비서)
-**위치:** 텔레그램 봇 자동 기록
-"""
-
+    content += f"\n\n## ⏰ 기록 시각\n{time.strftime('%Y년 %m월 %d일 %H시 %M분')}\n\n---\n**작성자:** 영숙 (AI 비서)\n**위치:** 텔레그램 봇 자동 기록\n"
     return create_notion_page(title, content)
 
 def collect_research_data() -> dict:
-    """에이전트들의 리서치 데이터 수집"""
     research_data = {}
-
-    # 루나 리서치
     luna_knowledge = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "knowledge")
     if os.path.exists(luna_knowledge):
         try:
@@ -397,7 +297,6 @@ def collect_research_data() -> dict:
     else:
         research_data["루나"] = {"상태": "knowledge 폴더 없음"}
 
-    # 아린 리서치
     arin_knowledge = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "knowledge")
     if os.path.exists(arin_knowledge):
         try:
@@ -411,7 +310,6 @@ def collect_research_data() -> dict:
     else:
         research_data["아린"] = {"상태": "knowledge 폴더 없음"}
 
-    # 현빈 리서치
     hyunbin_research = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "현빈_전략가", "research_results")
     if os.path.exists(hyunbin_research):
         try:
@@ -427,16 +325,12 @@ def collect_research_data() -> dict:
 
     return research_data
 
-
 def generate_research_report() -> str:
-    """Ollama로 디테일한 리서치 보고서 작성"""
-    if not lm_available():
-        return "Ollama 연결 안 됨 - 보고서 생성 불가"
+    """Gemini로 디테일한 리서치 보고서 작성"""
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        return "Gemini 연결 안 됨 - 보고서 생성 불가"
 
-    # 리서치 데이터 수집
     research_data = collect_research_data()
-
-    # 보고서 생성 프롬프트
     prompt = f"""당신은 영숙이에요. 에이전트들의 리서치 결과를 디테일하게 분석하는 보고서를 작성해주세요.
 
 # 리서치 데이터
@@ -471,29 +365,26 @@ def generate_research_report() -> str:
 
 보고서는 구체적이고 실용적으로 작성하되, 마크다운 형식을 사용하세요.
 """
-
     try:
-        report = lm_chat(
-            prompt,
-            system="당신은 전문 비서로서 데이터 기반의 디테일한 보고서를 작성합니다.",
-            json_mode=False,
-            max_tokens=2000,
-            temperature=0.7
+        res = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction="당신은 전문 비서로서 데이터 기반의 디테일한 보고서를 작성합니다.",
+                max_output_tokens=2000,
+                temperature=0.7
+            )
         )
-        return report if report else "보고서 생성 실패"
+        return res.text if res.text else "보고서 생성 실패"
     except Exception as e:
         return f"보고서 생성 중 오류: {e}"
 
-
 def get_agent_status() -> str:
-    """에이전트 실제 상태 종합 (Ollama에 전달할 컨텍스트)"""
     status_report = "=== 에이전트 실제 상태 ===\n\n"
-
-    # 1. 업로드 히스토리
     history = get_upload_history()
     status_report += f"📋 업로드 히스토리: {history['status']}\n"
     if history['data']:
-        recent = history['data'][-5:]  # 최근 5개
+        recent = history['data'][-5:]
         for item in recent:
             agent = item.get('agent', '?')
             uploaded_at = item.get('uploaded_at', '?')[:10]
@@ -502,7 +393,6 @@ def get_agent_status() -> str:
     else:
         status_report += "  (기록 없음)\n"
 
-    # 2. Checkpoint 상태
     status_report += "\n📦 Checkpoint 상태:\n"
     checkpoints = get_agent_checkpoints()
     for agent, cp_data in checkpoints.items():
@@ -513,7 +403,6 @@ def get_agent_status() -> str:
         else:
             status_report += f"  - {agent}: {cp_data}\n"
 
-    # 3. 최근 로그 요약
     status_report += "\n📝 최근 로그:\n"
     logs = get_agent_logs()
     for agent, log_lines in logs.items():
@@ -525,10 +414,8 @@ def get_agent_status() -> str:
 
     return status_report
 
-
 # ─── Telegram API ─────────────────────────────────────────────────────────
 def _api(method: str, payload: dict, _retry: int = 3) -> dict:
-    """Telegram API 호출"""
     url = f"https://api.telegram.org/bot{TOKEN}/{method}"
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
@@ -552,24 +439,18 @@ def _api(method: str, payload: dict, _retry: int = 3) -> dict:
     print(f"  [API] {method} 재시도 초과")
     return {}
 
-
 def send(text: str, chat_id: str = None):
-    """텔레그램 메시지 전송 (중복 방지 포함)"""
     _api("sendMessage", {
         "chat_id": chat_id or CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
     })
 
-
 def get_updates(offset: int, timeout: int = 30) -> list:
-    """업데이트 수신"""
     res = _api("getUpdates", {"offset": offset, "timeout": timeout, "allowed_updates": ["message"]})
     return res.get("result", [])
 
-
 def _clear_webhook():
-    """Webhook 제거 (Long Polling 사용)"""
     url = f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true"
     try:
         with urllib.request.urlopen(url, timeout=10) as r:
@@ -580,108 +461,129 @@ def _clear_webhook():
         print(f"  [Warning] Webhook 제거 실패: {e}")
 
 
-# ─── 영숙 대화 처리 ──────────────────────────────────────────────────────────
-def handle_message(text: str) -> str:
-    """메시지 처리 — 슈퍼파워(CEO 디스패처 + 협의체) + Ollama 응답"""
-    if not lm_available():
-        return "영숙이에요~ 지금은 Ollama가 실행되지 않아서 대화가 어렵네요 😅"
+# ─── 구글 제미니 전용 Tool 정의 (Function Calling) ───────────────────────────
 
-    # ── 슈퍼파워 1: 업무 명령 → CEO 디스패처로 라우팅 ─────────────────────
-    dispatch_keywords = [
-        "/luna", "/instagram", "/arin", "/kevin", "/kodari",
-        "만들어", "포스팅해", "업로드해", "뮤직비디오", "검수해",
-        "리서치해", "분석해줘", "배포해", "모니터링", "인스타",
-        "유튜브 올려", "영상 만들어", "노래 만들어"
-    ]
-    if any(kw in text.lower() for kw in dispatch_keywords) and _dispatcher_mod:
+def get_agents_status_tool(agent: str = "전체") -> str:
+    """에이전트의 현재 작업 현황 및 최근 로그를 조회합니다.
+    Args:
+        agent: 조회 대상 에이전트 ('루나', '아린', '데이브', '전체')
+    """
+    return get_agent_status()
+
+def execute_agent_command(instruction: str) -> str:
+    """에이전트 실행 지시 및 동사형 요청(예: 루나 영상 만들기, 인스타 포스팅 등)을 예원 CEO에게 전달하여 실행합니다.
+    Args:
+        instruction: 사장님이 지시하신 구체적인 실행 명령 구문
+    """
+    if _dispatcher_mod:
         try:
-            print(f"  [슈퍼파워] CEO 디스패처 호출: {text[:50]}")
-            result = _dispatcher_mod.dispatch_and_execute(text)
+            print(f"  [슈퍼파워] CEO 디스패처 호출: {instruction[:50]}")
+            result = _dispatcher_mod.dispatch_and_execute(instruction)
             return f"✅ 예원 CEO가 처리했어요!\n\n{result}"
         except Exception as e:
-            print(f"  [디스패처 오류] {e}")
+            return f"❌ 디스패처 오류: {e}"
+    return "⚠️ CEO 디스패처가 연결되어 있지 않습니다."
 
-    # ── 슈퍼파워 2: 에러/문제 → 에이전트 협의체 소집 ──────────────────────
-    council_keywords = ["에러", "오류", "버그", "고장", "안 돼", "실패", "문제 생겼"]
-    if any(kw in text for kw in council_keywords) and _council_mod:
+def convene_agent_council(problem_summary: str) -> str:
+    """시스템 오류나 에러 상황 발생 시 에이전트 협의체를 소집하여 해결책을 의논합니다.
+    Args:
+        problem_summary: 발생한 에러나 문제 상황 요약
+    """
+    if _council_mod:
         try:
-            print(f"  [슈퍼파워] 에이전트 협의체 소집: {text[:50]}")
+            print(f"  [슈퍼파워] 에이전트 협의체 소집: {problem_summary[:50]}")
             result = _council_mod.convene_council(
-                error_info=text,
+                error_info=problem_summary,
                 context="텔레그램 사장님 보고",
                 auto_apply=False
             )
             return f"🤝 에이전트 협의체가 분석했어요!\n\n{result.get('summary', str(result))[:400]}"
         except Exception as e:
-            print(f"  [협의체 오류] {e}")
+            return f"❌ 협의체 오류: {e}"
+    return "⚠️ 에이전트 협의체가 연결되어 있지 않습니다."
 
-    # ── Ollama 대화 ──────────────────────────────────────────────────────────
-    # 리서치 보고서 생성 키워드 감지
-    research_keywords = ["리서치", "연구", "학습", "보고서", "분석 보고"]
-    if any(keyword in text for keyword in research_keywords):
-        print("  [리서치 보고서 생성 시작]")
-        report = generate_research_report()
+def create_notion_log(summary: str) -> str:
+    """수정사항이나 업데이트 내역을 Notion 수정로그 데이터베이스에 등록합니다.
+    Args:
+        summary: Notion에 기록할 수정 요약 내역
+    """
+    if log_changes_to_notion(summary):
+        return f"✅ 수정사항을 Notion에 기록했습니다.\n내용: {summary[:100]}"
+    return "❌ Notion 기록에 실패했습니다."
 
-        # 노션에 업로드
-        title = f"에이전트 리서치 보고서 - {time.strftime('%Y-%m-%d')}"
-        if create_notion_page(title, report):
-            return f"✅ 리서치 보고서를 노션에 작성했어요!\n\n{report[:300]}...\n\n📝 노션에서 전체 내용을 확인하세요."
-        else:
-            return f"📝 리서치 보고서를 작성했어요!\n\n{report[:500]}...\n\n⚠️ 노션 업로드는 실패했어요."
+def generate_and_upload_report() -> str:
+    """에이전트들의 활동 내역을 취합하여 종합 보고서를 작성하고 Notion에 업로드합니다."""
+    report = generate_research_report()
+    title = f"에이전트 리서치 보고서 - {time.strftime('%Y-%m-%d')}"
+    if create_notion_page(title, report):
+        return f"✅ 리서치 보고서를 노션에 작성했어요!\n\n{report[:300]}...\n\n📝 노션에서 전체 내용을 확인하세요."
+    return f"📝 리서치 보고서 작성 성공 (노션 업로드 실패)\n\n{report[:500]}..."
 
-    # 수정사항 기록 키워드 감지
-    change_keywords = ["수정", "변경", "업데이트", "고침", "개선", "추가", "삭제", "배포"]
-    if any(keyword in text for keyword in change_keywords):
-        print("  [수정사항 노션 기록]")
-        if log_changes_to_notion(text):
-            return f"✅ 수정사항을 노션에 기록했어요!\n\n📝 내용: {text[:100]}{'...' if len(text) > 100 else ''}"
+TOOLS_MAP = {
+    "get_agents_status_tool": get_agents_status_tool,
+    "execute_agent_command": execute_agent_command,
+    "convene_agent_council": convene_agent_council,
+    "create_notion_log": create_notion_log,
+    "generate_and_upload_report": generate_and_upload_report
+}
 
-    # 상태 확인 키워드 감지
-    status_keywords = ["상태", "업무", "진행", "어때", "완료", "작업", "현황"]
-    needs_status = any(keyword in text for keyword in status_keywords)
+# ─── 영숙 대화 처리 ──────────────────────────────────────────────────────────
+def handle_message(text: str) -> str:
+    global CHAT_HISTORY
+    if not os.getenv("GEMINI_API_KEY", "").strip():
+        return "영숙이에요~ 지금은 Gemini API 키가 설정되지 않아서 대화가 어렵네요 😅"
 
-    # 대화 기록 구성
-    history_text = ""
-    for h in CHAT_HISTORY[-10:]:  # 최근 10개만
-        role_name = "사용자" if h["role"] == "user" else "영숙"
-        history_text += f"{role_name}: {h['text']}\n"
-    history_text += f"사용자: {text}\n"
-
-    # 실제 상태 데이터 추가
-    if needs_status:
-        history_text += f"\n[실제 데이터]\n{get_agent_status()}\n"
-
+    # 상태/리포트/수정로그 등 키워드 감지 시 해당 툴에 대한 가이드 역할
     import datetime
     kst = datetime.timezone(datetime.timedelta(hours=9))
     now_kst = datetime.datetime.now(kst)
     current_time_context = f"\n\n[현재 한국 표준시 (KST) 정보 - 대화 시 반드시 기준 날짜/요일로 사용]\n- 현재 일시: {now_kst.strftime('%Y-%m-%d %H:%M:%S %A')}\n"
     system_prompt = YEONGSUK_PERSONA + current_time_context
 
+    CHAT_HISTORY.append(types.Content(role="user", parts=[types.Part.from_text(text=text)]))
+    if len(CHAT_HISTORY) > 6:
+        CHAT_HISTORY = CHAT_HISTORY[-6:]
+
     try:
-        response = lm_chat(
-            history_text,
-            system=system_prompt,
-            json_mode=False,
-            max_tokens=500,
-            temperature=0.85
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=CHAT_HISTORY,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                tools=list(TOOLS_MAP.values()),
+                max_output_tokens=300,
+                temperature=0.8
+            )
         )
 
-        if response:
-            # 대화 기록 저장
-            CHAT_HISTORY.append({"role": "user", "text": text})
-            CHAT_HISTORY.append({"role": "assistant", "text": response})
+        final_reply = ""
+        if response.function_calls:
+            for call in response.function_calls:
+                name = call.name
+                args = call.args
+                print(f"  [Gemini Tool Call] {name}({args})")
 
-            # 메모리 관리
-            if len(CHAT_HISTORY) > 20:
-                CHAT_HISTORY.pop(0)
-                CHAT_HISTORY.pop(0)
+                if name in TOOLS_MAP:
+                    try:
+                        tool_result = TOOLS_MAP[name](**args)
+                        final_reply += f"{tool_result}\n"
+                    except Exception as e:
+                        final_reply += f"❌ 도구 실행 오류 ({name}): {e}\n"
+                else:
+                    final_reply += f"⚠️ 지원하지 않는 도구입니다: {name}\n"
+        else:
+            final_reply = response.text or "네 알겠습니다!"
 
-            return response.strip()
+        # 대화 기록 저장
+        CHAT_HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=final_reply)]))
+        if len(CHAT_HISTORY) > 6:
+            CHAT_HISTORY = CHAT_HISTORY[-6:]
+
+        return final_reply.strip()
+
     except Exception as e:
-        print(f"  [Ollama Error] {e}")
-
-    return "영숙이에요~ 응답 생성 중 문제가 생겼어요 😅"
-
+        print(f"  [Gemini Error] {e}")
+        return "영숙이에요~ 응답 생성 중 문제가 생겼어요 😅"
 
 # ─── 메인 루프 ────────────────────────────────────────────────────────────
 def main():
@@ -689,7 +591,7 @@ def main():
     load_env()
     _init_superpowers()
     print(f"🤖 영숙 텔레그램 봇 시작 (chat_id={CHAT_ID})")
-    print(f"   Ollama      : {'✅ 연결됨' if lm_available() else '❌ 연결 안 됨'}")
+    print(f"   Gemini      : {'✅ 연결됨' if os.getenv('GEMINI_API_KEY') else '❌ 연결 안 됨'}")
     print(f"   CEO 디스패처: {'✅' if _dispatcher_mod else '❌'}")
     print(f"   에이전트협의체: {'✅' if _council_mod else '❌'}")
 
@@ -712,7 +614,6 @@ def main():
             if not text or cid != CHAT_ID:
                 continue
 
-            # 중복 방지
             if msg_id in processed_messages:
                 continue
             processed_messages.add(msg_id)
@@ -721,14 +622,12 @@ def main():
 
             print(f"  ← [{cid}] {text[:60]}")
 
-            # 응답 생성
             reply = handle_message(text)
             send(reply, chat_id=cid)
 
             print(f"  → {reply[:80]}")
 
         time.sleep(1)
-
 
 if __name__ == "__main__":
     main()

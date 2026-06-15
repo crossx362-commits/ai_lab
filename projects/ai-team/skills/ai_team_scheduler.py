@@ -25,7 +25,6 @@ from _shared.telegram_notifier import send_telegram_message
 AGENT_EXECUTORS = {
     "루나": "루나_디렉터.tools.music_video_pipeline",
     "아린": "아린_관리자.tools.auto_pipeline",
-    "가희": "가희_검수관.tools.content_inspector",
 }
 
 
@@ -98,11 +97,6 @@ def execute_agent_task(agent_name: str, task: dict) -> tuple[bool, str]:
                 return True, "인스타그램 포스팅 완료"
             else:
                 return False, f"파이프라인 실패: {result.stderr[:500]}"
-
-        elif agent_name == "가희":
-            # 가희 검수 실행
-            result_msg = f"검수 작업: {task['description']}\n수동 실행 필요"
-            return True, result_msg
 
         else:
             return False, f"지원하지 않는 에이전트: {agent_name}"
