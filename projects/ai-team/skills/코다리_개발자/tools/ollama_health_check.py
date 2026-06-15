@@ -18,9 +18,20 @@ if _ai_team not in sys.path:
     sys.path.insert(0, _ai_team)
 
 from _shared.env_loader import load_env as _load_env
-from _shared.ollama_client import is_available, chat as lm_chat
+from _shared.ollama_client import chat as lm_chat
 from _shared.resource_utils import get_system_load
 import _shared.gemini_client as _gc
+
+def _simple_is_available() -> bool:
+    try:
+        import urllib.request
+        import json
+        url = os.getenv("OLLAMA_URL", "http://localhost:11434/v1/chat/completions").replace("/chat/completions", "/models")
+        with urllib.request.urlopen(url, timeout=5) as r:
+            data = json.loads(r.read())
+        return bool(data.get("data", []))
+    except Exception:
+        return False
 
 _OLLAMA_PORT    = 11434
 _TEST_PROMPT    = "파이썬에서 1+1을 출력하는 한 줄 코드만 반환하세요."
@@ -113,7 +124,7 @@ def _try_restart() -> bool:
     try:
         subprocess.Popen(["ollama", "serve"])
         time.sleep(10)
-        return is_available()
+        return _simple_is_available()
     except Exception:
         return False
 
@@ -129,7 +140,7 @@ def run_check():
     """Ollama 연동 상태 진단 메인. 외부에서 직접 호출 가능."""
     _load_env()
 
-    api_ok = is_available()
+    api_ok = _simple_is_available()
 
     if api_ok:
         resp = lm_chat(_TEST_PROMPT, task="coding", max_tokens=60)
