@@ -82,3 +82,9 @@
 - **아린**: [숏폼 마케팅 전략](projects/ai-team/skills/아린_관리자/knowledge/learned_20260615_숏폼_마케팅_전략.md)
 - **코다리**: [Rust 프로그래밍](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260615_Rust_프로그래밍.md)
 - **로율**: no_topic
+
+
+## 2026-06-15 10:19 자가학습
+- **티모**: [모션 그래픽스](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260615_모션_그래픽스.md)
+- **가희**: no_topic
+- **코다리**: [분산 시스템 설계](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260615_분산_시스템_설계.md)
