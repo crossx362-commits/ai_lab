@@ -38,7 +38,7 @@ try:
 except:
     yewon_dispatcher = None
 
-SYSTEM = """영숙(비서). 규칙: 1)짧게 2-3줄 2)도구 우선 사용 3)미사여구 금지"""
+SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 필요시 도구(get_agent_status, list_calendar, dispatch) 즉시 호출."
 HISTORY = []
 
 def tg_api(method, data, timeout=20):
@@ -151,102 +151,80 @@ def process(msg):
     now = datetime.now(timezone(timedelta(hours=9)))
     time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
 
+    # 대화 기록 추가
     HISTORY.append(types.Content(role="user", parts=[types.Part.from_text(text=msg)]))
-    if len(HISTORY) > 6: HISTORY = HISTORY[-6:]
+    
+    # 최근 3턴(6개 메시지: 3 user, 3 model)만 유지하여 토큰 사용량 최적화
+    if len(HISTORY) > 6:
+        HISTORY = HISTORY[-6:]
 
-    # 1단계: Gemini Flash
-    for model_name in ["gemini-2.5-flash", "gemini-2.5-pro"]:
-        try:
-            resp = client.models.generate_content(
+    model_name = "gemini-2.5-flash"
+    try:
+        resp = client.models.generate_content(
+            model=model_name,
+            contents=HISTORY,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM + time_ctx,
+                tools=TOOLS,
+                max_output_tokens=120,  # 답변 길이 제한으로 토큰 사용량 최소화
+                temperature=0.7
+            )
+        )
+
+        answer = ""
+        tool_results = []
+
+        if resp.candidates and resp.candidates[0].content.parts:
+            for part in resp.candidates[0].content.parts:
+                if part.text:
+                    answer += part.text
+                elif part.function_call:
+                    fn = part.function_call.name
+                    args = dict(part.function_call.args) if part.function_call.args else {}
+                    print(f"🔧 {fn}({args})")
+                    if fn in TOOL_MAP:
+                        try:
+                            res = TOOL_MAP[fn](**args)
+                            tool_results.append({"name": fn, "result": res})
+                            print(f"✅ {res[:80]}...")
+                        except Exception as e:
+                            err = f"❌ {str(e)[:80]}"
+                            tool_results.append({"name": fn, "result": err})
+                            print(err)
+
+        if tool_results:
+            fn_parts = [types.Part.from_function_response(name=tr["name"], response={"result": tr["result"]}) for tr in tool_results]
+            HISTORY.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
+            HISTORY.append(types.Content(role="user", parts=fn_parts))
+
+            final = client.models.generate_content(
                 model=model_name,
                 contents=HISTORY,
                 config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM + time_ctx,
-                    tools=TOOLS,
-                    max_output_tokens=200,
+                    system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
+                    max_output_tokens=100,  # 최종 답변 토큰 수 최소화
                     temperature=0.7
                 )
             )
+            answer = final.text.strip() if final.text else "\n\n".join([tr["result"] for tr in tool_results])
 
-            answer = ""
-            tool_results = []
+        if not answer:
+            answer = "네"
 
-            if resp.candidates and resp.candidates[0].content.parts:
-                for part in resp.candidates[0].content.parts:
-                    if part.text:
-                        answer += part.text
-                    elif part.function_call:
-                        fn = part.function_call.name
-                        args = dict(part.function_call.args) if part.function_call.args else {}
-                        print(f"🔧 {fn}({args})")
-                        if fn in TOOL_MAP:
-                            try:
-                                res = TOOL_MAP[fn](**args)
-                                tool_results.append({"name": fn, "result": res})
-                                print(f"✅ {res[:80]}...")
-                            except Exception as e:
-                                err = f"❌ {str(e)[:80]}"
-                                tool_results.append({"name": fn, "result": err})
-                                print(err)
+        send_msg(answer)
 
-            if tool_results:
-                fn_parts = [types.Part.from_function_response(name=tr["name"], response={"result": tr["result"]}) for tr in tool_results]
-                HISTORY.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
-                HISTORY.append(types.Content(role="user", parts=fn_parts))
+        # 모델 응답 기록 추가 및 3턴(6개 메시지) 유지
+        HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=answer)]))
+        if len(HISTORY) > 6:
+            HISTORY = HISTORY[-6:]
 
-                final = client.models.generate_content(
-                    model=model_name,
-                    contents=HISTORY,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
-                        max_output_tokens=150,
-                        temperature=0.7
-                    )
-                )
-                answer = final.text.strip() if final.text else "\n\n".join([tr["result"] for tr in tool_results])
-
-            if not answer: answer = "네"
-
-            prefix = "[Pro] " if model_name == "gemini-2.5-pro" else ""
-            send_msg(prefix + answer)
-
-            HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=answer)]))
-            if len(HISTORY) > 6: HISTORY = HISTORY[-6:]
-            return
-
-        except Exception as e:
-            err = str(e)
-            print(f"❌ {model_name}: {err}")
-
-            # Flash 실패 → Pro로, Pro 실패 → Claude로
-            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
-                if model_name == "gemini-2.5-flash":
-                    print("🔄 Gemini Pro 시도...")
-                    continue
-                else:
-                    print("🔄 Claude 시도...")
-                    break
-            else:
-                send_msg("일시 오류")
-                return
-
-    # 2단계: Claude 폴백
-    try:
-        from _shared.claude_client import chat as claude_chat
-        hist_txt = "\n".join([f"{'사용자' if c.role == 'user' else '영숙'}: {c.parts[0].text if c.parts and hasattr(c.parts[0], 'text') else ''}" for c in HISTORY[-4:]])
-        claude_resp = claude_chat(prompt=f"{hist_txt}\n사용자: {msg}", system=SYSTEM + time_ctx, max_tokens=200)
-        if claude_resp:
-            send_msg(f"🤖 [Claude]\n{claude_resp}")
-            HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=claude_resp)]))
-            return
-    except Exception as ce:
-        print(f"❌ Claude: {ce}")
-
-    send_msg("모든 AI 서비스 일시 불가. 잠시 후 재시도")
+    except Exception as e:
+        print(f"❌ {model_name} 오류: {e}")
+        send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
 def main():
     print("="*60)
-    print("🤖 영숙 봇 (Flash→Pro→Claude 폴백)")
+    print("🤖 영숙 봇 (Gemini 2.5 Flash 전용 최적화 버전)")
     print("="*60)
     print(f"Gemini: {'✅' if client else '❌'}")
     print(f"Telegram: {'✅' if TOKEN and CHAT_ID else '❌'}")
@@ -257,7 +235,7 @@ def main():
         return
 
     tg_api("deleteWebhook", {"drop_pending_updates": True})
-    send_msg("🤖 영숙 출근\n예: 현황/루나 영상/일정")
+    send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/루나 영상/일정")
 
     offset = 0
     while True:
@@ -265,7 +243,8 @@ def main():
             for upd in get_updates(offset):
                 offset = upd["update_id"] + 1
                 text = upd.get("message", {}).get("text", "").strip()
-                if text: process(text)
+                if text:
+                    process(text)
             time.sleep(1)
         except KeyboardInterrupt:
             print("\n👋 종료")
