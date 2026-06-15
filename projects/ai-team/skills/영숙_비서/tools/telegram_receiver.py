@@ -214,6 +214,20 @@ def process(msg):
 
     except Exception as e:
         print(f"❌ {model_name} 최종 오류: {e}")
+        try:
+            print("🔄 Gemini 오류 감지 → 로컬 Ollama 최종 폴백 진행...")
+            from _shared.ollama_client import chat as lm_chat
+            prompt_context = "\n".join([f"{'User' if p.role == 'user' else 'Model'}: {p.parts[0].text}" for p in HISTORY])
+            ollama_ans = lm_chat(prompt_context, system=SYSTEM, max_tokens=150, temperature=0.7)
+            if ollama_ans:
+                answer = ollama_ans.strip()
+                send_msg(answer)
+                HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=answer)]))
+                if len(HISTORY) > 6:
+                    HISTORY = HISTORY[-6:]
+                return
+        except Exception as oe:
+            print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
         send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
 def main():
