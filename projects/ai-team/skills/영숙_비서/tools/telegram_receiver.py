@@ -281,6 +281,7 @@ def main():
                 text = upd.get("message", {}).get("text", "").strip()
                 if text:
                     process(text)
+                    time.sleep(2)  # 구글 API 요청 속도 조절을 위한 2초 딜레이 추가
             time.sleep(1)
         except KeyboardInterrupt:
             print("\n👋 종료")
