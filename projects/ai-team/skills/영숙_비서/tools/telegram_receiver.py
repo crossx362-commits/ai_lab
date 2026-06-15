@@ -75,19 +75,33 @@ def list_calendar(days: int = 7):
 def dispatch(cmd: str):
     """에이전트 스크립트를 실제로 구동/실행(run/execute)하는 명시적 명령에만 호출하세요. 단순 분석/설명 질문에는 절대 호출 금지. Args: cmd (실행 명령)"""
     if not yewon_dispatcher: return "❌ 디스패처 없음"
-    try:
-        print(f"🎯 {cmd}")
-        result = yewon_dispatcher.dispatch_and_execute(cmd)
-        if not result: return "⚠️ CEO 대기"
-        if len(result) > 400:
-            try:
-                s = client.models.generate_content(model="gemini-2.5-flash", contents=f"2줄 요약:\n{result[:600]}", config=types.GenerateContentConfig(max_output_tokens=100))
-                if s.text: return f"✅ {s.text.strip()}"
-            except: pass
-            return result[:400] + "..."
-        return result
-    except Exception as e:
-        return f"❌ {str(e)[:100]}"
+    import threading
+    def _run_bg():
+        try:
+            print(f"🎯 [비동기 시작] {cmd}")
+            send_msg(f"⚙️ 에이전트 작업을 시작합니다: '{cmd}'")
+            result = yewon_dispatcher.dispatch_and_execute(cmd)
+            if not result:
+                send_msg("⚠️ CEO 분석 대기 중")
+                return
+            if len(result) > 500:
+                try:
+                    s = client.models.generate_content(
+                        model="gemini-2.5-flash", 
+                        contents=f"2줄 요약:\n{result[:600]}", 
+                        config=types.GenerateContentConfig(max_output_tokens=100)
+                    )
+                    if s.text:
+                        send_msg(f"✅ 작업 완료 요약:\n{s.text.strip()}")
+                        return
+                except:
+                    pass
+            send_msg(f"✅ 작업 결과:\n{result}")
+        except Exception as e:
+            send_msg(f"❌ 작업 수행 실패: {str(e)[:200]}")
+            
+    threading.Thread(target=_run_bg, daemon=True).start()
+    return "🚀 에이전트 구동 지시를 비동기로 시작했습니다. 완료되면 알려드리겠습니다."
 
 TOOLS = [get_agent_status, list_calendar, dispatch]
 TOOL_MAP = {"get_agent_status": get_agent_status, "list_calendar": list_calendar, "dispatch": dispatch}

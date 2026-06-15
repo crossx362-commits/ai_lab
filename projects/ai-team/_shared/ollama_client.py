@@ -270,6 +270,8 @@ def chat_vision(prompt: str, image_bytes: bytes, max_tokens: int = 500) -> str |
 
 def is_available() -> bool:
     """Ollama 서버가 응답하고 모델이 로드돼 있는지 확인. 연결 실패 시 코다리에게 복구를 요청하고 대기."""
+    if os.getenv("GEMINI_API_KEY", "").strip():
+        return True
     models = _list_models()
     if bool(models):
         return True
