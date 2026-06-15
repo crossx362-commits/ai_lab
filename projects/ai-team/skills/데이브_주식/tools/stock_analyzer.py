@@ -12,7 +12,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from google import genai
+from google.genai import types
 from analyze_stock_realtime import analyze_stock_realtime
 
 # UTF-8 설정
@@ -230,17 +231,22 @@ def run_analysis(query: str = "", stock_code: str = "032820") -> str:
 
 """
 
-    if not lm_available():
-        return "❌ [데이브] Ollama 로컬 연결 실패로 분석을 수행할 수 없습니다."
+    api_key = os.getenv("GEMINI_API_KEY", "").strip('"').strip("'")
+    if not api_key:
+        return "❌ [데이브] GEMINI_API_KEY 환경변수가 설정되지 않았습니다."
 
     try:
-        report = lm_chat(
-            prompt,
-            system="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
-            json_mode=False,
-            max_tokens=2000,
-            temperature=0.7
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
+                max_output_tokens=2000,
+                temperature=0.7
+            )
         )
+        report = response.text
 
         # 영숙 보고 섹션 후처리 제거
         for marker in ["영숙 보고", "영숙이 보고", "영숙님", "📱"]:
