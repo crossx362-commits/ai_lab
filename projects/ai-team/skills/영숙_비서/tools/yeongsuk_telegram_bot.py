@@ -367,7 +367,7 @@ def generate_research_report() -> str:
 """
     try:
         res = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction="당신은 전문 비서로서 데이터 기반의 디테일한 보고서를 작성합니다.",
@@ -546,7 +546,7 @@ def handle_message(text: str) -> str:
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=CHAT_HISTORY,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
