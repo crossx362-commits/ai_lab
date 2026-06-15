@@ -152,6 +152,18 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
          max_tokens: int = 2000, json_mode: bool = False,
          task: str = "") -> str | None:
     """Ollama에 단일 프롬프트 전송 후 응답 텍스트 반환. 실패 시 None."""
+    try:
+        import _shared.gemini_client as _gc
+        res = _gc.text(
+            prompt, system=system, temperature=temperature,
+            max_tokens=max_tokens, json_mode=json_mode, task=task,
+            lm_first=False
+        )
+        if res:
+            return res
+    except Exception as ge:
+        print(f"  [Ollama Client] Gemini 우선 호출 실패 (Ollama 폴백 진행): {ge}")
+
     model_id = _detect_model(task)
     if model_id is None:
         return None
