@@ -9,6 +9,14 @@ import json
 import time
 from datetime import datetime, timezone, timedelta
 
+# UTF-8 인코딩 설정
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except:
+        pass
+
 # 프로젝트 루트 및 패스 추가
 _here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _here)
