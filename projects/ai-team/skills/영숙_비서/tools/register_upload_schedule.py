@@ -15,9 +15,13 @@ except ImportError:
     print("❌ pip install google-api-python-client google-auth-oauthlib")
     sys.exit(1)
 
-HERE           = os.path.dirname(os.path.abspath(__file__))
-CLIENT_SECRET  = os.path.abspath(os.path.join(HERE, "..", "루나_사운드디렉터", "client_secret.json"))
-TOKEN_FILE     = os.path.join(HERE, "token_calendar.pickle")
+HERE = os.path.dirname(os.path.abspath(__file__))
+CLIENT_SECRET_CANDIDATES = [
+    os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", "..", "client_secret.json")),
+    os.path.abspath(os.path.join(HERE, "..", "..", "루나_디렉터", "tools", "client_secret.json")),
+]
+CLIENT_SECRET = next((p for p in CLIENT_SECRET_CANDIDATES if os.path.exists(p)), CLIENT_SECRET_CANDIDATES[0])
+TOKEN_FILE = os.path.join(HERE, "token_calendar.pickle")
 SCOPES         = ["https://www.googleapis.com/auth/calendar.events"]
 
 UPLOAD_SCHEDULE = [

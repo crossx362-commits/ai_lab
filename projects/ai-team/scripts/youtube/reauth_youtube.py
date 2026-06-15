@@ -13,7 +13,7 @@ if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_ai_team_root = os.path.join(_here, "projects", "ai-team")
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
@@ -30,12 +30,12 @@ SCOPES = [
 
 # client_secret.json 우선순위: 루트 → tools 폴더
 CLIENT_SECRET_CANDIDATES = [
-    os.path.join(_here, "client_secret.json"),
-    os.path.join(_here, "projects", "ai-team", "skills", "루나_디렉터", "tools", "client_secret.json"),
+    os.path.abspath(os.path.join(_here, "..", "..", "..", "client_secret.json")),
+    os.path.abspath(os.path.join(_here, "..", "..", "skills", "루나_디렉터", "tools", "client_secret.json")),
 ]
-TOKEN_FILE = os.path.join(
-    _here, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle"
-)
+TOKEN_FILE = os.path.abspath(os.path.join(
+    _here, "..", "..", "skills", "루나_디렉터", "tools", "youtube_token.pickle"
+))
 
 def main():
     print("=" * 55)

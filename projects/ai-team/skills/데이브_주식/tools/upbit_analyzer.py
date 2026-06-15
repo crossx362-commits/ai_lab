@@ -15,8 +15,10 @@ PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
 from _shared.telegram_notifier import send_telegram_message
+from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field
 
 # UTF-8 설정
 if hasattr(sys.stdout, "reconfigure"):
@@ -42,7 +44,10 @@ def get_upbit_client():
     try:
         upbit = pyupbit.Upbit(access_key, secret_key)
         # 키 검증 시도 (단순 잔고 조회)
-        upbit.get_balances()
+        res = upbit.get_balances()
+        if res is None or (isinstance(res, dict) and "error" in res) or (isinstance(res, list) and len(res) > 0 and isinstance(res[0], dict) and "error" in res[0]):
+            print(f"[Dave] Upbit API 키 검증 실패 (결과: {res})")
+            return None
         return upbit
     except Exception as e:
         print(f"[Dave] Upbit API 키 검증 실패 (시뮬레이션 모드로 전환): {e}")
@@ -371,13 +376,81 @@ def get_upbit_data(ticker="KRW-BTC"):
     except Exception as e:
         return {"error": f"가상자산 시세 조회 중 오류 발생: {e}"}
 
-def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
-    print(f"[Dave] Starting Upbit crypto analysis: {query}")
+class TradeDecision(BaseModel):
+    decision: str = Field(description="최종 매매 결정. 반드시 'BUY', 'SELL', 'HOLD' 중 하나여야 합니다.")
+    percentage: int = Field(description="매수/매도할 자산 비중 (0~100 %)")
+    reason: str = Field(description="판단에 대한 핵심 근거 (한두 문장)")
+    report: str = Field(description="출력 양식 템플릿에 맞추어 작성된 마크다운 형식의 최종 마스터 리포트 전체 텍스트")
+
+_dave_cache_name = None
+
+def load_system_instruction():
+    skill_md_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "SKILL.md")
+    indicators_md_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "indicators_knowledge.md")
     
+    system_instruction = "너는 글로벌 매크로, 온체인, 호가창 세력, 퀀트 지표를 통합 분석하는 지구 최강의 AI 수석 매크로 퀀트 트레이더 데이브(Dave)이다.\n\n"
+    if os.path.exists(skill_md_path):
+        with open(skill_md_path, "r", encoding="utf-8") as f:
+            system_instruction += f.read() + "\n"
+    if os.path.exists(indicators_md_path):
+        with open(indicators_md_path, "r", encoding="utf-8") as f:
+            system_instruction += f.read() + "\n"
+    return system_instruction
+
+def get_dave_context_cache(client):
+    global _dave_cache_name
+    if _dave_cache_name:
+        return _dave_cache_name
+        
+    try:
+        for c in client.caches.list():
+            if c.display_name == "dave_coin_rules":
+                _dave_cache_name = c.name
+                return _dave_cache_name
+    except Exception as e:
+        print(f"[Dave Cache] Error checking cache list: {e}")
+        
+    system_instruction = load_system_instruction()
+            
+    try:
+        count_resp = client.models.count_tokens(
+            model="gemini-2.5-flash",
+            contents=system_instruction
+        )
+        total_tokens = count_resp.total_tokens
+        print(f"[Dave Cache] Base system instruction tokens: {total_tokens}")
+        
+        # Padding to meet the 32768 token limit for context caching
+        while total_tokens < 32768:
+            system_instruction += "\n# Cache Padding Reference Data\n" + "This is reference educational padding text for Context Caching. " * 1000
+            count_resp = client.models.count_tokens(
+                model="gemini-2.5-flash",
+                contents=system_instruction
+            )
+            total_tokens = count_resp.total_tokens
+        
+        print(f"[Dave Cache] Padded system instruction tokens: {total_tokens}")
+        
+        cache = client.caches.create(
+            model="gemini-2.5-flash",
+            config=types.CreateCachedContentConfig(
+                display_name="dave_coin_rules",
+                contents=[types.Content(role="user", parts=[types.Part.from_text(text=system_instruction)])],
+                ttl="3600s"
+            )
+        )
+        _dave_cache_name = cache.name
+        print(f"[Dave Cache] Created context cache successfully: {_dave_cache_name}")
+        return _dave_cache_name
+    except Exception as e:
+        print(f"[Dave Cache] Failed to configure or create context cache: {e}")
+        return None
+
+def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> TradeDecision:
     # 1. 시세 데이터 및 기술분석
     data = get_upbit_data(ticker)
     if "error" in data:
-        return f"❌ [데이브] {data['error']}"
+        raise Exception(data["error"])
         
     current_price = data["현재가"]
     current_trend = data["현재추세"]
@@ -519,17 +592,42 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
 ### 💡 수석 퀀트의 원칙 한 줄
 - (거시 흐름, 세력 무빙, 기술적 원칙을 관통하는 냉정한 명언 한 줄 제공)
 """
-    if not lm_available():
-        return "❌ [데이브] Ollama 로컬 연결 실패로 분석을 수행할 수 없습니다."
+    api_key = os.getenv("GEMINI_API_KEY", "").strip('"').strip("'")
+    if not api_key:
+        raise Exception("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
 
-    try:
-        report = lm_chat(
-            prompt,
-            system="너는 가상자산 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
-            json_mode=False,
-            max_tokens=2000,
-            temperature=0.7
+    client = genai.Client(api_key=api_key)
+    cache_name = get_dave_context_cache(client)
+    
+    if cache_name:
+        config = types.GenerateContentConfig(
+            cached_content=cache_name,
+            response_mime_type="application/json",
+            response_schema=TradeDecision,
+            temperature=0.2
         )
+    else:
+        config = types.GenerateContentConfig(
+            system_instruction=load_system_instruction(),
+            response_mime_type="application/json",
+            response_schema=TradeDecision,
+            temperature=0.2
+        )
+        
+    print(f"[Dave] Calling Gemini 2.5 Flash for {ticker}...")
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=config
+    )
+    
+    return TradeDecision.model_validate_json(response.text)
+
+def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
+    print(f"[Dave] Starting Upbit crypto analysis: {query}")
+    try:
+        decision_data = run_gemini_trade_decision(query, ticker)
+        report = decision_data.report
 
         # 영숙 보고 섹션 후처리 제거
         for marker in ["영숙 보고", "영숙이 보고", "영숙님", "📱"]:
