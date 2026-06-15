@@ -1,18 +1,15 @@
 """
 posting_scheduler.py — 영숙: 에이전트 포스팅 일정 Google Calendar 자동 등록
 
-매일 오전 8시(KST) 실행:
-  - 루나: YouTube 영상 예약 업로드 (오후 7시)
-  - 아린: 인스타그램 포스팅 (오전 11시 30분)
-    이미 등록된 일정은 중복 생성하지 않음.
-
-직접 실행:
-  python posting_scheduler.py
+기능:
+1) 일일 포스팅 일정 Google Calendar 자동 등록 (기본 실행)
+2) 에이전트별 매일 반복 업로드 일정 신규 생성 (--register-recurring)
 """
 import os
 import sys
 import datetime
 import json
+import pickle
 
 _here = os.path.dirname(os.path.abspath(__file__))
 _root = _here
@@ -24,6 +21,7 @@ sys.path.insert(0, _root)
 
 from _shared.calendar_client import get_service, create_event, event_exists
 from _shared.telegram_notifier import send_telegram_message
+from _shared.env_loader import load_env as _load_env
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
@@ -51,9 +49,12 @@ POSTING_SCHEDULE = [
     },
 ]
 
-
-from _shared.env_loader import load_env as _load_env
-
+# 매일 반복 일정 리스트 (register-recurring 용)
+UPLOAD_SCHEDULE_RECURRING = [
+    {"agent": "경수",  "hour": 1,  "summary": "🔍 경수 — 악플 자동 수사",          "color": "11"},  # tomato
+    {"agent": "루나",  "hour": 3,  "summary": "🎵 루나 — 음악 채널 자동 업로드",    "color": "2"},   # sage
+    {"agent": "아린",  "hour": 3,  "summary": "📸 아린 — 인스타그램 자동 업로드",   "color": "6"},   # tangerine
+]
 
 def _get_recent_results() -> dict:
     """업로드 히스토리에서 오늘 실제 포스팅 내용 조회."""
@@ -78,12 +79,8 @@ def _get_recent_results() -> dict:
         pass
     return results
 
-
 def run_schedule(target_date: datetime.date = None) -> int:
-    """
-    오늘(또는 target_date)의 포스팅 일정을 Google Calendar에 등록.
-    생성된 이벤트 수 반환.
-    """
+    """오늘(또는 target_date)의 포스팅 일정을 Google Calendar에 등록."""
     _load_env()
     service = get_service()
     if not service:
@@ -95,12 +92,10 @@ def run_schedule(target_date: datetime.date = None) -> int:
     created = []
 
     for sched in POSTING_SCHEDULE:
-        # 중복 체크
         if event_exists(service, sched["keyword"], date):
             print(f"  ✅ [{sched['agent']}] 이미 등록됨 — 건너뜀")
             continue
 
-        # 실제 포스팅 내용이 있으면 설명에 추가
         extra = today_results.get(sched["agent"], "")
         desc  = sched["description"]
         if extra:
@@ -143,6 +138,34 @@ def run_schedule(target_date: datetime.date = None) -> int:
 
     return len(created)
 
+def register_recurring_schedule():
+    """매일 반복 일정 일괄 생성 (OAuth 인증 필요)"""
+    _load_env()
+    service = get_service()
+    if not service:
+        print("❌ Google Calendar OAuth 인증 실패")
+        return
+
+    print("📅 영숙 — 매일 반복 업로드 일정 Google Calendar 등록 시작\n")
+    for item in UPLOAD_SCHEDULE_RECURRING:
+        now  = datetime.datetime.now(KST)
+        start = now.replace(hour=item["hour"], minute=0, second=0, microsecond=0)
+        if start <= now:
+            start += datetime.timedelta(days=1)
+        end   = start + datetime.timedelta(minutes=30)
+
+        event = {
+            "summary": item["summary"],
+            "colorId": item["color"],
+            "start": {"dateTime": start.isoformat(), "timeZone": "Asia/Seoul"},
+            "end":   {"dateTime": end.isoformat(),   "timeZone": "Asia/Seoul"},
+            "recurrence": ["RRULE:FREQ=DAILY"],
+            "reminders": {"useDefault": False, "overrides": []},
+        }
+        result = service.events().insert(calendarId="primary", body=event).execute()
+        print(f"  ✅ 등록: {item['summary']} → {start.strftime('%Y-%m-%d %H:%M')} KST (매일 반복)")
+        
+    print(f"\n🎉 총 {len(UPLOAD_SCHEDULE_RECURRING)}개 반복 일정 등록 완료!")
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -150,4 +173,8 @@ if __name__ == "__main__":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
-    run_schedule()
+
+    if "--register-recurring" in sys.argv:
+        register_recurring_schedule()
+    else:
+        run_schedule()

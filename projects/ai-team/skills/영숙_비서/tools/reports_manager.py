@@ -1,21 +1,29 @@
 #!/usr/bin/env python3
 """
-Reports 폴더 관리 도구
-영숙 비서가 에이전트들의 리서치 보고서, 학습 로그, 작업 히스토리를 관리합니다.
+Reports 폴더 관리 도구 (reports_manager.py)
+영숙 비서가 에이전트들의 리서치 보고서, 학습 로그, 작업 히스토리를 관리하고 Notion에 보고서를 전송합니다.
 """
 
 import os
+import sys
 import json
 import shutil
+import glob
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict
 
 # 프로젝트 루트 경로
 ROOT_DIR = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(ROOT_DIR))
+sys.path.insert(0, str(ROOT_DIR / "projects" / "ai-team"))
+
+from _shared.knowledge_base import get_kb_dir
+from _shared.notion_client import create_notion_page
+from _shared.ollama_client import chat as ollama_chat
+
 REPORTS_DIR = ROOT_DIR / "reports"
 ARCHIVE_DIR = REPORTS_DIR / "archive"
-
 
 def ensure_directories():
     """필요한 디렉토리 생성"""
@@ -66,7 +74,6 @@ def clean_duplicate_research() -> List[str]:
     agent_files: Dict[str, List[Path]] = {}
 
     for research_file in research_dir.glob("*_research*.json"):
-        # 파일명에서 에이전트명 추출 (예: arin_research_20260602.json → arin)
         agent_name = research_file.name.split("_research")[0]
 
         if agent_name not in agent_files:
@@ -102,7 +109,6 @@ def trim_history(max_entries: int = 100) -> Dict[str, int]:
 
             if isinstance(data, list) and len(data) > max_entries:
                 original_count = len(data)
-                # 최근 max_entries개만 유지
                 trimmed_data = data[-max_entries:]
 
                 with open(history_file, 'w', encoding='utf-8') as f:
@@ -123,12 +129,10 @@ def generate_status_report() -> str:
     report = []
     report.append("📊 **Reports 폴더 현황**\n")
 
-    # 리서치 보고서 카운트
     research_dir = REPORTS_DIR / "research"
     research_count = len(list(research_dir.glob("*.json"))) + len(list(research_dir.glob("*.md")))
     report.append(f"📝 리서치 보고서: {research_count}개")
 
-    # 에이전트별 최신 리서치
     agent_research = {}
     for research_file in research_dir.glob("*_research*.json"):
         agent_name = research_file.name.split("_research")[0]
@@ -140,7 +144,6 @@ def generate_status_report() -> str:
         for agent, date in sorted(agent_research.items()):
             report.append(f"  - {agent}: {date}")
 
-    # 학습 로그 카운트
     learning_dir = REPORTS_DIR / "learning"
     success_log = learning_dir / "success_log.jsonl"
     fail_log = learning_dir / "fail_log.jsonl"
@@ -160,7 +163,6 @@ def generate_status_report() -> str:
     report.append(f"  - ✅ 성공: {success_count}건")
     report.append(f"  - ❌ 실패: {fail_count}건")
 
-    # 아카이브
     archive_count = len(list(ARCHIVE_DIR.glob("*"))) if ARCHIVE_DIR.exists() else 0
     report.append(f"\n📦 아카이브: {archive_count}개")
 
@@ -174,7 +176,6 @@ def cleanup_all(verbose: bool = True) -> str:
     results = []
     results.append("🧹 **Reports 폴더 자동 정리 시작**\n")
 
-    # 1. 오래된 로그 아카이브 (30일 이상)
     archived = archive_old_logs(days_threshold=30)
     if archived:
         results.append(f"📦 학습 로그 아카이브: {len(archived)}개")
@@ -184,7 +185,6 @@ def cleanup_all(verbose: bool = True) -> str:
     else:
         results.append("📦 아카이브할 로그 없음")
 
-    # 2. 중복 리서치 정리
     removed = clean_duplicate_research()
     if removed:
         results.append(f"\n🗑️ 중복 리서치 삭제: {len(removed)}개")
@@ -194,7 +194,6 @@ def cleanup_all(verbose: bool = True) -> str:
     else:
         results.append("\n🗑️ 중복 파일 없음")
 
-    # 3. 히스토리 트리밍 (최근 100개)
     trimmed = trim_history(max_entries=100)
     if trimmed:
         results.append(f"\n✂️ 히스토리 정리:")
@@ -208,26 +207,59 @@ def cleanup_all(verbose: bool = True) -> str:
     return "\n".join(results)
 
 
-def main():
-    """CLI 인터페이스"""
-    import sys
+def run_notion_report():
+    """지식베이스 리서치를 취합하여 Notion에 리포트 발행"""
+    kb_path = get_kb_dir()
+    md_files = glob.glob(os.path.join(kb_path, "*.md"))
+    
+    if not md_files:
+        return "영숙이에요! 아직 지식 베이스(Knowledge Base)에 수집된 리서치 결과가 없네요."
+        
+    md_files.sort(key=os.path.getmtime, reverse=True)
+    recent_files = md_files[:5]
+    
+    combined_text = ""
+    for mf in recent_files:
+        with open(mf, "r", encoding="utf-8") as f:
+            combined_text += f.read()[:1000] + "\n\n---\n\n"
+            
+    prompt = (
+        "당신은 스마트 비서 '영숙'입니다. 다음은 여러 에이전트들이 방금까지 수집한 최신 지식 리서치 자료입니다.\n"
+        "이 자료들을 CEO가 한눈에 파악하기 쉽게 '핵심 인사이트 요약 보고서'로 작성해 주세요.\n"
+        "말투는 전문적이면서도 깔끔하게, 마크다운(글머리기호 등)을 적극 사용하세요.\n\n"
+        f"{combined_text}"
+    )
+    
+    print("  [영숙] 지식 통합 분석 중...")
+    summary = ollama_chat(prompt, task="", max_tokens=1000)
 
+    if not summary:
+        return "❌ 리서치 자료를 분석하는 데 실패했습니다 (AI 응답 오류)."
+        
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    title = f"🧠 AI 팀 통합 리서치 리포트 ({now_str})"
+    
+    print("  [영숙] 노션(Notion) 슈퍼파워 툴 가동 중...")
+    result = create_notion_page(title, summary)
+    return result
+
+
+def main():
     if len(sys.argv) < 2:
         print("사용법:")
         print("  python reports_manager.py status    - 현황 보고")
         print("  python reports_manager.py cleanup   - 자동 정리 실행")
         print("  python reports_manager.py archive   - 오래된 로그만 아카이브")
+        print("  python reports_manager.py notion    - Notion 리포트 발행")
         return
 
     command = sys.argv[1].lower()
 
     if command == "status":
         print(generate_status_report())
-
     elif command == "cleanup":
         print(cleanup_all(verbose=True))
         print("\n" + generate_status_report())
-
     elif command == "archive":
         ensure_directories()
         archived = archive_old_logs(days_threshold=30)
@@ -237,7 +269,8 @@ def main():
                 print(f"  - {item}")
         else:
             print("📦 아카이브할 파일 없음")
-
+    elif command == "notion":
+        print(run_notion_report())
     else:
         print(f"❌ 알 수 없는 명령어: {command}")
 
