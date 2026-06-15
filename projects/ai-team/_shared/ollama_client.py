@@ -120,11 +120,11 @@ def _detect_model(task: str = "") -> str | None:
     models = _list_models()
     
     if not models:
-        max_retries = 30
+        max_retries = 3
         for i in range(max_retries):
             _request_kodari_fix()
             print(f"  [Ollama Client] Ollama 복구 대기 중... ({i+1}/{max_retries})")
-            time.sleep(10)
+            time.sleep(3)
             models = _list_models()
             if models:
                 print("  [Ollama Client] ✅ Ollama 연결 복구 완료! 작업을 재개합니다.")
@@ -202,7 +202,7 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
             _endpoint(), data=data,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with urllib.request.urlopen(req, timeout=20) as r:
             res = json.loads(r.read())
         msg  = res["choices"][0]["message"]
         text = msg.get("content", "").strip()
@@ -219,7 +219,7 @@ def chat(prompt: str, system: str = "", temperature: float = 0.7,
                     _endpoint(), data=data2,
                     headers={"Content-Type": "application/json"},
                 )
-                with urllib.request.urlopen(req2, timeout=300) as r2:
+                with urllib.request.urlopen(req2, timeout=20) as r2:
                     res2 = json.loads(r2.read())
                 text = res2["choices"][0]["message"].get("content", "").strip()
                 if not text:
