@@ -1,10 +1,5 @@
 """
-영숙 텔레그램 봇 - 최종 최적화 버전
-
-[핵심 기능]
-1. Gemini Flash → Pro → Claude 3단계 폴백
-2. 토큰 최적화 (시스템 프롬프트 최소화, 히스토리 3턴)
-3. Function Calling으로 대충 명령해도 알아듣기
+영숙 텔레그램 봇 - 최종 최적화 및 에러 복원 버전
 """
 import os, sys, json, time, traceback
 from datetime import datetime, timezone, timedelta
@@ -39,7 +34,6 @@ except:
     yewon_dispatcher = None
 
 SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 단, 현황 보고(get_agent_status) 도구를 호출하는 경우에는 예외적으로 모든 에이전트의 내용을 줄이거나 생략하지 말고 상세하게 다 답변해야 함. 일반적인 질문이나 상태 분석 요청은 도구를 쓰지 말고 제미니가 직접 아는 선에서 즉시 답변하세요. 파이썬 스크립트 실행이나 특정 에이전트 구동 명령인 경우에만 dispatch 도구를 호출하세요."
-HISTORY = []
 
 def tg_api(method, data, timeout=20):
     import urllib.request
@@ -63,7 +57,6 @@ def get_agent_status(agent: str = "전체"):
     from _shared.agent_status import get_status_report
     return get_status_report(agent, PROJECT_ROOT)
 
-
 def list_calendar(days: int = 7):
     """캘린더 일정. Args: days (조회 일수)"""
     cache = os.path.join(PROJECT_ROOT, "projects", "ai-team", "_shared", "calendar_cache.md")
@@ -71,6 +64,25 @@ def list_calendar(days: int = 7):
         with open(cache, "r", encoding="utf-8") as f:
             return f"📅 일정:\n{f.read()[:800]}"
     return "📅 캘린더 미설정"
+
+def generate_content_with_retry(model_name, contents, config, max_retries=5):
+    """구글 제미니 API 호출을 수행하며, 429 등의 할당량 초과 시 자동 재시도 및 사용자 알림 제공"""
+    for attempt in range(max_retries):
+        try:
+            return client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=config
+            )
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
+                if attempt < max_retries - 1:
+                    send_msg("⚠️ 구글 서버가 바쁩니다. 5초 뒤 자동 재시도합니다.")
+                    time.sleep(5)
+                    continue
+            raise e
+    return None
 
 def dispatch(cmd: str):
     """에이전트 스크립트를 실제로 구동/실행(run/execute)하는 명시적 명령에만 호출하세요. 단순 분석/설명 질문에는 절대 호출 금지. Args: cmd (실행 명령)"""
@@ -86,12 +98,12 @@ def dispatch(cmd: str):
                 return
             if len(result) > 500:
                 try:
-                    s = client.models.generate_content(
-                        model="gemini-2.5-flash", 
-                        contents=f"2줄 요약:\n{result[:600]}", 
+                    s = generate_content_with_retry(
+                        model_name="gemini-2.5-flash",
+                        contents=[types.Content(role="user", parts=[types.Part.from_text(text=f"2줄 요약:\n{result[:600]}")]),],
                         config=types.GenerateContentConfig(max_output_tokens=100)
                     )
-                    if s.text:
+                    if s and s.text:
                         send_msg(f"✅ 작업 완료 요약:\n{s.text.strip()}")
                         return
                 except:
@@ -107,16 +119,14 @@ TOOLS = [get_agent_status, list_calendar, dispatch]
 TOOL_MAP = {"get_agent_status": get_agent_status, "list_calendar": list_calendar, "dispatch": dispatch}
 
 def process(msg):
-    global HISTORY
     print(f"\n📩 {msg}")
 
-    # 1. 자주 사용하는 시스템 명령은 LLM을 거치지 않고 즉시 반환하여 딜레이와 토큰 최소화
+    # 1. 자주 사용하는 시스템 명령은 즉시 반환하여 딜레이/토큰 제로화
     msg_clean = msg.strip().replace(" ", "").lower()
     if any(k in msg_clean for k in ["현황", "상태", "다들뭐해"]):
         try:
             status_report = get_agent_status("전체")
             send_msg(status_report)
-            HISTORY = [] # 대화 컨텍스트 초기화
             return
         except Exception as se:
             print(f"❌ 현황 조회 실패: {se}")
@@ -136,34 +146,31 @@ def process(msg):
     now = datetime.now(timezone(timedelta(hours=9)))
     time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
 
-    # 대화 기록 추가
-    HISTORY.append(types.Content(role="user", parts=[types.Part.from_text(text=msg)]))
-    
-    # 최근 3턴(6개 메시지: 3 user, 3 model)만 유지하여 토큰 사용량 최적화
-    if len(HISTORY) > 6:
-        HISTORY = HISTORY[-6:]
+    # 대화 누적 방지: 이전 대화 컨텍스트(HISTORY) 없이 지금 보낸 단 한 개의 메시지만 독립적으로 전송
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=msg)])]
 
     model_name = "gemini-2.5-flash"
     try:
         try:
-            resp = client.models.generate_content(
-                model=model_name,
-                contents=HISTORY,
+            resp = generate_content_with_retry(
+                model_name=model_name,
+                contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM + time_ctx,
                     tools=TOOLS,
-                    max_output_tokens=120,  # 답변 길이 제한으로 토큰 사용량 최소화
+                    max_output_tokens=120,
                     temperature=0.7
                 )
             )
         except Exception as e:
+            # flash 할당량 초과 시 pro로 전환 시도
             err = str(e)
             if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
                 print("🔄 Gemini Flash 할당량 초과. Gemini Pro로 전환 시도...")
                 model_name = "gemini-2.5-pro"
-                resp = client.models.generate_content(
-                    model=model_name,
-                    contents=HISTORY,
+                resp = generate_content_with_retry(
+                    model_name=model_name,
+                    contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM + time_ctx,
                         tools=TOOLS,
@@ -177,7 +184,7 @@ def process(msg):
         answer = ""
         tool_results = []
 
-        if resp.candidates and resp.candidates[0].content.parts:
+        if resp and resp.candidates and resp.candidates[0].content.parts:
             for part in resp.candidates[0].content.parts:
                 if part.text:
                     answer += part.text
@@ -201,13 +208,13 @@ def process(msg):
                 answer = "\n\n".join([tr["result"] for tr in tool_results])
             else:
                 fn_parts = [types.Part.from_function_response(name=tr["name"], response={"result": tr["result"]}) for tr in tool_results]
-                HISTORY.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
-                HISTORY.append(types.Content(role="user", parts=fn_parts))
+                contents.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
+                contents.append(types.Content(role="user", parts=fn_parts))
 
                 try:
-                    final = client.models.generate_content(
-                        model=model_name,
-                        contents=HISTORY,
+                    final = generate_content_with_retry(
+                        model_name=model_name,
+                        contents=contents,
                         config=types.GenerateContentConfig(
                             system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
                             max_output_tokens=150,
@@ -219,9 +226,9 @@ def process(msg):
                     if ("429" in ferr or "RESOURCE_EXHAUSTED" in ferr or "quota" in ferr.lower()) and model_name == "gemini-2.5-flash":
                         print("🔄 Gemini Flash 할당량 초과 (최종 답변). Gemini Pro로 전환 시도...")
                         model_name = "gemini-2.5-pro"
-                        final = client.models.generate_content(
-                            model=model_name,
-                            contents=HISTORY,
+                        final = generate_content_with_retry(
+                            model_name=model_name,
+                            contents=contents,
                             config=types.GenerateContentConfig(
                                 system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
                                 max_output_tokens=150,
@@ -230,36 +237,22 @@ def process(msg):
                         )
                     else:
                         raise fe
-                answer = final.text.strip() if final.text else "\n\n".join([tr["result"] for tr in tool_results])
+                answer = final.text.strip() if final and final.text else "\n\n".join([tr["result"] for tr in tool_results])
 
         if not answer:
             answer = "네"
 
         send_msg(answer)
 
-        # 모델 응답 기록 추가 및 3턴(6개 메시지) 유지
-        HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=answer)]))
-        if len(HISTORY) > 6:
-            HISTORY = HISTORY[-6:]
-
     except Exception as e:
         print(f"❌ {model_name} 최종 오류: {e}")
         try:
-            # 429나 quota 초과 오류인 경우 유저에게 빠른 상태 공지 후 Ollama 구동
-            err_msg = str(e)
-            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower():
-                send_msg("⚠️ 제미니 API 일일 할당량이 초과되어 로컬 AI로 연산을 시도합니다. (처리에 약 1~2분 정도 소요될 수 있으니 잠시만 기다려 주세요.)")
-            
             print("🔄 Gemini 오류 감지 → 로컬 Ollama 최종 폴백 진행...")
             from _shared.ollama_client import chat as lm_chat
-            prompt_context = "\n".join([f"{'User' if p.role == 'user' else 'Model'}: {p.parts[0].text}" for p in HISTORY])
-            ollama_ans = lm_chat(prompt_context, system=SYSTEM, max_tokens=150, temperature=0.7)
+            ollama_ans = lm_chat(msg, system=SYSTEM, max_tokens=150, temperature=0.7)
             if ollama_ans:
                 answer = ollama_ans.strip()
                 send_msg(answer)
-                HISTORY.append(types.Content(role="model", parts=[types.Part.from_text(text=answer)]))
-                if len(HISTORY) > 6:
-                    HISTORY = HISTORY[-6:]
                 return
         except Exception as oe:
             print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
