@@ -60,57 +60,9 @@ def get_updates(offset):
 
 def get_agent_status(agent: str = "전체"):
     """에이전트 현황. Args: agent ('루나'/'아린'/'데이브'/'전체')"""
-    lines = []
-    hist_path = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
+    from _shared.agent_status import get_status_report
+    return get_status_report(agent, PROJECT_ROOT)
 
-    def read_hist(name):
-        if not os.path.exists(hist_path): return []
-        try:
-            with open(hist_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return [d for d in data if d.get("agent") == name] if isinstance(data, list) else []
-        except: return []
-
-    if "루나" in agent or "전체" in agent:
-        luna = read_hist("루나")
-        if luna:
-            last = luna[-1]
-            meta = last.get("metadata", {})
-            title = meta.get("youtube_title", "?")[:40]
-            vid = meta.get("video_id", "")
-            url = f"https://youtu.be/{vid}" if vid else ""
-            date = last.get("uploaded_at", "")[:16]
-            lines.append(f"🎬 루나: {title}\n   {date} | {url}\n   누적 {len(luna)}개")
-        else:
-            lines.append("🎬 루나: 기록 없음")
-
-    if "아린" in agent or "전체" in agent:
-        arin = read_hist("아린")
-        if arin:
-            last = arin[-1]
-            caption = last.get("metadata", {}).get("caption", "?")[:30]
-            date = last.get("uploaded_at", "")[:16]
-            lines.append(f"📸 아린: {caption}\n   {date} | 누적 {len(arin)}개")
-        else:
-            lines.append("📸 아린: 기록 없음")
-
-    if "데이브" in agent or "전체" in agent:
-        dave_path = os.path.join(PROJECT_ROOT, "reports", "research", "dave_upbit_analysis.md")
-        if os.path.exists(dave_path):
-            try:
-                with open(dave_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                decision = "?"
-                for line in content.split("\n"):
-                    if "최종 결정" in line:
-                        decision = line.split(":")[-1].strip()[:50]
-                        break
-                mtime = datetime.fromtimestamp(os.path.getmtime(dave_path)).strftime("%m/%d %H:%M")
-                lines.append(f"📈 데이브: {decision}\n   {mtime}")
-            except: lines.append("📈 데이브: 오류")
-        else: lines.append("📈 데이브: 분석 없음")
-
-    return "\n\n".join(lines) if lines else "조회 대상 지정 필요"
 
 def list_calendar(days: int = 7):
     """캘린더 일정. Args: days (조회 일수)"""
