@@ -21,16 +21,16 @@ PROJECT_ROOT = find_project_root(_here)
 
 MEM_FILE = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
 
-# 에이전트별 파이프라인 정의
+# 에이전트별 파이프라인 정의 (자동 실행 비활성화 - 사용자 지시 시에만 실행)
 PIPELINES = {
-    "루나_디렉터": {
-        "script": os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py"),
-        "cwd":    os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools"),
-    },
-    "아린_관리자": {
-        "script": os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py"),
-        "cwd":    os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools"),
-    },
+    # "루나_디렉터": {
+    #     "script": os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py"),
+    #     "cwd":    os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools"),
+    # },
+    # "아린_관리자": {
+    #     "script": os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py"),
+    #     "cwd":    os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools"),
+    # },
 }
 
 def _load_env_keys():
