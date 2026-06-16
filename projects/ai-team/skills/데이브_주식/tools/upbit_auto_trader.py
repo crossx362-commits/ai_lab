@@ -4,6 +4,24 @@
 """
 import os
 import sys
+import io
+
+# UTF-8 인코딩 강제 (Windows)
+if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+# 데몬 모드일 때만 중복 실행 방지 (최대한 빨리 체크)
+if "--daemon" in sys.argv:
+    _here = os.path.dirname(os.path.abspath(__file__))
+    AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+    sys.path.insert(0, AI_TEAM_ROOT)
+
+    from _shared.process_lock import acquire_lock
+    if not acquire_lock("dave"):
+        sys.exit(0)
+
+# 나머지 import
 import time
 import datetime
 
@@ -452,41 +470,21 @@ if __name__ == "__main__":
     if "--once" in args:
         run_auto_trade_cycle(sim_mode=sim)
     else:
-        # 중복 실행 방지 (프로세스 실제 존재 여부 재확인)
-        try:
-            import psutil
-            current_pid = os.getpid()
-            for p in psutil.process_iter(['pid', 'name', 'cmdline']):
-                try:
-                    if p.info['pid'] == current_pid:
-                        continue
-                    cmd = p.info['cmdline']
-                    if cmd and any('upbit_auto_trader.py' in str(arg) for arg in cmd):
-                        # psutil 캐시가 오래되었을 수 있으므로 실제 존재 확인
-                        if psutil.pid_exists(p.info['pid']):
-                            try:
-                                proc = psutil.Process(p.info['pid'])
-                                if proc.is_running():
-                                    print(f"⚠️ 이미 다른 upbit_auto_trader.py 데몬 프로세스가 실행 중입니다 (PID: {p.info['pid']}). 실행을 종료합니다.")
-                                    sys.exit(0)
-                            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                                # 프로세스가 실제로는 없거나 접근 불가 - 무시하고 계속
-                                continue
-                except (psutil.AccessDenied, psutil.NoSuchProcess):
-                    continue
-        except Exception as pe:
-            # psutil 오류는 무시하고 계속 진행 (중복 체크 실패해도 실행은 허용)
-            print(f"⚠️ 중복 실행 확인 중 오류 (무시하고 계속): {pe}")
+        # 락은 파일 최상단에서 이미 획득됨
+        from _shared.process_lock import release_lock
 
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
         # 시작 메시지 전송 안 함 (혼란 방지)
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS  # 시작 즉시 첫 보고
 
-        while True:
-            try:
-                run_auto_trade_cycle(sim_mode=sim)
-                send_status_report(sim_mode=sim)
-            except Exception as e:
-                print(f"[Daemon Error] {e}")
+        try:
+            while True:
+                try:
+                    run_auto_trade_cycle(sim_mode=sim)
+                    send_status_report(sim_mode=sim)
+                except Exception as e:
+                    print(f"[Daemon Error] {e}")
 
-            time.sleep(30)
+                time.sleep(30)
+        finally:
+            release_lock("dave")

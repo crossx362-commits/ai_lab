@@ -319,15 +319,23 @@ if __name__ == "__main__":
     # 1회 실행: python crypto_market_intelligence.py
     # 데몬 모드: 5분마다 수집
     if "--daemon" in sys.argv:
+        # 중복 실행 방지
+        from _shared.process_lock import acquire_lock, release_lock
+        if not acquire_lock("hyunbin"):
+            sys.exit(0)
+
         print("🤖 [현빈] 암호화폐 정보 수집 데몬 시작 (5분 주기)")
         # 시작 메시지 전송 안 함 (혼란 방지)
 
-        while True:
-            try:
-                main(notify=True)  # 데몬 모드는 중요 변화만 알림
-            except Exception as e:
-                print(f"[Daemon Error] {e}")
+        try:
+            while True:
+                try:
+                    main(notify=True)  # 데몬 모드는 중요 변화만 알림
+                except Exception as e:
+                    print(f"[Daemon Error] {e}")
 
-            time.sleep(300)  # 5분 대기
+                time.sleep(300)  # 5분 대기
+        finally:
+            release_lock("hyunbin")
     else:
         main(notify=False)  # 단발 실행은 알림 안 함

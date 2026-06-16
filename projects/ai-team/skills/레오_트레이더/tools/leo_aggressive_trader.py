@@ -508,14 +508,26 @@ if __name__ == "__main__":
     if "--once" in args:
         run_leo_cycle(sim_mode=sim)
     else:
+        # 중복 실행 방지 (PID 파일 기반)
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        from _shared.process_lock import acquire_lock, release_lock
+
+        if not acquire_lock("leo"):
+            sys.exit(0)
+
         print("⚡ 레오 공격적 단타 트레이더 시작 (10초 주기)")
         # 시작 메시지 전송 안 함 (혼란 방지)
 
-        while True:
-            try:
-                run_leo_cycle(sim_mode=sim)
-                send_status_report(sim_mode=sim)
-            except Exception as e:
-                print(f"[Leo Daemon Error] {e}")
+        try:
+            while True:
+                try:
+                    run_leo_cycle(sim_mode=sim)
+                    send_status_report(sim_mode=sim)
+                except Exception as e:
+                    print(f"[Leo Daemon Error] {e}")
 
-            time.sleep(10)  # 10초 주기
+                time.sleep(10)  # 10초 주기
+        finally:
+            release_lock("leo")

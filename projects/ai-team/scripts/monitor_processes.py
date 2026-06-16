@@ -69,7 +69,14 @@ if __name__ == "__main__":
     parser.add_argument('--daemon', action='store_true', help='데몬 모드 (조용한 백그라운드 실행)')
     args = parser.parse_args()
 
+    # 중복 실행 방지 (PID 파일 기반)
+    from _shared.process_lock import acquire_lock, release_lock
+    if not acquire_lock("monitor"):
+        sys.exit(0)
+
     try:
         main(daemon=args.daemon)
     except KeyboardInterrupt:
         print("\n\n프로세스 모니터링 중지")
+    finally:
+        release_lock("monitor")
