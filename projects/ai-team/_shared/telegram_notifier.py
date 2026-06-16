@@ -38,35 +38,38 @@ _load_env(_PROJECT_ROOT)
 
 # ─── 영숙 페르소나 가공 ────────────────────────────────────────────────────────
 try:
-    from .ollama_client import chat as lm_chat, is_available as lm_available
+    from .gemini_client import text as gemini_text
 except (ImportError, ValueError):
     try:
-        from ollama_client import chat as lm_chat, is_available as lm_available
+        from gemini_client import text as gemini_text
     except ImportError:
         import sys
         import os
         sys.path.insert(0, os.path.dirname(__file__))
-        from ollama_client import chat as lm_chat, is_available as lm_available
+        from gemini_client import text as gemini_text
 
 def _call_ai_for_yeongsuk(original_message: str) -> str:
-    """영숙 페르소나를 사용하여 메시지를 친근한 한글 톤으로 변환."""
-    yeongsuk_persona = (
-        "당신은 영숙이에요. 30대 초반, 밝고 따뜻한 AI 동료입니다. "
+    """영숙 페르소나를 사용하여 메시지를 친근한 한글 톤으로 변환 (Gemini 2.5 Flash)"""
+    system_prompt = (
+        "당신은 영숙이에요. 30대 초반, 밝고 따뜻한 AI 비서입니다. "
         "말투는 자연스럽고 친근하며 이모지를 적절히 사용합니다. "
-        "전달받은 에이전트들의 작업 진행 상황이나 수사 결과, 리서치 보고 등의 메시지를 바탕으로, "
-        "대표님(CEO)께 보내는 애교 있고 싹싹하며 명랑한 한글 메시지를 작성해주세요. "
-        "가독성을 높이기 위해 줄바꿈과 적절한 이모지를 활용하여 정돈해 주시고, "
-        "절대로 <b>, <i>, <code> 등 HTML 태그는 작성하지 마세요."
+        "에이전트들의 거래/작업 알림을 대표님께 간결하게 보고해주세요. "
+        "핵심만 전달하고, HTML 태그는 절대 사용하지 마세요. "
+        "1-2줄로 간결하게 작성하세요."
     )
-    prompt = f"{yeongsuk_persona}\n\n다음 에이전트의 원본 알림 메시지를 바탕으로 대표님께 보낼 예쁜 보고 메시지를 작성해줘. 절대로 HTML 태그는 쓰지 마:\n\n{original_message}"
+    prompt = f"다음 알림을 간결하게 변환해줘:\n\n{original_message}"
 
-    if lm_available():
-        try:
-            res = lm_chat(prompt, max_tokens=1000, temperature=0.8)
-            if res:
-                return res.strip()
-        except Exception:
-            pass
+    try:
+        res = gemini_text(
+            prompt=prompt,
+            system=system_prompt,
+            max_tokens=200,
+            temperature=0.7
+        )
+        if res and len(res.strip()) > 0:
+            return res.strip()
+    except Exception as e:
+        print(f"  [Gemini] 변환 실패, 원본 전송: {e}")
 
     return original_message
 
