@@ -211,28 +211,56 @@ class CryptoMarketIntelligence:
         return intel
 
     def check_and_notify(self, intel: Dict[str, Any]):
-        """중요한 변화만 텔레그램 알림"""
+        """상태 변화만 텔레그램 알림 (중복 방지)"""
+        import json
+
+        # 이전 상태 로드
+        state_file = os.path.join(os.path.dirname(self.output_path), "hyunbin_alert_state.json")
+        prev_state = {}
+        if os.path.exists(state_file):
+            try:
+                with open(state_file, "r", encoding="utf-8") as f:
+                    prev_state = json.load(f)
+            except Exception:
+                pass
+
+        # 현재 상태
+        fed = intel.get("fed_events", {})
+        fg = intel.get("fear_greed_index", {})
+        kp = intel.get("kimchi_premium", {})
+
+        current_state = {
+            "fed_risk": fed.get("risk_level"),
+            "fg_action": fg.get("action"),
+            "kp_alert": "HIGH" if abs(kp.get("premium_pct", 0)) >= 5 else "NORMAL"
+        }
+
+        # 변화 감지
         alerts = []
 
-        # 연준 위험도 HIGH일 때만
-        fed = intel.get("fed_events", {})
-        if fed.get("risk_level") == "HIGH":
-            alerts.append(f"🏛️ {fed.get('current_status')}")
+        # 연준 위험도 변화 (NORMAL → HIGH 또는 HIGH → NORMAL)
+        if current_state["fed_risk"] != prev_state.get("fed_risk"):
+            if current_state["fed_risk"] == "HIGH":
+                alerts.append(f"🏛️ {fed.get('current_status')}")
 
-        # 공포탐욕 극단 구간
-        fg = intel.get("fear_greed_index", {})
-        if fg.get("action") in ["BUY_SIGNAL", "SELL_SIGNAL"]:
-            alerts.append(f"😱 공포탐욕 {fg['value']} - {fg['signal']}")
+        # 공포탐욕 극단 진입/탈출
+        if current_state["fg_action"] != prev_state.get("fg_action"):
+            if fg.get("action") in ["BUY_SIGNAL", "SELL_SIGNAL"]:
+                alerts.append(f"😱 공포탐욕 {fg['value']} - {fg['signal']}")
 
-        # 김프 ±5% 이상
-        kp = intel.get("kimchi_premium", {})
-        if abs(kp.get("premium_pct", 0)) >= 5:
-            alerts.append(f"🌶️ 김프 {kp['premium_pct']:+.1f}% - {kp['signal']}")
+        # 김프 극단 진입/탈출
+        if current_state["kp_alert"] != prev_state.get("kp_alert"):
+            if current_state["kp_alert"] == "HIGH":
+                alerts.append(f"🌶️ 김프 {kp['premium_pct']:+.1f}% - {kp['signal']}")
 
-        # 중요 알림만 전송
+        # 변화가 있을 때만 알림
         if alerts:
             msg = "🚨 [현빈] 중요 시장 변화\n" + "\n".join(alerts)
             send_telegram_message(msg)
+
+        # 현재 상태 저장
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(current_state, f, ensure_ascii=False, indent=2)
 
     def generate_summary(self, intel: Dict[str, Any]) -> str:
         """수집된 정보를 요약 메시지로 변환"""
