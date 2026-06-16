@@ -656,17 +656,43 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
             report="## 데이브 로컬 폴백\n\nGEMINI_API_KEY가 없어 HOLD로 처리했습니다.",
         )
 
+    # Ollama 우선 시도 (Gemini API 할당량 절약)
+    try:
+        from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+        if lm_available():
+            print(f"[Dave] Calling Ollama for {ticker}...")
+            system = load_system_instruction()
+            full_prompt = f"{system}\n\n{prompt}"
+
+            ollama_result = lm_chat(
+                full_prompt,
+                system="",
+                max_tokens=2000,
+                temperature=0.2,
+                json_mode=True,
+                task="coding"
+            )
+
+            if ollama_result:
+                try:
+                    return TradeDecision.model_validate_json(ollama_result)
+                except Exception as parse_err:
+                    print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → Gemini 폴백")
+    except Exception as ollama_err:
+        print(f"[Dave] Ollama 실패: {ollama_err} → Gemini 폴백")
+
+    # Gemini API 폴백 (Ollama 실패 시에만)
     client = genai.Client(api_key=api_key)
-    
+
     config = types.GenerateContentConfig(
         system_instruction=load_system_instruction(),
         response_mime_type="application/json",
         response_schema=TradeDecision,
         temperature=0.2
     )
-        
+
     print(f"[Dave] Calling Gemini 2.5 Flash for {ticker}...")
-    
+
     max_retries = 5
     response = None
     for attempt in range(max_retries):
@@ -685,11 +711,20 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
                     import time
                     time.sleep(5)
                     continue
+                else:
+                    # 마지막 재시도 실패 시 HOLD로 안전 처리
+                    print(f"[Dave] Gemini API 할당량 초과 → 안전 HOLD")
+                    return TradeDecision(
+                        decision="HOLD",
+                        percentage=0,
+                        reason="Gemini API 할당량 초과로 안전 관망",
+                        report="## 데이브 안전 모드\n\nGemini API 할당량 초과로 HOLD 처리했습니다."
+                    )
             raise e
 
     if not response:
         raise Exception("제미니로부터 응답을 수신하지 못했습니다.")
-        
+
     return TradeDecision.model_validate_json(response.text)
 
 def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
