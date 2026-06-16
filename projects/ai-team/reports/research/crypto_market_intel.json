@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-16T11:10:17.187836",
+  "timestamp": "2026-06-16T12:32:48.010950",
   "fed_events": {
     "next_fomc": "2026-06-17",
     "next_cpi": "2026-07-10",
@@ -15,9 +15,9 @@
     "timestamp": "1781568000"
   },
   "kimchi_premium": {
-    "upbit_price": 99613000.0,
-    "binance_price_krw": 86177741.00000001,
-    "premium_pct": 15.59,
+    "upbit_price": 99135000.0,
+    "binance_price_krw": 85792122.0,
+    "premium_pct": 15.55,
     "signal": "국내 투기 과열 - 고점 경보, 자산 대피",
     "action": "SELL_SIGNAL"
   },

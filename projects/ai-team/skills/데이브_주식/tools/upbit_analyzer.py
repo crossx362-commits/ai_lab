@@ -621,7 +621,7 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
             err = str(e)
             if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
                 if attempt < max_retries - 1:
-                    print(f"[Dave] 구글 API 요청 제한(429) 감지. 5초 뒤 재시도합니다... ({attempt+1}/{max_retries})")
+                    # 재시도 로직만 수행 (텔레그램 노이즈 방지)
                     import time
                     time.sleep(5)
                     continue
