@@ -17,8 +17,6 @@
 |---------|---------|----------|
 | **티모 (디자이너)** | 🔴 HIGH | petnna UI/UX 디자인 개선 시 MasterClass 다크 테마 철학 적용 |
 | **코다리 (개발자)** | 🔴 HIGH | CSS Custom Properties, Component 패턴 코드 구현 |
-| **루나 (디렉터)** | 🟡 MEDIUM | 시네마틱 콘텐츠 레이아웃, 이미지 크롭 전략 |
-| **아린 (관리자)** | 🟡 MEDIUM | SNS 포스팅 시 다크 테마 비주얼 활용 |
 | **예원 (CEO)** | 🟡 MEDIUM | 프리미엄 스트리밍 비즈니스 모델 연구 |
 | 케빈 (인프라) | 🟢 LOW | PWA 다크모드 테마 적용 시 참고 |
 | 경수 (수사관) | ⚪ REFERENCE | - |
@@ -87,15 +85,6 @@ border-radius: 0px;
 2. Component 패턴 코드화 (버튼, 카드, 입력 필드)
 3. TypeScript type definitions 생성
 
-### 루나 (디렉터)
-1. YouTube 썸네일 다크 테마 적용 (Pitch Black 배경)
-2. 타이트 크롭 인물 사진 활용
-3. Full-bleed hero 섹션 레이아웃
-
-### 아린 (관리자)
-1. Instagram 포스팅 시 다크 배경 + 밝은 텍스트 조합
-2. 시네마틱 비주얼 스타일 적용
-
 ### 예원 (CEO)
 1. MasterClass의 celebrity instructor 전략 연구
 2. 프리미엄 구독 모델 비즈니스 케이스 분석
@@ -113,8 +102,6 @@ border-radius: 0px;
 
 - [ ] **티모**: petnna UI 개선 작업 시 "MasterClass 디자인 시스템 기반" 언급
 - [ ] **코다리**: CSS 코드 생성 시 `--color-*` 토큰 사용
-- [ ] **루나**: 콘텐츠 제작 시 "시네마틱 레이아웃" 적용
-- [ ] **아린**: SNS 포스팅 시 "다크 테마" 비주얼
 - [ ] **예원**: 전략 보고서에 MasterClass 비즈니스 모델 인용
 
 ---
@@ -136,7 +123,7 @@ border-radius: 0px;
 MasterClass 디자인 시스템이 공용 스킬로 추가되었습니다.
 
 [티모/코다리] 🔴 HIGH 우선순위로 학습 후 petnna 프로젝트에 적용
-[루나/아린/예원/현빈] 🟡 MEDIUM 우선순위로 각자 분야에 참고
+[예원/현빈] 🟡 MEDIUM 우선순위로 각자 분야에 참고
 
 상세 내용: skills/공용스킬/masterclass_design_system.md
 학습 가이드: skills/공용스킬/AGENT_LEARNING_NOTICE.md
