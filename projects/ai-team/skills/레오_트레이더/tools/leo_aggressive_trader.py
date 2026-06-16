@@ -333,13 +333,63 @@ def run_leo_cycle(sim_mode=False):
 
     best = scanned[0]
 
-    # 최소 진입 점수: 1점 이상
-    if best["score"] >= 1:
+    # SKILL 기준 강화: 최소 진입 점수 2점 + 현빈 정보 종합 판단
+    min_score = 2  # 1점 → 2점으로 상향
+
+    # 현빈 정보 확인
+    hyunbin_intel = load_hyunbin_intel()
+
+    # 현빈 위험 신호 체크
+    if hyunbin_intel:
+        # 김치 프리미엄 극단 구간 (-5% 미만 or +10% 초과) → 진입 금지
+        kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
+        if kp < -5.0:
+            print(f"[Leo] 김치프리미엄 {kp:.1f}% - 극단 하락, 진입 금지")
+            return
+        elif kp > 10.0:
+            print(f"[Leo] 김치프리미엄 {kp:.1f}% - 과도한 투기 과열, 진입 금지")
+            return
+
+        # 공포탐욕 극단 탐욕(80 이상) → 신규 진입 금지
+        fg = hyunbin_intel.get("fear_greed_index", {})
+        if fg.get("value", 50) >= 80:
+            print(f"[Leo] 공포탐욕지수 {fg['value']} - 극탐욕, 신규 진입 금지")
+            return
+
+    # 진입 조건 체크
+    if best["score"] >= min_score:
         ticker = best["ticker"]
 
-        # 투입 금액 계산 (30~50% 랜덤)
-        import random
-        invest_pct = random.uniform(0.3, 0.5)
+        # SKILL 필수 조건 재검증
+        # 1. 거래량 급증 필수 (최소 1.5배)
+        if best.get("volume_ratio", 0) < 1.5:
+            print(f"[Leo] {ticker} - 거래량 부족 ({best.get('volume_ratio', 0):.1f}배), 진입 금지")
+            return
+
+        # 2. 모멘텀 확인 (최소 +0.5% 이상)
+        if best.get("momentum_1h", 0) < 0.5:
+            print(f"[Leo] {ticker} - 모멘텀 부족 ({best.get('momentum_1h', 0):.1f}%), 진입 금지")
+            return
+
+        # 3. 스코어 구성 확인 (단순 김프만으로 점수 받은 경우 제외)
+        reasons = best.get("reasons", [])
+        has_technical = any(
+            keyword in reason
+            for reason in reasons
+            for keyword in ["RSI", "거래량", "모멘텀"]
+        )
+        if not has_technical:
+            print(f"[Leo] {ticker} - 기술적 근거 부족 (김프만 높음), 진입 금지")
+            return
+
+        # 투입 금액 계산 (스코어에 따라 차등)
+        if best["score"] >= 4:
+            invest_pct = 0.5  # 고득점: 50%
+        elif best["score"] >= 3:
+            invest_pct = 0.4  # 중득점: 40%
+        else:
+            invest_pct = 0.3  # 저득점: 30%
+
         buy_amount = leo_budget * invest_pct * 0.995  # 수수료 여유
 
         if buy_amount < 5000:
@@ -347,9 +397,18 @@ def run_leo_cycle(sim_mode=False):
             return
 
         coin = ticker.split('-')[1]
-        msg = f"⚡ [레오] {coin} 진입 {buy_amount/10000:.0f}만원 ({best['score']}점)"
 
-        print(msg)
+        # 진입 근거 로깅
+        print(f"\n[Leo] ✅ 진입 조건 만족!")
+        print(f"  코인: {ticker}")
+        print(f"  스코어: {best['score']}점")
+        print(f"  근거: {', '.join(reasons)}")
+        print(f"  거래량: {best.get('volume_ratio', 0):.1f}배")
+        print(f"  모멘텀: {best.get('momentum_1h', 0):+.1f}%")
+        print(f"  투입: {buy_amount:,.0f}원 ({invest_pct*100:.0f}%)\n")
+
+        # 간결한 텔레그램 메시지
+        msg = f"⚡ [레오] {coin} 진입 {buy_amount/10000:.0f}만원 ({best['score']}점)"
         send_telegram_message(msg)
 
         if not sim_mode:
@@ -360,7 +419,9 @@ def run_leo_cycle(sim_mode=False):
         trades_today.append(time.time())
 
     else:
-        print(f"[Leo] 진입 점수 부족 (최고: {best['ticker']} {best['score']}점)")
+        coin = best['ticker'].split('-')[1]
+        print(f"[Leo] ❌ {coin} 진입 점수 부족 ({best['score']}점 < {min_score}점)")
+        print(f"  근거: {', '.join(best.get('reasons', []))}")
 
 
 def send_status_report(sim_mode=False):
