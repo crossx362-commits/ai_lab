@@ -370,7 +370,13 @@ def run_auto_trade_cycle(sim_mode=False):
                         return
 
                     coin = best_ticker.split('-')[1]
-                    msg = f"💼 [데이브] {coin} 매수 {buy_amount/10000:.0f}만원 ({best['score']}점)"
+                    # 금액 포맷 (1만원 이상/미만 구분)
+                    if buy_amount >= 10000:
+                        amount_str = f"{buy_amount/10000:.1f}만원"
+                    else:
+                        amount_str = f"{buy_amount:,.0f}원"
+
+                    msg = f"💼 [데이브] {coin} 매수 {amount_str} ({best['score']}점)"
                     print(msg)
                     send_telegram_message(msg)
                     if not sim_mode:

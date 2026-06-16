@@ -441,8 +441,13 @@ def run_leo_cycle(sim_mode=False):
         print(f"  모멘텀: {best.get('momentum_1h', 0):+.1f}%")
         print(f"  투입: {buy_amount:,.0f}원 ({invest_pct*100:.0f}%)\n")
 
-        # 간결한 텔레그램 메시지
-        msg = f"⚡ [레오] {coin} 진입 {buy_amount/10000:.0f}만원 ({best['score']}점)"
+        # 금액 포맷 (1만원 이상/미만 구분)
+        if buy_amount >= 10000:
+            amount_str = f"{buy_amount/10000:.1f}만원"
+        else:
+            amount_str = f"{buy_amount:,.0f}원"
+
+        msg = f"⚡ [레오] {coin} 진입 {amount_str} ({best['score']}점)"
         send_telegram_message(msg)
 
         if not sim_mode:
