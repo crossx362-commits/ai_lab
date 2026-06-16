@@ -2,6 +2,40 @@ import os
 import json
 import urllib.request
 
+
+def _call_gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
+    """OpenAI GPT-4o mini 호출."""
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+        )
+        with urllib.request.urlopen(req, timeout=60) as r:
+            res = json.loads(r.read())
+        result = res["choices"][0]["message"]["content"].strip()
+        print(f"  [GPT-4o mini] 텍스트 생성 완료")
+        return result
+    except Exception as e:
+        print(f"  [GPT-4o mini] 실패: {e}")
+        return None
+
+
 def text(
     prompt: str,
     system: str = "",
@@ -11,7 +45,7 @@ def text(
     task: str = "",
     lm_first: bool = False,
 ) -> str | None:
-    """텍스트 생성 (Ollama/Gemini)."""
+    """텍스트 생성. 폴백 체인: Gemini → GPT-4o mini → Ollama"""
     import inspect
     allowed = False
     for frame in inspect.stack():
@@ -24,7 +58,7 @@ def text(
         lm_first = True
 
     if lm_first:
-        # 1. Ollama 시도
+        # Ollama 전용 (API 비용 없는 로컬 에이전트)
         try:
             from _shared.ollama_client import chat as lm_chat, is_available as lm_available
             if lm_available():
@@ -37,67 +71,55 @@ def text(
                     return res.strip()
         except Exception:
             pass
-        # lm_first가 True인 경우 (Ollama 우선), Ollama 실패 시 Gemini API 폴백을 완전히 차단
         return None
 
-    # 2. Gemini API 사용
+    # 1. Gemini API 시도
     api_key = os.getenv("GEMINI_API_KEY", "")
-    if not api_key:
-        # 만약 lm_first가 False여서 여기로 왔는데 API 키가 없으면 Ollama로 폴백
-        if not lm_first:
-            try:
-                from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-                if lm_available():
-                    res = lm_chat(
-                        prompt, system=system,
-                        max_tokens=max_tokens, temperature=temperature,
-                        json_mode=json_mode, task=task,
-                    )
-                    if res:
-                        return res.strip()
-            except Exception:
-                pass
-        return None
-
-    try:
-        parts = [{"text": prompt}]
-        payload = {
-            "contents": [{"parts": parts}],
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": temperature,
+    if api_key:
+        try:
+            parts = [{"text": prompt}]
+            payload = {
+                "contents": [{"parts": parts}],
+                "generationConfig": {
+                    "maxOutputTokens": max_tokens,
+                    "temperature": temperature,
+                }
             }
-        }
-        if system:
-            payload["systemInstruction"] = {
-                "parts": [{"text": system}]
-            }
-        if json_mode:
-            payload["generationConfig"]["responseMimeType"] = "application/json"
+            if system:
+                payload["systemInstruction"] = {"parts": [{"text": system}]}
+            if json_mode:
+                payload["generationConfig"]["responseMimeType"] = "application/json"
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
-        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-        
-        with urllib.request.urlopen(req, timeout=60) as r:
-            res = json.loads(r.read())
-        
-        result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
-        print(f"  [Gemini API] 텍스트 생성 완료")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                res = json.loads(r.read())
+            result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+            print(f"  [Gemini API] 텍스트 생성 완료")
+            return result
+        except Exception as e:
+            print(f"  [Gemini API] 실패: {e} → GPT 폴백")
+
+    # 2. GPT-4o mini 폴백
+    result = _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
+    if result:
         return result
+
+    # 3. Ollama 최종 폴백
+    print(f"  [GPT] 실패 → Ollama 폴백")
+    try:
+        from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+        if lm_available():
+            res = lm_chat(
+                prompt, system=system,
+                max_tokens=max_tokens, temperature=temperature,
+                json_mode=json_mode, task=task,
+            )
+            if res:
+                return res.strip()
     except Exception as e:
-        print(f"  [Gemini API] 실패: {e}")
-        # 실패 시 Ollama로 폴백
-        if not lm_first:
-            try:
-                from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-                if lm_available():
-                    return lm_chat(
-                        prompt, system=system,
-                        max_tokens=max_tokens, temperature=temperature,
-                        json_mode=json_mode, task=task,
-                    )
-            except Exception:
-                pass
+        print(f"  [Ollama] 실패: {e}")
+
     return None
 
 
