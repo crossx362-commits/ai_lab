@@ -255,34 +255,68 @@ def run_leo_cycle(sim_mode=False):
 
                 profit_pct = (current_price - avg_buy_price) / avg_buy_price * 100
 
+                coin = ticker.split('-')[1]
+
+                # SKILL 기반 익절/손절 관리
                 # 익절 체크
                 if profit_pct >= 5.0:
-                    # 전량 익절
-                    coin = ticker.split('-')[1]
-                    print(f"💰 [Leo] {coin} 2차 익절 +{profit_pct:.2f}%")
-                    send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}%")
+                    # 2차 익절: 전량 청산
+                    print(f"💰 [Leo] {coin} 2차 익절 +{profit_pct:.2f}% - 전량 매도")
+                    print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
+                    send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
                     if not sim_mode:
                         upbit_analyzer.execute_sell(ticker, balance)
-                    consecutive_losses = 0
+                    consecutive_losses = 0  # 익절 시 연속 손절 리셋
 
                 elif profit_pct >= 3.0:
-                    # 50% 익절
+                    # 1차 익절: 50% 청산 (위험 헷지)
                     sell_amount = balance * 0.5
-                    coin = ticker.split('-')[1]
-                    print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}%")
+                    remaining = balance * 0.5
+                    print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}% - 50% 매도")
+                    print(f"  청산: {sell_amount:.6f}개 | 유지: {remaining:.6f}개")
                     send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
                     if not sim_mode:
                         upbit_analyzer.execute_sell(ticker, sell_amount)
 
-                # 손절 체크
+                # 손절 체크 (SKILL: -2% 기계적 손절)
                 elif profit_pct <= -2.0:
-                    coin = ticker.split('-')[1]
-                    print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}%")
-                    send_telegram_message(f"🛑 [레오] {coin} {profit_pct:.1f}%")
+                    print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}% - 전량 매도")
+                    print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
+                    send_telegram_message(f"🛑 [레오] {coin} {profit_pct:.1f}% 손절")
                     if not sim_mode:
                         upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses += 1
                     daily_loss_pct += profit_pct
+
+                # 홀딩 중 (익절/손절 범위 밖)
+                else:
+                    # 1시간 이상 보유 중이고 수익 < +1%인 경우 현빈 정보 재확인
+                    if ticker in last_trade_time:
+                        holding_hours = (time.time() - last_trade_time.get(ticker, 0)) / 3600
+                        if holding_hours >= 1.0 and -1.0 < profit_pct < 1.0:
+                            # 현빈 정보로 시장 상황 재확인
+                            hyunbin_intel = load_hyunbin_intel()
+                            if hyunbin_intel:
+                                kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
+                                fg = hyunbin_intel.get("fear_greed_index", {}).get("value", 50)
+
+                                # 극단 상황 변화 시 손절 기준 완화 (-1% 손절)
+                                if kp > 12.0 or fg >= 85:
+                                    print(f"⚠️ [Leo] {coin} 시장 과열 감지 (김프 {kp:.1f}%, 탐욕 {fg}) - 조기 청산 고려")
+                                    if profit_pct >= 0:
+                                        # 소폭 이익이라도 청산
+                                        print(f"  소폭 이익 {profit_pct:+.2f}% 조기 청산")
+                                        send_telegram_message(f"⚠️ [레오] {coin} 과열 조기청산 {profit_pct:+.1f}%")
+                                        if not sim_mode:
+                                            upbit_analyzer.execute_sell(ticker, balance)
+                                    elif profit_pct <= -1.0:
+                                        # -1% 이하 손실 시 조기 손절
+                                        print(f"  과열 구간 조기 손절 {profit_pct:.2f}%")
+                                        send_telegram_message(f"🛑 [레오] {coin} 과열 조기손절 {profit_pct:.1f}%")
+                                        if not sim_mode:
+                                            upbit_analyzer.execute_sell(ticker, balance)
+                                        consecutive_losses += 1
+                                        daily_loss_pct += profit_pct
 
                 leo_positions.append({
                     "ticker": ticker,

@@ -265,10 +265,29 @@ def run_auto_trade_cycle(sim_mode=False):
             
             profit_ratio = (current_price - avg_buy_price) / avg_buy_price
 
-            # 트레일링 스탑: 최고가 대비 -3% 이탈 시 청산 (수익 극대화)
-            trail_key = f"peak_{ticker}"
-            if not hasattr(run_auto_trade_cycle, '_peaks'):
-                run_auto_trade_cycle._peaks = {}
+            # SKILL 기반 포지션 관리
+            coin = ticker.split("-")[1]
+
+            # 현빈 정보로 시장 상황 확인
+            hyunbin_intel = load_hyunbin_intel()
+            emergency_exit = False
+            if hyunbin_intel:
+                kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
+                fg = hyunbin_intel.get("fear_greed_index", {}).get("value", 50)
+
+                # 극단 상황: 김프 +15% 초과 or 공포탐욕 85 이상 → 긴급 청산 고려
+                if (kp > 15.0 or fg >= 85) and profit_ratio >= 0.01:  # +1% 이상 수익
+                    print(f"⚠️ [Dave] {coin} 시장 과열 (김프 {kp:.1f}%, 탐욕 {fg}) - 이익 실현 청산")
+                    send_telegram_message(f"⚠️ [데이브] {coin} 과열 청산 {profit_ratio*100:+.1f}%")
+                    if not sim_mode:
+                        upbit_analyzer.execute_sell(ticker, btc_balance)
+                    emergency_exit = True
+
+            if not emergency_exit:
+                # 트레일링 스탑: 최고가 대비 -3% 이탈 시 청산 (수익 극대화)
+                trail_key = f"peak_{ticker}"
+                if not hasattr(run_auto_trade_cycle, '_peaks'):
+                    run_auto_trade_cycle._peaks = {}
             peak = run_auto_trade_cycle._peaks.get(ticker, avg_buy_price)
             if current_price > peak:
                 run_auto_trade_cycle._peaks[ticker] = current_price
