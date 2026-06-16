@@ -14,8 +14,6 @@ from _shared.gemini_client import text as gemini_text
 _YEWON_DISPATCH_SYSTEM = """당신은 CEO 예원입니다. 사장님 명령을 분석해 최적의 에이전트에게 배분합니다.
 
 # 팀 구성 — 전문 에이전트 (AI_TEAM_ROLES.md 기준)
-- 루나(luna): YouTube 음악·BGM 생성(Lyria 3 Pro), Veo 3.1 비디오 렌더링, SEO 최적화, KST 19:00 예약 업로드
-- 아린(arin): Instagram 트렌드 분석·비주얼 생성·캡션·Alt Text 빌드, 2단계 Graph API 포스팅
 - 영숙(secretary): 텔레그램 최우선 독점 응답, 구글 캘린더 CRUD, 일일 업로드 총괄, 유튜브 추천
 - 경수(cyber): 유튜브·SNS 악플 포렌식, 채널 보안 취약점 스캔, 스프레드시트 법적 아카이빙
 - 코다리(developer): Vite+React+TS+Tailwind v4 기반 petnna 웹 개발, 2시간 주기 에이전트 헬스 체크
@@ -83,8 +81,6 @@ def dispatch_and_execute(ceo_message: str) -> str:
             "로율": ["로율", "법률 검토", "월간 감사", "월간 심층 감사", "주간 법률", "lolaw"],
             "경수": ["경수", "악플 체크", "악플 모니터", "comment_forensics"],
             "현빈": ["현빈", "시장 분석", "딥서치"],
-            "아린": ["아린", "인스타그램 포스팅", "petnna_social_upload"],
-            "루나": ["루나", "뮤직비디오", "음악 영상"],
             "티모": ["티모", "디자인 검토", "UI", "UX"],
             "케빈": ["케빈", "인프라", "모니터링", "vercel"],
             "코다리": ["코다리", "헬스체크", "개발"],
@@ -108,7 +104,7 @@ def dispatch_and_execute(ceo_message: str) -> str:
                 return True
             if msg_keywords:
                 # agent가 다른 이름으로 매핑되지 않은 경우에만 키워드 폴백
-                all_known = ["ceo", "예원", "루나", "luna", "아린", "arin", "현빈", "business", "케빈", "kevin", "로율", "legal", "코다리", "developer", "경수", "cyber", "영숙", "secretary", "티모", "timo", "데이브", "dave", "레오", "leo"]
+                all_known = ["ceo", "예원", "현빈", "business", "케빈", "kevin", "로율", "legal", "코다리", "developer", "경수", "cyber", "영숙", "secretary", "티모", "timo", "데이브", "dave", "레오", "leo"]
                 agent_matched = any(n in agent_lower for n in all_known)
                 if not agent_matched:
                     return any(k in ceo_message for k in msg_keywords)
@@ -266,53 +262,6 @@ def dispatch_and_execute(ceo_message: str) -> str:
 2. "30초 펫 리얼리티" 챌린지 썸네일 브리프 구성 중
 3. 메타데이터(태그, 설명) 최적화로 외부 검색 유입 비중 25% 달성
 """
-
-        elif _match(agent, ["루나", "luna"], ["유튜브", "뮤직비디오", "음악 영상", "루나", "숏츠", "shorts"]):
-            import subprocess
-            if "숏츠" in ceo_message or "shorts" in ceo_message.lower():
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "shorts_pipeline.py")
-                pipe_name = "루나_디렉터 숏츠 파이프라인"
-            else:
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "music_video_pipeline.py")
-                pipe_name = "루나_디렉터 뮤직비디오 파이프라인"
-
-            if os.path.exists(script):
-                result = subprocess.run(
-                    [sys.executable, script],
-                    cwd=os.path.dirname(script),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-                if result.returncode == 0:
-                    return f"✅ {pipe_name} 실행 완료"
-                else:
-                    error_msg = result.stderr[:500] if result.stderr else result.stdout[:500] or "알 수 없는 오류"
-                    return f"❌ {pipe_name} 실행 실패\n\n에러: {error_msg}"
-            return f"❌ {pipe_name} 스크립트를 찾을 수 없습니다."
-
-        elif _match(agent, ["아린", "arin"], ["인스타그램 포스팅", "인스타 올려", "펫과나 소셜 피드", "petnna_social_upload", "아린"]):
-            import subprocess
-            if "petnna_social_upload.py" in ceo_message or "펫과나" in ceo_message:
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts", "petnna_social_upload.py")
-            else:
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "아린_관리자", "tools", "auto_pipeline.py")
-            if os.path.exists(script):
-                result = subprocess.run(
-                    [sys.executable, script],
-                    cwd=os.path.dirname(script),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
-                if result.returncode == 0:
-                    return f"✅ 아린_관리자 파이프라인 실행 완료\n\n{result.stdout[:500]}"
-                else:
-                    error_msg = result.stderr[:500] if result.stderr else "알 수 없는 오류"
-                    return f"❌ 아린 파이프라인 실행 실패\n\n에러: {error_msg}"
-            return f"❌ 아린 파이프라인 스크립트를 찾을 수 없습니다."
 
         elif _match(agent, ["코다리", "kodari", "developer"], ["코딩", "개발", "웹 구축", "헬스체크", "health_check"]):
             if "헬스체크" in ceo_message or "health_check" in ceo_message or "health" in ceo_message:

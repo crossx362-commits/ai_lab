@@ -40,46 +40,21 @@
       ]
     },
     "INSTAGRAM_ACCOUNT_ID": {
-      "usage_count": 3,
+      "usage_count": 1,
       "used_by_agents": [
-        "경수_수사관",
-        "아린_관리자"
+        "경수_수사관"
       ],
       "files": [
-        "projects\\ai-team\\skills\\경수_수사관\\tools\\comment_forensics.py",
-        "projects\\ai-team\\skills\\아린_관리자\\tools\\auto_pipeline.py",
-        "projects\\ai-team\\skills\\아린_관리자\\tools\\uploader.py"
+        "projects\\ai-team\\skills\\경수_수사관\\tools\\comment_forensics.py"
       ]
     },
     "INSTAGRAM_ACCESS_TOKEN": {
-      "usage_count": 2,
-      "used_by_agents": [
-        "경수_수사관",
-        "아린_관리자"
-      ],
-      "files": [
-        "projects\\ai-team\\skills\\경수_수사관\\tools\\comment_forensics.py",
-        "projects\\ai-team\\skills\\아린_관리자\\tools\\uploader.py"
-      ]
-    },
-    "GEMINI_API_KEY": {
-      "usage_count": 3,
-      "used_by_agents": [
-        "루나_디렉터"
-      ],
-      "files": [
-        "projects\\ai-team\\skills\\루나_디렉터\\tools\\lyria_music_gen.py",
-        "projects\\ai-team\\skills\\루나_디렉터\\tools\\veo_video_maker.py",
-        "projects\\ai-team\\skills\\루나_디렉터\\tools\\src\\lyria_music_generator.py"
-      ]
-    },
-    "GEMINI_API_KEYS": {
       "usage_count": 1,
       "used_by_agents": [
-        "루나_디렉터"
+        "경수_수사관"
       ],
       "files": [
-        "projects\\ai-team\\skills\\루나_디렉터\\tools\\lyria_music_gen.py"
+        "projects\\ai-team\\skills\\경수_수사관\\tools\\comment_forensics.py"
       ]
     },
     "VERCEL_TOKEN": {
@@ -129,14 +104,6 @@
       "SUPPRESS_TELEGRAM"
     ],
     "경수_수사관": [
-      "INSTAGRAM_ACCESS_TOKEN",
-      "INSTAGRAM_ACCOUNT_ID"
-    ],
-    "루나_디렉터": [
-      "GEMINI_API_KEY",
-      "GEMINI_API_KEYS"
-    ],
-    "아린_관리자": [
       "INSTAGRAM_ACCESS_TOKEN",
       "INSTAGRAM_ACCOUNT_ID"
     ],

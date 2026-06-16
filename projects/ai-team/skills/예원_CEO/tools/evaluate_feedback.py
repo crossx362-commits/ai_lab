@@ -14,7 +14,7 @@ PROJECT_ROOT = find_project_root(_here)
 MEM_FILE   = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
 REWARD_DIR = os.path.join(PROJECT_ROOT, "reports", "learning", "reward")
 PUNISH_DIR = os.path.join(PROJECT_ROOT, "reports", "learning", "punishment")
-TOKEN_FILE = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "루나_디렉터", "tools", "youtube_token.pickle")
+TOKEN_FILE = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools", "youtube_token.pickle")
 
 VIEWS_THRESHOLD = 10_000
 

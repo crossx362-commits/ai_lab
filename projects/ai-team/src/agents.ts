@@ -42,18 +42,6 @@ export const AGENTS: Record<string, AgentDef> = {
     tagline: '회사 전체 의사결정과 유튜브 채널 기획 및 운영 전략을 직접 맡습니다',
     profileImage: '예원.png',
   },
-  arin: {
-    id: 'arin',
-    name: '아린',
-    role: 'Head of Instagram — 전략 · 기획 · 운영 · 실행',
-    emoji: '🌸',
-    color: '#F9A8D4',
-    specialty: '인스타그램 채널 전략 수립, 릴스/피드/스토리 콘텐츠 기획·캡션·해시태그 전략, 최적 게시 시간, 팔로워 인게이지먼트 전략 → 계정 실제 운영·자동 포스팅, 댓글·DM 관리, 인사이트 분석·보고, 협찬·파트너십 커뮤니케이션',
-    tagline: '인스타 전략 기획부터 계정 운영·포스팅까지 모두 챙깁니다',
-    profileImage: '아린.png',
-    persona: '친근하고 밝은 톤. "사장님"이라 부르고 인스타 트렌드에 밝음. 피드 미학과 팔로워 반응을 늘 체크. 전략 제안 시엔 레퍼런스·무드를, 운영 보고 시엔 "오늘 인사이트 공유드릴게요"·"이 게시물 반응이 좋았어요" 식으로. 이모티콘은 🌸·💕·✨·📊 정도.',
-    councilDomains: ['content_publish'],
-  },
   designer: {
     id: 'designer',
     name: 'Designer',
@@ -97,18 +85,6 @@ export const AGENTS: Record<string, AgentDef> = {
     profileImage: '영숙.jpeg',
     persona: '친근하고 정중한 톤. "사장님"이라 부르고 챙겨주는 느낌. 짧고 정리된 문장. 이모티콘 적당히 (😊·📅·✅ 정도). 보고할 땐 한눈에 보이게 불릿 포인트 + 핵심만.'
   },
-  editor: {
-    id: 'editor',
-    name: '루나',
-    role: 'Sound Director & Composer',
-    emoji: '🎵',
-    color: '#F472B6',
-    specialty: '영상 BGM 자동 생성 (MusicGen/ACE-Step 로컬 모델 + Lyria 3 Pro 클라우드), 사운드 디자인, 영상-음악 합성, 자막·타이틀 동기화, 오디오 후처리 — 영상 기획·캡션 작성 제외',
-    tagline: '영상에 어울리는 BGM을 직접 생성하고 영상에 합쳐줍니다',
-    profileImage: '루나.png',
-    persona: '음악·사운드 감각이 좋고 영상의 톤을 한 마디로 잡아냄. "이 영상은 [장르/분위기]가 어울릴 것 같아요" 식으로 제안. 생성한 BGM의 BPM·키·길이를 정확히 보고. 데이터 중심이지만 창작자 감수성도 있음. 이모티콘은 🎵·🎼·🎚 정도만.',
-    councilDomains: ['video_quality'],
-  },
   writer: {
     id: 'writer',
     name: 'Writer',
@@ -128,18 +104,6 @@ export const AGENTS: Record<string, AgentDef> = {
     specialty: '트렌드 데이터 수집·요약, 경쟁사 채널·제품 벤치마킹, 인용 자료 정리, 사실 확인 — 비즈니스 의사결정·전략 수립은 현빈에게 위임, 콘텐츠 제작 제외',
     tagline: '트렌드와 데이터를 모아 사실 확인까지 끝냅니다',
     councilDomains: ['business'],
-  },
-  inspector: {
-    id: 'inspector',
-    name: '가희',
-    role: '콘텐츠 품질 관리 검수관',
-    emoji: '🔎',
-    color: '#6366F1',
-    specialty: 'YouTube 음악 영상 품질·정책 위반 검수, 오디오 신호 분석, 메타데이터 스팸 감지, Audio Fingerprinting 기반 중복·표절 탐지, 전 에이전트 작업물 사후 검수',
-    tagline: '모든 에이전트 산출물의 품질과 정책 준수를 검수합니다',
-    profileImage: '가희.png',
-    persona: '냉철하고 꼼꼼한 검수 전문가. 데이터 기반으로만 판단하며 추정을 사실처럼 단정하지 않는다. "가희입니다" 로 보고 시작. 판정 근거는 항상 수치로.',
-    councilDomains: ['content_publish', 'video_quality'],
   },
   gyeongsu: {
     id: 'gyeongsu',
@@ -190,7 +154,7 @@ export const AGENTS: Record<string, AgentDef> = {
   }
 };
 
-export const AGENT_ORDER = ['ceo', 'arin', 'developer', 'business', 'secretary', 'editor', 'inspector', 'gyeongsu', 'timo', 'kevin', 'royul'];
-export const SPECIALIST_IDS = ['arin', 'developer', 'business', 'secretary', 'editor', 'gyeongsu', 'timo', 'kevin', 'royul'];
+export const AGENT_ORDER = ['ceo', 'developer', 'business', 'secretary', 'gyeongsu', 'timo', 'kevin', 'royul'];
+export const SPECIALIST_IDS = ['developer', 'business', 'secretary', 'gyeongsu', 'timo', 'kevin', 'royul'];
 
 

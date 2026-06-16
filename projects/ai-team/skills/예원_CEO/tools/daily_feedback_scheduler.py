@@ -126,13 +126,6 @@ def generate_daily_report() -> str:
 
     success_rate = (len(rewards) / total * 100) if total > 0 else 0
 
-    # 플랫폼별 집계
-    youtube_rewards = [r for r in rewards if r.get("platform") == "youtube"]
-    instagram_rewards = [r for r in rewards if r.get("platform") == "instagram"]
-
-    # 상위 콘텐츠
-    top_youtube = sorted(youtube_rewards, key=lambda x: x.get("views", 0), reverse=True)[:3]
-
     # 보고서 생성
     report = f"""📊 **예원 CEO — 일일 콘텐츠 성과 보고**
 날짜: {datetime.date.today().isoformat()}
@@ -145,19 +138,6 @@ def generate_daily_report() -> str:
 • ❌ 실패: {len(punishments)}개 ({100 - success_rate:.0f}%)
 
 ━━━━━━━━━━━━━━━━━━━━
-
-📺 **YouTube (루나)**
-• 성공: {len(youtube_rewards)}개
-"""
-
-    if top_youtube:
-        report += "• 상위 콘텐츠:\n"
-        for i, item in enumerate(top_youtube, 1):
-            report += f"  {i}. {item['title'][:30]}... ({item['views']:,} 조회수)\n"
-
-    report += f"""
-📸 **Instagram (아린)**
-• 포스팅: {len(instagram_rewards)}개
 """
 
     if punishments:
