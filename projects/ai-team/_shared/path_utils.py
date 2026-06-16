@@ -96,15 +96,15 @@ def get_agent_output_dir(agent_name: str, create: bool = True) -> Path:
     에이전트별 출력 디렉토리를 반환합니다.
 
     Args:
-        agent_name: 에이전트 이름 (예: '루나', 'luna')
+        agent_name: 에이전트 이름 (예: '코다리', 'kodari')
         create: 디렉토리가 없으면 생성 (기본값: True)
 
     Returns:
         Path: output/{agent_name} 경로
 
     Example:
-        >>> output_dir = get_agent_output_dir('루나')
-        >>> video_path = output_dir / 'final_video.mp4'
+        >>> output_dir = get_agent_output_dir('코다리')
+        >>> result_path = output_dir / 'result.json'
     """
     project_root = get_project_root()
     output_dir = project_root / 'output' / agent_name.lower()

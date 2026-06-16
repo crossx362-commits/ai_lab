@@ -8,8 +8,6 @@
 | --- | --- | --- |
 | `예원_CEO` | 중앙 디스패처, 작업 분배 | `tools/yewon_dispatcher.py` |
 | `영숙_비서` | 텔레그램/일정/보고 | `tools/telegram_receiver.py`, `tools/reports_manager.py` |
-| `루나_디렉터` | YouTube 음악/영상 | `tools/music_video_pipeline.py`, `tools/shorts_pipeline.py` |
-| `아린_관리자` | Instagram 콘텐츠 | `tools/auto_pipeline.py`, `tools/uploader.py` |
 | `경수_수사관` | 댓글/보안/검수 | `tools/comment_forensics.py` |
 | `코다리_개발자` | 개발/헬스체크 | `tools/agent_health_check.py`, `tools/ollama_health_check.py` |
 | `티모_디자이너` | UI/UX 리뷰 | `tools/petnna_reviewer.py` |

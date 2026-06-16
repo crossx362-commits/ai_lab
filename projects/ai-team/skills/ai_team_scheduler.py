@@ -22,7 +22,6 @@ from _shared.telegram_notifier import send_telegram_message
 
 
 # 에이전트 실행 함수 매핑
-# 루나·아린: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
 AGENT_EXECUTORS = {}
 
 
@@ -41,66 +40,8 @@ def execute_agent_task(agent_name: str, task: dict) -> tuple[bool, str]:
     print(f"{'='*60}")
 
     try:
-        if agent_name == "루나":
-            # 루나 뮤직비디오 파이프라인 실행
-            import subprocess
-            pipeline_path = os.path.join(
-                _ai_team_root, "skills", "루나_디렉터", "tools", "music_video_pipeline.py"
-            )
+        return False, f"지원하지 않는 에이전트: {agent_name}"
 
-            print(f"  파이프라인 실행: {pipeline_path}")
-            result = subprocess.run(
-                [sys.executable, pipeline_path],
-                capture_output=True,
-                text=True,
-                timeout=3600  # 1시간 제한
-            )
-
-            if result.returncode == 0:
-                # 성공 - 업로드된 영상 URL 추출
-                output = result.stdout
-                video_url = None
-                for line in output.split('\n'):
-                    if 'youtu.be' in line or 'youtube.com' in line:
-                        import re
-                        match = re.search(r'https://youtu\.be/([a-zA-Z0-9_-]+)', line)
-                        if match:
-                            video_url = f"https://youtu.be/{match.group(1)}"
-                            break
-
-                result_msg = f"뮤직비디오 생성 완료"
-                if video_url:
-                    result_msg += f"\nURL: {video_url}"
-
-                return True, result_msg
-            else:
-                return False, f"파이프라인 실패: {result.stderr[:500]}"
-
-        elif agent_name == "아린":
-            # 아린 인스타그램 파이프라인 실행
-            import subprocess
-            pipeline_path = os.path.join(
-                _ai_team_root, "skills", "아린_관리자", "tools", "auto_pipeline.py"
-            )
-
-            print(f"  파이프라인 실행: {pipeline_path}")
-            result = subprocess.run(
-                [sys.executable, pipeline_path],
-                capture_output=True,
-                text=True,
-                timeout=1800  # 30분 제한
-            )
-
-            if result.returncode == 0:
-                return True, "인스타그램 포스팅 완료"
-            else:
-                return False, f"파이프라인 실패: {result.stderr[:500]}"
-
-        else:
-            return False, f"지원하지 않는 에이전트: {agent_name}"
-
-    except subprocess.TimeoutExpired:
-        return False, "작업 시간 초과 (timeout)"
     except Exception as e:
         return False, f"실행 중 오류: {str(e)[:500]}"
 

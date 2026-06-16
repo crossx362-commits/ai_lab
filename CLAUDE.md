@@ -71,8 +71,6 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 |-------|------|-----------|
 | 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `upload_manager.py` |
 | 영숙 (Youngsuk) | Secretary — Telegram bot & calendar | `telegram_receiver.py`, `calendar_manager.py` |
-| 루나 (Luna) | Director — YouTube music video production | `youtube_research.py`, `video_automation.py` |
-| 아린 (Arin) | Manager — Instagram content uploader | `upload_insta_post.py`, `auto_pipeline.py` |
 | 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
 | 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
 | 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |
@@ -225,7 +223,7 @@ The bot uses Gemini Function Calling to map natural language to tools:
 
 - **"현황 보고해줘" / "다들 뭐해?"** → `get_agent_status()` (shows all 13 agents)
 - **"일정 알려줘" / "캘린더 확인해봐"** → `list_calendar()`
-- **"루나 영상 만들어" / "인스타 올려"** → `dispatch()` → CEO orchestration
+- **"에이전트 작업 요청"** → `dispatch()` → CEO orchestration
 
 ### Bot Architecture
 

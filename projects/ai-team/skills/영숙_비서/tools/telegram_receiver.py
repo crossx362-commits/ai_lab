@@ -286,6 +286,77 @@ def process(msg):
             print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
         send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
+def _watch_traders():
+    """데이브/레오 프로세스 감시 및 자동 재시작 (60초 주기)"""
+    import subprocess, threading
+
+    TRADERS = {
+        "dave": {
+            "script": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
+            "args": ["--daemon"],
+            "keyword": "upbit_auto_trader",
+            "lock": "/tmp/ailab_locks/dave.lock",
+        },
+        "leo": {
+            "script": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
+            "args": ["--daemon", "--live"],
+            "keyword": "leo_aggressive_trader",
+            "lock": "/tmp/ailab_locks/leo.lock",
+        },
+    }
+
+    def is_running(keyword):
+        try:
+            return subprocess.run(["pgrep", "-f", keyword], capture_output=True).returncode == 0
+        except Exception:
+            return False
+
+    def restart(name, info):
+        try:
+            lock = info["lock"]
+            if os.path.exists(lock):
+                os.remove(lock)
+            root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
+            script = os.path.join(root, info["script"])
+            subprocess.Popen([sys.executable, "-u", script] + info["args"], cwd=root)
+            send_msg(f"🔄 [영숙] {name} 종료 감지 → 자동 재시작")
+        except Exception as e:
+            send_msg(f"⚠️ [영숙] {name} 재시작 실패: {e}")
+
+    def loop():
+        time.sleep(30)
+        while True:
+            try:
+                for name, info in TRADERS.items():
+                    if not is_running(info["keyword"]):
+                        restart(name, info)
+            except Exception as e:
+                print(f"[trader_watch] {e}")
+            time.sleep(60)
+
+    threading.Thread(target=loop, daemon=True, name="trader_watch").start()
+    print("✅ 데이브/레오 감시 스레드 시작")
+
+
+def _watch_cleanup():
+    """중복 프로세스 정리 자동화 (10분 주기)"""
+    import subprocess, threading
+
+    def loop():
+        time.sleep(60)
+        while True:
+            try:
+                root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
+                script = os.path.join(root, "projects", "ai-team", "scripts", "cleanup_duplicate_processes.py")
+                subprocess.run([sys.executable, script], capture_output=True, timeout=30, cwd=root)
+            except Exception as e:
+                print(f"[cleanup_watch] {e}")
+            time.sleep(600)
+
+    threading.Thread(target=loop, daemon=True, name="cleanup_watch").start()
+    print("✅ 중복 프로세스 정리 스레드 시작")
+
+
 def main():
     # 중복 실행 방지
     try:
@@ -316,7 +387,9 @@ def main():
         return
 
     tg_api("deleteWebhook", {"drop_pending_updates": True})
-    send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/루나 영상/일정")
+    send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/일정")
+    _watch_traders()
+    _watch_cleanup()
 
     offset = 0
     while True:

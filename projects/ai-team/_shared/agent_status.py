@@ -78,33 +78,7 @@ def get_status_report(agent: str, project_root: str) -> str:
             info += f" | {learning_info.split(':', 1)[1].strip()}"
         lines.append(f"💼 <b>영숙 (비서)</b>: {info}")
 
-    # 3. 루나 (YouTube)
-    if "루나" in agent or "전체" in agent:
-        luna = read_history("루나")
-        if luna:
-            last = luna[-1]
-            meta = last.get("metadata", {})
-            title = meta.get("youtube_title", "?")[:40]
-            vid = meta.get("video_id", "")
-            url = f"https://youtu.be/{vid}" if vid else ""
-            date = last.get("uploaded_at", "")[:16]
-            lines.append(f"🎬 <b>루나 (디렉터)</b>: {title}\n   {date} | {url}\n   누적 {len(luna)}개")
-        else:
-            lines.append("🎬 <b>루나 (디렉터)</b>: 업로드 기록 없음")
-
-    # 4. 아린 (Instagram)
-    if "아린" in agent or "전체" in agent:
-        arin = read_history("아린")
-        if arin:
-            last = arin[-1]
-            meta = last.get("metadata", {})
-            caption = meta.get("caption", "?")[:30]
-            date = last.get("uploaded_at", "")[:16]
-            lines.append(f"📸 <b>아린 (관리자)</b>: {caption}\n   {date} | 누적 {len(arin)}개")
-        else:
-            lines.append("📸 <b>아린 (관리자)</b>: 포스팅 기록 없음")
-
-    # 5. 코다리 (개발자)
+    # 3. 코다리 (개발자)
     if "코다리" in agent or "개발" in agent or "전체" in agent:
         prog_path = os.path.join(project_root, "projects", "ai-team", "docs", "progress.md")
         if os.path.exists(prog_path):
@@ -239,5 +213,5 @@ def get_status_report(agent: str, project_root: str) -> str:
         else:
             lines.append("📈 <b>데이브 (주식/코인)</b>: 분석 기록 없음")
 
-    return "\n\n".join(lines) if lines else "조회할 에이전트를 지정하세요 (예원/영숙/루나/아린/코다리/케빈/티모/현빈/경수/로율/데이브/전체)"
+    return "\n\n".join(lines) if lines else "조회할 에이전트를 지정하세요 (예원/영숙/코다리/케빈/티모/현빈/경수/로율/데이브/전체)"
 

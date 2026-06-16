@@ -2,7 +2,6 @@
 image_uploader.py — 공통 이미지 업로드 모듈
 
 ImgBB(우선) → Catbox.moe(폴백) → Pollinations.ai(URL 직접)
-아린(fix_missing_images, improve_posts)에서 각자 구현하던 코드 병합.
 """
 import os
 import json

@@ -6,7 +6,7 @@ _shared/telegram_notifier.py — 전체 에이전트 공용 텔레그램 알림 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '_shared'))
     from telegram_notifier import send_telegram_message
 
-    send_telegram_message("✅ 루나: 업로드 완료")
+    send_telegram_message("✅ 작업 완료")
 """
 import os
 import json

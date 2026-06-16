@@ -145,7 +145,6 @@ def execute_agent_pipeline(agent_name: str, task_info: dict) -> tuple[bool, str]
     print(f"  [{agent_name}] {task_info['action']} 실행")
     print(f"{'='*60}")
 
-    # 루나·아린: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
     pipeline_map = {}
 
     pipeline_path = pipeline_map.get(agent_name)
@@ -260,7 +259,7 @@ def run_daily_automation():
     manager = NotionReportManager()
     today = datetime.datetime.now().strftime('%Y-%m-%d')
 
-    # 루나/아린 파이프라인 결과 기록
+    # 파이프라인 결과 기록
     for result in results:
         try:
             manager.create_report_entry(

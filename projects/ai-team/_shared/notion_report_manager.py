@@ -497,9 +497,9 @@ if __name__ == "__main__":
     if manager.token:
         print("=== Notion 연동 테스트 ===\n")
 
-        # 루나의 대기 작업 확인
-        tasks = manager.get_pending_tasks("루나")
-        print(f"루나 대기 작업: {len(tasks)}개")
+        # 예원의 대기 작업 확인
+        tasks = manager.get_pending_tasks("예원")
+        print(f"예원 대기 작업: {len(tasks)}개")
 
         for task in tasks[:3]:
             print(f"\n- {task.get('title', 'N/A')}")

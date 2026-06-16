@@ -47,27 +47,6 @@ AGENTS = {
         "optional_env": [],
         "files": ["SKILL.md", "tools/telegram_receiver.py", "tools/reports_manager.py"],
     },
-    "루나_디렉터": {
-        "path": "projects/ai-team/skills/루나_디렉터",
-        "required_env": ["GEMINI_API_KEY", "YOUTUBE_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
-        "optional_env": ["GEMINI_MUSIC_KEY", "OLLAMA_URL"],
-        "files": ["SKILL.md", "tools/music_video_pipeline.py", "tools/shorts_pipeline.py"],
-        "workspace_files": ["client_secret.json", "projects/ai-team/skills/루나_디렉터/tools/youtube_token.pickle"],
-    },
-    "아린_관리자": {
-        "path": "projects/ai-team/skills/아린_관리자",
-        "required_env": [
-            "GEMINI_API_KEY",
-            "INSTAGRAM_APP_ID",
-            "INSTAGRAM_APP_SECRET",
-            "INSTAGRAM_ACCESS_TOKEN",
-            "INSTAGRAM_ACCOUNT_ID",
-            "TELEGRAM_BOT_TOKEN",
-            "TELEGRAM_CHAT_ID",
-        ],
-        "optional_env": ["OLLAMA_URL"],
-        "files": ["SKILL.md", "tools/auto_pipeline.py", "tools/uploader.py"],
-    },
     "경수_수사관": {
         "path": "projects/ai-team/skills/경수_수사관",
         "required_env": ["GEMINI_API_KEY", "YOUTUBE_API_KEY"],

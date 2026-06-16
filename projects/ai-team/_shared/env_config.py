@@ -54,14 +54,14 @@ ENV_CONFIG = {
     "GEMINI_API_KEY": {
         "required": True,
         "description": "Google Gemini API 키",
-        "agents": ["루나_디렉터", "아린_관리자", "영숙_비서", "현빈_전략가", "로율_변호사"],
+        "agents": ["영숙_비서", "현빈_전략가", "로율_변호사"],
         "setup_url": "https://aistudio.google.com/app/apikey",
         "validation": lambda x: x and (x.startswith("AI") or x.startswith("AQ")),
     },
     "YOUTUBE_API_KEY": {
-        "required": True,
+        "required": False,
         "description": "YouTube Data API v3 키",
-        "agents": ["루나_디렉터"],
+        "agents": ["경수_수사관"],
         "setup_url": "https://console.cloud.google.com/apis/credentials",
         "validation": lambda x: x and x.startswith("AI"),
     },
@@ -70,27 +70,27 @@ ENV_CONFIG = {
     "INSTAGRAM_APP_ID": {
         "required": True,
         "description": "Facebook App ID",
-        "agents": ["아린_관리자", "경수_수사관", "코다리_개발자"],
+        "agents": ["경수_수사관", "코다리_개발자"],
         "setup_url": "https://developers.facebook.com/apps/",
         "validation": lambda x: x and x.isdigit(),
     },
     "INSTAGRAM_APP_SECRET": {
         "required": True,
         "description": "Facebook App Secret",
-        "agents": ["아린_관리자", "코다리_개발자"],
+        "agents": ["코다리_개발자"],
         "setup_url": "https://developers.facebook.com/apps/",
     },
     "INSTAGRAM_ACCESS_TOKEN": {
         "required": True,
         "description": "Instagram 장기 액세스 토큰",
-        "agents": ["아린_관리자", "경수_수사관", "코다리_개발자"],
+        "agents": ["경수_수사관", "코다리_개발자"],
         "setup_url": "docs/SETUP_INSTAGRAM.md",
         "validation": lambda x: x and len(x) > 50,
     },
     "INSTAGRAM_ACCOUNT_ID": {
         "required": True,
         "description": "Instagram Business 계정 ID",
-        "agents": ["아린_관리자", "경수_수사관"],
+        "agents": ["경수_수사관"],
         "setup_url": "docs/SETUP_INSTAGRAM.md",
         "validation": lambda x: x and x.isdigit(),
     },
@@ -138,9 +138,6 @@ ENV_CONFIG = {
 
 # 에이전트별 필수 환경변수 매핑
 AGENT_REQUIRED_VARS = {
-    "루나_디렉터": ["GEMINI_API_KEY", "YOUTUBE_API_KEY"],
-    "아린_관리자": ["GEMINI_API_KEY", "INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET",
-                     "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID"],
     "영숙_비서": ["GEMINI_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
     "현빈_전략가": ["GEMINI_API_KEY"],
     "코다리_개발자": ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",

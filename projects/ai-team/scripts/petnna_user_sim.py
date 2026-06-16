@@ -27,7 +27,6 @@ SB_ANON = os.getenv("SUPABASE_ANON_KEY", "")
 # ── 에이전트 유저 페르소나 ────────────────────────────────────────────────────
 AGENT_USERS = [
     {"name": "레오",    "email": "leo@petna.co.kr",     "pet_name": "레오짱",  "pet_type": "dog",    "emoji": "🎬", "style": "활발하고 마케팅적"},
-    {"name": "아린",    "email": "arin@petna.co.kr",    "pet_name": "아린이",  "pet_type": "cat",    "emoji": "📸", "style": "감성적이고 비주얼 중시"},
     {"name": "현빈",    "email": "hyunbin@petna.co.kr", "pet_name": "현빈이",  "pet_type": "dog",    "emoji": "💡", "style": "분석적이고 전략적"},
     {"name": "티모",    "email": "timo@petna.co.kr",    "pet_name": "티모냥",  "pet_type": "cat",    "emoji": "🎨", "style": "감각적이고 디자인 중시"},
     {"name": "경수",    "email": "kyungsoo@petna.co.kr","pet_name": "경수당",  "pet_type": "dog",    "emoji": "🛡️", "style": "신중하고 안전 중시"},

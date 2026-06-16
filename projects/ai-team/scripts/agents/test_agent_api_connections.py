@@ -73,7 +73,7 @@ def test_telegram():
 def test_youtube_oauth():
     """YouTube OAuth 연결 테스트"""
     try:
-        sys.path.insert(0, "projects/ai-team/skills/루나_디렉터/tools")
+        sys.path.insert(0, "projects/ai-team/skills/경수_수사관/tools")
         from src.youtube_uploader import YouTubeUploader
 
         uploader = YouTubeUploader()
@@ -147,8 +147,8 @@ def main():
         ("Gemini API", test_gemini_api, "필수 - 모든 에이전트"),
         ("Ollama", test_ollama, "선택 - 로컬 LLM"),
         ("Telegram Bot", test_telegram, "필수 - 알림"),
-        ("YouTube OAuth", test_youtube_oauth, "필수 - 루나"),
-        ("Instagram API", test_instagram, "필수 - 아린"),
+        ("YouTube OAuth", test_youtube_oauth, "선택 - 경수"),
+        ("Instagram API", test_instagram, "선택 - 경수"),
         ("Notion API", test_notion, "필수 - 영숙"),
     ]
 

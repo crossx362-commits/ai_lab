@@ -121,17 +121,7 @@ ai_lab/
 
 ---
 
-### 7. 루나 (Luna) / 아린 (Arin) — 콘텐츠 제작 (수동 전용)
-**직급**: 콘텐츠 디렉터 / 인스타그램 관리자
-
-- **루나**: 유튜브 뮤직 비디오 제작 (Lyria 3 Pro 음악 생성 + Veo 영상 합성 + YouTube 업로드)
-- **아린**: 인스타그램 포스팅 (구글 트렌드 → Gemini 이미지 생성 → 자동 업로드)
-- **실행 방식**: 자동화 비활성화 — 사장님 명령 시에만 수동 실행
-- **스크립트**: `루나_디렉터/tools/music_video_pipeline.py` | `아린_관리자/tools/auto_pipeline.py`
-
----
-
-### 9. 경수 (Gyeongsu) — 사이버 수사관
+### 7. 경수 (Gyeongsu) — 사이버 수사관
 **직급**: Cyber Investigation Officer
 
 - **핵심 책임**: 유튜브·SNS 댓글 악플 및 조직적 어뷰징 Ollama 판별·분류, Google Sheets 증거 아카이빙. 소스 코드 API Key 탈취 시도 및 보안 취약점 스캔.
