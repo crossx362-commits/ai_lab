@@ -259,11 +259,6 @@ Example Component Prompts:
 - Component 패턴 코드 구현 시 참고
 - Typography scale을 React/TS에서 활용
 
-### 루나/아린 (콘텐츠)
-- 시네마틱 UI의 콘텐츠 중심 레이아웃
-- 타이트한 크롭, full-bleed 이미지 활용
-- Hero 섹션 left-text / right-image 패턴
-
 ### 예원 (CEO)
 - 프리미엄 스트리밍 플랫폼의 비즈니스 모델 연구
 - MasterClass의 celebrity instructor 전략

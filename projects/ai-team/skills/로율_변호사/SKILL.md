@@ -188,16 +188,6 @@ Use the following information to dig deeper into specific topics based on the us
 ## 업로드 작업물 법률 검토 (Upload Content Legal Review)
 
 ### A. 자동 검토 트리거
-* **YouTube 업로드 전** (루나 작업):
-  - 음악 저작권 침해 여부
-  - 영상 콘텐츠 법적 리스크 (명예훼손, 초상권)
-  - 광고 표시 의무 준수
-
-* **Instagram 업로드 전** (아린 작업):
-  - 이미지 생성 AI 이용 약관 준수
-  - 상표권 침해 가능성 (브랜드 로고 등)
-  - 허위/과장 광고 규제
-
 * **코드 커밋 전** (케빈 작업):
   - 오픈소스 라이선스 충돌
   - 제3자 API 이용 약관 위반
