@@ -4,13 +4,23 @@
 import os, sys, json, time, traceback
 from datetime import datetime, timezone, timedelta
 
+_early_here = os.path.dirname(os.path.abspath(__file__))
+try:
+    _log_path = os.path.join(_early_here, "telegram_receiver.log")
+    if sys.stdout is None or sys.stderr is None or "pythonw" in os.path.basename(sys.executable).lower():
+        _log = open(_log_path, "a", encoding="utf-8", buffering=1)
+        sys.stdout = _log
+        sys.stderr = _log
+except Exception:
+    pass
+
 if hasattr(sys.stdout, "reconfigure"):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except: pass
 
-_here = os.path.dirname(os.path.abspath(__file__))
+_here = _early_here
 PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
@@ -18,11 +28,15 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 from _shared.env_loader import load_env
 load_env(PROJECT_ROOT)
 
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+except ModuleNotFoundError:
+    genai = None
+    types = None
 
 API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-client = genai.Client(api_key=API_KEY) if API_KEY else None
+client = genai.Client(api_key=API_KEY) if genai and API_KEY else None
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
@@ -67,6 +81,9 @@ def list_calendar(days: int = 7):
 
 def generate_content_with_retry(model_name, contents, config, max_retries=5):
     """구글 제미니 API 호출을 수행하며, 429 등의 할당량 초과 시 자동 재시도 및 사용자 알림 제공"""
+    if not client:
+        return None
+
     for attempt in range(max_retries):
         try:
             return client.models.generate_content(
@@ -139,9 +156,20 @@ def process(msg):
         except Exception as ce:
             print(f"❌ 일정 조회 실패: {ce}")
 
+    direct_dispatch_keywords = ["구동", "실행", "시작", "켜", "동작", "가동", "데몬", "자동매매", "실거래", "live"]
     if not client:
-        send_msg("Gemini API 키 없음")
-        return
+        if any(k in msg for k in direct_dispatch_keywords):
+            send_msg(dispatch(msg))
+            return
+        try:
+            from _shared.ollama_client import chat as lm_chat
+            answer = lm_chat(msg, system=SYSTEM, max_tokens=150, temperature=0.7)
+            send_msg(answer.strip() if answer else "Gemini 패키지가 없어 로컬 응답도 실패했습니다.")
+            return
+        except Exception as oe:
+            print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
+            send_msg("Gemini 패키지가 없어 일반 답변은 제한됩니다. 현황/일정/에이전트 구동 명령은 가능합니다.")
+            return
 
     now = datetime.now(timezone(timedelta(hours=9)))
     time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
@@ -308,4 +336,8 @@ def main():
             time.sleep(5)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        raise

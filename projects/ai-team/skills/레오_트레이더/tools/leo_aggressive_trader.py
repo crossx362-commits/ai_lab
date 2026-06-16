@@ -24,10 +24,17 @@ load_env()
 IMPORT_ERROR = None
 try:
     import pyupbit
+except ModuleNotFoundError as e:
+    try:
+        import upbit_public as pyupbit
+    except ModuleNotFoundError:
+        IMPORT_ERROR = e
+        pyupbit = None
+
+try:
     import upbit_analyzer
 except ModuleNotFoundError as e:
     IMPORT_ERROR = e
-    pyupbit = None
     upbit_analyzer = None
 
 # 레오 전용 감시 코인 (고변동성 알트)
@@ -215,7 +222,7 @@ def run_leo_cycle(sim_mode=False):
 
     if IMPORT_ERROR:
         print(f"[Leo] 의존성 누락: {IMPORT_ERROR}")
-        print("[Leo] pyupbit 설치 후 스캔/매매 사이클을 실행할 수 있습니다.")
+        print("[Leo] pyupbit 또는 upbit_public fallback 확인이 필요합니다.")
         return
 
     # 위험 한도 체크
@@ -530,6 +537,8 @@ def print_status():
     print("- 실거래 데몬: leo_aggressive_trader.py --daemon --live")
     if IMPORT_ERROR:
         print(f"- 현재 의존성 상태: 누락 ({IMPORT_ERROR})")
+    elif getattr(pyupbit, "__name__", "") == "upbit_public":
+        print("- 현재 의존성 상태: 공개 시세 fallback 사용 중 (실거래 불가)")
 
 
 if __name__ == "__main__":
@@ -564,9 +573,8 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"[Leo Daemon Error] {e}")
 
-                time.sleep(10)  # 10초 주기
+                time.sleep(10)
+        except KeyboardInterrupt:
+            print("[Leo] stopped")
         finally:
             release_lock("leo")
-    else:
-        print_status()
-        print("\n실행하지 않았습니다. --once 또는 --daemon을 명시하세요.")

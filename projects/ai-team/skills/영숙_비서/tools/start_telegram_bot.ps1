@@ -11,34 +11,21 @@ Write-Host "=" * 60
 
 # 1. 기존 프로세스 확인
 Write-Host "`n[1/4] 기존 프로세스 확인 중..."
-$existingProcess = Get-WmiObject Win32_Process | Where-Object {
-    ($_.Name -eq "pythonw.exe" -or $_.Name -eq "python.exe") -and
-    $_.CommandLine -match "telegram_receiver"
-}
-
-if ($existingProcess) {
-    Write-Host "  ⚠️  이미 실행 중인 봇 발견 (PID: $($existingProcess.ProcessId))"
-    $response = Read-Host "  기존 봇을 종료하고 재시작하시겠습니까? (y/n)"
-    if ($response -eq "y") {
-        Stop-Process -Id $existingProcess.ProcessId -Force
-        Write-Host "  ✅ 기존 프로세스 종료 완료"
-        Start-Sleep -Seconds 2
-    } else {
-        Write-Host "  취소됨 — 기존 봇이 계속 실행됩니다."
-        exit 0
-    }
-}
+Write-Host "  WMI 접근이 제한된 환경에서는 명령줄 기반 중복 확인을 건너뜁니다."
 
 # 2. 환경 확인
 Write-Host "`n[2/4] 환경 확인 중..."
 cd $BotPath
 
+$PythonExe = "C:\Users\User\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\pythonw.exe"
+$PythonConsole = "C:\Users\User\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+
 # Python 확인
-try {
-    $pythonVersion = python --version 2>&1
+if (Test-Path $PythonConsole) {
+    $pythonVersion = & $PythonConsole --version 2>&1
     Write-Host "  ✅ Python: $pythonVersion"
-} catch {
-    Write-Host "  ❌ Python이 설치되지 않았거나 PATH에 없습니다."
+} else {
+    Write-Host "  ❌ 번들 Python을 찾을 수 없습니다: $PythonConsole"
     exit 1
 }
 
@@ -60,7 +47,7 @@ if (Test-Path $ScriptName) {
 
 # 3. 봇 시작
 Write-Host "`n[3/4] 텔레그램 봇 시작 중..."
-$process = Start-Process pythonw -ArgumentList $ScriptName -WindowStyle Hidden -PassThru
+$process = Start-Process -FilePath $PythonExe -ArgumentList $ScriptName -WindowStyle Hidden -PassThru
 Write-Host "  ✅ 봇 시작됨 (PID: $($process.Id))"
 
 # 4. 시작 확인

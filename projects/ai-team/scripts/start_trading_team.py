@@ -29,22 +29,45 @@ def has_module(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
 
 
+def has_public_upbit_fallback() -> bool:
+    fallback_path = os.path.join(
+        AI_TEAM_ROOT, "skills", "데이브_주식", "tools", "upbit_public.py"
+    )
+    return os.path.exists(fallback_path)
+
+
+_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "output", "trading_logs")
+os.makedirs(_LOG_DIR, exist_ok=True)
+
+
 def start_process(name: str, script_path: str, args: list = None):
-    """백그라운드 프로세스 시작"""
+    """백그라운드 프로세스 시작 (로그 파일로 출력 리다이렉트)"""
     if args is None:
         args = []
 
+    # 로그 파일명: name에서 한글/공백 제거 후 소문자
+    slug = name.split()[0]
+    slug_map = {"현빈": "hyunbin", "데이브": "dave", "레오": "leo"}
+    slug = slug_map.get(slug, slug.lower())
+    out_path = os.path.join(_LOG_DIR, f"{slug}_daemon.out.log")
+    err_path = os.path.join(_LOG_DIR, f"{slug}_daemon.err.log")
+
     try:
-        cmd = [sys.executable, script_path] + args
+        cmd = [sys.executable, "-u", script_path] + args
+        env = os.environ.copy()
+        env["PYTHONUTF8"] = "1"
         creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        fout = open(out_path, "a", encoding="utf-8", errors="replace", buffering=1)
+        ferr = open(err_path, "a", encoding="utf-8", errors="replace", buffering=1)
         process = subprocess.Popen(
             cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=fout,
+            stderr=ferr,
+            env=env,
             creationflags=creationflags,
         )
 
-        print(f"✅ {name} 시작 (PID: {process.pid})")
+        print(f"✅ {name} 시작 (PID: {process.pid}) → {os.path.basename(out_path)}")
         return process
     except Exception as e:
         print(f"❌ {name} 시작 실패: {e}")
@@ -64,10 +87,13 @@ def main():
     print("실거래를 원하면 --live를 명시해야 합니다.")
 
     processes = {}
-    can_trade = has_module("pyupbit")
-    if not can_trade:
-        print("⚠️  pyupbit 모듈이 없어 데이브/레오 매매 루프는 시작하지 않습니다.")
-        print("   트레이딩 기능을 쓰려면 현재 파이썬 환경에 pyupbit를 설치하세요.")
+    has_pyupbit = has_module("pyupbit")
+    can_scan = has_pyupbit or has_public_upbit_fallback()
+    if live_mode and not has_pyupbit:
+        print("⚠️  실거래는 pyupbit 정식 패키지가 필요합니다. 현재는 시작하지 않습니다.")
+        can_scan = False
+    elif not has_pyupbit:
+        print("⚠️  pyupbit가 없어 공개 시세 fallback으로 시뮬레이션만 시작합니다.")
 
     # 1. 현빈 (시장 정보 수집 - 5분 주기)
     hyunbin_path = os.path.join(
@@ -83,12 +109,12 @@ def main():
     dave_path = os.path.join(
         AI_TEAM_ROOT, "skills", "데이브_주식", "tools", "upbit_auto_trader.py"
     )
-    if os.path.exists(dave_path) and can_trade:
+    if os.path.exists(dave_path) and can_scan:
         dave_args = ["--daemon"] if live_mode else ["--daemon", "--sim"]
         processes["데이브"] = start_process(f"데이브 (보수적 매매/{mode_label})", dave_path, dave_args)
         time.sleep(1)
     elif os.path.exists(dave_path):
-        print("⚠️  데이브 스크립트는 있지만 pyupbit가 없어 시작하지 않음")
+        print("⚠️  데이브 스크립트는 있지만 시세 모듈이 없어 시작하지 않음")
     else:
         print(f"⚠️  데이브 스크립트 없음: {dave_path}")
 
@@ -96,10 +122,10 @@ def main():
     leo_path = os.path.join(
         AI_TEAM_ROOT, "skills", "레오_트레이더", "tools", "leo_aggressive_trader.py"
     )
-    if os.path.exists(leo_path) and can_trade:
+    if os.path.exists(leo_path) and can_scan:
         processes["레오"] = start_process(f"레오 (공격적 단타/{mode_label})", leo_path, trade_mode_args)
     elif os.path.exists(leo_path):
-        print("⚠️  레오 스크립트는 있지만 pyupbit가 없어 시작하지 않음")
+        print("⚠️  레오 스크립트는 있지만 시세 모듈이 없어 시작하지 않음")
     else:
         print(f"⚠️  레오 스크립트 없음: {leo_path}")
 

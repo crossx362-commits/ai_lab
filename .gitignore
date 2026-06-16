@@ -45,3 +45,5 @@ __pycache__/
 
 # Vercel
 .vercel
+commit_push.bat
+*.bat

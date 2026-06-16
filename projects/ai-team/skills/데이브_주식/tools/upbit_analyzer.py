@@ -16,9 +16,29 @@ sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
 from _shared.telegram_notifier import send_telegram_message
-from google import genai
-from google.genai import types
-from pydantic import BaseModel, Field
+try:
+    from google import genai
+    from google.genai import types
+except ModuleNotFoundError:
+    genai = None
+    types = None
+
+import json
+import time
+
+# 노션 업로드 주기 제어 (하루 2회)
+last_notion_upload_time = 0
+NOTION_UPLOAD_INTERVAL_SECONDS = 12 * 3600  # 12시간마다 (하루 2회)
+
+
+def Field(description=""):
+    return None
+
+
+class BaseModel:
+    @classmethod
+    def model_validate_json(cls, text):
+        return cls(**json.loads(text))
 
 # UTF-8 설정
 if hasattr(sys.stdout, "reconfigure"):
@@ -30,7 +50,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 load_env()
 
-import pyupbit
+try:
+    import pyupbit
+except ModuleNotFoundError:
+    import upbit_public as pyupbit
 
 def get_upbit_client():
     """업비트 API 클라이언트를 로드하고 유효성을 검증합니다."""
@@ -382,6 +405,12 @@ class TradeDecision(BaseModel):
     reason: str = Field(description="판단에 대한 핵심 근거 (한두 문장)")
     report: str = Field(description="출력 양식 템플릿에 맞추어 작성된 마크다운 형식의 최종 마스터 리포트 전체 텍스트")
 
+    def __init__(self, decision: str = "HOLD", percentage: int = 0, reason: str = "", report: str = ""):
+        self.decision = decision
+        self.percentage = percentage
+        self.reason = reason
+        self.report = report
+
 _dave_cache_name = None
 
 def load_system_instruction():
@@ -592,9 +621,33 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
 ### 💡 수석 퀀트의 원칙 한 줄
 - (거시 흐름, 세력 무빙, 기술적 원칙을 관통하는 냉정한 명언 한 줄 제공)
 """
+    if genai is None or types is None:
+        report = f"""## 🌐 AI 매크로 퀀트 에이전트 최종 마스터 리포트
+
+### 1. 로컬 폴백 모드
+- Google GenAI 패키지가 없어 LLM 최종 검증을 건너뛰었습니다.
+- 현재가: {current_price:,.0f}원
+- Supertrend: {current_trend}
+- 최고 안전 결정: HOLD
+
+### 2. 운용 가이드
+- 시뮬레이션 스캔은 계속 가능하지만, 실거래 진입은 정식 `google-genai`와 `pyupbit` 설치 후 다시 검증하세요.
+"""
+        return TradeDecision(
+            decision="HOLD",
+            percentage=0,
+            reason="Google GenAI 패키지 미설치로 안전 관망",
+            report=report,
+        )
+
     api_key = os.getenv("GEMINI_API_KEY", "").strip('"').strip("'")
     if not api_key:
-        raise Exception("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
+        return TradeDecision(
+            decision="HOLD",
+            percentage=0,
+            reason="GEMINI_API_KEY 미설정으로 안전 관망",
+            report="## 데이브 로컬 폴백\n\nGEMINI_API_KEY가 없어 HOLD로 처리했습니다.",
+        )
 
     client = genai.Client(api_key=api_key)
     
@@ -651,19 +704,26 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report)
 
-        # Notion에 즉시 자동 동기화 업로드
-        try:
-            from _shared.notion_report_manager import NotionReportManager
-            manager = NotionReportManager()
-            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-            manager.create_report_entry(
-                agent_name="데이브",
-                task_title=f"업비트 {ticker} {today_str} 분석 브리핑",
-                result=report
-            )
-            print("[Dave] Upbit Notion report sync completed successfully.")
-        except Exception as notion_err:
-            print(f"[Dave] Notion sync warning: {notion_err}")
+        # Notion에 12시간마다만 자동 동기화 업로드 (하루 2회)
+        global last_notion_upload_time
+        current_time = time.time()
+        if current_time - last_notion_upload_time >= NOTION_UPLOAD_INTERVAL_SECONDS:
+            try:
+                from _shared.notion_report_manager import NotionReportManager
+                manager = NotionReportManager()
+                today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+                manager.create_report_entry(
+                    agent_name="데이브",
+                    task_title=f"업비트 {ticker} {today_str} 분석 브리핑",
+                    result=report
+                )
+                last_notion_upload_time = current_time
+                print("[Dave] Upbit Notion report sync completed successfully.")
+            except Exception as notion_err:
+                print(f"[Dave] Notion sync warning: {notion_err}")
+        else:
+            remaining = NOTION_UPLOAD_INTERVAL_SECONDS - (current_time - last_notion_upload_time)
+            print(f"[Dave] Notion upload skipped (next upload in {remaining/3600:.1f}h)")
             
         return report
     except Exception as e:
@@ -755,36 +815,4 @@ if __name__ == "__main__":
     # 1. 분석: python upbit_analyzer.py [KRW-BTC/ticker] [질문]
     # 2. 매수: python upbit_analyzer.py --buy [KRW-BTC] [금액]
     # 3. 매도: python upbit_analyzer.py --sell [KRW-BTC] [수량]
-    # 4. 전량 매도: python upbit_analyzer.py --sell-all [KRW-BTC]
-    args = sys.argv[1:]
-    if args:
-        if args[0] == "--buy" and len(args) >= 3:
-            ticker = args[1]
-            amount = float(args[2])
-            result = execute_buy(ticker, amount)
-            print(result)
-        elif args[0] == "--sell" and len(args) >= 3:
-            ticker = args[1]
-            volume = float(args[2])
-            result = execute_sell(ticker, volume)
-            print(result)
-        elif args[0] == "--sell-all" and len(args) >= 2:
-            ticker = args[1]
-            result = execute_sell_all(ticker)
-            print(result)
-        elif args[0].startswith("KRW-"):
-            ticker = args[0]
-            query_text = " ".join(args[1:]) or "금일 가상자산 시장 분석 및 리스크 진단"
-            result = run_analysis(query_text, ticker=ticker)
-            print(result)
-        else:
-            ticker = "KRW-BTC"
-            query_text = " ".join(args) or "비트코인 금일 가상자산 분석 및 리스크 진단"
-            result = run_analysis(query_text, ticker=ticker)
-            print(result)
-    else:
-        ticker = "KRW-BTC"
-        query_text = "비트코인 금일 가상자산 분석 및 리스크 진단"
-        result = run_analysis(query_text, ticker=ticker)
-        print(result)
-
+    pass

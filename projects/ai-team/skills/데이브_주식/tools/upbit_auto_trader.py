@@ -4,12 +4,14 @@
 """
 import os
 import sys
-import io
 
 # UTF-8 인코딩 강제 (Windows)
-if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # 데몬 모드일 때만 중복 실행 방지 (최대한 빨리 체크)
 if "--daemon" in sys.argv:
@@ -34,7 +36,11 @@ from _shared.telegram_notifier import send_telegram_message
 
 load_env()
 
-import pyupbit
+sys.path.insert(0, _here)  # upbit_public, upbit_analyzer 로컬 모듈 경로 추가
+try:
+    import pyupbit
+except ModuleNotFoundError:
+    import upbit_public as pyupbit
 import upbit_analyzer
 
 # 감시 대상 — 거래량 상위 고변동성 알트 우선 (소액 수익 극대화)
@@ -49,7 +55,7 @@ TICKERS = [
 last_llm_time = {}
 LLM_COOLDOWN_SECONDS = 300  # 동일 종목에 대한 LLM 재분석은 최소 5분 쿨다운 적용
 last_report_time = 0
-REPORT_INTERVAL_SECONDS = 4 * 3600  # 4시간마다 현황 보고
+REPORT_INTERVAL_SECONDS = 12 * 3600  # 12시간마다 현황 보고 (하루 2회)
 
 def safe_float(val, default=0.0):
     if val is None:
@@ -484,7 +490,8 @@ if __name__ == "__main__":
                     send_status_report(sim_mode=sim)
                 except Exception as e:
                     print(f"[Daemon Error] {e}")
-
-                time.sleep(30)
+                time.sleep(10)
+        except KeyboardInterrupt:
+            print("[Dave] stopped")
         finally:
             release_lock("dave")
