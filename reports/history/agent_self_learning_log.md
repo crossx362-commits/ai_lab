@@ -87,3 +87,9 @@
 - **루나**: no_doc
 - **영숙**: [데이터 시각화](projects/ai-team/skills/영숙_비서/knowledge/learned_20260615_데이터_시각화.md)
 - **데이브**: no_doc
+
+
+## 2026-06-17 02:07 자가학습
+- **로율**: [AI 법률 및 규제](projects/ai-team/skills/로율_변호사/knowledge/learned_20260617_AI_법률_및_규제.md)
+- **케빈**: [플랫폼 엔지니어링](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260617_플랫폼_엔지니어링.md)
+- **경수**: [제로 트러스트 보안](projects/ai-team/skills/경수_수사관/knowledge/learned_20260617_제로_트러스트_보안.md)
