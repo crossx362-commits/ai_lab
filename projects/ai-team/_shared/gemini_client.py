@@ -44,7 +44,6 @@ def text(
     json_mode: bool = False,
     task: str = "",
     lm_first: bool = False,
-    gpt_first: bool = False,  # GPT 우선 모드 추가
 ) -> str | None:
     """텍스트 생성. 폴백 체인: GPT-4o mini → Ollama (Gemini는 할당량 초과로 비활성화)"""
     import inspect
@@ -75,11 +74,10 @@ def text(
         return None
 
     # 1. GPT-4o mini 우선 (Gemini 할당량 초과로 기본값 변경)
-    if gpt_first or True:  # 기본값을 GPT 우선으로 변경
-        result = _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
-        if result:
-            return result
-        print(f"  [GPT] 실패 → Ollama 폴백")
+    result = _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
+    if result:
+        return result
+    print(f"  [GPT] 실패 → Ollama 폴백")
 
     # 2. Ollama 폴백
     try:
