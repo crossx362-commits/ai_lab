@@ -87,7 +87,7 @@ def start_trading_bots():
     dave_path = os.path.join(AI_TEAM_ROOT, "skills", "데이브_주식", "tools", "upbit_auto_trader.py")
     try:
         proc = subprocess.Popen(
-            ["python", dave_path],
+            ["python", dave_path, "--daemon"],
             cwd=os.path.dirname(dave_path),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -102,7 +102,7 @@ def start_trading_bots():
     leo_path = os.path.join(AI_TEAM_ROOT, "skills", "레오_트레이더", "tools", "leo_aggressive_trader.py")
     try:
         proc = subprocess.Popen(
-            ["python", leo_path],
+            ["python", leo_path, "--daemon"],
             cwd=os.path.dirname(leo_path),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -125,13 +125,16 @@ def main():
     count = count_python_processes()
     print(f"\n현재 Python 프로세스: {count}개")
 
-    if count >= 30:
-        print(f"\n⚠️ 중복 프로세스 감지 ({count}개 ≥ 30개)")
+    # 정상 범위: 4개 (현빈 + 데이브 + 레오 + 모니터)
+    # 10개 이상이면 중복으로 판단
+    if count >= 10:
+        print(f"\n⚠️ 중복 프로세스 감지 ({count}개 ≥ 10개)")
         send_telegram_message(f"⚠️ 중복 프로세스 {count}개 감지 - 자동 정리 시작")
 
         # 모든 프로세스 종료
         if kill_all_python_processes():
             print("\n트레이딩 봇 재시작 중...")
+            time.sleep(3)  # 프로세스 종료 대기
 
             # 트레이딩 봇 재시작
             bots = start_trading_bots()
@@ -144,7 +147,7 @@ def main():
         else:
             send_telegram_message("❌ 프로세스 정리 실패 - 수동 확인 필요")
     else:
-        print(f"✅ 정상 범위 (< 30개)")
+        print(f"✅ 정상 범위 (< 10개)")
 
     print("\n" + "=" * 60)
 
