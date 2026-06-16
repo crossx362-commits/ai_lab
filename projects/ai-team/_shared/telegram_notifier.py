@@ -151,8 +151,8 @@ def send_telegram_message(message: str, parse_mode: str = "HTML") -> bool:
     except Exception as fe:
         print(f"중복 방지 필터 오류: {fe}")
 
-    # 영숙이 톤으로 일괄 변환
-    message = _call_ai_for_yeongsuk(message)
+    # 영숙이 톤 변환 비활성화 (혼란 방지)
+    # message = _call_ai_for_yeongsuk(message)
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "")

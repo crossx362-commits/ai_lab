@@ -504,7 +504,7 @@ if __name__ == "__main__":
         run_leo_cycle(sim_mode=sim)
     else:
         print("⚡ 레오 공격적 단타 트레이더 시작 (10초 주기)")
-        send_telegram_message("⚡ [레오] 시작")
+        # 시작 메시지 전송 안 함 (혼란 방지)
 
         while True:
             try:

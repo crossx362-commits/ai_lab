@@ -464,7 +464,7 @@ if __name__ == "__main__":
             print(f"중복 실행 확인 중 오류 발생: {pe}")
 
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
-        send_telegram_message("💼 [데이브] 시작")
+        # 시작 메시지 전송 안 함 (혼란 방지)
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS  # 시작 즉시 첫 보고
 
         while True:

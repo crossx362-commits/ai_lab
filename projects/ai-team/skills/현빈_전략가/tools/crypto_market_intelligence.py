@@ -292,7 +292,7 @@ if __name__ == "__main__":
     # 데몬 모드: 5분마다 수집
     if "--daemon" in sys.argv:
         print("🤖 [현빈] 암호화폐 정보 수집 데몬 시작 (5분 주기)")
-        send_telegram_message("🤖 [현빈] 정보 수집 시작 (중요 변화만 알림)")
+        # 시작 메시지 전송 안 함 (혼란 방지)
 
         while True:
             try:
