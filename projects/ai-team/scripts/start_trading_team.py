@@ -7,6 +7,7 @@ import os
 import sys
 import subprocess
 import time
+import importlib.util
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -24,29 +25,24 @@ from _shared.telegram_notifier import send_telegram_message
 load_env()
 
 
+def has_module(module_name: str) -> bool:
+    return importlib.util.find_spec(module_name) is not None
+
+
 def start_process(name: str, script_path: str, args: list = None):
     """백그라운드 프로세스 시작"""
     if args is None:
         args = []
 
     try:
-        # Windows에서 백그라운드 실행
-        if sys.platform == "win32":
-            cmd = ["python", script_path] + args
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-        else:
-            # Linux/Mac
-            cmd = ["python3", script_path] + args + ["&"]
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
+        cmd = [sys.executable, script_path] + args
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=creationflags,
+        )
 
         print(f"✅ {name} 시작 (PID: {process.pid})")
         return process
@@ -61,7 +57,17 @@ def main():
     print("🚀 AI 트레이딩 팀 가동 시작")
     print("=" * 60)
 
+    live_mode = "--live" in sys.argv[1:]
+    trade_mode_args = ["--daemon", "--live"] if live_mode else ["--daemon", "--sim"]
+    mode_label = "실거래" if live_mode else "시뮬레이션"
+    print(f"모드: {mode_label}")
+    print("실거래를 원하면 --live를 명시해야 합니다.")
+
     processes = {}
+    can_trade = has_module("pyupbit")
+    if not can_trade:
+        print("⚠️  pyupbit 모듈이 없어 데이브/레오 매매 루프는 시작하지 않습니다.")
+        print("   트레이딩 기능을 쓰려면 현재 파이썬 환경에 pyupbit를 설치하세요.")
 
     # 1. 현빈 (시장 정보 수집 - 5분 주기)
     hyunbin_path = os.path.join(
@@ -77,9 +83,12 @@ def main():
     dave_path = os.path.join(
         AI_TEAM_ROOT, "skills", "데이브_주식", "tools", "upbit_auto_trader.py"
     )
-    if os.path.exists(dave_path):
-        processes["데이브"] = start_process("데이브 (보수적 매매)", dave_path)
+    if os.path.exists(dave_path) and can_trade:
+        dave_args = ["--daemon"] if live_mode else ["--daemon", "--sim"]
+        processes["데이브"] = start_process(f"데이브 (보수적 매매/{mode_label})", dave_path, dave_args)
         time.sleep(1)
+    elif os.path.exists(dave_path):
+        print("⚠️  데이브 스크립트는 있지만 pyupbit가 없어 시작하지 않음")
     else:
         print(f"⚠️  데이브 스크립트 없음: {dave_path}")
 
@@ -87,8 +96,10 @@ def main():
     leo_path = os.path.join(
         AI_TEAM_ROOT, "skills", "레오_트레이더", "tools", "leo_aggressive_trader.py"
     )
-    if os.path.exists(leo_path):
-        processes["레오"] = start_process("레오 (공격적 단타)", leo_path)
+    if os.path.exists(leo_path) and can_trade:
+        processes["레오"] = start_process(f"레오 (공격적 단타/{mode_label})", leo_path, trade_mode_args)
+    elif os.path.exists(leo_path):
+        print("⚠️  레오 스크립트는 있지만 pyupbit가 없어 시작하지 않음")
     else:
         print(f"⚠️  레오 스크립트 없음: {leo_path}")
 
@@ -99,7 +110,7 @@ def main():
     # 텔레그램 알림
     active_agents = [name for name, proc in processes.items() if proc is not None]
     msg = f"""
-🚀 AI 트레이딩 팀 가동
+🚀 AI 트레이딩 팀 가동 ({mode_label})
 
 ✅ 활성 에이전트:
 {chr(10).join(f'  • {name}' for name in active_agents)}
@@ -110,7 +121,7 @@ def main():
 2️⃣ 데이브 → 보수적 매매 (30초)
    - 현빈 정보 참조, 퀀트 3점 + LLM 검증
 3️⃣ 레오 → 공격적 단타 (10초)
-   - 현빈 정보 참조, 퀀트 1점 자동 진입
+   - 현빈 정보 참조, 퀀트 2점 이상 + 위험 필터
 """
     send_telegram_message(msg)
 

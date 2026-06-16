@@ -14,7 +14,7 @@ AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
-from _shared.ollama_client import call_ollama
+from _shared.ollama_client import chat
 
 load_env()
 
@@ -137,7 +137,7 @@ class LeoLearningSystem:
 간결하고 실행 가능한 제안만 해주세요.
 """
 
-        return call_ollama(prompt, model="llama3.1:latest")
+        return chat(prompt, task="leo_learning", max_tokens=800) or "Ollama 응답 없음"
 
     def update_knowledge(self, insights: str):
         """학습한 내용을 지식 파일에 추가"""

@@ -21,8 +21,14 @@ from _shared.telegram_notifier import send_telegram_message
 
 load_env()
 
-import pyupbit
-import upbit_analyzer
+IMPORT_ERROR = None
+try:
+    import pyupbit
+    import upbit_analyzer
+except ModuleNotFoundError as e:
+    IMPORT_ERROR = e
+    pyupbit = None
+    upbit_analyzer = None
 
 # 레오 전용 감시 코인 (고변동성 알트)
 LEO_TICKERS = [
@@ -206,6 +212,11 @@ def run_leo_cycle(sim_mode=False):
     global consecutive_losses, daily_loss_pct, trades_today, last_trade_time
 
     print(f"\n⚡ [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 레오 단타 스캔")
+
+    if IMPORT_ERROR:
+        print(f"[Leo] 의존성 누락: {IMPORT_ERROR}")
+        print("[Leo] pyupbit 설치 후 스캔/매매 사이클을 실행할 수 있습니다.")
+        return
 
     # 위험 한도 체크
     can_trade, risk_msg = check_risk_limits()
@@ -465,6 +476,9 @@ def run_leo_cycle(sim_mode=False):
 
 def send_status_report(sim_mode=False):
     """2시간마다 현황 보고 (간결)"""
+    if IMPORT_ERROR:
+        return
+
     now = time.time()
     if not hasattr(send_status_report, 'last_report'):
         send_status_report.last_report = 0
@@ -501,13 +515,35 @@ def send_status_report(sim_mode=False):
         print(f"[Leo] 현황 보고 오류: {e}")
 
 
+def print_status():
+    """외부 API 주문 없이 레오 설정과 실행 방법만 출력."""
+    print("⚡ 레오 트레이더 상태")
+    print(f"- 감시 코인: {', '.join(LEO_TICKERS)}")
+    print(f"- 최소 진입 점수: 2점")
+    print(f"- 연속 손절 제한: {MAX_CONSECUTIVE_LOSSES}회")
+    print(f"- 일일 손실 한도: {MAX_DAILY_LOSS_PCT:.1f}%")
+    print(f"- 시간당 거래 제한: {MAX_TRADES_PER_HOUR}회")
+    print("- 기본 모드: 시뮬레이션")
+    print("- 1회 스캔: leo_aggressive_trader.py --once --sim")
+    print("- 시뮬레이션 데몬: leo_aggressive_trader.py --daemon --sim")
+    print("- 실거래 1회 스캔: leo_aggressive_trader.py --once --live")
+    print("- 실거래 데몬: leo_aggressive_trader.py --daemon --live")
+    if IMPORT_ERROR:
+        print(f"- 현재 의존성 상태: 누락 ({IMPORT_ERROR})")
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
-    sim = "--sim" in args
+    if "--status" in args or "--help" in args or "-h" in args:
+        print_status()
+        sys.exit(0)
+
+    live = "--live" in args
+    sim = "--sim" in args or not live
 
     if "--once" in args:
         run_leo_cycle(sim_mode=sim)
-    else:
+    elif "--daemon" in args:
         # 중복 실행 방지 (PID 파일 기반)
         import sys
         import os
@@ -531,3 +567,6 @@ if __name__ == "__main__":
                 time.sleep(10)  # 10초 주기
         finally:
             release_lock("leo")
+    else:
+        print_status()
+        print("\n실행하지 않았습니다. --once 또는 --daemon을 명시하세요.")
