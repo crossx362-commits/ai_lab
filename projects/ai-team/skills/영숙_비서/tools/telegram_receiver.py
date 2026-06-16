@@ -259,6 +259,23 @@ def process(msg):
         send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
 def main():
+    # 중복 실행 방지
+    try:
+        import psutil
+        current_pid = os.getpid()
+        for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if p.info['pid'] == current_pid:
+                    continue
+                cmd = p.info['cmdline']
+                if cmd and any('telegram_receiver.py' in str(arg) for arg in cmd):
+                    print(f"⚠️ 이미 다른 telegram_receiver.py 프로세스가 실행 중입니다 (PID: {p.info['pid']}). 실행을 종료합니다.")
+                    sys.exit(0)
+            except (psutil.AccessDenied, psutil.NoSuchProcess):
+                continue
+    except Exception as pe:
+        print(f"중복 실행 확인 중 오류 발생: {pe}")
+
     print("="*60)
     print("🤖 영숙 봇 (Gemini 2.5 Flash 전용 최적화 버전)")
     print("="*60)

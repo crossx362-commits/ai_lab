@@ -185,9 +185,31 @@ def calculate_confluence_score(ticker: str) -> dict:
     except Exception as e:
         return {"ticker": ticker, "score": 0, "error": str(e)}
 
+def load_hyunbin_intel():
+    """현빈의 시장 정보 로드"""
+    try:
+        import json
+        intel_path = os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+        if os.path.exists(intel_path):
+            with open(intel_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"[Dave] 현빈 정보 로드 실패: {e}")
+    return None
+
+
 def run_auto_trade_cycle(sim_mode=False):
     print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 실시간 다중 코인 자동 매매 감시 ---")
-    
+
+    # 현빈 정보 확인
+    hyunbin_intel = load_hyunbin_intel()
+    if hyunbin_intel:
+        fed = hyunbin_intel.get("fed_events", {})
+        if fed.get("risk_level") == "HIGH":
+            print(f"[Dave] 🚨 연준 고위험 구간: {fed.get('current_status')} - 신규 진입 금지")
+            # 기존 포지션 관리만 수행하고 신규 진입은 스킵
+            # (포지션 청산 로직은 계속 실행)
+
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
         print("[AutoTrader] API 키가 설정되지 않았습니다. 시뮬레이션 모드로 작동합니다.")
@@ -418,6 +440,23 @@ if __name__ == "__main__":
     if "--once" in args:
         run_auto_trade_cycle(sim_mode=sim)
     else:
+        # 중복 실행 방지
+        try:
+            import psutil
+            current_pid = os.getpid()
+            for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    if p.info['pid'] == current_pid:
+                        continue
+                    cmd = p.info['cmdline']
+                    if cmd and any('upbit_auto_trader.py' in str(arg) for arg in cmd):
+                        print(f"⚠️ 이미 다른 upbit_auto_trader.py 데몬 프로세스가 실행 중입니다 (PID: {p.info['pid']}). 실행을 종료합니다.")
+                        sys.exit(0)
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    continue
+        except Exception as pe:
+            print(f"중복 실행 확인 중 오류 발생: {pe}")
+
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
         send_telegram_message("🤖 데이브 업비트 실시간 자동 매매 데몬 가동을 시작합니다 (실시간 10초 시세 감시 및 실시간 다중 퀀트 스캔).")
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS  # 시작 즉시 첫 보고
