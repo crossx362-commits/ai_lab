@@ -81,7 +81,7 @@ def text(
             payload = {
                 "contents": [{"parts": parts}],
                 "generationConfig": {
-                    "maxOutputTokens": max_tokens,
+                    "maxOutputTokens": min(max_tokens, 800),  # 최대 800토큰으로 제한 (토큰 절약)
                     "temperature": temperature,
                 }
             }

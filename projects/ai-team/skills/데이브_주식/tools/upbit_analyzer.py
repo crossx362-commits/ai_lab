@@ -421,66 +421,26 @@ class TradeDecision(BaseModel):
 _dave_cache_name = None
 
 def load_system_instruction():
-    skill_md_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "SKILL.md")
-    indicators_md_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "indicators_knowledge.md")
-    
-    system_instruction = "너는 글로벌 매크로, 온체인, 호가창 세력, 퀀트 지표를 통합 분석하는 지구 최강의 AI 수석 매크로 퀀트 트레이더 데이브(Dave)이다.\n\n"
-    if os.path.exists(skill_md_path):
-        with open(skill_md_path, "r", encoding="utf-8") as f:
-            system_instruction += f.read() + "\n"
-    if os.path.exists(indicators_md_path):
-        with open(indicators_md_path, "r", encoding="utf-8") as f:
-            system_instruction += f.read() + "\n"
-    return system_instruction
+    """토큰 절약을 위한 압축된 system instruction (31KB → 2KB)"""
+    return """너는 AI 수석 트레이더 데이브(Dave). 극존칭 필수.
 
+핵심 규칙:
+1. 연준 이벤트(FOMC/CPI) 전후 24시간 → 무조건 HOLD
+2. 김치프리미엄 15% 이상 → 고점 경보, 매도 신호
+3. OBV 다이버전스(가격↓ + OBV↑) → 세력 매집 신호
+4. 호가창 허매수/매도 벽 → 체결 강도로 진위 확인
+5. 하이킨 아시 양봉 3개 연속 → 상승 확인
+6. StochRSI 80 이상 → 과열, 진입 금지
+7. EMA200 위 + 거래량 급증 → 강한 매수 신호
+
+출력: JSON 형식으로 decision(BUY/SELL/HOLD), percentage(0-100), reason(1문장), report(3-5줄 마크다운)만 반환."""
+
+# Context Caching 비활성화 (토큰 절약)
+# - Free tier에서는 오히려 손해
+# - 32,768 토큰 padding 제거
 def get_dave_context_cache(client):
-    global _dave_cache_name
-    if _dave_cache_name:
-        return _dave_cache_name
-        
-    try:
-        for c in client.caches.list():
-            if c.display_name == "dave_coin_rules":
-                _dave_cache_name = c.name
-                return _dave_cache_name
-    except Exception as e:
-        print(f"[Dave Cache] Error checking cache list: {e}")
-        
-    system_instruction = load_system_instruction()
-            
-    try:
-        count_resp = client.models.count_tokens(
-            model="gemini-2.5-flash",
-            contents=system_instruction
-        )
-        total_tokens = count_resp.total_tokens
-        print(f"[Dave Cache] Base system instruction tokens: {total_tokens}")
-        
-        # Padding to meet the 32768 token limit for context caching
-        while total_tokens < 32768:
-            system_instruction += "\n# Cache Padding Reference Data\n" + "This is reference educational padding text for Context Caching. " * 1000
-            count_resp = client.models.count_tokens(
-                model="gemini-2.5-flash",
-                contents=system_instruction
-            )
-            total_tokens = count_resp.total_tokens
-        
-        print(f"[Dave Cache] Padded system instruction tokens: {total_tokens}")
-        
-        cache = client.caches.create(
-            model="gemini-2.5-flash",
-            config=types.CreateCachedContentConfig(
-                display_name="dave_coin_rules",
-                contents=[types.Content(role="user", parts=[types.Part.from_text(text=system_instruction)])],
-                ttl="3600s"
-            )
-        )
-        _dave_cache_name = cache.name
-        print(f"[Dave Cache] Created context cache successfully: {_dave_cache_name}")
-        return _dave_cache_name
-    except Exception as e:
-        print(f"[Dave Cache] Failed to configure or create context cache: {e}")
-        return None
+    """Context Caching 비활성화 - 토큰 절약을 위해 제거"""
+    return None
 
 def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> TradeDecision:
     # 1. 시세 데이터 및 기술분석
@@ -688,7 +648,8 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
         system_instruction=load_system_instruction(),
         response_mime_type="application/json",
         response_schema=TradeDecision,
-        temperature=0.2
+        temperature=0.1,  # 0.2 → 0.1 (더 결정론적, 짧은 응답)
+        max_output_tokens=500  # 2000 → 500 (JSON 응답은 500이면 충분)
     )
 
     print(f"[Dave] Calling Gemini 2.5 Flash for {ticker}...")
