@@ -648,9 +648,31 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     }
 }
 
-/* 펫 hover 효과 강화 */
+/* 펫 hover 효과 */
 .pet-stage-container:hover {
-    animation: petWiggle 0.5s ease-in-out;
+    filter: drop-shadow(0 8px 14px rgba(245, 158, 11, 0.18));
+}
+
+.room-settings-action {
+    min-height: 64px;
+    text-align: center;
+}
+
+.room-settings-action i {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.room-settings-action span {
+    display: block;
+    width: 100%;
+    text-align: center;
+    line-height: 1.15;
+    white-space: nowrap;
 }
 
 /* 목줄 흔들림 */

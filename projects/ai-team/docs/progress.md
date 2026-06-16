@@ -45,7 +45,7 @@
 - **산책 streak 뱃지 CSS**: `.streak-badge` — 오렌지 그라데이션 + `streakGlow` 애니메이션
 - **산책 자동 일기 draft 스타일**: `.walk-diary-draft` — dashed border + pulse 효과
 - **빈 상태 Empty State**: `.empty-state` + `.empty-state-icon` bobbing 애니메이션
-- **입력 검증 피드백 CSS**: `.field-error` shake 애니메이션 + `.field-error-msg` (가희 연동)
+- **입력 검증 피드백 CSS**: `.field-error` shake 애니메이션 + `.field-error-msg`
 - **스크롤 렌더링 최적화**: `contain: layout style` 적용
 - **prefers-reduced-motion 완전 지원**: WCAG 필수 접근성 기준 충족
 - **다크모드 신규 요소 호환**: 전 신규 클래스 다크 테마 오버라이드 완료
@@ -64,7 +64,7 @@
 - **`renderWalkStreakBanner()`**: `#walk-streak-banner` 엘리먼트에 streak 현황 + 다음 목표 프로그레스바 렌더링
 - **`renderMonthlyReport()`**: 이번 달 산책 횟수·거리·건강기록·AI분석·칼로리 4격자 요약 카드 렌더링 (PetDesk 벤치마크)
 
-### 🔍 가희 (검수관) — `js/mypet.js`
+### `js/mypet.js` 입력 검증
 - **`submitPetRegistration()` 입력 검증 강화**: 3단계 검수 로직
   - 이름: 필수 입력 / 20자 초과 방지 / 순수 숫자 이름 차단
   - 체중: 0.1~100kg 범위 검증 (비어있으면 기본값 적용)

@@ -14,7 +14,7 @@
 3. 이미지 생성: Gemini → Pollinations.ai 폴백 → Catbox.moe 호스팅
 4. Vision 분석: Gemini Vision → (caption + alt_text 150자) → Ollama 폴백
 5. 중복 검증: 캡션 70% / 해시태그 80% / 프롬프트 60% 유사도 체크
-6. 가희 사전 검수 → 업로드 → 가희 사후 검수 (최대 3회 재시도)
+6. 업로드 (최대 3회 재시도)
 7. 히스토리 기록 + Git 동기화
 ```
 
@@ -43,7 +43,7 @@
 4. 5단 비주얼: 각 파트별 이미지 → Ken Burns 비디오 → 비주얼 병합
 5. 오디오+비디오 합성: ffmpeg concat (1280×720 16:9)
 6. 메타데이터 생성: Ollama — description + tags (_auto_generate_metadata)
-7. 가희 사전 검수 → YouTube 예약 업로드 (KST 19:00) → 가희 사후 검수
+7. YouTube 예약 업로드 (KST 19:00)
 8. 히스토리 기록
 ```
 
@@ -72,7 +72,7 @@ YouTube 업로드는 OAuth 2.0 pickle 파일 사용.
 | 변수 | 사용처 |
 |------|--------|
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 영숙 봇, 공용 알림 |
-| `GEMINI_API_KEY` | 루나, 아린, 가희, 티모 공통 |
+| `GEMINI_API_KEY` | 루나, 아린, 티모 공통 |
 | `VERCEL_TOKEN` / `VERCEL_TEAM_ID` | 케빈 |
 | `SUPABASE_URL` / `SUPABASE_ANON_KEY` | 케빈, petnna |
 

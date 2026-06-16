@@ -28,10 +28,6 @@ load_env()
 
 모든 에이전트 스크립트가 `env_loader.py`를 사용하는 것을 확인했습니다:
 
-**가희 (검수관)**
-- content_inspector.py ✅
-- fix_issues.py ✅
-
 **경수 (수사관)**
 - comment_forensics.py ✅
 
@@ -74,7 +70,7 @@ load_env()
 
 ### 특정 에이전트
 - `YOUTUBE_API_KEY` - 루나, 영숙
-- `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID` - 아린, 가희, 경수
+- `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID` - 아린, 경수
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` - 펫과나 관련 에이전트
 
 ## 🔄 환경 변수 변경 사항의 영향

@@ -18,7 +18,7 @@
 | Property | Type | Options |
 |----------|------|---------|
 | Name | Title | - |
-| Agent | Select | 루나, 아린, 가희, 경수, 예원, 영숙 |
+| Agent | Select | 루나, 아린, 경수, 예원, 영숙 |
 | Status | Status | Not started, In progress, Done, Failed |
 | Priority | Select | High, Medium, Low |
 | Description | Text | - |
@@ -90,7 +90,6 @@ python projects/ai-team/_shared/notion_report_manager.py
 |------|-------|--------|----------|-------------|
 | 새로운 시티팝 뮤직비디오 생성 | 루나 | Not started | High | Imagen 4.0으로 고품질 영상 제작 |
 | 인스타그램 트렌드 포스팅 | 아린 | Not started | Medium | 최신 트렌드 기반 이미지 생성 및 업로드 |
-| 유튜브 영상 품질 검수 | 가희 | Not started | High | 최근 업로드된 영상 메타데이터 검증 |
 
 ## 사용 방법
 

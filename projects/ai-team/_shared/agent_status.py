@@ -104,31 +104,7 @@ def get_status_report(agent: str, project_root: str) -> str:
         else:
             lines.append("📸 <b>아린 (관리자)</b>: 포스팅 기록 없음")
 
-    # 5. 가희 (검수관)
-    if "가희" in agent or "검수" in agent or "전체" in agent:
-        ins_path = os.path.join(project_root, "reports", "inspection", "petnna_inspection_report.md")
-        if os.path.exists(ins_path):
-            try:
-                with open(ins_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                time_str = "알 수 없음"
-                violation = "0건"
-                for line in content.split("\n"):
-                    if "검수 일시" in line:
-                        time_str = line.split(":")[-1].strip()
-                    elif "규칙 위반" in line:
-                        violation = line.split(":")[-1].strip()
-                lines.append(f"🔍 <b>가희 (검수관)</b>: 최근 검수 완료 ({time_str}) | 규칙 위반: {violation}")
-            except Exception:
-                lines.append("🔍 <b>가희 (검수관)</b>: 검수 보고서 읽기 오류")
-        else:
-            learning_info = get_last_learning("가희")
-            if learning_info:
-                lines.append(f"🔍 <b>가희 (검수관)</b>: {learning_info.split(':', 1)[1].strip()}")
-            else:
-                lines.append("🔍 <b>가희 (검수관)</b>: 검수 기록 없음")
-
-    # 6. 코다리 (개발자)
+    # 5. 코다리 (개발자)
     if "코다리" in agent or "개발" in agent or "전체" in agent:
         prog_path = os.path.join(project_root, "projects", "ai-team", "docs", "progress.md")
         if os.path.exists(prog_path):
@@ -263,5 +239,5 @@ def get_status_report(agent: str, project_root: str) -> str:
         else:
             lines.append("📈 <b>데이브 (주식/코인)</b>: 분석 기록 없음")
 
-    return "\n\n".join(lines) if lines else "조회할 에이전트를 지정하세요 (예원/영숙/루나/아린/가희/코다리/케빈/티모/현빈/경수/로율/데이브/전체)"
+    return "\n\n".join(lines) if lines else "조회할 에이전트를 지정하세요 (예원/영숙/루나/아린/코다리/케빈/티모/현빈/경수/로율/데이브/전체)"
 

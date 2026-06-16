@@ -4,7 +4,7 @@
 영숙의 업로드 승인 플로우
 - 루나/아린 업로드 전 영숙에게 보고
 - 예원 CEO 피드백 요청
-- 가희 검수 통과 시 업로드 진행
+- 예원 CEO 최종 승인 후 업로드 진행
 """
 
 import os
@@ -56,7 +56,7 @@ def request_upload_approval(
     Returns:
         {
             "approved": True/False,
-            "stage": "영숙_보고|예원_피드백|가희_검수|최종_승인",
+            "stage": "영숙_보고|예원_피드백|최종_승인",
             "message": "결과 메시지",
             "issues": ["문제1", "문제2"] (거절 시)
         }

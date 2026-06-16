@@ -104,17 +104,12 @@ function renderPetStageList() {
                 svg.appendChild(foreignObject);
             }
 
-            // 펫 컨테이너 (애니메이션 추가)
+            // 펫 컨테이너
             const wrapper = document.createElement('div');
             wrapper.className = 'absolute transition-all duration-500';
             wrapper.style.left = `${petX}%`;
             wrapper.style.top = `${petY}%`;
             wrapper.style.transform = 'translate(-50%, -50%)';
-
-            // 랜덤 idle 애니메이션 (각 펫마다 다른 타이밍)
-            const animDelay = (pet.id || idx) % 5; // 0~4초 딜레이
-            const animDuration = 3 + ((pet.id || idx) % 3); // 3~5초 주기
-            wrapper.style.animation = `petBounce ${animDuration}s ease-in-out ${animDelay}s infinite`;
 
             wrapper.onclick = () => setActivePet(idx);
 
@@ -125,8 +120,8 @@ function renderPetStageList() {
             const circle = document.createElement('div');
             circle.className = `flex items-center justify-center rounded-2xl overflow-hidden transition-all shrink-0
                 ${isActive
-                    ? `${sz.circle} ${sz.border} border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-110 hover:rotate-6`
-                    : `${sz.circle} ${sz.border} border-amber-200 opacity-60 bg-amber-50/40 hover:opacity-90 hover:scale-110 hover:rotate-3`}`;
+                    ? `${sz.circle} ${sz.border} border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-105`
+                    : `${sz.circle} ${sz.border} border-amber-200 opacity-60 bg-amber-50/40 hover:opacity-90 hover:scale-105`}`;
             circle.id = isActive ? 'pet-graphic-container' : `pet-circle-${idx}`;
             circle.title = isActive ? `${pet.name || '펫'} 사진 변경` : `${pet.name || '펫'} 선택`;
             circle.style.transition = 'all 0.3s ease-out';

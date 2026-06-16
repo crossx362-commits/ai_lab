@@ -26,8 +26,10 @@ function updateMonthlyReportData() {
     // 월 정보
     const now = new Date();
     const month = now.getMonth() + 1;
-    document.getElementById('report-modal-month').textContent = `${month}월`;
-    document.getElementById('report-modal-pet-name').textContent = petName;
+    const monthEl = document.getElementById('report-modal-month');
+    const petNameEl = document.getElementById('report-modal-pet-name');
+    if (monthEl) monthEl.textContent = `${month}월`;
+    if (petNameEl) petNameEl.textContent = petName;
 
     // 건강 점수
     const score = (typeof calcHealthScore === 'function') ? calcHealthScore() : 0;
@@ -39,27 +41,37 @@ function updateMonthlyReportData() {
     const streakEl = document.getElementById('report-modal-streak');
     if (streakEl) streakEl.textContent = streak ? `${streak}일` : '--일';
 
-    // 산책 데이터
-    const walks = (typeof walks !== 'undefined' && walks?.history) ? walks.history : [];
     const thisMonth = now.toISOString().slice(0, 7);
-    const monthlyWalks = walks.filter(w => w.date && w.date.startsWith(thisMonth));
+    const getRecordDate = (record) => {
+        const rawDate = record?.savedAt || record?.date || record?.completedAt || record?.analyzedAt || '';
+        return typeof rawDate === 'string' ? rawDate.slice(0, 10) : '';
+    };
+
+    // 산책 데이터
+    const walkList = (typeof walks !== 'undefined' && Array.isArray(walks))
+        ? walks
+        : (Array.isArray(window.walks) ? window.walks : []);
+    const monthlyWalks = walkList.filter(w => getRecordDate(w).startsWith(thisMonth));
 
     const walkCountEl = document.getElementById('report-modal-walk-count');
     const walkDistanceEl = document.getElementById('report-modal-walk-distance');
     if (walkCountEl) walkCountEl.textContent = `${monthlyWalks.length}회`;
 
-    const totalDistance = monthlyWalks.reduce((sum, w) => sum + (w.distance || 0), 0);
-    if (walkDistanceEl) walkDistanceEl.textContent = `${(totalDistance / 1000).toFixed(1)}km`;
+    const totalDistance = monthlyWalks.reduce((sum, w) => sum + (parseFloat(w.distance) || 0), 0);
+    if (walkDistanceEl) walkDistanceEl.textContent = `${totalDistance.toFixed(1)}km`;
 
     // 건강 기록
-    const healthLogs = (typeof healthLogs !== 'undefined' && healthLogs?.history) ? healthLogs.history : [];
-    const monthlyLogs = healthLogs.filter(h => h.date && h.date.startsWith(thisMonth));
+    const healthState = (typeof healthLogs !== 'undefined' && healthLogs)
+        ? healthLogs
+        : window.healthLogs;
+    const healthHistory = (healthState && Array.isArray(healthState.history)) ? healthState.history : [];
+    const monthlyLogs = healthHistory.filter(h => getRecordDate(h).startsWith(thisMonth));
     const logCountEl = document.getElementById('report-modal-log-count');
     if (logCountEl) logCountEl.textContent = `${monthlyLogs.length}회`;
 
     // AI 분석
     const analyses = (typeof getHealthAnalyses === 'function') ? getHealthAnalyses() : [];
-    const monthlyAI = analyses.filter(a => a.date && a.date.startsWith(thisMonth));
+    const monthlyAI = analyses.filter(a => getRecordDate(a).startsWith(thisMonth));
     const aiCountEl = document.getElementById('report-modal-ai-count');
     if (aiCountEl) aiCountEl.textContent = `${monthlyAI.length}회`;
 
@@ -74,10 +86,15 @@ function updateMonthlyReportData() {
     if (waterEl) waterEl.textContent = avgWater ? `${avgWater}ml` : '--ml';
 
     // 일정 준수율 계산
-    const schedules = (typeof schedules !== 'undefined' && schedules) ? schedules : [];
-    const completedSchedules = schedules.filter(s => s.completed).length;
-    const totalSchedules = schedules.length;
-    const careRate = totalSchedules > 0 ? Math.round((completedSchedules / totalSchedules) * 100) : 0;
+    const careState = (typeof AppStore !== 'undefined' && AppStore.getState)
+        ? (AppStore.getState('careSchedules') || {})
+        : {};
+    const careSchedules = Array.isArray(careState.schedules) ? careState.schedules : [];
+    const completionHistory = Array.isArray(careState.completionHistory) ? careState.completionHistory : [];
+    const monthlyCompletions = completionHistory.filter(item => getRecordDate(item).startsWith(thisMonth));
+    const careRate = careSchedules.length > 0
+        ? Math.min(100, Math.round((monthlyCompletions.length / careSchedules.length) * 100))
+        : 0;
     const careRateEl = document.getElementById('report-modal-care-rate');
     if (careRateEl) careRateEl.textContent = `${careRate}%`;
 }

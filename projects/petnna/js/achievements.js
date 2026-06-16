@@ -279,6 +279,23 @@ function renderMonthlyReport(targetElId) {
     const walkStreak = calcWalkStreak();
     const monthName = `${now.getMonth() + 1}월`;
 
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.classList.add('cursor-pointer');
+    el.onclick = () => {
+        if (typeof openMonthlyReportModal === 'function') {
+            openMonthlyReportModal();
+        } else if (typeof showToast === 'function') {
+            showToast('월간 리포트를 불러오는 중입니다.');
+        }
+    };
+    el.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            el.click();
+        }
+    };
+
     el.innerHTML = `
         <div class="space-y-3">
             <div class="flex items-center justify-between">

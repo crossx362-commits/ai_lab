@@ -12,7 +12,6 @@ description: Company orchestrator and decision-maker. Activates for cross-agent 
 |-----------|----------------|
 | **공통 지침 및 최고 경영자 권한** | `skills/예원_CEO/SKILL.md` (본 문서 전체) |
 | **자동 스킬 감사 엔진** | `assets/tool-seeds/예원_CEO/skill_auditor.py` |
-| **품질 및 정책 검수 엔진** | `projects/ai-team/skills/가희_검수자/` 및 `content_inspector.py` |
 | **환경변수 / 텔레그램 / 인프라** | `_shared/공통_스킬_지식.md` |
 
 ### 2단계: 필수 경영 가드레일 체크리스트
@@ -48,7 +47,7 @@ description: Company orchestrator and decision-maker. Activates for cross-agent 
 | `developer` / 코다리 | 소스 코드베이스 자율 제어, 시스템 자동화, API 엔드포인트 통합 및 디버깅 가이드 |
 | `business` / 현빈 | 수익화 파이프라인 빌드, 광고 단가 및 KPI 분석, 데이터 기반 10x 비즈니스 전략 수립 |
 | `secretary` / 영숙 | 사장님 텔레그램 최우선 보좌, 구글 캘린더 연동, 데일리 브리핑 및 일일 업로드 자동 통제 |
-| `inspector` / 가희 | 모든 에이전트 산출물의 품질·정책 다중 검수, 캡션 클리셰 및 유튜브 콘텐츠 가이드 심사 |
+
 | `designer` / 티모 | UI/UX 아키텍처 가이드, 웹페이지 레이아웃 개발, 사용자 경험 리서치 기반 디자인 검수 |
 | `writer` / 라이터 | 카피라이팅 기획, 영상 후킹 스크립트 작성, 블로그 텍스트 및 SNS 카피 마스터링 |
 | `researcher` / 리서처 | 글로벌 트렌드 및 경쟁사 벤치마킹 분석, 데이터 수집 및 팩트 레이어 교차 검증 |
@@ -122,30 +121,7 @@ description: Company orchestrator and decision-maker. Activates for cross-agent 
 
 ---
 
-## Section 5. 품질 예외 처리 및 수정 프로세스 총괄 (가희 연동)
-
-영숙(Secretary)비서 파트로부터 가희(Inspector)의 검수 필터 리포트를 실시간 공유받아 아래의 구조로 긴급 품질 보정 워크플로우를 관할합니다.
-```mermaid
-graph TD
-    A[가희: 산출물 검수 및 위반 사항 적발] --> B[영숙: 자동수정 불가 NO 항목 필터링]
-    B --> C[CEO 예원: 리포트 수령 및 즉시 정밀 검토]
-    C --> D[전문 에이전트: CEO 지시 수령 및 즉시 텍스트/비주얼 수정 보정]
-    D --> E[가희: 재검수 가동 및 최종 PASS 확인]
-    E --> F[CEO 예원: 최종 조치 결과 취합 및 사장님 앞 품질 수정 보고 통산 전송]
-```
-
-#### **🛠️ 최종 품질 조치 완료 보고 템플릿 (사장님 직송)**
-```markdown
-## 🛠️ 콘텐츠 품질 수정 보고
-- **검수 적발**: [가희]가 발견한 가이드라인 위반 사안 및 리스크
-- **조치 에이전트**: [수정을 완수한 에이전트 ID]
-- **수정 내용**: 알고리즘 최적화를 위해 보정된 구체적 데이터 및 수치 내역
-- **검수 상태**: 재검수 수행 결과 PASS 최종 확인 및 퍼블리싱 세팅 완료
-```
-
----
-
-## Section 6. 크로스 에이전트 고도화 협업 기술
+## Section 5. 크로스 에이전트 고도화 협업 기술
 
 ### 1. 멀티 에이전트 토론 스킬 (자가 진화형 협업)
 - **배정 역할: 🛠️ 개발자 (비즈니스 전략 기반 스킬·워크플로우 아키텍트)**

@@ -22,10 +22,8 @@ from _shared.telegram_notifier import send_telegram_message
 
 
 # 에이전트 실행 함수 매핑
-AGENT_EXECUTORS = {
-    "루나": "루나_디렉터.tools.music_video_pipeline",
-    "아린": "아린_관리자.tools.auto_pipeline",
-}
+# 루나·아린: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
+AGENT_EXECUTORS = {}
 
 
 def execute_agent_task(agent_name: str, task: dict) -> tuple[bool, str]:

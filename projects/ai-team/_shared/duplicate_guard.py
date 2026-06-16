@@ -1,11 +1,8 @@
 """
-duplicate_guard.py — 가희(콘텐츠 검수관) 소유 중앙 중복 감지 모듈
+duplicate_guard.py — 중앙 중복 감지 모듈
 
 모든 에이전트(아린·루나)의 중복 감지 로직이 이곳에 집중됨.
 에이전트는 자체 중복 체크를 하지 않고 이 모듈을 import해서 사용한다.
-
-소유: 가희 (assets/tool-seeds/가희_검수관/)
-유지보수: 가희 SKILL.md Section 5 참조
 """
 import os
 import re

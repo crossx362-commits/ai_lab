@@ -67,7 +67,7 @@ def await_approval(decision: str | dict) -> bool:
 
 
 def ceo_coaching_on_rejection(agent: str, title: str, description: str, issues: list) -> dict:
-    """가희에게 반려된 콘텐츠를 예원 CEO가 교정합니다."""
+    """반려된 콘텐츠를 예원 CEO가 교정합니다."""
     print(f"👑 [예원 CEO] {agent} 반려 사유 분석 중...")
 
     corrected = {

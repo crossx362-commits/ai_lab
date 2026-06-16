@@ -99,22 +99,22 @@ const MYPET_TEMPLATE = `
             <div id="room-settings-menu" class="hidden border-t border-amber-50 bg-amber-50/40 px-5 py-3">
                 <div class="grid grid-cols-4 gap-2">
                     <button onclick="openNotebookModal()"
-                        class="flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
+                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
                         <i class="fa-solid fa-address-book text-brand-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">생활수첩</span>
                     </button>
                     <button onclick="toggleButlerProfileEdit()"
-                        class="flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all">
+                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all">
                         <i class="fa-solid fa-user-pen text-indigo-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">집사 설정</span>
                     </button>
                     <button onclick="togglePetProfileEdit()"
-                        class="flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-amber-300 hover:bg-amber-50 transition-all">
+                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-amber-300 hover:bg-amber-50 transition-all">
                         <i class="fa-solid fa-paw text-amber-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">방 설정</span>
                     </button>
                     <button onclick="openPetRegistrationModal()"
-                        class="flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
+                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
                         <i class="fa-solid fa-plus text-brand-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">펫 추가</span>
                     </button>

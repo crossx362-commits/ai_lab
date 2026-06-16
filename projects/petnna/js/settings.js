@@ -729,14 +729,59 @@ function closeInquiryDetailModal() {
 function resetToRichDemoData() {
     showCustomDialog({
         title: "데모 데이터 셋업 확인 ⚡",
-        message: "정말 풍요로운 테스트용 일주일치 펫생활 데모 데이터로 덮어쓰시겠습니까? 기존 기록은 소실됩니다.",
+        message: "정말 풍요로운 테스트용 펫생활 전체 데모 데이터로 덮어쓰시겠습니까? 기존 기록은 소실됩니다.",
         icon: "🪄",
         type: "confirm",
         onConfirm: () => {
+            const now = new Date();
+            const dayKey = (offset = 0) => {
+                const d = new Date(now);
+                d.setDate(now.getDate() - offset);
+                return d.toISOString().split('T')[0];
+            };
+            const isoAt = (offset, hour = 9, minute = 0) => {
+                const d = new Date(now);
+                d.setDate(now.getDate() - offset);
+                d.setHours(hour, minute, 0, 0);
+                return d.toISOString();
+            };
+
+            const demoPets = [
+                {
+                    ...INITIAL_PETS[0],
+                    id: 101,
+                    name: "초코",
+                    roomName: "초코의 햇살방",
+                    hunger: 82,
+                    happy: 91,
+                    mbtiCode: "ENFP",
+                    iqScore: 128,
+                    sajuData: {
+                        compatScore: 88,
+                        petBirth: "2024-03-14",
+                        ownerBirth: "1992-06-16",
+                        ownerSummary: "火 (불) 기운이 강한 따뜻한 보호자",
+                        petSummary: "木 (나무) 기운이 밝은 활동형 펫"
+                    },
+                    harmonyData: {
+                        level: 4,
+                        title: "찰떡궁합 베스트 프렌드",
+                        solution: "서로를 잘 이해하는 안정적인 관계입니다. 산책과 놀이 루틴을 유지하면 더 좋아져요.",
+                        sajuScore: 88,
+                        iqScore: 84,
+                        mbtiScore: 92,
+                        avgScore: 88
+                    }
+                },
+                { ...INITIAL_PETS[1], id: 102, name: "나비", roomName: "나비의 조용한 창가", hunger: 68, happy: 86, mbtiCode: "INFJ", iqScore: 116 },
+                { ...INITIAL_PETS[2], id: 103, name: "솜이", roomName: "솜이의 당근 정원", hunger: 76, happy: 89 }
+            ];
+
             const sampleWalks = [
-                { id: 401, date: "오늘 방금", duration: "25:40", distance: "2.10", calories: "158", poop: 1, pee: 2, sniff: 8, coords: [[37.3912, 126.6392], [37.3920, 126.6370], [37.3932, 126.6360], [37.3948, 126.6368]], marks: [{ lat: 37.3920, lng: 126.6370, type: "poop" }, { lat: 37.3932, lng: 126.6360, type: "pee" }] },
-                { id: 402, date: "어제", duration: "18:15", distance: "1.25", calories: "94", poop: 0, pee: 1, sniff: 5, coords: [[37.3912, 126.6392], [37.3918, 126.6412], [37.3932, 126.6428]], marks: [{ lat: 37.3918, lng: 126.6412, type: "sniff" }] },
-                { id: 403, date: "3일 전", duration: "32:04", distance: "2.80", calories: "210", poop: 2, pee: 3, sniff: 12, coords: [[37.3912, 126.6392], [37.3949, 126.6415]], marks: [] }
+                { id: 401, date: "오늘 방금", savedAt: isoAt(0, 18, 20), duration: "25:40", distance: "2.10", calories: "158", poop: 1, pee: 2, sniff: 8, coords: [[37.3912, 126.6392], [37.3920, 126.6370], [37.3932, 126.6360], [37.3948, 126.6368]], marks: [{ lat: 37.3920, lng: 126.6370, type: "poop" }, { lat: 37.3932, lng: 126.6360, type: "pee" }] },
+                { id: 402, date: "어제", savedAt: isoAt(1, 8, 30), duration: "18:15", distance: "1.25", calories: "94", poop: 0, pee: 1, sniff: 5, coords: [[37.3912, 126.6392], [37.3918, 126.6412], [37.3932, 126.6428]], marks: [{ lat: 37.3918, lng: 126.6370, type: "sniff" }] },
+                { id: 403, date: "3일 전", savedAt: isoAt(3, 19, 5), duration: "32:04", distance: "2.80", calories: "210", poop: 2, pee: 3, sniff: 12, coords: [[37.3912, 126.6392], [37.3949, 126.6415]], marks: [] },
+                { id: 404, date: "5일 전", savedAt: isoAt(5, 7, 45), duration: "21:10", distance: "1.74", calories: "131", poop: 1, pee: 1, sniff: 6, coords: [[37.3912, 126.6392], [37.3924, 126.6401]], marks: [] }
             ];
 
             const sampleMeals = [
@@ -745,15 +790,112 @@ function resetToRichDemoData() {
                 { id: Date.now() - 86400000, type: "저녁", time: "19:20", notes: "칠면조 습식 캔 85g 섭취 완수 🌙" }
             ];
 
-            localStorage.setItem('petna_pets', JSON.stringify(INITIAL_PETS));
-            localStorage.setItem('petna_posts', JSON.stringify(INITIAL_POSTS));
-            localStorage.setItem('petna_schedules', JSON.stringify(INITIAL_SCHEDULES));
-            localStorage.setItem('petna_albums', JSON.stringify(INITIAL_ALBUM));
-            localStorage.setItem('petna_walks', JSON.stringify(sampleWalks));
-            localStorage.setItem('petna_meals', JSON.stringify(sampleMeals));
-            localStorage.setItem('petna_cart', JSON.stringify([]));
+            const sampleHealthLogs = {
+                today: { date: dayKey(0), poop: "normal", water: 420, food: 165, condition: "happy" },
+                history: Array.from({ length: 14 }, (_, i) => ({
+                    date: dayKey(i),
+                    poop: i % 5 === 0 ? "soft" : "normal",
+                    water: 340 + ((i * 37) % 180),
+                    food: 115 + ((i * 23) % 70),
+                    condition: i % 4 === 0 ? "tired" : "happy"
+                }))
+            };
 
-            showToast("데모 데이터 주입이 끝났습니다. 새로고침 중...");
+            const sampleCareSchedules = {
+                schedules: [
+                    { id: 701, petId: 101, type: "feed", title: "아침 사료", time: "08:00", repeat: "daily", completed: true, lastCompleted: isoAt(0, 8, 5), notes: "초코 아침 급여" },
+                    { id: 702, petId: 101, type: "walk", title: "저녁 산책", time: "18:30", repeat: "daily", completed: true, lastCompleted: isoAt(0, 18, 25), notes: "30분 목표" },
+                    { id: 703, petId: 101, type: "medicine", title: "심장사상충 예방약", time: "09:00", repeat: "monthly", completed: false, lastCompleted: isoAt(12, 9, 0), notes: "매월 1회" }
+                ],
+                completionHistory: [
+                    { scheduleId: 701, completedAt: isoAt(0, 8, 5), petId: 101, type: "feed", notes: "완료" },
+                    { scheduleId: 702, completedAt: isoAt(0, 18, 25), petId: 101, type: "walk", notes: "완료" },
+                    { scheduleId: 701, completedAt: isoAt(1, 8, 8), petId: 101, type: "feed", notes: "완료" }
+                ]
+            };
+
+            const samplePosts = [
+                {
+                    id: Date.now() - 7000,
+                    petName: "초코",
+                    petAvatar: demoPets[0].imageUrl,
+                    content: "오늘 데모 산책 완료! 냄새 탐험을 잔뜩 했어요 🐾",
+                    image: demoPets[0].imageUrl,
+                    isVideo: false,
+                    likes: 12,
+                    liked: false,
+                    comments: [{ author: "나비 집사", text: "초코 표정이 너무 좋아요!", replies: [] }],
+                    attachedWalk: sampleWalks[0],
+                    attachedAiHealth: null
+                },
+                {
+                    id: Date.now() - 14000,
+                    petName: "펫과나 케어팀",
+                    petAvatar: "https://api.dicebear.com/7.x/bottts/svg?seed=petna",
+                    content: "데모 데이터가 준비되면 건강, 산책, 리포트 화면을 바로 확인할 수 있어요.",
+                    image: null,
+                    isVideo: false,
+                    likes: 8,
+                    liked: false,
+                    comments: [],
+                    attachedWalk: null,
+                    attachedAiHealth: { summary: "최근 7일 식사와 음수 패턴이 안정적입니다." }
+                }
+            ];
+
+            const sampleAlbums = [
+                ...INITIAL_ALBUM,
+                { id: Date.now() - 60000, url: demoPets[0].imageUrl, isVideo: false, caption: "초코 데모 프로필", createdAt: isoAt(0, 12, 0) }
+            ];
+
+            const sampleSchedules = [
+                { id: 301, date: dayKey(2), title: "초코 종합백신 체크", type: "vet" },
+                { id: 302, date: dayKey(-3), title: "나비 미용 예약", type: "groom" },
+                { id: 303, date: dayKey(5), title: "송도 산책 모임", type: "walk" }
+            ];
+
+            const demoState = {
+                pets: demoPets,
+                posts: samplePosts,
+                schedules: sampleSchedules,
+                albums: sampleAlbums,
+                walks: sampleWalks,
+                meals: sampleMeals,
+                healthLogs: sampleHealthLogs,
+                careSchedules: sampleCareSchedules,
+                cart: [],
+                friends: INITIAL_FRIENDS,
+                letters: INITIAL_LETTERS,
+                customRoutes: []
+            };
+
+            Object.entries(demoState).forEach(([key, value]) => {
+                if (typeof AppStore !== 'undefined') {
+                    AppStore.setState(key, value);
+                }
+            });
+
+            const storageMap = {
+                pets: 'petna_pets',
+                posts: 'petna_posts',
+                schedules: 'petna_schedules',
+                albums: 'petna_albums',
+                walks: 'petna_walks',
+                meals: 'petna_meals',
+                healthLogs: 'petna_health_logs',
+                careSchedules: 'petna_care_schedules',
+                cart: 'petna_cart',
+                friends: 'petna_friends',
+                letters: 'petna_letters',
+                customRoutes: 'petna_custom_routes'
+            };
+
+            Object.entries(storageMap).forEach(([key, storageKey]) => {
+                localStorage.setItem(storageKey, JSON.stringify(demoState[key]));
+            });
+            localStorage.setItem("petna_premium", "demo");
+
+            showToast("전체 데모 데이터 주입이 끝났습니다. 새로고침 중...");
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -762,14 +904,24 @@ function resetToRichDemoData() {
 }
 
 function exportAllDataAsJSON() {
+    const dataKeyMap = {
+        pets: { storage: 'petna_pets', fallback: INITIAL_PETS },
+        posts: { storage: 'petna_posts', fallback: INITIAL_POSTS },
+        schedules: { storage: 'petna_schedules', fallback: INITIAL_SCHEDULES },
+        walks: { storage: 'petna_walks', fallback: INITIAL_WALKS },
+        albums: { storage: 'petna_albums', fallback: INITIAL_ALBUM },
+        meals: { storage: 'petna_meals', fallback: [] },
+        places: { storage: 'petna_places', fallback: INITIAL_PLACES },
+        healthLogs: { storage: 'petna_health_logs', fallback: INITIAL_HEALTH_LOGS },
+        careSchedules: { storage: 'petna_care_schedules', fallback: INITIAL_CARE_SCHEDULES },
+        friends: { storage: 'petna_friends', fallback: INITIAL_FRIENDS },
+        chatHistories: { storage: 'petna_chats', fallback: INITIAL_CHATS },
+        letters: { storage: 'petna_letters', fallback: INITIAL_LETTERS },
+        customRoutes: { storage: 'petna_custom_routes', fallback: [] },
+        petSaju: { storage: 'petna_pet_saju', fallback: null },
+        butlerSaju: { storage: 'petna_butler_saju', fallback: null }
+    };
     const backupObj = {
-        pets: JSON.parse(localStorage.getItem('petna_pets')) || INITIAL_PETS,
-        posts: JSON.parse(localStorage.getItem('petna_posts')) || INITIAL_POSTS,
-        schedules: JSON.parse(localStorage.getItem('petna_schedules')) || INITIAL_SCHEDULES,
-        walks: JSON.parse(localStorage.getItem('petna_walks')) || INITIAL_WALKS,
-        albums: JSON.parse(localStorage.getItem('petna_albums')) || INITIAL_ALBUM,
-        meals: JSON.parse(localStorage.getItem('petna_meals')) || [],
-        places: JSON.parse(localStorage.getItem('petna_places')) || INITIAL_PLACES,
         user: {
             nickname: settings_nickname,
             email: settings_email,
@@ -778,6 +930,10 @@ function exportAllDataAsJSON() {
             unit: settings_unit
         }
     };
+    Object.entries(dataKeyMap).forEach(([dataKey, config]) => {
+        const stored = localStorage.getItem(config.storage);
+        backupObj[dataKey] = stored ? JSON.parse(stored) : config.fallback;
+    });
 
     try {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj, null, 2));
@@ -801,13 +957,31 @@ function importDataFromJSON(event) {
     reader.onload = function (e) {
         try {
             const parsed = JSON.parse(e.target.result);
-            if (parsed.pets) localStorage.setItem('petna_pets', JSON.stringify(parsed.pets));
-            if (parsed.posts) localStorage.setItem('petna_posts', JSON.stringify(parsed.posts));
-            if (parsed.schedules) localStorage.setItem('petna_schedules', JSON.stringify(parsed.schedules));
-            if (parsed.walks) localStorage.setItem('petna_walks', JSON.stringify(parsed.walks));
-            if (parsed.albums) localStorage.setItem('petna_albums', JSON.stringify(parsed.albums));
-            if (parsed.meals) localStorage.setItem('petna_meals', JSON.stringify(parsed.meals));
-            if (parsed.places) localStorage.setItem('petna_places', JSON.stringify(parsed.places));
+            const dataKeyMap = {
+                pets: 'petna_pets',
+                posts: 'petna_posts',
+                schedules: 'petna_schedules',
+                walks: 'petna_walks',
+                albums: 'petna_albums',
+                meals: 'petna_meals',
+                places: 'petna_places',
+                healthLogs: 'petna_health_logs',
+                careSchedules: 'petna_care_schedules',
+                friends: 'petna_friends',
+                chatHistories: 'petna_chats',
+                letters: 'petna_letters',
+                customRoutes: 'petna_custom_routes',
+                petSaju: 'petna_pet_saju',
+                butlerSaju: 'petna_butler_saju'
+            };
+            Object.entries(dataKeyMap).forEach(([dataKey, storageKey]) => {
+                if (parsed[dataKey] !== undefined) {
+                    localStorage.setItem(storageKey, JSON.stringify(parsed[dataKey]));
+                    if (typeof AppStore !== 'undefined') {
+                        AppStore.setState(dataKey, parsed[dataKey]);
+                    }
+                }
+            });
 
             if (parsed.user) {
                 if (parsed.user.nickname) localStorage.setItem('petna_user_nickname', parsed.user.nickname);

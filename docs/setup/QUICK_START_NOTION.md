@@ -27,7 +27,7 @@
 | Property | Type | Options |
 |----------|------|---------|
 | Name | Title | (기본) |
-| Agent | Select | 루나, 아린, 가희 |
+| Agent | Select | 루나, 아린 |
 | Status | Status | Not started, In progress, Done, Failed |
 | Priority | Select | High, Medium, Low |
 | Description | Text | - |
@@ -152,7 +152,7 @@ python -c "import os; import sys; sys.path.insert(0, 'projects/ai-team'); from _
 ### 작업이 감지되지 않음
 
 1. Notion에서 **Status**가 `Not started`인지 확인
-2. **Agent** 필드가 정확한지 확인 (루나/아린/가희)
+2. **Agent** 필드가 정확한지 확인 (루나/아린)
 3. Integration이 데이터베이스에 연결되었는지 확인
 
 ### Integration 연결 확인

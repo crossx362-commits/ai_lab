@@ -21,25 +21,21 @@
 ## 2026-06-12 02:01 자가학습
 - **루나**: [숏폼 편집](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260612_숏폼_편집.md)
 - **예원**: [데이터분석](projects/ai-team/skills/예원_CEO/knowledge/learned_20260612_데이터분석.md)
-- **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
 
 
 ## 2026-06-12 10:01 자가학습
 - **코다리**: [서버리스](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260612_서버리스.md)
 - **경수**: [머신러닝](projects/ai-team/skills/경수_수사관/knowledge/learned_20260612_머신러닝.md)
-- **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
 
 
 ## 2026-06-12 16:01 자가학습
 - **경수**: [AI 윤리](projects/ai-team/skills/경수_수사관/knowledge/learned_20260612_AI_윤리.md)
-- **가희**: [AI 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260612_AI_윤리.md)
 - **루나**: [AI 시각화](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260612_AI_시각화.md)
 
 
 ## 2026-06-13 02:01 자가학습
 - **티모**: [모션 디자인](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260613_모션_디자인.md)
 - **케빈**: [IaC](projects/ai-team/skills/케빈_인프라/knowledge/learned_20260613_IaC.md)
-- **가희**: [챗봇 윤리](projects/ai-team/skills/가희_검수관/knowledge/learned_20260613_챗봇_윤리.md)
 
 
 ## 2026-06-13 10:39 자가학습
@@ -49,7 +45,6 @@
 
 
 ## 2026-06-13 16:23 자가학습
-- **가희**: [AI 콘텐츠 검증](projects/ai-team/skills/가희_검수관/knowledge/learned_20260613_AI_콘텐츠_검증.md)
 - **루나**: [AI 영상 제작](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260613_AI_영상_제작.md)
 - **경수**: [제로 트러스트 보안](projects/ai-team/skills/경수_수사관/knowledge/learned_20260613_제로_트러스트_보안.md)
 
@@ -73,7 +68,6 @@
 
 
 ## 2026-06-14 21:04 자가학습
-- **가희**: [수의 기초 의학](projects/ai-team/skills/가희_검수관/knowledge/learned_20260614_수의_기초_의학.md)
 - **티모**: [디자인 시스템](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260614_디자인_시스템.md)
 - **루나**: [AI 영상 제작 기술](projects/ai-team/skills/루나_디렉터/knowledge/learned_20260614_AI_영상_제작_기술.md)
 
@@ -86,7 +80,6 @@
 
 ## 2026-06-15 10:19 자가학습
 - **티모**: [모션 그래픽스](projects/ai-team/skills/티모_디자이너/knowledge/learned_20260615_모션_그래픽스.md)
-- **가희**: no_topic
 - **코다리**: [분산 시스템 설계](projects/ai-team/skills/코다리_개발자/knowledge/learned_20260615_분산_시스템_설계.md)
 
 

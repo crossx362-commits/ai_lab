@@ -17,7 +17,7 @@
       "agent": "영숙",
       "task": "리포트 정리",
       "cron": "0 4 * * *",
-      "description": "가희 검수 리포트 필터링 및 정리",
+      "description": "리포트 필터링 및 정리",
       "command": "리포트 정리해줘",
       "enabled": true,
       "priority": "medium"

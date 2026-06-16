@@ -30,7 +30,6 @@ AGENT_USERS = [
     {"name": "아린",    "email": "arin@petna.co.kr",    "pet_name": "아린이",  "pet_type": "cat",    "emoji": "📸", "style": "감성적이고 비주얼 중시"},
     {"name": "현빈",    "email": "hyunbin@petna.co.kr", "pet_name": "현빈이",  "pet_type": "dog",    "emoji": "💡", "style": "분석적이고 전략적"},
     {"name": "티모",    "email": "timo@petna.co.kr",    "pet_name": "티모냥",  "pet_type": "cat",    "emoji": "🎨", "style": "감각적이고 디자인 중시"},
-    {"name": "가희",    "email": "gahee@petna.co.kr",   "pet_name": "가희봄",  "pet_type": "rabbit", "emoji": "✅", "style": "꼼꼼하고 건강 관심"},
     {"name": "경수",    "email": "kyungsoo@petna.co.kr","pet_name": "경수당",  "pet_type": "dog",    "emoji": "🛡️", "style": "신중하고 안전 중시"},
     {"name": "영숙",    "email": "yeongsuk@petna.co.kr","pet_name": "영숙이",  "pet_type": "hamster","emoji": "📅", "style": "부지런하고 일정 관리"},
 ]

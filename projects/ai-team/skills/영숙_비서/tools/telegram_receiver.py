@@ -67,7 +67,7 @@ def get_updates(offset):
     return res.get("result", [])
 
 def get_agent_status(agent: str = "전체"):
-    """에이전트 현황. Args: agent ('예원'/'영숙'/'루나'/'아린'/'가희'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
+    """에이전트 현황. Args: agent ('예원'/'영숙'/'루나'/'아린'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
     from _shared.agent_status import get_status_report
     return get_status_report(agent, PROJECT_ROOT)
 

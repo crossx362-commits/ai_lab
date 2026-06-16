@@ -32,16 +32,6 @@ HISTORY = ROOT / "reports/history/petnna_social_upload_history.json"
 
 # ── 에이전트 정의 ────────────────────────────────────────────────────────────
 AGENTS = {
-    "루나": {
-        "emoji": "🎵", "nickname": "루나 디렉터",
-        "pet_angle": "AI 시티팝과 함께하는 반려동물 힐링 타임",
-        "upload_dir": UPLOADS / "luna", "file_glob": "best_scene_thumbnail*.png",
-    },
-    "아린": {
-        "emoji": "📸", "nickname": "아린 디렉터",
-        "pet_angle": "반려동물 일상의 감성적인 순간",
-        "upload_dir": UPLOADS / "arin", "file_glob": "*.png",
-    },
     "레오": {
         "emoji": "🎬", "nickname": "레오",
         "pet_angle": "우리 반려동물을 SNS 스타로! 오늘의 바이럴 팁",

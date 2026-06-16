@@ -133,6 +133,13 @@ function getSajuPet() {
     return pets[Math.min(sajuSelectedPetIndex, pets.length - 1)];
 }
 
+function getCurrentHarmonyResult() {
+    const sajuPet = getSajuPet();
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const appResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+    return sajuPet?.harmonyData || activePet?.harmonyData || appResult || null;
+}
+
 function renderSajuPetPicker() {
     const list = document.getElementById('saju-pet-list');
     const picker = document.getElementById('saju-pet-picker');
@@ -182,13 +189,18 @@ function saveIqToWidget() {
 
 // 조화도를 마이룸에 등록
 function saveHarmonyToWidget() {
-    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
+    const harmonyResult = getCurrentHarmonyResult();
 
     if (!harmonyResult || !harmonyResult.avgScore) {
         if (typeof showToast === 'function') {
             showToast('⚠️ 조화도를 먼저 측정해주세요!');
         }
         return;
+    }
+
+    const pet = getSajuPet();
+    if (pet && !pet.harmonyData) {
+        pet.harmonyData = harmonyResult;
     }
 
     // 상태 저장
@@ -215,8 +227,8 @@ window.saveHarmonyToWidget = saveHarmonyToWidget;
 
 // 조화도를 소셜 피드에 공유
 function shareHarmonyToSocial() {
-    const harmonyResult = (typeof AppStore !== 'undefined') ? AppStore.getState('harmonyResult') : null;
-    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const harmonyResult = getCurrentHarmonyResult();
+    const pet = getSajuPet() || ((typeof getActivePet === 'function') ? getActivePet() : null);
     const ownerName = (typeof settings_nickname !== 'undefined' && settings_nickname) ? settings_nickname : '집사';
 
     if (!harmonyResult || !harmonyResult.avgScore) {
@@ -1037,7 +1049,11 @@ function generateHarmonyReport() {
         mbtiScore: mbtiScore,
         avgScore: avgScore
     };
-    
+
+    if (typeof AppStore !== 'undefined') {
+        AppStore.setState('harmonyResult', harmonyData);
+    }
+
     if (typeof pets !== 'undefined' && pets.length > 0) {
         getSajuPet().harmonyData = harmonyData;
         if (typeof saveState === 'function') saveState();

@@ -122,7 +122,7 @@ def analyze_with_ollama(report_content: str) -> dict:
     # 폴백: Ollama 직접 분석
     prompt = f"""AI팀 리포트를 분석하여 오늘 할 작업을 JSON으로 반환하세요.
 리포트: {report_content[:2000]}
-JSON: {{"tasks":[{{"agent":"루나","action":"뮤직비디오 생성","priority":"medium","description":"","reason":""}}],"summary":""}}"""
+JSON: {{"tasks":[],"summary":"오늘 작업 없음"}}"""
 
     try:
         response = ollama_chat(prompt, json_mode=True, temperature=0.5, max_tokens=1000)
@@ -145,10 +145,8 @@ def execute_agent_pipeline(agent_name: str, task_info: dict) -> tuple[bool, str]
     print(f"  [{agent_name}] {task_info['action']} 실행")
     print(f"{'='*60}")
 
-    pipeline_map = {
-        "루나": "skills/루나_디렉터/tools/music_video_pipeline.py",
-        "아린": "skills/아린_관리자/tools/auto_pipeline.py",
-    }
+    # 루나·아린: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
+    pipeline_map = {}
 
     pipeline_path = pipeline_map.get(agent_name)
     if not pipeline_path:
@@ -277,10 +275,7 @@ def run_daily_automation():
     # 다른 에이전트 리포트 파일 → Notion 반영
     agent_report_map = {
         "현빈": "reports/research/hyunbin_research.json",
-        "루나": "reports/research/luna_research.json",
-        "아린": "reports/research/arin_research.json",
         "케빈": "reports/history/kevin_monitor_log.md",
-        "가희": "reports/inspection/gahee_inspection_log.md",
         "경수": "reports/inspection/kyungsoo_audit_log.md",
         "코다리": "projects/ai-team/docs/progress.md",
         "영숙": "reports/history/yeongsuk_daily_brief.md",

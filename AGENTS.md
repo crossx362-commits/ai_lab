@@ -73,7 +73,6 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 | 영숙 (Youngsuk) | Secretary — Telegram bot & calendar | `telegram_receiver.py`, `calendar_manager.py` |
 | 루나 (Luna) | Director — YouTube music video production | `youtube_research.py`, `video_automation.py` |
 | 아린 (Arin) | Manager — Instagram content uploader | `upload_insta_post.py`, `auto_pipeline.py` |
-| 가희 (Gahee) | Inspector — Content quality & policy review | `content_validator.py` |
 | 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
 | 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
 | 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |

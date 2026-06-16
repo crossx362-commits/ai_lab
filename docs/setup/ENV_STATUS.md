@@ -40,7 +40,7 @@
   - `INSTAGRAM_ACCOUNT_ID`: 1950584362997755
 - **확인**: Facebook Graph API 인증 성공
 - **참고**: Instagram Business 계정 연결 권장 (`SETUP_INSTAGRAM.md`)
-- **용도**: 아린 관리자, 가희 검수관 (Instagram 콘텐츠 관리)
+- **용도**: 아린 관리자 (Instagram 콘텐츠 관리)
 
 ### 6. Telegram Bot API ✅
 - **상태**: 정상

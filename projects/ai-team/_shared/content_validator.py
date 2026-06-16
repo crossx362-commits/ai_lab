@@ -1,7 +1,7 @@
 """
 content_validator.py - 콘텐츠 검증 로직 통합
 
-가희 검수관과 경수 수사관에서 중복되는 콘텐츠 검증 로직을 통합합니다.
+경수 수사관의 콘텐츠 검증 로직을 통합합니다.
 """
 from typing import Dict, List, Optional
 

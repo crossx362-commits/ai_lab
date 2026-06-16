@@ -26,34 +26,12 @@ from _shared.env_loader import load_env as _load_env
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
 # 에이전트별 포스팅 일정 설정
-POSTING_SCHEDULE = [
-    {
-        "agent":       "루나",
-        "title":       "📺 루나 — YouTube 업로드",
-        "hour":        19,
-        "minute":      0,
-        "duration":    30,
-        "color_id":    "11",  # 토마토
-        "description": "루나 AI 뮤직비디오 YouTube 예약 업로드 (시티팝/레트로 장르)",
-        "keyword":     "루나",
-    },
-    {
-        "agent":       "아린",
-        "title":       "🌸 아린 — 인스타그램 포스팅",
-        "hour":        11,
-        "minute":      30,
-        "duration":    20,
-        "color_id":    "6",   # 바나나
-        "description": "아린 AI 인스타그램 이미지 자동 포스팅 (트렌드 기반)",
-        "keyword":     "아린",
-    },
-]
+# 루나·아린: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
+POSTING_SCHEDULE = []
 
 # 매일 반복 일정 리스트 (register-recurring 용)
 UPLOAD_SCHEDULE_RECURRING = [
     {"agent": "경수",  "hour": 1,  "summary": "🔍 경수 — 악플 자동 수사",          "color": "11"},  # tomato
-    {"agent": "루나",  "hour": 3,  "summary": "🎵 루나 — 음악 채널 자동 업로드",    "color": "2"},   # sage
-    {"agent": "아린",  "hour": 3,  "summary": "📸 아린 — 인스타그램 자동 업로드",   "color": "6"},   # tangerine
 ]
 
 def _get_recent_results() -> dict:
