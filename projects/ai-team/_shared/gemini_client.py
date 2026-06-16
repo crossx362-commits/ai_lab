@@ -44,8 +44,9 @@ def text(
     json_mode: bool = False,
     task: str = "",
     lm_first: bool = False,
+    gpt_first: bool = False,  # GPT 우선 모드 추가
 ) -> str | None:
-    """텍스트 생성. 폴백 체인: Gemini → GPT-4o mini → Ollama"""
+    """텍스트 생성. 폴백 체인: GPT-4o mini → Ollama (Gemini는 할당량 초과로 비활성화)"""
     import inspect
     allowed = False
     for frame in inspect.stack():
@@ -73,40 +74,14 @@ def text(
             pass
         return None
 
-    # 1. Gemini API 시도
-    api_key = os.getenv("GEMINI_API_KEY", "")
-    if api_key:
-        try:
-            parts = [{"text": prompt}]
-            payload = {
-                "contents": [{"parts": parts}],
-                "generationConfig": {
-                    "maxOutputTokens": min(max_tokens, 800),  # 최대 800토큰으로 제한 (토큰 절약)
-                    "temperature": temperature,
-                }
-            }
-            if system:
-                payload["systemInstruction"] = {"parts": [{"text": system}]}
-            if json_mode:
-                payload["generationConfig"]["responseMimeType"] = "application/json"
-
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=60) as r:
-                res = json.loads(r.read())
-            result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
-            print(f"  [Gemini API] 텍스트 생성 완료")
+    # 1. GPT-4o mini 우선 (Gemini 할당량 초과로 기본값 변경)
+    if gpt_first or True:  # 기본값을 GPT 우선으로 변경
+        result = _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
+        if result:
             return result
-        except Exception as e:
-            print(f"  [Gemini API] 실패: {e} → GPT 폴백")
+        print(f"  [GPT] 실패 → Ollama 폴백")
 
-    # 2. GPT-4o mini 폴백
-    result = _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
-    if result:
-        return result
-
-    # 3. Ollama 최종 폴백
-    print(f"  [GPT] 실패 → Ollama 폴백")
+    # 2. Ollama 폴백
     try:
         from _shared.ollama_client import chat as lm_chat, is_available as lm_available
         if lm_available():
