@@ -258,27 +258,27 @@ def run_leo_cycle(sim_mode=False):
                 # 익절 체크
                 if profit_pct >= 5.0:
                     # 전량 익절
-                    print(f"💰 [Leo] {ticker} 2차 익절 +{profit_pct:.2f}% - 전량 매도")
-                    msg = f"💰 [레오] {ticker} 익절\n수익률: +{profit_pct:.2f}%\n매도가: {current_price:,}원"
-                    send_telegram_message(msg)
+                    coin = ticker.split('-')[1]
+                    print(f"💰 [Leo] {coin} 2차 익절 +{profit_pct:.2f}%")
+                    send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}%")
                     if not sim_mode:
                         upbit_analyzer.execute_sell(ticker, balance)
-                    consecutive_losses = 0  # 익절 시 연속 손절 리셋
+                    consecutive_losses = 0
 
                 elif profit_pct >= 3.0:
                     # 50% 익절
                     sell_amount = balance * 0.5
-                    print(f"💰 [Leo] {ticker} 1차 익절 +{profit_pct:.2f}% - 50% 매도")
-                    msg = f"💰 [레오] {ticker} 1차 익절\n수익률: +{profit_pct:.2f}%\n매도 비중: 50%"
-                    send_telegram_message(msg)
+                    coin = ticker.split('-')[1]
+                    print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}%")
+                    send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
                     if not sim_mode:
                         upbit_analyzer.execute_sell(ticker, sell_amount)
 
                 # 손절 체크
                 elif profit_pct <= -2.0:
-                    print(f"🛑 [Leo] {ticker} 손절 {profit_pct:.2f}% - 전량 매도")
-                    msg = f"🛑 [레오] {ticker} 손절\n손실: {profit_pct:.2f}%\n매도가: {current_price:,}원"
-                    send_telegram_message(msg)
+                    coin = ticker.split('-')[1]
+                    print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}%")
+                    send_telegram_message(f"🛑 [레오] {coin} {profit_pct:.1f}%")
                     if not sim_mode:
                         upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses += 1
@@ -346,20 +346,8 @@ def run_leo_cycle(sim_mode=False):
             print(f"[Leo] 매수 금액 부족 ({buy_amount:,.0f}원)")
             return
 
-        current_price = best["current_price"]
-        tp1 = current_price * 1.03  # +3%
-        tp2 = current_price * 1.05  # +5%
-        sl = current_price * 0.98   # -2%
-
-        msg = (
-            f"⚡ [레오] 단타 진입!\n"
-            f"📌 {ticker} (점수: {best['score']}점)\n"
-            f"💰 투입: {buy_amount:,.0f}원 ({invest_pct*100:.0f}%)\n"
-            f"📊 현재가: {current_price:,}원\n"
-            f"🎯 1차 익절: {tp1:,}원 (+3%)\n"
-            f"🎯 2차 익절: {tp2:,}원 (+5%)\n"
-            f"🛑 손절: {sl:,}원 (-2%)"
-        )
+        coin = ticker.split('-')[1]
+        msg = f"⚡ [레오] {coin} 진입 {buy_amount/10000:.0f}만원 ({best['score']}점)"
 
         print(msg)
         send_telegram_message(msg)
@@ -376,9 +364,7 @@ def run_leo_cycle(sim_mode=False):
 
 
 def send_status_report(sim_mode=False):
-    """2시간마다 현황 보고"""
-    global last_report_time
-
+    """2시간마다 현황 보고 (간결)"""
     now = time.time()
     if not hasattr(send_status_report, 'last_report'):
         send_status_report.last_report = 0
@@ -393,7 +379,6 @@ def send_status_report(sim_mode=False):
         return
 
     try:
-        # 레오 포지션 현황
         leo_positions = []
         for ticker in LEO_TICKERS:
             balance = safe_float(upbit_client.get_balance(ticker))
@@ -402,19 +387,15 @@ def send_status_report(sim_mode=False):
             if balance * current_price >= 5000 and not check_dave_holdings(ticker):
                 avg = safe_float(upbit_client.get_avg_buy_price(ticker))
                 profit = (current_price - avg) / avg * 100
-                leo_positions.append(f"  • {ticker.split('-')[1]}: +{profit:.2f}%")
+                leo_positions.append(f"{ticker.split('-')[1]} {profit:+.1f}%")
 
-        pos_str = "\n".join(leo_positions) if leo_positions else "  • 없음"
+        if leo_positions or consecutive_losses > 0:
+            pos = ' | '.join(leo_positions) if leo_positions else '없음'
+            msg = f"⚡ [레오] {pos} | 일손익 {daily_loss_pct:+.1f}%"
+            if consecutive_losses > 0:
+                msg += f" | 연손 {consecutive_losses}회"
+            send_telegram_message(msg)
 
-        msg = (
-            f"⚡ [레오] 2시간 현황 보고\n\n"
-            f"📦 보유 포지션:\n{pos_str}\n\n"
-            f"📊 일일 손익: {daily_loss_pct:+.2f}%\n"
-            f"🔄 연속 손절: {consecutive_losses}회\n"
-            f"🤖 데몬 정상 가동 중"
-        )
-
-        send_telegram_message(msg)
         print("[Leo] 2시간 현황 보고 전송 완료")
     except Exception as e:
         print(f"[Leo] 현황 보고 오류: {e}")
@@ -428,7 +409,7 @@ if __name__ == "__main__":
         run_leo_cycle(sim_mode=sim)
     else:
         print("⚡ 레오 공격적 단타 트레이더 시작 (10초 주기)")
-        send_telegram_message("⚡ [레오] 공격적 단타 트레이더 가동 시작")
+        send_telegram_message("⚡ [레오] 시작")
 
         while True:
             try:

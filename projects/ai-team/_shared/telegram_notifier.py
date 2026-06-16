@@ -83,6 +83,71 @@ def send_telegram_message(message: str, parse_mode: str = "HTML") -> bool:
         print(f"  [영숙에게 보고 예정] {message[:50]}")
         return True
 
+    # 중복 메시지 및 도배 방지 필터 (파일 기반 영구 캐시)
+    try:
+        import time
+        import re
+        import json
+        
+        cache_file = os.path.join(_PROJECT_ROOT, ".telegram_sent_cache.json")
+        now = time.time()
+        
+        # 캐시 파일 로드 및 오래된 데이터 정리
+        cache = {}
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cache = json.load(f)
+            except Exception:
+                pass
+        
+        # 10분(600초) 이상 지난 항목 정리
+        cache = {k: v for k, v in cache.items() if now - v < 600}
+        
+        # 에이전트명, 코인명(티커), 액션(매수/매도/실패/에러 등) 추출
+        agent_match = re.search(r'\[([^\]]+)\]', message)
+        ticker_match = re.search(r'(KRW-[A-Z0-9]+)', message)
+        
+        agent = agent_match.group(1) if agent_match else "unknown"
+        ticker = ticker_match.group(1) if ticker_match else "general"
+        
+        # 메시지 내 핵심 상태 단어 추출
+        action = "info"
+        for word in ["매도 실패", "매수 실패", "손절", "익절", "매도", "매수", "에러", "오류", "실패", "실시간 스캔"]:
+            if word in message:
+                action = word
+                break
+        
+        is_duplicate = False
+        if action != "info" or ticker != "general":
+            key = f"{agent}_{ticker}_{action}"
+            last_time = cache.get(key, 0)
+            if now - last_time < 600:  # 10분
+                is_duplicate = True
+            else:
+                cache[key] = now
+        else:
+            # 일반 메시지의 경우 완전히 동일한 텍스트는 5분간 차단
+            key = f"exact_{hash(message)}"
+            last_time = cache.get(key, 0)
+            if now - last_time < 300:  # 5분
+                is_duplicate = True
+            else:
+                cache[key] = now
+                
+        # 캐시 업데이트 저장
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(cache, f, ensure_ascii=False)
+        except Exception:
+            pass
+            
+        if is_duplicate:
+            print(f"  [Telegram] 중복 메시지 전송 차단 (Key: {key})")
+            return True
+    except Exception as fe:
+        print(f"중복 방지 필터 오류: {fe}")
+
     # 영숙이 톤으로 일괄 변환
     message = _call_ai_for_yeongsuk(message)
 

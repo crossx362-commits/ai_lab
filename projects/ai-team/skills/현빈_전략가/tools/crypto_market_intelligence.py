@@ -183,7 +183,7 @@ class CryptoMarketIntelligence:
 
         return {"error": "No data"}
 
-    def collect_all(self) -> Dict[str, Any]:
+    def collect_all(self, notify=False) -> Dict[str, Any]:
         """모든 정보를 한 번에 수집"""
         print("[현빈] 암호화폐 시장 정보 수집 시작...")
 
@@ -203,7 +203,36 @@ class CryptoMarketIntelligence:
             json.dump(intel, f, ensure_ascii=False, indent=2)
 
         print(f"[현빈] 정보 수집 완료: {self.output_path}")
+
+        # 중요 변화만 알림
+        if notify:
+            self.check_and_notify(intel)
+
         return intel
+
+    def check_and_notify(self, intel: Dict[str, Any]):
+        """중요한 변화만 텔레그램 알림"""
+        alerts = []
+
+        # 연준 위험도 HIGH일 때만
+        fed = intel.get("fed_events", {})
+        if fed.get("risk_level") == "HIGH":
+            alerts.append(f"🏛️ {fed.get('current_status')}")
+
+        # 공포탐욕 극단 구간
+        fg = intel.get("fear_greed_index", {})
+        if fg.get("action") in ["BUY_SIGNAL", "SELL_SIGNAL"]:
+            alerts.append(f"😱 공포탐욕 {fg['value']} - {fg['signal']}")
+
+        # 김프 ±5% 이상
+        kp = intel.get("kimchi_premium", {})
+        if abs(kp.get("premium_pct", 0)) >= 5:
+            alerts.append(f"🌶️ 김프 {kp['premium_pct']:+.1f}% - {kp['signal']}")
+
+        # 중요 알림만 전송
+        if alerts:
+            msg = "🚨 [현빈] 중요 시장 변화\n" + "\n".join(alerts)
+            send_telegram_message(msg)
 
     def generate_summary(self, intel: Dict[str, Any]) -> str:
         """수집된 정보를 요약 메시지로 변환"""
@@ -237,43 +266,40 @@ class CryptoMarketIntelligence:
         return "\n".join(lines)
 
 
-def main():
+def main(notify=False):
     """메인 실행 함수"""
-    import sys
-    import io
-
-    # UTF-8 출력 강제
-    if sys.platform == "win32":
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
     collector = CryptoMarketIntelligence()
 
-    # 전체 정보 수집
-    intel = collector.collect_all()
+    # 전체 정보 수집 (중요 변화만 알림)
+    intel = collector.collect_all(notify=notify)
 
-    # 요약 메시지 생성 및 텔레그램 전송
+    # 요약 출력 (텔레그램은 중요 변화만)
     summary = collector.generate_summary(intel)
     print(summary)
-    send_telegram_message(summary)
 
     print("\n✅ 암호화폐 시장 정보 수집 완료")
 
 
 if __name__ == "__main__":
+    # UTF-8 출력 강제 (데몬 모드용)
+    import sys
+    import io
+    if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
     # 1회 실행: python crypto_market_intelligence.py
     # 데몬 모드: 5분마다 수집
-    import sys
-
     if "--daemon" in sys.argv:
         print("🤖 [현빈] 암호화폐 정보 수집 데몬 시작 (5분 주기)")
-        send_telegram_message("🤖 [현빈] 암호화폐 시장 정보 수집 데몬 가동 시작")
+        send_telegram_message("🤖 [현빈] 정보 수집 시작 (중요 변화만 알림)")
 
         while True:
             try:
-                main()
+                main(notify=True)  # 데몬 모드는 중요 변화만 알림
             except Exception as e:
                 print(f"[Daemon Error] {e}")
 
             time.sleep(300)  # 5분 대기
     else:
-        main()
+        main(notify=False)  # 단발 실행은 알림 안 함

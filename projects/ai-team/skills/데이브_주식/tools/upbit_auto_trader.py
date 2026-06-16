@@ -345,12 +345,13 @@ def run_auto_trade_cycle(sim_mode=False):
                 if decision == "BUY":
                     pct = percentage / 100.0
                     buy_amount = krw_balance * pct * 0.995 # 수수료 고려 안전 여유
-                    
+
                     if buy_amount < 5000.0:
                         print(f"[AutoTrader] 매수 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {buy_amount:.0f}원)")
                         return
-                        
-                    msg = f"⚡ [데이브] 실시간 스캔 1위 + Confluence 합치 완료!\n📌 대상: {best_ticker} (스캔 점수: {best['score']}점)\n💰 투입 금액: {buy_amount:,.0f}원 ({percentage}%)\n📊 현재가: {best['current_price']:,}원\n🚨 시장가 매수를 집행합니다."
+
+                    coin = best_ticker.split('-')[1]
+                    msg = f"💼 [데이브] {coin} 매수 {buy_amount/10000:.0f}만원 ({best['score']}점)"
                     print(msg)
                     send_telegram_message(msg)
                     if not sim_mode:
@@ -385,7 +386,7 @@ def run_auto_trade_cycle(sim_mode=False):
             print(f"[AutoTrader] 현재 최소 진입 점수(3점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
 
 def send_status_report(sim_mode=False):
-    """4시간마다 현황 보고 텔레그램 전송."""
+    """4시간마다 현황 보고 텔레그램 전송 (간결)"""
     global last_report_time
     now = time.time()
     if now - last_report_time < REPORT_INTERVAL_SECONDS:
@@ -395,39 +396,25 @@ def send_status_report(sim_mode=False):
     try:
         upbit_client = upbit_analyzer.get_upbit_client()
         if upbit_client is None or sim_mode:
-            krw = 0.0
-            holdings = []
-        else:
-            krw = safe_float(upbit_client.get_balance("KRW"))
-            holdings = []
-            for ticker in TICKERS:
-                bal = safe_float(upbit_client.get_balance(ticker))
-                if bal * float(pyupbit.get_current_price(ticker)) >= 5000:
-                    cur = float(pyupbit.get_current_price(ticker))
-                    avg = safe_float(upbit_client.get_avg_buy_price(ticker))
-                    pnl = (cur - avg) / avg * 100
-                    holdings.append(f"  • {ticker.split('-')[1]}: {bal:.6f}개 | 평단 {avg:,.0f}원 | 현재 {cur:,.0f}원 | {pnl:+.2f}%")
+            return
 
-        # 상위 코인 스코어 요약
-        scores = []
+        krw = safe_float(upbit_client.get_balance("KRW"))
+        holdings = []
+        total_pnl = 0
+
         for ticker in TICKERS:
-            r = calculate_confluence_score(ticker)
-            if "error" not in r:
-                scores.append(f"  • {ticker.split('-')[1]}: {r['score']}점")
-        scores.sort(reverse=True)
+            bal = safe_float(upbit_client.get_balance(ticker))
+            if bal * float(pyupbit.get_current_price(ticker)) >= 5000:
+                cur = float(pyupbit.get_current_price(ticker))
+                avg = safe_float(upbit_client.get_avg_buy_price(ticker))
+                pnl = (cur - avg) / avg * 100
+                total_pnl += pnl
+                holdings.append(f"{ticker.split('-')[1]} {pnl:+.1f}%")
 
-        holding_str = "\n".join(holdings) if holdings else "  • 없음"
-        score_str = "\n".join(scores[:5])
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        if holdings:
+            msg = f"💼 [데이브] {' | '.join(holdings)} | 예수금 {krw/10000:.0f}만원"
+            send_telegram_message(msg)
 
-        msg = (
-            f"📊 [데이브] 4시간 현황 보고 — {now_str}\n"
-            f"\n💰 예수금: {krw:,.0f}원"
-            f"\n\n📦 보유 포지션:\n{holding_str}"
-            f"\n\n🔍 퀀트 스코어 TOP5:\n{score_str}"
-            f"\n\n🤖 데몬 정상 가동 중 (10초 주기 감시)"
-        )
-        send_telegram_message(msg)
         print(f"[Report] 4시간 현황 보고 전송 완료")
     except Exception as e:
         print(f"[Report] 현황 보고 오류: {e}")
@@ -458,7 +445,7 @@ if __name__ == "__main__":
             print(f"중복 실행 확인 중 오류 발생: {pe}")
 
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
-        send_telegram_message("🤖 데이브 업비트 실시간 자동 매매 데몬 가동을 시작합니다 (실시간 10초 시세 감시 및 실시간 다중 퀀트 스캔).")
+        send_telegram_message("💼 [데이브] 시작")
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS  # 시작 즉시 첫 보고
 
         while True:
