@@ -138,9 +138,11 @@ TOOL_MAP = {"get_agent_status": get_agent_status, "list_calendar": list_calendar
 def process(msg):
     print(f"\n📩 {msg}")
 
-    # 1. 자주 사용하는 시스템 명령은 즉시 반환하여 딜레이/토큰 제로화
+    # 1. 자주 사용하는 시스템 명령은 즉시 반환하여 딜레이/토큰 제로화 (Gemini API 절약)
     msg_clean = msg.strip().replace(" ", "").lower()
-    if any(k in msg_clean for k in ["현황", "상태", "다들뭐해"]):
+
+    # 1-1. 에이전트 현황 (가장 많이 사용)
+    if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행"]):
         try:
             status_report = get_agent_status("전체")
             send_msg(status_report)
@@ -148,7 +150,8 @@ def process(msg):
         except Exception as se:
             print(f"❌ 현황 조회 실패: {se}")
 
-    if any(k in msg_clean for k in ["일정", "캘린더"]):
+    # 1-2. 일정 조회
+    if any(k in msg_clean for k in ["일정", "캘린더", "calendar", "schedule"]):
         try:
             cal_report = list_calendar()
             send_msg(cal_report)
@@ -156,7 +159,17 @@ def process(msg):
         except Exception as ce:
             print(f"❌ 일정 조회 실패: {ce}")
 
-    direct_dispatch_keywords = ["구동", "실행", "시작", "켜", "동작", "가동", "데몬", "자동매매", "실거래", "live"]
+    # 1-3. 에이전트 구동 명령 (dispatch로 직접 전달)
+    direct_dispatch_keywords = ["구동", "실행", "시작", "켜", "동작", "가동", "데몬", "자동매매", "실거래", "live", "데이브", "dave", "레오", "leo", "현빈", "hyunbin"]
+    if any(k in msg_clean for k in direct_dispatch_keywords):
+        try:
+            result = dispatch(msg)
+            send_msg(result)
+            return
+        except Exception as de:
+            print(f"❌ dispatch 실패: {de}")
+
+    # Gemini 클라이언트 없으면 Ollama 폴백
     if not client:
         if any(k in msg for k in direct_dispatch_keywords):
             send_msg(dispatch(msg))
