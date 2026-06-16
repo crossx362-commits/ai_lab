@@ -31,14 +31,21 @@ last_notion_upload_time = 0
 NOTION_UPLOAD_INTERVAL_SECONDS = 12 * 3600  # 12시간마다 (하루 2회)
 
 
-def Field(description=""):
-    return None
+try:
+    from pydantic import BaseModel as PydanticBaseModel, Field as PydanticField, ConfigDict
 
+    class BaseModel(PydanticBaseModel):
+        model_config = ConfigDict(arbitrary_types_allowed=True)
 
-class BaseModel:
-    @classmethod
-    def model_validate_json(cls, text):
-        return cls(**json.loads(text))
+    Field = PydanticField
+except ImportError:
+    def Field(description=""):
+        return None
+
+    class BaseModel:
+        @classmethod
+        def model_validate_json(cls, text):
+            return cls(**json.loads(text))
 
 # UTF-8 설정
 if hasattr(sys.stdout, "reconfigure"):
