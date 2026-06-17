@@ -236,40 +236,91 @@ def run_analysis(query: str = "", stock_code: str = "032820") -> str:
 """
 
     api_key = os.getenv("GEMINI_API_KEY", "").strip('"').strip("'")
-    if not api_key:
-        return "❌ [데이브] GEMINI_API_KEY 환경변수가 설정되지 않았습니다."
+
+    report = None
+
+    # 1차: Gemini 시도
+    if genai and api_key:
+        try:
+            import time
+            print("[Dave] Gemini API 호출 중...")
+            client = genai.Client(api_key=api_key)
+
+            max_retries = 5
+            response = None
+            for attempt in range(max_retries):
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
+                            max_output_tokens=700,
+                            temperature=0.2
+                        )
+                    )
+                    break
+                except Exception as e:
+                    err = str(e)
+                    if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
+                        if attempt < max_retries - 1:
+                            time.sleep(5)
+                            continue
+                    raise e
+
+            if response:
+                report = response.text
+                print("[Dave] ✅ Gemini 분석 완료")
+        except Exception as e:
+            print(f"[Dave] ⚠️ Gemini 실패: {e}, Ollama 폴백 시도")
+
+    # 2차: Ollama 폴백
+    if not report:
+        try:
+            from _shared.ollama_client import chat as ollama_chat
+            print("[Dave] Ollama 로컬 LLM 사용 중...")
+            report = ollama_chat(
+                prompt,
+                system="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다.",
+                max_tokens=700,
+                temperature=0.2
+            )
+            print("[Dave] ✅ Ollama 분석 완료")
+        except Exception as oe:
+            print(f"[Dave] ⚠️ Ollama 실패: {oe}, GPT 폴백 시도")
+
+    # 3차: GPT 폴백
+    if not report:
+        try:
+            import urllib.request, json as _json
+            openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+            if openai_key:
+                print("[Dave] GPT-4o-mini 폴백 사용 중...")
+                payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": "너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 700,
+                    "temperature": 0.2
+                }
+                req = urllib.request.Request(
+                    "https://api.openai.com/v1/chat/completions",
+                    data=_json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_key}"}
+                )
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    res = _json.loads(r.read())
+                report = res["choices"][0]["message"]["content"].strip()
+                print("[Dave] ✅ GPT 분석 완료")
+        except Exception as ge:
+            print(f"[Dave] ❌ GPT도 실패: {ge}")
+
+    if not report:
+        return "❌ [데이브] 모든 AI 모델 사용 불가 (Gemini/Ollama/GPT 모두 실패)"
 
     try:
-        import time
-        client = genai.Client(api_key=api_key)
-        
-        max_retries = 5
-        response = None
-        for attempt in range(max_retries):
-            try:
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
-                        max_output_tokens=700,
-                        temperature=0.2
-                    )
-                )
-                break
-            except Exception as e:
-                err = str(e)
-                if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
-                    if attempt < max_retries - 1:
-                        # 재시도 로직만 수행 (텔레그램 노이즈 방지)
-                        time.sleep(5)
-                        continue
-                raise e
-
-        if not response:
-            return "❌ [데이브] 분석을 수행할 수 없습니다 (제미니 응답 없음)."
-        report = response.text
-
         # 영숙 보고 섹션 후처리 제거
         for marker in ["영숙 보고", "영숙이 보고", "영숙님", "📱"]:
             if marker in report:
