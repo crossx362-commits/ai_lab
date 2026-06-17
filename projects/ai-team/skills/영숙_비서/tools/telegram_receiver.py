@@ -77,8 +77,25 @@ def get_updates(offset):
     payload = {"timeout": 30, "allowed_updates": ["message"]}
     if offset:
         payload["offset"] = offset
-    res = tg_api("getUpdates", payload, timeout=40)
-    return res.get("result", [])
+
+    try:
+        res = tg_api("getUpdates", payload, timeout=40)
+        return res.get("result", [])
+    except Exception as e:
+        error_str = str(e)
+        if "409" in error_str or "Conflict" in error_str:
+            print(f"⚠️ Telegram API 409 Conflict - 다른 클라이언트가 봇을 사용 중입니다")
+            print(f"   원인: Telegram Desktop, 웹, 또는 다른 봇 인스턴스")
+            print(f"   해결: 다른 클라이언트를 종료하거나 Webhook 모드로 전환하세요")
+            print(f"   대기 10초 후 재시도...")
+            time.sleep(10)
+            # 한 번만 재시도
+            try:
+                res = tg_api("getUpdates", payload, timeout=40)
+                return res.get("result", [])
+            except:
+                pass
+        return []
 
 def get_agent_status(agent: str = "전체"):
     """에이전트 현황. Args: agent ('예원'/'영숙'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
@@ -475,6 +492,59 @@ def _hold_extension_telegram_lock():
     print("[telegram_lock] Youngsuk owns Telegram getUpdates")
 
 
+def _check_telegram_conflicts():
+    """Telegram API 충돌 감지 및 해결"""
+    print("🔍 Telegram API 충돌 확인 중...")
+
+    # 1. Telegram Desktop 프로세스 확인
+    try:
+        import psutil
+        telegram_processes = []
+        for p in psutil.process_iter(['pid', 'name']):
+            try:
+                if p.info['name'] and 'telegram' in p.info['name'].lower():
+                    telegram_processes.append((p.info['pid'], p.info['name']))
+            except:
+                pass
+
+        if telegram_processes:
+            print("⚠️ Telegram Desktop 감지:")
+            for pid, name in telegram_processes:
+                print(f"   PID {pid}: {name}")
+            print("   → 이 프로세스들이 봇과 충돌할 수 있습니다")
+            print("   → Telegram Desktop을 종료하거나 다른 계정으로 사용하세요")
+            # 자동 종료는 하지 않음 (사용자 데이터 손실 방지)
+    except ImportError:
+        print("⚠️ psutil 모듈 없음 - 충돌 감지 건너뜀")
+    except Exception as e:
+        print(f"⚠️ 충돌 감지 실패: {e}")
+
+    # 2. 테스트 getUpdates 호출
+    try:
+        test_res = tg_api("getUpdates", {"timeout": 1, "offset": 0}, timeout=5)
+        if test_res.get("ok"):
+            print("✅ Telegram API 연결 정상")
+            return True
+        else:
+            error_desc = test_res.get("description", "")
+            if "conflict" in error_desc.lower():
+                print(f"❌ Telegram API Conflict: {error_desc}")
+                print("   → 다른 클라이언트가 이미 연결 중입니다")
+                print("   → Telegram Desktop, 웹, 또는 다른 봇 인스턴스를 종료하세요")
+                return False
+            else:
+                print(f"⚠️ Telegram API 오류: {error_desc}")
+                return False
+    except Exception as e:
+        error_str = str(e)
+        if "409" in error_str or "Conflict" in error_str:
+            print(f"❌ 409 Conflict 감지: {e}")
+            print("   → Telegram Desktop 또는 다른 봇 인스턴스를 종료하세요")
+            return False
+        else:
+            print(f"⚠️ 연결 테스트 실패: {e}")
+            return False
+
 def main():
     # 중복 실행 방지
     try:
@@ -507,6 +577,16 @@ def main():
 
     # Keep pending updates so messages sent while the bot was restarting are not lost.
     tg_api("deleteWebhook", {"drop_pending_updates": False})
+
+    # Telegram API 충돌 확인
+    if not _check_telegram_conflicts():
+        print("=" * 60)
+        print("⚠️ Telegram API 충돌이 감지되었습니다")
+        print("   계속 실행하면 409 Conflict 오류가 반복됩니다")
+        print("   Telegram Desktop을 종료하고 다시 시작하세요")
+        print("=" * 60)
+        # 충돌이 있어도 계속 실행 (사용자가 수동으로 해결할 수 있도록)
+
     send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/일정")
     _hold_extension_telegram_lock()
     _watch_traders()
