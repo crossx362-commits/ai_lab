@@ -6,59 +6,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🏗️ Repository Structure
 
-This is a monorepo containing:
-
-1. **ai-team/** — Multi-agent AI automation framework with 13+ specialized agents
-2. **petnna/** — Pet healing platform (web/hybrid app)
-3. **Root scripts/** — Trading bots and daemon management
-
-### Key Directories
-
 ```
 ai_lab/
-├── projects/ai-team/
-│   ├── _shared/           # Shared API clients and utilities (import as: from _shared.module_name)
-│   ├── skills/            # Agent-specific tools organized by agent name (Korean folders)
-│   ├── scripts/           # System-wide automation and daemon launchers
-│   └── reports/           # Generated reports and research outputs
-├── projects/petnna/       # Pet platform web app
-├── .env                   # Encrypted central environment variables (NEVER commit plaintext)
-└── output/                # Runtime logs and artifacts
+├── projects/
+│   ├── ai-team/
+│   │   ├── _shared/              # 공통 클라이언트 (from _shared.xxx로 임포트)
+│   │   │   ├── env_loader.py
+│   │   │   ├── gemini_client.py  # LLM: Ollama → GPT-4o-mini → Gemini 폴백
+│   │   │   ├── ollama_client.py
+│   │   │   ├── telegram_notifier.py
+│   │   │   ├── process_lock.py   # fcntl 파일 락 (중복 실행 방지)
+│   │   │   └── agent_status.py
+│   │   ├── skills/               # 에이전트별 도구 (한국어 폴더명)
+│   │   │   ├── 예원_CEO/tools/   yewon_dispatcher.py, upload_manager.py
+│   │   │   ├── 영숙_비서/tools/  telegram_receiver.py (봇 + 감시 스레드)
+│   │   │   ├── 코다리_개발자/tools/ web_preview.py, ollama_health_check.py
+│   │   │   ├── 케빈_인프라/tools/ vercel_manager.py, supabase_manager.py
+│   │   │   ├── 티모_디자이너/tools/ petnna_reviewer.py
+│   │   │   ├── 현빈_전략가/tools/ crypto_market_intelligence.py
+│   │   │   ├── 데이브_주식/tools/ upbit_auto_trader.py, upbit_analyzer.py
+│   │   │   ├── 레오_트레이더/tools/ leo_aggressive_trader.py
+│   │   │   ├── 경수_수사관/tools/ comment_forensics.py
+│   │   │   ├── 로율_변호사/tools/ tax_simulator.py
+│   │   │   └── 공용스킬/         공통 스킬 마크다운 문서
+│   │   ├── scripts/              # 시스템 운영 스크립트
+│   │   │   ├── launchd/          # macOS LaunchAgent plist + install.sh
+│   │   │   ├── agents/           # 에이전트 API 연결 테스트
+│   │   │   ├── security/         # 시크릿 암호화/복호화
+│   │   │   ├── start_trading_team.py
+│   │   │   ├── cleanup_duplicate_processes.py
+│   │   │   ├── check_holdings.py
+│   │   │   ├── daily_balance_check.py
+│   │   │   └── monitor_processes.py
+│   │   └── reports/research/     # 현빈이 생성한 시장 인텔 JSON
+│   └── petnna/                   # Pet 플랫폼 웹앱 (index.html + js/css)
+├── output/
+│   ├── trading_logs/             # 봇별 stdout/stderr 로그
+│   ├── bot_logs/                 # 영숙 로그
+│   └── media/                    # 생성된 영상/음악 파일
+├── docs/                         # 설계 문서
+├── connect-ai/                   # LLM fine-tuning 데이터 (별도 프로젝트)
+├── connect-ai-packs/             # 스킬 팩 템플릿
+├── .env                          # 암호화된 시크릿 (절대 커밋 금지)
+└── CLAUDE.md                     # 이 파일
 ```
 
 ---
 
 ## 🚀 Running the System
 
-### Start All Trading Bots (Live Mode)
+### macOS — launchd (정식 운영 방식)
+
+봇 4개는 macOS LaunchAgent로 관리됩니다. OS 부팅 시 자동 시작, 충돌 시 자동 재시작.
+
 ```bash
-python projects/ai-team/scripts/start_trading_team.py --live
+# 전체 설치 및 시작
+bash projects/ai-team/scripts/launchd/install.sh
+
+# 상태 확인
+launchctl list | grep com.ailab
+
+# 전체 중지 및 제거
+bash projects/ai-team/scripts/launchd/uninstall.sh
 ```
 
-This launches:
-- **현빈 (Hyunbin)**: Crypto market intelligence collector
-- **데이브 (Dave)**: Conservative Upbit auto-trader
-- **레오 (Leo)**: Aggressive day-trader
-- **Monitor**: Process health checker
+서비스 목록:
+- `com.ailab.hyunbin` — 현빈: 시장 인텔 수집
+- `com.ailab.dave` — 데이브: 보수적 업비트 자동매매
+- `com.ailab.leo` — 레오: 공격적 데이트레이딩
+- `com.ailab.youngsuk` — 영숙: 텔레그램 봇 + 중복 프로세스 감시
 
-### Start Telegram Bot (영숙/Youngsuk)
-```powershell
-powershell -ExecutionPolicy Bypass .\projects\ai-team\skills\영숙_비서\tools\start_telegram_bot.ps1
-```
-
-Or manually:
+### 수동 재시작 (개별 봇)
 ```bash
-python projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py
+launchctl kickstart -k gui/$(id -u)/com.ailab.dave
 ```
 
-### Check Running Bots
-```powershell
-Get-Process python* | Select-Object Id, ProcessName, StartTime
-```
-
-### Kill Duplicate Processes
+### 보유 현황 / 잔고 확인
 ```bash
-python projects/ai-team/scripts/cleanup_duplicate_processes.py
+python3 projects/ai-team/scripts/check_holdings.py
+python3 projects/ai-team/scripts/daily_balance_check.py
 ```
 
 ---
