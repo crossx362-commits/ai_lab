@@ -222,7 +222,7 @@ def load_hyunbin_intel():
     return None
 
 
-def run_auto_trade_cycle(sim_mode=False):
+def run_auto_trade_cycle():
     print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 실시간 다중 코인 자동 매매 감시 ---")
 
     # 현빈 정보 확인
@@ -231,27 +231,18 @@ def run_auto_trade_cycle(sim_mode=False):
         fed = hyunbin_intel.get("fed_events", {})
         if fed.get("risk_level") == "HIGH":
             print(f"[Dave] 🚨 연준 고위험 구간: {fed.get('current_status')} - 신규 진입 금지")
-            # 기존 포지션 관리만 수행하고 신규 진입은 스킵
-            # (포지션 청산 로직은 계속 실행)
 
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
-        if not sim_mode:
-            print("[AutoTrader] ❌ 실거래 모드 요청되었으나 Upbit API 검증 실패. 거래 중지.")
-            print("[AutoTrader] API 키를 확인하세요: UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY")
-            return
-        print("[AutoTrader] 시뮬레이션 모드로 작동합니다.")
-        sim_mode = True
-    else:
-        if not sim_mode:
-            print("[AutoTrader] ✅ 실거래 모드 - Upbit API 연결 성공")
-        else:
-            print("[AutoTrader] 시뮬레이션 모드로 작동합니다 (--sim 옵션)")
-        
+        print("[AutoTrader] ❌ Upbit API 검증 실패. 거래 중지.")
+        print("[AutoTrader] API 키를 확인하세요: UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY")
+        return
+    print("[AutoTrader] ✅ 실거래 모드 - Upbit API 연결 성공")
+
     held_positions = []
-    krw_balance = 1000000.0 if sim_mode else 0.0
-    
-    if not sim_mode:
+    krw_balance = 0.0
+
+    if True:
         try:
             krw_balance = safe_float(upbit_client.get_balance("KRW"))
         except Exception as e:
@@ -261,12 +252,8 @@ def run_auto_trade_cycle(sim_mode=False):
     # 1. 보유 중인 모든 코인에 대한 실시간 시세 감시 (10초 주기)
     for ticker in TICKERS:
         try:
-            if sim_mode:
-                btc_balance = 0.0
-                avg_buy_price = 0.0
-            else:
-                btc_balance = safe_float(upbit_client.get_balance(ticker))
-                avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
+            btc_balance = safe_float(upbit_client.get_balance(ticker))
+            avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
                 
             current_price = float(pyupbit.get_current_price(ticker))
             
@@ -312,8 +299,7 @@ def run_auto_trade_cycle(sim_mode=False):
                 if (kp > 15.0 or fg >= 85) and profit_ratio >= 0.01:  # +1% 이상 수익
                     print(f"⚠️ [Dave] {coin} 시장 과열 (김프 {kp:.1f}%, 탐욕 {fg}) - 이익 실현 청산")
                     send_telegram_message(f"⚠️ [데이브] {coin} 과열 청산 {profit_ratio*100:+.1f}%")
-                    if not sim_mode:
-                        upbit_analyzer.execute_sell(ticker, btc_balance)
+                    upbit_analyzer.execute_sell(ticker, btc_balance)
                     emergency_exit = True
 
             if not emergency_exit:
@@ -345,9 +331,8 @@ def run_auto_trade_cycle(sim_mode=False):
                 print(msg)
                 send_telegram_message(msg)
                 run_auto_trade_cycle._peaks.pop(ticker, None)
-                if not sim_mode:
-                    res = upbit_analyzer.execute_sell_all(ticker)
-                    print(res)
+                res = upbit_analyzer.execute_sell_all(ticker)
+                print(res)
 
     # 3. 포지션 미보유 시 혹은 예수금이 충분히 남아있을 시 신규 진입 분석 (완전 실시간화)
     # 보유 포지션이 있더라도 추가 매수 여력이 있다면 진입 후보 탐색
@@ -412,15 +397,11 @@ def run_auto_trade_cycle(sim_mode=False):
                     msg = f"💼 [데이브] {coin} 매수 {amount_str} ({best['score']}점)"
                     print(msg)
                     send_telegram_message(msg)
-                    if not sim_mode:
-                        res = upbit_analyzer.execute_buy(best_ticker, buy_amount)
-                        print(res)
-                        
+                    res = upbit_analyzer.execute_buy(best_ticker, buy_amount)
+                    print(res)
+
                 elif decision == "SELL":
-                    if sim_mode:
-                        coin_balance = 0.05
-                    else:
-                        coin_balance = safe_float(upbit_client.get_balance(best_ticker))
+                    coin_balance = safe_float(upbit_client.get_balance(best_ticker))
                         
                     pct = percentage / 100.0
                     sell_volume = coin_balance * pct
@@ -433,9 +414,8 @@ def run_auto_trade_cycle(sim_mode=False):
                     msg = f"📉 [데이브] 실시간 스캔 매도 조건 감지!\n📌 대상: {best_ticker}\n📉 비중: {percentage}%\n🚨 시장가 매도를 집행합니다."
                     print(msg)
                     send_telegram_message(msg)
-                    if not sim_mode:
-                        res = upbit_analyzer.execute_sell(best_ticker, sell_volume)
-                        print(res)
+                    res = upbit_analyzer.execute_sell(best_ticker, sell_volume)
+                    print(res)
                 else:
                     print(f"[AutoTrader] {best_ticker} 분석 결과가 HOLD로 결정되어 진입하지 않습니다. (사유: {reason})")
             except Exception as trade_err:
@@ -443,7 +423,7 @@ def run_auto_trade_cycle(sim_mode=False):
         else:
             print(f"[AutoTrader] 현재 최소 진입 점수(3점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
 
-def send_status_report(sim_mode=False):
+def send_status_report():
     """4시간마다 현황 보고 텔레그램 전송 (간결)"""
     global last_report_time
     now = time.time()
@@ -453,7 +433,7 @@ def send_status_report(sim_mode=False):
 
     try:
         upbit_client = upbit_analyzer.get_upbit_client()
-        if upbit_client is None or sim_mode:
+        if upbit_client is None:
             return
 
         krw = safe_float(upbit_client.get_balance("KRW"))
@@ -480,23 +460,20 @@ def send_status_report(sim_mode=False):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    sim = "--sim" in args
 
     if "--once" in args:
-        run_auto_trade_cycle(sim_mode=sim)
+        run_auto_trade_cycle()
     else:
-        # 락은 파일 최상단에서 이미 획득됨
         from _shared.process_lock import release_lock
 
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
-        # 시작 메시지 전송 안 함 (혼란 방지)
-        last_report_time = time.time() - REPORT_INTERVAL_SECONDS  # 시작 즉시 첫 보고
+        last_report_time = time.time() - REPORT_INTERVAL_SECONDS
 
         try:
             while True:
                 try:
-                    run_auto_trade_cycle(sim_mode=sim)
-                    send_status_report(sim_mode=sim)
+                    run_auto_trade_cycle()
+                    send_status_report()
                 except Exception as e:
                     print(f"[Daemon Error] {e}")
                 time.sleep(10)

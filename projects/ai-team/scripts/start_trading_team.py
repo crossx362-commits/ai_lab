@@ -21,8 +21,13 @@ sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
 from _shared.telegram_notifier import send_telegram_message
+from _shared.process_lock import acquire_lock
 
 load_env()
+
+if not acquire_lock("trading_team"):
+    print("[trading_team] Already running")
+    sys.exit(0)
 
 
 def has_module(module_name: str) -> bool:
@@ -80,28 +85,22 @@ def main():
     print("🚀 AI 트레이딩 팀 가동 시작")
     print("=" * 60)
 
-    live_mode = "--live" in sys.argv[1:]
-    trade_mode_args = ["--daemon", "--live"] if live_mode else ["--daemon", "--sim"]
-    mode_label = "실거래" if live_mode else "시뮬레이션"
-    print(f"모드: {mode_label}")
-    print("실거래를 원하면 --live를 명시해야 합니다.")
-
     processes = {}
+    process_configs = {}
     has_pyupbit = has_module("pyupbit")
     can_scan = has_pyupbit or has_public_upbit_fallback()
-    if live_mode and not has_pyupbit:
-        print("⚠️  실거래는 pyupbit 정식 패키지가 필요합니다. 현재는 시작하지 않습니다.")
+    if not has_pyupbit:
+        print("⚠️  pyupbit가 없어 시작하지 않습니다.")
         can_scan = False
-    elif not has_pyupbit:
-        print("⚠️  pyupbit가 없어 공개 시세 fallback으로 시뮬레이션만 시작합니다.")
 
     # 1. 현빈 (시장 정보 수집 - 5분 주기)
     hyunbin_path = os.path.join(
         AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py"
     )
     if os.path.exists(hyunbin_path):
+        process_configs["현빈"] = {"path": hyunbin_path, "args": ["--daemon"]}
         processes["현빈"] = start_process("현빈 (정보 수집)", hyunbin_path, ["--daemon"])
-        time.sleep(2)  # 초기 정보 수집 대기
+        time.sleep(2)
     else:
         print(f"⚠️  현빈 스크립트 없음: {hyunbin_path}")
 
@@ -110,8 +109,8 @@ def main():
         AI_TEAM_ROOT, "skills", "데이브_주식", "tools", "upbit_auto_trader.py"
     )
     if os.path.exists(dave_path) and can_scan:
-        dave_args = ["--daemon"] if live_mode else ["--daemon", "--sim"]
-        processes["데이브"] = start_process(f"데이브 (보수적 매매/{mode_label})", dave_path, dave_args)
+        process_configs["데이브"] = {"path": dave_path, "args": ["--daemon", "--live"]}
+        processes["데이브"] = start_process("데이브 (보수적 매매/실거래)", dave_path, ["--daemon", "--live"])
         time.sleep(1)
     elif os.path.exists(dave_path):
         print("⚠️  데이브 스크립트는 있지만 시세 모듈이 없어 시작하지 않음")
@@ -123,7 +122,8 @@ def main():
         AI_TEAM_ROOT, "skills", "레오_트레이더", "tools", "leo_aggressive_trader.py"
     )
     if os.path.exists(leo_path) and can_scan:
-        processes["레오"] = start_process(f"레오 (공격적 단타/{mode_label})", leo_path, trade_mode_args)
+        process_configs["레오"] = {"path": leo_path, "args": ["--daemon", "--live"]}
+        processes["레오"] = start_process("레오 (공격적 단타/실거래)", leo_path, ["--daemon", "--live"])
     elif os.path.exists(leo_path):
         print("⚠️  레오 스크립트는 있지만 시세 모듈이 없어 시작하지 않음")
     else:
@@ -136,7 +136,7 @@ def main():
     # 텔레그램 알림
     active_agents = [name for name, proc in processes.items() if proc is not None]
     msg = f"""
-🚀 AI 트레이딩 팀 가동 ({mode_label})
+🚀 AI 트레이딩 팀 가동 (실거래)
 
 ✅ 활성 에이전트:
 {chr(10).join(f'  • {name}' for name in active_agents)}
@@ -158,16 +158,21 @@ def main():
 
     print("\n프로세스를 종료하려면 Ctrl+C를 누르세요.")
 
-    # 프로세스 모니터링
+    # 프로세스 모니터링 + 자동 재시작
     try:
         while True:
             time.sleep(10)
 
-            # 프로세스 상태 체크
             for name, proc in list(processes.items()):
                 if proc and proc.poll() is not None:
-                    print(f"⚠️  {name} 프로세스 종료됨 (exit code: {proc.returncode})")
-                    send_telegram_message(f"⚠️ {name} 프로세스 종료 감지")
+                    exit_code = proc.returncode
+                    print(f"⚠️  {name} 종료됨 (exit: {exit_code}) → 5초 후 재시작")
+                    send_telegram_message(f"⚠️ {name} 재시작 중...")
+                    time.sleep(5)
+                    cfg = process_configs.get(name)
+                    if cfg:
+                        new_proc = start_process(name, cfg["path"], cfg["args"])
+                        processes[name] = new_proc
 
     except KeyboardInterrupt:
         print("\n\n프로세스 종료 중...")

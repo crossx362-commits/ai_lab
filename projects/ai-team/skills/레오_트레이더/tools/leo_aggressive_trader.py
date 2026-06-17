@@ -273,7 +273,7 @@ def check_dave_holdings(ticker: str) -> bool:
     return False
 
 
-def run_leo_cycle(sim_mode=False):
+def run_leo_cycle():
     """레오 단타 사이클 실행"""
     global consecutive_losses, daily_loss_pct, trades_today, last_trade_time
 
@@ -292,36 +292,24 @@ def run_leo_cycle(sim_mode=False):
 
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
-        print("[Leo] API 키 미설정 - 시뮬레이션 모드")
-        if not sim_mode:
-            print("[Leo] LIVE requested but Upbit API validation failed. Trading is paused.")
-            return
-        sim_mode = True
+        print("[Leo] API 키 미설정 - Upbit API 검증 실패. 거래 중지.")
+        return
 
     # KRW 잔고 조회
-    if sim_mode:
-        total_krw = 1000000.0
-    else:
-        try:
-            total_krw = safe_float(upbit_client.get_balance("KRW"))
-        except Exception as e:
-            print(f"[Leo] KRW 잔고 조회 실패: {e}")
-            return
+    try:
+        total_krw = safe_float(upbit_client.get_balance("KRW"))
+    except Exception as e:
+        print(f"[Leo] KRW 잔고 조회 실패: {e}")
+        return
 
-    # 데이브 예약금 제외 (40%)
-    dave_reserve = total_krw * 0.4
-    leo_budget = total_krw - dave_reserve
+    leo_budget = total_krw
 
     if leo_budget < 5000:
-        print(f"[Leo] 운용 가능 금액 부족 ({leo_budget:,.0f}원)")
         return
 
     # 보유 포지션 체크 및 익절/손절 감시
     leo_positions = []
     for ticker in LEO_TICKERS:
-        if sim_mode:
-            continue
-
         try:
             balance = safe_float(upbit_client.get_balance(ticker))
             avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
@@ -344,8 +332,7 @@ def run_leo_cycle(sim_mode=False):
                     print(f"💰 [Leo] {coin} 2차 익절 +{profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
                     send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
-                    if not sim_mode:
-                        upbit_analyzer.execute_sell(ticker, balance)
+                    upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses = 0  # 익절 시 연속 손절 리셋
 
                 elif profit_pct >= 3.0:
@@ -355,16 +342,14 @@ def run_leo_cycle(sim_mode=False):
                     print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}% - 50% 매도")
                     print(f"  청산: {sell_amount:.6f}개 | 유지: {remaining:.6f}개")
                     send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
-                    if not sim_mode:
-                        upbit_analyzer.execute_sell(ticker, sell_amount)
+                    upbit_analyzer.execute_sell(ticker, sell_amount)
 
                 # 손절 체크 (SKILL: -2% 기계적 손절)
                 elif profit_pct <= -2.0:
                     print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
                     send_telegram_message(f"🛑 [레오] {coin} {profit_pct:.1f}% 손절")
-                    if not sim_mode:
-                        upbit_analyzer.execute_sell(ticker, balance)
+                    upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses += 1
                     daily_loss_pct += profit_pct
 
@@ -387,14 +372,12 @@ def run_leo_cycle(sim_mode=False):
                                         # 소폭 이익이라도 청산
                                         print(f"  소폭 이익 {profit_pct:+.2f}% 조기 청산")
                                         send_telegram_message(f"⚠️ [레오] {coin} 과열 조기청산 {profit_pct:+.1f}%")
-                                        if not sim_mode:
-                                            upbit_analyzer.execute_sell(ticker, balance)
+                                        upbit_analyzer.execute_sell(ticker, balance)
                                     elif profit_pct <= -1.0:
                                         # -1% 이하 손실 시 조기 손절
                                         print(f"  과열 구간 조기 손절 {profit_pct:.2f}%")
                                         send_telegram_message(f"🛑 [레오] {coin} 과열 조기손절 {profit_pct:.1f}%")
-                                        if not sim_mode:
-                                            upbit_analyzer.execute_sell(ticker, balance)
+                                        upbit_analyzer.execute_sell(ticker, balance)
                                         consecutive_losses += 1
                                         daily_loss_pct += profit_pct
 
@@ -530,9 +513,8 @@ def run_leo_cycle(sim_mode=False):
         msg = f"⚡ [레오] {coin} 진입 {amount_str} ({best['score']}점)"
         send_telegram_message(msg)
 
-        if not sim_mode:
-            res = upbit_analyzer.execute_buy(ticker, buy_amount)
-            print(res)
+        res = upbit_analyzer.execute_buy(ticker, buy_amount)
+        print(res)
 
         last_trade_time[ticker] = time.time()
         trades_today.append(time.time())
@@ -543,7 +525,7 @@ def run_leo_cycle(sim_mode=False):
         print(f"  근거: {', '.join(best.get('reasons', []))}")
 
 
-def send_status_report(sim_mode=False):
+def send_status_report():
     """2시간마다 현황 보고 (간결)"""
     if IMPORT_ERROR:
         return
@@ -558,7 +540,7 @@ def send_status_report(sim_mode=False):
     send_status_report.last_report = now
 
     upbit_client = upbit_analyzer.get_upbit_client()
-    if upbit_client is None or sim_mode:
+    if upbit_client is None:
         return
 
     try:
@@ -592,11 +574,8 @@ def print_status():
     print(f"- 연속 손절 제한: {MAX_CONSECUTIVE_LOSSES}회")
     print(f"- 일일 손실 한도: {MAX_DAILY_LOSS_PCT:.1f}%")
     print(f"- 시간당 거래 제한: {MAX_TRADES_PER_HOUR}회")
-    print("- 기본 모드: 시뮬레이션")
-    print("- 1회 스캔: leo_aggressive_trader.py --once --sim")
-    print("- 시뮬레이션 데몬: leo_aggressive_trader.py --daemon --sim")
-    print("- 실거래 1회 스캔: leo_aggressive_trader.py --once --live")
-    print("- 실거래 데몬: leo_aggressive_trader.py --daemon --live")
+    print("- 1회 스캔: leo_aggressive_trader.py --once")
+    print("- 데몬: leo_aggressive_trader.py --daemon")
     if IMPORT_ERROR:
         print(f"- 현재 의존성 상태: 누락 ({IMPORT_ERROR})")
     elif getattr(pyupbit, "__name__", "") == "upbit_public":
@@ -609,13 +588,9 @@ if __name__ == "__main__":
         print_status()
         sys.exit(0)
 
-    live = "--live" in args
-    sim = "--sim" in args or not live
-
     if "--once" in args:
-        run_leo_cycle(sim_mode=sim)
+        run_leo_cycle()
     elif "--daemon" in args:
-        # 중복 실행 방지 (PID 파일 기반)
         import sys
         import os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -625,13 +600,12 @@ if __name__ == "__main__":
             sys.exit(0)
 
         print("⚡ 레오 공격적 단타 트레이더 시작 (10초 주기)")
-        # 시작 메시지 전송 안 함 (혼란 방지)
 
         try:
             while True:
                 try:
-                    run_leo_cycle(sim_mode=sim)
-                    send_status_report(sim_mode=sim)
+                    run_leo_cycle()
+                    send_status_report()
                 except Exception as e:
                     print(f"[Leo Daemon Error] {e}")
 

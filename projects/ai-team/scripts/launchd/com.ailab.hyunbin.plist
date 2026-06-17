@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ailab.hyunbin</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>-u</string>
+        <string>/Users/junholee/ai_lab/projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py</string>
+        <string>--daemon</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/junholee/ai_lab</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUTF8</key>
+        <string>1</string>
+        <key>HOME</key>
+        <string>/Users/junholee</string>
+    </dict>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/junholee/ai_lab/output/trading_logs/hyunbin_daemon.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/junholee/ai_lab/output/trading_logs/hyunbin_daemon.err.log</string>
+</dict>
+</plist>
