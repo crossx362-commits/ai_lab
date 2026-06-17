@@ -147,13 +147,44 @@ def generate_content_with_retry(model_name, contents, config, max_retries=2):
     return None
 
 def local_fallback_answer(msg: str) -> str | None:
-    """Google/Gemini가 막힐 때 로컬 Ollama로 일반 답변을 처리."""
+    """Ollama 로컬 LLM 폴백."""
     try:
         from _shared.ollama_client import chat as lm_chat
-        answer = lm_chat(msg, system=SYSTEM, max_tokens=150, temperature=0.7)
+        answer = lm_chat(msg, system=SYSTEM, max_tokens=300, temperature=0.7)
         return answer.strip() if answer else None
     except Exception as oe:
         print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
+        return None
+
+
+def _gpt_fallback(msg: str) -> str | None:
+    """Gemini 실패 시 GPT-4o mini 폴백."""
+    import urllib.request, json as _json
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return None
+    try:
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": SYSTEM},
+                {"role": "user", "content": msg},
+            ],
+            "max_tokens": 400,
+            "temperature": 0.7,
+        }
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=_json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            res = _json.loads(r.read())
+        text = res["choices"][0]["message"]["content"].strip()
+        print(f"  [GPT-4o mini 폴백] 답변 완료")
+        return text
+    except Exception as e:
+        print(f"❌ GPT 폴백 실패: {e}")
         return None
 
 def dispatch(cmd: str):
@@ -218,8 +249,9 @@ def process(msg):
         except Exception as ce:
             print(f"❌ 일정 조회 실패: {ce}")
 
-    # 1-3. 에이전트 구동 명령 (dispatch로 직접 전달)
-    direct_dispatch_keywords = ["구동", "실행", "시작", "켜", "동작", "가동", "데몬", "자동매매", "실거래", "live", "데이브", "dave", "레오", "leo", "현빈", "hyunbin"]
+    # 1-3. 명시적 에이전트 구동/실행 명령만 dispatch로 전달
+    # ※ 에이전트 이름(데이브/레오/현빈)만으로는 dispatch 하지 않음 → 현황 질문과 구분
+    direct_dispatch_keywords = ["구동", "실행해", "시작해", "켜줘", "가동", "데몬", "자동매매", "실거래시작", "거래시작"]
     if any(k in msg_clean for k in direct_dispatch_keywords):
         try:
             result = dispatch(msg)
@@ -228,25 +260,18 @@ def process(msg):
         except Exception as de:
             print(f"❌ dispatch 실패: {de}")
 
-    # Gemini 클라이언트 없으면 Ollama 폴백
-    if not client:
-        if any(k in msg for k in direct_dispatch_keywords):
-            send_msg(dispatch(msg))
-            return
-        answer = local_fallback_answer(msg)
-        send_msg(answer if answer else "Gemini 패키지가 없어 일반 답변은 제한됩니다. 현황/일정/에이전트 구동 명령은 가능합니다.")
-        return
-
     now = datetime.now(timezone(timedelta(hours=9)))
     time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
 
-    # 일반 대화는 로컬 AI를 먼저 사용해 Gemini 토큰을 아낀다.
-    local_answer = local_fallback_answer(msg)
-    if local_answer:
-        send_msg(local_answer)
+    # Gemini 클라이언트 없으면 GPT → Ollama 폴백
+    if not client:
+        answer = _gpt_fallback(msg)
+        if not answer:
+            answer = local_fallback_answer(msg)
+        send_msg(answer if answer else "Gemini 패키지가 없어 일반 답변은 제한됩니다. 현황/일정/구동 명령은 가능합니다.")
         return
 
-    # 대화 누적 방지: 이전 대화 컨텍스트(HISTORY) 없이 지금 보낸 단 한 개의 메시지만 독립적으로 전송
+    # 대화 누적 방지: 지금 보낸 메시지만 독립적으로 전송
     contents = [types.Content(role="user", parts=[types.Part.from_text(text=msg)])]
 
     model_name = "gemini-2.5-flash"
@@ -258,21 +283,22 @@ def process(msg):
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM + time_ctx,
                     tools=TOOLS,
-                    max_output_tokens=120,
+                    max_output_tokens=800,
                     temperature=0.7
                 )
             )
         except Exception as e:
-            # Gemini 혼잡/쿼터 오류는 즉시 로컬 답변으로 우회한다.
+            # Gemini 혼잡/쿼터 오류 → GPT → Ollama 순서로 폴백
             if is_google_busy_error(e):
-                print("🔄 Gemini 일시 제한/혼잡 감지 → 로컬 Ollama 폴백")
-                fallback = local_fallback_answer(msg)
-                send_msg(fallback if fallback else "지금은 일반 답변 모델이 잠시 불안정합니다. 현황/일정/에이전트 구동 명령은 처리 가능합니다.")
+                print("🔄 Gemini 일시 제한/혼잡 감지 → GPT 폴백 시도")
+                fallback = _gpt_fallback(msg) or local_fallback_answer(msg)
+                send_msg(fallback if fallback else "일반 답변 모델이 잠시 불안정합니다. 현황/일정/구동 명령은 처리 가능합니다.")
                 return
             raise e
 
         answer = ""
         tool_results = []
+        tool_calls_made = []  # function_call args 보존용
 
         if resp and resp.candidates and resp.candidates[0].content.parts:
             for part in resp.candidates[0].content.parts:
@@ -282,23 +308,33 @@ def process(msg):
                     fn = part.function_call.name
                     args = dict(part.function_call.args) if part.function_call.args else {}
                     print(f"🔧 {fn}({args})")
+                    tool_calls_made.append({"name": fn, "args": args})
                     if fn in TOOL_MAP:
                         try:
                             res = TOOL_MAP[fn](**args)
-                            tool_results.append({"name": fn, "result": res})
-                            print(f"✅ {res[:80]}...")
+                            tool_results.append({"name": fn, "result": str(res)})
+                            print(f"✅ {str(res)[:80]}...")
                         except Exception as e:
-                            err = f"❌ {str(e)[:80]}"
+                            err = f"❌ {str(e)[:100]}"
                             tool_results.append({"name": fn, "result": err})
                             print(err)
 
         if tool_results:
-            is_direct = any(tr["name"] in ["get_agent_status", "get_status_report", "list_calendar"] for tr in tool_results)
+            # get_agent_status / list_calendar는 결과를 그대로 전송
+            is_direct = any(tr["name"] in ["get_agent_status", "list_calendar"] for tr in tool_results)
             if is_direct:
                 answer = "\n\n".join([tr["result"] for tr in tool_results])
             else:
-                fn_parts = [types.Part.from_function_response(name=tr["name"], response={"result": tr["result"]}) for tr in tool_results]
-                contents.append(types.Content(role="model", parts=[types.Part.from_function_call(name=tool_results[0]["name"], args={})]))
+                # dispatch 등 → Gemini에게 결과를 주고 최종 답변 생성
+                model_parts = []
+                for tc in tool_calls_made:
+                    model_parts.append(types.Part.from_function_call(name=tc["name"], args=tc["args"]))
+                contents.append(types.Content(role="model", parts=model_parts))
+
+                fn_parts = [
+                    types.Part.from_function_response(name=tr["name"], response={"result": tr["result"]})
+                    for tr in tool_results
+                ]
                 contents.append(types.Content(role="user", parts=fn_parts))
 
                 try:
@@ -306,8 +342,8 @@ def process(msg):
                         model_name=model_name,
                         contents=contents,
                         config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
-                            max_output_tokens=150,
+                            system_instruction=SYSTEM + time_ctx,
+                            max_output_tokens=500,
                             temperature=0.7
                         )
                     )
@@ -327,10 +363,10 @@ def process(msg):
 
     except Exception as e:
         print(f"❌ {model_name} 최종 오류: {e}")
-        print("🔄 Gemini 오류 감지 → 로컬 Ollama 최종 폴백 진행...")
-        ollama_ans = local_fallback_answer(msg)
-        if ollama_ans:
-            send_msg(ollama_ans)
+        print("🔄 Gemini 오류 → GPT 폴백 시도...")
+        fallback = _gpt_fallback(msg) or local_fallback_answer(msg)
+        if fallback:
+            send_msg(fallback)
             return
         send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
