@@ -176,7 +176,7 @@ def get_status_report(agent: str, project_root: str) -> str:
         else:
             lines.append("⚖️ <b>로율 (변호사)</b>: 법률 및 저작권 검토 대기 중")
 
-    # 데이브 (주식/가상자산) - 별도 지정 시 또는 데이브 검색 시 추가
+    # 데이브 (보수적 트레이더)
     if "데이브" in agent or "전체" in agent:
         dave_path = os.path.join(project_root, "reports", "research", "dave_upbit_analysis.md")
         dave_stock = os.path.join(project_root, "reports", "research", "dave_stock_analysis.md")
@@ -207,11 +207,47 @@ def get_status_report(agent: str, project_root: str) -> str:
                 dave_info.append(f"주식: {decision} ({mtime})")
             except Exception:
                 dave_info.append("주식: 분석 오류")
-        
-        if dave_info:
-            lines.append(f"📈 <b>데이브 (주식/코인)</b>: " + " | ".join(dave_info))
-        else:
-            lines.append("📈 <b>데이브 (주식/코인)</b>: 분석 기록 없음")
 
-    return "\n\n".join(lines) if lines else "조회할 에이전트를 지정하세요 (예원/영숙/코다리/케빈/티모/현빈/경수/로율/데이브/전체)"
+        if dave_info:
+            lines.append(f"📈 <b>데이브 (보수적 트레이더)</b>: " + " | ".join(dave_info))
+        else:
+            lines.append("📈 <b>데이브 (보수적 트레이더)</b>: 분석 기록 없음")
+
+    # 레오 (공격적 단타 트레이더)
+    if "레오" in agent or "전체" in agent:
+        leo_path = os.path.join(project_root, "reports", "research", "leo_trades.json")
+        leo_log = os.path.join(project_root, "output", "bot_logs", "leo_aggressive_trader.log")
+        leo_info = []
+
+        # 거래 기록 확인
+        if os.path.exists(leo_path):
+            try:
+                with open(leo_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list) and data:
+                    last_trade = data[-1]
+                    ticker = last_trade.get("ticker", "?")
+                    decision = last_trade.get("decision", "?")
+                    profit = last_trade.get("profit_pct", 0)
+                    timestamp = last_trade.get("timestamp", "")[:16].replace("T", " ")
+                    leo_info.append(f"{ticker} {decision} ({profit:+.1f}% at {timestamp})")
+                else:
+                    leo_info.append("거래 기록 없음")
+            except Exception:
+                leo_info.append("거래 기록 오류")
+
+        # 로그 파일 확인
+        if os.path.exists(leo_log):
+            try:
+                mtime = datetime.fromtimestamp(os.path.getmtime(leo_log)).strftime("%m/%d %H:%M")
+                leo_info.append(f"마지막 활동: {mtime}")
+            except Exception:
+                pass
+
+        if leo_info:
+            lines.append(f"⚡ <b>레오 (공격적 단타)</b>: " + " | ".join(leo_info))
+        else:
+            lines.append("⚡ <b>레오 (공격적 단타)</b>: 대기 중")
+
+    return "\n\n".join(lines) if lines else "조회할 에이전트를 지정하세요 (예원/영숙/코다리/케빈/티모/현빈/경수/로율/데이브/레오/전체)"
 
