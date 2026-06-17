@@ -12,8 +12,12 @@ PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+except ModuleNotFoundError:
+    genai = None
+    types = None
 from analyze_stock_realtime import analyze_stock_realtime
 
 # UTF-8 설정
