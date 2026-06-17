@@ -147,41 +147,59 @@ system = """분석 단계:
 
 ---
 
-## 📊 통합 적용 템플릿
+## 📊 통합 적용 템플릿 (2026-06-17 최신)
 
-### 데이브 트레이더 예시
+### 데이브 트레이더 예시 (점수 기반)
 
 ```python
-def analyze_crypto(ticker, price, trend, indicators):
-    # 1. System: 압축 + Few-shot + CoT
-    system = """AI 트레이더. 규칙:
-1. FOMC 24h전후→HOLD
-2. 김프15%+→SELL
-3. 가격↓+OBV↑→BUY
-
-예시1:
-입력: BTC:95M|상승|RSI:45|OBV:상승
-출력: {"decision":"BUY","percentage":40,"reason":"OBV 매집"}
-
-예시2:
-입력: BTC:95M|하락|RSI:85|김프:18%
-출력: {"decision":"SELL","percentage":50,"reason":"과열"}
-
-분석 단계: 1.추세? 2.거래량? 3.지표? 4.결론"""
-
-    # 2. Prompt: 압축
-    prompt = f"{ticker}:{price}|{trend}|RSI:{indicators['RSI']}|OBV:{indicators['OBV']}"
+def analyze_crypto(ticker, current_price, current_trend, indicators):
+    # 1. 공통 + 특화 프롬프트 조합
+    common = get_common_trader_prompt()  # 공통 원칙 ~500 토큰
+    dave_specific = """
+--- 데이브 특화 ---
+성향: 보수적 (극존칭)
+점수 → 판단:
+85~100: BUY 20%
+70~84: BUY 10%
+55~69: BUY 5%
+40~54: HOLD
+0~39: HOLD"""
     
-    # 3. API 호출: 구조화 + 제한
-    response = client.generate_content(
+    system = common + dave_specific  # 총 ~700 토큰
+    
+    # 2. 점수 계산 (코드가 수행)
+    scores = calculate_trade_score(indicators, current_trend)
+    
+    # 3. 간소화된 입력 (LLM은 판단만)
+    prompt = f"""코인: {ticker}
+가격: {current_price}원
+추세: {current_trend}
+총점: {scores['total']}/100
+RSI: {indicators['RSI']}
+OBV: {indicators['OBV']}
+김프: {kimchi_pct}%
+리스크상태: 정상
+최근HOLD: {consecutive_holds}회"""
+    
+    # 4. API 호출: 구조화 + 토큰 제한
+    response = lm_chat(
         prompt=prompt,
         system=system,
-        response_schema=TradeDecision,
-        max_output_tokens=500,
-        temperature=0.1
+        max_tokens=300,  # 기존 500 → 300
+        temperature=0.1,
+        json_mode=True
     )
     
     return response
+
+def calculate_trade_score(indicators: dict, current_trend: str) -> dict:
+    """점수 계산은 코드가 수행 (일관성 보장)"""
+    score = 0
+    if "상승" in current_trend: score += 20
+    if indicators.get('VolumeSpike') == '급증': score += 20
+    if indicators.get('StochRSI_상태') == '골든크로스': score += 20
+    # ...
+    return {'total': score, 'trend': 20, 'volume': 20, ...}
 ```
 
 ---
@@ -222,37 +240,51 @@ def analyze_crypto(ticker, price, trend, indicators):
 
 ### 영숙 (텔레그램 봇)
 ```python
-# Few-shot + 압축
-system = """비서 영숙. 규칙:
-1. 현황→get_agent_status()
-2. 일정→list_calendar()
-3. 구동→dispatch()
-
-예시:
-"다들 뭐해?" → get_agent_status("전체")
-"데이브 시작" → dispatch("데이브 구동")"""
-
 # 패턴 매칭으로 API 우회 (80% 절감)
 if "현황" in msg or "뭐해" in msg:
     return get_agent_status("전체")  # AI 호출 없음
+
+if "일정" in msg:
+    return list_calendar()  # AI 호출 없음
+
+# AI 호출은 복잡한 요청만
+system = """비서 영숙. 규칙:
+1. 현황→get_agent_status()
+2. 일정→list_calendar()
+3. 구동→dispatch()"""
 ```
 
-### 예원 (CEO 라우팅)
+### 데이브/레오 (공통 구조)
 ```python
-# 압축 + 구조화
-system = """CEO. JSON만 반환:
-{"agent":"에이전트명","action":"행동요약"}
+# 공통 프롬프트 함수
+def get_common_trader_prompt():
+    """공통 원칙 ~500 토큰"""
+    return """너는 암호화폐 매매 최종 판단 AI다.
+목표는 제한된 토큰으로 기대값이 양수인 거래를 반복하는 것이다.
+...
+출력 JSON:
+{"decision":"BUY|SELL|HOLD","percentage":0|5|10|20|40|50,"confidence":0-100,"reason":"40자이내"}"""
 
-예시:
-"데이브 상태 확인" → {"agent":"dave","action":"상태조회"}
-"현빈 리서치" → {"agent":"business","action":"시장분석"}"""
+# 데이브 특화
+def load_dave_prompt():
+    common = get_common_trader_prompt()
+    return common + """
+--- 데이브 특화 ---
+성향: 보수적 (극존칭)
+점수 → 판단:
+85~100: BUY 20%
+70~84: BUY 10%
+..."""
 
-# Structured Output
-class Routing(BaseModel):
-    agent: str
-    action: str
-
-response = call_api(msg, system, response_schema=Routing)
+# 레오 특화
+def load_leo_prompt():
+    common = get_common_trader_prompt()
+    return common + """
+--- 레오 특화 ---
+대상: DOGE, PEPE, NEAR...
+성향: 공격적 단타
+애매하면 5% 소액 진입 우선
+..."""
 ```
 
 ---
