@@ -1,8 +1,10 @@
 """
 영숙 텔레그램 봇 - 최종 최적화 및 에러 복원 버전
 """
-import os, sys, json, time, traceback
+import os, sys, json, time, traceback, subprocess
 from datetime import datetime, timezone, timedelta
+
+CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 _early_here = os.path.dirname(os.path.abspath(__file__))
 try:
@@ -368,6 +370,7 @@ def _watch_traders():
                     encoding="utf-8",
                     errors="replace",
                     timeout=15,
+                    creationflags=CREATE_NO_WINDOW,
                 )
                 if result.returncode != 0:
                     print(f"[trader_watch] PowerShell 조회 실패: {result.stderr.strip()}")
@@ -388,7 +391,7 @@ def _watch_traders():
                 os.remove(lock)
             root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
             script = os.path.join(root, info["script"])
-            subprocess.Popen([sys.executable, "-u", script] + info["args"], cwd=root)
+            subprocess.Popen([sys.executable, "-u", script] + info["args"], cwd=root, creationflags=CREATE_NO_WINDOW)
             send_msg(f"🔄 [영숙] {name} 종료 감지 → 자동 재시작")
         except Exception as e:
             send_msg(f"⚠️ [영숙] {name} 재시작 실패: {e}")
@@ -426,6 +429,7 @@ def _watch_cleanup():
                     errors="replace",
                     timeout=60,
                     cwd=root,
+                    creationflags=CREATE_NO_WINDOW,
                 )
                 if result.stdout:
                     print(result.stdout.strip())
@@ -439,6 +443,38 @@ def _watch_cleanup():
     print("✅ 중복 프로세스 정리 스레드 시작")
 
 
+def _hold_extension_telegram_lock():
+    """Keep the IDE extension from polling Telegram while Youngsuk owns getUpdates."""
+    import threading
+
+    lock_paths = [
+        os.path.join(os.path.expanduser("~"), ".ai-team-brain", ".telegram_poll.lock"),
+        os.path.join(os.path.expanduser("~"), ".connect-ai-brain", ".telegram_poll.lock"),
+    ]
+
+    def write_lock():
+        payload = {"pid": os.getpid(), "owner": "youngsuk-python", "heartbeat": int(time.time() * 1000)}
+        for lock_path in lock_paths:
+            os.makedirs(os.path.dirname(lock_path), exist_ok=True)
+            with open(lock_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+
+    def loop():
+        while True:
+            try:
+                write_lock()
+            except Exception as e:
+                print(f"[telegram_lock] {e}")
+            time.sleep(15)
+
+    try:
+        write_lock()
+    except Exception as e:
+        print(f"[telegram_lock] {e}")
+    threading.Thread(target=loop, daemon=True, name="telegram_lock").start()
+    print("[telegram_lock] Youngsuk owns Telegram getUpdates")
+
+
 def main():
     # 중복 실행 방지
     try:
@@ -448,8 +484,9 @@ def main():
             try:
                 if p.info['pid'] == current_pid:
                     continue
+                name = str(p.info.get('name') or '').lower()
                 cmd = p.info['cmdline']
-                if cmd and any(('telegram_receiver.py' in str(arg) or 'run_youngsuk_daemon.py' in str(arg)) for arg in cmd):
+                if name.startswith("python") and cmd and any(('telegram_receiver.py' in str(arg) or 'run_youngsuk_daemon.py' in str(arg)) for arg in cmd):
                     print(f"⚠️ 이미 다른 telegram_receiver.py 프로세스가 실행 중입니다 (PID: {p.info['pid']}). 실행을 종료합니다.")
                     sys.exit(0)
             except (psutil.AccessDenied, psutil.NoSuchProcess):
@@ -471,6 +508,7 @@ def main():
     # Keep pending updates so messages sent while the bot was restarting are not lost.
     tg_api("deleteWebhook", {"drop_pending_updates": False})
     send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/일정")
+    _hold_extension_telegram_lock()
     _watch_traders()
     _watch_cleanup()
 

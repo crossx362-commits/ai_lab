@@ -28,6 +28,8 @@ from _shared.telegram_notifier import send_telegram_message
 
 load_env()
 
+CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
 
 @dataclass(frozen=True)
 class ProcessRule:
@@ -55,6 +57,7 @@ class ProcessInfo:
             text=True,
             timeout=10,
             check=True,
+            creationflags=CREATE_NO_WINDOW,
         )
 
     def kill(self):
@@ -66,6 +69,7 @@ class ProcessInfo:
             text=True,
             timeout=10,
             check=True,
+            creationflags=CREATE_NO_WINDOW,
         )
 
     def wait(self, timeout=5):
@@ -78,6 +82,7 @@ class ProcessInfo:
                 capture_output=True,
                 text=True,
                 timeout=5,
+                creationflags=CREATE_NO_WINDOW,
             )
             if not result.stdout.strip():
                 return None
@@ -122,6 +127,7 @@ def iter_python_processes_powershell():
             encoding="utf-8",
             errors="replace",
             timeout=20,
+            creationflags=CREATE_NO_WINDOW,
         )
         if result.returncode != 0:
             print(f"❌ PowerShell 프로세스 조회 실패: {result.stderr.strip()}")

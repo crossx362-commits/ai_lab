@@ -443,77 +443,184 @@ def parse_trade_decision(text: str) -> TradeDecision:
         report=str(data.get("report", "")),
     )
 
+def _update_consecutive_holds(decision: str):
+    """HOLD 연속 카운터 업데이트"""
+    holds_file = os.path.join(os.path.dirname(__file__), ".consecutive_holds.txt")
+    try:
+        current = 0
+        if os.path.exists(holds_file):
+            with open(holds_file, "r") as f:
+                current = int(f.read().strip())
+
+        if decision == "HOLD":
+            current += 1
+        else:
+            current = 0
+
+        with open(holds_file, "w") as f:
+            f.write(str(current))
+    except Exception as e:
+        print(f"[Dave] HOLD 카운터 업데이트 실패: {e}")
+
 def load_system_instruction():
-    """Few-shot + 핵심 규칙 (토큰 최소화 + 품질 향상)"""
-    return """AI 트레이더 데이브. 극존칭.
+    """데이브: 보수적 트레이더 (극존칭)"""
+    return """너는 보수적 암호화폐 트레이더 데이브다. 극존칭 사용.
 
-규칙:
-1. FOMC/CPI 24h전후→HOLD
-2. 김프15%+→SELL
-3. 가격↓+OBV↑→BUY(매집)
-4. HA양봉3개→상승확인
-5. StochRSI>80→과열HOLD
-6. EMA200위+거래량↑→BUY
+목표: 제한된 토큰으로 기대값 양수 거래 반복.
 
-예시1:
-입력: BTC 95M|상승|RSI:45|OBV:상승|HA:양봉
-→ {"decision":"BUY","percentage":40,"reason":"OBV 다이버전스 세력 매집"}
+원칙:
+- 완벽한 진입점보다 확률 우위 중요
+- HOLD는 명확한 회피 사유 있을 때만
+- 단순 불확실성만으로 HOLD 금지
+- 승률 55%+ 또는 RR 1:1.5+ → 진입 검토
+- 항상 BUY/SELL/HOLD 중 1개만 선택
+- 설명 40자 이내
+- 사고과정 출력 금지
 
-예시2:
-입력: BTC 95M|하락|RSI:85|OBV:하락|김프:18%
-→ {"decision":"SELL","percentage":50,"reason":"과열+김프과열 고점"}
+성향:
+- 안정적 추세와 리스크 관리 우선
+- 과매수 구간 진입 신중
+- 강한 근거 없는 공격적 진입 회피
+- 5회 이상 HOLD 반복 시 기회비용 재검토
 
-분석 단계:
-1. 추세? 2. 거래량? 3. 지표? 4. 결론"""
+강제 HOLD:
+- FOMC/CPI 전후 24h
+- 연속손실 제한 초과
+- 일일손실 제한 초과
+- 거래 쿨다운 중
+
+점수 → 판단:
+85~100: BUY 20%
+70~84: BUY 10%
+55~69: BUY 5%
+40~54: HOLD
+0~39: HOLD
+
+예외:
+- 김프 15%+ + 과열 → SELL
+- 가격↓ + OBV↑ → BUY 가능
+- EMA200 위 + 거래량↑ → BUY 우선
+- StochRSI > 80 → 신규 BUY 신중
+
+출력 JSON만:
+{"decision":"BUY|SELL|HOLD","percentage":0|5|10|20|40|50,"confidence":0-100,"reason":"40자이내"}"""
+
+def calculate_trade_score(indicators: dict, current_trend: str) -> dict:
+    """코드가 점수를 계산 (LLM은 판단만)"""
+    trend_score = 0
+    volume_score = 0
+    momentum_score = 0
+    support_score = 0
+    sentiment_score = 0
+    btc_sync_score = 0
+
+    # 추세 강도 (0-25)
+    if "상승" in current_trend:
+        trend_score = 20
+    elif "하락" in current_trend:
+        trend_score = 5
+    else:
+        trend_score = 10
+
+    if indicators.get('대추세_EMA200') == '상승 국면(LONG 전용)':
+        trend_score += 5
+
+    # 거래량 (0-20)
+    if indicators.get('VolumeSpike') == '✅ 급증':
+        volume_score = 20
+    elif indicators.get('거래량평균대비') == '증가':
+        volume_score = 12
+    else:
+        volume_score = 5
+
+    # 모멘텀 (0-20)
+    stoch_status = indicators.get('StochRSI_상태', '')
+    if '골든크로스' in stoch_status:
+        momentum_score = 20
+    elif '과매도' in stoch_status:
+        momentum_score = 15
+    elif '과매수' in stoch_status:
+        momentum_score = 5
+    else:
+        momentum_score = 10
+
+    if indicators.get('MACD_상태') == '골든크로스':
+        momentum_score += 5
+
+    # 지지/저항 (0-15)
+    bb_pos = indicators.get('BB_위치', '')
+    if '하단' in bb_pos:
+        support_score = 15
+    elif '상단' in bb_pos:
+        support_score = 5
+    else:
+        support_score = 10
+
+    # 심리 (0-10)
+    if indicators.get('OBV_다이버전스') == '매집신호(상승전환가능)':
+        sentiment_score = 10
+    elif indicators.get('세력매집패턴') == '✅ 세력 매집':
+        sentiment_score += 5
+
+    # BTC 동조성 (0-10) - 기본값
+    btc_sync_score = 8
+
+    total_score = trend_score + volume_score + momentum_score + support_score + sentiment_score + btc_sync_score
+
+    return {
+        'total': total_score,
+        'trend': trend_score,
+        'volume': volume_score,
+        'momentum': momentum_score,
+        'support': support_score,
+        'sentiment': sentiment_score,
+        'btc_sync': btc_sync_score
+    }
 
 def build_compact_trade_prompt(
     ticker: str,
-    query: str,
-    today_str: str,
     is_simulated: bool,
     current_price: float,
     current_trend: str,
     indicators: dict,
-    poc_status: str,
-    atr: float,
-    total_asset: float,
-    krw_balance: float,
-    crypto_balance: float,
-    avg_buy_price: float,
     loss_now: float,
     kimchi: dict,
+    consecutive_holds: int = 0,
 ) -> str:
-    """LLM에 실제 전송하는 압축형 판단 프롬프트."""
-    coin = ticker.split("-")[-1]
-    fields = [
-        f"T:{ticker}",
-        f"D:{today_str}",
-        f"M:{'SIM' if is_simulated else 'LIVE'}",
-        f"Q:{query[:80]}",
-        f"P:{current_price:.0f}",
-        f"ST:{current_trend}",
-        f"EMA:{indicators.get('대추세_EMA200')}",
-        f"RSI:{indicators.get('RSI14')}",
-        f"Stoch:{indicators.get('StochRSI_K')}/{indicators.get('StochRSI_D')}:{indicators.get('StochRSI_상태')}",
-        f"HA:{indicators.get('HeikinAshi_상태')}",
-        f"Vol:{indicators.get('VolumeSpike')}:{indicators.get('Volume_배율')}x",
-        f"OBV:{indicators.get('OBV_추세')}:{indicators.get('OBV_다이버전스')}",
-        f"CVD:{indicators.get('CVD_추세')}:{indicators.get('CVD_다이버전스')}",
-        f"MACD:{indicators.get('MACD_상태')}",
-        f"BB:{indicators.get('BB_위치')}",
-        f"POC:{poc_status[:60]}",
-        f"ATR:{atr:.0f}",
-        f"KP:{kimchi.get('김치프리미엄', kimchi.get('premium_pct', 'N/A'))}:{kimchi.get('상태', kimchi.get('signal', 'N/A'))}",
-        f"Wash:{indicators.get('통정매매의심')}",
-        f"Accum:{indicators.get('세력매집패턴')}",
-        f"Acct:asset{total_asset:.0f}|krw{krw_balance:.0f}|{coin}{crypto_balance}|avg{avg_buy_price:.0f}|pnl{loss_now}%",
-    ]
-    return (
-        "압축데이터|" + "|".join(str(x).replace("\n", " ") for x in fields) + "\n"
-        "판단순서: 추세>거래량>세력수급>과열/김프>계좌위험.\n"
-        "JSON만 출력: decision BUY/SELL/HOLD, percentage 0-100, reason 1문장, "
-        "report 짧은 markdown 5줄 이하."
-    )
+    """간소화된 입력 프롬프트 (점수는 코드가 계산)"""
+    scores = calculate_trade_score(indicators, current_trend)
+
+    kimchi_pct = kimchi.get('김치프리미엄', kimchi.get('premium_pct', 0))
+    try:
+        kimchi_pct = float(str(kimchi_pct).replace('%',''))
+    except:
+        kimchi_pct = 0
+
+    risk_status = "정상"
+    if is_simulated:
+        risk_status = "시뮬레이션"
+
+    prompt = f"""코인: {ticker}
+가격: {current_price:.0f}원
+추세: {current_trend}
+추세점수: {scores['trend']}/25
+거래량점수: {scores['volume']}/20
+모멘텀점수: {scores['momentum']}/20
+지지저항점수: {scores['support']}/15
+심리점수: {scores['sentiment']}/10
+BTC동조점수: {scores['btc_sync']}/10
+총점: {scores['total']}/100
+RSI: {indicators.get('RSI14')}
+StochRSI: {indicators.get('StochRSI_K')}
+OBV: {indicators.get('OBV_추세')}
+OBV다이버: {indicators.get('OBV_다이버전스')}
+HA: {indicators.get('HeikinAshi_양봉여부')}
+김프: {kimchi_pct}%
+리스크상태: {risk_status}
+최근HOLD: {consecutive_holds}회
+보유PNL: {loss_now}%"""
+
+    return prompt
 
 def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> TradeDecision:
     # 1. 시세 데이터 및 기술분석
@@ -524,21 +631,7 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
     current_price = data["현재가"]
     current_trend = data["현재추세"]
     indicators = data["보조지표"]
-    volume_profile = data["매물대 상위 3구간"]
     kimchi = data.get("김치프리미엄", {})
-
-    records = data["최근 30일 슈퍼트렌드 분석"]
-    atr = _calc_atr(records)
-
-    # POC 분석
-    poc_status = "N/A"
-    if volume_profile:
-        poc_item = volume_profile[0]
-        poc_mid = (poc_item["lo"] + poc_item["hi"]) / 2
-        if current_price > poc_mid:
-            poc_status = f"현재가({current_price:,.0f}원) > POC({poc_mid:,.0f}원) — [매물대 지지 형성]"
-        else:
-            poc_status = f"현재가({current_price:,.0f}원) < POC({poc_mid:,.0f}원) — [매물대 저항 형성 (매수 신중)]"
 
     # 2. 잔고 조회 (API 키가 없으면 시뮬레이션 모드)
     upbit_client = get_upbit_client()
@@ -546,7 +639,6 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
 
     if not is_simulated:
         try:
-            krw_balance = float(upbit_client.get_balance("KRW"))
             crypto_balance = float(upbit_client.get_balance(ticker))
             avg_buy_price = float(upbit_client.get_avg_buy_price(ticker))
         except Exception as e:
@@ -554,46 +646,32 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
             is_simulated = True
 
     if is_simulated:
-        krw_balance = 2214137.0
         crypto_balance = 0.05  # 예시 비트코인 보유량
         avg_buy_price = 95000000.0  # 평단가 예시
 
-    total_asset = krw_balance + (crypto_balance * current_price)
     loss_now = 0.0
     if crypto_balance > 0 and avg_buy_price > 0:
         loss_now = round((current_price - avg_buy_price) / avg_buy_price * 100, 1)
 
-    today_str = datetime.datetime.now().strftime("%Y년 %m월 %d일 (%a)")
-
-    # 매물대 문자열 변환
-    vp_rows = "\n".join(
-        f"  {v['가격대']} — 누적거래량 {v['누적거래량']:,}"
-        for v in volume_profile
-    ) if volume_profile else "  (데이터 부족)"
-
-    # 슈퍼트렌드 문자열 변환
-    recent_records = records[-5:]
-    st_rows = "\n".join(
-        f"  {r['Date'].strftime('%Y-%m-%d') if isinstance(r['Date'], datetime.datetime) else r['Date']} | 종가 {r['Close']:,}원 | ST {r['Supertrend']:,}원 | {r['Trend']}"
-        for r in recent_records
-    )
+    # consecutive_holds 추적 (전역 변수 또는 파일 기반)
+    consecutive_holds = 0
+    holds_file = os.path.join(os.path.dirname(__file__), ".consecutive_holds.txt")
+    try:
+        if os.path.exists(holds_file):
+            with open(holds_file, "r") as f:
+                consecutive_holds = int(f.read().strip())
+    except:
+        consecutive_holds = 0
 
     prompt = build_compact_trade_prompt(
         ticker=ticker,
-        query=query,
-        today_str=today_str,
         is_simulated=is_simulated,
         current_price=current_price,
         current_trend=current_trend,
         indicators=indicators,
-        poc_status=poc_status,
-        atr=atr,
-        total_asset=total_asset,
-        krw_balance=krw_balance,
-        crypto_balance=crypto_balance,
-        avg_buy_price=avg_buy_price,
         loss_now=loss_now,
         kimchi=kimchi,
+        consecutive_holds=consecutive_holds,
     )
     # 1) Ollama 우선
     try:
@@ -625,21 +703,25 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
         print(f"[Dave] Calling GPT-4o mini for {ticker}...")
         gpt_result = gpt_mini(
             prompt,
-            system=load_system_instruction(),
-            max_tokens=500,
+            system=system,
+            max_tokens=300,
             temperature=0.1,
             json_mode=True,
         )
         if gpt_result:
-            return parse_trade_decision(gpt_result)
+            decision = parse_trade_decision(gpt_result)
+            _update_consecutive_holds(decision.decision)
+            return decision
     except Exception as gpt_err:
         print(f"[Dave] GPT 폴백 실패: {gpt_err}")
 
+    # 3) 모든 AI 실패 시 안전 HOLD
+    _update_consecutive_holds("HOLD")
     return TradeDecision(
         decision="HOLD",
         percentage=0,
-        reason="Ollama/GPT 응답 실패로 안전 관망",
-        report="## 데이브 안전 모드\n\nOllama/GPT 응답 실패로 HOLD 처리했습니다.",
+        reason="AI 응답 실패로 안전 관망",
+        report="## 데이브 안전 모드\n\nAI 응답 실패로 HOLD 처리했습니다.",
     )
 
 def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:

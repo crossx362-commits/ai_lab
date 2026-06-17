@@ -2901,6 +2901,8 @@ function startReportScheduler() {
 }
 function startTelegramPolling() {
     if (_telegramPollTimer) return;
+    const enabled = vscode.workspace.getConfiguration('connectAiLab').get<boolean>('telegramPollingEnabled', false);
+    if (!enabled) return;
     // Restore last known offset so we never replay messages after a restart
     if (_extCtx) {
         _telegramPollOffset = _extCtx.globalState.get<number>('telegramPollOffset', 0);
@@ -8041,8 +8043,8 @@ export function activate(context: vscode.ExtensionContext) {
     // 사이드바 1인 기업 모드(👔) ON/OFF와도 무관 — 백그라운드에서 계속 일함.
     provider.startAutoCycle(15, 0);
 
-    // Telegram bidirectional bot — quietly idles when token/chat_id missing,
-    // self-activates as soon as the user fills config.md.
+    // Telegram receive polling is disabled by default. Youngsuk's Python daemon
+    // owns getUpdates so Telegram does not return 409 conflicts.
     startTelegramPolling();
     /* Hourly stale-task nudge for user-owned tracker items. Idles when no
        telegram credentials. */
