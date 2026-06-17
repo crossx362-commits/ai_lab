@@ -727,7 +727,25 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
     except Exception as gpt_err:
         print(f"[Dave] GPT 폴백 실패: {gpt_err}")
 
-    # 3) 모든 AI 실패 시 안전 HOLD
+    # 3) Gemini 폴백 (최후 수단)
+    try:
+        from _shared.gemini_client import gemini_flash
+        print(f"[Dave] Calling Gemini for {ticker}...")
+        gemini_result = gemini_flash(
+            prompt,
+            system=system,
+            max_tokens=300,
+            temperature=0.1,
+            json_mode=True,
+        )
+        if gemini_result:
+            decision = parse_trade_decision(gemini_result)
+            _update_consecutive_holds(decision.decision)
+            return decision
+    except Exception as gemini_err:
+        print(f"[Dave] Gemini 폴백 실패: {gemini_err}")
+
+    # 4) 모든 AI 실패 시 안전 HOLD
     _update_consecutive_holds("HOLD")
     return TradeDecision(
         decision="HOLD",

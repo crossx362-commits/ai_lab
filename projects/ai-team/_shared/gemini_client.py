@@ -37,8 +37,44 @@ def _call_gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature
 
 
 def gpt_mini(prompt: str, system: str = "", max_tokens: int = 500, temperature: float = 0.1, json_mode: bool = False) -> str | None:
-    """GPT-4o mini만 호출. 로컬 fallback은 호출자가 직접 결정한다."""
+    """GPT-4o mini만 호출."""
     return _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
+
+
+def gemini_flash(prompt: str, system: str = "", max_tokens: int = 500, temperature: float = 0.1, json_mode: bool = False) -> str | None:
+    """Gemini 2.5 Flash 호출 (최후 폴백)."""
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        messages = []
+        if system:
+            messages.append({"role": "user", "parts": [{"text": f"[System]\n{system}"}]})
+            messages.append({"role": "model", "parts": [{"text": "understood"}]})
+        messages.append({"role": "user", "parts": [{"text": prompt}]})
+        payload = {
+            "contents": messages,
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": temperature,
+            },
+        }
+        if json_mode:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=60) as r:
+            res = json.loads(r.read())
+        result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+        print(f"  [Gemini 2.5 Flash] 텍스트 생성 완료")
+        return result
+    except Exception as e:
+        print(f"  [Gemini 2.5 Flash] 실패: {e}")
+        return None
 
 
 def text(
