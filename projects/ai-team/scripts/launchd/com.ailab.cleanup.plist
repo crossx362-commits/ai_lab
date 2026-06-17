@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ailab.cleanup</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>-u</string>
+        <string>/Users/junholee/ai_lab/projects/ai-team/scripts/cleanup_duplicate_processes.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/junholee/ai_lab</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUTF8</key>
+        <string>1</string>
+        <key>HOME</key>
+        <string>/Users/junholee</string>
+    </dict>
+    <key>StartInterval</key>
+    <integer>1800</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/junholee/ai_lab/output/trading_logs/cleanup.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/junholee/ai_lab/output/trading_logs/cleanup.err.log</string>
+</dict>
+</plist>
