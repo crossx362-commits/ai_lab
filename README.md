@@ -1,59 +1,81 @@
-# 🐾 Connect AI Lab — Monorepo Workspace
+# Connect AI Lab
 
-이 워크스페이스는 AI 1인 기업 자동화 에이전트 팀(`ai-team`)과 주력 서비스 프로젝트인 펫 힐링 플랫폼(`petnna`)을 함께 관리하는 통합 모노레포 저장소입니다.
+AI agent automation and Petnna web app monorepo.
 
----
+Last reviewed: 2026-06-17
 
-## 🏗️ 폴더 구조
+## Current Layout
 
 ```text
-ai_lab/
-├── ai-team/              # 🤖 AI 에이전트 프레임워크 (VS Code Extension 및 실행 도구)
-│   ├── _shared/          #   - 에이전트 공용 API 클라이언트 및 라이브러리
-│   ├── assets/           #   - 에이전트별 프롬프트 및 도구 실행 스크립트 (tool-seeds)
-│   └── src/              #   - VS Code 확장 프로그램 소스 코드
-├── petnna/               # 🐶 펫과나 (Pet&Na) 웹/하이브리드 애플리케이션
-│   ├── css/              #   - 스타일시트 (Tailwind CSS, Leaflet 등)
-│   ├── docs/             #   - 프로젝트 기획, 미팅 로그 및 딥서치 분석 보고서
-│   ├── js/               #   - 핵심 기능 컨트롤러 및 뷰 템플릿
-│   └── index.html        #   - 웹 앱 메인 엔트리
-├── .agent/               # ⚙️ 에이전트 구동에 필요한 로컬 스킬, 메모리 및 도구
-├── .claude/              # 🔍 에이전트 컨텍스트 캐시 및 설정
-└── .gitignore            # 깃 추적 제외 규칙
+D:\ai_lab
+├── projects\ai-team\      # multi-agent automation framework
+├── projects\petnna\       # Petnna web/hybrid app
+├── docs\                  # setup and operating documentation
+├── reports\               # generated reports, meeting notes, research, logs
+├── output\                # generated runtime artifacts
+├── connect-ai-packs\      # reusable packs, skills, templates
+├── PROJECT_OVERVIEW.md    # high-level system overview
+└── AGENTS.md              # repository rules for coding agents
 ```
 
----
+The historical flat `ai-team/` and `petnna/` paths are no longer the active project layout. Use `projects/ai-team/` and `projects/petnna/`.
 
-## 🚀 프로젝트 실행 및 관리
+## Main Entry Points
 
-### 1. 펫과나 웹 앱 실행 (로컬 웹 서버)
-`ai-team`에 내장된 웹 프리뷰 도구를 실행하여 `petnna` 프로젝트를 로컬 브라우저에서 실시간으로 확인할 수 있습니다.
+| Task | Command |
+| --- | --- |
+| Start trading team live | `python projects/ai-team/scripts/start_trading_team.py --live` |
+| Start trading team in background | `python projects/ai-team/scripts/run_trading_team_background.py --live` |
+| Restart trading team from Windows | `restart_trading.bat` |
+| Start Youngsuk Telegram bot | `cmd /c projects\ai-team\scripts\start_youngsuk_bot.cmd` |
+| Start Telegram bot directly | `python projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py` |
+| Check agent API connections | `python projects/ai-team/scripts/agents/test_agent_api_connections.py` |
+| Scan environment variable usage | `python projects/ai-team/scripts/scan_env_usage.py` |
+| Preview Petnna locally | `python projects/ai-team/skills/코다리_개발자/tools/web_preview.py` |
+| Review Petnna UI/UX | `python projects/ai-team/skills/티모_디자이너/tools/petnna_reviewer.py` |
 
-```bash
-# 로컬 미리보기 서버 구동 (포트: 8000)
-python ai-team/assets/tool-seeds/코다리_개발자/web_preview.py
-```
-* **미리보기 주소**: [http://localhost:8000](http://localhost:8000)
+## Agent System
 
-### 2. 에이전트 상태 및 헬스 체크
-에이전트들이 사용하는 LLM(Ollama) 및 텔레그램 연동 상태가 정상인지 진단합니다.
+The active agent tools live under `projects/ai-team/skills/<agent>/tools/`.
 
-```bash
-# Windows 환경에서 한글 깨짐 및 인코딩 오류 방지 설정 후 실행
-$env:PYTHONUTF8=1
-python ai-team/assets/tool-seeds/코다리_개발자/ollama_health_check.py
-```
+| Area | Agents / Files |
+| --- | --- |
+| Orchestration | 예원 CEO: `yewon_dispatcher.py`, `upload_manager.py`, `skill_auditor.py` |
+| Telegram and scheduling | 영숙 비서: `telegram_receiver.py`, `calendar_manager.py`, `posting_scheduler.py` |
+| Trading | 현빈 market intelligence, 데이브 conservative trader, 레오 aggressive trader |
+| Development and design | 코다리 developer tools, 티모 UI/UX reviewer |
+| Infra and security | 케빈 Vercel/Supabase/PWA monitor, 경수 investigation/security tools |
+| Legal/tax | 로율 tax and legal simulation tools |
 
-### 3. 웹 서비스 UI/UX 자동 검토
-디자이너 에이전트인 **티모**를 통해 `petnna` 웹 서비스의 UI/UX 완성도 및 사용성을 검수하고 보고서를 생성합니다.
+Shared Python modules are in `projects/ai-team/_shared/`. Be careful with this folder because many agents import it directly.
 
-```bash
-$env:PYTHONUTF8=1
-python ai-team/assets/tool-seeds/티모_디자이너/petnna_reviewer.py
-```
+## Documentation Map
 
----
+- [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md): current high-level architecture and operating picture.
+- [docs/REPOSITORY_CLASSIFICATION.md](docs/REPOSITORY_CLASSIFICATION.md): categorized Markdown/script/bot inventory and cleanup decisions.
+- [docs/TELEGRAM_BOT_README.md](docs/TELEGRAM_BOT_README.md): Telegram bot operations.
+- [docs/setup/ENV_SECURITY_RULES.md](docs/setup/ENV_SECURITY_RULES.md): secret handling rules.
+- [projects/ai-team/scripts/README.md](projects/ai-team/scripts/README.md): operational scripts index.
+- [projects/petnna/README.md](projects/petnna/README.md): Petnna app documentation.
 
-## 🔒 보안 및 가이드라인
-* API 키 및 토큰 정보는 절대 소스코드에 노출하지 않으며, 루트 경로 및 프로젝트 내 `.env` 파일 또는 시스템 환경변수를 사용해 관리합니다.
-* 에이전트 자동화 관련 정보(`.agent/`, `.claude/`, `*.pid`)는 깃에 커밋되지 않도록 이그노어 처리되어 있습니다.
+## Security Rules
+
+- Keep secrets in `D:\ai_lab\.env` and encrypted copies only.
+- Do not create project-specific plaintext `.env` files.
+- Do not commit plaintext credentials, `client_secret.json`, logs, generated media, or cache folders.
+- Use `load_env()` from `projects/ai-team/_shared/env_loader.py` before accessing secrets.
+
+## Generated and Disposable Areas
+
+These paths are operational artifacts, caches, or local backups and should not be treated as source:
+
+- `.archive/`
+- `.backups/`
+- `.logs/`
+- `__pycache__/`
+- `output/`
+- `reports/uploads/`
+- `projects/ai-team/node_modules/`
+- `projects/ai-team/out/`
+
+Use Git status before cleanup so tracked reports or deliverables are not removed accidentally.

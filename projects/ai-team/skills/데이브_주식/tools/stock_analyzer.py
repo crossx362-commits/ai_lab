@@ -248,8 +248,8 @@ def run_analysis(query: str = "", stock_code: str = "032820") -> str:
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction="너는 주식 전문 에이전트 데이브(Dave)이다. 결론부터 말하고 간결하게 답한다. 영숙 보고 섹션은 절대 생성하지 않는다.",
-                        max_output_tokens=2000,
-                        temperature=0.7
+                        max_output_tokens=700,
+                        temperature=0.2
                     )
                 )
                 break

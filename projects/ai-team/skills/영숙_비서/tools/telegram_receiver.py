@@ -56,14 +56,26 @@ def tg_api(method, data, timeout=20):
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
-    except: return {}
+    except Exception as e:
+        print(f"❌ Telegram API 실패 ({method}): {e}")
+        return {}
 
 def send_msg(text):
+    text = str(text or "")
     print(f"📤 {text[:60]}...")
-    tg_api("sendMessage", {"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML"})
+    chunks = [text[i:i + 3500] for i in range(0, len(text), 3500)] or [""]
+    for chunk in chunks:
+        res = tg_api("sendMessage", {"chat_id": CHAT_ID, "text": chunk, "parse_mode": "HTML"})
+        if res.get("ok"):
+            continue
+        print(f"⚠️ HTML 전송 실패 → 일반 텍스트 재전송: {res.get('description', 'unknown')}")
+        tg_api("sendMessage", {"chat_id": CHAT_ID, "text": chunk})
 
 def get_updates(offset):
-    res = tg_api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": ["message"]}, timeout=40)
+    payload = {"timeout": 30, "allowed_updates": ["message"]}
+    if offset:
+        payload["offset"] = offset
+    res = tg_api("getUpdates", payload, timeout=40)
     return res.get("result", [])
 
 def get_agent_status(agent: str = "전체"):
@@ -79,8 +91,24 @@ def list_calendar(days: int = 7):
             return f"📅 일정:\n{f.read()[:800]}"
     return "📅 캘린더 미설정"
 
-def generate_content_with_retry(model_name, contents, config, max_retries=5):
-    """구글 제미니 API 호출을 수행하며, 429 등의 할당량 초과 시 자동 재시도 및 사용자 알림 제공"""
+def is_google_busy_error(err: Exception | str) -> bool:
+    text = str(err).lower()
+    markers = [
+        "429",
+        "503",
+        "resource_exhausted",
+        "quota",
+        "rate limit",
+        "rate_limit",
+        "temporarily unavailable",
+        "service unavailable",
+        "overloaded",
+        "deadline",
+    ]
+    return any(marker in text for marker in markers)
+
+def generate_content_with_retry(model_name, contents, config, max_retries=2):
+    """Gemini 호출. 바쁨/쿼터 오류는 사용자에게 떠넘기지 않고 상위 fallback으로 넘긴다."""
     if not client:
         return None
 
@@ -92,14 +120,22 @@ def generate_content_with_retry(model_name, contents, config, max_retries=5):
                 config=config
             )
         except Exception as e:
-            err = str(e)
-            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
+            if is_google_busy_error(e):
                 if attempt < max_retries - 1:
-                    send_msg("⚠️ 구글 서버가 바쁩니다. 5초 뒤 자동 재시도합니다.")
-                    time.sleep(5)
+                    time.sleep(2 + attempt * 2)
                     continue
             raise e
     return None
+
+def local_fallback_answer(msg: str) -> str | None:
+    """Google/Gemini가 막힐 때 로컬 Ollama로 일반 답변을 처리."""
+    try:
+        from _shared.ollama_client import chat as lm_chat
+        answer = lm_chat(msg, system=SYSTEM, max_tokens=150, temperature=0.7)
+        return answer.strip() if answer else None
+    except Exception as oe:
+        print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
+        return None
 
 def dispatch(cmd: str):
     """에이전트 스크립트를 실제로 구동/실행(run/execute)하는 명시적 명령에만 호출하세요. 단순 분석/설명 질문에는 절대 호출 금지. Args: cmd (실행 명령)"""
@@ -114,6 +150,10 @@ def dispatch(cmd: str):
                 send_msg("⚠️ CEO 분석 대기 중")
                 return
             if len(result) > 500:
+                local_summary = local_fallback_answer(f"다음 작업 결과를 2줄로 요약:\n{result[:800]}")
+                if local_summary:
+                    send_msg(f"✅ 작업 완료 요약:\n{local_summary}")
+                    return
                 try:
                     s = generate_content_with_retry(
                         model_name="gemini-2.5-flash",
@@ -174,18 +214,18 @@ def process(msg):
         if any(k in msg for k in direct_dispatch_keywords):
             send_msg(dispatch(msg))
             return
-        try:
-            from _shared.ollama_client import chat as lm_chat
-            answer = lm_chat(msg, system=SYSTEM, max_tokens=150, temperature=0.7)
-            send_msg(answer.strip() if answer else "Gemini 패키지가 없어 로컬 응답도 실패했습니다.")
-            return
-        except Exception as oe:
-            print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
-            send_msg("Gemini 패키지가 없어 일반 답변은 제한됩니다. 현황/일정/에이전트 구동 명령은 가능합니다.")
-            return
+        answer = local_fallback_answer(msg)
+        send_msg(answer if answer else "Gemini 패키지가 없어 일반 답변은 제한됩니다. 현황/일정/에이전트 구동 명령은 가능합니다.")
+        return
 
     now = datetime.now(timezone(timedelta(hours=9)))
     time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
+
+    # 일반 대화는 로컬 AI를 먼저 사용해 Gemini 토큰을 아낀다.
+    local_answer = local_fallback_answer(msg)
+    if local_answer:
+        send_msg(local_answer)
+        return
 
     # 대화 누적 방지: 이전 대화 컨텍스트(HISTORY) 없이 지금 보낸 단 한 개의 메시지만 독립적으로 전송
     contents = [types.Content(role="user", parts=[types.Part.from_text(text=msg)])]
@@ -204,23 +244,13 @@ def process(msg):
                 )
             )
         except Exception as e:
-            # flash 할당량 초과 시 pro로 전환 시도
-            err = str(e)
-            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
-                print("🔄 Gemini Flash 할당량 초과. Gemini Pro로 전환 시도...")
-                model_name = "gemini-2.5-pro"
-                resp = generate_content_with_retry(
-                    model_name=model_name,
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM + time_ctx,
-                        tools=TOOLS,
-                        max_output_tokens=120,
-                        temperature=0.7
-                    )
-                )
-            else:
-                raise e
+            # Gemini 혼잡/쿼터 오류는 즉시 로컬 답변으로 우회한다.
+            if is_google_busy_error(e):
+                print("🔄 Gemini 일시 제한/혼잡 감지 → 로컬 Ollama 폴백")
+                fallback = local_fallback_answer(msg)
+                send_msg(fallback if fallback else "지금은 일반 답변 모델이 잠시 불안정합니다. 현황/일정/에이전트 구동 명령은 처리 가능합니다.")
+                return
+            raise e
 
         answer = ""
         tool_results = []
@@ -263,21 +293,12 @@ def process(msg):
                         )
                     )
                 except Exception as fe:
-                    ferr = str(fe)
-                    if ("429" in ferr or "RESOURCE_EXHAUSTED" in ferr or "quota" in ferr.lower()) and model_name == "gemini-2.5-flash":
-                        print("🔄 Gemini Flash 할당량 초과 (최종 답변). Gemini Pro로 전환 시도...")
-                        model_name = "gemini-2.5-pro"
-                        final = generate_content_with_retry(
-                            model_name=model_name,
-                            contents=contents,
-                            config=types.GenerateContentConfig(
-                                system_instruction=SYSTEM + time_ctx + "\n도구 결과로 간결히 답변",
-                                max_output_tokens=150,
-                                temperature=0.7
-                            )
-                        )
-                    else:
-                        raise fe
+                    if is_google_busy_error(fe):
+                        print("🔄 Gemini 최종 답변 제한/혼잡 → 도구 결과 직접 반환")
+                        answer = "\n\n".join([tr["result"] for tr in tool_results])
+                        send_msg(answer)
+                        return
+                    raise fe
                 answer = final.text.strip() if final and final.text else "\n\n".join([tr["result"] for tr in tool_results])
 
         if not answer:
@@ -287,16 +308,11 @@ def process(msg):
 
     except Exception as e:
         print(f"❌ {model_name} 최종 오류: {e}")
-        try:
-            print("🔄 Gemini 오류 감지 → 로컬 Ollama 최종 폴백 진행...")
-            from _shared.ollama_client import chat as lm_chat
-            ollama_ans = lm_chat(msg, system=SYSTEM, max_tokens=150, temperature=0.7)
-            if ollama_ans:
-                answer = ollama_ans.strip()
-                send_msg(answer)
-                return
-        except Exception as oe:
-            print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
+        print("🔄 Gemini 오류 감지 → 로컬 Ollama 최종 폴백 진행...")
+        ollama_ans = local_fallback_answer(msg)
+        if ollama_ans:
+            send_msg(ollama_ans)
+            return
         send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
 
 def _watch_traders():
@@ -319,10 +335,45 @@ def _watch_traders():
     }
 
     def is_running(keyword):
+        needle = keyword.lower()
+        root_marker = PROJECT_ROOT.replace("\\", "/").lower()
         try:
-            return subprocess.run(["pgrep", "-f", keyword], capture_output=True).returncode == 0
-        except Exception:
-            return False
+            import psutil
+            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+                try:
+                    cmd = " ".join(proc.info.get("cmdline") or []).replace("\\", "/").lower()
+                    name = str(proc.info.get("name") or "").lower()
+                    if name.startswith("python") and needle in cmd and root_marker in cmd:
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except Exception as e:
+            print(f"[trader_watch] psutil 조회 실패, PowerShell fallback 사용: {e}")
+            try:
+                command = (
+                    "Get-CimInstance Win32_Process | "
+                    "Where-Object { $_.Name -match '^python' } | "
+                    "Select-Object -ExpandProperty CommandLine"
+                )
+                result = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", command],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=15,
+                )
+                if result.returncode != 0:
+                    print(f"[trader_watch] PowerShell 조회 실패: {result.stderr.strip()}")
+                    return False
+                for line in result.stdout.splitlines():
+                    cmd = line.replace("\\", "/").lower()
+                    if needle in cmd and root_marker in cmd:
+                        return True
+            except Exception as pe:
+                print(f"[trader_watch] PowerShell fallback 실패: {pe}")
+                return False
+        return False
 
     def restart(name, info):
         try:
@@ -361,7 +412,19 @@ def _watch_cleanup():
             try:
                 root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
                 script = os.path.join(root, "projects", "ai-team", "scripts", "cleanup_duplicate_processes.py")
-                subprocess.run([sys.executable, script], capture_output=True, timeout=30, cwd=root)
+                result = subprocess.run(
+                    [sys.executable, script],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=60,
+                    cwd=root,
+                )
+                if result.stdout:
+                    print(result.stdout.strip())
+                if result.stderr:
+                    print(result.stderr.strip())
             except Exception as e:
                 print(f"[cleanup_watch] {e}")
             time.sleep(600)
@@ -380,7 +443,7 @@ def main():
                 if p.info['pid'] == current_pid:
                     continue
                 cmd = p.info['cmdline']
-                if cmd and any('telegram_receiver.py' in str(arg) for arg in cmd):
+                if cmd and any(('telegram_receiver.py' in str(arg) or 'run_youngsuk_daemon.py' in str(arg)) for arg in cmd):
                     print(f"⚠️ 이미 다른 telegram_receiver.py 프로세스가 실행 중입니다 (PID: {p.info['pid']}). 실행을 종료합니다.")
                     sys.exit(0)
             except (psutil.AccessDenied, psutil.NoSuchProcess):
@@ -399,7 +462,8 @@ def main():
         print("❌ 텔레그램 설정 필요")
         return
 
-    tg_api("deleteWebhook", {"drop_pending_updates": True})
+    # Keep pending updates so messages sent while the bot was restarting are not lost.
+    tg_api("deleteWebhook", {"drop_pending_updates": False})
     send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/일정")
     _watch_traders()
     _watch_cleanup()

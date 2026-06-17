@@ -32,23 +32,18 @@ def run_research():
         return "❌ Ollama(로컬 AI)가 켜져 있지 않습니다."
     
     # 1. 주제 선정
-    topic_prompt = "최신 비즈니스, AI 크리에이터 수익화, SaaS 마케팅 중 오늘 리서치할 주제 1개만 단어로 말해줘."
-    topic = lm_chat(topic_prompt, max_tokens=30, temperature=0.7)
+    topic_prompt = "AI 크리에이터 수익화/SaaS 마케팅 중 오늘 리서치 주제 1개. 8단어 이하."
+    topic = lm_chat(topic_prompt, max_tokens=20, temperature=0.5, task="strategy")
     topic = topic.strip() if topic else "크리에이터 수익화 모델"
 
     # 2. 분석 및 인사이트 도출
-    research_prompt = f"""당신은 1인 기업 비즈니스 전략가 현빈입니다.
-오늘의 주제: {topic}
+    research_prompt = (
+        f"현빈 비즈니스 리서치|주제:{topic}\n"
+        "markdown 4섹션만: 수익구조, CAC/LTV, 방어력, 즉시실행. "
+        "섹션당 bullet 2개 이하. 숫자는 추정이면 '추정' 표시."
+    )
 
-다음 4가지 구조로 리서치 인사이트를 작성하세요:
-1. 수익 구조: 누가, 무엇에, 얼마를 지불하는가
-2. 단위 경제: CAC vs LTV
-3. 확장성 및 방어력
-4. 루나(유튜브)/아린(인스타) 팀에 즉시 적용 가능한 전략
-
-마크다운 형식으로 간결하게 작성하세요."""
-
-    result = lm_chat(research_prompt, max_tokens=800, temperature=0.7)
+    result = lm_chat(research_prompt, max_tokens=500, temperature=0.5, task="strategy")
     if not result:
         return "❌ 리서치 생성에 실패했습니다."
 

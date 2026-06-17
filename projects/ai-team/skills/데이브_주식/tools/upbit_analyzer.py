@@ -16,12 +16,6 @@ sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
 from _shared.telegram_notifier import send_telegram_message
-try:
-    from google import genai
-    from google.genai import types
-except ModuleNotFoundError:
-    genai = None
-    types = None
 
 import json
 import time
@@ -66,11 +60,11 @@ def get_upbit_client():
     """업비트 API 클라이언트를 로드하고 유효성을 검증합니다."""
     access_key = os.getenv("UPBIT_ACCESS_KEY", "").strip('"').strip("'")
     secret_key = os.getenv("UPBIT_SECRET_KEY", "").strip('"').strip("'")
-    
+
     # 자리 표시자이거나 비어있으면 None 반환 (시뮬레이션 모드)
     if not access_key or not secret_key or "입력" in access_key or "입력" in secret_key:
         return None
-        
+
     try:
         upbit = pyupbit.Upbit(access_key, secret_key)
         # 키 검증 시도 (단순 잔고 조회)
@@ -279,22 +273,22 @@ def calc_indicators(df: pd.DataFrame) -> dict:
     ha_open[0] = (df['Open'].iloc[0] + df['Close'].iloc[0]) / 2
     for i in range(1, len(df)):
         ha_open[i] = (ha_open[i-1] + ha_close.iloc[i-1]) / 2
-    
+
     latest_ha_close = ha_close.iloc[-1]
     latest_ha_open = ha_open[-1]
     prev_ha_close = ha_close.iloc[-2]
     prev_ha_open = ha_open[-2]
     latest_ha_low = min(df['Low'].iloc[-1], latest_ha_open, latest_ha_close)
-    
+
     body_size = abs(latest_ha_close - latest_ha_open)
     prev_body_size = abs(prev_ha_close - prev_ha_open)
-    
+
     is_bullish = latest_ha_close > latest_ha_open
     lower_tail = min(latest_ha_open, latest_ha_close) - latest_ha_low
-    
+
     has_no_lower_tail = lower_tail <= (latest_ha_close * 0.0005)
     is_body_longer = body_size > prev_body_size
-    
+
     result["HeikinAshi_상태"] = (
         "아래꼬리 없는 장대양봉(매수 신호)" if is_bullish and has_no_lower_tail and is_body_longer
         else "양봉" if is_bullish
@@ -373,7 +367,7 @@ def get_upbit_data(ticker="KRW-BTC"):
         df = pyupbit.get_ohlcv(ticker, interval="day", count=300)
         if df is None or df.empty:
             return {"error": "업비트에서 OHLCV 데이터를 가져올 수 없습니다."}
-            
+
         df = df.reset_index().rename(columns={
             "index": "Date",
             "open": "Open",
@@ -383,11 +377,11 @@ def get_upbit_data(ticker="KRW-BTC"):
             "volume": "Volume",
             "value": "Value"
         })
-        
+
         df_supertrend = calculate_supertrend(df.copy())
         current_price = df_supertrend['Close'].iloc[-1]
         current_trend = df_supertrend['Trend'].iloc[-1]
-        
+
         indicators = calc_indicators(df)
         kimchi = get_kimchi_premium(ticker)
 
@@ -418,8 +412,6 @@ class TradeDecision(BaseModel):
         self.reason = reason
         self.report = report
 
-_dave_cache_name = None
-
 def load_system_instruction():
     """Few-shot + 핵심 규칙 (토큰 최소화 + 품질 향상)"""
     return """AI 트레이더 데이브. 극존칭.
@@ -443,28 +435,70 @@ def load_system_instruction():
 분석 단계:
 1. 추세? 2. 거래량? 3. 지표? 4. 결론"""
 
-# Context Caching 비활성화 (토큰 절약)
-# - Free tier에서는 오히려 손해
-# - 32,768 토큰 padding 제거
-def get_dave_context_cache(client):
-    """Context Caching 비활성화 - 토큰 절약을 위해 제거"""
-    return None
+def build_compact_trade_prompt(
+    ticker: str,
+    query: str,
+    today_str: str,
+    is_simulated: bool,
+    current_price: float,
+    current_trend: str,
+    indicators: dict,
+    poc_status: str,
+    atr: float,
+    total_asset: float,
+    krw_balance: float,
+    crypto_balance: float,
+    avg_buy_price: float,
+    loss_now: float,
+    kimchi: dict,
+) -> str:
+    """LLM에 실제 전송하는 압축형 판단 프롬프트."""
+    coin = ticker.split("-")[-1]
+    fields = [
+        f"T:{ticker}",
+        f"D:{today_str}",
+        f"M:{'SIM' if is_simulated else 'LIVE'}",
+        f"Q:{query[:80]}",
+        f"P:{current_price:.0f}",
+        f"ST:{current_trend}",
+        f"EMA:{indicators.get('대추세_EMA200')}",
+        f"RSI:{indicators.get('RSI14')}",
+        f"Stoch:{indicators.get('StochRSI_K')}/{indicators.get('StochRSI_D')}:{indicators.get('StochRSI_상태')}",
+        f"HA:{indicators.get('HeikinAshi_상태')}",
+        f"Vol:{indicators.get('VolumeSpike')}:{indicators.get('Volume_배율')}x",
+        f"OBV:{indicators.get('OBV_추세')}:{indicators.get('OBV_다이버전스')}",
+        f"CVD:{indicators.get('CVD_추세')}:{indicators.get('CVD_다이버전스')}",
+        f"MACD:{indicators.get('MACD_상태')}",
+        f"BB:{indicators.get('BB_위치')}",
+        f"POC:{poc_status[:60]}",
+        f"ATR:{atr:.0f}",
+        f"KP:{kimchi.get('김치프리미엄', kimchi.get('premium_pct', 'N/A'))}:{kimchi.get('상태', kimchi.get('signal', 'N/A'))}",
+        f"Wash:{indicators.get('통정매매의심')}",
+        f"Accum:{indicators.get('세력매집패턴')}",
+        f"Acct:asset{total_asset:.0f}|krw{krw_balance:.0f}|{coin}{crypto_balance}|avg{avg_buy_price:.0f}|pnl{loss_now}%",
+    ]
+    return (
+        "압축데이터|" + "|".join(str(x).replace("\n", " ") for x in fields) + "\n"
+        "판단순서: 추세>거래량>세력수급>과열/김프>계좌위험.\n"
+        "JSON만 출력: decision BUY/SELL/HOLD, percentage 0-100, reason 1문장, "
+        "report 짧은 markdown 5줄 이하."
+    )
 
 def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> TradeDecision:
     # 1. 시세 데이터 및 기술분석
     data = get_upbit_data(ticker)
     if "error" in data:
         raise Exception(data["error"])
-        
+
     current_price = data["현재가"]
     current_trend = data["현재추세"]
     indicators = data["보조지표"]
     volume_profile = data["매물대 상위 3구간"]
     kimchi = data.get("김치프리미엄", {})
-    
+
     records = data["최근 30일 슈퍼트렌드 분석"]
     atr = _calc_atr(records)
-    
+
     # POC 분석
     poc_status = "N/A"
     if volume_profile:
@@ -474,11 +508,11 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
             poc_status = f"현재가({current_price:,.0f}원) > POC({poc_mid:,.0f}원) — [매물대 지지 형성]"
         else:
             poc_status = f"현재가({current_price:,.0f}원) < POC({poc_mid:,.0f}원) — [매물대 저항 형성 (매수 신중)]"
-            
+
     # 2. 잔고 조회 (API 키가 없으면 시뮬레이션 모드)
     upbit_client = get_upbit_client()
     is_simulated = (upbit_client is None)
-    
+
     if not is_simulated:
         try:
             krw_balance = float(upbit_client.get_balance("KRW"))
@@ -487,25 +521,25 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
         except Exception as e:
             print(f"[Dave] 잔고 조회 오류로 시뮬레이션 모드 전환: {e}")
             is_simulated = True
-            
+
     if is_simulated:
         krw_balance = 2214137.0
         crypto_balance = 0.05  # 예시 비트코인 보유량
         avg_buy_price = 95000000.0  # 평단가 예시
-        
+
     total_asset = krw_balance + (crypto_balance * current_price)
     loss_now = 0.0
     if crypto_balance > 0 and avg_buy_price > 0:
         loss_now = round((current_price - avg_buy_price) / avg_buy_price * 100, 1)
 
     today_str = datetime.datetime.now().strftime("%Y년 %m월 %d일 (%a)")
-    
+
     # 매물대 문자열 변환
     vp_rows = "\n".join(
         f"  {v['가격대']} — 누적거래량 {v['누적거래량']:,}"
         for v in volume_profile
     ) if volume_profile else "  (데이터 부족)"
-    
+
     # 슈퍼트렌드 문자열 변환
     recent_records = records[-5:]
     st_rows = "\n".join(
@@ -513,188 +547,69 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
         for r in recent_records
     )
 
-    prompt = f"""당신은 글로벌 자산 시장의 거시 경제(Macro) 흐름, 고래의 온체인(On-chain) 데이터, 그리고 국내외 최정상 퀀트 매매법(나씨TV, 홍익희 교수, 닥터페퍼3, 실전 단타 기법)을 단 하나의 알고리즘으로 완벽하게 통합한 '지구 최강의 AI 수석 매크로 퀀트 트레이더' 데이브(Dave)입니다.
-오늘 날짜는 **{today_str}**입니다. 모든 분석은 이 날짜를 기준으로 동기화합니다.
-현재 모드: {'[시뮬레이션 모드] (API 키 미설정)' if is_simulated else '[실거래 모드] (API 키 연동 완료)'}
-
-[사용자 요청/질문]: {query}
-
-[업비트 실시간 데이터 및 기술분석 연산 결과]:
-- 현재가: {current_price:,}원
-- 대추세 (EMA 200 기준): {indicators['대추세_EMA200']} (현재가: {current_price:,}원 vs EMA200: {indicators['EMA200']:,}원)
-- 보조지표 및 캔들 마감 상태:
-  - 현재추세 (Supertrend): {current_trend} (최근 5일간 변동성 필터 추종)
-  - 매물대 POC (Point of Control) 상태: {poc_status}
-  - 스토캐스틱 RSI: K {indicators['StochRSI_K']} / D {indicators['StochRSI_D']} → {indicators['StochRSI_상태']}
-  - 하이킨 애쉬 캔들: {indicators['HeikinAshi_상태']} (현재봉: {indicators['HeikinAshi_양봉여부']}, 아래꼬리: {indicators['HeikinAshi_아래꼬리여부']}, 몸통길이: {indicators['HeikinAshi_몸통길어짐여부']})
-  - 실시간 거래량 급증 (Volume Spike): {indicators['VolumeSpike']} (오늘 거래량 대비 5일 평균 배율: {indicators['Volume_배율']}배, 5일평균: {indicators['Volume_Avg5']:,})
-  - 24시간 거래대금: {indicators['거래대금_24h']:,}원 (유동성 상태: {indicators['유동성_상태']})
-  - RSI(14): {indicators['RSI14']}
-  - MACD: {indicators['MACD']:,} / Signal: {indicators['MACD_Signal']:,} → {indicators['MACD_상태']}
-  - 볼린저밴드: 상단 {indicators['BB_상단']:,}원 / 중단 {indicators['BB_중단']:,}원 / 하단 {indicators['BB_하단']:,}원 → {indicators['BB_위치']}
-  - OBV 추세: {indicators['OBV_추세']} (5일 변화: {indicators['OBV_5일변화']:,})
-  - ATR (10일 변동성 폭): {atr:,.0f}원 (이탈 범위 방어 기준)
-- 매물대 상위 3구간 (최근 30일):
-{vp_rows}
-- 최근 5일 슈퍼트렌드:
-{st_rows}
-
-[실시간 계좌 정보]:
-- 총 평가자산: {total_asset:,.0f}원
-- 보유 예수금(KRW): {krw_balance:,.0f}원
-- 보유 수량: {crypto_balance} {ticker.split('-')[1]}
-- 평균 매수 단가: {avg_buy_price:,.0f}원
-- 현재 손실률: {loss_now}%
-
-[세력 탐지 지표 (신규 주입)]:
-- 김치 프리미엄: {kimchi.get('김치프리미엄', 'N/A')}% → {kimchi.get('상태', 'N/A')}
-- OBV 다이버전스: {indicators.get('OBV_다이버전스', 'N/A')}
-- CVD 추세: {indicators.get('CVD_추세', 'N/A')} | CVD 다이버전스: {indicators.get('CVD_다이버전스', 'N/A')}
-- 세력 매집 패턴: {indicators.get('세력매집패턴', 'N/A')}
-- 워시트레이딩 의심 여부: {indicators.get('통정매매의심', 'N/A')}
-
-[매크로 & 온체인 추가 분석 재료 (자가 탐색 시 반영)]:
-1. 미국 친크립토 규제 완화 및 정책 환경 우호성 여부 분석
-2. 현물 ETF 자금 유입 강도 추이
-3. 고래 대형 지갑 이동 및 청산 맵(Liquidation Map)의 주요 매물대 벽
-4. 김프 폭등 여부, 인간 지표(무지성 수익 인증) 과열 여부 분석
-
-[⚠️ 필수 거래 규칙 및 6단계 Confluence 조건]:
-1. Step 1 (대추세 생명선): 현재가 > EMA 200 (상승 국면)이어야만 롱(Long) 가능.
-2. Step 2 (중기 추세 방향): Supertrend = '상승' 추세일 때만 롱 가능.
-3. Step 3 (단기 모멘텀): 스토캐스틱 RSI 과매도 구간 골든크로스(K, D < 20) 혹은 MACD 골든크로스 발생 확인.
-4. Step 4 (가격 스무딩): 하이킨 애쉬 캔들이 아래꼬리 없고 몸통이 이전보다 길어지는 양봉 마감.
-5. Step 5 (세력 수급/거래량): Volume Spike >= 2.0배 이상 및 OBV 추세 '상승'.
-6. Step 6 (유동성/리스크/POC): 24시간 거래대금 >= 10억 원, ATR 대비 적정 손익비 및 매물대 POC 돌파/지지 여부 검증 (가격이 POC선 위에 있을 때 롱 신뢰도 극대화).
-
-* 위 6단계 조건 중 단 하나라도 만족하지 못하면 최종 결정은 무조건 관망(HOLD)으로 출력하시오.
-
-[출력 양식 — 무조건 이 포맷으로만 답변하세요. 줄글을 절대 배제하고 대시보드 형태로 출력해야 합니다]:
-
-## 🌐 AI 매크로 퀀트 에이전트 최종 마스터 리포트
-
-### 1. 🏛️ 매크로 & 온체인 세력 동향 (Macro & On-chain)
-- **정책 환경 및 ETF 수급:** (미국 규제 흐름 및 기관 ETF 자금 유입/유출 상태 요약)
-- **고래 물량 및 청산 매물대:** [세력 매집 중 / 덤핑 위험 / 매물대 저항 중 택 1] (온체인 및 청산 벽 분석 근거 기술)
-
-### 2. 📊 기술적 대추세 및 광기 지수 (Trend & Sentiment)
-- **대추세 (EMA 200 기준):** [상승 국면(LONG 전용) / 하락 국면(SHORT 전용) 중 택 1] (현재가: {current_price:,}원 vs EMA 200: {indicators['EMA200']:,}원)
-- **중기 추세 (Supertrend 기준):** [상승 추세 유지 / 하락 추세 지속 중 택 1] (현재 추세: {current_trend})
-- **매물대 POC 지지/저항:** [매물대 지지 형성 / 매물대 저항 형성 중 택 1] ({poc_status})
-- **광기 지수 (인간 지표/코프):** [안정 / 과열 경고 / 폭락 징후 중 택 1]
-
-### 3. ⚡ 퀀트 타점 매트릭스 (Trading Matrix)
-- **보조지표 & 캔들 마감:** (스토캐스틱 RSI K {indicators['StochRSI_K']}/D {indicators['StochRSI_D']} ({indicators['StochRSI_상태']}), MACD {indicators['MACD']:,} ({indicators['MACD_상태']}), 하이킨 애쉬 {indicators['HeikinAshi_상태']}, Volume Spike {indicators['VolumeSpike']} (배율: {indicators['Volume_배율']}배), OBV {indicators['OBV_추세']}, 볼린저밴드 위치: {indicators['BB_위치']}, 매물대 POC 상태를 종합하여 6단계 진입 합치 여부 구체적으로 판정)
-- **기계적 손익비 점수:** [최상(2:1 만족) / 불량(진입 금지) 중 택 1]
-
-### 4. 🚨 최종 트레이딩 오더 (Final Order)
-- **최종 결정 (Decision):** [전략적 매수(Long) / 헷징·매도(Short) / 무조건 관망(HOLD) 중 택 1]
-- **확정 익절가 (Take-Profit):** {current_price * 1.025:,.0f} ~ {current_price * 1.03:,.0f}원 (진입가 대비 +2.5~3% 계산값 또는 볼린저밴드 상단 감안 목표값 제시)
-- **확정 손절가 (Stop-Loss):** {current_price - 2 * atr:,.0f}원 또는 {current_price * 0.985:,.0f}원 (ATR 기반 손절가 {current_price - 2 * atr:,.0f}원 혹은 진입가 대비 -1.5% 수준 계산값 중 택 1, 칼손절 라인)
-- **운용 가이드:** (안전기금 분리 비중 및 5배 이하 레버리지 가이드)
-
-### 💡 수석 퀀트의 원칙 한 줄
-- (거시 흐름, 세력 무빙, 기술적 원칙을 관통하는 냉정한 명언 한 줄 제공)
-"""
-    if genai is None or types is None:
-        report = f"""## 🌐 AI 매크로 퀀트 에이전트 최종 마스터 리포트
-
-### 1. 로컬 폴백 모드
-- Google GenAI 패키지가 없어 LLM 최종 검증을 건너뛰었습니다.
-- 현재가: {current_price:,.0f}원
-- Supertrend: {current_trend}
-- 최고 안전 결정: HOLD
-
-### 2. 운용 가이드
-- 시뮬레이션 스캔은 계속 가능하지만, 실거래 진입은 정식 `google-genai`와 `pyupbit` 설치 후 다시 검증하세요.
-"""
-        return TradeDecision(
-            decision="HOLD",
-            percentage=0,
-            reason="Google GenAI 패키지 미설치로 안전 관망",
-            report=report,
-        )
-
-    api_key = os.getenv("GEMINI_API_KEY", "").strip('"').strip("'")
-    if not api_key:
-        return TradeDecision(
-            decision="HOLD",
-            percentage=0,
-            reason="GEMINI_API_KEY 미설정으로 안전 관망",
-            report="## 데이브 로컬 폴백\n\nGEMINI_API_KEY가 없어 HOLD로 처리했습니다.",
-        )
-
-    # Ollama 우선 시도 (Gemini API 할당량 절약)
+    prompt = build_compact_trade_prompt(
+        ticker=ticker,
+        query=query,
+        today_str=today_str,
+        is_simulated=is_simulated,
+        current_price=current_price,
+        current_trend=current_trend,
+        indicators=indicators,
+        poc_status=poc_status,
+        atr=atr,
+        total_asset=total_asset,
+        krw_balance=krw_balance,
+        crypto_balance=crypto_balance,
+        avg_buy_price=avg_buy_price,
+        loss_now=loss_now,
+        kimchi=kimchi,
+    )
+    # 1) Ollama 우선
     try:
         from _shared.ollama_client import chat as lm_chat, is_available as lm_available
         if lm_available():
             print(f"[Dave] Calling Ollama for {ticker}...")
             system = load_system_instruction()
-            full_prompt = f"{system}\n\n{prompt}"
 
             ollama_result = lm_chat(
-                full_prompt,
-                system="",
-                max_tokens=2000,
-                temperature=0.2,
+                prompt,
+                system=system,
+                max_tokens=600,
+                temperature=0.1,
                 json_mode=True,
-                task="coding"
+                task="trading"
             )
 
             if ollama_result:
                 try:
                     return TradeDecision.model_validate_json(ollama_result)
                 except Exception as parse_err:
-                    print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → Gemini 폴백")
+                    print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → GPT 폴백")
     except Exception as ollama_err:
-        print(f"[Dave] Ollama 실패: {ollama_err} → Gemini 폴백")
+        print(f"[Dave] Ollama 실패: {ollama_err} → GPT 폴백")
 
-    # Gemini API 폴백 (Ollama 실패 시에만)
-    client = genai.Client(api_key=api_key)
+    # 2) GPT-4o mini 폴백
+    try:
+        from _shared.gemini_client import gpt_mini
+        print(f"[Dave] Calling GPT-4o mini for {ticker}...")
+        gpt_result = gpt_mini(
+            prompt,
+            system=load_system_instruction(),
+            max_tokens=500,
+            temperature=0.1,
+            json_mode=True,
+        )
+        if gpt_result:
+            return TradeDecision.model_validate_json(gpt_result)
+    except Exception as gpt_err:
+        print(f"[Dave] GPT 폴백 실패: {gpt_err}")
 
-    config = types.GenerateContentConfig(
-        system_instruction=load_system_instruction(),
-        response_mime_type="application/json",
-        response_schema=TradeDecision,
-        temperature=0.1,  # 0.2 → 0.1 (더 결정론적, 짧은 응답)
-        max_output_tokens=500  # 2000 → 500 (JSON 응답은 500이면 충분)
+    return TradeDecision(
+        decision="HOLD",
+        percentage=0,
+        reason="Ollama/GPT 응답 실패로 안전 관망",
+        report="## 데이브 안전 모드\n\nOllama/GPT 응답 실패로 HOLD 처리했습니다.",
     )
-
-    print(f"[Dave] Calling Gemini 2.5 Flash for {ticker}...")
-
-    max_retries = 5
-    response = None
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=config
-            )
-            break
-        except Exception as e:
-            err = str(e)
-            if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower() or "limit" in err.lower():
-                if attempt < max_retries - 1:
-                    # 재시도 로직만 수행 (텔레그램 노이즈 방지)
-                    import time
-                    time.sleep(5)
-                    continue
-                else:
-                    # 마지막 재시도 실패 시 HOLD로 안전 처리
-                    print(f"[Dave] Gemini API 할당량 초과 → 안전 HOLD")
-                    return TradeDecision(
-                        decision="HOLD",
-                        percentage=0,
-                        reason="Gemini API 할당량 초과로 안전 관망",
-                        report="## 데이브 안전 모드\n\nGemini API 할당량 초과로 HOLD 처리했습니다."
-                    )
-            raise e
-
-    if not response:
-        raise Exception("제미니로부터 응답을 수신하지 못했습니다.")
-
-    return TradeDecision.model_validate_json(response.text)
 
 def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
     print(f"[Dave] Starting Upbit crypto analysis: {query}")
@@ -706,12 +621,12 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
         for marker in ["영숙 보고", "영숙이 보고", "영숙님", "📱"]:
             if marker in report:
                 report = report[:report.index(marker)].rstrip("-— \n")
-        
+
         # 분석 결과를 reports/research/dave_upbit_analysis.md 에 기록
         report_dir = os.path.join(PROJECT_ROOT, "reports", "research")
         os.makedirs(report_dir, exist_ok=True)
         report_path = os.path.join(report_dir, "dave_upbit_analysis.md")
-        
+
         with open(report_path, "w", encoding="utf-8") as f:
             f.write(report)
 
@@ -735,7 +650,7 @@ def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
         else:
             remaining = NOTION_UPLOAD_INTERVAL_SECONDS - (current_time - last_notion_upload_time)
             print(f"[Dave] Notion upload skipped (next upload in {remaining/3600:.1f}h)")
-            
+
         return report
     except Exception as e:
         return f"❌ [데이브] 분석 중 오류 발생: {e}"
@@ -822,7 +737,7 @@ def execute_sell_all(ticker: str):
         return f"❌ [Dave] 전량 매도 중 오류 발생: {e}"
 
 if __name__ == "__main__":
-    # 사용법: 
+    # 사용법:
     # 1. 분석: python upbit_analyzer.py [KRW-BTC/ticker] [질문]
     # 2. 매수: python upbit_analyzer.py --buy [KRW-BTC] [금액]
     # 3. 매도: python upbit_analyzer.py --sell [KRW-BTC] [수량]

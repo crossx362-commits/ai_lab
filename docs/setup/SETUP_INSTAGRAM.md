@@ -8,7 +8,7 @@
 ## 📋 현재 설정 정보
 ```
 App ID: 1219822826776845
-App Secret: 2b4e0b63ca84558ee64da6e856251235
+App Secret: .env의 INSTAGRAM_APP_SECRET 값 사용
 ```
 
 ## 🚀 발급 방법 (2가지 옵션)
@@ -39,7 +39,7 @@ App Secret: 2b4e0b63ca84558ee64da6e856251235
 
 5. **장기 토큰으로 변환 및 저장**
    ```bash
-   python ai-team/assets/tool-seeds/코다리_개발자/instagram_token_refresher.py <단기토큰> <계정ID>
+   python projects/ai-team/skills/코다리_개발자/tools/instagram_token_refresher.py <단기토큰> <계정ID>
    ```
    - 자동으로 60일 장기 토큰으로 변환되어 `.env`에 저장됩니다
    - 이후 자동 갱신됩니다
@@ -48,7 +48,7 @@ App Secret: 2b4e0b63ca84558ee64da6e856251235
 
 1. **단기 토큰 → 장기 토큰 변환**
    ```bash
-   curl "https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_id=1219822826776845&client_secret=2b4e0b63ca84558ee64da6e856251235&access_token=<단기토큰>"
+   curl "https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_id=<INSTAGRAM_APP_ID>&client_secret=<INSTAGRAM_APP_SECRET>&access_token=<단기토큰>"
    ```
 
 2. **계정 ID 확인**
@@ -69,7 +69,7 @@ App Secret: 2b4e0b63ca84558ee64da6e856251235
 
 수동 갱신:
 ```bash
-python ai-team/assets/tool-seeds/코다리_개발자/instagram_token_refresher.py
+python projects/ai-team/skills/코다리_개발자/tools/instagram_token_refresher.py
 ```
 
 ## 📝 .env 파일 최종 형태

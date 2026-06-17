@@ -1,99 +1,81 @@
-# AI Team — 1인 AI 기업 자동화 에이전트
+# AI Team
 
-AI 기술을 활용한 비즈니스 파이프라인(마케팅, 리서치, 개발·인프라, 보안, 트레이딩 등)을  
-**전문 AI 에이전트들**이 각자의 역할을 분담하여 텔레그램을 기반으로 자동 운영합니다.
+Multi-agent automation framework for Telegram operations, trading bots, Petnna support tooling, infrastructure checks, and business research.
 
----
+Last reviewed: 2026-06-17
 
-## 🤖 에이전트 팀
+## Active Structure
 
-| 이름 | 역할 | 핵심 담당 |
-|------|------|-----------|
-| **예원** (CEO) | 총괄 오케스트레이터 | 작업 분배·에이전트 라우팅·종합 보고·스킬 감사 |
-| **영숙** (비서) | 개인 비서 | 텔레그램 보고·구글 캘린더 일정·YouTube 추천 |
-| **현빈** (전략가) | 비즈니스 전략 | 시장 분석·6시간 딥서치(`/deepsearch`)·매출 모니터링 |
-| **코다리** (개발자) | 풀스택 개발 | 프로젝트 초기화·Ollama 및 에이전트 건강 진단 |
-| **경수** (수사관) | 사이버 보안 | 악성 댓글 탐지 및 아카이브·코드 보안 감사 |
-| **티모** (디자이너) | UI/UX 디자인 | 인터페이스 품질 검수·리서치 기반 디자인 방향 |
-| **케빈** (인프라) | 서버 배포 관리 | Vercel 클라우드 배포 모니터링 및 클린업 관리 |
-| **로율** (변호사/세무사) | 법률·세무 스마트 어시스턴트 | 상속/가족분쟁 민법 분석 및 세무 시뮬레이션 |
-| **데이브** (주식) | 보수적 트레이딩 리스크 관리 | 거래량·차트 분석, 업비트 보수적 자동매매 |
-| **레오** (트레이더) | 공격적 단타 트레이딩 | 고변동성 알트코인 시뮬레이션/실거래 분리 운용 |
-
----
-
-## 🔄 자동화 파이프라인
-
-```
-[매일 자동 실행 및 주요 파이프라인]
-
-영숙  → 업로드 현황 점검 → 구글 캘린더 스케줄링 → 텔레그램 통합 보고
-현빈  → CEO 요청 시 비즈니스 주제 6단계 딥서치 수행 및 메모리 저장
-코다리 → 텔레그램 봇 및 전체 에이전트 상태 2시간 주기 자동 진단
-경수  → 댓글 모니터링 및 악성 패턴 탐지 시 예원에게 즉시 에스컬레이션
-데이브/레오 → 현빈 시장 정보 기반 보수/공격 트레이딩 분리 운용
+```text
+projects/ai-team/
+├── _shared/          # common Python clients and utilities
+├── scripts/          # operational launchers and diagnostics
+├── skills/           # agent-specific SKILL.md files and tools
+├── docs/             # architecture and optimization docs
+├── src/              # VS Code extension source
+├── assets/           # templates and static assets
+└── reports/          # local project reports
 ```
 
----
+## Agent Tool Map
 
-## 🏗 프로젝트 구조
+| Agent | Folder | Main Tools |
+| --- | --- | --- |
+| 예원 CEO | `skills/예원_CEO/` | `yewon_dispatcher.py`, `upload_manager.py`, `skill_auditor.py` |
+| 영숙 비서 | `skills/영숙_비서/` | `telegram_receiver.py`, `calendar_manager.py`, `posting_scheduler.py` |
+| 현빈 전략가 | `skills/현빈_전략가/` | `crypto_market_intelligence.py`, `business_research.py`, `paypal_revenue.py` |
+| 데이브 주식 | `skills/데이브_주식/` | `upbit_auto_trader.py`, `upbit_analyzer.py`, `upbit_public.py` |
+| 레오 트레이더 | `skills/레오_트레이더/` | `leo_aggressive_trader.py`, `leo_learning_system.py` |
+| 코다리 개발자 | `skills/코다리_개발자/` | `web_preview.py`, `agent_health_check.py`, `ollama_health_check.py` |
+| 티모 디자이너 | `skills/티모_디자이너/` | `petnna_reviewer.py` |
+| 케빈 인프라 | `skills/케빈_인프라/` | `vercel_manager.py`, `supabase_manager.py`, `petnna_monitor.py` |
+| 경수 수사관 | `skills/경수_수사관/` | `comment_forensics.py`, `content_inspector.py` |
+| 로율 변호사 | `skills/로율_변호사/` | `tax_simulator.py` |
 
-과거에 파편화되어 있던 에이전트 스크립트들을 모두 `.agent` 단일 폴더로 통합했습니다.
+## Common Commands
 
-```
-ai-team/
-├── .agent/              # 에이전트 두뇌 및 스킬 통합 허브
-│   ├── skills/          # 에이전트별 전용 폴더 (SKILL.md 및 실행 도구)
-│   │   ├── 예원/
-│   │   ├── 영숙/
-│   │   ├── 현빈/
-│   │   ├── 코다리/
-│   │   ├── 경수/
-│   │   ├── 티모/
-│   │   ├── 케빈/
-│   │   └── 로율/
-│   ├── memory/          # 에이전트 학습 메모리 및 리서치 저장소
-│   └── config/          # 스케줄 등 전역 환경 설정
-├── _shared/             # 공유 모듈 (중복 방지 로직, 환경변수 등)
-│   ├── env_loader.py    
-│   ├── telegram_notifier.py
-│   ├── ollama_client.py
-│   └── 공통_스킬_지식.md
-└── assets/              # 프롬프트, 템플릿 등 정적 리소스
-```
+Run from `D:\ai_lab`.
 
-*(참고: `ai-team/.agent` 폴더는 루트 디렉토리의 `.agent`를 가리키는 심볼릭 링크입니다.)*
+```powershell
+# Start all trading processes in live mode
+python projects/ai-team/scripts/start_trading_team.py --live
 
----
+# Start trading team in background
+python projects/ai-team/scripts/run_trading_team_background.py --live
 
-## 🛠 기술 스택
+# Start Youngsuk Telegram bot
+cmd /c projects\ai-team\scripts\start_youngsuk_bot.cmd
 
-| 분류 | 기술 |
-|------|------|
-| AI 모델 (로컬) | Ollama · DeepSeek (코딩) |
-| AI 모델 (클라우드) | Google Gemini API · Lyria 3 Pro · Veo 3.1 |
-| 플랫폼 연동 | Telegram Bot API · YouTube Data API v3 · Instagram Graph API |
-| 자동화 / 일정 | Google Calendar API · Python `threading` 백그라운드 태스크 |
-| 인프라 / 웹 | Vercel · Vite · React · TypeScript |
+# Direct Telegram bot debug run
+python projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py
 
----
+# Check API/env connectivity
+python projects/ai-team/scripts/agents/test_agent_api_connections.py
 
-## ⚙️ 환경 설정
-
-프로젝트 루트에 `.env` 파일을 생성하고 다음 값을 기입합니다:
-
-```env
-GEMINI_API_KEY=...
-YOUTUBE_API_KEY=...
-INSTAGRAM_ACCESS_TOKEN=...
-INSTAGRAM_ACCOUNT_ID=...
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=...
+# Scan environment variable usage
+python projects/ai-team/scripts/scan_env_usage.py
 ```
 
----
+## Shared Imports
 
-## 📡 커뮤니케이션 체계
+Agent tools commonly climb to the `projects/ai-team/` root and import from `_shared`:
 
-모든 커뮤니케이션은 **예원(CEO)** 봇을 통해 오케스트레이션 되며, 텔레그램 채팅방 한 곳에서 이루어집니다.
-명령어(예: `/deepsearch`, `/tax`, `/vercel`) 입력 시 예원이가 적절한 담당자를 호출해 백그라운드에서 작업을 처리하고 결과를 다시 텔레그램으로 보고합니다.
+```python
+from _shared.env_loader import load_env
+from _shared.telegram_notifier import send_telegram_message
+
+load_env()
+```
+
+Avoid changing `_shared/` casually. It is imported by many agents and should be tested across agent commands after edits.
+
+## Script Index
+
+Use `scripts/README.md` for the operations script inventory. Broad repository classification lives in `D:\ai_lab\docs\REPOSITORY_CLASSIFICATION.md`.
+
+## Security
+
+- Secrets are loaded from the central `D:\ai_lab\.env`.
+- Do not add project-local plaintext `.env` files.
+- Keep encrypted copies such as `.env.encrypted`; do not keep plaintext backups.
+- Daemon and trading scripts should preserve process locks and duplicate-process guards.

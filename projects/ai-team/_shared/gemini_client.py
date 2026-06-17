@@ -36,6 +36,11 @@ def _call_gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature
         return None
 
 
+def gpt_mini(prompt: str, system: str = "", max_tokens: int = 500, temperature: float = 0.1, json_mode: bool = False) -> str | None:
+    """GPT-4o mini만 호출. 로컬 fallback은 호출자가 직접 결정한다."""
+    return _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
+
+
 def text(
     prompt: str,
     system: str = "",
