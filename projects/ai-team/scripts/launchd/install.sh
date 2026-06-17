@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-AGENTS=(com.ailab.hyunbin com.ailab.dave com.ailab.leo com.ailab.youngsuk com.ailab.cleanup)
+AGENTS=(com.ailab.hyunbin com.ailab.dave com.ailab.leo com.ailab.youngsuk)
 
 # 기존 실행 중인 프로세스 정리
 echo "기존 프로세스 정리 중..."

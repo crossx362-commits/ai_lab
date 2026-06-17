@@ -465,35 +465,68 @@ def _watch_traders():
 
 
 def _watch_cleanup():
-    """중복 프로세스 정리 자동화 (10분 주기)"""
-    import subprocess, threading
+    """중복 프로세스 실시간 감시 — 중복 감지 즉시 제거"""
+    import threading
+
+    BOT_KEYWORDS = {
+        "데이브": "upbit_auto_trader",
+        "레오": "leo_aggressive_trader",
+        "현빈": "crypto_market_intelligence",
+        "영숙": "telegram_receiver",
+    }
+    ROOT_MARKER = PROJECT_ROOT.replace("\\", "/").lower()
+
+    def get_pids(keyword):
+        needle = keyword.lower()
+        pids = []
+        try:
+            import psutil
+            for proc in psutil.process_iter(["pid", "name", "cmdline", "create_time"]):
+                try:
+                    name = str(proc.info.get("name") or "").lower()
+                    cmd = " ".join(proc.info.get("cmdline") or []).replace("\\", "/").lower()
+                    if name.startswith("python") and needle in cmd and ROOT_MARKER in cmd:
+                        pids.append((proc.info["create_time"], proc.info["pid"]))
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except Exception as e:
+            print(f"[cleanup_watch] psutil 오류: {e}")
+        return sorted(pids)  # 오래된 순 정렬
+
+    def kill_pid(pid):
+        try:
+            import psutil
+            p = psutil.Process(pid)
+            p.terminate()
+            p.wait(timeout=5)
+        except Exception:
+            try:
+                import signal
+                os.kill(pid, signal.SIGKILL)
+            except Exception:
+                pass
 
     def loop():
-        time.sleep(60)
+        time.sleep(30)
         while True:
             try:
-                root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
-                script = os.path.join(root, "projects", "ai-team", "scripts", "cleanup_duplicate_processes.py")
-                result = subprocess.run(
-                    [sys.executable, script],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=60,
-                    cwd=root,
-                    creationflags=CREATE_NO_WINDOW,
-                )
-                if result.stdout:
-                    print(result.stdout.strip())
-                if result.stderr:
-                    print(result.stderr.strip())
+                for name, keyword in BOT_KEYWORDS.items():
+                    procs = get_pids(keyword)
+                    if len(procs) > 1:
+                        extras = procs[:-1]  # 최신 1개 남기고 나머지 제거
+                        killed = []
+                        for _, pid in extras:
+                            kill_pid(pid)
+                            killed.append(pid)
+                        msg = f"🧹 [영숙] {name} 중복 {len(killed)}개 제거 (PID: {', '.join(map(str, killed))})"
+                        print(msg)
+                        send_msg(msg)
             except Exception as e:
                 print(f"[cleanup_watch] {e}")
-            time.sleep(600)
+            time.sleep(30)
 
     threading.Thread(target=loop, daemon=True, name="cleanup_watch").start()
-    print("✅ 중복 프로세스 정리 스레드 시작")
+    print("✅ 중복 프로세스 실시간 감시 스레드 시작")
 
 
 def _hold_extension_telegram_lock():
