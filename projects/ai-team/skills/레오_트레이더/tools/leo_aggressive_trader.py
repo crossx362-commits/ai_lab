@@ -234,6 +234,9 @@ def run_leo_cycle(sim_mode=False):
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
         print("[Leo] API 키 미설정 - 시뮬레이션 모드")
+        if not sim_mode:
+            print("[Leo] LIVE requested but Upbit API validation failed. Trading is paused.")
+            return
         sim_mode = True
 
     # KRW 잔고 조회

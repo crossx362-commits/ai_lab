@@ -237,6 +237,9 @@ def run_auto_trade_cycle(sim_mode=False):
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
         print("[AutoTrader] API 키가 설정되지 않았습니다. 시뮬레이션 모드로 작동합니다.")
+        if not sim_mode:
+            print("[AutoTrader] LIVE requested but Upbit API validation failed. Trading is paused.")
+            return
         sim_mode = True
         
     held_positions = []

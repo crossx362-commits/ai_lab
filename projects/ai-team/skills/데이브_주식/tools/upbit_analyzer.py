@@ -400,7 +400,7 @@ def get_upbit_data(ticker="KRW-BTC"):
     except Exception as e:
         return {"error": f"가상자산 시세 조회 중 오류 발생: {e}"}
 
-class TradeDecision(BaseModel):
+class TradeDecision:
     decision: str = Field(description="최종 매매 결정. 반드시 'BUY', 'SELL', 'HOLD' 중 하나여야 합니다.")
     percentage: int = Field(description="매수/매도할 자산 비중 (0~100 %)")
     reason: str = Field(description="판단에 대한 핵심 근거 (한두 문장)")
@@ -411,6 +411,37 @@ class TradeDecision(BaseModel):
         self.percentage = percentage
         self.reason = reason
         self.report = report
+
+
+def parse_trade_decision(text: str) -> TradeDecision:
+    """Parse an LLM JSON response without relying on Pydantic internals."""
+    raw = (text or "").strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`").strip()
+        if raw.lower().startswith("json"):
+            raw = raw[4:].strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start >= 0 and end >= start:
+        raw = raw[start:end + 1]
+
+    data = json.loads(raw)
+    decision = str(data.get("decision", "HOLD")).upper()
+    if decision not in {"BUY", "SELL", "HOLD"}:
+        decision = "HOLD"
+
+    try:
+        percentage = int(float(data.get("percentage", 0)))
+    except Exception:
+        percentage = 0
+    percentage = max(0, min(100, percentage))
+
+    return TradeDecision(
+        decision=decision,
+        percentage=percentage,
+        reason=str(data.get("reason", ""))[:500],
+        report=str(data.get("report", "")),
+    )
 
 def load_system_instruction():
     """Few-shot + 핵심 규칙 (토큰 최소화 + 품질 향상)"""
@@ -582,7 +613,7 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
 
             if ollama_result:
                 try:
-                    return TradeDecision.model_validate_json(ollama_result)
+                    return parse_trade_decision(ollama_result)
                 except Exception as parse_err:
                     print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → GPT 폴백")
     except Exception as ollama_err:
@@ -600,7 +631,7 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
             json_mode=True,
         )
         if gpt_result:
-            return TradeDecision.model_validate_json(gpt_result)
+            return parse_trade_decision(gpt_result)
     except Exception as gpt_err:
         print(f"[Dave] GPT 폴백 실패: {gpt_err}")
 

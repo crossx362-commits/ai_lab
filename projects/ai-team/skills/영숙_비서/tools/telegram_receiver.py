@@ -320,6 +320,12 @@ def _watch_traders():
     import subprocess, threading
 
     TRADERS = {
+        "hyunbin": {
+            "script": "projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py",
+            "args": ["--daemon"],
+            "keyword": "crypto_market_intelligence",
+            "lock": "/tmp/ailab_locks/hyunbin.lock",
+        },
         "dave": {
             "script": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
             "args": ["--daemon"],
