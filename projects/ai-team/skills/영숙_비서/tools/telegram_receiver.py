@@ -106,6 +106,7 @@ def get_agent_status(agent: str = "전체"):
 def get_live_trading_status() -> str:
     """업비트 계좌와 트레이딩 에이전트 실행 상태를 실시간 조회한다."""
     import importlib
+    load_env(PROJECT_ROOT)
 
     try:
         import agent_controller
