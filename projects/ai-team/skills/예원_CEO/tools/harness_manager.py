@@ -22,6 +22,8 @@ class HarnessManager:
         self.ai_team = Path(__file__).parent.parent.parent
         self.reports_dir = self.ai_team.parent.parent / "reports" / "harness"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
+        self.last_report_file = self.reports_dir / ".last_telegram_report"
+        self.report_interval = 12 * 3600  # 12시간
 
     def run_harness(self):
         """하네스 실행"""
@@ -149,7 +151,20 @@ CEO 관점에서:
 {suggestions}"""
 
         print(summary)
-        send(summary)
+
+        # 텔레그램은 12시간마다만
+        should_notify = True
+        if self.last_report_file.exists():
+            import time
+            last_time = float(self.last_report_file.read_text())
+            if time.time() - last_time < self.report_interval:
+                should_notify = False
+                print("  (텔레그램 전송 생략 - 12시간 미경과)")
+
+        if should_notify:
+            send(summary)
+            import time
+            self.last_report_file.write_text(str(time.time()))
 
         return report
 
