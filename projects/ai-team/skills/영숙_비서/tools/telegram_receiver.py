@@ -24,6 +24,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 _here = _early_here
 PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
+sys.path.insert(0, _here)
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
@@ -101,6 +102,115 @@ def get_agent_status(agent: str = "전체"):
     """에이전트 현황. Args: agent ('예원'/'영숙'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
     from _shared.agent_status import get_status_report
     return get_status_report(agent, PROJECT_ROOT)
+
+def get_live_trading_status() -> str:
+    """업비트 계좌와 트레이딩 에이전트 실행 상태를 실시간 조회한다."""
+    import importlib
+
+    try:
+        import agent_controller
+        process_status = agent_controller.get_agent_status()
+    except Exception as e:
+        process_status = f"프로세스 상태 조회 실패: {e}"
+
+    dave_tools = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools")
+    if dave_tools not in sys.path:
+        sys.path.insert(0, dave_tools)
+
+    try:
+        pyupbit = importlib.import_module("pyupbit")
+        upbit_analyzer = importlib.import_module("upbit_analyzer")
+    except Exception as e:
+        return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 조회 실패: 모듈 로드 오류 ({e})"
+
+    try:
+        client = upbit_analyzer.get_upbit_client()
+        if not client:
+            return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 API 키가 설정되지 않았거나 검증에 실패했습니다."
+
+        balances = client.get_balances()
+        if not balances or (isinstance(balances, dict) and balances.get("error")):
+            return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 잔고 조회 실패: {balances}"
+
+        krw = 0.0
+        holdings = []
+        tickers = []
+        for item in balances:
+            currency = item.get("currency", "")
+            balance = float(item.get("balance") or 0)
+            locked = float(item.get("locked") or 0)
+            total_balance = balance + locked
+            if currency == "KRW":
+                krw = total_balance
+                continue
+            if total_balance <= 0:
+                continue
+            tickers.append(f"KRW-{currency}")
+
+        prices = pyupbit.get_current_price(tickers) if tickers else {}
+        if isinstance(prices, (int, float)) and len(tickers) == 1:
+            prices = {tickers[0]: float(prices)}
+        if not isinstance(prices, dict):
+            prices = {}
+
+        for item in balances:
+            currency = item.get("currency", "")
+            if currency == "KRW":
+                continue
+            balance = float(item.get("balance") or 0)
+            locked = float(item.get("locked") or 0)
+            total_balance = balance + locked
+            if total_balance <= 0:
+                continue
+            ticker = f"KRW-{currency}"
+            current_price = float(prices.get(ticker) or 0)
+            avg_price = float(item.get("avg_buy_price") or 0)
+            value = total_balance * current_price
+            if value < 1000 and locked <= 0:
+                continue
+            profit_pct = ((current_price - avg_price) / avg_price * 100) if avg_price > 0 and current_price > 0 else 0.0
+            holdings.append({
+                "coin": currency,
+                "balance": total_balance,
+                "locked": locked,
+                "avg_price": avg_price,
+                "current_price": current_price,
+                "value": value,
+                "profit_pct": profit_pct,
+            })
+
+        holdings.sort(key=lambda x: x["value"], reverse=True)
+        total_coin_value = sum(h["value"] for h in holdings)
+        total_asset = krw + total_coin_value
+
+        lines = [
+            "📊 거래현황 (업비트 실시간)",
+            "",
+            process_status,
+            "",
+            f"KRW: {krw:,.0f}원",
+            f"코인 평가액: {total_coin_value:,.0f}원",
+            f"총 자산: {total_asset:,.0f}원",
+            "",
+            "보유 코인:",
+        ]
+
+        if not holdings:
+            lines.append("없음")
+        else:
+            for h in holdings[:12]:
+                emoji = "📈" if h["profit_pct"] >= 0 else "📉"
+                locked_note = f" / 주문묶임 {h['locked']:.6f}" if h["locked"] > 0 else ""
+                lines.append(
+                    f"{emoji} {h['coin']} {h['balance']:.6f}{locked_note}\n"
+                    f"   평가 {h['value']:,.0f}원 | 현재 {h['current_price']:,.4g} | 평단 {h['avg_price']:,.4g} | {h['profit_pct']:+.2f}%"
+                )
+
+        lines.append("")
+        lines.append(f"조회시각: {datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 실시간 조회 실패: {e}"
 
 def list_calendar(days: int = 7):
     """캘린더 일정. Args: days (조회 일수)"""
@@ -284,6 +394,15 @@ def process(msg):
             return
         except Exception as e:
             send_msg(f"❌ 에이전트 제어 실패: {e}")
+            return
+
+    # 1-3. 거래 현황은 업비트 실시간 API로 조회한다.
+    if any(k in msg_clean for k in ["거래현황", "매매현황", "업비트현황", "보유코인", "잔고현황", "계좌현황"]):
+        try:
+            send_msg(get_live_trading_status())
+            return
+        except Exception as te:
+            send_msg(f"❌ 거래현황 조회 실패: {te}")
             return
 
     # 1-3. 기존 업무 리포트는 명시적으로 요청할 때만 보낸다.
