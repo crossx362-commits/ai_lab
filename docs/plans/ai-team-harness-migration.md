@@ -10,7 +10,6 @@ Use `projects/ai-team/harness/check_all.py` as the gate for repo cleanup and fol
 
 Do not move these live paths yet:
 
-- `projects/ai-team/reports/pids/dave.lock`
 - `output/trading_logs/*`
 - `output/bot_logs/*`
 
@@ -20,6 +19,10 @@ Moved to root `reports/research/`:
 
 - `crypto_market_intel.json`
 - `hyunbin_alert_state.json`
+
+Removed from `projects/ai-team/reports/`:
+
+- `pids/dave.lock` (stale Windows runtime file; active locks use Windows Named Mutex)
 
 ## Cleanup Order
 

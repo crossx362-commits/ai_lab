@@ -25,4 +25,4 @@ reports/status/harness_latest.json
 
 Use it before and after folder cleanup or migration. The checks avoid secrets and do not print key values.
 
-`projects/ai-team/reports/` is only allowed for live runtime exceptions that are still read by agents, currently PID locks. General generated reports should live under root `reports/`.
+`projects/ai-team/reports/` should stay empty. General generated reports should live under root `reports/`.

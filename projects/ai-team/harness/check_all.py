@@ -124,9 +124,7 @@ def check_structure():
 
 def check_report_layout():
     project_reports = AI_TEAM / "reports"
-    allowed = {
-        Path("pids/dave.lock"),
-    }
+    allowed = set()
     if not project_reports.exists():
         return ok("no ai-team local reports")
 

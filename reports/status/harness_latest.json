@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-18T13:04:01",
+  "timestamp": "2026-06-18T13:06:07",
   "root": "D:\\ai_lab",
   "overall": "OK",
   "checks": [
@@ -11,7 +11,7 @@
     {
       "name": "runtime",
       "status": "OK",
-      "message": "youngsuk=41232; hyunbin=56976; dave=12984; leo=26716"
+      "message": "youngsuk=41232; hyunbin=23608; dave=12984; leo=26716"
     },
     {
       "name": "schedule",
@@ -21,7 +21,7 @@
     {
       "name": "trading",
       "status": "OK",
-      "message": "intel 06/18 13:03, dave_log 06/18 10:59, leo_log 06/18 11:00"
+      "message": "intel 06/18 13:05, dave_log 06/18 10:59, leo_log 06/18 11:00"
     },
     {
       "name": "structure",
@@ -31,7 +31,7 @@
     {
       "name": "report_layout",
       "status": "OK",
-      "message": "ai-team local reports limited to live runtime exceptions"
+      "message": "no ai-team local reports"
     }
   ]
 }
