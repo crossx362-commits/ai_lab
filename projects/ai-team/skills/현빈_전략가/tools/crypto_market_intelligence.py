@@ -182,6 +182,74 @@ class CryptoMarketIntelligence:
 
         return {"error": "No data"}
 
+    def analyze_top_coins(self) -> list:
+        """주요 코인별 퀀트 점수 계산 (데이브 스킬 기준)"""
+        try:
+            import pyupbit
+        except:
+            return []
+
+        TICKERS = [
+            "KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP", "KRW-DOGE",
+            "KRW-ADA", "KRW-AVAX", "KRW-LINK", "KRW-PEPE", "KRW-NEAR",
+            "KRW-SUI", "KRW-SEI", "KRW-HBAR", "KRW-STX", "KRW-ARB",
+            "KRW-OP", "KRW-MATIC", "KRW-DOT", "KRW-SHIB", "KRW-TRX",
+        ]
+
+        results = []
+        for ticker in TICKERS:
+            try:
+                df = pyupbit.get_ohlcv(ticker, interval="day", count=50)
+                if df is None or df.empty:
+                    continue
+
+                # 간단 퀀트 점수 (데이브 스킬 기준 단순화)
+                score = 0
+                close = df['close'].iloc[-1]
+                ma20 = df['close'].rolling(20).mean().iloc[-1]
+                ma50 = df['close'].rolling(50).mean().iloc[-1] if len(df) >= 50 else ma20
+                vol_avg = df['volume'].rolling(20).mean().iloc[-1]
+                vol_now = df['volume'].iloc[-1]
+                change_pct = ((close - df['close'].iloc[-2]) / df['close'].iloc[-2]) * 100
+
+                # 추세 (25점)
+                if close > ma20 > ma50:
+                    score += 25
+                elif close > ma20:
+                    score += 15
+
+                # 거래량 (20점)
+                if vol_now > vol_avg * 1.5:
+                    score += 20
+                elif vol_now > vol_avg:
+                    score += 10
+
+                # 모멘텀 (20점)
+                if change_pct > 5:
+                    score += 20
+                elif change_pct > 2:
+                    score += 10
+
+                # 변동성 (15점)
+                volatility = df['close'].pct_change().std() * 100
+                if volatility > 5:
+                    score += 15
+                elif volatility > 3:
+                    score += 10
+
+                results.append({
+                    "ticker": ticker,
+                    "score": score,
+                    "change_pct": round(change_pct, 2),
+                    "volatility": round(volatility, 2),
+                    "volume_ratio": round(vol_now / vol_avg, 2)
+                })
+            except Exception as e:
+                print(f"[현빈] {ticker} 분석 실패: {e}")
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results
+
     def collect_all(self, notify=False) -> Dict[str, Any]:
         """모든 정보를 한 번에 수집"""
         print("[현빈] 암호화폐 시장 정보 수집 시작...")
@@ -193,8 +261,15 @@ class CryptoMarketIntelligence:
             "kimchi_premium": self.get_kimchi_premium(),
             "whale_alerts": self.get_whale_alerts(),
             "liquidation_map": self.get_liquidation_map(),
-            "crypto_news": self.get_crypto_news()
+            "crypto_news": self.get_crypto_news(),
+            "coin_analysis": self.analyze_top_coins()
         }
+
+        # 상위 5개 요약
+        if intel["coin_analysis"]:
+            print(f"\n[현빈] 퀀트 점수 TOP 5:")
+            for c in intel["coin_analysis"][:5]:
+                print(f"  {c['ticker']}: {c['score']}점 (변동 {c['change_pct']:+.1f}%)")
 
         # JSON 파일로 저장 (데이브가 읽을 수 있도록)
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)

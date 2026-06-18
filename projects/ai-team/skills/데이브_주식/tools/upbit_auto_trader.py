@@ -32,7 +32,7 @@ BASE_TICKERS = [
 ]
 
 def get_dynamic_tickers():
-    """현빈 인텔 기반 동적 종목 선정"""
+    """현빈 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
     import json
     tickers = BASE_TICKERS.copy()
 
@@ -42,16 +42,20 @@ def get_dynamic_tickers():
             with open(intel_path, "r", encoding="utf-8") as f:
                 intel = json.load(f)
 
-            # 현빈 추천 급등/급락 종목 추가 (상위 5개씩)
-            if "top_movers" in intel:
-                for gainer in intel["top_movers"].get("gainers", [])[:5]:
-                    tickers.append(gainer["ticker"])
-                for loser in intel["top_movers"].get("losers", [])[:3]:
-                    tickers.append(loser["ticker"])
+            # 현빈 종목별 퀀트 점수 확인 (상위 8개)
+            if "coin_analysis" in intel:
+                scored = [(c["ticker"], c.get("score", 0)) for c in intel["coin_analysis"]]
+                scored.sort(key=lambda x: x[1], reverse=True)
+
+                for ticker, score in scored[:8]:
+                    if score >= 50:  # 50점 이상만
+                        tickers.append(ticker)
+
+                print(f"[Dave] 현빈 고득점: {', '.join([f'{t.replace('KRW-', '')}({s}점)' for t, s in scored[:3]])}")
 
             # 중복 제거
             tickers = list(dict.fromkeys(tickers))
-            print(f"[Dave] 동적 종목 선정: {len(tickers)}개 (기본 {len(BASE_TICKERS)} + 현빈 추천 {len(tickers) - len(BASE_TICKERS)})")
+            print(f"[Dave] 동적 종목: {len(tickers)}개 (기본 {len(BASE_TICKERS)} + 현빈 {len(tickers) - len(BASE_TICKERS)})")
     except Exception as e:
         print(f"[Dave] 동적 종목 로드 실패, 기본 종목 사용: {e}")
 

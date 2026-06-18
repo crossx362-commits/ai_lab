@@ -112,7 +112,7 @@ BASE_LEO_TICKERS = [
 ]
 
 def get_dynamic_leo_tickers():
-    """현빈 인텔 기반 동적 종목 선정 (공격적)"""
+    """현빈 인텔 기반 동적 종목 선정 (퀀트 점수 기준, 공격적)"""
     import json
     tickers = BASE_LEO_TICKERS.copy()
 
@@ -122,13 +122,20 @@ def get_dynamic_leo_tickers():
             with open(intel_path, "r", encoding="utf-8") as f:
                 intel = json.load(f)
 
-            # 급등주만 추가 (상위 8개)
-            if "top_movers" in intel:
-                for gainer in intel["top_movers"].get("gainers", [])[:8]:
-                    tickers.append(gainer["ticker"])
+            # 현빈 종목별 퀀트 점수 확인 (변동성 높은 것 우선)
+            if "coin_analysis" in intel:
+                scored = [(c["ticker"], c.get("score", 0), c.get("volatility", 0)) for c in intel["coin_analysis"]]
+                # 점수 40점 이상 & 변동성 높은 순
+                scored = [(t, s, v) for t, s, v in scored if s >= 40]
+                scored.sort(key=lambda x: (x[1], x[2]), reverse=True)
+
+                for ticker, score, vol in scored[:10]:
+                    tickers.append(ticker)
+
+                print(f"[Leo] 현빈 고득점: {', '.join([f'{t.replace('KRW-', '')}({s}점)' for t, s, v in scored[:3]])}")
 
             tickers = list(dict.fromkeys(tickers))
-            print(f"[Leo] 동적 종목: {len(tickers)}개 (기본 {len(BASE_LEO_TICKERS)} + 급등주 {len(tickers) - len(BASE_LEO_TICKERS)})")
+            print(f"[Leo] 동적 종목: {len(tickers)}개 (기본 {len(BASE_LEO_TICKERS)} + 현빈 {len(tickers) - len(BASE_LEO_TICKERS)})")
     except Exception as e:
         print(f"[Leo] 동적 종목 실패, 기본 사용: {e}")
 
