@@ -570,7 +570,7 @@ def _watch_traders():
         },
         "dave": {
             "script": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
-            "args": ["--daemon"],
+            "args": ["--daemon", "--live"],
             "keyword": "upbit_auto_trader",
             "lock": "/tmp/ailab_locks/dave.lock",
         },
