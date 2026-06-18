@@ -15,6 +15,7 @@ sys.path.insert(0, AI_TEAM_ROOT)
 from _shared.env import load_env
 from _shared.notify import send
 from _shared.process import ProcessLock
+from _shared.llm import ollama as llm_ollama
 
 load_env()
 
@@ -37,24 +38,30 @@ class StockMarketIntelligence:
         return self.client
 
     def get_kospi_kosdaq_index(self) -> Dict[str, Any]:
-        """KOSPI/KOSDAQ 지수 조회"""
+        """KOSPI/KOSDAQ 지수 조회 (KIS 업종/지수 TR: FHPUP02100000)"""
         try:
             client = self._get_client()
-            # KOSPI
-            kospi = client.get_current_price("0001")  # KOSPI 지수
-            # KOSDAQ
-            kosdaq = client.get_current_price("1001")  # KOSDAQ 지수
+            # KOSPI (0001), KOSDAQ (1001) — 지수 전용 API 사용
+            kospi_raw  = client.get_index_price("0001")
+            kosdaq_raw = client.get_index_price("1001")
+
+            def _parse(raw: dict, label: str) -> dict:
+                out = raw.get("output", {})
+                if not out:
+                    print(f"[StockIntel] {label} 지수 응답 없음: {raw}")
+                    return {"value": 0, "change": 0.0, "volume": 0}
+                return {
+                    "value":  float(out.get("bstp_nmix_prpr",  0)),   # 업종 지수 현재가
+                    "change": float(out.get("bstp_nmix_prdy_ctrt", 0)), # 전일 대비율(%)
+                    "volume": int(out.get("acml_vol", 0)),             # 누적 거래량
+                }
 
             result = {
-                "kospi": {
-                    "value": int(kospi.get("output", {}).get("stck_prpr", 0)) if "output" in kospi else 0,
-                    "change": float(kospi.get("output", {}).get("prdy_ctrt", 0)) if "output" in kospi else 0
-                },
-                "kosdaq": {
-                    "value": int(kosdaq.get("output", {}).get("stck_prpr", 0)) if "output" in kosdaq else 0,
-                    "change": float(kosdaq.get("output", {}).get("prdy_ctrt", 0)) if "output" in kosdaq else 0
-                }
+                "kospi":  _parse(kospi_raw,  "KOSPI"),
+                "kosdaq": _parse(kosdaq_raw, "KOSDAQ"),
             }
+            print(f"[StockIntel] KOSPI {result['kospi']['value']:,.2f} ({result['kospi']['change']:+.2f}%)")
+            print(f"[StockIntel] KOSDAQ {result['kosdaq']['value']:,.2f} ({result['kosdaq']['change']:+.2f}%)")
             return result
         except Exception as e:
             print(f"[StockIntel] 지수 조회 실패: {e}")
@@ -194,6 +201,55 @@ class StockMarketIntelligence:
 
         return sentiment
 
+    def analyze_with_ollama(self, intel: Dict[str, Any]) -> str | None:
+        """Ollama 로컴 LLM으로 주식 데이터 지능형 분석"""
+        kospi = intel.get("indexes", {}).get("kospi", {})
+        kosdaq = intel.get("indexes", {}).get("kosdaq", {})
+        stocks = intel.get("stock_analysis", [])[:5]
+        sentiment = intel.get("sentiment", "N/A")
+        calendar = intel.get("economic_calendar", {})
+
+        top_stocks = "\n".join(
+            f"- {s['name']}({s['code']}): 퀀트 {s['score']}점, {s['change_pct']:+.1f}%, 거래량비 {s['volume_ratio']:.1f}x"
+            for s in stocks
+        ) if stocks else "데이터 없음"
+
+        this_week = ", ".join(
+            f"{e['date']} {e['event']}({e['impact']})"
+            for e in calendar.get("this_week", [])
+        ) or "없음"
+
+        prompt = f"""당신은 현빈, 한국 주식 시장 분석 전문 AI입니다.
+아래 실시간 주식 시장 데이터를 분석하고, 사장님(투자자)에게 한국어로 간결하게 실용적인 인사이트를 제공하세요.
+
+=== 주식 시장 데이터 ({intel.get('timestamp', 'N/A')[:16]}) ===
+
+[시장 지수]
+- KOSPI: {kospi.get('value', 0):,.0f} ({kospi.get('change', 0):+.2f}%)
+- KOSDAQ: {kosdaq.get('value', 0):,.0f} ({kosdaq.get('change', 0):+.2f}%)
+- 시장 심리: {sentiment}
+
+[퀀트 점수 TOP 5 종목]
+{top_stocks}
+
+[이번 주 주요 경제 일정]
+{this_week}
+
+=== 분석 요청 ===
+1. 현재 KOSPI/KOSDAQ 시장 한줄 평가 (강세/약세/횟보)
+2. 주목할 종목 또는 섹터 1~2개
+3. 투자자에게 실용적인 한 줄 조언
+
+간결하게 3~5줄 이내로 답변하세요."""
+
+        print("[현빈 주식] Ollama 로컴 분석 요청 중...")
+        result = llm_ollama(prompt, max_tokens=400, temperature=0.5)
+        if result:
+            print(f"[현빈 주식] Ollama 분석 완료 ({len(result)}자)")
+        else:
+            print("[현빈 주식] Ollama 분석 실패 → 규칙 기반 요약 사용")
+        return result
+
     def collect_all(self, notify: bool = False) -> Dict[str, Any]:
         """모든 정보 수집"""
         print("[현빈 주식] 한국 주식 시장 정보 수집 시작...")
@@ -214,6 +270,11 @@ class StockMarketIntelligence:
             for s in intel["stock_analysis"][:5]:
                 print(f"  {s['name']}({s['code']}): {s['score']}점 (변동 {s['change_pct']:+.1f}%)")
 
+        # Ollama 로컴 분석
+        ollama_analysis = self.analyze_with_ollama(intel)
+        if ollama_analysis:
+            intel["ollama_analysis"] = ollama_analysis
+
         # JSON 저장
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
         with open(self.output_path, "w", encoding="utf-8") as f:
@@ -227,15 +288,23 @@ class StockMarketIntelligence:
             kosdaq = intel["indexes"]["kosdaq"]
 
             if abs(kospi.get("change", 0)) > 2 or abs(kosdaq.get("change", 0)) > 2:
+                ollama_insight = intel.get("ollama_analysis", "")
                 msg = f"📊 [현빈 주식] 시장 급변동\n"
                 msg += f"KOSPI: {kospi.get('value', 0):,.0f} ({kospi.get('change', 0):+.2f}%)\n"
                 msg += f"KOSDAQ: {kosdaq.get('value', 0):,.0f} ({kosdaq.get('change', 0):+.2f}%)"
+                if ollama_insight:
+                    msg += f"\n\n🤖 Ollama 분석:\n{ollama_insight}"
                 send(msg)
 
         return intel
 
     def generate_summary(self, intel: Dict[str, Any]) -> str:
-        """요약 생성"""
+        """Ollama 분석 우선, 없으면 규칙 기반 요약"""
+        ollama_analysis = intel.get("ollama_analysis")
+        if ollama_analysis:
+            return "📊 [현빈] 한국 주식 분석 (Ollama 로컴)\n" + ollama_analysis
+
+        # Fallback: 규칙 기반 요약
         lines = ["📊 [현빈] 한국 주식 시장 정보\n"]
 
         # 지수

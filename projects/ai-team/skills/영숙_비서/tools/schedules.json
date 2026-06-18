@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated": "2026-06-15",
+  "updated": "2026-06-18",
   "schedules": [
     {
       "id": "yeongsuk_upload_check",
@@ -93,14 +93,14 @@
       "priority": "medium"
     },
     {
-      "id": "hyunbin_hourly_research",
+      "id": "hyunbin_market_research",
       "agent": "현빈",
-      "task": "시간당 시장 분석",
-      "cron": "0 * * * *",
-      "description": "시장 트렌드 실시간 수집",
+      "task": "1일 2회 시장 분석",
+      "cron": "0 9,18 * * *",
+      "description": "오전 9시 · 오후 6시 시장 트렌드 수집 및 분석",
       "command": "현빈 시장 분석",
       "enabled": true,
-      "priority": "low"
+      "priority": "medium"
     },
     {
       "id": "lolaw_weekly_review",
@@ -141,6 +141,16 @@
       "command": "python3 projects/ai-team/scripts/petnna_social_upload.py",
       "enabled": true,
       "priority": "medium"
+    },
+    {
+      "id": "yeongsuk_schedule_report",
+      "agent": "영숙",
+      "task": "스케줄 현황 사장님 보고",
+      "cron": "0 9,18 * * *",
+      "description": "하루 2회 (오전 9시 · 오후 6시) 스케줄 실행 현황 보고",
+      "command": "스케줄 보고해줘",
+      "enabled": true,
+      "priority": "low"
     }
   ]
 }

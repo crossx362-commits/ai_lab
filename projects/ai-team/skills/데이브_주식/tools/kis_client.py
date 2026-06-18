@@ -32,11 +32,36 @@ class KISClient:
         else:
             self.base_url = "https://openapivts.koreainvestment.com:29443"
 
+        self.token_cache_file = os.path.join(os.path.dirname(__file__), ".kis_token_cache.json")
         self.access_token = None
         self.token_expires = 0
 
+        # 캐시된 토큰 로드
+        self._load_token_cache()
+
         if not self.app_key or not self.app_secret:
             print("⚠️  KIS API 키가 설정되지 않았습니다")
+
+    def _save_token_cache(self):
+        """토큰 파일 캐시 저장"""
+        try:
+            with open(self.token_cache_file, "w", encoding="utf-8") as f:
+                json.dump({"token": self.access_token, "expires": self.token_expires}, f)
+        except Exception:
+            pass
+
+    def _load_token_cache(self):
+        """캐시된 토큰 로드"""
+        try:
+            if os.path.exists(self.token_cache_file):
+                with open(self.token_cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if time.time() < data.get("expires", 0):
+                    self.access_token = data["token"]
+                    self.token_expires = data["expires"]
+                    print("✅ KIS 토큰 캐시 로드 완료")
+        except Exception:
+            pass
 
     def _get_access_token(self) -> str:
         """액세스 토큰 발급 (캐싱)"""
@@ -57,7 +82,6 @@ class KISClient:
 
             if res.status_code == 200 and "access_token" in data:
                 self.access_token = data["access_token"]
-                # 토큰 유효기간 (24시간 - 1시간 여유)
                 self.token_expires = time.time() + (23 * 3600)
                 self._save_token_cache()
                 print(f"✅ KIS 액세스 토큰 발급 완료 (24시간 유효)")
@@ -164,6 +188,23 @@ class KISClient:
         }
 
         result = self._make_request("POST", "/uapi/domestic-stock/v1/trading/order-cash", tr_id, body=body)
+        return result
+
+    def get_index_price(self, index_code: str) -> dict:
+        """시장 지수 조회 (KOSPI: 0001, KOSDAQ: 1001)
+        TR ID: FHPUP02100000 (업종/지수 현재가)
+        """
+        tr_id = "FHPUP02100000"
+        params = {
+            "FID_COND_MRKT_DIV_CODE": "U",   # U = 업종/지수
+            "FID_INPUT_ISCD": index_code,      # 0001=KOSPI, 1001=KOSDAQ
+        }
+        result = self._make_request(
+            "GET",
+            "/uapi/domestic-stock/v1/quotations/inquire-index-price",
+            tr_id,
+            params=params
+        )
         return result
 
     def get_daily_price(self, stock_code: str, days: int = 100) -> dict:

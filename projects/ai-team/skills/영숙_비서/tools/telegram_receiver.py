@@ -122,6 +122,35 @@ def get_schedule_status_summary() -> str:
     except Exception as e:
         return f"🗓️ 스케줄러: 상태 확인 실패 ({e})"
 
+
+def get_schedule_report() -> str:
+    """실제 schedules.json을 읽어 스케줄 목록을 텔레그램용으로 반환한다."""
+    try:
+        import schedule_manager
+        schedules = schedule_manager.load_schedules()
+        last_run = schedule_manager.load_last_run()
+        if not schedules:
+            return "📋 등록된 스케줄이 없습니다."
+
+        lines = [f"📋 스케줄 현황 ({len(schedules)}개)\n"]
+        for idx, s in enumerate(schedules, 1):
+            enabled = "✅" if s.get("enabled", True) else "❌"
+            agent = s.get("agent", "?")
+            task = s.get("task", "?")
+            cron = s.get("cron", "?")
+            priority = s.get("priority", "medium").upper()
+            last = last_run.get(s.get("id", ""))
+            last_text = ""
+            if last:
+                try:
+                    last_text = f" | 마지막: {datetime.fromisoformat(last).strftime('%m/%d %H:%M')}"
+                except Exception:
+                    pass
+            lines.append(f"{idx}. {enabled} [{priority}] {agent}\n   작업: {task}\n   Cron: {cron}{last_text}")
+        return "\n\n".join(lines)
+    except Exception as e:
+        return f"❌ 스케줄 조회 실패: {e}"
+
 def get_full_agent_status() -> str:
     """전체 에이전트 리포트에 실시간 실행/스케줄 상태를 붙인다."""
     try:
@@ -455,7 +484,16 @@ def process(msg):
         except Exception as se:
             print(f"❌ 현황 조회 실패: {se}")
 
-    # 1-5. 일정 조회
+    # 1-5. 스케줄러 현황 조회 (schedules.json 실제 데이터)
+    if any(k in msg_clean for k in ["스케줄보고", "스케줄확인", "스케줄현황", "스케줄목록",
+                                     "하루에몇번", "하루에두번", "몇번실행", "자동스케줄"]):
+        try:
+            send_msg(get_schedule_report())
+            return
+        except Exception as sce:
+            print(f"❌ 스케줄 보고 실패: {sce}")
+
+    # 1-6. 구글 캘린더 일정 조회
     if any(k in msg_clean for k in ["일정", "캘린더", "calendar", "schedule"]):
         try:
             cal_report = list_calendar()

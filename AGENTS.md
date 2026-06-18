@@ -382,3 +382,53 @@ if hasattr(sys.stdout, "reconfigure"):
 - **Petnna setup**: `projects/petnna/README.md`
 
 ## Imported Claude Cowork project instructions
+
+---
+
+## 🏛️ Workspace Harness Architect — 구조 관리 지침
+
+### 하네스(Harness) 운영 규칙
+
+- `projects/ai-team/harness/`는 **읽기 전용 검증 엔진**입니다. 하네스 자체를 수정하지 마십시오.
+- 폴더 정리, 마이그레이션, 파일 이동 등 구조적 변화 전후에는 반드시 실행:
+  ```bash
+  python projects/ai-team/harness/check_all.py
+  ```
+- 라이브 런타임 경로는 Producer + Consumer 에이전트가 함께 마이그레이션되기 전까지 **이동 금지**
+
+### 파일 배치 정책
+
+| 유형 | 경로 |
+|------|------|
+| 에이전트 전용 툴 | `projects/ai-team/skills/<agent>/tools/` |
+| 공용 헬퍼 | `projects/ai-team/_shared/` |
+| 일회성 진단 스크립트 | `projects/ai-team/scripts/agents/` |
+| 정식 시스템 스크립트 | `projects/ai-team/scripts/` |
+| 연구·분석 리포트 | `reports/` |
+| 런타임 로그·미디어 | `output/` (Git 제외) |
+
+> ❌ 루트에 새 스크립트 생성 금지 / ❌ 평문 `.env` 복사본 금지 / ❌ `__pycache__` Git 포함 금지
+
+### 에이전트 도메인 경계
+
+| 에이전트 | 전담 역할 | 진입 파일 |
+|---------|----------|----------|
+| **예원_CEO** | 오케스트레이션·라우팅·하네스 체크 | `yewon_dispatcher.py`, `harness_manager.py` |
+| **영숙_비서** | 텔레그램 봇·스케줄러·캘린더 | `telegram_receiver.py`, `schedule_manager.py` |
+| **현빈_전략가** | 코인·주식 시장 동향 수집·Ollama 분석 | `crypto_market_intelligence.py`, `stock_market_intelligence.py` |
+| **데이브_주식** | 보수적 코인 자동매매·KIS API | `upbit_auto_trader.py`, `kis_client.py` |
+| **레오_트레이더** | 공격적 알트코인 단타 | `leo_aggressive_trader.py` |
+| **케빈_인프라** | Vercel·Supabase·CI/CD | `케빈_인프라/tools/` |
+| **코다리_개발자** | petnna 웹 개발·헬스체크 | `코다리_개발자/tools/` |
+| **티모_디자이너** | UI/UX 검수 | `티모_디자이너/tools/` |
+| **경수_수사관** | 악플 포렌식·보안 스캔 | `경수_수사관/tools/` |
+| **로율_변호사** | 세액 시뮬레이션·컴플라이언스 | `로율_변호사/tools/` |
+
+### 주요 런타임 파일 (이동 금지)
+
+| 파일 | Producer → Consumer |
+|------|---------------------|
+| `reports/research/crypto_market_intel.json` | 현빈 → 데이브·레오 |
+| `reports/research/stock_market_intel.json` | 현빈 → 데이브 |
+| `skills/영숙_비서/tools/schedules.json` | 설정 → 영숙 스케줄러 |
+| `_shared/calendar_cache.md` | 구글 캘린더 → 영숙 봇 |

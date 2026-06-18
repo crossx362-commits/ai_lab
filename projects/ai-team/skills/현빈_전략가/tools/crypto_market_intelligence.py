@@ -1,5 +1,5 @@
-﻿#!/usr/bin/env python3
-"""현빈 - 암호화폐 시장 정보 수집 에이전트"""
+#!/usr/bin/env python3
+"""현빈 - 코인 & 주식 시장 정보 수집 에이전트 (Ollama 로컬 분석)""""
 import os, sys, json, time, datetime, requests
 from typing import Dict, Any
 
@@ -16,6 +16,7 @@ sys.path.insert(0, AI_TEAM_ROOT)
 from _shared.env import load_env
 from _shared.notify import send
 from _shared.process import ProcessLock
+from _shared.llm import ollama as llm_ollama
 
 load_env()
 
@@ -250,6 +251,62 @@ class CryptoMarketIntelligence:
         results.sort(key=lambda x: x["score"], reverse=True)
         return results
 
+    def analyze_with_ollama(self, intel: Dict[str, Any]) -> str | None:
+        """Ollama 로컬 LLM으로 수집 데이터 지능형 분석"""
+        fed = intel.get("fed_events", {})
+        fg = intel.get("fear_greed_index", {})
+        kp = intel.get("kimchi_premium", {})
+        news = intel.get("crypto_news", {})
+        top_coins = intel.get("coin_analysis", [])[:5]
+
+        news_titles = ""
+        if news.get("status") == "success":
+            news_titles = "\n".join(f"- {n['title']}" for n in news.get("news", [])[:3])
+
+        coin_lines = "\n".join(
+            f"- {c['ticker']}: 퀀트점수 {c['score']}점, 전일대비 {c['change_pct']:+.1f}%, 거래량비 {c['volume_ratio']:.1f}x"
+            for c in top_coins
+        ) if top_coins else "데이터 없음"
+
+        prompt = f"""당신은 현빈, 암호화폐 시장 분석 전문 AI입니다.
+아래 실시간 시장 데이터를 분석하고, 사장님(투자자)에게 한국어로 간결하고 실용적인 인사이트를 제공하세요.
+
+=== 시장 데이터 ({intel.get('timestamp', 'N/A')[:16]}) ===
+
+[연준/매크로]
+- 상태: {fed.get('current_status', 'N/A')}
+- 다음 FOMC: {fed.get('next_fomc', 'N/A')} | 다음 CPI: {fed.get('next_cpi', 'N/A')}
+- 위험도: {fed.get('risk_level', 'N/A')}
+
+[공포탐욕지수]
+- 수치: {fg.get('value', 'N/A')} ({fg.get('classification', 'N/A')})
+- 신호: {fg.get('signal', 'N/A')} → {fg.get('action', 'N/A')}
+
+[김치 프리미엄]
+- 프리미엄: {kp.get('premium_pct', 'N/A')}%
+- 신호: {kp.get('signal', 'N/A')}
+
+[퀀트 TOP 5 코인]
+{coin_lines}
+
+[주요 뉴스]
+{news_titles if news_titles else '없음'}
+
+=== 분석 요청 ===
+1. 현재 시장 전반 한줄 평가 (강세/약세/중립)
+2. 주목할 핵심 신호 1~2개
+3. 데이브(보수적 트레이더)와 레오(공격적 트레이더)에게 한 줄씩 조언
+
+간결하게 3~5줄 이내로 답변하세요."""
+
+        print("[현빈] Ollama 로컬 분석 요청 중...")
+        result = llm_ollama(prompt, max_tokens=400, temperature=0.5)
+        if result:
+            print(f"[현빈] Ollama 분석 완료 ({len(result)}자)")
+        else:
+            print("[현빈] Ollama 분석 실패 → 규칙 기반 요약 사용")
+        return result
+
     def collect_all(self, notify=False) -> Dict[str, Any]:
         """모든 정보를 한 번에 수집"""
         print("[현빈] 암호화폐 시장 정보 수집 시작...")
@@ -270,6 +327,11 @@ class CryptoMarketIntelligence:
             print(f"\n[현빈] 퀀트 점수 TOP 5:")
             for c in intel["coin_analysis"][:5]:
                 print(f"  {c['ticker']}: {c['score']}점 (변동 {c['change_pct']:+.1f}%)")
+
+        # Ollama 로컬 분석
+        ollama_analysis = self.analyze_with_ollama(intel)
+        if ollama_analysis:
+            intel["ollama_analysis"] = ollama_analysis
 
         # JSON 파일로 저장 (데이브가 읽을 수 있도록)
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
@@ -329,7 +391,11 @@ class CryptoMarketIntelligence:
 
         # 변화가 있을 때만 알림
         if alerts:
-            msg = "🚨 [현빈] 중요 시장 변화\n" + "\n".join(alerts)
+            ollama_insight = intel.get("ollama_analysis", "")
+            if ollama_insight:
+                msg = "🚨 [현빈] 중요 시장 변화\n" + "\n".join(alerts) + "\n\n🤖 Ollama 분석:\n" + ollama_insight
+            else:
+                msg = "🚨 [현빈] 중요 시장 변화\n" + "\n".join(alerts)
             send(msg)
 
         # 현재 상태 저장
@@ -337,7 +403,14 @@ class CryptoMarketIntelligence:
             json.dump(current_state, f, ensure_ascii=False, indent=2)
 
     def generate_summary(self, intel: Dict[str, Any]) -> str:
-        """수집된 정보를 요약 메시지로 변환"""
+        """Ollama 분석 결과 우선, 없으면 규칙 기반 요약"""
+        # Ollama 분석이 있으면 상단에 배치
+        ollama_analysis = intel.get("ollama_analysis")
+        if ollama_analysis:
+            header = "📊 [현빈] 시장 분석 (Ollama 로컬)\n"
+            return header + ollama_analysis
+
+        # Fallback: 규칙 기반 요약
         lines = ["📊 [현빈] 암호화폐 시장 정보 업데이트\n"]
 
         # 연준 이벤트
@@ -369,17 +442,34 @@ class CryptoMarketIntelligence:
 
 
 def main(notify=False):
-    """메인 실행 함수"""
-    collector = CryptoMarketIntelligence()
+    """메인 실행 함수 - 코인 & 주식 통합 분석"""
+    # ── 1. 코인 분석 ──────────────────────────────
+    print("\n" + "="*50)
+    print("  📊 현빈 [1/2] 코인 시장 분석")
+    print("="*50)
+    crypto_collector = CryptoMarketIntelligence()
+    crypto_intel = crypto_collector.collect_all(notify=notify)
+    print(crypto_collector.generate_summary(crypto_intel))
 
-    # 전체 정보 수집 (중요 변화만 알림)
-    intel = collector.collect_all(notify=notify)
+    # ── 2. 주식 분석 ──────────────────────────────
+    print("\n" + "="*50)
+    print("  📈 현빈 [2/2] 주식 시장 분석")
+    print("="*50)
+    try:
+        sys.path.insert(0, _here)
+        from stock_market_intelligence import StockMarketIntelligence
+        stock_collector = StockMarketIntelligence()
+        stock_intel = stock_collector.collect_all(notify=notify)
+        print(stock_collector.generate_summary(stock_intel))
+    except Exception as e:
+        print(f"[현빈 주식] 분석 실패 (KIS API 미연결 등): {e}")
 
-    # 요약 출력 (텔레그램은 중요 변화만)
-    summary = collector.generate_summary(intel)
-    print(summary)
-
-    print("\n✅ 암호화폐 시장 정보 수집 완료")
+    print("\n" + "="*50)
+    if crypto_intel.get("ollama_analysis"):
+        print("✅ [현빈] 코인 + 주식 분석 완료 (Ollama 로컬)")
+    else:
+        print("✅ [현빈] 코인 + 주식 분석 완료 (규칙 기반 fallback)")
+    print("="*50)
 
 
 if __name__ == "__main__":
