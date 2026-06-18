@@ -20,17 +20,13 @@ load_env()
 sys.path.insert(0, _here)
 from kis_client import KISClient
 
-# 기본 감시 대상 (우량주 중심)
-BASE_STOCKS = [
-    "005930",  # 삼성전자
-    "000660",  # SK하이닉스
-    "005380",  # 현대차
-    "035720",  # 카카오
-    "051910",  # LG화학
-    "006400",  # 삼성SDI
-    "035420",  # NAVER
-    "000270",  # 기아
+# 슈퍼트렌드 모니터링 종목 (사용자 지정)
+SUPERTREND_WATCH = [
+    ("240810", "원익IPS"),
 ]
+
+# 기본 감시 대상 비활성화 (슈퍼트렌드만 사용)
+BASE_STOCKS = []
 
 WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
 
@@ -72,6 +68,7 @@ class StockAutoTrader:
         self.client = KISClient()
         self.cooldown = {}  # LLM 분석 쿨다운
         self.llm_cooldown_seconds = 600  # 10분
+        self.supertrend_state = {}  # 슈퍼트렌드 추세 상태 저장
 
     def get_stock_info(self, stock_code: str) -> dict:
         """종목 정보 수집"""
@@ -98,6 +95,112 @@ class StockAutoTrader:
         except Exception as e:
             print(f"❌ {stock_code} 정보 수집 실패: {e}")
             return None
+
+    def calculate_supertrend(self, stock_code: str, period: int = 10, multiplier: float = 3.0) -> dict:
+        """슈퍼트렌드 지표 계산"""
+        try:
+            # 일봉 데이터 조회
+            daily = self.client.get_daily_price(stock_code, days=period + 10)
+            if not daily or "output2" not in daily:
+                return None
+
+            candles = daily["output2"]
+            if len(candles) < period:
+                return None
+
+            # 최근 데이터만 사용
+            candles = candles[:period]
+
+            # ATR 계산
+            atr_values = []
+            for i in range(len(candles)):
+                high = int(candles[i]["stck_hgpr"])
+                low = int(candles[i]["stck_lwpr"])
+                close = int(candles[i]["stck_clpr"])
+
+                if i == 0:
+                    tr = high - low
+                else:
+                    prev_close = int(candles[i-1]["stck_clpr"])
+                    tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+
+                atr_values.append(tr)
+
+            atr = sum(atr_values) / len(atr_values)
+
+            # 최신 캔들
+            latest = candles[0]
+            high = int(latest["stck_hgpr"])
+            low = int(latest["stck_lwpr"])
+            close = int(latest["stck_clpr"])
+
+            # 슈퍼트렌드 계산
+            hl_avg = (high + low) / 2
+            upperband = hl_avg + (multiplier * atr)
+            lowerband = hl_avg - (multiplier * atr)
+
+            # 추세 판단
+            if close > upperband:
+                trend = "UP"
+                supertrend_value = lowerband
+            elif close < lowerband:
+                trend = "DOWN"
+                supertrend_value = upperband
+            else:
+                # 이전 추세 유지
+                prev_state = self.supertrend_state.get(stock_code, {})
+                trend = prev_state.get("trend", "NEUTRAL")
+                supertrend_value = upperband if trend == "DOWN" else lowerband
+
+            return {
+                "trend": trend,
+                "supertrend": supertrend_value,
+                "atr": atr,
+                "close": close,
+                "upperband": upperband,
+                "lowerband": lowerband
+            }
+
+        except Exception as e:
+            print(f"  ❌ 슈퍼트렌드 계산 실패: {e}")
+            return None
+
+    def check_supertrend_signal(self, stock_code: str, stock_name: str):
+        """슈퍼트렌드 추세 변환 감지 및 알림"""
+        current = self.calculate_supertrend(stock_code)
+        if not current:
+            return
+
+        current_trend = current["trend"]
+        prev_state = self.supertrend_state.get(stock_code, {})
+        prev_trend = prev_state.get("trend")
+
+        # 추세 변환 감지
+        if prev_trend and prev_trend != current_trend:
+            if current_trend == "UP":
+                signal = "🟢 매수 신호"
+                emoji = "📈"
+            elif current_trend == "DOWN":
+                signal = "🔴 매도 신호"
+                emoji = "📉"
+            else:
+                signal = "⚪ 중립"
+                emoji = "➡️"
+
+            msg = f"""{emoji} [슈퍼트렌드] {stock_name} 추세 변환
+
+{prev_trend} → {current_trend}
+
+{signal}
+현재가: {current['close']:,}원
+슈퍼트렌드: {current['supertrend']:,.0f}원
+ATR: {current['atr']:,.0f}"""
+
+            send(msg)
+            print(f"\n{msg}\n")
+
+        # 상태 저장
+        self.supertrend_state[stock_code] = current
 
     def analyze_with_llm(self, stock_info: dict, balance_data: dict) -> dict:
         """LLM을 이용한 매매 판단"""
@@ -183,36 +286,13 @@ JSON 형식으로 답변:
             print(f"  ❌ 매매 실행 오류: {e}")
 
     def run_cycle(self):
-        """1회 매매 사이클"""
-        print(f"\n--- [{datetime.now().strftime('%H:%M:%S')}] 데이브 주식 자동매매 ---")
+        """1회 매매 사이클 (슈퍼트렌드 모니터링)"""
+        print(f"\n--- [{datetime.now().strftime('%H:%M:%S')}] 슈퍼트렌드 모니터링 ---")
 
-        # 잔고 조회
-        balance = self.client.get_balance()
-        balance_data = {"cash": 0}
-
-        if "output2" in balance and balance["output2"]:
-            for item in balance["output2"]:
-                if item.get("acnt_prdt_cd") == "01":  # 현금잔고
-                    balance_data["cash"] = int(item.get("prvs_rcdl_excc_amt", 0))
-                    break
-
-        print(f"현금 잔고: {balance_data['cash']:,}원")
-
-        # 우량주 스캔
-        for stock_code in DAVE_STOCKS:
-            stock_info = self.get_stock_info(stock_code)
-            if not stock_info:
-                continue
-
-            print(f"\n📊 {stock_info['name']} ({stock_code})")
-            print(f"   현재가: {stock_info['current_price']:,}원 ({stock_info['change_rate']:+.2f}%)")
-
-            # LLM 분석
-            decision = self.analyze_with_llm(stock_info, balance_data)
-            print(f"   판단: {decision['decision']} - {decision.get('reason', 'N/A')}")
-
-            # 매매 실행 (실전에서는 주의!)
-            # self.execute_trade(stock_code, decision)
+        # 슈퍼트렌드 감시 종목 체크
+        for stock_code, stock_name in SUPERTREND_WATCH:
+            print(f"\n📊 {stock_name} ({stock_code}) 슈퍼트렌드 체크...")
+            self.check_supertrend_signal(stock_code, stock_name)
 
         print("\n✅ 사이클 완료")
 
@@ -230,12 +310,7 @@ def main():
             try:
                 trader = StockAutoTrader()
                 while True:
-                    # 30분마다 종목 재로드
-                    if iteration % 30 == 0:
-                        DAVE_STOCKS = get_dynamic_stocks()
-
                     # 장중에만 실행 (09:00 ~ 15:30)
-                    iteration += 1
                     now = datetime.now()
                     hour = now.hour
                     minute = now.minute
