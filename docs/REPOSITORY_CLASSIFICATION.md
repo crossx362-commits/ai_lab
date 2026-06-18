@@ -13,6 +13,7 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 | Reports | `reports/` | Generated research, history, meetings, and inspection reports. Keep current reports; archive exact duplicates can be removed. |
 | Petnna docs | `projects/petnna/*.md`, `projects/petnna/docs/` | Product docs, policies, changelog, Supabase setup. |
 | AI Team docs | `projects/ai-team/*.md`, `projects/ai-team/docs/`, `projects/ai-team/scripts/README.md`, `projects/ai-team/skills/README.md` | Project-level and agent-framework documentation. |
+| AI Team harness | `projects/ai-team/harness/` | Read-only runtime and structure checks. Run before and after folder cleanup or migration. |
 | Agent skills | `projects/ai-team/skills/<agent>/SKILL.md`, `knowledge/*.md` | Agent identity, behavior, and learned knowledge. Do not merge across agents unless the agent roster changes. |
 | Shared skill docs | `projects/ai-team/skills/공용스킬/` | Cross-agent reusable guidance. |
 | Packs and templates | `connect-ai-packs/`, `projects/ai-team/assets/brain-seeds/` | Reusable templates and pack examples. Treat as library assets. |
@@ -47,6 +48,7 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 | `__pycache__` | Remove. Python regenerates it. |
 | `node_modules` | Leave unless a clean dependency reinstall is planned. Network is restricted, so deleting it would make local TS/Node tooling harder to run. |
 | `output` | Leave. Some files are tracked generated deliverables; clean only by explicit artifact policy. |
+| `projects/ai-team/reports/research/crypto_market_intel.json` | Leave for now. Hyunbin, Dave, and Leo currently read/write this live path. Move only with harness coverage and code migration. |
 
 ## Cleanup Policy Going Forward
 
@@ -55,3 +57,5 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 - Put one-off diagnostics in `projects/ai-team/scripts/agents/`.
 - Put generated reports under `reports/` and large generated media under `output/`.
 - Avoid new root scripts unless they are Windows convenience wrappers for a canonical script under `projects/ai-team/scripts/`.
+- Run `python projects/ai-team/harness/check_all.py` before and after any structure change.
+- Do not move live runtime paths until their producers and consumers are migrated together.

@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-06-18T12:58:40",
+  "root": "D:\\ai_lab",
+  "overall": "OK",
+  "checks": [
+    {
+      "name": "env",
+      "status": "OK",
+      "message": "central env loaded"
+    },
+    {
+      "name": "runtime",
+      "status": "OK",
+      "message": "youngsuk=47188; hyunbin=56276; dave=24684; leo=61304"
+    },
+    {
+      "name": "schedule",
+      "status": "OK",
+      "message": "enabled 14/14, last_run 06/18 12:35"
+    },
+    {
+      "name": "trading",
+      "status": "OK",
+      "message": "intel 06/18 12:58, dave_log 06/18 10:59, leo_log 06/18 11:00"
+    },
+    {
+      "name": "structure",
+      "status": "OK",
+      "message": "core dirs present"
+    }
+  ]
+}

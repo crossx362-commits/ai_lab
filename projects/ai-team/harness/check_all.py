@@ -131,10 +131,26 @@ def main() -> int:
         "structure": check_structure,
     }
     worst = 0
+    results = []
     for name, fn in checks.items():
         status, msg = fn()
         worst = max(worst, {"OK": 0, "WARN": 1, "FAIL": 2}[status])
         print(f"[{status}] {name}: {msg}")
+        results.append({"name": name, "status": status, "message": msg})
+
+    status_dir = ROOT / "reports" / "status"
+    status_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "root": str(ROOT),
+        "overall": "FAIL" if worst == 2 else ("WARN" if worst == 1 else "OK"),
+        "checks": results,
+    }
+    (status_dir / "harness_latest.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(f"[OK] report: {status_dir / 'harness_latest.json'}")
     return 1 if worst == 2 else 0
 
 
