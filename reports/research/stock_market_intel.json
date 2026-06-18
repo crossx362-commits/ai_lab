@@ -1,39 +1,17 @@
 {
-  "timestamp": "2026-06-18T15:29:38.286267",
+  "timestamp": "2026-06-18T15:30:28.521461",
   "indexes": {
     "kospi": {
       "value": 0,
-      "change": 0.0
+      "change": 0
     },
     "kosdaq": {
       "value": 0,
-      "change": 0.0
+      "change": 0
     }
   },
   "hot_stocks": {
-    "stocks": [
-      {
-        "code": "000660",
-        "name": "N/A",
-        "price": 2698000,
-        "change": 7.02,
-        "volume": 5160727
-      },
-      {
-        "code": "035720",
-        "name": "N/A",
-        "price": 39325,
-        "change": -3.02,
-        "volume": 940168
-      },
-      {
-        "code": "035420",
-        "name": "N/A",
-        "price": 235500,
-        "change": -3.29,
-        "volume": 1232641
-      }
-    ]
+    "stocks": []
   },
   "economic_calendar": {
     "this_week": [

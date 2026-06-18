@@ -21,12 +21,10 @@ def start_bot(script_path: str, name: str):
     """봇 시작"""
     try:
         if sys.platform == "win32":
-            # Windows: pythonw.exe로 백그라운드 실행
+            # Windows: 백그라운드 실행
             subprocess.Popen(
                 [sys.executable, script_path, "--daemon"],
-                creationflags=CREATE_NO_WINDOW,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                creationflags=CREATE_NO_WINDOW
             )
         else:
             # macOS/Linux: nohup으로 백그라운드 실행
