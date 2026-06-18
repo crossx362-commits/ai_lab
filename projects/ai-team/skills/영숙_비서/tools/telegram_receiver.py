@@ -629,24 +629,29 @@ def _watch_traders():
     manual_stop_dir = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
     global_manual_stop = os.path.join(manual_stop_dir, ".manual_stop")
 
+    # Windows/Unix 호환 lock 경로
+    import tempfile
+    lock_dir = os.path.join(tempfile.gettempdir(), "ailab_locks")
+    os.makedirs(lock_dir, exist_ok=True)
+
     TRADERS = {
         "hyunbin": {
             "script": "projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py",
             "args": ["--daemon"],
             "keyword": "crypto_market_intelligence",
-            "lock": "/tmp/ailab_locks/hyunbin.lock",
+            "lock": os.path.join(lock_dir, "hyunbin.lock"),
         },
         "dave": {
             "script": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
             "args": ["--daemon", "--live"],
             "keyword": "upbit_auto_trader",
-            "lock": "/tmp/ailab_locks/dave.lock",
+            "lock": os.path.join(lock_dir, "dave.lock"),
         },
         "leo": {
             "script": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
             "args": ["--daemon", "--live"],
             "keyword": "leo_aggressive_trader",
-            "lock": "/tmp/ailab_locks/leo.lock",
+            "lock": os.path.join(lock_dir, "leo.lock"),
         },
     }
 
