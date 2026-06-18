@@ -397,8 +397,8 @@ def process(msg):
             send_msg(f"❌ 에이전트 제어 실패: {e}")
             return
 
-    # 1-3. 거래 현황은 업비트 실시간 API로 조회한다.
-    if any(k in msg_clean for k in ["거래현황", "매매현황", "업비트현황", "보유코인", "잔고현황", "계좌현황"]):
+    # 1-3. 코인 거래 현황은 업비트 실시간 API로 조회한다.
+    if any(k in msg_clean for k in ["코인거래현황", "코인현황", "거래현황", "매매현황", "업비트현황", "보유코인", "잔고현황", "계좌현황"]):
         try:
             send_msg(get_live_trading_status())
             return
@@ -415,11 +415,10 @@ def process(msg):
         except Exception as se:
             print(f"❌ 업무 현황 조회 실패: {se}")
 
-    # 1-4. 에이전트 현황 (실시간 프로세스 기준)
+    # 1-4. 전체 에이전트 현황
     if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행"]):
         try:
-            import agent_controller
-            status_report = agent_controller.get_agent_status()
+            status_report = get_agent_status("전체")
             send_msg(status_report)
             return
         except Exception as se:
