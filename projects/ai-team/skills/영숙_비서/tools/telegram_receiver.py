@@ -103,6 +103,37 @@ def get_agent_status(agent: str = "전체"):
     from _shared.agent_status import get_status_report
     return get_status_report(agent, PROJECT_ROOT)
 
+def get_schedule_status_summary() -> str:
+    """영숙 스케줄러 상태를 간단히 요약한다."""
+    try:
+        import schedule_manager
+        schedules = schedule_manager.load_schedules()
+        last_run = schedule_manager.load_last_run()
+        enabled = [s for s in schedules if s.get("enabled", True)]
+        latest = None
+        for value in last_run.values():
+            try:
+                dt = datetime.fromisoformat(value)
+                latest = dt if latest is None or dt > latest else latest
+            except Exception:
+                continue
+        latest_text = latest.strftime("%m/%d %H:%M") if latest else "기록 없음"
+        return f"🗓️ 스케줄러: 활성 {len(enabled)}/{len(schedules)}개 | 마지막 실행 기록 {latest_text}"
+    except Exception as e:
+        return f"🗓️ 스케줄러: 상태 확인 실패 ({e})"
+
+def get_full_agent_status() -> str:
+    """전체 에이전트 리포트에 실시간 실행/스케줄 상태를 붙인다."""
+    try:
+        import agent_controller
+        live_status = agent_controller.get_agent_status()
+    except Exception as e:
+        live_status = f"실시간 프로세스 상태 조회 실패: {e}"
+
+    schedule_status = get_schedule_status_summary()
+    report = get_agent_status("전체")
+    return f"{live_status}\n\n{schedule_status}\n\n{report}"
+
 def get_live_trading_status() -> str:
     """업비트 계좌와 트레이딩 에이전트 실행 상태를 실시간 조회한다."""
     import importlib
@@ -418,7 +449,7 @@ def process(msg):
     # 1-4. 전체 에이전트 현황
     if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행"]):
         try:
-            status_report = get_agent_status("전체")
+            status_report = get_full_agent_status()
             send_msg(status_report)
             return
         except Exception as se:
@@ -733,6 +764,54 @@ def _watch_cleanup():
     print("✅ 중복 프로세스 실시간 감시 스레드 시작")
 
 
+def _start_schedule_watch():
+    """영숙 내부에서 에이전트 스케줄러를 같이 구동한다."""
+    import threading
+
+    def bootstrap_stale_last_run(schedule_manager):
+        try:
+            schedules = schedule_manager.load_schedules()
+            last_run = schedule_manager.load_last_run()
+            now = datetime.now()
+            latest = None
+            for value in last_run.values():
+                try:
+                    dt = datetime.fromisoformat(value)
+                    latest = dt if latest is None or dt > latest else latest
+                except Exception:
+                    continue
+
+            if latest and (now - latest).total_seconds() < 12 * 3600:
+                return
+
+            now_str = now.isoformat()
+            for schedule in schedules:
+                if schedule.get("enabled", True):
+                    last_run[schedule["id"]] = now_str
+            schedule_manager.save_last_run(last_run)
+            print(f"[schedule_watch] 오래된 스케줄 실행 기록을 현재 시각으로 동기화 ({len(schedules)}개)")
+        except Exception as e:
+            print(f"[schedule_watch] bootstrap 실패: {e}")
+
+    def loop():
+        try:
+            import schedule_manager
+            bootstrap_stale_last_run(schedule_manager)
+            print("✅ 영숙 에이전트 스케줄러 시작")
+        except Exception as e:
+            print(f"[schedule_watch] 시작 실패: {e}")
+            return
+
+        while True:
+            try:
+                schedule_manager.check_and_run_schedules()
+            except Exception as e:
+                print(f"[schedule_watch] {e}")
+            time.sleep(60)
+
+    threading.Thread(target=loop, daemon=True, name="schedule_watch").start()
+
+
 def _hold_extension_telegram_lock():
     """Keep the IDE extension from polling Telegram while Youngsuk owns getUpdates."""
     import threading
@@ -864,6 +943,7 @@ def main():
     _hold_extension_telegram_lock()
     _watch_traders()
     _watch_cleanup()
+    _start_schedule_watch()
 
     offset = 0
     while True:

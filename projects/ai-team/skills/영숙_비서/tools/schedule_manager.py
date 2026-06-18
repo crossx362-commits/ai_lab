@@ -41,7 +41,7 @@ def load_schedules() -> List[Dict]:
         print(f"❌ 스케줄 파일이 없습니다: {SCHEDULES_FILE}")
         return []
 
-    with open(SCHEDULES_FILE, 'r', encoding='utf-8') as f:
+    with open(SCHEDULES_FILE, 'r', encoding='utf-8-sig') as f:
         data = json.load(f)
         return data.get('schedules', [])
 
@@ -51,7 +51,7 @@ def load_last_run() -> Dict:
     if not os.path.exists(LAST_RUN_FILE):
         return {}
 
-    with open(LAST_RUN_FILE, 'r', encoding='utf-8') as f:
+    with open(LAST_RUN_FILE, 'r', encoding='utf-8-sig') as f:
         return json.load(f)
 
 
