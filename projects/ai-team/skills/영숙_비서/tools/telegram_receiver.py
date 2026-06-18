@@ -475,8 +475,8 @@ def process(msg):
         except Exception as se:
             print(f"❌ 업무 현황 조회 실패: {se}")
 
-    # 1-4. 전체 에이전트 현황
-    if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행"]):
+    # 1-4. 전체 에이전트 현황 (dispatch 우회 - 직접 처리)
+    if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행", "get_agent_status", "dispatch.*status"]):
         try:
             status_report = get_full_agent_status()
             send_msg(status_report)
