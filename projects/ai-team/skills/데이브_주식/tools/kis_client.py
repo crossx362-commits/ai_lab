@@ -221,6 +221,20 @@ class KISClient:
         result = self._make_request("GET", "/uapi/domestic-stock/v1/quotations/inquire-daily-price", tr_id, params=params)
         return result
 
+    def get_minute_price(self, stock_code: str, interval: str = "1") -> dict:
+        """분봉 데이터 조회 (당일)"""
+        tr_id = "FHKST03010200"
+
+        params = {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": stock_code,
+            "FID_INPUT_HOUR_1": "",  # 조회시작시간 (공백: 당일전체)
+            "FID_PW_DATA_INCU_YN": "Y"  # 과거데이터포함여부
+        }
+
+        result = self._make_request("GET", "/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice", tr_id, params=params)
+        return result
+
 
 def test_kis_connection():
     """한국투자증권 API 연결 테스트"""

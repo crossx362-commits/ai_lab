@@ -97,42 +97,42 @@ class StockAutoTrader:
             return None
 
     def calculate_supertrend(self, stock_code: str, period: int = 10, multiplier: float = 3.0) -> dict:
-        """슈퍼트렌드 지표 계산"""
+        """슈퍼트렌드 지표 계산 (1분봉)"""
         try:
-            # 일봉 데이터 조회
-            daily = self.client.get_daily_price(stock_code, days=period + 10)
-            if not daily or "output2" not in daily:
+            # 1분봉 데이터 조회
+            minute_data = self.client.get_minute_price(stock_code)
+            if not minute_data or "output2" not in minute_data:
                 return None
 
-            candles = daily["output2"]
+            candles = minute_data["output2"]
             if len(candles) < period:
                 return None
 
-            # 최근 데이터만 사용
-            candles = candles[:period]
+            # 최근 데이터만 사용 (역순이므로 reverse)
+            candles = list(reversed(candles[:period + 1]))
 
-            # ATR 계산
+            # ATR 계산 (분봉 데이터 키 이름 다름)
             atr_values = []
             for i in range(len(candles)):
                 high = int(candles[i]["stck_hgpr"])
                 low = int(candles[i]["stck_lwpr"])
-                close = int(candles[i]["stck_clpr"])
+                close = int(candles[i]["stck_prpr"])  # 분봉은 stck_prpr
 
                 if i == 0:
                     tr = high - low
                 else:
-                    prev_close = int(candles[i-1]["stck_clpr"])
+                    prev_close = int(candles[i-1]["stck_prpr"])
                     tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
 
                 atr_values.append(tr)
 
             atr = sum(atr_values) / len(atr_values)
 
-            # 최신 캔들
-            latest = candles[0]
+            # 최신 캔들 (마지막)
+            latest = candles[-1]
             high = int(latest["stck_hgpr"])
             low = int(latest["stck_lwpr"])
-            close = int(latest["stck_clpr"])
+            close = int(latest["stck_prpr"])
 
             # 슈퍼트렌드 계산
             hl_avg = (high + low) / 2
