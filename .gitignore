@@ -11,6 +11,12 @@ projects/ai-team/scripts/.manual_stop*
 # 파이프라인 작업물 (바이너리, 업로드 전 임시 파일)
 output/
 reports/uploads/
+reports/status/harness_latest.json
+reports/research/crypto_market_intel.json
+reports/research/hyunbin_alert_state.json
+reports/research/hyunbin_research.json
+.telegram_sent_cache.json
+projects/ai-team/skills/영숙_비서/tools/last_run.json
 *.mp4
 *.mp3
 *.wav
