@@ -43,6 +43,17 @@ def has_public_upbit_fallback() -> bool:
 
 _LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "output", "trading_logs")
 os.makedirs(_LOG_DIR, exist_ok=True)
+_MANUAL_STOP_SLUGS = {"현빈": "hyunbin", "데이브": "dave", "레오": "leo"}
+
+
+def manual_stop_flag(name: str | None = None):
+    if not name:
+        return os.path.join(_here, ".manual_stop")
+    return os.path.join(_here, f".manual_stop_{_MANUAL_STOP_SLUGS.get(name, name.lower())}")
+
+
+def is_manual_stopped(name: str | None = None):
+    return os.path.exists(manual_stop_flag()) or (name is not None and os.path.exists(manual_stop_flag(name)))
 
 
 def start_process(name: str, script_path: str, args: list = None):
@@ -99,7 +110,7 @@ def main():
     )
     if os.path.exists(hyunbin_path):
         process_configs["현빈"] = {"path": hyunbin_path, "args": ["--daemon"]}
-        processes["현빈"] = start_process("현빈 (정보 수집)", hyunbin_path, ["--daemon"])
+        processes["현빈"] = None if is_manual_stopped("현빈") else start_process("현빈 (정보 수집)", hyunbin_path, ["--daemon"])
         time.sleep(2)
     else:
         print(f"⚠️  현빈 스크립트 없음: {hyunbin_path}")
@@ -110,7 +121,7 @@ def main():
     )
     if os.path.exists(dave_path) and can_scan:
         process_configs["데이브"] = {"path": dave_path, "args": ["--daemon", "--live"]}
-        processes["데이브"] = start_process("데이브 (보수적 매매/실거래)", dave_path, ["--daemon", "--live"])
+        processes["데이브"] = None if is_manual_stopped("데이브") else start_process("데이브 (보수적 매매/실거래)", dave_path, ["--daemon", "--live"])
         time.sleep(1)
     elif os.path.exists(dave_path):
         print("⚠️  데이브 스크립트는 있지만 시세 모듈이 없어 시작하지 않음")
@@ -123,7 +134,7 @@ def main():
     )
     if os.path.exists(leo_path) and can_scan:
         process_configs["레오"] = {"path": leo_path, "args": ["--daemon", "--live"]}
-        processes["레오"] = start_process("레오 (공격적 단타/실거래)", leo_path, ["--daemon", "--live"])
+        processes["레오"] = None if is_manual_stopped("레오") else start_process("레오 (공격적 단타/실거래)", leo_path, ["--daemon", "--live"])
     elif os.path.exists(leo_path):
         print("⚠️  레오 스크립트는 있지만 시세 모듈이 없어 시작하지 않음")
     else:
@@ -159,17 +170,15 @@ def main():
     print("\n프로세스를 종료하려면 Ctrl+C를 누르세요.")
 
     # 프로세스 모니터링 + 자동 재시작
-    manual_stop_flag = os.path.join(_here, ".manual_stop")
-
     try:
         while True:
             time.sleep(10)
 
             # 수동 종료 플래그 체크
-            if os.path.exists(manual_stop_flag):
+            if is_manual_stopped():
                 print("\n⚠️  수동 종료 플래그 감지 - 자동 재시작 비활성화")
                 print("    모든 에이전트를 종료하고 런처를 종료합니다.")
-                print(f"    재시작하려면: rm {manual_stop_flag}\n")
+                print(f"    재시작하려면: rm {manual_stop_flag()}\n")
 
                 # 모든 프로세스 종료
                 for name, proc in processes.items():
@@ -182,6 +191,10 @@ def main():
 
             for name, proc in list(processes.items()):
                 if proc and proc.poll() is not None:
+                    if is_manual_stopped(name):
+                        print(f"⚠️  {name} 수동 종료 플래그 감지 - 재시작 생략")
+                        processes[name] = None
+                        continue
                     exit_code = proc.returncode
                     print(f"⚠️  {name} 종료됨 (exit: {exit_code}) → 5초 후 재시작")
                     send_telegram_message(f"⚠️ {name} 재시작 중...")

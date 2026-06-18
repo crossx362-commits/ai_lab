@@ -31,6 +31,43 @@ AGENT_ALIASES = {
     "youngsuk": "영숙",
 }
 
+MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
+AGENT_STOP_SLUGS = {
+    "현빈": "hyunbin",
+    "데이브": "dave",
+    "레오": "leo",
+    "영숙": "youngsuk",
+}
+
+
+def _manual_stop_flag(agent_name: str | None = None) -> str:
+    if not agent_name:
+        return os.path.join(MANUAL_STOP_DIR, ".manual_stop")
+    safe_name = AGENT_STOP_SLUGS.get(get_agent_name(agent_name), get_agent_name(agent_name).lower())
+    return os.path.join(MANUAL_STOP_DIR, f".manual_stop_{safe_name}")
+
+
+def mark_manual_stop(agent_name: str | None = None):
+    os.makedirs(MANUAL_STOP_DIR, exist_ok=True)
+    targets = [agent_name] if agent_name else [None]
+    for target in targets:
+        flag_path = _manual_stop_flag(target)
+        with open(flag_path, "w", encoding="utf-8") as f:
+            label = get_agent_name(target) if target else "all"
+            f.write(f"# manual stop: {label}\n")
+            f.write("# Created by direct user stop command. Remove by explicit start/restart.\n")
+
+
+def clear_manual_stop(agent_name: str | None = None):
+    targets = [None, agent_name] if agent_name else [None]
+    for target in targets:
+        flag_path = _manual_stop_flag(target)
+        try:
+            if os.path.exists(flag_path):
+                os.remove(flag_path)
+        except OSError:
+            pass
+
 def get_agent_name(name: str) -> str:
     """에이전트 이름 정규화"""
     name = name.strip().lower()
@@ -83,6 +120,7 @@ def stop_agent(agent_name: str) -> str:
         available = ", ".join(AGENTS.keys())
         return f"❌ 알 수 없는 에이전트: {agent_name}\n사용 가능: {available}"
 
+    mark_manual_stop(agent_name)
     pids = find_agent_process(agent_name)
     if not pids:
         return f"⚠️ {agent_name} 에이전트가 실행 중이 아닙니다"
@@ -95,12 +133,6 @@ def stop_agent(agent_name: str) -> str:
             for pid in pids:
                 subprocess.run(["kill", str(pid)])
 
-        # 트레이더 에이전트 종료 시 수동 종료 플래그 생성
-        if agent_name in ["데이브", "레오"]:
-            flag_path = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts", ".manual_stop")
-            with open(flag_path, "w") as f:
-                f.write(f"# Manually stopped by user at {os.environ.get('USERNAME', 'user')}\n")
-
         return f"✅ {agent_name} 종료 완료 (PID: {', '.join(map(str, pids))})"
     except Exception as e:
         return f"❌ {agent_name} 종료 실패: {e}"
@@ -111,6 +143,8 @@ def start_agent(agent_name: str) -> str:
     if agent_name not in AGENTS:
         available = ", ".join(AGENTS.keys())
         return f"❌ 알 수 없는 에이전트: {agent_name}\n사용 가능: {available}"
+
+    clear_manual_stop(agent_name)
 
     # 이미 실행 중인지 확인
     pids = find_agent_process(agent_name)
@@ -150,7 +184,10 @@ def start_agent(agent_name: str) -> str:
 
 def restart_agent(agent_name: str) -> str:
     """에이전트 재시작"""
+    agent_name = get_agent_name(agent_name)
+    clear_manual_stop(agent_name)
     stop_result = stop_agent(agent_name)
+    clear_manual_stop(agent_name)
     import time
     time.sleep(2)
     start_result = start_agent(agent_name)

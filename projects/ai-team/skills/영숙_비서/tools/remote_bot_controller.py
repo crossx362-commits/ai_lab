@@ -34,6 +34,17 @@ AI_TEAM_KEYWORDS = [
     "run_trader_daemon.py",
 ]
 
+MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
+
+
+def mark_local_manual_stop_all():
+    os.makedirs(MANUAL_STOP_DIR, exist_ok=True)
+    flags = [".manual_stop", ".manual_stop_hyunbin", ".manual_stop_dave", ".manual_stop_leo", ".manual_stop_youngsuk"]
+    for flag in flags:
+        with open(os.path.join(MANUAL_STOP_DIR, flag), "w", encoding="utf-8") as f:
+            f.write("# manual stop: direct user stop command\n")
+            f.write("# Remove by explicit start/restart.\n")
+
 
 def _ssh_macbook(command: str, timeout: int = 10):
     if not MACBOOK_HOST:
@@ -162,6 +173,10 @@ def stop_remote_macbook_agents():
 
     patterns = " ".join(shlex.quote(k) for k in AI_TEAM_KEYWORDS)
     remote_cmd = f"""
+mkdir -p "$HOME/ai_lab/projects/ai-team/scripts" 2>/dev/null || true
+for flag in .manual_stop .manual_stop_hyunbin .manual_stop_dave .manual_stop_leo .manual_stop_youngsuk; do
+  printf '%s\\n' '# manual stop: direct user stop command' '# Remove by explicit start/restart.' > "$HOME/ai_lab/projects/ai-team/scripts/$flag" 2>/dev/null || true
+done
 for pattern in {patterns}; do
   pkill -f "$pattern" 2>/dev/null || true
 done
@@ -183,6 +198,7 @@ done
 
 def stop_local_ai_team_processes(skip_current=True):
     """현재 머신의 AI-team 에이전트/봇을 종료한다."""
+    mark_local_manual_stop_all()
     if platform.system() == "Windows":
         pids = _windows_pids_for_keywords(AI_TEAM_KEYWORDS)
     else:
@@ -212,6 +228,7 @@ def stop_local_ai_team_processes(skip_current=True):
 
 def emergency_stop_all_no_restart(skip_current=True):
     """원격 MacBook을 먼저 멈춘 뒤 로컬도 멈춘다. 시작 명령은 실행하지 않는다."""
+    mark_local_manual_stop_all()
     results = []
     if MACBOOK_HOST and get_current_platform() == "windows":
         results.append(stop_remote_macbook_agents())

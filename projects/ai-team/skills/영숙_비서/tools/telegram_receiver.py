@@ -431,6 +431,8 @@ def process(msg):
 def _watch_traders():
     """데이브/레오 프로세스 감시 및 자동 재시작 (60초 주기)"""
     import subprocess, threading
+    manual_stop_dir = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
+    global_manual_stop = os.path.join(manual_stop_dir, ".manual_stop")
 
     TRADERS = {
         "hyunbin": {
@@ -497,6 +499,10 @@ def _watch_traders():
 
     def restart(name, info):
         try:
+            agent_manual_stop = os.path.join(manual_stop_dir, f".manual_stop_{name}")
+            if os.path.exists(global_manual_stop) or os.path.exists(agent_manual_stop):
+                print(f"[trader_watch] {name} 수동 종료 플래그 감지 - 자동 재시작 생략")
+                return
             lock = info["lock"]
             if os.path.exists(lock):
                 os.remove(lock)
@@ -511,6 +517,10 @@ def _watch_traders():
         time.sleep(30)
         while True:
             try:
+                if os.path.exists(global_manual_stop):
+                    print("[trader_watch] 전체 수동 종료 플래그 감지 - 감시 재시작 대기")
+                    time.sleep(60)
+                    continue
                 for name, info in TRADERS.items():
                     if not is_running(info["keyword"]):
                         restart(name, info)
