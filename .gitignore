@@ -2,6 +2,7 @@
 .claude/
 *.pid
 *.log
+projects/ai-team/scripts/.manual_stop*
 *.bak
 *.tmp
 *.old
