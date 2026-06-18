@@ -114,13 +114,19 @@ def text(
             pass
         return None
 
-    # 1. GPT-4o mini 우선 (Gemini 할당량 초과로 기본값 변경)
+    # 1. GPT-4o mini 최우선
     result = _call_gpt(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
     if result:
         return result
-    print(f"  [GPT] 실패 → Ollama 폴백")
+    print(f"  [GPT] 실패 → Gemini 폴백")
 
-    # 2. Ollama 폴백
+    # 2. Gemini 2.5 Flash 폴백
+    result = gemini_flash(prompt, system=system, max_tokens=max_tokens, temperature=temperature, json_mode=json_mode)
+    if result:
+        return result
+    print(f"  [Gemini] 실패 → Ollama 폴백")
+
+    # 3. Ollama 최후 폴백
     try:
         from _shared.ollama_client import chat as lm_chat, is_available as lm_available
         if lm_available():
