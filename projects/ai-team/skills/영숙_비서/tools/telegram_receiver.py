@@ -218,7 +218,7 @@ def dispatch(cmd: str):
             send_msg(f"✅ 작업 결과:\n{result}")
         except Exception as e:
             send_msg(f"❌ 작업 수행 실패: {str(e)[:200]}")
-            
+
     threading.Thread(target=_run_bg, daemon=True).start()
     return "🚀 에이전트 구동 지시를 비동기로 시작했습니다. 완료되면 알려드리겠습니다."
 
@@ -231,7 +231,65 @@ def process(msg):
     # 1. 자주 사용하는 시스템 명령은 즉시 반환하여 딜레이/토큰 제로화 (Gemini API 절약)
     msg_clean = msg.strip().replace(" ", "").lower()
 
-    # 1-1. 에이전트 현황 (가장 많이 사용)
+    # 1-1. 종료/제어 명령은 "상태" 같은 일반 현황보다 먼저 처리한다.
+    if any(k in msg_clean for k in [
+        "봇전체종료", "봇모두종료", "killallbots", "stopallbots",
+        "에이전트전체종료", "전체에이전트종료", "killallagents", "stopallagents",
+    ]):
+        try:
+            import remote_bot_controller
+            result = remote_bot_controller.emergency_stop_all_no_restart(skip_current=True)
+            send_msg("🛑 전체 종료 명령 처리 완료 (재시작 없음)\n" + result)
+        except Exception as e:
+            send_msg(f"❌ 전체 종료 실패: {e}")
+        import time
+        time.sleep(2)
+        print("🛑 사용자 명령: 전체 종료 (재시작 금지)")
+        import sys
+        sys.exit(0)
+
+    bot_control_keywords = ["봇상태", "봇종료", "봇시작", "봇재시작",
+                            "봇전체시작", "봇모두시작",
+                            "맥북봇종료", "맥북봇시작",
+                            "botstatus", "botstop", "botstart", "botrestart",
+                            "startallbots", "macbookstop", "macbookstart"]
+    if any(k in msg_clean for k in bot_control_keywords):
+        try:
+            import remote_bot_controller
+            result = remote_bot_controller.handle_bot_command(msg)
+            send_msg(result)
+
+            if any(k in msg_clean for k in ["봇종료", "botstop", "봇재시작", "botrestart"]):
+                import time
+                time.sleep(2)
+                print("🛑 사용자 명령으로 봇 종료")
+                import sys
+                sys.exit(0)
+            return
+        except Exception as e:
+            send_msg(f"❌ 봇 제어 실패: {e}")
+            return
+
+    # 1-2. 개별 에이전트 제어 명령
+    agent_control_keywords = ["데이브", "레오", "현빈", "영숙", "dave", "leo", "hyunbin", "youngsuk",
+                              "에이전트상태", "agentstatus"]
+    action_keywords = ["시작", "종료", "재시작", "상태", "start", "stop", "restart", "status", "켜", "꺼"]
+
+    # "데이브 시작", "레오 종료" 같은 패턴 체크
+    has_agent = any(k in msg_clean for k in agent_control_keywords)
+    has_action = any(k in msg_clean for k in action_keywords)
+
+    if (has_agent and has_action) or "에이전트상태" in msg_clean:
+        try:
+            import agent_controller
+            result = agent_controller.handle_agent_command(msg)
+            send_msg(result)
+            return
+        except Exception as e:
+            send_msg(f"❌ 에이전트 제어 실패: {e}")
+            return
+
+    # 1-3. 에이전트 현황 (가장 많이 사용)
     if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행"]):
         try:
             status_report = get_agent_status("전체")
@@ -240,7 +298,7 @@ def process(msg):
         except Exception as se:
             print(f"❌ 현황 조회 실패: {se}")
 
-    # 1-2. 일정 조회
+    # 1-4. 일정 조회
     if any(k in msg_clean for k in ["일정", "캘린더", "calendar", "schedule"]):
         try:
             cal_report = list_calendar()
@@ -249,7 +307,7 @@ def process(msg):
         except Exception as ce:
             print(f"❌ 일정 조회 실패: {ce}")
 
-    # 1-3. 명시적 에이전트 구동/실행 명령만 dispatch로 전달
+    # 1-5. 명시적 에이전트 구동/실행 명령만 dispatch로 전달
     # ※ 에이전트 이름(데이브/레오/현빈)만으로는 dispatch 하지 않음 → 현황 질문과 구분
     direct_dispatch_keywords = ["구동", "실행해", "시작해", "켜줘", "가동", "데몬", "자동매매", "실거래시작", "거래시작"]
     if any(k in msg_clean for k in direct_dispatch_keywords):

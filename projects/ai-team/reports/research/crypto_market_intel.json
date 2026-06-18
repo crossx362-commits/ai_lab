@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-17T20:55:00.580632",
+  "timestamp": "2026-06-18T09:46:11.573406",
   "fed_events": {
     "next_fomc": "2026-06-17",
     "next_cpi": "2026-07-10",
@@ -8,16 +8,16 @@
     "risk_level": "HIGH"
   },
   "fear_greed_index": {
-    "value": 22,
+    "value": 15,
     "classification": "Extreme Fear",
-    "signal": "중립 구간",
-    "action": "NEUTRAL",
-    "timestamp": "1781654400"
+    "signal": "극단적 공포 - 역발상 매수 준비",
+    "action": "BUY_SIGNAL",
+    "timestamp": "1781740800"
   },
   "kimchi_premium": {
-    "upbit_price": 97517000.0,
-    "binance_price_krw": 84298305.0,
-    "premium_pct": 15.68,
+    "upbit_price": 97279000.0,
+    "binance_price_krw": 83969613.0,
+    "premium_pct": 15.85,
     "signal": "국내 투기 과열 - 고점 경보, 자산 대피",
     "action": "SELL_SIGNAL"
   },
