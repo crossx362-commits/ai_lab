@@ -29,6 +29,10 @@ function renderSettings() {
         updateSocialLinkButtons();
     }
 
+    if (typeof renderServiceStatusPanel === 'function') {
+        renderServiceStatusPanel();
+    }
+
     const themes = ['light', 'sepia', 'dark'];
     themes.forEach(t => {
         const btn = document.getElementById(`btn-theme-${t}`);
@@ -392,6 +396,16 @@ function closeDonationModal() {
 
 function confirmDonation() {
     closeDonationModal();
+    const paymentsReady = (typeof isPaymentEnabled === 'function') ? isPaymentEnabled() : false;
+    if (!paymentsReady) {
+        showCustomDialog({
+            title: "후원 결제 준비 중",
+            message: "현재 결제 기능은 운영 설정에서 차단되어 있습니다. 결제 설정을 열면 바로 연결할 수 있게 준비해두겠습니다.",
+            icon: "💳",
+            type: "alert"
+        });
+        return;
+    }
     triggerConfetti();
     showCustomDialog({
         title: "후원 대성공! 💖",

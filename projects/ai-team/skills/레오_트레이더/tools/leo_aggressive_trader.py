@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import datetime
+import subprocess
 
 def get_common_trader_prompt():
     """공통 트레이더 시스템 프롬프트 (데이브와 동일)"""
@@ -118,6 +119,7 @@ MAX_CONSECUTIVE_LOSSES = 3
 MAX_DAILY_LOSS_PCT = -5.0
 MAX_TRADES_PER_HOUR = 5
 COOLDOWN_AFTER_LOSS = 1800  # 30분
+HYUNBIN_INTEL_MAX_AGE_SECONDS = int(os.getenv("HYUNBIN_INTEL_MAX_AGE_SECONDS", "60"))
 
 
 def safe_float(val, default=0.0):
@@ -129,11 +131,79 @@ def safe_float(val, default=0.0):
         return default
 
 
-def load_hyunbin_intel():
+def _hyunbin_intel_path():
+    return os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+
+
+def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECONDS):
+    """거래 판단 직전 현빈 시장 조사가 낡았으면 단발 수집을 실행한다."""
+    intel_path = _hyunbin_intel_path()
+    now = time.time()
+    age = None
+    if os.path.exists(intel_path):
+        age = now - os.path.getmtime(intel_path)
+        if age <= max_age_seconds:
+            return
+
+    lock_path = os.path.join(os.path.dirname(intel_path), ".hyunbin_refresh.lock")
+    os.makedirs(os.path.dirname(intel_path), exist_ok=True)
+
+    lock_fd = None
+    try:
+        try:
+            lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(lock_fd, str(os.getpid()).encode("ascii", errors="ignore"))
+        except FileExistsError:
+            lock_age = now - os.path.getmtime(lock_path) if os.path.exists(lock_path) else 0
+            if lock_age > 60:
+                try:
+                    os.remove(lock_path)
+                except OSError:
+                    pass
+            for _ in range(10):
+                time.sleep(1)
+                if os.path.exists(intel_path) and time.time() - os.path.getmtime(intel_path) <= max_age_seconds:
+                    return
+            return
+
+        age_text = "없음" if age is None else f"{age:.0f}s"
+        print(f"[Leo] 현빈 시장 조사 최신화 실행 (기존 age={age_text})")
+        script_path = os.path.join(AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py")
+        result = subprocess.run(
+            [sys.executable, script_path],
+            cwd=AI_TEAM_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=45,
+            env={**os.environ, "PYTHONUTF8": "1"},
+        )
+        if result.returncode != 0:
+            print(f"[Leo] 현빈 조사 실행 실패: {result.stderr.strip()}")
+        else:
+            print("[Leo] 현빈 시장 조사 최신화 완료")
+    except Exception as e:
+        print(f"[Leo] 현빈 조사 최신화 실패: {e}")
+    finally:
+        if lock_fd is not None:
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+            try:
+                os.remove(lock_path)
+            except OSError:
+                pass
+
+
+def load_hyunbin_intel(refresh=True):
     """현빈의 시장 정보 로드"""
     try:
         import json
-        intel_path = os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+        if refresh:
+            _refresh_hyunbin_intel_if_stale()
+        intel_path = _hyunbin_intel_path()
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 return json.load(f)

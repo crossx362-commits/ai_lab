@@ -159,9 +159,26 @@ def main():
     print("\n프로세스를 종료하려면 Ctrl+C를 누르세요.")
 
     # 프로세스 모니터링 + 자동 재시작
+    manual_stop_flag = os.path.join(_here, ".manual_stop")
+
     try:
         while True:
             time.sleep(10)
+
+            # 수동 종료 플래그 체크
+            if os.path.exists(manual_stop_flag):
+                print("\n⚠️  수동 종료 플래그 감지 - 자동 재시작 비활성화")
+                print("    모든 에이전트를 종료하고 런처를 종료합니다.")
+                print(f"    재시작하려면: rm {manual_stop_flag}\n")
+
+                # 모든 프로세스 종료
+                for name, proc in processes.items():
+                    if proc and proc.poll() is None:
+                        proc.terminate()
+                        print(f"  ✅ {name} 종료")
+
+                send_telegram_message("🛑 트레이딩 팀 수동 종료 (자동 재시작 비활성화)")
+                break
 
             for name, proc in list(processes.items()):
                 if proc and proc.poll() is not None:

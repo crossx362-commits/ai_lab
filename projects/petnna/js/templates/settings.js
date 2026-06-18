@@ -3,6 +3,20 @@ const SETTINGS_TEMPLATE = `
 
     <!-- 왼쪽 패널: 프로필 및 테마 커스터마이즈 -->
     <div class="lg:col-span-2 space-y-6">
+        <!-- 운영 서비스 상태 -->
+        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b pb-2">
+                <h3 class="font-black text-gray-800 text-sm flex items-center">
+                    <i class="fa-solid fa-toggle-on text-brand-500 mr-2"></i>운영 서비스 상태
+                </h3>
+                <span class="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-1 rounded-full">env gate</span>
+            </div>
+            <div id="service-status-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            <p class="text-[10px] text-gray-400 font-medium leading-relaxed px-1">
+                AI와 결제는 현재 차단 상태로 운영됩니다. 배포 환경에서 플래그와 키를 켜면 같은 화면에서 즉시 준비 상태로 전환됩니다.
+            </p>
+        </div>
+
         <!-- 🔒 로그인 및 보안 계정 관리 (Login & Security options) -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">

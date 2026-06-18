@@ -2006,10 +2006,10 @@ function deleteNeighbor() {
 }
 
 async function generateSocialCaption() {
-    const apiKey = window._env_?.GEMINI_API_KEY || "";
-    if (!apiKey) {
-        showToast("⚠️ AI 캡션 기능은 GEMINI_API_KEY 설정 후 사용 가능합니다.");
-        console.warn("GEMINI_API_KEY not set. Please add it to your environment.");
+    const enabled = (typeof isAiHealthEnabled === 'function') ? isAiHealthEnabled() : false;
+    if (!enabled) {
+        if (typeof notifyPetnnaServiceLocked === 'function') notifyPetnnaServiceLocked('AI 캡션');
+        else showToast("AI 캡션 기능은 현재 준비 중입니다.");
         return;
     }
 
@@ -2033,22 +2033,21 @@ async function generateSocialCaption() {
         }
     }
 
-    const prompt = base64Data
-        ? `이 반려동물 사진을 보고 진짜 집사가 인스타에 올릴 것처럼 짧고 자연스러운 한국어 자랑글 캡션을 써줘. 평소 친구에게 톡하듯 문어체 탈피. 이모지 1개. 해시태그 5개 포함. 캡션만 출력.`
-        : `${pet?.name || "우리 아이"}의 일상을 공유하는 진짜 집사 말투의 인스타 자랑글 캡션을 써줘. 친근하고 부드러운 구어체 사용. 이모지 1개. 해시태그 5개 포함. 캡션만.`;
-
     try {
-        const parts = [{ text: prompt }];
-        if (base64Data) {
-            parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
-        }
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            { method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ contents: [{ parts }] }) }
-        );
-        const data = await res.json();
-        const caption = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || prevVal;
+        const endpoint = (typeof getAiHealthProxyPath === 'function') ? getAiHealthProxyPath() : '/api/ai-health';
+        const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                type: "social-caption",
+                petName: pet?.name || "우리 아이",
+                imageBase64: base64Data,
+                mimeType
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `API ${res.status}`);
+        const caption = data.text?.trim() || prevVal;
         
         // Remove markdown block backticks if any returned by Gemini
         let cleanedCaption = caption.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "").trim();

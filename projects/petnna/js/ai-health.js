@@ -1,54 +1,40 @@
 // ai-health.js — Gemini 2.5 Flash Vision 기반 10항목 건강 분석 + 음성 문진
 const AI_HEALTH_DISCLAIMER = "※ 이 분석은 참고용이며 의학적 진단이 아닙니다. 이상 소견 시 반드시 수의사와 상담하세요.";
 
-async function analyzeHealthFromPhoto(imageBase64, petName = "펫") {
-    const apiKey = window._env_?.GEMINI_API_KEY || "";
-    if (!apiKey) return { error: true, message: "GEMINI_API_KEY가 설정되지 않았습니다." };
+async function callPetnnaAiProxy(payload) {
+    const enabled = (typeof isAiHealthEnabled === "function") ? isAiHealthEnabled() : false;
+    if (!enabled) {
+        return {
+            error: true,
+            locked: true,
+            message: (typeof notifyPetnnaServiceLocked === "function")
+                ? notifyPetnnaServiceLocked("AI 건강 분석")
+                : "AI 건강 분석은 현재 준비 중입니다.",
+            disclaimer: AI_HEALTH_DISCLAIMER
+        };
+    }
 
-    const prompt = `이 반려동물 사진을 보고 건강 상태를 전문 수의사 관점으로 분석해줘.
-사진에서 보이지 않는 부위는 "확인불가"로 반환.
-다음 10개 항목을 JSON으로만 반환 (다른 텍스트 없이):
-
-{
-  "eyes": "정상|주의|이상|확인불가",
-  "ears": "정상|주의|이상|확인불가",
-  "skin": "정상|주의|이상|확인불가",
-  "coat": "윤기있음|보통|칙칙함|확인불가",
-  "teeth": "정상|주의|이상|확인불가",
-  "nose": "촉촉함|건조함|이상|확인불가",
-  "posture": "정상|주의|이상|확인불가",
-  "weight": "저체중|적정|과체중|확인불가",
-  "alertness": "활발|보통|무기력|확인불가",
-  "paw": "정상|주의|이상|확인불가",
-  "score": 0~100,
-  "urgent": true|false,
-  "urgentReason": "긴급 사유 (urgent=false면 빈 문자열)",
-  "summary": "한국어 2문장 요약",
-  "advice": "권고 사항 1줄"
+    const endpoint = (typeof getAiHealthProxyPath === "function") ? getAiHealthProxyPath() : "/api/ai-health";
+    const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        return {
+            error: true,
+            locked: !!data.locked,
+            message: data.message || `AI API ${res.status}`,
+            disclaimer: AI_HEALTH_DISCLAIMER
+        };
+    }
+    return data;
 }
 
-score 산정 기준: 이상 항목 1개당 -8점, 주의 항목 1개당 -3점, 기본 85점에서 차감.
-urgent=true 조건: 눈·코·피부 중 '이상' 2개 이상이거나, 자세·체형이 '이상'인 경우.`;
-
+async function analyzeHealthFromPhoto(imageBase64, petName = "펫") {
     try {
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [
-                        { text: prompt },
-                        { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
-                    ]}],
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            }
-        );
-        if (!res.ok) throw new Error(`API ${res.status}`);
-        const data = await res.json();
-        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-        const result = JSON.parse(raw);
+        const result = await callPetnnaAiProxy({ type: "photo", imageBase64, petName });
         result.disclaimer = AI_HEALTH_DISCLAIMER;
         result.petName = petName;
         result.analyzedAt = new Date().toISOString();
@@ -60,37 +46,10 @@ urgent=true 조건: 눈·코·피부 중 '이상' 2개 이상이거나, 자세·
 
 // 음성 문진 — 증상을 말하면 Gemini가 분석
 async function analyzeSymptomByVoice(transcript, petName = "펫") {
-    const apiKey = window._env_?.GEMINI_API_KEY || "";
-    if (!apiKey) return { error: true, message: "GEMINI_API_KEY가 설정되지 않았습니다." };
-
-    const prompt = `반려동물 보호자가 "${petName}"의 증상을 이렇게 설명했어:
-"${transcript}"
-
-수의사 관점에서 아래 JSON 형식으로만 분석해줘:
-{
-  "possibleCauses": ["원인1", "원인2", "원인3"],
-  "immediateAction": "지금 당장 할 수 있는 조치 1줄",
-  "needsVet": true|false,
-  "urgency": "즉시|24시간내|일주일내|관찰",
-  "summary": "2문장 요약"
-}`;
-
     try {
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            }
-        );
-        if (!res.ok) throw new Error(`API ${res.status}`);
-        const data = await res.json();
-        const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-        return JSON.parse(raw);
+        const result = await callPetnnaAiProxy({ type: "symptom", transcript, petName });
+        result.disclaimer = AI_HEALTH_DISCLAIMER;
+        return result;
     } catch (e) {
         return { error: true, message: `분석 실패: ${e.message}` };
     }

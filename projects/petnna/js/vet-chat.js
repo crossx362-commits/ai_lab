@@ -3,9 +3,11 @@ let vetChatHistory = [];
 async function sendVetChatMessage(userMessage) {
     if (!userMessage || !userMessage.trim()) return;
 
-    const apiKey = window._env_?.GEMINI_API_KEY || "";
-    if (!apiKey) {
-        appendVetChatMessage('model', 'GEMINI_API_KEY가 설정되지 않았습니다.');
+    const enabled = (typeof isAiHealthEnabled === 'function') ? isAiHealthEnabled() : false;
+    if (!enabled) {
+        appendVetChatMessage('model', (typeof notifyPetnnaServiceLocked === 'function')
+            ? notifyPetnnaServiceLocked('AI 수의사 상담')
+            : 'AI 수의사 상담은 현재 준비 중입니다.');
         return;
     }
 
@@ -19,38 +21,27 @@ async function sendVetChatMessage(userMessage) {
     const breed = pet?.breed || '품종 미상';
     const age = pet?.age ? `${pet.age}살` : '나이 미상';
 
-    const systemPrompt = `당신은 10년 경력의 친절한 수의사 AI 어시스턴트입니다.
-현재 상담 중인 반려동물: ${petName} (${breed}, ${age})
-반려동물의 증상이나 건강 관련 질문에 답변해주세요.
-의학적으로 긴급한 경우 즉시 동물병원 방문을 권고하세요.
-답변은 한국어로, 친근하고 이해하기 쉽게 해주세요.`;
-
     vetChatHistory.push({ role: 'user', text: userMessage.trim() });
-
-    const contents = [
-        { role: 'user', parts: [{ text: systemPrompt }] },
-        { role: 'model', parts: [{ text: `안녕하세요! ${petName}의 건강을 함께 챙겨드릴게요. 무엇이 걱정되시나요?` }] },
-        ...vetChatHistory.map(m => ({
-            role: m.role,
-            parts: [{ text: m.text }]
-        }))
-    ];
 
     const loadingId = 'vet-loading-' + Date.now();
     appendVetChatLoading(loadingId);
 
     try {
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents })
-            }
-        );
-        if (!res.ok) throw new Error(`API ${res.status}`);
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '답변을 가져올 수 없습니다.';
+        const endpoint = (typeof getAiHealthProxyPath === 'function') ? getAiHealthProxyPath() : '/api/ai-health';
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'vet-chat',
+                message: userMessage.trim(),
+                petName,
+                breed,
+                age
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `API ${res.status}`);
+        const text = data.text || '답변을 가져올 수 없습니다.';
 
         removeVetChatLoading(loadingId);
         vetChatHistory.push({ role: 'model', text });

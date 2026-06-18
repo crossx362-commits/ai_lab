@@ -95,6 +95,12 @@ def stop_agent(agent_name: str) -> str:
             for pid in pids:
                 subprocess.run(["kill", str(pid)])
 
+        # 트레이더 에이전트 종료 시 수동 종료 플래그 생성
+        if agent_name in ["데이브", "레오"]:
+            flag_path = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts", ".manual_stop")
+            with open(flag_path, "w") as f:
+                f.write(f"# Manually stopped by user at {os.environ.get('USERNAME', 'user')}\n")
+
         return f"✅ {agent_name} 종료 완료 (PID: {', '.join(map(str, pids))})"
     except Exception as e:
         return f"❌ {agent_name} 종료 실패: {e}"

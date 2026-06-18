@@ -84,6 +84,13 @@ function selectPremiumPlan(plan) {
 
 // Stripe Payment Link 결제 시작
 function startStripeCheckout() {
+    const paymentsReady = (typeof isPaymentEnabled === 'function') ? isPaymentEnabled() : false;
+    if (!paymentsReady) {
+        showPremiumWaitlist();
+        if (typeof notifyPetnnaServiceLocked === 'function') notifyPetnnaServiceLocked('프리미엄 결제');
+        return;
+    }
+
     const isYearly = _premiumPlanSelected === 'yearly';
     const paymentLink = isYearly
         ? (window._env_?.STRIPE_PAYMENT_LINK_YEARLY || window._env_?.STRIPE_PAYMENT_LINK || "")
@@ -100,8 +107,8 @@ function startStripeCheckout() {
 
 // 결제 완료 후 URL 파라미터로 프리미엄 활성화
 function checkPremiumFromUrl() {
-    const isLocal = ['localhost', '127.0.0.1'].some(h => location.hostname.includes(h));
-    if (!isLocal) return;
+    const activationReady = (typeof isPremiumActivationEnabled === 'function') ? isPremiumActivationEnabled() : false;
+    if (!activationReady) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('premium') === 'activated') {
         localStorage.setItem("petna_premium", "stripe_verified");
@@ -141,6 +148,10 @@ function showPremiumWaitlist() {
 function activatePremiumDemo() {
     const isLocal = ['localhost', '127.0.0.1'].some(h => location.hostname.includes(h));
     if (!isLocal) return;
+    if (typeof isPremiumActivationEnabled === 'function' && !isPremiumActivationEnabled()) {
+        notifyPetnnaServiceLocked('프리미엄 테스트 활성화');
+        return;
+    }
     console.warn("[PETNA] activatePremiumDemo: 테스트 전용. 프로덕션에서 제거 필요.");
     localStorage.setItem("petna_premium", "demo");
     closePremiumModal();

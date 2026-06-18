@@ -26,6 +26,7 @@ if "--daemon" in sys.argv:
 # 나머지 import
 import time
 import datetime
+import subprocess
 
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
@@ -56,6 +57,9 @@ last_llm_time = {}
 LLM_COOLDOWN_SECONDS = 300  # 동일 종목에 대한 LLM 재분석은 최소 5분 쿨다운 적용
 last_report_time = 0
 REPORT_INTERVAL_SECONDS = 12 * 3600  # 12시간마다 현황 보고 (하루 2회)
+HYUNBIN_INTEL_MAX_AGE_SECONDS = int(os.getenv("HYUNBIN_INTEL_MAX_AGE_SECONDS", "60"))
+WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
+COOLDOWN_STATE_PATH = os.path.join(WORKSPACE_ROOT, "output", "trading_logs", "dave_llm_cooldown.json")
 
 def safe_float(val, default=0.0):
     if val is None:
@@ -64,6 +68,32 @@ def safe_float(val, default=0.0):
         return float(val)
     except Exception:
         return default
+
+
+def _load_llm_cooldown_state():
+    try:
+        import json
+        if os.path.exists(COOLDOWN_STATE_PATH):
+            with open(COOLDOWN_STATE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {str(k): float(v) for k, v in data.items()}
+    except Exception as e:
+        print(f"[Dave] LLM 쿨다운 상태 로드 실패: {e}")
+    return {}
+
+
+def _save_llm_cooldown_state():
+    try:
+        import json
+        os.makedirs(os.path.dirname(COOLDOWN_STATE_PATH), exist_ok=True)
+        with open(COOLDOWN_STATE_PATH, "w", encoding="utf-8") as f:
+            json.dump(last_llm_time, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[Dave] LLM 쿨다운 상태 저장 실패: {e}")
+
+
+last_llm_time.update(_load_llm_cooldown_state())
+
 
 def parse_decision_from_report(report: str) -> str:
     """리포트 텍스트에서 최종 결정을 파싱합니다."""
@@ -84,7 +114,7 @@ def calculate_confluence_score(ticker: str) -> dict:
         df4h = pyupbit.get_ohlcv(ticker, interval="minute240", count=100)
         if df is None or df.empty:
             return {"ticker": ticker, "score": 0, "error": "데이터 없음"}
-            
+
         df = df.reset_index().rename(columns={
             "index": "Date",
             "open": "Open",
@@ -93,28 +123,28 @@ def calculate_confluence_score(ticker: str) -> dict:
             "close": "Close",
             "volume": "Volume"
         })
-        
+
         indicators = upbit_analyzer.calc_indicators(df)
         df_supertrend = upbit_analyzer.calculate_supertrend(df.copy())
-        
+
         current_price = df_supertrend['Close'].iloc[-1]
         current_trend = df_supertrend['Trend'].iloc[-1]
         records = df_supertrend.tail(30).to_dict(orient='records')
         atr = upbit_analyzer._calc_atr(records)
-        
+
         score = 0
         reasons = []
-        
+
         # 1. EMA 200 대추세 (롱 국면 여부)
         if indicators["대추세_EMA200"] == "상승 국면(LONG 전용)":
             score += 4
             reasons.append("EMA200 위")
-            
+
         # 2. Supertrend 추세
         if current_trend == "상승":
             score += 3
             reasons.append("Supertrend 상승")
-            
+
         # 3. 스토캐스틱 RSI
         stoch_status = indicators["StochRSI_상태"]
         if stoch_status == "과매도 골든크로스":
@@ -126,7 +156,7 @@ def calculate_confluence_score(ticker: str) -> dict:
         elif stoch_status == "과매수":
             score -= 1
             reasons.append("StochRSI 과매수(과열)")
-            
+
         # 4. 하이킨 애쉬
         ha_status = indicators["HeikinAshi_상태"]
         if "아래꼬리 없는 장대양봉" in ha_status:
@@ -135,7 +165,7 @@ def calculate_confluence_score(ticker: str) -> dict:
         elif ha_status == "양봉":
             score += 1
             reasons.append("HA 양봉")
-            
+
         # 5. 거래량 급증
         if indicators["VolumeSpike"] == "✅ 급증":
             score += 2
@@ -209,11 +239,79 @@ def calculate_confluence_score(ticker: str) -> dict:
     except Exception as e:
         return {"ticker": ticker, "score": 0, "error": str(e)}
 
-def load_hyunbin_intel():
+def _hyunbin_intel_path():
+    return os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+
+
+def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECONDS):
+    """거래 판단 직전 현빈 시장 조사가 낡았으면 단발 수집을 실행한다."""
+    intel_path = _hyunbin_intel_path()
+    now = time.time()
+    age = None
+    if os.path.exists(intel_path):
+        age = now - os.path.getmtime(intel_path)
+        if age <= max_age_seconds:
+            return
+
+    lock_path = os.path.join(os.path.dirname(intel_path), ".hyunbin_refresh.lock")
+    os.makedirs(os.path.dirname(intel_path), exist_ok=True)
+
+    lock_fd = None
+    try:
+        try:
+            lock_fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(lock_fd, str(os.getpid()).encode("ascii", errors="ignore"))
+        except FileExistsError:
+            lock_age = now - os.path.getmtime(lock_path) if os.path.exists(lock_path) else 0
+            if lock_age > 60:
+                try:
+                    os.remove(lock_path)
+                except OSError:
+                    pass
+            for _ in range(10):
+                time.sleep(1)
+                if os.path.exists(intel_path) and time.time() - os.path.getmtime(intel_path) <= max_age_seconds:
+                    return
+            return
+
+        age_text = "없음" if age is None else f"{age:.0f}s"
+        print(f"[Dave] 현빈 시장 조사 최신화 실행 (기존 age={age_text})")
+        script_path = os.path.join(AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py")
+        result = subprocess.run(
+            [sys.executable, script_path],
+            cwd=AI_TEAM_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=45,
+            env={**os.environ, "PYTHONUTF8": "1"},
+        )
+        if result.returncode != 0:
+            print(f"[Dave] 현빈 조사 실행 실패: {result.stderr.strip()}")
+        else:
+            print("[Dave] 현빈 시장 조사 최신화 완료")
+    except Exception as e:
+        print(f"[Dave] 현빈 조사 최신화 실패: {e}")
+    finally:
+        if lock_fd is not None:
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+            try:
+                os.remove(lock_path)
+            except OSError:
+                pass
+
+
+def load_hyunbin_intel(refresh=True):
     """현빈의 시장 정보 로드"""
     try:
         import json
-        intel_path = os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+        if refresh:
+            _refresh_hyunbin_intel_if_stale()
+        intel_path = _hyunbin_intel_path()
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 return json.load(f)
@@ -254,15 +352,15 @@ def run_auto_trade_cycle():
         try:
             btc_balance = safe_float(upbit_client.get_balance(ticker))
             avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
-                
+
             current_price = float(pyupbit.get_current_price(ticker))
-            
+
             # 최소 주문 단위(5,000원) 이상의 포지션 보유 확인
             if btc_balance * current_price >= 5000.0:
                 df = pyupbit.get_ohlcv(ticker, interval="day", count=30)
                 df_supertrend = upbit_analyzer.calculate_supertrend(df.reset_index().rename(columns={"index": "Date", "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}))
                 atr = upbit_analyzer._calc_atr(df_supertrend.to_dict(orient='records'))
-                
+
                 held_positions.append({
                     "ticker": ticker,
                     "balance": btc_balance,
@@ -282,7 +380,7 @@ def run_auto_trade_cycle():
             avg_buy_price = pos["avg_buy_price"]
             btc_balance = pos["balance"]
             atr = pos["atr"]
-            
+
             profit_ratio = (current_price - avg_buy_price) / avg_buy_price
 
             # SKILL 기반 포지션 관리
@@ -343,19 +441,19 @@ def run_auto_trade_cycle():
             res = calculate_confluence_score(ticker)
             if "error" not in res:
                 scanned.append(res)
-                
+
         scanned.sort(key=lambda x: x["score"], reverse=True)
-        
+
         # 스캔 스코어 보드 출력 (10초마다 실시간으로 보임)
         print("\n=== [실시간 퀀트 스코어 랭킹] ===")
         for item in scanned[:5]:
             print(f"  - {item['ticker']}: {item['score']}점 | {', '.join(item['reasons'])}")
         print("=========================\n")
-        
+
         if not scanned:
             print("[AutoTrader] 스캔 가능한 코인 데이터가 없습니다.")
             return
-            
+
         best = scanned[0]
         # 최소 진입 점수 문턱값 (11점 이상)
         if best["score"] >= 3:
@@ -370,15 +468,16 @@ def run_auto_trade_cycle():
 
             print(f"[AutoTrader] 💥 최우수 코인 진입 조건 달성! {best_ticker} ({best['score']}점) -> LLM 최종 검증 진행...")
             last_llm_time[best_ticker] = now  # 쿨다운 갱신
+            _save_llm_cooldown_state()
 
             try:
                 decision_data = upbit_analyzer.run_gemini_trade_decision(f"실시간 퀀트 스캔 {best['score']}점 달성. 신규 진입 최종 검증 요청.", best_ticker)
                 decision = decision_data.decision.upper()
                 percentage = decision_data.percentage
                 reason = decision_data.reason
-                
+
                 print(f"[AutoTrader] LLM 최종 결정: {decision} ({percentage}%) | 사유: {reason}")
-                
+
                 if decision == "BUY":
                     pct = percentage / 100.0
                     buy_amount = krw_balance * pct * 0.995 # 수수료 고려 안전 여유
@@ -402,15 +501,15 @@ def run_auto_trade_cycle():
 
                 elif decision == "SELL":
                     coin_balance = safe_float(upbit_client.get_balance(best_ticker))
-                        
+
                     pct = percentage / 100.0
                     sell_volume = coin_balance * pct
                     current_price = float(pyupbit.get_current_price(best_ticker))
-                    
+
                     if sell_volume * current_price < 5000.0:
                         print(f"[AutoTrader] 매도 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {sell_volume * current_price:.0f}원)")
                         return
-                        
+
                     msg = f"📉 [데이브] 실시간 스캔 매도 조건 감지!\n📌 대상: {best_ticker}\n📉 비중: {percentage}%\n🚨 시장가 매도를 집행합니다."
                     print(msg)
                     send_telegram_message(msg)

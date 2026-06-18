@@ -27,13 +27,17 @@ if (fs.existsSync(envFilePath)) {
 let html = fs.readFileSync(indexPath, 'utf8');
 
 // Environment variables
-// GEMINI_API_KEY는 로컬 .env 폴백 제외 — Vercel 빌드 시에만 주입 (git 노출 방지)
-const isVercelBuild = !!process.env.VERCEL;
+// GEMINI_API_KEY is server-only for /api/ai-health and must not be injected into HTML.
 const env = {
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
-  GEMINI_API_KEY: isVercelBuild ? (process.env.GEMINI_API_KEY || '') : '',
+  GEMINI_API_KEY: '',
+  AI_HEALTH_ENABLED: process.env.AI_HEALTH_ENABLED || 'false',
+  AI_HEALTH_PROXY_PATH: process.env.AI_HEALTH_PROXY_PATH || '/api/ai-health',
+  PAYMENTS_ENABLED: process.env.PAYMENTS_ENABLED || 'false',
+  PREMIUM_ACTIVATION_ENABLED: process.env.PREMIUM_ACTIVATION_ENABLED || 'false',
   STRIPE_PAYMENT_LINK: process.env.STRIPE_PAYMENT_LINK || '',
+  STRIPE_PAYMENT_LINK_YEARLY: process.env.STRIPE_PAYMENT_LINK_YEARLY || '',
   STRIPE_SHOP_PAYMENT_LINK: process.env.STRIPE_SHOP_PAYMENT_LINK || ''
 };
 
@@ -52,8 +56,10 @@ if (regex.test(html)) {
   console.log('✅ Environment variables injected into index.html');
   console.log(`   SUPABASE_URL: ${env.SUPABASE_URL ? 'Set ✓' : 'Empty ✗'}`);
   console.log(`   SUPABASE_ANON_KEY: ${env.SUPABASE_ANON_KEY ? 'Set ✓' : 'Empty ✗'}`);
-  console.log(`   GEMINI_API_KEY: ${env.GEMINI_API_KEY ? 'Set ✓' : 'Empty ✗'}`);
+  console.log(`   AI_HEALTH_ENABLED: ${env.AI_HEALTH_ENABLED}`);
+  console.log(`   PAYMENTS_ENABLED: ${env.PAYMENTS_ENABLED}`);
   console.log(`   STRIPE_PAYMENT_LINK: ${env.STRIPE_PAYMENT_LINK ? 'Set ✓' : 'Empty ✗'}`);
+  console.log(`   STRIPE_PAYMENT_LINK_YEARLY: ${env.STRIPE_PAYMENT_LINK_YEARLY ? 'Set ✓' : 'Empty ✗'}`);
   console.log(`   STRIPE_SHOP_PAYMENT_LINK: ${env.STRIPE_SHOP_PAYMENT_LINK ? 'Set ✓' : 'Empty ✗'}`);
 } else {
   console.log('⚠️  Could not find environment variable placeholder in index.html');
