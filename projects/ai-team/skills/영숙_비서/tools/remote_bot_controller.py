@@ -1,4 +1,4 @@
-"""
+﻿"""
 원격 봇 제어 스크립트
 텔레그램 메시지를 통해 맥북/윈도우 봇을 원격으로 켜고 끌 수 있음
 """
@@ -13,8 +13,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 
 load_env()
 
@@ -403,7 +403,7 @@ if __name__ == "__main__":
         result = handle_bot_command(command)
         print(result)
         if "--notify" in sys.argv:
-            send_telegram_message(result)
+            send(result)
     else:
         print("사용법: python remote_bot_controller.py <명령어>")
         print(handle_bot_command("help"))

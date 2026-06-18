@@ -1,4 +1,4 @@
-"""
+﻿"""
 instagram_token_refresher.py — Instagram 장기 액세스 토큰 자동 갱신
 - 현재 토큰 만료까지 10일 이하 남으면 자동 갱신 후 .env 업데이트
 - telegram_bot.py _kodari_health_loop에서 매일 1회 호출
@@ -16,8 +16,8 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-from _shared.env_loader import load_env as _load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env as _load_env
+from _shared.notify import send
 
 _ENV_PATH = os.path.join(_root, ".env")
 _APP_ID     = "1219822826776845"
@@ -111,7 +111,7 @@ def run_check():
     _load_env()
     token = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
     if not token:
-        send_telegram_message(
+        send(
             "⚠️ <b>[코다리]</b> INSTAGRAM_ACCESS_TOKEN 없음\n"
             "Meta 개발자 콘솔에서 User 토큰을 발급해 .env에 추가하세요."
         )
@@ -121,7 +121,7 @@ def run_check():
     is_valid = info.get("is_valid", False)
 
     if not is_valid:
-        send_telegram_message(
+        send(
             "🚨 <b>[코다리]</b> Instagram 토큰 무효 (만료 또는 권한 취소)\n"
             "새 User 토큰을 발급해 주세요."
         )
@@ -134,7 +134,7 @@ def run_check():
     new_token = _refresh_long_lived(token)
     if new_token and new_token != token:
         _update_env(new_token)
-        send_telegram_message("✅ <b>[코다리]</b> Instagram 토큰 갱신 완료 (60일 유효)")
+        send("✅ <b>[코다리]</b> Instagram 토큰 갱신 완료 (60일 유효)")
     else:
         print("  [코다리] Instagram 토큰 갱신 불필요 또는 실패 — 현재 토큰 유지")
 
@@ -145,7 +145,7 @@ def exchange_and_save(short_token: str, account_id: str = ""):
     long_token = _exchange_to_long_lived(short_token)
     if long_token:
         _update_env(long_token, account_id)
-        send_telegram_message(
+        send(
             "✅ <b>[코다리]</b> Instagram 장기 토큰 발급 완료\n"
             "60일간 유효합니다. 이후 만료 10일 전 자동 갱신됩니다."
         )

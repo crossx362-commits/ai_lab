@@ -1,8 +1,8 @@
-"""
+﻿"""
 process_lock.py — 중복 실행 방지 (Windows Named Mutex / Unix fcntl)
 
 사용법:
-    from _shared.process_lock import acquire_lock, release_lock
+    from _shared.process import ProcessLock
 
     if not acquire_lock("my_bot"):
         print("이미 실행 중")

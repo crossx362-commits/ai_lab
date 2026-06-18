@@ -1,4 +1,4 @@
-"""
+﻿"""
 데이브 주식 분석 실행 스크립트
 """
 import os
@@ -11,7 +11,7 @@ AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 try:
     from google import genai
     from google.genai import types
@@ -277,7 +277,7 @@ def run_analysis(query: str = "", stock_code: str = "032820") -> str:
     # 2차: Ollama 폴백
     if not report:
         try:
-            from _shared.ollama_client import chat as ollama_chat
+            from _shared.llm import ollama as ollama_chat
             print("[Dave] Ollama 로컬 LLM 사용 중...")
             report = ollama_chat(
                 prompt,

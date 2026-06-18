@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 ECC 통합 보안 감사 스크립트
 경수(보안 스캐너) + 로율(컴플라이언스 감사) 통합 실행
@@ -26,8 +26,8 @@ sys.path.insert(0, os.path.join(_root, "projects", "ai-team", "skills", "로율_
 
 from security_scanner import SecurityScanner
 from compliance_auditor import ComplianceAuditor
-from _shared.telegram_notifier import send_telegram_message
-from _shared.env_loader import load_env
+from _shared.notify import send
+from _shared.env import load_env
 
 load_env()
 
@@ -235,7 +235,7 @@ class IntegratedSecurityAudit:
 
 리포트: {results['report_path']}
 """
-        send_telegram_message(message)
+        send(message)
 
 
 def main():

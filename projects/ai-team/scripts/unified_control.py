@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 통합 제어 시스템 (Unified Control)
 봇 제어, 에이전트 제어, 자동 수정을 하나의 스크립트로
@@ -31,7 +31,7 @@ AI_TEAM_ROOT = os.path.join(PROJECT_ROOT, "projects", "ai-team")
 sys.path.insert(0, AI_TEAM_ROOT)
 
 try:
-    from _shared.env_loader import load_env
+    from _shared.env import load_env
     load_env()
 except:
     # env_loader 없으면 직접 로드

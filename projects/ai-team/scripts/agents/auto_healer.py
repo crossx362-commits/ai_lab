@@ -1,4 +1,4 @@
-"""
+﻿"""
 에이전트 자가 수정 시스템 (Auto Healer)
 에이전트들의 문제를 자동으로 감지하고 수정
 
@@ -18,8 +18,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 
 load_env()
 
@@ -234,7 +234,7 @@ def run_auto_healer(notify: bool = True) -> dict:
             if detail.get("failed_errors"):
                 message += f"\n• {detail['agent']}: {len(detail['failed_errors'])}개 문제"
 
-        send_telegram_message(message)
+        send(message)
 
     return results
 
@@ -247,7 +247,7 @@ def daemon_mode(interval_minutes: int = 30):
             run_auto_healer(notify=True)
         except Exception as e:
             print(f"❌ 오류 발생: {e}")
-            send_telegram_message(f"🚨 Auto Healer 오류: {e}")
+            send(f"🚨 Auto Healer 오류: {e}")
 
         print(f"\n⏸️ {interval_minutes}분 대기 중...\n")
         time.sleep(interval_minutes * 60)

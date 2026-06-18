@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 트레이딩 팀 상태 확인 스크립트
 """
@@ -16,7 +16,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 def check_api_keys():

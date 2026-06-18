@@ -9,6 +9,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Windows 인코딩 수정
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 THIS = Path(__file__).resolve()
 AI_TEAM = THIS.parents[1]
@@ -63,8 +68,7 @@ def find_python_pids(script_name: str) -> list[str]:
 
 def check_env():
     try:
-        from _shared.env_loader import load_env
-
+        from _shared.env import load_env
         load_env()
     except Exception as e:
         return fail(f"load_env failed: {e}")
@@ -73,22 +77,18 @@ def check_env():
     missing = [k for k in required if not os.getenv(k)]
     if missing:
         return warn("missing env: " + ", ".join(missing))
-    return ok("central env loaded")
+    return ok("✅ unified env loaded")
 
 
 def check_runtime():
-    agents = {
-        "youngsuk": "telegram_receiver.py",
-        "hyunbin": "crypto_market_intelligence.py",
-        "dave": "upbit_auto_trader.py",
-        "leo": "leo_aggressive_trader.py",
-    }
-    parts = []
-    for name, script in agents.items():
-        pids = find_python_pids(script)
-        parts.append(f"{name}={','.join(pids) if pids else 'down'}")
-    down = [p for p in parts if p.endswith("down")]
-    return (warn if down else ok)("; ".join(parts))
+    try:
+        from _shared.notify import agent_status
+        status = agent_status()
+        parts = [f"{k}={v}" for k, v in status.items()]
+        down = [k for k, v in status.items() if v == "down"]
+        return (warn if down else ok)("; ".join(parts))
+    except Exception as e:
+        return fail(f"runtime check failed: {e}")
 
 
 def check_schedule():

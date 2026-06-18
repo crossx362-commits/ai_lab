@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 petnna_monitor.py — 케빈: Petnna PWA 가용성 실시간 모니터링
 SKILL.md Mission 3 반영:
@@ -25,8 +25,8 @@ _project_root = os.path.abspath(os.path.join(_ai_team_root, "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 
 load_env()
 
@@ -195,9 +195,9 @@ def main():
         print(report.replace("<b>", "").replace("</b>", ""))
         # SKILL.md: Critical → 즉시 전송, Warning → 데일리 포함, Normal → 로그만
         if severity == "critical":
-            send_telegram_message(f"🚨 <b>[케빈] CRITICAL</b>\n{report}")
+            send(f"🚨 <b>[케빈] CRITICAL</b>\n{report}")
         elif severity == "warning":
-            send_telegram_message(f"⚠️ <b>[케빈] WARNING</b>\n{report}")
+            send(f"⚠️ <b>[케빈] WARNING</b>\n{report}")
         else:
             print("✅ 정상 — 텔레그램 알림 생략 (SKILL.md: Normal = 로그만)")
 

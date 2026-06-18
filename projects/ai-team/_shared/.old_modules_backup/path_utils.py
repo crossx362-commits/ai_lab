@@ -1,4 +1,4 @@
-"""
+﻿"""
 path_utils.py - 경로 설정 유틸리티 (중복 코드 중앙화)
 
 모든 에이전트 스크립트에서 사용하는 공통 경로 설정 로직을 통합합니다.
@@ -71,8 +71,8 @@ def setup_import_paths(current_file: str = None):
     Example:
         >>> from _shared.path_utils import setup_import_paths
         >>> setup_import_paths(__file__)
-        >>> from _shared.env_loader import load_env
-        >>> from _shared.telegram_notifier import send_telegram_message
+        >>> from _shared.env import load_env
+        >>> from _shared.notify import send
 
     Args:
         current_file: __file__ 경로

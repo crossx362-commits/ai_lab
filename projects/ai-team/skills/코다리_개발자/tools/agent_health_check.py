@@ -1,4 +1,4 @@
-"""
+﻿"""
 agent_health_check.py — 코다리: 전체 에이전트 상태 및 시스템 자원 통합 점검
 에이전트별 리서치 메모리 갱신 여부 및 시스템 부하(CPU/RAM)를 체크하여 보고합니다.
 """
@@ -20,8 +20,8 @@ _ai_team = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 if _ai_team not in sys.path:
     sys.path.insert(0, _ai_team)
 _root = os.path.abspath(os.path.join(_ai_team, ".."))
-from _shared.env_loader import load_env as _load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env as _load_env
+from _shared.notify import send
 from _shared.resource_utils import get_resource_report_html, get_heavy_processes_report
 
 def _check_file_freshness(file_path, max_hours=24):
@@ -82,7 +82,7 @@ def run_check():
     
     # 리소스가 위험하거나 에이전트 지연 시 텔레그램 발송
     if "🔴" in resource_report or has_issues:
-        send_telegram_message(full_report)
+        send(full_report)
 
 if __name__ == "__main__":
     run_check()

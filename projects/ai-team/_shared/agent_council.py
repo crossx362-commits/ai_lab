@@ -1,4 +1,4 @@
-"""
+﻿"""
 agent_council.py — 자율 에이전트 회의 엔진
 
 내부 문제 발생 시 에이전트들이 회의를 열고 합의된 패치를 적용한 뒤
@@ -20,11 +20,11 @@ if _here not in sys.path:
 
 try:
     from ollama_client import chat as lm_chat, is_available as lm_available
-    from telegram_notifier import send_telegram_message
+    from telegram_notifier import send
     from env_loader import find_project_root, load_env
 except ImportError:
-    from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-    from _shared.telegram_notifier import send_telegram_message
+    from _shared.llm import ollama as lm_chat, is_available as lm_available
+    from _shared.notify import send
     from _shared.env_loader import find_project_root, load_env
 
 _PROJECT_ROOT = find_project_root(_here)
@@ -168,7 +168,7 @@ def convene(
     """
     if not lm_available():
         msg = "⚠️ [에이전트 회의] Ollama 오프라인 — 회의 불가. 수동 확인 필요."
-        send_telegram_message(msg)
+        send(msg)
         return {"success": False, "executed": False, "summary": msg, "patch": None}
 
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -177,7 +177,7 @@ def convene(
     print(f"  문제: {problem_summary[:80]}")
     print(f"{'='*55}")
 
-    send_telegram_message(
+    send(
         f"🚨 [에이전트 회의 소집]\n"
         f"소집자: {caller_agent}\n"
         f"문제: {problem_summary[:200]}"
@@ -300,7 +300,7 @@ def convene(
         f"👑 예원 결재: {decision.get('ceo_comment', '없음')}\n\n"
         f"{'✅ 패치 자동 적용 완료' if executed else ('🔧 패치 준비됨 (미실행)' if decision.get('final_approval') else '⚠️ 수동 확인 필요')}: {exec_result}"
     )
-    send_telegram_message(report)
+    send(report)
 
     summary = f"회의완료|executed={executed}|{decision.get('ceo_comment','')[:80]}"
     print(f"\n{'='*55}\n  [회의 종료] {summary}\n{'='*55}\n")

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 AI 에이전트 로컬 연결 체크 스크립트.
 
@@ -23,7 +23,7 @@ WORKSPACE_ROOT = AI_TEAM_ROOT.parent.parent
 if str(AI_TEAM_ROOT) not in sys.path:
     sys.path.insert(0, str(AI_TEAM_ROOT))
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 
 load_env()
 

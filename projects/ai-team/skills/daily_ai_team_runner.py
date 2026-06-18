@@ -1,4 +1,4 @@
-"""
+﻿"""
 daily_ai_team_runner.py — AI 팀 일일 자동 실행 시스템
 
 Notion 리포트를 읽고 Ollama를 통해 에이전트들이 자율적으로 작업하며,
@@ -15,12 +15,12 @@ _ai_team_root = os.path.abspath(os.path.join(_here, ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 from _shared.notion_report_manager import NotionReportManager
-from _shared.ollama_client import chat as ollama_chat
-from _shared.telegram_notifier import send_telegram_message
+from _shared.llm import ollama as ollama_chat
+from _shared.notify import send
 
 
 def read_notion_report() -> str:
@@ -223,7 +223,7 @@ def run_daily_automation():
     print(f"  작업 {len(plan.get('tasks', []))}개 식별")
 
     # 텔레그램 알림
-    send_telegram_message(
+    send(
         f"🤖 AI 팀 일일 작업 시작\n\n"
         f"📋 {plan.get('summary', 'N/A')}\n"
         f"📌 작업: {len(plan.get('tasks', []))}개"
@@ -248,7 +248,7 @@ def run_daily_automation():
 
             # 개별 결과 알림
             icon = "✅" if success else "❌"
-            send_telegram_message(
+            send(
                 f"{icon} [{agent}] {task.get('action', '')}\n"
                 f"결과: {result_msg[:200]}"
             )
@@ -312,7 +312,7 @@ def run_daily_automation():
     print(f"  완료: {success_count}/{len(results)} 성공")
     print("="*60)
 
-    send_telegram_message(
+    send(
         f"📊 AI 팀 일일 작업 완료\n\n"
         f"✅ 성공: {success_count}\n"
         f"❌ 실패: {len(results) - success_count}\n"

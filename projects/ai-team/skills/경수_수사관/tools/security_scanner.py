@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 경수(Kyungsu) 수사관 - 보안 스캐너 도구
 ECC AgentShield를 사용한 프롬프트 인젝션 탐지 및 악성 코드 스캐닝
@@ -21,9 +21,9 @@ for _ in range(6):
 sys.path.insert(0, _root)
 sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
-from _shared.gemini_client import text
+from _shared.env import load_env
+from _shared.notify import send
+from _shared.llm import text
 
 load_env()
 
@@ -301,7 +301,7 @@ def main():
 
 리포트: {report_path}
 """
-        send_telegram_message(message)
+        send(message)
 
 
 if __name__ == "__main__":

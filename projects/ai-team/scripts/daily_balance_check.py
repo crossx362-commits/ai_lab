@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 일일 잔고 점검 스크립트
 매일 아침 9시 잔고 확인 및 리포트
@@ -13,8 +13,8 @@ sys.path.insert(0, AI_TEAM_ROOT)
 DAVE_TOOLS = os.path.join(AI_TEAM_ROOT, "skills", "데이브_주식", "tools")
 sys.path.insert(0, DAVE_TOOLS)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 
 load_env()
 
@@ -80,7 +80,7 @@ KRW: {krw:,.0f}원
 """
 
     print(msg)
-    send_telegram_message(msg)
+    send(msg)
 
 
 if __name__ == "__main__":

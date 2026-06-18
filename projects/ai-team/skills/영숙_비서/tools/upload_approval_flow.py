@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 영숙의 업로드 승인 플로우
@@ -22,8 +22,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.telegram_notifier import send_telegram_message
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.notify import send
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 # CEO Dispatcher import
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
@@ -85,7 +85,7 @@ def request_upload_approval(
     if platform == "Instagram":
         yeongsuk_report += f"**해시태그**: {' '.join(content_info.get('hashtags', [])[:5])}\n"
 
-    send_telegram_message(yeongsuk_report)
+    send(yeongsuk_report)
     print(f"  ✅ 사장님께 보고 완료\n")
 
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -108,7 +108,7 @@ def request_upload_approval(
             f"**거절 사유**:\n{ceo_feedback['comment']}\n\n"
             f"**조치**: {agent}에게 수정 요청"
         )
-        send_telegram_message(rejection_report)
+        send(rejection_report)
 
         return {
             "approved": False,
@@ -133,7 +133,7 @@ def request_upload_approval(
         f"**제목**: {content_info.get('title', content_info.get('caption', 'N/A')[:100]}\n\n"
         f"지금 {agent}에게 업로드 지시를 내립니다! 🚀"
     )
-    send_telegram_message(final_approval)
+    send(final_approval)
 
     # 업로드 지시
     upload_command = _issue_upload_command(agent, platform, content_info)
@@ -262,7 +262,7 @@ def _issue_upload_command(agent: str, platform: str, content_info: Dict) -> str:
         command = f"{agent} {platform} 업로드"
         upload_instruction = f"[영숙] {agent}에게 업로드 지시"
 
-    send_telegram_message(upload_instruction)
+    send(upload_instruction)
 
     return command
 

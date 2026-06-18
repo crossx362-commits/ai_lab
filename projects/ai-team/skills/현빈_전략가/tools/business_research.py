@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import json
 import datetime
@@ -7,7 +7,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 from _shared.env_loader import find_project_root
 _root = find_project_root(_here)
 

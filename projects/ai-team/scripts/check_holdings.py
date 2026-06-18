@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """보유 코인 현황 확인"""
-import os
-import sys
+import os, sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-_here = os.path.dirname(os.path.abspath(__file__))
-AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, ".."))
-sys.path.insert(0, AI_TEAM_ROOT)
+# Add _shared to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-DAVE_TOOLS = os.path.join(AI_TEAM_ROOT, "skills", "데이브_주식", "tools")
-sys.path.insert(0, DAVE_TOOLS)
-
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 import pyupbit
+# Use upbit_analyzer from Dave's tools
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "skills", "데이브_주식", "tools"))
 import upbit_analyzer
 
 def check_holdings():

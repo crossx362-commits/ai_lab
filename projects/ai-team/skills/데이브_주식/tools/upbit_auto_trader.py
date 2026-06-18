@@ -1,39 +1,20 @@
-# -*- coding: utf-8 -*-
-"""
-데이브 업비트 다중 코인 자동 매매 봇 (완전 실시간 분석 및 진입 고도화 버전)
-"""
-import os
-import sys
+#!/usr/bin/env python3
+"""데이브 업비트 다중 코인 자동 매매 봇"""
+import os, sys, time, datetime, subprocess
 
-# UTF-8 인코딩 강제 (Windows)
-if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
+# UTF-8 인코딩 강제
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# 데몬 모드일 때만 중복 실행 방지 (최대한 빨리 체크)
-if "--daemon" in sys.argv:
-    _here = os.path.dirname(os.path.abspath(__file__))
-    AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
-    sys.path.insert(0, AI_TEAM_ROOT)
-
-    from _shared.process_lock import acquire_lock
-    if not acquire_lock("dave"):
-        sys.exit(0)
-
-# 나머지 import
-import time
-import datetime
-import subprocess
-
+# _shared 경로 추가
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
+from _shared.process import ProcessLock
 
 load_env()
 
@@ -396,7 +377,7 @@ def run_auto_trade_cycle():
                 # 극단 상황: 김프 +15% 초과 or 공포탐욕 85 이상 → 긴급 청산 고려
                 if (kp > 15.0 or fg >= 85) and profit_ratio >= 0.01:  # +1% 이상 수익
                     print(f"⚠️ [Dave] {coin} 시장 과열 (김프 {kp:.1f}%, 탐욕 {fg}) - 이익 실현 청산")
-                    send_telegram_message(f"⚠️ [데이브] {coin} 과열 청산 {profit_ratio*100:+.1f}%")
+                    send(f"⚠️ [데이브] {coin} 과열 청산 {profit_ratio*100:+.1f}%")
                     upbit_analyzer.execute_sell(ticker, btc_balance)
                     emergency_exit = True
 
@@ -427,7 +408,7 @@ def run_auto_trade_cycle():
                 else:
                     msg = f"🚨 [데이브] 손절 집행\n📌 {ticker}\n💰 매도가: {current_price:,}원\n📉 수익률: {profit_ratio*100:.2f}%"
                 print(msg)
-                send_telegram_message(msg)
+                send(msg)
                 run_auto_trade_cycle._peaks.pop(ticker, None)
                 res = upbit_analyzer.execute_sell_all(ticker)
                 print(res)
@@ -495,7 +476,7 @@ def run_auto_trade_cycle():
 
                     msg = f"💼 [데이브] {coin} 매수 {amount_str} ({best['score']}점)"
                     print(msg)
-                    send_telegram_message(msg)
+                    send(msg)
                     res = upbit_analyzer.execute_buy(best_ticker, buy_amount)
                     print(res)
 
@@ -512,7 +493,7 @@ def run_auto_trade_cycle():
 
                     msg = f"📉 [데이브] 실시간 스캔 매도 조건 감지!\n📌 대상: {best_ticker}\n📉 비중: {percentage}%\n🚨 시장가 매도를 집행합니다."
                     print(msg)
-                    send_telegram_message(msg)
+                    send(msg)
                     res = upbit_analyzer.execute_sell(best_ticker, sell_volume)
                     print(res)
                 else:
@@ -550,7 +531,7 @@ def send_status_report():
 
         if holdings:
             msg = f"💼 [데이브] {' | '.join(holdings)} | 예수금 {krw/10000:.0f}만원"
-            send_telegram_message(msg)
+            send(msg)
 
         print(f"[Report] 4시간 현황 보고 전송 완료")
     except Exception as e:
@@ -562,21 +543,21 @@ if __name__ == "__main__":
 
     if "--once" in args:
         run_auto_trade_cycle()
-    else:
-        from _shared.process_lock import release_lock
-
+    elif "--daemon" in args:
         print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS
 
-        try:
-            while True:
-                try:
-                    run_auto_trade_cycle()
-                    send_status_report()
-                except Exception as e:
-                    print(f"[Daemon Error] {e}")
-                time.sleep(10)
-        except KeyboardInterrupt:
-            print("[Dave] stopped")
-        finally:
-            release_lock("dave")
+        with ProcessLock("dave"):
+            try:
+                while True:
+                    try:
+                        run_auto_trade_cycle()
+                        send_status_report()
+                    except Exception as e:
+                        print(f"[Daemon Error] {e}")
+                    time.sleep(10)
+            except KeyboardInterrupt:
+                print("[Dave] stopped")
+    else:
+        print("Usage: python upbit_auto_trader.py [--once | --daemon]")
+        sys.exit(1)

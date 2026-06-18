@@ -1,28 +1,34 @@
-# ai-team Harness
+# AI Team Harness
 
-Lightweight checks for the current ai-team runtime and repo layout.
+**목적**: 레포지토리 구조 + 런타임 상태 검증
 
-Run from repo root:
+## 사용법
 
-```powershell
+```bash
 python projects/ai-team/harness/check_all.py
 ```
 
-Checks:
+## 검증 항목
 
-- central env loading
-- Youngsuk, Hyunbin, Dave, Leo process presence
-- Youngsuk schedules and last-run file
-- trading intelligence/log freshness
-- core folder structure
-- report layout drift
+| 항목 | 설명 |
+|------|------|
+| env | 환경변수 로딩 (_shared.env) |
+| runtime | 에이전트 실행 상태 (youngsuk, hyunbin, dave, leo) |
+| schedule | 영숙 스케줄러 유효성 |
+| trading | 트레이딩 데이터 최신성 |
+| structure | 폴더 구조 완전성 |
 
-It also writes the latest status snapshot to:
+## 출력 예시
 
-```text
-reports/status/harness_latest.json
+```
+[OK] env: ✅ unified env loaded
+[WARN] runtime: youngsuk=down; hyunbin=1728
+[OK] schedule: enabled 14/14
 ```
 
-Use it before and after folder cleanup or migration. The checks avoid secrets and do not print key values.
+## 통합 모듈
 
-`projects/ai-team/reports/` should stay empty. General generated reports should live under root `reports/`.
+하네스는 5개 통합 모듈을 사용:
+- env.py, llm.py, notify.py, process.py, utils.py
+
+자세한 내용: `MIGRATION_GUIDE.md`

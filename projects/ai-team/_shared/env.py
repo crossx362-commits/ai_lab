@@ -1,0 +1,154 @@
+"""Unified environment loader - replaces env_loader, env_config, env_crypto."""
+import base64
+import getpass
+import os
+import platform
+from pathlib import Path
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+
+# ==================== ROOT DETECTION ====================
+
+def find_root(start: str | None = None) -> Path:
+    """Find project root (D:/ai_lab)."""
+    root = Path(start or __file__).resolve()
+    for _ in range(10):
+        if (root / "ENV_MANIFEST.json").exists() or (root / ".env.encrypted").exists():
+            return root
+        if root.parent == root:
+            break
+        root = root.parent
+    return Path(__file__).resolve().parent
+
+
+# ==================== ENCRYPTION ====================
+
+def _get_key() -> bytes:
+    """Machine-local Fernet key."""
+    salt = b"ai_team_env_salt_v1"
+    password = f"{getpass.getuser()}@{platform.node()}".encode()
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=100000, backend=default_backend())
+    return base64.urlsafe_b64encode(kdf.derive(password))
+
+
+def encrypt(env_path: str = ".env", out: str = ".env.encrypted") -> bool:
+    """Encrypt .env → .env.encrypted."""
+    try:
+        data = Path(env_path).read_bytes()
+        encrypted = Fernet(_get_key()).encrypt(data)
+        Path(out).write_bytes(encrypted)
+        print(f"✅ Encrypted {len(data):,} → {len(encrypted):,} bytes")
+        return True
+    except Exception as e:
+        print(f"❌ Encryption failed: {e}")
+        return False
+
+
+def decrypt(enc_path: str = ".env.encrypted", out: str = ".env.decrypted") -> bool:
+    """Decrypt .env.encrypted → .env.decrypted."""
+    try:
+        encrypted = Path(enc_path).read_bytes()
+        data = Fernet(_get_key()).decrypt(encrypted)
+        Path(out).write_bytes(data)
+        print(f"✅ Decrypted {len(encrypted):,} → {len(data):,} bytes")
+        return True
+    except Exception as e:
+        print(f"❌ Decryption failed: {e}")
+        return False
+
+
+def load_encrypted(enc_path: Path) -> dict[str, str]:
+    """Return env dict from .env.encrypted."""
+    try:
+        encrypted = enc_path.read_bytes()
+        data = Fernet(_get_key()).decrypt(encrypted).decode()
+        env = {}
+        for line in data.splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip().strip('"').strip("'")
+        return env
+    except Exception:
+        return {}
+
+
+# ==================== LOAD ENV ====================
+
+def load_env(start: str | None = None) -> None:
+    """Load .env.encrypted or .env into os.environ."""
+    root = find_root(start)
+
+    # Try encrypted first
+    enc = root / ".env.encrypted"
+    if enc.exists():
+        env = load_encrypted(enc)
+        if env:
+            os.environ.update(env)
+            return
+
+    # Fallback to plaintext
+    plain = root / ".env"
+    if plain.exists():
+        for line in plain.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ[k.strip()] = v.strip().strip('"').strip("'")
+
+
+# ==================== VALIDATION ====================
+
+REQUIRED_VARS = [
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "GEMINI_API_KEY",
+]
+
+TRADING_VARS = ["UPBIT_ACCESS_KEY", "UPBIT_SECRET_KEY"]
+
+
+def validate(required: list[str] = REQUIRED_VARS) -> None:
+    """Validate required env vars."""
+    missing = [v for v in required if not os.getenv(v)]
+    if missing:
+        print("❌ Missing env vars:", ", ".join(missing))
+        print("   Run: python projects/ai-team/_shared/env.py decrypt")
+        raise SystemExit(1)
+
+
+def get(key: str, default: str = "", warn: bool = True) -> str:
+    """Get env var with fallback."""
+    val = os.getenv(key)
+    if not val:
+        if warn:
+            print(f"⚠️  {key} not set, using default: {default}")
+        return default
+    return val
+
+
+# ==================== CLI ====================
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  python env.py encrypt [.env] [.env.encrypted]")
+        print("  python env.py decrypt [.env.encrypted] [.env.decrypted]")
+        raise SystemExit(1)
+
+    cmd = sys.argv[1]
+    if cmd == "encrypt":
+        ok = encrypt(sys.argv[2] if len(sys.argv) > 2 else ".env",
+                     sys.argv[3] if len(sys.argv) > 3 else ".env.encrypted")
+    elif cmd == "decrypt":
+        ok = decrypt(sys.argv[2] if len(sys.argv) > 2 else ".env.encrypted",
+                     sys.argv[3] if len(sys.argv) > 3 else ".env.decrypted")
+    else:
+        print(f"Unknown command: {cmd}")
+        ok = False
+    raise SystemExit(0 if ok else 1)

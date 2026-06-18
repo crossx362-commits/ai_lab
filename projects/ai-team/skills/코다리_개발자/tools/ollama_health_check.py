@@ -1,4 +1,4 @@
-"""
+﻿"""
 ollama_health_check.py — 코다리의 Ollama 연동 상태 진단·원인 분석·자동 수복
 2시간마다 호출: 연결 확인 → 다운 시 원인 진단(Gemini 폴백) → 재시작 시도 → 보고.
 """
@@ -17,8 +17,8 @@ _ai_team = os.path.join(_root, "projects", "ai-team")
 if _ai_team not in sys.path:
     sys.path.insert(0, _ai_team)
 
-from _shared.env_loader import load_env as _load_env
-from _shared.ollama_client import chat as lm_chat
+from _shared.env import load_env as _load_env
+from _shared.llm import ollama as lm_chat
 from _shared.resource_utils import get_system_load
 import _shared.gemini_client as _gc
 

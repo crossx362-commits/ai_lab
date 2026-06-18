@@ -1,6 +1,6 @@
-import json
-from _shared.telegram_notifier import send_telegram_message
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+﻿import json
+from _shared.notify import send
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 # 즉시 반려 기준 — 이 키워드가 포함되면 Ollama 검토 없이 바로 거부
 _HARD_BANNED = [
@@ -27,7 +27,7 @@ def await_approval(decision: str | dict) -> bool:
         if keyword in decision_lower:
             print(f"❌ [예원 CEO] 금지 키워드 '{keyword}' 감지 → 반려")
             try:
-                send_telegram_message(f"❌ [예원 CEO] 금지 키워드 '{keyword}' 포함 → 반려")
+                send(f"❌ [예원 CEO] 금지 키워드 '{keyword}' 포함 → 반려")
             except Exception:
                 pass
             return False
@@ -51,7 +51,7 @@ def await_approval(decision: str | dict) -> bool:
             if "REJECTED" in res_upper and "APPROVED" not in res_upper:
                 print("❌ [예원 CEO] 기획안 반려")
                 try:
-                    send_telegram_message(f"❌ [예원 CEO] 기획안 반려: {res_upper[:50]}")
+                    send(f"❌ [예원 CEO] 기획안 반려: {res_upper[:50]}")
                 except Exception:
                     pass
                 return False
@@ -60,7 +60,7 @@ def await_approval(decision: str | dict) -> bool:
 
     print("✅ [예원 CEO] 기획안 승인")
     try:
-        send_telegram_message(f"✅ [예원 CEO] 기획안 승인 완료")
+        send(f"✅ [예원 CEO] 기획안 승인 완료")
     except Exception:
         pass
     return True
@@ -102,7 +102,7 @@ def ceo_coaching_on_rejection(agent: str, title: str, description: str, issues: 
             corrected["directive"] = data.get("directive", corrected["directive"])
             print(f"👑 [예원 CEO 지시] {corrected['directive']}")
             try:
-                send_telegram_message(
+                send(
                     f"👑 [예원 CEO 지시서]\n수정대상: {agent}\n사유: {issues_str}\n지시: {corrected['directive']}"
                 )
             except Exception:

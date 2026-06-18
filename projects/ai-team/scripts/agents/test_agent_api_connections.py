@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 AI 에이전트 API 연결 실제 테스트
 환경변수뿐만 아니라 실제 API 연결을 테스트합니다.
@@ -18,7 +18,7 @@ _ai_team_root = os.path.abspath(os.path.join(_here, "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 
 # 환경 변수 로드
 load_env()
@@ -27,7 +27,7 @@ load_env()
 def test_gemini_api():
     """Gemini API 연결 테스트"""
     try:
-        from _shared.gemini_client import text
+        from _shared.llm import text
         result = text("Say 'OK' only", max_tokens=10)
         return result is not None, result[:50] if result else "No response"
     except Exception as e:

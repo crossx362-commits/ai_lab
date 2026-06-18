@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 레오 자가 학습 시스템
 거래 결과를 분석하고 전략을 개선
@@ -13,7 +13,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 from _shared.ollama_client import chat
 
 load_env()

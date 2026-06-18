@@ -1,4 +1,4 @@
-"""
+﻿"""
 ai_team_scheduler.py — AI 팀 자동 작업 스케줄러
 
 Notion 통합 리서치 리포트에서 작업을 읽고,
@@ -14,11 +14,11 @@ _ai_team_root = os.path.abspath(os.path.join(_here, ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 from _shared.notion_report_manager import NotionReportManager
-from _shared.telegram_notifier import send_telegram_message
+from _shared.notify import send
 
 
 # 에이전트 실행 함수 매핑
@@ -99,7 +99,7 @@ def run_scheduler(interval_minutes: int = 30, max_iterations: int = None):
 
                     # 작업 시작 알림
                     manager.update_task_status(task_id, "In progress")
-                    send_telegram_message(
+                    send(
                         f"🤖 [{agent_name}] 작업 시작\n"
                         f"제목: {task_title}\n"
                         f"설명: {task.get('description', 'N/A')}"
@@ -111,7 +111,7 @@ def run_scheduler(interval_minutes: int = 30, max_iterations: int = None):
                     # 결과 기록
                     if success:
                         manager.update_task_status(task_id, "Done", result)
-                        send_telegram_message(
+                        send(
                             f"✅ [{agent_name}] 작업 완료\n"
                             f"제목: {task_title}\n"
                             f"결과: {result[:200]}"
@@ -119,7 +119,7 @@ def run_scheduler(interval_minutes: int = 30, max_iterations: int = None):
                         print(f"  ✅ 작업 완료: {task_title}")
                     else:
                         manager.update_task_status(task_id, "Failed", result)
-                        send_telegram_message(
+                        send(
                             f"❌ [{agent_name}] 작업 실패\n"
                             f"제목: {task_title}\n"
                             f"오류: {result[:200]}"

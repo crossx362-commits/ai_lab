@@ -1,4 +1,4 @@
-"""
+﻿"""
 posting_scheduler.py — 영숙: 에이전트 포스팅 일정 Google Calendar 자동 등록
 
 기능:
@@ -20,8 +20,8 @@ for _ in range(6):
 sys.path.insert(0, _root)
 
 from _shared.calendar_client import get_service, create_event, event_exists
-from _shared.telegram_notifier import send_telegram_message
-from _shared.env_loader import load_env as _load_env
+from _shared.notify import send
+from _shared.env import load_env as _load_env
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
@@ -109,7 +109,7 @@ def run_schedule(target_date: datetime.date = None) -> int:
             )
             + "\n\n구글 캘린더에서 확인해보세요! 📆"
         )
-        send_telegram_message(msg)
+        send(msg)
         print(f"  [포스팅 스케줄러] {len(created)}개 등록 완료: {agents_str}")
     else:
         print("  [포스팅 스케줄러] 새로 등록할 일정 없음")

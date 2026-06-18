@@ -1,23 +1,21 @@
-# -*- coding: utf-8 -*-
-"""
-현빈 - 암호화폐 시장 정보 수집 에이전트
-데이브(거래봇)에게 필요한 매크로/온체인/심리 지표를 실시간 수집
-"""
-import os
-import sys
-import json
-import time
-import datetime
-import requests
+﻿#!/usr/bin/env python3
+"""현빈 - 암호화폐 시장 정보 수집 에이전트"""
+import os, sys, json, time, datetime, requests
 from typing import Dict, Any
+
+# UTF-8 인코딩 강제
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
+from _shared.process import ProcessLock
 
 load_env()
 
@@ -257,7 +255,7 @@ class CryptoMarketIntelligence:
         # 변화가 있을 때만 알림
         if alerts:
             msg = "🚨 [현빈] 중요 시장 변화\n" + "\n".join(alerts)
-            send_telegram_message(msg)
+            send(msg)
 
         # 현재 상태 저장
         with open(state_file, "w", encoding="utf-8") as f:
@@ -310,33 +308,19 @@ def main(notify=False):
 
 
 if __name__ == "__main__":
-    # UTF-8 출력 강제 (데몬 모드용)
-    import sys
-    import io
-    if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
-    # 1회 실행: python crypto_market_intelligence.py
-    # 데몬 모드: 5분마다 수집
     if "--daemon" in sys.argv:
-        # 중복 실행 방지
-        from _shared.process_lock import acquire_lock, release_lock
-        if not acquire_lock("hyunbin"):
-            sys.exit(0)
-
         print("🤖 [현빈] 암호화폐 정보 수집 데몬 시작 (5분 주기)")
-        # 시작 메시지 전송 안 함 (혼란 방지)
 
-        try:
-            while True:
-                try:
-                    main(notify=True)  # 데몬 모드는 중요 변화만 알림
-                except Exception as e:
-                    print(f"[Daemon Error] {e}")
+        with ProcessLock("hyunbin"):
+            try:
+                while True:
+                    try:
+                        main(notify=True)  # 데몬 모드는 중요 변화만 알림
+                    except Exception as e:
+                        print(f"[Daemon Error] {e}")
 
-                time.sleep(300)  # 5분 대기
-        finally:
-            release_lock("hyunbin")
+                    time.sleep(300)  # 5분 대기
+            except KeyboardInterrupt:
+                print("[Hyunbin] stopped")
     else:
         main(notify=False)  # 단발 실행은 알림 안 함

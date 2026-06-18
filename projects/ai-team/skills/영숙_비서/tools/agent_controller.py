@@ -1,4 +1,4 @@
-"""
+﻿"""
 개별 에이전트 제어 스크립트
 특정 에이전트를 시작/종료/재시작할 수 있음
 """
@@ -12,7 +12,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 # 에이전트 정의 (이름 -> 스크립트 경로)

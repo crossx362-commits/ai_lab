@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 reauth_youtube.py -- Luna YouTube OAuth token reissue script
 A browser window will open automatically. Log in to your Google account and approve.
@@ -17,7 +17,7 @@ _ai_team_root = os.path.abspath(os.path.join(_here, "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 from google_auth_oauthlib.flow import InstalledAppFlow

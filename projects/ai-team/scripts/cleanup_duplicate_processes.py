@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 중복 프로세스 자동 정리 스크립트.
 
@@ -23,8 +23,8 @@ AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, ".."))
 WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 
 load_env()
 
@@ -282,7 +282,7 @@ def main():
         msg = "✅ 중복 프로세스 정리 완료\n" + "\n".join(lines)
         print("\n" + msg)
         if not dry_run:
-            send_telegram_message(msg)
+            send(msg)
     else:
         print("\n✅ 정리할 중복 프로세스 없음")
 
@@ -291,7 +291,7 @@ def main():
         msg = "⚠️ 일부 중복 프로세스 정리 실패\n" + "\n".join(lines)
         print("\n" + msg)
         if not dry_run:
-            send_telegram_message(msg)
+            send(msg)
         return 1
 
     time.sleep(1)

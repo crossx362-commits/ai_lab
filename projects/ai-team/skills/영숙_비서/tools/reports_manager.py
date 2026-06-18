@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Reports 폴더 관리 도구 (reports_manager.py)
 영숙 비서가 에이전트들의 리서치 보고서, 학습 로그, 작업 히스토리를 관리하고 Notion에 보고서를 전송합니다.
@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT_DIR / "projects" / "ai-team"))
 
 from _shared.knowledge_base import get_kb_dir
 from _shared.notion_client import create_notion_page
-from _shared.ollama_client import chat as ollama_chat
+from _shared.llm import ollama as ollama_chat
 
 REPORTS_DIR = ROOT_DIR / "reports"
 ARCHIVE_DIR = REPORTS_DIR / "archive"

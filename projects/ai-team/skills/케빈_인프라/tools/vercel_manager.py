@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import json
 import urllib.request
@@ -7,7 +7,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
-from _shared.env_loader import load_env, find_project_root
+from _shared.env import load_env, find_project_root
 _root = find_project_root(_here)
 
 def run_vercel_cleanup():

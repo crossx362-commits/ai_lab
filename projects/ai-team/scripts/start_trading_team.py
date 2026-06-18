@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 트레이딩 팀 통합 시작 스크립트
 현빈(정보 수집) + 데이브(보수적 매매) + 레오(공격적 단타) 협업
@@ -19,9 +19,9 @@ _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
-from _shared.process_lock import acquire_lock
+from _shared.env import load_env
+from _shared.notify import send
+from _shared.process import ProcessLock
 
 load_env()
 
@@ -160,7 +160,7 @@ def main():
 3️⃣ 레오 → 공격적 단타 (10초)
    - 현빈 정보 참조, 퀀트 2점 이상 + 위험 필터
 """
-    send_telegram_message(msg)
+    send(msg)
 
     print(f"\n실행 중인 프로세스:")
     for name, proc in processes.items():
@@ -186,7 +186,7 @@ def main():
                         proc.terminate()
                         print(f"  ✅ {name} 종료")
 
-                send_telegram_message("🛑 트레이딩 팀 수동 종료 (자동 재시작 비활성화)")
+                send("🛑 트레이딩 팀 수동 종료 (자동 재시작 비활성화)")
                 break
 
             for name, proc in list(processes.items()):
@@ -197,7 +197,7 @@ def main():
                         continue
                     exit_code = proc.returncode
                     print(f"⚠️  {name} 종료됨 (exit: {exit_code}) → 5초 후 재시작")
-                    send_telegram_message(f"⚠️ {name} 재시작 중...")
+                    send(f"⚠️ {name} 재시작 중...")
                     time.sleep(5)
                     cfg = process_configs.get(name)
                     if cfg:
@@ -214,7 +214,7 @@ def main():
                 proc.wait(timeout=5)
 
         print("\n✅ 모든 프로세스 종료 완료")
-        send_telegram_message("🛑 AI 트레이딩 팀 가동 중지")
+        send("🛑 AI 트레이딩 팀 가동 중지")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 deep_search_6h.py — 현빈 (비즈니스 전략가) 6시간 딥서치 및 딥러닝 리서치 시뮬레이션 모듈.
 """
@@ -23,13 +23,13 @@ if _ai_team_root not in sys.path:
 from _shared.env_loader import find_project_root
 _root = find_project_root(_here)
 try:
-    from _shared.telegram_notifier import send_telegram_message
+    from _shared.notify import send
 except ImportError:
-    def send_telegram_message(msg):
+    def send(msg):
         print(msg)
 
-from _shared.env_loader import load_env as _load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.env import load_env as _load_env
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 # 기본 주제 (펫과나)
 DEFAULT_TOPICS = [
@@ -97,7 +97,7 @@ def run_deep_research(custom_topic=None):
         prompt = topic_info.get("prompt", "리서치 진행")
 
         _log(f"⏰ [Hour {h}/6] 연구 시작: {topic}")
-        send_telegram_message(f"📊 [현빈 딥서치 {h}/6] {topic} 연구 분석 중...")
+        send(f"📊 [현빈 딥서치 {h}/6] {topic} 연구 분석 중...")
 
         research_prompt = (
             f"현빈 전략가 리서치|주제:{topic}|질문:{prompt[:180]}\n"
@@ -152,7 +152,7 @@ def run_deep_research(custom_topic=None):
     
     msg = f"🏆 [현빈] 6시간 딥서치가 완료되었습니다!\n주제: {custom_topic or 'ai-lab 플랫폼'}\n보고서 저장 위치: `{report_path}`"
     _log(msg)
-    send_telegram_message(msg)
+    send(msg)
     return msg
 
 if __name__ == "__main__":

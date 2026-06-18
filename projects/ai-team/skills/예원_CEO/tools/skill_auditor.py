@@ -1,4 +1,4 @@
-"""
+﻿"""
 skill_auditor.py — 예원(CEO): 에이전트 스킬 관리 감독·분석·검토
 
 Ollama로 각 에이전트 SKILL.md를 읽어 분석:
@@ -22,8 +22,8 @@ _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-from _shared.telegram_notifier import send_telegram_message
+from _shared.llm import ollama as lm_chat, is_available as lm_available
+from _shared.notify import send
 from _shared.env_loader import find_project_root
 _root = find_project_root(_here)
 
@@ -185,7 +185,7 @@ def run_audit() -> bool:
 
     # 5. 텔레그램 전송
     if not DRY_RUN:
-        send_telegram_message(report)
+        send(report)
         print("\n✅ 텔레그램 보고 완료")
 
     return True

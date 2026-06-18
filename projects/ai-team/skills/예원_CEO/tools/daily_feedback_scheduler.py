@@ -1,4 +1,4 @@
-"""
+﻿"""
 daily_feedback_scheduler.py — 예원 CEO: 피드백 평가 도구
 
 기능:
@@ -27,8 +27,8 @@ for _ in range(6):
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from _shared.telegram_notifier import send_telegram_message
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.notify import send
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 # evaluate_feedback.py import
 sys.path.insert(0, os.path.dirname(__file__))
@@ -235,7 +235,7 @@ def run_daily_evaluation():
     report = generate_daily_report()
 
     # 3. 텔레그램 전송
-    send_telegram_message(report)
+    send(report)
 
     print("\n✅ 일일 평가 완료 — 텔레그램 보고서 전송됨")
 
@@ -250,7 +250,7 @@ def run_weekly_evaluation():
     report = generate_weekly_report()
 
     # 텔레그램 전송
-    send_telegram_message(report)
+    send(report)
 
     print("\n✅ 주간 리포트 완료 — 텔레그램 전송됨")
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 upload_manager.py — CEO/비서가 호출하는 업로드 자동 관리 도구.
 
 사용법:
@@ -15,7 +15,7 @@ import subprocess
 _here = os.path.dirname(os.path.abspath(__file__))
 _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
 sys.path.insert(0, _ai_team_root)
-from _shared.telegram_notifier import send_telegram_message as _send_telegram
+from _shared.notify import send as _send_telegram
 from _shared.env_loader import find_project_root
 PROJECT_ROOT = find_project_root(_here)
 

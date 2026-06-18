@@ -1,4 +1,4 @@
-"""
+﻿"""
 mermaid_generator.py — 코다리: Mermaid 다이어그램 자동 생성 도구
 
 사용법:
@@ -21,8 +21,8 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, ".agent")):
         break
     _root = os.path.dirname(_root)
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-from _shared.env_loader import load_env
+from _shared.llm import ollama as lm_chat, is_available as lm_available
+from _shared.env import load_env
 
 load_env()
 

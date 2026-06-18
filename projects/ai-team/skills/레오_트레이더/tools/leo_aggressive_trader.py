@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 레오 공격적 단타 트레이더
 고변동성 알트코인 전문, 빠른 수익 실현
@@ -68,6 +68,12 @@ def get_leo_system_prompt():
 
 PRO_TRADER_DIRECTIVE = get_leo_system_prompt()
 
+#!/usr/bin/env python3
+# UTF-8 인코딩 강제
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
@@ -77,8 +83,9 @@ sys.path.insert(0, AI_TEAM_ROOT)
 DAVE_TOOLS = os.path.join(AI_TEAM_ROOT, "skills", "데이브_주식", "tools")
 sys.path.insert(0, DAVE_TOOLS)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
+from _shared.process import ProcessLock
 
 load_env()
 
@@ -402,7 +409,7 @@ def run_leo_cycle():
                     # 2차 익절: 전량 청산
                     print(f"💰 [Leo] {coin} 2차 익절 +{profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
-                    send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
+                    send(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
                     upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses = 0  # 익절 시 연속 손절 리셋
 
@@ -412,14 +419,14 @@ def run_leo_cycle():
                     remaining = balance * 0.5
                     print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}% - 50% 매도")
                     print(f"  청산: {sell_amount:.6f}개 | 유지: {remaining:.6f}개")
-                    send_telegram_message(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
+                    send(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
                     upbit_analyzer.execute_sell(ticker, sell_amount)
 
                 # 손절 체크 (SKILL: -2% 기계적 손절)
                 elif profit_pct <= -2.0:
                     print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
-                    send_telegram_message(f"🛑 [레오] {coin} {profit_pct:.1f}% 손절")
+                    send(f"🛑 [레오] {coin} {profit_pct:.1f}% 손절")
                     upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses += 1
                     daily_loss_pct += profit_pct
@@ -442,12 +449,12 @@ def run_leo_cycle():
                                     if profit_pct >= 0:
                                         # 소폭 이익이라도 청산
                                         print(f"  소폭 이익 {profit_pct:+.2f}% 조기 청산")
-                                        send_telegram_message(f"⚠️ [레오] {coin} 과열 조기청산 {profit_pct:+.1f}%")
+                                        send(f"⚠️ [레오] {coin} 과열 조기청산 {profit_pct:+.1f}%")
                                         upbit_analyzer.execute_sell(ticker, balance)
                                     elif profit_pct <= -1.0:
                                         # -1% 이하 손실 시 조기 손절
                                         print(f"  과열 구간 조기 손절 {profit_pct:.2f}%")
-                                        send_telegram_message(f"🛑 [레오] {coin} 과열 조기손절 {profit_pct:.1f}%")
+                                        send(f"🛑 [레오] {coin} 과열 조기손절 {profit_pct:.1f}%")
                                         upbit_analyzer.execute_sell(ticker, balance)
                                         consecutive_losses += 1
                                         daily_loss_pct += profit_pct
@@ -582,7 +589,7 @@ def run_leo_cycle():
             amount_str = f"{buy_amount:,.0f}원"
 
         msg = f"⚡ [레오] {coin} 진입 {amount_str} ({best['score']}점)"
-        send_telegram_message(msg)
+        send(msg)
 
         res = upbit_analyzer.execute_buy(ticker, buy_amount)
         print(res)
@@ -630,7 +637,7 @@ def send_status_report():
             msg = f"⚡ [레오] {pos} | 일손익 {daily_loss_pct:+.1f}%"
             if consecutive_losses > 0:
                 msg += f" | 연손 {consecutive_losses}회"
-            send_telegram_message(msg)
+            send(msg)
 
         print("[Leo] 2시간 현황 보고 전송 완료")
     except Exception as e:
@@ -662,26 +669,17 @@ if __name__ == "__main__":
     if "--once" in args:
         run_leo_cycle()
     elif "--daemon" in args:
-        import sys
-        import os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-        from _shared.process_lock import acquire_lock, release_lock
-
-        if not acquire_lock("leo"):
-            sys.exit(0)
-
         print("⚡ 레오 공격적 단타 트레이더 시작 (10초 주기)")
 
-        try:
-            while True:
-                try:
-                    run_leo_cycle()
-                    send_status_report()
-                except Exception as e:
-                    print(f"[Leo Daemon Error] {e}")
+        with ProcessLock("leo"):
+            try:
+                while True:
+                    try:
+                        run_leo_cycle()
+                        send_status_report()
+                    except Exception as e:
+                        print(f"[Leo Daemon Error] {e}")
 
-                time.sleep(10)
-        except KeyboardInterrupt:
-            print("[Leo] stopped")
-        finally:
-            release_lock("leo")
+                    time.sleep(10)
+            except KeyboardInterrupt:
+                print("[Leo] stopped")

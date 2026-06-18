@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """YouTube 채널의 모든 영상 메타데이터를 SKILL 규칙에 맞게 일괄 업데이트"""
 import sys
 import os
@@ -10,7 +10,7 @@ sys.path.insert(0, 'projects/ai-team/skills/루나_디렉터')
 sys.path.insert(0, 'projects/ai-team')
 
 from src.youtube_uploader import YouTubeUploader
-from _shared.ollama_client import chat as lm_chat
+from _shared.llm import ollama as lm_chat
 
 def get_all_uploaded_videos(uploader):
     """채널의 모든 업로드 영상 정보 가져오기"""

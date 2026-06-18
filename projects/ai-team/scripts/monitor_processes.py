@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 프로세스 모니터링 데몬
 10분마다 중복 프로세스 체크 및 자동 정리
@@ -18,7 +18,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 
 load_env()
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # 중복 실행 방지 (PID 파일 기반)
-    from _shared.process_lock import acquire_lock, release_lock
+    from _shared.process import ProcessLock
     if not acquire_lock("monitor"):
         sys.exit(0)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 로율(Royul) 변호사 - 컴플라이언스 감사 도구
 ECC 기반 법률/규정 준수 검증 및 라이선스 스캐닝
@@ -22,9 +22,9 @@ for _ in range(6):
 sys.path.insert(0, _root)
 sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
-from _shared.gemini_client import text
+from _shared.env import load_env
+from _shared.notify import send
+from _shared.llm import text
 
 load_env()
 
@@ -385,7 +385,7 @@ def main():
 
 리포트: {report_path}
 """
-        send_telegram_message(message)
+        send(message)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""
+﻿"""
 telegram_health_check.py — 코다리의 텔레그램 봇 상태 진단·자동 수정
 2시간마다 호출: 프로세스 확인 → 로그 분석(Ollama) → 오류 시 재시작·보고.
 """
@@ -17,8 +17,8 @@ _ai_team = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, _ai_team)
 _root = os.path.abspath(os.path.join(_ai_team, ".."))
 
-from _shared.env_loader import load_env as _load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env as _load_env
+from _shared.notify import send
 import _shared.gemini_client as _gc
 
 _BOT_SCRIPT = os.path.join(_root, "projects", "ai-team", "skills", "영숙_비서", "tools", "telegram_receiver.py")
@@ -121,33 +121,33 @@ def run_check():
     # ① 프로세스도 없고 API도 안 됨 → 즉시 재시작
     if not pid and not api_ok:
         analysis = _analyze_log(log_tail)
-        send_telegram_message(
+        send(
             f"🚨 <b>[코다리 긴급]</b> 텔레그램 봇 프로세스 없음 + API 응답 없음\n\n"
             f"📋 로그 분석:\n{analysis}\n\n🔄 재시작 시도..."
         )
         new_pid = _restart_bot()
         if new_pid:
-            send_telegram_message(f"✅ <b>[코다리]</b> 봇 재시작 완료 (PID {new_pid})")
+            send(f"✅ <b>[코다리]</b> 봇 재시작 완료 (PID {new_pid})")
         else:
-            send_telegram_message("❌ <b>[코다리]</b> 봇 재시작 실패 — 수동 점검 필요")
+            send("❌ <b>[코다리]</b> 봇 재시작 실패 — 수동 점검 필요")
         return
 
     # ② 프로세스는 있으나 API 응답 없음 → 재시작
     if pid and not api_ok:
         analysis = _analyze_log(log_tail)
-        send_telegram_message(
+        send(
             f"⚠️ <b>[코다리]</b> 봇 프로세스 존재(PID {pid})하나 API 무응답\n\n"
             f"📋 분석:\n{analysis}\n\n🔄 재시작 시도..."
         )
         new_pid = _restart_bot()
         msg = f"✅ 재시작 완료 (PID {new_pid})" if new_pid else "❌ 재시작 실패 — 수동 점검 필요"
-        send_telegram_message(f"🔧 <b>[코다리]</b> {msg}")
+        send(f"🔧 <b>[코다리]</b> {msg}")
         return
 
     # ③ 정상 실행 중 → 로그 오류 분석
     analysis = _analyze_log(log_tail)
     if analysis != "정상":
-        send_telegram_message(
+        send(
             f"🔧 <b>[코다리 진단]</b> 봇 실행 중(PID {pid})이나 로그 오류 감지\n\n"
             f"📋 분석:\n{analysis}"
         )

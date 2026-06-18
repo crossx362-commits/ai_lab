@@ -1,4 +1,4 @@
-"""
+﻿"""
 youtube_recommender.py — 영숙의 유튜브 추천 모듈
 YOUTUBE_API_KEY 있으면 실제 트렌딩 영상, 없으면 Gemini가 추천 → YouTube 검색 URL.
 """
@@ -16,9 +16,9 @@ for _ in range(6):
     _root = os.path.dirname(_root)
 sys.path.insert(0, _root)
 import urllib.request
-from _shared.telegram_notifier import send_telegram_message
-from _shared.env_loader import load_env as _load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.notify import send
+from _shared.env import load_env as _load_env
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 
 # 영숙 메시지 오프닝 풀
@@ -140,7 +140,7 @@ def send_recommendation():
         }
 
     msg = _format_message(video)
-    ok = send_telegram_message(msg)
+    ok = send(msg)
     print(f"  [영숙] 추천 전송{'완료' if ok else '실패'}: {video['title'][:40]}")
     return ok
 

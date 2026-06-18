@@ -1,10 +1,10 @@
-import os
+﻿import os
 import json
 import urllib.request
 import urllib.error
 
 def create_notion_page(title: str, markdown_content: str) -> str:
-    from _shared.env_loader import load_env
+    from _shared.env import load_env
     load_env()
     
     api_key = os.getenv("NOTION_API_KEY", "")

@@ -28,8 +28,8 @@ sys.path.insert(0, _here)
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
-load_env(PROJECT_ROOT)
+from _shared.env import load_env
+load_env()
 
 try:
     from google import genai
@@ -100,8 +100,8 @@ def get_updates(offset):
 
 def get_agent_status(agent: str = "전체"):
     """에이전트 현황. Args: agent ('예원'/'영숙'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
-    from _shared.agent_status import get_status_report
-    return get_status_report(agent, PROJECT_ROOT)
+    from _shared.notify import status_report
+    return status_report()
 
 def get_schedule_status_summary() -> str:
     """영숙 스케줄러 상태를 간단히 요약한다."""
@@ -291,8 +291,8 @@ def generate_content_with_retry(model_name, contents, config, max_retries=2):
 def local_fallback_answer(msg: str) -> str | None:
     """Ollama 로컬 LLM 폴백."""
     try:
-        from _shared.ollama_client import chat as lm_chat
-        answer = lm_chat(msg, system=SYSTEM, max_tokens=300, temperature=0.7)
+        from _shared.llm import ollama
+        answer = ollama(msg, system=SYSTEM, max_tokens=300, temperature=0.7)
         return answer.strip() if answer else None
     except Exception as oe:
         print(f"❌ 로컬 Ollama 폴백 실패: {oe}")

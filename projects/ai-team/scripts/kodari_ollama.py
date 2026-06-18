@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 kodari_ollama.py — 공용 ollama_client 사용 펫과나 자율 개발
 Usage: python3 projects/ai-team/scripts/kodari_ollama.py
@@ -15,7 +15,7 @@ PETNNA = ROOT / "projects/petnna"
 AI_TEAM = ROOT / "projects/ai-team"
 
 sys.path.insert(0, str(AI_TEAM))
-from _shared.env_loader import load_env
+from _shared.env import load_env
 from _shared import ollama_client as lm
 
 load_env()

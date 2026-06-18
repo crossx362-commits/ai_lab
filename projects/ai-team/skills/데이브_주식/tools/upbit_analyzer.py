@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 데이브 가상자산(업비트) 분석 및 보고서 생성 실행 스크립트
 """
@@ -14,8 +14,8 @@ AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 
 import json
 import time
@@ -687,7 +687,7 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
     )
     # 1) Ollama 우선
     try:
-        from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+        from _shared.llm import ollama as lm_chat, is_available as lm_available
         if lm_available():
             print(f"[Dave] Calling Ollama for {ticker}...")
             system = load_system_instruction()
@@ -802,33 +802,33 @@ def execute_buy(ticker: str, krw_amount: float):
     upbit_client = get_upbit_client()
     if upbit_client is None:
         err_msg = "❌ [Dave] 업비트 API 키가 올바르게 설정되지 않아 매수를 수행할 수 없습니다 (시뮬레이션 모드에서는 주문이 불가합니다)."
-        send_telegram_message(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n❌ 원인: API 키 미설정")
+        send(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n❌ 원인: API 키 미설정")
         return err_msg
     try:
         res = upbit_client.buy_market_order(ticker, krw_amount)
         if res is None:
             err_msg = "❌ [Dave] 매수 주문 실패: 주문 결과가 없습니다 (잔고 부족 또는 API 오류 가능성)."
-            send_telegram_message(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n❌ 원인: 잔고 부족 또는 API 오류")
+            send(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n❌ 원인: 잔고 부족 또는 API 오류")
             return err_msg
         if isinstance(res, dict):
             if "error" in res:
                 err_msg = f"❌ [Dave] 매수 주문 실패: {res['error'].get('message', '알 수 없는 오류')}"
-                send_telegram_message(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n❌ 원인: {res['error'].get('message')}")
+                send(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n❌ 원인: {res['error'].get('message')}")
                 return err_msg
             if "uuid" in res:
                 success_msg = f"✅ [Dave] 시장가 매수 주문 성공!\n주문 결과: {res}"
-                send_telegram_message(f"🤖 [데이브] 매수 성공! 🎉\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n🆔 주문ID: {res.get('uuid')}")
+                send(f"🤖 [데이브] 매수 성공! 🎉\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n🆔 주문ID: {res.get('uuid')}")
                 return success_msg
         if isinstance(res, str):
             err_msg = f"❌ [Dave] 매수 주문 실패: {res}"
-            send_telegram_message(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n❌ 원인: {res}")
+            send(f"🤖 [데이브] 매수 실패\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원\n❌ 원인: {res}")
             return err_msg
         success_msg = f"✅ [Dave] 시장가 매수 주문 접수 완료\n주문 결과: {res}"
-        send_telegram_message(f"🤖 [데이브] 매수 주문 접수\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원")
+        send(f"🤖 [데이브] 매수 주문 접수\n📌 대상: {ticker}\n💰 금액: {krw_amount:,}원")
         return success_msg
     except Exception as e:
         err_msg = f"❌ [Dave] 매수 주문 중 오류 발생: {e}"
-        send_telegram_message(f"🤖 [데이브] 매수 에러 ❌\n📌 대상: {ticker}\n❌ 에러 내용: {e}")
+        send(f"🤖 [데이브] 매수 에러 ❌\n📌 대상: {ticker}\n❌ 에러 내용: {e}")
         return err_msg
 
 def execute_sell(ticker: str, volume: float):
@@ -836,33 +836,33 @@ def execute_sell(ticker: str, volume: float):
     upbit_client = get_upbit_client()
     if upbit_client is None:
         err_msg = "❌ [Dave] 업비트 API 키가 올바르게 설정되지 않아 매도를 수행할 수 없습니다 (시뮬레이션 모드에서는 주문이 불가합니다)."
-        send_telegram_message(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n❌ 원인: API 키 미설정")
+        send(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n❌ 원인: API 키 미설정")
         return err_msg
     try:
         res = upbit_client.sell_market_order(ticker, volume)
         if res is None:
             err_msg = "❌ [Dave] 매도 주문 실패: 주문 결과가 없습니다 (잔고 부족 또는 API 오류 가능성)."
-            send_telegram_message(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n📉 수량: {volume}\n❌ 원인: 잔고 부족 또는 API 오류")
+            send(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n📉 수량: {volume}\n❌ 원인: 잔고 부족 또는 API 오류")
             return err_msg
         if isinstance(res, dict):
             if "error" in res:
                 err_msg = f"❌ [Dave] 매도 주문 실패: {res['error'].get('message', '알 수 없는 오류')}"
-                send_telegram_message(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n📉 수량: {volume}\n❌ 원인: {res['error'].get('message')}")
+                send(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n📉 수량: {volume}\n❌ 원인: {res['error'].get('message')}")
                 return err_msg
             if "uuid" in res:
                 success_msg = f"✅ [Dave] 시장가 매도 주문 성공!\n주문 결과: {res}"
-                send_telegram_message(f"🤖 [데이브] 매도 성공! 📉🎉\n📌 대상: {ticker}\n📉 수량: {volume}\n🆔 주문ID: {res.get('uuid')}")
+                send(f"🤖 [데이브] 매도 성공! 📉🎉\n📌 대상: {ticker}\n📉 수량: {volume}\n🆔 주문ID: {res.get('uuid')}")
                 return success_msg
         if isinstance(res, str):
             err_msg = f"❌ [Dave] 매도 주문 실패: {res}"
-            send_telegram_message(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n📉 수량: {volume}\n❌ 원인: {res}")
+            send(f"🤖 [데이브] 매도 실패\n📌 대상: {ticker}\n📉 수량: {volume}\n❌ 원인: {res}")
             return err_msg
         success_msg = f"✅ [Dave] 시장가 매도 주문 접수 완료\n주문 결과: {res}"
-        send_telegram_message(f"🤖 [데이브] 매도 주문 접수\n📌 대상: {ticker}\n📉 수량: {volume}")
+        send(f"🤖 [데이브] 매도 주문 접수\n📌 대상: {ticker}\n📉 수량: {volume}")
         return success_msg
     except Exception as e:
         err_msg = f"❌ [Dave] 매도 주문 중 오류 발생: {e}"
-        send_telegram_message(f"🤖 [데이브] 매도 에러 ❌\n📌 대상: {ticker}\n❌ 에러 내용: {e}")
+        send(f"🤖 [데이브] 매도 에러 ❌\n📌 대상: {ticker}\n❌ 에러 내용: {e}")
         return err_msg
 
 def execute_sell_all(ticker: str):

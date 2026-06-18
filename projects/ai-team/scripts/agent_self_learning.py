@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 agent_self_learning.py
 에이전트들이 유휴 시간에 자가학습 → 스킬 문서 생성 → 지식 축적
@@ -13,7 +13,7 @@ ROOT    = Path(__file__).resolve().parents[3]
 AI_TEAM = ROOT / "projects/ai-team"
 sys.path.insert(0, str(AI_TEAM))
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 from _shared import ollama_client as lm
 load_env()
 

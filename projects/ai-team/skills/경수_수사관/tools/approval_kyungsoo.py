@@ -1,4 +1,4 @@
-"""
+﻿"""
 approval_kyungsoo.py — 경수(수사관) 승인 모듈
 인스타그램 및 YouTube 콘텐츠 승인 요청을 텔레그램으로 발송합니다.
 """
@@ -15,7 +15,7 @@ for _ in range(6):
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from _shared.telegram_notifier import send_telegram_message
+from _shared.notify import send
 
 
 def await_approval(decision: str, channel: str = "") -> bool:
@@ -30,7 +30,7 @@ def await_approval(decision: str, channel: str = "") -> bool:
     channel_tag = f"[{channel}] " if channel else ""
     msg = f"🔍 {channel_tag}경수 검수 요청\n{decision}"
     try:
-        send_telegram_message(msg)
+        send(msg)
         print(f"  ✅ 경수 검수 요청 전송 완료 (채널: {channel or '미지정'})")
     except Exception as e:
         print(f"  ⚠️ 경수 검수 알림 전송 실패: {e}")

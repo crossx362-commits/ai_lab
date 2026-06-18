@@ -106,60 +106,67 @@ python3 projects/ai-team/scripts/daily_balance_check.py
 | 경수 (Kyungsu) | Investigator — Malicious comment detection | security tools |
 | 로율 (Royul) | Lawyer — Legal/tax/compliance | compliance tools |
 
-### Shared Module System
+### Shared Module System (Unified, 5 Files)
 
-All agents use centralized utilities in `projects/ai-team/_shared/`:
+All agents use **5 centralized modules** in `projects/ai-team/_shared/`:
 
 | Module | Purpose |
 |--------|---------|
-| `env_loader.py` | Load encrypted `.env` from project root |
-| `gemini_client.py` | Gemini API wrapper (text/image/vision) |
-| `ollama_client.py` | Local Ollama LLM with task-based model selection |
-| `telegram_notifier.py` | Send notifications to Telegram |
-| `process_lock.py` | Windows Named Mutex for preventing duplicate processes |
-| `agent_status.py` | Get status reports for all 13 agents |
-| `duplicate_guard.py` | Prevent duplicate content uploads |
+| **`env.py`** | Load/encrypt/validate environment variables |
+| **`llm.py`** | Unified LLM client (Ollama → GPT → Gemini fallback) |
+| **`notify.py`** | Telegram notifications + agent status |
+| **`process.py`** | Process lock + duplicate content guard |
+| **`utils.py`** | Path/resource/ffmpeg/image upload utilities |
 
-**Import pattern** used by all agents:
+**Standard import pattern** for all agents:
 ```python
+#!/usr/bin/env python3
 import os, sys
-_here = os.path.dirname(os.path.abspath(__file__))
-_root = _here
-for _ in range(6):
-    if os.path.isdir(os.path.join(_root, "reports")):  # or .agent, ENV_MANIFEST.json
-        break
-    _root = os.path.dirname(_root)
-sys.path.insert(0, _root)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from _shared.env import load_env
+from _shared.llm import text
+from _shared.notify import send
+from _shared.process import ProcessLock
+from _shared.utils import find_root
+
 load_env()
 ```
 
 ---
 
-## 🧠 AI Model Strategy (2-Tier Fallback)
+## 🧠 AI Model Strategy (Unified LLM Client)
 
-Priority: **Ollama (local, free) → Gemini API (cloud, paid) → GPT-4o-mini (fallback)**
+Priority: **Ollama (local, free) → GPT-4o-mini → Gemini (cloud, paid)**
 
-### Model Selection Logic (`_shared/ollama_client.py`)
+### Unified LLM Client (`_shared/llm.py`)
 
-- **Coding tasks**: Prefers `deepseek-coder`, `codestral`
+- **Coding tasks**: Prefers `deepseek-coder`, `codestral` (Ollama)
 - **Blog/caption writing**: Prefers `qwen2.5` (excludes deepseek)
-- **General**: Uses first loaded model in Ollama
+- **Cloud fallback**: GPT-4o-mini → Gemini
 
 Force a specific model:
 ```bash
 export OLLAMA_MODEL=deepseek-coder:latest
 ```
 
-### Fallback Chain
+### Usage
 
 ```python
-from _shared.gemini_client import text
+from _shared.llm import text
 
-# Automatically tries: Ollama → Gemini → GPT-4o-mini
-response = text("Your prompt here", lm_first=True)
+# Local-first (Ollama → GPT → Gemini)
+response = text("프롬프트", lm_first=True, task="coding")
+
+# Cloud-first (GPT → Gemini → Ollama)
+response = text("프롬프트", lm_first=False)
+
+# Direct access
+from _shared.llm import ollama, gpt, gemini
+result = ollama("프롬프트", task="blog")
 ```
 
 ---
@@ -177,12 +184,12 @@ response = text("Your prompt here", lm_first=True)
 
 Encrypt all secrets:
 ```bash
-python projects/ai-team/scripts/security/encrypt_all_secrets.py
+python projects/ai-team/_shared/env.py encrypt .env .env.encrypted
 ```
 
 Decrypt for editing:
 ```bash
-python projects/ai-team/scripts/security/decrypt_all_secrets.py
+python projects/ai-team/_shared/env.py decrypt .env.encrypted .env.decrypted
 ```
 
 ### Required Environment Variables

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 영숙의 스케줄 관리 시스템
@@ -24,7 +24,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.telegram_notifier import send_telegram_message
+from _shared.notify import send
 from _shared.ollama_client import is_available as lm_available
 
 # CEO Dispatcher import
@@ -123,7 +123,7 @@ def execute_schedule(schedule: Dict):
     )
 
     print(f"  [영숙 → CEO 예원] 스케줄 도래 인지 (중간 텔레그램 발송 생략)")
-    # send_telegram_message(ceo_report)
+    # send(ceo_report)
 
     # 2. CEO Dispatcher를 통해 에이전트에게 지시 (Ollama가 지능적으로 판단)
     print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")
@@ -153,7 +153,7 @@ def execute_schedule(schedule: Dict):
         f"**실행 결과**:\n{result_text[:500]}"
     )
 
-    send_telegram_message(final_report)
+    send(final_report)
     print(f"  [영숙 → 사장님] 최종 보고 완료")
 
 
@@ -208,7 +208,7 @@ def schedule_loop(interval_seconds: int = 60):
         f"**체크 주기**: {interval_seconds}초\n"
         f"**총 스케줄**: {len(load_schedules())}개"
     )
-    send_telegram_message(start_msg)
+    send(start_msg)
 
     while True:
         try:

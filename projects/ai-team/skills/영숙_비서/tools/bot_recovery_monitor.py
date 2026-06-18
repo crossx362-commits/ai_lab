@@ -1,4 +1,4 @@
-"""
+﻿"""
 봇 복구 모니터링 스크립트
 logOut 후 봇 토큰이 복구될 때까지 대기하고 알림
 """
@@ -14,7 +14,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env_loader import load_env
+from _shared.env import load_env
 load_env()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()

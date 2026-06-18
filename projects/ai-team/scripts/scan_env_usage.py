@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 환경변수 사용 현황 스캔 도구
 전체 코드베이스에서 환경변수 사용을 자동으로 스캔하고 분석합니다.
@@ -178,7 +178,7 @@ def check_load_env_usage(root_dir: str, file_usage: Dict[str, List[str]]) -> Dic
             results["files_using_env"].append(file_path)
 
             # load_env 호출 확인
-            if "load_env()" in content or "from _shared.env_loader import load_env" in content:
+            if "load_env()" in content or "from _shared.env import load_env" in content:
                 results["files_with_load_env"].append(file_path)
             else:
                 results["files_without_load_env"].append({

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # version: pack_apply_v7
 """두뇌의 템플릿 팩을 사용자 프로젝트에 한 번에 적용.
 
@@ -23,7 +23,7 @@ _ai_team_root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 try:
-    from _shared.env_loader import load_env
+    from _shared.env import load_env
     load_env()
 except Exception:
     pass

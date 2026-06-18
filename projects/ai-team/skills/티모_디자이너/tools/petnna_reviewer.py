@@ -1,4 +1,4 @@
-"""
+﻿"""
 petnna_reviewer.py — 티모: petnna 프로젝트 UI/UX 지속 검토 및 개선 보고
 SKILL.md Section 4(AI Slop 타파) + Section 5(7대 심사 기준 + 출력 템플릿) 반영
 """
@@ -12,9 +12,9 @@ _project_root = os.path.abspath(os.path.join(_ai_team_root, "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.env_loader import load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.llm import ollama as lm_chat, is_available as lm_available
+from _shared.notify import send
 
 load_env()
 
@@ -174,5 +174,5 @@ if __name__ == "__main__":
     print("🎨 [티모] petnna UI/UX 검토 시작...\n")
     report = run_review()
     print(report.replace("<b>", "").replace("</b>", ""))
-    send_telegram_message(report)
+    send(report)
     print("\n✅ 텔레그램 보고 완료")

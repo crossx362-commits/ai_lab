@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 petnna_social_upload.py
 사람처럼 Supabase Auth 로그인 → JWT 획득 → 에이전트 게시물 소셜 피드 업로드
@@ -19,8 +19,8 @@ AI_TEAM = ROOT / "projects/ai-team"
 UPLOADS = ROOT / "reports/uploads"
 sys.path.insert(0, str(AI_TEAM))
 
-from _shared.env_loader import load_env
-from _shared.ollama_client import chat as ollama_chat
+from _shared.env import load_env
+from _shared.llm import ollama as ollama_chat
 from _shared.image_uploader import upload_image
 load_env()
 

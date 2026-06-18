@@ -1,4 +1,4 @@
-import os
+﻿import os
 import pickle
 import json
 import datetime
@@ -16,9 +16,9 @@ _ai_team_root = os.path.join(_root, "projects", "ai-team")
 
 sys.path.insert(0, _root)
 sys.path.insert(0, _ai_team_root)
-from _shared.telegram_notifier import send_telegram_message
-from _shared.env_loader import load_env as _load_env
-from _shared.ollama_client import chat as lm_chat, is_available as lm_available
+from _shared.notify import send
+from _shared.env import load_env as _load_env
+from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 try:
     from google_auth_oauthlib.flow import InstalledAppFlow
@@ -334,7 +334,7 @@ def main(max_videos=5):
         
     report_lines.append(f"\n🔗 수사 데이터 시트: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
     
-    send_telegram_message("\n".join(report_lines))
+    send("\n".join(report_lines))
 
 
 if __name__ == "__main__":

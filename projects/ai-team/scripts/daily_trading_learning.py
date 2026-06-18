@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 일일 트레이딩 학습 스케줄러
 매일 자정에 레오, 데이브의 거래 성과를 분석하고 전략 개선
@@ -16,8 +16,8 @@ sys.path.insert(0, AI_TEAM_ROOT)
 LEO_TOOLS = os.path.join(AI_TEAM_ROOT, "skills", "레오_트레이더", "tools")
 sys.path.insert(0, LEO_TOOLS)
 
-from _shared.env_loader import load_env
-from _shared.telegram_notifier import send_telegram_message
+from _shared.env import load_env
+from _shared.notify import send
 from leo_learning_system import LeoLearningSystem
 
 load_env()
@@ -45,7 +45,7 @@ def run_daily_learning():
     print("✅ 일일 학습 완료")
     print(f"{'='*60}\n")
 
-    send_telegram_message("📚 일일 트레이딩 학습 완료\n레오, 데이브의 거래 성과를 분석하고 전략을 업데이트했습니다.")
+    send("📚 일일 트레이딩 학습 완료\n레오, 데이브의 거래 성과를 분석하고 전략을 업데이트했습니다.")
 
 
 def main():
@@ -61,7 +61,7 @@ def main():
         print("\n즉시 실행 모드...")
         run_daily_learning()
 
-    send_telegram_message("🤖 트레이딩 학습 스케줄러 가동 시작\n매일 00:00에 자동 학습합니다.")
+    send("🤖 트레이딩 학습 스케줄러 가동 시작\n매일 00:00에 자동 학습합니다.")
 
     # 스케줄러 루프
     while True:
