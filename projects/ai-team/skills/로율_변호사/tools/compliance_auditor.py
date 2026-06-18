@@ -20,6 +20,7 @@ for _ in range(6):
         break
     _root = os.path.dirname(_root)
 sys.path.insert(0, _root)
+sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
 
 from _shared.env_loader import load_env
 from _shared.telegram_notifier import send_telegram_message
@@ -342,7 +343,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="로율 변호사 - 컴플라이언스 감사")
     parser.add_argument("--scan-privacy", help="민감정보 스캔할 파일")
-    parser.add_argument("--scan-licenses", help="라이선스 스캔할 디렉토리", default=".")
+    parser.add_argument("--scan-licenses", help="라이선스 스캔할 디렉토리")
     parser.add_argument("--output", help="리포트 출력 경로")
     parser.add_argument("--notify", action="store_true", help="텔레그램 알림")
 
@@ -358,11 +359,18 @@ def main():
         print(json.dumps(result, indent=2, ensure_ascii=False))
 
     if args.scan_licenses:
-        print(f"[로율] 라이선스 컴플라이언스 스캔 중: {args.scan_licenses}")
-        result = auditor.scan_license_compliance(args.scan_licenses)
+        scan_dir = args.scan_licenses
+        print(f"[로율] 라이선스 컴플라이언스 스캔 중: {scan_dir}")
+        result = auditor.scan_license_compliance(scan_dir)
         print(f"총 의존성: {result['total_dependencies']}개")
         print(f"라이선스 충돌: {len(result['license_conflicts'])}개")
         print(json.dumps(result, indent=2, ensure_ascii=False))
+
+    if not args.scan_privacy and not args.scan_licenses:
+        print("[로율] 전체 컴플라이언스 감사 중: .")
+        result = auditor.scan_license_compliance(".")
+        print(f"총 의존성: {result['total_dependencies']}개")
+        print(f"라이선스 충돌: {len(result['license_conflicts'])}개")
 
     # 리포트 생성
     report_path = auditor.generate_compliance_report(args.output)

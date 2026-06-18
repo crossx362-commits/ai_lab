@@ -18,6 +18,7 @@ for _ in range(4):
         break
     _root = os.path.dirname(_root)
 sys.path.insert(0, _root)
+sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
 
 # 에이전트 도구 임포트
 sys.path.insert(0, os.path.join(_root, "projects", "ai-team", "skills", "경수_수사관", "tools"))
