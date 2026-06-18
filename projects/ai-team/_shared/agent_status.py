@@ -160,21 +160,63 @@ def get_status_report(agent: str, project_root: str) -> str:
         else:
             lines.append("📊 <b>현빈 (전략가)</b>: 리서치 파일 없음")
 
-    # 10. 경수 (수사관)
+    # 10. 경수 (수사관) - ECC 보안 스캐너 통합
     if "경수" in agent or "수사" in agent or "전체" in agent:
+        security_scan_dir = os.path.join(project_root, "output", "security_scans")
+        kyungsu_info = []
+
+        # 최근 보안 스캔 결과 확인
+        if os.path.exists(security_scan_dir):
+            try:
+                scans = sorted([f for f in os.listdir(security_scan_dir) if f.endswith('.json')], reverse=True)
+                if scans:
+                    with open(os.path.join(security_scan_dir, scans[0]), "r", encoding="utf-8") as f:
+                        scan_data = json.load(f)
+                    threat_level = scan_data.get("threat_level", "UNKNOWN")
+                    total_scans = scan_data.get("total_scans", 0)
+                    scan_time = scan_data.get("scan_timestamp", "")[:16].replace("T", " ")
+                    kyungsu_info.append(f"ECC 스캔: {threat_level} ({total_scans}개 항목, {scan_time})")
+                else:
+                    kyungsu_info.append("보안 스캔 대기 중")
+            except Exception:
+                kyungsu_info.append("보안 스캔 오류")
+        else:
+            kyungsu_info.append("ECC 보안 스캐너 준비 완료")
+
         learning_info = get_last_learning("경수")
         if learning_info:
-            lines.append(f"🚨 <b>경수 (수사관)</b>: {learning_info.split(':', 1)[1].strip()}")
-        else:
-            lines.append("🚨 <b>경수 (수사관)</b>: 악성 댓글 모니터링 중")
+            kyungsu_info.append(learning_info.split(':', 1)[1].strip())
 
-    # 11. 로율 (변호사)
+        lines.append(f"🚨 <b>경수 (수사관)</b>: " + " | ".join(kyungsu_info))
+
+    # 11. 로율 (변호사) - ECC 컴플라이언스 통합
     if "로율" in agent or "변호사" in agent or "전체" in agent:
+        compliance_dir = os.path.join(project_root, "output", "compliance_audits")
+        royul_info = []
+
+        # 최근 컴플라이언스 감사 결과 확인
+        if os.path.exists(compliance_dir):
+            try:
+                audits = sorted([f for f in os.listdir(compliance_dir) if f.endswith('.json')], reverse=True)
+                if audits:
+                    with open(os.path.join(compliance_dir, audits[0]), "r", encoding="utf-8") as f:
+                        audit_data = json.load(f)
+                    risk_level = audit_data.get("risk_level", "UNKNOWN")
+                    total_issues = audit_data.get("total_issues", 0)
+                    audit_time = audit_data.get("audit_timestamp", "")[:16].replace("T", " ")
+                    royul_info.append(f"컴플라이언스: {risk_level} ({total_issues}개 이슈, {audit_time})")
+                else:
+                    royul_info.append("감사 대기 중")
+            except Exception:
+                royul_info.append("감사 오류")
+        else:
+            royul_info.append("ECC 컴플라이언스 감사 준비 완료")
+
         learning_info = get_last_learning("로율")
         if learning_info:
-            lines.append(f"⚖️ <b>로율 (변호사)</b>: {learning_info.split(':', 1)[1].strip()}")
-        else:
-            lines.append("⚖️ <b>로율 (변호사)</b>: 법률 및 저작권 검토 대기 중")
+            royul_info.append(learning_info.split(':', 1)[1].strip())
+
+        lines.append(f"⚖️ <b>로율 (변호사)</b>: " + " | ".join(royul_info))
 
     # 데이브 (보수적 트레이더)
     if "데이브" in agent or "전체" in agent:
