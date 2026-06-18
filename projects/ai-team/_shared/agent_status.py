@@ -111,10 +111,22 @@ def get_status_report(agent: str, project_root: str) -> str:
                     content = f.read()
                 sections = re.split(r"##\s+", content)
                 latest_sec = ""
-                for sec in reversed(sections):
-                    if "케빈 헬스 체크" in sec:
+                latest_dt = None
+                for sec in sections:
+                    if "케빈 헬스 체크" not in sec:
+                        continue
+                    first_line = sec.split("\n", 1)[0].strip()
+                    match = re.match(r"(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?", first_line)
+                    if not match:
+                        continue
+                    time_part = match.group(2) or "00:00"
+                    try:
+                        sec_dt = datetime.strptime(f"{match.group(1)} {time_part}", "%Y-%m-%d %H:%M")
+                    except Exception:
+                        continue
+                    if latest_dt is None or sec_dt > latest_dt:
+                        latest_dt = sec_dt
                         latest_sec = sec
-                        break
                 if latest_sec:
                     sec_lines = [l.strip() for l in latest_sec.split("\n") if l.strip()]
                     header = sec_lines[0].strip()

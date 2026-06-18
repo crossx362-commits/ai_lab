@@ -58,3 +58,11 @@
 - 핵심의존성: OK (Tailwind, FontAwesome, Leaflet 확인) / GEMINI_API_KEY: EMPTY
 - Supabase: OK (profiles, albums, routes, posts, pets 모두 참조)
 - 조치: GEMINI_API_KEY 미설정 확인됨 — 설정 필요 / monitor 스크립트 cffi 오류 별도 조치 필요
+
+## 2026-06-18 03:37 UTC — 케빈 헬스 체크
+- 배포: OK (HTTP 200 — petnna_monitor.py test 111ms)
+- 핵심의존성: OK (Tailwind, FontAwesome, Leaflet 확인) / GEMINI_API_KEY: OK (central env loaded)
+- PWA 파일: OK (6/6)
+- Supabase/DB: OK
+- 모니터 스크립트: OK (cffi 2.0.0 / _cffi_backend import 정상)
+- 조치: 이전 cffi 백엔드 누락 및 GEMINI_API_KEY EMPTY 기록은 오래된 상태로 확인됨
