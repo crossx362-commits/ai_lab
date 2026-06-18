@@ -49,7 +49,7 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 | `__pycache__` | Remove. Python regenerates it. |
 | `node_modules` | Leave unless a clean dependency reinstall is planned. Network is restricted, so deleting it would make local TS/Node tooling harder to run. |
 | `output` | Leave. Some files are tracked generated deliverables; clean only by explicit artifact policy. |
-| `projects/ai-team/reports/research/crypto_market_intel.json` | Leave for now. Hyunbin, Dave, and Leo currently read/write this live path. Move only with harness coverage and code migration. |
+| `projects/ai-team/reports/pids/dave.lock` | Leave for now. Dave still owns this lock path. Move only with lock handling migration. |
 
 ## Cleanup Policy Going Forward
 

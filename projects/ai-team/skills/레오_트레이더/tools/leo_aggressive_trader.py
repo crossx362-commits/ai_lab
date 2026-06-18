@@ -70,6 +70,7 @@ PRO_TRADER_DIRECTIVE = get_leo_system_prompt()
 
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 # 데이브의 upbit_analyzer 재사용
@@ -132,7 +133,7 @@ def safe_float(val, default=0.0):
 
 
 def _hyunbin_intel_path():
-    return os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+    return os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
 
 
 def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECONDS):

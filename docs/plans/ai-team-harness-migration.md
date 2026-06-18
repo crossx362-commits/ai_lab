@@ -10,13 +10,16 @@ Use `projects/ai-team/harness/check_all.py` as the gate for repo cleanup and fol
 
 Do not move these live paths yet:
 
-- `projects/ai-team/reports/research/crypto_market_intel.json`
-- `projects/ai-team/reports/research/hyunbin_alert_state.json`
 - `projects/ai-team/reports/pids/dave.lock`
 - `output/trading_logs/*`
 - `output/bot_logs/*`
 
 They are read or written by currently running agents.
+
+Moved to root `reports/research/`:
+
+- `crypto_market_intel.json`
+- `hyunbin_alert_state.json`
 
 ## Cleanup Order
 

@@ -198,7 +198,7 @@ def get_status_report(agent: str, project_root: str) -> str:
 
     # 9. 현빈 (전략가)
     if "현빈" in agent or "전략" in agent or "전체" in agent:
-        intel_path = os.path.join(project_root, "projects", "ai-team", "reports", "research", "crypto_market_intel.json")
+        intel_path = os.path.join(project_root, "reports", "research", "crypto_market_intel.json")
         hb_path = os.path.join(project_root, "reports", "research", "hyunbin_research.json")
         if os.path.exists(intel_path):
             try:
@@ -308,7 +308,7 @@ def get_status_report(agent: str, project_root: str) -> str:
         dave_path = os.path.join(project_root, "reports", "research", "dave_upbit_analysis.md")
         dave_stock = os.path.join(project_root, "reports", "research", "dave_stock_analysis.md")
         dave_log = os.path.join(project_root, "output", "trading_logs", "dave_daemon.out.log")
-        intel_path = os.path.join(project_root, "projects", "ai-team", "reports", "research", "crypto_market_intel.json")
+        intel_path = os.path.join(project_root, "reports", "research", "crypto_market_intel.json")
         dave_info = []
         pids = command_pids("upbit_auto_trader.py")
         if pids:

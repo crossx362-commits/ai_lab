@@ -13,6 +13,7 @@ from typing import Dict, Any
 
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env_loader import load_env
@@ -25,7 +26,7 @@ class CryptoMarketIntelligence:
     """암호화폐 시장 정보 수집 클래스"""
 
     def __init__(self):
-        self.output_path = os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+        self.output_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
         self.cache_ttl = 300  # 5분 캐시
 
     def get_fed_events(self) -> Dict[str, Any]:

@@ -240,7 +240,7 @@ def calculate_confluence_score(ticker: str) -> dict:
         return {"ticker": ticker, "score": 0, "error": str(e)}
 
 def _hyunbin_intel_path():
-    return os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+    return os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
 
 
 def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECONDS):

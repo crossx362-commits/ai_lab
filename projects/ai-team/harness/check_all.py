@@ -106,7 +106,7 @@ def check_schedule():
 
 
 def check_trading():
-    intel = AI_TEAM / "reports" / "research" / "crypto_market_intel.json"
+    intel = ROOT / "reports" / "research" / "crypto_market_intel.json"
     dave_log = ROOT / "output" / "trading_logs" / "dave_daemon.out.log"
     leo_log = ROOT / "output" / "trading_logs" / "leo_daemon.out.log"
     if not intel.exists():
@@ -125,8 +125,6 @@ def check_structure():
 def check_report_layout():
     project_reports = AI_TEAM / "reports"
     allowed = {
-        Path("research/crypto_market_intel.json"),
-        Path("research/hyunbin_alert_state.json"),
         Path("pids/dave.lock"),
     }
     if not project_reports.exists():

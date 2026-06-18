@@ -187,7 +187,8 @@ import json
 
 def load_market_intel():
     """현빈이 수집한 시장 정보 로드"""
-    intel_path = os.path.join(AI_TEAM_ROOT, "reports", "research", "crypto_market_intel.json")
+    workspace_root = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
+    intel_path = os.path.join(workspace_root, "reports", "research", "crypto_market_intel.json")
     
     if not os.path.exists(intel_path):
         return None

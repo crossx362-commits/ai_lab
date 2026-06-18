@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-18T13:00:03",
+  "timestamp": "2026-06-18T13:04:01",
   "root": "D:\\ai_lab",
   "overall": "OK",
   "checks": [
@@ -11,17 +11,17 @@
     {
       "name": "runtime",
       "status": "OK",
-      "message": "youngsuk=47188; hyunbin=56276; dave=24684; leo=61304"
+      "message": "youngsuk=41232; hyunbin=56976; dave=12984; leo=26716"
     },
     {
       "name": "schedule",
       "status": "OK",
-      "message": "enabled 14/14, last_run 06/18 12:35"
+      "message": "enabled 14/14, last_run 06/18 13:01"
     },
     {
       "name": "trading",
       "status": "OK",
-      "message": "intel 06/18 12:59, dave_log 06/18 10:59, leo_log 06/18 11:00"
+      "message": "intel 06/18 13:03, dave_log 06/18 10:59, leo_log 06/18 11:00"
     },
     {
       "name": "structure",
