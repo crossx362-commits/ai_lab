@@ -239,14 +239,11 @@ def process(msg):
         try:
             import remote_bot_controller
             result = remote_bot_controller.emergency_stop_all_no_restart(skip_current=True)
-            send_msg("🛑 전체 종료 명령 처리 완료 (재시작 없음)\n" + result)
+            send_msg("🛑 에이전트 전체 종료 명령 처리 완료 (영숙 유지, 재시작 없음)\n" + result)
         except Exception as e:
             send_msg(f"❌ 전체 종료 실패: {e}")
-        import time
-        time.sleep(2)
-        print("🛑 사용자 명령: 전체 종료 (재시작 금지)")
-        import sys
-        sys.exit(0)
+        print("🛑 사용자 명령: 에이전트 전체 종료 (영숙 유지, 재시작 금지)")
+        return
 
     bot_control_keywords = ["봇상태", "봇종료", "봇시작", "봇재시작",
                             "봇전체시작", "봇모두시작",

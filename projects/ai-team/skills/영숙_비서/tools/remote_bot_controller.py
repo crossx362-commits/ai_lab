@@ -33,17 +33,39 @@ AI_TEAM_KEYWORDS = [
     "start_trading_team.py",
     "run_trader_daemon.py",
 ]
+AGENT_STOP_KEYWORDS = [
+    "crypto_market_intelligence.py",
+    "upbit_auto_trader.py",
+    "leo_aggressive_trader.py",
+    "monitor_processes.py",
+    "start_trading_team.py",
+    "run_trader_daemon.py",
+]
 
 MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
 
 
 def mark_local_manual_stop_all():
     os.makedirs(MANUAL_STOP_DIR, exist_ok=True)
-    flags = [".manual_stop", ".manual_stop_hyunbin", ".manual_stop_dave", ".manual_stop_leo", ".manual_stop_youngsuk"]
+    flags = [".manual_stop", ".manual_stop_hyunbin", ".manual_stop_dave", ".manual_stop_leo"]
     for flag in flags:
         with open(os.path.join(MANUAL_STOP_DIR, flag), "w", encoding="utf-8") as f:
             f.write("# manual stop: direct user stop command\n")
             f.write("# Remove by explicit start/restart.\n")
+
+
+def mark_local_youngsuk_stop():
+    os.makedirs(MANUAL_STOP_DIR, exist_ok=True)
+    with open(os.path.join(MANUAL_STOP_DIR, ".manual_stop_youngsuk"), "w", encoding="utf-8") as f:
+        f.write("# manual stop: youngsuk\n")
+        f.write("# Remove by explicit bot start/restart.\n")
+
+
+def clear_local_youngsuk_stop():
+    try:
+        os.remove(os.path.join(MANUAL_STOP_DIR, ".manual_stop_youngsuk"))
+    except OSError:
+        pass
 
 
 def _ssh_macbook(command: str, timeout: int = 10):
@@ -108,6 +130,7 @@ def check_bot_running(platform_name=None):
 def stop_local_bot():
     """로컬(현재 머신)의 봇 종료"""
     platform_name = get_current_platform()
+    mark_local_youngsuk_stop()
 
     try:
         if platform_name == "windows":
@@ -125,6 +148,7 @@ def start_local_bot():
     """로컬(현재 머신)의 봇 시작"""
     platform_name = get_current_platform()
     bot_path = os.path.join(_here, "telegram_receiver.py")
+    clear_local_youngsuk_stop()
 
     try:
         if platform_name == "windows":
@@ -171,10 +195,10 @@ def stop_remote_macbook_agents():
     if not MACBOOK_HOST:
         return "❌ MACBOOK_SSH_HOST 환경변수가 설정되지 않았습니다"
 
-    patterns = " ".join(shlex.quote(k) for k in AI_TEAM_KEYWORDS)
+    patterns = " ".join(shlex.quote(k) for k in AGENT_STOP_KEYWORDS)
     remote_cmd = f"""
 mkdir -p "$HOME/ai_lab/projects/ai-team/scripts" 2>/dev/null || true
-for flag in .manual_stop .manual_stop_hyunbin .manual_stop_dave .manual_stop_leo .manual_stop_youngsuk; do
+for flag in .manual_stop .manual_stop_hyunbin .manual_stop_dave .manual_stop_leo; do
   printf '%s\\n' '# manual stop: direct user stop command' '# Remove by explicit start/restart.' > "$HOME/ai_lab/projects/ai-team/scripts/$flag" 2>/dev/null || true
 done
 for pattern in {patterns}; do
@@ -200,10 +224,10 @@ def stop_local_ai_team_processes(skip_current=True):
     """현재 머신의 AI-team 에이전트/봇을 종료한다."""
     mark_local_manual_stop_all()
     if platform.system() == "Windows":
-        pids = _windows_pids_for_keywords(AI_TEAM_KEYWORDS)
+        pids = _windows_pids_for_keywords(AGENT_STOP_KEYWORDS)
     else:
         pids = []
-        for keyword in AI_TEAM_KEYWORDS:
+        for keyword in AGENT_STOP_KEYWORDS:
             result = subprocess.run(["pgrep", "-f", keyword], capture_output=True, text=True)
             if result.returncode == 0:
                 pids.extend(int(pid) for pid in result.stdout.split() if pid.isdigit())

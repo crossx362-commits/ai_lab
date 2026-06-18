@@ -58,8 +58,12 @@ def mark_manual_stop(agent_name: str | None = None):
             f.write("# Created by direct user stop command. Remove by explicit start/restart.\n")
 
 
-def clear_manual_stop(agent_name: str | None = None):
-    targets = [None, agent_name] if agent_name else [None]
+def clear_manual_stop(agent_name: str | None = None, include_global: bool = False):
+    targets = []
+    if include_global or not agent_name:
+        targets.append(None)
+    if agent_name:
+        targets.append(agent_name)
     for target in targets:
         flag_path = _manual_stop_flag(target)
         try:
