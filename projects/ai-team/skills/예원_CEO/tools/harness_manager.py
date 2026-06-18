@@ -38,6 +38,10 @@ class HarnessManager:
 
         # _shared 확인
         shared = self.ai_team / "_shared"
+        if not shared.exists():
+            issues.append(f"Missing: _shared directory")
+            return issues
+
         required_modules = ["env.py", "llm.py", "notify.py", "process.py", "utils.py"]
         for mod in required_modules:
             if not (shared / mod).exists():
@@ -57,6 +61,7 @@ class HarnessManager:
 
     def analyze_logic(self):
         """봇 로직 분석"""
+        import os.path
         bots = {
             "데이브 코인": "skills/데이브_주식/tools/upbit_auto_trader.py",
             "데이브 주식": "skills/데이브_주식/tools/stock_auto_trader.py",
@@ -67,12 +72,14 @@ class HarnessManager:
 
         analysis = {}
         for name, rel_path in bots.items():
-            path = self.ai_team / rel_path
-            if path.exists():
-                lines = len(path.read_text(encoding="utf-8", errors="ignore").splitlines())
+            # 절대 경로로 변환
+            abs_path = os.path.join(str(self.ai_team), rel_path.replace("/", os.sep))
+            if os.path.exists(abs_path):
+                with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
+                    lines = len(f.readlines())
                 analysis[name] = {"lines": lines, "status": "✅"}
             else:
-                analysis[name] = {"status": "❌ Missing"}
+                analysis[name] = {"status": f"❌ {abs_path}"}
 
         return analysis
 
