@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-18T15:50:36.033890",
+  "timestamp": "2026-06-18T15:55:49.275123",
   "indexes": {
     "kospi": {
       "value": 0,
@@ -10,9 +10,7 @@
       "change": 0
     }
   },
-  "hot_stocks": {
-    "stocks": []
-  },
+  "stock_analysis": [],
   "economic_calendar": {
     "this_week": [
       {

@@ -28,15 +28,22 @@ class StockMarketIntelligence:
 
     def __init__(self):
         self.output_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "stock_market_intel.json")
-        self.client = KISClient()
+        self.client = None  # Lazy init to share token
+
+    def _get_client(self):
+        """KIS 클라이언트 싱글톤"""
+        if self.client is None:
+            self.client = KISClient()
+        return self.client
 
     def get_kospi_kosdaq_index(self) -> Dict[str, Any]:
         """KOSPI/KOSDAQ 지수 조회"""
         try:
+            client = self._get_client()
             # KOSPI
-            kospi = self.client.get_current_price("0001")  # KOSPI 지수
+            kospi = client.get_current_price("0001")  # KOSPI 지수
             # KOSDAQ
-            kosdaq = self.client.get_current_price("1001")  # KOSDAQ 지수
+            kosdaq = client.get_current_price("1001")  # KOSDAQ 지수
 
             result = {
                 "kospi": {
@@ -53,34 +60,108 @@ class StockMarketIntelligence:
             print(f"[StockIntel] 지수 조회 실패: {e}")
             return {"error": str(e)}
 
-    def get_top_volume_stocks(self) -> Dict[str, Any]:
-        """거래량 상위 종목 (네이버 금융 스크래핑 대안)"""
-        # TODO: KIS API로 거래량 상위 종목 조회
-        # 현재는 수동으로 주요 종목만 확인
-        hot_stocks = [
-            "005930",  # 삼성전자
-            "000660",  # SK하이닉스
-            "035720",  # 카카오
-            "035420",  # NAVER
+    def analyze_top_stocks(self) -> list:
+        """주요 종목 퀀트 점수 계산"""
+        client = self._get_client()
+
+        # KOSPI 우량주 + 성장주 + 배당주 (30개)
+        STOCKS = [
+            ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("035720", "카카오"),
+            ("035420", "NAVER"), ("051910", "LG화학"), ("006400", "삼성SDI"),
+            ("005380", "현대차"), ("000270", "기아"), ("068270", "셀트리온"),
+            ("207940", "삼성바이오로직스"), ("005490", "POSCO홀딩스"), ("373220", "LG에너지솔루션"),
+            ("105560", "KB금융"), ("055550", "신한지주"), ("086790", "하나금융지주"),
+            ("012330", "현대모비스"), ("009150", "삼성전기"), ("017670", "SK텔레콤"),
+            ("036570", "엔씨소프트"), ("251270", "넷마블"), ("003670", "포스코퓨처엠"),
+            ("096770", "SK이노베이션"), ("018260", "삼성에스디에스"), ("028260", "삼성물산"),
+            ("000810", "삼성화재"), ("032830", "삼성생명"), ("015760", "한국전력"),
+            ("034730", "SK"), ("051900", "LG생활건강"), ("003550", "LG"),
         ]
 
-        result = []
-        for code in hot_stocks:
+        results = []
+        for code, name in STOCKS:
             try:
-                data = self.client.get_current_price(code)
-                if "output" in data:
-                    output = data["output"]
-                    result.append({
-                        "code": code,
-                        "name": output.get("prdt_name", "N/A"),
-                        "price": int(output.get("stck_prpr", 0)),
-                        "change": float(output.get("prdy_ctrt", 0)),
-                        "volume": int(output.get("acml_vol", 0))
-                    })
-            except Exception as e:
-                print(f"  ❌ {code} 조회 실패: {e}")
+                # 현재가 조회
+                data = client.get_current_price(code)
+                if "output" not in data:
+                    continue
 
-        return {"stocks": result}
+                output = data["output"]
+                price = int(output.get("stck_prpr", 0))
+                change_pct = float(output.get("prdy_ctrt", 0))
+                volume = int(output.get("acml_vol", 0))
+
+                # 일봉 데이터 조회 (최근 50일)
+                daily = client.get_daily_price(code, days=50)
+                if not daily or "output2" not in daily:
+                    continue
+
+                candles = daily["output2"]
+                if len(candles) < 20:
+                    continue
+
+                # 퀀트 점수 계산
+                score = 0
+                closes = [int(c["stck_clpr"]) for c in candles[:20]]
+                volumes = [int(c["acml_vol"]) for c in candles[:20]]
+
+                # 추세 (25점)
+                ma5 = sum(closes[:5]) / 5
+                ma20 = sum(closes) / 20
+                if price > ma5 > ma20:
+                    score += 25
+                elif price > ma5:
+                    score += 15
+                elif price > ma20:
+                    score += 10
+
+                # 거래량 (20점)
+                avg_vol = sum(volumes) / len(volumes)
+                if volume > avg_vol * 1.5:
+                    score += 20
+                elif volume > avg_vol:
+                    score += 10
+
+                # 모멘텀 (20점)
+                if change_pct > 3:
+                    score += 20
+                elif change_pct > 1:
+                    score += 10
+                elif change_pct > 0:
+                    score += 5
+
+                # 변동성 (15점) - 일간 등락률 표준편차
+                changes = [(closes[i] - closes[i+1]) / closes[i+1] * 100 for i in range(len(closes)-1)]
+                volatility = (sum([(c - sum(changes)/len(changes))**2 for c in changes]) / len(changes)) ** 0.5
+                if volatility > 3:
+                    score += 15
+                elif volatility > 2:
+                    score += 10
+                elif volatility > 1:
+                    score += 5
+
+                # 상승 연속성 (10점)
+                up_days = sum(1 for c in changes[:5] if c > 0)
+                if up_days >= 4:
+                    score += 10
+                elif up_days >= 3:
+                    score += 5
+
+                results.append({
+                    "code": code,
+                    "name": name,
+                    "score": score,
+                    "price": price,
+                    "change_pct": round(change_pct, 2),
+                    "volatility": round(volatility, 2),
+                    "volume_ratio": round(volume / avg_vol, 2) if avg_vol > 0 else 0
+                })
+
+            except Exception as e:
+                print(f"[현빈 주식] {code} {name} 분석 실패: {e}")
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results
 
     def get_economic_calendar(self) -> Dict[str, Any]:
         """경제 지표 일정 (수동 입력)"""
@@ -120,12 +201,18 @@ class StockMarketIntelligence:
         intel = {
             "timestamp": datetime.now().isoformat(),
             "indexes": self.get_kospi_kosdaq_index(),
-            "hot_stocks": self.get_top_volume_stocks(),
+            "stock_analysis": self.analyze_top_stocks(),
             "economic_calendar": self.get_economic_calendar(),
         }
 
         # 시장 심리 분석
         intel["sentiment"] = self.analyze_market_sentiment(intel)
+
+        # 상위 5개 요약
+        if intel["stock_analysis"]:
+            print(f"\n[현빈 주식] 퀀트 점수 TOP 5:")
+            for s in intel["stock_analysis"][:5]:
+                print(f"  {s['name']}({s['code']}): {s['score']}점 (변동 {s['change_pct']:+.1f}%)")
 
         # JSON 저장
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
@@ -160,12 +247,12 @@ class StockMarketIntelligence:
         # 시장 심리
         lines.append(f"\n시장 심리: {intel.get('sentiment', 'N/A')}")
 
-        # 거래량 상위
-        hot_stocks = intel.get("hot_stocks", {}).get("stocks", [])
-        if hot_stocks:
-            lines.append("\n📈 주요 종목:")
-            for stock in hot_stocks[:3]:
-                lines.append(f"  {stock['name']}: {stock['price']:,}원 ({stock['change']:+.2f}%)")
+        # 퀀트 점수 상위
+        stocks = intel.get("stock_analysis", [])
+        if stocks:
+            lines.append("\n📈 퀀트 점수 TOP 3:")
+            for stock in stocks[:3]:
+                lines.append(f"  {stock['name']}: {stock['score']}점 ({stock['change_pct']:+.2f}%)")
 
         return "\n".join(lines)
 

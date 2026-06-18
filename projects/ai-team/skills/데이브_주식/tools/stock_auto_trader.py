@@ -20,8 +20,8 @@ load_env()
 sys.path.insert(0, _here)
 from kis_client import KISClient
 
-# 데이브 감시 대상 (우량주 중심)
-DAVE_STOCKS = [
+# 기본 감시 대상 (우량주 중심)
+BASE_STOCKS = [
     "005930",  # 삼성전자
     "000660",  # SK하이닉스
     "005380",  # 현대차
@@ -31,6 +31,39 @@ DAVE_STOCKS = [
     "035420",  # NAVER
     "000270",  # 기아
 ]
+
+WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+
+def get_dynamic_stocks():
+    """현빈 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
+    stocks = BASE_STOCKS.copy()
+
+    try:
+        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "stock_market_intel.json")
+        if os.path.exists(intel_path):
+            with open(intel_path, "r", encoding="utf-8") as f:
+                intel = json.load(f)
+
+            # 현빈 종목별 퀀트 점수 확인 (상위 5개)
+            if "stock_analysis" in intel:
+                scored = [(s["code"], s["name"], s.get("score", 0)) for s in intel["stock_analysis"]]
+                scored.sort(key=lambda x: x[2], reverse=True)
+
+                for code, name, score in scored[:5]:
+                    if score >= 50:  # 50점 이상만
+                        stocks.append(code)
+
+                print(f"[Dave 주식] 현빈 고득점: {', '.join([f'{n}({s}점)' for c, n, s in scored[:3]])}")
+
+            # 중복 제거
+            stocks = list(dict.fromkeys(stocks))
+            print(f"[Dave 주식] 동적 종목: {len(stocks)}개 (기본 {len(BASE_STOCKS)} + 현빈 {len(stocks) - len(BASE_STOCKS)})")
+    except Exception as e:
+        print(f"[Dave 주식] 동적 종목 로드 실패, 기본 종목 사용: {e}")
+
+    return stocks
+
+DAVE_STOCKS = get_dynamic_stocks()
 
 class StockAutoTrader:
     """한국 주식 자동매매 (데이브 보수적 전략)"""
@@ -186,15 +219,23 @@ JSON 형식으로 답변:
 
 def main():
     """메인 함수"""
-    trader = StockAutoTrader()
+    global DAVE_STOCKS
 
     if "--daemon" in sys.argv:
-        print("🤖 데이브 주식 자동매매 데몬 시작 (1분 주기)")
+        DAVE_STOCKS = get_dynamic_stocks()
+        print(f"🤖 데이브 주식 자동매매 시작: {len(DAVE_STOCKS)}개 종목")
+        iteration = 0
 
         with ProcessLock("dave_stock"):
             try:
+                trader = StockAutoTrader()
                 while True:
+                    # 30분마다 종목 재로드
+                    if iteration % 30 == 0:
+                        DAVE_STOCKS = get_dynamic_stocks()
+
                     # 장중에만 실행 (09:00 ~ 15:30)
+                    iteration += 1
                     now = datetime.now()
                     hour = now.hour
                     minute = now.minute

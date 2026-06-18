@@ -59,7 +59,8 @@ class KISClient:
                 self.access_token = data["access_token"]
                 # 토큰 유효기간 (24시간 - 1시간 여유)
                 self.token_expires = time.time() + (23 * 3600)
-                print(f"✅ KIS 액세스 토큰 발급 완료")
+                self._save_token_cache()
+                print(f"✅ KIS 액세스 토큰 발급 완료 (24시간 유효)")
                 return self.access_token
             else:
                 print(f"❌ KIS 토큰 발급 실패: {data}")
