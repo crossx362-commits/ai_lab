@@ -10,6 +10,7 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 | --- | --- | --- |
 | Root operating docs | `AGENTS.md`, `PROJECT_OVERVIEW.md`, `README.md`, `CLAUDE.md`, `SKILL.md` | Root docs define workspace behavior and broad overview. `README.md` is now the lightweight entry point. |
 | Setup docs | `docs/setup/` | Environment, Notion, Instagram, security, and automation setup guides. |
+| Planning docs | `docs/plans/` | Current migration and cleanup plans that should be executed through the harness. |
 | Reports | `reports/` | Generated research, history, meetings, and inspection reports. Keep current reports; archive exact duplicates can be removed. |
 | Petnna docs | `projects/petnna/*.md`, `projects/petnna/docs/` | Product docs, policies, changelog, Supabase setup. |
 | AI Team docs | `projects/ai-team/*.md`, `projects/ai-team/docs/`, `projects/ai-team/scripts/README.md`, `projects/ai-team/skills/README.md` | Project-level and agent-framework documentation. |

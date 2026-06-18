@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-18T12:58:40",
+  "timestamp": "2026-06-18T13:00:03",
   "root": "D:\\ai_lab",
   "overall": "OK",
   "checks": [
@@ -21,12 +21,17 @@
     {
       "name": "trading",
       "status": "OK",
-      "message": "intel 06/18 12:58, dave_log 06/18 10:59, leo_log 06/18 11:00"
+      "message": "intel 06/18 12:59, dave_log 06/18 10:59, leo_log 06/18 11:00"
     },
     {
       "name": "structure",
       "status": "OK",
       "message": "core dirs present"
+    },
+    {
+      "name": "report_layout",
+      "status": "OK",
+      "message": "ai-team local reports limited to live runtime exceptions"
     }
   ]
 }

@@ -122,6 +122,24 @@ def check_structure():
     return ok("core dirs present")
 
 
+def check_report_layout():
+    project_reports = AI_TEAM / "reports"
+    allowed = {
+        Path("research/crypto_market_intel.json"),
+        Path("research/hyunbin_alert_state.json"),
+        Path("pids/dave.lock"),
+    }
+    if not project_reports.exists():
+        return ok("no ai-team local reports")
+
+    files = [p.relative_to(project_reports) for p in project_reports.rglob("*") if p.is_file()]
+    unexpected = sorted(str(p).replace("\\", "/") for p in files if p not in allowed)
+    if unexpected:
+        return warn("unexpected ai-team reports: " + ", ".join(unexpected[:8]))
+
+    return ok("ai-team local reports limited to live runtime exceptions")
+
+
 def main() -> int:
     checks = {
         "env": check_env,
@@ -129,6 +147,7 @@ def main() -> int:
         "schedule": check_schedule,
         "trading": check_trading,
         "structure": check_structure,
+        "report_layout": check_report_layout,
     }
     worst = 0
     results = []

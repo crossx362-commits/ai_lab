@@ -15,6 +15,7 @@ Checks:
 - Youngsuk schedules and last-run file
 - trading intelligence/log freshness
 - core folder structure
+- report layout drift
 
 It also writes the latest status snapshot to:
 
@@ -23,3 +24,5 @@ reports/status/harness_latest.json
 ```
 
 Use it before and after folder cleanup or migration. The checks avoid secrets and do not print key values.
+
+`projects/ai-team/reports/` is only allowed for live runtime exceptions that are still read by agents, such as Hyunbin market intelligence and PID locks. General generated reports should live under root `reports/`.
