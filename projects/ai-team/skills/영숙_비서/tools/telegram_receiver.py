@@ -484,6 +484,44 @@ def process(msg):
         except Exception as se:
             print(f"❌ 현황 조회 실패: {se}")
 
+    # 1-4-1. 기술 질문 - 데이터 출처
+    if any(k in msg_clean for k in ["슈퍼트랜드", "보조지표", "지표", "어디서가져", "api출처", "데이터출처"]):
+        if any(k in msg_clean for k in ["주식", "원익", "kis", "한국투자"]):
+            send_msg("""📊 주식 데이터 출처
+
+**슈퍼트랜드 & 보조지표**:
+- 한국투자증권 KIS OpenAPI
+- 1분봉 데이터 사용
+- ATR 기반 계산
+
+**현재 모니터링**:
+- 원익IPS (240810)
+- 추세 변환 시 실시간 알림""")
+            return
+        elif any(k in msg_clean for k in ["코인", "업비트", "crypto", "비트"]):
+            send_msg("""💰 코인 데이터 출처
+
+**기술 지표**:
+- 업비트 API
+- pyupbit 라이브러리
+- 일봉/분봉 데이터
+
+**현재 모니터링**:
+- 현빈: 20개 코인 퀀트 점수
+- 데이브: 기본 8개 + 현빈 추천
+- 레오: 기본 7개 + 급등주""")
+            return
+        else:
+            send_msg("""📊 데이터 출처
+
+**주식**: 한국투자증권 KIS API
+**코인**: 업비트 API
+
+무엇에 대해 알고 싶으신가요?
+- 주식 슈퍼트랜드
+- 코인 지표""")
+            return
+
     # 1-5. 스케줄러 현황 조회 (schedules.json 실제 데이터)
     if any(k in msg_clean for k in ["스케줄보고", "스케줄확인", "스케줄현황", "스케줄목록",
                                      "하루에몇번", "하루에두번", "몇번실행", "자동스케줄"]):
