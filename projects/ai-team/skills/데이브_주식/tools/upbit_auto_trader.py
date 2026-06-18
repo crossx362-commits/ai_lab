@@ -25,13 +25,39 @@ except ModuleNotFoundError:
     import upbit_public as pyupbit
 import upbit_analyzer
 
-# 감시 대상 — 거래량 상위 고변동성 알트 우선 (소액 수익 극대화)
-TICKERS = [
-    "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-NEAR",
-    "KRW-SUI", "KRW-SEI", "KRW-STX", "KRW-HBAR",
-    "KRW-ADA", "KRW-AVAX", "KRW-LINK", "KRW-PEPE",
-    "KRW-BTC", "KRW-ETH",
+# 기본 감시 대상 (안정성)
+BASE_TICKERS = [
+    "KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP",
+    "KRW-DOGE", "KRW-ADA", "KRW-AVAX", "KRW-LINK",
 ]
+
+def get_dynamic_tickers():
+    """현빈 인텔 기반 동적 종목 선정"""
+    import json
+    tickers = BASE_TICKERS.copy()
+
+    try:
+        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
+        if os.path.exists(intel_path):
+            with open(intel_path, "r", encoding="utf-8") as f:
+                intel = json.load(f)
+
+            # 현빈 추천 급등/급락 종목 추가 (상위 5개씩)
+            if "top_movers" in intel:
+                for gainer in intel["top_movers"].get("gainers", [])[:5]:
+                    tickers.append(gainer["ticker"])
+                for loser in intel["top_movers"].get("losers", [])[:3]:
+                    tickers.append(loser["ticker"])
+
+            # 중복 제거
+            tickers = list(dict.fromkeys(tickers))
+            print(f"[Dave] 동적 종목 선정: {len(tickers)}개 (기본 {len(BASE_TICKERS)} + 현빈 추천 {len(tickers) - len(BASE_TICKERS)})")
+    except Exception as e:
+        print(f"[Dave] 동적 종목 로드 실패, 기본 종목 사용: {e}")
+
+    return tickers
+
+TICKERS = get_dynamic_tickers()
 
 # 티커별 최근 LLM 분석 실행 시점 기록 (실시간 무한 루프로 인한 중복 LLM 과부하 방지 쿨다운용)
 last_llm_time = {}
@@ -544,15 +570,24 @@ if __name__ == "__main__":
     if "--once" in args:
         run_auto_trade_cycle()
     elif "--daemon" in args:
-        print("🤖 데이브 업비트 실시간 자동 매매 데몬 시작 (시세 감시 및 신규 스캔: 10초)")
+        TICKERS = get_dynamic_tickers()
+        print(f"🤖 데이브 업비트 자동매매 시작: {len(TICKERS)}개 종목")
+        print(f"   기본: {', '.join(t.replace('KRW-', '') for t in BASE_TICKERS[:4])}...")
+        print(f"   현빈: {', '.join(t.replace('KRW-', '') for t in [t for t in TICKERS if t not in BASE_TICKERS][:5])}...")
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS
+        iteration = 0
 
         with ProcessLock("dave"):
             try:
                 while True:
                     try:
+                        # 30분마다 종목 재로드
+                        if iteration % 180 == 0:
+                            TICKERS = get_dynamic_tickers()
+
                         run_auto_trade_cycle()
                         send_status_report()
+                        iteration += 1
                     except Exception as e:
                         print(f"[Daemon Error] {e}")
                     time.sleep(10)

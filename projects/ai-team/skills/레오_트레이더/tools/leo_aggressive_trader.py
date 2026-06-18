@@ -105,16 +105,36 @@ except ModuleNotFoundError as e:
     IMPORT_ERROR = e
     upbit_analyzer = None
 
-# 레오 전용 감시 코인 (고변동성 알트)
-LEO_TICKERS = [
-    "KRW-DOGE",   # 밈코인 대장
-    "KRW-PEPE",   # 밈코인 급등주
-    "KRW-NEAR",   # 레이어1 고변동
-    "KRW-SUI",    # 신규 레이어1
-    "KRW-SEI",    # 신규 레이어1
-    "KRW-HBAR",   # 엔터프라이즈
-    "KRW-STX",    # 비트코인 L2
+# 기본 감시 대상 (고변동성 우선)
+BASE_LEO_TICKERS = [
+    "KRW-DOGE", "KRW-PEPE", "KRW-NEAR", "KRW-SUI",
+    "KRW-SEI", "KRW-HBAR", "KRW-STX",
 ]
+
+def get_dynamic_leo_tickers():
+    """현빈 인텔 기반 동적 종목 선정 (공격적)"""
+    import json
+    tickers = BASE_LEO_TICKERS.copy()
+
+    try:
+        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
+        if os.path.exists(intel_path):
+            with open(intel_path, "r", encoding="utf-8") as f:
+                intel = json.load(f)
+
+            # 급등주만 추가 (상위 8개)
+            if "top_movers" in intel:
+                for gainer in intel["top_movers"].get("gainers", [])[:8]:
+                    tickers.append(gainer["ticker"])
+
+            tickers = list(dict.fromkeys(tickers))
+            print(f"[Leo] 동적 종목: {len(tickers)}개 (기본 {len(BASE_LEO_TICKERS)} + 급등주 {len(tickers) - len(BASE_LEO_TICKERS)})")
+    except Exception as e:
+        print(f"[Leo] 동적 종목 실패, 기본 사용: {e}")
+
+    return tickers
+
+LEO_TICKERS = get_dynamic_leo_tickers()
 
 # 위험 관리 변수
 consecutive_losses = 0
@@ -646,8 +666,12 @@ def send_status_report():
 
 def print_status():
     """외부 API 주문 없이 레오 설정과 실행 방법만 출력."""
+    global LEO_TICKERS
+    LEO_TICKERS = get_dynamic_leo_tickers()
     print("⚡ 레오 트레이더 상태")
-    print(f"- 감시 코인: {', '.join(LEO_TICKERS)}")
+    print(f"- 감시 코인: {len(LEO_TICKERS)}개")
+    print(f"  기본: {', '.join(BASE_LEO_TICKERS)}")
+    print(f"  급등주: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
     print(f"- 최소 진입 점수: 2점")
     print(f"- 연속 손절 제한: {MAX_CONSECUTIVE_LOSSES}회")
     print(f"- 일일 손실 한도: {MAX_DAILY_LOSS_PCT:.1f}%")
@@ -669,14 +693,23 @@ if __name__ == "__main__":
     if "--once" in args:
         run_leo_cycle()
     elif "--daemon" in args:
-        print("⚡ 레오 공격적 단타 트레이더 시작 (10초 주기)")
+        LEO_TICKERS = get_dynamic_leo_tickers()
+        print(f"⚡ 레오 공격적 단타 트레이더 시작: {len(LEO_TICKERS)}개 종목")
+        print(f"   기본: {', '.join(BASE_LEO_TICKERS)}")
+        print(f"   급등주: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
+        iteration = 0
 
         with ProcessLock("leo"):
             try:
                 while True:
                     try:
+                        # 30분마다 종목 재로드
+                        if iteration % 180 == 0:
+                            LEO_TICKERS = get_dynamic_leo_tickers()
+
                         run_leo_cycle()
                         send_status_report()
+                        iteration += 1
                     except Exception as e:
                         print(f"[Leo Daemon Error] {e}")
 
