@@ -504,6 +504,8 @@ def _watch_traders():
                 return False
         return False
 
+    last_restart_notified = {}  # 마지막 재시작 알림 시간 추적
+
     def restart(name, info):
         try:
             agent_manual_stop = os.path.join(manual_stop_dir, f".manual_stop_{name}")
@@ -516,7 +518,15 @@ def _watch_traders():
             root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
             script = os.path.join(root, info["script"])
             subprocess.Popen([sys.executable, "-u", script] + info["args"], cwd=root, creationflags=CREATE_NO_WINDOW)
-            send_msg(f"🔄 [영숙] {name} 종료 감지 → 자동 재시작")
+
+            # 10분마다 한 번만 알림 (스팸 방지)
+            current_time = time.time()
+            last_notify = last_restart_notified.get(name, 0)
+            if current_time - last_notify > 600:  # 10분 = 600초
+                send_msg(f"🔄 [영숙] {name} 종료 감지 → 자동 재시작")
+                last_restart_notified[name] = current_time
+            else:
+                print(f"[trader_watch] {name} 재시작 (알림 생략 - 최근 알림 {int(current_time - last_notify)}초 전)")
         except Exception as e:
             send_msg(f"⚠️ [영숙] {name} 재시작 실패: {e}")
 
