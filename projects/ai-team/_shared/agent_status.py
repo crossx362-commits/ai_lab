@@ -14,6 +14,7 @@ telegram_bot_optimized.py 및 telegram_receiver.py 등에서 사용
 import os
 import json
 import re
+import subprocess
 from datetime import datetime
 
 
@@ -57,6 +58,43 @@ def get_status_report(agent: str, project_root: str) -> str:
         except Exception:
             return ""
 
+    def mtime_text(path: str) -> str:
+        try:
+            return datetime.fromtimestamp(os.path.getmtime(path)).strftime("%m/%d %H:%M")
+        except Exception:
+            return "시간 확인 불가"
+
+    def is_recent(path: str, hours: int = 24) -> bool:
+        try:
+            age = datetime.now() - datetime.fromtimestamp(os.path.getmtime(path))
+            return age.total_seconds() <= hours * 3600
+        except Exception:
+            return False
+
+    def command_pids(script_filename: str) -> list[int]:
+        try:
+            needle = script_filename.replace("'", "''").lower()
+            cmd = (
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
+                f"$_.CommandLine.ToLower().Contains('{needle}') }} | "
+                "Select-Object -ExpandProperty ProcessId"
+            )
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", cmd],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return [int(pid) for pid in result.stdout.split() if pid.isdigit()]
+        except Exception:
+            return []
+
+    def upbit_env_status() -> str:
+        access_ok = len(os.getenv("UPBIT_ACCESS_KEY", "")) >= 20
+        secret_ok = len(os.getenv("UPBIT_SECRET_KEY", "")) >= 20
+        return "Upbit env OK" if access_ok and secret_ok else "Upbit env 확인 필요"
+
     # 1. 예원 (CEO)
     if "예원" in agent or "CEO" in agent or "전체" in agent:
         learning_info = get_last_learning("예원")
@@ -80,8 +118,19 @@ def get_status_report(agent: str, project_root: str) -> str:
 
     # 3. 코다리 (개발자)
     if "코다리" in agent or "개발" in agent or "전체" in agent:
+        ollama_log = os.path.join(project_root, "reports", "history", "kodari_ollama_log.md")
         prog_path = os.path.join(project_root, "projects", "ai-team", "docs", "progress.md")
-        if os.path.exists(prog_path):
+        if os.path.exists(ollama_log):
+            try:
+                with open(ollama_log, "r", encoding="utf-8") as f:
+                    content = f.read()
+                events = [l.strip() for l in content.splitlines() if l.strip().startswith("- [")]
+                latest = events[-1] if events else "Ollama 헬스 로그 있음"
+                latest = re.sub(r"^-\s*", "", latest)
+                lines.append(f"💻 <b>코다리 (개발자)</b>: Ollama/개발 헬스 {latest}\n   로그 갱신: {mtime_text(ollama_log)}")
+            except Exception:
+                lines.append("💻 <b>코다리 (개발자)</b>: Ollama 헬스 로그 읽기 오류")
+        elif os.path.exists(prog_path):
             try:
                 with open(prog_path, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -149,8 +198,24 @@ def get_status_report(agent: str, project_root: str) -> str:
 
     # 9. 현빈 (전략가)
     if "현빈" in agent or "전략" in agent or "전체" in agent:
+        intel_path = os.path.join(project_root, "projects", "ai-team", "reports", "research", "crypto_market_intel.json")
         hb_path = os.path.join(project_root, "reports", "research", "hyunbin_research.json")
-        if os.path.exists(hb_path):
+        if os.path.exists(intel_path):
+            try:
+                with open(intel_path, "r", encoding="utf-8-sig") as f:
+                    data = json.load(f)
+                ts = data.get("timestamp", "")[:16].replace("T", " ")
+                fed = data.get("fed_events", {})
+                fear = data.get("fear_greed_index", {})
+                kimchi = data.get("kimchi_premium", {})
+                risk = fed.get("risk_level", "?")
+                status = fed.get("current_status", "시장 조사 중")
+                fear_text = f"공포탐욕 {fear.get('value', '?')}({fear.get('classification', '?')})"
+                kimchi_text = f"김프 {kimchi.get('premium_pct', '?')}%"
+                lines.append(f"📊 <b>현빈 (전략가)</b>: {status} | 위험도 {risk}\n   {fear_text} / {kimchi_text} / 갱신 {ts}")
+            except Exception:
+                lines.append("📊 <b>현빈 (전략가)</b>: crypto_market_intel 읽기 오류")
+        elif os.path.exists(hb_path):
             try:
                 with open(hb_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -180,7 +245,11 @@ def get_status_report(agent: str, project_root: str) -> str:
         # 최근 보안 스캔 결과 확인
         if os.path.exists(security_scan_dir):
             try:
-                scans = sorted([f for f in os.listdir(security_scan_dir) if f.endswith('.json')], reverse=True)
+                scans = sorted(
+                    [f for f in os.listdir(security_scan_dir) if f.endswith('.json')],
+                    key=lambda f: os.path.getmtime(os.path.join(security_scan_dir, f)),
+                    reverse=True,
+                )
                 if scans:
                     with open(os.path.join(security_scan_dir, scans[0]), "r", encoding="utf-8") as f:
                         scan_data = json.load(f)
@@ -209,7 +278,11 @@ def get_status_report(agent: str, project_root: str) -> str:
         # 최근 컴플라이언스 감사 결과 확인
         if os.path.exists(compliance_dir):
             try:
-                audits = sorted([f for f in os.listdir(compliance_dir) if f.endswith('.json')], reverse=True)
+                audits = sorted(
+                    [f for f in os.listdir(compliance_dir) if f.endswith('.json')],
+                    key=lambda f: os.path.getmtime(os.path.join(compliance_dir, f)),
+                    reverse=True,
+                )
                 if audits:
                     with open(os.path.join(compliance_dir, audits[0]), "r", encoding="utf-8") as f:
                         audit_data = json.load(f)
@@ -234,8 +307,18 @@ def get_status_report(agent: str, project_root: str) -> str:
     if "데이브" in agent or "전체" in agent:
         dave_path = os.path.join(project_root, "reports", "research", "dave_upbit_analysis.md")
         dave_stock = os.path.join(project_root, "reports", "research", "dave_stock_analysis.md")
+        dave_log = os.path.join(project_root, "output", "trading_logs", "dave_daemon.out.log")
+        intel_path = os.path.join(project_root, "projects", "ai-team", "reports", "research", "crypto_market_intel.json")
         dave_info = []
-        if os.path.exists(dave_path):
+        pids = command_pids("upbit_auto_trader.py")
+        if pids:
+            dave_info.append(f"실거래 감시 실행 중 PID {', '.join(map(str, pids))}")
+        dave_info.append(upbit_env_status())
+        if os.path.exists(intel_path):
+            dave_info.append(f"현빈 시장정보 {mtime_text(intel_path)}")
+        if os.path.exists(dave_log):
+            dave_info.append(f"로그 {mtime_text(dave_log)}")
+        if os.path.exists(dave_path) and is_recent(dave_path):
             try:
                 with open(dave_path, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -248,7 +331,7 @@ def get_status_report(agent: str, project_root: str) -> str:
                 dave_info.append(f"가상자산: {decision} ({mtime})")
             except Exception:
                 dave_info.append("가상자산: 분석 오류")
-        if os.path.exists(dave_stock):
+        if os.path.exists(dave_stock) and is_recent(dave_stock):
             try:
                 with open(dave_stock, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -270,8 +353,12 @@ def get_status_report(agent: str, project_root: str) -> str:
     # 레오 (공격적 단타 트레이더)
     if "레오" in agent or "전체" in agent:
         leo_path = os.path.join(project_root, "reports", "research", "leo_trades.json")
-        leo_log = os.path.join(project_root, "output", "bot_logs", "leo_aggressive_trader.log")
+        leo_log = os.path.join(project_root, "output", "trading_logs", "leo_daemon.out.log")
         leo_info = []
+        pids = command_pids("leo_aggressive_trader.py")
+        if pids:
+            leo_info.append(f"실거래 단타 감시 실행 중 PID {', '.join(map(str, pids))}")
+        leo_info.append(upbit_env_status())
 
         # 거래 기록 확인
         if os.path.exists(leo_path):
@@ -294,7 +381,7 @@ def get_status_report(agent: str, project_root: str) -> str:
         if os.path.exists(leo_log):
             try:
                 mtime = datetime.fromtimestamp(os.path.getmtime(leo_log)).strftime("%m/%d %H:%M")
-                leo_info.append(f"마지막 활동: {mtime}")
+                leo_info.append(f"로그 파일: {mtime}")
             except Exception:
                 pass
 
