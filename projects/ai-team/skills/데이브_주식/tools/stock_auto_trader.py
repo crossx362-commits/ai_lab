@@ -299,16 +299,13 @@ JSON 형식으로 답변:
 
 def main():
     """메인 함수"""
-    global DAVE_STOCKS
+    trader = StockAutoTrader()
 
     if "--daemon" in sys.argv:
-        DAVE_STOCKS = get_dynamic_stocks()
-        print(f"🤖 데이브 주식 자동매매 시작: {len(DAVE_STOCKS)}개 종목")
-        iteration = 0
+        print("🤖 원익IPS 슈퍼트렌드 모니터링 시작 (1분봉)")
 
         with ProcessLock("dave_stock"):
             try:
-                trader = StockAutoTrader()
                 while True:
                     # 장중에만 실행 (09:00 ~ 15:30)
                     now = datetime.now()
