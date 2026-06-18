@@ -136,6 +136,47 @@ def check_report_layout():
     return ok("ai-team local reports limited to live runtime exceptions")
 
 
+def git_tracked() -> list[str]:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
+    except Exception:
+        return []
+
+
+def check_root_layout():
+    allowed_root_files = {
+        ".codex/environments/environment.toml",
+        ".env.encrypted",
+        ".gitignore",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "ENV_MANIFEST.json",
+        "PROJECT_OVERVIEW.md",
+        "README.md",
+        "SKILL.md",
+        "client_secret.json.encrypted",
+        "vercel.json",
+    }
+    tracked = git_tracked()
+    root_files = [p for p in tracked if "/" not in p or p == ".codex/environments/environment.toml"]
+    unexpected = sorted(p for p in root_files if p not in allowed_root_files)
+    generated = sorted(p for p in tracked if p.startswith("output/"))
+    problems = []
+    if unexpected:
+        problems.append("unexpected root files: " + ", ".join(unexpected[:8]))
+    if generated:
+        problems.append("tracked output files: " + ", ".join(generated[:8]))
+    if problems:
+        return warn(" | ".join(problems))
+    return ok("root tracked files classified")
+
+
 def main() -> int:
     checks = {
         "env": check_env,
@@ -144,6 +185,7 @@ def main() -> int:
         "trading": check_trading,
         "structure": check_structure,
         "report_layout": check_report_layout,
+        "root_layout": check_root_layout,
     }
     worst = 0
     results = []
