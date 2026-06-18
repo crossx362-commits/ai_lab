@@ -3,7 +3,13 @@ import base64
 import getpass
 import os
 import platform
+import sys
 from pathlib import Path
+
+# UTF-8 인코딩 강제
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
