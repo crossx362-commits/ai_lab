@@ -509,14 +509,20 @@ def process(msg):
                 send_msg("ℹ️ 종목명을 입력해주세요.\n예: 'SK하이닉스 감시 추가'")
             return
         elif "제거" in msg_clean or "삭제" in msg_clean or "중단" in msg_clean or "끄" in msg_clean:
-            # 종목명 추출
+            # 모두 제거
+            if "모두" in msg_clean or "전체" in msg_clean or "all" in msg_clean:
+                result = subprocess.run([sys.executable, manager_path, "clear"],
+                                      capture_output=True, text=True, encoding="utf-8")
+                send_msg(result.stdout or result.stderr or "✅ 모든 감시 제거 완료")
+                return
+            # 개별 종목 제거
             stock_name = msg.replace("슈퍼트랜드", "").replace("감시", "").replace("제거", "").replace("삭제", "").replace("중단", "").replace("끄", "").strip()
             if stock_name:
                 result = subprocess.run([sys.executable, manager_path, "remove", stock_name],
                                       capture_output=True, text=True, encoding="utf-8")
                 send_msg(result.stdout or result.stderr or "✅ 감시 제거 완료")
             else:
-                send_msg("ℹ️ 종목명을 입력해주세요.\n예: '원익IPS 감시 제거'")
+                send_msg("ℹ️ 종목명을 입력해주세요.\n예: '원익IPS 감시 제거' 또는 '감시 모두 제거'")
             return
         elif "목록" in msg_clean or "리스트" in msg_clean:
             # 감시 목록 조회

@@ -134,6 +134,22 @@ def list_stocks():
 
     return "\n".join(lines)
 
+def clear_all():
+    """모든 종목 감시 중단"""
+    data = load_watch_list()
+    count = 0
+
+    for stock in data["stocks"]:
+        if stock.get("enabled"):
+            stock["enabled"] = False
+            count += 1
+
+    if count > 0:
+        save_watch_list(data)
+        return True, f"✅ 모든 감시 종목 제거 완료 ({count}개)"
+    else:
+        return False, "ℹ️ 감시 중인 종목이 없습니다."
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
@@ -148,4 +164,7 @@ if __name__ == "__main__":
         print(msg)
     elif cmd == "remove" and len(sys.argv) > 2:
         success, msg = remove_stock(sys.argv[2])
+        print(msg)
+    elif cmd == "clear":
+        success, msg = clear_all()
         print(msg)
