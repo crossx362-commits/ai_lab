@@ -109,9 +109,8 @@ def check_schedule():
         enabled = [s for s in items if s.get("enabled", True)]
     except Exception as e:
         return fail(f"schedule json failed: {e}")
-    if not last_run.exists():
-        return warn(f"enabled {len(enabled)}/{len(items)}, last_run missing (bot not yet run)")
-    return ok(f"enabled {len(enabled)}/{len(items)}, last_run {age_text(last_run)}")
+    last_info = age_text(last_run) if last_run.exists() else "미실행"
+    return ok(f"enabled {len(enabled)}/{len(items)}, last_run {last_info}")
 
 
 def check_trading():
