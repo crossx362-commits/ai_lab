@@ -360,19 +360,12 @@ def _tool_web_search(query: str) -> str:
     return web_search(query)
 
 
-# 종목명 → 종목코드 매핑 (주요 종목)
+# 종목명 → (종목코드, 표시명) 매핑
 _STOCK_NAME_MAP = {
-    "삼성전자": "005930", "sk하이닉스": "000660", "하이닉스": "000660",
-    "lg에너지솔루션": "373220", "삼성바이오로직스": "207940",
-    "현대차": "005380", "현대자동차": "005380", "기아": "000270",
-    "셀트리온": "068270", "포스코홀딩스": "005490", "포스코": "005490",
-    "카카오": "035720", "네이버": "035420", "naver": "035420",
-    "lg화학": "051910", "삼성sdi": "006400", "sk이노베이션": "096770",
-    "한국전력": "015760", "kb금융": "105560", "신한지주": "055550",
-    "하나금융지주": "086790", "우리금융지주": "316140", "삼성물산": "028260",
-    "두산에너빌리티": "034020", "한화에어로스페이스": "012450",
-    "크래프톤": "259960", "엔씨소프트": "036570", "넷마블": "251270",
-    "카카오뱅크": "323410", "토스뱅크": "034020",
+    "우리기술": ("032820", "우리기술"),
+    "삼성전자": ("005930", "삼성전자"),
+    "sk하이닉스": ("000660", "SK하이닉스"),
+    "하이닉스": ("000660", "SK하이닉스"),
 }
 
 _STOCK_KEYWORDS = ["주가", "시세", "얼마", "주식가격", "현재가"]
@@ -383,15 +376,19 @@ _DATA_KEYWORDS = [
 _SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷"]
 
 
-def _extract_stock_code(text: str) -> str | None:
-    """텍스트에서 종목명을 찾아 종목코드 반환."""
+def _extract_stock(text: str) -> tuple[str, str] | None:
+    """텍스트에서 종목명을 찾아 (종목코드, 표시명) 반환."""
     t = "".join(text.lower().split())
-    for name, code in _STOCK_NAME_MAP.items():
+    for name, (code, label) in _STOCK_NAME_MAP.items():
         if name.replace(" ", "") in t:
-            return code
-    # 6자리 숫자 코드가 직접 있으면 그대로 사용
+            return code, label
     m = re.search(r"\b(\d{6})\b", text)
-    return m.group(1) if m else None
+    return (m.group(1), m.group(1)) if m else None
+
+
+def _extract_stock_code(text: str) -> str | None:
+    result = _extract_stock(text)
+    return result[0] if result else None
 
 
 def _tool_get_stock_price(text: str) -> str:
@@ -403,16 +400,18 @@ def _tool_get_stock_price(text: str) -> str:
         _mod = importlib.util.module_from_spec(_spec)
         _spec.loader.exec_module(_mod)
         KISClient = _mod.KISClient
-        code = _extract_stock_code(text)
-        if not code:
+        stock = _extract_stock(text)
+        if not stock:
             return ""
+        code, name = stock
         client = KISClient()
         result = client.get_current_price(code)
         output = result.get("output", {})
-        name = output.get("hts_kor_isnm", code)
-        price = output.get("stck_prpr", "?")
-        change = output.get("prdy_vrss", "0")
-        pct = output.get("prdy_ctrt", "0")
+        price = output.get("stck_prpr")
+        if not price:
+            return ""
+        change = output.get("prdy_vrss", "0") or "0"
+        pct = output.get("prdy_ctrt", "0") or "0"
         sign = "▲" if output.get("prdy_vrss_sign") in ("1", "2") else "▼"
         return f"{name} 현재가: {int(price):,}원 {sign}{int(change):,}원 ({pct}%)"
     except Exception as exc:
