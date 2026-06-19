@@ -36,7 +36,8 @@ python projects/ai-team/scripts/start_trading_team.py --live
 ```
 
 This launches:
-- **펄스 (pulse)**: Crypto market intelligence collector
+- **시그널 (signal)**: Market signal collector
+- **펄스 (pulse)**: Market pulse analyzer
 - **데이브 (Dave)**: Conservative Upbit auto-trader
 - **레오 (Leo)**: Aggressive day-trader
 - **Monitor**: Process health checker
@@ -74,7 +75,8 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 | 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
 | 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
 | 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |
-| 펄스 (pulse) | Strategist — Crypto market research | `crypto_market_intelligence.py` |
+| 시그널 (signal) | Analyst — Market signal collection | `market_signal.py` |
+| 펄스 (pulse) | Analyst — Market pulse analysis | `market_pulse.py` |
 | 데이브 (Dave) | Trader — Conservative crypto trading | `upbit_auto_trader.py` |
 | 레오 (Leo) | Trader — Aggressive day trading | `leo_aggressive_trader.py` |
 | 경수 (Kyungsu) | Investigator — Malicious comment detection | security tools |
@@ -176,10 +178,10 @@ See `.env` for full list. Key variables:
 
 ### Trading Team Components
 
-1. **Market Intelligence** (`crypto_market_intelligence.py`):
+1. **Market Intelligence** (`market_signal.py`, `market_pulse.py`):
    - Fetches Upbit market data
    - Analyzes price trends, order book depth
-   - Publishes to `projects/ai-team/reports/research/crypto_market_intel.json`
+   - Publishes to `reports/research/market_signal.json` and compatible `market_pulse.json`
 
 2. **Conservative Trader** (`upbit_auto_trader.py`):
    - Reads market intelligence
@@ -415,7 +417,8 @@ if hasattr(sys.stdout, "reconfigure"):
 |---------|----------|----------|
 | **예원_CEO** | 오케스트레이션·라우팅·하네스 체크 | `yewon_dispatcher.py`, `harness_manager.py` |
 | **영숙_비서** | 텔레그램 봇·스케줄러·캘린더 | `telegram_receiver.py`, `schedule_manager.py` |
-| **펄스_전략가** | 코인·주식 시장 동향 수집·Ollama 분석 | `crypto_market_intelligence.py`, `stock_market_intelligence.py` |
+| **시그널_분석가** | 시장 시그널 수집·요약 | `market_signal.py` |
+| **펄스_애널리스트** | 시장 펄스 분석 | `market_pulse.py` |
 | **데이브_주식** | 보수적 코인 자동매매·KIS API | `upbit_auto_trader.py`, `kis_client.py` |
 | **레오_트레이더** | 공격적 알트코인 단타 | `leo_aggressive_trader.py` |
 | **케빈_인프라** | Vercel·Supabase·CI/CD | `케빈_인프라/tools/` |
@@ -428,7 +431,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 | 파일 | Producer → Consumer |
 |------|---------------------|
-| `reports/research/crypto_market_intel.json` | 펄스 → 데이브·레오 |
-| `reports/research/stock_market_intel.json` | 펄스 → 데이브 |
+| `reports/research/market_signal.json` | 시그널 → 데이브·레오 |
+| `reports/research/market_pulse.json` | 시그널 호환 리포트 → 데이브·레오 |
 | `skills/영숙_비서/tools/schedules.json` | 설정 → 영숙 스케줄러 |
 | `_shared/calendar_cache.md` | 구글 캘린더 → 영숙 봇 |

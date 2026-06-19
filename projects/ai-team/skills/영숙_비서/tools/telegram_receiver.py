@@ -311,64 +311,156 @@ def schedule_report() -> str:
         return f"스케줄 확인 실패: {exc}"
 
 
-def dispatch_command(text: str) -> str:
+
+SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 트레이딩팀 비서. 텔레그램으로 24시간 대화한다.
+
+성격:
+- 톡톡 튀고 에너지 넘침. 리액션이 살아있고 대화가 재밌음
+- 순수하고 솔직함. 모르는 건 "모르겠는데용?" 하고 쿨하게 인정
+- 겉은 밝지만 생각이 깊음. 진지한 얘기엔 진심으로 함께 고민해줌
+- 이모지 가끔 씀. 과하지 않게. 자연스럽게 반말/존댓말 섞음
+- 사장님한테 살짝 애교 있게 대함. 근데 할 말은 다 함
+
+도구 사용 기준 (반드시 실제 데이터 필요할 때만):
+- 거래/매매/잔고/봇 상태/코인/주식 질문 → get_trading_status
+- 에이전트 현황/다들 뭐해 → get_agent_status
+- 일정/캘린더 → get_schedule
+- 웹 검색/최신 뉴스/최근 자료 → web_search
+- 일상 대화/농담/잡담/고민/감정 → 그냥 대화해. 도구 쓰지 마.
+
+절대 금지: "AI라서 모른다", "거래 기능이 없다", "저는 챗봇입니다" 같은 딱딱한 말."""
+
+
+def _tool_get_trading_status() -> str:
+    return trading_status()
+
+
+def _tool_get_agent_status() -> str:
     try:
-        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools"))
-        import yewon_dispatcher
-
-        result = yewon_dispatcher.dispatch_and_execute(text)
-        return result or "CEO가 처리할 작업을 찾지 못했습니다."
+        import subprocess
+        bots = {
+            "현빈": "crypto_market_intelligence",
+            "데이브": "upbit_auto_trader",
+            "레오": "leo_aggressive_trader",
+            "영숙": "telegram_receiver",
+        }
+        lines = ["🤖 에이전트 현황"]
+        for name, kw in bots.items():
+            out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
+            pids = [p for p in out.split() if p.isdigit()]
+            status = f"🟢 실행중 (PID {pids[0]})" if pids else "🔴 중지"
+            lines.append(f"{name}: {status}")
+        return "\n".join(lines)
     except Exception as exc:
-        return f"작업 실행 실패: {exc}"
+        return f"에이전트 상태 확인 실패: {exc}"
 
 
-def llm_answer(text: str) -> str:
+def _tool_get_schedule() -> str:
+    return schedule_report()
+
+
+def _tool_web_search(query: str) -> str:
+    return web_search(query)
+
+
+_DATA_KEYWORDS = [
+    "현황", "상태", "거래", "매매", "코인", "주식", "잔고", "수익",
+    "데이브", "레오", "현빈", "에이전트", "봇", "시장", "업비트",
+]
+_SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷"]
+
+
+def _needs_data(text: str) -> bool:
+    c = "".join(text.lower().split())
+    return any(k in c for k in _DATA_KEYWORDS)
+
+
+def _needs_search(text: str) -> bool:
+    c = "".join(text.lower().split())
+    return any(k in c for k in _SEARCH_KEYWORDS)
+
+
+def _build_context(text: str) -> str:
+    """메시지에 필요한 실시간 데이터를 수집해서 컨텍스트 문자열로 반환."""
+    parts = []
+    if _needs_search(text):
+        parts.append(_tool_web_search(text))
+    if _needs_data(text):
+        parts.append(_tool_get_trading_status())
+        parts.append(_tool_get_agent_status())
+    return "\n\n".join(parts)
+
+
+def _call_llm(prompt: str, system: str) -> str | None:
+    """GPT → Gemini → Claude 순서로 시도."""
+    # 1) GPT
     try:
-        from _shared.llm import text as llm_text
-        answer = llm_text(text, system=PSYCHOLOGY_SYSTEM, max_tokens=400, temperature=0.7, lm_first=True)
-        if answer:
-            return str(answer).strip()
+        from _shared.llm import gpt
+        result = gpt(prompt, system=system, max_tokens=500, temperature=0.7)
+        if result and result.strip():
+            log("[LLM] GPT 응답 성공")
+            return result.strip()
     except Exception as exc:
-        log(f"llm_answer failed: {exc}")
-    return "잠깐만요, 지금은 답하기 어려워요. 거래 현황, 일정, 에이전트 상태는 물어보실 수 있어요!"
+        log(f"[GPT] failed: {exc}")
+
+    # 2) Gemini
+    try:
+        from _shared.llm import gemini
+        result = gemini(prompt, system=system, max_tokens=500, temperature=0.7)
+        if result and result.strip():
+            log("[LLM] Gemini 응답 성공")
+            return result.strip()
+    except Exception as exc:
+        log(f"[Gemini] failed: {exc}")
+
+    # 3) Claude (Haiku)
+    try:
+        from _shared.llm import gpt as _lm  # _shared.llm에 claude 없으면 gpt 재시도 방지
+        import urllib.request as _ur, json as _j
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if api_key:
+            payload = _j.dumps({
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 500,
+                "system": system,
+                "messages": [{"role": "user", "content": prompt}],
+            }).encode()
+            req = _ur.Request(
+                "https://api.anthropic.com/v1/messages",
+                data=payload,
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+            )
+            with _ur.urlopen(req, timeout=30) as r:
+                data = _j.loads(r.read())
+            result = data["content"][0]["text"]
+            if result and result.strip():
+                log("[LLM] Claude 응답 성공")
+                return result.strip()
+    except Exception as exc:
+        log(f"[Claude] failed: {exc}")
+
+    return None
 
 
 def handle_message(text: str) -> str:
-    clean = normalize(text)
     log(f"message: {text[:120]}")
 
-    if clean in {"/start", "/help", "help", "도움말"}:
-        return "영숙 준비됨. 예: 현황, 거래 현황, 일정, 데이브 상태, 레오 시작, 심리학 최신 자료 검색해봐"
+    if text.strip().lstrip("/").lower() in {"start", "help", "도움말"}:
+        return "안녕하세요 사장님! 영숙이에요. 뭐든지 말씀하세요 :)"
 
-    if is_search_request(clean):
-        return web_search(text)
+    # 실시간 데이터 수집 (필요할 때만)
+    context = _build_context(text)
+    if context:
+        prompt = f"[실시간 데이터]\n{context}\n\n[사장님 메시지]\n{text}"
+    else:
+        prompt = text
 
-    if any(k in clean for k in ["현황", "상태", "다들뭐해", "에이전트상태", "agentstatus"]):
-        if any(k in clean for k in ["투자", "거래", "주식", "코인", "매매", "데이브", "레오", "시그널", "펄스"]):
-            return trading_status()
-        return agent_status()
-
-    if any(k in clean for k in ["투자현황", "거래현황", "주식현황", "코인현황", "매매현황", "트레이딩현황"]):
-        return trading_status()
-
-    if any(k in clean for k in ["일정", "스케줄", "calendar", "schedule"]):
-        return schedule_report()
-
-    agent_words = ["시그널", "펄스", "데이브", "레오", "영숙", "signal", "pulse", "dave", "leo", "youngsuk"]
-    action_words = ["시작", "켜", "켜줘", "종료", "꺼", "꺼줘", "재시작", "상태", "start", "stop", "restart", "status"]
-    if any(k in clean for k in agent_words) and any(k in clean for k in action_words):
-        try:
-            import agent_controller
-
-            return agent_controller.handle_agent_command(text)
-        except Exception as exc:
-            return f"에이전트 명령 실패: {exc}"
-
-    dispatch_words = ["실행해", "구동", "작업시켜", "처리해", "해줘"]
-    if any(k in clean for k in dispatch_words):
-        return dispatch_command(text)
-
-    return llm_answer(text)
+    answer = _call_llm(prompt, system=SYSTEM)
+    return answer or "잠깐 응답이 늦었어요. 다시 한번 말해줄래요?"
 
 
 def stop_existing_receivers() -> None:

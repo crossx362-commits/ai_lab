@@ -46,7 +46,7 @@ Reduce token usage by 70% through aggressive consolidation while maintaining all
 ## Phase 4: Skill Consolidation
 
 ### Trading
-- Keep: `upbit_auto_trader.py` (Dave), `leo_aggressive_trader.py` (Leo), `crypto_market_intelligence.py` (pulse)
+- Keep: `upbit_auto_trader.py` (Dave), `leo_aggressive_trader.py` (Leo), `market_signal.py` (Signal), `market_pulse.py` (Pulse)
 - Remove: `upbit_public.py` (merge into upbit_analyzer.py), duplicate analyzers
 
 ### Telegram

@@ -247,9 +247,10 @@ ssh-copy-id -i ~/.ssh/macbook_key.pub user@macbook-ip
 ### 에이전트가 시작 안 될 때
 1. "에이전트상태"로 현재 상태 확인
 2. 스크립트 경로 확인:
-   - 데이브: `skills/데이브_트레이더/tools/upbit_auto_trader.py`
-   - 레오: `skills/레오_공격형트레이더/tools/leo_aggressive_trader.py`
-   - 펄스: `skills/펄스_전략가/tools/crypto_market_intelligence.py`
+   - 데이브: `skills/데이브_주식/tools/upbit_auto_trader.py`
+   - 레오: `skills/레오_트레이더/tools/leo_aggressive_trader.py`
+   - 시그널: `skills/시그널_분석가/tools/market_signal.py`
+   - 펄스: `skills/펄스_애널리스트/tools/market_pulse.py`
 
 ### 409 Conflict 에러
 - 다른 곳에서 봇이 실행 중

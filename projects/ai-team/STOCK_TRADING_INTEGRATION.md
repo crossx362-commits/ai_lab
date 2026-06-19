@@ -53,16 +53,16 @@
 3. LLM 분석 (BUY/SELL/HOLD)
 4. 매매 실행 (현재는 주석 처리 - 안전)
 
-### 3. 펄스 주식 시장 인텔 (`stock_market_intelligence.py`)
+### 3. 시그널 시장 인텔 (`market_signal.py`)
 
-**위치**: `projects/ai-team/skills/펄스_전략가/tools/stock_market_intelligence.py`
+**위치**: `projects/ai-team/skills/시그널_분석가/tools/market_signal.py`
 
 **수집 정보**:
 - ✅ KOSPI/KOSDAQ 지수 + 등락률
 - ✅ 주요 종목 현재가 + 거래량
 - ✅ 경제 지표 캘린더 (수동)
 - ✅ 시장 심리 분석
-- ✅ JSON 저장 (`reports/research/stock_market_intel.json`)
+- ✅ JSON 저장 (`reports/research/market_signal.json`, `reports/research/crypto_market_intel.json`)
 
 **알림 조건**:
 - KOSPI 또는 KOSDAQ 등락률 ±2% 이상
@@ -112,8 +112,8 @@ python projects/ai-team/skills/데이브_주식/tools/stock_auto_trader.py
 # 데이브 주식 봇 (데몬 모드)
 python projects/ai-team/skills/데이브_주식/tools/stock_auto_trader.py --daemon
 
-# 펄스 주식 인텔 (데몬 모드)
-python projects/ai-team/skills/펄스_전략가/tools/stock_market_intelligence.py --daemon
+# 시그널 시장 인텔 (데몬 모드)
+python projects/ai-team/skills/시그널_분석가/tools/market_signal.py --daemon
 ```
 
 ### 2. 코인 + 주식 통합 실행

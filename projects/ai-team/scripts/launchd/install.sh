@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-AGENTS=(com.ailab.dave com.ailab.leo com.ailab.youngsuk)
+AGENTS=(com.ailab.signal com.ailab.dave com.ailab.leo com.ailab.youngsuk)
 
 # 기존 실행 중인 프로세스 정리
 echo "기존 프로세스 정리 중..."
@@ -12,7 +12,6 @@ pkill -f "upbit_auto_trader.py" 2>/dev/null || true
 pkill -f "leo_aggressive_trader.py" 2>/dev/null || true
 pkill -f "market_signal.py" 2>/dev/null || true
 pkill -f "market_pulse.py" 2>/dev/null || true
-pkill -f "crypto_market_intelligence.py" 2>/dev/null || true
 pkill -f "telegram_receiver.py" 2>/dev/null || true
 pkill -f "start_trading_team.py" 2>/dev/null || true
 rm -f /tmp/ailab_locks/*.lock 2>/dev/null || true

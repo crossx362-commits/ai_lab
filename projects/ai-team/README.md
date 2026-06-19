@@ -30,8 +30,8 @@ python skills/데이브_주식/tools/upbit_auto_trader.py --daemon
 # 레오 (공격적)
 python skills/레오_트레이더/tools/leo_aggressive_trader.py --daemon
 
-# 펄스 (시장 인텔)
-python skills/펄스_전략가/tools/crypto_market_intelligence.py --daemon
+# 시그널 (시장 인텔)
+python skills/시그널_분석가/tools/market_signal.py --daemon
 
 # 영숙 (텔레그램 봇)
 python skills/영숙_비서/tools/telegram_receiver.py
@@ -68,7 +68,8 @@ projects/ai-team/
 ├── skills/                  # 에이전트별 도구
 │   ├── 데이브_주식/
 │   ├── 레오_트레이더/
-│   ├── 펄스_전략가/
+│   ├── 시그널_분석가/
+│   ├── 펄스_애널리스트/
 │   ├── 영숙_비서/
 │   ├── 예원_CEO/
 │   └── ...

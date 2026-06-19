@@ -95,15 +95,15 @@ ai_lab/
 
 ---
 
-### 5. 펄스 (pulse) — 시장 정보 수집 + 비즈니스 전략가
-**직급**: 시장 정보 수집 에이전트 & Business Strategist
+### 5. 시그널 (signal) / 펄스 (pulse) — 시장 정보 수집 + 시장 애널리스트
+**직급**: 시장 정보 수집 에이전트 & Market Analyst
 
 #### 핵심 책임
 - **수집 데이터**: 연준 이벤트(FOMC·CPI·NFP) | 공포탐욕지수(Alternative.me) | 김치 프리미엄(업비트 vs 바이낸스) | 암호화폐 뉴스(CryptoPanic)
 - **출력**: `reports/research/crypto_market_intel.json`
-- **비즈니스 리서치**: 1시간 주기 크리에이터 이코노미 시장 트렌드 파악, CAC/LTV 기반 수익화 파이프라인 설계, PayPal 결제 이상 징후 추적
+- **시장 분석**: 시그널은 코인/주식 공통 시장 스냅샷을 생성하고, 펄스는 그 리포트를 기반으로 흐름을 해석
 
-**주요 도구**: `crypto_market_intelligence.py`, `business_research.py`, `paypal_revenue.py`  
+**주요 도구**: `market_signal.py`, `market_pulse.py`  
 **스케줄**: 5분마다 시장 정보 갱신 | 1시간 주기 리서치 | 6시간 심층 조사
 
 ---
@@ -221,7 +221,8 @@ projects/ai-team/skills/
 ├── 영숙_비서/tools/          telegram_receiver.py · upload_manager.py
 ├── 데이브_주식/tools/        upbit_auto_trader.py
 ├── 레오_트레이더/tools/       leo_aggressive_trader.py
-├── 펄스_전략가/tools/        crypto_market_intelligence.py · business_research.py
+├── 시그널_분석가/tools/       market_signal.py
+├── 펄스_애널리스트/tools/     market_pulse.py
 ├── 케빈_인프라/tools/        vercel_manager.py · petnna_monitor.py
 ├── 경수_수사관/tools/        comment_forensics.py
 ├── 코다리_개발자/tools/       agent_health_check.py · web_init.py

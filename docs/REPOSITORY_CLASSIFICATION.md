@@ -25,7 +25,7 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 | Category | Primary Files | Merge / Cleanup Rule |
 | --- | --- | --- |
 | Trading launchers | `projects/ai-team/scripts/start_trading_team.py`, `run_trading_team_background.py`, `run_trader_daemon.py`, root `start_trading.bat`, `restart_trading.bat` | Keep Python scripts as canonical. Root batch files are Windows convenience wrappers only. |
-| Trading bots | `skills/데이브_주식/tools/upbit_auto_trader.py`, `skills/레오_트레이더/tools/leo_aggressive_trader.py`, `skills/펄스_전략가/tools/crypto_market_intelligence.py` | Do not merge: different risk profiles and daemon cadences. |
+| Trading bots | `skills/시그널_분석가/tools/market_signal.py`, `skills/펄스_애널리스트/tools/market_pulse.py`, `skills/데이브_주식/tools/upbit_auto_trader.py`, `skills/레오_트레이더/tools/leo_aggressive_trader.py` | Do not merge: different risk profiles and daemon cadences. |
 | Trading utilities | `check_holdings.py`, `daily_balance_check.py`, `daily_trading_learning.py`, `upbit_public.py`, `upbit_analyzer.py` | Keep as support tools. Move new shared exchange logic into `_shared/` only after cross-agent testing. |
 | Telegram bot | `skills/영숙_비서/tools/telegram_receiver.py`, `start_telegram_bot.ps1`, `scripts/start_youngsuk_bot.cmd`, `run_youngsuk_daemon.py` | `telegram_receiver.py` is canonical; wrappers only start and supervise it. |
 | Scheduling and reports | `calendar_manager.py`, `posting_scheduler.py`, `reports_manager.py`, `schedule_manager.py`, `start_daily_automation.py` | Keep separated by workflow; only consolidate if duplicated function bodies appear. |
