@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""현빈 - 코인 & 주식 시장 정보 수집 에이전트 (Ollama 로컬 분석)""""
+"""현빈 - 코인 & 주식 시장 정보 수집 에이전트 (Ollama 로컬 분석)"""
 import os, sys, json, time, datetime, requests
 from typing import Dict, Any
 
