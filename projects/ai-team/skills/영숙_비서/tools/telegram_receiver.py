@@ -298,8 +298,9 @@ def is_google_busy_error(err: Exception | str) -> bool:
     return any(marker in text for marker in markers)
 
 def generate_content_with_retry(model_name, contents, config, max_retries=2):
-    """Gemini 호출. 바쁨/쿼터 오류는 사용자에게 떠넘기지 않고 상위 fallback으로 넘긴다."""
+    """Gemini 호출. 실패 시 None 반환 → GPT 폴백"""
     if not client:
+        print("❌ Gemini client 없음 - GPT 폴백")
         return None
 
     for attempt in range(max_retries):
@@ -310,11 +311,19 @@ def generate_content_with_retry(model_name, contents, config, max_retries=2):
                 config=config
             )
         except Exception as e:
+            err_str = str(e).lower()
+            # 400 에러는 즉시 GPT 폴백
+            if "400" in err_str or "bad request" in err_str:
+                print(f"❌ Gemini 400 에러 - GPT 폴백")
+                return None
+            # 바쁨 에러만 재시도
             if is_google_busy_error(e):
                 if attempt < max_retries - 1:
                     time.sleep(2 + attempt * 2)
                     continue
-            raise e
+            # 기타 에러도 GPT 폴백
+            print(f"❌ Gemini 오류 - GPT 폴백: {e}")
+            return None
     return None
 
 def local_fallback_answer(msg: str) -> str | None:

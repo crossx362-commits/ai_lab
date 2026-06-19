@@ -4,6 +4,11 @@
       "code": "240810",
       "name": "원익IPS",
       "enabled": true
+    },
+    {
+      "code": "066570",
+      "name": "LG전자",
+      "enabled": true
     }
   ]
 }
