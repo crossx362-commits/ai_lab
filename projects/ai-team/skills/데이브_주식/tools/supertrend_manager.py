@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
 """슈퍼트렌드 감시 목록 관리"""
 import os
+import sys
 import json
 
-WATCH_FILE = os.path.join(os.path.dirname(__file__), ".supertrend_watch.json")
+# _shared 모듈 경로 추가
+_here = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_here, "..", "..", ".."))
 
-# 주요 종목 코드 매핑
-STOCK_CODES = {
-    "원익ips": "240810",
-    "원익아이피에스": "240810",
-    "sk하이닉스": "000660",
-    "하이닉스": "000660",
-    "삼성전자": "005930",
-    "삼성": "005930",
-    "카카오": "035720",
-    "네이버": "035420",
-    "naver": "035420",
-}
+from _shared.env import load_env
+from _shared.llm import gpt
+
+load_env()
+
+WATCH_FILE = os.path.join(os.path.dirname(__file__), ".supertrend_watch.json")
 
 def load_watch_list():
     """감시 목록 로드"""
@@ -34,21 +31,48 @@ def save_watch_list(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 def get_stock_code(name):
-    """종목명 → 종목코드 변환"""
-    name_clean = name.replace(" ", "").replace("-", "").lower()
+    """종목명 → 종목코드 변환 (GPT 사용)"""
+    name_clean = name.replace(" ", "").replace("-", "").strip()
 
-    # 직접 코드인 경우
+    # 직접 코드인 경우 (6자리 숫자)
     if name_clean.isdigit() and len(name_clean) == 6:
         return name_clean
 
-    # 매핑된 이름
-    return STOCK_CODES.get(name_clean)
+    # GPT로 종목 코드 찾기
+    try:
+        prompt = f"""한국 주식 종목명을 종목코드로 변환해주세요.
+
+종목명: {name}
+
+규칙:
+- 정확한 6자리 종목코드만 반환
+- 존재하지 않는 종목이면 "UNKNOWN" 반환
+- 설명 없이 코드만 반환
+
+예시:
+원익IPS → 240810
+SK하이닉스 → 000660
+삼성전자 → 005930
+"""
+        result = gpt(prompt, max_tokens=20, temperature=0)
+        code = result.strip()
+
+        # 유효성 검사
+        if code.isdigit() and len(code) == 6:
+            return code
+        elif code == "UNKNOWN":
+            return None
+
+    except Exception as e:
+        print(f"GPT 종목코드 검색 실패: {e}")
+
+    return None
 
 def add_stock(name):
     """종목 추가"""
     code = get_stock_code(name)
     if not code:
-        return False, f"❌ 알 수 없는 종목: {name}\n\n지원 종목:\n- 원익IPS (240810)\n- SK하이닉스 (000660)\n- 삼성전자 (005930)\n- 카카오 (035720)\n- 네이버 (035420)"
+        return False, f"❌ 종목 코드를 찾을 수 없습니다: {name}\n\n한국 주식 종목명을 정확히 입력해주세요."
 
     data = load_watch_list()
 
