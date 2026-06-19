@@ -9,7 +9,7 @@ _here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_here, "..", "..", ".."))
 
 from _shared.env import load_env
-from _shared.llm import gpt
+from _shared.llm import text as llm_text
 
 load_env()
 
@@ -54,7 +54,7 @@ def get_stock_code(name):
 SK하이닉스 → 000660
 삼성전자 → 005930
 """
-        result = gpt(prompt, max_tokens=20, temperature=0)
+        result = llm_text(prompt, max_tokens=20, temperature=0, lm_first=False)
         code = result.strip()
 
         # 유효성 검사
