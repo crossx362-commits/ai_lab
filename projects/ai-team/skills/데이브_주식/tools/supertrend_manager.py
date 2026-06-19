@@ -38,33 +38,41 @@ def get_stock_code(name):
     if name_clean.isdigit() and len(name_clean) == 6:
         return name_clean
 
-    # GPT로 종목 코드 찾기
+    # LLM으로 종목 코드 찾기
     try:
-        prompt = f"""한국 주식 종목명을 종목코드로 변환해주세요.
+        prompt = f"""You are a Korean stock market expert. Convert the stock name to its 6-digit stock code.
 
-종목명: {name}
+Stock name: {name}
 
-규칙:
-- 정확한 6자리 종목코드만 반환
-- 존재하지 않는 종목이면 "UNKNOWN" 반환
-- 설명 없이 코드만 반환
+Rules:
+- Return ONLY the 6-digit numeric code
+- No explanation, no extra text
+- If unknown, return: UNKNOWN
 
-예시:
+Examples:
 원익IPS → 240810
 SK하이닉스 → 000660
 삼성전자 → 005930
-"""
-        result = llm_text(prompt, max_tokens=20, temperature=0, lm_first=False)
-        code = result.strip()
+LG전자 → 066570
+카카오 → 035720
+네이버 → 035420
 
-        # 유효성 검사
-        if code.isdigit() and len(code) == 6:
-            return code
-        elif code == "UNKNOWN":
+Answer (code only):"""
+
+        result = llm_text(prompt, max_tokens=10, temperature=0, lm_first=False)
+        if not result:
             return None
 
+        code = result.strip().replace(" ", "").replace("\n", "")
+
+        # 유효성 검사
+        if code == "UNKNOWN":
+            return None
+        if code.isdigit() and len(code) == 6:
+            return code
+
     except Exception as e:
-        print(f"GPT 종목코드 검색 실패: {e}")
+        print(f"LLM 종목코드 검색 실패: {e}")
 
     return None
 
