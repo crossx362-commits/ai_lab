@@ -36,7 +36,6 @@ AI_TEAM_KEYWORDS = [
     "bot_recovery_monitor.py",
     "start_telegram_bot",
     "market_signal.py",
-    "market_pulse.py",
     "upbit_auto_trader.py",
     "leo_aggressive_trader.py",
     "monitor_processes.py",
@@ -45,7 +44,6 @@ AI_TEAM_KEYWORDS = [
 ]
 AGENT_STOP_KEYWORDS = [
     "market_signal.py",
-    "market_pulse.py",
     "upbit_auto_trader.py",
     "leo_aggressive_trader.py",
     "monitor_processes.py",

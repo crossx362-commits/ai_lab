@@ -39,7 +39,7 @@ def has_public_upbit_fallback() -> bool:
 
 _LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "output", "trading_logs")
 os.makedirs(_LOG_DIR, exist_ok=True)
-_MANUAL_STOP_SLUGS = {"시그널": "signal", "펄스": "signal", "데이브": "dave", "레오": "leo"}
+_MANUAL_STOP_SLUGS = {"시그널": "signal", "데이브": "dave", "레오": "leo"}
 
 
 def manual_stop_flag(name: str | None = None):
@@ -118,7 +118,7 @@ def start_process(name: str, script_path: str, args: list = None):
 
     # 로그 파일명: name에서 한글/공백 제거 후 소문자
     slug = name.split()[0]
-    slug_map = {"시그널": "signal", "펄스": "signal", "데이브": "dave", "레오": "leo"}
+    slug_map = {"시그널": "signal", "데이브": "dave", "레오": "leo"}
     slug = slug_map.get(slug, slug.lower())
     out_path = os.path.join(_LOG_DIR, f"{slug}_daemon.out.log")
     err_path = os.path.join(_LOG_DIR, f"{slug}_daemon.err.log")

@@ -335,24 +335,18 @@ def _tool_get_agent_status() -> str:
     try:
         sys.path.insert(0, str(AI_TEAM_ROOT))
         from _shared.agent_registry import scan_agents
+        from pathlib import Path as _Path
         agents = scan_agents()
-
-        # 데몬 에이전트: 프로세스 실행 여부 확인
-        daemon_keywords = {
-            "youngsuk": "telegram_receiver",
-            "signal": "market_signal",
-            "dave": "upbit_auto_trader",
-            "leo": "leo_aggressive_trader",
-        }
 
         lines = [f"🤖 에이전트 현황 ({len(agents)}명)"]
         for slug, info in agents.items():
             name = info["name"]
-            if slug in daemon_keywords:
-                kw = daemon_keywords[slug]
+            if info["type"] == "daemon":
+                # 스크립트 파일명(확장자 제외)을 pgrep 키워드로 사용
+                kw = _Path(info["script"]).stem
                 out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
                 pids = [p for p in out.split() if p.isdigit()]
-                status = f"🟢 실행중" if pids else "🔴 중지"
+                status = "🟢 실행중" if pids else "🔴 중지"
             else:
                 status = "⚪ 온디맨드"
             lines.append(f"{name}: {status}")
@@ -380,7 +374,7 @@ _STOCK_NAME_MAP = {
 _STOCK_KEYWORDS = ["주가", "시세", "얼마", "주식가격", "현재가"]
 _DATA_KEYWORDS = [
     "현황", "상태", "거래", "매매", "코인", "주식", "잔고", "수익",
-    "데이브", "레오", "시그널", "펄스", "현빈", "에이전트", "봇", "시장", "업비트",
+    "데이브", "레오", "시그널", "현빈", "에이전트", "봇", "시장", "업비트",
 ]
 _SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷"]
 

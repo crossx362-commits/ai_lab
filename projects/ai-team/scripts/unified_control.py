@@ -150,15 +150,16 @@ def bot_stop():
 # ============================================================
 # 에이전트 제어
 # ============================================================
+from _shared.agent_registry import scan_agents as _scan_agents
+_registry = _scan_agents()
 AGENTS = {
-    "시그널": "projects/ai-team/skills/시그널_분석가/tools/market_signal.py",
-    "데이브": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
-    "레오": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
-    "영숙": "projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py",
+    info["name"].split("_", 1)[0]: os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", info["script"])
+    for info in _registry.values()
+    if info["type"] == "daemon"
 }
 
 AGENT_ALIASES = {
-    "signal": "시그널", "pulse": "시그널", "펄스": "시그널",
+    "signal": "시그널",
     "dave": "데이브", "leo": "레오", "youngsuk": "영숙"
 }
 

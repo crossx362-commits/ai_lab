@@ -36,8 +36,6 @@ for info in _all_agents.values():
 # 영어 별칭
 AGENT_ALIASES = {
     "signal": "시그널",
-    "pulse": "시그널",
-    "펄스": "시그널",
     "dave": "데이브",
     "leo": "레오",
     "youngsuk": "영숙",
@@ -46,7 +44,6 @@ AGENT_ALIASES = {
 MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
 AGENT_STOP_SLUGS = {
     "시그널": "signal",
-    "펄스": "signal",
     "데이브": "dave",
     "레오": "leo",
     "영숙": "youngsuk",
