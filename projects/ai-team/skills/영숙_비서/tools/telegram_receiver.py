@@ -244,21 +244,55 @@ def agent_status() -> str:
         return f"에이전트 상태 확인 실패: {exc}"
 
 
-def trading_status() -> str:
-    lines = ["거래팀 상태"]
+def _bot_running(script_keyword: str) -> str:
     try:
-        import agent_controller
+        out = subprocess.run(["pgrep", "-f", script_keyword], capture_output=True, text=True, timeout=5).stdout
+        pids = [p for p in out.split() if p.isdigit()]
+        return f"🟢 실행중 (PID {pids[0]})" if pids else "🔴 중지"
+    except Exception:
+        return "❓ 확인불가"
 
-        for name in ["시그널", "데이브", "레오"]:
-            lines.append(agent_controller.get_agent_status(name))
-    except Exception as exc:
-        lines.append(f"상태 확인 실패: {exc}")
+
+def trading_status() -> str:
+    lines = ["📊 거래팀 현황"]
+
+    # 봇 실행 상태
+    lines.append(f"데이브: {_bot_running('upbit_auto_trader')}")
+    lines.append(f"레오:   {_bot_running('leo_aggressive_trader')}")
+    lines.append(f"시그널: {_bot_running('market_signal')}")
+
+    # 시장 인텔 요약
+    intel_file = PROJECT_ROOT / "reports" / "research" / "crypto_market_intel.json"
+    if intel_file.exists():
+        try:
+            intel = json.loads(intel_file.read_text(encoding="utf-8"))
+            fed = intel.get("fed_events", {})
+            fg = intel.get("fear_greed", {})
+            age = int(time.time() - intel_file.stat().st_mtime)
+            lines.append(f"\n시장 인텔 ({age}초 전)")
+            lines.append(f"위험도: {fed.get('risk_level','?')} | {fed.get('current_status','')}")
+            if fg.get("value"):
+                lines.append(f"공포탐욕: {fg['value']} ({fg.get('classification','')})")
+        except Exception:
+            pass
+
+    # 주식 시그널
     signal_file = PROJECT_ROOT / "reports" / "research" / "market_signal.json"
-    legacy_file = PROJECT_ROOT / "reports" / "research" / "market_pulse.json"
-    report_file = signal_file if signal_file.exists() else legacy_file
-    if report_file.exists():
-        age = int(time.time() - report_file.stat().st_mtime)
-        lines.append(f"시그널 리포트: {age}초 전 갱신")
+    if signal_file.exists():
+        try:
+            sig = json.loads(signal_file.read_text(encoding="utf-8"))
+            stock = sig.get("stock", {}).get("indexes", {})
+            kospi = stock.get("kospi", {}).get("value", 0)
+            kosdaq = stock.get("kosdaq", {}).get("value", 0)
+            age = int(time.time() - signal_file.stat().st_mtime)
+            lines.append(f"\n주식 ({age}초 전)")
+            if kospi:
+                lines.append(f"KOSPI: {kospi:,.2f}  KOSDAQ: {kosdaq:,.2f}")
+            else:
+                lines.append("주식 데이터 수집 안됨 (시그널봇 확인 필요)")
+        except Exception:
+            pass
+
     return "\n".join(lines)
 
 
@@ -290,17 +324,13 @@ def dispatch_command(text: str) -> str:
 
 def llm_answer(text: str) -> str:
     try:
-        from _shared.ollama_client import chat
-
-        answer = chat(
-            [{"role": "system", "content": PSYCHOLOGY_SYSTEM}, {"role": "user", "content": text}],
-            task="general",
-        )
+        from _shared.llm import text as llm_text
+        answer = llm_text(text, system=PSYCHOLOGY_SYSTEM, max_tokens=400, temperature=0.7, lm_first=True)
         if answer:
             return str(answer).strip()
-    except Exception:
-        pass
-    return "확인했습니다. 지금은 상태/일정/거래팀/에이전트 시작·종료 명령을 처리할 수 있습니다."
+    except Exception as exc:
+        log(f"llm_answer failed: {exc}")
+    return "잠깐만요, 지금은 답하기 어려워요. 거래 현황, 일정, 에이전트 상태는 물어보실 수 있어요!"
 
 
 def handle_message(text: str) -> str:
