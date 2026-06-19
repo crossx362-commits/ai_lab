@@ -608,53 +608,6 @@ def handle_message(text: str) -> str:
     return answer or "잠깐 응답이 늦었어요. 다시 한번 말해줄래요?"
 
 
-def _agent_watcher() -> None:
-    """30초마다 데몬 에이전트 상태를 체크해 변화 시 텔레그램 알림."""
-    import threading
-    from pathlib import Path as _P
-
-    CHECK_INTERVAL = 30
-
-    def _get_status() -> dict[str, bool]:
-        try:
-            from _shared.agent_registry import scan_agents
-            agents = scan_agents()
-            status = {}
-            for slug, info in agents.items():
-                if info["type"] != "daemon":
-                    continue
-                kw = _P(info["script"]).stem
-                out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
-                pids = [p for p in out.split() if p.isdigit()]
-                status[info["name"]] = bool(pids)
-            return status
-        except Exception:
-            return {}
-
-    def _watch():
-        time.sleep(10)  # 시작 직후 10초 대기 (봇 안정화)
-        prev = _get_status()
-        while True:
-            time.sleep(CHECK_INTERVAL)
-            try:
-                curr = _get_status()
-                for name, running in curr.items():
-                    was_running = prev.get(name)
-                    if was_running is None:
-                        continue
-                    if running and not was_running:
-                        send_message(f"🟢 {name} 시작됨")
-                        log(f"[watcher] {name} started")
-                    elif not running and was_running:
-                        send_message(f"🔴 {name} 중지됨")
-                        log(f"[watcher] {name} stopped")
-                prev = curr
-            except Exception as exc:
-                log(f"[watcher] error: {exc}")
-
-    t = threading.Thread(target=_watch, daemon=True, name="agent-watcher")
-    t.start()
-    log("agent watcher started")
 
 
 def stop_existing_receivers() -> None:
@@ -695,7 +648,6 @@ def main() -> None:
         if not startup_check():
             return
         send_message("영숙 재시작 완료. Telegram 수신은 Python 봇 하나만 담당합니다.")
-        _agent_watcher()
         offset = read_offset()
         log(f"polling started offset={offset}")
         while True:

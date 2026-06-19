@@ -32,7 +32,7 @@ WORKSPACE_ROOT = AI_TEAM_ROOT.parents[1]
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import send, report  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(WORKSPACE_ROOT))
@@ -251,6 +251,7 @@ def run_once(notify: bool = False) -> dict[str, Any] | None:
     if fd is None:
         log("another collection is already running; skipping")
         return None
+    report("시그널", "시장 수집 시작")
     try:
         data = {
             "agent": "시그널",

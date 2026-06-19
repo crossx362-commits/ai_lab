@@ -84,7 +84,7 @@ DAVE_TOOLS = os.path.join(AI_TEAM_ROOT, "skills", "데이브_주식", "tools")
 sys.path.insert(0, DAVE_TOOLS)
 
 from _shared.env import load_env
-from _shared.notify import send
+from _shared.notify import send, report
 from _shared.process import ProcessLock
 from _shared.trading_entry_evaluator import (
     backfill_pending_outcomes,
@@ -390,6 +390,7 @@ def run_leo_cycle():
     global consecutive_losses, daily_loss_pct, trades_today, last_trade_time
 
     print(f"\n⚡ [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 레오 단타 스캔")
+    report("레오", "단타 스캔 시작")
 
     if IMPORT_ERROR:
         print(f"[Leo] 의존성 누락: {IMPORT_ERROR}")

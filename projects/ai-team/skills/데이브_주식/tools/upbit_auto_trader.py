@@ -14,7 +14,7 @@ WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env import load_env
-from _shared.notify import send
+from _shared.notify import send, report
 from _shared.process import ProcessLock
 from _shared.trading_entry_evaluator import (
     backfill_pending_outcomes,
@@ -343,6 +343,7 @@ def load_pulse_intel(refresh=True):
 
 def run_auto_trade_cycle():
     print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 실시간 다중 코인 자동 매매 감시 ---")
+    report("데이브", "매매 사이클 시작")
 
     # 펄스 정보 확인 (중요 시장 변화 체크)
     pulse_intel = load_pulse_intel()

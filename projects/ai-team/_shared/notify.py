@@ -118,6 +118,14 @@ def status_report() -> str:
     return "\n".join(lines)
 
 
+def report(agent: str, action: str, detail: str = "") -> None:
+    """에이전트가 작업/스케줄 시작·완료 시 영숙에게 보고."""
+    msg = f"[{agent}] {action}"
+    if detail:
+        msg += f"\n{detail}"
+    send(msg, silent=True)
+
+
 # Aliases
 telegram = send
 status = agent_status
