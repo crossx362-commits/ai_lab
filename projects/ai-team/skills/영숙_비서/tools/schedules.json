@@ -1,17 +1,7 @@
-﻿{
+{
   "version": "1.0.0",
   "updated": "2026-06-18",
   "schedules": [
-    {
-      "id": "yeongsuk_upload_check",
-      "agent": "영숙",
-      "task": "업로드 현황 점검",
-      "cron": "0 3 * * *",
-      "description": "일일 업로드 누락 확인 및 자동 실행",
-      "command": "업로드 현황 확인",
-      "enabled": true,
-      "priority": "high"
-    },
     {
       "id": "yeongsuk_report_cleanup",
       "agent": "영숙",
@@ -51,16 +41,6 @@
       "command": "코다리 헬스체크 실행",
       "enabled": true,
       "priority": "critical"
-    },
-    {
-      "id": "kevin_hourly_monitor",
-      "agent": "케빈",
-      "task": "Petnna 모니터링",
-      "cron": "0 * * * *",
-      "description": "Petnna PWA 헬스체크",
-      "command": "케빈 Petnna 모니터링",
-      "enabled": true,
-      "priority": "medium"
     },
     {
       "id": "kevin_daily_report",
@@ -131,26 +111,6 @@
       "command": "경수 악플 체크",
       "enabled": true,
       "priority": "critical"
-    },
-    {
-      "id": "petnna_agent_social_upload",
-      "agent": "아린",
-      "task": "펫과나 소셜 피드 자율 업로드 및 모니터링",
-      "cron": "*/30 * * * *",
-      "description": "30분마다 에이전트들이 펫과나 소셜 피드에 글을 올리고 유저처럼 사용",
-      "command": "python3 projects/ai-team/scripts/petnna_social_upload.py",
-      "enabled": true,
-      "priority": "medium"
-    },
-    {
-      "id": "yeongsuk_schedule_report",
-      "agent": "영숙",
-      "task": "스케줄 현황 사장님 보고",
-      "cron": "0 9,18 * * *",
-      "description": "하루 2회 (오전 9시 · 오후 6시) 스케줄 실행 현황 보고",
-      "command": "스케줄 보고해줘",
-      "enabled": true,
-      "priority": "low"
     }
   ]
 }
