@@ -10,6 +10,7 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
 from _shared.llm import text as gemini_text
+from _shared.notify import report
 
 _YEWON_DISPATCH_SYSTEM = """당신은 CEO 예원입니다. 사장님 명령을 분석해 최적의 에이전트에게 배분합니다.
 
@@ -34,6 +35,7 @@ JSON만 반환:
 """
 
 def dispatch_and_execute(ceo_message: str) -> str:
+    report("예원", "업무 지시 처리 시작", ceo_message[:80])
     print(f"  [예원 CEO] 수신된 업무 지시: {ceo_message}")
 
     # ── 하네스 체크 선처리 (LLM 불필요, AGENTS.md 하네스 아키텍트 지침) ──

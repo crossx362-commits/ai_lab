@@ -27,6 +27,12 @@ TEMP_DIR = SUPABASE_DIR / ".temp"
 ROOT_DIR = Path(__file__).parent.parent.parent.parent.parent.parent  # tools→케빈→skills→ai-team→projects→ai_lab
 ENV_PATH = ROOT_DIR / ".env"
 
+sys.path.insert(0, str(ROOT_DIR / "projects" / "ai-team"))
+try:
+    from _shared.notify import report as _report
+except Exception:
+    def _report(*a, **k): pass
+
 
 def load_env():
     """환경변수 로드"""
@@ -299,6 +305,7 @@ def main():
         return
 
     command = sys.argv[1].lower()
+    _report("케빈", f"supabase {command} 시작")
 
     if command == "status":
         print(generate_status_report())

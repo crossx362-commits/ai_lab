@@ -14,7 +14,7 @@ if _ai_team_root not in sys.path:
 
 from _shared.env import load_env
 from _shared.llm import ollama as lm_chat, is_available as lm_available
-from _shared.notify import send
+from _shared.notify import send, report
 
 load_env()
 
@@ -129,6 +129,7 @@ def check_structure() -> list[str]:
 
 
 def run_review() -> str:
+    report("티모", "UI/UX 검토 시작")
     if not os.path.isdir(PETNNA_ROOT):
         return f"❌ petnna 프로젝트 경로를 찾을 수 없습니다: {PETNNA_ROOT}"
 

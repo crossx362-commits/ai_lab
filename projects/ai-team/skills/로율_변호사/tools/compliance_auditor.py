@@ -23,7 +23,7 @@ sys.path.insert(0, _root)
 sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
 
 from _shared.env import load_env
-from _shared.notify import send
+from _shared.notify import send, report
 from _shared.llm import text
 
 load_env()
@@ -348,7 +348,7 @@ def main():
     parser.add_argument("--notify", action="store_true", help="텔레그램 알림")
 
     args = parser.parse_args()
-
+    report("로율", "컴플라이언스 감사 시작")
     auditor = ComplianceAuditor()
 
     if args.scan_privacy:

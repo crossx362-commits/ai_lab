@@ -16,7 +16,7 @@ _ai_team_root = os.path.join(_root, "projects", "ai-team")
 
 sys.path.insert(0, _root)
 sys.path.insert(0, _ai_team_root)
-from _shared.notify import send
+from _shared.notify import send, report
 from _shared.env import load_env as _load_env
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 
@@ -279,6 +279,7 @@ def scan_comments(youtube, sheets, max_videos=5):
 
 def main(max_videos=5):
     _load_env()
+    report("경수", "악플 포렌식 시작")
     print("👮 경수 사이버수사대 — 악플 및 채널 포렌식 시작!\n")
     
     youtube, sheets = None, None

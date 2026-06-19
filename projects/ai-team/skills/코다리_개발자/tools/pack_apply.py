@@ -24,9 +24,10 @@ if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 try:
     from _shared.env import load_env
+    from _shared.notify import report as _report
     load_env()
 except Exception:
-    pass
+    def _report(*a, **k): pass
 CONFIG = os.path.join(HERE, "pack_apply.json")
 WEB_INIT_CFG = os.path.join(HERE, "web_init.json")
 
@@ -384,6 +385,7 @@ def _parse_cli_args():
 
 
 def main():
+    _report("코다리", "팩 적용 시작")
     cfg = _load(CONFIG)
     init_cfg = _load(WEB_INIT_CFG)
 
