@@ -47,10 +47,16 @@ def send(msg: str, silent: bool = False) -> bool:
 # ==================== AGENT STATUS ====================
 
 _AGENTS = {
+    "yewon": "예원_CEO/tools/yewon_dispatcher.py",
     "youngsuk": "영숙_비서/tools/telegram_receiver.py",
+    "kodari": "코다리_개발자/tools/web_preview.py",
+    "kevin": "케빈_인프라/tools/vercel_manager.py",
+    "timo": "티모_디자이너/tools/petnna_reviewer.py",
     "hyunbin": "현빈_전략가/tools/crypto_market_intelligence.py",
     "dave": "데이브_주식/tools/upbit_auto_trader.py",
     "leo": "레오_트레이더/tools/leo_aggressive_trader.py",
+    "kyungsu": "경수_수사관/tools/comment_forensics.py",
+    "royul": "로율_변호사/tools/tax_simulator.py",
 }
 
 
