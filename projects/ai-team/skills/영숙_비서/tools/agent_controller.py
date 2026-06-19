@@ -15,13 +15,13 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 from _shared.env import load_env
 load_env()
 
-# 에이전트 정의 (이름 -> 스크립트 경로)
-AGENTS = {
-    "현빈": "projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py",
-    "데이브": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
-    "레오": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
-    "영숙": "projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py",
-}
+# 하드코딩 제거 - 자동 스캔 사용
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
+from _shared.agent_registry import get_agents as _get_all_agents
+
+_all_agents = _get_all_agents()
+AGENTS = {info["name"]: os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", info["script"])
+          for info in _all_agents.values()}
 
 # 영어 별칭
 AGENT_ALIASES = {
