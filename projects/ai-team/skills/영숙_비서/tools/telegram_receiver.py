@@ -486,13 +486,34 @@ def process(msg):
 
     # 1-4-0. 슈퍼트렌드 감시 추가/제거 명령
     if "슈퍼트랜드" in msg_clean or "감시" in msg_clean:
+        import subprocess
+        manager_path = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", "supertrend_manager.py")
+
         if "추가" in msg_clean or "시작" in msg_clean or "켜" in msg_clean:
-            # 감시 추가
-            send_msg("🔧 슈퍼트렌드 감시 추가 기능은 현재 개발 중입니다.\n\n현재 감시 중: 원익IPS (240810)")
+            # 종목명 추출
+            stock_name = msg.replace("슈퍼트랜드", "").replace("감시", "").replace("추가", "").replace("시작", "").replace("켜", "").strip()
+            if stock_name:
+                result = subprocess.run([sys.executable, manager_path, "add", stock_name],
+                                      capture_output=True, text=True, encoding="utf-8")
+                send_msg(result.stdout or result.stderr or "✅ 감시 추가 완료")
+            else:
+                send_msg("ℹ️ 종목명을 입력해주세요.\n예: 'SK하이닉스 감시 추가'")
             return
         elif "제거" in msg_clean or "삭제" in msg_clean or "중단" in msg_clean or "끄" in msg_clean:
-            # 감시 제거
-            send_msg("🔧 슈퍼트렌드 감시 제거 기능은 현재 개발 중입니다.\n\n현재 감시 중: 원익IPS (240810)")
+            # 종목명 추출
+            stock_name = msg.replace("슈퍼트랜드", "").replace("감시", "").replace("제거", "").replace("삭제", "").replace("중단", "").replace("끄", "").strip()
+            if stock_name:
+                result = subprocess.run([sys.executable, manager_path, "remove", stock_name],
+                                      capture_output=True, text=True, encoding="utf-8")
+                send_msg(result.stdout or result.stderr or "✅ 감시 제거 완료")
+            else:
+                send_msg("ℹ️ 종목명을 입력해주세요.\n예: '원익IPS 감시 제거'")
+            return
+        elif "목록" in msg_clean or "리스트" in msg_clean:
+            # 감시 목록 조회
+            result = subprocess.run([sys.executable, manager_path, "list"],
+                                  capture_output=True, text=True, encoding="utf-8")
+            send_msg(result.stdout or "ℹ️ 감시 중인 종목이 없습니다.")
             return
 
     # 1-4-1. 기술 질문 - 데이터 출처
