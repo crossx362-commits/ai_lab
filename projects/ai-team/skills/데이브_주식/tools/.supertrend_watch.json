@@ -1,0 +1,9 @@
+{
+  "stocks": [
+    {
+      "code": "240810",
+      "name": "원익IPS",
+      "enabled": true
+    }
+  ]
+}

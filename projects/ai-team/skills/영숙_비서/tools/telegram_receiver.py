@@ -484,6 +484,17 @@ def process(msg):
         except Exception as se:
             print(f"❌ 현황 조회 실패: {se}")
 
+    # 1-4-0. 슈퍼트렌드 감시 추가/제거 명령
+    if "슈퍼트랜드" in msg_clean or "감시" in msg_clean:
+        if "추가" in msg_clean or "시작" in msg_clean or "켜" in msg_clean:
+            # 감시 추가
+            send_msg("🔧 슈퍼트렌드 감시 추가 기능은 현재 개발 중입니다.\n\n현재 감시 중: 원익IPS (240810)")
+            return
+        elif "제거" in msg_clean or "삭제" in msg_clean or "중단" in msg_clean or "끄" in msg_clean:
+            # 감시 제거
+            send_msg("🔧 슈퍼트렌드 감시 제거 기능은 현재 개발 중입니다.\n\n현재 감시 중: 원익IPS (240810)")
+            return
+
     # 1-4-1. 기술 질문 - 데이터 출처
     if any(k in msg_clean for k in ["슈퍼트랜드", "보조지표", "지표", "어디서가져", "api출처", "데이터출처"]):
         if any(k in msg_clean for k in ["주식", "원익", "kis", "한국투자"]):

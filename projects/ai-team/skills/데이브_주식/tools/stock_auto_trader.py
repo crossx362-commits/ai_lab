@@ -20,10 +20,20 @@ load_env()
 sys.path.insert(0, _here)
 from kis_client import KISClient
 
-# 슈퍼트렌드 모니터링 종목 (사용자 지정)
-SUPERTREND_WATCH = [
-    ("240810", "원익IPS"),
-]
+# 슈퍼트렌드 모니터링 종목 (동적 로드)
+def load_supertrend_watch():
+    """JSON 파일에서 슈퍼트렌드 감시 목록 로드"""
+    watch_file = os.path.join(os.path.dirname(__file__), ".supertrend_watch.json")
+    try:
+        if os.path.exists(watch_file):
+            with open(watch_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return [(s["code"], s["name"]) for s in data.get("stocks", []) if s.get("enabled")]
+    except Exception as e:
+        print(f"[Dave 주식] 감시 목록 로드 실패: {e}")
+    return [("240810", "원익IPS")]  # 기본값
+
+SUPERTREND_WATCH = load_supertrend_watch()
 
 # 기본 감시 대상 비활성화 (슈퍼트렌드만 사용)
 BASE_STOCKS = []
