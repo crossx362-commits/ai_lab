@@ -99,6 +99,8 @@ RULES = [
     ProcessRule("프로세스 모니터", ("monitor_processes.py",)),
 ]
 
+SILENT_REMOVED_RULES = {"현빈 시장정보"}
+
 
 def _norm(text: str) -> str:
     return " ".join(str(text or "").replace("\\", "/").lower().split())
@@ -268,6 +270,18 @@ def cleanup_duplicates(dry_run=False):
     return removed, failed
 
 
+def format_removed_message(removed):
+    notify_removed = [
+        (name, pid, status)
+        for name, pid, status in removed
+        if name not in SILENT_REMOVED_RULES
+    ]
+    if not notify_removed:
+        return None
+    lines = [f"• {name}: PID {pid} ({status})" for name, pid, status in notify_removed]
+    return "✅ 중복 프로세스 정리 완료\n" + "\n".join(lines)
+
+
 def main():
     dry_run = "--dry-run" in sys.argv[1:]
 
@@ -279,9 +293,9 @@ def main():
 
     if removed:
         lines = [f"• {name}: PID {pid} ({status})" for name, pid, status in removed]
-        msg = "✅ 중복 프로세스 정리 완료\n" + "\n".join(lines)
-        print("\n" + msg)
-        if not dry_run:
+        print("\n✅ 중복 프로세스 정리 완료\n" + "\n".join(lines))
+        msg = format_removed_message(removed)
+        if msg and not dry_run:
             send(msg)
     else:
         print("\n✅ 정리할 중복 프로세스 없음")

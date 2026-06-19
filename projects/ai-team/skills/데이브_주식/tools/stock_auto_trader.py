@@ -13,6 +13,12 @@ from _shared.env import load_env
 from _shared.notify import send
 from _shared.process import ProcessLock
 from _shared.llm import text as llm_text
+from _shared.trading_entry_evaluator import (
+    backfill_pending_outcomes,
+    evaluate_entry,
+    format_evaluation,
+    record_decision,
+)
 
 load_env()
 
@@ -222,6 +228,35 @@ ATR: {current['atr']:,.0f}"""
                 print(f"  [{stock_info['name']}] LLM 분석 쿨다운 중 (남은 시간: {int(self.llm_cooldown_seconds - elapsed)}초)")
                 return {"decision": "HOLD", "reason": "쿨다운"}
 
+        raw_score = self.calculate_stock_entry_score(stock_info)
+        backfill_pending_outcomes(
+            agent="dave_stock",
+            ticker=stock_code,
+            current_price=stock_info.get("current_price", 0),
+            workspace_root=WORKSPACE_ROOT,
+        )
+        evaluation = evaluate_entry(
+            agent="dave_stock",
+            ticker=stock_code,
+            raw_score=raw_score,
+            max_raw_score=10,
+            reasons=[f"change_rate={stock_info.get('change_rate', 0):+.2f}%"],
+            metrics={"current_price": stock_info.get("current_price"), "momentum_pct": stock_info.get("change_rate", 0)},
+            workspace_root=WORKSPACE_ROOT,
+        )
+        print(f"  [{stock_info['name']}] 진입 평가: {format_evaluation(evaluation)}")
+        record_decision(
+            agent="dave_stock",
+            ticker=stock_code,
+            decision=evaluation["decision"],
+            evaluation=evaluation,
+            reason="stock_pre_llm_entry_gate",
+            workspace_root=WORKSPACE_ROOT,
+            extra={"observed_price": stock_info.get("current_price")},
+        )
+        if evaluation["decision"] == "HOLD":
+            return {"decision": "HOLD", "reason": f"진입평가 HOLD {evaluation['entry_score']}점"}
+
         # 프롬프트 생성
         prompt = f"""한국 주식 매매 판단 AI.
 
@@ -258,11 +293,47 @@ JSON 형식으로 답변:
 
             # 쿨다운 갱신
             self.cooldown[stock_code] = now
+            record_decision(
+                agent="dave_stock",
+                ticker=stock_code,
+                decision=decision.get("decision", "HOLD"),
+                evaluation=evaluation,
+                reason=decision.get("reason", ""),
+                workspace_root=WORKSPACE_ROOT,
+                extra={"llm_confidence": decision.get("confidence")},
+            )
 
             return decision
         except Exception as e:
             print(f"  ❌ LLM 분석 실패: {e}")
             return {"decision": "HOLD", "reason": "LLM 오류"}
+
+    def calculate_stock_entry_score(self, stock_info: dict) -> float:
+        """주식용 간단 진입 원점수. LLM 전 사전 게이트로만 사용한다."""
+        score = 0.0
+        change_rate = float(stock_info.get("change_rate", 0) or 0)
+        volume = int(stock_info.get("volume", 0) or 0)
+        current = int(stock_info.get("current_price", 0) or 0)
+        open_price = int(stock_info.get("open", 0) or 0)
+        high = int(stock_info.get("high", 0) or 0)
+        low = int(stock_info.get("low", 0) or 0)
+
+        if -3.0 <= change_rate <= -0.5:
+            score += 3.0  # 보수적 저가 매수 후보
+        elif 0.5 <= change_rate <= 4.0:
+            score += 2.0  # 상승 확인
+        elif change_rate > 7.0:
+            score -= 2.0  # 과열
+
+        if volume >= 100_000:
+            score += 2.0
+        if open_price > 0 and current > open_price:
+            score += 1.5
+        if high > low and current > (low + (high - low) * 0.6):
+            score += 1.5
+        if current <= 0:
+            score = 0.0
+        return max(score, 0.0)
 
     def execute_trade(self, stock_code: str, decision: dict):
         """매매 실행"""

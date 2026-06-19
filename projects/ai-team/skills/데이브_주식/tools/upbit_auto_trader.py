@@ -16,6 +16,13 @@ sys.path.insert(0, AI_TEAM_ROOT)
 from _shared.env import load_env
 from _shared.notify import send
 from _shared.process import ProcessLock
+from _shared.trading_entry_evaluator import (
+    backfill_pending_outcomes,
+    evaluate_entry,
+    format_evaluation,
+    record_decision,
+    suggested_position_pct,
+)
 
 load_env()
 
@@ -471,9 +478,36 @@ def run_auto_trade_cycle():
             return
 
         best = scanned[0]
-        # 최소 진입 점수 문턱값 (11점 이상)
         if best["score"] >= 3:
             best_ticker = best["ticker"]
+            backfill_pending_outcomes(
+                agent="dave",
+                ticker=best_ticker,
+                current_price=best.get("current_price", 0),
+                workspace_root=WORKSPACE_ROOT,
+            )
+            evaluation = evaluate_entry(
+                agent="dave",
+                ticker=best_ticker,
+                raw_score=best["score"],
+                max_raw_score=10,
+                reasons=best.get("reasons", []),
+                metrics={"current_price": best.get("current_price")},
+                workspace_root=WORKSPACE_ROOT,
+            )
+            print(f"[AutoTrader] 진입 평가: {format_evaluation(evaluation)}")
+            record_decision(
+                agent="dave",
+                ticker=best_ticker,
+                decision=evaluation["decision"],
+                evaluation=evaluation,
+                reason="pre_llm_entry_gate",
+                workspace_root=WORKSPACE_ROOT,
+                extra={"observed_price": best.get("current_price")},
+            )
+            if evaluation["decision"] == "HOLD":
+                print(f"[AutoTrader] {best_ticker} 공용 진입 평가 HOLD - LLM 검증 생략")
+                return
 
             # 동일 종목에 대한 LLM 분석 쿨다운 감시
             now = time.time()
@@ -493,9 +527,23 @@ def run_auto_trade_cycle():
                 reason = decision_data.reason
 
                 print(f"[AutoTrader] LLM 최종 결정: {decision} ({percentage}%) | 사유: {reason}")
+                record_decision(
+                    agent="dave",
+                    ticker=best_ticker,
+                    decision=decision,
+                    evaluation=evaluation,
+                    reason=reason,
+                    workspace_root=WORKSPACE_ROOT,
+                    extra={"llm_percentage": percentage},
+                )
 
                 if decision == "BUY":
-                    pct = percentage / 100.0
+                    suggested_pct = suggested_position_pct("dave", evaluation)
+                    effective_percentage = min(percentage, suggested_pct) if suggested_pct else 0
+                    pct = effective_percentage / 100.0
+                    if pct <= 0:
+                        print(f"[AutoTrader] 진입 평가 비중이 0%라 매수하지 않습니다. ({format_evaluation(evaluation)})")
+                        return
                     buy_amount = krw_balance * pct * 0.995 # 수수료 고려 안전 여유
 
                     if buy_amount < 5000.0:
@@ -509,7 +557,7 @@ def run_auto_trade_cycle():
                     else:
                         amount_str = f"{buy_amount:,.0f}원"
 
-                    msg = f"💼 [데이브] {coin} 매수 {amount_str} ({best['score']}점)"
+                    msg = f"💼 [데이브] {coin} 매수 {amount_str} ({evaluation['entry_score']}점, 승률 {evaluation['expected_win_rate']*100:.0f}%, RR {evaluation['risk_reward']})"
                     print(msg)
                     send(msg)
                     res = upbit_analyzer.execute_buy(best_ticker, buy_amount)

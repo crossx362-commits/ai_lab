@@ -685,41 +685,26 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
         kimchi=kimchi,
         consecutive_holds=consecutive_holds,
     )
+    system = load_system_instruction()
+
     # 1) Ollama 우선
     try:
-        from _shared.llm import ollama as lm_chat, is_available as lm_available
-        if lm_available():
-            print(f"[Dave] Calling Ollama for {ticker}...")
-            system = load_system_instruction()
-
-            ollama_result = lm_chat(
-                prompt,
-                system=system,
-                max_tokens=600,
-                temperature=0.1,
-                json_mode=True,
-                task="trading"
-            )
-
-            if ollama_result:
-                try:
-                    return parse_trade_decision(ollama_result)
-                except Exception as parse_err:
-                    print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → GPT 폴백")
+        from _shared.llm import ollama as lm_ollama
+        print(f"[Dave] Calling Ollama for {ticker}...")
+        ollama_result = lm_ollama(prompt, system=system, max_tokens=600, temperature=0.1, task="trading")
+        if ollama_result:
+            try:
+                return parse_trade_decision(ollama_result)
+            except Exception as parse_err:
+                print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → GPT 폴백")
     except Exception as ollama_err:
         print(f"[Dave] Ollama 실패: {ollama_err} → GPT 폴백")
 
-    # 2) GPT-4o mini 폴백
+    # 2) GPT 폴백
     try:
-        from _shared.gemini_client import gpt_mini
-        print(f"[Dave] Calling GPT-4o mini for {ticker}...")
-        gpt_result = gpt_mini(
-            prompt,
-            system=system,
-            max_tokens=300,
-            temperature=0.1,
-            json_mode=True,
-        )
+        from _shared.llm import gpt as lm_gpt
+        print(f"[Dave] Calling GPT for {ticker}...")
+        gpt_result = lm_gpt(prompt, system=system, max_tokens=300, temperature=0.1, json_mode=True)
         if gpt_result:
             decision = parse_trade_decision(gpt_result)
             _update_consecutive_holds(decision.decision)
@@ -727,17 +712,11 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
     except Exception as gpt_err:
         print(f"[Dave] GPT 폴백 실패: {gpt_err}")
 
-    # 3) Gemini 폴백 (최후 수단)
+    # 3) Gemini 폴백
     try:
-        from _shared.gemini_client import gemini_flash
+        from _shared.llm import gemini as lm_gemini
         print(f"[Dave] Calling Gemini for {ticker}...")
-        gemini_result = gemini_flash(
-            prompt,
-            system=system,
-            max_tokens=300,
-            temperature=0.1,
-            json_mode=True,
-        )
+        gemini_result = lm_gemini(prompt, system=system, max_tokens=300, temperature=0.1, json_mode=True)
         if gemini_result:
             decision = parse_trade_decision(gemini_result)
             _update_consecutive_holds(decision.decision)

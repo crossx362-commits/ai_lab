@@ -52,10 +52,69 @@ def is_manual_stopped(name: str | None = None):
     return os.path.exists(manual_stop_flag()) or (name is not None and os.path.exists(manual_stop_flag(name)))
 
 
+def _norm_path(path: str) -> str:
+    try:
+        return os.path.normcase(os.path.realpath(path))
+    except Exception:
+        return os.path.normcase(os.path.abspath(path))
+
+
+def is_script_already_running(script_path: str) -> bool:
+    """Return True when this exact daemon script is already running."""
+    target = _norm_path(script_path)
+    current_pid = os.getpid()
+
+    try:
+        import psutil
+
+        for proc in psutil.process_iter(["pid", "cmdline"]):
+            try:
+                if proc.info["pid"] == current_pid:
+                    continue
+                cmdline = proc.info.get("cmdline") or []
+                for part in cmdline:
+                    if _norm_path(part) == target:
+                        return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception:
+        pass
+
+    if sys.platform != "win32":
+        try:
+            result = subprocess.run(
+                ["ps", "-axo", "pid=,command="],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=10,
+            )
+            if result.returncode == 0:
+                marker = script_path.replace("\\", "/")
+                for line in result.stdout.splitlines():
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    pid_text, _, command = stripped.partition(" ")
+                    if pid_text.isdigit() and int(pid_text) == current_pid:
+                        continue
+                    if marker in command.replace("\\", "/"):
+                        return True
+        except Exception:
+            pass
+
+    return False
+
+
 def start_process(name: str, script_path: str, args: list = None):
     """백그라운드 프로세스 시작 (로그 파일로 출력 리다이렉트)"""
     if args is None:
         args = []
+
+    if is_script_already_running(script_path):
+        print(f"ℹ️  {name} 이미 실행 중 - 새 프로세스 시작 생략")
+        return None
 
     # 로그 파일명: name에서 한글/공백 제거 후 소문자
     slug = name.split()[0]

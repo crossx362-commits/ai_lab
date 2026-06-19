@@ -17,7 +17,7 @@ def run_harness():
     """하네스 실행"""
     result = subprocess.run(
         [sys.executable, "harness/check_all.py"],
-        cwd=os.path.join(os.path.dirname(__file__), "..", ".."),
+        cwd=os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."),
         capture_output=True,
         text=True
     )
@@ -32,7 +32,7 @@ def check_and_restart_bots():
         print(f"⚠️  Down: {', '.join(down_bots)}")
 
         # 재시작 시도
-        restart_script = os.path.join(os.path.dirname(__file__), "..", "..", "scripts", "start_trading_all.py")
+        restart_script = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts", "start_trading_all.py")
         if os.path.exists(restart_script):
             subprocess.Popen([sys.executable, restart_script])
             send(f"🔄 [예원] 봇 재시작\nDown: {', '.join(down_bots)}")

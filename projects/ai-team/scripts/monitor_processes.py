@@ -71,12 +71,9 @@ if __name__ == "__main__":
 
     # 중복 실행 방지 (PID 파일 기반)
     from _shared.process import ProcessLock
-    if not acquire_lock("monitor"):
-        sys.exit(0)
 
-    try:
-        main(daemon=args.daemon)
-    except KeyboardInterrupt:
-        print("\n\n프로세스 모니터링 중지")
-    finally:
-        release_lock("monitor")
+    with ProcessLock("monitor"):
+        try:
+            main(daemon=args.daemon)
+        except KeyboardInterrupt:
+            print("\n\n프로세스 모니터링 중지")

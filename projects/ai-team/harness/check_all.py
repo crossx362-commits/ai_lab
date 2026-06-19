@@ -9,6 +9,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+sys.dont_write_bytecode = True
+
 # Windows 인코딩 수정
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -48,20 +50,26 @@ def age_text(path: Path) -> str:
 
 
 def find_python_pids(script_name: str) -> list[str]:
-    cmd = (
-        "Get-CimInstance Win32_Process | "
-        "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
-        f"$_.CommandLine.ToLower().Contains('{script_name.lower()}') }} | "
-        "Select-Object -ExpandProperty ProcessId"
-    )
+    import platform
     try:
-        out = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", cmd],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        ).stdout
-        return [p for p in out.split() if p.isdigit()]
+        if platform.system() == "Darwin":
+            out = subprocess.run(
+                ["pgrep", "-f", script_name],
+                capture_output=True, text=True, timeout=5,
+            ).stdout
+            return [p for p in out.split() if p.isdigit()]
+        else:
+            cmd = (
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
+                f"$_.CommandLine.ToLower().Contains('{script_name.lower()}') }} | "
+                "Select-Object -ExpandProperty ProcessId"
+            )
+            out = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", cmd],
+                capture_output=True, text=True, timeout=5,
+            ).stdout
+            return [p for p in out.split() if p.isdigit()]
     except Exception:
         return []
 
@@ -99,9 +107,10 @@ def check_schedule():
         data = read_json(schedules)
         items = data.get("schedules", [])
         enabled = [s for s in items if s.get("enabled", True)]
-        read_json(last_run)
     except Exception as e:
         return fail(f"schedule json failed: {e}")
+    if not last_run.exists():
+        return warn(f"enabled {len(enabled)}/{len(items)}, last_run missing (bot not yet run)")
     return ok(f"enabled {len(enabled)}/{len(items)}, last_run {age_text(last_run)}")
 
 
@@ -122,6 +131,153 @@ def check_structure():
     return ok("core dirs present")
 
 
+def check_classification_layout():
+    """Validate the active repo areas from docs/REPOSITORY_CLASSIFICATION.md."""
+    required_files = [
+        ROOT / "AGENTS.md",
+        ROOT / "PROJECT_OVERVIEW.md",
+        ROOT / "README.md",
+        ROOT / "CLAUDE.md",
+        ROOT / "SKILL.md",
+        ROOT / "docs" / "REPOSITORY_CLASSIFICATION.md",
+        ROOT / "docs" / "TELEGRAM_BOT_README.md",
+        AI_TEAM / "README.md",
+        AI_TEAM / "scripts" / "README.md",
+        AI_TEAM / "scripts" / "check_holdings.py",
+        AI_TEAM / "scripts" / "daily_balance_check.py",
+        AI_TEAM / "scripts" / "daily_trading_learning.py",
+        AI_TEAM / "scripts" / "start_daily_automation.py",
+        AI_TEAM / "scripts" / "start_trading_team.py",
+        AI_TEAM / "skills" / "README.md",
+        AI_TEAM / "harness" / "check_all.py",
+        AI_TEAM / "skills" / "경수_수사관" / "tools" / "approval_kyungsoo.py",
+        AI_TEAM / "skills" / "경수_수사관" / "tools" / "comment_forensics.py",
+        AI_TEAM / "skills" / "경수_수사관" / "tools" / "content_inspector.py",
+        AI_TEAM / "skills" / "데이브_주식" / "tools" / "upbit_analyzer.py",
+        AI_TEAM / "skills" / "데이브_주식" / "tools" / "upbit_auto_trader.py",
+        AI_TEAM / "skills" / "데이브_주식" / "tools" / "upbit_public.py",
+        AI_TEAM / "skills" / "레오_트레이더" / "tools" / "leo_aggressive_trader.py",
+        AI_TEAM / "skills" / "로율_변호사" / "tools" / "tax_simulator.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "calendar_manager.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "posting_scheduler.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "reports_manager.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "schedule_manager.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "telegram_receiver.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "upload_approval_flow.py",
+        AI_TEAM / "skills" / "영숙_비서" / "tools" / "start_telegram_bot.ps1",
+        AI_TEAM / "skills" / "예원_CEO" / "tools" / "evaluate_feedback.py",
+        AI_TEAM / "skills" / "예원_CEO" / "tools" / "skill_auditor.py",
+        AI_TEAM / "skills" / "예원_CEO" / "tools" / "upload_manager.py",
+        AI_TEAM / "skills" / "예원_CEO" / "tools" / "yewon_dispatcher.py",
+        AI_TEAM / "skills" / "케빈_인프라" / "tools" / "petnna_monitor.py",
+        AI_TEAM / "skills" / "케빈_인프라" / "tools" / "supabase_manager.py",
+        AI_TEAM / "skills" / "케빈_인프라" / "tools" / "sync_env_to_vercel.py",
+        AI_TEAM / "skills" / "케빈_인프라" / "tools" / "vercel_manager.py",
+        AI_TEAM / "skills" / "코다리_개발자" / "tools" / "agent_health_check.py",
+        AI_TEAM / "skills" / "코다리_개발자" / "tools" / "ollama_health_check.py",
+        AI_TEAM / "skills" / "코다리_개발자" / "tools" / "web_init.py",
+        AI_TEAM / "skills" / "코다리_개발자" / "tools" / "web_preview.py",
+        AI_TEAM / "skills" / "티모_디자이너" / "tools" / "petnna_reviewer.py",
+        AI_TEAM / "skills" / "시그널_분석가" / "tools" / "market_signal.py",
+        AI_TEAM / "skills" / "펄스_애널리스트" / "tools" / "market_pulse.py",
+        ROOT / "projects" / "petnna" / "index.html",
+        ROOT / "projects" / "petnna" / "sw.js",
+        ROOT / "projects" / "petnna" / "js" / "app.js",
+        ROOT / "projects" / "petnna" / "js" / "state.js",
+        ROOT / "projects" / "petnna" / "js" / "settings.js",
+        ROOT / "projects" / "petnna" / "api" / "ai-health.js",
+        AI_TEAM / "src" / "extension.ts",
+    ]
+    required_dirs = [
+        ROOT / "docs" / "setup",
+        ROOT / "docs" / "plans",
+        ROOT / "docs" / "archive",
+        ROOT / "reports",
+        ROOT / "reports" / "research",
+        ROOT / "reports" / "status",
+        ROOT / "projects" / "petnna" / "docs",
+        ROOT / "projects" / "petnna" / "api",
+        ROOT / "projects" / "petnna" / "css",
+        ROOT / "projects" / "petnna" / "js",
+        ROOT / "projects" / "petnna" / "js" / "templates",
+        AI_TEAM / "docs",
+        AI_TEAM / "harness",
+        AI_TEAM / "_shared",
+        AI_TEAM / "scripts" / "agents",
+        AI_TEAM / "skills" / "공용스킬",
+        AI_TEAM / "assets" / "brain-seeds",
+    ]
+
+    missing = []
+    for path in required_files + required_dirs:
+        if not path.exists():
+            missing.append(str(path.relative_to(ROOT)))
+
+    skills_dir = AI_TEAM / "skills"
+    if skills_dir.exists():
+        for agent_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
+            if agent_dir.name.startswith(".") or agent_dir.name == "__pycache__":
+                continue
+            if agent_dir.name == "공용스킬":
+                continue
+            if not (agent_dir / "SKILL.md").exists():
+                missing.append(str((agent_dir / "SKILL.md").relative_to(ROOT)))
+
+    if missing:
+        return fail("classification missing: " + ", ".join(missing[:10]))
+
+    warnings = []
+    for legacy_dir in [ROOT / ".backups", ROOT / ".archive"]:
+        if legacy_dir.exists():
+            warnings.append(f"legacy dir present: {legacy_dir.name}")
+
+    project_reports = ROOT / "projects" / "reports"
+    if project_reports.exists():
+        misplaced = [p for p in project_reports.rglob("*") if p.is_file()]
+        if misplaced:
+            warnings.append("misplaced reports: projects/reports")
+
+    root_wrappers = sorted(
+        p.name for p in ROOT.iterdir()
+        if p.is_file() and p.suffix.lower() in {".bat", ".cmd", ".ps1"}
+    )
+    if root_wrappers:
+        warnings.append("root wrappers present: " + ", ".join(root_wrappers[:8]))
+
+    tracked = git_tracked()
+    tracked_ignored = git_tracked_ignored()
+    tracked_runtime = [
+        p for p in tracked
+        if p in {
+            ".telegram_sent_cache.json",
+            "reports/status/harness_latest.json",
+            "reports/research/crypto_market_intel.json",
+            "reports/research/hyunbin_alert_state.json",
+            "projects/ai-team/skills/영숙_비서/tools/last_run.json",
+        }
+    ]
+    tracked_plaintext_secrets = [
+        p for p in tracked
+        if p in {".env", "client_secret.json"} or p.endswith("/.env") or p.endswith("/client_secret.json")
+    ]
+    tracked_media = [
+        p for p in tracked
+        if p.startswith("output/") and Path(p).suffix.lower() in {".mp3", ".mp4", ".png", ".jpg", ".jpeg", ".webp"}
+    ]
+    if tracked_plaintext_secrets:
+        warnings.append("tracked plaintext secrets: " + ", ".join(tracked_plaintext_secrets[:8]))
+    if tracked_ignored:
+        warnings.append("tracked ignored files: " + ", ".join(tracked_ignored[:8]))
+    if tracked_runtime:
+        warnings.append("tracked runtime state: " + ", ".join(tracked_runtime[:8]))
+    if tracked_media:
+        warnings.append("tracked generated media: " + ", ".join(tracked_media[:8]))
+
+    if warnings:
+        return warn(" | ".join(warnings))
+    return ok("repository classification layout matches")
+
+
 def check_report_layout():
     project_reports = AI_TEAM / "reports"
     allowed = set()
@@ -140,6 +296,19 @@ def git_tracked() -> list[str]:
     try:
         out = subprocess.run(
             ["git", "-C", str(ROOT), "ls-files"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
+    except Exception:
+        return []
+
+
+def git_tracked_ignored() -> list[str]:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "-ci", "--exclude-standard"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -184,6 +353,7 @@ def main() -> int:
         "schedule": check_schedule,
         "trading": check_trading,
         "structure": check_structure,
+        "classification_layout": check_classification_layout,
         "report_layout": check_report_layout,
         "root_layout": check_root_layout,
     }

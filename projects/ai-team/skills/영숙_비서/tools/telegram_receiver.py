@@ -14,7 +14,10 @@ import subprocess
 import sys
 import time
 import traceback
+import html
+import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -58,6 +61,16 @@ STATE_DIRS = [
 ]
 LOCK_PATHS = [p / ".telegram_poll.lock" for p in STATE_DIRS]
 OFFSET_PATH = STATE_DIRS[0] / "telegram_offset.json"
+
+PSYCHOLOGY_SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 트레이딩팀 비서이자 대화 상대다.
+- 어떤 말에도 먼저 감정과 의도를 읽고 짧게 받아준다. 판단보다 이해, 훈계보다 정리, 회피보다 반응이 먼저다.
+- 불안/분노/무기력/외로움/수치심/집착/관계 고민/동기 저하/습관 문제는 심리학 관점으로 풀되, 전문 용어를 남발하지 말고 사장님 말로 다시 번역한다.
+- 필요하면 인지왜곡, 방어기제, 애착, 스트레스 반응, 회피/보상 행동, 습관 루프, 감정 조절, 동기 이론을 활용한다.
+- 보통 1) 감정 반영 2) 핵심 심리 패턴 3) 지금 할 수 있는 작은 행동 1개 순서로 답한다.
+- 진단명을 단정하지 않는다. "우울증이야", "ADHD야"처럼 확정하지 말고 "그 패턴처럼 보일 수 있어" 정도로 말한다.
+- 자해/자살/타해/학대/극심한 위기 표현이 나오면 즉시 안전을 우선한다. 미국이면 988 또는 현지 응급번호, 한국이면 112/119 등 즉시 도움을 안내한다.
+- 모르는 사실, 최신 정보, 심리학 근거 요청은 아는 척하지 말고 검색 결과를 근거로 말한다.
+- 텔레그램답게 짧고 자연스럽게, 사장님에게 말하듯 답한다."""
 
 
 def log(message: str) -> None:
@@ -146,6 +159,82 @@ def normalize(text: str) -> str:
     return "".join(text.lower().split())
 
 
+def is_search_request(clean: str) -> bool:
+    explicit = ["검색", "찾아봐", "찾아줘", "인터넷", "웹에서", "자료조사", "근거찾"]
+    current = ["최신", "최근", "오늘", "뉴스", "논문", "연구", "자료", "출처", "근거"]
+    return any(k in clean for k in explicit) or (
+        any(k in clean for k in ["심리", "정신건강", "상담", "치료"]) and
+        any(k in clean for k in current)
+    )
+
+
+def web_search(query: str) -> str:
+    query = str(query or "").strip()
+    if not query:
+        return "뭘 찾아볼지 한 번만 더 말해줘요."
+
+    lines = [f"검색: {query}", ""]
+    params = urllib.parse.urlencode({
+        "q": query,
+        "format": "json",
+        "no_html": "1",
+        "skip_disambig": "1",
+    })
+    req = urllib.request.Request(
+        f"https://api.duckduckgo.com/?{params}",
+        headers={"User-Agent": "ai-lab-youngsuk/1.0"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as response:
+            data = json.loads(response.read().decode("utf-8", errors="replace"))
+    except Exception as exc:
+        return f"검색을 시도했는데 지금 웹 조회가 막혔어요: {exc}"
+
+    abstract = str(data.get("AbstractText") or "").strip()
+    abstract_url = str(data.get("AbstractURL") or "").strip()
+    heading = str(data.get("Heading") or "").strip()
+    if abstract:
+        lines.append(f"{heading or '요약'}: {abstract}")
+        if abstract_url:
+            lines.append(f"출처: {abstract_url}")
+
+    if len(lines) <= 2:
+        quoted = urllib.parse.quote_plus(query)
+        lite_req = urllib.request.Request(
+            f"https://lite.duckduckgo.com/lite/?q={quoted}",
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        try:
+            with urllib.request.urlopen(lite_req, timeout=12) as response:
+                page = response.read().decode("utf-8", errors="replace")
+            matches = re.findall(
+                r"<a rel=\"nofollow\" href=\"([^\"]+)\" class='result-link'>(.*?)</a>.*?"
+                r"<td class='result-snippet'>\s*(.*?)\s*</td>",
+                page,
+                flags=re.S,
+            )
+            if matches:
+                lines.append("검색 결과:")
+                for idx, (href, title, snippet) in enumerate(matches[:4], 1):
+                    parsed = urllib.parse.urlparse(html.unescape(href))
+                    target = urllib.parse.parse_qs(parsed.query).get("uddg", [href])[0]
+                    clean_title = html.unescape(re.sub(r"<.*?>", "", title)).strip()
+                    clean_snippet = html.unescape(re.sub(r"<.*?>", "", snippet)).strip()
+                    lines.append(f"{idx}. {clean_title}")
+                    if clean_snippet:
+                        lines.append(f"   {clean_snippet}")
+                    lines.append(f"   {target}")
+        except Exception as exc:
+            lines.append(f"검색 결과 페이지 확인도 실패했어요: {exc}")
+
+    if len(lines) <= 2:
+        quoted = urllib.parse.quote_plus(query)
+        lines.append("바로 요약할 만한 검색 결과가 부족해요.")
+        lines.append(f"직접 확인 링크: https://duckduckgo.com/?q={quoted}")
+
+    return "\n".join(lines)
+
+
 def agent_status() -> str:
     try:
         import agent_controller
@@ -204,7 +293,7 @@ def llm_answer(text: str) -> str:
         from _shared.ollama_client import chat
 
         answer = chat(
-            [{"role": "system", "content": "너는 영숙 비서다. 짧고 사실적으로 한국어로 답한다."}, {"role": "user", "content": text}],
+            [{"role": "system", "content": PSYCHOLOGY_SYSTEM}, {"role": "user", "content": text}],
             task="general",
         )
         if answer:
@@ -219,7 +308,10 @@ def handle_message(text: str) -> str:
     log(f"message: {text[:120]}")
 
     if clean in {"/start", "/help", "help", "도움말"}:
-        return "영숙 준비됨. 예: 현황, 거래 현황, 일정, 데이브 상태, 레오 시작, 시그널 시작"
+        return "영숙 준비됨. 예: 현황, 거래 현황, 일정, 데이브 상태, 레오 시작, 심리학 최신 자료 검색해봐"
+
+    if is_search_request(clean):
+        return web_search(text)
 
     if any(k in clean for k in ["현황", "상태", "다들뭐해", "에이전트상태", "agentstatus"]):
         if any(k in clean for k in ["투자", "거래", "주식", "코인", "매매", "데이브", "레오", "시그널", "펄스"]):

@@ -62,10 +62,22 @@ _AGENTS = _get_agents()
 
 
 def _find_pids(script_name: str) -> list[str]:
-    """Find PIDs running given script (Windows only)."""
+    """Find PIDs running given script."""
     import subprocess
     # 파일명만 추출 (경로 제거)
     script_file = script_name.split('/')[-1].lower()
+    if sys.platform == "darwin":
+        try:
+            out = subprocess.run(
+                ["pgrep", "-f", script_file],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout
+            return [p for p in out.split() if p.isdigit()]
+        except Exception:
+            return []
+
     cmd = (
         "Get-CimInstance Win32_Process | "
         "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "

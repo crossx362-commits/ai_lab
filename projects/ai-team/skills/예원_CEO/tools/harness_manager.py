@@ -18,8 +18,8 @@ class HarnessManager:
     """하네스 & 시스템 관리자"""
 
     def __init__(self):
-        self.harness_dir = Path(__file__).parent.parent.parent / "harness"
-        self.ai_team = Path(__file__).parent.parent.parent
+        self.harness_dir = Path(__file__).parent.parent.parent.parent / "harness"
+        self.ai_team = Path(__file__).parent.parent.parent.parent
         self.reports_dir = self.ai_team.parent.parent / "reports" / "harness"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.last_report_file = self.reports_dir / ".last_telegram_report"

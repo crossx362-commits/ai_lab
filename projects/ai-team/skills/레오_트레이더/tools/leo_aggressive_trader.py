@@ -86,6 +86,13 @@ sys.path.insert(0, DAVE_TOOLS)
 from _shared.env import load_env
 from _shared.notify import send
 from _shared.process import ProcessLock
+from _shared.trading_entry_evaluator import (
+    backfill_pending_outcomes,
+    evaluate_entry,
+    format_evaluation,
+    record_decision,
+    suggested_position_pct,
+)
 
 load_env()
 
@@ -551,7 +558,53 @@ def run_leo_cycle():
         fg = crypto_data.get("fear_greed", {})
         if fg.get("value", 50) >= 80:
             print(f"[Leo] 공포탐욕지수 {fg['value']} - 극탐욕, 신규 진입 금지")
+            record_decision(
+                agent="leo",
+                ticker=best["ticker"],
+                decision="HOLD",
+                evaluation=evaluate_entry(
+                    agent="leo",
+                    ticker=best["ticker"],
+                    raw_score=best["score"],
+                    max_raw_score=8,
+                    reasons=best.get("reasons", []),
+                    metrics=best,
+                    hard_hold_reasons=[f"fear_greed_{fg['value']}"],
+                    workspace_root=WORKSPACE_ROOT,
+                ),
+                reason="fear_greed_hard_hold",
+                workspace_root=WORKSPACE_ROOT,
+            )
             return
+
+    backfill_pending_outcomes(
+        agent="leo",
+        ticker=best["ticker"],
+        current_price=best.get("current_price", 0),
+        workspace_root=WORKSPACE_ROOT,
+    )
+    evaluation = evaluate_entry(
+        agent="leo",
+        ticker=best["ticker"],
+        raw_score=best["score"],
+        max_raw_score=8,
+        reasons=best.get("reasons", []),
+        metrics=best,
+        workspace_root=WORKSPACE_ROOT,
+    )
+    print(f"[Leo] 진입 평가: {format_evaluation(evaluation)}")
+    record_decision(
+        agent="leo",
+        ticker=best["ticker"],
+        decision=evaluation["decision"],
+        evaluation=evaluation,
+        reason="entry_gate",
+        workspace_root=WORKSPACE_ROOT,
+        extra={"observed_price": best.get("current_price")},
+    )
+    if evaluation["decision"] == "HOLD":
+        print(f"[Leo] {best['ticker']} 공용 진입 평가 HOLD - 신규 진입 보류")
+        return
 
     # 진입 조건 체크
     if best["score"] >= min_score:
@@ -571,12 +624,10 @@ def run_leo_cycle():
         reasons = best.get("reasons", [])
 
         # 투입 금액 계산 (스코어에 따라 차등)
-        if best["score"] >= 4:
-            invest_pct = 0.5  # 고득점: 50%
-        elif best["score"] >= 3:
-            invest_pct = 0.4  # 중득점: 40%
-        else:
-            invest_pct = 0.3  # 저득점: 30%
+        invest_pct = suggested_position_pct("leo", evaluation) / 100.0
+        if invest_pct <= 0:
+            print(f"[Leo] 평가 비중 0% - 신규 진입 보류 ({format_evaluation(evaluation)})")
+            return
 
         buy_amount = leo_budget * invest_pct * 0.995  # 수수료 여유
 
@@ -589,7 +640,8 @@ def run_leo_cycle():
         # 진입 근거 로깅
         print(f"\n[Leo] ✅ 진입 조건 만족!")
         print(f"  코인: {ticker}")
-        print(f"  스코어: {best['score']}점")
+        print(f"  스코어: {best['score']}점 → 진입평가 {evaluation['entry_score']}점")
+        print(f"  승률/RR: {evaluation['expected_win_rate']*100:.1f}% / {evaluation['risk_reward']}")
         print(f"  근거: {', '.join(reasons)}")
         print(f"  거래량: {best.get('volume_ratio', 0):.1f}배")
         print(f"  모멘텀: {best.get('momentum_1h', 0):+.1f}%")
@@ -601,11 +653,20 @@ def run_leo_cycle():
         else:
             amount_str = f"{buy_amount:,.0f}원"
 
-        msg = f"⚡ [레오] {coin} 진입 {amount_str} ({best['score']}점)"
+        msg = f"⚡ [레오] {coin} 진입 {amount_str} ({evaluation['entry_score']}점, 승률 {evaluation['expected_win_rate']*100:.0f}%, RR {evaluation['risk_reward']})"
         send(msg)
 
         res = upbit_analyzer.execute_buy(ticker, buy_amount)
         print(res)
+        record_decision(
+            agent="leo",
+            ticker=ticker,
+            decision="BUY",
+            evaluation=evaluation,
+            reason="order_submitted",
+            workspace_root=WORKSPACE_ROOT,
+            extra={"buy_amount": buy_amount, "invest_pct": invest_pct},
+        )
 
         last_trade_time[ticker] = time.time()
         trades_today.append(time.time())
