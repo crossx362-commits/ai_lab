@@ -49,13 +49,12 @@ def send(msg: str, silent: bool = False) -> bool:
 
 # 하드코딩 제거 - 자동 스캔 사용
 def _get_agents():
-    """에이전트 목록 자동 로드 (하드코딩 제거)"""
+    """데몬 에이전트만 로드 (온디맨드 제외 — 런타임 체크 대상)"""
     try:
         from .agent_registry import get_agents
         agents = get_agents()
-        return {slug: info["script"] for slug, info in agents.items()}
+        return {slug: info["script"] for slug, info in agents.items() if info["type"] == "daemon"}
     except Exception:
-        # Fallback: 빈 딕셔너리
         return {}
 
 _AGENTS = _get_agents()
