@@ -333,19 +333,28 @@ def _tool_get_trading_status() -> str:
 
 def _tool_get_agent_status() -> str:
     try:
-        import subprocess
-        bots = {
-            "시그널": "market_signal",
-            "펄스": "market_pulse",
-            "데이브": "upbit_auto_trader",
-            "레오": "leo_aggressive_trader",
-            "영숙": "telegram_receiver",
+        sys.path.insert(0, str(AI_TEAM_ROOT))
+        from _shared.agent_registry import scan_agents
+        agents = scan_agents()
+
+        # 데몬 에이전트: 프로세스 실행 여부 확인
+        daemon_keywords = {
+            "youngsuk": "telegram_receiver",
+            "signal": "market_signal",
+            "dave": "upbit_auto_trader",
+            "leo": "leo_aggressive_trader",
         }
-        lines = ["🤖 에이전트 현황"]
-        for name, kw in bots.items():
-            out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
-            pids = [p for p in out.split() if p.isdigit()]
-            status = f"🟢 실행중 (PID {pids[0]})" if pids else "🔴 중지"
+
+        lines = [f"🤖 에이전트 현황 ({len(agents)}명)"]
+        for slug, info in agents.items():
+            name = info["name"]
+            if slug in daemon_keywords:
+                kw = daemon_keywords[slug]
+                out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
+                pids = [p for p in out.split() if p.isdigit()]
+                status = f"🟢 실행중" if pids else "🔴 중지"
+            else:
+                status = "⚪ 온디맨드"
             lines.append(f"{name}: {status}")
         return "\n".join(lines)
     except Exception as exc:
