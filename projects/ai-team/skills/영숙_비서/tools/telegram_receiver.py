@@ -453,6 +453,9 @@ def handle_message(text: str) -> str:
     if text.strip().lstrip("/").lower() in {"start", "help", "도움말"}:
         return "안녕하세요 사장님! 영숙이에요. 뭐든지 말씀하세요 :)"
 
+    if is_search_request(normalize(text)):
+        return web_search(text)
+
     # 실시간 데이터 수집 (필요할 때만)
     context = _build_context(text)
     if context:

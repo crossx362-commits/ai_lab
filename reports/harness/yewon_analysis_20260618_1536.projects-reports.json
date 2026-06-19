@@ -1,0 +1,25 @@
+﻿{
+  "timestamp": "2026-06-18T15:36:41.841281",
+  "harness_output": "",
+  "structure_issues": [
+    "Missing: _shared directory"
+  ],
+  "bot_analysis": {
+    "데이브 코인": {
+      "status": "❌ D:\\ai_lab\\projects\\ai-team\\skills\\skills\\데이브_주식\\tools\\upbit_auto_trader.py"
+    },
+    "데이브 주식": {
+      "status": "❌ D:\\ai_lab\\projects\\ai-team\\skills\\skills\\데이브_주식\\tools\\stock_auto_trader.py"
+    },
+    "레오 코인": {
+      "status": "❌ D:\\ai_lab\\projects\\ai-team\\skills\\skills\\레오_트레이더\\tools\\leo_aggressive_trader.py"
+    },
+    "펄스 코인": {
+      "status": "❌ D:\\ai_lab\\projects\\ai-team\\skills\\skills\\펄스_전략가\\tools\\crypto_market_intelligence.py"
+    },
+    "펄스 주식": {
+      "status": "❌ D:\\ai_lab\\projects\\ai-team\\skills\\skills\\펄스_전략가\\tools\\stock_market_intelligence.py"
+    }
+  },
+  "suggestions": "**즉시 수정 필요**\n\n1. _shared directory가 없다는 오류를 해결해야 함.\n2. 봇 로직 중 \"❌\" 표시가 된 모든 프로젝트의 오류를 확인하고 수정해야 함.\n\n**성능 개선 제안**\n\n1. 각 봇 로직이 독립적으로 작동하도록 하기 위해, 공통 라이브러리나 함수로 추출하여 재사용성을 높여야 함.\n2. 데이터 처리 및 분석을 위한 병렬처리 기능을 추가하면 성능 향상에 도움이 될 수 있음.\n\n**다음 우선순위 작업**\n\n1. _shared directory를 생성하고, 각 봇 로직이 공유하는 라이브러리나 함수로 추출하여 재사용성을 높이는 작업 수행.\n2. 오류가 발생한 봇 로직을 수정하고 테스트 후 배포."
+}

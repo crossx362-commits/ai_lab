@@ -1,0 +1,25 @@
+﻿{
+  "timestamp": "2026-06-18T15:35:53.252256",
+  "harness_output": "",
+  "structure_issues": [
+    "Missing: _shared directory"
+  ],
+  "bot_analysis": {
+    "데이브 코인": {
+      "status": "❌ Missing"
+    },
+    "데이브 주식": {
+      "status": "❌ Missing"
+    },
+    "레오 코인": {
+      "status": "❌ Missing"
+    },
+    "펄스 코인": {
+      "status": "❌ Missing"
+    },
+    "펄스 주식": {
+      "status": "❌ Missing"
+    }
+  },
+  "suggestions": "**즉시 수정 필요**\n\n* _shared directory가 존재하지 않아 시스템에 문제가 발생하고 있습니다.\n* 봇 로직에서 데이브 코인, 데이브 주식, 레오 코인, 펄스 코인, 펄스 주식이 모두 미설정 상태입니다.\n\n**성능 개선 제안**\n\n* _shared directory를 생성하여 시스템의 안정성을 높여주세요.\n* 봇 로직을 수정하여 모든 봇이 정상 작동하도록 하세요."
+}
