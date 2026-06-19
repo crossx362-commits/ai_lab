@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import os, re
 
 AI_TEAM = os.path.abspath(os.path.join(os.path.dirname(__file__), "projects", "ai-team"))
@@ -26,8 +26,8 @@ REPLACEMENTS = [
      '"reports", "research", "luna_research.json"'),
     ('".agent", "memory", "arin_research.json"',
      '"reports", "research", "arin_research.json"'),
-    ('".agent", "memory", "hyunbin_research.json"',
-     '"reports", "research", "hyunbin_research.json"'),
+    ('".agent", "memory", "pulse_research.json"',
+     '"reports", "research", "pulse_research.json"'),
     ('".agent", "skills", "영숙_비서", "tools", "telegram_receiver.py"',
      '"projects", "ai-team", "skills", "영숙_비서", "tools", "telegram_receiver.py"'),
     ('".agent", "skills", "영숙_비서", "tools", "telegram_receiver.log"',

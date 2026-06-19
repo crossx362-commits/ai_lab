@@ -1,4 +1,4 @@
-# 🏗️ Connect AI Lab — 전체 프로젝트 개요
+﻿# 🏗️ Connect AI Lab — 전체 프로젝트 개요
 
 > 마지막 업데이트: 2026-06-16
 
@@ -30,7 +30,7 @@ ai_lab/
                         |
      ┌──────────────────┼──────────────────┬──────────────────┐
      |                  |                  |                  |
-   케빈 (Kevin)      데이브 (Dave)      레오 (Leo)        현빈 (Hyunbin)
+   케빈 (Kevin)      데이브 (Dave)      레오 (Leo)        펄스 (pulse)
  DevOps 인프라      보수적 매매        공격적 단타       시장 정보 수집
 ```
 
@@ -95,7 +95,7 @@ ai_lab/
 
 ---
 
-### 5. 현빈 (Hyunbin) — 시장 정보 수집 + 비즈니스 전략가
+### 5. 펄스 (pulse) — 시장 정보 수집 + 비즈니스 전략가
 **직급**: 시장 정보 수집 에이전트 & Business Strategist
 
 #### 핵심 책임
@@ -160,7 +160,7 @@ ai_lab/
 ## 🔄 트레이딩 팀 협업 흐름
 
 ```
-현빈 (5분마다 시장 정보 수집)
+펄스 (5분마다 시장 정보 수집)
   ↓ 연준 이벤트 · 공포탐욕지수 · 김치프리미엄
   ├→ 데이브 (30초 주기, 퀀트 3점 + LLM 검증 → 보수적 매매)
   └→ 레오  (10초 주기, 퀀트 2점 → 공격적 단타)
@@ -221,7 +221,7 @@ projects/ai-team/skills/
 ├── 영숙_비서/tools/          telegram_receiver.py · upload_manager.py
 ├── 데이브_주식/tools/        upbit_auto_trader.py
 ├── 레오_트레이더/tools/       leo_aggressive_trader.py
-├── 현빈_전략가/tools/        crypto_market_intelligence.py · business_research.py
+├── 펄스_전략가/tools/        crypto_market_intelligence.py · business_research.py
 ├── 케빈_인프라/tools/        vercel_manager.py · petnna_monitor.py
 ├── 경수_수사관/tools/        comment_forensics.py
 ├── 코다리_개발자/tools/       agent_health_check.py · web_init.py
@@ -258,7 +258,7 @@ VERCEL_TOKEN            # 배포
 
 | 에이전트 | 역할 | 주기 | 상태 |
 |---------|------|------|------|
-| 현빈 | 시장 정보 수집 | 5분 | ✅ 실행 중 |
+| 펄스 | 시장 정보 수집 | 5분 | ✅ 실행 중 |
 | 데이브 | 보수적 매매 | 30초 | ✅ 실행 중 |
 | 레오 | 공격적 단타 | 10초 | ✅ 실행 중 |
 | 영숙 | 텔레그램 비서 | 상시 | ✅ 실행 중 |
@@ -274,5 +274,5 @@ output/bot_logs/youngsuk_daemon.out.log    # 영숙 봇
 output/bot_logs/youngsuk_daemon.err.log
 reports/history/                            # 에이전트별 히스토리
 reports/inspection/petnna_inspection_report.md
-reports/research/crypto_market_intel.json  # 현빈 시장 정보
+reports/research/crypto_market_intel.json  # 펄스 시장 정보
 ```

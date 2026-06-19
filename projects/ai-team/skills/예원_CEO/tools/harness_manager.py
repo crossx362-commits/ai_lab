@@ -68,8 +68,7 @@ class HarnessManager:
             "데이브 코인": "skills/데이브_주식/tools/upbit_auto_trader.py",
             "데이브 주식": "skills/데이브_주식/tools/stock_auto_trader.py",
             "레오 코인": "skills/레오_트레이더/tools/leo_aggressive_trader.py",
-            "현빈 코인": "skills/현빈_전략가/tools/crypto_market_intelligence.py",
-            "현빈 주식": "skills/현빈_전략가/tools/stock_market_intelligence.py",
+            "시그널": "skills/시그널_분석가/tools/market_signal.py",
         }
 
         analysis = {}

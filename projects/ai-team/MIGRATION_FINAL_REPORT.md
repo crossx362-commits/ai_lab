@@ -1,4 +1,4 @@
-# 🎊 Migration Final Report
+﻿# 🎊 Migration Final Report
 
 **Project**: AI Team Repository Consolidation  
 **Date**: 2026-06-18  
@@ -42,7 +42,7 @@ Successfully consolidated 24 scattered Python modules into 5 unified modules, ac
 #### Core Bots (4)
 - ✅ Dave (Conservative trader) - `upbit_auto_trader.py`
 - ✅ Leo (Aggressive trader) - `leo_aggressive_trader.py`
-- ✅ Hyunbin (Market intel) - `crypto_market_intelligence.py`
+- ✅ pulse (Market intel) - `crypto_market_intelligence.py`
 - ✅ Youngsuk (Telegram bot) - `telegram_receiver.py` (970 lines)
 
 #### Scripts (15)
@@ -82,7 +82,7 @@ Successfully consolidated 24 scattered Python modules into 5 unified modules, ac
 ### Harness Validation
 ```
 [OK] env: ✅ unified env loaded
-[WARN] runtime: youngsuk=down; hyunbin=51312; dave=down; leo=down
+[WARN] runtime: youngsuk=down; pulse=51312; dave=down; leo=down
 [OK] schedule: enabled 14/14, last_run 06/18 14:30
 [OK] trading: intel 06/18 14:43
 [OK] structure: core dirs present
@@ -92,7 +92,7 @@ Successfully consolidated 24 scattered Python modules into 5 unified modules, ac
 
 ### Functional Tests
 - ✅ **Dave bot**: `--once` mode working correctly
-- ✅ **Hyunbin bot**: Running in production (PID 51312)
+- ✅ **pulse bot**: Running in production (PID 51312)
 - ✅ **Youngsuk bot**: Running in production (PID 41232)
 - ✅ **check_holdings.py**: Balance retrieval working
 - ✅ **Import system**: Zero import errors

@@ -1,4 +1,4 @@
-# 텔레그램 봇 명령어 가이드
+﻿# 텔레그램 봇 명령어 가이드
 
 ## 📱 봇 정보
 - **봇 이름**: @desktop362_bot
@@ -71,14 +71,14 @@ macbook start
 에이전트상태
 agent status
 ```
-- 데이브, 레오, 현빈, 영숙 모든 에이전트 상태
+- 데이브, 레오, 펄스, 영숙 모든 에이전트 상태
 - 실행 중인 에이전트는 🟢, 중지는 🔴 표시
 
 ### 특정 에이전트 시작
 ```
 데이브 시작
 레오 시작
-현빈 시작
+펄스 시작
 
 dave start
 leo start
@@ -90,7 +90,7 @@ leo start
 ```
 데이브 종료
 레오 종료
-현빈 종료
+펄스 종료
 
 dave stop
 leo stop
@@ -121,7 +121,7 @@ leo status
 **사용 가능한 에이전트:**
 - 데이브 (dave) - 보수적 트레이더
 - 레오 (leo) - 공격적 트레이더
-- 현빈 (hyunbin) - 시장 정보 수집가
+- 펄스 (pulse) - 시장 정보 수집가
 - 영숙 (youngsuk) - 텔레그램 봇
 
 ---
@@ -157,7 +157,7 @@ schedule
    → 맥북과 윈도우의 모든 봇 종료 (전력 절약)
 
 2. 필요하면 특정 에이전트만 재시작
-   → "현빈 시작" (시장 정보만 계속 수집)
+   → "펄스 시작" (시장 정보만 계속 수집)
 ```
 
 ### 시나리오 2: 집에 돌아올 때
@@ -221,8 +221,8 @@ ssh-copy-id -i ~/.ssh/macbook_key.pub user@macbook-ip
    - 다시 시작하려면 "봇전체시작" 또는 수동 시작 필요
 
 2. **에이전트 시작 순서**
-   - 현빈 (시장 정보) → 데이브/레오 (트레이더) 순서 권장
-   - 트레이더는 현빈의 정보에 의존
+   - 펄스 (시장 정보) → 데이브/레오 (트레이더) 순서 권장
+   - 트레이더는 펄스의 정보에 의존
 
 3. **동시 실행 금지**
    - 맥북과 윈도우에서 **같은 봇을 동시에 실행하면 안 됨**
@@ -249,7 +249,7 @@ ssh-copy-id -i ~/.ssh/macbook_key.pub user@macbook-ip
 2. 스크립트 경로 확인:
    - 데이브: `skills/데이브_트레이더/tools/upbit_auto_trader.py`
    - 레오: `skills/레오_공격형트레이더/tools/leo_aggressive_trader.py`
-   - 현빈: `skills/현빈_전략가/tools/crypto_market_intelligence.py`
+   - 펄스: `skills/펄스_전략가/tools/crypto_market_intelligence.py`
 
 ### 409 Conflict 에러
 - 다른 곳에서 봇이 실행 중

@@ -1,4 +1,4 @@
-# AI Team Harness
+﻿# AI Team Harness
 
 **목적**: 레포지토리 구조 + 런타임 상태 검증
 
@@ -13,7 +13,7 @@ python projects/ai-team/harness/check_all.py
 | 항목 | 설명 |
 |------|------|
 | env | 환경변수 로딩 (_shared.env) |
-| runtime | 에이전트 실행 상태 (youngsuk, hyunbin, dave, leo) |
+| runtime | 에이전트 실행 상태 (youngsuk, pulse, dave, leo) |
 | schedule | 영숙 스케줄러 유효성 |
 | trading | 트레이딩 데이터 최신성 |
 | structure | 폴더 구조 완전성 |
@@ -22,7 +22,7 @@ python projects/ai-team/harness/check_all.py
 
 ```
 [OK] env: ✅ unified env loaded
-[WARN] runtime: youngsuk=down; hyunbin=1728
+[WARN] runtime: youngsuk=down; pulse=1728
 [OK] schedule: enabled 14/14
 ```
 

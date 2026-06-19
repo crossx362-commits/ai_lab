@@ -1,4 +1,4 @@
-{
+﻿{
   "generated_at": "2026-06-02",
   "total_env_vars": 12,
   "total_files": 12,
@@ -87,10 +87,10 @@
     "OUTPUT": {
       "usage_count": 1,
       "used_by_agents": [
-        "현빈_전략가"
+        "펄스_전략가"
       ],
       "files": [
-        "projects\\ai-team\\skills\\현빈_전략가\\tools\\paypal_revenue.py"
+        "projects\\ai-team\\skills\\펄스_전략가\\tools\\paypal_revenue.py"
       ]
     }
   },
@@ -114,7 +114,7 @@
     "코다리_개발자": [
       "BRAIN_ROOT"
     ],
-    "현빈_전략가": [
+    "펄스_전략가": [
       "OUTPUT"
     ]
   }

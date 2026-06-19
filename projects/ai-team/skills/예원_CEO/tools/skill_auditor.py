@@ -31,7 +31,7 @@ SKILLS_DIR = os.path.join(_root, "projects", "ai-team", "skills")
 DRY_RUN    = "--check" in sys.argv
 
 AGENT_FOLDER_MAP = {
-    "현빈": "현빈_전략가",
+    "시그널": "시그널_분석가",
     "영숙": "영숙_비서",
     "경수": "경수_수사관",
     "코다리": "코다리_개발자",

@@ -1,4 +1,4 @@
-# AI 팀 에이전트 환경 변수 호환성 보고서
+﻿# AI 팀 에이전트 환경 변수 호환성 보고서
 
 생성일: 2026-06-01
 
@@ -54,7 +54,7 @@ load_env()
 - posting_scheduler.py ✅
 - youtube_recommender.py ✅
 
-**현빈 (전략가)**
+**펄스 (전략가)**
 - business_research.py ✅
 - deep_search_6h.py ✅
 

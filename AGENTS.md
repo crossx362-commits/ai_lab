@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
@@ -36,7 +36,7 @@ python projects/ai-team/scripts/start_trading_team.py --live
 ```
 
 This launches:
-- **현빈 (Hyunbin)**: Crypto market intelligence collector
+- **펄스 (pulse)**: Crypto market intelligence collector
 - **데이브 (Dave)**: Conservative Upbit auto-trader
 - **레오 (Leo)**: Aggressive day-trader
 - **Monitor**: Process health checker
@@ -74,7 +74,7 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 | 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
 | 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
 | 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |
-| 현빈 (Hyunbin) | Strategist — Crypto market research | `crypto_market_intelligence.py` |
+| 펄스 (pulse) | Strategist — Crypto market research | `crypto_market_intelligence.py` |
 | 데이브 (Dave) | Trader — Conservative crypto trading | `upbit_auto_trader.py` |
 | 레오 (Leo) | Trader — Aggressive day trading | `leo_aggressive_trader.py` |
 | 경수 (Kyungsu) | Investigator — Malicious comment detection | security tools |
@@ -415,7 +415,7 @@ if hasattr(sys.stdout, "reconfigure"):
 |---------|----------|----------|
 | **예원_CEO** | 오케스트레이션·라우팅·하네스 체크 | `yewon_dispatcher.py`, `harness_manager.py` |
 | **영숙_비서** | 텔레그램 봇·스케줄러·캘린더 | `telegram_receiver.py`, `schedule_manager.py` |
-| **현빈_전략가** | 코인·주식 시장 동향 수집·Ollama 분석 | `crypto_market_intelligence.py`, `stock_market_intelligence.py` |
+| **펄스_전략가** | 코인·주식 시장 동향 수집·Ollama 분석 | `crypto_market_intelligence.py`, `stock_market_intelligence.py` |
 | **데이브_주식** | 보수적 코인 자동매매·KIS API | `upbit_auto_trader.py`, `kis_client.py` |
 | **레오_트레이더** | 공격적 알트코인 단타 | `leo_aggressive_trader.py` |
 | **케빈_인프라** | Vercel·Supabase·CI/CD | `케빈_인프라/tools/` |
@@ -428,7 +428,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 | 파일 | Producer → Consumer |
 |------|---------------------|
-| `reports/research/crypto_market_intel.json` | 현빈 → 데이브·레오 |
-| `reports/research/stock_market_intel.json` | 현빈 → 데이브 |
+| `reports/research/crypto_market_intel.json` | 펄스 → 데이브·레오 |
+| `reports/research/stock_market_intel.json` | 펄스 → 데이브 |
 | `skills/영숙_비서/tools/schedules.json` | 설정 → 영숙 스케줄러 |
 | `_shared/calendar_cache.md` | 구글 캘린더 → 영숙 봇 |

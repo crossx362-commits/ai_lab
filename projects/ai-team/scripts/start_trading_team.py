@@ -1,7 +1,7 @@
 ﻿# -*- coding: utf-8 -*-
 """
 트레이딩 팀 통합 시작 스크립트
-현빈(정보 수집) + 데이브(보수적 매매) + 레오(공격적 단타) 협업
+시그널(정보 수집) + 데이브(보수적 매매) + 레오(공격적 단타) 협업
 """
 import os
 import sys
@@ -25,10 +25,6 @@ from _shared.process import ProcessLock
 
 load_env()
 
-if not acquire_lock("trading_team"):
-    print("[trading_team] Already running")
-    sys.exit(0)
-
 
 def has_module(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
@@ -43,7 +39,7 @@ def has_public_upbit_fallback() -> bool:
 
 _LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "output", "trading_logs")
 os.makedirs(_LOG_DIR, exist_ok=True)
-_MANUAL_STOP_SLUGS = {"현빈": "hyunbin", "데이브": "dave", "레오": "leo"}
+_MANUAL_STOP_SLUGS = {"시그널": "signal", "펄스": "signal", "데이브": "dave", "레오": "leo"}
 
 
 def manual_stop_flag(name: str | None = None):
@@ -63,7 +59,7 @@ def start_process(name: str, script_path: str, args: list = None):
 
     # 로그 파일명: name에서 한글/공백 제거 후 소문자
     slug = name.split()[0]
-    slug_map = {"현빈": "hyunbin", "데이브": "dave", "레오": "leo"}
+    slug_map = {"시그널": "signal", "펄스": "signal", "데이브": "dave", "레오": "leo"}
     slug = slug_map.get(slug, slug.lower())
     out_path = os.path.join(_LOG_DIR, f"{slug}_daemon.out.log")
     err_path = os.path.join(_LOG_DIR, f"{slug}_daemon.err.log")
@@ -104,16 +100,16 @@ def main():
         print("⚠️  pyupbit가 없어 시작하지 않습니다.")
         can_scan = False
 
-    # 1. 현빈 (시장 정보 수집 - 5분 주기)
-    hyunbin_path = os.path.join(
-        AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py"
+    # 1. 시그널 (시장 정보 수집 - 10분 주기)
+    signal_path = os.path.join(
+        AI_TEAM_ROOT, "skills", "시그널_분석가", "tools", "market_signal.py"
     )
-    if os.path.exists(hyunbin_path):
-        process_configs["현빈"] = {"path": hyunbin_path, "args": ["--daemon"]}
-        processes["현빈"] = None if is_manual_stopped("현빈") else start_process("현빈 (정보 수집)", hyunbin_path, ["--daemon"])
+    if os.path.exists(signal_path):
+        process_configs["시그널"] = {"path": signal_path, "args": ["--daemon"]}
+        processes["시그널"] = None if is_manual_stopped("시그널") else start_process("시그널 (정보 수집)", signal_path, ["--daemon"])
         time.sleep(2)
     else:
-        print(f"⚠️  현빈 스크립트 없음: {hyunbin_path}")
+        print(f"⚠️  시그널 스크립트 없음: {signal_path}")
 
     # 2. 데이브 (보수적 매매 - 30초 주기)
     dave_path = os.path.join(
@@ -153,12 +149,12 @@ def main():
 {chr(10).join(f'  • {name}' for name in active_agents)}
 
 협업 구조:
-1️⃣ 현빈 → 시장 정보 수집 (5분)
-   - 연준 일정, 공포탐욕지수, 김치프리미엄
+1️⃣ 시그널 → 시장 정보 수집 (10분)
+   - 공포탐욕지수, 김치프리미엄, TOP5 코인
 2️⃣ 데이브 → 보수적 매매 (30초)
-   - 현빈 정보 참조, 퀀트 3점 + LLM 검증
+   - 시그널 정보 참조, 퀀트 기반
 3️⃣ 레오 → 공격적 단타 (10초)
-   - 현빈 정보 참조, 퀀트 2점 이상 + 위험 필터
+   - 시그널 정보 참조, 퀀트 2점 이상 + 위험 필터
 """
     send(msg)
 
@@ -218,4 +214,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    with ProcessLock("trading_team"):
+        main()

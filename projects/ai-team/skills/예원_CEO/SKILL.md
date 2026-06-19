@@ -1,4 +1,4 @@
----
+﻿---
 name: ceo
 description: Company orchestrator and decision-maker. Activates for cross-agent task planning, work delegation, daily briefings, and final report synthesis. Routes tasks to the right specialist agents and delivers consolidated reports to the owner.
 ---
@@ -43,7 +43,7 @@ description: Company orchestrator and decision-maker. Activates for cross-agent 
 |----------------|----------------------------------|
 | `designer` / 디자이너 | 유튜브 썸네일 아트웍, 브랜드 비주얼 가이드라인, 컬러 팰릿 및 타이포그래피 설계 |
 | `developer` / 코다리 | 소스 코드베이스 자율 제어, 시스템 자동화, API 엔드포인트 통합 및 디버깅 가이드 |
-| `business` / 현빈 | 수익화 파이프라인 빌드, 광고 단가 및 KPI 분석, 데이터 기반 10x 비즈니스 전략 수립 |
+| `business` / 펄스 | 수익화 파이프라인 빌드, 광고 단가 및 KPI 분석, 데이터 기반 10x 비즈니스 전략 수립 |
 | `secretary` / 영숙 | 사장님 텔레그램 최우선 보좌, 구글 캘린더 연동, 데일리 브리핑 및 일일 업로드 자동 통제 |
 | `designer` / 티모 | UI/UX 아키텍처 가이드, 웹페이지 레이아웃 개발, 사용자 경험 리서치 기반 디자인 검수 |
 | `writer` / 라이터 | 카피라이팅 기획, 영상 후킹 스크립트 작성, 블로그 텍스트 및 SNS 카피 마스터링 |
@@ -110,7 +110,7 @@ description: Company orchestrator and decision-maker. Activates for cross-agent 
 
 ### 2. 코다리(developer) 기반 에이전트 상태 자율 감시
 - **시스템 체크 가이드:** 코다리가 3시간 주기로 백그라운드 구동하는 하드웨어 및 소프트웨어 헬스 로그를 수령합니다. 이상 징후 포착 시에만 예원 CEO 텔레그램으로 즉시 긴급 알림이 포워딩됩니다.
-- *체크 대상 인프라:* Ollama 로컬 연결 및 모델 로드 상태, 현빈의 리서치 메모리 무결성, 구글 캘린더 세션 갱신 유효성.
+- *체크 대상 인프라:* Ollama 로컬 연결 및 모델 로드 상태, 펄스의 리서치 메모리 무결성, 구글 캘린더 세션 갱신 유효성.
 
 ### 3. 에이전트 스킬 검수 거버넌스 (Skill Governance — Ollama 분석)
 - **감사 주기:** 매주 월요일 오전 09:00 KST 자동 스캔 가동 / 텔레그램 명령 `/skillaudit` 수신 시 즉시 강제 감사.

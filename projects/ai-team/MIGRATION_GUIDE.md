@@ -1,4 +1,4 @@
-# Migration Guide: _shared 통합 모듈
+﻿# Migration Guide: _shared 통합 모듈
 
 ## 변경 사항
 
@@ -155,7 +155,7 @@ load_env()
 - [ ] `telegram_receiver.py` (영숙)
 - [ ] `upbit_auto_trader.py` (데이브)
 - [ ] `leo_aggressive_trader.py` (레오)
-- [ ] `crypto_market_intelligence.py` (현빈)
+- [ ] `crypto_market_intelligence.py` (펄스)
 
 ### Phase 2: Support Scripts
 - [ ] `start_daily_automation.py`
@@ -195,7 +195,7 @@ git checkout projects/ai-team/_shared/env_loader.py
 
 ## 완료 기준
 
-- [ ] 모든 데몬 봇 정상 실행 (youngsuk, dave, leo, hyunbin)
+- [ ] 모든 데몬 봇 정상 실행 (youngsuk, dave, leo, pulse)
 - [ ] `harness/check_all.py` 전체 OK
 - [ ] `CLAUDE.md` 업데이트 완료
 - [ ] 구 모듈 파일 삭제 완료

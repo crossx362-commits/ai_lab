@@ -37,8 +37,8 @@ AGENTS = {
         "pet_angle": "우리 반려동물을 SNS 스타로! 오늘의 바이럴 팁",
         "upload_dir": None, "file_glob": None,
     },
-    "현빈": {
-        "emoji": "💡", "nickname": "현빈",
+    "펄스": {
+        "emoji": "💡", "nickname": "펄스",
         "pet_angle": "스마트한 집사를 위한 펫 케어 인사이트",
         "upload_dir": None, "file_glob": None,
     },

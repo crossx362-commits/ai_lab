@@ -1,4 +1,4 @@
-# 펫과나 개발 및 진행 현황 보고서
+﻿# 펫과나 개발 및 진행 현황 보고서
 
 본 문서는 코다리 개발자가 수행하는 진행 상황 및 완료 세부 정보를 기록하는 공식 보고서입니다.
 
@@ -58,7 +58,7 @@
   - 2.2초 후 "📖 산책 일기 자동 저장됨" Toast 알림
   - 에러 시 `console.warn`으로 사일런트 실패 처리
 
-### 📊 현빈 (비즈니스 전략가) — `js/achievements.js`
+### 📊 펄스 (비즈니스 전략가) — `js/achievements.js`
 - **`calcWalkStreak()`**: `walks[].savedAt` ISO 날짜 기반 연속 산책일 계산 함수 신규 추가
 - **산책 Streak 뱃지 4종 추가**: `walk_streak_3(🏅)`, `walk_streak_7(🥇)`, `walk_streak_14(🏆)`, `walk_streak_30(💎)` — Duolingo 복리 리텐션 설계
 - **`renderWalkStreakBanner()`**: `#walk-streak-banner` 엘리먼트에 streak 현황 + 다음 목표 프로그레스바 렌더링

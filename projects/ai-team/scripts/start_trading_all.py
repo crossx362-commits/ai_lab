@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-"""데이브/레오/현빈 통합 트레이딩 시스템 시작 (코인 + 주식)"""
+﻿#!/usr/bin/env python3
+"""데이브/레오/시그널 통합 트레이딩 시스템 시작."""
 import os, sys, subprocess, time
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -55,10 +55,10 @@ def main():
     print("💰 코인 트레이딩 봇")
     print("-" * 60)
 
-    # 현빈 - 코인 시장 인텔
+    # 시그널 - 시장 인텔
     bots.append({
-        "script": os.path.join(AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py"),
-        "name": "현빈 (코인 시장 인텔)"
+        "script": os.path.join(AI_TEAM_ROOT, "skills", "시그널_분석가", "tools", "market_signal.py"),
+        "name": "시그널 (시장 인텔)"
     })
 
     # 데이브 - 코인 보수적 매매
@@ -78,12 +78,6 @@ def main():
     # === 주식 트레이딩 ===
     print("📈 주식 트레이딩 봇")
     print("-" * 60)
-
-    # 현빈 - 주식 시장 인텔
-    bots.append({
-        "script": os.path.join(AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "stock_market_intelligence.py"),
-        "name": "현빈 (주식 시장 인텔)"
-    })
 
     # 데이브 - 주식 보수적 매매
     bots.append({
@@ -130,8 +124,8 @@ def main():
     msg += f"✅ 성공: {len(started)}개\n"
     if failed:
         msg += f"❌ 실패: {len(failed)}개\n"
-    msg += f"\n코인: 현빈, 데이브, 레오\n"
-    msg += f"주식: 현빈, 데이브"
+    msg += f"\n코인: 펄스, 데이브, 레오\n"
+    msg += f"주식: 펄스, 데이브"
 
     send(msg)
 

@@ -1,4 +1,4 @@
-# AI Team Skills
+﻿# AI Team Skills
 
 이 폴더는 에이전트별 지시문(`SKILL.md`)과 실행 도구(`tools/`)를 담는 운영 중심 영역입니다.
 
@@ -12,7 +12,7 @@
 | `코다리_개발자` | 개발/헬스체크 | `tools/agent_health_check.py`, `tools/ollama_health_check.py` |
 | `티모_디자이너` | UI/UX 리뷰 | `tools/petnna_reviewer.py` |
 | `케빈_인프라` | Vercel/Supabase 운영 | `tools/vercel_manager.py`, `tools/petnna_monitor.py` |
-| `현빈_전략가` | 비즈니스/시장 분석 | `tools/business_research.py`, `tools/crypto_market_intelligence.py` |
+| `펄스_전략가` | 비즈니스/시장 분석 | `tools/business_research.py`, `tools/crypto_market_intelligence.py` |
 | `로율_변호사` | 법률/세무 | `tools/tax_simulator.py` |
 | `데이브_주식` | 보수적 주식/가상자산 분석 | `tools/upbit_analyzer.py`, `tools/upbit_auto_trader.py` |
 | `레오_트레이더` | 공격적 단타 트레이딩 | `tools/leo_aggressive_trader.py`, `tools/leo_learning_system.py`, `README.md` |

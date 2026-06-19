@@ -273,7 +273,7 @@ def run_daily_automation():
 
     # 다른 에이전트 리포트 파일 → Notion 반영
     agent_report_map = {
-        "현빈": "reports/research/hyunbin_research.json",
+        "펄스": "reports/research/pulse_research.json",
         "케빈": "reports/history/kevin_monitor_log.md",
         "경수": "reports/inspection/kyungsoo_audit_log.md",
         "코다리": "projects/ai-team/docs/progress.md",

@@ -111,31 +111,35 @@ BASE_LEO_TICKERS = [
     "KRW-SEI", "KRW-HBAR", "KRW-STX",
 ]
 
+def _signal_intel_path():
+    signal_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "market_signal.json")
+    compat_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "market_pulse.json")
+    return signal_path if os.path.exists(signal_path) else compat_path
+
+
 def get_dynamic_leo_tickers():
-    """현빈 인텔 기반 동적 종목 선정 (퀀트 점수 기준, 공격적)"""
+    """시그널 인텔 기반 동적 종목 선정 (퀀트 점수 기준, 공격적)"""
     import json
     tickers = BASE_LEO_TICKERS.copy()
 
     try:
-        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
+        intel_path = _signal_intel_path()
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 intel = json.load(f)
 
-            # 현빈 종목별 퀀트 점수 확인 (변동성 높은 것 우선)
-            if "coin_analysis" in intel:
-                scored = [(c["ticker"], c.get("score", 0), c.get("volatility", 0)) for c in intel["coin_analysis"]]
-                # 점수 40점 이상 & 변동성 높은 순
-                scored = [(t, s, v) for t, s, v in scored if s >= 40]
-                scored.sort(key=lambda x: (x[1], x[2]), reverse=True)
-
-                for ticker, score, vol in scored[:10]:
-                    tickers.append(ticker)
-
-                print(f"[Leo] 현빈 고득점: {', '.join([f'{t.replace('KRW-', '')}({s}점)' for t, s, v in scored[:3]])}")
+            # 시그널 코인 정보 확인
+            crypto_data = intel.get("crypto", {})
+            if "top_coins" in crypto_data:
+                for coin in crypto_data["top_coins"][:10]:
+                    ticker = coin.get("ticker")
+                    score = coin.get("score", 0)
+                    if ticker and score >= 40:
+                        tickers.append(ticker)
+                print(f"[Leo] 시그널 고득점 코인 반영 완료")
 
             tickers = list(dict.fromkeys(tickers))
-            print(f"[Leo] 동적 종목: {len(tickers)}개 (기본 {len(BASE_LEO_TICKERS)} + 현빈 {len(tickers) - len(BASE_LEO_TICKERS)})")
+            print(f"[Leo] 동적 종목: {len(tickers)}개")
     except Exception as e:
         print(f"[Leo] 동적 종목 실패, 기본 사용: {e}")
 
@@ -154,7 +158,7 @@ MAX_CONSECUTIVE_LOSSES = 3
 MAX_DAILY_LOSS_PCT = -5.0
 MAX_TRADES_PER_HOUR = 5
 COOLDOWN_AFTER_LOSS = 1800  # 30분
-HYUNBIN_INTEL_MAX_AGE_SECONDS = int(os.getenv("HYUNBIN_INTEL_MAX_AGE_SECONDS", "60"))
+PULSE_INTEL_MAX_AGE_SECONDS = int(os.getenv("SIGNAL_INTEL_MAX_AGE_SECONDS", os.getenv("PULSE_INTEL_MAX_AGE_SECONDS", "600")))
 
 
 def safe_float(val, default=0.0):
@@ -166,13 +170,13 @@ def safe_float(val, default=0.0):
         return default
 
 
-def _hyunbin_intel_path():
-    return os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
+def _pulse_intel_path():
+    return _signal_intel_path()
 
 
-def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECONDS):
-    """거래 판단 직전 현빈 시장 조사가 낡았으면 단발 수집을 실행한다."""
-    intel_path = _hyunbin_intel_path()
+def _refresh_pulse_intel_if_stale(max_age_seconds=PULSE_INTEL_MAX_AGE_SECONDS):
+    """거래 판단 직전 시그널 시장 조사가 낡았으면 단발 수집을 실행한다."""
+    intel_path = _pulse_intel_path()
     now = time.time()
     age = None
     if os.path.exists(intel_path):
@@ -180,7 +184,7 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
         if age <= max_age_seconds:
             return
 
-    lock_path = os.path.join(os.path.dirname(intel_path), ".hyunbin_refresh.lock")
+    lock_path = os.path.join(os.path.dirname(intel_path), ".signal_refresh.lock")
     os.makedirs(os.path.dirname(intel_path), exist_ok=True)
 
     lock_fd = None
@@ -202,8 +206,8 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
             return
 
         age_text = "없음" if age is None else f"{age:.0f}s"
-        print(f"[Leo] 현빈 시장 조사 최신화 실행 (기존 age={age_text})")
-        script_path = os.path.join(AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py")
+        print(f"[Leo] 시그널 시장 조사 최신화 실행 (기존 age={age_text})")
+        script_path = os.path.join(AI_TEAM_ROOT, "skills", "시그널_분석가", "tools", "market_signal.py")
         result = subprocess.run(
             [sys.executable, script_path],
             cwd=AI_TEAM_ROOT,
@@ -215,11 +219,11 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
             env={**os.environ, "PYTHONUTF8": "1"},
         )
         if result.returncode != 0:
-            print(f"[Leo] 현빈 조사 실행 실패: {result.stderr.strip()}")
+            print(f"[Leo] 시그널 조사 실행 실패: {result.stderr.strip()}")
         else:
-            print("[Leo] 현빈 시장 조사 최신화 완료")
+            print("[Leo] 시그널 시장 조사 최신화 완료")
     except Exception as e:
-        print(f"[Leo] 현빈 조사 최신화 실패: {e}")
+        print(f"[Leo] 시그널 조사 최신화 실패: {e}")
     finally:
         if lock_fd is not None:
             try:
@@ -232,23 +236,23 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
                 pass
 
 
-def load_hyunbin_intel(refresh=True):
-    """현빈의 시장 정보 로드"""
+def load_pulse_intel(refresh=True):
+    """시그널의 시장 정보 로드"""
     try:
         import json
         if refresh:
-            _refresh_hyunbin_intel_if_stale()
-        intel_path = _hyunbin_intel_path()
+            _refresh_pulse_intel_if_stale()
+        intel_path = _pulse_intel_path()
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 return json.load(f)
     except Exception as e:
-        print(f"[Leo] 현빈 정보 로드 실패: {e}")
+        print(f"[Leo] 시그널 정보 로드 실패: {e}")
     return None
 
 
 def calculate_leo_score(ticker: str) -> dict:
-    """레오용 단순화된 스코어 계산 (현빈 정보 활용)"""
+    """레오용 단순화된 스코어 계산 (펄스 정보 활용)"""
     try:
         df = pyupbit.get_ohlcv(ticker, interval="minute60", count=50)
         if df is None or df.empty:
@@ -258,8 +262,8 @@ def calculate_leo_score(ticker: str) -> dict:
         score = 0
         reasons = []
 
-        # 현빈 정보 로드
-        hyunbin_intel = load_hyunbin_intel()
+        # 펄스 정보 로드
+        pulse_intel = load_pulse_intel()
 
         # 1. StochRSI 과매도 체크 (가장 중요)
         try:
@@ -303,28 +307,24 @@ def calculate_leo_score(ticker: str) -> dict:
             score -= 1
             reasons.append(f"1h 모멘텀 {momentum_1h:.1f}%")
 
-        # 4. 현빈 정보 활용 (공포탐욕, 김치프리미엄, 연준 이벤트)
-        if hyunbin_intel:
+        # 4. 펄스 정보 활용 (공포탐욕, 김치프리미엄)
+        if pulse_intel:
+            crypto_data = pulse_intel.get("crypto", {})
+
             # 김치 프리미엄
-            kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
+            kp = crypto_data.get("kimchi_premium", {}).get("value", 0)
             if kp >= 3.0:
                 score += 1
                 reasons.append(f"김프 +{kp:.1f}% (국내 관심)")
 
             # 공포탐욕지수 (극단 구간 보너스)
-            fg = hyunbin_intel.get("fear_greed_index", {})
-            if fg.get("action") == "BUY_SIGNAL":
+            fg = crypto_data.get("fear_greed", {})
+            if fg.get("signal") == "BUY":
                 score += 2
                 reasons.append(f"극공포 ({fg.get('value')})")
-            elif fg.get("action") == "SELL_SIGNAL":
+            elif fg.get("signal") == "SELL":
                 score -= 2
                 reasons.append(f"극탐욕 ({fg.get('value')})")
-
-            # 연준 이벤트 (레오는 변동성 기회로 활용)
-            fed = hyunbin_intel.get("fed_events", {})
-            if fed.get("risk_level") == "HIGH":
-                score += 1  # 데이브와 반대로 변동성 기회
-                reasons.append("연준 이벤트 변동성")
 
         return {
             "ticker": ticker,
@@ -460,19 +460,20 @@ def run_leo_cycle():
 
                 # 홀딩 중 (익절/손절 범위 밖)
                 else:
-                    # 1시간 이상 보유 중이고 수익 < +1%인 경우 현빈 정보 재확인
+                    # 1시간 이상 보유 중이고 수익 < +1%인 경우 펄스 정보 재확인
                     if ticker in last_trade_time:
                         holding_hours = (time.time() - last_trade_time.get(ticker, 0)) / 3600
                         if holding_hours >= 1.0 and -1.0 < profit_pct < 1.0:
-                            # 현빈 정보로 시장 상황 재확인
-                            hyunbin_intel = load_hyunbin_intel()
-                            if hyunbin_intel:
-                                kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
-                                fg = hyunbin_intel.get("fear_greed_index", {}).get("value", 50)
+                            # 펄스 정보로 시장 상황 재확인
+                            pulse_intel = load_pulse_intel()
+                            if pulse_intel:
+                                crypto_data = pulse_intel.get("crypto", {})
+                                fg = crypto_data.get("fear_greed", {}).get("value", 50)
 
-                                # 극단 상황 변화 시 손절 기준 완화 (-1% 손절)
-                                if kp > 12.0 or fg >= 85:
-                                    print(f"⚠️ [Leo] {coin} 시장 과열 감지 (김프 {kp:.1f}%, 탐욕 {fg}) - 조기 청산 고려")
+                                # 극단 탐욕 변화 시 손절 기준 완화 (-1% 손절)
+                                # 김치프리미엄은 조기 청산 필터로 사용하지 않는다.
+                                if fg >= 85:
+                                    print(f"⚠️ [Leo] {coin} 시장 과열 감지 (탐욕 {fg}) - 조기 청산 고려")
                                     if profit_pct >= 0:
                                         # 소폭 이익이라도 청산
                                         print(f"  소폭 이익 {profit_pct:+.2f}% 조기 청산")
@@ -535,25 +536,19 @@ def run_leo_cycle():
 
     best = scanned[0]
 
-    # SKILL 기준 강화: 최소 진입 점수 2점 + 현빈 정보 종합 판단
+    # SKILL 기준 강화: 최소 진입 점수 2점 + 펄스 정보 종합 판단
     min_score = 2  # 1점 → 2점으로 상향
 
-    # 현빈 정보 확인
-    hyunbin_intel = load_hyunbin_intel()
+    # 펄스 정보 확인
+    pulse_intel = load_pulse_intel()
 
-    # 현빈 위험 신호 체크
-    if hyunbin_intel:
-        # 김치 프리미엄 극단 구간 (-5% 미만 or +10% 초과) → 진입 금지
-        kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
-        if kp < -5.0:
-            print(f"[Leo] 김치프리미엄 {kp:.1f}% - 극단 하락, 진입 금지")
-            return
-        elif kp > 10.0:
-            print(f"[Leo] 김치프리미엄 {kp:.1f}% - 과도한 투기 과열, 진입 금지")
-            return
+    # 시그널 위험 신호 체크. 김치프리미엄은 참고값으로만 쓰고
+    # 신규 진입 차단 필터로 사용하지 않는다.
+    if pulse_intel:
+        crypto_data = pulse_intel.get("crypto", {})
 
         # 공포탐욕 극단 탐욕(80 이상) → 신규 진입 금지
-        fg = hyunbin_intel.get("fear_greed_index", {})
+        fg = crypto_data.get("fear_greed", {})
         if fg.get("value", 50) >= 80:
             print(f"[Leo] 공포탐욕지수 {fg['value']} - 극탐욕, 신규 진입 금지")
             return
@@ -573,16 +568,7 @@ def run_leo_cycle():
             print(f"[Leo] {ticker} - 모멘텀 부족 ({best.get('momentum_1h', 0):.1f}%), 진입 금지")
             return
 
-        # 3. 스코어 구성 확인 (단순 김프만으로 점수 받은 경우 제외)
         reasons = best.get("reasons", [])
-        has_technical = any(
-            keyword in reason
-            for reason in reasons
-            for keyword in ["RSI", "거래량", "모멘텀"]
-        )
-        if not has_technical:
-            print(f"[Leo] {ticker} - 기술적 근거 부족 (김프만 높음), 진입 금지")
-            return
 
         # 투입 금액 계산 (스코어에 따라 차등)
         if best["score"] >= 4:
@@ -678,7 +664,7 @@ def print_status():
     print("⚡ 레오 트레이더 상태")
     print(f"- 감시 코인: {len(LEO_TICKERS)}개")
     print(f"  기본: {', '.join(BASE_LEO_TICKERS)}")
-    print(f"  급등주: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
+    print(f"  시그널: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
     print(f"- 최소 진입 점수: 2점")
     print(f"- 연속 손절 제한: {MAX_CONSECUTIVE_LOSSES}회")
     print(f"- 일일 손실 한도: {MAX_DAILY_LOSS_PCT:.1f}%")
@@ -703,7 +689,7 @@ if __name__ == "__main__":
         LEO_TICKERS = get_dynamic_leo_tickers()
         print(f"⚡ 레오 공격적 단타 트레이더 시작: {len(LEO_TICKERS)}개 종목")
         print(f"   기본: {', '.join(BASE_LEO_TICKERS)}")
-        print(f"   급등주: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
+        print(f"   시그널: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
         iteration = 0
 
         with ProcessLock("leo"):

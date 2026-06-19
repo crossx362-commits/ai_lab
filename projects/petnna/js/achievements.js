@@ -1,5 +1,5 @@
-// achievements.js — 업적 시스템 + 일일 챌린지
-// ── 📊 현빈 전략가 패치: Woofz Training Passport + Duolingo Streak 벤치마크 ──
+﻿// achievements.js — 업적 시스템 + 일일 챌린지
+// ── 📊 펄스 전략가 패치: Woofz Training Passport + Duolingo Streak 벤치마크 ──
 
 // ── 산책 연속일(streak) 계산 헬퍼 ─────────────────────────────────────────
 function calcWalkStreak() {
@@ -44,7 +44,7 @@ const ACHIEVEMENTS = [
     { id: 'premium',          emoji: '👑',    name: '프리미엄 집사',  desc: '펫과나 프리미엄 구독 중',              check: () => typeof isPremium === 'function' && isPremium() },
     { id: 'voice_first',      emoji: '🎙️',   name: '음성 문진',      desc: '음성으로 증상을 처음 분석했어요',      check: () => !!localStorage.getItem('petna_voice_used') },
     { id: 'share_saju',       emoji: '✨',    name: '사주 공유',      desc: '사주 결과 카드를 공유했어요',          check: () => !!localStorage.getItem('petna_saju_shared') },
-    // ── 📊 현빈 추가: 산책 연속 streak 뱃지 (Duolingo/Woofz 스타일) ──
+    // ── 📊 펄스 추가: 산책 연속 streak 뱃지 (Duolingo/Woofz 스타일) ──
     { id: 'walk_streak_3',    emoji: '🏅',    name: '3일 산책러',     desc: '3일 연속 산책을 기록했어요!',          check: () => calcWalkStreak() >= 3 },
     { id: 'walk_streak_7',    emoji: '🥇',    name: '주간 산책왕',    desc: '7일 연속 산책 달성! 최고예요!',        check: () => calcWalkStreak() >= 7 },
     { id: 'walk_streak_14',   emoji: '🏆',    name: '2주 챔피언',     desc: '14일 연속 산책! 놀라운 의지력!',       check: () => calcWalkStreak() >= 14 },
@@ -217,7 +217,7 @@ function renderDailyChallenges() {
         ${doneCount === challenges.length ? '<p class="text-[10px] text-emerald-600 font-black text-center mt-2">🎉 오늘 챌린지 모두 완료! 내일도 화이팅!</p>' : ''}`;
 }
 
-// ── 📊 현빈: 산책 Streak 배너 렌더링 (Duolingo 스타일) ─────────────────────
+// ── 📊 펄스: 산책 Streak 배너 렌더링 (Duolingo 스타일) ─────────────────────
 function renderWalkStreakBanner() {
     const el = document.getElementById('walk-streak-banner');
     if (!el) return;
@@ -251,7 +251,7 @@ function renderWalkStreakBanner() {
         </div>`;
 }
 
-// ── 📊 현빈: 월간 리포트 카드 (PetDesk 벤치마크) ──────────────────────────
+// ── 📊 펄스: 월간 리포트 카드 (PetDesk 벤치마크) ──────────────────────────
 function renderMonthlyReport(targetElId) {
     const el = document.getElementById(targetElId || 'monthly-report-card');
     if (!el) return;

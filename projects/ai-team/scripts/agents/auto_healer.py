@@ -40,8 +40,8 @@ AGENTS = {
             }
         ]
     },
-    "현빈": {
-        "health_check": "projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py --status",
+    "시그널": {
+        "health_check": "projects/ai-team/skills/시그널_분석가/tools/market_signal.py",
         "auto_fix": []
     },
     "데이브": {

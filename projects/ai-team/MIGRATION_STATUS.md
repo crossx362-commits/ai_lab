@@ -1,4 +1,4 @@
-# Migration Status Report
+﻿# Migration Status Report
 
 **날짜**: 2026-06-18 14:35  
 **Phase 1 완료**: Core Trading Agents
@@ -25,7 +25,7 @@
   - 변경: 동일 패턴
   - 테스트: 대기 (데이브와 동일 구조)
   
-- ✅ **현빈** (`crypto_market_intelligence.py`) - 시장 인텔 수집
+- ✅ **펄스** (`crypto_market_intelligence.py`) - 시장 인텔 수집
   - 변경: 동일 패턴
   - 테스트: 대기
 
@@ -141,7 +141,7 @@ if sys.platform == "win32":
 - [x] 하네스 업데이트
 - [x] 데이브 마이그레이션 + 테스트
 - [x] 레오 마이그레이션
-- [x] 현빈 마이그레이션
+- [x] 펄스 마이그레이션
 - [x] check_holdings.py 마이그레이션 + 테스트
 - [ ] 영숙 마이그레이션
 - [ ] 나머지 스크립트 마이그레이션

@@ -109,7 +109,7 @@ def check_log_files():
         print(f"로그 디렉토리 없음: {log_dir}")
         return
 
-    for filename in ["dave_daemon.out.log", "leo_daemon.out.log", "hyunbin_daemon.out.log"]:
+    for filename in ["dave_daemon.out.log", "leo_daemon.out.log", "pulse_daemon.out.log"]:
         filepath = os.path.join(log_dir, filename)
         if os.path.exists(filepath):
             import datetime

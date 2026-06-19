@@ -151,14 +151,15 @@ def bot_stop():
 # 에이전트 제어
 # ============================================================
 AGENTS = {
-    "현빈": "projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py",
+    "시그널": "projects/ai-team/skills/시그널_분석가/tools/market_signal.py",
     "데이브": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
     "레오": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
     "영숙": "projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py",
 }
 
 AGENT_ALIASES = {
-    "hyunbin": "현빈", "dave": "데이브", "leo": "레오", "youngsuk": "영숙"
+    "signal": "시그널", "pulse": "시그널", "펄스": "시그널",
+    "dave": "데이브", "leo": "레오", "youngsuk": "영숙"
 }
 
 def normalize_agent_name(name):
@@ -356,7 +357,7 @@ def show_help():
   heal                    자동 수정 실행
   heal --daemon           데몬 모드 (30분마다)
 
-에이전트: 현빈, 데이브, 레오, 영숙
+에이전트: 펄스, 데이브, 레오, 영숙
 
 예시:
   python unified_control.py bot status

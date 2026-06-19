@@ -21,7 +21,7 @@ SKILLS_DIR = AI_TEAM / "skills"
 LOG_FILE   = ROOT / "reports/history/agent_self_learning_log.md"
 
 AGENTS = [
-    {"name": "현빈", "dir": "현빈_전략가",   "specialty": "비즈니스 전략, 시장 분석, 수익화 모델, 경쟁사 분석", "task": ""},
+    {"name": "시그널", "dir": "시그널_분석가", "specialty": "코인·주식 시장 신호 수집, 위험 신호 감지, 트레이딩 인텔 제공", "task": ""},
     {"name": "코다리", "dir": "코다리_개발자", "specialty": "풀스택 개발, Python/TypeScript, 아키텍처 설계, 코드 품질", "task": "coding"},
     {"name": "티모",  "dir": "티모_디자이너", "specialty": "UI/UX 디자인, 시각 브랜딩, 컬러 이론, 타이포그래피", "task": ""},
     {"name": "경수",  "dir": "경수_수사관",   "specialty": "보안 분석, 리스크 탐지, 이상행동 모니터링", "task": ""},

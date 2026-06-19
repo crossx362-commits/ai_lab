@@ -72,19 +72,84 @@ if (sys.platform != "win32" or not _has_win32) and _has_fcntl:
                 self.lockfile.unlink(missing_ok=True)
                 print(f"🔓 [{self.name}] Lock released")
 
-# Fallback: No locking available
+# Fallback: File-based locking (no win32 or fcntl)
 if (sys.platform == "win32" and not _has_win32) or (sys.platform != "win32" and not _has_fcntl):
+    import atexit
+
     class ProcessLock:
-        """Dummy lock (no win32 or fcntl available)."""
+        """File-based lock (fallback when pywin32/fcntl unavailable)."""
         def __init__(self, name: str):
             self.name = name
-            print(f"⚠️  [{name}] Process lock unavailable (install pywin32)")
+            lock_dir = Path(os.environ.get("TEMP", "/tmp"))
+            self.lockfile = lock_dir / f"{name}.lock"
+            self.pid = os.getpid()
 
         def __enter__(self):
+            # Atomic lock check with retry
+            for attempt in range(10):
+                if not self.lockfile.exists():
+                    try:
+                        # Atomic create - exclusive mode
+                        fd = os.open(str(self.lockfile), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+                        os.write(fd, str(self.pid).encode())
+                        os.close(fd)
+                        print(f"✅ [{self.name}] Lock acquired (PID: {self.pid})")
+                        return self
+                    except FileExistsError:
+                        # Another process created it between check and create
+                        pass
+
+                # Lock exists - check if process is alive
+                try:
+                    pid_str = self.lockfile.read_text().strip()
+                    old_pid = int(pid_str)
+
+                    # Check if process still running
+                    is_running = False
+                    if sys.platform == "win32":
+                        try:
+                            import psutil
+                            is_running = psutil.pid_exists(old_pid)
+                        except:
+                            pass
+                    else:
+                        try:
+                            os.kill(old_pid, 0)
+                            is_running = True
+                        except OSError:
+                            pass
+
+                    if is_running:
+                        print(f"❌ [{self.name}] Already running (PID: {old_pid}). Exiting.")
+                        sys.exit(0)
+
+                    # Stale lock - remove and retry
+                    print(f"🧹 [{self.name}] Removing stale lock (PID: {old_pid})")
+                    self.lockfile.unlink(missing_ok=True)
+                    time.sleep(0.1)
+                except (ValueError, OSError):
+                    self.lockfile.unlink(missing_ok=True)
+                    time.sleep(0.1)
+
+            print(f"❌ [{self.name}] Failed to acquire lock after 10 attempts. Exiting.")
+            sys.exit(1)
+
+            # Ensure cleanup on exit
+            atexit.register(self._cleanup)
             return self
 
         def __exit__(self, *args):
-            pass
+            self._cleanup()
+
+        def _cleanup(self):
+            if self.lockfile.exists():
+                try:
+                    # Only remove if it's our lock
+                    if self.lockfile.read_text().strip() == str(self.pid):
+                        self.lockfile.unlink()
+                        print(f"🔓 [{self.name}] Lock released")
+                except Exception:
+                    pass
 
 
 # ==================== DUPLICATE GUARD (Content Hash) ====================

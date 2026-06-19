@@ -1,6 +1,7 @@
 """Unified notification - Telegram + agent status."""
 import json
 import os
+import sys
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -72,11 +73,15 @@ def _find_pids(script_name: str) -> list[str]:
         "Select-Object -ExpandProperty ProcessId"
     )
     try:
+        run_kwargs = {}
+        if sys.platform == "win32":
+            run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         out = subprocess.run(
             ["powershell", "-NoProfile", "-Command", cmd],
             capture_output=True,
             text=True,
             timeout=5,
+            **run_kwargs,
         ).stdout
         return [p for p in out.split() if p.isdigit()]
     except Exception:

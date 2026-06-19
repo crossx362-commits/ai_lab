@@ -1,4 +1,4 @@
-# 🏦 한국투자증권 API 통합 완료
+﻿# 🏦 한국투자증권 API 통합 완료
 
 **날짜**: 2026-06-18  
 **상태**: ✅ 완료 (Production Ready)
@@ -10,7 +10,7 @@
 기존 코인 트레이딩 시스템에 한국 주식 시장 연동 추가
 - 데이브: 코인 + 주식 (보수적 전략)
 - 레오: 코인 (공격적 전략)
-- 현빈: 코인 + 주식 (시장 인텔)
+- 펄스: 코인 + 주식 (시장 인텔)
 
 ---
 
@@ -53,9 +53,9 @@
 3. LLM 분석 (BUY/SELL/HOLD)
 4. 매매 실행 (현재는 주석 처리 - 안전)
 
-### 3. 현빈 주식 시장 인텔 (`stock_market_intelligence.py`)
+### 3. 펄스 주식 시장 인텔 (`stock_market_intelligence.py`)
 
-**위치**: `projects/ai-team/skills/현빈_전략가/tools/stock_market_intelligence.py`
+**위치**: `projects/ai-team/skills/펄스_전략가/tools/stock_market_intelligence.py`
 
 **수집 정보**:
 - ✅ KOSPI/KOSDAQ 지수 + 등락률
@@ -72,8 +72,8 @@
 **위치**: `projects/ai-team/scripts/start_trading_all.py`
 
 **실행 봇**:
-- 코인: 현빈 (인텔) + 데이브 (보수) + 레오 (공격)
-- 주식: 현빈 (인텔) + 데이브 (보수)
+- 코인: 펄스 (인텔) + 데이브 (보수) + 레오 (공격)
+- 주식: 펄스 (인텔) + 데이브 (보수)
 
 **사용법**:
 ```bash
@@ -112,8 +112,8 @@ python projects/ai-team/skills/데이브_주식/tools/stock_auto_trader.py
 # 데이브 주식 봇 (데몬 모드)
 python projects/ai-team/skills/데이브_주식/tools/stock_auto_trader.py --daemon
 
-# 현빈 주식 인텔 (데몬 모드)
-python projects/ai-team/skills/현빈_전략가/tools/stock_market_intelligence.py --daemon
+# 펄스 주식 인텔 (데몬 모드)
+python projects/ai-team/skills/펄스_전략가/tools/stock_market_intelligence.py --daemon
 ```
 
 ### 2. 코인 + 주식 통합 실행
@@ -137,8 +137,8 @@ python projects/ai-team/skills/데이브_주식/tools/kis_client.py
 | **데이브 (코인)** | Upbit | 보수적 | BTC, ETH, SOL, XRP 등 | 10초 |
 | **데이브 (주식)** | KRX | 보수적 가치투자 | 우량주 8종목 | 1분 |
 | **레오 (코인)** | Upbit | 공격적 단타 | DOGE, PEPE, NEAR 등 | 10초 |
-| **현빈 (코인)** | Upbit | 시장 인텔 | 전체 시장 | 5분 |
-| **현빈 (주식)** | KRX | 시장 인텔 | KOSPI/KOSDAQ | 5분 |
+| **펄스 (코인)** | Upbit | 시장 인텔 | 전체 시장 | 5분 |
+| **펄스 (주식)** | KRX | 시장 인텔 | KOSPI/KOSDAQ | 5분 |
 
 ---
 
@@ -181,7 +181,7 @@ projects/ai-team/
 │   │   └── upbit_analyzer.py
 │   ├── 레오_트레이더/tools/
 │   │   └── leo_aggressive_trader.py # 코인 공격적 매매
-│   └── 현빈_전략가/tools/
+│   └── 펄스_전략가/tools/
 │       ├── crypto_market_intelligence.py  # 코인 시장 인텔
 │       └── stock_market_intelligence.py   # ✨ 주식 시장 인텔
 ├── scripts/

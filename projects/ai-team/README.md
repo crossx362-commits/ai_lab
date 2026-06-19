@@ -1,4 +1,4 @@
-# AI Team - Multi-Agent Trading System
+﻿# AI Team - Multi-Agent Trading System
 
 **Status**: ✅ Production Ready (마이그레이션 완료)  
 **Last Updated**: 2026-06-18
@@ -30,8 +30,8 @@ python skills/데이브_주식/tools/upbit_auto_trader.py --daemon
 # 레오 (공격적)
 python skills/레오_트레이더/tools/leo_aggressive_trader.py --daemon
 
-# 현빈 (시장 인텔)
-python skills/현빈_전략가/tools/crypto_market_intelligence.py --daemon
+# 펄스 (시장 인텔)
+python skills/펄스_전략가/tools/crypto_market_intelligence.py --daemon
 
 # 영숙 (텔레그램 봇)
 python skills/영숙_비서/tools/telegram_receiver.py
@@ -68,7 +68,7 @@ projects/ai-team/
 ├── skills/                  # 에이전트별 도구
 │   ├── 데이브_주식/
 │   ├── 레오_트레이더/
-│   ├── 현빈_전략가/
+│   ├── 펄스_전략가/
 │   ├── 영숙_비서/
 │   ├── 예원_CEO/
 │   └── ...
@@ -83,7 +83,7 @@ projects/ai-team/
 |-------|------|--------|
 | **데이브** | 보수적 매매 (BTC, ETH, SOL, XRP) | ✅ Active |
 | **레오** | 공격적 단타 (DOGE, PEPE, NEAR, SUI) | ✅ Active |
-| **현빈** | 시장 인텔 수집 (Fear & Greed, 김프) | ✅ Active |
+| **펄스** | 시장 인텔 수집 (Fear & Greed, 김프) | ✅ Active |
 | **영숙** | Telegram 봇 + 스케줄러 | ✅ Active |
 | **예원** | CEO - Task dispatcher | 🟡 Manual |
 | **케빈** | Vercel + Supabase 인프라 | 🟡 Manual |

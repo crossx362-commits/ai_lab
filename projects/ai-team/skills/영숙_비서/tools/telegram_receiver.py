@@ -1,1098 +1,317 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Youngsuk Telegram receiver.
+
+Single source of truth for Telegram getUpdates.
+Do not add another Telegram receiver in the IDE extension or helper daemons.
 """
-영숙 텔레그램 봇 - 최종 최적화 및 에러 복원 버전
-"""
-import os, sys, json, time, traceback, subprocess
-from datetime import datetime, timezone, timedelta
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+import traceback
+import urllib.error
+import urllib.request
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parents[4]
+AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
+LOG_PATH = SCRIPT_DIR / "telegram_receiver.log"
 
-_early_here = os.path.dirname(os.path.abspath(__file__))
-try:
-    _log_path = os.path.join(_early_here, "telegram_receiver.log")
-    if sys.stdout is None or sys.stderr is None or "pythonw" in os.path.basename(sys.executable).lower():
-        _log = open(_log_path, "a", encoding="utf-8", buffering=1)
-        sys.stdout = _log
-        sys.stderr = _log
-except Exception:
-    pass
 
-if hasattr(sys.stdout, "reconfigure"):
-    try:
+def _ensure_stdio() -> None:
+    if sys.stdout is None or sys.stderr is None or "pythonw" in Path(sys.executable).name.lower():
+        log = open(LOG_PATH, "a", encoding="utf-8", buffering=1)
+        sys.stdout = log
+        sys.stderr = log
+    if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except: pass
 
-_here = _early_here
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
-sys.path.insert(0, _here)
-sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env import load_env
-load_env()
+_ensure_stdio()
+sys.path.insert(0, str(AI_TEAM_ROOT))
+sys.path.insert(0, str(SCRIPT_DIR))
 
-try:
-    from google import genai
-    from google.genai import types
-except ModuleNotFoundError:
-    genai = None
-    types = None
+from _shared.env import load_env  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 
-API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-client = genai.Client(api_key=API_KEY) if genai and API_KEY else None
+load_env(str(PROJECT_ROOT))
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+POLL_TIMEOUT = int(os.getenv("YOUNGSUK_POLL_TIMEOUT", "0"))
+POLL_INTERVAL_SECONDS = float(os.getenv("YOUNGSUK_POLL_INTERVAL", "3"))
+POLL_BACKOFF_SECONDS = int(os.getenv("YOUNGSUK_CONFLICT_BACKOFF", "15"))
 
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
-try:
-    import yewon_dispatcher
-except:
-    yewon_dispatcher = None
+STATE_DIRS = [
+    Path.home() / ".ai-team-brain",
+    Path.home() / ".connect-ai-brain",
+]
+LOCK_PATHS = [p / ".telegram_poll.lock" for p in STATE_DIRS]
+OFFSET_PATH = STATE_DIRS[0] / "telegram_offset.json"
 
-SYSTEM = "영숙(비서). 규칙: 짧게 핵심만 2줄 이내 답변. 단, 현황 보고(get_agent_status) 도구를 호출하는 경우에는 예외적으로 모든 에이전트의 내용을 줄이거나 생략하지 말고 상세하게 다 답변해야 함. 일반적인 질문이나 상태 분석 요청은 도구를 쓰지 말고 제미니가 직접 아는 선에서 즉시 답변하세요. 파이썬 스크립트 실행이나 특정 에이전트 구동 명령인 경우에만 dispatch 도구를 호출하세요."
 
-def tg_api(method, data, timeout=20):
-    import urllib.request
-    url = f"https://api.telegram.org/bot{TOKEN}/{method}"
-    req = urllib.request.Request(url, json.dumps(data).encode(), headers={"Content-Type": "application/json"})
+def log(message: str) -> None:
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}", flush=True)
+
+
+def write_poll_lock() -> None:
+    payload = {"pid": os.getpid(), "owner": "youngsuk-python", "heartbeat": int(time.time() * 1000)}
+    for lock_path in LOCK_PATHS:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock_path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def read_offset() -> int:
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode())
-    except Exception as e:
-        print(f"❌ Telegram API 실패 ({method}): {e}")
-        return {}
+        data = json.loads(OFFSET_PATH.read_text(encoding="utf-8"))
+        return int(data.get("offset") or 0)
+    except Exception:
+        return 0
 
-def send_msg(text):
-    text = str(text or "")
-    print(f"📤 {text[:60]}...")
-    chunks = [text[i:i + 3500] for i in range(0, len(text), 3500)] or [""]
-    for chunk in chunks:
-        res = tg_api("sendMessage", {"chat_id": CHAT_ID, "text": chunk, "parse_mode": "HTML"})
-        if res.get("ok"):
-            continue
-        print(f"⚠️ HTML 전송 실패 → 일반 텍스트 재전송: {res.get('description', 'unknown')}")
-        tg_api("sendMessage", {"chat_id": CHAT_ID, "text": chunk})
 
-def get_updates(offset):
-    payload = {"timeout": 30, "allowed_updates": ["message"]}
+def write_offset(offset: int) -> None:
+    OFFSET_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OFFSET_PATH.write_text(json.dumps({"offset": offset, "ts": int(time.time())}), encoding="utf-8")
+
+
+def telegram_api(method: str, payload: dict[str, Any] | None = None, timeout: int = 20) -> dict[str, Any]:
+    if not TOKEN:
+        return {"ok": False, "description": "TELEGRAM_BOT_TOKEN is missing"}
+    url = f"https://api.telegram.org/bot{TOKEN}/{method}"
+    data = json.dumps(payload or {}).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(body)
+        except Exception:
+            parsed = {"description": body[:200]}
+        parsed["http_status"] = exc.code
+        return parsed
+    except Exception as exc:
+        return {"ok": False, "description": str(exc)}
+
+
+def send_message(text: str) -> bool:
+    if not CHAT_ID:
+        log("Telegram chat id is missing")
+        return False
+    text = str(text or "").strip() or "확인했습니다."
+    ok = True
+    for start in range(0, len(text), 3500):
+        chunk = text[start : start + 3500]
+        result = telegram_api(
+            "sendMessage",
+            {"chat_id": CHAT_ID, "text": chunk, "disable_web_page_preview": True},
+            timeout=15,
+        )
+        if not result.get("ok"):
+            ok = False
+            log(f"sendMessage failed: {result.get('description')}")
+    return ok
+
+
+def get_updates(offset: int) -> tuple[list[dict[str, Any]], bool]:
+    write_poll_lock()
+    payload: dict[str, Any] = {"timeout": POLL_TIMEOUT, "limit": 20, "allowed_updates": ["message"]}
     if offset:
         payload["offset"] = offset
+    result = telegram_api("getUpdates", payload, timeout=max(POLL_TIMEOUT + 10, 10))
+    if result.get("ok"):
+        return result.get("result", []), False
+    description = str(result.get("description") or "")
+    if result.get("http_status") == 409 or "conflict" in description.lower():
+        log(f"getUpdates conflict; backing off {POLL_BACKOFF_SECONDS}s")
+        time.sleep(POLL_BACKOFF_SECONDS)
+        return [], True
+    log(f"getUpdates failed: {description}")
+    time.sleep(5)
+    return [], False
 
+
+def normalize(text: str) -> str:
+    return "".join(text.lower().split())
+
+
+def agent_status() -> str:
     try:
-        res = tg_api("getUpdates", payload, timeout=40)
-        return res.get("result", [])
-    except Exception as e:
-        error_str = str(e)
-        if "409" in error_str or "Conflict" in error_str:
-            print(f"⚠️ Telegram API 409 Conflict - 다른 클라이언트가 봇을 사용 중입니다")
-            print(f"   원인: Telegram Desktop, 웹, 또는 다른 봇 인스턴스")
-            print(f"   해결: 다른 클라이언트를 종료하거나 Webhook 모드로 전환하세요")
-            print(f"   대기 10초 후 재시도...")
-            time.sleep(10)
-            # 한 번만 재시도
-            try:
-                res = tg_api("getUpdates", payload, timeout=40)
-                return res.get("result", [])
-            except:
-                pass
-        return []
+        import agent_controller
 
-def get_agent_status(agent: str = "전체"):
-    """에이전트 현황. Args: agent ('예원'/'영숙'/'코다리'/'케빈'/'티모'/'현빈'/'경수'/'로율'/'데이브'/'전체')"""
-    from _shared.notify import status_report
-    return status_report()
+        return agent_controller.get_agent_status()
+    except Exception as exc:
+        return f"에이전트 상태 확인 실패: {exc}"
 
-def get_schedule_status_summary() -> str:
-    """영숙 스케줄러 상태를 간단히 요약한다."""
+
+def trading_status() -> str:
+    lines = ["거래팀 상태"]
+    try:
+        import agent_controller
+
+        for name in ["시그널", "데이브", "레오"]:
+            lines.append(agent_controller.get_agent_status(name))
+    except Exception as exc:
+        lines.append(f"상태 확인 실패: {exc}")
+    signal_file = PROJECT_ROOT / "reports" / "research" / "market_signal.json"
+    legacy_file = PROJECT_ROOT / "reports" / "research" / "market_pulse.json"
+    report_file = signal_file if signal_file.exists() else legacy_file
+    if report_file.exists():
+        age = int(time.time() - report_file.stat().st_mtime)
+        lines.append(f"시그널 리포트: {age}초 전 갱신")
+    return "\n".join(lines)
+
+
+def schedule_report() -> str:
     try:
         import schedule_manager
+
         schedules = schedule_manager.load_schedules()
-        last_run = schedule_manager.load_last_run()
         enabled = [s for s in schedules if s.get("enabled", True)]
-        latest = None
-        for value in last_run.values():
-            try:
-                dt = datetime.fromisoformat(value)
-                latest = dt if latest is None or dt > latest else latest
-            except Exception:
-                continue
-        latest_text = latest.strftime("%m/%d %H:%M") if latest else "기록 없음"
-        return f"🗓️ 스케줄러: 활성 {len(enabled)}/{len(schedules)}개 | 마지막 실행 기록 {latest_text}"
-    except Exception as e:
-        return f"🗓️ 스케줄러: 상태 확인 실패 ({e})"
-
-
-def get_schedule_report() -> str:
-    """실제 schedules.json을 읽어 스케줄 목록을 텔레그램용으로 반환한다."""
-    try:
-        import schedule_manager
-        schedules = schedule_manager.load_schedules()
-        last_run = schedule_manager.load_last_run()
-        if not schedules:
-            return "📋 등록된 스케줄이 없습니다."
-
-        lines = [f"📋 스케줄 현황 ({len(schedules)}개)\n"]
-        for idx, s in enumerate(schedules, 1):
-            enabled = "✅" if s.get("enabled", True) else "❌"
-            agent = s.get("agent", "?")
-            task = s.get("task", "?")
-            cron = s.get("cron", "?")
-            priority = s.get("priority", "medium").upper()
-            last = last_run.get(s.get("id", ""))
-            last_text = ""
-            if last:
-                try:
-                    last_text = f" | 마지막: {datetime.fromisoformat(last).strftime('%m/%d %H:%M')}"
-                except Exception:
-                    pass
-            lines.append(f"{idx}. {enabled} [{priority}] {agent}\n   작업: {task}\n   Cron: {cron}{last_text}")
-        return "\n\n".join(lines)
-    except Exception as e:
-        return f"❌ 스케줄 조회 실패: {e}"
-
-def get_full_agent_status() -> str:
-    """전체 에이전트 리포트에 실시간 실행/스케줄 상태를 붙인다."""
-    try:
-        import agent_controller
-        live_status = agent_controller.get_agent_status()
-    except Exception as e:
-        live_status = f"실시간 프로세스 상태 조회 실패: {e}"
-
-    schedule_status = get_schedule_status_summary()
-    report = get_agent_status("전체")
-    return f"{live_status}\n\n{schedule_status}\n\n{report}"
-
-def get_live_trading_status() -> str:
-    """업비트 계좌와 트레이딩 에이전트 실행 상태를 실시간 조회한다."""
-    import importlib
-    load_env(PROJECT_ROOT)
-
-    try:
-        import agent_controller
-        process_status = agent_controller.get_agent_status()
-    except Exception as e:
-        process_status = f"프로세스 상태 조회 실패: {e}"
-
-    dave_tools = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools")
-    if dave_tools not in sys.path:
-        sys.path.insert(0, dave_tools)
-
-    try:
-        pyupbit = importlib.import_module("pyupbit")
-        upbit_analyzer = importlib.import_module("upbit_analyzer")
-    except Exception as e:
-        return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 조회 실패: 모듈 로드 오류 ({e})"
-
-    try:
-        client = upbit_analyzer.get_upbit_client()
-        if not client:
-            return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 API 키가 설정되지 않았거나 검증에 실패했습니다."
-
-        balances = client.get_balances()
-        if not balances or (isinstance(balances, dict) and balances.get("error")):
-            return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 잔고 조회 실패: {balances}"
-
-        krw = 0.0
-        holdings = []
-        tickers = []
-        for item in balances:
-            currency = item.get("currency", "")
-            balance = float(item.get("balance") or 0)
-            locked = float(item.get("locked") or 0)
-            total_balance = balance + locked
-            if currency == "KRW":
-                krw = total_balance
-                continue
-            if total_balance <= 0:
-                continue
-            tickers.append(f"KRW-{currency}")
-
-        prices = pyupbit.get_current_price(tickers) if tickers else {}
-        if isinstance(prices, (int, float)) and len(tickers) == 1:
-            prices = {tickers[0]: float(prices)}
-        if not isinstance(prices, dict):
-            prices = {}
-
-        for item in balances:
-            currency = item.get("currency", "")
-            if currency == "KRW":
-                continue
-            balance = float(item.get("balance") or 0)
-            locked = float(item.get("locked") or 0)
-            total_balance = balance + locked
-            if total_balance <= 0:
-                continue
-            ticker = f"KRW-{currency}"
-            current_price = float(prices.get(ticker) or 0)
-            avg_price = float(item.get("avg_buy_price") or 0)
-            value = total_balance * current_price
-            if value < 1000 and locked <= 0:
-                continue
-            profit_pct = ((current_price - avg_price) / avg_price * 100) if avg_price > 0 and current_price > 0 else 0.0
-            holdings.append({
-                "coin": currency,
-                "balance": total_balance,
-                "locked": locked,
-                "avg_price": avg_price,
-                "current_price": current_price,
-                "value": value,
-                "profit_pct": profit_pct,
-            })
-
-        holdings.sort(key=lambda x: x["value"], reverse=True)
-        total_coin_value = sum(h["value"] for h in holdings)
-        total_asset = krw + total_coin_value
-
-        lines = [
-            "📊 거래현황 (업비트 실시간)",
-            "",
-            process_status,
-            "",
-            f"KRW: {krw:,.0f}원",
-            f"코인 평가액: {total_coin_value:,.0f}원",
-            f"총 자산: {total_asset:,.0f}원",
-            "",
-            "보유 코인:",
-        ]
-
-        if not holdings:
-            lines.append("없음")
-        else:
-            for h in holdings[:12]:
-                emoji = "📈" if h["profit_pct"] >= 0 else "📉"
-                locked_note = f" / 주문묶임 {h['locked']:.6f}" if h["locked"] > 0 else ""
-                lines.append(
-                    f"{emoji} {h['coin']} {h['balance']:.6f}{locked_note}\n"
-                    f"   평가 {h['value']:,.0f}원 | 현재 {h['current_price']:,.4g} | 평단 {h['avg_price']:,.4g} | {h['profit_pct']:+.2f}%"
-                )
-
-        lines.append("")
-        lines.append(f"조회시각: {datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')}")
+        lines = [f"스케줄 {len(enabled)}/{len(schedules)}개 활성"]
+        for item in schedules[:10]:
+            status = "ON" if item.get("enabled", True) else "OFF"
+            lines.append(f"- {status} {item.get('agent', '?')}: {item.get('task', '?')} ({item.get('cron', '?')})")
         return "\n".join(lines)
-    except Exception as e:
-        return f"📊 거래현황\n\n{process_status}\n\n⚠️ 업비트 실시간 조회 실패: {e}"
+    except Exception as exc:
+        return f"스케줄 확인 실패: {exc}"
 
-def list_calendar(days: int = 7):
-    """캘린더 일정. Args: days (조회 일수)"""
-    cache = os.path.join(PROJECT_ROOT, "projects", "ai-team", "_shared", "calendar_cache.md")
-    if os.path.exists(cache):
-        with open(cache, "r", encoding="utf-8") as f:
-            return f"📅 일정:\n{f.read()[:800]}"
-    return "📅 캘린더 미설정"
 
-def is_google_busy_error(err: Exception | str) -> bool:
-    text = str(err).lower()
-    markers = [
-        "429",
-        "503",
-        "resource_exhausted",
-        "quota",
-        "rate limit",
-        "rate_limit",
-        "temporarily unavailable",
-        "service unavailable",
-        "overloaded",
-        "deadline",
-    ]
-    return any(marker in text for marker in markers)
-
-def generate_content_with_retry(model_name, contents, config, max_retries=2):
-    """Gemini 호출. 실패 시 None 반환 → GPT 폴백"""
-    if not client:
-        print("❌ Gemini client 없음 - GPT 폴백")
-        return None
-
-    for attempt in range(max_retries):
-        try:
-            return client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config
-            )
-        except Exception as e:
-            err_str = str(e).lower()
-            # 400 에러는 즉시 GPT 폴백
-            if "400" in err_str or "bad request" in err_str:
-                print(f"❌ Gemini 400 에러 - GPT 폴백")
-                return None
-            # 바쁨 에러만 재시도
-            if is_google_busy_error(e):
-                if attempt < max_retries - 1:
-                    time.sleep(2 + attempt * 2)
-                    continue
-            # 기타 에러도 GPT 폴백
-            print(f"❌ Gemini 오류 - GPT 폴백: {e}")
-            return None
-    return None
-
-def local_fallback_answer(msg: str) -> str | None:
-    """Ollama 로컬 LLM 폴백."""
+def dispatch_command(text: str) -> str:
     try:
-        from _shared.llm import ollama
-        answer = ollama(msg, system=SYSTEM, max_tokens=300, temperature=0.7)
-        return answer.strip() if answer else None
-    except Exception as oe:
-        print(f"❌ 로컬 Ollama 폴백 실패: {oe}")
-        return None
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools"))
+        import yewon_dispatcher
+
+        result = yewon_dispatcher.dispatch_and_execute(text)
+        return result or "CEO가 처리할 작업을 찾지 못했습니다."
+    except Exception as exc:
+        return f"작업 실행 실패: {exc}"
 
 
-def _gpt_fallback(msg: str) -> str | None:
-    """Gemini 실패 시 GPT-4o mini 폴백."""
-    import urllib.request, json as _json
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        return None
+def llm_answer(text: str) -> str:
     try:
-        payload = {
-            "model": "gpt-4o-mini",
-            "messages": [
-                {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": msg},
-            ],
-            "max_tokens": 400,
-            "temperature": 0.7,
-        }
-        req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=_json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        from _shared.ollama_client import chat
+
+        answer = chat(
+            [{"role": "system", "content": "너는 영숙 비서다. 짧고 사실적으로 한국어로 답한다."}, {"role": "user", "content": text}],
+            task="general",
         )
-        with urllib.request.urlopen(req, timeout=30) as r:
-            res = _json.loads(r.read())
-        text = res["choices"][0]["message"]["content"].strip()
-        print(f"  [GPT-4o mini 폴백] 답변 완료")
-        return text
-    except Exception as e:
-        print(f"❌ GPT 폴백 실패: {e}")
-        return None
+        if answer:
+            return str(answer).strip()
+    except Exception:
+        pass
+    return "확인했습니다. 지금은 상태/일정/거래팀/에이전트 시작·종료 명령을 처리할 수 있습니다."
 
-def dispatch(cmd: str):
-    """에이전트 스크립트를 실제로 구동/실행(run/execute)하는 명시적 명령에만 호출하세요. 단순 분석/설명 질문에는 절대 호출 금지. Args: cmd (실행 명령)"""
-    if not yewon_dispatcher: return "❌ 디스패처 없음"
-    import threading
-    def _run_bg():
-        try:
-            print(f"🎯 [비동기 시작] {cmd}")
-            send_msg(f"⚙️ 에이전트 작업을 시작합니다: '{cmd}'")
-            result = yewon_dispatcher.dispatch_and_execute(cmd)
-            if not result:
-                send_msg("⚠️ CEO 분석 대기 중")
-                return
-            if len(result) > 500:
-                local_summary = local_fallback_answer(f"다음 작업 결과를 2줄로 요약:\n{result[:800]}")
-                if local_summary:
-                    send_msg(f"✅ 작업 완료 요약:\n{local_summary}")
-                    return
-                try:
-                    s = generate_content_with_retry(
-                        model_name="gemini-2.5-flash",
-                        contents=[types.Content(role="user", parts=[types.Part.from_text(text=f"2줄 요약:\n{result[:600]}")]),],
-                        config=types.GenerateContentConfig(max_output_tokens=100)
-                    )
-                    if s and s.text:
-                        send_msg(f"✅ 작업 완료 요약:\n{s.text.strip()}")
-                        return
-                except:
-                    pass
-            send_msg(f"✅ 작업 결과:\n{result}")
-        except Exception as e:
-            send_msg(f"❌ 작업 수행 실패: {str(e)[:200]}")
 
-    threading.Thread(target=_run_bg, daemon=True).start()
-    return "🚀 에이전트 구동 지시를 비동기로 시작했습니다. 완료되면 알려드리겠습니다."
+def handle_message(text: str) -> str:
+    clean = normalize(text)
+    log(f"message: {text[:120]}")
 
-TOOLS = [get_agent_status, list_calendar, dispatch]
-TOOL_MAP = {"get_agent_status": get_agent_status, "list_calendar": list_calendar, "dispatch": dispatch}
+    if clean in {"/start", "/help", "help", "도움말"}:
+        return "영숙 준비됨. 예: 현황, 거래 현황, 일정, 데이브 상태, 레오 시작, 시그널 시작"
 
-def process(msg):
-    print(f"\n📩 {msg}")
+    if any(k in clean for k in ["현황", "상태", "다들뭐해", "에이전트상태", "agentstatus"]):
+        if any(k in clean for k in ["투자", "거래", "주식", "코인", "매매", "데이브", "레오", "시그널", "펄스"]):
+            return trading_status()
+        return agent_status()
 
-    # 1. 자주 사용하는 시스템 명령은 즉시 반환하여 딜레이/토큰 제로화 (Gemini API 절약)
-    msg_clean = msg.strip().replace(" ", "").lower()
+    if any(k in clean for k in ["투자현황", "거래현황", "주식현황", "코인현황", "매매현황", "트레이딩현황"]):
+        return trading_status()
 
-    # 1-1. 종료/제어 명령은 "상태" 같은 일반 현황보다 먼저 처리한다.
-    if any(k in msg_clean for k in [
-        "봇전체종료", "봇모두종료", "killallbots", "stopallbots",
-        "에이전트전체종료", "전체에이전트종료", "killallagents", "stopallagents",
-    ]):
-        try:
-            import remote_bot_controller
-            result = remote_bot_controller.emergency_stop_all_no_restart(skip_current=True)
-            send_msg("🛑 에이전트 전체 종료 명령 처리 완료 (영숙 유지, 재시작 없음)\n" + result)
-        except Exception as e:
-            send_msg(f"❌ 전체 종료 실패: {e}")
-        print("🛑 사용자 명령: 에이전트 전체 종료 (영숙 유지, 재시작 금지)")
-        return
+    if any(k in clean for k in ["일정", "스케줄", "calendar", "schedule"]):
+        return schedule_report()
 
-    bot_control_keywords = ["봇상태", "봇종료", "봇시작", "봇재시작",
-                            "봇전체시작", "봇모두시작",
-                            "맥북봇종료", "맥북봇시작",
-                            "botstatus", "botstop", "botstart", "botrestart",
-                            "startallbots", "macbookstop", "macbookstart"]
-    if any(k in msg_clean for k in bot_control_keywords):
-        try:
-            import remote_bot_controller
-            result = remote_bot_controller.handle_bot_command(msg)
-            send_msg(result)
-
-            if any(k in msg_clean for k in ["봇종료", "botstop", "봇재시작", "botrestart"]):
-                import time
-                time.sleep(2)
-                print("🛑 사용자 명령으로 봇 종료")
-                import sys
-                sys.exit(0)
-            return
-        except Exception as e:
-            send_msg(f"❌ 봇 제어 실패: {e}")
-            return
-
-    # 1-2. 개별 에이전트 제어 명령
-    agent_control_keywords = ["데이브", "레오", "현빈", "영숙", "dave", "leo", "hyunbin", "youngsuk",
-                              "에이전트상태", "agentstatus"]
-    action_keywords = ["시작", "종료", "재시작", "상태", "start", "stop", "restart", "status", "켜", "꺼"]
-
-    # "데이브 시작", "레오 종료" 같은 패턴 체크
-    has_agent = any(k in msg_clean for k in agent_control_keywords)
-    has_action = any(k in msg_clean for k in action_keywords)
-
-    if (has_agent and has_action) or "에이전트상태" in msg_clean:
+    agent_words = ["시그널", "펄스", "데이브", "레오", "영숙", "signal", "pulse", "dave", "leo", "youngsuk"]
+    action_words = ["시작", "켜", "켜줘", "종료", "꺼", "꺼줘", "재시작", "상태", "start", "stop", "restart", "status"]
+    if any(k in clean for k in agent_words) and any(k in clean for k in action_words):
         try:
             import agent_controller
-            result = agent_controller.handle_agent_command(msg)
-            send_msg(result)
-            return
-        except Exception as e:
-            send_msg(f"❌ 에이전트 제어 실패: {e}")
-            return
 
-    # 1-3. 코인 거래 현황은 업비트 실시간 API로 조회한다.
-    if any(k in msg_clean for k in ["코인거래현황", "코인현황", "거래현황", "매매현황", "업비트현황", "보유코인", "잔고현황", "계좌현황"]):
-        try:
-            send_msg(get_live_trading_status())
-            return
-        except Exception as te:
-            send_msg(f"❌ 거래현황 조회 실패: {te}")
-            return
+            return agent_controller.handle_agent_command(text)
+        except Exception as exc:
+            return f"에이전트 명령 실패: {exc}"
 
-    # 1-3. 기존 업무 리포트는 명시적으로 요청할 때만 보낸다.
-    if any(k in msg_clean for k in ["업무현황", "상세현황", "리포트현황"]):
-        try:
-            status_report = get_agent_status("전체")
-            send_msg(status_report)
-            return
-        except Exception as se:
-            print(f"❌ 업무 현황 조회 실패: {se}")
+    dispatch_words = ["실행해", "구동", "작업시켜", "처리해", "해줘"]
+    if any(k in clean for k in dispatch_words):
+        return dispatch_command(text)
 
-    # 1-4. 전체 에이전트 현황 (dispatch 우회 - 직접 처리)
-    if any(k in msg_clean for k in ["현황", "상태", "다들뭐해", "뭐하니", "진행", "get_agent_status", "dispatch.*status"]):
-        try:
-            status_report = get_full_agent_status()
-            send_msg(status_report)
-            return
-        except Exception as se:
-            print(f"❌ 현황 조회 실패: {se}")
-
-    # 1-4-0. 슈퍼트렌드 감시 추가/제거 명령
-    if "슈퍼트랜드" in msg_clean or "감시" in msg_clean:
-        import subprocess
-        manager_path = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", "supertrend_manager.py")
-
-        if "추가" in msg_clean or "시작" in msg_clean or "켜" in msg_clean:
-            # 종목명 추출
-            stock_name = msg.replace("슈퍼트랜드", "").replace("감시", "").replace("추가", "").replace("시작", "").replace("켜", "").strip()
-            if stock_name:
-                result = subprocess.run([sys.executable, manager_path, "add", stock_name],
-                                      capture_output=True, text=True, encoding="utf-8")
-                send_msg(result.stdout or result.stderr or "✅ 감시 추가 완료")
-            else:
-                send_msg("ℹ️ 종목명을 입력해주세요.\n예: 'SK하이닉스 감시 추가'")
-            return
-        elif "제거" in msg_clean or "삭제" in msg_clean or "중단" in msg_clean or "끄" in msg_clean:
-            # 모두 제거
-            if "모두" in msg_clean or "전체" in msg_clean or "all" in msg_clean:
-                result = subprocess.run([sys.executable, manager_path, "clear"],
-                                      capture_output=True, text=True, encoding="utf-8")
-                send_msg(result.stdout or result.stderr or "✅ 모든 감시 제거 완료")
-                return
-            # 개별 종목 제거
-            stock_name = msg.replace("슈퍼트랜드", "").replace("감시", "").replace("제거", "").replace("삭제", "").replace("중단", "").replace("끄", "").strip()
-            if stock_name:
-                result = subprocess.run([sys.executable, manager_path, "remove", stock_name],
-                                      capture_output=True, text=True, encoding="utf-8")
-                send_msg(result.stdout or result.stderr or "✅ 감시 제거 완료")
-            else:
-                send_msg("ℹ️ 종목명을 입력해주세요.\n예: '원익IPS 감시 제거' 또는 '감시 모두 제거'")
-            return
-        elif "목록" in msg_clean or "리스트" in msg_clean:
-            # 감시 목록 조회
-            result = subprocess.run([sys.executable, manager_path, "list"],
-                                  capture_output=True, text=True, encoding="utf-8")
-            send_msg(result.stdout or "ℹ️ 감시 중인 종목이 없습니다.")
-            return
-
-    # 1-4-1. 기술 질문 - 데이터 출처
-    if any(k in msg_clean for k in ["슈퍼트랜드", "보조지표", "지표", "어디서가져", "api출처", "데이터출처"]):
-        if any(k in msg_clean for k in ["주식", "원익", "kis", "한국투자"]):
-            send_msg("""📊 주식 데이터 출처
-
-**슈퍼트랜드 & 보조지표**:
-- 한국투자증권 KIS OpenAPI
-- 1분봉 데이터 사용
-- ATR 기반 계산
-
-**현재 모니터링**:
-- 원익IPS (240810)
-- 추세 변환 시 실시간 알림""")
-            return
-        elif any(k in msg_clean for k in ["코인", "업비트", "crypto", "비트"]):
-            send_msg("""💰 코인 데이터 출처
-
-**기술 지표**:
-- 업비트 API
-- pyupbit 라이브러리
-- 일봉/분봉 데이터
-
-**현재 모니터링**:
-- 현빈: 20개 코인 퀀트 점수
-- 데이브: 기본 8개 + 현빈 추천
-- 레오: 기본 7개 + 급등주""")
-            return
-        else:
-            send_msg("""📊 데이터 출처
-
-**주식**: 한국투자증권 KIS API
-**코인**: 업비트 API
-
-무엇에 대해 알고 싶으신가요?
-- 주식 슈퍼트랜드
-- 코인 지표""")
-            return
-
-    # 1-5. 스케줄러 현황 조회 (schedules.json 실제 데이터)
-    if any(k in msg_clean for k in ["스케줄보고", "스케줄확인", "스케줄현황", "스케줄목록",
-                                     "하루에몇번", "하루에두번", "몇번실행", "자동스케줄"]):
-        try:
-            send_msg(get_schedule_report())
-            return
-        except Exception as sce:
-            print(f"❌ 스케줄 보고 실패: {sce}")
-
-    # 1-6. 구글 캘린더 일정 조회
-    if any(k in msg_clean for k in ["일정", "캘린더", "calendar", "schedule"]):
-        try:
-            cal_report = list_calendar()
-            send_msg(cal_report)
-            return
-        except Exception as ce:
-            print(f"❌ 일정 조회 실패: {ce}")
-
-    # 1-5. 명시적 에이전트 구동/실행 명령만 dispatch로 전달
-    # ※ 에이전트 이름(데이브/레오/현빈)만으로는 dispatch 하지 않음 → 현황 질문과 구분
-    direct_dispatch_keywords = ["구동", "실행해", "시작해", "켜줘", "가동", "데몬", "자동매매", "실거래시작", "거래시작"]
-    if any(k in msg_clean for k in direct_dispatch_keywords):
-        try:
-            result = dispatch(msg)
-            send_msg(result)
-            return
-        except Exception as de:
-            print(f"❌ dispatch 실패: {de}")
-
-    now = datetime.now(timezone(timedelta(hours=9)))
-    time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
-
-    # Gemini 클라이언트 없으면 GPT → Ollama 폴백
-    if not client:
-        answer = _gpt_fallback(msg)
-        if not answer:
-            answer = local_fallback_answer(msg)
-        send_msg(answer if answer else "Gemini 패키지가 없어 일반 답변은 제한됩니다. 현황/일정/구동 명령은 가능합니다.")
-        return
-
-    # 대화 누적 방지: 지금 보낸 메시지만 독립적으로 전송
-    contents = [types.Content(role="user", parts=[types.Part.from_text(text=msg)])]
-
-    model_name = "gemini-2.5-flash"
-    try:
-        try:
-            resp = generate_content_with_retry(
-                model_name=model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM + time_ctx,
-                    tools=TOOLS,
-                    max_output_tokens=800,
-                    temperature=0.7
-                )
-            )
-        except Exception as e:
-            # Gemini 혼잡/쿼터 오류 → GPT → Ollama 순서로 폴백
-            if is_google_busy_error(e):
-                print("🔄 Gemini 일시 제한/혼잡 감지 → GPT 폴백 시도")
-                fallback = _gpt_fallback(msg) or local_fallback_answer(msg)
-                send_msg(fallback if fallback else "일반 답변 모델이 잠시 불안정합니다. 현황/일정/구동 명령은 처리 가능합니다.")
-                return
-            raise e
-
-        answer = ""
-        tool_results = []
-        tool_calls_made = []  # function_call args 보존용
-
-        if resp and resp.candidates and resp.candidates[0].content.parts:
-            for part in resp.candidates[0].content.parts:
-                if part.text:
-                    answer += part.text
-                elif part.function_call:
-                    fn = part.function_call.name
-                    args = dict(part.function_call.args) if part.function_call.args else {}
-                    print(f"🔧 {fn}({args})")
-                    tool_calls_made.append({"name": fn, "args": args})
-                    if fn in TOOL_MAP:
-                        try:
-                            res = TOOL_MAP[fn](**args)
-                            tool_results.append({"name": fn, "result": str(res)})
-                            print(f"✅ {str(res)[:80]}...")
-                        except Exception as e:
-                            err = f"❌ {str(e)[:100]}"
-                            tool_results.append({"name": fn, "result": err})
-                            print(err)
-
-        if tool_results:
-            # get_agent_status / list_calendar는 결과를 그대로 전송
-            is_direct = any(tr["name"] in ["get_agent_status", "list_calendar"] for tr in tool_results)
-            if is_direct:
-                answer = "\n\n".join([tr["result"] for tr in tool_results])
-            else:
-                # dispatch 등 → Gemini에게 결과를 주고 최종 답변 생성
-                model_parts = []
-                for tc in tool_calls_made:
-                    model_parts.append(types.Part.from_function_call(name=tc["name"], args=tc["args"]))
-                contents.append(types.Content(role="model", parts=model_parts))
-
-                fn_parts = [
-                    types.Part.from_function_response(name=tr["name"], response={"result": tr["result"]})
-                    for tr in tool_results
-                ]
-                contents.append(types.Content(role="user", parts=fn_parts))
-
-                try:
-                    final = generate_content_with_retry(
-                        model_name=model_name,
-                        contents=contents,
-                        config=types.GenerateContentConfig(
-                            system_instruction=SYSTEM + time_ctx,
-                            max_output_tokens=500,
-                            temperature=0.7
-                        )
-                    )
-                except Exception as fe:
-                    if is_google_busy_error(fe):
-                        print("🔄 Gemini 최종 답변 제한/혼잡 → 도구 결과 직접 반환")
-                        answer = "\n\n".join([tr["result"] for tr in tool_results])
-                        send_msg(answer)
-                        return
-                    raise fe
-                answer = final.text.strip() if final and final.text else "\n\n".join([tr["result"] for tr in tool_results])
-
-        if not answer:
-            answer = "네"
-
-        send_msg(answer)
-
-    except Exception as e:
-        print(f"❌ {model_name} 최종 오류: {e}")
-        print("🔄 Gemini 오류 → GPT 폴백 시도...")
-        fallback = _gpt_fallback(msg) or local_fallback_answer(msg)
-        if fallback:
-            send_msg(fallback)
-            return
-        send_msg("일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
-
-def _watch_traders():
-    """데이브/레오 프로세스 감시 및 자동 재시작 (60초 주기)"""
-    import subprocess, threading
-    manual_stop_dir = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
-    global_manual_stop = os.path.join(manual_stop_dir, ".manual_stop")
-
-    # Windows/Unix 호환 lock 경로
-    import tempfile
-    lock_dir = os.path.join(tempfile.gettempdir(), "ailab_locks")
-    os.makedirs(lock_dir, exist_ok=True)
-
-    TRADERS = {
-        "hyunbin": {
-            "script": "projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py",
-            "args": ["--daemon"],
-            "keyword": "crypto_market_intelligence",
-            "lock": os.path.join(lock_dir, "hyunbin.lock"),
-        },
-        "dave": {
-            "script": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
-            "args": ["--daemon", "--live"],
-            "keyword": "upbit_auto_trader",
-            "lock": os.path.join(lock_dir, "dave.lock"),
-        },
-        "leo": {
-            "script": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
-            "args": ["--daemon", "--live"],
-            "keyword": "leo_aggressive_trader",
-            "lock": os.path.join(lock_dir, "leo.lock"),
-        },
-    }
-
-    def is_running(keyword):
-        needle = keyword.lower()
-        root_marker = PROJECT_ROOT.replace("\\", "/").lower()
-        try:
-            import psutil
-            for proc in psutil.process_iter(["pid", "name", "cmdline"]):
-                try:
-                    cmd = " ".join(proc.info.get("cmdline") or []).replace("\\", "/").lower()
-                    name = str(proc.info.get("name") or "").lower()
-                    if name.startswith("python") and needle in cmd and root_marker in cmd:
-                        return True
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-        except Exception as e:
-            print(f"[trader_watch] psutil 조회 실패, PowerShell fallback 사용: {e}")
-            try:
-                command = (
-                    "Get-CimInstance Win32_Process | "
-                    "Where-Object { $_.Name -match '^python' } | "
-                    "Select-Object -ExpandProperty CommandLine"
-                )
-                result = subprocess.run(
-                    ["powershell", "-NoProfile", "-Command", command],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=15,
-                    creationflags=CREATE_NO_WINDOW,
-                )
-                if result.returncode != 0:
-                    print(f"[trader_watch] PowerShell 조회 실패: {result.stderr.strip()}")
-                    return False
-                for line in result.stdout.splitlines():
-                    cmd = line.replace("\\", "/").lower()
-                    if needle in cmd and root_marker in cmd:
-                        return True
-            except Exception as pe:
-                print(f"[trader_watch] PowerShell fallback 실패: {pe}")
-                return False
-        return False
-
-    last_restart_notified = {}  # 마지막 재시작 알림 시간 추적
-
-    def restart(name, info):
-        try:
-            agent_manual_stop = os.path.join(manual_stop_dir, f".manual_stop_{name}")
-            if os.path.exists(global_manual_stop) or os.path.exists(agent_manual_stop):
-                print(f"[trader_watch] {name} 수동 종료 플래그 감지 - 자동 재시작 생략")
-                return
-            lock = info["lock"]
-            if os.path.exists(lock):
-                os.remove(lock)
-            root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", ".."))
-            script = os.path.join(root, info["script"])
-            subprocess.Popen([sys.executable, "-u", script] + info["args"], cwd=root, creationflags=CREATE_NO_WINDOW)
-
-            # 10분마다 한 번만 알림 (스팸 방지)
-            current_time = time.time()
-            last_notify = last_restart_notified.get(name, 0)
-            if current_time - last_notify > 600:  # 10분 = 600초
-                send_msg(f"🔄 [영숙] {name} 종료 감지 → 자동 재시작")
-                last_restart_notified[name] = current_time
-            else:
-                print(f"[trader_watch] {name} 재시작 (알림 생략 - 최근 알림 {int(current_time - last_notify)}초 전)")
-        except Exception as e:
-            send_msg(f"⚠️ [영숙] {name} 재시작 실패: {e}")
-
-    def loop():
-        time.sleep(30)
-        while True:
-            try:
-                if os.path.exists(global_manual_stop):
-                    print("[trader_watch] 전체 수동 종료 플래그 감지 - 감시 재시작 대기")
-                    time.sleep(60)
-                    continue
-                for name, info in TRADERS.items():
-                    if not is_running(info["keyword"]):
-                        restart(name, info)
-            except Exception as e:
-                print(f"[trader_watch] {e}")
-            time.sleep(60)
-
-    threading.Thread(target=loop, daemon=True, name="trader_watch").start()
-    print("✅ 데이브/레오 감시 스레드 시작")
+    return llm_answer(text)
 
 
-def _watch_cleanup():
-    """중복 프로세스 실시간 감시 — 중복 감지 즉시 제거"""
-    import threading
-
-    BOT_KEYWORDS = {
-        "데이브": "upbit_auto_trader",
-        "레오": "leo_aggressive_trader",
-        "현빈": "crypto_market_intelligence",
-        "영숙": "telegram_receiver",
-    }
-    ROOT_MARKER = PROJECT_ROOT.replace("\\", "/").lower()
-
-    def get_pids(keyword):
-        needle = keyword.lower()
-        pids = []
-        try:
-            import psutil
-            for proc in psutil.process_iter(["pid", "name", "cmdline", "create_time"]):
-                try:
-                    name = str(proc.info.get("name") or "").lower()
-                    cmd = " ".join(proc.info.get("cmdline") or []).replace("\\", "/").lower()
-                    if name.startswith("python") and needle in cmd and ROOT_MARKER in cmd:
-                        pids.append((proc.info["create_time"], proc.info["pid"]))
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-        except Exception as e:
-            print(f"[cleanup_watch] psutil 오류: {e}")
-        return sorted(pids)  # 오래된 순 정렬
-
-    def kill_pid(pid):
-        try:
-            import psutil
-            p = psutil.Process(pid)
-            p.terminate()
-            p.wait(timeout=5)
-        except Exception:
-            try:
-                import signal
-                os.kill(pid, signal.SIGKILL)
-            except Exception:
-                pass
-
-    def loop():
-        time.sleep(30)
-        while True:
-            try:
-                for name, keyword in BOT_KEYWORDS.items():
-                    procs = get_pids(keyword)
-                    if len(procs) > 1:
-                        extras = procs[:-1]  # 최신 1개 남기고 나머지 제거
-                        killed = []
-                        for _, pid in extras:
-                            kill_pid(pid)
-                            killed.append(pid)
-                        msg = f"🧹 [영숙] {name} 중복 {len(killed)}개 제거 (PID: {', '.join(map(str, killed))})"
-                        print(msg)
-                        send_msg(msg)
-            except Exception as e:
-                print(f"[cleanup_watch] {e}")
-            time.sleep(30)
-
-    threading.Thread(target=loop, daemon=True, name="cleanup_watch").start()
-    print("✅ 중복 프로세스 실시간 감시 스레드 시작")
-
-
-def _start_schedule_watch():
-    """영숙 내부에서 에이전트 스케줄러를 같이 구동한다."""
-    import threading
-
-    def bootstrap_stale_last_run(schedule_manager):
-        try:
-            schedules = schedule_manager.load_schedules()
-            last_run = schedule_manager.load_last_run()
-            now = datetime.now()
-            latest = None
-            for value in last_run.values():
-                try:
-                    dt = datetime.fromisoformat(value)
-                    latest = dt if latest is None or dt > latest else latest
-                except Exception:
-                    continue
-
-            if latest and (now - latest).total_seconds() < 12 * 3600:
-                return
-
-            now_str = now.isoformat()
-            for schedule in schedules:
-                if schedule.get("enabled", True):
-                    last_run[schedule["id"]] = now_str
-            schedule_manager.save_last_run(last_run)
-            print(f"[schedule_watch] 오래된 스케줄 실행 기록을 현재 시각으로 동기화 ({len(schedules)}개)")
-        except Exception as e:
-            print(f"[schedule_watch] bootstrap 실패: {e}")
-
-    def loop():
-        try:
-            import schedule_manager
-            bootstrap_stale_last_run(schedule_manager)
-            print("✅ 영숙 에이전트 스케줄러 시작")
-        except Exception as e:
-            print(f"[schedule_watch] 시작 실패: {e}")
-            return
-
-        while True:
-            try:
-                schedule_manager.check_and_run_schedules()
-            except Exception as e:
-                print(f"[schedule_watch] {e}")
-            time.sleep(60)
-
-    threading.Thread(target=loop, daemon=True, name="schedule_watch").start()
-
-
-def _hold_extension_telegram_lock():
-    """Keep the IDE extension from polling Telegram while Youngsuk owns getUpdates."""
-    import threading
-
-    lock_paths = [
-        os.path.join(os.path.expanduser("~"), ".ai-team-brain", ".telegram_poll.lock"),
-        os.path.join(os.path.expanduser("~"), ".connect-ai-brain", ".telegram_poll.lock"),
-    ]
-
-    def write_lock():
-        payload = {"pid": os.getpid(), "owner": "youngsuk-python", "heartbeat": int(time.time() * 1000)}
-        for lock_path in lock_paths:
-            os.makedirs(os.path.dirname(lock_path), exist_ok=True)
-            with open(lock_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f)
-
-    def loop():
-        while True:
-            try:
-                write_lock()
-            except Exception as e:
-                print(f"[telegram_lock] {e}")
-            time.sleep(15)
-
-    try:
-        write_lock()
-    except Exception as e:
-        print(f"[telegram_lock] {e}")
-    threading.Thread(target=loop, daemon=True, name="telegram_lock").start()
-    print("[telegram_lock] Youngsuk owns Telegram getUpdates")
-
-
-def _check_telegram_conflicts():
-    """Telegram API 충돌 감지 및 해결"""
-    print("🔍 Telegram API 충돌 확인 중...")
-
-    # 1. Telegram Desktop 프로세스 확인
+def stop_existing_receivers() -> None:
+    current = os.getpid()
     try:
         import psutil
-        telegram_processes = []
-        for p in psutil.process_iter(['pid', 'name']):
-            try:
-                if p.info['name'] and 'telegram' in p.info['name'].lower():
-                    telegram_processes.append((p.info['pid'], p.info['name']))
-            except:
-                pass
 
-        if telegram_processes:
-            print("⚠️ Telegram Desktop 감지:")
-            for pid, name in telegram_processes:
-                print(f"   PID {pid}: {name}")
-            print("   → 이 프로세스들이 봇과 충돌할 수 있습니다")
-            print("   → Telegram Desktop을 종료하거나 다른 계정으로 사용하세요")
-            # 자동 종료는 하지 않음 (사용자 데이터 손실 방지)
-    except ImportError:
-        print("⚠️ psutil 모듈 없음 - 충돌 감지 건너뜀")
-    except Exception as e:
-        print(f"⚠️ 충돌 감지 실패: {e}")
-
-    # 2. 테스트 getUpdates 호출
-    try:
-        test_res = tg_api("getUpdates", {"timeout": 1, "offset": 0}, timeout=5)
-        if test_res.get("ok"):
-            print("✅ Telegram API 연결 정상")
-            return True
-        else:
-            error_desc = test_res.get("description", "")
-            if "conflict" in error_desc.lower():
-                print(f"❌ Telegram API Conflict: {error_desc}")
-                print("   → 다른 클라이언트가 이미 연결 중입니다")
-                print("   → Telegram Desktop, 웹, 또는 다른 봇 인스턴스를 종료하세요")
-                return False
-            else:
-                print(f"⚠️ Telegram API 오류: {error_desc}")
-                return False
-    except Exception as e:
-        error_str = str(e)
-        if "409" in error_str or "Conflict" in error_str:
-            print(f"❌ 409 Conflict 감지: {e}")
-            print("   → Telegram Desktop 또는 다른 봇 인스턴스를 종료하세요")
-            return False
-        else:
-            print(f"⚠️ 연결 테스트 실패: {e}")
-            return False
-
-def main():
-    # 중복 실행 방지
-    try:
-        import psutil
-        current_pid = os.getpid()
-        for p in psutil.process_iter(['pid', 'name', 'cmdline']):
-            try:
-                if p.info['pid'] == current_pid:
-                    continue
-                name = str(p.info.get('name') or '').lower()
-                cmd = p.info['cmdline']
-                if name.startswith("python") and cmd and any(('telegram_receiver.py' in str(arg) or 'run_youngsuk_daemon.py' in str(arg)) for arg in cmd):
-                    print(f"⚠️ 이미 다른 telegram_receiver.py 프로세스가 실행 중입니다 (PID: {p.info['pid']}). 실행을 종료합니다.")
-                    sys.exit(0)
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            pid = int(proc.info.get("pid") or 0)
+            if pid == current:
                 continue
-    except Exception as pe:
-        print(f"중복 실행 확인 중 오류 발생: {pe}")
+            name = str(proc.info.get("name") or "").lower()
+            cmd = " ".join(proc.info.get("cmdline") or [])
+            if name.startswith("python") and ("telegram_receiver.py" in cmd or "run_youngsuk_daemon.py" in cmd):
+                log(f"stopping duplicate receiver pid={pid}")
+                proc.terminate()
+    except Exception as exc:
+        log(f"duplicate scan skipped: {exc}")
 
-    print("="*60)
-    print("🤖 영숙 봇 (Gemini 2.5 Flash 전용 최적화 버전)")
-    print("="*60)
-    print(f"Gemini: {'✅' if client else '❌'}")
-    print(f"Telegram: {'✅' if TOKEN and CHAT_ID else '❌'}")
-    print("="*60)
 
+def startup_check() -> bool:
     if not TOKEN or not CHAT_ID:
-        print("❌ 텔레그램 설정 필요")
-        return
+        log("missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
+        return False
+    telegram_api("deleteWebhook", {"drop_pending_updates": False}, timeout=10)
+    me = telegram_api("getMe", {}, timeout=10)
+    if not me.get("ok"):
+        log(f"getMe failed: {me.get('description')}")
+        return False
+    username = me.get("result", {}).get("username", "unknown")
+    log(f"connected to @{username}")
+    return True
 
-    # Keep pending updates so messages sent while the bot was restarting are not lost.
-    tg_api("deleteWebhook", {"drop_pending_updates": False})
 
-    # Telegram API 충돌 확인
-    if not _check_telegram_conflicts():
-        print("=" * 60)
-        print("⚠️ Telegram API 충돌이 감지되었습니다")
-        print("   계속 실행하면 409 Conflict 오류가 반복됩니다")
-        print("   Telegram Desktop을 종료하고 다시 시작하세요")
-        print("=" * 60)
-        # 충돌이 있어도 계속 실행 (사용자가 수동으로 해결할 수 있도록)
+def main() -> None:
+    stop_existing_receivers()
+    with ProcessLock("youngsuk_telegram_receiver"):
+        if not startup_check():
+            return
+        send_message("영숙 재시작 완료. Telegram 수신은 Python 봇 하나만 담당합니다.")
+        offset = read_offset()
+        log(f"polling started offset={offset}")
+        while True:
+            try:
+                updates, _conflicted = get_updates(offset)
+                for update in updates:
+                    offset = int(update.get("update_id", 0)) + 1
+                    write_offset(offset)
+                    message = update.get("message") or {}
+                    chat_id = str(message.get("chat", {}).get("id", ""))
+                    if chat_id != str(CHAT_ID):
+                        continue
+                    text = str(message.get("text") or "").strip()
+                    if not text:
+                        continue
+                    send_message(handle_message(text))
+                if not updates:
+                    time.sleep(POLL_INTERVAL_SECONDS)
+            except KeyboardInterrupt:
+                log("stopped by keyboard")
+                break
+            except Exception:
+                log(traceback.format_exc())
+                time.sleep(5)
 
-    send_msg("🤖 영숙 출근 (최적화 모드)\n예: 현황/일정")
-    _hold_extension_telegram_lock()
-    _watch_traders()
-    _watch_cleanup()
-    _start_schedule_watch()
-
-    offset = 0
-    while True:
-        try:
-            for upd in get_updates(offset):
-                offset = upd["update_id"] + 1
-                text = upd.get("message", {}).get("text", "").strip()
-                if text:
-                    process(text)
-                    time.sleep(2)  # 구글 API 요청 속도 조절을 위한 2초 딜레이 추가
-            time.sleep(1)
-        except KeyboardInterrupt:
-            print("\n👋 종료")
-            break
-        except Exception as e:
-            print(f"❌ 루프: {e}")
-            time.sleep(5)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception:
-        traceback.print_exc()
-        raise
+    main()

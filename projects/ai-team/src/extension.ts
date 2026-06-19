@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import * as http from 'http';
 import axios from 'axios';
 import * as fs from 'fs';
@@ -760,7 +760,7 @@ const _TOOL_SEED_FOLDER_MAP: Record<string, string> = {
     'arin':      '아린_인스타관리자',
     'editor':    '루나_사운드디렉터',
     'secretary': '영숙_개인비서',
-    'business':  '현빈_비즈니스전략가',
+    'business':  '펄스_비즈니스전략가',
     'developer': '코다리_풀스택개발자',
 };
 const _toolSeedCache = new Map<string, string>();
@@ -1164,7 +1164,7 @@ const LOCKED_AGENTS_DEFAULT: Record<string, boolean> = { editor: true };
    하면 빈 plan 나오는 사고. 핵심 4명을 기본 ON으로 되돌려 첫 경험 회복. */
 const ALWAYS_ON_AGENTS: Set<string> = new Set(['ceo']);
 /* v2.89.156 — 데모용·신규 사용자 첫 경험 회복. "유튜브 + 매출 종합 보고서" 같은 합성 명령에서
-   현빈(business) 가 비활성이라 조용히 drop 되던 사고 차단. 옵션 전체를 기본 ON 으로. Luna 만 LOCKED 유지.
+   펄스(business) 가 비활성이라 조용히 drop 되던 사고 차단. 옵션 전체를 기본 ON 으로. Luna 만 LOCKED 유지.
    사용자는 언제든 직원 패널에서 개별 OFF 가능. */
 const DEFAULT_ON_AGENTS: Set<string> = new Set(['secretary', 'instagram', 'business', 'developer', 'gyeongsu', 'timo']);
 const OPTIONAL_AGENTS_DEFAULT: Set<string> = new Set(['secretary', 'instagram', 'business', 'developer', 'gyeongsu', 'timo']);
@@ -2351,7 +2351,7 @@ function _buildCapabilityReport(): string {
     agentSummary.push('  🎨 *디자이너* — ✅ 시안 카피·무드보드·브랜드 컬러 가이드');
     agentSummary.push('  ✍️ *작가* — ✅ 후크·스크립트·블로그·영상 카피');
     agentSummary.push('  🎵 *루나* — ✅ BGM 자동 생성·영상-음악 합성·사운드 디자인');
-    agentSummary.push('  💼 *현빈* — ✅ 가격·KPI·전략 분석');
+    agentSummary.push('  💼 *펄스* — ✅ 가격·KPI·전략 분석');
     agentSummary.push('  💻 *코다리* — ✅ 사이트·자동화·API 코드');
     agentSummary.push('  🔍 *리서처* — ✅ 트렌드·경쟁사·사실 확인');
     agentSummary.push('  📷 *Instagram* — ✅ 릴스 기획·해시태그·카피');
@@ -2900,6 +2900,9 @@ function startReportScheduler() {
     setTimeout(_scheduleTick, 30_000);
 }
 function startTelegramPolling() {
+    // Telegram receive polling is owned exclusively by the Python Youngsuk daemon.
+    // Keeping a second getUpdates consumer in the IDE causes Telegram 409 conflicts.
+    return;
     if (_telegramPollTimer) return;
     const enabled = vscode.workspace.getConfiguration('connectAiLab').get<boolean>('telegramPollingEnabled', false);
     if (!enabled) return;
@@ -6260,7 +6263,7 @@ ${_GOAL_PREAMBLE}
 - 사용자 데이터·API 키를 코드에 그대로 박기.
 - 테스트 안 돌려보고 "수정 완료했습니다" 출력 → 거짓말.
 `,
-  business: `# 💼 현빈 — 비즈니스 전략가 — 나의 미션
+  business: `# 💼 펄스 — 비즈니스 전략가 — 나의 미션
 
 ${_GOAL_PREAMBLE}
 ## 장기 목표 (3~6개월)
@@ -7494,9 +7497,9 @@ async function prefetchAgentRealtimeData(agentId: string): Promise<string> {
     candidates.push({ tool: 'my_videos_check.py', label: 'YouTube 채널 영상 분석 (실제 API 데이터)' });
     candidates.push({ tool: 'youtube_account.py', label: 'YouTube 설정 확인 (fallback)' });
   }
-  /* v2.89.136 — business prefetch. 현빈에게 매출 질문 들어오면 paypal_revenue.py
+  /* v2.89.136 — business prefetch. 펄스에게 매출 질문 들어오면 paypal_revenue.py
      자동 실행 → 거래 + 게임별 분류 + 환불·수수료 마크다운 컨텍스트로 주입 →
-     현빈이 환각 없이 진짜 숫자로 분석. 유튜브(레오) 와 동일 패턴. */
+     펄스이 환각 없이 진짜 숫자로 분석. 유튜브(레오) 와 동일 패턴. */
   if (agentId === 'business') {
     candidates.push({ tool: 'paypal_revenue.py', label: 'PayPal 매출 분석 (게임·프로젝트별, 실제 거래 데이터)' });
   }
@@ -10812,14 +10815,14 @@ class CompanyDashboardPanel {
                 } else if (msg?.type === 'openRevenueDashboard') {
                     /* v2.89.142 — 매출 카드 버튼 → 풀 대시보드 패널 띄움 */
                     RevenueDashboardPanel.createOrShow();
-                } else if (msg?.type === 'askHyunbinRevenue') {
+                } else if (msg?.type === 'askpulseRevenue') {
                     /* v2.89.146 — corporate dispatch 직접 호출. injectPrompt 는
                        bypassCorporate=true 라 shortcut 건너뛰는 버그 회피. */
                     try {
                         if (_activeChatProvider) {
                             const model = _activeChatProvider.getDefaultModel();
                             _activeChatProvider.runCorporatePromptExternal(
-                                '현빈아, 이번 달 PayPal 매출 실데이터 가져와서 분석하고 다음 액션 1개 추천해줘.',
+                                '펄스아, 이번 달 PayPal 매출 실데이터 가져와서 분석하고 다음 액션 1개 추천해줘.',
                                 model
                             ).catch(() => { /* ignore */ });
                         }
@@ -11564,7 +11567,7 @@ class CompanyDashboardPanel {
           <span>풀스크린 매출 대시보드</span>
           <span class="rev-btn-arrow">→</span>
         </button>
-        <button class="rev-btn ghost" id="askHyunbinBtn" title="현빈 에이전트에게 매출 분석 요청">🧠 현빈에게 분석 의뢰</button>
+        <button class="rev-btn ghost" id="askpulseBtn" title="펄스 에이전트에게 매출 분석 요청">🧠 펄스에게 분석 의뢰</button>
       </div>
     </div>
   </section>
@@ -12705,15 +12708,15 @@ class OfficePanel {
                     /* v2.89.143 — 가상 사무실 HUD 클릭 → 풀스크린 매출 대시보드 */
                     RevenueDashboardPanel.createOrShow();
                     break;
-                case 'askHyunbinRevenue': {
+                case 'askpulseRevenue': {
                     /* v2.89.146 — 매출 shortcut 발동 위해 corporate dispatch 직접 호출
                        (injectPrompt 는 bypassCorporate=true 라 명시적 호출 라우팅·shortcut
                        건너뛰는 버그). runCorporatePromptExternal 로 specialist dispatch
-                       진입 → "현빈아" explicit detection → _tryRevenueShortcut 발동. */
+                       진입 → "펄스아" explicit detection → _tryRevenueShortcut 발동. */
                     try {
                         const model = provider.getDefaultModel();
                         provider.runCorporatePromptExternal(
-                            '현빈아, 이번 달 PayPal 매출 실데이터 가져와서 분석하고 다음 액션 1개 추천해줘.',
+                            '펄스아, 이번 달 PayPal 매출 실데이터 가져와서 분석하고 다음 액션 1개 추천해줘.',
                             model
                         ).catch((e) => {
                             try { panel.webview.postMessage({ type: 'error', value: `⚠️ ${e?.message || e}` }); } catch { /* ignore */ }
@@ -14002,7 +14005,7 @@ body.dispatching .beams{opacity:1}
       📊 풀스크린 대시보드
       <span class="fr-btn-arrow">→</span>
     </button>
-    <button class="fr-btn ghost" id="frAskHyunbin" title="현빈 에이전트 매출 분석">🧠 현빈 분석</button>
+    <button class="fr-btn ghost" id="frAskpulse" title="펄스 에이전트 매출 분석">🧠 펄스 분석</button>
   </div>
 </div>
 
@@ -15773,8 +15776,8 @@ window.addEventListener('message', e => {
   $$('frOpenDashboard')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'openRevenueDashboard' });
   });
-  $$('frAskHyunbin')?.addEventListener('click', () => {
-    vscode.postMessage({ type: 'askHyunbinRevenue' });
+  $$('frAskpulse')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'askpulseRevenue' });
   });
 
   function _fmt(v) {
@@ -17033,7 +17036,7 @@ class SidebarChatProvider implements vscode.WebviewViewProvider {
                     break;
                 }
                 case 'prompt': {
-                    /* v2.89.146 — 명시적 호출 감지("현빈아", "코다리야" 등) 시 corporate
+                    /* v2.89.146 — 명시적 호출 감지("펄스아", "코다리야" 등) 시 corporate
                        모드 force. 사용자가 사이드바 toggle 안 해도 명시적 호출은 항상
                        specialist dispatch 흐름으로 → 매출/키트 shortcut 발동. */
                     const txt = String(msg.value || '');
@@ -19290,7 +19293,7 @@ class SidebarChatProvider implements vscode.WebviewViewProvider {
 
         /* v2.89.156 — 다중 도메인 종합 명령은 multi-agent 로 보냄.
            "유튜브 + 매출 + 종합 보고서" 같이 두 영역 동시 요청이면 단일 도구 shortcut 이
-           무시하고 multi-agent dispatch (현빈 + 레오 둘 다) 가 잡도록 여기서 바로 false. */
+           무시하고 multi-agent dispatch (펄스 + 레오 둘 다) 가 잡도록 여기서 바로 false. */
         const lpEarly = p.toLowerCase();
         const hasYoutube = /유튜브|youtube|채널|구독|조회/.test(lpEarly);
         const hasRevenue = /매출|페이팔|paypal|수익|결제|매상/.test(lpEarly);
@@ -21096,7 +21099,7 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
            우선순위 높은 것부터 (코다리 같은 고유 닉네임이 일반어 "개발자"보다 강함). */
         const candidates: Array<{ patterns: RegExp[]; agentId: string; agentName: string }> = [
             { patterns: [/코다리[야아!,~ ]/, /코다리야/, /@developer\b/, /@코다리\b/], agentId: 'developer', agentName: '코다리' },
-            { patterns: [/현빈[아야!,~ ]/, /현빈아/, /@business\b/, /@현빈\b/], agentId: 'business', agentName: '현빈' },
+            { patterns: [/펄스[아야!,~ ]/, /펄스아/, /@business\b/, /@펄스\b/], agentId: 'business', agentName: '펄스' },
             { patterns: [/루나[야아!,~ ]/, /루나야/, /@editor\b/, /@루나\b/], agentId: 'editor', agentName: '루나' },
             { patterns: [/레오[야아!,~ ]/, /레오야/, /@youtube\b/, /@레오\b/], agentId: 'youtube', agentName: '레오' },
             { patterns: [/영숙[아야!,~ ]/, /영숙아/, /@secretary\b/, /@영숙\b/], agentId: 'secretary', agentName: '영숙' },
@@ -21120,7 +21123,7 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
         return null;
     }
 
-    /** v2.89.145 — 매출 shortcut. 명시적 현빈 호출 + 매출 키워드면 LLM 우회하고
+    /** v2.89.145 — 매출 shortcut. 명시적 펄스 호출 + 매출 키워드면 LLM 우회하고
      *  paypal_revenue.py 의 마크다운 리포트 + 한 줄 코멘트 직접 표시. 작은 LLM이
      *  prefetch 무시하고 README 읽으려 하는 버릇 차단.
      *
@@ -21135,7 +21138,7 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
         let cfg: any = {};
         try { cfg = JSON.parse(_safeReadText(ppJson) || '{}'); } catch { return null; }
         if (!cfg.CLIENT_ID || !cfg.CLIENT_SECRET) {
-            return `💼 현빈: 사장님, PayPal Client ID 또는 Secret 이 비어있어 매출을 가져올 수 없어요.
+            return `💼 펄스: 사장님, PayPal Client ID 또는 Secret 이 비어있어 매출을 가져올 수 없어요.
 
 📋 **해결 단계**:
 1. \`Cmd+Shift+P\` → \`AI Team: 외부 연결\`
@@ -21158,14 +21161,14 @@ ${catalog.map((c, i) => `${i + 1}. agent=${c.agentId} tool=${c.tool} — ${c.des
                 setTimeout(() => { try { p.kill(); } catch {} resolve({ exitCode: -1, output: out, stderr: err }); }, 25000);
             });
             if (r.exitCode !== 0 || !r.output) {
-                return `💼 현빈: PayPal 데이터 가져오기 실패. ${r.stderr.slice(-150) || ''}
+                return `💼 펄스: PayPal 데이터 가져오기 실패. ${r.stderr.slice(-150) || ''}
 
 📋 외부 연결 패널에서 Client ID/Secret 다시 확인 후 재시도.
 📊 평가: 대기 — 자격증명 확인 필요.
 📝 다음 단계: \`Cmd+Shift+P\` → \`AI Team: 외부 연결\` 에서 PayPal 카드 점검.
 `;
             }
-            const insight = `💼 현빈: 사장님, 실시간 PayPal 데이터 가져왔습니다. 즉시 분석 결과 보여드려요.\n\n`;
+            const insight = `💼 펄스: 사장님, 실시간 PayPal 데이터 가져왔습니다. 즉시 분석 결과 보여드려요.\n\n`;
             const footer = `\n\n📊 평가: 완료 — 실데이터 기반 분석 (LLM 우회, 환각 없음).\n📝 다음 단계: 위 "💡 다음 액션" 섹션 참고하시고, 더 깊이 분석 필요하면 매출 대시보드 (\`Cmd+Shift+P → 매출 대시보드\`) 에서 시각화 확인.\n`;
             return insight + r.output + footer;
         } catch (e: any) {

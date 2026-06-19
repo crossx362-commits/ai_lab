@@ -1,0 +1,72 @@
+{
+  "agent": "시그널",
+  "agent_slug": "signal",
+  "timestamp": "2026-06-19T13:58:16.967910+09:00",
+  "crypto": {
+    "fear_greed": {
+      "value": 14,
+      "label": "Extreme Fear",
+      "signal": "BUY"
+    },
+    "kimchi_premium": {
+      "value": 15.92,
+      "signal": "SELL"
+    },
+    "top_coins": [
+      {
+        "ticker": "KRW-BTC",
+        "score": 0,
+        "change": -0.98
+      },
+      {
+        "ticker": "KRW-ETH",
+        "score": 0,
+        "change": -1.51
+      },
+      {
+        "ticker": "KRW-DOGE",
+        "score": 0,
+        "change": -1.59
+      },
+      {
+        "ticker": "KRW-XRP",
+        "score": 0,
+        "change": -1.85
+      },
+      {
+        "ticker": "KRW-SOL",
+        "score": 0,
+        "change": -2.18
+      },
+      {
+        "ticker": "KRW-LINK",
+        "score": 0,
+        "change": -2.24
+      },
+      {
+        "ticker": "KRW-ADA",
+        "score": 0,
+        "change": -2.82
+      },
+      {
+        "ticker": "KRW-AVAX",
+        "score": 0,
+        "change": -4.56
+      }
+    ]
+  },
+  "stock": {
+    "indexes": {
+      "kospi": {
+        "value": 8891.21,
+        "change": -1.9
+      },
+      "kosdaq": {
+        "value": 949.1,
+        "change": -5.18
+      }
+    },
+    "sentiment": "BEARISH"
+  },
+  "ai_analysis": "Fear/Greed 14 BUY; kimchi 15.92% SELL; top coins BTC:0, ETH:0, DOGE:0; risk: kimchi premium high."
+}

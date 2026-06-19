@@ -93,7 +93,7 @@ class ProcessInfo:
 RULES = [
     ProcessRule("영숙 텔레그램", ("telegram_receiver.py", "run_youngsuk_daemon.py")),
     ProcessRule("트레이딩 팀 런처", ("start_trading_team.py",)),
-    ProcessRule("현빈 시장정보", ("crypto_market_intelligence.py",)),
+    ProcessRule("시그널 시장정보", ("market_signal.py", "market_pulse.py", "crypto_market_intelligence.py")),
     ProcessRule("데이브 트레이더", ("upbit_auto_trader.py", "run_trader_daemon.py dave")),
     ProcessRule("레오 트레이더", ("leo_aggressive_trader.py", "run_trader_daemon.py leo")),
     ProcessRule("프로세스 모니터", ("monitor_processes.py",)),

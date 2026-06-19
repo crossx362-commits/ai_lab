@@ -9,6 +9,15 @@ import platform
 import urllib.request
 import json
 
+CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
+def _subprocess_run(args, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", CREATE_NO_WINDOW)
+    return subprocess.run(args, **kwargs)
+
+
 # 환경변수 로드 최적화: 한 번만 로드
 _ENV_LOADED = False
 _TOKEN = None
@@ -91,13 +100,13 @@ Get-CimInstance Win32_Process |
   } |
   Select-Object -ExpandProperty ProcessId
 """
-            result = subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
-                                    capture_output=True, text=True, timeout=3)
+            result = _subprocess_run(["powershell", "-NoProfile", "-Command", cmd],
+                                     capture_output=True, text=True, timeout=3)
             if result.stdout.strip():
                 pids = [int(p.strip()) for p in result.stdout.strip().split() if p.strip().isdigit()]
         else:
-            result = subprocess.run(["pgrep", "-f", "telegram_receiver"],
-                                    capture_output=True, text=True, timeout=2)
+            result = _subprocess_run(["pgrep", "-f", "telegram_receiver"],
+                                     capture_output=True, text=True, timeout=2)
             if result.returncode == 0:
                 pids = [int(p.strip()) for p in result.stdout.strip().split() if p.strip().isdigit()]
     except:
@@ -114,10 +123,10 @@ def stop_bot() -> str:
     try:
         if platform.system() == "Windows":
             for pid in pids:
-                subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                               capture_output=True, timeout=2)
+                _subprocess_run(["taskkill", "/F", "/PID", str(pid)],
+                                capture_output=True, timeout=2)
         else:
-            subprocess.run(["kill"] + [str(p) for p in pids], timeout=2)
+            _subprocess_run(["kill"] + [str(p) for p in pids], timeout=2)
 
         return f"✅ 봇 종료 (PID: {','.join(map(str, pids))})"
     except Exception as e:

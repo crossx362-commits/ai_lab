@@ -1,4 +1,4 @@
-# Connect AI Lab
+﻿# Connect AI Lab
 
 AI agent automation and Petnna web app monorepo.
 
@@ -42,7 +42,7 @@ The active agent tools live under `projects/ai-team/skills/<agent>/tools/`.
 | --- | --- |
 | Orchestration | 예원 CEO: `yewon_dispatcher.py`, `upload_manager.py`, `skill_auditor.py` |
 | Telegram and scheduling | 영숙 비서: `telegram_receiver.py`, `calendar_manager.py`, `posting_scheduler.py` |
-| Trading | 현빈 market intelligence, 데이브 conservative trader, 레오 aggressive trader |
+| Trading | 펄스 market intelligence, 데이브 conservative trader, 레오 aggressive trader |
 | Development and design | 코다리 developer tools, 티모 UI/UX reviewer |
 | Infra and security | 케빈 Vercel/Supabase/PWA monitor, 경수 investigation/security tools |
 | Legal/tax | 로율 tax and legal simulation tools |

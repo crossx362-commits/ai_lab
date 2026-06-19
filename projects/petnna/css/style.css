@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     --color-bg-app: #f8fafc;
     --color-text-main: #0f172a;
     --color-bg-card: #ffffff;
@@ -782,7 +782,7 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 .petna-card:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; }
 .petna-card:active { transform: scale(0.97) !important; transition-duration: 0.1s !important; }
 
-/* ── 3. 산책 streak 뱃지 (Duolingo 스타일 — 현빈 연동) ─────── */
+/* ── 3. 산책 streak 뱃지 (Duolingo 스타일 — 펄스 연동) ─────── */
 .streak-badge {
     display: inline-flex;
     align-items: center;

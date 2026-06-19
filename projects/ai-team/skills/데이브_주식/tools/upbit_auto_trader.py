@@ -10,6 +10,7 @@ if hasattr(sys.stdout, "reconfigure"):
 # _shared 경로 추가
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env import load_env
@@ -31,31 +32,34 @@ BASE_TICKERS = [
     "KRW-DOGE", "KRW-ADA", "KRW-AVAX", "KRW-LINK",
 ]
 
+def _signal_intel_path():
+    signal_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "market_signal.json")
+    compat_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "market_pulse.json")
+    return signal_path if os.path.exists(signal_path) else compat_path
+
+
 def get_dynamic_tickers():
-    """현빈 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
+    """시그널 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
     import json
     tickers = BASE_TICKERS.copy()
 
     try:
-        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
+        intel_path = _signal_intel_path()
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 intel = json.load(f)
 
-            # 현빈 종목별 퀀트 점수 확인 (상위 8개)
-            if "coin_analysis" in intel:
-                scored = [(c["ticker"], c.get("score", 0)) for c in intel["coin_analysis"]]
-                scored.sort(key=lambda x: x[1], reverse=True)
-
-                for ticker, score in scored[:8]:
-                    if score >= 50:  # 50점 이상만
+            # 시그널 코인 정보 확인
+            crypto_data = intel.get("crypto", {})
+            if "top_coins" in crypto_data:
+                for coin in crypto_data["top_coins"][:8]:
+                    ticker = coin.get("ticker")
+                    score = coin.get("score", 0)
+                    if ticker and score >= 40:
                         tickers.append(ticker)
 
-                print(f"[Dave] 현빈 고득점: {', '.join([f'{t.replace('KRW-', '')}({s}점)' for t, s in scored[:3]])}")
-
-            # 중복 제거
             tickers = list(dict.fromkeys(tickers))
-            print(f"[Dave] 동적 종목: {len(tickers)}개 (기본 {len(BASE_TICKERS)} + 현빈 {len(tickers) - len(BASE_TICKERS)})")
+            print(f"[Dave] 동적 종목: {len(tickers)}개 (시그널 반영)")
     except Exception as e:
         print(f"[Dave] 동적 종목 로드 실패, 기본 종목 사용: {e}")
 
@@ -68,8 +72,7 @@ last_llm_time = {}
 LLM_COOLDOWN_SECONDS = 300  # 동일 종목에 대한 LLM 재분석은 최소 5분 쿨다운 적용
 last_report_time = 0
 REPORT_INTERVAL_SECONDS = 12 * 3600  # 12시간마다 현황 보고 (하루 2회)
-HYUNBIN_INTEL_MAX_AGE_SECONDS = int(os.getenv("HYUNBIN_INTEL_MAX_AGE_SECONDS", "60"))
-WORKSPACE_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
+PULSE_INTEL_MAX_AGE_SECONDS = int(os.getenv("SIGNAL_INTEL_MAX_AGE_SECONDS", os.getenv("PULSE_INTEL_MAX_AGE_SECONDS", "600")))
 COOLDOWN_STATE_PATH = os.path.join(WORKSPACE_ROOT, "output", "trading_logs", "dave_llm_cooldown.json")
 
 def safe_float(val, default=0.0):
@@ -250,13 +253,13 @@ def calculate_confluence_score(ticker: str) -> dict:
     except Exception as e:
         return {"ticker": ticker, "score": 0, "error": str(e)}
 
-def _hyunbin_intel_path():
-    return os.path.join(WORKSPACE_ROOT, "reports", "research", "crypto_market_intel.json")
+def _pulse_intel_path():
+    return _signal_intel_path()
 
 
-def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECONDS):
-    """거래 판단 직전 현빈 시장 조사가 낡았으면 단발 수집을 실행한다."""
-    intel_path = _hyunbin_intel_path()
+def _refresh_pulse_intel_if_stale(max_age_seconds=PULSE_INTEL_MAX_AGE_SECONDS):
+    """거래 판단 직전 시그널 시장 조사가 낡았으면 단발 수집을 실행한다."""
+    intel_path = _pulse_intel_path()
     now = time.time()
     age = None
     if os.path.exists(intel_path):
@@ -264,7 +267,7 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
         if age <= max_age_seconds:
             return
 
-    lock_path = os.path.join(os.path.dirname(intel_path), ".hyunbin_refresh.lock")
+    lock_path = os.path.join(os.path.dirname(intel_path), ".signal_refresh.lock")
     os.makedirs(os.path.dirname(intel_path), exist_ok=True)
 
     lock_fd = None
@@ -286,8 +289,8 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
             return
 
         age_text = "없음" if age is None else f"{age:.0f}s"
-        print(f"[Dave] 현빈 시장 조사 최신화 실행 (기존 age={age_text})")
-        script_path = os.path.join(AI_TEAM_ROOT, "skills", "현빈_전략가", "tools", "crypto_market_intelligence.py")
+        print(f"[Dave] 시그널 시장 조사 최신화 실행 (기존 age={age_text})")
+        script_path = os.path.join(AI_TEAM_ROOT, "skills", "시그널_분석가", "tools", "market_signal.py")
         result = subprocess.run(
             [sys.executable, script_path],
             cwd=AI_TEAM_ROOT,
@@ -299,11 +302,11 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
             env={**os.environ, "PYTHONUTF8": "1"},
         )
         if result.returncode != 0:
-            print(f"[Dave] 현빈 조사 실행 실패: {result.stderr.strip()}")
+            print(f"[Dave] 시그널 조사 실행 실패: {result.stderr.strip()}")
         else:
-            print("[Dave] 현빈 시장 조사 최신화 완료")
+            print("[Dave] 시그널 시장 조사 최신화 완료")
     except Exception as e:
-        print(f"[Dave] 현빈 조사 최신화 실패: {e}")
+        print(f"[Dave] 시그널 조사 최신화 실패: {e}")
     finally:
         if lock_fd is not None:
             try:
@@ -316,30 +319,31 @@ def _refresh_hyunbin_intel_if_stale(max_age_seconds=HYUNBIN_INTEL_MAX_AGE_SECOND
                 pass
 
 
-def load_hyunbin_intel(refresh=True):
-    """현빈의 시장 정보 로드"""
+def load_pulse_intel(refresh=True):
+    """시그널의 시장 정보 로드"""
     try:
         import json
         if refresh:
-            _refresh_hyunbin_intel_if_stale()
-        intel_path = _hyunbin_intel_path()
+            _refresh_pulse_intel_if_stale()
+        intel_path = _pulse_intel_path()
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 return json.load(f)
     except Exception as e:
-        print(f"[Dave] 현빈 정보 로드 실패: {e}")
+        print(f"[Dave] 시그널 정보 로드 실패: {e}")
     return None
 
 
 def run_auto_trade_cycle():
     print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 실시간 다중 코인 자동 매매 감시 ---")
 
-    # 현빈 정보 확인
-    hyunbin_intel = load_hyunbin_intel()
-    if hyunbin_intel:
-        fed = hyunbin_intel.get("fed_events", {})
-        if fed.get("risk_level") == "HIGH":
-            print(f"[Dave] 🚨 연준 고위험 구간: {fed.get('current_status')} - 신규 진입 금지")
+    # 펄스 정보 확인 (중요 시장 변화 체크)
+    pulse_intel = load_pulse_intel()
+    if pulse_intel:
+        crypto_data = pulse_intel.get("crypto", {})
+        fg = crypto_data.get("fear_greed", {})
+        if fg.get("signal") == "SELL":
+            print(f"[Dave] 🚨 극탐욕 구간 ({fg.get('value')}) - 신규 진입 신중")
 
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
@@ -397,16 +401,17 @@ def run_auto_trade_cycle():
             # SKILL 기반 포지션 관리
             coin = ticker.split("-")[1]
 
-            # 현빈 정보로 시장 상황 확인
-            hyunbin_intel = load_hyunbin_intel()
+            # 펄스 정보로 시장 상황 확인
+            pulse_intel = load_pulse_intel()
             emergency_exit = False
-            if hyunbin_intel:
-                kp = hyunbin_intel.get("kimchi_premium", {}).get("premium_pct", 0)
-                fg = hyunbin_intel.get("fear_greed_index", {}).get("value", 50)
+            if pulse_intel:
+                crypto_data = pulse_intel.get("crypto", {})
+                fg = crypto_data.get("fear_greed", {}).get("value", 50)
 
-                # 극단 상황: 김프 +15% 초과 or 공포탐욕 85 이상 → 긴급 청산 고려
-                if (kp > 15.0 or fg >= 85) and profit_ratio >= 0.01:  # +1% 이상 수익
-                    print(f"⚠️ [Dave] {coin} 시장 과열 (김프 {kp:.1f}%, 탐욕 {fg}) - 이익 실현 청산")
+                # 극단 탐욕 구간에서는 이익 포지션 청산을 고려한다.
+                # 김치프리미엄은 참고값으로만 사용하고 청산 필터로 쓰지 않는다.
+                if fg >= 85 and profit_ratio >= 0.01:  # +1% 이상 수익
+                    print(f"⚠️ [Dave] {coin} 시장 과열 (탐욕 {fg}) - 이익 실현 청산")
                     send(f"⚠️ [데이브] {coin} 과열 청산 {profit_ratio*100:+.1f}%")
                     upbit_analyzer.execute_sell(ticker, btc_balance)
                     emergency_exit = True
@@ -577,7 +582,7 @@ if __name__ == "__main__":
         TICKERS = get_dynamic_tickers()
         print(f"🤖 데이브 업비트 자동매매 시작: {len(TICKERS)}개 종목")
         print(f"   기본: {', '.join(t.replace('KRW-', '') for t in BASE_TICKERS[:4])}...")
-        print(f"   현빈: {', '.join(t.replace('KRW-', '') for t in [t for t in TICKERS if t not in BASE_TICKERS][:5])}...")
+        print(f"   시그널: {', '.join(t.replace('KRW-', '') for t in [t for t in TICKERS if t not in BASE_TICKERS][:5])}...")
         last_report_time = time.time() - REPORT_INTERVAL_SECONDS
         iteration = 0
 

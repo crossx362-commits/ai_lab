@@ -1,4 +1,4 @@
-# 🎉 Migration Complete - Repository Consolidation
+﻿# 🎉 Migration Complete - Repository Consolidation
 
 **완료 날짜**: 2026-06-18  
 **소요 시간**: ~2시간  
@@ -29,7 +29,7 @@
 #### Core Trading Bots (3)
 - ✅ `데이브_주식/tools/upbit_auto_trader.py` - 보수적 매매
 - ✅ `레오_트레이더/tools/leo_aggressive_trader.py` - 공격적 단타
-- ✅ `현빈_전략가/tools/crypto_market_intelligence.py` - 시장 인텔
+- ✅ `펄스_전략가/tools/crypto_market_intelligence.py` - 시장 인텔
 
 #### Telegram Bot (1)
 - ✅ `영숙_비서/tools/telegram_receiver.py` - 970 lines
@@ -112,7 +112,7 @@ with ProcessLock("dave"):
 ### Harness Check
 ```
 [OK] env: ✅ unified env loaded
-[WARN] runtime: youngsuk=down; hyunbin=51312; dave=down; leo=down
+[WARN] runtime: youngsuk=down; pulse=51312; dave=down; leo=down
 [OK] schedule: enabled 14/14, last_run 06/18 14:30
 [OK] trading: intel 06/18 14:38
 [OK] structure: core dirs present
@@ -122,7 +122,7 @@ with ProcessLock("dave"):
 
 ### Functional Tests
 - ✅ **데이브** (`--once` 모드): 정상 작동, 포지션 관리 정상
-- ✅ **현빈**: 실행 중 (PID 51312), 인텔 수집 정상
+- ✅ **펄스**: 실행 중 (PID 51312), 인텔 수집 정상
 - ✅ **check_holdings.py**: 보유 현황 조회 정상
 - ✅ **하네스**: 모든 검사 통과
 
@@ -203,7 +203,7 @@ result = ollama("prompt", task="blog")
 - [x] 16개 구 모듈 백업/삭제
 - [x] 하네스 전체 OK
 - [x] 데이브 봇 정상 작동
-- [x] 현빈 봇 실행 중
+- [x] 펄스 봇 실행 중
 - [x] check_holdings 정상
 - [x] 문서 완비
 

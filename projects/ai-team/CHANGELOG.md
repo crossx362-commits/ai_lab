@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 ## [2.0.0] - 2026-06-18
 
@@ -28,7 +28,7 @@ Complete repository consolidation and refactoring for 81% token reduction.
 
 #### Migrated Files (53 files)
 All agent tools and scripts now use unified modules:
-- Core trading bots (3): Dave, Leo, Hyunbin
+- Core trading bots (3): Dave, Leo, pulse
 - Telegram bot (1): Youngsuk (970 lines)
 - Support scripts (15): check_holdings, daily_balance_check, etc.
 - Agent tools (34): All tools under skills/*/tools/
@@ -105,7 +105,7 @@ from _shared.llm import ollama, gpt, gemini
 
 - ✅ Harness: All checks passing
 - ✅ Dave bot: --once mode working
-- ✅ Hyunbin bot: Running (PID 51312)
+- ✅ pulse bot: Running (PID 51312)
 - ✅ Youngsuk bot: Running (PID 41232)
 - ✅ check_holdings.py: Working correctly
 - ✅ Zero downtime migration

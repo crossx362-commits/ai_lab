@@ -71,11 +71,11 @@ AGENTS = {
         "optional_env": ["VERCEL_TEAM_ID", "BLOB_READ_WRITE_TOKEN", "CRON_SECRET"],
         "files": ["SKILL.md", "tools/vercel_manager.py", "tools/petnna_monitor.py", "tools/supabase_manager.py"],
     },
-    "현빈_전략가": {
-        "path": "projects/ai-team/skills/현빈_전략가",
+    "시그널_분석가": {
+        "path": "projects/ai-team/skills/시그널_분석가",
         "required_env": ["GEMINI_API_KEY"],
         "optional_env": ["YOUTUBE_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_CLIENT_SECRET"],
-        "files": ["SKILL.md", "tools/business_research.py", "tools/crypto_market_intelligence.py"],
+        "files": ["tools/market_signal.py"],
     },
     "로율_변호사": {
         "path": "projects/ai-team/skills/로율_변호사",

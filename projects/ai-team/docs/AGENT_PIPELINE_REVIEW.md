@@ -1,4 +1,4 @@
-# AI Lab 에이전트 파이프라인 기술 문서
+﻿# AI Lab 에이전트 파이프라인 기술 문서
 
 생성일: 2026-06-02 | 최종 수정: 2026-06-03  
 > 에이전트 역할·팀 구성·스케줄은 **[AI_TEAM_ROLES.md](./reports/AI_TEAM_ROLES.md)** 참조.  
@@ -79,7 +79,7 @@ YouTube 업로드는 OAuth 2.0 pickle 파일 사용.
 ### `load_env()` 미적용 파일
 - ✅ `_shared/telegram_notifier.py` — 이미 적용됨 (`_load_env` 내부 호출)
 - ✅ `코다리_개발자/tools/pack_apply.py` — 적용 완료
-- ✅ `현빈_전략가/tools/paypal_revenue.py` — 적용 완료
+- ✅ `펄스_전략가/tools/paypal_revenue.py` — 적용 완료
 
 ---
 

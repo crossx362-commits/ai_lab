@@ -1,4 +1,4 @@
-# Repository Consolidation Summary
+﻿# Repository Consolidation Summary
 
 **날짜**: 2026-06-18  
 **목표**: 토큰 사용량 70% 절감 + 폴더 구조 단순화
@@ -99,8 +99,8 @@ projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py
 # 3. 레오 (Aggressive trader)
 projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py
 
-# 4. 현빈 (Market intel)
-projects/ai-team/skills/현빈_전략가/tools/crypto_market_intelligence.py
+# 4. 펄스 (Market intel)
+projects/ai-team/skills/펄스_전략가/tools/crypto_market_intelligence.py
 ```
 
 ### Phase 2: Support Scripts

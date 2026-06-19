@@ -1,4 +1,4 @@
-
+﻿
 ## 2026-05-31 (2차 세션 — 에이전트 전원 참여)
 
 ### 구현 완료
@@ -15,7 +15,7 @@
 - insertHashtags() — 펫 종류(dog/cat/rabbit/hamster)·품종 기반 10-15개 자동 생성
 - 포스트 작성 액션바에 '#️⃣ 해시태그' 버튼 추가
 
-**[현빈+티모+코다리] P5 — Stripe 결제 연동 준비**
+**[펄스+티모+코다리] P5 — Stripe 결제 연동 준비**
 - 파일: js/freemium.js, js/templates/mypet.js, index.html
 - startStripeCheckout() — Payment Link 리다이렉트
 - checkPremiumFromUrl() — ?premium=activated 파라미터 처리

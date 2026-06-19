@@ -50,7 +50,7 @@ def run_check():
     # 2. 에이전트별 주요 메모리 파일 점검
     agents_to_check = {
         "루나 (리서치)": os.path.join(_root, "reports", "research", "luna_research.json"),
-        "현빈 (비즈니스)": os.path.join(_root, "reports", "research", "hyunbin_research.json"),
+        "펄스 (비즈니스)": os.path.join(_root, "reports", "research", "pulse_research.json"),
         "아린 (인스타)": os.path.join(_root, "reports", "research", "arin_research.json"),
     }
     

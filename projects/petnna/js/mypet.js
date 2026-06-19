@@ -1,4 +1,4 @@
-const PET_MBTI_SPEECHES = {
+﻿const PET_MBTI_SPEECHES = {
     "ENFP": "집사님! 우리 오늘 새로운 산책길 가볼까요? 너무 신나요! 🌟🐾",
     "ENFJ": "우리 집사님 오늘도 고생 많았어요! 제가 늘 곁에 있을게요 💖🐶",
     "ENTP": "집사님, 울타리 밖 세상은 어떤가요? 저기 간식 서랍 비밀번호가 뭐예요? 😼💡",
@@ -936,7 +936,7 @@ function renderMyPets() {
     if (typeof updateHarmonyWidget === 'function') updateHarmonyWidget();
     if (typeof updateRoomThemeByHarmony === 'function') updateRoomThemeByHarmony();
 
-    // ── 📊 현빈 패치: 산책 streak 배너 + 월간 리포트 카드 갱신 ──
+    // ── 📊 펄스 패치: 산책 streak 배너 + 월간 리포트 카드 갱신 ──
     if (typeof renderWalkStreakBanner === 'function') renderWalkStreakBanner();
     if (typeof renderMonthlyReport === 'function') renderMonthlyReport('monthly-report-card');
 }

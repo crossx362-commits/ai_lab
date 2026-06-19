@@ -1,4 +1,4 @@
-# AI Team Harness Migration Plan
+﻿# AI Team Harness Migration Plan
 
 Last updated: 2026-06-18
 
@@ -18,7 +18,7 @@ They are read or written by currently running agents.
 Moved to root `reports/research/`:
 
 - `crypto_market_intel.json`
-- `hyunbin_alert_state.json`
+- `pulse_alert_state.json`
 
 Removed from `projects/ai-team/reports/`:
 

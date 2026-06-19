@@ -510,10 +510,10 @@ def load_system_instruction():
 0~39: HOLD
 
 예외 규칙:
-- 김프 15%+ + 과열 → SELL
 - 가격↓ + OBV↑ → BUY 가능 (세력 매집)
 - EMA200 위 + 거래량↑ → BUY 우선
-- StochRSI > 80 → 신규 BUY 신중"""
+- StochRSI > 80 → 신규 BUY 신중
+- 김프는 참고값이며 단독 SELL/HOLD 또는 신규 진입 차단 근거로 쓰지 않는다."""
 
     return common + dave_specific
 

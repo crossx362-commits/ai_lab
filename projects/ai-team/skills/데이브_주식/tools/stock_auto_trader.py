@@ -41,29 +41,27 @@ BASE_STOCKS = []
 WORKSPACE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
 
 def get_dynamic_stocks():
-    """현빈 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
+    """펄스 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
     stocks = BASE_STOCKS.copy()
 
     try:
-        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "stock_market_intel.json")
+        intel_path = os.path.join(WORKSPACE_ROOT, "reports", "research", "market_pulse.json")
         if os.path.exists(intel_path):
             with open(intel_path, "r", encoding="utf-8") as f:
                 intel = json.load(f)
 
-            # 현빈 종목별 퀀트 점수 확인 (상위 5개)
-            if "stock_analysis" in intel:
-                scored = [(s["code"], s["name"], s.get("score", 0)) for s in intel["stock_analysis"]]
-                scored.sort(key=lambda x: x[2], reverse=True)
-
-                for code, name, score in scored[:5]:
-                    if score >= 50:  # 50점 이상만
+            # 펄스 주식 정보 확인
+            stock_data = intel.get("stock", {})
+            if "top_stocks" in stock_data:
+                for item in stock_data["top_stocks"][:5]:
+                    code = item.get("code")
+                    score = item.get("score", 0)
+                    if code and score >= 50:
                         stocks.append(code)
+                print(f"[Dave 주식] 펄스 고득점 종목 반영 완료")
 
-                print(f"[Dave 주식] 현빈 고득점: {', '.join([f'{n}({s}점)' for c, n, s in scored[:3]])}")
-
-            # 중복 제거
             stocks = list(dict.fromkeys(stocks))
-            print(f"[Dave 주식] 동적 종목: {len(stocks)}개 (기본 {len(BASE_STOCKS)} + 현빈 {len(stocks) - len(BASE_STOCKS)})")
+            print(f"[Dave 주식] 동적 종목: {len(stocks)}개")
     except Exception as e:
         print(f"[Dave 주식] 동적 종목 로드 실패, 기본 종목 사용: {e}")
 

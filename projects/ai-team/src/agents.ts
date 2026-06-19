@@ -1,4 +1,4 @@
-/* v2.89.64 — 에이전트 정의 모듈 분리.
+﻿/* v2.89.64 — 에이전트 정의 모듈 분리.
  *
  * AGENTS map은 회사 전체에서 가장 많이 참조되는 데이터 (페르소나·이름·이모지·전문성 정의).
  * 이전엔 extension.ts 안에 inline으로 있어서 25,000줄짜리 파일에 묻혀있었음. 분리 후:
@@ -65,13 +65,13 @@ export const AGENTS: Record<string, AgentDef> = {
   },
   business: {
     id: 'business',
-    name: '현빈',
+    name: '펄스',
     role: '비즈니스 전략가 · Head of Business',
     emoji: '💼',
     color: '#F5C518',
     specialty: '수익화 모델 설계, 가격 전략, ROI/KPI 설계, 비즈니스 의사결정, 광고·협찬 계약 판단 — 시장·경쟁 데이터 수집은 Researcher에게 위임, 콘텐츠 제작 제외',
     tagline: '수익화·가격·전략 의사결정을 같이 봅니다',
-    profileImage: '현빈.jpeg',
+    profileImage: '펄스.jpeg',
     councilDomains: ['business'],
   },
   secretary: {
@@ -101,7 +101,7 @@ export const AGENTS: Record<string, AgentDef> = {
     role: 'Trend & Data Researcher',
     emoji: '🔍',
     color: '#60A5FA',
-    specialty: '트렌드 데이터 수집·요약, 경쟁사 채널·제품 벤치마킹, 인용 자료 정리, 사실 확인 — 비즈니스 의사결정·전략 수립은 현빈에게 위임, 콘텐츠 제작 제외',
+    specialty: '트렌드 데이터 수집·요약, 경쟁사 채널·제품 벤치마킹, 인용 자료 정리, 사실 확인 — 비즈니스 의사결정·전략 수립은 펄스에게 위임, 콘텐츠 제작 제외',
     tagline: '트렌드와 데이터를 모아 사실 확인까지 끝냅니다',
     councilDomains: ['business'],
   },

@@ -15,17 +15,29 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 from _shared.env import load_env
 load_env()
 
+CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
+def _subprocess_run(args, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", CREATE_NO_WINDOW)
+    return subprocess.run(args, **kwargs)
+
 # 하드코딩 제거 - 자동 스캔 사용
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 from _shared.agent_registry import get_agents as _get_all_agents
 
 _all_agents = _get_all_agents()
-AGENTS = {info["name"]: os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", info["script"])
-          for info in _all_agents.values()}
+AGENTS = {}
+for info in _all_agents.values():
+    display_name = info["name"].split("_", 1)[0]
+    AGENTS[display_name] = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", info["script"])
 
 # 영어 별칭
 AGENT_ALIASES = {
-    "hyunbin": "현빈",
+    "signal": "시그널",
+    "pulse": "시그널",
+    "펄스": "시그널",
     "dave": "데이브",
     "leo": "레오",
     "youngsuk": "영숙",
@@ -33,7 +45,8 @@ AGENT_ALIASES = {
 
 MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
 AGENT_STOP_SLUGS = {
-    "현빈": "hyunbin",
+    "시그널": "signal",
+    "펄스": "signal",
     "데이브": "dave",
     "레오": "leo",
     "영숙": "youngsuk",
@@ -99,14 +112,14 @@ Get-CimInstance Win32_Process |
   }} |
   Select-Object -ExpandProperty ProcessId
 """
-            result = subprocess.run(
+            result = _subprocess_run(
                 ["powershell", "-NoProfile", "-Command", cmd],
                 capture_output=True, text=True, timeout=5
             )
             if result.stdout.strip():
                 pids = [int(pid) for pid in result.stdout.split() if pid.strip().isdigit()]
         else:  # macOS/Linux
-            result = subprocess.run(
+            result = _subprocess_run(
                 ["pgrep", "-f", script_filename],
                 capture_output=True, text=True
             )
@@ -132,10 +145,10 @@ def stop_agent(agent_name: str) -> str:
     try:
         if platform.system() == "Windows":
             for pid in pids:
-                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                _subprocess_run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
         else:
             for pid in pids:
-                subprocess.run(["kill", str(pid)])
+                _subprocess_run(["kill", str(pid)])
 
         return f"✅ {agent_name} 종료 완료 (PID: {', '.join(map(str, pids))})"
     except Exception as e:
@@ -155,22 +168,26 @@ def start_agent(agent_name: str) -> str:
     if pids:
         return f"⚠️ {agent_name} 이미 실행 중 (PID: {', '.join(map(str, pids))})"
 
-    script_path = os.path.join(PROJECT_ROOT, AGENTS[agent_name])
+    script_path = AGENTS[agent_name]
     if not os.path.exists(script_path):
         return f"❌ 스크립트 없음: {script_path}"
 
     try:
         if platform.system() == "Windows":
             # Windows에서 백그라운드로 시작
+            args = [script_path]
+            if agent_name == "시그널":
+                args.append("--daemon")
+
             if agent_name == "영숙":  # 텔레그램 봇은 pythonw로
                 process = subprocess.Popen(
-                    ["pythonw", script_path],
+                    ["pythonw", *args],
                     creationflags=subprocess.CREATE_NO_WINDOW,
                     env={**os.environ, "PYTHONUTF8": "1"}
                 )
             else:
                 process = subprocess.Popen(
-                    ["python", script_path],
+                    ["python", *args],
                     creationflags=subprocess.CREATE_NO_WINDOW,
                     env={**os.environ, "PYTHONUTF8": "1"}
                 )

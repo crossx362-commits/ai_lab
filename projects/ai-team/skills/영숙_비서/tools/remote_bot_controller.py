@@ -8,6 +8,15 @@ import subprocess
 import platform
 import shlex
 
+CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
+def _subprocess_run(args, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", CREATE_NO_WINDOW)
+    return subprocess.run(args, **kwargs)
+
+
 _here = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
 sys.path.insert(0, PROJECT_ROOT)
@@ -26,6 +35,8 @@ AI_TEAM_KEYWORDS = [
     "run_youngsuk_daemon.py",
     "bot_recovery_monitor.py",
     "start_telegram_bot",
+    "market_signal.py",
+    "market_pulse.py",
     "crypto_market_intelligence.py",
     "upbit_auto_trader.py",
     "leo_aggressive_trader.py",
@@ -34,6 +45,8 @@ AI_TEAM_KEYWORDS = [
     "run_trader_daemon.py",
 ]
 AGENT_STOP_KEYWORDS = [
+    "market_signal.py",
+    "market_pulse.py",
     "crypto_market_intelligence.py",
     "upbit_auto_trader.py",
     "leo_aggressive_trader.py",
@@ -47,7 +60,7 @@ MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
 
 def mark_local_manual_stop_all():
     os.makedirs(MANUAL_STOP_DIR, exist_ok=True)
-    flags = [".manual_stop", ".manual_stop_hyunbin", ".manual_stop_dave", ".manual_stop_leo"]
+    flags = [".manual_stop", ".manual_stop_signal", ".manual_stop_pulse", ".manual_stop_dave", ".manual_stop_leo"]
     for flag in flags:
         with open(os.path.join(MANUAL_STOP_DIR, flag), "w", encoding="utf-8") as f:
             f.write("# manual stop: direct user stop command\n")
@@ -77,7 +90,7 @@ def _ssh_macbook(command: str, timeout: int = 10):
         ssh_cmd.extend(["-i", MACBOOK_SSH_KEY])
     ssh_cmd.extend([MACBOOK_HOST, command])
     try:
-        return subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=timeout), None
+        return _subprocess_run(ssh_cmd, capture_output=True, text=True, timeout=timeout), None
     except Exception as e:
         return None, str(e)
 
@@ -95,7 +108,7 @@ Get-CimInstance Win32_Process |
   }} |
   Select-Object -ExpandProperty ProcessId
 """
-    result = subprocess.run(
+    result = _subprocess_run(
         ["powershell", "-NoProfile", "-Command", cmd],
         capture_output=True,
         text=True,
@@ -118,7 +131,7 @@ def check_bot_running(platform_name=None):
         if platform_name == "windows":
             return bool(_windows_pids_for_keywords(["telegram_receiver.py"]))
         else:  # macbook
-            result = subprocess.run(
+            result = _subprocess_run(
                 ["pgrep", "-f", "telegram_receiver.py"],
                 capture_output=True, text=True
             )
@@ -136,10 +149,10 @@ def stop_local_bot():
         if platform_name == "windows":
             pids = _windows_pids_for_keywords(["telegram_receiver.py"])
             for pid in pids:
-                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=3)
+                _subprocess_run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=3)
             return "✅ Windows 봇 종료 완료" if pids else "⚠️ Windows 봇 실행 중 아님"
         else:  # macbook
-            subprocess.run(["pkill", "-f", "telegram_receiver.py"])
+            _subprocess_run(["pkill", "-f", "telegram_receiver.py"])
             return "✅ MacBook 봇 종료 완료"
     except Exception as e:
         return f"❌ 봇 종료 실패: {e}"
@@ -198,7 +211,7 @@ def stop_remote_macbook_agents():
     patterns = " ".join(shlex.quote(k) for k in AGENT_STOP_KEYWORDS)
     remote_cmd = f"""
 mkdir -p "$HOME/ai_lab/projects/ai-team/scripts" 2>/dev/null || true
-for flag in .manual_stop .manual_stop_hyunbin .manual_stop_dave .manual_stop_leo; do
+for flag in .manual_stop .manual_stop_signal .manual_stop_pulse .manual_stop_dave .manual_stop_leo; do
   printf '%s\\n' '# manual stop: direct user stop command' '# Remove by explicit start/restart.' > "$HOME/ai_lab/projects/ai-team/scripts/$flag" 2>/dev/null || true
 done
 for pattern in {patterns}; do
@@ -228,7 +241,7 @@ def stop_local_ai_team_processes(skip_current=True):
     else:
         pids = []
         for keyword in AGENT_STOP_KEYWORDS:
-            result = subprocess.run(["pgrep", "-f", keyword], capture_output=True, text=True)
+            result = _subprocess_run(["pgrep", "-f", keyword], capture_output=True, text=True)
             if result.returncode == 0:
                 pids.extend(int(pid) for pid in result.stdout.split() if pid.isdigit())
 
@@ -239,9 +252,9 @@ def stop_local_ai_team_processes(skip_current=True):
             continue
         try:
             if platform.system() == "Windows":
-                subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=3)
+                _subprocess_run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, timeout=3)
             else:
-                subprocess.run(["kill", "-TERM", str(pid)], capture_output=True, timeout=3)
+                _subprocess_run(["kill", "-TERM", str(pid)], capture_output=True, timeout=3)
             killed.append(pid)
         except Exception:
             pass
@@ -276,7 +289,7 @@ def start_remote_macbook_bot():
             f"nohup python3 {remote_bot_path} > /dev/null 2>&1 &"
         ])
 
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=10)
+        result = _subprocess_run(ssh_cmd, capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
             return "✅ MacBook 봇 원격 시작 완료"
         else:
@@ -301,7 +314,7 @@ def get_bot_status():
                 ssh_cmd.extend(["-i", MACBOOK_SSH_KEY])
             ssh_cmd.extend([MACBOOK_HOST, "pgrep -f telegram_receiver.py"])
 
-            result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=5)
+            result = _subprocess_run(ssh_cmd, capture_output=True, text=True, timeout=5)
             remote_running = result.returncode == 0
             status += f"원격 MacBook: {'🟢 실행 중' if remote_running else '🔴 중지'}\n"
         except:

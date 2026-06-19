@@ -1,4 +1,4 @@
-# 📚 AI 팀 전체 학습 공지
+﻿# 📚 AI 팀 전체 학습 공지
 
 **발행일**: 2026-06-11  
 **대상**: AI 팀 12명 전체  
@@ -21,7 +21,7 @@
 | 케빈 (인프라) | 🟢 LOW | PWA 다크모드 테마 적용 시 참고 |
 | 경수 (수사관) | ⚪ REFERENCE | - |
 | 로율 (변호사) | ⚪ REFERENCE | - |
-| 현빈 (전략가) | 🟡 MEDIUM | MasterClass 비즈니스 전략 분석 |
+| 펄스 (전략가) | 🟡 MEDIUM | MasterClass 비즈니스 전략 분석 |
 | 영숙 (비서) | ⚪ REFERENCE | - |
 | 데이브 (주식) | ⚪ REFERENCE | - |
 
@@ -90,7 +90,7 @@ border-radius: 0px;
 2. 프리미엄 구독 모델 비즈니스 케이스 분석
 3. Dark UI가 전환률에 미치는 영향 리서치
 
-### 현빈 (전략가)
+### 펄스 (전략가)
 1. MasterClass vs Skillshare vs Coursera 경쟁사 분석
 2. 프리미엄 교육 플랫폼 시장 트렌드 리포트
 
@@ -123,7 +123,7 @@ border-radius: 0px;
 MasterClass 디자인 시스템이 공용 스킬로 추가되었습니다.
 
 [티모/코다리] 🔴 HIGH 우선순위로 학습 후 petnna 프로젝트에 적용
-[예원/현빈] 🟡 MEDIUM 우선순위로 각자 분야에 참고
+[예원/펄스] 🟡 MEDIUM 우선순위로 각자 분야에 참고
 
 상세 내용: skills/공용스킬/masterclass_design_system.md
 학습 가이드: skills/공용스킬/AGENT_LEARNING_NOTICE.md

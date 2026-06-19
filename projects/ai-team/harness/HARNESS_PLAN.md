@@ -1,4 +1,4 @@
-# Harness Simplification Plan
+﻿# Harness Simplification Plan
 
 ## Goal
 Reduce token usage by 70% through aggressive consolidation while maintaining all runtime functionality.
@@ -46,7 +46,7 @@ Reduce token usage by 70% through aggressive consolidation while maintaining all
 ## Phase 4: Skill Consolidation
 
 ### Trading
-- Keep: `upbit_auto_trader.py` (Dave), `leo_aggressive_trader.py` (Leo), `crypto_market_intelligence.py` (Hyunbin)
+- Keep: `upbit_auto_trader.py` (Dave), `leo_aggressive_trader.py` (Leo), `crypto_market_intelligence.py` (pulse)
 - Remove: `upbit_public.py` (merge into upbit_analyzer.py), duplicate analyzers
 
 ### Telegram
@@ -75,7 +75,7 @@ Reduce token usage by 70% through aggressive consolidation while maintaining all
 1. ✅ Read REPOSITORY_CLASSIFICATION
 2. Create consolidated _shared modules
 3. Update all imports to use new modules
-4. Test runtime (Youngsuk, Dave, Leo, Hyunbin)
+4. Test runtime (Youngsuk, Dave, Leo, pulse)
 5. Remove old _shared files
 6. Update CLAUDE.md
 7. Run `harness/check_all.py`
