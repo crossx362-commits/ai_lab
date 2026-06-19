@@ -16,7 +16,7 @@ ai_lab/
 │   │   │   ├── ollama_client.py
 │   │   │   ├── telegram_notifier.py
 │   │   │   ├── process_lock.py   # fcntl 파일 락 (중복 실행 방지)
-│   │   │   └── agent_status.py
+│   │   │   └── agent_registry.py
 │   │   ├── skills/               # 에이전트별 도구 (한국어 폴더명)
 │   │   │   ├── 예원_CEO/tools/   yewon_dispatcher.py, upload_manager.py
 │   │   │   ├── 영숙_비서/tools/  telegram_receiver.py (봇 + 감시 스레드)
@@ -315,8 +315,8 @@ projects/petnna/
 
 1. Create folder: `projects/ai-team/skills/<에이전트명>/`
 2. Add tools to: `projects/ai-team/skills/<에이전트명>/tools/*.py`
-3. Register in: `projects/ai-team/_shared/agent_status.py`
-4. Update: `projects/ai-team/AGENT_AUDIT_REPORT.md`
+3. Register in: `projects/ai-team/_shared/agent_registry.py`
+4. Update: `AGENTS.md`
 
 ### Process Management
 
@@ -408,8 +408,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ## 📚 Documentation
 
-- **Agent details**: `projects/ai-team/AGENT_AUDIT_REPORT.md`
+- **Agent details**: `AGENTS.md`
 - **AI model strategy**: `projects/ai-team/docs/AI_MODEL_STRATEGY.md`
-- **Security rules**: `docs/ENV_SECURITY_RULES.md`
+- **Security rules**: `docs/setup/ENV_SECURITY_RULES.md`
 - **Telegram bot**: `TELEGRAM_BOT_README.md`
 - **Petnna setup**: `projects/petnna/README.md`
