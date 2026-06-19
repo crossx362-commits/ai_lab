@@ -51,15 +51,16 @@ def scan_agents():
                 main_scripts = [max(py_files, key=lambda f: f.stat().st_size)]
 
         if main_scripts:
-            # 프로젝트 루트 기준 상대 경로
+            # 프로젝트 루트 기준 상대 경로 (항상 / 사용)
             relative_path = main_scripts[0].relative_to(PROJECT_ROOT / "projects" / "ai-team" / "skills")
+            script_path = str(relative_path).replace("\\", "/")  # Windows 경로 정규화
 
             # 영어 slug 생성 (폴더명 기반)
             slug = _generate_slug(agent_name)
 
             agents[slug] = {
                 "name": agent_name,
-                "script": str(relative_path),
+                "script": script_path,
                 "path": str(main_scripts[0]),
                 "type": _detect_agent_type(main_scripts[0].name)
             }
