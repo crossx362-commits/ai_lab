@@ -135,7 +135,10 @@ def _gemini(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
 
         with urllib.request.urlopen(req, timeout=60) as r:
             res = json.loads(r.read())
-        result = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+        parts = res["candidates"][0]["content"]["parts"]
+        # 2.5 Flash: parts[0]=thinking, parts[-1]=answer — 마지막 text part 사용
+        text_parts = [p["text"] for p in parts if "text" in p]
+        result = text_parts[-1].strip() if text_parts else ""
         print(f"  ✅ [Gemini] {len(result)} chars")
         return result
     except Exception as e:

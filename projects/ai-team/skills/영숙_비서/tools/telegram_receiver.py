@@ -339,7 +339,8 @@ def _tool_get_agent_status() -> str:
     try:
         import subprocess
         bots = {
-            "현빈": "crypto_market_intelligence",
+            "시그널": "market_signal",
+            "펄스": "market_pulse",
             "데이브": "upbit_auto_trader",
             "레오": "leo_aggressive_trader",
             "영숙": "telegram_receiver",
@@ -365,7 +366,7 @@ def _tool_web_search(query: str) -> str:
 
 _DATA_KEYWORDS = [
     "현황", "상태", "거래", "매매", "코인", "주식", "잔고", "수익",
-    "데이브", "레오", "현빈", "에이전트", "봇", "시장", "업비트",
+    "데이브", "레오", "시그널", "펄스", "현빈", "에이전트", "봇", "시장", "업비트",
 ]
 _SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷"]
 

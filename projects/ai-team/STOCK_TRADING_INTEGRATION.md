@@ -181,9 +181,10 @@ projects/ai-team/
 │   │   └── upbit_analyzer.py
 │   ├── 레오_트레이더/tools/
 │   │   └── leo_aggressive_trader.py # 코인 공격적 매매
-│   └── 펄스_전략가/tools/
-│       ├── crypto_market_intelligence.py  # 코인 시장 인텔
-│       └── stock_market_intelligence.py   # ✨ 주식 시장 인텔
+│   ├── 시그널_분석가/tools/
+│   │   └── market_signal.py        # 코인/주식 시장 인텔
+│   └── 펄스_애널리스트/tools/
+│       └── market_pulse.py         # 시장 흐름 요약
 ├── scripts/
 │   ├── start_trading_team.py     # 코인만
 │   └── start_trading_all.py      # ✨ 코인 + 주식 통합
