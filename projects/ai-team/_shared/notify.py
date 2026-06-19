@@ -63,10 +63,12 @@ _AGENTS = {
 def _find_pids(script_name: str) -> list[str]:
     """Find PIDs running given script (Windows only)."""
     import subprocess
+    # 파일명만 추출 (경로 제거)
+    script_file = script_name.split('/')[-1].lower()
     cmd = (
         "Get-CimInstance Win32_Process | "
         "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
-        f"$_.CommandLine.ToLower().Contains('{script_name.lower()}') }} | "
+        f"$_.CommandLine.ToLower().Contains('{script_file}') }} | "
         "Select-Object -ExpandProperty ProcessId"
     )
     try:
