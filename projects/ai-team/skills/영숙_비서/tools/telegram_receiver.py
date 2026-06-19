@@ -360,11 +360,69 @@ def _tool_web_search(query: str) -> str:
     return web_search(query)
 
 
+# 종목명 → 종목코드 매핑 (주요 종목)
+_STOCK_NAME_MAP = {
+    "삼성전자": "005930", "sk하이닉스": "000660", "하이닉스": "000660",
+    "lg에너지솔루션": "373220", "삼성바이오로직스": "207940",
+    "현대차": "005380", "현대자동차": "005380", "기아": "000270",
+    "셀트리온": "068270", "포스코홀딩스": "005490", "포스코": "005490",
+    "카카오": "035720", "네이버": "035420", "naver": "035420",
+    "lg화학": "051910", "삼성sdi": "006400", "sk이노베이션": "096770",
+    "한국전력": "015760", "kb금융": "105560", "신한지주": "055550",
+    "하나금융지주": "086790", "우리금융지주": "316140", "삼성물산": "028260",
+    "두산에너빌리티": "034020", "한화에어로스페이스": "012450",
+    "크래프톤": "259960", "엔씨소프트": "036570", "넷마블": "251270",
+    "카카오뱅크": "323410", "토스뱅크": "034020",
+}
+
+_STOCK_KEYWORDS = ["주가", "시세", "얼마", "주식가격", "현재가"]
 _DATA_KEYWORDS = [
     "현황", "상태", "거래", "매매", "코인", "주식", "잔고", "수익",
     "데이브", "레오", "시그널", "펄스", "현빈", "에이전트", "봇", "시장", "업비트",
 ]
-_SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷", "주가", "시세", "얼마"]
+_SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷"]
+
+
+def _extract_stock_code(text: str) -> str | None:
+    """텍스트에서 종목명을 찾아 종목코드 반환."""
+    t = "".join(text.lower().split())
+    for name, code in _STOCK_NAME_MAP.items():
+        if name.replace(" ", "") in t:
+            return code
+    # 6자리 숫자 코드가 직접 있으면 그대로 사용
+    m = re.search(r"\b(\d{6})\b", text)
+    return m.group(1) if m else None
+
+
+def _tool_get_stock_price(text: str) -> str:
+    """한국투자증권 API로 주가 조회."""
+    try:
+        import importlib.util
+        _kis_path = AI_TEAM_ROOT / "skills" / "데이브_주식" / "tools" / "kis_client.py"
+        _spec = importlib.util.spec_from_file_location("kis_client", _kis_path)
+        _mod = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        KISClient = _mod.KISClient
+        code = _extract_stock_code(text)
+        if not code:
+            return ""
+        client = KISClient()
+        result = client.get_current_price(code)
+        output = result.get("output", {})
+        name = output.get("hts_kor_isnm", code)
+        price = output.get("stck_prpr", "?")
+        change = output.get("prdy_vrss", "0")
+        pct = output.get("prdy_ctrt", "0")
+        sign = "▲" if output.get("prdy_vrss_sign") in ("1", "2") else "▼"
+        return f"{name} 현재가: {int(price):,}원 {sign}{int(change):,}원 ({pct}%)"
+    except Exception as exc:
+        log(f"[KIS] 주가 조회 실패: {exc}")
+        return ""
+
+
+def _needs_stock(text: str) -> bool:
+    c = "".join(text.lower().split())
+    return any(k in c for k in _STOCK_KEYWORDS) and _extract_stock_code(text) is not None
 
 
 def _needs_data(text: str) -> bool:
@@ -380,6 +438,10 @@ def _needs_search(text: str) -> bool:
 def _build_context(text: str) -> str:
     """메시지에 필요한 실시간 데이터를 수집해서 컨텍스트 문자열로 반환."""
     parts = []
+    if _needs_stock(text):
+        price_info = _tool_get_stock_price(text)
+        if price_info:
+            parts.append(price_info)
     if _needs_search(text):
         parts.append(_tool_web_search(text))
     if _needs_data(text):
@@ -393,7 +455,7 @@ def _call_llm(prompt: str, system: str) -> str | None:
     # 1) GPT
     try:
         from _shared.llm import gpt
-        result = gpt(prompt, system=system, max_tokens=500, temperature=0.7)
+        result = gpt(prompt, system=system, max_tokens=1024, temperature=0.7)
         if result and result.strip():
             log("[LLM] GPT 응답 성공")
             return result.strip()
@@ -403,7 +465,7 @@ def _call_llm(prompt: str, system: str) -> str | None:
     # 2) Gemini
     try:
         from _shared.llm import gemini
-        result = gemini(prompt, system=system, max_tokens=500, temperature=0.7)
+        result = gemini(prompt, system=system, max_tokens=1024, temperature=0.7)
         if result and result.strip():
             log("[LLM] Gemini 응답 성공")
             return result.strip()
