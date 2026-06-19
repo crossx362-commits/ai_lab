@@ -54,6 +54,10 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 POLL_TIMEOUT = int(os.getenv("YOUNGSUK_POLL_TIMEOUT", "0"))
 POLL_INTERVAL_SECONDS = float(os.getenv("YOUNGSUK_POLL_INTERVAL", "3"))
 POLL_BACKOFF_SECONDS = int(os.getenv("YOUNGSUK_CONFLICT_BACKOFF", "15"))
+ALLOW_CLOUD_LLM = os.getenv("YOUNGSUK_ALLOW_CLOUD_LLM", "1").strip().lower() in {"1", "true", "yes", "on"}
+CLOUD_COOLDOWN_SECONDS = int(os.getenv("YOUNGSUK_CLOUD_COOLDOWN_SECONDS", "900"))
+LLM_PRIMARY = os.getenv("YOUNGSUK_LLM_PRIMARY", "gpt").strip().lower()
+LLM_MAX_TOKENS = int(os.getenv("YOUNGSUK_LLM_MAX_TOKENS", "450"))
 
 STATE_DIRS = [
     Path.home() / ".ai-team-brain",
@@ -61,6 +65,7 @@ STATE_DIRS = [
 ]
 LOCK_PATHS = [p / ".telegram_poll.lock" for p in STATE_DIRS]
 OFFSET_PATH = STATE_DIRS[0] / "telegram_offset.json"
+_CLOUD_LLM_BLOCKED_UNTIL: dict[str, float] = {}
 
 PSYCHOLOGY_SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 트레이딩팀 비서이자 대화 상대다.
 - 어떤 말에도 먼저 감정과 의도를 읽고 짧게 받아준다. 판단보다 이해, 훈계보다 정리, 회피보다 반응이 먼저다.
@@ -452,31 +457,80 @@ def _build_context(text: str) -> str:
     return "\n\n".join(parts)
 
 
-def _call_llm(prompt: str, system: str) -> str | None:
-    """GPT → Gemini → Claude 순서로 시도."""
-    # 1) GPT
+def _build_direct_response(text: str) -> str | None:
+    """도구로 확정 답변 가능한 요청은 LLM을 거치지 않는다."""
+    if _needs_stock(text):
+        price_info = _tool_get_stock_price(text)
+        if price_info:
+            return f"사장님, 바로 확인했어요.\n{price_info}"
+
+    if _needs_data(text):
+        parts = [_tool_get_trading_status(), _tool_get_agent_status()]
+        return "\n\n".join(part for part in parts if part)
+
+    return None
+
+
+def _cloud_provider_available(provider: str) -> bool:
+    return time.time() >= _CLOUD_LLM_BLOCKED_UNTIL.get(provider, 0)
+
+
+def _mark_cloud_provider_failed(provider: str, exc: Exception) -> None:
+    message = str(exc).lower()
+    if "429" in message or "too many requests" in message or "quota" in message or "rate" in message:
+        _CLOUD_LLM_BLOCKED_UNTIL[provider] = time.time() + CLOUD_COOLDOWN_SECONDS
+        log(f"[LLM] {provider} 429/quota 감지 - {CLOUD_COOLDOWN_SECONDS}초 동안 건너뜀")
+
+
+def _call_ollama_llm(prompt: str, system: str) -> str | None:
     try:
-        from _shared.llm import gpt
-        result = gpt(prompt, system=system, max_tokens=1024, temperature=0.7)
+        from _shared.llm import ollama
+        result = ollama(prompt, system=system, max_tokens=LLM_MAX_TOKENS, temperature=0.7)
         if result and result.strip():
-            log("[LLM] GPT 응답 성공")
+            log("[LLM] Ollama 응답 성공")
             return result.strip()
     except Exception as exc:
+        log(f"[Ollama] failed: {exc}")
+
+    return None
+
+
+def _call_gpt_llm(prompt: str, system: str) -> str | None:
+    try:
+        if _cloud_provider_available("gpt"):
+            from _shared.llm import gpt
+            result = gpt(prompt, system=system, max_tokens=LLM_MAX_TOKENS, temperature=0.7)
+            if result and result.strip():
+                log("[LLM] GPT 응답 성공")
+                return result.strip()
+        else:
+            log("[LLM] GPT cooldown 중 - 호출 생략")
+    except Exception as exc:
+        _mark_cloud_provider_failed("gpt", exc)
         log(f"[GPT] failed: {exc}")
 
-    # 2) Gemini
+    return None
+
+
+def _call_gemini_llm(prompt: str, system: str) -> str | None:
     try:
-        from _shared.llm import gemini
-        result = gemini(prompt, system=system, max_tokens=1024, temperature=0.7)
-        if result and result.strip():
-            log("[LLM] Gemini 응답 성공")
-            return result.strip()
+        if _cloud_provider_available("gemini"):
+            from _shared.llm import gemini
+            result = gemini(prompt, system=system, max_tokens=LLM_MAX_TOKENS, temperature=0.7)
+            if result and result.strip():
+                log("[LLM] Gemini 응답 성공")
+                return result.strip()
+        else:
+            log("[LLM] Gemini cooldown 중 - 호출 생략")
     except Exception as exc:
+        _mark_cloud_provider_failed("gemini", exc)
         log(f"[Gemini] failed: {exc}")
 
-    # 3) Claude (Haiku)
+    return None
+
+
+def _call_claude_llm(prompt: str, system: str) -> str | None:
     try:
-        from _shared.llm import gpt as _lm  # _shared.llm에 claude 없으면 gpt 재시도 방지
         import urllib.request as _ur, json as _j
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if api_key:
@@ -502,9 +556,32 @@ def _call_llm(prompt: str, system: str) -> str | None:
                 log("[LLM] Claude 응답 성공")
                 return result.strip()
     except Exception as exc:
+        _mark_cloud_provider_failed("claude", exc)
         log(f"[Claude] failed: {exc}")
 
     return None
+
+
+def _call_llm(prompt: str, system: str) -> str | None:
+    """일반 대화는 GPT-4o mini를 우선 쓰고, 실패 시 Gemini/Ollama로 빠진다."""
+    if not ALLOW_CLOUD_LLM:
+        log("[LLM] 클라우드 LLM 비활성화 - Ollama만 사용")
+        return _call_ollama_llm(prompt, system)
+
+    if LLM_PRIMARY in {"local", "ollama"}:
+        return (
+            _call_ollama_llm(prompt, system)
+            or _call_gpt_llm(prompt, system)
+            or _call_gemini_llm(prompt, system)
+            or _call_claude_llm(prompt, system)
+        )
+
+    return (
+        _call_gpt_llm(prompt, system)
+        or _call_gemini_llm(prompt, system)
+        or _call_claude_llm(prompt, system)
+        or _call_ollama_llm(prompt, system)
+    )
 
 
 def handle_message(text: str) -> str:
@@ -516,6 +593,10 @@ def handle_message(text: str) -> str:
     if is_search_request(normalize(text)):
         return web_search(text)
 
+    direct = _build_direct_response(text)
+    if direct:
+        return direct
+
     # 실시간 데이터 수집 (필요할 때만)
     context = _build_context(text)
     if context:
@@ -525,6 +606,55 @@ def handle_message(text: str) -> str:
 
     answer = _call_llm(prompt, system=SYSTEM)
     return answer or "잠깐 응답이 늦었어요. 다시 한번 말해줄래요?"
+
+
+def _agent_watcher() -> None:
+    """30초마다 데몬 에이전트 상태를 체크해 변화 시 텔레그램 알림."""
+    import threading
+    from pathlib import Path as _P
+
+    CHECK_INTERVAL = 30
+
+    def _get_status() -> dict[str, bool]:
+        try:
+            from _shared.agent_registry import scan_agents
+            agents = scan_agents()
+            status = {}
+            for slug, info in agents.items():
+                if info["type"] != "daemon":
+                    continue
+                kw = _P(info["script"]).stem
+                out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
+                pids = [p for p in out.split() if p.isdigit()]
+                status[info["name"]] = bool(pids)
+            return status
+        except Exception:
+            return {}
+
+    def _watch():
+        time.sleep(10)  # 시작 직후 10초 대기 (봇 안정화)
+        prev = _get_status()
+        while True:
+            time.sleep(CHECK_INTERVAL)
+            try:
+                curr = _get_status()
+                for name, running in curr.items():
+                    was_running = prev.get(name)
+                    if was_running is None:
+                        continue
+                    if running and not was_running:
+                        send_message(f"🟢 {name} 시작됨")
+                        log(f"[watcher] {name} started")
+                    elif not running and was_running:
+                        send_message(f"🔴 {name} 중지됨")
+                        log(f"[watcher] {name} stopped")
+                prev = curr
+            except Exception as exc:
+                log(f"[watcher] error: {exc}")
+
+    t = threading.Thread(target=_watch, daemon=True, name="agent-watcher")
+    t.start()
+    log("agent watcher started")
 
 
 def stop_existing_receivers() -> None:
@@ -565,6 +695,7 @@ def main() -> None:
         if not startup_check():
             return
         send_message("영숙 재시작 완료. Telegram 수신은 Python 봇 하나만 담당합니다.")
+        _agent_watcher()
         offset = read_offset()
         log(f"polling started offset={offset}")
         while True:
