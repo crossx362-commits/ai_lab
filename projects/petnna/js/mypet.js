@@ -23,12 +23,22 @@ const ROOM_LAYOUTS = {
         id: 'living',
         label: '거실형',
         iconClass: 'fa-solid fa-house',
+        decorDensity: 'calm',
+        connectionStyle: 'subtle',
+        butlerClearance: 14,
+        petClearance: 8,
+        nodeSize: 4,
         toast: '거실형 방으로 바꿨어요. 차분하게 쉬는 느낌이에요 🏠'
     },
     circle: {
         id: 'circle',
         label: '교감형',
         iconClass: 'fa-solid fa-circle-nodes',
+        decorDensity: 'balanced',
+        connectionStyle: 'expressive',
+        butlerClearance: 12,
+        petClearance: 7,
+        nodeSize: 5,
         toast: '교감형 방으로 바꿨어요. 모두가 둥글게 이어져요 ✨'
     }
 };
@@ -46,6 +56,10 @@ function setActivePet(idx) {
 
 function normalizeRoomLayout(layout) {
     return ROOM_LAYOUTS[layout] ? layout : 'living';
+}
+
+function getRoomLayoutPreset(layout = 'living') {
+    return ROOM_LAYOUTS[normalizeRoomLayout(layout)];
 }
 
 function getActiveRoomLayout() {
@@ -228,22 +242,24 @@ function resolvePetStageCollisions(points, isMobile) {
     });
 }
 
-function createRoomConnection(svg, butlerPoint, petPoint, isActive, idx) {
+function createRoomConnection(svg, butlerPoint, petPoint, isActive, idx, layout = getActiveRoomLayout()) {
     const svgNs = 'http://www.w3.org/2000/svg';
+    const preset = getRoomLayoutPreset(layout);
     const dx = petPoint.x - butlerPoint.x;
     const dy = petPoint.y - butlerPoint.y;
     const length = Math.hypot(dx, dy) || 1;
     const unitX = dx / length;
     const unitY = dy / length;
     const start = {
-        x: butlerPoint.x + unitX * 11,
-        y: butlerPoint.y + unitY * 11
+        x: butlerPoint.x + unitX * preset.butlerClearance,
+        y: butlerPoint.y + unitY * preset.butlerClearance
     };
     const end = {
-        x: petPoint.x - unitX * 6,
-        y: petPoint.y - unitY * 6
+        x: petPoint.x - unitX * preset.petClearance,
+        y: petPoint.y - unitY * preset.petClearance
     };
-    const bend = (idx % 2 === 0 ? 1 : -1) * (isActive ? 7 : 4);
+    const bendBase = preset.connectionStyle === 'subtle' ? 3 : 5;
+    const bend = (idx % 2 === 0 ? 1 : -1) * (isActive ? bendBase + 1 : bendBase);
     const control = {
         x: (start.x + end.x) / 2 + (-unitY * bend),
         y: (start.y + end.y) / 2 + (unitX * bend) - 2
@@ -264,13 +280,22 @@ function createRoomConnection(svg, butlerPoint, petPoint, isActive, idx) {
     const nodeX = start.x * 0.48 + end.x * 0.52;
     const nodeY = start.y * 0.48 + end.y * 0.52;
     const node = document.createElementNS(svgNs, 'foreignObject');
-    node.setAttribute('x', (nodeX - 3).toFixed(2));
-    node.setAttribute('y', (nodeY - 3).toFixed(2));
-    node.setAttribute('width', '6');
-    node.setAttribute('height', '6');
+    node.setAttribute('x', (nodeX - preset.nodeSize / 2).toFixed(2));
+    node.setAttribute('y', (nodeY - preset.nodeSize / 2).toFixed(2));
+    node.setAttribute('width', String(preset.nodeSize));
+    node.setAttribute('height', String(preset.nodeSize));
     node.setAttribute('class', `room-connection-node ${isActive ? 'is-active' : 'is-muted'}`);
     node.innerHTML = '<div class="room-connection-node-inner"></div>';
     svg.appendChild(node);
+
+    return {
+        start,
+        end,
+        node: { x: nodeX, y: nodeY, size: preset.nodeSize },
+        butlerClearance: preset.butlerClearance,
+        petClearance: preset.petClearance,
+        nodeSize: preset.nodeSize
+    };
 }
 
 function renderPetStageList() {
@@ -303,7 +328,7 @@ function renderPetStageList() {
             const isActive = idx === activePetIndex;
             const { x: petX, y: petY } = positions[idx];
 
-            if (svg) createRoomConnection(svg, { x: butlerX, y: butlerY }, { x: petX, y: petY }, isActive, idx);
+            if (svg) createRoomConnection(svg, { x: butlerX, y: butlerY }, { x: petX, y: petY }, isActive, idx, layout);
 
             // 펫 컨테이너
             const wrapper = document.createElement('div');

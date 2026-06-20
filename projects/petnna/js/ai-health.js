@@ -1,5 +1,25 @@
 // ai-health.js — Gemini 2.5 Flash Vision 기반 10항목 건강 분석 + 음성 문진
 const AI_HEALTH_DISCLAIMER = "※ 이 분석은 참고용이며 의학적 진단이 아닙니다. 이상 소견 시 반드시 수의사와 상담하세요.";
+const AI_HEALTH_IMAGE_BUDGET = {
+    maxBase64Chars: 850000,
+    maxEdgePx: 1024,
+    jpegQuality: 0.72
+};
+if (typeof globalThis !== "undefined") {
+    globalThis.AI_HEALTH_IMAGE_BUDGET = AI_HEALTH_IMAGE_BUDGET;
+}
+
+function normalizeAiImagePayload(imageBase64) {
+    const normalized = String(imageBase64 || "");
+    if (!normalized) return { error: false, imageBase64: "" };
+    if (normalized.length > AI_HEALTH_IMAGE_BUDGET.maxBase64Chars) {
+        return {
+            error: true,
+            message: "이미지가 너무 커서 AI 분석 전에 줄여야 해요. 더 작은 사진으로 다시 시도해주세요."
+        };
+    }
+    return { error: false, imageBase64: normalized };
+}
 
 async function callPetnnaAiProxy(payload) {
     const enabled = (typeof isAiHealthEnabled === "function") ? isAiHealthEnabled() : false;
@@ -34,7 +54,11 @@ async function callPetnnaAiProxy(payload) {
 
 async function analyzeHealthFromPhoto(imageBase64, petName = "펫") {
     try {
-        const result = await callPetnnaAiProxy({ type: "photo", imageBase64, petName });
+        const imagePayload = normalizeAiImagePayload(imageBase64);
+        if (imagePayload.error) {
+            return { ...imagePayload, disclaimer: AI_HEALTH_DISCLAIMER };
+        }
+        const result = await callPetnnaAiProxy({ type: "photo", imageBase64: imagePayload.imageBase64, petName });
         result.disclaimer = AI_HEALTH_DISCLAIMER;
         result.petName = petName;
         result.analyzedAt = new Date().toISOString();
@@ -56,10 +80,41 @@ async function analyzeSymptomByVoice(transcript, petName = "펫") {
 }
 
 function imageFileToBase64(file) {
+    if (typeof document !== "undefined" && typeof Image !== "undefined" && file && file.type && file.type.startsWith("image/")) {
+        return resizeImageFileForAi(file);
+    }
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result.split(",")[1]);
         reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function resizeImageFileForAi(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                const maxEdge = AI_HEALTH_IMAGE_BUDGET.maxEdgePx;
+                const scale = Math.min(1, maxEdge / Math.max(img.width || maxEdge, img.height || maxEdge));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round((img.width || maxEdge) * scale));
+                canvas.height = Math.max(1, Math.round((img.height || maxEdge) * scale));
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const mimeType = file.type === "image/png" ? "image/jpeg" : (file.type || "image/jpeg");
+                const dataUrl = canvas.toDataURL(mimeType, AI_HEALTH_IMAGE_BUDGET.jpegQuality);
+                const base64 = dataUrl.split(",")[1] || "";
+                const normalized = normalizeAiImagePayload(base64);
+                if (normalized.error) reject(new Error(normalized.message));
+                else resolve(normalized.imageBase64);
+            };
+            img.src = reader.result;
+        };
         reader.readAsDataURL(file);
     });
 }

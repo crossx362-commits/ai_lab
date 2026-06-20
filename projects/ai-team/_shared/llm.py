@@ -14,6 +14,10 @@ def _env_bool(name: str, default: str = "1") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _cloud_llm_allowed() -> bool:
+    return _env_bool("AI_TEAM_ALLOW_CLOUD_LLM", "1")
+
+
 # ==================== OLLAMA (LOCAL, FREE) ====================
 
 def _ollama_endpoint() -> str:
@@ -86,6 +90,9 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
 
 def _gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
     """Call OpenAI GPT-4o-mini."""
+    if not _cloud_llm_allowed():
+        print("  ⏭️ [GPT] blocked by AI_TEAM_ALLOW_CLOUD_LLM=0")
+        return None
     api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
         return None
@@ -118,6 +125,9 @@ def _gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: flo
 
 def _gemini(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
     """Call Google Gemini 2.5 Flash."""
+    if not _cloud_llm_allowed():
+        print("  ⏭️ [Gemini] blocked by AI_TEAM_ALLOW_CLOUD_LLM=0")
+        return None
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key:
         return None
@@ -169,7 +179,7 @@ def text(
     Set AI_TEAM_LLM_PRIMARY=cloud only for explicit cloud-first runs.
     Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
-    cloud_allowed = _env_bool("AI_TEAM_ALLOW_CLOUD_LLM", "1")
+    cloud_allowed = _cloud_llm_allowed()
     primary = os.getenv("AI_TEAM_LLM_PRIMARY", "ollama").strip().lower()
 
     if lm_first or primary in {"local", "ollama"}:

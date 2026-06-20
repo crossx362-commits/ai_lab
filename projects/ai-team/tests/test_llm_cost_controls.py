@@ -48,6 +48,34 @@ class LlmCostControlTest(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(calls, ["ollama"])
 
+    def test_direct_cloud_aliases_obey_global_cost_gate(self):
+        module = load_module("shared_llm_alias_gate_test", ROOT / "_shared" / "llm.py")
+        old_allow = os.environ.get("AI_TEAM_ALLOW_CLOUD_LLM")
+        old_openai = os.environ.get("OPENAI_API_KEY")
+        old_gemini = os.environ.get("GEMINI_API_KEY")
+        os.environ["AI_TEAM_ALLOW_CLOUD_LLM"] = "0"
+        os.environ["OPENAI_API_KEY"] = "test-openai-key"
+        os.environ["GEMINI_API_KEY"] = "test-gemini-key"
+        try:
+            cloud_attempts = []
+            def blocked_urlopen(*args, **kwargs):
+                cloud_attempts.append(args[0])
+                raise AssertionError("cloud request should be blocked")
+            module.urllib.request.urlopen = blocked_urlopen
+            self.assertIsNone(module.gpt("hello"))
+            self.assertIsNone(module.gemini("hello"))
+            self.assertEqual(cloud_attempts, [])
+        finally:
+            for key, value in {
+                "AI_TEAM_ALLOW_CLOUD_LLM": old_allow,
+                "OPENAI_API_KEY": old_openai,
+                "GEMINI_API_KEY": old_gemini,
+            }.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
     def test_youngsuk_cloud_defaults_to_explicit_mode(self):
         source = (ROOT / "skills" / "영숙_비서" / "tools" / "telegram_receiver.py").read_text(encoding="utf-8")
         self.assertIn('YOUNGSUK_LLM_PRIMARY", "ollama"', source)

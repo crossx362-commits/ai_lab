@@ -30,6 +30,9 @@ function loadMypetContext() {
 const ctx = loadMypetContext();
 
 assert.strictEqual(ctx.getActiveRoomLayout(), 'living', 'new rooms should default to living room layout');
+assert.strictEqual(typeof ctx.getRoomLayoutPreset, 'function', 'room rendering should be driven by layout presets');
+assert.strictEqual(ctx.getRoomLayoutPreset('living').decorDensity, 'calm', 'living room should keep visual density calm');
+assert.strictEqual(ctx.getRoomLayoutPreset('living').connectionStyle, 'subtle', 'living room should use subtle connection lines');
 
 const circleSlots = ctx.getPetStageSlots(3, false, 'circle');
 const livingSlots = ctx.getPetStageSlots(3, false, 'living');
@@ -62,6 +65,22 @@ function assertRoomHasNoOverlaps(layout, isMobile, count) {
         [1, 2, 3, 4, 6, 8, 10, 12].forEach((count) => assertRoomHasNoOverlaps(layout, isMobile, count));
     });
 });
+
+function makeSvgRecorder() {
+    const children = [];
+    return {
+        children,
+        appendChild(node) { children.push(node); }
+    };
+}
+
+const svgRecorder = makeSvgRecorder();
+const connectionMeta = ctx.createRoomConnection(svgRecorder, { x: 50, y: 52 }, { x: 30, y: 72 }, true, 0, 'living');
+assert.ok(connectionMeta, 'connection renderer should return geometry metadata');
+assert.ok(connectionMeta.butlerClearance >= 13, 'connection should not start inside the butler icon');
+assert.ok(connectionMeta.petClearance >= 8, 'connection should not end inside the pet icon');
+assert.ok(connectionMeta.nodeSize <= 4, 'living room connection icon should stay visually quiet');
+assert.strictEqual(svgRecorder.children.length, 3, 'connection should still render glow, line, and one node');
 
 ctx.setRoomLayoutForActivePet('circle');
 assert.strictEqual(ctx.pets[0].roomLayout, 'circle', 'selected layout should persist on the active pet');
