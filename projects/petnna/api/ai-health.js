@@ -10,6 +10,8 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+const MAX_IMAGE_BASE64_CHARS = Number(process.env.AI_HEALTH_MAX_IMAGE_BASE64_CHARS || 900000);
+
 function buildPrompt(body) {
   const petName = body.petName || "펫";
 
@@ -103,6 +105,12 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+    if (body.imageBase64 && body.imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
+      return sendJson(res, 413, {
+        error: true,
+        message: "이미지가 너무 큽니다. AI 사용량 절약을 위해 더 작은 이미지로 다시 시도해주세요."
+      });
+    }
     const prompt = buildPrompt(body);
     if (!prompt) {
       return sendJson(res, 400, { error: true, message: "지원하지 않는 AI 요청입니다." });

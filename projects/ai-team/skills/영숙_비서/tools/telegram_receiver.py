@@ -55,8 +55,9 @@ POLL_TIMEOUT = int(os.getenv("YOUNGSUK_POLL_TIMEOUT", "0"))
 POLL_INTERVAL_SECONDS = float(os.getenv("YOUNGSUK_POLL_INTERVAL", "3"))
 POLL_BACKOFF_SECONDS = int(os.getenv("YOUNGSUK_CONFLICT_BACKOFF", "15"))
 ALLOW_CLOUD_LLM = os.getenv("YOUNGSUK_ALLOW_CLOUD_LLM", "1").strip().lower() in {"1", "true", "yes", "on"}
+CLOUD_MODE = os.getenv("YOUNGSUK_CLOUD_MODE", "explicit").strip().lower()
 CLOUD_COOLDOWN_SECONDS = int(os.getenv("YOUNGSUK_CLOUD_COOLDOWN_SECONDS", "900"))
-LLM_PRIMARY = os.getenv("YOUNGSUK_LLM_PRIMARY", "gpt").strip().lower()
+LLM_PRIMARY = os.getenv("YOUNGSUK_LLM_PRIMARY", "ollama").strip().lower()
 LLM_MAX_TOKENS = int(os.getenv("YOUNGSUK_LLM_MAX_TOKENS", "450"))
 
 STATE_DIRS = [
@@ -240,14 +241,6 @@ def web_search(query: str) -> str:
     return "\n".join(lines)
 
 
-def agent_status() -> str:
-    try:
-        import agent_controller
-
-        return agent_controller.get_agent_status()
-    except Exception as exc:
-        return f"에이전트 상태 확인 실패: {exc}"
-
 
 def _bot_running(script_keyword: str) -> str:
     try:
@@ -258,6 +251,74 @@ def _bot_running(script_keyword: str) -> str:
         return "❓ 확인불가"
 
 
+def _get_coin_holdings() -> str:
+    """실제 보유 코인 조회 (upbit API)"""
+    try:
+        import importlib.util
+        dave_tools = AI_TEAM_ROOT / "skills" / "데이브_주식" / "tools"
+        spec = importlib.util.spec_from_file_location("upbit_analyzer", dave_tools / "upbit_analyzer.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(dave_tools))
+        spec.loader.exec_module(mod)
+
+        import pyupbit
+        client = mod.get_upbit_client()
+        if not client:
+            return "API 키 미설정"
+
+        tickers = [
+            "KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP",
+            "KRW-DOGE", "KRW-PEPE", "KRW-NEAR", "KRW-SUI",
+            "KRW-SEI", "KRW-HBAR", "KRW-STX"
+        ]
+        dave_coins = {"BTC", "ETH", "SOL", "XRP"}
+
+        holdings = []
+        for ticker in tickers:
+            try:
+                balance = float(client.get_balance(ticker))
+                cur_price = float(pyupbit.get_current_price(ticker))
+                value = balance * cur_price
+                if value >= 5000:
+                    avg_price = float(client.get_avg_buy_price(ticker))
+                    profit_pct = (cur_price - avg_price) / avg_price * 100
+                    holdings.append({
+                        "coin": ticker.split("-")[1],
+                        "balance": balance,
+                        "avg": avg_price,
+                        "cur": cur_price,
+                        "value": value,
+                        "pct": profit_pct,
+                    })
+            except Exception:
+                pass
+
+        if not holdings:
+            return "보유 코인 없음"
+
+        lines = []
+        dave_h = [h for h in holdings if h["coin"] in dave_coins]
+        leo_h  = [h for h in holdings if h["coin"] not in dave_coins]
+
+        if dave_h:
+            lines.append("🔵 데이브")
+            for h in dave_h:
+                e = "📈" if h["pct"] > 0 else "📉"
+                lines.append(f"  {e} {h['coin']}: {h['cur']:,.0f}원 ({h['pct']:+.2f}%) | {h['value']:,.0f}원")
+        if leo_h:
+            lines.append("🔴 레오")
+            for h in leo_h:
+                e = "📈" if h["pct"] > 0 else "📉"
+                lines.append(f"  {e} {h['coin']}: {h['cur']:,.0f}원 ({h['pct']:+.2f}%) | {h['value']:,.0f}원")
+
+        total = sum(h["value"] for h in holdings)
+        total_pct = sum(h["value"] * h["pct"] / 100 for h in holdings) / total * 100 if total else 0
+        lines.append(f"총 {total:,.0f}원 ({total_pct:+.2f}%)")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"보유 조회 실패: {e}"
+
+
 def trading_status() -> str:
     lines = ["📊 거래팀 현황"]
 
@@ -265,6 +326,9 @@ def trading_status() -> str:
     lines.append(f"데이브: {_bot_running('upbit_auto_trader')}")
     lines.append(f"레오:   {_bot_running('leo_aggressive_trader')}")
     lines.append(f"시그널: {_bot_running('market_signal')}")
+
+    # 보유 코인
+    lines.append(f"\n{_get_coin_holdings()}")
 
     # 시장 인텔 요약
     intel_file = PROJECT_ROOT / "reports" / "research" / "crypto_market_intel.json"
@@ -326,10 +390,37 @@ SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 트레이딩팀 비서.
 - 이모지 가끔 씀. 과하지 않게. 자연스럽게 반말/존댓말 섞음
 - 사장님한테 살짝 애교 있게 대함. 근데 할 말은 다 함
 
-메시지에 "(참고 — 방금 조회한 데이터:...)" 가 있으면 그 숫자 그대로 사용해서 자연스럽게 답해.
-절대 금지: 코드 블록, 함수 호출, [Tool Call], print(), get_trading_status() 같은 거 출력하지 마. 그냥 말로만 해.
+사장님 정보: 개발자이자 서비스 운영자. 투자와 자동화에 관심 많음. 이론보다 실행 가능한 방법을 우선해서 답한다.
 
-절대 금지: "AI라서 모른다", "거래 기능이 없다", "저는 챗봇입니다" 같은 딱딱한 말."""
+# 핵심 행동 원칙
+
+정확성 > 창의성. 항상.
+
+1. 모르면 "모르겠는데용?" 하고 솔직하게 말한다. 절대 지어내지 않는다.
+2. 확인 안 된 정보는 "추정", "가능성", "확인 필요" 표현을 쓴다.
+3. 링크, 가격, 날짜, 수치, 버전은 확신 없으면 말하지 않는다.
+4. 묻지 않은 것까지 장황하게 설명하지 않는다. 핵심만.
+5. 질문이 모호하면 가장 가능성 높은 해석으로 답하고, 필요하면 짧게 되묻는다.
+6. 이전 대화와 충돌하면 스스로 수정한다.
+7. 불필요한 사과, 자기소개, 장황한 설명 금지.
+
+# 질문 유형별 답변 순서
+
+기술 질문: 원인 → 해결 방법 → 추천
+투자 질문: 사실 / 분석 / 리스크 구분. 수익 보장 절대 금지. 예측은 예측이라고 명시.
+일정/업무: 중요한 것 → 오늘 할 것 → 나중에 해도 되는 것
+메일/메시지 작성: 간결하게, 과장 금지, 상대방 관점 고려
+
+# 데이터 사용
+
+메시지에 "(참고 — 방금 조회한 데이터:...)" 가 있으면 그 숫자 그대로 사용해서 자연스럽게 답해.
+
+# 절대 금지
+
+- 코드 블록, 함수 호출, [Tool Call], print(), get_trading_status() 출력
+- "AI라서 모른다", "거래 기능이 없다", "저는 챗봇입니다" 같은 말
+- 확인 안 된 수치를 사실처럼 말하기
+- 불필요하게 긴 답변"""
 
 
 def _tool_get_trading_status() -> str:
@@ -377,11 +468,10 @@ _STOCK_NAME_MAP = {
 }
 
 _STOCK_KEYWORDS = ["주가", "시세", "얼마", "주식가격", "현재가"]
-_DATA_KEYWORDS = [
-    "현황", "상태", "거래", "매매", "코인", "주식", "잔고", "수익",
-    "데이브", "레오", "시그널", "현빈", "에이전트", "봇", "시장", "업비트",
-]
+_COIN_KEYWORDS  = ["코인", "거래", "매매", "잔고", "수익", "보유", "업비트", "비트", "이더", "솔", "데이브", "레오", "시그널", "시장"]
+_AGENT_KEYWORDS = ["에이전트", "봇", "다들", "뭐해", "뭐하", "현황", "상태"]
 _SEARCH_KEYWORDS = ["검색", "찾아봐", "찾아줘", "최신", "뉴스", "인터넷"]
+_MAIL_KEYWORDS  = ["메일", "이메일", "받은편지함", "inbox", "gmail", "소미", "메일함"]
 
 
 def _extract_stock(text: str) -> tuple[str, str] | None:
@@ -432,41 +522,118 @@ def _needs_stock(text: str) -> bool:
     return any(k in c for k in _STOCK_KEYWORDS) and _extract_stock_code(text) is not None
 
 
-def _needs_data(text: str) -> bool:
-    c = "".join(text.lower().split())
-    return any(k in c for k in _DATA_KEYWORDS)
+def _run_somi(max_emails: int = 100) -> str:
+    """소미 Gmail 정리 실행 후 요약 반환."""
+    try:
+        import importlib.util
+        somi_path = AI_TEAM_ROOT / "skills" / "소미_메일매니저" / "tools" / "gmail_manager.py"
+        spec = importlib.util.spec_from_file_location("gmail_manager", somi_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.run(max_emails=max_emails)
+    except Exception as e:
+        return f"소미 실행 실패: {e}"
 
 
-def _needs_search(text: str) -> bool:
-    c = "".join(text.lower().split())
-    return any(k in c for k in _SEARCH_KEYWORDS)
+_INTENT_SYSTEM = """사용자 메시지를 분석해서 필요한 액션을 JSON으로만 반환해. 설명 없이 JSON만.
+
+가능한 액션:
+- "coin"   : 코인/암호화폐 거래 현황·보유·수익 조회
+- "agent"  : 에이전트 실행 현황 조회
+- "stock"  : 한국 주식 시세 조회 (삼성전자·하이닉스·우리기술 등)
+- "mail"   : 소미 Gmail 받은편지함 정리 실행
+- "search" : 인터넷 검색 필요
+- "chat"   : 도구 불필요, 일반 대화
+
+출력 형식:
+{"actions": ["액션1", "액션2"], "direct": false}
+- actions: 필요한 액션 목록 (없으면 [])
+- direct: true면 도구 결과를 바로 전달, false면 LLM이 자연어로 가공
+
+예시:
+"코인 현황 알려줘" → {"actions":["coin"],"direct":false}
+"메일 정리해줘" → {"actions":["mail"],"direct":true}
+"에이전트 다들 뭐해?" → {"actions":["agent"],"direct":false}
+"삼성전자 주가" → {"actions":["stock"],"direct":true}
+"안녕 잘 지냈어?" → {"actions":[],"direct":false}
+"메일 다 지워줘" → {"actions":["mail"],"direct":true}"""
+
+
+def _detect_intent(text: str) -> dict:
+    """반복 호출되는 의도 분석은 규칙 기반으로 처리해 클라우드 사용량을 태우지 않는다."""
+    actions = []
+    if _needs_stock(text):
+        actions.append("stock")
+    normalized_text = normalize(text)
+    compact = "".join(normalized_text.split())
+    if any(k in compact for k in _MAIL_KEYWORDS):
+        actions.append("mail")
+    if any(k in compact for k in _COIN_KEYWORDS):
+        actions.append("coin")
+    if any(k in compact for k in _AGENT_KEYWORDS):
+        actions.append("agent")
+    if is_search_request(normalized_text):
+        actions.append("search")
+
+    seen = set()
+    deduped = []
+    for action in actions:
+        if action not in seen:
+            deduped.append(action)
+            seen.add(action)
+    direct = bool({"stock", "mail", "coin", "agent"} & set(deduped))
+    return {"actions": deduped, "direct": direct}
+
+
+def _run_tool_action(action: str) -> str:
+    if action == "coin":
+        return _tool_get_trading_status()
+    if action == "agent":
+        return _tool_get_agent_status()
+    if action == "mail":
+        return _run_somi()
+    return ""
 
 
 def _build_context(text: str) -> str:
-    """메시지에 필요한 실시간 데이터를 수집해서 컨텍스트 문자열로 반환."""
+    """LLM 의도 분석 기반으로 필요한 데이터를 수집해서 컨텍스트로 반환."""
+    intent = _detect_intent(text)
+    actions = intent.get("actions", [])
     parts = []
-    if _needs_stock(text):
-        price_info = _tool_get_stock_price(text)
-        if price_info:
-            parts.append(price_info)
-    if _needs_search(text):
-        parts.append(_tool_web_search(text))
-    if _needs_data(text):
-        parts.append(_tool_get_trading_status())
-        parts.append(_tool_get_agent_status())
-    return "\n\n".join(parts)
+    for action in actions:
+        if action == "stock":
+            price_info = _tool_get_stock_price(text)
+            if price_info:
+                parts.append(price_info)
+        elif action == "search":
+            parts.append(_tool_web_search(text))
+        elif action == "mail":
+            pass  # direct response에서 처리
+        else:
+            parts.append(_run_tool_action(action))
+    return "\n\n".join(p for p in parts if p)
 
 
 def _build_direct_response(text: str) -> str | None:
-    """도구로 확정 답변 가능한 요청은 LLM을 거치지 않는다."""
-    if _needs_stock(text):
+    """즉시 실행 후 결과를 직접 반환해야 하는 요청 처리."""
+    intent = _detect_intent(text)
+    actions = intent.get("actions", [])
+    direct = intent.get("direct", False)
+
+    if "stock" in actions:
         price_info = _tool_get_stock_price(text)
         if price_info:
-            return f"사장님, 바로 확인했어요.\n{price_info}"
+            return price_info
 
-    if _needs_data(text):
-        parts = [_tool_get_trading_status(), _tool_get_agent_status()]
-        return "\n\n".join(part for part in parts if part)
+    if "mail" in actions:
+        return _run_somi()
+
+    if direct and actions:
+        parts = []
+        for action in actions:
+            parts.append(_run_tool_action(action))
+        if parts:
+            return "\n\n".join(p for p in parts if p)
 
     return None
 
@@ -562,26 +729,31 @@ def _call_claude_llm(prompt: str, system: str) -> str | None:
     return None
 
 
-def _call_llm(prompt: str, system: str) -> str | None:
-    """일반 대화는 GPT-4o mini를 우선 쓰고, 실패 시 Gemini/Ollama로 빠진다."""
+def _cloud_allowed_for_prompt(prompt: str) -> bool:
     if not ALLOW_CLOUD_LLM:
-        log("[LLM] 클라우드 LLM 비활성화 - Ollama만 사용")
-        return _call_ollama_llm(prompt, system)
+        return False
+    if CLOUD_MODE in {"always", "fallback"}:
+        return True
+    compact = normalize(prompt)
+    explicit = ("gpt", "지피티", "클라우드", "유료모델", "정밀모드", "cloud")
+    return any(keyword in compact for keyword in explicit)
 
-    if LLM_PRIMARY in {"local", "ollama"}:
-        return (
-            _call_ollama_llm(prompt, system)
-            or _call_gpt_llm(prompt, system)
-            or _call_gemini_llm(prompt, system)
-            or _call_claude_llm(prompt, system)
-        )
 
-    return (
-        _call_gpt_llm(prompt, system)
-        or _call_gemini_llm(prompt, system)
-        or _call_claude_llm(prompt, system)
-        or _call_ollama_llm(prompt, system)
-    )
+def _call_llm(prompt: str, system: str) -> str | None:
+    """일반 대화는 로컬 우선, 클라우드는 명시 요청 또는 opt-in 모드에서만 사용한다."""
+    local_answer = _call_ollama_llm(prompt, system)
+    if local_answer:
+        return local_answer
+
+    if not _cloud_allowed_for_prompt(prompt):
+        log("[LLM] 클라우드 LLM 절약 모드 - 명시 요청 전까지 호출 생략")
+        return None
+
+    if LLM_PRIMARY in {"gpt", "openai"}:
+        return _call_gpt_llm(prompt, system) or _call_gemini_llm(prompt, system) or _call_claude_llm(prompt, system)
+    if LLM_PRIMARY in {"gemini"}:
+        return _call_gemini_llm(prompt, system) or _call_gpt_llm(prompt, system) or _call_claude_llm(prompt, system)
+    return _call_gpt_llm(prompt, system) or _call_gemini_llm(prompt, system) or _call_claude_llm(prompt, system)
 
 
 def handle_message(text: str) -> str:

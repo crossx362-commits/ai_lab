@@ -4,25 +4,17 @@
 """
 import os
 import sys
-import datetime
+import json
 import pandas as pd
 import numpy as np
 
 _here = os.path.dirname(os.path.abspath(__file__))
 # projects/ai-team/skills/데이브_주식/tools -> projects/ai-team/
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
-PROJECT_ROOT = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env import load_env
 from _shared.notify import send
-
-import json
-import time
-
-# 노션 업로드 주기 제어 (하루 2회)
-last_notion_upload_time = 0
-NOTION_UPLOAD_INTERVAL_SECONDS = 12 * 3600  # 12시간마다 (하루 2회)
 
 
 try:
@@ -50,6 +42,9 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 load_env()
+
+DAVE_ALLOW_CLOUD_LLM = os.getenv("DAVE_ALLOW_CLOUD_LLM", "0").strip().lower() in {"1", "true", "yes", "on"}
+DAVE_ALLOW_GEMINI_FALLBACK = os.getenv("DAVE_ALLOW_GEMINI_FALLBACK", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 try:
     import pyupbit
@@ -399,13 +394,11 @@ class TradeDecision:
     decision: str = Field(description="최종 매매 결정. 반드시 'BUY', 'SELL', 'HOLD' 중 하나여야 합니다.")
     percentage: int = Field(description="매수/매도할 자산 비중 (0~100 %)")
     reason: str = Field(description="판단에 대한 핵심 근거 (한두 문장)")
-    report: str = Field(description="출력 양식 템플릿에 맞추어 작성된 마크다운 형식의 최종 마스터 리포트 전체 텍스트")
 
-    def __init__(self, decision: str = "HOLD", percentage: int = 0, reason: str = "", report: str = ""):
+    def __init__(self, decision: str = "HOLD", percentage: int = 0, reason: str = ""):
         self.decision = decision
         self.percentage = percentage
         self.reason = reason
-        self.report = report
 
 
 def parse_trade_decision(text: str) -> TradeDecision:
@@ -434,9 +427,17 @@ def parse_trade_decision(text: str) -> TradeDecision:
     return TradeDecision(
         decision=decision,
         percentage=percentage,
-        reason=str(data.get("reason", ""))[:500],
-        report=str(data.get("report", "")),
+        reason=str(data.get("reason", ""))[:200],
     )
+
+def _save_last_decision(ticker: str, decision: "TradeDecision"):
+    import time as _time
+    path = os.path.join(os.path.dirname(__file__), ".last_decision.json")
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"ticker": ticker, "decision": decision.decision, "pct": decision.percentage, "ts": int(_time.time())}, f)
+    except Exception:
+        pass
 
 def _update_consecutive_holds(decision: str):
     """HOLD 연속 카운터 업데이트"""
@@ -501,7 +502,7 @@ def load_system_instruction():
 85~100: BUY 20%
 70~84: BUY 10%
 55~69: BUY 5%
-40~54: HOLD
+40~54: BUY 5% (소액 탐색)
 0~39: HOLD
 
 예외 규칙:
@@ -675,93 +676,60 @@ def run_gemini_trade_decision(query: str = "", ticker: str = "KRW-BTC") -> Trade
     )
     system = load_system_instruction()
 
+    decision = None
+
     # 1) Ollama 우선
     try:
         from _shared.llm import ollama as lm_ollama
         print(f"[Dave] Calling Ollama for {ticker}...")
-        ollama_result = lm_ollama(prompt, system=system, max_tokens=600, temperature=0.1, task="trading")
+        ollama_result = lm_ollama(prompt, system=system, max_tokens=120, temperature=0.1, task="trading")
         if ollama_result:
             try:
-                return parse_trade_decision(ollama_result)
+                decision = parse_trade_decision(ollama_result)
             except Exception as parse_err:
                 print(f"[Dave] Ollama JSON 파싱 실패: {parse_err} → GPT 폴백")
     except Exception as ollama_err:
         print(f"[Dave] Ollama 실패: {ollama_err} → GPT 폴백")
 
+    if decision is None and not DAVE_ALLOW_CLOUD_LLM:
+        print("[Dave] 클라우드 LLM 폴백 비활성화 - 안전 HOLD")
+        decision = TradeDecision(decision="HOLD", percentage=0, reason="로컬 AI 응답 실패, 클라우드 절약 모드로 관망")
+
     # 2) GPT 폴백
-    try:
-        from _shared.llm import gpt as lm_gpt
-        print(f"[Dave] Calling GPT for {ticker}...")
-        gpt_result = lm_gpt(prompt, system=system, max_tokens=300, temperature=0.1, json_mode=True)
-        if gpt_result:
-            decision = parse_trade_decision(gpt_result)
-            _update_consecutive_holds(decision.decision)
-            return decision
-    except Exception as gpt_err:
-        print(f"[Dave] GPT 폴백 실패: {gpt_err}")
+    if decision is None:
+        try:
+            from _shared.llm import gpt as lm_gpt
+            print(f"[Dave] Calling GPT for {ticker}...")
+            gpt_result = lm_gpt(prompt, system=system, max_tokens=120, temperature=0.1, json_mode=True)
+            if gpt_result:
+                decision = parse_trade_decision(gpt_result)
+        except Exception as gpt_err:
+            print(f"[Dave] GPT 폴백 실패: {gpt_err}")
 
     # 3) Gemini 폴백
-    try:
-        from _shared.llm import gemini as lm_gemini
-        print(f"[Dave] Calling Gemini for {ticker}...")
-        gemini_result = lm_gemini(prompt, system=system, max_tokens=300, temperature=0.1, json_mode=True)
-        if gemini_result:
-            decision = parse_trade_decision(gemini_result)
-            _update_consecutive_holds(decision.decision)
-            return decision
-    except Exception as gemini_err:
-        print(f"[Dave] Gemini 폴백 실패: {gemini_err}")
+    if decision is None and DAVE_ALLOW_GEMINI_FALLBACK:
+        try:
+            from _shared.llm import gemini as lm_gemini
+            print(f"[Dave] Calling Gemini for {ticker}...")
+            gemini_result = lm_gemini(prompt, system=system, max_tokens=120, temperature=0.1, json_mode=True)
+            if gemini_result:
+                decision = parse_trade_decision(gemini_result)
+        except Exception as gemini_err:
+            print(f"[Dave] Gemini 폴백 실패: {gemini_err}")
 
-    # 4) 모든 AI 실패 시 안전 HOLD
-    _update_consecutive_holds("HOLD")
-    return TradeDecision(
-        decision="HOLD",
-        percentage=0,
-        reason="AI 응답 실패로 안전 관망",
-        report="## 데이브 안전 모드\n\nAI 응답 실패로 HOLD 처리했습니다.",
-    )
+    if decision is None:
+        decision = TradeDecision(decision="HOLD", percentage=0, reason="AI 응답 실패로 안전 관망")
+
+    _update_consecutive_holds(decision.decision)
+    _save_last_decision(ticker, decision)
+    return decision
 
 def run_analysis(query: str = "", ticker: str = "KRW-BTC") -> str:
     print(f"[Dave] Starting Upbit crypto analysis: {query}")
     try:
         decision_data = run_gemini_trade_decision(query, ticker)
-        report = decision_data.report
-
-        # 영숙 보고 섹션 후처리 제거
-        for marker in ["영숙 보고", "영숙이 보고", "영숙님", "📱"]:
-            if marker in report:
-                report = report[:report.index(marker)].rstrip("-— \n")
-
-        # 분석 결과를 reports/research/dave_upbit_analysis.md 에 기록
-        report_dir = os.path.join(PROJECT_ROOT, "reports", "research")
-        os.makedirs(report_dir, exist_ok=True)
-        report_path = os.path.join(report_dir, "dave_upbit_analysis.md")
-
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write(report)
-
-        # Notion에 12시간마다만 자동 동기화 업로드 (하루 2회)
-        global last_notion_upload_time
-        current_time = time.time()
-        if current_time - last_notion_upload_time >= NOTION_UPLOAD_INTERVAL_SECONDS:
-            try:
-                from _shared.notion_report_manager import NotionReportManager
-                manager = NotionReportManager()
-                today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-                manager.create_report_entry(
-                    agent_name="데이브",
-                    task_title=f"업비트 {ticker} {today_str} 분석 브리핑",
-                    result=report
-                )
-                last_notion_upload_time = current_time
-                print("[Dave] Upbit Notion report sync completed successfully.")
-            except Exception as notion_err:
-                print(f"[Dave] Notion sync warning: {notion_err}")
-        else:
-            remaining = NOTION_UPLOAD_INTERVAL_SECONDS - (current_time - last_notion_upload_time)
-            print(f"[Dave] Notion upload skipped (next upload in {remaining/3600:.1f}h)")
-
-        return report
+        summary = f"[데이브] {ticker} → {decision_data.decision} {decision_data.percentage}% | {decision_data.reason}"
+        return summary
     except Exception as e:
         return f"❌ [데이브] 분석 중 오류 발생: {e}"
 def execute_buy(ticker: str, krw_amount: float):

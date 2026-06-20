@@ -7,6 +7,11 @@ import urllib.error
 
 _cache = {}
 _CACHE_TTL = 60
+OPENAI_GPT_MODEL = "gpt-4o-mini"
+
+
+def _env_bool(name: str, default: str = "1") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
 # ==================== OLLAMA (LOCAL, FREE) ====================
@@ -90,7 +95,7 @@ def _gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: flo
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {"model": "gpt-4o-mini", "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
+        payload = {"model": OPENAI_GPT_MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
@@ -102,7 +107,7 @@ def _gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: flo
         with urllib.request.urlopen(req, timeout=60) as r:
             res = json.loads(r.read())
         result = res["choices"][0]["message"]["content"].strip()
-        print(f"  ✅ [GPT-4o-mini] {len(result)} chars")
+        print(f"  ✅ [{OPENAI_GPT_MODEL}] {len(result)} chars")
         return result
     except Exception as e:
         print(f"  ❌ [GPT] {e}")
@@ -158,30 +163,36 @@ def text(
     lm_first: bool = False,
 ) -> str | None:
     """
-    Generate text with fallback chain: Ollama → GPT → Gemini.
+    Generate text with a cost-safe fallback chain.
 
-    Args:
-        lm_first: Start with local model (Ollama) instead of cloud
-        task: "coding", "blog", or "" (affects Ollama model selection)
+    Default: Ollama → GPT → Gemini.
+    Set AI_TEAM_LLM_PRIMARY=cloud only for explicit cloud-first runs.
+    Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
-    if lm_first:
-        # Local first
+    cloud_allowed = _env_bool("AI_TEAM_ALLOW_CLOUD_LLM", "1")
+    primary = os.getenv("AI_TEAM_LLM_PRIMARY", "ollama").strip().lower()
+
+    if lm_first or primary in {"local", "ollama"}:
         result = _ollama(prompt, system, max_tokens, temperature, task)
         if result:
             return result
+        if not cloud_allowed:
+            return None
         result = _gpt(prompt, system, max_tokens, temperature, json_mode)
         if result:
             return result
         return _gemini(prompt, system, max_tokens, temperature, json_mode)
-    else:
-        # Cloud first (GPT → Gemini → Ollama)
-        result = _gpt(prompt, system, max_tokens, temperature, json_mode)
-        if result:
-            return result
-        result = _gemini(prompt, system, max_tokens, temperature, json_mode)
-        if result:
-            return result
+
+    if not cloud_allowed:
         return _ollama(prompt, system, max_tokens, temperature, task)
+
+    result = _gpt(prompt, system, max_tokens, temperature, json_mode)
+    if result:
+        return result
+    result = _gemini(prompt, system, max_tokens, temperature, json_mode)
+    if result:
+        return result
+    return _ollama(prompt, system, max_tokens, temperature, task)
 
 
 # Shorthand aliases

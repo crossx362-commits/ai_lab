@@ -1,5 +1,7 @@
 import importlib.util
 import pathlib
+import sys
+import types
 import unittest
 
 
@@ -34,6 +36,82 @@ class YoungsukPsychologyAndSearchTests(unittest.TestCase):
 
         self.assertEqual(queries, ["심리학 최신 자료 검색해봐"])
         self.assertEqual(result, "검색 결과 요약")
+
+    def test_stock_price_answer_does_not_call_llm(self):
+        receiver = load_receiver()
+        receiver._tool_get_stock_price = lambda text: "SK하이닉스 현재가: 300,000원 ▲1,000원 (0.33%)"
+        receiver._call_llm = lambda prompt, system: self.fail("stock price should not call LLM")
+
+        result = receiver.handle_message("하이닉스 주가 알려줘")
+
+        self.assertIn("SK하이닉스 현재가", result)
+        self.assertIn("300,000원", result)
+
+    def test_trading_status_answer_does_not_call_llm(self):
+        receiver = load_receiver()
+        receiver._tool_get_trading_status = lambda: "거래현황: 데이브 실행중"
+        receiver._tool_get_agent_status = lambda: "에이전트 현황: 레오 실행중"
+        receiver._call_llm = lambda prompt, system: self.fail("trading status should not call LLM")
+
+        result = receiver.handle_message("거래 현황")
+
+        self.assertIn("거래현황", result)
+        self.assertIn("에이전트 현황", result)
+
+    def test_llm_uses_local_before_cloud_by_default(self):
+        receiver = load_receiver()
+        receiver.ALLOW_CLOUD_LLM = True
+        receiver.LLM_PRIMARY = "gpt"
+        calls = []
+        fake_llm = types.SimpleNamespace(
+            ollama=lambda *args, **kwargs: calls.append("ollama") or "로컬 답변",
+            gpt=lambda *args, **kwargs: calls.append("gpt") or "GPT 답변",
+            gemini=lambda *args, **kwargs: calls.append("gemini") or "Gemini 답변",
+        )
+        original_llm = sys.modules.get("_shared.llm")
+        try:
+            sys.modules["_shared.llm"] = fake_llm
+
+            result = receiver._call_llm("안녕", receiver.SYSTEM)
+
+            self.assertEqual(result, "로컬 답변")
+            self.assertEqual(calls, ["ollama"])
+        finally:
+            if original_llm is None:
+                sys.modules.pop("_shared.llm", None)
+            else:
+                sys.modules["_shared.llm"] = original_llm
+
+    def test_llm_falls_back_to_gemini_when_local_is_empty_and_cloud_is_explicit(self):
+        receiver = load_receiver()
+        receiver.ALLOW_CLOUD_LLM = True
+        receiver.LLM_PRIMARY = "gpt"
+        calls = []
+        fake_llm = types.SimpleNamespace(
+            ollama=lambda *args, **kwargs: calls.append("ollama") or None,
+            gpt=lambda *args, **kwargs: calls.append("gpt") or None,
+            gemini=lambda *args, **kwargs: calls.append("gemini") or "Gemini 답변",
+        )
+        original_llm = sys.modules.get("_shared.llm")
+        try:
+            sys.modules["_shared.llm"] = fake_llm
+
+            result = receiver._call_llm("지피티 정밀모드로 답해줘", receiver.SYSTEM)
+
+            self.assertEqual(result, "Gemini 답변")
+            self.assertEqual(calls, ["ollama", "gpt", "gemini"])
+        finally:
+            if original_llm is None:
+                sys.modules.pop("_shared.llm", None)
+            else:
+                sys.modules["_shared.llm"] = original_llm
+
+    def test_cloud_llm_requires_explicit_mode_by_default(self):
+        receiver = load_receiver()
+
+        self.assertTrue(receiver.ALLOW_CLOUD_LLM)
+        self.assertEqual(receiver.CLOUD_MODE, "explicit")
+        self.assertEqual(receiver.LLM_PRIMARY, "ollama")
 
 
 if __name__ == "__main__":
