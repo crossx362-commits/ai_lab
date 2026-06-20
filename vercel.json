@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd projects/petnna && npm run build || true",
   "outputDirectory": "projects/petnna",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- projects/petnna ':!*.md' ':!docs/'",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- projects/petnna api vercel.json ':!*.md' ':!docs/'",
   "crons": [
     {
       "path": "/api/cleanup-projects",
