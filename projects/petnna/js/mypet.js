@@ -22,8 +22,8 @@ const ROOM_LAYOUTS = {
     living: {
         id: 'living',
         label: '거실형',
-        iconClass: 'fa-solid fa-couch',
-        toast: '거실형 방으로 바꿨어요. 포근하게 앉아있는 느낌이에요 🛋️'
+        iconClass: 'fa-solid fa-house',
+        toast: '거실형 방으로 바꿨어요. 차분하게 쉬는 느낌이에요 🏠'
     },
     circle: {
         id: 'circle',
@@ -269,7 +269,7 @@ function createRoomConnection(svg, butlerPoint, petPoint, isActive, idx) {
     node.setAttribute('width', '6');
     node.setAttribute('height', '6');
     node.setAttribute('class', `room-connection-node ${isActive ? 'is-active' : 'is-muted'}`);
-    node.innerHTML = `<div class="room-connection-node-inner">${isActive ? '♥' : '•'}</div>`;
+    node.innerHTML = '<div class="room-connection-node-inner"></div>';
     svg.appendChild(node);
 }
 

@@ -69,9 +69,9 @@ assert.strictEqual(ctx.saveStateCalled, 1, 'layout changes should save app state
 
 assert.match(templateCode, /id="room-layout-badge"/, 'room header should show the active layout badge');
 assert.match(templateCode, /room-layout-preview-card/, 'layout picker should use preview cards');
-assert.match(templateCode, /편안한 소파와 러그/, 'living preview should explain the living room mood');
-assert.match(templateCode, /images\/room\/cozy-sofa\.png/, 'living room should mount generated sofa asset');
-assert.match(templateCode, /images\/room\/soft-round-rug\.png/, 'living room should mount generated rug asset');
-assert.match(templateCode, /images\/room\/sunny-window\.png/, 'living room should mount generated window asset');
+assert.match(templateCode, /차분한 여백/, 'living preview should explain the calmer room mood');
+assert.doesNotMatch(templateCode, /images\/room\/cozy-sofa\.png/, 'living room should not mount the wide sofa asset');
+assert.doesNotMatch(templateCode, /images\/room\/soft-round-rug\.png/, 'living room should not mount the wide rug asset');
+assert.doesNotMatch(templateCode, /<img[^>]+class="room-decor/, 'living room should avoid decorative bitmap clutter in the stage');
 
 console.log('mypet room layout tests passed');

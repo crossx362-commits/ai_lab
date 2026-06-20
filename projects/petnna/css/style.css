@@ -659,9 +659,9 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     inset: 8px 10px 4px;
     border-radius: 28px;
     background:
-        radial-gradient(circle at 50% 52%, rgba(251, 191, 36, 0.12), transparent 34%),
-        radial-gradient(circle at 22% 26%, rgba(227, 119, 54, 0.08), transparent 24%),
-        radial-gradient(circle at 78% 28%, rgba(99, 102, 241, 0.07), transparent 24%);
+        radial-gradient(circle at 50% 52%, rgba(251, 191, 36, 0.08), transparent 34%),
+        radial-gradient(circle at 24% 28%, rgba(227, 119, 54, 0.045), transparent 22%),
+        radial-gradient(circle at 76% 30%, rgba(99, 102, 241, 0.04), transparent 22%);
     pointer-events: none;
     z-index: 0;
 }
@@ -674,19 +674,17 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 }
 
 .room-stage.room-layout-living::after {
-    left: 17%;
-    right: 17%;
-    bottom: 20px;
-    height: 86px;
-    border-radius: 34px 34px 28px 28px;
+    left: 24%;
+    right: 24%;
+    bottom: 28px;
+    height: 52px;
+    border-radius: 999px;
     background:
-        radial-gradient(ellipse at 50% 96%, rgba(245, 158, 11, 0.18), transparent 52%),
-        linear-gradient(180deg, rgba(255, 247, 237, 0.9), rgba(254, 215, 170, 0.44));
+        radial-gradient(ellipse at 50% 62%, rgba(245, 158, 11, 0.14), transparent 64%),
+        linear-gradient(180deg, rgba(255, 247, 237, 0.78), rgba(254, 215, 170, 0.2));
     border: 1px solid rgba(251, 191, 36, 0.22);
-    box-shadow:
-        inset 0 14px 28px rgba(255, 255, 255, 0.48),
-        0 18px 34px rgba(146, 64, 14, 0.08);
-    opacity: 0.38;
+    box-shadow: inset 0 12px 22px rgba(255, 255, 255, 0.42);
+    opacity: 0.5;
 }
 
 .room-stage.room-layout-circle::after {
@@ -857,60 +855,11 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
-}
-
-.room-decor {
-    position: absolute;
-    user-select: none;
-    object-fit: contain;
-    height: auto;
-    max-width: none;
-    filter: drop-shadow(0 12px 18px rgba(146, 64, 14, 0.07));
+    opacity: 0;
 }
 
 .room-stage:not(.room-layout-living) .room-decor-layer {
     opacity: 0;
-}
-
-.room-stage.room-layout-living .room-decor-layer {
-    opacity: 1;
-}
-
-.room-window {
-    width: clamp(70px, 11%, 104px);
-    right: 7%;
-    top: 7%;
-    opacity: 0.42;
-}
-
-.room-sofa {
-    width: clamp(190px, 38%, 310px);
-    left: 50%;
-    top: 39%;
-    transform: translateX(-50%);
-    opacity: 0.28;
-}
-
-.room-rug {
-    width: clamp(170px, 34%, 280px);
-    left: 50%;
-    bottom: 5%;
-    transform: translateX(-50%);
-    opacity: 0.36;
-}
-
-.room-cushions {
-    width: clamp(72px, 12%, 102px);
-    left: 9%;
-    bottom: 10%;
-    opacity: 0.38;
-}
-
-.room-toys {
-    width: clamp(62px, 10%, 88px);
-    right: 10%;
-    bottom: 11%;
-    opacity: 0.4;
 }
 
 .butler-stage-core {
@@ -992,14 +941,14 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 }
 
 .room-connection-glow {
-    stroke-width: 8;
-    opacity: 0.1;
+    stroke-width: 5;
+    opacity: 0.06;
 }
 
 .room-connection-glow.is-active {
     stroke: #f59e0b;
-    opacity: 0.28;
-    filter: drop-shadow(0 4px 8px rgba(245, 158, 11, 0.22));
+    opacity: 0.14;
+    filter: none;
 }
 
 .room-connection-glow.is-muted {
@@ -1007,17 +956,17 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 }
 
 .room-connection-line {
-    stroke-width: 2.2;
-    stroke-dasharray: 1 7;
-    animation: leashWave 2.8s linear infinite;
+    stroke-width: 1.4;
+    stroke-dasharray: 2 8;
+    animation: none;
     animation-delay: calc(var(--connection-order, 0) * -0.18s);
 }
 
 .room-connection-line.is-active {
     stroke: #e37736;
-    stroke-width: 3;
-    stroke-dasharray: 2 6;
-    opacity: 0.95;
+    stroke-width: 1.8;
+    stroke-dasharray: 3 8;
+    opacity: 0.62;
 }
 
 .room-connection-line.is-muted {
@@ -1033,31 +982,20 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 .room-connection-node-inner {
     width: 100%;
     height: 100%;
-    min-width: 18px;
-    min-height: 18px;
-    transform: translate(-4px, -4px);
+    min-width: 7px;
+    min-height: 7px;
+    transform: translate(2px, 2px);
     border-radius: 999px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 251, 235, 0.95);
-    border: 1px solid rgba(245, 158, 11, 0.42);
-    color: #e37736;
-    font-size: 11px;
-    font-weight: 900;
-    line-height: 1;
-    box-shadow: 0 6px 14px rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.3);
+    border: 0;
+    box-shadow: none;
 }
 
 .room-connection-node.is-muted .room-connection-node-inner {
-    min-width: 12px;
-    min-height: 12px;
-    transform: translate(-1px, -1px);
-    background: rgba(255, 255, 255, 0.72);
-    border-color: rgba(209, 213, 219, 0.7);
-    color: #b8aea4;
-    font-size: 10px;
-    box-shadow: none;
+    min-width: 5px;
+    min-height: 5px;
+    transform: translate(3px, 3px);
+    background: rgba(168, 162, 158, 0.28);
 }
 
 /* 활성 펫 펄스 효과 */

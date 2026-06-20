@@ -187,8 +187,8 @@ const MYPET_TEMPLATE = `
                                         <span class="preview-pet right"></span>
                                     </span>
                                     <span class="room-layout-copy">
-                                        <strong><i class="fa-solid fa-couch text-[11px]"></i> 거실형</strong>
-                                        <small>편안한 소파와 러그</small>
+                                        <strong><i class="fa-solid fa-house text-[11px]"></i> 거실형</strong>
+                                        <small>차분한 여백 중심</small>
                                     </span>
                                 </button>
                                 <button type="button" id="room-layout-circle" onclick="setRoomLayoutForActivePet('circle')"
@@ -222,13 +222,7 @@ const MYPET_TEMPLATE = `
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
                 <div class="room-stage relative w-full h-[300px] md:h-[340px] flex items-center justify-center pt-5 pb-3">
-                    <div class="room-decor-layer" aria-hidden="true">
-                        <img loading="lazy" src="images/room/sunny-window.png" class="room-decor room-window" alt="">
-                        <img loading="lazy" src="images/room/cozy-sofa.png" class="room-decor room-sofa" alt="">
-                        <img loading="lazy" src="images/room/soft-round-rug.png" class="room-decor room-rug" alt="">
-                        <img loading="lazy" src="images/room/pet-cushion-set.png" class="room-decor room-cushions" alt="">
-                        <img loading="lazy" src="images/room/toy-basket.png" class="room-decor room-toys" alt="">
-                    </div>
+                    <div class="room-decor-layer" aria-hidden="true"></div>
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
                         <!-- JS로 동적 생성 -->
