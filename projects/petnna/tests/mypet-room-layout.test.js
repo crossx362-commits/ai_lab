@@ -40,6 +40,29 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(livingSlots.slice(0, 3))), [
     { x: 50, y: 84 }
 ]);
 
+function boxesOverlap(a, b) {
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+}
+
+function assertRoomHasNoOverlaps(layout, isMobile, count) {
+    const points = ctx.resolvePetStageCollisions(ctx.getPetStageSlots(count, isMobile, layout), isMobile);
+    const butlerBox = { x: 46, y: 42, w: 8, h: 16 };
+    const petBoxes = points.map(point => ({ x: point.x - 4, y: point.y - 6, w: 8, h: 12 }));
+
+    petBoxes.forEach((box, idx) => {
+        assert.ok(!boxesOverlap(box, butlerBox), `${layout}/${isMobile}/${count} pet ${idx} should not overlap butler`);
+        for (let next = idx + 1; next < petBoxes.length; next += 1) {
+            assert.ok(!boxesOverlap(box, petBoxes[next]), `${layout}/${isMobile}/${count} pets ${idx}/${next} should not overlap`);
+        }
+    });
+}
+
+['living', 'circle'].forEach((layout) => {
+    [false, true].forEach((isMobile) => {
+        [1, 2, 3, 4, 6, 8, 10, 12].forEach((count) => assertRoomHasNoOverlaps(layout, isMobile, count));
+    });
+});
+
 ctx.setRoomLayoutForActivePet('circle');
 assert.strictEqual(ctx.pets[0].roomLayout, 'circle', 'selected layout should persist on the active pet');
 assert.strictEqual(ctx.saveStateCalled, 1, 'layout changes should save app state once');
