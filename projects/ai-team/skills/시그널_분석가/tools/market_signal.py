@@ -121,7 +121,7 @@ def get_crypto_signals() -> dict[str, Any]:
         premium = ((upbit_krw - offshore_krw) / offshore_krw) * 100 if offshore_krw else 0.0
         crypto["kimchi_premium"] = {
             "value": round(premium, 2),
-            "signal": "SELL" if premium >= 5 else "BUY" if premium <= -3 else "NEUTRAL",
+            "signal": "NEUTRAL",
         }
     except Exception as exc:
         crypto["kimchi_premium"] = {"error": str(exc), "signal": "NEUTRAL"}
@@ -209,8 +209,6 @@ def summarize(data: dict[str, Any]) -> str:
     fg_signal = signal_labels.get(str(fg.get("signal", "NEUTRAL")).upper(), fg.get("signal", "중립"))
     kp_signal = signal_labels.get(str(kp.get("signal", "NEUTRAL")).upper(), kp.get("signal", "중립"))
     risks = []
-    if safe_float(kp.get("value")) >= 5:
-        risks.append("김치프리미엄 높음")
     if fg.get("signal") == "SELL":
         risks.append("공포탐욕 과열")
     if not risks:
@@ -233,7 +231,6 @@ def write_outputs(data: dict[str, Any]) -> None:
 def notify_on_change(data: dict[str, Any]) -> None:
     current = {
         "fear_greed": data.get("crypto", {}).get("fear_greed", {}).get("signal"),
-        "kimchi_premium": data.get("crypto", {}).get("kimchi_premium", {}).get("signal"),
     }
     previous: dict[str, Any] = {}
     if STATE_FILE.exists():

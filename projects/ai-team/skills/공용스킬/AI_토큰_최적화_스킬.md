@@ -32,7 +32,7 @@ system = """
 ```python
 system = """AI 트레이더. 규칙:
 1. FOMC/CPI 24h전후→HOLD
-2. 김프15%+→SELL
+2. 김프는 단독 SELL/HOLD 금지
 3. 가격↓+OBV↑→BUY
 [핵심만 7개]"""
 ```
@@ -177,7 +177,6 @@ def analyze_crypto(ticker, current_price, current_trend, indicators):
 총점: {scores['total']}/100
 RSI: {indicators['RSI']}
 OBV: {indicators['OBV']}
-김프: {kimchi_pct}%
 리스크상태: 정상
 최근HOLD: {consecutive_holds}회"""
     

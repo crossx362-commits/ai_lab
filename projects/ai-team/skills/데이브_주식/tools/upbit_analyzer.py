@@ -347,12 +347,7 @@ def get_kimchi_premium(ticker="KRW-BTC"):
         upbit_krw = float(pyupbit.get_current_price(ticker))
         premium = (upbit_krw - binance_krw) / binance_krw * 100
 
-        if premium > 3:
-            status = "🔴 과열(김프 3%↑ — 한국 FOMO 과잉, 고점 주의)"
-        elif premium < -2:
-            status = "🟢 역프리미엄(글로벌 대비 저평가 — 매집 기회 가능)"
-        else:
-            status = "🟡 정상 범위"
+        status = "참고값(거래 제한 없음)"
 
         return {"김치프리미엄": round(premium, 2), "상태": status,
                 "업비트가": upbit_krw, "바이낸스환산가": round(binance_krw, 0)}
@@ -602,12 +597,6 @@ def build_compact_trade_prompt(
     """간소화된 입력 프롬프트 (점수는 코드가 계산)"""
     scores = calculate_trade_score(indicators, current_trend)
 
-    kimchi_pct = kimchi.get('김치프리미엄', kimchi.get('premium_pct', 0))
-    try:
-        kimchi_pct = float(str(kimchi_pct).replace('%',''))
-    except:
-        kimchi_pct = 0
-
     risk_status = "정상"
     if is_simulated:
         risk_status = "시뮬레이션"
@@ -627,7 +616,6 @@ StochRSI: {indicators.get('StochRSI_K')}
 OBV: {indicators.get('OBV_추세')}
 OBV다이버: {indicators.get('OBV_다이버전스')}
 HA: {indicators.get('HeikinAshi_양봉여부')}
-김프: {kimchi_pct}%
 리스크상태: {risk_status}
 최근HOLD: {consecutive_holds}회
 보유PNL: {loss_now}%"""

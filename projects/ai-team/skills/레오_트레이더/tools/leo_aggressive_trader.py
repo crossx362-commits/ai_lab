@@ -314,15 +314,9 @@ def calculate_leo_score(ticker: str) -> dict:
             score -= 1
             reasons.append(f"1h 모멘텀 {momentum_1h:.1f}%")
 
-        # 4. 펄스 정보 활용 (공포탐욕, 김치프리미엄)
+        # 4. 펄스 정보 활용 (공포탐욕)
         if pulse_intel:
             crypto_data = pulse_intel.get("crypto", {})
-
-            # 김치 프리미엄
-            kp = crypto_data.get("kimchi_premium", {}).get("value", 0)
-            if kp >= 3.0:
-                score += 1
-                reasons.append(f"김프 +{kp:.1f}% (국내 관심)")
 
             # 공포탐욕지수 (극단 구간 보너스)
             fg = crypto_data.get("fear_greed", {})
@@ -479,7 +473,6 @@ def run_leo_cycle():
                                 fg = crypto_data.get("fear_greed", {}).get("value", 50)
 
                                 # 극단 탐욕 변화 시 손절 기준 완화 (-1% 손절)
-                                # 김치프리미엄은 조기 청산 필터로 사용하지 않는다.
                                 if fg >= 85:
                                     print(f"⚠️ [Leo] {coin} 시장 과열 감지 (탐욕 {fg}) - 조기 청산 고려")
                                     if profit_pct >= 0:
@@ -550,8 +543,7 @@ def run_leo_cycle():
     # 펄스 정보 확인
     pulse_intel = load_pulse_intel()
 
-    # 시그널 위험 신호 체크. 김치프리미엄은 참고값으로만 쓰고
-    # 신규 진입 차단 필터로 사용하지 않는다.
+    # 시그널 위험 신호 체크
     if pulse_intel:
         crypto_data = pulse_intel.get("crypto", {})
 

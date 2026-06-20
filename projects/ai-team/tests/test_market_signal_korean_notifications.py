@@ -22,7 +22,7 @@ class MarketSignalKoreanNotificationTest(unittest.TestCase):
             {
                 "crypto": {
                     "fear_greed": {"value": 82, "signal": "SELL"},
-                    "kimchi_premium": {"value": 6.2, "signal": "SELL"},
+                    "kimchi_premium": {"value": 6.2, "signal": "NEUTRAL"},
                     "top_coins": [{"ticker": "KRW-DOGE", "score": 4}, {"ticker": "KRW-XRP", "score": 3}],
                 }
             }
@@ -34,6 +34,32 @@ class MarketSignalKoreanNotificationTest(unittest.TestCase):
         self.assertIn("주의", summary)
         self.assertNotIn("Fear/Greed", summary)
         self.assertNotIn("kimchi", summary.lower())
+        self.assertNotIn("김치프리미엄 높음", summary)
+
+    def test_kimchi_premium_signal_is_neutral_for_trading(self):
+        module = load_market_signal_module()
+        original_http_json = module.http_json
+        original_safe_float = module.safe_float
+
+        def fake_http_json(url, timeout=8):
+            if "alternative.me" in url:
+                return {"data": [{"value": "50", "value_classification": "Neutral"}]}
+            if "upbit.com" in url:
+                return [{"trade_price": 150_000_000}]
+            if "binance.com" in url:
+                return {"price": "100000"}
+            raise AssertionError(f"unexpected url: {url}")
+
+        module.http_json = fake_http_json
+        module.safe_float = lambda value, default=0.0: 1000.0 if value == "1300.0" else original_safe_float(value, default)
+        try:
+            crypto = module.get_crypto_signals()
+        finally:
+            module.http_json = original_http_json
+            module.safe_float = original_safe_float
+
+        self.assertGreater(crypto["kimchi_premium"]["value"], 5)
+        self.assertEqual(crypto["kimchi_premium"]["signal"], "NEUTRAL")
 
     def test_signal_change_notification_uses_korean_header(self):
         module = load_market_signal_module()
