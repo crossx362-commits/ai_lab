@@ -18,6 +18,20 @@
 };
 
 let activePetIndex = 0;
+const ROOM_LAYOUTS = {
+    living: {
+        id: 'living',
+        label: '거실형',
+        iconClass: 'fa-solid fa-couch',
+        toast: '거실형 방으로 바꿨어요. 포근하게 앉아있는 느낌이에요 🛋️'
+    },
+    circle: {
+        id: 'circle',
+        label: '교감형',
+        iconClass: 'fa-solid fa-circle-nodes',
+        toast: '교감형 방으로 바꿨어요. 모두가 둥글게 이어져요 ✨'
+    }
+};
 
 function getActivePet() {
     if (!pets || pets.length === 0) return null;
@@ -28,6 +42,235 @@ function setActivePet(idx) {
     activePetIndex = idx;
     renderPetStageList();
     renderMyPets();
+}
+
+function normalizeRoomLayout(layout) {
+    return ROOM_LAYOUTS[layout] ? layout : 'living';
+}
+
+function getActiveRoomLayout() {
+    const current = getActivePet();
+    return normalizeRoomLayout(current?.roomLayout || 'living');
+}
+
+function updateRoomLayoutControls(layout = getActiveRoomLayout()) {
+    if (typeof document === 'undefined') return;
+    Object.keys(ROOM_LAYOUTS).forEach((layoutId) => {
+        const btn = document.getElementById(`room-layout-${layoutId}`);
+        if (!btn) return;
+        const isActive = layoutId === layout;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    const badge = document.getElementById('room-layout-badge');
+    const badgeText = document.getElementById('room-layout-badge-text');
+    if (badge) {
+        const icon = badge.querySelector ? badge.querySelector('i') : null;
+        if (icon) icon.className = `${ROOM_LAYOUTS[layout].iconClass} text-[9px]`;
+        badge.className = `room-layout-badge is-${layout}`;
+    }
+    if (badgeText) badgeText.textContent = ROOM_LAYOUTS[layout].label;
+}
+
+function applyRoomLayoutVisualState(layout = getActiveRoomLayout()) {
+    if (typeof document === 'undefined') return;
+    const stage = document.querySelector ? document.querySelector('.room-stage') : null;
+    if (!stage) return;
+    Object.keys(ROOM_LAYOUTS).forEach(layoutId => stage.classList.remove(`room-layout-${layoutId}`));
+    stage.classList.add(`room-layout-${layout}`);
+    updateRoomLayoutControls(layout);
+}
+
+function setRoomLayoutForActivePet(layout) {
+    const current = getActivePet();
+    if (!current) return;
+    const nextLayout = normalizeRoomLayout(layout);
+    current.roomLayout = nextLayout;
+    if (typeof saveState === 'function') saveState();
+    if (typeof updatePetInSupabase === 'function') updatePetInSupabase(current);
+    applyRoomLayoutVisualState(nextLayout);
+    renderPetStageList();
+    if (typeof showToast === 'function') showToast(ROOM_LAYOUTS[nextLayout].toast);
+}
+
+function clampPetStagePoint(point, isMobile) {
+    const marginX = isMobile ? 10 : 8;
+    const marginTop = isMobile ? 20 : 17;
+    const marginBottom = isMobile ? 88 : 90;
+    return {
+        x: Math.max(marginX, Math.min(100 - marginX, point.x)),
+        y: Math.max(marginTop, Math.min(marginBottom, point.y))
+    };
+}
+
+function getPetStageSlots(count, isMobile, layout = 'living') {
+    if (normalizeRoomLayout(layout) === 'living') {
+        const livingRoomySlots = [
+            { x: 30, y: 72 }, { x: 70, y: 72 },
+            { x: 50, y: 84 }, { x: 18, y: 45 },
+            { x: 82, y: 45 }, { x: 30, y: 25 },
+            { x: 70, y: 25 }, { x: 12, y: 78 },
+            { x: 88, y: 78 }, { x: 50, y: 22 }
+        ];
+        const livingCompactSlots = [
+            { x: 28, y: 78 }, { x: 72, y: 78 },
+            { x: 50, y: 88 }, { x: 15, y: 51 },
+            { x: 85, y: 51 }, { x: 28, y: 25 },
+            { x: 72, y: 25 }, { x: 12, y: 82 },
+            { x: 88, y: 82 }, { x: 50, y: 22 },
+            { x: 12, y: 33 }, { x: 88, y: 33 }
+        ];
+        const livingSlots = isMobile ? livingCompactSlots : livingRoomySlots;
+        if (count === 1) return [{ x: isMobile ? 72 : 70, y: isMobile ? 80 : 74 }];
+        if (count <= livingSlots.length) return livingSlots.slice(0, count);
+        return livingSlots.concat(getPetStageSlots(count - livingSlots.length, isMobile, 'circle'));
+    }
+
+    const roomySlots = [
+        { x: 24, y: 24 }, { x: 76, y: 24 },
+        { x: 18, y: 52 }, { x: 82, y: 52 },
+        { x: 31, y: 82 }, { x: 69, y: 82 },
+        { x: 13, y: 76 }, { x: 87, y: 76 },
+        { x: 39, y: 25 }, { x: 61, y: 25 }
+    ];
+    const compactSlots = [
+        { x: 23, y: 23 }, { x: 77, y: 23 },
+        { x: 14, y: 51 }, { x: 86, y: 51 },
+        { x: 27, y: 84 }, { x: 73, y: 84 },
+        { x: 46, y: 21 }, { x: 54, y: 88 },
+        { x: 11, y: 78 }, { x: 89, y: 78 },
+        { x: 11, y: 31 }, { x: 89, y: 31 }
+    ];
+    const slots = isMobile ? compactSlots : roomySlots;
+
+    if (count === 1) return [{ x: isMobile ? 76 : 72, y: isMobile ? 82 : 76 }];
+    if (count === 2) return [slots[0], slots[1]];
+    if (count === 3) return [slots[0], slots[1], { x: 50, y: 84 }];
+    if (count === 4) return [slots[0], slots[1], slots[2], slots[3]];
+    if (count <= slots.length) return slots.slice(0, count);
+
+    const generated = slots.slice();
+    const extra = count - slots.length;
+    const expansionSlots = isMobile
+        ? [{ x: 12, y: 38 }, { x: 88, y: 38 }, { x: 50, y: 90 }]
+        : [{ x: 8, y: 36 }, { x: 92, y: 36 }, { x: 50, y: 90 }];
+    for (let i = 0; i < extra; i++) {
+        if (expansionSlots[i]) {
+            generated.push(expansionSlots[i]);
+            continue;
+        }
+        const angle = (Math.PI * 2 * i) / extra - Math.PI / 2;
+        generated.push({
+            x: 50 + Math.cos(angle) * (isMobile ? 34 : 39),
+            y: 54 + Math.sin(angle) * (isMobile ? 31 : 34)
+        });
+    }
+    return generated;
+}
+
+function resolvePetStageCollisions(points, isMobile) {
+    const count = points.length;
+    const minDx = isMobile ? (count > 8 ? 13 : 16) : (count > 10 ? 13 : 15);
+    const minDy = isMobile ? (count > 8 ? 15 : 18) : (count > 10 ? 15 : 17);
+    const butler = { x: 50, y: 52 };
+    const butlerSafeX = isMobile ? 24 : 20;
+    const butlerSafeY = isMobile ? 25 : 22;
+    const relaxed = points.map(point => clampPetStagePoint(point, isMobile));
+
+    for (let pass = 0; pass < 7; pass++) {
+        for (let i = 0; i < relaxed.length; i++) {
+            for (let j = i + 1; j < relaxed.length; j++) {
+                const a = relaxed[i];
+                const b = relaxed[j];
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                if (Math.abs(dx) < minDx && Math.abs(dy) < minDy) {
+                    const pushX = ((minDx - Math.abs(dx)) / 2) * (dx >= 0 ? 1 : -1);
+                    const pushY = ((minDy - Math.abs(dy)) / 2) * (dy >= 0 ? 1 : -1);
+                    a.x -= pushX;
+                    b.x += pushX;
+                    a.y -= pushY * 0.35;
+                    b.y += pushY * 0.35;
+                }
+            }
+
+            const p = relaxed[i];
+            const fromButlerX = p.x - butler.x;
+            const fromButlerY = p.y - butler.y;
+            if (Math.abs(fromButlerX) < butlerSafeX && Math.abs(fromButlerY) < butlerSafeY) {
+                const angle = Math.atan2(fromButlerY || 1, fromButlerX || (i % 2 ? 1 : -1));
+                p.x = butler.x + Math.cos(angle) * butlerSafeX;
+                p.y = butler.y + Math.sin(angle) * butlerSafeY;
+            }
+
+            relaxed[i] = clampPetStagePoint(p, isMobile);
+        }
+    }
+
+    return relaxed.map((point, idx) => {
+        const fromButlerX = point.x - butler.x;
+        const fromButlerY = point.y - butler.y;
+        if (Math.abs(fromButlerX) >= butlerSafeX || Math.abs(fromButlerY) >= butlerSafeY) {
+            return clampPetStagePoint(point, isMobile);
+        }
+        const signX = fromButlerX >= 0 ? 1 : -1;
+        const signY = fromButlerY >= 0 ? 1 : -1;
+        const xPressure = Math.abs(fromButlerX) / butlerSafeX;
+        const yPressure = Math.abs(fromButlerY) / butlerSafeY;
+        const corrected = { ...point };
+        if (yPressure >= xPressure) {
+            corrected.y = butler.y + signY * (butlerSafeY + 3);
+        } else {
+            corrected.x = butler.x + signX * (butlerSafeX + 3);
+        }
+        return clampPetStagePoint(corrected, isMobile);
+    });
+}
+
+function createRoomConnection(svg, butlerPoint, petPoint, isActive, idx) {
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const dx = petPoint.x - butlerPoint.x;
+    const dy = petPoint.y - butlerPoint.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const unitX = dx / length;
+    const unitY = dy / length;
+    const start = {
+        x: butlerPoint.x + unitX * 11,
+        y: butlerPoint.y + unitY * 11
+    };
+    const end = {
+        x: petPoint.x - unitX * 6,
+        y: petPoint.y - unitY * 6
+    };
+    const bend = (idx % 2 === 0 ? 1 : -1) * (isActive ? 7 : 4);
+    const control = {
+        x: (start.x + end.x) / 2 + (-unitY * bend),
+        y: (start.y + end.y) / 2 + (unitX * bend) - 2
+    };
+    const d = `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} Q ${control.x.toFixed(2)} ${control.y.toFixed(2)} ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+
+    const glow = document.createElementNS(svgNs, 'path');
+    glow.setAttribute('d', d);
+    glow.setAttribute('class', `room-connection-glow ${isActive ? 'is-active' : 'is-muted'}`);
+    svg.appendChild(glow);
+
+    const line = document.createElementNS(svgNs, 'path');
+    line.setAttribute('d', d);
+    line.setAttribute('class', `room-connection-line ${isActive ? 'is-active' : 'is-muted'}`);
+    line.style.setProperty('--connection-order', idx);
+    svg.appendChild(line);
+
+    const nodeX = start.x * 0.48 + end.x * 0.52;
+    const nodeY = start.y * 0.48 + end.y * 0.52;
+    const node = document.createElementNS(svgNs, 'foreignObject');
+    node.setAttribute('x', (nodeX - 3).toFixed(2));
+    node.setAttribute('y', (nodeY - 3).toFixed(2));
+    node.setAttribute('width', '6');
+    node.setAttribute('height', '6');
+    node.setAttribute('class', `room-connection-node ${isActive ? 'is-active' : 'is-muted'}`);
+    node.innerHTML = `<div class="room-connection-node-inner">${isActive ? '♥' : '•'}</div>`;
+    svg.appendChild(node);
 }
 
 function renderPetStageList() {
@@ -43,70 +286,28 @@ function renderPetStageList() {
 
     // 집사 위치 (%)
     const butlerX = 50;
-    const butlerY = 50;
+    const butlerY = 52;
 
     // 펫 크기
     const sz = { circle: 'w-14 h-14', emoji: 'text-2xl', label: 'text-[11px]', border: 'border-3' };
 
-    // ── 펫 배치 (360° 원형, 시드 정규화로 timestamp ID 안정화) ───────────────────
+    // ── 펫 배치 (안전 슬롯 + 충돌 보정) ───────────────────
     if (pets && pets.length > 0) {
         const isMobile = window.innerWidth < 768;
-        const baseRadius = count === 1 ? (isMobile ? 26 : 30) : (isMobile ? 30 : 34);
-        const angleStep = (Math.PI * 2) / count;
+        const layout = getActiveRoomLayout();
+        applyRoomLayoutVisualState(layout);
+        const baseSlots = getPetStageSlots(count, isMobile, layout);
+        const positions = resolvePetStageCollisions(baseSlots, isMobile);
 
         pets.forEach((pet, idx) => {
             const isActive = idx === activePetIndex;
+            const { x: petX, y: petY } = positions[idx];
 
-            const baseAngle = angleStep * idx - Math.PI / 2; // 12시 방향부터
-            // 시드 정규화 — timestamp ID에서도 sin/cos 안정적
-            const seed1 = ((pet.id || idx) * 137.508) % (Math.PI * 2);
-            const seed2 = ((pet.id || idx) * 213.123) % (Math.PI * 2);
-
-            const randomAngleOffset = Math.sin(seed1) * 0.6;
-            const angle = baseAngle + randomAngleOffset;
-
-            const minRadius = isMobile ? 20 : 25;
-            const maxRadius = isMobile ? 35 : 40;
-            const radiusVariation = minRadius + (Math.abs(Math.sin(seed2)) * (maxRadius - minRadius));
-
-            const xStretch = 1 + Math.cos(seed1) * 0.10;
-            const yStretch = 1 + Math.sin(seed2) * 0.08;
-
-            const rawPetX = butlerX + Math.cos(angle) * radiusVariation * xStretch;
-            const rawPetY = butlerY + Math.sin(angle) * radiusVariation * yStretch;
-            const petX = Math.max(6, Math.min(92, rawPetX));
-            const petY = Math.max(8, Math.min(90, rawPetY));
-
-            // SVG 목줄 그리기 (곡선)
-            if (svg) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                const controlX = (butlerX + petX) / 2 + Math.sin(angle) * 3;
-                const controlY = (butlerY + petY) / 2 - 8;
-                const d = `M ${butlerX} ${butlerY} Q ${controlX} ${controlY} ${petX} ${petY}`;
-                line.setAttribute('d', d);
-                line.setAttribute('stroke', isActive ? '#f59e0b' : '#d1d5db');
-                line.setAttribute('stroke-width', isActive ? '2.5' : '1.5');
-                line.setAttribute('stroke-dasharray', '5 3');
-                line.setAttribute('fill', 'none');
-                line.setAttribute('opacity', isActive ? '0.9' : '0.4');
-                line.setAttribute('class', 'transition-all duration-300');
-                svg.appendChild(line);
-
-                // 목줄에 🦮 아이콘
-                const leashMidX = (butlerX + petX) / 2;
-                const leashMidY = (butlerY + petY) / 2 - 5;
-                const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-                foreignObject.setAttribute('x', `${leashMidX - 1.5}%`);
-                foreignObject.setAttribute('y', `${leashMidY - 1.5}%`);
-                foreignObject.setAttribute('width', '3%');
-                foreignObject.setAttribute('height', '3%');
-                foreignObject.innerHTML = `<div style="font-size: ${isActive ? '16px' : '12px'}; opacity: ${isActive ? 1 : 0.5}; transition: all 0.3s;">🦮</div>`;
-                svg.appendChild(foreignObject);
-            }
+            if (svg) createRoomConnection(svg, { x: butlerX, y: butlerY }, { x: petX, y: petY }, isActive, idx);
 
             // 펫 컨테이너
             const wrapper = document.createElement('div');
-            wrapper.className = 'absolute transition-all duration-500';
+            wrapper.className = 'pet-stage-wrapper absolute transition-all duration-500';
             wrapper.style.left = `${petX}%`;
             wrapper.style.top = `${petY}%`;
             wrapper.style.transform = 'translate(-50%, -50%)';
@@ -120,8 +321,8 @@ function renderPetStageList() {
             const circle = document.createElement('div');
             circle.className = `flex items-center justify-center rounded-2xl overflow-hidden transition-all shrink-0
                 ${isActive
-                    ? `${sz.circle} ${sz.border} border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-105`
-                    : `${sz.circle} ${sz.border} border-amber-200 opacity-60 bg-amber-50/40 hover:opacity-90 hover:scale-105`}`;
+                    ? `${sz.circle} ${sz.border} pet-stage-circle is-active border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-105`
+                    : `${sz.circle} ${sz.border} pet-stage-circle is-muted border-amber-200 bg-amber-50/40 hover:opacity-90 hover:scale-105`}`;
             circle.id = isActive ? 'pet-graphic-container' : `pet-circle-${idx}`;
             circle.title = isActive ? `${pet.name || '펫'} 사진 변경` : `${pet.name || '펫'} 선택`;
             circle.style.transition = 'all 0.3s ease-out';
@@ -1734,6 +1935,7 @@ function togglePetProfileEdit() {
                 if (imgEl) {
                     imgEl.src = current.imageUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300";
                 }
+                updateRoomLayoutControls(normalizeRoomLayout(current.roomLayout || 'living'));
                 tempPetRoomPhotoUrl = "";
             }
         }
@@ -1788,6 +1990,7 @@ function savePetProfileAndRoom() {
 
     current.name = nameInput;
     current.roomName = roomNameInput || `${nameInput}의 하루 방 🏠`;
+    current.roomLayout = normalizeRoomLayout(current.roomLayout || 'living');
     
     if (tempPetRoomPhotoUrl) {
         current.imageUrl = tempPetRoomPhotoUrl;

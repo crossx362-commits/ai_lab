@@ -56,9 +56,15 @@ const MYPET_TEMPLATE = `
                         <h2 class="text-xl font-bold text-gray-900 keep-all mb-1.5" id="pet-room-name-wrapper">
                             <span id="pet-room-name">댕이의 하루 방 🏠</span>
                         </h2>
-                        <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
-                            🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
-                        </p>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <p id="pet-room-visit-badge" class="text-[11px] text-amber-500 font-bold">
+                                🐾 집사의 <span id="pet-room-visit-count">1</span>번째 방문
+                            </p>
+                            <span id="room-layout-badge" class="room-layout-badge">
+                                <i class="fa-solid fa-couch text-[9px]"></i>
+                                <span id="room-layout-badge-text">거실형</span>
+                            </span>
+                        </div>
                     </div>
                     <div class="flex items-start gap-2 shrink-0">
                         <!-- 사주 정보 카드 -->
@@ -171,6 +177,34 @@ const MYPET_TEMPLATE = `
                         <div class="flex-1 space-y-2">
                             <input type="text" id="settings-pet-name" placeholder="반려동물 이름" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-amber-400 text-xs">
                             <input type="text" id="settings-room-name-input" placeholder="방 이름 🏠" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-amber-400 text-xs">
+                            <div class="room-layout-picker grid grid-cols-2 gap-2">
+                                <button type="button" id="room-layout-living" onclick="setRoomLayoutForActivePet('living')"
+                                    class="room-layout-option room-layout-preview-card is-active" aria-pressed="true">
+                                    <span class="room-layout-preview living">
+                                        <span class="preview-sofa"></span>
+                                        <span class="preview-rug"></span>
+                                        <span class="preview-pet left"></span>
+                                        <span class="preview-pet right"></span>
+                                    </span>
+                                    <span class="room-layout-copy">
+                                        <strong><i class="fa-solid fa-couch text-[11px]"></i> 거실형</strong>
+                                        <small>편안한 소파와 러그</small>
+                                    </span>
+                                </button>
+                                <button type="button" id="room-layout-circle" onclick="setRoomLayoutForActivePet('circle')"
+                                    class="room-layout-option room-layout-preview-card" aria-pressed="false">
+                                    <span class="room-layout-preview circle">
+                                        <span class="preview-line"></span>
+                                        <span class="preview-pet top"></span>
+                                        <span class="preview-pet left"></span>
+                                        <span class="preview-pet right"></span>
+                                    </span>
+                                    <span class="room-layout-copy">
+                                        <strong><i class="fa-solid fa-circle-nodes text-[11px]"></i> 교감형</strong>
+                                        <small>마음이 이어지는 배치</small>
+                                    </span>
+                                </button>
+                            </div>
                             <div class="flex gap-1.5">
                                 <button onclick="changePetPresetPhoto('https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300')" class="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-100 hover:scale-110 transition-transform"><img loading="lazy" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover"></button>
                                 <button onclick="changePetPresetPhoto('https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=300')" class="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-100 hover:scale-110 transition-transform"><img loading="lazy" src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover"></button>
@@ -187,20 +221,27 @@ const MYPET_TEMPLATE = `
             <div class="px-5 pb-5 space-y-4">
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
-                <div class="relative w-full h-[260px] md:h-[300px] flex items-center justify-center pt-3 pb-2">
+                <div class="room-stage relative w-full h-[300px] md:h-[340px] flex items-center justify-center pt-5 pb-3">
+                    <div class="room-decor-layer" aria-hidden="true">
+                        <img loading="lazy" src="images/room/sunny-window.png" class="room-decor room-window" alt="">
+                        <img loading="lazy" src="images/room/cozy-sofa.png" class="room-decor room-sofa" alt="">
+                        <img loading="lazy" src="images/room/soft-round-rug.png" class="room-decor room-rug" alt="">
+                        <img loading="lazy" src="images/room/pet-cushion-set.png" class="room-decor room-cushions" alt="">
+                        <img loading="lazy" src="images/room/toy-basket.png" class="room-decor room-toys" alt="">
+                    </div>
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
                         <!-- JS로 동적 생성 -->
                     </svg>
 
                     <!-- 집사 (중앙) -->
-                    <div class="absolute" style="left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 10;">
+                    <div class="absolute" style="left: 50%; top: 52%; transform: translate(-50%, -50%); z-index: 10;">
                         <div class="flex flex-col items-center gap-1.5">
                             <span class="text-[10px] font-black text-brand-600 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 👑 집사
                             </span>
                             <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
-                                class="w-32 h-32 flex items-center justify-center rounded-full bg-white border-4 border-brand-400 shadow-xl overflow-hidden cursor-pointer hover:border-brand-500 transition-all"
+                                class="butler-stage-core w-32 h-32 flex items-center justify-center rounded-full bg-white border-4 border-brand-400 shadow-xl overflow-hidden cursor-pointer hover:border-brand-500 transition-all"
                                 title="집사 사진 변경">
                                 <span id="butler-stage-avatar" class="text-6xl">🧔</span>
                                 <img loading="lazy" id="butler-stage-image" class="hidden w-full h-full object-cover rounded-full">
@@ -211,12 +252,12 @@ const MYPET_TEMPLATE = `
                     </div>
 
                     <!-- 말풍선 (집사 위, 폭 제한) -->
-                    <div id="pet-speech-bubble" class="absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 4%; transform: translateX(-50%); z-index: 11; max-width: 160px; white-space: normal; line-height: 1.4;">
+                    <div id="pet-speech-bubble" class="room-speech-bubble absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 2.5%; transform: translateX(-50%); z-index: 11; max-width: 178px; white-space: normal; line-height: 1.4;">
                         <span id="pet-bubble-text">산책 가요! 🐕</span>
                         <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
                     </div>
 
-                    <!-- 반려동물들 (불규칙 배치) -->
+                    <!-- 반려동물들 (겹침 방지 배치) -->
                     <div id="pet-stage-list" class="absolute inset-0" style="z-index: 5;">
                         <!-- renderPetStageList() - 각 펫을 원형으로 배치 -->
                     </div>
