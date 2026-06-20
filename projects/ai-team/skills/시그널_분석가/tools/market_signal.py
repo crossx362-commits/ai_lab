@@ -205,17 +205,20 @@ def summarize(data: dict[str, Any]) -> str:
     kp = crypto.get("kimchi_premium", {})
     coins = crypto.get("top_coins", [])
     top = ", ".join(f"{c['ticker'].replace('KRW-', '')}:{c['score']}" for c in coins[:3]) or "none"
+    signal_labels = {"BUY": "매수", "SELL": "매도", "NEUTRAL": "중립"}
+    fg_signal = signal_labels.get(str(fg.get("signal", "NEUTRAL")).upper(), fg.get("signal", "중립"))
+    kp_signal = signal_labels.get(str(kp.get("signal", "NEUTRAL")).upper(), kp.get("signal", "중립"))
     risks = []
     if safe_float(kp.get("value")) >= 5:
-        risks.append("kimchi premium high")
+        risks.append("김치프리미엄 높음")
     if fg.get("signal") == "SELL":
-        risks.append("fear-greed overheated")
+        risks.append("공포탐욕 과열")
     if not risks:
-        risks.append("no major market-wide block")
+        risks.append("큰 시장 차단 신호 없음")
     return (
-        f"Fear/Greed {fg.get('value', 'n/a')} {fg.get('signal', 'NEUTRAL')}; "
-        f"kimchi {kp.get('value', 'n/a')}% {kp.get('signal', 'NEUTRAL')}; "
-        f"top coins {top}; risk: {', '.join(risks)}."
+        f"공포탐욕 {fg.get('value', 'n/a')} {fg_signal}; "
+        f"김치프리미엄 {kp.get('value', 'n/a')}% {kp_signal}; "
+        f"상위 코인 {top}; 주의: {', '.join(risks)}."
     )
 
 
@@ -243,7 +246,7 @@ def notify_on_change(data: dict[str, Any]) -> None:
 
     changes = [key for key, value in current.items() if value and value != previous.get(key) and value != "NEUTRAL"]
     if changes:
-        send("[Signal] Market signal changed\n" + data.get("ai_analysis", summarize(data)), silent=True)
+        send("📡 [시그널] 시장 신호가 바뀌었어요\n" + data.get("ai_analysis", summarize(data)), silent=True)
 
 
 def run_once(notify: bool = False) -> dict[str, Any] | None:
