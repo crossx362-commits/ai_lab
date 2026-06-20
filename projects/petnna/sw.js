@@ -1,4 +1,4 @@
-const CACHE = 'petna-v13-room-layout';
+const CACHE = 'petna-v14-room-decor';
 const STATIC = [
     './',
     './index.html',

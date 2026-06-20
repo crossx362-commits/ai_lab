@@ -863,6 +863,8 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     position: absolute;
     user-select: none;
     object-fit: contain;
+    height: auto;
+    max-width: none;
     filter: drop-shadow(0 12px 18px rgba(146, 64, 14, 0.07));
 }
 
@@ -875,40 +877,40 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 }
 
 .room-window {
-    width: clamp(86px, 18vw, 132px);
-    right: 5%;
-    top: 6%;
-    opacity: 0.5;
-}
-
-.room-sofa {
-    width: min(74%, 560px);
-    left: 50%;
-    top: 35%;
-    transform: translateX(-50%);
+    width: clamp(70px, 11%, 104px);
+    right: 7%;
+    top: 7%;
     opacity: 0.42;
 }
 
-.room-rug {
-    width: min(58%, 430px);
+.room-sofa {
+    width: clamp(190px, 38%, 310px);
     left: 50%;
-    bottom: 2%;
+    top: 39%;
     transform: translateX(-50%);
-    opacity: 0.58;
+    opacity: 0.28;
+}
+
+.room-rug {
+    width: clamp(170px, 34%, 280px);
+    left: 50%;
+    bottom: 5%;
+    transform: translateX(-50%);
+    opacity: 0.36;
 }
 
 .room-cushions {
-    width: clamp(90px, 16vw, 128px);
-    left: 8%;
-    bottom: 8%;
-    opacity: 0.48;
+    width: clamp(72px, 12%, 102px);
+    left: 9%;
+    bottom: 10%;
+    opacity: 0.38;
 }
 
 .room-toys {
-    width: clamp(78px, 13vw, 112px);
-    right: 8%;
-    bottom: 9%;
-    opacity: 0.5;
+    width: clamp(62px, 10%, 88px);
+    right: 10%;
+    bottom: 11%;
+    opacity: 0.4;
 }
 
 .butler-stage-core {
