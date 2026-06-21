@@ -363,12 +363,66 @@ function _makePetDraggable(el, petId) {
     });
 }
 
+function _initButlerDrag() {
+    const el = document.getElementById('butler-stage-wrapper');
+    if (!el || el._dragInit) return;
+    el._dragInit = true;
+
+    // 저장된 위치 복원
+    try {
+        const saved = JSON.parse(localStorage.getItem('petnna_butler_pos') || 'null');
+        if (saved) {
+            el.style.left = `${saved.x}%`;
+            el.style.top  = `${saved.y}%`;
+            el.style.transform = `translate(-50%, -100%) scale(${_depthScale(saved.y).toFixed(3)})`;
+        }
+    } catch {}
+
+    let sx, sy, sl, st, moved = false;
+    el.addEventListener('pointerdown', e => {
+        if (e.target.closest('input,button')) return;
+        moved = false;
+        el.setPointerCapture(e.pointerId);
+        sx = e.clientX; sy = e.clientY;
+        sl = parseFloat(el.style.left);
+        st = parseFloat(el.style.top);
+        el.style.cursor = 'grabbing';
+        el.style.transition = 'none';
+        e.stopPropagation();
+        e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => {
+        if (!e.buttons) return;
+        if (Math.abs(e.clientX - sx) < 4 && Math.abs(e.clientY - sy) < 4) return;
+        moved = true;
+        const rect = el.closest('.room-stage').getBoundingClientRect();
+        const nx = Math.max(8, Math.min(92, sl + (e.clientX - sx) / rect.width  * 100));
+        const ny = Math.max(15, Math.min(90, st + (e.clientY - sy) / rect.height * 100));
+        el.style.left      = `${nx}%`;
+        el.style.top       = `${ny}%`;
+        el.style.transform = `translate(-50%,-100%) scale(${_depthScale(ny).toFixed(3)})`;
+        el.style.zIndex    = Math.round(ny) + 50;
+    });
+    el.addEventListener('pointerup', () => {
+        el.style.cursor = 'grab';
+        el.style.transition = '';
+        if (!moved) return;
+        const nx = parseFloat(el.style.left);
+        const ny = parseFloat(el.style.top);
+        el.style.zIndex = Math.round(ny) + 10;
+        localStorage.setItem('petnna_butler_pos', JSON.stringify({ x: nx, y: ny }));
+        _redrawLeashes();
+    });
+}
+
 function _redrawLeashes() {
     const svg = document.getElementById('leash-svg');
     if (!svg) return;
     svg.innerHTML = '';
-    const butlerX = 50, butlerY = 82;
-    const layout = getActiveRoomLayout ? getActiveRoomLayout() : 'living';
+    const butlerEl = document.getElementById('butler-stage-wrapper');
+    const butlerX = butlerEl ? parseFloat(butlerEl.style.left) || 50 : 50;
+    const butlerY = butlerEl ? parseFloat(butlerEl.style.top)  || 82 : 82;
+    const layout = typeof getActiveRoomLayout === 'function' ? getActiveRoomLayout() : 'living';
     document.querySelectorAll('.pet-stage-wrapper').forEach((el, idx) => {
         const px = parseFloat(el.style.left);
         const py = parseFloat(el.style.top);
@@ -423,8 +477,13 @@ function renderPetStageList() {
                 spriteImg.src = pet.imageUrl;
                 spriteImg.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:50%;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.3));display:block;';
             } else {
-                const petImgMap = { cat: 'images/bingo_corgi.png', rabbit: 'images/bingo_corgi.png', hamster: 'images/bingo_corgi.png', dog: 'images/bingo_corgi.png' };
-                spriteImg.src = petImgMap[pet.type] || 'images/bingo_corgi.png';
+                const petImgMap = {
+                    dog:     'images/bingo_corgi.png',
+                    cat:     'images/pet_cat.png',
+                    rabbit:  'images/pet_rabbit.png',
+                    hamster: 'images/pet_hamster.png',
+                };
+                spriteImg.src = petImgMap[pet.type] || 'images/pet_dog_golden.png';
                 spriteImg.style.cssText = 'width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25));display:block;';
             }
             spriteImg.id = isActive ? 'pet-graphic-container' : `pet-img-${idx}`;
@@ -458,6 +517,7 @@ function renderPetStageList() {
     }
     renderRoomStickers();
     loadRoomTheme();
+    setTimeout(_initButlerDrag, 0);
     const _pet = getActivePet();
     if (_pet) { runStatDecay(_pet); saveState(); }
     _applyUnlockedItems();

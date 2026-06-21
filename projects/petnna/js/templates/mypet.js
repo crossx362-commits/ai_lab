@@ -295,8 +295,8 @@ const MYPET_TEMPLATE = `
                         <!-- JS로 동적 생성 -->
                     </svg>
 
-                    <!-- 집사 (하단 중앙 전경) -->
-                    <div class="absolute" style="left: 50%; top: 82%; transform: translate(-50%, -100%); z-index: 10;">
+                    <!-- 집사 (드래그 가능) -->
+                    <div class="absolute" id="butler-stage-wrapper" style="left: 50%; top: 82%; transform: translate(-50%, -100%); z-index: 10; cursor: grab;">
                         <div class="flex flex-col items-center gap-1">
                             <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
                                 class="butler-stage-core w-24 h-24 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
