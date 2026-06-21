@@ -288,74 +288,151 @@ const MYPET_TEMPLATE = `
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
                 <div class="room-stage relative w-full h-[360px] md:h-[420px] flex items-center justify-center pt-5 pb-3">
-                    <!-- 싸이월드 쿼터뷰 방 (SVG) -->
+                    <!-- 픽셀아트 야외 필드 -->
                     <svg aria-hidden="true" class="room-decor-layer"
                          viewBox="0 0 100 100" preserveAspectRatio="none"
                          xmlns="http://www.w3.org/2000/svg"
-                         style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;border-radius:inherit;">
+                         style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;border-radius:inherit;image-rendering:pixelated;">
                       <defs>
-                        <!-- 좌측 벽 그라데이션 (왼쪽 어둡 → 오른쪽) -->
-                        <linearGradient id="cwWallL" x1="0" x2="1" y1="0" y2="0">
-                          <stop offset="0%"   stop-color="var(--cw-wall-dark,#9a6c38)"/>
-                          <stop offset="100%" stop-color="var(--cw-wall-side,#c89058)"/>
+                        <linearGradient id="fSky" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stop-color="#4890d8"/>
+                          <stop offset="100%" stop-color="#a8d8f8"/>
                         </linearGradient>
-                        <!-- 바닥 그라데이션 (뒤 밝 → 앞 어둡) -->
-                        <linearGradient id="cwFloorG" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%"   stop-color="var(--cw-floor,#dfc070)"/>
-                          <stop offset="100%" stop-color="var(--cw-floor-front,#b89040)"/>
+                        <linearGradient id="fGround" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stop-color="#a8d050"/>
+                          <stop offset="100%" stop-color="#58a010"/>
                         </linearGradient>
-                        <!-- 바닥 대각선 마루 패턴 -->
-                        <pattern id="cwFloorP" x="0" y="0" width="9" height="9" patternUnits="userSpaceOnUse">
-                          <line x1="0" y1="9" x2="9" y2="0" stroke="rgba(0,0,0,0.08)" stroke-width="0.4"/>
+                        <linearGradient id="fDirt" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stop-color="#c8a060"/>
+                          <stop offset="100%" stop-color="#a07030"/>
+                        </linearGradient>
+                        <pattern id="fGrass" x="0" y="0" width="10" height="8" patternUnits="userSpaceOnUse">
+                          <line x1="0" y1="0" x2="10" y2="0" stroke="rgba(0,0,0,0.05)" stroke-width="0.4"/>
                         </pattern>
-                        <!-- 창문 햇빛 glow -->
-                        <radialGradient id="cwSun" cx="82" cy="8" r="38" gradientUnits="userSpaceOnUse">
-                          <stop offset="0%"   stop-color="rgba(255,235,140,0.38)"/>
-                          <stop offset="100%" stop-color="rgba(255,235,140,0)"/>
-                        </radialGradient>
-                        <!-- 창문 유리 -->
-                        <linearGradient id="cwGlass" x1="0" x2="1" y1="0" y2="1">
-                          <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
-                          <stop offset="100%" stop-color="rgba(120,190,240,0.75)"/>
-                        </linearGradient>
-                        <!-- 뒷벽 위→아래 미세 그라데이션 -->
-                        <linearGradient id="cwWallBG" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%"   stop-color="var(--cw-wall-back,#fef0d8)"/>
-                          <stop offset="100%" stop-color="var(--cw-wall-back,#fef0d8)" stop-opacity="0.88"/>
-                        </linearGradient>
                       </defs>
 
-                      <!-- ① 뒷벽 (우측 상단 사다리꼴) -->
-                      <polygon points="27,0 100,4 100,63 27,63" fill="url(#cwWallBG)"/>
+                      <!-- ══ 하늘 ══ -->
+                      <rect x="0" y="0" width="100" height="30" fill="url(#fSky)"/>
+                      <!-- 구름 1 -->
+                      <rect x="6"  y="5"  width="18" height="5"  rx="2.5" fill="rgba(255,255,255,0.95)" shape-rendering="auto"/>
+                      <rect x="4"  y="7"  width="22" height="6"  rx="3"   fill="rgba(255,255,255,0.98)" shape-rendering="auto"/>
+                      <rect x="8"  y="4"  width="12" height="4"  rx="2"   fill="rgba(255,255,255,0.90)" shape-rendering="auto"/>
+                      <!-- 구름 2 -->
+                      <rect x="62" y="6"  width="22" height="5"  rx="2.5" fill="rgba(255,255,255,0.88)" shape-rendering="auto"/>
+                      <rect x="59" y="8"  width="28" height="6"  rx="3"   fill="rgba(255,255,255,0.92)" shape-rendering="auto"/>
+                      <!-- 구름 3 (작음) -->
+                      <rect x="38" y="3"  width="12" height="4"  rx="2"   fill="rgba(255,255,255,0.80)" shape-rendering="auto"/>
+                      <rect x="36" y="5"  width="16" height="4"  rx="2"   fill="rgba(255,255,255,0.85)" shape-rendering="auto"/>
 
-                      <!-- ② 좌측 벽 (평행사변형, 확연히 어두움) -->
-                      <polygon points="0,11 27,0 27,63 0,72" fill="url(#cwWallL)"/>
+                      <!-- ══ 지평선 언덕 ══ -->
+                      <ellipse cx="10"  cy="30" rx="18" ry="7"  fill="#90c040" shape-rendering="auto"/>
+                      <ellipse cx="38"  cy="28" rx="24" ry="7"  fill="#a8d050" shape-rendering="auto"/>
+                      <ellipse cx="72"  cy="29" rx="22" ry="6"  fill="#98c840" shape-rendering="auto"/>
+                      <ellipse cx="96"  cy="31" rx="14" ry="5"  fill="#88b830" shape-rendering="auto"/>
 
-                      <!-- ③ 걸레받이 (경계선) -->
-                      <polygon points="0,72 27,63 100,63 100,67 27,67 0,76" fill="var(--cw-baseboard,#c07030)"/>
+                      <!-- ══ 나무들 ══ -->
+                      <!-- 왼쪽 나무 1 -->
+                      <rect x="1"   y="24" width="3"  height="8"  fill="#7b4a1f" shape-rendering="crispEdges"/>
+                      <rect x="-1"  y="13" width="7"  height="13" rx="3" fill="#2a8a22" shape-rendering="auto"/>
+                      <rect x="0"   y="10" width="5"  height="7"  rx="2" fill="#3aaa2a" shape-rendering="auto"/>
+                      <!-- 왼쪽 나무 2 -->
+                      <rect x="13"  y="23" width="2"  height="7"  fill="#6b3a1f" shape-rendering="crispEdges"/>
+                      <rect x="11"  y="14" width="6"  height="11" rx="3" fill="#228822" shape-rendering="auto"/>
+                      <rect x="12"  y="11" width="4"  height="6"  rx="2" fill="#33bb33" shape-rendering="auto"/>
+                      <!-- 오른쪽 나무 1 -->
+                      <rect x="86"  y="21" width="3"  height="9"  fill="#7b4a1f" shape-rendering="crispEdges"/>
+                      <rect x="84"  y="11" width="7"  height="13" rx="3" fill="#1a7a1a" shape-rendering="auto"/>
+                      <rect x="85"  y="8"  width="5"  height="7"  rx="2" fill="#2a9a2a" shape-rendering="auto"/>
+                      <!-- 오른쪽 나무 2 -->
+                      <rect x="96"  y="23" width="2"  height="7"  fill="#6b3a1f" shape-rendering="crispEdges"/>
+                      <rect x="94"  y="14" width="6"  height="11" rx="3" fill="#226622" shape-rendering="auto"/>
 
-                      <!-- ④ 바닥 (사다리꼴 + 마루 패턴) -->
-                      <polygon points="0,76 27,67 100,67 100,100 0,100" fill="url(#cwFloorG)"/>
-                      <polygon points="0,76 27,67 100,67 100,100 0,100" fill="url(#cwFloorP)" opacity="0.9"/>
+                      <!-- ══ 잔디 필드 ══ -->
+                      <rect x="0" y="28" width="100" height="72" fill="url(#fGround)"/>
+                      <rect x="0" y="28" width="100" height="72" fill="url(#fGrass)"/>
+                      <!-- 원근 하이라이트 (뒤쪽 밝음) -->
+                      <rect x="0" y="28" width="100" height="18" fill="rgba(200,240,120,0.25)"/>
+                      <!-- 원근 음영 (앞쪽 어둡) -->
+                      <rect x="0" y="85" width="100" height="15" fill="rgba(0,0,0,0.10)"/>
 
-                      <!-- ⑤ 코너 라인 (좌측벽/뒷벽 경계) -->
-                      <line x1="27" y1="0" x2="27" y2="63" stroke="var(--cw-baseboard,#c07030)" stroke-width="1.8"/>
+                      <!-- ══ 흙 밭 (왼쪽) ══ -->
+                      <rect x="4"  y="44" width="24" height="18" rx="1" fill="url(#fDirt)" shape-rendering="crispEdges"/>
+                      <!-- 밭 이랑 -->
+                      <rect x="5"  y="46" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="5"  y="50" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="5"  y="54" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="5"  y="58" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <!-- 밭 테두리 -->
+                      <rect x="4"  y="44" width="24" height="1"  fill="#885520" shape-rendering="crispEdges"/>
+                      <rect x="4"  y="61" width="24" height="1"  fill="#886630" shape-rendering="crispEdges"/>
 
-                      <!-- ⑥ 창문 (뒷벽 오른쪽) -->
-                      <rect x="69" y="5" width="24" height="33" rx="1.5" fill="var(--cw-baseboard,#c07030)"/>
-                      <rect x="71" y="7" width="20" height="29" fill="url(#cwGlass)"/>
-                      <!-- 창틀 십자 -->
-                      <line x1="81" y1="7"  x2="81" y2="36" stroke="var(--cw-baseboard,#c07030)" stroke-width="1.5"/>
-                      <line x1="71" y1="21" x2="91" y2="21" stroke="var(--cw-baseboard,#c07030)" stroke-width="1.5"/>
-                      <!-- 창문 glare -->
-                      <rect x="72" y="8"  width="7" height="11" rx="2" fill="rgba(255,255,255,0.52)"/>
-                      <!-- 커튼 왼쪽 -->
-                      <rect x="69" y="5" width="5" height="33" fill="var(--cw-baseboard,#c07030)" opacity="0.45"/>
-                      <!-- 커튼 오른쪽 -->
-                      <rect x="88" y="5" width="5" height="33" fill="var(--cw-baseboard,#c07030)" opacity="0.45"/>
+                      <!-- ══ 흙 밭 (오른쪽) ══ -->
+                      <rect x="72" y="50" width="24" height="22" rx="1" fill="url(#fDirt)" shape-rendering="crispEdges"/>
+                      <rect x="73" y="52" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="73" y="56" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="73" y="60" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="73" y="64" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="73" y="68" width="22" height="2"  fill="#a07030" shape-rendering="crispEdges"/>
+                      <rect x="72" y="50" width="24" height="1"  fill="#885520" shape-rendering="crispEdges"/>
 
-                      <!-- ⑦ 창문 햇빛 (뒷벽 오버레이) -->
-                      <polygon points="27,0 100,4 100,63 27,63" fill="url(#cwSun)"/>
+                      <!-- ══ 연못 ══ -->
+                      <rect x="2"  y="70" width="18" height="14" rx="3" fill="#4898d8" shape-rendering="auto" opacity="0.9"/>
+                      <!-- 물 반짝임 -->
+                      <rect x="4"  y="72" width="6"  height="2"  rx="1" fill="rgba(255,255,255,0.5)" shape-rendering="crispEdges"/>
+                      <rect x="8"  y="76" width="4"  height="1"  fill="rgba(255,255,255,0.35)" shape-rendering="crispEdges"/>
+                      <rect x="3"  y="80" width="5"  height="1"  fill="rgba(255,255,255,0.3)" shape-rendering="crispEdges"/>
+                      <!-- 연못 테두리 -->
+                      <rect x="2"  y="83" width="18" height="1"  fill="#2878a8" shape-rendering="crispEdges" opacity="0.6"/>
+
+                      <!-- ══ 잔디 풀 (산발) ══ -->
+                      <rect x="27" y="37" width="1" height="4" fill="#44bb22" shape-rendering="crispEdges"/>
+                      <rect x="28" y="35" width="1" height="5" fill="#55cc33" shape-rendering="crispEdges"/>
+                      <rect x="29" y="37" width="1" height="4" fill="#44bb22" shape-rendering="crispEdges"/>
+
+                      <rect x="52" y="34" width="1" height="4" fill="#44bb22" shape-rendering="crispEdges"/>
+                      <rect x="53" y="32" width="1" height="5" fill="#55cc33" shape-rendering="crispEdges"/>
+                      <rect x="54" y="34" width="1" height="4" fill="#44bb22" shape-rendering="crispEdges"/>
+
+                      <rect x="36" y="68" width="1" height="4" fill="#44aa22" shape-rendering="crispEdges"/>
+                      <rect x="37" y="66" width="1" height="5" fill="#55bb33" shape-rendering="crispEdges"/>
+                      <rect x="38" y="68" width="1" height="4" fill="#44aa22" shape-rendering="crispEdges"/>
+
+                      <rect x="62" y="74" width="1" height="4" fill="#44aa22" shape-rendering="crispEdges"/>
+                      <rect x="63" y="72" width="1" height="5" fill="#55bb33" shape-rendering="crispEdges"/>
+                      <rect x="64" y="74" width="1" height="4" fill="#44aa22" shape-rendering="crispEdges"/>
+
+                      <rect x="45" y="82" width="1" height="4" fill="#3a9918" shape-rendering="crispEdges"/>
+                      <rect x="46" y="80" width="1" height="5" fill="#4aaa22" shape-rendering="crispEdges"/>
+                      <rect x="47" y="82" width="1" height="4" fill="#3a9918" shape-rendering="crispEdges"/>
+
+                      <!-- ══ 꽃들 ══ -->
+                      <!-- 노란 꽃 -->
+                      <rect x="33" y="57" width="1" height="3" fill="#44aa22" shape-rendering="crispEdges"/>
+                      <rect x="32" y="54" width="3" height="3" fill="#ffdd00" shape-rendering="crispEdges"/>
+                      <rect x="33" y="53" width="1" height="4" fill="#ffdd00" shape-rendering="crispEdges"/>
+                      <rect x="33" y="55" width="1" height="1" fill="#ff8800" shape-rendering="crispEdges"/>
+                      <!-- 분홍 꽃 -->
+                      <rect x="58" y="42" width="1" height="3" fill="#44aa22" shape-rendering="crispEdges"/>
+                      <rect x="57" y="39" width="3" height="3" fill="#ff88cc" shape-rendering="crispEdges"/>
+                      <rect x="58" y="38" width="1" height="4" fill="#ff88cc" shape-rendering="crispEdges"/>
+                      <rect x="58" y="40" width="1" height="1" fill="#ff44aa" shape-rendering="crispEdges"/>
+                      <!-- 흰 꽃 -->
+                      <rect x="42" y="45" width="1" height="3" fill="#44aa22" shape-rendering="crispEdges"/>
+                      <rect x="41" y="42" width="3" height="3" fill="#ffffff" shape-rendering="crispEdges"/>
+                      <rect x="42" y="41" width="1" height="4" fill="#ffffff" shape-rendering="crispEdges"/>
+                      <rect x="42" y="43" width="1" height="1" fill="#ffdd88" shape-rendering="crispEdges"/>
+                      <!-- 보라 꽃 -->
+                      <rect x="68" y="33" width="1" height="3" fill="#44aa22" shape-rendering="crispEdges"/>
+                      <rect x="67" y="30" width="3" height="3" fill="#cc88ff" shape-rendering="crispEdges"/>
+                      <rect x="68" y="29" width="1" height="4" fill="#cc88ff" shape-rendering="crispEdges"/>
+
+                      <!-- ══ 돌 ══ -->
+                      <rect x="50" y="52" width="5" height="3" rx="1" fill="#a0a0a0" shape-rendering="crispEdges"/>
+                      <rect x="51" y="51" width="3" height="1" fill="#c8c8c8" shape-rendering="crispEdges"/>
+                      <rect x="24" y="76" width="6" height="4" rx="1" fill="#909090" shape-rendering="crispEdges"/>
+                      <rect x="25" y="75" width="4" height="1" fill="#b8b8b8" shape-rendering="crispEdges"/>
+                      <rect x="55" y="80" width="4" height="3" rx="1" fill="#989898" shape-rendering="crispEdges"/>
+                      <rect x="56" y="79" width="2" height="1" fill="#bbbbbb" shape-rendering="crispEdges"/>
                     </svg>
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
