@@ -373,9 +373,14 @@ def run_auto_trade_cycle():
     for ticker in TICKERS:
         try:
             btc_balance = safe_float(upbit_client.get_balance(ticker))
-            avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
+            if btc_balance <= 0:
+                continue
 
-            current_price = float(pyupbit.get_current_price(ticker))
+            avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
+            _cp = pyupbit.get_current_price(ticker)
+            if _cp is None:
+                continue
+            current_price = float(_cp)
 
             # 최소 주문 단위(5,000원) 이상의 포지션 보유 확인
             if btc_balance * current_price >= 5000.0:
@@ -605,8 +610,13 @@ def send_status_report():
 
         for ticker in TICKERS:
             bal = safe_float(upbit_client.get_balance(ticker))
-            if bal * float(pyupbit.get_current_price(ticker)) >= 5000:
-                cur = float(pyupbit.get_current_price(ticker))
+            if bal <= 0:
+                continue
+            _cp = pyupbit.get_current_price(ticker)
+            if _cp is None:
+                continue
+            cur = float(_cp)
+            if bal * cur >= 5000:
                 avg = safe_float(upbit_client.get_avg_buy_price(ticker))
                 pnl = (cur - avg) / avg * 100
                 total_pnl += pnl

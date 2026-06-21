@@ -84,6 +84,9 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
         with urllib.request.urlopen(req, timeout=60) as r:
             res = json.loads(r.read())
         result = res["choices"][0]["message"]["content"].strip()
+        if not result:
+            print(f"  ⚠️ [Ollama:{model}] empty response, falling back")
+            return None
         print(f"  ✅ [Ollama:{model}] {len(result)} chars")
         return result
     except Exception as e:

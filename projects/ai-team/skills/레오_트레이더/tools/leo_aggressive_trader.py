@@ -393,7 +393,12 @@ def check_dave_holdings(ticker: str) -> bool:
 
     try:
         balance = safe_float(upbit_client.get_balance(ticker))
-        current_price = float(pyupbit.get_current_price(ticker))
+        if balance <= 0:
+            return False
+        _cp = pyupbit.get_current_price(ticker)
+        if _cp is None:
+            return False
+        current_price = float(_cp)
 
         # 5,000원 이상 보유 시 데이브 소유로 간주
         if balance * current_price >= 5000:
@@ -443,8 +448,13 @@ def run_leo_cycle():
     for ticker in LEO_TICKERS:
         try:
             balance = safe_float(upbit_client.get_balance(ticker))
+            if balance <= 0:
+                continue
             avg_buy_price = safe_float(upbit_client.get_avg_buy_price(ticker))
-            current_price = float(pyupbit.get_current_price(ticker))
+            _cp = pyupbit.get_current_price(ticker)
+            if _cp is None:
+                continue
+            current_price = float(_cp)
 
             if balance * current_price >= 5000:
                 # 데이브 소유인지 체크
@@ -715,7 +725,12 @@ def send_status_report():
         leo_positions = []
         for ticker in LEO_TICKERS:
             balance = safe_float(upbit_client.get_balance(ticker))
-            current_price = float(pyupbit.get_current_price(ticker))
+            if balance <= 0:
+                continue
+            _cp = pyupbit.get_current_price(ticker)
+            if _cp is None:
+                continue
+            current_price = float(_cp)
 
             if balance * current_price >= 5000 and not check_dave_holdings(ticker):
                 avg = safe_float(upbit_client.get_avg_buy_price(ticker))

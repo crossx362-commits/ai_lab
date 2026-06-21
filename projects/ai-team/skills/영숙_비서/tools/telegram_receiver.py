@@ -157,7 +157,6 @@ def get_updates(offset: int) -> tuple[list[dict[str, Any]], bool]:
         time.sleep(POLL_BACKOFF_SECONDS)
         return [], True
     log(f"getUpdates failed: {description}")
-    time.sleep(5)
     return [], False
 
 
@@ -822,28 +821,37 @@ def main() -> None:
         send_message("영숙 재시작 완료. Telegram 수신은 Python 봇 하나만 담당합니다.")
         offset = read_offset()
         log(f"polling started offset={offset}")
+        _fail_count = 0
         while True:
             try:
                 updates, _conflicted = get_updates(offset)
-                for update in updates:
-                    offset = int(update.get("update_id", 0)) + 1
-                    write_offset(offset)
-                    message = update.get("message") or {}
-                    chat_id = str(message.get("chat", {}).get("id", ""))
-                    if chat_id != str(CHAT_ID):
-                        continue
-                    text = str(message.get("text") or "").strip()
-                    if not text:
-                        continue
-                    send_message(handle_message(text))
-                if not updates:
-                    time.sleep(POLL_INTERVAL_SECONDS)
+                if updates:
+                    _fail_count = 0
+                    for update in updates:
+                        offset = int(update.get("update_id", 0)) + 1
+                        write_offset(offset)
+                        message = update.get("message") or {}
+                        chat_id = str(message.get("chat", {}).get("id", ""))
+                        if chat_id != str(CHAT_ID):
+                            continue
+                        text = str(message.get("text") or "").strip()
+                        if not text:
+                            continue
+                        send_message(handle_message(text))
+                else:
+                    if _conflicted:
+                        _fail_count = 0
+                    else:
+                        _fail_count += 1
+                    backoff = min(5 * (2 ** min(_fail_count - 1, 4)), 60) if _fail_count > 0 else POLL_INTERVAL_SECONDS
+                    time.sleep(backoff)
             except KeyboardInterrupt:
                 log("stopped by keyboard")
                 break
             except Exception:
                 log(traceback.format_exc())
-                time.sleep(5)
+                _fail_count += 1
+                time.sleep(min(5 * (2 ** min(_fail_count - 1, 4)), 60))
 
 
 if __name__ == "__main__":
