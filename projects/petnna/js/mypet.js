@@ -477,13 +477,27 @@ function renderPetStageList() {
                 spriteImg.src = pet.imageUrl;
                 spriteImg.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:50%;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.3));display:block;';
             } else {
+                const dogBreeds = [
+                    'images/bingo_corgi.png',
+                    'images/pet_dog_golden.png',
+                    'images/pet_dog_shiba.png',
+                    'images/pet_dog_poodle.png',
+                    'images/pet_dog_dalmatian.png',
+                    'images/pet_dog_husky.png',
+                    'images/pet_dog_pomeranian.png',
+                ];
                 const petImgMap = {
-                    dog:     'images/bingo_corgi.png',
                     cat:     'images/pet_cat.png',
                     rabbit:  'images/pet_rabbit.png',
                     hamster: 'images/pet_hamster.png',
                 };
-                spriteImg.src = petImgMap[pet.type] || 'images/pet_dog_golden.png';
+                if (pet.type === 'dog' || !pet.type) {
+                    // 펫 ID나 이름 해시로 품종 고정 배정 (같은 펫은 항상 같은 품종)
+                    const seed = (pet.id || pet.name || '').split('').reduce((a, c) => a + c.charCodeAt(0), idx);
+                    spriteImg.src = dogBreeds[seed % dogBreeds.length];
+                } else {
+                    spriteImg.src = petImgMap[pet.type] || 'images/bingo_corgi.png';
+                }
                 spriteImg.style.cssText = 'width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25));display:block;';
             }
             spriteImg.id = isActive ? 'pet-graphic-container' : `pet-img-${idx}`;
