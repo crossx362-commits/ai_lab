@@ -634,8 +634,8 @@ function deleteRoomSticker(id) {
 }
 
 function _depthScale(yPct) {
-    if (yPct >= 62) return 0.75 + ((yPct - 62) / 31) * 0.65;
-    return 0.55 + (yPct / 62) * 0.2;
+    if (yPct >= 60) return 0.75 + ((yPct - 60) / 33) * 0.65;
+    return 0.5 + (yPct / 60) * 0.25;
 }
 
 function renderRoomStickers() {

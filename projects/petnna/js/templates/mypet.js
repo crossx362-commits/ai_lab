@@ -314,10 +314,55 @@ const MYPET_TEMPLATE = `
                                 👑 집사
                             </span>
                             <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
-                                class="butler-stage-core w-32 h-32 flex items-center justify-center rounded-full bg-white border-4 border-brand-400 shadow-xl overflow-hidden cursor-pointer hover:border-brand-500 transition-all"
+                                class="butler-stage-core w-28 h-28 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
                                 title="집사 사진 변경">
-                                <span id="butler-stage-avatar" class="text-6xl">🧔</span>
-                                <img loading="lazy" id="butler-stage-image" class="hidden w-full h-full object-cover rounded-full">
+                                <!-- 싸이월드 미니미 스타일 캐릭터 -->
+                                <svg id="butler-stage-avatar" viewBox="0 0 60 80" width="112" height="112" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-lg">
+                                  <!-- 그림자 -->
+                                  <ellipse cx="30" cy="78" rx="14" ry="4" fill="rgba(0,0,0,0.15)"/>
+                                  <!-- 다리 -->
+                                  <rect x="21" y="57" width="7" height="14" rx="3" fill="#5b6af0"/>
+                                  <rect x="32" y="57" width="7" height="14" rx="3" fill="#5b6af0"/>
+                                  <!-- 신발 -->
+                                  <ellipse cx="24.5" cy="71" rx="5" ry="3" fill="#2d2d2d"/>
+                                  <ellipse cx="35.5" cy="71" rx="5" ry="3" fill="#2d2d2d"/>
+                                  <!-- 몸 (셔츠) -->
+                                  <rect x="16" y="34" width="28" height="26" rx="6" fill="#7c8ef8"/>
+                                  <!-- 넥타이 -->
+                                  <polygon points="30,36 27,44 30,47 33,44" fill="#e05050"/>
+                                  <!-- 팔 왼쪽 -->
+                                  <rect x="8" y="35" width="9" height="18" rx="4" fill="#7c8ef8"/>
+                                  <!-- 팔 오른쪽 -->
+                                  <rect x="43" y="35" width="9" height="18" rx="4" fill="#7c8ef8"/>
+                                  <!-- 손 -->
+                                  <circle cx="12" cy="54" r="4" fill="#f5c5a0"/>
+                                  <circle cx="48" cy="54" r="4" fill="#f5c5a0"/>
+                                  <!-- 목 -->
+                                  <rect x="25" y="27" width="10" height="9" rx="2" fill="#f5c5a0"/>
+                                  <!-- 얼굴 -->
+                                  <circle cx="30" cy="20" r="16" fill="#f5c5a0"/>
+                                  <!-- 눈 -->
+                                  <circle cx="24" cy="19" r="2.5" fill="#333"/>
+                                  <circle cx="36" cy="19" r="2.5" fill="#333"/>
+                                  <circle cx="24.8" cy="18.2" r="1" fill="white"/>
+                                  <circle cx="36.8" cy="18.2" r="1" fill="white"/>
+                                  <!-- 볼터치 -->
+                                  <ellipse cx="20" cy="23" rx="4" ry="2.5" fill="rgba(255,150,150,0.4)"/>
+                                  <ellipse cx="40" cy="23" rx="4" ry="2.5" fill="rgba(255,150,150,0.4)"/>
+                                  <!-- 입 -->
+                                  <path d="M 26 25 Q 30 28 34 25" stroke="#c07060" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                                  <!-- 머리카락 -->
+                                  <path d="M 14 16 Q 14 2 30 2 Q 46 2 46 16 Q 44 8 30 8 Q 16 8 14 16 Z" fill="#3d2a1a"/>
+                                  <!-- 왕관 장식 -->
+                                  <rect x="22" y="3" width="16" height="6" rx="1" fill="#f0b030"/>
+                                  <polygon points="22,3 22,9 25,6" fill="#e8a020"/>
+                                  <polygon points="30,3 30,9 33,6" fill="#e8a020"/>
+                                  <polygon points="38,3 38,9 35,6" fill="#e8a020"/>
+                                  <circle cx="22" cy="3" r="1.5" fill="#e05050"/>
+                                  <circle cx="30" cy="2" r="1.5" fill="#50c050"/>
+                                  <circle cx="38" cy="3" r="1.5" fill="#5050e0"/>
+                                </svg>
+                                <img loading="lazy" id="butler-stage-image" class="hidden w-28 h-28 object-cover rounded-full border-4 border-brand-400 shadow-xl">
                             </div>
                             <input type="file" id="butler-direct-upload" accept="image/*" class="hidden" onchange="uploadButlerPhotoDirect(event)">
                             <span id="butler-stage-name" class="text-xs text-gray-600 font-black">집사</span>

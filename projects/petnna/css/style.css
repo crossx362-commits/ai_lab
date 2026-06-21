@@ -650,206 +650,211 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 
 /* 마이펫 방 스테이지 */
 /* ── 방꾸미기 룸 배경 ───────────────────────────────────────── */
-/* ── 싸이월드 미니홈피 스타일 방 ─────────────────────────────── */
+/* ── 싸이월드 미니홈피 2.5D 방 ─────────────────────────────────── */
 .room-stage {
     isolation: isolate;
-    /* 색상 변수 */
-    --room-wall:       #fef7ee;
-    --room-wall-side:  #f0dcc8;
-    --room-divide:     #d4a96a;
-    --room-floor:      #e8cfa0;
-    --room-floor-dark: #d4b882;
-    /* 레이아웃 변수 */
-    --room-split:      28%;   /* 좌측벽 너비 */
-    --room-floor-top:  62%;   /* 바닥 시작점 */
     border-radius: 20px;
     overflow: hidden;
-    background: var(--room-wall); /* 뒷벽 fallback */
+    /* 기본 테마 색상 */
+    --cw-wall-back:   #fef0d8;
+    --cw-wall-side:   #d4b48a;
+    --cw-wall-dark:   #b89060;
+    --cw-baseboard:   #c8903a;
+    --cw-floor:       #e8c878;
+    --cw-floor-stripe:#d4b050;
+    --cw-floor-front: #c89840;
+    /* 레이아웃 상수 */
+    --cw-split: 30%;   /* 좌측벽 너비 */
+    --cw-wall-h: 60%;  /* 벽 높이 (위에서) */
 }
 
-/* 창문 햇빛 & 바닥 광택 오버레이 (최상위) */
+/* room-stage 자체 배경 = 뒷벽 */
+.room-stage {
+    background: var(--cw-wall-back);
+}
+
+/* 광택 오버레이 (창문 빛) */
 .room-stage::before {
     content: "";
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse at 82% 8%, rgba(255,235,160,0.22) 0%, transparent 38%),
-        radial-gradient(ellipse at 18% 15%, rgba(255,255,255,0.07) 0%, transparent 25%);
+        radial-gradient(ellipse 45% 35% at 78% 15%, rgba(255,240,180,0.35) 0%, transparent 100%);
     pointer-events: none;
-    z-index: 8;
+    z-index: 10;
 }
+
+/* 바닥 광택 */
 .room-stage::after {
     content: "";
     position: absolute;
-    left: 0; right: 0;
-    top: var(--room-floor-top);
-    bottom: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,0.16) 0%, transparent 45%);
+    left: 0; right: 0; bottom: 0;
+    height: 42%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 50%);
     pointer-events: none;
-    z-index: 8;
+    z-index: 10;
 }
 
-/* ── 방 구조 요소 ─────────────────────────────────────────────── */
+/* ── 방 구조 레이어 ─────────────────────────────────────────────── */
 .room-decor-layer {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
-    overflow: hidden;
     pointer-events: none;
     z-index: 0;
 }
 
-/* 뒷벽 */
-.room-wall-back {
-    position: absolute;
-    left: var(--room-split); right: 0; top: 0;
-    bottom: calc(100% - var(--room-floor-top));
-    background: var(--room-wall);
-}
-
-/* 좌측 벽 (약간 어둡고 상단 2% clip으로 원근감) */
+/* 좌측 사이드 벽 — 싸이월드 핵심: 왼쪽이 확연히 어둡고 기울어짐 */
 .room-wall-left {
     position: absolute;
     left: 0; top: 0;
-    width: calc(var(--room-split) + 1px);
-    bottom: calc(100% - var(--room-floor-top));
-    background: linear-gradient(to right,
-        color-mix(in srgb, var(--room-wall-side) 78%, #000 22%) 0%,
-        var(--room-wall-side) 100%
+    width: var(--cw-split);
+    height: var(--cw-wall-h);
+    background: linear-gradient(105deg,
+        var(--cw-wall-dark) 0%,
+        var(--cw-wall-side) 55%,
+        var(--cw-wall-side) 100%
     );
-    clip-path: polygon(0 0, 100% 2.5%, 100% 100%, 0 100%);
+    /* 위쪽 모서리를 오른쪽으로 약간 기울여서 원근감 표현 */
+    clip-path: polygon(0 0, 100% 5%, 100% 100%, 0 100%);
 }
 
-/* 벽 코너 라인 */
+/* 뒷벽과 좌측벽 사이 코너 라인 */
 .room-wall-corner {
     position: absolute;
-    left: var(--room-split); top: 0;
-    width: 2px;
-    bottom: calc(100% - var(--room-floor-top));
-    background: linear-gradient(180deg,
-        color-mix(in srgb, var(--room-divide) 60%, #fff 40%) 0%,
-        var(--room-divide) 100%
-    );
-    z-index: 1;
+    left: var(--cw-split);
+    top: 0;
+    width: 3px;
+    height: var(--cw-wall-h);
+    background: var(--cw-baseboard);
+    z-index: 2;
+    /* 좌측벽 기울기에 맞춰 위쪽 위치를 약간 오른쪽으로 */
+    transform-origin: bottom center;
 }
 
-/* 바닥 (타일 패턴) */
+/* 바닥 전체 */
 .room-floor-area {
     position: absolute;
     left: 0; right: 0;
-    top: var(--room-floor-top); bottom: 0;
-    background-color: var(--room-floor);
+    top: var(--cw-wall-h);
+    bottom: 0;
+    background-color: var(--cw-floor);
+    /* 대각선 마루 패턴 (싸이월드 스타일) */
     background-image:
-        repeating-linear-gradient(90deg,
-            transparent 0, transparent 29px,
-            rgba(0,0,0,0.055) 29px, rgba(0,0,0,0.055) 30px
+        repeating-linear-gradient(
+            -45deg,
+            transparent 0px, transparent 18px,
+            rgba(0,0,0,0.07) 18px, rgba(0,0,0,0.07) 19px
         ),
-        repeating-linear-gradient(0deg,
-            transparent 0, transparent 14px,
-            rgba(0,0,0,0.035) 14px, rgba(0,0,0,0.035) 15px
+        repeating-linear-gradient(
+            45deg,
+            transparent 0px, transparent 18px,
+            rgba(0,0,0,0.04) 18px, rgba(0,0,0,0.04) 19px
         );
 }
 
-/* 바닥 그라데이션 (앞→뒤 원근 암도) */
+/* 바닥 앞쪽이 어두워지는 원근감 */
 .room-floor-area::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(0deg,
-        color-mix(in srgb, var(--room-floor-dark) 40%, transparent 60%) 0%,
-        transparent 60%
-    );
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.14) 100%);
 }
 
-/* 걸레받이 */
+/* 걸레받이 (벽/바닥 경계선) */
 .room-baseboard {
     position: absolute;
     left: 0; right: 0;
-    top: var(--room-floor-top);
-    height: 5px;
-    background: var(--room-divide);
-    z-index: 1;
+    top: var(--cw-wall-h);
+    height: 6px;
+    background: var(--cw-baseboard);
+    z-index: 3;
 }
 
-/* 창문 */
+/* 창문 — 뒷벽 오른쪽에 */
 .room-window {
     position: absolute;
-    right: 9%;
-    top: 6%;
-    width: 19%;
-    height: 32%;
-    border: 3px solid var(--room-divide);
-    border-radius: 3px 3px 2px 2px;
+    right: 8%;
+    top: 7%;
+    width: 22%;
+    height: 36%;
+    border: 4px solid var(--cw-baseboard);
+    border-radius: 4px 4px 2px 2px;
     background: linear-gradient(135deg,
-        #c2e4f8 0%, #daf0fc 35%, #b8dcf4 65%, #a8cce8 100%
+        #b8dff8 0%, #d8f0fc 40%, #a8d4f0 100%
     );
     overflow: hidden;
-    z-index: 2;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.14), inset 0 1px 4px rgba(255,255,255,0.6);
+    z-index: 3;
+    box-shadow:
+        inset 0 2px 6px rgba(255,255,255,0.7),
+        0 4px 12px rgba(0,0,0,0.18);
 }
 .room-window-v {
     position: absolute;
     left: 50%; top: 0; bottom: 0;
-    width: 2px; transform: translateX(-50%);
-    background: var(--room-divide);
+    width: 3px;
+    transform: translateX(-50%);
+    background: var(--cw-baseboard);
 }
 .room-window-h {
     position: absolute;
-    left: 0; right: 0; top: 44%;
-    height: 2px;
-    background: var(--room-divide);
+    left: 0; right: 0;
+    top: 45%;
+    height: 3px;
+    background: var(--cw-baseboard);
 }
 .room-window-glare {
     position: absolute;
-    top: 4%; left: 5%;
-    width: 38%; height: 38%;
-    background: rgba(255,255,255,0.42);
-    border-radius: 0 0 60% 0;
+    top: 6%; left: 6%;
+    width: 36%; height: 40%;
+    background: rgba(255,255,255,0.5);
+    border-radius: 0 0 70% 0;
 }
 .room-window-curtain-l,
 .room-window-curtain-r {
     position: absolute;
     top: 0; bottom: 0;
-    width: 14%;
-    opacity: 0.7;
+    width: 18%;
+    z-index: 1;
 }
 .room-window-curtain-l {
     left: 0;
-    background: linear-gradient(to right, var(--room-divide), transparent);
+    background: linear-gradient(to right, var(--cw-baseboard) 0%, transparent 100%);
+    opacity: 0.6;
 }
 .room-window-curtain-r {
     right: 0;
-    background: linear-gradient(to left, var(--room-divide), transparent);
+    background: linear-gradient(to left, var(--cw-baseboard) 0%, transparent 100%);
+    opacity: 0.6;
 }
 
 /* ── 방 테마 ─────────────────────────────────────────────────── */
 .room-stage.room-theme-mint {
-    --room-wall: #edfaf4; --room-wall-side: #c8ead8;
-    --room-divide: #6ab893; --room-floor: #b8e0c8; --room-floor-dark: #9ecdb0;
+    --cw-wall-back: #e8faf2; --cw-wall-side: #98d4b4; --cw-wall-dark: #6ab890;
+    --cw-baseboard: #4a9870; --cw-floor: #b0e0c4; --cw-floor-stripe: #90c8a4; --cw-floor-front: #70b080;
 }
 .room-stage.room-theme-purple {
-    --room-wall: #f5f0fe; --room-wall-side: #d8c8f0;
-    --room-divide: #9b7ed4; --room-floor: #d4c0f0; --room-floor-dark: #c0a8e0;
+    --cw-wall-back: #f4f0fe; --cw-wall-side: #c0a8e8; --cw-wall-dark: #9070c0;
+    --cw-baseboard: #7850a8; --cw-floor: #d0b8f0; --cw-floor-stripe: #b898d8; --cw-floor-front: #9878b8;
 }
 .room-stage.room-theme-sky {
-    --room-wall: #eaf4fe; --room-wall-side: #c4ddf0;
-    --room-divide: #6aaed4; --room-floor: #b8d8f0; --room-floor-dark: #9ec4e0;
+    --cw-wall-back: #e8f4fe; --cw-wall-side: #98c8e8; --cw-wall-dark: #60a0c8;
+    --cw-baseboard: #4080a8; --cw-floor: #b8d8f0; --cw-floor-stripe: #90b8d8; --cw-floor-front: #6898b8;
 }
 .room-stage.room-theme-pink {
-    --room-wall: #fef0f4; --room-wall-side: #f0ccd8;
-    --room-divide: #e0829a; --room-floor: #f0c0cc; --room-floor-dark: #e0a8b8;
+    --cw-wall-back: #fef0f4; --cw-wall-side: #e0a8b8; --cw-wall-dark: #c07090;
+    --cw-baseboard: #a05070; --cw-floor: #f0c0cc; --cw-floor-stripe: #d898a8; --cw-floor-front: #b87888;
 }
 .room-stage.room-theme-dark {
-    --room-wall: #2a2a3e; --room-wall-side: #1e1e2c;
-    --room-divide: #4a4a6a; --room-floor: #1e1e2e; --room-floor-dark: #16161e;
+    --cw-wall-back: #282838; --cw-wall-side: #1c1c2c; --cw-wall-dark: #101018;
+    --cw-baseboard: #404060; --cw-floor: #202030; --cw-floor-stripe: #181828; --cw-floor-front: #101018;
 }
 .room-stage.room-theme-ocean {
-    --room-wall: #e0f2fe; --room-wall-side: #b0d8f0;
-    --room-divide: #38bdf8; --room-floor: #7dd3fc; --room-floor-dark: #50b8e8;
+    --cw-wall-back: #d8f0fe; --cw-wall-side: #88c8f0; --cw-wall-dark: #40a0d8;
+    --cw-baseboard: #2080b8; --cw-floor: #a0d8f8; --cw-floor-stripe: #70b8e0; --cw-floor-front: #4098c0;
 }
 .room-stage.room-theme-forest {
-    --room-wall: #dcfce7; --room-wall-side: #a8e0bc;
-    --room-divide: #4ade80; --room-floor: #86efac; --room-floor-dark: #5dca80;
+    --cw-wall-back: #d8fae8; --cw-wall-side: #80c898; --cw-wall-dark: #40a060;
+    --cw-baseboard: #208040; --cw-floor: #a0e0b0; --cw-floor-stripe: #70c080; --cw-floor-front: #40a060;
 }
 
 /* 꾸미기 탭 버튼 */
