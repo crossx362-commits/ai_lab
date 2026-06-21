@@ -633,6 +633,11 @@ function deleteRoomSticker(id) {
     renderRoomStickers();
 }
 
+function _depthScale(yPct) {
+    if (yPct >= 62) return 0.75 + ((yPct - 62) / 31) * 0.65;
+    return 0.55 + (yPct / 62) * 0.2;
+}
+
 function renderRoomStickers() {
     const stage = document.querySelector('.room-stage');
     if (!stage) return;
@@ -649,7 +654,8 @@ function renderRoomStickers() {
     loadRoomStickers().forEach(s => {
         const el = document.createElement('div');
         el.className = 'room-sticker absolute';
-        el.style.cssText = `left:${s.x}%;top:${s.y}%;transform:translate(-50%,-50%);pointer-events:auto;z-index:${Math.round(s.y)+3};`;
+        const ds = _depthScale(s.y).toFixed(3);
+        el.style.cssText = `left:${s.x}%;top:${s.y}%;transform:translate(-50%,-50%) scale(${ds});pointer-events:auto;z-index:${Math.round(s.y)+3};`;
         el.dataset.id = s.id;
         el.innerHTML = `<span class="room-sticker-emoji size-${s.size||'md'}">${s.emoji}</span><button class="room-sticker-delete" onclick="event.stopPropagation();deleteRoomSticker('${s.id}')" title="삭제">✕</button>`;
         _makeStickerDraggable(el, s.id);
@@ -675,8 +681,10 @@ function _makeStickerDraggable(el, stickerId) {
         el.classList.add('is-dragging');
         const rect = el.closest('.room-stage').getBoundingClientRect();
         const newTop = Math.max(5, Math.min(93, startTop + (e.clientY - startY) / rect.height * 100));
+        const ds = _depthScale(newTop).toFixed(3);
         el.style.left = `${Math.max(5, Math.min(95, startLeft + (e.clientX - startX) / rect.width * 100))}%`;
         el.style.top = `${newTop}%`;
+        el.style.transform = `translate(-50%,-50%) scale(${ds})`;
         el.style.zIndex = Math.round(newTop) + 50;
     });
     el.addEventListener('pointerup', () => {

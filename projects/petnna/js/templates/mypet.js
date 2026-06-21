@@ -288,7 +288,20 @@ const MYPET_TEMPLATE = `
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
                 <div class="room-stage relative w-full h-[360px] md:h-[420px] flex items-center justify-center pt-5 pb-3">
-                    <div class="room-decor-layer" aria-hidden="true"></div>
+                    <div class="room-decor-layer" aria-hidden="true">
+                      <div class="room-wall-left"></div>
+                      <div class="room-wall-back"></div>
+                      <div class="room-wall-corner"></div>
+                      <div class="room-floor-area"></div>
+                      <div class="room-baseboard"></div>
+                      <div class="room-window">
+                        <div class="room-window-curtain-l"></div>
+                        <div class="room-window-curtain-r"></div>
+                        <div class="room-window-v"></div>
+                        <div class="room-window-h"></div>
+                        <div class="room-window-glare"></div>
+                      </div>
+                    </div>
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
                         <!-- JS로 동적 생성 -->
