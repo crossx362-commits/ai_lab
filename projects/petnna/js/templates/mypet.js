@@ -288,20 +288,75 @@ const MYPET_TEMPLATE = `
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
                 <div class="room-stage relative w-full h-[360px] md:h-[420px] flex items-center justify-center pt-5 pb-3">
-                    <div class="room-decor-layer" aria-hidden="true">
-                      <div class="room-wall-left"></div>
-                      <div class="room-wall-back"></div>
-                      <div class="room-wall-corner"></div>
-                      <div class="room-floor-area"></div>
-                      <div class="room-baseboard"></div>
-                      <div class="room-window">
-                        <div class="room-window-curtain-l"></div>
-                        <div class="room-window-curtain-r"></div>
-                        <div class="room-window-v"></div>
-                        <div class="room-window-h"></div>
-                        <div class="room-window-glare"></div>
-                      </div>
-                    </div>
+                    <!-- 싸이월드 쿼터뷰 방 (SVG) -->
+                    <svg aria-hidden="true" class="room-decor-layer"
+                         viewBox="0 0 100 100" preserveAspectRatio="none"
+                         xmlns="http://www.w3.org/2000/svg"
+                         style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;border-radius:inherit;">
+                      <defs>
+                        <!-- 좌측 벽 그라데이션 (왼쪽 어둡 → 오른쪽) -->
+                        <linearGradient id="cwWallL" x1="0" x2="1" y1="0" y2="0">
+                          <stop offset="0%"   stop-color="var(--cw-wall-dark,#9a6c38)"/>
+                          <stop offset="100%" stop-color="var(--cw-wall-side,#c89058)"/>
+                        </linearGradient>
+                        <!-- 바닥 그라데이션 (뒤 밝 → 앞 어둡) -->
+                        <linearGradient id="cwFloorG" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%"   stop-color="var(--cw-floor,#dfc070)"/>
+                          <stop offset="100%" stop-color="var(--cw-floor-front,#b89040)"/>
+                        </linearGradient>
+                        <!-- 바닥 대각선 마루 패턴 -->
+                        <pattern id="cwFloorP" x="0" y="0" width="9" height="9" patternUnits="userSpaceOnUse">
+                          <line x1="0" y1="9" x2="9" y2="0" stroke="rgba(0,0,0,0.08)" stroke-width="0.4"/>
+                        </pattern>
+                        <!-- 창문 햇빛 glow -->
+                        <radialGradient id="cwSun" cx="82" cy="8" r="38" gradientUnits="userSpaceOnUse">
+                          <stop offset="0%"   stop-color="rgba(255,235,140,0.38)"/>
+                          <stop offset="100%" stop-color="rgba(255,235,140,0)"/>
+                        </radialGradient>
+                        <!-- 창문 유리 -->
+                        <linearGradient id="cwGlass" x1="0" x2="1" y1="0" y2="1">
+                          <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
+                          <stop offset="100%" stop-color="rgba(120,190,240,0.75)"/>
+                        </linearGradient>
+                        <!-- 뒷벽 위→아래 미세 그라데이션 -->
+                        <linearGradient id="cwWallBG" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%"   stop-color="var(--cw-wall-back,#fef0d8)"/>
+                          <stop offset="100%" stop-color="var(--cw-wall-back,#fef0d8)" stop-opacity="0.88"/>
+                        </linearGradient>
+                      </defs>
+
+                      <!-- ① 뒷벽 (우측 상단 사다리꼴) -->
+                      <polygon points="27,0 100,4 100,63 27,63" fill="url(#cwWallBG)"/>
+
+                      <!-- ② 좌측 벽 (평행사변형, 확연히 어두움) -->
+                      <polygon points="0,11 27,0 27,63 0,72" fill="url(#cwWallL)"/>
+
+                      <!-- ③ 걸레받이 (경계선) -->
+                      <polygon points="0,72 27,63 100,63 100,67 27,67 0,76" fill="var(--cw-baseboard,#c07030)"/>
+
+                      <!-- ④ 바닥 (사다리꼴 + 마루 패턴) -->
+                      <polygon points="0,76 27,67 100,67 100,100 0,100" fill="url(#cwFloorG)"/>
+                      <polygon points="0,76 27,67 100,67 100,100 0,100" fill="url(#cwFloorP)" opacity="0.9"/>
+
+                      <!-- ⑤ 코너 라인 (좌측벽/뒷벽 경계) -->
+                      <line x1="27" y1="0" x2="27" y2="63" stroke="var(--cw-baseboard,#c07030)" stroke-width="1.8"/>
+
+                      <!-- ⑥ 창문 (뒷벽 오른쪽) -->
+                      <rect x="69" y="5" width="24" height="33" rx="1.5" fill="var(--cw-baseboard,#c07030)"/>
+                      <rect x="71" y="7" width="20" height="29" fill="url(#cwGlass)"/>
+                      <!-- 창틀 십자 -->
+                      <line x1="81" y1="7"  x2="81" y2="36" stroke="var(--cw-baseboard,#c07030)" stroke-width="1.5"/>
+                      <line x1="71" y1="21" x2="91" y2="21" stroke="var(--cw-baseboard,#c07030)" stroke-width="1.5"/>
+                      <!-- 창문 glare -->
+                      <rect x="72" y="8"  width="7" height="11" rx="2" fill="rgba(255,255,255,0.52)"/>
+                      <!-- 커튼 왼쪽 -->
+                      <rect x="69" y="5" width="5" height="33" fill="var(--cw-baseboard,#c07030)" opacity="0.45"/>
+                      <!-- 커튼 오른쪽 -->
+                      <rect x="88" y="5" width="5" height="33" fill="var(--cw-baseboard,#c07030)" opacity="0.45"/>
+
+                      <!-- ⑦ 창문 햇빛 (뒷벽 오버레이) -->
+                      <polygon points="27,0 100,4 100,63 27,63" fill="url(#cwSun)"/>
+                    </svg>
                     <!-- SVG 목줄 연결선 -->
                     <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
                         <!-- JS로 동적 생성 -->

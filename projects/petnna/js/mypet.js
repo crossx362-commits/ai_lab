@@ -634,8 +634,9 @@ function deleteRoomSticker(id) {
 }
 
 function _depthScale(yPct) {
-    if (yPct >= 60) return 0.75 + ((yPct - 60) / 33) * 0.65;
-    return 0.5 + (yPct / 60) * 0.25;
+    // SVG 기준: 바닥 시작 67%, 스티커는 주로 바닥(67~95%)에 위치
+    if (yPct >= 67) return 0.65 + ((yPct - 67) / 30) * 0.75;
+    return 0.4 + (yPct / 67) * 0.25;
 }
 
 function renderRoomStickers() {
