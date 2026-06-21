@@ -287,7 +287,7 @@ const MYPET_TEMPLATE = `
             <div class="px-5 pb-5 space-y-4">
 
                 <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
-                <div class="room-stage relative w-full h-[360px] md:h-[420px] flex items-center justify-center pt-5 pb-3">
+                <div class="room-stage relative w-full h-[480px] md:h-[560px] flex items-center justify-center pt-5 pb-3">
                     <!-- Dog Paradise Field (isometric) -->
                     <img aria-hidden="true" class="room-decor-layer" src="images/dog_paradise_field.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;border-radius:inherit;object-fit:cover;">
                     <!-- SVG 목줄 연결선 -->
@@ -295,21 +295,17 @@ const MYPET_TEMPLATE = `
                         <!-- JS로 동적 생성 -->
                     </svg>
 
-                    <!-- 집사 (중앙) -->
-                    <div class="absolute" style="left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 10;">
-                        <div class="flex flex-col items-center gap-1.5">
-                            <span class="text-[10px] font-black text-brand-600 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                👑 집사
-                            </span>
+                    <!-- 집사 (하단 중앙 전경) -->
+                    <div class="absolute" style="left: 50%; top: 82%; transform: translate(-50%, -100%); z-index: 10;">
+                        <div class="flex flex-col items-center gap-1">
                             <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
-                                class="butler-stage-core w-28 h-28 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
+                                class="butler-stage-core w-24 h-24 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
                                 title="집사 사진 변경">
-                                <!-- Park Manager 생성 이미지 -->
-                                <img id="butler-stage-avatar" src="images/park_manager.png" class="w-28 h-28 object-contain" style="filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25))" alt="Park Manager">
-                                <img loading="lazy" id="butler-stage-image" class="hidden w-28 h-28 object-cover rounded-full border-4 border-brand-400 shadow-xl">
+                                <img id="butler-stage-avatar" src="images/park_manager.png" class="w-24 h-24 object-contain" style="filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3))" alt="Park Manager">
+                                <img loading="lazy" id="butler-stage-image" class="hidden w-24 h-24 object-cover rounded-full border-4 border-brand-400 shadow-xl">
                             </div>
                             <input type="file" id="butler-direct-upload" accept="image/*" class="hidden" onchange="uploadButlerPhotoDirect(event)">
-                            <span id="butler-stage-name" class="text-xs text-gray-600 font-black">집사</span>
+                            <span id="butler-stage-name" class="text-[10px] text-amber-700 font-black bg-amber-50/90 border border-amber-200 px-2 py-0.5 rounded-full">👑 집사</span>
                         </div>
                     </div>
 

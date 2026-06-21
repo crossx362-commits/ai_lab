@@ -303,6 +303,80 @@ function _getBingoSVG() {
     return `<img src="images/bingo_corgi.png" style="width:100%;height:100%;object-fit:contain;display:block;" alt="Bingo">`;
 }
 
+// ── 펫 위치 저장/로드 ──────────────────────────────────────────
+function _petPosKey() {
+    try {
+        const uid = auth?.currentUser?.uid || 'local';
+        return `petnna_pet_pos_${uid}`;
+    } catch { return 'petnna_pet_pos_local'; }
+}
+function _loadPetPos(petId) {
+    try { return JSON.parse(localStorage.getItem(_petPosKey()) || '{}')[petId] || null; }
+    catch { return null; }
+}
+function _savePetPos(petId, x, y) {
+    try {
+        const all = JSON.parse(localStorage.getItem(_petPosKey()) || '{}');
+        all[petId] = { x, y };
+        localStorage.setItem(_petPosKey(), JSON.stringify(all));
+    } catch {}
+}
+
+function _makePetDraggable(el, petId) {
+    let sx, sy, sl, st, moved = false;
+    el.addEventListener('pointerdown', e => {
+        if (e.target.closest('button, span')) return;
+        moved = false;
+        el.setPointerCapture(e.pointerId);
+        sx = e.clientX; sy = e.clientY;
+        sl = parseFloat(el.style.left);
+        st = parseFloat(el.style.top);
+        el.style.cursor = 'grabbing';
+        el.style.transition = 'none';
+        e.stopPropagation();
+        e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => {
+        if (!e.buttons) return;
+        if (Math.abs(e.clientX - sx) < 4 && Math.abs(e.clientY - sy) < 4) return;
+        moved = true;
+        const rect = el.closest('.room-stage').getBoundingClientRect();
+        const nx = Math.max(6, Math.min(94, sl + (e.clientX - sx) / rect.width * 100));
+        const ny = Math.max(10, Math.min(85, st + (e.clientY - sy) / rect.height * 100));
+        const ds = _depthScale(ny);
+        el.style.left = `${nx}%`;
+        el.style.top = `${ny}%`;
+        el.style.transform = `translate(-50%, -100%) scale(${ds})`;
+        el.style.zIndex = Math.round(ny) + 50;
+    });
+    el.addEventListener('pointerup', e => {
+        el.style.cursor = 'grab';
+        el.style.transition = '';
+        el._moved = moved;
+        if (!moved) return;
+        const nx = parseFloat(el.style.left);
+        const ny = parseFloat(el.style.top);
+        el.style.zIndex = Math.round(ny) + 5;
+        _savePetPos(petId, nx, ny);
+        _redrawLeashes();
+        setTimeout(() => { el._moved = false; }, 200);
+    });
+}
+
+function _redrawLeashes() {
+    const svg = document.getElementById('leash-svg');
+    if (!svg) return;
+    svg.innerHTML = '';
+    const butlerX = 50, butlerY = 82;
+    const layout = getActiveRoomLayout ? getActiveRoomLayout() : 'living';
+    document.querySelectorAll('.pet-stage-wrapper').forEach((el, idx) => {
+        const px = parseFloat(el.style.left);
+        const py = parseFloat(el.style.top);
+        const isActive = el.dataset.active === '1';
+        createRoomConnection(svg, { x: butlerX, y: butlerY }, { x: px, y: py }, isActive, idx, layout);
+    });
+}
+
 function renderPetStageList() {
     const list = document.getElementById('pet-stage-list');
     const svg = document.getElementById('leash-svg');
@@ -316,12 +390,9 @@ function renderPetStageList() {
 
     // 집사 위치 (%)
     const butlerX = 50;
-    const butlerY = 42;
+    const butlerY = 82;
 
-    // 펫 크기
-    const sz = { circle: 'w-14 h-14', emoji: 'text-2xl', label: 'text-[11px]', border: 'border-3' };
-
-    // ── 펫 배치 (안전 슬롯 + 충돌 보정) ───────────────────
+    // ── 펫 스프라이트 배치 ───────────────────────────────
     if (pets && pets.length > 0) {
         const isMobile = window.innerWidth < 768;
         const layout = getActiveRoomLayout();
@@ -331,55 +402,57 @@ function renderPetStageList() {
 
         pets.forEach((pet, idx) => {
             const isActive = idx === activePetIndex;
-            const { x: petX, y: petY } = positions[idx];
+            const slot = positions[idx];
+            // 저장된 위치 우선, 없으면 기본 슬롯
+            const saved = _loadPetPos(pet.id || pet.name || `pet_${idx}`);
+            const finalX = saved ? saved.x : slot.x;
+            const finalY = saved ? saved.y : slot.y;
 
-            if (svg) createRoomConnection(svg, { x: butlerX, y: butlerY }, { x: petX, y: petY }, isActive, idx, layout);
+            if (svg) createRoomConnection(svg, { x: butlerX, y: butlerY }, { x: finalX, y: finalY }, isActive, idx, layout);
 
-            // 펫 컨테이너
+            // 스프라이트 wrapper
             const wrapper = document.createElement('div');
-            wrapper.className = 'pet-stage-wrapper absolute transition-all duration-500';
-            wrapper.style.left = `${petX}%`;
-            wrapper.style.top = `${petY}%`;
-            wrapper.style.transform = 'translate(-50%, -50%)';
+            wrapper.className = 'pet-stage-wrapper absolute';
+            wrapper.dataset.petIdx = idx;
+            wrapper.dataset.active = isActive ? '1' : '0';
+            wrapper.style.cssText = `left:${finalX}%;top:${finalY}%;transform:translate(-50%,-100%) scale(${_depthScale(finalY).toFixed(3)});z-index:${Math.round(finalY)+5};cursor:grab;`;
 
-            wrapper.onclick = () => setActivePet(idx);
-
-            const container = document.createElement('div');
-            container.className = `flex flex-col items-center gap-1 cursor-pointer pet-stage-container ${isActive ? 'pet-active-ring' : ''}`;
-
-            // 아바타
-            const circle = document.createElement('div');
-            circle.className = `flex items-center justify-center rounded-2xl overflow-hidden transition-all shrink-0
-                ${isActive
-                    ? `${sz.circle} ${sz.border} pet-stage-circle is-active border-amber-400 ring-4 ring-amber-300/40 shadow-xl bg-amber-50 hover:border-amber-500 hover:scale-105`
-                    : `${sz.circle} ${sz.border} pet-stage-circle is-muted border-amber-200 bg-amber-50/40 hover:opacity-90 hover:scale-105`}`;
-            circle.id = isActive ? 'pet-graphic-container' : `pet-circle-${idx}`;
-            circle.title = isActive ? `${pet.name || '펫'} 사진 변경` : `${pet.name || '펫'} 선택`;
-            circle.style.transition = 'all 0.3s ease-out';
-            if (isActive) circle.onclick = (e) => { e.stopPropagation(); triggerPetPhotoUploadDirect(); };
-
+            // 스프라이트 이미지
+            const spriteImg = document.createElement('img');
             if (pet.type === 'custom' && pet.imageUrl) {
-                circle.innerHTML = `<img loading="lazy" src="${pet.imageUrl}" class="w-full h-full object-cover">`;
-            } else if (pet.type === 'dog' || !pet.type) {
-                circle.innerHTML = _getBingoSVG();
+                spriteImg.src = pet.imageUrl;
+                spriteImg.style.cssText = 'width:72px;height:72px;object-fit:cover;border-radius:50%;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.3));display:block;';
             } else {
-                const emojiMap = { cat: '🐈', rabbit: '🐰', hamster: '🐹' };
-                circle.innerHTML = `<span class="text-2xl">${emojiMap[pet.type] || '🐾'}</span>`;
+                const petImgMap = { cat: 'images/bingo_corgi.png', rabbit: 'images/bingo_corgi.png', hamster: 'images/bingo_corgi.png', dog: 'images/bingo_corgi.png' };
+                spriteImg.src = petImgMap[pet.type] || 'images/bingo_corgi.png';
+                spriteImg.style.cssText = 'width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.25));display:block;';
             }
-            container.appendChild(circle);
+            spriteImg.id = isActive ? 'pet-graphic-container' : `pet-img-${idx}`;
 
             // 이름 태그
             const nameTag = document.createElement('span');
-            nameTag.className = `${sz.label} font-black px-2 py-0.5 rounded-full border-2 transition-all ${
-                isActive
-                    ? 'text-amber-700 bg-amber-50 border-amber-300'
-                    : 'text-gray-400 bg-white/80 border-gray-200'
-            }`;
+            nameTag.style.cssText = 'display:block;text-align:center;font-size:10px;font-weight:900;padding:1px 6px;border-radius:99px;border:1.5px solid;margin-top:2px;white-space:nowrap;';
+            nameTag.style.color = isActive ? '#92400e' : '#6b7280';
+            nameTag.style.background = isActive ? 'rgba(255,251,235,0.95)' : 'rgba(255,255,255,0.85)';
+            nameTag.style.borderColor = isActive ? '#fcd34d' : '#e5e7eb';
             if (isActive) nameTag.id = 'pet-stage-name';
             nameTag.textContent = pet.name || '펫';
-            container.appendChild(nameTag);
 
-            wrapper.appendChild(container);
+            const inner = document.createElement('div');
+            inner.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0;';
+            if (isActive) {
+                spriteImg.style.outline = '2.5px solid #f59e0b';
+                spriteImg.style.outlineOffset = '2px';
+                spriteImg.style.borderRadius = '12px';
+                spriteImg.title = `${pet.name || '펫'} 사진 변경`;
+                spriteImg.onclick = (e) => { e.stopPropagation(); triggerPetPhotoUploadDirect(); };
+            }
+            inner.appendChild(spriteImg);
+            inner.appendChild(nameTag);
+            wrapper.appendChild(inner);
+
+            wrapper.addEventListener('click', (e) => { if (!wrapper._moved) setActivePet(idx); });
+            _makePetDraggable(wrapper, pet.id || pet.name || `pet_${idx}`);
             list.appendChild(wrapper);
         });
     }
