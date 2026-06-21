@@ -299,6 +299,69 @@ function createRoomConnection(svg, butlerPoint, petPoint, isActive, idx, layout 
     };
 }
 
+function _getBingoSVG() {
+    return `<svg viewBox="0 0 20 20" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" style="image-rendering:pixelated;display:block;">
+  <!-- ░░ Bingo 코기 (20×20 픽셀) ░░ -->
+  <!-- 꼬리 (말려올라간 형태) -->
+  <rect x="15" y="8"  width="3" height="1" fill="#f8aa30"/>
+  <rect x="17" y="7"  width="2" height="2" fill="#f8aa30"/>
+  <rect x="17" y="6"  width="1" height="2" fill="#e8941e"/>
+  <!-- 왼쪽 귀 -->
+  <rect x="2"  y="0"  width="3" height="4" fill="#c07818"/>
+  <rect x="3"  y="0"  width="1" height="2" fill="#fafafa"/>
+  <!-- 오른쪽 귀 -->
+  <rect x="12" y="0"  width="3" height="4" fill="#c07818"/>
+  <rect x="13" y="0"  width="1" height="2" fill="#fafafa"/>
+  <!-- 머리 (둥글고 넓음) -->
+  <rect x="2"  y="3"  width="13" height="6" fill="#e8941e"/>
+  <rect x="3"  y="2"  width="11" height="2" fill="#e8941e"/>
+  <!-- 머리 하이라이트 -->
+  <rect x="4"  y="3"  width="4"  height="2" fill="#f8aa30"/>
+  <!-- 흰 머즐 -->
+  <rect x="4"  y="6"  width="9"  height="3" fill="#f0ead8"/>
+  <rect x="3"  y="7"  width="1"  height="2" fill="#f0ead8"/>
+  <rect x="13" y="7"  width="1"  height="2" fill="#f0ead8"/>
+  <!-- 눈 (왼쪽) -->
+  <rect x="4"  y="5"  width="2"  height="2" fill="#ffffff"/>
+  <rect x="5"  y="5"  width="1"  height="2" fill="#3d2010"/>
+  <rect x="5"  y="5"  width="1"  height="1" fill="#ffffff"/>
+  <!-- 눈 (오른쪽) -->
+  <rect x="11" y="5"  width="2"  height="2" fill="#ffffff"/>
+  <rect x="12" y="5"  width="1"  height="2" fill="#3d2010"/>
+  <rect x="12" y="5"  width="1"  height="1" fill="#ffffff"/>
+  <!-- 코 -->
+  <rect x="8"  y="7"  width="3"  height="2" fill="#1a1008"/>
+  <rect x="8"  y="7"  width="1"  height="1" fill="#444444"/>
+  <!-- 혀 -->
+  <rect x="8"  y="9"  width="3"  height="1" fill="#ff8888"/>
+  <!-- 테니스공 -->
+  <rect x="7"  y="9"  width="4"  height="2" fill="#aad818"/>
+  <rect x="7"  y="9"  width="1"  height="1" fill="#c8ee30"/>
+  <rect x="9"  y="10" width="2"  height="1" fill="#88b010"/>
+  <!-- 파란 반다나 -->
+  <rect x="3"  y="10" width="12" height="2" fill="#4898e8"/>
+  <rect x="3"  y="10" width="12" height="1" fill="#60b0ff"/>
+  <rect x="3"  y="11" width="12" height="1" fill="#2878c8"/>
+  <!-- 황금 태그 (반다나 중앙) -->
+  <rect x="9"  y="11" width="3"  height="2" fill="#f0c830"/>
+  <rect x="9"  y="11" width="1"  height="1" fill="#ffe050"/>
+  <rect x="10" y="12" width="1"  height="1" fill="#c09820"/>
+  <!-- 몸통 (낮고 넓은 코기 체형) -->
+  <rect x="2"  y="12" width="13" height="4" fill="#e8941e"/>
+  <rect x="3"  y="12" width="4"  height="2" fill="#f8aa30"/>
+  <rect x="11" y="13" width="3"  height="2" fill="#c07818"/>
+  <!-- 앞다리 (짧음) -->
+  <rect x="3"  y="16" width="3"  height="3" fill="#e8941e"/>
+  <rect x="3"  y="18" width="3"  height="1" fill="#c07818"/>
+  <!-- 뒷다리 -->
+  <rect x="11" y="16" width="3"  height="3" fill="#e8941e"/>
+  <rect x="11" y="18" width="3"  height="1" fill="#c07818"/>
+  <!-- 발 (흰색 양말) -->
+  <rect x="3"  y="18" width="3"  height="1" fill="#f0ead8"/>
+  <rect x="11" y="18" width="3"  height="1" fill="#f0ead8"/>
+</svg>`;
+}
+
 function renderPetStageList() {
     const list = document.getElementById('pet-stage-list');
     const svg = document.getElementById('leash-svg');
@@ -354,11 +417,13 @@ function renderPetStageList() {
             circle.style.transition = 'all 0.3s ease-out';
             if (isActive) circle.onclick = (e) => { e.stopPropagation(); triggerPetPhotoUploadDirect(); };
 
-            const emojiMap = { cat: '🐈', rabbit: '🐰', hamster: '🐹', dog: '🐕' };
             if (pet.type === 'custom' && pet.imageUrl) {
                 circle.innerHTML = `<img loading="lazy" src="${pet.imageUrl}" class="w-full h-full object-cover">`;
+            } else if (pet.type === 'dog' || !pet.type) {
+                circle.innerHTML = _getBingoSVG();
             } else {
-                circle.innerHTML = `<span class="${sz.emoji}">${emojiMap[pet.type] || '🐕'}</span>`;
+                const emojiMap = { cat: '🐈', rabbit: '🐰', hamster: '🐹' };
+                circle.innerHTML = `<span class="text-2xl">${emojiMap[pet.type] || '🐾'}</span>`;
             }
             container.appendChild(circle);
 

@@ -596,113 +596,115 @@ const MYPET_TEMPLATE = `
                             <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
                                 class="butler-stage-core w-28 h-28 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
                                 title="집사 사진 변경">
-                                <!-- 싸이월드 도트 미니미 -->
-                                <svg id="butler-stage-avatar" viewBox="0 0 20 28" width="112" height="112" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" style="image-rendering:pixelated;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.3))">
-                                  <!-- ░░ 싸이월드 도트 미니미 (20×28 픽셀그리드) ░░ -->
+                                <!-- Park Manager 도트 캐릭터 -->
+                                <svg id="butler-stage-avatar" viewBox="0 0 20 28" width="112" height="112" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" style="image-rendering:pixelated;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.28))">
+                                  <!-- ░░ Park Manager 도트 캐릭터 (20×28) ░░ -->
 
                                   <!-- 바닥 그림자 -->
-                                  <ellipse cx="10" cy="27.5" rx="7" ry="1" fill="rgba(0,0,0,0.22)" shape-rendering="auto"/>
+                                  <ellipse cx="10" cy="27.5" rx="7" ry="1" fill="rgba(0,0,0,0.20)" shape-rendering="auto"/>
 
-                                  <!-- ══ 왕관 ══ -->
-                                  <!-- 왕관 밴드 -->
-                                  <rect x="4" y="1" width="11" height="3" fill="#f0c030"/>
-                                  <rect x="3" y="2" width="13" height="2" fill="#f0c030"/>
-                                  <!-- 왕관 어두운 아랫줄 -->
-                                  <rect x="3" y="3" width="13" height="1" fill="#c09010"/>
-                                  <!-- 왕관 밴드 하이라이트 -->
-                                  <rect x="4" y="1" width="11" height="1" fill="#ffe060"/>
-                                  <!-- 보석 -->
-                                  <rect x="4"  y="0" width="2" height="2" fill="#ff3333"/>
-                                  <rect x="8"  y="0" width="3" height="2" fill="#33cc33"/>
-                                  <rect x="13" y="0" width="2" height="2" fill="#4444ff"/>
-                                  <!-- 보석 하이라이트 -->
-                                  <rect x="4"  y="0" width="1" height="1" fill="#ff9999"/>
-                                  <rect x="8"  y="0" width="1" height="1" fill="#99ff99"/>
-                                  <rect x="13" y="0" width="1" height="1" fill="#9999ff"/>
+                                  <!-- ══ 밀짚 모자 크라운 ══ -->
+                                  <rect x="5"  y="0" width="10" height="5" fill="#c8a840"/>
+                                  <rect x="4"  y="1" width="12" height="4" fill="#c8a840"/>
+                                  <!-- 크라운 하이라이트 -->
+                                  <rect x="5"  y="0" width="10" height="1" fill="#e0bc60"/>
+                                  <rect x="5"  y="1" width="3"  height="2" fill="#d0b048"/>
+                                  <!-- 크라운 우측 음영 -->
+                                  <rect x="12" y="1" width="3"  height="4" fill="#a88820"/>
+                                  <!-- 모자 밴드 (어두운 스트랩) -->
+                                  <rect x="3"  y="5" width="14" height="1" fill="#7a5010"/>
+                                  <!-- 발 도장 엠블럼 (밴드 중앙) -->
+                                  <rect x="9"  y="5" width="1"  height="1" fill="#5a3808"/>
+                                  <rect x="10" y="5" width="1"  height="1" fill="#5a3808"/>
+                                  <rect x="8"  y="5" width="1"  height="1" fill="#5a3808"/>
 
-                                  <!-- ══ 머리카락 ══ -->
-                                  <!-- 윗머리 -->
-                                  <rect x="3" y="3"  width="13" height="3" fill="#3d2a1a"/>
-                                  <!-- 옆머리 왼쪽 (밝은 면) -->
-                                  <rect x="2" y="5"  width="3"  height="7" fill="#4e3520"/>
-                                  <!-- 옆머리 오른쪽 (어두운 면) -->
-                                  <rect x="14" y="5" width="3"  height="7" fill="#2a1a0a"/>
-                                  <!-- 머리 하이라이트 -->
-                                  <rect x="6" y="3"  width="5"  height="1" fill="#6b4a28"/>
+                                  <!-- ══ 모자 브림 (넓게) ══ -->
+                                  <rect x="1"  y="6" width="18" height="2" fill="#d4b040"/>
+                                  <rect x="1"  y="6" width="18" height="1" fill="#e8c858"/>
+                                  <rect x="1"  y="7" width="18" height="1" fill="#b09030"/>
+
+                                  <!-- ══ 머리카락 (모자 아래, 양 옆) ══ -->
+                                  <rect x="2"  y="7" width="3"  height="5" fill="#3d2a10"/>
+                                  <rect x="14" y="7" width="3"  height="5" fill="#2a1a08"/>
 
                                   <!-- ══ 얼굴 ══ -->
-                                  <rect x="4" y="5"  width="11" height="8" fill="#ffcc99"/>
-                                  <!-- 얼굴 오른쪽 측면 음영 -->
-                                  <rect x="14" y="5" width="1"  height="8" fill="#e8aa77"/>
+                                  <rect x="4"  y="7"  width="11" height="9" fill="#ffcc99"/>
+                                  <rect x="14" y="8"  width="1"  height="7" fill="#e8aa77"/>
 
-                                  <!-- 눈 (왼쪽) -->
-                                  <rect x="5"  y="7" width="3" height="3" fill="#ffffff"/>
-                                  <rect x="6"  y="8" width="2" height="2" fill="#1a1008"/>
-                                  <rect x="6"  y="8" width="1" height="1" fill="#ffffff"/>
-                                  <!-- 눈 (오른쪽) -->
-                                  <rect x="11" y="7" width="3" height="3" fill="#ffffff"/>
-                                  <rect x="12" y="8" width="2" height="2" fill="#1a1008"/>
-                                  <rect x="12" y="8" width="1" height="1" fill="#ffffff"/>
                                   <!-- 눈썹 -->
-                                  <rect x="5"  y="6" width="3" height="1" fill="#3d2a1a"/>
-                                  <rect x="11" y="6" width="3" height="1" fill="#3d2a1a"/>
+                                  <rect x="5"  y="9"  width="3" height="1" fill="#3d2a10"/>
+                                  <rect x="11" y="9"  width="3" height="1" fill="#3d2a10"/>
+                                  <!-- 눈 (왼쪽): 흰자+동공+하이라이트 -->
+                                  <rect x="5"  y="10" width="3" height="2" fill="#ffffff"/>
+                                  <rect x="6"  y="10" width="2" height="2" fill="#1a1008"/>
+                                  <rect x="6"  y="10" width="1" height="1" fill="#ffffff"/>
+                                  <!-- 눈 (오른쪽) -->
+                                  <rect x="11" y="10" width="3" height="2" fill="#ffffff"/>
+                                  <rect x="12" y="10" width="2" height="2" fill="#1a1008"/>
+                                  <rect x="12" y="10" width="1" height="1" fill="#ffffff"/>
 
                                   <!-- 볼터치 -->
-                                  <rect x="4"  y="10" width="2" height="1" fill="#ffaaaa"/>
-                                  <rect x="13" y="10" width="2" height="1" fill="#ffaaaa"/>
+                                  <rect x="4"  y="12" width="2" height="1" fill="#ffaaaa"/>
+                                  <rect x="13" y="12" width="2" height="1" fill="#ffaaaa"/>
 
-                                  <!-- 입 -->
-                                  <rect x="7"  y="11" width="1" height="1" fill="#cc6644"/>
-                                  <rect x="8"  y="12" width="3" height="1" fill="#cc6644"/>
-                                  <rect x="11" y="11" width="1" height="1" fill="#cc6644"/>
+                                  <!-- 입 (활짝 웃음) -->
+                                  <rect x="7"  y="13" width="5" height="1" fill="#cc5533"/>
+                                  <rect x="7"  y="14" width="5" height="1" fill="#ee8855"/>
+                                  <rect x="7"  y="13" width="1" height="2" fill="#cc5533"/>
+                                  <rect x="11" y="13" width="1" height="2" fill="#cc5533"/>
 
                                   <!-- ══ 목 ══ -->
-                                  <rect x="8" y="13" width="3" height="2" fill="#ffcc99"/>
+                                  <rect x="8"  y="16" width="3" height="2" fill="#ffcc99"/>
 
-                                  <!-- ══ 몸통/셔츠 ══ -->
-                                  <!-- 왼팔 (밝은 면) -->
-                                  <rect x="2"  y="14" width="3" height="6" fill="#8898ff"/>
-                                  <!-- 손 왼쪽 -->
-                                  <rect x="2"  y="20" width="3" height="2" fill="#ffcc99"/>
+                                  <!-- ══ 폴로 셔츠 ══ -->
+                                  <!-- 칼라 (흰 V넥) -->
+                                  <rect x="7"  y="16" width="2" height="2" fill="#d8f0ff"/>
+                                  <rect x="10" y="16" width="2" height="2" fill="#d8f0ff"/>
+                                  <!-- 왼팔 -->
+                                  <rect x="1"  y="16" width="4" height="7" fill="#60a8f0"/>
+                                  <rect x="1"  y="16" width="1" height="7" fill="#80c0ff"/>
                                   <!-- 몸통 -->
-                                  <rect x="4"  y="14" width="11" height="7" fill="#7080f0"/>
-                                  <!-- 몸통 왼쪽 하이라이트 -->
-                                  <rect x="5"  y="15" width="2" height="4" fill="#9aaeff"/>
-                                  <!-- 몸통 오른쪽 음영 -->
-                                  <rect x="13" y="14" width="2" height="7" fill="#4a56c8"/>
-                                  <!-- 오른팔 (어두운 면) -->
-                                  <rect x="14" y="14" width="3" height="6" fill="#5060d0"/>
-                                  <!-- 손 오른쪽 -->
-                                  <rect x="14" y="20" width="3" height="2" fill="#e8aa77"/>
+                                  <rect x="4"  y="16" width="11" height="7" fill="#5090e0"/>
+                                  <rect x="5"  y="17" width="2" height="5" fill="#70aaff"/>
+                                  <rect x="13" y="16" width="2" height="7" fill="#3070c0"/>
+                                  <!-- 오른팔 -->
+                                  <rect x="14" y="16" width="4" height="7" fill="#3878c8"/>
+                                  <rect x="17" y="16" width="1" height="7" fill="#2868b0"/>
+                                  <!-- 가슴 로고 (개발 마크 2×2) -->
+                                  <rect x="11" y="18" width="2" height="1" fill="#2060b0"/>
+                                  <rect x="10" y="19" width="1" height="1" fill="#2060b0"/>
+                                  <rect x="12" y="19" width="1" height="1" fill="#2060b0"/>
+                                  <!-- 손 -->
+                                  <rect x="1"  y="23" width="4" height="2" fill="#ffcc99"/>
+                                  <rect x="14" y="23" width="4" height="2" fill="#e8aa77"/>
 
-                                  <!-- 칼라 -->
-                                  <rect x="7"  y="14" width="2" height="1" fill="#ffffff"/>
-                                  <rect x="10" y="14" width="2" height="1" fill="#ffffff"/>
-                                  <!-- 넥타이 -->
-                                  <rect x="9"  y="14" width="1" height="1" fill="#ff4444"/>
-                                  <rect x="8"  y="15" width="3" height="5" fill="#ff4444"/>
-                                  <!-- 넥타이 음영 -->
-                                  <rect x="10" y="16" width="1" height="3" fill="#cc2222"/>
-                                  <!-- 넥타이 하이라이트 -->
-                                  <rect x="8"  y="15" width="1" height="2" fill="#ff8888"/>
+                                  <!-- ══ 벨트 ══ -->
+                                  <rect x="4"  y="23" width="11" height="1" fill="#6a3808"/>
+                                  <rect x="9"  y="23" width="2"  height="1" fill="#c8a000"/>
 
-                                  <!-- ══ 바지 ══ -->
-                                  <rect x="5"  y="21" width="4" height="4" fill="#3344aa"/>
-                                  <rect x="10" y="21" width="4" height="4" fill="#3344aa"/>
-                                  <!-- 바지 음영 (오른쪽 다리) -->
-                                  <rect x="12" y="21" width="2" height="4" fill="#223388"/>
-                                  <!-- 바지 하이라이트 (왼쪽 다리) -->
-                                  <rect x="5"  y="21" width="1" height="4" fill="#5566cc"/>
+                                  <!-- ══ 트릿 파우치 (왼쪽 허리) ══ -->
+                                  <rect x="4"  y="24" width="3" height="3" fill="#8b4810"/>
+                                  <rect x="4"  y="24" width="3" height="1" fill="#a85e20"/>
+                                  <rect x="5"  y="26" width="1" height="1" fill="#6a3008"/>
 
-                                  <!-- ══ 신발 ══ -->
-                                  <rect x="4"  y="25" width="6" height="2" fill="#222222"/>
-                                  <rect x="9"  y="25" width="6" height="2" fill="#222222"/>
-                                  <!-- 신발 발끝 -->
-                                  <rect x="3"  y="25" width="1" height="2" fill="#222222"/>
-                                  <rect x="15" y="25" width="1" height="2" fill="#111111"/>
-                                  <!-- 신발 광택 -->
-                                  <rect x="4"  y="25" width="2" height="1" fill="#444444"/>
-                                  <rect x="9"  y="25" width="2" height="1" fill="#333333"/>
+                                  <!-- ══ 카키 반바지 ══ -->
+                                  <rect x="4"  y="24" width="11" height="4" fill="#c8a040"/>
+                                  <rect x="5"  y="25" width="2"  height="3" fill="#d8b050"/>
+                                  <rect x="13" y="24" width="2"  height="4" fill="#a88020"/>
+
+                                  <!-- ══ 맨다리 ══ -->
+                                  <rect x="5"  y="25" width="3" height="2" fill="#ffcc99"/>
+                                  <rect x="11" y="25" width="3" height="2" fill="#e8aa77"/>
+
+                                  <!-- ══ 운동화 ══ -->
+                                  <rect x="3"  y="27" width="6" height="1" fill="#f0f0f0"/>
+                                  <rect x="10" y="27" width="6" height="1" fill="#f0f0f0"/>
+                                  <!-- 파란 줄무늬 -->
+                                  <rect x="4"  y="27" width="4" height="1" fill="#5090e0"/>
+                                  <rect x="11" y="27" width="4" height="1" fill="#5090e0"/>
+                                  <!-- 신발 밑창 -->
+                                  <rect x="3"  y="27" width="1" height="1" fill="#d0d0d0"/>
+                                  <rect x="15" y="27" width="1" height="1" fill="#d0d0d0"/>
                                 </svg>
                                 <img loading="lazy" id="butler-stage-image" class="hidden w-28 h-28 object-cover rounded-full border-4 border-brand-400 shadow-xl">
                             </div>
