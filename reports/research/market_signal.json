@@ -1,7 +1,7 @@
 {
   "agent": "시그널",
   "agent_slug": "signal",
-  "timestamp": "2026-06-21T12:38:02.597194+09:00",
+  "timestamp": "2026-06-21T12:48:04.171757+09:00",
   "crypto": {
     "fear_greed": {
       "value": 23,
@@ -9,42 +9,42 @@
       "signal": "NEUTRAL"
     },
     "kimchi_premium": {
-      "value": 16.39,
+      "value": 16.38,
       "signal": "NEUTRAL"
     },
     "top_coins": [
       {
         "ticker": "KRW-SOL",
         "score": 50,
-        "change": 0.72
+        "change": 0.9
       },
       {
         "ticker": "KRW-BTC",
         "score": 50,
-        "change": 0.14
+        "change": 0.18
       },
       {
         "ticker": "KRW-ETH",
         "score": 50,
-        "change": -0.19
+        "change": -0.11
       },
       {
         "ticker": "KRW-LINK",
         "score": 25,
-        "change": -0.17
+        "change": -0.25
       },
       {
-        "ticker": "KRW-XRP",
+        "ticker": "KRW-DOGE",
         "score": 0,
-        "change": 0.06
+        "change": 0.79
       },
       {
         "ticker": "KRW-AVAX",
         "score": 0,
-        "change": 0.05
+        "change": 0.21
       },
       {
-        "ticker": "KRW-DOGE",
+        "ticker": "KRW-XRP",
         "score": 0,
         "change": 0.0
       },
@@ -68,5 +68,5 @@
     },
     "sentiment": "BEARISH"
   },
-  "ai_analysis": "공포탐욕 23 중립; 김치프리미엄 16.39% 중립; 상위 코인 SOL:50, BTC:50, ETH:50; 주의: 큰 시장 차단 신호 없음."
+  "ai_analysis": "공포탐욕 23 중립; 김치프리미엄 16.38% 중립; 상위 코인 SOL:50, BTC:50, ETH:50; 주의: 큰 시장 차단 신호 없음."
 }
