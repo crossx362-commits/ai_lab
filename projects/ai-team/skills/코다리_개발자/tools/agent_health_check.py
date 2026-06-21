@@ -47,21 +47,8 @@ def run_check():
     if "🔴" in resource_report:
         resource_report += "\n" + get_heavy_processes_report()
 
-    # 2. 에이전트별 주요 메모리 파일 점검
-    agents_to_check = {
-        "루나 (리서치)": os.path.join(_root, "reports", "research", "luna_research.json"),
-        "펄스 (비즈니스)": os.path.join(_root, "reports", "research", "pulse_research.json"),
-        "아린 (인스타)": os.path.join(_root, "reports", "research", "arin_research.json"),
-    }
-    
     status_lines = []
     has_issues = False
-    
-    for name, path in agents_to_check.items():
-        ok, msg = _check_file_freshness(path)
-        icon = "🟢" if ok else "🟡"
-        if not ok: has_issues = True
-        status_lines.append(f"{icon} <b>{name}</b>: {msg}")
 
     # 2.5 Ollama 상태 점검 및 자동 수복
     print("  [코다리] Ollama 상태 점검 및 수복 시작...")
@@ -75,7 +62,7 @@ def run_check():
     full_report = (
         f"🛠️ <b>[코다리] 에이전트 종합 헬스체크</b>\n\n"
         f"{resource_report}\n\n"
-        f"👥 <b>에이전트 활동 현황:</b>\n" + "\n".join(status_lines)
+        f"👥 <b>에이전트 활동 현황:</b>\n" + ("\n".join(status_lines) if status_lines else "N/A")
     )
 
     print(full_report.replace("<b>", "").replace("</b>", "")) # 터미널용

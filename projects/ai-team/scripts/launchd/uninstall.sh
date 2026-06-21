@@ -1,7 +1,7 @@
 ﻿#!/bin/bash
 # launchd 에이전트 중지 및 제거
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-AGENTS=(com.ailab.signal com.ailab.dave com.ailab.leo com.ailab.youngsuk)
+AGENTS=(com.ailab.signal com.ailab.dave com.ailab.leo com.ailab.dave-stock com.ailab.youngsuk)
 
 for agent in "${AGENTS[@]}"; do
     launchctl unload "$LAUNCH_AGENTS/$agent.plist" 2>/dev/null && echo "✅ $agent 중지" || echo "⚠️  $agent 이미 중지됨"

@@ -120,47 +120,48 @@ function clampPetStagePoint(point, isMobile) {
 
 function getPetStageSlots(count, isMobile, layout = 'living') {
     if (normalizeRoomLayout(layout) === 'living') {
+        // 집사가 y:42%에 위치하므로, 펫은 하단(60~85%)과 상단(15~28%), 양옆(10~20%)으로 분산
         const livingRoomySlots = [
-            { x: 30, y: 72 }, { x: 70, y: 72 },
-            { x: 50, y: 84 }, { x: 18, y: 45 },
-            { x: 82, y: 45 }, { x: 30, y: 25 },
-            { x: 70, y: 25 }, { x: 12, y: 78 },
-            { x: 88, y: 78 }, { x: 50, y: 22 }
+            { x: 28, y: 68 }, { x: 72, y: 68 },  // 집사 양옆 아래
+            { x: 50, y: 82 }, { x: 15, y: 38 },   // 정하단, 왼쪽
+            { x: 85, y: 38 }, { x: 28, y: 18 },   // 오른쪽, 왼쪽 상단
+            { x: 72, y: 18 }, { x: 10, y: 72 },   // 오른쪽 상단, 좌하단
+            { x: 90, y: 72 }, { x: 50, y: 14 }    // 우하단, 정상단
         ];
         const livingCompactSlots = [
-            { x: 28, y: 78 }, { x: 72, y: 78 },
-            { x: 50, y: 88 }, { x: 15, y: 51 },
-            { x: 85, y: 51 }, { x: 28, y: 25 },
-            { x: 72, y: 25 }, { x: 12, y: 82 },
-            { x: 88, y: 82 }, { x: 50, y: 22 },
-            { x: 12, y: 33 }, { x: 88, y: 33 }
+            { x: 26, y: 72 }, { x: 74, y: 72 },
+            { x: 50, y: 85 }, { x: 13, y: 44 },
+            { x: 87, y: 44 }, { x: 26, y: 20 },
+            { x: 74, y: 20 }, { x: 10, y: 76 },
+            { x: 90, y: 76 }, { x: 50, y: 16 },
+            { x: 10, y: 30 }, { x: 90, y: 30 }
         ];
         const livingSlots = isMobile ? livingCompactSlots : livingRoomySlots;
-        if (count === 1) return [{ x: isMobile ? 72 : 70, y: isMobile ? 80 : 74 }];
+        if (count === 1) return [{ x: isMobile ? 74 : 72, y: isMobile ? 74 : 70 }];
         if (count <= livingSlots.length) return livingSlots.slice(0, count);
         return livingSlots.concat(getPetStageSlots(count - livingSlots.length, isMobile, 'circle'));
     }
 
     const roomySlots = [
-        { x: 24, y: 24 }, { x: 76, y: 24 },
-        { x: 18, y: 52 }, { x: 82, y: 52 },
-        { x: 31, y: 82 }, { x: 69, y: 82 },
-        { x: 13, y: 76 }, { x: 87, y: 76 },
-        { x: 39, y: 25 }, { x: 61, y: 25 }
+        { x: 22, y: 20 }, { x: 78, y: 20 },
+        { x: 15, y: 48 }, { x: 85, y: 48 },
+        { x: 28, y: 78 }, { x: 72, y: 78 },
+        { x: 10, y: 72 }, { x: 90, y: 72 },
+        { x: 38, y: 18 }, { x: 62, y: 18 }
     ];
     const compactSlots = [
-        { x: 23, y: 23 }, { x: 77, y: 23 },
-        { x: 14, y: 51 }, { x: 86, y: 51 },
-        { x: 27, y: 84 }, { x: 73, y: 84 },
-        { x: 46, y: 21 }, { x: 54, y: 88 },
-        { x: 11, y: 78 }, { x: 89, y: 78 },
-        { x: 11, y: 31 }, { x: 89, y: 31 }
+        { x: 22, y: 20 }, { x: 78, y: 20 },
+        { x: 12, y: 48 }, { x: 88, y: 48 },
+        { x: 26, y: 80 }, { x: 74, y: 80 },
+        { x: 46, y: 18 }, { x: 54, y: 85 },
+        { x: 10, y: 74 }, { x: 90, y: 74 },
+        { x: 10, y: 28 }, { x: 90, y: 28 }
     ];
     const slots = isMobile ? compactSlots : roomySlots;
 
-    if (count === 1) return [{ x: isMobile ? 76 : 72, y: isMobile ? 82 : 76 }];
+    if (count === 1) return [{ x: isMobile ? 76 : 74, y: isMobile ? 74 : 70 }];
     if (count === 2) return [slots[0], slots[1]];
-    if (count === 3) return [slots[0], slots[1], { x: 50, y: 84 }];
+    if (count === 3) return [slots[0], slots[1], { x: 50, y: 82 }];
     if (count === 4) return [slots[0], slots[1], slots[2], slots[3]];
     if (count <= slots.length) return slots.slice(0, count);
 
@@ -187,7 +188,7 @@ function resolvePetStageCollisions(points, isMobile) {
     const count = points.length;
     const minDx = isMobile ? (count > 8 ? 13 : 16) : (count > 10 ? 13 : 15);
     const minDy = isMobile ? (count > 8 ? 15 : 18) : (count > 10 ? 15 : 17);
-    const butler = { x: 50, y: 52 };
+    const butler = { x: 50, y: 42 };
     const butlerSafeX = isMobile ? 24 : 20;
     const butlerSafeY = isMobile ? 25 : 22;
     const relaxed = points.map(point => clampPetStagePoint(point, isMobile));
@@ -311,7 +312,7 @@ function renderPetStageList() {
 
     // 집사 위치 (%)
     const butlerX = 50;
-    const butlerY = 52;
+    const butlerY = 42;
 
     // 펫 크기
     const sz = { circle: 'w-14 h-14', emoji: 'text-2xl', label: 'text-[11px]', border: 'border-3' };
@@ -376,8 +377,357 @@ function renderPetStageList() {
             list.appendChild(wrapper);
         });
     }
+    renderRoomStickers();
+    loadRoomTheme();
+    const _pet = getActivePet();
+    if (_pet) { runStatDecay(_pet); saveState(); }
+    _applyUnlockedItems();
+    _renderPetStatBars();
+    _renderDailyMissions();
 }
 
+
+// ── 펫 케어 게임 루프 ──────────────────────────────────────────────────────────
+
+function _ensurePetGameFields(pet) {
+    if (pet == null) return;
+    if (pet.pawCoins == null) pet.pawCoins = 0;
+    if (pet.clean == null) pet.clean = 80;
+    if (pet.lastStatDecay == null) pet.lastStatDecay = Date.now();
+}
+
+function _earnCoins(pet, amount, label) {
+    if (!pet) return;
+    _ensurePetGameFields(pet);
+    pet.pawCoins = (pet.pawCoins || 0) + amount;
+    showToast(`+${amount} 🐾코인 획득! (${label})`);
+    _renderPetStatBars();
+}
+
+function runStatDecay(pet) {
+    if (!pet) return;
+    _ensurePetGameFields(pet);
+    const now = Date.now();
+    const elapsedHours = (now - pet.lastStatDecay) / 3600000;
+    if (elapsedHours < 0.5) return;
+    const decaySteps = Math.floor(elapsedHours / 0.5);
+    pet.hunger = Math.max(0, pet.hunger - decaySteps * 3);
+    pet.happy  = Math.max(0, pet.happy  - decaySteps * 2);
+    pet.clean  = Math.max(0, pet.clean  - decaySteps * 2);
+    pet.lastStatDecay = now;
+}
+
+function _renderPetStatBars() {
+    const pet = getActivePet();
+    const el = document.getElementById('pet-game-stat-bars');
+    if (!el) return;
+    if (!pet) { el.innerHTML = ''; return; }
+    _ensurePetGameFields(pet);
+    const bar = (val, color) =>
+        `<div class="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="h-full rounded-full transition-all duration-500" style="width:${val}%;background:${color}"></div></div>`;
+    el.innerHTML = `
+        <div class="flex items-center gap-2 text-[9px] font-black text-gray-500">
+            <span>🍖</span>${bar(pet.hunger,'#f59e0b')}
+            <span>💛</span>${bar(pet.happy,'#ec4899')}
+            <span>🛁</span>${bar(pet.clean,'#22d3ee')}
+            <span class="ml-auto flex items-center gap-0.5 text-amber-600 font-black text-[10px]"><span>🐾</span>${pet.pawCoins || 0}</span>
+        </div>`;
+}
+
+// ── 데일리 미션 ───────────────────────────────────────────────────────────────
+
+function _dailyMissionKey() {
+    const d = new Date().toISOString().slice(0, 10);
+    return `petna_daily_missions_${settings_email}_${d}`;
+}
+
+function _getDailyMissions() {
+    try { return JSON.parse(localStorage.getItem(_dailyMissionKey())) || { feed: false, play: false, shower: false, bonusClaimed: false }; }
+    catch { return { feed: false, play: false, shower: false, bonusClaimed: false }; }
+}
+
+function _saveDailyMissions(m) {
+    localStorage.setItem(_dailyMissionKey(), JSON.stringify(m));
+}
+
+function _completeMission(type) {
+    const m = _getDailyMissions();
+    if (m[type]) return;
+    m[type] = true;
+    _saveDailyMissions(m);
+    const pet = getActivePet();
+    if (pet) _earnCoins(pet, type === 'feed' ? 5 : type === 'play' ? 10 : 8, `미션:${type === 'feed' ? '밥주기' : type === 'play' ? '놀기' : '목욕'}`);
+    if (!m.bonusClaimed && m.feed && m.play && m.shower) {
+        m.bonusClaimed = true;
+        _saveDailyMissions(m);
+        if (pet) _earnCoins(pet, 50, '데일리 미션 완료 보너스!');
+    }
+    _renderDailyMissions();
+}
+
+function _renderDailyMissions() {
+    const el = document.getElementById('pet-daily-missions');
+    if (!el) return;
+    const m = _getDailyMissions();
+    const chip = (done, icon, label) =>
+        `<span class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border ${done ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-200 text-gray-400'}">
+            ${done ? '✅' : icon} ${label}
+        </span>`;
+    el.innerHTML = `
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[9px] font-black text-gray-400 mr-0.5">오늘 미션</span>
+            ${chip(m.feed,'🍖','밥주기')}${chip(m.play,'🎾','놀기')}${chip(m.shower,'🛁','목욕')}
+            ${m.bonusClaimed ? '<span class="text-[9px] text-amber-500 font-black ml-auto">🎉 +50보너스 완료!</span>' : ''}
+        </div>`;
+}
+
+// ── 방 아이템 상점 ────────────────────────────────────────────────────────────
+
+const ROOM_SHOP_ITEMS = [
+    { id: 'pack_ocean',   type: 'stickerPack', label: '🌊 바다 팩',   price: 30, items: ['🐠','🐙','🦀','🐚','🌊','⚓','🐋','🦈','🦞','🐡','🌴','🏝️'], size: 'md' },
+    { id: 'pack_space',   type: 'stickerPack', label: '🚀 우주 팩',   price: 30, items: ['🚀','🌙','⭐','🪐','👾','🛸','🌠','☄️','🔭','🌌','👩‍🚀','🛰️'], size: 'md' },
+    { id: 'pack_xmas',    type: 'stickerPack', label: '🎄 크리스마스', price: 25, items: ['🎄','🎅','⛄','🦌','🎁','🔔','❄️','🕯️','🧦','🍪','🎶','✨'], size: 'md' },
+    { id: 'pack_food2',   type: 'stickerPack', label: '🍰 디저트 팩', price: 20, items: ['🍰','🧁','🍩','🎂','🍫','🍭','🍬','🧇','🥞','🍦','🍮','☕'], size: 'sm' },
+    { id: 'theme_ocean',  type: 'theme',       label: '🏖️ 오션 테마',  price: 50, themeId: 'ocean'  },
+    { id: 'theme_forest', type: 'theme',       label: '🌲 숲 테마',    price: 50, themeId: 'forest' },
+];
+
+function _unlockedKey() {
+    const pet = getActivePet();
+    return `petnna_unlocked_${pet?.id || 'default'}`;
+}
+
+function _getUnlocked() {
+    try { return JSON.parse(localStorage.getItem(_unlockedKey())) || []; }
+    catch { return []; }
+}
+
+function _saveUnlocked(list) {
+    localStorage.setItem(_unlockedKey(), JSON.stringify(list));
+}
+
+function buyRoomItem(itemId) {
+    const pet = getActivePet();
+    if (!pet) return;
+    _ensurePetGameFields(pet);
+    const item = ROOM_SHOP_ITEMS.find(i => i.id === itemId);
+    if (!item) return;
+    const unlocked = _getUnlocked();
+    if (unlocked.includes(itemId)) { showToast('이미 보유한 아이템입니다!'); return; }
+    if ((pet.pawCoins || 0) < item.price) { showToast(`🐾코인이 부족해요! (${item.price - pet.pawCoins}개 더 필요)`); return; }
+    pet.pawCoins -= item.price;
+    unlocked.push(itemId);
+    _saveUnlocked(unlocked);
+    saveState();
+    showToast(`✅ ${item.label} 구매 완료!`);
+    if (item.type === 'stickerPack') {
+        STICKER_CATEGORIES[item.label] = { items: item.items, size: item.size };
+    } else if (item.type === 'theme' && item.themeId) {
+        ROOM_THEMES[item.themeId] = ROOM_SHOP_THEMES[item.themeId];
+    }
+    _renderPetStatBars();
+    renderRoomShop();
+}
+
+function _applyUnlockedItems() {
+    const unlocked = _getUnlocked();
+    unlocked.forEach(id => {
+        const item = ROOM_SHOP_ITEMS.find(i => i.id === id);
+        if (!item) return;
+        if (item.type === 'stickerPack') STICKER_CATEGORIES[item.label] = { items: item.items, size: item.size };
+        else if (item.type === 'theme' && item.themeId) ROOM_THEMES[item.themeId] = ROOM_SHOP_THEMES[item.themeId];
+    });
+}
+
+const ROOM_SHOP_THEMES = {
+    ocean:  { cls: 'room-theme-ocean',  swatch: 'linear-gradient(135deg,#e0f2fe 50%,#7dd3fc 50%)', label: '오션' },
+    forest: { cls: 'room-theme-forest', swatch: 'linear-gradient(135deg,#dcfce7 50%,#86efac 50%)', label: '숲' },
+};
+
+function renderRoomShop() {
+    const el = document.getElementById('room-shop-grid');
+    if (!el) return;
+    const pet = getActivePet();
+    _ensurePetGameFields(pet);
+    const coins = pet?.pawCoins || 0;
+    const unlocked = _getUnlocked();
+    el.innerHTML = ROOM_SHOP_ITEMS.map(item => {
+        const owned = unlocked.includes(item.id);
+        const canAfford = coins >= item.price;
+        return `<div class="flex items-center justify-between bg-white border ${owned ? 'border-green-200 bg-green-50/40' : 'border-gray-100'} rounded-xl px-2.5 py-2 gap-2">
+            <div class="flex flex-col">
+                <span class="text-[11px] font-black text-gray-700">${item.label}</span>
+                <span class="text-[9px] text-gray-400">${item.type === 'stickerPack' ? '스티커 팩' : '방 테마'}</span>
+            </div>
+            ${owned
+                ? `<span class="text-[9px] text-green-600 font-black px-2 py-1 bg-green-100 rounded-lg">보유중</span>`
+                : `<button onclick="buyRoomItem('${item.id}')" class="text-[9px] font-black px-2 py-1 rounded-lg border transition-all ${canAfford ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'}">🐾${item.price}</button>`
+            }
+        </div>`;
+    }).join('');
+    const coinEl = document.getElementById('room-shop-coin-display');
+    if (coinEl) coinEl.textContent = `🐾 ${coins}`;
+}
+
+// ── 방꾸미기 시스템 ───────────────────────────────────────────────────────────
+const STICKER_CATEGORIES = {
+    '가구': { items: ['🛋️','🪑','🛏️','📺','🖼️','🪞','🚪','🪟','💡','🧸','🗃️','🧺'], size: 'lg' },
+    '식물': { items: ['🪴','🌿','🌸','🌺','🌻','🌵','🍀','🎋','🌴','🌾','🌱','🎍'], size: 'md' },
+    '장난감': { items: ['🎾','🦴','🧸','🎀','🪀','🏀','⚽','🎊','🪁','🧩','🎯','🪃'], size: 'md' },
+    '음식': { items: ['🍖','🐟','🥩','🫙','🍬','🍗','🥕','🍎','🍕','🧁','☕','🧃'], size: 'sm' },
+    '기타': { items: ['⭐','💛','🌈','🌙','✨','🎵','🎨','📸','🎪','🏆','🎁','🪄'], size: 'sm' },
+};
+
+const ROOM_THEMES = {
+    'cozy':   { cls: '',                   swatch: 'linear-gradient(135deg,#fef7ee 50%,#e8cfa0 50%)', label: '아늑' },
+    'mint':   { cls: 'room-theme-mint',    swatch: 'linear-gradient(135deg,#edfaf4 50%,#b8e0c8 50%)', label: '민트' },
+    'purple': { cls: 'room-theme-purple',  swatch: 'linear-gradient(135deg,#f5f0fe 50%,#d4c0f0 50%)', label: '보라' },
+    'sky':    { cls: 'room-theme-sky',     swatch: 'linear-gradient(135deg,#eaf4fe 50%,#b8d8f0 50%)', label: '하늘' },
+    'pink':   { cls: 'room-theme-pink',    swatch: 'linear-gradient(135deg,#fef0f4 50%,#f0c0cc 50%)', label: '핑크' },
+    'dark':   { cls: 'room-theme-dark',    swatch: 'linear-gradient(135deg,#2a2a3e 50%,#1e1e2e 50%)', label: '밤' },
+};
+
+function applyRoomTheme(themeId) {
+    const theme = ROOM_THEMES[themeId] || ROOM_THEMES['cozy'];
+    const stage = document.querySelector('.room-stage');
+    if (!stage) return;
+    Object.values(ROOM_THEMES).forEach(t => { if (t.cls) stage.classList.remove(t.cls); });
+    if (theme.cls) stage.classList.add(theme.cls);
+    document.querySelectorAll('.room-theme-btn').forEach(b => b.classList.toggle('is-active', b.dataset.theme === themeId));
+    const pet = pets && pets[activePetIndex];
+    if (pet) { pet.roomTheme = themeId; if (typeof savePets === 'function') savePets(); }
+    localStorage.setItem('petnna_room_theme_' + (pet?.id || 'default'), themeId);
+}
+
+function loadRoomTheme() {
+    const pet = pets && pets[activePetIndex];
+    const themeId = pet?.roomTheme || localStorage.getItem('petnna_room_theme_' + (pet?.id || 'default')) || 'cozy';
+    applyRoomTheme(themeId);
+}
+
+function _stickerKey() {
+    const pet = pets && pets[activePetIndex];
+    return `petnna_room_stickers_${pet?.id || 'default'}`;
+}
+
+function loadRoomStickers() {
+    try { return JSON.parse(localStorage.getItem(_stickerKey()) || '[]'); }
+    catch { return []; }
+}
+
+function saveRoomStickers(stickers) {
+    localStorage.setItem(_stickerKey(), JSON.stringify(stickers));
+}
+
+function addRoomSticker(emoji, size = 'md') {
+    const stickers = loadRoomStickers();
+    const x = 25 + Math.random() * 50;
+    const y = 58 + Math.random() * 25;
+    stickers.push({ id: `s${Date.now()}`, emoji, x, y, size });
+    saveRoomStickers(stickers);
+    renderRoomStickers();
+}
+
+function deleteRoomSticker(id) {
+    saveRoomStickers(loadRoomStickers().filter(s => s.id !== id));
+    renderRoomStickers();
+}
+
+function renderRoomStickers() {
+    const stage = document.querySelector('.room-stage');
+    if (!stage) return;
+    let layer = document.getElementById('room-sticker-layer');
+    if (!layer) {
+        layer = document.createElement('div');
+        layer.id = 'room-sticker-layer';
+        layer.className = 'absolute inset-0';
+        layer.style.zIndex = '3';
+        layer.style.pointerEvents = 'none';
+        stage.appendChild(layer);
+    }
+    layer.innerHTML = '';
+    loadRoomStickers().forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'room-sticker absolute';
+        el.style.cssText = `left:${s.x}%;top:${s.y}%;transform:translate(-50%,-50%);pointer-events:auto;z-index:${Math.round(s.y)+3};`;
+        el.dataset.id = s.id;
+        el.innerHTML = `<span class="room-sticker-emoji size-${s.size||'md'}">${s.emoji}</span><button class="room-sticker-delete" onclick="event.stopPropagation();deleteRoomSticker('${s.id}')" title="삭제">✕</button>`;
+        _makeStickerDraggable(el, s.id);
+        layer.appendChild(el);
+    });
+}
+
+function _makeStickerDraggable(el, stickerId) {
+    let startX, startY, startLeft, startTop, moved = false;
+    el.addEventListener('pointerdown', e => {
+        if (e.target.classList.contains('room-sticker-delete')) return;
+        moved = false;
+        el.setPointerCapture(e.pointerId);
+        startX = e.clientX; startY = e.clientY;
+        startLeft = parseFloat(el.style.left);
+        startTop = parseFloat(el.style.top);
+        e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => {
+        if (!e.buttons) return;
+        if (Math.abs(e.clientX - startX) < 4 && Math.abs(e.clientY - startY) < 4) return;
+        moved = true;
+        el.classList.add('is-dragging');
+        const rect = el.closest('.room-stage').getBoundingClientRect();
+        const newTop = Math.max(5, Math.min(93, startTop + (e.clientY - startY) / rect.height * 100));
+        el.style.left = `${Math.max(5, Math.min(95, startLeft + (e.clientX - startX) / rect.width * 100))}%`;
+        el.style.top = `${newTop}%`;
+        el.style.zIndex = Math.round(newTop) + 50;
+    });
+    el.addEventListener('pointerup', () => {
+        el.classList.remove('is-dragging');
+        if (!moved) return;
+        const newY = parseFloat(el.style.top);
+        el.style.zIndex = Math.round(newY) + 3;
+        const stickers = loadRoomStickers();
+        const s = stickers.find(s => s.id === stickerId);
+        if (s) { s.x = parseFloat(el.style.left); s.y = newY; saveRoomStickers(stickers); }
+    });
+}
+
+function toggleStickerPicker() {
+    const panel = document.getElementById('room-sticker-picker-panel');
+    if (!panel) return;
+    const opening = panel.classList.contains('hidden');
+    ['butler-profile-editor-panel','pet-profile-editor-panel'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    panel.classList.toggle('hidden', !opening);
+    if (opening) {
+        switchDecorTab('decor');
+    }
+}
+
+function switchDecorTab(tab) {
+    const decorContent = document.getElementById('room-sticker-picker-panel')?.querySelector('.space-y-2:not(#room-shop-panel),.space-y-3>div:not([id])');
+    const decorArea = document.querySelector('#room-sticker-picker-panel > div:not(.flex):not(#room-shop-panel)');
+    const shopPanel = document.getElementById('room-shop-panel');
+    document.querySelectorAll('.decor-tab-btn').forEach(b => b.classList.toggle('is-active', b.id === `${tab}-tab-btn`));
+    if (tab === 'shop') {
+        document.querySelectorAll('#room-sticker-picker-panel > div:not(.flex):not(#room-shop-panel)').forEach(el => el.classList.add('hidden'));
+        shopPanel?.classList.remove('hidden');
+        renderRoomShop();
+    } else {
+        document.querySelectorAll('#room-sticker-picker-panel > div:not(.flex):not(#room-shop-panel)').forEach(el => el.classList.remove('hidden'));
+        shopPanel?.classList.add('hidden');
+        renderStickerPickerCategory(Object.keys(STICKER_CATEGORIES)[0]);
+    }
+}
+
+function renderStickerPickerCategory(cat) {
+    document.querySelectorAll('.sticker-cat-btn').forEach(b => b.classList.toggle('is-active', b.dataset.cat === cat));
+    const grid = document.getElementById('sticker-emoji-grid');
+    if (!grid) return;
+    const { items, size } = STICKER_CATEGORIES[cat];
+    const fontSize = size === 'lg' ? 'text-3xl' : size === 'md' ? 'text-2xl' : 'text-xl';
+    grid.innerHTML = items.map(e =>
+        `<button onclick="addRoomSticker('${e}','${size}')" class="${fontSize} w-10 h-10 flex items-center justify-center rounded-xl hover:bg-amber-50 hover:scale-110 transition-all active:scale-95">${e}</button>`
+    ).join('');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 let mypetWidgetInitialized = false;
 function initMypetWeatherWidget() {
@@ -1361,9 +1711,11 @@ function feedPet() {
         return;
     }
 
+    _ensurePetGameFields(current);
     current.hunger = Math.min(100, current.hunger + 15);
     current.happy = Math.min(100, current.happy + 8);
     current.tempSpeechText = `냠냠! 맛있는 간식을 먹고 배가 든든해졌어요! 🥩 (${current.hunger}%)`;
+    _completeMission('feed');
 
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -1384,9 +1736,11 @@ function playPet() {
     const current = getActivePet();
     if (!current) return;
 
+    _ensurePetGameFields(current);
     current.happy = Math.min(100, current.happy + 18);
     current.hunger = Math.max(0, current.hunger - 10);
     current.tempSpeechText = `얍! 집사님이 터그놀이 공을 던져줘서 엄청 행복해요! 🥎 (${current.happy}%)`;
+    _completeMission('play');
     saveState();
 
     renderMyPets();
@@ -1397,8 +1751,11 @@ function showerPet() {
     const current = getActivePet();
     if (!current) return;
 
+    _ensurePetGameFields(current);
     current.happy = Math.min(100, current.happy + 10);
+    current.clean = Math.min(100, (current.clean || 0) + 30);
     current.tempSpeechText = `뽀송뽀송 샴푸 스파 완료! 털이 부드러워요 🧼`;
+    _completeMission('shower');
     saveState();
 
     renderMyPets();

@@ -9,7 +9,6 @@ import os
 import sys
 import datetime
 import json
-import pickle
 
 _here = os.path.dirname(os.path.abspath(__file__))
 _root = _here
@@ -26,7 +25,7 @@ from _shared.env import load_env as _load_env
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
 # 에이전트별 포스팅 일정 설정
-# 루나·아린: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
+# 루나: 자동 실행 비활성화 (사장님 명령 시에만 수동 실행)
 POSTING_SCHEDULE = []
 
 # 매일 반복 일정 리스트 (register-recurring 용)
@@ -51,8 +50,6 @@ def _get_recent_results() -> dict:
             meta  = r.get("metadata", {})
             if "루나" in agent:
                 results["루나"] = meta.get("youtube_title", "")
-            elif "아린" in agent:
-                results["아린"] = meta.get("caption", "")[:30]
     except Exception:
         pass
     return results

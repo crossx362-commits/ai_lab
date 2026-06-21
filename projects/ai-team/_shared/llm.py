@@ -40,6 +40,11 @@ def _list_ollama() -> list[str]:
     return []
 
 
+def is_available() -> bool:
+    """Return whether at least one local Ollama chat model is available."""
+    return bool(_list_ollama())
+
+
 def _pick_ollama(models: list[str], task: str) -> str | None:
     """Pick best Ollama model for task."""
     if not models:

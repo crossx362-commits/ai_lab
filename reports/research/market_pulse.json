@@ -1,72 +1,72 @@
 {
   "agent": "시그널",
   "agent_slug": "signal",
-  "timestamp": "2026-06-19T18:35:39.386499+09:00",
+  "timestamp": "2026-06-21T12:38:02.597194+09:00",
   "crypto": {
     "fear_greed": {
-      "value": 14,
+      "value": 23,
       "label": "Extreme Fear",
-      "signal": "BUY"
+      "signal": "NEUTRAL"
     },
     "kimchi_premium": {
-      "value": 16.08,
-      "signal": "SELL"
+      "value": 16.39,
+      "signal": "NEUTRAL"
     },
     "top_coins": [
       {
+        "ticker": "KRW-SOL",
+        "score": 50,
+        "change": 0.72
+      },
+      {
         "ticker": "KRW-BTC",
-        "score": 0,
-        "change": -0.79
+        "score": 50,
+        "change": 0.14
       },
       {
         "ticker": "KRW-ETH",
-        "score": 0,
-        "change": -1.16
+        "score": 50,
+        "change": -0.19
       },
       {
-        "ticker": "KRW-DOGE",
-        "score": 0,
-        "change": -1.59
+        "ticker": "KRW-LINK",
+        "score": 25,
+        "change": -0.17
       },
       {
         "ticker": "KRW-XRP",
         "score": 0,
-        "change": -1.85
-      },
-      {
-        "ticker": "KRW-SOL",
-        "score": 0,
-        "change": -1.9
-      },
-      {
-        "ticker": "KRW-LINK",
-        "score": 0,
-        "change": -1.91
-      },
-      {
-        "ticker": "KRW-ADA",
-        "score": 0,
-        "change": -2.82
+        "change": 0.06
       },
       {
         "ticker": "KRW-AVAX",
         "score": 0,
-        "change": -3.67
+        "change": 0.05
+      },
+      {
+        "ticker": "KRW-DOGE",
+        "score": 0,
+        "change": 0.0
+      },
+      {
+        "ticker": "KRW-ADA",
+        "score": 0,
+        "change": -0.4
       }
     ]
   },
   "stock": {
     "indexes": {
       "kospi": {
-        "value": 0.0,
-        "change": 0.0
+        "value": 9052.42,
+        "change": -0.13
       },
       "kosdaq": {
-        "value": 0.0,
-        "change": 0.0
+        "value": 966.59,
+        "change": -3.43
       }
     },
-    "sentiment": "NEUTRAL"
+    "sentiment": "BEARISH"
   },
-  "ai_analysis": "Fear/Greed 14 BUY; kimchi 16.08% SELL; top coins BTC:0, ETH:0, DOGE:0; risk: kimchi premium high."
+  "ai_analysis": "공포탐욕 23 중립; 김치프리미엄 16.39% 중립; 상위 코인 SOL:50, BTC:50, ETH:50; 주의: 큰 시장 차단 신호 없음."
 }

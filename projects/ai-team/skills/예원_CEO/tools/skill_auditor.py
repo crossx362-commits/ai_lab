@@ -18,27 +18,36 @@ import json
 import datetime
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 from _shared.notify import send
-from _shared.env_loader import find_project_root
-_root = find_project_root(_here)
+from _shared.env import find_root
+from _shared.agent_registry import scan_agents
+_root = find_root(_here)
 
 SKILLS_DIR = os.path.join(_root, "projects", "ai-team", "skills")
 DRY_RUN    = "--check" in sys.argv
 
-AGENT_FOLDER_MAP = {
-    "시그널": "시그널_분석가",
-    "영숙": "영숙_비서",
-    "경수": "경수_수사관",
-    "코다리": "코다리_개발자",
-    "티모": "티모_디자이너",
-    "로율": "로율_변호사",
-    "케빈": "케빈_인프라",
-}
+
+def _agent_display_name(folder_name: str) -> str:
+    return folder_name.split("_", 1)[0]
+
+
+def _build_agent_folder_map() -> dict[str, str]:
+    """Discover auditable agents from the shared registry."""
+    folders: dict[str, str] = {}
+    for info in scan_agents().values():
+        folder = info["name"]
+        skill_path = os.path.join(SKILLS_DIR, folder, "SKILL.md")
+        if os.path.exists(skill_path):
+            folders[_agent_display_name(folder)] = folder
+    return dict(sorted(folders.items(), key=lambda item: item[0]))
+
+
+AGENT_FOLDER_MAP = _build_agent_folder_map()
 AGENTS = list(AGENT_FOLDER_MAP.keys())
 
 

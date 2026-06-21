@@ -84,7 +84,7 @@ DAVE_TOOLS = os.path.join(AI_TEAM_ROOT, "skills", "데이브_주식", "tools")
 sys.path.insert(0, DAVE_TOOLS)
 
 from _shared.env import load_env
-from _shared.notify import send, report
+from _shared.notify import send
 from _shared.process import ProcessLock
 from _shared.trading_entry_evaluator import (
     backfill_pending_outcomes,
@@ -259,81 +259,106 @@ def load_pulse_intel(refresh=True):
 
 
 def calculate_leo_score(ticker: str) -> dict:
-    """레오용 단순화된 스코어 계산 (펄스 정보 활용)"""
+    """레오용 스코어 계산 (코드 지표 계산, LLM 없음)"""
     try:
         df = pyupbit.get_ohlcv(ticker, interval="minute60", count=50)
         if df is None or df.empty:
             return {"ticker": ticker, "score": 0, "error": "데이터 없음"}
 
-        current_price = df['close'].iloc[-1]
+        closes = df['close'].values
+        volumes = df['volume'].values
+        current_price = float(closes[-1])
         score = 0
         reasons = []
 
-        # 펄스 정보 로드
-        pulse_intel = load_pulse_intel()
+        # 1. RSI
+        deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
+        gains = [d if d > 0 else 0 for d in deltas]
+        losses = [-d if d < 0 else 0 for d in deltas]
+        avg_gain = sum(gains[-14:]) / 14
+        avg_loss = sum(losses[-14:]) / 14
+        rs = avg_gain / avg_loss if avg_loss != 0 else 100
+        rsi = 100 - (100 / (1 + rs))
 
-        # 1. StochRSI 과매도 체크 (가장 중요)
-        try:
-            closes = df['close'].values
-            # 단순 RSI 계산
-            deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
-            gains = [d if d > 0 else 0 for d in deltas]
-            losses = [-d if d < 0 else 0 for d in deltas]
-            avg_gain = sum(gains[-14:]) / 14
-            avg_loss = sum(losses[-14:]) / 14
-            rs = avg_gain / avg_loss if avg_loss != 0 else 100
-            rsi = 100 - (100 / (1 + rs))
+        if rsi < 30:
+            score += 3
+            reasons.append(f"RSI 과매도({rsi:.0f})")
+        elif rsi < 45:
+            score += 1
+            reasons.append(f"RSI 저점({rsi:.0f})")
+        elif rsi > 70:
+            score -= 2
+            reasons.append(f"RSI 과매수({rsi:.0f})")
 
-            if rsi < 30:
-                score += 3
-                reasons.append(f"RSI 과매도 ({rsi:.1f})")
-            elif rsi > 70:
-                score -= 2
-                reasons.append(f"RSI 과매수 ({rsi:.1f})")
-        except Exception:
-            pass
-
-        # 2. Volume Spike (1.5배 이상)
-        volumes = df['volume'].values
-        avg_vol = sum(volumes[-20:-1]) / 19
-        current_vol = volumes[-1]
-        vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
-
-        if vol_ratio >= 1.5:
+        # 2. 거래량 급등
+        avg_vol = float(sum(volumes[-20:-1]) / 19) if len(volumes) >= 20 else 1.0
+        vol_ratio = float(volumes[-1]) / avg_vol if avg_vol > 0 else 1.0
+        if vol_ratio >= 2.0:
+            score += 3
+            reasons.append(f"거래량 {vol_ratio:.1f}배")
+        elif vol_ratio >= 1.5:
             score += 2
             reasons.append(f"거래량 {vol_ratio:.1f}배")
 
-        # 3. 1시간 모멘텀 (상승 중)
-        price_1h_ago = df['close'].iloc[-2]
-        momentum_1h = (current_price - price_1h_ago) / price_1h_ago * 100
-
-        if momentum_1h > 1.0:
+        # 3. 단기 모멘텀 (1h, 4h)
+        mom_1h = (closes[-1] - closes[-2]) / closes[-2] * 100 if closes[-2] else 0
+        mom_4h = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 and closes[-5] else 0
+        if mom_1h > 1.5:
             score += 2
-            reasons.append(f"1h 모멘텀 +{momentum_1h:.1f}%")
-        elif momentum_1h < -1.0:
+            reasons.append(f"1h+{mom_1h:.1f}%")
+        elif mom_1h > 0.5:
+            score += 1
+        elif mom_1h < -2.0:
+            score -= 2
+            reasons.append(f"1h{mom_1h:.1f}%")
+
+        if mom_4h > 3.0:
+            score += 2
+            reasons.append(f"4h+{mom_4h:.1f}%")
+        elif mom_4h < -5.0:
+            score -= 2
+
+        # 4. EMA 정렬 (EMA9 > EMA21)
+        ema9 = float(df['close'].ewm(span=9).mean().iloc[-1])
+        ema21 = float(df['close'].ewm(span=21).mean().iloc[-1])
+        if ema9 > ema21 and current_price > ema9:
+            score += 2
+            reasons.append("EMA정렬↑")
+        elif ema9 < ema21:
             score -= 1
-            reasons.append(f"1h 모멘텀 {momentum_1h:.1f}%")
 
-        # 4. 펄스 정보 활용 (공포탐욕)
+        # 5. MACD 크로스
+        ema12 = float(df['close'].ewm(span=12).mean().iloc[-1])
+        ema26 = float(df['close'].ewm(span=26).mean().iloc[-1])
+        macd = ema12 - ema26
+        ema12_prev = float(df['close'].ewm(span=12).mean().iloc[-2])
+        ema26_prev = float(df['close'].ewm(span=26).mean().iloc[-2])
+        macd_prev = ema12_prev - ema26_prev
+        if macd > 0 and macd_prev <= 0:
+            score += 2
+            reasons.append("MACD골든")
+        elif macd > 0:
+            score += 1
+
+        # 6. 공포탐욕지수
+        pulse_intel = load_pulse_intel()
         if pulse_intel:
-            crypto_data = pulse_intel.get("crypto", {})
-
-            # 공포탐욕지수 (극단 구간 보너스)
-            fg = crypto_data.get("fear_greed", {})
+            fg = pulse_intel.get("crypto", {}).get("fear_greed", {})
             if fg.get("signal") == "BUY":
                 score += 2
-                reasons.append(f"극공포 ({fg.get('value')})")
+                reasons.append(f"극공포({fg.get('value')})")
             elif fg.get("signal") == "SELL":
                 score -= 2
-                reasons.append(f"극탐욕 ({fg.get('value')})")
+                reasons.append(f"극탐욕({fg.get('value')})")
 
         return {
             "ticker": ticker,
             "score": score,
             "current_price": current_price,
             "volume_ratio": vol_ratio,
-            "momentum_1h": momentum_1h,
-            "reasons": reasons
+            "momentum_1h": mom_1h,
+            "rsi": rsi,
+            "reasons": reasons,
         }
     except Exception as e:
         return {"ticker": ticker, "score": 0, "error": str(e)}
@@ -384,7 +409,6 @@ def run_leo_cycle():
     global consecutive_losses, daily_loss_pct, trades_today, last_trade_time
 
     print(f"\n⚡ [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 레오 단타 스캔")
-    report("레오", "단타 스캔 시작")
 
     if IMPORT_ERROR:
         print(f"[Leo] 의존성 누락: {IMPORT_ERROR}")
@@ -537,8 +561,7 @@ def run_leo_cycle():
 
     best = scanned[0]
 
-    # SKILL 기준 강화: 최소 진입 점수 2점 + 펄스 정보 종합 판단
-    min_score = 2  # 1점 → 2점으로 상향
+    min_score = 1  # 기회비용 고려: 낮은 임계값으로 진입 기회 확대
 
     # 펄스 정보 확인
     pulse_intel = load_pulse_intel()
@@ -580,7 +603,7 @@ def run_leo_cycle():
         agent="leo",
         ticker=best["ticker"],
         raw_score=best["score"],
-        max_raw_score=8,
+        max_raw_score=15,
         reasons=best.get("reasons", []),
         metrics=best,
         workspace_root=WORKSPACE_ROOT,

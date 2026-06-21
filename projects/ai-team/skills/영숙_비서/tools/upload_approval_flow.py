@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 영숙의 업로드 승인 플로우
-- 루나/아린 업로드 전 영숙에게 보고
+- 루나 업로드 전 영숙에게 보고
 - 예원 CEO 피드백 요청
 - 예원 CEO 최종 승인 후 업로드 진행
 """
@@ -41,7 +41,7 @@ def request_upload_approval(
     업로드 승인 요청 플로우
 
     Args:
-        agent: "루나" 또는 "아린"
+        agent: 에이전트 이름 (예: "루나")
         platform: "YouTube" 또는 "Instagram"
         content_info: 콘텐츠 정보
             {
@@ -245,19 +245,6 @@ def _issue_upload_command(agent: str, platform: str, content_info: Dict) -> str:
             f"**설명**: {content_info.get('description', 'N/A')[:100]}..."
         )
 
-    elif agent == "아린" and platform == "Instagram":
-        # 아린 업로드 지시
-        command = f"아린 Instagram 업로드 실행 (캡션: {content_info.get('caption', 'N/A')[:30]})"
-
-        # 실제로는 auto_pipeline.py의 upload 함수 호출
-        upload_instruction = (
-            f"📤 **[영숙 비서 → 아린 관리자]**\n\n"
-            f"최종 승인이 완료되었습니다!\n"
-            f"지금 바로 Instagram에 포스팅하세요.\n\n"
-            f"**캡션**: {content_info.get('caption', 'N/A')[:100]}...\n"
-            f"**해시태그**: {' '.join(content_info.get('hashtags', [])[:5])}"
-        )
-
     else:
         command = f"{agent} {platform} 업로드"
         upload_instruction = f"[영숙] {agent}에게 업로드 지시"
@@ -275,10 +262,6 @@ def luna_upload_approval(video_info: Dict) -> Dict:
     """루나 YouTube 업로드 승인"""
     return request_upload_approval("루나", "YouTube", video_info)
 
-
-def arin_upload_approval(post_info: Dict) -> Dict:
-    """아린 Instagram 업로드 승인"""
-    return request_upload_approval("아린", "Instagram", post_info)
 
 
 if __name__ == "__main__":

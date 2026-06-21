@@ -163,7 +163,6 @@ def check_classification_layout():
         AI_TEAM / "skills" / "영숙_비서" / "tools" / "schedule_manager.py",
         AI_TEAM / "skills" / "영숙_비서" / "tools" / "telegram_receiver.py",
         AI_TEAM / "skills" / "영숙_비서" / "tools" / "upload_approval_flow.py",
-        AI_TEAM / "skills" / "영숙_비서" / "tools" / "start_telegram_bot.ps1",
         AI_TEAM / "skills" / "예원_CEO" / "tools" / "evaluate_feedback.py",
         AI_TEAM / "skills" / "예원_CEO" / "tools" / "skill_auditor.py",
         AI_TEAM / "skills" / "예원_CEO" / "tools" / "upload_manager.py",

@@ -213,7 +213,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 "데이브_주식": ["upbit_analyzer.py", "upbit_auto_trader.py", "upbit_public.py"],
                 "레오_트레이더": ["leo_aggressive_trader.py"],
                 "로율_변호사": ["tax_simulator.py"],
-                "영숙_비서": ["calendar_manager.py", "posting_scheduler.py", "reports_manager.py", "schedule_manager.py", "telegram_receiver.py", "upload_approval_flow.py", "start_telegram_bot.ps1"],
+                "영숙_비서": ["calendar_manager.py", "posting_scheduler.py", "reports_manager.py", "schedule_manager.py", "telegram_receiver.py", "upload_approval_flow.py"],
                 "예원_CEO": ["evaluate_feedback.py", "skill_auditor.py", "upload_manager.py", "yewon_dispatcher.py"],
                 "케빈_인프라": ["petnna_monitor.py", "supabase_manager.py", "sync_env_to_vercel.py", "vercel_manager.py"],
                 "코다리_개발자": ["agent_health_check.py", "ollama_health_check.py", "web_init.py", "web_preview.py"],
