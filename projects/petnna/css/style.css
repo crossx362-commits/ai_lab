@@ -878,11 +878,7 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
-    opacity: 0;
-}
-
-.room-stage:not(.room-layout-living) .room-decor-layer {
-    opacity: 0;
+    opacity: 1;
 }
 
 .butler-stage-core {

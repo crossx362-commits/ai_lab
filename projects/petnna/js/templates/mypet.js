@@ -371,171 +371,113 @@ const MYPET_TEMPLATE = `
                             <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
                                 class="butler-stage-core w-28 h-28 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
                                 title="집사 사진 변경">
-                                <!-- 싸이월드 미니미 (입체 3D 스타일) -->
-                                <svg id="butler-stage-avatar" viewBox="0 0 60 84" width="112" height="112" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-xl" style="filter:drop-shadow(0 6px 12px rgba(0,0,0,0.22))">
-                                  <defs>
-                                    <!-- 얼굴 구형 그라데이션 (좌상단 하이라이트) -->
-                                    <radialGradient id="mm-face" cx="38%" cy="30%" r="62%">
-                                      <stop offset="0%"   stop-color="#fde8c8"/>
-                                      <stop offset="60%"  stop-color="#f5c5a0"/>
-                                      <stop offset="100%" stop-color="#d99070"/>
-                                    </radialGradient>
-                                    <!-- 몸통 그라데이션 (왼쪽 하이라이트 → 오른쪽 음영) -->
-                                    <linearGradient id="mm-body" x1="0" x2="1" y1="0" y2="0">
-                                      <stop offset="0%"   stop-color="#9aaeff"/>
-                                      <stop offset="40%"  stop-color="#6c7ef0"/>
-                                      <stop offset="100%" stop-color="#4a56c8"/>
-                                    </linearGradient>
-                                    <!-- 왼팔 그라데이션 -->
-                                    <linearGradient id="mm-armL" x1="0" x2="1" y1="0" y2="0">
-                                      <stop offset="0%"   stop-color="#8898f8"/>
-                                      <stop offset="100%" stop-color="#5060d0"/>
-                                    </linearGradient>
-                                    <!-- 오른팔 그라데이션 (더 어둠 = 그늘) -->
-                                    <linearGradient id="mm-armR" x1="0" x2="1" y1="0" y2="0">
-                                      <stop offset="0%"   stop-color="#5060d0"/>
-                                      <stop offset="100%" stop-color="#3840a0"/>
-                                    </linearGradient>
-                                    <!-- 다리 그라데이션 -->
-                                    <linearGradient id="mm-leg" x1="0" x2="1" y1="0" y2="0">
-                                      <stop offset="0%"   stop-color="#8898f8"/>
-                                      <stop offset="100%" stop-color="#4a56c8"/>
-                                    </linearGradient>
-                                    <!-- 머리카락 구형 그라데이션 -->
-                                    <radialGradient id="mm-hair" cx="35%" cy="25%" r="65%">
-                                      <stop offset="0%"   stop-color="#6b4a28"/>
-                                      <stop offset="70%"  stop-color="#3d2a1a"/>
-                                      <stop offset="100%" stop-color="#1e1208"/>
-                                    </radialGradient>
-                                    <!-- 손 그라데이션 -->
-                                    <radialGradient id="mm-hand" cx="35%" cy="30%" r="70%">
-                                      <stop offset="0%"   stop-color="#fde0c0"/>
-                                      <stop offset="100%" stop-color="#d8a070"/>
-                                    </radialGradient>
-                                    <!-- 신발 그라데이션 -->
-                                    <radialGradient id="mm-shoe" cx="35%" cy="30%" r="70%">
-                                      <stop offset="0%"   stop-color="#555"/>
-                                      <stop offset="100%" stop-color="#111"/>
-                                    </radialGradient>
-                                    <!-- 왕관 그라데이션 -->
-                                    <linearGradient id="mm-crown" x1="0" x2="0" y1="0" y2="1">
-                                      <stop offset="0%"   stop-color="#ffe060"/>
-                                      <stop offset="100%" stop-color="#c88010"/>
-                                    </linearGradient>
-                                  </defs>
+                                <!-- 싸이월드 도트 미니미 -->
+                                <svg id="butler-stage-avatar" viewBox="0 0 20 28" width="112" height="112" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" style="image-rendering:pixelated;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.3))">
+                                  <!-- ░░ 싸이월드 도트 미니미 (20×28 픽셀그리드) ░░ -->
 
                                   <!-- 바닥 그림자 -->
-                                  <ellipse cx="30" cy="82" rx="16" ry="3.5" fill="rgba(0,0,0,0.18)"/>
+                                  <ellipse cx="10" cy="27.5" rx="7" ry="1" fill="rgba(0,0,0,0.22)" shape-rendering="auto"/>
 
-                                  <!-- ── 다리 ── -->
-                                  <rect x="20" y="56" width="8"  height="16" rx="4" fill="url(#mm-leg)"/>
-                                  <rect x="32" y="56" width="8"  height="16" rx="4" fill="url(#mm-armR)"/>
-                                  <!-- 다리 하이라이트 -->
-                                  <rect x="21" y="57" width="3"  height="8"  rx="1.5" fill="rgba(255,255,255,0.18)"/>
-                                  <rect x="33" y="57" width="3"  height="8"  rx="1.5" fill="rgba(255,255,255,0.08)"/>
+                                  <!-- ══ 왕관 ══ -->
+                                  <!-- 왕관 밴드 -->
+                                  <rect x="4" y="1" width="11" height="3" fill="#f0c030"/>
+                                  <rect x="3" y="2" width="13" height="2" fill="#f0c030"/>
+                                  <!-- 왕관 어두운 아랫줄 -->
+                                  <rect x="3" y="3" width="13" height="1" fill="#c09010"/>
+                                  <!-- 왕관 밴드 하이라이트 -->
+                                  <rect x="4" y="1" width="11" height="1" fill="#ffe060"/>
+                                  <!-- 보석 -->
+                                  <rect x="4"  y="0" width="2" height="2" fill="#ff3333"/>
+                                  <rect x="8"  y="0" width="3" height="2" fill="#33cc33"/>
+                                  <rect x="13" y="0" width="2" height="2" fill="#4444ff"/>
+                                  <!-- 보석 하이라이트 -->
+                                  <rect x="4"  y="0" width="1" height="1" fill="#ff9999"/>
+                                  <rect x="8"  y="0" width="1" height="1" fill="#99ff99"/>
+                                  <rect x="13" y="0" width="1" height="1" fill="#9999ff"/>
 
-                                  <!-- ── 신발 ── -->
-                                  <ellipse cx="24" cy="73" rx="6"   ry="3.5" fill="url(#mm-shoe)"/>
-                                  <ellipse cx="36" cy="73" rx="5.5" ry="3"   fill="url(#mm-shoe)" opacity="0.85"/>
-                                  <!-- 신발 반사 -->
-                                  <ellipse cx="21" cy="71" rx="2.5" ry="1.5" fill="rgba(255,255,255,0.22)"/>
+                                  <!-- ══ 머리카락 ══ -->
+                                  <!-- 윗머리 -->
+                                  <rect x="3" y="3"  width="13" height="3" fill="#3d2a1a"/>
+                                  <!-- 옆머리 왼쪽 (밝은 면) -->
+                                  <rect x="2" y="5"  width="3"  height="7" fill="#4e3520"/>
+                                  <!-- 옆머리 오른쪽 (어두운 면) -->
+                                  <rect x="14" y="5" width="3"  height="7" fill="#2a1a0a"/>
+                                  <!-- 머리 하이라이트 -->
+                                  <rect x="6" y="3"  width="5"  height="1" fill="#6b4a28"/>
 
-                                  <!-- ── 몸통 ── -->
-                                  <rect x="15" y="33" width="30" height="26" rx="7" fill="url(#mm-body)"/>
-                                  <!-- 몸통 하이라이트 (왼쪽 상단) -->
-                                  <rect x="17" y="35" width="10" height="8"  rx="3" fill="rgba(255,255,255,0.18)"/>
-                                  <!-- 몸통 오른쪽 음영 -->
-                                  <rect x="37" y="33" width="8"  height="26" rx="7" fill="rgba(0,0,0,0.12)"/>
+                                  <!-- ══ 얼굴 ══ -->
+                                  <rect x="4" y="5"  width="11" height="8" fill="#ffcc99"/>
+                                  <!-- 얼굴 오른쪽 측면 음영 -->
+                                  <rect x="14" y="5" width="1"  height="8" fill="#e8aa77"/>
 
-                                  <!-- 넥타이 -->
-                                  <polygon points="30,35 27.5,43 30,47 32.5,43" fill="#e84040"/>
-                                  <polygon points="30,35 27.5,43 30,47 32.5,43" fill="url(#mm-body)" opacity="0.15"/>
-                                  <polygon points="29,36 28,40 30,42 30,38" fill="rgba(255,255,255,0.2)"/>
-
-                                  <!-- ── 왼팔 ── -->
-                                  <rect x="7"  y="34" width="9" height="19" rx="4.5" fill="url(#mm-armL)"/>
-                                  <rect x="8"  y="35" width="3" height="9"  rx="1.5" fill="rgba(255,255,255,0.2)"/>
-                                  <!-- ── 오른팔 ── -->
-                                  <rect x="44" y="34" width="9" height="19" rx="4.5" fill="url(#mm-armR)"/>
-
-                                  <!-- ── 손 ── -->
-                                  <circle cx="11.5" cy="54" r="4.5" fill="url(#mm-hand)"/>
-                                  <circle cx="48.5" cy="54" r="4"   fill="url(#mm-hand)" opacity="0.88"/>
-                                  <circle cx="10"   cy="52" r="1.5" fill="rgba(255,255,255,0.35)"/>
-
-                                  <!-- ── 목 ── -->
-                                  <rect x="25" y="27" width="10" height="8" rx="2.5" fill="url(#mm-face)"/>
-
-                                  <!-- ── 얼굴 ── -->
-                                  <circle cx="30" cy="19" r="16" fill="url(#mm-face)"/>
-                                  <!-- 얼굴 오른쪽 음영 -->
-                                  <path d="M 40 10 Q 46 19 40 28 Q 38 24 38 19 Q 38 14 40 10 Z" fill="rgba(0,0,0,0.06)"/>
-
-                                  <!-- ── 눈 ── -->
-                                  <!-- 눈 흰자 -->
-                                  <ellipse cx="23.5" cy="19" rx="3.5" ry="3.5" fill="white"/>
-                                  <ellipse cx="36.5" cy="19" rx="3.5" ry="3.5" fill="white"/>
-                                  <!-- 눈 그림자 (위쪽) -->
-                                  <ellipse cx="23.5" cy="17" rx="3.5" ry="2"   fill="rgba(0,0,0,0.07)"/>
-                                  <ellipse cx="36.5" cy="17" rx="3.5" ry="2"   fill="rgba(0,0,0,0.07)"/>
-                                  <!-- 눈동자 -->
-                                  <circle cx="23.5" cy="19.5" r="2.2" fill="#2a1a0a"/>
-                                  <circle cx="36.5" cy="19.5" r="2.2" fill="#2a1a0a"/>
-                                  <!-- 눈동자 하이라이트 (크게 + 작게) -->
-                                  <circle cx="24.3" cy="18.5" r="1"   fill="white"/>
-                                  <circle cx="37.3" cy="18.5" r="1"   fill="white"/>
-                                  <circle cx="23"   cy="20.5" r="0.4" fill="rgba(255,255,255,0.6)"/>
-                                  <circle cx="36"   cy="20.5" r="0.4" fill="rgba(255,255,255,0.6)"/>
-
-                                  <!-- 속눈썹 -->
-                                  <line x1="20.5" y1="16.5" x2="21.5" y2="15.5" stroke="#2a1a0a" stroke-width="0.7"/>
-                                  <line x1="23"   y1="16"   x2="23"   y2="14.8" stroke="#2a1a0a" stroke-width="0.7"/>
-                                  <line x1="25.5" y1="16.5" x2="26.5" y2="15.5" stroke="#2a1a0a" stroke-width="0.7"/>
-                                  <line x1="33.5" y1="16.5" x2="32.5" y2="15.5" stroke="#2a1a0a" stroke-width="0.7"/>
-                                  <line x1="36"   y1="16"   x2="36"   y2="14.8" stroke="#2a1a0a" stroke-width="0.7"/>
-                                  <line x1="38.5" y1="16.5" x2="39.5" y2="15.5" stroke="#2a1a0a" stroke-width="0.7"/>
+                                  <!-- 눈 (왼쪽) -->
+                                  <rect x="5"  y="7" width="3" height="3" fill="#ffffff"/>
+                                  <rect x="6"  y="8" width="2" height="2" fill="#1a1008"/>
+                                  <rect x="6"  y="8" width="1" height="1" fill="#ffffff"/>
+                                  <!-- 눈 (오른쪽) -->
+                                  <rect x="11" y="7" width="3" height="3" fill="#ffffff"/>
+                                  <rect x="12" y="8" width="2" height="2" fill="#1a1008"/>
+                                  <rect x="12" y="8" width="1" height="1" fill="#ffffff"/>
+                                  <!-- 눈썹 -->
+                                  <rect x="5"  y="6" width="3" height="1" fill="#3d2a1a"/>
+                                  <rect x="11" y="6" width="3" height="1" fill="#3d2a1a"/>
 
                                   <!-- 볼터치 -->
-                                  <ellipse cx="18.5" cy="23" rx="4.5" ry="3" fill="rgba(255,120,120,0.32)"/>
-                                  <ellipse cx="41.5" cy="23" rx="4.5" ry="3" fill="rgba(255,120,120,0.28)"/>
-
-                                  <!-- 코 -->
-                                  <ellipse cx="30" cy="22" rx="1.5" ry="1" fill="rgba(180,100,70,0.4)"/>
+                                  <rect x="4"  y="10" width="2" height="1" fill="#ffaaaa"/>
+                                  <rect x="13" y="10" width="2" height="1" fill="#ffaaaa"/>
 
                                   <!-- 입 -->
-                                  <path d="M 25.5 26 Q 30 30 34.5 26" stroke="#c06858" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-                                  <!-- 입 안쪽 (치아) -->
-                                  <path d="M 26.5 26.5 Q 30 29.5 33.5 26.5" stroke="rgba(255,255,255,0.6)" stroke-width="1" fill="none" stroke-linecap="round"/>
+                                  <rect x="7"  y="11" width="1" height="1" fill="#cc6644"/>
+                                  <rect x="8"  y="12" width="3" height="1" fill="#cc6644"/>
+                                  <rect x="11" y="11" width="1" height="1" fill="#cc6644"/>
 
-                                  <!-- 얼굴 전체 하이라이트 (좌상단 반사) -->
-                                  <ellipse cx="22" cy="11" rx="6" ry="5" fill="rgba(255,255,255,0.14)" transform="rotate(-20,22,11)"/>
+                                  <!-- ══ 목 ══ -->
+                                  <rect x="8" y="13" width="3" height="2" fill="#ffcc99"/>
 
-                                  <!-- ── 머리카락 ── -->
-                                  <!-- 기본 형태 -->
-                                  <path d="M 13 17 Q 12 2 30 1.5 Q 48 2 47 17 Q 45 7 30 7 Q 15 7 13 17 Z" fill="url(#mm-hair)"/>
-                                  <!-- 머리카락 옆 볼륨 -->
-                                  <path d="M 13 17 Q 11 10 13 5 Q 16 2 20 3 Q 14 6 13 17 Z" fill="url(#mm-hair)"/>
-                                  <path d="M 47 17 Q 49 10 47 5 Q 44 2 40 3 Q 46 6 47 17 Z" fill="rgba(30,18,8,0.7)"/>
-                                  <!-- 머리카락 하이라이트 -->
-                                  <path d="M 19 4 Q 24 2 30 2.5 Q 24 3.5 20 6 Z" fill="rgba(255,255,255,0.18)"/>
+                                  <!-- ══ 몸통/셔츠 ══ -->
+                                  <!-- 왼팔 (밝은 면) -->
+                                  <rect x="2"  y="14" width="3" height="6" fill="#8898ff"/>
+                                  <!-- 손 왼쪽 -->
+                                  <rect x="2"  y="20" width="3" height="2" fill="#ffcc99"/>
+                                  <!-- 몸통 -->
+                                  <rect x="4"  y="14" width="11" height="7" fill="#7080f0"/>
+                                  <!-- 몸통 왼쪽 하이라이트 -->
+                                  <rect x="5"  y="15" width="2" height="4" fill="#9aaeff"/>
+                                  <!-- 몸통 오른쪽 음영 -->
+                                  <rect x="13" y="14" width="2" height="7" fill="#4a56c8"/>
+                                  <!-- 오른팔 (어두운 면) -->
+                                  <rect x="14" y="14" width="3" height="6" fill="#5060d0"/>
+                                  <!-- 손 오른쪽 -->
+                                  <rect x="14" y="20" width="3" height="2" fill="#e8aa77"/>
 
-                                  <!-- ── 왕관 ── -->
-                                  <!-- 왕관 본체 -->
-                                  <rect x="19" y="2.5" width="22" height="7" rx="1" fill="url(#mm-crown)"/>
-                                  <!-- 왕관 톱니 -->
-                                  <polygon points="19,2.5 19,9.5 22,5" fill="#e8a010"/>
-                                  <polygon points="30,2.5 30,9.5 33,5" fill="#ffe050"/>
-                                  <polygon points="41,2.5 41,9.5 38,5" fill="#e8a010"/>
-                                  <!-- 왕관 보석 -->
-                                  <circle cx="19"  cy="2.5" r="2"   fill="#ff4444"/>
-                                  <circle cx="30"  cy="1.5" r="2.2" fill="#44cc44"/>
-                                  <circle cx="41"  cy="2.5" r="2"   fill="#4444ff"/>
-                                  <!-- 보석 하이라이트 -->
-                                  <circle cx="18.2" cy="1.8" r="0.7" fill="rgba(255,255,255,0.7)"/>
-                                  <circle cx="29.2" cy="0.8" r="0.8" fill="rgba(255,255,255,0.7)"/>
-                                  <circle cx="40.2" cy="1.8" r="0.7" fill="rgba(255,255,255,0.7)"/>
-                                  <!-- 왕관 하이라이트 -->
-                                  <rect x="20" y="3.5" width="20" height="2.5" rx="1" fill="rgba(255,255,255,0.25)"/>
+                                  <!-- 칼라 -->
+                                  <rect x="7"  y="14" width="2" height="1" fill="#ffffff"/>
+                                  <rect x="10" y="14" width="2" height="1" fill="#ffffff"/>
+                                  <!-- 넥타이 -->
+                                  <rect x="9"  y="14" width="1" height="1" fill="#ff4444"/>
+                                  <rect x="8"  y="15" width="3" height="5" fill="#ff4444"/>
+                                  <!-- 넥타이 음영 -->
+                                  <rect x="10" y="16" width="1" height="3" fill="#cc2222"/>
+                                  <!-- 넥타이 하이라이트 -->
+                                  <rect x="8"  y="15" width="1" height="2" fill="#ff8888"/>
+
+                                  <!-- ══ 바지 ══ -->
+                                  <rect x="5"  y="21" width="4" height="4" fill="#3344aa"/>
+                                  <rect x="10" y="21" width="4" height="4" fill="#3344aa"/>
+                                  <!-- 바지 음영 (오른쪽 다리) -->
+                                  <rect x="12" y="21" width="2" height="4" fill="#223388"/>
+                                  <!-- 바지 하이라이트 (왼쪽 다리) -->
+                                  <rect x="5"  y="21" width="1" height="4" fill="#5566cc"/>
+
+                                  <!-- ══ 신발 ══ -->
+                                  <rect x="4"  y="25" width="6" height="2" fill="#222222"/>
+                                  <rect x="9"  y="25" width="6" height="2" fill="#222222"/>
+                                  <!-- 신발 발끝 -->
+                                  <rect x="3"  y="25" width="1" height="2" fill="#222222"/>
+                                  <rect x="15" y="25" width="1" height="2" fill="#111111"/>
+                                  <!-- 신발 광택 -->
+                                  <rect x="4"  y="25" width="2" height="1" fill="#444444"/>
+                                  <rect x="9"  y="25" width="2" height="1" fill="#333333"/>
                                 </svg>
                                 <img loading="lazy" id="butler-stage-image" class="hidden w-28 h-28 object-cover rounded-full border-4 border-brand-400 shadow-xl">
                             </div>
