@@ -19,7 +19,7 @@ if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
 from _shared.env import load_env
-from _shared.llm import text as llm_text
+from _shared.llm import ollama
 from _shared.notify import send, report
 
 load_env()
@@ -160,7 +160,7 @@ def _classify(email: dict) -> dict:
         "has_attachment": email["has_attachment"],
     }
     user_msg = json.dumps(payload, ensure_ascii=False)
-    raw = llm_text(user_msg, system=SYSTEM_PROMPT, lm_first=True, max_tokens=80)
+    raw = ollama(user_msg, system=SYSTEM_PROMPT, max_tokens=80, task="coding")
 
     if not raw:
         return {"label": "REVIEW", "action": "keep", "reason": "LLM 응답 없음"}
