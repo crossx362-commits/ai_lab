@@ -112,10 +112,11 @@ except ModuleNotFoundError as e:
     IMPORT_ERROR = e
     upbit_analyzer = None
 
-# 기본 감시 대상 (고변동성 우선)
+# 기본 감시 대상 (메이저 코인 우선 → 승률 개선)
 BASE_LEO_TICKERS = [
-    "KRW-DOGE", "KRW-PEPE", "KRW-NEAR", "KRW-SUI",
-    "KRW-SEI", "KRW-HBAR", "KRW-STX",
+    "KRW-SOL", "KRW-ETH", "KRW-BTC",  # 메이저 코인 우선
+    "KRW-AVAX", "KRW-LINK", "KRW-NEAR",  # 중형 알트
+    "KRW-DOGE", "KRW-STX",  # 고변동성 (비중 축소)
 ]
 
 def _signal_intel_path():
@@ -340,16 +341,28 @@ def calculate_leo_score(ticker: str) -> dict:
         elif macd > 0:
             score += 1
 
-        # 6. 공포탐욕지수
+        # 6. 공포탐욕지수 (극공포 구간 집중 전략)
         pulse_intel = load_pulse_intel()
+        fg_value = 50  # 기본값
         if pulse_intel:
             fg = pulse_intel.get("crypto", {}).get("fear_greed", {})
-            if fg.get("signal") == "BUY":
+            fg_value = fg.get("value", 50)
+
+            # 극공포(25 이하): 공격적 매수
+            if fg_value <= 25:
+                score += 4  # 상향 (2 → 4)
+                reasons.append(f"극공포({fg_value})")
+            # 공포(26-40): 보수적 매수
+            elif fg_value <= 40:
                 score += 2
-                reasons.append(f"극공포({fg.get('value')})")
-            elif fg.get("signal") == "SELL":
-                score -= 2
-                reasons.append(f"극탐욕({fg.get('value')})")
+                reasons.append(f"공포({fg_value})")
+            # 탐욕(60+): 진입 억제
+            elif fg_value >= 75:
+                score -= 3  # 하향 (2 → 3)
+                reasons.append(f"극탐욕({fg_value})")
+            elif fg_value >= 60:
+                score -= 1
+                reasons.append(f"탐욕({fg_value})")
 
         return {
             "ticker": ticker,
@@ -466,18 +479,18 @@ def run_leo_cycle():
 
                 coin = ticker.split('-')[1]
 
-                # SKILL 기반 익절/손절 관리
-                # 익절 체크
-                if profit_pct >= 5.0:
-                    # 2차 익절: 전량 청산
-                    print(f"💰 [Leo] {coin} 2차 익절 +{profit_pct:.2f}% - 전량 매도")
+                # SKILL 기반 익절/손절 관리 (개선 전략: -3%/+4%)
+                # 익절 체크 (상향: +5% → +4%)
+                if profit_pct >= 4.0:
+                    # 전량 익절
+                    print(f"💰 [Leo] {coin} 익절 +{profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
                     send(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
                     upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses = 0  # 익절 시 연속 손절 리셋
 
-                elif profit_pct >= 3.0:
-                    # 1차 익절: 50% 청산 (위험 헷지)
+                elif profit_pct >= 2.5:
+                    # 1차 익절: 50% 청산 (리스크 헷지)
                     sell_amount = balance * 0.5
                     remaining = balance * 0.5
                     print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}% - 50% 매도")
@@ -485,8 +498,8 @@ def run_leo_cycle():
                     send(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
                     upbit_analyzer.execute_sell(ticker, sell_amount)
 
-                # 손절 체크 (SKILL: -2% 기계적 손절)
-                elif profit_pct <= -2.0:
+                # 손절 체크 (완화: -2% → -3%)
+                elif profit_pct <= -3.0:
                     print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
                     send(f"🛑 [레오] {coin} {profit_pct:.1f}% 손절")
@@ -571,7 +584,8 @@ def run_leo_cycle():
 
     best = scanned[0]
 
-    min_score = 1  # 기회비용 고려: 낮은 임계값으로 진입 기회 확대
+    # 진입 점수 상향 (1 → 3): 승률 개선 우선
+    min_score = 3
 
     # 펄스 정보 확인
     pulse_intel = load_pulse_intel()
@@ -757,7 +771,7 @@ def print_status():
     print(f"- 감시 코인: {len(LEO_TICKERS)}개")
     print(f"  기본: {', '.join(BASE_LEO_TICKERS)}")
     print(f"  시그널: {', '.join([t for t in LEO_TICKERS if t not in BASE_LEO_TICKERS][:5])}...")
-    print(f"- 최소 진입 점수: 2점")
+    print(f"- 최소 진입 점수: 3점 (승률 개선)")
     print(f"- 연속 손절 제한: {MAX_CONSECUTIVE_LOSSES}회")
     print(f"- 일일 손실 한도: {MAX_DAILY_LOSS_PCT:.1f}%")
     print(f"- 시간당 거래 제한: {MAX_TRADES_PER_HOUR}회")
