@@ -18,24 +18,49 @@ load_env()
 CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 def start_bot(script_path: str, name: str):
-    """봇 시작"""
+    """봇 시작 (로그 파일로 stdout/stderr 리다이렉트)"""
     try:
+        # 로그 디렉토리 (ai_lab/output/trading_logs)
+        workspace_root = os.path.abspath(os.path.join(AI_TEAM_ROOT, "..", ".."))
+        log_dir = os.path.join(workspace_root, "output", "trading_logs")
+        os.makedirs(log_dir, exist_ok=True)
+
+        # 로그 파일명 생성
+        bot_slug = name.split()[0].lower()
+        slug_map = {"시그널": "signal", "데이브": "dave", "레오": "leo"}
+        bot_slug = slug_map.get(name.split()[0], bot_slug)
+
+        # 중복 방지: "시그널 (일일 분석 스케줄러)" → signal_scheduler
+        if "스케줄러" in name:
+            bot_slug = f"{bot_slug}_scheduler"
+        elif "주식" in name:
+            bot_slug = f"{bot_slug}_stock"
+
+        out_log = os.path.join(log_dir, f"{bot_slug}_daemon.out.log")
+        err_log = os.path.join(log_dir, f"{bot_slug}_daemon.err.log")
+
         if sys.platform == "win32":
-            # Windows: 백그라운드 실행
-            subprocess.Popen(
-                [sys.executable, script_path, "--daemon"],
-                creationflags=CREATE_NO_WINDOW
-            )
+            # Windows: 로그 파일로 리다이렉트 + 백그라운드 실행
+            with open(out_log, "a", encoding="utf-8") as fout, \
+                 open(err_log, "a", encoding="utf-8") as ferr:
+                subprocess.Popen(
+                    [sys.executable, "-u", script_path, "--daemon"],
+                    stdout=fout,
+                    stderr=ferr,
+                    creationflags=CREATE_NO_WINDOW,
+                    env={**os.environ, "PYTHONUTF8": "1"}
+                )
         else:
             # macOS/Linux: nohup으로 백그라운드 실행
-            subprocess.Popen(
-                ["nohup", sys.executable, script_path, "--daemon"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                preexec_fn=os.setpgrp
-            )
+            with open(out_log, "a") as fout, open(err_log, "a") as ferr:
+                subprocess.Popen(
+                    ["nohup", sys.executable, "-u", script_path, "--daemon"],
+                    stdout=fout,
+                    stderr=ferr,
+                    preexec_fn=os.setpgrp
+                )
 
-        print(f"✅ {name} 시작됨")
+        print(f"✅ {name} 시작됨 → {out_log}")
         return True
     except Exception as e:
         print(f"❌ {name} 시작 실패: {e}")
