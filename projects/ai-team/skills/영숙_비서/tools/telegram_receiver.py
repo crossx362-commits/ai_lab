@@ -243,9 +243,13 @@ def web_search(query: str) -> str:
 
 def _bot_running(script_keyword: str) -> str:
     try:
-        out = subprocess.run(["pgrep", "-f", script_keyword], capture_output=True, text=True, timeout=5).stdout
-        pids = [p for p in out.split() if p.isdigit()]
-        return f"🟢 실행중 (PID {pids[0]})" if pids else "🔴 중지"
+        if sys.platform == "win32":
+            out = subprocess.run(["tasklist"], capture_output=True, text=True, timeout=5).stdout
+            return "🟢 실행중" if "python" in out.lower() else "🔴 중지"
+        else:
+            out = subprocess.run(["pgrep", "-f", script_keyword], capture_output=True, text=True, timeout=5).stdout
+            pids = [p for p in out.split() if p.isdigit()]
+            return f"🟢 실행중 (PID {pids[0]})" if pids else "🔴 중지"
     except Exception:
         return "❓ 확인불가"
 
@@ -437,11 +441,14 @@ def _tool_get_agent_status() -> str:
         for slug, info in agents.items():
             name = info["name"]
             if info["type"] == "daemon":
-                # 스크립트 파일명(확장자 제외)을 pgrep 키워드로 사용
                 kw = _Path(info["script"]).stem
-                out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
-                pids = [p for p in out.split() if p.isdigit()]
-                status = "🟢 실행중" if pids else "🔴 중지"
+                if sys.platform == "win32":
+                    out = subprocess.run(["tasklist"], capture_output=True, text=True, timeout=5).stdout
+                    status = "🟢 실행중" if "python" in out.lower() else "🔴 중지"
+                else:
+                    out = subprocess.run(["pgrep", "-f", kw], capture_output=True, text=True, timeout=5).stdout
+                    pids = [p for p in out.split() if p.isdigit()]
+                    status = "🟢 실행중" if pids else "🔴 중지"
             else:
                 status = "⚪ 온디맨드"
             lines.append(f"{name}: {status}")
