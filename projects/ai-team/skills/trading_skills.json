@@ -1,0 +1,218 @@
+{
+  "skills": [
+    {
+      "name": "dave_conservative_crypto_trading",
+      "description": "데이브 보수적 업비트 자동매매 스킬. 주요 코인(BTC, ETH, SOL 등) 대상, 시그널 퀀트 스코어 기반 진입, 트레일링 스탑/ATR 기반 손절, 탐욕지수 과열구간 청산, LLM 진입 평가(5분 쿨다운), 12시간마다 현황 보고.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["--once", "--daemon"],
+            "description": "실행 모드. --once: 1회 스캔 및 매매 판단, --daemon: 지속적 감시 및 자동매매 (기본 10초 주기)"
+          },
+          "min_score": {
+            "type": "integer",
+            "description": "진입 최소 퀀트 스코어 (기본값: 3점). 시그널 기반 지표 종합 점수",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "tickers": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "감시 대상 티커 목록 (기본값: BASE_TICKERS + 시그널 인텔 동적 추가). 예: [\"KRW-BTC\", \"KRW-ETH\"]"
+          },
+          "llm_cooldown_seconds": {
+            "type": "integer",
+            "description": "동일 종목 LLM 재분석 쿨다운 시간(초). 기본값: 300 (5분)",
+            "minimum": 60,
+            "maximum": 3600
+          }
+        },
+        "required": ["mode"]
+      },
+      "core_logic": {
+        "entry": [
+          "1. 시그널 인텔(market_signal.json) 로드 → 탐욕지수/김치프리미엄/top_coins 확인",
+          "2. 전체 티커 퀀트 스캔 (calculate_confluence_score) → 스코어 랭킹",
+          "3. 최고점 코인이 min_score(3점) 이상 → LLM 평가 (5분 쿨다운)",
+          "4. LLM 판단: BUY → 진입 (포지션 비율: 5%/10%/20%/40%/50%)"
+        ],
+        "exit": [
+          "수익 중: 트레일링 스탑 (최고가 대비 -3%)",
+          "손실: ATR 기준 or -2% 중 높은 값",
+          "탐욕지수 85+ → +1% 이상 수익 시 즉시 청산",
+          "LLM 판단: SELL → 즉시 청산"
+        ],
+        "risk_management": [
+          "일일 손실 한도: 미설정 (데이브는 보수적 홀딩 우선)",
+          "연속 손실 제한: 미설정",
+          "포지션 제한: 없음 (여러 코인 동시 보유 가능)"
+        ]
+      }
+    },
+    {
+      "name": "leo_aggressive_day_trading",
+      "description": "레오 공격적 단타 트레이더 스킬. 고변동성 알트코인(SOL, ETH, BTC, AVAX, LINK, NEAR, DOGE, STX) 전문, 빠른 익절(+4%)/손절(-3%), 최대 3개 코인 동시 보유, 탐욕지수 과열구간 조기청산, 연속손실 3회/일일손실 -5% 제한, 시간당 5회 거래 제한.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["--once", "--daemon"],
+            "description": "실행 모드. --once: 1회 스캔, --daemon: 지속적 단타 (기본 30초 주기)"
+          },
+          "min_score": {
+            "type": "integer",
+            "description": "진입 최소 퀀트 스코어 (레오: 기본값 1점, 데이브보다 공격적). 시그널 기반 지표 종합 점수",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "tickers": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "감시 대상 티커 목록 (기본값: BASE_LEO_TICKERS + 시그널 인텔 동적 추가). 예: [\"KRW-SOL\", \"KRW-DOGE\"]"
+          },
+          "max_positions": {
+            "type": "integer",
+            "description": "최대 동시 보유 코인 수. 기본값: 3개",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "stop_loss_pct": {
+            "type": "number",
+            "description": "손절 기준 (%). 기본값: -3.0%",
+            "minimum": -10.0,
+            "maximum": 0.0
+          },
+          "take_profit_pct": {
+            "type": "number",
+            "description": "익절 기준 (%). 기본값: +4.0%",
+            "minimum": 1.0,
+            "maximum": 20.0
+          }
+        },
+        "required": ["mode"]
+      },
+      "core_logic": {
+        "entry": [
+          "1. 위험 한도 체크 (연속손실 3회, 일일손실 -5%, 시간당 5회)",
+          "2. 데이브 보유 코인 제외 (충돌 방지)",
+          "3. 최대 3개 코인 보유 시 신규 진입 중단",
+          "4. 퀀트 스캔 → min_score(1점) 이상 → LLM 평가",
+          "5. LLM 판단: BUY → 진입 (포지션 비율: 5%/10%/20%/40%/50%)",
+          "6. 탐욕지수 고려 (70+ → 진입 신중, 30 이하 → +4점)"
+        ],
+        "exit": [
+          "익절: +4% 전량 청산 (1차 익절: +2.5% → 50% 매도)",
+          "손절: -3% 전량 청산",
+          "탐욕지수 85+ → 1시간 이상 보유 시 소폭 이익이라도 조기 청산",
+          "탐욕지수 85+ → -1% 이하 손실 시 조기 손절"
+        ],
+        "risk_management": [
+          "연속 손실 3회 → 강제 HOLD",
+          "일일 손실 -5% → 강제 HOLD",
+          "시간당 최대 5회 거래",
+          "손실 후 30분 쿨다운",
+          "최대 3개 코인 동시 보유"
+        ]
+      }
+    },
+    {
+      "name": "signal_market_intelligence",
+      "description": "시그널 시장 인텔리전스 스킬. 업비트 암호화폐 시장 데이터 수집 및 분석, 퀀트 스코어 산출(거래량/변동성/RSI/공포탐욕지수), top_coins 순위 생성, market_signal.json/market_pulse.json 출력, 데이브/레오 매매 의사결정 기반 제공.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["--daemon", "--once", "--notify"],
+            "description": "실행 모드. --daemon: 지속적 수집(10분 주기), --once: 1회 수집, --notify: 1회 수집 후 텔레그램 알림"
+          },
+          "interval_seconds": {
+            "type": "integer",
+            "description": "daemon 모드 수집 주기(초). 기본값: 600 (10분)",
+            "minimum": 60,
+            "maximum": 3600
+          },
+          "top_n": {
+            "type": "integer",
+            "description": "상위 N개 코인 선정. 기본값: 20개",
+            "minimum": 5,
+            "maximum": 50
+          },
+          "min_score": {
+            "type": "integer",
+            "description": "출력 최소 퀀트 스코어. 기본값: 30점",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": ["mode"]
+      },
+      "core_logic": {
+        "collection": [
+          "1. Upbit API → 전체 KRW 마켓 시세 조회",
+          "2. 각 코인별 24시간 데이터 수집 (거래량, 변동성, 현재가)",
+          "3. Fear & Greed Index 조회 (alternative.me API)",
+          "4. 김치프리미엄 계산 (BTC 기준)"
+        ],
+        "scoring": [
+          "거래량: 24시간 거래대금 기준 정규화 (최대 30점)",
+          "변동성: 24시간 가격 변동폭 (최대 25점)",
+          "RSI: 과매도/과매수 구간 가중치 (최대 20점)",
+          "공포탐욕지수: 극공포(20 이하) → +15점, 극탐욕(80 이상) → -10점",
+          "종합 점수: 0~100점 → top_coins 순위"
+        ],
+        "output": [
+          "market_signal.json: {crypto: {top_coins: [...], fear_greed: {...}, kimchi_premium: ...}}",
+          "market_pulse.json: 호환성 유지 (레거시)",
+          "crypto_market_intel.json: 하네스 호환성"
+        ]
+      }
+    }
+  ],
+  "unified_trader_prompt": {
+    "description": "데이브/레오 공통 LLM 시스템 프롬프트 (최종 매매 판단)",
+    "system": "너는 암호화폐 매매 최종 판단 AI다.\n목표는 제한된 토큰으로 기대값이 양수인 거래를 반복하는 것이다.\n\n원칙:\n- 완벽한 진입점보다 확률 우위가 중요하다.\n- HOLD는 명확한 회피 사유가 있을 때만 선택한다.\n- 단순 불확실성만으로 HOLD 금지.\n- 예상 승률 55% 이상 또는 RR 1:1.5 이상이면 진입 검토.\n- 항상 BUY, SELL, HOLD 중 하나만 선택한다.\n- 설명은 40자 이내.\n- 사고 과정 출력 금지.\n\n강제 HOLD:\n- FOMC/CPI 전후 24시간\n- 연속손실 제한 초과\n- 일일손실 제한 초과\n- 거래 쿨다운 중\n\n출력 JSON:\n{\n  \"decision\": \"BUY|SELL|HOLD\",\n  \"percentage\": 0|5|10|20|40|50,\n  \"confidence\": 0-100,\n  \"reason\": \"40자 이내\"\n}",
+    "dave_specific": "성향: 보수적 중장기 트레이더\n- 안정성 우선, 시그널 퀀트 스코어 3점 이상\n- 메이저 코인 우선 (BTC, ETH, SOL)\n- RSI 과매도 구간 + 거래량 폭발 → 진입\n- 트레일링 스탑 적극 활용\n- 애매하면 HOLD 우선\n\n점수 → 판단:\n85~100: BUY 20%\n70~84: BUY 10%\n55~69: BUY 5%\n0~54: HOLD",
+    "leo_specific": "성향: 공격적 단타 트레이더\n- 단기 변동성과 거래량 폭발 우선\n- 애매하면 HOLD보다 5% 소액 진입 우선 검토\n- 강한 추세에서는 일부 지표 불완전해도 진입 가능\n- 기회를 놓치는 것도 손실로 간주\n\n점수 → 판단:\n85~100: BUY 20%\n70~84: BUY 10%\n55~69: BUY 5%\n40~54: HOLD 또는 5% 소액 진입\n0~39: HOLD\n\n위험관리:\n- 연속손실 3회: 강제 HOLD\n- 일일손실 -5%: 강제 HOLD\n- 시간당 최대 5회 거래\n- 손실 후 30분 쿨다운"
+  },
+  "shared_modules": {
+    "description": "데이브/레오/시그널 공통 의존 모듈 (projects/ai-team/_shared/)",
+    "modules": [
+      {
+        "name": "env.py",
+        "purpose": "환경변수 로드 (UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY 등)"
+      },
+      {
+        "name": "llm.py",
+        "purpose": "통합 LLM 클라이언트 (Ollama → GPT-4o-mini → Gemini 폴백)"
+      },
+      {
+        "name": "notify.py",
+        "purpose": "텔레그램 알림 전송"
+      },
+      {
+        "name": "process.py",
+        "purpose": "프로세스 락 (중복 실행 방지, Windows Named Mutex)"
+      },
+      {
+        "name": "trading_entry_evaluator.py",
+        "purpose": "진입 평가, 백필 아웃컴, 포지션 비율 제안"
+      }
+    ]
+  },
+  "file_paths": {
+    "dave": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
+    "leo": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
+    "signal": "projects/ai-team/skills/시그널_분석가/tools/market_signal.py",
+    "shared": "projects/ai-team/_shared/",
+    "output": {
+      "market_signal": "reports/research/market_signal.json",
+      "market_pulse": "reports/research/market_pulse.json (레거시 호환)",
+      "crypto_intel": "reports/research/crypto_market_intel.json (하네스 호환)",
+      "trading_logs": "output/trading_logs/"
+    }
+  }
+}

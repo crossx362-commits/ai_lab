@@ -584,8 +584,8 @@ def run_leo_cycle():
 
     best = scanned[0]
 
-    # 진입 점수 상향 (1 → 3): 승률 개선 우선
-    min_score = 3
+    # 레오 공격적 진입 기준 (데이브 3점보다 낮음)
+    min_score = 1
 
     # 펄스 정보 확인
     pulse_intel = load_pulse_intel()
