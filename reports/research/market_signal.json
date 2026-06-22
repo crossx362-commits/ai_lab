@@ -1,72 +1,72 @@
 {
   "agent": "시그널",
   "agent_slug": "signal",
-  "timestamp": "2026-06-21T12:48:04.171757+09:00",
+  "timestamp": "2026-06-22T10:48:44.482095+09:00",
   "crypto": {
     "fear_greed": {
-      "value": 23,
+      "value": 20,
       "label": "Extreme Fear",
-      "signal": "NEUTRAL"
+      "signal": "BUY"
     },
     "kimchi_premium": {
-      "value": 16.38,
+      "value": 15.74,
       "signal": "NEUTRAL"
     },
     "top_coins": [
       {
         "ticker": "KRW-SOL",
-        "score": 50,
-        "change": 0.9
-      },
-      {
-        "ticker": "KRW-BTC",
-        "score": 50,
-        "change": 0.18
+        "score": 70,
+        "change": 2.47
       },
       {
         "ticker": "KRW-ETH",
-        "score": 50,
-        "change": -0.11
+        "score": 70,
+        "change": 2.14
       },
       {
         "ticker": "KRW-LINK",
-        "score": 25,
-        "change": -0.25
+        "score": 70,
+        "change": 2.04
       },
       {
-        "ticker": "KRW-DOGE",
-        "score": 0,
-        "change": 0.79
+        "ticker": "KRW-BTC",
+        "score": 70,
+        "change": 1.84
       },
       {
         "ticker": "KRW-AVAX",
-        "score": 0,
-        "change": 0.21
+        "score": 45,
+        "change": 2.39
       },
       {
-        "ticker": "KRW-XRP",
-        "score": 0,
-        "change": 0.0
+        "ticker": "KRW-DOGE",
+        "score": 45,
+        "change": 1.61
       },
       {
         "ticker": "KRW-ADA",
-        "score": 0,
-        "change": -0.4
+        "score": 20,
+        "change": 2.97
+      },
+      {
+        "ticker": "KRW-XRP",
+        "score": 20,
+        "change": 1.41
       }
     ]
   },
   "stock": {
     "indexes": {
       "kospi": {
-        "value": 9052.42,
-        "change": -0.13
+        "value": 9183.52,
+        "change": 1.45
       },
       "kosdaq": {
-        "value": 966.59,
-        "change": -3.43
+        "value": 960.08,
+        "change": -0.67
       }
     },
-    "sentiment": "BEARISH"
+    "sentiment": "NEUTRAL"
   },
-  "ai_analysis": "공포탐욕 23 중립; 김치프리미엄 16.38% 중립; 상위 코인 SOL:50, BTC:50, ETH:50; 주의: 큰 시장 차단 신호 없음."
+  "ai_analysis": "공포탐욕 20 매수; 김치프리미엄 15.74% 중립; 상위 코인 SOL:70, ETH:70, LINK:70; 주의: 큰 시장 차단 신호 없음."
 }

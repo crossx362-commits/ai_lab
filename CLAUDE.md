@@ -56,7 +56,7 @@ ai_lab/
 │   │   │   ├── 코다리_개발자/tools/ web_preview.py, ollama_health_check.py
 │   │   │   ├── 케빈_인프라/tools/ vercel_manager.py, supabase_manager.py
 │   │   │   ├── 티모_디자이너/tools/ petnna_reviewer.py
-│   │   │   ├── 펄스_전략가/tools/ crypto_market_intelligence.py
+│   │   │   ├── 시그널_분석가/tools/ market_signal.py
 │   │   │   ├── 데이브_주식/tools/ upbit_auto_trader.py, upbit_analyzer.py
 │   │   │   ├── 레오_트레이더/tools/ leo_aggressive_trader.py
 │   │   │   ├── 경수_수사관/tools/ comment_forensics.py
@@ -71,7 +71,7 @@ ai_lab/
 │   │   │   ├── check_holdings.py
 │   │   │   ├── daily_balance_check.py
 │   │   │   └── monitor_processes.py
-│   │   └── reports/research/     # 펄스이 생성한 시장 인텔 JSON
+│   │   └── reports/research/     # 시그널이 생성한 시장 인텔 JSON
 │   └── petnna/                   # Pet 플랫폼 웹앱 (index.html + js/css)
 ├── output/
 │   ├── trading_logs/             # 봇별 stdout/stderr 로그
@@ -104,7 +104,7 @@ bash projects/ai-team/scripts/launchd/uninstall.sh
 ```
 
 서비스 목록:
-- `com.ailab.pulse` — 펄스: 시장 인텔 수집
+- `com.ailab.signal` — 시그널: 시장 인텔 수집
 - `com.ailab.dave` — 데이브: 보수적 업비트 자동매매
 - `com.ailab.leo` — 레오: 공격적 데이트레이딩
 - `com.ailab.youngsuk` — 영숙: 텔레그램 봇 + 중복 프로세스 감시
@@ -133,7 +133,7 @@ python3 projects/ai-team/scripts/daily_balance_check.py
 | 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
 | 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
 | 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |
-| 펄스 (pulse) | Strategist — Crypto market research | `crypto_market_intelligence.py` |
+| 시그널 (signal) | Strategist — Market intelligence | `market_signal.py` |
 | 데이브 (Dave) | Trader — Conservative crypto trading | `upbit_auto_trader.py` |
 | 레오 (Leo) | Trader — Aggressive day trading | `leo_aggressive_trader.py` |
 | 경수 (Kyungsu) | Investigator — Malicious comment detection | security tools |
