@@ -75,6 +75,14 @@ def main():
 
     print()
 
+    # 시그널 - 일일 분석 스케줄러 (매일 새벽 3시)
+    bots.append({
+        "script": os.path.join(AI_TEAM_ROOT, "skills", "시그널_분석가", "tools", "daily_signal_scheduler.py"),
+        "name": "시그널 (일일 분석 스케줄러)"
+    })
+
+    print()
+
     # === 주식 트레이딩 ===
     print("📈 주식 트레이딩 봇")
     print("-" * 60)
@@ -124,8 +132,9 @@ def main():
     msg += f"✅ 성공: {len(started)}개\n"
     if failed:
         msg += f"❌ 실패: {len(failed)}개\n"
-    msg += f"\n코인: 펄스, 데이브, 레오\n"
-    msg += f"주식: 펄스, 데이브"
+    msg += f"\n코인: 시그널, 데이브, 레오\n"
+    msg += f"주식: 데이브\n"
+    msg += f"스케줄: 시그널 일일 분석 (매일 새벽 3시)"
 
     send(msg)
 
