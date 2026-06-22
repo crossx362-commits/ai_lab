@@ -30,6 +30,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **긴 로그 금지**: 핵심 줄만 요약 표시
 - **의존성/아키텍처 변경 전 승인 요청**
 
+### 모델 선택
+
+- **루틴 작업 → mini 모델**: 간단한 수정, 반복 작업, 명확한 패치
+- **복잡한 작업 → 현재 모델**: 아키텍처 변경, 디버깅, 설계
+
 ---
 
 ## 🏗️ Repository Structure
