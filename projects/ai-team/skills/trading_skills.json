@@ -1,4 +1,22 @@
 {
+  "version": "1.0.0",
+  "last_updated": "2026-06-22",
+  "changelog": [
+    "v1.0.0: 초기 스킬 명세서 작성 (데이브/레오/시그널)",
+    "v1.0.0: 레오 min_score 3→1 완화 (공격적 진입)"
+  ],
+  "dependencies": {
+    "python": ">=3.10",
+    "required_packages": ["pyupbit", "requests"],
+    "optional_packages": ["pandas", "numpy"],
+    "environment_vars": [
+      "UPBIT_ACCESS_KEY",
+      "UPBIT_SECRET_KEY",
+      "TELEGRAM_BOT_TOKEN",
+      "TELEGRAM_CHAT_ID",
+      "GEMINI_API_KEY"
+    ]
+  },
   "skills": [
     {
       "name": "dave_conservative_crypto_trading",
@@ -49,6 +67,30 @@
           "연속 손실 제한: 미설정",
           "포지션 제한: 없음 (여러 코인 동시 보유 가능)"
         ]
+      },
+      "examples": [
+        {
+          "input": {"mode": "--once", "min_score": 3},
+          "scenario": "퀀트 스코어 7점 코인 발견",
+          "output": {
+            "decision": "BUY",
+            "ticker": "KRW-BTC",
+            "percentage": 10,
+            "entry_price": 85000000,
+            "reason": "RSI 과매도 + 거래량 폭발"
+          }
+        }
+      ],
+      "error_handling": [
+        "API 키 미설정 → 거래 중지, 로그 출력",
+        "시그널 파일 부재 → BASE_TICKERS 폴백",
+        "네트워크 타임아웃 → 3회 재시도 후 스킵",
+        "잔고 부족 → 스킵, 다음 사이클 대기"
+      ],
+      "performance": {
+        "avg_execution_time": "15초 (1회 스캔)",
+        "memory_usage": "~200MB",
+        "win_rate": "28-30% (백테스트 기준)"
       }
     },
     {
@@ -116,6 +158,32 @@
           "손실 후 30분 쿨다운",
           "최대 3개 코인 동시 보유"
         ]
+      },
+      "examples": [
+        {
+          "input": {"mode": "--once", "min_score": 1, "max_positions": 3},
+          "scenario": "고변동성 DOGE 급등",
+          "output": {
+            "decision": "BUY",
+            "ticker": "KRW-DOGE",
+            "percentage": 20,
+            "entry_price": 250,
+            "stop_loss": 242.5,
+            "take_profit": 260,
+            "reason": "거래량 폭발 + 변동성 20%"
+          }
+        }
+      ],
+      "error_handling": [
+        "위험 한도 초과 → 강제 HOLD, 텔레그램 알림",
+        "데이브 보유 코인 → 스킵, 충돌 방지",
+        "최대 보유 3개 도달 → 신규 진입 중단",
+        "API 오류 → 3회 재시도 후 사이클 스킵"
+      ],
+      "performance": {
+        "avg_execution_time": "8초 (1회 스캔)",
+        "memory_usage": "~150MB",
+        "win_rate": "미측정 (신규 전략)"
       }
     },
     {
@@ -169,6 +237,29 @@
           "market_pulse.json: 호환성 유지 (레거시)",
           "crypto_market_intel.json: 하네스 호환성"
         ]
+      },
+      "examples": [
+        {
+          "input": {"mode": "--once", "top_n": 20, "min_score": 30},
+          "output": {
+            "top_coins": [
+              {"ticker": "KRW-BTC", "score": 85, "volume_24h": 150000000000, "change_24h": 5.2},
+              {"ticker": "KRW-ETH", "score": 72, "volume_24h": 80000000000, "change_24h": 3.8}
+            ],
+            "fear_greed": {"value": 45, "classification": "중립"},
+            "kimchi_premium": 1.02
+          }
+        }
+      ],
+      "error_handling": [
+        "Upbit API 오류 → 3회 재시도, 실패 시 이전 데이터 유지",
+        "Fear & Greed API 타임아웃 → 기본값 50(중립) 사용",
+        "김치프리미엄 계산 실패 → 1.0 (프리미엄 없음) 폴백"
+      ],
+      "performance": {
+        "avg_execution_time": "12초 (전체 마켓 스캔)",
+        "memory_usage": "~100MB",
+        "data_freshness": "10분 (기본 인터벌)"
       }
     }
   ],
