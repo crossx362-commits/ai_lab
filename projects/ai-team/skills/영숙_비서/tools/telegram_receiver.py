@@ -544,12 +544,14 @@ def _run_somi(max_emails: int = 100) -> str:
 _INTENT_SYSTEM = """사용자 메시지를 분석해서 필요한 액션을 JSON으로만 반환해. 설명 없이 JSON만.
 
 가능한 액션:
-- "coin"   : 코인/암호화폐 거래 현황·보유·수익 조회
-- "agent"  : 에이전트 실행 현황 조회
+- "coin"   : 코인/암호화폐 거래·보유·수익 조회 (데이브, 레오, 업비트, 비트코인)
+- "agent"  : 에이전트/봇 실행 현황 (전체 팀 상태, 에이전트 뭐해)
 - "stock"  : 한국 주식 시세 조회 (삼성전자·하이닉스·우리기술 등)
 - "mail"   : 소미 Gmail 받은편지함 정리 실행
 - "search" : 인터넷 검색 필요
 - "chat"   : 도구 불필요, 일반 대화
+
+중요: "코인 현황", "거래 현황" → coin / "에이전트 현황", "전체 현황" → agent
 
 출력 형식:
 {"actions": ["액션1", "액션2"], "direct": false}
@@ -558,26 +560,47 @@ _INTENT_SYSTEM = """사용자 메시지를 분석해서 필요한 액션을 JSON
 
 예시:
 "코인 현황 알려줘" → {"actions":["coin"],"direct":false}
-"메일 정리해줘" → {"actions":["mail"],"direct":true}
+"거래현황" → {"actions":["coin"],"direct":false}
 "에이전트 다들 뭐해?" → {"actions":["agent"],"direct":false}
+"전체 현황" → {"actions":["agent"],"direct":false}
 "삼성전자 주가" → {"actions":["stock"],"direct":true}
-"안녕 잘 지냈어?" → {"actions":[],"direct":false}
-"메일 다 지워줘" → {"actions":["mail"],"direct":true}"""
+"메일 정리해줘" → {"actions":["mail"],"direct":true}"""
 
 
 def _detect_intent(text: str) -> dict:
-    """반복 호출되는 의도 분석은 규칙 기반으로 처리해 클라우드 사용량을 태우지 않는다."""
+    """Gemini로 메시지 의도 분석 (코인현황 vs 에이전트현황 구분)"""
+    try:
+        from _shared.llm import gemini
+        result = gemini(text, system=_INTENT_SYSTEM, max_tokens=100, temperature=0.3, json_mode=True)
+        if result:
+            import json
+            intent = json.loads(result.strip())
+            log(f"[Intent] {intent}")
+            return intent
+    except Exception as e:
+        log(f"[Intent] Gemini 실패, 폴백: {e}")
+
+    # 폴백: 규칙 기반 (코인/에이전트 구분 강화)
     actions = []
-    if _needs_stock(text):
-        actions.append("stock")
     normalized_text = normalize(text)
     compact = "".join(normalized_text.split())
+
+    if _needs_stock(text):
+        actions.append("stock")
     if any(k in compact for k in _MAIL_KEYWORDS):
         actions.append("mail")
-    if any(k in compact for k in _COIN_KEYWORDS):
+
+    # 코인 vs 에이전트 구분
+    coin_match = any(k in compact for k in ["코인", "거래", "매매", "업비트", "데이브", "레오", "보유", "수익"])
+    agent_match = any(k in compact for k in ["에이전트", "봇", "다들", "전체", "뭐해"])
+
+    if coin_match and not agent_match:
         actions.append("coin")
-    if any(k in compact for k in _AGENT_KEYWORDS):
+    elif agent_match and not coin_match:
         actions.append("agent")
+    elif "현황" in compact or "상태" in compact:
+        actions.append("coin")  # 애매하면 코인 우선
+
     if is_search_request(normalized_text):
         actions.append("search")
 
