@@ -1,0 +1,15 @@
+{
+  "git.enabled": true,
+  "git.path": "C:\\Program Files\\Git\\cmd\\git.exe",
+  "git.useIntegratedAskPass": false,
+  "git.terminalAuthentication": false,
+  "git.autoRepositoryDetection": false,
+  "git.repositoryScanMaxDepth": 0,
+  "git.scanRepositories": [],
+  "git.detectSubmodules": false,
+  "terminal.integrated.inheritEnv": false,
+  "git.mergeEditor": false,
+  "git.promptToSaveFilesBeforeCommit": "never",
+  "git.confirmSync": false,
+  "git.autofetch": false
+}
