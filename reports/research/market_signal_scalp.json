@@ -1,0 +1,71 @@
+{
+  "agent": "signal",
+  "target_agent": "leo",
+  "timestamp": "2026-06-22T21:22:04.379165+09:00",
+  "timezone": "Asia/Seoul",
+  "is_stale": false,
+  "stale_after_seconds": 600,
+  "data_quality": "OK",
+  "crypto": {
+    "fear_greed": {
+      "value": 20,
+      "label": "Extreme Fear",
+      "signal": "BUY"
+    },
+    "kimchi_premium": {
+      "value": 15.8,
+      "signal": "NEUTRAL",
+      "note": "reference_only"
+    },
+    "btc_short_term": {
+      "change_5m_pct": 0.12,
+      "change_15m_pct": -0.06,
+      "change_1h_pct": 0.49,
+      "risk": "LOW"
+    },
+    "top_volatile_coins": [
+      {
+        "ticker": "KRW-STX",
+        "score": 55,
+        "change_5m_pct": 0.36,
+        "change_15m_pct": 1.47,
+        "change_1h_pct": 1.85,
+        "volume_ratio_5m": 0.19,
+        "volume_ratio_15m": 0.09,
+        "vwap_state": "ABOVE",
+        "breakout_30m": false,
+        "upper_wick_risk": "LOW",
+        "spread_pct": 0.072
+      },
+      {
+        "ticker": "KRW-SEI",
+        "score": 55,
+        "change_5m_pct": -0.12,
+        "change_15m_pct": 0.84,
+        "change_1h_pct": 1.33,
+        "volume_ratio_5m": 3.65,
+        "volume_ratio_15m": 2.25,
+        "vwap_state": "BELOW",
+        "breakout_30m": false,
+        "upper_wick_risk": "LOW",
+        "spread_pct": 0.262
+      }
+    ],
+    "volume_spike_rank": [
+      "KRW-SEI",
+      "KRW-DOGE",
+      "KRW-STX"
+    ],
+    "short_term_momentum_rank": [
+      "KRW-STX",
+      "KRW-SEI",
+      "KRW-DOGE"
+    ]
+  },
+  "event_risk": {
+    "status": "SAFE",
+    "next_event": "NONE",
+    "minutes_to_event": null
+  },
+  "ai_summary": "BTC 15분 -0.1% 위험=LOW; 단타 후보 STX:55, SEI:55"
+}
