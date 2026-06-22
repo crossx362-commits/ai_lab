@@ -93,6 +93,9 @@ from _shared.trading_entry_evaluator import (
     record_decision,
     suggested_position_pct,
 )
+from _shared.score_normalizer import normalize_score
+from _shared.risk_guard import RiskGuard
+from _shared.llm_cache import LLMCache
 
 load_env()
 
@@ -364,9 +367,14 @@ def calculate_leo_score(ticker: str) -> dict:
                 score -= 1
                 reasons.append(f"탐욕({fg_value})")
 
+        # 0~20 원시 점수 → 0~100 정규화
+        raw_score = score
+        normalized_score = normalize_score(raw_score, max_raw_score=20.0)
+
         return {
             "ticker": ticker,
-            "score": score,
+            "score": normalized_score,
+            "raw_score": raw_score,
             "current_price": current_price,
             "volume_ratio": vol_ratio,
             "momentum_1h": mom_1h,
@@ -374,11 +382,42 @@ def calculate_leo_score(ticker: str) -> dict:
             "reasons": reasons,
         }
     except Exception as e:
-        return {"ticker": ticker, "score": 0, "error": str(e)}
+        return {"ticker": ticker, "score": 0, "raw_score": 0, "error": str(e)}
+
+
+# 전역 위험 관리 및 LLM 캐시 인스턴스
+_risk_guard = None
+_llm_cache = None
+
+def get_risk_guard():
+    """위험 관리 인스턴스 (싱글톤)"""
+    global _risk_guard
+    if _risk_guard is None:
+        _risk_guard = RiskGuard(
+            agent="leo",
+            workspace_root=WORKSPACE_ROOT,
+            daily_loss_limit_pct=-5.0,
+            consecutive_loss_limit=3,
+            max_positions=3,
+            max_trades_per_hour=5,
+        )
+    return _risk_guard
+
+def get_llm_cache():
+    """LLM 캐시 인스턴스 (싱글톤)"""
+    global _llm_cache
+    if _llm_cache is None:
+        _llm_cache = LLMCache(
+            agent="leo",
+            workspace_root=WORKSPACE_ROOT,
+            cooldown_seconds=600,  # 10분
+            score_delta_trigger=10,
+        )
+    return _llm_cache
 
 
 def check_risk_limits() -> tuple[bool, str]:
-    """위험 한도 체크"""
+    """위험 한도 체크 (레거시 - RiskGuard로 대체 예정)"""
     global consecutive_losses, daily_loss_pct, trades_today
 
     # 일일 손실 한도
@@ -433,10 +472,11 @@ def run_leo_cycle():
         print("[Leo] pyupbit 또는 upbit_public fallback 확인이 필요합니다.")
         return
 
-    # 위험 한도 체크
-    can_trade, risk_msg = check_risk_limits()
+    # 위험 관리 체크 (RiskGuard 사용)
+    risk_guard = get_risk_guard()
+    can_trade, risk_msg = risk_guard.can_trade()
     if not can_trade:
-        print(f"[Leo] {risk_msg} - 거래 중단")
+        print(f"[Leo] ⚠️ {risk_msg}")
         return
 
     upbit_client = upbit_analyzer.get_upbit_client()
@@ -488,6 +528,8 @@ def run_leo_cycle():
                     send(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
                     upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses = 0  # 익절 시 연속 손절 리셋
+                    # 위험 관리: 매도 기록
+                    risk_guard.record_trade(ticker, "SELL", profit_pct=profit_pct)
 
                 elif profit_pct >= 2.5:
                     # 1차 익절: 50% 청산 (리스크 헷지)
@@ -506,6 +548,8 @@ def run_leo_cycle():
                     upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses += 1
                     daily_loss_pct += profit_pct
+                    # 위험 관리: 매도 기록
+                    risk_guard.record_trade(ticker, "SELL", profit_pct=profit_pct)
 
                 # 홀딩 중 (익절/손절 범위 밖)
                 else:
@@ -576,16 +620,34 @@ def run_leo_cycle():
 
     scanned.sort(key=lambda x: x["score"], reverse=True)
 
-    print("\n=== [레오 스캔 랭킹] ===")
+    print("\n=== [레오 스캔 랭킹 (0~100 정규화)] ===")
     for item in scanned[:5]:
+        raw = item.get("raw_score", 0)
         reasons_str = ", ".join(item.get("reasons", []))
-        print(f"  - {item['ticker']}: {item['score']}점 | {reasons_str}")
+        print(f"  - {item['ticker']}: {item['score']}점 (원시 {raw:.1f}/20) | {reasons_str}")
     print("======================\n")
 
-    best = scanned[0]
+    # LLM 평가 대상: 상위 3개 후보 중 min_score(40점) 이상만
+    MIN_SCORE = 40
+    MIN_SCORE_EXCEPTION = 35  # 35~39점 예외 조건
+    TOP_N_CANDIDATES = 3
+    candidates = [c for c in scanned[:TOP_N_CANDIDATES] if c["score"] >= MIN_SCORE]
 
-    # 레오 공격적 진입 기준 (데이브 3점보다 낮음)
-    min_score = 1
+    # 35~39점 예외: 거래량 1.5배 이상 급증
+    if not candidates:
+        exception_candidates = [
+            c for c in scanned[:TOP_N_CANDIDATES]
+            if MIN_SCORE_EXCEPTION <= c["score"] < MIN_SCORE and c.get("volume_ratio", 1.0) >= 1.5
+        ]
+        if exception_candidates:
+            print(f"[Leo] 💡 예외 조건: {exception_candidates[0]['ticker']} {exception_candidates[0]['score']}점 (거래량 {exception_candidates[0]['volume_ratio']:.1f}배)")
+            candidates = exception_candidates
+
+    if not candidates:
+        print(f"[Leo] ❌ 진입 후보 없음 (상위 {TOP_N_CANDIDATES}개 중 {MIN_SCORE}점 이상 없음)")
+        return
+
+    best = candidates[0]
 
     # 펄스 정보 확인
     pulse_intel = load_pulse_intel()
@@ -646,8 +708,22 @@ def run_leo_cycle():
         print(f"[Leo] {best['ticker']} 공용 진입 평가 HOLD - 신규 진입 보류")
         return
 
+    # LLM 캐시 체크
+    llm_cache = get_llm_cache()
+    should_call, cache_reason = llm_cache.should_call_llm(
+        ticker=best["ticker"],
+        current_score=best["score"],
+        volume_spike=best.get("volume_ratio", 1.0),
+    )
+
+    if not should_call:
+        print(f"[Leo] 💤 {best['ticker']} LLM 캐시 사용: {cache_reason}")
+        cached = llm_cache.get_cached_decision(best["ticker"])
+        if cached and cached["decision"] == "HOLD":
+            return
+
     # 진입 조건 체크
-    if best["score"] >= min_score:
+    if best["score"] >= MIN_SCORE or (MIN_SCORE_EXCEPTION <= best["score"] < MIN_SCORE):
         ticker = best["ticker"]
 
         # SKILL 필수 조건 재검증
@@ -711,9 +787,12 @@ def run_leo_cycle():
         last_trade_time[ticker] = time.time()
         trades_today.append(time.time())
 
+        # 위험 관리: 매수 기록
+        risk_guard.record_trade(ticker, "BUY")
+
     else:
         coin = best['ticker'].split('-')[1]
-        print(f"[Leo] ❌ {coin} 진입 점수 부족 ({best['score']}점 < {min_score}점)")
+        print(f"[Leo] ❌ {coin} 진입 점수 부족 ({best['score']}점 < {MIN_SCORE}점)")
         print(f"  근거: {', '.join(best.get('reasons', []))}")
 
 

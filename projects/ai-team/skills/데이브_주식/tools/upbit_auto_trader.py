@@ -23,6 +23,9 @@ from _shared.trading_entry_evaluator import (
     record_decision,
     suggested_position_pct,
 )
+from _shared.score_normalizer import normalize_score
+from _shared.risk_guard import RiskGuard
+from _shared.llm_cache import LLMCache
 
 load_env()
 
@@ -249,16 +252,21 @@ def calculate_confluence_score(ticker: str) -> dict:
             except Exception:
                 pass
 
+        # 0~20 원시 점수 → 0~100 정규화
+        raw_score = score
+        normalized_score = normalize_score(raw_score, max_raw_score=20.0)
+
         return {
             "ticker": ticker,
-            "score": score,
+            "score": normalized_score,
+            "raw_score": raw_score,
             "current_price": current_price,
             "atr": atr,
             "reasons": reasons,
             "indicators": indicators
         }
     except Exception as e:
-        return {"ticker": ticker, "score": 0, "error": str(e)}
+        return {"ticker": ticker, "score": 0, "raw_score": 0, "error": str(e)}
 
 def _pulse_intel_path():
     return _signal_intel_path()
@@ -341,8 +349,46 @@ def load_pulse_intel(refresh=True):
     return None
 
 
+# 전역 위험 관리 및 LLM 캐시 인스턴스
+_risk_guard = None
+_llm_cache = None
+
+def get_risk_guard():
+    """위험 관리 인스턴스 (싱글톤)"""
+    global _risk_guard
+    if _risk_guard is None:
+        _risk_guard = RiskGuard(
+            agent="dave",
+            workspace_root=WORKSPACE_ROOT,
+            daily_loss_limit_pct=-3.0,
+            consecutive_loss_limit=3,
+            max_positions=3,
+            max_trades_per_hour=5,
+        )
+    return _risk_guard
+
+def get_llm_cache():
+    """LLM 캐시 인스턴스 (싱글톤)"""
+    global _llm_cache
+    if _llm_cache is None:
+        _llm_cache = LLMCache(
+            agent="dave",
+            workspace_root=WORKSPACE_ROOT,
+            cooldown_seconds=900,  # 15분
+            score_delta_trigger=10,
+        )
+    return _llm_cache
+
+
 def run_auto_trade_cycle():
     print(f"\n--- [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 실시간 다중 코인 자동 매매 감시 ---")
+
+    # 위험 관리 체크
+    risk_guard = get_risk_guard()
+    can_trade, risk_reason = risk_guard.can_trade()
+    if not can_trade:
+        print(f"[Dave] ⚠️ {risk_reason}")
+        return
 
     # 펄스 정보 확인 (중요 시장 변화 체크)
     pulse_intel = load_pulse_intel()
@@ -460,6 +506,9 @@ def run_auto_trade_cycle():
                 res = upbit_analyzer.execute_sell_all(ticker)
                 print(res)
 
+                # 위험 관리: 매도 기록
+                risk_guard.record_trade(ticker, "SELL", profit_pct=profit_ratio * 100)
+
     # 3. 포지션 미보유 시 혹은 예수금이 충분히 남아있을 시 신규 진입 분석 (완전 실시간화)
     # 보유 포지션이 있더라도 추가 매수 여력이 있다면 진입 후보 탐색
     if not held_positions or (krw_balance >= 10000.0):
@@ -473,123 +522,149 @@ def run_auto_trade_cycle():
         scanned.sort(key=lambda x: x["score"], reverse=True)
 
         # 스캔 스코어 보드 출력 (10초마다 실시간으로 보임)
-        print("\n=== [실시간 퀀트 스코어 랭킹] ===")
+        print("\n=== [실시간 퀀트 스코어 랭킹 (0~100 정규화)] ===")
         for item in scanned[:5]:
-            print(f"  - {item['ticker']}: {item['score']}점 | {', '.join(item['reasons'])}")
+            raw = item.get("raw_score", 0)
+            print(f"  - {item['ticker']}: {item['score']}점 (원시 {raw:.1f}/20) | {', '.join(item['reasons'])}")
         print("=========================\n")
 
         if not scanned:
             print("[AutoTrader] 스캔 가능한 코인 데이터가 없습니다.")
             return
 
-        best = scanned[0]
-        if best["score"] >= 3:
-            best_ticker = best["ticker"]
-            backfill_pending_outcomes(
-                agent="dave",
+        # LLM 평가 대상: 상위 3개 후보 중 min_score(55점) 이상만
+        MIN_SCORE = 55
+        TOP_N_CANDIDATES = 3
+        candidates = [c for c in scanned[:TOP_N_CANDIDATES] if c["score"] >= MIN_SCORE]
+
+        if not candidates:
+            print(f"[Dave] ❌ 진입 후보 없음 (상위 {TOP_N_CANDIDATES}개 중 {MIN_SCORE}점 이상 없음)")
+            return
+
+        best = candidates[0]
+        best_ticker = best["ticker"]
+
+        # LLM 캐시 체크
+        llm_cache = get_llm_cache()
+        should_call, cache_reason = llm_cache.should_call_llm(
+            ticker=best_ticker,
+            current_score=best["score"],
+            volume_spike=best.get("indicators", {}).get("Volume_배율", 1.0),
+        )
+
+        if not should_call:
+            print(f"[Dave] 💤 {best_ticker} LLM 캐시 사용: {cache_reason}")
+            cached = llm_cache.get_cached_decision(best_ticker)
+            if cached and cached["decision"] == "HOLD":
+                return
+
+        backfill_pending_outcomes(
+            agent="dave",
+            ticker=best_ticker,
+            current_price=best.get("current_price", 0),
+            workspace_root=WORKSPACE_ROOT,
+        )
+        evaluation = evaluate_entry(
+            agent="dave",
+            ticker=best_ticker,
+            raw_score=best["score"],
+            max_raw_score=100,  # 정규화된 점수 기준
+            reasons=best.get("reasons", []),
+            metrics={"current_price": best.get("current_price")},
+            workspace_root=WORKSPACE_ROOT,
+        )
+        print(f"[AutoTrader] 진입 평가: {format_evaluation(evaluation)}")
+        record_decision(
+            agent="dave",
+            ticker=best_ticker,
+            decision=evaluation["decision"],
+            evaluation=evaluation,
+            reason="pre_llm_entry_gate",
+            workspace_root=WORKSPACE_ROOT,
+            extra={"observed_price": best.get("current_price")},
+        )
+        if evaluation["decision"] == "HOLD":
+            print(f"[AutoTrader] {best_ticker} 공용 진입 평가 HOLD - LLM 검증 생략")
+            return
+
+        print(f"[AutoTrader] 💥 최우수 코인 진입 조건 달성! {best_ticker} ({best['score']}점) -> LLM 최종 검증 진행...")
+
+        try:
+            decision_data = upbit_analyzer.run_gemini_trade_decision(f"실시간 퀀트 스캔 {best['score']}점 달성. 신규 진입 최종 검증 요청.", best_ticker)
+            decision = decision_data.decision.upper()
+            percentage = decision_data.percentage
+            reason = decision_data.reason
+
+            print(f"[AutoTrader] LLM 최종 결정: {decision} ({percentage}%) | 사유: {reason}")
+
+            # LLM 판단 캐싱
+            llm_cache.cache_decision(
                 ticker=best_ticker,
-                current_price=best.get("current_price", 0),
-                workspace_root=WORKSPACE_ROOT,
+                score=best["score"],
+                decision=decision,
+                percentage=percentage,
+                reason=reason,
             )
-            evaluation = evaluate_entry(
-                agent="dave",
-                ticker=best_ticker,
-                raw_score=best["score"],
-                max_raw_score=10,
-                reasons=best.get("reasons", []),
-                metrics={"current_price": best.get("current_price")},
-                workspace_root=WORKSPACE_ROOT,
-            )
-            print(f"[AutoTrader] 진입 평가: {format_evaluation(evaluation)}")
+
             record_decision(
                 agent="dave",
                 ticker=best_ticker,
-                decision=evaluation["decision"],
+                decision=decision,
                 evaluation=evaluation,
-                reason="pre_llm_entry_gate",
+                reason=reason,
                 workspace_root=WORKSPACE_ROOT,
-                extra={"observed_price": best.get("current_price")},
+                extra={"llm_percentage": percentage},
             )
-            if evaluation["decision"] == "HOLD":
-                print(f"[AutoTrader] {best_ticker} 공용 진입 평가 HOLD - LLM 검증 생략")
-                return
 
-            # 동일 종목에 대한 LLM 분석 쿨다운 감시
-            now = time.time()
-            last_run = last_llm_time.get(best_ticker, 0)
-            if now - last_run < LLM_COOLDOWN_SECONDS:
-                print(f"[AutoTrader] 최우수 코인 {best_ticker} ({best['score']}점) 포착되었으나, 최근 분석 이력으로 인해 쿨다운 중입니다. (남은 시간: {int(LLM_COOLDOWN_SECONDS - (now - last_run))}초)")
-                return
+            if decision == "BUY":
+                suggested_pct = suggested_position_pct("dave", evaluation)
+                effective_percentage = min(percentage, suggested_pct) if suggested_pct else 0
+                pct = effective_percentage / 100.0
+                if pct <= 0:
+                    print(f"[AutoTrader] 진입 평가 비중이 0%라 매수하지 않습니다. ({format_evaluation(evaluation)})")
+                    return
+                buy_amount = krw_balance * pct * 0.995 # 수수료 고려 안전 여유
 
-            print(f"[AutoTrader] 💥 최우수 코인 진입 조건 달성! {best_ticker} ({best['score']}점) -> LLM 최종 검증 진행...")
-            last_llm_time[best_ticker] = now  # 쿨다운 갱신
-            _save_llm_cooldown_state()
+                if buy_amount < 5000.0:
+                    print(f"[AutoTrader] 매수 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {buy_amount:.0f}원)")
+                    return
 
-            try:
-                decision_data = upbit_analyzer.run_gemini_trade_decision(f"실시간 퀀트 스캔 {best['score']}점 달성. 신규 진입 최종 검증 요청.", best_ticker)
-                decision = decision_data.decision.upper()
-                percentage = decision_data.percentage
-                reason = decision_data.reason
-
-                print(f"[AutoTrader] LLM 최종 결정: {decision} ({percentage}%) | 사유: {reason}")
-                record_decision(
-                    agent="dave",
-                    ticker=best_ticker,
-                    decision=decision,
-                    evaluation=evaluation,
-                    reason=reason,
-                    workspace_root=WORKSPACE_ROOT,
-                    extra={"llm_percentage": percentage},
-                )
-
-                if decision == "BUY":
-                    suggested_pct = suggested_position_pct("dave", evaluation)
-                    effective_percentage = min(percentage, suggested_pct) if suggested_pct else 0
-                    pct = effective_percentage / 100.0
-                    if pct <= 0:
-                        print(f"[AutoTrader] 진입 평가 비중이 0%라 매수하지 않습니다. ({format_evaluation(evaluation)})")
-                        return
-                    buy_amount = krw_balance * pct * 0.995 # 수수료 고려 안전 여유
-
-                    if buy_amount < 5000.0:
-                        print(f"[AutoTrader] 매수 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {buy_amount:.0f}원)")
-                        return
-
-                    coin = best_ticker.split('-')[1]
-                    # 금액 포맷 (1만원 이상/미만 구분)
-                    if buy_amount >= 10000:
-                        amount_str = f"{buy_amount/10000:.1f}만원"
-                    else:
-                        amount_str = f"{buy_amount:,.0f}원"
-
-                    msg = f"💼 [데이브] {coin} 매수 {amount_str} ({evaluation['entry_score']}점, 승률 {evaluation['expected_win_rate']*100:.0f}%, RR {evaluation['risk_reward']})"
-                    print(msg)
-                    send(msg)
-                    res = upbit_analyzer.execute_buy(best_ticker, buy_amount)
-                    print(res)
-
-                elif decision == "SELL":
-                    coin_balance = safe_float(upbit_client.get_balance(best_ticker))
-
-                    pct = percentage / 100.0
-                    sell_volume = coin_balance * pct
-                    current_price = float(pyupbit.get_current_price(best_ticker))
-
-                    if sell_volume * current_price < 5000.0:
-                        print(f"[AutoTrader] 매도 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {sell_volume * current_price:.0f}원)")
-                        return
-
-                    msg = f"📉 [데이브] 실시간 스캔 매도 조건 감지!\n📌 대상: {best_ticker}\n📉 비중: {percentage}%\n🚨 시장가 매도를 집행합니다."
-                    print(msg)
-                    send(msg)
-                    res = upbit_analyzer.execute_sell(best_ticker, sell_volume)
-                    print(res)
+                coin = best_ticker.split('-')[1]
+                # 금액 포맷 (1만원 이상/미만 구분)
+                if buy_amount >= 10000:
+                    amount_str = f"{buy_amount/10000:.1f}만원"
                 else:
-                    print(f"[AutoTrader] {best_ticker} 분석 결과가 HOLD로 결정되어 진입하지 않습니다. (사유: {reason})")
-            except Exception as trade_err:
-                print(f"[AutoTrader] ❌ 주문 실행 중 오류 발생: {trade_err}")
-        else:
-            print(f"[AutoTrader] 현재 최소 진입 점수(3점)를 만족하는 코인이 없습니다. (최고 점수: {best['ticker']} {best['score']}점)")
+                    amount_str = f"{buy_amount:,.0f}원"
+
+                msg = f"💼 [데이브] {coin} 매수 {amount_str} ({evaluation['entry_score']}점, 승률 {evaluation['expected_win_rate']*100:.0f}%, RR {evaluation['risk_reward']})"
+                print(msg)
+                send(msg)
+                res = upbit_analyzer.execute_buy(best_ticker, buy_amount)
+                print(res)
+
+                # 위험 관리: 매수 기록
+                risk_guard.record_trade(best_ticker, "BUY")
+
+            elif decision == "SELL":
+                coin_balance = safe_float(upbit_client.get_balance(best_ticker))
+
+                pct = percentage / 100.0
+                sell_volume = coin_balance * pct
+                current_price = float(pyupbit.get_current_price(best_ticker))
+
+                if sell_volume * current_price < 5000.0:
+                    print(f"[AutoTrader] 매도 가능 금액이 최소 주문금액(5,000원) 미만입니다. (계산액: {sell_volume * current_price:.0f}원)")
+                    return
+
+                msg = f"📉 [데이브] 실시간 스캔 매도 조건 감지!\n📌 대상: {best_ticker}\n📉 비중: {percentage}%\n🚨 시장가 매도를 집행합니다."
+                print(msg)
+                send(msg)
+                res = upbit_analyzer.execute_sell(best_ticker, sell_volume)
+                print(res)
+            else:
+                print(f"[AutoTrader] {best_ticker} 분석 결과가 HOLD로 결정되어 진입하지 않습니다. (사유: {reason})")
+        except Exception as trade_err:
+            print(f"[AutoTrader] ❌ 주문 실행 중 오류 발생: {trade_err}")
 
 def send_status_report():
     """4시간마다 현황 보고 텔레그램 전송 (간결)"""
