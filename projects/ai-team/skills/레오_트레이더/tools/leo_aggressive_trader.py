@@ -597,15 +597,15 @@ def run_leo_cycle():
     # 스캔 및 진입
     scanned = []
     for ticker in LEO_TICKERS:
-        # 데이브 보유 체크
-        if check_dave_holdings(ticker):
-            continue
-
-        # 이미 레오가 보유 중
+        # 1. 이미 레오가 보유 중 (우선 체크)
         if any(p["ticker"] == ticker for p in leo_positions):
             continue
 
-        # 1시간 내 재진입 금지
+        # 2. 데이브 보유 체크 (레오 보유가 아닌 것만)
+        if check_dave_holdings(ticker):
+            continue
+
+        # 3. 1시간 내 재진입 금지
         if ticker in last_trade_time:
             if time.time() - last_trade_time[ticker] < 3600:
                 continue
