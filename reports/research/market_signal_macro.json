@@ -1,7 +1,7 @@
 {
   "agent": "signal",
   "target_agent": "dave",
-  "timestamp": "2026-06-22T21:22:04.379165+09:00",
+  "timestamp": "2026-06-23T06:37:12.939442+09:00",
   "timezone": "Asia/Seoul",
   "is_stale": false,
   "stale_after_seconds": 1200,
@@ -13,72 +13,58 @@
       "signal": "BUY"
     },
     "kimchi_premium": {
-      "value": 15.8,
+      "value": 16.09,
       "signal": "NEUTRAL",
       "note": "reference_only"
     },
     "btc_market_state": {
       "state": "NEUTRAL",
-      "change_1h_pct": 0.14,
-      "change_4h_pct": 0.14,
-      "change_24h_pct": 2.22,
+      "change_1h_pct": -0.11,
+      "change_4h_pct": -0.24,
+      "change_24h_pct": 1.72,
       "price_vs_ema200": "BELOW"
     },
     "top_major_coins": [
       {
-        "ticker": "KRW-BTC",
-        "score": 55,
-        "change_24h_pct": 2.22,
-        "volume_ratio": 0.39,
-        "trend_state": "DOWN"
-      },
-      {
-        "ticker": "KRW-ETH",
-        "score": 55,
-        "change_24h_pct": 3.34,
-        "volume_ratio": 0.39,
-        "trend_state": "DOWN"
-      },
-      {
         "ticker": "KRW-SOL",
-        "score": 55,
-        "change_24h_pct": 2.1,
-        "volume_ratio": 0.39,
+        "score": 40,
+        "change_24h_pct": 0.46,
+        "volume_ratio": 0.67,
         "trend_state": "DOWN"
       },
       {
         "ticker": "KRW-LINK",
-        "score": 55,
-        "change_24h_pct": 3.83,
-        "volume_ratio": 0.31,
-        "trend_state": "DOWN"
-      },
-      {
-        "ticker": "KRW-XRP",
         "score": 35,
-        "change_24h_pct": 1.83,
-        "volume_ratio": 0.33,
+        "change_24h_pct": 1.62,
+        "volume_ratio": 0.53,
         "trend_state": "DOWN"
       },
       {
         "ticker": "KRW-ADA",
         "score": 25,
-        "change_24h_pct": 3.39,
-        "volume_ratio": 0.32,
+        "change_24h_pct": 1.69,
+        "volume_ratio": 0.49,
         "trend_state": "DOWN"
       },
       {
         "ticker": "KRW-AVAX",
         "score": 25,
-        "change_24h_pct": 4.07,
-        "volume_ratio": 0.38,
+        "change_24h_pct": 2.44,
+        "volume_ratio": 0.56,
+        "trend_state": "DOWN"
+      },
+      {
+        "ticker": "KRW-XRP",
+        "score": 10,
+        "change_24h_pct": 0.59,
+        "volume_ratio": 0.6,
         "trend_state": "DOWN"
       },
       {
         "ticker": "KRW-DOGE",
-        "score": 25,
-        "change_24h_pct": 2.42,
-        "volume_ratio": 0.38,
+        "score": 10,
+        "change_24h_pct": 0.81,
+        "volume_ratio": 0.56,
         "trend_state": "DOWN"
       }
     ]
@@ -87,11 +73,11 @@
     "indexes": {
       "kospi": {
         "value": 9114.55,
-        "change_pct": 0.69
+        "change_pct": 0.0
       },
       "kosdaq": {
         "value": 968.4,
-        "change_pct": 0.19
+        "change_pct": 0.0
       }
     },
     "sentiment": "NEUTRAL"
@@ -101,5 +87,5 @@
     "next_event": "NONE",
     "minutes_to_event": null
   },
-  "ai_summary": "공포탐욕 20 BUY; BTC NEUTRAL (+2.2%); 상위 BTC:55, ETH:55, SOL:55"
+  "ai_summary": "공포탐욕 20 BUY; BTC NEUTRAL (+1.7%); 상위 SOL:40, LINK:35, ADA:25"
 }

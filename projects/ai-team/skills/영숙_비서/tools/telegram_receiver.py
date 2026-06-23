@@ -551,7 +551,11 @@ _INTENT_SYSTEM = """사용자 메시지를 분석해서 필요한 액션을 JSON
 - "search" : 인터넷 검색 필요
 - "chat"   : 도구 불필요, 일반 대화
 
-중요: "코인 현황", "거래 현황" → coin / "에이전트 현황", "전체 현황" → agent
+중요:
+- "코인 현황", "거래 현황" → coin
+- "에이전트 현황", "전체 현황", "다들 뭐해" → agent
+- "주가 현황", "오늘 주가", "증시 현황", "코스피", "코스닥" → search (일반 시장 지수)
+- 특정 종목명 + 주가/시세 → stock
 
 출력 형식:
 {"actions": ["액션1", "액션2"], "direct": false}
@@ -563,6 +567,8 @@ _INTENT_SYSTEM = """사용자 메시지를 분석해서 필요한 액션을 JSON
 "거래현황" → {"actions":["coin"],"direct":false}
 "에이전트 다들 뭐해?" → {"actions":["agent"],"direct":false}
 "전체 현황" → {"actions":["agent"],"direct":false}
+"오늘 주가 현황" → {"actions":["search"],"direct":false}
+"증시 어때?" → {"actions":["search"],"direct":false}
 "삼성전자 주가" → {"actions":["stock"],"direct":true}
 "메일 정리해줘" → {"actions":["mail"],"direct":true}"""
 
