@@ -472,13 +472,6 @@ def run_leo_cycle():
         print("[Leo] pyupbit 또는 upbit_public fallback 확인이 필요합니다.")
         return
 
-    # 위험 관리 체크 (RiskGuard 사용)
-    risk_guard = get_risk_guard()
-    can_trade, risk_msg = risk_guard.can_trade()
-    if not can_trade:
-        print(f"[Leo] ⚠️ {risk_msg}")
-        return
-
     upbit_client = upbit_analyzer.get_upbit_client()
     if upbit_client is None:
         print("[Leo] API 키 미설정 - Upbit API 검증 실패. 거래 중지.")
@@ -588,6 +581,13 @@ def run_leo_cycle():
                 })
         except Exception as e:
             print(f"[Leo] {ticker} 포지션 체크 실패: {e}")
+
+    # 신규 진입 가능 여부 체크
+    risk_guard = get_risk_guard()
+    can_trade, risk_msg = risk_guard.can_trade()
+    if not can_trade:
+        print(f"[Leo] ⚠️ {risk_msg} - 신규 진입 금지 (보유 포지션 관리는 계속)")
+        return
 
     # 최대 3개 코인 동시 보유 제한
     if len(leo_positions) >= 3:
