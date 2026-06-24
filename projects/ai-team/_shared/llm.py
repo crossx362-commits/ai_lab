@@ -8,6 +8,7 @@ import urllib.error
 _cache = {}
 _CACHE_TTL = 60
 OPENAI_GPT_MODEL = "gpt-4o-mini"
+GEMINI_MODEL = "gemini-2.5-flash"  # 변경: 2.5 Flash 사용
 
 
 def _env_bool(name: str, default: str = "1") -> bool:

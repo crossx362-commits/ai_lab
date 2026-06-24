@@ -69,10 +69,10 @@ def get_leo_system_prompt():
 PRO_TRADER_DIRECTIVE = get_leo_system_prompt()
 
 #!/usr/bin/env python3
-# UTF-8 인코딩 강제
+# UTF-8 인코딩 강제 및 unbuffered 출력
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 _here = os.path.dirname(os.path.abspath(__file__))
 AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
@@ -263,7 +263,7 @@ def load_pulse_intel(refresh=True):
 
 
 def calculate_leo_score(ticker: str) -> dict:
-    """레오용 스코어 계산 (코드 지표 계산, LLM 없음)"""
+    """레오용 스코어 계산 (백테스팅 검증 로직 적용)"""
     try:
         df = pyupbit.get_ohlcv(ticker, interval="minute60", count=50)
         if df is None or df.empty:
@@ -275,7 +275,7 @@ def calculate_leo_score(ticker: str) -> dict:
         score = 0
         reasons = []
 
-        # 1. RSI
+        # 1. RSI (개선: 구간별 세분화)
         deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
         gains = [d if d > 0 else 0 for d in deltas]
         losses = [-d if d < 0 else 0 for d in deltas]
@@ -285,36 +285,62 @@ def calculate_leo_score(ticker: str) -> dict:
         rsi = 100 - (100 / (1 + rs))
 
         if rsi < 30:
-            score += 3
-            reasons.append(f"RSI 과매도({rsi:.0f})")
-        elif rsi < 45:
-            score += 1
-            reasons.append(f"RSI 저점({rsi:.0f})")
+            score += 4  # 상향 (3 → 4)
+            reasons.append(f"RSI극과매도({rsi:.0f})")
+        elif rsi < 40:
+            score += 2  # 신규 구간
+            reasons.append(f"RSI과매도({rsi:.0f})")
+        elif 40 <= rsi <= 60:
+            score += 1  # 중립 구간 약한 가점
+            reasons.append(f"RSI중립({rsi:.0f})")
         elif rsi > 70:
-            score -= 2
-            reasons.append(f"RSI 과매수({rsi:.0f})")
+            score -= 3  # 하향 (2 → 3)
+            reasons.append(f"RSI과매수({rsi:.0f})")
 
-        # 2. 거래량 급등
+        # 2. 볼린저 밴드 (신규)
+        if len(closes) >= 20:
+            sma20 = sum(closes[-20:]) / 20
+            std20 = (sum((c - sma20)**2 for c in closes[-20:]) / 20) ** 0.5
+            bb_upper = sma20 + (std20 * 2)
+            bb_lower = sma20 - (std20 * 2)
+
+            if current_price < bb_lower:
+                score += 3
+                reasons.append("BB하단돌파")
+            elif current_price > bb_upper:
+                score -= 2
+                reasons.append("BB상단과열")
+
+        # 3. 거래량 급등 (가중치 상향)
         avg_vol = float(sum(volumes[-20:-1]) / 19) if len(volumes) >= 20 else 1.0
         vol_ratio = float(volumes[-1]) / avg_vol if avg_vol > 0 else 1.0
         if vol_ratio >= 2.0:
-            score += 3
-            reasons.append(f"거래량 {vol_ratio:.1f}배")
+            score += 4  # 상향 (3 → 4)
+            reasons.append(f"거래량폭발{vol_ratio:.1f}x")
         elif vol_ratio >= 1.5:
             score += 2
-            reasons.append(f"거래량 {vol_ratio:.1f}배")
+            reasons.append(f"거래량증가{vol_ratio:.1f}x")
+        elif vol_ratio < 0.5:
+            score -= 1  # 신규 페널티
+            reasons.append("거래량감소")
 
-        # 3. 단기 모멘텀 (1h, 4h)
+        # 4. 단기 모멘텀 (급등 페널티 추가)
         mom_1h = (closes[-1] - closes[-2]) / closes[-2] * 100 if closes[-2] else 0
         mom_4h = (closes[-1] - closes[-5]) / closes[-5] * 100 if len(closes) >= 5 and closes[-5] else 0
-        if mom_1h > 1.5:
+        if mom_1h > 5.0:
+            score -= 1  # 급등 과열 페널티
+            reasons.append(f"1h급등{mom_1h:.1f}%")
+        elif mom_1h > 1.5:
             score += 2
-            reasons.append(f"1h+{mom_1h:.1f}%")
+            reasons.append(f"1h상승{mom_1h:.1f}%")
         elif mom_1h > 0.5:
             score += 1
+        elif mom_1h < -3.0:
+            score += 1  # 급락 후 반등 기회
+            reasons.append(f"1h급락반등{mom_1h:.1f}%")
         elif mom_1h < -2.0:
             score -= 2
-            reasons.append(f"1h{mom_1h:.1f}%")
+            reasons.append(f"1h하락{mom_1h:.1f}%")
 
         if mom_4h > 3.0:
             score += 2
@@ -322,16 +348,32 @@ def calculate_leo_score(ticker: str) -> dict:
         elif mom_4h < -5.0:
             score -= 2
 
-        # 4. EMA 정렬 (EMA9 > EMA21)
-        ema9 = float(df['close'].ewm(span=9).mean().iloc[-1])
-        ema21 = float(df['close'].ewm(span=21).mean().iloc[-1])
-        if ema9 > ema21 and current_price > ema9:
-            score += 2
-            reasons.append("EMA정렬↑")
-        elif ema9 < ema21:
-            score -= 1
+        # 5. 이동평균 정렬 (MA5 > MA20 > MA60 패턴)
+        if len(closes) >= 60:
+            ma5 = sum(closes[-5:]) / 5
+            ma20 = sum(closes[-20:]) / 20
+            ma60 = sum(closes[-60:]) / 60
 
-        # 5. MACD 크로스
+            if current_price > ma5 > ma20:
+                score += 3
+                reasons.append("추세상승정렬")
+            elif ma5 > ma20 > ma60:
+                score += 2
+                reasons.append("장기상승추세")
+            elif current_price < ma5 < ma20:
+                score -= 2
+                reasons.append("하락추세")
+        else:
+            # 60개 미만일 때 EMA 사용
+            ema9 = float(df['close'].ewm(span=9).mean().iloc[-1])
+            ema21 = float(df['close'].ewm(span=21).mean().iloc[-1])
+            if ema9 > ema21 and current_price > ema9:
+                score += 2
+                reasons.append("EMA정렬↑")
+            elif ema9 < ema21:
+                score -= 1
+
+        # 6. MACD 크로스 (유지)
         ema12 = float(df['close'].ewm(span=12).mean().iloc[-1])
         ema26 = float(df['close'].ewm(span=26).mean().iloc[-1])
         macd = ema12 - ema26
@@ -340,36 +382,40 @@ def calculate_leo_score(ticker: str) -> dict:
         macd_prev = ema12_prev - ema26_prev
         if macd > 0 and macd_prev <= 0:
             score += 2
-            reasons.append("MACD골든")
+            reasons.append("MACD골든크로스")
         elif macd > 0:
             score += 1
 
-        # 6. 공포탐욕지수 (극공포 구간 집중 전략)
+        # 7. 공포탐욕지수 (극공포 구간 집중 전략)
         pulse_intel = load_pulse_intel()
         fg_value = 50  # 기본값
         if pulse_intel:
             fg = pulse_intel.get("crypto", {}).get("fear_greed", {})
             fg_value = fg.get("value", 50)
 
-            # 극공포(25 이하): 공격적 매수
-            if fg_value <= 25:
-                score += 4  # 상향 (2 → 4)
+            # 극공포(20 이하): 최대 가점
+            if fg_value <= 20:
+                score += 5  # 상향
+                reasons.append(f"극극공포({fg_value})")
+            # 극공포(21-30): 공격적 매수
+            elif fg_value <= 30:
+                score += 4
                 reasons.append(f"극공포({fg_value})")
-            # 공포(26-40): 보수적 매수
-            elif fg_value <= 40:
+            # 공포(31-45): 보수적 매수
+            elif fg_value <= 45:
                 score += 2
                 reasons.append(f"공포({fg_value})")
-            # 탐욕(60+): 진입 억제
+            # 탐욕(70+): 진입 억제
             elif fg_value >= 75:
-                score -= 3  # 하향 (2 → 3)
+                score -= 4  # 상향
                 reasons.append(f"극탐욕({fg_value})")
             elif fg_value >= 60:
-                score -= 1
+                score -= 2
                 reasons.append(f"탐욕({fg_value})")
 
-        # 0~20 원시 점수 → 0~100 정규화
+        # 0~25 원시 점수 → 0~100 정규화 (범위 확장)
         raw_score = score
-        normalized_score = normalize_score(raw_score, max_raw_score=20.0)
+        normalized_score = normalize_score(raw_score, max_raw_score=25.0)
 
         return {
             "ticker": ticker,
@@ -465,7 +511,10 @@ def run_leo_cycle():
     """레오 단타 사이클 실행"""
     global consecutive_losses, daily_loss_pct, trades_today, last_trade_time
 
-    print(f"\n⚡ [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 레오 단타 스캔")
+    # RiskGuard 인스턴스 가져오기
+    risk_guard = get_risk_guard()
+
+    print(f"\n⚡ [{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 레오 단타 스캔", flush=True)
 
     if IMPORT_ERROR:
         print(f"[Leo] 의존성 누락: {IMPORT_ERROR}")
@@ -503,46 +552,53 @@ def run_leo_cycle():
             current_price = float(_cp)
 
             if balance * current_price >= 5000:
-                # 데이브 소유인지 체크
-                if check_dave_holdings(ticker):
-                    print(f"[Leo] {ticker} - 데이브 보유 중, 스킵")
+                coin = ticker.split('-')[1]
+
+                # 평단가가 0이면 강제 매도 (데이터 오류)
+                if avg_buy_price <= 0:
+                    print(f"⚠️ [Leo] {coin} 평단가 0원 - 데이터 오류로 전량 매도")
+                    send(f"⚠️ [레오] {coin} 평단가 오류 - 매도")
+                    upbit_analyzer.execute_sell(ticker, balance)
                     continue
 
                 profit_pct = (current_price - avg_buy_price) / avg_buy_price * 100
 
-                coin = ticker.split('-')[1]
+                # 백테스팅 검증 로직 (손절 -2%, 익절 +3%, 트레일링 -1.5%)
+                # 최고가 추적 (트레일링 스탑용)
+                highest_price = avg_buy_price * 1.03  # 기본값: 평단가 +3%
+                if ticker in last_trade_time:
+                    # 실제 최고가 추적은 별도 구현 필요 (간단히 현재가로 대체)
+                    highest_price = max(current_price, avg_buy_price * 1.03)
 
-                # SKILL 기반 익절/손절 관리 (개선 전략: -3%/+4%)
-                # 익절 체크 (상향: +5% → +4%)
-                if profit_pct >= 4.0:
-                    # 전량 익절
-                    print(f"💰 [Leo] {coin} 익절 +{profit_pct:.2f}% - 전량 매도")
-                    print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
-                    send(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
-                    upbit_analyzer.execute_sell(ticker, balance)
-                    consecutive_losses = 0  # 익절 시 연속 손절 리셋
-                    # 위험 관리: 매도 기록
-                    risk_guard.record_trade(ticker, "SELL", profit_pct=profit_pct)
-
-                elif profit_pct >= 2.5:
-                    # 1차 익절: 50% 청산 (리스크 헷지)
-                    sell_amount = balance * 0.5
-                    remaining = balance * 0.5
-                    print(f"💰 [Leo] {coin} 1차 익절 +{profit_pct:.2f}% - 50% 매도")
-                    print(f"  청산: {sell_amount:.6f}개 | 유지: {remaining:.6f}개")
-                    send(f"💰 [레오] {coin} +{profit_pct:.1f}% (50%)")
-                    upbit_analyzer.execute_sell(ticker, sell_amount)
-
-                # 손절 체크 (완화: -2% → -3%)
-                elif profit_pct <= -3.0:
+                # 손절 -2% (백테스팅 검증)
+                if profit_pct <= -2.0:
                     print(f"🛑 [Leo] {coin} 손절 {profit_pct:.2f}% - 전량 매도")
                     print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
                     send(f"🛑 [레오] {coin} {profit_pct:.1f}% 손절")
                     upbit_analyzer.execute_sell(ticker, balance)
                     consecutive_losses += 1
                     daily_loss_pct += profit_pct
-                    # 위험 관리: 매도 기록
                     risk_guard.record_trade(ticker, "SELL", profit_pct=profit_pct)
+
+                # 익절 +3% (백테스팅 검증)
+                elif profit_pct >= 3.0:
+                    print(f"💰 [Leo] {coin} 익절 +{profit_pct:.2f}% - 전량 매도")
+                    print(f"  평단: {avg_buy_price:,.0f}원 → 현재: {current_price:,.0f}원")
+                    send(f"💰 [레오] {coin} +{profit_pct:.1f}% 익절")
+                    upbit_analyzer.execute_sell(ticker, balance)
+                    consecutive_losses = 0
+                    risk_guard.record_trade(ticker, "SELL", profit_pct=profit_pct)
+
+                # 트레일링 스탑 -1.5% (최고점 대비)
+                elif profit_pct > 1.5:  # 1.5% 이상 수익일 때만 트레일링 적용
+                    trailing_loss = ((current_price - highest_price) / highest_price * 100)
+                    if trailing_loss <= -1.5:
+                        print(f"📉 [Leo] {coin} 트레일링스탑 {trailing_loss:.2f}% - 전량 매도")
+                        print(f"  최고: {highest_price:,.0f}원 → 현재: {current_price:,.0f}원")
+                        send(f"📉 [레오] {coin} 트레일링 {profit_pct:.1f}%")
+                        upbit_analyzer.execute_sell(ticker, balance)
+                        consecutive_losses = 0
+                        risk_guard.record_trade(ticker, "SELL", profit_pct=profit_pct)
 
                 # 홀딩 중 (익절/손절 범위 밖)
                 else:

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 통합 제어 시스템 (Unified Control)
 봇 제어, 에이전트 제어, 자동 수정을 하나의 스크립트로
@@ -26,8 +26,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 # 경로 설정
 _here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
-AI_TEAM_ROOT = os.path.join(PROJECT_ROOT, "projects", "ai-team")
+PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
+AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 try:
@@ -224,6 +224,19 @@ def agent_status(agent_name=None):
             pid_info = f" (PID: {', '.join(map(str, pids))})" if pids else ""
             print(f"{status} {name}{pid_info}")
 
+AGENT_ARGS = {
+    "시그널": ["--daemon"],
+    "데이브": ["--daemon", "--live"],
+    "레오": ["--daemon", "--live"],
+}
+
+AGENT_LOG_NAMES = {
+    "시그널": "signal",
+    "데이브": "dave",
+    "레오": "leo",
+    "영숙": "youngsuk",
+}
+
 def agent_start(agent_name):
     """에이전트 시작"""
     agent_name = normalize_agent_name(agent_name)
@@ -236,22 +249,47 @@ def agent_start(agent_name):
         return
 
     script_path = os.path.join(PROJECT_ROOT, AGENTS[agent_name])
+    args = AGENT_ARGS.get(agent_name, [])
+
+    # 로그 파일 설정
+    log_dir = os.path.join(PROJECT_ROOT, "projects", "output", "trading_logs")
+    os.makedirs(log_dir, exist_ok=True)
+    slug = AGENT_LOG_NAMES.get(agent_name, agent_name.lower())
+    
+    # 영숙은 bot_logs 폴더 사용
+    if agent_name == "영숙":
+        bot_log_dir = os.path.join(PROJECT_ROOT, "output", "bot_logs")
+        os.makedirs(bot_log_dir, exist_ok=True)
+        out_path = os.path.join(bot_log_dir, "telegram_receiver.log")
+        err_path = os.path.join(bot_log_dir, "telegram_receiver_err.log")
+    else:
+        out_path = os.path.join(log_dir, f"{slug}_daemon.out.log")
+        err_path = os.path.join(log_dir, f"{slug}_daemon.err.log")
 
     try:
+        env = {**os.environ, "PYTHONUTF8": "1"}
+        fout = open(out_path, "a", encoding="utf-8", errors="replace", buffering=1)
+        ferr = open(err_path, "a", encoding="utf-8", errors="replace", buffering=1)
+
         if platform.system() == "Windows":
             if agent_name == "영숙":
-                proc = subprocess.Popen(["pythonw", script_path],
+                proc = subprocess.Popen(["pythonw", "-u", script_path] + args,
+                                        stdout=fout,
+                                        stderr=ferr,
                                         creationflags=subprocess.CREATE_NO_WINDOW,
-                                        env={**os.environ, "PYTHONUTF8": "1"})
+                                        env=env)
             else:
-                proc = subprocess.Popen(["python", script_path],
+                proc = subprocess.Popen([sys.executable, "-u", script_path] + args,
+                                        stdout=fout,
+                                        stderr=ferr,
                                         creationflags=subprocess.CREATE_NO_WINDOW,
-                                        env={**os.environ, "PYTHONUTF8": "1"})
+                                        env=env)
         else:
-            proc = subprocess.Popen(["python3", script_path],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL,
-                                    start_new_session=True)
+            proc = subprocess.Popen([sys.executable, "-u", script_path] + args,
+                                    stdout=fout,
+                                    stderr=ferr,
+                                    start_new_session=True,
+                                    env=env)
         print(f"✅ {agent_name} 시작 (PID: {proc.pid})")
     except Exception as e:
         print(f"❌ {agent_name} 시작 실패: {e}")

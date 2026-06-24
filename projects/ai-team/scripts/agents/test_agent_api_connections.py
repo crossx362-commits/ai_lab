@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 AI 에이전트 API 연결 실제 테스트
 환경변수뿐만 아니라 실제 API 연결을 테스트합니다.
@@ -37,10 +37,10 @@ def test_gemini_api():
 def test_ollama():
     """Ollama 연결 테스트"""
     try:
-        from _shared.ollama_client import is_available, chat
+        from _shared.llm import is_available, ollama
         if not is_available():
             return False, "Ollama 서버 연결 불가"
-        result = chat("Say 'OK' only", task="test", max_tokens=10)
+        result = ollama("Say 'OK' only", task="test", max_tokens=10)
         return result is not None, result[:50] if result else "No response"
     except Exception as e:
         return False, str(e)[:100]

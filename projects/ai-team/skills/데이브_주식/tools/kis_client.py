@@ -24,6 +24,16 @@ class KISClient:
         self.account_no = os.getenv("KIS_ACCOUNT_NO", "12345678-01")
         self.account_code = os.getenv("KIS_ACCOUNT_CODE", "01")
 
+        # 계좌번호 파싱 (CANO: 앞 8자리, ACNT_PRDT_CD: 뒤 2자리)
+        if "-" in self.account_no:
+            parts = self.account_no.split("-")
+            self.cano = parts[0]
+            self.account_code = parts[1]
+        else:
+            self.cano = self.account_no[:8]
+            if len(self.account_no) > 8:
+                self.account_code = self.account_no[8:10]
+
         # 실전/모의 투자 구분
         self.is_real = os.getenv("KIS_REAL_MODE", "false").lower() == "true"
 
@@ -124,7 +134,7 @@ class KISClient:
         tr_id = "VTTC8434R" if not self.is_real else "TTTC8434R"
 
         params = {
-            "CANO": self.account_no.replace("-", ""),
+            "CANO": self.cano,
             "ACNT_PRDT_CD": self.account_code,
             "AFHR_FLPR_YN": "N",  # 시간외단일가여부
             "OFL_YN": "N",  # 오프라인여부
@@ -163,7 +173,7 @@ class KISClient:
         tr_id = "VTTC0802U" if not self.is_real else "TTTC0802U"
 
         body = {
-            "CANO": self.account_no.replace("-", ""),
+            "CANO": self.cano,
             "ACNT_PRDT_CD": self.account_code,
             "PDNO": stock_code,  # 종목코드
             "ORD_DVSN": "01" if price > 0 else "01",  # 주문구분 (00:지정가, 01:시장가)
@@ -179,7 +189,7 @@ class KISClient:
         tr_id = "VTTC0801U" if not self.is_real else "TTTC0801U"
 
         body = {
-            "CANO": self.account_no.replace("-", ""),
+            "CANO": self.cano,
             "ACNT_PRDT_CD": self.account_code,
             "PDNO": stock_code,
             "ORD_DVSN": "01" if price > 0 else "01",

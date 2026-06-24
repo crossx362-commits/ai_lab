@@ -20,8 +20,8 @@ UPLOADS = ROOT / "reports/uploads"
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env import load_env
-from _shared.llm import ollama as ollama_chat
-from _shared.image_uploader import upload_image
+from _shared.llm import text as llm_text
+from _shared.utils import upload_image
 load_env()
 
 SB_URL  = os.getenv("SUPABASE_URL", "")
@@ -166,7 +166,7 @@ def supabase_update_comments(access_token: str, post_id: int, comments: list) ->
 
 def generate_comment(agent_name: str, post_author: str, post_content: str) -> str:
     """Ollama 모델을 사용해 게시물에 달 대댓글을 작성합니다."""
-    result = ollama_chat(
+    result = llm_text(
         f"""펫과나 앱 소셜 피드 게시물에 달 댓글을 작성하세요.
 
 댓글 작성 에이전트: {agent_name}
@@ -198,7 +198,7 @@ def save_history(h: dict):
 
 def generate_caption(agent_name: str, pet_angle: str) -> str:
     today = datetime.now().strftime("%m월 %d일")
-    result = ollama_chat(
+    result = llm_text(
         f"""펫과나 반려동물 케어 앱 소셜 피드 게시물 캡션을 작성하세요.
 
 에이전트: {agent_name}

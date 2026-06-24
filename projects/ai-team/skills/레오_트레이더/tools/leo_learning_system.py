@@ -14,7 +14,7 @@ AI_TEAM_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.env import load_env
-from _shared.ollama_client import chat
+from _shared.llm import text as chat
 
 load_env()
 

@@ -89,6 +89,7 @@ class RiskGuard:
         Returns:
             (가능 여부, 불가 사유)
         """
+        self.state = self._load_state()
         self._check_daily_reset()
 
         # 1. 일일 손실 한도
@@ -123,6 +124,7 @@ class RiskGuard:
             action: BUY, SELL
             profit_pct: 수익률 (SELL 시)
         """
+        self.state = self._load_state()
         now = time.time()
         self.state["trade_history"].append((now, ticker, action))
 
@@ -144,11 +146,13 @@ class RiskGuard:
 
     def get_state(self) -> dict:
         """현재 상태 반환"""
+        self.state = self._load_state()
         self._check_daily_reset()
         return self.state.copy()
 
     def reset_consecutive_losses(self):
         """연속 손실 리셋 (익절 시)"""
+        self.state = self._load_state()
         self.state["consecutive_losses"] = 0
         self._save_state()
 

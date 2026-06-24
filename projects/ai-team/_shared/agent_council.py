@@ -18,16 +18,12 @@ _here = os.path.dirname(os.path.abspath(__file__))
 if _here not in sys.path:
     sys.path.insert(0, _here)
 
-try:
-    from ollama_client import chat as lm_chat, is_available as lm_available
-    from telegram_notifier import send
-    from env_loader import find_project_root, load_env
-except ImportError:
-    from _shared.llm import ollama as lm_chat, is_available as lm_available
-    from _shared.notify import send
-    from _shared.env_loader import find_project_root, load_env
+from _shared.llm import text as lm_chat, is_available
+from _shared.notify import send
+from _shared.env import load_env
 
-_PROJECT_ROOT = find_project_root(_here)
+# 프로젝트 루트 찾기
+_PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
 load_env(_PROJECT_ROOT)
 
 _COUNCIL_LOG = os.path.join(_PROJECT_ROOT, "reports", "learning", "council_log.jsonl")
@@ -166,7 +162,7 @@ def convene(
             "patch": dict or None,
         }
     """
-    if not lm_available():
+    if not is_available():
         msg = "⚠️ [에이전트 회의] Ollama 오프라인 — 회의 불가. 수동 확인 필요."
         send(msg)
         return {"success": False, "executed": False, "summary": msg, "patch": None}
@@ -199,30 +195,9 @@ def convene(
     ) or "분석 실패"
     print(f"  경수: {gyeongsu_resp[:150]}...")
 
-    # ── Round 1.5: 웹 서치 (필요 시) + 지식화 ───────────────────────────────
+    # ── Round 1.5: 웹 서치 (현재 비활성화) ─────────────────────────────────
+    # TODO: Gemini API를 통한 웹 서치 기능 재구현 필요
     web_knowledge = ""
-    try:
-        from gemini_client import web_search
-    except ImportError:
-        try:
-            from _shared.gemini_client import web_search
-        except ImportError:
-            web_search = None
-
-    if web_search:
-        # 경수 분석에서 키워드 추출 후 서치
-        search_query = f"Python {problem_summary[:80]} 해결 방법 best practice 2025"
-        print(f"\n🌐 [코다리] 웹 서치 중: {search_query[:60]}...")
-        search_result = web_search(search_query, max_tokens=800)
-        if search_result:
-            web_knowledge = search_result
-            print(f"  웹 서치 결과: {search_result[:120]}...")
-            # 지식 파일 자동 업데이트
-            _update_skill_knowledge(
-                agent="코다리",
-                topic=problem_summary[:60],
-                content=f"문제: {problem_summary}\n\n웹 서치 결과:\n{search_result}",
-            )
 
     # ── Round 2: 코다리 패치 제안 ─────────────────────────────────────────────
     print("\n🛠️ [코다리] 패치 제안 중...")

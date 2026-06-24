@@ -5,11 +5,9 @@ import glob
 
 def get_kb_dir():
     _here = os.path.dirname(os.path.abspath(__file__))
-    try:
-        from env_loader import find_project_root
-    except ImportError:
-        from _shared.env_loader import find_project_root
-    kb_path = os.path.join(find_project_root(_here), "reports", "knowledge_base")
+    # 프로젝트 루트 = _shared의 2단계 위
+    project_root = os.path.abspath(os.path.join(_here, "..", ".."))
+    kb_path = os.path.join(project_root, "reports", "knowledge_base")
     os.makedirs(kb_path, exist_ok=True)
     return kb_path
 

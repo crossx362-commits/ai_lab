@@ -13,11 +13,11 @@ import datetime
 import subprocess
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", "..", ".."))
+_ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, _ai_team_root)
 from _shared.notify import send as _send_telegram
-from _shared.env_loader import find_project_root
-PROJECT_ROOT = find_project_root(_here)
+from _shared.env import load_env
+PROJECT_ROOT = os.path.abspath(os.path.join(_ai_team_root, "..", ".."))
 
 MEM_FILE = os.path.join(PROJECT_ROOT, "reports", "history", "upload_history.json")
 

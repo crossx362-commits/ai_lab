@@ -25,7 +25,7 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
 from _shared.notify import send
-from _shared.ollama_client import is_available as lm_available
+from _shared.llm import is_available as lm_available
 
 # CEO Dispatcher import
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
