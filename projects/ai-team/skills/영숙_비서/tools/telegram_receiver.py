@@ -88,7 +88,7 @@ async def status_command(update: Update, _context: ContextTypes.DEFAULT_TYPE) ->
     try:
         import subprocess
         result = subprocess.run(
-            [sys.executable, str(AI_TEAM_ROOT / "scripts" / "daemon_manager.py"), "status"],
+            [sys.executable, str(AI_TEAM_ROOT / "scripts" / "unified_control.py"), "agent", "status"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -98,6 +98,10 @@ async def status_command(update: Update, _context: ContextTypes.DEFAULT_TYPE) ->
 
         if result.returncode == 0:
             status_text = result.stdout or "상태 정보 없음"
+            # Remove duplicate title if present in the first line
+            lines = status_text.splitlines()
+            if lines and "에이전트 상태" in lines[0]:
+                status_text = "\n".join(lines[1:]).strip()
         else:
             status_text = f"상태 확인 실패:\n{result.stderr}"
 
