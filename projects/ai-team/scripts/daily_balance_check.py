@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 일일 잔고 점검 스크립트
 매일 아침 9시 잔고 확인 및 리포트
@@ -32,28 +32,40 @@ def daily_balance_report():
     # KRW 잔고
     krw = float(client.get_balance("KRW"))
 
-    # 보유 코인
-    tickers = [
-        "KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP",
-        "KRW-DOGE", "KRW-PEPE", "KRW-NEAR", "KRW-SUI",
-        "KRW-SEI", "KRW-HBAR", "KRW-STX"
-    ]
-
     holdings = []
     total_value = krw
 
-    for ticker in tickers:
+    try:
+        balances = client.get_balances()
+    except Exception as e:
+        print(f"잔고 조회 실패: {e}")
+        balances = []
+
+    for b in balances:
+        currency = b.get('currency')
+        if currency == "KRW":
+            continue
         try:
-            balance = float(client.get_balance(ticker))
-            current_price = float(pyupbit.get_current_price(ticker))
-            value = balance * current_price
+            balance = float(b.get('balance', 0))
+            locked = float(b.get('locked', 0))
+            total_balance = balance + locked
+            if total_balance <= 0:
+                continue
+
+            ticker = f"KRW-{currency}"
+            current_price = pyupbit.get_current_price(ticker)
+            if current_price is None:
+                continue
+
+            current_price = float(current_price)
+            value = total_balance * current_price
 
             if value >= 5000:
-                avg_price = float(client.get_avg_buy_price(ticker))
-                profit_pct = (current_price - avg_price) / avg_price * 100
+                avg_price = float(b.get('avg_buy_price', 0))
+                profit_pct = ((current_price - avg_price) / avg_price * 100) if avg_price > 0 else 0.0
 
                 holdings.append({
-                    "coin": ticker.split("-")[1],
+                    "coin": currency,
                     "value": value,
                     "profit_pct": profit_pct
                 })
