@@ -24,55 +24,16 @@ import upbit_analyzer
 
 def daily_balance_report():
     """일일 잔고 리포트"""
-    client = upbit_analyzer.get_upbit_client()
-    if not client:
-        print("API 키 미설정")
+    import check_holdings
+
+    portfolio = check_holdings.get_upbit_portfolio()
+    if not portfolio:
+        print("API 키 미설정 또는 조회 실패")
         return
 
-    # KRW 잔고
-    krw = float(client.get_balance("KRW"))
-
-    holdings = []
-    total_value = krw
-
-    try:
-        balances = client.get_balances()
-    except Exception as e:
-        print(f"잔고 조회 실패: {e}")
-        balances = []
-
-    for b in balances:
-        currency = b.get('currency')
-        if currency == "KRW":
-            continue
-        try:
-            balance = float(b.get('balance', 0))
-            locked = float(b.get('locked', 0))
-            total_balance = balance + locked
-            if total_balance <= 0:
-                continue
-
-            ticker = f"KRW-{currency}"
-            current_price = pyupbit.get_current_price(ticker)
-            if current_price is None:
-                continue
-
-            current_price = float(current_price)
-            value = total_balance * current_price
-
-            if value >= 5000:
-                avg_price = float(b.get('avg_buy_price', 0))
-                profit_pct = ((current_price - avg_price) / avg_price * 100) if avg_price > 0 else 0.0
-
-                holdings.append({
-                    "coin": currency,
-                    "value": value,
-                    "profit_pct": profit_pct
-                })
-
-                total_value += value
-        except Exception:
-            pass
+    krw = portfolio["krw"]
+    holdings = portfolio["holdings"]
+    total_value = portfolio["total_value"]
 
     # 리포트 생성
     holdings_str = ""

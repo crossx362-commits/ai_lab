@@ -15,20 +15,24 @@ import pyupbit
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "skills", "데이브_주식", "tools"))
 import upbit_analyzer
 
-def check_holdings():
+def get_upbit_portfolio():
+    """업비트 잔고 및 보유 코인 평가 정보 조회"""
     client = upbit_analyzer.get_upbit_client()
     if not client:
-        print("API 키 미설정")
-        return
+        return None
 
-    print("\n=== 보유 코인 현황 ===\n")
+    try:
+        krw = float(client.get_balance("KRW"))
+    except Exception:
+        krw = 0.0
 
     holdings = []
+    total_value = krw
+
     try:
         balances = client.get_balances()
-    except Exception as e:
-        print(f"잔고 조회 실패: {e}")
-        return
+    except Exception:
+        balances = []
 
     for b in balances:
         currency = b.get('currency')
@@ -62,8 +66,27 @@ def check_holdings():
                     "value": value,
                     "profit_pct": profit_pct
                 })
+
+                total_value += value
         except Exception:
             pass
+
+    return {
+        "krw": krw,
+        "holdings": holdings,
+        "total_value": total_value
+    }
+
+
+def check_holdings():
+    portfolio = get_upbit_portfolio()
+    if not portfolio:
+        print("API 키 미설정 또는 조회 실패")
+        return
+
+    holdings = portfolio["holdings"]
+
+    print("\n=== 보유 코인 현황 ===\n")
 
     if not holdings:
         print("보유 코인 없음")
@@ -89,13 +112,15 @@ def check_holdings():
             print(f"     평가: {h['value']:,.0f}원\n")
 
     # 총합
-    total_value = sum(h['value'] for h in holdings)
+    total_value = portfolio["total_value"]
+    coin_value = sum(h['value'] for h in holdings)
     total_profit = sum(h['value'] * h['profit_pct'] / 100 for h in holdings)
-    total_profit_pct = (total_profit / total_value) * 100 if total_value > 0 else 0
+    total_profit_pct = (total_profit / coin_value) * 100 if coin_value > 0 else 0
 
     print("="*50)
-    print(f"총 평가액: {total_value:,.0f}원")
-    print(f"총 수익률: {total_profit_pct:+.2f}%")
+    print(f"총 평가액 (KRW 포함): {total_value:,.0f}원")
+    print(f"코인 평가액: {coin_value:,.0f}원")
+    print(f"코인 수익률: {total_profit_pct:+.2f}%")
     print("="*50)
 
 if __name__ == "__main__":

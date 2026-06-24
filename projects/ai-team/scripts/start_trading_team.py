@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 트레이딩 팀 통합 시작 스크립트
 시그널(정보 수집) + 데이브(보수적 매매) + 레오(공격적 단타) 협업
@@ -195,6 +195,18 @@ def main():
     else:
         print(f"⚠️  레오 스크립트 없음: {leo_path}")
 
+    # 4. 데이브 주식 (보수적 주식 매매 - 선택 사항)
+    if "--with-stock" in sys.argv:
+        stock_path = os.path.join(
+            AI_TEAM_ROOT, "skills", "데이브_주식", "tools", "stock_auto_trader.py"
+        )
+        if os.path.exists(stock_path):
+            process_configs["주식"] = {"path": stock_path, "args": ["--daemon"]}
+            processes["주식"] = None if is_manual_stopped("주식") else start_process("데이브 (주식 보수적/실거래)", stock_path, ["--daemon"])
+            time.sleep(1)
+        else:
+            print(f"⚠️  주식 스크립트 없음: {stock_path}")
+
     print("\n" + "=" * 60)
     print("✅ 트레이딩 팀 가동 완료")
     print("=" * 60)
@@ -215,6 +227,8 @@ def main():
 3️⃣ 레오 → 공격적 단타 (10초)
    - 시그널 정보 참조, 퀀트 2점 이상 + 위험 필터
 """
+    if "주식" in processes and processes["주식"] is not None:
+        msg += "4️⃣ 데이브 주식 → 국내 주식 보수적 자동 매매 (실거래)\n"
     send(msg)
 
     print(f"\n실행 중인 프로세스:")
