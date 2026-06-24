@@ -11,7 +11,7 @@ from typing import Any
 AI_TEAM_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_WORKSPACE_ROOT = AI_TEAM_ROOT.parents[1]
 
-AGENT_DEFAULTS = {
+_BASE_AGENT_DEFAULTS = {
     "dave": {
         "buy_threshold": 70,
         "watch_threshold": 55,
@@ -29,6 +29,44 @@ AGENT_DEFAULTS = {
         "hold_pressure_points": 5,
     },
 }
+
+
+def _load_signal_thresholds() -> dict[str, int]:
+    """market_signal.json의 learning_insights에서 권장 임계값 로드"""
+    try:
+        for fname in ("market_signal.json", "market_pulse.json"):
+            path = DEFAULT_WORKSPACE_ROOT / "reports" / "research" / fname
+            if path.exists():
+                data = json.loads(path.read_text(encoding="utf-8"))
+                insights = data.get("learning_insights", {})
+                thresholds = {}
+                for agent in ("dave", "leo"):
+                    t = insights.get(agent, {}).get("recommended_buy_threshold")
+                    if isinstance(t, (int, float)) and t > 0:
+                        thresholds[agent] = int(t)
+                if thresholds:
+                    return thresholds
+    except Exception:
+        pass
+    return {}
+
+
+def _build_agent_defaults() -> dict:
+    """기본값 + 학습 임계값 합성"""
+    import copy
+    defaults = copy.deepcopy(_BASE_AGENT_DEFAULTS)
+    learned = _load_signal_thresholds()
+    for agent, thresh in learned.items():
+        if agent in defaults:
+            old = defaults[agent]["buy_threshold"]
+            defaults[agent]["buy_threshold"] = thresh
+            defaults[agent]["watch_threshold"] = max(thresh - 15, 40)
+            if thresh != old:
+                pass  # 조용히 적용 (로그 없음)
+    return defaults
+
+
+AGENT_DEFAULTS = _build_agent_defaults()
 
 
 def _workspace_root(workspace_root: str | Path | None = None) -> Path:

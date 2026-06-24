@@ -48,8 +48,22 @@ def _signal_intel_path():
     return signal_path if os.path.exists(signal_path) else compat_path
 
 
+def _get_learning_insights() -> dict:
+    """시그널에서 학습 인사이트 로드"""
+    import json
+    try:
+        intel_path = _signal_intel_path()
+        if os.path.exists(intel_path):
+            with open(intel_path, "r", encoding="utf-8") as f:
+                intel = json.load(f)
+            return intel.get("learning_insights", {}).get("dave", {})
+    except Exception:
+        pass
+    return {}
+
+
 def get_dynamic_tickers():
-    """시그널 인텔 기반 동적 종목 선정 (퀀트 점수 기준)"""
+    """시그널 인텔 + 학습 인사이트 기반 동적 종목 선정"""
     import json
     tickers = BASE_TICKERS.copy()
 
@@ -59,7 +73,7 @@ def get_dynamic_tickers():
             with open(intel_path, "r", encoding="utf-8") as f:
                 intel = json.load(f)
 
-            # 시그널 코인 정보 확인
+            # 시그널 고득점 코인 추가
             crypto_data = intel.get("crypto", {})
             if "top_coins" in crypto_data:
                 for coin in crypto_data["top_coins"][:8]:
@@ -68,8 +82,23 @@ def get_dynamic_tickers():
                     if ticker and score >= 40:
                         tickers.append(ticker)
 
+            # 학습 인사이트: 승률 낮은 코인 제거
+            insights = intel.get("learning_insights", {}).get("dave", {})
+            avoid = insights.get("avoid_coins", [])
+            if avoid:
+                before = len(tickers)
+                tickers = [t for t in tickers if t not in avoid]
+                removed = before - len(tickers)
+                if removed:
+                    print(f"[Dave] 학습 기반 제외: {avoid} ({removed}개)")
+
+            # 학습 top_coins 우선 추가
+            for top in insights.get("top_coins", []):
+                if top not in tickers:
+                    tickers.insert(0, top)
+
             tickers = list(dict.fromkeys(tickers))
-            print(f"[Dave] 동적 종목: {len(tickers)}개 (시그널 반영)")
+            print(f"[Dave] 동적 종목: {len(tickers)}개 (시그널+학습 반영)")
     except Exception as e:
         print(f"[Dave] 동적 종목 로드 실패, 기본 종목 사용: {e}")
 
@@ -636,7 +665,12 @@ def run_auto_trade_cycle():
                 else:
                     amount_str = f"{buy_amount:,.0f}원"
 
-                msg = f"💼 [데이브] {coin} 매수 {amount_str} ({evaluation['entry_score']}점, 승률 {evaluation['expected_win_rate']*100:.0f}%, RR {evaluation['risk_reward']})"
+                reasons_str = ", ".join(best.get("reasons", [])) if best.get("reasons") else "기술지표 신호"
+                msg = (
+                    f"💼 [데이브] {coin} 매수 {amount_str}\n"
+                    f"📊 평점: {evaluation['entry_score']}점 | 승률: {evaluation['expected_win_rate']*100:.0f}% | 손익비: {evaluation['risk_reward']}\n"
+                    f"💡 근거: {reasons_str}"
+                )
                 print(msg)
                 send(msg)
                 res = upbit_analyzer.execute_buy(best_ticker, buy_amount)

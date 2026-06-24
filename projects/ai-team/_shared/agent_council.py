@@ -21,12 +21,16 @@ if _here not in sys.path:
 from _shared.llm import text as lm_chat, is_available
 from _shared.notify import send
 from _shared.env import load_env
+from _shared.llm_cache import LLMCache
 
 # 프로젝트 루트 찾기
-_PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", ".."))
+_PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 load_env(_PROJECT_ROOT)
 
 _COUNCIL_LOG = os.path.join(_PROJECT_ROOT, "reports", "learning", "council_log.jsonl")
+
+# 에러 반복 방지용 LLM 캐시 (15분 쿨다운)
+_council_cache = LLMCache("council", _PROJECT_ROOT, cooldown_seconds=900, score_delta_trigger=100)
 
 # ─── 에이전트 페르소나 ────────────────────────────────────────────────────────
 
@@ -179,9 +183,22 @@ def convene(
         f"문제: {problem_summary[:200]}"
     )
 
-    problem_context = f"문제: {problem_summary}"
+    # ── 에러 해시로 캐시 체크 (결의안 ④: 반복 에러 시 LLM 재호출 금지) ────────
+    err_hash = str(abs(hash(problem_summary[:80])))
+    should_call, cache_reason = _council_cache.should_call_llm(err_hash, current_score=50)
+    if not should_call:
+        cached = _council_cache.get_cached_decision(err_hash)
+        if cached:
+            reason = cached.get("reason", "캐시 재사용")
+            print(f"  [캐시] {cache_reason} — {reason}")
+            send(f"🔄 [에이전트 회의 캐시] {cache_reason}\n문제: {problem_summary[:100]}")
+            return {"success": True, "executed": False, "summary": f"캐시:{reason}", "patch": None}
+
+    # ── 컨텍스트 구성 (결의안 ①: 압축 전달) ──────────────────────────────────
+    # 경수에게는 원문 전체, 코다리/예원에는 요약본만 전달
+    problem_context = f"문제: {problem_summary[:500]}"
     if error_traceback:
-        problem_context += f"\n\n에러 트레이스:\n{error_traceback[:1500]}"
+        problem_context += f"\n\n에러 트레이스:\n{error_traceback[:800]}"
     if context_file:
         problem_context += f"\n\n관련 파일: {context_file}"
 
@@ -190,7 +207,7 @@ def convene(
     gyeongsu_resp = lm_chat(
         problem_context,
         system=_GYEONGSU,
-        max_tokens=400,
+        max_tokens=200,  # 결의안 ②: 400→200
         temperature=0.3,
     ) or "분석 실패"
     print(f"  경수: {gyeongsu_resp[:150]}...")
@@ -201,17 +218,17 @@ def convene(
 
     # ── Round 2: 코다리 패치 제안 ─────────────────────────────────────────────
     print("\n🛠️ [코다리] 패치 제안 중...")
+    # 결의안 ①: 경수 응답 150자 요약본만 전달
     kodari_input = (
-        f"{problem_context}\n\n"
-        f"경수 분석:\n{gyeongsu_resp}\n\n"
-        + (f"웹 서치 참고 자료:\n{web_knowledge}\n\n" if web_knowledge else "")
-        + f"프로젝트 루트: {_PROJECT_ROOT}"
+        f"문제: {problem_summary[:300]}\n\n"
+        f"경수 분석:\n{gyeongsu_resp[:150]}\n\n"
+        f"프로젝트 루트: {_PROJECT_ROOT}"
     )
     kodari_resp = lm_chat(
         kodari_input,
         system=_KODARI,
         json_mode=True,
-        max_tokens=600,
+        max_tokens=400,  # 결의안 ②: 600→400
         temperature=0.2,
     ) or "{}"
     patch = _parse_json_safe(kodari_resp) or {"patch_type": "none", "reason": "파싱 실패"}
@@ -219,16 +236,17 @@ def convene(
 
     # ── Round 4: 예원 CEO 최종 결재 ───────────────────────────────────────────
     print("\n👑 [예원 CEO] 최종 결재 중...")
+    # 결의안 ①: 요약본만 전달
     yewon_input = (
-        f"문제: {problem_summary}\n\n"
-        f"경수 분석: {gyeongsu_resp[:300]}\n\n"
-        f"코다리 패치: {json.dumps(patch, ensure_ascii=False)[:400]}\n\n"
+        f"문제: {problem_summary[:200]}\n\n"
+        f"경수: {gyeongsu_resp[:100]}\n\n"
+        f"패치: {json.dumps(patch, ensure_ascii=False)[:300]}"
     )
     yewon_resp = lm_chat(
         yewon_input,
         system=_YEWON,
         json_mode=True,
-        max_tokens=200,
+        max_tokens=150,  # 결의안 ②: 200→150
         temperature=0.1,
     ) or "{}"
     decision = _parse_json_safe(yewon_resp) or {
@@ -264,6 +282,14 @@ def convene(
         "exec_result": exec_result,
     }
     _log_council(record)
+
+    # ── 결의안 ④: 결과를 캐시에 저장 (동일 에러 15분 내 재발 시 재사용) ─────────
+    _council_cache.cache_decision(
+        err_hash,
+        score=50,
+        decision="EXECUTED" if executed else "HOLD",
+        reason=decision.get("ceo_comment", "")[:80],
+    )
 
     # ── 텔레그램 보고 ─────────────────────────────────────────────────────────
     status_icon = "✅" if executed else ("🟡" if decision.get("final_approval") else "❌")

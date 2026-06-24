@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 레오 공격적 단타 트레이더
 고변동성 알트코인 전문, 빠른 수익 실현
@@ -115,11 +115,12 @@ except ModuleNotFoundError as e:
     IMPORT_ERROR = e
     upbit_analyzer = None
 
-# 기본 감시 대상 (메이저 코인 우선 → 승률 개선)
+# 기본 감시 대상 (백테스트 검증: NEAR EV+2%, SUI EV+0.39%)
 BASE_LEO_TICKERS = [
-    "KRW-SOL", "KRW-ETH", "KRW-BTC",  # 메이저 코인 우선
-    "KRW-AVAX", "KRW-LINK", "KRW-NEAR",  # 중형 알트
-    "KRW-DOGE", "KRW-STX",  # 고변동성 (비중 축소)
+    "KRW-NEAR", "KRW-SUI",              # 백테스트 최고 성과
+    "KRW-BTC", "KRW-AVAX", "KRW-LINK",  # 안정적 메이저
+    "KRW-DOGE", "KRW-PEPE",             # 고변동성 (소량)
+    # 제외: SOL, ETH, HBAR, STX (백테스트 EV 마이너스)
 ]
 
 def _signal_intel_path():
@@ -128,26 +129,48 @@ def _signal_intel_path():
     return signal_path if os.path.exists(signal_path) else compat_path
 
 
+def _get_learning_insights() -> dict:
+    """학습 인사이트 로드 (market_signal.json → learning_insights.leo)"""
+    import json
+    try:
+        intel_path = _signal_intel_path()
+        if os.path.exists(intel_path):
+            data = json.loads(open(intel_path, encoding="utf-8").read())
+            return data.get("learning_insights", {}).get("leo", {})
+    except Exception:
+        pass
+    return {}
+
+
 def get_dynamic_leo_tickers():
-    """시그널 인텔 기반 동적 종목 선정 (퀀트 점수 기준, 공격적)"""
+    """시그널 인텔 기반 동적 종목 선정 (학습 기반 avoid/top 반영)"""
     import json
     tickers = BASE_LEO_TICKERS.copy()
 
     try:
         intel_path = _signal_intel_path()
         if os.path.exists(intel_path):
-            with open(intel_path, "r", encoding="utf-8") as f:
-                intel = json.load(f)
+            intel = json.loads(open(intel_path, encoding="utf-8").read())
 
-            # 시그널 코인 정보 확인
+            # 학습 인사이트: avoid_coins 제거, top_coins 우선순위
+            insights = intel.get("learning_insights", {}).get("leo", {})
+            avoid = set(insights.get("avoid_coins", []))
+            if avoid:
+                tickers = [t for t in tickers if t not in avoid]
+                print(f"[Leo] avoid 제거: {avoid}")
+
+            for top in reversed(insights.get("top_coins", [])):
+                if top not in tickers:
+                    tickers.insert(0, top)
+
+            # 시그널 고득점 코인 추가
             crypto_data = intel.get("crypto", {})
             if "top_coins" in crypto_data:
                 for coin in crypto_data["top_coins"][:10]:
                     ticker = coin.get("ticker")
                     score = coin.get("score", 0)
-                    if ticker and score >= 40:
+                    if ticker and score >= 40 and ticker not in avoid:
                         tickers.append(ticker)
-                print(f"[Leo] 시그널 고득점 코인 반영 완료")
 
             tickers = list(dict.fromkeys(tickers))
             print(f"[Leo] 동적 종목: {len(tickers)}개")
@@ -825,7 +848,12 @@ def run_leo_cycle():
         else:
             amount_str = f"{buy_amount:,.0f}원"
 
-        msg = f"⚡ [레오] {coin} 진입 {amount_str} ({evaluation['entry_score']}점, 승률 {evaluation['expected_win_rate']*100:.0f}%, RR {evaluation['risk_reward']})"
+        reasons_str = ", ".join(reasons) if reasons else "단기 수급 급증"
+        msg = (
+            f"⚡ [레오] {coin} 진입 {amount_str}\n"
+            f"📊 평점: {evaluation['entry_score']}점 | 승률: {evaluation['expected_win_rate']*100:.1f}% | 손익비: {evaluation['risk_reward']}\n"
+            f"💡 근거: {reasons_str}"
+        )
         send(msg)
 
         res = upbit_analyzer.execute_buy(ticker, buy_amount)

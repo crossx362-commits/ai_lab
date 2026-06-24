@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-AGENTS=(com.ailab.signal com.ailab.dave com.ailab.leo com.ailab.dave-stock com.ailab.youngsuk)
+AGENTS=(com.ailab.signal com.ailab.dave com.ailab.leo com.ailab.dave-stock com.ailab.youngsuk com.ailab.kodari com.ailab.kevin com.ailab.somi com.ailab.cleanup)
 
 # 기존 실행 중인 프로세스 정리
 echo "기존 프로세스 정리 중..."
@@ -25,6 +25,7 @@ done
 
 # plist 파일 복사 및 등록
 mkdir -p "$HOME/ai_lab/output/trading_logs"
+mkdir -p "$HOME/ai_lab/output/bot_logs"
 for agent in "${AGENTS[@]}"; do
     cp "$SCRIPT_DIR/$agent.plist" "$LAUNCH_AGENTS/"
     launchctl load "$LAUNCH_AGENTS/$agent.plist"

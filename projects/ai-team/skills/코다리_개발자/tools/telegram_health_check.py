@@ -19,7 +19,7 @@ _root = os.path.abspath(os.path.join(_ai_team, ".."))
 
 from _shared.env import load_env as _load_env
 from _shared.notify import send
-import _shared.gemini_client as _gc
+from _shared.llm import text as _lm_text
 
 _BOT_SCRIPT = os.path.join(_root, "projects", "ai-team", "skills", "영숙_비서", "tools", "telegram_receiver.py")
 _LOG_FILE   = os.path.join(_root, "projects", "ai-team", "skills", "영숙_비서", "tools", "telegram_receiver.log")
@@ -76,7 +76,7 @@ def _analyze_log(log: str) -> str:
         "문제가 없으면 '정상' 한 단어만 출력하세요.\n\n"
         f"[로그]\n{log[:3000]}"
     )
-    result = _gc.text(prompt, task="coding", max_tokens=400)
+    result = _lm_text(prompt, max_tokens=400)
     return (result or "분석 실패").strip()
 
 
@@ -101,7 +101,7 @@ def _restart_bot() -> int | None:
             creationflags=0x00000008,
         )
     else:
-        proc = subprocess.Popen(
+        subprocess.Popen(
             [sys.executable, _BOT_SCRIPT],
             stdout=log_fd, stderr=log_fd,
             start_new_session=True,

@@ -30,6 +30,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AI_TEAM_ROOT = SCRIPT_DIR.parents[2]
 WORKSPACE_ROOT = AI_TEAM_ROOT.parents[1]
 sys.path.insert(0, str(AI_TEAM_ROOT))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
@@ -133,7 +134,7 @@ def get_crypto_signals() -> dict[str, Any]:
 def score_upbit_tickers() -> list[dict[str, Any]]:
     """백테스팅 검증된 지표 기반 스코어링 (RSI, 볼린저밴드, MA)"""
     tickers = ["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-XRP", "KRW-DOGE", "KRW-ADA", "KRW-AVAX", "KRW-LINK",
-               "KRW-LINK", "KRW-NEAR", "KRW-STX"]
+               "KRW-NEAR", "KRW-STX", "KRW-SUI", "KRW-SEI", "KRW-PEPE"]
     try:
         import pyupbit
     except Exception as exc:
@@ -317,6 +318,35 @@ def notify_on_change(data: dict[str, Any]) -> None:
         send("📡 [시그널] 시장 신호가 바뀌었어요\n" + data.get("ai_analysis", summarize(data)), silent=True)
 
 
+_last_learn_time: float = 0
+_LEARN_INTERVAL = 3600  # 학습은 1시간마다
+
+
+def get_learning_insights() -> dict[str, Any]:
+    """백테스트 기반 학습 인사이트 (1시간 캐시)"""
+    global _last_learn_time
+    now = time.time()
+    if now - _last_learn_time < _LEARN_INTERVAL:
+        # 캐시: 기존 파일에서 읽기
+        if SIGNAL_FILE.exists():
+            try:
+                cached = json.loads(SIGNAL_FILE.read_text(encoding="utf-8"))
+                if "learning_insights" in cached:
+                    return cached["learning_insights"]
+            except Exception:
+                pass
+    try:
+        from signal_learner import analyze
+        insights = analyze(WORKSPACE_ROOT)
+        _last_learn_time = now
+        log(f"학습 완료: dave 임계값={insights.get('dave', {}).get('recommended_buy_threshold')} "
+            f"leo 임계값={insights.get('leo', {}).get('recommended_buy_threshold')}")
+        return insights
+    except Exception as e:
+        log(f"학습 실패: {e}")
+        return {}
+
+
 def run_once(notify: bool = False) -> dict[str, Any] | None:
     fd = acquire_file_lock()
     if fd is None:
@@ -331,6 +361,7 @@ def run_once(notify: bool = False) -> dict[str, Any] | None:
             "stock": get_stock_signals(),
         }
         data["ai_analysis"] = summarize(data)
+        data["learning_insights"] = get_learning_insights()
         write_outputs(data)
         if notify:
             notify_on_change(data)

@@ -35,28 +35,32 @@ class AgentHealthMonitor:
         "leo": {
             "name": "레오",
             "script": "projects/ai-team/skills/레오_트레이더/tools/leo_aggressive_trader.py",
-            "log": "projects/output/trading_logs/leo_daemon.out.log",
+            "log": "output/trading_logs/leo_daemon.out.log",
+            "launchd": "com.ailab.leo",
             "critical": True,
             "max_restart": 3,
         },
         "dave": {
             "name": "데이브",
             "script": "projects/ai-team/skills/데이브_주식/tools/upbit_auto_trader.py",
-            "log": "projects/output/trading_logs/dave_daemon.out.log",
+            "log": "output/trading_logs/dave_daemon.out.log",
+            "launchd": "com.ailab.dave",
             "critical": True,
             "max_restart": 3,
         },
         "signal": {
             "name": "시그널",
             "script": "projects/ai-team/skills/시그널_분석가/tools/market_signal.py",
-            "log": "projects/output/trading_logs/signal_daemon.out.log",
+            "log": "output/trading_logs/signal_daemon.out.log",
+            "launchd": "com.ailab.signal",
             "critical": True,
             "max_restart": 3,
         },
         "youngsuk": {
             "name": "영숙",
             "script": "projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py",
-            "log": "projects/ai-team/skills/영숙_비서/tools/telegram_receiver.log",
+            "log": "output/trading_logs/youngsuk_daemon.out.log",
+            "launchd": "com.ailab.youngsuk",
             "critical": True,
             "max_restart": 3,
         },
@@ -159,22 +163,40 @@ class AgentHealthMonitor:
             return False
 
     def restart_agent(self, agent_id: str, config: dict) -> bool:
-        """에이전트 재시작"""
-        script_path = WORKSPACE_ROOT / config["script"]
-        if not script_path.exists():
-            print(f"[코다리] ❌ {config['name']} 스크립트 없음: {script_path}")
-            return False
+        """에이전트 재시작 — launchd kickstart 우선 사용"""
+        print(f"[코다리] 🔄 {config['name']} 재시작 중...")
 
         try:
-            print(f"[코다리] 🔄 {config['name']} 재시작 중...")
+            # macOS: launchctl kickstart로 launchd가 직접 재시작 (올바른 환경/launcher 사용)
+            launchd_label = config.get("launchd")
+            if os.name != "nt" and launchd_label:
+                import pwd
+                uid = pwd.getpwnam(os.environ.get("USER", "junholee")).pw_uid
+                result = subprocess.run(
+                    ["launchctl", "kickstart", "-k", f"gui/{uid}/{launchd_label}"],
+                    capture_output=True, text=True, timeout=15
+                )
+                time.sleep(4)
+                if self.is_process_running(config["script"]):
+                    print(f"[코다리] ✅ {config['name']} launchctl 재시작 성공")
+                    self.restart_count[agent_id] += 1
+                    return True
+                else:
+                    print(f"[코다리] ⚠️ {config['name']} launchctl 실패, subprocess 시도...")
 
-            if os.name == "nt":  # Windows
+            # 폴백: 직접 subprocess (Windows 또는 launchd 없는 경우)
+            script_path = WORKSPACE_ROOT / config["script"]
+            if not script_path.exists():
+                print(f"[코다리] ❌ {config['name']} 스크립트 없음: {script_path}")
+                return False
+
+            if os.name == "nt":
                 subprocess.Popen(
                     ["python", str(script_path)],
                     cwd=str(WORKSPACE_ROOT),
                     creationflags=subprocess.CREATE_NO_WINDOW
                 )
-            else:  # Unix/macOS
+            else:
                 subprocess.Popen(
                     [sys.executable, str(script_path)],
                     cwd=str(WORKSPACE_ROOT),
@@ -183,11 +205,9 @@ class AgentHealthMonitor:
                 )
 
             time.sleep(3)
-
             if self.is_process_running(config["script"]):
-                print(f"[코다리] ✅ {config['name']} 재시작 성공")
+                print(f"[코다리] ✅ {config['name']} subprocess 재시작 성공")
                 self.restart_count[agent_id] += 1
-                send(f"🔄 [코다리] {config['name']} 자동 재시작 ({self.restart_count[agent_id]}/{config['max_restart']})")
                 return True
             else:
                 print(f"[코다리] ❌ {config['name']} 재시작 실패")
@@ -225,28 +245,22 @@ class AgentHealthMonitor:
                 print(f"[코다리] {config['name']} 다운 감지 - 자동 재시작")
                 if self.restart_agent(agent_id, config):
                     status["action"] = "restarted"
-                    send(f"🔄 [코다리] {config['name']} 자동 재시작 완료")
                 else:
                     status["action"] = "restart_failed"
-                    if config["critical"]:
-                        send(f"🚨 [코다리] {config['name']} 재시작 실패")
             else:
                 status["action"] = "max_restart_reached"
-                send(f"🚨 [코다리] {config['name']} 최대 재시작 횟수 도달")
 
         elif not log_active and agent_id != "youngsuk":
             # 프로세스는 살아있지만 로그가 오래됨 (영숙 제외)
             print(f"[코다리] {config['name']} 로그 활동 없음 - 재시작")
             if self.restart_agent(agent_id, config):
                 status["action"] = "restarted_inactive"
-                send(f"🔄 [코다리] {config['name']} 비활성 감지 - 재시작")
 
         elif errors and len(errors) > 3:
             # 에러가 많으면 재시작
             print(f"[코다리] {config['name']} 다수 에러 감지 - 재시작")
             if self.restart_agent(agent_id, config):
                 status["action"] = "restarted_errors"
-                send(f"⚠️ [코다리] {config['name']} 에러 감지 - 재시작")
 
         return status
 
@@ -280,10 +294,23 @@ class AgentHealthMonitor:
 
         print(f"\n{'='*60}\n")
 
-        # 액션 요약 알림
+        # 액션 요약 알림 — 문제 해결 후 요약 하나만 전송
         if actions_taken:
-            summary = "\n".join(actions_taken)
+            action_labels = {
+                "restarted": "재시작 완료",
+                "restarted_inactive": "비활성→복구 완료",
+                "restarted_errors": "에러감지→재시작 완료",
+                "restart_failed": "⚠️ 재시작 실패",
+                "max_restart_reached": "🚨 최대 재시작 초과",
+            }
+            lines = []
+            for r in results:
+                if r["action"]:
+                    label = action_labels.get(r["action"], r["action"])
+                    lines.append(f"• {r['name']}: {label}")
+            summary = "✅ [코다리] 자동 복구 완료\n" + "\n".join(lines)
             print(f"[코다리] 자동 복구 수행:\n{summary}")
+            send(summary)
 
         return results
 

@@ -369,10 +369,11 @@ def main() -> int:
 
     status_dir = ROOT / "reports" / "status"
     status_dir.mkdir(parents=True, exist_ok=True)
+    overall = "FAIL" if worst == 2 else ("WARN" if worst == 1 else "OK")
     report = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "root": str(ROOT),
-        "overall": "FAIL" if worst == 2 else ("WARN" if worst == 1 else "OK"),
+        "overall": overall,
         "checks": results,
     }
     (status_dir / "harness_latest.json").write_text(
@@ -380,6 +381,17 @@ def main() -> int:
         encoding="utf-8",
     )
     print(f"[OK] report: {status_dir / 'harness_latest.json'}")
+
+    # WARN/FAIL 시 텔레그램 알림
+    if worst >= 1:
+        try:
+            from _shared.notify import send
+            issues = [r for r in results if r["status"] != "OK"]
+            lines = [f"{'⚠️' if r['status']=='WARN' else '🚨'} {r['name']}: {r['message'][:80]}" for r in issues]
+            send(f"🔍 [하네스] {overall}\n" + "\n".join(lines))
+        except Exception as e:
+            print(f"[하네스] 텔레그램 알림 실패: {e}")
+
     return 1 if worst == 2 else 0
 
 

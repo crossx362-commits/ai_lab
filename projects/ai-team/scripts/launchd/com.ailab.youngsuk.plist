@@ -6,9 +6,8 @@
     <string>com.ailab.youngsuk</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/python3</string>
-        <string>-u</string>
-        <string>/Users/junholee/ai_lab/projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py</string>
+        <string>/bin/bash</string>
+        <string>/Users/junholee/ai_lab/projects/ai-team/skills/영숙_비서/tools/youngsuk_launcher.sh</string>
     </array>
     <key>WorkingDirectory</key>
     <string>/Users/junholee/ai_lab</string>
@@ -22,7 +21,7 @@
     <key>KeepAlive</key>
     <true/>
     <key>ThrottleInterval</key>
-    <integer>10</integer>
+    <integer>30</integer>
     <key>StandardOutPath</key>
     <string>/Users/junholee/ai_lab/output/trading_logs/youngsuk_daemon.out.log</string>
     <key>StandardErrorPath</key>

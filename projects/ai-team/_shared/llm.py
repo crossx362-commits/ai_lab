@@ -149,7 +149,11 @@ def _gemini(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
 
         payload = {
             "contents": messages,
-            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperature},
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": temperature,
+                "thinkingConfig": {"thinkingBudget": 0},  # thinking 토큰 차단 (결의안 ③)
+            },
         }
         if json_mode:
             payload["generationConfig"]["responseMimeType"] = "application/json"
