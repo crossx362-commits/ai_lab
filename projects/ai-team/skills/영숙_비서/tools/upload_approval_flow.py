@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 영숙의 업로드 승인 플로우
@@ -130,7 +130,7 @@ def request_upload_approval(
         f"1. ✅ 영숙 → 사장님 보고\n"
         f"2. ✅ 예원 CEO 피드백: 승인 (점수: {ceo_feedback.get('score', 'N/A')}/10)\n"
         f"3. ✅ 영숙 최종 승인\n\n"
-        f"**제목**: {content_info.get('title', content_info.get('caption', 'N/A')[:100]}\n\n"
+        f"**제목**: {content_info.get('title', content_info.get('caption', 'N/A')[:100])}\n\n"
         f"지금 {agent}에게 업로드 지시를 내립니다! 🚀"
     )
     send(final_approval)

@@ -171,13 +171,12 @@ def check_classification_layout():
         AI_TEAM / "skills" / "케빈_인프라" / "tools" / "supabase_manager.py",
         AI_TEAM / "skills" / "케빈_인프라" / "tools" / "sync_env_to_vercel.py",
         AI_TEAM / "skills" / "케빈_인프라" / "tools" / "vercel_manager.py",
-        AI_TEAM / "skills" / "코다리_개발자" / "tools" / "agent_health_check.py",
+        AI_TEAM / "skills" / "코다리_개발자" / "tools" / "agent_health_monitor.py",
         AI_TEAM / "skills" / "코다리_개발자" / "tools" / "ollama_health_check.py",
         AI_TEAM / "skills" / "코다리_개발자" / "tools" / "web_init.py",
         AI_TEAM / "skills" / "코다리_개발자" / "tools" / "web_preview.py",
         AI_TEAM / "skills" / "티모_디자이너" / "tools" / "petnna_reviewer.py",
         AI_TEAM / "skills" / "시그널_분석가" / "tools" / "market_signal.py",
-        AI_TEAM / "skills" / "펄스_애널리스트" / "tools" / "market_pulse.py",
         ROOT / "projects" / "petnna" / "index.html",
         ROOT / "projects" / "petnna" / "sw.js",
         ROOT / "projects" / "petnna" / "js" / "app.js",
@@ -212,11 +211,16 @@ def check_classification_layout():
             missing.append(str(path.relative_to(ROOT)))
 
     skills_dir = AI_TEAM / "skills"
+    try:
+        from _shared.agent_registry import LEGACY_AGENT_DIRS
+    except Exception:
+        LEGACY_AGENT_DIRS = {"펄스_애널리스트", "펄스_전략가", "루나_디렉터", "아린_비주얼"}
+
     if skills_dir.exists():
         for agent_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
             if agent_dir.name.startswith(".") or agent_dir.name == "__pycache__":
                 continue
-            if agent_dir.name == "공용스킬":
+            if agent_dir.name == "공용스킬" or agent_dir.name in LEGACY_AGENT_DIRS:
                 continue
             if not (agent_dir / "SKILL.md").exists():
                 missing.append(str((agent_dir / "SKILL.md").relative_to(ROOT)))
