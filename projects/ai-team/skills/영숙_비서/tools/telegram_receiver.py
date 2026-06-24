@@ -298,6 +298,151 @@ def _process_with_gemini(user_text: str) -> str | None:
     return answer
 
 
+def _process_with_gpt(user_text: str) -> str | None:
+    """OpenAI GPT-4o-mini를 사용하여 Function Calling 처리. 실패 시 None 반환."""
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return None
+
+    import urllib.request
+    import json
+
+    now = datetime.now(timezone(timedelta(hours=9)))
+    time_ctx = f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')}]"
+
+    openai_tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_agent_status",
+                "description": "에이전트 현황 조회. agent: 에이전트명 또는 '전체'",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent": {"type": "string", "default": "전체"}
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_calendar",
+                "description": "캘린더 일정 조회. days: 조회 일수",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "days": {"type": "integer", "default": 7}
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "dispatch",
+                "description": "에이전트에게 작업 지시. cmd: 명령",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "cmd": {"type": "string"}
+                    },
+                    "required": ["cmd"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_stock_price",
+                "description": "주식 현재가 조회. stock_code: 6자리 종목코드, stock_name: 종목명 (옵션)",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "stock_code": {"type": "string", "description": "6자리 종목코드 (예: '005930' -> 삼성전자)"},
+                        "stock_name": {"type": "string", "description": "종목명"}
+                    },
+                    "required": ["stock_code"]
+                }
+            }
+        }
+    ]
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT + time_ctx},
+        {"role": "user", "content": user_text}
+    ]
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": messages,
+        "tools": openai_tools,
+        "temperature": 0.7,
+        "max_tokens": 300
+    }
+
+    try:
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as r:
+            res = json.loads(r.read())
+        
+        message = res["choices"][0]["message"]
+        answer = message.get("content") or ""
+        tool_calls = message.get("tool_calls") or []
+
+        if tool_calls:
+            tool_results = []
+            for tc in tool_calls:
+                fn = tc["function"]["name"]
+                args = json.loads(tc["function"]["arguments"])
+                log(f"GPT Tool: {fn}({args})")
+                if fn in _TOOL_MAP:
+                    try:
+                        res_str = _TOOL_MAP[fn](**args)
+                        tool_results.append({"name": fn, "result": res_str, "id": tc["id"]})
+                    except Exception as e:
+                        tool_results.append({"name": fn, "result": f"❌ {e}", "id": tc["id"]})
+
+            # 도구 실행 결과를 다시 GPT에 전달하여 최종 답변 생성
+            messages.append(message)
+            for tr in tool_results:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tr["id"],
+                    "name": tr["name"],
+                    "content": tr["result"]
+                })
+
+            is_status = any(tr["name"] == "get_agent_status" for tr in tool_results)
+            max_tok = 1000 if is_status else 150
+            
+            payload_final = {
+                "model": "gpt-4o-mini",
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": max_tok
+            }
+
+            req_final = urllib.request.Request(
+                "https://api.openai.com/v1/chat/completions",
+                data=json.dumps(payload_final).encode(),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+            )
+            with urllib.request.urlopen(req_final, timeout=15) as r:
+                res_final = json.loads(r.read())
+            
+            answer = res_final["choices"][0]["message"]["content"].strip()
+        
+        return answer
+    except Exception as e:
+        log(f"GPT Function Calling 오류: {e}")
+        return None
+
+
 # =====================================================================
 # 명령어 핸들러
 # =====================================================================
@@ -379,7 +524,12 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE) ->
         if not response:
             response = _process_with_gemini(user_text)
 
-        # 2차 폴백: 키워드 직접 처리 (Gemini 실패 시)
+        # 1.5차: GPT Function Calling (Gemini 실패 시)
+        if not response:
+            log("Gemini 실패 → GPT Function Calling 진행")
+            response = _process_with_gpt(user_text)
+
+        # 2차 폴백: 키워드 직접 처리 (Gemini/GPT 실패 시)
         if not response:
             _status_kw = ["에이전트", "상태", "뭐해", "다들", "작동", "실행", "팀"]
             _cal_kw = ["일정", "캘린더", "스케줄", "calendar"]
