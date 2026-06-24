@@ -143,12 +143,45 @@ def dispatch(cmd: str) -> str:
         return f"❌ {str(e)[:100]}"
 
 
+def get_stock_price(stock_code: str, stock_name: str = "") -> str:
+    """주식 현재가 조회. Args: stock_code - 6자리 종목코드 (예: '005930' -> 삼성전자, '035720' -> 카카오, '000660' -> SK하이닉스), stock_name - 종목명 (옵션)"""
+    log(f"주식 현재가 조회: {stock_name} ({stock_code})")
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "데이브_주식" / "tools"))
+        from kis_client import KISClient  # noqa: PLC0415
+        client = KISClient()
+        price_data = client.get_current_price(stock_code)
+        if "output" not in price_data:
+            return f"❌ {stock_name or stock_code} 조회 실패: {price_data.get('msg1', '알 수 없는 오류')}"
+        
+        output = price_data["output"]
+        current_price = int(output.get("stck_prpr", 0))
+        change = int(output.get("prdy_vrss", 0))
+        change_rate = float(output.get("prdy_ctrt", 0.0))
+        sign = output.get("prdy_vrss_sign", "3")
+        
+        sign_emoji = "➕"
+        if sign in ["1", "2"]:
+            sign_emoji = "📈"
+        elif sign in ["4", "5"]:
+            sign_emoji = "📉"
+            change = -change
+        else:
+            sign_emoji = "➖"
+            
+        name_str = f"{stock_name}" if stock_name else f"종목코드 {stock_code}"
+        return f"📊 {name_str} 현재가: {current_price:,}원 ({sign_emoji} 전일대비 {change:+,}원 | {change_rate:+.2f}%)"
+    except Exception as e:
+        return f"❌ 주가 조회 중 오류 발생: {e}"
+
+
 _TOOL_MAP = {
     "get_agent_status": get_agent_status,
     "list_calendar": list_calendar,
     "dispatch": dispatch,
+    "get_stock_price": get_stock_price,
 }
-_TOOLS = [get_agent_status, list_calendar, dispatch]
+_TOOLS = [get_agent_status, list_calendar, dispatch, get_stock_price]
 
 
 # =====================================================================
