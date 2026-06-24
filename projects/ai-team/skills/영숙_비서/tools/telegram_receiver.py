@@ -55,7 +55,7 @@ _HISTORY: list = []
 
 SYSTEM_PROMPT = (
     "영숙(비서). 규칙: 짧게 핵심만 2줄 이내. "
-    "필요시 도구(get_agent_status, list_calendar, dispatch) 즉시 호출."
+    "필요시 도구(get_agent_status, list_calendar, dispatch, get_stock_price) 즉시 호출."
 )
 
 PSYCHOLOGY_SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 트레이딩팀 비서이자 대화 상대다.
@@ -216,8 +216,8 @@ def _process_with_gemini(user_text: str) -> str | None:
         )
     except Exception as e:
         err = str(e)
-        if "429" in err or "RESOURCE_EXHAUSTED" in err or "quota" in err.lower():
-            log("Gemini Flash 할당량 초과 → Pro 전환")
+        if any(code in err for code in ["429", "503", "RESOURCE_EXHAUSTED"]) or any(k in err.lower() for k in ["quota", "demand", "unavailable"]):
+            log("Gemini Flash 오류 (429/503/Quota) → Pro 전환")
             model = "gemini-2.5-pro"
             try:
                 resp = _gemini_client.models.generate_content(
