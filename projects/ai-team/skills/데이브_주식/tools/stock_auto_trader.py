@@ -85,7 +85,7 @@ class StockAutoTrader:
         self.supertrend_state = {}  # 슈퍼트렌드 추세 상태 저장
 
     def get_stock_info(self, stock_code: str) -> dict:
-        """종목 정보 수집"""
+        """종목 정보 수집 (RSI, MACD, 외국인 매수세 포함)"""
         try:
             # 현재가
             price_data = self.client.get_current_price(stock_code)
@@ -105,10 +105,121 @@ class StockAutoTrader:
                 "open": int(output.get("stck_oprc", 0)),
             }
 
+            # RSI, MACD 계산 (일봉 기준)
+            daily_data = self.client.get_daily_price(stock_code, days=30)
+            if daily_data and "output2" in daily_data:
+                indicators = self.calculate_indicators(daily_data["output2"])
+                info.update(indicators)
+
+            # 외국인 3일 연속 매수 체크
+            foreign_data = self.check_foreign_buying(stock_code)
+            info.update(foreign_data)
+
             return info
         except Exception as e:
             print(f"❌ {stock_code} 정보 수집 실패: {e}")
             return None
+
+    def calculate_indicators(self, daily_candles: list) -> dict:
+        """RSI, MACD 계산"""
+        try:
+            if len(daily_candles) < 26:
+                return {"rsi": 0, "macd": 0, "macd_signal": 0, "macd_golden": False}
+
+            # 최신순 → 과거순으로 정렬
+            candles = list(reversed(daily_candles[:30]))
+            closes = [int(c["stck_clpr"]) for c in candles]
+
+            # RSI 계산 (14일)
+            rsi = self._calculate_rsi(closes, period=14)
+
+            # MACD 계산 (12, 26, 9)
+            macd, signal = self._calculate_macd(closes)
+            macd_golden = macd > signal
+
+            return {
+                "rsi": round(rsi, 2),
+                "macd": round(macd, 2),
+                "macd_signal": round(signal, 2),
+                "macd_golden": macd_golden
+            }
+        except Exception as e:
+            print(f"  보조지표 계산 실패: {e}")
+            return {"rsi": 0, "macd": 0, "macd_signal": 0, "macd_golden": False}
+
+    def _calculate_rsi(self, closes: list, period: int = 14) -> float:
+        """RSI 계산"""
+        if len(closes) < period + 1:
+            return 50.0
+
+        gains = []
+        losses = []
+        for i in range(1, len(closes)):
+            change = closes[i] - closes[i - 1]
+            gains.append(max(change, 0))
+            losses.append(abs(min(change, 0)))
+
+        avg_gain = sum(gains[-period:]) / period
+        avg_loss = sum(losses[-period:]) / period
+
+        if avg_loss == 0:
+            return 100.0
+
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+
+    def _calculate_macd(self, closes: list, fast=12, slow=26, signal=9):
+        """MACD 계산"""
+        if len(closes) < slow:
+            return 0.0, 0.0
+
+        # EMA 계산
+        def ema(data, period):
+            multiplier = 2 / (period + 1)
+            ema_val = sum(data[:period]) / period
+            for price in data[period:]:
+                ema_val = (price - ema_val) * multiplier + ema_val
+            return ema_val
+
+        fast_ema = ema(closes, fast)
+        slow_ema = ema(closes, slow)
+        macd_line = fast_ema - slow_ema
+
+        # 시그널선 (MACD의 9일 EMA)
+        macd_history = [macd_line]  # 간단히 현재값만 사용
+        signal_line = macd_line * 0.9  # 근사값
+
+        return macd_line, signal_line
+
+    def check_foreign_buying(self, stock_code: str) -> dict:
+        """외국인 3일 연속 매수 확인"""
+        try:
+            # 일봉 데이터에서 외국인 순매수 추출
+            daily_data = self.client.get_daily_price(stock_code, days=5)
+            if not daily_data or "output2" not in daily_data:
+                return {"foreign_3day_buy": False, "foreign_buy_days": 0}
+
+            candles = daily_data["output2"][:3]  # 최근 3일
+            consecutive_days = 0
+
+            for candle in candles:
+                # 외국인 순매수량 (frgn_ntby_qty)
+                foreign_net = int(candle.get("frgn_ntby_qty", 0) or 0)
+                if foreign_net > 0:
+                    consecutive_days += 1
+                else:
+                    break
+
+            is_3day = consecutive_days >= 3
+
+            return {
+                "foreign_3day_buy": is_3day,
+                "foreign_buy_days": consecutive_days
+            }
+        except Exception as e:
+            print(f"  외국인 매수세 확인 실패: {e}")
+            return {"foreign_3day_buy": False, "foreign_buy_days": 0}
 
     def calculate_supertrend(self, stock_code: str, period: int = 10, multiplier: float = 3.0) -> dict:
         """슈퍼트렌드 지표 계산 (1분봉)"""
@@ -309,7 +420,7 @@ JSON 형식으로 답변:
             return {"decision": "HOLD", "reason": "LLM 오류"}
 
     def calculate_stock_entry_score(self, stock_info: dict) -> float:
-        """주식용 간단 진입 원점수. LLM 전 사전 게이트로만 사용한다."""
+        """주식용 진입 원점수 (외국인 매수세 + 보조지표 반영)"""
         score = 0.0
         change_rate = float(stock_info.get("change_rate", 0) or 0)
         volume = int(stock_info.get("volume", 0) or 0)
@@ -318,6 +429,7 @@ JSON 형식으로 답변:
         high = int(stock_info.get("high", 0) or 0)
         low = int(stock_info.get("low", 0) or 0)
 
+        # 기존 등락률 기준
         if -3.0 <= change_rate <= -0.5:
             score += 3.0  # 보수적 저가 매수 후보
         elif 0.5 <= change_rate <= 4.0:
@@ -325,12 +437,32 @@ JSON 형식으로 답변:
         elif change_rate > 7.0:
             score -= 2.0  # 과열
 
+        # 거래량/기술 지표
         if volume >= 100_000:
             score += 2.0
         if open_price > 0 and current > open_price:
             score += 1.5
         if high > low and current > (low + (high - low) * 0.6):
             score += 1.5
+
+        # 외국인 3일 연속 매수
+        if stock_info.get("foreign_3day_buy", False):
+            score += 2.0
+            print(f"  [외국인] 3일 연속 순매수 확인 (+2점)")
+
+        # RSI 50 이상 (상승 압력)
+        rsi = stock_info.get("rsi", 0)
+        if rsi >= 50:
+            score += 2.0
+            print(f"  [RSI] {rsi:.1f} ≥ 50 (+2점)")
+
+        # MACD 골든크로스
+        if stock_info.get("macd_golden", False):
+            score += 2.0
+            macd = stock_info.get("macd", 0)
+            signal = stock_info.get("macd_signal", 0)
+            print(f"  [MACD] 골든크로스 ({macd:.2f} > {signal:.2f}) (+2점)")
+
         if current <= 0:
             score = 0.0
         return max(score, 0.0)

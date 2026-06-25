@@ -231,6 +231,25 @@ class KISClient:
         result = self._make_request("GET", "/uapi/domestic-stock/v1/quotations/inquire-daily-price", tr_id, params=params)
         return result
 
+    def get_foreign_institution_total(self, stock_code: str, div_code: str = "0") -> dict:
+        """외국인/기관 매매 종목가 집계 조회
+
+        Args:
+            stock_code: 종목코드
+            div_code: 구분코드 (0:순매수, 1:매수, 2:매도)
+        """
+        tr_id = "FHKST01010900"
+
+        params = {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": stock_code,
+            "FID_DIV_CLS_CODE": div_code,
+            "FID_INPUT_DATE_1": "",  # 조회시작일자 (공백: 최근)
+        }
+
+        result = self._make_request("GET", "/uapi/domestic-stock/v1/quotations/foreign-institution-total", tr_id, params=params)
+        return result
+
     def get_minute_price(self, stock_code: str, interval: str = "1") -> dict:
         """분봉 데이터 조회 (당일)"""
         tr_id = "FHKST03010200"

@@ -320,6 +320,57 @@ def git_tracked_ignored() -> list[str]:
         return []
 
 
+def git_untracked() -> list[str]:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=all"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        return [
+            line[3:].strip().replace("\\", "/")
+            for line in out.splitlines()
+            if line.startswith("?? ")
+        ]
+    except Exception:
+        return []
+
+
+def check_docs_encoding():
+    """Catch obvious mojibake in the current operating docs."""
+    docs = [
+        ROOT / "README.md",
+        ROOT / "PROJECT_OVERVIEW.md",
+        ROOT / "docs" / "REPOSITORY_CLASSIFICATION.md",
+        AI_TEAM / "scripts" / "README.md",
+        ROOT / "projects" / "petnna" / "README.md",
+        AI_TEAM / "skills" / "공용스킬" / "stock_foreign_buying_strategy.md",
+    ]
+    markers = ["\ufffd", "諛", "怨", "鍮", "媛", "紐", "瑜", "쒋"]
+    bad = []
+    for path in docs:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            bad.append(f"{path.relative_to(ROOT)} read failed: {e}")
+            continue
+        hits = sum(text.count(marker) for marker in markers)
+        if hits:
+            bad.append(f"{path.relative_to(ROOT)} markers={hits}")
+    if bad:
+        return warn("possible mojibake docs: " + ", ".join(bad[:8]))
+    return ok("main docs encoding clean")
+
+
+def check_unclassified_files():
+    """Warn when new local files are neither tracked nor ignored."""
+    untracked = git_untracked()
+    if untracked:
+        return warn("unclassified untracked files: " + ", ".join(untracked[:8]))
+    return ok("no unclassified untracked files")
+
+
 def check_root_layout():
     allowed_root_files = {
         ".codex/environments/environment.toml",
@@ -358,6 +409,8 @@ def main() -> int:
         "classification_layout": check_classification_layout,
         "report_layout": check_report_layout,
         "root_layout": check_root_layout,
+        "docs_encoding": check_docs_encoding,
+        "unclassified_files": check_unclassified_files,
     }
     worst = 0
     results = []

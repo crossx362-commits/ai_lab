@@ -18,9 +18,9 @@ if _ai_team not in sys.path:
     sys.path.insert(0, _ai_team)
 
 from _shared.env import load_env as _load_env
+from _shared.llm import gemini as lm_gemini
 from _shared.llm import ollama as lm_chat
 from _shared.resource_utils import get_system_load
-import _shared.gemini_client as _gc
 
 def _simple_is_available() -> bool:
     try:
@@ -115,7 +115,7 @@ def _analyze_cause(diag: dict) -> str:
         f"- CPU 사용률: {diag['cpu_usage']}%\n"
         f"- RAM 사용률: {diag['ram_usage']}%\n"
     )
-    result = _gc.text(prompt, task="", max_tokens=300)
+    result = lm_gemini(prompt, max_tokens=300)
     return (result or "원인 분석 불가").strip()
 
 

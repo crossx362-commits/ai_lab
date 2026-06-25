@@ -266,9 +266,199 @@ def get_stock_signals() -> dict[str, Any]:
         }
         avg_change = (indexes["kospi"]["change"] + indexes["kosdaq"]["change"]) / 2
         sentiment = "BULLISH" if avg_change > 1 else "BEARISH" if avg_change < -1 else "NEUTRAL"
-        return {"indexes": indexes, "sentiment": sentiment}
+
+        # 외국인 3일 연속 매수 + RSI 50+ + MACD 골든크로스 종목 스캔
+        top_stocks = find_foreign_buying_stocks(client)
+
+        return {
+            "indexes": indexes,
+            "sentiment": sentiment,
+            "top_stocks": top_stocks
+        }
     except Exception as exc:
         return {"error": str(exc), "sentiment": "UNKNOWN"}
+
+
+def find_foreign_buying_stocks(client) -> list[dict[str, Any]]:
+    """외국인 3일 연속 매수 + 보조지표 양전 종목 동적 탐색"""
+
+    # 기존 감시 목록 로드
+    watch_file = REPORTS_DIR / ".stock_dynamic_watch.json"
+    current_watch = load_watch_list(watch_file)
+
+    # 1단계: 기존 감시 종목 재검증
+    validated = []
+    for stock in current_watch:
+        result = validate_stock_conditions(client, stock["code"], stock["name"])
+        if result:
+            validated.append(result)
+
+    # 2단계: 조건 미달 시 새 종목 탐색
+    if len(validated) < 5:
+        log(f"조건 충족 종목 {len(validated)}개, 새 후보 탐색 중...")
+        new_candidates = discover_new_candidates(client, exclude=[s["code"] for s in validated])
+        validated.extend(new_candidates)
+
+    # 3단계: 감시 목록 업데이트
+    save_watch_list(watch_file, validated)
+
+    # 점수순 정렬 후 상위 5개 반환
+    validated.sort(key=lambda x: x["score"], reverse=True)
+    return validated[:5]
+
+
+def load_watch_list(watch_file: Path) -> list[dict[str, Any]]:
+    """감시 목록 로드"""
+    if watch_file.exists():
+        try:
+            data = json.loads(watch_file.read_text(encoding="utf-8"))
+            return data.get("stocks", [])
+        except Exception:
+            pass
+    return []
+
+
+def save_watch_list(watch_file: Path, stocks: list[dict[str, Any]]) -> None:
+    """감시 목록 저장"""
+    try:
+        watch_file.write_text(
+            json.dumps({"stocks": stocks, "updated_at": datetime.now(KST).isoformat()}, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+    except Exception as e:
+        log(f"감시 목록 저장 실패: {e}")
+
+
+def validate_stock_conditions(client, code: str, name: str) -> dict[str, Any] | None:
+    """종목이 조건을 충족하는지 검증"""
+    try:
+        daily_data = client.get_daily_price(code, days=30)
+        if not daily_data or "output2" not in daily_data:
+            return None
+
+        candles = daily_data["output2"]
+
+        # 외국인 3일 연속 매수 확인
+        consecutive_days = 0
+        for candle in candles[:3]:
+            foreign_net = int(candle.get("frgn_ntby_qty", 0) or 0)
+            if foreign_net > 0:
+                consecutive_days += 1
+            else:
+                break
+
+        if consecutive_days < 3:
+            log(f"❌ [{name}] 외국인 매수 {consecutive_days}일 (3일 미만, 제외)")
+            return None
+
+        # RSI, MACD 계산
+        closes = [int(c["stck_clpr"]) for c in list(reversed(candles[:30]))]
+        rsi = calculate_rsi(closes)
+        macd, signal_line = calculate_macd(closes)
+        macd_golden = macd > signal_line
+
+        # 조건: RSI 50+ AND MACD 골든크로스
+        if rsi < 50 or not macd_golden:
+            log(f"❌ [{name}] RSI {rsi:.1f}, MACD {'골든' if macd_golden else '데드'} (조건 미달, 제외)")
+            return None
+
+        score = 50 + int(rsi - 50) + (10 if macd_golden else 0)
+        log(f"✅ [{name}] 외국인 {consecutive_days}일, RSI {rsi:.1f}, MACD 골든크로스 (점수 {score})")
+
+        return {
+            "code": code,
+            "name": name,
+            "score": min(score, 100),
+            "rsi": round(rsi, 1),
+            "macd": round(macd, 2),
+            "foreign_days": consecutive_days
+        }
+
+    except Exception as e:
+        log(f"  [{name}] 검증 실패: {e}")
+        return None
+
+
+def discover_new_candidates(client, exclude: list[str]) -> list[dict[str, Any]]:
+    """새 후보 종목 탐색 (KOSPI 200 전체 스캔)"""
+    # KOSPI 200 대표 종목 풀 (100개 샘플)
+    kospi_200 = [
+        ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("373220", "LG에너지솔루션"),
+        ("207940", "삼성바이오로직스"), ("005380", "현대차"), ("051910", "LG화학"),
+        ("006400", "삼성SDI"), ("035420", "NAVER"), ("000270", "기아"), ("068270", "셀트리온"),
+        ("035720", "카카오"), ("105560", "KB금융"), ("055550", "신한지주"), ("012330", "현대모비스"),
+        ("028260", "삼성물산"), ("066570", "LG전자"), ("003670", "포스코퓨처엠"), ("096770", "SK이노베이션"),
+        ("034020", "두산에너빌리티"), ("032830", "삼성생명"), ("018260", "삼성에스디에스"),
+        ("009150", "삼성전기"), ("011200", "HMM"), ("010130", "고려아연"), ("086790", "하나금융지주"),
+        ("323410", "카카오뱅크"), ("003550", "LG"), ("017670", "SK텔레콤"), ("030200", "KT"),
+        ("000810", "삼성화재"), ("316140", "우리금융지주"), ("033780", "KT&G"), ("015760", "한국전력"),
+        ("086280", "현대글로비스"), ("024110", "기업은행"), ("036570", "엔씨소프트"), ("011070", "LG이노텍"),
+        ("010950", "S-Oil"), ("047810", "한국항공우주"), ("009540", "한국조선해양"), ("012450", "삼성전자우"),
+    ]
+
+    candidates = []
+    scanned = 0
+
+    for code, name in kospi_200:
+        if code in exclude:
+            continue
+
+        if scanned >= 20:  # 한 번에 최대 20개만 스캔 (API 부하 방지)
+            break
+
+        scanned += 1
+        result = validate_stock_conditions(client, code, name)
+        if result:
+            candidates.append(result)
+
+        if len(candidates) >= 5:  # 5개 찾으면 중단
+            break
+
+    log(f"신규 후보 {len(candidates)}개 발견 (총 {scanned}개 스캔)")
+    return candidates
+
+
+def calculate_rsi(closes: list, period: int = 14) -> float:
+    """RSI 계산"""
+    if len(closes) < period + 1:
+        return 50.0
+
+    gains = []
+    losses = []
+    for i in range(1, len(closes)):
+        change = closes[i] - closes[i - 1]
+        gains.append(max(change, 0))
+        losses.append(abs(min(change, 0)))
+
+    avg_gain = sum(gains[-period:]) / period
+    avg_loss = sum(losses[-period:]) / period
+
+    if avg_loss == 0:
+        return 100.0
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+
+def calculate_macd(closes: list, fast=12, slow=26, sig=9):
+    """MACD 계산"""
+    if len(closes) < slow:
+        return 0.0, 0.0
+
+    def ema(data, period):
+        multiplier = 2 / (period + 1)
+        ema_val = sum(data[:period]) / period
+        for price in data[period:]:
+            ema_val = (price - ema_val) * multiplier + ema_val
+        return ema_val
+
+    fast_ema = ema(closes, fast)
+    slow_ema = ema(closes, slow)
+    macd_line = fast_ema - slow_ema
+    signal_line = macd_line * 0.9  # 간단 근사
+
+    return macd_line, signal_line
 
 
 def summarize(data: dict[str, Any]) -> str:
