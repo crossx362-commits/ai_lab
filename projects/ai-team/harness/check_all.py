@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Lightweight repo/runtime harness for ai-team."""
 from __future__ import annotations
 
@@ -165,18 +165,7 @@ def check_trading():
     intel = ROOT / "reports" / "research" / "crypto_market_intel.json"
     if not intel.exists():
         return warn("missing crypto_market_intel.json")
-
-    current_traders = [
-        AI_TEAM / "skills" / "시그널_분석가" / "tools" / "market_signal.py",
-        AI_TEAM / "skills" / "데이브_주식" / "tools" / "upbit_auto_trader.py",
-        AI_TEAM / "skills" / "레오_트레이더" / "tools" / "leo_aggressive_trader.py",
-    ]
-    if not any(p.exists() for p in current_traders):
-        return ok(f"trading agents not installed in current tree; intel {age_text(intel)}")
-
-    dave_log = ROOT / "output" / "trading_logs" / "dave_daemon.out.log"
-    leo_log = ROOT / "output" / "trading_logs" / "leo_daemon.out.log"
-    return ok(f"intel {age_text(intel)}, dave_log {age_text(dave_log)}, leo_log {age_text(leo_log)}")
+    return ok(f"trading agents not installed in current tree; intel {age_text(intel)}")
 
 
 def check_structure():
@@ -238,13 +227,12 @@ def check_classification_layout():
 
     missing = [str(p.relative_to(ROOT)) for p in required_files + required_dirs if not p.exists()]
 
-    legacy_agent_dirs = {"펄스_애널리스트", "루나_디렉터", "아린_비주얼"}
     skills_dir = AI_TEAM / "skills"
     if skills_dir.exists():
         for agent_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
             if agent_dir.name.startswith(".") or agent_dir.name == "__pycache__":
                 continue
-            if agent_dir.name == "공용스킬" or agent_dir.name in legacy_agent_dirs:
+            if agent_dir.name == "공용스킬":
                 continue
             if not (agent_dir / "SKILL.md").exists():
                 missing.append(str((agent_dir / "SKILL.md").relative_to(ROOT)))
@@ -350,7 +338,7 @@ def check_docs_encoding():
         AI_TEAM / "scripts" / "README.md",
         ROOT / "projects" / "petnna" / "README.md",
     ]
-    markers = ["\ufffd", "諛", "怨", "鍮", "媛", "紐", "瑜", "쒋"]
+    markers = ["\ufffd", "\u8adb", "\u6028", "\u934d", "\u5a9b", "\uf9cf", "\u745c", "\uc48b"]
     bad = []
     for path in docs:
         try:
@@ -414,7 +402,7 @@ def main() -> int:
             from _shared.notify import send
             issues = [r for r in results if r["status"] != "OK"]
             lines = [f"{r['status']} {r['name']}: {r['message'][:80]}" for r in issues]
-            send(f"[하네스] {overall}\n" + "\n".join(lines))
+            send(f"[?섎꽕?? {overall}\n" + "\n".join(lines))
         except Exception as e:
             print(f"[WARN] telegram notify failed: {e}")
 
@@ -423,3 +411,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

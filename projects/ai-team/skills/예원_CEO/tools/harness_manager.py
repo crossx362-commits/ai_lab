@@ -1,199 +1,109 @@
 #!/usr/bin/env python3
-"""예원 - 하네스 & 시스템 전체 관리"""
-import os, sys, json, subprocess
+"""예원 - 하네스 및 현재 ai-team 런타임 관리."""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-from _shared.env import load_env
-from _shared.notify import send
-from _shared.llm import text as llm
+_here = Path(__file__).resolve().parent
+AI_TEAM = _here.parents[2]
+PROJECT_ROOT = AI_TEAM.parents[1]
+sys.path.insert(0, str(AI_TEAM))
 
-load_env()
+from _shared.env import load_env
+from _shared.notify import agent_status, send
+
+load_env(str(PROJECT_ROOT))
+
 
 class HarnessManager:
-    """하네스 & 시스템 관리자"""
+    """Run the harness and summarize current installed agents."""
 
     def __init__(self):
-        self.harness_dir = Path(__file__).parent.parent.parent.parent / "harness"
-        self.ai_team = Path(__file__).parent.parent.parent.parent
-        self.reports_dir = self.ai_team.parent.parent / "reports" / "harness"
+        self.harness = AI_TEAM / "harness" / "check_all.py"
+        self.reports_dir = PROJECT_ROOT / "reports" / "harness"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
-        self.last_report_file = self.reports_dir / ".last_telegram_report"
-        self.report_interval = 12 * 3600  # 12시간
 
-    def run_harness(self):
-        """하네스 실행"""
+    def run_harness(self) -> str:
         result = subprocess.run(
-            [sys.executable, str(self.harness_dir / "check_all.py")],
+            [sys.executable, str(self.harness)],
+            cwd=str(AI_TEAM),
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            env={**os.environ, "PYTHONUTF8": "1"},
         )
-        return result.stdout
+        return result.stdout or result.stderr or ""
 
-    def analyze_structure(self):
-        """폴더 구조 분석"""
+    def analyze_structure(self) -> list[str]:
         issues = []
-
-        # _shared 확인
-        shared = self.ai_team / "_shared"
-        if not shared.exists():
-            issues.append(f"Missing: _shared directory")
-            return issues
-
-        required_modules = ["env.py", "llm.py", "notify.py", "process.py", "utils.py"]
-        for mod in required_modules:
-            if not (shared / mod).exists():
-                issues.append(f"Missing: _shared/{mod}")
-
-        # 중복 파일 체크
-        old_modules = ["env_loader.py", "ollama_client.py", "telegram_notifier.py"]
-        for mod in old_modules:
-            if (shared / mod).exists():
-                issues.append(f"Old module: _shared/{mod}")
-
-        # 빈 __pycache__ 체크
-        for pycache in self.ai_team.rglob("__pycache__"):
-            issues.append(f"Cache: {pycache.relative_to(self.ai_team)}")
-
+        for rel in [
+            "_shared/env.py",
+            "_shared/llm.py",
+            "_shared/notify.py",
+            "_shared/process.py",
+            "skills/소미_분석가/SKILL.md",
+            "skills/영숙_비서/SKILL.md",
+            "skills/예원_CEO/SKILL.md",
+        ]:
+            if not (AI_TEAM / rel).exists():
+                issues.append(f"Missing: {rel}")
         return issues
 
-    def analyze_logic(self):
-        """봇 로직 분석"""
-        import os.path
-        bots = {
-            "데이브 코인": "skills/데이브_주식/tools/upbit_auto_trader.py",
-            "데이브 주식": "skills/데이브_주식/tools/stock_auto_trader.py",
-            "레오 코인": "skills/레오_트레이더/tools/leo_aggressive_trader.py",
-            "시그널": "skills/시그널_분석가/tools/market_signal.py",
-        }
+    def generate_report(self) -> dict:
+        print("[예원] 시스템 분석 중...")
+        harness_output = self.run_harness()
+        structure_issues = self.analyze_structure()
+        runtime = agent_status()
 
-        analysis = {}
-        for name, rel_path in bots.items():
-            # 절대 경로로 변환
-            abs_path = os.path.join(str(self.ai_team), rel_path.replace("/", os.sep))
-            if os.path.exists(abs_path):
-                with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
-                    lines = len(f.readlines())
-                analysis[name] = {"lines": lines, "status": "✅"}
-            else:
-                analysis[name] = {"status": f"❌ {abs_path}"}
-
-        return analysis
-
-    def optimize_suggestions(self, harness_output, structure_issues, logic_analysis):
-        """LLM 최적화 제안"""
-        prompt = f"""AI Team 시스템 분석 및 개선 제안.
-
-=== 하네스 출력 ===
-{harness_output}
-
-=== 구조 이슈 ===
-{json.dumps(structure_issues, indent=2, ensure_ascii=False)}
-
-=== 봇 로직 현황 ===
-{json.dumps(logic_analysis, indent=2, ensure_ascii=False)}
-
-CEO 관점에서:
-1. 즉시 수정 필요한 이슈 (1-3개)
-2. 성능 개선 제안 (1-2개)
-3. 다음 우선순위 작업
-
-각 항목당 1줄, 총 6줄 이내로 간결하게."""
-
-        try:
-            result = llm(prompt, max_tokens=300, temperature=0.3, lm_first=True)
-            return result
-        except:
-            return "LLM 분석 불가"
-
-    def generate_report(self):
-        """전체 리포트 생성"""
-        print("🔍 [예원] 시스템 전체 분석 중...")
-
-        # 1. 하네스 실행
-        harness = self.run_harness()
-
-        # 2. 구조 분석
-        structure = self.analyze_structure()
-
-        # 3. 로직 분석
-        logic = self.analyze_logic()
-
-        # 4. LLM 제안
-        suggestions = self.optimize_suggestions(harness, structure, logic)
-
-        # 리포트 생성
         report = {
-            "timestamp": datetime.now().isoformat(),
-            "harness_output": harness,
-            "structure_issues": structure,
-            "bot_analysis": logic,
-            "suggestions": suggestions
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "harness_output": harness_output,
+            "structure_issues": structure_issues,
+            "runtime": runtime,
         }
-
-        # 저장
         report_path = self.reports_dir / f"yewon_analysis_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
         report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        print(f"✅ 리포트: {report_path.name}")
-
-        # 요약
-        summary = f"""📊 [예원 CEO] 시스템 분석 완료
-
-구조 이슈: {len(structure)}개
-봇 상태: {sum(1 for b in logic.values() if '✅' in str(b))} / {len(logic)}
-
-{suggestions}"""
-
-        print(summary)
-
-        # 텔레그램은 12시간마다만
-        should_notify = True
-        if self.last_report_file.exists():
-            import time
-            last_time = float(self.last_report_file.read_text())
-            if time.time() - last_time < self.report_interval:
-                should_notify = False
-                print("  (텔레그램 전송 생략 - 12시간 미경과)")
-
-        if should_notify:
-            send(summary)
-            import time
-            self.last_report_file.write_text(str(time.time()))
-
+        summary = [
+            "[예원 CEO] 시스템 분석 완료",
+            f"구조 이슈: {len(structure_issues)}개",
+            "런타임: " + ", ".join(f"{k}={v}" for k, v in runtime.items()),
+            f"보고서: {report_path}",
+        ]
+        print("\n".join(summary))
+        if structure_issues or "WARN" in harness_output or "FAIL" in harness_output:
+            send("\n".join(summary), silent=True)
         return report
 
-    def cleanup(self):
-        """자동 정리"""
+    def cleanup(self) -> list[str]:
         cleaned = []
-
-        # __pycache__ 삭제
-        for pycache in self.ai_team.rglob("__pycache__"):
+        for pycache in AI_TEAM.rglob("__pycache__"):
             try:
-                import shutil
                 shutil.rmtree(pycache)
-                cleaned.append(str(pycache.relative_to(self.ai_team)))
-            except:
+                cleaned.append(str(pycache.relative_to(AI_TEAM)))
+            except OSError:
                 pass
-
         if cleaned:
-            print(f"🧹 정리: {len(cleaned)}개")
-
+            print(f"정리: {len(cleaned)}개")
         return cleaned
 
+
 def main():
-    """메인"""
     manager = HarnessManager()
-
-    # 정리
     manager.cleanup()
-
-    # 분석
     manager.generate_report()
+
 
 if __name__ == "__main__":
     main()

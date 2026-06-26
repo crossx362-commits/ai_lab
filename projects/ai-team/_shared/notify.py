@@ -1,53 +1,15 @@
-"""Unified notification - Telegram + agent status."""
+"""Telegram notification and current ai-team daemon status helpers."""
+
+from __future__ import annotations
+
 import json
 import os
+import subprocess
 import sys
 import urllib.request
-import urllib.error
 from datetime import datetime
 
 
-# ==================== TELEGRAM ====================
-
-def send(msg: str, silent: bool = False) -> bool:
-    """Send Telegram message."""
-    if os.getenv("SUPPRESS_TELEGRAM") == "true":
-        print(f"  [Telegram suppressed] {msg[:100]}")
-        return True
-
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print(f"  ❌ [Telegram] Missing credentials")
-        return False
-
-    try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        payload = json.dumps({
-            "chat_id": chat_id,
-            "text": msg[:4096],  # Telegram limit
-            "parse_mode": "HTML",
-            "disable_notification": silent,
-        }).encode()
-
-        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            res = json.loads(r.read())
-
-        if res.get("ok"):
-            print(f"  ✅ [Telegram] Sent {len(msg)} chars")
-            return True
-        else:
-            print(f"  ❌ [Telegram] {res}")
-            return False
-    except Exception as e:
-        print(f"  ❌ [Telegram] {e}")
-        return False
-
-
-# ==================== AGENT STATUS ====================
-
-# 하드코딩 제거 - 자동 스캔 사용
 ACTIVE_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
     "youngsuk_schedule": "schedule_manager.py",
@@ -56,84 +18,93 @@ ACTIVE_DAEMONS = {
 }
 
 
-def _get_agents():
-    """데몬 에이전트만 로드 (온디맨드 제외 — 런타임 체크 대상)"""
-    try:
-        from .agent_registry import get_agents
-        agents = get_agents()
-        return {slug: info["script"] for slug, info in agents.items() if info["type"] == "daemon"}
-    except Exception:
-        return ACTIVE_DAEMONS.copy()
+def send(msg: str, silent: bool = False) -> bool:
+    """Send a Telegram message when credentials are configured."""
+    if os.getenv("SUPPRESS_TELEGRAM") == "true":
+        print(f"[Telegram suppressed] {msg[:100]}")
+        return True
 
-_AGENTS = _get_agents()
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        print("[Telegram] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
+        return False
+
+    try:
+        payload = json.dumps(
+            {
+                "chat_id": chat_id,
+                "text": msg[:4096],
+                "parse_mode": "HTML",
+                "disable_notification": silent,
+            }
+        ).encode("utf-8")
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        if result.get("ok"):
+            print(f"[Telegram] Sent {len(msg)} chars")
+            return True
+        print(f"[Telegram] API error: {result}")
+        return False
+    except Exception as exc:
+        print(f"[Telegram] {exc}")
+        return False
 
 
 def _find_pids(script_name: str) -> list[str]:
-    """Find PIDs running given script."""
-    import subprocess
-    # 파일명만 추출 (경로 제거)
-    script_file = script_name.split('/')[-1].lower()
-    if sys.platform == "darwin":
+    script_file = script_name.lower()
+    if sys.platform == "win32":
+        ps = (
+            "Get-CimInstance Win32_Process | "
+            "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
+            f"$_.CommandLine.ToLower().Contains('{script_file}') }} | "
+            "Select-Object -ExpandProperty ProcessId"
+        )
         try:
-            out = subprocess.run(
-                ["pgrep", "-f", script_file],
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps],
                 capture_output=True,
                 text=True,
                 timeout=5,
-            ).stdout
-            return [p for p in out.split() if p.isdigit()]
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            return [pid for pid in result.stdout.split() if pid.isdigit()]
         except Exception:
             return []
 
-    cmd = (
-        "Get-CimInstance Win32_Process | "
-        "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
-        f"$_.CommandLine.ToLower().Contains('{script_file}') }} | "
-        "Select-Object -ExpandProperty ProcessId"
-    )
     try:
-        run_kwargs = {}
-        if sys.platform == "win32":
-            run_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-        out = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", cmd],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            **run_kwargs,
-        ).stdout
-        return [p for p in out.split() if p.isdigit()]
+        result = subprocess.run(["pgrep", "-f", script_file], capture_output=True, text=True, timeout=5)
+        return [pid for pid in result.stdout.split() if pid.isdigit()]
     except Exception:
         return []
 
 
 def agent_status() -> dict[str, str]:
-    """Return runtime status of all agents."""
-    status = {}
-    for name, script in _AGENTS.items():
-        pids = _find_pids(script)
-        status[name] = ",".join(pids) if pids else "down"
-    return status
+    return {
+        name: ",".join(pids) if (pids := _find_pids(script)) else "down"
+        for name, script in ACTIVE_DAEMONS.items()
+    }
 
 
 def status_report() -> str:
-    """Generate formatted status report."""
-    status = agent_status()
-    lines = [f"🤖 Agent Status ({datetime.now().strftime('%Y-%m-%d %H:%M')})"]
-    for name, state in status.items():
-        emoji = "✅" if state != "down" else "❌"
-        lines.append(f"{emoji} {name}: {state}")
+    lines = [f"Agent Status ({datetime.now().strftime('%Y-%m-%d %H:%M')})"]
+    for name, state in agent_status().items():
+        marker = "UP" if state != "down" else "DOWN"
+        lines.append(f"- {name}: {marker} {state}")
     return "\n".join(lines)
 
 
 def report(agent: str, action: str, detail: str = "") -> None:
-    """에이전트가 작업/스케줄 시작·완료 시 영숙에게 보고."""
     msg = f"[{agent}] {action}"
     if detail:
         msg += f"\n{detail}"
     send(msg, silent=True)
 
 
-# Aliases
 telegram = send
 status = agent_status

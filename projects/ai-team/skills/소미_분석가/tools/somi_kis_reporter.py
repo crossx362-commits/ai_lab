@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""소미 - KIS 기반 국내주식 수급 자동 텔레그램 리포터."""
+"""Somi KIS-based Korean stock score reporter."""
 
 from __future__ import annotations
 
@@ -15,9 +15,11 @@ import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
@@ -29,6 +31,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from short_covering_analyzer import calculate_score, generate_report, parse_input_text  # noqa: E402
+
 
 load_env(str(PROJECT_ROOT))
 
@@ -44,8 +47,8 @@ def log(message: str) -> None:
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
     print(line, flush=True)
-    with RUN_LOG.open("a", encoding="utf-8") as f:
-        f.write(line + "\n")
+    with RUN_LOG.open("a", encoding="utf-8") as file:
+        file.write(line + "\n")
 
 
 def num(value: object) -> float:
@@ -64,10 +67,19 @@ def fmt_int(value: object) -> str:
 
 
 def fmt_pct(value: object) -> str:
-    n = num(value)
-    if not n:
+    text = str(value or "").strip()
+    if not text:
         return ""
+    n = num(text)
     return f"{n:+.2f}%"
+
+
+def pick(data: dict, *keys: str) -> str:
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return ""
 
 
 class KISClient:
@@ -88,11 +100,7 @@ class KISClient:
         if cached:
             return cached
 
-        payload = {
-            "grant_type": "client_credentials",
-            "appkey": self.app_key,
-            "appsecret": self.app_secret,
-        }
+        payload = {"grant_type": "client_credentials", "appkey": self.app_key, "appsecret": self.app_secret}
         req = urllib.request.Request(
             f"{self.base_url}/oauth2/tokenP",
             data=json.dumps(payload).encode("utf-8"),
@@ -107,13 +115,7 @@ class KISClient:
         expires_in = int(data.get("expires_in", 86400))
         TOKEN_CACHE.parent.mkdir(parents=True, exist_ok=True)
         TOKEN_CACHE.write_text(
-            json.dumps(
-                {
-                    "access_token": access_token,
-                    "expires_at": time.time() + max(60, expires_in - 300),
-                },
-                ensure_ascii=False,
-            ),
+            json.dumps({"access_token": access_token, "expires_at": time.time() + max(60, expires_in - 300)}),
             encoding="utf-8",
         )
         return access_token
@@ -144,9 +146,9 @@ class KISClient:
         try:
             with urllib.request.urlopen(req, timeout=15) as response:
                 return json.loads(response.read())
-        except urllib.error.HTTPError as e:
-            body = e.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"KIS HTTP {e.code}: {body[:300]}") from e
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"KIS HTTP {exc.code}: {body[:300]}") from exc
 
     def quote(self, symbol: str = DEFAULT_SYMBOL) -> dict:
         data = self.get(
@@ -164,7 +166,7 @@ class KISClient:
             {
                 "FID_COND_MRKT_DIV_CODE": "J",
                 "FID_INPUT_ISCD": symbol,
-                "FID_INPUT_DATE_1": (today - timedelta(days=80)).strftime("%Y%m%d"),
+                "FID_INPUT_DATE_1": (today - timedelta(days=90)).strftime("%Y%m%d"),
                 "FID_INPUT_DATE_2": today.strftime("%Y%m%d"),
                 "FID_PERIOD_DIV_CODE": "D",
                 "FID_ORG_ADJ_PRC": "0",
@@ -184,8 +186,8 @@ class KISClient:
             if isinstance(output, list):
                 return output[0] if output else {}
             return output if isinstance(output, dict) else {}
-        except Exception as e:
-            log(f"KIS investor_today unavailable: {e}")
+        except Exception as exc:
+            log(f"KIS investor_today unavailable: {exc}")
             return {}
 
     def daily_short_sale(self, symbol: str = DEFAULT_SYMBOL) -> dict:
@@ -199,17 +201,37 @@ class KISClient:
             if isinstance(output, list):
                 return output[0] if output else {}
             return output if isinstance(output, dict) else {}
-        except Exception as e:
-            log(f"KIS daily_short_sale unavailable: {e}")
+        except Exception as exc:
+            log(f"KIS daily_short_sale unavailable: {exc}")
             return {}
 
 
-def pick(data: dict, *keys: str) -> str:
-    for key in keys:
-        value = data.get(key)
-        if value not in (None, ""):
-            return str(value)
-    return ""
+def _flow_text(dailies: list[dict]) -> str:
+    rows = list(reversed(dailies[:5]))
+    if len(rows) < 2:
+        return "확인 필요"
+    first = num(rows[0].get("stck_clpr"))
+    last = num(rows[-1].get("stck_clpr"))
+    pct = ((last - first) / first * 100) if first else 0
+    closes = " -> ".join(fmt_int(row.get("stck_clpr")) for row in rows if row.get("stck_clpr"))
+    return f"{closes} ({pct:+.2f}%)"
+
+
+def _volume_flow_text(dailies: list[dict]) -> str:
+    vols = [num(row.get("acml_vol")) for row in dailies[:5] if row.get("acml_vol")]
+    if not vols:
+        return "확인 필요"
+    return f"최근 5일 평균 {int(sum(vols) / len(vols)):,}주, 오늘 {int(vols[0]):,}주"
+
+
+def _market_warning_text(code: str) -> str:
+    mapping = {
+        "00": "없음",
+        "01": "투자주의",
+        "02": "투자경고",
+        "03": "투자위험",
+    }
+    return mapping.get(str(code or "").strip(), str(code or "확인 필요"))
 
 
 def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> str:
@@ -220,68 +242,69 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
 
     latest = dailies[0] if dailies else {}
     rows_for_avg = dailies[1:21] if len(dailies) > 1 else dailies[:20]
-    avg_volume = 0
-    if rows_for_avg:
-        avg_volume = sum(num(row.get("acml_vol")) for row in rows_for_avg) / len(rows_for_avg)
+    avg_volume = sum(num(row.get("acml_vol")) for row in rows_for_avg) / len(rows_for_avg) if rows_for_avg else 0
 
     open_price = pick(quote, "stck_oprc") or pick(latest, "stck_oprc")
     high_price = pick(quote, "stck_hgpr") or pick(latest, "stck_hgpr")
     low_price = pick(quote, "stck_lwpr") or pick(latest, "stck_lwpr")
     close_price = pick(quote, "stck_prpr") or pick(latest, "stck_clpr")
-    change_pct = pick(quote, "prdy_ctrt")
     volume = pick(quote, "acml_vol") or pick(latest, "acml_vol")
-    trading_value = pick(quote, "acml_tr_pbmn") or pick(latest, "acml_tr_pbmn")
 
     individual = pick(investor, "prsn_ntby_qty", "indv_ntby_qty", "prsn_ntby_vol")
     foreigner = pick(investor, "frgn_ntby_qty", "frgn_ntby_vol")
     institution = pick(investor, "orgn_ntby_qty", "inst_ntby_qty", "orgn_ntby_vol")
 
-    short_volume = pick(short_sale, "short_sale_qty", "ssts_cntg_qty", "stnd_shrn_seln_qty")
+    short_volume = (
+        pick(short_sale, "short_sale_qty", "ssts_cntg_qty", "stnd_shrn_seln_qty")
+        or pick(quote, "last_ssts_cntg_qty")
+    )
     short_ratio = pick(short_sale, "short_sale_rate", "ssts_tr_pbmn_rate", "stnd_shrn_seln_rate")
     short_avg_price = pick(short_sale, "short_sale_avg_prc", "ssts_avrg_prc")
+    loan_rate = pick(quote, "whol_loan_rmnd_rate")
+    support_line = pick(quote, "pvt_frst_dmsp_prc", "dmsp_val")
+    resistance_line = pick(quote, "pvt_frst_dmrs_prc", "dmrs_val")
+    foreign_holding = pick(quote, "frgn_hldn_qty")
+    foreign_rate = pick(quote, "hts_frgn_ehrt")
+    market_warning = _market_warning_text(pick(quote, "mrkt_warn_cls_code"))
 
-    # KIS 기본 시세 연결값 외 대차/CB/개인 평단은 별도 데이터가 없으면 확인 필요로 남긴다.
-    return f"""{name} 오늘 데이터야. 수급, 세력상황, 큰 수익 가능성, 매수 판단까지 분석해줘.
-
-종목명: {name}
+    return f"""종목명: {name}
 종목코드: {symbol}
 날짜: {datetime.now().strftime("%Y-%m-%d")} {report_name}
 시가: {fmt_int(open_price)}
 고가: {fmt_int(high_price)}
 저가: {fmt_int(low_price)}
 종가: {fmt_int(close_price)}
-등락률: {fmt_pct(change_pct)}
+등락률: {fmt_pct(pick(quote, "prdy_ctrt"))}
 거래량: {fmt_int(volume)}
 20일 평균 거래량: {int(avg_volume):,}
-거래대금: {fmt_int(trading_value)}
-최근 5일 주가 흐름: 확인 필요
-최근 5일 거래량 흐름: 확인 필요
-최근 5일 외국인·기관 수급: 확인 필요
+거래대금: {fmt_int(pick(quote, "acml_tr_pbmn") or pick(latest, "acml_tr_pbmn"))}
+최근 5일 주가 흐름: {_flow_text(dailies)}
+최근 5일 거래량 흐름: {_volume_flow_text(dailies)}
+최근 5일 외국인기관 수급: KIS 오늘 수급 응답 기준. 빈 값은 장마감 후 재확인 필요
 개인 순매수: {fmt_int(individual)}
 외국인 순매수: {fmt_int(foreigner)}
 기관 순매수: {fmt_int(institution)}
-프로그램 매매:
-대차잔고수량:
-전일 대차잔고수량:
+외국인 보유수량: {fmt_int(foreign_holding)}
+외국인 보유율: {foreign_rate}
+프로그램 매매: {fmt_int(pick(quote, "pgtr_ntby_qty"))}
+대차잔고율: {loan_rate}
 대차상환수량:
 대차체결수량:
-공매도 거래량: {fmt_int(short_volume)}
+직전 공매도 체결수량: {fmt_int(short_volume)}
 공매도 비중: {short_ratio}
 공매도 평균가: {fmt_int(short_avg_price)}
-코스피 등락률:
-코스닥 등락률:
-시장경보 여부: 확인 필요
-테마: 확인 필요
+시장경보 여부: {market_warning}
+테마: {pick(quote, "bstp_kor_isnm") or "확인 필요"}
 관련 뉴스: 확인 필요
 CB/BW/유상증자/보호예수 이슈: 확인 필요
 전환가:
 리픽싱 가능 여부:
-주요 지지선:
-주요 저항선:
+주요 지지선: {fmt_int(support_line)}
+주요 저항선: {fmt_int(resistance_line)}
 내 평단:
 내 보유 비중:
 추가 예수금:
-장중 특징: KIS 현재가/일봉 기반 자동 수집. 대차·CB·지지/저항은 별도 확인 필요.
+장중 특징: KIS 현재가/일봉 기반 자동 수집. 대차잔고율, 직전 공매도 체결수량, 피벗 지지/저항 반영.
 """
 
 
@@ -331,24 +354,23 @@ def daemon(times: list[str], symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_N
             try:
                 send_report("자동", symbol, name)
                 log("소미 자동보고 전송 완료")
-            except Exception as e:
-                log(f"소미 자동보고 실패: {e}")
-                send(f"⚠️ [소미 자동보고 실패]\n{e}")
+            except Exception as exc:
+                log(f"소미 자동보고 실패: {exc}")
+                send(f"[소미 자동보고 실패]\n{exc}")
             time.sleep(65)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="소미 KIS 기반 국내주식 수급 자동 텔레그램 리포터")
+    parser = argparse.ArgumentParser(description="소미 KIS 기반 국내주식 점수 자동 리포터")
     parser.add_argument("--send", action="store_true", help="즉시 텔레그램 보고")
     parser.add_argument("--print", action="store_true", help="리포트 출력")
-    parser.add_argument("--daemon", action="store_true", help="하루 3회 자동 보고 데몬")
+    parser.add_argument("--daemon", action="store_true", help="지정 시간 자동 보고")
     parser.add_argument("--times", default=",".join(DEFAULT_TIMES), help="HH:MM,HH:MM 형식 보고 시간")
-    parser.add_argument("--symbol", default=DEFAULT_SYMBOL, help="종목코드, 기본값 032820")
-    parser.add_argument("--name", default=DEFAULT_NAME, help="종목명, 기본값 우리기술")
+    parser.add_argument("--symbol", default=DEFAULT_SYMBOL, help="종목코드")
+    parser.add_argument("--name", default=DEFAULT_NAME, help="종목명")
     args = parser.parse_args()
 
     times = [x.strip() for x in args.times.split(",") if x.strip()]
-
     if args.daemon:
         daemon(times, args.symbol, args.name)
     elif args.send:

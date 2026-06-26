@@ -1,480 +1,136 @@
-import os
-import sys
 import json
-import importlib.util
+import os
+import subprocess
+import sys
 
 _here = os.path.dirname(os.path.abspath(__file__))
-# skills/예원_CEO/tools → skills/예원_CEO → skills → ai-team → projects → ai_lab
 PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
+AI_TEAM_ROOT = os.path.join(PROJECT_ROOT, "projects", "ai-team")
 sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
+sys.path.insert(0, AI_TEAM_ROOT)
 
-from _shared.llm import text as gemini_text
+from _shared.llm import text as llm_text
 from _shared.notify import report
 
-_YEWON_DISPATCH_SYSTEM = """당신은 CEO 예원입니다. 사장님 명령을 분석해 최적의 에이전트에게 배분합니다.
+ACTIVE_AGENT_KEYWORDS = {
+    "somi": ["소미", "somi", "국내주식", "종목", "수급", "세력", "큰 수익", "매수", "매수판단", "숏커버링", "공매도", "대차잔고", "우리기술"],
+    "youngsuk": ["영숙", "youngsuk", "비서", "일정", "캘린더", "스케줄", "리포트 정리", "상태", "현황"],
+    "ceo": ["예원", "ceo", "하네스", "harness", "check_all", "스킬", "감사", "분배", "라우팅"],
+}
 
-# 팀 구성 — 전문 에이전트 (AI_TEAM_ROLES.md 기준)
-- 영숙(secretary): 텔레그램 최우선 독점 응답, 구글 캘린더 CRUD, 일일 업로드 총괄, 유튜브 추천
-- 경수(cyber): 유튜브·SNS 악플 포렌식, 채널 보안 취약점 스캔, 스프레드시트 법적 아카이빙
-- 코다리(developer): Vite+React+TS+Tailwind v4 기반 petnna 웹 개발, 2시간 주기 에이전트 헬스 체크
-- 티모(timo): petnna UI/UX 크리틱, 7대 사용성 기준 검수, AI Slop 클리셰 제거, CSS/JS 스니펫 제공
-- 케빈(kevin): Vercel/Supabase 인프라, CI/CD 배포, PWA 가용성 모니터링, 임시 자원 가비지 collector
-- 시그널(strategist): 코인/주식 시장 동향 수집, 공포탐욕지수·김프·Upbit 흐름 점수 보고
-- 로율(legal): 상속·증여 세액 시뮬레이션, petnna 개인정보·저작권 컴플라이언스 검토
-- 데이브(dave): 거래량 및 차트 변곡점 분석, 물타기/매도 타점 통제, 장 마감 Notion 브리핑 및 주식 정보 자동 탐색
-- 레오(leo): 고변동성 알트코인 공격적 단타 스캔, 시뮬레이션 점검, 데이브와 분리된 단타 전략 학습
-- 소미(somi): 국내주식 수급·세력상황·큰 수익 가능성·매수 판단 리포트 작성
-- 예원(ceo): 태스크 아키텍처링·플래닝, 원점 라우팅, 에이전트 스킬 거버넌스, 하네스 체크(check_all.py), YouTube 채널 전략 및 기획서 직접 작성
+DISPATCH_SYSTEM = """당신은 CEO 예원입니다.
+현재 활성 에이전트는 세 명뿐입니다.
+- somi: 국내주식 수급, 세력상황, 큰 수익 가능성, 매수판단 리포트
+- youngsuk: 텔레그램 비서, 일정, 스케줄, 상태 조회, 리포트 정리
+- ceo: 하네스 체크, 스킬 감사, 작업 분배, 시스템 점검
 
-# 최소 동원 원칙 (AI_TEAM_ROLES.md 준수)
-- 단순 조회·데이터: 에이전트 1명만
-- 창작·기획: 2~3명 (5명 이상 절대 금지)
-
-JSON만 반환:
-{"agent": "<에이전트명>", "action": "<구체적 행동 요약>"}
+JSON 객체만 반환하세요.
+{"agent":"somi|youngsuk|ceo","action":"짧은 작업 요약"}
 """
+
+
+def _parse_dispatch_decision(raw: str | None) -> dict | None:
+    if not raw:
+        return None
+    text = raw.strip()
+    candidates = [text]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(text[start:end + 1])
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            continue
+    return None
+
+
+def _keyword_dispatch_decision(message: str) -> dict | None:
+    lower = message.lower()
+    for agent, keywords in ACTIVE_AGENT_KEYWORDS.items():
+        if any(keyword.lower() in lower for keyword in keywords):
+            return {"agent": agent, "action": message[:120]}
+    return None
+
+
+def _run_script(args: list[str], timeout: int = 120) -> tuple[int, str]:
+    result = subprocess.run(
+        args,
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        env={**os.environ, "PYTHONUTF8": "1"},
+    )
+    return result.returncode, (result.stdout or result.stderr or "").strip()
+
+
+def _run_harness() -> str:
+    script = os.path.join(AI_TEAM_ROOT, "harness", "check_all.py")
+    code, output = _run_script([sys.executable, script], timeout=60)
+    has_warn = "WARN" in output or "FAIL" in output or code != 0
+    note = "WARN/FAIL 감지, 구조 점검 필요" if has_warn else "모든 구조 정상"
+    icon = "⚠️" if has_warn else "✅"
+    return f"{icon} [예원 CEO] 하네스 체크 완료\n\n{output}\n\n{note}"
+
+
+def _run_skill_audit() -> str:
+    script = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "skill_auditor.py")
+    code, output = _run_script([sys.executable, script, "--check"], timeout=180)
+    icon = "✅" if code == 0 else "❌"
+    return f"{icon} [예원 CEO] 스킬 문서 감사 완료\n\n{output[:3500]}"
+
+
+def _run_somi(message: str) -> str:
+    script = os.path.join(AI_TEAM_ROOT, "skills", "소미_분석가", "tools", "short_covering_analyzer.py")
+    code, output = _run_script([sys.executable, script, "--text", message], timeout=90)
+    icon = "✅" if code == 0 else "❌"
+    return f"{icon} [소미] 국내주식 수급·매수판단 리포트 완료\n\n{output[:3500]}"
+
+
+def _run_youngsuk(message: str) -> str:
+    if any(k in message for k in ["스케줄", "일정", "schedule"]):
+        script = os.path.join(AI_TEAM_ROOT, "skills", "영숙_비서", "tools", "schedule_manager.py")
+        code, output = _run_script([sys.executable, script, "--list"], timeout=30)
+        icon = "✅" if code == 0 else "❌"
+        return f"{icon} [영숙] 스케줄 확인 완료\n\n{output[:2000]}"
+    if any(k in message for k in ["리포트 정리", "cleanup"]):
+        script = os.path.join(AI_TEAM_ROOT, "skills", "영숙_비서", "tools", "reports_manager.py")
+        code, output = _run_script([sys.executable, script, "cleanup"], timeout=60)
+        icon = "✅" if code == 0 else "❌"
+        return f"{icon} [영숙] 리포트 정리 완료\n\n{output[:2000]}"
+    from _shared.notify import status_report
+    return status_report()
+
 
 def dispatch_and_execute(ceo_message: str) -> str:
     report("예원", "업무 지시 처리 시작", ceo_message[:80])
     print(f"  [예원 CEO] 수신된 업무 지시: {ceo_message}")
 
-    # ── 소미: 국내주식 수급·세력상황·큰 수익·매수 판단 리포트 (LLM 불필요, 데이터 기반 채점) ──
-    _somi_kw = ["소미", "국내주식", "종목", "수급", "세력", "큰 수익", "매수 판단", "매수", "숏커버링", "숏스퀴즈", "공매도 상환", "대차잔고", "CB", "전환가", "리픽싱", "물타기"]
-    if ("소미" in ceo_message or any(k in ceo_message for k in ["수급", "세력", "큰 수익", "매수 판단"])) and any(k in ceo_message for k in _somi_kw):
-        print("  [예원 CEO] 소미 키워드 감지 → short_covering_analyzer.py 직접 실행")
-        import subprocess
-        script = os.path.join(
-            PROJECT_ROOT,
-            "projects",
-            "ai-team",
-            "skills",
-            "소미_분석가",
-            "tools",
-            "short_covering_analyzer.py",
-        )
-        result = subprocess.run(
-            [sys.executable, script, "--text", ceo_message],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=60,
-        )
-        output = (result.stdout or result.stderr).strip()
-        prefix = "✅ [소미] 국내주식 수급·세력상황·매수판단 리포트 완료" if result.returncode == 0 else "❌ [소미] 리포트 생성 실패"
-        return f"{prefix}\n\n{output[:3500]}"
+    direct = _keyword_dispatch_decision(ceo_message)
+    if direct:
+        decision = direct
+    else:
+        raw = llm_text(ceo_message, system=DISPATCH_SYSTEM, json_mode=True, max_tokens=200, lm_first=False)
+        decision = _parse_dispatch_decision(raw) or _keyword_dispatch_decision(ceo_message)
 
-    # ── 하네스 체크 선처리 (LLM 불필요, AGENTS.md 하네스 아키텍트 지침) ──
-    _harness_kw = ["하네스", "harness", "시스템 점검", "시스템 분석", "check_all", "구조 검증"]
-    if any(k in ceo_message for k in _harness_kw):
-        print("  [예원 CEO] 하네스 키워드 감지 → check_all.py 직접 실행")
-        import subprocess
-        harness_script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "harness", "check_all.py")
-        result = subprocess.run(
-            [sys.executable, harness_script],
-            cwd=os.path.join(PROJECT_ROOT, "projects", "ai-team"),
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=60
-        )
-        output = (result.stdout or result.stderr).strip()
-        has_warn = "WARN" in output or "FAIL" in output
-        emoji = "⚠️" if has_warn else "✅"
-        note = "⚠️ WARN/FAIL 감지 → 구조 점검 필요" if has_warn else "✅ 모든 구조 정상"
-        return f"{emoji} [예원 CEO] 하네스 체크 완료\n\n{output}\n\n{note}"
+    if not decision:
+        return "예원 CEO가 지시를 해석하지 못했어요. 소미/영숙/예원 중 누구에게 맡길지 한 번만 더 적어주세요."
 
-    # ── Python 스크립트 직접 실행 (Ollama 불필요) ──
-    if ".py" in ceo_message and ("python" in ceo_message.lower() or "projects/" in ceo_message):
-        print("  [예원 CEO] Python 스크립트 감지 → 직접 실행")
-        import subprocess
-        # 명령어에서 python 경로 추출
-        parts = ceo_message.split()
-        script_idx = next((i for i, p in enumerate(parts) if ".py" in p), None)
-        if script_idx is not None:
-            if "python" in parts[script_idx - 1].lower():
-                cmd = parts[script_idx - 1:script_idx + 1]
-            else:
-                cmd = [sys.executable, parts[script_idx]]
+    agent = str(decision.get("agent", "")).lower()
+    print(f"  [예원 CEO] 분배 결정: {agent}")
 
-            try:
-                result = subprocess.run(
-                    cmd,
-                    cwd=PROJECT_ROOT,
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=300
-                )
-                if result.returncode == 0:
-                    return f"✅ Python 스크립트 실행 완료\n\n{result.stdout[:500]}"
-                else:
-                    return f"❌ Python 스크립트 실행 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
-            except Exception as e:
-                return f"❌ Python 스크립트 실행 오류: {str(e)[:300]}"
+    if agent in {"somi", "소미"}:
+        return _run_somi(ceo_message)
+    if agent in {"youngsuk", "영숙", "secretary"}:
+        return _run_youngsuk(ceo_message)
+    if agent in {"ceo", "예원", "yewon"}:
+        if any(k in ceo_message.lower() for k in ["스킬", "감사", "skill"]):
+            return _run_skill_audit()
+        return _run_harness()
 
-    try:
-        raw = gemini_text(ceo_message, system=_YEWON_DISPATCH_SYSTEM, json_mode=True, max_tokens=200, task="", lm_first=False)
-        if not raw:
-            return "❌ 예원 CEO의 지시를 해석할 수 없습니다."
-        
-        decision = json.loads(raw)
-        agent = decision.get("agent", "").lower()
-
-        # ── Ollama 오분류 보정: 메시지에 에이전트명이 명시된 경우 강제 재매핑 ──
-        _agent_keywords = {
-            "레오": ["레오", "leo", "단타", "공격적", "고변동성", "알트코인"],
-            "ceo": ["유튜브", "youtube", "기획서", "마케팅 전략", "하네스", "harness", "시스템 점검"],
-            "로율": ["로율", "법률 검토", "월간 감사", "월간 심층 감사", "주간 법률", "lolaw"],
-            "경수": ["경수", "악플 체크", "악플 모니터", "comment_forensics"],
-            "시그널": ["시그널", "펄스", "시장 분석", "코인 동향", "주가 동향", "주식 동향", "코인", "주식", "종목 검색", "종목 찾아", "crypto", "stock"],
-            "티모": ["티모", "디자인 검토", "UI", "UX"],
-            "케빈": ["케빈", "인프라", "모니터링", "vercel"],
-            "코다리": ["코다리", "헬스체크", "개발"],
-            "영숙": ["영숙", "노션 보고", "업로드 현황", "리포트 정리"],
-            "소미": ["소미", "국내주식", "종목", "수급", "세력", "큰 수익", "매수 판단", "숏커버링", "숏스퀴즈", "공매도 상환", "대차잔고", "CB", "전환가", "리픽싱", "물타기"],
-            "데이브": ["데이브", "거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit", "자동매매", "자동 매매", "투자 자동화"],
-        }
-        for true_agent, keywords in _agent_keywords.items():
-            if any(k in ceo_message for k in keywords):
-                if agent != true_agent:
-                    print(f"  [예원 보정] Ollama '{agent}' → '{true_agent}' (메시지 키워드 매칭)")
-                    agent = true_agent
-                break
-
-        print(f"  [예원 CEO] 분배 결정: {agent}")
-
-        def _match(agent: str, names: list, msg_keywords: list = None) -> bool:
-            """agent 필드 우선, 없으면 ceo_message 키워드 폴백."""
-            all_names = [n.lower() for n in names]
-            agent_lower = agent.lower()
-            if any(n in agent_lower for n in all_names):
-                return True
-            if msg_keywords:
-                # agent가 다른 이름으로 매핑되지 않은 경우에만 키워드 폴백
-                all_known = ["ceo", "예원", "시그널", "펄스", "business", "케빈", "kevin", "로율", "legal", "코다리", "developer", "경수", "cyber", "영숙", "secretary", "티모", "timo", "데이브", "dave", "레오", "leo", "소미", "somi"]
-                agent_matched = any(n in agent_lower for n in all_known)
-                if not agent_matched:
-                    return any(k in ceo_message for k in msg_keywords)
-            return False
-
-        # Execute based on agent (agent 필드 최우선, 키워드는 agent 미매핑시만 폴백)
-
-        # ─ 로율 최우선 체크 (secretary 오라우팅 방지) ─
-        if _match(agent, ["로율", "lolaw", "legal", "lawyer"], ["세무 시뮬레이션", "법률 자문", "로율", "법률 검토", "월간 감사", "월간 심층 감사", "주간 법률 검토"]):
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "로율_변호사", "tools"))
-            import tax_simulator
-            return tax_simulator.run_simulation(100000000)
-
-        elif _match(agent, ["영숙", "secretary", "notion"], ["노션 보고", "영숙", "업로드 현황", "리포트 정리"]):
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools"))
-            if "리포트 정리" in ceo_message or "cleanup" in ceo_message:
-                import subprocess
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools", "reports_manager.py")
-                result = subprocess.run(
-                    [sys.executable, script, "cleanup"],
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 영숙 리포트 정리 완료\n\n{result.stdout[:500]}"
-            elif "업로드 현황" in ceo_message or "status" in ceo_message:
-                import subprocess
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "영숙_비서", "tools", "reports_manager.py")
-                result = subprocess.run(
-                    [sys.executable, script, "status"],
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 영숙 업로드 현황 보고\n\n{result.stdout[:500]}"
-            else:
-                import notion_summarizer
-                return notion_summarizer.run_notion_report()
-
-        elif _match(agent, ["시그널", "펄스", "business", "research", "strategist"], ["시장 분석", "코인 동향", "주가 동향", "주식 동향", "종목 검색", "종목 찾아", "시그널", "펄스"]):
-            import subprocess
-
-            # 종목 검색 요청인지 확인
-            is_stock_search = any(k in ceo_message for k in ["종목 검색", "종목 찾아", "찾아줘", "검색해"])
-
-            if is_stock_search:
-                # 종목명 추출 (간단한 파싱)
-                stock_name = None
-                for keyword in ["종목 검색", "종목 찾아", "찾아줘", "검색해"]:
-                    if keyword in ceo_message:
-                        parts = ceo_message.split(keyword)
-                        if len(parts) > 0:
-                            stock_name = parts[0].strip() or (parts[1].strip() if len(parts) > 1 else None)
-                            break
-
-                if not stock_name:
-                    # LLM으로 종목명 추출
-                    from _shared.llm import text as llm_text  # noqa: PLC0415
-                    extract_prompt = f"다음 문장에서 주식 종목명만 추출해: '{ceo_message}'. 종목명만 답해."
-                    stock_name = llm_text(extract_prompt, max_tokens=10, temperature=0, lm_first=False, task="")
-
-                if stock_name:
-                    search_script = os.path.join(
-                        PROJECT_ROOT, "projects", "ai-team",
-                        "skills", "시그널_분석가", "tools", "stock_search.py"
-                    )
-                    result = subprocess.run(
-                        [sys.executable, search_script, stock_name.strip()],
-                        cwd=os.path.dirname(search_script),
-                        capture_output=True, text=True, encoding="utf-8", errors="replace",
-                        timeout=30
-                    )
-                    if result.returncode == 0:
-                        return result.stdout.strip() or "✅ 종목 검색 완료"
-                    else:
-                        return f"❌ 종목 검색 실패\n\n{result.stderr[:500]}"
-                else:
-                    return "❌ 종목명을 파악할 수 없습니다. '삼성전자 종목 찾아' 형식으로 요청해주세요."
-            else:
-                # 시장 분석
-                signal_script = os.path.join(
-                    PROJECT_ROOT, "projects", "ai-team",
-                    "skills", "시그널_분석가", "tools", "market_signal.py"
-                )
-                result = subprocess.run(
-                    [sys.executable, signal_script],
-                    cwd=os.path.dirname(signal_script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    timeout=300
-                )
-                if result.returncode == 0:
-                    return f"✅ 시그널 코인·주식 시장 분석 완료\n\n{result.stdout[:1500]}"
-                else:
-                    return f"❌ 시그널 시장 분석 실패\n\n{result.stderr[:500]}"
-
-        elif _match(agent, ["케빈", "kevin", "devops", "infra"], ["vercel 클린업", "서버 정리", "모니터링", "리포트", "케빈", "supabase", "oauth"]):
-            sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools"))
-            if "모니터링" in ceo_message or "monitor" in ceo_message or "리포트" in ceo_message or "report" in ceo_message:
-                import subprocess
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools", "petnna_monitor.py")
-                result = subprocess.run(
-                    [sys.executable, script, "health"],
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 케빈 모니터링 완료\n\n{result.stdout[:500]}"
-            elif "supabase" in ceo_message.lower() or "oauth" in ceo_message.lower():
-                import subprocess
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "케빈_인프라", "tools", "supabase_manager.py")
-                if "설정" in ceo_message or "set" in ceo_message or "url" in ceo_message:
-                    result = subprocess.run(
-                        [sys.executable, script, "set-url"],
-                        cwd=os.path.dirname(script),
-                        capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    )
-                    return f"Supabase Site URL 설정 결과:\n{result.stdout}"
-                else:
-                    result = subprocess.run(
-                        [sys.executable, script, "status"],
-                        cwd=os.path.dirname(script),
-                        capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    )
-                    return f"Supabase 상태 보고:\n{result.stdout}"
-            else:
-                import vercel_manager
-                return vercel_manager.run_vercel_cleanup()
-
-
-        elif _match(agent, ["레오", "leo"], ["레오", "leo", "단타", "공격적", "고변동성", "알트코인"]):
-            import subprocess
-            leo_script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "레오_트레이더", "tools", "leo_aggressive_trader.py")
-            learning_script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "레오_트레이더", "tools", "leo_learning_system.py")
-
-            if not os.path.exists(leo_script):
-                return "❌ 레오 스크립트를 찾을 수 없습니다."
-
-            wants_live = any(k in ceo_message for k in ["실거래", "실매매", "라이브", "live"])
-            wants_daemon = any(k in ceo_message for k in ["자동매매", "자동 매매", "데몬", "daemon", "계속", "가동"])
-            wants_once = any(k in ceo_message for k in ["한번", "1회", "스캔", "점검", "once", "시뮬", "sim"])
-            wants_learning = any(k in ceo_message for k in ["학습", "성과 분석", "러닝", "learning"])
-
-            if wants_learning:
-                result = subprocess.run(
-                    [sys.executable, learning_script],
-                    cwd=os.path.dirname(learning_script),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=180,
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 레오 학습 실행 완료\n\n{(result.stdout or result.stderr)[:800]}"
-
-            if wants_daemon:
-                args = [sys.executable, leo_script, "--daemon"]
-                mode_text = "시뮬레이션"
-                if wants_live:
-                    args.append("--live")
-                    mode_text = "실거래"
-                else:
-                    args.append("--sim")
-                subprocess.Popen(
-                    args,
-                    cwd=os.path.dirname(leo_script),
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
-                )
-                return f"✅ 레오 {mode_text} 데몬을 백그라운드에서 가동했습니다. 실거래는 '실거래/live'가 명시된 경우에만 켜집니다."
-
-            if wants_once:
-                args = [sys.executable, leo_script, "--once", "--sim"]
-                if wants_live:
-                    args = [sys.executable, leo_script, "--once", "--live"]
-                result = subprocess.run(
-                    args,
-                    cwd=os.path.dirname(leo_script),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=180,
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 레오 1회 스캔 완료\n\n{(result.stdout or result.stderr)[:1000]}"
-
-            result = subprocess.run(
-                [sys.executable, leo_script, "--status"],
-                cwd=os.path.dirname(leo_script),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=60,
-            )
-            return f"⚡ 레오 상태\n\n{(result.stdout or result.stderr)[:800]}"
-
-        elif _match(agent, ["ceo", "예원"], ["유튜브", "youtube", "기획서", "마케팅 전략", "하네스", "harness", "시스템 점검", "시스템 분석"]):
-            # 하네스 체크 (AGENTS.md 하네스 아키텍트 지침 반영)
-            if any(k in ceo_message for k in ["하네스", "harness", "시스템 점검", "시스템 분석", "check_all"]):
-                import subprocess
-                harness_script = os.path.join(
-                    PROJECT_ROOT, "projects", "ai-team", "harness", "check_all.py"
-                )
-                result = subprocess.run(
-                    [sys.executable, harness_script],
-                    cwd=os.path.join(PROJECT_ROOT, "projects", "ai-team"),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    timeout=60
-                )
-                output = (result.stdout or result.stderr).strip()
-                has_warn = "WARN" in output or "FAIL" in output
-                emoji = "⚠️" if has_warn else "✅"
-                return f"{emoji} [예원 CEO] 하네스 체크 완료\n\n{output}\n\n{'⚠️ WARN/FAIL 감지 → 구조 점검 필요' if has_warn else '✅ 구조 정상'}"
-
-            # 유튜브 기획 직접 처리
-            return """🎬 [예원 CEO] 유튜브 기획 및 채널 전략 리포트 (예원 CEO 직접 수행)
-
-📊 유튜브 채널 성과 지표
-- 평균 조회수: 12.4K (전주 대비 +12% 📈)
-- 평균 클릭률 (CTR): 6.8% 🎯
-- 구독자 증가율: +4.2% (주간 기준)
-
-🔥 주요 기획 및 진행 사항 (예원 직접 수립)
-1. "오늘의 펫 운세 카드" 릴스/인스타 연계 숏폼 기획안 작성 완료
-2. "30초 펫 리얼리티" 챌린지 썸네일 브리프 구성 중
-3. 메타데이터(태그, 설명) 최적화로 외부 검색 유입 비중 25% 달성
-"""
-
-        elif _match(agent, ["코다리", "kodari", "developer"], ["코딩", "개발", "웹 구축", "헬스체크", "health_check"]):
-            if "헬스체크" in ceo_message or "health_check" in ceo_message or "health" in ceo_message:
-                import subprocess
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "코다리_개발자", "tools", "agent_health_check.py")
-                result = subprocess.run(
-                    [sys.executable, script],
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 코다리 헬스체크 완료\n\n{result.stdout[:500]}"
-            else:
-                return "🛠️ 코다리: 코딩 작업은 텔레그램으로 구체적인 요청사항을 보내주세요."
-
-        elif _match(agent, ["경수", "cyber", "gyeongsu"], ["악플", "댓글 수사", "경수"]):
-            import subprocess
-            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "경수_수사관", "tools", "comment_forensics.py")
-            if os.path.exists(script):
-                result = subprocess.run(
-                    [sys.executable, script],
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 경수 수사 완료\n\n{result.stdout[:500]}"
-            return "❌ 경수 스크립트를 찾을 수 없습니다."
-
-        elif _match(agent, ["티모", "timo", "designer", "디자이너"], ["UI", "UX", "petnna 검토", "디자인 검토", "티모"]):
-            import subprocess
-            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "티모_디자이너", "tools", "petnna_reviewer.py")
-            if os.path.exists(script):
-                result = subprocess.run(
-                    [sys.executable, script],
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                return f"{'✅' if result.returncode == 0 else '❌'} 티모 UI/UX 검토 완료\n\n{result.stdout[:500]}"
-            return "❌ 티모 스크립트를 찾을 수 없습니다."
-
-        elif _match(agent, ["데이브", "dave"], ["거래량", "물타기", "매도 타점", "우리기술", "업비트", "가상자산", "비트코인", "btc", "upbit", "자동매매", "자동 매매", "투자 자동화"]):
-            import subprocess
-            is_auto = any(k in ceo_message for k in ["자동매매", "자동 매매", "자동화", "auto"])
-            if is_auto:
-                script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", "upbit_auto_trader.py")
-                if os.path.exists(script):
-                    # 백그라운드 데몬으로 실행 (Popen)
-                    subprocess.Popen(
-                        [sys.executable, script],
-                        cwd=os.path.dirname(script),
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == 'win32' else 0
-                    )
-                    return "✅ 데이브 업비트 자동 매매 데몬을 백그라운드에서 가동하기 시작했습니다. (1시간 주기로 분석 및 포지션 감시를 수행합니다)"
-                return "❌ 데이브 자동 매매 스크립트를 찾을 수 없습니다."
-
-            is_crypto = any(k in ceo_message.lower() for k in ["업비트", "가상자산", "비트코인", "btc", "upbit"])
-            tool_name = "upbit_analyzer.py" if is_crypto else "stock_analyzer.py"
-            script = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "데이브_주식", "tools", tool_name)
-            if os.path.exists(script):
-                cmd = [sys.executable, script]
-                if is_crypto:
-                    import re
-                    # 자연어 매수/매도 파싱
-                    if any(k in ceo_message for k in ["사줘", "매수", "구입", "살래"]):
-                        # 금액 추출 (원, 만원 등)
-                        money_match = re.search(r'(\d+)\s*원', ceo_message)
-                        if not money_match:
-                            money_match = re.search(r'(\d+)\s*(?:만원|만\s*원)', ceo_message)
-                            if money_match:
-                                amount = float(money_match.group(1)) * 10000
-                            else:
-                                money_match = re.search(r'\b(\d{4,10})\b', ceo_message)
-                                amount = float(money_match.group(1)) if money_match else 5000.0
-                        else:
-                            amount = float(money_match.group(1))
-                        cmd += ["--buy", "KRW-BTC", str(amount)]
-                    elif any(k in ceo_message for k in ["전부 팔아", "전량 매도", "모두 팔아", "싹 다 팔아", "팔아줘", "매도해"]):
-                        cmd += ["--sell-all", "KRW-BTC"]
-                    else:
-                        cmd += ["KRW-BTC", ceo_message]
-                else:
-                    cmd += [ceo_message]
-
-                result = subprocess.run(
-                    cmd,
-                    cwd=os.path.dirname(script),
-                    capture_output=True, text=True, encoding="utf-8", errors="replace",
-                )
-                if result.returncode == 0:
-                    return f"✅ 데이브 실행 완료\n\n{result.stdout[:1000]}"
-                else:
-                    return f"❌ 데이브 실행 실패 (exit {result.returncode})\n\n{result.stderr[:500]}"
-            return "❌ 데이브 스크립트를 찾을 수 없습니다."
-
-        else:
-            return f"⚠️ 예원 CEO: '{decision.get('agent', '?')}' 에이전트에 대한 파이프라인이 아직 없습니다. action={decision.get('action', '')}"
-
-    except Exception as e:
-        return f"❌ 예원 CEO 분배 중 오류 발생: {e}"
+    return f"⚠️ 현재 활성 에이전트가 아닙니다: {decision.get('agent')}. 사용 가능: 소미, 영숙, 예원"

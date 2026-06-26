@@ -1,296 +1,183 @@
-﻿"""
-개별 에이전트 제어 스크립트
-특정 에이전트를 시작/종료/재시작할 수 있음
-"""
+"""Start, stop, and inspect the currently installed ai-team daemons."""
+
+from __future__ import annotations
+
 import os
-import sys
 import subprocess
-import platform
+import sys
+import time
+from pathlib import Path
 
-_here = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", ".."))
-sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.env import load_env
-load_env()
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+
+HERE = Path(__file__).resolve()
+AI_TEAM_ROOT = HERE.parents[3]
+PROJECT_ROOT = AI_TEAM_ROOT.parents[1]
+LOG_DIR = PROJECT_ROOT / "output" / "bot_logs"
 CREATE_NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
+if str(AI_TEAM_ROOT) not in sys.path:
+    sys.path.insert(0, str(AI_TEAM_ROOT))
 
-def _subprocess_run(args, **kwargs):
-    if sys.platform == "win32":
-        kwargs.setdefault("creationflags", CREATE_NO_WINDOW)
-    return subprocess.run(args, **kwargs)
+from _shared.env import load_env
 
-# 하드코딩 제거 - 자동 스캔 사용
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
-from _shared.agent_registry import get_agents as _get_all_agents
 
-_all_agents = _get_all_agents()
-AGENTS = {}
-for info in _all_agents.values():
-    display_name = info["name"].split("_", 1)[0]
-    AGENTS[display_name] = os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", info["script"])
+load_env(str(PROJECT_ROOT))
 
-# 영어 별칭
-AGENT_ALIASES = {
-    "signal": "시그널",
-    "dave": "데이브",
-    "leo": "레오",
+
+AGENTS = {
+    "영숙": {
+        "script": AI_TEAM_ROOT / "skills" / "영숙_비서" / "tools" / "telegram_receiver.py",
+        "args": [],
+        "log": "youngsuk_telegram",
+    },
+    "영숙스케줄": {
+        "script": AI_TEAM_ROOT / "skills" / "영숙_비서" / "tools" / "schedule_manager.py",
+        "args": ["--daemon", "--interval", "60"],
+        "log": "youngsuk_schedule_manager",
+    },
+    "소미": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_kis_reporter.py",
+        "args": ["--daemon", "--times", "08:50,12:30,15:40"],
+        "log": "somi_kis_reporter",
+    },
+    "예원": {
+        "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "harness_monitor.py",
+        "args": [],
+        "log": "yewon_harness_monitor",
+    },
+}
+
+ALIASES = {
     "youngsuk": "영숙",
+    "schedule": "영숙스케줄",
+    "youngsuk_schedule": "영숙스케줄",
+    "somi": "소미",
+    "ceo": "예원",
+    "yewon": "예원",
 }
 
-MANUAL_STOP_DIR = os.path.join(PROJECT_ROOT, "projects", "ai-team", "scripts")
-AGENT_STOP_SLUGS = {
-    "시그널": "signal",
-    "데이브": "dave",
-    "레오": "leo",
-    "영숙": "youngsuk",
-}
-
-
-def _manual_stop_flag(agent_name: str | None = None) -> str:
-    if not agent_name:
-        return os.path.join(MANUAL_STOP_DIR, ".manual_stop")
-    safe_name = AGENT_STOP_SLUGS.get(get_agent_name(agent_name), get_agent_name(agent_name).lower())
-    return os.path.join(MANUAL_STOP_DIR, f".manual_stop_{safe_name}")
-
-
-def mark_manual_stop(agent_name: str | None = None):
-    os.makedirs(MANUAL_STOP_DIR, exist_ok=True)
-    targets = [agent_name] if agent_name else [None]
-    for target in targets:
-        flag_path = _manual_stop_flag(target)
-        with open(flag_path, "w", encoding="utf-8") as f:
-            label = get_agent_name(target) if target else "all"
-            f.write(f"# manual stop: {label}\n")
-            f.write("# Created by direct user stop command. Remove by explicit start/restart.\n")
-
-
-def clear_manual_stop(agent_name: str | None = None, include_global: bool = False):
-    targets = []
-    if include_global or not agent_name:
-        targets.append(None)
-    if agent_name:
-        targets.append(agent_name)
-    for target in targets:
-        flag_path = _manual_stop_flag(target)
-        try:
-            if os.path.exists(flag_path):
-                os.remove(flag_path)
-        except OSError:
-            pass
 
 def get_agent_name(name: str) -> str:
-    """에이전트 이름 정규화"""
-    name = name.strip().lower()
-    return AGENT_ALIASES.get(name, name)
+    key = name.strip()
+    return ALIASES.get(key.lower(), key)
 
-def find_agent_process(agent_name: str) -> list:
-    """에이전트 프로세스 찾기"""
-    agent_name = get_agent_name(agent_name)
-    if agent_name not in AGENTS:
-        return []
 
-    script_path = AGENTS[agent_name]
-    script_filename = os.path.basename(script_path)
+def _process_query(script_name: str) -> list[int]:
+    needle = script_name.lower().replace("'", "''")
+    if sys.platform == "win32":
+        command = (
+            "Get-CimInstance Win32_Process | "
+            "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
+            f"$_.CommandLine.ToLower().Contains('{needle}') }} | "
+            "Select-Object -ExpandProperty ProcessId"
+        )
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", command],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            creationflags=CREATE_NO_WINDOW,
+        )
+        return [int(pid) for pid in result.stdout.split() if pid.isdigit()]
 
-    pids = []
-    try:
-        if platform.system() == "Windows":
-            needle = script_filename.replace("'", "''").lower()
-            cmd = f"""
-Get-CimInstance Win32_Process |
-  Where-Object {{
-    $_.Name -match '^python' -and
-    $_.CommandLine -and
-    $_.CommandLine.ToLower().Contains('{needle}')
-  }} |
-  Select-Object -ExpandProperty ProcessId
-"""
-            result = _subprocess_run(
-                ["powershell", "-NoProfile", "-Command", cmd],
-                capture_output=True, text=True, timeout=5
-            )
-            if result.stdout.strip():
-                pids = [int(pid) for pid in result.stdout.split() if pid.strip().isdigit()]
-        else:  # macOS/Linux
-            result = _subprocess_run(
-                ["pgrep", "-f", script_filename],
-                capture_output=True, text=True
-            )
-            if result.returncode == 0:
-                pids = [int(pid) for pid in result.stdout.strip().split('\n') if pid.strip()]
-    except:
-        pass
+    result = subprocess.run(["pgrep", "-f", needle], capture_output=True, text=True, timeout=5)
+    return [int(pid) for pid in result.stdout.split() if pid.isdigit()]
 
-    return pids
+
+def find_agent_process(agent_name: str) -> list[int]:
+    info = AGENTS.get(get_agent_name(agent_name))
+    return _process_query(info["script"].name) if info else []
+
 
 def stop_agent(agent_name: str) -> str:
-    """에이전트 종료"""
-    agent_name = get_agent_name(agent_name)
-    if agent_name not in AGENTS:
-        available = ", ".join(AGENTS.keys())
-        return f"❌ 알 수 없는 에이전트: {agent_name}\n사용 가능: {available}"
-
-    mark_manual_stop(agent_name)
-    pids = find_agent_process(agent_name)
+    name = get_agent_name(agent_name)
+    if name not in AGENTS:
+        return f"알 수 없는 에이전트: {name}\n사용 가능: {', '.join(AGENTS)}"
+    pids = find_agent_process(name)
     if not pids:
-        return f"⚠️ {agent_name} 에이전트가 실행 중이 아닙니다"
-
-    try:
-        if platform.system() == "Windows":
-            for pid in pids:
-                _subprocess_run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+        return f"{name}은 실행 중이 아닙니다."
+    for pid in pids:
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, creationflags=CREATE_NO_WINDOW)
         else:
-            for pid in pids:
-                _subprocess_run(["kill", str(pid)])
+            subprocess.run(["kill", str(pid)], capture_output=True)
+    return f"{name} 종료 완료 (PID: {', '.join(map(str, pids))})"
 
-        return f"✅ {agent_name} 종료 완료 (PID: {', '.join(map(str, pids))})"
-    except Exception as e:
-        return f"❌ {agent_name} 종료 실패: {e}"
 
 def start_agent(agent_name: str) -> str:
-    """에이전트 시작"""
-    agent_name = get_agent_name(agent_name)
-    if agent_name not in AGENTS:
-        available = ", ".join(AGENTS.keys())
-        return f"❌ 알 수 없는 에이전트: {agent_name}\n사용 가능: {available}"
-
-    clear_manual_stop(agent_name)
-
-    # 이미 실행 중인지 확인
-    pids = find_agent_process(agent_name)
+    name = get_agent_name(agent_name)
+    info = AGENTS.get(name)
+    if not info:
+        return f"알 수 없는 에이전트: {name}\n사용 가능: {', '.join(AGENTS)}"
+    pids = find_agent_process(name)
     if pids:
-        return f"⚠️ {agent_name} 이미 실행 중 (PID: {', '.join(map(str, pids))})"
+        return f"{name} 이미 실행 중 (PID: {', '.join(map(str, pids))})"
+    script = info["script"]
+    if not script.exists():
+        return f"스크립트가 없습니다: {script}"
 
-    script_path = AGENTS[agent_name]
-    if not os.path.exists(script_path):
-        return f"❌ 스크립트 없음: {script_path}"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    with (LOG_DIR / f"{info['log']}.out.log").open("ab") as out, (LOG_DIR / f"{info['log']}.err.log").open("ab") as err:
+        process = subprocess.Popen(
+            [sys.executable, str(script), *info["args"]],
+            cwd=str(PROJECT_ROOT),
+            stdout=out,
+            stderr=err,
+            creationflags=CREATE_NO_WINDOW,
+            env={**os.environ, "PYTHONUTF8": "1"},
+        )
+    return f"{name} 시작 완료 (PID: {process.pid})"
 
-    try:
-        if platform.system() == "Windows":
-            # Windows에서 백그라운드로 시작
-            args = [script_path]
-            if agent_name == "시그널":
-                args.append("--daemon")
-
-            if agent_name == "영숙":  # 텔레그램 봇은 pythonw로
-                process = subprocess.Popen(
-                    ["pythonw", *args],
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    env={**os.environ, "PYTHONUTF8": "1"}
-                )
-            else:
-                process = subprocess.Popen(
-                    ["python", *args],
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    env={**os.environ, "PYTHONUTF8": "1"}
-                )
-            return f"✅ {agent_name} 시작 완료 (PID: {process.pid})"
-        else:  # macOS/Linux
-            process = subprocess.Popen(
-                ["python3", script_path],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True
-            )
-            return f"✅ {agent_name} 시작 완료 (PID: {process.pid})"
-    except Exception as e:
-        return f"❌ {agent_name} 시작 실패: {e}"
 
 def restart_agent(agent_name: str) -> str:
-    """에이전트 재시작"""
-    agent_name = get_agent_name(agent_name)
-    clear_manual_stop(agent_name)
     stop_result = stop_agent(agent_name)
-    clear_manual_stop(agent_name)
-    import time
-    time.sleep(2)
-    start_result = start_agent(agent_name)
-    return f"{stop_result}\n{start_result}"
+    time.sleep(1)
+    return f"{stop_result}\n{start_agent(agent_name)}"
 
-def get_agent_status(agent_name: str = None) -> str:
-    """에이전트 상태 조회"""
+
+def get_agent_status(agent_name: str | None = None) -> str:
     if agent_name:
-        agent_name = get_agent_name(agent_name)
-        if agent_name not in AGENTS:
-            available = ", ".join(AGENTS.keys())
-            return f"❌ 알 수 없는 에이전트: {agent_name}\n사용 가능: {available}"
-
-        pids = find_agent_process(agent_name)
-        status = "🟢 실행 중" if pids else "🔴 중지"
-        pid_info = f" (PID: {', '.join(map(str, pids))})" if pids else ""
-        return f"{agent_name}: {status}{pid_info}"
-
-    # 전체 에이전트 상태
-    status_lines = ["📊 에이전트 상태\n"]
-    for name in AGENTS.keys():
+        name = get_agent_name(agent_name)
+        if name not in AGENTS:
+            return f"알 수 없는 에이전트: {name}\n사용 가능: {', '.join(AGENTS)}"
         pids = find_agent_process(name)
-        status = "🟢" if pids else "🔴"
-        pid_info = f" (PID: {', '.join(map(str, pids))})" if pids else ""
-        status_lines.append(f"{status} {name}{pid_info}")
+        return f"{name}: {'실행 중' if pids else '중지'}" + (f" (PID: {', '.join(map(str, pids))})" if pids else "")
 
-    return "\n".join(status_lines)
+    lines = ["에이전트 상태"]
+    for name in AGENTS:
+        pids = find_agent_process(name)
+        lines.append(f"- {name}: {'실행 중' if pids else '중지'}" + (f" (PID: {', '.join(map(str, pids))})" if pids else ""))
+    return "\n".join(lines)
+
 
 def handle_agent_command(command: str) -> str:
-    """에이전트 제어 명령 처리
-
-    명령어 형식:
-    - <에이전트명> 시작 / start <agent>
-    - <에이전트명> 종료 / stop <agent>
-    - <에이전트명> 재시작 / restart <agent>
-    - <에이전트명> 상태 / status <agent>
-    - 에이전트상태 / agent status (전체)
-    """
-    command = command.strip().lower()
-
-    # "에이전트상태" - 전체 상태
-    if command in ["에이전트상태", "agentstatus"]:
+    command = command.strip()
+    if command.lower() in {"agentstatus", "status", "상태", "에이전트상태"}:
         return get_agent_status()
 
-    # 명령어 파싱
     parts = command.split()
     if len(parts) < 2:
-        return """❓ 명령어 형식:
-• <에이전트명> 시작 (예: 데이브 시작)
-• <에이전트명> 종료 (예: 레오 종료)
-• <에이전트명> 재시작
-• <에이전트명> 상태
-• 에이전트상태 (전체)
+        return "형식: <에이전트명> <시작|종료|재시작|상태>\n사용 가능: " + ", ".join(AGENTS)
 
-사용 가능한 에이전트: """ + ", ".join(AGENTS.keys())
+    agent_name, action = parts[0], parts[1]
+    if agent_name.lower() in {"start", "stop", "restart", "status"}:
+        action, agent_name = agent_name, parts[1]
 
-    # "데이브 시작" 형식
-    agent_name = parts[0]
-    action = parts[1]
-
-    # "start dave" 형식도 지원
-    if agent_name in ["start", "stop", "restart", "status"]:
-        action = agent_name
-        agent_name = parts[1] if len(parts) > 1 else None
-        if not agent_name:
-            return "❌ 에이전트 이름을 지정하세요"
-
-    agent_name = get_agent_name(agent_name)
-
-    if action in ["시작", "start", "켜", "켜줘"]:
+    if action in {"시작", "start", "켜", "켜줘"}:
         return start_agent(agent_name)
-    elif action in ["종료", "stop", "끄", "꺼", "꺼줘"]:
+    if action in {"종료", "stop", "꺼", "꺼줘"}:
         return stop_agent(agent_name)
-    elif action in ["재시작", "restart", "리스타트"]:
+    if action in {"재시작", "restart"}:
         return restart_agent(agent_name)
-    elif action in ["상태", "status"]:
+    if action in {"상태", "status"}:
         return get_agent_status(agent_name)
-    else:
-        return f"❌ 알 수 없는 동작: {action}\n사용 가능: 시작, 종료, 재시작, 상태"
+    return f"알 수 없는 동작: {action}\n사용 가능: 시작, 종료, 재시작, 상태"
+
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        command = " ".join(sys.argv[1:])
-        result = handle_agent_command(command)
-        print(result)
-    else:
-        print("사용법: python agent_controller.py <명령어>")
-        print(handle_agent_command("help"))
+    print(handle_agent_command(" ".join(sys.argv[1:]) if len(sys.argv) > 1 else "status"))

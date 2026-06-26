@@ -2,7 +2,7 @@
 skill_auditor.py — 예원(CEO): 에이전트 스킬 관리 감독·분석·검토
 
 Ollama로 각 에이전트 SKILL.md를 읽어 분석:
-  - 완성도 / 전문성 점수
+  - 스킬 문서 완성도 / 전문성
   - 역할 중복·충돌 감지
   - 개선 제안
   - 주간 보고 → 텔레그램 전송
@@ -22,7 +22,7 @@ _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.llm import ollama as lm_chat, is_available as lm_available
+from _shared.llm import text as lm_chat, is_available as lm_available
 from _shared.notify import send
 from _shared.env import find_root
 _root = find_root(_here)
@@ -68,28 +68,81 @@ def _analyze_skill(agent: str, skill_content: str) -> dict:
         f"당신은 AI 에이전트 팀을 관리하는 CEO 예원입니다.\n"
         f"다음은 에이전트 [{agent}]의 SKILL.md 내용입니다:\n\n"
         f"---\n{snippet}\n---\n\n"
-        f"이 스킬을 다음 기준으로 평가하고 JSON으로만 반환하세요:\n"
-        f'{{"completeness": 점수(1-10), "expertise": 점수(1-10), '
-        f'"strengths": ["강점1", "강점2"], '
-        f'"improvements": ["개선사항1", "개선사항2"], '
-        f'"one_line": "한 줄 요약"}}'
+        "아래 JSON 객체만 반환하세요. 마크다운, 설명문, 코드펜스는 쓰지 마세요.\n"
+        '{"completeness": 1에서 10 사이 숫자, "expertise": 1에서 10 사이 숫자, '
+        '"strengths": ["짧은 강점", "짧은 강점"], '
+        '"improvements": ["짧은 개선사항"], '
+        '"one_line": "한 줄 요약"}'
     )
 
     if lm_available():
-        raw = lm_chat(prompt, json_mode=True, max_tokens=400, temperature=0.5)
+        raw = lm_chat(prompt, json_mode=True, max_tokens=400, temperature=0.5, lm_first=True)
         if raw:
-            try:
-                return json.loads(raw.strip())
-            except Exception:
-                pass
+            parsed = _parse_json_object(raw)
+            if parsed:
+                return _normalize_analysis(parsed)
 
     return {
-        "completeness": None,
-        "expertise":    None,
+        "completeness": _heuristic_score(skill_content),
+        "expertise":    _heuristic_score(skill_content),
         "strengths":    [],
-        "improvements": ["Ollama 미응답 — 분석 불가"],
-        "one_line":     "분석 실패 (Ollama 미응답)",
+        "improvements": ["LLM JSON 파싱 실패로 휴리스틱 점수 사용"],
+        "one_line":     "스킬 문서 구조 기반 휴리스틱 평가",
     }
+
+
+def _parse_json_object(raw: str) -> dict | None:
+    """Parse a JSON object even when the model wraps it in prose or fences."""
+    text = raw.strip()
+    candidates = [text]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(text[start:end + 1])
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            continue
+    return None
+
+
+def _normalize_analysis(data: dict) -> dict:
+    def score(value):
+        if isinstance(value, (int, float)):
+            n = float(value)
+            if n > 10:
+                n = n / 10 if n <= 100 else 10
+            return max(1, min(10, round(n)))
+        try:
+            return max(1, min(10, round(float(str(value).strip()))))
+        except Exception:
+            return None
+
+    return {
+        "completeness": score(data.get("completeness")),
+        "expertise": score(data.get("expertise")),
+        "strengths": data.get("strengths") if isinstance(data.get("strengths"), list) else [],
+        "improvements": data.get("improvements") if isinstance(data.get("improvements"), list) else [],
+        "one_line": str(data.get("one_line") or "").strip()[:160],
+    }
+
+
+def _heuristic_score(skill_content: str) -> int:
+    score_value = 4
+    checks = [
+        "description:",
+        "##",
+        "역할",
+        "실행",
+        "가이드",
+        "체크",
+        "에이전트",
+        "tools",
+    ]
+    score_value += sum(1 for item in checks if item in skill_content)
+    return max(1, min(10, score_value))
 
 
 def _detect_overlaps(skills: dict[str, str]) -> list[str]:
@@ -105,7 +158,7 @@ def _detect_overlaps(skills: dict[str, str]) -> list[str]:
     prompt += "\n중복·충돌이 있으면 2~3줄로 설명. 없으면 '없음' 반환."
 
     if lm_available():
-        result = lm_chat(prompt, max_tokens=200, temperature=0.5)
+        result = lm_chat(prompt, max_tokens=200, temperature=0.5, lm_first=True)
         if result:
             return [result.strip()]
     return []
@@ -113,22 +166,22 @@ def _detect_overlaps(skills: dict[str, str]) -> list[str]:
 
 def _build_report(results: dict[str, dict], overlaps: list[str], timestamp: str) -> str:
     """텔레그램 보고 메시지 생성."""
-    lines = [f"📋 [CEO 예원] 주간 에이전트 스킬 감사 보고 ({timestamp})\n"]
+    lines = [f"📋 [CEO 예원] 주간 에이전트 스킬 문서 감사 보고 ({timestamp})\n"]
 
-    # 에이전트별 평가
-    lines.append("에이전트별 평가:")
+    # 에이전트별 스킬 문서 평가. 투자/매수판단 점수는 소미 분석 도구만 산출한다.
+    lines.append("에이전트별 스킬 문서 평가:")
     for agent, r in results.items():
         c = r.get("completeness")
         e = r.get("expertise")
         if c is not None and e is not None:
             avg = (c + e) / 2
             stars = "⭐" * min(int(avg / 2), 5)
-            score_str = f"{stars}({avg:.0f}/10)"
+            score_str = f"{stars}(문서 {avg:.0f}/10)"
         else:
             score_str = "❓(분석불가)"
         one_line = r.get("one_line", "")
         imps = r.get("improvements", [])
-        imp_str = f" → {imps[0]}" if imps and imps[0] != "Ollama 미응답 — 분석 불가" else ""
+        imp_str = f" → {imps[0]}" if imps and imps[0] not in {"Ollama 미응답 — 분석 불가", "LLM 응답 JSON 파싱 실패"} else ""
         lines.append(f"  {agent} {score_str} — {one_line}{imp_str}")
 
     # 중복 감지
@@ -180,7 +233,10 @@ def run_audit() -> bool:
         print(f"  🔍 [{agent}] 분석 중...")
         results[agent] = _analyze_skill(agent, content)
         r = results[agent]
-        print(f"     완성도={r.get('completeness')}/10 전문성={r.get('expertise')}/10 — {r.get('one_line','')}")
+        print(
+            f"     문서완성도={r.get('completeness')}/10 "
+            f"문서전문성={r.get('expertise')}/10 — {r.get('one_line','')}"
+        )
 
     # 3. 중복 감지
     print("  🔗 역할 중복 감지 중...")
