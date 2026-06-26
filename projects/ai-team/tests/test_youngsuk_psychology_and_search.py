@@ -47,6 +47,37 @@ class YoungsukPsychologyAndSearchTests(unittest.TestCase):
         self.assertIn("SK하이닉스 현재가", result)
         self.assertIn("300,000원", result)
 
+    def test_samsung_analysis_routes_to_somi_without_llm(self):
+        receiver = load_receiver()
+        calls = []
+
+        receiver.dispatch_to_somi = lambda text: calls.append(text) or "삼성전자 분석 완료"
+        receiver._call_llm = lambda prompt, system: self.fail("stock analysis should not call LLM")
+
+        result = receiver.handle_message("삼전 분석해줘")
+
+        self.assertEqual(calls, ["삼전 분석해줘"])
+        self.assertIn("삼성전자 분석 완료", result)
+
+    def test_dispatch_to_somi_passes_samsung_symbol_and_name(self):
+        receiver = load_receiver()
+        calls = []
+
+        def fake_run_python(script, *args, timeout=60):
+            calls.append((script.name, args, timeout))
+            return "삼성전자 리포트"
+
+        receiver._run_python = fake_run_python
+
+        result = receiver.dispatch_to_somi("삼전 분석")
+
+        self.assertEqual(result, "삼성전자 리포트")
+        self.assertEqual(calls[0][0], "somi_kis_reporter.py")
+        self.assertIn("--symbol", calls[0][1])
+        self.assertIn("005930", calls[0][1])
+        self.assertIn("--name", calls[0][1])
+        self.assertIn("삼성전자", calls[0][1])
+
     def test_trading_status_answer_does_not_call_llm(self):
         receiver = load_receiver()
         receiver._tool_get_trading_status = lambda: "거래현황: 데이브 실행중"

@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -42,6 +43,37 @@ except ImportError as exc:
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+SYSTEM = (
+    "영숙(비서). 규칙: 짧게 핵심만 답한다. "
+    "운영/주식/검색 요청은 가능한 한 로컬 도구 결과를 우선한다."
+)
+
+PSYCHOLOGY_SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 팀 비서이자 대화 상대다.
+- 어떤 말에도 먼저 감정과 의도를 읽고 짧게 받아준다.
+- 불안/분노/무기력/외로움은 심리학 관점으로 풀되, 전문 진단처럼 단정하지 않는다.
+- 위기나 자해 위험이 보이면 즉시 주변 사람/응급 서비스/988 같은 도움을 권한다.
+- 최신 자료가 필요하면 검색 도구를 먼저 사용한다.
+- 텔레그램답게 짧고 자연스럽게 답한다."""
+
+ALLOW_CLOUD_LLM = os.getenv("AI_TEAM_ALLOW_CLOUD_LLM", "1").strip().lower() not in {"0", "false", "no"}
+CLOUD_MODE = os.getenv("YOUNGSUK_CLOUD_MODE", "explicit").strip().lower()
+LLM_PRIMARY = os.getenv("YOUNGSUK_LLM_PRIMARY", "ollama").strip().lower()
+
+_STOCK_ALIASES: dict[str, tuple[str, str]] = {
+    "삼전": ("005930", "삼성전자"),
+    "삼성": ("005930", "삼성전자"),
+    "삼성전자": ("005930", "삼성전자"),
+    "하이닉스": ("000660", "SK하이닉스"),
+    "sk하이닉스": ("000660", "SK하이닉스"),
+    "sk하닉": ("000660", "SK하이닉스"),
+    "하닉": ("000660", "SK하이닉스"),
+    "카카오": ("035720", "카카오"),
+    "네이버": ("035420", "NAVER"),
+    "현대차": ("005380", "현대차"),
+    "기아": ("000270", "기아"),
+    "우리기술": ("032820", "우리기술"),
+}
+
 
 def log(message: str) -> None:
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -72,6 +104,112 @@ def _run_python(script: Path, *args: str, timeout: int = 60) -> str:
     return output or "완료했습니다."
 
 
+def _normalize_text(text: str) -> str:
+    return re.sub(r"\s+", "", text or "").lower()
+
+
+def _stock_from_text(text: str) -> tuple[str, str] | None:
+    normalized = _normalize_text(text)
+    for alias, stock in sorted(_STOCK_ALIASES.items(), key=lambda item: len(item[0]), reverse=True):
+        if _normalize_text(alias) in normalized:
+            return stock
+
+    code_match = re.search(r"\b(\d{6})\b", text or "")
+    if code_match:
+        return code_match.group(1), code_match.group(1)
+    return None
+
+
+def _is_search_request(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(word in normalized for word in ("검색", "찾아봐", "찾아줘", "최신자료", "자료찾"))
+
+
+def _is_stock_analysis_request(text: str) -> bool:
+    normalized = _normalize_text(text)
+    if not any(word in normalized for word in ("분석", "리포트", "보고서", "전망")):
+        return False
+    return _stock_from_text(text) is not None or any(word in normalized for word in ("주식", "종목"))
+
+
+def _is_stock_price_request(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(word in normalized for word in ("주가", "현재가", "가격")) and _stock_from_text(text) is not None
+
+
+def _is_trading_status_request(text: str) -> bool:
+    normalized = _normalize_text(text)
+    return any(word in normalized for word in ("거래현황", "봇현황", "자동매매현황", "매매현황"))
+
+
+def web_search(query: str) -> str:
+    """검색 요청 폴백. 실제 검색 도구가 없으면 GPT에 넘기지 않고 안내만 반환합니다."""
+    return f"검색 기능이 아직 연결되지 않았습니다. 요청: {query}"
+
+
+def _cloud_allowed_for_prompt(prompt: str) -> bool:
+    if not ALLOW_CLOUD_LLM:
+        return False
+    if CLOUD_MODE != "explicit":
+        return True
+    return any(word in _normalize_text(prompt) for word in ("지피티", "gpt", "제미니", "gemini", "정밀모드"))
+
+
+def _call_llm(prompt: str, system: str = SYSTEM) -> str:
+    from _shared import llm
+
+    local = llm.ollama(prompt, system=system, max_tokens=500, temperature=0.8)
+    if local:
+        return local
+
+    if not _cloud_allowed_for_prompt(prompt):
+        return "로컬 모델 응답이 비어 있어요. 정밀모드가 필요하면 '지피티 정밀모드'라고 말해줘요."
+
+    if LLM_PRIMARY == "gemini":
+        first = llm.gemini(prompt, system=system, max_tokens=500, temperature=0.8)
+        if first:
+            return first
+        second = llm.gpt(prompt, system=system, max_tokens=500, temperature=0.8)
+        if second:
+            return second
+    else:
+        first = llm.gpt(prompt, system=system, max_tokens=500, temperature=0.8)
+        if first:
+            return first
+        second = llm.gemini(prompt, system=system, max_tokens=500, temperature=0.8)
+        if second:
+            return second
+
+    return "LLM 응답을 만들지 못했어요. 로컬/클라우드 상태를 확인해볼게요."
+
+
+def _tool_get_agent_status() -> str:
+    return get_agent_status()
+
+
+def _tool_get_trading_status() -> str:
+    return status_report()
+
+
+def _tool_get_stock_price(text: str) -> str:
+    stock = _stock_from_text(text)
+    if not stock:
+        return "종목을 찾지 못했어요. 예: 삼전 주가, 하이닉스 현재가"
+
+    symbol, name = stock
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from somi_kis_reporter import KISClient, fmt_pct, fmt_int, pick
+
+        quote = KISClient().quote(symbol)
+        price = fmt_int(pick(quote, "stck_prpr"))
+        change = fmt_int(pick(quote, "prdy_vrss"))
+        rate = fmt_pct(pick(quote, "prdy_ctrt"))
+        return f"{name} 현재가: {price or '확인 필요'}원, 전일대비 {change or '0'}원 ({rate or '0.00%'})"
+    except Exception as exc:
+        return f"{name} 현재가 조회 실패: {exc}"
+
+
 def get_agent_status(_: str = "전체") -> str:
     """현재 AI 팀 에이전트 현황을 조회합니다."""
     return status_report()
@@ -92,6 +230,10 @@ def dispatch_to_yewon(text: str) -> str:
 def dispatch_to_somi(text: str) -> str:
     """소미 분석가에게 종목 분석을 요청합니다."""
     script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_kis_reporter.py"
+    stock = _stock_from_text(text)
+    if stock:
+        symbol, name = stock
+        return _run_python(script, "--print", "--symbol", symbol, "--name", name, timeout=90)
     return _run_python(script, "--print", timeout=90)
 
 
@@ -288,6 +430,30 @@ def handle_with_gpt(text: str) -> str:
         return f"요청 처리 중 오류가 발생했습니다: {exc}"
 
 
+def handle_message(text: str) -> str:
+    """Telegram 자연어 메시지를 처리합니다. 운영성 요청은 LLM 전에 직접 처리합니다."""
+    text = (text or "").strip()
+    if not text:
+        return "메시지가 비어 있어요."
+
+    if _is_trading_status_request(text):
+        return _tool_get_trading_status() + "\n\n" + _tool_get_agent_status()
+
+    if _is_stock_price_request(text):
+        return _tool_get_stock_price(text)
+
+    if _is_stock_analysis_request(text):
+        return dispatch_to_somi(text)
+
+    if _is_search_request(text):
+        return web_search(text)
+
+    gpt_response = handle_with_gpt(text)
+    if not gpt_response.startswith("요청 처리 중 오류가 발생했습니다:"):
+        return gpt_response
+    return _call_llm(text, PSYCHOLOGY_SYSTEM)
+
+
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.effective_message.reply_text("영숙 비서 대기 중입니다.")
 
@@ -300,7 +466,7 @@ async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.effective_message.text or ""
     log(f"Message: {text[:100]}")
     try:
-        response = await asyncio.to_thread(handle_with_gpt, text)
+        response = await asyncio.to_thread(handle_message, text)
     except Exception as exc:
         log(f"Handler error: {exc}")
         response = f"요청 처리 중 오류가 발생했습니다: {exc}"
