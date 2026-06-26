@@ -182,6 +182,7 @@ class KISClient:
                 "FHKST01010900",
                 {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
             )
+            log(f"KIS investor_today raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
             output = data.get("output") or data.get("output1") or []
             if isinstance(output, list):
                 return output[0] if output else {}
@@ -190,13 +191,37 @@ class KISClient:
             log(f"KIS investor_today unavailable: {exc}")
             return {}
 
+    def investor_history(self, symbol: str = DEFAULT_SYMBOL, days: int = 5) -> list[dict]:
+        """최근 N일간 투자자별 수급 데이터 조회"""
+        try:
+            data = self.get(
+                "uapi/domestic-stock/v1/quotations/inquire-investor",
+                "FHKST01010900",
+                {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+            )
+            log(f"KIS investor_history raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
+            output = data.get("output") or []
+            if isinstance(output, list):
+                return output[:days]
+            return [output] if isinstance(output, dict) else []
+        except Exception as exc:
+            log(f"KIS investor_history unavailable: {exc}")
+            return []
+
     def daily_short_sale(self, symbol: str = DEFAULT_SYMBOL) -> dict:
         try:
+            today = datetime.now()
             data = self.get(
                 "uapi/domestic-stock/v1/quotations/daily-short-sale",
                 "FHPST04830000",
-                {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+                {
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_DATE_1": (today - timedelta(days=7)).strftime("%Y%m%d"),
+                    "FID_INPUT_DATE_2": today.strftime("%Y%m%d"),
+                },
             )
+            log(f"KIS daily_short_sale raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
             output = data.get("output") or data.get("output1") or []
             if isinstance(output, list):
                 return output[0] if output else {}
@@ -234,10 +259,39 @@ def _market_warning_text(code: str) -> str:
     return mapping.get(str(code or "").strip(), str(code or "확인 필요"))
 
 
+def _investor_flow_text(investor_hist: list[dict]) -> str:
+    """최근 5일 투자자별 수급 흐름 분석"""
+    if not investor_hist:
+        return "확인 필요"
+
+    foreigner_sum = sum(num(row.get("frgn_ntby_qty") or row.get("frgn_ntby_vol")) for row in investor_hist)
+    institution_sum = sum(num(row.get("orgn_ntby_qty") or row.get("inst_ntby_qty") or row.get("orgn_ntby_vol")) for row in investor_hist)
+    individual_sum = sum(num(row.get("prsn_ntby_qty") or row.get("indv_ntby_qty") or row.get("prsn_ntby_vol")) for row in investor_hist)
+
+    parts = []
+    if foreigner_sum > 0:
+        parts.append(f"외국인 {int(foreigner_sum):,}주 순매수")
+    elif foreigner_sum < 0:
+        parts.append(f"외국인 {int(abs(foreigner_sum)):,}주 순매도")
+
+    if institution_sum > 0:
+        parts.append(f"기관 {int(institution_sum):,}주 순매수")
+    elif institution_sum < 0:
+        parts.append(f"기관 {int(abs(institution_sum)):,}주 순매도")
+
+    if individual_sum > 0:
+        parts.append(f"개인 {int(individual_sum):,}주 순매수")
+    elif individual_sum < 0:
+        parts.append(f"개인 {int(abs(individual_sum)):,}주 순매도")
+
+    return ", ".join(parts) if parts else "확인 필요"
+
+
 def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> str:
     quote = kis.quote(symbol)
     dailies = kis.daily_prices(symbol, 30)
     investor = kis.investor_today(symbol)
+    investor_hist = kis.investor_history(symbol, 5)
     short_sale = kis.daily_short_sale(symbol)
 
     latest = dailies[0] if dailies else {}
@@ -253,6 +307,10 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
     individual = pick(investor, "prsn_ntby_qty", "indv_ntby_qty", "prsn_ntby_vol")
     foreigner = pick(investor, "frgn_ntby_qty", "frgn_ntby_vol")
     institution = pick(investor, "orgn_ntby_qty", "inst_ntby_qty", "orgn_ntby_vol")
+
+    foreigner_5d = sum(num(row.get("frgn_ntby_qty") or row.get("frgn_ntby_vol")) for row in investor_hist)
+    institution_5d = sum(num(row.get("orgn_ntby_qty") or row.get("inst_ntby_qty") or row.get("orgn_ntby_vol")) for row in investor_hist)
+    individual_5d = sum(num(row.get("prsn_ntby_qty") or row.get("indv_ntby_qty") or row.get("prsn_ntby_vol")) for row in investor_hist)
 
     short_volume = (
         pick(short_sale, "short_sale_qty", "ssts_cntg_qty", "stnd_shrn_seln_qty")
@@ -280,10 +338,13 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
 거래대금: {fmt_int(pick(quote, "acml_tr_pbmn") or pick(latest, "acml_tr_pbmn"))}
 최근 5일 주가 흐름: {_flow_text(dailies)}
 최근 5일 거래량 흐름: {_volume_flow_text(dailies)}
-최근 5일 외국인기관 수급: KIS 오늘 수급 응답 기준. 빈 값은 장마감 후 재확인 필요
+최근 5일 외국인기관 수급: {_investor_flow_text(investor_hist)}
 개인 순매수: {fmt_int(individual)}
 외국인 순매수: {fmt_int(foreigner)}
 기관 순매수: {fmt_int(institution)}
+최근 5일 개인 누적: {fmt_int(individual_5d) if individual_5d else "확인 필요"}
+최근 5일 외국인 누적: {fmt_int(foreigner_5d) if foreigner_5d else "확인 필요"}
+최근 5일 기관 누적: {fmt_int(institution_5d) if institution_5d else "확인 필요"}
 외국인 보유수량: {fmt_int(foreign_holding)}
 외국인 보유율: {foreign_rate}
 프로그램 매매: {fmt_int(pick(quote, "pgtr_ntby_qty"))}

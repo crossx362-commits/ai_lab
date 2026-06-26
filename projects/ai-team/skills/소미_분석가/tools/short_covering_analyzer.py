@@ -52,6 +52,9 @@ def parse_input_text(text: str) -> dict[str, str]:
         "buy_indiv": ["개인 순매수"],
         "buy_foreigner": ["외국인 순매수"],
         "buy_institution": ["기관 순매수"],
+        "buy_indiv_5d": ["최근 5일 개인 누적"],
+        "buy_foreigner_5d": ["최근 5일 외국인 누적"],
+        "buy_institution_5d": ["최근 5일 기관 누적"],
         "foreign_holding": ["외국인 보유수량"],
         "foreign_holding_rate": ["외국인 보유율"],
         "program_trading": ["프로그램 매매"],
@@ -101,6 +104,9 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
     foreigner = to_num(raw.get("buy_foreigner"))
     institution = to_num(raw.get("buy_institution"))
     individual = to_num(raw.get("buy_indiv"))
+    foreigner_5d = to_num(raw.get("buy_foreigner_5d"))
+    institution_5d = to_num(raw.get("buy_institution_5d"))
+    individual_5d = to_num(raw.get("buy_indiv_5d"))
     foreign_rate = to_num(raw.get("foreign_holding_rate"))
     loan_rate = to_num(raw.get("loan_balance_rate"))
     short_volume = to_num(raw.get("short_volume"))
@@ -159,6 +165,25 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
     if individual > 0 and foreigner <= 0 and institution <= 0:
         score -= 6
         neg.append("개인 중심 수급으로 추격 매수 위험")
+
+    if foreigner_5d > 0:
+        score += 12
+        pos.append(f"최근 5일 외국인 누적 순매수 {foreigner_5d:,.0f}주")
+    elif foreigner_5d < 0:
+        score -= 6
+        neg.append(f"최근 5일 외국인 누적 순매도 {abs(foreigner_5d):,.0f}주")
+
+    if institution_5d > 0:
+        score += 10
+        pos.append(f"최근 5일 기관 누적 순매수 {institution_5d:,.0f}주")
+    elif institution_5d < 0:
+        score -= 5
+        neg.append(f"최근 5일 기관 누적 순매도 {abs(institution_5d):,.0f}주")
+
+    if individual_5d > 0 and foreigner_5d <= 0 and institution_5d <= 0:
+        score -= 8
+        neg.append(f"최근 5일 개인만 순매수 {individual_5d:,.0f}주 - 수급 약세 신호")
+
     if foreign_rate >= 5:
         score += 4
         pos.append(f"외국인 보유율 {foreign_rate:.2f}%")

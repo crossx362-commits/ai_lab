@@ -44,23 +44,15 @@ ai_lab/
 ├── projects/
 │   ├── ai-team/
 │   │   ├── _shared/              # 공통 클라이언트 (from _shared.xxx로 임포트)
-│   │   │   ├── env_loader.py
-│   │   │   ├── gemini_client.py  # LLM: Ollama → GPT-4o-mini → Gemini 폴백
-│   │   │   ├── ollama_client.py
-│   │   │   ├── telegram_notifier.py
-│   │   │   ├── process_lock.py   # fcntl 파일 락 (중복 실행 방지)
-│   │   │   └── agent_registry.py
+│   │   │   ├── env.py            # 환경변수 로드/암호화/검증
+│   │   │   ├── llm.py            # LLM 통합 (Ollama → GPT-4o-mini → Gemini)
+│   │   │   ├── notify.py         # 텔레그램 알림 + 에이전트 상태
+│   │   │   ├── process.py        # 프로세스 락 + 중복 방지
+│   │   │   └── utils.py          # 경로/리소스/ffmpeg 유틸
 │   │   ├── skills/               # 에이전트별 도구 (한국어 폴더명)
-│   │   │   ├── 예원_CEO/tools/   yewon_dispatcher.py, upload_manager.py
-│   │   │   ├── 영숙_비서/tools/  telegram_receiver.py (봇 + 감시 스레드)
-│   │   │   ├── 코다리_개발자/tools/ web_preview.py, ollama_health_check.py
-│   │   │   ├── 케빈_인프라/tools/ vercel_manager.py, supabase_manager.py
-│   │   │   ├── 티모_디자이너/tools/ petnna_reviewer.py
-│   │   │   ├── 시그널_분석가/tools/ market_signal.py
-│   │   │   ├── 데이브_주식/tools/ upbit_auto_trader.py, upbit_analyzer.py
-│   │   │   ├── 레오_트레이더/tools/ leo_aggressive_trader.py
-│   │   │   ├── 경수_수사관/tools/ comment_forensics.py
-│   │   │   ├── 로율_변호사/tools/ tax_simulator.py
+│   │   │   ├── 예원_CEO/tools/   yewon_dispatcher.py, harness_manager.py, skill_auditor.py
+│   │   │   ├── 영숙_비서/tools/  telegram_receiver.py (Flask webhook + GPT-4o-mini)
+│   │   │   ├── 소미_분석가/tools/ somi_kis_reporter.py, short_covering_analyzer.py
 │   │   │   └── 공용스킬/         공통 스킬 마크다운 문서
 │   │   ├── scripts/              # 시스템 운영 스크립트
 │   │   │   ├── launchd/          # macOS LaunchAgent plist + install.sh
@@ -104,20 +96,17 @@ bash projects/ai-team/scripts/launchd/uninstall.sh
 ```
 
 서비스 목록:
-- `com.ailab.signal` — 시그널: 시장 인텔 수집
-- `com.ailab.dave` — 데이브: 보수적 업비트 자동매매
-- `com.ailab.leo` — 레오: 공격적 데이트레이딩
-- `com.ailab.youngsuk` — 영숙: 텔레그램 봇 + 중복 프로세스 감시
+- `com.ailab.youngsuk` — 영숙: Flask webhook 서버 (포트 5000)
+- `com.ailab.somi` — 소미: 주식 분석 리포터 (정기 보고)
+- `com.ailab.yewon_monitor` — 예원: 하네스 모니터
 
-### 수동 재시작 (개별 봇)
+### 수동 재시작 (개별 서비스)
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.ailab.dave
-```
+# 영숙 webhook 서버 재시작
+python "D:\ai_lab\projects\ai-team\skills\영숙_비서\tools\telegram_receiver.py"
 
-### 보유 현황 / 잔고 확인
-```bash
-python3 projects/ai-team/scripts/check_holdings.py
-python3 projects/ai-team/scripts/daily_balance_check.py
+# 소미 즉시 보고
+python "D:\ai_lab\projects\ai-team\skills\소미_분석가\tools\somi_kis_reporter.py" --send
 ```
 
 ---
@@ -128,16 +117,9 @@ python3 projects/ai-team/scripts/daily_balance_check.py
 
 | Agent | Role | Key Tools |
 |-------|------|-----------|
-| 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `upload_manager.py` |
-| 영숙 (Youngsuk) | Secretary — Telegram bot & calendar | `telegram_receiver.py`, `calendar_manager.py` |
-| 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
-| 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
-| 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |
-| 시그널 (signal) | Strategist — Market intelligence | `market_signal.py` |
-| 데이브 (Dave) | Trader — Conservative crypto trading | `upbit_auto_trader.py` |
-| 레오 (Leo) | Trader — Aggressive day trading | `leo_aggressive_trader.py` |
-| 경수 (Kyungsu) | Investigator — Malicious comment detection | security tools |
-| 로율 (Royul) | Lawyer — Legal/tax/compliance | compliance tools |
+| 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `harness_manager.py`, `skill_auditor.py` |
+| 영숙 (Youngsuk) | Secretary — Telegram webhook bot (GPT-4o-mini) | `telegram_receiver.py` (Flask), `schedule_manager.py` |
+| 소미 (Somi) | Analyst — Stock analysis & scoring | `somi_kis_reporter.py`, `short_covering_analyzer.py` |
 
 ### Shared Module System (Unified, 5 Files)
 
