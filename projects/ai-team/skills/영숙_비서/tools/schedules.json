@@ -33,84 +33,34 @@
       "priority": "high"
     },
     {
-      "id": "kodari_health_check",
-      "agent": "코다리",
-      "task": "시스템 헬스체크",
-      "cron": "0 */2 * * *",
-      "description": "Ollama, 텔레그램 봇 상태 확인 및 자동 수복",
-      "command": "코다리 헬스체크 실행",
-      "enabled": true,
-      "priority": "critical"
-    },
-    {
-      "id": "kevin_daily_report",
-      "agent": "케빈",
-      "task": "일일 헬스 리포트",
-      "cron": "0 6 * * *",
-      "description": "Vercel + Supabase 전체 상태 보고",
-      "command": "케빈 일일 리포트",
+      "id": "somi_ourtech_morning",
+      "agent": "소미",
+      "task": "우리기술 KIS 자동 보고",
+      "cron": "50 8 * * 1-5",
+      "description": "한국투자증권 API 기반 장전 우리기술 수급·매수판단 점검",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
       "priority": "high"
     },
     {
-      "id": "timo_review_tuesday",
-      "agent": "티모",
-      "task": "화요일 디자인 검토",
-      "cron": "0 10 * * 2",
-      "description": "Petnna UI/UX 검토",
-      "command": "티모 디자인 검토",
-      "enabled": true,
-      "priority": "medium"
-    },
-    {
-      "id": "timo_review_friday",
-      "agent": "티모",
-      "task": "금요일 디자인 검토",
-      "cron": "0 10 * * 5",
-      "description": "Petnna UI/UX 검토",
-      "command": "티모 디자인 검토",
-      "enabled": true,
-      "priority": "medium"
-    },
-    {
-      "id": "signal_market_research",
-      "agent": "시그널",
-      "task": "1일 2회 시장 분석",
-      "cron": "0 9,18 * * *",
-      "description": "오전 9시 · 오후 6시 시장 트렌드 수집 및 분석",
-      "command": "시그널 시장 분석",
-      "enabled": true,
-      "priority": "medium"
-    },
-    {
-      "id": "lolaw_weekly_review",
-      "agent": "로율",
-      "task": "주간 법률 검토",
-      "cron": "0 10 * * 1",
-      "description": "Petnna 프로젝트 법률 감사",
-      "command": "로율 법률 검토",
+      "id": "somi_ourtech_midday",
+      "agent": "소미",
+      "task": "우리기술 KIS 자동 보고",
+      "cron": "30 12 * * 1-5",
+      "description": "한국투자증권 API 기반 장중 우리기술 수급·매수판단 점검",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
       "priority": "high"
     },
     {
-      "id": "lolaw_monthly_audit",
-      "agent": "로율",
-      "task": "월간 심층 감사",
-      "cron": "0 10 1 * *",
-      "description": "전체 프로젝트 컴플라이언스 감사",
-      "command": "로율 월간 감사",
+      "id": "somi_ourtech_close",
+      "agent": "소미",
+      "task": "우리기술 KIS 자동 보고",
+      "cron": "40 15 * * 1-5",
+      "description": "한국투자증권 API 기반 장마감 우리기술 수급·매수판단 점검",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
       "priority": "high"
-    },
-    {
-      "id": "gyeongsu_realtime_monitor",
-      "agent": "경수",
-      "task": "악플 실시간 모니터링",
-      "cron": "0 22 * * *",
-      "description": "매일 밤 10시 악플·보안 위협 감지",
-      "command": "경수 악플 체크",
-      "enabled": true,
-      "priority": "critical"
     }
   ]
 }

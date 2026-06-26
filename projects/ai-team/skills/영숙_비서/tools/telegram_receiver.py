@@ -6,7 +6,12 @@ from __future__ import annotations
 
 import os
 import sys
+import json
+import urllib.parse
+import urllib.request
 import subprocess
+import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -52,21 +57,110 @@ except Exception:
 
 # 대화 히스토리 (최근 3턴 유지)
 _HISTORY: list = []
+_GPT_HISTORY: list[dict[str, str]] = []
+_OPENAI_RESPONSE_ID: str | None = None
 
-SYSTEM_PROMPT = (
-    "영숙(비서). 규칙: 짧게 핵심만 2줄 이내. "
-    "필요시 도구(get_agent_status, list_calendar, dispatch, get_stock_price) 즉시 호출."
-)
+SYSTEM_PROMPT = """너는 영숙이야. 사장님(준호)의 AI 비서.
+
+메시지를 분석해서:
+1. 에이전트 관련 질문 → get_agent_status로 현황 조회
+2. 일정 조회 → list_calendar 도구 사용
+3. 웹 검색 필요 → web_search 도구 사용
+4. 주식 현재가 → get_stock_price 도구 사용
+5. 일반 질문/대화 → 직접 답변
+
+일반 질문 처리 원칙:
+- 날씨, 뉴스, 일반 상식 → "제가 직접 확인은 못하지만..." 형태로 친절하게 답변
+- 모르는 건 솔직히 "잘 모르겠어요" + 대안 제시
+- 짧고 자연스럽게 (텔레그램 채팅처럼)
+
+현재 팀원: 영숙(나), 예원(CEO), 소미(국내주식 수급·세력·매수판단 분석)
+도구가 없어도 대화는 계속해. 로봇처럼 "할 수 없습니다" 금지."""
 
 PSYCHOLOGY_SYSTEM = """너는 영숙이야. 사장님(준호)의 AI 트레이딩팀 비서이자 대화 상대다.
 - 어떤 말에도 먼저 감정과 의도를 읽고 짧게 받아준다.
 - 불안/분노/무기력/외로움 등은 심리학 관점으로 풀되 전문 용어 남발 금지.
 - 보통 1) 감정 반영 2) 핵심 패턴 3) 지금 할 수 있는 작은 행동 1개 순서로 답한다.
 - 텔레그램답게 짧고 자연스럽게."""
+CONVERSATION_PROMPT = """
+
+Behavior update:
+- You are Youngsuk, a warm Korean AI secretary talking in Telegram.
+- Reply in natural Korean unless the user explicitly asks for another language.
+- For normal chat, answer directly like a helpful GPT-style assistant.
+- If a question needs fresh facts, current events, prices, releases, schedules, or source-like evidence, call web_search first.
+- Use tools only when they help. Do not force dispatch for casual questions.
+- Keep Telegram answers concise: usually 3-8 short lines, with links only when useful.
+- If search results are weak, say so plainly and separate what you found from your own inference.
+"""
 
 
 def log(message: str) -> None:
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}", flush=True)
+
+
+AGENT_PROFILES = {
+    "예원": "예원이는 AI 팀의 CEO예요. 사장님 명령을 해석해서 어느 에이전트가 맡을지 나누고, 하네스 체크나 작업 분배 같은 총괄 판단을 담당해요.",
+    "영숙": "저는 영숙이에요. 텔레그램에서 사장님 말을 받아 일정, 상태 확인, 자연어 대화, 작업 전달을 도와주는 비서 역할이에요.",
+    "코다리": "코다리는 개발자예요. Petnna 웹 개발, 미리보기 서버, 헬스체크 같은 개발 쪽 일을 맡아요.",
+    "케빈": "케빈은 인프라 담당이에요. Vercel, Supabase, 배포, 환경변수 동기화 같은 운영 일을 맡아요.",
+    "티모": "티모는 디자이너예요. Petnna 화면과 UI/UX를 검토하고 개선점을 잡아줘요.",
+    "시그널": "시그널은 시장 데이터 수집 담당 분석가예요. Upbit 시장 신호와 가격 흐름을 모아줘요.",
+    "펄스": "펄스는 시장 분위기 분석가예요. 시장 펄스와 단기 흐름을 읽어서 트레이더들이 참고하게 해요.",
+    "데이브": "데이브는 보수적인 자동매매 트레이더예요. 안전한 진입, 손절, 리스크 관리를 우선해요.",
+    "레오": "레오는 공격적인 단타 트레이더예요. 변동성이 큰 알트코인과 빠른 매매 쪽을 맡아요.",
+    "소미": "소미는 국내주식 수급·세력상황·큰 수익 가능성·매수판단 에이전트예요. 최근 5거래일 흐름, 거래량, 거래대금, 대차잔고, 공매도, 외국인·기관 수급, 오버행 리스크를 보고 냉정하게 판단해요.",
+    "경수": "경수는 수사관이에요. 악성 댓글, 보안, 포렌식 쪽 탐지를 담당해요.",
+    "로율": "로율은 변호사예요. 법무, 세무, 컴플라이언스 판단을 도와줘요.",
+}
+
+
+def _answer_agent_profile(user_text: str) -> str | None:
+    text = user_text.lower()
+    profile_words = ["누구", "뭐하", "뭐 하", "역할", "소개", "담당", "정체", "뭐야", "뭐임"]
+    for name, desc in AGENT_PROFILES.items():
+        if name.lower() in text and (any(word in text for word in profile_words) or "에이전트" in text):
+            return desc
+    return None
+
+
+def _is_agent_status_request(user_text: str) -> bool:
+    text = user_text.lower()
+    if _answer_agent_profile(user_text):
+        return False
+    status_words = ["상태", "현황", "작동", "실행", "켜져", "살아", "다운", "팀 현황", "다들 뭐해"]
+    return any(word in text for word in status_words)
+
+
+def _is_yewon_dispatch_request(user_text: str) -> bool:
+    text = user_text.lower()
+    yewon_words = ["예원", "ceo", "yewon"]
+    task_words = ["하네스", "harness", "체크", "점검", "분석", "시켜", "돌려", "실행", "검사"]
+    return any(word in text for word in yewon_words) and any(word in text for word in task_words)
+
+
+def _is_somi_request(user_text: str) -> bool:
+    text = user_text.lower()
+    somi_words = [
+        "소미",
+        "국내주식",
+        "종목",
+        "수급",
+        "세력",
+        "큰 수익",
+        "매수 판단",
+        "우리기술",
+        "숏커버링",
+        "숏스퀴즈",
+        "공매도 상환",
+        "대차잔고",
+        "cb",
+        "전환가",
+        "리픽싱",
+        "물타기",
+    ]
+    task_words = ["리포트", "감시", "분석", "작성", "점수", "데이터", "전략", "확인", "사도", "매수", "팔아", "보유"]
+    return any(word in text for word in somi_words) and any(word in text for word in task_words)
 
 
 # =====================================================================
@@ -81,10 +175,32 @@ def get_agent_status(agent: str = "전체") -> str:
             [sys.executable, str(AI_TEAM_ROOT / "scripts" / "unified_control.py"), "agent", "status"],
             capture_output=True, text=True, timeout=10, encoding="utf-8", errors="replace"
         )
-        return (result.stdout or "상태 정보 없음")[:1000]
+        output = (result.stdout or "").strip()
+        if output:
+            return output[:1000]
     except Exception as e:
-        return f"❌ 상태 조회 실패: {e}"
+        log(f"unified_control status 실패: {e}")
 
+    try:
+        from _shared.notify import status_report  # noqa: PLC0415
+        report = status_report()
+        if isinstance(report, str) and report.strip():
+            return report[:1200]
+    except Exception as e:
+        log(f"notify status_report 실패: {e}")
+
+    try:
+        from _shared.notify import agent_status as _agent_status  # noqa: PLC0415
+        status = _agent_status()
+        if isinstance(status, dict) and status:
+            lines = ["📊 에이전트 상태"]
+            for name, state in status.items():
+                lines.append(f"- {name}: {state}")
+            return "\n".join(lines)[:1200]
+    except Exception as e:
+        log(f"notify agent_status 실패: {e}")
+
+    return "상태 정보를 가져오지 못했어요. 상태조회 경로를 다시 점검해야 해요."
 
 def list_calendar(days: int = 7) -> str:
     """캘린더 일정 조회. Args: days - 조회 일수"""
@@ -107,15 +223,14 @@ def list_calendar(days: int = 7) -> str:
                 d = _dt.fromisoformat(dt)
                 time_str = f"{d.month}/{d.day} {d.hour:02d}:{d.minute:02d}"
             else:
-                time_str = dt[5:]  # MM-DD
-            lines.append(f"• {time_str} {ev.get('summary','(제목없음)')}")
+                time_str = dt[5:]
+            lines.append(f"• {time_str} {ev.get('summary', '(제목없음)')}")
         return f"📅 향후 {days}일 일정 ({len(events)}건):\n" + "\n".join(lines)
-    except Exception as e:
-        # 폴백: 캐시 파일
+    except Exception:
         cache = AI_TEAM_ROOT / "_shared" / "calendar_cache.md"
         if cache.exists():
             return f"📅 일정 (캐시):\n{cache.read_text(encoding='utf-8')[:800]}"
-        return f"📅 캘린더 조회 실패: {e}"
+        return "📅 캘린더 조회에 실패했어요."
 
 
 def dispatch(cmd: str) -> str:
@@ -125,26 +240,191 @@ def dispatch(cmd: str) -> str:
         import yewon_dispatcher  # noqa: PLC0415
         result = yewon_dispatcher.dispatch_and_execute(cmd)
         if not result:
-            return "⚠️ CEO 대기 중"
-        # 긴 결과는 Gemini로 요약
+            return "예원 CEO 대기 중"
+        if "[소미]" in result or "종목 간단 분석 리포트" in result:
+            return result[:4000] + ("..." if len(result) > 4000 else "")
         if len(result) > 400 and _gemini_client:
             try:
                 s = _gemini_client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=f"2줄 요약:\n{result[:600]}",
-                    config=gtypes.GenerateContentConfig(max_output_tokens=100)
+                    config=gtypes.GenerateContentConfig(max_output_tokens=100),
                 )
                 if s.text:
-                    return f"✅ {s.text.strip()}"
+                    return f"요약: {s.text.strip()}"
             except Exception:
                 pass
-        return result[:400] + ("..." if len(result) > 400 else "")
+        return result[:4000] + ("..." if len(result) > 4000 else "")
     except Exception as e:
         return f"❌ {str(e)[:100]}"
 
 
+def get_weather(location: str = "서울") -> str:
+    """날씨 정보 조회. Args: location - 지역명 (기본값: 서울)"""
+    log(f"날씨 조회: {location}")
+    try:
+        import urllib.request
+        import json
+
+        # OpenWeatherMap API (무료)
+        api_key = os.getenv("OPENWEATHER_API_KEY", "").strip()
+        if not api_key:
+            # API 키 없으면 간단한 응답
+            return f"날씨 API 키가 설정되지 않았습니다. 날씨 정보는 인터넷 검색을 통해 확인해주세요."
+
+        # 도시명을 영어로 변환
+        city_map = {
+            "서울": "Seoul",
+            "부산": "Busan",
+            "인천": "Incheon",
+            "대구": "Daegu",
+            "대전": "Daejeon",
+            "광주": "Gwangju",
+            "울산": "Ulsan",
+        }
+        city = city_map.get(location, location)
+
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city},KR&appid={api_key}&units=metric&lang=kr"
+
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read())
+
+        temp = data["main"]["temp"]
+        feels_like = data["main"]["feels_like"]
+        desc = data["weather"][0]["description"]
+        humidity = data["main"]["humidity"]
+
+        return f"""🌤 {location} 날씨
+기온: {temp}°C (체감 {feels_like}°C)
+상태: {desc}
+습도: {humidity}%"""
+    except Exception as e:
+        # 실패해도 자연스럽게 응답
+        return f"죄송합니다. 날씨 정보를 가져올 수 없습니다. 구글이나 네이버에서 '{location} 날씨'로 검색해보세요."
+
+
+class _DuckDuckGoHTMLParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.results: list[dict[str, str]] = []
+        self._current: dict[str, str] | None = None
+        self._capture: str | None = None
+        self._buf: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attrs_dict = dict(attrs)
+        classes = attrs_dict.get("class", "")
+        if tag == "a" and "result__a" in classes:
+            self._current = {"title": "", "url": attrs_dict.get("href", "") or "", "snippet": ""}
+            self._capture = "title"
+            self._buf = []
+        elif self._current is not None and tag in {"a", "div"} and "result__snippet" in classes:
+            self._capture = "snippet"
+            self._buf = []
+
+    def handle_data(self, data: str) -> None:
+        if self._capture:
+            self._buf.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._current is None or not self._capture:
+            return
+        if self._capture == "title" and tag == "a":
+            self._current["title"] = " ".join("".join(self._buf).split())
+            self._capture = None
+            self._buf = []
+            if len(self.results) < 8:
+                self.results.append(self._current)
+        elif self._capture == "snippet" and tag in {"a", "div"}:
+            self._current["snippet"] = " ".join("".join(self._buf).split())
+            self._capture = None
+            self._buf = []
+
+
+def _clean_duckduckgo_url(url: str) -> str:
+    if url.startswith("//duckduckgo.com/l/?"):
+        parsed = urllib.parse.urlparse("https:" + url)
+        qs = urllib.parse.parse_qs(parsed.query)
+        if qs.get("uddg"):
+            return qs["uddg"][0]
+    return url
+
+
+def _should_force_web_search(user_text: str) -> bool:
+    text = (user_text or "").lower()
+    keywords = [
+        "웹검색", "검색", "찾아줘", "찾아 봐", "찾아봐", "알아봐", "최신", "뉴스",
+        "방금", "요즘", "실시간", "속보",
+        "web search", "search the web", "latest", "news",
+    ]
+    return any(keyword in text for keyword in keywords)
+
+
+def web_search(query: str, max_results: int = 5) -> str:
+    """Search the web for current information. Args: query - search query, max_results - 1 to 8 results."""
+    query = (query or "").strip()
+    if not query:
+        return "Search query is empty."
+    max_results = max(1, min(int(max_results or 5), 8))
+    log(f"web_search: {query}")
+
+    bing_url = "https://www.bing.com/search?" + urllib.parse.urlencode({"q": query, "format": "rss"})
+    bing_req = urllib.request.Request(
+        bing_url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.7,en;q=0.6",
+        },
+    )
+    try:
+        with urllib.request.urlopen(bing_req, timeout=12) as response:
+            rss_text = response.read().decode("utf-8", errors="replace")
+        root = ET.fromstring(rss_text)
+        results = []
+        for item in root.findall("./channel/item")[:max_results]:
+            title = " ".join((item.findtext("title") or "").split())
+            link = (item.findtext("link") or "").strip()
+            desc = " ".join((item.findtext("description") or "").split())
+            pub_date = " ".join((item.findtext("pubDate") or "").split())
+            if title and link:
+                date_line = f"  date: {pub_date}\n" if pub_date else ""
+                results.append(f"- {title}\n  {link}\n{date_line}  {desc}")
+        if results:
+            return "\n".join(results)
+    except Exception as e:
+        log(f"Bing RSS search failed: {e}")
+
+    url = "https://duckduckgo.com/html/?" + urllib.parse.urlencode({"q": query, "kl": "kr-kr"})
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.7,en;q=0.6",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as response:
+            html_text = response.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        return f"Web search failed: {e}"
+
+    parser = _DuckDuckGoHTMLParser()
+    parser.feed(html_text)
+    results = []
+    for item in parser.results[:max_results]:
+        title = item.get("title", "").strip()
+        link = _clean_duckduckgo_url(item.get("url", "").strip())
+        snippet = item.get("snippet", "").strip()
+        if title and link:
+            results.append(f"- {title}\n  {link}\n  {snippet}")
+
+    if not results:
+        return "No useful search results found."
+    return "\n".join(results)
+
+
 def get_stock_price(stock_code: str, stock_name: str = "") -> str:
-    """주식 현재가 조회. Args: stock_code - 6자리 종목코드 (예: '005930' -> 삼성전자, '035720' -> 카카오, '000660' -> SK하이닉스), stock_name - 종목명 (옵션)"""
+    """주식 현재가 조회 (종목코드 직접 입력). Args: stock_code - 6자리 종목코드 (예: '005930' -> 삼성전자, '035720' -> 카카오, '000660' -> SK하이닉스), stock_name - 종목명 (옵션)"""
     log(f"주식 현재가 조회: {stock_name} ({stock_code})")
     try:
         sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "데이브_주식" / "tools"))
@@ -153,13 +433,13 @@ def get_stock_price(stock_code: str, stock_name: str = "") -> str:
         price_data = client.get_current_price(stock_code)
         if "output" not in price_data:
             return f"❌ {stock_name or stock_code} 조회 실패: {price_data.get('msg1', '알 수 없는 오류')}"
-        
+
         output = price_data["output"]
         current_price = int(output.get("stck_prpr", 0))
         change = int(output.get("prdy_vrss", 0))
         change_rate = float(output.get("prdy_ctrt", 0.0))
         sign = output.get("prdy_vrss_sign", "3")
-        
+
         sign_emoji = "➕"
         if sign in ["1", "2"]:
             sign_emoji = "📈"
@@ -168,25 +448,25 @@ def get_stock_price(stock_code: str, stock_name: str = "") -> str:
             change = -change
         else:
             sign_emoji = "➖"
-            
+
         name_str = f"{stock_name}" if stock_name else f"종목코드 {stock_code}"
-        return f"📊 {name_str} 현재가: {current_price:,}원 ({sign_emoji} 전일대비 {change:+,}원 | {change_rate:+.2f}%)"
+        return (
+            f"{sign_emoji} {name_str}\n"
+            f"현재가: {current_price:,}원\n"
+            f"전일대비: {change:+,}원 ({change_rate:+.2f}%)"
+        )
     except Exception as e:
+        log(f"주가 조회 오류: {e}")
         return f"❌ 주가 조회 중 오류 발생: {e}"
 
 
 _TOOL_MAP = {
     "get_agent_status": get_agent_status,
     "list_calendar": list_calendar,
-    "dispatch": dispatch,
+    "web_search": web_search,
+    "get_weather": get_weather,
     "get_stock_price": get_stock_price,
 }
-_TOOLS = [get_agent_status, list_calendar, dispatch, get_stock_price]
-
-
-# =====================================================================
-# Gemini Function Calling 처리
-# =====================================================================
 
 def _process_with_gemini(user_text: str) -> str | None:
     """Gemini Function Calling으로 메시지 처리. 실패 시 None 반환."""
@@ -208,10 +488,10 @@ def _process_with_gemini(user_text: str) -> str | None:
             model=model,
             contents=_HISTORY,
             config=gtypes.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT + time_ctx,
+                system_instruction=SYSTEM_PROMPT + CONVERSATION_PROMPT + time_ctx,
                 tools=_TOOLS,
-                max_output_tokens=200,
-                temperature=0.7,
+                max_output_tokens=500,
+                temperature=0.8,
             ),
         )
     except Exception as e:
@@ -224,10 +504,10 @@ def _process_with_gemini(user_text: str) -> str | None:
                     model=model,
                     contents=_HISTORY,
                     config=gtypes.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT + time_ctx,
+                        system_instruction=SYSTEM_PROMPT + CONVERSATION_PROMPT + time_ctx,
                         tools=_TOOLS,
-                        max_output_tokens=200,
-                        temperature=0.7,
+                        max_output_tokens=500,
+                        temperature=0.8,
                     ),
                 )
             except Exception as e2:
@@ -268,8 +548,9 @@ def _process_with_gemini(user_text: str) -> str | None:
         _HISTORY.append(gtypes.Content(role="user", parts=fn_parts))
 
         is_status = any(tr["name"] == "get_agent_status" for tr in tool_results)
-        max_tok = 1000 if is_status else 150
-        sys_inst = SYSTEM_PROMPT + time_ctx
+        is_search = any(tr["name"] == "web_search" for tr in tool_results)
+        max_tok = 1000 if is_status else 700 if is_search else 200
+        sys_inst = SYSTEM_PROMPT + CONVERSATION_PROMPT + time_ctx
         if is_status:
             sys_inst += "\n현황 보고는 모든 에이전트 내용을 줄이지 말고 상세하게 보고하세요."
 
@@ -288,8 +569,12 @@ def _process_with_gemini(user_text: str) -> str | None:
             log(f"Gemini 최종 답변 실패: {e}")
             answer = "\n\n".join(tr["result"] for tr in tool_results)
 
-    if not answer:
-        answer = "네"
+    if not answer or answer.strip() == "":
+        # 빈 응답 대신 상황에 맞는 기본 답변
+        if tool_results:
+            answer = "완료했습니다."
+        else:
+            answer = "알겠습니다."
 
     _HISTORY.append(gtypes.Content(role="model", parts=[gtypes.Part.from_text(text=answer)]))
     if len(_HISTORY) > 6:
@@ -300,6 +585,8 @@ def _process_with_gemini(user_text: str) -> str | None:
 
 def _process_with_gpt(user_text: str) -> str | None:
     """OpenAI GPT-4o-mini를 사용하여 Function Calling 처리. 실패 시 None 반환."""
+    global _GPT_HISTORY
+
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
         return None
@@ -340,14 +627,15 @@ def _process_with_gpt(user_text: str) -> str | None:
         {
             "type": "function",
             "function": {
-                "name": "dispatch",
-                "description": "에이전트에게 작업 지시. cmd: 명령",
+                "name": "web_search",
+                "description": "최신 정보, 뉴스, 가격, 출시일, 일정, 근거가 필요한 질문을 웹에서 검색합니다.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "cmd": {"type": "string"}
+                        "query": {"type": "string", "description": "검색어"},
+                        "max_results": {"type": "integer", "default": 5}
                     },
-                    "required": ["cmd"]
+                    "required": ["query"]
                 }
             }
         },
@@ -368,18 +656,19 @@ def _process_with_gpt(user_text: str) -> str | None:
         }
     ]
 
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT + time_ctx},
-        {"role": "user", "content": user_text}
-    ]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT + CONVERSATION_PROMPT + time_ctx}]
+    messages.extend(_GPT_HISTORY[-6:])
+    messages.append({"role": "user", "content": user_text})
 
     payload = {
         "model": "gpt-4o-mini",
         "messages": messages,
         "tools": openai_tools,
         "temperature": 0.7,
-        "max_tokens": 300
+        "max_tokens": 500
     }
+    if _should_force_web_search(user_text):
+        payload["tool_choice"] = {"type": "function", "function": {"name": "web_search"}}
 
     try:
         req = urllib.request.Request(
@@ -418,7 +707,8 @@ def _process_with_gpt(user_text: str) -> str | None:
                 })
 
             is_status = any(tr["name"] == "get_agent_status" for tr in tool_results)
-            max_tok = 1000 if is_status else 150
+            is_search = any(tr["name"] == "web_search" for tr in tool_results)
+            max_tok = 1000 if is_status else 700 if is_search else 200
             
             payload_final = {
                 "model": "gpt-4o-mini",
@@ -437,10 +727,82 @@ def _process_with_gpt(user_text: str) -> str | None:
             
             answer = res_final["choices"][0]["message"]["content"].strip()
         
+        if answer:
+            _GPT_HISTORY.extend([
+                {"role": "user", "content": user_text},
+                {"role": "assistant", "content": answer},
+            ])
+            _GPT_HISTORY = _GPT_HISTORY[-6:]
         return answer
     except Exception as e:
         log(f"GPT Function Calling 오류: {e}")
         return None
+
+
+def _process_with_openai_web_chat(user_text: str) -> str | None:
+    """OpenAI Responses API hosted web_search로 ChatGPT 웹대화처럼 답변."""
+    global _OPENAI_RESPONSE_ID
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        return None
+
+    now = datetime.now(timezone(timedelta(hours=9)))
+    instructions = (
+        SYSTEM_PROMPT
+        + CONVERSATION_PROMPT
+        + f"\n[지금: {now.strftime('%Y-%m-%d %H:%M %a')} KST]\n"
+        + "Use hosted web_search when fresh or source-backed information would help. "
+        + "Answer naturally in Korean for Telegram."
+    )
+
+    payload = {
+        "model": os.getenv("YOUNGSUK_OPENAI_MODEL", "gpt-4.1-mini"),
+        "instructions": instructions,
+        "input": user_text,
+        "tools": [{"type": "web_search", "search_context_size": "low"}],
+        "temperature": 0.7,
+        "max_output_tokens": 900,
+    }
+    if _OPENAI_RESPONSE_ID:
+        payload["previous_response_id"] = _OPENAI_RESPONSE_ID
+
+    def _request(body: dict) -> dict:
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/responses",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        )
+        with urllib.request.urlopen(req, timeout=35) as r:
+            return json.loads(r.read())
+
+    try:
+        res = _request(payload)
+    except Exception as e:
+        msg = str(e)
+        if "web_search" in msg or "400" in msg:
+            try:
+                payload["tools"] = [{"type": "web_search_preview", "search_context_size": "low"}]
+                res = _request(payload)
+            except Exception as e2:
+                log(f"OpenAI web chat 오류: {e2}")
+                return None
+        else:
+            log(f"OpenAI web chat 오류: {e}")
+            return None
+
+    _OPENAI_RESPONSE_ID = res.get("id") or _OPENAI_RESPONSE_ID
+    answer = (res.get("output_text") or "").strip()
+    if answer:
+        return answer
+
+    chunks: list[str] = []
+    for item in res.get("output", []) or []:
+        for content in item.get("content", []) or []:
+            text = content.get("text") if isinstance(content, dict) else None
+            if text:
+                chunks.append(text)
+    return "\n".join(chunks).strip() or None
 
 
 # =====================================================================
@@ -501,54 +863,59 @@ async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text("생각 중...")
 
     try:
-        _u = user_text
-        _coin_kw = ["코인", "보유", "포트폴리오", "잔고", "수익률", "holdings", "balance",
-                    "비트코인", "이더리움", "업비트", "매매현황", "거래현황", "btc", "eth", "주식현황"]
+        text_lower = user_text.lower()
+        response = None
 
-        # 0차: 코인/잔고 키워드 → check_holdings.py 직접 실행 (Gemini 우회)
-        if any(k in _u.lower() for k in _coin_kw):
-            log("키워드 직접처리: check_holdings.py 실행")
+        profile_answer = _answer_agent_profile(user_text)
+        if _is_yewon_dispatch_request(user_text):
+            log("직접처리: yewon dispatch")
+            response = dispatch(user_text)
+        elif _is_somi_request(user_text):
+            log("직접처리: somi dispatch")
+            response = dispatch(user_text)
+        elif profile_answer:
+            log("직접처리: agent profile")
+            response = profile_answer
+        elif any(k in text_lower for k in ["잔고", "보유", "holdings", "balance", "포트폴리오"]):
+            log("직접처리: holdings/balance")
             try:
-                r = subprocess.run(
+                result = subprocess.run(
                     [sys.executable, str(AI_TEAM_ROOT / "scripts" / "check_holdings.py")],
-                    capture_output=True, text=True, timeout=20,
-                    encoding="utf-8", errors="replace"
+                    capture_output=True, text=True, timeout=30, encoding="utf-8", errors="replace"
                 )
-                response = (r.stdout or r.stderr or "잔고 조회 실패")[:1200]
-            except Exception as _e:
-                response = f"❌ 잔고 조회 오류: {_e}"
-        else:
-            response = None
+                response = result.stdout if result.returncode == 0 else f"실패:\n{result.stderr}"
+            except Exception as e:
+                response = f"⚠️ 보유/잔고 확인 오류: {e}"
+        elif _is_agent_status_request(user_text):
+            log("직접처리: agent status")
+            response = get_agent_status()
+        elif any(k in text_lower for k in ["일정", "캘린더", "스케줄", "calendar"]):
+            log("직접처리: calendar")
+            response = list_calendar()
 
-        # 1차: Gemini Function Calling
+        # 1차: ChatGPT 웹대화 스타일 (OpenAI Responses API + hosted web_search)
         if not response:
-            response = _process_with_gemini(user_text)
+            response = _process_with_openai_web_chat(user_text)
 
-        # 1.5차: GPT Function Calling (Gemini 실패 시)
+        # 2차: GPT Function Calling (Responses API 실패 시)
         if not response:
-            log("Gemini 실패 → GPT Function Calling 진행")
+            log("OpenAI web chat 실패 → GPT Function Calling 진행")
             response = _process_with_gpt(user_text)
 
-        # 2차 폴백: 키워드 직접 처리 (Gemini/GPT 실패 시)
+        # 3차: Gemini Function Calling (GPT 실패 시)
         if not response:
-            _status_kw = ["에이전트", "상태", "뭐해", "다들", "작동", "실행", "팀"]
-            _cal_kw = ["일정", "캘린더", "스케줄", "calendar"]
-            if any(k in _u for k in _status_kw):
-                log("키워드 폴백: 에이전트 상태")
-                response = get_agent_status()
-            elif any(k in _u for k in _cal_kw):
-                log("키워드 폴백: 캘린더")
-                response = list_calendar()
+            log("GPT 실패 → Gemini Function Calling 진행")
+            response = _process_with_gemini(user_text)
 
-        # 3차 폴백: Ollama → GPT
+        # 4차 폴백: Ollama (최후)
         if not response:
-            log("Gemini 실패 → llm_text 폴백")
+            log("GPT/Gemini 실패 → Ollama llm_text 폴백")
             response = llm_text(
                 user_text,
                 system=PSYCHOLOGY_SYSTEM,
                 max_tokens=500,
                 temperature=0.8,
-                lm_first=False,  # GPT → Gemini → Ollama 순서
+                lm_first=True,  # Ollama 사용
             )
 
         await update.message.reply_text(response or "지금은 답변하기 어려워요. 잠시 후 다시 말해주세요.")

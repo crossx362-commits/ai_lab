@@ -17,6 +17,7 @@
 | `로율_변호사` | 법률/세무 | `tools/tax_simulator.py` |
 | `데이브_주식` | 보수적 주식/가상자산 분석 | `tools/upbit_analyzer.py`, `tools/upbit_auto_trader.py` |
 | `레오_트레이더` | 공격적 단타 트레이딩 | `tools/leo_aggressive_trader.py`, `tools/leo_learning_system.py`, `README.md` |
+| `소미_분석가` | 국내주식 수급·세력상황·큰 수익 가능성·매수판단 | `tools/short_covering_analyzer.py`, `tools/somi_kis_reporter.py` |
 | `공용스킬` | 공통 지식/가이드 | Markdown 지식 파일 |
 
 ## 운영 규칙
