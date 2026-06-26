@@ -94,6 +94,24 @@ def dispatch_to_somi(text: str) -> str:
     return _run_python(script, "--print", timeout=90)
 
 
+def add_watchlist(symbol: str, name: str) -> str:
+    """소미 감시 목록에 종목 추가"""
+    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "watchlist_manager.py"
+    return _run_python(script, "add", "--symbol", symbol, "--name", name, timeout=30)
+
+
+def remove_watchlist(symbol: str) -> str:
+    """소미 감시 목록에서 종목 제거"""
+    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "watchlist_manager.py"
+    return _run_python(script, "remove", "--symbol", symbol, timeout=30)
+
+
+def list_watchlist() -> str:
+    """소미 감시 종목 목록 조회"""
+    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "watchlist_manager.py"
+    return _run_python(script, "list", timeout=30)
+
+
 TOOLS = [
     {
         "type": "function",
@@ -135,6 +153,41 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_watchlist",
+            "description": "소미 감시 목록에 종목 추가 (예: 삼성전자 005930)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "종목코드 (예: 005930)"},
+                    "name": {"type": "string", "description": "종목명 (예: 삼성전자)"},
+                },
+                "required": ["symbol", "name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "remove_watchlist",
+            "description": "소미 감시 목록에서 종목 제거",
+            "parameters": {
+                "type": "object",
+                "properties": {"symbol": {"type": "string", "description": "종목코드"}},
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_watchlist",
+            "description": "소미가 감시 중인 종목 목록 조회",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
 
 
@@ -143,6 +196,9 @@ AVAILABLE_FUNCTIONS = {
     "list_calendar": list_calendar,
     "dispatch_to_somi": dispatch_to_somi,
     "dispatch_to_yewon": dispatch_to_yewon,
+    "add_watchlist": add_watchlist,
+    "remove_watchlist": remove_watchlist,
+    "list_watchlist": list_watchlist,
 }
 
 
