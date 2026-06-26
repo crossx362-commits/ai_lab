@@ -41,7 +41,7 @@ class HarnessManager:
             encoding="utf-8",
             errors="replace",
             timeout=120,
-            env={**os.environ, "PYTHONUTF8": "1"},
+            env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"},
         )
         return result.stdout or result.stderr or ""
 
@@ -82,8 +82,6 @@ class HarnessManager:
             f"보고서: {report_path}",
         ]
         print("\n".join(summary))
-        if structure_issues or "WARN" in harness_output or "FAIL" in harness_output:
-            send("\n".join(summary), silent=True)
         return report
 
     def cleanup(self) -> list[str]:

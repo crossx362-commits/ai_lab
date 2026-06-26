@@ -15,7 +15,7 @@ load_env()
 
 def run_harness():
     """하네스 실행"""
-    env = {**os.environ, "PYTHONUTF8": "1"}
+    env = {**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"}
     result = subprocess.run(
         [sys.executable, "harness/check_all.py"],
         cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),

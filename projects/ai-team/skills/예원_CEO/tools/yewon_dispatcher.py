@@ -55,7 +55,7 @@ def _keyword_dispatch_decision(message: str) -> dict | None:
     return None
 
 
-def _run_script(args: list[str], timeout: int = 120) -> tuple[int, str]:
+def _run_script(args: list[str], timeout: int = 120, extra_env: dict[str, str] | None = None) -> tuple[int, str]:
     result = subprocess.run(
         args,
         cwd=PROJECT_ROOT,
@@ -64,14 +64,18 @@ def _run_script(args: list[str], timeout: int = 120) -> tuple[int, str]:
         encoding="utf-8",
         errors="replace",
         timeout=timeout,
-        env={**os.environ, "PYTHONUTF8": "1"},
+        env={**os.environ, "PYTHONUTF8": "1", **(extra_env or {})},
     )
     return result.returncode, (result.stdout or result.stderr or "").strip()
 
 
 def _run_harness() -> str:
     script = os.path.join(AI_TEAM_ROOT, "harness", "check_all.py")
-    code, output = _run_script([sys.executable, script], timeout=60)
+    code, output = _run_script(
+        [sys.executable, script],
+        timeout=60,
+        extra_env={"SUPPRESS_TELEGRAM": "true"},
+    )
     has_warn = "WARN" in output or "FAIL" in output or code != 0
     note = "WARN/FAIL 감지, 구조 점검 필요" if has_warn else "모든 구조 정상"
     icon = "⚠️" if has_warn else "✅"

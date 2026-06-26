@@ -18,6 +18,7 @@ projects/ai-team/scripts/.manual_stop*
 
 # Generated reports and runtime snapshots
 reports/status/harness_latest.json
+reports/harness/*.json
 reports/research/backtest_results.json
 reports/research/.stock_dynamic_watch.json
 reports/research/crypto_market_intel.json

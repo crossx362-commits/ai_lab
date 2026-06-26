@@ -25,6 +25,9 @@ test_gemini_output.jpg
 token.pickle
 client_secret.json
 
+# Runtime authentication cache
+skills/데이브_주식/tools/.kis_token_cache.json
+
 # Outputs
 **/output/
 output/
