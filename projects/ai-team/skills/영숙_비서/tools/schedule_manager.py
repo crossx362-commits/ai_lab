@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 영숙의 스케줄 관리 시스템
@@ -26,10 +26,6 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
 from _shared.notify import send
 from _shared.llm import is_available as lm_available
-
-# CEO Dispatcher import
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
-import yewon_dispatcher  # type: ignore
 
 SCHEDULES_FILE = os.path.join(_here, "schedules.json")
 LAST_RUN_FILE = os.path.join(_here, "last_run.json")
@@ -111,50 +107,17 @@ def execute_schedule(schedule: Dict):
     print(f"  명령: {command}")
     print(f"{'='*70}\n")
 
-    # 1. CEO에게 보고 (승인 절차 생략)
-    ceo_report = (
-        f"📋 **[영숙 비서 → CEO 예원]**\n\n"
-        f"스케줄 시간이 도래했습니다.\n\n"
+    # 스케줄 시간 도래 알림을 텔레그램으로 전송
+    notify_msg = (
+        f"⏰ **[영숙 스케줄러]** 정기 작업 알림\n\n"
         f"**에이전트**: {agent}\n"
         f"**작업**: {task}\n"
         f"**우선순위**: {priority}\n"
-        f"**명령**: {command}\n\n"
-        f"CEO님의 판단하에 에이전트에게 바로 지시하겠습니다."
+        f"**명령**: {command}\n"
+        f"**시간**: {now_kst}"
     )
-
-    print(f"  [영숙 → CEO 예원] 스케줄 도래 인지 (중간 텔레그램 발송 생략)")
-    # send(ceo_report)
-
-    # 2. CEO Dispatcher를 통해 에이전트에게 지시 (Ollama가 지능적으로 판단)
-    print(f"  [영숙 → 예원 CEO] 작업 분배 요청...")
-    dispatch_message = f"영숙 비서 스케줄러: {agent} 에이전트에게 '{task}' 작업을 지시해주세요. 명령: {command}"
-
-    try:
-        result = yewon_dispatcher.dispatch_and_execute(dispatch_message)
-
-        # result가 None이면 코다리가 복구 중 → 텔레그램 메시지 없이 조용히 종료
-        if result is None:
-            print(f"  [예원 CEO] Ollama 복구 대기 중 → 텔레그램 알림 생략")
-            return
-
-        result_text = result
-    except Exception as e:
-        result_text = f"❌ Dispatcher 오류: {str(e)[:300]}"
-
-    print(f"  [실행 결과]\n{result_text}\n")
-
-    # 3. 결과를 텔레그램으로 보고
-    final_report = (
-        f"✅ **[영숙 비서 → 사장님]**\n\n"
-        f"스케줄 작업이 완료되었습니다.\n\n"
-        f"**에이전트**: {agent}\n"
-        f"**작업**: {task}\n"
-        f"**시간**: {now_kst}\n\n"
-        f"**실행 결과**:\n{result_text[:500]}"
-    )
-
-    send(final_report)
-    print(f"  [영숙 → 사장님] 최종 보고 완료")
+    send(notify_msg)
+    print(f"  [영숙 → 사장님] 스케줄 알림 전송 완료")
 
 
 def check_and_run_schedules():

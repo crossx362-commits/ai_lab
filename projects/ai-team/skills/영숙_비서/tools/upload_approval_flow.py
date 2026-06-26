@@ -25,10 +25,6 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 from _shared.notify import send
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 
-# CEO Dispatcher import
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team", "skills", "예원_CEO", "tools"))
-import yewon_dispatcher
-
 # upload_approval_flow.py (Gahee bypassed)
 
 

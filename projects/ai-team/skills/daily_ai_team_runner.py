@@ -1,4 +1,4 @@
-﻿"""
+"""
 daily_ai_team_runner.py — AI 팀 일일 자동 실행 시스템
 
 Notion 리포트를 읽고 Ollama를 통해 에이전트들이 자율적으로 작업하며,
@@ -84,42 +84,8 @@ def read_notion_report() -> str:
 
 
 def analyze_with_ollama(report_content: str) -> dict:
-    """예원 CEO 디스패처가 리포트를 읽고 자율 판단으로 작업 계획 수립."""
+    """리포트를 읽고 오늘 할 작업을 Ollama로 분석."""
 
-    # 예원 CEO 디스패처 동적 로드
-    _dispatcher_path = os.path.join(_ai_team_root, "skills", "예원_CEO", "tools", "yewon_dispatcher.py")
-    try:
-        import importlib.util as _ilu
-        _spec = _ilu.spec_from_file_location("yewon_dispatcher", _dispatcher_path)
-        _mod = _ilu.module_from_spec(_spec)
-        _spec.loader.exec_module(_mod)
-
-        # 예원 CEO에게 리포트 전달 → 자율 판단
-        ceo_prompt = (
-            f"다음은 AI팀 Notion 활동 리포트입니다. 오늘 우선순위 높은 작업을 판단하고 "
-            f"적합한 에이전트에게 배분해주세요.\n\n리포트:\n{report_content[:2000]}"
-        )
-        result = _mod.dispatch_and_execute(ceo_prompt)
-        print(f"  [예원 CEO] 판단 완료: {result[:100]}")
-
-        # 디스패처 결과를 태스크 형태로 변환
-        tasks = []
-        for agent in []:
-            if agent in result:
-                tasks.append({
-                    "agent": agent,
-                    "action": f"{agent} 일일 파이프라인 실행",
-                    "priority": "high",
-                    "description": result[:200],
-                    "reason": "예원 CEO 자율 판단"
-                })
-        if tasks:
-            return {"tasks": tasks, "summary": f"예원 CEO 지시: {result[:100]}"}
-
-    except Exception as e:
-        print(f"  [예원 CEO 디스패처 실패, Ollama 폴백] {e}")
-
-    # 폴백: Ollama 직접 분석
     prompt = f"""AI팀 리포트를 분석하여 오늘 할 작업을 JSON으로 반환하세요.
 리포트: {report_content[:2000]}
 JSON: {{"tasks":[],"summary":"오늘 작업 없음"}}"""
@@ -135,6 +101,7 @@ JSON: {{"tasks":[],"summary":"오늘 작업 없음"}}"""
         "tasks": [],
         "summary": "일일 정기 콘텐츠 제작 (비활성화됨)"
     }
+
 
 
 def execute_agent_pipeline(agent_name: str, task_info: dict) -> tuple[bool, str]:
@@ -273,14 +240,7 @@ def run_daily_automation():
 
     # 다른 에이전트 리포트 파일 → Notion 반영
     agent_report_map = {
-        "펄스": "reports/research/pulse_research.json",
-        "케빈": "reports/history/kevin_monitor_log.md",
-        "경수": "reports/inspection/kyungsoo_audit_log.md",
-        "코다리": "projects/ai-team/docs/progress.md",
         "영숙": "reports/history/yeongsuk_daily_brief.md",
-        "티모": "reports/learning/timo_review.md",
-        "데이브": "reports/research/dave_stock_analysis.md",
-        "데이브(가상자산)": "reports/research/dave_upbit_analysis.md",
     }
 
     _root_dir = os.path.abspath(os.path.join(_ai_team_root, ".."))
