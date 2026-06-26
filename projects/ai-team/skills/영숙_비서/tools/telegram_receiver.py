@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Youngsuk Telegram receiver — Flask webhook with GPT-4o-mini function calling."""
+"""Youngsuk Telegram bot — polling mode with GPT-4o-mini function calling."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
@@ -30,15 +31,15 @@ from _shared.notify import status_report
 load_env(str(PROJECT_ROOT))
 
 try:
-    from flask import Flask, request
+    from telegram import Update
+    from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
     from openai import OpenAI
 except ImportError as exc:
     print(f"Dependencies not installed: {exc}")
-    print("Run: pip install flask openai")
+    print("Run: pip install python-telegram-bot openai")
     sys.exit(1)
 
 
-app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
@@ -112,12 +113,18 @@ def list_watchlist() -> str:
     return _run_python(script, "list", timeout=30)
 
 
+def search_stock(query: str) -> str:
+    """종목명으로 종목코드 검색"""
+    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "stock_search.py"
+    return _run_python(script, query, timeout=30)
+
+
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "get_agent_status",
-            "description": "현재 실행 중인 AI 팀 에이전트 현황 조회 (영숙, 소미, 예원 등)",
+            "description": "현재 실행 중인 AI 팀 에이전트 현황 조회",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -133,7 +140,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "dispatch_to_somi",
-            "description": "소미 분석가에게 주식 종목 분석 요청 (우리기술 종목)",
+            "description": "소미 분석가에게 주식 종목 분석 요청",
             "parameters": {
                 "type": "object",
                 "properties": {"text": {"type": "string", "description": "분석 요청 메시지"}},
@@ -145,7 +152,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "dispatch_to_yewon",
-            "description": "예원 CEO에게 작업 요청 (하네스 관리, 스킬 정리 등)",
+            "description": "예원 CEO에게 작업 요청",
             "parameters": {
                 "type": "object",
                 "properties": {"text": {"type": "string", "description": "작업 요청 메시지"}},
@@ -156,13 +163,25 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "search_stock",
+            "description": "종목명으로 종목코드 검색. 사용자가 '삼전 감시' 같이 종목명만 말하면 먼저 이 함수로 검색",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string", "description": "검색어 (종목명)"}},
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "add_watchlist",
-            "description": "소미 감시 목록에 종목 추가 (예: 삼성전자 005930)",
+            "description": "소미 감시 목록에 종목 추가 (search_stock으로 종목코드 확인 후 사용)",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "symbol": {"type": "string", "description": "종목코드 (예: 005930)"},
-                    "name": {"type": "string", "description": "종목명 (예: 삼성전자)"},
+                    "symbol": {"type": "string", "description": "종목코드"},
+                    "name": {"type": "string", "description": "종목명"},
                 },
                 "required": ["symbol", "name"],
             },
@@ -199,6 +218,7 @@ AVAILABLE_FUNCTIONS = {
     "add_watchlist": add_watchlist,
     "remove_watchlist": remove_watchlist,
     "list_watchlist": list_watchlist,
+    "search_stock": search_stock,
 }
 
 
@@ -210,24 +230,23 @@ def handle_with_gpt(text: str) -> str:
                 "role": "system",
                 "content": """당신은 영숙 비서입니다. 사용자의 모든 질문에 친절하고 정확하게 답변합니다.
 
-**역할**:
-- AI 팀 에이전트 현황 조회 (영숙, 소미, 예원, 데이브, 레오 등)
-- 일정 및 스케줄 관리
-- 주식 종목 분석 (우리기술 종목)
-- 작업 요청 및 지시사항 전달
-- 일반적인 질문에 대한 답변 (장마감 시간, 시장 정보 등)
+**종목 감시 추가 절차**:
+1. 사용자가 "삼전 감시" 같이 종목명만 말하면:
+   → search_stock("삼전") 호출하여 종목코드 확인
+   → 결과에서 종목코드/종목명 파싱
+   → add_watchlist(종목코드, 종목명) 호출
 
-**중요**:
-- 사용자가 에이전트 현황, 상태, 다들 뭐해? 등을 물으면 get_agent_status() 사용
-- 일정, 스케줄, 캘린더 관련 질문은 list_calendar() 사용
-- 종목 분석, 주식, 투자 관련 질문은 dispatch_to_somi() 사용
-- 하네스, 스킬, 작업 요청은 dispatch_to_yewon() 사용
-- **그 외 모든 질문은 당신이 직접 답변하세요** (tool 사용 불필요)
+2. 감시 중지/목록: remove_watchlist(), list_watchlist()
 
-예시:
-- "장마감 몇시야?" → 한국 주식시장은 오후 3시 30분에 마감됩니다.
-- "코스피 거래시간은?" → 오전 9시 ~ 오후 3시 30분입니다.
-- "현황 보고해줘" → get_agent_status() 호출""",
+**Tool 사용 규칙**:
+- 에이전트 현황 → get_agent_status()
+- 일정 → list_calendar()
+- 종목 검색 → search_stock()
+- 감시 추가 → add_watchlist()
+- 감시 제거 → remove_watchlist()
+- 감시 목록 → list_watchlist()
+- 종목 분석 → dispatch_to_somi()
+- 일반 질문은 직접 답변""",
             },
             {"role": "user", "content": text},
         ]
@@ -269,64 +288,44 @@ def handle_with_gpt(text: str) -> str:
         return f"요청 처리 중 오류가 발생했습니다: {exc}"
 
 
-def send_telegram_message(chat_id: str, text: str) -> None:
-    """텔레그램 메시지 전송"""
+async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.effective_message.reply_text("영숙 비서 대기 중입니다.")
+
+
+async def _status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.effective_message.reply_text(get_agent_status())
+
+
+async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.effective_message.text or ""
+    log(f"Message: {text[:100]}")
+    try:
+        response = await asyncio.to_thread(handle_with_gpt, text)
+    except Exception as exc:
+        log(f"Handler error: {exc}")
+        response = f"요청 처리 중 오류가 발생했습니다: {exc}"
+
+    # 4096자 제한으로 분할 전송
+    chunks = [response[i : i + 4000] for i in range(0, len(response), 4000)]
+    for chunk in chunks:
+        await update.effective_message.reply_text(chunk)
+
+
+def main() -> int:
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
-        return
+        print("TELEGRAM_BOT_TOKEN is not configured.")
+        return 1
 
-    import urllib.request
+    app = Application.builder().token(token).build()
+    app.add_handler(CommandHandler("start", _start))
+    app.add_handler(CommandHandler("status", _status))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _message))
 
-    chunks = [text[i : i + 4000] for i in range(0, len(text), 4000)]
-    for chunk in chunks:
-        payload = json.dumps({"chat_id": chat_id, "text": chunk, "parse_mode": "HTML"}).encode()
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=10):
-                pass
-        except Exception as exc:
-            log(f"send_telegram_message failed: {exc}")
-
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    """Telegram webhook endpoint"""
-    try:
-        data = request.get_json()
-        log(f"Webhook received: {json.dumps(data, ensure_ascii=False)[:200]}")
-
-        if "message" not in data:
-            return "ok"
-
-        message = data["message"]
-        chat_id = str(message["chat"]["id"])
-        text = message.get("text", "").strip()
-
-        if not text:
-            return "ok"
-
-        log(f"Message from {chat_id}: {text[:100]}")
-
-        response = handle_with_gpt(text)
-        send_telegram_message(chat_id, response)
-
-        return "ok"
-
-    except Exception as exc:
-        log(f"Webhook error: {exc}")
-        return "error", 500
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    return "ok"
+    log("Youngsuk Telegram bot started (polling mode)")
+    app.run_polling(allowed_updates=["message"])
+    return 0
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("YOUNGSUK_PORT", "5000"))
-    log(f"Starting Youngsuk webhook server on port {port}")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    raise SystemExit(main())
