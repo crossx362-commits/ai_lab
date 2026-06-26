@@ -240,6 +240,94 @@ def _v(raw: dict[str, str], key: str, default: str = "확인 필요") -> str:
     return raw.get(key, "").strip() or default
 
 
+def generate_prediction(raw: dict[str, str], score: int) -> str:
+    close = to_num(raw.get("close"))
+    change_pct = to_num(raw.get("change_pct"))
+    volume = to_num(raw.get("volume"))
+    avg_volume = to_num(raw.get("avg_volume_20d"))
+    foreigner = to_num(raw.get("buy_foreigner"))
+    institution = to_num(raw.get("buy_institution"))
+    foreigner_5d = to_num(raw.get("buy_foreigner_5d"))
+    institution_5d = to_num(raw.get("buy_institution_5d"))
+    support = to_num(raw.get("support_line"))
+    resistance = to_num(raw.get("resistance_line"))
+    vol_ratio = volume / avg_volume if avg_volume else 0
+
+    flow_score = 0
+    if close and support and close < support:
+        flow_score -= 3
+    elif close and support and close >= support:
+        flow_score += 1
+    if close and resistance and close >= resistance:
+        flow_score += 2
+    if change_pct >= 3:
+        flow_score += 2
+    elif change_pct <= -3:
+        flow_score -= 2
+    if vol_ratio >= 1.5:
+        flow_score += 1
+    elif volume and avg_volume and vol_ratio < 0.7:
+        flow_score -= 1
+    if foreigner > 0:
+        flow_score += 1
+    elif foreigner < 0:
+        flow_score -= 1
+    if institution > 0:
+        flow_score += 1
+    elif institution < 0:
+        flow_score -= 1
+    if foreigner_5d > 0:
+        flow_score += 1
+    elif foreigner_5d < 0:
+        flow_score -= 1
+    if institution_5d > 0:
+        flow_score += 1
+    elif institution_5d < 0:
+        flow_score -= 1
+    if score >= 60:
+        flow_score += 1
+    elif score < 30:
+        flow_score -= 1
+
+    if flow_score >= 4:
+        direction = "상승 우세"
+    elif flow_score <= -3:
+        direction = "하락 우세"
+    else:
+        direction = "중립"
+
+    support_text = f"{support:,.0f}원" if support else "확인 필요"
+    resistance_text = f"{resistance:,.0f}원" if resistance else "확인 필요"
+    close_text = f"{close:,.0f}원" if close else "확인 필요"
+
+    if direction == "상승 우세":
+        range_text = f"지지선 {support_text} 방어 시 저항선 {resistance_text} 위 안착을 시도할 가능성"
+        upside = f"상방 목표: {resistance_text} 위에서 거래량이 20일 평균 이상 유지되는지 확인"
+        downside = f"하방 위험: {support_text} 이탈 또는 외국인/기관 동반 매도 전환"
+        invalidation = f"무효화 조건: 종가가 {support_text} 아래로 밀리며 거래량이 증가"
+    elif direction == "하락 우세":
+        range_text = f"현재가 {close_text} 기준 지지선 {support_text} 회복 전까지 약세 지속 가능성"
+        upside = f"상방 전환 조건: {support_text} 회복 후 거래량이 20일 평균 이상 유지"
+        downside = "하방 위험: 외국인/기관 순매도 지속 시 최근 저점 재확인 가능"
+        invalidation = f"무효화 조건: 외국인 순매수 전환과 {resistance_text} 돌파"
+    else:
+        range_text = f"{support_text}~{resistance_text} 박스권 확인 구간"
+        upside = f"상방 전환 조건: {resistance_text} 돌파와 거래량 증가"
+        downside = f"하방 위험: {support_text} 이탈과 수급 악화"
+        invalidation = "무효화 조건: 방향성 신호가 약해 장 마감 수급 재확인 필요"
+
+    return f"""## 3. 단기 예측
+
+* 기간: 다음 거래일 ~ 5거래일
+* 방향성: {direction}
+* 예상 구간: {range_text}
+* {upside}
+* {downside}
+* {invalidation}
+* 본 예측은 현재 KIS 가격·거래량·수급·지지/저항 데이터 기반 조건부 시나리오이며, 매수·매도 지시가 아닙니다.
+"""
+
+
 def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str], neg: list[str]) -> str:
     stock_name = _v(raw, "stock_name")
     stock_code = _v(raw, "stock_code", "")
@@ -269,6 +357,7 @@ def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str],
 
     pos_lines = "\n".join(f"* {item}" for item in pos) if pos else "* 확인된 긍정 신호 없음"
     neg_lines = "\n".join(f"* {item}" for item in neg) if neg else "* 확인된 위험 신호 없음"
+    prediction = generate_prediction(raw, score)
 
     return f"""[종목 간단 분석 리포트]
 
@@ -292,7 +381,9 @@ def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str],
 * 등급: {grade}
 * 판단: {scenario}
 
-## 3. 체크 포인트
+{prediction}
+
+## 4. 체크 포인트
 
 * 대차잔고율과 직전 공매도 체결수량은 확인됐지만, 일자별 대차 감소/상환 우위는 별도 데이터가 필요합니다.
 * 외국인/기관 오늘 순매수는 KIS 응답이 비어 있으면 0으로 처리합니다. 장 마감 후 재확인이 필요합니다.
