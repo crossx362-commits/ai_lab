@@ -46,7 +46,7 @@ RUN_LOG = PROJECT_ROOT / "output" / "bot_logs" / "somi_kis_reporter.log"
 def log(message: str) -> None:
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
     line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
-    print(line, flush=True)
+    print(line, file=sys.stderr, flush=True)
     with RUN_LOG.open("a", encoding="utf-8") as file:
         file.write(line + "\n")
 
