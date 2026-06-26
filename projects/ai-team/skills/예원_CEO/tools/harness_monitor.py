@@ -15,13 +15,17 @@ load_env()
 
 def run_harness():
     """하네스 실행"""
+    env = {**os.environ, "PYTHONUTF8": "1"}
     result = subprocess.run(
         [sys.executable, "harness/check_all.py"],
-        cwd=os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."),
+        cwd=os.path.join(os.path.dirname(__file__), "..", "..", ".."),
         capture_output=True,
-        text=True
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env
     )
-    return result.stdout
+    return result.stdout or result.stderr or ""
 
 def check_and_restart_bots():
     """봇 상태 확인 및 재시작"""

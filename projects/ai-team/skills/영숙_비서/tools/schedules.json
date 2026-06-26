@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "updated": "2026-06-18",
+  "version": "1.0.1",
+  "updated": "2026-06-26",
   "schedules": [
     {
       "id": "yeongsuk_report_cleanup",
@@ -8,7 +8,7 @@
       "task": "리포트 정리",
       "cron": "0 4 * * *",
       "description": "리포트 필터링 및 정리",
-      "command": "리포트 정리해줘",
+      "command": "reports cleanup",
       "enabled": true,
       "priority": "medium"
     },
@@ -17,8 +17,8 @@
       "agent": "예원",
       "task": "주간 스킬 감사",
       "cron": "0 9 * * 1",
-      "description": "전체 에이전트 스킬 검토 및 개선사항 도출",
-      "command": "예원 주간 감사 실행",
+      "description": "전체 에이전트 스킬 감사와 개선사항 도출",
+      "command": "python projects/ai-team/skills/예원_CEO/tools/skill_auditor.py --check",
       "enabled": true,
       "priority": "high"
     },
@@ -27,8 +27,8 @@
       "agent": "예원",
       "task": "일일 피드백 평가",
       "cron": "0 9 * * *",
-      "description": "Instagram·YouTube 성과 평가 및 인사이트",
-      "command": "예원 피드백 평가",
+      "description": "Instagram, YouTube 성과 평가 및 인사이트",
+      "command": "python projects/ai-team/skills/예원_CEO/tools/evaluate_feedback.py",
       "enabled": true,
       "priority": "high"
     },
@@ -37,7 +37,7 @@
       "agent": "소미",
       "task": "우리기술 KIS 자동 보고",
       "cron": "50 8 * * 1-5",
-      "description": "한국투자증권 API 기반 장전 우리기술 수급·매수판단 점검",
+      "description": "한국투자증권 API 기반 장전 우리기술 수급 및 매수판단 평가",
       "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
       "priority": "high"
@@ -47,7 +47,7 @@
       "agent": "소미",
       "task": "우리기술 KIS 자동 보고",
       "cron": "30 12 * * 1-5",
-      "description": "한국투자증권 API 기반 장중 우리기술 수급·매수판단 점검",
+      "description": "한국투자증권 API 기반 장중 우리기술 수급 및 매수판단 평가",
       "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
       "priority": "high"
@@ -57,7 +57,7 @@
       "agent": "소미",
       "task": "우리기술 KIS 자동 보고",
       "cron": "40 15 * * 1-5",
-      "description": "한국투자증권 API 기반 장마감 우리기술 수급·매수판단 점검",
+      "description": "한국투자증권 API 기반 장마감 우리기술 수급 및 매수판단 평가",
       "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
       "priority": "high"

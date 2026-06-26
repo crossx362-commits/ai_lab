@@ -25,7 +25,6 @@ if _ai_team_root not in sys.path:
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 from _shared.notify import send
 from _shared.env import find_root
-from _shared.agent_registry import scan_agents
 _root = find_root(_here)
 
 SKILLS_DIR = os.path.join(_root, "projects", "ai-team", "skills")
@@ -37,10 +36,9 @@ def _agent_display_name(folder_name: str) -> str:
 
 
 def _build_agent_folder_map() -> dict[str, str]:
-    """Discover auditable agents from the shared registry."""
+    """Discover auditable agents from the current skills directory."""
     folders: dict[str, str] = {}
-    for info in scan_agents().values():
-        folder = info["name"]
+    for folder in os.listdir(SKILLS_DIR):
         skill_path = os.path.join(SKILLS_DIR, folder, "SKILL.md")
         if os.path.exists(skill_path):
             folders[_agent_display_name(folder)] = folder

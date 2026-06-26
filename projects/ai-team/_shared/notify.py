@@ -48,6 +48,14 @@ def send(msg: str, silent: bool = False) -> bool:
 # ==================== AGENT STATUS ====================
 
 # 하드코딩 제거 - 자동 스캔 사용
+ACTIVE_DAEMONS = {
+    "youngsuk": "telegram_receiver.py",
+    "youngsuk_schedule": "schedule_manager.py",
+    "somi": "somi_kis_reporter.py",
+    "yewon_monitor": "harness_monitor.py",
+}
+
+
 def _get_agents():
     """데몬 에이전트만 로드 (온디맨드 제외 — 런타임 체크 대상)"""
     try:
@@ -55,7 +63,7 @@ def _get_agents():
         agents = get_agents()
         return {slug: info["script"] for slug, info in agents.items() if info["type"] == "daemon"}
     except Exception:
-        return {}
+        return ACTIVE_DAEMONS.copy()
 
 _AGENTS = _get_agents()
 

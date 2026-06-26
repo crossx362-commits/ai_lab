@@ -11,11 +11,9 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-# Windows 인코딩 수정
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-
 
 THIS = Path(__file__).resolve()
 AI_TEAM = THIS.parents[1]
@@ -23,6 +21,13 @@ ROOT = AI_TEAM.parents[1]
 
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(AI_TEAM))
+
+ACTIVE_DAEMONS = {
+    "youngsuk": "telegram_receiver.py",
+    "youngsuk_schedule": "schedule_manager.py",
+    "somi": "somi_kis_reporter.py",
+    "yewon_monitor": "harness_monitor.py",
+}
 
 
 def ok(msg: str) -> tuple[str, str]:
@@ -49,15 +54,41 @@ def age_text(path: Path) -> str:
     return dt.strftime("%m/%d %H:%M")
 
 
-def find_python_pids(script_name: str) -> list[str]:
-    import platform
+def git_lines(*args: str) -> list[str]:
     try:
-        if platform.system() == "Darwin":
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), *args],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
+    except Exception:
+        return []
+
+
+def git_tracked() -> list[str]:
+    return git_lines("ls-files")
+
+
+def git_tracked_ignored() -> list[str]:
+    return git_lines("ls-files", "-ci", "--exclude-standard")
+
+
+def git_untracked() -> list[str]:
+    lines = git_lines("status", "--porcelain", "--untracked-files=all")
+    return [line[3:].strip().replace("\\", "/") for line in lines if line.startswith("?? ")]
+
+
+def find_python_pids(script_name: str) -> list[str]:
+    try:
+        if sys.platform == "darwin":
             out = subprocess.run(
                 ["pgrep", "-f", script_name],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             ).stdout
-            return [p for p in out.split() if p.isdigit()]
         else:
             cmd = (
                 "Get-CimInstance Win32_Process | "
@@ -67,9 +98,11 @@ def find_python_pids(script_name: str) -> list[str]:
             )
             out = subprocess.run(
                 ["powershell", "-NoProfile", "-Command", cmd],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             ).stdout
-            return [p for p in out.split() if p.isdigit()]
+        return [p for p in out.split() if p.isdigit()]
     except Exception:
         return []
 
@@ -81,22 +114,26 @@ def check_env():
     except Exception as e:
         return fail(f"load_env failed: {e}")
 
-    required = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "GEMINI_API_KEY", "UPBIT_ACCESS_KEY", "UPBIT_SECRET_KEY"]
+    required = ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "GEMINI_API_KEY"]
     missing = [k for k in required if not os.getenv(k)]
     if missing:
         return warn("missing env: " + ", ".join(missing))
-    return ok("✅ unified env loaded")
+    return ok("unified env loaded")
 
 
 def check_runtime():
     try:
         from _shared.notify import agent_status
         status = agent_status()
-        parts = [f"{k}={v}" for k, v in status.items()]
-        down = [k for k, v in status.items() if v == "down"]
-        return (warn if down else ok)("; ".join(parts))
     except Exception as e:
         return fail(f"runtime check failed: {e}")
+
+    if not status:
+        status = {name: ",".join(find_python_pids(script)) or "down" for name, script in ACTIVE_DAEMONS.items()}
+
+    down = [k for k, v in status.items() if v == "down"]
+    parts = [f"{k}={v}" for k, v in status.items()]
+    return (warn if down else ok)("; ".join(parts))
 
 
 def check_schedule():
@@ -109,16 +146,36 @@ def check_schedule():
         enabled = [s for s in items if s.get("enabled", True)]
     except Exception as e:
         return fail(f"schedule json failed: {e}")
-    last_info = age_text(last_run) if last_run.exists() else "미실행"
+
+    bad_commands = []
+    for item in enabled:
+        command = str(item.get("command", "")).strip()
+        if command.startswith("python "):
+            script = command.split()[1].replace("/", os.sep)
+            if not (ROOT / script).exists():
+                bad_commands.append(f"{item.get('id')}: {script}")
+    if bad_commands:
+        return fail("schedule command missing: " + ", ".join(bad_commands[:5]))
+
+    last_info = age_text(last_run) if last_run.exists() else "never"
     return ok(f"enabled {len(enabled)}/{len(items)}, last_run {last_info}")
 
 
 def check_trading():
     intel = ROOT / "reports" / "research" / "crypto_market_intel.json"
-    dave_log = ROOT / "output" / "trading_logs" / "dave_daemon.out.log"
-    leo_log = ROOT / "output" / "trading_logs" / "leo_daemon.out.log"
     if not intel.exists():
         return warn("missing crypto_market_intel.json")
+
+    current_traders = [
+        AI_TEAM / "skills" / "시그널_분석가" / "tools" / "market_signal.py",
+        AI_TEAM / "skills" / "데이브_주식" / "tools" / "upbit_auto_trader.py",
+        AI_TEAM / "skills" / "레오_트레이더" / "tools" / "leo_aggressive_trader.py",
+    ]
+    if not any(p.exists() for p in current_traders):
+        return ok(f"trading agents not installed in current tree; intel {age_text(intel)}")
+
+    dave_log = ROOT / "output" / "trading_logs" / "dave_daemon.out.log"
+    leo_log = ROOT / "output" / "trading_logs" / "leo_daemon.out.log"
     return ok(f"intel {age_text(intel)}, dave_log {age_text(dave_log)}, leo_log {age_text(leo_log)}")
 
 
@@ -131,7 +188,6 @@ def check_structure():
 
 
 def check_classification_layout():
-    """Validate the active repo areas from docs/REPOSITORY_CLASSIFICATION.md."""
     required_files = [
         ROOT / "AGENTS.md",
         ROOT / "PROJECT_OVERVIEW.md",
@@ -180,22 +236,15 @@ def check_classification_layout():
         AI_TEAM / "assets" / "brain-seeds",
     ]
 
-    missing = []
-    for path in required_files + required_dirs:
-        if not path.exists():
-            missing.append(str(path.relative_to(ROOT)))
+    missing = [str(p.relative_to(ROOT)) for p in required_files + required_dirs if not p.exists()]
 
+    legacy_agent_dirs = {"펄스_애널리스트", "루나_디렉터", "아린_비주얼"}
     skills_dir = AI_TEAM / "skills"
-    try:
-        from _shared.agent_registry import LEGACY_AGENT_DIRS
-    except Exception:
-        LEGACY_AGENT_DIRS = {"펄스_애널리스트", "펄스_전략가", "루나_디렉터", "아린_비주얼"}
-
     if skills_dir.exists():
         for agent_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
             if agent_dir.name.startswith(".") or agent_dir.name == "__pycache__":
                 continue
-            if agent_dir.name == "공용스킬" or agent_dir.name in LEGACY_AGENT_DIRS:
+            if agent_dir.name == "공용스킬" or agent_dir.name in legacy_agent_dirs:
                 continue
             if not (agent_dir / "SKILL.md").exists():
                 missing.append(str((agent_dir / "SKILL.md").relative_to(ROOT)))
@@ -209,10 +258,8 @@ def check_classification_layout():
             warnings.append(f"legacy dir present: {legacy_dir.name}")
 
     project_reports = ROOT / "projects" / "reports"
-    if project_reports.exists():
-        misplaced = [p for p in project_reports.rglob("*") if p.is_file()]
-        if misplaced:
-            warnings.append("misplaced reports: projects/reports")
+    if project_reports.exists() and any(p.is_file() for p in project_reports.rglob("*")):
+        warnings.append("misplaced reports: projects/reports")
 
     root_wrappers = sorted(
         p.name for p in ROOT.iterdir()
@@ -257,92 +304,14 @@ def check_classification_layout():
 
 def check_report_layout():
     project_reports = AI_TEAM / "reports"
-    allowed = set()
     if not project_reports.exists():
         return ok("no ai-team local reports")
 
     files = [p.relative_to(project_reports) for p in project_reports.rglob("*") if p.is_file()]
-    unexpected = sorted(str(p).replace("\\", "/") for p in files if p not in allowed)
-    if unexpected:
+    if files:
+        unexpected = sorted(str(p).replace("\\", "/") for p in files)
         return warn("unexpected ai-team reports: " + ", ".join(unexpected[:8]))
-
-    return ok("ai-team local reports limited to live runtime exceptions")
-
-
-def git_tracked() -> list[str]:
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        ).stdout
-        return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
-    except Exception:
-        return []
-
-
-def git_tracked_ignored() -> list[str]:
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files", "-ci", "--exclude-standard"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        ).stdout
-        return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
-    except Exception:
-        return []
-
-
-def git_untracked() -> list[str]:
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=all"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        ).stdout
-        return [
-            line[3:].strip().replace("\\", "/")
-            for line in out.splitlines()
-            if line.startswith("?? ")
-        ]
-    except Exception:
-        return []
-
-
-def check_docs_encoding():
-    """Catch obvious mojibake in the current operating docs."""
-    docs = [
-        ROOT / "README.md",
-        ROOT / "PROJECT_OVERVIEW.md",
-        ROOT / "docs" / "REPOSITORY_CLASSIFICATION.md",
-        AI_TEAM / "scripts" / "README.md",
-        ROOT / "projects" / "petnna" / "README.md",
-    ]
-    markers = ["\ufffd", "諛", "怨", "鍮", "媛", "紐", "瑜", "쒋"]
-    bad = []
-    for path in docs:
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except Exception as e:
-            bad.append(f"{path.relative_to(ROOT)} read failed: {e}")
-            continue
-        hits = sum(text.count(marker) for marker in markers)
-        if hits:
-            bad.append(f"{path.relative_to(ROOT)} markers={hits}")
-    if bad:
-        return warn("possible mojibake docs: " + ", ".join(bad[:8]))
-    return ok("main docs encoding clean")
-
-
-def check_unclassified_files():
-    """Warn when new local files are neither tracked nor ignored."""
-    untracked = git_untracked()
-    if untracked:
-        return warn("unclassified untracked files: " + ", ".join(untracked[:8]))
-    return ok("no unclassified untracked files")
+    return ok("ai-team local reports empty")
 
 
 def check_root_layout():
@@ -371,6 +340,37 @@ def check_root_layout():
     if problems:
         return warn(" | ".join(problems))
     return ok("root tracked files classified")
+
+
+def check_docs_encoding():
+    docs = [
+        ROOT / "README.md",
+        ROOT / "PROJECT_OVERVIEW.md",
+        ROOT / "docs" / "REPOSITORY_CLASSIFICATION.md",
+        AI_TEAM / "scripts" / "README.md",
+        ROOT / "projects" / "petnna" / "README.md",
+    ]
+    markers = ["\ufffd", "諛", "怨", "鍮", "媛", "紐", "瑜", "쒋"]
+    bad = []
+    for path in docs:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            bad.append(f"{path.relative_to(ROOT)} read failed: {e}")
+            continue
+        hits = sum(text.count(marker) for marker in markers)
+        if hits:
+            bad.append(f"{path.relative_to(ROOT)} markers={hits}")
+    if bad:
+        return warn("possible mojibake docs: " + ", ".join(bad[:8]))
+    return ok("main docs encoding clean")
+
+
+def check_unclassified_files():
+    untracked = git_untracked()
+    if untracked:
+        return warn("unclassified untracked files: " + ", ".join(untracked[:8]))
+    return ok("no unclassified untracked files")
 
 
 def main() -> int:
@@ -409,17 +409,16 @@ def main() -> int:
     )
     print(f"[OK] report: {status_dir / 'harness_latest.json'}")
 
-    # WARN/FAIL 시 텔레그램 알림
     if worst >= 1:
         try:
             from _shared.notify import send
             issues = [r for r in results if r["status"] != "OK"]
-            lines = [f"{'⚠️' if r['status']=='WARN' else '🚨'} {r['name']}: {r['message'][:80]}" for r in issues]
-            send(f"🔍 [하네스] {overall}\n" + "\n".join(lines))
+            lines = [f"{r['status']} {r['name']}: {r['message'][:80]}" for r in issues]
+            send(f"[하네스] {overall}\n" + "\n".join(lines))
         except Exception as e:
-            print(f"[하네스] 텔레그램 알림 실패: {e}")
+            print(f"[WARN] telegram notify failed: {e}")
 
-    return 1 if worst == 2 else 0
+    return worst
 
 
 if __name__ == "__main__":
