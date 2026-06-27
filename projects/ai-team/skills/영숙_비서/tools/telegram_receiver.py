@@ -268,9 +268,156 @@ def dispatch_to_yewon(text: str) -> str:
 
 
 def dispatch_screener(_: str = "") -> str:
-    """소미 점수 기반 유망종목 발굴 (거래량 상위 → 소미 점수 채점 상위)."""
-    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_screener.py"
-    return _run_python(script, "--top", "5", "--candidates", "20", timeout=240)
+    """소미 매수 제안 (발굴+점수화 → 진입/손절/목표/이유/위험, 승인형)."""
+    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_trade_advisor.py"
+    return _run_python(script, "--propose", "--candidates", "20", timeout=300)
+
+
+# ── 수동 주식 주문 (사용자가 명시적으로 지시한 매수/매도만 실행, 확인 1단계) ──
+_PENDING_ORDER: dict = {}
+_BUY_WORDS = ("매수", "매입", "사줘", "사세요", "사라", "삽니다", "사기", "매수해", "매수주문")
+_SELL_WORDS = ("매도", "매각", "팔아", "파세요", "팔자", "팔기", "판다", "매도해", "매도주문")
+
+
+def _is_balance_request(text: str) -> bool:
+    n = _normalize_text(text)
+    return any(w in n for w in ("잔고", "보유종목", "내주식", "내종목", "예수금", "내계좌"))
+
+
+def _tool_balance() -> str:
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from kis_trader import KISTrader, _fmt_balance
+        t = KISTrader()
+        mode = "실거래" if t.real else "모의투자"
+        return f"[{mode} 계좌 {t.cano}-{t.prod}]\n" + _fmt_balance(t.balance())
+    except Exception as exc:
+        return f"잔고 조회 실패: {exc}"
+
+
+def _parse_order(text: str) -> dict | None:
+    """'종목 N주 [가격원] 매수/매도' 형식 파싱. 명시적 수량+매매어가 있어야만 인식."""
+    if any(w in text for w in _BUY_WORDS):
+        side = "buy"
+    elif any(w in text for w in _SELL_WORDS):
+        side = "sell"
+    else:
+        return None
+    mqty = re.search(r"(\d[\d,]*)\s*주", text)
+    if not mqty:
+        return None
+    qty = int(mqty.group(1).replace(",", ""))
+    mprice = re.search(r"(\d[\d,]*)\s*원", text)
+    price = int(mprice.group(1).replace(",", "")) if mprice else 0
+    # 종목명 분리: 수량/가격/매매어 제거 후 해석
+    name_part = re.sub(r"\d[\d,]*\s*(주|원)", " ", text)
+    for w in _BUY_WORDS + _SELL_WORDS + ("지정가", "시장가", "주문", "해줘", "좀"):
+        name_part = name_part.replace(w, " ")
+    stock = _stock_from_text(name_part.strip()) or _stock_from_text(text)
+    if not stock:
+        return None
+    symbol, name = stock
+    return {"symbol": symbol, "name": name, "qty": qty, "side": side, "price": price}
+
+
+SOMI_BUDGET = int(os.getenv("SOMI_BUDGET_PER_TRADE", "1000000"))  # 제안 승인 시 1종목 기본 예산
+
+
+def _is_pass(text: str) -> bool:
+    return _normalize_text(text) in ("패스", "pass", "넘겨", "스킵", "skip", "보류")
+
+
+def _parse_somi_approve(text: str) -> dict | None:
+    """'소미 승인 <종목명> [N주]' → 제안 기반 매수 주문(손절/목표 포함)."""
+    n = _normalize_text(text)
+    if "소미" not in n or "승인" not in n:
+        return None
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from somi_trade_advisor import get_proposal
+    except Exception:
+        return None
+    rest = text.replace("소미", " ").replace("승인", " ")
+    mqty = re.search(r"(\d[\d,]*)\s*주", rest)
+    qty = int(mqty.group(1).replace(",", "")) if mqty else 0
+    key = re.sub(r"\d[\d,]*\s*주", " ", rest).strip()
+    prop = get_proposal(key) if key else None
+    if not prop:
+        return None
+    if qty <= 0:  # 미지정 시 예산 기반 수량
+        entry = prop.get("entry") or 1
+        qty = max(1, int(SOMI_BUDGET // entry))
+    return {
+        "symbol": prop["symbol"], "name": prop["name"], "qty": qty,
+        "side": "buy", "price": 0,
+        "entry": prop["entry"], "stop": prop["stop"], "target": prop["target"],
+    }
+
+
+def _parse_somi_sell(text: str) -> dict | None:
+    """'소미 매도 <종목>' → 보유 수량 전량(또는 지정 수량) 매도."""
+    n = _normalize_text(text)
+    if "소미" not in n or "매도" not in n:
+        return None
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from somi_trade_advisor import load_positions
+    except Exception:
+        return None
+    rest = text.replace("소미", " ").replace("매도", " ")
+    mqty = re.search(r"(\d[\d,]*)\s*주", rest)
+    key = re.sub(r"\d[\d,]*\s*주", " ", rest).strip()
+    stock = _stock_from_text(key) if key else None
+    if not stock:
+        return None
+    symbol, name = stock
+    positions = load_positions()
+    held = int(positions.get(symbol, {}).get("qty", 0))
+    qty = int(mqty.group(1).replace(",", "")) if mqty else held
+    if qty <= 0:
+        return None
+    return {"symbol": symbol, "name": name, "qty": qty, "side": "sell", "price": 0}
+
+
+def _order_confirm_prompt(order: dict) -> str:
+    sidetxt = "매수" if order["side"] == "buy" else "매도"
+    pricetxt = f"{order['price']:,}원 지정가" if order["price"] else "시장가"
+    mode = "🧪 모의(페이퍼) 주문 확인" if os.getenv("KIS_PAPER", "false").lower() in ("1", "true", "yes") else "⚠️ 실거래 주문 확인"
+    return (
+        f"{mode}\n"
+        f"{order['name']}({order['symbol']}) {order['qty']:,}주 {pricetxt} {sidetxt}\n\n"
+        f"체결하려면 '확인', 취소하려면 '취소'라고 답해줘요."
+    )
+
+
+def _execute_pending_order() -> str:
+    order = _PENDING_ORDER.pop("order", None)
+    if not order:
+        return "대기 중인 주문이 없어요."
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from kis_trader import KISTrader
+        result = KISTrader().order(order["symbol"], order["qty"], order["side"], order["price"])
+    except Exception as exc:
+        return f"❌ 주문 실패: {exc}"
+    # 포지션 기록(매수 제안 승인 시 손절/목표 저장) / 해제(매도 시)
+    try:
+        from somi_trade_advisor import record_position, remove_position
+        if order["side"] == "buy" and order.get("target"):
+            record_position(order["symbol"], order["name"], order.get("entry", 0),
+                            order.get("stop", 0), order.get("target", 0), order["qty"])
+        elif order["side"] == "sell":
+            remove_position(order["symbol"])
+    except Exception:
+        pass
+    sidetxt = "매수" if order["side"] == "buy" else "매도"
+    extra = ""
+    if order.get("target"):
+        extra = f"\n손절 {int(order['stop']):,} / 목표 {int(order['target']):,} 감시 시작"
+    return (
+        f"✅ {order['name']}({order['symbol']}) {order['qty']:,}주 {sidetxt} 주문 접수\n"
+        f"주문번호: {result.get('order_no')} / {result.get('time')}\n{result.get('msg','')}{extra}"
+    )
 
 
 def dispatch_to_somi(text: str) -> str:
@@ -490,6 +637,34 @@ def handle_message(text: str) -> str:
     text = (text or "").strip()
     if not text:
         return "메시지가 비어 있어요."
+
+    # 대기 중인 주문 확인/취소 (최우선)
+    if _PENDING_ORDER.get("order"):
+        n = _normalize_text(text)
+        if n in ("확인", "ㅇㅇ", "응", "ok", "yes", "체결"):
+            return _execute_pending_order()
+        if n in ("취소", "ㄴㄴ", "아니", "no", "cancel"):
+            _PENDING_ORDER.pop("order", None)
+            return "주문을 취소했어요."
+        # 다른 메시지면 기존 주문은 만료 처리
+        _PENDING_ORDER.pop("order", None)
+
+    # 소미 매수 제안 승인 / 매도 / 패스
+    if _is_pass(text):
+        return "넘어갈게요. 계속 감시하겠습니다."
+    somi_order = _parse_somi_approve(text) or _parse_somi_sell(text)
+    if somi_order:
+        _PENDING_ORDER["order"] = somi_order
+        return _order_confirm_prompt(somi_order)
+
+    # 수동 매수/매도 지시 → 확인 단계
+    order = _parse_order(text)
+    if order:
+        _PENDING_ORDER["order"] = order
+        return _order_confirm_prompt(order)
+
+    if _is_balance_request(text):
+        return _tool_balance()
 
     if _is_trading_status_request(text):
         return _tool_get_trading_status() + "\n\n" + _tool_get_agent_status()

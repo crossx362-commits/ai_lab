@@ -18,8 +18,9 @@ CONTINUOUS_DAEMONS = {
 
 # 예약 실행 서비스 (launchd StartCalendarInterval) — 평소엔 미실행이 정상, 지정 시각에만 실행
 SCHEDULED_SERVICES = {
-    "somi": "com.ailab.somi",                    # 정기 리포트 (08:50/12:30/15:40)
-    "somi_screener": "com.ailab.somi_screener",  # 유망종목 발굴 (09:10/15:50)
+    "somi": "com.ailab.somi",                    # 정기 리포트 (15:40)
+    "somi_screener": "com.ailab.somi_screener",  # 매수 제안 (09:30/15:50)
+    "somi_position": "com.ailab.somi_position",   # 보유 포지션 익절/손절 점검 (장중)
     "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
 }
 
@@ -27,7 +28,8 @@ _AGENT_LABELS = {
     "youngsuk": "영숙 (텔레그램 비서)",
     "somi_monitor": "소미 (실시간 급변동 감시)",
     "somi": "소미 (정기 리포트)",
-    "somi_screener": "소미 (유망종목 발굴)",
+    "somi_screener": "소미 (매수 제안)",
+    "somi_position": "소미 (포지션 익절/손절)",
     "harness": "하네스 (시스템 점검)",
 }
 
