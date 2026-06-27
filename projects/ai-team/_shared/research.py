@@ -137,6 +137,27 @@ def save_market_brief(text_md: str, payload: dict) -> Path:
     return path
 
 
+def load_market_brief() -> dict:
+    """마켓데스크 종합 브리프(fx·indices·disclosures·comment·web). 없으면 {}."""
+    f = RESEARCH_DIR / "market_brief.json"
+    try:
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    except Exception:
+        return {}
+
+
+def market_brief_age_hours() -> float | None:
+    """브리프가 몇 시간 전 것인지(신선도 판단). 없으면 None."""
+    mb = load_market_brief()
+    ts = mb.get("updated")
+    if not ts:
+        return None
+    try:
+        return (datetime.now() - datetime.fromisoformat(ts)).total_seconds() / 3600
+    except Exception:
+        return None
+
+
 # ── 종목별 이슈 영향도 (공시 기반 LLM 평가, 소미가 소비) ────────────────────
 def save_issue_impact(impact: dict) -> Path:
     """{종목코드: {"score": -2~+2, "reason": str}} 저장."""

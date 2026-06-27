@@ -386,8 +386,16 @@ def make_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name:
             report += f"\n\n📰 이슈 영향도 {int(imp['score']):+d} — {imp.get('reason', '')}"
     except Exception:
         pass
+    # 마켓데스크 시장 배경 한 줄 (환율) — 종목 보고 맨 위
+    market_bg = ""
+    try:
+        fx = research.load_market_brief().get("fx", {}) or {}
+        if fx.get("KRW"):
+            market_bg = f"🌐 시장 USD/KRW {fx['KRW']:.0f}\n\n"
+    except Exception:
+        pass
     header = f"[소미 자동보고 - {name}({symbol}) / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n\n"
-    return header + report
+    return header + market_bg + report
 
 
 def send_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> bool:

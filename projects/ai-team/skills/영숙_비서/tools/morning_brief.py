@@ -26,6 +26,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send, status_report  # noqa: E402
+from _shared import research  # noqa: E402
 
 CAL_CACHE = AI_TEAM_ROOT / "_shared" / "calendar_cache.md"
 SCHEDULES = SCRIPT_DIR / "schedules.json"
@@ -97,6 +98,23 @@ def _today_routines(now: datetime) -> str:
     return "\n".join(f"- {t} · {agent} · {task}" for t, agent, task in rows)
 
 
+def _market_section() -> str:
+    """마켓데스크 종합 브리프(환율 + 데스크 코멘트)를 아침 브리핑에 요약."""
+    mb = research.load_market_brief()
+    if not mb:
+        return ""
+    lines = ["📋 오늘의 시장"]
+    fx = mb.get("fx", {}) or {}
+    if fx.get("KRW"):
+        krw = f"USD/KRW {fx['KRW']:.1f}"
+        jpy = f" · USD/JPY {fx['JPY']:.1f}" if fx.get("JPY") else ""
+        lines.append(krw + jpy)
+    comment = (mb.get("comment") or "").strip()
+    if comment:
+        lines.append(comment)
+    return ("\n".join(lines) + "\n\n") if len(lines) > 1 else ""
+
+
 def build_brief(now: datetime | None = None) -> str:
     now = now or datetime.now()
     head = f"☀️ 사장님, 좋은 아침이에요! {now.strftime('%Y-%m-%d')} ({_WEEKDAY_KO[now.weekday()]})"
@@ -104,6 +122,7 @@ def build_brief(now: datetime | None = None) -> str:
         f"{head}\n\n"
         f"📅 오늘 일정\n{_today_events()}\n\n"
         f"⏰ 오늘 예정 루틴\n{_today_routines(now)}\n\n"
+        f"{_market_section()}"
         f"🤖 {status_report()}"
     )
 
