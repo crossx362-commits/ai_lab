@@ -133,6 +133,18 @@ const AGENTS = {
   "소미":{id:"somi",emoji:"📈",color:"#EC4899",role:"국내주식 수급 분석가",
     tagline:"종목 수급·세력상황·매수 가능 구간을 냉정하게 판단합니다.",
     tools:["somi_kis_reporter","somi_screener","somi_trade_advisor","somi_position_monitor","somi_price_monitor","short_covering_analyzer","kis_trader","stock_search","watchlist_manager"]},
+  "유나":{id:"yuna",emoji:"🌏",color:"#06B6D4",role:"아시아 시장 조사관",
+    tagline:"watchlist DART 공시·환율·아시아 지수를 수집합니다.",
+    tools:["asia_research"]},
+  "행크":{id:"hank",emoji:"🦅",color:"#3B82F6",role:"미국 시장 조사관",
+    tagline:"미국장·달러 흐름을 한국 개장 전에 정리합니다.",
+    tools:["us_research"]},
+  "레온":{id:"leon",emoji:"🏛️",color:"#6366F1",role:"유럽 시장 조사관",
+    tagline:"유럽 지수·정책 동향을 수집합니다.",
+    tools:["eu_research"]},
+  "마켓데스크":{id:"desk",emoji:"📋",color:"#F59E0B",role:"시장 종합 데스크",
+    tagline:"세 지역 조사를 하나의 시장 브리프로 종합합니다.",
+    tools:["market_desk"]},
 };
 // ── 스케줄 (schedules.json 미러) ────────────────────────────────────
 const SCHEDULES = [
@@ -144,6 +156,10 @@ const SCHEDULES = [
   {agent:"소미",task:"오전 스캔+분석",     cron:"50 8 * * 1-5"},
   {agent:"소미",task:"정오 관심종목 분석", cron:"30 12 * * 1-5"},
   {agent:"소미",task:"마감 관심종목 분석", cron:"40 15 * * 1-5"},
+  {agent:"행크",task:"미국 시장 조사",     cron:"30 6 * * 1-5"},
+  {agent:"유나",task:"아시아 시장 조사",   cron:"30 7 * * 1-5"},
+  {agent:"마켓데스크",task:"시장 종합 브리프", cron:"50 7 * * 1-5"},
+  {agent:"레온",task:"유럽 시장 조사",     cron:"0 16 * * 1-5"},
 ];
 const DOW = ["일","월","화","수","목","금","토"];
 const MON = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];

@@ -84,6 +84,50 @@
       "enabled": true,
       "run": false,
       "priority": "high"
+    },
+    {
+      "id": "research_us",
+      "agent": "행크",
+      "task": "미국 시장 조사",
+      "cron": "30 6 * * 1-5",
+      "description": "S&P·나스닥·VIX·환율 수집 (한국 개장 전)",
+      "command": "python projects/ai-team/skills/행크_미국조사/tools/us_research.py --send",
+      "enabled": true,
+      "run": true,
+      "priority": "medium"
+    },
+    {
+      "id": "research_asia",
+      "agent": "유나",
+      "task": "아시아 시장 조사",
+      "cron": "30 7 * * 1-5",
+      "description": "watchlist DART 공시 + 환율 + 아시아 지수 수집",
+      "command": "python projects/ai-team/skills/유나_아시아조사/tools/asia_research.py --send",
+      "enabled": true,
+      "run": true,
+      "priority": "high"
+    },
+    {
+      "id": "research_desk",
+      "agent": "마켓데스크",
+      "task": "시장 종합 브리프",
+      "cron": "50 7 * * 1-5",
+      "description": "지역 브리프 종합 + LLM 코멘트 → 영숙/소미 인용",
+      "command": "python projects/ai-team/skills/마켓데스크_시장종합/tools/market_desk.py --send",
+      "enabled": true,
+      "run": true,
+      "priority": "high"
+    },
+    {
+      "id": "research_eu",
+      "agent": "레온",
+      "task": "유럽 시장 조사",
+      "cron": "0 16 * * 1-5",
+      "description": "DAX·유로스톡스·EUR 수집",
+      "command": "python projects/ai-team/skills/레온_유럽조사/tools/eu_research.py --send",
+      "enabled": true,
+      "run": true,
+      "priority": "low"
     }
   ]
 }
