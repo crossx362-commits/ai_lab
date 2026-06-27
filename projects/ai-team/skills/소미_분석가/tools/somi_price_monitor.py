@@ -195,7 +195,7 @@ def main() -> int:
         "--price-threshold",
         type=float,
         default=3.0,
-        help="등락률 알림 기준 (%)",
+        help="등락률 알림 기준 (%%)",
     )
     parser.add_argument(
         "--volume-threshold",
