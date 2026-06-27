@@ -73,6 +73,12 @@ def build() -> dict:
             facts.append(f"{label} 지수: {line}")
     if disclosures:
         facts.append("watchlist 공시: " + "; ".join(f"{d['name']} {d['report']}" for d in disclosures[:8]))
+    fg = research.fear_greed()
+    if fg.get("score") is not None:
+        facts.append(f"미국 공포탐욕지수 {fg['score']} ({fg.get('rating', '')})")
+    news = asia.get("news") or []
+    if news:
+        facts.append("증권 뉴스: " + " | ".join(news[:5]))
     facts_str = "\n".join(facts) if facts else "수집된 데이터가 적음"
 
     # LLM 종합 코멘트 (실패 시 폴백)
@@ -104,6 +110,12 @@ def build() -> dict:
     else:
         md_lines.append("- 신규 공시 없음")
     md_lines.append("")
+    if fg.get("score") is not None:
+        md_lines += ["## 😨 시장 심리", f"미국 공포탐욕지수 {fg['score']} ({fg.get('rating', '')})", ""]
+    if news:
+        md_lines.append("## 📰 증권 뉴스")
+        md_lines += [f"- {n}" for n in news[:6]]
+        md_lines.append("")
     if comment:
         md_lines += ["## 🧭 데스크 코멘트", comment, ""]
 

@@ -13,6 +13,7 @@ import json
 import os
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -153,3 +154,50 @@ def load_issue_impact() -> dict:
         return d.get("impact", {}) if isinstance(d, dict) else {}
     except Exception:
         return {}
+
+
+# ── 뉴스 (RSS, 키 불필요) ───────────────────────────────────────────────────
+def news_rss(url: str, limit: int = 8) -> list[str]:
+    """RSS 피드의 기사 제목 목록. 실패 시 빈 리스트."""
+    try:
+        root = ET.fromstring(_get(url))
+        titles = []
+        for item in root.iter("item"):
+            t = (item.findtext("title") or "").strip()
+            if t:
+                titles.append(t)
+            if len(titles) >= limit:
+                break
+        return titles
+    except Exception:
+        return []
+
+
+# ── 시장 심리 (CNN 공포탐욕, 키 불필요) ─────────────────────────────────────
+def fear_greed() -> dict:
+    """CNN Fear & Greed Index. {'score': float, 'rating': str} 또는 {}."""
+    try:
+        d = get_json("https://production.dataviz.cnn.io/index/fearandgreed/graphdata")
+        fg = d.get("fear_and_greed", {}) or {}
+        score = fg.get("score")
+        return {"score": round(float(score), 1) if score is not None else None,
+                "rating": fg.get("rating", "")}
+    except Exception:
+        return {}
+
+
+# ── 미국 거시 (FRED, 키 조건부) ─────────────────────────────────────────────
+def fred_latest(series_id: str) -> str | None:
+    """FRED 시계열 최신값. FRED_API_KEY 미보유 시 None."""
+    key = os.getenv("FRED_API_KEY", "").strip()
+    if not key:
+        return None
+    try:
+        url = (
+            "https://api.stlouisfed.org/fred/series/observations"
+            f"?series_id={series_id}&api_key={key}&file_type=json&sort_order=desc&limit=1"
+        )
+        obs = get_json(url).get("observations", [])
+        return obs[0].get("value") if obs else None
+    except Exception:
+        return None

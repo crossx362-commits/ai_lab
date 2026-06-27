@@ -10,6 +10,7 @@ output/research/region_us.json 에 저장한다. FRED 등 거시 키 미보유 �
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -32,13 +33,27 @@ INDEX_SYMBOLS = {"S&P500": "^spx", "나스닥": "^ndq", "VIX": "^vix"}
 
 
 def collect() -> dict:
+    macro = {}
+    if os.getenv("FRED_API_KEY", "").strip():
+        macro = {
+            "미국채10년": research.fred_latest("DGS10"),
+            "CPI": research.fred_latest("CPIAUCSL"),
+            "연방기금금리": research.fred_latest("FEDFUNDS"),
+        }
     payload = {
         "indices": research.indices(INDEX_SYMBOLS),
         "fx": research.fx("EUR", "JPY", "KRW"),  # USD 강도 가늠
-        "note": "FRED/연준 거시 지표는 키 추가 시 확장 예정",
+        "macro": macro,
+        "note": "FRED 거시는 FRED_API_KEY 보유 시 자동 수집",
     }
     research.save_region("us", payload)
     return payload
+
+
+def _macro_line(p: dict) -> str:
+    m = p.get("macro") or {}
+    bits = [f"{k} {v}" for k, v in m.items() if v]
+    return " · ".join(bits)
 
 
 def brief_text(p: dict) -> str:
@@ -48,6 +63,9 @@ def brief_text(p: dict) -> str:
     fx = p.get("fx", {})
     if fx.get("KRW"):
         lines.append(f"💱 USD/KRW {fx['KRW']:.1f}")
+    ml = _macro_line(p)
+    if ml:
+        lines.append("🏦 " + ml)
     return "\n".join(lines)
 
 

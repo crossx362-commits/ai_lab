@@ -38,6 +38,7 @@ def collect() -> dict:
         "disclosures": research.dart_recent(codes, days=2),
         "fx": research.fx("KRW", "JPY", "CNY"),
         "indices": research.indices(INDEX_SYMBOLS),
+        "news": research.news_rss("https://www.hankyung.com/feed/finance", 8),
     }
     research.save_region("asia", payload)
     return payload
@@ -65,6 +66,11 @@ def brief_text(p: dict) -> str:
             lines.append(f"- {x['name']}({x['code']}) {x['report']} [{x['date']}]")
     else:
         lines.append("\n📑 watchlist 신규 공시 없음")
+    news = p.get("news") or []
+    if news:
+        lines.append("\n📰 증권 뉴스 헤드라인")
+        for n in news[:5]:
+            lines.append(f"- {n}")
     return "\n".join(lines)
 
 
