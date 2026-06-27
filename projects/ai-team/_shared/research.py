@@ -134,3 +134,22 @@ def save_market_brief(text_md: str, payload: dict) -> Path:
     path = RESEARCH_DIR / "market_brief.json"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+# ── 종목별 이슈 영향도 (공시 기반 LLM 평가, 소미가 소비) ────────────────────
+def save_issue_impact(impact: dict) -> Path:
+    """{종목코드: {"score": -2~+2, "reason": str}} 저장."""
+    RESEARCH_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {"updated": datetime.now().isoformat(timespec="seconds"), "impact": impact}
+    path = RESEARCH_DIR / "issue_impact.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def load_issue_impact() -> dict:
+    f = RESEARCH_DIR / "issue_impact.json"
+    try:
+        d = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        return d.get("impact", {}) if isinstance(d, dict) else {}
+    except Exception:
+        return {}

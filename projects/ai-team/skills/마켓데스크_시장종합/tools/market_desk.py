@@ -42,6 +42,27 @@ def build() -> dict:
     disclosures = asia.get("disclosures", []) or []
     fx = asia.get("fx", {}) or {}
 
+    # 종목별 이슈 영향도 (공시 기반 LLM 평가) → issue_impact.json, 소미가 소비
+    if disclosures:
+        by_code: dict[str, dict] = {}
+        for d in disclosures:
+            by_code.setdefault(d["code"], {"name": d["name"], "reports": []})["reports"].append(d["report"])
+        listing = "\n".join(f"{c} {v['name']}: {'; '.join(v['reports'])}" for c, v in by_code.items())
+        impact = {}
+        try:
+            import json as _json
+            resp = text(
+                "다음은 종목별 최근 공시다. 각 종목의 주가 영향도를 정수 -2(악재)~+2(호재)로 평가하고 "
+                "한 줄 이유를 달아라. 반드시 JSON만 출력하라: "
+                "{\"종목코드\":{\"score\":정수,\"reason\":\"...\"}}\n\n" + listing,
+                json_mode=True, max_tokens=600, temperature=0.2, task="blog",
+            )
+            if resp:
+                impact = _json.loads(resp)
+        except Exception:
+            impact = {}
+        research.save_issue_impact(impact)
+
     # 데이터 요약 (LLM 입력 + 본문)
     facts = []
     if fx.get("KRW"):

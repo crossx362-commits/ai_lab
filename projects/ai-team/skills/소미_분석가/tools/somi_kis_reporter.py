@@ -32,6 +32,7 @@ from _shared.notify import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from short_covering_analyzer import calculate_score, generate_report, parse_input_text  # noqa: E402
 from watchlist_manager import load_watchlist  # noqa: E402
+from _shared import research  # noqa: E402
 
 
 load_env(str(PROJECT_ROOT))
@@ -378,6 +379,13 @@ def make_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name:
     parsed = parse_input_text(input_text)
     score, grade, pos, neg = calculate_score(parsed)
     report = generate_report(parsed, score, grade, pos, neg)
+    # 마켓데스크 이슈 영향도 병기 (수급 점수는 보존, 공시 영향만 참고로 덧붙임)
+    try:
+        imp = research.load_issue_impact().get(symbol)
+        if isinstance(imp, dict) and imp.get("score") is not None:
+            report += f"\n\n📰 이슈 영향도 {int(imp['score']):+d} — {imp.get('reason', '')}"
+    except Exception:
+        pass
     header = f"[소미 자동보고 - {name}({symbol}) / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n\n"
     return header + report
 
