@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""예원 종합 보고 — 모든 에이전트 결과를 병합해 하루 3회만 보고한다.
+
+개별 에이전트(조사팀·소미·영숙)는 텔레그램으로 직접 보고하지 않고 결과를
+파일로 남기며, 예원이 장전(morning)·장중(midday)·마감(close) 3회에 한 번씩
+종합해 사장님께 한 건으로 올린다. 긴급 속보·급변동은 이 경로를 거치지 않고
+즉시 보고된다(somi_price_monitor / breaking_monitor).
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parents[4]
+AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
+sys.path.insert(0, str(AI_TEAM_ROOT))
+
+from _shared.env import load_env  # noqa: E402
+from _shared.notify import send, status_report  # noqa: E402
+from _shared.llm import text  # noqa: E402
+from _shared import research  # noqa: E402
+
+load_env(str(PROJECT_ROOT))
+
+SOMI_REPORTER = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_kis_reporter.py"
+CAL_CACHE = AI_TEAM_ROOT / "_shared" / "calendar_cache.md"
+
+SLOT_LABEL = {"morning": "장전", "midday": "장중", "close": "마감"}
+
+
+def _somi_text() -> str:
+    """소미 watchlist 종목 보고를 직접 받아온다(텔레그램 전송 없이 --print)."""
+    try:
+        r = subprocess.run(
+            [sys.executable, str(SOMI_REPORTER), "--print"],
+            capture_output=True, text=True, timeout=180,
+        )
+        return (r.stdout or "").strip()
+    except Exception as exc:
+        return f"(소미 보고 수집 실패: {exc})"
+
+
+def _today_events() -> str:
+    try:
+        text_md = CAL_CACHE.read_text(encoding="utf-8", errors="replace")
+        events = [ln.strip() for ln in text_md.splitlines() if ln.strip().startswith("-")]
+        return "\n".join(events[:6]) if events else "등록된 일정 없음"
+    except Exception:
+        return "일정 확인 불가"
+
+
+def build(slot: str) -> str:
+    now = datetime.now()
+    label = SLOT_LABEL.get(slot, slot)
+    mb = research.load_market_brief()
+    fx = mb.get("fx", {}) or {}
+    market_comment = (mb.get("comment") or "").strip()
+    somi = _somi_text()
+    events = _today_events()
+    status = status_report()
+
+    raw = (
+        f"[시간대] {label}\n"
+        f"[환율] USD/KRW {fx.get('KRW', '?')}\n"
+        f"[시장 코멘트] {market_comment or '없음'}\n\n"
+        f"[소미 종목 보고]\n{somi or '없음'}\n\n"
+        f"[오늘 일정]\n{events}\n\n"
+        f"[에이전트 현황]\n{status}"
+    )
+
+    prompt = (
+        f"너는 CEO 예원이다. 아래 자료를 사장님께 올리는 '{label} 종합 보고'로 정리하라. "
+        "시장 → 보유/관심 종목 → 일정·특이사항 순으로, 핵심만 간결하게. 군더더기·인사말 최소화, "
+        "사장님 호칭. 수치는 그대로 유지.\n\n" + raw
+    )
+    body = (text(prompt, max_tokens=1200, temperature=0.4, task="blog") or "").strip()
+    if not body:
+        body = raw  # LLM 실패 시 원자료라도 전달
+
+    return f"🧭 예원 {label} 종합보고 ({now.strftime('%m-%d %H:%M')})\n\n{body}"
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="예원 종합 보고 (하루 3회)")
+    ap.add_argument("--slot", choices=["morning", "midday", "close"], default="morning")
+    ap.add_argument("--send", action="store_true")
+    ap.add_argument("--print", action="store_true")
+    args = ap.parse_args()
+
+    report = build(args.slot)
+    if args.print or not args.send:
+        print(report)
+    if args.send:
+        for i in range(0, len(report), 3900):
+            send(report[i:i + 3900])
+
+
+if __name__ == "__main__":
+    main()

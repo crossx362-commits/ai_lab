@@ -117,8 +117,10 @@ def execute_schedule(schedule: Dict):
         f"**명령**: {command}\n"
         f"**시간**: {now_kst}"
     )
-    send(notify_msg)
-    print(f"  [영숙 → 사장님] 스케줄 알림 전송 완료")
+    # v2.90.1 — 개별 스케줄 알림 텔레그램 전송 중단. 정기 보고는 예원 digest가
+    # 하루 3회 병합해 올린다(yewon_digest). notify_msg는 콘솔 로그로만 남긴다.
+    _ = notify_msg
+    print(f"  [스케줄 실행] {schedule_id}")
 
     # v2.90 — python 스크립트 command는 실제 실행한다. 자체 데몬이 보고를
     # 전담하는 항목(소미 등)은 schedules.json에 "run": false 로 두어 중복 방지.

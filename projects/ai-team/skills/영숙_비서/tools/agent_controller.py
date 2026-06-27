@@ -41,9 +41,9 @@ AGENTS = {
         "log": "youngsuk_schedule_manager",
     },
     "소미": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_kis_reporter.py",
-        "args": ["--daemon", "--times", "08:50,12:30,15:40"],
-        "log": "somi_kis_reporter",
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_price_monitor.py",
+        "args": [],
+        "log": "somi_price_monitor",
     },
     "예원": {
         "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "harness_monitor.py",
