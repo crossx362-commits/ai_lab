@@ -756,12 +756,9 @@ function _loadPrompt(file: string): string {
    각 _seed* 함수에서 lazy load. 폴더명은 에이전트 이름+직책 형태로 변경됨 (하단 매핑 참조). */
 const _TOOL_SEEDS_DIR = path.join(__dirname, '..', 'assets', 'tool-seeds');
 // 에이전트 ID → 실제 폴더명 매핑 (폴더는 이름+직책 형태로 변경됨)
+// v2.90.0 — 실존 에이전트만 유지. 가짜(arin·editor·business·developer) 제거.
 const _TOOL_SEED_FOLDER_MAP: Record<string, string> = {
-    'arin':      '아린_인스타관리자',
-    'editor':    '루나_사운드디렉터',
     'secretary': '영숙_개인비서',
-    'business':  '펄스_비즈니스전략가',
-    'developer': '코다리_풀스택개발자',
 };
 const _toolSeedCache = new Map<string, string>();
 function _loadToolSeed(rel: string): string {
@@ -799,11 +796,13 @@ import { AgentDef, AGENTS, AGENT_ORDER, SPECIALIST_IDS } from './agents';
 
 
 /* 교차검증 도메인 → 소집 에이전트 매핑. agents.ts의 councilDomains 값과 키가 일치해야 함. */
+/* v2.90.0 — 실존 에이전트(예원·영숙·소미)만 남기면서 council 비움. 가짜 에이전트
+   ID를 소집하던 도메인은 빈 배열로 두어 _detectHighRisk가 ghost를 부르지 않게 함. */
 const COUNCIL_MAP: Record<string, string[]> = {
-    content_publish: ['arin', 'inspector', 'writer'],
-    code_deploy:     ['developer', 'gyeongsu', 'kevin'],
-    business:        ['business', 'royul', 'researcher'],
-    video_quality:   ['inspector', 'editor'],
+    content_publish: [],
+    code_deploy:     [],
+    business:        ['somi'],
+    video_quality:   [],
 };
 
 /**
@@ -879,16 +878,9 @@ const WORLD_LAYOUT = {
   // CEO's private office has a baked-in character at the desk — our CEO
   // stands in the open area of the room (right side, not overlapping).
   agents: {
-    youtube:   { building: 'office', localX: 28, localY: 38 },
-    instagram: { building: 'office', localX: 46, localY: 38 },
-    designer:  { building: 'office', localX: 64, localY: 38 },
-    business:  { building: 'office', localX: 82, localY: 38 },
-    developer: { building: 'office', localX: 28, localY: 58 },
-    secretary: { building: 'office', localX: 82, localY: 58 },
     ceo:       { building: 'office', localX: 88, localY: 88 },
-    editor:    { building: 'office', localX: 18, localY: 78 },
-    writer:    { building: 'office', localX: 50, localY: 78 },
-    researcher:{ building: 'office', localX: 70, localY: 78 },
+    secretary: { building: 'office', localX: 82, localY: 58 },
+    somi:      { building: 'office', localX: 28, localY: 38 },
   } as Record<string, AgentDeskRef>,
 
   // Visit-zones for idle wandering / autonomous behavior. Office-only.
@@ -908,18 +900,8 @@ const CUSTOM_MAP_DESKS: Record<string, DeskPos> = {
   ceo:        { x: 8,  y: 22 },
   // Front desk just outside CEO's office — Secretary station
   secretary:  { x: 18, y: 33 },
-  // Top-right twin workstation pairs
-  youtube:    { x: 87, y: 18 },
-  instagram:  { x: 87, y: 32 },
-  // Mid-left small glass meeting pod (used as Designer's focused space)
-  designer:   { x: 13, y: 47 },
-  // Center cubicle cluster (6 desks, agents at 4 of them)
-  developer:  { x: 41, y: 53 },
-  business:   { x: 51, y: 53 },
-  editor:     { x: 41, y: 63 },
-  writer:     { x: 51, y: 63 },
-  // Bottom-center small admin desks — Researcher
-  researcher: { x: 33, y: 82 },
+  // Center cubicle cluster — Somi (국내주식 수급 분석가)
+  somi:       { x: 41, y: 53 },
 };
 
 /** Convert each agent's building-local desk into world % coords. */
@@ -1166,8 +1148,8 @@ const ALWAYS_ON_AGENTS: Set<string> = new Set(['ceo']);
 /* v2.89.156 — 데모용·신규 사용자 첫 경험 회복. "유튜브 + 매출 종합 보고서" 같은 합성 명령에서
    펄스(business) 가 비활성이라 조용히 drop 되던 사고 차단. 옵션 전체를 기본 ON 으로. Luna 만 LOCKED 유지.
    사용자는 언제든 직원 패널에서 개별 OFF 가능. */
-const DEFAULT_ON_AGENTS: Set<string> = new Set(['secretary', 'instagram', 'business', 'developer', 'gyeongsu', 'timo']);
-const OPTIONAL_AGENTS_DEFAULT: Set<string> = new Set(['secretary', 'instagram', 'business', 'developer', 'gyeongsu', 'timo']);
+const DEFAULT_ON_AGENTS: Set<string> = new Set(['secretary', 'somi']);
+const OPTIONAL_AGENTS_DEFAULT: Set<string> = new Set(['secretary', 'somi']);
 
 function _hiredJsonPath(): string {
   return path.join(getCompanyDir(), '_shared', 'hired.json');
@@ -1254,7 +1236,7 @@ function readActiveAgents(): Record<string, { activatedAt: string }> {
        이전엔 ALWAYS_ON 이었던 secretary·youtube·writer·designer 도 자동 활성화 (사용자
        경험 유지). 한 번만 실행: _migrated_v2 플래그로 표시. */
     if (data._migrated && !data._migrated_v2) {
-      const carryOver = ['secretary', 'youtube', 'writer', 'designer'];
+      const carryOver = ['secretary', 'somi'];
       let touched = false;
       for (const id of carryOver) {
         if (!data[id]) {
@@ -2069,15 +2051,11 @@ async function classifyToAgent(text: string): Promise<string> {
         if (AGENTS[id]) return id;
     } catch { /* fall through to keyword router */ }
     const lower = text.toLowerCase();
-    if (/유튜브|youtube|영상|채널|구독|썸네일/.test(lower)) return 'youtube';
-    if (/인스타|instagram|릴스|피드|reel/.test(lower)) return 'instagram';
-    if (/디자인|design|로고|이미지/.test(lower)) return 'designer';
-    if (/코드|개발|사이트|웹|deploy|배포|api|app/.test(lower)) return 'developer';
-    if (/돈|매출|가격|수익|roi|business|단가/.test(lower)) return 'business';
+    /* v2.90.0 — 실존 에이전트(예원·영숙·소미)만 라우팅. 주식/수급은 소미,
+       일정·메일·브리핑은 영숙, 그 외 기획·종합 판단은 예원(ceo)이 받음. */
+    if (/주식|종목|수급|매수|매도|공매도|대차|코스피|코스닥|증시/.test(lower)) return 'somi';
     if (/일정|할일|todo|미팅|알림|메일|brief|브리핑|캘린더/.test(lower)) return 'secretary';
-    if (/편집|자막|b-?roll|컷/.test(lower)) return 'editor';
-    if (/카피|스크립트|블로그|후크|글/.test(lower)) return 'writer';
-    if (/트렌드|리서치|조사|뉴스/.test(lower)) return 'researcher';
+    if (/유튜브|youtube|영상|채널|구독|썸네일|기획|전략|매출|수익/.test(lower)) return 'ceo';
     return 'secretary'; // safe default — secretary triages
 }
 
@@ -4348,7 +4326,7 @@ _Developer 에이전트와 사용자가 내린 디자인·기술 의사결정이
                 title: `${safe} 프로젝트 셋업 (${template})`,
                 description: `다음 스텝: cd site && ${template === 'static' ? 'serve' : 'npm install && npm run dev'}`,
                 owner: 'mixed',
-                agentIds: ['developer'],
+                agentIds: ['ceo'],
                 status: 'in_progress',
                 priority: 'normal',
             });
@@ -6563,73 +6541,33 @@ function setToolEnabled(agentId: string, toolName: string, enabled: boolean) {
  *  business/writer/researcher 의 카탈로그 도구가 모두 "있는 것처럼" 표시돼서
  *  사용자가 _agents/<id>/tools.md 열고 "왜 작동 안 하지?" 혼란 발생. */
 const AGENT_TOOLS_CATALOG: Record<string, { tool: string; desc: string; planned?: boolean }[]> = {
+    // v2.90.0 — 실존 에이전트(예원·영숙·소미)만 유지. 가짜 에이전트 카탈로그 전부 삭제.
     ceo: [
-        { tool: 'approval_gate', desc: '위험 액션(deploy/post/send/rm) 사용자 승인 게이트', planned: true },
+        { tool: 'router', desc: '사용자 명령 → 적합한 에이전트로 분배 (CEO 클래시파이어 내장)' },
+        { tool: 'dispatcher', desc: '작업 분해 후 적임 에이전트에 디스패치 (yewon_dispatcher)' },
+        { tool: 'harness_monitor', desc: '하네스 시스템 점검·상태 모니터링 (harness_manager·harness_monitor)' },
+        { tool: 'skill_auditor', desc: '에이전트 SKILL.md 품질 주간 감사' },
+        { tool: 'feedback_eval', desc: '업로드 성과 일일/주간 피드백 평가 (evaluate_feedback·daily_feedback_scheduler)' },
+        { tool: 'upload_manager', desc: '업로드 관리·승인 게이트' },
         { tool: 'team_briefing', desc: '주간 전체 회의 자동 진행 + 회의록 정리', planned: true },
-        { tool: 'router', desc: '사용자 명령 → 적합한 specialist로 분배 (CEO 클래시파이어 내장)' }
-    ],
-    youtube: [
-        { tool: 'youtube_account', desc: 'YouTube Data API v3 + OAuth 연결' },
-        { tool: 'trend_sniper', desc: '키워드 기반 떡상 영상 패턴 분석' },
-        { tool: 'auto_planner', desc: '트렌드 스나이퍼 무인 반복 실행 (24시간 자율)' },
-        { tool: 'my_videos_check', desc: '내 채널 영상 성과 종합 분석' },
-        { tool: 'channel_full_analysis', desc: '채널 전체 그림 — 메타·업로드 패턴·참여율' },
-        { tool: 'comment_harvester', desc: '감시 채널 댓글 → memory.md 누적' },
-        { tool: 'competitor_brief', desc: '경쟁 채널 → 지시문 형식 다음 액션' },
-        { tool: 'telegram_notify', desc: '다른 도구 보고를 메신저로 자동 푸시' },
-        { tool: 'comment_replier', desc: '댓글 분류 + 답글 초안 (Draft 레벨)', planned: true },
-        { tool: 'video_uploader', desc: '제목·태그·썸네일·예약발행 업로드', planned: true },
-        { tool: 'analytics_pull', desc: '주간 인사이트 (조회수·시청 지속률·구독 전환)', planned: true }
-    ],
-    instagram: [
-        { tool: 'instagram_account', desc: 'Meta Graph API OAuth (비즈니스 계정)', planned: true },
-        { tool: 'feed_poster', desc: '피드/스토리/릴스 게시 (Draft → 승인 → 게시)', planned: true },
-        { tool: 'dm_responder', desc: 'DM·댓글 분류 + 답글 초안', planned: true },
-        { tool: 'insights_pull', desc: '도달·참여·팔로워 추이', planned: true }
-    ],
-    designer: [
-        { tool: 'image_local', desc: '로컬 SDXL/FLUX 이미지 생성 (오프라인 정체성)', planned: true },
-        { tool: 'image_cloud', desc: 'DALL-E/Replicate (Connected 모드 토글)', planned: true },
-        { tool: 'brand_check', desc: '브랜드 색상 팔레트·타이포 일관성 검증', planned: true },
-        { tool: 'asset_library', desc: '_company/assets/ 자동 정리·태깅', planned: true }
-    ],
-    developer: [
-        { tool: 'web_init', desc: '5개 템플릿 자동 시작 — vite·next·astro·expo·vanilla' },
-        { tool: 'pack_apply', desc: '두뇌의 키트 (landing·portfolio·dashboard·mobile)를 프로젝트에 자동 적용 + npm install + App.tsx 업데이트' },
-        { tool: 'web_preview', desc: 'dev server 백그라운드 실행 + URL 자동 추출' },
-        { tool: 'pwa_setup', desc: '웹사이트 → PWA 변환 (manifest·sw·아이콘 자동 생성)' },
-        { tool: 'lint_test', desc: '코드 수정 후 자가 검증 — tsc·py_compile·npm scripts 자동 실행 + 결과 리포트' },
-        { tool: 'git_committer', desc: '작업 단위 자동 커밋 (의미 단위 + git add -A 금지)', planned: true },
-        { tool: 'deploy_cli', desc: 'Vercel/Netlify/Cloudflare 배포 (deploy --prod는 항상 승인)', planned: true },
-    ],
-    business: [
-        { tool: 'paypal_revenue', desc: '내 PayPal 매출 자동 분석 — 일/주/월별 + 통화별 + 환불율' },
-        { tool: 'revenue_pull', desc: 'Stripe/Toss 매출 데이터 (PayPal은 paypal_revenue 별도)', planned: true },
-        { tool: 'analytics_pull', desc: 'Google Analytics / Plausible 트래픽', planned: true },
-        { tool: 'pnl_generator', desc: '월별 P&L 마크다운 자동 생성', planned: true }
     ],
     secretary: [
         { tool: 'telegram_setup', desc: '텔레그램 양방향 봇 (Bot Token + Chat ID)' },
+        { tool: 'morning_brief', desc: '오늘 일정·예정 루틴·에이전트 현황 아침 브리핑' },
         { tool: 'google_calendar_write', desc: 'Google Calendar OAuth 읽기·쓰기' },
-        { tool: 'calendar_local', desc: '_agents/secretary/calendar.md (Lv.1 오프라인)', planned: true },
-        { tool: 'calendar_caldav', desc: 'CalDAV (iCloud/Google 호환)', planned: true },
-        { tool: 'kakao_alert', desc: '카카오톡 "나에게 보내기" 단방향 알림', planned: true },
-        { tool: 'email_triage', desc: 'IMAP/Gmail 분류 + 답장 초안', planned: true }
+        { tool: 'schedule_manager', desc: 'cron 루틴 등록·실행 관리 (schedules.json)' },
+        { tool: 'reports_manager', desc: 'reports 폴더 정리·요약' },
+        { tool: 'email_triage', desc: 'IMAP/Gmail 분류 + 답장 초안', planned: true },
     ],
-    editor: [
-        { tool: 'music_studio_setup', desc: '음악 모델 설치 (MusicGen / ACE-Step)' },
-        { tool: 'music_generate', desc: 'BGM 자동 생성 (장르·길이 지정)' },
-        { tool: 'music_to_video', desc: '생성된 BGM을 영상에 합성 (loop/fade)' }
-    ],
-    writer: [
-        { tool: 'tone_learner', desc: '사용자 과거 글 학습 → 톤 복제', planned: true },
-        { tool: 'multi_platform_adapt', desc: '하나의 스크립트 → YouTube/IG/블로그 자동 변환', planned: true },
-        { tool: 'hook_library', desc: '후크·CTA 라이브러리 운영', planned: true }
-    ],
-    researcher: [
-        { tool: 'web_search', desc: 'Brave/DuckDuckGo 검색 (Connected)', planned: true },
-        { tool: 'page_fetcher', desc: '본문 추출 + 출처 인용', planned: true },
-        { tool: 'monitor_daily', desc: '매일 내 분야 뉴스 → CEO 브리핑', planned: true }
+    somi: [
+        { tool: 'kis_reporter', desc: 'KIS API 기반 종목 수급 분석 정기 리포트' },
+        { tool: 'screener', desc: '거래대금 상위 후보를 소미 점수로 채점해 유망종목 발굴' },
+        { tool: 'trade_advisor', desc: '매수/매도 판단·매수 가능 구간 제안' },
+        { tool: 'position_monitor', desc: '보유 포지션 익절/손절 실시간 감시' },
+        { tool: 'price_monitor', desc: '관심종목 급변동 실시간 감시' },
+        { tool: 'short_covering', desc: '대차잔고·공매도 기반 숏커버링 정황 분석' },
+        { tool: 'watchlist', desc: '관심종목 등록·관리 (watchlist_manager)' },
+        { tool: 'stock_search', desc: '종목명/코드 검색' },
     ]
 };
 
@@ -6712,19 +6650,10 @@ _레벨을 어떻게 골라야 할지 모르겠다면 \`2 (Draft)\`가 안전한
  *  (architecturally the messenger) so non-developers can input via the UI. */
 function _seedAgentToolsIfMissing(agentId: string) {
   try {
-    if (agentId === 'youtube') {
-      const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
-      fs.mkdirSync(toolsDir, { recursive: true });
-      _seedYouTubeAccount(toolsDir);
-      _seedYouTubeTrendSniper(toolsDir);
-      _seedYouTubeAutoPlanner(toolsDir);
-      _seedYouTubeMyVideosCheck(toolsDir);
-      _seedYouTubeChannelFullAnalysis(toolsDir);
-      _seedYouTubeCommentHarvester(toolsDir);
-      _seedYouTubeCompetitorBrief(toolsDir);
-      _seedYouTubeTelegramNotify(toolsDir);
-      _seedYouTubePipeline(toolsDir);
-    } else if (agentId === 'secretary') {
+    /* v2.90.0 — 실존 에이전트(예원·영숙·소미)만 도구 시드. secretary(영숙)는
+       텔레그램 자격증명 + 구글 캘린더 쓰기 도구를 소유. 가짜 에이전트
+       (youtube·editor·arin·developer·business) 시드 분기는 삭제. */
+    if (agentId === 'secretary') {
       const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
       fs.mkdirSync(toolsDir, { recursive: true });
       _seedSecretaryTelegram(toolsDir);
@@ -6734,33 +6663,6 @@ function _seedAgentToolsIfMissing(agentId: string) {
          remain), but listAgentTools hides it whenever the OAuth tool is
          present so they only see ONE calendar entry. */
       _seedSecretaryGoogleCalendarWrite(toolsDir);
-    } else if (agentId === 'editor') {
-      /* v2.89.68 — 사운드/음악 에이전트 도구. ACE-Step 1.5 로컬 음악 생성 모델 사용. */
-      const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
-      fs.mkdirSync(toolsDir, { recursive: true });
-      _seedEditorMusicStudioSetup(toolsDir);
-      _seedEditorMusicGenerate(toolsDir);
-      _seedEditorMusicToVideo(toolsDir);
-      _seedEditorLyriaMusicGen(toolsDir);
-    } else if (agentId === 'arin') {
-      /* v2.89.130 — 아린(인스타그램) 에이전트 도구. 인스타 자동화 파이프라인. */
-      const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
-      fs.mkdirSync(toolsDir, { recursive: true });
-      _seedArinAutoPipeline(toolsDir);
-    } else if (agentId === 'developer') {
-      /* v2.89.112+122 — 코다리 도구. 웹·모바일 셋업 + PWA + dev server + 키트 적용. */
-      const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
-      fs.mkdirSync(toolsDir, { recursive: true });
-      _seedDeveloperWebInit(toolsDir);
-      _seedDeveloperWebPreview(toolsDir);
-      _seedDeveloperPwaSetup(toolsDir);
-      _seedDeveloperPackApply(toolsDir);
-      _seedDeveloperLintTest(toolsDir);
-    } else if (agentId === 'business') {
-      /* v2.89.121 — 비즈니스 에이전트 도구. PayPal 매출 자동 분석. */
-      const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
-      fs.mkdirSync(toolsDir, { recursive: true });
-      _seedBusinessPaypalRevenue(toolsDir);
     }
   } catch { /* ignore */ }
 }
@@ -8508,7 +8410,7 @@ export function activate(context: vscode.ExtensionContext) {
                     try {
                         const body = await readRequestBody(req);
                         const parsed = JSON.parse(body);
-                        const agentId = typeof parsed.agent === 'string' ? parsed.agent.trim() : 'developer';
+                        const agentId = typeof parsed.agent === 'string' ? parsed.agent.trim() : 'ceo';
                         const rawName = typeof parsed.name === 'string' ? parsed.name : '';
                         const manifest = (parsed.manifest && typeof parsed.manifest === 'object') ? parsed.manifest : null;
                         const readme = typeof parsed.readme === 'string' ? parsed.readme : '';
@@ -11750,9 +11652,9 @@ const API_SERVICES: ApiServiceDef[] = [
         id: 'github',
         name: 'GitHub',
         icon: '💻',
-        summary: 'Developer 에이전트가 이슈 읽고 코드 푸시. repo + workflow 권한 필요.',
+        summary: 'CEO(예원)가 이슈 읽고 코드 푸시. repo + workflow 권한 필요.',
         helpUrl: 'https://github.com/settings/tokens',
-        agentId: 'developer',
+        agentId: 'ceo',
         comingSoon: true,
         fields: [
             { key: 'GITHUB_TOKEN', label: 'Personal Access Token', type: 'password' },
@@ -13406,32 +13308,10 @@ body.floorplan .conf-room,body.floorplan .location{display:none!important}
 .desk[data-agent="ceo"] .ds-screen::before{background:radial-gradient(circle at 50% 50%,rgba(0,255,65,.4) 0%,rgba(0,255,65,0) 1px,rgba(0,255,65,.1) 2px,rgba(0,255,65,0) 3px,rgba(0,255,65,.1) 6px,rgba(0,255,65,0) 7px,rgba(0,255,65,.08) 12px,rgba(0,255,65,0) 13px),conic-gradient(from 0deg,rgba(0,255,65,.5),transparent 70%);animation:radarSweep 4s linear infinite}
 @keyframes radarSweep{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
-/* Developer: scrolling code lines */
-.desk[data-agent="developer"] .ds-screen::before{background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(34,211,238,.7) 3px 4px,transparent 4px 7px,rgba(34,211,238,.4) 7px 8px,transparent 8px 12px,rgba(34,211,238,.55) 12px 13px,transparent 13px 16px,rgba(34,211,238,.3) 16px 17px,transparent 17px 22px);background-size:100% 22px;animation:codeScroll 3s linear infinite}
-@keyframes codeScroll{from{background-position:0 0}to{background-position:0 22px}}
+/* v2.90.0 — 가짜 에이전트(developer·designer·youtube·instagram·business) 화면 CSS 삭제. */
 
-/* Designer: rotating color swatches */
-.desk[data-agent="designer"] .ds-screen::before{background:conic-gradient(from 0deg,#FF0033 0deg 60deg,#FBBF24 60deg 120deg,#22D3EE 120deg 180deg,#A78BFA 180deg 240deg,#34D399 240deg 300deg,#E1306C 300deg 360deg);filter:saturate(.85) brightness(.7);animation:colorSpin 8s linear infinite;border-radius:50%;margin:6px}
-@keyframes colorSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-
-/* YouTube: red bars rising/falling like audio meter */
-.desk[data-agent="youtube"] .ds-screen::before{background:linear-gradient(90deg,
-  rgba(255,0,51,.7) 0%,rgba(255,0,51,.7) 8%,transparent 8% 12%,
-  rgba(255,0,51,.5) 12% 20%,transparent 20% 24%,
-  rgba(255,0,51,.8) 24% 32%,transparent 32% 36%,
-  rgba(255,0,51,.4) 36% 44%,transparent 44% 48%,
-  rgba(255,0,51,.6) 48% 56%,transparent 56% 60%,
-  rgba(255,0,51,.7) 60% 68%,transparent 68% 72%,
-  rgba(255,0,51,.5) 72% 80%,transparent 80% 84%,
-  rgba(255,0,51,.6) 84% 92%,transparent 92% 100%);background-size:100% 100%;animation:audioBars .6s ease-in-out infinite alternate;mask-image:linear-gradient(0deg,#000 0%,#000 100%)}
-@keyframes audioBars{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(20deg) brightness(1.2)}}
-
-/* Instagram: pink heart pulse + grid */
-.desk[data-agent="instagram"] .ds-screen::before{background:radial-gradient(circle at 50% 55%,rgba(225,48,108,.85) 0%,rgba(225,48,108,.5) 20%,transparent 35%),repeating-linear-gradient(0deg,rgba(247,119,55,.15) 0 4px,transparent 4px 8px),repeating-linear-gradient(90deg,rgba(247,119,55,.15) 0 4px,transparent 4px 8px);animation:igPulse 1.6s ease-in-out infinite}
-@keyframes igPulse{0%,100%{transform:scale(.95);opacity:.7}50%{transform:scale(1.05);opacity:1}}
-
-/* Business: bar chart growing */
-.desk[data-agent="business"] .ds-screen::before{background:linear-gradient(0deg,rgba(251,191,36,.7) 0%,rgba(251,191,36,.7) 30%,transparent 30%) 0 100%/12% 100% no-repeat,linear-gradient(0deg,rgba(251,191,36,.7) 0%,rgba(251,191,36,.7) 50%,transparent 50%) 16% 100%/12% 100% no-repeat,linear-gradient(0deg,rgba(251,191,36,.7) 0%,rgba(251,191,36,.7) 70%,transparent 70%) 32% 100%/12% 100% no-repeat,linear-gradient(0deg,rgba(251,191,36,.7) 0%,rgba(251,191,36,.7) 45%,transparent 45%) 48% 100%/12% 100% no-repeat,linear-gradient(0deg,rgba(251,191,36,.7) 0%,rgba(251,191,36,.7) 85%,transparent 85%) 64% 100%/12% 100% no-repeat,linear-gradient(0deg,rgba(251,191,36,.7) 0%,rgba(251,191,36,.7) 60%,transparent 60%) 80% 100%/12% 100% no-repeat;animation:barsRise 2.4s ease-in-out infinite alternate}
+/* Somi: 국내주식 수급 — pink candlestick ticker */
+.desk[data-agent="somi"] .ds-screen::before{background:linear-gradient(0deg,rgba(236,72,153,.7) 0%,rgba(236,72,153,.7) 40%,transparent 40%) 6% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.7) 0%,rgba(236,72,153,.7) 70%,transparent 70%) 24% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.5) 0%,rgba(236,72,153,.5) 50%,transparent 50%) 42% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.7) 0%,rgba(236,72,153,.7) 85%,transparent 85%) 60% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.6) 0%,rgba(236,72,153,.6) 60%,transparent 60%) 78% 100%/10% 100% no-repeat;animation:barsRise 2.4s ease-in-out infinite alternate}
 @keyframes barsRise{from{filter:brightness(.7)}to{filter:brightness(1.2)}}
 
 /* Secretary: scrolling event list */

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Team 대시보드</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#11161f; --panel2:#161d28; --line:#222b38;
+    --txt:#e6edf3; --dim:#8b97a7; --accent:#00ff41;
+    --ceo:#cbd5e1; --secretary:#84CC16; --somi:#EC4899;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:28px 20px 60px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h1{font-size:24px;margin:0;letter-spacing:.5px}
+  .sub{color:var(--dim);font-size:13px}
+  .clock{margin-left:auto;color:var(--accent);font-variant-numeric:tabular-nums;font-size:14px}
+  h2{font-size:14px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;
+    margin:34px 0 14px;font-weight:600}
+  /* agent cards */
+  .agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px 18px 16px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:var(--c)}
+  .card .top{display:flex;align-items:center;gap:12px}
+  .emoji{font-size:30px;line-height:1}
+  .nm{font-size:18px;font-weight:700}
+  .role{font-size:12px;color:var(--dim);margin-top:1px}
+  .tagline{font-size:12.5px;color:var(--txt);opacity:.85;margin:12px 0 14px;line-height:1.5}
+  .meta{display:flex;gap:18px;border-top:1px solid var(--line);padding-top:12px}
+  .meta div{font-size:12px;color:var(--dim)}
+  .meta b{display:block;color:var(--txt);font-size:18px;font-weight:700;margin-bottom:1px}
+  .meta b.c{color:var(--c)}
+  .tools{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:10.5px;background:var(--panel2);border:1px solid var(--line);
+    color:var(--dim);padding:3px 8px;border-radius:20px}
+  /* schedule */
+  .next{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:8px}
+  .nx{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c);
+    border-radius:10px;padding:12px 14px}
+  .nx .t{font-size:12px;color:var(--dim)}
+  .nx .a{font-size:14px;font-weight:600;margin:3px 0}
+  .nx .cd{font-size:12.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;font-size:13px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;background:var(--panel2)}
+  tr:last-child td{border-bottom:none}
+  td.time{font-variant-numeric:tabular-nums;color:var(--accent);white-space:nowrap}
+  .badge{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:7px;vertical-align:middle}
+  .days{color:var(--dim);font-size:11.5px}
+  footer{margin-top:36px;color:var(--dim);font-size:11.5px;text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🏢 AI Team 대시보드</h1>
+    <span class="sub">실존 에이전트 3명 · 자동 루틴 운영 현황</span>
+    <span class="clock" id="clock"></span>
+  </header>
+
+  <h2>에이전트</h2>
+  <div class="agents" id="agents"></div>
+
+  <h2>다음 실행 예정</h2>
+  <div class="next" id="next"></div>
+
+  <h2>주간 루틴 시간표</h2>
+  <table id="sched">
+    <thead><tr><th>시각</th><th>에이전트</th><th>작업</th><th>요일</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <footer>
+    데이터: <code>skills/영숙_비서/tools/schedules.json</code> · cron 기준 다음 실행은 브라우저 로컬시간으로 계산<br>
+    페이지를 새로고침하면 카운트다운이 갱신됩니다.
+  </footer>
+</div>
+
+<script>
+// ── 에이전트 정의 (agents.ts 기준 실존 3명) ─────────────────────────
+const AGENTS = {
+  "예원": {id:"ceo", emoji:"🧭", color:"var(--ceo)", role:"CEO · 오케스트레이터",
+    tagline:"작업 분해·종합 판단·다음 액션 결정. 팀 전체를 조율합니다.",
+    tools:["yewon_dispatcher","harness_manager","harness_monitor","skill_auditor","evaluate_feedback","daily_feedback_scheduler","upload_manager"]},
+  "영숙": {id:"secretary", emoji:"📱", color:"var(--secretary)", role:"비서 · Personal Assistant",
+    tagline:"일정·할 일·브리핑·텔레그램 소통을 챙깁니다.",
+    tools:["telegram_receiver","morning_brief","calendar_manager","schedule_manager","reports_manager","posting_scheduler","upload_approval_flow","agent_controller","youtube_recommender"]},
+  "소미": {id:"somi", emoji:"📈", color:"var(--somi)", role:"국내주식 수급 분석가",
+    tagline:"종목 수급·세력상황·매수 가능 구간을 냉정하게 판단합니다.",
+    tools:["somi_kis_reporter","somi_screener","somi_trade_advisor","somi_position_monitor","somi_price_monitor","short_covering_analyzer","kis_trader","stock_search","watchlist_manager"]},
+};
+
+// ── 스케줄 (schedules.json 미러) ─────────────────────────────────────
+const SCHEDULES = [
+  {agent:"영숙", task:"아침 브리핑",        cron:"0 8 * * 1-5"},
+  {agent:"소미", task:"장전 유망종목 스캔",  cron:"30 8 * * 1-5"},
+  {agent:"예원", task:"주간 종합 리포트",    cron:"0 17 * * 5"},
+  {agent:"영숙", task:"리포트 정리",         cron:"0 4 * * *"},
+  {agent:"예원", task:"주간 스킬 감사",      cron:"0 9 * * 1"},
+  {agent:"예원", task:"일일 피드백 평가",    cron:"0 9 * * *"},
+  {agent:"소미", task:"오전 우리기술 분석",  cron:"50 8 * * 1-5"},
+  {agent:"소미", task:"정오 우리기술 분석",  cron:"30 12 * * 1-5"},
+  {agent:"소미", task:"마감 우리기술 분석",  cron:"40 15 * * 1-5"},
+];
+
+const DOW_KO = ["일","월","화","수","목","금","토"];
+
+function fieldMatch(field, val){
+  if(field === "*") return true;
+  return field.split(",").some(p=>{
+    if(p.includes("-")){const[a,b]=p.split("-").map(Number);return val>=a&&val<=b;}
+    return Number(p)===val;
+  });
+}
+// cron(분 시 일 월 요일) → 지금 이후 가장 가까운 실행 Date
+function nextRun(cron, from){
+  const [mi,ho,,,dw] = cron.split(" ");
+  const d = new Date(from.getTime());
+  d.setSeconds(0,0); d.setMinutes(d.getMinutes()+1);
+  for(let i=0;i<8*24*60;i++){ // 최대 8일 탐색
+    const cronDow = d.getDay(); // 0=일~6=토 (cron과 동일)
+    if(fieldMatch(dw,cronDow) && fieldMatch(ho,d.getHours()) && fieldMatch(mi,d.getMinutes()))
+      return new Date(d.getTime());
+    d.setMinutes(d.getMinutes()+1);
+  }
+  return null;
+}
+function daysLabel(cron){
+  const dw = cron.split(" ")[4];
+  if(dw==="*") return "매일";
+  if(dw==="1-5") return "평일";
+  if(dw.includes("-")){const[a,b]=dw.split("-").map(Number);return DOW_KO[a]+"~"+DOW_KO[b];}
+  return dw.split(",").map(x=>DOW_KO[Number(x)]).join("·");
+}
+function fmtCountdown(ms){
+  if(ms<0) return "—";
+  const m=Math.floor(ms/60000), h=Math.floor(m/60), d=Math.floor(h/24);
+  if(d>0) return `${d}일 ${h%24}시간 후`;
+  if(h>0) return `${h}시간 ${m%60}분 후`;
+  return `${m}분 후`;
+}
+function timeOf(cron){const[mi,ho]=cron.split(" ");
+  return ho==="*"||mi==="*" ? "수시" : `${String(ho).padStart(2,"0")}:${String(mi).padStart(2,"0")}`;}
+
+// ── 렌더 ─────────────────────────────────────────────────────────────
+function renderAgents(){
+  const el = document.getElementById("agents");
+  el.innerHTML = Object.entries(AGENTS).map(([name,a])=>{
+    const routines = SCHEDULES.filter(s=>s.agent===name).length;
+    const chips = a.tools.map(t=>`<span class="chip">${t}</span>`).join("");
+    return `<div class="card" style="--c:${a.color}">
+      <div class="top"><span class="emoji">${a.emoji}</span>
+        <div><div class="nm">${name}</div><div class="role">${a.role}</div></div></div>
+      <div class="tagline">${a.tagline}</div>
+      <div class="meta">
+        <div><b class="c">${a.tools.length}</b>도구</div>
+        <div><b class="c">${routines}</b>자동 루틴</div>
+      </div>
+      <div class="tools">${chips}</div>
+    </div>`;
+  }).join("");
+}
+function renderNext(){
+  const now = new Date();
+  const rows = SCHEDULES.map(s=>({...s, next:nextRun(s.cron, now)}))
+    .filter(s=>s.next).sort((a,b)=>a.next-b.next).slice(0,4);
+  document.getElementById("next").innerHTML = rows.map(s=>{
+    const a = AGENTS[s.agent];
+    return `<div class="nx" style="--c:${a.color}">
+      <div class="t">${a.emoji} ${s.agent}</div>
+      <div class="a">${s.task}</div>
+      <div class="cd">${s.next.toLocaleString("ko-KR",{month:"short",day:"numeric",weekday:"short",hour:"2-digit",minute:"2-digit"})} · ${fmtCountdown(s.next-now)}</div>
+    </div>`;
+  }).join("");
+}
+function renderTable(){
+  const sorted = [...SCHEDULES].sort((a,b)=>timeOf(a.cron).localeCompare(timeOf(b.cron)));
+  document.querySelector("#sched tbody").innerHTML = sorted.map(s=>{
+    const a = AGENTS[s.agent];
+    return `<tr>
+      <td class="time">${timeOf(s.cron)}</td>
+      <td><span class="badge" style="--c:${a.color}"></span>${a.emoji} ${s.agent}</td>
+      <td>${s.task}</td>
+      <td class="days">${daysLabel(s.cron)}</td>
+    </tr>`;
+  }).join("");
+}
+function tick(){document.getElementById("clock").textContent =
+  new Date().toLocaleString("ko-KR",{dateStyle:"medium",timeStyle:"medium"});}
+
+renderAgents(); renderNext(); renderTable(); tick();
+setInterval(()=>{tick(); renderNext();}, 30000);
+</script>
+</body>
+</html>

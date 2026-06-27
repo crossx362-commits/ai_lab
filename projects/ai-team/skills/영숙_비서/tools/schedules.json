@@ -1,7 +1,37 @@
 {
-  "version": "1.0.2",
-  "updated": "2026-06-26",
+  "version": "1.1.0",
+  "updated": "2026-06-27",
   "schedules": [
+    {
+      "id": "youngsuk_morning_brief",
+      "agent": "영숙",
+      "task": "아침 브리핑",
+      "cron": "0 8 * * 1-5",
+      "description": "오늘 일정·예정 루틴·에이전트 현황을 모아 텔레그램 브리핑",
+      "command": "python projects/ai-team/skills/영숙_비서/tools/morning_brief.py",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "somi_premarket_scan",
+      "agent": "소미",
+      "task": "장전 유망종목 스캔",
+      "cron": "30 8 * * 1-5",
+      "description": "거래대금 상위 후보를 소미 점수로 채점해 상위 종목 추천",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_screener.py --send --top 5",
+      "enabled": true,
+      "priority": "high"
+    },
+    {
+      "id": "yewon_weekly_report",
+      "agent": "예원",
+      "task": "주간 종합 리포트",
+      "cron": "0 17 * * 5",
+      "description": "한 주 업로드/성과 피드백 주간 종합",
+      "command": "python projects/ai-team/skills/예원_CEO/tools/daily_feedback_scheduler.py --weekly",
+      "enabled": true,
+      "priority": "medium"
+    },
     {
       "id": "yeongsuk_report_cleanup",
       "agent": "영숙",
