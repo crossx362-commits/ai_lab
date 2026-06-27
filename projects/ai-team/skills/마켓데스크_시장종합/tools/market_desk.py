@@ -71,6 +71,9 @@ def build() -> dict:
         line = _idx_line(reg)
         if line:
             facts.append(f"{label} 지수: {line}")
+        w = reg.get("web_issues")
+        if w:
+            facts.append(f"{label} 웹이슈: {w}")
     if disclosures:
         facts.append("watchlist 공시: " + "; ".join(f"{d['name']} {d['report']}" for d in disclosures[:8]))
     fg = research.fear_greed()
@@ -110,6 +113,15 @@ def build() -> dict:
     else:
         md_lines.append("- 신규 공시 없음")
     md_lines.append("")
+    web_sections = []
+    for label, reg in (("🇺🇸 미국", us), ("🌏 아시아", asia), ("🇪🇺 유럽", eu)):
+        w = reg.get("web_issues")
+        if w:
+            web_sections.append(f"**{label}**\n{w}")
+    if web_sections:
+        md_lines.append("## 🔎 지역 웹이슈")
+        md_lines += web_sections
+        md_lines.append("")
     if fg.get("score") is not None:
         md_lines += ["## 😨 시장 심리", f"미국 공포탐욕지수 {fg['score']} ({fg.get('rating', '')})", ""]
     if news:

@@ -39,6 +39,10 @@ def collect() -> dict:
         "fx": research.fx("KRW", "JPY", "CNY"),
         "indices": research.indices(INDEX_SYMBOLS),
         "news": research.news_rss("https://www.hankyung.com/feed/finance", 8),
+        "web_issues": research.web_brief(
+            "오늘 한국 코스피·코스닥 증시의 주요 뉴스와 핫이슈를 종목·테마 위주로 "
+            "4줄 이내로 요약하라. 지수 등락과 수급 특징도 포함."
+        ),
     }
     research.save_region("asia", payload)
     return payload
@@ -71,6 +75,9 @@ def brief_text(p: dict) -> str:
         lines.append("\n📰 증권 뉴스 헤드라인")
         for n in news[:5]:
             lines.append(f"- {n}")
+    web = p.get("web_issues")
+    if web:
+        lines.append("\n🔎 웹 핫이슈\n" + web)
     return "\n".join(lines)
 
 

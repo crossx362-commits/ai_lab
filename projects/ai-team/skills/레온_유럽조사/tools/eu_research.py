@@ -34,6 +34,9 @@ def collect() -> dict:
     payload = {
         "indices": research.indices(INDEX_SYMBOLS),
         "fx": research.fx("EUR", "GBP"),
+        "web_issues": research.web_brief(
+            "오늘 유럽 증시(DAX·유로스톡스50)와 ECB·유럽 경제 주요 이슈를 2줄 이내로 요약."
+        ),
         "note": "ECB 정책·유럽 거시는 키/소스 추가 시 확장 예정",
     }
     research.save_region("eu", payload)
@@ -47,6 +50,9 @@ def brief_text(p: dict) -> str:
     fx = p.get("fx", {})
     if fx.get("EUR"):
         lines.append(f"💱 EUR/USD {1/fx['EUR']:.4f}" if fx["EUR"] else "")
+    web = p.get("web_issues")
+    if web:
+        lines.append("🔎 웹 이슈\n" + web)
     return "\n".join([ln for ln in lines if ln])
 
 

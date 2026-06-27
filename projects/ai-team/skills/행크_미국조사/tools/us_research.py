@@ -44,6 +44,10 @@ def collect() -> dict:
         "indices": research.indices(INDEX_SYMBOLS),
         "fx": research.fx("EUR", "JPY", "KRW"),  # USD 강도 가늠
         "macro": macro,
+        "web_issues": research.web_brief(
+            "어제 미국 증시 S&P500·나스닥·다우 종가와 등락률, VIX, 주요 이슈를 "
+            "3줄 이내로 요약하라. 한국 증시에 영향 줄 만한 포인트 중심."
+        ),
         "note": "FRED 거시는 FRED_API_KEY 보유 시 자동 수집",
     }
     research.save_region("us", payload)
@@ -66,6 +70,9 @@ def brief_text(p: dict) -> str:
     ml = _macro_line(p)
     if ml:
         lines.append("🏦 " + ml)
+    web = p.get("web_issues")
+    if web:
+        lines.append("\n🔎 웹 이슈\n" + web)
     return "\n".join(lines)
 
 

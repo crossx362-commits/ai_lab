@@ -201,3 +201,69 @@ def fred_latest(series_id: str) -> str | None:
         return obs[0].get("value") if obs else None
     except Exception:
         return None
+
+
+# ── 웹검색 (LLM grounding: Gemini → Claude 폴백) ────────────────────────────
+def _gemini_search(query: str, max_tokens: int) -> str:
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        return ""
+    try:
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-2.5-flash:generateContent?key={key}"
+        )
+        body = {
+            "contents": [{"parts": [{"text": query}]}],
+            "tools": [{"google_search": {}}],
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
+        }
+        req = urllib.request.Request(
+            url, data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            d = json.loads(r.read().decode("utf-8", "replace"))
+        cands = d.get("candidates", [])
+        if cands:
+            parts = cands[0].get("content", {}).get("parts", [])
+            return "".join(p.get("text", "") for p in parts).strip()
+    except Exception:
+        return ""
+    return ""
+
+
+def _claude_search(query: str, max_tokens: int) -> str:
+    key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not key:
+        return ""
+    try:
+        body = {
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": max_tokens,
+            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+            "messages": [{"role": "user", "content": query}],
+        }
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "content-type": "application/json",
+                "x-api-key": key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=40) as r:
+            d = json.loads(r.read().decode("utf-8", "replace"))
+        texts = [b.get("text", "") for b in d.get("content", []) if b.get("type") == "text"]
+        return "\n".join(t for t in texts if t).strip()
+    except Exception:
+        return ""
+
+
+def web_brief(query: str, max_tokens: int = 800) -> str:
+    """실시간 웹 정보를 LLM 검색으로 요약. 봇은 MCP 웹검색을 못 쓰므로
+    지수·심리·핫이슈처럼 무료 API가 막힌 항목을 이걸로 대체한다.
+    Gemini(google_search) → Claude(web_search) 폴백."""
+    return _gemini_search(query, max_tokens) or _claude_search(query, max_tokens)
