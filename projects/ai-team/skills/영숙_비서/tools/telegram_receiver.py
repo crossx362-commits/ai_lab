@@ -10,6 +10,8 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -192,6 +194,46 @@ def _is_stock_price_request(text: str) -> bool:
 def _is_trading_status_request(text: str) -> bool:
     normalized = _normalize_text(text)
     return any(word in normalized for word in ("거래현황", "봇현황", "자동매매현황", "매매현황"))
+
+
+def _is_weather_request(text: str) -> bool:
+    n = _normalize_text(text)
+    return any(w in n for w in ("날씨", "기온", "더워", "추워", "비와", "비온", "눈와", "미세먼지", "weather"))
+
+
+def _parse_weather_city(text: str) -> str:
+    t = text
+    for w in ("오늘", "지금", "현재", "날씨", "어때", "어떄", "기온", "좀", "알려줘", "?", "？", "미세먼지"):
+        t = t.replace(w, " ")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t or "서울"
+
+
+def get_weather(city: str = "서울") -> str:
+    """도시의 현재 날씨를 조회합니다 (wttr.in, 키 불필요)."""
+    city = (city or "서울").strip()
+    try:
+        url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1&lang=ko"
+        req = urllib.request.Request(url, headers={"User-Agent": "curl/8"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            d = json.loads(r.read().decode("utf-8", "replace"))
+        c = d["current_condition"][0]
+        desc = (c.get("lang_ko") or [{}])[0].get("value") or c["weatherDesc"][0]["value"]
+        _kor = {
+            "Sunny": "맑음", "Clear": "맑음", "Partly cloudy": "구름 조금", "Cloudy": "흐림",
+            "Overcast": "흐림", "Mist": "안개", "Fog": "안개", "Patchy rain possible": "비 가능",
+            "Patchy rain nearby": "비 약간", "Light rain": "가랑비", "Light drizzle": "이슬비",
+            "Moderate rain": "비", "Heavy rain": "폭우", "Light snow": "눈 약간", "Snow": "눈",
+            "Thundery outbreaks possible": "천둥 가능",
+        }
+        desc = _kor.get(desc.strip(), desc.strip())
+        return (
+            f"🌤️ {city} 현재 날씨\n"
+            f"기온 {c['temp_C']}°C (체감 {c['FeelsLikeC']}°C) / {desc}\n"
+            f"습도 {c['humidity']}% / 바람 {c['windspeedKmph']}km/h / 강수 {c['precipMM']}mm"
+        )
+    except Exception as exc:
+        return f"날씨 조회 실패: {exc}"
 
 
 def web_search(query: str) -> str:
@@ -506,6 +548,18 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_weather",
+            "description": "특정 도시의 현재 날씨 조회. 사용자가 날씨/기온을 물으면 호출",
+            "parameters": {
+                "type": "object",
+                "properties": {"city": {"type": "string", "description": "도시명 (예: 서울, 부산)"}},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "search_stock",
             "description": "종목명으로 종목코드 검색. 사용자가 '삼전 감시' 같이 종목명만 말하면 먼저 이 함수로 검색",
             "parameters": {
@@ -563,6 +617,7 @@ AVAILABLE_FUNCTIONS = {
     "remove_watchlist": remove_watchlist,
     "list_watchlist": list_watchlist,
     "search_stock": search_stock,
+    "get_weather": get_weather,
 }
 
 
@@ -677,6 +732,9 @@ def handle_message(text: str) -> str:
 
     if _is_stock_analysis_request(text):
         return dispatch_to_somi(text)
+
+    if _is_weather_request(text):
+        return get_weather(_parse_weather_city(text))
 
     if _is_search_request(text):
         return web_search(text)

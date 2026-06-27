@@ -54,16 +54,11 @@ ai_lab/
 │   │   │   ├── 영숙_비서/tools/  telegram_receiver.py (Flask webhook + GPT-4o-mini)
 │   │   │   ├── 소미_분석가/tools/ somi_kis_reporter.py, short_covering_analyzer.py
 │   │   │   └── 공용스킬/         공통 스킬 마크다운 문서
-│   │   ├── scripts/              # 시스템 운영 스크립트
-│   │   │   ├── launchd/          # macOS LaunchAgent plist + install.sh
-│   │   │   ├── agents/           # 에이전트 API 연결 테스트
-│   │   │   ├── security/         # 시크릿 암호화/복호화
-│   │   │   ├── start_trading_team.py
-│   │   │   ├── cleanup_duplicate_processes.py
-│   │   │   ├── check_holdings.py
-│   │   │   ├── daily_balance_check.py
-│   │   │   └── monitor_processes.py
-│   │   └── reports/research/     # 시그널이 생성한 시장 인텔 JSON
+│   │   ├── scripts/              # 운영 스크립트 (대부분 각 에이전트 tools/로 재배치)
+│   │   ├── harness/              # check_all.py — 시스템 점검
+│   │   ├── security/            # ecc 보안 컴포넌트
+│   │   ├── src/                  # VS Code 익스텐션 (TypeScript: extension.ts, agents.ts)
+│   │   └── tests/                # 테스트
 │   └── petnna/                   # Pet 플랫폼 웹앱 (index.html + js/css)
 ├── output/
 │   ├── trading_logs/             # 봇별 stdout/stderr 로그
@@ -80,19 +75,17 @@ ai_lab/
 
 ## 🚀 Running the System
 
-### macOS — launchd (정식 운영 방식)
+### macOS — 데몬 운영
 
-봇 4개는 macOS LaunchAgent로 관리됩니다. OS 부팅 시 자동 시작, 충돌 시 자동 재시작.
+에이전트 데몬은 `agent_controller.py`로 제어하고, 정기 서비스는 launchd(`com.ailab.*`)로 관리된다.
 
 ```bash
-# 전체 설치 및 시작
-bash projects/ai-team/scripts/launchd/install.sh
+# 개별 에이전트 제어 (영숙 | 소미 | 예원 | 영숙스케줄)
+python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 start
+python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 소미 status
 
-# 상태 확인
+# launchd 정기 서비스 상태
 launchctl list | grep com.ailab
-
-# 전체 중지 및 제거
-bash projects/ai-team/scripts/launchd/uninstall.sh
 ```
 
 서비스 목록:
@@ -102,22 +95,25 @@ bash projects/ai-team/scripts/launchd/uninstall.sh
 
 ### 수동 재시작 (개별 서비스)
 ```bash
-# 영숙 webhook 서버 재시작
-python "D:\ai_lab\projects\ai-team\skills\영숙_비서\tools\telegram_receiver.py"
+# agent_controller로 개별 제어 (start|stop|restart|status)
+python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 restart
+python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 소미 restart
 
-# 소미 즉시 보고
-python "D:\ai_lab\projects\ai-team\skills\소미_분석가\tools\somi_kis_reporter.py" --send
+# 소미 즉시 보고 (watchlist 등록 종목)
+python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send
 ```
 
 ---
 
 ## 🤖 AI Agent System Architecture
 
-### Agent Roster (13 Agents)
+### Agent Roster (3 Agents — 실존)
+
+> 백엔드(스킬 폴더·실행 데몬)가 있는 에이전트는 예원·영숙·소미 3명뿐. 과거 가짜 에이전트(데이브·레오·시그널·코다리·케빈·경수·티모·로율 등)는 제거됨.
 
 | Agent | Role | Key Tools |
 |-------|------|-----------|
-| 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `harness_manager.py`, `skill_auditor.py` |
+| 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `harness_manager.py`, `skill_auditor.py`, `evaluate_feedback.py`, `daily_feedback_scheduler.py` |
 | 영숙 (Youngsuk) | Secretary — Telegram webhook bot (GPT-4o-mini) | `telegram_receiver.py` (Flask), `schedule_manager.py` |
 | 소미 (Somi) | Analyst — Stock analysis & scoring | `somi_kis_reporter.py`, `short_covering_analyzer.py` |
 
@@ -190,7 +186,7 @@ result = ollama("프롬프트", task="blog")
 
 ### Critical Rules
 
-1. **ALL secrets live in `D:\ai_lab\.env`** (encrypted)
+1. **ALL secrets live in `/Users/junholee/ai_lab/.env`** (encrypted)
 2. **NEVER create project-specific `.env` files**
 3. **NEVER hardcode API keys**
 4. **Always use `load_env()` before accessing secrets**
@@ -220,45 +216,33 @@ See `.env` for full list. Key variables:
 
 ---
 
-## 📊 Trading System
+## 📊 Stock Analysis (소미 — 국내주식)
 
-### Trading Team Components
+> 과거 크립토 자동매매(데이브·레오·시그널/upbit 봇)는 모두 제거됨. 현재는 소미의 국내주식 수급 분석만 존재하며, **자동매매 아님** — `kis_trader.py`는 명시적 주문만 체결한다.
 
-1. **Market Intelligence** (`crypto_market_intelligence.py`):
-   - Fetches Upbit market data
-   - Analyzes price trends, order book depth
-   - Publishes to `projects/ai-team/reports/research/crypto_market_intel.json`
+### 소미 컴포넌트
 
-2. **Conservative Trader** (`upbit_auto_trader.py`):
-   - Reads market intelligence
-   - Executes safe trades with stop-loss
-   - Logs all trades
+1. **정기 보고** (`somi_kis_reporter.py`): KIS API로 watchlist 등록 종목의 수급·점수를 정기(오전/정오/마감) 분석 보고. `--send` 즉시 전송, `--daemon --times` 데몬 모드.
+2. **유망종목 발굴** (`somi_screener.py`): 거래대금 상위 후보를 소미 점수로 채점해 상위 종목 추천.
+3. **매수 판단** (`somi_trade_advisor.py`): 매수 가능 구간·제안.
+4. **실시간 감시** (`somi_price_monitor.py`): watchlist 종목 급등락·거래량 급증 실시간 감시(상시 데몬).
+5. **포지션 관리** (`somi_position_monitor.py`): 보유 포지션 익절/손절 점검.
+6. **수급/숏커버링** (`short_covering_analyzer.py`): 대차잔고·공매도 기반 분석.
 
-3. **Aggressive Trader** (`leo_aggressive_trader.py`):
-   - High-frequency day trading
-   - Tighter risk tolerance
-   - More volatile strategy
+### 관심종목 (watchlist)
 
-### Public API Fallback
+보고 대상은 `output/cache/somi_watchlist.json`의 등록 종목으로 결정된다(고정 종목 없음). 텔레그램 "관심종목 추가 <코드> <종목명>"으로 등록/관리(`watchlist_manager.py`).
 
-If `pyupbit` module is unavailable, `upbit_public.py` provides fallback REST API access.
-
-### Trading Commands
-
-Start live trading:
+### 주요 명령
 ```bash
-cd projects/ai-team/scripts
-python start_trading_team.py --live
-```
+# watchlist 종목 즉시 보고
+python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send
 
-Check holdings:
-```bash
-python check_holdings.py
-```
+# 유망종목 스캔
+python projects/ai-team/skills/소미_분석가/tools/somi_screener.py --send --top 5
 
-Daily balance check:
-```bash
-python daily_balance_check.py
+# 관심종목 목록
+python projects/ai-team/skills/소미_분석가/tools/watchlist_manager.py list
 ```
 
 ---
@@ -269,7 +253,7 @@ python daily_balance_check.py
 
 The bot uses Gemini Function Calling to map natural language to tools:
 
-- **"현황 보고해줘" / "다들 뭐해?"** → `get_agent_status()` (shows all 13 agents)
+- **"현황 보고해줘" / "다들 뭐해?"** → `get_agent_status()` (실존 에이전트 현황)
 - **"일정 알려줘" / "캘린더 확인해봐"** → `list_calendar()`
 - **"에이전트 작업 요청"** → `dispatch()` → CEO orchestration
 
@@ -330,7 +314,7 @@ projects/petnna/
 
 1. Create folder: `projects/ai-team/skills/<에이전트명>/`
 2. Add tools to: `projects/ai-team/skills/<에이전트명>/tools/*.py`
-3. Register in: `projects/ai-team/_shared/agent_registry.py`
+3. Register in: `src/agents.ts` (AGENTS) + `_shared/notify.py` (CONTINUOUS_DAEMONS/SCHEDULED_SERVICES) + `agent_controller.py` (실행 대상)
 4. Update: `AGENTS.md`
 
 ### Process Management

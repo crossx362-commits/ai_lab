@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Somi price monitor — 우리기술 주가/거래량 급변동 실시간 감시"""
+"""Somi price monitor — watchlist 등록 종목 주가/거래량 급변동 실시간 감시"""
 
 from __future__ import annotations
 
@@ -29,8 +29,10 @@ from watchlist_manager import load_watchlist
 
 load_env(str(PROJECT_ROOT))
 
-DEFAULT_SYMBOL = "032820"
-DEFAULT_NAME = "우리기술"
+# run_multi()는 watchlist 종목만 감시한다. 아래 기본값은 단일 인스턴스
+# 호출 시의 폴백일 뿐 정기 감시 대상이 아니다.
+DEFAULT_SYMBOL = ""
+DEFAULT_NAME = ""
 CHECK_INTERVAL = 60  # 1분마다 확인
 RUN_LOG = PROJECT_ROOT / "output" / "bot_logs" / "somi_price_monitor.log"
 

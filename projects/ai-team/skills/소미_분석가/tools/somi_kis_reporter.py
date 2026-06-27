@@ -36,8 +36,9 @@ from watchlist_manager import load_watchlist  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-DEFAULT_SYMBOL = "032820"
-DEFAULT_NAME = "우리기술"
+# 보고 대상은 watchlist에서 결정한다(아래는 함수 시그니처용 폴백, 정기 보고 대상 아님).
+DEFAULT_SYMBOL = ""
+DEFAULT_NAME = ""
 DEFAULT_TIMES = ["08:50", "12:30", "15:40"]
 TOKEN_CACHE = PROJECT_ROOT / "output" / "cache" / "kis_access_token.json"
 LATEST_REPORT = PROJECT_ROOT / "reports" / "research" / "somi_ourtech_latest.md"
