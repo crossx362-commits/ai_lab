@@ -402,7 +402,7 @@ def main() -> int:
             from _shared.notify import send
             issues = [r for r in results if r["status"] != "OK"]
             lines = [f"{r['status']} {r['name']}: {r['message'][:80]}" for r in issues]
-            send(f"[?섎꽕?? {overall}\n" + "\n".join(lines))
+            send(f"[하네스] {overall}\n" + "\n".join(lines))
         except Exception as e:
             print(f"[WARN] telegram notify failed: {e}")
 

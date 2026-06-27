@@ -222,7 +222,8 @@ class KISClient:
                 },
             )
             log(f"KIS daily_short_sale raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
-            output = data.get("output") or data.get("output1") or []
+            # output2: 일자별 공매도 상세(체결수량/비중/평균가), output1: 가격 요약
+            output = data.get("output2") or data.get("output") or data.get("output1") or []
             if isinstance(output, list):
                 return output[0] if output else {}
             return output if isinstance(output, dict) else {}
@@ -313,11 +314,11 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
     individual_5d = sum(num(row.get("prsn_ntby_qty") or row.get("indv_ntby_qty") or row.get("prsn_ntby_vol")) for row in investor_hist)
 
     short_volume = (
-        pick(short_sale, "short_sale_qty", "ssts_cntg_qty", "stnd_shrn_seln_qty")
+        pick(short_sale, "ssts_cntg_qty", "short_sale_qty", "stnd_shrn_seln_qty")
         or pick(quote, "last_ssts_cntg_qty")
     )
-    short_ratio = pick(short_sale, "short_sale_rate", "ssts_tr_pbmn_rate", "stnd_shrn_seln_rate")
-    short_avg_price = pick(short_sale, "short_sale_avg_prc", "ssts_avrg_prc")
+    short_ratio = pick(short_sale, "ssts_vol_rlim", "short_sale_rate", "ssts_tr_pbmn_rate", "stnd_shrn_seln_rate")
+    short_avg_price = pick(short_sale, "avrg_prc", "short_sale_avg_prc", "ssts_avrg_prc")
     loan_rate = pick(quote, "whol_loan_rmnd_rate")
     support_line = pick(quote, "pvt_frst_dmsp_prc", "dmsp_val")
     resistance_line = pick(quote, "pvt_frst_dmrs_prc", "dmrs_val")

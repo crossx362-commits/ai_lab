@@ -328,6 +328,58 @@ def generate_prediction(raw: dict[str, str], score: int) -> str:
 """
 
 
+def generate_smart_money(raw: dict[str, str]) -> str:
+    """5일 수급 주체·거래량·프로그램매매를 종합한 세력 동향 분석."""
+    foreigner_5d = to_num(raw.get("buy_foreigner_5d"))
+    institution_5d = to_num(raw.get("buy_institution_5d"))
+    indiv_5d = to_num(raw.get("buy_indiv_5d"))
+    program = to_num(raw.get("program_trading"))
+    vol = to_num(raw.get("volume"))
+    avg_vol = to_num(raw.get("avg_volume_20d"))
+    vol_ratio = vol / avg_vol if avg_vol else 0
+    smart_5d = foreigner_5d + institution_5d
+
+    if smart_5d > 0 and indiv_5d < 0:
+        verdict = "매집 우위 (외국인·기관 순매수 / 개인 순매도)"
+    elif smart_5d > 0:
+        verdict = "순매수 우위 (외국인·기관 자금 유입)"
+    elif smart_5d < 0 and indiv_5d > 0:
+        verdict = "이탈 우위 (외국인·기관 순매도 / 개인 순매수)"
+    elif smart_5d < 0:
+        verdict = "순매도 우위 (외국인·기관 자금 이탈)"
+    else:
+        verdict = "중립 (뚜렷한 세력 수급 신호 없음)"
+
+    if vol_ratio >= 2:
+        vol_note = f"거래량 평균 대비 {vol_ratio:.1f}배 급증 → 세력 개입 정황 강함"
+    elif vol_ratio >= 1.5:
+        vol_note = f"거래량 평균 대비 {vol_ratio:.1f}배 증가 → 관심 유입"
+    elif avg_vol:
+        vol_note = f"거래량 평균 대비 {vol_ratio:.1f}배 → 특이 동향 없음"
+    else:
+        vol_note = "거래량 비교 데이터 부족"
+
+    if program > 0:
+        prog_note = f"프로그램 순매수 {program:,.0f} (기관성 매수 유입)"
+    elif program < 0:
+        prog_note = f"프로그램 순매도 {program:,.0f} (기관성 매도 출회)"
+    else:
+        prog_note = "프로그램 매매 영향 미미"
+
+    def _qty(value: float) -> str:
+        return f"{value:+,.0f}주" if value else "0주"
+
+    return f"""## 1-1. 세력 동향
+
+* 세력 판단: {verdict}
+* 5일 누적 수급: 외국인 {_qty(foreigner_5d)} / 기관 {_qty(institution_5d)} / 개인 {_qty(indiv_5d)}
+* 거래량 신호: {vol_note}
+* 프로그램 매매: {prog_note}
+* 보조 지표: 외국인 보유율 {_v(raw, "foreign_holding_rate")} / 공매도 비중 {_v(raw, "short_ratio")}
+* 해석: 외국인·기관 합산 5일 순매수는 {_qty(smart_5d)}이며, 개인과 반대 방향일수록 세력 주도 가능성이 높습니다.
+"""
+
+
 def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str], neg: list[str]) -> str:
     stock_name = _v(raw, "stock_name")
     stock_code = _v(raw, "stock_code", "")
@@ -357,6 +409,7 @@ def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str],
 
     pos_lines = "\n".join(f"* {item}" for item in pos) if pos else "* 확인된 긍정 신호 없음"
     neg_lines = "\n".join(f"* {item}" for item in neg) if neg else "* 확인된 위험 신호 없음"
+    smart_money = generate_smart_money(raw)
     prediction = generate_prediction(raw, score)
 
     return f"""[종목 간단 분석 리포트]
@@ -374,6 +427,7 @@ def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str],
 * 지지선과 저항선: 지지선 {_v(raw, "support_line")} / 저항선 {_v(raw, "resistance_line")}
 * 시장경보: {_v(raw, "market_warning")}
 
+{smart_money}
 ## 2. 매수 판단
 
 * 결론: {decision}

@@ -10,11 +10,23 @@ import urllib.request
 from datetime import datetime
 
 
-ACTIVE_DAEMONS = {
+# 상시 데몬 (프로세스가 계속 떠 있어야 정상)
+CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
-    "youngsuk_schedule": "schedule_manager.py",
-    "somi": "somi_kis_reporter.py",
-    "yewon_monitor": "harness_monitor.py",
+}
+
+# 예약 실행 서비스 (launchd StartCalendarInterval) — 평소엔 미실행이 정상, 지정 시각에만 실행
+SCHEDULED_SERVICES = {
+    "somi": "com.ailab.somi",                    # 정기 리포트 (08:50/12:30/15:40)
+    "somi_screener": "com.ailab.somi_screener",  # 유망종목 발굴 (09:10/15:50)
+    "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
+}
+
+_AGENT_LABELS = {
+    "youngsuk": "영숙 (텔레그램 비서)",
+    "somi": "소미 (정기 리포트)",
+    "somi_screener": "소미 (유망종목 발굴)",
+    "harness": "하네스 (시스템 점검)",
 }
 
 
@@ -84,18 +96,42 @@ def _find_pids(script_name: str) -> list[str]:
         return []
 
 
+def _launchd_loaded(label: str) -> bool:
+    """launchd에 서비스가 적재(예약)돼 있는지 확인."""
+    try:
+        result = subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=5)
+    except Exception:
+        return False
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if parts and parts[-1] == label:  # 마지막 컬럼=라벨 정확 일치 (somi/somi_screener 혼동 방지)
+            return True
+    return False
+
+
 def agent_status() -> dict[str, str]:
-    return {
-        name: ",".join(pids) if (pids := _find_pids(script)) else "down"
-        for name, script in ACTIVE_DAEMONS.items()
-    }
+    """상시 데몬은 프로세스, 예약 서비스는 launchd 적재 여부로 상태 판정.
+    값: 'up,<pid>' | 'scheduled'(예약 대기) | 'down'."""
+    status: dict[str, str] = {}
+    for name, script in CONTINUOUS_DAEMONS.items():
+        pids = _find_pids(script)
+        status[name] = ",".join(pids) if pids else "down"
+    for name, label in SCHEDULED_SERVICES.items():
+        status[name] = "scheduled" if _launchd_loaded(label) else "down"
+    return status
 
 
 def status_report() -> str:
-    lines = [f"Agent Status ({datetime.now().strftime('%Y-%m-%d %H:%M')})"]
+    lines = [f"에이전트 현황 ({datetime.now().strftime('%Y-%m-%d %H:%M')})"]
     for name, state in agent_status().items():
-        marker = "UP" if state != "down" else "DOWN"
-        lines.append(f"- {name}: {marker} {state}")
+        label = _AGENT_LABELS.get(name, name)
+        if state == "down":
+            mark = "🔴 중지"
+        elif state == "scheduled":
+            mark = "🟢 정상 (예약 실행 대기)"
+        else:
+            mark = f"🟢 실행 중 (pid {state})"
+        lines.append(f"- {label}: {mark}")
     return "\n".join(lines)
 
 

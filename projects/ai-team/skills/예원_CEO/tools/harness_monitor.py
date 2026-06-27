@@ -28,20 +28,26 @@ def run_harness():
     return result.stdout or result.stderr or ""
 
 def check_and_restart_bots():
-    """봇 상태 확인 및 재시작"""
+    """봇 상태 확인 및 재시작 (launchd 서비스 kickstart, best-effort)"""
     status = agent_status()
     down_bots = [k for k, v in status.items() if v == "down"]
+    if not down_bots:
+        return False
 
-    if down_bots:
-        print(f"⚠️  Down: {', '.join(down_bots)}")
+    print(f"⚠️  Down: {', '.join(down_bots)}")
+    domain = f"gui/{os.getuid()}"
+    for name in down_bots:
+        try:
+            subprocess.run(
+                ["launchctl", "kickstart", "-k", f"{domain}/com.ailab.{name}"],
+                capture_output=True,
+                timeout=10,
+            )
+        except Exception:
+            pass  # 라벨이 없거나 실패해도 launchd KeepAlive가 백업
 
-        # 재시작 시도
-        restart_script = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts", "start_trading_all.py")
-        if os.path.exists(restart_script):
-            subprocess.Popen([sys.executable, restart_script])
-            send(f"🔄 [예원] 봇 재시작\nDown: {', '.join(down_bots)}")
-            return True
-    return False
+    send(f"🔄 [예원] 봇 다운 감지 → 재시작 시도\nDown: {', '.join(down_bots)}")
+    return True
 
 def main():
     """메인 루프"""
@@ -52,20 +58,14 @@ def main():
             while True:
                 print(f"\n--- [{datetime.now().strftime('%H:%M:%S')}] 하네스 체크 ---")
 
-                # 하네스 실행
+                # 하네스 실행 (리포트 갱신 + 로그)
                 output = run_harness()
-
-                # WARN/FAIL 체크
-                has_warn = "WARN" in output or "FAIL" in output
-
-                if has_warn:
+                if "WARN" in output or "FAIL" in output:
                     print("⚠️  이슈 감지")
 
-                    # 봇 상태 확인
-                    if "runtime" in output and "down" in output:
-                        restarted = check_and_restart_bots()
-                        if restarted:
-                            time.sleep(10)  # 재시작 대기
+                # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
+                if check_and_restart_bots():
+                    time.sleep(10)  # 재시작 대기
 
                 time.sleep(300)  # 5분
 
