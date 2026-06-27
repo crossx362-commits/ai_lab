@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS public.albums (
     user_id UUID NOT NULL DEFAULT auth.uid(),
     email TEXT NOT NULL,             -- 친구 공유 조회용 (profiles.email 참조)
     data JSONB NOT NULL,
+    is_public BOOLEAN NOT NULL DEFAULT false,  -- 명시적 공개만 외부 조회 허용
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -113,7 +114,7 @@ CREATE POLICY "profiles_delete_own" ON public.profiles FOR DELETE  USING (auth.u
 
 -- albums (본인 + 친구 공유 조회)
 CREATE POLICY "albums_select_own"    ON public.albums FOR SELECT  USING (auth.uid() = user_id);
-CREATE POLICY "albums_select_shared" ON public.albums FOR SELECT  USING (true);
+CREATE POLICY "albums_select_shared" ON public.albums FOR SELECT  USING (is_public);
 CREATE POLICY "albums_insert_own"    ON public.albums FOR INSERT  WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "albums_update_own"    ON public.albums FOR UPDATE  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "albums_delete_own"    ON public.albums FOR DELETE  USING (auth.uid() = user_id);

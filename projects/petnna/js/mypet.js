@@ -1288,7 +1288,7 @@ function renderMyPets() {
     const graphicContainer = document.getElementById('pet-graphic-container');
     if (graphicContainer) {
         if (current.type === 'custom') {
-            graphicContainer.innerHTML = `<img loading="lazy" src="${current.imageUrl}" class="w-full h-full object-cover rounded-xl animate-pet-body" onerror="this.src='https://placehold.co/200/fbeee0/732f18?text=${current.name}'">`;
+            graphicContainer.innerHTML = `<img loading="lazy" src="${escapeHtml(current.imageUrl)}" class="w-full h-full object-cover rounded-xl animate-pet-body" onerror="this.src='https://placehold.co/200/fbeee0/732f18?text=${escapeHtml(current.name)}'">`;
         } else {
             let svgMarkup = '';
             if (current.type === 'cat') {

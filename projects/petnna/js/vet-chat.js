@@ -100,7 +100,7 @@ function renderVetChat() {
 
     const welcomeEl = document.createElement('div');
     welcomeEl.className = 'flex justify-start';
-    welcomeEl.innerHTML = `<div class="bg-gray-100 text-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 text-sm max-w-[80%] leading-relaxed">안녕하세요! 저는 AI 수의사입니다. <strong>${petName}</strong>에 대해 궁금한 점이나 걱정되는 증상이 있으면 편하게 질문해 주세요.</div>`;
+    welcomeEl.innerHTML = `<div class="bg-gray-100 text-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 text-sm max-w-[80%] leading-relaxed">안녕하세요! 저는 AI 수의사입니다. <strong>${escapeHtml(petName)}</strong>에 대해 궁금한 점이나 걱정되는 증상이 있으면 편하게 질문해 주세요.</div>`;
     container.appendChild(welcomeEl);
 
     vetChatHistory.forEach(m => appendVetChatMessage(m.role, m.text));

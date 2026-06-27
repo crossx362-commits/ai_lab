@@ -114,12 +114,12 @@ function renderSocialRoom() {
                 el.innerHTML = `
                     <div class="flex items-center space-x-3 min-w-0">
                         <div class="relative shrink-0">
-                            <img loading="lazy" src="${f.avatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${f.nickname}'">
+                            <img loading="lazy" src="${f.avatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(f.nickname)}'">
                             <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${stateColor}"></span>
                         </div>
                         <div class="min-w-0 text-xs">
                             <span class="font-black text-gray-800 block truncate flex items-center gap-1">
-                                ${f.nickname} <span class="font-medium text-gray-400 text-[10px]">(${f.petName})</span>
+                                ${escapeHtml(f.nickname)} <span class="font-medium text-gray-400 text-[10px]">(${escapeHtml(f.petName)})</span>
                                 ${isBlocked ? `<span class="text-[8px] text-rose-500 font-extrabold bg-rose-50 border border-rose-100 rounded px-1 shrink-0">🚫 차단됨</span>` : ''}
                             </span>
                             <span class="text-gray-400 block truncate text-[10px] mt-0.5">${f.personality}</span>
@@ -245,9 +245,9 @@ function renderFeed() {
             post.stickers.forEach(st => {
                 let itemStyle = `position: absolute; left: ${st.left}%; top: ${st.top}%; z-index: ${st.zIndex || 20}; transform: translate(-50%, -50%) scale(${st.scale * 0.45}) rotate(${st.rotate}deg); pointer-events: none; transform-origin: center center;`;
                 if (st.type === "emoji") {
-                    stickersHtml += `<div style="${itemStyle} font-size: 14px;">${st.content}</div>`;
+                    stickersHtml += `<div style="${itemStyle} font-size: 14px;">${escapeHtml(st.content)}</div>`;
                 } else {
-                    stickersHtml += `<div class="p-0.5 rounded px-1 text-[5px] font-black leading-tight border ${st.bubbleTheme || 'bg-white/95 text-brand-700 border-amber-200/60'} shadow-sm" style="${itemStyle}">💬 ${st.content}</div>`;
+                    stickersHtml += `<div class="p-0.5 rounded px-1 text-[5px] font-black leading-tight border ${st.bubbleTheme || 'bg-white/95 text-brand-700 border-amber-200/60'} shadow-sm" style="${itemStyle}">💬 ${escapeHtml(st.content)}</div>`;
                 }
             });
         }
@@ -262,9 +262,9 @@ function renderFeed() {
                     item.stickers.forEach(st => {
                         let itemStyle = `position: absolute; left: ${st.left}%; top: ${st.top}%; z-index: ${st.zIndex || 20}; transform: translate(-50%, -50%) scale(${st.scale * 0.45}) rotate(${st.rotate}deg); pointer-events: none; transform-origin: center center;`;
                         if (st.type === "emoji") {
-                            itemStickersHtml += `<div style="${itemStyle} font-size: 14px;">${st.content}</div>`;
+                            itemStickersHtml += `<div style="${itemStyle} font-size: 14px;">${escapeHtml(st.content)}</div>`;
                         } else {
-                            itemStickersHtml += `<div class="p-0.5 rounded px-1 text-[5px] font-black leading-tight border ${st.bubbleTheme || 'bg-white/95 text-brand-700 border-amber-200/60'} shadow-sm" style="${itemStyle}">💬 ${st.content}</div>`;
+                            itemStickersHtml += `<div class="p-0.5 rounded px-1 text-[5px] font-black leading-tight border ${st.bubbleTheme || 'bg-white/95 text-brand-700 border-amber-200/60'} shadow-sm" style="${itemStyle}">💬 ${escapeHtml(st.content)}</div>`;
                         }
                     });
                 }
@@ -1267,9 +1267,9 @@ function renderChatHistoryWindow() {
                 chat.albumData.stickers.forEach(st => {
                     let itemStyle = `position: absolute; left: ${st.left}%; top: ${st.top}%; z-index: ${st.zIndex}; transform: translate(-50%, -50%) scale(${st.scale * 0.45}) rotate(${st.rotate}deg); pointer-events: none; transform-origin: center center;`;
                     if (st.type === "emoji") {
-                        stickersHtml += `<div style="${itemStyle} font-size: 14px;">${st.content}</div>`;
+                        stickersHtml += `<div style="${itemStyle} font-size: 14px;">${escapeHtml(st.content)}</div>`;
                     } else {
-                        stickersHtml += `<div class="p-0.5 rounded px-1 text-[5px] font-black leading-tight border ${st.bubbleTheme} shadow-sm" style="${itemStyle}">💬 ${st.content}</div>`;
+                        stickersHtml += `<div class="p-0.5 rounded px-1 text-[5px] font-black leading-tight border ${st.bubbleTheme} shadow-sm" style="${itemStyle}">💬 ${escapeHtml(st.content)}</div>`;
                     }
                 });
             }
