@@ -22,12 +22,12 @@ WATCHLIST_FILE = PROJECT_ROOT / "output" / "cache" / "somi_watchlist.json"
 def load_watchlist() -> dict[str, str]:
     """감시 목록 로드 {종목코드: 종목명}"""
     if not WATCHLIST_FILE.exists():
-        return {"032820": "우리기술"}  # 기본값
+        return {}  # 기본값 없음 — 사용자가 등록한 종목만 감시
     try:
         with WATCHLIST_FILE.open("r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return {"032820": "우리기술"}
+        return {}
 
 
 def save_watchlist(watchlist: dict[str, str]) -> None:

@@ -31,6 +31,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from short_covering_analyzer import calculate_score, generate_report, parse_input_text  # noqa: E402
+from watchlist_manager import load_watchlist  # noqa: E402
 
 
 load_env(str(PROJECT_ROOT))
@@ -393,6 +394,23 @@ def send_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name:
     return ok
 
 
+def send_watchlist_reports(report_name: str = "정기") -> bool:
+    """감시 목록(watchlist)에 등록된 종목을 순회하며 보고. 비어 있으면 안내만."""
+    watchlist = load_watchlist()
+    if not watchlist:
+        send("📋 감시 중인 종목이 없습니다.\n텔레그램에서 '관심종목 추가 <종목코드> <종목명>'으로 등록하세요.")
+        return True
+    ok = True
+    for symbol, name in watchlist.items():
+        try:
+            ok = send_report(report_name, symbol, name) and ok
+        except Exception as exc:
+            send(f"[소미 보고 실패 - {name}({symbol})]\n{exc}")
+            ok = False
+        time.sleep(0.5)
+    return ok
+
+
 def seconds_until_next(times: list[str]) -> tuple[int, str]:
     now = datetime.now()
     candidates = []
@@ -406,7 +424,7 @@ def seconds_until_next(times: list[str]) -> tuple[int, str]:
     return max(1, int((next_run - now).total_seconds())), next_run.strftime("%Y-%m-%d %H:%M")
 
 
-def daemon(times: list[str], symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> None:
+def daemon(times: list[str], symbol: str | None = None, name: str | None = None) -> None:
     with ProcessLock("somi_kis_reporter"):
         log(f"소미 KIS 리포터 시작: {', '.join(times)}")
         while True:
@@ -414,7 +432,10 @@ def daemon(times: list[str], symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_N
             log(f"다음 소미 보고: {next_run} (대기 {wait_seconds}s)")
             time.sleep(wait_seconds)
             try:
-                send_report("자동", symbol, name)
+                if symbol:
+                    send_report("자동", symbol, name or symbol)
+                else:
+                    send_watchlist_reports("자동")
                 log("소미 자동보고 전송 완료")
             except Exception as exc:
                 log(f"소미 자동보고 실패: {exc}")
@@ -428,20 +449,30 @@ def main() -> None:
     parser.add_argument("--print", action="store_true", help="리포트 출력")
     parser.add_argument("--daemon", action="store_true", help="지정 시간 자동 보고")
     parser.add_argument("--times", default=",".join(DEFAULT_TIMES), help="HH:MM,HH:MM 형식 보고 시간")
-    parser.add_argument("--symbol", default=DEFAULT_SYMBOL, help="종목코드")
-    parser.add_argument("--name", default=DEFAULT_NAME, help="종목명")
+    parser.add_argument("--symbol", default=None, help="종목코드 (미지정 시 watchlist 전체 보고)")
+    parser.add_argument("--name", default=None, help="종목명")
     args = parser.parse_args()
 
     times = [x.strip() for x in args.times.split(",") if x.strip()]
     if args.daemon:
         daemon(times, args.symbol, args.name)
     elif args.send:
-        ok = send_report("즉시", args.symbol, args.name)
+        if args.symbol:
+            ok = send_report("즉시", args.symbol, args.name or args.symbol)
+        else:
+            ok = send_watchlist_reports("정기")
         raise SystemExit(0 if ok else 1)
     elif getattr(args, "print"):
-        print(make_report("테스트", args.symbol, args.name))
+        if args.symbol:
+            print(make_report("테스트", args.symbol, args.name or args.symbol))
+        else:
+            wl = load_watchlist()
+            if not wl:
+                print("감시 종목 없음 — 텔레그램에서 '관심종목 추가 <코드> <종목명>'으로 등록")
+            for symbol, name in wl.items():
+                print(make_report("테스트", symbol, name))
     else:
-        print("사용법: --send | --print | --daemon [--symbol 032820 --name 우리기술] [--times 08:50,12:30,15:40]")
+        print("사용법: --send | --print | --daemon [--symbol <코드> --name <종목명>] [--times 08:50,12:30,15:40]")
 
 
 if __name__ == "__main__":

@@ -13,16 +13,6 @@
       "priority": "high"
     },
     {
-      "id": "somi_premarket_scan",
-      "agent": "소미",
-      "task": "장전 유망종목 스캔",
-      "cron": "30 8 * * 1-5",
-      "description": "거래대금 상위 후보를 소미 점수로 채점해 상위 종목 추천",
-      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_screener.py --send --top 5",
-      "enabled": true,
-      "priority": "high"
-    },
-    {
       "id": "yewon_weekly_report",
       "agent": "예원",
       "task": "주간 종합 리포트",
@@ -37,8 +27,8 @@
       "agent": "영숙",
       "task": "리포트 정리",
       "cron": "0 4 * * *",
-      "description": "reports 폴더 정리와 상태 요약",
-      "command": "reports cleanup",
+      "description": "reports 폴더 정리와 상태 요약 (30일 이상 로그 archive)",
+      "command": "python projects/ai-team/skills/영숙_비서/tools/reports_manager.py cleanup",
       "enabled": true,
       "priority": "medium"
     },
@@ -65,31 +55,34 @@
     {
       "id": "somi_ourtech_morning",
       "agent": "소미",
-      "task": "오전 우리기술 분석",
+      "task": "오전 스캔+분석",
       "cron": "50 8 * * 1-5",
-      "description": "KIS API 기반 오전 분석 보고",
-      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
+      "description": "유망종목 스캔 + watchlist 등록 종목 오전 분석 보고",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_screener.py --send --top 5 && python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
+      "run": false,
       "priority": "high"
     },
     {
       "id": "somi_ourtech_midday",
       "agent": "소미",
-      "task": "정오 우리기술 분석",
+      "task": "정오 관심종목 분석",
       "cron": "30 12 * * 1-5",
-      "description": "KIS API 기반 장중 분석 보고",
+      "description": "watchlist 등록 종목 장중 분석 보고",
       "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
+      "run": false,
       "priority": "high"
     },
     {
       "id": "somi_ourtech_close",
       "agent": "소미",
-      "task": "마감 우리기술 분석",
+      "task": "마감 관심종목 분석",
       "cron": "40 15 * * 1-5",
-      "description": "KIS API 기반 마감 분석 보고",
+      "description": "watchlist 등록 종목 마감 분석 보고",
       "command": "python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send",
       "enabled": true,
+      "run": false,
       "priority": "high"
     }
   ]

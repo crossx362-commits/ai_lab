@@ -11,6 +11,7 @@ import sys
 import json
 import time
 import datetime
+import subprocess
 from typing import Dict, List, Optional
 from croniter import croniter
 
@@ -118,6 +119,16 @@ def execute_schedule(schedule: Dict):
     )
     send(notify_msg)
     print(f"  [영숙 → 사장님] 스케줄 알림 전송 완료")
+
+    # v2.90 — python 스크립트 command는 실제 실행한다. 자체 데몬이 보고를
+    # 전담하는 항목(소미 등)은 schedules.json에 "run": false 로 두어 중복 방지.
+    if schedule.get("run", True) and command.strip().startswith("python"):
+        try:
+            subprocess.Popen(command, shell=True, cwd=PROJECT_ROOT)
+            print(f"  [영숙] 명령 실행 시작: {command}")
+        except Exception as exc:
+            print(f"  [영숙] 명령 실행 실패: {exc}")
+            send(f"⚠️ 스케줄 실행 실패 ({schedule_id}): {exc}")
 
 
 def check_and_run_schedules():
