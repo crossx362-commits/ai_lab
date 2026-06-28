@@ -959,11 +959,36 @@ def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool) -> str | 
     return None
 
 
+DEV_RUNNER = Path(__file__).resolve().parent / "tg_dev_runner.py"
+
+
+def _launch_dev_task(request: str) -> str:
+    """'개발 <요청>' → 격리 worktree에서 헤드리스 claude 실행(백그라운드). 끝나면 결과를 별도 보고."""
+    if not request:
+        return "개발 요청 내용을 적어줘. 예: '개발 소미 리포트에 RSI 지표 추가'"
+    branch = "tg-dev-" + datetime.now().strftime("%m%d-%H%M%S")
+    try:
+        subprocess.Popen(
+            [sys.executable, str(DEV_RUNNER), branch, request],
+            cwd=str(PROJECT_ROOT),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as exc:
+        return f"개발 작업 시작 실패: {exc}"
+    return (f"🛠️ 개발 작업 시작했어 (브랜치 {branch}).\n요청: {request}\n"
+            f"격리 환경에서 claude가 작업하고, 끝나면 변경 요약을 보고할게. (보통 1~3분, master는 안 건드려)")
+
+
 def handle_message(text: str) -> str:
     """Telegram 자연어 메시지를 처리합니다. 운영 명령은 '의미'로 인식합니다(정해진 단어 불필요)."""
     text = (text or "").strip()
     if not text:
         return "메시지가 비어 있어요."
+
+    # 개발 요청 — 코드 수정/기능 추가는 격리 브랜치에서 헤드리스 claude로 실행
+    if text.startswith("개발 ") or text.startswith("기능요청 "):
+        return _launch_dev_task(text.split(" ", 1)[1].strip() if " " in text else "")
 
     has_order = bool(_PENDING_ORDER.get("order"))
     has_signals = bool(_signals_load())
@@ -1055,7 +1080,16 @@ async def _status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.effective_message.reply_text(get_agent_status())
 
 
+_ALLOWED_CHAT_IDS = {c.strip() for c in (os.getenv("TELEGRAM_CHAT_ID", "")).split(",") if c.strip()}
+
+
 async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # 발신자 잠금 — 허용된 chat_id(소유자)만 처리. 그 외엔 무응답(원격 코드 실행 차단)
+    chat_id = str(update.effective_chat.id) if update.effective_chat else ""
+    if _ALLOWED_CHAT_IDS and chat_id not in _ALLOWED_CHAT_IDS:
+        log(f"차단된 발신자 chat_id={chat_id}: {(update.effective_message.text or '')[:50]}")
+        return
+
     text = update.effective_message.text or ""
     log(f"Message: {text[:100]}")
     try:
