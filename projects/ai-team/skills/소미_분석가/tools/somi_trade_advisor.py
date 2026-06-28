@@ -132,6 +132,10 @@ def _news_candidates() -> list[tuple[str, str]]:
 
 def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> list[dict]:
     kis = KISClient()
+    try:
+        impact = research.load_issue_impact() or {}
+    except Exception:
+        impact = {}
     # 후보 = 거래대금 상위(유동성) ∪ 뉴스/공시 호재·밸류체인 종목 (중복 코드 제거)
     universe: dict[str, str] = {}
     for code, name in get_candidates(kis, candidate_limit):
@@ -141,7 +145,14 @@ def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> li
     proposals = []
     for code, name in universe.items():
         a = analyze_candidate(kis, code, name)
-        if a and a["score"] >= min_score:
+        if not a:
+            time.sleep(0.2)
+            continue
+        # 뉴스 호재 가점 — 강한 호재(+2)면 수급 기준 10p, 호재(+1)면 5p 완화 (뉴스 주도 매매 반영)
+        score_imp = (impact.get(code) or {}).get("score", 0) or 0
+        bonus = 10 if score_imp >= 2 else (5 if score_imp >= 1 else 0)
+        if a["score"] >= min_score - bonus:
+            a["news_bonus"] = bonus
             proposals.append(a)
         time.sleep(0.2)
     proposals.sort(key=lambda x: x["score"], reverse=True)
