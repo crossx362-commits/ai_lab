@@ -34,8 +34,9 @@ from short_covering_analyzer import calculate_score  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-# 검증용 유동성 대형주 바스켓 (과거 거래대금 순위 히스토리가 없어 고정 바스켓 사용)
+# 검증용 유동성 종목 바스켓 (과거 거래대금 순위 히스토리가 없어 고정 바스켓 사용)
 UNIVERSE = {
+    # 대형주
     "005930": "삼성전자", "000660": "SK하이닉스", "373220": "LG에너지솔루션",
     "207940": "삼성바이오로직스", "005380": "현대차", "000270": "기아",
     "005490": "POSCO홀딩스", "035420": "NAVER", "035720": "카카오",
@@ -43,6 +44,14 @@ UNIVERSE = {
     "012330": "현대모비스", "105560": "KB금융", "055550": "신한지주",
     "402340": "SK스퀘어", "009150": "삼성전기", "011070": "LG이노텍",
     "259960": "크래프톤", "086520": "에코프로",
+    # 대형·중형 확대 (표본↑)
+    "012450": "한화에어로스페이스", "042700": "한미반도체", "247540": "에코프로비엠",
+    "028260": "삼성물산", "323410": "카카오뱅크", "034020": "두산에너빌리티",
+    "003670": "포스코퓨처엠", "011200": "HMM", "015760": "한국전력",
+    "032830": "삼성생명", "138040": "메리츠금융지주", "086280": "현대글로비스",
+    "036570": "엔씨소프트", "352820": "하이브", "090430": "아모레퍼시픽",
+    "024110": "기업은행", "003550": "LG", "017670": "SK텔레콤",
+    "030200": "KT", "196170": "알테오젠",
 }
 
 # 비용 (왕복) — 매수/매도 수수료 + 거래세 + 슬리피지
@@ -104,13 +113,60 @@ def _score_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     return score, entry, stop, target
 
 
-def backtest_symbol(bars: list[dict], threshold: int, hold: int) -> list[dict]:
-    """한 종목 walk-forward 백테스트 → 체결 리스트."""
+def _pullback_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """눌림목 진입: 상승추세 중 단기 눌림에서 매수 (모멘텀 추격 대안).
+    추세(종가>MA20·MA20 상승) + 눌림(종가≤MA5) + 고점대비 2~12% 되돌림 → 점수화."""
+    c = [b["c"] for b in bars[:t + 1]]
+    if len(c) < 25:
+        return 0, bars[t]["c"], 0, 0
+    cur = c[-1]
+    ma5 = sum(c[-5:]) / 5
+    ma20 = sum(c[-20:]) / 20
+    ma20_prev = sum(c[-25:-5]) / 20
+    recent_high = max(c[-10:])
+    uptrend = cur > ma20 and ma20 > ma20_prev
+    pullback = cur <= ma5
+    dip = (recent_high - cur) / recent_high if recent_high else 0
+    score = 0
+    if uptrend and pullback and 0.02 <= dip <= 0.12:
+        score = 60 + int(min(dip, 0.12) * 200)  # 되돌림 깊을수록 가점(최대 ~84)
+    entry = cur
+    stop = round(min(ma20, cur) * 0.97)          # MA20 약간 아래 손절
+    target = round(max(recent_high, cur * 1.08))  # 전고 회복 or +8%
+    return score, entry, stop, target
+
+
+def _obv_rising(bars: list[dict], t: int, lookback: int = 10) -> bool:
+    """수급 프록시: OBV(누적 방향성 거래량) 추세가 상승인가 = 매집 흐름."""
+    if t < lookback + 1:
+        return False
+    obv = 0.0
+    series = []
+    for k in range(t - lookback, t + 1):
+        if k == 0:
+            continue
+        sign = 1 if bars[k]["c"] > bars[k - 1]["c"] else (-1 if bars[k]["c"] < bars[k - 1]["c"] else 0)
+        obv += sign * bars[k]["v"]
+        series.append(obv)
+    # OBV 시작 대비 끝이 상승 + 후반부가 전반부보다 높으면 매집
+    return len(series) >= 4 and series[-1] > series[0] and series[-1] > series[len(series) // 2]
+
+
+def _momentum_obv_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """모멘텀 점수 + 수급(OBV) 필터 — OBV 매집 아니면 진입 제외(score 0)."""
+    score, entry, stop, target = _score_levels(bars, t)
+    if not _obv_rising(bars, t):
+        return 0, entry, stop, target
+    return score, entry, stop, target
+
+
+def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_score_levels) -> list[dict]:
+    """한 종목 walk-forward 백테스트 → 체결 리스트. levels_fn으로 전략 교체(모멘텀/눌림목)."""
     trades = []
     i = 21
     n = len(bars)
     while i < n - 1:
-        score, _entry, stop, target = _score_levels(bars, i)
+        score, _entry, stop, target = levels_fn(bars, i)
         if score < threshold or not (stop < bars[i]["c"] < target):
             i += 1
             continue
@@ -194,16 +250,36 @@ def grid(months: int, thresholds=(50, 55, 60, 65, 70), holds=(5, 7, 10, 15)) -> 
                 continue
             print(f"{th:>4} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
                   f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
-            # 최적: 샤프 우선, 거래 10건 이상 + MDD -40% 이내
-            if m["trades"] >= 10 and m["mdd"] > -40:
+            # 최적: 샤프 우선, 거래 30건 이상(통계 신뢰) + MDD -40% 이내 — 과적합 소표본 배제
+            if m["trades"] >= 30 and m["mdd"] > -40:
                 key = m["sharpe"]
                 if best is None or key > best[0]:
                     best = (key, th, hd, m)
     if best:
         _, th, hd, m = best
-        print(f"\n✅ 최적(샤프 기준, 거래≥10·MDD≤40%): 기준={th} 보유={hd}일 "
+        print(f"\n✅ 최적(샤프 기준, 거래≥30·MDD≤40%): 기준={th} 보유={hd}일 "
               f"→ 승률 {m['win_rate']}% 손익비 {m['profit_factor']} 누적 {m['total_return']}% "
               f"MDD {m['mdd']}% 샤프 {m['sharpe']}")
+    else:
+        print("\n⚠️ 거래≥30·MDD≤40% 조건을 만족하는 견고한 파라미터 없음 (엣지 약함)")
+
+
+def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
+    """모멘텀(기본 점수) vs 눌림목 진입 비교 — 동일 데이터·기준에서."""
+    data = _load_all(months)
+    print(f"[전략 비교] {len(data)}종목 / {months}개월 / 기준 {threshold}\n")
+    print(f"{'전략':>8} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
+    for label, fn in (("모멘텀", _score_levels), ("모멘텀+수급", _momentum_obv_levels), ("눌림목", _pullback_levels)):
+        for hd in holds:
+            trades = []
+            for bars in data.values():
+                trades += backtest_symbol(bars, threshold, hd, fn)
+            m = _metrics(trades)
+            if m.get("trades"):
+                print(f"{label:>8} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
+                      f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
+            else:
+                print(f"{label:>8} {hd:>4}  거래 없음")
 
 
 def main() -> None:
@@ -213,9 +289,12 @@ def main() -> None:
     ap.add_argument("--months", type=int, default=12, help="검증 기간(개월)")
     ap.add_argument("--scan", action="store_true", help="여러 임계값 비교")
     ap.add_argument("--grid", action="store_true", help="기준×보유기간 그리드 (데이터 1회 로드)")
+    ap.add_argument("--compare", action="store_true", help="모멘텀 vs 눌림목 전략 비교")
     args = ap.parse_args()
 
-    if args.grid:
+    if args.compare:
+        compare_strategies(args.months, args.threshold)
+    elif args.grid:
         grid(args.months)
     elif args.scan:
         print(f"[백테스트 스캔] {len(UNIVERSE)}종목 / {args.months}개월 / 보유 {args.hold}일")
