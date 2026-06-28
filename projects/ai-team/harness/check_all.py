@@ -25,7 +25,6 @@ sys.path.insert(0, str(AI_TEAM))
 
 ACTIVE_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
-    "youngsuk_schedule": "schedule_manager.py",
     "somi": "somi_kis_reporter.py",
     "yewon_monitor": "harness_monitor.py",
 }
@@ -140,7 +139,6 @@ def check_runtime():
 def check_schedule():
     base = AI_TEAM / "skills" / "영숙_비서" / "tools"
     schedules = base / "schedules.json"
-    last_run = base / "last_run.json"
     try:
         data = read_json(schedules)
         items = data.get("schedules", [])
@@ -158,8 +156,16 @@ def check_schedule():
     if bad_commands:
         return fail("schedule command missing: " + ", ".join(bad_commands[:5]))
 
-    last_info = age_text(last_run) if last_run.exists() else "never"
-    return ok(f"enabled {len(enabled)}/{len(items)}, last_run {last_info}")
+    # 정시 잡은 단일 데몬이 아니라 잡별 독립 launchd 에이전트(com.ailab.sched.*)로 운영 — 적재 확인
+    try:
+        out = subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=5).stdout
+        loaded = sum(1 for ln in out.splitlines()
+                     if ln.split() and ln.split()[-1].startswith("com.ailab.sched."))
+    except Exception as e:
+        return fail(f"launchctl 조회 실패: {e}")
+    if loaded < len(enabled):
+        return fail(f"정시 잡 적재 부족 {loaded}/{len(enabled)} — 'schedule_sync.py sync' 필요")
+    return ok(f"정시 잡 launchd 적재 {loaded}개 (enabled {len(enabled)}/{len(items)})")
 
 
 def check_somi():

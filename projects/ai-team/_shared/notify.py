@@ -13,9 +13,12 @@ from datetime import datetime
 # 상시 데몬 (프로세스가 계속 떠 있어야 정상)
 CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
-    "youngsuk_schedule": "schedule_manager.py",
     "somi_monitor": "somi_price_monitor.py",
 }
+
+# 정시 잡(조사팀·예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
+# (com.ailab.sched.*) — SPOF 제거. 집계로 정상 여부 판단.
+SCHED_PREFIX = "com.ailab.sched."
 
 # 예약 실행 서비스 (launchd StartCalendarInterval) — 평소엔 미실행이 정상, 지정 시각에만 실행
 SCHEDULED_SERVICES = {
@@ -28,7 +31,7 @@ SCHEDULED_SERVICES = {
 
 _AGENT_LABELS = {
     "youngsuk": "영숙 (텔레그램 비서)",
-    "youngsuk_schedule": "영숙 (조사팀 스케줄러)",
+    "scheduler": "정시 잡 (조사팀·예원 — launchd 잡별 분리)",
     "somi_monitor": "소미 (실시간 급변동 감시)",
     "somi": "소미 (정기 리포트)",
     "somi_screener": "소미 (매수 제안)",
@@ -117,13 +120,25 @@ def _launchd_loaded(label: str) -> bool:
     return False
 
 
+def _sched_count() -> int:
+    """적재된 com.ailab.sched.* 정시 잡 개수."""
+    try:
+        result = subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=5)
+    except Exception:
+        return 0
+    return sum(1 for ln in result.stdout.splitlines()
+               if ln.split() and ln.split()[-1].startswith(SCHED_PREFIX))
+
+
 def agent_status() -> dict[str, str]:
     """상시 데몬은 프로세스, 예약 서비스는 launchd 적재 여부로 상태 판정.
-    값: 'up,<pid>' | 'scheduled'(예약 대기) | 'down'."""
+    값: 'up,<pid>' | 'scheduled' | 'sched:<n>'(정시 잡 n개) | 'down'."""
     status: dict[str, str] = {}
     for name, script in CONTINUOUS_DAEMONS.items():
         pids = _find_pids(script)
         status[name] = ",".join(pids) if pids else "down"
+    n = _sched_count()
+    status["scheduler"] = f"sched:{n}" if n else "down"
     for name, label in SCHEDULED_SERVICES.items():
         status[name] = "scheduled" if _launchd_loaded(label) else "down"
     return status
@@ -137,6 +152,8 @@ def status_report() -> str:
             mark = "🔴 중지"
         elif state == "scheduled":
             mark = "🟢 정상 (예약 실행 대기)"
+        elif state.startswith("sched:"):
+            mark = f"🟢 정상 ({state.split(':')[1]}개 잡 예약)"
         else:
             mark = f"🟢 실행 중 (pid {state})"
         lines.append(f"- {label}: {mark}")
