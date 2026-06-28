@@ -227,8 +227,10 @@ def market_regime_map(kis: KISClient, months: int) -> dict:
 
 
 def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_score_levels,
-                    regime_ok: dict | None = None) -> list[dict]:
-    """한 종목 walk-forward 백테스트 → 체결 리스트. levels_fn으로 전략 교체, regime_ok로 국면 게이트."""
+                    regime_ok: dict | None = None, trail_pct: float | None = None,
+                    use_target: bool = True) -> list[dict]:
+    """한 종목 walk-forward 백테스트 → 체결 리스트. levels_fn으로 전략 교체, regime_ok로 국면 게이트.
+    trail_pct: 고점 대비 trail_pct 하락 시 청산(트레일링 스톱). use_target=False면 고정목표 미사용(추세 추종)."""
     trades = []
     i = 21
     n = len(bars)
@@ -244,11 +246,17 @@ def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_scor
         # 다음날 시가 진입 (무미래참조)
         ep = bars[i + 1]["o"] * (1 + SLIP)
         exit_price, exit_reason, exit_idx = None, "timeout", min(i + hold, n - 1)
+        peak = ep
         for j in range(i + 1, min(i + 1 + hold, n)):
-            if bars[j]["l"] <= stop:               # 손절 우선(보수적)
-                exit_price, exit_reason, exit_idx = stop * (1 - SLIP), "stop", j
+            peak = max(peak, bars[j]["h"])           # 보유 중 최고가 갱신
+            eff_stop = stop
+            if trail_pct:                            # 트레일링: 고점 대비 trail_pct 하락선
+                eff_stop = max(stop, peak * (1 - trail_pct))
+            if bars[j]["l"] <= eff_stop:             # 손절/트레일링 우선(보수적)
+                reason = "trail" if (trail_pct and eff_stop > stop) else "stop"
+                exit_price, exit_reason, exit_idx = eff_stop * (1 - SLIP), reason, j
                 break
-            if bars[j]["h"] >= target:
+            if use_target and bars[j]["h"] >= target:
                 exit_price, exit_reason, exit_idx = target * (1 - SLIP), "target", j
                 break
         if exit_price is None:
