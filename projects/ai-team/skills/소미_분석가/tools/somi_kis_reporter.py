@@ -414,6 +414,8 @@ def _load_prev_loan_rate(symbol: str) -> str | None:
 
 
 def _save_loan_rate(symbol: str, loan_rate) -> None:
+    if loan_rate in (None, "", "0", "0.0"):
+        return  # 빈/0 값은 전일대비 추이를 오염시키므로 저장하지 않음
     try:
         FLOW_HISTORY.parent.mkdir(parents=True, exist_ok=True)
         data = {}

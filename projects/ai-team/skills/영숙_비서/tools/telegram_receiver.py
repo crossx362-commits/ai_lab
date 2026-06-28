@@ -966,6 +966,14 @@ def _launch_dev_task(request: str) -> str:
     """'개발 <요청>' → 격리 worktree에서 헤드리스 claude 실행(백그라운드). 끝나면 결과를 별도 보고."""
     if not request:
         return "개발 요청 내용을 적어줘. 예: '개발 소미 리포트에 RSI 지표 추가'"
+    # 동시 실행 제한 — 진행 중인 개발 작업(worktree)이 있으면 거부(자원 고갈 방지)
+    try:
+        wt = subprocess.run(["git", "worktree", "list"], cwd=str(PROJECT_ROOT),
+                            capture_output=True, text=True, timeout=10).stdout
+        if "ailab-dev-" in wt:
+            return "🛠️ 이미 진행 중인 개발 작업이 있어. 끝나면 다시 요청해줘."
+    except Exception:
+        pass
     branch = "tg-dev-" + datetime.now().strftime("%m%d-%H%M%S")
     try:
         subprocess.Popen(
@@ -1084,10 +1092,11 @@ _ALLOWED_CHAT_IDS = {c.strip() for c in (os.getenv("TELEGRAM_CHAT_ID", "")).spli
 
 
 async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # 발신자 잠금 — 허용된 chat_id(소유자)만 처리. 그 외엔 무응답(원격 코드 실행 차단)
-    chat_id = str(update.effective_chat.id) if update.effective_chat else ""
-    if _ALLOWED_CHAT_IDS and chat_id not in _ALLOWED_CHAT_IDS:
-        log(f"차단된 발신자 chat_id={chat_id}: {(update.effective_message.text or '')[:50]}")
+    # 발신자 잠금 — fail-closed: 허용 목록이 비면 전부 거부. user.id·chat.id 모두 대조(그룹 권한상승 차단)
+    uid = str(update.effective_user.id) if update.effective_user else ""
+    cid = str(update.effective_chat.id) if update.effective_chat else ""
+    if not _ALLOWED_CHAT_IDS or (uid not in _ALLOWED_CHAT_IDS and cid not in _ALLOWED_CHAT_IDS):
+        log(f"차단된 발신자 user={uid} chat={cid}: {(update.effective_message.text or '')[:50]}")
         return
 
     text = update.effective_message.text or ""

@@ -445,7 +445,8 @@ def run(candidate_limit: int = 20, do_send: bool = False) -> str:
             for p in buys:
                 mc = _mc(p["symbol"], p["entry"], p["stop"], p["target"])
                 p["mc"] = mc
-                if mc is None or (mc["edge"] >= min_edge and mc["exp_ret_pct"] > 0):
+                # fail-closed: MC 계산 실패(None)면 매수 보류 — 게이트가 불확실성에 열리지 않게
+                if mc is not None and mc["edge"] >= min_edge and mc["exp_ret_pct"] > 0:
                     gated.append(p)
             buys = gated
         except Exception:

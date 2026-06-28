@@ -32,8 +32,13 @@ def _git(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
 
 
 def run(branch: str, request: str) -> None:
+    import os
     claude = shutil.which("claude") or "/usr/local/bin/claude"
+    if not os.access(claude, os.X_OK):
+        send(f"❌ 개발 작업 실패 — claude 실행파일을 찾을 수 없음({claude}). 데몬 PATH 확인 필요.")
+        return
     worktree = PROJECT_ROOT.parent / f"ailab-dev-{branch}"
+    _git("worktree", "prune")  # 이전 크래시로 남은 stale worktree 정리
 
     # 1) 격리 worktree + 새 브랜치 (master 작업트리 보호)
     r = _git("worktree", "add", "-b", branch, str(worktree))
@@ -81,4 +86,12 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("usage: tg_dev_runner.py <branch> <request>")
         sys.exit(1)
-    run(sys.argv[1], sys.argv[2])
+    # 어떤 예외로 죽어도 소유자에게 침묵하지 않도록 최상위 보호 — '시작했어'만 받고 무한대기 방지
+    try:
+        run(sys.argv[1], sys.argv[2])
+    except Exception as exc:
+        try:
+            send(f"❌ 개발 작업 비정상 종료: {exc}")
+        except Exception:
+            pass
+        raise
