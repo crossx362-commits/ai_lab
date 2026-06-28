@@ -13,17 +13,21 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict
 
-# 프로젝트 루트 경로
-ROOT_DIR = Path(__file__).parent.parent.parent.parent.parent
+# 프로젝트 루트 경로 (ai_lab) — parents[5]가 ai_lab (기존 .parent×5는 projects로 한 칸 어긋났었음)
+ROOT_DIR = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT_DIR))
 sys.path.insert(0, str(ROOT_DIR / "projects" / "ai-team"))
 
-from _shared.knowledge_base import get_kb_dir
-from _shared.notion_client import create_notion_page
 from _shared.llm import ollama as ollama_chat
 
 REPORTS_DIR = ROOT_DIR / "reports"
 ARCHIVE_DIR = REPORTS_DIR / "archive"
+
+
+def get_kb_dir() -> str:
+    """리서치 지식베이스(.md) 디렉터리. (제거된 _shared.knowledge_base 대체)"""
+    return str(REPORTS_DIR / "research")
+
 
 def ensure_directories():
     """필요한 디렉토리 생성"""
@@ -239,9 +243,11 @@ def run_notion_report():
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     title = f"🧠 AI 팀 통합 리서치 리포트 ({now_str})"
     
-    print("  [영숙] 노션(Notion) 슈퍼파워 툴 가동 중...")
-    result = create_notion_page(title, summary)
-    return result
+    print("  [영숙] 노션(Notion) 기록 중...")
+    from _shared.research import notion_page  # 현재 노션 기록 함수 (제거된 notion_client 대체)
+    bullets = [ln.strip("-* ").strip() for ln in summary.splitlines() if ln.strip()][:12]
+    ok = notion_page(title, bullets)
+    return f"✅ 노션 리포트 발행: {title}" if ok else "⚠️ 노션 발행 실패(키 미설정 등) — 요약은 생성됨:\n\n" + summary[:800]
 
 
 def main():
