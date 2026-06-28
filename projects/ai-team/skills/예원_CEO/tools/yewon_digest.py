@@ -62,17 +62,21 @@ def _today_events() -> str:
 def build(slot: str) -> str:
     now = datetime.now()
     label = SLOT_LABEL.get(slot, slot)
-    mb = research.load_market_brief()
-    fx = mb.get("fx", {}) or {}
-    market_comment = (mb.get("comment") or "").strip()
+    # 마켓데스크 종합 브리프 전체(국가별 뉴스·거시·지정학·트렌드·전망·비트코인)를 그대로 읽어
+    # 예원이 항상 체크하게 한다.
+    mb_md = ""
+    try:
+        p = research.RESEARCH_DIR / "market_brief.md"
+        mb_md = p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
+    except Exception:
+        mb_md = ""
     somi = _somi_text()
     events = _today_events()
     status = status_report()
 
     raw = (
-        f"[시간대] {label}\n"
-        f"[환율] USD/KRW {fx.get('KRW', '?')}\n"
-        f"[시장 코멘트] {market_comment or '없음'}\n\n"
+        f"[시간대] {label}\n\n"
+        f"[시장 종합 브리프 — 국가별 뉴스·거시·지정학·트렌드·전망·비트코인]\n{mb_md or '브리프 없음'}\n\n"
         f"[소미 종목 보고]\n{somi or '없음'}\n\n"
         f"[오늘 일정]\n{events}\n\n"
         f"[에이전트 현황]\n{status}"
@@ -80,8 +84,9 @@ def build(slot: str) -> str:
 
     prompt = (
         f"너는 CEO 예원이다. 아래 자료를 사장님께 올리는 '{label} 종합 보고'로 정리하라. "
-        "시장 → 보유/관심 종목 → 일정·특이사항 순으로, 핵심만 간결하게. 군더더기·인사말 최소화, "
-        "사장님 호칭. 수치는 그대로 유지.\n\n" + raw
+        "반드시 다음을 빠짐없이 포함: ① 국가별 증시·뉴스 ② 거시·지정학·전쟁 ③ 트렌드 이슈 "
+        "④ 증시·비트코인 전망 ⑤ 보유/관심 종목 ⑥ 일정·특이사항. 각 항목 핵심만 간결히, "
+        "군더더기·인사말 최소화, 사장님 호칭, 수치는 그대로 유지.\n\n" + raw
     )
     body = (text(prompt, max_tokens=1200, temperature=0.4, task="blog") or "").strip()
     if not body:
