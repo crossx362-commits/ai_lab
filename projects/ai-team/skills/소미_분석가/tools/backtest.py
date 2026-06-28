@@ -160,12 +160,31 @@ def _momentum_obv_levels(bars: list[dict], t: int) -> tuple[int, float, float, f
     return score, entry, stop, target
 
 
-def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_score_levels) -> list[dict]:
-    """한 종목 walk-forward 백테스트 → 체결 리스트. levels_fn으로 전략 교체(모멘텀/눌림목)."""
+def market_regime_map(kis: KISClient, months: int) -> dict:
+    """시장 국면(라이브 HMM 게이트의 백테스트 대용) — KODEX200 종가>MA20 이면 상승국면(진입 허용)."""
+    bars = _history(kis, "069500", months)  # KODEX 200 = KOSPI200 대용
+    closes = [b["c"] for b in bars]
+    ok = {}
+    for i, b in enumerate(bars):
+        if i < 20:
+            ok[b["date"]] = True
+            continue
+        ma20 = sum(closes[i - 20:i]) / 20
+        ok[b["date"]] = b["c"] > ma20  # 지수 20일선 위 = 상승국면
+    return ok
+
+
+def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_score_levels,
+                    regime_ok: dict | None = None) -> list[dict]:
+    """한 종목 walk-forward 백테스트 → 체결 리스트. levels_fn으로 전략 교체, regime_ok로 국면 게이트."""
     trades = []
     i = 21
     n = len(bars)
     while i < n - 1:
+        # 시장 하락국면이면 진입 스킵 (라이브 HMM 게이트와 동일 취지)
+        if regime_ok is not None and not regime_ok.get(bars[i]["date"], True):
+            i += 1
+            continue
         score, _entry, stop, target = levels_fn(bars, i)
         if score < threshold or not (stop < bars[i]["c"] < target):
             i += 1
@@ -265,21 +284,30 @@ def grid(months: int, thresholds=(50, 55, 60, 65, 70), holds=(5, 7, 10, 15)) -> 
 
 
 def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
-    """모멘텀(기본 점수) vs 눌림목 진입 비교 — 동일 데이터·기준에서."""
+    """전략·게이트 비교 — 모멘텀 / +수급(OBV) / +국면(HMM대용) / 눌림목. 동일 데이터·기준."""
+    kis = KISClient()
     data = _load_all(months)
-    print(f"[전략 비교] {len(data)}종목 / {months}개월 / 기준 {threshold}\n")
-    print(f"{'전략':>8} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
-    for label, fn in (("모멘텀", _score_levels), ("모멘텀+수급", _momentum_obv_levels), ("눌림목", _pullback_levels)):
+    regime = market_regime_map(kis, months)
+    bull_days = sum(1 for v in regime.values() if v)
+    print(f"[전략 비교] {len(data)}종목 / {months}개월 / 기준 {threshold} "
+          f"(상승국면 {bull_days}/{len(regime)}일)\n")
+    print(f"{'전략':>14} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
+    variants = [
+        ("모멘텀", _score_levels, None),
+        ("모멘텀+국면", _score_levels, regime),
+        ("모멘텀+수급+국면", _momentum_obv_levels, regime),
+    ]
+    for label, fn, reg in variants:
         for hd in holds:
             trades = []
             for bars in data.values():
-                trades += backtest_symbol(bars, threshold, hd, fn)
+                trades += backtest_symbol(bars, threshold, hd, fn, reg)
             m = _metrics(trades)
             if m.get("trades"):
-                print(f"{label:>8} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
+                print(f"{label:>14} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
                       f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
             else:
-                print(f"{label:>8} {hd:>4}  거래 없음")
+                print(f"{label:>14} {hd:>4}  거래 없음")
 
 
 def main() -> None:
