@@ -27,15 +27,16 @@ from _shared import research  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-INDEX_SYMBOLS = {"DAX": "^dax", "유로스톡스50": "^stx"}
+INDEX_SYMBOLS = {"독일DAX": "^dax", "영국FTSE": "^ukx", "프랑스CAC": "^fchi", "러시아RTS": "^rts", "오스트리아ATX": "^atx"}
 
 
 def collect() -> dict:
     payload = {
         "indices": research.indices(INDEX_SYMBOLS),
-        "fx": research.fx("EUR", "GBP"),
+        "fx": research.fx("EUR", "GBP", "RUB"),
         "web_issues": research.web_brief(
-            "오늘 유럽 증시(DAX·유로스톡스50)와 ECB·유럽 경제 주요 이슈를 2줄 이내로 요약."
+            "오늘 유럽 증시 주요 뉴스를 국가별로 정리하라: 영국·프랑스·독일·러시아·오스트리아. "
+            "각 국가 1~2줄, 지수·핵심 이슈 위주로 간결히. ECB·영란은행(BoE) 정책도 포함."
         ),
         "note": "ECB 정책·유럽 거시는 키/소스 추가 시 확장 예정",
     }
