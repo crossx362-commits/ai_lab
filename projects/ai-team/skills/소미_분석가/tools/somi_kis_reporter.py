@@ -318,12 +318,14 @@ def _investor_flow_text(investor_hist: list[dict]) -> str:
     return ", ".join(parts) if parts else "확인 필요"
 
 
-def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> str:
+def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = DEFAULT_SYMBOL,
+                     name: str = DEFAULT_NAME, investor_hist=None, short_sale=None) -> str:
     quote = kis.quote(symbol)
     dailies = kis.daily_prices(symbol, 30)
     investor = kis.investor_today(symbol)
-    investor_hist = kis.investor_history(symbol, 5)
-    short_sale = kis.daily_short_sale(symbol)
+    # make_report가 10일/시리즈를 미리 받아오면 재사용(중복 호출 방지), 단독 호출 시만 직접 조회
+    investor_hist = (investor_hist if investor_hist is not None else kis.investor_history(symbol, 5))[:5]
+    short_sale = short_sale if short_sale is not None else kis.daily_short_sale(symbol)
 
     latest = dailies[0] if dailies else {}
     rows_for_avg = dailies[1:21] if len(dailies) > 1 else dailies[:20]
@@ -425,14 +427,18 @@ def _save_loan_rate(symbol: str, loan_rate) -> None:
 
 def make_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> str:
     kis = KISClient()
-    input_text = build_input_text(kis, report_name, symbol, name)
+    # 일자별 데이터는 한 번만 조회해 리포트·정밀분석에 함께 사용(중복 호출 방지)
+    inv10 = kis.investor_history(symbol, 10)
+    short_series = kis.short_sale_series(symbol, 20)
+    input_text = build_input_text(
+        kis, report_name, symbol, name,
+        investor_hist=inv10, short_sale=(short_series[0] if short_series else None),
+    )
     parsed = parse_input_text(input_text)
     score, grade, pos, neg = calculate_score(parsed)
     # 일자별 수급·공매도·대차 정밀 분석 (고점분산·공매도추세·숏커버 판별로 점수 보정)
     flow_block = ""
     try:
-        inv10 = kis.investor_history(symbol, 10)
-        short_series = kis.short_sale_series(symbol, 20)
         prev_lr = _load_prev_loan_rate(symbol)
         fa = flow_short_analysis(
             inv10, short_series,

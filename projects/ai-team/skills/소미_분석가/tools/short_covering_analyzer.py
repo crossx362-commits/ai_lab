@@ -108,8 +108,7 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
     institution_5d = to_num(raw.get("buy_institution_5d"))
     individual_5d = to_num(raw.get("buy_indiv_5d"))
     foreign_rate = to_num(raw.get("foreign_holding_rate"))
-    loan_rate = to_num(raw.get("loan_balance_rate"))
-    short_volume = to_num(raw.get("short_volume"))
+    # 공매도·대차는 단순 가산 대신 flow_short_analysis(1-2)에서 맥락으로 판정 — 여기선 제외
     support = to_num(raw.get("support_line"))
     resistance = to_num(raw.get("resistance_line"))
     intraday = raw.get("intraday_feature", "")
@@ -187,16 +186,6 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
     if foreign_rate >= 5:
         score += 4
         pos.append(f"외국인 보유율 {foreign_rate:.2f}%")
-
-    if loan_rate >= 3:
-        score += 8
-        pos.append(f"대차잔고율 {loan_rate:.2f}%로 숏커버링 관찰 가치 있음")
-    elif loan_rate > 0:
-        score += 3
-        pos.append(f"대차잔고율 {loan_rate:.2f}% 확인")
-    if short_volume > 0:
-        score += 5
-        pos.append(f"직전 공매도 체결수량 {short_volume:,.0f}주")
 
     if support and close and close < support:
         score -= 15
