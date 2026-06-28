@@ -26,7 +26,7 @@ import os  # noqa: E402
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from somi_kis_reporter import KISClient, num  # noqa: E402
-from somi_trade_advisor import load_positions, remove_position  # noqa: E402
+from somi_trade_advisor import load_positions, log_closed_trade, remove_position  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -51,8 +51,8 @@ def _is_paper() -> bool:
     return os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
 
 
-def _paper_sell(symbol: str) -> str:
-    """모의 모드 자동 매도. 실제 페이퍼 보유분 기준으로 전량 매도하고 기록을 항상 정리(스토어 불일치 자가복구)."""
+def _paper_sell(symbol: str, reason: str = "", exit_price: float = 0.0) -> str:
+    """모의 모드 자동 매도. 실제 페이퍼 보유분 기준 전량 매도, 청산거래 로그 적재 후 기록 정리(자가복구)."""
     from kis_trader import KISTrader
 
     trader = KISTrader()
@@ -66,6 +66,14 @@ def _paper_sell(symbol: str) -> str:
         trader.order(symbol, held, "sell", 0)
     except Exception as exc:
         return f" → 자동 매도 실패: {exc}"
+    # 청산 거래 로그(성과추적: 백테스트 대비 실제 승률·수익률)
+    try:
+        meta = load_positions().get(symbol, {})
+        log_closed_trade(symbol, meta.get("name", symbol), num(meta.get("entry")),
+                         exit_price or num(meta.get("entry")), held, reason,
+                         meta.get("ts", ""), meta.get("score"))
+    except Exception:
+        pass
     remove_position(symbol)
     return f" → 🧪 모의 자동 매도 체결({held}주)"
 
@@ -93,20 +101,20 @@ def check_positions() -> list[str]:
 
         paper = _is_paper()
         if stop and cur <= stop:
-            action = _paper_sell(symbol) if paper else "\n  매도하려면 '소미 매도 {} '라고 답해줘요.".format(name)
+            action = _paper_sell(symbol, "stop", cur) if paper else "\n  매도하려면 '소미 매도 {} '라고 답해줘요.".format(name)
             alerts.append(
                 f"🔴 손절 — {name}({symbol})\n"
                 f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 손절가 {won(stop)} 도달/이탈.{action}"
             )
         elif target and cur >= target:
-            action = _paper_sell(symbol) if paper else "\n  '소미 매도 {}' 또는 수량 지정 매도.".format(name)
+            action = _paper_sell(symbol, "target", cur) if paper else "\n  '소미 매도 {}' 또는 수량 지정 매도.".format(name)
             alerts.append(
                 f"🟢 익절 — {name}({symbol})\n"
                 f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 목표가 {won(target)} 도달.{action}"
             )
         elif _busdays_held(p.get("ts", "")) >= MAX_HOLD_DAYS:
             # 시간초과 청산 — 목표·손절 미도달이라도 보유 한도 넘으면 정리(백테스트 검증)
-            action = _paper_sell(symbol) if paper else "\n  매도하려면 '소미 매도 {}' 라고 답해줘요.".format(name)
+            action = _paper_sell(symbol, "timeout", cur) if paper else "\n  매도하려면 '소미 매도 {}' 라고 답해줘요.".format(name)
             alerts.append(
                 f"⏰ 시간초과 청산 — {name}({symbol})\n"
                 f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 보유 {MAX_HOLD_DAYS}거래일 경과 — 목표·손절 미도달.{action}"

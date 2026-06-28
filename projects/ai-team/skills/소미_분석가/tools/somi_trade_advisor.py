@@ -37,6 +37,7 @@ load_env(str(PROJECT_ROOT))
 
 PROPOSALS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_proposals.json"
 POSITIONS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_positions.json"
+CLOSED_TRADES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"  # 청산 거래 로그(성과추적)
 
 STOP_PCT = 0.05    # 지지선 없을 때 기본 손절 -5%
 TARGET_PCT = 0.10  # 저항선 없을 때 기본 목표 +10%
@@ -74,11 +75,12 @@ def load_positions() -> dict:
     return _load(POSITIONS_FILE)
 
 
-def record_position(symbol: str, name: str, entry: float, stop: float, target: float, qty: int) -> None:
+def record_position(symbol: str, name: str, entry: float, stop: float, target: float,
+                    qty: int, score: int | None = None) -> None:
     pos = load_positions()
     pos[symbol] = {
         "name": name, "entry": entry, "stop": stop, "target": target,
-        "qty": qty, "ts": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "qty": qty, "ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "score": score,
     }
     _save(POSITIONS_FILE, pos)
 
@@ -88,6 +90,22 @@ def remove_position(symbol: str) -> None:
     if symbol in pos:
         del pos[symbol]
         _save(POSITIONS_FILE, pos)
+
+
+def log_closed_trade(symbol: str, name: str, entry: float, exit_price: float, qty: int,
+                     reason: str, ts_open: str = "", score=None) -> None:
+    """청산된 모의 거래를 로그에 적재 — 성과추적(백테스트 대비 실제 승률·수익률)용."""
+    try:
+        log = json.loads(CLOSED_TRADES_FILE.read_text(encoding="utf-8")) if CLOSED_TRADES_FILE.exists() else []
+    except Exception:
+        log = []
+    ret_pct = ((exit_price - entry) / entry * 100) if entry else 0.0
+    log.append({
+        "symbol": symbol, "name": name, "entry": entry, "exit": exit_price, "qty": qty,
+        "ret_pct": round(ret_pct, 2), "reason": reason, "score": score,
+        "ts_open": ts_open, "ts_close": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    })
+    _save(CLOSED_TRADES_FILE, log)
 
 
 # ── 매수 제안 생성 ───────────────────────────────────────────
@@ -409,7 +427,7 @@ def _auto_buy_paper(proposals: list[dict]) -> list[str]:
         except Exception as exc:
             done.append(f"⏭️ {p['name']} 매수 건너뜀: {exc}")
             continue
-        record_position(p["symbol"], p["name"], entry, p["stop"], p["target"], qty)
+        record_position(p["symbol"], p["name"], entry, p["stop"], p["target"], qty, p.get("score"))
         done.append(
             f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ ~{int(entry):,}원 "
             f"(확신 {conv:.1f}배·점수 {p.get('score', '?')})\n"

@@ -145,6 +145,17 @@
       "enabled": true,
       "run": true,
       "priority": "high"
+    },
+    {
+      "id": "somi_perf_tracker",
+      "agent": "소미",
+      "task": "모의 성과 추적(백테스트 대비)",
+      "cron": "30 16 * * 5",
+      "description": "주간 모의 성과 vs 백테스트 비교 보고",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_perf_tracker.py --send",
+      "enabled": true,
+      "run": true,
+      "priority": "medium"
     }
   ]
 }
