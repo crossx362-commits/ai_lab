@@ -263,7 +263,9 @@ def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_scor
             exit_price = bars[exit_idx]["c"] * (1 - SLIP)
         gross = exit_price / ep - 1
         net = gross - (FEE * 2 + TAX)            # 왕복 수수료 + 매도세
-        trades.append({"ret": net, "reason": exit_reason, "days": exit_idx - i})
+        risk = (ep - stop) / ep if ep else 0     # 손절까지 거리(=1주당 위험) — 사이징용
+        trades.append({"ret": net, "reason": exit_reason, "days": exit_idx - i,
+                       "score": score, "risk": risk})
         i = exit_idx + 1                          # 청산 후 재진입
     return trades
 

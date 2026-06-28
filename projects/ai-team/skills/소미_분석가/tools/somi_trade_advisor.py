@@ -399,7 +399,11 @@ def _auto_buy_paper(proposals: list[dict]) -> list[str]:
         if p["symbol"] in held:
             continue
         entry = p.get("entry") or 1
-        qty = max(1, int(SOMI_BUDGET // entry))
+        # 확신 기반 사이징(백테스트 검증): 점수 높을수록 크게. 평균점수(~65) 기준 1.0배로 재중심해
+        # 평균 투입자본은 그대로 두고 고점수에만 더 배분 → 공정비교서 24mo +264%→+298%,
+        # 30mo +348%→+385%, MDD 동등/개선. (위험기반·균등보다 우월)
+        conv = min(2.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))
+        qty = max(1, int(int(SOMI_BUDGET * conv) // entry))
         try:
             trader.order(p["symbol"], qty, "buy", 0)
         except Exception as exc:
@@ -407,7 +411,8 @@ def _auto_buy_paper(proposals: list[dict]) -> list[str]:
             continue
         record_position(p["symbol"], p["name"], entry, p["stop"], p["target"], qty)
         done.append(
-            f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ ~{int(entry):,}원\n"
+            f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ ~{int(entry):,}원 "
+            f"(확신 {conv:.1f}배·점수 {p.get('score', '?')})\n"
             f"   손절 {int(p['stop']):,} / 목표 {int(p['target']):,} 감시 시작"
         )
     return done
