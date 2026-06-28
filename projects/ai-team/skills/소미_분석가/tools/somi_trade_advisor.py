@@ -117,10 +117,29 @@ def analyze_candidate(kis: KISClient, code: str, name: str) -> dict | None:
     }
 
 
+def _news_candidates() -> list[tuple[str, str]]:
+    """뉴스/공시 호재(impact≥+1) + 밸류체인 수혜 종목을 발굴 후보로. (마켓데스크가 채운 issue_impact 기반)"""
+    try:
+        impact = research.load_issue_impact()
+    except Exception:
+        return []
+    out = []
+    for code, v in (impact or {}).items():
+        if isinstance(v, dict) and v.get("score", 0) >= 1:
+            out.append((str(code), v.get("name", str(code))))
+    return out
+
+
 def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> list[dict]:
     kis = KISClient()
-    proposals = []
+    # 후보 = 거래대금 상위(유동성) ∪ 뉴스/공시 호재·밸류체인 종목 (중복 코드 제거)
+    universe: dict[str, str] = {}
     for code, name in get_candidates(kis, candidate_limit):
+        universe[code] = name
+    for code, name in _news_candidates():
+        universe.setdefault(code, name)
+    proposals = []
+    for code, name in universe.items():
         a = analyze_candidate(kis, code, name)
         if a and a["score"] >= min_score:
             proposals.append(a)

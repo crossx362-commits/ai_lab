@@ -95,14 +95,66 @@ def _build_issue_impact(disclosures: list, us: dict, asia: dict, eu: dict) -> No
         resp = text(prompt, json_mode=True, max_tokens=900, temperature=0.2, task="blog")
         if resp:
             raw = _json.loads(resp)
-            # 실제 영향(0이 아닌) 종목만 저장 — 0/근거없음은 '뉴스없음'으로 둠
+            # 실제 영향(0이 아닌) 종목만 저장 — 0/근거없음은 '뉴스없음'으로 둠. 종목명도 함께.
             for code, v in (raw.items() if isinstance(raw, dict) else []):
                 if isinstance(v, dict) and isinstance(v.get("score"), int) and v["score"] != 0:
-                    impact[str(code)] = {"score": v["score"], "reason": v.get("reason", "")}
+                    code = str(code)
+                    impact[code] = {"score": v["score"], "reason": v.get("reason", ""),
+                                    "name": targets.get(code, code)}
     except Exception as exc:
         print(f"[market_desk] issue_impact 평가 실패: {exc}", file=sys.stderr)
+
+    # 밸류체인 확장: 강한 호재(+2) 종목의 공급망 수혜주를 도출해 후보에 추가
+    _expand_value_chain(impact)
     research.save_issue_impact(impact)
     print(f"[market_desk] issue_impact 저장: {len(impact)}종목 (대상 {len(targets)})")
+
+
+def _expand_value_chain(impact: dict, max_add: int = 6) -> None:
+    """강한 호재(+2) 종목의 밸류체인/공급망 수혜 상장사를 LLM으로 도출해 impact에 추가(+1).
+    LLM이 준 종목명은 네이버 검색으로 코드 검증 후, 실재 종목만 반영(허위 티커 방지)."""
+    import json as _json
+
+    strong = [(c, v) for c, v in list(impact.items()) if v.get("score", 0) >= 2]
+    if not strong:
+        return
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from stock_search import resolve_symbol
+    except Exception:
+        return
+    added: dict[str, dict] = {}
+    for code, v in strong[:3]:
+        nm = v.get("name", code)
+        names = []
+        try:
+            resp = text(
+                f"'{nm}'의 호재: {v.get('reason', '')}\n"
+                "이 호재로 직접 수혜받는 한국 상장사(밸류체인·공급망)를 3개까지 골라라. 확실한 것만, 대형주 우선.\n"
+                'JSON 객체만: {"beneficiaries": ["종목명", ...]}',
+                json_mode=True, max_tokens=150, temperature=0.2, lm_first=False,
+            )
+            if resp:
+                a, b = resp.find("{"), resp.rfind("}")
+                obj = _json.loads(resp[a:b + 1]) if a >= 0 and b > a else {}
+                names = obj.get("beneficiaries", []) if isinstance(obj, dict) else []
+        except Exception:
+            names = []
+        for name in (names if isinstance(names, list) else []):
+            hit = resolve_symbol(str(name))
+            if not hit:
+                continue
+            rc, rn = hit
+            if rc in impact or rc in added:
+                continue
+            added[rc] = {"score": 1, "reason": f"밸류체인 수혜({nm})", "name": rn}
+            if len(added) >= max_add:
+                break
+        if len(added) >= max_add:
+            break
+    if added:
+        impact.update(added)
+        print(f"[market_desk] 밸류체인 수혜주 {len(added)}종목 추가")
 
 
 def build() -> dict:
