@@ -288,3 +288,52 @@ def web_brief(query: str, max_tokens: int = 800) -> str:
     지수·심리·핫이슈처럼 무료 API가 막힌 항목을 이걸로 대체한다.
     Gemini(google_search) → Claude(web_search) 폴백."""
     return _gemini_search(query, max_tokens) or _claude_search(query, max_tokens)
+
+
+# ── 노션 기록 ───────────────────────────────────────────────────────────────
+def notion_page(title: str, bullets: list[str]) -> bool:
+    """NOTION_DATABASE_ID DB에 간결한 페이지(제목 + 불릿)를 만든다.
+    너무 길지 않게 — 불릿은 최대 12개, 각 줄 1800자 컷."""
+    key = os.getenv("NOTION_API_KEY", "").strip()
+    db = os.getenv("NOTION_DATABASE_ID", "").strip()
+    if not key or not db:
+        return False
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    }
+
+    def _api(method: str, url: str, payload: dict | None = None):
+        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+
+    # title 속성 이름 동적 조회 (DB마다 다름)
+    title_prop = "Name"
+    try:
+        meta = _api("GET", f"https://api.notion.com/v1/databases/{db}")
+        for k, v in (meta.get("properties") or {}).items():
+            if v.get("type") == "title":
+                title_prop = k
+                break
+    except Exception:
+        pass
+
+    children = [
+        {"object": "block", "type": "bulleted_list_item",
+         "bulleted_list_item": {"rich_text": [{"type": "text", "text": {"content": (b or "")[:1800]}}]}}
+        for b in bullets[:12] if (b or "").strip()
+    ]
+    payload = {
+        "parent": {"database_id": db},
+        "properties": {title_prop: {"title": [{"text": {"content": title[:200]}}]}},
+        "children": children,
+    }
+    try:
+        _api("POST", "https://api.notion.com/v1/pages", payload)
+        return True
+    except Exception as exc:
+        print(f"  노션 기록 실패: {exc}")
+        return False

@@ -35,6 +35,11 @@ def _idx_line(region: dict) -> str:
     return " / ".join(f"{k} {v['close']}" for k, v in (region.get("indices") or {}).items() if v)
 
 
+def _short(s: str, n: int = 120) -> str:
+    s = (s or "").strip().replace("\n", " ")
+    return (s[:n] + "…") if len(s) > n else s
+
+
 def build() -> dict:
     us = research.load_region("us")
     asia = research.load_region("asia")
@@ -138,6 +143,22 @@ def build() -> dict:
         "disclosures": disclosures,
         "comment": comment,
     })
+
+    # 노션에 간결 기록 (제목 + 핵심 불릿 몇 줄)
+    bullets = []
+    if fx.get("KRW"):
+        bullets.append(f"💱 USD/KRW {fx['KRW']:.1f}")
+    for label, reg in (("🇺🇸 미국", us), ("🌏 한국", asia), ("🇪🇺 유럽", eu)):
+        w = reg.get("web_issues")
+        if w:
+            bullets.append(f"{label} {_short(w, 110)}")
+    if disclosures:
+        bullets.append("📑 공시 " + str(len(disclosures)) + "건: "
+                       + ", ".join(f"{d['name']} {d['report']}" for d in disclosures[:3]))
+    if comment:
+        bullets.append("🧭 " + _short(comment, 160))
+    research.notion_page(f"📊 시장 브리프 {now}", bullets)
+
     return {"md": md}
 
 
