@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -161,11 +162,36 @@ def check_schedule():
     return ok(f"enabled {len(enabled)}/{len(items)}, last_run {last_info}")
 
 
-def check_trading():
-    intel = ROOT / "reports" / "research" / "crypto_market_intel.json"
-    if not intel.exists():
-        return warn("missing crypto_market_intel.json")
-    return ok(f"trading agents not installed in current tree; intel {age_text(intel)}")
+def check_somi():
+    """소미 자동매매 파이프라인 건강도 — KIS키·조사데이터 신선도·페이퍼 정합."""
+    warns = []
+    # 1) KIS 주문/시세 키
+    if not (os.getenv("KIS_APP_KEY") and os.getenv("KIS_APP_SECRET")):
+        warns.append("KIS 키 없음")
+    # 2) 조사팀 산출물(뉴스 impact / 시장브리프) 신선도 — 평일 2일↑ 묵으면 경고
+    research_dir = ROOT / "output" / "research"
+    for fname in ("market_brief.json", "issue_impact.json"):
+        f = research_dir / fname
+        if not f.exists():
+            warns.append(f"{fname} 없음")
+        elif (time.time() - f.stat().st_mtime) > 3 * 86400:
+            warns.append(f"{fname} 오래됨({age_text(f)})")
+    # 3) 페이퍼 원장 ↔ 포지션 메타 정합 (둘 다 있을 때만)
+    cache = ROOT / "output" / "cache"
+    paper_f, pos_f = cache / "somi_paper.json", cache / "somi_positions.json"
+    if paper_f.exists() and pos_f.exists():
+        try:
+            held = set((read_json(paper_f).get("positions") or {}).keys())
+            meta = set(read_json(pos_f).keys())
+            ghost = meta - held  # 메타엔 있는데 원장엔 없음 = 고스트
+            if ghost:
+                warns.append(f"포지션 고스트 {len(ghost)}건")
+        except Exception as e:
+            warns.append(f"페이퍼 정합 확인 실패: {e}")
+    mode = "페이퍼" if os.getenv("KIS_PAPER", "").lower() in ("1", "true", "yes") else "실거래"
+    if warns:
+        return warn(f"[{mode}] " + "; ".join(warns))
+    return ok(f"[{mode}] 파이프라인 정상 (KIS·조사데이터·페이퍼 정합)")
 
 
 def check_structure():
@@ -366,7 +392,7 @@ def main() -> int:
         "env": check_env,
         "runtime": check_runtime,
         "schedule": check_schedule,
-        "trading": check_trading,
+        "somi": check_somi,
         "structure": check_structure,
         "classification_layout": check_classification_layout,
         "report_layout": check_report_layout,
