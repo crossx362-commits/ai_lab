@@ -212,6 +212,21 @@ def _combo_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     return (score if ok else 0), e, s, tg
 
 
+def _meanrev_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """역추세(과매도 반등): '떨어졌으니 오른다' 가설 — RSI<30 과매도면 진입, 평균회귀 목표."""
+    c = [b["c"] for b in bars[:t + 1]]
+    if len(c) < 25:
+        return 0, bars[t]["c"], 0, 0
+    cur = c[-1]
+    ma20 = sum(c[-20:]) / 20
+    recent_low = min(c[-5:])
+    score = 70 if _rsi(bars, t) < 30 else 0      # 과매도 진입
+    entry = cur
+    stop = round(recent_low * 0.95)              # 더 빠지면(칼날) 손절
+    target = round(max(ma20, cur * 1.08))        # 평균(MA20) 회귀 or +8%
+    return score, entry, stop, target
+
+
 def market_regime_map(kis: KISClient, months: int) -> dict:
     """시장 국면(라이브 HMM 게이트의 백테스트 대용) — KODEX200 종가>MA20 이면 상승국면(진입 허용)."""
     bars = _history(kis, "069500", months)  # KODEX 200 = KOSPI200 대용
