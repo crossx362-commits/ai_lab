@@ -35,7 +35,57 @@ load_env(str(PROJECT_ROOT))
 SOMI_REPORTER = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_kis_reporter.py"
 CAL_CACHE = AI_TEAM_ROOT / "_shared" / "calendar_cache.md"
 
+# 조사팀 재수집용 스크립트 (예원이 부실 판단 시 재실행)
+RESEARCH_SCRIPTS = {
+    "us": AI_TEAM_ROOT / "skills" / "행크_미국조사" / "tools" / "us_research.py",
+    "asia": AI_TEAM_ROOT / "skills" / "유나_아시아조사" / "tools" / "asia_research.py",
+    "eu": AI_TEAM_ROOT / "skills" / "레온_유럽조사" / "tools" / "eu_research.py",
+    "desk": AI_TEAM_ROOT / "skills" / "마켓데스크_시장종합" / "tools" / "market_desk.py",
+}
+
 SLOT_LABEL = {"morning": "장전", "midday": "장중", "close": "마감"}
+
+
+def _run_research(key: str, timeout: int = 240) -> bool:
+    """조사 스크립트 1회 재실행 (텔레그램 전송 없이 데이터만 갱신)."""
+    script = RESEARCH_SCRIPTS.get(key)
+    if not script or not script.exists():
+        return False
+    try:
+        subprocess.run([sys.executable, str(script)], cwd=str(PROJECT_ROOT),
+                       capture_output=True, text=True, timeout=timeout)
+        return True
+    except Exception:
+        return False
+
+
+def _region_thin(name: str, reg: dict) -> bool:
+    """지역 조사 데이터가 부실한지 — 지수도 웹이슈도 (아시아면 뉴스도) 비었으면 부실."""
+    has = bool(reg.get("indices")) or bool(reg.get("web_issues"))
+    if name == "asia":
+        has = has or bool(reg.get("news")) or bool(reg.get("disclosures"))
+    return not has
+
+
+def ensure_news_quality() -> list[str]:
+    """예원이 뉴스팀 산출물을 검수 → 부실하면 해당 조사 에이전트에 재수집 지시(재실행).
+    보완한 내역을 반환. (1회만 재시도해 무한루프 방지)"""
+    actions = []
+    regions = {n: research.load_region(n) for n in ("us", "asia", "eu")}
+    weak = [n for n, reg in regions.items() if _region_thin(n, reg)]
+
+    for n in weak:
+        if _run_research(n):
+            actions.append(f"{n} 지역조사 재수집")
+
+    # 마켓데스크 종합/영향도 점검 — 비었거나 코멘트 없으면 재집계
+    mb = research.load_market_brief()
+    impact = research.load_issue_impact()
+    need_desk = bool(weak) or (not mb) or (not mb.get("comment")) or (not impact)
+    if need_desk and _run_research("desk"):
+        actions.append("마켓데스크 종합·영향도 재작성")
+
+    return actions
 
 
 def _somi_text() -> str:
@@ -62,6 +112,8 @@ def _today_events() -> str:
 def build(slot: str) -> str:
     now = datetime.now()
     label = SLOT_LABEL.get(slot, slot)
+    # 예원 검수: 뉴스팀 산출물이 부실하면 먼저 재수집 지시(보강 후 보고 작성)
+    fixed = ensure_news_quality()
     # 마켓데스크 종합 브리프 전체(국가별 뉴스·거시·지정학·트렌드·전망·비트코인)를 그대로 읽어
     # 예원이 항상 체크하게 한다.
     mb_md = ""
@@ -74,8 +126,10 @@ def build(slot: str) -> str:
     events = _today_events()
     status = status_report()
 
+    qa = ("예원 검수: 부실 항목 보강함 — " + ", ".join(fixed)) if fixed else "예원 검수: 뉴스팀 자료 양호"
     raw = (
-        f"[시간대] {label}\n\n"
+        f"[시간대] {label}\n"
+        f"[{qa}]\n\n"
         f"[시장 종합 브리프 — 국가별 뉴스·거시·지정학·트렌드·전망·비트코인]\n{mb_md or '브리프 없음'}\n\n"
         f"[소미 종목 보고]\n{somi or '없음'}\n\n"
         f"[오늘 일정]\n{events}\n\n"
