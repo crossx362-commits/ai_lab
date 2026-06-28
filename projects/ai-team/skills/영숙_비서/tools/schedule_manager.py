@@ -245,10 +245,14 @@ def main():
 
     if args.list:
         list_schedules()
-    elif args.check:
-        check_and_run_schedules()
-    elif args.daemon:
-        schedule_loop(args.interval)
+    elif args.check or args.daemon:
+        # 폐기됨: 정시 잡은 잡별 독립 launchd 에이전트(com.ailab.sched.*)로 운영된다.
+        # 이 데몬을 띄우면 launchd 잡과 '이중 실행'되므로 차단한다. (근본 구조 변경 후 footgun 방지)
+        print("⛔ schedule_manager 데몬/체크 모드는 폐기되었습니다.")
+        print("   정시 잡은 이제 launchd 잡별 에이전트로 실행됩니다 (SPOF 제거).")
+        print("   스케줄 반영: python schedule_sync.py sync")
+        print("   목록 확인:   python schedule_sync.py list  /  python schedule_manager.py --list")
+        sys.exit(2)
     else:
         print("사용법:")
         print("  --daemon        백그라운드 실행")
