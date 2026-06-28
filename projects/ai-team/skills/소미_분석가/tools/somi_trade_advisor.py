@@ -311,6 +311,10 @@ def _fmt(p: dict) -> str:
         head,
         f"  · 진입가 {won(p['entry'])} / 손절가 {won(p['stop'])} / 목표가 {won(p['target'])} (손익비 {p['rr']})",
     ]
+    mc = p.get("mc")
+    if mc:
+        lines.append(f"  · MC확률: 목표도달 {mc['p_target']*100:.0f}% vs 손절 {mc['p_stop']*100:.0f}% "
+                     f"(우위 {mc['edge']*100:+.0f}%p) / 기대 {mc['exp_ret_pct']:+.1f}%")
     if p.get("news_reason"):
         lines.append(f"  · 판단: {p['news_reason']}")
     else:
@@ -421,6 +425,20 @@ def run(candidate_limit: int = 20, do_send: bool = False) -> str:
     buys = [p for p in proposals if p.get("verdict") == "buy" and p["symbol"] not in held_syms]
     if regime == "bear":
         buys = []  # 하락 국면 → 신규 매수 중단
+    # 몬테카를로 확률 게이트: 목표도달이 손절보다 충분히 우위(edge)이고 기대수익>0 인 것만 매수
+    if buys:
+        try:
+            from mc_simulator import simulate as _mc
+            min_edge = float(os.getenv("SOMI_MC_MIN_EDGE", "0.05"))
+            gated = []
+            for p in buys:
+                mc = _mc(p["symbol"], p["entry"], p["stop"], p["target"])
+                p["mc"] = mc
+                if mc is None or (mc["edge"] >= min_edge and mc["exp_ret_pct"] > 0):
+                    gated.append(p)
+            buys = gated
+        except Exception:
+            pass
     if not proposals:
         report = f"{header}\n오늘은 소미 기준({GOOD_SCORE}점↑) 매수 제안 종목이 없습니다. 계속 감시 중."
     elif _is_paper():
