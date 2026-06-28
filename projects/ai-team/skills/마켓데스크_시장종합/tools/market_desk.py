@@ -100,6 +100,13 @@ def build() -> dict:
     except Exception:
         comment = ""
 
+    # 향후 전망 + 비트코인 전망 (웹검색 1회로 묶음, 토큰 절약)
+    outlook = research.web_brief(
+        "다음 두 가지를 각각 2줄 이내로 간결히 정리하라. 근거 위주, 단정적 표현은 피하라: "
+        "(1) 향후 1~2주 한국·미국 증시 단기 전망 (2) 비트코인 가격 동향과 단기 전망.",
+        max_tokens=500,
+    )
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     md_lines = [f"# 📋 시장 종합 브리프 — {now}", ""]
     if fx.get("KRW"):
@@ -135,6 +142,8 @@ def build() -> dict:
         md_lines.append("")
     if comment:
         md_lines += ["## 🧭 데스크 코멘트", comment, ""]
+    if outlook:
+        md_lines += ["## 📈 전망 · 비트코인", outlook, ""]
 
     md = "\n".join(md_lines)
     research.save_market_brief(md, {
@@ -155,8 +164,13 @@ def build() -> dict:
     if disclosures:
         bullets.append("📑 공시 " + str(len(disclosures)) + "건: "
                        + ", ".join(f"{d['name']} {d['report']}" for d in disclosures[:3]))
+    news = asia.get("news") or []
+    if news:
+        bullets.append("📰 뉴스: " + " · ".join(news[:2]))
     if comment:
         bullets.append("🧭 " + _short(comment, 160))
+    if outlook:
+        bullets.append("📈 전망·BTC: " + _short(outlook, 170))
     research.notion_page(f"📊 시장 브리프 {now}", bullets)
 
     return {"md": md}
