@@ -27,7 +27,7 @@ from _shared import research  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-INDEX_SYMBOLS = {"코스피": "^kospi", "상해종합": "^shc", "닛케이": "^nkx", "베트남VN": "^vnindex"}
+INDEX_SYMBOLS = {"코스피": "^kospi", "닛케이": "^nkx", "항셍": "^hsi"}
 
 
 def collect() -> dict:
@@ -36,12 +36,12 @@ def collect() -> dict:
     payload = {
         "watchlist": wl,
         "disclosures": research.dart_recent(codes, days=2),
-        "fx": research.fx("KRW", "JPY", "CNY", "VND"),
+        "fx": research.fx("KRW", "JPY", "CNY"),
         "indices": research.indices(INDEX_SYMBOLS),
         "news": research.news_rss("https://www.hankyung.com/feed/finance", 8),
         "web_issues": research.web_brief(
-            "오늘 아시아 증시 주요 뉴스·핫이슈를 국가별로 정리하라: 한국·중국·일본·베트남. "
-            "각 국가 1~2줄, 지수 등락과 핵심 이슈(종목·정책·수급) 위주로 간결히."
+            "오늘 한국 코스피·코스닥 증시의 주요 뉴스와 핫이슈를 종목·테마 위주로 "
+            "4줄 이내로 요약하라. 지수 등락과 수급 특징도 포함."
         ),
     }
     research.save_region("asia", payload)

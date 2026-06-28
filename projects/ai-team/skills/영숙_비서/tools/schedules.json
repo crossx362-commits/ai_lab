@@ -134,6 +134,17 @@
       "enabled": true,
       "run": true,
       "priority": "medium"
+    },
+    {
+      "id": "research_desk_pm",
+      "agent": "마켓데스크",
+      "task": "시장 종합(오후 갱신)",
+      "cron": "20 15 * * 1-5",
+      "description": "오후 소미 발굴(15:50) 직전 issue_impact 갱신 (텔레그램 전송 없음)",
+      "command": "python projects/ai-team/skills/마켓데스크_시장종합/tools/market_desk.py",
+      "enabled": true,
+      "run": true,
+      "priority": "high"
     }
   ]
 }

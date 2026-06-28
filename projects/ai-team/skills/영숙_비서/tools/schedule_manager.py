@@ -125,9 +125,14 @@ def execute_schedule(schedule: Dict):
     # v2.90 — python 스크립트 command는 실제 실행한다. 자체 데몬이 보고를
     # 전담하는 항목(소미 등)은 schedules.json에 "run": false 로 두어 중복 방지.
     if schedule.get("run", True) and command.strip().startswith("python"):
+        # 'python ...' → 실제 인터프리터로 치환 (이 시스템엔 python 별칭이 없고 python3만 존재)
+        run_cmd = command.strip()
+        if not run_cmd.startswith("python3"):
+            run_cmd = sys.executable + run_cmd[len("python"):]
         try:
-            subprocess.Popen(command, shell=True, cwd=PROJECT_ROOT)
-            print(f"  [영숙] 명령 실행 시작: {command}")
+            subprocess.Popen(run_cmd, shell=True, cwd=PROJECT_ROOT,
+                             env={**os.environ, "PYTHONUTF8": "1"})
+            print(f"  [영숙] 명령 실행 시작: {run_cmd}")
         except Exception as exc:
             print(f"  [영숙] 명령 실행 실패: {exc}")
             send(f"⚠️ 스케줄 실행 실패 ({schedule_id}): {exc}")

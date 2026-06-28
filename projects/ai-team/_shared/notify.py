@@ -13,6 +13,7 @@ from datetime import datetime
 # 상시 데몬 (프로세스가 계속 떠 있어야 정상)
 CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
+    "youngsuk_schedule": "schedule_manager.py",
     "somi_monitor": "somi_price_monitor.py",
 }
 
@@ -26,6 +27,7 @@ SCHEDULED_SERVICES = {
 
 _AGENT_LABELS = {
     "youngsuk": "영숙 (텔레그램 비서)",
+    "youngsuk_schedule": "영숙 (조사팀 스케줄러)",
     "somi_monitor": "소미 (실시간 급변동 감시)",
     "somi": "소미 (정기 리포트)",
     "somi_screener": "소미 (매수 제안)",
