@@ -22,6 +22,7 @@ SCHEDULED_SERVICES = {
     "somi": "com.ailab.somi",                    # 정기 리포트 (15:40)
     "somi_screener": "com.ailab.somi_screener",  # 매수 제안 (09:30/15:50)
     "somi_position": "com.ailab.somi_position",   # 보유 포지션 익절/손절 점검 (장중)
+    "yewon_selfheal": "com.ailab.yewon_selfheal", # 자가 점검/복구 (08:00)
     "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
 }
 
@@ -32,6 +33,7 @@ _AGENT_LABELS = {
     "somi": "소미 (정기 리포트)",
     "somi_screener": "소미 (매수 제안)",
     "somi_position": "소미 (포지션 익절/손절)",
+    "yewon_selfheal": "예원 (자가 점검/복구)",
     "harness": "하네스 (시스템 점검)",
 }
 
