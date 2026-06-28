@@ -237,13 +237,7 @@ def _gemini_search(query: str, max_tokens: int) -> str:
         body = {
             "contents": [{"parts": [{"text": query}]}],
             "tools": [{"google_search": {}}],
-            # 2.5-flash는 thinking 모델 → thinking이 출력 토큰을 먹어 답변이 잘림.
-            # thinkingBudget=0으로 thinking을 끄고 출력 토큰을 답변에 온전히 쓴다.
-            "generationConfig": {
-                "maxOutputTokens": max_tokens,
-                "temperature": 0.3,
-                "thinkingConfig": {"thinkingBudget": 0},
-            },
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
         }
         req = urllib.request.Request(
             url, data=json.dumps(body).encode("utf-8"),
