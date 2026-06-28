@@ -88,19 +88,27 @@ def fx(*codes: str) -> dict[str, float | None]:
         return {c: None for c in codes}
 
 
-# ── 지수 (stooq, 실패 시 None) ──────────────────────────────────────────────
+# ── 지수 (Yahoo Finance chart API, 실패 시 None) ────────────────────────────
 def index_quote(symbol: str) -> dict | None:
-    """stooq CSV로 지수 종가 조회. 형식: Symbol,Date,Time,Open,High,Low,Close,Volume."""
+    """Yahoo Finance chart API로 지수 종가·등락률 조회. (stooq는 2026년 차단됨)"""
     try:
-        csv = _get(f"https://stooq.com/q/l/?s={urllib.parse.quote(symbol)}&f=sd2t2ohlcv&h&e=csv")
-        lines = [ln for ln in csv.strip().splitlines() if ln.strip()]
-        if len(lines) >= 2:
-            v = lines[1].split(",")
-            if len(v) >= 7 and v[6] not in ("", "N/D"):
-                return {"symbol": symbol, "date": v[1], "close": v[6]}
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
+               f"{urllib.parse.quote(symbol)}?interval=1d&range=5d")
+        d = get_json(url)
+        m = d["chart"]["result"][0]["meta"]
+        px = m.get("regularMarketPrice")
+        if px is None:
+            return None
+        prev = m.get("chartPreviousClose") or m.get("previousClose")
+        chg = round((px - prev) / prev * 100, 2) if prev else None
+        ts = m.get("regularMarketTime")
+        dt = datetime.fromtimestamp(ts) if ts else datetime.now()
+        # 신선도 가드: 10일 넘게 묵은 데이터는 폐기(예: 제재로 동결된 러시아 IMOEX 2022년치)
+        if (datetime.now() - dt).days > 10:
+            return None
+        return {"symbol": symbol, "date": dt.strftime("%Y-%m-%d"), "close": px, "chg_pct": chg}
     except Exception:
-        pass
-    return None
+        return None
 
 
 def indices(symbol_map: dict[str, str]) -> dict[str, dict | None]:

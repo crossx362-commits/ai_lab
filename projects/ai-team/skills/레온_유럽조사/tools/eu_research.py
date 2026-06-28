@@ -27,7 +27,7 @@ from _shared import research  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-INDEX_SYMBOLS = {"독일DAX": "^dax", "영국FTSE": "^ukx", "프랑스CAC": "^fchi", "러시아RTS": "^rts", "오스트리아ATX": "^atx"}
+INDEX_SYMBOLS = {"독일DAX": "^GDAXI", "영국FTSE": "^FTSE", "프랑스CAC": "^FCHI", "러시아MOEX": "IMOEX.ME", "오스트리아ATX": "^ATX"}
 
 
 def collect() -> dict:

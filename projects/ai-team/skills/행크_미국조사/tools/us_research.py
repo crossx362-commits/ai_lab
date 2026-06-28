@@ -29,7 +29,7 @@ from _shared import research  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-INDEX_SYMBOLS = {"S&P500": "^spx", "나스닥": "^ndq", "VIX": "^vix"}
+INDEX_SYMBOLS = {"S&P500": "^GSPC", "나스닥": "^IXIC", "VIX": "^VIX"}
 
 
 def collect() -> dict:

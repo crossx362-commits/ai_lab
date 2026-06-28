@@ -27,7 +27,7 @@ from _shared import research  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-INDEX_SYMBOLS = {"코스피": "^kospi", "상해종합": "^shc", "닛케이": "^nkx", "베트남VN": "^vnindex"}
+INDEX_SYMBOLS = {"코스피": "^KS11", "상해종합": "000001.SS", "닛케이": "^N225"}  # 베트남VN: Yahoo 미지원으로 제외
 
 
 def collect() -> dict:
