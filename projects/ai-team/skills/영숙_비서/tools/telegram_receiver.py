@@ -1019,7 +1019,7 @@ def handle_message(text: str) -> str:
         return _agent_factory_action("reject_pending")
 
     if _is_trading_status_request(text):
-        return _tool_get_trading_status() + "\n\n" + _tool_get_agent_status()
+        return _tool_get_agent_status()  # 거래/에이전트 현황 통합 — 한 번만
 
     if _is_stock_price_request(text):
         return _tool_get_stock_price(text)
