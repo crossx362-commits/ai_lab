@@ -160,6 +160,58 @@ def _momentum_obv_levels(bars: list[dict], t: int) -> tuple[int, float, float, f
     return score, entry, stop, target
 
 
+# ── 진입 신호 강화(절대수익): RSI(과매수 회피) · 상대강도(지수 초과) ──────────
+_MARKET: dict = {}  # date -> 지수(KODEX200) 종가. compare_strategies에서 채움.
+
+
+def _rsi(bars: list[dict], t: int, period: int = 14) -> float:
+    """Wilder 단순화 RSI. 데이터 부족 시 중립값 50."""
+    if t < period:
+        return 50.0
+    gains = losses = 0.0
+    for k in range(t - period + 1, t + 1):
+        d = bars[k]["c"] - bars[k - 1]["c"]
+        if d >= 0:
+            gains += d
+        else:
+            losses -= d
+    if losses == 0:
+        return 100.0
+    rs = (gains / period) / (losses / period)
+    return 100 - 100 / (1 + rs)
+
+
+def _rel_strength_ok(bars: list[dict], t: int, lookback: int = 20) -> bool:
+    """상대강도: 종목의 lookback 수익률이 지수보다 높은가(시장 주도주). 데이터 없으면 중립 통과."""
+    if not _MARKET or t < lookback or not bars[t - lookback]["c"]:
+        return True
+    stock_ret = bars[t]["c"] / bars[t - lookback]["c"] - 1
+    m_now = _MARKET.get(bars[t]["date"])
+    m_then = _MARKET.get(bars[t - lookback]["date"])
+    if m_now and m_then:
+        return stock_ret > (m_now / m_then - 1)
+    return True
+
+
+def _rsi_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """모멘텀 + RSI 과매수(>70) 진입 제외 — 블로우오프 고점 추격 회피."""
+    score, e, s, tg = _score_levels(bars, t)
+    return (0 if _rsi(bars, t) > 70 else score), e, s, tg
+
+
+def _rs_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """모멘텀 + 상대강도(지수 초과) 필터 — 시장 주도주만 매수."""
+    score, e, s, tg = _score_levels(bars, t)
+    return (score if _rel_strength_ok(bars, t) else 0), e, s, tg
+
+
+def _combo_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """모멘텀 + 상대강도 + RSI과매수회피 동시 적용."""
+    score, e, s, tg = _score_levels(bars, t)
+    ok = _rel_strength_ok(bars, t) and _rsi(bars, t) <= 70
+    return (score if ok else 0), e, s, tg
+
+
 def market_regime_map(kis: KISClient, months: int) -> dict:
     """시장 국면(라이브 HMM 게이트의 백테스트 대용) — KODEX200 종가>MA20 이면 상승국면(진입 허용)."""
     bars = _history(kis, "069500", months)  # KODEX 200 = KOSPI200 대용
@@ -285,17 +337,21 @@ def grid(months: int, thresholds=(50, 55, 60, 65, 70), holds=(5, 7, 10, 15)) -> 
 
 def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
     """전략·게이트 비교 — 모멘텀 / +수급(OBV) / +국면(HMM대용) / 눌림목. 동일 데이터·기준."""
+    global _MARKET
     kis = KISClient()
     data = _load_all(months)
     regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)        # 지수(KODEX200) → 상대강도 기준
+    _MARKET = {b["date"]: b["c"] for b in mbars}
     bull_days = sum(1 for v in regime.values() if v)
     print(f"[전략 비교] {len(data)}종목 / {months}개월 / 기준 {threshold} "
           f"(상승국면 {bull_days}/{len(regime)}일)\n")
-    print(f"{'전략':>14} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
+    print(f"{'전략':>18} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
     variants = [
-        ("모멘텀", _score_levels, None),
         ("모멘텀+국면", _score_levels, regime),
-        ("모멘텀+수급+국면", _momentum_obv_levels, regime),
+        ("+RSI회피+국면", _rsi_levels, regime),
+        ("+상대강도+국면", _rs_levels, regime),
+        ("+RSI+상대강도+국면", _combo_levels, regime),
     ]
     for label, fn, reg in variants:
         for hd in holds:
@@ -304,10 +360,10 @@ def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
                 trades += backtest_symbol(bars, threshold, hd, fn, reg)
             m = _metrics(trades)
             if m.get("trades"):
-                print(f"{label:>14} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
+                print(f"{label:>18} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
                       f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
             else:
-                print(f"{label:>14} {hd:>4}  거래 없음")
+                print(f"{label:>18} {hd:>4}  거래 없음")
 
 
 def main() -> None:

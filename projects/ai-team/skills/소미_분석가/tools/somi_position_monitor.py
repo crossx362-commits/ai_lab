@@ -31,8 +31,9 @@ from somi_trade_advisor import load_positions, remove_position  # noqa: E402
 load_env(str(PROJECT_ROOT))
 
 TRAIL_PROFIT_PCT = 5.0   # 목표가 전이라도 +5% 이상이면 분할익절 참고 제안
-# 백테스트 검증: 보유 5~7거래일이 샤프 최고, 길어지면 급락(15일=샤프 0). 최대 보유 후 시간초과 청산.
-MAX_HOLD_DAYS = int(os.getenv("SOMI_MAX_HOLD_DAYS", "7"))
+# 백테스트 재검증(40종목·다기간 12/24/30개월, 기준 60): 보유 18~25일이 견고한 고원.
+# 7일은 승자를 일찍 놔줘 모멘텀 수익을 버림 — 20일이 절대수익 최상위·MDD 균형(24mo +134→+264%).
+MAX_HOLD_DAYS = int(os.getenv("SOMI_MAX_HOLD_DAYS", "20"))
 
 
 def _busdays_held(ts: str) -> int:
