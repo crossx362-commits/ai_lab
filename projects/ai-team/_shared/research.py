@@ -237,7 +237,13 @@ def _gemini_search(query: str, max_tokens: int) -> str:
         body = {
             "contents": [{"parts": [{"text": query}]}],
             "tools": [{"google_search": {}}],
-            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
+            # 2.5-flash는 thinking 모델 → thinking이 출력 토큰을 먹어 답변이 잘림.
+            # thinkingBudget=0으로 thinking을 끄고 출력 토큰을 답변에 온전히 쓴다.
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "temperature": 0.3,
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
         }
         req = urllib.request.Request(
             url, data=json.dumps(body).encode("utf-8"),
@@ -293,11 +299,45 @@ def _claude_search(query: str, max_tokens: int) -> str:
         return ""
 
 
+def _gpt_search(query: str, max_tokens: int) -> str:
+    key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not key:
+        return ""
+    try:
+        body = {
+            "model": "gpt-4o-search-preview",
+            "messages": [{"role": "user", "content": query}],
+            "max_tokens": max_tokens,
+        }
+        req = urllib.request.Request(
+            "https://api.openai.com/v1/chat/completions",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=40) as r:
+            d = json.loads(r.read().decode("utf-8", "replace"))
+        return (d["choices"][0]["message"]["content"] or "").strip()
+    except Exception:
+        return ""
+
+
+# 호출마다 다른 제공자로 시작 → Gemini 한 곳에 쏠리지 않게 부하 분산.
+_WEB_PROVIDERS = [_gemini_search, _claude_search, _gpt_search]
+_web_rr = [0]
+
+
 def web_brief(query: str, max_tokens: int = 800) -> str:
-    """실시간 웹 정보를 LLM 검색으로 요약. 봇은 MCP 웹검색을 못 쓰므로
-    지수·심리·핫이슈처럼 무료 API가 막힌 항목을 이걸로 대체한다.
-    Gemini(google_search) → Claude(web_search) 폴백."""
-    return _gemini_search(query, max_tokens) or _claude_search(query, max_tokens)
+    """실시간 웹 정보를 LLM 검색으로 요약. Gemini(google_search)·Claude(web_search)
+    ·GPT(search-preview)를 라운드로빈으로 돌리고, 실패 시 다음 제공자로 폴백한다."""
+    n = len(_WEB_PROVIDERS)
+    start = _web_rr[0]
+    _web_rr[0] = (start + 1) % n
+    for i in range(n):
+        result = _WEB_PROVIDERS[(start + i) % n](query, max_tokens)
+        if result:
+            return result
+    return ""
 
 
 # ── 노션 기록 ───────────────────────────────────────────────────────────────

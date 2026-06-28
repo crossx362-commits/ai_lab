@@ -200,11 +200,20 @@ def build() -> dict:
     except Exception:
         comment = ""
 
-    # 향후 전망 + 비트코인 전망 (웹검색 1회로 묶음, 토큰 절약)
+    # 향후 전망 + 비트코인 전망 (웹검색)
     outlook = research.web_brief(
-        "다음 두 가지를 각각 2줄 이내로 간결히 정리하라. 근거 위주, 단정적 표현은 피하라: "
+        "다음 두 가지를 각각 2~3줄로 간결히 정리하라. 근거 위주, 단정적 표현은 피하라: "
         "(1) 향후 1~2주 한국·미국 증시 단기 전망 (2) 비트코인 가격 동향과 단기 전망.",
-        max_tokens=500,
+        max_tokens=900,
+    )
+
+    # 거시 · 지정학 · 트렌드 (시장을 움직이는 큰 줄기)
+    geo_macro = research.web_brief(
+        "다음을 각각 2줄 이내로 간결히. 근거·출처 위주: "
+        "(1) 지정학·전쟁 상황(중동·이란·러시아-우크라이나 등 시장 영향) "
+        "(2) 거시 경제 흐름(미국·한국 금리·인플레·유가·달러 추세) "
+        "(3) 핵심 트렌드 이슈(AI·반도체 등 시장 주도 테마)",
+        max_tokens=1100,
     )
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -242,6 +251,8 @@ def build() -> dict:
         md_lines.append("")
     if comment:
         md_lines += ["## 🧭 데스크 코멘트", comment, ""]
+    if geo_macro:
+        md_lines += ["## 🌐 거시 · 지정학 · 트렌드", geo_macro, ""]
     if outlook:
         md_lines += ["## 📈 전망 · 비트코인", outlook, ""]
 
@@ -269,6 +280,8 @@ def build() -> dict:
         bullets.append("📰 뉴스: " + " · ".join(news[:2]))
     if comment:
         bullets.append("🧭 " + _short(comment, 160))
+    if geo_macro:
+        bullets.append("🌐 거시·지정학: " + _short(geo_macro, 180))
     if outlook:
         bullets.append("📈 전망·BTC: " + _short(outlook, 170))
     research.notion_page(f"📊 시장 브리프 {now}", bullets)
