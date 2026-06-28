@@ -31,6 +31,19 @@ from somi_trade_advisor import load_positions, remove_position  # noqa: E402
 load_env(str(PROJECT_ROOT))
 
 TRAIL_PROFIT_PCT = 5.0   # 목표가 전이라도 +5% 이상이면 분할익절 참고 제안
+# 백테스트 검증: 보유 5~7거래일이 샤프 최고, 길어지면 급락(15일=샤프 0). 최대 보유 후 시간초과 청산.
+MAX_HOLD_DAYS = int(os.getenv("SOMI_MAX_HOLD_DAYS", "7"))
+
+
+def _busdays_held(ts: str) -> int:
+    """기록 시각(ts)부터 오늘까지 거래일(평일) 경과 수."""
+    import numpy as np
+    from datetime import datetime
+    try:
+        d0 = datetime.strptime(str(ts)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return 0
+    return int(np.busday_count(d0, datetime.now().date()))
 
 
 def _is_paper() -> bool:
@@ -89,6 +102,13 @@ def check_positions() -> list[str]:
             alerts.append(
                 f"🟢 익절 — {name}({symbol})\n"
                 f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 목표가 {won(target)} 도달.{action}"
+            )
+        elif _busdays_held(p.get("ts", "")) >= MAX_HOLD_DAYS:
+            # 시간초과 청산 — 목표·손절 미도달이라도 보유 한도 넘으면 정리(백테스트 검증)
+            action = _paper_sell(symbol) if paper else "\n  매도하려면 '소미 매도 {}' 라고 답해줘요.".format(name)
+            alerts.append(
+                f"⏰ 시간초과 청산 — {name}({symbol})\n"
+                f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 보유 {MAX_HOLD_DAYS}거래일 경과 — 목표·손절 미도달.{action}"
             )
         elif pnl >= TRAIL_PROFIT_PCT:
             alerts.append(
