@@ -62,7 +62,8 @@ class KISTrader:
     def __init__(self) -> None:
         self.kis = KISClient()
         self.cano, self.prod = _account()
-        self.real = os.getenv("KIS_REAL_MODE", "true").strip().lower() in {"1", "true", "yes", "y"}
+        # 기본값 false(안전) — 환경변수 누락/오타 시 실거래가 아닌 모의로 떨어지게
+        self.real = os.getenv("KIS_REAL_MODE", "false").strip().lower() in {"1", "true", "yes", "y"}
         # 페이퍼(모의) 모드: 시세는 실제, 주문은 가상 체결. 실거래 키만 있어도 즉시 사용 가능.
         self.paper = os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
         if not self.paper and not self.cano:

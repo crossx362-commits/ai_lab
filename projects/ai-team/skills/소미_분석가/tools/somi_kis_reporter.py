@@ -96,7 +96,7 @@ class KISClient:
     def __init__(self) -> None:
         self.app_key = os.getenv("KIS_APP_KEY", "").strip()
         self.app_secret = os.getenv("KIS_APP_SECRET", "").strip()
-        real_mode = os.getenv("KIS_REAL_MODE", "true").strip().lower() in {"1", "true", "yes", "y"}
+        real_mode = os.getenv("KIS_REAL_MODE", "false").strip().lower() in {"1", "true", "yes", "y"}
         self.base_url = (
             "https://openapi.koreainvestment.com:9443"
             if real_mode
