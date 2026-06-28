@@ -223,17 +223,19 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
         pos.append(f"장중 특징: {intraday}")
 
     final = max(0, min(100, int(round(score))))
-    if final >= 80:
-        grade = "강함"
-    elif final >= 60:
-        grade = "중간 이상"
-    elif final >= 40:
-        grade = "관찰"
-    elif final >= 20:
-        grade = "약함"
-    else:
-        grade = "매우 약함"
-    return final, grade, pos, neg
+    return final, grade_of(final), pos, neg
+
+
+def grade_of(score: int) -> str:
+    if score >= 80:
+        return "강함"
+    if score >= 60:
+        return "중간 이상"
+    if score >= 40:
+        return "관찰"
+    if score >= 20:
+        return "약함"
+    return "매우 약함"
 
 
 def _v(raw: dict[str, str], key: str, default: str = "확인 필요") -> str:
@@ -376,8 +378,106 @@ def generate_smart_money(raw: dict[str, str]) -> str:
 * 거래량 신호: {vol_note}
 * 프로그램 매매: {prog_note}
 * 보조 지표: 외국인 보유율 {_v(raw, "foreign_holding_rate")} / 공매도 비중 {_v(raw, "short_ratio")}
-* 해석: 외국인·기관 합산 5일 순매수는 {_qty(smart_5d)}이며, 개인과 반대 방향일수록 세력 주도 가능성이 높습니다.
+* 해석: 외국인·기관 합산 5일 순매수는 {_qty(smart_5d)}. 단 5일 누적만으론 고점 분산·숏커버를 놓칠 수 있으니 '1-2 공매도·대차 정밀 분석'을 함께 보세요.
 """
+
+
+def flow_short_analysis(investor_daily, short_daily, support, close, loan_rate, prev_loan_rate=None):
+    """일자별 수급·공매도·대차 추이 종합 — 고점분산/공매도추세/숏커버 판별 + 점수 보정.
+    investor_daily, short_daily는 최신순 리스트. 반환: {text, delta, pos, neg, verdict, signals}."""
+    support = to_num(support)
+    close = to_num(close)
+    lr = to_num(loan_rate) if loan_rate not in (None, "") else None
+    lines: list[str] = []
+    pos: list[str] = []
+    neg: list[str] = []
+    signals: list[str] = []
+    delta = 0
+
+    # 1) 고점 분산 — 외국인 매도·개인 매수가 고가권에 몰렸나
+    rows = [r for r in (investor_daily or []) if to_num(r.get("stck_clpr"))]
+    if len(rows) >= 5:
+        closes = [to_num(r.get("stck_clpr")) for r in rows]
+        hi, lo = max(closes), min(closes)
+        if hi > lo:
+            band = lo + (hi - lo) * 0.6  # 상위 40% 가격대 = 고가권
+            hz = [r for r in rows if to_num(r.get("stck_clpr")) >= band]
+            f_hi = sum(to_num(r.get("frgn_ntby_qty") or r.get("frgn_ntby_vol")) for r in hz)
+            p_hi = sum(to_num(r.get("prsn_ntby_qty") or r.get("prsn_ntby_vol")) for r in hz)
+            if f_hi < 0 and p_hi > 0:
+                delta -= 10
+                signals.append("고점분산")
+                neg.append(f"고점 분산 — 고가권({band:,.0f}원↑)서 외국인 {f_hi:,.0f}주 매도·개인 {p_hi:,.0f}주 매수")
+                lines.append(f"⚠️ 고점 분산 감지: 고가권({band:,.0f}원 이상)에서 외국인 {f_hi:,.0f}주 순매도, "
+                             f"개인 {p_hi:,.0f}주 순매수 → 개인이 고점 물량을 받은 구조")
+
+    # 2) 공매도 추세 — 누적 증가 + 평균 비중
+    sd = [r for r in (short_daily or []) if to_num(r.get("acml_ssts_cntg_qty"))]
+    if len(sd) >= 5:
+        recent = sd[:5]
+        avg_ratio = sum(to_num(r.get("ssts_vol_rlim")) for r in recent) / 5
+        add5 = to_num(sd[0].get("acml_ssts_cntg_qty")) - to_num(sd[4].get("acml_ssts_cntg_qty"))
+        rising = add5 > 0
+        if rising and avg_ratio >= 5:
+            delta -= 12
+            signals.append("공매도증가")
+            neg.append(f"공매도 압력 지속 — 5일 누적공매도 +{add5:,.0f}주(평균 비중 {avg_ratio:.1f}%)")
+            lines.append(f"🔻 공매도 압력 지속: 최근 5일 누적공매도 +{add5:,.0f}주, 평균 비중 {avg_ratio:.1f}% "
+                         f"→ 하락을 끌고 내려가는 중")
+        elif avg_ratio < 3 or not rising:
+            delta += 6
+            signals.append("공매도둔화")
+            pos.append(f"공매도 둔화 — 평균 비중 {avg_ratio:.1f}%, 누적 증가 둔화")
+            lines.append(f"🟢 공매도 둔화: 평균 비중 {avg_ratio:.1f}%, 누적 증가 둔화 → 숏 압력 약화")
+        else:
+            lines.append(f"공매도 비중 평균 {avg_ratio:.1f}% (보통 수준)")
+
+    # 3) 대차잔고 해석 + 전일 대비 추이
+    if lr is not None:
+        trend = ""
+        if prev_loan_rate not in (None, ""):
+            pr = to_num(prev_loan_rate)
+            if lr > pr:
+                trend = f" (전일 {pr:.2f}%→증가: 신규 공매도 유입)"
+                signals.append("대차증가")
+            elif lr < pr:
+                trend = f" (전일 {pr:.2f}%→감소: 숏커버/상환 우위)"
+                signals.append("대차감소")
+        if lr < 1 and "공매도증가" in signals:
+            signals.append("숏커버소진")
+            lines.append(f"대차잔고율 {lr:.2f}% 낮음{trend} — 빌린 물량 대부분 상환됨. "
+                         f"외국인 순매수가 진짜 매집이 아니라 '숏커버 되사기'일 수 있어 반등 동력 제한")
+        elif lr >= 3:
+            lines.append(f"대차잔고율 {lr:.2f}% 높음{trend} — 미상환 공매도 잔존, 숏커버 시 반등 트리거 가능")
+        else:
+            lines.append(f"대차잔고율 {lr:.2f}%{trend}")
+
+    # 4) 종합 판세
+    below = bool(support and close and close < support)
+    above = bool(support and close and close >= support)
+    bearish = ("공매도증가" in signals) or ("고점분산" in signals)
+    if bearish and below:
+        verdict = "공매도 우위 — 하락 지속 위험. 외국인이 받쳐도 아직 '지는 받아먹기'. 신규 매수 보류."
+    elif "공매도둔화" in signals and above:
+        verdict = "받아먹기 우위 가능성 — 공매도 둔화 + 지지선 위. 반등 시도 관찰."
+    else:
+        verdict = "혼조 — 방향 확정 전. 관망."
+
+    # 바닥 전환 체크리스트
+    chk = [("✅" if "공매도둔화" in signals else "❌") + " 공매도 비중 꺾임(3%↓)"]
+    if "대차감소" in signals:
+        chk.append("✅ 대차잔고 감소(숏커버 진행)")
+    elif "숏커버소진" in signals:
+        chk.append("➖ 대차 소진(되사기 한계)")
+    else:
+        chk.append("❌ 대차잔고 감소 신호")
+    if support:
+        chk.append(("✅" if above else "❌") + f" 지지선({support:,.0f}원) 회복")
+
+    body = "\n".join(f"* {l}" for l in lines) if lines else "* 일자별 추이 데이터 부족"
+    text = ("## 1-2. 공매도·대차 정밀 분석\n\n" + body +
+            f"\n* 종합 판세: {verdict}\n* 바닥 전환 체크: " + " / ".join(chk))
+    return {"text": text, "delta": delta, "pos": pos, "neg": neg, "verdict": verdict, "signals": signals}
 
 
 def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str], neg: list[str]) -> str:

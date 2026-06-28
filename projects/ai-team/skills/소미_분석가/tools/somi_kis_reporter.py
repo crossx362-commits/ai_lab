@@ -30,7 +30,13 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
-from short_covering_analyzer import calculate_score, generate_report, parse_input_text  # noqa: E402
+from short_covering_analyzer import (  # noqa: E402
+    calculate_score,
+    flow_short_analysis,
+    generate_report,
+    grade_of,
+    parse_input_text,
+)
 from watchlist_manager import load_watchlist  # noqa: E402
 from _shared import research  # noqa: E402
 
@@ -44,6 +50,7 @@ DEFAULT_TIMES = ["08:50", "12:30", "15:40"]
 TOKEN_CACHE = PROJECT_ROOT / "output" / "cache" / "kis_access_token.json"
 LATEST_REPORT = PROJECT_ROOT / "reports" / "research" / "somi_ourtech_latest.md"
 RUN_LOG = PROJECT_ROOT / "output" / "bot_logs" / "somi_kis_reporter.log"
+FLOW_HISTORY = PROJECT_ROOT / "output" / "cache" / "somi_flow_history.json"
 
 
 def log(message: str) -> None:
@@ -234,6 +241,26 @@ class KISClient:
             log(f"KIS daily_short_sale unavailable: {exc}")
             return {}
 
+    def short_sale_series(self, symbol: str = DEFAULT_SYMBOL, days: int = 20) -> list[dict]:
+        """일자별 공매도 상세(output2) 전체 리스트 — 누적공매도·비중 추세용."""
+        try:
+            today = datetime.now()
+            data = self.get(
+                "uapi/domestic-stock/v1/quotations/daily-short-sale",
+                "FHPST04830000",
+                {
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_DATE_1": (today - timedelta(days=days)).strftime("%Y%m%d"),
+                    "FID_INPUT_DATE_2": today.strftime("%Y%m%d"),
+                },
+            )
+            out = data.get("output2") or []
+            return out if isinstance(out, list) else []
+        except Exception as exc:
+            log(f"KIS short_sale_series unavailable: {exc}")
+            return []
+
 
 def _flow_text(dailies: list[dict]) -> str:
     rows = list(reversed(dailies[:5]))
@@ -373,12 +400,60 @@ CB/BW/유상증자/보호예수 이슈: 확인 필요
 """
 
 
+def _load_prev_loan_rate(symbol: str) -> str | None:
+    """오늘 이전에 기록된 대차잔고율(전일 대비 추이용)."""
+    try:
+        rec = json.loads(FLOW_HISTORY.read_text(encoding="utf-8")).get(symbol)
+        if rec and rec.get("date") != datetime.now().strftime("%Y-%m-%d"):
+            return rec.get("loan_rate")
+    except Exception:
+        pass
+    return None
+
+
+def _save_loan_rate(symbol: str, loan_rate) -> None:
+    try:
+        FLOW_HISTORY.parent.mkdir(parents=True, exist_ok=True)
+        data = {}
+        if FLOW_HISTORY.exists():
+            data = json.loads(FLOW_HISTORY.read_text(encoding="utf-8"))
+        data[symbol] = {"date": datetime.now().strftime("%Y-%m-%d"), "loan_rate": loan_rate}
+        FLOW_HISTORY.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
 def make_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name: str = DEFAULT_NAME) -> str:
     kis = KISClient()
     input_text = build_input_text(kis, report_name, symbol, name)
     parsed = parse_input_text(input_text)
     score, grade, pos, neg = calculate_score(parsed)
+    # 일자별 수급·공매도·대차 정밀 분석 (고점분산·공매도추세·숏커버 판별로 점수 보정)
+    flow_block = ""
+    try:
+        inv10 = kis.investor_history(symbol, 10)
+        short_series = kis.short_sale_series(symbol, 20)
+        prev_lr = _load_prev_loan_rate(symbol)
+        fa = flow_short_analysis(
+            inv10, short_series,
+            parsed.get("support_line"), parsed.get("close"),
+            parsed.get("loan_balance_rate"), prev_lr,
+        )
+        if fa["delta"]:
+            score = max(0, min(100, score + fa["delta"]))
+            grade = grade_of(score)
+        pos = pos + fa["pos"]
+        neg = neg + fa["neg"]
+        flow_block = "\n\n" + fa["text"]
+        _save_loan_rate(symbol, parsed.get("loan_balance_rate"))
+    except Exception as exc:
+        log(f"flow_short_analysis 실패: {exc}")
     report = generate_report(parsed, score, grade, pos, neg)
+    # 공매도·대차 정밀 분석(1-2)을 세력 동향(1-1) 뒤, 매수 판단(2) 앞에 삽입
+    if flow_block and "## 2. 매수 판단" in report:
+        report = report.replace("## 2. 매수 판단", flow_block.strip() + "\n\n## 2. 매수 판단", 1)
+    elif flow_block:
+        report += flow_block
     # 마켓데스크 이슈 영향도 병기 (수급 점수는 보존, 공시 영향만 참고로 덧붙임)
     try:
         imp = research.load_issue_impact().get(symbol)
