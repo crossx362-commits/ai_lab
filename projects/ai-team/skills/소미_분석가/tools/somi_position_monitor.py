@@ -37,19 +37,23 @@ def _is_paper() -> bool:
     return os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
 
 
-def _paper_sell(symbol: str, qty: int) -> str:
-    """모의 모드 자동 매도 (실거래면 호출 안 함)."""
+def _paper_sell(symbol: str) -> str:
+    """모의 모드 자동 매도. 실제 페이퍼 보유분 기준으로 전량 매도하고 기록을 항상 정리(스토어 불일치 자가복구)."""
     from kis_trader import KISTrader
 
     trader = KISTrader()
     if not trader.paper:
         return ""
-    try:
-        trader.order(symbol, int(qty), "sell", 0)
+    held = next((int(h["qty"]) for h in trader.balance().get("holdings", []) if h["symbol"] == symbol), 0)
+    if held <= 0:  # 원장에 이미 없음 → 메타만 정리(고스트 제거)
         remove_position(symbol)
-        return " → 🧪 모의 자동 매도 체결"
+        return " → (이미 청산됨, 기록 정리)"
+    try:
+        trader.order(symbol, held, "sell", 0)
     except Exception as exc:
         return f" → 자동 매도 실패: {exc}"
+    remove_position(symbol)
+    return f" → 🧪 모의 자동 매도 체결({held}주)"
 
 
 def check_positions() -> list[str]:
@@ -73,16 +77,15 @@ def check_positions() -> list[str]:
         pnl = ((cur - entry) / entry * 100) if entry else 0
         won = lambda v: f"{int(v):,}원"
 
-        qty = int(num(p.get("qty")))
         paper = _is_paper()
         if stop and cur <= stop:
-            action = _paper_sell(symbol, qty) if paper else "\n  매도하려면 '소미 매도 {} '라고 답해줘요.".format(name)
+            action = _paper_sell(symbol) if paper else "\n  매도하려면 '소미 매도 {} '라고 답해줘요.".format(name)
             alerts.append(
                 f"🔴 손절 — {name}({symbol})\n"
                 f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 손절가 {won(stop)} 도달/이탈.{action}"
             )
         elif target and cur >= target:
-            action = _paper_sell(symbol, qty) if paper else "\n  '소미 매도 {}' 또는 수량 지정 매도.".format(name)
+            action = _paper_sell(symbol) if paper else "\n  '소미 매도 {}' 또는 수량 지정 매도.".format(name)
             alerts.append(
                 f"🟢 익절 — {name}({symbol})\n"
                 f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 목표가 {won(target)} 도달.{action}"

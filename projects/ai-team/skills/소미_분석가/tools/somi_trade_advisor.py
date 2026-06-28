@@ -27,6 +27,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
+from _shared.llm import text as llm_text  # noqa: E402
+from _shared import research  # noqa: E402
 from somi_kis_reporter import KISClient, build_input_text  # noqa: E402
 from short_covering_analyzer import parse_input_text, calculate_score, to_num  # noqa: E402
 from somi_screener import get_candidates, GOOD_SCORE  # noqa: E402
@@ -62,7 +64,8 @@ def get_proposal(key: str) -> dict | None:
     items = load_proposals().get("items", [])
     key = key.strip()
     for it in items:
-        if key == it["symbol"] or key == it["name"] or key in it["name"]:
+        sym, nm = it.get("symbol", ""), it.get("name", "")
+        if key and (key == sym or key == nm or key in nm):
             return it
     return None
 
@@ -126,14 +129,175 @@ def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> li
     return proposals
 
 
+# ── 뉴스·공시 영향도 반영 매수판단 (LLM) ────────────────────────
+NEWS_JUDGE_SYSTEM = """당신은 국내주식 매수판단가 '소미'입니다.
+판단은 두 축을 '반드시 함께' 사용합니다:
+ (1) 수급 분석 — 세력·거래량·대차/공매도 기반 점수
+ (2) 최근 N일(기본 5거래일) 뉴스·공시 누적 영향도 — 그날 하루가 아니라 '며칠간 흐름'으로 본다.
+
+뉴스는 누적·추세로 해석한다:
+- 단발성(하루만 뜨고 식은) 뉴스는 노이즈로 보고 비중을 낮춘다.
+- 여러 날 반복·강화되는 악재(누적 음수)는 강하게 반영한다 — 수급이 좋아도 판단을 낮춘다.
+- 여러 날 지속되는 호재(누적 양수, 후속 보도/실적/수주 등)는 확신을 강화한다.
+- 최근일에 가중치를 더 준다(오래된 이슈는 약화). 단, 방향이 바뀌면(악재→해소, 호재→소멸) 최신 흐름을 따른다.
+- 상충하는 날들이 섞이면 '반복 빈도'와 '최근성'을 우선한다.
+
+판단 규칙:
+- N일 누적 영향도 <= -2(지속/강한 악재): 수급과 무관하게 'avoid'.
+- 누적 -1 수준(약한·간헐 악재): 'watch'로 강등하거나 비중·목표를 보수적으로 축소.
+- 누적 >= +1(지속 호재): 확신 강화, 목표 상향·손절 여유 검토(과도한 상향 금지).
+- 뉴스 데이터가 없으면 수급만으로 판단하되 reason에 "뉴스 정보 없음" 명시.
+- 시장 브리프(지수 급락·환율 급등·공포탐욕 극단)가 위험이면 전반적으로 보수적으로 조정.
+- 손익비(목표-진입)/(진입-손절)가 1.5 미만이면 'watch' 이하.
+- 너는 제안만 한다. 실제 체결은 사용자 승인으로만. 과감한 매수 유도·근거 없는 낙관 금지.
+
+출력은 아래 JSON만. 설명·마크다운 금지:
+{
+  "verdict": "buy" | "watch" | "avoid",
+  "entry": 정수, "stop": 정수, "target": 정수,
+  "news_trend": "improving" | "stable" | "deteriorating" | "none",
+  "news_reflected": true | false,
+  "reason": "수급과 '며칠간 뉴스 흐름'을 함께 언급한 한국어 1~2문장"
+}"""
+
+# 뉴스 누적 일수 + 일자별 영향도 히스토리 저장소 (issue_impact가 매번 덮어써져 자체 누적)
+NEWS_DAYS = int(os.getenv("SOMI_NEWS_DAYS", "5"))
+NEWS_HISTORY_FILE = PROJECT_ROOT / "output" / "cache" / "somi_news_history.json"
+
+
+def _record_news_snapshot(impact_map: dict) -> dict:
+    """오늘자 issue_impact를 종목별 일자 히스토리에 누적(날짜당 1건). 최근 N*2일 보관."""
+    hist = _load(NEWS_HISTORY_FILE)
+    today = datetime.now().strftime("%Y-%m-%d")
+    for sym, v in (impact_map or {}).items():
+        if isinstance(v, dict) and v.get("score") is not None:
+            hist.setdefault(sym, {})[today] = {"score": v.get("score"), "reason": v.get("reason", "")}
+    keep = max(NEWS_DAYS * 2, NEWS_DAYS)
+    for sym in list(hist):
+        dates = sorted(hist[sym], reverse=True)[:keep]
+        hist[sym] = {d: hist[sym][d] for d in dates}
+    _save(NEWS_HISTORY_FILE, hist)
+    return hist
+
+
+def _news_block(sym: str, hist: dict) -> tuple[str, float, float, int]:
+    """종목의 최근 N일 뉴스 라인(최신순) + 누적합/평균/건수."""
+    entries = hist.get(sym, {})
+    items = sorted(entries.items(), reverse=True)[:NEWS_DAYS]  # 날짜 내림차순=최신순
+    lines, scores = [], []
+    for date, v in items:
+        s = v.get("score")
+        if s is None:
+            continue
+        scores.append(s)
+        lines.append(f"  {date}: impact {s:+d}  — {v.get('reason', '') or '-'}")
+    if not scores:
+        return "없음", 0.0, 0.0, 0
+    return "\n".join(lines), float(sum(scores)), sum(scores) / len(scores), len(scores)
+
+
+def _parse_json(raw: str | None) -> dict | None:
+    if not raw:
+        return None
+    a, b = raw.find("{"), raw.rfind("}")
+    try:
+        return json.loads(raw[a:b + 1]) if a >= 0 and b > a else None
+    except Exception:
+        return None
+
+
+def _market_brief_summary() -> str:
+    try:
+        mb = research.load_market_brief()
+    except Exception:
+        mb = {}
+    parts = []
+    fx = mb.get("fx") or {}
+    if fx.get("USD"):
+        parts.append(f"USD/KRW {fx['USD']}")
+    try:
+        fg = research.fear_greed()
+        if fg.get("score") is not None:
+            parts.append(f"공포탐욕 {fg['score']}({fg.get('rating', '')})")
+    except Exception:
+        pass
+    if mb.get("comment"):
+        parts.append(str(mb["comment"])[:160])
+    return " / ".join(parts) or "정보 없음"
+
+
+def judge_with_news(p: dict, hist: dict, brief: str) -> dict:
+    """수급 제안 p에 최근 N일 뉴스 누적 흐름 + 시장 브리프를 LLM으로 종합 → verdict/조정."""
+    block, imp_sum, imp_avg, n = _news_block(p["symbol"], hist)
+    user = (
+        f"[종목] {p['name']}({p['symbol']})  현재가 {int(p['entry'])}  등락 {p['change']}\n"
+        f"[수급 분석] 점수 {p['score']}/{p['grade']} · 손익비 {p['rr']}\n"
+        f"  강점: {', '.join(p['reasons']) or '-'}\n"
+        f"  위험: {', '.join(p['risks']) or '-'}\n"
+        f"  잠정 손절 {int(p['stop'])} / 목표 {int(p['target'])}\n\n"
+        f"[최근 {NEWS_DAYS}일 뉴스·공시 누적]  (최신순, 날짜별 영향도 -2~+2)\n"
+        f"{block if n else '  없음'}\n"
+        f"  누적 합계: {imp_sum:+.0f} / 평균: {imp_avg:+.2f}\n\n"
+        f"[시장 브리프] {brief}\n\n"
+        "위 수급과 '며칠간 뉴스 흐름'을 종합해 매수 판단을 내리고,\n"
+        "필요한 만큼만 진입/손절/목표를 조정해 JSON으로만 답하라."
+    )
+    raw = llm_text(user, system=NEWS_JUDGE_SYSTEM, json_mode=True, max_tokens=300,
+                   temperature=0.3, lm_first=False)
+    j = _parse_json(raw)
+    if not j or "verdict" not in j:
+        # LLM 미응답 → 수급만으로 판단, 안전하게 watch 강등
+        return {**p, "verdict": "watch", "news_trend": "none" if n == 0 else "stable",
+                "news_reflected": n > 0, "news_reason": "뉴스 판단 LLM 미응답 — 수급만 반영"}
+    entry = int(j.get("entry") or p["entry"])
+    stop = int(j.get("stop") or p["stop"])
+    target = int(j.get("target") or p["target"])
+    if not (stop < entry < target):  # LLM이 비합리적 레벨 반환 시 수급 기반 원래 레벨 유지
+        entry, stop, target = int(p["entry"]), int(p["stop"]), int(p["target"])
+    return {
+        **p,
+        "verdict": str(j.get("verdict", "watch")).lower(),
+        "entry": entry, "stop": stop, "target": target,
+        "news_trend": str(j.get("news_trend", "none")),
+        "news_reflected": bool(j.get("news_reflected", n > 0)),
+        "news_reason": str(j.get("reason", "")),
+    }
+
+
+def apply_news_judgment(proposals: list[dict]) -> list[dict]:
+    """make_proposals 결과에 최근 N일 뉴스 누적 흐름 반영(후처리). 오늘 영향도를 히스토리에 누적 후 판단."""
+    if not proposals:
+        return proposals
+    try:
+        impact_map = research.load_issue_impact()
+    except Exception:
+        impact_map = {}
+    hist = _record_news_snapshot(impact_map)  # 오늘자 누적 후 N일 히스토리 사용
+    brief = _market_brief_summary()
+    return [judge_with_news(p, hist, brief) for p in proposals]
+
+
+_VERDICT_ICON = {"buy": "🟢 매수", "watch": "👀 관찰", "avoid": "🔴 회피"}
+
+
 def _fmt(p: dict) -> str:
     won = lambda v: f"{int(v):,}원"
-    return (
-        f"📈 {p['name']}({p['symbol']}) — {p['score']}점/{p['grade']} (등락 {p['change']})\n"
-        f"  · 진입가 {won(p['entry'])} / 손절가 {won(p['stop'])} / 목표가 {won(p['target'])} (손익비 {p['rr']})\n"
-        f"  · 매수 이유: {', '.join(p['reasons']) or '점수 상위'}\n"
-        f"  · 위험 요소: {', '.join(p['risks'])}"
-    )
+    verdict = p.get("verdict")
+    head = f"📈 {p['name']}({p['symbol']}) — {p['score']}점/{p['grade']} (등락 {p['change']})"
+    if verdict:
+        _trend = {"improving": "뉴스↑", "deteriorating": "뉴스↓", "stable": "뉴스→", "none": "뉴스없음"}
+        news = _trend.get(p.get("news_trend"), "뉴스반영" if p.get("news_reflected") else "뉴스없음")
+        head = f"{_VERDICT_ICON.get(verdict, verdict)} {p['name']}({p['symbol']}) [{news}] — 수급 {p['score']}점"
+    lines = [
+        head,
+        f"  · 진입가 {won(p['entry'])} / 손절가 {won(p['stop'])} / 목표가 {won(p['target'])} (손익비 {p['rr']})",
+    ]
+    if p.get("news_reason"):
+        lines.append(f"  · 판단: {p['news_reason']}")
+    else:
+        lines.append(f"  · 매수 이유: {', '.join(p['reasons']) or '점수 상위'}")
+        lines.append(f"  · 위험 요소: {', '.join(p['risks'])}")
+    return "\n".join(lines)
 
 
 def _is_paper() -> bool:
@@ -143,6 +307,47 @@ def _is_paper() -> bool:
 # 모의 모드 1회 실행 시 자동 매수할 최대 종목 수 (예산 소진 시 자동 중단)
 PAPER_AUTO_MAX = int(os.getenv("SOMI_PAPER_AUTO_MAX", "3"))
 SOMI_BUDGET = int(os.getenv("SOMI_BUDGET_PER_TRADE", "1000000"))
+# 매수 전 관찰 시간(분): 'buy' 신호가 이 시간 이상 유지돼야 실제 매수 (바로 안 삼)
+OBSERVE_MINUTES = int(os.getenv("SOMI_OBSERVE_MINUTES", "30"))
+WATCHING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_watching.json"
+
+
+def _observation_gate(buys: list[dict]) -> tuple[list[dict], list[str]]:
+    """'buy' 신호를 바로 매수하지 않고 OBSERVE_MINUTES 만큼 관찰.
+    신호가 유지된 종목만 매수 대상으로 반환. (신호 소멸 시 관찰 해제)"""
+    watching = _load(WATCHING_FILE)
+    now = datetime.now()
+    buy_syms = {p["symbol"] for p in buys}
+    msgs: list[str] = []
+    to_buy: list[dict] = []
+
+    # 더 이상 'buy'가 아닌 관찰 종목은 해제 (신호 소멸)
+    for sym in list(watching):
+        if sym not in buy_syms:
+            msgs.append(f"👋 관찰 해제 — {watching[sym].get('name', sym)} (매수 신호 사라짐)")
+            del watching[sym]
+
+    for p in buys:
+        sym = p["symbol"]
+        w = watching.get(sym)
+        if not w:  # 처음 발견 → 관찰만 시작, 매수 안 함
+            watching[sym] = {"name": p["name"], "first_ts": now.isoformat(timespec="seconds"), "count": 1}
+            msgs.append(f"👀 관찰 시작 — {p['name']}({sym}) · 최소 {OBSERVE_MINUTES}분 지켜본 뒤 매수")
+            continue
+        w["count"] = w.get("count", 1) + 1
+        try:
+            elapsed = (now - datetime.fromisoformat(w["first_ts"])).total_seconds() / 60
+        except Exception:
+            elapsed = OBSERVE_MINUTES
+        if elapsed >= OBSERVE_MINUTES:  # 관찰 통과 → 매수
+            to_buy.append(p)
+            del watching[sym]
+            msgs.append(f"✅ 관찰 완료 {int(elapsed)}분({w['count']}회 유지) — {p['name']} 매수 진행")
+        else:
+            msgs.append(f"⏳ 관찰 중 — {p['name']} ({int(elapsed)}/{OBSERVE_MINUTES}분, {w['count']}회 확인)")
+
+    _save(WATCHING_FILE, watching)
+    return to_buy, msgs
 
 
 def _auto_buy_paper(proposals: list[dict]) -> list[str]:
@@ -176,24 +381,32 @@ def _auto_buy_paper(proposals: list[dict]) -> list[str]:
 
 def run(candidate_limit: int = 20, do_send: bool = False) -> str:
     proposals = make_proposals(candidate_limit)
+    # 수급 제안에 뉴스·공시 영향도 반영(후처리 LLM 판단)
+    proposals = apply_news_judgment(proposals)
     _save(PROPOSALS_FILE, {
         "ts": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "items": proposals,
     })
     header = f"[소미 매수 제안 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]"
+    # 매수 대상 = verdict=buy 이면서 아직 보유하지 않은 종목만 (보유분 재매수 churn 방지)
+    held_syms = set(load_positions().keys())
+    buys = [p for p in proposals if p.get("verdict") == "buy" and p["symbol"] not in held_syms]
     if not proposals:
         report = f"{header}\n오늘은 소미 기준({GOOD_SCORE}점↑) 매수 제안 종목이 없습니다. 계속 감시 중."
     elif _is_paper():
-        # 모의 모드: 승인 없이 자동 매수
-        executed = _auto_buy_paper(proposals)
-        body = "\n\n".join(executed) if executed else "신규 매수 없음 (이미 보유 중이거나 예수금 소진)"
-        report = f"{header} 🧪 모의 자동매매\n\n{body}"
+        # 모의 모드: 'buy' 신호도 바로 안 사고 관찰 게이트 통과한 것만 자동 매수
+        to_buy, watch_msgs = _observation_gate(buys)
+        executed = _auto_buy_paper(to_buy)
+        parts = []
+        if watch_msgs:
+            parts.append("[관찰 현황]\n" + "\n".join(watch_msgs))
+        parts.append("[매수 체결]\n" + ("\n\n".join(executed) if executed else "이번엔 매수 없음 (관찰 중이거나 신호 없음)"))
+        report = f"{header} 🧪 모의 자동매매(뉴스+관찰)\n\n" + "\n\n".join(parts)
     else:
         body = "\n\n".join(_fmt(p) for p in proposals[:3])
-        report = (
-            f"{header}\n확률 높다고 판단된 종목입니다. 매수하려면 '소미 승인 <종목명>',\n"
-            f"넘기려면 '패스'라고 답해줘요. (승인 없이는 절대 매수 안 함)\n\n{body}"
-        )
+        tip = ("매수하려면 '소미 승인 <종목명>', 넘기려면 '패스'. (승인 없이는 매수 안 함)"
+               if buys else "현재 'buy' 판정 없음 — 계속 감시.")
+        report = f"{header}\n수급+뉴스 종합 판단입니다. {tip}\n\n{body}"
     if do_send:
         send(report)
     return report
