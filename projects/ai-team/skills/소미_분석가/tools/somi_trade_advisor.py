@@ -406,10 +406,21 @@ def run(candidate_limit: int = 20, do_send: bool = False) -> str:
         "ts": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "items": proposals,
     })
-    header = f"[소미 매수 제안 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]"
-    # 매수 대상 = verdict=buy 이면서 아직 보유하지 않은 종목만 (보유분 재매수 churn 방지)
+    # 시장 국면(HMM): 하락 국면이면 신규 매수 중단(떨어지는 장 회피) — 매도/감시는 계속
+    try:
+        from market_regime import market_regime, regime_label
+        _reg = market_regime()
+        regime = _reg.get("regime", "unknown")
+    except Exception:
+        regime, _reg = "unknown", {}
+        regime_label = lambda r: r  # noqa: E731
+    header = (f"[소미 매수 제안 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n"
+              f"시장 국면(HMM): {regime_label(regime)}")
+    # 매수 대상 = verdict=buy · 미보유 · (하락 국면 아님)
     held_syms = set(load_positions().keys())
     buys = [p for p in proposals if p.get("verdict") == "buy" and p["symbol"] not in held_syms]
+    if regime == "bear":
+        buys = []  # 하락 국면 → 신규 매수 중단
     if not proposals:
         report = f"{header}\n오늘은 소미 기준({GOOD_SCORE}점↑) 매수 제안 종목이 없습니다. 계속 감시 중."
     elif _is_paper():
