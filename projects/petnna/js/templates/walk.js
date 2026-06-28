@@ -52,7 +52,7 @@ const WALK_TEMPLATE = `
 
         <!-- ── 지도 (Critical: 최소 280px 확보) ──────────────────────── -->
         <div class="relative w-full bg-gray-100 rounded-2xl overflow-hidden border border-amber-100/50 shadow-inner z-10"
-            style="height: clamp(280px, 50vh, 500px);">
+            style="height: clamp(360px, 70vh, 760px);">
             <div id="map" class="w-full h-full"></div>
 
             <!-- 일시정지 오버레이 (기본 hidden) -->
@@ -244,17 +244,17 @@ const WALK_TEMPLATE = `
                 <!-- 제어 버튼 3개 (Critical: min-h-[48px]) -->
                 <div class="grid grid-cols-3 gap-2">
                     <button id="walk-start-btn" onclick="toggleWalk()"
-                        class="bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
+                        class="bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[72px]">
                         <i class="fa-solid fa-play text-xl"></i>
                         <span>시작</span>
                     </button>
                     <button id="walk-stop-btn" onclick="discardWalk()" disabled
-                        class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs rounded-xl opacity-40 transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
+                        class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs rounded-xl opacity-40 transition-all flex flex-col items-center justify-center gap-1.5 min-h-[72px]">
                         <i class="fa-solid fa-flag-checkered text-xl"></i>
                         <span>정지</span>
                     </button>
                     <button id="walk-save-btn" onclick="stopAndSaveWalk()" disabled
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl opacity-40 shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[56px]">
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl opacity-40 shadow-md transition-all flex flex-col items-center justify-center gap-1.5 min-h-[72px]">
                         <i class="fa-solid fa-floppy-disk text-xl"></i>
                         <span>저장 💾</span>
                     </button>
@@ -264,19 +264,19 @@ const WALK_TEMPLATE = `
             <!-- ── 마킹 버튼 (Critical: min-h-[56px], disabled 명확 표현) ── -->
             <div class="grid grid-cols-3 gap-2">
                 <button id="btn-mark-poop" onclick="placeMarking('poop')" disabled
-                    class="opacity-40 grayscale cursor-not-allowed bg-amber-100 text-amber-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-amber-200">
+                    class="opacity-40 grayscale cursor-not-allowed bg-amber-100 text-amber-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[80px] border-2 border-dashed border-amber-200">
                     <span class="text-3xl leading-none">💩</span>
                     <span class="text-[10px] font-bold">응가</span>
                     <span class="text-[9px] font-bold bg-amber-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-poop-count" class="font-mono">0</span>회</span>
                 </button>
                 <button id="btn-mark-pee" onclick="placeMarking('pee')" disabled
-                    class="opacity-40 grayscale cursor-not-allowed bg-sky-100 text-sky-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-sky-200">
+                    class="opacity-40 grayscale cursor-not-allowed bg-sky-100 text-sky-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[80px] border-2 border-dashed border-sky-200">
                     <span class="text-3xl leading-none">💦</span>
                     <span class="text-[10px] font-bold">쉬야</span>
                     <span class="text-[9px] font-bold bg-sky-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-pee-count" class="font-mono">0</span>회</span>
                 </button>
                 <button id="btn-mark-sniff" onclick="placeMarking('sniff')" disabled
-                    class="opacity-40 grayscale cursor-not-allowed bg-emerald-100 text-emerald-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[64px] border-2 border-dashed border-emerald-200">
+                    class="opacity-40 grayscale cursor-not-allowed bg-emerald-100 text-emerald-800 font-bold rounded-xl transition-all shadow-sm flex flex-col items-center justify-center gap-1.5 min-h-[80px] border-2 border-dashed border-emerald-200">
                     <span class="text-3xl leading-none">👃</span>
                     <span class="text-[10px] font-bold">킁킁</span>
                     <span class="text-[9px] font-bold bg-emerald-200/60 px-1.5 py-0.5 rounded-full"><span id="stat-sniff-count" class="font-mono">0</span>회</span>

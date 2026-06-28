@@ -126,7 +126,7 @@ function renderPetlifeMarkers() {
                 <div style="text-align:center;padding:8px;">
                     <div style="font-size:28px;margin-bottom:8px;">${location.emoji}</div>
                     <div style="font-weight:900;font-size:13px;color:#0f172a;margin-bottom:4px;">${location.name}</div>
-                    <button onclick="selectIslandShop('${location.id}')" style="
+                    <button onclick="openPetlifeShop('${location.id}')" style="
                         background: linear-gradient(135deg, ${location.color}, ${adjustColorBrightness(location.color, -20)});
                         color: white;
                         border: none;
@@ -142,13 +142,25 @@ function renderPetlifeMarkers() {
 
         // 마커 클릭 시 자동으로 상세 정보 표시
         marker.on('click', () => {
-            if (typeof selectIslandShop === 'function') {
-                selectIslandShop(location.id);
-            }
+            openPetlifeShop(location.id);
         });
 
         petlifeMarkers.push(marker);
     });
+}
+
+// 가맹점 상세보기: 가맹점 고유 id → 카테고리 기반 퀘스트 id로 변환해 호출.
+// (SHOP_QUEST_DATA는 'healing-*' 퀘스트 키라, 고유 id를 그대로 넘기면 무반응이었음)
+function openPetlifeShop(locationId) {
+    if (typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
+    const loc = PETLIFE_REAL_LOCATIONS.find(l => l.id === locationId);
+    if (!loc) return;
+    const questId = (typeof getQuestIdByCategory === 'function')
+        ? getQuestIdByCategory(loc.category)
+        : loc.id;
+    if (typeof selectIslandShop === 'function') {
+        selectIslandShop(questId, loc);
+    }
 }
 
 // 내 위치로 이동

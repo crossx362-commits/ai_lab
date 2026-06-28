@@ -334,13 +334,13 @@ def get_agent_status(_: str = "전체") -> str:
 def list_calendar() -> str:
     """일정 및 스케줄을 조회합니다."""
     script = HERE.with_name("schedule_manager.py")
-    return _run_python(script, "list", timeout=30)
+    return _run_python(script, "--list", timeout=30)
 
 
 def dispatch_to_yewon(text: str) -> str:
-    """예원 CEO에게 작업을 요청합니다."""
-    script = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "yewon_dispatcher.py"
-    return _run_python(script, text, timeout=90)
+    """예원 CEO에게 작업을 요청합니다 (플랜 기반 멀티 에이전트 오케스트레이션)."""
+    script = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "yewon_orchestrator.py"
+    return _run_python(script, text, timeout=180)
 
 
 def dispatch_screener(_: str = "") -> str:
@@ -353,6 +353,47 @@ def dispatch_screener(_: str = "") -> str:
 _PENDING_ORDER: dict = {}
 _BUY_WORDS = ("매수", "매입", "사줘", "사세요", "사라", "삽니다", "사기", "매수해", "매수주문")
 _SELL_WORDS = ("매도", "매각", "팔아", "파세요", "팔자", "팔기", "판다", "매도해", "매도주문")
+
+# ── 거래 모드(모의/실거래) — 텔레그램 명령으로 즉시 전환. 체결은 여전히 'ㅇㅋ' 승인 때만. ──
+TRADE_MODE_FILE = PROJECT_ROOT / "output" / "cache" / "trade_mode.json"
+
+
+def _get_trade_mode() -> str:
+    """현재 거래 모드: 'paper'(기본) 또는 'live'."""
+    try:
+        return json.loads(TRADE_MODE_FILE.read_text(encoding="utf-8")).get("mode", "paper")
+    except Exception:
+        return "paper"
+
+
+def _set_trade_mode(mode: str) -> None:
+    TRADE_MODE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TRADE_MODE_FILE.write_text(json.dumps({"mode": mode}, ensure_ascii=False), encoding="utf-8")
+
+
+def _apply_trade_mode() -> str:
+    """주문 실행 직전 호출 — 모드 파일을 KIS_PAPER 환경변수에 반영해 KISTrader가 따르게 한다."""
+    mode = _get_trade_mode()
+    os.environ["KIS_PAPER"] = "false" if mode == "live" else "true"
+    return mode
+
+
+def _parse_trade_mode_command(text: str) -> str | None:
+    """모드 전환/조회 명령. 반환=응답 문자열 또는 None(명령 아님)."""
+    n = _normalize_text(text)
+    if n in ("실거래", "실거래모드", "실거래전환", "라이브", "실전", "실거래켜", "실거래on"):
+        _set_trade_mode("live")
+        return ("🔴 실거래 모드로 전환했습니다.\n"
+                "이제 매수신호에 'ㅇㅋ' 승인하면 **실제 계좌·실제 돈**으로 체결됩니다.\n"
+                "되돌리려면 '모의 모드'.")
+    if n in ("모의", "모의모드", "페이퍼", "모의투자", "모의전환", "실거래끄기", "실거래off"):
+        _set_trade_mode("paper")
+        return "🧪 모의(페이퍼) 모드로 전환했습니다. 체결은 가상으로만 처리됩니다."
+    if n in ("거래모드", "모드확인", "지금모드", "현재모드", "모드"):
+        cur = _get_trade_mode()
+        label = "🔴 실거래(실제 돈)" if cur == "live" else "🧪 모의(페이퍼)"
+        return f"현재 거래 모드: {label}\n전환: '실거래 모드' / '모의 모드'"
+    return None
 
 
 def _is_balance_request(text: str) -> bool:
@@ -458,7 +499,7 @@ def _parse_somi_sell(text: str) -> dict | None:
 def _order_confirm_prompt(order: dict) -> str:
     sidetxt = "매수" if order["side"] == "buy" else "매도"
     pricetxt = f"{order['price']:,}원 지정가" if order["price"] else "시장가"
-    mode = "🧪 모의(페이퍼) 주문 확인" if os.getenv("KIS_PAPER", "false").lower() in ("1", "true", "yes") else "⚠️ 실거래 주문 확인"
+    mode = "🧪 모의(페이퍼) 주문 확인" if _get_trade_mode() != "live" else "🔴 실거래 주문 확인(실제 돈)"
     return (
         f"{mode}\n"
         f"{order['name']}({order['symbol']}) {order['qty']:,}주 {pricetxt} {sidetxt}\n\n"
@@ -470,6 +511,7 @@ def _execute_pending_order() -> str:
     order = _PENDING_ORDER.pop("order", None)
     if not order:
         return "대기 중인 주문이 없어요."
+    _apply_trade_mode()   # 모드 파일(모의/실거래)을 KIS_PAPER 환경변수에 반영
     try:
         sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
         from kis_trader import KISTrader
@@ -486,6 +528,25 @@ def _execute_pending_order() -> str:
             remove_position(order["symbol"])
     except Exception:
         pass
+    # 한별(퀀트) 거래일지 기록 — 성과 복기·튜닝용
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "한별_퀀트" / "tools"))
+        import quant_analyzer
+        if order["side"] == "buy":
+            px = order.get("entry") or 0
+        else:  # 매도 체결가 best-effort 조회
+            px = 0
+            try:
+                from kis_trader import KISTrader as _KT
+                from somi_kis_reporter import num as _num
+                px = _num(_KT().kis.quote(order["symbol"]).get("stck_prpr"))
+            except Exception:
+                px = order.get("price") or 0
+        quant_analyzer.append(order["side"], order["symbol"], order["name"], order["qty"],
+                              px, order.get("score"), order.get("entry"),
+                              order.get("stop"), order.get("target"))
+    except Exception:
+        pass
     sidetxt = "매수" if order["side"] == "buy" else "매도"
     extra = ""
     if order.get("target"):
@@ -494,6 +555,82 @@ def _execute_pending_order() -> str:
         f"✅ {order['name']}({order['symbol']}) {order['qty']:,}주 {sidetxt} 주문 접수\n"
         f"주문번호: {result.get('order_no')} / {result.get('time')}\n{result.get('msg','')}{extra}"
     )
+
+
+# ── 푸시된 매수신호 원터치 승인 (신호 → 원터치 체결) ──
+PENDING_SIGNALS_FILE = PROJECT_ROOT / "output" / "cache" / "pending_signals.json"
+_SIGNAL_APPROVE_RE = re.compile(
+    r"^(ㅇㅋ|오케이|오키|ok|okay|승인|콜|ㄱㄱ|고고|가자|간다|사자|매수승인)\s*(\d+)?\s*(번)?$"
+)
+
+
+def _signals_load() -> list[dict]:
+    """만료되지 않은 대기 신호 목록."""
+    from datetime import datetime
+    try:
+        data = json.loads(PENDING_SIGNALS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    out, now = [], datetime.now()
+    for s in data.get("signals", []):
+        exp = s.get("expires")
+        if exp:
+            try:
+                if datetime.fromisoformat(exp) < now:
+                    continue
+            except Exception:
+                pass
+        out.append(s)
+    return out
+
+
+def _signals_clear() -> None:
+    try:
+        PENDING_SIGNALS_FILE.write_text(
+            json.dumps({"signals": []}, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _signals_remove(sig_id: int) -> None:
+    try:
+        data = json.loads(PENDING_SIGNALS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    data["signals"] = [s for s in data.get("signals", []) if s.get("id") != sig_id]
+    PENDING_SIGNALS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _parse_signal_approve(text: str):
+    """푸시된 매수신호 원터치 승인. 승인어(+선택 번호)만 인식.
+    반환: (order, signal_id) 또는 None. 신호가 없으면 None."""
+    signals = _signals_load()
+    if not signals:
+        return None
+    m = _SIGNAL_APPROVE_RE.match(_normalize_text(text))
+    if not m:
+        return None
+    idx = m.group(2)
+    sig = next((s for s in signals if s.get("id") == int(idx)), None) if idx else signals[0]
+    if not sig:
+        return None
+    order = {
+        "symbol": sig["symbol"], "name": sig["name"], "qty": int(sig["qty"]),
+        "side": "buy", "price": 0,
+        "entry": sig.get("entry", 0), "stop": sig.get("stop", 0), "target": sig.get("target", 0),
+        "score": sig.get("score"),
+    }
+    return order, sig["id"]
+
+
+def _agent_factory_action(fn: str) -> str:
+    """예원 agent_factory의 승인/거절 호출 (신규 에이전트 생성 게이트)."""
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools"))
+        import agent_factory
+        return getattr(agent_factory, fn)()
+    except Exception as exc:
+        return f"에이전트 생성 처리 실패: {exc}"
 
 
 def dispatch_to_somi(text: str) -> str:
@@ -724,26 +861,142 @@ def handle_with_gpt(text: str) -> str:
         return f"요청 처리 중 오류가 발생했습니다: {exc}"
 
 
+def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | None:
+    """LLM이 메시지의 '의미'를 분석해 운영 명령 의도를 분류. 정해진 단어가 아니어도 같은 뜻이면 매칭.
+    반환: {"intent":..., "index":n|None} 또는 None(해당 없음/casual)."""
+    from _shared import llm
+    opts = ["mode_live=실거래(실제 돈)로 전환", "mode_paper=모의(가상)로 전환",
+            "mode_status=현재 거래 모드 조회", "none=거래 운영 명령이 아님(일반 대화/질문)"]
+    if has_order:
+        opts = ["order_confirm=대기 중인 주문 체결 승인", "order_cancel=대기 주문 취소"] + opts
+    if has_signals:
+        opts = ["signal_approve=푸시된 매수신호 승인(index=종목 번호, 없으면 1)",
+                "pass=신호 보류/넘김"] + opts
+    prompt = (
+        "주식 봇 사용자의 메시지 의도를 분류하세요. 미리 정한 단어가 아니라 '의미'로 판단합니다.\n"
+        "예) '이제 진짜로 사자'·'실전으로 돌려'→mode_live, '가상으로만'·'연습모드'→mode_paper, "
+        "'지금 뭘로 돼있어?'→mode_status, '그래 사', '오케이 2번'→signal_approve, '넘겨'→pass.\n"
+        f"가능한 의도: {'; '.join(opts)}\n"
+        f'메시지: "{text}"\n'
+        '애매하거나 단순 대화면 none. JSON만: {"intent":"...","index":번호 또는 null}'
+    )
+    raw = None
+    for fn in (lambda: llm.gpt(prompt, max_tokens=60, temperature=0),
+               lambda: llm.gemini(prompt, max_tokens=60, temperature=0),
+               lambda: llm.ollama(prompt, max_tokens=60, temperature=0)):
+        try:
+            raw = fn()
+            if raw:
+                break
+        except Exception:
+            continue
+    if not raw:
+        return None
+    a, b = raw.find("{"), raw.rfind("}")
+    if a < 0 or b <= a:
+        return None
+    try:
+        d = json.loads(raw[a:b + 1])
+    except Exception:
+        return None
+    it = str(d.get("intent", "")).strip()
+    if not it or it == "none":
+        return None
+    out = {"intent": it}
+    try:
+        if d.get("index") is not None:
+            out["index"] = int(d["index"])
+    except Exception:
+        pass
+    return out
+
+
+def _approve_signal(sig: dict) -> str:
+    """대기 신호 1건을 주문으로 만들어 즉시 체결."""
+    order = {
+        "symbol": sig["symbol"], "name": sig["name"], "qty": int(sig["qty"]),
+        "side": "buy", "price": 0,
+        "entry": sig.get("entry", 0), "stop": sig.get("stop", 0),
+        "target": sig.get("target", 0), "score": sig.get("score"),
+    }
+    _PENDING_ORDER["order"] = order
+    _signals_remove(sig["id"])
+    return _execute_pending_order()
+
+
+def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool) -> str | None:
+    """분류된 의도를 실제 명령으로 실행. 처리 못 하면 None."""
+    it = intent.get("intent")
+    if it == "order_confirm" and has_order:
+        return _execute_pending_order()
+    if it == "order_cancel" and has_order:
+        _PENDING_ORDER.pop("order", None)
+        return "주문을 취소했어요."
+    if it == "mode_live":
+        _set_trade_mode("live")
+        return ("🔴 실거래 모드로 전환했습니다.\n이제 신호 승인 시 실제 계좌·실제 돈으로 체결됩니다. "
+                "되돌리려면 '모의로'.")
+    if it == "mode_paper":
+        _set_trade_mode("paper")
+        return "🧪 모의(페이퍼) 모드로 전환했습니다. 체결은 가상으로만 처리됩니다."
+    if it == "mode_status":
+        cur = _get_trade_mode()
+        return f"현재 거래 모드: {'🔴 실거래(실제 돈)' if cur == 'live' else '🧪 모의(페이퍼)'}"
+    if it == "signal_approve" and has_signals:
+        signals = _signals_load()
+        idx = intent.get("index")
+        s = next((x for x in signals if x.get("id") == idx), None) if idx else signals[0]
+        if s:
+            return _approve_signal(s)
+    if it == "pass" and has_signals:
+        _signals_clear()
+        return "넘어갈게요. 계속 감시하겠습니다."
+    return None
+
+
 def handle_message(text: str) -> str:
-    """Telegram 자연어 메시지를 처리합니다. 운영성 요청은 LLM 전에 직접 처리합니다."""
+    """Telegram 자연어 메시지를 처리합니다. 운영 명령은 '의미'로 인식합니다(정해진 단어 불필요)."""
     text = (text or "").strip()
     if not text:
         return "메시지가 비어 있어요."
 
-    # 대기 중인 주문 확인/취소 (최우선)
-    if _PENDING_ORDER.get("order"):
+    has_order = bool(_PENDING_ORDER.get("order"))
+    has_signals = bool(_signals_load())
+
+    # 1) 빠른 정확매칭 (LLM 없이 즉답)
+    if has_order:
         n = _normalize_text(text)
         if n in ("확인", "ㅇㅇ", "응", "ok", "yes", "체결"):
             return _execute_pending_order()
         if n in ("취소", "ㄴㄴ", "아니", "no", "cancel"):
             _PENDING_ORDER.pop("order", None)
             return "주문을 취소했어요."
-        # 다른 메시지면 기존 주문은 만료 처리
+    mode_reply = _parse_trade_mode_command(text)
+    if mode_reply:
+        return mode_reply
+    sig = _parse_signal_approve(text)
+    if sig:
+        order, sig_id = sig
+        _PENDING_ORDER["order"] = order
+        _signals_remove(sig_id)
+        return _execute_pending_order()
+    if _is_pass(text):
+        _signals_clear()
+        return "넘어갈게요. 계속 감시하겠습니다."
+
+    # 2) 의미 기반 분류 — 정확매칭이 안 됐고, 운영 맥락이거나 짧은 지시일 때만 LLM 호출
+    if has_order or has_signals or len(text) <= 30:
+        intent = _classify_intent(text, has_order, has_signals)
+        if intent:
+            resolved = _dispatch_intent(intent, has_order, has_signals)
+            if resolved is not None:
+                return resolved
+
+    # 3) 위에서 안 잡힌 대기 주문은 만료
+    if has_order:
         _PENDING_ORDER.pop("order", None)
 
-    # 소미 매수 제안 승인 / 매도 / 패스
-    if _is_pass(text):
-        return "넘어갈게요. 계속 감시하겠습니다."
+    # 소미 매수 제안 승인 / 매도
     somi_order = _parse_somi_approve(text) or _parse_somi_sell(text)
     if somi_order:
         _PENDING_ORDER["order"] = somi_order
@@ -757,6 +1010,13 @@ def handle_message(text: str) -> str:
 
     if _is_balance_request(text):
         return _tool_balance()
+
+    # 신규 에이전트 생성 승인/거절 (예원 오케스트레이터 제안에 대한 응답)
+    _n = _normalize_text(text)
+    if _n in ("에이전트승인", "새에이전트승인", "에이전트생성승인"):
+        return _agent_factory_action("approve_pending")
+    if _n in ("에이전트거절", "에이전트취소", "새에이전트거절"):
+        return _agent_factory_action("reject_pending")
 
     if _is_trading_status_request(text):
         return _tool_get_trading_status() + "\n\n" + _tool_get_agent_status()

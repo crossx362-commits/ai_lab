@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ailab.somi_signal</string>
+
+    <!-- 10분마다 1회 스캔. 거래 세션(평일 08:30~08:40, 09:00~20:00) 밖이면 스크립트가 스스로 생략. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/junholee/ai_lab/projects/ai-team/skills/소미_분석가/tools/somi_signal_engine.py</string>
+        <string>--scan</string>
+        <string>--session-only</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/junholee/ai_lab</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUTF8</key>
+        <string>1</string>
+        <!-- 처음엔 안전하게 모의로: 실거래 전환 시 false 로. -->
+        <key>KIS_PAPER</key>
+        <string>true</string>
+        <key>SOMI_BUDGET_PER_TRADE</key>
+        <string>1000000</string>
+        <key>SOMI_SIGNAL_TOP</key>
+        <string>3</string>
+        <!-- 코스피 시간외 단일가 20:00까지 포함. 필요시 조정. -->
+        <key>SOMI_SESSION_WINDOWS</key>
+        <string>08:30-08:40,09:00-20:00</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/junholee/ai_lab/output/trading_logs/somi_signal.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/junholee/ai_lab/output/trading_logs/somi_signal.err.log</string>
+</dict>
+</plist>

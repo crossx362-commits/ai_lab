@@ -1,5 +1,5 @@
 const SOCIAL_TEMPLATE = `
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
 
     <!-- 1열: 왼쪽 패널 - 친구 검색, 대기 신청, 친구 리스트 (lg:col-span-1) -->
     <div class="lg:col-span-1 order-last lg:order-first bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-6">

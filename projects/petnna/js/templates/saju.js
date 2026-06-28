@@ -270,7 +270,7 @@ const SAJU_TEMPLATE = `
             <span class="text-2xl">🧠</span>
         </div>
 
-        <div id="iq-test-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+        <div id="iq-test-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
             <!-- 메인 테스트 폼 영역 (2열 차지) -->
             <div class="md:col-span-2 bg-white rounded-3xl p-5 border border-sky-100 shadow-sm space-y-4">
                 
@@ -337,7 +337,7 @@ const SAJU_TEMPLATE = `
             <button onclick="switchMbtiMode('owner')" id="mbti-mode-owner" class="flex-1 text-gray-500 font-bold text-xs py-2 rounded-lg transition-all">🧔 집사 MBTI</button>
         </div>
 
-        <div id="mbti-test-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+        <div id="mbti-test-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
             <div class="md:col-span-2 bg-white rounded-3xl p-5 border border-pink-100 shadow-sm space-y-4">
                 
                 <div id="mbti-start-screen" class="text-center py-6 space-y-3">

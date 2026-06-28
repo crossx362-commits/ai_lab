@@ -41,7 +41,7 @@ const MYPET_TEMPLATE = `
     </div>
 
     <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
 
     <!-- 왼쪽: 댕이의 하루 방 -->
     <div class="lg:col-span-9 space-y-4">
