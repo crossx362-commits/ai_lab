@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -88,25 +89,55 @@ def _news_report_text() -> str:
     return "\n\n".join(parts) or "(보고서 없음)"
 
 
+def _parse_grade(out: str) -> str:
+    """검토 출력에서 등급 추출 — '등급: 부실' 우선, 없으면 본문 내 키워드."""
+    m = re.search(r"등급[^\n]{0,10}?(부실|보통|양호)", out)
+    if m:
+        return m.group(1)
+    for g in ("부실", "보통", "양호"):
+        if g in out:
+            return g
+    return "unknown"
+
+
 def review_news() -> dict:
-    """news_review_prompt.md 로 뉴스팀 보고서 LLM 품질 검토 → {grade, review}."""
+    """news_review_prompt.md 로 뉴스팀 보고서 LLM 품질 검토 → {grade, review}.
+    검수는 품질이 중요하므로 클라우드(gpt→gemini) 우선."""
     try:
         tmpl = NEWS_REVIEW_PROMPT.read_text(encoding="utf-8")
     except Exception as exc:
         return {"grade": "unknown", "review": f"(검토 프롬프트 로드 실패: {exc})"}
     prompt = tmpl.replace("{보고서}", _news_report_text())
-    out = (text(prompt, max_tokens=500, temperature=0.2, task="blog") or "").strip()
-    head = out[:150]
-    grade = "부실" if "부실" in head else ("보통" if "보통" in head else ("양호" if "양호" in head else "unknown"))
-    return {"grade": grade, "review": out}
+    # 검수는 품질이 중요 → 클라우드(gpt→gemini) 직접 호출. (text()는 env상 Ollama 우선이라 '-' 빈응답 위험)
+    from _shared import llm
+    out = ""
+    for fn in (llm.gpt, llm.gemini):
+        try:
+            out = (fn(prompt, max_tokens=500, temperature=0.2) or "").strip()
+        except Exception:
+            out = ""
+        if len(out) >= 20:
+            break
+    if len(out) < 20:  # LLM 빈/쓰레기 응답 → 판정 불가(기계적 폴백이 처리)
+        return {"grade": "unknown", "review": out}
+    return {"grade": _parse_grade(out), "review": out}
+
+
+def _news_mechanically_thin() -> bool:
+    """LLM 판정 불가일 때 쓰는 기계적 부실 판정 — 지역/브리프/영향도가 비었는가."""
+    if any(_region_thin(n, research.load_region(n)) for n in ("us", "asia", "eu")):
+        return True
+    mb = research.load_market_brief()
+    return (not mb) or (not mb.get("comment")) or (not research.load_issue_impact())
 
 
 def ensure_news_quality() -> dict:
-    """예원이 news_review_prompt 로 검수 → '부실'이면 조사팀에 재수집 지시 후 재검토.
+    """예원이 news_review_prompt 로 검수 → '부실'(또는 판정불가+기계적 부실)이면 재수집 후 재검토.
     {grade, review, actions, grade_after} 반환. (1회만 재시도)"""
     rv = review_news()
     actions: list[str] = []
-    if rv["grade"] == "부실":
+    need = rv["grade"] == "부실" or (rv["grade"] == "unknown" and _news_mechanically_thin())
+    if need:
         # 비어있는 지역은 콕 집어 재조사, 마켓데스크는 항상 재집계
         for n in ("us", "asia", "eu"):
             if _region_thin(n, research.load_region(n)) and _run_research(n):
