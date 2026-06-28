@@ -59,33 +59,63 @@ def _run_research(key: str, timeout: int = 240) -> bool:
         return False
 
 
+NEWS_REVIEW_PROMPT = Path(__file__).resolve().parent / "news_review_prompt.md"
+
+
 def _region_thin(name: str, reg: dict) -> bool:
-    """지역 조사 데이터가 부실한지 — 지수도 웹이슈도 (아시아면 뉴스도) 비었으면 부실."""
+    """지역 조사 데이터가 비었는지 — 재수집 대상 지역을 고를 때 사용."""
     has = bool(reg.get("indices")) or bool(reg.get("web_issues"))
     if name == "asia":
         has = has or bool(reg.get("news")) or bool(reg.get("disclosures"))
     return not has
 
 
-def ensure_news_quality() -> list[str]:
-    """예원이 뉴스팀 산출물을 검수 → 부실하면 해당 조사 에이전트에 재수집 지시(재실행).
-    보완한 내역을 반환. (1회만 재시도해 무한루프 방지)"""
-    actions = []
-    regions = {n: research.load_region(n) for n in ("us", "asia", "eu")}
-    weak = [n for n, reg in regions.items() if _region_thin(n, reg)]
-
-    for n in weak:
-        if _run_research(n):
-            actions.append(f"{n} 지역조사 재수집")
-
-    # 마켓데스크 종합/영향도 점검 — 비었거나 코멘트 없으면 재집계
-    mb = research.load_market_brief()
+def _news_report_text() -> str:
+    """검토 대상 보고서 = market_brief.md + 지역별 핵심 데이터 요약."""
+    parts = []
+    p = research.RESEARCH_DIR / "market_brief.md"
+    if p.exists():
+        parts.append(p.read_text(encoding="utf-8", errors="replace"))
+    for n in ("us", "asia", "eu"):
+        reg = research.load_region(n)
+        parts.append(
+            f"[{n}] 지수: {reg.get('indices') or '없음'} / "
+            f"웹이슈: {(reg.get('web_issues') or '없음')[:400]} / "
+            f"뉴스: {(reg.get('news') or [])[:5]}"
+        )
     impact = research.load_issue_impact()
-    need_desk = bool(weak) or (not mb) or (not mb.get("comment")) or (not impact)
-    if need_desk and _run_research("desk"):
-        actions.append("마켓데스크 종합·영향도 재작성")
+    parts.append(f"[종목 영향도] {len(impact)}건: {list(impact.items())[:5]}")
+    return "\n\n".join(parts) or "(보고서 없음)"
 
-    return actions
+
+def review_news() -> dict:
+    """news_review_prompt.md 로 뉴스팀 보고서 LLM 품질 검토 → {grade, review}."""
+    try:
+        tmpl = NEWS_REVIEW_PROMPT.read_text(encoding="utf-8")
+    except Exception as exc:
+        return {"grade": "unknown", "review": f"(검토 프롬프트 로드 실패: {exc})"}
+    prompt = tmpl.replace("{보고서}", _news_report_text())
+    out = (text(prompt, max_tokens=500, temperature=0.2, task="blog") or "").strip()
+    head = out[:150]
+    grade = "부실" if "부실" in head else ("보통" if "보통" in head else ("양호" if "양호" in head else "unknown"))
+    return {"grade": grade, "review": out}
+
+
+def ensure_news_quality() -> dict:
+    """예원이 news_review_prompt 로 검수 → '부실'이면 조사팀에 재수집 지시 후 재검토.
+    {grade, review, actions, grade_after} 반환. (1회만 재시도)"""
+    rv = review_news()
+    actions: list[str] = []
+    if rv["grade"] == "부실":
+        # 비어있는 지역은 콕 집어 재조사, 마켓데스크는 항상 재집계
+        for n in ("us", "asia", "eu"):
+            if _region_thin(n, research.load_region(n)) and _run_research(n):
+                actions.append(f"{n} 지역조사 재수집")
+        if _run_research("desk"):
+            actions.append("마켓데스크 종합·영향도 재작성")
+        rv["grade_after"] = review_news()["grade"] if actions else rv["grade"]
+    return {"grade": rv["grade"], "review": rv["review"],
+            "actions": actions, "grade_after": rv.get("grade_after")}
 
 
 def _somi_text() -> str:
@@ -113,7 +143,7 @@ def build(slot: str) -> str:
     now = datetime.now()
     label = SLOT_LABEL.get(slot, slot)
     # 예원 검수: 뉴스팀 산출물이 부실하면 먼저 재수집 지시(보강 후 보고 작성)
-    fixed = ensure_news_quality()
+    qa_info = ensure_news_quality()  # news_review_prompt.md 로 LLM 검수 → 부실하면 재수집
     # 마켓데스크 종합 브리프 전체(국가별 뉴스·거시·지정학·트렌드·전망·비트코인)를 그대로 읽어
     # 예원이 항상 체크하게 한다.
     mb_md = ""
@@ -126,7 +156,9 @@ def build(slot: str) -> str:
     events = _today_events()
     status = status_report()
 
-    qa = ("예원 검수: 부실 항목 보강함 — " + ", ".join(fixed)) if fixed else "예원 검수: 뉴스팀 자료 양호"
+    qa = f"예원 검수 등급: {qa_info['grade']}"
+    if qa_info["actions"]:
+        qa += " → 보강: " + ", ".join(qa_info["actions"]) + f" (재검토: {qa_info.get('grade_after')})"
     raw = (
         f"[시간대] {label}\n"
         f"[{qa}]\n\n"

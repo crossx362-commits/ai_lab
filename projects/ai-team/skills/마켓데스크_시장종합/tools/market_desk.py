@@ -216,6 +216,15 @@ def build() -> dict:
         max_tokens=1100,
     )
 
+    # 신기술·혁신 트렌드 핫이슈 (AI·우주에 한정하지 말고 폭넓게, 관련 상장사까지)
+    hot_issues = research.web_brief(
+        "오늘 가장 화제인 '신기술·혁신 트렌드' 이슈를 폭넓게 4~6개 골라 각각 1~2줄로 정리하라. "
+        "특정 주제 2개에 한정하지 말 것. 예: AI/반도체, 우주·SpaceX·위성, 로봇·휴머노이드, 양자컴퓨팅, "
+        "자율주행·전기차, 바이오·헬스테크, 에너지·원전·배터리, AR/VR 등 첨단기술 전반. "
+        "각 이슈에 관련된 한국/미국 상장사(수혜주)가 있으면 함께. 근거·출처 위주, 단정 표현 회피.",
+        max_tokens=1000,
+    )
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     md_lines = [f"# 📋 시장 종합 브리프 — {now}", ""]
     if fx.get("KRW"):
@@ -253,6 +262,8 @@ def build() -> dict:
         md_lines += ["## 🧭 데스크 코멘트", comment, ""]
     if geo_macro:
         md_lines += ["## 🌐 거시 · 지정학 · 트렌드", geo_macro, ""]
+    if hot_issues:
+        md_lines += ["## 🚀 신기술 핫이슈", hot_issues, ""]
     if outlook:
         md_lines += ["## 📈 전망 · 비트코인", outlook, ""]
 
