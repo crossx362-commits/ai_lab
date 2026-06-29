@@ -523,23 +523,20 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.daemon:
+        from _shared.utils import due_slot
+        slots = os.getenv("SOMI_ADVISOR_SLOTS", "09:00,12:30,15:30").split(",")
+        state = PROJECT_ROOT / "output" / "cache" / "somi_advisor_slots.json"
         with ProcessLock("somi_trade_advisor"):
-            print(f"[{datetime.now()}] 소미 매수 제안 데몬 시작 (08:00~20:00, 30분 주기)")
+            print(f"[{datetime.now()}] 소미 매수 제안 데몬 시작 (정해진 시각만: {','.join(slots)})")
             while True:
-                now = datetime.now()
-                hour = now.hour
-                # 08:00~20:00만 동작
-                if 8 <= hour < 20:
+                slot = due_slot(slots, state)   # 정해진 시각에만, 재시작·매틱 보고 방지
+                if slot:
                     try:
-                        print(f"[{now}] 후보 분석 시작")
-                        result = run(args.candidates, do_send=True)
-                        print(f"[{now}] 완료: {result[:200]}")
+                        print(f"[{datetime.now()}] 슬롯 {slot} 실행")
+                        run(args.candidates, do_send=True)
                     except Exception as e:
                         send(f"⚠️ 소미 매수 제안 오류: {e}")
-                        print(f"[{now}] 오류: {e}")
-                else:
-                    print(f"[{now}] 대기 중 (활동시간: 08:00~20:00)")
-                time.sleep(1800)  # 30분
+                time.sleep(300)  # 5분마다 슬롯 도래만 확인(보고는 슬롯당 1회)
         return
 
     print(run(args.candidates, args.send))

@@ -1,8 +1,41 @@
 """Unified utilities - path, resources, ffmpeg, image upload."""
+import json
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
+
+
+# ==================== SCHEDULE SLOT GATE ====================
+def due_slot(slots: list[str], state_path: str | Path, weekdays_only: bool = True) -> str | None:
+    """정해진 시각(slots, 'HH:MM')이 도래했고 오늘 아직 안 보냈으면 그 슬롯을 반환, 아니면 None.
+    데몬이 시작 즉시·매 틱마다 보고하는 것을 막고 '정해진 시간에 한 번만' 실행하게 한다.
+    지난 슬롯은 재시작 시 catch-up(한 번)된다. 상태는 state_path(json)에 날짜로 기록."""
+    now = datetime.now()
+    if weekdays_only and now.weekday() >= 5:
+        return None
+    state_path = Path(state_path)
+    try:
+        sent = json.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    except Exception:
+        sent = {}
+    today = now.strftime("%Y-%m-%d")
+    for s in slots:
+        try:
+            h, m = (int(x) for x in s.split(":"))
+        except Exception:
+            continue
+        slot_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if now >= slot_dt and sent.get(s) != today:
+            sent[s] = today
+            try:
+                state_path.parent.mkdir(parents=True, exist_ok=True)
+                state_path.write_text(json.dumps(sent, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                pass
+            return s
+    return None
 
 
 # ==================== PATH UTILITIES ====================

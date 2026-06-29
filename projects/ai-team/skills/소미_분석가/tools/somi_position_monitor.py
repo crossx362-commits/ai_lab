@@ -162,15 +162,18 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.daemon:
-        interval = int(os.getenv("SOMI_POSITION_INTERVAL", "300"))  # 기본 5분
+        from _shared.utils import due_slot
+        interval = int(os.getenv("SOMI_POSITION_INTERVAL", "300"))  # 점검 주기(자동 손절/익절)
+        slots = os.getenv("SOMI_POSITION_SLOTS", "09:30,11:00,13:00,15:20").split(",")
+        state = PROJECT_ROOT / "output" / "cache" / "somi_position_slots.json"
         with ProcessLock("somi_position_monitor"):
-            print(f"[{datetime.now()}] 소미 포지션 감시 데몬 시작 (장중 평일 09~16시, {interval // 60}분 주기)")
+            print(f"[{datetime.now()}] 소미 포지션 감시 데몬 시작 (점검 {interval // 60}분 / 보고 슬롯 {','.join(slots)})")
             while True:
                 now = datetime.now()
                 if now.weekday() < 5 and 9 <= now.hour < 16:  # 평일 장중만
                     try:
-                        result = run(do_send=True)
-                        print(f"[{now}] {result[:200]}")
+                        # 자동 손절/익절은 매 틱 점검(체결), 보고(텔레그램/노션)는 정해진 시각에만
+                        run(do_send=bool(due_slot(slots, state)))
                     except Exception as e:
                         send(f"⚠️ 소미 포지션 감시 오류: {e}")
                         print(f"[{now}] 오류: {e}")

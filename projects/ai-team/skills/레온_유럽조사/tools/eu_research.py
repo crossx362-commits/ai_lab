@@ -25,7 +25,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import publish_report, send  # noqa: E402
 from _shared import research  # noqa: E402
 from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
@@ -70,22 +70,23 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.daemon:
+        from _shared.utils import due_slot
+        slots = os.getenv("LEON_SLOTS", "16:00").split(",")
+        state = PROJECT_ROOT / "output" / "cache" / "leon_slots.json"
         with ProcessLock("leon_eu_research"):
-            print(f"[{datetime.now()}] 레온 데몬 시작 (30분 주기)")
+            print(f"[{datetime.now()}] 레온 데몬 시작 (정해진 시각만: {','.join(slots)})")
             while True:
-                try:
-                    payload = collect()
-                    txt = brief_text(payload)
-                    send(txt)
-                    print(f"[{datetime.now()}] 유럽 브리프 전송 완료")
-                    growth.record("leon_eu", role="유럽 시장조사", data="DAX·유로스톡스·환율·정책",
-                                  judgment="브리프 작성", result="전송", good="4시간 주기",
-                                  bad="국내주 억지연결 경계",
-                                  scores={"fit": 19, "evidence": 18, "efficiency": 18, "risk": 16, "brevity": 8})
-                except Exception as e:
-                    send(f"⚠️ 레온 오류: {e}")
-                    print(f"[{datetime.now()}] 오류: {e}")
-                time.sleep(int(os.getenv("RESEARCH_INTERVAL_SEC", "14400")))  # 기본 4시간(과다 알림 완화)
+                if due_slot(slots, state):
+                    try:
+                        txt = brief_text(collect())
+                        publish_report("레온 유럽 시장 브리프", txt)
+                        growth.record("leon_eu", role="유럽 시장조사", data="DAX·유로스톡스·환율·정책",
+                                      judgment="브리프 작성", result="전송", good="정해진 시각 보고",
+                                      bad="국내주 억지연결 경계",
+                                      scores={"fit": 19, "evidence": 18, "efficiency": 18, "risk": 16, "brevity": 8})
+                    except Exception as e:
+                        send(f"⚠️ 레온 오류: {e}")
+                time.sleep(300)
         return
 
     payload = collect()
@@ -93,7 +94,7 @@ def main() -> None:
     if args.print or not args.send:
         print(txt)
     if args.send:
-        send(txt)
+        publish_report("레온 유럽 시장 브리프", txt)
 
 
 if __name__ == "__main__":

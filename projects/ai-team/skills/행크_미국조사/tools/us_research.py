@@ -26,7 +26,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import publish_report, send  # noqa: E402
 from _shared import research  # noqa: E402
 from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
@@ -88,22 +88,23 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.daemon:
+        from _shared.utils import due_slot
+        slots = os.getenv("HANK_SLOTS", "06:30,12:00,15:30").split(",")
+        state = PROJECT_ROOT / "output" / "cache" / "hank_slots.json"
         with ProcessLock("hank_us_research"):
-            print(f"[{datetime.now()}] 행크 데몬 시작 (30분 주기)")
+            print(f"[{datetime.now()}] 행크 데몬 시작 (정해진 시각만: {','.join(slots)})")
             while True:
-                try:
-                    payload = collect()
-                    txt = brief_text(payload)
-                    send(txt)
-                    print(f"[{datetime.now()}] 미국 브리프 전송 완료")
-                    growth.record("hank_us", role="미국 시장조사", data="지수·환율·금리·웹이슈",
-                                  judgment="브리프 작성", result="전송", good="4시간 주기",
-                                  bad="한국 영향 연결 강화 여지",
-                                  scores={"fit": 19, "evidence": 18, "efficiency": 18, "risk": 16, "brevity": 8})
-                except Exception as e:
-                    send(f"⚠️ 행크 오류: {e}")
-                    print(f"[{datetime.now()}] 오류: {e}")
-                time.sleep(int(os.getenv("RESEARCH_INTERVAL_SEC", "14400")))  # 기본 4시간(과다 알림 완화)
+                if due_slot(slots, state):   # 정해진 시각에만, 재시작·매틱 보고 방지
+                    try:
+                        txt = brief_text(collect())
+                        publish_report("행크 미국 시장 브리프", txt)  # 노션 작성 + 텔레그램 링크
+                        growth.record("hank_us", role="미국 시장조사", data="지수·환율·금리·웹이슈",
+                                      judgment="브리프 작성", result="전송", good="정해진 시각 보고",
+                                      bad="한국 영향 연결 강화 여지",
+                                      scores={"fit": 19, "evidence": 18, "efficiency": 18, "risk": 16, "brevity": 8})
+                    except Exception as e:
+                        send(f"⚠️ 행크 오류: {e}")
+                time.sleep(300)
         return
 
     payload = collect()
@@ -111,7 +112,7 @@ def main() -> None:
     if args.print or not args.send:
         print(txt)
     if args.send:
-        send(txt)
+        publish_report("행크 미국 시장 브리프", txt)  # 보고서는 노션, 텔레그램엔 링크만
 
 
 if __name__ == "__main__":

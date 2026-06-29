@@ -26,7 +26,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import publish_report, send  # noqa: E402
 from _shared.llm import text  # noqa: E402
 from _shared import research  # noqa: E402
 from _shared import growth  # noqa: E402
@@ -363,31 +363,29 @@ def main() -> None:
     args = ap.parse_args()
 
     if args.daemon:
+        from _shared.utils import due_slot
+        slots = os.getenv("MARKETDESK_SLOTS", "07:50,15:20").split(",")
+        state = PROJECT_ROOT / "output" / "cache" / "marketdesk_slots.json"
         with ProcessLock("market_desk"):
-            print(f"[{datetime.now()}] 마켓데스크 데몬 시작 (1시간 주기)")
+            print(f"[{datetime.now()}] 마켓데스크 데몬 시작 (정해진 시각만: {','.join(slots)})")
             while True:
-                try:
-                    md = build()["md"]
-                    for i in range(0, len(md), 3900):
-                        send(md[i:i + 3900])
-                    print(f"[{datetime.now()}] 시장 종합 브리프 전송 완료")
-                    growth.record("marketdesk", role="시장 종합 최종판단", data="행크·유나·레온 통합",
-                                  judgment="단일 시장판단", result="전송", good="지역조사 통합",
-                                  bad="중복·충돌 정리 로직 정식화 여지",
-                                  scores={"fit": 21, "evidence": 19, "efficiency": 18, "risk": 18, "brevity": 8})
-                except Exception as e:
-                    send(f"⚠️ 마켓데스크 오류: {e}")
-                    print(f"[{datetime.now()}] 오류: {e}")
-                time.sleep(int(os.getenv("RESEARCH_INTERVAL_SEC", "14400")))  # 기본 4시간(과다 알림 완화)
+                if due_slot(slots, state):
+                    try:
+                        publish_report("마켓데스크 시장 종합 브리프", build()["md"])
+                        growth.record("marketdesk", role="시장 종합 최종판단", data="행크·유나·레온 통합",
+                                      judgment="단일 시장판단", result="전송", good="정해진 시각 보고",
+                                      bad="중복·충돌 정리 로직 정식화 여지",
+                                      scores={"fit": 21, "evidence": 19, "efficiency": 18, "risk": 18, "brevity": 8})
+                    except Exception as e:
+                        send(f"⚠️ 마켓데스크 오류: {e}")
+                time.sleep(300)
         return
 
     md = build()["md"]
     if args.print or not args.send:
         print(md)
     if args.send:
-        # 텔레그램 길이 제한 대비 3900자 분할
-        for i in range(0, len(md), 3900):
-            send(md[i:i + 3900])
+        publish_report("마켓데스크 시장 종합 브리프", md)
 
 
 if __name__ == "__main__":
