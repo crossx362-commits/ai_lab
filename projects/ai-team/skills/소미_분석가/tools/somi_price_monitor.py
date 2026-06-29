@@ -115,34 +115,37 @@ class PriceMonitor:
             window_change = ((current_price - ref_price) / ref_price * 100) if ref_price else 0.0
 
             # 급변동 감지 — 트리거는 '최근 N분 급변'만 (종일 반복 알림 방지)
-            alerts = []
-            if abs(window_change) >= RAPID_MOVE_THRESHOLD:
-                direction = "급등" if window_change > 0 else "급락"
-                mins = MOVE_WINDOW_SEC // 60
-                vol_note = f" · 거래량 {volume_ratio:.1f}배" if volume_ratio >= VOLUME_RATIO_THRESHOLD else ""
-                alerts.append(f"🚨 {mins}분새 {direction} {window_change:+.2f}% (전일대비 {change_pct:+.2f}%){vol_note}")
+            triggered = abs(window_change) >= RAPID_MOVE_THRESHOLD
+            direction = "급등" if window_change > 0 else "급락"
+            mins = MOVE_WINDOW_SEC // 60
+            # 신호 등급(헌장): 거래량 동반·변동폭으로 단순변동/관심신호/강한신호 구분
+            if abs(window_change) >= RAPID_MOVE_THRESHOLD + 1 and volume_ratio >= VOLUME_RATIO_THRESHOLD:
+                grade, nxt = "강한 신호", "매수 제안 에이전트로 전달 권고"
+            elif volume_ratio >= 1.5:
+                grade, nxt = "관심 신호", "추가 확인 필요"
+            else:
+                grade, nxt = "단순 변동", "추격 금지 · 관망"
 
-            # 알림 전송
-            if alerts and self._can_send_alert():
-                message = f"""⚠️ {self.name}({self.symbol}) 급변동 감지
-
-{chr(10).join(alerts)}
-
-현재가: {fmt_int(current_price)}원
-등락률: {fmt_pct(change_pct)}
-거래량: {fmt_int(volume)}주
-시간: {datetime.now().strftime('%H:%M:%S')}"""
+            # 알림 전송 (헌장 [급변동 알림] 형식 + 신호등급)
+            if triggered and self._can_send_alert():
+                vol_txt = f"{volume_ratio:.1f}배" if volume_ratio else "확인불가"
+                message = f"""[급변동 알림]
+- 종목: {self.name}({self.symbol})
+- 변동률: {mins}분새 {direction} {window_change:+.2f}% (전일대비 {change_pct:+.2f}%)
+- 신호 등급: {grade}
+- 이유: 거래량 {vol_txt} · 현재가 {fmt_int(current_price)}원
+- 다음 전달 대상: {nxt}"""
 
                 if send(message):
                     self.last_alert_time = datetime.now()
-                    log(f"알림 전송: {', '.join(alerts)}")
+                    log(f"알림 전송: {direction} {window_change:+.2f}% [{grade}]")
                     growth.record(
                         "somi_monitor", role="실시간 급변동 감시",
-                        data=f"{self.name}({self.symbol}) {window_change:+.2f}%/{MOVE_WINDOW_SEC//60}분",
-                        judgment="급변동 감지", result="알림 전송",
-                        good="단시간 델타 기반(전일대비 아님)",
-                        bad="신호등급(단순/관심/강한) 미분류" ,
-                        scores={"fit": 20, "evidence": 17, "efficiency": 19, "risk": 16, "brevity": 9},
+                        data=f"{self.name}({self.symbol}) {window_change:+.2f}%/{mins}분",
+                        judgment=f"급변동 감지 — {grade}", result="알림 전송",
+                        good="단시간 델타 + 신호등급 분류",
+                        bad=("강한신호 외엔 전달 보류 검토" if grade != "강한 신호" else ""),
+                        scores={"fit": 22, "evidence": 19, "efficiency": 19, "risk": 17, "brevity": 9},
                     )
 
         except Exception as exc:

@@ -104,30 +104,34 @@ def check_positions() -> list[str]:
         won = lambda v: f"{int(v):,}원"
 
         paper = _is_paper()
+
+        def _clear(state: str, reason: str, hold_reason: str, risk: str, action: str) -> str:
+            # 헌장 [청산 제안] 형식
+            return (
+                f"[청산 제안]\n"
+                f"- 종목: {name}({symbol}) · 현재 {won(cur)} ({pnl:+.1f}%)\n"
+                f"- 현재 상태: {state}\n"
+                f"- 청산 이유: {reason}\n"
+                f"- 더 보유할 이유: {hold_reason}\n"
+                f"- 리스크: {risk}\n"
+                f"- 사용자 승인 필요: 예{action}"
+            )
+
         if stop and cur <= stop:
-            action = _paper_sell(symbol, "stop", cur) if paper else "\n  매도하려면 '소미 매도 {} '라고 답해줘요.".format(name)
-            alerts.append(
-                f"🔴 손절 — {name}({symbol})\n"
-                f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 손절가 {won(stop)} 도달/이탈.{action}"
-            )
+            action = _paper_sell(symbol, "stop", cur) if paper else "\n  (실거래: '소미 매도 {}' 로 승인)".format(name)
+            alerts.append(_clear("손절 후보", f"손절가 {won(stop)} 도달/이탈",
+                                 "추세 반전 신호 시에만(현재 근거 약함)", "추가 하락 가능", action))
         elif target and cur >= target:
-            action = _paper_sell(symbol, "target", cur) if paper else "\n  '소미 매도 {}' 또는 수량 지정 매도.".format(name)
-            alerts.append(
-                f"🟢 익절 — {name}({symbol})\n"
-                f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 목표가 {won(target)} 도달.{action}"
-            )
+            action = _paper_sell(symbol, "target", cur) if paper else "\n  (실거래: '소미 매도 {}' 로 승인)".format(name)
+            alerts.append(_clear("익절 후보", f"목표가 {won(target)} 도달",
+                                 "강한 추세 지속 시 일부 보유", "되돌림 가능", action))
         elif _busdays_held(p.get("ts", "")) >= MAX_HOLD_DAYS:
-            # 시간초과 청산 — 목표·손절 미도달이라도 보유 한도 넘으면 정리(백테스트 검증)
-            action = _paper_sell(symbol, "timeout", cur) if paper else "\n  매도하려면 '소미 매도 {}' 라고 답해줘요.".format(name)
-            alerts.append(
-                f"⏰ 시간초과 청산 — {name}({symbol})\n"
-                f"  현재 {won(cur)} (수익률 {pnl:+.1f}%), 보유 {MAX_HOLD_DAYS}거래일 경과 — 목표·손절 미도달.{action}"
-            )
+            action = _paper_sell(symbol, "timeout", cur) if paper else "\n  (실거래: '소미 매도 {}' 로 승인)".format(name)
+            alerts.append(_clear("위험 증가", f"보유 {MAX_HOLD_DAYS}거래일 경과(목표·손절 미도달)",
+                                 "신규 모멘텀 발생 시", "정체·기회비용", action))
         elif pnl >= TRAIL_PROFIT_PCT:
-            alerts.append(
-                f"🟡 분할익절 참고 — {name}({symbol})\n"
-                f"  현재 {won(cur)} (수익률 {pnl:+.1f}%). 목표가({won(target)}) 전이지만 일부 익절 고려 가능."
-            )
+            alerts.append(_clear("보유 가능", f"수익 {pnl:+.1f}% — 목표가({won(target)}) 전 분할익절 참고",
+                                 "목표가까지 추세 지속 기대", "급반락 시 이익 반납", ""))
     return alerts
 
 

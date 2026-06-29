@@ -113,33 +113,28 @@ def _line(rank: int, r: dict) -> str:
 
 
 def format_report(results: list[dict], top_n: int = 5) -> str:
-    header = f"[소미 유망종목 발굴 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n"
-    header += f"거래대금 상위 {len(results)}종목을 소미가 분석한 결과입니다.\n"
+    """헌장 [유망종목 발굴] 형식 — 1~순위 / 제외 종목·이유 / 매수제안 전달 (최대 5)."""
+    ts = datetime.now().strftime('%Y-%m-%d %H:%M')
     if not results:
-        return header + "\n분석 가능한 종목이 없습니다. (장 시간/데이터 확인 필요)"
-
-    # 유망 = 소미 매수판단 '분할 관찰 가능'(60점↑). 관찰 = 40점↑.
+        return f"[유망종목 발굴] {ts}\n- 분석 가능한 종목 없음 (장 시간/데이터 확인 필요)"
+    ranked = results[:top_n]
     good = [r for r in results if r["score"] >= GOOD_SCORE]
-    watch = [r for r in results if WATCH_SCORE <= r["score"] < GOOD_SCORE]
-
-    lines = [header]
+    labels = ["1순위", "2순위", "3순위", "4순위", "5순위"]
+    lines = [f"[유망종목 발굴] {ts}"]
+    for i, r in enumerate(ranked):
+        sig = r["pos"][0] if r["pos"] else (r["neg"][0] if r["neg"] else "특이신호 없음")
+        lines.append(f"- {labels[i]}: {r['name']}({r['code']}) {r['score']}점/{r['grade']} — {sig}")
+    excluded = results[top_n:top_n + 2]
+    if excluded:
+        ex = ", ".join(f"{r['name']}({r['score']}점)" for r in excluded)
+        lines.append(f"- 제외한 종목과 이유: {ex} 등 — 점수·신호 부족")
+    else:
+        lines.append("- 제외한 종목과 이유: 해당 없음")
     if good:
-        lines.append(f"\n✅ 유망 (소미 '분할 관찰 가능' 60점↑)")
-        for i, r in enumerate(good[:top_n], start=1):
-            lines.append(_line(i, r))
+        lines.append(f"- 매수 제안 에이전트로 넘길 종목: {', '.join(r['name'] for r in good[:top_n])} (60점↑)")
     else:
         best = results[0]
-        lines.append(
-            f"\n⚠️ 오늘 소미 기준 '유망(60점↑)' 종목은 없습니다."
-            f" 최고점도 {best['name']} {best['score']}점({best['grade']})에 그칩니다."
-        )
-
-    if watch:
-        lines.append(f"\n👀 관찰 (소미 '관찰 우선' 40~59점)")
-        for i, r in enumerate(watch[:top_n], start=1):
-            lines.append(_line(i, r))
-
-    lines.append("\n※ 소미 점수(시장경보·지지선·급락·수급 반영) 기반 분석이며, 매수 지시가 아닙니다.")
+        lines.append(f"- 매수 제안 전달: 없음 (최고 {best['name']} {best['score']}점, 60점 미달)")
     return "\n".join(lines)
 
 
