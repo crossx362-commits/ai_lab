@@ -18,6 +18,13 @@ CONTINUOUS_DAEMONS = {
     "somi_screener": "somi_screener.py",
 }
 
+# macOS는 아래 데몬을 launchd 정시 잡으로 운영 → 상시 프로세스가 없어도 launchd에 적재돼 있으면
+# 정상(scheduled)으로 본다. (윈도우는 launchd 없음 → 프로세스 기준 그대로). 워치독 오탐 재시작 방지.
+_LAUNCHD_FALLBACK = {
+    "somi_position": "com.ailab.somi_position",
+    "somi_screener": "com.ailab.somi_screener",
+}
+
 # 정시 잡(조사팀·예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
 # (com.ailab.sched.*) — SPOF 제거. 집계로 정상 여부 판단.
 SCHED_PREFIX = "com.ailab.sched."
@@ -138,7 +145,12 @@ def agent_status() -> dict[str, str]:
     status: dict[str, str] = {}
     for name, script in CONTINUOUS_DAEMONS.items():
         pids = _find_pids(script)
-        status[name] = ",".join(pids) if pids else "down"
+        if pids:
+            status[name] = ",".join(pids)
+        elif sys.platform != "win32" and name in _LAUNCHD_FALLBACK and _launchd_loaded(_LAUNCHD_FALLBACK[name]):
+            status[name] = "scheduled"   # macOS: launchd 정시 잡으로 운영 중 → 정상
+        else:
+            status[name] = "down"
     # launchd 기반 상태(스케줄러·예약 서비스)는 macOS 전용 — Windows엔 launchd가 없어
     # 항상 'down'으로 오탐되므로 집계에서 제외(예원 하네스 오재시작·알림 스팸 방지).
     if sys.platform != "win32":
