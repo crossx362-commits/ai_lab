@@ -139,10 +139,13 @@ def agent_status() -> dict[str, str]:
     for name, script in CONTINUOUS_DAEMONS.items():
         pids = _find_pids(script)
         status[name] = ",".join(pids) if pids else "down"
-    n = _sched_count()
-    status["scheduler"] = f"sched:{n}" if n else "down"
-    for name, label in SCHEDULED_SERVICES.items():
-        status[name] = "scheduled" if _launchd_loaded(label) else "down"
+    # launchd 기반 상태(스케줄러·예약 서비스)는 macOS 전용 — Windows엔 launchd가 없어
+    # 항상 'down'으로 오탐되므로 집계에서 제외(예원 하네스 오재시작·알림 스팸 방지).
+    if sys.platform != "win32":
+        n = _sched_count()
+        status["scheduler"] = f"sched:{n}" if n else "down"
+        for name, label in SCHEDULED_SERVICES.items():
+            status[name] = "scheduled" if _launchd_loaded(label) else "down"
     return status
 
 
