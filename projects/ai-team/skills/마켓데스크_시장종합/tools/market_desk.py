@@ -161,6 +161,56 @@ def _expand_value_chain(impact: dict, max_add: int = 6) -> None:
         print(f"[market_desk] 밸류체인 수혜주 {len(added)}종목 추가")
 
 
+def final_judgment() -> str:
+    """헌장 [마켓데스크 최종 판단] — 매수제안·보유·개선안 신호를 종합해 단일 결론.
+    충돌 조정: 국내 수급·거래대금 우선, 급등이라도 수급 약하면 추격 경고."""
+    import json
+    cache = growth._root() / "output" / "cache"
+
+    def _load(name):
+        try:
+            return json.loads((cache / name).read_text(encoding="utf-8"))
+        except Exception:
+            return None
+
+    proposals = (_load("somi_proposals.json") or {}).get("items", [])
+    buys = [p for p in proposals if p.get("verdict") == "buy"]
+    positions = _load("somi_positions.json") or {}
+    pending = growth.list_proposals()
+
+    if buys:
+        conclusion, approval = "매수 후보", "예"
+        top = max(buys, key=lambda x: x.get("score", 0))
+        ev1 = f"매수 후보 {len(buys)}종목 (최고 {top.get('name')} {top.get('score')}점)"
+        risk = "급등 후보의 추격 위험 — 거래대금·수급 약하면 진입 보류"
+        choice = "매수 승인 여부 결정"
+    elif positions:
+        conclusion, approval = "보유", "아니오"
+        ev1 = f"신규 매수 후보 없음 · 보유 {len(positions)}종목 관리 국면"
+        risk = "보유분 손절선·수급 이탈 점검 필요"
+        choice = "보유 유지 / 청산 후보 확인"
+    else:
+        conclusion, approval = "관망", "아니오"
+        ev1 = "매수 후보·보유 모두 없음 — 현금 보유"
+        risk = "신규 진입 신호 부족(국면·점수 미달)"
+        choice = "추가 관망"
+
+    lines = [
+        "[마켓데스크 최종 판단]",
+        f"- 결론: {conclusion}",
+        "- 핵심 근거 3개:",
+        f"  1. {ev1}",
+        f"  2. 보유 포지션 {len(positions)}종목",
+        "  3. 판단 우선순위: 국내 수급·거래대금 > 해외 조사(배경 변수)",
+        f"- 가장 큰 리스크: {risk}",
+        f"- 사용자에게 필요한 선택: {choice}",
+        f"- 승인 필요 여부: {approval}",
+    ]
+    if pending:
+        lines.append(f"- 대기 개선안: {len(pending)}건 (예원 수집·승인 대기)")
+    return "\n".join(lines)
+
+
 def build() -> dict:
     us = research.load_region("us")
     asia = research.load_region("asia")
@@ -301,6 +351,7 @@ def build() -> dict:
         bullets.append("📈 전망·BTC: " + _short(outlook, 170))
     research.notion_page(f"📊 시장 브리프 {now}", bullets)
 
+    md += "\n\n" + final_judgment()  # 헌장 [마켓데스크 최종 판단] 통합
     return {"md": md}
 
 

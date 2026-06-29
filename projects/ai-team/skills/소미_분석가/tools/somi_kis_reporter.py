@@ -495,9 +495,48 @@ def send_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name:
     return ok
 
 
+def daily_summary() -> str:
+    """헌장 [정기 보고] 7항목 요약 — 짧게(시장·이슈·관심·보유·매수·청산·성장)."""
+    import json
+    cache = growth._root() / "output" / "cache"
+
+    def _load(n):
+        try:
+            return json.loads((cache / n).read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+
+    watchlist = load_watchlist()
+    positions = _load("somi_positions.json") or {}
+    buys = [p for p in (_load("somi_proposals.json") or {}).get("items", []) if p.get("verdict") == "buy"]
+    try:
+        from market_regime import market_regime, regime_label
+        reg = regime_label(market_regime().get("regime", "unknown"))
+    except Exception:
+        reg = "확인불가"
+    gs = growth.summary()
+    low = [a for a, d in gs.items() if d.get("avg_total", 100) < 60]
+    top = f" (최고 {max(buys, key=lambda x: x.get('score', 0)).get('name')})" if buys else ""
+    return "\n".join([
+        "[정기 보고]",
+        f"1. 시장 상태: {reg}",
+        "2. 핵심 이슈: 수급 기반 자동 분석(상세는 종목별 보고)",
+        f"3. 관심 종목: {len(watchlist)}종목",
+        f"4. 보유 종목 리스크: {len(positions)}종목 보유 중",
+        f"5. 매수 후보: {len(buys)}종목{top}",
+        "6. 청산 후보: 포지션 점검 에이전트 참조",
+        f"7. 성장/오류: 기록 {sum(d.get('count', 0) for d in gs.values())}건"
+        + (f", 저점수 {','.join(low)}" if low else ", 이상 없음"),
+    ])
+
+
 def send_watchlist_reports(report_name: str = "정기") -> bool:
     """감시 목록(watchlist)에 등록된 종목을 순회하며 보고. 비어 있으면 안내만."""
     watchlist = load_watchlist()
+    try:
+        send(daily_summary())  # 헌장 [정기 보고] 요약 선두 발송
+    except Exception:
+        pass
     if not watchlist:
         send("📋 감시 중인 종목이 없습니다.\n텔레그램에서 '관심종목 추가 <종목코드> <종목명>'으로 등록하세요.")
         return True

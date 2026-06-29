@@ -30,6 +30,7 @@ if str(AI_TEAM_ROOT) not in sys.path:
 from _shared.env import load_env
 from _shared.notify import status_report
 from _shared.process import ProcessLock
+from _shared import growth
 
 
 load_env(str(PROJECT_ROOT))
@@ -1112,6 +1113,13 @@ async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chunks = [response[i : i + 4000] for i in range(0, len(response), 4000)]
     for chunk in chunks:
         await update.effective_message.reply_text(chunk)
+
+    growth.record(
+        "youngsuk", role="명령 수신·전달·승인 확인", data=text[:60],
+        judgment="명령 처리·응답", result="응답 전송",
+        good="발신자 잠금(fail-closed) 적용", bad="명령 분류 라벨링 정식화 여지",
+        scores={"fit": 20, "evidence": 17, "efficiency": 19, "risk": 18, "brevity": 9},
+    )
 
 
 def main() -> int:
