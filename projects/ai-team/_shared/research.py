@@ -395,3 +395,52 @@ def notion_page(title: str, bullets: list[str]) -> bool:
     except Exception as exc:
         print(f"  노션 기록 실패: {exc}")
         return False
+
+
+def notion_report(title: str, body: str) -> str:
+    """긴 텍스트 보고서를 NOTION_DATABASE_ID 페이지로 만들고 페이지 URL을 반환(실패 시 '')."""
+    key = os.getenv("NOTION_API_KEY", "").strip()
+    db = os.getenv("NOTION_DATABASE_ID", "").strip()
+    if not key or not db:
+        return ""
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    }
+
+    def _api(method: str, url: str, payload: dict | None = None):
+        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+
+    title_prop = "Name"
+    try:
+        meta = _api("GET", f"https://api.notion.com/v1/databases/{db}")
+        for k, v in (meta.get("properties") or {}).items():
+            if v.get("type") == "title":
+                title_prop = k
+                break
+    except Exception:
+        pass
+
+    # 본문을 줄 단위 문단 블록으로 (한 블록 2000자 한도, 최대 100블록)
+    blocks = []
+    for line in (body or "").split("\n"):
+        chunk = line[:1990]
+        rich = [{"type": "text", "text": {"content": chunk}}] if chunk else []
+        blocks.append({"object": "block", "type": "paragraph", "paragraph": {"rich_text": rich}})
+        if len(blocks) >= 100:
+            break
+    payload = {
+        "parent": {"database_id": db},
+        "properties": {title_prop: {"title": [{"text": {"content": title[:200]}}]}},
+        "children": blocks,
+    }
+    try:
+        resp = _api("POST", "https://api.notion.com/v1/pages", payload)
+        return resp.get("url", "") or ""
+    except Exception as exc:
+        print(f"  노션 보고서 기록 실패: {exc}")
+        return ""

@@ -28,7 +28,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import publish_report, send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared import growth  # noqa: E402
 from short_covering_analyzer import (  # noqa: E402
@@ -486,13 +486,8 @@ def send_report(report_name: str = "정기", symbol: str = DEFAULT_SYMBOL, name:
     report = make_report(report_name, symbol, name)
     LATEST_REPORT.parent.mkdir(parents=True, exist_ok=True)
     LATEST_REPORT.write_text(report, encoding="utf-8")
-    chunks = [report[i : i + 3900] for i in range(0, len(report), 3900)]
-    ok = True
-    for index, chunk in enumerate(chunks, start=1):
-        prefix = f"(part {index}/{len(chunks)})\n" if len(chunks) > 1 else ""
-        ok = send(prefix + chunk) and ok
-        time.sleep(0.5)
-    return ok
+    # 보고서는 노션에 작성, 텔레그램엔 링크만
+    return publish_report(f"소미 {name}({symbol}) {report_name} 보고", report)
 
 
 def daily_summary() -> str:

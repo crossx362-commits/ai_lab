@@ -25,7 +25,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 import json  # noqa: E402
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import publish_report  # noqa: E402
 from somi_trade_advisor import CLOSED_TRADES_FILE, load_positions  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -118,7 +118,7 @@ def main() -> None:
     report = build()
     print(report)
     if args.send:
-        send(report)
+        publish_report("소미 모의 성과", report)
 
 
 if __name__ == "__main__":

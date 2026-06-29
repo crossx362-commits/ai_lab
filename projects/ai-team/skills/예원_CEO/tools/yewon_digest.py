@@ -27,7 +27,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send, status_report  # noqa: E402
+from _shared.notify import publish_report, status_report  # noqa: E402
 from _shared.llm import text  # noqa: E402
 from _shared import research  # noqa: E402
 
@@ -223,8 +223,9 @@ def main() -> None:
     if args.print or not args.send:
         print(report)
     if args.send:
-        for i in range(0, len(report), 3900):
-            send(report[i:i + 3900])
+        # 보고서는 노션에 작성, 텔레그램엔 링크만
+        title = report.split("\n", 1)[0][:200] or "예원 종합보고"
+        publish_report(title, report)
 
 
 if __name__ == "__main__":

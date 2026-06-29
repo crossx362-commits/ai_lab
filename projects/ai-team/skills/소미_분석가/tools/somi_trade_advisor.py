@@ -26,7 +26,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.notify import publish_report, send  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
 from _shared import research  # noqa: E402
 from _shared import growth  # noqa: E402
@@ -501,7 +501,7 @@ def run(candidate_limit: int = 20, do_send: bool = False) -> str:
                if buys else "현재 'buy' 판정 없음 — 계속 감시.")
         report = f"{header}\n수급+뉴스 종합 판단입니다. {tip}\n\n{body}"
     if do_send:
-        send(report)
+        publish_report("소미 매수 제안", report)
     growth.record(
         "somi_advisor", role="매수 제안(수급확인 게이트)",
         data=f"후보 {len(proposals)} / 국면 {regime}", judgment=f"매수대상 {len(buys)}",

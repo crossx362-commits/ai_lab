@@ -165,6 +165,24 @@ def status_report() -> str:
     return "\n".join(lines)
 
 
+def publish_report(title: str, body: str) -> bool:
+    """보고서·브리핑은 노션에 작성하고 텔레그램엔 '제목 + 노션 링크'만 보낸다.
+    노션 불가(키 없음/실패) 시 본문을 텔레그램으로 폴백 전송(보고 유실 방지)."""
+    url = ""
+    try:
+        from _shared import research
+        url = research.notion_report(title, body)
+    except Exception:
+        url = ""
+    if url:
+        return send(f"📄 {title}\n{url}")
+    # 폴백: 노션 실패 → 본문 그대로 전송(분할)
+    ok = True
+    for i in range(0, len(body), 3900):
+        ok = send(body[i:i + 3900]) and ok
+    return ok
+
+
 def report(agent: str, action: str, detail: str = "") -> None:
     msg = f"[{agent}] {action}"
     if detail:
