@@ -30,6 +30,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
+from _shared import growth  # noqa: E402
 from short_covering_analyzer import (  # noqa: E402
     calculate_score,
     flow_short_analysis,
@@ -46,7 +47,7 @@ load_env(str(PROJECT_ROOT))
 # 보고 대상은 watchlist에서 결정한다(아래는 함수 시그니처용 폴백, 정기 보고 대상 아님).
 DEFAULT_SYMBOL = ""
 DEFAULT_NAME = ""
-DEFAULT_TIMES = ["08:50", "12:30", "15:40"]
+DEFAULT_TIMES = ["08:00", "16:00"]
 TOKEN_CACHE = PROJECT_ROOT / "output" / "cache" / "kis_access_token.json"
 LATEST_REPORT = PROJECT_ROOT / "reports" / "research" / "somi_ourtech_latest.md"
 RUN_LOG = PROJECT_ROOT / "output" / "bot_logs" / "somi_kis_reporter.log"
@@ -537,6 +538,12 @@ def daemon(times: list[str], symbol: str | None = None, name: str | None = None)
                 else:
                     send_watchlist_reports("자동")
                 log("소미 자동보고 전송 완료")
+                growth.record(
+                    "somi_reporter", role="정기 보고(08:00/16:00)",
+                    data=f"watchlist {'단일' if symbol else '전체'}", judgment="정기 요약 전송",
+                    result="전송 완료", good="2회/일로 축소", bad="",
+                    scores={"fit": 20, "evidence": 18, "efficiency": 18, "risk": 16, "brevity": 8},
+                )
             except Exception as exc:
                 log(f"소미 자동보고 실패: {exc}")
                 send(f"[소미 자동보고 실패]\n{exc}")

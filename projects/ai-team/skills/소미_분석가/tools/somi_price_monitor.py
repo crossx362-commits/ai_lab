@@ -23,6 +23,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 from _shared.env import load_env
 from _shared.notify import send
 from _shared.process import ProcessLock
+from _shared import growth
 from somi_kis_reporter import KISClient, num, fmt_int, fmt_pct
 from watchlist_manager import load_watchlist
 
@@ -37,8 +38,11 @@ CHECK_INTERVAL = 60  # 1분마다 확인
 RUN_LOG = PROJECT_ROOT / "output" / "bot_logs" / "somi_price_monitor.log"
 
 # Global thresholds (can be modified by argparse)
-PRICE_CHANGE_THRESHOLD = 3.0  # 등락률 3% 이상
+PRICE_CHANGE_THRESHOLD = 3.0  # 전일대비 등락률(참고용 — 더 이상 단독 트리거 아님)
 VOLUME_RATIO_THRESHOLD = 2.0  # 거래량 평균 대비 2배 이상
+# 진짜 '급변동' = 짧은 시간 내 급변. 전일대비 누적이 아니라 최근 N분 변동률로 감지.
+RAPID_MOVE_THRESHOLD = 2.0     # 최근 MOVE_WINDOW 내 ±2% 이상 변동 시 급변동
+MOVE_WINDOW_SEC = 300          # 급변동 판정 시간창(5분)
 
 
 def log(message: str) -> None:
@@ -57,6 +61,7 @@ class PriceMonitor:
         self.last_alert_time = None
         self.alert_cooldown = 600  # 10분 쿨다운 (같은 알림 반복 방지)
         self.baseline_volume = None
+        self.price_window: list[tuple[datetime, float]] = []  # (시각, 가격) — 최근 N분 급변동 판정용
 
     def check_market_hours(self) -> bool:
         """장 운영 시간인지 확인 (평일 09:00-15:30)"""
@@ -101,15 +106,21 @@ class PriceMonitor:
             if self.baseline_volume and self.baseline_volume > 0:
                 volume_ratio = volume / self.baseline_volume
 
-            # 급변동 감지
+            # 최근 N분 변동률 계산 — 진짜 '급변동'(전일대비 누적이 아니라 짧은 시간 급변)
+            now = datetime.now()
+            self.price_window.append((now, current_price))
+            self.price_window = [(t, p) for t, p in self.price_window
+                                 if (now - t).total_seconds() <= MOVE_WINDOW_SEC]
+            ref_price = self.price_window[0][1]
+            window_change = ((current_price - ref_price) / ref_price * 100) if ref_price else 0.0
+
+            # 급변동 감지 — 트리거는 '최근 N분 급변'만 (종일 반복 알림 방지)
             alerts = []
-
-            if abs(change_pct) >= PRICE_CHANGE_THRESHOLD:
-                direction = "급등" if change_pct > 0 else "급락"
-                alerts.append(f"🚨 {direction} {change_pct:+.2f}%")
-
-            if volume_ratio >= VOLUME_RATIO_THRESHOLD:
-                alerts.append(f"📊 거래량 급증 {volume_ratio:.1f}배 (평균 대비)")
+            if abs(window_change) >= RAPID_MOVE_THRESHOLD:
+                direction = "급등" if window_change > 0 else "급락"
+                mins = MOVE_WINDOW_SEC // 60
+                vol_note = f" · 거래량 {volume_ratio:.1f}배" if volume_ratio >= VOLUME_RATIO_THRESHOLD else ""
+                alerts.append(f"🚨 {mins}분새 {direction} {window_change:+.2f}% (전일대비 {change_pct:+.2f}%){vol_note}")
 
             # 알림 전송
             if alerts and self._can_send_alert():
@@ -125,6 +136,14 @@ class PriceMonitor:
                 if send(message):
                     self.last_alert_time = datetime.now()
                     log(f"알림 전송: {', '.join(alerts)}")
+                    growth.record(
+                        "somi_monitor", role="실시간 급변동 감시",
+                        data=f"{self.name}({self.symbol}) {window_change:+.2f}%/{MOVE_WINDOW_SEC//60}분",
+                        judgment="급변동 감지", result="알림 전송",
+                        good="단시간 델타 기반(전일대비 아님)",
+                        bad="신호등급(단순/관심/강한) 미분류" ,
+                        scores={"fit": 20, "evidence": 17, "efficiency": 19, "risk": 16, "brevity": 9},
+                    )
 
         except Exception as exc:
             log(f"모니터링 오류: {exc}")

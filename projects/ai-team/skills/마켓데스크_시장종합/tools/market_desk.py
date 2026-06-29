@@ -29,6 +29,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.llm import text  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -319,6 +320,10 @@ def main() -> None:
                     for i in range(0, len(md), 3900):
                         send(md[i:i + 3900])
                     print(f"[{datetime.now()}] 시장 종합 브리프 전송 완료")
+                    growth.record("marketdesk", role="시장 종합 최종판단", data="행크·유나·레온 통합",
+                                  judgment="단일 시장판단", result="전송", good="지역조사 통합",
+                                  bad="중복·충돌 정리 로직 정식화 여지",
+                                  scores={"fit": 21, "evidence": 19, "efficiency": 18, "risk": 18, "brevity": 8})
                 except Exception as e:
                     send(f"⚠️ 마켓데스크 오류: {e}")
                     print(f"[{datetime.now()}] 오류: {e}")

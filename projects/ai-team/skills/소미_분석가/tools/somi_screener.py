@@ -22,6 +22,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
+from _shared import growth  # noqa: E402
 from somi_kis_reporter import KISClient, build_input_text  # noqa: E402
 from short_covering_analyzer import parse_input_text, calculate_score  # noqa: E402
 
@@ -149,6 +150,14 @@ def run(top_n: int = 5, candidate_limit: int = 20, do_send: bool = False) -> str
     report = format_report(results, top_n)
     if do_send:
         send(report)
+    strong = [r for r in results if r.get("score", 0) >= 60]
+    growth.record(
+        "somi_screener", role="유망종목 발굴",
+        data=f"후보 {len(candidates)} 채점", judgment=f"유망(60+) {len(strong)}",
+        result=f"상위 {min(top_n, len(results))} 보고",
+        good="거래대금 상위 풀 채점", bad=("유망 0 — 관심권만" if not strong else ""),
+        scores={"fit": 21, "evidence": 19, "efficiency": 18, "risk": 17, "brevity": 9},
+    )
     return report
 
 

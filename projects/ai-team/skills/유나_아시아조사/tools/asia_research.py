@@ -27,6 +27,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -101,6 +102,10 @@ def main() -> None:
                     txt = brief_text(payload)
                     send(txt)
                     print(f"[{datetime.now()}] 아시아 브리프 전송 완료")
+                    growth.record("yuna_asia", role="아시아 시장조사", data="한·중·일 지수·환율·공시",
+                                  judgment="브리프 작성", result="전송", good="4시간 주기",
+                                  bad="찌라시·단기소음 필터 강화 여지",
+                                  scores={"fit": 19, "evidence": 18, "efficiency": 18, "risk": 16, "brevity": 8})
                 except Exception as e:
                     send(f"⚠️ 유나 오류: {e}")
                     print(f"[{datetime.now()}] 오류: {e}")

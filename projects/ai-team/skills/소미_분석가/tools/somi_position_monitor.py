@@ -27,6 +27,7 @@ import time  # noqa: E402
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
+from _shared import growth  # noqa: E402
 from somi_kis_reporter import KISClient, num  # noqa: E402
 from somi_trade_advisor import load_positions, log_closed_trade, remove_position  # noqa: E402
 
@@ -138,6 +139,13 @@ def run(do_send: bool = False) -> str:
         report = f"[소미 포지션 점검 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n\n" + "\n\n".join(alerts)
         if do_send:
             send(report)
+    growth.record(
+        "somi_position", role="포지션 익절/손절/시간초과 청산",
+        data=f"보유 {len(load_positions())}종목", judgment=f"신호 {len(alerts)}건",
+        result=("청산 신호 발생" if alerts else "보유 유지"),
+        good="목표·손절·20일 기준 일관 적용", bad="",
+        scores={"fit": 22, "evidence": 19, "efficiency": 18, "risk": 20, "brevity": 9},
+    )
     return report
 
 

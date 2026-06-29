@@ -10,8 +10,35 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
 from _shared.notify import send, agent_status
 from _shared.process import ProcessLock
+from _shared import growth
 
 load_env()
+
+
+def growth_report() -> str:
+    """[예원 시스템 점검] — 프로세스 상태 + 성장기록 점검 + 승인대기 개선안 (헌장 예원 형식)."""
+    status = agent_status()
+    normal = [k for k, v in status.items() if v != "down"]
+    down = [k for k, v in status.items() if v == "down"]
+    summ = growth.summary()
+    # 반복 문제: 같은 부족점이 2회 이상, 또는 평균 총점 60 미만
+    repeated = [f"{a}: 평균 {d['avg_total']}점({d['count']}건)"
+                for a, d in summ.items() if d["count"] >= 2 and d["avg_total"] < 60]
+    no_log = [a for a in ("somi_monitor", "somi_advisor", "somi_position", "somi_screener",
+                          "somi_reporter", "marketdesk") if a not in summ]
+    proposals = growth.list_proposals()
+    lines = ["[예원 시스템 점검]"]
+    lines.append(f"- 정상 에이전트: {len(normal)}종 ({', '.join(normal) or '-'})")
+    lines.append(f"- 이상 에이전트: {', '.join(down) if down else '없음'}")
+    lines.append(f"- 성장기록 누락: {', '.join(no_log) if no_log else '없음'}")
+    lines.append(f"- 반복 문제: {'; '.join(repeated) if repeated else '없음'}")
+    if proposals:
+        lines.append(f"- 사용자 승인 필요 개선안: {len(proposals)}건")
+        for p in proposals[:5]:
+            lines.append(f"  · [{p.get('agent')}] {p.get('fix','')[:60]}")
+    else:
+        lines.append("- 사용자 승인 필요 개선안: 없음")
+    return "\n".join(lines)
 
 def run_harness():
     """하네스 실행"""
@@ -66,6 +93,7 @@ def main():
     """메인 루프"""
     print("🤖 [예원] 하네스 자동 감시 시작 (5분 주기)")
 
+    last_growth_date = None
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -79,6 +107,15 @@ def main():
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
                     time.sleep(10)  # 재시작 대기
+
+                # 성장 점검: 하루 1회(17시 이후) 발송 — 스팸 방지
+                now = datetime.now()
+                if now.hour >= 17 and last_growth_date != now.date():
+                    try:
+                        send(growth_report())
+                        last_growth_date = now.date()
+                    except Exception as e:
+                        print(f"성장 점검 발송 오류: {e}")
 
                 time.sleep(300)  # 5분
 

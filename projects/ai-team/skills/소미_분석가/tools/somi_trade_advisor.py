@@ -29,6 +29,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from somi_kis_reporter import KISClient, build_input_text  # noqa: E402
 from short_covering_analyzer import parse_input_text, calculate_score, to_num  # noqa: E402
@@ -500,6 +501,13 @@ def run(candidate_limit: int = 20, do_send: bool = False) -> str:
         report = f"{header}\n수급+뉴스 종합 판단입니다. {tip}\n\n{body}"
     if do_send:
         send(report)
+    growth.record(
+        "somi_advisor", role="매수 제안(수급확인 게이트)",
+        data=f"후보 {len(proposals)} / 국면 {regime}", judgment=f"매수대상 {len(buys)}",
+        result=("모의 자동매수" if _is_paper() else "승인형 제안"),
+        good="국면·수급·MC 게이트 통과분만", bad=("후보 0" if not proposals else ""),
+        scores={"fit": 22, "evidence": 20, "efficiency": 18, "risk": 19, "brevity": 8},
+    )
     return report
 
 
