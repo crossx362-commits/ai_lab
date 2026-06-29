@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
+from datetime import datetime
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -26,6 +28,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -80,7 +83,24 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="행크 미국 시장 조사")
     ap.add_argument("--send", action="store_true")
     ap.add_argument("--print", action="store_true")
+    ap.add_argument("--daemon", action="store_true", help="정기 실행 데몬 모드 (매 30분)")
     args = ap.parse_args()
+
+    if args.daemon:
+        with ProcessLock("hank_us_research"):
+            print(f"[{datetime.now()}] 행크 데몬 시작 (30분 주기)")
+            while True:
+                try:
+                    payload = collect()
+                    txt = brief_text(payload)
+                    send(txt)
+                    print(f"[{datetime.now()}] 미국 브리프 전송 완료")
+                except Exception as e:
+                    send(f"⚠️ 행크 오류: {e}")
+                    print(f"[{datetime.now()}] 오류: {e}")
+                time.sleep(1800)  # 30분
+        return
+
     payload = collect()
     txt = brief_text(payload)
     if args.print or not args.send:

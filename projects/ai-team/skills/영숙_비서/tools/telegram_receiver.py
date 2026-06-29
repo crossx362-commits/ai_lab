@@ -29,6 +29,7 @@ if str(AI_TEAM_ROOT) not in sys.path:
 
 from _shared.env import load_env
 from _shared.notify import status_report
+from _shared.process import ProcessLock
 
 
 load_env(str(PROJECT_ROOT))
@@ -1119,13 +1120,16 @@ def main() -> int:
         print("TELEGRAM_BOT_TOKEN is not configured.")
         return 1
 
-    app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler("start", _start))
-    app.add_handler(CommandHandler("status", _status))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _message))
+    # 단일 인스턴스 보장 — 중복 폴러가 getUpdates Conflict를 일으키지 않도록
+    with ProcessLock("youngsuk_telegram"):
+        app = Application.builder().token(token).build()
+        app.add_handler(CommandHandler("start", _start))
+        app.add_handler(CommandHandler("status", _status))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _message))
 
-    log("Youngsuk Telegram bot started (polling mode)")
-    app.run_polling(allowed_updates=["message"])
+        log("Youngsuk Telegram bot started (polling mode)")
+        # drop_pending_updates=True → 시작 시 webhook 해제 + 밀린 업데이트 폐기(충돌 잔재 정리)
+        app.run_polling(allowed_updates=["message"], drop_pending_updates=True)
     return 0
 
 

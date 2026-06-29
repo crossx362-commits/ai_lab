@@ -27,24 +27,37 @@ def run_harness():
     )
     return result.stdout or result.stderr or ""
 
+def _restart_bot(name: str) -> None:
+    """봇 재시작 — Windows는 agent_controller, macOS는 launchctl kickstart."""
+    if sys.platform == "win32":
+        controller = os.path.join(
+            os.path.dirname(__file__), "..", "..", "영숙_비서", "tools", "agent_controller.py"
+        )
+        subprocess.run(
+            [sys.executable, controller, name, "restart"],
+            capture_output=True, timeout=30,
+        )
+    else:
+        domain = f"gui/{os.getuid()}"
+        subprocess.run(
+            ["launchctl", "kickstart", "-k", f"{domain}/com.ailab.{name}"],
+            capture_output=True, timeout=10,
+        )
+
+
 def check_and_restart_bots():
-    """봇 상태 확인 및 재시작 (launchd 서비스 kickstart, best-effort)"""
+    """봇 상태 확인 및 재시작 (best-effort)"""
     status = agent_status()
     down_bots = [k for k, v in status.items() if v == "down"]
     if not down_bots:
         return False
 
     print(f"⚠️  Down: {', '.join(down_bots)}")
-    domain = f"gui/{os.getuid()}"
     for name in down_bots:
         try:
-            subprocess.run(
-                ["launchctl", "kickstart", "-k", f"{domain}/com.ailab.{name}"],
-                capture_output=True,
-                timeout=10,
-            )
+            _restart_bot(name)
         except Exception:
-            pass  # 라벨이 없거나 실패해도 launchd KeepAlive가 백업
+            pass  # 실패해도 다음 주기에 재시도
 
     send(f"🔄 [예원] 봇 다운 감지 → 재시작 시도\nDown: {', '.join(down_bots)}")
     return True

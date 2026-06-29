@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
+from datetime import datetime
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -24,6 +26,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -85,7 +88,23 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="유나 아시아 시장 조사")
     ap.add_argument("--send", action="store_true", help="텔레그램 전송")
     ap.add_argument("--print", action="store_true", help="콘솔 출력")
+    ap.add_argument("--daemon", action="store_true", help="정기 실행 데몬 모드 (매 30분)")
     args = ap.parse_args()
+
+    if args.daemon:
+        with ProcessLock("yuna_asia_research"):
+            print(f"[{datetime.now()}] 유나 데몬 시작 (30분 주기)")
+            while True:
+                try:
+                    payload = collect()
+                    txt = brief_text(payload)
+                    send(txt)
+                    print(f"[{datetime.now()}] 아시아 브리프 전송 완료")
+                except Exception as e:
+                    send(f"⚠️ 유나 오류: {e}")
+                    print(f"[{datetime.now()}] 오류: {e}")
+                time.sleep(1800)  # 30분
+        return
 
     payload = collect()
     txt = brief_text(payload)

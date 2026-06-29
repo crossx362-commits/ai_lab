@@ -14,6 +14,7 @@ from datetime import datetime
 CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
     "somi_monitor": "somi_price_monitor.py",
+    "somi_position": "somi_position_monitor.py",
 }
 
 # 정시 잡(조사팀·예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
@@ -24,7 +25,7 @@ SCHED_PREFIX = "com.ailab.sched."
 SCHEDULED_SERVICES = {
     "somi": "com.ailab.somi",                    # 정기 리포트 (15:40)
     "somi_screener": "com.ailab.somi_screener",  # 매수 제안 (09:30/15:50)
-    "somi_position": "com.ailab.somi_position",   # 보유 포지션 익절/손절 점검 (장중)
+    # somi_position 은 상시 데몬으로 승격(CONTINUOUS_DAEMONS) — 장중 평일 N분 주기 자동 청산 루프 내장
     "yewon_selfheal": "com.ailab.yewon_selfheal", # 자가 점검/복구 (08:00)
     "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
 }

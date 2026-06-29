@@ -4,6 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 📖 시스템 이해 필수 문서
+
+**작업 전 반드시 읽기**: [`docs/AI_LAB_SYSTEM_ARCHITECTURE.md`](docs/AI_LAB_SYSTEM_ARCHITECTURE.md)
+
+- 전체 에이전트 구조와 데이터 플로우
+- 각 컴포넌트 역할과 의존성
+- 공유 모듈 설명 및 사용 패턴
+- 실행 스케줄과 시스템 동작 원리
+
+---
+
 ## 🎯 에이전트 작업 지침
 
 **목표**: 이 파일 하나만 수정해.  

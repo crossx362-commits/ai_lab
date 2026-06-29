@@ -159,7 +159,7 @@ class KISTrader:
             else:
                 pos[symbol]["qty"] = held - qty
         _paper_save(led)
-        return {"order_no": f"PAPER-{symbol}-{qty}", "time": "", "msg": f"[페이퍼] {fill:,}원 체결"}
+        return {"order_no": f"PAPER-{symbol}-{qty}", "time": "", "price": fill, "msg": f"[페이퍼] {fill:,}원 체결"}
 
     def balance(self) -> dict:
         """보유 종목 + 예수금 조회."""

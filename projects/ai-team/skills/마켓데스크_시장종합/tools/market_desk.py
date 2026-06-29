@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.llm import text  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -304,7 +306,24 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="마켓데스크 시장 종합")
     ap.add_argument("--send", action="store_true")
     ap.add_argument("--print", action="store_true")
+    ap.add_argument("--daemon", action="store_true", help="정기 실행 데몬 모드 (매 1시간)")
     args = ap.parse_args()
+
+    if args.daemon:
+        with ProcessLock("market_desk"):
+            print(f"[{datetime.now()}] 마켓데스크 데몬 시작 (1시간 주기)")
+            while True:
+                try:
+                    md = build()["md"]
+                    for i in range(0, len(md), 3900):
+                        send(md[i:i + 3900])
+                    print(f"[{datetime.now()}] 시장 종합 브리프 전송 완료")
+                except Exception as e:
+                    send(f"⚠️ 마켓데스크 오류: {e}")
+                    print(f"[{datetime.now()}] 오류: {e}")
+                time.sleep(3600)  # 1시간
+        return
+
     md = build()["md"]
     if args.print or not args.send:
         print(md)

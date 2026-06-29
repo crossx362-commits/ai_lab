@@ -42,18 +42,55 @@ AGENTS = {
         "args": [],
         "log": "somi_price_monitor",
     },
+    "소미제안": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_trade_advisor.py",
+        "args": ["--daemon"],
+        "log": "somi_trade_advisor",
+    },
+    "소미포지션": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_position_monitor.py",
+        "args": ["--daemon"],
+        "log": "somi_position_monitor",
+    },
     "예원": {
         "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "harness_monitor.py",
         "args": [],
         "log": "yewon_harness_monitor",
+    },
+    "행크": {
+        "script": AI_TEAM_ROOT / "skills" / "행크_미국조사" / "tools" / "us_research.py",
+        "args": ["--daemon"],
+        "log": "hank_us_research",
+    },
+    "유나": {
+        "script": AI_TEAM_ROOT / "skills" / "유나_아시아조사" / "tools" / "asia_research.py",
+        "args": ["--daemon"],
+        "log": "yuna_asia_research",
+    },
+    "레온": {
+        "script": AI_TEAM_ROOT / "skills" / "레온_유럽조사" / "tools" / "eu_research.py",
+        "args": ["--daemon"],
+        "log": "leon_eu_research",
+    },
+    "마켓데스크": {
+        "script": AI_TEAM_ROOT / "skills" / "마켓데스크_시장종합" / "tools" / "market_desk.py",
+        "args": ["--daemon"],
+        "log": "market_desk",
     },
 }
 
 ALIASES = {
     "youngsuk": "영숙",
     "somi": "소미",
+    "somi_trade": "소미제안",
+    "trade": "소미제안",
     "ceo": "예원",
     "yewon": "예원",
+    "hank": "행크",
+    "yuna": "유나",
+    "leon": "레온",
+    "market": "마켓데스크",
+    "marketdesk": "마켓데스크",
 }
 
 

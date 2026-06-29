@@ -22,9 +22,11 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import os  # noqa: E402
+import time  # noqa: E402
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 from somi_kis_reporter import KISClient, num  # noqa: E402
 from somi_trade_advisor import load_positions, log_closed_trade, remove_position  # noqa: E402
 
@@ -63,14 +65,15 @@ def _paper_sell(symbol: str, reason: str = "", exit_price: float = 0.0) -> str:
         remove_position(symbol)
         return " → (이미 청산됨, 기록 정리)"
     try:
-        trader.order(symbol, held, "sell", 0)
+        res = trader.order(symbol, held, "sell", 0)
     except Exception as exc:
         return f" → 자동 매도 실패: {exc}"
+    sell_fill = res.get("price") or exit_price  # 실제 매도 체결가(별도 quote 아님)
     # 청산 거래 로그(성과추적: 백테스트 대비 실제 승률·수익률)
     try:
         meta = load_positions().get(symbol, {})
         log_closed_trade(symbol, meta.get("name", symbol), num(meta.get("entry")),
-                         exit_price or num(meta.get("entry")), held, reason,
+                         sell_fill or num(meta.get("entry")), held, reason,
                          meta.get("ts", ""), meta.get("score"))
     except Exception:
         pass
@@ -143,7 +146,27 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="소미 보유 포지션 익절/손절 점검")
     parser.add_argument("--send", action="store_true", help="신호 있으면 텔레그램 전송")
+    parser.add_argument("--daemon", action="store_true", help="데몬 모드 (장중 평일 N분 주기 자동 점검/청산)")
     args = parser.parse_args()
+
+    if args.daemon:
+        interval = int(os.getenv("SOMI_POSITION_INTERVAL", "300"))  # 기본 5분
+        with ProcessLock("somi_position_monitor"):
+            print(f"[{datetime.now()}] 소미 포지션 감시 데몬 시작 (장중 평일 09~16시, {interval // 60}분 주기)")
+            while True:
+                now = datetime.now()
+                if now.weekday() < 5 and 9 <= now.hour < 16:  # 평일 장중만
+                    try:
+                        result = run(do_send=True)
+                        print(f"[{now}] {result[:200]}")
+                    except Exception as e:
+                        send(f"⚠️ 소미 포지션 감시 오류: {e}")
+                        print(f"[{now}] 오류: {e}")
+                else:
+                    print(f"[{now}] 장외 대기")
+                time.sleep(interval)
+        return
+
     print(run(args.send))
 
 

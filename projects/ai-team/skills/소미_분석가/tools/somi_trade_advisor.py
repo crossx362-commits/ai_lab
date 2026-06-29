@@ -29,6 +29,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
 from _shared import research  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 from somi_kis_reporter import KISClient, build_input_text  # noqa: E402
 from short_covering_analyzer import parse_input_text, calculate_score, to_num  # noqa: E402
 from somi_screener import get_candidates, GOOD_SCORE  # noqa: E402
@@ -423,13 +424,14 @@ def _auto_buy_paper(proposals: list[dict]) -> list[str]:
         conv = min(2.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))
         qty = max(1, int(int(SOMI_BUDGET * conv) // entry))
         try:
-            trader.order(p["symbol"], qty, "buy", 0)
+            res = trader.order(p["symbol"], qty, "buy", 0)
         except Exception as exc:
             done.append(f"⏭️ {p['name']} 매수 건너뜀: {exc}")
             continue
-        record_position(p["symbol"], p["name"], entry, p["stop"], p["target"], qty, p.get("score"))
+        fill = res.get("price") or entry  # 실제 페이퍼 체결가 — 성과·손익 계산 기준(제안가 아님)
+        record_position(p["symbol"], p["name"], fill, p["stop"], p["target"], qty, p.get("score"))
         done.append(
-            f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ ~{int(entry):,}원 "
+            f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ {int(fill):,}원 "
             f"(확신 {conv:.1f}배·점수 {p.get('score', '?')})\n"
             f"   손절 {int(p['stop']):,} / 목표 {int(p['target']):,} 감시 시작"
         )
@@ -502,7 +504,29 @@ def main() -> None:
     parser.add_argument("--propose", action="store_true", help="후보 분석 후 제안 생성")
     parser.add_argument("--candidates", type=int, default=20)
     parser.add_argument("--send", action="store_true", help="텔레그램 전송")
+    parser.add_argument("--daemon", action="store_true", help="데몬 모드 (08:00~20:00, 30분 주기)")
     args = parser.parse_args()
+
+    if args.daemon:
+        with ProcessLock("somi_trade_advisor"):
+            print(f"[{datetime.now()}] 소미 매수 제안 데몬 시작 (08:00~20:00, 30분 주기)")
+            while True:
+                now = datetime.now()
+                hour = now.hour
+                # 08:00~20:00만 동작
+                if 8 <= hour < 20:
+                    try:
+                        print(f"[{now}] 후보 분석 시작")
+                        result = run(args.candidates, do_send=True)
+                        print(f"[{now}] 완료: {result[:200]}")
+                    except Exception as e:
+                        send(f"⚠️ 소미 매수 제안 오류: {e}")
+                        print(f"[{now}] 오류: {e}")
+                else:
+                    print(f"[{now}] 대기 중 (활동시간: 08:00~20:00)")
+                time.sleep(1800)  # 30분
+        return
+
     print(run(args.candidates, args.send))
 
 
