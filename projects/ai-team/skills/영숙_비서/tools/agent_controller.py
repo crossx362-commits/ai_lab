@@ -52,6 +52,11 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "somi_position_monitor",
     },
+    "소미발굴": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_screener.py",
+        "args": ["--daemon"],
+        "log": "somi_screener",
+    },
     "예원": {
         "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "harness_monitor.py",
         "args": [],

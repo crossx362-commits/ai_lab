@@ -243,19 +243,27 @@ def market_regime_map(kis: KISClient, months: int) -> dict:
 
 def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_score_levels,
                     regime_ok: dict | None = None, trail_pct: float | None = None,
-                    use_target: bool = True) -> list[dict]:
+                    use_target: bool = True, bear_relstr: bool = False,
+                    bear_threshold: int | None = None) -> list[dict]:
     """한 종목 walk-forward 백테스트 → 체결 리스트. levels_fn으로 전략 교체, regime_ok로 국면 게이트.
-    trail_pct: 고점 대비 trail_pct 하락 시 청산(트레일링 스톱). use_target=False면 고정목표 미사용(추세 추종)."""
+    trail_pct: 고점 대비 trail_pct 하락 시 청산(트레일링 스톱). use_target=False면 고정목표 미사용(추세 추종).
+    bear_relstr=True면 하락국면에 '전량 차단' 대신 역행 강세(상대강도>지수) + bear_threshold 이상만 통과."""
     trades = []
     i = 21
     n = len(bars)
     while i < n - 1:
-        # 시장 하락국면이면 진입 스킵 (라이브 HMM 게이트와 동일 취지)
-        if regime_ok is not None and not regime_ok.get(bars[i]["date"], True):
-            i += 1
+        is_bear = regime_ok is not None and not regime_ok.get(bars[i]["date"], True)
+        if is_bear and not bear_relstr:
+            i += 1                                    # 현행: 하락국면 전량 차단
             continue
         score, _entry, stop, target = levels_fn(bars, i)
-        if score < threshold or not (stop < bars[i]["c"] < target):
+        eff_threshold = threshold
+        if is_bear:                                   # 제안: 하락국면엔 역행 강세 + 고점수만
+            if not _rel_strength_ok(bars, i):
+                i += 1
+                continue
+            eff_threshold = bear_threshold or threshold
+        if score < eff_threshold or not (stop < bars[i]["c"] < target):
             i += 1
             continue
         # 다음날 시가 진입 (무미래참조)
@@ -391,6 +399,35 @@ def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
                 print(f"{label:>18} {hd:>4}  거래 없음")
 
 
+def compare_bear_gate(months: int, threshold: int = 60, hold: int = 10, bear_threshold: int = 70) -> None:
+    """하락국면 게이트 비교 — 전량차단(현행) vs 역행강세 선별통과(제안) vs 게이트없음. 동일 데이터·기준."""
+    global _MARKET
+    kis = KISClient()
+    data = _load_all(months)
+    regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)            # 지수(KODEX200) → 상대강도 기준
+    _MARKET = {b["date"]: b["c"] for b in mbars}
+    bear_days = sum(1 for v in regime.values() if not v)
+    print(f"[하락국면 게이트 비교] {len(data)}종목 / {months}개월 / 기준 {threshold} / 보유 {hold}일 "
+          f"(하락국면 {bear_days}/{len(regime)}일, bear선별 기준 {bear_threshold})\n")
+    print(f"{'전략':>26} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
+    configs = [
+        ("게이트없음(하락장도 매수)", dict(regime_ok=None)),
+        ("현행: 하락장 전량차단", dict(regime_ok=regime)),
+        (f"제안: 하락장 역행강세선별", dict(regime_ok=regime, bear_relstr=True, bear_threshold=bear_threshold)),
+    ]
+    for label, kw in configs:
+        trades = []
+        for bars in data.values():
+            trades += backtest_symbol(bars, threshold, hold, _score_levels, **kw)
+        m = _metrics(trades)
+        if m.get("trades"):
+            print(f"{label:>26} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
+                  f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
+        else:
+            print(f"{label:>26}  거래 없음")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="소미 전략 백테스트")
     ap.add_argument("--threshold", type=int, default=40, help="진입 점수 기준")
@@ -399,9 +436,14 @@ def main() -> None:
     ap.add_argument("--scan", action="store_true", help="여러 임계값 비교")
     ap.add_argument("--grid", action="store_true", help="기준×보유기간 그리드 (데이터 1회 로드)")
     ap.add_argument("--compare", action="store_true", help="모멘텀 vs 눌림목 전략 비교")
+    ap.add_argument("--beargate", action="store_true", help="하락국면 전량차단 vs 역행강세 선별통과 비교")
+    ap.add_argument("--bear-threshold", type=int, default=70, help="하락장 선별통과 점수 기준")
     args = ap.parse_args()
 
-    if args.compare:
+    if args.beargate:
+        compare_bear_gate(args.months, args.threshold if args.threshold != 40 else 60,
+                          args.hold, args.bear_threshold)
+    elif args.compare:
         compare_strategies(args.months, args.threshold)
     elif args.grid:
         grid(args.months)

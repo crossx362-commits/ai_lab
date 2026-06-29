@@ -157,7 +157,31 @@ def main() -> None:
     parser.add_argument("--top", type=int, default=5, help="추천 종목 수")
     parser.add_argument("--candidates", type=int, default=20, help="분석할 거래대금 상위 후보 수")
     parser.add_argument("--send", action="store_true", help="텔레그램 전송")
+    parser.add_argument("--daemon", action="store_true", help="정기 자동 발굴 데몬 (평일 지정 시각 전송)")
+    parser.add_argument("--times", default="09:30,15:50", help="HH:MM,HH:MM 발굴 전송 시각")
     args = parser.parse_args()
+
+    if args.daemon:
+        import time as _t
+        from _shared.process import ProcessLock
+        slots = [s.strip() for s in args.times.split(",") if s.strip()]
+        last_fired: dict[str, str] = {}  # 시각슬롯 -> 마지막 전송일(중복 전송 방지)
+        with ProcessLock("somi_screener"):
+            print(f"[{datetime.now()}] 소미 발굴 데몬 시작 (평일 {','.join(slots)})")
+            while True:
+                now = datetime.now()
+                hm, today = now.strftime("%H:%M"), now.strftime("%Y-%m-%d")
+                if now.weekday() < 5 and hm in slots and last_fired.get(hm) != today:
+                    try:
+                        run(args.top, args.candidates, do_send=True)
+                        last_fired[hm] = today
+                        print(f"[{now}] 발굴 전송 완료 ({hm})")
+                    except Exception as e:
+                        send(f"⚠️ 소미 발굴 오류: {e}")
+                        print(f"[{now}] 오류: {e}")
+                _t.sleep(20)
+        return
+
     report = run(args.top, args.candidates, args.send)
     print(report)
 

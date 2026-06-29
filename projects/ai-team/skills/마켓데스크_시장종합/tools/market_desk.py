@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from datetime import datetime
@@ -321,7 +322,7 @@ def main() -> None:
                 except Exception as e:
                     send(f"⚠️ 마켓데스크 오류: {e}")
                     print(f"[{datetime.now()}] 오류: {e}")
-                time.sleep(3600)  # 1시간
+                time.sleep(int(os.getenv("RESEARCH_INTERVAL_SEC", "14400")))  # 기본 4시간(과다 알림 완화)
         return
 
     md = build()["md"]

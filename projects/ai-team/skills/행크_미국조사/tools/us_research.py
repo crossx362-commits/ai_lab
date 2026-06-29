@@ -98,7 +98,7 @@ def main() -> None:
                 except Exception as e:
                     send(f"⚠️ 행크 오류: {e}")
                     print(f"[{datetime.now()}] 오류: {e}")
-                time.sleep(1800)  # 30분
+                time.sleep(int(os.getenv("RESEARCH_INTERVAL_SEC", "14400")))  # 기본 4시간(과다 알림 완화)
         return
 
     payload = collect()

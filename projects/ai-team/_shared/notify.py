@@ -15,6 +15,7 @@ CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
     "somi_monitor": "somi_price_monitor.py",
     "somi_position": "somi_position_monitor.py",
+    "somi_screener": "somi_screener.py",
 }
 
 # 정시 잡(조사팀·예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
@@ -24,7 +25,7 @@ SCHED_PREFIX = "com.ailab.sched."
 # 예약 실행 서비스 (launchd StartCalendarInterval) — 평소엔 미실행이 정상, 지정 시각에만 실행
 SCHEDULED_SERVICES = {
     "somi": "com.ailab.somi",                    # 정기 리포트 (15:40)
-    "somi_screener": "com.ailab.somi_screener",  # 매수 제안 (09:30/15:50)
+    # somi_screener 는 상시 데몬으로 승격(CONTINUOUS_DAEMONS) — 평일 09:30/15:50 자동 발굴 전송
     # somi_position 은 상시 데몬으로 승격(CONTINUOUS_DAEMONS) — 장중 평일 N분 주기 자동 청산 루프 내장
     "yewon_selfheal": "com.ailab.yewon_selfheal", # 자가 점검/복구 (08:00)
     "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
@@ -35,7 +36,7 @@ _AGENT_LABELS = {
     "scheduler": "정시 잡 (조사팀·예원 — launchd 잡별 분리)",
     "somi_monitor": "소미 (실시간 급변동 감시)",
     "somi": "소미 (정기 리포트)",
-    "somi_screener": "소미 (매수 제안)",
+    "somi_screener": "소미 (유망종목 발굴)",
     "somi_position": "소미 (포지션 익절/손절)",
     "yewon_selfheal": "예원 (자가 점검/복구)",
     "harness": "하네스 (시스템 점검)",

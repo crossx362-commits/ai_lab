@@ -9,6 +9,7 @@ output/research/region_eu.json 에 저장한다. ECB 거시는 키/소스 추가
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from datetime import datetime
@@ -79,7 +80,7 @@ def main() -> None:
                 except Exception as e:
                     send(f"⚠️ 레온 오류: {e}")
                     print(f"[{datetime.now()}] 오류: {e}")
-                time.sleep(1800)  # 30분
+                time.sleep(int(os.getenv("RESEARCH_INTERVAL_SEC", "14400")))  # 기본 4시간(과다 알림 완화)
         return
 
     payload = collect()
