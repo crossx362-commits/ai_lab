@@ -227,6 +227,49 @@ def _meanrev_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]
     return score, entry, stop, target
 
 
+# ── 과거 수급(외국인·기관 순매매) 반영 — 네이버 히스토리 병합 ──────────────
+_SOOMGEUP: dict = {}  # 현재 백테스트 중인 종목의 date(YYYYMMDD)->{"inst","frgn"} (compare_soomgeup에서 종목별 설정)
+
+
+def _accum_net(bars: list[dict], t: int, lookback: int = 5):
+    """최근 lookback 거래일 기관+외국인 누적 순매매(주). 수급 데이터 없으면 None."""
+    if not _SOOMGEUP:
+        return None
+    tot, hit = 0, 0
+    for k in range(max(0, t - lookback + 1), t + 1):
+        s = _SOOMGEUP.get(bars[k]["date"])
+        if s:
+            tot += s["inst"] + s["frgn"]
+            hit += 1
+    return tot if hit else None
+
+
+def _smartmoney_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """모멘텀 + 수급확인: 기관+외국인 5일 누적 순매수>0(스마트머니 매집)일 때만 모멘텀 진입."""
+    score, e, s, tg = _score_levels(bars, t)
+    net = _accum_net(bars, t, 5)
+    return (score if (net is not None and net > 0) else 0), e, s, tg
+
+
+def _accum_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """조용한 매집(선취형): 5일 순매수 강세 + 당일 등락 과하지 않음(아직 안 튐) + 추세 위/근처.
+    가격이 이미 급등하지 않았는데 수급이 들어오는 '오를 것 같은' 종목을 잡는 가설."""
+    c = [b["c"] for b in bars[:t + 1]]
+    if len(c) < 25:
+        return 0, bars[t]["c"], 0, 0
+    cur, prev = c[-1], c[-2]
+    chg = ((cur - prev) / prev * 100) if prev else 0
+    ma20 = sum(c[-20:]) / 20
+    net = _accum_net(bars, t, 5)
+    score = 0
+    if net is not None and net > 0 and chg <= 3 and cur >= ma20 * 0.97:
+        score = 60 + min(int(net / 5_000_000 * 5), 24)  # 순매수 규모로 가점(상한 84)
+    entry = cur
+    stop = round(min(ma20, cur) * 0.95)
+    target = round(cur * 1.10)
+    return score, entry, stop, target
+
+
 def market_regime_map(kis: KISClient, months: int) -> dict:
     """시장 국면(라이브 HMM 게이트의 백테스트 대용) — KODEX200 종가>MA20 이면 상승국면(진입 허용)."""
     bars = _history(kis, "069500", months)  # KODEX 200 = KOSPI200 대용
@@ -288,7 +331,9 @@ def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_scor
         net = gross - (FEE * 2 + TAX)            # 왕복 수수료 + 매도세
         risk = (ep - stop) / ep if ep else 0     # 손절까지 거리(=1주당 위험) — 사이징용
         trades.append({"ret": net, "reason": exit_reason, "days": exit_idx - i,
-                       "score": score, "risk": risk})
+                       "score": score, "risk": risk,
+                       "entry": round(ep), "exit": round(exit_price),
+                       "ts_open": bars[i + 1]["date"], "ts_close": bars[exit_idx]["date"]})
         i = exit_idx + 1                          # 청산 후 재진입
     return trades
 
@@ -428,6 +473,78 @@ def compare_bear_gate(months: int, threshold: int = 60, hold: int = 10, bear_thr
             print(f"{label:>26}  거래 없음")
 
 
+def compare_soomgeup(months: int, threshold: int = 60, hold: int = 10, pages: int = 14) -> None:
+    """과거 수급(네이버 외국인·기관 순매매) 병합 — 모멘텀 vs 모멘텀+수급확인 vs 조용한매집 비교."""
+    global _SOOMGEUP, _MARKET
+    import soomgeup_history
+    kis = KISClient()
+    data = _load_all(months)
+    regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)
+    _MARKET = {b["date"]: b["c"] for b in mbars}
+    soom = {}
+    for code in data:
+        soom[code] = soomgeup_history.fetch(code, pages)
+    covered = sum(1 for s in soom.values() if s)
+    avg_days = (sum(len(s) for s in soom.values()) / max(1, covered)) if covered else 0
+    print(f"[수급 반영 비교] {len(data)}종목 / {months}개월 / 기준 {threshold} / 보유 {hold}일 "
+          f"(수급 수집 {covered}/{len(data)}종목·평균 {avg_days:.0f}일)\n")
+    print(f"{'전략':>22} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
+    variants = [
+        ("모멘텀(현행)", _score_levels),
+        ("모멘텀+수급확인", _smartmoney_levels),
+        ("조용한매집(선취)", _accum_levels),
+    ]
+    for label, fn in variants:
+        trades = []
+        for code, bars in data.items():
+            _SOOMGEUP = soom.get(code, {})
+            trades += backtest_symbol(bars, threshold, hold, fn, regime)
+        _SOOMGEUP = {}
+        m = _metrics(trades)
+        if m.get("trades"):
+            print(f"{label:>22} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
+                  f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
+        else:
+            print(f"{label:>22}  거래 없음")
+
+
+def seed_sample(months: int = 9, pages: int = 12, threshold: int = 60, hold: int = 20) -> None:
+    """검증된 '모멘텀+수급확인' 전략을 과거 자료에 돌려 청산거래를 생성하고
+    somi_closed_trades.json 에 주입 — 성과추적 표본을 즉시 확보(과거 자료 기반)."""
+    global _SOOMGEUP, _MARKET
+    import json
+    import soomgeup_history
+    kis = KISClient()
+    regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)
+    _MARKET = {b["date"]: b["c"] for b in mbars}
+
+    def _fmt(s: str) -> str:
+        return f"{s[:4]}-{s[4:6]}-{s[6:]}" if len(s) == 8 else s
+
+    records = []
+    for code, name in UNIVERSE.items():
+        bars = _history(kis, code, months)
+        if len(bars) < 30:
+            continue
+        _SOOMGEUP = soomgeup_history.fetch(code, pages)
+        for t in backtest_symbol(bars, threshold, hold, _smartmoney_levels, regime):
+            records.append({
+                "symbol": code, "name": name, "entry": t["entry"], "exit": t["exit"],
+                "qty": 1, "ret_pct": round(t["ret"] * 100, 2), "reason": t["reason"],
+                "score": t["score"], "ts_open": _fmt(t["ts_open"]), "ts_close": _fmt(t["ts_close"]),
+                "source": "backtest_seed",  # 과거자료 주입분 표시(라이브 실거래 아님)
+            })
+    _SOOMGEUP = {}
+    records.sort(key=lambda r: r["ts_close"])
+    out = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+    wins = sum(1 for r in records if r["ret_pct"] > 0)
+    print(f"표본 주입 완료: {len(records)}건 (승 {wins} / 패 {len(records)-wins}) → {out}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="소미 전략 백테스트")
     ap.add_argument("--threshold", type=int, default=40, help="진입 점수 기준")
@@ -438,9 +555,16 @@ def main() -> None:
     ap.add_argument("--compare", action="store_true", help="모멘텀 vs 눌림목 전략 비교")
     ap.add_argument("--beargate", action="store_true", help="하락국면 전량차단 vs 역행강세 선별통과 비교")
     ap.add_argument("--bear-threshold", type=int, default=70, help="하락장 선별통과 점수 기준")
+    ap.add_argument("--soomgeup", action="store_true", help="과거 수급 병합 — 모멘텀 vs 수급확인 vs 조용한매집 비교")
+    ap.add_argument("--pages", type=int, default=14, help="네이버 수급 수집 페이지(≈20일/페이지)")
+    ap.add_argument("--seed-sample", action="store_true", help="검증전략을 과거자료에 돌려 성과추적 표본 주입")
     args = ap.parse_args()
 
-    if args.beargate:
+    if args.seed_sample:
+        seed_sample(args.months, args.pages, args.threshold if args.threshold != 40 else 60, args.hold)
+    elif args.soomgeup:
+        compare_soomgeup(args.months, args.threshold if args.threshold != 40 else 60, args.hold, args.pages)
+    elif args.beargate:
         compare_bear_gate(args.months, args.threshold if args.threshold != 40 else 60,
                           args.hold, args.bear_threshold)
     elif args.compare:

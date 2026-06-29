@@ -128,10 +128,12 @@ def analyze_candidate(kis: KISClient, code: str, name: str) -> dict | None:
     score, grade, pos, neg = calculate_score(parsed)
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비
+    soomgeup_net = to_num(parsed.get("buy_foreigner_5d")) + to_num(parsed.get("buy_institution_5d"))
     return {
         "symbol": code, "name": name, "score": score, "grade": grade,
         "change": parsed.get("change_pct", ""),
         "entry": entry, "stop": stop, "target": target, "rr": round(rr, 2),
+        "soomgeup_net": soomgeup_net,  # 기관+외국인 5일 누적 순매수(수급확인 게이트용)
         "reasons": pos[:3], "risks": neg[:3] or ["뚜렷한 위험 신호 없음"],
     }
 
@@ -150,6 +152,7 @@ def _news_candidates() -> list[tuple[str, str]]:
 
 
 def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> list[dict]:
+    min_score = int(os.getenv("SOMI_GOOD_SCORE", str(min_score)))  # 표본수집 등 한시적 완화용(기본=GOOD_SCORE)
     kis = KISClient()
     try:
         impact = research.load_issue_impact() or {}
@@ -459,8 +462,11 @@ def run(candidate_limit: int = 20, do_send: bool = False) -> str:
     # 매수 대상 = verdict=buy · 미보유 · (하락 국면 아님)
     held_syms = set(load_positions().keys())
     buys = [p for p in proposals if p.get("verdict") == "buy" and p["symbol"] not in held_syms]
-    if regime == "bear":
-        buys = []  # 하락 국면 → 신규 매수 중단
+    if regime == "bear" and os.getenv("SOMI_DISABLE_REGIME_GATE", "").lower() not in {"1", "true", "yes"}:
+        buys = []  # 하락 국면 → 신규 매수 중단 (SOMI_DISABLE_REGIME_GATE=true 면 한시적 해제)
+    # 수급확인 게이트(백테스트 검증: 샤프 3.15→5.80·MDD 반토막): 기관+외국인 5일 누적 순매수>0만
+    if os.getenv("SOMI_SOOMGEUP_GATE", "true").lower() in {"1", "true", "yes"}:
+        buys = [p for p in buys if p.get("soomgeup_net", 0) > 0]
     # 몬테카를로 확률 게이트: 목표도달이 손절보다 충분히 우위(edge)이고 기대수익>0 인 것만 매수
     if buys:
         try:
