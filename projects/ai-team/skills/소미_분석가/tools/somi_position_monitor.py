@@ -142,7 +142,10 @@ def run(do_send: bool = False) -> str:
     else:
         report = f"[소미 포지션 점검 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n\n" + "\n\n".join(alerts)
         if do_send:
-            publish_report("소미 포지션 점검", report)
+            if _is_paper():
+                publish_report("소미 포지션 점검", report)   # 모의: 자동청산 정보성 → 노션 링크
+            else:
+                send(report)   # 실거래: 매도 승인 요청은 급한 액션 → 텔레그램 인라인
     growth.record(
         "somi_position", role="포지션 익절/손절/시간초과 청산",
         data=f"보유 {len(load_positions())}종목", judgment=f"신호 {len(alerts)}건",
