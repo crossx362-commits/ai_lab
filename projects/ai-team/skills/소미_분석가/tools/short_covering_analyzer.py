@@ -80,6 +80,8 @@ def parse_input_text(text: str) -> dict[str, str]:
         "holding_ratio": ["내 보유 비중", "보유 비중"],
         "cash": ["추가 예수금", "예수금"],
         "intraday_feature": ["장중 특징"],
+        "today_investor_available": ["오늘수급확정"],
+        "investor_history_window": ["수급윈도"],
     }
     for key, labels in aliases.items():
         value = ""
@@ -155,15 +157,29 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
         score -= 8
         neg.append("윗꼬리가 길어 물량 출회 가능성")
 
-    if foreigner > 0:
-        score += 8
-        pos.append(f"외국인 순매수 {foreigner:,.0f}주")
-    if institution > 0:
-        score += 8
-        pos.append(f"기관 순매수 {institution:,.0f}주")
-    if individual > 0 and foreigner <= 0 and institution <= 0:
-        score -= 6
-        neg.append("개인 중심 수급으로 추격 매수 위험")
+    # 당일 외국인/기관 수급은 오전엔 KIS가 빈 값으로 내려주는 경우가 많다.
+    # 미확정이면 오늘 +8/+8을 부여하지 않고(없는 데이터를 있는 것처럼 쓰지 않음),
+    # 대신 5일 누적이 강하면 보정점수 최대 +10(외국인 +6 / 기관 +4)만 부여한다.
+    today_inv_flag = (raw.get("today_investor_available", "") or "").strip().lower()
+    today_investor_available = today_inv_flag not in {"아니오", "no", "false", "n"}
+    if today_investor_available:
+        if foreigner > 0:
+            score += 8
+            pos.append(f"외국인 순매수 {foreigner:,.0f}주")
+        if institution > 0:
+            score += 8
+            pos.append(f"기관 순매수 {institution:,.0f}주")
+        if individual > 0 and foreigner <= 0 and institution <= 0:
+            score -= 6
+            neg.append("개인 중심 수급으로 추격 매수 위험")
+        score_mode = "regular"
+    else:
+        boost = (6 if foreigner_5d > 0 else 0) + (4 if institution_5d > 0 else 0)
+        score += min(10, boost)
+        if boost:
+            pos.append(f"당일 수급 미확정 → 5일 누적 수급 기반 보정 +{min(10, boost)}점")
+        neg.append("당일 외국인/기관 수급 미확정(오전 데이터 공백) — 실매수 보류 대상")
+        score_mode = "morning_missing_investor_adjusted"
 
     if foreigner_5d > 0:
         score += 12
@@ -212,7 +228,133 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
         pos.append(f"장중 특징: {intraday}")
 
     final = max(0, min(100, int(round(score))))
+    # 점수 결과에 데이터 품질 메타 부착(호출부가 raw["data_quality"]로 읽음 — 반환 시그니처 불변).
+    raw["data_quality"] = {
+        "today_investor_available": today_investor_available,
+        "investor_history_window": (raw.get("investor_history_window") or "today_included"),
+        "score_mode": score_mode,
+    }
     return final, grade_of(final), pos, neg
+
+
+# 탐지점수(detection score) — 종목이 '지금 볼 만한가'를 탐지하는 1차 점수.
+# 실제 매수는 entry_score/risk_score/rr_score/data_quality_score를 추가 통과해야 한다.
+detection_score = calculate_score
+
+
+def entry_score(feat: dict) -> tuple[int, list[str], list[str]]:
+    """진입 자리 품질 0~100(높을수록 좋음). 실시간 VWAP/호가매수세 + 일봉 기반.
+    feat: close, vwap, ma5, high, low, change_pct, buy_pressure, trading_value, resistance."""
+    close = to_num(feat.get("close")); vwap = to_num(feat.get("vwap")); ma5 = to_num(feat.get("ma5"))
+    high = to_num(feat.get("high")); low = to_num(feat.get("low"))
+    change = to_num(feat.get("change_pct")); bp = to_num(feat.get("buy_pressure"))
+    tval = to_num(feat.get("trading_value")); resistance = to_num(feat.get("resistance"))
+    s = 50
+    pos: list[str] = []
+    neg: list[str] = []
+    if vwap and close:
+        if close >= vwap:
+            s += 15; pos.append("현재가가 VWAP 위(매수 우위 구간)")
+        else:
+            s -= 12; neg.append("현재가가 VWAP 아래(매도 우위)")
+    if ma5 and close:
+        if close >= ma5:
+            s += 10; pos.append("현재가가 5일선 위")
+        else:
+            s -= 8; neg.append("현재가가 5일선 아래")
+    if bp:
+        if bp >= 1.3:
+            s += 12; pos.append(f"호가 매수세 우위({bp:.2f})")
+        elif bp >= 1.0:
+            s += 6
+        elif bp < 0.8:
+            s -= 10; neg.append(f"호가 매도세 우위({bp:.2f})")
+    if change >= 20:
+        s -= 35; neg.append(f"당일 {change:+.1f}% 과열 — 신규매수 제한")
+    elif change >= 15:
+        s -= 22; neg.append(f"당일 {change:+.1f}% 과열권 — 고점추격 위험")
+    if high and low and close and change > 0 and (high - close) / max(1, high - low) >= 0.5:
+        s -= 15; neg.append("긴 윗꼬리 — 고점 매도압력")
+    if tval >= 50_000_000_000:
+        s += 8; pos.append("거래대금 충분")
+    elif tval and tval < 5_000_000_000:
+        s -= 10; neg.append("거래대금 부족")
+    if resistance and close and 0 < (resistance - close) / close <= 0.01:
+        s -= 8; neg.append("바로 위 저항 근접 — 상승여력 제한")
+    return max(0, min(100, int(round(s)))), pos, neg
+
+
+def risk_score(feat: dict) -> tuple[int, str, list[str]]:
+    """손실위험도 0~100(높을수록 위험). state: ok/caution/danger.
+    feat: entry, stop, change_pct, vwap, ma5, close, market_warning, trading_value."""
+    close = to_num(feat.get("close")); entry = to_num(feat.get("entry")); stop = to_num(feat.get("stop"))
+    change = to_num(feat.get("change_pct")); vwap = to_num(feat.get("vwap")); ma5 = to_num(feat.get("ma5"))
+    warning = feat.get("market_warning", "") or ""
+    tval = to_num(feat.get("trading_value"))
+    r = 0
+    notes: list[str] = []
+    stop_pct = abs(entry - stop) / entry * 100 if entry else 0
+    if stop_pct >= 10:
+        r += 35; notes.append(f"손절폭 {stop_pct:.1f}% 과다")
+    elif stop_pct >= 7:
+        r += 18; notes.append(f"손절폭 {stop_pct:.1f}% 다소 큼")
+    if change >= 20:
+        r += 30; notes.append("과열 급등")
+    elif change >= 15:
+        r += 18
+    if vwap and close and close < vwap and ma5 and close < ma5:
+        r += 20; notes.append("VWAP·5일선 동시 하회")
+    if any(w in warning for w in ["경고", "위험", "주의"]):
+        r += 25; notes.append(f"시장경보: {warning}")
+    if tval and tval < 5_000_000_000:
+        r += 12; notes.append("저유동성")
+    r = max(0, min(100, r))
+    state = "danger" if r >= 60 else ("caution" if r >= 35 else "ok")
+    return r, state, notes
+
+
+def rr_score(feat: dict) -> tuple[int, float, bool, list[str]]:
+    """손익비 평가. returns (score0~100, rr, ok, notes). ok = 매수 허용 손익비(≥1.5 & 저항 비차단)."""
+    entry = to_num(feat.get("entry")); stop = to_num(feat.get("stop")); target = to_num(feat.get("target"))
+    resistance = to_num(feat.get("resistance"))
+    notes: list[str] = []
+    risk = entry - stop
+    reward = target - entry
+    rr = (reward / risk) if risk > 0 else 0.0
+    blocked = bool(resistance and target and target > resistance and (target - resistance) / target > 0.005)
+    if rr >= 2.5:
+        s = 100
+    elif rr >= 2.0:
+        s = 85
+    elif rr >= 1.5:
+        s = 70
+    elif rr >= 1.0:
+        s = 45
+    else:
+        s = 20
+    if blocked:
+        s = min(s, 40); notes.append("목표가가 바로 위 저항에 막힘")
+    if rr < 1.5:
+        notes.append(f"손익비 {rr:.2f} < 1.5 (매수 보류)")
+    ok = rr >= 1.5 and not blocked
+    return s, round(rr, 2), ok, notes
+
+
+def data_quality_score(dq: dict, vwap: float = 0.0, buy_pressure: float = 0.0) -> tuple[int, str, list[str]]:
+    """데이터 품질 0~100. state: normal/adjustable/degraded.
+    dq: calculate_score가 부착한 data_quality(today_investor_available/score_mode 등)."""
+    notes: list[str] = []
+    today_ok = bool(dq.get("today_investor_available"))
+    mode = dq.get("score_mode", "regular")
+    rt_ok = bool(vwap) and bool(buy_pressure)
+    s = 100
+    if not rt_ok:
+        s -= 40; notes.append("실시간 VWAP/호가 미확인")
+    if mode == "morning_missing_investor_adjusted" or not today_ok:
+        s -= 30; notes.append("당일 외국인/기관 수급 미확정(보정 채점)")
+    s = max(0, min(100, s))
+    state = "normal" if s >= 80 else ("adjustable" if s >= 50 else "degraded")
+    return s, state, notes
 
 
 def grade_of(score: int) -> str:
@@ -496,6 +638,11 @@ def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str],
     else:
         scenario = "숏커버링으로 단정하기에는 재료가 부족합니다."
 
+    dq = raw.get("data_quality") or {}
+    investor_note = (
+        "\n* ⚠️ 오늘 외국인/기관 수급 미확정 → 5일 누적 수급 기반 보정점수 적용 (실매수 보류, 후보 저장)"
+        if dq.get("score_mode") == "morning_missing_investor_adjusted" else ""
+    )
     pos_lines = "\n".join(f"* {item}" for item in pos) if pos else "* 확인된 긍정 신호 없음"
     neg_lines = "\n".join(f"* {item}" for item in neg) if neg else "* 확인된 위험 신호 없음"
     smart_money = generate_smart_money(raw)
@@ -520,9 +667,9 @@ def generate_report(raw: dict[str, str], score: int, grade: str, pos: list[str],
 ## 2. 매수 판단
 
 * 결론: {decision}
-* 큰 수익 가능성 점수: {score}점 / 100점
+* 탐지점수: {score}점 / 100점
 * 등급: {grade}
-* 판단: {scenario}
+* 판단: {scenario}{investor_note}
 
 {prediction}
 

@@ -23,6 +23,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import json  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import publish_report  # noqa: E402
@@ -95,8 +96,86 @@ def _verdict(real: dict) -> str:
     return "🔴 기대 미달(손익비<1) — 라이브 가정 점검 필요"
 
 
+def _recent(trades: list[dict], days: int = 7) -> list[dict]:
+    cut = datetime.now() - timedelta(days=days)
+    out = []
+    for t in trades:
+        try:
+            ts = datetime.strptime(str(t.get("ts_close", ""))[:16], "%Y-%m-%d %H:%M")
+        except Exception:
+            continue
+        if ts >= cut:
+            out.append(t)
+    return out
+
+
+def _mdd(trades: list[dict]) -> float:
+    """청산 순서 기준 누적자산 최대낙폭(%)."""
+    eq = peak = 1.0
+    mdd = 0.0
+    for t in sorted(trades, key=lambda x: str(x.get("ts_close", ""))):
+        eq *= (1 + t.get("ret_pct", 0) / 100)
+        peak = max(peak, eq)
+        mdd = min(mdd, (eq - peak) / peak * 100)
+    return round(mdd, 1)
+
+
+def _group_winrate(trades: list[dict], keyfn) -> list[tuple]:
+    groups: dict = {}
+    for t in trades:
+        k = keyfn(t)
+        if k in (None, ""):
+            continue
+        groups.setdefault(k, []).append(t.get("ret_pct", 0))
+    rows = []
+    for k, rets in sorted(groups.items(), key=lambda kv: str(kv[0])):
+        wins = [r for r in rets if r > 0]
+        rows.append((k, len(rets), round(len(wins) / len(rets) * 100), round(sum(rets) / len(rets), 2)))
+    return rows
+
+
+def _avg(xs: list[float]) -> float:
+    return round(sum(xs) / len(xs), 2) if xs else 0.0
+
+
+def weekly_condition_analysis(all_trades: list[dict]) -> str:
+    """최근 7일 거래일지 조건조합 분석 — 어떤 조건/시간대/국면에서 수익·손실이 났는지."""
+    recent = _recent(all_trades, 7)
+    if len(recent) < MIN_SAMPLE:
+        return f"\n[주간 조건분석] 최근 7일 청산 {len(recent)}건 — 표본 부족({MIN_SAMPLE} 미만), 분석 보류."
+    st = _realized_stats(recent)
+    lines = [f"\n[주간 조건분석] 최근 7일 청산 {len(recent)}건",
+             f" 종합: 승률 {st['win_rate']}% · 손익비 {st['profit_factor']} · 평균 {st['avg_ret']}% · MDD {_mdd(recent)}%"]
+    slot_rows = _group_winrate(recent, lambda t: t.get("slot"))
+    if slot_rows:
+        lines.append(" · 시간대별: " + ", ".join(f"{k} {w}%승({n})" for k, n, w, a in slot_rows))
+    reg_rows = _group_winrate(recent, lambda t: t.get("regime"))
+    if reg_rows:
+        lines.append(" · 국면별: " + ", ".join(f"{k} {w}%승({n})" for k, n, w, a in reg_rows))
+    rsn_rows = _group_winrate(recent, lambda t: t.get("sell_reason") or t.get("reason"))
+    if rsn_rows:
+        lines.append(" · 청산사유별 평균수익: " + ", ".join(f"{k} {a}%({n})" for k, n, w, a in rsn_rows))
+    hi = [t.get("ret_pct", 0) for t in recent if (t.get("entry_score") or 0) >= 70]
+    lo = [t.get("ret_pct", 0) for t in recent if t.get("entry_score") is not None and (t.get("entry_score") or 0) < 70]
+    if hi or lo:
+        lines.append(f" · 진입점수 기여: ≥70 평균 {_avg(hi)}%({len(hi)}) vs <70 평균 {_avg(lo)}%({len(lo)})")
+    tp = [t for t in recent if t.get("took_profit") and t.get("max_up_pct") is not None]
+    if tp:
+        gap = [t.get("max_up_pct", 0) - t.get("ret_pct", 0) for t in tp]
+        lines.append(f" · 익절 타이밍: 고점 대비 평균 {_avg(gap)}%p 일찍 실현(↑클수록 익절 과속)")
+    sl = [t for t in recent if t.get("stopped") and t.get("max_up_pct") is not None]
+    if sl:
+        lines.append(f" · 손절 거래 손절 전 평균 고점 +{_avg([t.get('max_up_pct', 0) for t in sl])}% (↑크면 손절 과도하게 빨랐을 수)")
+    nn = [t.get("ret_pct", 0) for t in recent if t.get("news")]
+    if nn:
+        lines.append(f" · 뉴스호재 동반 {len(nn)}건 평균 {_avg(nn)}%")
+    lines.append(" ⚠️ 과최적화 주의: 백테스트·아웃오브샘플·모의 결과가 함께 일치할 때만 가중치 조정. 표본 적으면 신뢰 보류.")
+    return "\n".join(lines)
+
+
 def build() -> str:
-    real = _realized_stats(_load_closed())
+    closed = _load_closed()
+    real = _realized_stats(closed)
     unreal = _unrealized()
     lines = ["📊 소미 모의 성과 (백테스트 대비)\n"]
     lines.append(f"[실현] 청산 {real['n']}건")
@@ -107,6 +186,7 @@ def build() -> str:
         lines.append(f" 평균 익절 +{real['avg_win']}% / 평균 손절 {real['avg_loss']}%")
     lines.append(f"[평가] 보유 {unreal['n']}종목 평가손익 {unreal['upnl']:+.2f}%/종목")
     lines.append(f"\n판정: {_verdict(real)}")
+    lines.append(weekly_condition_analysis(closed))
     return "\n".join(lines)
 
 

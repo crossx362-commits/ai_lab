@@ -262,6 +262,63 @@ class KISClient:
             log(f"KIS short_sale_series unavailable: {exc}")
             return []
 
+    def minute_chart(self, symbol: str = DEFAULT_SYMBOL, time_hhmmss: str = "") -> list[dict]:
+        """당일 분봉(inquire-time-itemchartprice output2) — VWAP·장중 구조 산출용.
+        bar: stck_cntg_hour/stck_prpr/stck_oprc/stck_hgpr/stck_lwpr/cntg_vol."""
+        try:
+            data = self.get(
+                "uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice",
+                "FHKST03010200",
+                {
+                    "FID_ETC_CLS_CODE": "",
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_HOUR_1": time_hhmmss or datetime.now().strftime("%H%M%S"),
+                    "FID_PW_DATA_INCU_YN": "Y",
+                },
+            )
+            out = data.get("output2") or []
+            return out if isinstance(out, list) else []
+        except Exception as exc:
+            log(f"KIS minute_chart unavailable: {exc}")
+            return []
+
+    def orderbook(self, symbol: str = DEFAULT_SYMBOL) -> dict:
+        """실시간 호가/잔량(inquire-asking-price-exp-ccn output1) — 매수세=총매수잔량/총매도잔량.
+        total_bidp_rsqn(총매수호가잔량)/total_askp_rsqn(총매도호가잔량) 포함."""
+        try:
+            data = self.get(
+                "uapi/domestic-stock/v1/quotations/inquire-asking-price-exp-ccn",
+                "FHKST01010200",
+                {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+            )
+            return data.get("output1") or {}
+        except Exception as exc:
+            log(f"KIS orderbook unavailable: {exc}")
+            return {}
+
+
+def intraday_vwap(bars: list[dict]) -> float:
+    """분봉 리스트에서 거래량가중평균가(VWAP) 산출. 데이터 없으면 0.0 (미확인)."""
+    tot_v = tot_pv = 0.0
+    for b in bars:
+        high = num(b.get("stck_hgpr"))
+        low = num(b.get("stck_lwpr"))
+        close = num(b.get("stck_prpr"))
+        vol = num(b.get("cntg_vol"))
+        typical = (high + low + close) / 3 if (high and low and close) else close
+        if typical and vol:
+            tot_pv += typical * vol
+            tot_v += vol
+    return (tot_pv / tot_v) if tot_v else 0.0
+
+
+def buy_pressure_ratio(ob: dict) -> float:
+    """호가 매수세 = 총매수호가잔량/총매도호가잔량. 1.0 초과면 매수 우위. 데이터 없으면 0.0."""
+    bid = num(ob.get("total_bidp_rsqn"))
+    ask = num(ob.get("total_askp_rsqn"))
+    return (bid / ask) if (bid and ask) else 0.0
+
 
 def _flow_text(dailies: list[dict]) -> str:
     rows = list(reversed(dailies[:5]))
@@ -325,7 +382,8 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
     dailies = kis.daily_prices(symbol, 30)
     investor = kis.investor_today(symbol)
     # make_report가 10일/시리즈를 미리 받아오면 재사용(중복 호출 방지), 단독 호출 시만 직접 조회
-    investor_hist = (investor_hist if investor_hist is not None else kis.investor_history(symbol, 5))[:5]
+    # ([1:6] 슬라이스 대비 6일 확보) — 오늘 빈 행 제외 시 과거 5거래일 사용
+    raw_hist = investor_hist if investor_hist is not None else kis.investor_history(symbol, 6)
     short_sale = short_sale if short_sale is not None else kis.daily_short_sale(symbol)
 
     latest = dailies[0] if dailies else {}
@@ -341,6 +399,16 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
     individual = pick(investor, "prsn_ntby_qty", "indv_ntby_qty", "prsn_ntby_vol")
     foreigner = pick(investor, "frgn_ntby_qty", "frgn_ntby_vol")
     institution = pick(investor, "orgn_ntby_qty", "inst_ntby_qty", "orgn_ntby_vol")
+
+    # 당일 외국인/기관 수급 가용 여부 — 오전엔 KIS가 당일치를 빈 값으로 내려줌.
+    # 미확정이면 5일 누적 윈도에서 오늘 빈 행을 제외([1:6]), 정상이면 오늘 포함([:5]).
+    today_investor_available = bool((foreigner or "").strip() or (institution or "").strip())
+    if today_investor_available:
+        investor_hist = (raw_hist or [])[:5]
+        investor_history_window = "today_included"
+    else:
+        investor_hist = (raw_hist or [])[1:6]
+        investor_history_window = "today_excluded"
 
     foreigner_5d = sum(num(row.get("frgn_ntby_qty") or row.get("frgn_ntby_vol")) for row in investor_hist)
     institution_5d = sum(num(row.get("orgn_ntby_qty") or row.get("inst_ntby_qty") or row.get("orgn_ntby_vol")) for row in investor_hist)
@@ -379,6 +447,8 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
 최근 5일 개인 누적: {fmt_int(individual_5d) if individual_5d else "확인 필요"}
 최근 5일 외국인 누적: {fmt_int(foreigner_5d) if foreigner_5d else "확인 필요"}
 최근 5일 기관 누적: {fmt_int(institution_5d) if institution_5d else "확인 필요"}
+오늘수급확정: {"예" if today_investor_available else "아니오"}
+수급윈도: {investor_history_window}
 외국인 보유수량: {fmt_int(foreign_holding)}
 외국인 보유율: {foreign_rate}
 프로그램 매매: {fmt_int(pick(quote, "pgtr_ntby_qty"))}
