@@ -743,7 +743,7 @@ def invest_scout(text: str) -> str:
     stock = _stock_from_text(text)
     if stock:
         symbol, name = stock
-        return _run_python(_INVEST_HOUSE, "action1", symbol, name, "--send", timeout=300)
+        return _run_python(_INVEST_HOUSE, "action1", symbol, name, timeout=300)
     return "종목을 찾지 못했어요. 예: '삼성전자 투자분석해줘'"
 
 
@@ -752,25 +752,37 @@ def invest_track(text: str) -> str:
     stock = _stock_from_text(text)
     if stock:
         symbol, name = stock
-        return _run_python(_INVEST_HOUSE, "action2", symbol, name, "--send", timeout=300)
+        return _run_python(_INVEST_HOUSE, "action2", symbol, name, timeout=300)
     return "종목을 찾지 못했어요. 예: 'SK하이닉스 추적관찰해줘'"
 
 
-def invest_sector(text: str) -> str:
-    """섹터 초감 분석"""
-    # 섹터 키워드 추출 (기본: AI반도체)
-    sector = "AI반도체"
-    for kw in ["반도체", "AI", "인공지능", "바이오", "금융", "자동차", "2차전지", "배터리", "에너지"]:
-        if kw in text:
-            sector = kw
-            break
-    return _run_python(_INVEST_HOUSE, "sector", sector, "--send", timeout=120)
+def invest_track_all() -> str:
+    """소미 보유 전 종목 일괄 추적관찰 (매수→추적 루프 자동화)"""
+    return _run_python(_INVEST_HOUSE, "track-all", timeout=300)
+
+
+def invest_sector(text: str = "") -> str:
+    """섹터 초감 분석 — 메시지에서 섹터명 동적 추출"""
+    import re
+    t = (text or "").strip()
+    # "○○ 섹터" 패턴 우선
+    m = re.search(r"([가-힣A-Za-z0-9·/&]+)\s*섹터", t)
+    if m:
+        sector = m.group(1)
+    else:
+        # 명령어/조사 제거 후 핵심어 사용
+        for stop in ["분석해줘", "분석", "초감", "어때", "현황", "전망",
+                     "해줘", "알려줘", "관련", "에 대해", "에대해", "좀"]:
+            t = t.replace(stop, " ")
+        parts = t.split()
+        sector = parts[0] if parts else "AI반도체"
+    return _run_python(_INVEST_HOUSE, "sector", sector, timeout=120)
 
 
 def morning_note_now() -> str:
     """모닝노트 즉시 전송"""
     script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "morning_note.py"
-    return _run_python(script, "--send", timeout=120)
+    return _run_python(script, timeout=120)
 
 
 TOOLS = [
@@ -927,6 +939,15 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "invest_track_all",
+            "description": "소미가 실제 보유 중인 모든 종목을 일괄 추적관찰(Action 2). "
+                           "사용자가 '보유종목 다 추적', '내 종목 전부 점검', '포지션 추적관찰' 등을 말하면 호출",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "morning_note_now",
             "description": "모닝노트 즉시 생성 및 전송. 사용자가 '모닝노트', '아침 브리핑', '오늘 시장 요약' 등을 요청하면 호출",
             "parameters": {"type": "object", "properties": {}, "required": []},
@@ -949,6 +970,7 @@ AVAILABLE_FUNCTIONS = {
     # 1인 투자하우스
     "invest_scout": invest_scout,
     "invest_track": invest_track,
+    "invest_track_all": invest_track_all,
     "invest_sector": invest_sector,
     "morning_note_now": morning_note_now,
 }
@@ -984,6 +1006,7 @@ def handle_with_gpt(text: str) -> str:
 - 유망종목 발굴 → dispatch_screener()
 - 종목 투자분석/메모 (Action 1) → invest_scout()
 - 보유종목 추적관찰 (Action 2) → invest_track()
+- 보유종목 전체 일괄 추적관찰 → invest_track_all()
 - 섹터 분석 → invest_sector()
 - 모닝노트 즉시 → morning_note_now()
 - 일반 질문은 직접 답변""",

@@ -39,12 +39,14 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from _shared.env import load_env
 from _shared.notify import send
 from _shared.llm import gpt, gemini
+from _shared import research
 
 load_env(str(PROJECT_ROOT))
 
-TOKEN_CACHE  = PROJECT_ROOT / "output" / "cache" / "kis_access_token.json"
-THESIS_FILE  = PROJECT_ROOT / "output" / "cache" / "investment_thesis.json"
-LOG_FILE     = PROJECT_ROOT / "output" / "bot_logs" / "investment_house.log"
+TOKEN_CACHE   = PROJECT_ROOT / "output" / "cache" / "kis_access_token.json"
+THESIS_FILE   = PROJECT_ROOT / "output" / "cache" / "investment_thesis.json"
+POSITIONS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_positions.json"  # 소미 보유 포지션(추적관찰 연계)
+LOG_FILE      = PROJECT_ROOT / "output" / "bot_logs" / "investment_house.log"
 
 
 # ─── 유틸 ────────────────────────────────────────────────────────────────────
@@ -210,6 +212,73 @@ def _collect_stock_data(symbol: str, name: str) -> dict:
     }
 
 
+# ─── 소미 연계 (grounding) ───────────────────────────────────────────────────
+
+def _somi_context(symbol: str, name: str) -> dict:
+    """소미 정량 진단 + 뉴스팀 영향도 + 시장 국면을 한데 모은다.
+    소미와 동일한 데이터·매수게이트를 쓰므로, 하우스 메모가 소미 실제 매수판단과 일치한다."""
+    ctx: dict = {"ok": False}
+    try:
+        from somi_trade_advisor import analyze_candidate, _passes_buy_gate
+        from somi_kis_reporter import KISClient as SomiKIS
+        a = analyze_candidate(SomiKIS(), symbol, name, realtime=True)
+        if a:
+            gate_ok, why = _passes_buy_gate(a)
+            ctx.update({
+                "ok": True, "score": a.get("score"), "entry_score": a.get("entry_score"),
+                "rr": a.get("rr"), "rr_ok": a.get("rr_ok"), "risk_state": a.get("risk_state"),
+                "soomgeup_net": a.get("soomgeup_net"), "entry": a.get("entry"),
+                "stop": a.get("stop"), "target": a.get("target"),
+                "reasons": a.get("reasons") or [], "risks": a.get("risks") or [],
+                "gate_ok": gate_ok, "gate_why": why,
+            })
+    except Exception as e:
+        log(f"소미 진단 연계 실패: {e}")
+    try:
+        imp = (research.load_issue_impact() or {}).get(symbol) or {}
+        ctx["news_score"], ctx["news_reason"] = imp.get("score", 0) or 0, imp.get("reason", "")
+    except Exception:
+        ctx["news_score"], ctx["news_reason"] = 0, ""
+    try:
+        from market_regime import stable_regime, regime_label, KOSPI_PROXY, KOSDAQ_PROXY
+        ctx["regime_kospi"] = regime_label(stable_regime(KOSPI_PROXY).get("regime", "unknown"))
+        ctx["regime_kosdaq"] = regime_label(stable_regime(KOSDAQ_PROXY).get("regime", "unknown"))
+    except Exception:
+        ctx["regime_kospi"] = ctx["regime_kosdaq"] = "미상"
+    return ctx
+
+
+def _somi_block(ctx: dict) -> str:
+    """LLM 프롬프트에 주입할 '소미 정량 진단' 블록."""
+    if ctx.get("ok"):
+        gate = "✅ 통과" if ctx.get("gate_ok") else f"❌ 미통과({ctx.get('gate_why')})"
+        lines = [
+            "## 소미 정량 진단 (소미와 동일 데이터·게이트)",
+            f"- 탐지점수 {ctx.get('score')} / 진입점수 {ctx.get('entry_score')} / 손익비 {ctx.get('rr')}"
+            f"({'적합' if ctx.get('rr_ok') else '미달'})",
+            f"- 리스크 {ctx.get('risk_state')} / 기관·외국인 5일 순매수 {int(ctx.get('soomgeup_net') or 0):+,}",
+            f"- 소미 진입/손절/목표: {int(ctx.get('entry') or 0):,} / {int(ctx.get('stop') or 0):,} / {int(ctx.get('target') or 0):,}",
+            f"- **소미 매수게이트: {gate}**",
+        ]
+    else:
+        lines = ["## 소미 정량 진단", "(소미 연계 분석 미가용 — 시세·뉴스 위주로 판단)"]
+    ns = ctx.get("news_score", 0) or 0
+    ns_txt = f"+{ns}" if ns > 0 else str(ns)
+    reason = f"({ctx.get('news_reason')})" if ctx.get("news_reason") else "(특이 뉴스 없음)"
+    lines.append(f"## 뉴스팀 영향도\n- 점수 {ns_txt} {reason}")
+    lines.append(f"## 시장 국면\n- KOSPI {ctx.get('regime_kospi')} · KOSDAQ {ctx.get('regime_kosdaq')}")
+    return "\n".join(lines)
+
+
+def _somi_position(symbol: str) -> dict:
+    """소미 보유 포지션 조회 — 추적관찰(Action2)이 실제 진입가/매수이유로 동작하도록."""
+    try:
+        data = json.loads(POSITIONS_FILE.read_text(encoding="utf-8"))
+        return data.get(symbol) or {}
+    except Exception:
+        return {}
+
+
 # ─── ACTION 1: 종목탐색 ──────────────────────────────────────────────────────
 
 def action1_scout(symbol: str, name: str) -> str:
@@ -224,6 +293,8 @@ def action1_scout(symbol: str, name: str) -> str:
              "volume": 0, "market_cap": 0, "high52": 0, "low52": 0,
              "per": 0, "pbr": 0, "eps": 0, "ma20": 0,
              "inst_net": 0, "foreign_net": 0, "indiv_net": 0}
+
+    ctx = _somi_context(symbol, name)
 
     prompt = f"""당신은 기관급 주식 리서치 애널리스트입니다. 다음 데이터를 바탕으로 {name}({symbol})의 투자 메모를 작성하세요.
 
@@ -240,7 +311,9 @@ def action1_scout(symbol: str, name: str) -> str:
 - 외국인 순매수: {d['foreign_net']:+,}주
 - 개인 순매수: {d['indiv_net']:+,}주
 
-다음 형식으로 간결하게 작성하세요 (텔레그램 전송용, 총 600자 이내):
+{_somi_block(ctx)}
+
+위 '소미 정량 진단'과 모순되지 않게(특히 매수게이트 결과를 존중) 다음 형식으로 간결하게 작성하세요 (텔레그램 전송용, 총 600자 이내):
 
 📊 **{name} 투자 메모** (Action 1)
 
@@ -263,10 +336,21 @@ def action1_scout(symbol: str, name: str) -> str:
 
     memo = llm(prompt, max_tokens=900)
 
+    # 승격 — 소미 매수게이트 통과 시 하우스 픽으로 등록(+1 가점, 3거래일). 소미가 후보로 소비.
+    promo = ""
+    if ctx.get("gate_ok"):
+        try:
+            research.save_house_pick(symbol, name, score=1,
+                                     reason=f"소미게이트통과 점수{ctx.get('score')}/진입{ctx.get('entry_score')}")
+            promo = "\n🔗 소미 자동매수 후보로 등록(가점 +1·3거래일). 소미 게이트 재확인 후 체결."
+            log(f"하우스 픽 승격: {name}({symbol})")
+        except Exception as e:
+            log(f"하우스 픽 승격 실패: {e}")
+
     result = f"""🏠 *1인 투자하우스 — Action 1: 종목탐색*
 ━━━━━━━━━━━━━━━━━━━━
 {memo}
-━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━{promo}
 📅 {datetime.now().strftime('%Y-%m-%d %H:%M')} | 소미·영숙 AI Lab"""
 
     return result
@@ -307,20 +391,34 @@ def action2_track(symbol: str, name: str) -> str:
 
     prev_thesis = _load_thesis(symbol)
     prev_note   = prev_thesis.get("note", "첫 추적 시작")
-    entry_price = num(prev_thesis.get("entry_price", d["price"]))
+    pos = _somi_position(symbol)  # 소미 실제 보유 — 있으면 진입가/매수이유를 권위 데이터로 사용
+    if pos:
+        entry_price = num(pos.get("entry")) or num(prev_thesis.get("entry_price", d["price"]))
+        held_note = (f"소미 실보유 {int(num(pos.get('qty'))):,}주 · 진입 {int(num(pos.get('entry'))):,}원"
+                     f" · 손절 {int(num(pos.get('stop'))):,} / 목표 {int(num(pos.get('target'))):,}"
+                     f" · 매수이유: {pos.get('buy_reason', '기록 없음')}")
+    else:
+        entry_price = num(prev_thesis.get("entry_price", d["price"]))
+        held_note = "소미 미보유 — 가상 추적(진입가=현재가 기준)"
     pnl_pct = ((d["price"] - entry_price) / entry_price * 100) if entry_price else 0.0
+    ctx = _somi_context(symbol, name)
 
-    prompt = f"""당신은 포트폴리오 매니저입니다. {name}({symbol}) 보유 중인 포지션을 추적 관찰 중입니다.
+    prompt = f"""당신은 포트폴리오 매니저입니다. {name}({symbol}) 포지션을 추적 관찰 중입니다.
 
 ## 현재 데이터
 - 현재가: {d['price']:,.0f}원 ({d['chg_pct']:+.2f}%)
 - 진입가 기준 손익: {pnl_pct:+.2f}%
 - 수급: 기관 {d['inst_net']:+,}주 / 외국인 {d['foreign_net']:+,}주
 
+## 소미 보유 상태
+{held_note}
+
+{_somi_block(ctx)}
+
 ## 이전 투자 thesis
 {prev_note}
 
-다음 형식으로 추적 노트를 작성하세요 (텔레그램용, 500자 이내):
+위 소미 정량 진단·보유 상태와 일관되게 다음 형식으로 추적 노트를 작성하세요 (텔레그램용, 500자 이내):
 
 🔍 **{name} 추적관찰** (Action 2)
 
@@ -390,7 +488,7 @@ def sector_scan(query: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="1인 투자하우스")
-    parser.add_argument("action", choices=["action1", "action2", "sector", "morning"],
+    parser.add_argument("action", choices=["action1", "action2", "sector", "morning", "track-all"],
                         help="실행할 액션")
     parser.add_argument("arg1", nargs="?", default="", help="종목코드 또는 섹터명")
     parser.add_argument("arg2", nargs="?", default="", help="종목명")
@@ -404,6 +502,23 @@ def main() -> None:
         if args.send:
             cmd.append("--send")
         subprocess.run(cmd)
+        return
+
+    if args.action == "track-all":
+        # 소미 보유 전 종목을 자동으로 추적관찰 — 매수→추적 루프 자동화
+        try:
+            positions = json.loads(POSITIONS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            positions = {}
+        if not positions:
+            result = "🏠 추적관찰 대상 없음 — 소미 보유 포지션이 비어 있습니다."
+        else:
+            notes = [action2_track(code, p.get("name", code)) for code, p in positions.items()]
+            result = "\n\n".join(notes)
+        print(result)
+        if args.send:
+            send(result)
+            log("track-all 텔레그램 전송 완료")
         return
 
     if args.action == "sector":

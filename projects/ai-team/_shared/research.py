@@ -185,6 +185,52 @@ def load_issue_impact() -> dict:
         return {}
 
 
+# ── 투자하우스 픽 (투자하우스 → 소미 후보 승격, TTL 자동만료) ─────────────────
+# issue_impact.json은 마켓데스크가 매 사이클 통째로 덮어쓰므로 하우스 픽 채널로 못 쓴다.
+# 별도 house_picks.json에 보관하고 소미 make_proposals가 후보군에 합친다.
+def save_house_pick(symbol: str, name: str, score: int = 1, reason: str = "", ttl_days: int = 3) -> Path:
+    """투자하우스 Action1 '진입' 판정 종목을 소미 매수 후보로 승격. 같은 종목은 갱신.
+    score: issue_impact 가점 등가(+1=약한 호재). ttl_days 경과분은 로드 시 자동 정리."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    f = CACHE_DIR / "house_picks.json"
+    try:
+        data = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    except Exception:
+        data = {}
+    data[str(symbol)] = {
+        "name": name, "score": int(score), "reason": reason,
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "expire": (datetime.now() + timedelta(days=ttl_days)).isoformat(timespec="seconds"),
+    }
+    f.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return f
+
+
+def load_house_picks() -> dict:
+    """만료되지 않은 투자하우스 픽만 {code: {...}} 반환. 만료분은 파일에서 정리."""
+    f = CACHE_DIR / "house_picks.json"
+    try:
+        data = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    except Exception:
+        return {}
+    now = datetime.now()
+    live, changed = {}, False
+    for code, v in (data.items() if isinstance(data, dict) else []):
+        try:
+            if datetime.fromisoformat(v.get("expire", "")) >= now:
+                live[code] = v
+            else:
+                changed = True
+        except Exception:
+            changed = True
+    if changed:
+        try:
+            f.write_text(json.dumps(live, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+    return live
+
+
 # ── 뉴스 (RSS, 키 불필요) ───────────────────────────────────────────────────
 def news_rss(url: str, limit: int = 8) -> list[str]:
     """RSS 피드의 기사 제목 목록. 실패 시 빈 리스트."""

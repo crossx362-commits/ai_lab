@@ -276,6 +276,17 @@ def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> li
         universe[code] = name
     for code, name in _news_candidates():
         universe.setdefault(code, name)
+    # 투자하우스 픽 — Action1 '진입(소미게이트 통과)' 판정 종목을 후보로 승격(+가점, TTL).
+    # 이미 마켓데스크 issue_impact가 더 높게 평가했으면 그 점수를 존중한다.
+    try:
+        for code, v in research.load_house_picks().items():
+            universe.setdefault(code, v.get("name", code))
+            hp = int(v.get("score", 1) or 1)
+            if (impact.get(code) or {}).get("score", 0) < hp:
+                impact[code] = {"score": hp, "reason": "투자하우스 진입판정: " + v.get("reason", ""),
+                                "source": "house"}
+    except Exception:
+        pass
     proposals = []
     for code, name in universe.items():
         a = analyze_candidate(kis, code, name)
