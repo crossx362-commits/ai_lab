@@ -307,31 +307,61 @@ def _tool_get_agent_status() -> str:
     return get_agent_status()
 
 
+def _position_verdict(pnl: float, cur: float, stop: float, target: float, tp1: float) -> str:
+    """보유 종목 다음 행동 판단(앞으로 어쩔지)."""
+    if target and cur >= target:
+        return "🟢 목표 도달 — 익절 검토"
+    if stop and cur <= stop:
+        return "🔴 손절선 도달 — 청산 검토"
+    if tp1 and cur >= tp1:
+        return "🟢 +5% 돌파 — 분할익절/트레일링"
+    if pnl <= -3:
+        return "🟠 손절선 근접 — 주의"
+    if target and cur:
+        return f"⚪ 보유 (목표까지 {((target - cur) / cur * 100):+.1f}%)"
+    return "⚪ 보유"
+
+
 def _tool_get_trading_status() -> str:
-    """거래 현황 — 보유 모의 포지션 + 실시간 평가손익."""
+    """거래 현황 — 보유 모의 포지션 + 실시간 평가손익 + 다음 행동 판단."""
     try:
         sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
         from somi_trade_advisor import load_positions
         from somi_kis_reporter import KISClient, num
     except Exception:
         return "거래 현황 조회 모듈을 불러오지 못했어요."
+    mode = "🧪 모의(페이퍼)" if _get_trade_mode() != "live" else "🔴 실거래(실제 돈)"
     pos = load_positions()
     if not pos:
-        return "[거래 현황]\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
+        return f"[거래 현황] {mode}\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
     kis = KISClient()
     lines, tot = [], 0.0
+    take, cut = 0, 0
     for sym, p in pos.items():
         try:
             cur = num(kis.quote(sym).get("stck_prpr"))
         except Exception:
             cur = 0.0
         entry = num(p.get("entry"))
+        stop = num(p.get("stop"))
+        target = num(p.get("target"))
+        tp1 = num(p.get("tp1"))
         qty = int(p.get("qty") or 0)
         pnl = ((cur - entry) / entry * 100) if (cur and entry) else 0.0
         tot += pnl
-        lines.append(f"- {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%)")
+        verdict = _position_verdict(pnl, cur, stop, target, tp1)
+        if "익절" in verdict:
+            take += 1
+        elif "손절" in verdict:
+            cut += 1
+        lines.append(
+            f"• {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%)\n"
+            f"   손절 {int(stop):,} / 목표 {int(target):,} · {verdict}"
+        )
     avg = tot / len(pos)
-    return f"[거래 현황] 보유 {len(pos)}종목 · 평균 {avg:+.1f}%\n" + "\n".join(lines)
+    head = f"[거래 현황] {mode} · 보유 {len(pos)}종목 · 평균 {avg:+.1f}%"
+    tail = f"\n요약: 익절검토 {take} · 손절주의 {cut} · 그 외 보유 {len(pos) - take - cut}"
+    return head + "\n" + "\n".join(lines) + tail
 
 
 def _tool_get_stock_price(text: str) -> str:
