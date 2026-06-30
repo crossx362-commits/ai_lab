@@ -200,17 +200,31 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     return out
 
 
+def _gate_thresholds() -> dict:
+    """매수 게이트 문턱 — 모의(paper)는 공격적 완화, 실거래(live)는 보수값 유지.
+    위험관리 축(dq_state·danger·수급미확정)은 모드 무관하게 항상 차단한다."""
+    if _is_paper():
+        return {
+            "score": int(os.getenv("SOMI_GATE_SCORE_PAPER", "48")),   # 탐지점수 (기본 60 → 48)
+            "entry": int(os.getenv("SOMI_GATE_ENTRY_PAPER", "58")),   # 진입점수 (기본 70 → 58)
+            "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
+        }
+    return {"score": 60, "entry": 70, "require_rr": True}
+
+
 def _passes_buy_gate(c: dict) -> tuple[bool, str]:
-    """기대값 기반 최종 매수 게이트. 모두 통과해야 실매수 허용."""
-    if c.get("score", 0) < 60:
-        return False, f"탐지점수 {c.get('score')} < 60"
+    """기대값 기반 최종 매수 게이트. 모두 통과해야 실매수 허용.
+    모의는 점수·진입 문턱↓·손익비 요구 해제(공격적), 실거래는 보수값. 위험축은 공통 차단."""
+    th = _gate_thresholds()
+    if c.get("score", 0) < th["score"]:
+        return False, f"탐지점수 {c.get('score')} < {th['score']}"
     if c.get("score_mode") == "morning_missing_investor_adjusted":
         return False, "당일 외국인/기관 수급 미확정 — 후보 저장만"
     if c.get("dq_state") == "degraded":
         return False, "데이터 품질 미흡(실시간 미확인)"
-    if c.get("entry_score", 0) < 70:
-        return False, f"진입점수 {c.get('entry_score')} < 70"
-    if not c.get("rr_ok"):
+    if c.get("entry_score", 0) < th["entry"]:
+        return False, f"진입점수 {c.get('entry_score')} < {th['entry']}"
+    if th["require_rr"] and not c.get("rr_ok"):
         return False, f"손익비 {c.get('rr')} 미달/저항 차단"
     if c.get("risk_state") == "danger":
         return False, "리스크 위험 상태"
@@ -484,11 +498,11 @@ def _is_paper() -> bool:
     return os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
 
 
-# 모의 모드 1회 실행 시 자동 매수할 최대 종목 수 (예산 소진 시 자동 중단)
-PAPER_AUTO_MAX = int(os.getenv("SOMI_PAPER_AUTO_MAX", "3"))
+# 모의 모드 1회 실행 시 자동 매수할 최대 종목 수 (예산 소진 시 자동 중단). 모의=공격적(8).
+PAPER_AUTO_MAX = int(os.getenv("SOMI_PAPER_AUTO_MAX", "8"))
 SOMI_BUDGET = int(os.getenv("SOMI_BUDGET_PER_TRADE", "1000000"))
-# 매수 전 관찰 시간(분): 'buy' 신호가 이 시간 이상 유지돼야 실제 매수 (바로 안 삼)
-OBSERVE_MINUTES = int(os.getenv("SOMI_OBSERVE_MINUTES", "30"))
+# 매수 전 관찰 시간(분): 'buy' 신호가 이 시간 이상 유지돼야 실제 매수. 모의=5분(공격적)/실거래=30분.
+OBSERVE_MINUTES = int(os.getenv("SOMI_OBSERVE_MINUTES", "5" if _is_paper() else "30"))
 WATCHING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_watching.json"
 
 
@@ -549,7 +563,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         # 확신 기반 사이징(백테스트 검증): 점수 높을수록 크게. 평균점수(~65) 기준 1.0배로 재중심해
         # 평균 투입자본은 그대로 두고 고점수에만 더 배분 → 공정비교서 24mo +264%→+298%,
         # 30mo +348%→+385%, MDD 동등/개선. (위험기반·균등보다 우월)
-        conv = min(2.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))
+        conv = min(3.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))
         qty = max(1, int(int(SOMI_BUDGET * conv) // entry))
         try:
             res = trader.order(p["symbol"], qty, "buy", 0)
@@ -647,8 +661,9 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     # 하락 국면이면 후보 풀을 넓혀 더 많은 종목을 검색(기회 종목 발굴). 매수는 막지 않음.
     if regime == "bear":
         candidate_limit = int(os.getenv("SOMI_CANDIDATES_BEAR", str(candidate_limit * 2)))
-    # 시간대별 탐지 문턱(헌장 권장): 오전 후보편입 45, 오후 매수검토 GOOD_SCORE(기본 60)
-    detect_floor = 45 if slot_kind in ("collect", "observe") else int(os.getenv("SOMI_GOOD_SCORE", str(GOOD_SCORE)))
+    # 시간대별 탐지 문턱: 오전 후보편입 45, 오후 매수검토는 매수게이트 점수와 정렬(모의=48/실거래=60).
+    # 게이트보다 floor가 높으면 완화한 게이트가 무의미해지므로 일치시킨다.
+    detect_floor = 45 if slot_kind in ("collect", "observe") else int(os.getenv("SOMI_GOOD_SCORE", str(_gate_thresholds()["score"])))
     proposals = make_proposals(candidate_limit, min_score=detect_floor)
     proposals = apply_news_judgment(proposals)
     _save(PROPOSALS_FILE, {"ts": now_str, "items": proposals})
