@@ -1,0 +1,8 @@
+{
+  "name": "somi-kr-equity-research",
+  "version": "0.1.0",
+  "description": "소미(분석가) 한국주식 리서치 스킬 — 장전 브리핑, 종목 발굴, 섹터 분석, 실적 분석, 투자논리 추적 (KRX·KIS API·수급·소미 점수·기대값 엔진)",
+  "author": {
+    "name": "ai_lab (준)"
+  }
+}

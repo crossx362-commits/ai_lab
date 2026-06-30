@@ -1,0 +1,8 @@
+{
+  "name": "youngsuk-briefing",
+  "version": "0.1.0",
+  "description": "영숙(비서) 브리핑·리포팅 스킬 — 텔레그램 요약 + 노션 풀리포트, 일정·현황·승인요청 패킹",
+  "author": {
+    "name": "ai_lab (준)"
+  }
+}

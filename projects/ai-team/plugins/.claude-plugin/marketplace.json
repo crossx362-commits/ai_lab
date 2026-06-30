@@ -1,0 +1,30 @@
+{
+  "name": "ai-lab-korea-finance",
+  "owner": {
+    "name": "ai_lab (준)"
+  },
+  "metadata": {
+    "description": "Anthropic Claude for Financial Services 플러그인을 한국시장(KRX·KIS API)·한국어·ai_lab 3 에이전트(소미·예원·영숙)에 맞게 커스터마이징한 마켓플레이스",
+    "basedOn": "github.com/anthropics/financial-services-plugins"
+  },
+  "plugins": [
+    {
+      "name": "somi-kr-equity-research",
+      "displayName": "소미 — 한국주식 리서치",
+      "source": "./somi-kr-equity-research",
+      "description": "소미(분석가)용 한국주식 리서치 스킬: 장전 브리핑, 종목 발굴(스크리닝), 섹터 분석, 실적 분석, 투자논리 추적 — KRX/KIS API·수급·소미 점수·기대값 엔진 기반"
+    },
+    {
+      "name": "yewon-research-dispatcher",
+      "displayName": "예원 — 리서치 디스패처",
+      "source": "./yewon-research-dispatcher",
+      "description": "예원(CEO)용 리서치 오케스트레이터 에이전트: 섹터/테마 요청을 소미 스킬로 분해·지휘하고 결과를 검수 게이트와 함께 취합"
+    },
+    {
+      "name": "youngsuk-briefing",
+      "displayName": "영숙 — 브리핑·리포팅",
+      "source": "./youngsuk-briefing",
+      "description": "영숙(비서)용 데일리 브리핑/리포트 스킬: 텔레그램 요약 + 노션 풀리포트 작성, 일정·현황·승인요청 패킹"
+    }
+  ]
+}
