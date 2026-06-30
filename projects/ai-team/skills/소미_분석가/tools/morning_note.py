@@ -38,6 +38,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import send  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
 from watchlist_manager import load_watchlist  # noqa: E402
 from short_covering_analyzer import calculate_score, flow_short_analysis, grade_of  # noqa: E402
 
@@ -280,6 +281,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.daemon:
-        daemon_loop(args.send, args.hour)
+        # 중복 데몬 방지 — 다른 8개 데몬과 동일하게 ProcessLock으로 단일 인스턴스 보장
+        with ProcessLock("morning_note"):
+            daemon_loop(args.send, args.hour)
     else:
         run(args.send)

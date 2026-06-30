@@ -116,6 +116,13 @@ ALIASES = {
     "morningnote": "모닝노트",
     "somi_signal": "소미신호",
     "trend": "추세알림",
+    # harness_monitor 자동재시작은 notify.CONTINUOUS_DAEMONS의 영어 키를 그대로 넘긴다.
+    # 아래 매핑이 없으면 Windows에서 해당 데몬 재시작이 조용히 실패한다(자가복구 불능).
+    "somi_monitor": "소미",
+    "somi_advisor": "소미제안",
+    "somi_position": "소미포지션",
+    "somi_screener": "소미발굴",
+    "market_desk": "마켓데스크",
 }
 
 
