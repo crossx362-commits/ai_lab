@@ -52,6 +52,16 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "somi_position_monitor",
     },
+    "소미신호": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_signal_engine.py",
+        "args": ["--daemon", "--interval", "600"],
+        "log": "somi_signal_engine",
+    },
+    "추세알림": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "market_trend_alert.py",
+        "args": ["--daemon", "--interval", "900"],
+        "log": "market_trend_alert",
+    },
     "소미발굴": {
         "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_screener.py",
         "args": ["--daemon"],
@@ -82,6 +92,11 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "market_desk",
     },
+    "모닝노트": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "morning_note.py",
+        "args": ["--daemon", "--send"],
+        "log": "morning_note",
+    },
 }
 
 ALIASES = {
@@ -96,6 +111,11 @@ ALIASES = {
     "leon": "레온",
     "market": "마켓데스크",
     "marketdesk": "마켓데스크",
+    "signal": "소미신호",
+    "morning": "모닝노트",
+    "morningnote": "모닝노트",
+    "somi_signal": "소미신호",
+    "trend": "추세알림",
 }
 
 

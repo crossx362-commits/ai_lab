@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""소미 포지션 감시 — 보유 종목 수익률/목표가/손절가 점검 후 익절·손절 제안.
+"""소미 포지션 감시 — 보유 종목 수익률/목표가/손절가 점검 후 익절·손절.
 
-제안만 한다. 실제 매도는 사용자가 텔레그램에서 승인('소미 매도 …')해야 실행.
+모의(paper) 모드: 손절/목표/트레일링/시간초과 도달 시 자동 매도 체결.
+실거래(live) 모드: 제안만 한다 — 매도는 사용자가 텔레그램에서 승인('소미 매도 …')해야 실행.
 """
 
 from __future__ import annotations
@@ -53,6 +54,16 @@ def _busdays_held(ts: str) -> int:
 
 
 def _is_paper() -> bool:
+    """거래 모드 — trade_mode.json(텔레그램 토글) 우선, 없으면 KIS_PAPER 환경변수.
+    명시적 'live'가 아니면 모의로 본다(기본 모의)."""
+    import json
+    f = PROJECT_ROOT / "output" / "cache" / "trade_mode.json"
+    try:
+        mode = json.loads(f.read_text(encoding="utf-8")).get("mode", "")
+    except Exception:
+        mode = ""
+    if mode:
+        return mode != "live"
     return os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
 
 
@@ -130,6 +141,8 @@ def check_positions() -> list[str]:
     positions = load_positions()
     if not positions:
         return []
+    if _is_paper():
+        os.environ["KIS_PAPER"] = "true"   # _paper_sell의 KISTrader가 모의 계좌로 체결하도록
     kis = KISClient()
     alerts = []
     for symbol, p in positions.items():

@@ -575,8 +575,8 @@ def daily_summary() -> str:
     positions = _load("somi_positions.json") or {}
     buys = [p for p in (_load("somi_proposals.json") or {}).get("items", []) if p.get("verdict") == "buy"]
     try:
-        from market_regime import market_regime, regime_label
-        reg = regime_label(market_regime().get("regime", "unknown"))
+        from market_regime import stable_regime, regime_label
+        reg = regime_label(stable_regime().get("regime", "unknown"))
     except Exception:
         reg = "확인불가"
     gs = growth.summary()

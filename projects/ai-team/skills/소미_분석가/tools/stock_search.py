@@ -23,7 +23,6 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env
-from somi_kis_reporter import KISClient
 
 
 load_env(str(PROJECT_ROOT))
@@ -120,57 +119,17 @@ def resolve_symbol(query: str) -> tuple[str, str] | None:
 
 
 def search_stock(query: str) -> str:
-    """종목명으로 종목코드 검색"""
+    """종목명/별칭/코드 → 종목코드 검색. 로컬 맵 → 네이버 자동완성(한글명 검색)."""
     query = query.strip()
     if not query:
         return "❌ 검색어를 입력하세요."
 
-    # 별칭 처리
-    aliases = {
-        "삼전": "삼성전자",
-        "삼성": "삼성전자",
-        "SK하닉": "SK하이닉스",
-        "하닉": "SK하이닉스",
-    }
-    query = aliases.get(query, query)
-
-    try:
-        kis = KISClient()
-
-        # KIS 종목 검색 API
-        data = kis.get(
-            "uapi/domestic-stock/v1/quotations/search-stock-info",
-            "CTPF1604R",
-            {
-                "PRDT_TYPE_CD": "300",  # 주식
-                "PDNO": query,
-            },
-        )
-
-        output = data.get("output") or []
-        if not isinstance(output, list):
-            output = [output]
-
-        if not output:
-            return _fallback_search(query)
-
-        # 최대 5개 결과 반환
-        results = []
-        for item in output[:5]:
-            symbol = item.get("pdno", "").strip()
-            name = item.get("prdt_name", "").strip()
-            if symbol and name:
-                results.append(f"• {name} ({symbol})")
-
-        if not results:
-            return _fallback_search(query)
-
-        header = f"🔍 '{query}' 검색 결과:\n"
-        return header + "\n".join(results)
-
-    except Exception as exc:
-        # KIS API가 검색을 지원하지 않을 수 있으므로 fallback
-        return _fallback_search(query)
+    # KIS PDNO 검색은 한글명 조회가 안 되므로 resolve_symbol(로컬 맵 → 네이버) 사용
+    hit = resolve_symbol(query)
+    if hit:
+        code, name = hit
+        return f"🔍 '{query}' 검색 결과:\n• {name} ({code})"
+    return _fallback_search(query)
 
 
 def _fallback_search(query: str) -> str:

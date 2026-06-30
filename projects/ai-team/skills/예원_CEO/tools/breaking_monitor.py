@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,30 @@ QUERY = (
     "지정학 리스크. 정말 중대한 건이 있으면 '[긴급] ' 으로 시작해 한두 줄로 요약하고, "
     "평범하거나 특별한 속보가 없으면 정확히 '없음' 한 단어만 출력하라."
 )
+
+
+_DROP_WORDS = ("급락", "폭락", "하락", "붕괴", "패닉", "크래시", "서킷", "사이드카", "곤두박질", "추락")
+# 오탐 차단은 '실제 검증 가능한' 한국 지수(코스피/코스닥) 주장에만 적용.
+# (나스닥·다우 등 해외 지수는 여기서 시세를 안 보므로 차단 트리거에서 제외 — 과차단 방지)
+_INDEX_WORDS = ("코스피", "코스닥", "kospi", "kosdaq")
+_FALSE_DROP_FLOOR = float(os.getenv("BREAKING_DROP_FLOOR", "-1.5"))  # 이보다 덜 빠지면 '지수급락' 오탐
+
+
+def _index_reality() -> dict:
+    """실제 지수 등락(코스피=KODEX200, 코스닥=KODEX코스닥150 대용). 검증·표기용."""
+    out = {}
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from somi_kis_reporter import KISClient, num
+        kis = KISClient()
+        for label, code in (("코스피", "069500"), ("코스닥", "229200")):
+            try:
+                out[label] = num(kis.quote(code).get("prdy_ctrt"))
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return out
 
 
 def _load_state() -> dict:
@@ -71,6 +96,18 @@ def check_and_send(force: bool = False) -> bool:
     if not issue:
         print("속보 없음")
         return False
+
+    # 실제 지수 대조 — LLM 속보가 '지수 급락'을 주장하는데 실제론 안 빠졌으면 오탐 차단
+    reality = _index_reality()
+    low = issue.lower()
+    claims_drop = any(w in issue for w in _DROP_WORDS) and any(w in low for w in _INDEX_WORDS)
+    if claims_drop and reality:
+        worst = min(reality.values())  # 가장 많이 빠진 지수
+        if worst > _FALSE_DROP_FLOOR:
+            snap = " · ".join(f"{k} {v:+.2f}%" for k, v in reality.items())
+            print(f"⚠️ 오탐 차단 — 속보는 지수하락 주장이나 실제 {snap}")
+            return False
+
     key = issue[:40]
     state = _load_state()
     now = datetime.now()
@@ -82,6 +119,8 @@ def check_and_send(force: bool = False) -> bool:
         except Exception:
             pass
     msg = "🚨 [속보] " + issue.replace("[긴급]", "").strip()
+    if reality:  # 실제 지수 등락을 함께 표기 — 사용자가 사실 확인 가능
+        msg += "\n\n📈 실제 지수: " + " · ".join(f"{k} {v:+.2f}%" for k, v in reality.items())
     send(msg)
     _save_state({"key": key, "ts": now.isoformat()})
     print("속보 전송:", key)

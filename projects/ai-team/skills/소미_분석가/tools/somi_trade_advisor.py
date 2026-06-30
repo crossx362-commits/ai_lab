@@ -593,18 +593,26 @@ def _save_candidates(cands: list[dict], slot_kind: str) -> str:
 
 
 def _market_regime_now():
+    """KOSPI·KOSDAQ 국면을 함께 추정. 반환: (효과국면, {지수:국면}, regime_label).
+    소미 후보는 대부분 코스닥이라 둘 중 하나라도 'bear'면 위험회피(bear)로 본다."""
     try:
-        from market_regime import market_regime, regime_label
-        reg = market_regime().get("regime", "unknown")
-        return reg, regime_label
+        from market_regime import stable_regime, regime_label, KOSPI_PROXY, KOSDAQ_PROXY
+        kospi = stable_regime(KOSPI_PROXY).get("regime", "unknown")
+        kosdaq = stable_regime(KOSDAQ_PROXY).get("regime", "unknown")
+        if "bear" in (kospi, kosdaq):
+            eff = "bear"
+        elif kospi == "bull" and kosdaq == "bull":
+            eff = "bull"
+        else:
+            eff = "sideways"
+        return eff, {"KOSPI": kospi, "KOSDAQ": kosdaq}, regime_label
     except Exception:
-        return "unknown", (lambda r: r)
+        return "unknown", {}, (lambda r: r)
 
 
-def _apply_buy_gates(buys: list[dict], regime: str) -> list[dict]:
-    """기존 통계 게이트(국면·수급확인·몬테카를로) — 탐지 단계 필터."""
-    if regime == "bear" and os.getenv("SOMI_DISABLE_REGIME_GATE", "").lower() not in {"1", "true", "yes"}:
-        return []
+def _apply_buy_gates(buys: list[dict]) -> list[dict]:
+    """통계 게이트(수급확인·몬테카를로) — 탐지 단계 품질 필터.
+    하락 국면이라도 매수를 막지 않는다(하락장 기회 종목 발굴). 국면은 후보 검색폭에만 반영."""
     if os.getenv("SOMI_SOOMGEUP_GATE", "true").lower() in {"1", "true", "yes"}:
         buys = [p for p in buys if p.get("soomgeup_net", 0) > 0]
     try:
@@ -624,13 +632,20 @@ def _apply_buy_gates(buys: list[dict], regime: str) -> list[dict]:
 def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy") -> str:
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     label = SLOT_LABEL.get(slot_kind, "매수 검토")
+    regime, regime_detail, regime_label = _market_regime_now()
+    # 하락 국면이면 후보 풀을 넓혀 더 많은 종목을 검색(기회 종목 발굴). 매수는 막지 않음.
+    if regime == "bear":
+        candidate_limit = int(os.getenv("SOMI_CANDIDATES_BEAR", str(candidate_limit * 2)))
     # 시간대별 탐지 문턱(헌장 권장): 오전 후보편입 45, 오후 매수검토 GOOD_SCORE(기본 60)
     detect_floor = 45 if slot_kind in ("collect", "observe") else int(os.getenv("SOMI_GOOD_SCORE", str(GOOD_SCORE)))
     proposals = make_proposals(candidate_limit, min_score=detect_floor)
     proposals = apply_news_judgment(proposals)
     _save(PROPOSALS_FILE, {"ts": now_str, "items": proposals})
-    regime, regime_label = _market_regime_now()
-    header = f"[소미 {label} / {now_str}]\n시장 국면(HMM): {regime_label(regime)}"
+    detail_txt = ""
+    if regime_detail:
+        detail_txt = (f" (KOSPI {regime_label(regime_detail.get('KOSPI', '?'))}"
+                      f" · KOSDAQ {regime_label(regime_detail.get('KOSDAQ', '?'))})")
+    header = f"[소미 {label} / {now_str}]\n시장 국면(HMM): {regime_label(regime)}{detail_txt}"
     held_syms = set(load_positions().keys())
     candidates = [p for p in proposals if p["symbol"] not in held_syms]
 
@@ -655,8 +670,8 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
         return report
 
     # ── 오후 매수 슬롯(buy / buy_close) ──
-    # 1차: 뉴스판정 buy + 통계 게이트(국면·수급·MC)
-    buys = _apply_buy_gates([p for p in candidates if p.get("verdict") == "buy"], regime)
+    # 1차: 뉴스판정 buy + 통계 게이트(수급·MC). 하락 국면은 차단이 아니라 후보 확대로 반영.
+    buys = _apply_buy_gates([p for p in candidates if p.get("verdict") == "buy"])
     # 2차: 상위 후보를 실시간 다중점수로 보강 → 기대값 기반 최종 게이트
     kis = KISClient()
     top = sorted(buys, key=lambda x: x["score"], reverse=True)[: max(4, PAPER_AUTO_MAX * 2)]

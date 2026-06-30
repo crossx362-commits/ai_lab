@@ -6,9 +6,9 @@
   2) 예산 기준 수량 계산 → pending_signals.json 에 대기 신호 저장(만료시각 포함)
   3) 텔레그램으로 "🚨 매수신호 ... 승인하려면 'ㅇㅋ'" 푸시
 
-⚠️ 이 엔진은 주문을 체결하지 않는다. 체결은 사용자가 텔레그램에서 'ㅇㅋ'/'승인'으로
-   직접 방아쇠를 당길 때만, telegram_receiver 의 기존 주문 실행기로 이뤄진다.
-   (사람 확인 없는 자동 체결 아님)
+⚠️ 이 엔진은 주문을 체결하지 않는다(승인 푸시 전용). 체결은 사용자가 텔레그램에서
+   'ㅇㅋ'/'승인'으로 직접 방아쇠를 당길 때만 telegram_receiver 주문 실행기로 이뤄진다.
+   모의 자동매수는 소미제안(somi_trade_advisor)이 단일 실행자로 담당한다(중복 매수 방지).
 
 실행:
   python somi_signal_engine.py --scan                  # 1회 스캔·푸시
@@ -114,6 +114,17 @@ def _trade_mode() -> str:
         return ""
 
 
+def _is_bear() -> bool:
+    """KOSPI·KOSDAQ 중 하나라도 하락 국면인지. 하락장에선 후보를 더 넓게 검색한다
+    (매수를 막지는 않음 — 하락장에도 기회 종목을 찾는다)."""
+    try:
+        from market_regime import stable_regime, KOSPI_PROXY, KOSDAQ_PROXY
+        return "bear" in (stable_regime(KOSPI_PROXY).get("regime"),
+                          stable_regime(KOSDAQ_PROXY).get("regime"))
+    except Exception:
+        return False
+
+
 def _format_push(signals: list[dict]) -> str:
     m = _trade_mode()
     if m == "live":
@@ -145,7 +156,10 @@ def scan(budget: int = BUDGET, top: int = TOP_N, do_send: bool = True,
         print(msg)
         return msg
     from somi_trade_advisor import make_proposals
-    kwargs = {"candidate_limit": int(os.getenv("SOMI_SIGNAL_CANDIDATES", "20"))}
+    # 하락 국면이면 후보 풀을 넓혀 더 많은 종목을 검색(기회 종목 발굴). 매수는 막지 않음.
+    base_cand = int(os.getenv("SOMI_SIGNAL_CANDIDATES", "20"))
+    cand = int(os.getenv("SOMI_SIGNAL_CANDIDATES_BEAR", str(base_cand * 2))) if _is_bear() else base_cand
+    kwargs = {"candidate_limit": cand}
     # 한별(퀀트) 튜닝 추천을 우선 반영 — 없으면 env(MIN_SCORE)
     eff_min = MIN_SCORE
     try:
@@ -170,6 +184,8 @@ def scan(budget: int = BUDGET, top: int = TOP_N, do_send: bool = True,
         _save_signals([])
         return "📭 [소미] 유효 신호 없음 (진입가 산출 실패)"
 
+    # 체결하지 않고 푸시만 — 사용자 'ㅇㅋ' 승인 시 telegram_receiver가 체결.
+    # (모의 자동매수는 소미제안이 단일 실행자로 담당)
     _save_signals(signals)
     push = _format_push(signals)
     print(push)

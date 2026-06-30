@@ -7,9 +7,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -44,6 +46,44 @@ PAPER_FILE = PROJECT_ROOT / "output" / "cache" / "somi_paper.json"
 PAPER_START_CASH = int(os.getenv("SOMI_PAPER_CASH", "10000000"))  # 페이퍼 초기 예수금 1천만
 
 
+_LEDGER_LOCK_FILE = PROJECT_ROOT / "output" / "cache" / "somi_paper.lock"
+
+
+@contextlib.contextmanager
+def _ledger_lock(timeout: float = 10.0, stale: float = 30.0):
+    """페이퍼 원장 임계구역용 블로킹 파일락 — 동시 매수/매도의 lost-update 방지.
+    ProcessLock(싱글톤·exit)과 달리 짧게 대기 후 획득한다. stale 잔재는 제거,
+    timeout 초과 시엔 데몬 데드락 방지를 위해 그냥 진행(원장 정합보다 생존 우선)."""
+    _LEDGER_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.time() + timeout
+    acquired = False
+    while True:
+        try:
+            fd = os.open(str(_LEDGER_LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+            acquired = True
+            break
+        except FileExistsError:
+            try:
+                if time.time() - _LEDGER_LOCK_FILE.stat().st_mtime > stale:
+                    _LEDGER_LOCK_FILE.unlink(missing_ok=True)
+                    continue
+            except OSError:
+                pass
+            if time.time() >= deadline:
+                break
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        if acquired:
+            try:
+                _LEDGER_LOCK_FILE.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
 def _paper_load() -> dict:
     try:
         if PAPER_FILE.exists():
@@ -54,8 +94,11 @@ def _paper_load() -> dict:
 
 
 def _paper_save(d: dict) -> None:
+    """원자적 저장 — 임시파일 기록 후 os.replace로 교체해 torn read(부분쓰기 읽힘) 방지."""
     PAPER_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PAPER_FILE.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp = PAPER_FILE.with_name(PAPER_FILE.name + ".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, PAPER_FILE)
 
 
 class KISTrader:
@@ -136,29 +179,32 @@ class KISTrader:
 
     def _paper_order(self, symbol: str, qty: int, side: str, price: int) -> dict:
         """가상 체결: 시장가는 현재 시세로 체결. 페이퍼 원장(현금/보유) 갱신."""
+        # 시세 조회(네트워크)는 락 밖에서 — 락 점유시간 최소화
         fill = price if price > 0 else int(num(self.kis.quote(symbol).get("stck_prpr")))
         if fill <= 0:
             raise RuntimeError("현재가 조회 실패로 체결 불가")
-        led = _paper_load()
-        pos = led["positions"]
-        if side == "buy":
-            cost = fill * qty
-            if cost > led["cash"]:
-                raise RuntimeError(f"페이퍼 예수금 부족 (필요 {cost:,} / 보유 {int(led['cash']):,})")
-            led["cash"] -= cost
-            cur = pos.get(symbol, {"qty": 0, "avg": 0})
-            tot = cur["qty"] + qty
-            pos[symbol] = {"qty": tot, "avg": round((cur["qty"] * cur["avg"] + cost) / tot)}
-        else:  # sell
-            held = pos.get(symbol, {}).get("qty", 0)
-            if qty > held:
-                raise RuntimeError(f"페이퍼 보유 수량 부족 (보유 {held}주)")
-            led["cash"] += fill * qty
-            if qty == held:
-                pos.pop(symbol, None)
-            else:
-                pos[symbol]["qty"] = held - qty
-        _paper_save(led)
+        # 원장 read-modify-write는 락으로 직렬화 — 동시 매수/매도 lost-update 방지
+        with _ledger_lock():
+            led = _paper_load()
+            pos = led["positions"]
+            if side == "buy":
+                cost = fill * qty
+                if cost > led["cash"]:
+                    raise RuntimeError(f"페이퍼 예수금 부족 (필요 {cost:,} / 보유 {int(led['cash']):,})")
+                led["cash"] -= cost
+                cur = pos.get(symbol, {"qty": 0, "avg": 0})
+                tot = cur["qty"] + qty
+                pos[symbol] = {"qty": tot, "avg": round((cur["qty"] * cur["avg"] + cost) / tot)}
+            else:  # sell
+                held = pos.get(symbol, {}).get("qty", 0)
+                if qty > held:
+                    raise RuntimeError(f"페이퍼 보유 수량 부족 (보유 {held}주)")
+                led["cash"] += fill * qty
+                if qty == held:
+                    pos.pop(symbol, None)
+                else:
+                    pos[symbol]["qty"] = held - qty
+            _paper_save(led)
         return {"order_no": f"PAPER-{symbol}-{qty}", "time": "", "price": fill, "msg": f"[페이퍼] {fill:,}원 체결"}
 
     def balance(self) -> dict:

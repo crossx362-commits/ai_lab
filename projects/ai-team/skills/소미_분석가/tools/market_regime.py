@@ -9,6 +9,8 @@ KODEX 200(069500)을 KOSPI 대용으로 일봉 수익률 시계열을 만들고,
 
 from __future__ import annotations
 
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -27,7 +29,8 @@ from somi_kis_reporter import KISClient, num  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-KOSPI_PROXY = "069500"  # KODEX 200 (KOSPI200 추종 ETF)
+KOSPI_PROXY = "069500"   # KODEX 200 (KOSPI200 추종 ETF)
+KOSDAQ_PROXY = "229200"  # KODEX 코스닥150 (코스닥150 추종 ETF)
 
 
 def _fit_hmm(x, k: int = 3, n_iter: int = 40):
@@ -78,12 +81,13 @@ def _fit_hmm(x, k: int = 3, n_iter: int = 40):
     return mu, gamma[-1]
 
 
-def market_regime() -> dict:
-    """현재 시장 국면 추정 → {'regime': 'bull'|'bear'|'sideways'|'unknown', ...}."""
+def market_regime(proxy: str = KOSPI_PROXY) -> dict:
+    """현재 시장 국면 추정 → {'regime': 'bull'|'bear'|'sideways'|'unknown', ...}.
+    proxy: 지수 추종 ETF 코드 (기본 KOSPI200, 코스닥은 KOSDAQ_PROXY)."""
     try:
         import numpy as np
         kis = KISClient()
-        dailies = kis.daily_prices(KOSPI_PROXY, 70)
+        dailies = kis.daily_prices(proxy, 70)
         closes = [num(d.get("stck_clpr")) for d in reversed(dailies) if num(d.get("stck_clpr"))]
         if len(closes) < 25:
             return {"regime": "unknown", "reason": "지수 데이터 부족"}
@@ -120,6 +124,60 @@ _REGIME_KR = {"bull": "🟢 상승 국면", "bear": "🔴 하락 국면", "sidew
 
 def regime_label(regime: str) -> str:
     return _REGIME_KR.get(regime, regime)
+
+
+# ── 신뢰도 게이트 국면(전환 안정화) ──
+# 매 호출의 raw 추정은 경계값에서 흔들린다. 직전 확정 국면과 다른 국면이 나와도
+# 신뢰도(confidence)가 임계값 이상일 때만 '전환 인정'한다. 미달이면 직전 국면 유지.
+STABLE_FILE = PROJECT_ROOT / "output" / "cache" / "market_regime_stable.json"
+CONF_MIN = float(os.getenv("SOMI_REGIME_CONF_MIN", "0.6"))
+
+
+def _load_stable() -> dict:
+    try:
+        return json.loads(STABLE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_stable(state: dict) -> None:
+    STABLE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STABLE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def stable_regime(proxy: str = KOSPI_PROXY, advance: bool = False,
+                  threshold: float | None = None) -> dict:
+    """신뢰도 게이트를 통과한 '확정 국면'을 반환.
+
+    raw 국면이 직전 확정 국면과 다르고 confidence ≥ threshold(기본 0.6)일 때만 전환 인정.
+    advance=True면 확정 국면 상태파일을 갱신(전환 시각·알림 담당 데몬만 사용).
+    advance=False는 읽기 전용 — 결정(매수 게이트 등) 소비자는 이걸 쓴다(경쟁 쓰기 방지).
+    반환: market_regime() dict + {regime(확정), raw_regime, changed, prev}.
+    """
+    thr = CONF_MIN if threshold is None else threshold
+    raw = market_regime(proxy)
+    rr = raw.get("regime", "unknown")
+    conf = float(raw.get("confidence") or 0.0)
+    state = _load_stable()
+    prev = (state.get(proxy) or {}).get("regime")
+
+    changed = False
+    if rr == "unknown":
+        stable = prev or "unknown"
+    elif prev is None:
+        stable = rr               # 최초 시드 — 알릴 전환 없음
+    elif rr != prev and conf >= thr:
+        stable = rr; changed = True
+    else:
+        stable = prev             # 동일하거나 신뢰도 미달 → 직전 국면 유지
+
+    if advance and rr != "unknown" and (prev is None or changed):
+        state[proxy] = {"regime": stable, "confidence": round(conf, 2)}
+        _save_stable(state)
+
+    out = dict(raw)
+    out.update({"regime": stable, "raw_regime": rr, "changed": changed, "prev": prev})
+    return out
 
 
 def main() -> None:
