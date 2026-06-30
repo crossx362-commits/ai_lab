@@ -3777,7 +3777,29 @@ async function _runDailyBriefingOnce(force = false): Promise<void> {
         } catch { /* ignore — briefing 자체는 항상 진행 */ }
 
         const body = `🌅 *${company} — 아침 브리핑*\n_${dateStr}_\n${calBlock}${taskBlock}${revBlock}${yhBlock}\n_명령: \`/today\` 다시 보기 · \`/tools\` 도구 상태_`;
-        await sendTelegramReport(body);
+        /* 브리프 본문은 노션에 작성하고 텔레그램엔 제목+링크만 보낸다(사용자 지정).
+           노션 발행 실패(키 없음/오류) 시 본문을 텔레그램으로 폴백(유실 방지). */
+        let notionUrl = '';
+        try {
+            const npScript = path.join(__dirname, '..', '_shared', 'notion_publish.py');
+            if (fs.existsSync(npScript)) {
+                notionUrl = await new Promise<string>((resolve) => {
+                    const cp = require('child_process');
+                    const p = cp.spawn(_pythonCmd(), [npScript, `${company} 아침 브리핑 ${today}`], { cwd: path.dirname(npScript) });
+                    let out = '';
+                    p.stdout?.on('data', (d: Buffer) => { out += d.toString(); });
+                    p.on('close', () => resolve(out.trim()));
+                    p.on('error', () => resolve(''));
+                    try { p.stdin?.write(body); p.stdin?.end(); } catch { /* ignore */ }
+                    setTimeout(() => { try { p.kill(); } catch { /* ignore */ } resolve(out.trim()); }, 20000);
+                });
+            }
+        } catch { notionUrl = ''; }
+        if (notionUrl) {
+            await sendTelegramReport(`📄 *${company} — 아침 브리핑*\n${notionUrl}`);
+        } else {
+            await sendTelegramReport(body);
+        }
         if (_extCtx) {
             _extCtx.globalState.update(_DAILY_BRIEFING_KEY, today);
         }

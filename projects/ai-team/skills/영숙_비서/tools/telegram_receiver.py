@@ -308,7 +308,30 @@ def _tool_get_agent_status() -> str:
 
 
 def _tool_get_trading_status() -> str:
-    return status_report()
+    """거래 현황 — 보유 모의 포지션 + 실시간 평가손익."""
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools"))
+        from somi_trade_advisor import load_positions
+        from somi_kis_reporter import KISClient, num
+    except Exception:
+        return "거래 현황 조회 모듈을 불러오지 못했어요."
+    pos = load_positions()
+    if not pos:
+        return "[거래 현황]\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
+    kis = KISClient()
+    lines, tot = [], 0.0
+    for sym, p in pos.items():
+        try:
+            cur = num(kis.quote(sym).get("stck_prpr"))
+        except Exception:
+            cur = 0.0
+        entry = num(p.get("entry"))
+        qty = int(p.get("qty") or 0)
+        pnl = ((cur - entry) / entry * 100) if (cur and entry) else 0.0
+        tot += pnl
+        lines.append(f"- {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%)")
+    avg = tot / len(pos)
+    return f"[거래 현황] 보유 {len(pos)}종목 · 평균 {avg:+.1f}%\n" + "\n".join(lines)
 
 
 def _tool_get_stock_price(text: str) -> str:
@@ -1036,16 +1059,20 @@ def handle_message(text: str) -> str:
     if has_order:
         _PENDING_ORDER.pop("order", None)
 
-    # 소미 매수 제안 승인 / 매도
+    # 소미 매수 제안 승인 / 매도 — 모의는 즉시 체결, 실거래는 '확인' 단계
     somi_order = _parse_somi_approve(text) or _parse_somi_sell(text)
     if somi_order:
         _PENDING_ORDER["order"] = somi_order
+        if _get_trade_mode() != "live":
+            return _execute_pending_order()
         return _order_confirm_prompt(somi_order)
 
-    # 수동 매수/매도 지시 → 확인 단계
+    # 수동 매수/매도 지시 — 모의는 즉시 체결, 실거래는 '확인' 단계
     order = _parse_order(text)
     if order:
         _PENDING_ORDER["order"] = order
+        if _get_trade_mode() != "live":
+            return _execute_pending_order()
         return _order_confirm_prompt(order)
 
     if _is_balance_request(text):
@@ -1059,7 +1086,8 @@ def handle_message(text: str) -> str:
         return _agent_factory_action("reject_pending")
 
     if _is_trading_status_request(text):
-        return _tool_get_agent_status()  # 거래/에이전트 현황 통합 — 한 번만
+        # 거래 현황(보유 포지션·손익) + 에이전트 현황 통합 — 한 번만
+        return _tool_get_trading_status() + "\n\n" + _tool_get_agent_status()
 
     if _is_stock_price_request(text):
         return _tool_get_stock_price(text)

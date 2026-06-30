@@ -14,8 +14,14 @@ from datetime import datetime
 CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
     "somi_monitor": "somi_price_monitor.py",
+    "somi_advisor": "somi_trade_advisor.py",
     "somi_position": "somi_position_monitor.py",
     "somi_screener": "somi_screener.py",
+    "hank": "us_research.py",
+    "yuna": "asia_research.py",
+    "leon": "eu_research.py",
+    "market_desk": "market_desk.py",
+    "yewon": "harness_monitor.py",
 }
 
 # macOS는 아래 데몬을 launchd 정시 잡으로 운영 → 상시 프로세스가 없어도 launchd에 적재돼 있으면
@@ -42,9 +48,15 @@ _AGENT_LABELS = {
     "youngsuk": "영숙 (텔레그램 비서)",
     "scheduler": "정시 잡 (조사팀·예원 — launchd 잡별 분리)",
     "somi_monitor": "소미 (실시간 급변동 감시)",
+    "somi_advisor": "소미 (매수 판단/제안)",
     "somi": "소미 (정기 리포트)",
     "somi_screener": "소미 (유망종목 발굴)",
     "somi_position": "소미 (포지션 익절/손절)",
+    "hank": "행크 (미국 시장 조사)",
+    "yuna": "유나 (아시아 시장 조사)",
+    "leon": "레온 (유럽 시장 조사)",
+    "market_desk": "마켓데스크 (시장 종합)",
+    "yewon": "예원 (CEO 하네스 모니터)",
     "yewon_selfheal": "예원 (자가 점검/복구)",
     "harness": "하네스 (시스템 점검)",
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""영숙 아침 브리핑 — 오늘 일정·에이전트 현황·예정 루틴을 모아 텔레그램 전송.
+"""영숙 아침 브리핑 — 오늘 일정·에이전트 현황·예정 루틴을 모아 노션에 작성.
 
 사용:
-    python morning_brief.py           # 브리핑 생성 후 텔레그램 전송
-    python morning_brief.py --dry     # 전송 없이 콘솔 출력만
+    python morning_brief.py           # 브리핑 생성 후 노션 작성(텔레그램 X)
+    python morning_brief.py --dry     # 작성 없이 콘솔 출력만
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send, status_report  # noqa: E402
+from _shared.notify import publish_report, status_report  # noqa: E402
 from _shared import research  # noqa: E402
 
 CAL_CACHE = AI_TEAM_ROOT / "_shared" / "calendar_cache.md"
@@ -136,7 +136,7 @@ def main() -> None:
     brief = build_brief()
     print(brief)
     if not args.dry:
-        send(brief)
+        publish_report("영숙 아침 브리프", brief)  # 텔레그램 X → 노션 작성
 
 
 if __name__ == "__main__":
