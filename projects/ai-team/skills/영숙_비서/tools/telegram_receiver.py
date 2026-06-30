@@ -724,6 +724,55 @@ def search_stock(query: str) -> str:
     return _run_python(script, query, timeout=30)
 
 
+# ─── 1인 투자하우스 ──────────────────────────────────────────────────────────
+
+_INVEST_HOUSE = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "investment_house.py"
+
+
+def _stock_from_text(text: str) -> tuple[str, str] | None:
+    """텍스트에서 종목코드+종목명 해석 (별칭 → 검색 순)"""
+    normalized = _normalize_text(text)
+    for alias, (code, name) in _STOCK_ALIASES.items():
+        if _normalize_text(alias) in normalized:
+            return code, name
+    return _resolve_from_search(text)
+
+
+def invest_scout(text: str) -> str:
+    """Action 1: 종목탐색 (섹터 포지션 → 스크리닝 → 어닝스 프리뷰 → 투자 메모)"""
+    stock = _stock_from_text(text)
+    if stock:
+        symbol, name = stock
+        return _run_python(_INVEST_HOUSE, "action1", symbol, name, "--send", timeout=300)
+    return "종목을 찾지 못했어요. 예: '삼성전자 투자분석해줘'"
+
+
+def invest_track(text: str) -> str:
+    """Action 2: 추적관찰 (Thesis 업데이트 → 카탈리스트 → 어닝스 리뷰)"""
+    stock = _stock_from_text(text)
+    if stock:
+        symbol, name = stock
+        return _run_python(_INVEST_HOUSE, "action2", symbol, name, "--send", timeout=300)
+    return "종목을 찾지 못했어요. 예: 'SK하이닉스 추적관찰해줘'"
+
+
+def invest_sector(text: str) -> str:
+    """섹터 초감 분석"""
+    # 섹터 키워드 추출 (기본: AI반도체)
+    sector = "AI반도체"
+    for kw in ["반도체", "AI", "인공지능", "바이오", "금융", "자동차", "2차전지", "배터리", "에너지"]:
+        if kw in text:
+            sector = kw
+            break
+    return _run_python(_INVEST_HOUSE, "sector", sector, "--send", timeout=120)
+
+
+def morning_note_now() -> str:
+    """모닝노트 즉시 전송"""
+    script = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "morning_note.py"
+    return _run_python(script, "--send", timeout=120)
+
+
 TOOLS = [
     {
         "type": "function",
@@ -835,6 +884,54 @@ TOOLS = [
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
+    # ─── 1인 투자하우스 ──────────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "invest_scout",
+            "description": "특정 종목 투자 탐색 분석 (Action 1): 섹터 포지션·밸류에이션·수급·어닝스 프리뷰·투자 메모. "
+                           "사용자가 '투자분석', '종목탐색', '분석 메모', 'initiate', '투자해도 돼?' 등을 물으면 호출",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string", "description": "종목명이 포함된 요청 메시지"}},
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "invest_track",
+            "description": "보유 종목 추적관찰 (Action 2): Thesis 업데이트·카탈리스트 체크·어닝스 리뷰. "
+                           "사용자가 '추적', '관찰', '업데이트', '보유 중인데', '계속 봐줘' 등을 말하면 호출",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string", "description": "종목명이 포함된 요청 메시지"}},
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "invest_sector",
+            "description": "섹터 초감 분석: AI, 반도체, 바이오, 금융 등 섹터 전반 이슈 요약. "
+                           "사용자가 '섹터 분석', '반도체 어때', 'AI 섹터' 등 섹터 전반을 물으면 호출",
+            "parameters": {
+                "type": "object",
+                "properties": {"text": {"type": "string", "description": "섹터명이 포함된 요청 메시지"}},
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "morning_note_now",
+            "description": "모닝노트 즉시 생성 및 전송. 사용자가 '모닝노트', '아침 브리핑', '오늘 시장 요약' 등을 요청하면 호출",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
 
 
@@ -849,6 +946,11 @@ AVAILABLE_FUNCTIONS = {
     "list_watchlist": list_watchlist,
     "search_stock": search_stock,
     "get_weather": get_weather,
+    # 1인 투자하우스
+    "invest_scout": invest_scout,
+    "invest_track": invest_track,
+    "invest_sector": invest_sector,
+    "morning_note_now": morning_note_now,
 }
 
 
@@ -878,7 +980,12 @@ def handle_with_gpt(text: str) -> str:
 - 감시 추가 → add_watchlist()
 - 감시 제거 → remove_watchlist()
 - 감시 목록 → list_watchlist()
-- 종목 분석 → dispatch_to_somi()
+- 종목 분석(수급·점수) → dispatch_to_somi()
+- 유망종목 발굴 → dispatch_screener()
+- 종목 투자분석/메모 (Action 1) → invest_scout()
+- 보유종목 추적관찰 (Action 2) → invest_track()
+- 섹터 분석 → invest_sector()
+- 모닝노트 즉시 → morning_note_now()
 - 일반 질문은 직접 답변""",
             },
             {"role": "user", "content": text},
