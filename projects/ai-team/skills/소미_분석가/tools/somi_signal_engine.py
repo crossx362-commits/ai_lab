@@ -151,6 +151,13 @@ def scan(budget: int = BUDGET, top: int = TOP_N, do_send: bool = True,
          session_only: bool = False) -> str:
     """후보 스캔→신호 선별→저장→푸시. 반환=요약 문자열.
     session_only=True 면 거래 세션(평일 장중·시간외) 밖에서는 스캔하지 않는다."""
+    # 가드레일: 모의(paper) 운영 중엔 승인푸시 금지 — 자동매수 단일 실행자는 소미제안(trade_advisor).
+    # 데몬이 자동재시작돼도 이 가드로 무해화하고, 남은 대기신호를 비워 옛 'ㅇㅋ' 오체결도 막는다.
+    if os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}:
+        _save_signals([])
+        msg = "⏸️ [소미] 모의(paper) 모드 — 신호 푸시 중지(자동매수는 소미제안 담당)"
+        print(msg)
+        return msg
     if session_only and not _in_session():
         msg = "⏸️ [소미] 거래 세션 외 — 스캔 생략"
         print(msg)

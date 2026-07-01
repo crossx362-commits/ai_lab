@@ -202,7 +202,7 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
 
 def _gate_thresholds() -> dict:
     """매수 게이트 문턱 — 모의(paper)는 공격적 완화, 실거래(live)는 보수값 유지.
-    위험관리 축(dq_state·danger·수급미확정)은 모드 무관하게 항상 차단한다."""
+    위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
         return {
             "score": int(os.getenv("SOMI_GATE_SCORE_PAPER", "48")),   # 탐지점수 (기본 60 → 48)
@@ -214,11 +214,13 @@ def _gate_thresholds() -> dict:
 
 def _passes_buy_gate(c: dict) -> tuple[bool, str]:
     """기대값 기반 최종 매수 게이트. 모두 통과해야 실매수 허용.
-    모의는 점수·진입 문턱↓·손익비 요구 해제(공격적), 실거래는 보수값. 위험축은 공통 차단."""
+    모의는 점수·진입 문턱↓·손익비 요구 해제·수급미확정 허용(공격적), 실거래는 보수값. 위험축은 공통 차단."""
     th = _gate_thresholds()
     if c.get("score", 0) < th["score"]:
         return False, f"탐지점수 {c.get('score')} < {th['score']}"
-    if c.get("score_mode") == "morning_missing_investor_adjusted":
+    # 수급 미확정: 실거래는 하드 차단(보수). 모의는 장중 당일수급이 원천 미공개라
+    # 하드 차단하면 100% 매수 불가 → 5일 누적수급 보정점수로 매수 허용(공격적). 약한 종목은 점수·리스크 게이트가 거른다.
+    if not _is_paper() and c.get("score_mode") == "morning_missing_investor_adjusted":
         return False, "당일 외국인/기관 수급 미확정 — 후보 저장만"
     if c.get("dq_state") == "degraded":
         return False, "데이터 품질 미흡(실시간 미확인)"
@@ -501,8 +503,8 @@ def _is_paper() -> bool:
 # 모의 모드 1회 실행 시 자동 매수할 최대 종목 수 (예산 소진 시 자동 중단). 모의=공격적(8).
 PAPER_AUTO_MAX = int(os.getenv("SOMI_PAPER_AUTO_MAX", "8"))
 SOMI_BUDGET = int(os.getenv("SOMI_BUDGET_PER_TRADE", "1000000"))
-# 매수 전 관찰 시간(분): 'buy' 신호가 이 시간 이상 유지돼야 실제 매수. 모의=5분(공격적)/실거래=30분.
-OBSERVE_MINUTES = int(os.getenv("SOMI_OBSERVE_MINUTES", "5" if _is_paper() else "30"))
+# 매수 전 관찰 시간(분): 'buy' 신호가 이 시간 이상 유지돼야 실제 매수. 모의=2분(고공격)/실거래=30분.
+OBSERVE_MINUTES = int(os.getenv("SOMI_OBSERVE_MINUTES", "2" if _is_paper() else "30"))
 WATCHING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_watching.json"
 
 
@@ -553,18 +555,25 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
     if not trader.paper:  # 안전장치: 실거래면 자동매수 금지
         return []
     held = load_positions()
-    done = []
+    done, bought = [], 0
     for p in proposals:
-        if len(done) >= PAPER_AUTO_MAX:
+        if bought >= PAPER_AUTO_MAX:   # 실제 체결분만 상한 계산(스킵 메시지는 미포함)
             break
         if p["symbol"] in held:
             continue
-        entry = p.get("entry") or 1
+        entry = p.get("entry") or 0
+        if entry <= 0:                 # F2: 유효 진입가 없으면 스킵 — 수량 폭주(예산//1) 방지
+            done.append(f"⏭️ {p['name']} 매수 건너뜀: 유효 진입가 없음")
+            continue
         # 확신 기반 사이징(백테스트 검증): 점수 높을수록 크게. 평균점수(~65) 기준 1.0배로 재중심해
         # 평균 투입자본은 그대로 두고 고점수에만 더 배분 → 공정비교서 24mo +264%→+298%,
         # 30mo +348%→+385%, MDD 동등/개선. (위험기반·균등보다 우월)
         conv = min(3.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))
-        qty = max(1, int(int(SOMI_BUDGET * conv) // entry))
+        budget = int(SOMI_BUDGET * conv)
+        if entry > budget:             # F3: 1주가 배정예산 초과(고가주) — 포트폴리오 배분 왜곡 방지
+            done.append(f"⏭️ {p['name']} 매수 건너뜀: 1주 {int(entry):,}원 > 배정예산 {budget:,}원")
+            continue
+        qty = max(1, budget // entry)
         try:
             res = trader.order(p["symbol"], qty, "buy", 0)
         except Exception as exc:
@@ -583,6 +592,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
             "rr": p.get("rr"), "vwap_at_buy": p.get("vwap"),
         }
         record_position(p["symbol"], p["name"], fill, p["stop"], p["target"], qty, p.get("score"), extra=extra)
+        bought += 1
         done.append(
             f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ {int(fill):,}원 "
             f"(확신 {conv:.1f}배·탐지 {p.get('score', '?')}·진입 {p.get('entry_score', '?')})\n"
@@ -701,7 +711,10 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     # 2차: 상위 후보를 실시간 다중점수로 보강 → 기대값 기반 최종 게이트
     kis = KISClient()
     top = sorted(buys, key=lambda x: x["score"], reverse=True)[: max(4, PAPER_AUTO_MAX * 2)]
-    for p in top:
+    # 표시용: 하락장엔 'buy' 판정이 적어 매수 메시지가 대형주 한 종목만 반복돼 보인다.
+    # 발굴 다양성이 메시지에도 드러나도록 점수 상위 후보를 함께 노출(체결은 buys 게이트 경로만).
+    shown = sorted(candidates, key=lambda x: x["score"], reverse=True)[:5]
+    for p in {id(x): x for x in (top + shown)}.values():   # 공유 dict는 id로 중복 보강 방지
         rt = analyze_candidate(kis, p["symbol"], p["name"], realtime=True)
         if rt:
             p.update({k: rt[k] for k in (
@@ -710,10 +723,12 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     if slot_kind == "buy_close":  # 마감권: 종가 고가권 유지(매수세·VWAP 위) 후보만 제한 검토
         top = [p for p in top if p.get("buy_pressure", 0) >= 1.0 and p.get("entry_score", 0) >= 75]
     passed = [p for p in top if _passes_buy_gate(p)[0]]
-    decisions = "\n\n".join(_format_decision(p, next_check=("보유 관리" if _passes_buy_gate(p)[0] else "다음 슬롯")) for p in top[:5])
+    decisions = "\n\n".join(_format_decision(p, next_check=("보유 관리" if _passes_buy_gate(p)[0] else "다음 슬롯")) for p in shown)
 
+    notable = True   # 스팸 감소: paper 슬롯은 '실제 이벤트' 있을 때만 전송(빈 슬롯 자제)
     if not proposals:
         report = f"{header}\n오늘은 소미 기준({detect_floor}점↑) 탐지 후보가 없습니다. 계속 감시 중."
+        notable = not _is_paper()
     elif _is_paper():
         to_buy, watch_msgs = _observation_gate(passed)  # 관찰시간 통과분만 실매수
         executed = _auto_buy_paper(to_buy, slot_kind=slot_kind, regime=regime)
@@ -724,9 +739,11 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
             parts.append("[관찰 현황]\n" + "\n".join(watch_msgs))
         parts.append("[매수 체결]\n" + ("\n\n".join(executed) if executed else "이번엔 매수 없음 (게이트 미통과·관찰 중)"))
         report = f"{header} 🧪 모의 자동매매(기대값 게이트)\n\n" + "\n\n".join(parts)
+        # 체결 or 관찰 상태변화(시작·완료·해제)가 있을 때만 알림. 단순 '관찰 중'/'매수 없음'은 자제.
+        notable = bool(executed) or any(k in m for m in watch_msgs for k in ("관찰 시작", "관찰 완료", "관찰 해제"))
     else:
         report = f"{header}\n기대값 기반 종합 판단(승인형):\n\n{decisions or '현재 매수 게이트 통과 후보 없음 — 계속 감시.'}"
-    if do_send:
+    if do_send and notable:
         send(report)
     growth.record(
         "somi_advisor", role=f"{label}(기대값 게이트)",
@@ -761,7 +778,13 @@ def main() -> None:
 
     if args.daemon:
         from _shared.utils import due_slot
-        slots = os.getenv("SOMI_ADVISOR_SLOTS", "09:00,11:00,12:30,14:00,15:10,15:25").split(",")
+        # 모의(paper)는 오전 포함 30분 간격 고빈도 매수 슬롯(헌장 시각 외는 buy로 폴백) — 실거래는 보수 스케줄 유지.
+        # 모의는 15분 간격(관찰 2분이 슬롯 간격에 묻히지 않게) — 실거래는 보수 스케줄 유지.
+        default_slots = (
+            "09:15,09:30,09:45,10:00,10:15,10:30,10:45,11:00,11:15,11:30,11:45,12:00,"
+            "12:15,12:30,12:45,13:00,13:15,13:30,13:45,14:00,14:15,14:30,14:45,15:00"
+            if _is_paper() else "09:00,11:00,12:30,14:00,15:10,15:25")
+        slots = os.getenv("SOMI_ADVISOR_SLOTS", default_slots).split(",")
         state = PROJECT_ROOT / "output" / "cache" / "somi_advisor_slots.json"
         with ProcessLock("somi_trade_advisor"):
             print(f"[{datetime.now()}] 소미 매수 제안 데몬 시작 (시간대 슬롯: {','.join(slots)})")
