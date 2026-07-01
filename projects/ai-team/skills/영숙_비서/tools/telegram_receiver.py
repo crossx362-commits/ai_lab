@@ -727,6 +727,21 @@ def search_stock(query: str) -> str:
     return _run_python(script, query, timeout=30)
 
 
+def get_stock_news(query: str) -> str:
+    """종목/키워드 관련 최신 뉴스·공시를 웹에서 찾아 요약."""
+    from _shared import research
+    try:
+        brief = research.web_brief(
+            f"'{query}' 종목·기업의 최근 뉴스·공시·이슈를 3~5줄로 요약하라. "
+            f"호재/악재와 근거(날짜·핵심 내용)를 간결히. 확실치 않으면 추측하지 말고 "
+            f"'뚜렷한 최신 뉴스 없음'이라고 답하라.",
+            max_tokens=700,
+        )
+        return f"📰 {query} 관련 뉴스\n\n{(brief or '').strip() or '뚜렷한 최신 뉴스를 못 찾았어.'}"
+    except Exception as e:
+        return f"{query} 뉴스 조회 중 오류가 났어: {e}"
+
+
 # ─── 1인 투자하우스 ──────────────────────────────────────────────────────────
 
 _INVEST_HOUSE = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "investment_house.py"
@@ -867,6 +882,18 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_stock_news",
+            "description": "종목·기업 관련 최신 뉴스/이슈를 웹에서 찾아 요약. 사용자가 '우리기술 뉴스', 'OO 관련뉴스', 'OO 무슨 일 있어?' 처럼 특정 종목의 뉴스·소식을 물으면 호출",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string", "description": "종목명 또는 키워드 (예: 우리기술)"}},
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "add_watchlist",
             "description": "소미 감시 목록에 종목 추가 (search_stock으로 종목코드 확인 후 사용)",
             "parameters": {
@@ -969,6 +996,7 @@ AVAILABLE_FUNCTIONS = {
     "remove_watchlist": remove_watchlist,
     "list_watchlist": list_watchlist,
     "search_stock": search_stock,
+    "get_stock_news": get_stock_news,
     "get_weather": get_weather,
     # 1인 투자하우스
     "invest_scout": invest_scout,
@@ -1002,6 +1030,7 @@ def handle_with_gpt(text: str) -> str:
 - 에이전트 현황 → get_agent_status()
 - 일정 → list_calendar()
 - 종목 검색 → search_stock()
+- 종목 뉴스/이슈 ("OO 뉴스", "OO 무슨 일 있어?") → get_stock_news()
 - 감시 추가 → add_watchlist()
 - 감시 제거 → remove_watchlist()
 - 감시 목록 → list_watchlist()
