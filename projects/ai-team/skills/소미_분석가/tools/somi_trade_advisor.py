@@ -664,6 +664,29 @@ def _apply_buy_gates(buys: list[dict]) -> list[dict]:
         return buys
 
 
+def _refresh_news_for_trade() -> None:
+    """뉴스는 스케줄이 아니라 매매 직전에 반영 — 거래 대상(국내주식) 관련 지역만 재수집.
+    아시아/한국 뉴스·공시를 새로 fetch → 마켓데스크 issue_impact 재평가. 미국/유럽은
+    KR 장중 미개장이라 아침 스냅샷 유지. 실패해도 매매는 진행(기존 캐시로 폴백)."""
+    try:
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "유나_아시아조사" / "tools"))
+        sys.path.insert(0, str(AI_TEAM_ROOT / "skills" / "마켓데스크_시장종합" / "tools"))
+        import asia_research
+        import market_desk
+        prev = research.load_issue_impact()                 # 재평가 실패 대비 스냅샷(뉴스 유실 방지)
+        asia = asia_research.collect()                      # KR/아시아 뉴스·공시 재수집
+        us, eu = research.load_region("us"), research.load_region("eu")
+        market_desk._build_issue_impact(asia.get("disclosures", []) or [], us, asia, eu)
+        # _build_issue_impact는 LLM JSON 파싱 실패 시 빈 결과로 덮어쓴다 → 직전 데이터가 있었으면 복원.
+        if not research.load_issue_impact() and prev:
+            research.save_issue_impact(prev)
+            print("[소미제안] 뉴스 재평가 결과 비어 있음 — 직전 issue_impact 복원(유실 방지)")
+        else:
+            print("[소미제안] 거래 전 뉴스 갱신 완료 — 아시아/한국 재수집·issue_impact 재평가")
+    except Exception as exc:
+        print(f"[소미제안] 거래 전 뉴스 갱신 실패 — 기존 캐시 사용: {exc}")
+
+
 def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy") -> str:
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     label = SLOT_LABEL.get(slot_kind, "매수 검토")
@@ -674,6 +697,9 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     # 시간대별 탐지 문턱: 오전 후보편입 45, 오후 매수검토는 매수게이트 점수와 정렬(모의=48/실거래=60).
     # 게이트보다 floor가 높으면 완화한 게이트가 무의미해지므로 일치시킨다.
     detect_floor = 45 if slot_kind in ("collect", "observe") else int(os.getenv("SOMI_GOOD_SCORE", str(_gate_thresholds()["score"])))
+    # 뉴스는 스케줄이 아니라 매매 직전에 반영 — 매수 슬롯에서만 관련 지역(아시아/한국) 재수집·재평가.
+    if slot_kind in ("buy", "buy_close"):
+        _refresh_news_for_trade()
     proposals = make_proposals(candidate_limit, min_score=detect_floor)
     proposals = apply_news_judgment(proposals)
     _save(PROPOSALS_FILE, {"ts": now_str, "items": proposals})
