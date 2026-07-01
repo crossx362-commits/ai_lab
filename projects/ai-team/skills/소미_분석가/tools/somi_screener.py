@@ -87,7 +87,10 @@ def _rank_candidates(kis: KISClient, blng_cls: str, limit: int) -> list[tuple[st
 def _rank_fluctuation(kis: KISClient, limit: int) -> list[tuple[str, str]]:
     """등락률 상위(상승률순) 강세주 축 — 오늘 오르는 리더를 발굴. 하락장에서도 VWAP 위·
     상승 모멘텀 종목을 후보에 넣어 진입 품질을 확보한다(거래량 축은 급락 패닉주도 섞임).
-    상한가(≥29.5%)는 매수 진입 불가라 제외. 실패 시 빈 리스트(다른 축으로 폴백)."""
+    과열 블로우오프(기본 ≥15%)는 고점권·손익비 열위라 추격금지, 미미한 상승(<2%)도 제외 —
+    완만한 상승 리더(진입 여유 있는 자리)만. 밴드는 SOMI_FLUCT_MIN/MAX로 조정."""
+    lo = float(os.getenv("SOMI_FLUCT_MIN", "2"))
+    hi = float(os.getenv("SOMI_FLUCT_MAX", "15"))
     try:
         data = kis.get(
             "uapi/domestic-stock/v1/ranking/fluctuation", "FHPST01700000",
@@ -111,7 +114,7 @@ def _rank_fluctuation(kis: KISClient, limit: int) -> list[tuple[str, str]]:
             chg = float(row.get("prdy_ctrt") or 0)
         except ValueError:
             chg = 0.0
-        if not code.isdigit() or not name or _is_excluded(name) or chg >= 29.5:
+        if not code.isdigit() or not name or _is_excluded(name) or not (lo <= chg < hi):
             continue
         out.append((code, name))
         if len(out) >= limit:
