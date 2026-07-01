@@ -29,7 +29,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.notify import publish_report, send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared import growth  # noqa: E402
-from somi_kis_reporter import KISClient, num, intraday_vwap  # noqa: E402
+from somi_kis_reporter import KISClient, num, intraday_vwap, buy_pressure_ratio  # noqa: E402
 from somi_trade_advisor import (  # noqa: E402
     load_positions, log_closed_trade, remove_position, set_position_fields,
 )
@@ -39,7 +39,7 @@ load_env(str(PROJECT_ROOT))
 TRAIL_PROFIT_PCT = 5.0   # 목표가 전이라도 +5% 이상이면 분할익절 참고 제안
 # 백테스트 재검증(40종목·다기간 12/24/30개월, 기준 60): 보유 18~25일이 견고한 고원.
 # 7일은 승자를 일찍 놔줘 모멘텀 수익을 버림 — 20일이 절대수익 최상위·MDD 균형(24mo +134→+264%).
-MAX_HOLD_DAYS = int(os.getenv("SOMI_MAX_HOLD_DAYS", "20"))
+MAX_HOLD_DAYS = int(os.getenv("SOMI_MAX_HOLD_DAYS", "7"))   # 백테스트(12mo·40종목): 보유 5~7일이 샤프 최적, 20일은 과도
 
 
 def _busdays_held(ts: str) -> int:
@@ -182,10 +182,21 @@ def check_positions() -> list[str]:
         tp2 = num(p.get("tp2")) or max(target, entry * 1.08)
         partial_taken = bool(p.get("partial_taken"))
 
-        # 조기청산 신호: 당일 분봉 VWAP 이탈(>1%) + 손실권, 또는 장대음봉
+        # 조기청산 신호: 손실권 + 당일 분봉 VWAP 이탈(>2%, 여유) 또는 장대음봉.
+        # 단 ①매수 후 유예시간(기본 15분) 내이거나 ②호가 매수세 우위(반등 예측)면 손실이라도 대기.
+        # 급락은 상위의 하드 손절(-3%/ATR)이 우선 컷하므로 조기청산을 완화해도 하방은 보호됨.
         vwap = intraday_vwap(kis.minute_chart(symbol))
         chg = num(q.get("prdy_ctrt"))
-        early = (vwap and cur < vwap * 0.99 and pnl < 0) or (chg <= -5)
+        grace_min = int(os.getenv("SOMI_EARLY_GRACE_MIN", "15"))
+        try:
+            held_min = (datetime.now() - datetime.strptime(p.get("ts", ""), "%Y-%m-%d %H:%M")).total_seconds() / 60
+        except Exception:
+            held_min = grace_min  # 매수시각 불명 → 유예 만료로 간주(기존 동작)
+        early = False
+        if pnl < 0 and held_min >= grace_min and ((vwap and cur < vwap * 0.98) or chg <= -5):
+            # 반등 예측(호가 매수세 우위)이면 대기 — 조건 충족 시에만 호가 조회(불필요한 API 억제)
+            rebound = buy_pressure_ratio(kis.orderbook(symbol)) >= float(os.getenv("SOMI_REBOUND_BP", "1.1"))
+            early = not rebound
 
         def _clear(state, reason, hold_reason, risk, action):
             return (
@@ -207,7 +218,7 @@ def check_positions() -> list[str]:
             action = _paper_sell(symbol, "stop", cur, extra=ex) if paper else manual
             alerts.append(_clear("손절", f"손절가 {won(eff_stop)} 도달(ATR/-3% 보수적용)",
                                  "근거 약함 — 원칙 청산", "추가 하락 가능", action))
-        elif partial_taken and cur <= trail_stop and pnl > 0:
+        elif (partial_taken or qty < 2) and cur <= trail_stop and pnl > 0:  # F1: 단주(분할불가)도 트레일링 보호
             ex = _journal_extra(p, max_up, max_dn, "trailing", profit=True, stopped=False)
             action = _paper_sell(symbol, "trailing", cur, extra=ex) if paper else manual
             alerts.append(_clear("트레일링 청산", f"고점 {won(high_water)} 대비 -{trail_pct:.0f}% 이탈",
@@ -220,7 +231,7 @@ def check_positions() -> list[str]:
         elif early:
             ex = _journal_extra(p, max_up, max_dn, "early_exit", profit=(pnl > 0), stopped=False)
             action = _paper_sell(symbol, "early_exit", cur, extra=ex) if paper else manual
-            why = "VWAP 이탈+손실권" if (vwap and cur < vwap * 0.99) else f"장대음봉 {chg:+.1f}%"
+            why = "VWAP 이탈+손실권" if (vwap and cur < vwap * 0.98) else f"장대음봉 {chg:+.1f}%"
             alerts.append(_clear("조기청산", f"{why} — 모멘텀 약화",
                                  "신호 회복 시 재진입", "추세 이탈", action))
         elif not partial_taken and cur >= tp1 and qty >= 2:
