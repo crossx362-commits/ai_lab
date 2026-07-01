@@ -818,6 +818,8 @@ def main() -> None:
                 slot = due_slot(slots, state)   # 정해진 시각에만, 재시작·매틱 보고 방지
                 if slot:
                     kind = slot_kinds.get(slot, "buy")
+                    if _is_paper() and kind in ("collect", "observe"):
+                        kind = "buy"   # 모의는 종일 공격적 매수 — 오전 관찰/후보편입(09:00·11:00)도 매수로 승격
                     try:
                         print(f"[{datetime.now()}] 슬롯 {slot} 실행({kind})")
                         run(args.candidates, do_send=True, slot_kind=kind)
