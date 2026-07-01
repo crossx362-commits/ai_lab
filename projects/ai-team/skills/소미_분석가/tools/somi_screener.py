@@ -72,13 +72,17 @@ def _rank_candidates(kis: KISClient, blng_cls: str, limit: int) -> list[tuple[st
             "FID_INPUT_DATE_1": "",
         },
     )
-    out: list[tuple[str, str]] = []
+    out: list[tuple[str, str, float]] = []
     for row in data.get("output") or []:
         code = str(row.get("mksc_shrn_iscd", "")).strip()
         name = str(row.get("hts_kor_isnm", "")).strip()
         if not code.isdigit() or not name or _is_excluded(name):
             continue
-        out.append((code, name))
+        try:
+            chg = float(row.get("prdy_ctrt") or 0)
+        except ValueError:
+            chg = 0.0
+        out.append((code, name, chg))
         if len(out) >= limit:
             break
     return out
@@ -140,9 +144,21 @@ def get_candidates(kis: KISClient, limit: int = 20) -> list[tuple[str, str]]:
                 return [tuple(x) for x in c["items"]][:limit]
     except Exception:
         pass
-    # 강세(상승률) 축을 맨 앞에 둬 라운드로빈에서 우선 노출 — 하락장에서도 오르는 리더부터 발굴.
-    pools = [_rank_fluctuation(kis, _UNIVERSE_DEPTH)]
-    pools += [_rank_candidates(kis, ax, _UNIVERSE_DEPTH) for ax in _RANK_AXES]
+    lo = float(os.getenv("SOMI_FLUCT_MIN", "2"))
+    hi = float(os.getenv("SOMI_FLUCT_MAX", "15"))
+    vol_pools = [_rank_candidates(kis, ax, _UNIVERSE_DEPTH) for ax in _RANK_AXES]  # (code,name,chg)
+    # 완만 상승주(진입 여유 있는 좋은 자리)를 거래량 축에서도 추출 — 등락률 순위(급등주)가 얇은 날 보강.
+    rising_raw: list[tuple[str, str, float]] = []
+    rseen: set[str] = set()
+    for pool in vol_pools:
+        for code, name, chg in pool:
+            if lo <= chg < hi and code not in rseen:
+                rseen.add(code)
+                rising_raw.append((code, name, chg))
+    rising = [(c, n) for c, n, _ in sorted(rising_raw, key=lambda x: x[2], reverse=True)]
+    # 강세(상승률 순위)·완만 상승주를 맨 앞에 둬 우선 노출 — 하락장에서도 좋은 진입자리부터 발굴.
+    pools = [_rank_fluctuation(kis, _UNIVERSE_DEPTH), rising]
+    pools += [[(c, n) for c, n, _ in pool] for pool in vol_pools]  # (code,name)로 정규화
     merged: list[tuple[str, str]] = []
     seen: set[str] = set()
     for i in range(_UNIVERSE_DEPTH):                # 라운드로빈: 축별 i번째를 번갈아 뽑아 편향 최소화
