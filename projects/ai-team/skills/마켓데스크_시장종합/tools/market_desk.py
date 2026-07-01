@@ -27,7 +27,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import publish_report, send  # noqa: E402
-from _shared.llm import text  # noqa: E402
+from _shared.llm import text, gpt, gemini  # noqa: E402
 from _shared import research  # noqa: E402
 from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
@@ -96,7 +96,11 @@ def _build_issue_impact(disclosures: list, us: dict, asia: dict, eu: dict) -> No
     )
     impact = {}
     try:
-        resp = text(prompt, json_mode=True, max_tokens=900, temperature=0.2, task="blog")
+        # issue_impact는 소미 매매 판단의 핵심 입력 → JSON 신뢰성 우선. 로컬 모델(json_mode 미적용)은
+        # 파싱 실패가 잦아 GPT(json_mode)→Gemini→로컬 순으로 고정. (로컬은 최후 폴백)
+        resp = (gpt(prompt, max_tokens=900, temperature=0.2, json_mode=True)
+                or gemini(prompt, max_tokens=900, temperature=0.2, json_mode=True)
+                or text(prompt, json_mode=True, max_tokens=900, temperature=0.2, task="blog"))
         if resp:
             raw = _json.loads(resp)
             # 실제 영향(0이 아닌) 종목만 저장 — 0/근거없음은 '뉴스없음'으로 둠. 종목명도 함께.
