@@ -178,7 +178,7 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
         score += min(10, boost)
         if boost:
             pos.append(f"당일 수급 미확정 → 5일 누적 수급 기반 보정 +{min(10, boost)}점")
-        neg.append("당일 외국인/기관 수급 미확정(오전 데이터 공백) — 실매수 보류 대상")
+        neg.append("당일 외국인/기관 수급 미확정(장중 미제공·마감후 확정) — 5일 누적으로 보정")
         score_mode = "morning_missing_investor_adjusted"
 
     if foreigner_5d > 0:

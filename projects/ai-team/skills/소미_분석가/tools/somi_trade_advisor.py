@@ -168,6 +168,7 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
         "change": parsed.get("change_pct", ""),
         "entry": entry, "stop": stop, "target": target, "rr": round(rr, 2),
         "soomgeup_net": soomgeup_net,  # 기관+외국인 5일 누적 순매수(수급확인 게이트용)
+        "market_warning": parsed.get("market_warning", "") or "",  # 시장경보(투자경고/위험/정리매매 등) — 발굴 제외용
         "score_mode": dq.get("score_mode", "regular"),
         "reasons": pos[:3], "risks": neg[:3] or ["뚜렷한 위험 신호 없음"],
         # realtime 미실행 기본값(보수적: 진입/손익비 미충족 처리)
@@ -307,6 +308,10 @@ def make_proposals(candidate_limit: int = 20, min_score: int = GOOD_SCORE) -> li
     for code, name in universe.items():
         a = analyze_candidate(kis, code, name)
         if not a:
+            time.sleep(0.2)
+            continue
+        # 시장경보(투자경고·투자위험·정리매매·관리종목·단기과열)는 매매 부적격 — 발굴/제안에서 제외.
+        if any(w in a.get("market_warning", "") for w in ("경고", "위험", "정리매매", "관리종목", "과열")):
             time.sleep(0.2)
             continue
         # 뉴스 호재 가점 — 강한 호재(+2)면 수급 기준 10p, 호재(+1)면 5p 완화 (뉴스 주도 매매 반영)
@@ -664,6 +669,48 @@ def _apply_buy_gates(buys: list[dict]) -> list[dict]:
         return buys
 
 
+STOCK_NEWS_CACHE = PROJECT_ROOT / "output" / "cache" / "somi_stock_news.json"
+
+
+def _enrich_mover_news(top_n: int = 6) -> None:
+    """급등 후보 중 issue_impact에 뉴스 없는 종목을 종목별 웹검색으로 개별 보강(일 1회 캐시).
+    소형 급등주는 마켓데스크 매크로 뉴스에 안 잡혀 news_bonus=0 되던 문제 해소.
+    비용 제한: 상위 후보 top_n개, 종목당 하루 1회만 조회(캐시)."""
+    try:
+        from somi_screener import get_candidates
+        impact = research.load_issue_impact() or {}
+        today = datetime.now().strftime("%Y-%m-%d")
+        cache = _load(STOCK_NEWS_CACHE)
+        if cache.get("date") != today:
+            cache = {"date": today, "items": {}}
+        changed = False
+        for code, name in get_candidates(KISClient(), top_n):
+            if code in impact or code in cache["items"]:
+                continue  # 이미 매크로 뉴스 있거나 오늘 조회함 → 스킵
+            brief = research.web_brief(
+                f"'{name}'({code}) 오늘 주가 관련 구체적 재료(뉴스·공시·수주 등)가 있으면 "
+                f"첫 줄에 호재 강도 숫자만(1=약호재 2=강호재 -1=악재), 없으면 0. "
+                f"둘째 줄에 한 줄 근거(없으면 빈 줄).", max_tokens=180)
+            score, reason = 0, ""
+            if brief:
+                lines = [l.strip() for l in brief.strip().splitlines() if l.strip()]
+                try:
+                    score = max(-2, min(2, int(lines[0].split()[0].replace("+", ""))))
+                except (ValueError, IndexError):
+                    score = 0
+                reason = (lines[1] if len(lines) > 1 else lines[0] if lines else "")[:60]
+            cache["items"][code] = {"score": score, "reason": reason, "name": name}
+            if score:
+                impact[code] = {"score": score, "reason": reason, "name": name, "source": "stock_news"}
+                changed = True
+        _save(STOCK_NEWS_CACHE, cache)
+        if changed:
+            research.save_issue_impact(impact)
+            print(f"[소미제안] 종목별 뉴스 보강 — {sum(1 for v in cache['items'].values() if v['score'])}종목 재료 확인")
+    except Exception as exc:
+        print(f"[소미제안] 종목별 뉴스 보강 실패(스킵): {exc}")
+
+
 def _refresh_news_for_trade() -> None:
     """뉴스는 스케줄이 아니라 매매 직전에 반영 — 거래 대상(국내주식) 관련 지역만 재수집.
     아시아/한국 뉴스·공시를 새로 fetch → 마켓데스크 issue_impact 재평가. 미국/유럽은
@@ -683,6 +730,7 @@ def _refresh_news_for_trade() -> None:
             print("[소미제안] 뉴스 재평가 결과 비어 있음 — 직전 issue_impact 복원(유실 방지)")
         else:
             print("[소미제안] 거래 전 뉴스 갱신 완료 — 아시아/한국 재수집·issue_impact 재평가")
+        _enrich_mover_news()   # 소형 급등주 종목별 뉴스 개별 보강(매크로 뉴스 사각지대)
     except Exception as exc:
         print(f"[소미제안] 거래 전 뉴스 갱신 실패 — 기존 캐시 사용: {exc}")
 
