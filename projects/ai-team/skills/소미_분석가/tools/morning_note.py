@@ -40,7 +40,8 @@ from _shared.notify import send  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from watchlist_manager import load_watchlist  # noqa: E402
-from short_covering_analyzer import calculate_score, flow_short_analysis, grade_of  # noqa: E402
+from short_covering_analyzer import calculate_score, parse_input_text  # noqa: E402
+from somi_kis_reporter import KISClient as SomiKIS, build_input_text  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -198,26 +199,26 @@ def build_watchlist_section(kis: KISClient) -> str:
         return "📋 *watchlist*\n등록된 종목 없음"
 
     lines = ["📋 *watchlist 종목 동향*"]
+    skis = SomiKIS()   # 소미 점수 계산용(build_input_text → parse → calculate_score)
     for symbol, name in watchlist.items():
         try:
             q = kis.quote(symbol)
-            inv = kis.investor_today(symbol)
 
             price = num(q.get("stck_prpr", 0))
             chg_pct = num(q.get("prdy_ctrt", 0))
             volume = num(q.get("acml_vol", 0))
 
-            # 소미 점수 계산
-            flow_data = flow_short_analysis(inv, {}, symbol, name)
-            score = calculate_score(flow_data)
-            grade = grade_of(score)
+            # 소미 점수 계산 — somi_kis_reporter와 동일 파이프라인(정상 사용)
+            score, grade, _pos, _neg = calculate_score(
+                parse_input_text(build_input_text(skis, "모닝", symbol, name))
+            )
 
             arrow = "▲" if chg_pct >= 0 else "▼"
             vol_str = f"{int(volume / 1000)}천주" if volume >= 1000 else f"{int(volume)}주"
 
             lines.append(
                 f"  [{grade}] {name}({symbol}): {price:,.0f}원 {arrow}{abs(chg_pct):.2f}% | "
-                f"거래량 {vol_str} | 점수 {score:.1f}"
+                f"거래량 {vol_str} | 점수 {score}"
             )
         except Exception as e:
             log(f"watchlist {symbol} 처리 실패: {e}")

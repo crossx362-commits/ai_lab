@@ -190,10 +190,10 @@ def _collect_stock_data(symbol: str, name: str) -> dict:
     eps        = num(q.get("eps", 0))
     market_cap = num(q.get("hts_avls", 0))  # 억원
 
-    # 수급
-    inst_net   = num(inv.get("instl_ntby_qty", 0))   # 기관 순매수
+    # 수급 (KIS inquire-investor 정식 필드: orgn/frgn/prsn — 오타 필드는 항상 0이라 수정)
+    inst_net   = num(inv.get("orgn_ntby_qty") or inv.get("inst_ntby_qty", 0))  # 기관 순매수
     foreign_net= num(inv.get("frgn_ntby_qty", 0))    # 외국인 순매수
-    indiv_net  = num(inv.get("indvdl_ntby_qty", 0))  # 개인 순매수
+    indiv_net  = num(inv.get("prsn_ntby_qty", 0))    # 개인 순매수
 
     # 20일 모멘텀
     ma20 = 0.0
