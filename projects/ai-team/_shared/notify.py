@@ -32,6 +32,11 @@ CONTINUOUS_DAEMONS = {
 _LAUNCHD_FALLBACK = {
     "somi_position": "com.ailab.somi_position",
     "somi_screener": "com.ailab.somi_screener",
+    "somi_advisor": "com.ailab.somi_screener",     # 매수제안=trade_advisor(launchd propose)
+    "hank": "com.ailab.sched.research_us",
+    "yuna": "com.ailab.sched.research_asia",
+    "leon": "com.ailab.sched.research_eu",
+    "market_desk": "com.ailab.sched.research_desk",
 }
 
 # 정시 잡(조사팀·예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
