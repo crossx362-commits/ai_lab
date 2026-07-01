@@ -75,7 +75,9 @@ def _restart_bot(name: str) -> None:
 def check_and_restart_bots():
     """봇 상태 확인 및 재시작 (best-effort)"""
     status = agent_status()
-    down_bots = [k for k, v in status.items() if v == "down"]
+    # 워치독 자신(yewon)은 재시작 대상에서 제외 — 자기를 죽이고 되살리는 재귀/스팸 방지.
+    # (자신이 실제로 죽으면 스스로 재시작 불가; launchd/수동이 담당)
+    down_bots = [k for k, v in status.items() if v == "down" and k != "yewon"]
     if not down_bots:
         return False
 
