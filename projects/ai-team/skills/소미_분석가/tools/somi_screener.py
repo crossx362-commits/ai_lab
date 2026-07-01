@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
 import time
 from datetime import datetime
@@ -32,7 +34,7 @@ load_env(str(PROJECT_ROOT))
 _EXCLUDE_KEYWORDS = (
     "KODEX", "TIGER", "KBSTAR", "ARIRANG", "HANARO", "KOSEF", "SOL ", "ACE ",
     "PLUS ", "RISE ", "TIMEFOLIO", "KIWOOM", "히어로즈", "ETN", "인버스",
-    "레버리지", "선물", "2X", "스팩",
+    "레버리지", "선물", "2X", "스팩", "액티브", "플러스액티브",
 )
 
 # 유망/관찰 기준 — 소미 자체 매수판단 점수 컷을 그대로 사용
@@ -46,9 +48,13 @@ def _is_excluded(name: str) -> bool:
     return any(kw.upper() in upper for kw in _EXCLUDE_KEYWORDS)
 
 
-def get_candidates(kis: KISClient, limit: int = 20) -> list[tuple[str, str]]:
-    """KIS 거래대금 순위에서 ETF/ETN 등을 제외한 일반 종목 후보 목록.
-    (거래대금 상위 = 유동성 큰 실종목 → 저가주·작전주 노이즈 최소화. 최종 유망 판정은 소미 분석이 함.)"""
+# KIS volume-rank 발굴 축(FID_BLNG_CLS_CODE): 대형주 쏠림 방지를 위해 여러 축을 섞는다.
+#   3=거래금액순(대형·유동성), 1=거래증가율(급증·신선), 0=평균거래량, 2=평균거래회전율(중소형 회전)
+_RANK_AXES = ("3", "1", "2")
+
+
+def _rank_candidates(kis: KISClient, blng_cls: str, limit: int) -> list[tuple[str, str]]:
+    """단일 순위축(FID_BLNG_CLS_CODE)으로 후보 조회. ETF/ETN 등 제외."""
     data = kis.get(
         "uapi/domestic-stock/v1/quotations/volume-rank",
         "FHPST01710000",
@@ -57,7 +63,7 @@ def get_candidates(kis: KISClient, limit: int = 20) -> list[tuple[str, str]]:
             "FID_COND_SCR_DIV_CODE": "20171",
             "FID_INPUT_ISCD": "0000",
             "FID_DIV_CLS_CODE": "0",
-            "FID_BLNG_CLS_CODE": "3",
+            "FID_BLNG_CLS_CODE": blng_cls,
             "FID_TRGT_CLS_CODE": "111111111",
             "FID_TRGT_EXLS_CLS_CODE": "0000000000",
             "FID_INPUT_PRICE_1": "",
@@ -66,16 +72,89 @@ def get_candidates(kis: KISClient, limit: int = 20) -> list[tuple[str, str]]:
             "FID_INPUT_DATE_1": "",
         },
     )
-    candidates: list[tuple[str, str]] = []
+    out: list[tuple[str, str]] = []
     for row in data.get("output") or []:
         code = str(row.get("mksc_shrn_iscd", "")).strip()
         name = str(row.get("hts_kor_isnm", "")).strip()
         if not code.isdigit() or not name or _is_excluded(name):
             continue
-        candidates.append((code, name))
-        if len(candidates) >= limit:
+        out.append((code, name))
+        if len(out) >= limit:
             break
-    return candidates
+    return out
+
+
+def _rank_fluctuation(kis: KISClient, limit: int) -> list[tuple[str, str]]:
+    """등락률 상위(상승률순) 강세주 축 — 오늘 오르는 리더를 발굴. 하락장에서도 VWAP 위·
+    상승 모멘텀 종목을 후보에 넣어 진입 품질을 확보한다(거래량 축은 급락 패닉주도 섞임).
+    상한가(≥29.5%)는 매수 진입 불가라 제외. 실패 시 빈 리스트(다른 축으로 폴백)."""
+    try:
+        data = kis.get(
+            "uapi/domestic-stock/v1/ranking/fluctuation", "FHPST01700000",
+            {
+                "fid_cond_mrkt_div_code": "J", "fid_cond_scr_div_code": "20170",
+                "fid_input_iscd": "0000", "fid_rank_sort_cls_code": "0",
+                "fid_input_cnt_1": "0", "fid_prc_cls_code": "0",
+                "fid_input_price_1": "", "fid_input_price_2": "", "fid_vol_cnt": "",
+                "fid_trgt_cls_code": "0", "fid_trgt_exls_cls_code": "0",
+                "fid_div_cls_code": "0", "fid_rsfl_rate1": "", "fid_rsfl_rate2": "",
+            },
+        )
+    except Exception as exc:
+        print(f"[screener] 등락률 순위 조회 실패: {exc}", file=sys.stderr)
+        return []
+    out: list[tuple[str, str]] = []
+    for row in data.get("output") or []:
+        code = str(row.get("stck_shrn_iscd", "")).strip()
+        name = str(row.get("hts_kor_isnm", "")).strip()
+        try:
+            chg = float(row.get("prdy_ctrt") or 0)
+        except ValueError:
+            chg = 0.0
+        if not code.isdigit() or not name or _is_excluded(name) or chg >= 29.5:
+            continue
+        out.append((code, name))
+        if len(out) >= limit:
+            break
+    return out
+
+
+# 유니버스 캐시 — 순위는 수분 내 안정. 3축 API 반복 호출을 TTL 동안 재사용(스크리너+advisor 15분 슬롯 부하 절감).
+_UNIVERSE_CACHE = PROJECT_ROOT / "output" / "cache" / "somi_universe.json"
+_UNIVERSE_TTL = int(os.getenv("SOMI_UNIVERSE_TTL", "300"))   # 초
+_UNIVERSE_DEPTH = 40   # 축별 조회 깊이(넉넉히 한 번 받아 캐시 후 limit로 슬라이스 — 추가 API 호출 아님)
+
+
+def get_candidates(kis: KISClient, limit: int = 20) -> list[tuple[str, str]]:
+    """여러 순위축(거래금액·거래증가율·회전율)을 라운드로빈 병합한 후보 목록.
+    대형주 한 축만 보면 매번 같은 초대형주만 나오므로, 축을 섞어 신선한 발굴을 확보한다.
+    라운드로빈 순서는 결정적이라 넉넉히 캐시(TTL) 후 [:limit] 슬라이스해도 동일 결과.
+    (ETF/작전주는 _is_excluded + 소미 점수 게이트가 걸러낸다. 최종 유망 판정은 소미 분석이 함.)"""
+    try:
+        if _UNIVERSE_CACHE.exists():
+            c = json.loads(_UNIVERSE_CACHE.read_text(encoding="utf-8"))
+            if time.time() - c.get("ts", 0) < _UNIVERSE_TTL and c.get("items"):
+                return [tuple(x) for x in c["items"]][:limit]
+    except Exception:
+        pass
+    # 강세(상승률) 축을 맨 앞에 둬 라운드로빈에서 우선 노출 — 하락장에서도 오르는 리더부터 발굴.
+    pools = [_rank_fluctuation(kis, _UNIVERSE_DEPTH)]
+    pools += [_rank_candidates(kis, ax, _UNIVERSE_DEPTH) for ax in _RANK_AXES]
+    merged: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for i in range(_UNIVERSE_DEPTH):                # 라운드로빈: 축별 i번째를 번갈아 뽑아 편향 최소화
+        for pool in pools:
+            if i < len(pool):
+                code, name = pool[i]
+                if code not in seen:
+                    seen.add(code)
+                    merged.append((code, name))
+    try:
+        _UNIVERSE_CACHE.write_text(
+            json.dumps({"ts": time.time(), "items": merged}, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return merged[:limit]
 
 
 def screen(kis: KISClient, candidates: list[tuple[str, str]]) -> list[dict]:
