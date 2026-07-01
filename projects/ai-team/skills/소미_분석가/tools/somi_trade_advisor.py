@@ -206,7 +206,7 @@ def _gate_thresholds() -> dict:
     if _is_paper():
         return {
             "score": int(os.getenv("SOMI_GATE_SCORE_PAPER", "48")),   # 탐지점수 (기본 60 → 48)
-            "entry": int(os.getenv("SOMI_GATE_ENTRY_PAPER", "58")),   # 진입점수 (기본 70 → 58)
+            "entry": int(os.getenv("SOMI_GATE_ENTRY_PAPER", "48")),   # 진입점수 (기본 70 → 48, 탐지 게이트와 정렬·사용자 승인)
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}
