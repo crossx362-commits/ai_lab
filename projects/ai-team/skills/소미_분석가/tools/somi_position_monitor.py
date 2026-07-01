@@ -141,8 +141,7 @@ def check_positions() -> list[str]:
     positions = load_positions()
     if not positions:
         return []
-    if _is_paper():
-        os.environ["KIS_PAPER"] = "true"   # _paper_sell의 KISTrader가 모의 계좌로 체결하도록
+    # KISTrader가 trade_mode.json을 직접 읽어 모드 판정 → 전역 env mutate 불필요
     kis = KISClient()
     alerts = []
     for symbol, p in positions.items():

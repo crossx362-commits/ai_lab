@@ -101,14 +101,27 @@ def _paper_save(d: dict) -> None:
     os.replace(tmp, PAPER_FILE)
 
 
+def resolve_paper() -> bool:
+    """거래모드 단일 소스 — trade_mode.json(텔레그램 토글) 우선, 없으면 KIS_PAPER 환경변수.
+    명시적 'live'가 아니면 모의(안전 기본). position_monitor._is_paper와 동일 판정."""
+    f = PROJECT_ROOT / "output" / "cache" / "trade_mode.json"
+    try:
+        mode = json.loads(f.read_text(encoding="utf-8")).get("mode", "")
+    except Exception:
+        mode = ""
+    if mode:
+        return mode != "live"
+    return os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
+
+
 class KISTrader:
     def __init__(self) -> None:
         self.kis = KISClient()
         self.cano, self.prod = _account()
         # 기본값 false(안전) — 환경변수 누락/오타 시 실거래가 아닌 모의로 떨어지게
         self.real = os.getenv("KIS_REAL_MODE", "false").strip().lower() in {"1", "true", "yes", "y"}
-        # 페이퍼(모의) 모드: 시세는 실제, 주문은 가상 체결. 실거래 키만 있어도 즉시 사용 가능.
-        self.paper = os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
+        # 모의/실거래는 trade_mode.json 단일 소스로 판정(모든 프로세스 일치, env mutate 불필요).
+        self.paper = resolve_paper()
         if not self.paper and not self.cano:
             raise RuntimeError("KIS_ACCOUNT_NO 환경변수가 없습니다.")
 

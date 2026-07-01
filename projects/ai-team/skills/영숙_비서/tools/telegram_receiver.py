@@ -432,9 +432,14 @@ def _set_trade_mode(mode: str) -> None:
 
 
 def _apply_trade_mode() -> str:
-    """주문 실행 직전 호출 — 모드 파일을 KIS_PAPER 환경변수에 반영해 KISTrader가 따르게 한다."""
+    """주문 실행 직전 호출 — trade_mode.json이 단일 소스이나, 실거래는 실서버·실 tr_id를
+    보장하도록 KIS_REAL_MODE도 함께 세팅(모의서버로 새지 않게). KISTrader는 trade_mode.json을 읽음."""
     mode = _get_trade_mode()
-    os.environ["KIS_PAPER"] = "false" if mode == "live" else "true"
+    if mode == "live":
+        os.environ["KIS_PAPER"] = "false"
+        os.environ["KIS_REAL_MODE"] = "true"   # 실거래 = 실서버 + 실 tr_id 보장
+    else:
+        os.environ["KIS_PAPER"] = "true"
     return mode
 
 
