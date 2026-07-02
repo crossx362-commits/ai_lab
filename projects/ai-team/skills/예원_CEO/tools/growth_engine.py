@@ -177,7 +177,10 @@ def tune(st: dict) -> list[str]:
         history.append({"ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "kind": "tune",
                         "before": before, "params": params,
                         "baseline_avg": st.get("avg_net", 0), "notes": notes})
-    _save(TUNING_FILE, {"params": params, "history": history[-30:]})
+    # 병합 저장 — somi_tuning.json은 한별(퀀트)의 recommend_min_score 등과 공유하는 파일.
+    # 전체 덮어쓰기 금지: 성장엔진 키(params/history)만 갱신하고 나머지 키는 보존한다.
+    data.update({"params": params, "history": history[-30:]})
+    _save(TUNING_FILE, data)
     return notes
 
 

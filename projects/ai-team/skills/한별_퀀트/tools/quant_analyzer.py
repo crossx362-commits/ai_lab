@@ -182,7 +182,15 @@ def tune() -> str:
         "sample": len(scored),
     }
     TUNING.parent.mkdir(parents=True, exist_ok=True)
-    TUNING.write_text(json.dumps(tuning, ensure_ascii=False, indent=2), encoding="utf-8")
+    # 병합 저장 — 이 파일은 성장엔진(예원)의 params/history와 공유. 전체 덮어쓰면 서로의 튜닝이 유실된다.
+    try:
+        merged = json.loads(TUNING.read_text(encoding="utf-8")) if TUNING.exists() else {}
+        if not isinstance(merged, dict):
+            merged = {}
+    except Exception:
+        merged = {}
+    merged.update(tuning)
+    TUNING.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
 
     lines += [
         "",
