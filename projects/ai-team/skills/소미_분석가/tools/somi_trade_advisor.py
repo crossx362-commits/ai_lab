@@ -834,6 +834,31 @@ def _enrich_mover_news(top_n: int = 6) -> None:
         print(f"[소미제안] 종목별 뉴스 보강 실패(스킵): {exc}")
 
 
+# 공시 키워드 게이트(결정적) — LLM 평가와 별개로 치명 공시는 하드 차단, 명확한 호재는 가점.
+_BAD_DISCLOSURE = ("유상증자", "전환사채", "신주인수권", "감자", "관리종목", "거래정지", "상장폐지",
+                   "불성실공시", "횡령", "배임", "감사의견", "회생절차", "투자주의환기")
+_GOOD_DISCLOSURE = ("단일판매", "공급계약", "수주", "무상증자", "자기주식", "자사주")
+
+
+def _disclosure_check(codes: list[str]) -> dict[str, dict]:
+    """매수 후보의 최근 3일 DART 공시 직접 조회 — 워치리스트 밖 후보까지 커버(매매 직전 반영 원칙).
+    반환 {code: {"block": bool, "bonus": int, "why": str}}. 키 미설정/실패 시 빈 dict(기존 흐름 유지)."""
+    out: dict[str, dict] = {}
+    try:
+        for d in research.dart_recent(set(codes), days=3):
+            rep, code = d.get("report", "") or "", d.get("code", "") or ""
+            if not code:
+                continue
+            cur = out.setdefault(code, {"block": False, "bonus": 0, "why": ""})
+            if any(k in rep for k in _BAD_DISCLOSURE):
+                cur.update({"block": True, "why": rep[:50]})
+            elif any(k in rep for k in _GOOD_DISCLOSURE) and not cur["block"]:
+                cur["bonus"], cur["why"] = 5, rep[:50]
+    except Exception as exc:
+        print(f"[소미제안] 공시 게이트 조회 실패(스킵): {exc}")
+    return {c: v for c, v in out.items() if v["block"] or v["bonus"]}
+
+
 def _refresh_news_for_trade() -> None:
     """뉴스는 스케줄이 아니라 매매 직전에 반영 — 거래 대상(국내주식) 관련 지역만 재수집.
     아시아/한국 뉴스·공시를 새로 fetch → 마켓데스크 issue_impact 재평가. 미국/유럽은
@@ -881,6 +906,21 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     header = f"[소미 {label} / {now_str}]\n시장 국면(HMM): {regime_label(regime)}{detail_txt}"
     held_syms = set(load_positions().keys())
     candidates = [p for p in proposals if p["symbol"] not in held_syms]
+
+    # 공시 게이트(2026-07-02): 후보 종목 최근 3일 공시 — 악재는 하드 제외, 호재는 +5 가점.
+    # 마켓데스크 LLM 평가와 별개의 결정적 안전축(유증·CB 등 치명 공시가 LLM 누락돼도 차단).
+    disc = _disclosure_check([p["symbol"] for p in candidates])
+    if disc:
+        dropped = [f"⛔ 공시 악재 제외 — {p['name']}: {disc[p['symbol']]['why']}"
+                   for p in candidates if disc.get(p["symbol"], {}).get("block")]
+        for p in candidates:
+            d = disc.get(p["symbol"])
+            if d and d["bonus"] and not d["block"]:
+                p["score"] = min(100, p["score"] + d["bonus"])
+                p["reasons"] = [f"호재 공시: {d['why']}"] + (p.get("reasons") or [])
+        candidates = [p for p in candidates if not disc.get(p["symbol"], {}).get("block")]
+        if dropped:
+            header += "\n" + "\n".join(dropped[:5])
 
     # 발굴 후보 자동 관심등록 — 유망(GOOD_SCORE↑)만. 가격감시·정기보고가 즉시 추적 시작.
     try:
