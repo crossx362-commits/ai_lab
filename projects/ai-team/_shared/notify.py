@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
 import urllib.request
 from datetime import datetime
+
+# 텔레그램이 지원하는 HTML 태그 — 이 태그가 있을 때만 parse_mode=HTML을 쓴다.
+# 평문(태그 없음)은 파싱 자체를 안 하므로 '<', '&' 등 어떤 문자가 와도 400이 원천 불가능.
+_TG_HTML_TAG = re.compile(
+    r"</?(b|strong|i|em|u|ins|s|strike|del|code|pre|a|tg-spoiler|blockquote)\b", re.IGNORECASE)
 
 
 # 상시 데몬 (프로세스가 계속 떠 있어야 정상)
@@ -99,14 +105,14 @@ def send(msg: str, silent: bool = False) -> bool:
         with urllib.request.urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode("utf-8"))
 
+    wants_html = bool(_TG_HTML_TAG.search(msg))
     try:
         try:
-            result = _post("HTML")
+            result = _post("HTML" if wants_html else None)
         except urllib.error.HTTPError as he:
-            if he.code != 400:
+            if he.code != 400 or not wants_html:
                 raise
-            # 본문에 이스케이프 안 된 <, & 가 있으면 HTML 파싱 400('탐지점수 47 < 48' 등)
-            # → 매수/청산 보고가 통째로 유실되던 문제. 평문으로 1회 재시도해 전달을 보장한다.
+            # HTML 태그가 있어도 본문 나머지가 파싱을 깨면 400 → 평문 폴백(서식은 잃어도 전달 보장)
             result = _post(None)
         if result.get("ok"):
             print(f"[Telegram] Sent {len(msg)} chars")
