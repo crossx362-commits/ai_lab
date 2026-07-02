@@ -96,6 +96,7 @@ def main():
     print("🤖 [예원] 하네스 자동 감시 시작 (5분 주기)")
 
     last_growth_date = None
+    last_issue_sig = ""
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -103,7 +104,18 @@ def main():
 
                 # 하네스 실행 (리포트 갱신 + 로그)
                 output = run_harness()
-                if "WARN" in output or "FAIL" in output:
+                # WARN/FAIL은 '상태가 바뀔 때만' 텔레그램 보고(동일 이슈 5분마다 반복 스팸 방지).
+                # 해소되면 회복 알림 1회. (run_harness는 SUPPRESS_TELEGRAM이라 자체 발송 없음)
+                issues = [ln.strip() for ln in output.splitlines()
+                          if ln.startswith("[WARN]") or ln.startswith("[FAIL]")]
+                sig = "\n".join(issues)
+                if sig != last_issue_sig:
+                    if issues:
+                        send("⚠️ [예원 하네스] 이슈 감지\n" + "\n".join(issues[:8]))
+                    elif last_issue_sig:
+                        send("✅ [예원 하네스] 이슈 해소 — 전 항목 정상")
+                    last_issue_sig = sig
+                if issues:
                     print("⚠️  이슈 감지")
 
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)

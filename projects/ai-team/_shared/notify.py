@@ -33,6 +33,8 @@ CONTINUOUS_DAEMONS = {
     "market_desk": "market_desk.py",
     "yewon": "harness_monitor.py",
     "yewon_growth": "growth_engine.py",
+    # Windows 정시 잡 실행자(영숙스케줄) — macOS는 아래 launchd 집계가 이 키를 덮어써 오탐 없음
+    "scheduler": "schedule_manager.py",
 }
 
 # macOS는 아래 데몬을 launchd 정시 잡으로 운영 → 상시 프로세스가 없어도 launchd에 적재돼 있으면

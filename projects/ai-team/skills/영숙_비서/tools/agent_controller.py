@@ -35,8 +35,13 @@ AGENTS = {
         "args": [],
         "log": "youngsuk_telegram",
     },
-    # 영숙스케줄(단일 스케줄러 데몬)은 제거됨 — 정시 잡은 잡별 독립 launchd 에이전트(com.ailab.sched.*)로
-    # 운영(SPOF 제거). 스케줄 변경 반영: schedule_sync.py sync (부팅 시 com.ailab.sched_sync가 자동 실행).
+    # 정시 잡 실행자 — macOS는 잡별 launchd 에이전트(com.ailab.sched.*), Windows는 이 데몬이 유일한
+    # 실행자(2026-07-02 복구: launchd 이관이 Windows 정시 잡을 통째로 정지시켰던 사고).
+    "영숙스케줄": {
+        "script": AI_TEAM_ROOT / "skills" / "영숙_비서" / "tools" / "schedule_manager.py",
+        "args": ["--daemon"],
+        "log": "youngsuk_scheduler",
+    },
     "소미": {
         "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_price_monitor.py",
         "args": [],
@@ -125,6 +130,7 @@ ALIASES = {
     # 아래 매핑이 없으면 Windows에서 해당 데몬 재시작이 조용히 실패한다(자가복구 불능).
     "somi_monitor": "소미",
     "somi_advisor": "소미제안",
+    "scheduler": "영숙스케줄",
     "somi_position": "소미포지션",
     "somi_screener": "소미발굴",
     "market_desk": "마켓데스크",
