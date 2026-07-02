@@ -235,7 +235,9 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
 
 TUNING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
 # 성장엔진 자동 튜닝 허용범위 — 모의 한정. 엔진 버그로 극단값이 와도 여기서 클램프(실거래 무관).
-_TUNING_BOUNDS = {"gate_score": (40, 70), "gate_entry": (40, 75),
+# 하한 52(2026-07-02 백테스트 학습): 12개월·40종목 그리드에서 기준 50 이하는 누적 -42~-65%·
+# MDD -75% 손실 구간 — '체결 0→문턱 -2' 규칙이 손실 엣지까지 못 내려가게 바닥을 올림.
+_TUNING_BOUNDS = {"gate_score": (52, 70), "gate_entry": (52, 75),
                   "observe_minutes": (1, 20), "paper_auto_max": (2, 10)}
 
 
@@ -254,19 +256,23 @@ def _gate_thresholds() -> dict:
     위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
         return {
-            "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "48"))),   # 탐지점수 (기본 60 → 48)
-            "entry": _tuning("gate_entry", int(os.getenv("SOMI_GATE_ENTRY_PAPER", "48"))),   # 진입점수 (기본 70 → 48)
+            "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "55"))),   # 탐지점수 (백테스트: 55↑부터 양의 엣지)
+            "entry": _tuning("gate_entry", int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))),   # 진입점수 (동일 근거)
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}
 
 
-def _passes_buy_gate(c: dict) -> tuple[bool, str]:
+def _passes_buy_gate(c: dict, regime: str = "unknown") -> tuple[bool, str]:
     """기대값 기반 최종 매수 게이트. 모두 통과해야 실매수 허용.
     모의는 점수·진입 문턱↓·손익비 요구 해제·수급미확정 허용(공격적), 실거래는 보수값. 위험축은 공통 차단."""
     th = _gate_thresholds()
-    if c.get("score", 0) < th["score"]:
-        return False, f"탐지점수 {c.get('score')} < {th['score']}"
+    # 하락 국면 선별(백테스트 12개월·40종목: 하락장 무차별 매수 누적 +23.6% vs 선별통과 +62.3%):
+    # 매수를 막진 않되 문턱만 올려 역행 강세만 통과 — 모의 공격 원칙과 수익률의 절충. 모의 한정.
+    score_th = th["score"] + (int(os.getenv("SOMI_BEAR_GATE_BUMP", "10"))
+                              if _is_paper() and regime == "bear" else 0)
+    if c.get("score", 0) < score_th:
+        return False, f"탐지점수 {c.get('score')} < {score_th}"
     # 수급 미확정: 실거래는 하드 차단(보수). 모의는 장중 당일수급이 원천 미공개라
     # 하드 차단하면 100% 매수 불가 → 5일 누적수급 보정점수로 매수 허용(공격적). 약한 종목은 점수·리스크 게이트가 거른다.
     if not _is_paper() and c.get("score_mode") == "morning_missing_investor_adjusted":
@@ -282,8 +288,8 @@ def _passes_buy_gate(c: dict) -> tuple[bool, str]:
     return True, ""
 
 
-def _decide(c: dict) -> tuple[str, str]:
-    ok, why = _passes_buy_gate(c)
+def _decide(c: dict, regime: str = "unknown") -> tuple[str, str]:
+    ok, why = _passes_buy_gate(c, regime)
     if ok:
         return "매수", ""
     if c.get("score", 0) >= 45:
@@ -291,9 +297,9 @@ def _decide(c: dict) -> tuple[str, str]:
     return "제외", why
 
 
-def _format_decision(c: dict, next_check: str = "다음 슬롯") -> str:
+def _format_decision(c: dict, next_check: str = "다음 슬롯", regime: str = "unknown") -> str:
     """헌장 의사결정 출력형식 — 종목별 결론/세부점수/가격/이유."""
-    decision, why = _decide(c)
+    decision, why = _decide(c, regime)
     entry = c.get("entry") or 0
     t1 = int(entry * 1.05) if entry else 0
     t2 = max(int(c.get("target") or 0), int(entry * 1.08) if entry else 0)
@@ -904,7 +910,7 @@ def _fast_watch(regime: str = "unknown") -> None:
             p.update({k: rt[k] for k in (
                 "entry_score", "risk_level", "risk_state", "rr_score", "rr_ok",
                 "dq_score", "dq_state", "score_mode", "vwap", "buy_pressure", "rr", "reasons", "risks")})
-    passed = [p for p in top if _passes_buy_gate(p)[0]]
+    passed = [p for p in top if _passes_buy_gate(p, regime)[0]]
     to_buy, msgs = _observation_gate(passed)
     executed = _auto_buy_paper(to_buy, slot_kind="buy_fast", regime=regime)
     # 체결·관찰 상태변화(시작·완료·해제)만 알림 — 매 틱 '관찰 중' 스팸 방지
@@ -1007,8 +1013,8 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
                 "dq_score", "dq_state", "score_mode", "vwap", "buy_pressure", "rr", "reasons", "risks")})
     if slot_kind == "buy_close":  # 마감권: 종가 고가권 유지(매수세·VWAP 위) 후보만 제한 검토
         top = [p for p in top if p.get("buy_pressure", 0) >= 1.0 and p.get("entry_score", 0) >= 75]
-    passed = [p for p in top if _passes_buy_gate(p)[0]]
-    decisions = "\n\n".join(_format_decision(p, next_check=("보유 관리" if _passes_buy_gate(p)[0] else "다음 슬롯")) for p in shown)
+    passed = [p for p in top if _passes_buy_gate(p, regime)[0]]
+    decisions = "\n\n".join(_format_decision(p, next_check=("보유 관리" if _passes_buy_gate(p, regime)[0] else "다음 슬롯"), regime=regime) for p in shown)
 
     notable = True   # 스팸 감소: paper 슬롯은 '실제 이벤트' 있을 때만 전송(빈 슬롯 자제)
     if not proposals:
