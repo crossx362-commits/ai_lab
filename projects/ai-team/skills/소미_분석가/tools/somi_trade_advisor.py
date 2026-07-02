@@ -609,6 +609,23 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         return []
     held = load_positions()
     done, bought = [], 0
+    # 자금배분(사용자 지시 2026-07-02): 총자산의 유보율(기본 20%)만 예수금으로 남기고 전액 투자.
+    # 배분량 = (현금 - 총자산×유보율)을 후보 확신 가중으로 분배. 유보 도달 시 신규매수 보류.
+    reserve_pct = float(os.getenv("SOMI_CASH_RESERVE_PCT", "0.20"))
+    _conv = lambda p: min(3.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))  # noqa: E731
+    try:
+        bal = trader.balance()
+        cash = float(bal.get("cash", 0))
+        equity = cash + sum(float(h.get("qty", 0)) * float(h.get("avg", 0)) for h in bal.get("holdings", []))
+        reserve = equity * reserve_pct
+        eligible = [p for p in proposals if p["symbol"] not in held][: _paper_auto_max()]
+        total_conv = sum(_conv(p) for p in eligible) or 1.0
+        deployable = max(0.0, cash - reserve)
+    except Exception as exc:               # 잔고 조회 실패 → 기존 고정예산으로 폴백(매수 중단 방지)
+        print(f"[소미제안] 잔고 조회 실패 — 고정예산 폴백: {exc}")
+        cash, reserve, deployable, total_conv = float("inf"), 0.0, 0.0, 0.0
+    if deployable <= 0 and cash != float("inf"):
+        return [f"💤 신규매수 보류 — 예수금 유보율 {reserve_pct:.0%} 도달(현금 {int(cash):,} ≤ 유보 {int(reserve):,})"]
     for p in proposals:
         if bought >= _paper_auto_max():   # 실제 체결분만 상한 계산(스킵 메시지는 미포함)
             break
@@ -618,11 +635,15 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         if entry <= 0:                 # F2: 유효 진입가 없으면 스킵 — 수량 폭주(예산//1) 방지
             done.append(f"⏭️ {p['name']} 매수 건너뜀: 유효 진입가 없음")
             continue
-        # 확신 기반 사이징(백테스트 검증): 점수 높을수록 크게. 평균점수(~65) 기준 1.0배로 재중심해
-        # 평균 투입자본은 그대로 두고 고점수에만 더 배분 → 공정비교서 24mo +264%→+298%,
-        # 30mo +348%→+385%, MDD 동등/개선. (위험기반·균등보다 우월)
-        conv = min(3.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))
-        budget = int(SOMI_BUDGET * conv)
+        # 확신 기반 사이징(백테스트 검증): 점수 높을수록 크게. 평균점수(~65) 기준 1.0배 재중심.
+        conv = _conv(p)
+        if deployable > 0:             # 투자여력 비례 배분 + 남은 현금-유보 한도 캡
+            budget = int(min(deployable * conv / total_conv, cash - reserve))
+        else:
+            budget = int(SOMI_BUDGET * conv)   # 잔고 조회 실패 시 기존 고정예산
+        if budget <= 0:
+            done.append(f"💤 {p['name']} 매수 보류 — 예수금 유보율 {reserve_pct:.0%} 도달")
+            break
         if entry > budget:             # F3: 1주가 배정예산 초과(고가주) — 포트폴리오 배분 왜곡 방지
             done.append(f"⏭️ {p['name']} 매수 건너뜀: 1주 {int(entry):,}원 > 배정예산 {budget:,}원")
             continue
@@ -646,6 +667,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         }
         record_position(p["symbol"], p["name"], fill, p["stop"], p["target"], qty, p.get("score"), extra=extra)
         bought += 1
+        cash -= qty * fill   # 후속 후보 배분 캡에 반영(유보율 침범 방지)
         done.append(
             f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ {int(fill):,}원 "
             f"(확신 {conv:.1f}배·탐지 {p.get('score', '?')}·진입 {p.get('entry_score', '?')})\n"
