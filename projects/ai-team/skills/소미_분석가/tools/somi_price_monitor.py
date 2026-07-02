@@ -37,6 +37,8 @@ DEFAULT_SYMBOL = ""
 DEFAULT_NAME = ""
 CHECK_INTERVAL = 60  # 1분마다 확인
 RUN_LOG = PROJECT_ROOT / "output" / "bot_logs" / "somi_price_monitor.log"
+# 강한 신호 → 어드바이저 즉시 매수검토 트리거(이벤트 드리븐). 어드바이저 데몬이 소비 후 삭제.
+TRIGGER_FILE = PROJECT_ROOT / "output" / "cache" / "somi_trigger.json"
 
 # Global thresholds (can be modified by argparse)
 PRICE_CHANGE_THRESHOLD = 3.0  # 전일대비 등락률(참고용 — 더 이상 단독 트리거 아님)
@@ -140,6 +142,19 @@ class PriceMonitor:
                 # 사용자 지시(2026-07-02): 급변동 알림은 텔레그램 전송 안 함 — 매수 체결 메시지만 전송.
                 # 감지·성장기록·콘솔로그는 유지(신호 파이프라인 영향 없음). 재활성화: SOMI_ALERT_TELEGRAM=true
                 tg_on = os.getenv("SOMI_ALERT_TELEGRAM", "false").lower() in {"1", "true", "yes"}
+                # 강한 신호는 문구 전달이 아니라 실제 연동 — 어드바이저가 다음 정시 슬롯(최대 15분)을
+                # 기다리지 않고 즉시 매수검토를 돌도록 트리거 파일 기록(급등주 알파 감쇠 대응).
+                if grade == "강한 신호":
+                    try:
+                        import json as _json
+                        TRIGGER_FILE.write_text(_json.dumps({
+                            "ts": datetime.now().isoformat(timespec="seconds"),
+                            "symbol": self.symbol, "name": self.name,
+                            "change": f"{window_change:+.2f}%/{mins}분", "grade": grade,
+                        }, ensure_ascii=False), encoding="utf-8")
+                        log(f"어드바이저 트리거 기록 — {self.name} 강한 신호")
+                    except Exception as exc:
+                        log(f"트리거 기록 실패: {exc}")
                 if (send(message) if tg_on else True):
                     self.last_alert_time = datetime.now()
                     log(f"급변동 감지{'·알림 전송' if tg_on else '(텔레그램 억제)'}: {direction} {window_change:+.2f}% [{grade}]")

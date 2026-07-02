@@ -655,6 +655,34 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
 
 
 CANDIDATES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_candidates.json"
+TRIGGER_FILE = PROJECT_ROOT / "output" / "cache" / "somi_trigger.json"
+_last_trigger_run: datetime | None = None
+
+
+def _consume_trigger(max_age_sec: int = 600, cooldown_sec: int = 600) -> bool:
+    """가격모니터의 '강한 신호' 이벤트 소비(1회성) — 신선하고 쿨다운 지났고 장중이면 즉시 매수검토.
+    슬롯 스케줄과 별개인 이벤트 경로: 급변동 감지→매수검토 지연을 최대 15분→1분으로 단축.
+    신선도 10분: 슬롯 실행(5~8분)과 겹쳐 대기해도 실행 직후 소비되게 — 급변동 후 데이터로 재검토는 유효."""
+    global _last_trigger_run
+    if not TRIGGER_FILE.exists():
+        return False
+    try:
+        t = json.loads(TRIGGER_FILE.read_text(encoding="utf-8"))
+        ts = datetime.fromisoformat(str(t.get("ts", "")))
+    except Exception:
+        TRIGGER_FILE.unlink(missing_ok=True)
+        return False
+    TRIGGER_FILE.unlink(missing_ok=True)  # 읽는 즉시 소비 — 중복 실행 방지
+    now = datetime.now()
+    if (now - ts).total_seconds() > max_age_sec:
+        return False
+    if _last_trigger_run and (now - _last_trigger_run).total_seconds() < cooldown_sec:
+        return False
+    if now.weekday() >= 5 or not ("09:05" <= now.strftime("%H:%M") <= "15:00"):
+        return False
+    _last_trigger_run = now
+    print(f"[{now}] 급변동 트리거 소비 — {t.get('name')}({t.get('symbol')}) {t.get('change')}")
+    return True
 # 슬롯 종류: 시간대별 운영 규율(헌장). collect/observe=실매수 금지·후보 저장, buy=매수검토, buy_close=마감권 제한, manage=청산 중심
 SLOT_LABEL = {
     "collect": "후보 편입(09시)", "observe": "후보 관찰(오전)",
@@ -937,7 +965,12 @@ def main() -> None:
                         run(args.candidates, do_send=True, slot_kind=kind)
                     except Exception as e:
                         send(f"⚠️ 소미 매수 제안 오류: {e}")
-                time.sleep(300)  # 5분마다 슬롯 도래만 확인(보고는 슬롯당 1회)
+                elif _consume_trigger():  # 가격모니터 강한 신호 — 정시 슬롯 대기 없이 즉시 매수검토
+                    try:
+                        run(args.candidates, do_send=True, slot_kind="buy")
+                    except Exception as e:
+                        print(f"[{datetime.now()}] 트리거 실행 오류: {e}")
+                time.sleep(60)  # 1분마다 슬롯/트리거 확인(보고는 슬롯당 1회, 트리거는 쿨다운 10분)
         return
 
     print(run(args.candidates, args.send, slot_kind=args.slot))
