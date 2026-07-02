@@ -8,7 +8,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
-from _shared.notify import send, agent_status, _LAUNCHD_FALLBACK
+from _shared.notify import send, agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
 from _shared.process import ProcessLock
 from _shared import growth
 
@@ -79,6 +79,81 @@ def _restart_bot(name: str) -> None:
                 [sys.executable, controller, name, "restart"],
                 capture_output=True, timeout=30,
             )
+
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+HEAD_STATE = os.path.join(ROOT_DIR, "output", "cache", "watchdog_git_head.json")
+
+
+def _git_out(*args: str) -> str:
+    try:
+        r = subprocess.run(["git", "-c", "core.quotepath=false", *args], cwd=ROOT_DIR,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
+        return r.stdout.strip()
+    except Exception:
+        return ""
+
+
+def _daemon_dirs() -> dict:
+    """데몬 키 → 리포 상대 tools 디렉터리. agent_controller의 스크립트 경로가 단일 소스."""
+    try:
+        ctrl_dir = os.path.join(os.path.dirname(__file__), "..", "..", "영숙_비서", "tools")
+        if ctrl_dir not in sys.path:
+            sys.path.insert(0, ctrl_dir)
+        import agent_controller as _ac
+        out = {}
+        for key in CONTINUOUS_DAEMONS:   # 상시 데몬만 — 예약 서비스 키를 넣으면 정시 잡이 오발사된다
+            info = _ac.AGENTS.get(_ac.get_agent_name(key))
+            if info:
+                out[key] = os.path.relpath(str(info["script"].parent), ROOT_DIR).replace("\\", "/")
+        return out
+    except Exception:
+        return {}
+
+
+def restart_on_code_update() -> None:
+    """git pull 감지 → 변경 코드에 해당하는 데몬 자동 재시작 — '깃 풀만 하면 되게'(2026-07-02).
+    _shared 변경은 전 데몬, tools 폴더 변경은 그 폴더 소속 데몬만. 자신(yewon)은
+    분리 실행한 컨트롤러 restart로 최후 교체(뮤텍스 경합 없는 유일한 자가재시작 경로)."""
+    head = _git_out("rev-parse", "HEAD")
+    if not head:
+        return
+    try:
+        with open(HEAD_STATE, encoding="utf-8") as f:
+            last = json.load(f).get("head", "")
+    except Exception:
+        last = ""
+    if head == last:
+        return
+    os.makedirs(os.path.dirname(HEAD_STATE), exist_ok=True)
+    with open(HEAD_STATE, "w", encoding="utf-8") as f:   # 재시작 루프 방지 — 상태 먼저 기록
+        json.dump({"head": head, "ts": datetime.now().isoformat(timespec="seconds")}, f)
+    if not last:
+        return  # 첫 기동 — 기준점만 기록
+    changed = [p for p in _git_out("diff", "--name-only", f"{last}..{head}").splitlines()
+               if p.endswith(".py")]
+    if not changed:
+        return
+    dirs = _daemon_dirs()
+    shared = any(p.startswith("projects/ai-team/_shared/") for p in changed)
+    targets = [key for key, rel_dir in dirs.items()
+               if shared or any(os.path.dirname(p) == rel_dir for p in changed)]
+    self_restart = "yewon" in targets
+    targets = [t for t in targets if t != "yewon"]
+    if not (targets or self_restart):
+        return
+    send("🔄 [예원] 코드 갱신 감지(git pull) → 새 코드로 데몬 재시작\n"
+         + ", ".join(targets + (["yewon(자가교체)"] if self_restart else [])))
+    for name in targets:
+        try:
+            _restart_bot(name)
+        except Exception:
+            pass  # 실패해도 다음 주기 워치독이 down 감지 후 재시도
+    if self_restart:
+        controller = os.path.join(os.path.dirname(__file__), "..", "..", "영숙_비서", "tools",
+                                  "agent_controller.py")
+        kwargs = {"creationflags": 0x08000008} if sys.platform == "win32" else {"start_new_session": True}
+        subprocess.Popen([sys.executable, controller, "yewon", "restart"], **kwargs)
 
 
 # 하네스 이슈 → 원인 에이전트 자동 복구 매핑: (검사명, 메시지 부분문자열, 재시작 대상)
@@ -188,6 +263,12 @@ def main():
                     if acts:
                         send("🔧 [예원] 하네스 이슈 자동 복구\n" + "\n".join(acts))
                         last_issue_sig = ""  # 복구 후 상태 재평가 — 다음 사이클 결과를 다시 보고
+
+                # git pull 감지 → 변경 데몬 새 코드로 자동 교체 (풀만 하면 반영)
+                try:
+                    restart_on_code_update()
+                except Exception as e:
+                    print(f"코드 갱신 감지 오류: {e}")
 
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
