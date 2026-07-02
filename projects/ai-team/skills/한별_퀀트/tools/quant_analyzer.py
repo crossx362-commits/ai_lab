@@ -33,6 +33,7 @@ PROJECT_ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
 JOURNAL = PROJECT_ROOT / "output" / "cache" / "trade_journal.json"
+CLOSED = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"
 TUNING = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
 
 # 리스크 파라미터(환경변수 조절)
@@ -96,6 +97,26 @@ def _realized_trades() -> tuple[list[dict], dict]:
                 remaining -= matched
                 if lot["qty"] <= 0:
                     lots.pop(0)
+    # 청산 로그(somi_closed_trades.json) 병합(2026-07-02) — 모의 자동매매의 실제 학습 데이터.
+    # trade_journal은 생산자(체결부 append)가 사라져 이 병합이 없으면 한별이 영원히 '거래 없음'.
+    # backtest_seed(합성 표본)는 성장엔진 learn()과 동일 기준으로 제외. pnl_pct는 실비용 차감치(ret_pct) 사용.
+    try:
+        closed = json.loads(CLOSED.read_text(encoding="utf-8")) if CLOSED.exists() else []
+    except Exception:
+        closed = []
+    for r in closed:
+        if r.get("source") == "backtest_seed":
+            continue
+        entry, exit_px, qty = r.get("entry") or 0, r.get("exit") or 0, r.get("qty") or 0
+        if not (entry and exit_px):
+            continue
+        trades.append({
+            "symbol": r.get("symbol", ""), "name": r.get("name", ""), "qty": qty,
+            "buy": entry, "sell": exit_px, "pnl": (exit_px - entry) * qty,
+            "pnl_pct": r.get("ret_pct", (exit_px - entry) / entry * 100),
+            "score": r.get("score"), "buy_ts": r.get("ts_open", ""), "sell_ts": r.get("ts_close", ""),
+        })
+    trades.sort(key=lambda t: str(t.get("sell_ts", "")))   # MDD 곡선용 시간순 정렬(병합 후 필수)
     open_pos = {s: lots for s, lots in open_lots.items() if lots}
     return trades, open_pos
 

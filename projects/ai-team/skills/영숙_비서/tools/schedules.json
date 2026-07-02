@@ -156,6 +156,17 @@
       "enabled": true,
       "run": true,
       "priority": "medium"
+    },
+    {
+      "id": "hanbyul_quant_tune",
+      "agent": "한별",
+      "task": "청산 데이터 점수버킷 분석 → 소미 튜닝 추천",
+      "cron": "45 15 * * 1-5",
+      "description": "장 마감 후 실현거래 복기·recommend_min_score 갱신 (성장엔진 16:10 전 선행)",
+      "command": "python projects/ai-team/skills/한별_퀀트/tools/quant_analyzer.py tune",
+      "enabled": true,
+      "run": true,
+      "priority": "medium"
     }
   ]
 }
