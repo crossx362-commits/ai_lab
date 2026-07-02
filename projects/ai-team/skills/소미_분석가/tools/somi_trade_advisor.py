@@ -118,10 +118,14 @@ def log_closed_trade(symbol: str, name: str, entry: float, exit_price: float, qt
         log = json.loads(CLOSED_TRADES_FILE.read_text(encoding="utf-8")) if CLOSED_TRADES_FILE.exists() else []
     except Exception:
         log = []
-    ret_pct = ((exit_price - entry) / entry * 100) if entry else 0.0
+    gross_pct = ((exit_price - entry) / entry * 100) if entry else 0.0
+    # 실비용 반영 — 왕복 수수료(0.015%×2) + 매도 거래세(0.18%) 차감(backtest.py와 동일 상수).
+    # VTS 체결가엔 비용이 없어 성과가 ~0.21%p 과대평가되던 문제. gross는 별도 보존.
+    cost_pct = (0.00015 * 2 + 0.0018) * 100 if entry else 0.0
+    ret_pct = gross_pct - cost_pct
     rec = {
         "symbol": symbol, "name": name, "entry": entry, "exit": exit_price, "qty": qty,
-        "ret_pct": round(ret_pct, 2), "reason": reason, "score": score,
+        "ret_pct": round(ret_pct, 2), "gross_ret_pct": round(gross_pct, 2), "reason": reason, "score": score,
         "ts_open": ts_open, "ts_close": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
     if extra:
@@ -137,6 +141,9 @@ def _levels(parsed: dict) -> tuple[float, float, float]:
     support = to_num(parsed.get("support_line"))
     resistance = to_num(parsed.get("resistance_line"))
     stop = support if (support and support < entry) else round(entry * (1 - STOP_PCT))
+    # rr 일원화: 실제 청산은 포지션 모니터 하드손절(-3%/ATR 보수)이 우선 컷하므로, 지지선 기반
+    # 넓은 손절(-10~30%)로 계산한 rr이 뉴스판정·MC 게이트를 일괄 왜곡하던 문제 — -3%를 바닥으로 캡.
+    stop = max(stop, round(entry * 0.97))
     target = resistance if (resistance and resistance > entry) else round(entry * (1 + TARGET_PCT))
     return entry, stop, target
 
@@ -201,13 +208,29 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     return out
 
 
+TUNING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
+# 성장엔진 자동 튜닝 허용범위 — 모의 한정. 엔진 버그로 극단값이 와도 여기서 클램프(실거래 무관).
+_TUNING_BOUNDS = {"gate_score": (40, 70), "gate_entry": (40, 75),
+                  "observe_minutes": (1, 20), "paper_auto_max": (2, 10)}
+
+
+def _tuning(key: str, default: int) -> int:
+    """성장엔진(예원)이 모의 한정 자동 튜닝하는 파라미터 — 파일 우선, 없으면 default. 호출 시점 로드(재시작 불요)."""
+    try:
+        v = int(json.loads(TUNING_FILE.read_text(encoding="utf-8")).get("params", {}).get(key, default))
+    except Exception:
+        return default
+    lo, hi = _TUNING_BOUNDS.get(key, (v, v))
+    return max(lo, min(hi, v))
+
+
 def _gate_thresholds() -> dict:
-    """매수 게이트 문턱 — 모의(paper)는 공격적 완화, 실거래(live)는 보수값 유지.
+    """매수 게이트 문턱 — 모의(paper)는 공격적 완화 + 성장엔진 자동 튜닝, 실거래(live)는 보수값 고정.
     위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
         return {
-            "score": int(os.getenv("SOMI_GATE_SCORE_PAPER", "48")),   # 탐지점수 (기본 60 → 48)
-            "entry": int(os.getenv("SOMI_GATE_ENTRY_PAPER", "48")),   # 진입점수 (기본 70 → 48, 탐지 게이트와 정렬·사용자 승인)
+            "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "48"))),   # 탐지점수 (기본 60 → 48)
+            "entry": _tuning("gate_entry", int(os.getenv("SOMI_GATE_ENTRY_PAPER", "48"))),   # 진입점수 (기본 70 → 48)
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}
@@ -519,6 +542,18 @@ def _is_paper() -> bool:
 
 
 # 모의 모드 1회 실행 시 자동 매수할 최대 종목 수 (예산 소진 시 자동 중단). 모의=공격적(8).
+def _paper_auto_max() -> int:
+    """모의 1회 실행 자동매수 상한 — 성장엔진 튜닝 대상(호출 시점 로드)."""
+    return _tuning("paper_auto_max", int(os.getenv("SOMI_PAPER_AUTO_MAX", "8")))
+
+
+def _observe_minutes() -> int:
+    """매수 전 관찰 시간(분) — 모의는 성장엔진 튜닝 대상, 실거래는 30분 고정."""
+    if _is_paper():
+        return _tuning("observe_minutes", int(os.getenv("SOMI_OBSERVE_MINUTES", "2")))
+    return int(os.getenv("SOMI_OBSERVE_MINUTES", "30"))
+
+
 PAPER_AUTO_MAX = int(os.getenv("SOMI_PAPER_AUTO_MAX", "8"))
 SOMI_BUDGET = int(os.getenv("SOMI_BUDGET_PER_TRADE", "1000000"))
 # 매수 전 관찰 시간(분): 'buy' 신호가 이 시간 이상 유지돼야 실제 매수. 모의=2분(고공격)/실거래=30분.
@@ -527,7 +562,7 @@ WATCHING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_watching.json"
 
 
 def _observation_gate(buys: list[dict]) -> tuple[list[dict], list[str]]:
-    """'buy' 신호를 바로 매수하지 않고 OBSERVE_MINUTES 만큼 관찰.
+    """'buy' 신호를 바로 매수하지 않고 _observe_minutes()만큼 관찰.
     신호가 유지된 종목만 매수 대상으로 반환. (신호 소멸 시 관찰 해제)"""
     watching = _load(WATCHING_FILE)
     now = datetime.now()
@@ -546,19 +581,19 @@ def _observation_gate(buys: list[dict]) -> tuple[list[dict], list[str]]:
         w = watching.get(sym)
         if not w:  # 처음 발견 → 관찰만 시작, 매수 안 함
             watching[sym] = {"name": p["name"], "first_ts": now.isoformat(timespec="seconds"), "count": 1}
-            msgs.append(f"👀 관찰 시작 — {p['name']}({sym}) · 최소 {OBSERVE_MINUTES}분 지켜본 뒤 매수")
+            msgs.append(f"👀 관찰 시작 — {p['name']}({sym}) · 최소 {_observe_minutes()}분 지켜본 뒤 매수")
             continue
         w["count"] = w.get("count", 1) + 1
         try:
             elapsed = (now - datetime.fromisoformat(w["first_ts"])).total_seconds() / 60
         except Exception:
-            elapsed = OBSERVE_MINUTES
-        if elapsed >= OBSERVE_MINUTES:  # 관찰 통과 → 매수
+            elapsed = _observe_minutes()
+        if elapsed >= _observe_minutes():  # 관찰 통과 → 매수
             to_buy.append(p)
             del watching[sym]
             msgs.append(f"✅ 관찰 완료 {int(elapsed)}분({w['count']}회 유지) — {p['name']} 매수 진행")
         else:
-            msgs.append(f"⏳ 관찰 중 — {p['name']} ({int(elapsed)}/{OBSERVE_MINUTES}분, {w['count']}회 확인)")
+            msgs.append(f"⏳ 관찰 중 — {p['name']} ({int(elapsed)}/{_observe_minutes()}분, {w['count']}회 확인)")
 
     _save(WATCHING_FILE, watching)
     return to_buy, msgs
@@ -575,7 +610,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
     held = load_positions()
     done, bought = [], 0
     for p in proposals:
-        if bought >= PAPER_AUTO_MAX:   # 실제 체결분만 상한 계산(스킵 메시지는 미포함)
+        if bought >= _paper_auto_max():   # 실제 체결분만 상한 계산(스킵 메시지는 미포함)
             break
         if p["symbol"] in held:
             continue
@@ -806,7 +841,7 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     buys = _apply_buy_gates([p for p in candidates if p.get("verdict") == "buy"])
     # 2차: 상위 후보를 실시간 다중점수로 보강 → 기대값 기반 최종 게이트
     kis = KISClient()
-    top = sorted(buys, key=lambda x: x["score"], reverse=True)[: max(4, PAPER_AUTO_MAX * 2)]
+    top = sorted(buys, key=lambda x: x["score"], reverse=True)[: max(4, _paper_auto_max() * 2)]
     # 표시용: 하락장엔 'buy' 판정이 적어 매수 메시지가 대형주 한 종목만 반복돼 보인다.
     # 발굴 다양성이 메시지에도 드러나도록 점수 상위 후보를 함께 노출(체결은 buys 게이트 경로만).
     shown = sorted(candidates, key=lambda x: x["score"], reverse=True)[:5]
