@@ -107,6 +107,11 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "yewon_growth_engine",
     },
+    "대시보드": {
+        "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "status_dashboard.py",
+        "args": [],
+        "log": "status_dashboard",
+    },
 }
 
 ALIASES = {
@@ -136,6 +141,7 @@ ALIASES = {
     "market_desk": "마켓데스크",
     "yewon_growth": "성장엔진",
     "growth": "성장엔진",
+    "dashboard": "대시보드",
 }
 
 
