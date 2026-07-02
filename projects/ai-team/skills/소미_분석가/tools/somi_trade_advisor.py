@@ -881,6 +881,42 @@ def _refresh_news_for_trade() -> None:
         print(f"[소미제안] 거래 전 뉴스 갱신 실패 — 기존 캐시 사용: {exc}")
 
 
+def _fast_watch(regime: str = "unknown") -> None:
+    """발굴 사이 고속 감시(모의 전용): 직전 발굴 후보(PROPOSALS_FILE)만 실시간 재평가해
+    게이트·관찰 통과 즉시 매수. 무거운 발굴(스크리너·뉴스·공시 조회)은 하지 않는다 —
+    공시 차단은 발굴 시점에 표시된 disc_block을 재사용."""
+    now = datetime.now()
+    if now.strftime("%H:%M") >= "15:00":
+        return  # 마감권(15:00~)은 발굴(buy_close) 제한 규율로만 매수 — 고속감시 중단
+    store = _load(PROPOSALS_FILE)
+    if str(store.get("ts", ""))[:10] != now.strftime("%Y-%m-%d"):
+        return  # 전일 후보로 매수 금지
+    held = set(load_positions().keys())
+    cands = [p for p in (store.get("items") or [])
+             if p.get("verdict") == "buy" and not p.get("disc_block") and p["symbol"] not in held]
+    if not cands and not _load(WATCHING_FILE):
+        return
+    kis = KISClient()
+    top = sorted(_apply_buy_gates(cands), key=lambda x: x["score"], reverse=True)[: _paper_auto_max()]
+    for p in top:
+        rt = analyze_candidate(kis, p["symbol"], p["name"], realtime=True)
+        if rt:
+            p.update({k: rt[k] for k in (
+                "entry_score", "risk_level", "risk_state", "rr_score", "rr_ok",
+                "dq_score", "dq_state", "score_mode", "vwap", "buy_pressure", "rr", "reasons", "risks")})
+    passed = [p for p in top if _passes_buy_gate(p)[0]]
+    to_buy, msgs = _observation_gate(passed)
+    executed = _auto_buy_paper(to_buy, slot_kind="buy_fast", regime=regime)
+    # 체결·관찰 상태변화(시작·완료·해제)만 알림 — 매 틱 '관찰 중' 스팸 방지
+    if executed or any(k in m for m in msgs for k in ("관찰 시작", "관찰 완료", "관찰 해제")):
+        parts = [f"[소미 고속감시 / {now.strftime('%H:%M')}] ⚡ 동적 진입"]
+        if msgs:
+            parts.append("\n".join(msgs))
+        if executed:
+            parts.append("[매수 체결]\n" + "\n\n".join(executed))
+        send("\n\n".join(parts))
+
+
 def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy") -> str:
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     label = SLOT_LABEL.get(slot_kind, "매수 검토")
@@ -919,6 +955,11 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
         candidates = [p for p in candidates if not disc.get(p["symbol"], {}).get("block")]
         if dropped:
             header += "\n" + "\n".join(dropped[:5])
+        # 고속감시(_fast_watch)가 공시 재조회 없이 차단을 재사용하도록 표시 후 재저장
+        for p in proposals:
+            if disc.get(p["symbol"], {}).get("block"):
+                p["disc_block"] = True
+        _save(PROPOSALS_FILE, {"ts": now_str, "items": proposals})
 
     # 발굴 후보 자동 관심등록 — 유망(GOOD_SCORE↑)만. 가격감시·정기보고가 즉시 추적 시작.
     try:
@@ -1021,30 +1062,48 @@ def main() -> None:
     }
 
     if args.daemon:
+        if _is_paper():
+            # 모의: 고정 매수 슬롯 폐지(사용자 지시 2026-07-02) — 발굴(무거움)은 주기 실행,
+            # 사이엔 고속감시(_fast_watch)로 발굴 후보를 실시간 재평가해 조건 충족 즉시 매수.
+            # 가격모니터 강신호(_consume_trigger)는 발굴 주기를 기다리지 않고 즉시 발굴.
+            fast_sec = int(os.getenv("SOMI_FAST_WATCH_SEC", "60"))
+            disc_min = int(os.getenv("SOMI_DISCOVERY_MIN", "10"))
+            last_disc, regime = None, "unknown"
+            with ProcessLock("somi_trade_advisor"):
+                print(f"[{datetime.now()}] 소미 매수 데몬 시작 (동적 모드: 발굴 {disc_min}분 주기 + 고속감시 {fast_sec}초)")
+                while True:
+                    now = datetime.now()
+                    hm = now.strftime("%H:%M")
+                    if now.weekday() >= 5 or not ("09:00" <= hm <= "15:20"):
+                        time.sleep(60)   # 장외 대기
+                        continue
+                    if (not last_disc or (now - last_disc).total_seconds() >= disc_min * 60
+                            or _consume_trigger()):
+                        last_disc = now
+                        kind = "buy_close" if hm >= "15:00" else "buy"  # 마감권 제한 규율 유지
+                        try:
+                            print(f"[{datetime.now()}] 발굴 실행({kind})")
+                            run(args.candidates, do_send=True, slot_kind=kind)
+                            regime = _market_regime_now()[0]
+                        except Exception as e:
+                            send(f"⚠️ 소미 매수 제안 오류: {e}")
+                    else:
+                        try:
+                            _fast_watch(regime)
+                        except Exception as e:
+                            print(f"[{datetime.now()}] 고속감시 오류: {e}")
+                    time.sleep(fast_sec)
+            return
         from _shared.utils import due_slot
-        # 모의(paper)는 오전 포함 30분 간격 고빈도 매수 슬롯(헌장 시각 외는 buy로 폴백) — 실거래는 보수 스케줄 유지.
-        # 모의는 15분 간격(관찰 2분이 슬롯 간격에 묻히지 않게) — 실거래는 보수 스케줄 유지.
-        default_slots = (
-            "09:15,09:30,09:45,10:00,10:15,10:30,10:45,11:00,11:15,11:30,11:45,12:00,"
-            "12:15,12:30,12:45,13:00,13:15,13:30,13:45,14:00,14:15,14:30,14:45,15:00"
-            if _is_paper() else "09:00,11:00,12:30,14:00,15:10,15:25")
-        slots = os.getenv("SOMI_ADVISOR_SLOTS", default_slots).split(",")
+        # 실거래: 보수 스케줄(승인형) 유지 — 동적 고속감시는 모의 전용.
+        slots = os.getenv("SOMI_ADVISOR_SLOTS", "09:00,11:00,12:30,14:00,15:10,15:25").split(",")
         state = PROJECT_ROOT / "output" / "cache" / "somi_advisor_slots.json"
         with ProcessLock("somi_trade_advisor"):
             print(f"[{datetime.now()}] 소미 매수 제안 데몬 시작 (시간대 슬롯: {','.join(slots)})")
-            # 기동 즉시 1회 — 재시작/장중 진입 후 다음 정시까지 놀지 않고 바로 발굴·관찰 시작(모의만).
-            if _is_paper():
-                try:
-                    print(f"[{datetime.now()}] 기동 즉시 실행(buy)")
-                    run(args.candidates, do_send=True, slot_kind="buy")
-                except Exception as e:
-                    print(f"[{datetime.now()}] 기동 실행 오류: {e}")
             while True:
                 slot = due_slot(slots, state)   # 정해진 시각에만, 재시작·매틱 보고 방지
                 if slot:
                     kind = slot_kinds.get(slot, "buy")
-                    if _is_paper() and kind in ("collect", "observe"):
-                        kind = "buy"   # 모의는 종일 공격적 매수 — 오전 관찰/후보편입(09:00·11:00)도 매수로 승격
                     try:
                         print(f"[{datetime.now()}] 슬롯 {slot} 실행({kind})")
                         run(args.candidates, do_send=True, slot_kind=kind)
