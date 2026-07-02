@@ -196,6 +196,12 @@ class KISTrader:
         fill = price if price > 0 else int(num(self.kis.quote(symbol).get("stck_prpr")))
         if fill <= 0:
             raise RuntimeError("현재가 조회 실패로 체결 불가")
+        # 시장가 슬리피지 반영(2026-07-02): 비용 스트레스 테스트상 슬리피지가 급등주 엣지를
+        # 크게 깎음(0.1→0.5%에서 누적 +45%→+4.6%). 모의가 0% 비용으로 체결되면 실전 대비
+        # 과대평가되므로 편도 0.1% 불리하게 체결(백테스트 SLIP과 동일). 지정가(price>0)는 미적용.
+        if price <= 0:
+            slip = float(os.getenv("SOMI_PAPER_SLIP", "0.001"))
+            fill = int(round(fill * (1 + slip))) if side == "buy" else int(round(fill * (1 - slip)))
         # 원장 read-modify-write는 락으로 직렬화 — 동시 매수/매도 lost-update 방지
         with _ledger_lock():
             led = _paper_load()
