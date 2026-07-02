@@ -4,7 +4,7 @@
 
 근거(2026-07-02 미국 전이검증, backtest_us.py): 문턱 48~52 창·보유 5일·SPY>MA20
 국면에서 24개월 PF 1.53·+73%·MDD -34%(샤프 2.7). 국내와 역방향으로 55↑는
-블로우오프 전패 — 게이트는 하한+상한 '창'(기본 48~54) 구조.
+블로우오프 전패 — 게이트는 하한+상한 '창'(기본 44~54, 모의 완화 검증) 구조.
 
 설계: 국내 모의와 동일하게 KIS 모의서버가 아닌 내부 원장(USD) 체결.
 시세·점수는 야후 일봉(당일 진행중 봉 포함)·backtest._score_levels 재사용.
@@ -49,8 +49,11 @@ LEDGER = CACHE / "somi_paper_us.json"          # USD 원장 {cash, positions{sym
 CLOSED = CACHE / "somi_us_closed.json"         # 청산 기록(미국 전용 — 국내 학습과 분리)
 
 START_CASH = float(os.getenv("SOMI_US_PAPER_CASH", "10000"))       # USD
-GATE_LO = int(os.getenv("SOMI_US_GATE_LO", "48"))
-GATE_HI = int(os.getenv("SOMI_US_GATE_HI", "54"))                  # 55↑ 블로우오프 차단(검증)
+# 게이트 창: 48~54는 PF 2.03이지만 24개월 35건(최근 3개월 히트 4건)뿐 — 모의 데이터가 안 쌓인다.
+# 모의 원칙(공격적 수집)에 따라 하한 44로 완화: 24개월 130건·PF 1.25·+66%·샤프 1.46(2026-07-03 창 그리드).
+# 43 이하 완화 금지(40~54 PF 1.16, 35↓ PF<1 전멸). 55↑ 블로우오프 차단(검증) 유지.
+GATE_LO = int(os.getenv("SOMI_US_GATE_LO", "44"))
+GATE_HI = int(os.getenv("SOMI_US_GATE_HI", "54"))
 MAX_SLOTS = int(os.getenv("SOMI_US_SLOTS", "3"))
 STOP_PCT = float(os.getenv("SOMI_US_STOP_PCT", "3"))               # 하드손절 -3%
 TARGET_PCT = float(os.getenv("SOMI_US_TARGET_PCT", "8"))           # 목표 +8%
@@ -110,6 +113,8 @@ def _record_close(sym: str, name: str, pos: dict, exit_px: float, reason: str) -
 def scan_candidates(regime: dict) -> list[dict]:
     """유니버스 스캔 — 게이트 창(GATE_LO~GATE_HI) 통과 후보. 당일 진행중 봉 포함 점수."""
     out = []
+    if not regime:
+        return []                              # 국면 미확보(조회 실패) — max({}) 크래시 방지, 진입 보류
     today_ok = regime.get(max(regime), True)   # 최신 SPY 국면
     if not today_ok:
         return []                              # 하락국면 — 신규 진입 없음(검증 조건과 동일)
@@ -225,7 +230,10 @@ def daemon() -> None:
                 now = datetime.now()
                 if not last_scan or (now - last_scan).total_seconds() >= SCAN_MIN * 60:
                     last_scan = now
-                    bought = buy(scan_candidates(regime))
+                    cands = scan_candidates(regime)
+                    bought = buy(cands)
+                    # 무체결 밤에도 가동 검증이 되도록 스캔마다 로그 1줄(첫 세션 '텅 빈 로그' 재발 방지)
+                    print(f"[{now:%m-%d %H:%M}] 스캔 후보 {len(cands)} / 매수 {len(bought)} / 보유 {len(_ledger()['positions'])}")
                 if sold or bought:
                     led = _ledger()
                     send("🇺🇸 [소미 미장 모의]\n" + "\n".join(sold + bought)
