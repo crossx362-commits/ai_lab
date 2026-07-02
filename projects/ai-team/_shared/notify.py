@@ -154,9 +154,20 @@ def _find_pids(script_name: str) -> list[str]:
         except Exception:
             return []
 
+    # pgrep 금지(2026-07-02): BSD(macOS) pgrep은 자기 조상 프로세스를 매칭에서 제외한다 —
+    # 데몬이 자기/부모 상태를 조회하면 항상 down 오탐(워치독 점검의 yewon=down 깜빡임,
+    # 대시보드 자기상태 down의 원인). ps 전체 파싱은 조상 제외가 없어 정확하다.
     try:
-        result = subprocess.run(["pgrep", "-f", script_file], capture_output=True, text=True, timeout=5)
-        return [pid for pid in result.stdout.split() if pid.isdigit()]
+        result = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True, timeout=5)
+        pids = []
+        for line in result.stdout.splitlines():
+            pid, _, cmd = line.strip().partition(" ")
+            cmd = cmd.lower()
+            # Windows 분기와 동일하게 python 실행 프로세스만 — 스크립트명을 '언급'만 한
+            # 셸/grep 오탐 방지
+            if pid.isdigit() and script_file in cmd and "python" in cmd:
+                pids.append(pid)
+        return pids
     except Exception:
         return []
 

@@ -69,7 +69,9 @@ if (sys.platform != "win32" or not _has_win32) and _has_fcntl:
             if self.fd:
                 fcntl.flock(self.fd, fcntl.LOCK_UN)
                 self.fd.close()
-                self.lockfile.unlink(missing_ok=True)
+                # unlink 금지(2026-07-02): 파일을 지우면 다음 인스턴스가 '새 inode'에 flock을 걸어
+                # 기존 보유자와 무관하게 락 획득 — kill 경합 시 이중 데몬의 원인(미장소미 2중 실행).
+                # 빈 락파일 잔존은 무해.
                 print(f"🔓 [{self.name}] Lock released")
 
 # Fallback: File-based locking (no win32 or fcntl)
