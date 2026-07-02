@@ -219,7 +219,9 @@ def start_agent(agent_name: str) -> str:
             stdout=out,
             stderr=err,
             creationflags=CREATE_NO_WINDOW,
-            env={**os.environ, "PYTHONUTF8": "1"},
+            # PYTHONUNBUFFERED(2026-07-03): 버퍼링 때문에 데몬 로그가 비어 관찰 불가 —
+            # 미장소미 첫 세션 검증 불가 사례. 라인 단위 즉시 flush.
+            env={**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"},
         )
     return f"{name} 시작 완료 (PID: {process.pid})"
 
