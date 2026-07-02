@@ -97,11 +97,14 @@ def collect() -> dict:
                    "history": [{"ts": x.get("ts"), "notes": x.get("notes", [])}
                                for x in tun.get("history", [])[-3:]][::-1]}
 
-    # 오늘 발굴/제안
+    # 오늘 발굴/제안 — 발굴 사유(reasons)·뉴스 판단까지 노출
     prop = _j(CACHE / "somi_proposals.json", {})
     d["proposals"] = {"ts": prop.get("ts", "-"),
                       "items": [{"name": p.get("name"), "score": p.get("score"),
-                                 "verdict": p.get("verdict"), "change": p.get("change")}
+                                 "verdict": p.get("verdict"), "change": p.get("change"),
+                                 "reasons": (p.get("reasons") or [])[:3],
+                                 "risks": (p.get("risks") or [])[:1],
+                                 "news_reason": (p.get("news_reason") or "")[:90]}
                                 for p in (prop.get("items") or [])[:8]]}
 
     # 조사 산출물 신선도
@@ -171,8 +174,14 @@ async function load(){
  const pf=d.perf.n?`<div class="kv"><div><div class="l">청산</div><div class="big">${d.perf.n}건</div></div><div><div class="l">승률</div><div class="big">${d.perf.winrate}%</div></div><div><div class="l">평균</div><div class="big ${d.perf.avg>=0?'ok':'bad'}">${d.perf.avg>0?'+':''}${d.perf.avg}%</div></div><div><div class="l">누적</div><div class="big ${d.perf.sum>=0?'ok':'bad'}">${d.perf.sum>0?'+':''}${d.perf.sum}%p</div></div></div>`:'<span class="dim">청산 거래가 아직 없습니다 — 첫 체결부터 집계</span>';
  const rt=d.recent_trades.length?`<table><tr><th>청산</th><th>종목</th><th class="num">순수익</th><th>사유</th></tr>${d.recent_trades.map(t=>`<tr><td class="dim">${esc(t.ts_close)}</td><td>${esc(t.name)}</td><td class="num ${t.ret_pct>=0?'ok':'bad'}">${t.ret_pct>0?'+':''}${esc(t.ret_pct)}%</td><td class="dim">${esc(t.reason)}</td></tr>`).join('')}</table>`:'';
  g.push(card('모의 성과',pf+rt));
- // 발굴/제안
- const pr=d.proposals.items.length?`<table><tr><th>종목</th><th class="num">점수</th><th>판정</th><th class="num">등락</th></tr>${d.proposals.items.map(p=>`<tr><td>${esc(p.name)}</td><td class="num">${esc(p.score)}</td><td class="${p.verdict==='buy'?'ok':'dim'}">${esc(p.verdict)}</td><td class="num">${esc(p.change)}</td></tr>`).join('')}</table>`:'<span class="dim">후보 없음</span>';
+ // 발굴/제안 — 종목 행 아래 발굴 사유·리스크·뉴스 판단 표시
+ const pr=d.proposals.items.length?`<table><tr><th>종목</th><th class="num">점수</th><th>판정</th><th class="num">등락</th></tr>${d.proposals.items.map(p=>{
+  const why=[(p.reasons||[]).map(r=>'✚ '+esc(r)).join(' · '),
+             (p.risks||[]).filter(r=>r&&r!=='뚜렷한 위험 신호 없음'&&r!=='뚜렷한 위험 없음').map(r=>'⚠ '+esc(r)).join(' · '),
+             p.news_reason?('📰 '+esc(p.news_reason)):''].filter(Boolean).join('<br>');
+  return `<tr><td>${esc(p.name)}</td><td class="num">${esc(p.score)}</td><td class="${p.verdict==='buy'?'ok':'dim'}">${esc(p.verdict)}</td><td class="num">${esc(p.change)}</td></tr>`+
+         (why?`<tr><td colspan="4" class="dim" style="font-size:12px;padding-left:14px;border-bottom:1px solid var(--line)">${why}</td></tr>`:'');
+ }).join('')}</table>`:'<span class="dim">후보 없음</span>';
  g.push(card('발굴 후보 <span class="dim">('+esc(d.proposals.ts)+')</span>',pr));
  // 튜닝
  const tp=d.tuning.params;
