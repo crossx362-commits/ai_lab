@@ -33,6 +33,7 @@ CONTINUOUS_DAEMONS = {
     "market_desk": "market_desk.py",
     "yewon": "harness_monitor.py",
     "yewon_growth": "growth_engine.py",
+    "somi_us": "somi_us_trader.py",   # 미장 모의 (야간 세션 외엔 대기 루프)
     # Windows 정시 잡 실행자(영숙스케줄) — macOS는 아래 launchd 집계가 이 키를 덮어써 오탐 없음
     "scheduler": "schedule_manager.py",
 }
@@ -82,6 +83,7 @@ _AGENT_LABELS = {
     "yewon": "예원 (CEO 하네스 모니터)",
     "yewon_selfheal": "예원 (자가 점검/복구)",
     "yewon_growth": "예원 (성장엔진)",
+    "somi_us": "소미 (미장 모의)",
     "harness": "하네스 (시스템 점검)",
 }
 

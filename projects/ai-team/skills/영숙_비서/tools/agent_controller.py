@@ -112,6 +112,11 @@ AGENTS = {
         "args": [],
         "log": "status_dashboard",
     },
+    "미장소미": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_us_trader.py",
+        "args": ["--daemon"],
+        "log": "somi_us_trader",
+    },
 }
 
 ALIASES = {
@@ -142,6 +147,8 @@ ALIASES = {
     "yewon_growth": "성장엔진",
     "growth": "성장엔진",
     "dashboard": "대시보드",
+    "somi_us": "미장소미",
+    "us": "미장소미",
 }
 
 
