@@ -148,6 +148,26 @@ def _levels(parsed: dict) -> tuple[float, float, float]:
     return entry, stop, target
 
 
+def _ma_cross(kis: KISClient, code: str, lookback: int = 3) -> tuple[bool, int]:
+    """골든크로스(MA5가 MA20 상향돌파) 최근 lookback거래일 내 발생 여부 → (발생, 경과일).
+    일봉 26개로 각 시점 MA5/MA20을 계산해 교차일 탐지. 데이터 부족/조회 실패 시 (False, -1)."""
+    try:
+        d = kis.daily_prices(code, 26)
+        closes = [to_num(r.get("stck_clpr")) for r in d if r.get("stck_clpr")]
+    except Exception:
+        return False, -1
+    if len(closes) < 21 + lookback:
+        return False, -1
+
+    def ma(n: int, i: int) -> float:  # closes[0]=최신, i일 전 시점의 n일 이동평균
+        return sum(closes[i:i + n]) / n
+
+    for i in range(lookback):
+        if ma(5, i) > ma(20, i) and ma(5, i + 1) <= ma(20, i + 1):
+            return True, i
+    return False, -1
+
+
 def _ma5(kis: KISClient, code: str) -> float:
     """일봉 5일 단순이동평균(종가). 진입 품질(현재가 5일선 위) 판정용."""
     try:
@@ -166,6 +186,12 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     except Exception:
         return None
     score, grade, pos, neg = calculate_score(parsed)
+    # 골든크로스(5/20일선) 가점 — 모의 한정 +6점(추세 전환 초입 포착). 실거래 점수 변경은 헌장상 승인 필요.
+    if _is_paper():
+        gc, gc_days = _ma_cross(kis, code)
+        if gc:
+            score = min(100, score + 6)
+            pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비(저항 미반영 기본값)
     soomgeup_net = to_num(parsed.get("buy_foreigner_5d")) + to_num(parsed.get("buy_institution_5d"))
