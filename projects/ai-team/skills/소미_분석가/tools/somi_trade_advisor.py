@@ -356,6 +356,18 @@ NEWS_JUDGE_SYSTEM = """당신은 국내주식 매수판단가 '소미'입니다.
   "reason": "수급과 '며칠간 뉴스 흐름'을 함께 언급한 한국어 1~2문장"
 }"""
 
+# 모의(paper) 전용 판단 규칙 — 수익 기회 포착 우선(하네스: 완화는 _is_paper 분기로만, 실거래 프롬프트는 그대로).
+# 급등주는 손절폭(ATR/저가)이 넓어 손익비가 구조적으로 낮게 계산됨 → 1.5 하드룰이 후보 전원을 watch로 강등하던 문제.
+# 하방 방어는 하드손절(-3%/ATR)·트레일링·MC 게이트가 별도로 맡으므로 뉴스판정은 악재 회피만 담당한다.
+NEWS_JUDGE_SYSTEM_PAPER = NEWS_JUDGE_SYSTEM.replace(
+    "- 손익비(목표-진입)/(진입-손절)가 1.5 미만이면 'watch' 이하.",
+    "- 손익비는 참고만 한다 — 급등주는 손절폭이 넓어 손익비가 낮게 나오므로 손익비만으로 강등하지 않는다.",
+).replace(
+    "- 너는 제안만 한다. 실제 체결은 사용자 승인으로만. 과감한 매수 유도·근거 없는 낙관 금지.",
+    "- 지금은 모의(검증) 운용: 누적 악재·시장 급변이 없고 수급이 유망하면 'buy'를 준다. "
+    "'뉴스 없음'·'확신 부족'만으로 buy를 watch로 낮추지 마라(뉴스 없음=중립, 수급 우선).",
+)
+
 # 뉴스 누적 일수 + 일자별 영향도 히스토리 저장소 (issue_impact가 매번 덮어써져 자체 누적)
 NEWS_DAYS = int(os.getenv("SOMI_NEWS_DAYS", "5"))
 NEWS_HISTORY_FILE = PROJECT_ROOT / "output" / "cache" / "somi_news_history.json"
@@ -438,12 +450,13 @@ def judge_with_news(p: dict, hist: dict, brief: str) -> dict:
         "위 수급과 '며칠간 뉴스 흐름'을 종합해 매수 판단을 내리고,\n"
         "필요한 만큼만 진입/손절/목표를 조정해 JSON으로만 답하라."
     )
-    raw = llm_text(user, system=NEWS_JUDGE_SYSTEM, json_mode=True, max_tokens=300,
-                   temperature=0.3, lm_first=False)
+    raw = llm_text(user, system=NEWS_JUDGE_SYSTEM_PAPER if _is_paper() else NEWS_JUDGE_SYSTEM,
+                   json_mode=True, max_tokens=300, temperature=0.3, lm_first=False)
     j = _parse_json(raw)
     if not j or "verdict" not in j:
-        # LLM 미응답 → 수급만으로 판단, 안전하게 watch 강등
-        return {**p, "verdict": "watch", "news_trend": "none" if n == 0 else "stable",
+        # LLM 미응답 → 수급만으로 판단. 모의는 유망 수급이면 buy(판정 실패가 매수 전면차단이 되지 않게), 실거래는 watch.
+        fb = "buy" if _is_paper() and p.get("score", 0) >= GOOD_SCORE and p.get("soomgeup_net", 0) > 0 else "watch"
+        return {**p, "verdict": fb, "news_trend": "none" if n == 0 else "stable",
                 "news_reflected": n > 0, "news_reason": "뉴스 판단 LLM 미응답 — 수급만 반영"}
     entry = int(j.get("entry") or p["entry"])
     stop = int(j.get("stop") or p["stop"])
