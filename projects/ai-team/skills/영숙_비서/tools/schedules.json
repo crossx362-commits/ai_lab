@@ -167,6 +167,17 @@
       "enabled": true,
       "run": true,
       "priority": "medium"
+    },
+    {
+      "id": "somi_accum_scan",
+      "agent": "소미",
+      "task": "조용한매집 선행 발굴 (대형주 한정)",
+      "cron": "40 16 * * 1-5",
+      "description": "마감 후 확정 수급으로 매집 신호 스캔 → 관심종목 편입 (매수는 기존 게이트)",
+      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_accum_scanner.py",
+      "enabled": true,
+      "run": true,
+      "priority": "medium"
     }
   ]
 }
