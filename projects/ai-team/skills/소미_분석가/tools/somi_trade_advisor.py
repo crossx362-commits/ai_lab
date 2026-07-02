@@ -235,9 +235,10 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
 
 TUNING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
 # 성장엔진 자동 튜닝 허용범위 — 모의 한정. 엔진 버그로 극단값이 와도 여기서 클램프(실거래 무관).
-# 하한 52(2026-07-02 백테스트 학습): 12개월·40종목 그리드에서 기준 50 이하는 누적 -42~-65%·
-# MDD -75% 손실 구간 — '체결 0→문턱 -2' 규칙이 손실 엣지까지 못 내려가게 바닥을 올림.
-_TUNING_BOUNDS = {"gate_score": (52, 70), "gate_entry": (52, 75),
+# gate_score 하한 58(2026-07-02 중소형 전이검증): 소미 실제 사냥터(코스닥·중소형 30종목)에선
+# 55는 수급확인을 더해도 손실(-60%), 60+수급확인부터 흑자(+45%·PF 1.39) — 대형주 결론(55↑ 흑자)이
+# 전이되지 않음. 최종 눈금은 한별 점수버킷(실데이터)이 보정. gate_entry는 별개 척도라 52 유지.
+_TUNING_BOUNDS = {"gate_score": (58, 70), "gate_entry": (52, 75),
                   "observe_minutes": (1, 20), "paper_auto_max": (2, 10)}
 
 
@@ -256,8 +257,8 @@ def _gate_thresholds() -> dict:
     위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
         return {
-            "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "55"))),   # 탐지점수 (백테스트: 55↑부터 양의 엣지)
-            "entry": _tuning("gate_entry", int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))),   # 진입점수 (동일 근거)
+            "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "60"))),   # 탐지점수 (중소형 전이검증: 60+수급확인부터 흑자)
+            "entry": _tuning("gate_entry", int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))),   # 진입점수 (별개 척도 — 실데이터로 보정 예정)
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}

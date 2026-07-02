@@ -56,10 +56,10 @@ RUN_AT = os.getenv("GROWTH_ENGINE_TIME", "16:10")
 # 자기패치가 수정해도 되는 경로(이 밖을 건드리면 전체 롤백)
 PATCH_WHITELIST = ("projects/ai-team/skills/소미_분석가/tools/",
                    "projects/ai-team/skills/예원_CEO/tools/")
-# 하한 52·기본 55(2026-07-02 백테스트 학습): 기준 50 이하는 12개월 그리드에서 손실 구간
-# (누적 -42~-65%, MDD -75%) — advisor._TUNING_BOUNDS와 동일하게 유지할 것.
-TUNING_DEFAULTS = {"gate_score": 55, "gate_entry": 55, "observe_minutes": 2, "paper_auto_max": 8}
-TUNING_BOUNDS = {"gate_score": (52, 70), "gate_entry": (52, 75),
+# gate_score 기본 60·하한 58(2026-07-02 중소형 전이검증): 실사냥터(코스닥·중소형)에선 55는
+# 수급확인 포함해도 손실(-60%), 60+수급확인부터 흑자(+45%) — advisor._TUNING_BOUNDS와 동일 유지.
+TUNING_DEFAULTS = {"gate_score": 60, "gate_entry": 55, "observe_minutes": 2, "paper_auto_max": 8}
+TUNING_BOUNDS = {"gate_score": (58, 70), "gate_entry": (52, 75),
                  "observe_minutes": (1, 20), "paper_auto_max": (2, 10)}
 
 
