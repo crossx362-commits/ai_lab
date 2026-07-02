@@ -186,12 +186,11 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     except Exception:
         return None
     score, grade, pos, neg = calculate_score(parsed)
-    # 골든크로스(5/20일선) 가점 — 모의 한정 +6점(추세 전환 초입 포착). 실거래 점수 변경은 헌장상 승인 필요.
-    if _is_paper():
-        gc, gc_days = _ma_cross(kis, code)
-        if gc:
-            score = min(100, score + 6)
-            pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
+    # 골든크로스(5/20일선) 가점 +6점(추세 전환 초입 포착) — 모의·실거래 공통(실거래 적용 사용자 승인 2026-07-02).
+    gc, gc_days = _ma_cross(kis, code)
+    if gc:
+        score = min(100, score + 6)
+        pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비(저항 미반영 기본값)
     soomgeup_net = to_num(parsed.get("buy_foreigner_5d")) + to_num(parsed.get("buy_institution_5d"))
