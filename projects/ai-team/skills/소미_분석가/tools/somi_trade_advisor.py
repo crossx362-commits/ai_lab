@@ -634,15 +634,13 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         return []
     held = load_positions()
     done, bought = [], 0
-    # 자금배분(사용자 지시 2026-07-02): 총자산의 유보율(기본 20%)만 예수금으로 남기고 전액 투자.
-    # 배분량 = (현금 - 총자산×유보율)을 후보 확신 가중으로 분배. 유보 도달 시 신규매수 보류.
-    reserve_pct = float(os.getenv("SOMI_CASH_RESERVE_PCT", "0.20"))
+    # 자금배분(사용자 지시 2026-07-02): 예수금 200만원(고정)만 남기고 전액 투자.
+    # 배분량 = (현금 - 고정유보금)을 후보 확신 가중으로 분배. 유보 도달 시 신규매수 보류.
+    reserve = float(os.getenv("SOMI_CASH_RESERVE_KRW", "2000000"))
     _conv = lambda p: min(3.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))  # noqa: E731
     try:
         bal = trader.balance()
         cash = float(bal.get("cash", 0))
-        equity = cash + sum(float(h.get("qty", 0)) * float(h.get("avg", 0)) for h in bal.get("holdings", []))
-        reserve = equity * reserve_pct
         eligible = [p for p in proposals if p["symbol"] not in held][: _paper_auto_max()]
         total_conv = sum(_conv(p) for p in eligible) or 1.0
         deployable = max(0.0, cash - reserve)
@@ -650,7 +648,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         print(f"[소미제안] 잔고 조회 실패 — 고정예산 폴백: {exc}")
         cash, reserve, deployable, total_conv = float("inf"), 0.0, 0.0, 0.0
     if deployable <= 0 and cash != float("inf"):
-        return [f"💤 신규매수 보류 — 예수금 유보율 {reserve_pct:.0%} 도달(현금 {int(cash):,} ≤ 유보 {int(reserve):,})"]
+        return [f"💤 신규매수 보류 — 예수금 고정유보 {int(reserve):,}원 도달(현금 {int(cash):,})"]
     for p in proposals:
         if bought >= _paper_auto_max():   # 실제 체결분만 상한 계산(스킵 메시지는 미포함)
             break
@@ -667,7 +665,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         else:
             budget = int(SOMI_BUDGET * conv)   # 잔고 조회 실패 시 기존 고정예산
         if budget <= 0:
-            done.append(f"💤 {p['name']} 매수 보류 — 예수금 유보율 {reserve_pct:.0%} 도달")
+            done.append(f"💤 {p['name']} 매수 보류 — 예수금 고정유보 {int(reserve):,}원 도달")
             break
         if entry > budget:             # F3: 1주가 배정예산 초과(고가주) — 포트폴리오 배분 왜곡 방지
             done.append(f"⏭️ {p['name']} 매수 건너뜀: 1주 {int(entry):,}원 > 배정예산 {budget:,}원")
