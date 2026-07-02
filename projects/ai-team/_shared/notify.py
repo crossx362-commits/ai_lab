@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime
 
@@ -86,22 +87,27 @@ def send(msg: str, silent: bool = False) -> bool:
         print("[Telegram] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
         return False
 
-    try:
-        payload = json.dumps(
-            {
-                "chat_id": chat_id,
-                "text": msg[:4096],
-                "parse_mode": "HTML",
-                "disable_notification": silent,
-            }
-        ).encode("utf-8")
+    def _post(parse_mode: str | None) -> dict:
+        body = {"chat_id": chat_id, "text": msg[:4096], "disable_notification": silent}
+        if parse_mode:
+            body["parse_mode"] = parse_mode
         req = urllib.request.Request(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data=payload,
+            data=json.dumps(body).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=10) as response:
-            result = json.loads(response.read().decode("utf-8"))
+            return json.loads(response.read().decode("utf-8"))
+
+    try:
+        try:
+            result = _post("HTML")
+        except urllib.error.HTTPError as he:
+            if he.code != 400:
+                raise
+            # 본문에 이스케이프 안 된 <, & 가 있으면 HTML 파싱 400('탐지점수 47 < 48' 등)
+            # → 매수/청산 보고가 통째로 유실되던 문제. 평문으로 1회 재시도해 전달을 보장한다.
+            result = _post(None)
         if result.get("ok"):
             print(f"[Telegram] Sent {len(msg)} chars")
             return True
