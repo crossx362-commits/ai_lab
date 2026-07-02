@@ -81,6 +81,7 @@ _AGENT_LABELS = {
     "market_desk": "마켓데스크 (시장 종합)",
     "yewon": "예원 (CEO 하네스 모니터)",
     "yewon_selfheal": "예원 (자가 점검/복구)",
+    "yewon_growth": "예원 (성장엔진)",
     "harness": "하네스 (시스템 점검)",
 }
 
