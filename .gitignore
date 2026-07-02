@@ -1,6 +1,7 @@
 # Local agent/tool state
 .agent/
 .claude/
+agent-reach/
 .logs/
 projects/.logs/
 projects/.daemon_state.json

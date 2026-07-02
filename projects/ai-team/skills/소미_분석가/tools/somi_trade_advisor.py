@@ -759,6 +759,15 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
     held_syms = set(load_positions().keys())
     candidates = [p for p in proposals if p["symbol"] not in held_syms]
 
+    # 발굴 후보 자동 관심등록 — 유망(GOOD_SCORE↑)만. 가격감시·정기보고가 즉시 추적 시작.
+    try:
+        from watchlist_manager import auto_register
+        added = auto_register(candidates, min_score=GOOD_SCORE)
+        if added:
+            header += f"\n📌 관심종목 자동 등록: {', '.join(added)}"
+    except Exception as exc:
+        print(f"[watchlist] 자동 등록 실패: {exc}")
+
     # ── 오전: 실매수 금지, 후보 저장만 ──
     if slot_kind in ("collect", "observe"):
         saved = _save_candidates(candidates, slot_kind)
@@ -862,6 +871,13 @@ def main() -> None:
         state = PROJECT_ROOT / "output" / "cache" / "somi_advisor_slots.json"
         with ProcessLock("somi_trade_advisor"):
             print(f"[{datetime.now()}] 소미 매수 제안 데몬 시작 (시간대 슬롯: {','.join(slots)})")
+            # 기동 즉시 1회 — 재시작/장중 진입 후 다음 정시까지 놀지 않고 바로 발굴·관찰 시작(모의만).
+            if _is_paper():
+                try:
+                    print(f"[{datetime.now()}] 기동 즉시 실행(buy)")
+                    run(args.candidates, do_send=True, slot_kind="buy")
+                except Exception as e:
+                    print(f"[{datetime.now()}] 기동 실행 오류: {e}")
             while True:
                 slot = due_slot(slots, state)   # 정해진 시각에만, 재시작·매틱 보고 방지
                 if slot:

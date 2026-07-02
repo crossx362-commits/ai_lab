@@ -55,6 +55,28 @@ def add_watch(symbol: str, name: str) -> str:
     return f"✅ {name}({symbol})을 감시 목록에 추가했습니다.\n현재 {len(watchlist)}개 종목 감시 중"
 
 
+def auto_register(items: list[dict], min_score: int = 60, cap: int = 15) -> list[str]:
+    """발굴 종목 자동 등록 — min_score 이상만, 총 cap 개 상한, 중복 스킵.
+
+    items: [{"symbol"/"code": str, "name": str, "score": int}, ...]
+    반환: 새로 등록된 "이름(코드)" 목록.
+    """
+    watchlist = load_watchlist()
+    added = []
+    for it in sorted(items, key=lambda x: x.get("score", 0), reverse=True):
+        code = (it.get("symbol") or it.get("code") or "").strip()
+        name = (it.get("name") or "").strip()
+        if not code or not name or it.get("score", 0) < min_score:
+            continue
+        if code in watchlist or len(watchlist) >= cap:
+            continue
+        watchlist[code] = name
+        added.append(f"{name}({code})")
+    if added:
+        save_watchlist(watchlist)
+    return added
+
+
 def remove_watch(symbol: str) -> str:
     """종목 제거"""
     symbol = symbol.strip()

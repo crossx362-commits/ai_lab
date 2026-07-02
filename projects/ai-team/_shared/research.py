@@ -99,8 +99,26 @@ def index_quote(symbol: str) -> dict | None:
         px = m.get("regularMarketPrice")
         if px is None:
             return None
-        prev = m.get("chartPreviousClose") or m.get("previousClose")
+        # 직전 거래일 종가 도출: chartPreviousClose는 range(5d) 시작 이전 종가라
+        # 일간 등락에 부적합. 일봉 종가 시리즈에서 구한다(장중엔 당일 종가가 None).
+        prev = m.get("previousClose")
+        if prev is None:
+            try:
+                closes = [c for c in d["chart"]["result"][0]["indicators"]["quote"][0]["close"] if c is not None]
+            except Exception:
+                closes = []
+            if closes and abs(closes[-1] - px) <= abs(px) * 1e-4:  # 상대오차: 반올림된 현재가와 정밀 종가 매칭
+                prev = closes[-2] if len(closes) >= 2 else None  # 마지막 종가=현재가 → 그 직전이 전일 종가
+            elif closes:
+                prev = closes[-1]  # 당일 종가 미확정(장중) → 마지막 확정 종가가 전일 종가
+            else:
+                prev = m.get("chartPreviousClose")
         chg = round((px - prev) / prev * 100, 2) if prev else None
+        # 검증 가드(피드백 루프): 지수 일간 등락률이 비현실적이면(±25% 초과) 전일종가 산출이
+        # 어긋난 것 → 틀린 수치를 내보내느니 등락률을 버린다(종가는 유지). 과거 chartPreviousClose
+        # 오사용으로 5일 누적변동이 일간으로 표기된 사고를 자동 차단.
+        if chg is not None and abs(chg) > 25:
+            chg = None
         ts = m.get("regularMarketTime")
         dt = datetime.fromtimestamp(ts) if ts else datetime.now()
         # 신선도 가드: 10일 넘게 묵은 데이터는 폐기(예: 제재로 동결된 러시아 IMOEX 2022년치)

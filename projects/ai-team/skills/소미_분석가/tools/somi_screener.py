@@ -241,6 +241,14 @@ def run(top_n: int = 5, candidate_limit: int = 20, do_send: bool = False) -> str
     candidates = get_candidates(kis, candidate_limit)
     results = screen(kis, candidates)
     report = format_report(results, top_n)
+    # 발굴 종목 자동 관심등록 — 유망(GOOD_SCORE↑)만, 가격감시/정기보고가 즉시 추적
+    try:
+        from watchlist_manager import auto_register
+        added = auto_register(results[:top_n], min_score=GOOD_SCORE)
+        if added:
+            report += f"\n- 관심종목 자동 등록: {', '.join(added)}"
+    except Exception as exc:
+        print(f"[watchlist] 자동 등록 실패: {exc}", file=sys.stderr)
     if do_send:
         send(report)
     strong = [r for r in results if r.get("score", 0) >= 60]
