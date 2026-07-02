@@ -1,7 +1,7 @@
 ﻿# 📚 AI 팀 전체 학습 공지
 
-**발행일**: 2026-06-11  
-**대상**: AI 팀 12명 전체  
+**발행일**: 2026-06-11 (2026-07-02 현 로스터 기준 갱신)  
+**대상**: AI 팀 전체 (예원·영숙·소미 + 마켓데스크·행크·유나·레온·한별)  
 **주제**: MasterClass 디자인 시스템 공용 스킬 추가
 
 ---
@@ -15,15 +15,12 @@
 
 | 에이전트 | 우선순위 | 적용 분야 |
 |---------|---------|----------|
-| **티모 (디자이너)** | 🔴 HIGH | petnna UI/UX 디자인 개선 시 MasterClass 다크 테마 철학 적용 |
-| **코다리 (개발자)** | 🔴 HIGH | CSS Custom Properties, Component 패턴 코드 구현 |
-| **예원 (CEO)** | 🟡 MEDIUM | 프리미엄 스트리밍 비즈니스 모델 연구 |
-| 케빈 (인프라) | 🟢 LOW | PWA 다크모드 테마 적용 시 참고 |
-| 경수 (수사관) | ⚪ REFERENCE | - |
-| 로율 (변호사) | ⚪ REFERENCE | - |
-| 펄스 (전략가) | 🟡 MEDIUM | MasterClass 비즈니스 전략 분석 |
+| **예원 (CEO)** | 🔴 HIGH | petnna UI/UX 개선 디스패치 시 MasterClass 디자인 시스템 기준 적용 + 프리미엄 비즈니스 모델 연구 |
+| 마켓데스크 | 🟡 MEDIUM | 프리미엄 구독 플랫폼 시장 트렌드 참고 |
 | 영숙 (비서) | ⚪ REFERENCE | - |
-| 데이브 (주식) | ⚪ REFERENCE | - |
+| 소미 (분석가) | ⚪ REFERENCE | - |
+
+> ※ 과거 담당(티모·코다리 등)은 에이전트 정리로 제거됨. petnna 디자인 작업은 예원 디스패치로 수행.
 
 ---
 
@@ -74,23 +71,12 @@ border-radius: 0px;
 
 ## 🎯 에이전트별 학습 액션 아이템
 
-### 티모 (디자이너)
-1. petnna 색상 팔레트를 MasterClass 스타일로 재설계
-2. Inset shadow 기법으로 버튼 active state 구현
-3. 4px spacing scale 시스템 petnna 전체 적용
-4. Action Raspberry → Violet 600 (#7c3aed) 매핑
-
-### 코다리 (개발자)
-1. `masterclass_design_system.md`의 CSS Custom Properties를 petnna에 통합
-2. Component 패턴 코드화 (버튼, 카드, 입력 필드)
-3. TypeScript type definitions 생성
-
-### 예원 (CEO)
-1. MasterClass의 celebrity instructor 전략 연구
-2. 프리미엄 구독 모델 비즈니스 케이스 분석
+### 예원 (CEO) — petnna 디자인 디스패치 겸임
+1. petnna UI 작업 지시 시 색상 팔레트·4px spacing scale·Component 패턴을 MasterClass 기준으로 명시 (Action Raspberry → Violet 600 `#7c3aed` 매핑)
+2. MasterClass의 celebrity instructor 전략·프리미엄 구독 모델 비즈니스 케이스 분석
 3. Dark UI가 전환률에 미치는 영향 리서치
 
-### 펄스 (전략가)
+### 마켓데스크
 1. MasterClass vs Skillshare vs Coursera 경쟁사 분석
 2. 프리미엄 교육 플랫폼 시장 트렌드 리포트
 
@@ -100,9 +86,7 @@ border-radius: 0px;
 
 각 에이전트는 다음 작업 시 해당 스킬을 참조했음을 보고서에 명시:
 
-- [ ] **티모**: petnna UI 개선 작업 시 "MasterClass 디자인 시스템 기반" 언급
-- [ ] **코다리**: CSS 코드 생성 시 `--color-*` 토큰 사용
-- [ ] **예원**: 전략 보고서에 MasterClass 비즈니스 모델 인용
+- [ ] **예원**: petnna UI 개선 지시·전략 보고서에 "MasterClass 디자인 시스템 기반" 명시, CSS 산출물은 `--color-*` 토큰 사용
 
 ---
 
