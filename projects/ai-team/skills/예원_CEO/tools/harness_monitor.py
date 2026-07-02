@@ -8,7 +8,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
-from _shared.notify import send, agent_status
+from _shared.notify import send, agent_status, _LAUNCHD_FALLBACK
 from _shared.process import ProcessLock
 from _shared import growth
 
@@ -55,21 +55,30 @@ def run_harness():
     return result.stdout or result.stderr or ""
 
 def _restart_bot(name: str) -> None:
-    """봇 재시작 — Windows는 agent_controller, macOS는 launchctl kickstart."""
+    """봇 재시작 — Windows는 agent_controller, macOS는 launchctl kickstart.
+    macOS 라벨은 _LAUNCHD_FALLBACK으로 해석(hank→com.ailab.sched.research_us 등).
+    launchd 비관리 데몬(추세알림·모닝노트·성장엔진 등)은 kickstart가 실패하므로
+    agent_controller로 폴백 — 재부팅 후 미기동 데몬도 이 경로로 복구된다."""
+    controller = os.path.join(
+        os.path.dirname(__file__), "..", "..", "영숙_비서", "tools", "agent_controller.py"
+    )
     if sys.platform == "win32":
-        controller = os.path.join(
-            os.path.dirname(__file__), "..", "..", "영숙_비서", "tools", "agent_controller.py"
-        )
         subprocess.run(
             [sys.executable, controller, name, "restart"],
             capture_output=True, timeout=30,
         )
     else:
         domain = f"gui/{os.getuid()}"
-        subprocess.run(
-            ["launchctl", "kickstart", "-k", f"{domain}/com.ailab.{name}"],
+        label = _LAUNCHD_FALLBACK.get(name, f"com.ailab.{name}")
+        r = subprocess.run(
+            ["launchctl", "kickstart", "-k", f"{domain}/{label}"],
             capture_output=True, timeout=10,
         )
+        if r.returncode != 0:
+            subprocess.run(
+                [sys.executable, controller, name, "restart"],
+                capture_output=True, timeout=30,
+            )
 
 
 # 하네스 이슈 → 원인 에이전트 자동 복구 매핑: (검사명, 메시지 부분문자열, 재시작 대상)

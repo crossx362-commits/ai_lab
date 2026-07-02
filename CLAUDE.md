@@ -437,6 +437,7 @@ if hasattr(sys.stdout, "reconfigure"):
 - **조기청산은 여유·유예·반등대기** — 매수 직후 소폭 눌림에 즉시 컷하면 휘프소. VWAP -2% 여유 + 매수후 15분 유예(`SOMI_EARLY_GRACE_MIN`) + 호가 매수세 우위(반등 예측)면 손실이라도 대기. 하방은 상위 하드손절(-3%/ATR)이 우선 컷하므로 완화해도 안전.
 - **영숙 새 기능은 4곳 등록** — 함수 정의 + `AVAILABLE_FUNCTIONS` + `TOOLS`(GPT 스키마) + 시스템 프롬프트 규칙. 하나라도 빠지면 봇이 함수 못 부르고 일반 회피 답변. 종목 뉴스는 `get_stock_news`(`research.web_brief`).
 - **OS 이관/인프라 교체는 두 플랫폼 모두 확인** — 6/28 launchd 이관이 Windows 정시 잡 실행자(`schedule_manager --daemon`)를 차단해 14개 잡이 나흘간 조용히 정지(예원 다이제스트·속보감시 등). 실행자 교체는 `sys.platform` 분기 필수 + 하네스 체크(check_all)도 같은 분기로 검증. "정기 보고가 안 온다" = 정시 잡 실행자 생존부터 확인.
+- **재부팅 복구는 워치독 launchd 상주가 전제(2026-07-02)** — 7/2 재부팅 후 launchd 비관리 상시 데몬(예원모니터·추세알림·모닝노트·성장엔진)이 반나절 전멸. 원인: 워치독 `_restart_bot`이 macOS에서 `com.ailab.<이름>` kickstart만 시도 → 라벨 없는 데몬은 조용히 실패. 수정: 라벨은 `_LAUNCHD_FALLBACK`으로 해석 + kickstart 실패 시 agent_controller 폴백, 워치독 자신은 `com.ailab.yewon_monitor`(KeepAlive) 상주(설치: `deploy/install_yewon_monitor.command`), 자가복구(yewon_self_heal)도 상시 데몬을 실제 재시작. "재부팅 후 데몬 전멸" = 워치독 launchd 적재부터 확인.
 
 ---
 

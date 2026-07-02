@@ -31,15 +31,13 @@ PROJECT_ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env import load_env            # noqa: E402
-from _shared.notify import send, agent_status, _AGENT_LABELS  # noqa: E402
+from _shared.notify import send, agent_status, _AGENT_LABELS, CONTINUOUS_DAEMONS  # noqa: E402
 from _shared.registry import load_registry  # noqa: E402
 
 load_env()
 
 AC = AI_TEAM / "skills" / "영숙_비서" / "tools" / "agent_controller.py"
 HARNESS = AI_TEAM / "harness" / "check_all.py"
-# 상시 데몬 → agent_controller 제어명 (재시작 가능 대상)
-DAEMON_CONTROL = {"youngsuk": "영숙"}
 # 상시 데몬 → 직접 재실행 스크립트(컨트롤러 비대상, 뮤텍스로 중복 방지)
 DAEMON_SCRIPT = {"somi_monitor": AI_TEAM / "skills" / "소미_분석가" / "tools" / "somi_price_monitor.py"}
 
@@ -111,11 +109,7 @@ def heal_daemons(status: dict) -> tuple[list[str], list[str]]:
         if state != "down":
             continue
         label = _AGENT_LABELS.get(name, name)
-        # 상시 데몬만 자동 재시작. 예약(launchd) 서비스 down은 보고만.
-        if name in DAEMON_CONTROL:
-            code, _ = _run([sys.executable, str(AC), DAEMON_CONTROL[name], "restart"], timeout=40)
-            (fixed if code == 0 else flagged).append(label + (" 재시작" if code == 0 else " 재시작 실패"))
-        elif name in DAEMON_SCRIPT and DAEMON_SCRIPT[name].exists():
+        if name in DAEMON_SCRIPT and DAEMON_SCRIPT[name].exists():
             try:
                 subprocess.Popen([sys.executable, str(DAEMON_SCRIPT[name])],
                                  cwd=str(PROJECT_ROOT),
@@ -125,7 +119,14 @@ def heal_daemons(status: dict) -> tuple[list[str], list[str]]:
                 fixed.append(label + " 재기동")
             except Exception:
                 flagged.append(label + " 재기동 실패")
+        elif name in CONTINUOUS_DAEMONS:
+            # 상시 데몬은 agent_controller(ALIASES 영어 키)로 재시작 — 재부팅 후 미기동 자가복구.
+            # 컨트롤러는 항상 exit 0이므로 출력의 '시작 완료'로 성공 판정.
+            code, out = _run([sys.executable, str(AC), name, "restart"], timeout=40)
+            ok = code == 0 and "시작 완료" in out
+            (fixed if ok else flagged).append(label + (" 재시작" if ok else " 중지(재시작 실패 — 확인 필요)"))
         else:
+            # 예약(launchd) 서비스 down은 프로세스 기동으로 못 고침 — 보고만.
             flagged.append(label + " 중지(확인 필요)")
     return fixed, flagged
 
