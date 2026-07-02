@@ -747,6 +747,33 @@ def get_stock_news(query: str) -> str:
         return f"{query} 뉴스 조회 중 오류가 났어: {e}"
 
 
+def get_disclosures(query: str = "") -> str:
+    """최근 공시 조회 — 유나(아시아조사)의 DART 수집분 우선, 특정 종목은 웹으로 보강."""
+    from _shared import research
+    try:
+        asia = research.load_region("asia") or {}
+        items = asia.get("disclosures") or []
+        if query:
+            hit = [d for d in items if query in (d.get("name", "") + d.get("report", ""))]
+            if hit:
+                return "\n".join([f"📑 '{query}' 최근 공시 {len(hit)}건"] +
+                                 [f"- {d.get('date', '')} {d.get('name', '')}: {d.get('report', '')}" for d in hit[:8]])
+            brief = research.web_brief(
+                f"'{query}' 종목의 최근 1주일 공시(DART)·주요 발표를 3~5줄로 요약. "
+                f"날짜·공시명 중심, 확실치 않으면 '확인된 공시 없음'이라고 답하라.", max_tokens=300)
+            return f"📑 '{query}' — 자동수집분엔 없어 웹에서 확인:\n{(brief or '').strip() or '확인 실패'}"
+        if items:
+            return "\n".join([f"📑 관심종목 최근 공시 {len(items)}건 (수집 {asia.get('updated', '?')})"] +
+                             [f"- {d.get('date', '')} {d.get('name', '')}: {d.get('report', '')}" for d in items[:10]])
+        if not os.getenv("DART_API_KEY", "").strip():
+            return ("📑 공시 자동수집이 꺼져 있어요 — DART_API_KEY 미설정.\n"
+                    "opendart.fss.or.kr에서 무료 API 키 발급 후 .env에 DART_API_KEY로 넣으면 "
+                    "유나가 관심종목 공시를 매 사이클 수집해요. 특정 종목은 '삼성전자 공시'처럼 물으면 웹으로 찾아볼게요.")
+        return "📑 최근 2일간 관심종목 신규 공시가 없어요."
+    except Exception as e:
+        return f"공시 조회 중 오류가 났어: {e}"
+
+
 # ─── 1인 투자하우스 ──────────────────────────────────────────────────────────
 
 _INVEST_HOUSE = AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "investment_house.py"
@@ -887,6 +914,18 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "get_disclosures",
+            "description": "최근 공시(DART) 조회. '공시 알려줘', '오늘 공시 뭐 있어?', 'OO 공시 떴어?' 등 공시 관련 질문이면 호출. query 비우면 관심종목 전체, 종목명 주면 해당 종목만",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string", "description": "종목명(선택, 예: 삼성전자). 전체 공시는 빈 문자열"}},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_stock_news",
             "description": "종목·기업 관련 최신 뉴스/이슈를 웹에서 찾아 요약. 사용자가 '우리기술 뉴스', 'OO 관련뉴스', 'OO 무슨 일 있어?' 처럼 특정 종목의 뉴스·소식을 물으면 호출",
             "parameters": {
@@ -1002,6 +1041,7 @@ AVAILABLE_FUNCTIONS = {
     "list_watchlist": list_watchlist,
     "search_stock": search_stock,
     "get_stock_news": get_stock_news,
+    "get_disclosures": get_disclosures,
     "get_weather": get_weather,
     # 1인 투자하우스
     "invest_scout": invest_scout,
@@ -1036,6 +1076,7 @@ def handle_with_gpt(text: str) -> str:
 - 일정 → list_calendar()
 - 종목 검색 → search_stock()
 - 종목 뉴스/이슈 ("OO 뉴스", "OO 무슨 일 있어?") → get_stock_news()
+- 공시 ("공시 뭐 있어?", "OO 공시") → get_disclosures()
 - 감시 추가 → add_watchlist()
 - 감시 제거 → remove_watchlist()
 - 감시 목록 → list_watchlist()

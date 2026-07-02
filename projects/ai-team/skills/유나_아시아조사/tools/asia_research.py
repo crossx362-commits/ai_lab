@@ -73,8 +73,10 @@ def brief_text(p: dict) -> str:
         lines.append(f"\n📑 watchlist 공시 {len(d)}건")
         for x in d[:10]:
             lines.append(f"- {x['name']}({x['code']}) {x['report']} [{x['date']}]")
-    else:
+    elif os.getenv("DART_API_KEY", "").strip():
         lines.append("\n📑 watchlist 신규 공시 없음")
+    else:  # 키 없으면 '없음'이 아니라 '수집 불가' — 조용한 0건이 정상처럼 보이던 문제
+        lines.append("\n📑 공시 수집 꺼짐 — DART_API_KEY 미설정(opendart.fss.or.kr 무료 발급)")
     news = p.get("news") or []
     if news:
         lines.append("\n📰 증권 뉴스 헤드라인")
