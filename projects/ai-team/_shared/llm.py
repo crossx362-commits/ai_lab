@@ -1,6 +1,7 @@
 """Unified LLM client - Ollama → GPT → Gemini fallback chain."""
 import json
 import os
+import re
 import time
 import urllib.request
 import urllib.error
@@ -58,38 +59,57 @@ def _pick_ollama(models: list[str], task: str) -> str | None:
         for m in models:
             if "qwen" in m.lower() and "deepseek" not in m.lower():
                 return m
-    return models[0]
+    # 기본: 파라미터 수가 가장 큰 모델(2026-07-02) — models[0]이 최소 모델(e2b)이면
+    # 구조화 프롬프트에 빈 응답을 뱉어 전체 폴백 체인이 무너진다(성장엔진 'LLM 종합 실패').
+    def _size(name: str) -> float:
+        m = re.search(r"(\d+(?:\.\d+)?)b", name.lower())
+        return float(m.group(1)) if m else 0.0
+    return max(models, key=_size)
 
 
-def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, task: str = "") -> str | None:
-    """Call Ollama local LLM."""
+def _json_ok(s: str) -> bool:
+    """관대한 JSON 판정 — 코드펜스/서문 허용(호출부와 동일한 find-슬라이스 방식)."""
     try:
-        model = os.getenv("OLLAMA_MODEL")
-        if not model:
-            now = time.time()
-            if "ollama_models" not in _cache or now - _cache.get("ollama_ts", 0) > _CACHE_TTL:
-                _cache["ollama_models"] = _list_ollama()
-                _cache["ollama_ts"] = now
-            model = _pick_ollama(_cache.get("ollama_models", []), task)
+        json.loads(s[s.find("{"):s.rfind("}") + 1])
+        return True
+    except Exception:
+        return False
+
+
+def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7,
+            task: str = "", json_mode: bool = False) -> str | None:
+    """Call Ollama local LLM. 소형 모델이 빈 응답/깨진 JSON을 뱉으면 최대 모델로 1회
+    재시도(2026-07-02) — OLLAMA_MODEL 강제(e2b 등 속도 우선)가 구조화 프롬프트를 못 버텨
+    전체 폴백이 무너지던 문제. 사용자의 소형 기본값은 존중하고 실패 시에만 승급."""
+    try:
+        now = time.time()
+        if "ollama_models" not in _cache or now - _cache.get("ollama_ts", 0) > _CACHE_TTL:
+            _cache["ollama_models"] = _list_ollama()
+            _cache["ollama_ts"] = now
+        available = _cache.get("ollama_models", [])
+        model = os.getenv("OLLAMA_MODEL") or _pick_ollama(available, task)
         if not model:
             return None
+        biggest = _pick_ollama(available, "")
+        candidates = [model] + ([biggest] if biggest and biggest != model else [])
 
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        payload = json.dumps({"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}).encode()
-        req = urllib.request.Request(_ollama_endpoint(), data=payload, headers={"Content-Type": "application/json"})
-
-        with urllib.request.urlopen(req, timeout=60) as r:
-            res = json.loads(r.read())
-        result = res["choices"][0]["message"]["content"].strip()
-        if not result:
-            print(f"  ⚠️ [Ollama:{model}] empty response, falling back")
-            return None
-        print(f"  ✅ [Ollama:{model}] {len(result)} chars")
-        return result
+        for m in candidates:
+            payload = json.dumps({"model": m, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}).encode()
+            req = urllib.request.Request(_ollama_endpoint(), data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                res = json.loads(r.read())
+            result = res["choices"][0]["message"]["content"].strip()
+            if result and (not json_mode or _json_ok(result)):
+                print(f"  ✅ [Ollama:{m}] {len(result)} chars")
+                return result
+            why = "empty response" if not result else "invalid json"
+            print(f"  ⚠️ [Ollama:{m}] {why}, falling back")
+        return None
     except Exception as e:
         print(f"  ❌ [Ollama] {e}")
         return None
@@ -183,20 +203,22 @@ def text(
     temperature: float = 0.7,
     json_mode: bool = False,
     task: str = "",
-    lm_first: bool = False,
+    lm_first: bool | None = None,
 ) -> str | None:
     """
     Generate text with a cost-safe fallback chain.
 
-    Default: Ollama → GPT → Gemini.
-    Set AI_TEAM_LLM_PRIMARY=cloud only for explicit cloud-first runs.
+    Default(lm_first 미지정): Ollama → GPT → Gemini (AI_TEAM_LLM_PRIMARY 준수).
+    lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선(GPT→Gemini→Ollama)
+    — 기존엔 False가 무시돼 '클라우드 우선' 호출(성장엔진·issue_impact)이 전부 로컬을 탔다(2026-07-02 수정).
     Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
     cloud_allowed = _cloud_llm_allowed()
     primary = os.getenv("AI_TEAM_LLM_PRIMARY", "ollama").strip().lower()
+    local_first = lm_first if lm_first is not None else primary in {"local", "ollama"}
 
-    if lm_first or primary in {"local", "ollama"}:
-        result = _ollama(prompt, system, max_tokens, temperature, task)
+    if local_first:
+        result = _ollama(prompt, system, max_tokens, temperature, task, json_mode)
         if result:
             return result
         if not cloud_allowed:
@@ -207,7 +229,7 @@ def text(
         return _gemini(prompt, system, max_tokens, temperature, json_mode)
 
     if not cloud_allowed:
-        return _ollama(prompt, system, max_tokens, temperature, task)
+        return _ollama(prompt, system, max_tokens, temperature, task, json_mode)
 
     result = _gpt(prompt, system, max_tokens, temperature, json_mode)
     if result:
@@ -215,7 +237,7 @@ def text(
     result = _gemini(prompt, system, max_tokens, temperature, json_mode)
     if result:
         return result
-    return _ollama(prompt, system, max_tokens, temperature, task)
+    return _ollama(prompt, system, max_tokens, temperature, task, json_mode)
 
 
 # Shorthand aliases

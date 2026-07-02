@@ -122,7 +122,9 @@ def learn() -> dict:
         f"[거래 통계] {json.dumps(st, ensure_ascii=False)}\n"
         f"[에이전트 자기평가-개선] {improves}\n[자기평가-문제] {bads}"
     )
-    raw = llm_text(prompt, json_mode=True, max_tokens=700, temperature=0.2, lm_first=False)
+    # max_tokens 1500(2026-07-02): 로컬(gemma) 폴백 시 700이면 finish=length로 JSON이 잘려
+    # 파싱 실패 → 'LLM 종합 실패'. 1500부터 완결(finish=stop) 확인.
+    raw = llm_text(prompt, json_mode=True, max_tokens=1500, temperature=0.2, lm_first=False)
     try:
         parsed = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
     except Exception:
