@@ -25,6 +25,7 @@ CONTINUOUS_DAEMONS = {
     "leon": "eu_research.py",
     "market_desk": "market_desk.py",
     "yewon": "harness_monitor.py",
+    "yewon_growth": "growth_engine.py",
 }
 
 # macOS는 아래 데몬을 launchd 정시 잡으로 운영 → 상시 프로세스가 없어도 launchd에 적재돼 있으면

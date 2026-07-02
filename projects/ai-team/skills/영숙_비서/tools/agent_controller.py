@@ -97,6 +97,11 @@ AGENTS = {
         "args": ["--daemon", "--send"],
         "log": "morning_note",
     },
+    "성장엔진": {
+        "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "growth_engine.py",
+        "args": ["--daemon"],
+        "log": "yewon_growth_engine",
+    },
 }
 
 ALIASES = {
@@ -123,6 +128,8 @@ ALIASES = {
     "somi_position": "소미포지션",
     "somi_screener": "소미발굴",
     "market_desk": "마켓데스크",
+    "yewon_growth": "성장엔진",
+    "growth": "성장엔진",
 }
 
 
