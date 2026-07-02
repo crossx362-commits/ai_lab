@@ -32,7 +32,7 @@ from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
-INDEX_SYMBOLS = {"코스피": "^KS11", "상해종합": "000001.SS", "닛케이": "^N225"}  # 베트남VN: Yahoo 미지원으로 제외
+INDEX_SYMBOLS = {"코스피": "^KS11", "코스닥": "^KQ11", "상해종합": "000001.SS", "닛케이": "^N225"}  # 베트남VN: Yahoo 미지원으로 제외
 
 
 def collect() -> dict:

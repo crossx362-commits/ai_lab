@@ -62,6 +62,15 @@ def log(message: str) -> None:
         file.write(line + "\n")
 
 
+# KIS 원시응답 덤프는 err.log를 도배하므로 디버그 플래그에서만 출력.
+_DEBUG_RAW = os.getenv("SOMI_DEBUG_KIS", "false").strip().lower() in {"1", "true", "yes"}
+
+
+def dlog(message: str) -> None:
+    if _DEBUG_RAW:
+        log(message)
+
+
 def num(value: object) -> float:
     text = str(value or "").replace(",", "").strip()
     if not text:
@@ -193,7 +202,7 @@ class KISClient:
                 "FHKST01010900",
                 {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
             )
-            log(f"KIS investor_today raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
+            dlog(f"KIS investor_today raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
             output = data.get("output") or data.get("output1") or []
             if isinstance(output, list):
                 return output[0] if output else {}
@@ -210,7 +219,7 @@ class KISClient:
                 "FHKST01010900",
                 {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
             )
-            log(f"KIS investor_history raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
+            dlog(f"KIS investor_history raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
             output = data.get("output") or []
             if isinstance(output, list):
                 return output[:days]
@@ -232,7 +241,7 @@ class KISClient:
                     "FID_INPUT_DATE_2": today.strftime("%Y%m%d"),
                 },
             )
-            log(f"KIS daily_short_sale raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
+            dlog(f"KIS daily_short_sale raw response: {json.dumps(data, ensure_ascii=False)[:500]}")
             # output2: 일자별 공매도 상세(체결수량/비중/평균가), output1: 가격 요약
             output = data.get("output2") or data.get("output") or data.get("output1") or []
             if isinstance(output, list):

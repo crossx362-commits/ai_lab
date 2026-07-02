@@ -64,7 +64,7 @@ AGENTS = {
     },
     "소미발굴": {
         "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_screener.py",
-        "args": ["--daemon"],
+        "args": ["--daemon", "--times", "09:30,10:30,11:30,13:00,14:00,15:00,15:50"],
         "log": "somi_screener",
     },
     "예원": {
