@@ -1051,6 +1051,20 @@ def main() -> None:
     parser.add_argument("--slot", default="buy", help="단발 실행 슬롯종류: collect|observe|buy|buy_close|manage")
     args = parser.parse_args()
 
+    # 이중실행 가드(2026-07-02): launchd 정시 one-shot(--propose)이 상시 매수 데몬과 겹치면 스킵
+    # — 데몬이 발굴 주기로 같은 일을 하므로 이중 수집(LLM 비용·중복 보고) 방지.
+    # 데몬 미가동이면 그대로 실행(안전망 유지). schedule_manager 가드(Windows)와 동일 취지.
+    if args.propose and not args.daemon and sys.platform != "win32":
+        import subprocess
+        try:
+            out = subprocess.run(["pgrep", "-f", r"somi_trade_advisor\.py.*--daemon"],
+                                 capture_output=True, text=True, timeout=5).stdout
+            if any(p.isdigit() for p in out.split()):
+                print("[소미] one-shot 스킵 — 매수 데몬 가동 중(이중실행 방지)")
+                return
+        except Exception:
+            pass  # 판정 실패 시 실행 — 잡 누락이 이중 수집보다 해롭다
+
     # 슬롯 시각 → 시간대 운영 종류(헌장): 오전 후보편입·관찰, 오후 매수, 마감권 제한, 마감 관리
     slot_kinds = {
         "09:00": "collect",   # 09:00~10:00 신규매수 금지·후보 편입

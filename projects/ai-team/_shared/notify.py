@@ -42,7 +42,9 @@ CONTINUOUS_DAEMONS = {
 _LAUNCHD_FALLBACK = {
     "somi_position": "com.ailab.somi_position",
     "somi_screener": "com.ailab.somi_screener",
-    "somi_advisor": "com.ailab.somi_screener",     # 매수제안=trade_advisor(launchd propose)
+    # somi_advisor 는 폴백 제거(2026-07-02) — 동적 매수(발굴 주기+고속감시)는 상시 데몬이
+    # 필요한데 launchd 정시 잡(com.ailab.somi_screener propose)을 '정상'으로 봐서 워치독이
+    # 데몬을 안 살렸다. 이제 프로세스 기준 판정 → down이면 워치독/자가복구가 재기동.
     "hank": "com.ailab.sched.research_us",
     "yuna": "com.ailab.sched.research_asia",
     "leon": "com.ailab.sched.research_eu",
