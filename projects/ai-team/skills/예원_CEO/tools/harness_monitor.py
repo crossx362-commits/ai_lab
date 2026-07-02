@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """예원 - 하네스 자동 감시 및 봇 관리"""
-import os, sys, time, subprocess
+import json, os, sys, time, subprocess
 from datetime import datetime
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -72,6 +72,62 @@ def _restart_bot(name: str) -> None:
         )
 
 
+# 하네스 이슈 → 원인 에이전트 자동 복구 매핑: (검사명, 메시지 부분문자열, 재시작 대상)
+# 대상은 agent_controller ALIASES에 있는 영어 키. 재시작으로 해결 가능한 이슈만 등록
+# (파일 파손 등 재시작으로 안 낫는 건 알림만 — 데이터 삭제류 복구는 자동화 금지).
+REMEDY_MAP = [
+    ("agent_links", "region_us", "hank"),
+    ("agent_links", "region_asia", "yuna"),
+    ("agent_links", "region_eu", "leon"),
+    ("agent_links", "종합브리프", "market_desk"),
+    ("agent_links", "issue_impact", "market_desk"),
+    ("agent_links", "발굴", "somi_advisor"),
+    ("agent_links", "somi_proposals", "somi_advisor"),
+    ("schedule", "schedule_manager", "scheduler"),
+]
+REMEDY_COOLDOWN_SEC = 3600   # 같은 대상 재시작 최소 간격(재시작 루프 방지)
+REMEDY_MAX_PER_DAY = 3       # 초과 시 자동복구 포기 → 수동 개입 에스컬레이션
+
+
+def auto_remediate(state: dict) -> list[str]:
+    """직전 하네스 결과(harness_latest.json)의 WARN/FAIL을 원인 에이전트 재시작으로 자가치유.
+    state: {대상: {"ts": [epoch...], "date": "YYYY-MM-DD", "escalated": bool}} (데몬 메모리 상주)."""
+    report_file = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "..", "..",
+        "reports", "status", "harness_latest.json")
+    try:
+        with open(report_file, encoding="utf-8") as f:
+            checks = json.load(f).get("checks", [])
+    except Exception:
+        return []
+    actions = []
+    now, today = time.time(), datetime.now().strftime("%Y-%m-%d")
+    for chk in checks:
+        if chk.get("status") == "OK":
+            continue
+        for name, pat, target in REMEDY_MAP:
+            if chk.get("name") != name or pat not in chk.get("message", ""):
+                continue
+            s = state.setdefault(target, {"ts": [], "date": today, "escalated": False})
+            if s["date"] != today:   # 날짜 바뀌면 카운터 리셋
+                s.update({"ts": [], "date": today, "escalated": False})
+            if s["ts"] and now - s["ts"][-1] < REMEDY_COOLDOWN_SEC:
+                break                # 쿨다운 중 — 직전 복구 효과를 기다린다
+            if len(s["ts"]) >= REMEDY_MAX_PER_DAY:
+                if not s["escalated"]:
+                    s["escalated"] = True
+                    actions.append(f"🚨 {target} 자동복구 {REMEDY_MAX_PER_DAY}회 실패 — 수동 개입 필요: {chk['message'][:60]}")
+                break
+            try:
+                _restart_bot(target)
+                s["ts"].append(now)
+                actions.append(f"🔧 {target} 재시작 ({len(s['ts'])}/{REMEDY_MAX_PER_DAY}) ← {chk['message'][:60]}")
+            except Exception as e:
+                actions.append(f"⚠️ {target} 재시작 실패: {e}")
+            break                    # 이슈당 첫 매칭 대상 하나만
+    return actions
+
+
 def check_and_restart_bots():
     """봇 상태 확인 및 재시작 (best-effort)"""
     status = agent_status()
@@ -97,6 +153,7 @@ def main():
 
     last_growth_date = None
     last_issue_sig = ""
+    remedy_state: dict = {}
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -117,6 +174,11 @@ def main():
                     last_issue_sig = sig
                 if issues:
                     print("⚠️  이슈 감지")
+                    # 자동 복구: 원인 에이전트 재시작(쿨다운·일일상한) — 결과는 텔레그램 보고
+                    acts = auto_remediate(remedy_state)
+                    if acts:
+                        send("🔧 [예원] 하네스 이슈 자동 복구\n" + "\n".join(acts))
+                        last_issue_sig = ""  # 복구 후 상태 재평가 — 다음 사이클 결과를 다시 보고
 
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
