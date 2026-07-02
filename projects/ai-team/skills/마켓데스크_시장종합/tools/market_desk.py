@@ -95,6 +95,7 @@ def _build_issue_impact(disclosures: list, us: dict, asia: dict, eu: dict) -> No
         f"[시장 맥락]\n{ctx_str}\n\n[평가 대상 종목]\n{target_list}"
     )
     impact = {}
+    evaluated = False   # LLM 평가가 실제 수행됐는지 — 실패 시 빈 값으로 덮어쓰지 않기 위한 구분
     try:
         # issue_impact는 소미 매매 판단의 핵심 입력 → JSON 신뢰성 우선. 로컬 모델(json_mode 미적용)은
         # 파싱 실패가 잦아 GPT(json_mode)→Gemini→로컬 순으로 고정. (로컬은 최후 폴백)
@@ -102,7 +103,13 @@ def _build_issue_impact(disclosures: list, us: dict, asia: dict, eu: dict) -> No
                 or gemini(prompt, max_tokens=900, temperature=0.2, json_mode=True)
                 or text(prompt, json_mode=True, max_tokens=900, temperature=0.2, task="blog"))
         if resp:
-            raw = _json.loads(resp)
+            try:
+                raw = _json.loads(resp)
+            except Exception:
+                # 폴백 모델이 JSON 앞뒤에 잡문/펜스를 붙이는 실패("Extra data" 등) 구제 —
+                # 첫 '{'부터 균형 잡힌 첫 JSON 객체만 추출(2026-07-03 뉴스신호 유실 사고)
+                raw, _ = _json.JSONDecoder().raw_decode(resp[resp.index("{"):])
+            evaluated = isinstance(raw, dict)
             # 실제 영향(0이 아닌) 종목만 저장 — 0/근거없음은 '뉴스없음'으로 둠. 종목명도 함께.
             for code, v in (raw.items() if isinstance(raw, dict) else []):
                 if isinstance(v, dict) and isinstance(v.get("score"), int) and v["score"] != 0:
@@ -111,6 +118,14 @@ def _build_issue_impact(disclosures: list, us: dict, asia: dict, eu: dict) -> No
                                     "name": targets.get(code, code)}
     except Exception as exc:
         print(f"[market_desk] issue_impact 평가 실패: {exc}", file=sys.stderr)
+
+    if not evaluated:
+        # 평가 자체가 실패(모델 무응답·JSON 복구 불능) — 빈 값 덮어쓰기로 직전 뉴스신호를
+        # 유실하지 않는다(가드레일 '비파괴' 원칙을 원본에도 적용). 직전값 없을 때만 그대로 진행.
+        prev = research.load_issue_impact()
+        if prev:
+            print(f"[market_desk] issue_impact 평가 실패 — 직전 {len(prev)}종목 유지(빈 값 덮어쓰기 방지)")
+            return
 
     # 밸류체인 확장: 강한 호재(+2) 종목의 공급망 수혜주를 도출해 후보에 추가
     _expand_value_chain(impact)

@@ -92,6 +92,9 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
             return None
         biggest = _pick_ollama(available, "")
         candidates = [model] + ([biggest] if biggest and biggest != model else [])
+        # 선순위 후보가 비챗 모델(400 "does not support chat" — gemma4:e2b 사고 2026-07-03)이거나
+        # 죽어도 로컬 최후선이 유지되도록 나머지 설치 모델을 후순위로 전부 편성.
+        candidates += [m for m in available if m not in candidates]
 
         messages = []
         if system:
@@ -99,11 +102,16 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
         messages.append({"role": "user", "content": prompt})
 
         for m in candidates:
-            payload = json.dumps({"model": m, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}).encode()
-            req = urllib.request.Request(_ollama_endpoint(), data=payload, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=120) as r:
-                res = json.loads(r.read())
-            result = res["choices"][0]["message"]["content"].strip()
+            try:
+                payload = json.dumps({"model": m, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}).encode()
+                req = urllib.request.Request(_ollama_endpoint(), data=payload, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    res = json.loads(r.read())
+                result = res["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                # 후보 하나의 실패(비챗 모델 400 등)로 로컬 전체를 포기하지 않는다 — 다음 모델 시도
+                print(f"  ⚠️ [Ollama:{m}] {e}, falling back")
+                continue
             if result and (not json_mode or _json_ok(result)):
                 print(f"  ✅ [Ollama:{m}] {len(result)} chars")
                 return result
