@@ -58,6 +58,26 @@ def save_last_run(last_run: Dict):
         json.dump(last_run, f, ensure_ascii=False, indent=2)
 
 
+def _script_running(script_name: str) -> bool:
+    """해당 파이썬 스크립트가 이미 실행 중인지(플랫폼 분기)."""
+    try:
+        if sys.platform == "win32":
+            cmd = (
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.Name -match '^python' -and $_.CommandLine -and "
+                f"$_.CommandLine.ToLower().Contains('{script_name.lower()}') }} | "
+                "Select-Object -ExpandProperty ProcessId"
+            )
+            out = subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
+                                 capture_output=True, text=True, timeout=10).stdout
+        else:
+            out = subprocess.run(["pgrep", "-f", script_name],
+                                 capture_output=True, text=True, timeout=10).stdout
+        return any(p.isdigit() for p in out.split())
+    except Exception:
+        return False   # 판정 실패 시 '미가동'으로 간주해 잡을 실행 — 잡 누락이 이중 수집보다 해롭다
+
+
 def should_run(schedule: Dict, last_run_time: Optional[str]) -> bool:
     """스케줄 실행 여부 확인"""
     if not schedule.get('enabled', True):
@@ -129,6 +149,13 @@ def execute_schedule(schedule: Dict):
         run_cmd = command.strip()
         if not run_cmd.startswith("python3"):
             run_cmd = sys.executable + run_cmd[len("python"):]
+        # 이중실행 가드(2026-07-02): 같은 스크립트가 이미 프로세스로 떠 있으면(상시 데몬 등)
+        # one-shot 실행을 스킵 — 조사팀처럼 데몬이 내부 슬롯으로 같은 시각에 수집하는 잡의
+        # 이중 수집(LLM 비용·캐시 경합) 방지. 데몬 없는 잡(다이제스트 등)은 그대로 실행된다.
+        script = os.path.basename(next((p for p in run_cmd.split() if p.endswith(".py")), ""))
+        if script and script != "schedule_manager.py" and _script_running(script):
+            print(f"  [영숙] {schedule_id} 스킵 — {script} 프로세스 이미 가동 중(이중실행 방지)")
+            return
         try:
             subprocess.Popen(run_cmd, shell=True, cwd=PROJECT_ROOT,
                              env={**os.environ, "PYTHONUTF8": "1"})
