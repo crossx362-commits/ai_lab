@@ -155,7 +155,8 @@ function card(t,b){return `<div class="card"><h2>${t}</h2>${b}</div>`}
 function esc(x){return String(x??'-').replace(/</g,'&lt;')}
 async function load(){
  let d;try{d=await (await fetch('/api/status')).json()}catch(e){document.getElementById('ts').textContent='서버 응답 없음 — 재시도 중';return}
- document.getElementById('ts').textContent='갱신 '+d.ts+' · 30초마다 자동 갱신 · 모드 '+(d.mode==='paper'?'🧪 모의':'🔴 실거래')+' · 배포 '+esc(d.deploy.head);
+ window._last=d.ts;
+ document.getElementById('ts').innerHTML='갱신 '+d.ts+' · 다음 갱신 <span id="cd">15</span>초 · 모드 '+(d.mode==='paper'?'🧪 모의':'🔴 실거래')+' · 배포 '+esc(d.deploy.head);
  const g=[];
  // 에이전트
  g.push(card('에이전트',(d.agents||[]).map(a=>`<span class="pill" style="margin:2px"><span class="${S.cls(a.state)}">●</span> ${esc(a.label)} <span class="dim">${S.txt(a.state)}</span></span>`).join(' ')));
@@ -183,7 +184,9 @@ async function load(){
  g.push(card('학습 인사이트 <span class="dim">('+esc(d.insights.ts)+')</span>',`<div class="dim" style="font-size:12px">표본 ${esc(d.insights.stats.n??0)}건</div>`+(d.insights.list||[]).map(i=>`<div style="margin-top:4px">· ${esc(i)}</div>`).join('')));
  document.getElementById('grid').innerHTML=g.join('');
 }
-load();setInterval(load,30000);
+load();setInterval(load,15000);
+let cd=15;setInterval(()=>{cd=cd>1?cd-1:15;const el=document.getElementById('cd');if(el)el.textContent=cd},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()}); // 탭 복귀 시 즉시 갱신
 </script></body></html>"""
 
 
