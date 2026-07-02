@@ -6,8 +6,8 @@
 ---
 
 ## ✅ 적용 대상
-- **필수**: 데이브, 영숙, 예원 (API 사용 에이전트)
-- **권장**: 모든 에이전트 (향후 API 사용 시)
+- **필수**: 소미, 영숙, 예원 (API 사용 에이전트)
+- **권장**: 마켓데스크·행크·유나·레온·한별 포함 모든 에이전트
 
 ---
 
@@ -18,12 +18,12 @@
 #### ❌ 잘못된 예
 ```python
 system = """
-# 데이브 트레이더 완전 가이드
+# 소미 분석가 완전 가이드
 
 ## 소개
-데이브는 세계 최고의 AI 트레이더로서 다음과 같은 역할을 수행합니다:
-- 글로벌 매크로 경제 분석
-- 미 연준 정책 이벤트 모니터링
+소미는 세계 최고의 주식 분석가로서 다음과 같은 역할을 수행합니다:
+- 국내주식 수급·숏커버링 분석
+- 시장 국면·이슈 임팩트 모니터링
 [30KB의 장황한 설명...]
 """
 ```
@@ -149,29 +149,27 @@ system = """분석 단계:
 
 ## 📊 통합 적용 템플릿 (2026-06-17 최신)
 
-### 데이브 트레이더 예시 (점수 기반)
+### 소미 분석가 예시 (점수 기반)
 
 ```python
-def analyze_crypto(ticker, current_price, current_trend, indicators):
+def analyze_stock(ticker, current_price, current_trend, indicators):
     # 1. 공통 + 특화 프롬프트 조합
-    common = get_common_trader_prompt()  # 공통 원칙 ~500 토큰
-    dave_specific = """
---- 데이브 특화 ---
-성향: 보수적 (극존칭)
+    common = get_common_analyst_prompt()  # 공통 원칙 ~500 토큰
+    somi_specific = """
+--- 소미 특화 ---
+성향: 수급 기반 보수적 판단
 점수 → 판단:
-85~100: BUY 20%
-70~84: BUY 10%
-55~69: BUY 5%
-40~54: HOLD
-0~39: HOLD"""
+60~100: 분할 관찰 가능
+40~59: 관찰 우선
+0~39: 신규 매수 보류"""
     
-    system = common + dave_specific  # 총 ~700 토큰
+    system = common + somi_specific  # 총 ~700 토큰
     
     # 2. 점수 계산 (코드가 수행)
     scores = calculate_trade_score(indicators, current_trend)
     
     # 3. 간소화된 입력 (LLM은 판단만)
-    prompt = f"""코인: {ticker}
+    prompt = f"""종목: {ticker}
 가격: {current_price}원
 추세: {current_trend}
 총점: {scores['total']}/100
@@ -253,36 +251,33 @@ system = """비서 영숙. 규칙:
 3. 구동→dispatch()"""
 ```
 
-### 데이브/레오 (공통 구조)
+### 소미/마켓데스크 (공통 구조)
 ```python
 # 공통 프롬프트 함수
-def get_common_trader_prompt():
+def get_common_analyst_prompt():
     """공통 원칙 ~500 토큰"""
-    return """너는 암호화폐 매매 최종 판단 AI다.
-목표는 제한된 토큰으로 기대값이 양수인 거래를 반복하는 것이다.
+    return """너는 국내주식 분석 최종 판단 AI다.
+목표는 제한된 토큰으로 기대값이 양수인 제안을 반복하는 것이다.
 ...
 출력 JSON:
-{"decision":"BUY|SELL|HOLD","percentage":0|5|10|20|40|50,"confidence":0-100,"reason":"40자이내"}"""
+{"verdict":"buy|hold|avoid","score":0-100,"confidence":0-100,"reason":"40자이내"}"""
 
-# 데이브 특화
-def load_dave_prompt():
-    common = get_common_trader_prompt()
+# 소미 특화 (매수 제안)
+def load_somi_prompt():
+    common = get_common_analyst_prompt()
     return common + """
---- 데이브 특화 ---
-성향: 보수적 (극존칭)
-점수 → 판단:
-85~100: BUY 20%
-70~84: BUY 10%
+--- 소미 특화 ---
+성향: 수급·손익비 기반 보수적
+60↑ 분할 관찰 / 40↑ 관찰 우선 / 미만 보류
 ..."""
 
-# 레오 특화
-def load_leo_prompt():
-    common = get_common_trader_prompt()
+# 마켓데스크 특화 (이슈 임팩트)
+def load_marketdesk_prompt():
+    common = get_common_analyst_prompt()
     return common + """
---- 레오 특화 ---
-대상: DOGE, PEPE, NEAR...
-성향: 공격적 단타
-애매하면 5% 소액 진입 우선
+--- 마켓데스크 특화 ---
+대상: 지수·섹터·뉴스 이슈
+issue_impact는 json_mode 고정 (하네스 가드레일)
 ..."""
 ```
 

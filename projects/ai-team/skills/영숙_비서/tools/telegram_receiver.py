@@ -1288,7 +1288,7 @@ def handle_message(text: str) -> str:
     # 거래/투자 현황(보유 포지션·손익) — LLM 분류기보다 먼저(짧은 '모의 투자 현황'이
     # mode_status로 오분류되는 것 방지). 모드 조회는 '거래 모드/뭘로 돼있어'만 해당.
     if _is_trading_status_request(text):
-        return _tool_get_trading_status() + "\n\n" + _tool_get_agent_status()
+        return _tool_get_trading_status()
 
     # 2) 의미 기반 분류 — 정확매칭이 안 됐고, 운영 맥락이거나 짧은 지시일 때만 LLM 호출
     if has_order or has_signals or len(text) <= 30:

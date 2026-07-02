@@ -118,15 +118,20 @@ python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --sen
 
 ## 🤖 AI Agent System Architecture
 
-### Agent Roster (3 Agents — 실존)
+### Agent Roster (8 Agents — 실존, 2026-07-02 갱신)
 
-> 백엔드(스킬 폴더·실행 데몬)가 있는 에이전트는 예원·영숙·소미 3명뿐. 과거 가짜 에이전트(데이브·레오·시그널·코다리·케빈·경수·티모·로율 등)는 제거됨.
+> 백엔드(스킬 폴더·실행 데몬)가 있는 에이전트는 아래 8명. 과거 가짜 에이전트(데이브·레오·시그널·코다리·케빈·경수·티모·로율 등)는 제거됨.
 
 | Agent | Role | Key Tools |
 |-------|------|-----------|
 | 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `harness_manager.py`, `skill_auditor.py`, `evaluate_feedback.py`, `daily_feedback_scheduler.py` |
-| 영숙 (Youngsuk) | Secretary — Telegram webhook bot (GPT-4o-mini) | `telegram_receiver.py` (Flask), `schedule_manager.py` |
-| 소미 (Somi) | Analyst — Stock analysis & scoring | `somi_kis_reporter.py`, `short_covering_analyzer.py` |
+| 영숙 (Youngsuk) | Secretary — Telegram bot (GPT-4o-mini, polling) | `telegram_receiver.py`, `schedule_manager.py`, `agent_controller.py` |
+| 소미 (Somi) | Analyst — Stock analysis & scoring | `somi_kis_reporter.py`, `somi_trade_advisor.py`, `somi_screener.py`, `short_covering_analyzer.py`, `watchlist_manager.py` |
+| 마켓데스크 | Market synthesis — 07:50/15:20 시장 종합·issue_impact | `market_desk.py` |
+| 행크 (Hank) | US research desk | `us_research.py` |
+| 유나 (Yuna) | Asia research desk | `asia_research.py` |
+| 레온 (Leon) | Europe research desk | `eu_research.py` |
+| 한별 (Hanbyul) | Quant analysis | `quant_analyzer.py` |
 
 ### Shared Module System (Unified, 5 Files)
 
@@ -425,12 +430,13 @@ if hasattr(sys.stdout, "reconfigure"):
 - **발굴 유니버스는 단일 축 금지** — 거래대금순 한 축만 보면 매번 초대형주만 나온다. 거래대금·거래증가율·회전율 다축 병합(`somi_screener.get_candidates`). "왜 같은 종목만" = 축 편향 의심.
 - **모의(paper) 운영 중 `somi_signal_engine`(소미신호) 중지** — 실거래 승인푸시 전용이라 모의 중엔 혼선. 자동매수 단일 실행자는 `somi_trade_advisor`. (코드 강제: `scan()` 최상단 paper 가드가 푸시 차단·대기신호 비움 — 하네스가 자동재시작해도 무해)
 - **모의 원칙: 종일 공격적 매수, 실거래는 보수** — 완화(문턱↓·수급미확정 허용·조기청산 여유)는 전부 `_is_paper()` 분기로만. 실거래 보수값은 절대 건드리지 마. "모의인데 왜 매수 안 되냐"는 대부분 이 분기 누락.
-- **모의 데몬 슬롯: `collect`/`observe`도 매수로 승격** — 고빈도 스케줄에 `09:00`(collect)·`11:00`(observe)이 섞여 있어 그 시각만 '신규매수 금지'로 빠진다. 데몬 루프에서 `_is_paper()`면 buy로 승격(`somi_trade_advisor` main). "특정 시각만 매수 끊김" = 슬롯종류 매핑 의심.
-- **당일 외국인/기관 수급은 장중 원천 미공개** — KIS가 마감 후 확정. 장중엔 모든 종목이 `morning_missing_investor_adjusted`(수급미확정). 하드차단하면 모의 장중매수 100% 불가 → **실거래만 차단, 모의는 5일 누적수급 보정점수로 허용**(`_passes_buy_gate`).
+- **모의 매수는 고정 슬롯 아님 — 발굴 주기 + 고속감시 동적 진입(2026-07-02)** — 발굴(스크리너·뉴스·공시)은 10분 주기(`SOMI_DISCOVERY_MIN`), 사이엔 60초 고속감시(`_fast_watch`)가 발굴 후보만 실시간 재평가해 즉시 매수(`slot=buy_fast`). 마감권(15:00~)은 고속감시 중단·buy_close 규율. 실거래는 기존 보수 슬롯 유지.
+- **당일 외국인/기관 수급: 확정치는 마감 후, 장중엔 잠정치(가집계)로 채점** — KIS `investor-trend-estimate`(HHPTJ04160200)가 장중 외인·기관 추정 순매수 제공(`somi_kis_reporter.investor_estimate`). 잠정 수급은 `score_mode=intraday_estimated`로 정상 채점(가점 8→6, dq -5). 가집계 미가용 시에만 구 방식 폴백(5일 누적 보정 `morning_missing_investor_adjusted` — 실거래 차단·모의 허용). "수급 미확정이라 거래 안 됨" 재발 시 가집계 API 응답부터 확인.
 - **뉴스는 스케줄 아니라 매매 직전 반영** — 마켓데스크 정시(07:50/15:20)만 믿지 마라. 매수 슬롯 직전 거래대상 관련 지역(국내주식=아시아/한국)만 재수집→`issue_impact` 재평가(`_refresh_news_for_trade`). 미국/유럽은 KR 장중 미개장이라 아침 스냅샷 유지.
 - **`issue_impact` 평가는 GPT(json_mode) 고정** — 로컬 모델은 json_mode 미적용이라 JSON 파싱 실패가 잦고, 실패 시 빈 결과로 덮어써 뉴스 신호가 통째로 유실된다. `market_desk._build_issue_impact`는 GPT→Gemini→로컬 순. 매 슬롯 재평가는 비파괴(비면 직전값 복원).
 - **조기청산은 여유·유예·반등대기** — 매수 직후 소폭 눌림에 즉시 컷하면 휘프소. VWAP -2% 여유 + 매수후 15분 유예(`SOMI_EARLY_GRACE_MIN`) + 호가 매수세 우위(반등 예측)면 손실이라도 대기. 하방은 상위 하드손절(-3%/ATR)이 우선 컷하므로 완화해도 안전.
 - **영숙 새 기능은 4곳 등록** — 함수 정의 + `AVAILABLE_FUNCTIONS` + `TOOLS`(GPT 스키마) + 시스템 프롬프트 규칙. 하나라도 빠지면 봇이 함수 못 부르고 일반 회피 답변. 종목 뉴스는 `get_stock_news`(`research.web_brief`).
+- **OS 이관/인프라 교체는 두 플랫폼 모두 확인** — 6/28 launchd 이관이 Windows 정시 잡 실행자(`schedule_manager --daemon`)를 차단해 14개 잡이 나흘간 조용히 정지(예원 다이제스트·속보감시 등). 실행자 교체는 `sys.platform` 분기 필수 + 하네스 체크(check_all)도 같은 분기로 검증. "정기 보고가 안 온다" = 정시 잡 실행자 생존부터 확인.
 
 ---
 

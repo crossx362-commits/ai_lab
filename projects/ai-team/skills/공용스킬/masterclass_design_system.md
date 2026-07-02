@@ -248,18 +248,12 @@ Example Component Prompts:
 
 ## 🎓 에이전트 학습 가이드
 
-### 티모 (디자이너)
-- MasterClass의 다크 테마 철학을 petnna에 적용
-- Action Raspberry (#e32652) → 펫과나의 보라 계열로 변환
-- Inset shadow 기법을 활용한 버튼 상태 표현
-- 4px 기반 spacing 시스템 유지
+### 예원 (CEO) — petnna UI/UX 디스패치 겸임
+- MasterClass의 다크 테마 철학을 petnna에 적용 (Action Raspberry #e32652 → 보라 계열 변환)
+- Inset shadow 버튼 상태 표현 · 4px spacing 시스템 유지
+- CSS Custom Properties / Component 패턴 / Typography scale을 구현 지시에 명시
 
-### 코다리 (개발자)
-- CSS Custom Properties 구조 학습
-- Component 패턴 코드 구현 시 참고
-- Typography scale을 React/TS에서 활용
-
-### 예원 (CEO)
+### 예원 (CEO) — 전략
 - 프리미엄 스트리밍 플랫폼의 비즈니스 모델 연구
 - MasterClass의 celebrity instructor 전략
 - Dark UI가 전환률에 미치는 영향 분석

@@ -106,8 +106,8 @@ border-radius: 0px;
 
 MasterClass 디자인 시스템이 공용 스킬로 추가되었습니다.
 
-[티모/코다리] 🔴 HIGH 우선순위로 학습 후 petnna 프로젝트에 적용
-[예원/펄스] 🟡 MEDIUM 우선순위로 각자 분야에 참고
+[예원] 🔴 HIGH 우선순위 — petnna 프로젝트 디스패치 시 적용
+[마켓데스크] 🟡 MEDIUM 우선순위 — 시장 트렌드 참고
 
 상세 내용: skills/공용스킬/masterclass_design_system.md
 학습 가이드: skills/공용스킬/AGENT_LEARNING_NOTICE.md
