@@ -81,6 +81,7 @@ def parse_input_text(text: str) -> dict[str, str]:
         "cash": ["추가 예수금", "예수금"],
         "intraday_feature": ["장중 특징"],
         "today_investor_available": ["오늘수급확정"],
+        "investor_source": ["수급출처"],
         "investor_history_window": ["수급윈도"],
     }
     for key, labels in aliases.items():
@@ -162,17 +163,22 @@ def calculate_score(raw: dict[str, str]) -> tuple[int, str, list[str], list[str]
     # 대신 5일 누적이 강하면 보정점수 최대 +10(외국인 +6 / 기관 +4)만 부여한다.
     today_inv_flag = (raw.get("today_investor_available", "") or "").strip().lower()
     today_investor_available = today_inv_flag not in {"아니오", "no", "false", "n"}
+    inv_src = (raw.get("investor_source", "") or "").strip()
     if today_investor_available:
+        # 잠정(장중 추정가집계)도 당일 수급으로 정상 채점 — '미확정 보류' 근본 해소(2026-07-02).
+        # 잠정치는 확정 대비 오차 여지가 있어 가점을 8→6으로 소폭 낮추고 라벨을 남긴다.
+        pt = 6 if inv_src == "잠정" else 8
+        tag = "(잠정)" if inv_src == "잠정" else ""
         if foreigner > 0:
-            score += 8
-            pos.append(f"외국인 순매수 {foreigner:,.0f}주")
+            score += pt
+            pos.append(f"외국인 순매수{tag} {foreigner:,.0f}주")
         if institution > 0:
-            score += 8
-            pos.append(f"기관 순매수 {institution:,.0f}주")
+            score += pt
+            pos.append(f"기관 순매수{tag} {institution:,.0f}주")
         if individual > 0 and foreigner <= 0 and institution <= 0:
             score -= 6
             neg.append("개인 중심 수급으로 추격 매수 위험")
-        score_mode = "regular"
+        score_mode = "intraday_estimated" if inv_src == "잠정" else "regular"
     else:
         boost = (6 if foreigner_5d > 0 else 0) + (4 if institution_5d > 0 else 0)
         score += min(10, boost)
@@ -352,6 +358,8 @@ def data_quality_score(dq: dict, vwap: float = 0.0, buy_pressure: float = 0.0) -
         s -= 40; notes.append("실시간 VWAP/호가 미확인")
     if mode == "morning_missing_investor_adjusted" or not today_ok:
         s -= 30; notes.append("당일 외국인/기관 수급 미확정(보정 채점)")
+    elif mode == "intraday_estimated":
+        s -= 5; notes.append("당일 수급 잠정치(장중 가집계) 사용")
     s = max(0, min(100, s))
     state = "normal" if s >= 80 else ("adjustable" if s >= 50 else "degraded")
     return s, state, notes

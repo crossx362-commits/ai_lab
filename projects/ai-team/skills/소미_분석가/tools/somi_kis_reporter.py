@@ -228,6 +228,28 @@ class KISClient:
             log(f"KIS investor_history unavailable: {exc}")
             return []
 
+    def investor_estimate(self, symbol: str = DEFAULT_SYMBOL) -> dict:
+        """장중 외국인·기관 추정가집계(잠정) — 당일 확정치가 마감 후에만 나오는 공백을 메우는 KIS 공식 잠정치.
+        시간대 버킷별 누적 스냅샷 중 최신 행 반환: {"frgn": 외국인 추정순매수(주), "orgn": 기관}(미가용 시 {})."""
+        try:
+            data = self.get(
+                "uapi/domestic-stock/v1/quotations/investor-trend-estimate",
+                "HHPTJ04160200",
+                {"MKSC_SHRN_ISCD": symbol},
+            )
+            rows = data.get("output2") or data.get("output") or []
+            if isinstance(rows, dict):
+                rows = [rows]
+            rows = [r for r in rows
+                    if str(r.get("frgn_fake_ntby_qty", "")).strip() or str(r.get("orgn_fake_ntby_qty", "")).strip()]
+            if not rows:
+                return {}
+            r = max(rows, key=lambda x: str(x.get("bsop_hour_gb", "")))  # 최신 시간대 버킷
+            return {"frgn": num(r.get("frgn_fake_ntby_qty")), "orgn": num(r.get("orgn_fake_ntby_qty"))}
+        except Exception as exc:
+            log(f"KIS investor_estimate unavailable: {exc}")
+            return {}
+
     def daily_short_sale(self, symbol: str = DEFAULT_SYMBOL) -> dict:
         try:
             today = datetime.now()
@@ -412,10 +434,18 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
     # 당일 외국인/기관 수급 가용 여부 — 오전엔 KIS가 당일치를 빈 값으로 내려줌.
     # 미확정이면 5일 누적 윈도에서 오늘 빈 행을 제외([1:6]), 정상이면 오늘 포함([:5]).
     today_investor_available = bool((foreigner or "").strip() or (institution or "").strip())
-    if today_investor_available:
+    investor_source = "확정" if today_investor_available else "미확정"
+    if not today_investor_available:
+        # 근본 해결(2026-07-02): 확정치 공백을 KIS 장중 추정가집계(잠정)로 메운다.
+        # '수급 미확정' 상태로 점수보정·매수보류되던 문제 제거 — 잠정치도 공식 데이터.
+        est = kis.investor_estimate(symbol)
+        if est:
+            foreigner, institution = str(int(est["frgn"])), str(int(est["orgn"]))
+            today_investor_available, investor_source = True, "잠정"
+    if today_investor_available and investor_source == "확정":
         investor_hist = (raw_hist or [])[:5]
         investor_history_window = "today_included"
-    else:
+    else:  # 잠정/미확정: 히스토리의 오늘 빈 행 제외(잠정치는 당일 칸에만 사용, 누적엔 중복 미포함)
         investor_hist = (raw_hist or [])[1:6]
         investor_history_window = "today_excluded"
 
@@ -457,6 +487,7 @@ def build_input_text(kis: KISClient, report_name: str = "정기", symbol: str = 
 최근 5일 외국인 누적: {fmt_int(foreigner_5d) if foreigner_5d else "확인 필요"}
 최근 5일 기관 누적: {fmt_int(institution_5d) if institution_5d else "확인 필요"}
 오늘수급확정: {"예" if today_investor_available else "아니오"}
+수급출처: {investor_source}
 수급윈도: {investor_history_window}
 외국인 보유수량: {fmt_int(foreign_holding)}
 외국인 보유율: {foreign_rate}
