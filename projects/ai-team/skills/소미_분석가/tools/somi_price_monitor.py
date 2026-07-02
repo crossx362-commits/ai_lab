@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 from datetime import datetime
@@ -136,13 +137,16 @@ class PriceMonitor:
 - 이유: 거래량 {vol_txt} · 현재가 {fmt_int(current_price)}원
 - 다음 전달 대상: {nxt}"""
 
-                if send(message):
+                # 사용자 지시(2026-07-02): 급변동 알림은 텔레그램 전송 안 함 — 매수 체결 메시지만 전송.
+                # 감지·성장기록·콘솔로그는 유지(신호 파이프라인 영향 없음). 재활성화: SOMI_ALERT_TELEGRAM=true
+                tg_on = os.getenv("SOMI_ALERT_TELEGRAM", "false").lower() in {"1", "true", "yes"}
+                if (send(message) if tg_on else True):
                     self.last_alert_time = datetime.now()
-                    log(f"알림 전송: {direction} {window_change:+.2f}% [{grade}]")
+                    log(f"급변동 감지{'·알림 전송' if tg_on else '(텔레그램 억제)'}: {direction} {window_change:+.2f}% [{grade}]")
                     growth.record(
                         "somi_monitor", role="실시간 급변동 감시",
                         data=f"{self.name}({self.symbol}) {window_change:+.2f}%/{mins}분",
-                        judgment=f"급변동 감지 — {grade}", result="알림 전송",
+                        judgment=f"급변동 감지 — {grade}", result="알림 전송" if tg_on else "감지 기록(전송 억제)",
                         good="단시간 델타 + 신호등급 분류",
                         bad=("강한신호 외엔 전달 보류 검토" if grade != "강한 신호" else ""),
                         scores={"fit": 22, "evidence": 19, "efficiency": 19, "risk": 17, "brevity": 9},
