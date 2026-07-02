@@ -159,16 +159,22 @@ def check_schedule():
     if bad_commands:
         return fail("schedule command missing: " + ", ".join(bad_commands[:5]))
 
-    # 정시 잡은 단일 데몬이 아니라 잡별 독립 launchd 에이전트(com.ailab.sched.*)로 운영 — 적재 확인
-    try:
-        out = subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=5).stdout
-        loaded = sum(1 for ln in out.splitlines()
-                     if ln.split() and ln.split()[-1].startswith("com.ailab.sched."))
-    except Exception as e:
-        return fail(f"launchctl 조회 실패: {e}")
-    if loaded < len(enabled):
-        return fail(f"정시 잡 적재 부족 {loaded}/{len(enabled)} — 'schedule_sync.py sync' 필요")
-    return ok(f"정시 잡 launchd 적재 {loaded}개 (enabled {len(enabled)}/{len(items)})")
+    # 정시 잡 실행자 확인 — macOS는 잡별 독립 launchd 에이전트(com.ailab.sched.*),
+    # Windows는 launchd가 없어 schedule_manager 데몬(영숙스케줄)이 단일 실행자.
+    if sys.platform == "darwin":
+        try:
+            out = subprocess.run(["launchctl", "list"], capture_output=True, text=True, timeout=5).stdout
+            loaded = sum(1 for ln in out.splitlines()
+                         if ln.split() and ln.split()[-1].startswith("com.ailab.sched."))
+        except Exception as e:
+            return fail(f"launchctl 조회 실패: {e}")
+        if loaded < len(enabled):
+            return fail(f"정시 잡 적재 부족 {loaded}/{len(enabled)} — 'schedule_sync.py sync' 필요")
+        return ok(f"정시 잡 launchd 적재 {loaded}개 (enabled {len(enabled)}/{len(items)})")
+    pids = find_python_pids("schedule_manager.py")
+    if not pids:
+        return fail(f"정시 잡 실행자(schedule_manager) 미가동 — enabled {len(enabled)}개 잡 정지")
+    return ok(f"정시 잡 실행자 schedule_manager pid={','.join(pids)} (enabled {len(enabled)}/{len(items)})")
 
 
 def check_somi():
