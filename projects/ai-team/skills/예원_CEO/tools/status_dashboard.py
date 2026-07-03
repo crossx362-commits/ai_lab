@@ -380,8 +380,9 @@ function stripLayout(items,x,y,w,h){
   const host=out.slice(out.length-lastN).reduce((a,b)=>a.w*a.h<b.w*b.h?a:b);
   let th=Math.max(tail.v/host.w,host.w/4,MH);   // 종횡비 4:1 이내 사각형 지향
   th=Math.min(th,host.h*0.45);                  // 호스트를 과도하게 잠식하지 않게
-  host.h-=th;
-  out.push({d:tail.d,x:host.x,y:host.y+host.h,w:host.w,h:th})}
+  // 호스트 '위쪽'에 배치(사용자 피드백: 밑에 깔리게 하지 마) — 우상단 사각형 블록
+  out.push({d:tail.d,x:host.x,y:host.y,w:host.w,h:th});
+  host.y+=th;host.h-=th}
  return out}
 // ── 포맷터 ──
 const P=(m,p)=>m==='kr'?Number(p||0).toLocaleString()+'원':'$'+Number(p||0).toLocaleString();
