@@ -790,6 +790,12 @@ def _apply_buy_gates(buys: list[dict]) -> list[dict]:
         for p in buys:
             mc = _mc(p["symbol"], p["entry"], p["stop"], p["target"])
             p["mc"] = mc
+            # 모의는 MC를 차단이 아니라 '기록'으로만 사용(오너 지시 2026-07-03) — 폭락장 90일 분포에선
+            # 전 종목 기대수익 음수라 전면 무체결이 됨. 매수 기록에 mc가 남아 한별 튜닝의 학습 데이터가 된다.
+            # 실거래는 기존 fail-closed 유지(시뮬 실패·기대수익 음수 차단).
+            if _is_paper():
+                gated.append(p)
+                continue
             if mc is not None and mc["edge"] >= min_edge and mc["exp_ret_pct"] > 0:
                 gated.append(p)
         return gated
