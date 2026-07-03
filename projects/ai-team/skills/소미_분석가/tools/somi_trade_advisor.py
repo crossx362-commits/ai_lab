@@ -57,8 +57,12 @@ def _load(path: Path) -> dict:
 
 
 def _save(path: Path, data: dict) -> None:
+    # 원자적 쓰기(2026-07-03): write_text는 파일을 0으로 자른 뒤 기록 → 데몬이 쓰는 순간
+    # 텔레그램 봇 등 동시 읽기가 빈/깨진 파일을 만나 '보유 없음' 오답. tmp+replace로 봉인.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def load_proposals() -> dict:

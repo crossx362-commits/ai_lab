@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -31,10 +32,11 @@ def load_watchlist() -> dict[str, str]:
 
 
 def save_watchlist(watchlist: dict[str, str]) -> None:
-    """감시 목록 저장"""
+    """감시 목록 저장 (원자적 — 동시 읽기가 빈/깨진 파일 안 보게 tmp+replace)."""
     WATCHLIST_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with WATCHLIST_FILE.open("w", encoding="utf-8") as f:
-        json.dump(watchlist, f, ensure_ascii=False, indent=2)
+    tmp = WATCHLIST_FILE.with_name(WATCHLIST_FILE.name + ".tmp")
+    tmp.write_text(json.dumps(watchlist, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, WATCHLIST_FILE)
 
 
 def add_watch(symbol: str, name: str) -> str:
