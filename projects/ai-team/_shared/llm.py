@@ -171,9 +171,11 @@ def _claude(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
         return None
+    # 호출 시점에 재조회 — 데몬이 load_env() 전에 이 모듈을 임포트해도 최신 설정 반영
+    model = os.getenv("ANTHROPIC_MODEL", ANTHROPIC_MODEL) or ANTHROPIC_MODEL
     try:
         user_prompt = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
-        payload = {"model": ANTHROPIC_MODEL, "max_tokens": max_tokens,
+        payload = {"model": model, "max_tokens": max_tokens,
                    "messages": [{"role": "user", "content": user_prompt}]}
         if system:
             payload["system"] = system
@@ -190,10 +192,18 @@ def _claude(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
             return None
         result = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text").strip()
         if not result or (json_mode and not _json_ok(result)):
-            print(f"  ⚠️ [Claude:{ANTHROPIC_MODEL}] {'empty' if not result else 'invalid json'}")
+            print(f"  ⚠️ [Claude:{model}] {'empty' if not result else 'invalid json'}")
             return None
-        print(f"  ✅ [Claude:{ANTHROPIC_MODEL}] {len(result)} chars")
+        print(f"  ✅ [Claude:{model}] {len(result)} chars")
         return result
+    except urllib.error.HTTPError as e:
+        # 에러 본문의 메시지를 노출 — "400 Bad Request"만으론 크레딧 소진/모델명 오류 구분 불가(2026-07-03)
+        try:
+            detail = json.loads(e.read()).get("error", {}).get("message", "")[:120]
+        except Exception:
+            detail = ""
+        print(f"  ❌ [Claude] HTTP {e.code}: {detail}")
+        return None
     except Exception as e:
         print(f"  ❌ [Claude] {e}")
         return None
