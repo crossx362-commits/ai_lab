@@ -315,7 +315,7 @@ function squarify(items,x,y,w,h){
   return Math.max(len*len*mx/(s*s),(s*s)/(len*len*mn))};
  // 최소 두께 보장(2026-07-03): 극단 분포(삼성 50%·한미반도체 0.6%)에서 꼬리 타일이
  // 3~7px 실오라기가 돼 '짤림'으로 보이던 문제 — 행/열 두께와 행 내부 셀에 16px 바닥.
- const MINT=16;
+ const MINT=20;
  const place=(len)=>{const tot=row.reduce((a,b)=>a+b.v,0)||1;
   let out2=row.map(q=>q.v/tot*len);
   if(len>MINT*row.length){
@@ -341,7 +341,7 @@ function squarify(items,x,y,w,h){
 // 배치 후 최소치 보정: 트리맵 수학상 꼬리 종목(예: 반도체 섹터의 한미반도체 0.6%)은
 // 거인 밑 7~11px 띠가 될 수밖에 없다 — 같은 열/행의 이웃(거인)에게서 공간을 빌려 16px 보장.
 function enforceMin(rects){
- const M=16,EPS=0.8;
+ const M=20,EPS=0.8;
  for(let pass=0;pass<3;pass++){
   let changed=false;
   for(const t of rects){
@@ -383,10 +383,10 @@ function renderMarket(mkt,rows,ox,oy,W,H,html){
   const s=r.d,cls=s.wch>0.02?'up':s.wch<-0.02?'dn':'fl';
   // 작은 섹터는 헤더 생략 — 18px 헤더가 타일 공간을 다 먹어 '짤림'처럼 보이던 문제
   const HD=(r.h<48||r.w<64)?0:16;
-  // 섹터 내 크기 지수 압축(^0.75): 삼성 50.8%·하이닉스 48.5%·한미반도체 0.62% 같은 극단
-  // 분포에서 꼬리 종목이 3px 실오라기로 배정돼 안 보이던 문제 — 순서·크기감은 유지하며
-  // 82:1 → 27:1로 완화해 최소한 읽히는 블록을 보장.
-  const inner=enforceMin(squarify(s.items.map(x=>({d:x,v:Math.pow(sizeOf(x),0.75)})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2)));
+  // 섹터 내 크기 √압축: 삼성 50.8%·하이닉스 48.5%·한미반도체 0.62% 같은 극단 분포에서
+  // 꼬리 종목이 실오라기가 되던 문제 — 82:1을 9:1로 완화(순서·크기감 유지)해 꼬리도
+  // 이름·등락률이 읽히는 블록을 보장(사용자 피드백 2026-07-03: 0.75 압축도 부족).
+  const inner=enforceMin(squarify(s.items.map(x=>({d:x,v:Math.sqrt(sizeOf(x))})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2)));
   const tiles=inner.map(t=>{
    const x=t.d,dim=query&&!(x.name.toLowerCase().includes(query)||String(x.code).toLowerCase().includes(query));
    const fs=Math.max(9,Math.min(21,Math.sqrt(t.w*t.h)/5.2));
