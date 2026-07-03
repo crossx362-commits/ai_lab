@@ -15,6 +15,8 @@ import json
 import os
 import sys
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -69,8 +71,13 @@ US_SECTORS = {
 }
 
 
-def _collect_kr() -> list[dict]:
-    """국장 — KIS 현재가/등락/거래대금."""
+# 지수 요약(헤더 칩) — 국장: KIS ETF 프록시, 미장: 야후
+KR_INDICES = [("069500", "KOSPI200"), ("229200", "코스닥150")]
+US_INDICES = [("SPY", "S&P500"), ("QQQ", "나스닥100"), ("DIA", "다우"), ("^VIX", "VIX")]
+
+
+def _collect_kr() -> tuple[list[dict], list[dict]]:
+    """국장 — KIS 현재가/등락/거래대금/시가총액(주가×상장주식수) + 지수 프록시."""
     from somi_kis_reporter import KISClient, num
     kis = KISClient()
     out = []
@@ -78,62 +85,130 @@ def _collect_kr() -> list[dict]:
         for code, name in stocks:
             try:
                 q = kis.quote(code)
+                price = num(q.get("stck_prpr"))
+                listed = num(q.get("lstn_stcn"))
                 out.append({
                     "code": code, "name": name, "sector": sector,
-                    "price": num(q.get("stck_prpr")),
+                    "price": price,
                     "change": round(num(q.get("prdy_ctrt")), 2),
-                    "value": num(q.get("acml_tr_pbmn")),  # 거래대금(원) — 타일 크기
+                    "value": num(q.get("acml_tr_pbmn")),        # 거래대금(원)
+                    "mcap": round(price * listed) if listed else None,  # 시가총액(원)
                 })
             except Exception:
                 continue
             time.sleep(0.12)
-    return out
+    idx = []
+    for code, label in KR_INDICES:
+        try:
+            q = kis.quote(code)
+            idx.append({"name": label, "price": num(q.get("stck_prpr")),
+                        "change": round(num(q.get("prdy_ctrt")), 2)})
+        except Exception:
+            continue
+        time.sleep(0.12)
+    return out, idx
 
 
-def _collect_us() -> list[dict]:
-    """미장 — 야후 배치 시세(v7 quote)로 한 번에. 실패 시 개별 차트 폴백."""
+_YCRUMB: dict = {}  # {"cookie": str, "crumb": str} — 프로세스 생존 동안 재사용
+
+
+def _yahoo_crumb() -> tuple[str, str]:
+    """야후 v7 API용 쿠키+크럼(2023~ 필수). 실패 시 ("","")."""
+    if _YCRUMB.get("crumb"):
+        return _YCRUMB["cookie"], _YCRUMB["crumb"]
+    try:
+        req = urllib.request.Request("https://fc.yahoo.com", headers={"User-Agent": "Mozilla/5.0"})
+        try:
+            urllib.request.urlopen(req, timeout=10)
+            cookie = ""
+        except urllib.error.HTTPError as e:   # 404여도 Set-Cookie는 온다
+            cookie = e.headers.get("Set-Cookie", "").split(";")[0]
+        req = urllib.request.Request("https://query1.finance.yahoo.com/v1/test/getcrumb",
+                                     headers={"User-Agent": "Mozilla/5.0", "Cookie": cookie})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            crumb = r.read().decode().strip()
+        _YCRUMB.update({"cookie": cookie, "crumb": crumb})
+        return cookie, crumb
+    except Exception:
+        return "", ""
+
+
+def _yahoo_quotes(symbols: list[str]) -> dict[str, dict]:
+    """야후 v7 배치 시세(시총 포함) → {심볼: quote}. 실패 시 빈 dict(개별 차트 폴백)."""
+    try:
+        cookie, crumb = _yahoo_crumb()
+        url = ("https://query1.finance.yahoo.com/v7/finance/quote?symbols="
+               + ",".join(urllib.parse.quote(s) for s in symbols)
+               + (f"&crumb={urllib.parse.quote(crumb)}" if crumb else ""))
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if cookie:
+            headers["Cookie"] = cookie
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as r:
+            res = json.loads(r.read())["quoteResponse"]["result"]
+        return {q.get("symbol"): q for q in res}
+    except Exception:
+        return {}
+
+
+def _yahoo_chart_fallback(sym: str) -> tuple[float, float, float] | None:
+    """개별 차트(range=2d)로 (종가, 등락%, 거래량) 폴백."""
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}?range=2d&interval=1d"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            d = json.loads(r.read())["chart"]["result"][0]
+        cl = [c for c in d["indicators"]["quote"][0]["close"] if c is not None]
+        vol = [v for v in d["indicators"]["quote"][0]["volume"] if v is not None]
+        if len(cl) >= 2:
+            return round(cl[-1], 2), round((cl[-1] - cl[-2]) / cl[-2] * 100, 2), (vol[-1] if vol else 0)
+    except Exception:
+        pass
+    return None
+
+
+def _collect_us() -> tuple[list[dict], list[dict]]:
+    """미장 — 야후 배치 시세(시총 포함) + 지수. 배치 실패 시 개별 차트 폴백."""
     syms = [s for stocks in US_SECTORS.values() for s, _ in stocks]
     sec_of = {s: sec for sec, stocks in US_SECTORS.items() for s, _ in stocks}
     name_of = {s: n for stocks in US_SECTORS.values() for s, n in stocks}
+    quotes = _yahoo_quotes(syms + [s for s, _ in US_INDICES])
     out = []
-    try:
-        url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + ",".join(syms)
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            res = json.loads(r.read())["quoteResponse"]["result"]
-        for q in res:
-            s = q.get("symbol")
+    for s in syms:
+        q = quotes.get(s)
+        if q:
             price = q.get("regularMarketPrice") or 0
             vol = q.get("regularMarketVolume") or 0
             out.append({
                 "code": s, "name": name_of.get(s, s), "sector": sec_of.get(s, "기타"),
                 "price": price, "change": round(q.get("regularMarketChangePercent") or 0, 2),
-                "value": price * vol,  # 거래대금 근사(USD)
+                "value": price * vol,                      # 거래대금 근사(USD)
+                "mcap": q.get("marketCap"),                # 시가총액(USD)
             })
-    except Exception:
-        # 폴백: 개별 차트(range=2d)로 등락 계산
-        for s in syms:
-            try:
-                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{s}?range=2d&interval=1d"
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                with urllib.request.urlopen(req, timeout=12) as r:
-                    d = json.loads(r.read())["chart"]["result"][0]
-                cl = [c for c in d["indicators"]["quote"][0]["close"] if c is not None]
-                vol = [v for v in d["indicators"]["quote"][0]["volume"] if v is not None]
-                if len(cl) >= 2:
-                    chg = (cl[-1] - cl[-2]) / cl[-2] * 100
-                    out.append({"code": s, "name": name_of.get(s, s), "sector": sec_of.get(s, "기타"),
-                                "price": round(cl[-1], 2), "change": round(chg, 2),
-                                "value": cl[-1] * (vol[-1] if vol else 0)})
-            except Exception:
-                continue
+        else:
+            fb = _yahoo_chart_fallback(s)
+            if fb:
+                out.append({"code": s, "name": name_of.get(s, s), "sector": sec_of.get(s, "기타"),
+                            "price": fb[0], "change": fb[1], "value": fb[0] * fb[2], "mcap": None})
             time.sleep(0.1)
-    return out
+    idx = []
+    for s, label in US_INDICES:
+        q = quotes.get(s)
+        if q:
+            idx.append({"name": label, "price": q.get("regularMarketPrice"),
+                        "change": round(q.get("regularMarketChangePercent") or 0, 2)})
+        else:
+            fb = _yahoo_chart_fallback(s)
+            if fb:
+                idx.append({"name": label, "price": fb[0], "change": fb[1]})
+    return out, idx
 
 
 def build() -> dict:
+    kr, kr_idx = _collect_kr()
+    us, us_idx = _collect_us()
     data = {"ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "kr": _collect_kr(), "us": _collect_us()}
+            "kr": kr, "us": us, "indices": {"kr": kr_idx, "us": us_idx}}
     try:
         tmp = CACHE.with_name(CACHE.name + ".tmp")
         tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
