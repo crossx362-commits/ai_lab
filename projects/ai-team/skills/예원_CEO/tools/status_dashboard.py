@@ -155,7 +155,7 @@ th{color:var(--dim);font-weight:600;font-size:11px}
 .kv{display:flex;gap:14px;flex-wrap:wrap}.kv div{min-width:70px}
 .kv .l{font-size:11px;color:var(--dim)}
 </style></head><body>
-<h1>🧭 AI Lab 시스템 현황</h1>
+<h1>🧭 AI Lab 시스템 현황</h1> <a href="/heatmap" style="font-size:13px;margin-left:8px">🔥 시장 열지도 →</a>
 <div id="ts">불러오는 중…</div>
 <div class="grid" id="grid"></div>
 <script>
@@ -212,11 +212,83 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()}); 
 </script></body></html>"""
 
 
+HEATMAP_HTML = """<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>열지도 — 국장·미장</title>
+<style>
+:root{--bg:#0e1117;--line:#232a3a;--tx:#e6ecf5;--dim:#7c8aa5}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.4 -apple-system,'Malgun Gothic',sans-serif;padding:12px}
+h1{font-size:17px;display:inline-block}
+#ts{color:var(--dim);font-size:12px;margin:2px 0 10px}
+.tabs{margin-bottom:10px}
+.tab{display:inline-block;padding:6px 18px;border-radius:8px;background:#1a2233;color:var(--dim);cursor:pointer;font-weight:600;margin-right:6px}
+.tab.on{background:#2a3a5e;color:#fff}
+.sector{margin-bottom:10px}
+.sector h2{font-size:12px;color:var(--dim);margin:0 0 3px 2px;letter-spacing:.5px}
+.row{display:flex;flex-wrap:wrap;gap:3px}
+.tile{flex-grow:1;min-width:74px;min-height:58px;border-radius:5px;padding:6px 7px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.tile .n{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .c{font-size:14px;font-weight:700;margin-top:2px}
+.tile .p{font-size:10px;opacity:.75}
+.legend{margin-top:8px;font-size:11px;color:var(--dim)}
+a{color:#5ea0ff}
+</style></head><body>
+<h1>🔥 시장 열지도</h1> <a href="/" style="font-size:12px;margin-left:8px">← 현황판</a>
+<div id="ts">불러오는 중…</div>
+<div class="tabs"><span class="tab on" id="t_kr" onclick="show('kr')">🇰🇷 국장</span><span class="tab" id="t_us" onclick="show('us')">🇺🇸 미장</span></div>
+<div id="map"></div>
+<div class="legend">타일 크기 = 거래대금 · 색 = 등락률 (초록↑/빨강↓, 진할수록 큼)</div>
+<script>
+let DATA={kr:[],us:[]}, cur='kr';
+function color(c){
+ const a=Math.min(Math.abs(c)/4,1);           // 0~4%에서 포화
+ const l=16+a*30;                              // 명도: 클수록 밝게
+ return c>=0?`hsl(145,55%,${l}%)`:`hsl(2,60%,${l}%)`;
+}
+function show(m){
+ cur=m; document.getElementById('t_kr').className='tab'+(m==='kr'?' on':''); document.getElementById('t_us').className='tab'+(m==='us'?' on':'');
+ const rows=DATA[m]||[]; const cur_unit=(m==='kr'?'원':'$');
+ const bySec={}; rows.forEach(x=>{(bySec[x.sector]=bySec[x.sector]||[]).push(x)});
+ // 섹터를 총 거래대금 순으로
+ const secs=Object.entries(bySec).sort((a,b)=>b[1].reduce((s,x)=>s+(x.value||0),0)-a[1].reduce((s,x)=>s+(x.value||0),0));
+ const H=[];
+ for(const [sec,items] of secs){
+  items.sort((a,b)=>(b.value||0)-(a.value||0));
+  const maxv=Math.max(...items.map(x=>x.value||1),1);
+  const tiles=items.map(x=>{
+   const grow=Math.max(1,Math.round((x.value||1)/maxv*8));  // 거래대금 비례 크기
+   return `<div class="tile" style="background:${color(x.change)};flex-grow:${grow}"><div class="n">${x.name}</div><div class="c">${x.change>0?'+':''}${x.change}%</div><div class="p">${Number(x.price||0).toLocaleString()}${cur_unit}</div></div>`;
+  }).join('');
+  H.push(`<div class="sector"><h2>${sec} (${items.length})</h2><div class="row">${tiles}</div></div>`);
+ }
+ document.getElementById('map').innerHTML=H.join('')||'<span style="color:var(--dim)">데이터 없음</span>';
+}
+async function load(){
+ try{const d=await (await fetch('/api/heatmap')).json();
+  DATA={kr:d.kr||[],us:d.us||[]};
+  document.getElementById('ts').textContent='갱신 '+(d.ts||'-')+' · 3분마다 자동 갱신';
+  show(cur);
+ }catch(e){document.getElementById('ts').textContent='데이터 수집 대기 중… (최초 수집 ~10초)';}
+}
+load();setInterval(load,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+</script></body></html>"""
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         if self.path.startswith("/api/status"):
             body = json.dumps(collect(), ensure_ascii=False).encode("utf-8")
             ctype = "application/json; charset=utf-8"
+        elif self.path.startswith("/api/heatmap"):
+            body = json.dumps(_j(CACHE / "somi_heatmap.json", {"kr": [], "us": [], "ts": "-"}),
+                              ensure_ascii=False).encode("utf-8")
+            ctype = "application/json; charset=utf-8"
+        elif self.path.startswith("/heatmap"):
+            body = HEATMAP_HTML.encode("utf-8")
+            ctype = "text/html; charset=utf-8"
         elif self.path == "/" or self.path.startswith("/index"):
             body = HTML.encode("utf-8")
             ctype = "text/html; charset=utf-8"
@@ -235,12 +307,28 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def _heatmap_refresher() -> None:
+    """열지도 데이터 백그라운드 갱신 — KIS/야후 조회는 여기서만(요청 스레드 비차단)."""
+    import importlib
+    interval = int(os.getenv("HEATMAP_INTERVAL", "180"))
+    sys.path.insert(0, str(ROOT / "projects" / "ai-team" / "skills" / "소미_분석가" / "tools"))
+    while True:
+        try:
+            hc = importlib.import_module("heatmap_collector")
+            hc.build()
+        except Exception as e:
+            print(f"[대시보드] 열지도 수집 오류: {e}")
+        time.sleep(interval)
+
+
 def main() -> None:
+    import threading
     port = PORT
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
+    threading.Thread(target=_heatmap_refresher, daemon=True).start()  # 열지도 자동 갱신
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"[대시보드] http://localhost:{port} 서빙 시작")
+    print(f"[대시보드] http://localhost:{port} 서빙 시작 (열지도: /heatmap)")
     srv.serve_forever()
 
 
