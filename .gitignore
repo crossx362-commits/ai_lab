@@ -82,3 +82,6 @@ projects/ai-team/out/
 commit_push.bat
 *.bat
 fix_agent_paths.py
+
+# Understand-Anything 지식그래프 산출물 (도구 생성물)
+.understand-anything/
