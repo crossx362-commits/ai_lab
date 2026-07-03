@@ -290,6 +290,20 @@ com.ailab.yewon_selfheal      08:00 KST (system self-heal)
 com.ailab.harness             09:00, 21:00 KST (health check)
 ```
 
+정시 잡의 단일 진실원천은 `영숙_비서/tools/schedules.json`이며
+`schedule_sync.py sync`가 잡별 `com.ailab.sched.*` launchd 에이전트로 materialize 한다.
+
+### Ops Hygiene Automation (2026-07-04)
+
+| Job | Schedule | Script (영숙_비서/tools/) | Role |
+|-----|----------|--------------------------|------|
+| `llm_probe` | 평일 07:25 | `llm_probe.py` | 로컬(Ollama)·클라우드(GPT/Gemini) 실제 챗 응답 점검 — 실패 시에만 텔레그램 경보 |
+| `log_janitor` | 매일 04:10 | `log_janitor.py` | output 로그 회전(5MB+, copytruncate)·45일 사어 로그 삭제 |
+| `state_backup` | 매일 20:00 | `state_backup.py` | output/cache(청산기록·watchlist)+.env → `~/ai_lab_backups` 스냅샷(14일 보관) |
+
+`check_all.py`의 `ops_hygiene` 검사가 디스크 여유·백업 신선도(50h)를 감시한다.
+데몬 생성 스냅샷 리포트(`reports/research/*_latest.md`)는 git 미추적(풀 배포 차단 방지).
+
 ---
 
 ## Directory Structure

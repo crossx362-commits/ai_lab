@@ -124,6 +124,30 @@ def check_env():
     return ok("unified env loaded")
 
 
+def check_ops_hygiene():
+    """운영 위생 — 디스크 여유 + 상태백업 신선도 (예방 점검, 2026-07-04)."""
+    import shutil
+
+    issues = []
+    usage = shutil.disk_usage(str(ROOT))
+    free_gb = usage.free / (1024 ** 3)
+    if free_gb < 20 or usage.free / usage.total < 0.10:
+        issues.append(f"디스크 여유 부족 {free_gb:.0f}GB")
+
+    backup_dir = Path.home() / "ai_lab_backups"
+    backups = sorted(backup_dir.glob("state_*.tar.gz")) if backup_dir.is_dir() else []
+    if not backups:
+        issues.append("상태백업 없음 (state_backup 잡 확인)")
+    else:
+        age_h = (time.time() - backups[-1].stat().st_mtime) / 3600
+        if age_h > 50:
+            issues.append(f"상태백업 정체 {age_h:.0f}시간 (매일 20:00 잡 확인)")
+
+    if issues:
+        return warn("; ".join(issues))
+    return ok(f"디스크 {free_gb:.0f}GB 여유, 백업 최신({backups[-1].name})")
+
+
 def check_runtime():
     try:
         from _shared.notify import agent_status
@@ -483,6 +507,7 @@ def check_agent_links():
 def main() -> int:
     checks = {
         "env": check_env,
+        "ops_hygiene": check_ops_hygiene,
         "runtime": check_runtime,
         "schedule": check_schedule,
         "somi": check_somi,
