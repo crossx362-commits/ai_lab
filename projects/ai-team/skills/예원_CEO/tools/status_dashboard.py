@@ -338,29 +338,40 @@ function squarify(items,x,y,w,h){
   if(!row.length||worst(row.concat([L[0]]),len)<=worst(row,len))row.push(L.shift());
   else flush()}
  flush();return out}
-// 배치 후 최소치 보정: 트리맵 수학상 꼬리 종목(예: 반도체 섹터의 한미반도체 0.6%)은
-// 거인 밑 7~11px 띠가 될 수밖에 없다 — 같은 열/행의 이웃(거인)에게서 공간을 빌려 16px 보장.
-function enforceMin(rects){
- const M=20,EPS=0.8;
- for(let pass=0;pass<3;pass++){
-  let changed=false;
-  for(const t of rects){
-   if(t.h<M){ // 같은 열(같은 x·w) 어디든 기부자(충분히 큰 타일)를 찾아 사이 타일을 밀어냄
-    const col=rects.filter(o=>Math.abs(o.x-t.x)<EPS&&Math.abs(o.w-t.w)<EPS);
-    const donor=col.filter(o=>o!==t&&o.h>M*2).sort((a,b)=>b.h-a.h)[0];
-    if(donor){const d=M-t.h;
-     if(donor.y<t.y){donor.h-=d;for(const o of col)if(o!==donor&&o.y>donor.y&&o.y<=t.y+EPS)o.y-=d}
-     else{donor.y+=d;donor.h-=d;for(const o of col)if(o!==donor&&o!==t&&o.y>t.y&&o.y<donor.y+EPS)o.y+=d}
-     t.h=M;changed=true}}
-   if(t.w<M){
-    const row=rects.filter(o=>Math.abs(o.y-t.y)<EPS&&Math.abs(o.h-t.h)<EPS);
-    const donor=row.filter(o=>o!==t&&o.w>M*2).sort((a,b)=>b.w-a.w)[0];
-    if(donor){const d=M-t.w;
-     if(donor.x<t.x){donor.w-=d;for(const o of row)if(o!==donor&&o.x>donor.x&&o.x<=t.x+EPS)o.x-=d}
-     else{donor.x+=d;donor.w-=d;for(const o of row)if(o!==donor&&o!==t&&o.x>t.x&&o.x<donor.x+EPS)o.x+=d}
-     t.w=M;changed=true}}}
-  if(!changed)break}
- return rects}
+// 스트립 레이아웃(2026-07-03, '정렬' 피드백): 섹터 내부는 크기순 좌→우, 줄 단위 상→하,
+// 줄 안에서는 높이 동일 — 들쭉날쭉한 중첩 사각형 대신 줄 맞은 격자 느낌.
+// 최소 크기(두께 20px·폭 22px)를 배분 단계에서 보장하므로 별도 보정 패스 불필요.
+function stripLayout(items,x,y,w,h){
+ const MH=20,MW=22;
+ items=items.filter(i=>i.v>0).sort((a,b)=>b.v-a.v);
+ const total=items.reduce((s,i)=>s+i.v,0);
+ if(!total||w<8||h<8)return[];
+ const sc=w*h/total,L=items.map(i=>({d:i.d,v:i.v*sc}));
+ const aspect=(row)=>{const sh=row.reduce((a,b)=>a+b.v,0)/w;
+  return row.reduce((a,q)=>{const ww=q.v/sh;return a+Math.max(ww/sh,sh/ww)},0)/row.length};
+ const strips=[];let cur=[];
+ while(L.length){
+  if(!cur.length){cur.push(L.shift());continue}
+  if(aspect(cur.concat([L[0]]))<=aspect(cur))cur.push(L.shift());
+  else{strips.push(cur);cur=[]}}
+ if(cur.length)strips.push(cur);
+ // 줄 높이: 면적 비례 → 최소 MH 보장 → 전체 h로 정규화
+ let hs=strips.map(st=>st.reduce((a,b)=>a+b.v,0)/w).map(v=>Math.max(v,MH));
+ const k=h/hs.reduce((a,b)=>a+b,0);hs=hs.map(v=>v*k);
+ const out=[];let oy=y;
+ strips.forEach((st,i)=>{
+  const sh=hs[i],stot=st.reduce((a,b)=>a+b.v,0);
+  let ws=st.map(q=>q.v/stot*w);
+  if(w>MW*st.length){ // 줄 내부 최소 폭 보장(비례 재배분)
+   ws=ws.map(v=>Math.max(v,MW));
+   const over=ws.reduce((a,b)=>a+b,0)-w;
+   if(over>0){const fx=ws.map(v=>v-MW),fs=fx.reduce((a,b)=>a+b,0)||1;
+    ws=ws.map((v,j)=>v-over*fx[j]/fs)}}
+  let ox=x;
+  st.forEach((q,j)=>{out.push({d:q.d,x:ox,y:oy,w:ws[j],h:sh});ox+=ws[j]});
+  out[out.length-1].w+=x+w-ox; // 오른쪽 끝 정렬(누적 오차 제거)
+  oy+=sh});
+ return out}
 // ── 포맷터 ──
 const P=(m,p)=>m==='kr'?Number(p||0).toLocaleString()+'원':'$'+Number(p||0).toLocaleString();
 const CAP=(m,v)=>!v?'—':(m==='kr'?(v>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString()+'억')
@@ -383,10 +394,8 @@ function renderMarket(mkt,rows,ox,oy,W,H,html){
   const s=r.d,cls=s.wch>0.02?'up':s.wch<-0.02?'dn':'fl';
   // 작은 섹터는 헤더 생략 — 18px 헤더가 타일 공간을 다 먹어 '짤림'처럼 보이던 문제
   const HD=(r.h<48||r.w<64)?0:16;
-  // 섹터 내 크기 √압축: 삼성 50.8%·하이닉스 48.5%·한미반도체 0.62% 같은 극단 분포에서
-  // 꼬리 종목이 실오라기가 되던 문제 — 82:1을 9:1로 완화(순서·크기감 유지)해 꼬리도
-  // 이름·등락률이 읽히는 블록을 보장(사용자 피드백 2026-07-03: 0.75 압축도 부족).
-  const inner=enforceMin(squarify(s.items.map(x=>({d:x,v:Math.sqrt(sizeOf(x))})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2)));
+  // 섹터 내부: √압축(82:1→9:1, 꼬리 가시성) + 스트립 배치(줄 맞은 정렬)
+  const inner=stripLayout(s.items.map(x=>({d:x,v:Math.sqrt(sizeOf(x))})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2));
   const tiles=inner.map(t=>{
    const x=t.d,dim=query&&!(x.name.toLowerCase().includes(query)||String(x.code).toLowerCase().includes(query));
    const fs=Math.max(9,Math.min(21,Math.sqrt(t.w*t.h)/5.2));
