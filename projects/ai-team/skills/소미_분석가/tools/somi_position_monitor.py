@@ -252,13 +252,18 @@ def check_positions() -> list[str]:
 
 def run(do_send: bool = False) -> str:
     alerts = check_positions()
+    # 실제 체결(매도·청산·분할익절)은 액션 이벤트 → do_send/모의 무관하게 매 틱 즉시 텔레그램(사용자 지시 2026-07-03).
+    # 기존엔 모의 청산이 노션으로만·정시 슬롯에만 나가 "청산했는데 왜 알림 안 오냐" 사고. 체결분만 골라 즉시 전송.
+    executed = [a for a in alerts if "체결" in a]
+    if executed:
+        send("🧪 [소미 자동청산 체결]\n\n" + "\n\n".join(executed))
     if not alerts:
         report = "보유 포지션: 익절/손절 신호 없음 (정상 감시 중)."
     else:
         report = f"[소미 포지션 점검 / {datetime.now().strftime('%Y-%m-%d %H:%M')}]\n\n" + "\n\n".join(alerts)
         if do_send:
             if _is_paper():
-                publish_report("소미 포지션 점검", report)   # 모의: 자동청산 정보성 → 노션 링크
+                publish_report("소미 포지션 점검", report)   # 모의: 정기 전체 점검(보유 포함)은 노션 링크
             else:
                 send(report)   # 실거래: 매도 승인 요청은 급한 액션 → 텔레그램 인라인
     growth.record(
