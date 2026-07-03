@@ -1,4 +1,4 @@
-﻿"""
+"""
 skill_auditor.py — 예원(CEO): 에이전트 스킬 관리 감독·분석·검토
 
 Ollama로 각 에이전트 SKILL.md를 읽어 분석:

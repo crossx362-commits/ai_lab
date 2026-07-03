@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Reports 폴더 관리 도구 (reports_manager.py)
 영숙 비서가 에이전트들의 리서치 보고서, 학습 로그, 작업 히스토리를 관리하고 Notion에 보고서를 전송합니다.

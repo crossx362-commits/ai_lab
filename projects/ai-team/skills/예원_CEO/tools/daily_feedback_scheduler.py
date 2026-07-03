@@ -1,4 +1,4 @@
-﻿"""
+"""
 daily_feedback_scheduler.py — 예원 CEO: 피드백 평가 도구
 
 기능:

@@ -1,4 +1,4 @@
-﻿"""
+"""
 youtube_recommender.py — 영숙의 유튜브 추천 모듈
 YOUTUBE_API_KEY 있으면 실제 트렌딩 영상, 없으면 Gemini가 추천 → YouTube 검색 URL.
 """
