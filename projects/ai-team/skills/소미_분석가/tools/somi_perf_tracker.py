@@ -26,7 +26,7 @@ import json  # noqa: E402
 from datetime import datetime, timedelta  # noqa: E402
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import publish_report  # noqa: E402
+from _shared.notify import send  # noqa: E402
 from somi_trade_advisor import CLOSED_TRADES_FILE, load_positions  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -84,6 +84,38 @@ def _unrealized() -> dict:
     return {"n": n, "upnl": round(total / n, 2) if n else 0.0}
 
 
+def _account() -> dict:
+    """실제 모의 계좌 평가액 — 사용자가 예수금과 대조 가능한 '진짜' 성과.
+    (거래통계 누적%는 매거래 전액투입 가정이라 실계좌와 다르다 — 이 값이 진짜.)"""
+    from somi_kis_reporter import KISClient, num
+    import json as _json
+    try:
+        led = _json.loads((PROJECT_ROOT / "output" / "cache" / "somi_paper.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    import os
+    start = int(os.getenv("SOMI_PAPER_CASH", "10000000"))
+    cash = float(led.get("cash", start))
+    kis = KISClient()
+    pos_val = 0.0
+    for sym, p in (led.get("positions") or {}).items():
+        try:
+            cur = num(kis.quote(sym).get("stck_prpr"))
+        except Exception:
+            cur = num(p.get("avg"))
+        pos_val += (cur or 0) * int(p.get("qty") or 0)
+    value = cash + pos_val
+    return {"start": start, "cash": cash, "pos_val": pos_val, "value": value,
+            "ret": round((value / start - 1) * 100, 2) if start else 0.0}
+
+
+# 암호 같은 내부 태그 → 한글 (보고 가독성)
+_SLOT_KR = {"buy": "정규매수", "buy_fast": "고속매수", "buy_close": "마감권", "collect": "관찰편입"}
+_REASON_KR = {"stop": "손절", "target": "목표달성", "tp1_partial": "1차익절", "trailing": "트레일링",
+              "trail": "트레일링", "early_exit": "조기청산", "timeout": "시간초과"}
+_REGIME_KR = {"bear": "하락장", "bull": "상승장", "sideways": "횡보장", "unknown": "미확인"}
+
+
 def _verdict(real: dict) -> str:
     if real["n"] < MIN_SAMPLE:
         return f"표본 부족({real['n']}/{MIN_SAMPLE}) — 더 쌓여야 판단 가능"
@@ -139,54 +171,60 @@ def _avg(xs: list[float]) -> float:
 
 
 def weekly_condition_analysis(all_trades: list[dict]) -> str:
-    """최근 7일 거래일지 조건조합 분석 — 어떤 조건/시간대/국면에서 수익·손실이 났는지."""
+    """최근 7일 — 무엇이 잘/안 됐나를 한글로 간단히(핵심 3~4줄만)."""
     recent = _recent(all_trades, 7)
     if len(recent) < MIN_SAMPLE:
-        return f"\n[주간 조건분석] 최근 7일 청산 {len(recent)}건 — 표본 부족({MIN_SAMPLE} 미만), 분석 보류."
+        return f"📅 최근 7일: 청산 {len(recent)}건 (표본 부족 — 분석 보류)"
     st = _realized_stats(recent)
-    lines = [f"\n[주간 조건분석] 최근 7일 청산 {len(recent)}건",
-             f" 종합: 승률 {st['win_rate']}% · 손익비 {st['profit_factor']} · 평균 {st['avg_ret']}% · MDD {_mdd(recent)}%"]
-    slot_rows = _group_winrate(recent, lambda t: t.get("slot"))
-    if slot_rows:
-        lines.append(" · 시간대별: " + ", ".join(f"{k} {w}%승({n})" for k, n, w, a in slot_rows))
-    reg_rows = _group_winrate(recent, lambda t: t.get("regime"))
-    if reg_rows:
-        lines.append(" · 국면별: " + ", ".join(f"{k} {w}%승({n})" for k, n, w, a in reg_rows))
-    rsn_rows = _group_winrate(recent, lambda t: t.get("sell_reason") or t.get("reason"))
-    if rsn_rows:
-        lines.append(" · 청산사유별 평균수익: " + ", ".join(f"{k} {a}%({n})" for k, n, w, a in rsn_rows))
-    hi = [t.get("ret_pct", 0) for t in recent if (t.get("entry_score") or 0) >= 70]
-    lo = [t.get("ret_pct", 0) for t in recent if t.get("entry_score") is not None and (t.get("entry_score") or 0) < 70]
-    if hi or lo:
-        lines.append(f" · 진입점수 기여: ≥70 평균 {_avg(hi)}%({len(hi)}) vs <70 평균 {_avg(lo)}%({len(lo)})")
-    tp = [t for t in recent if t.get("took_profit") and t.get("max_up_pct") is not None]
-    if tp:
-        gap = [t.get("max_up_pct", 0) - t.get("ret_pct", 0) for t in tp]
-        lines.append(f" · 익절 타이밍: 고점 대비 평균 {_avg(gap)}%p 일찍 실현(↑클수록 익절 과속)")
-    sl = [t for t in recent if t.get("stopped") and t.get("max_up_pct") is not None]
-    if sl:
-        lines.append(f" · 손절 거래 손절 전 평균 고점 +{_avg([t.get('max_up_pct', 0) for t in sl])}% (↑크면 손절 과도하게 빨랐을 수)")
-    nn = [t.get("ret_pct", 0) for t in recent if t.get("news")]
-    if nn:
-        lines.append(f" · 뉴스호재 동반 {len(nn)}건 평균 {_avg(nn)}%")
-    lines.append(" ⚠️ 과최적화 주의: 백테스트·아웃오브샘플·모의 결과가 함께 일치할 때만 가중치 조정. 표본 적으면 신뢰 보류.")
+    won = str(_won(round(sum(t.get('ret_pct', 0) for t in recent) / len(recent), 2)))
+    lines = [f"📅 최근 7일 · 청산 {len(recent)}건",
+             f"   승률 {st['win_rate']}% · 손익비 {st['profit_factor']} · 건당평균 {st['avg_ret']:+}%"]
+    # 청산사유별 — 무엇으로 벌고 잃었나(한글)
+    rsn = _group_winrate(recent, lambda t: _REASON_KR.get(t.get("sell_reason") or t.get("reason"), t.get("reason")))
+    if rsn:
+        good = [f"{k} {a:+}%({n})" for k, n, w, a in sorted(rsn, key=lambda r: r[3], reverse=True) if a > 0]
+        bad = [f"{k} {a:+}%({n})" for k, n, w, a in sorted(rsn, key=lambda r: r[3]) if a <= 0]
+        if good:
+            lines.append("   💚 수익원: " + ", ".join(good[:3]))
+        if bad:
+            lines.append("   ❤️ 손실원: " + ", ".join(bad[:3]))
+    # 국면별(한글) — 지금 하락장에서 잘 되나
+    reg = _group_winrate(recent, lambda t: _REGIME_KR.get(t.get("regime"), t.get("regime")))
+    if reg:
+        lines.append("   🌦 국면별 승률: " + ", ".join(f"{k} {w}%({n}건)" for k, n, w, a in reg))
     return "\n".join(lines)
+
+
+def _won(pct: float) -> str:
+    """수익률(%)을 시작자본 1천만 기준 원화 근사로 — 직관용."""
+    return f"{pct:+}%"
 
 
 def build() -> str:
     closed = _load_closed()
     real = _realized_stats(closed)
-    unreal = _unrealized()
-    lines = ["📊 소미 모의 성과 (백테스트 대비)\n"]
-    lines.append(f"[실현] 청산 {real['n']}건")
+    acct = _account()
+    lines = ["📊 소미 모의 성과 보고\n"]
+
+    # ── 1. 실제 계좌(진짜 성과) — 사용자가 예수금과 대조 가능 ──
+    if acct:
+        sign = "🟢" if acct["ret"] >= 0 else "🔴"
+        lines.append(f"{sign} 계좌 평가액 {acct['value']:,.0f}원  ({acct['ret']:+}%)")
+        lines.append(f"   시작 {acct['start']:,.0f} → 현금 {acct['cash']:,.0f} + 주식 {acct['pos_val']:,.0f}")
+
+    # ── 2. 거래 품질(48건 통계) — 전략이 좋은지 ──
     if real["n"]:
-        lines.append(f" 승률 {real['win_rate']}% (기대 {BENCH['win_rate']}%)")
-        lines.append(f" 손익비 {real['profit_factor']} (기대 {BENCH['profit_factor']})")
-        lines.append(f" 평균수익 {real['avg_ret']}%/건 (기대 {BENCH['avg_ret']}%) · 누적 {real['total_return']}%")
-        lines.append(f" 평균 익절 +{real['avg_win']}% / 평균 손절 {real['avg_loss']}%")
-    lines.append(f"[평가] 보유 {unreal['n']}종목 평가손익 {unreal['upnl']:+.2f}%/종목")
-    lines.append(f"\n판정: {_verdict(real)}")
-    lines.append(weekly_condition_analysis(closed))
+        def mark(v, b, tol):  # 기대치 달성 여부
+            return "✅" if v >= b - tol else "🟡"
+        lines.append(f"\n🎯 거래 품질 (청산 {real['n']}건)")
+        lines.append(f"   승률 {real['win_rate']}% {mark(real['win_rate'], BENCH['win_rate'], 12)} (목표 {BENCH['win_rate']}%)")
+        lines.append(f"   손익비 {real['profit_factor']} {mark(real['profit_factor'], BENCH['profit_factor'], 0.3)} (목표 {BENCH['profit_factor']})")
+        lines.append(f"   이기면 평균 +{real['avg_win']}% / 지면 {real['avg_loss']}%")
+        lines.append(f"   판정: {_verdict(real)}")
+        lines.append("   ※ '거래 품질'은 개별 거래의 좋고나쁨. 실제 벌이는 위 '계좌 평가액'이 진짜.")
+
+    # ── 3. 최근 7일 ──
+    lines.append("\n" + weekly_condition_analysis(closed))
     return "\n".join(lines)
 
 
@@ -198,7 +236,7 @@ def main() -> None:
     report = build()
     print(report)
     if args.send:
-        publish_report("소미 모의 성과", report)
+        send(report)   # 짧고 명확한 요약이라 노션 링크 대신 텔레그램 직접(가독성 우선)
 
 
 if __name__ == "__main__":
