@@ -635,25 +635,48 @@ def daily_summary() -> str:
     ])
 
 
-def send_watchlist_reports(report_name: str = "정기") -> bool:
-    """감시 목록(watchlist)에 등록된 종목을 순회하며 보고. 비어 있으면 안내만."""
+def watchlist_summary(report_name: str = "정기") -> str:
+    """관심종목 전체를 종목별 1줄로 요약(점수순) — 노션 링크 우르르 대신 텔레그램 1메시지.
+    (사용자 지시 2026-07-03: 정기보고는 종목마다 링크 말고 간단 종목별 요약으로.)"""
     watchlist = load_watchlist()
-    try:
-        send(daily_summary())  # 헌장 [정기 보고] 요약 선두 발송
-    except Exception:
-        pass
     if not watchlist:
-        send("📋 감시 중인 종목이 없습니다.\n텔레그램에서 '관심종목 추가 <종목코드> <종목명>'으로 등록하세요.")
-        return True
-    ok = True
+        return "📋 감시 중인 종목이 없습니다.\n'관심종목 추가 <종목코드> <종목명>'으로 등록하세요."
+    kis = KISClient()
+    rows = []
     for symbol, name in watchlist.items():
         try:
-            ok = send_report(report_name, symbol, name) and ok
-        except Exception as exc:
-            send(f"[소미 보고 실패 - {name}({symbol})]\n{exc}")
-            ok = False
-        time.sleep(0.5)
-    return ok
+            inv10 = kis.investor_history(symbol, 10)
+            ss = kis.short_sale_series(symbol, 20)
+            text = build_input_text(kis, report_name, symbol, name,
+                                    investor_hist=inv10, short_sale=(ss[0] if ss else None))
+            parsed = parse_input_text(text)
+            score, grade, pos, neg = calculate_score(parsed)
+            close = int(num(parsed.get("close")) or 0)
+            chg = str(parsed.get("change_pct", "?")).strip()
+            if chg and not chg.endswith("%"):
+                chg += "%"
+            sig = (pos[0] if pos else (neg[0] if neg else "-")).split(",")[0][:22]
+            rows.append((score, f"• {name} {close:,}원 {chg} · {score}점({grade}) · {sig}"))
+        except Exception:
+            rows.append((-1, f"• {name}({symbol}) 조회 실패"))
+        time.sleep(0.3)
+    rows.sort(key=lambda r: r[0], reverse=True)   # 점수 높은 순
+    header = f"📋 [소미 관심종목 요약 · {datetime.now():%m-%d %H:%M}] {len(watchlist)}종목 (점수순)"
+    return "\n".join([header] + [r[1] for r in rows])
+
+
+def send_watchlist_reports(report_name: str = "정기") -> bool:
+    """정기 보고 — 시장 요약 + 관심종목 종목별 1줄 요약(각 1메시지). 노션 링크 나열 폐기."""
+    try:
+        send(daily_summary())  # 헌장 [정기 보고] 7항목 요약
+    except Exception:
+        pass
+    try:
+        send(watchlist_summary(report_name))  # 종목별 1줄 요약 (1메시지)
+    except Exception as exc:
+        send(f"[소미 관심종목 요약 실패] {exc}")
+        return False
+    return True
 
 
 def seconds_until_next(times: list[str]) -> tuple[int, str]:
