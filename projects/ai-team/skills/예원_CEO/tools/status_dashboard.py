@@ -355,6 +355,10 @@ function stripLayout(items,x,y,w,h){
   if(aspect(cur.concat([L[0]]))<=aspect(cur))cur.push(L.shift());
   else{strips.push(cur);cur=[]}}
  if(cur.length)strips.push(cur);
+ // 외톨이 꼬리 스트립(예: 반도체의 한미반도체)은 풀폭 띠가 되므로 분리해뒀다가
+ // 마지막 줄의 막내 타일 아래에 사각형 블록으로 중첩(사용자 피드백: '사각형으로').
+ let tail=null;
+ if(strips.length>=2&&strips[strips.length-1].length===1)tail=strips.pop()[0];
  // 줄 높이: 면적 비례 → 최소 MH 보장 → 전체 h로 정규화
  let hs=strips.map(st=>st.reduce((a,b)=>a+b.v,0)/w).map(v=>Math.max(v,MH));
  const k=h/hs.reduce((a,b)=>a+b,0);hs=hs.map(v=>v*k);
@@ -371,6 +375,13 @@ function stripLayout(items,x,y,w,h){
   st.forEach((q,j)=>{out.push({d:q.d,x:ox,y:oy,w:ws[j],h:sh});ox+=ws[j]});
   out[out.length-1].w+=x+w-ox; // 오른쪽 끝 정렬(누적 오차 제거)
   oy+=sh});
+ if(tail&&out.length){
+  const lastN=strips[strips.length-1].length;
+  const host=out.slice(out.length-lastN).reduce((a,b)=>a.w*a.h<b.w*b.h?a:b);
+  let th=Math.max(tail.v/host.w,host.w/4,MH);   // 종횡비 4:1 이내 사각형 지향
+  th=Math.min(th,host.h*0.45);                  // 호스트를 과도하게 잠식하지 않게
+  host.h-=th;
+  out.push({d:tail.d,x:host.x,y:host.y+host.h,w:host.w,h:th})}
  return out}
 // ── 포맷터 ──
 const P=(m,p)=>m==='kr'?Number(p||0).toLocaleString()+'원':'$'+Number(p||0).toLocaleString();
