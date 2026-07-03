@@ -55,6 +55,8 @@ youtube_token.pickle
 
 # Generated media and preview artifacts
 output/
+# 데몬이 상시 갱신하는 스냅샷 리포트 — 추적하면 트리가 늘 더러워져 git pull 배포가 막힘
+reports/research/*_latest.md
 *.mp3
 *.mp4
 *.wav

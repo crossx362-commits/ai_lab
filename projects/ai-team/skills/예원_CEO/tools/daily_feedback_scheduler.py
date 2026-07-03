@@ -238,9 +238,10 @@ def run_daily_evaluation():
     report = generate_daily_report()
 
     # 3. 텔레그램 전송
-    send(report)
+    sent = send(report)
 
-    print("\n✅ 일일 평가 완료 — 텔레그램 보고서 전송됨")
+    print("\n✅ 일일 평가 완료 — 텔레그램 보고서 전송됨" if sent
+          else "\n⚠️ 일일 평가 완료 — 텔레그램 전송 실패(토큰/네트워크 확인)")
 
 
 def run_weekly_evaluation():
@@ -253,9 +254,10 @@ def run_weekly_evaluation():
     report = generate_weekly_report()
 
     # 텔레그램 전송
-    send(report)
+    sent = send(report)
 
-    print("\n✅ 주간 리포트 완료 — 텔레그램 전송됨")
+    print("\n✅ 주간 리포트 완료 — 텔레그램 전송됨" if sent
+          else "\n⚠️ 주간 리포트 완료 — 텔레그램 전송 실패(토큰/네트워크 확인)")
 
 
 # ⚠️ DEPRECATED: 독립 스케줄러 제거됨

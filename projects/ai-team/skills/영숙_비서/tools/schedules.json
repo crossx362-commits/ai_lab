@@ -26,6 +26,28 @@
       "priority": "low"
     },
     {
+      "id": "llm_probe",
+      "agent": "영숙",
+      "task": "LLM 생존 프로브",
+      "cron": "25 7 * * 1-5",
+      "description": "로컬(Ollama)·클라우드(GPT·Gemini) 실제 챗 응답 점검 — 실패 시에만 경보 (조사 파이프라인 직전)",
+      "command": "python projects/ai-team/skills/영숙_비서/tools/llm_probe.py",
+      "enabled": true,
+      "run": true,
+      "priority": "medium"
+    },
+    {
+      "id": "state_backup",
+      "agent": "영숙",
+      "task": "상태·학습 데이터 백업",
+      "cron": "0 20 * * *",
+      "description": "output/cache(청산기록·watchlist·원장)·.env를 ~/ai_lab_backups 스냅샷 (14일 보관)",
+      "command": "python projects/ai-team/skills/영숙_비서/tools/state_backup.py",
+      "enabled": true,
+      "run": true,
+      "priority": "low"
+    },
+    {
       "id": "research_us",
       "agent": "행크",
       "task": "미국 시장 조사(수집)",
