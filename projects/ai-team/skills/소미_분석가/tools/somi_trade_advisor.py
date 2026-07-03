@@ -538,6 +538,17 @@ def apply_news_judgment(proposals: list[dict]) -> list[dict]:
         impact_map = {}
     hist = _record_news_snapshot(impact_map)  # 오늘자 누적 후 N일 히스토리 사용
     brief = _market_brief_summary()
+    # 모의: LLM 판정은 매수권 상위 후보만 — 클라우드 전멸 시 로컬 LLM 판정(건당 10~20초)이
+    # 후보 40개 × 사이클을 20분+로 늘려 매수 판단 자체가 지연되던 문제(2026-07-03).
+    # 자동매수 상한(8)의 2배만 판정하면 체결 후보는 전부 커버. 나머지는 watch(악재 후보는
+    # 공시 게이트·리스크 게이트가 별도 차단). 실거래는 전 후보 판정 유지.
+    if _is_paper():
+        n = max(8, _paper_auto_max() * 2)
+        top_ids = {id(x) for x in sorted(proposals, key=lambda x: x.get("score", 0), reverse=True)[:n]}
+        return [judge_with_news(p, hist, brief) if id(p) in top_ids
+                else {**p, "verdict": "watch", "news_trend": "none", "news_reflected": False,
+                      "news_reason": "모의 속도 우선 — 상위 후보만 LLM 판정"}
+                for p in proposals]
     return [judge_with_news(p, hist, brief) for p in proposals]
 
 
