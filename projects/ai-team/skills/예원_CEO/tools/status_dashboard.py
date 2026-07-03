@@ -237,7 +237,7 @@ svg{vertical-align:-2px}
 .search svg{position:absolute;left:10px;top:8px;opacity:.5}
 .meta{margin-left:auto;color:var(--dim);font-size:12px;text-align:right;line-height:1.35}
 .sub{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:rgba(19,23,34,.55)}
-.chip{display:flex;align-items:baseline;gap:7px;background:#0d1119;border:1px solid var(--line);border-radius:8px;padding:5px 11px}
+.chip{display:inline-flex;align-items:baseline;gap:6px;background:#0d1119;border:1px solid var(--line);border-radius:8px;padding:4px 9px;margin:1px 0}
 .chip .l{font-size:11px;color:var(--dim);font-weight:600}
 .chip .v{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
 .chip .c{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -246,7 +246,7 @@ svg{vertical-align:-2px}
 .bbar{width:170px;height:7px;border-radius:4px;overflow:hidden;display:flex;background:#2a2e39}
 .bbar i{display:block;height:100%}
 .bl{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
-#wrap{flex:1;position:relative;margin:8px;min-height:0}
+#wrap{flex:1;position:relative;margin:8px;min-height:0;overflow:hidden}
 #map{position:absolute;inset:0}
 .sec{position:absolute;overflow:hidden;border-radius:4px}
 .sec .sh{position:absolute;left:0;top:0;right:0;height:18px;padding:2px 7px 0;font-size:10.5px;font-weight:700;color:#aab3c5;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(11,14,20,.35)}
@@ -261,9 +261,10 @@ svg{vertical-align:-2px}
 #tip .t2{font-size:16px;font-weight:800;margin:2px 0 6px;font-variant-numeric:tabular-nums}
 #tip .kv{display:flex;justify-content:space-between;gap:18px;color:var(--dim);margin-top:2px}
 #tip .kv b{color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums}
-.legend{position:fixed;right:14px;bottom:12px;display:flex;align-items:center;gap:2px;background:rgba(19,23,34,.9);border:1px solid var(--line);border-radius:8px;padding:6px 9px;z-index:20}
+.foot{display:flex;align-items:center;gap:12px;padding:4px 14px;border-top:1px solid var(--line);background:var(--panel);color:var(--dim);font-size:11px;flex-wrap:wrap}
+.legend{display:flex;align-items:center;gap:2px;margin-left:auto}
 .legend i{display:block;width:34px;height:14px;border-radius:2px;font-style:normal;font-size:9.5px;text-align:center;line-height:14px;color:#fff;font-weight:700}
-.hint{position:fixed;left:14px;bottom:12px;color:var(--dim);font-size:11px;background:rgba(19,23,34,.85);border:1px solid var(--line);border-radius:8px;padding:5px 10px;z-index:20}
+.mkl{position:absolute;font-size:11px;font-weight:800;color:#aab3c5;letter-spacing:.3px}
 @media (max-width:760px){.search input{width:120px}.meta{display:none}.breadth{margin-left:0}}
 </style></head><body>
 <div class="hdr">
@@ -272,7 +273,8 @@ svg{vertical-align:-2px}
   시장 열지도 <a href="/">← 시스템 현황</a>
  </div>
  <div class="seg" id="mkt">
-  <button id="t_kr" class="on" onclick="setMkt('kr')">🇰🇷 국장</button>
+  <button id="t_all" class="on" onclick="setMkt('all')">🌏 전체</button>
+  <button id="t_kr" onclick="setMkt('kr')">🇰🇷 국장</button>
   <button id="t_us" onclick="setMkt('us')">🇺🇸 미장</button>
  </div>
  <div class="seg sm" id="size">
@@ -291,10 +293,12 @@ svg{vertical-align:-2px}
 </div>
 <div id="wrap"><div id="map"></div></div>
 <div id="tip"></div>
-<div class="legend" id="legend"></div>
-<div class="hint">크기 = <span id="hint_size">시가총액</span> · 색 = 등락률 · 클릭 → 차트</div>
+<div class="foot">
+ <span>크기 = <span id="hint_size">시가총액</span> · 색 = 등락률 · 클릭 → 차트</span>
+ <div class="legend" id="legend"></div>
+</div>
 <script>
-let DATA={kr:[],us:[],indices:{kr:[],us:[]}},TS='-',cur='kr',sizeMode='mcap',query='';
+let DATA={kr:[],us:[],indices:{kr:[],us:[]}},TS='-',cur='all',sizeMode='mcap',query='';
 // ── 색: TradingView 팔레트 보간 (중립 → ±3%에서 포화) ──
 const NC=[42,46,57],GC=[6,153,129],RC=[242,54,69];
 function color(c){const t=Math.max(-1,Math.min(1,(c||0)/3));const M=t>=0?GC:RC,a=Math.abs(t);
@@ -327,39 +331,54 @@ const VAL=(m,v)=>!v?'—':(m==='kr'?Math.round(v/1e8).toLocaleString()+'억':'$'
 const sizeOf=x=>(sizeMode==='mcap'?(x.mcap||x.value):x.value)||1;
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 // ── 렌더 ──
-function render(){
- const el=document.getElementById('map'),wrap=document.getElementById('wrap');
- const W=wrap.clientWidth,H=wrap.clientHeight;
- const rows=DATA[cur]||[];el.innerHTML='';
- if(!rows.length){el.innerHTML='<div style="color:#8b93a7;padding:30px">데이터 수집 대기 중… (수집기 첫 실행 후 표시)</div>';return}
- // 섹터 집계
+function marketRows(){return cur==='all'?[...(DATA.kr||[]),...(DATA.us||[])]:(DATA[cur]||[])}
+function renderMarket(mkt,rows,ox,oy,W,H,html){
+ if(!rows.length||W<40||H<40)return;
  const by={};rows.forEach(x=>{(by[x.sector]=by[x.sector]||[]).push(x)});
  const secs=Object.entries(by).map(([name,items])=>{
   const tot=items.reduce((s,x)=>s+sizeOf(x),0);
   const wch=items.reduce((s,x)=>s+(x.change||0)*sizeOf(x),0)/(tot||1);
   return {name,items,tot,wch}});
- const secRects=squarify(secs.map(s=>({d:s,v:s.tot})),0,0,W,H);
- const G=2,HD=18,html=[];
+ const secRects=squarify(secs.map(s=>({d:s,v:s.tot})),ox,oy,W,H);
+ const G=2;
  for(const r of secRects){
   const s=r.d,cls=s.wch>0.02?'up':s.wch<-0.02?'dn':'fl';
+  // 작은 섹터는 헤더 생략 — 18px 헤더가 타일 공간을 다 먹어 '짤림'처럼 보이던 문제
+  const HD=(r.h<48||r.w<64)?0:16;
   const inner=squarify(s.items.map(x=>({d:x,v:sizeOf(x)})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2));
   const tiles=inner.map(t=>{
    const x=t.d,dim=query&&!(x.name.toLowerCase().includes(query)||String(x.code).toLowerCase().includes(query));
    const fs=Math.max(9,Math.min(21,Math.sqrt(t.w*t.h)/5.2));
-   const showN=t.w>44&&t.h>26,showC=t.w>40&&t.h>40;
+   const showN=t.w>34&&t.h>20,showC=t.w>36&&t.h>34;
    const lbl=(showN?'<div class="tn" style="font-size:'+(fs*0.72).toFixed(1)+'px">'+esc(x.name)+'</div>':'')+
              (showC?'<div class="tc" style="font-size:'+fs.toFixed(1)+'px">'+(x.change>0?'+':'')+x.change+'%</div>':'');
    return '<div class="tile'+(dim?' dimmed':'')+'" style="left:'+t.x.toFixed(1)+'px;top:'+t.y.toFixed(1)+
     'px;width:'+Math.max(1,t.w-1).toFixed(1)+'px;height:'+Math.max(1,t.h-1).toFixed(1)+'px;background:'+color(x.change)+
-    '" data-c="'+esc(x.code)+'">'+lbl+'</div>'}).join('');
+    '" data-c="'+esc(x.code)+'" data-m="'+mkt+'">'+lbl+'</div>'}).join('');
   html.push('<div class="sec" style="left:'+r.x.toFixed(1)+'px;top:'+r.y.toFixed(1)+'px;width:'+Math.max(1,r.w-1).toFixed(1)+
-   'px;height:'+Math.max(1,r.h-1).toFixed(1)+'px"><div class="sh">'+esc(s.name)+
-   ' <b class="'+cls+'">'+(s.wch>0?'+':'')+s.wch.toFixed(2)+'%</b></div>'+
-   '<div style="position:absolute;left:'+G+'px;top:'+HD+'px;right:'+G+'px;bottom:'+G+'px">'+tiles+'</div></div>')}
- el.innerHTML=html.join('');
- renderSub()}
+   'px;height:'+Math.max(1,r.h-1).toFixed(1)+'px">'+
+   (HD?'<div class="sh">'+esc(s.name)+(r.w>=120?' <b class="'+cls+'">'+(s.wch>0?'+':'')+s.wch.toFixed(2)+'%</b>':'')+'</div>':'')+
+   '<div style="position:absolute;left:'+G+'px;top:'+(HD||G)+'px;right:'+G+'px;bottom:'+G+'px">'+tiles+'</div></div>')}
+}
+function render(){
+ renderSub();   // 칩/지표를 먼저 그려 상단 바 높이를 확정한 뒤 지도 영역을 측정(넘침 방지)
+ const el=document.getElementById('map'),wrap=document.getElementById('wrap');
+ const W=wrap.clientWidth,H=wrap.clientHeight,html=[];
+ el.innerHTML='';
+ if(cur==='all'){
+  // 국장·미장 동시(한눈에) — 가로 여유 있으면 좌우, 아니면 상하 분할
+  const LB=15,gap=8,vert=W>=H*1.1;
+  const panes=vert?[['kr',0,0,(W-gap)/2,H],['us',(W-gap)/2+gap,0,(W-gap)/2,H]]
+                  :[['kr',0,0,W,(H-gap)/2],['us',0,(H-gap)/2+gap,W,(H-gap)/2]];
+  for(const [m,x,y,w,h] of panes){
+   html.push('<div class="mkl" style="left:'+(x+2)+'px;top:'+y+'px">'+(m==='kr'?'🇰🇷 국장':'🇺🇸 미장')+'</div>');
+   renderMarket(m,DATA[m]||[],x,y+LB,w,h-LB,html)}
+ }else{
+  renderMarket(cur,DATA[cur]||[],0,0,W,H,html)}
+ el.innerHTML=html.join('')||'<div style="color:#8b93a7;padding:30px">데이터 수집 대기 중… (수집기 첫 실행 후 표시)</div>'}
 function renderSub(){
- const rows=DATA[cur]||[],idx=(DATA.indices||{})[cur]||[];
+ const rows=marketRows();
+ const idx=cur==='all'?[...((DATA.indices||{}).kr||[]),...((DATA.indices||{}).us||[])]:((DATA.indices||{})[cur]||[]);
  document.getElementById('chips').innerHTML=idx.map(i=>{
   const cls=i.change>0?'up':i.change<0?'dn':'fl';
   return '<span class="chip"><span class="l">'+esc(i.name)+'</span><span class="v">'+Number(i.price||0).toLocaleString()+
@@ -374,8 +393,8 @@ function renderSub(){
   '<i style="width:'+(dn/T*100)+'%;background:var(--dn)"></i>';
  document.getElementById('meta').innerHTML='갱신 '+esc(TS)+'<br>1분마다 자동 새로고침';}
 // ── 상호작용 ──
-function setMkt(m){cur=m;document.getElementById('t_kr').className=m==='kr'?'on':'';
- document.getElementById('t_us').className=m==='us'?'on':'';render()}
+function setMkt(m){cur=m;for(const k of ['all','kr','us'])
+ document.getElementById('t_'+k).className=m===k?'on':'';render()}
 function setSize(s){sizeMode=s;document.getElementById('s_mcap').className=s==='mcap'?'on':'';
  document.getElementById('s_value').className=s==='value'?'on':'';
  document.getElementById('hint_size').textContent=s==='mcap'?'시가총액':'거래대금';render()}
@@ -384,13 +403,14 @@ const tip=document.getElementById('tip');
 document.getElementById('map').addEventListener('mousemove',e=>{
  const t=e.target.closest('.tile');
  if(!t){tip.style.display='none';return}
- const x=(DATA[cur]||[]).find(r=>String(r.code)===t.dataset.c);if(!x)return;
+ const m=t.dataset.m||cur;
+ const x=(DATA[m]||[]).find(r=>String(r.code)===t.dataset.c);if(!x)return;
  const cls=x.change>0?'up':x.change<0?'dn':'fl';
  tip.innerHTML='<div class="t1">'+esc(x.name)+' <span style="color:#8b93a7;font-weight:500">'+esc(x.code)+'</span></div>'+
   '<div class="t2 '+cls+'">'+(x.change>0?'+':'')+x.change+'%</div>'+
-  '<div class="kv"><span>현재가</span><b>'+P(cur,x.price)+'</b></div>'+
-  '<div class="kv"><span>시가총액</span><b>'+CAP(cur,x.mcap)+'</b></div>'+
-  '<div class="kv"><span>거래대금</span><b>'+VAL(cur,x.value)+'</b></div>'+
+  '<div class="kv"><span>현재가</span><b>'+P(m,x.price)+'</b></div>'+
+  '<div class="kv"><span>시가총액</span><b>'+CAP(m,x.mcap)+'</b></div>'+
+  '<div class="kv"><span>거래대금</span><b>'+VAL(m,x.value)+'</b></div>'+
   '<div class="kv"><span>섹터</span><b>'+esc(x.sector)+'</b></div>';
  tip.style.display='block';
  const tw=tip.offsetWidth,th=tip.offsetHeight;
@@ -399,8 +419,8 @@ document.getElementById('map').addEventListener('mousemove',e=>{
 document.getElementById('map').addEventListener('mouseleave',()=>tip.style.display='none');
 document.getElementById('map').addEventListener('click',e=>{
  const t=e.target.closest('.tile');if(!t)return;
- const c=t.dataset.c;
- window.open(cur==='kr'?'https://finance.naver.com/item/main.naver?code='+c
+ const c=t.dataset.c,m=t.dataset.m||cur;
+ window.open(m==='kr'?'https://finance.naver.com/item/main.naver?code='+c
   :'https://www.tradingview.com/symbols/'+encodeURIComponent(c.replace('^',''))+'/','_blank')});
 // 범례
 document.getElementById('legend').innerHTML=[-3,-2,-1,0,1,2,3].map(v=>
