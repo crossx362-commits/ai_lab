@@ -79,9 +79,10 @@ def _json_ok(s: str) -> bool:
 
 def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7,
             task: str = "", json_mode: bool = False) -> str | None:
-    """Call Ollama local LLM. 소형 모델이 빈 응답/깨진 JSON을 뱉으면 최대 모델로 1회
-    재시도(2026-07-02) — OLLAMA_MODEL 강제(e2b 등 속도 우선)가 구조화 프롬프트를 못 버텨
-    전체 폴백이 무너지던 문제. 사용자의 소형 기본값은 존중하고 실패 시에만 승급."""
+    """Call Ollama local LLM (네이티브 /api/chat + think=false — 2026-07-03).
+    e2b '빈 응답'의 진범은 thinking 모델: OpenAI 호환(/v1) 경로에선 추론이 reasoning 필드로
+    새고 max_tokens를 추론이 소진해 content가 빈다. 네이티브 API에서 추론을 끄면 정상+고속.
+    소형 모델이 빈 응답/깨진 JSON이면 다음 후보로 승급(2026-07-02) — 소형 기본값 존중."""
     try:
         now = time.time()
         if "ollama_models" not in _cache or now - _cache.get("ollama_ts", 0) > _CACHE_TTL:
@@ -102,13 +103,31 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        url = _ollama_endpoint().replace("/v1/chat/completions", "/api/chat")
         for m in candidates:
             try:
-                payload = json.dumps({"model": m, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}).encode()
-                req = urllib.request.Request(_ollama_endpoint(), data=payload, headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(req, timeout=120) as r:
-                    res = json.loads(r.read())
-                result = res["choices"][0]["message"]["content"].strip()
+                body = {"model": m, "messages": messages, "stream": False, "think": False,
+                        "options": {"num_predict": max_tokens, "temperature": temperature}}
+                try:
+                    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+                                                 headers={"Content-Type": "application/json"})
+                    with urllib.request.urlopen(req, timeout=120) as r:
+                        res = json.loads(r.read())
+                except urllib.error.HTTPError as he:
+                    detail = ""
+                    try:
+                        detail = he.read().decode()[:200]
+                    except Exception:
+                        pass
+                    if "think" not in detail.lower():
+                        raise
+                    # 비사고 모델이 think 파라미터를 거부하면 빼고 1회 재시도
+                    body.pop("think", None)
+                    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+                                                 headers={"Content-Type": "application/json"})
+                    with urllib.request.urlopen(req, timeout=120) as r:
+                        res = json.loads(r.read())
+                result = (res.get("message", {}).get("content") or "").strip()
             except Exception as e:
                 # 후보 하나의 실패(비챗 모델 400 등)로 로컬 전체를 포기하지 않는다 — 다음 모델 시도
                 print(f"  ⚠️ [Ollama:{m}] {e}, falling back")
