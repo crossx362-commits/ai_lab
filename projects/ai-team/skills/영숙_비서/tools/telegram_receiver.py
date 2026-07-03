@@ -283,27 +283,16 @@ def web_search(query: str) -> str:
 
 
 def _call_llm(prompt: str, system: str = SYSTEM) -> str:
-    """안정적인 클라우드 우선 폴백. Ollama는 연결 불안정이 잦아 최후수단으로만 시도."""
+    """클라우드 우선 폴백 — llm.text(lm_first=False)가 GPT→Gemini→클로드→로컬(승급) 전체
+    체인을 담당(2026-07-03). 수동 체인은 클로드 3선을 건너뛰어 GPT·Gemini 크레딧 소진 시
+    저품질 로컬로 직행하던 문제."""
     from _shared import llm
-
-    # 1순위: gpt-4o-mini (영숙 주 모델과 동일, 가장 안정)
-    # 2순위: gemini-2.5-flash (무료 쿼터 여유 있음)
-    # 3순위: Ollama (로컬, 불안정 — 위 둘 다 실패했을 때만)
-    providers = [
-        ("gpt", lambda: llm.gpt(prompt, system=system, max_tokens=500, temperature=0.8)),
-        ("gemini", lambda: llm.gemini(prompt, system=system, max_tokens=500, temperature=0.8)),
-        ("ollama", lambda: llm.ollama(prompt, system=system, max_tokens=500, temperature=0.8)),
-    ]
-    for name, call in providers:
-        try:
-            result = call()
-        except Exception as exc:
-            log(f"_call_llm {name} 실패: {exc}")
-            continue
-        if result:
-            return result
-
-    return "지금은 답변을 만들기 어려워요. 잠시 후 다시 시도해줘요."
+    try:
+        result = llm.text(prompt, system=system, max_tokens=800, temperature=0.8, lm_first=False)
+    except Exception as exc:
+        log(f"_call_llm 실패: {exc}")
+        result = None
+    return result or "지금은 답변을 만들기 어려워요. 잠시 후 다시 시도해줘요."
 
 
 def _tool_get_agent_status() -> str:
@@ -1134,7 +1123,9 @@ def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | No
     반환: {"intent":..., "index":n|None} 또는 None(해당 없음/casual)."""
     from _shared import llm
     opts = ["mode_live=실거래(실제 돈)로 전환", "mode_paper=모의(가상)로 전환",
-            "mode_status=현재 거래 모드 조회", "none=거래 운영 명령이 아님(일반 대화/질문)"]
+            "mode_status=현재 거래 모드 조회",
+            "status=거래/투자 현황 조회(보유 종목·손익·오늘 거래 — 오타 포함 '거래현황' 류)",
+            "none=거래 운영 명령이 아님(일반 대화/질문)"]
     if has_order:
         opts = ["order_confirm=대기 중인 주문 체결 승인", "order_cancel=대기 주문 취소"] + opts
     if has_signals:
@@ -1143,21 +1134,19 @@ def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | No
     prompt = (
         "주식 봇 사용자의 메시지 의도를 분류하세요. 미리 정한 단어가 아니라 '의미'로 판단합니다.\n"
         "예) '이제 진짜로 사자'·'실전으로 돌려'→mode_live, '가상으로만'·'연습모드'→mode_paper, "
-        "'지금 뭘로 돼있어?'→mode_status, '그래 사', '오케이 2번'→signal_approve, '넘겨'→pass.\n"
+        "'지금 뭘로 돼있어?'→mode_status, 'ㄱㅓ래현황'·'포지션 어때'→status, "
+        "'그래 사', '오케이 2번'→signal_approve, '넘겨'→pass.\n"
         f"가능한 의도: {'; '.join(opts)}\n"
         f'메시지: "{text}"\n'
         '애매하거나 단순 대화면 none. JSON만: {"intent":"...","index":번호 또는 null}'
     )
-    raw = None
-    for fn in (lambda: llm.gpt(prompt, max_tokens=60, temperature=0),
-               lambda: llm.gemini(prompt, max_tokens=60, temperature=0),
-               lambda: llm.ollama(prompt, max_tokens=60, temperature=0)):
-        try:
-            raw = fn()
-            if raw:
-                break
-        except Exception:
-            continue
+    # llm.text(json_mode)가 GPT→Gemini→클로드→로컬(JSON 검증·모델 승급) 전체 체인 담당(2026-07-03).
+    # 기존 수동 체인은 클로드를 건너뛰고 로컬을 60토큰으로 불러 깨진 JSON이 오분류('ㄱㅓ래현황'→
+    # mode_status 정답변)를 만들던 문제. json_mode 로컬 폴백은 1500토큰↑ 필요(가드레일).
+    try:
+        raw = llm.text(prompt, json_mode=True, max_tokens=1500, temperature=0, lm_first=False)
+    except Exception:
+        raw = None
     if not raw:
         return None
     a, b = raw.find("{"), raw.rfind("}")
@@ -1210,6 +1199,8 @@ def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool) -> str | 
     if it == "mode_status":
         cur = _get_trade_mode()
         return f"현재 거래 모드: {'🔴 실거래(실제 돈)' if cur == 'live' else '🧪 모의(페이퍼)'}"
+    if it == "status":
+        return _tool_get_trading_status()
     if it == "signal_approve" and has_signals:
         signals = _signals_load()
         idx = intent.get("index")
