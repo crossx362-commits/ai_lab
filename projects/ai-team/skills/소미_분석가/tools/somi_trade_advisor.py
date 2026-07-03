@@ -899,8 +899,9 @@ def _fast_watch(regime: str = "unknown") -> None:
     if str(store.get("ts", ""))[:10] != now.strftime("%Y-%m-%d"):
         return  # 전일 후보로 매수 금지
     held = set(load_positions().keys())
+    _ok_verdicts = ("buy", "watch") if _is_paper() else ("buy",)   # 모의는 watch 허용(오너 지시 2026-07-03)
     cands = [p for p in (store.get("items") or [])
-             if p.get("verdict") == "buy" and not p.get("disc_block") and p["symbol"] not in held]
+             if p.get("verdict") in _ok_verdicts and not p.get("disc_block") and p["symbol"] not in held]
     if not cands and not _load(WATCHING_FILE):
         return
     kis = KISClient()
@@ -999,7 +1000,10 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
 
     # ── 오후 매수 슬롯(buy / buy_close) ──
     # 1차: 뉴스판정 buy + 통계 게이트(수급·MC). 하락 국면은 차단이 아니라 후보 확대로 반영.
-    buys = _apply_buy_gates([p for p in candidates if p.get("verdict") == "buy"])
+    # 모의는 'watch'(확신부족)도 통과 — 오너 지시(2026-07-03): 폭락주간 전종목 수급음수→watch로
+    # 모의가 전면 무체결이 되던 문제. 'avoid'(누적 악재)는 모의에서도 차단. 실거래는 buy만.
+    _ok_verdicts = ("buy", "watch") if _is_paper() else ("buy",)
+    buys = _apply_buy_gates([p for p in candidates if p.get("verdict") in _ok_verdicts])
     # 2차: 상위 후보를 실시간 다중점수로 보강 → 기대값 기반 최종 게이트
     kis = KISClient()
     top = sorted(buys, key=lambda x: x["score"], reverse=True)[: max(4, _paper_auto_max() * 2)]
