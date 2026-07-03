@@ -23,15 +23,22 @@ def _cloud_llm_allowed() -> bool:
 
 # ==================== OLLAMA (LOCAL, FREE) ====================
 
-def _ollama_endpoint() -> str:
-    return os.getenv("OLLAMA_URL", "http://localhost:11434/v1/chat/completions")
+def _ollama_base() -> str:
+    """Ollama 호스트 루트. OLLAMA_URL에 구 경로(/v1/chat/completions 등)가 붙어와도 루트만 취한다
+    — 7/3 네이티브 /api/chat 전환 후 엔드포인트를 여기서 조립(더는 죽은 주소를 replace 안 함)."""
+    raw = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    for suffix in ("/v1/chat/completions", "/api/chat", "/v1", "/api"):
+        if raw.endswith(suffix):
+            raw = raw[: -len(suffix)]
+            break
+    return raw.rstrip("/")
 
 
 def _list_ollama() -> list[str]:
     """List Ollama models (exclude embeddings)."""
     for attempt in range(3):
         try:
-            url = _ollama_endpoint().replace("/chat/completions", "/models")
+            url = _ollama_base() + "/v1/models"
             timeout = 45 if attempt == 0 else 15
             with urllib.request.urlopen(url, timeout=timeout) as r:
                 data = json.loads(r.read())
@@ -89,7 +96,13 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
             _cache["ollama_models"] = _list_ollama()
             _cache["ollama_ts"] = now
         available = _cache.get("ollama_models", [])
-        model = os.getenv("OLLAMA_MODEL") or _pick_ollama(available, task)
+        # 동적 연결: 핀(OLLAMA_MODEL)이 실제 설치돼 있으면 존중(고속 e2b 기본 유지),
+        # 사라졌으면 죽은 모델에 헛방 안 쏘고 설치 목록에서 자동 선택.
+        pinned = os.getenv("OLLAMA_MODEL", "").strip()
+        if pinned and (pinned in available or not available):
+            model = pinned
+        else:
+            model = _pick_ollama(available, task)
         if not model:
             return None
         biggest = _pick_ollama(available, "")
@@ -103,16 +116,20 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        url = _ollama_endpoint().replace("/v1/chat/completions", "/api/chat")
+        url = _ollama_base() + "/api/chat"
+
+        def _post(payload):
+            req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return json.loads(r.read())
+
         for m in candidates:
             try:
                 body = {"model": m, "messages": messages, "stream": False, "think": False,
                         "options": {"num_predict": max_tokens, "temperature": temperature}}
                 try:
-                    req = urllib.request.Request(url, data=json.dumps(body).encode(),
-                                                 headers={"Content-Type": "application/json"})
-                    with urllib.request.urlopen(req, timeout=120) as r:
-                        res = json.loads(r.read())
+                    res = _post(body)
                 except urllib.error.HTTPError as he:
                     detail = ""
                     try:
@@ -123,10 +140,7 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
                         raise
                     # 비사고 모델이 think 파라미터를 거부하면 빼고 1회 재시도
                     body.pop("think", None)
-                    req = urllib.request.Request(url, data=json.dumps(body).encode(),
-                                                 headers={"Content-Type": "application/json"})
-                    with urllib.request.urlopen(req, timeout=120) as r:
-                        res = json.loads(r.read())
+                    res = _post(body)
                 result = (res.get("message", {}).get("content") or "").strip()
             except Exception as e:
                 # 후보 하나의 실패(비챗 모델 400 등)로 로컬 전체를 포기하지 않는다 — 다음 모델 시도
@@ -295,33 +309,24 @@ def text(
     primary = os.getenv("AI_TEAM_LLM_PRIMARY", "ollama").strip().lower()
     local_first = lm_first if lm_first is not None else primary in {"local", "ollama"}
 
-    if local_first:
-        result = _ollama(prompt, system, max_tokens, temperature, task, json_mode)
-        if result:
-            return result
-        if not cloud_allowed:
-            return None
-        result = _gpt(prompt, system, max_tokens, temperature, json_mode)
-        if result:
-            return result
-        result = _gemini(prompt, system, max_tokens, temperature, json_mode)
-        if result:
-            return result
-        return _claude(prompt, system, max_tokens, temperature, json_mode)
+    local = lambda: _ollama(prompt, system, max_tokens, temperature, task, json_mode)
+    cloud = [
+        lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),
+        lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),
+        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),
+    ]
 
+    # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.
     if not cloud_allowed:
-        return _ollama(prompt, system, max_tokens, temperature, task, json_mode)
+        chain = [local]
+    else:
+        chain = [local] + cloud if local_first else cloud + [local]
 
-    result = _gpt(prompt, system, max_tokens, temperature, json_mode)
-    if result:
-        return result
-    result = _gemini(prompt, system, max_tokens, temperature, json_mode)
-    if result:
-        return result
-    result = _claude(prompt, system, max_tokens, temperature, json_mode)
-    if result:
-        return result
-    return _ollama(prompt, system, max_tokens, temperature, task, json_mode)
+    for call in chain:
+        result = call()
+        if result:
+            return result
+    return None
 
 
 # Shorthand aliases
