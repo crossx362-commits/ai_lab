@@ -12,7 +12,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -688,7 +688,12 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         if entry > budget:             # F3: 1주가 배정예산 초과(고가주) — 포트폴리오 배분 왜곡 방지
             done.append(f"⏭️ {p['name']} 매수 건너뜀: 1주 {int(entry):,}원 > 배정예산 {budget:,}원")
             continue
-        qty = max(1, budget // entry)
+        # 돌파 분할매수(연구 2026-07-03, docs/SPLIT_ENTRY_EXIT_STUDY): 예산 50% 진입 →
+        # 진입가 +2% 돌파 시 잔여 50% 증액(3거래일 유효, 미돌파 시 미투입).
+        # 24개월 검증: 손익비 1.40→2.43, MDD -32→-19%, 샤프 2.24→5.26. 1주가 절반예산 초과면 일괄.
+        half_budget = budget // 2
+        split = half_budget >= entry
+        qty = max(1, (half_budget if split else budget) // entry)
         try:
             res = trader.order(p["symbol"], qty, "buy", 0)
         except Exception as exc:
@@ -706,15 +711,79 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
             "slot": slot_kind, "regime": regime, "news": bool(p.get("news_bonus")),
             "rr": p.get("rr"), "vwap_at_buy": p.get("vwap"),
         }
+        if split:
+            extra.update({"addon_trigger": round(fill * 1.02), "addon_budget": int(budget - qty * fill),
+                          "addon_until": _n_trading_days_later(3), "addon_done": False})
         record_position(p["symbol"], p["name"], fill, p["stop"], p["target"], qty, p.get("score"), extra=extra)
         bought += 1
         cash -= qty * fill   # 후속 후보 배분 캡에 반영(유보율 침범 방지)
+        split_note = f" · 분할 1차 50%(+2% 돌파 시 증액)" if split else ""
         done.append(
             f"🧪 자동 매수(모의) — {p['name']}({p['symbol']}) {qty}주 @ {int(fill):,}원 "
-            f"(확신 {conv:.1f}배·탐지 {p.get('score', '?')}·진입 {p.get('entry_score', '?')})\n"
+            f"(확신 {conv:.1f}배·탐지 {p.get('score', '?')}·진입 {p.get('entry_score', '?')}){split_note}\n"
             f"   손절 {int(p['stop']):,} / 1차 {tp1:,} / 2차 {tp2:,} 감시 시작"
         )
     return done
+
+
+def _n_trading_days_later(n: int) -> str:
+    """주말 제외 n거래일 뒤 날짜(YYYY-MM-DD) — 공휴일 미반영(근사)."""
+    d = datetime.now()
+    added = 0
+    while added < n:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            added += 1
+    return d.strftime("%Y-%m-%d")
+
+
+def _addon_scale_in() -> None:
+    """돌파 분할매수 2차 증액(모의 전용) — 보유 포지션의 +2% 돌파 트리거를 고속감시 주기로 확인.
+    연구(2026-07-03): '강함 확인 후 증액'이 손익비 1.40→2.43·샤프 2.24→5.26 (docs/SPLIT_ENTRY_EXIT_STUDY).
+    기한(3거래일) 내 미돌파면 미투입 종료 — 눌림 추가매수는 역선택이라 금지."""
+    if not _is_paper():
+        return
+    pos = load_positions()
+    pending = {s: p for s, p in pos.items() if p.get("addon_trigger") and not p.get("addon_done")}
+    if not pending:
+        return
+    from kis_trader import KISTrader
+    trader = KISTrader()
+    if not trader.paper:
+        return
+    kis = KISClient()
+    today = datetime.now().strftime("%Y-%m-%d")
+    for sym, p in pending.items():
+        if today > str(p.get("addon_until", "")):
+            set_position_fields(sym, {"addon_done": True})   # 기한 만료 — 잔여 미투입 종료
+            continue
+        try:
+            cur = to_num((kis.quote(sym) or {}).get("stck_prpr"))
+        except Exception:
+            continue
+        if not cur or cur < p["addon_trigger"]:
+            continue
+        qty2 = int(p.get("addon_budget", 0) // cur)
+        if qty2 < 1:
+            set_position_fields(sym, {"addon_done": True})   # 잔여 예산으로 1주 불가
+            continue
+        try:
+            res = trader.order(sym, qty2, "buy", 0)
+        except Exception as exc:
+            print(f"[분할증액] {p.get('name', sym)} 주문 실패: {exc}")
+            continue
+        fill2 = res.get("price") or cur
+        q1, e1 = int(p.get("qty", 0)), float(p.get("entry") or fill2)
+        new_qty = q1 + qty2
+        new_avg = round((q1 * e1 + qty2 * fill2) / new_qty, 2)
+        # 평단 갱신에 맞춰 분할익절 단계 재산정(손절·트레일은 원신호 유지 — 백테스트 조건 동일)
+        set_position_fields(sym, {
+            "qty": new_qty, "entry": new_avg, "addon_done": True,
+            "addon_fill": fill2, "addon_qty": qty2,
+            "tp1": round(new_avg * 1.05), "tp2": max(int(p.get("target") or 0), round(new_avg * 1.08)),
+        })
+        send(f"🧪 [소미 분할증액] {p.get('name', sym)}({sym}) +2% 돌파 확인 — {qty2}주 @ {int(fill2):,}원 추가\n"
+             f"   평단 {int(new_avg):,}원 · 총 {new_qty}주 · 1차 {round(new_avg * 1.05):,} 재설정")
 
 
 CANDIDATES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_candidates.json"
@@ -1134,6 +1203,10 @@ def main() -> None:
                             _fast_watch(regime)
                         except Exception as e:
                             print(f"[{datetime.now()}] 고속감시 오류: {e}")
+                    try:
+                        _addon_scale_in()   # 돌파 분할매수 2차 증액 감시(모의 전용)
+                    except Exception as e:
+                        print(f"[{datetime.now()}] 분할증액 오류: {e}")
                     time.sleep(fast_sec)
             return
         from _shared.utils import due_slot
