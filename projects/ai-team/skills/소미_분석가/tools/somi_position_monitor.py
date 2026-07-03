@@ -36,7 +36,40 @@ from somi_trade_advisor import (  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
+ACCOUNT_FILE = PROJECT_ROOT / "output" / "cache" / "somi_account.json"
 TRAIL_PROFIT_PCT = 5.0   # 목표가 전이라도 +5% 이상이면 분할익절 참고 제안
+
+
+def write_account_snapshot() -> dict:
+    """모의 계좌 평가액 스냅샷 기록 — 대시보드·성과보고가 KIS 호출 없이 읽는다.
+    이미 시세를 조회하는 포지션 모니터가 소유(대시보드는 stdlib 유지). 시작 1천만 대비 전체 수익."""
+    import json
+    try:
+        led = json.loads((PROJECT_ROOT / "output" / "cache" / "somi_paper.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    start = int(os.getenv("SOMI_PAPER_CASH", "10000000"))
+    cash = float(led.get("cash", start))
+    positions = led.get("positions") or {}
+    kis = KISClient() if positions else None
+    pos_val = 0.0
+    for sym, p in positions.items():
+        try:
+            cur = num(kis.quote(sym).get("stck_prpr"))
+        except Exception:
+            cur = num(p.get("avg"))
+        pos_val += (cur or 0) * int(p.get("qty") or 0)
+    value = cash + pos_val
+    snap = {"start": start, "cash": round(cash), "pos_val": round(pos_val),
+            "value": round(value), "ret": round((value / start - 1) * 100, 2) if start else 0.0,
+            "held": len(positions), "ts": datetime.now().strftime("%Y-%m-%d %H:%M")}
+    try:
+        tmp = ACCOUNT_FILE.with_name(ACCOUNT_FILE.name + ".tmp")
+        tmp.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, ACCOUNT_FILE)
+    except Exception:
+        pass
+    return snap
 # 백테스트 재검증(40종목·다기간 12/24/30개월, 기준 60): 보유 18~25일이 견고한 고원.
 # 7일은 승자를 일찍 놔줘 모멘텀 수익을 버림 — 20일이 절대수익 최상위·MDD 균형(24mo +134→+264%).
 MAX_HOLD_DAYS = int(os.getenv("SOMI_MAX_HOLD_DAYS", "20"))
@@ -297,10 +330,12 @@ def main() -> None:
                     try:
                         # 자동 손절/익절은 매 틱 점검(체결), 보고(텔레그램/노션)는 정해진 시각에만
                         run(do_send=bool(due_slot(slots, state)))
+                        write_account_snapshot()   # 계좌 평가액 갱신(대시보드용)
                     except Exception as e:
                         send(f"⚠️ 소미 포지션 감시 오류: {e}")
                         print(f"[{now}] 오류: {e}")
                 else:
+                    write_account_snapshot()   # 장외에도 1회 갱신(현금 기준)
                     print(f"[{now}] 장외 대기")
                 time.sleep(interval)
         return

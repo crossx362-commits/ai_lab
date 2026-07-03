@@ -76,6 +76,14 @@ def collect() -> dict:
     d["mode"] = _j(CACHE / "trade_mode.json", {}).get("mode", "?")
     paper = _j(CACHE / "somi_paper.json", {})
     d["paper"] = {"cash": paper.get("cash"), "positions": paper.get("positions", {})}
+    # 계좌 평가액 스냅샷(포지션 모니터가 시세 반영해 기록) — 전체 금액 대비 수익
+    acct = _j(CACHE / "somi_account.json", {})
+    if not acct:  # 스냅샷 없으면 원장 현금 기준 폴백
+        start = 10000000
+        cash = paper.get("cash", start)
+        acct = {"start": start, "value": cash, "ret": round((cash / start - 1) * 100, 2),
+                "cash": cash, "pos_val": 0, "ts": "-"}
+    d["account"] = acct
 
     # 청산 성과 요약 + 최근 거래
     trades = [t for t in _j(CACHE / "somi_closed_trades.json", [])
@@ -166,12 +174,17 @@ async function load(){
  // 하네스
  const hc=d.harness.checks.map(c=>`<tr><td class="${c.status==='OK'?'ok':c.status==='WARN'?'warn':'bad'}">${c.status}</td><td>${esc(c.name)}</td><td class="dim">${esc(c.message)}</td></tr>`).join('');
  g.push(card('하네스 점검 <span class="dim">('+esc(d.harness.ts)+')</span>',`<table>${hc}</table>`));
- // 모의 계좌
+ // 모의 계좌 — 전체 금액 대비 평가액·수익 강조
  const pos=Object.entries(d.paper.positions||{});
- g.push(card('모의 계좌',`<div class="kv"><div><div class="l">예수금</div><div class="big">${d.paper.cash!=null?Number(d.paper.cash).toLocaleString()+'원':'원장 미생성'}</div></div><div><div class="l">보유</div><div class="big">${pos.length}종목</div></div></div>`+
-  (pos.length?`<table><tr><th>종목</th><th class="num">수량</th><th class="num">평단</th></tr>${pos.map(([s,p])=>`<tr><td>${esc(s)}</td><td class="num">${p.qty}</td><td class="num">${Number(p.avg).toLocaleString()}</td></tr>`).join('')}</table>`:'')));
+ const ac=d.account||{};
+ const acCls=ac.ret>=0?'ok':'bad';
+ g.push(card('모의 계좌',
+  `<div class="kv"><div><div class="l">계좌 평가액</div><div class="big ${acCls}">${Number(ac.value||0).toLocaleString()}원</div></div>`+
+  `<div><div class="l">전체 수익률</div><div class="big ${acCls}">${ac.ret>0?'+':''}${ac.ret}%</div></div></div>`+
+  `<div class="dim" style="font-size:12px;margin-top:4px">시작 ${Number(ac.start||10000000).toLocaleString()} → 현금 ${Number(ac.cash||0).toLocaleString()} + 주식 ${Number(ac.pos_val||0).toLocaleString()} · 보유 ${pos.length}종목</div>`+
+  (pos.length?`<table style="margin-top:6px"><tr><th>종목</th><th class="num">수량</th><th class="num">평단</th></tr>${pos.map(([s,p])=>`<tr><td>${esc(s)}</td><td class="num">${p.qty}</td><td class="num">${Number(p.avg).toLocaleString()}</td></tr>`).join('')}</table>`:'')));
  // 성과
- const pf=d.perf.n?`<div class="kv"><div><div class="l">청산</div><div class="big">${d.perf.n}건</div></div><div><div class="l">승률</div><div class="big">${d.perf.winrate}%</div></div><div><div class="l">평균</div><div class="big ${d.perf.avg>=0?'ok':'bad'}">${d.perf.avg>0?'+':''}${d.perf.avg}%</div></div><div><div class="l">누적</div><div class="big ${d.perf.sum>=0?'ok':'bad'}">${d.perf.sum>0?'+':''}${d.perf.sum}%p</div></div></div>`:'<span class="dim">청산 거래가 아직 없습니다 — 첫 체결부터 집계</span>';
+ const pf=d.perf.n?`<div class="kv"><div><div class="l">청산</div><div class="big">${d.perf.n}건</div></div><div><div class="l">승률</div><div class="big">${d.perf.winrate}%</div></div><div><div class="l">건당평균</div><div class="big ${d.perf.avg>=0?'ok':'bad'}">${d.perf.avg>0?'+':''}${d.perf.avg}%</div></div></div><div class="dim" style="font-size:11px;margin-top:2px">거래 품질 지표 — 실제 벌이는 위 계좌 평가액</div>`:'<span class="dim">청산 거래가 아직 없습니다 — 첫 체결부터 집계</span>';
  const rt=d.recent_trades.length?`<table><tr><th>청산</th><th>종목</th><th class="num">순수익</th><th>사유</th></tr>${d.recent_trades.map(t=>`<tr><td class="dim">${esc(t.ts_close)}</td><td>${esc(t.name)}</td><td class="num ${t.ret_pct>=0?'ok':'bad'}">${t.ret_pct>0?'+':''}${esc(t.ret_pct)}%</td><td class="dim">${esc(t.reason)}</td></tr>`).join('')}</table>`:'';
  g.push(card('모의 성과',pf+rt));
  // 발굴/제안 — 종목 행 아래 발굴 사유·리스크·뉴스 판단 표시
