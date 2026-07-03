@@ -21,14 +21,17 @@ from typing import Dict, List
 _here = os.path.dirname(os.path.abspath(__file__))
 _root = _here
 for _ in range(6):
-    if os.path.isdir(os.path.join(_root, "reports")):
+    if os.path.isdir(os.path.join(_root, "_shared")):
         break
     _root = os.path.dirname(_root)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
+from _shared.env import load_env
 from _shared.notify import send
 from _shared.llm import ollama as lm_chat, is_available as lm_available
+
+load_env()
 
 # evaluate_feedback.py import
 sys.path.insert(0, os.path.dirname(__file__))

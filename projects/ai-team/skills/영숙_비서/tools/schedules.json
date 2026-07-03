@@ -15,6 +15,17 @@
       "priority": "low"
     },
     {
+      "id": "log_janitor",
+      "agent": "영숙",
+      "task": "output 로그 정리",
+      "cron": "10 4 * * *",
+      "description": "output/trading_logs·bot_logs 비대 로그 회전(5MB+) + 45일 사어 로그 삭제",
+      "command": "python projects/ai-team/skills/영숙_비서/tools/log_janitor.py",
+      "enabled": true,
+      "run": true,
+      "priority": "low"
+    },
+    {
       "id": "research_us",
       "agent": "행크",
       "task": "미국 시장 조사(수집)",
