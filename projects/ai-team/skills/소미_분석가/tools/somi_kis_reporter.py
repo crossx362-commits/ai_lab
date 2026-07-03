@@ -635,14 +635,27 @@ def daily_summary() -> str:
     ])
 
 
+def _held_symbols() -> set:
+    """보유 포지션 종목코드 — 관심종목 청소에서 보호."""
+    try:
+        p = growth._root() / "output" / "cache" / "somi_positions.json"
+        return set(json.loads(p.read_text(encoding="utf-8")).keys()) if p.exists() else set()
+    except Exception:
+        return set()
+
+
 def watchlist_summary(report_name: str = "정기") -> str:
-    """관심종목 전체를 종목별 1줄로 요약(점수순) — 노션 링크 우르르 대신 텔레그램 1메시지.
-    (사용자 지시 2026-07-03: 정기보고는 종목마다 링크 말고 간단 종목별 요약으로.)"""
+    """관심종목 전체를 종목별 1줄로 요약(점수순) + 붕괴주 자동 청소.
+    (2026-07-03: 정기보고는 종목별 간단 요약으로. 청소: 점수가 keep_floor 밑으로 떨어진
+    비보유 종목은 관심종목에서 자동 제거 — 펌핑 등록 후 붕괴한 '거래량 많은 하락주' 방치 해소.)"""
+    from watchlist_manager import save_watchlist
     watchlist = load_watchlist()
     if not watchlist:
         return "📋 감시 중인 종목이 없습니다.\n'관심종목 추가 <종목코드> <종목명>'으로 등록하세요."
     kis = KISClient()
-    rows = []
+    held = _held_symbols()
+    keep_floor = int(os.getenv("SOMI_WATCH_KEEP_FLOOR", "40"))  # 이 점수 밑 비보유 종목은 청소
+    rows, keep, pruned = [], {}, []
     for symbol, name in watchlist.items():
         try:
             inv10 = kis.investor_history(symbol, 10)
@@ -656,13 +669,24 @@ def watchlist_summary(report_name: str = "정기") -> str:
             if chg and not chg.endswith("%"):
                 chg += "%"
             sig = (pos[0] if pos else (neg[0] if neg else "-")).split(",")[0][:22]
+            # 청소 판정: 점수 미달 + 비보유 → 제거(보유 종목은 점수 무관 유지)
+            if score < keep_floor and symbol not in held:
+                pruned.append(f"{name}({score}점)")
+                continue
+            keep[symbol] = name
             rows.append((score, f"• {name} {close:,}원 {chg} · {score}점({grade}) · {sig}"))
         except Exception:
+            keep[symbol] = name   # 조회 실패는 청소 대상 아님(보수)
             rows.append((-1, f"• {name}({symbol}) 조회 실패"))
         time.sleep(0.3)
+    if pruned:
+        save_watchlist(keep)   # 청소 반영
     rows.sort(key=lambda r: r[0], reverse=True)   # 점수 높은 순
-    header = f"📋 [소미 관심종목 요약 · {datetime.now():%m-%d %H:%M}] {len(watchlist)}종목 (점수순)"
-    return "\n".join([header] + [r[1] for r in rows])
+    header = f"📋 [소미 관심종목 요약 · {datetime.now():%m-%d %H:%M}] {len(keep)}종목 (점수순)"
+    body = [header] + [r[1] for r in rows]
+    if pruned:
+        body.append(f"🧹 청소 {len(pruned)}종목 제거(점수 {keep_floor}↓·비보유): {', '.join(pruned[:8])}")
+    return "\n".join(body)
 
 
 def send_watchlist_reports(report_name: str = "정기") -> bool:
