@@ -726,6 +726,19 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
     return done
 
 
+def _deployable_cash() -> float:
+    """투자 가능 현금(예수금 - 고정유보). 모의는 원장 읽기라 무비용.
+    발굴 게이트용 — 자금 없으면(전액 투자·유보 도달) 무거운 발굴을 건너뛴다."""
+    try:
+        from kis_trader import KISTrader
+        trader = KISTrader()
+        cash = float(trader.balance().get("cash", 0))
+        reserve = float(os.getenv("SOMI_CASH_RESERVE_KRW", "2000000"))
+        return max(0.0, cash - reserve)
+    except Exception:
+        return 1.0   # 조회 실패 시 발굴 허용(기존 흐름 유지 — 무체결 방지)
+
+
 def _n_trading_days_later(n: int) -> str:
     """주말 제외 n거래일 뒤 날짜(YYYY-MM-DD) — 공휴일 미반영(근사)."""
     d = datetime.now()
@@ -1188,8 +1201,16 @@ def main() -> None:
                     if now.weekday() >= 5 or not ("09:00" <= hm <= "15:20"):
                         time.sleep(60)   # 장외 대기
                         continue
-                    if (not last_disc or (now - last_disc).total_seconds() >= disc_min * 60
-                            or _consume_trigger()):
+                    disc_due = (not last_disc or (now - last_disc).total_seconds() >= disc_min * 60
+                                or _consume_trigger())
+                    # 발굴은 '자금 있고 매수 시작 전에만'(사용자 지시 2026-07-03) — 전액 투자/유보 도달 시
+                    # 무거운 발굴(스크리너·뉴스·40종목 분석)을 건너뛴다. 보유 관리(청산·분할증액)는 계속.
+                    if disc_due and _deployable_cash() <= 0:
+                        disc_due = False
+                        if not last_disc or (now - last_disc).total_seconds() >= disc_min * 60:
+                            last_disc = now   # 재검사 주기 유지(매 틱 스킵로그 방지)
+                            print(f"[{datetime.now()}] 발굴 스킵 — 투자가능 현금 없음(전액 투자/유보 도달)")
+                    if disc_due:
                         last_disc = now
                         kind = "buy_close" if hm >= "15:00" else "buy"  # 마감권 제한 규율 유지
                         try:
