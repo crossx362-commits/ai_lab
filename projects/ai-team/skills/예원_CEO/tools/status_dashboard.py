@@ -313,16 +313,54 @@ function squarify(items,x,y,w,h){
  const worst=(r,len)=>{const s=r.reduce((a,b)=>a+b.v,0);let mx=0,mn=1e18;
   for(const q of r){mx=Math.max(mx,q.v);mn=Math.min(mn,q.v)}
   return Math.max(len*len*mx/(s*s),(s*s)/(len*len*mn))};
+ // 최소 두께 보장(2026-07-03): 극단 분포(삼성 50%·한미반도체 0.6%)에서 꼬리 타일이
+ // 3~7px 실오라기가 돼 '짤림'으로 보이던 문제 — 행/열 두께와 행 내부 셀에 16px 바닥.
+ const MINT=16;
+ const place=(len)=>{const tot=row.reduce((a,b)=>a+b.v,0)||1;
+  let out2=row.map(q=>q.v/tot*len);
+  if(len>MINT*row.length){
+   out2=out2.map(v=>Math.max(v,MINT));
+   const over=out2.reduce((a,b)=>a+b,0)-len;
+   if(over>0){const flex=out2.map(v=>v-MINT),fs=flex.reduce((a,b)=>a+b,0)||1;
+    out2=out2.map((v,i)=>v-over*flex[i]/fs)}}
+  return out2};
  const flush=()=>{const s=row.reduce((a,b)=>a+b.v,0);if(!s){row=[];return}
-  if(cw>=ch){const rw=s/ch;let off=0;
-   for(const q of row){const hh=q.v/rw;out.push({d:q.d,x:cx,y:cy+off,w:rw,h:hh});off+=hh}cx+=rw;cw-=rw}
-  else{const rh=s/cw;let off=0;
-   for(const q of row){const ww=q.v/rh;out.push({d:q.d,x:cx+off,y:cy,w:ww,h:rh});off+=ww}cy+=rh;ch-=rh}
+  if(cw>=ch){const rw=Math.min(Math.max(s/ch,MINT),cw);
+   const hs=place(ch);let off=0;
+   for(let i=0;i<row.length;i++){out.push({d:row[i].d,x:cx,y:cy+off,w:rw,h:hs[i]});off+=hs[i]}
+   cx+=rw;cw-=rw}
+  else{const rh=Math.min(Math.max(s/cw,MINT),ch);
+   const ws=place(cw);let off=0;
+   for(let i=0;i<row.length;i++){out.push({d:row[i].d,x:cx+off,y:cy,w:ws[i],h:rh});off+=ws[i]}
+   cy+=rh;ch-=rh}
   row=[]};
  while(L.length){const len=Math.min(cw,ch);
   if(!row.length||worst(row.concat([L[0]]),len)<=worst(row,len))row.push(L.shift());
   else flush()}
  flush();return out}
+// 배치 후 최소치 보정: 트리맵 수학상 꼬리 종목(예: 반도체 섹터의 한미반도체 0.6%)은
+// 거인 밑 7~11px 띠가 될 수밖에 없다 — 같은 열/행의 이웃(거인)에게서 공간을 빌려 16px 보장.
+function enforceMin(rects){
+ const M=16,EPS=0.8;
+ for(let pass=0;pass<3;pass++){
+  let changed=false;
+  for(const t of rects){
+   if(t.h<M){ // 같은 열(같은 x·w) 어디든 기부자(충분히 큰 타일)를 찾아 사이 타일을 밀어냄
+    const col=rects.filter(o=>Math.abs(o.x-t.x)<EPS&&Math.abs(o.w-t.w)<EPS);
+    const donor=col.filter(o=>o!==t&&o.h>M*2).sort((a,b)=>b.h-a.h)[0];
+    if(donor){const d=M-t.h;
+     if(donor.y<t.y){donor.h-=d;for(const o of col)if(o!==donor&&o.y>donor.y&&o.y<=t.y+EPS)o.y-=d}
+     else{donor.y+=d;donor.h-=d;for(const o of col)if(o!==donor&&o!==t&&o.y>t.y&&o.y<donor.y+EPS)o.y+=d}
+     t.h=M;changed=true}}
+   if(t.w<M){
+    const row=rects.filter(o=>Math.abs(o.y-t.y)<EPS&&Math.abs(o.h-t.h)<EPS);
+    const donor=row.filter(o=>o!==t&&o.w>M*2).sort((a,b)=>b.w-a.w)[0];
+    if(donor){const d=M-t.w;
+     if(donor.x<t.x){donor.w-=d;for(const o of row)if(o!==donor&&o.x>donor.x&&o.x<=t.x+EPS)o.x-=d}
+     else{donor.x+=d;donor.w-=d;for(const o of row)if(o!==donor&&o!==t&&o.x>t.x&&o.x<donor.x+EPS)o.x+=d}
+     t.w=M;changed=true}}}
+  if(!changed)break}
+ return rects}
 // ── 포맷터 ──
 const P=(m,p)=>m==='kr'?Number(p||0).toLocaleString()+'원':'$'+Number(p||0).toLocaleString();
 const CAP=(m,v)=>!v?'—':(m==='kr'?(v>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString()+'억')
@@ -345,11 +383,14 @@ function renderMarket(mkt,rows,ox,oy,W,H,html){
   const s=r.d,cls=s.wch>0.02?'up':s.wch<-0.02?'dn':'fl';
   // 작은 섹터는 헤더 생략 — 18px 헤더가 타일 공간을 다 먹어 '짤림'처럼 보이던 문제
   const HD=(r.h<48||r.w<64)?0:16;
-  const inner=squarify(s.items.map(x=>({d:x,v:sizeOf(x)})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2));
+  // 섹터 내 크기 지수 압축(^0.75): 삼성 50.8%·하이닉스 48.5%·한미반도체 0.62% 같은 극단
+  // 분포에서 꼬리 종목이 3px 실오라기로 배정돼 안 보이던 문제 — 순서·크기감은 유지하며
+  // 82:1 → 27:1로 완화해 최소한 읽히는 블록을 보장.
+  const inner=enforceMin(squarify(s.items.map(x=>({d:x,v:Math.pow(sizeOf(x),0.75)})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2)));
   const tiles=inner.map(t=>{
    const x=t.d,dim=query&&!(x.name.toLowerCase().includes(query)||String(x.code).toLowerCase().includes(query));
    const fs=Math.max(9,Math.min(21,Math.sqrt(t.w*t.h)/5.2));
-   const showN=t.w>34&&t.h>20,showC=t.w>36&&t.h>34;
+   const showN=t.w>34&&t.h>14,showC=t.w>36&&t.h>34;
    const lbl=(showN?'<div class="tn" style="font-size:'+(fs*0.72).toFixed(1)+'px">'+esc(x.name)+'</div>':'')+
              (showC?'<div class="tc" style="font-size:'+fs.toFixed(1)+'px">'+(x.change>0?'+':'')+x.change+'%</div>':'');
    return '<div class="tile'+(dim?' dimmed':'')+'" style="left:'+t.x.toFixed(1)+'px;top:'+t.y.toFixed(1)+
