@@ -118,20 +118,21 @@ python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --sen
 
 ## 🤖 AI Agent System Architecture
 
-### Agent Roster (8 Agents — 실존, 2026-07-02 갱신)
+### Agent Roster (7 Agents — 실존, 2026-07-04 역할 재편)
 
-> 백엔드(스킬 폴더·실행 데몬)가 있는 에이전트는 아래 8명. 과거 가짜 에이전트(데이브·레오·시그널·코다리·케빈·경수·티모·로율 등)는 제거됨.
+> 백엔드(스킬 폴더·실행 데몬)가 있는 에이전트는 아래 7명. 과거 가짜 에이전트(데이브·레오·시그널·코다리·케빈·경수·티모·로율 등)는 제거됨. 마켓데스크는 예원에 흡수(2026-07-04).
+>
+> **소유권 재배치(2026-07-04)**: 소미 8역할 부담을 분산. **도구 파일은 물리적으로 그대로**(대부분 `소미_분석가/tools/`) 두고, `notify.py`의 `_AGENT_LABELS`에서 **소유(명찰)만 이동** — launchd·워치독·import·데몬 키(`somi_advisor` 등) 전부 불변(안전). "왜 한별 도구가 소미 폴더에?" = 이 재배치 때문(파일 이동 안 함).
 
-| Agent | Role | Key Tools |
+| Agent | Role | Key Tools (파일 위치 불변, 소유만 표기) |
 |-------|------|-----------|
-| 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `harness_manager.py`, `skill_auditor.py`, `evaluate_feedback.py`, `daily_feedback_scheduler.py` |
-| 영숙 (Youngsuk) | Secretary — Telegram bot (GPT-4o-mini, polling) | `telegram_receiver.py`, `schedule_manager.py`, `agent_controller.py` |
-| 소미 (Somi) | Analyst — Stock analysis & scoring | `somi_kis_reporter.py`, `somi_trade_advisor.py`, `somi_screener.py`, `short_covering_analyzer.py`, `watchlist_manager.py` |
-| 마켓데스크 | Market synthesis — 07:50/15:20 시장 종합·issue_impact | `market_desk.py` |
+| 예원 (Yewon) | CEO — 통합관리자: 오케스트레이션·시장종합·브리핑·추세·하네스·정시잡 | `yewon_dispatcher.py`, `harness_manager.py`, `market_desk.py`, `morning_note.py`, `somi_kis_reporter.py`(정기리포트), `market_trend_alert.py` |
+| 영숙 (Youngsuk) | Secretary — 텔레그램 게이트웨이 | `telegram_receiver.py`(+`bot_common.py`·`bot_tools_info.py`), `schedule_manager.py`, `agent_controller.py` |
+| 소미 (Somi) | Analyst — 실시간 감시/집행 코어 | `somi_price_monitor.py`, `somi_position_monitor.py`, `somi_us_trader.py`, `short_covering_analyzer.py`, `watchlist_manager.py` |
+| 한별 (Hanbyul) | Quant — 정량 매매 두뇌: 분석·매수판단·발굴·신호 | `quant_analyzer.py`, `somi_trade_advisor.py`, `somi_screener.py`, `somi_signal_engine.py` |
 | 행크 (Hank) | US research desk | `us_research.py` |
 | 유나 (Yuna) | Asia research desk | `asia_research.py` |
 | 레온 (Leon) | Europe research desk | `eu_research.py` |
-| 한별 (Hanbyul) | Quant analysis | `quant_analyzer.py` |
 
 ### Shared Module System (Unified, 5 Files)
 
