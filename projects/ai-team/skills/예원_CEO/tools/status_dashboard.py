@@ -545,13 +545,16 @@ def _heatmap_refresher() -> None:
 
 def main() -> None:
     import threading
+    from _shared.process import ProcessLock
     port = PORT
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
-    threading.Thread(target=_heatmap_refresher, daemon=True).start()  # 열지도 자동 갱신
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"[대시보드] http://localhost:{port} 서빙 시작 (열지도: /heatmap)")
-    srv.serve_forever()
+    # 단일 인스턴스 보장 — 락이 없어 재기동마다 좀비가 쌓여 에이전트 현황을 오염시켰다(2026-07-04)
+    with ProcessLock("status_dashboard"):
+        threading.Thread(target=_heatmap_refresher, daemon=True).start()  # 열지도 자동 갱신
+        srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        print(f"[대시보드] http://localhost:{port} 서빙 시작 (열지도: /heatmap)")
+        srv.serve_forever()
 
 
 if __name__ == "__main__":
