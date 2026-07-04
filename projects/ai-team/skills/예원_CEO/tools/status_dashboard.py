@@ -170,8 +170,10 @@ async function load(){
  window._last=d.ts;
  document.getElementById('ts').innerHTML='갱신 '+d.ts+' · 다음 갱신 <span id="cd">15</span>초 · 모드 '+(d.mode==='paper'?'🧪 모의':'🔴 실거래')+' · 배포 '+esc(d.deploy.head);
  const g=[];
- // 에이전트
- g.push(card('에이전트',(d.agents||[]).map(a=>`<span class="pill" style="margin:2px"><span class="${S.cls(a.state)}">●</span> ${esc(a.label)} <span class="dim">${S.txt(a.state)}</span></span>`).join(' ')));
+ // 에이전트 — 라벨 '<에이전트> (<세부>)'를 에이전트명으로 그룹핑(소미 8줄 → 소미 1줄+세부 pill)
+ const _grp={};
+ (d.agents||[]).forEach(a=>{const m=String(a.label).match(/^(.+?)\\s*\\((.+)\\)$/);const ag=m?m[1]:a.label;const sub=m?m[2]:'';(_grp[ag]=_grp[ag]||[]).push({sub,state:a.state})});
+ g.push(card('에이전트',Object.entries(_grp).map(([ag,ds])=>`<div style="margin:5px 0"><b style="color:var(--acc)">${esc(ag)}</b> ${ds.map(x=>`<span class="pill" style="margin:2px"><span class="${S.cls(x.state)}">●</span> ${esc(x.sub||ag)} <span class="dim">${S.txt(x.state)}</span></span>`).join(' ')}</div>`).join('')));
  // 하네스
  const hc=d.harness.checks.map(c=>`<tr><td class="${c.status==='OK'?'ok':c.status==='WARN'?'warn':'bad'}">${c.status}</td><td>${esc(c.name)}</td><td class="dim">${esc(c.message)}</td></tr>`).join('');
  g.push(card('하네스 점검 <span class="dim">('+esc(d.harness.ts)+')</span>',`<table>${hc}</table>`));
