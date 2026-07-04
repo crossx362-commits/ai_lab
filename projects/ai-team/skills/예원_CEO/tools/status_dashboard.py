@@ -155,8 +155,9 @@ th{color:var(--dim);font-weight:600;font-size:11px}
 .kv{display:flex;gap:14px;flex-wrap:wrap}.kv div{min-width:70px}
 .kv .l{font-size:11px;color:var(--dim)}
 </style></head><body>
-<h1>🧭 AI Lab 시스템 현황</h1> <a href="/heatmap" style="font-size:13px;margin-left:8px">🔥 시장 열지도 →</a>
+<h1>🧭 AI Lab 시스템 현황</h1> <a href="/heatmap" target="_blank" style="font-size:13px;margin-left:8px">🔥 열지도 크게 보기 ↗</a>
 <div id="ts">불러오는 중…</div>
+<iframe src="/heatmap?embed=1" title="시장 열지도" style="width:100%;height:480px;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;background:var(--card)"></iframe>
 <div class="grid" id="grid"></div>
 <script>
 const S={up:s=>/^\\d/.test(s)||s==='scheduled'||s.startsWith('sched'),
@@ -270,7 +271,7 @@ svg{vertical-align:-2px}
 <div class="hdr">
  <div class="logo">
   <svg width="20" height="20" viewBox="0 0 32 32"><rect x="2" y="14" width="8" height="16" rx="1.5" fill="#089981"/><rect x="12" y="6" width="8" height="24" rx="1.5" fill="#f23645"/><rect x="22" y="2" width="8" height="28" rx="1.5" fill="#089981"/></svg>
-  시장 열지도 <a href="/">← 시스템 현황</a>
+  시장 열지도 <a href="/" id="backlink">← 시스템 현황</a><script>if(location.search.indexOf('embed')>=0){var _b=document.getElementById('backlink');if(_b)_b.remove()}</script>
  </div>
  <div class="seg" id="mkt">
   <button id="t_all" class="on" onclick="setMkt('all')">🌏 전체</button>
