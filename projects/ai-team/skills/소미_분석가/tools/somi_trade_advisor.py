@@ -182,6 +182,22 @@ def _ma5(kis: KISClient, code: str) -> float:
         return 0.0
 
 
+def _is_52w_high(kis: KISClient, code: str) -> bool:
+    """현재가가 최근 52주(≈250거래일) 고가 98%+ 인가 — 모의 전용 전략 후보(웹 연구 2026-07-05, 한별 소유).
+    기관 상승추세·신고가 편승(웹: historically best-performing). ⚠️ 백테스트 검증 전이라 실거래 미적용
+    (호출부 _is_paper 가드). 250일 일봉은 모의 후보에만 조회 → 실거래 부하 0."""
+    try:
+        d = kis.daily_prices(code, 250)
+        highs = [to_num(r.get("stck_hgpr") or r.get("stck_clpr")) for r in d]
+        highs = [h for h in highs if h]
+        cur = to_num(d[0].get("stck_clpr")) if d else 0
+        if len(highs) < 60 or not cur:
+            return False
+        return cur >= max(highs) * 0.98
+    except Exception:
+        return False
+
+
 def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = False) -> dict | None:
     """탐지점수(1차) + (realtime=True면) 실시간 진입/리스크/손익비/데이터품질 점수.
     realtime은 API 부담이 커 매수 판단 슬롯의 상위 후보에만 켠다."""
@@ -195,6 +211,10 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     if gc:
         score = min(100, score + 6)
         pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
+    # 52주 신고가 가점 +8 — 모의 전용(웹 연구 전략, 백테스트 검증 전이라 실거래 미적용). 한별 소유 전략.
+    if _is_paper() and _is_52w_high(kis, code):
+        score = min(100, score + 8)
+        pos = ["52주 신고가 근처(기관 상승추세 편승 — 모의 전략)"] + pos
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비(저항 미반영 기본값)
     soomgeup_net = to_num(parsed.get("buy_foreigner_5d")) + to_num(parsed.get("buy_institution_5d"))
