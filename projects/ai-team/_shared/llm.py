@@ -128,6 +128,10 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
             try:
                 body = {"model": m, "messages": messages, "stream": False, "think": False,
                         "options": {"num_predict": max_tokens, "temperature": temperature}}
+                if json_mode:
+                    # Ollama 네이티브 JSON 강제 — 로컬도 파싱 가능한 JSON만 출력(2026-07-05).
+                    # 이게 없으면 gemma가 'JSON 드릴게요' 잡문을 뱉어 issue_impact가 클라우드에만 의존했다.
+                    body["format"] = "json"
                 try:
                     res = _post(body)
                 except urllib.error.HTTPError as he:
