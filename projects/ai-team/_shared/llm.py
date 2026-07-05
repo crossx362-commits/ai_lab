@@ -321,6 +321,39 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
         return None
 
 
+# ==================== GPT CODEX (ChatGPT 구독 사용량, API 크레딧 불필요) ====================
+
+def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
+    """Codex CLI headless(`codex exec`) — ChatGPT Plus 구독 사용량으로 GPT 호출(오너 지시 2026-07-05).
+    API 크레딧 불필요. `-o`(output-last-message)로 순수 응답만 파일에 뽑아 훅 로그와 분리.
+    주의: Plus 플랜은 Claude Max보다 rate limit 빠듯 — 체인에서 구독 클로드 다음(2선)에만 두고,
+    로컬+클로드가 대부분 커버하게 해 Plus 한도 소진을 막는다. subprocess+훅이라 느림."""
+    if not _cloud_llm_allowed():
+        return None
+    import subprocess, tempfile
+    full = ((system + "\n\n") if system else "") + prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
+    fd, outfile = tempfile.mkstemp(suffix=".txt")
+    os.close(fd)
+    try:
+        subprocess.run(["codex", "exec", "--skip-git-repo-check", "-o", outfile, full],
+                       capture_output=True, text=True, timeout=180)
+        with open(outfile, encoding="utf-8") as f:
+            out = f.read().strip()
+        if not out or (json_mode and not _json_ok(out)):
+            print(f"  ⚠️ [GptCodex] {'empty' if not out else 'invalid json'}")
+            return None
+        print(f"  ✅ [GptCodex:구독] {len(out)} chars")
+        return out
+    except Exception as e:
+        print(f"  ❌ [GptCodex] {str(e)[:80]}")
+        return None
+    finally:
+        try:
+            os.unlink(outfile)
+        except Exception:
+            pass
+
+
 # ==================== UNIFIED INTERFACE ====================
 
 def text(
@@ -347,10 +380,11 @@ def text(
 
     local = lambda: _ollama(prompt, system, max_tokens, temperature, task, json_mode)
     cloud = [
-        lambda: _claude_code(prompt, system, max_tokens, temperature, json_mode),  # 구독 (크레딧 불필요) — 1선
-        lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),
-        lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),          # GPT — 크레딧 있을 때 백업
-        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),        # API 클로드 — 크레딧 백업
+        lambda: _claude_code(prompt, system, max_tokens, temperature, json_mode),  # 구독 클로드(Max) — 1선
+        lambda: _gpt_codex(prompt, system, max_tokens, temperature, json_mode),    # 구독 GPT(Plus) — 2선
+        lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),       # Gemini — 무료/할당량
+        lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),          # GPT API — 크레딧 백업
+        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),        # 클로드 API — 크레딧 백업
     ]
 
     # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.
@@ -372,3 +406,4 @@ gpt = _gpt
 gemini = _gemini
 claude = _claude
 claude_code = _claude_code
+gpt_codex = _gpt_codex
