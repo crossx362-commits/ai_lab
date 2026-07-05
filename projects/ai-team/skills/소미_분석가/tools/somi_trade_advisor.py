@@ -198,6 +198,28 @@ def _is_52w_high(kis: KISClient, code: str) -> bool:
         return False
 
 
+def _volume_breakout(kis: KISClient, code: str) -> bool:
+    """거래량 동반 20일 고가 돌파(turtle/Donchian) — 모의 전용 전략 후보(웹 연구 2026-07-05, 한별 소유).
+    당일 종가가 직전 20거래일 고가를 상향 돌파 + 당일 거래량 ≥ 직전 20일 평균의 1.5배(웹: 검증 돌파
+    승률 60~70%·R:R 3:1+). 52주 신고가(장기 축)와 달리 단기 돌파+거래량 확인 축. ⚠️ 백테스트 검증
+    전이라 실거래 미적용(호출부 _is_paper 가드). 25일 일봉은 모의 후보에만 조회 → 실거래 부하 0."""
+    try:
+        d = kis.daily_prices(code, 25)
+        if len(d) < 22:
+            return False
+        prior = d[1:21]  # 직전 20거래일(당일 d[0] 제외)
+        prior_high = max(to_num(r.get("stck_hgpr") or r.get("stck_clpr")) for r in prior)
+        vols = [to_num(r.get("acml_vol")) for r in prior if r.get("acml_vol")]
+        avg_vol = sum(vols) / len(vols) if vols else 0
+        cur = to_num(d[0].get("stck_clpr"))
+        cur_vol = to_num(d[0].get("acml_vol"))
+        if not (cur and prior_high and avg_vol):
+            return False
+        return cur > prior_high and cur_vol >= avg_vol * 1.5
+    except Exception:
+        return False
+
+
 def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = False) -> dict | None:
     """탐지점수(1차) + (realtime=True면) 실시간 진입/리스크/손익비/데이터품질 점수.
     realtime은 API 부담이 커 매수 판단 슬롯의 상위 후보에만 켠다."""
@@ -215,6 +237,10 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     if _is_paper() and _is_52w_high(kis, code):
         score = min(100, score + 8)
         pos = ["52주 신고가 근처(기관 상승추세 편승 — 모의 전략)"] + pos
+    # 거래량 동반 20일 고가 돌파 가점 +7 — 모의 전용(웹 연구 전략, 백테스트 검증 전이라 실거래 미적용). 한별 소유.
+    if _is_paper() and _volume_breakout(kis, code):
+        score = min(100, score + 7)
+        pos = ["거래량 동반 20일 고가 돌파(turtle/Donchian — 모의 전략)"] + pos
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비(저항 미반영 기본값)
     soomgeup_net = to_num(parsed.get("buy_foreigner_5d")) + to_num(parsed.get("buy_institution_5d"))
