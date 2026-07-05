@@ -228,6 +228,34 @@ def _breakout_levels(bars: list[dict], t: int) -> tuple[int, float, float, float
     return 0, e, s, tg
 
 
+def _breakout_rs_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """거래량 돌파 + 상대강도(주도주) — 돌파를 시장 초과 강세 종목으로 한정(개선 실험 2026-07-05)."""
+    score, e, s, tg = _breakout_levels(bars, t)
+    if score <= 0:
+        return 0, e, s, tg
+    return (score if _rel_strength_ok(bars, t) else 0), e, s, tg
+
+
+def _breakout_combo_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """거래량 돌파 + 상대강도 + RSI 과매수(>70) 회피 — 주도주 중 블로우오프 고점만 제외(개선 실험 2026-07-05)."""
+    score, e, s, tg = _breakout_levels(bars, t)
+    if score <= 0 or _rsi(bars, t) > 70:
+        return 0, e, s, tg
+    return (score if _rel_strength_ok(bars, t) else 0), e, s, tg
+
+
+def _breakout_52w_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """거래량 돌파 + 52주 신고가 근처 — 단기 돌파를 장기 신고가 국면으로 한정(개선 실험 2026-07-05)."""
+    score, e, s, tg = _breakout_levels(bars, t)
+    if score <= 0:
+        return 0, e, s, tg
+    win = bars[max(0, t - 250):t + 1]
+    if len(win) < 60:
+        return 0, e, s, tg
+    hi52 = max(b["h"] for b in win)
+    return (score if bars[t]["c"] >= hi52 * 0.98 else 0), e, s, tg
+
+
 def _rsi_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     """모멘텀 + RSI 과매수(>70) 진입 제외 — 블로우오프 고점 추격 회피."""
     score, e, s, tg = _score_levels(bars, t)
@@ -464,6 +492,9 @@ def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
         ("모멘텀+국면", _score_levels, regime),
         ("+52주신고가+국면", _high52_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
         ("+거래량돌파+국면", _breakout_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
+        ("+돌파+상대강도", _breakout_rs_levels, regime),      # 개선 실험(2026-07-05)
+        ("+돌파+상대강도+RSI", _breakout_combo_levels, regime),  # 개선 실험(2026-07-05)
+        ("+돌파+52주신고가", _breakout_52w_levels, regime),   # 개선 실험(2026-07-05)
         ("+RSI회피+국면", _rsi_levels, regime),
         ("+상대강도+국면", _rs_levels, regime),
         ("+RSI+상대강도+국면", _combo_levels, regime),
