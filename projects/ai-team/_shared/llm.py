@@ -293,6 +293,34 @@ def _gemini(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
         return None
 
 
+# ==================== CLAUDE CODE (구독 사용량, API 크레딧 불필요) ====================
+
+def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
+    """Claude Code CLI headless(`claude -p`) — 구독 사용량으로 클로드 호출(오너 지시 2026-07-05).
+    API 크레딧이 막힌 상황에서 구독으로 클로드를 쓰는 경로. --bare는 API키 인증만이라 쓰지 않음
+    (기본 모드 = 구독 OAuth 인증). 주의: 구독 rate limit 공유 — 대량 호출 시 오너 본인 Claude Code가
+    제한될 수 있어 로컬 우선을 유지하고 이건 클라우드 폴백으로만 쓴다. subprocess라 API보다 느림."""
+    if not _cloud_llm_allowed():
+        return None
+    import subprocess
+    full = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
+    cmd = ["claude", "-p"]
+    if system:
+        cmd += ["--append-system-prompt", system]
+    cmd.append(full)
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+        out = (r.stdout or "").strip()
+        if not out or (json_mode and not _json_ok(out)):
+            print(f"  ⚠️ [ClaudeCode] {'empty' if not out else 'invalid json'}")
+            return None
+        print(f"  ✅ [ClaudeCode:구독] {len(out)} chars")
+        return out
+    except Exception as e:
+        print(f"  ❌ [ClaudeCode] {str(e)[:80]}")
+        return None
+
+
 # ==================== UNIFIED INTERFACE ====================
 
 def text(
@@ -307,10 +335,10 @@ def text(
     """
     Generate text with a cost-safe fallback chain.
 
-    Default(lm_first 미지정): Ollama → Claude → Gemini (AI_TEAM_LLM_PRIMARY 준수).
-    lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선(Claude→Gemini→Ollama)
-    — 기존엔 False가 무시돼 '클라우드 우선' 호출(성장엔진·issue_impact)이 전부 로컬을 탔다(2026-07-02 수정).
-    GPT는 기본 체인에서 제거(오너 지시 2026-07-05: 클로드 사용) — 명시 호출(llm.gpt)만 가능.
+    Default(lm_first 미지정): Ollama → Claude Code(구독) → Gemini → Claude API.
+    lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선.
+    클라우드 클로드는 구독(claude -p) 1선 — API 크레딧 막힘 대응(오너 지시 2026-07-05).
+    API _claude는 크레딧 있을 때 백업으로 뒤에. GPT는 기본 체인 제거(명시 llm.gpt만).
     Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
     cloud_allowed = _cloud_llm_allowed()
@@ -319,8 +347,9 @@ def text(
 
     local = lambda: _ollama(prompt, system, max_tokens, temperature, task, json_mode)
     cloud = [
-        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),
+        lambda: _claude_code(prompt, system, max_tokens, temperature, json_mode),  # 구독 (크레딧 불필요) — 1선
         lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),
+        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),        # API — 크레딧 있을 때 백업
     ]
 
     # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.
@@ -341,3 +370,4 @@ ollama = _ollama
 gpt = _gpt
 gemini = _gemini
 claude = _claude
+claude_code = _claude_code
