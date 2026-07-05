@@ -18,7 +18,7 @@ created_by: human
 
 ## 도구
 - `tools/quant_analyzer.py` — 성과 복기·튜닝·사이징: `performance` / `tune` / `size --price --stop` / `add`(체결부 자동 호출)
-- **(소미 폴더, 소유만 이관)** `../소미_분석가/tools/somi_trade_advisor.py`(매수판단·자동매수 데몬), `somi_screener.py`(발굴), `somi_signal_engine.py`(실거래 승인신호)
+- **(소미 폴더, 소유만 이관)** `../소미_분석가/tools/somi_trade_advisor.py`(매수판단·자동매수 데몬), `somi_screener.py`(발굴), `somi_signal_engine.py`(실거래 승인신호), `backtest.py`(전략·게이트 검증 — 소미 수급 점수를 재료로 전략을 백테스트·채택 판단)
 
 ## 데이터 흐름
 1. 영숙 체결부(`_execute_pending_order`)가 매수/매도 시 `한별.append(...)` 호출

@@ -129,7 +129,7 @@ python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --sen
 | 예원 (Yewon) | CEO — 통합관리자: 오케스트레이션·시장종합·브리핑·추세·하네스·정시잡 | `yewon_dispatcher.py`, `harness_manager.py`, `market_desk.py`, `morning_note.py`, `somi_kis_reporter.py`(정기리포트), `market_trend_alert.py` |
 | 영숙 (Youngsuk) | Secretary — 텔레그램 게이트웨이 | `telegram_receiver.py`(+`bot_common.py`·`bot_tools_info.py`), `schedule_manager.py`, `agent_controller.py` |
 | 소미 (Somi) | Analyst — 실시간 감시/집행 코어 | `somi_price_monitor.py`, `somi_position_monitor.py`, `somi_us_trader.py`, `short_covering_analyzer.py`, `watchlist_manager.py` |
-| 한별 (Hanbyul) | Quant — 정량 매매 두뇌: 분석·매수판단·발굴·신호 | `quant_analyzer.py`, `somi_trade_advisor.py`, `somi_screener.py`, `somi_signal_engine.py` |
+| 한별 (Hanbyul) | Quant — 정량 매매 두뇌: 전략 검증·백테스트·매수판단·발굴·신호·튜닝 | `quant_analyzer.py`, `backtest.py`(전략·게이트 검증), `somi_trade_advisor.py`, `somi_screener.py`, `somi_signal_engine.py` |
 | 행크 (Hank) | US research desk | `us_research.py` |
 | 유나 (Yuna) | Asia research desk | `asia_research.py` |
 | 레온 (Leon) | Europe research desk | `eu_research.py` |
