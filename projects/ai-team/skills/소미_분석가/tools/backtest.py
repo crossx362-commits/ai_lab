@@ -193,6 +193,22 @@ def _rel_strength_ok(bars: list[dict], t: int, lookback: int = 20) -> bool:
     return True
 
 
+def _high52_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """52주 신고가 돌파(웹 연구 2026-07-05, 검증 후보): 종가가 최근 250거래일 고가 98%+ 돌파일 때만
+    소미 점수 통과 — 기관 상승추세·신고가 편승(웹: historically best-performing). 소미 수급확인과 시너지 기대.
+    ⚠️ 검증 전 실채택 금지 — backtest --compare로 기존 전략 대비 우위 확인 후에만 도입."""
+    score, e, s, tg = _score_levels(bars, t)
+    if score <= 0:
+        return 0, e, s, tg
+    win = bars[max(0, t - 250):t + 1]
+    if len(win) < 60:  # 52주 데이터 부족 시 진입 안 함
+        return 0, e, s, tg
+    hi52 = max(b["h"] for b in win)
+    if bars[t]["c"] >= hi52 * 0.98:   # 52주 고가 98%+ 돌파만 통과
+        return score, e, s, tg
+    return 0, e, s, tg
+
+
 def _rsi_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     """모멘텀 + RSI 과매수(>70) 진입 제외 — 블로우오프 고점 추격 회피."""
     score, e, s, tg = _score_levels(bars, t)
@@ -427,6 +443,7 @@ def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
     print(f"{'전략':>18} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
     variants = [
         ("모멘텀+국면", _score_levels, regime),
+        ("+52주신고가+국면", _high52_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
         ("+RSI회피+국면", _rsi_levels, regime),
         ("+상대강도+국면", _rs_levels, regime),
         ("+RSI+상대강도+국면", _combo_levels, regime),
