@@ -57,9 +57,6 @@ except ImportError as exc:
     sys.exit(1)
 
 
-# 함수호출 LLM: 클로드 (오너 지시 2026-07-05 — GPT 사용 중단). 봇은 빠른 응답이 중요해 haiku 기본.
-ANTHROPIC_BOT_MODEL = os.getenv("ANTHROPIC_BOT_MODEL", "claude-haiku-4-5-20251001")
-
 SYSTEM = (
     "너는 영숙이야. 사장님(준호)의 비서이자 친구. "
     "친한 친구처럼 편하고 따뜻하게, 반말 섞어 짧고 자연스럽게 답해. "
@@ -350,91 +347,40 @@ def _parse_signal_approve(text: str):
     return order, sig["id"]
 
 
-def _anthropic_call(payload: dict) -> dict:
-    """Anthropic Messages API 직접 호출 (무SDK — llm.py와 동일 방식)."""
-    import urllib.request
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json",
-                 "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
-                 "anthropic-version": "2023-06-01"},
-    )
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.loads(r.read())
-
-
-def _claude_tools() -> list[dict]:
-    """도메인 모듈 TOOLS(OpenAI 스키마)를 클로드 tool 스키마로 변환."""
-    return [{"name": t["function"]["name"],
-             "description": t["function"]["description"],
-             "input_schema": t["function"]["parameters"]} for t in TOOLS]
-
-
 def handle_with_gpt(text: str) -> str:
-    """클로드 tool use로 사용자 메시지 처리 (함수명은 호환성 유지 — 구 GPT 함수호출 대체, 2026-07-05)"""
+    """자연어 → 도구 선택·실행 (구독/로컬 LLM 체인 수동 tool use — 크레딧 불필요, 2026-07-05).
+    구 클로드 API tool use는 크레딧0에서 마비 → llm.text(구독 클로드 우선) 기반으로 전환.
+    ①도구 선택(JSON) ②실행 ③결과를 영숙 말투로 요약. 딱 맞는 도구 없으면 일반 대화.
+    (함수명은 handle_message 호환성 위해 유지)"""
+    from _shared import llm
+    tool_lines = "\n".join(
+        f"- {t['schema']['function']['name']}: {t['schema']['function']['description'][:70]}"
+        for t in _ALL_BOT_TOOLS)
+    sel_prompt = (
+        f'사용자 메시지: "{text}"\n\n사용 가능한 도구:\n{tool_lines}\n\n'
+        '메시지에 딱 맞는 도구가 있으면 그 도구명을, 없으면(일반 대화·잡담·인사·질문) null.\n'
+        'JSON만 출력: {"tool": "도구명 또는 null", "args": {필요한 인자 객체}}'
+    )
     try:
-        system_prompt = """너는 '영숙'이야. 사장님(준호)의 비서이자 친구야.
-말투는 **친한 친구처럼 편하고 따뜻하게** — 반말 섞어 친근하게, 짧고 자연스럽게 답해.
-딱딱한 존댓말·기계적인 안내체 금지. 이모지도 가끔 자연스럽게.
-단, 사실/숫자(주가·일정·현황 등)는 정확하게 전한다.
-
-**종목 감시 추가 절차**:
-1. 사용자가 "삼전 감시" 같이 종목명만 말하면:
-   → search_stock("삼전") 호출하여 종목코드 확인
-   → 결과에서 종목코드/종목명 파싱
-   → add_watchlist(종목코드, 종목명) 호출
-
-2. 감시 중지/목록: remove_watchlist(), list_watchlist()
-
-**Tool 사용 규칙**:
-- 에이전트 현황 → get_agent_status()
-- 일정 → list_calendar()
-- 종목 검색 → search_stock()
-- 종목 뉴스/이슈 ("OO 뉴스", "OO 무슨 일 있어?") → get_stock_news()
-- 공시 ("공시 뭐 있어?", "OO 공시") → get_disclosures()
-- 감시 추가 → add_watchlist()
-- 감시 제거 → remove_watchlist()
-- 감시 목록 → list_watchlist()
-- 종목 분석(수급·점수) → dispatch_to_somi()
-- 유망종목 발굴 → dispatch_screener()
-- 종목 투자분석/메모 (Action 1) → invest_scout()
-- 보유종목 추적관찰 (Action 2) → invest_track()
-- 보유종목 전체 일괄 추적관찰 → invest_track_all()
-- 섹터 분석 → invest_sector()
-- 모닝노트 즉시 → morning_note_now()
-- 일반 질문은 직접 답변"""
-
-        tools = _claude_tools()
-        messages = [{"role": "user", "content": text}]
-
-        # tool use 루프 — 클로드가 도구를 요청하면 실행해 결과를 되돌려주고 최종 답변까지 (최대 3회)
-        for _ in range(3):
-            d = _anthropic_call({
-                "model": ANTHROPIC_BOT_MODEL, "max_tokens": 1500,
-                "system": system_prompt, "messages": messages, "tools": tools,
-            })
-            if d.get("stop_reason") != "tool_use":
-                out = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text").strip()
-                return out or "알 수 없는 응답입니다."
-            results = []
-            for b in d.get("content", []):
-                if b.get("type") != "tool_use":
-                    continue
-                fn = AVAILABLE_FUNCTIONS.get(b["name"])
-                bc.log(f"Calling {b['name']} with {b.get('input')}")
-                try:
-                    res = fn(**(b.get("input") or {})) if fn else f"알 수 없는 도구: {b['name']}"
-                except Exception as e:
-                    res = f"도구 실행 실패: {e}"
-                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(res)})
-            messages.append({"role": "assistant", "content": d["content"]})
-            messages.append({"role": "user", "content": results})
-        return "도구 호출이 반복돼 중단했어요. 다시 물어봐줘요."
-
-    except Exception as exc:
-        bc.log(f"Claude error: {exc}")
-        return f"요청 처리 중 오류가 발생했습니다: {exc}"
+        raw = llm.text(sel_prompt, json_mode=True, max_tokens=500, lm_first=False)
+        sel = json.loads(raw) if raw else {}
+    except Exception:
+        sel = {}
+    tool = sel.get("tool")
+    fn = AVAILABLE_FUNCTIONS.get(tool) if (tool and tool != "null") else None
+    if fn:
+        bc.log(f"Calling {tool} with {sel.get('args')}")
+        try:
+            result = fn(**(sel.get("args") or {}))
+        except Exception as e:
+            result = f"도구 실행 실패: {e}"
+        ans = llm.text(
+            f'사용자가 "{text}"라고 물었어. 도구 결과:\n{result}\n\n'
+            '이 결과를 영숙이답게 친근하게(반말 섞어 짧게) 전해줘. 숫자·사실은 정확히.',
+            system=SYSTEM, max_tokens=800, lm_first=False)
+        return ans or str(result)
+    # 딱 맞는 도구 없음 → 일반 대화(심리 프롬프트)
+    return _call_llm(text, PSYCHOLOGY_SYSTEM)
 
 
 def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | None:
