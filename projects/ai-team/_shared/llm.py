@@ -10,7 +10,7 @@ _cache = {}
 _CACHE_TTL = 60
 OPENAI_GPT_MODEL = "gpt-4o-mini"
 GEMINI_MODEL = "gemini-2.5-flash"  # 변경: 2.5 Flash 사용
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8")  # 클라우드 3선 (2026-07-03 연결)
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")  # 최저가 haiku 고정 — 비용 최소화(오너 지시 2026-07-05). 고품질 필요 시 .env ANTHROPIC_MODEL 오버라이드
 
 
 def _env_bool(name: str, default: str = "1") -> bool:
@@ -196,8 +196,9 @@ def _gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: flo
 
 def _claude(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
     """Call Anthropic Claude (Messages API 직접 호출 — 다른 클라우드와 동일하게 무SDK).
-    주의: Opus 4.8은 temperature 미지원(400) — 인자는 인터페이스 호환용, 전송 안 함.
-    json_mode는 응답 강제 파라미터·프리필이 없어(4.8에서 프리필 400) 지시문 + _json_ok 검증으로 대체."""
+    주의: Opus 4.8만 temperature 미지원(400) — opus 모델일 때만 전송 생략, haiku/sonnet은 전송해
+    분류(temperature=0) 등이 제대로 반영되게 한다(2026-07-05 haiku 전환).
+    json_mode는 응답 강제 파라미터·프리필이 없어(프리필 400) 지시문 + _json_ok 검증으로 대체."""
     if not _cloud_llm_allowed():
         print("  ⏭️ [Claude] blocked by AI_TEAM_ALLOW_CLOUD_LLM=0")
         return None
@@ -210,6 +211,8 @@ def _claude(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
         user_prompt = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
         payload = {"model": model, "max_tokens": max_tokens,
                    "messages": [{"role": "user", "content": user_prompt}]}
+        if "opus" not in model:  # Opus만 temperature 미지원 — haiku/sonnet은 전송(분류 temperature=0 반영)
+            payload["temperature"] = temperature
         if system:
             payload["system"] = system
         req = urllib.request.Request(
