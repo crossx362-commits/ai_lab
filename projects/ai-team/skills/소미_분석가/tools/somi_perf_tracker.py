@@ -32,7 +32,7 @@ from somi_trade_advisor import CLOSED_TRADES_FILE, load_positions  # noqa: E402
 load_env(str(PROJECT_ROOT))
 
 # 검증된 백테스트 기대치 (모멘텀 점수60 + 상승국면 게이트 + 보유20일 + 확신사이징, 24/30개월)
-BENCH = {"win_rate": 66.0, "profit_factor": 1.4, "avg_ret": 1.6}
+BENCH = {"win_rate": 66.0, "profit_factor": 1.4, "avg_ret": 1.6, "sharpe": 1.0}  # sharpe 1.0 = 웹 최소 기준
 MIN_SAMPLE = 5  # 이보다 적으면 통계 무의미 — 더 모아야
 
 
@@ -52,6 +52,10 @@ def _realized_stats(trades: list[dict]) -> dict:
     for r in rets:
         eq *= (1 + r / 100)
     pf = (sum(wins) / -sum(losses)) if losses and sum(losses) < 0 else 0
+    # 샤프 비율(거래 기반, 무위험 0 가정) — 변동성 대비 수익. 웹 베스트 프랙티스 핵심 지표(2026-07-05).
+    # 백테스트엔 있었으나 실시간 성과추적엔 없어 추가 — 전략 악화(수익 대비 변동↑) 조기 감지.
+    import statistics
+    sharpe = round(statistics.mean(rets) / statistics.stdev(rets), 2) if len(rets) >= 2 and statistics.stdev(rets) > 0 else 0
     return {
         "n": len(rets),
         "win_rate": round(len(wins) / len(rets) * 100, 1) if rets else 0,
@@ -59,6 +63,7 @@ def _realized_stats(trades: list[dict]) -> dict:
         "avg_win": round(sum(wins) / len(wins), 2) if wins else 0,
         "avg_loss": round(sum(losses) / len(losses), 2) if losses else 0,
         "profit_factor": round(pf, 2),
+        "sharpe": sharpe,
         "total_return": round((eq - 1) * 100, 1),
     }
 
@@ -123,9 +128,13 @@ def _verdict(real: dict) -> str:
     pf_ok = real["profit_factor"] >= BENCH["profit_factor"] - 0.3
     if wr_ok and pf_ok:
         return "✅ 백테스트 기대치 추종 중 — 전략이 실제로도 작동"
+    # 샤프 경보 — 손익비는 되나 변동성 대비 수익(샤프)이 낮으면 리스크 대비 비효율(웹 기준 1.0)
+    sharpe_note = ""
+    if real.get("sharpe", 0) and real["sharpe"] < BENCH["sharpe"]:
+        sharpe_note = f" ⚠️ 샤프 {real['sharpe']}<1.0 (수익 대비 변동 큼 — 리스크 대비 효율 점검)"
     if real["profit_factor"] >= 1.0:
-        return "🟡 수익은 나나 기대 이하 — 표본 더 보며 관찰"
-    return "🔴 기대 미달(손익비<1) — 라이브 가정 점검 필요"
+        return "🟡 수익은 나나 기대 이하 — 표본 더 보며 관찰" + sharpe_note
+    return "🔴 기대 미달(손익비<1) — 라이브 가정 점검 필요" + sharpe_note
 
 
 def _recent(trades: list[dict], days: int = 7) -> list[dict]:
@@ -178,7 +187,7 @@ def weekly_condition_analysis(all_trades: list[dict]) -> str:
     st = _realized_stats(recent)
     won = str(_won(round(sum(t.get('ret_pct', 0) for t in recent) / len(recent), 2)))
     lines = [f"📅 최근 7일 · 청산 {len(recent)}건",
-             f"   승률 {st['win_rate']}% · 손익비 {st['profit_factor']} · 건당평균 {st['avg_ret']:+}%"]
+             f"   승률 {st['win_rate']}% · 손익비 {st['profit_factor']} · 샤프 {st['sharpe']} · 건당평균 {st['avg_ret']:+}%"]
     # 청산사유별 — 무엇으로 벌고 잃었나(한글)
     rsn = _group_winrate(recent, lambda t: _REASON_KR.get(t.get("sell_reason") or t.get("reason"), t.get("reason")))
     if rsn:
