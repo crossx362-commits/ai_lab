@@ -65,13 +65,19 @@ def _analyze_skill(agent: str, skill_content: str) -> dict:
     snippet = skill_content[:3000]
 
     prompt = (
-        f"당신은 AI 에이전트 팀을 관리하는 CEO 예원입니다.\n"
+        f"당신은 AI 에이전트 팀 CEO 예원이며, Anthropic 스킬 작성 베스트 프랙티스로 문서를 감사합니다.\n"
         f"다음은 에이전트 [{agent}]의 SKILL.md 내용입니다:\n\n"
         f"---\n{snippet}\n---\n\n"
+        "평가 기준:\n"
+        "1. 완성도 — 역할·주요 도구·데이터 흐름·책임 경계가 빠짐없이 기술됐나\n"
+        "2. 전문성 — 도메인 판단 기준·규칙이 구체적이고 실행 가능한가\n"
+        "3. 발견성 — description이 '무엇을 언제 담당하는지'를 트리거 키워드로 명확히 하고, "
+        "다른 에이전트와 역할 경계가 겹치지 않게 구분되는가(핵심 베스트 프랙티스). "
+        "개선사항에는 발견성·역할경계 문제를 우선 지적하라.\n\n"
         "아래 JSON 객체만 반환하세요. 마크다운, 설명문, 코드펜스는 쓰지 마세요.\n"
         '{"completeness": 1에서 10 사이 숫자, "expertise": 1에서 10 사이 숫자, '
         '"strengths": ["짧은 강점", "짧은 강점"], '
-        '"improvements": ["짧은 개선사항"], '
+        '"improvements": ["발견성/역할경계 개선을 우선한 짧은 개선사항"], '
         '"one_line": "한 줄 요약"}'
     )
 
