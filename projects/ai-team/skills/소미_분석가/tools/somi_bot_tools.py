@@ -238,7 +238,10 @@ def balance() -> str:
 
 BOT_TOOLS = [
     {"handler": dispatch_to_somi, "schema": {"type": "function", "function": {
-        "name": "dispatch_to_somi", "description": "소미 분석가에게 주식 종목 분석 요청",
+        "name": "dispatch_to_somi",
+        "description": "종목의 수급·세력·매수 타이밍 즉시 분석(소미 수급 점수). '수급 어때', '세력 붙었나', "
+                       "'지금 사도 돼', '살만해', '들어가도 될까', '점수 몇' 등 단기 매매 판단·매수 타이밍 질문. "
+                       "종합·장기 투자 판단은 invest_scout.",
         "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "분석 요청 메시지"}}, "required": ["text"]}}}},
     {"handler": dispatch_screener, "schema": {"type": "function", "function": {
         "name": "dispatch_screener",
@@ -267,7 +270,9 @@ BOT_TOOLS = [
         "parameters": {"type": "object", "properties": {}, "required": []}}}},
     {"handler": invest_scout, "schema": {"type": "function", "function": {
         "name": "invest_scout",
-        "description": "특정 종목 투자 탐색 분석 (Action 1): 섹터 포지션·밸류에이션·수급·어닝스 프리뷰·투자 메모. 사용자가 '투자분석', '종목탐색', '분석 메모', 'initiate', '투자해도 돼?' 등을 물으면 호출",
+        "description": "종목 심층 투자 탐색 메모(Action 1): 섹터 포지션·밸류에이션·어닝스 프리뷰. "
+                       "'투자 메모', '깊이 분석해줘', 'initiate', '중장기 투자 관점' 등 종합·장기 투자 판단. "
+                       "단기 수급·매수 타이밍('지금 사도 돼', '살만해')은 dispatch_to_somi.",
         "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "종목명이 포함된 요청 메시지"}}, "required": ["text"]}}}},
     {"handler": invest_track, "schema": {"type": "function", "function": {
         "name": "invest_track",
