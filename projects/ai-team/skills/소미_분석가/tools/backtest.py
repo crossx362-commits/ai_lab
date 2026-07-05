@@ -209,6 +209,25 @@ def _high52_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     return 0, e, s, tg
 
 
+def _breakout_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """거래량 동반 20일 고가 돌파(turtle/Donchian, 웹 연구 2026-07-05, 검증 후보): 종가가 직전 20거래일
+    고가 상향 돌파 + 당일 거래량 ≥ 직전 20일 평균 1.5배일 때만 소미 점수 통과 — 검증 돌파(웹: 승률 60~70%).
+    52주(장기)와 다른 단기 돌파+거래량 확인 축. ⚠️ 검증 결과(2026-07-05): 약·기간의존 — 12mo -24.2%(기존
+    +20.7%보다 열위), 24mo +43.5%. 52주 신고가(12mo +74.6%/24mo +203%)에 크게 못 미침 → 실거래 승격 금지."""
+    score, e, s, tg = _score_levels(bars, t)
+    if score <= 0:
+        return 0, e, s, tg
+    prior = bars[max(0, t - 20):t]   # 직전 20거래일(당일 t 제외, 무미래참조)
+    if len(prior) < 20:
+        return 0, e, s, tg
+    prior_high = max(b["h"] for b in prior)
+    vols = [b["v"] for b in prior if b["v"]]
+    avg_vol = sum(vols) / len(vols) if vols else 0
+    if avg_vol and bars[t]["c"] > prior_high and bars[t]["v"] >= avg_vol * 1.5:
+        return score, e, s, tg
+    return 0, e, s, tg
+
+
 def _rsi_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     """모멘텀 + RSI 과매수(>70) 진입 제외 — 블로우오프 고점 추격 회피."""
     score, e, s, tg = _score_levels(bars, t)
@@ -444,6 +463,7 @@ def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
     variants = [
         ("모멘텀+국면", _score_levels, regime),
         ("+52주신고가+국면", _high52_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
+        ("+거래량돌파+국면", _breakout_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
         ("+RSI회피+국면", _rsi_levels, regime),
         ("+상대강도+국면", _rs_levels, regime),
         ("+RSI+상대강도+국면", _combo_levels, regime),
