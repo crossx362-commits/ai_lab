@@ -335,10 +335,10 @@ def text(
     """
     Generate text with a cost-safe fallback chain.
 
-    Default(lm_first 미지정): Ollama → Claude Code(구독) → Gemini → Claude API.
+    Default(lm_first 미지정): Ollama(gemma4:12b) → ClaudeCode(구독) → Gemini → GPT → Claude API.
     lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선.
     클라우드 클로드는 구독(claude -p) 1선 — API 크레딧 막힘 대응(오너 지시 2026-07-05).
-    API _claude는 크레딧 있을 때 백업으로 뒤에. GPT는 기본 체인 제거(명시 llm.gpt만).
+    GPT·API클로드는 크레딧 있을 때 백업(오너 지시 2026-07-05: 지피티도 백업 포함).
     Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
     cloud_allowed = _cloud_llm_allowed()
@@ -349,7 +349,8 @@ def text(
     cloud = [
         lambda: _claude_code(prompt, system, max_tokens, temperature, json_mode),  # 구독 (크레딧 불필요) — 1선
         lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),
-        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),        # API — 크레딧 있을 때 백업
+        lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),          # GPT — 크레딧 있을 때 백업
+        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),        # API 클로드 — 크레딧 백업
     ]
 
     # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.
