@@ -233,13 +233,13 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     if gc:
         score = min(100, score + 6)
         pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
-    # 52주 신고가 가점 +8 — 모의 전용(웹 연구 전략, 백테스트 검증 전이라 실거래 미적용). 한별 소유 전략.
+    # 52주 신고가 가점 +10 — 모의 전용(웹 연구 전략, 오너 지시 가점 상향 2026-07-05). 백테스트 우위 입증(실거래 후보). 한별 소유.
     if _is_paper() and _is_52w_high(kis, code):
-        score = min(100, score + 8)
+        score = min(100, score + 10)
         pos = ["52주 신고가 근처(기관 상승추세 편승 — 모의 전략)"] + pos
-    # 거래량 동반 20일 고가 돌파 가점 +7 — 모의 전용(웹 연구 전략, 백테스트 검증 전이라 실거래 미적용). 한별 소유.
+    # 거래량 동반 20일 고가 돌파 가점 +10 — 모의 전용(웹 연구 전략, 오너 지시 가점 상향 2026-07-05). 실거래 미적용(백테스트 약). 한별 소유.
     if _is_paper() and _volume_breakout(kis, code):
-        score = min(100, score + 7)
+        score = min(100, score + 10)
         pos = ["거래량 동반 20일 고가 돌파(turtle/Donchian — 모의 전략)"] + pos
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비(저항 미반영 기본값)
