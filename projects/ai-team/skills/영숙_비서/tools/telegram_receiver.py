@@ -51,14 +51,14 @@ load_env(str(PROJECT_ROOT))
 try:
     from telegram import Update
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-    from openai import OpenAI
 except ImportError as exc:
     print(f"Dependencies not installed: {exc}")
-    print("Run: pip install python-telegram-bot openai")
+    print("Run: pip install python-telegram-bot")
     sys.exit(1)
 
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# 함수호출 LLM: 클로드 (오너 지시 2026-07-05 — GPT 사용 중단). 봇은 빠른 응답이 중요해 haiku 기본.
+ANTHROPIC_BOT_MODEL = os.getenv("ANTHROPIC_BOT_MODEL", "claude-haiku-4-5-20251001")
 
 SYSTEM = (
     "너는 영숙이야. 사장님(준호)의 비서이자 친구. "
@@ -350,13 +350,31 @@ def _parse_signal_approve(text: str):
     return order, sig["id"]
 
 
+def _anthropic_call(payload: dict) -> dict:
+    """Anthropic Messages API 직접 호출 (무SDK — llm.py와 동일 방식)."""
+    import urllib.request
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json",
+                 "x-api-key": os.getenv("ANTHROPIC_API_KEY", ""),
+                 "anthropic-version": "2023-06-01"},
+    )
+    with urllib.request.urlopen(req, timeout=120) as r:
+        return json.loads(r.read())
+
+
+def _claude_tools() -> list[dict]:
+    """도메인 모듈 TOOLS(OpenAI 스키마)를 클로드 tool 스키마로 변환."""
+    return [{"name": t["function"]["name"],
+             "description": t["function"]["description"],
+             "input_schema": t["function"]["parameters"]} for t in TOOLS]
+
+
 def handle_with_gpt(text: str) -> str:
-    """GPT-4o-mini function calling으로 사용자 메시지 처리"""
+    """클로드 tool use로 사용자 메시지 처리 (함수명은 호환성 유지 — 구 GPT 함수호출 대체, 2026-07-05)"""
     try:
-        messages = [
-            {
-                "role": "system",
-                "content": """너는 '영숙'이야. 사장님(준호)의 비서이자 친구야.
+        system_prompt = """너는 '영숙'이야. 사장님(준호)의 비서이자 친구야.
 말투는 **친한 친구처럼 편하고 따뜻하게** — 반말 섞어 친근하게, 짧고 자연스럽게 답해.
 딱딱한 존댓말·기계적인 안내체 금지. 이모지도 가끔 자연스럽게.
 단, 사실/숫자(주가·일정·현황 등)는 정확하게 전한다.
@@ -385,45 +403,37 @@ def handle_with_gpt(text: str) -> str:
 - 보유종목 전체 일괄 추적관찰 → invest_track_all()
 - 섹터 분석 → invest_sector()
 - 모닝노트 즉시 → morning_note_now()
-- 일반 질문은 직접 답변""",
-            },
-            {"role": "user", "content": text},
-        ]
+- 일반 질문은 직접 답변"""
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            tools=TOOLS,
-            tool_choice="auto",
-        )
+        tools = _claude_tools()
+        messages = [{"role": "user", "content": text}]
 
-        message = response.choices[0].message
-
-        if message.tool_calls:
-            for tool_call in message.tool_calls:
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
-                function_to_call = AVAILABLE_FUNCTIONS.get(function_name)
-
-                if function_to_call:
-                    bc.log(f"Calling {function_name} with {function_args}")
-                    function_response = function_to_call(**function_args)
-                    messages.append(message)
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "content": function_response,
-                        }
-                    )
-
-            second_response = client.chat.completions.create(model="gpt-4o-mini", messages=messages)
-            return second_response.choices[0].message.content or "완료했습니다."
-
-        return message.content or "알 수 없는 응답입니다."
+        # tool use 루프 — 클로드가 도구를 요청하면 실행해 결과를 되돌려주고 최종 답변까지 (최대 3회)
+        for _ in range(3):
+            d = _anthropic_call({
+                "model": ANTHROPIC_BOT_MODEL, "max_tokens": 1500,
+                "system": system_prompt, "messages": messages, "tools": tools,
+            })
+            if d.get("stop_reason") != "tool_use":
+                out = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text").strip()
+                return out or "알 수 없는 응답입니다."
+            results = []
+            for b in d.get("content", []):
+                if b.get("type") != "tool_use":
+                    continue
+                fn = AVAILABLE_FUNCTIONS.get(b["name"])
+                bc.log(f"Calling {b['name']} with {b.get('input')}")
+                try:
+                    res = fn(**(b.get("input") or {})) if fn else f"알 수 없는 도구: {b['name']}"
+                except Exception as e:
+                    res = f"도구 실행 실패: {e}"
+                results.append({"type": "tool_result", "tool_use_id": b["id"], "content": str(res)})
+            messages.append({"role": "assistant", "content": d["content"]})
+            messages.append({"role": "user", "content": results})
+        return "도구 호출이 반복돼 중단했어요. 다시 물어봐줘요."
 
     except Exception as exc:
-        bc.log(f"GPT error: {exc}")
+        bc.log(f"Claude error: {exc}")
         return f"요청 처리 중 오류가 발생했습니다: {exc}"
 
 

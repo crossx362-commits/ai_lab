@@ -300,9 +300,10 @@ def text(
     """
     Generate text with a cost-safe fallback chain.
 
-    Default(lm_first 미지정): Ollama → GPT → Gemini (AI_TEAM_LLM_PRIMARY 준수).
-    lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선(GPT→Gemini→Ollama)
+    Default(lm_first 미지정): Ollama → Claude → Gemini (AI_TEAM_LLM_PRIMARY 준수).
+    lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선(Claude→Gemini→Ollama)
     — 기존엔 False가 무시돼 '클라우드 우선' 호출(성장엔진·issue_impact)이 전부 로컬을 탔다(2026-07-02 수정).
+    GPT는 기본 체인에서 제거(오너 지시 2026-07-05: 클로드 사용) — 명시 호출(llm.gpt)만 가능.
     Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
     cloud_allowed = _cloud_llm_allowed()
@@ -311,9 +312,8 @@ def text(
 
     local = lambda: _ollama(prompt, system, max_tokens, temperature, task, json_mode)
     cloud = [
-        lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),
-        lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),
         lambda: _claude(prompt, system, max_tokens, temperature, json_mode),
+        lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),
     ]
 
     # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.
