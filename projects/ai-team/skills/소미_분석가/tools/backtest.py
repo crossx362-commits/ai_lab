@@ -237,7 +237,10 @@ def _breakout_rs_levels(bars: list[dict], t: int) -> tuple[int, float, float, fl
 
 
 def _breakout_combo_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
-    """거래량 돌파 + 상대강도 + RSI 과매수(>70) 회피 — 주도주 중 블로우오프 고점만 제외(개선 실험 2026-07-05)."""
+    """거래량 돌파 + 상대강도 + RSI 과매수(>70) 회피 — 주도주 중 블로우오프 고점만 제외(개선 실험 2026-07-05).
+    ⚠️ 재검증 결과: 완화된 임계값(40)에선 최우수(24mo 샤프2.89)였으나, 실제 라이브 게이트(60)에서 재검증하니
+    과필터로 거래 4~21건까지 급감 — 표본부족(`--validate` MIN_TRADES=30 미달)으로 판단 불가. 라이브 미채택
+    (단순 `_breakout_levels`가 실게이트에서 유일하게 검증 통과 — advisor._volume_breakout 참고)."""
     score, e, s, tg = _breakout_levels(bars, t)
     if score <= 0 or _rsi(bars, t) > 70:
         return 0, e, s, tg
@@ -401,7 +404,13 @@ def backtest_symbol(bars: list[dict], threshold: int, hold: int, levels_fn=_scor
     return trades
 
 
-def _metrics(trades: list[dict]) -> dict:
+MIN_TRADES_SIGNIFICANT = 30  # 최소 표본(웹 연구: Bailey&López de Prado Deflated Sharpe — 표본 부족·다중검정은 성과를 부풀린다)
+
+
+def _metrics(trades: list[dict], months: float | None = None) -> dict:
+    """승률·손익비·누적·MDD·샤프에 소르티노(하방편차 기준)·칼마(연환산수익/MDD)·표본유의성 플래그 추가
+    (웹 연구 2026-07-05: Sortino/Calmar가 Sharpe 단독보다 하방리스크를 더 정확히 포착, 최소 30건 미만은
+    통계적 유의성 부족 — Deflated Sharpe Ratio 취지). months 주어지면 칼마용 연환산수익 계산."""
     if not trades:
         return {"trades": 0}
     import numpy as np
@@ -410,15 +419,24 @@ def _metrics(trades: list[dict]) -> dict:
     eq = np.cumprod(1 + r)
     peak = np.maximum.accumulate(eq)
     mdd = float(((eq - peak) / peak).min() * 100)
+    total_return = (float(eq[-1]) - 1) * 100
+    downside = r[r < 0]
+    downside_std = float(downside.std()) if len(downside) > 1 else 0.0
+    sortino = round(float(r.mean() / downside_std * (252 ** 0.5)), 2) if downside_std else 0.0
+    ann_return = (float(eq[-1]) ** (12 / months) - 1) * 100 if months else total_return
+    calmar = round(ann_return / abs(mdd), 2) if mdd else 0.0
     return {
         "trades": len(r),
         "win_rate": round(float((r > 0).mean()) * 100, 1),
         "avg_win": round(float(wins.mean()) * 100, 2) if len(wins) else 0,
         "avg_loss": round(float(losses.mean()) * 100, 2) if len(losses) else 0,
         "profit_factor": round(float(wins.sum() / -losses.sum()), 2) if len(losses) and losses.sum() < 0 else 0,
-        "total_return": round((float(eq[-1]) - 1) * 100, 1),
+        "total_return": round(total_return, 1),
         "mdd": round(mdd, 1),
         "sharpe": round(float(r.mean() / r.std() * (252 ** 0.5)) if r.std() else 0, 2),
+        "sortino": sortino,
+        "calmar": calmar,
+        "significant": len(r) >= MIN_TRADES_SIGNIFICANT,
         "stop/target/timeout": f"{sum(t['reason']=='stop' for t in trades)}/{sum(t['reason']=='target' for t in trades)}/{sum(t['reason']=='timeout' for t in trades)}",
     }
 
@@ -476,40 +494,100 @@ def grid(months: int, thresholds=(50, 55, 60, 65, 70), holds=(5, 7, 10, 15)) -> 
         print("\n⚠️ 거래≥30·MDD≤40% 조건을 만족하는 견고한 파라미터 없음 (엣지 약함)")
 
 
-def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
-    """전략·게이트 비교 — 모멘텀 / +수급(OBV) / +국면(HMM대용) / 눌림목. 동일 데이터·기준."""
+_STRATEGY_VARIANTS = [
+    ("모멘텀+국면", _score_levels),
+    ("+52주신고가+국면", _high52_levels),        # 웹 연구 후보(2026-07-05) — 검증 전용
+    ("+거래량돌파+국면", _breakout_levels),        # 웹 연구 후보(2026-07-05) — 검증 전용(단순 돌파, 열위)
+    ("+돌파+상대강도", _breakout_rs_levels),       # 개선 실험(2026-07-05)
+    ("+돌파+상대강도+RSI", _breakout_combo_levels),  # 개선 실험(2026-07-05) — 채택(라이브 반영)
+    ("+돌파+52주신고가", _breakout_52w_levels),    # 개선 실험(2026-07-05)
+    ("+RSI회피+국면", _rsi_levels),
+    ("+상대강도+국면", _rs_levels),
+    ("+RSI+상대강도+국면", _combo_levels),
+]
+
+
+def _collect_variants(months: int, threshold: int, holds: tuple[int, ...]) -> dict[tuple[str, int], dict]:
+    """한 기간에 대해 전 전략×보유기간 조합의 지표를 계산 — compare_strategies·validate_strategies 공유 코어."""
     global _MARKET
     kis = KISClient()
     data = _load_all(months)
     regime = market_regime_map(kis, months)
     mbars = _history(kis, "069500", months)        # 지수(KODEX200) → 상대강도 기준
     _MARKET = {b["date"]: b["c"] for b in mbars}
-    bull_days = sum(1 for v in regime.values() if v)
-    print(f"[전략 비교] {len(data)}종목 / {months}개월 / 기준 {threshold} "
-          f"(상승국면 {bull_days}/{len(regime)}일)\n")
-    print(f"{'전략':>18} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} {'샤프':>5}")
-    variants = [
-        ("모멘텀+국면", _score_levels, regime),
-        ("+52주신고가+국면", _high52_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
-        ("+거래량돌파+국면", _breakout_levels, regime),   # 웹 연구 후보(2026-07-05) — 검증 전용
-        ("+돌파+상대강도", _breakout_rs_levels, regime),      # 개선 실험(2026-07-05)
-        ("+돌파+상대강도+RSI", _breakout_combo_levels, regime),  # 개선 실험(2026-07-05)
-        ("+돌파+52주신고가", _breakout_52w_levels, regime),   # 개선 실험(2026-07-05)
-        ("+RSI회피+국면", _rsi_levels, regime),
-        ("+상대강도+국면", _rs_levels, regime),
-        ("+RSI+상대강도+국면", _combo_levels, regime),
-    ]
-    for label, fn, reg in variants:
+    out: dict[tuple[str, int], dict] = {}
+    for label, fn in _STRATEGY_VARIANTS:
         for hd in holds:
             trades = []
             for bars in data.values():
-                trades += backtest_symbol(bars, threshold, hd, fn, reg)
-            m = _metrics(trades)
+                trades += backtest_symbol(bars, threshold, hd, fn, regime)
+            out[(label, hd)] = _metrics(trades, months=months)
+    return out, len(data), regime
+
+
+def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
+    """전략·게이트 비교 — 모멘텀 / +수급(OBV) / +국면(HMM대용) / 눌림목. 동일 데이터·기준.
+    소르티노(하방편차)·칼마(연환산/MDD)·표본유의성(≥30건) 병기(웹 연구 2026-07-05, 다기간 검증은
+    --validate 참고 — 단일기간 결과만으로 채택 금지, MIN_TRADES_SIGNIFICANT 미달은 '표본부족' 표시)."""
+    results, n_symbols, regime = _collect_variants(months, threshold, holds)
+    bull_days = sum(1 for v in regime.values() if v)
+    print(f"[전략 비교] {n_symbols}종목 / {months}개월 / 기준 {threshold} "
+          f"(상승국면 {bull_days}/{len(regime)}일)\n")
+    print(f"{'전략':>18} {'보유':>4} {'거래':>5} {'승률':>6} {'손익비':>6} {'누적%':>8} {'MDD%':>7} "
+          f"{'샤프':>5} {'소르티노':>7} {'칼마':>5} {'표본':>5}")
+    for label, _fn in _STRATEGY_VARIANTS:
+        for hd in holds:
+            m = results[(label, hd)]
             if m.get("trades"):
+                sig = "OK" if m["significant"] else "부족"
                 print(f"{label:>18} {hd:>4} {m['trades']:>5} {m['win_rate']:>5}% {m['profit_factor']:>6} "
-                      f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5}")
+                      f"{m['total_return']:>7}% {m['mdd']:>6}% {m['sharpe']:>5} "
+                      f"{m['sortino']:>7} {m['calmar']:>5} {sig:>5}")
             else:
                 print(f"{label:>18} {hd:>4}  거래 없음")
+
+
+def validate_strategies(periods: tuple[int, ...] = (12, 24), threshold: int = 60,
+                         holds=(7, 10)) -> None:
+    """다기간 검증 프로토콜(웹 연구 2026-07-05: walk-forward 다구간 일관성 확인이 단일 백테스트
+    과최적화·선택편향의 핵심 방어 — Bailey&López de Prado 「Deflated Sharpe Ratio」, QuantInsti WFO 가이드).
+    여러 기간(기본 12·24개월)에서 독립 실행 후 3단계 판정:
+      ✅채택   — 전 기간 표본≥30(MIN_TRADES_SIGNIFICANT) & 흑자 & 샤프>0 모두 충족
+      ❌기각   — 표본은 충분하나(≥30) 적자·샤프≤0인 기간이 있음 (성과로 증명된 열위)
+      🔸보류(표본부족) — 거래 자체가 부족(<30)해 판단 불가 (성과가 아니라 데이터 부족 — 기각과 구분)
+    표본부족을 기각과 뭉뚱그리면 실제로는 '증명 안 됨'인 전략을 '나쁨'으로 오판한다(DSR 취지)."""
+    per_period = {}
+    for months in periods:
+        per_period[months] = _collect_variants(months, threshold, holds)[0]
+    print(f"[다기간 검증] 기간={periods}개월 / 기준 {threshold}\n")
+    header = f"{'전략':>18} {'보유':>4}" + "".join(f" {'%d개월누적%%' % p:>12}" for p in periods) + f" {'판정':>14}"
+    print(header)
+    for label, _fn in _STRATEGY_VARIANTS:
+        for hd in holds:
+            cells = []
+            any_trades = False
+            insufficient = False
+            underperform = False
+            for p in periods:
+                m = per_period[p].get((label, hd), {})
+                if not m.get("trades"):
+                    cells.append("거래없음")
+                    insufficient = True
+                    continue
+                any_trades = True
+                cells.append(f"{m['total_return']:+.1f}%(샤프{m['sharpe']})")
+                if not m["significant"]:
+                    insufficient = True
+                elif not (m["total_return"] > 0 and m["sharpe"] > 0):
+                    underperform = True
+            if not any_trades or (insufficient and not underperform):
+                verdict = "🔸보류(표본부족)"
+            elif underperform:
+                verdict = "❌기각(성과미달)"
+            else:
+                verdict = "✅채택"
+            row = f"{label:>18} {hd:>4}" + "".join(f" {c:>12}" for c in cells) + f" {verdict:>14}"
+            print(row)
 
 
 def compare_bear_gate(months: int, threshold: int = 60, hold: int = 10, bear_threshold: int = 70) -> None:
@@ -621,6 +699,8 @@ def main() -> None:
     ap.add_argument("--scan", action="store_true", help="여러 임계값 비교")
     ap.add_argument("--grid", action="store_true", help="기준×보유기간 그리드 (데이터 1회 로드)")
     ap.add_argument("--compare", action="store_true", help="모멘텀 vs 눌림목 전략 비교")
+    ap.add_argument("--validate", action="store_true",
+                     help="다기간(기본 12·24개월) 자동 검증 — 전 기간 표본≥30·흑자·샤프>0 일치해야 채택 판정")
     ap.add_argument("--beargate", action="store_true", help="하락국면 전량차단 vs 역행강세 선별통과 비교")
     ap.add_argument("--bear-threshold", type=int, default=70, help="하락장 선별통과 점수 기준")
     ap.add_argument("--soomgeup", action="store_true", help="과거 수급 병합 — 모멘텀 vs 수급확인 vs 조용한매집 비교")
@@ -636,7 +716,11 @@ def main() -> None:
         compare_bear_gate(args.months, args.threshold if args.threshold != 40 else 60,
                           args.hold, args.bear_threshold)
     elif args.compare:
-        compare_strategies(args.months, args.threshold)
+        # 기존 버그: args.threshold 기본값(40)을 그대로 넘겨 실제 라이브 게이트(60)와 다른 임계값으로
+        # 검증되던 불일치를 발견(2026-07-05, --validate 신설 중). 다른 서브커맨드와 동일하게 40→60 치환.
+        compare_strategies(args.months, args.threshold if args.threshold != 40 else 60)
+    elif args.validate:
+        validate_strategies(threshold=args.threshold if args.threshold != 40 else 60)
     elif args.grid:
         grid(args.months)
     elif args.scan:
