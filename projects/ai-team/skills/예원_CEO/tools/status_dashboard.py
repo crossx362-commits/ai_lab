@@ -221,7 +221,7 @@ HEATMAP_HTML = """<!DOCTYPE html>
 <title>시장 열지도 — 국장·미장</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='14' width='8' height='16' rx='1.5' fill='%23089981'/><rect x='12' y='6' width='8' height='24' rx='1.5' fill='%23f23645'/><rect x='22' y='2' width='8' height='28' rx='1.5' fill='%23089981'/></svg>">
 <style>
-:root{--bg:#0b0e14;--panel:#131722;--line:#1f2637;--tx:#e8edf5;--dim:#8b93a7;--up:#089981;--dn:#f23645;--acc:#4f7dff}
+:root{--bg:#0b0e14;--panel:#131722;--line:#1f2637;--tx:#e8edf5;--dim:#8b93a7;--up:#f23645;--dn:#3182f6;--acc:#4f7dff}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{background:var(--bg);color:var(--tx);font:13px/1.45 -apple-system,'Segoe UI','Malgun Gothic',sans-serif;overflow:hidden;display:flex;flex-direction:column}
@@ -302,9 +302,9 @@ svg{vertical-align:-2px}
 </div>
 <script>
 let DATA={kr:[],us:[],indices:{kr:[],us:[]}},TS='-',cur='all',sizeMode='mcap',query='';
-// ── 색: TradingView 팔레트 보간 (중립 → ±3%에서 포화) ──
-const NC=[42,46,57],GC=[6,153,129],RC=[242,54,69];
-function color(c){const t=Math.max(-1,Math.min(1,(c||0)/3));const M=t>=0?GC:RC,a=Math.abs(t);
+// ── 색: 국내 관행(상승 빨강·하락 파랑) 팔레트 보간 (중립 → ±3%에서 포화) ──
+const NC=[42,46,57],UPC=[242,54,69],DNC=[49,130,246];
+function color(c){const t=Math.max(-1,Math.min(1,(c||0)/3));const M=t>=0?UPC:DNC,a=Math.abs(t);
  return 'rgb('+NC.map((n,i)=>Math.round(n+(M[i]-n)*a)).join(',')+')'}
 // ── 스퀘리파이드 트리맵 ──
 function squarify(items,x,y,w,h){
