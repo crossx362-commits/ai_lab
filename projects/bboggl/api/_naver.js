@@ -19,6 +19,14 @@ export function cleanTitle(value) {
     .trim();
 }
 
+// "성지" 낚시 매물(제목 키워드 스터핑)을 걸러낸다. 실제 매물이지만 검색어와 무관한 미끼가 많다.
+const SPAM_PATTERNS = ['성지', '싸게사는법', '싸게 사는', '최저가보장', '최저가 보장', '좌표', '시세표', '카톡문의', '카톡 문의'];
+
+export function isSpamTitle(title) {
+  const text = String(title || '');
+  return SPAM_PATTERNS.some((pattern) => text.includes(pattern));
+}
+
 // 네이버 응답을 프론트가 쓰는 최소 형태로 정규화한다.
 export function normalizeItem(item) {
   return {
@@ -58,5 +66,8 @@ export async function searchNaverShopping(query, { clientId, clientSecret, displ
   }
 
   const data = await response.json();
-  return (data.items || []).map(normalizeItem);
+  const items = (data.items || []).map(normalizeItem);
+  const clean = items.filter((item) => !isSpamTitle(item.title));
+  // 전부 스팸으로 걸러져 빈 화면이 되는 것만 방지(그 외엔 항상 스팸 제외).
+  return clean.length ? clean : items;
 }

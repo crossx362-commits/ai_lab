@@ -871,6 +871,24 @@ textarea {
   height: 16px;
 }
 
+.match-warning {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #E5A000;
+  background: #FFF7E6;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.match-warning strong {
+  color: #8A5A00;
+}
+
+.match-warning span {
+  color: #8A5A00;
+  font-size: 13px;
+}
+
 .product-results {
   display: grid;
   gap: 12px;

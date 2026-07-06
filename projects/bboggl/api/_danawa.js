@@ -26,6 +26,53 @@ function parseSpecTokens(raw) {
   return out;
 }
 
+const NORMALIZE = (value) => String(value || '').toLowerCase().replace(/\s+/g, '');
+
+// 제목을 비교용 토큰으로 분해(판매 노이즈·브랜드 제거).
+function tokenize(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/\[[^\]]*\]|\([^)]*\)/g, ' ')
+    .replace(/미개봉|새상품|새제품|정품|자급제|공기계|미사용|무료배송|당일발송|특가|해외구매|병행수입|리퍼|중고|apple|삼성전자|삼성|애플/g, ' ')
+    .split(/[^a-z0-9가-힣]+/)
+    .filter((token) => token && (token.length >= 2 || /\d/.test(token)));
+}
+
+// 반드시 일치해야 하는 모델 식별자: 짧은 모델번호(15·16e·s24) 전부 + 긴 코드(16z90s)는 가장 긴 것 1개.
+function requiredModelTokens(refTokens) {
+  const nums = refTokens.filter((t) => /\d/.test(t) && !/^\d+(gb|tb)$/.test(t) && !/[가-힣]/.test(t) && !/^(19|20)\d\d$/.test(t));
+  const core = nums.filter((t) => /^[a-z]?\d{1,3}[a-z]?$/.test(t));
+  const longCodes = nums.filter((t) => t.length >= 5).sort((a, b) => b.length - a.length);
+  return Array.from(new Set([...core, ...(longCodes[0] ? [longCodes[0]] : [])]));
+}
+
+// 후보 중 선택 상품(ref)과 가장 잘 맞는 것을 고른다. 확신이 낮으면 null(틀린 스펙 노출 방지).
+export function pickBestCandidate(candidates, query, ref) {
+  const queryTokens = Array.from(new Set(tokenize(query)));
+  const refTokens = Array.from(new Set(tokenize(ref)));
+  const required = requiredModelTokens(refTokens.length ? refTokens : queryTokens);
+  const scoreTokens = Array.from(new Set([...queryTokens, ...refTokens]));
+
+  let best = null;
+  let bestScore = 0;
+  for (const candidate of candidates) {
+    const name = NORMALIZE(candidate.name);
+    if (!required.every((token) => name.includes(token))) continue;
+    const hits = scoreTokens.filter((token) => name.includes(token)).length;
+    const score = scoreTokens.length ? hits / scoreTokens.length : 0;
+    if (score > bestScore) { bestScore = score; best = candidate; }
+  }
+  return bestScore >= 0.3 ? best : null;
+}
+
+// 검색(recall) → 제목 기반 채점(precision)으로 실제 상품의 스펙을 반환한다.
+export async function bestSpecFor(query, ref) {
+  const candidates = await fetchDanawaSpecs(query, { max: 12 });
+  const best = pickBestCandidate(candidates, query, ref || query);
+  if (!best) return { matched: false, specs: {} };
+  return { matched: true, name: best.name, url: best.url, specs: best.specs, source: '다나와' };
+}
+
 // 다나와 검색 후 상위 매칭 상품의 스펙을 반환한다.
 export async function fetchDanawaSpecs(query, { max = 1 } = {}) {
   const url = 'https://search.danawa.com/dsearch.php?k1=' + encodeURIComponent(query);

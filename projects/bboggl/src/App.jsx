@@ -292,6 +292,12 @@ function CompareView({ hasSearched, query, setHasSearched, setQuery }) {
               <span>‘{trimmed}’ 네이버 쇼핑 검색 중입니다.</span>
             </div>
           )}
+          {!state.loading && hasProducts && queryMatchRatio(trimmed, state.items) < 0.3 && (
+            <div className="match-warning">
+              <strong>‘{trimmed}’와 정확히 일치하는 상품이 적어요.</strong>
+              <span>아직 판매되지 않거나(미출시), 판매자가 유사·낚시로 등록한 결과일 수 있습니다.</span>
+            </div>
+          )}
           {!state.loading && hasProducts && (
             <ProductResults
               items={state.items}
@@ -322,6 +328,21 @@ function launcherReason(state) {
 
 function itemKey(item) {
   return `${item.id}-${item.link}`;
+}
+
+// 결과 제목 중 검색어의 핵심 토큰(특히 모델 번호)을 포함하는 비율.
+// 낮으면(미출시·낚시) 배너로 안내. 번호가 있으면 번호를, 없으면 전체 토큰을 기준으로 한다.
+function queryMatchRatio(query, items) {
+  const normalize = (value) => String(value || '').toLowerCase().replace(/\s+/g, '');
+  const tokens = String(query || '').trim().split(/\s+/).filter((token) => token.length >= 2 || /\d/.test(token));
+  if (!tokens.length || !items.length) return 1;
+  const numeric = tokens.filter((token) => /\d/.test(token)).map(normalize);
+  const check = numeric.length ? numeric : tokens.map(normalize);
+  const matched = items.filter((item) => {
+    const title = normalize(item.title);
+    return check.every((token) => title.includes(token));
+  }).length;
+  return matched / items.length;
 }
 
 const SPEC_COLORS = ['화이트', '블랙', '블루', '핑크', '그린', '옐로우', '퍼플', '내추럴', '티타늄', '실버', '골드', '그레이', '스페이스', '레드', '민트', '베이지', '그래파이트'];
@@ -409,15 +430,16 @@ function ComparisonPanel({ items, onClear, onRemove }) {
     items.forEach((item) => {
       const key = itemKey(item);
       const dq = danawaQuery(item);
-      if (specCache.has(dq)) {
-        const cached = specCache.get(dq);
+      const cacheKey = `${dq}::${item.title}`;
+      if (specCache.has(cacheKey)) {
+        const cached = specCache.get(cacheKey);
         setSpecMap((current) => (current[key] === cached ? current : { ...current, [key]: cached }));
         return;
       }
       setSpecMap((current) => (current[key] ? current : { ...current, [key]: { loading: true, specs: {} } }));
-      fetchSpecs(dq).then((data) => {
+      fetchSpecs(dq, item.title).then((data) => {
         const entry = { loading: false, matched: data.matched, specs: data.specs || {}, url: data.url || '' };
-        specCache.set(dq, entry);
+        specCache.set(cacheKey, entry);
         if (active) setSpecMap((current) => ({ ...current, [key]: entry }));
       });
     });

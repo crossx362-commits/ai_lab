@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 import { searchNaverShopping } from './api/_naver.js';
-import { fetchDanawaSpecs } from './api/_danawa.js';
+import { bestSpecFor } from './api/_danawa.js';
 
 // 개발 서버에서도 /api/* 가 동작하도록 미들웨어로 붙인다.
 // (배포에서는 Vercel 서버리스 함수 api/*.js 가 같은 경로를 처리한다.)
@@ -36,11 +36,9 @@ function devApi(env) {
 
         if (url.pathname === '/api/specs') {
           if (!query) return json(res, { matched: false, specs: {} });
+          const ref = (url.searchParams.get('ref') || '').trim();
           try {
-            const products = await fetchDanawaSpecs(query, { max: 1 });
-            const product = products[0];
-            if (!product) return json(res, { matched: false, specs: {} });
-            return json(res, { matched: true, name: product.name, url: product.url, specs: product.specs, source: '다나와' });
+            return json(res, await bestSpecFor(query, ref));
           } catch (error) {
             return json(res, { matched: false, specs: {}, error: error.message });
           }
