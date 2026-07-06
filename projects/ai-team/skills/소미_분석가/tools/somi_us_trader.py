@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sys
 import time
 from datetime import datetime
@@ -47,13 +48,39 @@ from backtest_us import _yahoo_bars, us_regime_map, UNIVERSE_US  # noqa: E402
 CACHE = ROOT / "output" / "cache"
 LEDGER = CACHE / "somi_paper_us.json"          # USD 원장 {cash, positions{sym:{qty,avg,ts,stop,target}}}
 CLOSED = CACHE / "somi_us_closed.json"         # 청산 기록(미국 전용 — 국내 학습과 분리)
+TUNING_FILE = CACHE / "somi_tuning_us.json"    # 성장엔진 미장 전용 자동 튜닝 파일(국내 somi_tuning.json과 분리)
+
+# 맥↔Windows 이중 데몬 방지(2026-07-06, 원장이 gitignore라 기기간 미공유 — 실행 중복=원장 분기·중복 알림).
+# 로컬(.env, 미커밋) 스위치: 이 기기를 미장 담당에서 뺄 때 SOMI_US_ENABLE=false로 설정.
+# 워치독이 재기동해도 이 분기에서 즉시 대기하므로 "다른 기기로 이관 후 방치"에도 안전.
+US_ENABLED = os.getenv("SOMI_US_ENABLE", "true").lower() in {"1", "true", "yes"}
 
 START_CASH = float(os.getenv("SOMI_US_PAPER_CASH", "10000"))       # USD
 # 게이트 창: 48~54는 PF 2.03이지만 24개월 35건(최근 3개월 히트 4건)뿐 — 모의 데이터가 안 쌓인다.
 # 모의 원칙(공격적 수집)에 따라 하한 44로 완화: 24개월 130건·PF 1.25·+66%·샤프 1.46(2026-07-03 창 그리드).
 # 43 이하 완화 금지(40~54 PF 1.16, 35↓ PF<1 전멸). 55↑ 블로우오프 차단(검증) 유지.
-GATE_LO = int(os.getenv("SOMI_US_GATE_LO", "44"))
-GATE_HI = int(os.getenv("SOMI_US_GATE_HI", "54"))
+_US_TUNING_BOUNDS = {"gate_lo": (44, 48), "gate_hi": (50, 54)}
+
+
+def _tuning_us(key: str, default: int) -> int:
+    """성장엔진(예원)이 미장 모의 한정 자동 튜닝하는 파라미터 — 파일 우선, 없으면 default.
+    국내 advisor._tuning()과 동일 패턴, 파일만 분리(somi_tuning_us.json)."""
+    try:
+        v = int(json.loads(TUNING_FILE.read_text(encoding="utf-8")).get("params", {}).get(key, default))
+    except Exception:
+        v = default
+    lo, hi = _US_TUNING_BOUNDS.get(key, (v, v))
+    return max(lo, min(hi, v))
+
+
+def _gate_lo() -> int:
+    return _tuning_us("gate_lo", int(os.getenv("SOMI_US_GATE_LO", "44")))
+
+
+def _gate_hi() -> int:
+    return _tuning_us("gate_hi", int(os.getenv("SOMI_US_GATE_HI", "54")))
+
+
 MAX_SLOTS = int(os.getenv("SOMI_US_SLOTS", "3"))
 STOP_PCT = float(os.getenv("SOMI_US_STOP_PCT", "3"))               # 하드손절 -3%
 TARGET_PCT = float(os.getenv("SOMI_US_TARGET_PCT", "8"))           # 목표 +8%
@@ -118,13 +145,14 @@ def scan_candidates(regime: dict) -> list[dict]:
     today_ok = regime.get(max(regime), True)   # 최신 SPY 국면
     if not today_ok:
         return []                              # 하락국면 — 신규 진입 없음(검증 조건과 동일)
+    gate_lo, gate_hi = _gate_lo(), _gate_hi()
     for sym, name in UNIVERSE_US.items():
         try:
             bars = _yahoo_live(sym)   # 진행중 당일 봉 포함(장중 누적 기준 점수)
             if len(bars) < 25:
                 continue
             score, entry, stop, target = bt._score_levels(bars, len(bars) - 1)
-            if GATE_LO <= score <= GATE_HI:
+            if gate_lo <= score <= gate_hi:
                 out.append({"symbol": sym, "name": name, "score": score, "price": bars[-1]["c"]})
         except Exception:
             continue
@@ -211,7 +239,15 @@ def manage() -> list[str]:
 
 def daemon() -> None:
     with ProcessLock("somi_us_trader"):
-        print(f"[{datetime.now()}] 🇺🇸 미장 모의 데몬 시작 (세션 {SESSION} KST, 게이트 {GATE_LO}~{GATE_HI})")
+        host = socket.gethostname()
+        if not US_ENABLED:
+            # 이중 데몬 방지: 다른 기기가 담당인 밤엔 이 기기는 조회·매매 전혀 없이 대기만.
+            # 워치독이 CONTINUOUS_DAEMONS 보고 계속 재기동해도 매번 이 분기로 즉시 빠짐(안전).
+            print(f"[{datetime.now()}] 🇺🇸 미장 모의 비활성(SOMI_US_ENABLE=false, host={host}) — 대기 전용")
+            while True:
+                time.sleep(600)
+        print(f"[{datetime.now()}] 🇺🇸 미장 모의 데몬 시작 (host={host}, 세션 {SESSION} KST, "
+              f"게이트 {_gate_lo()}~{_gate_hi()})")
         regime, regime_ts = {}, 0.0
         last_scan = None
         while True:
@@ -249,7 +285,7 @@ def main() -> None:
     elif "--scan" in sys.argv:
         regime = us_regime_map(3)
         cands = scan_candidates(regime)
-        print(f"국면 상승={regime.get(max(regime))} / 게이트 {GATE_LO}~{GATE_HI} / 후보 {len(cands)}")
+        print(f"국면 상승={regime.get(max(regime))} / 게이트 {_gate_lo()}~{_gate_hi()} / 후보 {len(cands)}")
         for c in cands:
             print(f"  {c['name']}({c['symbol']}) 점수 {c['score']} @ ${c['price']:,.2f}")
     else:
