@@ -537,6 +537,10 @@ def handle_message(text: str) -> str:
         _signals_clear()
         return "넘어갈게요. 계속 감시하겠습니다."
 
+    # 미장(US) 손익/현황 — 국내 판정보다 먼저(같은 상태어 공유). 야간 모의 원장 기준.
+    if bc.is_us_status_request(text):
+        return somi.get_us_trading_status()
+
     # 거래/투자 현황(보유 포지션·손익) — LLM 분류기보다 먼저, 결정적 팩트 즉답
     if bc.is_trading_status_request(text):
         return somi.get_trading_status(_get_trade_mode() == "live")

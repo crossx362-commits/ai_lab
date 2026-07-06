@@ -154,6 +154,14 @@ def is_stock_price_request(text: str) -> bool:
     return any(word in normalized for word in ("주가", "현재가", "가격")) and stock_from_text(text) is not None
 
 
+def is_us_status_request(text: str) -> bool:
+    """미장(US) 손익/현황 질문 — 국내 현황 판정보다 먼저 확인해야 함(같은 상태어를 공유)."""
+    n = normalize_text(text)
+    if not any(w in n for w in ("미장", "미국", "나스닥", "us주식", "us장")):
+        return False
+    return any(w in n for w in ("손익", "수익", "현황", "잔고", "계좌", "포지션", "보유", "얼마"))
+
+
 def is_trading_status_request(text: str) -> bool:
     normalized = normalize_text(text)
     return any(word in normalized for word in (
