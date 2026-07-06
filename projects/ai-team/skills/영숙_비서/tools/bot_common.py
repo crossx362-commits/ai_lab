@@ -159,6 +159,7 @@ def is_trading_status_request(text: str) -> bool:
     return any(word in normalized for word in (
         "거래현황", "봇현황", "자동매매현황", "매매현황", "투자현황", "모의투자현황",
         "포지션현황", "보유현황", "보유종목현황", "내종목", "수익률현황",
+        "손익현황", "수익현황",   # 오너 실사용 표현 — LLM 분류 대기 없이 즉답(2026-07-06)
     ))
 
 
