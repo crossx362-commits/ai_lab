@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 
@@ -253,8 +254,78 @@ def get_agent_status(agent_name: str | None = None) -> str:
     return "\n".join(lines)
 
 
+# ── 전체 봇 원격 종료/기동 (텔레그램 "봇 다 꺼/켜") ──────────────────────
+# 종료 시에도 유지할 봇: 영숙(텔레그램 제어통로)·예원(워치독 — 플래그 준수하며 부활 담당)·대시보드(무해).
+_KEEP_ON_SHUTDOWN = {"영숙", "예원", "대시보드"}
+# 플래그: 존재하면 워치독이 다운 봇을 되살리지 않음(부활 억제). 텔레그램 재기동 통로는 유지.
+BOTS_OFF_FLAG = PROJECT_ROOT / "output" / "cache" / "BOTS_OFF"
+# launchd KeepAlive 트레이딩 봇(kill론 부활) — launchctl로 정지/재적재해야 함.
+_KEEPALIVE_LABELS = {"소미": "com.ailab.somi_monitor"}
+
+
+def _launchctl(action: str, label: str) -> None:
+    uid = os.getuid() if hasattr(os, "getuid") else 0
+    if action == "off":
+        subprocess.run(["launchctl", "bootout", f"gui/{uid}/{label}"], capture_output=True)
+    else:  # on — 재적재(부팅). 이미 적재면 kickstart로 기동.
+        plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+        subprocess.run(["launchctl", "bootstrap", f"gui/{uid}", str(plist)], capture_output=True)
+        subprocess.run(["launchctl", "kickstart", "-k", f"gui/{uid}/{label}"], capture_output=True)
+
+
+def stop_all_bots() -> str:
+    """맥 봇 전체 정지 — 플래그 세워 워치독 부활 억제 + 개별 종료. 제어통로(영숙·워치독·대시보드)는 유지."""
+    from _shared.notify import CONTINUOUS_DAEMONS  # noqa: E402
+    BOTS_OFF_FLAG.parent.mkdir(parents=True, exist_ok=True)
+    BOTS_OFF_FLAG.write_text(datetime.now().isoformat(), encoding="utf-8")
+    stopped, kept = [], []
+    for key in CONTINUOUS_DAEMONS:
+        name = get_agent_name(key)  # 영어 키 → 한국어 에이전트명
+        if name in _KEEP_ON_SHUTDOWN or name not in AGENTS:
+            kept.append(name)
+            continue
+        if name in _KEEPALIVE_LABELS:          # launchd KeepAlive → launchctl 정지(부활 차단)
+            _launchctl("off", _KEEPALIVE_LABELS[name])
+            stopped.append(f"{name}(launchd)")
+        else:                                   # 워치독 관리 → kill (플래그로 재기동 차단)
+            if find_agent_process(name):
+                stop_agent(name)
+            stopped.append(name)
+    return ("🛑 맥 봇 전체 정지 (플래그 ON — 워치독 부활 억제)\n"
+            f"정지({len(stopped)}): {', '.join(sorted(set(stopped)))}\n"
+            f"유지({len(set(kept))}): {', '.join(sorted(set(kept)))}\n"
+            "다시 켜려면: '봇 다 켜'")
+
+
+def start_all_bots() -> str:
+    """맥 봇 전체 기동 — 플래그 해제 후 재기동(워치독이 나머지도 자동 복구)."""
+    from _shared.notify import CONTINUOUS_DAEMONS  # noqa: E402
+    if BOTS_OFF_FLAG.exists():
+        BOTS_OFF_FLAG.unlink()
+    started = []
+    for key in CONTINUOUS_DAEMONS:
+        name = get_agent_name(key)
+        if name in _KEEP_ON_SHUTDOWN or name not in AGENTS:
+            continue
+        if name in _KEEPALIVE_LABELS:
+            _launchctl("on", _KEEPALIVE_LABELS[name])
+            started.append(f"{name}(launchd)")
+        else:
+            if not find_agent_process(name):
+                start_agent(name)
+            started.append(name)
+    return ("▶️ 맥 봇 전체 기동 (플래그 OFF)\n"
+            f"기동({len(started)}): {', '.join(sorted(set(started)))}\n"
+            "누락분은 워치독이 5분 내 자동 복구합니다.")
+
+
 def handle_agent_command(command: str) -> str:
     command = command.strip()
+    low = command.lower().replace(" ", "")
+    if low in {"allstop", "봇다꺼", "전체종료", "맥봇종료", "봇전부종료"}:
+        return stop_all_bots()
+    if low in {"allstart", "봇다켜", "전체시작", "맥봇시작", "봇전부시작"}:
+        return start_all_bots()
     if command.lower() in {"agentstatus", "status", "상태", "에이전트상태"}:
         return get_agent_status()
 

@@ -551,9 +551,12 @@ def main() -> None:
     port = PORT
     if "--port" in sys.argv:
         port = int(sys.argv[sys.argv.index("--port") + 1])
-    # 단일 인스턴스 보장 — 락이 없어 재기동마다 좀비가 쌓여 에이전트 현황을 오염시켰다(2026-07-04)
-    with ProcessLock("status_dashboard"):
-        threading.Thread(target=_heatmap_refresher, daemon=True).start()  # 열지도 자동 갱신
+    # 단일 인스턴스 보장 — 락이 없어 재기동마다 좀비가 쌓여 에이전트 현황을 오염시켰다(2026-07-04).
+    # 포트별로 락을 분리 — 상시 데몬(8890)과 프리뷰 인스턴스(다른 포트)가 충돌 없이 공존(포트당 단일 인스턴스는 유지).
+    with ProcessLock(f"status_dashboard:{port}"):
+        # 열지도 수집은 기본 포트(상시 데몬)만 — 프리뷰 인스턴스가 캐시를 중복 수집(더블 API 부하)하지 않게.
+        if port == PORT:
+            threading.Thread(target=_heatmap_refresher, daemon=True).start()  # 열지도 자동 갱신
         srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
         print(f"[대시보드] http://localhost:{port} 서빙 시작 (열지도: /heatmap)")
         srv.serve_forever()

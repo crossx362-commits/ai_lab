@@ -83,6 +83,12 @@ def _restart_bot(name: str) -> None:
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
 HEAD_STATE = os.path.join(ROOT_DIR, "output", "cache", "watchdog_git_head.json")
+# 텔레그램 "봇 다 꺼"가 세우는 플래그 — 존재하면 워치독이 다운 봇을 되살리지 않는다(원격 종료 유지).
+BOTS_OFF_FLAG = os.path.join(ROOT_DIR, "output", "cache", "BOTS_OFF")
+
+
+def _bots_off() -> bool:
+    return os.path.exists(BOTS_OFF_FLAG)
 
 
 def _git_out(*args: str) -> str:
@@ -115,6 +121,8 @@ def restart_on_code_update() -> None:
     """git pull 감지 → 변경 코드에 해당하는 데몬 자동 재시작 — '깃 풀만 하면 되게'(2026-07-02).
     _shared 변경은 전 데몬, tools 폴더 변경은 그 폴더 소속 데몬만. 자신(yewon)은
     분리 실행한 컨트롤러 restart로 최후 교체(뮤텍스 경합 없는 유일한 자가재시작 경로)."""
+    if _bots_off():
+        return   # 원격 종료 상태 — 코드 변경돼도 데몬 되살리지 않음(HEAD 갱신도 보류)
     head = _git_out("rev-parse", "HEAD")
     if not head:
         return
@@ -176,6 +184,9 @@ REMEDY_MAX_PER_DAY = 3       # 초과 시 자동복구 포기 → 수동 개입 
 def auto_remediate(state: dict) -> list[str]:
     """직전 하네스 결과(harness_latest.json)의 WARN/FAIL을 원인 에이전트 재시작으로 자가치유.
     state: {대상: {"ts": [epoch...], "date": "YYYY-MM-DD", "escalated": bool}} (데몬 메모리 상주)."""
+    if _bots_off():
+        return []   # 원격 종료 상태 — 자가치유 재시작도 억제
+
     report_file = os.path.join(
         os.path.dirname(__file__), "..", "..", "..", "..", "..",
         "reports", "status", "harness_latest.json")
@@ -214,6 +225,8 @@ def auto_remediate(state: dict) -> list[str]:
 
 def check_and_restart_bots():
     """봇 상태 확인 및 재시작 (best-effort)"""
+    if _bots_off():
+        return False   # 텔레그램 원격 종료 상태 — 부활 억제('봇 다 켜'로 해제)
     status = agent_status()
     # 워치독 자신(yewon)은 재시작 대상에서 제외 — 자기를 죽이고 되살리는 재귀/스팸 방지.
     # (자신이 실제로 죽으면 스스로 재시작 불가; launchd/수동이 담당)

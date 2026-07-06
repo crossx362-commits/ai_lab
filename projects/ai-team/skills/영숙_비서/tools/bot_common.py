@@ -154,6 +154,22 @@ def is_stock_price_request(text: str) -> bool:
     return any(word in normalized for word in ("주가", "현재가", "가격")) and stock_from_text(text) is not None
 
 
+def is_bots_off_request(text: str) -> bool:
+    """맥 봇 전체 원격 종료 지시 — '봇 다 꺼/맥봇 전부 중지/전체 종료' 등."""
+    n = normalize_text(text).replace(" ", "")
+    if not any(w in n for w in ("봇", "맥봇", "전체", "다", "전부")):
+        return False
+    return any(w in n for w in ("꺼", "끄", "종료", "중지", "정지", "내려", "죽여")) and "켜" not in n
+
+
+def is_bots_on_request(text: str) -> bool:
+    """맥 봇 전체 원격 기동 지시 — '봇 다 켜/맥봇 전부 시작' 등."""
+    n = normalize_text(text).replace(" ", "")
+    if not any(w in n for w in ("봇", "맥봇", "전체", "다", "전부")):
+        return False
+    return any(w in n for w in ("켜", "켜줘", "시작", "가동", "올려", "살려"))
+
+
 def is_us_status_request(text: str) -> bool:
     """미장(US) 손익/현황 질문 — 국내 현황 판정보다 먼저 확인해야 함(같은 상태어를 공유)."""
     n = normalize_text(text)

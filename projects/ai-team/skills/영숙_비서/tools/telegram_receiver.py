@@ -537,6 +537,14 @@ def handle_message(text: str) -> str:
         _signals_clear()
         return "넘어갈게요. 계속 감시하겠습니다."
 
+    # 맥 봇 전체 원격 종료/기동 — LLM 분류보다 먼저(결정적 즉답). 영숙·워치독·대시보드는 유지.
+    if bc.is_bots_on_request(text):
+        from agent_controller import start_all_bots
+        return start_all_bots()
+    if bc.is_bots_off_request(text):
+        from agent_controller import stop_all_bots
+        return stop_all_bots()
+
     # 미장(US) 손익/현황 — 국내 판정보다 먼저(같은 상태어 공유). 야간 모의 원장 기준.
     if bc.is_us_status_request(text):
         return somi.get_us_trading_status()
