@@ -182,8 +182,62 @@ def position_verdict(pnl: float, cur: float, stop: float, target: float, tp1: fl
     return "⚪ 보유"
 
 
+def _today_realized() -> str:
+    """오늘 청산된 거래의 실현손익 요약 — 보유 포지션이 없어도 '수익현황'에 답을 준다.
+    금액은 ret_pct(실비용 반영 순수익률) 기준으로 재구성해 표시. 청산 없으면 ''."""
+    try:
+        import json
+        from datetime import datetime
+        from somi_trade_advisor import CLOSED_TRADES_FILE
+        from somi_kis_reporter import num
+        log = json.loads(CLOSED_TRADES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    today = datetime.now().strftime("%Y-%m-%d")
+    tr = [t for t in log if str(t.get("ts_close", "")).startswith(today)]
+    if not tr:
+        return ""
+    amt = sum(num(t.get("qty")) * num(t.get("entry")) * num(t.get("ret_pct")) / 100 for t in tr)
+    wins = sum(1 for t in tr if num(t.get("ret_pct")) > 0)
+    avg = sum(num(t.get("ret_pct")) for t in tr) / len(tr)
+    srt = sorted(tr, key=lambda t: num(t.get("ret_pct")), reverse=True)
+    best, worst = srt[0], srt[-1]
+    return (
+        f"[오늘 실현손익] 청산 {len(tr)}건 · {amt:+,.0f}원 (평균 {avg:+.1f}% · 승 {wins}/{len(tr)})\n"
+        f"  최고 {best.get('name')} {num(best.get('ret_pct')):+.1f}% · 최저 {worst.get('name')} {num(worst.get('ret_pct')):+.1f}%"
+    )
+
+
+def _account_cash(is_live: bool) -> float | None:
+    """예수금만 조회 — 모의는 원장 직접 읽기(보유 시세는 상세 루프가 이미 조회 → 중복 방지),
+    실거래는 KIS 잔고. 조회 실패 시 None."""
+    try:
+        from somi_kis_reporter import num
+        if not is_live:
+            from kis_trader import _paper_load
+            return num(_paper_load().get("cash"))
+        from kis_trader import KISTrader
+        return num(KISTrader().balance().get("cash"))
+    except Exception:
+        return None
+
+
+def _fmt_account(cash: float | None, hold_val: float, is_live: bool) -> str:
+    """예수금·보유평가·총자산·누적손익(모의 초기자본 대비) 한 줄 블록."""
+    if cash is None:
+        return "(계좌 조회 실패)"
+    total = cash + hold_val
+    line = f"💰 예수금 {cash:,.0f}원 · 보유평가 {hold_val:,.0f}원 · 총자산 {total:,.0f}원"
+    if not is_live:   # 모의는 초기자본 대비 누적손익(실거래는 입출금 있어 생략)
+        import os
+        start = float(os.getenv("SOMI_PAPER_CASH", "10000000")) or 1.0
+        line += f"\n📈 누적손익 {total - start:+,.0f}원 ({(total - start) / start * 100:+.1f}% · 초기 {start / 10000:,.0f}만원)"
+    return line
+
+
 def get_trading_status(is_live: bool = False) -> str:
-    """거래 현황 — 보유 모의 포지션 + 실시간 평가손익 + 다음 행동 판단.
+    """손익 현황 — 계좌 종합(예수금·총자산·누적손익) + 보유 평가손익 + 오늘 실현손익.
+    보유 시세는 상세 루프에서 1회만 조회하고, 그 값으로 보유평가(총자산)까지 산출한다(단일 소스).
 
     거래모드(모의/실거래) 판정은 봇 상태이므로 게이트웨이가 is_live로 넘긴다."""
     try:
@@ -193,11 +247,10 @@ def get_trading_status(is_live: bool = False) -> str:
         return "거래 현황 조회 모듈을 불러오지 못했어요."
     mode = "🔴 실거래(실제 돈)" if is_live else "🧪 모의(페이퍼)"
     pos = load_positions()
-    if not pos:
-        return f"[거래 현황] {mode}\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
-    kis = KISClient()
-    lines, tot = [], 0.0
+    kis = KISClient() if pos else None
+    lines = []
     take, cut = 0, 0
+    tot_pnl_amt, tot_cost, hold_val = 0.0, 0.0, 0.0   # 평가손익·매수원가·보유평가액(모두 동일 시세)
     for sym, p in pos.items():
         try:
             cur = num(kis.quote(sym).get("stck_prpr"))
@@ -209,20 +262,30 @@ def get_trading_status(is_live: bool = False) -> str:
         tp1 = num(p.get("tp1"))
         qty = int(p.get("qty") or 0)
         pnl = ((cur - entry) / entry * 100) if (cur and entry) else 0.0
-        tot += pnl
+        pnl_amt = qty * (cur - entry) if (cur and entry) else 0.0   # 평가손익(원)
+        tot_pnl_amt += pnl_amt
+        tot_cost += qty * entry
+        hold_val += qty * cur                                       # 보유평가액(계좌 총자산용)
         verdict = position_verdict(pnl, cur, stop, target, tp1)
         if "익절" in verdict:
             take += 1
         elif "손절" in verdict:
             cut += 1
         lines.append(
-            f"• {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%)\n"
+            f"• {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%, {pnl_amt:+,.0f}원)\n"
             f"   손절 {int(stop):,} / 목표 {int(target):,} · {verdict}"
         )
-    avg = tot / len(pos)
-    head = f"[거래 현황] {mode} · 보유 {len(pos)}종목 · 평균 {avg:+.1f}%"
+    acct = _fmt_account(_account_cash(is_live), hold_val, is_live)
+    realized = _today_realized()
+    if not pos:
+        base = f"[손익 현황] {mode}\n{acct}"
+        base += f"\n\n{realized}" if realized else "\n오늘 청산 거래 없음."
+        return base + "\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
+    wpnl = (tot_pnl_amt / tot_cost * 100) if tot_cost else 0.0   # 자본가중 수익률
+    head = (f"[손익 현황] {mode}\n{acct}\n"
+            f"보유 {len(pos)}종목 · 평가손익 {tot_pnl_amt:+,.0f}원 ({wpnl:+.1f}%)")
     tail = f"\n요약: 익절검토 {take} · 손절주의 {cut} · 그 외 보유 {len(pos) - take - cut}"
-    return head + "\n" + "\n".join(lines) + tail
+    return head + "\n" + "\n".join(lines) + tail + (f"\n\n{realized}" if realized else "")
 
 
 def balance() -> str:
@@ -234,6 +297,79 @@ def balance() -> str:
         return f"[{mode} 계좌 {t.cano}-{t.prod}]\n" + _fmt_balance(t.balance())
     except Exception as exc:
         return f"잔고 조회 실패: {exc}"
+
+
+def _us_num(x) -> float:
+    try:
+        return float(x)
+    except Exception:
+        return 0.0
+
+
+def _us_today_realized() -> str:
+    """미장 오늘 청산 실현손익 요약(USD). 청산 없으면 ''."""
+    try:
+        import json
+        from datetime import datetime
+        from somi_us_trader import CLOSED
+        log = json.loads(CLOSED.read_text(encoding="utf-8")) if CLOSED.exists() else []
+    except Exception:
+        return ""
+    today = datetime.now().strftime("%Y-%m-%d")
+    tr = [t for t in log if str(t.get("ts_close", "")).startswith(today)]
+    if not tr:
+        return ""
+    amt = sum(_us_num(t.get("qty")) * _us_num(t.get("entry")) * _us_num(t.get("ret_pct")) / 100 for t in tr)
+    wins = sum(1 for t in tr if _us_num(t.get("ret_pct")) > 0)
+    avg = sum(_us_num(t.get("ret_pct")) for t in tr) / len(tr)
+    srt = sorted(tr, key=lambda t: _us_num(t.get("ret_pct")), reverse=True)
+    best, worst = srt[0], srt[-1]
+    return (
+        f"[오늘 실현손익] 청산 {len(tr)}건 · ${amt:+,.2f} (평균 {avg:+.1f}% · 승 {wins}/{len(tr)})\n"
+        f"  최고 {best.get('name')} {_us_num(best.get('ret_pct')):+.1f}% · 최저 {worst.get('name')} {_us_num(worst.get('ret_pct')):+.1f}%"
+    )
+
+
+def get_us_trading_status() -> str:
+    """미장(US) 모의 손익 현황 — USD 원장 기준 계좌 종합(예수금·총자산·누적손익) + 보유 평가손익 + 오늘 실현손익.
+    현재가는 야후 일봉 최신 종가(장외엔 전일 종가). 미장 모의는 실거래 경로 없음(내부 원장)."""
+    try:
+        from somi_us_trader import _ledger, START_CASH
+        from backtest_us import _yahoo_bars
+    except Exception as exc:
+        return f"미장 현황 조회 모듈 로드 실패: {exc}"
+    led = _ledger()
+    cash = _us_num(led.get("cash"))
+    positions = led.get("positions") or {}
+    lines = []
+    tot_pnl, hold_val = 0.0, 0.0
+    for sym, p in positions.items():
+        avg = _us_num(p.get("avg"))
+        qty = int(p.get("qty") or 0)
+        try:
+            bars = _yahoo_bars(sym, 1)
+            cur = _us_num(bars[-1].get("c")) if bars else avg
+        except Exception:
+            cur = avg
+        if not cur:
+            cur = avg
+        pnl = ((cur - avg) / avg * 100) if avg else 0.0
+        pnl_amt = qty * (cur - avg)
+        tot_pnl += pnl_amt
+        hold_val += qty * cur
+        lines.append(f"• {p.get('name', sym)}({sym}) {qty}주 @ ${avg:,.2f} → ${cur:,.2f} ({pnl:+.1f}%, ${pnl_amt:+,.2f})")
+    total = cash + hold_val
+    start = _us_num(START_CASH) or 10000.0
+    head = (
+        f"[미장 손익] 🧪 모의(USD·야간)\n"
+        f"💵 예수금 ${cash:,.2f} · 보유평가 ${hold_val:,.2f} · 총자산 ${total:,.2f}\n"
+        f"📈 누적손익 ${total - start:+,.2f} ({(total - start) / start * 100:+.1f}% · 초기 ${start:,.0f})"
+    )
+    realized = _us_today_realized()
+    if not positions:
+        return head + (f"\n\n{realized}" if realized else "\n오늘 청산 거래 없음.") + "\n보유 포지션 없음 — 미장 대기 중."
+    body = f"\n보유 {len(positions)}종목 · 평가손익 ${tot_pnl:+,.2f}\n" + "\n".join(lines)
+    return head + body + (f"\n\n{realized}" if realized else "")
 
 
 BOT_TOOLS = [

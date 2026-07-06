@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from datetime import datetime, timedelta
@@ -52,6 +53,16 @@ UNIVERSE = {
     "036570": "엔씨소프트", "352820": "하이브", "090430": "아모레퍼시픽",
     "024110": "기업은행", "003550": "LG", "017670": "SK텔레콤",
     "030200": "KT", "196170": "알테오젠",
+}
+
+# 중소형/코스닥 유니버스(소미 실사냥터) — 대형주 결과가 전이 안 되는 문제 검증용(가드레일 2026-07-02).
+# 스크리너가 실제로 뽑는 중소형 모멘텀 종목군. 환경변수 SOMI_BT_SMALL=1이면 UNIVERSE를 이걸로 교체.
+SMALL_UNIVERSE = {
+    "025950": "동신건설", "002700": "신일전자", "003680": "한성기업", "011230": "삼화전자",
+    "006660": "삼성공조", "082850": "우리바이오", "122350": "삼기", "043340": "에쎈테크",
+    "010960": "삼호개발", "003610": "방림", "025540": "한국단자", "007810": "코리아써키트",
+    "092780": "동양피스톤", "013000": "세우글로벌", "064820": "케이프", "011330": "유니켐",
+    "015710": "코콤", "025820": "이구산업", "002460": "화성산업", "012800": "대창",
 }
 
 # 비용 (왕복) — 매수/매도 수수료 + 거래세 + 슬리피지
@@ -111,6 +122,47 @@ def _score_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     stop = s1 if (s1 and s1 < entry) else round(entry * 0.95)
     target = r1 if (r1 and r1 > entry) else round(entry * 1.10)
     return score, entry, stop, target
+
+
+def _atr(bars: list[dict], t: int, period: int = 14) -> float:
+    """Wilder True Range 평균(ATR). 데이터 부족 시 0. (bars[:t+1]만 참조 — 무미래참조)"""
+    if t < period:
+        return 0.0
+    trs = []
+    for k in range(t - period + 1, t + 1):
+        h, l, pc = bars[k]["h"], bars[k]["l"], bars[k - 1]["c"]
+        trs.append(max(h - l, abs(h - pc), abs(l - pc)))
+    return sum(trs) / len(trs) if trs else 0.0
+
+
+def _score_atr_levels(bars: list[dict], t: int, k: float = 2.0) -> tuple[int, float, float, float]:
+    """모멘텀 점수 + ATR 기반 손절(웹 근거 2026-07-06: 변동성 적응 손절이 고정% 대비 우위).
+    손절 = 진입 - k×ATR (종목 변동성별로 손절폭이 달라져 rr이 실제로 분산). 목표는 _score_levels와 동일.
+    안전대: 최소 -2%(과촘촘 방지), 최대 -12%(과다손절 방지)로 캡."""
+    score, entry, _stop, target = _score_levels(bars, t)
+    atr = _atr(bars, t)
+    if atr <= 0:
+        return score, entry, _stop, target
+    stop = round(entry - k * atr)
+    stop = min(stop, round(entry * 0.98))   # 최소 -2%
+    stop = max(stop, round(entry * 0.88))   # 최대 -12%
+    return score, entry, stop, target
+
+
+def _score_atr075_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    return _score_atr_levels(bars, t, k=0.75)
+
+
+def _score_atr10_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    return _score_atr_levels(bars, t, k=1.0)
+
+
+def _score_atr15_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    return _score_atr_levels(bars, t, k=1.5)
+
+
+def _score_atr20_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    return _score_atr_levels(bars, t, k=2.0)
 
 
 def _pullback_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
@@ -453,6 +505,10 @@ def run(threshold: int, hold: int, months: int) -> dict:
                        "universe": len(UNIVERSE)}, **_metrics(all_trades)}
 
 
+if os.getenv("SOMI_BT_SMALL", "").strip() in {"1", "true", "yes"}:
+    UNIVERSE = SMALL_UNIVERSE   # 중소형 검증 모드 — 소미 실사냥터로 전략 재검증
+
+
 def _load_all(months: int) -> dict:
     """전 종목 일봉을 1회만 받아 캐시 (그리드 스캔용)."""
     kis = KISClient()
@@ -496,10 +552,14 @@ def grid(months: int, thresholds=(50, 55, 60, 65, 70), holds=(5, 7, 10, 15)) -> 
 
 _STRATEGY_VARIANTS = [
     ("모멘텀+국면", _score_levels),
+    ("+ATR0.75손절+국면", _score_atr075_levels),  # 웹 근거(2026-07-06) — 변동성 손절 검증
+    ("+ATR1.0손절+국면", _score_atr10_levels),
+    ("+ATR1.5손절+국면", _score_atr15_levels),
+    ("+ATR2.0손절+국면", _score_atr20_levels),
     ("+52주신고가+국면", _high52_levels),        # 웹 연구 후보(2026-07-05) — 검증 전용
-    ("+거래량돌파+국면", _breakout_levels),        # 웹 연구 후보(2026-07-05) — 검증 전용(단순 돌파, 열위)
+    ("+거래량돌파+국면", _breakout_levels),        # 웹 연구 후보(2026-07-05) — 라이브 채택(실게이트 재검증 통과)
     ("+돌파+상대강도", _breakout_rs_levels),       # 개선 실험(2026-07-05)
-    ("+돌파+상대강도+RSI", _breakout_combo_levels),  # 개선 실험(2026-07-05) — 채택(라이브 반영)
+    ("+돌파+상대강도+RSI", _breakout_combo_levels),  # 개선 실험(2026-07-05) — 실게이트 재검증 미채택(표본부족)
     ("+돌파+52주신고가", _breakout_52w_levels),    # 개선 실험(2026-07-05)
     ("+RSI회피+국면", _rsi_levels),
     ("+상대강도+국면", _rs_levels),
@@ -691,6 +751,40 @@ def seed_sample(months: int = 9, pages: int = 12, threshold: int = 60, hold: int
     print(f"표본 주입 완료: {len(records)}건 (승 {wins} / 패 {len(records)-wins}) → {out}")
 
 
+def soomgeup_grid(months: int, pages: int = 14) -> None:
+    """수급확인 게이트 문턱×보유 그리드 — 모멘텀 vs +수급확인. 중소형 검증엔 SOMI_BT_SMALL=1.
+    수급 데이터는 1회 수집 후 파라미터만 재조합(2026-07-06 게이트 하한 60 근거)."""
+    global _SOOMGEUP, _MARKET
+    import soomgeup_history
+    kis = KISClient()
+    data = _load_all(months)
+    regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)
+    _MARKET = {b["date"]: b["c"] for b in mbars}
+    soom = {code: soomgeup_history.fetch(code, pages) for code in data}
+    covered = sum(1 for s in soom.values() if s)
+    print(f"[수급확인 그리드] {len(data)}종목 / {months}개월 / 수급 {covered}/{len(data)}종목\n")
+    print(f"{'전략':>12}{'문턱':>5}{'보유':>5}{'거래':>6}{'승률':>7}{'손익비':>7}{'누적%':>9}{'MDD%':>8}{'샤프':>6}")
+
+    def _run(fn, th, hold):
+        trades = []
+        for code, bars in data.items():
+            _SOOMGEUP = soom.get(code, {})
+            trades += backtest_symbol(bars, th, hold, fn, regime)
+        return _metrics(trades)
+
+    for th in (55, 58, 60, 62, 65):
+        for hold in (7, 10):
+            for label, fn in (("모멘텀", _score_levels), ("+수급확인", _smartmoney_levels)):
+                m = _run(fn, th, hold)
+                row = (f"{label:>12}{th:>5}{hold:>5}{m['trades']:>6}{m['win_rate']:>6}%{m['profit_factor']:>7}"
+                       f"{m['total_return']:>8}%{m['mdd']:>7}%{m['sharpe']:>6}") if m.get("trades") else \
+                      f"{label:>12}{th:>5}{hold:>5}   거래없음"
+                print(row)
+        print()
+    _SOOMGEUP = {}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="소미 전략 백테스트")
     ap.add_argument("--threshold", type=int, default=40, help="진입 점수 기준")
@@ -704,12 +798,15 @@ def main() -> None:
     ap.add_argument("--beargate", action="store_true", help="하락국면 전량차단 vs 역행강세 선별통과 비교")
     ap.add_argument("--bear-threshold", type=int, default=70, help="하락장 선별통과 점수 기준")
     ap.add_argument("--soomgeup", action="store_true", help="과거 수급 병합 — 모멘텀 vs 수급확인 vs 조용한매집 비교")
+    ap.add_argument("--soomgeup-grid", action="store_true", help="수급확인 문턱×보유 그리드(게이트 하한 근거, SOMI_BT_SMALL=1)")
     ap.add_argument("--pages", type=int, default=14, help="네이버 수급 수집 페이지(≈20일/페이지)")
     ap.add_argument("--seed-sample", action="store_true", help="검증전략을 과거자료에 돌려 성과추적 표본 주입")
     args = ap.parse_args()
 
     if args.seed_sample:
         seed_sample(args.months, args.pages, args.threshold if args.threshold != 40 else 60, args.hold)
+    elif args.soomgeup_grid:
+        soomgeup_grid(args.months, args.pages)
     elif args.soomgeup:
         compare_soomgeup(args.months, args.threshold if args.threshold != 40 else 60, args.hold, args.pages)
     elif args.beargate:

@@ -462,6 +462,7 @@ def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool) -> str | 
         cur = _get_trade_mode()
         return f"현재 거래 모드: {'🔴 실거래(실제 돈)' if cur == 'live' else '🧪 모의(페이퍼)'}"
     if it == "status":
+        # 손익/거래 현황은 결정적 팩트만 즉시 전송(LLM 재구성 금지 — 팩트 무시·지연 사고 2026-07-06)
         return somi.get_trading_status(_get_trade_mode() == "live")
     if it == "signal_approve" and has_signals:
         signals = _signals_load()
@@ -536,7 +537,11 @@ def handle_message(text: str) -> str:
         _signals_clear()
         return "넘어갈게요. 계속 감시하겠습니다."
 
-    # 거래/투자 현황(보유 포지션·손익) — LLM 분류기보다 먼저
+    # 미장(US) 손익/현황 — 국내 판정보다 먼저(같은 상태어 공유). 야간 모의 원장 기준.
+    if bc.is_us_status_request(text):
+        return somi.get_us_trading_status()
+
+    # 거래/투자 현황(보유 포지션·손익) — LLM 분류기보다 먼저, 결정적 팩트 즉답
     if bc.is_trading_status_request(text):
         return somi.get_trading_status(_get_trade_mode() == "live")
 

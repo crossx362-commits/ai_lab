@@ -302,14 +302,19 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
     제한될 수 있어 로컬 우선을 유지하고 이건 클라우드 폴백으로만 쓴다. subprocess라 API보다 느림."""
     if not _cloud_llm_allowed():
         return None
+    import shutil
     import subprocess
+    exe = shutil.which("claude")   # Windows npm은 claude.cmd shim — 확장자 없는 이름은 못 찾음(WinError 2)
+    if not exe:
+        return None                # CLI 미설치 — 헛된 subprocess/로그 없이 조용히 폴백
     full = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
-    cmd = ["claude", "-p"]
+    cmd = [exe, "-p"]
     if system:
         cmd += ["--append-system-prompt", system]
     cmd.append(full)
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=150,
+                            encoding="utf-8", errors="replace")
         out = (r.stdout or "").strip()
         if not out or (json_mode and not _json_ok(out)):
             print(f"  ⚠️ [ClaudeCode] {'empty' if not out else 'invalid json'}")
@@ -330,13 +335,18 @@ def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperatur
     로컬+클로드가 대부분 커버하게 해 Plus 한도 소진을 막는다. subprocess+훅이라 느림."""
     if not _cloud_llm_allowed():
         return None
+    import shutil
     import subprocess, tempfile
+    exe = shutil.which("codex")   # 미설치 시(WinError 2) 헛된 subprocess/로그 없이 조용히 폴백
+    if not exe:
+        return None
     full = ((system + "\n\n") if system else "") + prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
     fd, outfile = tempfile.mkstemp(suffix=".txt")
     os.close(fd)
     try:
-        subprocess.run(["codex", "exec", "--skip-git-repo-check", "-o", outfile, full],
-                       capture_output=True, text=True, timeout=180)
+        subprocess.run([exe, "exec", "--skip-git-repo-check", "-o", outfile, full],
+                       capture_output=True, text=True, timeout=180,
+                       encoding="utf-8", errors="replace")
         with open(outfile, encoding="utf-8") as f:
             out = f.read().strip()
         if not out or (json_mode and not _json_ok(out)):
@@ -368,10 +378,10 @@ def text(
     """
     Generate text with a cost-safe fallback chain.
 
-    Default(lm_first 미지정): Ollama(gemma4:12b) → ClaudeCode(구독) → Gemini → GPT → Claude API.
+    Default(lm_first 미지정): Ollama(gemma4:12b) → ClaudeCode(구독) → GPT_codex(구독) → Gemini.
     lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선.
     클라우드 클로드는 구독(claude -p) 1선 — API 크레딧 막힘 대응(오너 지시 2026-07-05).
-    GPT·API클로드는 크레딧 있을 때 백업(오너 지시 2026-07-05: 지피티도 백업 포함).
+    유료 API(GPT·Claude) 백업은 주석 처리(오너 지시 2026-07-06 — 유료 API 미사용).
     Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
     """
     cloud_allowed = _cloud_llm_allowed()
@@ -383,8 +393,9 @@ def text(
         lambda: _claude_code(prompt, system, max_tokens, temperature, json_mode),  # 구독 클로드(Max) — 1선
         lambda: _gpt_codex(prompt, system, max_tokens, temperature, json_mode),    # 구독 GPT(Plus) — 2선
         lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),       # Gemini — 무료/할당량
-        lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),          # GPT API — 크레딧 백업
-        lambda: _claude(prompt, system, max_tokens, temperature, json_mode),        # 클로드 API — 크레딧 백업
+        # 유료 API 백업 주석 처리(오너 지시 2026-07-06 — 유료 API 미사용)
+        # lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),        # GPT API — 크레딧 백업
+        # lambda: _claude(prompt, system, max_tokens, temperature, json_mode),      # 클로드 API — 크레딧 백업
     ]
 
     # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.

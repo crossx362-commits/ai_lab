@@ -43,6 +43,7 @@ load_env(str(PROJECT_ROOT))
 PROPOSALS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_proposals.json"
 POSITIONS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_positions.json"
 CLOSED_TRADES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"  # 청산 거래 로그(성과추적)
+REPORT_STATE_FILE = PROJECT_ROOT / "output" / "cache" / "somi_report_state.json"  # 발굴 리포트 델타(중복 전송 억제)
 
 STOP_PCT = 0.05    # 지지선 없을 때 기본 손절 -5%
 TARGET_PCT = 0.10  # 저항선 없을 때 기본 목표 +10%
@@ -78,6 +79,20 @@ def get_proposal(key: str) -> dict | None:
         if key and (key == sym or key == nm or key in nm):
             return it
     return None
+
+
+def _report_changed(slot_kind: str, candidates: list) -> bool:
+    """발굴 후보셋이 직전 전송과 달라졌을 때만 True(그리고 상태 갱신). 같으면 False로 재전송 억제.
+    서명 = 종목+점수버킷(5점)+판정 정렬 — 순서·미세점수 흔들림엔 둔감, 편입/이탈/등급변화엔 민감.
+    '매수 검토 계속 같은거만' 방지(오너 지시 2026-07-06)."""
+    sig = "|".join(sorted(
+        f"{p.get('symbol')}:{int(p.get('score') or 0)//5}:{p.get('verdict', '')}" for p in candidates))
+    state = _load(REPORT_STATE_FILE)
+    if state.get(slot_kind) == sig:
+        return False
+    state[slot_kind] = sig
+    _save(REPORT_STATE_FILE, state)
+    return True
 
 
 def load_positions() -> dict:
@@ -290,10 +305,11 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
 
 TUNING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
 # 성장엔진 자동 튜닝 허용범위 — 모의 한정. 엔진 버그로 극단값이 와도 여기서 클램프(실거래 무관).
-# gate_score 하한 58(2026-07-02 중소형 전이검증): 소미 실제 사냥터(코스닥·중소형 30종목)에선
-# 55는 수급확인을 더해도 손실(-60%), 60+수급확인부터 흑자(+45%·PF 1.39) — 대형주 결론(55↑ 흑자)이
-# 전이되지 않음. 최종 눈금은 한별 점수버킷(실데이터)이 보정. gate_entry는 별개 척도라 52 유지.
-_TUNING_BOUNDS = {"gate_score": (58, 70), "gate_entry": (52, 75),
+# gate_score 하한 60(2026-07-06 수급확인 재활성화): 중소형 20종목 그리드(12/24mo)에서 수급확인은
+# 문턱 60~62 + 수급확인에서만 흑자 전환(PF 0.82→1.45·샤프 -1.3→+2.2·MDD 절반), 58은 여전히 손실(PF 0.79),
+# 55↓는 수급확인이 오히려 역효과. 즉 방금 켠 수급확인의 짝은 60 — 튜너가 다시 내리지 못하게 하한 60 고정.
+# (구 58 하한은 수급확인 OFF 데이터수집 모드용이었고 07-06 품질 전환으로 폐기.) gate_entry는 별개 척도라 52 유지.
+_TUNING_BOUNDS = {"gate_score": (60, 70), "gate_entry": (52, 75),
                   "observe_minutes": (1, 20), "paper_auto_max": (2, 10)}
 
 
@@ -1069,14 +1085,12 @@ def _fast_watch(regime: str = "unknown") -> None:
     passed = [p for p in top if _passes_buy_gate(p, regime)[0]]
     to_buy, msgs = _observation_gate(passed)
     executed = _auto_buy_paper(to_buy, slot_kind="buy_fast", regime=regime)
-    # 체결·관찰 상태변화(시작·완료·해제)만 알림 — 매 틱 '관찰 중' 스팸 방지
-    if executed or any(k in m for m in msgs for k in ("관찰 시작", "관찰 완료", "관찰 해제")):
-        parts = [f"[소미 고속감시 / {now.strftime('%H:%M')}] ⚡ 동적 진입"]
-        if msgs:
-            parts.append("\n".join(msgs))
-        if executed:
-            parts.append("[매수 체결]\n" + "\n\n".join(executed))
-        send("\n\n".join(parts))
+    # 실제 체결만 알림 — 관찰·보류·스킵은 로그로만(오너 지시 2026-07-06 텔레그램 스팸 금지)
+    fills = [m for m in executed if "자동 매수" in m]
+    for m in msgs + [m for m in executed if "자동 매수" not in m]:
+        print(f"[고속감시] {m}")
+    if fills:
+        send(f"[소미 고속감시 / {now.strftime('%H:%M')}] ⚡ 매수 체결\n\n" + "\n\n".join(fills))
 
 
 def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy") -> str:
@@ -1138,7 +1152,7 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
         miss = sum(1 for c in candidates if c.get("score_mode") == "morning_missing_investor_adjusted")
         note = f"\n(당일 수급 미확정 {miss}종목 — 실매수 보류, 오후 재평가)" if miss else ""
         report = f"{header} 🕘 신규매수 금지·후보 편입\n\n[후보 {len(candidates)}종목]\n" + (saved or "조건 충족 후보 없음") + note
-        if do_send:
+        if do_send and _report_changed(slot_kind, candidates):   # 후보셋 변화 있을 때만 전송(중복 억제)
             send(report)
         growth.record("somi_advisor", role=f"{label}", data=f"후보 {len(candidates)}",
                       judgment="실매수 금지·후보 저장", result="후보 편입",
@@ -1189,8 +1203,8 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
             parts.append("[관찰 현황]\n" + "\n".join(watch_msgs))
         parts.append("[매수 체결]\n" + ("\n\n".join(executed) if executed else "이번엔 매수 없음 (게이트 미통과·관찰 중)"))
         report = f"{header} 🧪 모의 자동매매(기대값 게이트)\n\n" + "\n\n".join(parts)
-        # 체결 or 관찰 상태변화(시작·완료·해제)가 있을 때만 알림. 단순 '관찰 중'/'매수 없음'은 자제.
-        notable = bool(executed) or any(k in m for m in watch_msgs for k in ("관찰 시작", "관찰 완료", "관찰 해제"))
+        # 실제 체결이 있을 때만 알림 — 관찰·보류·스킵은 로그로만(오너 지시 2026-07-06)
+        notable = any("자동 매수" in m for m in executed)
     else:
         report = f"{header}\n기대값 기반 종합 판단(승인형):\n\n{decisions or '현재 매수 게이트 통과 후보 없음 — 계속 감시.'}"
     if do_send and notable:
