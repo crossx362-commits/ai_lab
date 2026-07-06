@@ -1282,6 +1282,6 @@ function switchSajuSubTab(tabName) {
         if (tabName === 'petIq' || tabName === 'ownerIq') activeBtn.classList.add('bg-sky-500');
         if (tabName === 'mbti') activeBtn.classList.add('bg-pink-500');
         if (tabName === 'harmony') activeBtn.classList.add('bg-rose-500');
-        if (tabName === 'arcade') activeBtn.classList.add('bg-indigo-500');
+        if (tabName === 'arcade') activeBtn.classList.add('bg-brand-500');
     }
 }

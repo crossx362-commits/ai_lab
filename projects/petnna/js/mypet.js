@@ -1178,7 +1178,7 @@ function showOnboardingCard() {
     if (!card) return;
     card.innerHTML = `
         <div class="relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-amber-50/60 to-violet-50/40 pointer-events-none"></div>
+            <div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-amber-50/60 to-brand-50/40 pointer-events-none"></div>
             <div class="relative flex flex-col items-center text-center px-6 pt-10 pb-8 space-y-6">
                 <div class="relative">
                     <span class="text-7xl drop-shadow-md" style="animation:petBounce 2s ease-in-out infinite">🐾</span>
@@ -2940,7 +2940,7 @@ async function runAiHealthAnalysis(event) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> 분석 중...';
     resultEl.classList.remove("hidden");
-    resultEl.innerHTML = '<p class="text-xs text-violet-500 text-center py-4 font-black">AI가 사진을 분석하고 있습니다... 🔍</p>';
+    resultEl.innerHTML = '<p class="text-xs text-brand-500 text-center py-4 font-black">AI가 사진을 분석하고 있습니다... 🔍</p>';
 
     const pet = getActivePet();
     try {
@@ -3011,15 +3011,15 @@ function _buildHealthResultCard(result) {
                 </div>
                 <div class="flex-1 space-y-1.5">
                     <p class="text-[11px] text-gray-700 font-medium leading-snug">${escapeHtml(result.summary || "")}</p>
-                    <p class="text-[10px] text-violet-600 font-bold">${escapeHtml(result.advice || "")}</p>
+                    <p class="text-[10px] text-brand-600 font-bold">${escapeHtml(result.advice || "")}</p>
                 </div>
             </div>
             ${items.length > 0 ? `<div class="grid grid-cols-5 gap-1">${itemsHtml}</div>` : ""}
             <div class="flex gap-1.5">
-                <button onclick="shareHealthCard()" class="flex items-center gap-1 px-2.5 py-1.5 bg-white/80 hover:bg-white border border-violet-200 text-violet-700 font-black text-[10px] rounded-xl transition-all">
+                <button onclick="shareHealthCard()" class="flex items-center gap-1 px-2.5 py-1.5 bg-white/80 hover:bg-white border border-brand-200 text-brand-700 font-black text-[10px] rounded-xl transition-all">
                     <i class="fa-solid fa-image text-[9px]"></i> 카드 저장
                 </button>
-                <button onclick="shareAiHealthToFeed()" class="flex items-center gap-1 px-2.5 py-1.5 bg-violet-500 hover:bg-violet-600 text-white font-black text-[10px] rounded-xl transition-all">
+                <button onclick="shareAiHealthToFeed()" class="flex items-center gap-1 px-2.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white font-black text-[10px] rounded-xl transition-all">
                     <i class="fa-solid fa-share-nodes text-[9px]"></i> 피드 공유
                 </button>
             </div>
@@ -3063,7 +3063,7 @@ async function startVoiceConsultation() {
         _speechRecognition = null;
         voiceBtn.innerHTML = '<i class="fa-solid fa-microphone text-xs"></i> 증상 말하기';
         voiceBtn.classList.remove("bg-red-500","hover:bg-red-600");
-        voiceBtn.classList.add("bg-violet-500","hover:bg-violet-600");
+        voiceBtn.classList.add("bg-brand-500","hover:bg-brand-600");
         return;
     }
 
@@ -3074,10 +3074,10 @@ async function startVoiceConsultation() {
     _speechRecognition = recognition;
 
     voiceBtn.innerHTML = '<i class="fa-solid fa-circle-stop text-xs"></i> 듣는 중... (탭하면 완료)';
-    voiceBtn.classList.remove("bg-violet-500","hover:bg-violet-600");
+    voiceBtn.classList.remove("bg-brand-500","hover:bg-brand-600");
     voiceBtn.classList.add("bg-red-500","hover:bg-red-600");
     voiceResult.classList.remove("hidden");
-    voiceResult.innerHTML = '<p class="text-[11px] text-violet-500 text-center py-2 font-black">🎙️ 증상을 말해주세요...</p>';
+    voiceResult.innerHTML = '<p class="text-[11px] text-brand-500 text-center py-2 font-black">🎙️ 증상을 말해주세요...</p>';
 
     recognition.onresult = async (e) => {
         const transcript = e.results[0][0].transcript;
@@ -3086,9 +3086,9 @@ async function startVoiceConsultation() {
         _speechRecognition = null;
         voiceBtn.innerHTML = '<i class="fa-solid fa-microphone text-xs"></i> 증상 말하기';
         voiceBtn.classList.remove("bg-red-500","hover:bg-red-600");
-        voiceBtn.classList.add("bg-violet-500","hover:bg-violet-600");
+        voiceBtn.classList.add("bg-brand-500","hover:bg-brand-600");
 
-        voiceResult.innerHTML = `<p class="text-[11px] text-gray-500 font-medium p-2">"${escapeHtml(transcript)}"<br><span class="text-violet-500 font-black">AI 분석 중...</span></p>`;
+        voiceResult.innerHTML = `<p class="text-[11px] text-gray-500 font-medium p-2">"${escapeHtml(transcript)}"<br><span class="text-brand-500 font-black">AI 분석 중...</span></p>`;
         const pet = getActivePet();
         const analysis = await analyzeSymptomByVoice(transcript, pet?.name || "펫");
         incrementVoiceUsage();
@@ -3103,7 +3103,7 @@ async function startVoiceConsultation() {
         _speechRecognition = null;
         voiceBtn.innerHTML = '<i class="fa-solid fa-microphone text-xs"></i> 증상 말하기';
         voiceBtn.classList.remove("bg-red-500","hover:bg-red-600");
-        voiceBtn.classList.add("bg-violet-500","hover:bg-violet-600");
+        voiceBtn.classList.add("bg-brand-500","hover:bg-brand-600");
     };
 
     recognition.start();
@@ -3130,9 +3130,9 @@ function _buildVoiceResultCard(analysis) {
             </div>
             <p class="text-[11px] text-gray-700 font-medium leading-snug">${escapeHtml(analysis.summary || "")}</p>
             ${causesHtml ? `<ul class="space-y-0.5">${causesHtml}</ul>` : ""}
-            <div class="bg-violet-50 border border-violet-100 rounded-xl px-2.5 py-1.5">
-                <p class="text-[10px] text-violet-700 font-black">지금 할 수 있는 것</p>
-                <p class="text-[10px] text-violet-600 font-medium">${escapeHtml(analysis.immediateAction || "")}</p>
+            <div class="bg-brand-50 border border-brand-100 rounded-xl px-2.5 py-1.5">
+                <p class="text-[10px] text-brand-700 font-black">지금 할 수 있는 것</p>
+                <p class="text-[10px] text-brand-600 font-medium">${escapeHtml(analysis.immediateAction || "")}</p>
             </div>
         </div>`;
 }
@@ -3154,7 +3154,7 @@ function renderHealthStreak() {
     } else if (streak < 30) {
         html = `<span class="text-[10px] font-black text-brand-600">🔥🔥 ${streak}일 연속 🥉 훌륭한 집사예요!</span>`;
     } else if (streak < 100) {
-        html = `<span class="text-[10px] font-black text-violet-600">🔥🔥🔥 ${streak}일 연속 🥈 전설의 집사!</span>`;
+        html = `<span class="text-[10px] font-black text-brand-600">🔥🔥🔥 ${streak}일 연속 🥈 전설의 집사!</span>`;
     } else {
         html = `<span class="text-[10px] font-black text-amber-600">👑 ${streak}일 연속 🥇 펫과나 명예의 전당!</span>`;
     }

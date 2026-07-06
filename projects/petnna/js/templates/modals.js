@@ -99,9 +99,9 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
             <!-- 답변 내용 -->
             <div class="space-y-2">
                 <span class="block font-bold text-gray-700 flex items-center gap-1">
-                    <i class="fa-solid fa-reply-all text-indigo-500"></i>펫과나 안심 케어팀 답변
+                    <i class="fa-solid fa-reply-all text-brand-500"></i>펫과나 안심 케어팀 답변
                 </span>
-                <div id="inquiry-detail-reply-box" class="bg-indigo-50/40 border border-indigo-100/50 rounded-2xl p-4">
+                <div id="inquiry-detail-reply-box" class="bg-brand-50/40 border border-brand-100/50 rounded-2xl p-4">
                     <!-- 답변 상태에 따라 로딩바 또는 답변 표시 -->
                 </div>
             </div>
@@ -349,7 +349,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
     <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl max-h-[90vh] overflow-y-auto no-scrollbar">
         <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
             <h4 class="font-bold text-gray-800 text-sm flex items-center">
-                <i class="fa-solid fa-route text-indigo-500 mr-2"></i>기록된 산책로/이동 첨부
+                <i class="fa-solid fa-route text-brand-500 mr-2"></i>기록된 산책로/이동 첨부
             </h4>
             <button onclick="closeAttachWalkModal()" class="text-gray-400 hover:text-gray-600"><i
                     class="fa-solid fa-xmark"></i></button>
@@ -426,7 +426,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 <i class="fa-solid fa-comments"></i> 1:1 대화방 입장하기
             </button>
             <div class="flex gap-2">
-                <button id="neighbor-walk-btn" onclick="requestWalkSchedule()" class="flex-grow bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold py-3.5 rounded-2xl text-xs border border-indigo-100 transition-all flex items-center justify-center gap-2 outline-none">
+                <button id="neighbor-walk-btn" onclick="requestWalkSchedule()" class="flex-grow bg-brand-50 hover:bg-brand-100 text-brand-700 font-extrabold py-3.5 rounded-2xl text-xs border border-brand-100 transition-all flex items-center justify-center gap-2 outline-none">
                     <i class="fa-solid fa-calendar-plus"></i> 공동 산책 신청
                 </button>
                 <button id="neighbor-bone-btn" onclick="sendGetWellBone()" class="flex-grow bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold py-3.5 rounded-2xl text-[11px] border border-rose-100 transition-all flex items-center justify-center gap-1 outline-none group">
@@ -547,7 +547,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 <button onclick="saveHealthLog()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
                     <i class="fa-solid fa-save"></i>건강 일지 안전하게 보관하기
                 </button>
-                <button onclick="generateWeeklyHealthData()" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-2.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
+                <button onclick="generateWeeklyHealthData()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
                     <i class="fa-solid fa-dice"></i>일주일치 데이터 랜덤 생성
                 </button>
             </div>
@@ -559,9 +559,9 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <div id="health-report-modal" class="fixed inset-0 bg-black/60 z-[100] hidden items-center justify-center p-5 sm:p-6 backdrop-blur-sm transition-opacity duration-300">
     <div class="bg-white rounded-[2rem] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-5 text-center relative shrink-0">
+        <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-5 text-center relative shrink-0">
             <h3 class="text-lg font-black text-white tracking-tight drop-shadow-sm">이번 달 맞춤 헬스 리포트 🔮</h3>
-            <p class="text-indigo-100 text-[10px] mt-1 font-medium">우리 아이 기질 기반 심층 분석</p>
+            <p class="text-brand-100 text-[10px] mt-1 font-medium">우리 아이 기질 기반 심층 분석</p>
             <button onclick="closeHealthReportModal()" class="absolute right-4 top-4 text-white/80 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-colors">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
@@ -571,9 +571,9 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
         <div class="p-5 overflow-y-auto no-scrollbar space-y-5 bg-slate-50/50">
             
             <!-- Summary Badge -->
-            <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-indigo-50 shadow-sm">
+            <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-brand-50 shadow-sm">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center text-2xl border-2 border-white shadow-sm">
+                    <div class="w-12 h-12 bg-gradient-to-br from-brand-100 to-brand-100 rounded-full flex items-center justify-center text-2xl border-2 border-white shadow-sm">
                         📊
                     </div>
                     <div>
@@ -582,14 +582,14 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full block mb-1">건강 점수</span>
-                    <span class="font-black text-indigo-600 text-xl">92<span class="text-[10px] text-indigo-400 ml-0.5">점</span></span>
+                    <span class="bg-brand-100 text-brand-700 text-[9px] font-black px-2 py-0.5 rounded-full block mb-1">건강 점수</span>
+                    <span class="font-black text-brand-600 text-xl">92<span class="text-[10px] text-brand-400 ml-0.5">점</span></span>
                 </div>
             </div>
 
             <!-- Chart Simulation -->
             <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                <h4 class="text-xs font-black text-gray-800 mb-3 flex items-center gap-1.5"><i class="fa-solid fa-chart-line text-purple-500"></i> 기질 맞춤 5대 건강 지표</h4>
+                <h4 class="text-xs font-black text-gray-800 mb-3 flex items-center gap-1.5"><i class="fa-solid fa-chart-line text-brand-500"></i> 기질 맞춤 5대 건강 지표</h4>
                 <div class="space-y-3">
                     <!-- Progress item -->
                     <div>
@@ -622,12 +622,12 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
             </div>
 
             <!-- Social Call to action -->
-            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-center justify-between">
+            <div class="bg-brand-50 border border-brand-100 p-4 rounded-2xl flex items-center justify-between">
                 <div>
-                    <span class="block font-black text-indigo-900 text-xs mb-0.5">이웃들과 조언 나누기</span>
-                    <span class="text-[9px] text-indigo-500 font-medium">우리 아이의 기특한 달성률을 자랑해 보세요.</span>
+                    <span class="block font-black text-brand-900 text-xs mb-0.5">이웃들과 조언 나누기</span>
+                    <span class="text-[9px] text-brand-500 font-medium">우리 아이의 기특한 달성률을 자랑해 보세요.</span>
                 </div>
-                <button onclick="closeHealthReportModal(); switchTab('social'); switchSocialSubTab('feed');" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] shadow-sm transition-colors shrink-0">
+                <button onclick="closeHealthReportModal(); switchTab('social'); switchSocialSubTab('feed');" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-3 py-2 rounded-xl text-[10px] shadow-sm transition-colors shrink-0">
                     피드로 가기 <i class="fa-solid fa-arrow-right ml-0.5"></i>
                 </button>
             </div>
@@ -976,7 +976,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 
         <!-- 탭 2: 맞춤 산책 코스 목록 -->
         <div id="notebook-tab-content-routes" class="space-y-4 hidden">
-            <span class="block text-xs font-bold text-gray-400"><i class="fa-solid fa-compass text-indigo-500 mr-1"></i> 저장된 나만의 맞춤 산책 경로</span>
+            <span class="block text-xs font-bold text-gray-400"><i class="fa-solid fa-compass text-brand-500 mr-1"></i> 저장된 나만의 맞춤 산책 경로</span>
             <div id="notebook-custom-routes-list" class="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
                 <!-- 맞춤 코스 리스트 동적 렌더링 -->
             </div>

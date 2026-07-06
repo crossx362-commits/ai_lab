@@ -12,10 +12,10 @@ const ALBUM_TEMPLATE = `
                 <div id="diary-stats-row" class="flex items-center gap-3 mt-1.5"></div>
             </div>
             <div class="flex space-x-2 w-full sm:w-auto">
-                <button onclick="openFriendInviteModal()" class="flex-1 sm:flex-none bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm border border-indigo-100">
+                <button onclick="openFriendInviteModal()" class="flex-1 sm:flex-none bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm border border-brand-100">
                     <i class="fa-solid fa-user-group"></i> 공유 친구
                 </button>
-                <button onclick="exportDiaryPDF()" class="flex-1 sm:flex-none bg-violet-50 hover:bg-violet-100 text-violet-700 font-bold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-violet-100">
+                <button onclick="exportDiaryPDF()" class="flex-1 sm:flex-none bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold text-xs py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-brand-100">
                     <i class="fa-solid fa-file-pdf"></i> PDF
                     <span class="text-[8px] bg-amber-100 text-amber-700 px-1 rounded font-black">PRO</span>
                 </button>
@@ -53,7 +53,7 @@ const ALBUM_TEMPLATE = `
         <!-- 우측 사이드 패널 (우측 1/4) -->
         <div class="space-y-4">
             <!-- 바로가기 배너 -->
-            <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 shadow-sm text-white cursor-pointer hover:shadow-md transition-all transform hover:-translate-y-0.5" onclick="goToDayRoom()">
+            <div class="bg-gradient-to-br from-brand-500 to-brand-600 rounded-3xl p-5 shadow-sm text-white cursor-pointer hover:shadow-md transition-all transform hover:-translate-y-0.5" onclick="goToDayRoom()">
                 <div class="flex justify-between items-start mb-2">
                     <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
                         <span class="text-xl">🐾</span>
@@ -234,13 +234,13 @@ const ALBUM_TEMPLATE = `
                         </div>
                         
                         <!-- 동영상 트리머 (비디오일 때만 나타남) -->
-                        <div id="video-trimmer-box" class="hidden bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 space-y-2 mt-2">
-                            <span class="block text-[9px] text-indigo-900 font-black flex items-center"><i class="fa-solid fa-scissors mr-1.5"></i> 동영상 재생 구간 자르기</span>
+                        <div id="video-trimmer-box" class="hidden bg-brand-50/50 p-3 rounded-xl border border-brand-100 space-y-2 mt-2">
+                            <span class="block text-[9px] text-brand-900 font-black flex items-center"><i class="fa-solid fa-scissors mr-1.5"></i> 동영상 재생 구간 자르기</span>
                             <div class="grid grid-cols-2 gap-2">
-                                <input type="range" id="trim-start-slider" min="0" max="30" step="0.5" value="0" oninput="updateVideoTrimStart(this.value)" class="w-full h-1.5 bg-indigo-200 rounded-lg accent-indigo-600">
-                                <input type="range" id="trim-end-slider" min="1" max="30" step="0.5" value="10" oninput="updateVideoTrimEnd(this.value)" class="w-full h-1.5 bg-indigo-200 rounded-lg accent-indigo-600">
+                                <input type="range" id="trim-start-slider" min="0" max="30" step="0.5" value="0" oninput="updateVideoTrimStart(this.value)" class="w-full h-1.5 bg-brand-200 rounded-lg accent-brand-600">
+                                <input type="range" id="trim-end-slider" min="1" max="30" step="0.5" value="10" oninput="updateVideoTrimEnd(this.value)" class="w-full h-1.5 bg-brand-200 rounded-lg accent-brand-600">
                             </div>
-                            <div class="flex justify-between text-[8px] font-bold text-indigo-700">
+                            <div class="flex justify-between text-[8px] font-bold text-brand-700">
                                 <span>Start: <span id="trim-start-val">0.0s</span></span>
                                 <span>End: <span id="trim-end-val">10.0s</span></span>
                             </div>
@@ -302,9 +302,9 @@ const ALBUM_TEMPLATE = `
 <!-- ============================================== -->
 <div id="friend-invite-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 backdrop-blur-sm bg-black/60 opacity-0 transition-opacity duration-300">
     <div class="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
-        <div class="bg-indigo-50 p-4 flex justify-between items-center border-b border-indigo-100">
-            <h3 class="font-black text-indigo-800 text-sm"><i class="fa-solid fa-user-plus mr-1"></i> 교환 일기 친구 초대</h3>
-            <button onclick="closeFriendInviteModal()" class="text-indigo-400 hover:text-indigo-600"><i class="fa-solid fa-xmark"></i></button>
+        <div class="bg-brand-50 p-4 flex justify-between items-center border-b border-brand-100">
+            <h3 class="font-black text-brand-800 text-sm"><i class="fa-solid fa-user-plus mr-1"></i> 교환 일기 친구 초대</h3>
+            <button onclick="closeFriendInviteModal()" class="text-brand-400 hover:text-brand-600"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="p-5 space-y-4">
             <p class="text-[11px] text-gray-500 font-medium leading-relaxed">
@@ -323,15 +323,15 @@ const ALBUM_TEMPLATE = `
 
             <div class="space-y-2">
                 <p class="text-[10px] font-bold text-gray-500">🤖 AI 에이전트 (예시)</p>
-                <div class="flex justify-between items-center bg-gradient-to-r from-violet-50 to-purple-50 p-3 rounded-xl border border-violet-200">
+                <div class="flex justify-between items-center bg-gradient-to-r from-brand-50 to-brand-50 p-3 rounded-xl border border-brand-200">
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-xs font-black">🤖</div>
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center text-white text-xs font-black">🤖</div>
                         <div>
                             <span class="block text-xs font-black text-gray-800">펫케어 AI 도우미</span>
                             <span class="block text-[9px] text-gray-400">ai-helper@petna.co.kr</span>
                         </div>
                     </div>
-                    <button onclick="sendFriendInvite('펫케어 AI 도우미', 'ai-helper@petna.co.kr', this)" class="bg-violet-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-sm hover:bg-violet-600 transition-colors">초대하기</button>
+                    <button onclick="sendFriendInvite('펫케어 AI 도우미', 'ai-helper@petna.co.kr', this)" class="bg-brand-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg shadow-sm hover:bg-brand-600 transition-colors">초대하기</button>
                 </div>
 
                 <div class="flex justify-between items-center bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200">

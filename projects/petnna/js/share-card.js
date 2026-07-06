@@ -55,7 +55,7 @@ function generateShareCard(type = 'health') {
     // 배경 그라데이션
     const grad = ctx.createLinearGradient(0, 0, S, S);
     if (type === 'health') {
-        grad.addColorStop(0, '#f5f3ff'); grad.addColorStop(1, '#ddd6fe');
+        grad.addColorStop(0, '#faf3ef'); grad.addColorStop(1, '#f4e2d9');
     } else {
         grad.addColorStop(0, '#fffbeb'); grad.addColorStop(1, '#fde68a');
     }
@@ -63,7 +63,7 @@ function generateShareCard(type = 'health') {
     ctx.fillRect(0, 0, S, S);
 
     // 상단 헤더 배경
-    ctx.fillStyle = type === 'health' ? '#7c3aed' : '#d97706';
+    ctx.fillStyle = type === 'health' ? '#a9583e' : '#d97706';
     ctx.beginPath();
     ctx.roundRect(40, 40, S - 80, 140, 24);
     ctx.fill();
@@ -269,7 +269,7 @@ function generateSajuShareCard() {
 
     // 전생 인연
     if (sajuData.pastDesc) {
-        ctx.fillStyle = '#c4b5fd';
+        ctx.fillStyle = '#eccab8';
         ctx.font = '30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
         ctx.textAlign = 'center';
         _wrapText(ctx, `💫 ${sajuData.pastDesc}`, W / 2, 1120, W - 160, 42);
@@ -414,13 +414,13 @@ function generateCompatChallengeCard(pet, compatScore) {
 
     // 배경 그라데이션 — 보라-핑크
     const grad = ctx.createLinearGradient(0, 0, S, S);
-    grad.addColorStop(0, '#f5f3ff');
+    grad.addColorStop(0, '#faf3ef');
     grad.addColorStop(1, '#fce7f3');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, S, S);
 
     // 헤더 배너
-    ctx.fillStyle = '#7c3aed';
+    ctx.fillStyle = '#a9583e';
     ctx.beginPath();
     ctx.roundRect(40, 40, S - 80, 150, 28);
     ctx.fill();
@@ -430,7 +430,7 @@ function generateCompatChallengeCard(pet, compatScore) {
     ctx.fillText('☯️ 조화도 챌린지', S / 2, 140);
 
     // 큰 숫자 — 점수
-    ctx.fillStyle = '#6d28d9';
+    ctx.fillStyle = '#8f4832';
     ctx.font = 'bold 280px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`${score}%`, S / 2, 580);
@@ -441,12 +441,12 @@ function generateCompatChallengeCard(pet, compatScore) {
     ctx.fillText(`우리 ${petName}와 나는 조화도 ${score}%!`, S / 2, 680);
 
     // 해시태그
-    ctx.fillStyle = '#7c3aed';
+    ctx.fillStyle = '#a9583e';
     ctx.font = '40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.fillText('당신의 펫과 조화도는? #펫과나 #조화도챌린지', S / 2, 760);
 
     // 하단 브랜드
-    ctx.fillStyle = '#7c3aed';
+    ctx.fillStyle = '#a9583e';
     ctx.beginPath();
     ctx.roundRect(40, S - 140, S - 80, 100, 24);
     ctx.fill();

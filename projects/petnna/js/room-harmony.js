@@ -5,7 +5,7 @@ const ROOM_THEMES = {
     perfect: {
         score: 90,
         name: '완벽한 조화',
-        bgGradient: 'from-rose-50 via-pink-50 to-purple-50',
+        bgGradient: 'from-rose-50 via-pink-50 to-brand-50',
         borderColor: 'border-rose-200',
         icon: '💖✨',
         message: '영혼의 단짝! 완벽한 듀오입니다'
@@ -29,7 +29,7 @@ const ROOM_THEMES = {
     normal: {
         score: 40,
         name: '평범한 조화',
-        bgGradient: 'from-blue-50 via-sky-50 to-indigo-50',
+        bgGradient: 'from-blue-50 via-sky-50 to-brand-50',
         borderColor: 'border-blue-200',
         icon: '💙⭐',
         message: '노력하면 더욱 발전할 수 있는 관계'

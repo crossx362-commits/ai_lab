@@ -22,7 +22,7 @@ const SAJU_TEMPLATE = `
         <button onclick="switchSajuSubTab('petIq')" id="saju-tab-petIq" class="saju-subtab-btn whitespace-nowrap bg-white text-gray-500 font-bold text-xs py-2 px-3.5 rounded-xl border border-gray-200 transition-all hover:bg-gray-50 flex items-center gap-1"><span>🧠</span> 펫 지능</button>
         <button onclick="switchSajuSubTab('ownerIq')" id="saju-tab-ownerIq" class="saju-subtab-btn whitespace-nowrap bg-white text-gray-500 font-bold text-xs py-2 px-3.5 rounded-xl border border-gray-200 transition-all hover:bg-gray-50 flex items-center gap-1"><span>👀</span> 집사 눈치</button>
         <button onclick="switchSajuSubTab('arcade')" id="saju-tab-arcade"
-            class="saju-subtab-btn whitespace-nowrap bg-white hover:bg-indigo-50 text-gray-500 font-bold text-xs py-2 px-3.5 rounded-xl border border-gray-200 transition-all flex items-center gap-1">
+            class="saju-subtab-btn whitespace-nowrap bg-white hover:bg-brand-50 text-gray-500 font-bold text-xs py-2 px-3.5 rounded-xl border border-gray-200 transition-all flex items-center gap-1">
             <span>🎮</span> 아케이드
         </button>
     </div>
@@ -82,23 +82,23 @@ const SAJU_TEMPLATE = `
                     </div>
 
                     <!-- 집사 사주 폼 -->
-                    <div class="bg-indigo-50/20 p-4 rounded-2xl border border-indigo-100/40 space-y-3">
-                        <h3 class="font-black text-indigo-700 text-xs flex items-center gap-1.5">
+                    <div class="bg-brand-50/20 p-4 rounded-2xl border border-brand-100/40 space-y-3">
+                        <h3 class="font-black text-brand-700 text-xs flex items-center gap-1.5">
                             <span>🧔</span> 반려인(집사) 사주 정보
                         </h3>
                         <div class="space-y-2.5 text-[11px]">
                             <div>
                                 <label class="block font-bold text-gray-500 mb-0.5">집사 이름</label>
-                                <input type="text" id="saju-owner-name" placeholder="집사 닉네임" class="w-full border border-gray-200 rounded-xl p-2 outline-none focus:border-indigo-500 bg-white font-bold text-xs">
+                                <input type="text" id="saju-owner-name" placeholder="집사 닉네임" class="w-full border border-gray-200 rounded-xl p-2 outline-none focus:border-brand-500 bg-white font-bold text-xs">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="block font-bold text-gray-500 mb-0.5">생년월일</label>
-                                    <input type="date" id="saju-owner-birth" class="w-full border border-gray-200 rounded-xl p-2 outline-none focus:border-indigo-500 bg-white text-xs">
+                                    <input type="date" id="saju-owner-birth" class="w-full border border-gray-200 rounded-xl p-2 outline-none focus:border-brand-500 bg-white text-xs">
                                 </div>
                                 <div>
                                     <label class="block font-bold text-gray-500 mb-0.5">태어난 시간</label>
-                                    <select id="saju-owner-time" class="w-full border border-gray-200 rounded-xl p-2 outline-none focus:border-indigo-500 bg-white text-xs">
+                                    <select id="saju-owner-time" class="w-full border border-gray-200 rounded-xl p-2 outline-none focus:border-brand-500 bg-white text-xs">
                                         <option value="모름">모름/미기재</option>
                                         <option value="자시">子 (자시: 23:30~01:29)</option>
                                         <option value="축시">丑 (축시: 01:30~03:29)</option>
@@ -179,7 +179,7 @@ const SAJU_TEMPLATE = `
                 <!-- 집사 결과 -->
                 <div class="bg-white p-4 rounded-2xl border border-amber-800/10 shadow-sm flex flex-col justify-between">
                     <div>
-                        <span class="text-[9px] bg-indigo-50 text-indigo-800 font-black px-2 py-0.5 rounded" id="res-owner-badge">OWNER SAJU</span>
+                        <span class="text-[9px] bg-brand-50 text-brand-800 font-black px-2 py-0.5 rounded" id="res-owner-badge">OWNER SAJU</span>
                         <p class="text-xs font-black text-gray-800 mt-2" id="res-owner-summary">화(Fire)의 열정을 가진 따뜻한 등대</p>
                     </div>
                     <div class="mt-2.5 bg-gray-50/50 p-3 rounded-xl border border-gray-100 text-[11px] text-gray-600 text-left leading-relaxed" id="res-desc-owner">사주 풀이</div>
@@ -222,7 +222,7 @@ const SAJU_TEMPLATE = `
                             <p class="text-[10px] text-gray-600 leading-relaxed" id="fortune-pet-text">기분 좋은 에너지가 넘칩니다.</p>
                         </div>
                         <div class="bg-white p-3.5 rounded-xl shadow-sm border border-emerald-100/50 space-y-1">
-                            <span class="font-black text-indigo-700 text-[11px] flex items-center gap-1"><i class="fa-solid fa-user text-[9px]"></i> 집사의 하루</span>
+                            <span class="font-black text-brand-700 text-[11px] flex items-center gap-1"><i class="fa-solid fa-user text-[9px]"></i> 집사의 하루</span>
                             <p class="text-[10px] text-gray-600 leading-relaxed" id="fortune-owner-text">예상치 못한 행운이 찾아옵니다.</p>
                         </div>
                     </div>
@@ -247,9 +247,9 @@ const SAJU_TEMPLATE = `
                         <span class="text-gray-400 block font-bold text-[9px]">럭키 산책로</span>
                         <strong class="text-emerald-700 font-bold block mt-1">소나무 숲길 🌲</strong>
                     </div>
-                    <div class="bg-indigo-50/50 p-2 rounded-xl border border-indigo-100/40">
+                    <div class="bg-brand-50/50 p-2 rounded-xl border border-brand-100/40">
                         <span class="text-gray-400 block font-bold text-[9px]">행운의 멘토</span>
-                        <strong class="text-indigo-700 font-bold block mt-1">동네 냥이맘 🐱</strong>
+                        <strong class="text-brand-700 font-bold block mt-1">동네 냥이맘 🐱</strong>
                     </div>
                 </div>
                 <div class="bg-teal-50 p-2.5 rounded-xl border border-teal-100/50 text-[10px] text-teal-800 leading-snug">
@@ -457,7 +457,7 @@ const SAJU_TEMPLATE = `
                             <button onclick="resetHarmonyTest()" class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold py-2 rounded-xl text-[10px] border transition-colors text-center shadow-sm">다시 측정하기</button>
                             <button onclick="saveHarmonyToWidget()" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">마이룸 등록</button>
                         </div>
-                        <button onclick="shareHarmonyToSocial()" class="w-full bg-violet-500 hover:bg-violet-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">
+                        <button onclick="shareHarmonyToSocial()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">
                             <i class="fa-solid fa-share-nodes mr-1"></i>소셜 피드에 자랑하기
                         </button>
                     </div>
@@ -468,7 +468,7 @@ const SAJU_TEMPLATE = `
 
     <!-- 6. 아케이드 섹션 -->
     <div id="arcade-test-section" class="hidden space-y-4">
-        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl p-4 text-white flex justify-between items-center shadow-md">
+        <div class="bg-gradient-to-r from-brand-500 to-brand-500 rounded-3xl p-4 text-white flex justify-between items-center shadow-md">
             <div class="flex flex-col">
                 <span class="text-[10px] font-black uppercase tracking-widest opacity-80">Arcade Minigame</span>
                 <span class="text-lg font-black mt-0.5">간식 터치 미니게임 🎮</span>
@@ -477,13 +477,13 @@ const SAJU_TEMPLATE = `
         </div>
 
         <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm max-w-xl mx-auto space-y-4">
-            <div class="flex justify-between items-center bg-indigo-50 p-3 rounded-2xl border border-indigo-100/50">
-                <div class="text-[11px] text-indigo-900 font-black">Score: <span id="arcade-score-display" class="font-mono text-base text-brand-600">0</span></div>
-                <div class="text-[11px] text-indigo-900 font-black">Lives: <span id="arcade-lives-display" class="text-sm tracking-widest text-rose-500 drop-shadow-sm">❤️❤️❤️</span></div>
+            <div class="flex justify-between items-center bg-brand-50 p-3 rounded-2xl border border-brand-100/50">
+                <div class="text-[11px] text-brand-900 font-black">Score: <span id="arcade-score-display" class="font-mono text-base text-brand-600">0</span></div>
+                <div class="text-[11px] text-brand-900 font-black">Lives: <span id="arcade-lives-display" class="text-sm tracking-widest text-rose-500 drop-shadow-sm">❤️❤️❤️</span></div>
             </div>
 
             <!-- 플레이 에어리어 -->
-            <div id="arcade-play-area" class="relative w-full aspect-[4/3] bg-gradient-to-b from-indigo-950 to-indigo-900 rounded-2xl overflow-hidden border border-indigo-950 shadow-inner">
+            <div id="arcade-play-area" class="relative w-full aspect-[4/3] bg-gradient-to-b from-brand-950 to-brand-900 rounded-2xl overflow-hidden border border-brand-950 shadow-inner">
                 <!-- 게임 시작 오버레이 -->
                 <div id="arcade-start-overlay" class="absolute inset-0 bg-black/75 z-20 flex flex-col items-center justify-center text-center p-6 space-y-3">
                     <span class="text-4xl animate-bounce">🍖</span>

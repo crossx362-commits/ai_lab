@@ -176,16 +176,16 @@ function generateHealthReportPDF() {
 <title>${petName} 월간 종합 케어 리포트 — ${monthStr}</title>
 <style>
   body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;margin:0;padding:32px;color:#1f2937;background:#fff}
-  h1{font-size:24px;font-weight:900;color:#7c3aed;margin-bottom:4px}
+  h1{font-size:24px;font-weight:900;color:#a9583e;margin-bottom:4px}
   .sub{font-size:13px;color:#6b7280;margin-bottom:24px}
   .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
   .card{background:#f9fafb;border-radius:12px;padding:16px;text-align:center;border:1px solid #e5e7eb}
   .card .val{font-size:28px;font-weight:900;color:#374151;margin-bottom:2px}
   .card .lbl{font-size:11px;color:#9ca3af}
   .section{margin-bottom:20px}
-  .section h2{font-size:15px;font-weight:900;color:#374151;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #ede9fe}
+  .section h2{font-size:15px;font-weight:900;color:#374151;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #f4e2d9}
   table{width:100%;border-collapse:collapse;font-size:12px}
-  th{background:#ede9fe;color:#7c3aed;padding:6px 8px;text-align:left}
+  th{background:#f4e2d9;color:#a9583e;padding:6px 8px;text-align:left}
   td{padding:5px 8px;border-bottom:1px solid #f3f4f6}
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
   .ok{background:#d1fae5;color:#065f46}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}
@@ -199,7 +199,7 @@ function generateHealthReportPDF() {
 </div>
 
 <div class="grid" style="grid-template-columns:repeat(5,1fr)">
-  <div class="card"><div class="val" style="color:#7c3aed">${score}</div><div class="lbl">건강 점수</div></div>
+  <div class="card"><div class="val" style="color:#a9583e">${score}</div><div class="lbl">건강 점수</div></div>
   <div class="card"><div class="val" style="color:#f59e0b">${streak}일</div><div class="lbl">연속 기록</div></div>
   <div class="card"><div class="val" style="color:#10b981">${recordDays}일</div><div class="lbl">이달 기록일</div></div>
   <div class="card"><div class="val" style="color:#3b82f6">${analyses.length}회</div><div class="lbl">AI 분석 횟수</div></div>
@@ -226,7 +226,7 @@ ${latestAI ? `<div class="section">
       ${[['눈',latestAI.eyes],['귀',latestAI.ears],['피부',latestAI.skin],['털',latestAI.coat],['치아',latestAI.teeth]].filter(([,v])=>v&&v!=='확인불가').map(([l,v])=>`<span class="badge ${v==='정상'||v==='윤기있음'?'ok':v==='주의'?'warn':'bad'}">${l}: ${v}</span>`).join('')}
     </div>
     <div style="font-size:12px;color:#4b5563">${latestAI.summary || ''}</div>
-    <div style="font-size:11px;color:#7c3aed;margin-top:4px;font-weight:700">${latestAI.advice || ''}</div>
+    <div style="font-size:11px;color:#a9583e;margin-top:4px;font-weight:700">${latestAI.advice || ''}</div>
     <div style="font-size:10px;color:#9ca3af;margin-top:4px">분석일: ${new Date(latestAI.analyzedAt || Date.now()).toLocaleDateString('ko-KR')}</div>
   </div>
 </div>` : ''}
@@ -270,7 +270,7 @@ ${latestAI ? `<div class="section">
 </div>
 
 <div style="text-align:center;margin-top:20px">
-  <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PDF로 저장 / 인쇄</button>
+  <button onclick="window.print()" style="background:#a9583e;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">🖨️ PDF로 저장 / 인쇄</button>
 </div>
 </body></html>`;
     const blob = new Blob([html], { type: 'text/html; charset=utf-8' });

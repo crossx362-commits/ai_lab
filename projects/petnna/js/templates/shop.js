@@ -252,14 +252,14 @@ const SHOP_TEMPLATE = `
 
       <!-- ① 🏨 호텔 — 야사와 군도 (NW) -->
       <g class="filter-node" data-cat="hotel" onclick="selectIslandShop('healing-hotel')" style="cursor:pointer;" filter="url(#pf)">
-        <circle cx="105" cy="175" r="22" fill="#4f46e5"/>
+        <circle cx="105" cy="175" r="22" fill="#a9583e"/>
         <circle cx="105" cy="175" r="22" fill="none" stroke="white" stroke-width="2.5"/>
         <rect x="97" y="167" width="16" height="13" rx="1" fill="none" stroke="white" stroke-width="1.8"/>
         <line x1="101" y1="167" x2="101" y2="180" stroke="white" stroke-width="1.1"/>
         <line x1="105" y1="167" x2="105" y2="180" stroke="white" stroke-width="1.1"/>
         <line x1="109" y1="167" x2="109" y2="180" stroke="white" stroke-width="1.1"/>
         <line x1="97"  y1="173" x2="113" y2="173" stroke="white" stroke-width="1.1"/>
-        <polygon points="105,193 99,182 111,182" fill="#4f46e5"/>
+        <polygon points="105,193 99,182 111,182" fill="#a9583e"/>
       </g>
 
       <!-- ② 🛁 스파 — 비티레부 서부 Nadi (W) -->
@@ -328,7 +328,7 @@ const SHOP_TEMPLATE = `
       <div style="display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;">
         <span id="quest-emoji" style="font-size:2rem;">🛁</span>
         <div>
-          <span id="quest-badge" style="font-size:0.58rem;font-weight:900;letter-spacing:0.1em;color:#6366f1;background:#eef2ff;border:1px solid #c7d2fe;padding:2px 6px;border-radius:5px;display:inline-block;">SPA</span>
+          <span id="quest-badge" style="font-size:0.58rem;font-weight:900;letter-spacing:0.1em;color:#cc785c;background:#faf3ef;border:1px solid #c7d2fe;padding:2px 6px;border-radius:5px;display:inline-block;">SPA</span>
           <h3 id="quest-title" style="font-size:0.95rem;font-weight:900;color:#1e293b;margin:3px 0 0;">힐링 스파</h3>
         </div>
       </div>
@@ -469,12 +469,12 @@ const SHOP_TEMPLATE = `
         </div>
         <div class="space-y-2">
             <a href="https://www.petliz.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
-                class="flex items-center justify-between p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                class="flex items-center justify-between p-3 rounded-xl bg-brand-50 hover:bg-brand-100 transition-colors">
                 <div>
-                    <span class="block text-xs font-black text-indigo-800">Petliz</span>
+                    <span class="block text-xs font-black text-brand-800">Petliz</span>
                     <span class="text-[10px] text-gray-400">청결도 4.8점 이상 펫호텔만 큐레이션</span>
                 </div>
-                <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400 text-xs"></i>
+                <i class="fa-solid fa-arrow-up-right-from-square text-brand-400 text-xs"></i>
             </a>
         </div>
     </div>

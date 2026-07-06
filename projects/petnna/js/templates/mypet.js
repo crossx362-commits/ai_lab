@@ -30,8 +30,8 @@ const MYPET_TEMPLATE = `
 
     <!-- 오늘의 운세 (집사 + 펫) -->
     <div class="grid grid-cols-2 gap-3">
-        <div class="card-modern bg-violet-50/50 p-3.5 space-y-1.5">
-            <span class="block text-xs font-semibold text-violet-600">🧔 집사 오늘의 운세</span>
+        <div class="card-modern bg-brand-50/50 p-3.5 space-y-1.5">
+            <span class="block text-xs font-semibold text-brand-600">🧔 집사 오늘의 운세</span>
             <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
         </div>
         <div class="card-modern bg-amber-50/50 p-3.5 space-y-1.5">
@@ -68,18 +68,18 @@ const MYPET_TEMPLATE = `
                     </div>
                     <div class="flex items-start gap-2 shrink-0">
                         <!-- 사주 정보 카드 -->
-                        <div id="room-saju-card" class="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-xl px-3.5 py-3 max-w-sm shadow-soft">
+                        <div id="room-saju-card" class="bg-gradient-to-br from-brand-50 to-brand-50 border border-brand-200 rounded-xl px-3.5 py-3 max-w-sm shadow-soft">
                             <div class="text-[10px] leading-relaxed space-y-1.5">
                                 <div class="flex items-center justify-between mb-1">
-                                    <span class="font-black text-violet-700">🔮 사주 분석</span>
+                                    <span class="font-black text-brand-700">🔮 사주 분석</span>
                                     <span id="room-saju-score" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">미측정</span>
                                 </div>
                                 <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5">
-                                    <div class="text-[9px] text-gray-500 border-b border-violet-100/50 pb-1">
-                                        <span class="font-bold text-violet-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
+                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1">
+                                        <span class="font-bold text-brand-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
                                         <div id="room-saju-owner-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
-                                    <div class="text-[9px] text-gray-500 border-b border-violet-100/50 pb-1">
+                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1">
                                         <span class="font-bold text-amber-600">🐾 펫</span>: <span id="room-saju-pet">--년생</span>
                                         <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
@@ -87,7 +87,7 @@ const MYPET_TEMPLATE = `
                                         조화도 탭에서 사주 궁합을 분석해보세요
                                     </div>
                                 </div>
-                                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[9px] font-bold text-violet-500 hover:text-violet-600 mt-1">
+                                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[9px] font-bold text-brand-500 hover:text-brand-600 mt-1">
                                     조화도 분석하기 →
                                 </button>
                             </div>
@@ -110,8 +110,8 @@ const MYPET_TEMPLATE = `
                         <span class="text-[10px] font-black text-gray-600">생활수첩</span>
                     </button>
                     <button onclick="toggleButlerProfileEdit()"
-                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all">
-                        <i class="fa-solid fa-user-pen text-indigo-500 text-lg"></i>
+                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
+                        <i class="fa-solid fa-user-pen text-brand-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">집사 설정</span>
                     </button>
                     <button onclick="togglePetProfileEdit()"
@@ -193,14 +193,14 @@ const MYPET_TEMPLATE = `
                 </div>
 
                 <!-- 집사 설정 패널 -->
-                <div id="butler-profile-editor-panel" class="hidden mt-3 bg-white border border-indigo-100 p-4 rounded-2xl space-y-3 text-xs">
+                <div id="butler-profile-editor-panel" class="hidden mt-3 bg-white border border-brand-100 p-4 rounded-2xl space-y-3 text-xs">
                     <div class="flex items-center justify-between pb-1 border-b border-gray-100">
-                        <span class="font-black text-gray-700"><i class="fa-solid fa-user-gear mr-1 text-indigo-500"></i>집사 프로필</span>
+                        <span class="font-black text-gray-700"><i class="fa-solid fa-user-gear mr-1 text-brand-500"></i>집사 프로필</span>
                         <button onclick="toggleButlerProfileEdit()" class="text-gray-300 hover:text-gray-500"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="shrink-0">
-                            <div class="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-2xl border-2 border-indigo-100 overflow-hidden relative cursor-pointer group" onclick="document.getElementById('butler-photo-upload').click()">
+                            <div class="w-14 h-14 rounded-full bg-brand-50 flex items-center justify-center text-2xl border-2 border-brand-100 overflow-hidden relative cursor-pointer group" onclick="document.getElementById('butler-photo-upload').click()">
                                 <span id="settings-avatar-disp">🧔</span>
                                 <img loading="lazy" id="settings-avatar-image" class="hidden w-full h-full object-cover">
                                 <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
@@ -210,8 +210,8 @@ const MYPET_TEMPLATE = `
                             <input type="file" id="butler-photo-upload" accept="image/*" class="hidden" onchange="uploadButlerProfilePhoto(event)">
                         </div>
                         <div class="flex-1 space-y-2">
-                            <input type="text" id="settings-user-nickname" placeholder="닉네임" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 text-xs">
-                            <input type="email" id="settings-user-email" placeholder="이메일" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 text-xs">
+                            <input type="text" id="settings-user-nickname" placeholder="닉네임" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs">
+                            <input type="email" id="settings-user-email" placeholder="이메일" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs">
                             <div class="flex gap-1.5 text-base">
                                 <button onclick="changeUserAvatar('🧔')" class="hover:scale-125 transition-transform">🧔</button>
                                 <button onclick="changeUserAvatar('👩')" class="hover:scale-125 transition-transform">👩</button>
@@ -221,7 +221,7 @@ const MYPET_TEMPLATE = `
                             </div>
                         </div>
                     </div>
-                    <button onclick="saveUserProfile()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs py-2 rounded-xl transition-all">저장</button>
+                    <button onclick="saveUserProfile()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs py-2 rounded-xl transition-all">저장</button>
                 </div>
 
                 <!-- 방 설정 패널 -->
@@ -492,7 +492,7 @@ const MYPET_TEMPLATE = `
             <!-- 구독 플랜 선택 탭 -->
             <div class="flex gap-2 bg-gray-100 p-1 rounded-2xl">
                 <button id="premium-plan-monthly" onclick="selectPremiumPlan('monthly')"
-                    class="flex-1 py-2 text-xs font-black rounded-xl bg-white text-violet-700 shadow-sm transition-all">
+                    class="flex-1 py-2 text-xs font-black rounded-xl bg-white text-brand-700 shadow-sm transition-all">
                     월간 구독
                 </button>
                 <button id="premium-plan-yearly" onclick="selectPremiumPlan('yearly')"
@@ -503,45 +503,45 @@ const MYPET_TEMPLATE = `
             </div>
             <!-- 가격 배지 -->
             <div class="flex justify-center">
-                <div id="premium-price-badge" class="bg-gradient-to-r from-violet-500 to-purple-600 text-white px-6 py-3 rounded-2xl text-center shadow-lg w-full">
+                <div id="premium-price-badge" class="bg-gradient-to-r from-brand-500 to-brand-600 text-white px-6 py-3 rounded-2xl text-center shadow-lg w-full">
                     <span id="premium-price-main" class="block text-2xl font-black">월 5,900원</span>
                     <span id="premium-price-sub" class="text-xs font-bold opacity-80">TTcare 대비 올인원 · 해지 언제든 가능</span>
                 </div>
             </div>
             <!-- 혜택 -->
             <div class="grid grid-cols-2 gap-2">
-                <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
+                <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">🏥</span>
-                    <span class="text-[11px] font-black text-violet-700">AI 건강분석 무제한</span>
+                    <span class="text-[11px] font-black text-brand-700">AI 건강분석 무제한</span>
                 </div>
-                <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
+                <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">📖</span>
-                    <span class="text-[11px] font-black text-violet-700">일기장 무제한 저장</span>
+                    <span class="text-[11px] font-black text-brand-700">일기장 무제한 저장</span>
                 </div>
-                <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
+                <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">📊</span>
-                    <span class="text-[11px] font-black text-violet-700">건강·일기 PDF 내보내기</span>
+                    <span class="text-[11px] font-black text-brand-700">건강·일기 PDF 내보내기</span>
                 </div>
-                <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
+                <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">🎙️</span>
-                    <span class="text-[11px] font-black text-violet-700">음성 문진 무제한</span>
+                    <span class="text-[11px] font-black text-brand-700">음성 문진 무제한</span>
                 </div>
                 <div id="premium-yearly-bonus" class="hidden flex items-center gap-2 bg-rose-50 rounded-xl p-2.5">
                     <span class="text-lg">📋</span>
                     <span class="text-[11px] font-black text-rose-700">건강 리포트 PDF 매월 자동 발송</span>
                 </div>
-                <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
+                <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">📅</span>
-                    <span class="text-[11px] font-black text-violet-700">"1년 전 오늘" 추억 알림</span>
+                    <span class="text-[11px] font-black text-brand-700">"1년 전 오늘" 추억 알림</span>
                 </div>
-                <div class="flex items-center gap-2 bg-violet-50 rounded-xl p-2.5">
+                <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">⚡</span>
-                    <span class="text-[11px] font-black text-violet-700">우선 고객 지원</span>
+                    <span class="text-[11px] font-black text-brand-700">우선 고객 지원</span>
                 </div>
             </div>
             <div class="space-y-2">
                 <button onclick="startStripeCheckout()"
-                    class="w-full py-3.5 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-black text-sm rounded-2xl transition-all shadow-lg active:scale-95">
+                    class="w-full py-3.5 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-black text-sm rounded-2xl transition-all shadow-lg active:scale-95">
                     💳 카드로 구독 시작
                 </button>
                 <button onclick="closePremiumModal()"

@@ -669,7 +669,7 @@ function selectGoodsType(btn, type) {
     _goodsType = type;
     document.querySelectorAll('.goods-type-btn').forEach(b => {
         b.className = b.className
-            .replace('border-2 border-violet-400 bg-violet-50 text-violet-700', '')
+            .replace('border-2 border-brand-400 bg-brand-50 text-brand-700', '')
             .replace('border border-gray-200 bg-gray-50 text-gray-600', '')
             .trim();
         b.className += ' border border-gray-200 bg-gray-50 text-gray-600';
@@ -677,7 +677,7 @@ function selectGoodsType(btn, type) {
     btn.className = btn.className
         .replace('border border-gray-200 bg-gray-50 text-gray-600', '')
         .trim();
-    btn.className += ' border-2 border-violet-400 bg-violet-50 text-violet-700';
+    btn.className += ' border-2 border-brand-400 bg-brand-50 text-brand-700';
     _updateGoodsPrice();
 }
 
@@ -685,7 +685,7 @@ function selectGoodsSize(btn, size) {
     _goodsSize = size;
     document.querySelectorAll('.goods-size-btn').forEach(b => {
         b.className = b.className
-            .replace('border-2 border-violet-400 bg-violet-50 text-violet-700', '')
+            .replace('border-2 border-brand-400 bg-brand-50 text-brand-700', '')
             .replace('border border-gray-200 bg-gray-50 text-gray-600', '')
             .trim();
         b.className += ' border border-gray-200 bg-gray-50 text-gray-600';
@@ -693,7 +693,7 @@ function selectGoodsSize(btn, size) {
     btn.className = btn.className
         .replace('border border-gray-200 bg-gray-50 text-gray-600', '')
         .trim();
-    btn.className += ' border-2 border-violet-400 bg-violet-50 text-violet-700';
+    btn.className += ' border-2 border-brand-400 bg-brand-50 text-brand-700';
     _updateGoodsPrice();
 }
 

@@ -1085,7 +1085,7 @@ function renderWalkHistory() {
             </div>
             <div class="flex space-x-2 w-full sm:w-auto shrink-0 justify-end" onclick="event.stopPropagation()">
                 <button onclick="addWalkToAlbum(${w.id})" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-amber-50 border border-amber-200 text-amber-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-images mr-1"></i>앨범에 추가</button>
-                <button onclick="shareWalkToFeed(${w.id})" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-share mr-1"></i> 피드 발행</button>
+                <button onclick="shareWalkToFeed(${w.id})" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-brand-50 border border-brand-200 text-brand-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-share mr-1"></i> 피드 발행</button>
                 <button onclick="copyWalkShareCode('${codeString}')" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-amber-50 border border-amber-200 text-brand-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-copy mr-1"></i> 코드 복사</button>
                 <button onclick="deleteWalkLog(${w.id})" class="text-gray-300 hover:text-red-500 py-1.5 px-2 text-xs transition-colors"><i class="fa-solid fa-trash-can"></i></button>
             </div>
@@ -1769,7 +1769,7 @@ function reRenderDrawingRoute() {
     // Redraw line
     if (drawingRoutePoints.length >= 2) {
         drawingRouteLine = L.polyline(drawingRoutePoints, {
-            color: '#6366f1',
+            color: '#cc785c',
             weight: 5,
             opacity: 0.85,
             dashArray: '5, 5'
@@ -2093,7 +2093,7 @@ function loadCustomRouteOnMap(routeId) {
     loadedRouteId = routeId;
     
     sharedOverlayLine = L.polyline(r.coords, {
-        color: '#6366f1',
+        color: '#cc785c',
         weight: 6,
         opacity: 0.9,
         lineJoin: 'round'

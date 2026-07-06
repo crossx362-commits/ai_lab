@@ -821,7 +821,7 @@ async function sendFriendInvite(friendName, friendEmail, btnEl) {
 
     setTimeout(async () => {
         btnEl.innerText = "수락 완료!";
-        btnEl.classList.remove('bg-brand-500', 'hover:bg-brand-600', 'bg-violet-500', 'hover:bg-violet-600', 'bg-blue-500', 'hover:bg-blue-600', 'opacity-50', 'cursor-not-allowed');
+        btnEl.classList.remove('bg-brand-500', 'hover:bg-brand-600', 'bg-brand-500', 'hover:bg-brand-600', 'bg-blue-500', 'hover:bg-blue-600', 'opacity-50', 'cursor-not-allowed');
         btnEl.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
 
         sharedFriends.push({ name: friendName, email: friendEmail });
@@ -1026,7 +1026,7 @@ function updateFriendListDisplay() {
             friendListContainer.innerHTML = sharedFriends.map(f => {
                 const friendName = typeof f === 'string' ? f : (f.name || f.email || '친구');
                 const isAI = friendName.includes('AI') || friendName.includes('에이전트') || friendName.includes('도우미') || friendName.includes('전문가');
-                const avatarBg = isAI ? 'bg-gradient-to-br from-violet-400 to-purple-500 text-white' : 'bg-brand-100 text-brand-500';
+                const avatarBg = isAI ? 'bg-gradient-to-br from-brand-400 to-brand-500 text-white' : 'bg-brand-100 text-brand-500';
                 const avatarContent = isAI ? '🤖' : String(friendName).slice(0, 1);
 
                 return `
@@ -1112,7 +1112,7 @@ function _renderDiaryList(container, emptyState, displayList) {
         if (item.isWalkCard && item.walkData) {
             const wd = item.walkData;
             mediaMarkup = `
-                <div class="w-full h-full bg-gradient-to-br from-brand-500 to-indigo-600 flex flex-col items-center justify-center p-3 text-center">
+                <div class="w-full h-full bg-gradient-to-br from-brand-500 to-brand-600 flex flex-col items-center justify-center p-3 text-center">
                     <span class="text-3xl mb-1">🦮</span>
                     <span class="block text-white/90 font-black text-xl mt-0.5">${wd.distance}km</span>
                     <div class="flex gap-2 mt-2 justify-center">
@@ -1139,13 +1139,13 @@ function _renderDiaryList(container, emptyState, displayList) {
 
         const moodBadge = item.mood ? `<span class="bg-white border border-gray-200 text-gray-600 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">${item.mood}</span>` : '';
         const authorBadge = isFriend
-            ? `<span class="bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-0.5 rounded-full">${item.author || '친구'} 👤</span>`
+            ? `<span class="bg-brand-100 text-brand-700 text-[9px] font-black px-2 py-0.5 rounded-full">${item.author || '친구'} 👤</span>`
             : `<span class="bg-brand-100 text-brand-700 text-[9px] font-black px-2 py-0.5 rounded-full">${item.author || '나'} 🧔</span>`;
 
         container.insertAdjacentHTML('beforeend', `
             <div id="diary-entry-${item.id}" class="relative z-10 flex flex-col items-start mb-8 last:mb-0">
-                <div class="absolute -left-7 top-4 w-4 h-4 ${isFriend ? 'bg-indigo-400' : 'bg-brand-400'} border-4 border-white rounded-full shadow-sm"></div>
-                <div class="bg-white p-3 rounded-2xl shadow-sm border ${isFriend ? 'border-indigo-100' : 'border-gray-100'} w-full hover:-translate-y-1 transition-transform">
+                <div class="absolute -left-7 top-4 w-4 h-4 ${isFriend ? 'bg-brand-400' : 'bg-brand-400'} border-4 border-white rounded-full shadow-sm"></div>
+                <div class="bg-white p-3 rounded-2xl shadow-sm border ${isFriend ? 'border-brand-100' : 'border-gray-100'} w-full hover:-translate-y-1 transition-transform">
                     <div class="flex justify-between items-center mb-3 px-1">
                         <div class="flex items-center gap-2">
                             ${authorBadge}

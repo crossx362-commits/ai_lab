@@ -109,7 +109,7 @@ function renderMailbox() {
         if (folder === 'inbox') {
             headingText = `<span class="font-black text-gray-800 text-xs break-words">${letter.sender} <span class="font-medium text-gray-400 text-[10px]">(${letter.petName || '우리 아이'})</span></span>`;
             buttonGroup = `
-                <button onclick="event.stopPropagation(); replyToLetter('${letter.sender}', '${letter.content.replace(/'/g, "\\'")}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[9px] px-2 py-0.5 rounded-lg transition-colors">답장</button>
+                <button onclick="event.stopPropagation(); replyToLetter('${letter.sender}', '${letter.content.replace(/'/g, "\\'")}')" class="bg-brand-50 hover:bg-brand-100 text-brand-600 font-bold text-[9px] px-2 py-0.5 rounded-lg transition-colors">답장</button>
                 <button onclick="event.stopPropagation(); deleteLetter(${letter.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[9px] px-2 py-0.5 rounded-lg transition-colors">삭제</button>
             `;
         } else if (folder === 'sent') {
@@ -123,7 +123,7 @@ function renderMailbox() {
             const originalType = letter.originalFolder === 'sent' ? '보낸 편지' : '받은 편지';
             headingText = `<span class="font-black text-gray-800 text-xs break-words">From. ${letter.sender} ➔ To. ${receiverName} <span class="font-medium text-gray-400 text-[9px] ml-1">(${originalType})</span></span>`;
             buttonGroup = `
-                <button onclick="event.stopPropagation(); restoreLetter(${letter.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[9px] px-2 py-0.5 rounded-lg transition-colors">복원</button>
+                <button onclick="event.stopPropagation(); restoreLetter(${letter.id})" class="bg-brand-50 hover:bg-brand-100 text-brand-600 font-bold text-[9px] px-2 py-0.5 rounded-lg transition-colors">복원</button>
                 <button onclick="event.stopPropagation(); deleteLetterPermanently(${letter.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[9px] px-2 py-0.5 rounded-lg transition-colors">영구삭제</button>
             `;
         }
@@ -192,7 +192,7 @@ function openLetterDetail(id) {
     let badgeClass = "bg-brand-50 text-brand-700";
     if (folder === 'sent') {
         folderBadgeText = "📤 보낸 편지함";
-        badgeClass = "bg-indigo-50 text-indigo-700";
+        badgeClass = "bg-brand-50 text-brand-700";
     } else if (folder === 'trash') {
         folderBadgeText = "🗑️ 휴지통";
         badgeClass = "bg-rose-50 text-rose-700";
@@ -228,7 +228,7 @@ function openLetterDetail(id) {
         `;
     } else if (folder === 'trash') {
         actionContainer.innerHTML = `
-            <button onclick="closeLetterDetailModal(); restoreLetter(${letter.id})" class="w-1/2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-3 rounded-2xl transition-colors flex items-center justify-center gap-1.5 outline-none">
+            <button onclick="closeLetterDetailModal(); restoreLetter(${letter.id})" class="w-1/2 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold py-3 rounded-2xl transition-colors flex items-center justify-center gap-1.5 outline-none">
                 <i class="fa-solid fa-trash-arrow-up"></i>편지 복원
             </button>
             <button onclick="closeLetterDetailModal(); deleteLetterPermanently(${letter.id})" class="w-1/4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-3 rounded-2xl transition-colors flex items-center justify-center gap-1 outline-none">

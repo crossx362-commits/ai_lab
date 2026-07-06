@@ -131,13 +131,13 @@ const SETTINGS_TEMPLATE = `
                 </div>
             </div>
             <button onclick="saveAppSettings()"
-                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md">
+                class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md">
                 환경설정 적용 적용하기 ⚙️
             </button>
         </div>
 
         <!-- 💖 펫과나 동행 후원하기 -->
-        <div class="bg-gradient-to-br from-amber-50/50 to-indigo-50/30 rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4 relative overflow-hidden">
+        <div class="bg-gradient-to-br from-amber-50/50 to-brand-50/30 rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 rounded-full -mr-8 -mt-8"></div>
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
                 <i class="fa-solid fa-heart text-rose-500 mr-2 animate-pulse"></i>따뜻한 동행 후원하기 💖
@@ -157,7 +157,7 @@ const SETTINGS_TEMPLATE = `
                     20,000원
                 </button>
                 <button id="donation-preset-50000" onclick="selectDonationPreset(50000, this)" class="donation-preset-btn py-2.5 rounded-xl border border-amber-200/60 bg-white hover:bg-amber-50/60 text-gray-700 font-bold text-center text-xs transition-all">
-                    <span class="block text-[10px] text-indigo-500 font-bold">대감 집사</span>
+                    <span class="block text-[10px] text-brand-500 font-bold">대감 집사</span>
                     50,000원
                 </button>
             </div>
@@ -229,7 +229,7 @@ const SETTINGS_TEMPLATE = `
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
                     <i class="fa-solid fa-pen-to-square text-brand-500 mr-2"></i>1:1 안심 신문고 (문의 게시판) ✍️
                 </h3>
-                <button onclick="openInquiryWriteModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1">
+                <button onclick="openInquiryWriteModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1">
                     <i class="fa-solid fa-feather-pointed"></i>문의 접수하기
                 </button>
             </div>

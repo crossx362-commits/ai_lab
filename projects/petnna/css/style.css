@@ -1,11 +1,13 @@
 ﻿:root {
-    --color-bg-app: #f8fafc;
-    --color-text-main: #0f172a;
-    --color-bg-card: #ffffff;
-    --color-border-card: #e2e8f0;
-    --color-bg-header: rgba(255, 255, 255, 0.8);
-    --color-accent: #8b5cf6;
-    --color-accent-light: #a78bfa;
+    /* Claude DESIGN.md 팔레트(2026-07-06): 크림 캔버스 + 코랄 액센트 + 웜 잉크.
+       기존 보라(#8b5cf6) → 코랄(#cc785c). dark/sepia 테마는 그대로 유지. */
+    --color-bg-app: #faf9f5;      /* canvas */
+    --color-text-main: #141413;   /* ink */
+    --color-bg-card: #fffdf9;     /* warm white card (캔버스 위 대비 유지) */
+    --color-border-card: #e6dfd8; /* hairline */
+    --color-bg-header: rgba(250, 249, 245, 0.85);
+    --color-accent: #cc785c;      /* primary coral */
+    --color-accent-light: #e8a55a;/* accent amber(코랄 동반 웜톤) */
 }
 
 body.theme-dark {
@@ -14,8 +16,8 @@ body.theme-dark {
     --color-bg-card: #1e293b;
     --color-border-card: #334155;
     --color-bg-header: rgba(30, 41, 59, 0.8);
-    --color-accent: #a78bfa;
-    --color-accent-light: #c4b5fd;
+    --color-accent: #e0a888;
+    --color-accent-light: #e8a55a;
 }
 
 body.theme-sepia {
@@ -749,9 +751,9 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 }
 
 .room-layout-badge.is-circle {
-    border-color: rgba(168, 85, 247, 0.22);
-    background: rgba(245, 243, 255, 0.86);
-    color: #7c3aed;
+    border-color: rgba(204, 120, 92, 0.22);
+    background: rgba(250, 243, 239, 0.86);
+    color: #a9583e;
 }
 
 .room-layout-picker {
@@ -827,7 +829,7 @@ body.theme-sepia #more-drawer button:hover { background-color: rgba(74,47,19,0.0
 }
 
 .room-layout-preview.circle {
-    background: radial-gradient(circle at 50% 52%, #fff7ed, #f5f3ff);
+    background: radial-gradient(circle at 50% 52%, #fff7ed, #faf3ef);
 }
 
 .room-layout-preview.circle .preview-line {

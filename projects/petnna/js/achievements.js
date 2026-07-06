@@ -315,8 +315,8 @@ function renderMonthlyReport(targetElId) {
                     <div class="text-lg font-black text-emerald-600">${monthHealth}회</div>
                     <div class="text-[9px] text-gray-500 font-bold mt-0.5">건강 기록</div>
                 </div>
-                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-center">
-                    <div class="text-lg font-black text-indigo-600">${monthAI}회</div>
+                <div class="bg-brand-50 border border-brand-100 rounded-xl p-3 text-center">
+                    <div class="text-lg font-black text-brand-600">${monthAI}회</div>
                     <div class="text-[9px] text-gray-500 font-bold mt-0.5">AI 분석</div>
                 </div>
             </div>

@@ -62,7 +62,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '24시간 CCTV, 비밀번호 견사, 스마트 자동화 펫호텔',
         website: 'https://hoteldogs.co.kr/hoteling',
         services: ['24시간 CCTV', '비밀번호 견사', '자동 급식', '24시간 입퇴실'],
-        color: '#4f46e5',
+        color: '#a9583e',
         lat: 37.5172, // 강남구 중심
         lng: 127.0473
     },
@@ -77,7 +77,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '반려동물 테마공원. 펫호텔, 수영장, 놀이터 복합 시설',
         website: 'https://www.ijoapetpark.com/ijoa/hotel.php',
         services: ['펫호텔', '수영장', '놀이공원', '카페'],
-        color: '#4f46e5',
+        color: '#a9583e',
         lat: 37.4138, // 경기도 광주시
         lng: 127.2558
     },
@@ -188,7 +188,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '30년 경력의 전문 애견훈련소. 문제행동 교정 전문',
         website: 'https://esac2000.co.kr/',
         services: ['기본훈련', '문제행동교정', '전문가과정', '1:1 맞춤'],
-        color: '#8b5cf6',
+        color: '#cc785c',
         lat: 37.4500, // 경기도 성남
         lng: 127.1500
     },
@@ -203,7 +203,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '집으로 찾아가는 강아지 홈스쿨. 배변/입질/분리불안 전문',
         website: 'https://dmhomeschool.co.kr/',
         services: ['배변훈련', '입질교정', '분리불안', '짖음훈련'],
-        color: '#8b5cf6',
+        color: '#cc785c',
         lat: 37.5500, // 서울 중부
         lng: 127.0500
     },
@@ -299,7 +299,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '강아지유치원, 반려견훈련, 견주교육 전문',
         website: 'https://starmong.co.kr/',
         services: ['유치원', '훈련', '호텔', '미용', '견주교육'],
-        color: '#8b5cf6',
+        color: '#cc785c',
         lat: 37.5300,
         lng: 127.0200
     },
@@ -372,10 +372,10 @@ const PETLIFE_REAL_LOCATIONS = [
 // 카테고리별 색상 맵
 const CATEGORY_COLORS = {
     hospital: '#dc2626',
-    hotel: '#4f46e5',
+    hotel: '#a9583e',
     grooming: '#0d9488',
     cafe: '#f59e0b',
-    training: '#8b5cf6',
+    training: '#cc785c',
     shop: '#d97706'
 };
 

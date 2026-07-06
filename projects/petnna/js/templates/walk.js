@@ -19,7 +19,7 @@ const WALK_TEMPLATE = `
                     <span class="hidden sm:inline">경로 만들기</span>
                 </button>
                 <button onclick="promptImportTrailCode()"
-                    class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] py-2 px-3 rounded-xl transition-all flex items-center gap-1.5">
+                    class="bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold text-[11px] py-2 px-3 rounded-xl transition-all flex items-center gap-1.5">
                     <i class="fa-solid fa-file-import text-sm"></i>
                     <span class="hidden sm:inline">가져오기</span>
                 </button>
@@ -154,7 +154,7 @@ const WALK_TEMPLATE = `
                 </h4>
                 <div class="flex gap-1.5">
                     <button onclick="generateRandomRoute()"
-                        class="bg-violet-500 hover:bg-violet-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow-sm">
+                        class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition-all shadow-sm">
                         <i class="fa-solid fa-shuffle text-xs"></i> 랜덤
                     </button>
                     <button onclick="startRouteDrawingMode()"
@@ -189,7 +189,7 @@ const WALK_TEMPLATE = `
                     <option value="name">이름순</option>
                 </select>
                 <button onclick="promptImportTrailCode()"
-                    class="flex-shrink-0 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10px] px-3 py-2 rounded-xl flex items-center gap-1 transition-all">
+                    class="flex-shrink-0 bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold text-[10px] px-3 py-2 rounded-xl flex items-center gap-1 transition-all">
                     <i class="fa-solid fa-file-import text-xs"></i> 가져오기
                 </button>
             </div>
@@ -291,7 +291,7 @@ const WALK_TEMPLATE = `
     <!-- 산책 완료 역사관 -->
     <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
         <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
-            <i class="fa-solid fa-route text-indigo-500 text-lg"></i>
+            <i class="fa-solid fa-route text-brand-500 text-lg"></i>
             산책 완료 역사관 🏆
         </h4>
         <div id="walk-history-list" class="space-y-3 max-h-[300px] overflow-y-auto no-scrollbar"></div>

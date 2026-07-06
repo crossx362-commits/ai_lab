@@ -62,7 +62,7 @@ const SOCIAL_TEMPLATE = `
                 </div>
                 <div class="flex justify-end mb-0.5">
                     <button type="button" onclick="generateSocialCaption(null)"
-                        class="flex items-center gap-1 text-[11px] font-black text-violet-500 hover:text-violet-700 transition-colors outline-none">
+                        class="flex items-center gap-1 text-[11px] font-black text-brand-500 hover:text-brand-700 transition-colors outline-none">
                         <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i> AI 캡션 작성 ✍️
                     </button>
                 </div>
@@ -109,7 +109,7 @@ const SOCIAL_TEMPLATE = `
                 <div class="flex flex-wrap gap-2 text-[10px] font-bold">
                     <span id="post-photo-indicator" class="hidden bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200"><i class="fa-solid fa-image mr-1"></i> 이쁜 사진 장착됨</span>
                     <span id="post-video-indicator" class="hidden bg-amber-50 text-amber-700 px-3 py-1 rounded-full border border-amber-200"><i class="fa-solid fa-video mr-1"></i> 자랑 영상 연동됨</span>
-                    <span id="post-walk-indicator" class="hidden bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200"><i class="fa-solid fa-map-marked-alt mr-1"></i> 오늘 산책로 데이터 동봉됨</span>
+                    <span id="post-walk-indicator" class="hidden bg-brand-50 text-brand-700 px-3 py-1 rounded-full border border-brand-200"><i class="fa-solid fa-map-marked-alt mr-1"></i> 오늘 산책로 데이터 동봉됨</span>
                     <span id="post-health-indicator" class="hidden bg-teal-50 text-teal-700 px-3 py-1 rounded-full border border-teal-200"><i class="fa-solid fa-notes-medical mr-1"></i> 오늘의 건강 기록 연동됨</span>
                 </div>
 
@@ -128,13 +128,13 @@ const SOCIAL_TEMPLATE = `
                             <i class="fa-solid fa-video mr-1 text-amber-500"></i> 영상 프리셋
                         </button>
                         <button onclick="openAttachWalkModal()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
-                            <i class="fa-solid fa-route mr-1 text-indigo-500"></i> 이동 첨부
+                            <i class="fa-solid fa-route mr-1 text-brand-500"></i> 이동 첨부
                         </button>
                         <button onclick="toggleAttachHealthLog()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
                             <i class="fa-solid fa-notes-medical mr-1 text-teal-500"></i> 건강 기록 첨부
                         </button>
-                        <button onclick="insertHashtags()" class="bg-gray-50 hover:bg-violet-50 text-gray-600 hover:text-violet-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
-                            <i class="fa-solid fa-hashtag mr-1 text-violet-400"></i> 해시태그
+                        <button onclick="insertHashtags()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
+                            <i class="fa-solid fa-hashtag mr-1 text-brand-400"></i> 해시태그
                         </button>
                     </div>
                     <button onclick="submitFeedPost()" class="bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3 px-6 rounded-xl shadow-md transition-colors">
@@ -170,7 +170,7 @@ const SOCIAL_TEMPLATE = `
             <div class="p-4 border-t border-gray-100 space-y-3 bg-white shrink-0">
                 <!-- 빠른 첨부 옵션 트레이 -->
                 <div class="flex space-x-2">
-                    <button onclick="shareWalkToActiveChat()" class="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-1.5 px-3 rounded-xl transition-colors">
+                    <button onclick="shareWalkToActiveChat()" class="text-[10px] bg-brand-50 hover:bg-brand-100 text-brand-700 font-bold py-1.5 px-3 rounded-xl transition-colors">
                         <i class="fa-solid fa-map-location-dot mr-1"></i> 산책로 지도 첨부
                     </button>
                     <button onclick="shareAlbumToActiveChat()" class="text-[10px] bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold py-1.5 px-3 rounded-xl transition-colors">

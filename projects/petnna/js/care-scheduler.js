@@ -200,7 +200,7 @@ function renderCareScheduler() {
     const autoReminderBtn = `
         <div class="mb-2">
             <button onclick="triggerAgeBasedReminders()"
-                class="w-full flex items-center justify-center gap-1.5 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-[10px] font-bold rounded-xl transition-all">
+                class="w-full flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
                 🔔 월령별 알림 자동 추가
             </button>
         </div>`;

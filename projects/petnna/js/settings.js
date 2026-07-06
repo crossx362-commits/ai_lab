@@ -319,12 +319,13 @@ function applyThemeStyles(theme) {
             c.style.borderColor = '#e4d2a3';
         });
     } else {
-        body.style.backgroundColor = '#fbf8f5';
-        body.style.color = '#1f2937';
+        // Claude DESIGN.md 크림 라이트 테마(2026-07-06)
+        body.style.backgroundColor = '#faf9f5';
+        body.style.color = '#141413';
         cards.forEach(c => {
-            c.style.backgroundColor = '#ffffff';
-            c.style.color = '#1f2937';
-            c.style.borderColor = '#fef3c7';
+            c.style.backgroundColor = '#fffdf9';
+            c.style.color = '#141413';
+            c.style.borderColor = '#e6dfd8';
         });
     }
 }
@@ -416,7 +417,7 @@ function confirmDonation() {
 }
 
 function triggerConfetti() {
-    const colors = ['#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#8b5cf6'];
+    const colors = ['#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#cc785c'];
     const container = document.createElement('div');
     container.className = "fixed inset-0 pointer-events-none z-[200] overflow-hidden";
     document.body.appendChild(container);
@@ -711,9 +712,9 @@ function renderInquiryDetailReply(inq) {
         replyBox.innerHTML = `
             <div class="flex flex-col items-center justify-center py-4 space-y-2 text-gray-400">
                 <div class="flex items-center space-x-1.5">
-                    <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                    <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                    <div class="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+                    <div class="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    <div class="w-2 h-2 bg-brand-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
                 </div>
                 <span class="text-[10px] font-bold animate-pulse">펫과나 AI 동행 케어팀이 전문 답변을 작성하고 있습니다... ✍️</span>
             </div>
@@ -723,7 +724,7 @@ function renderInquiryDetailReply(inq) {
         replyBox.innerHTML = `
             <div class="space-y-2 text-gray-700 leading-relaxed text-[11px] whitespace-pre-line animate-fade-in">
                 ${inq.replies[0]}
-                <div class="mt-4 pt-3 border-t border-indigo-100/40 text-[9px] text-indigo-400 font-bold flex items-center justify-between">
+                <div class="mt-4 pt-3 border-t border-brand-100/40 text-[9px] text-brand-400 font-bold flex items-center justify-between">
                     <span>담당부서: 펫과나 안심 동행 고객지원부</span>
                     <span>처리 완료 🟢</span>
                 </div>

@@ -104,7 +104,7 @@ const MONTHLY_REPORT_MODAL = `
 <div id="monthly-report-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm items-center justify-center z-[100] p-4 hidden">
     <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <!-- 헤더 -->
-        <div class="sticky top-0 bg-gradient-to-r from-violet-500 to-purple-600 px-6 py-5 rounded-t-3xl">
+        <div class="sticky top-0 bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-5 rounded-t-3xl">
             <button onclick="closeMonthlyReportModal()" class="absolute top-4 right-4 text-white/80 hover:text-white transition-colors">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
@@ -126,13 +126,13 @@ const MONTHLY_REPORT_MODAL = `
 
             <!-- 건강 점수 & 연속 기록 -->
             <div class="grid grid-cols-2 gap-4">
-                <div class="card-modern bg-violet-50/50 p-5 text-center">
-                    <div class="text-5xl font-bold text-violet-600 mb-3" id="report-modal-health-score">--</div>
+                <div class="card-modern bg-brand-50/50 p-5 text-center">
+                    <div class="text-5xl font-bold text-brand-600 mb-3" id="report-modal-health-score">--</div>
                     <div class="text-sm font-semibold text-gray-700">건강 점수</div>
                     <div class="text-xs text-gray-500 mt-1">최근 7일 평균</div>
-                    <div class="mt-3 pt-3 border-t border-violet-200">
+                    <div class="mt-3 pt-3 border-t border-brand-200">
                         <div class="text-xs text-gray-600">
-                            <i class="fa-solid fa-chart-line text-violet-500 mr-1"></i>
+                            <i class="fa-solid fa-chart-line text-brand-500 mr-1"></i>
                             식사·음수·배변 종합 평가
                         </div>
                     </div>
@@ -237,7 +237,7 @@ const MONTHLY_REPORT_MODAL = `
             </div>
 
             <!-- 닫기 버튼 -->
-            <button onclick="closeMonthlyReportModal()" class="w-full btn-modern bg-violet-500 hover:bg-violet-600 text-white py-4 text-base font-bold">
+            <button onclick="closeMonthlyReportModal()" class="w-full btn-modern bg-brand-500 hover:bg-brand-600 text-white py-4 text-base font-bold">
                 확인
             </button>
         </div>

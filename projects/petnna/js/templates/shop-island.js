@@ -34,7 +34,7 @@ const SHOP_ISLAND_TEMPLATE = `
         </label>
         <label class="filter-item">
           <input type="checkbox" checked id="f-hotel" onchange="applyMapFilters()">
-          <span class="filter-dot" style="background:#4f46e5"></span>
+          <span class="filter-dot" style="background:#a9583e"></span>
           <span>스테이 & 돌봄</span>
           <span class="filter-count">2</span>
         </label>
@@ -208,20 +208,20 @@ const SHOP_ISLAND_TEMPLATE = `
           </div>
           <div class="space-y-2">
               <a href="https://www.petliz.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
-                  class="flex items-center justify-between p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                  class="flex items-center justify-between p-3 rounded-xl bg-brand-50 hover:bg-brand-100 transition-colors">
                   <div>
-                      <span class="block text-xs font-black text-indigo-800">펫리즈 호텔 예약</span>
+                      <span class="block text-xs font-black text-brand-800">펫리즈 호텔 예약</span>
                       <span class="text-[10px] text-gray-400">개별 테라스와 24시 안심 CCTV 케어 연계 서비스</span>
                   </div>
-                  <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400 text-xs"></i>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-brand-400 text-xs"></i>
               </a>
               <a href="https://hoteldogs.co.kr/hoteling" target="_blank" rel="noopener"
-                  class="flex items-center justify-between p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 transition-colors">
+                  class="flex items-center justify-between p-3 rounded-xl bg-brand-50 hover:bg-brand-100 transition-colors">
                   <div>
-                      <span class="block text-xs font-black text-indigo-800">호텔 독스 예약</span>
+                      <span class="block text-xs font-black text-brand-800">호텔 독스 예약</span>
                       <span class="text-[10px] text-gray-400">24시간 스마트 안심 비대면 펫 위탁 케어</span>
                   </div>
-                  <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400 text-xs"></i>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-brand-400 text-xs"></i>
               </a>
           </div>
       </div>
@@ -440,7 +440,7 @@ const SHOP_ISLAND_TEMPLATE = `
 .petlife-pin.active {
   transform: translate(-50%, -50%) scale(1.3) translateY(-4px);
   box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-  border-color: #4f46e5;
+  border-color: #a9583e;
   z-index: 100;
 }
 
@@ -457,7 +457,7 @@ const SHOP_ISLAND_TEMPLATE = `
 }
 .callout-box {
   background: white;
-  border: 2px solid #4f46e5;
+  border: 2px solid #a9583e;
   border-radius: 12px;
   padding: 6px 14px;
   font-size: 0.75rem;
@@ -471,7 +471,7 @@ const SHOP_ISLAND_TEMPLATE = `
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-top: 8px solid #4f46e5;
+  border-top: 8px solid #a9583e;
   margin: 0 auto;
 }
 
@@ -501,8 +501,8 @@ const SHOP_ISLAND_TEMPLATE = `
   font-size: 0.65rem;
   font-weight: 900;
   letter-spacing: 0.12em;
-  color: #4f46e5;
-  background: #eef2ff;
+  color: #a9583e;
+  background: #faf3ef;
   border: 1.5px solid #c7d2fe;
   padding: 3px 9px;
   border-radius: 8px;

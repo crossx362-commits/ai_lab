@@ -4,10 +4,10 @@ const HEALTH_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
 
     <!-- 헤더 -->
-    <div class="glass rounded-2xl px-6 py-5 shadow-soft-lg border border-violet-100/50">
+    <div class="glass rounded-2xl px-6 py-5 shadow-soft-lg border border-brand-100/50">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-soft">
+                <div class="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center shadow-soft">
                     <span class="text-3xl">❤️</span>
                 </div>
                 <div>
@@ -18,11 +18,11 @@ const HEALTH_TEMPLATE = `
             <div class="flex items-center gap-3">
                 <!-- 펫 선택 드롭다운 -->
                 <select id="health-pet-selector" onchange="onHealthPetChange()"
-                    class="px-4 py-2 bg-white border border-violet-200 rounded-xl text-sm font-bold text-violet-700 hover:border-violet-300 transition-colors cursor-pointer">
+                    class="px-4 py-2 bg-white border border-brand-200 rounded-xl text-sm font-bold text-brand-700 hover:border-brand-300 transition-colors cursor-pointer">
                     <option value="">펫 선택</option>
                 </select>
                 <button onclick="generateWeeklyHealthData()"
-                    class="btn-modern px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 text-sm border border-violet-200/50">
+                    class="btn-modern px-4 py-2 bg-brand-50 hover:bg-brand-100 text-brand-700 text-sm border border-brand-200/50">
                     <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
                 </button>
             </div>
@@ -46,7 +46,7 @@ const HEALTH_TEMPLATE = `
                     <p class="text-xs text-gray-500">빠른 건강 체크</p>
                 </div>
             </div>
-            <button onclick="openHealthLogModal()" class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-4 py-2.5 text-sm">
+            <button onclick="openHealthLogModal()" class="btn-modern bg-brand-500 hover:bg-brand-600 text-white px-4 py-2.5 text-sm">
                 <i class="fa-solid fa-plus mr-1.5"></i>기록
             </button>
         </div>
@@ -88,23 +88,23 @@ const HEALTH_TEMPLATE = `
         </div>
 
         <!-- 사용법 안내 (데이터 없을 때만 표시) -->
-        <div id="health-tutorial-main" class="hidden card-modern bg-violet-50/50 p-4 mb-4">
+        <div id="health-tutorial-main" class="hidden card-modern bg-brand-50/50 p-4 mb-4">
             <div class="flex items-start gap-3">
                 <span class="text-3xl">💡</span>
                 <div class="flex-1 space-y-2">
-                    <p class="text-sm font-bold text-violet-700">건강 트렌드 사용법</p>
+                    <p class="text-sm font-bold text-brand-700">건강 트렌드 사용법</p>
                     <ul class="text-xs text-gray-600 space-y-1.5 leading-relaxed">
                         <li class="flex items-start gap-2">
-                            <span class="text-violet-500 mt-0.5">•</span>
-                            <span>매일 <strong class="text-violet-600">건강 기록</strong> 버튼으로 식사·음수·배변을 기록하세요</span>
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>매일 <strong class="text-brand-600">건강 기록</strong> 버튼으로 식사·음수·배변을 기록하세요</span>
                         </li>
                         <li class="flex items-start gap-2">
-                            <span class="text-violet-500 mt-0.5">•</span>
-                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-violet-600">건강점수</strong>와 <strong class="text-violet-600">차트</strong>가 생성됩니다</span>
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">건강점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
                         </li>
                         <li class="flex items-start gap-2">
-                            <span class="text-violet-500 mt-0.5">•</span>
-                            <span>테스트하려면 위의 <strong class="text-violet-600">데모 데이터</strong> 버튼을 눌러보세요</span>
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>테스트하려면 위의 <strong class="text-brand-600">데모 데이터</strong> 버튼을 눌러보세요</span>
                         </li>
                     </ul>
                 </div>
@@ -122,31 +122,31 @@ const HEALTH_TEMPLATE = `
     <!-- 🤖 AI 기능 섹션 -->
     <div class="space-y-4">
         <div class="flex items-center gap-2 px-2">
-            <div class="flex-1 h-px bg-gradient-to-r from-transparent via-violet-300 to-transparent"></div>
+            <div class="flex-1 h-px bg-gradient-to-r from-transparent via-brand-300 to-transparent"></div>
             <div class="flex items-center gap-2">
                 <span class="text-3xl">🤖</span>
-                <h3 class="text-base font-bold text-violet-600">AI 기능</h3>
+                <h3 class="text-base font-bold text-brand-600">AI 기능</h3>
             </div>
-            <div class="flex-1 h-px bg-gradient-to-r from-transparent via-violet-300 to-transparent"></div>
+            <div class="flex-1 h-px bg-gradient-to-r from-transparent via-brand-300 to-transparent"></div>
         </div>
 
         <!-- AI 기능 카드 그리드 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <!-- AI 건강 분석 -->
-            <button onclick="triggerAiHealthAnalysis()" class="card-modern bg-gradient-to-br from-violet-50 to-purple-50 p-6 text-left group hover:scale-[1.02] transition-all">
+            <button onclick="triggerAiHealthAnalysis()" class="card-modern bg-gradient-to-br from-brand-50 to-brand-50 p-6 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <div class="text-5xl">🔬</div>
                         <div>
                             <h3 class="text-lg font-bold text-gray-900">건강 분석</h3>
-                            <p class="text-xs text-violet-600 mt-1">사진으로 10가지 항목 체크</p>
+                            <p class="text-xs text-brand-600 mt-1">사진으로 10가지 항목 체크</p>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center justify-between">
-                    <p class="text-xs text-gray-500">이번 달 <span id="ai-usage-count-health" class="font-bold text-violet-600">0</span>/5회</p>
-                    <i class="fa-solid fa-camera text-violet-500 text-xl group-hover:scale-110 transition-transform"></i>
+                    <p class="text-xs text-gray-500">이번 달 <span id="ai-usage-count-health" class="font-bold text-brand-600">0</span>/5회</p>
+                    <i class="fa-solid fa-camera text-brand-500 text-xl group-hover:scale-110 transition-transform"></i>
                 </div>
             </button>
 
@@ -207,14 +207,14 @@ const HEALTH_TEMPLATE = `
         <div id="ai-voice-result-health" class="hidden card-modern p-4"></div>
         <div id="ai-health-result-main" class="hidden space-y-2"></div>
         <div id="ai-health-share-btn-wrap-health" class="hidden flex justify-end">
-            <button onclick="shareHealthCard()" class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 text-sm">
+            <button onclick="shareHealthCard()" class="btn-modern bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 text-sm">
                 <i class="fa-solid fa-share-nodes mr-1.5"></i>공유 카드 저장
             </button>
         </div>
 
         <!-- AI 안내 -->
-        <div class="card-modern bg-violet-50/50 p-4">
-            <p class="text-xs text-center text-violet-700">
+        <div class="card-modern bg-brand-50/50 p-4">
+            <p class="text-xs text-center text-brand-700">
                 <i class="fa-solid fa-info-circle mr-1"></i>
                 AI 분석은 참고용이며 의학적 진단이 아닙니다. 이상 시 수의사와 상담하세요.
             </p>
@@ -240,14 +240,14 @@ const HEALTH_TEMPLATE = `
                     </div>
                 </div>
                 <button onclick="generateHealthReportPDF()"
-                    class="btn-modern bg-violet-500 hover:bg-violet-600 text-white px-3 py-2 text-xs">
+                    class="btn-modern bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 text-xs">
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF
                 </button>
             </div>
             <div class="grid grid-cols-2 gap-2">
-                <div class="card-modern bg-violet-50/50 p-3 text-center">
+                <div class="card-modern bg-brand-50/50 p-3 text-center">
                     <div class="text-2xl mb-1">💯</div>
-                    <div id="report-health-score" class="text-xl font-bold text-violet-600">--</div>
+                    <div id="report-health-score" class="text-xl font-bold text-brand-600">--</div>
                     <div class="text-[10px] text-gray-600 font-semibold">건강점수</div>
                 </div>
                 <div class="card-modern bg-emerald-50/50 p-3 text-center">

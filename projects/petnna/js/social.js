@@ -126,7 +126,7 @@ function renderSocialRoom() {
                         </div>
                     </div>
                     <div class="flex flex-col items-end shrink-0 gap-1 text-[9px]">
-                        <span class="bg-indigo-50 text-indigo-700 font-black px-1.5 py-0.5 rounded-full">성향 조화 ${f.chemistry}%</span>
+                        <span class="bg-brand-50 text-brand-700 font-black px-1.5 py-0.5 rounded-full">성향 조화 ${f.chemistry}%</span>
                         ${f.unread > 0 && !isBlocked ? `<span class="bg-red-500 text-white font-bold w-4 h-4 rounded-full flex items-center justify-center text-[8px] animate-bounce">${f.unread}</span>` : ''}
                     </div>
                 `;
@@ -335,16 +335,16 @@ function renderFeed() {
         let walkAttachedCard = '';
         if (post.attachedWalk) {
             walkAttachedCard = `
-                <div onclick="openWalkTrailModal(${post.id})" class="cursor-pointer bg-indigo-50/50 hover:bg-indigo-100/50 p-3.5 border border-indigo-100 rounded-2xl flex justify-between items-center transition-all">
+                <div onclick="openWalkTrailModal(${post.id})" class="cursor-pointer bg-brand-50/50 hover:bg-brand-100/50 p-3.5 border border-brand-100 rounded-2xl flex justify-between items-center transition-all">
                     <div class="space-y-0.5 flex-grow">
-                        <span class="block text-[8px] text-indigo-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span class="block text-[8px] text-brand-500 font-bold uppercase tracking-wider flex items-center gap-1">
                             <span>이웃이 추천한 실제 산책로</span>
-                            <span class="bg-indigo-200/50 text-indigo-800 text-[7px] font-black px-1.5 py-0.2 rounded-full">클릭 시 미리보기 🔍</span>
+                            <span class="bg-brand-200/50 text-brand-800 text-[7px] font-black px-1.5 py-0.2 rounded-full">클릭 시 미리보기 🔍</span>
                         </span>
                         <h5 class="font-black text-gray-800 text-xs">🐾 안심 트랙 코스 (${post.attachedWalk.distance} km)</h5>
                         <span class="block text-[9px] text-gray-400">⏱️ 주행 완료 타임: ${post.attachedWalk.duration} / 마킹: ${post.attachedWalk.poop}💩 ${post.attachedWalk.pee}💦</span>
                     </div>
-                    <button onclick="event.stopPropagation(); loadFeedWalkOnMap(${post.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] py-1.5 px-3.5 rounded-xl shadow transition-all shrink-0">
+                    <button onclick="event.stopPropagation(); loadFeedWalkOnMap(${post.id})" class="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[10px] py-1.5 px-3.5 rounded-xl shadow transition-all shrink-0">
                         <i class="fa-solid fa-map-location-dot mr-1"></i> 전체지도 이동
                     </button>
                 </div>
@@ -387,8 +387,8 @@ function renderFeed() {
             const scoreColor = h.score >= 80 ? '#10b981' : h.score >= 60 ? '#f59e0b' : '#ef4444';
             const badgeClass = (val) => val === '정상' ? 'bg-emerald-100 text-emerald-700' : val === '주의' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
             aiHealthAttachedCard = `
-                <div class="bg-violet-50/40 p-3 border border-violet-100 rounded-2xl shadow-sm space-y-2">
-                    <span class="block text-[8px] text-violet-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                <div class="bg-brand-50/40 p-3 border border-brand-100 rounded-2xl shadow-sm space-y-2">
+                    <span class="block text-[8px] text-brand-600 font-bold uppercase tracking-wider flex items-center gap-1">
                         <i class="fa-solid fa-microscope"></i> AI 건강 분석 결과 공유됨
                     </span>
                     <div class="flex items-center gap-3">
@@ -1016,13 +1016,13 @@ function openAttachWalkModal() {
         walks.forEach(w => {
             const row = document.createElement('button');
             row.onclick = () => confirmWalkAttachment(w.id);
-            row.className = "w-full text-left p-3 hover:bg-indigo-50 border border-gray-100 rounded-xl flex justify-between items-center transition-colors";
+            row.className = "w-full text-left p-3 hover:bg-brand-50 border border-gray-100 rounded-xl flex justify-between items-center transition-colors";
             row.innerHTML = `
                 <div>
                     <span class="block text-[10px] text-gray-400 font-bold">${w.date}</span>
                     <span class="font-bold text-gray-700 text-xs mt-0.5">🐾 ${w.distance} km / ${w.duration}</span>
                 </div>
-                <span class="text-[9px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">첨부하기</span>
+                <span class="text-[9px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-bold">첨부하기</span>
             `;
             container.appendChild(row);
         });
@@ -1252,11 +1252,11 @@ function renderChatHistoryWindow() {
         let inlineAttachment = '';
         if (chat.walkData) {
             inlineAttachment = `
-                <div class="mt-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl space-y-1 text-left text-gray-800 shadow-inner">
-                    <span class="block text-[8px] text-indigo-500 font-bold uppercase tracking-wider">임베디드 산책 루트 지도 카드</span>
+                <div class="mt-2 p-3 bg-brand-50 border border-brand-100 rounded-xl space-y-1 text-left text-gray-800 shadow-inner">
+                    <span class="block text-[8px] text-brand-500 font-bold uppercase tracking-wider">임베디드 산책 루트 지도 카드</span>
                     <span class="font-bold text-xs block">🐾 안심 경로 (${chat.walkData.distance} km)</span>
                     <span class="block text-[9px] text-gray-400">⏱️ 주행 완료: ${chat.walkData.duration} / 흔적 마킹: ${chat.walkData.poop}💩 ${chat.walkData.pee}💦</span>
-                    <button onclick="loadSharedTrailFromChatIndex(${activeChatFriendId}, ${idx})" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] py-1 rounded-lg shadow-sm transition-all">내 맵에 장착하기</button>
+                    <button onclick="loadSharedTrailFromChatIndex(${activeChatFriendId}, ${idx})" class="w-full mt-2 bg-brand-600 hover:bg-brand-700 text-white font-bold text-[9px] py-1 rounded-lg shadow-sm transition-all">내 맵에 장착하기</button>
                 </div>
             `;
         }
@@ -1530,7 +1530,7 @@ function renderLikeNotifications() {
         if (!isReplied) {
             actionButtonHtml = `
                 <button onclick="toggleNeighborReplyForm(${n.id})" class="text-[9px] bg-brand-50 hover:bg-brand-100 text-brand-600 font-bold px-2 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
-                    ${n.type === 'comment' ? '<i class="fa-solid fa-reply text-[8px] text-indigo-500"></i> 답장' : '<i class="fa-solid fa-heart text-[8px] text-rose-500 animate-pulse"></i> 반사'}
+                    ${n.type === 'comment' ? '<i class="fa-solid fa-reply text-[8px] text-brand-500"></i> 답장' : '<i class="fa-solid fa-heart text-[8px] text-rose-500 animate-pulse"></i> 반사'}
                 </button>
             `;
         }

@@ -31,7 +31,7 @@ function updateAiHealthUsageBadge() {
     } else {
         const rem = getRemainingFreeAnalyses();
         badge.textContent = `이번 달 ${rem}회 남음`;
-        badge.className = `text-[10px] font-black px-2 py-0.5 rounded-full ${rem > 0 ? 'text-violet-500 bg-violet-50' : 'text-red-500 bg-red-50'}`;
+        badge.className = `text-[10px] font-black px-2 py-0.5 rounded-full ${rem > 0 ? 'text-brand-500 bg-brand-50' : 'text-red-500 bg-red-50'}`;
     }
 }
 
@@ -69,12 +69,12 @@ function selectPremiumPlan(plan) {
 
     if (plan === 'yearly') {
         monthly.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-gray-400 transition-all';
-        yearly.className = 'flex-1 py-2 text-xs font-black rounded-xl bg-white text-violet-700 shadow-sm transition-all relative';
+        yearly.className = 'flex-1 py-2 text-xs font-black rounded-xl bg-white text-brand-700 shadow-sm transition-all relative';
         priceMain.textContent = '연 49,000원';
         priceSub.textContent = '월 4,083원 · 월간 대비 30% 절약 🎉';
         if (yearlyBonus) yearlyBonus.classList.remove('hidden');
     } else {
-        monthly.className = 'flex-1 py-2 text-xs font-black rounded-xl bg-white text-violet-700 shadow-sm transition-all';
+        monthly.className = 'flex-1 py-2 text-xs font-black rounded-xl bg-white text-brand-700 shadow-sm transition-all';
         yearly.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-gray-400 transition-all relative';
         priceMain.textContent = '월 5,900원';
         priceSub.textContent = 'TTcare 대비 올인원 · 해지 언제든 가능';
