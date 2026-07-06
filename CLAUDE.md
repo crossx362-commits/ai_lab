@@ -465,3 +465,4 @@ if hasattr(sys.stdout, "reconfigure"):
 - **Security rules**: `docs/setup/ENV_SECURITY_RULES.md`
 - **Telegram bot**: `TELEGRAM_BOT_README.md`
 - **Petnna setup**: `projects/petnna/README.md`
+- **DESIGN.md 참고 자료(2026-07-06)**: `references/awesome-design-md/design-md/<사이트>/DESIGN.md` — 73개 실사이트 디자인 시스템(색상·타이포·컴포넌트) 추출본. 적용 대상 미정(petnna/bboggl/대시보드 후보) — 사용 시 해당 프로젝트 루트에 원하는 `DESIGN.md`를 복사해 붙여넣고 AI에게 "이 디자인처럼 만들어줘" 요청.
