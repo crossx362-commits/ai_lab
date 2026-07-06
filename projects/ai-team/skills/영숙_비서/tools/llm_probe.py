@@ -25,7 +25,7 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 from _shared.env import load_env
-from _shared.llm import ollama, claude, gemini
+from _shared.llm import ollama, claude_code, gemini
 from _shared.notify import send
 
 load_env()
@@ -47,9 +47,10 @@ def run() -> list[str]:
     if not ok:
         fails.append(f"로컬(Ollama) 챗 실패: {why} — `ollama show`로 매니페스트 확인")
     # GPT는 기본 체인에서 제거(오너 지시 2026-07-05) — 클로드가 클라우드 1선
-    ok, why = _probe("claude", claude)
+    # 클로드는 구독(claude -p)으로 점검 — 실제 운영 체인 1순위와 동일 경로(2026-07-06)
+    ok, why = _probe("claude_code", claude_code)
     if not ok:
-        fails.append(f"클라우드(Claude) 실패: {why} — credit balance면 Anthropic 콘솔 충전")
+        fails.append(f"클라우드(Claude 구독) 실패: {why}")
     ok, why = _probe("gemini", gemini)
     if not ok:
         fails.append(f"클라우드(Gemini) 실패: {why}")
