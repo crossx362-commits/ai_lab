@@ -622,6 +622,40 @@ def seed_sample(months: int = 9, pages: int = 12, threshold: int = 60, hold: int
     print(f"표본 주입 완료: {len(records)}건 (승 {wins} / 패 {len(records)-wins}) → {out}")
 
 
+def soomgeup_grid(months: int, pages: int = 14) -> None:
+    """수급확인 게이트 문턱×보유 그리드 — 모멘텀 vs +수급확인. 중소형 검증엔 SOMI_BT_SMALL=1.
+    수급 데이터는 1회 수집 후 파라미터만 재조합(2026-07-06 게이트 하한 60 근거)."""
+    global _SOOMGEUP, _MARKET
+    import soomgeup_history
+    kis = KISClient()
+    data = _load_all(months)
+    regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)
+    _MARKET = {b["date"]: b["c"] for b in mbars}
+    soom = {code: soomgeup_history.fetch(code, pages) for code in data}
+    covered = sum(1 for s in soom.values() if s)
+    print(f"[수급확인 그리드] {len(data)}종목 / {months}개월 / 수급 {covered}/{len(data)}종목\n")
+    print(f"{'전략':>12}{'문턱':>5}{'보유':>5}{'거래':>6}{'승률':>7}{'손익비':>7}{'누적%':>9}{'MDD%':>8}{'샤프':>6}")
+
+    def _run(fn, th, hold):
+        trades = []
+        for code, bars in data.items():
+            _SOOMGEUP = soom.get(code, {})
+            trades += backtest_symbol(bars, th, hold, fn, regime)
+        return _metrics(trades)
+
+    for th in (55, 58, 60, 62, 65):
+        for hold in (7, 10):
+            for label, fn in (("모멘텀", _score_levels), ("+수급확인", _smartmoney_levels)):
+                m = _run(fn, th, hold)
+                row = (f"{label:>12}{th:>5}{hold:>5}{m['trades']:>6}{m['win_rate']:>6}%{m['profit_factor']:>7}"
+                       f"{m['total_return']:>8}%{m['mdd']:>7}%{m['sharpe']:>6}") if m.get("trades") else \
+                      f"{label:>12}{th:>5}{hold:>5}   거래없음"
+                print(row)
+        print()
+    _SOOMGEUP = {}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="소미 전략 백테스트")
     ap.add_argument("--threshold", type=int, default=40, help="진입 점수 기준")
@@ -633,12 +667,15 @@ def main() -> None:
     ap.add_argument("--beargate", action="store_true", help="하락국면 전량차단 vs 역행강세 선별통과 비교")
     ap.add_argument("--bear-threshold", type=int, default=70, help="하락장 선별통과 점수 기준")
     ap.add_argument("--soomgeup", action="store_true", help="과거 수급 병합 — 모멘텀 vs 수급확인 vs 조용한매집 비교")
+    ap.add_argument("--soomgeup-grid", action="store_true", help="수급확인 문턱×보유 그리드(게이트 하한 근거, SOMI_BT_SMALL=1)")
     ap.add_argument("--pages", type=int, default=14, help="네이버 수급 수집 페이지(≈20일/페이지)")
     ap.add_argument("--seed-sample", action="store_true", help="검증전략을 과거자료에 돌려 성과추적 표본 주입")
     args = ap.parse_args()
 
     if args.seed_sample:
         seed_sample(args.months, args.pages, args.threshold if args.threshold != 40 else 60, args.hold)
+    elif args.soomgeup_grid:
+        soomgeup_grid(args.months, args.pages)
     elif args.soomgeup:
         compare_soomgeup(args.months, args.threshold if args.threshold != 40 else 60, args.hold, args.pages)
     elif args.beargate:

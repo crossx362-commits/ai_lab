@@ -208,30 +208,36 @@ def _today_realized() -> str:
     )
 
 
-def _account_header() -> str:
-    """계좌 종합 — 예수금·보유평가·총자산·누적손익(초기자본 대비). 원장(모의) 또는 KIS(실거래) 기준."""
+def _account_cash(is_live: bool) -> float | None:
+    """예수금만 조회 — 모의는 원장 직접 읽기(보유 시세는 상세 루프가 이미 조회 → 중복 방지),
+    실거래는 KIS 잔고. 조회 실패 시 None."""
     try:
-        import os
-        from kis_trader import KISTrader
         from somi_kis_reporter import num
-        t = KISTrader()
-        bal = t.balance()
-        cash = num(bal.get("cash"))
-        hval = sum(num(h.get("qty")) * num(h.get("avg")) * (1 + num(h.get("pnl")) / 100)
-                   for h in (bal.get("holdings") or []))
-        total = cash + hval
-        line = f"💰 예수금 {cash:,.0f}원 · 보유평가 {hval:,.0f}원 · 총자산 {total:,.0f}원"
-        if t.paper:   # 모의는 초기자본 대비 누적손익 표시(실거래는 입출금 있어 생략)
-            start = float(os.getenv("SOMI_PAPER_CASH", "10000000"))
-            cum = total - start
-            line += f"\n📈 누적손익 {cum:+,.0f}원 ({cum / start * 100:+.1f}% · 초기 {start / 10000:,.0f}만원)"
-        return line
-    except Exception as exc:
-        return f"(계좌 조회 실패: {exc})"
+        if not is_live:
+            from kis_trader import _paper_load
+            return num(_paper_load().get("cash"))
+        from kis_trader import KISTrader
+        return num(KISTrader().balance().get("cash"))
+    except Exception:
+        return None
+
+
+def _fmt_account(cash: float | None, hold_val: float, is_live: bool) -> str:
+    """예수금·보유평가·총자산·누적손익(모의 초기자본 대비) 한 줄 블록."""
+    if cash is None:
+        return "(계좌 조회 실패)"
+    total = cash + hold_val
+    line = f"💰 예수금 {cash:,.0f}원 · 보유평가 {hold_val:,.0f}원 · 총자산 {total:,.0f}원"
+    if not is_live:   # 모의는 초기자본 대비 누적손익(실거래는 입출금 있어 생략)
+        import os
+        start = float(os.getenv("SOMI_PAPER_CASH", "10000000")) or 1.0
+        line += f"\n📈 누적손익 {total - start:+,.0f}원 ({(total - start) / start * 100:+.1f}% · 초기 {start / 10000:,.0f}만원)"
+    return line
 
 
 def get_trading_status(is_live: bool = False) -> str:
-    """거래 현황 — 계좌 종합(예수금·총자산·누적손익) + 보유 평가손익 + 오늘 실현손익.
+    """손익 현황 — 계좌 종합(예수금·총자산·누적손익) + 보유 평가손익 + 오늘 실현손익.
+    보유 시세는 상세 루프에서 1회만 조회하고, 그 값으로 보유평가(총자산)까지 산출한다(단일 소스).
 
     거래모드(모의/실거래) 판정은 봇 상태이므로 게이트웨이가 is_live로 넘긴다."""
     try:
@@ -240,17 +246,11 @@ def get_trading_status(is_live: bool = False) -> str:
     except Exception:
         return "거래 현황 조회 모듈을 불러오지 못했어요."
     mode = "🔴 실거래(실제 돈)" if is_live else "🧪 모의(페이퍼)"
-    acct = _account_header()
-    realized = _today_realized()
     pos = load_positions()
-    if not pos:
-        base = f"[손익 현황] {mode}\n{acct}"
-        base += f"\n\n{realized}" if realized else "\n오늘 청산 거래 없음."
-        return base + "\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
-    kis = KISClient()
+    kis = KISClient() if pos else None
     lines = []
     take, cut = 0, 0
-    tot_pnl_amt, tot_cost = 0.0, 0.0   # 자본가중 손익 — 종목 크기 반영(단순평균 아님)
+    tot_pnl_amt, tot_cost, hold_val = 0.0, 0.0, 0.0   # 평가손익·매수원가·보유평가액(모두 동일 시세)
     for sym, p in pos.items():
         try:
             cur = num(kis.quote(sym).get("stck_prpr"))
@@ -265,6 +265,7 @@ def get_trading_status(is_live: bool = False) -> str:
         pnl_amt = qty * (cur - entry) if (cur and entry) else 0.0   # 평가손익(원)
         tot_pnl_amt += pnl_amt
         tot_cost += qty * entry
+        hold_val += qty * cur                                       # 보유평가액(계좌 총자산용)
         verdict = position_verdict(pnl, cur, stop, target, tp1)
         if "익절" in verdict:
             take += 1
@@ -274,6 +275,12 @@ def get_trading_status(is_live: bool = False) -> str:
             f"• {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%, {pnl_amt:+,.0f}원)\n"
             f"   손절 {int(stop):,} / 목표 {int(target):,} · {verdict}"
         )
+    acct = _fmt_account(_account_cash(is_live), hold_val, is_live)
+    realized = _today_realized()
+    if not pos:
+        base = f"[손익 현황] {mode}\n{acct}"
+        base += f"\n\n{realized}" if realized else "\n오늘 청산 거래 없음."
+        return base + "\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
     wpnl = (tot_pnl_amt / tot_cost * 100) if tot_cost else 0.0   # 자본가중 수익률
     head = (f"[손익 현황] {mode}\n{acct}\n"
             f"보유 {len(pos)}종목 · 평가손익 {tot_pnl_amt:+,.0f}원 ({wpnl:+.1f}%)")
