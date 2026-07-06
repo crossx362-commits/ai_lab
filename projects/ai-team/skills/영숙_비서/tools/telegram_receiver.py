@@ -384,20 +384,28 @@ def handle_with_gpt(text: str) -> str:
 
 
 def _trading_status_reply(text: str, is_live: bool) -> str:
-    """거래/손익 현황 — 결정적 팩트(get_trading_status)를 뽑아, 원문 질문 의미에 맞춰
-    LLM이 동적으로 재구성. '손익'이면 손익 금액 중심, '거래현황'이면 활동 중심 등.
-    숫자·종목·금액은 도구 결과에 있는 값만 사용(지어내지 않음). 실패 시 원문 팩트 그대로."""
+    """거래/손익 현황 — 결정적 팩트(get_trading_status: 총 평가손익 원·%)는 항상 그대로 내보내고,
+    LLM은 질문 의도에 맞춘 짧은 코멘트 1~2문장만 덧붙인다.
+    (LLM에 답 전체를 맡기면 안 됨 — 구독 클로드는 파일까지 읽는 에이전트라 팩트를 무시하고
+    제멋대로 재구성한 사고 2026-07-06. 코멘트가 이상하면 버리고 팩트만 보낸다.)"""
     facts = somi.get_trading_status(is_live)
     from _shared import llm
+    comment = None
     try:
-        ans = llm.text(
-            f'사용자가 "{text}"라고 물었어. 아래는 실시간 보유·손익 데이터야:\n{facts}\n\n'
-            '질문 의도에 딱 맞춰 영숙이답게 친근하게(반말 섞어 짧게) 답해줘. '
-            '숫자·종목명·금액·수익률은 데이터에 있는 값만 그대로 쓰고 절대 새로 만들지 마.',
-            system=SYSTEM, max_tokens=800, lm_first=False)
+        comment = llm.text(
+            f'질문: "{text}"\n손익 데이터:\n{facts}\n\n'
+            '위 데이터만 근거로 질문에 맞는 한줄평을 1~2문장(총 100자 이내)으로 써라. '
+            '영숙이답게 친근하게(반말 섞어). 숫자는 데이터 값 그대로만. '
+            '데이터 재나열·마크다운·목록·질문 금지. 한줄평 텍스트만 출력.',
+            max_tokens=300, lm_first=False)
     except Exception:
-        ans = None
-    return ans or facts
+        comment = None
+    if comment:
+        comment = comment.strip()
+        # 폭주 방어 — 길거나 재나열이면 코멘트 폐기(팩트는 항상 보장)
+        if len(comment) > 200 or comment.count("\n") > 1 or "•" in comment or "**" in comment:
+            comment = None
+    return facts + (f"\n\n💬 {comment}" if comment else "")
 
 
 def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | None:
