@@ -550,6 +550,79 @@ def grid(months: int, thresholds=(50, 55, 60, 65, 70), holds=(5, 7, 10, 15)) -> 
         print("\n⚠️ 거래≥30·MDD≤40% 조건을 만족하는 견고한 파라미터 없음 (엣지 약함)")
 
 
+# ── 조립식 전략 스펙(새 아이디어 자동검증) ─────────────────────────────
+# 새 전략 = 임의 코드가 아니라 '화이트리스트 프리미티브의 조합'. LLM이 스펙(JSON)을 생성하면
+# make_spec_levels가 backtest 가능한 levels_fn으로 조립 → 임의 코드 실행 없이 안전하게 새 전략 검증.
+_FILTER_TYPES = ("breakout", "high52", "rsi_max", "rsi_min", "rel_strength", "obv_rising",
+                 "above_ma", "pullback")
+
+
+def _filter_ok(f: dict, bars: list[dict], t: int) -> bool:
+    """단일 필터 통과 여부 — 화이트리스트 타입만(미지 타입=진입 안 함, 안전). 무미래참조(bars[:t+1])."""
+    typ = f.get("type"); p = f.get("params", {})
+    c = [b["c"] for b in bars[:t + 1]]
+    if typ == "breakout":
+        w = int(p.get("window", 20)); vm = float(p.get("vol_mult", 1.5))
+        prior = bars[max(0, t - w):t]
+        if len(prior) < w:
+            return False
+        ph = max(b["h"] for b in prior); vs = [b["v"] for b in prior if b["v"]]
+        av = sum(vs) / len(vs) if vs else 0
+        return bool(av and bars[t]["c"] > ph and bars[t]["v"] >= av * vm)
+    if typ == "high52":
+        win = bars[max(0, t - 250):t + 1]
+        if len(win) < 60:
+            return False
+        return bars[t]["c"] >= max(b["h"] for b in win) * float(p.get("pct", 0.98))
+    if typ == "rsi_max":
+        return _rsi(bars, t) <= float(p.get("max", 70))
+    if typ == "rsi_min":
+        return _rsi(bars, t) >= float(p.get("min", 30))
+    if typ == "rel_strength":
+        return _rel_strength_ok(bars, t, int(p.get("lookback", 20)))
+    if typ == "obv_rising":
+        return _obv_rising(bars, t, int(p.get("lookback", 10)))
+    if typ == "above_ma":
+        n = int(p.get("n", 20))
+        return len(c) >= n and bars[t]["c"] > sum(c[-n:]) / n
+    if typ == "pullback":
+        if len(c) < 10:
+            return False
+        rh = max(c[-10:]); dip = (rh - c[-1]) / rh if rh else 0
+        return float(p.get("min_dip", 0.02)) <= dip <= float(p.get("max_dip", 0.12))
+    return False
+
+
+def make_spec_levels(spec: dict):
+    """스펙(JSON) → levels_fn. base 모멘텀 점수에 필터들을 AND(하나라도 실패면 진입 안 함).
+    spec = {"filters": [{"type": <_FILTER_TYPES>, "params": {...}}, ...]}. 임의 코드 없음."""
+    filters = spec.get("filters", [])
+
+    def levels(bars: list[dict], t: int):
+        score, e, s, tg = _score_levels(bars, t)
+        if score <= 0:
+            return 0, e, s, tg
+        for f in filters:
+            if not _filter_ok(f, bars, t):
+                return 0, e, s, tg
+        return score, e, s, tg
+    return levels
+
+
+def run_levels(levels_fn, months: int, threshold: int = 60, hold: int = 10) -> dict:
+    """임의 levels_fn(스펙 조립 포함)을 한 기간에 백테스트 → _metrics. 국면 게이트·상대강도 기준 로드."""
+    global _MARKET
+    kis = KISClient()
+    data = _load_all(months)
+    regime = market_regime_map(kis, months)
+    mbars = _history(kis, "069500", months)
+    _MARKET = {b["date"]: b["c"] for b in mbars}
+    trades = []
+    for bars in data.values():
+        trades += backtest_symbol(bars, threshold, hold, levels_fn, regime)
+    return _metrics(trades, months=months)
+
+
 _STRATEGY_VARIANTS = [
     ("모멘텀+국면", _score_levels),
     ("+ATR0.75손절+국면", _score_atr075_levels),  # 웹 근거(2026-07-06) — 변동성 손절 검증

@@ -54,6 +54,7 @@ CACHE = ROOT / "output" / "cache"
 GROWTH = ROOT / "output" / "growth"
 BACKLOG = GROWTH / "strategy_backlog.json"    # 검증 대기 가설
 LEDGER = GROWTH / "strategy_lab.json"         # 검증 결과 이력
+CHAMPIONS = GROWTH / "strategy_champions.json"  # ✅채택된 새 스펙 — 실거래/라이브 승격 후보(사람·self_patch 실장 대기)
 STATE = GROWTH / "strategy_lab_state.json"
 PAPER_CFG = CACHE / "somi_paper_strategies.json"  # advisor가 읽는 모의 전략 활성/가점 설정
 
@@ -113,8 +114,9 @@ def _verdict(cells: dict) -> str:
     return "✅채택"
 
 
-def _pass(label: str, hold: int, periods: tuple[int, ...], expand: bool) -> tuple[str, dict]:
-    """한 검증 패스 — 주어진 기간들 × (expand면 중소형 병합 유니버스)로 백테스트 후 3단 판정.
+def _pass(hyp: dict, hold: int, periods: tuple[int, ...], expand: bool) -> tuple[str, dict]:
+    """한 검증 패스 — 가설(기존 라벨 or 새 스펙) × 기간들 × (expand면 중소형 병합)로 백테스트 후 3단 판정.
+    스펙 가설(hyp['spec'])은 make_spec_levels로 조립해 run_levels로 검증(임의 코드 없음).
     expand=True는 bt.UNIVERSE를 대형+중소형으로 임시 확대(표본 확보) 후 원복(전역 오염 방지)."""
     saved = bt.UNIVERSE
     if expand:
@@ -122,14 +124,17 @@ def _pass(label: str, hold: int, periods: tuple[int, ...], expand: bool) -> tupl
     try:
         cells = {}
         for mo in periods:
-            m = bt._collect_variants(mo, 60, (hold,))[0].get((label, hold), {})
+            if hyp.get("spec"):
+                m = bt.run_levels(bt.make_spec_levels(hyp["spec"]), mo, 60, hold)
+            else:
+                m = bt._collect_variants(mo, 60, (hold,))[0].get((hyp["label"], hold), {})
             cells[f"{mo}mo"] = m
     finally:
         bt.UNIVERSE = saved
     return _verdict(cells), cells
 
 
-def _validate(label: str, hold: int) -> tuple[str, dict, str]:
+def _validate(hyp: dict, hold: int) -> tuple[str, dict, str]:
     """자동 에스컬레이션 검증 — 표본부족이면 스스로 표본을 늘려 재검증(오너 지시 2026-07-06).
       0단계: 12·24개월 / 대형 40종목 (기본)
       1단계: 표본부족 → 24·36개월 / 대형 40종목 (히스토리 연장, 유니버스 성격 불변 우선)
@@ -143,7 +148,7 @@ def _validate(label: str, hold: int) -> tuple[str, dict, str]:
     ]
     last = ("🔸보류(표본부족)", {}, ladders[0][2])
     for periods, expand, tag in ladders:
-        v, cells = _pass(label, hold, periods, expand)
+        v, cells = _pass(hyp, hold, periods, expand)
         last = (v, cells, tag)
         if not v.startswith("🔸"):   # 채택/기각으로 결론나면 즉시 확정(표본 확보 성공)
             break
@@ -170,8 +175,73 @@ def _pick(backlog: list[dict], ledger: list[dict]) -> dict:
         return fallback
 
 
+# ── 새 전략 아이디어 자동생성(로컬 올라마) + 스펙 검증/클램프 ──────────────
+_PARAM_BOUNDS = {  # 필터 타입별 파라미터 허용범위(LLM 생성 스펙을 여기로 클램프 — 폭주/무의미 방지)
+    "breakout": {"window": (10, 40), "vol_mult": (1.0, 3.0)},
+    "high52": {"pct": (0.90, 1.0)},
+    "rsi_max": {"max": (50, 90)}, "rsi_min": {"min": (10, 50)},
+    "rel_strength": {"lookback": (10, 60)}, "obv_rising": {"lookback": (5, 20)},
+    "above_ma": {"n": (5, 120)},
+    "pullback": {"min_dip": (0.01, 0.05), "max_dip": (0.06, 0.20)},
+}
+
+
+def _valid_spec(spec: dict) -> dict | None:
+    """LLM 생성 스펙을 화이트리스트 타입·파라미터 범위로 정제. 유효 필터 1~4개면 반환, 아니면 None."""
+    out = []
+    for f in (spec.get("filters") or [])[:4]:
+        typ = f.get("type")
+        if typ not in bt._FILTER_TYPES:
+            continue
+        bounds = _PARAM_BOUNDS.get(typ, {})
+        params = {}
+        for k, (lo, hi) in bounds.items():
+            v = f.get("params", {}).get(k)
+            if v is None:
+                continue
+            try:
+                params[k] = max(lo, min(hi, type(lo)(v)))
+            except Exception:
+                pass
+        out.append({"type": typ, "params": params})
+    return {"filters": out} if out else None
+
+
+def _gen_specs(ledger: list[dict], n: int = 1) -> list[dict]:
+    """로컬 올라마가 새 전략 아이디어(스펙)를 생성 — 프리미티브 조합. 정제 통과분만 가설로 반환."""
+    try:
+        from _shared.llm import text
+        done = [x.get("label") for x in ledger[-20:]]
+        prompt = (
+            "너는 퀀트 전략 설계자다. 아래 '필터 프리미티브'만 2~3개 조합해 새 매매전략 후보를 만들어라.\n"
+            f"필터 타입: {', '.join(bt._FILTER_TYPES)}\n"
+            "각 파라미터 예: breakout{window:20,vol_mult:1.5} high52{pct:0.98} rsi_max{max:70} "
+            "rsi_min{min:30} rel_strength{lookback:20} obv_rising{lookback:10} above_ma{n:20} "
+            "pullback{min_dip:0.02,max_dip:0.12}\n"
+            "원칙: 모멘텀 base에 얹는 '진입 조건'. 서로 보완되는 조합(추세+과열회피 등). 기존과 다른 새 조합 우선.\n"
+            f"이미 검증한 전략(중복 회피): {done}\n"
+            f'JSON만: {{"strategies": [{{"name": "짧은이름", "filters": [{{"type": "...", "params": {{...}}}}]}}]}} ({n}개)'
+        )
+        raw = text(prompt, json_mode=True, max_tokens=400, temperature=0.5, lm_first=True)  # 로컬 올라마
+        data = json.loads(raw[raw.find("{"):raw.rfind("}") + 1])
+    except Exception as e:
+        print(f"스펙 생성 실패(스킵): {e}")
+        return []
+    out = []
+    for s in (data.get("strategies") or [])[:n]:
+        spec = _valid_spec(s)
+        if not spec:
+            continue
+        name = str(s.get("name") or "gen")[:30]
+        sig = json.dumps(spec, sort_keys=True, ensure_ascii=False)
+        out.append({"id": f"spec:{name}:{abs(hash(sig)) % 100000}", "label": f"[스펙]{name}",
+                    "spec": spec, "hold": 10, "note": sig[:80], "source": "ollama-gen", "tested_ts": ""})
+    return out
+
+
 def _apply_to_paper(label: str, verdict: str) -> str:
-    """검증 결과를 advisor가 읽는 모의 설정에 반영 — 매핑된 라이브 전략만. 코드 수정 없음(설정값만)."""
+    """검증 결과를 advisor가 읽는 모의 설정에 반영 — 매핑된 라이브 전략만. 코드 수정 없음(설정값만).
+    새 스펙 전략(LIVE_MAP 밖)은 라이브 진입로직이 없으므로 자동반영 안 함 — 이력·챔피언보드로만 승격 후보."""
     key = LIVE_MAP.get(label)
     if not key:
         return f"(라이브 매핑 없음 — 이력만 기록)"
@@ -197,16 +267,25 @@ def run_once() -> str:
         _save(BACKLOG, backlog)
     ledger = _load(LEDGER, [])
 
+    # 미검증 가설이 부족하면 로컬 올라마가 새 전략 아이디어(스펙)를 생성해 백로그 보충(중복 id 제외).
+    untested = [h for h in backlog if not h.get("tested_ts")]
+    if len(untested) < 2:
+        have = {h["id"] for h in backlog}
+        for g in _gen_specs(ledger, n=2):
+            if g["id"] not in have:
+                backlog.append(g)
+        _save(BACKLOG, backlog)
+
     pick = _pick(backlog, ledger)
-    label, hold = pick["label"], int(pick.get("hold", 10))
-    verdict, cells, stage = _validate(label, hold)
+    hold = int(pick.get("hold", 10))
+    verdict, cells, stage = _validate(pick, hold)
 
     # 결과 기간이 에스컬레이션에 따라 달라지므로(12·24 또는 24·36) 셀 전체를 요약 저장
     period_summary = {k: {kk: v.get(kk) for kk in ("trades", "total_return", "sharpe", "significant")}
                       for k, v in cells.items()}
     entry = {"ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "id": pick["id"],
-             "label": label, "hold": hold, "verdict": verdict, "stage": stage,
-             "periods": period_summary}
+             "label": pick["label"], "hold": hold, "verdict": verdict, "stage": stage,
+             "spec": pick.get("spec"), "periods": period_summary}
     ledger.append(entry)
     _save(LEDGER, ledger[-200:])
 
@@ -215,11 +294,17 @@ def run_once() -> str:
             h["tested_ts"] = entry["ts"]
     _save(BACKLOG, backlog)
 
-    applied = _apply_to_paper(label, verdict)
+    applied = _apply_to_paper(pick["label"], verdict)
+    # ✅채택된 '새 스펙'은 라이브 진입로직이 없으므로 챔피언보드에 승격후보로 기록(사람/self_patch가 실장).
+    if verdict.startswith("✅") and pick.get("spec"):
+        champs = _load(CHAMPIONS, [])
+        champs.append({"ts": entry["ts"], "label": pick["label"], "spec": pick["spec"],
+                       "hold": hold, "periods": period_summary, "stage": stage})
+        _save(CHAMPIONS, champs[-50:])
 
     detail = " · ".join(f"{k} {m.get('trades', 0)}건·{m.get('total_return', 0)}%·샤프{m.get('sharpe', 0)}"
                         for k, m in cells.items())
-    summary = (f"🔬 [전략랩] {label} (보유 {hold}일) → {verdict}\n"
+    summary = (f"🔬 [전략랩] {pick['label']} (보유 {hold}일) → {verdict}\n"
                f"검증단계 {stage}\n{detail}\n반영: {applied}")
     try:
         send(summary)
