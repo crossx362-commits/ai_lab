@@ -96,8 +96,9 @@ def _seed_backlog() -> list[dict]:
 
 
 def _verdict(cells: dict) -> str:
-    """backtest.validate_strategies와 동일한 3단 판정을 임의 기간 집합에 적용. cells={기간라벨: metrics}."""
-    any_trades = insufficient = underperform = False
+    """4단 판정(경쟁력 감사 2026-07-06 반영). 표본유의성 + 흑자 + 샤프>0 + **벤치마크(지수 단순보유)
+    초과**까지 봐야 진짜 엣지. cells 각 metrics에 bench_sharpe/bench_ret 부착돼 있어야 함."""
+    any_trades = insufficient = underperform = bench_fail = False
     for m in cells.values():
         if not m or not m.get("trades"):
             insufficient = True
@@ -107,17 +108,20 @@ def _verdict(cells: dict) -> str:
             insufficient = True
         elif not (m.get("total_return", 0) > 0 and m.get("sharpe", 0) > 0):
             underperform = True
-    if not any_trades or (insufficient and not underperform):
+        elif m.get("bench_sharpe") is not None and m.get("sharpe", 0) <= m["bench_sharpe"]:
+            bench_fail = True   # 표본충분·흑자지만 패시브(지수 단순보유) 위험조정 대비 초과수익 없음
+    if not any_trades or (insufficient and not underperform and not bench_fail):
         return "🔸보류(표본부족)"
     if underperform:
         return "❌기각(성과미달)"
+    if bench_fail:
+        return "⚠️벤치미달(패시브 대비 초과수익 없음)"
     return "✅채택"
 
 
 def _pass(hyp: dict, hold: int, periods: tuple[int, ...], expand: bool) -> tuple[str, dict]:
-    """한 검증 패스 — 가설(기존 라벨 or 새 스펙) × 기간들 × (expand면 중소형 병합)로 백테스트 후 3단 판정.
-    스펙 가설(hyp['spec'])은 make_spec_levels로 조립해 run_levels로 검증(임의 코드 없음).
-    expand=True는 bt.UNIVERSE를 대형+중소형으로 임시 확대(표본 확보) 후 원복(전역 오염 방지)."""
+    """한 검증 패스 — 가설(기존 라벨 or 새 스펙) × 기간들 × (expand면 중소형 병합)로 백테스트 후 판정.
+    각 기간에 벤치마크(지수 단순보유) 지표를 부착해 '패시브 대비 초과수익' 여부까지 판정에 반영."""
     saved = bt.UNIVERSE
     if expand:
         bt.UNIVERSE = {**bt.UNIVERSE, **bt.SMALL_UNIVERSE}
@@ -128,6 +132,9 @@ def _pass(hyp: dict, hold: int, periods: tuple[int, ...], expand: bool) -> tuple
                 m = bt.run_levels(bt.make_spec_levels(hyp["spec"]), mo, 60, hold)
             else:
                 m = bt._collect_variants(mo, 60, (hold,))[0].get((hyp["label"], hold), {})
+            if m.get("trades"):
+                bench = bt.benchmark_metrics(mo)   # 지수 단순보유(같은 잣대 샤프)
+                m = {**m, "bench_sharpe": bench.get("sharpe"), "bench_ret": bench.get("ret")}
             cells[f"{mo}mo"] = m
     finally:
         bt.UNIVERSE = saved
@@ -280,8 +287,9 @@ def run_once() -> str:
     hold = int(pick.get("hold", 10))
     verdict, cells, stage = _validate(pick, hold)
 
-    # 결과 기간이 에스컬레이션에 따라 달라지므로(12·24 또는 24·36) 셀 전체를 요약 저장
-    period_summary = {k: {kk: v.get(kk) for kk in ("trades", "total_return", "sharpe", "significant")}
+    # 결과 기간이 에스컬레이션에 따라 달라지므로(12·24 또는 24·36) 셀 전체를 요약 저장(벤치마크 포함)
+    period_summary = {k: {kk: v.get(kk) for kk in
+                          ("trades", "total_return", "sharpe", "significant", "bench_sharpe", "bench_ret")}
                       for k, v in cells.items()}
     entry = {"ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "id": pick["id"],
              "label": pick["label"], "hold": hold, "verdict": verdict, "stage": stage,

@@ -460,9 +460,11 @@ MIN_TRADES_SIGNIFICANT = 30  # 최소 표본(웹 연구: Bailey&López de Prado 
 
 
 def _metrics(trades: list[dict], months: float | None = None) -> dict:
-    """승률·손익비·누적·MDD·샤프에 소르티노(하방편차 기준)·칼마(연환산수익/MDD)·표본유의성 플래그 추가
-    (웹 연구 2026-07-05: Sortino/Calmar가 Sharpe 단독보다 하방리스크를 더 정확히 포착, 최소 30건 미만은
-    통계적 유의성 부족 — Deflated Sharpe Ratio 취지). months 주어지면 칼마용 연환산수익 계산."""
+    """승률·손익비·누적·MDD·샤프·소르티노·칼마·표본유의성.
+    ⚠️ 샤프/소르티노 연율화 수정(2026-07-06 경쟁력 감사): per-trade 수익률에 √252를 곱하던 방식은
+    연 252회 거래를 가정 → 실제 연 18~44회뿐이라 샤프를 ~3.7배 과대계상(52주신고가 4.91→실제 ~1.33,
+    지수 단순보유 1.61보다 낮음)했다. **거래빈도 기반 연율화 √(거래/년)**으로 교체(months 필수).
+    months 없으면 보수적으로 √min(252,N) 폴백(과대 방지). 벤치마크 대비는 benchmark_metrics 참고."""
     if not trades:
         return {"trades": 0}
     import numpy as np
@@ -472,9 +474,11 @@ def _metrics(trades: list[dict], months: float | None = None) -> dict:
     peak = np.maximum.accumulate(eq)
     mdd = float(((eq - peak) / peak).min() * 100)
     total_return = (float(eq[-1]) - 1) * 100
+    # 거래빈도 기반 연율화 계수 — per-trade 표준편차를 연 '거래횟수'로 스케일(√252 아님)
+    ann_factor = (len(r) / (months / 12.0)) ** 0.5 if months else float(min(252, len(r))) ** 0.5
     downside = r[r < 0]
     downside_std = float(downside.std()) if len(downside) > 1 else 0.0
-    sortino = round(float(r.mean() / downside_std * (252 ** 0.5)), 2) if downside_std else 0.0
+    sortino = round(float(r.mean() / downside_std * ann_factor), 2) if downside_std else 0.0
     ann_return = (float(eq[-1]) ** (12 / months) - 1) * 100 if months else total_return
     calmar = round(ann_return / abs(mdd), 2) if mdd else 0.0
     return {
@@ -485,12 +489,29 @@ def _metrics(trades: list[dict], months: float | None = None) -> dict:
         "profit_factor": round(float(wins.sum() / -losses.sum()), 2) if len(losses) and losses.sum() < 0 else 0,
         "total_return": round(total_return, 1),
         "mdd": round(mdd, 1),
-        "sharpe": round(float(r.mean() / r.std() * (252 ** 0.5)) if r.std() else 0, 2),
+        "sharpe": round(float(r.mean() / r.std() * ann_factor) if r.std() else 0, 2),
         "sortino": sortino,
         "calmar": calmar,
         "significant": len(r) >= MIN_TRADES_SIGNIFICANT,
         "stop/target/timeout": f"{sum(t['reason']=='stop' for t in trades)}/{sum(t['reason']=='target' for t in trades)}/{sum(t['reason']=='timeout' for t in trades)}",
     }
+
+
+def benchmark_metrics(months: int) -> dict:
+    """벤치마크 — 지수(KODEX200) 단순보유 수익·샤프·MDD(일별 연속수익, 정상 연율화 √252).
+    전략의 '패시브 대비 초과수익' 판정 기준(경쟁력 감사 2026-07-06). 전략 샤프와 같은 잣대로 비교 가능."""
+    import numpy as np
+    kis = KISClient()
+    ic = [b["c"] for b in _history(kis, "069500", months) if b["c"]]
+    if len(ic) < 2:
+        return {"ret": 0, "sharpe": 0, "mdd": 0}
+    a = np.array(ic)
+    d = a[1:] / a[:-1] - 1
+    eq = a / a[0]
+    mdd = float(((eq - np.maximum.accumulate(eq)) / np.maximum.accumulate(eq)).min() * 100)
+    return {"ret": round((ic[-1] / ic[0] - 1) * 100, 1),
+            "sharpe": round(float(d.mean() / d.std() * (252 ** 0.5)) if d.std() else 0, 2),
+            "mdd": round(mdd, 1)}
 
 
 def run(threshold: int, hold: int, months: int) -> dict:
