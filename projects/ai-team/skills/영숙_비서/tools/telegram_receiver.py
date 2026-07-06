@@ -384,28 +384,11 @@ def handle_with_gpt(text: str) -> str:
 
 
 def _trading_status_reply(text: str, is_live: bool) -> str:
-    """거래/손익 현황 — 결정적 팩트(get_trading_status: 총 평가손익 원·%)는 항상 그대로 내보내고,
-    LLM은 질문 의도에 맞춘 짧은 코멘트 1~2문장만 덧붙인다.
-    (LLM에 답 전체를 맡기면 안 됨 — 구독 클로드는 파일까지 읽는 에이전트라 팩트를 무시하고
-    제멋대로 재구성한 사고 2026-07-06. 코멘트가 이상하면 버리고 팩트만 보낸다.)"""
-    facts = somi.get_trading_status(is_live)
-    from _shared import llm
-    comment = None
-    try:
-        comment = llm.text(
-            f'질문: "{text}"\n손익 데이터:\n{facts}\n\n'
-            '위 데이터만 근거로 질문에 맞는 한줄평을 1~2문장(총 100자 이내)으로 써라. '
-            '영숙이답게 친근하게(반말 섞어). 숫자는 데이터 값 그대로만. '
-            '데이터 재나열·마크다운·목록·질문 금지. 한줄평 텍스트만 출력.',
-            max_tokens=300, lm_first=False)
-    except Exception:
-        comment = None
-    if comment:
-        comment = comment.strip()
-        # 폭주 방어 — 길거나 재나열이면 코멘트 폐기(팩트는 항상 보장)
-        if len(comment) > 200 or comment.count("\n") > 1 or "•" in comment or "**" in comment:
-            comment = None
-    return facts + (f"\n\n💬 {comment}" if comment else "")
+    """거래/손익 현황 — 결정적 팩트(get_trading_status: 총 평가손익 원·%)만 즉시 전송.
+    LLM 재구성·코멘트 금지(오너 승인 2026-07-06): 구독 클로드는 파일까지 읽는 에이전트라
+    팩트를 무시하고 제멋대로 재구성했고, 코멘트 호출은 ~10분 지연 후 매번 폭주·폐기됐다.
+    질문 의미 분석(손익현황→상태조회)은 분류기가 담당, 응답 본문은 결정적 팩트."""
+    return somi.get_trading_status(is_live)
 
 
 def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | None:
