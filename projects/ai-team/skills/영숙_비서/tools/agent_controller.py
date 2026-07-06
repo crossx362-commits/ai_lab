@@ -117,6 +117,11 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "somi_us_trader",
     },
+    "전략랩": {
+        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "strategy_lab.py",
+        "args": ["--daemon"],
+        "log": "strategy_lab",
+    },
 }
 
 ALIASES = {
@@ -149,6 +154,7 @@ ALIASES = {
     "dashboard": "대시보드",
     "somi_us": "미장소미",
     "us": "미장소미",
+    "strategy_lab": "전략랩",
 }
 
 

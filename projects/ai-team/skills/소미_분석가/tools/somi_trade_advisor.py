@@ -43,6 +43,7 @@ load_env(str(PROJECT_ROOT))
 PROPOSALS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_proposals.json"
 POSITIONS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_positions.json"
 CLOSED_TRADES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"  # 청산 거래 로그(성과추적)
+PAPER_STRATEGIES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_paper_strategies.json"  # strategy_lab 자동검증 → 모의 전략 활성/가점
 REPORT_STATE_FILE = PROJECT_ROOT / "output" / "cache" / "somi_report_state.json"  # 발굴 리포트 델타(중복 전송 억제)
 
 STOP_PCT = 0.05    # 지지선 없을 때 기본 손절 -5%
@@ -187,6 +188,21 @@ def _ma_cross(kis: KISClient, code: str, lookback: int = 3) -> tuple[bool, int]:
     return False, -1
 
 
+def _paper_strategy(key: str, default_bonus: int = 10) -> int:
+    """모의 전략(52w/breakout)의 가점 — strategy_lab 자동검증 루프가 쓴 설정을 읽는다(호출 시점 로드).
+    설정 없음/파싱 실패 시 기본 활성(현행 유지). enabled=false면 0 반환(가점 스킵). 가점은 0~12 클램프."""
+    try:
+        s = (json.loads(PAPER_STRATEGIES_FILE.read_text(encoding="utf-8"))
+             .get("strategies", {}).get(key, {}))
+    except Exception:
+        return default_bonus
+    if not s:
+        return default_bonus
+    if not s.get("enabled", True):
+        return 0
+    return max(0, min(12, int(s.get("bonus", default_bonus))))
+
+
 def _ma5(kis: KISClient, code: str) -> float:
     """일봉 5일 단순이동평균(종가). 진입 품질(현재가 5일선 위) 판정용."""
     try:
@@ -253,13 +269,15 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     if gc:
         score = min(100, score + 6)
         pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
-    # 52주 신고가 가점 +10 — 모의 전용(웹 연구 전략, 오너 지시 가점 상향 2026-07-05). 백테스트 우위 입증(실거래 후보). 한별 소유.
-    if _is_paper() and _is_52w_high(kis, code):
-        score = min(100, score + 10)
+    # 52주 신고가 가점 — 모의 전용. 활성여부·가점은 strategy_lab 검증결과(somi_paper_strategies.json)가 제어. 한별 소유.
+    _bonus_52w = _paper_strategy("52w")
+    if _is_paper() and _bonus_52w and _is_52w_high(kis, code):
+        score = min(100, score + _bonus_52w)
         pos = ["52주 신고가 근처(기관 상승추세 편승 — 모의 전략)"] + pos
-    # 거래량 동반 20일 고가 돌파 가점 +10 — 모의 전용(웹 연구, 실게이트 재검증 완료 2026-07-05). 한별 소유.
-    if _is_paper() and _volume_breakout(kis, code):
-        score = min(100, score + 10)
+    # 거래량 동반 20일 고가 돌파 가점 — 모의 전용. strategy_lab 자동검증 루프가 활성/가점 제어. 한별 소유.
+    _bonus_bo = _paper_strategy("breakout")
+    if _is_paper() and _bonus_bo and _volume_breakout(kis, code):
+        score = min(100, score + _bonus_bo)
         pos = ["거래량 동반 20일 고가 돌파(turtle/Donchian — 모의 전략, 실게이트 검증 샤프 2.5~3.1)"] + pos
     entry, stop, target = _levels(parsed)
     rr = (target - entry) / (entry - stop) if entry > stop else 0  # 손익비(저항 미반영 기본값)
