@@ -1038,14 +1038,12 @@ def _fast_watch(regime: str = "unknown") -> None:
     passed = [p for p in top if _passes_buy_gate(p, regime)[0]]
     to_buy, msgs = _observation_gate(passed)
     executed = _auto_buy_paper(to_buy, slot_kind="buy_fast", regime=regime)
-    # 체결·관찰 상태변화(시작·완료·해제)만 알림 — 매 틱 '관찰 중' 스팸 방지
-    if executed or any(k in m for m in msgs for k in ("관찰 시작", "관찰 완료", "관찰 해제")):
-        parts = [f"[소미 고속감시 / {now.strftime('%H:%M')}] ⚡ 동적 진입"]
-        if msgs:
-            parts.append("\n".join(msgs))
-        if executed:
-            parts.append("[매수 체결]\n" + "\n\n".join(executed))
-        send("\n\n".join(parts))
+    # 실제 체결만 알림 — 관찰·보류·스킵은 로그로만(오너 지시 2026-07-06 텔레그램 스팸 금지)
+    fills = [m for m in executed if "자동 매수" in m]
+    for m in msgs + [m for m in executed if "자동 매수" not in m]:
+        print(f"[고속감시] {m}")
+    if fills:
+        send(f"[소미 고속감시 / {now.strftime('%H:%M')}] ⚡ 매수 체결\n\n" + "\n\n".join(fills))
 
 
 def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy") -> str:
@@ -1158,8 +1156,8 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
             parts.append("[관찰 현황]\n" + "\n".join(watch_msgs))
         parts.append("[매수 체결]\n" + ("\n\n".join(executed) if executed else "이번엔 매수 없음 (게이트 미통과·관찰 중)"))
         report = f"{header} 🧪 모의 자동매매(기대값 게이트)\n\n" + "\n\n".join(parts)
-        # 체결 or 관찰 상태변화(시작·완료·해제)가 있을 때만 알림. 단순 '관찰 중'/'매수 없음'은 자제.
-        notable = bool(executed) or any(k in m for m in watch_msgs for k in ("관찰 시작", "관찰 완료", "관찰 해제"))
+        # 실제 체결이 있을 때만 알림 — 관찰·보류·스킵은 로그로만(오너 지시 2026-07-06)
+        notable = any("자동 매수" in m for m in executed)
     else:
         report = f"{header}\n기대값 기반 종합 판단(승인형):\n\n{decisions or '현재 매수 게이트 통과 후보 없음 — 계속 감시.'}"
     if do_send and notable:
