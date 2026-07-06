@@ -137,19 +137,19 @@ HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Lab 현황</title>
 <style>
-:root{--bg:#0f1420;--card:#1a2233;--line:#2a3550;--tx:#dce4f2;--dim:#8494b3;--ok:#3ddc84;--warn:#ffb347;--bad:#ff5c72;--acc:#5ea0ff}
+:root{--bg:#faf9f5;--card:#efe9de;--line:#e6dfd8;--tx:#141413;--dim:#6c6a64;--ok:#5db872;--warn:#d4a017;--bad:#c64545;--acc:#cc785c}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,'Malgun Gothic',sans-serif;padding:16px}
-h1{font-size:18px;margin-bottom:2px}
+body{background:var(--bg);color:var(--tx);font:14px/1.55 Inter,-apple-system,'Malgun Gothic',sans-serif;padding:16px}
+h1{font-family:Georgia,'Tiempos Headline',serif;font-weight:400;letter-spacing:-.3px;font-size:20px;margin-bottom:2px}
 #ts{color:var(--dim);font-size:12px;margin-bottom:14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
-.card h2{font-size:13px;color:var(--acc);margin-bottom:8px;letter-spacing:.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h2{font-size:13px;color:var(--acc);margin-bottom:8px;letter-spacing:.5px;font-weight:600}
 table{width:100%;border-collapse:collapse;font-size:13px}
 td,th{padding:3px 6px;text-align:left;border-bottom:1px solid var(--line)}
 th{color:var(--dim);font-weight:600;font-size:11px}
 .ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.dim{color:var(--dim)}
-.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#243050}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#e8e0d2}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .big{font-size:20px;font-weight:700}
 .kv{display:flex;gap:14px;flex-wrap:wrap}.kv div{min-width:70px}
@@ -221,45 +221,45 @@ HEATMAP_HTML = """<!DOCTYPE html>
 <title>시장 열지도 — 국장·미장</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='14' width='8' height='16' rx='1.5' fill='%23089981'/><rect x='12' y='6' width='8' height='24' rx='1.5' fill='%23f23645'/><rect x='22' y='2' width='8' height='28' rx='1.5' fill='%23089981'/></svg>">
 <style>
-:root{--bg:#0b0e14;--panel:#131722;--line:#1f2637;--tx:#e8edf5;--dim:#8b93a7;--up:#f23645;--dn:#3182f6;--acc:#4f7dff}
+:root{--bg:#181715;--panel:#252320;--line:rgba(250,249,245,.1);--tx:#faf9f5;--dim:#a09d96;--up:#f23645;--dn:#3182f6;--acc:#cc785c}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{background:var(--bg);color:var(--tx);font:13px/1.45 -apple-system,'Segoe UI','Malgun Gothic',sans-serif;overflow:hidden;display:flex;flex-direction:column}
+body{background:var(--bg);color:var(--tx);font:13px/1.45 Inter,-apple-system,'Segoe UI','Malgun Gothic',sans-serif;overflow:hidden;display:flex;flex-direction:column}
 svg{vertical-align:-2px}
 .hdr{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-.logo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;letter-spacing:-.2px}
+.logo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;letter-spacing:-.2px}
 .logo a{color:var(--dim);font-size:12px;font-weight:500;text-decoration:none;margin-left:4px}
 .logo a:hover{color:var(--acc)}
-.seg{display:flex;background:#0d1119;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg{display:flex;background:#1f1e1b;border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .seg button{border:0;background:transparent;color:var(--dim);padding:7px 16px;font:600 13px inherit;cursor:pointer;font-family:inherit}
 .seg button.on{background:var(--acc);color:#fff}
 .seg.sm button{padding:5px 12px;font-size:12px}
 .search{position:relative}
-.search input{background:#0d1119;border:1px solid var(--line);border-radius:9px;color:var(--tx);padding:7px 12px 7px 32px;width:190px;font-family:inherit;font-size:13px;outline:none}
+.search input{background:#1f1e1b;border:1px solid var(--line);border-radius:9px;color:var(--tx);padding:7px 12px 7px 32px;width:190px;font-family:inherit;font-size:13px;outline:none}
 .search input:focus{border-color:var(--acc)}
 .search svg{position:absolute;left:10px;top:8px;opacity:.5}
 .meta{margin-left:auto;color:var(--dim);font-size:12px;text-align:right;line-height:1.35}
-.sub{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:rgba(19,23,34,.55)}
-.chip{display:inline-flex;align-items:baseline;gap:6px;background:#0d1119;border:1px solid var(--line);border-radius:8px;padding:4px 9px;margin:1px 0}
+.sub{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:rgba(37,35,32,.55)}
+.chip{display:inline-flex;align-items:baseline;gap:6px;background:#1f1e1b;border:1px solid var(--line);border-radius:8px;padding:4px 9px;margin:1px 0}
 .chip .l{font-size:11px;color:var(--dim);font-weight:600}
 .chip .v{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
 .chip .c{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
 .up{color:var(--up)}.dn{color:var(--dn)}.fl{color:var(--dim)}
 .breadth{display:flex;align-items:center;gap:8px;margin-left:auto}
-.bbar{width:170px;height:7px;border-radius:4px;overflow:hidden;display:flex;background:#2a2e39}
+.bbar{width:170px;height:7px;border-radius:4px;overflow:hidden;display:flex;background:#2a2822}
 .bbar i{display:block;height:100%}
 .bl{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
 #wrap{flex:1;position:relative;margin:8px;min-height:0;overflow:hidden}
 #map{position:absolute;inset:0}
 .sec{position:absolute;overflow:hidden;border-radius:4px}
-.sec .sh{position:absolute;left:0;top:0;right:0;height:18px;padding:2px 7px 0;font-size:10.5px;font-weight:700;color:#aab3c5;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(11,14,20,.35)}
+.sec .sh{position:absolute;left:0;top:0;right:0;height:18px;padding:2px 7px 0;font-size:10.5px;font-weight:700;color:#a09d96;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(24,23,21,.4)}
 .sec .sh b{font-weight:700}
-.tile{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;cursor:pointer;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(11,14,20,.85);transition:filter .1s}
+.tile{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;cursor:pointer;border-radius:3px;box-shadow:inset 0 0 0 1px rgba(24,23,21,.85);transition:filter .1s}
 .tile:hover{filter:brightness(1.22);z-index:5}
 .tile.dimmed{opacity:.12}
 .tile .tn{font-weight:800;line-height:1.1;text-shadow:0 1px 2px rgba(0,0,0,.45);white-space:nowrap;max-width:96%;overflow:hidden;text-overflow:ellipsis}
 .tile .tc{font-weight:700;opacity:.96;line-height:1.15;text-shadow:0 1px 2px rgba(0,0,0,.4);font-variant-numeric:tabular-nums}
-#tip{position:fixed;z-index:50;pointer-events:none;background:#171c29;border:1px solid #2b3350;border-radius:10px;padding:10px 13px;font-size:12.5px;display:none;box-shadow:0 8px 28px rgba(0,0,0,.55);min-width:190px}
+#tip{position:fixed;z-index:50;pointer-events:none;background:#252320;border:1px solid rgba(250,249,245,.12);border-radius:10px;padding:10px 13px;font-size:12.5px;display:none;box-shadow:0 8px 28px rgba(0,0,0,.55);min-width:190px}
 #tip .t1{font-weight:800;font-size:13.5px;margin-bottom:2px}
 #tip .t2{font-size:16px;font-weight:800;margin:2px 0 6px;font-variant-numeric:tabular-nums}
 #tip .kv{display:flex;justify-content:space-between;gap:18px;color:var(--dim);margin-top:2px}
@@ -267,7 +267,7 @@ svg{vertical-align:-2px}
 .foot{display:flex;align-items:center;gap:12px;padding:4px 14px;border-top:1px solid var(--line);background:var(--panel);color:var(--dim);font-size:11px;flex-wrap:wrap}
 .legend{display:flex;align-items:center;gap:2px;margin-left:auto}
 .legend i{display:block;width:34px;height:14px;border-radius:2px;font-style:normal;font-size:9.5px;text-align:center;line-height:14px;color:#fff;font-weight:700}
-.mkl{position:absolute;font-size:11px;font-weight:800;color:#aab3c5;letter-spacing:.3px}
+.mkl{position:absolute;font-size:11px;font-weight:800;color:#a09d96;letter-spacing:.3px}
 @media (max-width:760px){.search input{width:120px}.meta{display:none}.breadth{margin-left:0}}
 </style></head><body>
 <div class="hdr">
@@ -285,7 +285,7 @@ svg{vertical-align:-2px}
   <button id="s_value" onclick="setSize('value')">거래대금</button>
  </div>
  <div class="search">
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b93a7" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a09d96" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
   <input id="q" placeholder="종목 검색…" oninput="setQuery(this.value)">
  </div>
  <div class="meta" id="meta">불러오는 중…</div>
@@ -303,7 +303,7 @@ svg{vertical-align:-2px}
 <script>
 let DATA={kr:[],us:[],indices:{kr:[],us:[]}},TS='-',cur='all',sizeMode='mcap',query='';
 // ── 색: 국내 관행(상승 빨강·하락 파랑) 팔레트 보간 (중립 → ±3%에서 포화) ──
-const NC=[42,46,57],UPC=[242,54,69],DNC=[49,130,246];
+const NC=[42,40,36],UPC=[242,54,69],DNC=[49,130,246];
 function color(c){const t=Math.max(-1,Math.min(1,(c||0)/3));const M=t>=0?UPC:DNC,a=Math.abs(t);
  return 'rgb('+NC.map((n,i)=>Math.round(n+(M[i]-n)*a)).join(',')+')'}
 // ── 스퀘리파이드 트리맵 ──
@@ -440,7 +440,7 @@ function render(){
    renderMarket(m,DATA[m]||[],x,y+LB,w,h-LB,html)}
  }else{
   renderMarket(cur,DATA[cur]||[],0,0,W,H,html)}
- el.innerHTML=html.join('')||'<div style="color:#8b93a7;padding:30px">데이터 수집 대기 중… (수집기 첫 실행 후 표시)</div>'}
+ el.innerHTML=html.join('')||'<div style="color:#a09d96;padding:30px">데이터 수집 대기 중… (수집기 첫 실행 후 표시)</div>'}
 function renderSub(){
  const rows=marketRows();
  const idx=cur==='all'?[...((DATA.indices||{}).kr||[]),...((DATA.indices||{}).us||[])]:((DATA.indices||{})[cur]||[]);
@@ -471,7 +471,7 @@ document.getElementById('map').addEventListener('mousemove',e=>{
  const m=t.dataset.m||cur;
  const x=(DATA[m]||[]).find(r=>String(r.code)===t.dataset.c);if(!x)return;
  const cls=x.change>0?'up':x.change<0?'dn':'fl';
- tip.innerHTML='<div class="t1">'+esc(x.name)+' <span style="color:#8b93a7;font-weight:500">'+esc(x.code)+'</span></div>'+
+ tip.innerHTML='<div class="t1">'+esc(x.name)+' <span style="color:#a09d96;font-weight:500">'+esc(x.code)+'</span></div>'+
   '<div class="t2 '+cls+'">'+(x.change>0?'+':'')+x.change+'%</div>'+
   '<div class="kv"><span>현재가</span><b>'+P(m,x.price)+'</b></div>'+
   '<div class="kv"><span>시가총액</span><b>'+CAP(m,x.mcap)+'</b></div>'+
