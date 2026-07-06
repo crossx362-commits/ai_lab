@@ -274,10 +274,11 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
 
 TUNING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
 # 성장엔진 자동 튜닝 허용범위 — 모의 한정. 엔진 버그로 극단값이 와도 여기서 클램프(실거래 무관).
-# gate_score 하한 58(2026-07-02 중소형 전이검증): 소미 실제 사냥터(코스닥·중소형 30종목)에선
-# 55는 수급확인을 더해도 손실(-60%), 60+수급확인부터 흑자(+45%·PF 1.39) — 대형주 결론(55↑ 흑자)이
-# 전이되지 않음. 최종 눈금은 한별 점수버킷(실데이터)이 보정. gate_entry는 별개 척도라 52 유지.
-_TUNING_BOUNDS = {"gate_score": (58, 70), "gate_entry": (52, 75),
+# gate_score 하한 60(2026-07-06 수급확인 재활성화): 중소형 20종목 그리드(12/24mo)에서 수급확인은
+# 문턱 60~62 + 수급확인에서만 흑자 전환(PF 0.82→1.45·샤프 -1.3→+2.2·MDD 절반), 58은 여전히 손실(PF 0.79),
+# 55↓는 수급확인이 오히려 역효과. 즉 방금 켠 수급확인의 짝은 60 — 튜너가 다시 내리지 못하게 하한 60 고정.
+# (구 58 하한은 수급확인 OFF 데이터수집 모드용이었고 07-06 품질 전환으로 폐기.) gate_entry는 별개 척도라 52 유지.
+_TUNING_BOUNDS = {"gate_score": (60, 70), "gate_entry": (52, 75),
                   "observe_minutes": (1, 20), "paper_auto_max": (2, 10)}
 
 
