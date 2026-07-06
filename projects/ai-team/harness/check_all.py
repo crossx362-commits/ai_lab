@@ -374,6 +374,7 @@ def check_root_layout():
         ".gitignore",
         "AGENTS.md",
         "CLAUDE.md",
+        "DESIGN.md",
         "ENV_MANIFEST.json",
         "PROJECT_OVERVIEW.md",
         "README.md",

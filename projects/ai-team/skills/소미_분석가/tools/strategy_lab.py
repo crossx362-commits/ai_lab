@@ -94,11 +94,10 @@ def _seed_backlog() -> list[dict]:
     return seed
 
 
-def _verdict(m12: dict, m24: dict) -> tuple[str, dict]:
-    """backtest.validate_strategies와 동일한 3단 판정 규칙을 단일 라벨에 적용."""
-    cells = {"12mo": m12, "24mo": m24}
+def _verdict(cells: dict) -> str:
+    """backtest.validate_strategies와 동일한 3단 판정을 임의 기간 집합에 적용. cells={기간라벨: metrics}."""
     any_trades = insufficient = underperform = False
-    for m in (m12, m24):
+    for m in cells.values():
         if not m or not m.get("trades"):
             insufficient = True
             continue
@@ -108,19 +107,47 @@ def _verdict(m12: dict, m24: dict) -> tuple[str, dict]:
         elif not (m.get("total_return", 0) > 0 and m.get("sharpe", 0) > 0):
             underperform = True
     if not any_trades or (insufficient and not underperform):
-        v = "🔸보류(표본부족)"
-    elif underperform:
-        v = "❌기각(성과미달)"
-    else:
-        v = "✅채택"
-    return v, cells
+        return "🔸보류(표본부족)"
+    if underperform:
+        return "❌기각(성과미달)"
+    return "✅채택"
 
 
-def _validate(label: str, hold: int) -> tuple[str, dict]:
-    """단일 가설을 12·24개월로 검증. KIS 일봉 로드(수 분 소요)."""
-    r12 = bt._collect_variants(12, 60, (hold,))[0].get((label, hold), {})
-    r24 = bt._collect_variants(24, 60, (hold,))[0].get((label, hold), {})
-    return _verdict(r12, r24)
+def _pass(label: str, hold: int, periods: tuple[int, ...], expand: bool) -> tuple[str, dict]:
+    """한 검증 패스 — 주어진 기간들 × (expand면 중소형 병합 유니버스)로 백테스트 후 3단 판정.
+    expand=True는 bt.UNIVERSE를 대형+중소형으로 임시 확대(표본 확보) 후 원복(전역 오염 방지)."""
+    saved = bt.UNIVERSE
+    if expand:
+        bt.UNIVERSE = {**bt.UNIVERSE, **bt.SMALL_UNIVERSE}
+    try:
+        cells = {}
+        for mo in periods:
+            m = bt._collect_variants(mo, 60, (hold,))[0].get((label, hold), {})
+            cells[f"{mo}mo"] = m
+    finally:
+        bt.UNIVERSE = saved
+    return _verdict(cells), cells
+
+
+def _validate(label: str, hold: int) -> tuple[str, dict, str]:
+    """자동 에스컬레이션 검증 — 표본부족이면 스스로 표본을 늘려 재검증(오너 지시 2026-07-06).
+      0단계: 12·24개월 / 대형 40종목 (기본)
+      1단계: 표본부족 → 24·36개월 / 대형 40종목 (히스토리 연장, 유니버스 성격 불변 우선)
+      2단계: 여전히 부족 → 24·36개월 / 대형+중소형 60종목 (신호 breadth 확대)
+    성격이 다른 유니버스 확대는 마지막 수단(대형↔중소형 전이는 부호가 뒤집힐 수 있어 기록에 stage 명시).
+    반환: (verdict, cells, stage설명)."""
+    ladders = [
+        ((12, 24), False, "0:12·24mo/대형40"),
+        ((24, 36), False, "1:24·36mo/대형40(기간연장)"),
+        ((24, 36), True, "2:24·36mo/대형+중소형60(유니버스확대)"),
+    ]
+    last = ("🔸보류(표본부족)", {}, ladders[0][2])
+    for periods, expand, tag in ladders:
+        v, cells = _pass(label, hold, periods, expand)
+        last = (v, cells, tag)
+        if not v.startswith("🔸"):   # 채택/기각으로 결론나면 즉시 확정(표본 확보 성공)
+            break
+    return last
 
 
 def _pick(backlog: list[dict], ledger: list[dict]) -> dict:
@@ -172,12 +199,14 @@ def run_once() -> str:
 
     pick = _pick(backlog, ledger)
     label, hold = pick["label"], int(pick.get("hold", 10))
-    verdict, cells = _validate(label, hold)
+    verdict, cells, stage = _validate(label, hold)
 
+    # 결과 기간이 에스컬레이션에 따라 달라지므로(12·24 또는 24·36) 셀 전체를 요약 저장
+    period_summary = {k: {kk: v.get(kk) for kk in ("trades", "total_return", "sharpe", "significant")}
+                      for k, v in cells.items()}
     entry = {"ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "id": pick["id"],
-             "label": label, "hold": hold, "verdict": verdict,
-             "m12": {k: cells["12mo"].get(k) for k in ("trades", "total_return", "sharpe", "significant")},
-             "m24": {k: cells["24mo"].get(k) for k in ("trades", "total_return", "sharpe", "significant")}}
+             "label": label, "hold": hold, "verdict": verdict, "stage": stage,
+             "periods": period_summary}
     ledger.append(entry)
     _save(LEDGER, ledger[-200:])
 
@@ -188,10 +217,10 @@ def run_once() -> str:
 
     applied = _apply_to_paper(label, verdict)
 
-    m24 = cells["24mo"]
+    detail = " · ".join(f"{k} {m.get('trades', 0)}건·{m.get('total_return', 0)}%·샤프{m.get('sharpe', 0)}"
+                        for k, m in cells.items())
     summary = (f"🔬 [전략랩] {label} (보유 {hold}일) → {verdict}\n"
-               f"24개월: {m24.get('trades', 0)}건·{m24.get('total_return', 0)}%·샤프 {m24.get('sharpe', 0)}\n"
-               f"반영: {applied}")
+               f"검증단계 {stage}\n{detail}\n반영: {applied}")
     try:
         send(summary)
     except Exception:
