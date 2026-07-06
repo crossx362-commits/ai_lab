@@ -182,6 +182,32 @@ def position_verdict(pnl: float, cur: float, stop: float, target: float, tp1: fl
     return "⚪ 보유"
 
 
+def _today_realized() -> str:
+    """오늘 청산된 거래의 실현손익 요약 — 보유 포지션이 없어도 '수익현황'에 답을 준다.
+    금액은 ret_pct(실비용 반영 순수익률) 기준으로 재구성해 표시. 청산 없으면 ''."""
+    try:
+        import json
+        from datetime import datetime
+        from somi_trade_advisor import CLOSED_TRADES_FILE
+        from somi_kis_reporter import num
+        log = json.loads(CLOSED_TRADES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    today = datetime.now().strftime("%Y-%m-%d")
+    tr = [t for t in log if str(t.get("ts_close", "")).startswith(today)]
+    if not tr:
+        return ""
+    amt = sum(num(t.get("qty")) * num(t.get("entry")) * num(t.get("ret_pct")) / 100 for t in tr)
+    wins = sum(1 for t in tr if num(t.get("ret_pct")) > 0)
+    avg = sum(num(t.get("ret_pct")) for t in tr) / len(tr)
+    srt = sorted(tr, key=lambda t: num(t.get("ret_pct")), reverse=True)
+    best, worst = srt[0], srt[-1]
+    return (
+        f"[오늘 실현손익] 청산 {len(tr)}건 · {amt:+,.0f}원 (평균 {avg:+.1f}% · 승 {wins}/{len(tr)})\n"
+        f"  최고 {best.get('name')} {num(best.get('ret_pct')):+.1f}% · 최저 {worst.get('name')} {num(worst.get('ret_pct')):+.1f}%"
+    )
+
+
 def get_trading_status(is_live: bool = False) -> str:
     """거래 현황 — 보유 모의 포지션 + 실시간 평가손익 + 다음 행동 판단.
 
@@ -194,7 +220,9 @@ def get_trading_status(is_live: bool = False) -> str:
     mode = "🔴 실거래(실제 돈)" if is_live else "🧪 모의(페이퍼)"
     pos = load_positions()
     if not pos:
-        return f"[거래 현황] {mode}\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
+        realized = _today_realized()
+        base = f"[손익 현황] {mode}\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
+        return base + (f"\n\n{realized}" if realized else "\n오늘 청산 거래도 없어요.")
     kis = KISClient()
     lines = []
     take, cut = 0, 0
@@ -225,7 +253,8 @@ def get_trading_status(is_live: bool = False) -> str:
     wpnl = (tot_pnl_amt / tot_cost * 100) if tot_cost else 0.0   # 자본가중 수익률
     head = f"[손익 현황] {mode} · 보유 {len(pos)}종목 · 총 평가손익 {tot_pnl_amt:+,.0f}원 ({wpnl:+.1f}%)"
     tail = f"\n요약: 익절검토 {take} · 손절주의 {cut} · 그 외 보유 {len(pos) - take - cut}"
-    return head + "\n" + "\n".join(lines) + tail
+    realized = _today_realized()
+    return head + "\n" + "\n".join(lines) + tail + (f"\n\n{realized}" if realized else "")
 
 
 def balance() -> str:
