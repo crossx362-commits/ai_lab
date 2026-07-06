@@ -43,6 +43,7 @@ load_env(str(PROJECT_ROOT))
 PROPOSALS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_proposals.json"
 POSITIONS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_positions.json"
 CLOSED_TRADES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"  # 청산 거래 로그(성과추적)
+REPORT_STATE_FILE = PROJECT_ROOT / "output" / "cache" / "somi_report_state.json"  # 발굴 리포트 델타(중복 전송 억제)
 
 STOP_PCT = 0.05    # 지지선 없을 때 기본 손절 -5%
 TARGET_PCT = 0.10  # 저항선 없을 때 기본 목표 +10%
@@ -78,6 +79,20 @@ def get_proposal(key: str) -> dict | None:
         if key and (key == sym or key == nm or key in nm):
             return it
     return None
+
+
+def _report_changed(slot_kind: str, candidates: list) -> bool:
+    """발굴 후보셋이 직전 전송과 달라졌을 때만 True(그리고 상태 갱신). 같으면 False로 재전송 억제.
+    서명 = 종목+점수버킷(5점)+판정 정렬 — 순서·미세점수 흔들림엔 둔감, 편입/이탈/등급변화엔 민감.
+    '매수 검토 계속 같은거만' 방지(오너 지시 2026-07-06)."""
+    sig = "|".join(sorted(
+        f"{p.get('symbol')}:{int(p.get('score') or 0)//5}:{p.get('verdict', '')}" for p in candidates))
+    state = _load(REPORT_STATE_FILE)
+    if state.get(slot_kind) == sig:
+        return False
+    state[slot_kind] = sig
+    _save(REPORT_STATE_FILE, state)
+    return True
 
 
 def load_positions() -> dict:
@@ -1105,7 +1120,7 @@ def run(candidate_limit: int = 20, do_send: bool = False, slot_kind: str = "buy"
         miss = sum(1 for c in candidates if c.get("score_mode") == "morning_missing_investor_adjusted")
         note = f"\n(당일 수급 미확정 {miss}종목 — 실매수 보류, 오후 재평가)" if miss else ""
         report = f"{header} 🕘 신규매수 금지·후보 편입\n\n[후보 {len(candidates)}종목]\n" + (saved or "조건 충족 후보 없음") + note
-        if do_send:
+        if do_send and _report_changed(slot_kind, candidates):   # 후보셋 변화 있을 때만 전송(중복 억제)
             send(report)
         growth.record("somi_advisor", role=f"{label}", data=f"후보 {len(candidates)}",
                       judgment="실매수 금지·후보 저장", result="후보 편입",
