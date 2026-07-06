@@ -196,8 +196,9 @@ def get_trading_status(is_live: bool = False) -> str:
     if not pos:
         return f"[거래 현황] {mode}\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
     kis = KISClient()
-    lines, tot = [], 0.0
+    lines = []
     take, cut = 0, 0
+    tot_pnl_amt, tot_cost = 0.0, 0.0   # 자본가중 손익 — 종목 크기 반영(단순평균 아님)
     for sym, p in pos.items():
         try:
             cur = num(kis.quote(sym).get("stck_prpr"))
@@ -209,18 +210,20 @@ def get_trading_status(is_live: bool = False) -> str:
         tp1 = num(p.get("tp1"))
         qty = int(p.get("qty") or 0)
         pnl = ((cur - entry) / entry * 100) if (cur and entry) else 0.0
-        tot += pnl
+        pnl_amt = qty * (cur - entry) if (cur and entry) else 0.0   # 평가손익(원)
+        tot_pnl_amt += pnl_amt
+        tot_cost += qty * entry
         verdict = position_verdict(pnl, cur, stop, target, tp1)
         if "익절" in verdict:
             take += 1
         elif "손절" in verdict:
             cut += 1
         lines.append(
-            f"• {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%)\n"
+            f"• {p.get('name', sym)}({sym}) {qty}주 @ {int(entry):,} → {int(cur):,} ({pnl:+.1f}%, {pnl_amt:+,.0f}원)\n"
             f"   손절 {int(stop):,} / 목표 {int(target):,} · {verdict}"
         )
-    avg = tot / len(pos)
-    head = f"[거래 현황] {mode} · 보유 {len(pos)}종목 · 평균 {avg:+.1f}%"
+    wpnl = (tot_pnl_amt / tot_cost * 100) if tot_cost else 0.0   # 자본가중 수익률
+    head = f"[손익 현황] {mode} · 보유 {len(pos)}종목 · 총 평가손익 {tot_pnl_amt:+,.0f}원 ({wpnl:+.1f}%)"
     tail = f"\n요약: 익절검토 {take} · 손절주의 {cut} · 그 외 보유 {len(pos) - take - cut}"
     return head + "\n" + "\n".join(lines) + tail
 

@@ -383,6 +383,23 @@ def handle_with_gpt(text: str) -> str:
     return _call_llm(text, PSYCHOLOGY_SYSTEM)
 
 
+def _trading_status_reply(text: str, is_live: bool) -> str:
+    """거래/손익 현황 — 결정적 팩트(get_trading_status)를 뽑아, 원문 질문 의미에 맞춰
+    LLM이 동적으로 재구성. '손익'이면 손익 금액 중심, '거래현황'이면 활동 중심 등.
+    숫자·종목·금액은 도구 결과에 있는 값만 사용(지어내지 않음). 실패 시 원문 팩트 그대로."""
+    facts = somi.get_trading_status(is_live)
+    from _shared import llm
+    try:
+        ans = llm.text(
+            f'사용자가 "{text}"라고 물었어. 아래는 실시간 보유·손익 데이터야:\n{facts}\n\n'
+            '질문 의도에 딱 맞춰 영숙이답게 친근하게(반말 섞어 짧게) 답해줘. '
+            '숫자·종목명·금액·수익률은 데이터에 있는 값만 그대로 쓰고 절대 새로 만들지 마.',
+            system=SYSTEM, max_tokens=800, lm_first=False)
+    except Exception:
+        ans = None
+    return ans or facts
+
+
 def _classify_intent(text: str, has_order: bool, has_signals: bool) -> dict | None:
     """LLM이 메시지의 '의미'를 분석해 운영 명령 의도를 분류. 정해진 단어가 아니어도 같은 뜻이면 매칭.
     반환: {"intent":..., "index":n|None} 또는 None(해당 없음/casual)."""
@@ -443,7 +460,7 @@ def _approve_signal(sig: dict) -> str:
     return _execute_pending_order()
 
 
-def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool) -> str | None:
+def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool, text: str = "") -> str | None:
     """분류된 의도를 실제 명령으로 실행. 처리 못 하면 None."""
     it = intent.get("intent")
     if it == "order_confirm" and has_order:
@@ -462,7 +479,7 @@ def _dispatch_intent(intent: dict, has_order: bool, has_signals: bool) -> str | 
         cur = _get_trade_mode()
         return f"현재 거래 모드: {'🔴 실거래(실제 돈)' if cur == 'live' else '🧪 모의(페이퍼)'}"
     if it == "status":
-        return somi.get_trading_status(_get_trade_mode() == "live")
+        return _trading_status_reply(text, _get_trade_mode() == "live")
     if it == "signal_approve" and has_signals:
         signals = _signals_load()
         idx = intent.get("index")
@@ -538,13 +555,13 @@ def handle_message(text: str) -> str:
 
     # 거래/투자 현황(보유 포지션·손익) — LLM 분류기보다 먼저
     if bc.is_trading_status_request(text):
-        return somi.get_trading_status(_get_trade_mode() == "live")
+        return _trading_status_reply(text, _get_trade_mode() == "live")
 
     # 2) 의미 기반 분류 — 정확매칭이 안 됐고, 운영 맥락이거나 짧은 지시일 때만 LLM 호출
     if has_order or has_signals or len(text) <= 30:
         intent = _classify_intent(text, has_order, has_signals)
         if intent:
-            resolved = _dispatch_intent(intent, has_order, has_signals)
+            resolved = _dispatch_intent(intent, has_order, has_signals, text)
             if resolved is not None:
                 return resolved
 
