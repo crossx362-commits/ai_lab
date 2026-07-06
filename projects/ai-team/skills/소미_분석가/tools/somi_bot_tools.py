@@ -208,8 +208,30 @@ def _today_realized() -> str:
     )
 
 
+def _account_header() -> str:
+    """계좌 종합 — 예수금·보유평가·총자산·누적손익(초기자본 대비). 원장(모의) 또는 KIS(실거래) 기준."""
+    try:
+        import os
+        from kis_trader import KISTrader
+        from somi_kis_reporter import num
+        t = KISTrader()
+        bal = t.balance()
+        cash = num(bal.get("cash"))
+        hval = sum(num(h.get("qty")) * num(h.get("avg")) * (1 + num(h.get("pnl")) / 100)
+                   for h in (bal.get("holdings") or []))
+        total = cash + hval
+        line = f"💰 예수금 {cash:,.0f}원 · 보유평가 {hval:,.0f}원 · 총자산 {total:,.0f}원"
+        if t.paper:   # 모의는 초기자본 대비 누적손익 표시(실거래는 입출금 있어 생략)
+            start = float(os.getenv("SOMI_PAPER_CASH", "10000000"))
+            cum = total - start
+            line += f"\n📈 누적손익 {cum:+,.0f}원 ({cum / start * 100:+.1f}% · 초기 {start / 10000:,.0f}만원)"
+        return line
+    except Exception as exc:
+        return f"(계좌 조회 실패: {exc})"
+
+
 def get_trading_status(is_live: bool = False) -> str:
-    """거래 현황 — 보유 모의 포지션 + 실시간 평가손익 + 다음 행동 판단.
+    """거래 현황 — 계좌 종합(예수금·총자산·누적손익) + 보유 평가손익 + 오늘 실현손익.
 
     거래모드(모의/실거래) 판정은 봇 상태이므로 게이트웨이가 is_live로 넘긴다."""
     try:
@@ -218,11 +240,13 @@ def get_trading_status(is_live: bool = False) -> str:
     except Exception:
         return "거래 현황 조회 모듈을 불러오지 못했어요."
     mode = "🔴 실거래(실제 돈)" if is_live else "🧪 모의(페이퍼)"
+    acct = _account_header()
+    realized = _today_realized()
     pos = load_positions()
     if not pos:
-        realized = _today_realized()
-        base = f"[손익 현황] {mode}\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
-        return base + (f"\n\n{realized}" if realized else "\n오늘 청산 거래도 없어요.")
+        base = f"[손익 현황] {mode}\n{acct}"
+        base += f"\n\n{realized}" if realized else "\n오늘 청산 거래 없음."
+        return base + "\n보유 포지션 없음 — 현재 거래 중인 종목이 없어요."
     kis = KISClient()
     lines = []
     take, cut = 0, 0
@@ -251,9 +275,9 @@ def get_trading_status(is_live: bool = False) -> str:
             f"   손절 {int(stop):,} / 목표 {int(target):,} · {verdict}"
         )
     wpnl = (tot_pnl_amt / tot_cost * 100) if tot_cost else 0.0   # 자본가중 수익률
-    head = f"[손익 현황] {mode} · 보유 {len(pos)}종목 · 총 평가손익 {tot_pnl_amt:+,.0f}원 ({wpnl:+.1f}%)"
+    head = (f"[손익 현황] {mode}\n{acct}\n"
+            f"보유 {len(pos)}종목 · 평가손익 {tot_pnl_amt:+,.0f}원 ({wpnl:+.1f}%)")
     tail = f"\n요약: 익절검토 {take} · 손절주의 {cut} · 그 외 보유 {len(pos) - take - cut}"
-    realized = _today_realized()
     return head + "\n" + "\n".join(lines) + tail + (f"\n\n{realized}" if realized else "")
 
 
