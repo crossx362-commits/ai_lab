@@ -29,32 +29,6 @@ JSON 객체만 반환하세요.
 """
 
 
-def _parse_dispatch_decision(raw: str | None) -> dict | None:
-    if not raw:
-        return None
-    text = raw.strip()
-    candidates = [text]
-    start = text.find("{")
-    end = text.rfind("}")
-    if start >= 0 and end > start:
-        candidates.append(text[start:end + 1])
-    for candidate in candidates:
-        try:
-            parsed = json.loads(candidate)
-            return parsed if isinstance(parsed, dict) else None
-        except Exception:
-            continue
-    return None
-
-
-def _keyword_dispatch_decision(message: str) -> dict | None:
-    lower = message.lower()
-    for agent, keywords in ACTIVE_AGENT_KEYWORDS.items():
-        if any(keyword.lower() in lower for keyword in keywords):
-            return {"agent": agent, "action": message[:120]}
-    return None
-
-
 def _run_script(args: list[str], timeout: int = 120, extra_env: dict[str, str] | None = None) -> tuple[int, str]:
     result = subprocess.run(
         args,
@@ -80,34 +54,5 @@ def _run_harness() -> str:
     note = "WARN/FAIL 감지, 구조 점검 필요" if has_warn else "모든 구조 정상"
     icon = "⚠️" if has_warn else "✅"
     return f"{icon} [예원 CEO] 하네스 체크 완료\n\n{output}\n\n{note}"
-
-
-def _run_skill_audit() -> str:
-    script = os.path.join(AI_TEAM_ROOT, "skills", "예원_CEO", "tools", "skill_auditor.py")
-    code, output = _run_script([sys.executable, script, "--check"], timeout=180)
-    icon = "✅" if code == 0 else "❌"
-    return f"{icon} [예원 CEO] 스킬 문서 감사 완료\n\n{output[:3500]}"
-
-
-def _run_somi(message: str) -> str:
-    script = os.path.join(AI_TEAM_ROOT, "skills", "소미_분석가", "tools", "short_covering_analyzer.py")
-    code, output = _run_script([sys.executable, script, "--text", message], timeout=90)
-    icon = "✅" if code == 0 else "❌"
-    return f"{icon} [소미] 국내주식 수급·매수판단 리포트 완료\n\n{output[:3500]}"
-
-
-def _run_youngsuk(message: str) -> str:
-    if any(k in message for k in ["스케줄", "일정", "schedule"]):
-        script = os.path.join(AI_TEAM_ROOT, "skills", "영숙_비서", "tools", "schedule_manager.py")
-        code, output = _run_script([sys.executable, script, "--list"], timeout=30)
-        icon = "✅" if code == 0 else "❌"
-        return f"{icon} [영숙] 스케줄 확인 완료\n\n{output[:2000]}"
-    if any(k in message for k in ["리포트 정리", "cleanup"]):
-        script = os.path.join(AI_TEAM_ROOT, "skills", "영숙_비서", "tools", "reports_manager.py")
-        code, output = _run_script([sys.executable, script, "cleanup"], timeout=60)
-        icon = "✅" if code == 0 else "❌"
-        return f"{icon} [영숙] 리포트 정리 완료\n\n{output[:2000]}"
-    from _shared.notify import status_report
-    return status_report()
 
 
