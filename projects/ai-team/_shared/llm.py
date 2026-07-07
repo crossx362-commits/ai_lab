@@ -210,6 +210,21 @@ def _gemini(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
 
 # ==================== CLAUDE CODE (구독 사용량, API 크레딧 불필요) ====================
 
+def _find_cli(name: str) -> str | None:
+    """구독 CLI(claude/codex) 실행 파일 탐색 — PATH 우선, 실패 시 맥 표준 설치 경로 폴백.
+    launchd 잡은 기본 PATH(/usr/bin:/bin:...)라 /usr/local/bin·/opt/homebrew/bin이 빠져
+    which가 실패 → 조용히 None → 프로브가 '빈 응답' 경보(2026-07-08 실제 사고)."""
+    import shutil
+    exe = shutil.which(name)   # Windows npm은 .cmd shim — which가 확장자 처리
+    if exe:
+        return exe
+    for cand in (f"/usr/local/bin/{name}", f"/opt/homebrew/bin/{name}",
+                 os.path.expanduser(f"~/.local/bin/{name}")):
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
 def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
     """Claude Code CLI headless(`claude -p`) — 구독 사용량으로 클로드 호출(오너 지시 2026-07-05).
     API 크레딧이 막힌 상황에서 구독으로 클로드를 쓰는 경로. --bare는 API키 인증만이라 쓰지 않음
@@ -217,9 +232,8 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
     제한될 수 있어 로컬 우선을 유지하고 이건 클라우드 폴백으로만 쓴다. subprocess라 API보다 느림."""
     if not _cloud_llm_allowed():
         return None
-    import shutil
     import subprocess
-    exe = shutil.which("claude")   # Windows npm은 claude.cmd shim — 확장자 없는 이름은 못 찾음(WinError 2)
+    exe = _find_cli("claude")
     if not exe:
         return None                # CLI 미설치 — 헛된 subprocess/로그 없이 조용히 폴백
     full = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
@@ -253,11 +267,10 @@ def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperatur
     로컬+클로드가 대부분 커버하게 해 Plus 한도 소진을 막는다. subprocess+훅이라 느림."""
     if not _cloud_llm_allowed():
         return None
-    import shutil
     import subprocess, tempfile
-    exe = shutil.which("codex")   # 미설치 시(WinError 2) 헛된 subprocess/로그 없이 조용히 폴백
+    exe = _find_cli("codex")
     if not exe:
-        return None
+        return None               # CLI 미설치 — 헛된 subprocess/로그 없이 조용히 폴백
     full = ((system + "\n\n") if system else "") + prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
     fd, outfile = tempfile.mkstemp(suffix=".txt")
     os.close(fd)
