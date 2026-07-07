@@ -313,8 +313,11 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
         cmd += ["--append-system-prompt", system]
     cmd.append(full)
     try:
+        # stdin=DEVNULL — claude -p는 stdin을 3초 기다린 뒤 진행("no stdin data received in 3s").
+        # detached 데몬은 상속 stdin이 닫힌 핸들이라 그 대기가 빈 응답을 유발할 수 있어 명시 차단
+        # (하루 수백 호출 × 3초 절약 + 재현성). 검증: 10.9s→8.6s, 응답 동일(2026-07-07).
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=150,
-                            encoding="utf-8", errors="replace")
+                            encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
         out = (r.stdout or "").strip()
         if not out or (json_mode and not _json_ok(out)):
             print(f"  ⚠️ [ClaudeCode] {'empty' if not out else 'invalid json'}")
@@ -346,7 +349,7 @@ def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperatur
     try:
         subprocess.run([exe, "exec", "--skip-git-repo-check", "-o", outfile, full],
                        capture_output=True, text=True, timeout=180,
-                       encoding="utf-8", errors="replace")
+                       encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
         with open(outfile, encoding="utf-8") as f:
             out = f.read().strip()
         if not out or (json_mode and not _json_ok(out)):

@@ -1100,7 +1100,14 @@ def _fast_watch(regime: str = "unknown") -> None:
             p.update({k: rt[k] for k in (
                 "entry_score", "risk_level", "risk_state", "rr_score", "rr_ok",
                 "dq_score", "dq_state", "score_mode", "vwap", "buy_pressure", "rr", "reasons", "risks")})
-    passed = [p for p in top if _passes_buy_gate(p, regime)[0]]
+    gated = [(p, _passes_buy_gate(p, regime)) for p in top]
+    passed = [p for p, (ok, _r) in gated if ok]
+    # 대기 사유 로그(2026-07-07) — 거부 이유가 로그에 안 찍혀 "왜 안 사냐"를 매번 사람이 확인해야 했다.
+    # 무체결이 '정상 대기'인지 '막힘'인지 로그만으로 구분되도록 컷된 후보의 사유를 남긴다.
+    for p, (ok, why) in gated:
+        if not ok:
+            print(f"[고속감시] ⏸ {p['name']}({p['symbol']}) 매수 대기 — {why} "
+                  f"(점수 {p.get('score')}·진입 {p.get('entry_score')}·매수세 {p.get('buy_pressure', 0):.1f})")
     to_buy, msgs = _observation_gate(passed)
     executed = _auto_buy_paper(to_buy, slot_kind="buy_fast", regime=regime)
     # 실제 체결만 알림 — 관찰·보류·스킵은 로그로만(오너 지시 2026-07-06 텔레그램 스팸 금지)
