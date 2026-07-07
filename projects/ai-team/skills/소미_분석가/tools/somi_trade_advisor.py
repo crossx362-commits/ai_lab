@@ -345,13 +345,14 @@ def _gate_thresholds() -> dict:
     """매수 게이트 문턱 — 모의(paper)는 공격적 완화 + 성장엔진 자동 튜닝, 실거래(live)는 보수값 고정.
     위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
-        # 모의 진입문턱: 완화값(SOMI_GATE_ENTRY_PAPER)을 '상한'으로 존중 — 오토튜너가 55로 올려
-        # env 40 완화가 무력화되던 문제(2026-07-07 발견: 하락장에 CS 진입45·매수세8.0 종목이 55에
-        # 막혀 종일 무체결). 튜너는 상한 이하로만(더 공격적으로만) 조정 가능. 활동 우선(모의).
+        # 모의 진입문턱 하한 55 — 실거래(모의) 69건 분석(2026-07-07): 진입점수 40~54 매수는
+        # 7건 전패(-24.6%)·55~69가 스위트스팟(+32.4%·승률53%). 아침의 '상한 40 강제'는 오판이라
+        # 데이터로 철회(그 게이트로 산 덕성·덕성우 당일 -4.7~-5.3% 손절 실증). 재분석 없이 55 밑 금지.
         paper_entry_cap = int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))
+        entry_floor = int(os.getenv("SOMI_GATE_ENTRY_FLOOR", "55"))
         return {
             "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "60"))),   # 탐지점수 (중소형 전이검증: 60+수급확인부터 흑자)
-            "entry": min(_tuning("gate_entry", paper_entry_cap), paper_entry_cap),   # 진입점수 — 완화(env)가 상한, 튜너는 그 이하로만
+            "entry": max(entry_floor, min(_tuning("gate_entry", paper_entry_cap), paper_entry_cap)),
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}
@@ -746,6 +747,12 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
     trader = KISTrader()
     if not trader.paper:  # 안전장치: 실거래면 자동매수 금지
         return []
+    # 오전 신규매수 차단(2026-07-07 실거래 69건 분석): 오전(09~12시) 매수 25건 누적 -22.1%
+    # (승률 28%) vs 오후(13~15시) 44건 +123.3%(승률 70%·PF 2.09). 아침 갭·급등 추격이 꼭지
+    # 매수의 주범(손절의 64%가 매수 후 +0.5%도 못 감). 오전엔 발굴·관찰만, 체결은 오후부터.
+    buy_from = os.getenv("SOMI_PAPER_BUY_FROM", "13:00")
+    if datetime.now().strftime("%H:%M") < buy_from:
+        return [f"⏰ 신규매수 대기 — 오전 체결 차단({buy_from}부터, 69건 분석: 오전 PF 0.6 vs 오후 2.1)"]
     held = load_positions()
     done, bought = [], 0
     # 당일 손절 종목 재진입 금지(2026-07-07 오너 지적 "비쌀때 사서 쌀때 파냐") — 덕성이 11:27 매수
