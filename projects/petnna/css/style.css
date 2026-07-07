@@ -1314,11 +1314,18 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
 /* ── 펫게임 ─────────────────────────────── */
 .pg-bubble{position:absolute;top:-34px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #e6dfd8;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .pg-editable{outline:2px dashed #cc785c;outline-offset:3px;border-radius:8px;cursor:grab;touch-action:none}
+.pg-pet-img{--pg-face:1;--pg-depth:1;transform-origin:50% 100%;will-change:transform}
+.pg-menu-img{width:36px;height:36px;object-fit:contain;display:block}
+.pg-food-fx-img{width:40px;height:40px;object-fit:contain;display:block;filter:drop-shadow(0 4px 6px rgba(77,47,24,.18))}
+#pg-pet.pg-idle .pg-pet-img{animation:pgIdleBreath 2.8s ease-in-out infinite}
+#pg-pet.pg-moving .pg-pet-img{animation:pgWalkBob .34s ease-in-out infinite}
 .pg-eat{animation:pgEat .5s ease-in-out 2}
+@keyframes pgIdleBreath{0%,100%{transform:scaleX(var(--pg-face)) scale(var(--pg-depth))}50%{transform:scaleX(var(--pg-face)) scale(calc(var(--pg-depth) + .025),calc(var(--pg-depth) - .015))}}
+@keyframes pgWalkBob{0%,100%{transform:translateY(0) scaleX(var(--pg-face)) scale(var(--pg-depth))}50%{transform:translateY(-4px) scaleX(var(--pg-face)) scale(calc(var(--pg-depth) + .02),calc(var(--pg-depth) - .02))}}
 @keyframes pgEat{0%,100%{transform:translate(-50%,-100%) scale(1)}50%{transform:translate(-50%,-100%) scale(1.08,0.92)}}
 .pg-float{animation:pgFloat 1.1s ease-out forwards;font-size:20px}
 @keyframes pgFloat{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-46px)}}
-@media (prefers-reduced-motion: reduce){.pg-eat,.pg-float{animation:none}}
+@media (prefers-reduced-motion: reduce){.pg-eat,.pg-float,#pg-pet.pg-idle .pg-pet-img,#pg-pet.pg-moving .pg-pet-img{animation:none}}
 
 /* ── 📱 하단 네비 가시성 수리(2026-07-07 오너 피드백) ─────────────────
    원인 ①: .mobile-bottom-nav 베이스 스타일 부재 — fixed 하단 고정이 없어 페이지 끝에 흘러감

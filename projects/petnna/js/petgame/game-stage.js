@@ -32,6 +32,10 @@
         return imgOrEmoji(meta.idle, meta.fallback, 'pg-pet-img', size, data);
     }
 
+    function assetIcon(obj, cls, px) {
+        return imgOrEmoji(obj.img, obj.emoji, cls, px);
+    }
+
     function hudHTML(p, g) {
         const st = Items.stageForLevel(g.level);
         const need = Core.xpForLevel(g.level);
@@ -208,7 +212,7 @@
             const n = g.foods[f.id] || 0;
             return `<button ${n ? `onclick="PetGame.feedNow('${f.id}')"` : 'disabled'}
                 class="flex flex-col items-center gap-0.5 p-2 rounded-xl ${n ? 'bg-white' : 'bg-gray-100 opacity-50'} border border-brand-100">
-                <span class="text-[22px]">${f.emoji}</span>
+                ${assetIcon(f, 'pg-menu-img', 36)}
                 <span class="text-[10px] font-bold">${f.name}</span>
                 <span class="text-[9px] text-gray-400">보유 ${n}</span></button>`;
         }).join('');
@@ -237,7 +241,7 @@
         if (!stage || !petEl || !fx) { done(); return; }
         const foodEl = document.createElement('div');
         foodEl.style.cssText = 'position:absolute;left:12%;top:20%;font-size:30px;transition:all .8s cubic-bezier(.3,-.3,.6,1);z-index:5';
-        foodEl.textContent = food.emoji;
+        foodEl.innerHTML = assetIcon(food, 'pg-food-fx-img', 40);
         fx.appendChild(foodEl);
         requestAnimationFrame(() => { foodEl.style.left = '58%'; foodEl.style.top = '74%'; });
         setTimeout(() => { movePetTo(60, 76, 900); }, 700);
@@ -270,13 +274,13 @@
         const g = Core.ensureGame(p);
         const foodRows = Items.FOODS.map(f =>
             `<button onclick="PetGame.buy('food','${f.id}')" class="flex flex-col items-center p-2 rounded-xl bg-white border border-brand-100">
-             <span class="text-[20px]">${f.emoji}</span><span class="text-[10px] font-bold">${f.name}</span>
+             ${assetIcon(f, 'pg-menu-img', 34)}<span class="text-[10px] font-bold">${f.name}</span>
              <span class="text-[9px] font-black text-amber-700">🐾${f.price}</span></button>`).join('');
         const itemRows = Items.ITEMS.map(it => {
             const owned = g.ownedItems.includes(it.id), locked = g.level < it.unlockLv;
             return `<button ${owned || locked ? 'disabled' : `onclick="PetGame.buy('item','${it.id}')"`}
                 class="flex flex-col items-center p-2 rounded-xl border border-brand-100 ${owned ? 'bg-brand-100' : locked ? 'bg-gray-100 opacity-60' : 'bg-white'}">
-                <span class="text-[20px]">${it.emoji}</span><span class="text-[10px] font-bold">${it.name}</span>
+                ${assetIcon(it, 'pg-menu-img', 34)}<span class="text-[10px] font-bold">${it.name}</span>
                 <span class="text-[9px] ${locked ? 'text-gray-400' : 'font-black text-amber-700'}">${owned ? '보유중' : locked ? `Lv.${it.unlockLv} 해금` : `🐾${it.price}`}</span></button>`;
         }).join('');
         const themeRows = Items.THEMES.filter(t => t.price > 0).map(t => {
@@ -326,7 +330,7 @@
             .filter(it => it && it.space === S.space && !placedIds.includes(it.id));
         const rows = avail.length ? avail.map(it =>
             `<button onclick="PetGame.placeOwned('${it.id}')" class="flex flex-col items-center p-2 rounded-xl bg-white border border-brand-100">
-             <span class="text-[20px]">${it.emoji}</span><span class="text-[10px] font-bold">${it.name}</span></button>`).join('')
+             ${assetIcon(it, 'pg-menu-img', 34)}<span class="text-[10px] font-bold">${it.name}</span></button>`).join('')
             : `<p class="text-[10px] text-gray-400 col-span-3">배치할 아이템이 없어요 — 상점에서 구매하세요</p>`;
         sheet(`<div class="flex items-center justify-between mb-2"><b class="text-[12px]">🎨 꾸미기 — 아이템을 끌어서 이동</b>
             <button onclick="PetGame.toggleDecorate()" class="text-[11px] font-bold text-brand-600">완료 ✓</button></div>
