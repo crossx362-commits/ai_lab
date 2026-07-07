@@ -136,7 +136,7 @@ def _delete(items: list[dict]) -> set[str]:
 def _verify(changed: set[str]) -> bool:
     for rel in changed:
         r = subprocess.run([sys.executable, "-m", "py_compile", os.path.join(_root, rel)],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             print(f"❌ py_compile 실패: {rel}\n{r.stderr}")
             return False
@@ -150,7 +150,8 @@ def _rollback(changed: set[str]) -> None:
 def _commit(changed: set[str], n: int) -> bool:
     subprocess.run(["git", "add"] + list(changed), cwd=_root, capture_output=True)
     msg = f"chore(예원): 데드코드 자동정리 — 미사용 함수 {n}개 제거 (코드검수기)"
-    r = subprocess.run(["git", "commit", "-m", msg], cwd=_root, capture_output=True, text=True)
+    r = subprocess.run(["git", "commit", "-m", msg], cwd=_root, capture_output=True,
+                       text=True, encoding="utf-8", errors="replace")
     return r.returncode == 0
 
 
@@ -174,10 +175,23 @@ def _report(high: list[dict], report: list[dict], deleted: bool, committed: bool
     return "\n".join(L)
 
 
+def _market_hours() -> bool:
+    """KR 장중(평일 09:00~15:40). 자동삭제 커밋은 워치독 거래데몬 재배포를 유발하므로
+    이 시간엔 트리거(크론 overdue 캐치업 포함)와 무관하게 삭제를 막고 보고만 한다."""
+    now = datetime.datetime.now()
+    if now.weekday() >= 5:
+        return False
+    return (9, 0) <= (now.hour, now.minute) < (15, 40)
+
+
 def run() -> str:
     high, report = _scan()
     deleted = committed = False
-    if not CHECK_ONLY and high:
+    blocked = not CHECK_ONLY and _market_hours()
+    if blocked and high:
+        report = [dict(it, why="장중 보호 — 삭제 보류(마감 후/주말 재실행)") for it in high] + report
+        high = []
+    if not CHECK_ONLY and not blocked and high:
         changed = _delete(high)
         if _verify(changed):
             committed = _commit(changed, len(high))
