@@ -165,29 +165,6 @@ def _score_atr20_levels(bars: list[dict], t: int) -> tuple[int, float, float, fl
     return _score_atr_levels(bars, t, k=2.0)
 
 
-def _pullback_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
-    """눌림목 진입: 상승추세 중 단기 눌림에서 매수 (모멘텀 추격 대안).
-    추세(종가>MA20·MA20 상승) + 눌림(종가≤MA5) + 고점대비 2~12% 되돌림 → 점수화."""
-    c = [b["c"] for b in bars[:t + 1]]
-    if len(c) < 25:
-        return 0, bars[t]["c"], 0, 0
-    cur = c[-1]
-    ma5 = sum(c[-5:]) / 5
-    ma20 = sum(c[-20:]) / 20
-    ma20_prev = sum(c[-25:-5]) / 20
-    recent_high = max(c[-10:])
-    uptrend = cur > ma20 and ma20 > ma20_prev
-    pullback = cur <= ma5
-    dip = (recent_high - cur) / recent_high if recent_high else 0
-    score = 0
-    if uptrend and pullback and 0.02 <= dip <= 0.12:
-        score = 60 + int(min(dip, 0.12) * 200)  # 되돌림 깊을수록 가점(최대 ~84)
-    entry = cur
-    stop = round(min(ma20, cur) * 0.97)          # MA20 약간 아래 손절
-    target = round(max(recent_high, cur * 1.08))  # 전고 회복 or +8%
-    return score, entry, stop, target
-
-
 def _obv_rising(bars: list[dict], t: int, lookback: int = 10) -> bool:
     """수급 프록시: OBV(누적 방향성 거래량) 추세가 상승인가 = 매집 흐름."""
     if t < lookback + 1:
@@ -202,14 +179,6 @@ def _obv_rising(bars: list[dict], t: int, lookback: int = 10) -> bool:
         series.append(obv)
     # OBV 시작 대비 끝이 상승 + 후반부가 전반부보다 높으면 매집
     return len(series) >= 4 and series[-1] > series[0] and series[-1] > series[len(series) // 2]
-
-
-def _momentum_obv_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
-    """모멘텀 점수 + 수급(OBV) 필터 — OBV 매집 아니면 진입 제외(score 0)."""
-    score, entry, stop, target = _score_levels(bars, t)
-    if not _obv_rising(bars, t):
-        return 0, entry, stop, target
-    return score, entry, stop, target
 
 
 # ── 진입 신호 강화(절대수익): RSI(과매수 회피) · 상대강도(지수 초과) ──────────
@@ -328,21 +297,6 @@ def _combo_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
     score, e, s, tg = _score_levels(bars, t)
     ok = _rel_strength_ok(bars, t) and _rsi(bars, t) <= 70
     return (score if ok else 0), e, s, tg
-
-
-def _meanrev_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
-    """역추세(과매도 반등): '떨어졌으니 오른다' 가설 — RSI<30 과매도면 진입, 평균회귀 목표."""
-    c = [b["c"] for b in bars[:t + 1]]
-    if len(c) < 25:
-        return 0, bars[t]["c"], 0, 0
-    cur = c[-1]
-    ma20 = sum(c[-20:]) / 20
-    recent_low = min(c[-5:])
-    score = 70 if _rsi(bars, t) < 30 else 0      # 과매도 진입
-    entry = cur
-    stop = round(recent_low * 0.95)              # 더 빠지면(칼날) 손절
-    target = round(max(ma20, cur * 1.08))        # 평균(MA20) 회귀 or +8%
-    return score, entry, stop, target
 
 
 # ── 과거 수급(외국인·기관 순매매) 반영 — 네이버 히스토리 병합 ──────────────
@@ -680,7 +634,7 @@ def _collect_variants(months: int, threshold: int, holds: tuple[int, ...]) -> di
 
 
 def compare_strategies(months: int, threshold: int = 60, holds=(7, 10)) -> None:
-    """전략·게이트 비교 — 모멘텀 / +수급(OBV) / +국면(HMM대용) / 눌림목. 동일 데이터·기준.
+    """전략·게이트 비교 — 모멘텀+국면 / ATR손절 / 거래량돌파 / 52주신고가 / RSI·상대강도 필터. 동일 데이터·기준.
     소르티노(하방편차)·칼마(연환산/MDD)·표본유의성(≥30건) 병기(웹 연구 2026-07-05, 다기간 검증은
     --validate 참고 — 단일기간 결과만으로 채택 금지, MIN_TRADES_SIGNIFICANT 미달은 '표본부족' 표시)."""
     results, n_symbols, regime = _collect_variants(months, threshold, holds)
@@ -886,7 +840,7 @@ def main() -> None:
     ap.add_argument("--months", type=int, default=12, help="검증 기간(개월)")
     ap.add_argument("--scan", action="store_true", help="여러 임계값 비교")
     ap.add_argument("--grid", action="store_true", help="기준×보유기간 그리드 (데이터 1회 로드)")
-    ap.add_argument("--compare", action="store_true", help="모멘텀 vs 눌림목 전략 비교")
+    ap.add_argument("--compare", action="store_true", help="전략 변형 비교(모멘텀·ATR손절·돌파·RSI·상대강도)")
     ap.add_argument("--validate", action="store_true",
                      help="다기간(기본 12·24개월) 자동 검증 — 전 기간 표본≥30·흑자·샤프>0 일치해야 채택 판정")
     ap.add_argument("--beargate", action="store_true", help="하락국면 전량차단 vs 역행강세 선별통과 비교")
