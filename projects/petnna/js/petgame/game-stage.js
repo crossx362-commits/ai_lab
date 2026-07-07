@@ -1,25 +1,35 @@
 // 펫게임 스테이지 — DOM 렌더/연출. 로직은 PetGameCore에 위임.
 (function (root) {
     const Core = root.PetGameCore, Items = root.PetGameItems;
-    const S = { space: 'yard', mode: 'play', rootId: null, timers: [] };
+    const S = { space: 'yard', mode: 'play', rootId: null, timers: [], walkTimer: null, moveTimer: null, walkFrame: 0 };
 
     function pet() { return (typeof getActivePet === 'function') ? getActivePet() : null; }
     function toast(m) { if (typeof showToast === 'function') showToast(m); else console.log('[petgame]', m); }
     function esc(x) { return String(x ?? '').replace(/</g, '&lt;'); }
+    function attr(x) { return esc(x).replace(/"/g, '&quot;'); }
 
     // 이미지 로드 실패 → 이모지 폴백 (전역 constraint)
-    function imgOrEmoji(src, emoji, cls, px) {
-        return `<img src="${src}" class="${cls}" style="width:${px}px" draggable="false"
-                 onerror="this.outerHTML='<span class=&quot;${cls}&quot; style=&quot;font-size:${Math.round(px * 0.8)}px;line-height:1&quot;>${emoji}</span>'">`;
+    function imgOrEmoji(src, emoji, cls, px, extraAttrs) {
+        return `<img src="${attr(src)}" class="${cls}" style="width:${px}px" draggable="false" ${extraAttrs || ''}
+                 onerror="if(this.dataset.animTry==='walk'){this.dataset.walkBroken='1';this.src=this.dataset.idleSrc}else{this.outerHTML='<span class=&quot;${cls}&quot; style=&quot;font-size:${Math.round(px * 0.8)}px;line-height:1&quot;>${emoji}</span>'}">`;
+    }
+
+    function spriteMeta(p) {
+        const g = Core.ensureGame(p);
+        const st = Items.stageForLevel(g.level);
+        const type = ['dog', 'cat', 'rabbit', 'hamster'].includes(p.type) ? p.type : 'dog';
+        const fallback = { dog: '🐶', cat: '🐱', rabbit: '🐰', hamster: '🐹' }[type];
+        const base = `images/petgame/pet/${type}_${st.stage}`;
+        return { type, stage: st.stage, fallback, idle: `${base}.png`, walk: [`${base}_walk_1.png`, `${base}_walk_2.png`] };
     }
 
     function petSprite(p, px) {
         const g = Core.ensureGame(p);
         const st = Items.stageForLevel(g.level);
-        const type = ['dog', 'cat', 'rabbit', 'hamster'].includes(p.type) ? p.type : 'dog';
-        const fallback = { dog: '🐶', cat: '🐱', rabbit: '🐰', hamster: '🐹' }[type];
+        const meta = spriteMeta(p);
         const size = Math.round(px * st.scale);
-        return imgOrEmoji(`images/petgame/pet/${type}_${st.stage}.png`, fallback, 'pg-pet-img', size);
+        const data = `data-idle-src="${attr(meta.idle)}" data-walk-srcs="${attr(meta.walk.join('|'))}"`;
+        return imgOrEmoji(meta.idle, meta.fallback, 'pg-pet-img', size, data);
     }
 
     function hudHTML(p, g) {
@@ -58,7 +68,7 @@
         return `
         <div id="pg-stage" class="relative w-full rounded-2xl overflow-hidden" style="aspect-ratio:4/3;background:#cde9f2 url('${theme.img}') center/cover">
           ${placed}
-          <div id="pg-pet" class="absolute" style="left:50%;top:78%;transform:translate(-50%,-100%);transition:left 2.5s ease-in-out">
+          <div id="pg-pet" class="absolute pg-idle pg-facing-right" style="left:50%;top:78%;transform:translate(-50%,-100%);transition:left 2.5s ease-in-out, top 2.5s ease-in-out">
             ${mood}${petSprite(p, 96)}
           </div>
           <div id="pg-fx" class="absolute inset-0 pointer-events-none"></div>
@@ -94,10 +104,68 @@
 
     function setSpace(sp) { S.space = sp; S.mode = 'play'; refresh(); }
 
-    // 펫 산책 루프 — 스테이지 안에서 좌우로 이동
-    function wanderTick() {
+    function setPetIdle(el) {
+        if (!el) return;
+        clearInterval(S.walkTimer); S.walkTimer = null;
+        clearTimeout(S.moveTimer); S.moveTimer = null;
+        el.classList.remove('pg-moving');
+        el.classList.add('pg-idle');
+        const img = el.querySelector('.pg-pet-img');
+        if (img && img.dataset.idleSrc) {
+            img.dataset.animTry = '';
+            img.src = img.dataset.idleSrc;
+        }
+    }
+
+    function startWalkFrames(el) {
+        const img = el && el.querySelector('.pg-pet-img');
+        if (!img || img.dataset.walkBroken === '1') return;
+        const frames = (img.dataset.walkSrcs || '').split('|').filter(Boolean);
+        if (!frames.length) return;
+        clearInterval(S.walkTimer);
+        S.walkFrame = 0;
+        img.dataset.animTry = 'walk';
+        img.src = frames[0];
+        S.walkTimer = setInterval(() => {
+            if (img.dataset.walkBroken === '1') { setPetIdle(el); return; }
+            S.walkFrame = (S.walkFrame + 1) % frames.length;
+            img.dataset.animTry = 'walk';
+            img.src = frames[S.walkFrame];
+        }, 280);
+    }
+
+    function movePetTo(x, y, durationMs) {
         const el = document.getElementById('pg-pet');
-        if (el && S.mode === 'play') el.style.left = (25 + Math.random() * 50).toFixed(0) + '%';
+        if (!el || S.mode !== 'play') return;
+        const prevX = parseFloat(el.style.left) || 50;
+        const targetX = Math.max(18, Math.min(82, x));
+        const targetY = Math.max(50, Math.min(88, y));
+        const img = el.querySelector('.pg-pet-img');
+        if (img) {
+            const depth = 0.8 + (targetY - 50) / 38 * 0.25;
+            img.style.setProperty('--pg-depth', depth.toFixed(2));
+            img.style.setProperty('--pg-face', targetX > prevX ? '-1' : '1');
+        }
+        el.classList.toggle('pg-facing-left', targetX < prevX);
+        el.classList.toggle('pg-facing-right', targetX >= prevX);
+        el.classList.remove('pg-idle');
+        el.classList.add('pg-moving');
+        startWalkFrames(el);
+        el.style.transition = `left ${durationMs}ms ease-in-out, top ${durationMs}ms ease-in-out`;
+        requestAnimationFrame(() => {
+            el.style.left = targetX.toFixed(0) + '%';
+            el.style.top = targetY.toFixed(0) + '%';
+        });
+        clearTimeout(S.moveTimer);
+        S.moveTimer = setTimeout(() => setPetIdle(el), durationMs + 120);
+    }
+
+    // 펫 산책 루프 — 잔디 영역(x 18~82%, y 50~88%)을 상하좌우 자유 이동.
+    // 원근감: 위(멀리)로 갈수록 작게(--pg-depth), 이동 방향으로 몸 뒤집기(--pg-face).
+    function wanderTick() {
+        const x = 18 + Math.random() * 64;
+        const y = 50 + Math.random() * 38;
+        movePetTo(x, y, 2500);
     }
 
     function mount(rootId) {
@@ -108,6 +176,7 @@
         }) });
         const p = pet(); if (p) Core.ensureGame(p);
         S.timers.forEach(clearInterval); S.timers = [];
+        clearInterval(S.walkTimer); clearTimeout(S.moveTimer);
         S.timers.push(setInterval(wanderTick, 4000));
         S.timers.push(setInterval(() => { const q = pet(); if (q) { Core.decay(q, 1 / 60); updateHud(); } }, 60000));
         refresh();
@@ -171,7 +240,7 @@
         foodEl.textContent = food.emoji;
         fx.appendChild(foodEl);
         requestAnimationFrame(() => { foodEl.style.left = '58%'; foodEl.style.top = '74%'; });
-        setTimeout(() => { petEl.style.transition = 'left .9s ease-in-out'; petEl.style.left = '60%'; }, 700);
+        setTimeout(() => { movePetTo(60, 76, 900); }, 700);
         setTimeout(() => {
             foodEl.remove();
             petEl.classList.add('pg-eat');
@@ -180,7 +249,7 @@
             heart.style.cssText = 'position:absolute;left:60%;top:48%';
             heart.innerHTML = `💖 <b style="font-size:11px;color:#a9583e">+${food.xp}XP</b>`;
             fx.appendChild(heart);
-            setTimeout(() => { heart.remove(); petEl.classList.remove('pg-eat'); petEl.style.transition = 'left 2.5s ease-in-out'; done(); }, 1200);
+            setTimeout(() => { heart.remove(); petEl.classList.remove('pg-eat'); setPetIdle(petEl); done(); }, 1200);
         }, 1700);
     }
 
