@@ -1,4 +1,4 @@
-const CACHE = 'petna-v17-claude-design';
+const CACHE = 'petna-v19-petgame-item-assets';
 const STATIC = [
     './',
     './index.html',
