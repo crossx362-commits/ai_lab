@@ -190,6 +190,7 @@ const SAJU_TEMPLATE = `
 
     <!-- 2. 오늘의 운세 섹션 (Lucky Metas 추가하여 여백 차단) -->
     <div id="fortune-test-section" class="hidden space-y-4">
+        <div id="fortune-calendar"></div>
         <div class="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-3xl p-4 text-white flex justify-between items-center shadow-md">
             <div class="flex flex-col">
                 <span class="text-[10px] font-black uppercase tracking-widest opacity-80">Today's Fortune</span>

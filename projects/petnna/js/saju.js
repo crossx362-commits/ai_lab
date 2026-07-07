@@ -1278,6 +1278,9 @@ function switchSajuSubTab(tabName) {
         const p = (typeof getSajuPet === 'function') ? getSajuPet() : null;
         PetHarmonyView.renderPlus('harmony-plus', p && p.harmonyData);
     }
+    if (tabName === 'fortune' && typeof PetHarmonyView !== 'undefined') {
+        PetHarmonyView.renderCalendar('fortune-calendar');
+    }
 
     // Highlight target button
     const activeBtn = document.getElementById('saju-tab-' + tabName);
