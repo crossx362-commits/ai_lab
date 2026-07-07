@@ -568,13 +568,51 @@ def _filter_ok(f: dict, bars: list[dict], t: int) -> bool:
     return False
 
 
+def _trend_levels(bars: list[dict], t: int) -> tuple[int, float, float, float]:
+    """추세질 base 점수 — 돌파일 조건 없이 '상승추세 지속' 자체를 채점(눌림형 스펙 측정용, 2026-07-07).
+    momentum base(_score_levels)는 돌파일에만 60+라 pullback 필터와 AND하면 구조적 거래 0건
+    (모순: 당일 급등 60+ ↔ 고점 대비 3~10% 눌림 동시 불가 — Pullback_Strong 24·36mo 0건 실증).
+    배점은 눌림 중에도 유지되는 큰 추세 척도만: MA20>MA50 정배열(25) + MA20 상승기울기(20)
+    + 종가>MA50(15) + 60일 수익 양(10) = 최대 70. 게이트 60 = 앞 3요소 동시 충족.
+    주의: 종가>MA20은 배점 금지 — 3~10% 눌림이면 MA20 아래로 내려가 눌림형과 재모순(검증됨).
+    무미래참조(bars[:t+1])."""
+    cur, prev = bars[t], bars[t - 1]
+    entry = cur["c"]
+    p = (prev["h"] + prev["l"] + prev["c"]) / 3
+    s1, r1 = 2 * p - prev["h"], 2 * p - prev["l"]
+    stop = s1 if (s1 and s1 < entry) else round(entry * 0.95)
+    target = r1 if (r1 and r1 > entry) else round(entry * 1.10)
+    c = [b["c"] for b in bars[:t + 1]]
+    if len(c) < 61:
+        return 0, entry, stop, target
+    ma20 = sum(c[-20:]) / 20
+    ma50 = sum(c[-50:]) / 50
+    ma20_prev = sum(c[-25:-5]) / 20  # 5일 전 MA20 (기울기 판정)
+    score = 0
+    if ma20 > ma50:
+        score += 25
+    if ma20 > ma20_prev:
+        score += 20
+    if entry > ma50:
+        score += 15
+    if entry > c[-61]:
+        score += 10
+    return score, entry, stop, target
+
+
+_SPEC_BASES = {"momentum": _score_levels, "trend": _trend_levels}
+
+
 def make_spec_levels(spec: dict):
-    """스펙(JSON) → levels_fn. base 모멘텀 점수에 필터들을 AND(하나라도 실패면 진입 안 함).
-    spec = {"filters": [{"type": <_FILTER_TYPES>, "params": {...}}, ...]}. 임의 코드 없음."""
+    """스펙(JSON) → levels_fn. base 점수에 필터들을 AND(하나라도 실패면 진입 안 함).
+    spec = {"base": "momentum"(돌파형, 기본)|"trend"(추세질 — pullback 등 눌림형 필수),
+            "filters": [{"type": <_FILTER_TYPES>, "params": {...}}, ...]}. 임의 코드 없음.
+    미지 base는 momentum 폴백(안전)."""
     filters = spec.get("filters", [])
+    base_fn = _SPEC_BASES.get(spec.get("base", "momentum"), _score_levels)
 
     def levels(bars: list[dict], t: int):
-        score, e, s, tg = _score_levels(bars, t)
+        score, e, s, tg = base_fn(bars, t)
         if score <= 0:
             return 0, e, s, tg
         for f in filters:
