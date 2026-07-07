@@ -298,7 +298,7 @@ svg{vertical-align:-2px}
 <div id="wrap"><div id="map"></div></div>
 <div id="tip"></div>
 <div class="foot">
- <span>크기 = <span id="hint_size">시가총액</span> · 색 = 등락률 · 클릭 → 차트</span>
+ <span>정렬 = <span id="hint_size">시가총액</span> · 색 = 등락률 · 클릭 → 차트</span>
  <div class="legend" id="legend"></div>
 </div>
 <script>
@@ -307,87 +307,6 @@ let DATA={kr:[],us:[],crypto:[],indices:{kr:[],us:[],crypto:[]}},TS='-',cur='all
 const NC=[42,40,36],UPC=[242,54,69],DNC=[49,130,246];
 function color(c){const t=Math.max(-1,Math.min(1,(c||0)/3));const M=t>=0?UPC:DNC,a=Math.abs(t);
  return 'rgb('+NC.map((n,i)=>Math.round(n+(M[i]-n)*a)).join(',')+')'}
-// ── 스퀘리파이드 트리맵 ──
-function squarify(items,x,y,w,h){
- items=items.filter(i=>i.v>0).sort((a,b)=>b.v-a.v);
- const out=[],total=items.reduce((s,i)=>s+i.v,0);
- if(!total||w<=2||h<=2)return out;
- const sc=w*h/total;let L=items.map(i=>({d:i.d,v:i.v*sc}));
- let cx=x,cy=y,cw=w,ch=h,row=[];
- const worst=(r,len)=>{const s=r.reduce((a,b)=>a+b.v,0);let mx=0,mn=1e18;
-  for(const q of r){mx=Math.max(mx,q.v);mn=Math.min(mn,q.v)}
-  return Math.max(len*len*mx/(s*s),(s*s)/(len*len*mn))};
- // 최소 두께 보장(2026-07-03): 극단 분포(삼성 50%·한미반도체 0.6%)에서 꼬리 타일이
- // 3~7px 실오라기가 돼 '짤림'으로 보이던 문제 — 행/열 두께와 행 내부 셀에 16px 바닥.
- const MINT=20;
- const place=(len)=>{const tot=row.reduce((a,b)=>a+b.v,0)||1;
-  let out2=row.map(q=>q.v/tot*len);
-  if(len>MINT*row.length){
-   out2=out2.map(v=>Math.max(v,MINT));
-   const over=out2.reduce((a,b)=>a+b,0)-len;
-   if(over>0){const flex=out2.map(v=>v-MINT),fs=flex.reduce((a,b)=>a+b,0)||1;
-    out2=out2.map((v,i)=>v-over*flex[i]/fs)}}
-  return out2};
- const flush=()=>{const s=row.reduce((a,b)=>a+b.v,0);if(!s){row=[];return}
-  if(cw>=ch){const rw=Math.min(Math.max(s/ch,MINT),cw);
-   const hs=place(ch);let off=0;
-   for(let i=0;i<row.length;i++){out.push({d:row[i].d,x:cx,y:cy+off,w:rw,h:hs[i]});off+=hs[i]}
-   cx+=rw;cw-=rw}
-  else{const rh=Math.min(Math.max(s/cw,MINT),ch);
-   const ws=place(cw);let off=0;
-   for(let i=0;i<row.length;i++){out.push({d:row[i].d,x:cx+off,y:cy,w:ws[i],h:rh});off+=ws[i]}
-   cy+=rh;ch-=rh}
-  row=[]};
- while(L.length){const len=Math.min(cw,ch);
-  if(!row.length||worst(row.concat([L[0]]),len)<=worst(row,len))row.push(L.shift());
-  else flush()}
- flush();return out}
-// 스트립 레이아웃(2026-07-03, '정렬' 피드백): 섹터 내부는 크기순 좌→우, 줄 단위 상→하,
-// 줄 안에서는 높이 동일 — 들쭉날쭉한 중첩 사각형 대신 줄 맞은 격자 느낌.
-// 최소 크기(두께 20px·폭 22px)를 배분 단계에서 보장하므로 별도 보정 패스 불필요.
-function stripLayout(items,x,y,w,h){
- const MH=20,MW=22;
- items=items.filter(i=>i.v>0).sort((a,b)=>b.v-a.v);
- const total=items.reduce((s,i)=>s+i.v,0);
- if(!total||w<8||h<8)return[];
- const sc=w*h/total,L=items.map(i=>({d:i.d,v:i.v*sc}));
- const aspect=(row)=>{const sh=row.reduce((a,b)=>a+b.v,0)/w;
-  return row.reduce((a,q)=>{const ww=q.v/sh;return a+Math.max(ww/sh,sh/ww)},0)/row.length};
- const strips=[];let cur=[];
- while(L.length){
-  if(!cur.length){cur.push(L.shift());continue}
-  if(aspect(cur.concat([L[0]]))<=aspect(cur))cur.push(L.shift());
-  else{strips.push(cur);cur=[]}}
- if(cur.length)strips.push(cur);
- // 외톨이 꼬리 스트립(예: 반도체의 한미반도체)은 풀폭 띠가 되므로 분리해뒀다가
- // 마지막 줄의 막내 타일 아래에 사각형 블록으로 중첩(사용자 피드백: '사각형으로').
- let tail=null;
- if(strips.length>=2&&strips[strips.length-1].length===1)tail=strips.pop()[0];
- // 줄 높이: 면적 비례 → 최소 MH 보장 → 전체 h로 정규화
- let hs=strips.map(st=>st.reduce((a,b)=>a+b.v,0)/w).map(v=>Math.max(v,MH));
- const k=h/hs.reduce((a,b)=>a+b,0);hs=hs.map(v=>v*k);
- const out=[];let oy=y;
- strips.forEach((st,i)=>{
-  const sh=hs[i],stot=st.reduce((a,b)=>a+b.v,0);
-  let ws=st.map(q=>q.v/stot*w);
-  if(w>MW*st.length){ // 줄 내부 최소 폭 보장(비례 재배분)
-   ws=ws.map(v=>Math.max(v,MW));
-   const over=ws.reduce((a,b)=>a+b,0)-w;
-   if(over>0){const fx=ws.map(v=>v-MW),fs=fx.reduce((a,b)=>a+b,0)||1;
-    ws=ws.map((v,j)=>v-over*fx[j]/fs)}}
-  let ox=x;
-  st.forEach((q,j)=>{out.push({d:q.d,x:ox,y:oy,w:ws[j],h:sh});ox+=ws[j]});
-  out[out.length-1].w+=x+w-ox; // 오른쪽 끝 정렬(누적 오차 제거)
-  oy+=sh});
- if(tail&&out.length){
-  const lastN=strips[strips.length-1].length;
-  const host=out.slice(out.length-lastN).reduce((a,b)=>a.w*a.h<b.w*b.h?a:b);
-  let th=Math.max(tail.v/host.w,host.w/4,MH);   // 종횡비 4:1 이내 사각형 지향
-  th=Math.min(th,host.h*0.45);                  // 호스트를 과도하게 잠식하지 않게
-  // 호스트 '위쪽'에 배치(사용자 피드백: 밑에 깔리게 하지 마) — 우상단 사각형 블록
-  out.push({d:tail.d,x:host.x,y:host.y,w:host.w,h:th});
-  host.y+=th;host.h-=th}
- return out}
 // ── 포맷터 ──
 // 통화: 미장만 USD, 국장·크립토(업비트 KRW)는 원화
 const P=(m,p)=>m==='us'?'$'+Number(p||0).toLocaleString():Number(p||0).toLocaleString()+'원';
@@ -400,32 +319,34 @@ const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 function marketRows(){return cur==='all'?[...(DATA.kr||[]),...(DATA.us||[]),...(DATA.crypto||[])]:(DATA[cur]||[])}
 function renderMarket(mkt,rows,ox,oy,W,H,html){
  if(!rows.length||W<40||H<40)return;
+ const G=2,HDR=15;
+ // 섹터 그룹(입력 순서 유지) — 내부는 정렬키(시총/거래대금) 내림차순
  const by={};rows.forEach(x=>{(by[x.sector]=by[x.sector]||[]).push(x)});
- const secs=Object.entries(by).map(([name,items])=>{
-  const tot=items.reduce((s,x)=>s+sizeOf(x),0);
-  const wch=items.reduce((s,x)=>s+(x.change||0)*sizeOf(x),0)/(tot||1);
-  return {name,items,tot,wch}});
- const secRects=squarify(secs.map(s=>({d:s,v:s.tot})),ox,oy,W,H);
- const G=2;
- for(const r of secRects){
-  const s=r.d,cls=s.wch>0.02?'up':s.wch<-0.02?'dn':'fl';
-  // 작은 섹터는 헤더 생략 — 18px 헤더가 타일 공간을 다 먹어 '짤림'처럼 보이던 문제
-  const HD=(r.h<48||r.w<64)?0:16;
-  // 섹터 내부: √압축(82:1→9:1, 꼬리 가시성) + 스트립 배치(줄 맞은 정렬)
-  const inner=stripLayout(s.items.map(x=>({d:x,v:Math.sqrt(sizeOf(x))})),0,0,Math.max(1,r.w-G*2),Math.max(1,r.h-HD-G*2));
-  const tiles=inner.map(t=>{
-   const x=t.d,dim=query&&!(x.name.toLowerCase().includes(query)||String(x.code).toLowerCase().includes(query));
-   const fs=Math.max(9,Math.min(21,Math.sqrt(t.w*t.h)/5.2));
-   const showN=t.w>34&&t.h>14,showC=t.w>36&&t.h>34;
-   const lbl=(showN?'<div class="tn" style="font-size:'+(fs*0.72).toFixed(1)+'px">'+esc(x.name)+'</div>':'')+
+ const secs=Object.entries(by).map(([name,items])=>({name,items:items.slice().sort((a,b)=>sizeOf(b)-sizeOf(a))}));
+ // 모든 타일을 같은 크기 정사각형으로 — 변 s를 이분탐색해 세로(H)에 딱 맞는 최대값 채택
+ const need=s=>{const cols=Math.max(1,Math.floor((W+G)/(s+G)));
+  let h=0;for(const sc of secs)h+=HDR+Math.ceil(sc.items.length/cols)*(s+G)+G;return{cols,h}};
+ let lo=8,hi=Math.min(W,H),s=lo;
+ for(let i=0;i<26;i++){const mid=(lo+hi)/2;if(need(mid).h<=H){s=mid;lo=mid}else hi=mid}
+ const cols=need(s).cols,side=Math.max(1,s-1),fs=Math.max(8,Math.min(15,s/4.4));
+ let y=oy;
+ for(const sc of secs){
+  const avg=sc.items.reduce((a,x)=>a+(x.change||0),0)/sc.items.length;
+  const cls=avg>0.02?'up':avg<-0.02?'dn':'fl';
+  if(W>=80)html.push('<div style="position:absolute;left:'+ox+'px;top:'+y.toFixed(1)+'px;width:'+W+'px;height:'+HDR+
+   'px;font-size:10.5px;font-weight:700;color:#a09d96;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+   esc(sc.name)+' <b class="'+cls+'">'+(avg>0?'+':'')+avg.toFixed(2)+'%</b></div>');
+  y+=HDR;
+  sc.items.forEach((x,i)=>{
+   const tx=ox+(i%cols)*(s+G),ty=y+Math.floor(i/cols)*(s+G);
+   const dim=query&&!(x.name.toLowerCase().includes(query)||String(x.code).toLowerCase().includes(query));
+   const showN=s>30,showC=s>22;
+   const lbl=(showN?'<div class="tn" style="font-size:'+(fs*0.8).toFixed(1)+'px">'+esc(x.name)+'</div>':'')+
              (showC?'<div class="tc" style="font-size:'+fs.toFixed(1)+'px">'+(x.change>0?'+':'')+x.change+'%</div>':'');
-   return '<div class="tile'+(dim?' dimmed':'')+'" style="left:'+t.x.toFixed(1)+'px;top:'+t.y.toFixed(1)+
-    'px;width:'+Math.max(1,t.w-1).toFixed(1)+'px;height:'+Math.max(1,t.h-1).toFixed(1)+'px;background:'+color(x.change)+
-    '" data-c="'+esc(x.code)+'" data-m="'+mkt+'">'+lbl+'</div>'}).join('');
-  html.push('<div class="sec" style="left:'+r.x.toFixed(1)+'px;top:'+r.y.toFixed(1)+'px;width:'+Math.max(1,r.w-1).toFixed(1)+
-   'px;height:'+Math.max(1,r.h-1).toFixed(1)+'px">'+
-   (HD?'<div class="sh">'+esc(s.name)+(r.w>=120?' <b class="'+cls+'">'+(s.wch>0?'+':'')+s.wch.toFixed(2)+'%</b>':'')+'</div>':'')+
-   '<div style="position:absolute;left:'+G+'px;top:'+(HD||G)+'px;right:'+G+'px;bottom:'+G+'px">'+tiles+'</div></div>')}
+   html.push('<div class="tile'+(dim?' dimmed':'')+'" style="left:'+tx.toFixed(1)+'px;top:'+ty.toFixed(1)+
+    'px;width:'+side.toFixed(1)+'px;height:'+side.toFixed(1)+'px;background:'+color(x.change)+
+    '" data-c="'+esc(x.code)+'" data-m="'+mkt+'">'+lbl+'</div>')});
+  y+=Math.ceil(sc.items.length/cols)*(s+G)+G}
 }
 function render(){
  renderSub();   // 칩/지표를 먼저 그려 상단 바 높이를 확정한 뒤 지도 영역을 측정(넘침 방지)
