@@ -75,6 +75,12 @@ US_SECTORS = {
 KR_INDICES = [("069500", "KOSPI200"), ("229200", "코스닥150")]
 US_INDICES = [("SPY", "S&P500"), ("QQQ", "나스닥100"), ("DIA", "다우"), ("^VIX", "VIX")]
 
+# 크립토(업비트 KRW, 공개 API — 인증 불필요). 메이저는 고정 섹터, 나머지는 24h 거래대금 상위를 '알트'로.
+CRYPTO_MAJORS = {"KRW-BTC": "비트코인", "KRW-ETH": "이더리움", "KRW-XRP": "리플", "KRW-SOL": "솔라나",
+                 "KRW-ADA": "에이다", "KRW-DOGE": "도지코인", "KRW-TRX": "트론", "KRW-AVAX": "아발란체"}
+CRYPTO_EXCLUDE = {"KRW-USDT", "KRW-USDC", "KRW-DAI", "KRW-TUSD"}   # 스테이블 제외
+CRYPTO_ALT_N = int(os.getenv("HEATMAP_CRYPTO_ALT_N", "16"))         # 알트 표시 수
+
 
 def _collect_kr() -> tuple[list[dict], list[dict]]:
     """국장 — KIS 현재가/등락/거래대금/시가총액(주가×상장주식수) + 지수 프록시."""
@@ -204,18 +210,65 @@ def _collect_us() -> tuple[list[dict], list[dict]]:
     return out, idx
 
 
+def _collect_crypto() -> tuple[list[dict], list[dict]]:
+    """크립토(업비트 KRW) — 전 마켓 현재가/등락/24h 거래대금 배치 조회. 시총은 미제공(None,
+    트리맵은 거래대금으로 폴백). 지수 칩은 BTC·ETH. 실패 시 빈 리스트(열지도에서 생략)."""
+    try:
+        req = urllib.request.Request("https://api.upbit.com/v1/market/all?isDetails=false",
+                                     headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            mkts = json.loads(r.read())
+        krw = {m["market"]: m.get("korean_name", m["market"])
+               for m in mkts if m["market"].startswith("KRW-") and m["market"] not in CRYPTO_EXCLUDE}
+        rows: list[dict] = []
+        codes = list(krw)
+        for i in range(0, len(codes), 100):
+            chunk = ",".join(codes[i:i + 100])
+            req = urllib.request.Request(f"https://api.upbit.com/v1/ticker?markets={chunk}",
+                                         headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                rows += json.loads(r.read())
+            time.sleep(0.15)
+        by = {t["market"]: t for t in rows}
+        out = []
+        # 메이저(고정) + 알트(24h 거래대금 상위)
+        alt_pool = sorted((m for m in by if m not in CRYPTO_MAJORS),
+                          key=lambda m: float(by[m].get("acc_trade_price_24h", 0)), reverse=True)
+        for mkt in list(CRYPTO_MAJORS) + alt_pool[:CRYPTO_ALT_N]:
+            t = by.get(mkt)
+            if not t:
+                continue
+            out.append({
+                "code": mkt, "name": CRYPTO_MAJORS.get(mkt, krw.get(mkt, mkt)),
+                "sector": "메이저" if mkt in CRYPTO_MAJORS else "알트",
+                "price": float(t.get("trade_price") or 0),
+                "change": round(float(t.get("signed_change_rate") or 0) * 100, 2),
+                "value": float(t.get("acc_trade_price_24h") or 0),   # 24h 거래대금(원)
+                "mcap": None,                                        # 업비트 미제공 — 거래대금 폴백
+            })
+        idx = [{"name": lbl, "price": float(by[m]["trade_price"]),
+                "change": round(float(by[m].get("signed_change_rate") or 0) * 100, 2)}
+               for m, lbl in (("KRW-BTC", "BTC"), ("KRW-ETH", "ETH")) if m in by]
+        return out, idx
+    except Exception as e:
+        print(f"[열지도] 크립토 수집 실패: {e}")
+        return [], []
+
+
 def build() -> dict:
     kr, kr_idx = _collect_kr()
     us, us_idx = _collect_us()
+    crypto, crypto_idx = _collect_crypto()
     data = {"ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "kr": kr, "us": us, "indices": {"kr": kr_idx, "us": us_idx}}
+            "kr": kr, "us": us, "crypto": crypto,
+            "indices": {"kr": kr_idx, "us": us_idx, "crypto": crypto_idx}}
     try:
         tmp = CACHE.with_name(CACHE.name + ".tmp")
         tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, CACHE)
     except Exception as e:
         print(f"캐시 기록 실패: {e}")
-    print(f"[열지도] 국장 {len(data['kr'])}종목 · 미장 {len(data['us'])}종목 수집 ({data['ts']})")
+    print(f"[열지도] 국장 {len(data['kr'])} · 미장 {len(data['us'])} · 크립토 {len(data['crypto'])}종목 수집 ({data['ts']})")
     return data
 
 

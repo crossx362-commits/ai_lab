@@ -218,7 +218,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()}); 
 HEATMAP_HTML = """<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>시장 열지도 — 국장·미장</title>
+<title>시장 열지도 — 국장·미장·크립토</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='14' width='8' height='16' rx='1.5' fill='%23089981'/><rect x='12' y='6' width='8' height='24' rx='1.5' fill='%23f23645'/><rect x='22' y='2' width='8' height='28' rx='1.5' fill='%23089981'/></svg>">
 <style>
 :root{--bg:#181715;--panel:#252320;--line:rgba(250,249,245,.1);--tx:#faf9f5;--dim:#a09d96;--up:#f23645;--dn:#3182f6;--acc:#cc785c}
@@ -279,6 +279,7 @@ svg{vertical-align:-2px}
   <button id="t_all" class="on" onclick="setMkt('all')">🌏 전체</button>
   <button id="t_kr" onclick="setMkt('kr')">🇰🇷 국장</button>
   <button id="t_us" onclick="setMkt('us')">🇺🇸 미장</button>
+  <button id="t_crypto" onclick="setMkt('crypto')">🪙 크립토</button>
  </div>
  <div class="seg sm" id="size">
   <button id="s_mcap" class="on" onclick="setSize('mcap')">시가총액</button>
@@ -301,7 +302,7 @@ svg{vertical-align:-2px}
  <div class="legend" id="legend"></div>
 </div>
 <script>
-let DATA={kr:[],us:[],indices:{kr:[],us:[]}},TS='-',cur='all',sizeMode='mcap',query='';
+let DATA={kr:[],us:[],crypto:[],indices:{kr:[],us:[],crypto:[]}},TS='-',cur='all',sizeMode='mcap',query='';
 // ── 색: 국내 관행(상승 빨강·하락 파랑) 팔레트 보간 (중립 → ±3%에서 포화) ──
 const NC=[42,40,36],UPC=[242,54,69],DNC=[49,130,246];
 function color(c){const t=Math.max(-1,Math.min(1,(c||0)/3));const M=t>=0?UPC:DNC,a=Math.abs(t);
@@ -388,14 +389,15 @@ function stripLayout(items,x,y,w,h){
   host.y+=th;host.h-=th}
  return out}
 // ── 포맷터 ──
-const P=(m,p)=>m==='kr'?Number(p||0).toLocaleString()+'원':'$'+Number(p||0).toLocaleString();
-const CAP=(m,v)=>!v?'—':(m==='kr'?(v>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString()+'억')
+// 통화: 미장만 USD, 국장·크립토(업비트 KRW)는 원화
+const P=(m,p)=>m==='us'?'$'+Number(p||0).toLocaleString():Number(p||0).toLocaleString()+'원';
+const CAP=(m,v)=>!v?'—':(m!=='us'?(v>=1e12?(v/1e12).toFixed(1)+'조':Math.round(v/1e8).toLocaleString()+'억')
  :(v>=1e12?'$'+(v/1e12).toFixed(2)+'T':'$'+Math.round(v/1e9)+'B'));
-const VAL=(m,v)=>!v?'—':(m==='kr'?Math.round(v/1e8).toLocaleString()+'억':'$'+(v>=1e9?(v/1e9).toFixed(1)+'B':Math.round(v/1e6)+'M'));
+const VAL=(m,v)=>!v?'—':(m!=='us'?Math.round(v/1e8).toLocaleString()+'억':'$'+(v>=1e9?(v/1e9).toFixed(1)+'B':Math.round(v/1e6)+'M'));
 const sizeOf=x=>(sizeMode==='mcap'?(x.mcap||x.value):x.value)||1;
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 // ── 렌더 ──
-function marketRows(){return cur==='all'?[...(DATA.kr||[]),...(DATA.us||[])]:(DATA[cur]||[])}
+function marketRows(){return cur==='all'?[...(DATA.kr||[]),...(DATA.us||[]),...(DATA.crypto||[])]:(DATA[cur]||[])}
 function renderMarket(mkt,rows,ox,oy,W,H,html){
  if(!rows.length||W<40||H<40)return;
  const by={};rows.forEach(x=>{(by[x.sector]=by[x.sector]||[]).push(x)});
@@ -431,12 +433,14 @@ function render(){
  const W=wrap.clientWidth,H=wrap.clientHeight,html=[];
  el.innerHTML='';
  if(cur==='all'){
-  // 국장·미장 동시(한눈에) — 가로 여유 있으면 좌우, 아니면 상하 분할
+  // 국장·미장·크립토 동시(한눈에) — 가로 여유 있으면 3열, 아니면 3행
   const LB=15,gap=8,vert=W>=H*1.1;
-  const panes=vert?[['kr',0,0,(W-gap)/2,H],['us',(W-gap)/2+gap,0,(W-gap)/2,H]]
-                  :[['kr',0,0,W,(H-gap)/2],['us',0,(H-gap)/2+gap,W,(H-gap)/2]];
+  const MKL={kr:'🇰🇷 국장',us:'🇺🇸 미장',crypto:'🪙 크립토'};
+  const mkts=['kr','us','crypto'].filter(m=>(DATA[m]||[]).length),n=mkts.length||1;
+  const panes=vert?mkts.map((m,i)=>[m,(W-gap*(n-1))/n*i+gap*i,0,(W-gap*(n-1))/n,H])
+                  :mkts.map((m,i)=>[m,0,(H-gap*(n-1))/n*i+gap*i,W,(H-gap*(n-1))/n]);
   for(const [m,x,y,w,h] of panes){
-   html.push('<div class="mkl" style="left:'+(x+2)+'px;top:'+y+'px">'+(m==='kr'?'🇰🇷 국장':'🇺🇸 미장')+'</div>');
+   html.push('<div class="mkl" style="left:'+(x+2)+'px;top:'+y+'px">'+MKL[m]+'</div>');
    renderMarket(m,DATA[m]||[],x,y+LB,w,h-LB,html)}
  }else{
   renderMarket(cur,DATA[cur]||[],0,0,W,H,html)}
@@ -458,7 +462,7 @@ function renderSub(){
   '<i style="width:'+(dn/T*100)+'%;background:var(--dn)"></i>';
  document.getElementById('meta').innerHTML='갱신 '+esc(TS)+'<br>1분마다 자동 새로고침';}
 // ── 상호작용 ──
-function setMkt(m){cur=m;for(const k of ['all','kr','us'])
+function setMkt(m){cur=m;for(const k of ['all','kr','us','crypto'])
  document.getElementById('t_'+k).className=m===k?'on':'';render()}
 function setSize(s){sizeMode=s;document.getElementById('s_mcap').className=s==='mcap'?'on':'';
  document.getElementById('s_value').className=s==='value'?'on':'';
@@ -486,6 +490,7 @@ document.getElementById('map').addEventListener('click',e=>{
  const t=e.target.closest('.tile');if(!t)return;
  const c=t.dataset.c,m=t.dataset.m||cur;
  window.open(m==='kr'?'https://finance.naver.com/item/main.naver?code='+c
+  :m==='crypto'?'https://upbit.com/exchange?code=CRIX.UPBIT.'+encodeURIComponent(c)
   :'https://www.tradingview.com/symbols/'+encodeURIComponent(c.replace('^',''))+'/','_blank')});
 // 범례
 document.getElementById('legend').innerHTML=[-3,-2,-1,0,1,2,3].map(v=>
@@ -493,7 +498,7 @@ document.getElementById('legend').innerHTML=[-3,-2,-1,0,1,2,3].map(v=>
 // ── 로드/리사이즈 ──
 async function load(){
  try{const d=await (await fetch('/api/heatmap')).json();
-  DATA={kr:d.kr||[],us:d.us||[],indices:d.indices||{kr:[],us:[]}};TS=d.ts||'-';render()}
+  DATA={kr:d.kr||[],us:d.us||[],crypto:d.crypto||[],indices:d.indices||{kr:[],us:[],crypto:[]}};TS=d.ts||'-';render()}
  catch(e){document.getElementById('meta').textContent='수집 대기 중…'}}
 let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(render,150)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
@@ -507,7 +512,7 @@ class Handler(BaseHTTPRequestHandler):
             body = json.dumps(collect(), ensure_ascii=False).encode("utf-8")
             ctype = "application/json; charset=utf-8"
         elif self.path.startswith("/api/heatmap"):
-            body = json.dumps(_j(CACHE / "somi_heatmap.json", {"kr": [], "us": [], "ts": "-"}),
+            body = json.dumps(_j(CACHE / "somi_heatmap.json", {"kr": [], "us": [], "crypto": [], "ts": "-"}),
                               ensure_ascii=False).encode("utf-8")
             ctype = "application/json; charset=utf-8"
         elif self.path.startswith("/heatmap"):
