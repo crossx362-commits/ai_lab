@@ -748,6 +748,19 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         return []
     held = load_positions()
     done, bought = [], 0
+    # 당일 손절 종목 재진입 금지(2026-07-07 오너 지적 "비쌀때 사서 쌀때 파냐") — 덕성이 11:27 매수
+    # →11:55 손절 -4.68% 후 같은 날 재매수되는 복수매매(churn)가 실측됨. 손절은 '오늘은 이 종목이
+    # 아니다'는 신호 — 같은 날 재진입은 떨어지는 칼 잡기라 차단(env SOMI_STOP_REENTRY_BLOCK=false로 해제).
+    stopped_today: set[str] = set()
+    if os.getenv("SOMI_STOP_REENTRY_BLOCK", "true").lower() in {"1", "true", "yes"}:
+        today = datetime.now().strftime("%Y-%m-%d")
+        try:   # closed_trades는 list — dict 전용 _load() 대신 직접 파싱
+            closed = json.loads(CLOSED_TRADES_FILE.read_text(encoding="utf-8")) if CLOSED_TRADES_FILE.exists() else []
+        except Exception:
+            closed = []
+        for t in closed[-80:]:
+            if t.get("reason") == "stop" and str(t.get("ts_close", "")).startswith(today):
+                stopped_today.add(t.get("symbol"))
     # 자금배분(사용자 지시 2026-07-02): 예수금 200만원(고정)만 남기고 전액 투자.
     # 배분량 = (현금 - 고정유보금)을 후보 확신 가중으로 분배. 유보 도달 시 신규매수 보류.
     reserve = float(os.getenv("SOMI_CASH_RESERVE_KRW", "2000000"))
@@ -767,6 +780,9 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
         if bought >= _paper_auto_max():   # 실제 체결분만 상한 계산(스킵 메시지는 미포함)
             break
         if p["symbol"] in held:
+            continue
+        if p["symbol"] in stopped_today:
+            done.append(f"⛔ {p['name']} 재진입 차단 — 오늘 손절한 종목(복수매매 방지)")
             continue
         entry = p.get("entry") or 0
         if entry <= 0:                 # F2: 유효 진입가 없으면 스킵 — 수량 폭주(예산//1) 방지
