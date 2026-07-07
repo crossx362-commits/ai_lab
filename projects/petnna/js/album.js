@@ -503,6 +503,7 @@ function submitWeightLog() {
     if (pet.weightHistory.length > 24) pet.weightHistory.splice(24);
     pet.weight = String(val);
     if (typeof saveState === 'function') saveState();
+    if (typeof PetGame !== 'undefined') PetGame.earnCare('health');
     closeWeightLogModal();
     renderGrowthChart();
     if (typeof showToast === 'function') showToast(`체중 ${val}kg 기록 완료! ⚖️`);
@@ -935,7 +936,9 @@ function submitDiaryAuth() {
     
     deselectActiveSticker();
     resetStickerCanvas();
-    
+
+    if (typeof PetGame !== 'undefined') PetGame.earnCare('diary');
+
     showCustomDialog({
         title: "일기 저장 성공! 📕✨",
         message: "오늘의 예쁜 추억이 일기장에 차곡차곡 쌓였습니다.\n지금 아래 타임라인에서 확인해보시겠습니까?",

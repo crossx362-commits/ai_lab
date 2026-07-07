@@ -413,6 +413,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch(e) {
             console.warn('switchTab 오류:', e);
         }
+
+        setTimeout(() => { if (typeof PetGame !== 'undefined') PetGame.earnCare('attend'); }, 1500);
     } else {
         if (loginOverlay) {
             loginOverlay.style.display = 'flex';

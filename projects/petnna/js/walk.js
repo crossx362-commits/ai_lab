@@ -575,6 +575,8 @@ function stopAndSaveWalk() {
             walks.unshift(completedSession);
             saveState();
 
+            if (typeof PetGame !== 'undefined') PetGame.earnCare('walk', parseFloat(walkDistanceRun.toFixed(2)));
+
             const currentPet = getActivePet();
             if (currentPet) {
                 currentPet.happy = Math.min(100, currentPet.happy + 25);
