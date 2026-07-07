@@ -39,6 +39,7 @@ CONTINUOUS_DAEMONS = {
     "yewon_growth": "growth_engine.py",
     "strategy_lab": "strategy_lab.py",   # 한별: 전략연구→백테스트검증→모의반영 (주 1회 자체 게이트)
     "somi_us": "somi_us_trader.py",   # 미장 모의 (야간 세션 외엔 대기 루프)
+    "somi_crypto": "somi_crypto_trader.py",   # 크립토 모의 (업비트 공개시세, 24h, 오너 지시 2026-07-07)
     "dashboard": "status_dashboard.py",  # 현황 페이지 — 등록해야 자동배포·생존관리 대상
     # Windows 정시 잡 실행자(영숙스케줄) — macOS는 아래 launchd 집계가 이 키를 덮어써 오탐 없음
     "scheduler": "schedule_manager.py",
@@ -91,6 +92,7 @@ _AGENT_LABELS = {
     "yewon_growth": "예원 (성장엔진)",
     "strategy_lab": "한별 (전략랩 — 연구·검증·반영)",
     "somi_us": "소미 (미장 모의)",
+    "somi_crypto": "소미 (크립토 모의)",
     "dashboard": "대시보드 (현황 페이지)",
     "harness": "하네스 (시스템 점검)",
 }
