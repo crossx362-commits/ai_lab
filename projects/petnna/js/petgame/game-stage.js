@@ -89,7 +89,7 @@
             <div class="mt-2">${stageHTML(p, g)}</div>
             ${actionsHTML()}
           </div>`;
-        if (S.mode === 'decorate') bindDecorate();
+        if (S.mode === 'decorate') bindDecorateReal();
     }
 
     function setSpace(sp) { S.space = sp; S.mode = 'play'; refresh(); }
@@ -239,11 +239,94 @@
         Core.save(); S.space = t.space; refresh(); toast(`${t.name} 적용!`);
     }
 
+    function toggleDecorate() {
+        S.mode = S.mode === 'decorate' ? 'play' : 'decorate';
+        refresh();
+        if (S.mode === 'decorate') openPalette();
+        else closeSheet();
+    }
+
+    // 보유했지만 현재 공간에 미배치인 아이템 팔레트
+    function openPalette() {
+        const p = pet(); if (!p) return;
+        const g = Core.ensureGame(p);
+        const placedIds = itemsOf(g).filter(e => !e.emoji).map(e => e.id);
+        const avail = g.ownedItems
+            .map(id => Items.getItem(id))
+            .filter(it => it && it.space === S.space && !placedIds.includes(it.id));
+        const rows = avail.length ? avail.map(it =>
+            `<button onclick="PetGame.placeOwned('${it.id}')" class="flex flex-col items-center p-2 rounded-xl bg-white border border-brand-100">
+             <span class="text-[20px]">${it.emoji}</span><span class="text-[10px] font-bold">${it.name}</span></button>`).join('')
+            : `<p class="text-[10px] text-gray-400 col-span-3">배치할 아이템이 없어요 — 상점에서 구매하세요</p>`;
+        sheet(`<div class="flex items-center justify-between mb-2"><b class="text-[12px]">🎨 꾸미기 — 아이템을 끌어서 이동</b>
+            <button onclick="PetGame.toggleDecorate()" class="text-[11px] font-bold text-brand-600">완료 ✓</button></div>
+            <div class="grid grid-cols-3 gap-1.5">${rows}</div>
+            <p class="text-[10px] text-gray-400 mt-2">배치된 아이템 탭: 🔍＋/－ 크기 · 📦 보관</p>`);
+    }
+
+    function placeOwned(itemId) {
+        const p = pet(); const g = Core.ensureGame(p);
+        const it = Items.getItem(itemId); if (!it) return;
+        itemsOf(g).push({ uid: 'i' + Date.now(), id: itemId, x: 50, y: 70, size: it.basePx });
+        Core.save(); refresh(); openPalette();
+    }
+
+    function resizePlaced(idx, dir) {
+        const g = Core.ensureGame(pet());
+        const e = itemsOf(g)[idx]; if (!e) return;
+        e.size = Math.max(32, Math.min(280, Math.round(e.size * (dir > 0 ? 1.15 : 0.87))));
+        Core.save(); refresh(); openPalette();
+    }
+
+    function storePlaced(idx) {
+        const g = Core.ensureGame(pet());
+        itemsOf(g).splice(idx, 1);
+        Core.save(); refresh(); openPalette();
+    }
+
+    // 꾸미기 모드에서 스테이지 아이템 드래그 + 선택 툴바
+    function bindDecorateReal() {
+        const stage = document.getElementById('pg-stage'); if (!stage) return;
+        stage.querySelectorAll('.pg-item').forEach(el => {
+            const idx = parseInt(el.dataset.idx, 10);
+            el.addEventListener('pointerdown', (ev) => {
+                ev.preventDefault();
+                el.setPointerCapture(ev.pointerId);
+                let moved = false;
+                const rect = stage.getBoundingClientRect();
+                const onMove = (mv) => {
+                    moved = true;
+                    const x = Math.max(4, Math.min(96, (mv.clientX - rect.left) / rect.width * 100));
+                    const y = Math.max(10, Math.min(96, (mv.clientY - rect.top) / rect.height * 100));
+                    el.style.left = x + '%'; el.style.top = y + '%';
+                    el._pos = { x, y };
+                };
+                const onUp = () => {
+                    el.removeEventListener('pointermove', onMove);
+                    el.removeEventListener('pointerup', onUp);
+                    if (moved && el._pos) {
+                        const g = Core.ensureGame(pet());
+                        const e = itemsOf(g)[idx];
+                        if (e) { e.x = Math.round(el._pos.x); e.y = Math.round(el._pos.y); Core.save(); }
+                    } else {
+                        // 탭 = 선택 툴바 표시
+                        sheet(`<div class="flex items-center gap-2">
+                          <b class="text-[12px] flex-1">아이템 편집</b>
+                          <button onclick="PetGame.resizePlaced(${idx},1)" class="px-3 py-1.5 rounded-lg bg-white border text-[12px]">🔍＋</button>
+                          <button onclick="PetGame.resizePlaced(${idx},-1)" class="px-3 py-1.5 rounded-lg bg-white border text-[12px]">🔍－</button>
+                          <button onclick="PetGame.storePlaced(${idx})" class="px-3 py-1.5 rounded-lg bg-white border text-[12px]">📦 보관</button>
+                          <button onclick="PetGame.toggleDecorate()" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-[12px] font-bold">완료</button></div>`);
+                    }
+                };
+                el.addEventListener('pointermove', onMove);
+                el.addEventListener('pointerup', onUp);
+            });
+        });
+    }
+
     root.PetGame = Object.assign(root.PetGame || {}, {
         mount, refresh, setSpace, earnCare, updateHud, state: S,
         openFeed, feedNow, closeSheet, openShop, buy, applyTheme,
-        toggleDecorate() { toast('준비 중'); },   // Task 6에서 교체
+        toggleDecorate, placeOwned, resizePlaced, storePlaced,
     });
-    function bindDecorate() {} // Task 6에서 교체
-    root.PetGameStageInternals = { bindDecorate: (fn) => { bindDecorate = fn; } };
 })(typeof window !== 'undefined' ? window : globalThis);
