@@ -1319,3 +1319,37 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
 .pg-float{animation:pgFloat 1.1s ease-out forwards;font-size:20px}
 @keyframes pgFloat{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-46px)}}
 @media (prefers-reduced-motion: reduce){.pg-eat,.pg-float{animation:none}}
+
+/* ── 📱 하단 네비 가시성 수리(2026-07-07 오너 피드백) ─────────────────
+   원인 ①: .mobile-bottom-nav 베이스 스타일 부재 — fixed 하단 고정이 없어 페이지 끝에 흘러감
+   원인 ②: .mobile-tab-btn span { 9.5px !important }가 이모지 아이콘 span까지 축소 */
+.mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0; left: 0; right: 0;
+    z-index: 45;
+    display: flex;
+    align-items: stretch;
+    background: var(--color-bg-card, #fffdf9);
+    border-top: 1px solid var(--color-border-card, #e6dfd8);
+    box-shadow: 0 -4px 18px rgba(51, 41, 31, 0.10);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    min-height: 62px;
+}
+.mobile-bottom-nav.hidden { display: none !important; }
+.mobile-tab-btn span:first-child {
+    font-size: 24px !important;
+    line-height: 1 !important;
+    opacity: 0.95;
+    margin-top: 0 !important;
+}
+.mobile-tab-btn span:last-child {
+    font-size: 12px !important;
+    opacity: 1 !important;
+    margin-top: 3px !important;
+}
+.mobile-tab-btn.text-gray-400 { color: #8a7a66 !important; }
+@media (max-width: 767px) {
+    body:has(.mobile-bottom-nav:not(.hidden)) {
+        padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    }
+}
