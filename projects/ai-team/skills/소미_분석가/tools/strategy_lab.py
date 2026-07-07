@@ -61,7 +61,9 @@ PAPER_CFG = CACHE / "somi_paper_strategies.json"  # advisor가 읽는 모의 전
 # 가설 라벨 → advisor의 모의 전략 키(활성/가점 반영 대상). 라벨은 backtest._STRATEGY_VARIANTS와 일치해야 함.
 LIVE_MAP = {"+52주신고가+국면": "52w", "+거래량돌파+국면": "breakout"}
 BONUS_MIN, BONUS_MAX = 0, 12
-RUN_EVERY_DAYS = 7
+# 주1→일1 상향(오너 "연구 개선" 2026-07-07): 백로그 7건이 주1회론 7주 — 연구 처리량이 병목.
+# 장 마감 후(16:30↑)에만 돌아 KIS 부하 무관. env SOMI_LAB_EVERY_DAYS로 조정.
+RUN_EVERY_DAYS = int(os.getenv("SOMI_LAB_EVERY_DAYS", "1"))
 
 
 def _load(p: Path, default):
@@ -163,7 +165,11 @@ def _validate(hyp: dict, hold: int) -> tuple[str, dict, str]:
 
 
 def _pick(backlog: list[dict], ledger: list[dict]) -> dict:
-    """다음 검증 대상 — 로컬 올라마가 과거 이력 보고 우선순위 판단(실패 시 가장 오래 미검증 폴백)."""
+    """다음 검증 대상 — 로컬 올라마가 과거 이력 보고 우선순위 판단(실패 시 가장 오래 미검증 폴백).
+    오너 지시 가설(source에 'owner')은 미검증이면 LLM 판단 없이 최우선(2026-07-07)."""
+    owner_first = [h for h in backlog if not h.get("tested_ts") and "owner" in str(h.get("source", ""))]
+    if owner_first:
+        return owner_first[0]
     fallback = sorted(backlog, key=lambda h: h.get("tested_ts", ""))[0]
     try:
         from _shared.llm import text
