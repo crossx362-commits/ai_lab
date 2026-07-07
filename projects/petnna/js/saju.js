@@ -925,7 +925,8 @@ function generateHarmonyReport() {
     
     const resContainer = document.getElementById('harmony-result-container');
     if (resContainer) resContainer.classList.remove('hidden');
-    
+    if (typeof PetHarmonyView !== 'undefined') PetHarmonyView.enrichOnMeasure();
+
     // 1. 사주 궁합 점수 (Real score check)
     let sajuScore = 0;
     if (typeof savedSajuScore !== 'undefined' && savedSajuScore > 0) {
@@ -1055,11 +1056,13 @@ function generateHarmonyReport() {
     }
 
     if (typeof pets !== 'undefined' && pets.length > 0) {
-        getSajuPet().harmonyData = harmonyData;
+        const sp = getSajuPet();
+        sp.harmonyData = Object.assign({}, sp.harmonyData, harmonyData);
         if (typeof saveState === 'function') saveState();
         if (typeof updatePetInSupabase === 'function') {
             try { updatePetInSupabase(getSajuPet()); } catch(e) {}
         }
+        if (typeof PetHarmonyView !== 'undefined') PetHarmonyView.renderPlus('harmony-plus', sp.harmonyData);
     }
 }
 
@@ -1270,6 +1273,11 @@ function switchSajuSubTab(tabName) {
     
     const targetSection = document.getElementById(targetSectionId);
     if (targetSection) targetSection.classList.remove('hidden');
+
+    if (tabName === 'harmony' && typeof PetHarmonyView !== 'undefined') {
+        const p = (typeof getSajuPet === 'function') ? getSajuPet() : null;
+        PetHarmonyView.renderPlus('harmony-plus', p && p.harmonyData);
+    }
 
     // Highlight target button
     const activeBtn = document.getElementById('saju-tab-' + tabName);

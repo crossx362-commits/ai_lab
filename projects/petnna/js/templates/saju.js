@@ -464,6 +464,7 @@ const SAJU_TEMPLATE = `
                 </div>
             </div>
         </div>
+        <div id="harmony-plus"></div>
     </div>
 
     <!-- 6. 아케이드 섹션 -->
