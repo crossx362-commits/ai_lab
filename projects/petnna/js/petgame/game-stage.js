@@ -103,6 +103,7 @@
     function mount(rootId) {
         S.rootId = rootId;
         Core.init({ saveFn: root.PetGameSave || (() => {
+            if (typeof root.saveState === 'function') { root.saveState(); return; }
             try { localStorage.setItem('petna_pets', JSON.stringify(root.pets || [])); } catch (e) {}
         }) });
         const p = pet(); if (p) Core.ensureGame(p);

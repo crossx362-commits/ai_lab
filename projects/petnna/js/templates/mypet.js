@@ -103,7 +103,7 @@ const MYPET_TEMPLATE = `
 
             <!-- 설정 메뉴 (접기/펼치기) -->
             <div id="room-settings-menu" class="hidden border-t border-amber-50 bg-amber-50/40 px-5 py-3">
-                <div class="grid grid-cols-5 gap-2">
+                <div class="grid grid-cols-4 gap-2">
                     <button onclick="openNotebookModal()"
                         class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
                         <i class="fa-solid fa-address-book text-brand-500 text-lg"></i>
@@ -119,77 +119,11 @@ const MYPET_TEMPLATE = `
                         <i class="fa-solid fa-paw text-amber-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">방 설정</span>
                     </button>
-                    <button onclick="toggleStickerPicker()"
-                        class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-rose-300 hover:bg-rose-50 transition-all">
-                        <i class="fa-solid fa-wand-magic-sparkles text-rose-400 text-lg"></i>
-                        <span class="text-[10px] font-black text-gray-600">꾸미기</span>
-                    </button>
                     <button onclick="openPetRegistrationModal()"
                         class="room-settings-action flex flex-col items-center gap-1.5 p-2.5 bg-white rounded-xl border border-amber-100 hover:border-brand-300 hover:bg-brand-50 transition-all">
                         <i class="fa-solid fa-plus text-brand-500 text-lg"></i>
                         <span class="text-[10px] font-black text-gray-600">펫 추가</span>
                     </button>
-                </div>
-
-                <!-- 꾸미기 패널 -->
-                <div id="room-sticker-picker-panel" class="hidden mt-3 bg-white border border-rose-100 p-3 rounded-2xl space-y-3 text-xs">
-                    <div class="flex items-center justify-between pb-1.5 border-b border-gray-100">
-                        <span class="font-black text-gray-700"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-rose-400"></i>방 꾸미기</span>
-                        <div class="flex items-center gap-2">
-                            <button onclick="switchDecorTab('decor')" id="decor-tab-btn" class="decor-tab-btn is-active text-[9px] font-black px-2 py-0.5 rounded-lg transition-all">꾸미기</button>
-                            <button onclick="switchDecorTab('shop')" id="shop-tab-btn" class="decor-tab-btn text-[9px] font-black px-2 py-0.5 rounded-lg transition-all">🐾 상점</button>
-                        </div>
-                    </div>
-                    <!-- 방 테마 -->
-                    <div>
-                        <p class="text-[9px] font-black text-gray-500 mb-1.5">🎨 방 테마</p>
-                        <div class="flex gap-2">
-                            <button class="room-theme-btn flex flex-col items-center gap-0.5" data-theme="cozy" onclick="applyRoomTheme('cozy')" title="아늑한 방">
-                                <span class="room-theme-swatch" style="background:linear-gradient(135deg,#fef7ee 50%,#e8cfa0 50%)"></span>
-                                <span class="text-[8px] text-gray-500 font-bold">아늑</span>
-                            </button>
-                            <button class="room-theme-btn flex flex-col items-center gap-0.5" data-theme="mint" onclick="applyRoomTheme('mint')" title="민트 방">
-                                <span class="room-theme-swatch" style="background:linear-gradient(135deg,#edfaf4 50%,#b8e0c8 50%)"></span>
-                                <span class="text-[8px] text-gray-500 font-bold">민트</span>
-                            </button>
-                            <button class="room-theme-btn flex flex-col items-center gap-0.5" data-theme="purple" onclick="applyRoomTheme('purple')" title="보라 방">
-                                <span class="room-theme-swatch" style="background:linear-gradient(135deg,#f5f0fe 50%,#d4c0f0 50%)"></span>
-                                <span class="text-[8px] text-gray-500 font-bold">보라</span>
-                            </button>
-                            <button class="room-theme-btn flex flex-col items-center gap-0.5" data-theme="sky" onclick="applyRoomTheme('sky')" title="하늘 방">
-                                <span class="room-theme-swatch" style="background:linear-gradient(135deg,#eaf4fe 50%,#b8d8f0 50%)"></span>
-                                <span class="text-[8px] text-gray-500 font-bold">하늘</span>
-                            </button>
-                            <button class="room-theme-btn flex flex-col items-center gap-0.5" data-theme="pink" onclick="applyRoomTheme('pink')" title="핑크 방">
-                                <span class="room-theme-swatch" style="background:linear-gradient(135deg,#fef0f4 50%,#f0c0cc 50%)"></span>
-                                <span class="text-[8px] text-gray-500 font-bold">핑크</span>
-                            </button>
-                            <button class="room-theme-btn flex flex-col items-center gap-0.5" data-theme="dark" onclick="applyRoomTheme('dark')" title="밤 방">
-                                <span class="room-theme-swatch" style="background:linear-gradient(135deg,#2a2a3e 50%,#1e1e2e 50%)"></span>
-                                <span class="text-[8px] text-gray-500 font-bold">밤</span>
-                            </button>
-                        </div>
-                    </div>
-                    <!-- 아이템 -->
-                    <div>
-                        <p class="text-[9px] font-black text-gray-500 mb-1.5">🛋️ 아이템</p>
-                        <div class="flex gap-1.5 flex-wrap mb-2">
-                            <button class="sticker-cat-btn is-active px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-black text-gray-600 transition-all" data-cat="가구" onclick="renderStickerPickerCategory('가구')">가구</button>
-                            <button class="sticker-cat-btn px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-black text-gray-600 transition-all" data-cat="식물" onclick="renderStickerPickerCategory('식물')">식물</button>
-                            <button class="sticker-cat-btn px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-black text-gray-600 transition-all" data-cat="장난감" onclick="renderStickerPickerCategory('장난감')">장난감</button>
-                            <button class="sticker-cat-btn px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-black text-gray-600 transition-all" data-cat="음식" onclick="renderStickerPickerCategory('음식')">음식</button>
-                            <button class="sticker-cat-btn px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-black text-gray-600 transition-all" data-cat="기타" onclick="renderStickerPickerCategory('기타')">기타</button>
-                        </div>
-                        <div id="sticker-emoji-grid" class="grid grid-cols-8 gap-1"></div>
-                    </div>
-                    <!-- 상점 패널 (기본 숨김) -->
-                    <div id="room-shop-panel" class="hidden space-y-2">
-                        <div class="flex items-center justify-between">
-                            <p class="text-[9px] font-black text-gray-500">코인으로 프리미엄 아이템 구매</p>
-                            <span id="room-shop-coin-display" class="text-[10px] font-black text-amber-600">🐾 0</span>
-                        </div>
-                        <div id="room-shop-grid" class="space-y-1.5"></div>
-                    </div>
                 </div>
 
                 <!-- 집사 설정 패널 -->
@@ -243,34 +177,6 @@ const MYPET_TEMPLATE = `
                         <div class="flex-1 space-y-2">
                             <input type="text" id="settings-pet-name" placeholder="반려동물 이름" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-amber-400 text-xs">
                             <input type="text" id="settings-room-name-input" placeholder="방 이름 🏠" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-amber-400 text-xs">
-                            <div class="room-layout-picker grid grid-cols-2 gap-2">
-                                <button type="button" id="room-layout-living" onclick="setRoomLayoutForActivePet('living')"
-                                    class="room-layout-option room-layout-preview-card is-active" aria-pressed="true">
-                                    <span class="room-layout-preview living">
-                                        <span class="preview-sofa"></span>
-                                        <span class="preview-rug"></span>
-                                        <span class="preview-pet left"></span>
-                                        <span class="preview-pet right"></span>
-                                    </span>
-                                    <span class="room-layout-copy">
-                                        <strong><i class="fa-solid fa-house text-[11px]"></i> 거실형</strong>
-                                        <small>차분한 여백 중심</small>
-                                    </span>
-                                </button>
-                                <button type="button" id="room-layout-circle" onclick="setRoomLayoutForActivePet('circle')"
-                                    class="room-layout-option room-layout-preview-card" aria-pressed="false">
-                                    <span class="room-layout-preview circle">
-                                        <span class="preview-line"></span>
-                                        <span class="preview-pet top"></span>
-                                        <span class="preview-pet left"></span>
-                                        <span class="preview-pet right"></span>
-                                    </span>
-                                    <span class="room-layout-copy">
-                                        <strong><i class="fa-solid fa-circle-nodes text-[11px]"></i> 교감형</strong>
-                                        <small>마음이 이어지는 배치</small>
-                                    </span>
-                                </button>
-                            </div>
                             <div class="flex gap-1.5">
                                 <button onclick="changePetPresetPhoto('https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300')" class="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-100 hover:scale-110 transition-transform"><img loading="lazy" src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover"></button>
                                 <button onclick="changePetPresetPhoto('https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=300')" class="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-100 hover:scale-110 transition-transform"><img loading="lazy" src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover"></button>

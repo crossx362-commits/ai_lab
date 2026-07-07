@@ -322,6 +322,9 @@ const SupabaseService = {
                         if (!dbPet.sajuData && localPet.sajuData) dbPet.sajuData = localPet.sajuData;
                         if (!dbPet.harmonyData && localPet.harmonyData) dbPet.harmonyData = localPet.harmonyData;
                         if (!dbPet.mbtiCode && localPet.mbtiCode) dbPet.mbtiCode = localPet.mbtiCode;
+                        // 펫게임(마이펫 육성) 상태는 DB 스키마에 없음 — 로컬 보존 필수(없으면 리셋됨)
+                        if (localPet.game) dbPet.game = localPet.game;
+                        if (typeof localPet.pawCoins === 'number') dbPet.pawCoins = localPet.pawCoins;
                     }
                     return dbPet;
                 });
