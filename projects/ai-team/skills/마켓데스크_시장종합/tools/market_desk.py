@@ -27,7 +27,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.notify import publish_report, send  # noqa: E402
-from _shared.llm import text, gemini, claude_code, gpt_codex  # noqa: E402
+from _shared.llm import text  # noqa: E402
 from _shared import research  # noqa: E402
 from _shared import growth  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
@@ -97,15 +97,11 @@ def _build_issue_impact(disclosures: list, us: dict, asia: dict, eu: dict) -> No
     impact = {}
     evaluated = False   # LLM 평가가 실제 수행됐는지 — 실패 시 빈 값으로 덮어쓰지 않기 위한 구분
     try:
-        # issue_impact는 소미 매매 판단의 핵심 입력 → JSON 신뢰성 우선. 로컬 모델(json_mode 미적용)은
-        # 파싱 실패가 잦아 구독(ClaudeCode·GPT_codex)→Gemini→로컬 순으로 고정.
-        # 유료 API(Claude·GPT)는 주석 처리(오너 지시 2026-07-06 — 유료 API 미사용).
-        resp = (claude_code(prompt, max_tokens=900, json_mode=True)
-                or gpt_codex(prompt, max_tokens=900, json_mode=True)
-                or gemini(prompt, max_tokens=900, temperature=0.2, json_mode=True)
-                # or claude(prompt, max_tokens=900, json_mode=True)
-                # or gpt(prompt, max_tokens=900, temperature=0.2, json_mode=True)
-                or text(prompt, json_mode=True, max_tokens=900, temperature=0.2, task="blog"))
+        # 로컬 우선(2026-07-07): 기존 구독→Gemini→로컬 고정 체인이 호출당 30~40초(claude -p 실패
+        # ~15s + Gemini 429)를 낭비해 소미 발굴 사이클을 ~9분으로 늘리고 fast_watch를 굶겼다.
+        # 로컬 gemma는 format:json으로 신뢰 가능(가드레일 2026-07-05) — text(lm_first=True)가
+        # Ollama→구독(ClaudeCode·GPT_codex)→Gemini 순서라 실패 시 클라우드 폴백은 그대로 유지.
+        resp = text(prompt, json_mode=True, max_tokens=900, temperature=0.2, task="blog", lm_first=True)
         if resp:
             try:
                 raw = _json.loads(resp)
@@ -159,7 +155,7 @@ def _expand_value_chain(impact: dict, max_add: int = 6) -> None:
                 f"'{nm}'의 호재: {v.get('reason', '')}\n"
                 "이 호재로 직접 수혜받는 한국 상장사(밸류체인·공급망)를 3개까지 골라라. 확실한 것만, 대형주 우선.\n"
                 'JSON 객체만: {"beneficiaries": ["종목명", ...]}',
-                json_mode=True, max_tokens=150, temperature=0.2, lm_first=False,
+                json_mode=True, max_tokens=150, temperature=0.2, lm_first=True,  # 로컬 우선(2026-07-07) — 발굴 사이클 지연 방지
             )
             if resp:
                 a, b = resp.find("{"), resp.rfind("}")

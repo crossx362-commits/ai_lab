@@ -598,8 +598,11 @@ def judge_with_news(p: dict, hist: dict, brief: str) -> dict:
         "위 수급과 '며칠간 뉴스 흐름'을 종합해 매수 판단을 내리고,\n"
         "필요한 만큼만 진입/손절/목표를 조정해 JSON으로만 답하라."
     )
+    # 로컬 우선(2026-07-07): 클라우드 우선이 후보당 30~40초(claude -p ~15s 실패 + Gemini 429)를
+    # 낭비해 발굴 사이클이 ~9분으로 늘고 fast_watch(매수 실행자)가 굶어 종일 무체결이 됐다.
+    # 로컬 gemma는 format:json으로 신뢰 가능(가드레일 2026-07-05) — 실패 시 구독 체인 폴백은 유지.
     raw = llm_text(user, system=NEWS_JUDGE_SYSTEM_PAPER if _is_paper() else NEWS_JUDGE_SYSTEM,
-                   json_mode=True, max_tokens=300, temperature=0.3, lm_first=False)
+                   json_mode=True, max_tokens=300, temperature=0.3, lm_first=True)
     j = _parse_json(raw)
     if not j or "verdict" not in j:
         # LLM 미응답 → 수급만으로 판단. 모의는 유망 수급이면 buy(판정 실패가 매수 전면차단이 되지 않게), 실거래는 watch.
