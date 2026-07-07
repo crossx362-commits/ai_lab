@@ -40,13 +40,20 @@
         const st = Items.stageForLevel(g.level);
         const need = Core.xpForLevel(g.level);
         const xpPct = g.level >= 10 ? 100 : Math.min(100, Math.round(g.xp / need * 100));
+        let buff = '';
+        try {
+            if (typeof PetHarmony !== 'undefined' && p.harmonyData && p.harmonyData.elements
+                && PetHarmony.todayIndex(p.harmonyData.score || p.harmonyData.avgScore, p.harmonyData.elements.pet.dominant) >= 70) {
+                buff = `<span class="text-[9px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full mr-1">💞1.2x</span>`;
+            }
+        } catch (e) {}
         return `
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="font-black text-[15px]">${esc(p.name)}</span>
             <span class="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">Lv.${g.level} ${st.name}</span>
           </div>
-          <span class="text-[12px] font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">🐾 ${p.pawCoins || 0}</span>
+          <span class="flex items-center">${buff}<span class="text-[12px] font-black text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">🐾 ${p.pawCoins || 0}</span></span>
         </div>
         <div class="mt-1.5 h-[6px] bg-brand-100 rounded-full overflow-hidden"><div class="h-full bg-brand-500 rounded-full" style="width:${xpPct}%"></div></div>
         <div class="flex gap-3 mt-1.5 text-[10px] font-bold text-gray-500">

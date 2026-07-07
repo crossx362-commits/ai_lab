@@ -97,8 +97,16 @@
         g.foods[foodId] -= 1;
         g.hunger = Math.min(100, g.hunger + f.hunger);
         g.happy = Math.min(100, g.happy + f.happy);
-        const levelUp = addXp(pet, f.xp);   // 내부에서 save
-        return { ok: true, msg: `냠냠! ${f.name} 맛있다! (+${f.xp}XP)`, food: f, levelUp };
+        let xpGain = f.xp;
+        // 조화도 버프: 오늘 궁합 ≥70 → XP 1.2배 (하모니 모듈·측정 데이터 없으면 무영향)
+        try {
+            if (typeof PetHarmony !== 'undefined' && pet.harmonyData && pet.harmonyData.elements) {
+                const idx = PetHarmony.todayIndex(pet.harmonyData.score || pet.harmonyData.avgScore, pet.harmonyData.elements.pet.dominant);
+                if (idx >= 70) xpGain = Math.round(f.xp * 1.2);
+            }
+        } catch (e) {}
+        const levelUp = addXp(pet, xpGain);   // 내부에서 save
+        return { ok: true, msg: `냠냠! ${f.name} 맛있다! (+${xpGain}XP)`, food: f, levelUp };
     }
 
     const CARE = { walk: { per: 20, cap: 100 }, health: { flat: 15 }, diary: { flat: 10 }, attend: { flat: 10 } };
@@ -127,8 +135,9 @@
 
     function decay(pet, hours) {
         const g = ensureGame(pet);
-        g.hunger = Math.max(0, g.hunger - 3 * hours);
-        g.happy = Math.max(0, g.happy - 1 * hours);
+        const soft = (pet.harmonyData && pet.harmonyData.elements) ? 0.8 : 1;
+        g.hunger = Math.max(0, g.hunger - 3 * hours * soft);
+        g.happy = Math.max(0, g.happy - 1 * hours * soft);
         save();
     }
 
