@@ -1310,3 +1310,12 @@ body.theme-dark .walk-diary-draft { background:linear-gradient(135deg,rgba(227,1
 body.theme-dark .streak-badge { box-shadow:0 2px 8px rgba(227,119,54,0.5) !important; }
 body.theme-dark .empty-state-title { color:#e2e2e9 !important; }
 body.theme-dark .field-error-msg { color:#fb7185 !important; }
+
+/* ── 펫게임 ─────────────────────────────── */
+.pg-bubble{position:absolute;top:-34px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #e6dfd8;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.pg-editable{outline:2px dashed #cc785c;outline-offset:3px;border-radius:8px;cursor:grab;touch-action:none}
+.pg-eat{animation:pgEat .5s ease-in-out 2}
+@keyframes pgEat{0%,100%{transform:translate(-50%,-100%) scale(1)}50%{transform:translate(-50%,-100%) scale(1.08,0.92)}}
+.pg-float{animation:pgFloat 1.1s ease-out forwards;font-size:20px}
+@keyframes pgFloat{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-46px)}}
+@media (prefers-reduced-motion: reduce){.pg-eat,.pg-float{animation:none}}

@@ -286,40 +286,7 @@ const MYPET_TEMPLATE = `
             <!-- 메인 콘텐츠 -->
             <div class="px-5 pb-5 space-y-4">
 
-                <!-- 스테이지: 불규칙 배치 (집사 중앙, 펫들 주변) -->
-                <div class="room-stage relative w-full h-[480px] md:h-[560px] flex items-center justify-center pt-5 pb-3">
-                    <!-- Dog Paradise Field (isometric) -->
-                    <img aria-hidden="true" class="room-decor-layer" src="images/dog_paradise_field.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;border-radius:inherit;object-fit:cover;">
-                    <!-- SVG 목줄 연결선 -->
-                    <svg id="leash-svg" viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
-                        <!-- JS로 동적 생성 -->
-                    </svg>
-
-                    <!-- 집사 (드래그 가능) -->
-                    <div class="absolute" id="butler-stage-wrapper" style="left: 50%; top: 82%; transform: translate(-50%, -100%); z-index: 10; cursor: grab;">
-                        <div class="flex flex-col items-center gap-1">
-                            <div id="butler-graphic-container" onclick="triggerButlerPhotoUploadDirect()"
-                                class="butler-stage-core w-24 h-24 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative"
-                                title="집사 사진 변경">
-                                <img id="butler-stage-avatar" src="images/park_manager.png" class="w-24 h-24 object-contain" style="filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3))" alt="Park Manager">
-                                <img loading="lazy" id="butler-stage-image" class="hidden w-24 h-24 object-cover rounded-full border-4 border-brand-400 shadow-xl">
-                            </div>
-                            <input type="file" id="butler-direct-upload" accept="image/*" class="hidden" onchange="uploadButlerPhotoDirect(event)">
-                            <span id="butler-stage-name" class="text-[10px] text-amber-700 font-black bg-amber-50/90 border border-amber-200 px-2 py-0.5 rounded-full">👑 집사</span>
-                        </div>
-                    </div>
-
-                    <!-- 말풍선 (집사 위, 폭 제한) -->
-                    <div id="pet-speech-bubble" class="room-speech-bubble absolute bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold py-1.5 px-2.5 rounded-xl keep-all text-center shadow-sm" style="left: 50%; top: 4%; transform: translateX(-50%); z-index: 11; max-width: 178px; white-space: normal; line-height: 1.4;">
-                        <span id="pet-bubble-text">산책 가요! 🐕</span>
-                        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-50 border-r border-b border-amber-200 rotate-45"></div>
-                    </div>
-
-                    <!-- 반려동물들 (겹침 방지 배치) -->
-                    <div id="pet-stage-list" class="absolute inset-0" style="z-index: 5;">
-                        <!-- renderPetStageList() - 각 펫을 원형으로 배치 -->
-                    </div>
-                </div>
+                <div id="petgame-root" class="w-full"></div>
 
                 <!-- 펫 스탯바 + 코인 + 데일리 미션 -->
                 <div class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 space-y-1.5">

@@ -1218,7 +1218,14 @@ function showOnboardingCard() {
 
 function renderMyPets() {
     initMypetWeatherWidget();
-    renderPetStageList();
+    if (typeof PetGame !== 'undefined' && document.getElementById('petgame-root')) {
+        // 레거시 스티커 1회 이관 준비 — ensureGame이 pet._legacyStickers를 읽는다
+        const cur = getActivePet();
+        if (cur && !cur.game) {
+            try { cur._legacyStickers = JSON.parse(localStorage.getItem(`petnna_room_stickers_${cur.id}`)) || []; } catch (e) {}
+        }
+        PetGame.mount('petgame-root');
+    }
     const current = getActivePet();
     if (!current) {
         showOnboardingCard();
