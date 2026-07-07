@@ -111,30 +111,3 @@ def _run_youngsuk(message: str) -> str:
     return status_report()
 
 
-def dispatch_and_execute(ceo_message: str) -> str:
-    report("예원", "업무 지시 처리 시작", ceo_message[:80])
-    print(f"  [예원 CEO] 수신된 업무 지시: {ceo_message}")
-
-    direct = _keyword_dispatch_decision(ceo_message)
-    if direct:
-        decision = direct
-    else:
-        raw = llm_text(ceo_message, system=DISPATCH_SYSTEM, json_mode=True, max_tokens=200, lm_first=False)
-        decision = _parse_dispatch_decision(raw) or _keyword_dispatch_decision(ceo_message)
-
-    if not decision:
-        return "예원 CEO가 지시를 해석하지 못했어요. 소미/영숙/예원 중 누구에게 맡길지 한 번만 더 적어주세요."
-
-    agent = str(decision.get("agent", "")).lower()
-    print(f"  [예원 CEO] 분배 결정: {agent}")
-
-    if agent in {"somi", "소미"}:
-        return _run_somi(ceo_message)
-    if agent in {"youngsuk", "영숙", "secretary"}:
-        return _run_youngsuk(ceo_message)
-    if agent in {"ceo", "예원", "yewon"}:
-        if any(k in ceo_message.lower() for k in ["스킬", "감사", "skill"]):
-            return _run_skill_audit()
-        return _run_harness()
-
-    return f"⚠️ 현재 활성 에이전트가 아닙니다: {decision.get('agent')}. 사용 가능: 소미, 영숙, 예원"

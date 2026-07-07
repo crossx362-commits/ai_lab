@@ -32,9 +32,5 @@ def request_upload_approval(agent: str, platform: str, content_info: dict[str, A
     }
 
 
-def inactive_upload_approval(content_info: dict[str, Any] | None = None) -> dict[str, Any]:
-    return request_upload_approval("inactive", "unknown", content_info or {})
-
-
 if __name__ == "__main__":
     print(request_upload_approval("inactive", "unknown", {"title": "compatibility check"}))

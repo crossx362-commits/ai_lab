@@ -68,27 +68,6 @@ def _realized_stats(trades: list[dict]) -> dict:
     }
 
 
-def _unrealized() -> dict:
-    """현재 보유 모의 포지션의 평가손익."""
-    from somi_kis_reporter import KISClient, num
-    pos = load_positions()
-    if not pos:
-        return {"n": 0, "upnl": 0.0}
-    kis = KISClient()
-    total = 0.0
-    n = 0
-    for sym, p in pos.items():
-        try:
-            cur = num(kis.quote(sym).get("stck_prpr"))
-        except Exception:
-            continue
-        entry = num(p.get("entry"))
-        if cur and entry:
-            total += (cur - entry) / entry * 100
-            n += 1
-    return {"n": n, "upnl": round(total / n, 2) if n else 0.0}
-
-
 def _account() -> dict:
     """실제 모의 계좌 평가액 — 사용자가 예수금과 대조 가능한 '진짜' 성과.
     (거래통계 누적%는 매거래 전액투입 가정이라 실계좌와 다르다 — 이 값이 진짜.)"""
@@ -150,17 +129,6 @@ def _recent(trades: list[dict], days: int = 7) -> list[dict]:
     return out
 
 
-def _mdd(trades: list[dict]) -> float:
-    """청산 순서 기준 누적자산 최대낙폭(%)."""
-    eq = peak = 1.0
-    mdd = 0.0
-    for t in sorted(trades, key=lambda x: str(x.get("ts_close", ""))):
-        eq *= (1 + t.get("ret_pct", 0) / 100)
-        peak = max(peak, eq)
-        mdd = min(mdd, (eq - peak) / peak * 100)
-    return round(mdd, 1)
-
-
 def _group_winrate(trades: list[dict], keyfn) -> list[tuple]:
     groups: dict = {}
     for t in trades:
@@ -173,10 +141,6 @@ def _group_winrate(trades: list[dict], keyfn) -> list[tuple]:
         wins = [r for r in rets if r > 0]
         rows.append((k, len(rets), round(len(wins) / len(rets) * 100), round(sum(rets) / len(rets), 2)))
     return rows
-
-
-def _avg(xs: list[float]) -> float:
-    return round(sum(xs) / len(xs), 2) if xs else 0.0
 
 
 def weekly_condition_analysis(all_trades: list[dict]) -> str:
