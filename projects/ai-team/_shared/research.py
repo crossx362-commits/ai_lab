@@ -342,62 +342,10 @@ def _gemini_search(query: str, max_tokens: int) -> str:
     return ""
 
 
-def _claude_search(query: str, max_tokens: int) -> str:
-    key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not key:
-        return ""
-    try:
-        body = {
-            "model": "claude-haiku-4-5-20251001",
-            "max_tokens": max_tokens,
-            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
-            "messages": [{"role": "user", "content": query}],
-        }
-        req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=json.dumps(body).encode("utf-8"),
-            headers={
-                "content-type": "application/json",
-                "x-api-key": key,
-                "anthropic-version": "2023-06-01",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=40) as r:
-            d = json.loads(r.read().decode("utf-8", "replace"))
-        texts = [b.get("text", "") for b in d.get("content", []) if b.get("type") == "text"]
-        return "\n".join(t for t in texts if t).strip()
-    except Exception:
-        return ""
-
-
-def _gpt_search(query: str, max_tokens: int) -> str:
-    key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not key:
-        return ""
-    try:
-        body = {
-            "model": "gpt-4o-search-preview",
-            "messages": [{"role": "user", "content": query}],
-            "max_tokens": max_tokens,
-        }
-        req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=40) as r:
-            d = json.loads(r.read().decode("utf-8", "replace"))
-        return (d["choices"][0]["message"]["content"] or "").strip()
-    except Exception:
-        return ""
-
-
 def _claude_code_search(query: str, max_tokens: int) -> str:
-    """구독 claude -p(Max)로 웹 검색·요약 — 유료 api.anthropic.com(_claude_search) 대신
-    이미 만들어진 구독 경로(llm._claude_code)를 재사용(오너 지시: 유료 API 금지, 구독 사용).
-    claude -p는 헤드리스에서 WebSearch 도구로 최신 정보를 조회한다. llm은 지연 임포트."""
+    """구독 claude -p(Max)로 웹 검색·요약 — 유료 Anthropic API 직접호출 대신 이미 만들어진
+    구독 경로(llm._claude_code)를 재사용(오너 지시: 유료 API 금지, 구독 사용). claude -p는
+    헤드리스에서 WebSearch 도구로 최신 정보를 조회한다. llm은 지연 임포트."""
     try:
         from _shared import llm
         return (llm.claude_code(query, max_tokens=max_tokens) or "").strip()
@@ -405,8 +353,7 @@ def _claude_code_search(query: str, max_tokens: int) -> str:
         return ""
 
 
-# 유료 API(_claude_search=api.anthropic·_gpt_search=api.openai)는 오너 지시로 로테이션에서 제외 —
-# 실검색은 Gemini(google_search, 무료 할당량), 폴백은 구독 claude -p. 함수 정의는 남기되 미사용.
+# 웹검색 제공자 = Gemini(google_search, 무료 할당량) + 구독 claude -p 폴백. 유료 API 미사용(오너 지시).
 _WEB_PROVIDERS = [_gemini_search, _claude_code_search]
 _web_rr = [0]
 

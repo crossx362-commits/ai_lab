@@ -1,4 +1,5 @@
-"""Unified LLM client - Ollama → GPT → Gemini → Claude fallback chain."""
+"""Unified LLM client — Ollama(로컬) → 구독(claude -p/codex) → Gemini fallback chain.
+유료 API(GPT·Claude Messages)는 미사용(오너 지시) — 관련 함수·별칭 제거됨."""
 import json
 import os
 import re
@@ -8,9 +9,7 @@ import urllib.error
 
 _cache = {}
 _CACHE_TTL = 60
-OPENAI_GPT_MODEL = "gpt-4o-mini"
 GEMINI_MODEL = "gemini-2.5-flash"  # 변경: 2.5 Flash 사용
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")  # 최저가 haiku 고정 — 비용 최소화(오너 지시 2026-07-05). 고품질 필요 시 .env ANTHROPIC_MODEL 오버라이드
 
 
 def _env_bool(name: str, default: str = "1") -> bool:
@@ -161,95 +160,11 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
         return None
 
 
-# ==================== GPT-4o-mini (CLOUD, PAID) ====================
-
-def _gpt(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
-    """Call OpenAI GPT-4o-mini."""
-    if not _cloud_llm_allowed():
-        print("  ⏭️ [GPT] blocked by AI_TEAM_ALLOW_CLOUD_LLM=0")
-        return None
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    if not api_key:
-        return None
-    try:
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
-        payload = {"model": OPENAI_GPT_MODEL, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
-
-        req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-        )
-        with urllib.request.urlopen(req, timeout=60) as r:
-            res = json.loads(r.read())
-        result = res["choices"][0]["message"]["content"].strip()
-        print(f"  ✅ [{OPENAI_GPT_MODEL}] {len(result)} chars")
-        return result
-    except Exception as e:
-        print(f"  ❌ [GPT] {e}")
-        return None
+# 유료 API 경로(_gpt=OpenAI / _claude=Anthropic Messages)는 제거됨 —
+# 유료 API 미사용(오너 지시). 클라우드는 구독 CLI(_claude_code/_gpt_codex) + Gemini만.
 
 
-# ==================== CLAUDE (CLOUD, PAID) ====================
-
-def _claude(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
-    """Call Anthropic Claude (Messages API 직접 호출 — 다른 클라우드와 동일하게 무SDK).
-    주의: Opus 4.8만 temperature 미지원(400) — opus 모델일 때만 전송 생략, haiku/sonnet은 전송해
-    분류(temperature=0) 등이 제대로 반영되게 한다(2026-07-05 haiku 전환).
-    json_mode는 응답 강제 파라미터·프리필이 없어(프리필 400) 지시문 + _json_ok 검증으로 대체."""
-    if not _cloud_llm_allowed():
-        print("  ⏭️ [Claude] blocked by AI_TEAM_ALLOW_CLOUD_LLM=0")
-        return None
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return None
-    # 호출 시점에 재조회 — 데몬이 load_env() 전에 이 모듈을 임포트해도 최신 설정 반영
-    model = os.getenv("ANTHROPIC_MODEL", ANTHROPIC_MODEL) or ANTHROPIC_MODEL
-    try:
-        user_prompt = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
-        payload = {"model": model, "max_tokens": max_tokens,
-                   "messages": [{"role": "user", "content": user_prompt}]}
-        if "opus" not in model:  # Opus만 temperature 미지원 — haiku/sonnet은 전송(분류 temperature=0 반영)
-            payload["temperature"] = temperature
-        if system:
-            payload["system"] = system
-        req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json", "x-api-key": api_key,
-                     "anthropic-version": "2023-06-01"},
-        )
-        with urllib.request.urlopen(req, timeout=120) as r:
-            d = json.loads(r.read())
-        if d.get("stop_reason") == "refusal":
-            print("  ❌ [Claude] refusal")
-            return None
-        result = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text").strip()
-        if not result or (json_mode and not _json_ok(result)):
-            print(f"  ⚠️ [Claude:{model}] {'empty' if not result else 'invalid json'}")
-            return None
-        print(f"  ✅ [Claude:{model}] {len(result)} chars")
-        return result
-    except urllib.error.HTTPError as e:
-        # 에러 본문의 메시지를 노출 — "400 Bad Request"만으론 크레딧 소진/모델명 오류 구분 불가(2026-07-03)
-        try:
-            detail = json.loads(e.read()).get("error", {}).get("message", "")[:120]
-        except Exception:
-            detail = ""
-        print(f"  ❌ [Claude] HTTP {e.code}: {detail}")
-        return None
-    except Exception as e:
-        print(f"  ❌ [Claude] {e}")
-        return None
-
-
-# ==================== GEMINI (CLOUD, PAID) ====================
+# ==================== GEMINI (무료 할당량) ====================
 
 def _gemini(prompt: str, system: str = "", max_tokens: int = 2000, temperature: float = 0.7, json_mode: bool = False) -> str | None:
     """Call Google Gemini 2.5 Flash."""
@@ -384,8 +299,8 @@ def text(
     Default(lm_first 미지정): Ollama(gemma4:12b) → ClaudeCode(구독) → GPT_codex(구독) → Gemini.
     lm_first=True: 명시적 로컬 우선. lm_first=False: 명시적 클라우드 우선.
     클라우드 클로드는 구독(claude -p) 1선 — API 크레딧 막힘 대응(오너 지시 2026-07-05).
-    유료 API(GPT·Claude) 백업은 주석 처리(오너 지시 2026-07-06 — 유료 API 미사용).
-    Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block paid/cloud fallback entirely.
+    유료 API(GPT·Claude Messages)는 제거됨 — 유료 API 미사용(오너 지시).
+    Set AI_TEAM_ALLOW_CLOUD_LLM=0 to block cloud(구독·Gemini) fallback entirely.
     """
     cloud_allowed = _cloud_llm_allowed()
     primary = os.getenv("AI_TEAM_LLM_PRIMARY", "ollama").strip().lower()
@@ -396,9 +311,7 @@ def text(
         lambda: _claude_code(prompt, system, max_tokens, temperature, json_mode),  # 구독 클로드(Max) — 1선
         lambda: _gpt_codex(prompt, system, max_tokens, temperature, json_mode),    # 구독 GPT(Plus) — 2선
         lambda: _gemini(prompt, system, max_tokens, temperature, json_mode),       # Gemini — 무료/할당량
-        # 유료 API 백업 주석 처리(오너 지시 2026-07-06 — 유료 API 미사용)
-        # lambda: _gpt(prompt, system, max_tokens, temperature, json_mode),        # GPT API — 크레딧 백업
-        # lambda: _claude(prompt, system, max_tokens, temperature, json_mode),      # 클로드 API — 크레딧 백업
+        # 유료 API(GPT·Claude Messages) 백업은 제거됨 — 유료 API 미사용(오너 지시)
     ]
 
     # 클라우드 차단 시 로컬만. 아니면 우선순위대로 로컬±클라우드 순서 조립.
@@ -414,10 +327,8 @@ def text(
     return None
 
 
-# Shorthand aliases
+# Shorthand aliases (유료 gpt/claude 별칭 제거 — 유료 API 미사용)
 ollama = _ollama
-gpt = _gpt
 gemini = _gemini
-claude = _claude
 claude_code = _claude_code
 gpt_codex = _gpt_codex

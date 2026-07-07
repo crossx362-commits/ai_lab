@@ -38,7 +38,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from _shared.env import load_env
 from _shared.notify import send
-from _shared.llm import gpt, gemini
+from _shared.llm import text as _shared_text
 from _shared import research
 
 load_env(str(PROJECT_ROOT))
@@ -67,14 +67,13 @@ def num(v: object) -> float:
 
 
 def llm(prompt: str, max_tokens: int = 800) -> str:
-    """GPT → Gemini 폴백"""
-    for fn in [gpt, gemini]:
-        try:
-            result = fn(prompt, max_tokens=max_tokens)
-            if result:
-                return result.strip()
-        except Exception as e:
-            log(f"llm 폴백: {e}")
+    """구독(claude -p/codex) → Gemini → 로컬 통합체인 — 유료 API 미사용(오너 지시)."""
+    try:
+        result = _shared_text(prompt, max_tokens=max_tokens, lm_first=False)
+        if result:
+            return result.strip()
+    except Exception as e:
+        log(f"llm 폴백: {e}")
     return "(분석 실패)"
 
 

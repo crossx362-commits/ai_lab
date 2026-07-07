@@ -20,7 +20,7 @@ class LlmCostControlTest(unittest.TestCase):
         module = load_module("shared_llm_cost_test", ROOT / "_shared" / "llm.py")
         calls = []
         module._ollama = lambda *args, **kwargs: calls.append("ollama") or "local-ok"
-        module._gpt = lambda *args, **kwargs: calls.append("gpt") or "gpt-ok"
+        module._claude_code = lambda *args, **kwargs: calls.append("claude_code") or "sub-ok"
         module._gemini = lambda *args, **kwargs: calls.append("gemini") or "gemini-ok"
 
         result = module.text("hello")
@@ -32,7 +32,7 @@ class LlmCostControlTest(unittest.TestCase):
         module = load_module("shared_llm_no_cloud_test", ROOT / "_shared" / "llm.py")
         calls = []
         module._ollama = lambda *args, **kwargs: calls.append("ollama") or None
-        module._gpt = lambda *args, **kwargs: calls.append("gpt") or "gpt-ok"
+        module._claude_code = lambda *args, **kwargs: calls.append("claude_code") or "sub-ok"
         module._gemini = lambda *args, **kwargs: calls.append("gemini") or "gemini-ok"
 
         old_value = os.environ.get("AI_TEAM_ALLOW_CLOUD_LLM")
@@ -62,7 +62,10 @@ class LlmCostControlTest(unittest.TestCase):
                 cloud_attempts.append(args[0])
                 raise AssertionError("cloud request should be blocked")
             module.urllib.request.urlopen = blocked_urlopen
-            self.assertIsNone(module.gpt("hello"))
+            # 유료 별칭(gpt/claude)은 제거됨 — 존재 자체가 없어야 한다(오너 지시: 유료 API 미사용)
+            self.assertFalse(hasattr(module, "gpt"))
+            self.assertFalse(hasattr(module, "claude"))
+            # 남은 urllib 경로(gemini)는 비용 게이트를 준수해 네트워크를 때리지 않아야 한다
             self.assertIsNone(module.gemini("hello"))
             self.assertEqual(cloud_attempts, [])
         finally:
@@ -76,17 +79,14 @@ class LlmCostControlTest(unittest.TestCase):
                 else:
                     os.environ[key] = value
 
-    def test_youngsuk_cloud_defaults_to_explicit_mode(self):
+    def test_youngsuk_bot_uses_unified_subscription_chain(self):
+        """영숙 봇 함수호출은 통합 llm.text(구독→Gemini→로컬)를 쓰고, 유료 API 별칭·엔드포인트를
+        직접 참조하지 않는다(오너 지시: 유료 API 미사용). 옛 데이브 테스트는 에이전트 제거로 폐기."""
         source = (ROOT / "skills" / "영숙_비서" / "tools" / "telegram_receiver.py").read_text(encoding="utf-8")
-        self.assertIn('YOUNGSUK_LLM_PRIMARY", "ollama"', source)
-        self.assertIn('YOUNGSUK_CLOUD_MODE", "explicit"', source)
-        self.assertIn("def _cloud_allowed_for_prompt", source)
-
-    def test_dave_cloud_fallback_is_opt_in(self):
-        source = (ROOT / "skills" / "데이브_주식" / "tools" / "upbit_analyzer.py").read_text(encoding="utf-8")
-        self.assertIn('DAVE_ALLOW_CLOUD_LLM", "0"', source)
-        self.assertIn('DAVE_ALLOW_GEMINI_FALLBACK", "0"', source)
-        self.assertIn("클라우드 LLM 폴백 비활성화", source)
+        self.assertIn("llm.text(", source)
+        self.assertNotIn("import gpt", source)
+        self.assertNotIn("api.openai.com", source)
+        self.assertNotIn("api.anthropic.com", source)
 
     def test_petnna_ai_health_has_request_size_guard(self):
         source = (ROOT.parents[0] / "petnna" / "api" / "ai-health.js").read_text(encoding="utf-8")
