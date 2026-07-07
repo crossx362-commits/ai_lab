@@ -44,4 +44,10 @@ assert.ok(Math.abs(idx - 70) <= 15);
 // analyze: harmonyData 병합용 형태
 const full = H.analyze('2024-03-15', '1990-07-07');
 assert.ok(full.score && full.elements.pet.vec && full.areas.length === 4 && full.measuredAt);
+
+// 타임존 정규화: 같은 로컬 달력일이면 시각 무관 동일 일주
+const early = H.dayPillar(new Date(2026, 6, 7, 2, 0));
+const late = H.dayPillar(new Date(2026, 6, 7, 22, 0));
+assert.strictEqual(early.stem + early.branch, late.stem + late.branch);
+
 console.log('harmony test_core OK');

@@ -15,7 +15,9 @@
     }
 
     function dayPillar(date) {
-        const jdn = Math.floor(date.getTime() / 86400000) + 2440588;
+        // 로컬 달력일로 정규화: KST 자정~09:00에 생성된 Date가 "어제"일진을 가지는 버그 수정
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const jdn = Math.floor(d.getTime() / 86400000) + 2440588;
         const idx = ((jdn + 49) % 60 + 60) % 60;
         const s = idx % 10, b = idx % 12;
         return { stem: STEMS[s], branch: BRANCHES[b], stemEl: STEM_EL[s], branchEl: BRANCH_EL[BRANCHES[b]] };
