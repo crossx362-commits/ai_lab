@@ -345,9 +345,13 @@ def _gate_thresholds() -> dict:
     """매수 게이트 문턱 — 모의(paper)는 공격적 완화 + 성장엔진 자동 튜닝, 실거래(live)는 보수값 고정.
     위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
+        # 모의 진입문턱: 완화값(SOMI_GATE_ENTRY_PAPER)을 '상한'으로 존중 — 오토튜너가 55로 올려
+        # env 40 완화가 무력화되던 문제(2026-07-07 발견: 하락장에 CS 진입45·매수세8.0 종목이 55에
+        # 막혀 종일 무체결). 튜너는 상한 이하로만(더 공격적으로만) 조정 가능. 활동 우선(모의).
+        paper_entry_cap = int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))
         return {
             "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "60"))),   # 탐지점수 (중소형 전이검증: 60+수급확인부터 흑자)
-            "entry": _tuning("gate_entry", int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))),   # 진입점수 (별개 척도 — 실데이터로 보정 예정)
+            "entry": min(_tuning("gate_entry", paper_entry_cap), paper_entry_cap),   # 진입점수 — 완화(env)가 상한, 튜너는 그 이하로만
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}
