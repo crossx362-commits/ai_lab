@@ -59,7 +59,7 @@
         <div id="pg-stage" class="relative w-full rounded-2xl overflow-hidden" style="aspect-ratio:4/3;background:#cde9f2 url('${theme.img}') center/cover">
           ${placed}
           <div id="pg-pet" class="absolute" style="left:50%;top:78%;transform:translate(-50%,-100%);transition:left 2.5s ease-in-out">
-            ${mood}${petSprite(p, 150)}
+            ${mood}${petSprite(p, 96)}
           </div>
           <div id="pg-fx" class="absolute inset-0 pointer-events-none"></div>
         </div>`;
