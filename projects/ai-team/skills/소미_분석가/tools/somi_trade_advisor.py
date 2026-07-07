@@ -1312,7 +1312,6 @@ def main() -> None:
                             last_disc = now   # 재검사 주기 유지(매 틱 스킵로그 방지)
                             print(f"[{datetime.now()}] 발굴 스킵 — 투자가능 현금 없음(전액 투자/유보 도달)")
                     if disc_due:
-                        last_disc = now
                         kind = "buy_close" if hm >= "15:00" else "buy"  # 마감권 제한 규율 유지
                         try:
                             print(f"[{datetime.now()}] 발굴 실행({kind})")
@@ -1320,6 +1319,15 @@ def main() -> None:
                             regime = _market_regime_now()[0]
                         except Exception as e:
                             send(f"⚠️ 소미 매수 제안 오류: {e}")
+                        # 발굴 '종료' 시각 기준으로 다음 주기 계산(2026-07-07) — 시작 시각 기준이면
+                        # 발굴이 disc_min만큼 오래 걸릴 때(실측 ~9분) 끝나자마자 또 발굴이 due가 돼
+                        # fast_watch(매수 실행자)가 구조적으로 굶는다. 관찰 게이트(2분·2회 확인)는
+                        # fast_watch 연속 2~3회가 필요 — 발굴 후 disc_min만큼 감시 시간을 보장한다.
+                        last_disc = datetime.now()
+                        try:
+                            _fast_watch(regime)   # 신선한 후보 즉시 1회 재평가 — 관찰 시작 지연 방지
+                        except Exception as e:
+                            print(f"[{datetime.now()}] 고속감시 오류: {e}")
                     else:
                         try:
                             _fast_watch(regime)
