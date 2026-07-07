@@ -125,10 +125,124 @@
         return r;
     }
 
+    function sheet(html) {
+        const el = document.getElementById('pg-sheet');
+        if (el) el.innerHTML = html ? `<div class="mt-2 bg-brand-50 border border-brand-100 rounded-2xl p-3">${html}</div>` : '';
+    }
+    function closeSheet() { sheet(''); }
+
+    function openFeed() {
+        const p = pet(); if (!p) return;
+        const g = Core.ensureGame(p);
+        const rows = Items.FOODS.map(f => {
+            const n = g.foods[f.id] || 0;
+            return `<button ${n ? `onclick="PetGame.feedNow('${f.id}')"` : 'disabled'}
+                class="flex flex-col items-center gap-0.5 p-2 rounded-xl ${n ? 'bg-white' : 'bg-gray-100 opacity-50'} border border-brand-100">
+                <span class="text-[22px]">${f.emoji}</span>
+                <span class="text-[10px] font-bold">${f.name}</span>
+                <span class="text-[9px] text-gray-400">보유 ${n}</span></button>`;
+        }).join('');
+        sheet(`<div class="flex items-center justify-between mb-2"><b class="text-[12px]">먹이 선택</b>
+               <button onclick="PetGame.closeSheet()" class="text-[11px] text-gray-400">닫기 ✕</button></div>
+               <div class="grid grid-cols-3 gap-1.5">${rows}</div>
+               <p class="text-[10px] text-gray-400 mt-2">먹이가 없으면 🛒 상점에서 구매!</p>`);
+    }
+
+    function feedNow(foodId) {
+        const p = pet(); if (!p) return;
+        const r = Core.feed(p, foodId);
+        if (!r.ok) { toast(r.msg); return; }
+        closeSheet();
+        throwFoodFx(r.food, () => {
+            toast(r.msg);
+            updateHud();
+            if (r.levelUp && r.levelUp.leveled) celebrate(r.levelUp);
+        });
+    }
+
+    // 먹이 투척 → 펫 달려옴 → 냠냠 + 하트/XP 플로팅 (약 2.5초)
+    function throwFoodFx(food, done) {
+        const stage = document.getElementById('pg-stage'), petEl = document.getElementById('pg-pet'),
+              fx = document.getElementById('pg-fx');
+        if (!stage || !petEl || !fx) { done(); return; }
+        const foodEl = document.createElement('div');
+        foodEl.style.cssText = 'position:absolute;left:12%;top:20%;font-size:30px;transition:all .8s cubic-bezier(.3,-.3,.6,1);z-index:5';
+        foodEl.textContent = food.emoji;
+        fx.appendChild(foodEl);
+        requestAnimationFrame(() => { foodEl.style.left = '58%'; foodEl.style.top = '74%'; });
+        setTimeout(() => { petEl.style.transition = 'left .9s ease-in-out'; petEl.style.left = '60%'; }, 700);
+        setTimeout(() => {
+            foodEl.remove();
+            petEl.classList.add('pg-eat');
+            const heart = document.createElement('div');
+            heart.className = 'pg-float';
+            heart.style.cssText = 'position:absolute;left:60%;top:48%';
+            heart.innerHTML = `💖 <b style="font-size:11px;color:#a9583e">+${food.xp}XP</b>`;
+            fx.appendChild(heart);
+            setTimeout(() => { heart.remove(); petEl.classList.remove('pg-eat'); petEl.style.transition = 'left 2.5s ease-in-out'; done(); }, 1200);
+        }, 1700);
+    }
+
+    function celebrate(levelUp) {
+        const fx = document.getElementById('pg-fx'); if (!fx) { refresh(); return; }
+        const el = document.createElement('div');
+        el.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,253,248,.75);z-index:9';
+        el.innerHTML = `<div class="text-center">
+            <div style="font-size:44px">${levelUp.evolved ? '✨🐾✨' : '🎉'}</div>
+            <div class="font-black text-[16px] text-brand-700">${levelUp.evolved ? `${levelUp.stage.name}(으)로 진화!` : `레벨 ${levelUp.level} 달성!`}</div>
+            <div class="text-[11px] text-gray-500 mt-1">보너스 🐾+${levelUp.level * 20}</div></div>`;
+        fx.appendChild(el);
+        setTimeout(() => { el.remove(); refresh(); }, 2200);
+    }
+
+    function openShop() {
+        const p = pet(); if (!p) return;
+        const g = Core.ensureGame(p);
+        const foodRows = Items.FOODS.map(f =>
+            `<button onclick="PetGame.buy('food','${f.id}')" class="flex flex-col items-center p-2 rounded-xl bg-white border border-brand-100">
+             <span class="text-[20px]">${f.emoji}</span><span class="text-[10px] font-bold">${f.name}</span>
+             <span class="text-[9px] font-black text-amber-700">🐾${f.price}</span></button>`).join('');
+        const itemRows = Items.ITEMS.map(it => {
+            const owned = g.ownedItems.includes(it.id), locked = g.level < it.unlockLv;
+            return `<button ${owned || locked ? 'disabled' : `onclick="PetGame.buy('item','${it.id}')"`}
+                class="flex flex-col items-center p-2 rounded-xl border border-brand-100 ${owned ? 'bg-brand-100' : locked ? 'bg-gray-100 opacity-60' : 'bg-white'}">
+                <span class="text-[20px]">${it.emoji}</span><span class="text-[10px] font-bold">${it.name}</span>
+                <span class="text-[9px] ${locked ? 'text-gray-400' : 'font-black text-amber-700'}">${owned ? '보유중' : locked ? `Lv.${it.unlockLv} 해금` : `🐾${it.price}`}</span></button>`;
+        }).join('');
+        const themeRows = Items.THEMES.filter(t => t.price > 0).map(t => {
+            const owned = g.ownedThemes.includes(t.id);
+            return `<button ${owned ? `onclick="PetGame.applyTheme('${t.id}')"` : `onclick="PetGame.buy('theme','${t.id}')"`}
+                class="flex flex-col items-center p-2 rounded-xl border border-brand-100 ${owned ? 'bg-brand-100' : 'bg-white'}">
+                <span class="text-[20px]">🖼️</span><span class="text-[10px] font-bold">${t.name}</span>
+                <span class="text-[9px] font-black text-amber-700">${owned ? '적용하기' : `🐾${t.price}`}</span></button>`;
+        }).join('');
+        sheet(`<div class="flex items-center justify-between mb-2"><b class="text-[12px]">🛒 상점</b>
+            <button onclick="PetGame.closeSheet()" class="text-[11px] text-gray-400">닫기 ✕</button></div>
+            <p class="text-[10px] font-black text-gray-500 mb-1">먹이</p><div class="grid grid-cols-3 gap-1.5">${foodRows}</div>
+            <p class="text-[10px] font-black text-gray-500 mt-2 mb-1">아이템 (방·마당)</p><div class="grid grid-cols-3 gap-1.5">${itemRows}</div>
+            <p class="text-[10px] font-black text-gray-500 mt-2 mb-1">방 테마</p><div class="grid grid-cols-3 gap-1.5">${themeRows}</div>`);
+    }
+
+    function buy(kind, id) {
+        const p = pet(); if (!p) return;
+        const r = kind === 'food' ? Core.buyFood(p, id) : kind === 'item' ? Core.buyItem(p, id) : Core.buyTheme(p, id);
+        toast(r.msg); updateHud();
+        if (r.ok) openShop();   // 시트 갱신(보유중 반영)
+    }
+
+    function applyTheme(themeId) {
+        const p = pet(); if (!p) return;
+        const g = Core.ensureGame(p);
+        const t = Items.THEMES.find(x => x.id === themeId);
+        if (!t || !g.ownedThemes.includes(themeId)) return;
+        if (t.space === 'room') g.roomTheme = themeId; else g.yardTheme = themeId;
+        Core.save(); S.space = t.space; refresh(); toast(`${t.name} 적용!`);
+    }
+
     root.PetGame = Object.assign(root.PetGame || {}, {
         mount, refresh, setSpace, earnCare, updateHud, state: S,
-        // Task 5·6에서 구현 — 미구현 호출 시 안내
-        openFeed() { toast('준비 중'); }, openShop() { toast('준비 중'); }, toggleDecorate() { toast('준비 중'); },
+        openFeed, feedNow, closeSheet, openShop, buy, applyTheme,
+        toggleDecorate() { toast('준비 중'); },   // Task 6에서 교체
     });
     function bindDecorate() {} // Task 6에서 교체
     root.PetGameStageInternals = { bindDecorate: (fn) => { bindDecorate = fn; } };
