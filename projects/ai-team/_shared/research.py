@@ -394,14 +394,26 @@ def _gpt_search(query: str, max_tokens: int) -> str:
         return ""
 
 
-# 호출마다 다른 제공자로 시작 → Gemini 한 곳에 쏠리지 않게 부하 분산.
-_WEB_PROVIDERS = [_gemini_search, _claude_search, _gpt_search]
+def _claude_code_search(query: str, max_tokens: int) -> str:
+    """구독 claude -p(Max)로 웹 검색·요약 — 유료 api.anthropic.com(_claude_search) 대신
+    이미 만들어진 구독 경로(llm._claude_code)를 재사용(오너 지시: 유료 API 금지, 구독 사용).
+    claude -p는 헤드리스에서 WebSearch 도구로 최신 정보를 조회한다. llm은 지연 임포트."""
+    try:
+        from _shared import llm
+        return (llm.claude_code(query, max_tokens=max_tokens) or "").strip()
+    except Exception:
+        return ""
+
+
+# 유료 API(_claude_search=api.anthropic·_gpt_search=api.openai)는 오너 지시로 로테이션에서 제외 —
+# 실검색은 Gemini(google_search, 무료 할당량), 폴백은 구독 claude -p. 함수 정의는 남기되 미사용.
+_WEB_PROVIDERS = [_gemini_search, _claude_code_search]
 _web_rr = [0]
 
 
 def web_brief(query: str, max_tokens: int = 800) -> str:
-    """실시간 웹 정보를 LLM 검색으로 요약. Gemini(google_search)·Claude(web_search)
-    ·GPT(search-preview)를 라운드로빈으로 돌리고, 실패 시 다음 제공자로 폴백한다."""
+    """실시간 웹 정보를 LLM 검색으로 요약. Gemini(google_search, 무료)·구독 claude -p를
+    라운드로빈으로 돌리고, 실패 시 다음 제공자로 폴백한다(유료 API 미사용, 오너 지시)."""
     n = len(_WEB_PROVIDERS)
     start = _web_rr[0]
     _web_rr[0] = (start + 1) % n
