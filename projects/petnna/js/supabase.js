@@ -740,7 +740,7 @@ const SupabaseService = {
                 .from('profiles')
                 .select('*')
                 .eq('email', email)
-                .single();
+                .maybeSingle();
             if (error && error.code !== 'PGRST116') throw error; // PGRST116: 0 rows returned
             if (data) {
                 if (data.nickname) {
