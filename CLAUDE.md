@@ -112,7 +112,7 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 
 ## 🤖 AI Agent System Architecture
 
-### Agent Roster (4 Agents — 2026-07-08 주식·코인 전면 삭제, 봄이·수리 추가)
+### Agent Roster (8 Agents — 2026-07-08 주식·코인 전면 삭제, 펫나 개발팀 6명 신설)
 
 > 오너 지시(2026-07-08)로 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크·지아)와 도구·스케줄·데몬 전부 삭제. 남은 에이전트는 아래 3명.
 
@@ -121,7 +121,23 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 | 예원 (Yewon) | CEO — 오케스트레이션·하네스·워치독·콘텐츠 피드백 | `yewon_dispatcher.py`, `harness_manager.py`, `harness_monitor.py`, `skill_auditor.py`, `daily_feedback_scheduler.py` |
 | 영숙 (Youngsuk) | Secretary — 텔레그램 게이트웨이·일정·정시 잡 | `telegram_receiver.py`, `schedule_manager.py`, `agent_controller.py`, `calendar_manager.py` |
 | 봄이 (Bomi) | QA — 펫나 상시 순찰 | `petnna_qa_patrol.py` |
-| 수리 (Suri) | Dev — 펫나 자동 개선 엔진: QA 결과→격리 브랜치 수정→재검수→저위험만 자동 병합 | `petnna_dev_engine.py` (헌장: `skills/수리_개발자/SKILL.md`, 산출물: `output/qa/petnna/dev/`) |
+| 수리 (Suri) | Dev — 펫나 자동 개선 엔진: QA 결과→격리 브랜치 수정→재검수→저위험만 자동 병합. QA 이슈 없으면 백로그(미오·나무 과제) 구현(항상 PR대기) | `petnna_dev_engine.py` (헌장: `skills/수리_개발자/SKILL.md`, 산출물: `output/qa/petnna/dev/`) |
+| 테오 (Teo) | Test — E2E 테스트 자동 작성(하루 1개, 2회 연속 통과 시 채택·flaky 폐기)·매일+변경 시 실행 | `petnna_test_engineer.py` (테스트: `projects/petnna/tests/e2e/`, 결과: `output/qa/petnna/tests/`) |
+| 백호 (Baekho) | Backend — Supabase 스키마·RLS vs 프론트 쿼리 계약 감사(매일 10:30, 읽기 전용) | `petnna_backend_guard.py` (보고서: `output/qa/petnna/backend/`) |
+| 미오 (Mio) | Design — 주 1회(월) 스크린샷 기반 UX·시각 리뷰 → 공유 백로그 적재 | `petnna_design_review.py` (보고서: `output/qa/petnna/design/`) |
+| 나무 (Namu) | PM — 주 1회(화) 웹서치 트렌드·경쟁 조사 → 기능 백로그 적재 | `petnna_product_manager.py` (보고서: `output/qa/petnna/product/`) |
+
+**펫나 자동 개발 루프**: 봄이(발견)·백호(DB 계약)·테오(회귀 테스트) → 수리(수정/구현) → 봄이 재검수 → 저위험 P2/P3만 자동 병합. 미오(디자인)·나무(기획)가 `output/qa/petnna/backlog.json`에 과제 적재 → 수리가 QA 이슈 없을 때 브랜치 구현(자동 병합 없음, 사람 검토). 봄이는 순찰 중 앱 자체 오류수집기(AppLogger→localStorage)도 흡수(global_error=P1). 전 에이전트 클로드 세션에 웹서치 허용(모르는 건 검색). 공용 헬퍼: `_shared/cc.py`(claude -p 헤드리스).
+
+**펫나 가드레일 (주식 모의거래 교훈 이식, 2026-07-08)**:
+- **산출물 감사**: 봄이가 매일 함대 신선도 감사 — 데몬이 떠 있어도 산출물(보고서/루프/결과)이 36h(주간 에이전트 8일) 무갱신이면 죽은 데몬 의심 경보. "프로세스 생존 ≠ 일하는 중".
+- **검토 적체 상한**: PR대기 브랜치 ≥5(`SURI_MAX_PENDING`)면 수리가 신규 백로그 착수 중단(QA 버그 수정은 계속) + 하루 1회 알림. 사람 검토가 병목일 때 무한 브랜치 생성 방지.
+- **인프라 실패 ≠ 이슈 실패**: 클로드 CLI 부재/타임아웃/과부하로 실패한 사이클은 시도 미차감 — 크레딧·PATH 장애를 "3회 실패 보류"로 오판 금지.
+- **단일 기계 운영**: 펫나 데몬 6종은 Windows에서 자동 종료(`PETNNA_AGENTS_ON_WINDOWS=true`로만 해제) — 두 기계가 각자 master 병합하는 이중 가동 참사 방지.
+- **컨트롤러 오폭 방지**: `--daemon` 에이전트의 stop/restart는 "스크립트명 --daemon"만 매칭 — 진행 중 수동 사이클(--once)·회의를 죽이지 않는다.
+- **브랜치 위생**: 병합/해결된 이슈의 브랜치는 즉시 삭제, 수리 데몬 기동 시 잔재 워크트리 정리 + 독트린(게이트 구성) 1줄 로그.
+
+**긴급 회의(큰 이슈 = 전 에이전트 소집)**: `예원_CEO/tools/petnna_council.py` — 트리거: 봄이 신규 P0/P1, 수리 3회 실패 보류, 백호 신규 P1 계약 위반 (각 에이전트가 비차단 자동 소집), 수동 `--topic`. 6인이 각자 헌장+실데이터 기반 독립 의견(plan 모드) → 의장 예원 종합 결정 → 액션아이템 백로그 적재([승인필요]/owner=사람은 보류 상태로 수리가 안 집음) → 회의록 `output/qa/petnna/council/` + 텔레그램. 동일 안건 24h 중복 소집 방지.
 
 
 ### Shared Module System (Unified, 5 Files)
@@ -352,7 +368,8 @@ if hasattr(sys.stdout, "reconfigure"):
 - **운영 기계 분담 + git pull 자동 배포(2026-07-02)** — 맥은 아침(~06:45) 종료→저녁(19:00) 부팅하는 날이 있다. 코드 배포는 **git pull만 하면 됨** — 워치독이 HEAD 변화를 감지해 변경 폴더의 데몬을 새 코드로 자동 교체(`harness_monitor.restart_on_code_update`, `_shared` 변경 시 전 데몬·자신은 자가교체). "안 돌았다" = 그 시간 어느 기계가 켜져 있었는지부터 확인.
 - **재부팅 복구는 워치독 launchd 상주가 전제(2026-07-02)** — 7/2 재부팅 후 launchd 비관리 상시 데몬(예원모니터·추세알림·모닝노트·성장엔진)이 반나절 전멸. 원인: 워치독 `_restart_bot`이 macOS에서 `com.ailab.<이름>` kickstart만 시도 → 라벨 없는 데몬은 조용히 실패. 수정: 라벨은 `_LAUNCHD_FALLBACK`으로 해석 + kickstart 실패 시 agent_controller 폴백, 워치독 자신은 `com.ailab.yewon_monitor`(KeepAlive) 상주(설치: `deploy/install_yewon_monitor.command`), 자가복구(yewon_self_heal)도 상시 데몬을 실제 재시작. "재부팅 후 데몬 전멸" = 워치독 launchd 적재부터 확인.
 - **모의 게이트 무단 강화 금지 — 분석 지시 ≠ 게이트 도입 승인(오너 지시 2026-07-08 "근본 수리", 격노 사건)** — 7/7 "과거 자료 분석" 지시를 받은 세션이 열세 발견(오전 PF 0.6, 진입 40~54 전패)을 그대로 게이트 3종으로 구현: ①13:00 이전 체결 차단 ②진입하한 55(**오너 env 40을 "env 있어도 하한 적용"으로 고의 무력화** — 최악 패턴) ③BEAR_BUMP .env 0→10 복원. 오너가 전부 철회시킴. **규칙**: 새 발견이 모의 원칙(종일 공격적 매수·데이터 수집)과 충돌하면 게이트로 넣지 말고 포지션 메타 기록 + 실거래 도입 판단 자료로만 축적, 차단이 필요해 보이면 충돌을 명시하고 오너에게 먼저 물어라. 오너 env 완화를 코드 하한으로 덮는 것 절대 금지. **코드 강제**: `advisor._doctrine_audit()`가 데몬 기동마다 자가검사(시간대 차단·env 무력화·BUMP>0·rr게이트) → 위반 시 텔레그램 경보 + `[독트린]` 게이트 상태 1줄 로그. `SOMI_PAPER_BUY_FROM` 기본 09:00, `SOMI_GATE_ENTRY_PAPER`(.env 40)가 진입 상한, BUMP=0(.env).
-- **국면선별(하락장 역행강세 선별)은 시도 후 제거 — 검증된 우위 없음(2026-07-08)** — `backtest.py --beargate`로 실측: 대형주 40종목(12·24mo)에선 전량차단과 사실상 동일(거래 +1건, PF·MDD·샤프 무변화), 중소형 20종목(**실사냥터**, 12·24mo)에선 전량차단보다 **전 구간 열등**(-32.3%/-55.7% vs -29.0%/-37.4%) — 채택 근거 없음. 오너 지시로 임시 활성(`_bear_relstr_ok`, `SOMI_BEAR_RELSTR`)했다가, 같은날 "주식매매 전체 단순화·쓸데없는거 삭제" 지시로 **완전 제거**. 재도입하려면 이번엔 먼저 대형주 아닌 중소형 기준으로 우위를 확인할 것 — 대형주에서 무해해 보이는 필터가 실사냥터에서 열등한 패턴이 반복됨(ATR 변동성 손절과 동일 계열).
+- **국면선별(하락장 역행강세 선별)은 시도 후 제거 — 검증된 우위 없음(2026-07-08)** — `backtest.py --beargate`로 실측: 대형주 40종목(12·24mo)에선 전량차단과 사실상 동일(거래 +1건, PF·MDD·샤프 무변화), 중소형 20종목(**실사냥터**, 12·24mo)에선 전량차단보다 **전 구간 열등**(-32.3%/-55.7% vs -29.0%/-37.4%) — 채택 근거 없음. 오너 지시로 임시 활성(`_bear_relstr_ok`, `SOMI_BEAR_RELSTR`)했다가, 같은날 "주식매매 전체 단순화·쓸데없는거 삭제" 지시로 **완전 제거**. 재도입하려면 이번엔 먼저 대형주 아닌 중소형 기준으로 우위를 확인할 것 — 대형주에서 무해해 보이는 필터가 실사냥터에서 열등한 패턴이 반복됨(ATR 변동성 손절과 동일 계열). (2026-07-08 주식 도메인 전면 삭제로 이 항목이 가리키는 `backtest.py`·`somi_trade_advisor.py`는 더 이상 존재하지 않음 — 이력 기록으로만 유지.)
+- **동시 세션 저장소에서는 `git add`와 `git commit`을 붙여서 처리 — 스테이징 방치 금지(2026-07-08 사고)** — 이 저장소는 여러 세션·자동 에이전트(예: 수리·테오의 자율 커밋 데몬)가 동시에 master에 직접 커밋한다. 파일 정리 작업 중 `git mv`/`git rm`으로 스테이징만 해두고 검증·다음 파일 편집으로 넘어갔더니, 그 사이 다른 세션의 자동 커밋(`git commit -a` 류로 추정)이 내 스테이징까지 쓸어 담아 무관한 커밋 메시지("테오 자동 생성" E2E 테스트)에 섞여 들어갔다(내용 손상은 없었으나 커밋 귀속·메시지가 부정확해짐). **규칙**: 여러 파일을 순차 편집·검증하는 동안은 `git add`를 하지 않는다. 모든 변경이 끝나 커밋할 준비가 된 시점에만 `git add`+`git commit`을 한 호흡(연속 명령)으로 실행해 스테이징 대기 시간을 0에 가깝게 유지한다.
 
 ---
 
