@@ -11,7 +11,7 @@ const HEALTH_TEMPLATE = `
                     <span class="text-3xl">❤️</span>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">건강 대시보드</h1>
+                    <h2 class="text-xl font-bold text-gray-900 tracking-tight">건강 대시보드</h2>
                     <p class="text-xs text-gray-500 mt-1">펫별 건강 관리 및 기록</p>
                 </div>
             </div>

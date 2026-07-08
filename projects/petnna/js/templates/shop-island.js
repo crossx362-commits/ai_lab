@@ -7,7 +7,7 @@ const SHOP_ISLAND_TEMPLATE = `
   <div class="iw-header">
     <div class="iw-header-icon">🗺️</div>
     <div>
-      <h1 class="iw-title">펫 라이프 실시간 지도</h1>
+      <h2 class="iw-title">펫 라이프 실시간 지도</h2>
       <p class="iw-subtitle">현재 위치 기반으로 주변 펫 가맹점을 찾아보세요</p>
     </div>
     <span class="iw-badge">REAL-TIME MAP</span>
