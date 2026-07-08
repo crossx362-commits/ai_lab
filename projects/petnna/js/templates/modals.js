@@ -376,7 +376,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
         <!-- 프로필 카드 헤더 / 아바타 및 이름 -->
         <div class="text-center space-y-4 mb-6">
             <div class="relative inline-block">
-                <img loading="lazy" id="neighbor-avatar" src="" class="w-24 h-24 object-cover rounded-full mx-auto border-4 border-brand-100 shadow-md">
+                <img loading="lazy" id="neighbor-avatar" class="w-24 h-24 object-cover rounded-full mx-auto border-4 border-brand-100 shadow-md">
                 <span id="neighbor-status-badge" class="absolute bottom-1 right-2 w-4.5 h-4.5 rounded-full border-2 border-white bg-green-500"></span>
             </div>
             
@@ -857,7 +857,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 
                 <!-- 미디어 미리보기 영역 -->
                 <div id="feed-edit-media-preview-container" class="relative w-full aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-inner border border-gray-200 group flex items-center justify-center">
-                    <img loading="lazy" id="feed-edit-photo-preview" src="" class="w-full h-full object-cover hidden">
+                    <img loading="lazy" id="feed-edit-photo-preview" class="w-full h-full object-cover hidden">
                     <video id="feed-edit-video-preview" src="" class="w-full h-full object-cover hidden" controls></video>
                     <div id="feed-edit-media-placeholder" class="text-gray-400 text-xs font-bold py-6">첨부된 미디어가 없습니다.</div>
                 </div>

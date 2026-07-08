@@ -72,7 +72,7 @@ const SOCIAL_TEMPLATE = `
 
                 <!-- 직접 사진 첨부 미리보기 영역 -->
                 <div id="feed-photo-preview-container" class="hidden relative w-32 aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-inner border border-gray-200 group">
-                    <img loading="lazy" id="feed-photo-preview" src="" class="w-full h-full object-cover">
+                    <img loading="lazy" id="feed-photo-preview" class="w-full h-full object-cover">
                     <div id="feed-photo-uploading-overlay" class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white text-[9px] font-bold space-y-1 hidden">
                         <i class="fa-solid fa-circle-notch animate-spin text-xs"></i>
                         <span>사진 업로드 중...</span>
