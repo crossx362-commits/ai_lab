@@ -146,6 +146,39 @@ const AppLogger = {
         } catch (e) {
             console.error('Failed to write error log to storage', e);
         }
+        this._uploadErrorLog(type, message, stack);
+    },
+    _remoteSessionId() {
+        try {
+            let sid = sessionStorage.getItem('petna_session_id');
+            if (!sid) {
+                sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                sessionStorage.setItem('petna_session_id', sid);
+            }
+            return sid;
+        } catch (e) {
+            return '';
+        }
+    },
+    _remoteUploadCount: 0,
+    _uploadErrorLog(type, message, stack) {
+        // 원격 수집: supabase 연결 시에만, 실패해도 앱 영향 0, 세션당 최대 20건 스로틀.
+        try {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient || !isSupabaseConnected) return;
+            if (this._remoteUploadCount >= 20) return;
+            this._remoteUploadCount++;
+            const row = {
+                type: type,
+                message: (message || '').toString().slice(0, 500),
+                stack: (stack || '').toString().slice(0, 2000),
+                url: (location && location.href ? location.href : '').slice(0, 500),
+                user_agent: (navigator && navigator.userAgent ? navigator.userAgent : '').slice(0, 500),
+                session_id: this._remoteSessionId()
+            };
+            Promise.resolve(supabaseClient.from('error_logs').insert(row)).catch(() => {});
+        } catch (e) {
+            // 업로드 실패는 조용히 무시
+        }
     },
     clearErrorLogs() {
         try {
