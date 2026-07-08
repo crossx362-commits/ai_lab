@@ -58,6 +58,8 @@ function getUnlockedAchievements() {
 }
 
 function checkNewAchievements() {
+    // 미인증 상태에서는 업적 토스트를 띄우지 않는다(로그인 전 맥락 붕괴 방지)
+    if (localStorage.getItem('petna_is_logged_in') !== 'true') return 0;
     const shownKey = 'petna_shown_achievements';
     const shown = JSON.parse(localStorage.getItem(shownKey) || '[]');
     const unlocked = getUnlockedAchievements();
