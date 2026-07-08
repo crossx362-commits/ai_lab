@@ -18,12 +18,12 @@ created_by: human
 
 ## 도구
 - `tools/quant_analyzer.py` — 성과 복기·튜닝·사이징: `performance` / `tune` / `size --price --stop` / `add`(체결부 자동 호출)
-- **(소미 폴더, 소유만 이관)** `../소미_분석가/tools/somi_trade_advisor.py`(매수판단·자동매수 데몬), `somi_screener.py`(발굴), `somi_signal_engine.py`(실거래 승인신호), `backtest.py`(전략·게이트 검증 — 소미 수급 점수를 재료로 전략을 백테스트·채택 판단)
+- **(소미 폴더, 소유만 이관)** `../소미_분석가/tools/somi_trade_advisor.py`(매수판단·자동매수 데몬), `somi_screener.py`(발굴), `backtest.py`(전략·게이트 검증 — 소미 수급 점수를 재료로 전략을 백테스트·채택 판단)
 
 ## 데이터 흐름
 1. 영숙 체결부(`_execute_pending_order`)가 매수/매도 시 `한별.append(...)` 호출
 2. 한별이 일지를 누적 → `performance`/`tune`으로 분석
-3. `somi_tuning.json` 추천을 소미 신호엔진이 다음 스캔부터 참고
+3. `somi_tuning.json` 추천을 소미제안이 다음 스캔부터 참고
 
 ## 트리거 키워드
 성과, 복기, 승률, 손익, 손익비, 백테스트, 퀀트, 튜닝, 포지션, 리스크, 사이징

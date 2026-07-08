@@ -24,7 +24,7 @@ Claude Code 플러그인 마켓플레이스.
 
 ### 한국화 핵심 변경점
 - 미국 7am 모닝미팅 → **한국 08:30 장전**, KST·₩원·코스피/코스닥
-- CapIQ/FactSet MCP → **KIS API + 소미 Python 도구**(`somi_kis_reporter`, `somi_signal_engine`, `somi_screener`, `short_covering_analyzer`, `market_regime`)
+- CapIQ/FactSet MCP → **KIS API + 소미 Python 도구**(`somi_kis_reporter`, `somi_trade_advisor`, `somi_screener`, `short_covering_analyzer`, `market_regime`)
 - EPS 중심 → **영업이익·수급(외인/기관)·소미 점수·기대값** 중심
 - 출력: **텔레그램 요약 + 노션 풀리포트** 분리 규칙
 - 사용자 규칙 반영: 노하드코딩 / 모의=자동·실거래=승인 / 주식질문→분석+텔레그램 / 성장 도크트린

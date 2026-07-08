@@ -23,9 +23,6 @@ CONTINUOUS_DAEMONS = {
     "somi_monitor": "somi_price_monitor.py",
     "somi_advisor": "somi_trade_advisor.py",
     "somi_position": "somi_position_monitor.py",
-    # somi_signal 은 모의(paper) 중 워치독 대상에서 제외(2026-07-04) — 실거래 승인푸시 전용이라
-    # 모의 중엔 헛돌며 소미 부하 착시. 자동매수 단일 실행자는 somi_advisor. 실거래 전환 시 아래 줄 복원.
-    # "somi_signal": "somi_signal_engine.py",
     "trend": "market_trend_alert.py",
     # somi_screener 상시 등록 제거(2026-07-04) — advisor 데몬 가동 시 정시 propose는 자동 스킵돼
     # 상시 프로세스가 실제로 안 돎(유령 등록). launchd 정시(09:30/15:50, advisor --propose)로만 운영.
@@ -37,9 +34,6 @@ CONTINUOUS_DAEMONS = {
     "market_desk": "market_desk.py",
     "yewon": "harness_monitor.py",
     "yewon_growth": "growth_engine.py",
-    "strategy_lab": "strategy_lab.py",   # 한별: 전략연구→백테스트검증→모의반영 (주 1회 자체 게이트)
-    "somi_us": "somi_us_trader.py",   # 미장 모의 (야간 세션 외엔 대기 루프)
-    "somi_crypto": "somi_crypto_trader.py",   # 크립토 모의 (업비트 공개시세, 24h, 오너 지시 2026-07-07)
     "dashboard": "status_dashboard.py",  # 현황 페이지 — 등록해야 자동배포·생존관리 대상
     # Windows 정시 잡 실행자(영숙스케줄) — macOS는 아래 launchd 집계가 이 키를 덮어써 오탐 없음
     "scheduler": "schedule_manager.py",
@@ -78,7 +72,6 @@ _AGENT_LABELS = {
     "somi_monitor": "소미 (실시간 급변동 감시)",
     "somi_advisor": "한별 (매수 판단/제안)",
     "somi": "예원 (정기 리포트)",
-    "somi_signal": "한별 (매수신호 엔진)",
     "trend": "예원 (시장추세 알림)",
     "somi_screener": "한별 (유망종목 발굴)",
     "somi_position": "소미 (포지션 익절/손절)",
@@ -90,9 +83,6 @@ _AGENT_LABELS = {
     "yewon": "예원 (CEO 하네스 모니터)",
     "yewon_selfheal": "예원 (자가 점검/복구)",
     "yewon_growth": "예원 (성장엔진)",
-    "strategy_lab": "한별 (전략랩 — 연구·검증·반영)",
-    "somi_us": "소미 (미장 모의)",
-    "somi_crypto": "소미 (크립토 모의)",
     "dashboard": "대시보드 (현황 페이지)",
     "harness": "하네스 (시스템 점검)",
 }

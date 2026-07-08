@@ -9,8 +9,7 @@
 |------|----------------|------|
 | `somi_kis_reporter.py` | `--send` `--print` `--daemon` · `make_report()` `daily_summary()` `send_watchlist_reports()` | 관심종목 수급·점수 정기 보고 (KIS API) |
 | `somi_screener.py` | `--top N` `--candidates N` `--send` `--daemon --times HH:MM,HH:MM` · `run()` `screen()` `get_candidates()` | 거래대금 상위 후보 채점·발굴 |
-| `somi_signal_engine.py` | `--scan` `--daemon --interval` `--budget` `--top` `--no-send` · `scan()` | 기대값 기반 매매 신호 생성/푸시 |
-| `somi_trade_advisor.py` | `make_proposals()` `analyze_candidate()` `_passes_buy_gate()` `_decide()` | 매수구간·제안 판단 |
+| `somi_trade_advisor.py` | `make_proposals()` `analyze_candidate()` `_passes_buy_gate()` `_decide()` | 매수구간·제안 판단·기대값 기반 매매 신호 실행(자동매수 단일 실행자) |
 | `somi_position_monitor.py` | `--send` `--daemon` · `check_positions()` `run()` | 보유 포지션 익절/손절/트레일링/시간초과 점검 |
 | `market_regime.py` | `market_regime()` `stable_regime()` `regime_label()` | KOSPI 프록시 HMM 레짐(공격/중립/방어) |
 | `short_covering_analyzer.py` | `--file` `--text` `--output` · `entry_score()` `risk_score()` `rr_score()` `flow_short_analysis()` | 대차/공매도·수급 점수 |

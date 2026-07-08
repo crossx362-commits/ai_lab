@@ -28,7 +28,6 @@ ACTIVE_DAEMONS = {
     "somi_monitor": "somi_price_monitor.py",
     "somi_advisor": "somi_trade_advisor.py",
     "somi_position": "somi_position_monitor.py",
-    "somi_signal": "somi_signal_engine.py",
     "yewon_monitor": "harness_monitor.py",
 }
 

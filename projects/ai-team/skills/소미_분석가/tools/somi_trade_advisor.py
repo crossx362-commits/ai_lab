@@ -43,7 +43,7 @@ load_env(str(PROJECT_ROOT))
 PROPOSALS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_proposals.json"
 POSITIONS_FILE = PROJECT_ROOT / "output" / "cache" / "somi_positions.json"
 CLOSED_TRADES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"  # 청산 거래 로그(성과추적)
-PAPER_STRATEGIES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_paper_strategies.json"  # strategy_lab 자동검증 → 모의 전략 활성/가점
+PAPER_STRATEGIES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_paper_strategies.json"  # 모의 전략 활성/가점 설정(수동 편집용 — strategy_lab 자동검증 루프는 2026-07-08 제거됨)
 REPORT_STATE_FILE = PROJECT_ROOT / "output" / "cache" / "somi_report_state.json"  # 발굴 리포트 델타(중복 전송 억제)
 
 STOP_PCT = 0.05    # 지지선 없을 때 기본 손절 -5%
@@ -189,7 +189,7 @@ def _ma_cross(kis: KISClient, code: str, lookback: int = 3) -> tuple[bool, int]:
 
 
 def _paper_strategy(key: str, default_bonus: int = 10) -> int:
-    """모의 전략(52w/breakout)의 가점 — strategy_lab 자동검증 루프가 쓴 설정을 읽는다(호출 시점 로드).
+    """모의 전략(52w/breakout)의 가점 — somi_paper_strategies.json 설정을 읽는다(호출 시점 로드).
     설정 없음/파싱 실패 시 기본 활성(현행 유지). enabled=false면 0 반환(가점 스킵). 가점은 0~12 클램프."""
     try:
         s = (json.loads(PAPER_STRATEGIES_FILE.read_text(encoding="utf-8"))
@@ -269,12 +269,12 @@ def analyze_candidate(kis: KISClient, code: str, name: str, realtime: bool = Fal
     if gc:
         score = min(100, score + 6)
         pos = [f"골든크로스 발생({'당일' if gc_days == 0 else f'{gc_days}일 전'}, 5/20일선)"] + pos
-    # 52주 신고가 가점 — 모의 전용. 활성여부·가점은 strategy_lab 검증결과(somi_paper_strategies.json)가 제어. 한별 소유.
+    # 52주 신고가 가점 — 모의 전용. 활성여부·가점은 somi_paper_strategies.json이 제어. 한별 소유.
     _bonus_52w = _paper_strategy("52w")
     if _is_paper() and _bonus_52w and _is_52w_high(kis, code):
         score = min(100, score + _bonus_52w)
         pos = ["52주 신고가 근처(기관 상승추세 편승 — 모의 전략)"] + pos
-    # 거래량 동반 20일 고가 돌파 가점 — 모의 전용. strategy_lab 자동검증 루프가 활성/가점 제어. 한별 소유.
+    # 거래량 동반 20일 고가 돌파 가점 — 모의 전용. somi_paper_strategies.json이 활성/가점 제어.
     _bonus_bo = _paper_strategy("breakout")
     if _is_paper() and _bonus_bo and _volume_breakout(kis, code):
         score = min(100, score + _bonus_bo)
@@ -388,56 +388,12 @@ def _log_doctrine_state() -> None:
     print(f"[독트린] 게이트: 탐지 {th['score']} · 진입 {th['entry']} · 손익비게이트 {th['require_rr']}"
           f" · 매수시작 {os.getenv('SOMI_PAPER_BUY_FROM', '09:00')}"
           f" · BEAR_BUMP {os.getenv('SOMI_BEAR_GATE_BUMP', '10')}"
-          f" · 국면선별(역행강세) {os.getenv('SOMI_BEAR_RELSTR', 'true')}(임시,검증우위없음)"
           f" · 수급확인 {os.getenv('SOMI_SOOMGEUP_GATE', 'true')} · 관찰 {_observe_minutes()}분")
     violations = _doctrine_audit()
     for msg in violations:
         print(f"[독트린] 🚨 위반: {msg}")
     if violations:
         send("🚨 [소미] 모의 독트린 위반 감지 — 게이트가 무단 강화됨:\n- " + "\n- ".join(violations))
-
-
-_RELSTR_CACHE: dict = {"date": None, "closes": None}
-_RELSTR_SYMBOL_CACHE: dict = {}
-
-
-def _index_closes(kis) -> list[float]:
-    today = datetime.now().strftime("%Y-%m-%d")
-    if _RELSTR_CACHE["date"] == today and _RELSTR_CACHE["closes"]:
-        return _RELSTR_CACHE["closes"]
-    try:
-        from somi_kis_reporter import num
-        dailies = kis.daily_prices("069500", 30)
-        closes = [num(d.get("stck_clpr")) for d in reversed(dailies) if num(d.get("stck_clpr"))]
-    except Exception:
-        closes = []
-    _RELSTR_CACHE["date"], _RELSTR_CACHE["closes"] = today, closes
-    return closes
-
-
-def _bear_relstr_ok(kis, symbol: str, lookback: int = 20) -> bool:
-    """하락국면 역행강세 선별(2026-07-08 오너 지시 임시 활성화) — 종목 lookback수익률이 지수보다 높은가.
-    검증 결과(backtest.py --beargate): 대형주 40종목은 전량차단과 사실상 동일(추가 이득 없음),
-    중소형 20종목(실사냥터)은 전량차단보다 전 구간(12·24mo) 열등(-32~-56% vs -29~-37%) —
-    검증된 우위 없음. 임시·실험적 활성이며 데이터 없거나 조회 실패 시 중립 통과(차단 아님)."""
-    key = (datetime.now().strftime("%Y-%m-%d"), symbol)
-    if key in _RELSTR_SYMBOL_CACHE:
-        return _RELSTR_SYMBOL_CACHE[key]
-    idx = _index_closes(kis)
-    ok = True
-    if len(idx) >= lookback + 1:
-        try:
-            from somi_kis_reporter import num
-            dailies = kis.daily_prices(symbol, lookback + 10)
-            closes = [num(d.get("stck_clpr")) for d in reversed(dailies) if num(d.get("stck_clpr"))]
-            if len(closes) >= lookback + 1:
-                stock_ret = closes[-1] / closes[-1 - lookback] - 1
-                idx_ret = idx[-1] / idx[-1 - lookback] - 1
-                ok = stock_ret > idx_ret
-        except Exception:
-            ok = True
-    _RELSTR_SYMBOL_CACHE[key] = ok
-    return ok
 
 
 def _passes_buy_gate(c: dict, regime: str = "unknown") -> tuple[bool, str]:
@@ -450,12 +406,6 @@ def _passes_buy_gate(c: dict, regime: str = "unknown") -> tuple[bool, str]:
                               if _is_paper() and regime == "bear" else 0)
     if c.get("score", 0) < score_th:
         return False, f"탐지점수 {c.get('score')} < {score_th}"
-    # 국면선별(역행강세) 임시 활성 — 오너 지시 2026-07-08. 백테스트 검증 결과 우위 없음(위 함수 docstring
-    # 참고), 실험적 데이터수집 목적. SOMI_BEAR_RELSTR=false로 즉시 원복 가능(코드 변경 불필요).
-    if (_is_paper() and regime == "bear"
-            and os.getenv("SOMI_BEAR_RELSTR", "true").lower() in {"1", "true", "yes"}
-            and c.get("symbol") and not _bear_relstr_ok(KISClient(), c["symbol"])):
-        return False, "하락국면 역행강세 미달(국면선별, 임시활성 2026-07-08)"
     # 수급 미확정: 실거래는 하드 차단(보수). 모의는 장중 당일수급이 원천 미공개라
     # 하드 차단하면 100% 매수 불가 → 5일 누적수급 보정점수로 매수 허용(공격적). 약한 종목은 점수·리스크 게이트가 거른다.
     if not _is_paper() and c.get("score_mode") == "morning_missing_investor_adjusted":

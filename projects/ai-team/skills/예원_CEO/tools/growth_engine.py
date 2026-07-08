@@ -51,13 +51,6 @@ INSIGHTS_FILE = GROWTH_DIR / "insights.json"
 STATE_FILE = GROWTH_DIR / "engine_state.json"
 TUNING_FILE = PROJECT_ROOT / "output" / "cache" / "somi_tuning.json"
 TRADES_FILE = PROJECT_ROOT / "output" / "cache" / "somi_closed_trades.json"
-# 미장(US) 전용 — 국내와 점수 눈금·파일 분리(파이프라인 검토 2026-07-06: 기존엔 학습 되먹임 없이
-# 정적 env값(GATE_LO/HI)만 썼음 — 국내와 동일한 학습·롤백 패턴을 미장에도 연결).
-TUNING_FILE_US = PROJECT_ROOT / "output" / "cache" / "somi_tuning_us.json"
-TRADES_FILE_US = PROJECT_ROOT / "output" / "cache" / "somi_us_closed.json"
-TUNING_DEFAULTS_US = {"gate_lo": 44, "gate_hi": 54}
-# 하한 하드캡: 43 이하 완화 금지(백테스트 40~54 PF1.16, 35↓ 전멸). 상한: 55↑ 블로우오프 검증 차단 유지.
-TUNING_BOUNDS_US = {"gate_lo": (44, 48), "gate_hi": (50, 54)}
 CONTROLLER = AI_TEAM_ROOT / "skills" / "영숙_비서" / "tools" / "agent_controller.py"
 RUN_AT = os.getenv("GROWTH_ENGINE_TIME", "16:10")
 # 자기패치가 수정해도 되는 경로(이 밖을 건드리면 전체 롤백)
@@ -195,55 +188,6 @@ def tune(st: dict) -> list[str]:
     return notes
 
 
-def tune_us(st: dict) -> list[str]:
-    """미장(US) 게이트창(gate_lo/gate_hi) 자동 튜닝 — 국내 tune()과 동일한 롤백·클램프 안전장치.
-    표본이 국내보다 훨씬 희소(24개월 35~130건 수준)해 신호 발동 최소표본을 국내보다 낮게 잡는다.
-    somi_us_trader._tuning_us()가 이 파일(TUNING_FILE_US)을 읽어 다음 스캔부터 즉시 반영(재시작 불요)."""
-    data = _load(TUNING_FILE_US, {"params": dict(TUNING_DEFAULTS_US), "history": []})
-    params = {**TUNING_DEFAULTS_US, **data.get("params", {})}
-    history = data.get("history", [])
-    notes: list[str] = []
-
-    if history:
-        last = history[-1]
-        after = [t for t in _recent_trades(7, TRADES_FILE_US) if str(t.get("ts_close", "")) > last["ts"]]
-        if len(after) >= 3 and last.get("kind") != "rollback":
-            avg_after = sum(t.get("ret_pct", 0) for t in after) / len(after)
-            base = last.get("baseline_avg", 0)
-            if avg_after < base - 1.0:
-                params = dict(last.get("before", params))
-                history.append({"ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "kind": "rollback",
-                                "reason": f"변경 후 평균 {avg_after:+.2f}% < 기준 {base:+.2f}%-1.0", "params": params})
-                notes.append(f"↩️ 미장 튜닝 롤백 — 변경 후 성과 악화({avg_after:+.2f}%)")
-
-    before = dict(params)
-    n = st.get("n", 0)
-    recent3 = _recent_trades(3, TRADES_FILE_US)
-    if not notes:  # 롤백한 날은 추가 조정 금지(한 번에 한 손잡이)
-        if n and not recent3:
-            params["gate_lo"] -= 1
-            notes.append("미장 3일간 체결 0건 → 하한 완화(-1)")
-        elif n >= 5 and st.get("winrate", 1) < 0.4:
-            params["gate_lo"] += 1
-            notes.append(f"미장 승률 {st['winrate']:.0%} < 40% → 하한 강화(+1)")
-        if n >= 5 and st.get("avg_net", 0) < 0:
-            params["gate_lo"] += 1
-            notes.append(f"미장 평균 순수익 {st['avg_net']:+.2f}% < 0 → 하한 강화(+1)")
-
-    for k, (lo, hi) in TUNING_BOUNDS_US.items():
-        params[k] = max(lo, min(hi, int(params[k])))
-    if params["gate_lo"] > params["gate_hi"] - 2:   # 최소 창 폭 2 보장(과튜닝으로 창 소멸 방지)
-        params["gate_lo"] = params["gate_hi"] - 2
-
-    if params != before:
-        history.append({"ts": datetime.now().strftime("%Y-%m-%d %H:%M"), "kind": "tune",
-                        "before": before, "params": params,
-                        "baseline_avg": st.get("avg_net", 0), "notes": notes})
-    data.update({"params": params, "history": history[-30:]})
-    _save(TUNING_FILE_US, data)
-    return notes
-
-
 # ── 3) 자기패치 (headless claude) ────────────────────────
 def _git(*args: str) -> str:
     # core.quotepath=false: 한글 경로가 8진수 이스케이프로 나오면 화이트리스트 검사·복원이 깨진다
@@ -322,8 +266,7 @@ def self_patch(insights: dict, state: dict) -> str:
     # 수정 파일이 속한 데몬 재시작(소미 계열만 매핑)
     restart_map = {"somi_trade_advisor.py": "소미제안", "somi_position_monitor.py": "소미포지션",
                    "somi_screener.py": "소미발굴", "somi_price_monitor.py": "소미",
-                   "somi_signal_engine.py": "소미신호", "market_trend_alert.py": "추세알림",
-                   "morning_note.py": "모닝노트"}
+                   "market_trend_alert.py": "추세알림", "morning_note.py": "모닝노트"}
     for f in changed:
         agent = restart_map.get(Path(f).name)
         if agent:
@@ -375,12 +318,6 @@ def run_cycle() -> str:
     if _autopilot_on():
         notes = tune(st)
         lines += [f"🔧 {n}" for n in notes] or ["🔧 튜닝: 조정 없음"]
-        # 미장(US) 튜닝 — 표본 희소하므로 실제 신호(notes) 있거나 거래가 있었던 날만 보고(매일 '0건' 스팸 방지).
-        # 신호 판정 자체는 n=0인 날도 항상 실행(무체결 연속→하한 완화 로직이 조용히 계속 작동해야 함).
-        st_us = _stats(_recent_trades(14, TRADES_FILE_US))
-        notes_us = tune_us(st_us)
-        if notes_us or st_us.get("n"):
-            lines += [f"🇺🇸 {n}" for n in notes_us] or [f"🇺🇸 미장 14일 {st_us.get('n', 0)}건 학습(조정 없음)"]
         lines.append(self_patch(insights, state))
         ac = agent_check(insights, state)
         if ac:

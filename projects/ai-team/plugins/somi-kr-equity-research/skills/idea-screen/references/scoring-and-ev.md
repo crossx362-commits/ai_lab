@@ -23,7 +23,7 @@ CLI: `python ... /somi_screener.py --top 5 --candidates 20`.
 EV = (상승확률 × 목표수익률) − (하락확률 × 손절폭)
 ```
 - 목표/손절은 `somi_trade_advisor._levels()`/`analyze_candidate()`가 산출.
-- 신호화·예산 배분은 `somi_signal_engine.scan(budget, top)` (기본 예산 `SOMI_BUDGET_PER_TRADE`).
+- 신호화·예산 배분은 `somi_trade_advisor.py`의 자동매수 루프(`_auto_buy_paper`).
 - 약세장(`_is_bear()`)이면 후보 수 2배로 넓혀 보수적으로 선별.
 
 ## 4. 매수 게이트

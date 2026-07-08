@@ -58,11 +58,6 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "somi_position_monitor",
     },
-    "소미신호": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_signal_engine.py",
-        "args": ["--daemon", "--interval", "600"],
-        "log": "somi_signal_engine",
-    },
     "추세알림": {
         "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "market_trend_alert.py",
         "args": ["--daemon", "--interval", "900"],
@@ -113,21 +108,6 @@ AGENTS = {
         "args": [],
         "log": "status_dashboard",
     },
-    "미장소미": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_us_trader.py",
-        "args": ["--daemon"],
-        "log": "somi_us_trader",
-    },
-    "크립토소미": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_crypto_trader.py",
-        "args": ["--daemon"],
-        "log": "somi_crypto_trader",
-    },
-    "전략랩": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "strategy_lab.py",
-        "args": ["--daemon"],
-        "log": "strategy_lab",
-    },
 }
 
 ALIASES = {
@@ -142,10 +122,8 @@ ALIASES = {
     "leon": "레온",
     "market": "마켓데스크",
     "marketdesk": "마켓데스크",
-    "signal": "소미신호",
     "morning": "모닝노트",
     "morningnote": "모닝노트",
-    "somi_signal": "소미신호",
     "trend": "추세알림",
     # harness_monitor 자동재시작은 notify.CONTINUOUS_DAEMONS의 영어 키를 그대로 넘긴다.
     # 아래 매핑이 없으면 Windows에서 해당 데몬 재시작이 조용히 실패한다(자가복구 불능).
@@ -158,11 +136,6 @@ ALIASES = {
     "yewon_growth": "성장엔진",
     "growth": "성장엔진",
     "dashboard": "대시보드",
-    "somi_us": "미장소미",
-    "us": "미장소미",
-    "somi_crypto": "크립토소미",
-    "crypto": "크립토소미",
-    "strategy_lab": "전략랩",
 }
 
 

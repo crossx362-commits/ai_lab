@@ -10,7 +10,7 @@ description: 한국주식(코스피·코스닥) 종목 발굴·스크리닝. 거
 ## 데이터 소스
 
 - 후보 풀: `somi_screener.py` (거래대금 상위), KIS API
-- 채점: `somi_signal_engine.py` (소미 점수), `short_covering_analyzer.py` (대차/공매도)
+- 채점: `short_covering_analyzer.py` (소미 점수·대차/공매도)
 - 시장 레짐: `market_regime.py` — 레짐에 따라 스크린 강도 조절
 - 매수구간: `somi_trade_advisor.py`
 
