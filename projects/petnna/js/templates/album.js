@@ -190,7 +190,7 @@ const ALBUM_TEMPLATE = `
                             <i class="fa-solid fa-circle-check"></i><span>업로드 완료</span>
                         </div>
 
-                        <img loading="lazy" id="decorator-bg" class="hidden w-full h-full object-cover pointer-events-none" src="">
+                        <img loading="lazy" id="decorator-bg" class="hidden w-full h-full object-cover pointer-events-none">
                         <video id="decorator-bg-video" class="hidden w-full h-full object-cover pointer-events-none" muted loop autoplay playsinline></video>
                         <div id="stickers-container" class="absolute inset-0 pointer-events-none z-10"></div>
                     </div>
