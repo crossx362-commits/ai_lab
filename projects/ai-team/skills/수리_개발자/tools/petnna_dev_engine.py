@@ -246,10 +246,14 @@ def claude_fix(worktree: Path, finding: dict) -> tuple[bool, str]:
         "- 마지막에 어떤 파일을 왜 바꿨는지 1~3줄로 요약하라."
     )
     try:
+        # env: 죽은 ANTHROPIC_API_KEY(.env, 크레딧0) 상속 차단 — 남아있으면 claude가
+        # 구독 OAuth 대신 그 키로 인증해 credit-balance 오류로 실패한다(2026-07-09 사고, llm.py 동일 수정).
+        _env = {k: v for k, v in os.environ.items()
+                if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")}
         r = subprocess.run([cli, "-p", prompt, "--permission-mode", "acceptEdits",
                             "--allowedTools", "WebSearch,WebFetch"],
                            cwd=str(worktree), capture_output=True, text=True,
-                           timeout=CLAUDE_TIMEOUT)
+                           timeout=CLAUDE_TIMEOUT, env=_env)
         tail = (r.stdout or r.stderr or "").strip()[-500:]
         return r.returncode == 0, tail
     except subprocess.TimeoutExpired:

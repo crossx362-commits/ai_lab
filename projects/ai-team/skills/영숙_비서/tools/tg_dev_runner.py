@@ -49,11 +49,19 @@ def run(branch: str, request: str) -> None:
     try:
         # 2) 헤드리스 claude 실행 (격리된 worktree에서)
         #    acceptEdits: 파일 수정만 자동 승인, 검토·테스트·머지는 사람이(안전 모드)
+        #    env: 죽은 ANTHROPIC_API_KEY(.env, 크레딧0) 상속 차단 — 남아있으면 claude가
+        #    구독 OAuth 대신 그 키로 인증해 "credit balance too low"를 응답처럼 뱉는다(2026-07-09 사고).
+        _env = {k: v for k, v in os.environ.items()
+                if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")}
         try:
             proc = subprocess.run(
                 [claude, "-p", request, "--permission-mode", "acceptEdits"],
-                cwd=str(worktree), capture_output=True, text=True, timeout=900,
+                cwd=str(worktree), capture_output=True, text=True, timeout=900, env=_env,
             )
+            if proc.returncode != 0:
+                send(f"❌ 개발 작업 실패 — claude 실행 오류(exit {proc.returncode})\n"
+                     f"{(proc.stderr or proc.stdout or '')[:400]}")
+                return
             summary = (proc.stdout or proc.stderr or "").strip()[-1200:]
         except subprocess.TimeoutExpired:
             send(f"⏱️ 개발 작업 시간초과(15분) — 브랜치 {branch} 확인 필요")
