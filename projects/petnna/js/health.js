@@ -179,7 +179,7 @@ function updateAiUsageCount() {
 // 건강 트렌드 차트 렌더링 (메인)
 function renderHealthTrendChartMain() {
     const canvas = document.getElementById('health-trend-chart-main');
-    if (!canvas) return;
+    if (!canvas || typeof Chart === 'undefined') return;
 
     const ctx = canvas.getContext('2d');
     const data = (typeof getLast7DaysHealthData === 'function') ? getLast7DaysHealthData() : [];

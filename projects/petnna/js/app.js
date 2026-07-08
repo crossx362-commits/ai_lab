@@ -677,8 +677,7 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
     _safeRender(renderMyPets);
     _safeRender(renderFeed);
     _safeRender(renderAlbumGallery);
-    _safeRender(renderWalkTimeline);
-    _safeRender(renderScheduleCalendar);
+    _safeRender(renderCareScheduler);
     _safeRender(renderWalkHistory);
     
     // 설정 프로필 사진 갱신
