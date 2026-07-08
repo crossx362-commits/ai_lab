@@ -166,6 +166,7 @@ def _journal_extra(p: dict, max_up: float, max_dn: float, sell_reason: str,
         "max_up_pct": round(max_up, 2), "max_dn_pct": round(max_dn, 2),
         "stopped": stopped, "took_profit": profit,
         "slot": p.get("slot"), "regime": p.get("regime"), "news": p.get("news"),
+        "conv": p.get("conv"), "chg_at_buy": p.get("chg_at_buy"),  # 확신 사이징 학습용(2026-07-08 누락 발견)
         "success_cause": cause if profit else "", "fail_cause": "" if profit else cause,
     }
 
