@@ -345,17 +345,52 @@ def _gate_thresholds() -> dict:
     """매수 게이트 문턱 — 모의(paper)는 공격적 완화 + 성장엔진 자동 튜닝, 실거래(live)는 보수값 고정.
     위험관리 축(dq_state·danger)은 모드 무관 차단. 수급미확정은 실거래만 차단(모의는 5일누적 보정 허용)."""
     if _is_paper():
-        # 모의 진입문턱 하한 55 — 실거래(모의) 69건 분석(2026-07-07): 진입점수 40~54 매수는
-        # 7건 전패(-24.6%)·55~69가 스위트스팟(+32.4%·승률53%). 아침의 '상한 40 강제'는 오판이라
-        # 데이터로 철회(그 게이트로 산 덕성·덕성우 당일 -4.7~-5.3% 손절 실증). 재분석 없이 55 밑 금지.
+        # 오너 env(SOMI_GATE_ENTRY_PAPER)가 상한 — 코드 하한(floor)으로 env를 무력화하지 마라
+        # (오너 지시 2026-07-08 "종일 매수·근본 수리": 7/7 하한 55가 env 40 완화를 덮어써 철회됨).
+        # 진입 40~54 열세 분석(69건: 7건 전패)은 실거래 도입 판단 자료 — 시간대·점수는 메타에 기록됨.
         paper_entry_cap = int(os.getenv("SOMI_GATE_ENTRY_PAPER", "55"))
-        entry_floor = int(os.getenv("SOMI_GATE_ENTRY_FLOOR", "55"))
         return {
             "score": _tuning("gate_score", int(os.getenv("SOMI_GATE_SCORE_PAPER", "60"))),   # 탐지점수 (중소형 전이검증: 60+수급확인부터 흑자)
-            "entry": max(entry_floor, min(_tuning("gate_entry", paper_entry_cap), paper_entry_cap)),
+            "entry": min(_tuning("gate_entry", paper_entry_cap), paper_entry_cap),   # env가 상한 — 튜너는 그 이하로만
             "require_rr": os.getenv("SOMI_GATE_RR_PAPER", "false").lower() in {"1", "true", "yes"},
         }
     return {"score": 60, "entry": 70, "require_rr": True}
+
+
+def _doctrine_audit() -> list[str]:
+    """모의 독트린 자가검사(오너 지시 2026-07-08 "근본 수리") — 데몬 기동 시 호출.
+    독트린: 모의는 종일 공격적 매수·데이터 수집. 오너 env 완화를 코드가 무력화하면 위반.
+    위반 발견 = 누군가(세션·튜너·수동편집) 게이트를 무단 강화한 것 → 즉시 경보."""
+    if not _is_paper():
+        return []
+    v = []
+    th = _gate_thresholds()
+    buy_from = os.getenv("SOMI_PAPER_BUY_FROM", "09:00")
+    if buy_from > "09:00":
+        v.append(f"시간대 체결 차단({buy_from}부터) — 모의는 종일 매수(가드레일 2026-07-08)")
+    env_cap = os.getenv("SOMI_GATE_ENTRY_PAPER")
+    if env_cap and th["entry"] > int(env_cap):
+        v.append(f"진입문턱 {th['entry']} > 오너 env {env_cap} — env 완화가 코드에 무력화됨")
+    bump = int(os.getenv("SOMI_BEAR_GATE_BUMP", "10"))
+    if bump > 0:
+        v.append(f"BEAR_GATE_BUMP={bump} — 모의는 0(오너 지시 2026-07-03, 하락장도 기본 60 거래)")
+    if th["require_rr"]:
+        v.append("손익비 하드게이트 켜짐 — 모의는 해제가 기본")
+    return v
+
+
+def _log_doctrine_state() -> None:
+    """기동 시 유효 게이트 상태 1줄 로그 + 위반 시 텔레그램 경보."""
+    th = _gate_thresholds()
+    print(f"[독트린] 게이트: 탐지 {th['score']} · 진입 {th['entry']} · 손익비게이트 {th['require_rr']}"
+          f" · 매수시작 {os.getenv('SOMI_PAPER_BUY_FROM', '09:00')}"
+          f" · BEAR_BUMP {os.getenv('SOMI_BEAR_GATE_BUMP', '10')}"
+          f" · 수급확인 {os.getenv('SOMI_SOOMGEUP_GATE', 'true')} · 관찰 {_observe_minutes()}분")
+    violations = _doctrine_audit()
+    for msg in violations:
+        print(f"[독트린] 🚨 위반: {msg}")
+    if violations:
+        send("🚨 [소미] 모의 독트린 위반 감지 — 게이트가 무단 강화됨:\n- " + "\n- ".join(violations))
 
 
 def _passes_buy_gate(c: dict, regime: str = "unknown") -> tuple[bool, str]:
@@ -1319,6 +1354,7 @@ def main() -> None:
             last_disc, regime = None, "unknown"
             with ProcessLock("somi_trade_advisor"):
                 print(f"[{datetime.now()}] 소미 매수 데몬 시작 (동적 모드: 발굴 {disc_min}분 주기 + 고속감시 {fast_sec}초)")
+                _log_doctrine_state()   # 독트린 자가검사 — 게이트 무단 강화 시 기동 즉시 경보
                 while True:
                     now = datetime.now()
                     hm = now.strftime("%H:%M")
