@@ -23,6 +23,10 @@ CONTINUOUS_DAEMONS = {
     "yewon": "harness_monitor.py",
     "bomi_qa": "petnna_qa_patrol.py",  # 봄이 — 펫나 QA 상시 순찰 (정기 + 변경 감지)
     "suri_dev": "petnna_dev_engine.py",  # 수리 — 펫나 자동 개선 엔진 (QA 결과 → 수정 → 재검수)
+    "teo_test": "petnna_test_engineer.py",  # 테오 — E2E 테스트 자동 작성·실행
+    "baekho_backend": "petnna_backend_guard.py",  # 백호 — Supabase 계약 감사 (매일)
+    "mio_design": "petnna_design_review.py",  # 미오 — 디자인 리뷰 (주 1회 월)
+    "namu_pm": "petnna_product_manager.py",  # 나무 — 기획 PM (주 1회 화)
     # Windows 정시 잡 실행자(영숙스케줄) — macOS는 아래 launchd 집계가 이 키를 덮어써 오탐 없음
     "scheduler": "schedule_manager.py",
 }
@@ -48,6 +52,10 @@ _AGENT_LABELS = {
     "yewon_selfheal": "예원 (자가 점검/복구)",
     "bomi_qa": "봄이 (펫나 QA 순찰)",
     "suri_dev": "수리 (펫나 자동 개선)",
+    "teo_test": "테오 (펫나 E2E 테스트)",
+    "baekho_backend": "백호 (펫나 백엔드 감사)",
+    "mio_design": "미오 (펫나 디자인 리뷰)",
+    "namu_pm": "나무 (펫나 기획)",
     "harness": "하네스 (시스템 점검)",
 }
 

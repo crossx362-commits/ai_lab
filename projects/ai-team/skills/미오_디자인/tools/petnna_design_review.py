@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""미오 — 펫나 디자인 리뷰어 (주 1회 스크린샷 기반 UX·시각 품질 리뷰).
+
+주 1회(기본 월요일 11:00):
+1. 데스크톱(1440x900)·모바일(390x844) 풀페이지 스크린샷 촬영
+2. 구독 클로드가 스크린샷 + 디자인 기준(projects/petnna/DESIGN.md 있으면 그것,
+   없으면 일반 UX 휴리스틱 + references/awesome-design-md 참고)을 읽고 리뷰
+3. 개선 항목(JSON)을 공유 백로그(output/qa/petnna/backlog.json)에 적재
+   → 수리가 QA 이슈 없을 때 집어 브랜치 구현(자동 병합 없음, 항상 사람 검토)
+4. 리뷰 보고서 + 텔레그램 요약. 모르는 디자인 트렌드/근거는 웹서치.
+"""
+
+from __future__ import annotations
+
+import argparse
+import http.server
+import json
+import os
+import sys
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parents[4]
+AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
+sys.path.insert(0, str(AI_TEAM_ROOT))
+
+from _shared.env import load_env  # noqa: E402
+from _shared.notify import send  # noqa: E402
+from _shared.process import ProcessLock  # noqa: E402
+from _shared.utils import due_slot  # noqa: E402
+from _shared.cc import run_claude, extract_json  # noqa: E402
+
+load_env(str(PROJECT_ROOT))
+
+PETNNA_ROOT = PROJECT_ROOT / "projects" / "petnna"
+OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "design"
+BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
+SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "mio_slots.json"
+PORT = int(os.getenv("MIO_PORT", "8936"))
+REVIEW_WEEKDAY = int(os.getenv("MIO_WEEKDAY", "0"))  # 0=월요일
+
+
+class _SilentHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+
+def take_screenshots() -> list[Path]:
+    from playwright.sync_api import sync_playwright
+
+    handler = lambda *a, **kw: _SilentHandler(*a, directory=str(PETNNA_ROOT), **kw)  # noqa: E731
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    shots = []
+    stamp = datetime.now().strftime("%Y%m%d")
+    (OUT_DIR / "shots").mkdir(parents=True, exist_ok=True)
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            for label, (w, h) in {"desktop": (1440, 900), "mobile": (390, 844)}.items():
+                ctx = browser.new_context(viewport={"width": w, "height": h})
+                page = ctx.new_page()
+                page.goto(f"http://127.0.0.1:{PORT}/index.html", wait_until="load", timeout=30000)
+                page.wait_for_timeout(2500)
+                path = OUT_DIR / "shots" / f"{stamp}_{label}.png"
+                page.screenshot(path=str(path), full_page=True)
+                shots.append(path)
+                ctx.close()
+            browser.close()
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    return shots
+
+
+def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
+    try:
+        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+    except Exception:
+        data = {"items": []}
+    existing = {i.get("title") for i in data["items"]}
+    added = 0
+    for it in items:
+        title = (it.get("title") or "").strip()
+        if not title or title in existing:
+            continue
+        data["items"].append({
+            "id": f"{source}_{datetime.now():%Y%m%d}_{added}",
+            "title": title[:120],
+            "detail": (it.get("detail") or "")[:500],
+            "priority": it.get("priority") if it.get("priority") in ("P1", "P2", "P3") else "P3",
+            "type": itype, "source": source, "status": "대기",
+            "created": datetime.now().isoformat(),
+        })
+        added += 1
+    BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return added
+
+
+def review(do_send: bool) -> None:
+    print(f"[{datetime.now()}] 🎨 미오 디자인 리뷰 시작")
+    shots = take_screenshots()
+    design_md = PETNNA_ROOT / "DESIGN.md"
+    ref = (f"디자인 기준 문서 {design_md} 를 Read로 읽고 그 기준으로 평가하라."
+           if design_md.exists() else
+           "일반 UX 휴리스틱(시각 위계·CTA 가시성·여백·타이포·일관성·모바일 터치 영역)으로 평가하고, "
+           "필요하면 references/awesome-design-md/ 의 실사이트 디자인 시스템을 참고하라.")
+    ok, out = run_claude(
+        "너는 시니어 프로덕트 디자이너다. 펫나(펫 케어 플랫폼 SPA)의 현재 화면을 리뷰하라.\n"
+        f"스크린샷을 Read 도구로 열어 실제로 보라: {', '.join(str(s) for s in shots)}\n"
+        f"{ref}\n"
+        "모르는 디자인 트렌드·근거는 웹서치로 확인하라.\n\n"
+        "출력: 반드시 JSON 배열만. 각 항목 {\"title\": \"개선 제목(한국어, 구체적으로)\", "
+        "\"detail\": \"무엇을 어떻게 바꿀지 + 근거\", \"priority\": \"P2|P3\"}. "
+        "실행 가능하고 CSS/HTML 수준에서 구현 가능한 것 위주로 3~6개. 코드는 수정하지 마라.",
+        PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
+        permission_mode="plan")
+    items = extract_json(out) if ok else None
+    if not isinstance(items, list):
+        print(f"[미오] 리뷰 실패/파싱 불가: {out[-200:] if out else '응답 없음'}")
+        if do_send:
+            send("🎨 미오 — 이번 주 디자인 리뷰 실패(응답 파싱 불가), 다음 주기 재시도", silent=True)
+        return
+    added = add_backlog_items(items, source="미오", itype="디자인")
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    report = OUT_DIR / f"review_{datetime.now():%Y%m%d}.md"
+    lines = [f"# 펫나 디자인 리뷰 — {datetime.now():%Y-%m-%d} (미오)", ""]
+    for it in items:
+        lines.append(f"- [{it.get('priority','P3')}] {it.get('title')}\n  - {it.get('detail','')}")
+    lines += ["", f"스크린샷: {', '.join(s.name for s in shots)}",
+              f"백로그 신규 적재: {added}건 → 수리가 브랜치 구현(자동 병합 없음)"]
+    report.write_text("\n".join(lines), encoding="utf-8")
+    print(f"리뷰 완료 — 제안 {len(items)}건, 백로그 적재 {added}건, {report}")
+    if do_send:
+        msg = [f"🎨 미오 디자인 리뷰 — 제안 {len(items)}건 (백로그 적재 {added})"]
+        msg += [f"· {it.get('title')}" for it in items[:4]]
+        msg.append(f"📄 {report}")
+        send("\n".join(msg), silent=True)
+
+
+def daemon() -> None:
+    if sys.platform == "win32" and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true":
+        print("펫나 에이전트는 맥 전용(이중 가동 방지)")
+        return
+    slots = os.getenv("MIO_SLOTS", "11:00").split(",")
+    with ProcessLock("mio_design_review"):
+        print(f"[{datetime.now()}] 미오 데몬 시작 — 매주 요일 {REVIEW_WEEKDAY}, {','.join(slots)}")
+        while True:
+            try:
+                if datetime.now().weekday() == REVIEW_WEEKDAY and \
+                        due_slot(slots, SLOT_STATE, weekdays_only=False):
+                    review(do_send=True)
+            except Exception as e:
+                print(f"[{datetime.now()}] ⚠️ 미오 오류: {e}")
+                try:
+                    send(f"⚠️ 미오 디자인 리뷰 오류: {str(e)[:200]}", silent=True)
+                except Exception:
+                    pass
+            time.sleep(600)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="미오 — 펫나 디자인 리뷰어")
+    ap.add_argument("--once", action="store_true", help="리뷰 1회(요일 무관)")
+    ap.add_argument("--send", action="store_true")
+    ap.add_argument("--daemon", action="store_true")
+    args = ap.parse_args()
+    if args.daemon:
+        daemon()
+    else:
+        review(do_send=args.send)
+
+
+if __name__ == "__main__":
+    main()

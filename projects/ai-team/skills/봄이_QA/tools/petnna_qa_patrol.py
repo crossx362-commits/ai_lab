@@ -108,8 +108,11 @@ def _finding(priority, ftype, url, env, title, detail="", evidence=""):
 
 
 def _fingerprint(f: dict) -> str:
-    key = f"{f['type']}|{f['url']}|{f['env']}|{f['title']}"
-    return hashlib.md5(key.encode("utf-8")).hexdigest()[:12]
+    # 회의 결정(2026-07-08): 뷰포트(env)·유형 제외, "URL + 숫자 정규화 제목"으로 단일화
+    # — 같은 근본 원인이 데스크톱/모바일로 이중 계상돼 브랜치 2개가 생기던 문제 방지.
+    # (지문 체계 변경으로 기존 상태와 1회성 신규/해결 흔들림 발생 — 정상)
+    norm = re.sub(r"\d+", "#", f["title"])
+    return hashlib.md5(f"{f['url']}|{norm}".encode("utf-8")).hexdigest()[:12]
 
 
 def find_pages() -> list[str]:
@@ -233,6 +236,28 @@ def browser_patrol(port: int) -> list[dict]:
                     findings.append(_finding("P1", "기능", f"/{doc}", env_name,
                                              "본문 텍스트가 거의 없음 — 빈 화면 의심",
                                              f"body 텍스트 {a['bodyText']}자", str(shot or "")))
+
+                # 앱 자체 오류 수집기(AppLogger→localStorage) 흡수 — 핸들된 오류·스택까지 확보
+                try:
+                    # AppLogger는 const 선언이라 window 프로퍼티가 아님 — typeof로 접근
+                    app_logs = page.evaluate(
+                        "() => (typeof AppLogger !== 'undefined' && AppLogger.getErrorLogs) "
+                        "? AppLogger.getErrorLogs().slice(0, 15) : []")
+                except Exception:
+                    app_logs = []
+                seen_msgs = set()
+                for lg in app_logs:
+                    # 타임스탬프·숫자 가변부 정규화 → 순찰 간 동일 오류로 지문 유지
+                    msg = re.sub(r"\d+", "#", str(lg.get("message", ""))[:110])
+                    key = f"{lg.get('type')}|{msg}"
+                    if key in seen_msgs:
+                        continue
+                    seen_msgs.add(key)
+                    pri = "P1" if lg.get("type") in ("global_error", "global_rejection") else "P2"
+                    findings.append(_finding(
+                        pri, "기능", f"/{doc}", env_name,
+                        f"앱 오류로그[{lg.get('type')}]: {msg}",
+                        (str(lg.get("stack", ""))[:300] or "스택 없음") + " — AppLogger 수집(순찰 세션)"))
             ctx.close()
         browser.close()
     return findings
@@ -361,6 +386,20 @@ def urgent_message(findings) -> str | None:
 
 # ── 실행 ───────────────────────────────────────────────────
 
+def _convene_council(topic: str, context: str, priority: str) -> None:
+    """큰 이슈 → 전 에이전트 긴급 회의 소집 (비차단, 24h 중복 방지는 회의 쪽에서)."""
+    import subprocess
+    council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
+    try:
+        subprocess.Popen([sys.executable, str(council), "--topic", topic[:200],
+                          "--context", context[:1500], "--priority", priority],
+                         cwd=str(PROJECT_ROOT), start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"[회의 소집] {topic[:80]}")
+    except Exception as e:
+        print(f"[회의 소집 실패] {e}")
+
+
 def patrol(do_send: bool) -> list[dict]:
     print(f"[{datetime.now()}] 🧪 봄이 순찰 시작 (포트 {PORT})")
     srv = start_server(PORT)
@@ -368,6 +407,7 @@ def patrol(do_send: bool) -> list[dict]:
         findings = static_checks() + browser_patrol(PORT)
     finally:
         srv.shutdown()
+        srv.server_close()  # 소켓까지 닫아야 같은 프로세스의 다음 순찰이 포트 재사용 가능
     # 동일 문제(지문 기준) 중복 제거 — 같은 리소스 오류가 여러 번 잡혀도 1건으로 보고
     seen, unique = set(), []
     for f in findings:
@@ -384,6 +424,14 @@ def patrol(do_send: bool) -> list[dict]:
         if msg:
             send(msg)
         send(summary_message(findings, delta, report), silent=not msg)
+        # 신규 P0/P1 = 큰 이슈 → 전 에이전트 긴급 회의
+        urgent_new = [f for f in findings
+                      if f["priority"] in ("P0", "P1") and f["id"] in delta["new"]]
+        if urgent_new:
+            top = urgent_new[0]
+            _convene_council(f"긴급 QA: {top['title'][:120]}",
+                             f"{top.get('detail','')} | URL {top['url']} ({top['env']}) | "
+                             f"신규 P0/P1 총 {len(urgent_new)}건", top["priority"])
     return findings
 
 
@@ -397,7 +445,28 @@ def _tree_digest() -> str:
     return h.hexdigest()
 
 
+def fleet_freshness_audit() -> None:
+    """함대 산출물 신선도 감사 — '켜져는 있는데 아무것도 안 만드는' 죽은 데몬 감지
+    (주식 시절 교훈: 프로세스 생존 ≠ 일하는 중. 산출물이 실제로 쌓이는지 봐야 한다)."""
+    qa_base = PROJECT_ROOT / "output" / "qa" / "petnna"
+    checks = [("봄이 QA 보고서", QA_DIR, 36), ("수리 개선 루프", qa_base / "dev", 36),
+              ("테오 테스트 결과", qa_base / "tests", 36), ("백호 백엔드 감사", qa_base / "backend", 36),
+              ("미오 디자인 리뷰", qa_base / "design", 8 * 24), ("나무 기획", qa_base / "product", 8 * 24)]
+    stale = []
+    for name, path, hours in checks:
+        newest = max((p.stat().st_mtime for p in path.rglob("*") if p.is_file()), default=0)
+        if time.time() - newest > hours * 3600:
+            stale.append(f"- {name}: {int((time.time() - newest) / 3600)}시간째 무산출 (기준 {hours}h)")
+    if stale:
+        send("🕯️ 봄이 — 함대 산출물 정체 감지 (죽은 데몬 의심, 로그 확인 필요)\n" + "\n".join(stale))
+    else:
+        print(f"[{datetime.now()}] 함대 신선도 감사: 전원 정상 산출 중")
+
+
 def daemon() -> None:
+    if sys.platform == "win32" and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true":
+        print("펫나 에이전트는 맥 전용(이중 가동 방지)")
+        return
     slots = os.getenv("BOMI_QA_SLOTS", "09:20").split(",")
     poll = int(os.getenv("BOMI_QA_POLL_SEC", "300"))
     cooldown = int(os.getenv("BOMI_QA_COOLDOWN_SEC", "1800"))
@@ -414,6 +483,8 @@ def daemon() -> None:
                     reason = f"정기({slot})" if slot else "변경 감지"
                     print(f"[{datetime.now()}] 순찰 트리거: {reason}")
                     patrol(do_send=True)
+                    if slot:
+                        fleet_freshness_audit()
                     last_patrol = time.time()
                     last_digest = _tree_digest()
                 elif changed:

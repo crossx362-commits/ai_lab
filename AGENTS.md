@@ -58,10 +58,14 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 
 | Agent | Role | Key Tools |
 |-------|------|-----------|
-| 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `upload_manager.py` |
+| 예원 (Yewon) | CEO — Task dispatcher & orchestrator, 펫나 긴급 회의 의장 | `yewon_dispatcher.py`, `upload_manager.py`, `petnna_council.py` |
 | 영숙 (Youngsuk) | Secretary — Telegram bot & calendar | `telegram_receiver.py`, `calendar_manager.py` |
 | 봄이 (Bomi) | QA — 펫나 상시 자동 순찰/검수 | `petnna_qa_patrol.py` (skills/봄이_QA, SKILL.md=QA 헌장) |
-| 수리 (Suri) | Dev — 펫나 자동 개선 엔진 (QA 결과→수정→재검수→저위험 자동 병합) | `petnna_dev_engine.py` (skills/수리_개발자, SKILL.md=개발 헌장) |
+| 수리 (Suri) | Dev — 펫나 자동 개선 엔진 (QA 결과→수정→재검수→저위험 자동 병합, 백로그 과제는 항상 PR대기) | `petnna_dev_engine.py` (skills/수리_개발자, SKILL.md=개발 헌장) |
+| 테오 (Teo) | Test — E2E 테스트 자동 작성·실행 (2회 연속 통과 시 채택, flaky 폐기) | `petnna_test_engineer.py` (skills/테오_테스트) |
+| 백호 (Baekho) | Backend — Supabase 스키마·RLS·프론트 계약 감사 (매일, 읽기 전용) | `petnna_backend_guard.py` (skills/백호_백엔드) |
+| 미오 (Mio) | Design — 주 1회 스크린샷 기반 디자인 리뷰 → 백로그 적재 | `petnna_design_review.py` (skills/미오_디자인) |
+| 나무 (Namu) | PM — 주 1회 웹서치 트렌드·경쟁 조사 → 기능 백로그 적재 | `petnna_product_manager.py` (skills/나무_기획) |
 
 ### Shared Module System
 
@@ -400,6 +404,10 @@ if hasattr(sys.stdout, "reconfigure"):
 | **영숙_비서** | 텔레그램 봇·스케줄러·캘린더 | `telegram_receiver.py`, `schedule_manager.py` |
 | **봄이_QA** | 펫나 QA 상시 순찰 | `petnna_qa_patrol.py` |
 | **수리_개발자** | 펫나 자동 개선 엔진 (봄이 결과 소비, 격리 브랜치 수정·게이트 병합) | `petnna_dev_engine.py` |
+| **테오_테스트** | 펫나 E2E 테스트 자동 작성·실행 | `petnna_test_engineer.py` |
+| **백호_백엔드** | Supabase 계약 감사 (읽기 전용) | `petnna_backend_guard.py` |
+| **미오_디자인** | 디자인 리뷰 → 공유 백로그(`output/qa/petnna/backlog.json`) | `petnna_design_review.py` |
+| **나무_기획** | 기획 PM → 공유 백로그 | `petnna_product_manager.py` |
 
 > 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크 등)는 2026-07-08 오너 지시로 전부 삭제됨 (git 이력에서 복구 가능).
 

@@ -1,0 +1,66 @@
+"""Claude Code 헤드리스(구독) 실행 헬퍼 — 펫나 에이전트 공용.
+
+`claude -p`를 subprocess로 호출해 구독 사용량으로 클로드를 쓴다(API 크레딧 불필요).
+- `--bare` 금지(구독 OAuth 무시), launchd PATH 폴백 필수 (가드레일 2026-07-05/07-08)
+- 기본으로 WebSearch/WebFetch 허용 — 에이전트가 모르는 것은 웹서치로 해결
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+
+def find_claude() -> str | None:
+    cli = shutil.which("claude")
+    if cli:
+        return cli
+    for p in ("/usr/local/bin/claude", "/opt/homebrew/bin/claude",
+              str(Path.home() / ".local" / "bin" / "claude")):
+        if Path(p).exists():
+            return p
+    return None
+
+
+def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
+               allowed_tools: str = "WebSearch,WebFetch",
+               permission_mode: str = "acceptEdits") -> tuple[bool, str]:
+    """헤드리스 클로드 실행. (성공여부, 응답/오류 텍스트) 반환."""
+    cli = find_claude()
+    if not cli:
+        return False, "claude CLI 미발견 (PATH·표준 경로 모두 없음)"
+    cmd = [cli, "-p", prompt, "--permission-mode", permission_mode]
+    if allowed_tools:
+        cmd += ["--allowedTools", allowed_tools]
+    try:
+        r = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, timeout=timeout)
+        out = (r.stdout or "").strip() or (r.stderr or "").strip()
+        return r.returncode == 0, out
+    except subprocess.TimeoutExpired:
+        return False, f"claude -p 타임아웃({timeout}s)"
+    except Exception as e:
+        return False, f"claude 실행 실패: {e}"
+
+
+def extract_json(text: str):
+    """응답에서 첫 JSON 객체/배열을 관대하게 추출. 실패 시 None."""
+    if not text:
+        return None
+    # 코드펜스 우선
+    m = re.search(r"```(?:json)?\s*([\[{].*?[\]}])\s*```", text, re.DOTALL)
+    candidates = [m.group(1)] if m else []
+    for opener, closer in (("[", "]"), ("{", "}")):
+        start = text.find(opener)
+        if start != -1:
+            end = text.rfind(closer)
+            if end > start:
+                candidates.append(text[start:end + 1])
+    for cand in candidates:
+        try:
+            return json.loads(cand)
+        except Exception:
+            continue
+    return None

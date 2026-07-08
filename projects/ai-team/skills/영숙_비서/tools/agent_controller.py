@@ -58,6 +58,26 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "suri_dev_engine",
     },
+    "테오": {
+        "script": AI_TEAM_ROOT / "skills" / "테오_테스트" / "tools" / "petnna_test_engineer.py",
+        "args": ["--daemon"],
+        "log": "teo_test_engineer",
+    },
+    "백호": {
+        "script": AI_TEAM_ROOT / "skills" / "백호_백엔드" / "tools" / "petnna_backend_guard.py",
+        "args": ["--daemon"],
+        "log": "baekho_backend_guard",
+    },
+    "미오": {
+        "script": AI_TEAM_ROOT / "skills" / "미오_디자인" / "tools" / "petnna_design_review.py",
+        "args": ["--daemon"],
+        "log": "mio_design_review",
+    },
+    "나무": {
+        "script": AI_TEAM_ROOT / "skills" / "나무_기획" / "tools" / "petnna_product_manager.py",
+        "args": ["--daemon"],
+        "log": "namu_product_manager",
+    },
 }
 
 ALIASES = {
@@ -73,6 +93,18 @@ ALIASES = {
     "suri": "수리",
     "suri_dev": "수리",
     "dev": "수리",
+    "teo": "테오",
+    "teo_test": "테오",
+    "test": "테오",
+    "baekho": "백호",
+    "baekho_backend": "백호",
+    "backend": "백호",
+    "mio": "미오",
+    "mio_design": "미오",
+    "design": "미오",
+    "namu": "나무",
+    "namu_pm": "나무",
+    "pm": "나무",
 }
 
 
@@ -105,7 +137,12 @@ def _process_query(script_name: str) -> list[int]:
 
 def find_agent_process(agent_name: str) -> list[int]:
     info = AGENTS.get(get_agent_name(agent_name))
-    return _process_query(info["script"].name) if info else []
+    if not info:
+        return []
+    # --daemon 데몬은 "스크립트명 --daemon"으로 매칭 — 같은 스크립트의 수동 --once
+    # 실행(수리 사이클·회의 등)을 stop/restart가 죽이는 사고 방지(2026-07-08).
+    needle = info["script"].name + (" --daemon" if "--daemon" in info.get("args", []) else "")
+    return _process_query(needle)
 
 
 def stop_agent(agent_name: str) -> str:
