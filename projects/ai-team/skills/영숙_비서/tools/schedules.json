@@ -218,7 +218,7 @@
       "task": "코드 데드코드 검수",
       "cron": "0 10 * * 6",
       "description": "미사용 함수 자동검출 — 고확신 자동삭제+커밋, 나머지 보고 (주말=장없음이라 데몬 재배포 무해)",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/code_auditor.py --apply --send",
+      "command": "python projects/ai-team/skills/예원_CEO/tools/code_auditor.py --check --send",
       "enabled": true,
       "run": true,
       "priority": "medium"

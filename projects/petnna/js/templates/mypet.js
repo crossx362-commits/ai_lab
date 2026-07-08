@@ -164,6 +164,37 @@ const MYPET_TEMPLATE = `
                         <span class="font-black text-gray-700"><i class="fa-solid fa-paw mr-1 text-amber-500"></i>방 & 펫 설정</span>
                         <button onclick="togglePetProfileEdit()" class="text-gray-300 hover:text-gray-500"><i class="fa-solid fa-xmark"></i></button>
                     </div>
+                    <div class="room-layout-picker">
+                        <button id="room-layout-living" onclick="setRoomLayoutForActivePet('living')" class="room-layout-option is-active">
+                            <span class="room-layout-preview-card">
+                                <span class="room-layout-preview living">
+                                    <span class="preview-sofa"></span>
+                                    <span class="preview-rug"></span>
+                                    <span class="preview-line"></span>
+                                    <span class="preview-pet left"></span>
+                                    <span class="preview-pet right"></span>
+                                </span>
+                            </span>
+                            <span class="room-layout-copy">
+                                <strong>거실형</strong>
+                                <small>차분한 여백</small>
+                            </span>
+                        </button>
+                        <button id="room-layout-circle" onclick="setRoomLayoutForActivePet('circle')" class="room-layout-option">
+                            <span class="room-layout-preview-card">
+                                <span class="room-layout-preview circle">
+                                    <span class="preview-line"></span>
+                                    <span class="preview-pet left"></span>
+                                    <span class="preview-pet right"></span>
+                                    <span class="preview-pet top"></span>
+                                </span>
+                            </span>
+                            <span class="room-layout-copy">
+                                <strong>원형</strong>
+                                <small>활동적인 배치</small>
+                            </span>
+                        </button>
+                    </div>
                     <div class="flex items-center gap-3">
                         <div class="shrink-0">
                             <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center border-2 border-amber-100 overflow-hidden relative cursor-pointer group" onclick="document.getElementById('pet-room-photo-upload').click()">

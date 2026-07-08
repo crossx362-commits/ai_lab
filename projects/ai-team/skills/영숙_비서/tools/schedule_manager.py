@@ -12,6 +12,7 @@ import json
 import time
 import datetime
 import subprocess
+import shlex
 from typing import Dict, List, Optional
 from croniter import croniter
 
@@ -145,21 +146,20 @@ def execute_schedule(schedule: Dict):
     # v2.90 — python 스크립트 command는 실제 실행한다. 자체 데몬이 보고를
     # 전담하는 항목(소미 등)은 schedules.json에 "run": false 로 두어 중복 방지.
     if schedule.get("run", True) and command.strip().startswith("python"):
-        # 'python ...' → 실제 인터프리터로 치환 (이 시스템엔 python 별칭이 없고 python3만 존재)
-        run_cmd = command.strip()
-        if not run_cmd.startswith("python3"):
-            run_cmd = sys.executable + run_cmd[len("python"):]
+        # 'python ...' → 현재 인터프리터 argv로 치환. shell=True는 경로/인자 파싱과 주입에 취약하다.
+        run_parts = shlex.split(command.strip(), posix=(sys.platform != "win32"))
+        run_cmd = [sys.executable, *run_parts[1:]]
         # 이중실행 가드(2026-07-02): 같은 스크립트가 이미 프로세스로 떠 있으면(상시 데몬 등)
         # one-shot 실행을 스킵 — 조사팀처럼 데몬이 내부 슬롯으로 같은 시각에 수집하는 잡의
         # 이중 수집(LLM 비용·캐시 경합) 방지. 데몬 없는 잡(다이제스트 등)은 그대로 실행된다.
-        script = os.path.basename(next((p for p in run_cmd.split() if p.endswith(".py")), ""))
+        script = os.path.basename(next((p for p in run_cmd if p.endswith(".py")), ""))
         if script and script != "schedule_manager.py" and _script_running(script):
             print(f"  [영숙] {schedule_id} 스킵 — {script} 프로세스 이미 가동 중(이중실행 방지)")
             return
         try:
-            subprocess.Popen(run_cmd, shell=True, cwd=PROJECT_ROOT,
+            subprocess.Popen(run_cmd, cwd=PROJECT_ROOT,
                              env={**os.environ, "PYTHONUTF8": "1"})
-            print(f"  [영숙] 명령 실행 시작: {run_cmd}")
+            print(f"  [영숙] 명령 실행 시작: {' '.join(run_cmd)}")
         except Exception as exc:
             print(f"  [영숙] 명령 실행 실패: {exc}")
             send(f"⚠️ 스케줄 실행 실패 ({schedule_id}): {exc}")

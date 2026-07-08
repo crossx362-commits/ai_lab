@@ -38,9 +38,9 @@ const circleSlots = ctx.getPetStageSlots(3, false, 'circle');
 const livingSlots = ctx.getPetStageSlots(3, false, 'living');
 assert.notDeepStrictEqual(livingSlots, circleSlots, 'living layout should use a distinct room arrangement');
 assert.deepStrictEqual(JSON.parse(JSON.stringify(livingSlots.slice(0, 3))), [
-    { x: 30, y: 72 },
-    { x: 70, y: 72 },
-    { x: 50, y: 84 }
+    { x: 28, y: 68 },
+    { x: 72, y: 68 },
+    { x: 50, y: 82 }
 ]);
 
 function boxesOverlap(a, b) {

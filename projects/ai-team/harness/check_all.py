@@ -23,13 +23,31 @@ ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(AI_TEAM))
 
-ACTIVE_DAEMONS = {
+DEFAULT_ACTIVE_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
     "somi_monitor": "somi_price_monitor.py",
     "somi_advisor": "somi_trade_advisor.py",
     "somi_position": "somi_position_monitor.py",
-    "yewon_monitor": "harness_monitor.py",
+    "trend": "market_trend_alert.py",
+    "somi_screener": "somi_screener.py",
+    "morning": "morning_note.py",
+    "hank": "us_research.py",
+    "yuna": "asia_research.py",
+    "leon": "eu_research.py",
+    "market_desk": "market_desk.py",
+    "yewon": "harness_monitor.py",
+    "yewon_growth": "growth_engine.py",
+    "dashboard": "status_dashboard.py",
+    "scheduler": "schedule_manager.py",
 }
+
+
+def active_daemons() -> dict[str, str]:
+    try:
+        from _shared.notify import CONTINUOUS_DAEMONS
+        return dict(CONTINUOUS_DAEMONS)
+    except Exception:
+        return dict(DEFAULT_ACTIVE_DAEMONS)
 
 
 def ok(msg: str) -> tuple[str, str]:
@@ -148,18 +166,29 @@ def check_ops_hygiene():
 
 
 def check_runtime():
+    expected = active_daemons()
     try:
         from _shared.notify import agent_status
         status = agent_status()
     except Exception as e:
-        return fail(f"runtime check failed: {e}")
+        status = {}
+        runtime_error = str(e)
+    else:
+        runtime_error = ""
 
-    if not status:
-        status = {name: ",".join(find_python_pids(script)) or "down" for name, script in ACTIVE_DAEMONS.items()}
+    merged = {}
+    for name, script in expected.items():
+        value = status.get(name)
+        if not value:
+            value = ",".join(find_python_pids(script)) or "down"
+        merged[name] = value
 
-    down = [k for k, v in status.items() if v == "down"]
-    parts = [f"{k}={v}" for k, v in status.items()]
-    return (warn if down else ok)("; ".join(parts))
+    extra = {k: v for k, v in status.items() if k not in merged}
+    down = [k for k, v in merged.items() if v == "down"]
+    parts = [f"{k}={v}" for k, v in {**merged, **extra}.items()]
+    if runtime_error:
+        parts.insert(0, f"agent_status fallback used: {runtime_error}")
+    return (warn if down or runtime_error else ok)("; ".join(parts))
 
 
 def check_schedule():

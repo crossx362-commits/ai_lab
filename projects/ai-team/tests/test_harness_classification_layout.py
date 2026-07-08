@@ -37,22 +37,28 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 "check_env": module.check_env,
                 "check_runtime": module.check_runtime,
                 "check_schedule": module.check_schedule,
-                "check_trading": module.check_trading,
+                "check_somi": module.check_somi,
+                "check_agent_links": module.check_agent_links,
                 "check_structure": module.check_structure,
                 "check_classification_layout": module.check_classification_layout,
                 "check_report_layout": module.check_report_layout,
                 "check_root_layout": module.check_root_layout,
+                "check_docs_encoding": module.check_docs_encoding,
+                "check_unclassified_files": module.check_unclassified_files,
             }
             try:
                 module.ROOT = Path(tmp)
                 module.check_env = lambda: ("OK", "env")
                 module.check_runtime = lambda: ("OK", "runtime")
                 module.check_schedule = lambda: ("OK", "schedule")
-                module.check_trading = lambda: ("OK", "trading")
+                module.check_somi = lambda: ("OK", "somi")
+                module.check_agent_links = lambda: ("OK", "agent links")
                 module.check_structure = lambda: ("OK", "structure")
                 module.check_classification_layout = lambda: ("OK", "classification")
                 module.check_report_layout = lambda: ("OK", "reports")
                 module.check_root_layout = lambda: ("OK", "root")
+                module.check_docs_encoding = lambda: ("OK", "docs")
+                module.check_unclassified_files = lambda: ("OK", "unclassified")
 
                 with contextlib.redirect_stdout(output):
                     module.main()
@@ -63,7 +69,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
 
         self.assertIn("classification_layout", output.getvalue())
 
-    def test_classification_layout_requires_canonical_bot_scripts(self):
+    def test_classification_layout_requires_current_canonical_bot_scripts(self):
         module = load_check_all_module()
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -121,7 +127,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 module.git_tracked = original_git_tracked
 
         self.assertEqual(status, "FAIL")
-        self.assertIn("upbit_auto_trader.py", message)
+        self.assertIn("telegram_receiver.py", message)
 
     def test_classification_layout_warns_for_tracked_plaintext_secrets(self):
         module = load_check_all_module()
