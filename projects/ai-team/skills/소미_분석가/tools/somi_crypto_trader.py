@@ -234,11 +234,22 @@ def _cur_prices(markets: list[str]) -> dict[str, float]:
         return {}
 
 
+# 시세 전체 실패 카운터(2026-07-08 감사) — _cur_prices()가 {}면 전 포지션 청산 감시가
+# 조용히 정지된 상태. 다음 사이클 재시도는 정상이나 10회 연속이면 1회 경보.
+_PX_FAIL = [0]
+
+
 def manage(uni: dict[str, str]) -> list[str]:
     """보유 관리 — 하드손절/목표/시간청산."""
     led = _ledger()
     out = []
     prices = _cur_prices(list(led["positions"]))
+    if led["positions"] and not prices:
+        _PX_FAIL[0] += 1
+        if _PX_FAIL[0] == 10:
+            send("⚠️ [크립토소미] 시세 전체 조회 10회 연속 실패 — 보유 포지션 청산 감시 정지 상태(업비트 API 확인)")
+    else:
+        _PX_FAIL[0] = 0
     for mkt in list(led["positions"]):
         pos = led["positions"][mkt]
         name = uni.get(mkt, mkt)

@@ -246,6 +246,8 @@ def build() -> dict:
     if fx.get("KRW"):
         facts.append(f"USD/KRW {fx['KRW']:.1f}")
     for label, reg in (("미국", us), ("아시아", asia), ("유럽", eu)):
+        if reg.get("stale_hours"):   # 신선도 가드(2026-07-08): 옛 데이터를 오늘 것처럼 쓰지 않게 명시
+            label = f"{label}({reg['stale_hours']:.0f}시간 전 데이터)"
         line = _idx_line(reg)
         if line:
             facts.append(f"{label} 지수: {line}")

@@ -148,9 +148,19 @@ def save_region(region: str, payload: dict) -> Path:
 def load_region(region: str) -> dict:
     f = RESEARCH_DIR / f"region_{region}.json"
     try:
-        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+        d = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
     except Exception:
         return {}
+    # 신선도 표시(2026-07-08 감사): 데스크 수집이 며칠 죽어도 옛 데이터가 '오늘 브리프'로
+    # 둔갑하던 문제 — 24시간 넘은 지역 데이터엔 stale_hours를 달아 소비자가 표기/제외하게 한다.
+    try:
+        age_h = (datetime.now() - datetime.fromisoformat(d.get("updated", ""))).total_seconds() / 3600
+        if age_h > 24:
+            d["stale_hours"] = round(age_h, 1)
+            print(f"⚠️ [research] region_{region} 데이터가 {age_h:.0f}시간 전 것 — 신선도 주의")
+    except Exception:
+        pass
+    return d
 
 
 def save_market_brief(text_md: str, payload: dict) -> Path:
@@ -368,6 +378,9 @@ def web_brief(query: str, max_tokens: int = 800) -> str:
         result = _WEB_PROVIDERS[(start + i) % n](query, max_tokens)
         if result:
             return result
+    # 조용한 실패 가시화(2026-07-08 서킷브레이커 사고): 전 프로바이더 실패의 ""는
+    # '정보 없음'이 아니라 '판단 불가'다 — 소비자가 로그로 구분할 수 있게 남긴다.
+    print("⚠️ [web_brief] 웹검색 전 프로바이더 실패 — '정보 없음' 아님(판단 불가)")
     return ""
 
 

@@ -202,6 +202,10 @@ def buy(cands: list[dict]) -> list[str]:
     return done
 
 
+# 시세 연속 실패 카운터(2026-07-08 감사) — 지속 실패는 청산 감시의 조용한 정지. 10회 연속 시 1회 경보.
+_PX_FAIL: dict[str, int] = {}
+
+
 def manage() -> list[str]:
     """보유 관리 — 하드손절/목표/시간청산."""
     led = _ledger()
@@ -211,7 +215,11 @@ def manage() -> list[str]:
         name = UNIVERSE_US.get(sym, sym)
         try:
             cur = _yahoo_live(sym)[-1]["c"]
+            _PX_FAIL.pop(sym, None)
         except Exception:
+            _PX_FAIL[sym] = _PX_FAIL.get(sym, 0) + 1
+            if _PX_FAIL[sym] == 10:
+                send(f"⚠️ [미장소미] {name}({sym}) 시세 조회 10회 연속 실패 — 손절/목표 감시 정지 상태(야후 API 확인)")
             continue
         reason = None
         if cur <= pos["stop"]:

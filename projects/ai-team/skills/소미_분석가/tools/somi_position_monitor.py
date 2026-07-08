@@ -170,6 +170,19 @@ def _journal_extra(p: dict, max_up: float, max_dn: float, sell_reason: str,
     }
 
 
+# 시세 조회 연속 실패 카운터(2026-07-08 감사): 실패→continue는 다음 사이클 재시도라 정상이지만,
+# '지속' 실패는 그 포지션의 손절/익절 감시가 조용히 정지된 상태 — 10회 연속이면 1회 경보.
+_QUOTE_FAIL: dict[str, int] = {}
+
+
+def _note_quote_fail(symbol: str, name: str) -> None:
+    n = _QUOTE_FAIL.get(symbol, 0) + 1
+    _QUOTE_FAIL[symbol] = n
+    if n == 10:
+        send(f"⚠️ [소미포지션] {name}({symbol}) 시세 조회 {n}회 연속 실패 — "
+             f"이 포지션의 손절/익절 감시가 밀리는 중(KIS/종목 상태 확인 필요)")
+
+
 def check_positions() -> list[str]:
     positions = load_positions()
     if not positions:
@@ -181,10 +194,13 @@ def check_positions() -> list[str]:
         try:
             q = kis.quote(symbol)
         except Exception:
+            _note_quote_fail(symbol, p.get("name", symbol))
             continue
         cur = num(q.get("stck_prpr"))
         if not cur:
+            _note_quote_fail(symbol, p.get("name", symbol))
             continue
+        _QUOTE_FAIL.pop(symbol, None)
         entry = num(p.get("entry"))
         stop = num(p.get("stop"))
         target = num(p.get("target"))
@@ -227,7 +243,13 @@ def check_positions() -> list[str]:
         early = False
         if pnl < 0 and held_min >= grace_min and ((vwap and cur < vwap * 0.98) or chg <= -5):
             # 반등 예측(호가 매수세 우위)이면 대기 — 조건 충족 시에만 호가 조회(불필요한 API 억제)
-            rebound = buy_pressure_ratio(kis.orderbook(symbol)) >= float(os.getenv("SOMI_REBOUND_BP", "1.1"))
+            try:
+                rebound = buy_pressure_ratio(kis.orderbook(symbol)) >= float(os.getenv("SOMI_REBOUND_BP", "1.1"))
+            except Exception as exc:
+                # 호가 실패가 check_positions 전체를 죽여 '뒤 종목 청산 점검까지 중단'되던 결함(2026-07-08 감사).
+                # 판단 불가 시 대기(완화 독트린) — 하방은 위의 하드손절(-3%/ATR)이 보호.
+                print(f"[소미포지션] {name} 호가 조회 실패 — 조기청산 판단 보류: {exc}")
+                rebound = True
             early = not rebound
 
         def _clear(state, reason, hold_reason, risk, action):
