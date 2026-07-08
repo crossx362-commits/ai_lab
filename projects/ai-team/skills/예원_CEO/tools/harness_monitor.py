@@ -24,8 +24,7 @@ def growth_report() -> str:
     # 반복 문제: 같은 부족점이 2회 이상, 또는 평균 총점 60 미만
     repeated = [f"{a}: 평균 {d['avg_total']}점({d['count']}건)"
                 for a, d in summ.items() if d["count"] >= 2 and d["avg_total"] < 60]
-    no_log = [a for a in ("somi_monitor", "somi_advisor", "somi_position", "somi_screener",
-                          "somi_reporter", "marketdesk") if a not in summ]
+    no_log = []  # 주식 에이전트 삭제(2026-07-08)로 성장기록 누락 점검 대상 없음
     proposals = growth.list_proposals()
     lines = ["[예원 시스템 점검]"]
     lines.append(f"- 정상 에이전트: {len(normal)}종 ({', '.join(normal) or '-'})")
@@ -56,7 +55,7 @@ def run_harness():
 
 def _restart_bot(name: str) -> None:
     """봇 재시작 — Windows는 agent_controller, macOS는 launchctl kickstart.
-    macOS 라벨은 _LAUNCHD_FALLBACK으로 해석(hank→com.ailab.sched.research_us 등).
+    macOS 라벨은 _LAUNCHD_FALLBACK으로 해석(현재 비어 있음 — 주식 에이전트 삭제).
     launchd 비관리 데몬(추세알림·모닝노트·성장엔진 등)은 kickstart가 실패하므로
     agent_controller로 폴백 — 재부팅 후 미기동 데몬도 이 경로로 복구된다."""
     controller = os.path.join(
@@ -168,13 +167,6 @@ def restart_on_code_update() -> None:
 # 대상은 agent_controller ALIASES에 있는 영어 키. 재시작으로 해결 가능한 이슈만 등록
 # (파일 파손 등 재시작으로 안 낫는 건 알림만 — 데이터 삭제류 복구는 자동화 금지).
 REMEDY_MAP = [
-    ("agent_links", "region_us", "hank"),
-    ("agent_links", "region_asia", "yuna"),
-    ("agent_links", "region_eu", "leon"),
-    ("agent_links", "종합브리프", "market_desk"),
-    ("agent_links", "issue_impact", "market_desk"),
-    ("agent_links", "발굴", "somi_advisor"),
-    ("agent_links", "somi_proposals", "somi_advisor"),
     ("schedule", "schedule_manager", "scheduler"),
 ]
 REMEDY_COOLDOWN_SEC = 3600   # 같은 대상 재시작 최소 간격(재시작 루프 방지)

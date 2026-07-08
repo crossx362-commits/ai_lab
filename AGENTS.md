@@ -8,9 +8,9 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 This is a monorepo containing:
 
-1. **ai-team/** — Multi-agent AI automation framework with 13+ specialized agents
+1. **ai-team/** — Multi-agent AI automation framework (예원·영숙·봄이 3 agents)
 2. **petnna/** — Pet healing platform (web/hybrid app)
-3. **Root scripts/** — Trading bots and daemon management
+3. **Root scripts/** — Daemon management
 
 ### Key Directories
 
@@ -29,18 +29,6 @@ ai_lab/
 ---
 
 ## 🚀 Running the System
-
-### Start All Trading Bots (Live Mode)
-```bash
-python projects/ai-team/scripts/start_trading_team.py --live
-```
-
-This launches:
-- **시그널 (signal)**: Market signal collector
-- **펄스 (pulse)**: Market pulse analyzer
-- **데이브 (Dave)**: Conservative Upbit auto-trader
-- **레오 (Leo)**: Aggressive day-trader
-- **Monitor**: Process health checker
 
 ### Start Telegram Bot (영숙/Youngsuk)
 ```powershell
@@ -66,21 +54,13 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 
 ## 🤖 AI Agent System Architecture
 
-### Agent Roster (13 Agents)
+### Agent Roster
 
 | Agent | Role | Key Tools |
 |-------|------|-----------|
 | 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `upload_manager.py` |
 | 영숙 (Youngsuk) | Secretary — Telegram bot & calendar | `telegram_receiver.py`, `calendar_manager.py` |
-| 코다리 (Kodari) | Developer — Web dev & health checks | `web_preview.py`, `ollama_health_check.py` |
-| 케빈 (Kevin) | Infra — Vercel & Supabase management | `setup_vercel.py`, `deploy_*.py` |
-| 티모 (Timo) | Designer — UI/UX review | `petnna_reviewer.py` |
-| 시그널 (signal) | Analyst — Market signal collection | `market_signal.py` |
-| 펄스 (pulse) | Analyst — Market pulse analysis | `market_pulse.py` |
-| 데이브 (Dave) | Trader — Conservative crypto trading | `upbit_auto_trader.py` |
-| 레오 (Leo) | Trader — Aggressive day trading | `leo_aggressive_trader.py` |
-| 경수 (Kyungsu) | Investigator — Malicious comment detection | security tools |
-| 로율 (Royul) | Lawyer — Legal/tax/compliance | compliance tools |
+| 봄이 (Bomi) | QA — 펫나 상시 자동 순찰/검수 | `petnna_qa_patrol.py` (skills/봄이_QA, SKILL.md=QA 헌장) |
 
 ### Shared Module System
 
@@ -415,23 +395,15 @@ if hasattr(sys.stdout, "reconfigure"):
 
 | 에이전트 | 전담 역할 | 진입 파일 |
 |---------|----------|----------|
-| **예원_CEO** | 오케스트레이션·라우팅·하네스 체크 | `yewon_dispatcher.py`, `harness_manager.py` |
+| **예원_CEO** | 오케스트레이션·라우팅·하네스 체크·워치독 | `yewon_dispatcher.py`, `harness_manager.py`, `harness_monitor.py` |
 | **영숙_비서** | 텔레그램 봇·스케줄러·캘린더 | `telegram_receiver.py`, `schedule_manager.py` |
-| **시그널_분석가** | 시장 시그널 수집·요약 | `market_signal.py` |
-| **펄스_애널리스트** | 시장 펄스 분석 | `market_pulse.py` |
-| **데이브_주식** | 보수적 코인 자동매매·KIS API | `upbit_auto_trader.py`, `kis_client.py` |
-| **레오_트레이더** | 공격적 알트코인 단타 | `leo_aggressive_trader.py` |
-| **케빈_인프라** | Vercel·Supabase·CI/CD | `케빈_인프라/tools/` |
-| **코다리_개발자** | petnna 웹 개발·헬스체크 | `코다리_개발자/tools/` |
-| **티모_디자이너** | UI/UX 검수 | `티모_디자이너/tools/` |
-| **경수_수사관** | 악플 포렌식·보안 스캔 | `경수_수사관/tools/` |
-| **로율_변호사** | 세액 시뮬레이션·컴플라이언스 | `로율_변호사/tools/` |
+| **봄이_QA** | 펫나 QA 상시 순찰 | `petnna_qa_patrol.py` |
+
+> 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크 등)는 2026-07-08 오너 지시로 전부 삭제됨 (git 이력에서 복구 가능).
 
 ### 주요 런타임 파일 (이동 금지)
 
 | 파일 | Producer → Consumer |
 |------|---------------------|
-| `reports/research/market_signal.json` | 시그널 → 데이브·레오 |
-| `reports/research/market_pulse.json` | 시그널 호환 리포트 → 데이브·레오 |
 | `skills/영숙_비서/tools/schedules.json` | 설정 → 영숙 스케줄러 |
 | `_shared/calendar_cache.md` | 구글 캘린더 → 영숙 봇 |

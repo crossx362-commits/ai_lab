@@ -43,99 +43,36 @@ AGENTS = {
         "args": ["--daemon"],
         "log": "youngsuk_scheduler",
     },
-    "소미": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_price_monitor.py",
-        "args": [],
-        "log": "somi_price_monitor",
-    },
-    "소미제안": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_trade_advisor.py",
-        "args": ["--daemon"],
-        "log": "somi_trade_advisor",
-    },
-    "소미포지션": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_position_monitor.py",
-        "args": ["--daemon"],
-        "log": "somi_position_monitor",
-    },
-    "추세알림": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "market_trend_alert.py",
-        "args": ["--daemon", "--interval", "900"],
-        "log": "market_trend_alert",
-    },
-    "소미발굴": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "somi_screener.py",
-        "args": ["--daemon", "--times", "09:30,10:30,11:30,13:00,14:00,15:00,15:50"],
-        "log": "somi_screener",
-    },
     "예원": {
         "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "harness_monitor.py",
         "args": [],
         "log": "yewon_harness_monitor",
     },
-    "행크": {
-        "script": AI_TEAM_ROOT / "skills" / "행크_미국조사" / "tools" / "us_research.py",
+    "봄이": {
+        "script": AI_TEAM_ROOT / "skills" / "봄이_QA" / "tools" / "petnna_qa_patrol.py",
         "args": ["--daemon"],
-        "log": "hank_us_research",
+        "log": "bomi_qa_patrol",
     },
-    "유나": {
-        "script": AI_TEAM_ROOT / "skills" / "유나_아시아조사" / "tools" / "asia_research.py",
+    "수리": {
+        "script": AI_TEAM_ROOT / "skills" / "수리_개발자" / "tools" / "petnna_dev_engine.py",
         "args": ["--daemon"],
-        "log": "yuna_asia_research",
-    },
-    "레온": {
-        "script": AI_TEAM_ROOT / "skills" / "레온_유럽조사" / "tools" / "eu_research.py",
-        "args": ["--daemon"],
-        "log": "leon_eu_research",
-    },
-    "마켓데스크": {
-        "script": AI_TEAM_ROOT / "skills" / "마켓데스크_시장종합" / "tools" / "market_desk.py",
-        "args": ["--daemon"],
-        "log": "market_desk",
-    },
-    "모닝노트": {
-        "script": AI_TEAM_ROOT / "skills" / "소미_분석가" / "tools" / "morning_note.py",
-        "args": ["--daemon", "--send"],
-        "log": "morning_note",
-    },
-    "성장엔진": {
-        "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "growth_engine.py",
-        "args": ["--daemon"],
-        "log": "yewon_growth_engine",
-    },
-    "대시보드": {
-        "script": AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "status_dashboard.py",
-        "args": [],
-        "log": "status_dashboard",
+        "log": "suri_dev_engine",
     },
 }
 
 ALIASES = {
     "youngsuk": "영숙",
-    "somi": "소미",
-    "somi_trade": "소미제안",
-    "trade": "소미제안",
     "ceo": "예원",
     "yewon": "예원",
-    "hank": "행크",
-    "yuna": "유나",
-    "leon": "레온",
-    "market": "마켓데스크",
-    "marketdesk": "마켓데스크",
-    "morning": "모닝노트",
-    "morningnote": "모닝노트",
-    "trend": "추세알림",
     # harness_monitor 자동재시작은 notify.CONTINUOUS_DAEMONS의 영어 키를 그대로 넘긴다.
     # 아래 매핑이 없으면 Windows에서 해당 데몬 재시작이 조용히 실패한다(자가복구 불능).
-    "somi_monitor": "소미",
-    "somi_advisor": "소미제안",
     "scheduler": "영숙스케줄",
-    "somi_position": "소미포지션",
-    "somi_screener": "소미발굴",
-    "market_desk": "마켓데스크",
-    "yewon_growth": "성장엔진",
-    "growth": "성장엔진",
-    "dashboard": "대시보드",
+    "bomi": "봄이",
+    "bomi_qa": "봄이",
+    "qa": "봄이",
+    "suri": "수리",
+    "suri_dev": "수리",
+    "dev": "수리",
 }
 
 
@@ -235,12 +172,12 @@ def get_agent_status(agent_name: str | None = None) -> str:
 
 
 # ── 전체 봇 원격 종료/기동 (텔레그램 "봇 다 꺼/켜") ──────────────────────
-# 종료 시에도 유지할 봇: 영숙(텔레그램 제어통로)·예원(워치독 — 플래그 준수하며 부활 담당)·대시보드(무해).
-_KEEP_ON_SHUTDOWN = {"영숙", "예원", "대시보드"}
+# 종료 시에도 유지할 봇: 영숙(텔레그램 제어통로)·예원(워치독 — 플래그 준수하며 부활 담당).
+_KEEP_ON_SHUTDOWN = {"영숙", "예원"}
 # 플래그: 존재하면 워치독이 다운 봇을 되살리지 않음(부활 억제). 텔레그램 재기동 통로는 유지.
 BOTS_OFF_FLAG = PROJECT_ROOT / "output" / "cache" / "BOTS_OFF"
 # launchd KeepAlive 트레이딩 봇(kill론 부활) — launchctl로 정지/재적재해야 함.
-_KEEPALIVE_LABELS = {"소미": "com.ailab.somi_monitor"}
+_KEEPALIVE_LABELS = {}
 
 
 def _launchctl(action: str, label: str) -> None:
@@ -254,7 +191,7 @@ def _launchctl(action: str, label: str) -> None:
 
 
 def stop_all_bots() -> str:
-    """맥 봇 전체 정지 — 플래그 세워 워치독 부활 억제 + 개별 종료. 제어통로(영숙·워치독·대시보드)는 유지."""
+    """맥 봇 전체 정지 — 플래그 세워 워치독 부활 억제 + 개별 종료. 제어통로(영숙·워치독)는 유지."""
     from _shared.notify import CONTINUOUS_DAEMONS  # noqa: E402
     BOTS_OFF_FLAG.parent.mkdir(parents=True, exist_ok=True)
     BOTS_OFF_FLAG.write_text(datetime.now().isoformat(), encoding="utf-8")

@@ -3,7 +3,7 @@
 """핵심 상태·학습 데이터 일일 백업 — output/cache는 gitignore라 유실되면 복구 불가.
 
 보호 대상:
-  - output/cache/  (watchlist·모의 원장·청산기록 somi_closed_trades = 한별 튜닝 학습 원천)
+  - output/cache/  (에이전트 캐시·상태 데이터)
   - .env / .env.encrypted  (전 에이전트 시크릿 — 실수 삭제 대비)
 
 방식: ~/ai_lab_backups/state_YYYY-MM-DD.tar.gz 로 스냅샷, RETENTION_DAYS 초과분 삭제.

@@ -39,7 +39,7 @@ load_env()
 AC = AI_TEAM / "skills" / "영숙_비서" / "tools" / "agent_controller.py"
 HARNESS = AI_TEAM / "harness" / "check_all.py"
 # 상시 데몬 → 직접 재실행 스크립트(컨트롤러 비대상, 뮤텍스로 중복 방지)
-DAEMON_SCRIPT = {"somi_monitor": AI_TEAM / "skills" / "소미_분석가" / "tools" / "somi_price_monitor.py"}
+DAEMON_SCRIPT = {}
 
 DRY = "--dry" in sys.argv
 CHECK_ONLY = "--check" in sys.argv

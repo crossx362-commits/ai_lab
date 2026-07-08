@@ -25,19 +25,7 @@ sys.path.insert(0, str(AI_TEAM))
 
 DEFAULT_ACTIVE_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
-    "somi_monitor": "somi_price_monitor.py",
-    "somi_advisor": "somi_trade_advisor.py",
-    "somi_position": "somi_position_monitor.py",
-    "trend": "market_trend_alert.py",
-    "somi_screener": "somi_screener.py",
-    "morning": "morning_note.py",
-    "hank": "us_research.py",
-    "yuna": "asia_research.py",
-    "leon": "eu_research.py",
-    "market_desk": "market_desk.py",
     "yewon": "harness_monitor.py",
-    "yewon_growth": "growth_engine.py",
-    "dashboard": "status_dashboard.py",
     "scheduler": "schedule_manager.py",
 }
 
@@ -227,38 +215,6 @@ def check_schedule():
     if not pids:
         return fail(f"정시 잡 실행자(schedule_manager) 미가동 — enabled {len(enabled)}개 잡 정지")
     return ok(f"정시 잡 실행자 schedule_manager pid={','.join(pids)} (enabled {len(enabled)}/{len(items)})")
-
-
-def check_somi():
-    """소미 자동매매 파이프라인 건강도 — KIS키·조사데이터 신선도·페이퍼 정합."""
-    warns = []
-    # 1) KIS 주문/시세 키
-    if not (os.getenv("KIS_APP_KEY") and os.getenv("KIS_APP_SECRET")):
-        warns.append("KIS 키 없음")
-    # 2) 조사팀 산출물(뉴스 impact / 시장브리프) 신선도 — 평일 2일↑ 묵으면 경고
-    research_dir = ROOT / "output" / "research"
-    for fname in ("market_brief.json", "issue_impact.json"):
-        f = research_dir / fname
-        if not f.exists():
-            warns.append(f"{fname} 없음")
-        elif (time.time() - f.stat().st_mtime) > 3 * 86400:
-            warns.append(f"{fname} 오래됨({age_text(f)})")
-    # 3) 페이퍼 원장 ↔ 포지션 메타 정합 (둘 다 있을 때만)
-    cache = ROOT / "output" / "cache"
-    paper_f, pos_f = cache / "somi_paper.json", cache / "somi_positions.json"
-    if paper_f.exists() and pos_f.exists():
-        try:
-            held = set((read_json(paper_f).get("positions") or {}).keys())
-            meta = set(read_json(pos_f).keys())
-            ghost = meta - held  # 메타엔 있는데 원장엔 없음 = 고스트
-            if ghost:
-                warns.append(f"포지션 고스트 {len(ghost)}건")
-        except Exception as e:
-            warns.append(f"페이퍼 정합 확인 실패: {e}")
-    mode = "페이퍼" if os.getenv("KIS_PAPER", "").lower() in ("1", "true", "yes") else "실거래"
-    if warns:
-        return warn(f"[{mode}] " + "; ".join(warns))
-    return ok(f"[{mode}] 파이프라인 정상 (KIS·조사데이터·페이퍼 정합)")
 
 
 def check_structure():
@@ -455,83 +411,6 @@ def check_unclassified_files():
     return ok("no unclassified untracked files")
 
 
-def check_agent_links():
-    """에이전트 간 연동 점검 — 핸드오프 산출물(캐시 파일)의 존재·형식·신선도로 체인 검증.
-    체인: 조사(행크/유나/레온)→마켓데스크(region_*→issue_impact/brief)→소미(proposals)→매매(paper).
-    파손/부재=FAIL, 지연=WARN. 주말·장외는 신선도 기준 완화(오탐 방지)."""
-    now = datetime.now()
-    research = ROOT / "output" / "research"
-    cache = ROOT / "output" / "cache"
-    weekday = now.weekday() < 5
-    fresh_h = 26 if weekday else 80  # 주말은 금요일 산출물까지 허용
-    trading = weekday and "09:30" <= now.strftime("%H:%M") <= "15:20"
-
-    def _age_h(path: Path, ts: str | None) -> float | None:
-        try:
-            if ts:
-                return (now - datetime.fromisoformat(ts)).total_seconds() / 3600
-            return (now.timestamp() - path.stat().st_mtime) / 3600
-        except Exception:
-            return None
-
-    broken, stale, seen = [], [], 0
-    # ① 조사팀 → 마켓데스크: 지역 브리프 3종 (행크=us, 유나=asia, 레온=eu)
-    for region, agent in (("us", "행크"), ("asia", "유나"), ("eu", "레온")):
-        f = research / f"region_{region}.json"
-        try:
-            d = read_json(f)
-            seen += 1
-            a = _age_h(f, d.get("updated"))
-            if a is None or a > fresh_h:
-                stale.append(f"{agent}→데스크 region_{region} 묵음({'?' if a is None else f'{a:.0f}h'})")
-        except Exception:
-            broken.append(f"region_{region}(조사팀 산출물)")
-    # ② 마켓데스크 → 소미: 종합 브리프 + 종목별 이슈 영향도
-    for fname, label in (("market_brief.json", "데스크 종합브리프"), ("issue_impact.json", "데스크→소미 issue_impact")):
-        f = research / fname
-        try:
-            d = read_json(f)
-            seen += 1
-            a = _age_h(f, d.get("updated"))
-            if a is None or a > fresh_h:
-                stale.append(f"{label} 묵음({'?' if a is None else f'{a:.0f}h'})")
-            if fname == "issue_impact.json" and not d.get("impact"):
-                stale.append("issue_impact 비어 있음(뉴스신호 유실 의심 — 가드레일: GPT json_mode 확인)")
-        except Exception:
-            broken.append(label)
-    # ③ 소미 발굴 → 매수 파이프라인: 장중엔 발굴 주기(10분)가 살아 있어야 한다
-    if trading:
-        try:
-            d = read_json(cache / "somi_proposals.json")
-            seen += 1
-            ts = datetime.strptime(str(d.get("ts", "")), "%Y-%m-%d %H:%M")
-            if (now - ts).total_seconds() > 45 * 60:
-                stale.append(f"소미 발굴 멈춤 의심(proposals {d.get('ts')})")
-        except Exception:
-            broken.append("somi_proposals(발굴 파이프라인)")
-    # ④ 발굴 → 관심등록/가격감시 + ⑤ 매매 체인(모의계좌·거래일지)
-    for fname, label, shape in (
-        ("somi_watchlist.json", "관심종목(발굴→감시)", None),
-        ("somi_paper.json", "모의계좌", "cash"),
-        ("somi_closed_trades.json", "거래일지", None),
-    ):
-        f = cache / fname
-        if not f.exists():
-            continue  # 초기 상태 허용 — 생기고 나서 파손된 것만 잡는다
-        try:
-            d = read_json(f)
-            seen += 1
-            if shape and shape not in d:
-                broken.append(f"{label} 형식 이상({shape} 없음)")
-        except Exception:
-            broken.append(label)
-
-    if broken:
-        return fail("연동 산출물 파손/부재: " + ", ".join(broken))
-    if stale:
-        return warn("연동 지연: " + "; ".join(stale))
-    return ok(f"조사→데스크→소미→매매 체인 정상 (산출물 {seen}개 검증)")
-
 
 def main() -> int:
     checks = {
@@ -539,8 +418,6 @@ def main() -> int:
         "ops_hygiene": check_ops_hygiene,
         "runtime": check_runtime,
         "schedule": check_schedule,
-        "somi": check_somi,
-        "agent_links": check_agent_links,
         "structure": check_structure,
         "classification_layout": check_classification_layout,
         "report_layout": check_report_layout,

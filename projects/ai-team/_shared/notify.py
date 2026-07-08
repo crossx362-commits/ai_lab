@@ -20,65 +20,34 @@ _TG_HTML_TAG = re.compile(
 # 상시 데몬 (프로세스가 계속 떠 있어야 정상)
 CONTINUOUS_DAEMONS = {
     "youngsuk": "telegram_receiver.py",
-    "somi_monitor": "somi_price_monitor.py",
-    "somi_advisor": "somi_trade_advisor.py",
-    "somi_position": "somi_position_monitor.py",
-    "trend": "market_trend_alert.py",
-    "somi_screener": "somi_screener.py",
-    "morning": "morning_note.py",
-    "hank": "us_research.py",
-    "yuna": "asia_research.py",
-    "leon": "eu_research.py",
-    "market_desk": "market_desk.py",
     "yewon": "harness_monitor.py",
-    "yewon_growth": "growth_engine.py",
-    "dashboard": "status_dashboard.py",  # 현황 페이지 — 등록해야 자동배포·생존관리 대상
+    "bomi_qa": "petnna_qa_patrol.py",  # 봄이 — 펫나 QA 상시 순찰 (정기 + 변경 감지)
+    "suri_dev": "petnna_dev_engine.py",  # 수리 — 펫나 자동 개선 엔진 (QA 결과 → 수정 → 재검수)
     # Windows 정시 잡 실행자(영숙스케줄) — macOS는 아래 launchd 집계가 이 키를 덮어써 오탐 없음
     "scheduler": "schedule_manager.py",
 }
 
 # macOS는 아래 데몬을 launchd 정시 잡으로 운영 → 상시 프로세스가 없어도 launchd에 적재돼 있으면
 # 정상(scheduled)으로 본다. (윈도우는 launchd 없음 → 프로세스 기준 그대로). 워치독 오탐 재시작 방지.
-_LAUNCHD_FALLBACK = {
-    "somi_position": "com.ailab.somi_position",
-    # somi_advisor/somi_screener는 동적 매수 후보 발굴 주기와 고속감시를 위해
-    # 프로세스 기준으로 판정한다. 정시 launchd 잡을 정상으로 보지 않는다.
-    "hank": "com.ailab.sched.research_us",
-    "yuna": "com.ailab.sched.research_asia",
-    "leon": "com.ailab.sched.research_eu",
-    "market_desk": "com.ailab.sched.research_desk",
-}
+_LAUNCHD_FALLBACK = {}
 
-# 정시 잡(조사팀·예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
+# 정시 잡(예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
 # (com.ailab.sched.*) — SPOF 제거. 집계로 정상 여부 판단.
 SCHED_PREFIX = "com.ailab.sched."
 
 # 예약 실행 서비스 (launchd StartCalendarInterval) — 평소엔 미실행이 정상, 지정 시각에만 실행
 SCHEDULED_SERVICES = {
-    "somi": "com.ailab.somi",                    # 정기 리포트 (15:40)
-    # somi_position 은 상시 데몬으로 승격(CONTINUOUS_DAEMONS) — 장중 평일 N분 주기 자동 청산 루프 내장
     "yewon_selfheal": "com.ailab.yewon_selfheal", # 자가 점검/복구 (08:00)
     "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
 }
 
 _AGENT_LABELS = {
     "youngsuk": "영숙 (텔레그램 비서)",
-    "scheduler": "정시 잡 (조사팀·예원 — launchd 잡별 분리)",
-    "somi_monitor": "소미 (실시간 급변동 감시)",
-    "somi_advisor": "한별 (매수 판단/제안)",
-    "somi": "예원 (정기 리포트)",
-    "trend": "예원 (시장추세 알림)",
-    "somi_screener": "한별 (유망종목 발굴)",
-    "somi_position": "소미 (포지션 익절/손절)",
-    "morning": "예원 (모닝노트 브리핑)",
-    "hank": "행크 (미국 시장 조사)",
-    "yuna": "유나 (아시아 시장 조사)",
-    "leon": "레온 (유럽 시장 조사)",
-    "market_desk": "예원 (시장 종합)",
+    "scheduler": "정시 잡 (예원 — launchd 잡별 분리)",
     "yewon": "예원 (CEO 하네스 모니터)",
     "yewon_selfheal": "예원 (자가 점검/복구)",
-    "yewon_growth": "예원 (성장엔진)",
-    "dashboard": "대시보드 (현황 페이지)",
+    "bomi_qa": "봄이 (펫나 QA 순찰)",
+    "suri_dev": "수리 (펫나 자동 개선)",
     "harness": "하네스 (시스템 점검)",
 }
 

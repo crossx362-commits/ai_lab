@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
   "updated": "2026-06-27",
-  "_note": "정기 보고는 예원 digest가 하루 3회(장전 08:10/장중 12:40/마감 16:10) 병합. 개별 에이전트는 데이터만 저장(텔레그램 직접 전송 안 함). 긴급은 breaking(속보)·somi_price_monitor(급변동)가 즉시 보고.",
+  "_note": "정시 잡은 영숙(운영 위생)·예원(피드백·감사) 일반 작업만 유지.",
   "schedules": [
     {
       "id": "yeongsuk_report_cleanup",
@@ -48,50 +48,6 @@
       "priority": "low"
     },
     {
-      "id": "research_us",
-      "agent": "행크",
-      "task": "미국 시장 조사(수집)",
-      "cron": "30 6 * * 1-5",
-      "description": "미국 지수·환율·이슈 수집 → region_us.json (텔레그램 전송 없음)",
-      "command": "python projects/ai-team/skills/행크_미국조사/tools/us_research.py",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "research_asia",
-      "agent": "유나",
-      "task": "아시아 시장 조사(수집)",
-      "cron": "30 7 * * 1-5",
-      "description": "DART 공시·환율·뉴스·이슈 수집 → region_asia.json (텔레그램 전송 없음)",
-      "command": "python projects/ai-team/skills/유나_아시아조사/tools/asia_research.py",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
-      "id": "research_desk",
-      "agent": "마켓데스크",
-      "task": "시장 종합(수집)",
-      "cron": "50 7 * * 1-5",
-      "description": "지역 브리프 종합 + 공시 영향도 → market_brief.json (텔레그램 전송 없음)",
-      "command": "python projects/ai-team/skills/마켓데스크_시장종합/tools/market_desk.py",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
-      "id": "yewon_digest_morning",
-      "agent": "예원",
-      "task": "장전 종합보고",
-      "cron": "10 8 * * 1-5",
-      "description": "시장+소미+일정+현황을 병합해 사장님께 1건 보고",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/yewon_digest.py --slot morning --send",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
       "id": "yewon_daily_feedback",
       "agent": "예원",
       "task": "일일 피드백 평가",
@@ -114,100 +70,12 @@
       "priority": "medium"
     },
     {
-      "id": "breaking_monitor",
-      "agent": "예원",
-      "task": "속보 감시(긴급 즉시)",
-      "cron": "0 9-15 * * 1-5",
-      "description": "장중 1시간마다 중대 속보 감지 시 즉시 보고(정기 병합 우회, 쿨다운 2h). 종목 급변동은 소미 price_monitor가 1분 단위 커버.",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/breaking_monitor.py --send",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
-      "id": "yewon_digest_midday",
-      "agent": "예원",
-      "task": "장중 종합보고",
-      "cron": "40 12 * * 1-5",
-      "description": "장중 시장+소미 병합 보고",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/yewon_digest.py --slot midday --send",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
-      "id": "research_eu",
-      "agent": "레온",
-      "task": "유럽 시장 조사(수집)",
-      "cron": "0 16 * * 1-5",
-      "description": "유럽 지수·환율·이슈 수집 → region_eu.json (텔레그램 전송 없음)",
-      "command": "python projects/ai-team/skills/레온_유럽조사/tools/eu_research.py",
-      "enabled": true,
-      "run": true,
-      "priority": "low"
-    },
-    {
-      "id": "yewon_digest_close",
-      "agent": "예원",
-      "task": "마감 종합보고",
-      "cron": "10 16 * * 1-5",
-      "description": "마감 시장+소미+하루 정리 병합 보고",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/yewon_digest.py --slot close --send",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
       "id": "yewon_weekly_report",
       "agent": "예원",
       "task": "주간 종합 리포트",
       "cron": "0 17 * * 5",
       "description": "한 주 업로드/성과 피드백 주간 종합",
       "command": "python projects/ai-team/skills/예원_CEO/tools/daily_feedback_scheduler.py --weekly",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "research_desk_pm",
-      "agent": "마켓데스크",
-      "task": "시장 종합(오후 갱신)",
-      "cron": "20 15 * * 1-5",
-      "description": "오후 소미 발굴(15:50) 직전 issue_impact 갱신 (텔레그램 전송 없음)",
-      "command": "python projects/ai-team/skills/마켓데스크_시장종합/tools/market_desk.py",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    },
-    {
-      "id": "somi_perf_tracker",
-      "agent": "소미",
-      "task": "모의 성과 추적(백테스트 대비)",
-      "cron": "30 16 * * 5",
-      "description": "주간 모의 성과 vs 백테스트 비교 보고",
-      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_perf_tracker.py --send",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "hanbyul_quant_tune",
-      "agent": "한별",
-      "task": "청산 데이터 점수버킷 분석 → 소미 튜닝 추천",
-      "cron": "45 15 * * 1-5",
-      "description": "장 마감 후 실현거래 복기·recommend_min_score 갱신 (성장엔진 16:10 전 선행)",
-      "command": "python projects/ai-team/skills/한별_퀀트/tools/quant_analyzer.py tune",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "somi_accum_scan",
-      "agent": "소미",
-      "task": "조용한매집 선행 발굴 (대형주 한정)",
-      "cron": "40 16 * * 1-5",
-      "description": "마감 후 확정 수급으로 매집 신호 스캔 → 관심종목 편입 (매수는 기존 게이트)",
-      "command": "python projects/ai-team/skills/소미_분석가/tools/somi_accum_scanner.py",
       "enabled": true,
       "run": true,
       "priority": "medium"

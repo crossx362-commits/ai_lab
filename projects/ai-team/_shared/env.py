@@ -132,7 +132,7 @@ REQUIRED_VARS = [
     "GEMINI_API_KEY",
 ]
 
-TRADING_VARS = ["UPBIT_ACCESS_KEY", "UPBIT_SECRET_KEY"]
+TRADING_VARS = []  # 주식·코인 삭제(2026-07-08) — 매매 API 키 검증 대상 없음
 
 
 def validate(required: list[str] = REQUIRED_VARS) -> None:

@@ -138,8 +138,7 @@ def execute_schedule(schedule: Dict):
         f"**명령**: {command}\n"
         f"**시간**: {now_kst}"
     )
-    # v2.90.1 — 개별 스케줄 알림 텔레그램 전송 중단. 정기 보고는 예원 digest가
-    # 하루 3회 병합해 올린다(yewon_digest). notify_msg는 콘솔 로그로만 남긴다.
+    # v2.90.1 — 개별 스케줄 알림 텔레그램 전송 중단. notify_msg는 콘솔 로그로만 남긴다.
     _ = notify_msg
     print(f"  [스케줄 실행] {schedule_id}")
 
