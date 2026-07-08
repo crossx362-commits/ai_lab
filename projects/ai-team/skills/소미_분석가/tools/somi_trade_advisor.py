@@ -809,7 +809,23 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
     # 자금배분(사용자 지시 2026-07-02): 예수금 200만원(고정)만 남기고 전액 투자.
     # 배분량 = (현금 - 고정유보금)을 후보 확신 가중으로 분배. 유보 도달 시 신규매수 보류.
     reserve = float(os.getenv("SOMI_CASH_RESERVE_KRW", "2000000"))
-    _conv = lambda p: min(3.0, max(0.5, 1.0 + (p.get("score", 65) - 65) / 40.0))  # noqa: E731
+
+    def _conv(p: dict) -> float:
+        """확신 사이징 = 선별(청산 71건 실측 2026-07-08, 오너 지시 '수익 나는 걸 선별'):
+        탐지점수에 ①진입점수 가중(40대 7건 전패 vs 승자들 68 — 매수후 +2% 못 가면 전패)
+        ②bear 과열추격 감액(이미 +8% 뜬 급등 추격이 bear 손절 주범, 돌파추격 3건 전패)을 더한다.
+        차단이 아니라 배분 — 나쁜 설정은 작게 사서 데이터는 계속 수집, 좋은 설정에 돈을 몰아준다."""
+        c = 1.0 + (p.get("score", 65) - 65) / 40.0
+        es = p.get("entry_score") or 0
+        if es:   # 실시간 진입점수 있을 때만(발굴 직후 0은 중립)
+            c += (es - 55) / 50.0
+        try:
+            chg = float(str(p.get("change", "0")).replace("%", "").replace("+", ""))
+        except ValueError:
+            chg = 0.0
+        if regime == "bear" and chg >= 8.0:
+            c -= 0.5
+        return min(3.0, max(0.3, c))
     try:
         bal = trader.balance()
         cash = float(bal.get("cash", 0))
@@ -867,6 +883,7 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
             "tp1": tp1, "tp2": tp2, "trail_pct": 3.0, "partial_taken": False,
             "slot": slot_kind, "regime": regime, "news": bool(p.get("news_bonus")),
             "rr": p.get("rr"), "vwap_at_buy": p.get("vwap"),
+            "conv": round(conv, 2), "chg_at_buy": p.get("change"),   # 선별 사이징 학습용
         }
         if split:
             extra.update({"addon_trigger": round(fill * 1.02), "addon_budget": int(budget - qty * fill),
