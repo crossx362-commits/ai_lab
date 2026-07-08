@@ -21,6 +21,7 @@ code_auditor.py — 예원(CEO): 데드코드(미사용 함수) 자동 검수
 import os
 import sys
 import ast
+import re
 import subprocess
 import datetime
 
@@ -75,18 +76,41 @@ def _top_funcs(path: str) -> list[dict]:
 
 def _refcount(name: str) -> int:
     """저장소(ai-team) 전역 .py word-boundary 참조수. 자기 정의 포함."""
-    r = subprocess.run(["grep", "-rnw", "--include=*.py", name, _ai_team_root],
-                       capture_output=True, text=True, encoding="utf-8", errors="replace")
-    return r.stdout.count("\n") if r.stdout else 0
+    pattern = re.compile(rf"(?<!\w){re.escape(name)}(?!\w)")
+    count = 0
+    for dp, _, fns in os.walk(_ai_team_root):
+        if "__pycache__" in dp:
+            continue
+        for fn in fns:
+            if not fn.endswith(".py"):
+                continue
+            path = os.path.join(dp, fn)
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    count += sum(1 for line in f if pattern.search(line))
+            except OSError:
+                continue
+    return count
 
 
 def _in_nonpy(name: str) -> bool:
     """비.py(json·plist·md·txt)에 이름 등장 → 설정/문서 참조 가능 → 보호."""
-    r = subprocess.run(
-        ["grep", "-rlw", "--include=*.json", "--include=*.md", "--include=*.plist",
-         "--include=*.txt", "--include=*.command", name, _root],
-        capture_output=True, text=True, encoding="utf-8", errors="replace")
-    return bool(r.stdout.strip())
+    pattern = re.compile(rf"(?<!\w){re.escape(name)}(?!\w)")
+    allowed = {".json", ".md", ".plist", ".txt", ".command"}
+    for dp, _, fns in os.walk(_root):
+        if "__pycache__" in dp or ".git" in dp:
+            continue
+        for fn in fns:
+            if os.path.splitext(fn)[1].lower() not in allowed:
+                continue
+            path = os.path.join(dp, fn)
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    if any(pattern.search(line) for line in f):
+                        return True
+            except OSError:
+                continue
+    return False
 
 
 def _scan() -> tuple[list[dict], list[dict]]:

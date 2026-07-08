@@ -24,9 +24,7 @@ CONTINUOUS_DAEMONS = {
     "somi_advisor": "somi_trade_advisor.py",
     "somi_position": "somi_position_monitor.py",
     "trend": "market_trend_alert.py",
-    # somi_screener 상시 등록 제거(2026-07-04) — advisor 데몬 가동 시 정시 propose는 자동 스킵돼
-    # 상시 프로세스가 실제로 안 돎(유령 등록). launchd 정시(09:30/15:50, advisor --propose)로만 운영.
-    # → SCHEDULED_SERVICES로 재분류.
+    "somi_screener": "somi_screener.py",
     "morning": "morning_note.py",
     "hank": "us_research.py",
     "yuna": "asia_research.py",
@@ -43,10 +41,8 @@ CONTINUOUS_DAEMONS = {
 # 정상(scheduled)으로 본다. (윈도우는 launchd 없음 → 프로세스 기준 그대로). 워치독 오탐 재시작 방지.
 _LAUNCHD_FALLBACK = {
     "somi_position": "com.ailab.somi_position",
-    # somi_screener 폴백 제거(2026-07-04) — CONTINUOUS_DAEMONS에서 빠져 SCHEDULED_SERVICES로 이동.
-    # somi_advisor 는 폴백 제거(2026-07-02) — 동적 매수(발굴 주기+고속감시)는 상시 데몬이
-    # 필요한데 launchd 정시 잡(com.ailab.somi_screener propose)을 '정상'으로 봐서 워치독이
-    # 데몬을 안 살렸다. 이제 프로세스 기준 판정 → down이면 워치독/자가복구가 재기동.
+    # somi_advisor/somi_screener는 동적 매수 후보 발굴 주기와 고속감시를 위해
+    # 프로세스 기준으로 판정한다. 정시 launchd 잡을 정상으로 보지 않는다.
     "hank": "com.ailab.sched.research_us",
     "yuna": "com.ailab.sched.research_asia",
     "leon": "com.ailab.sched.research_eu",
@@ -60,7 +56,6 @@ SCHED_PREFIX = "com.ailab.sched."
 # 예약 실행 서비스 (launchd StartCalendarInterval) — 평소엔 미실행이 정상, 지정 시각에만 실행
 SCHEDULED_SERVICES = {
     "somi": "com.ailab.somi",                    # 정기 리포트 (15:40)
-    "somi_screener": "com.ailab.somi_screener",  # 정시 발굴 제안 (평일 09:30/15:50, advisor --propose)
     # somi_position 은 상시 데몬으로 승격(CONTINUOUS_DAEMONS) — 장중 평일 N분 주기 자동 청산 루프 내장
     "yewon_selfheal": "com.ailab.yewon_selfheal", # 자가 점검/복구 (08:00)
     "harness": "com.ailab.harness",              # 시스템 점검 (09:00/21:00)
