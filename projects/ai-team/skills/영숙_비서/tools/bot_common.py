@@ -125,7 +125,13 @@ def stock_from_text(text: str) -> tuple[str, str] | None:
             return stock
     code_match = re.search(r"\b(\d{6})\b", text or "")
     if code_match:
-        return code_match.group(1), code_match.group(1)
+        code = code_match.group(1)
+        try:  # 종목명 역조회(2026-07-08 감사): 실패해도 코드를 이름으로 쓰는 기존 폴백 유지
+            from stock_search import MAJOR_STOCKS
+            name = next((n for n, c in MAJOR_STOCKS.items() if c == code), code)
+        except Exception:
+            name = code
+        return code, name
     return _resolve_from_search(text)
 
 

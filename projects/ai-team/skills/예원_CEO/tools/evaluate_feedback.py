@@ -35,7 +35,8 @@ from _shared.env import load_env
 MEM_FILE = str(PROJECT_ROOT / "reports" / "history" / "upload_history.json")
 REWARD_DIR = str(PROJECT_ROOT / "reports" / "learning" / "reward")
 PUNISH_DIR = str(PROJECT_ROOT / "reports" / "learning" / "punishment")
-TOKEN_FILE = str(HERE / "youtube_token.pickle")
+TOKEN_FILE = str(HERE.parent / "youtube_token.pickle")  # 수정(2026-07-08): HERE는 .py 파일 자체라
+# HERE / "..."는 파일을 디렉터리처럼 취급해 항상 존재하지 않는 경로가 됨 — _get_youtube()가 매번 조용히 None
 VIEWS_THRESHOLD = 10_000
 
 

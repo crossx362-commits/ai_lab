@@ -91,7 +91,9 @@ def index_crash_watch(kis: KISClient) -> None:
         st["sent"][label] = done
     if changed:
         CRASH_STATE.parent.mkdir(parents=True, exist_ok=True)
-        CRASH_STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        tmp = CRASH_STATE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, CRASH_STATE)  # 원자적 쓰기(2026-07-08 감사) — market_desk 동시 읽기와 경합 방지
 
 
 def log(message: str) -> None:

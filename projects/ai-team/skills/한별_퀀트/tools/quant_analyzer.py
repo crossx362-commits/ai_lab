@@ -138,13 +138,16 @@ def performance() -> str:
     gross_loss = -sum(t["pnl"] for t in losses)
     pf = (gross_win / gross_loss) if gross_loss > 0 else float("inf")
 
-    # 누적 손익 곡선 기반 MDD(%)
-    eq, peak, mdd = 0.0, 0.0, 0.0
+    # 누적 손익 곡선 기반 MDD(%) — 계좌 원금(ACCOUNT_EQUITY) 기준 잔고로 계산.
+    # 수정(2026-07-08): peak을 0에서 시작하면 첫 거래가 손실일 때 peak=0에 고정돼
+    # "peak>0" 게이트를 영원히 통과 못해 손실만 누적되는 계좌의 MDD가 항상 0%로 나오는 결함이 있었음
+    # (오늘처럼 누적 손익이 흑자 전환 없이 손실만 쌓인 계좌에서 실제 재현됨).
+    eq = peak = ACCOUNT_EQUITY
+    mdd = 0.0
     for t in trades:
         eq += t["pnl"]
         peak = max(peak, eq)
-        if peak > 0:
-            mdd = min(mdd, (eq - peak) / peak * 100)
+        mdd = min(mdd, (eq - peak) / peak * 100)
 
     lines = [
         "📊 [한별] 거래 성과 복기",

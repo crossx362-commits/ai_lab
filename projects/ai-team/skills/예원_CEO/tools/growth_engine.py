@@ -288,13 +288,18 @@ def self_patch(insights: dict, state: dict) -> str:
             input=prompt, cwd=PROJECT_ROOT, capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=1500, shell=True,
         )
-        _ = r.stdout
     except Exception as exc:
         return f"패치 실행 실패(스킵): {exc}"
 
     changed = _changed_files(pre)
     if not changed:
-        return f"패치 무변경 종료 — {pick.get('title', '')}"
+        # 가시화(2026-07-08 감사): stdout/returncode를 버리고 있어 "claude가 정말 무변경 판단했는지"와
+        # "claude 자체가 크래시/타임아웃/거부했는지"를 구분할 수 없었다("auto(growth) 0건 의심"의 원인).
+        detail = f"rc={r.returncode}"
+        if r.returncode != 0 or not (r.stdout or "").strip():
+            tail = (r.stderr or r.stdout or "").strip()[-300:]
+            detail += f" stderr/out꼬리: {tail}" if tail else " (출력 없음)"
+        return f"패치 무변경 종료({detail}) — {pick.get('title', '')}"
 
     # 화이트리스트·컴파일 검증, 위반/실패 시 git 복원
     def _revert():

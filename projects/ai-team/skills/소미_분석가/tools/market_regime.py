@@ -108,7 +108,11 @@ def market_regime(proxy: str = KOSPI_PROXY) -> dict:
             "recent5_ret": round(float(rets[-5:].sum()), 2),
         }
     except Exception as exc:
-        # HMM 실패 시 단순 추세 폴백 (파이프라인 안 깨지게)
+        # HMM 실패 시 단순 추세 폴백 (파이프라인 안 깨지게).
+        # 수정(2026-07-08): KIS 조회 등 rets 계산 전 단계에서 실패하면 rets가 미정의라
+        # 폴백이 NameError로 조용히 또 실패 → 항상 unknown만 반환하며 폴백이 사실상 죽어있었음.
+        if "rets" not in locals():
+            return {"regime": "unknown", "reason": str(exc)}
         try:
             import numpy as np
             r = np.asarray(rets[-20:])
