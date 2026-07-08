@@ -352,7 +352,6 @@ ai_lab/
 │   │   │   ├── kis_trader.py           # Order execution
 │   │   │   ├── stock_search.py         # Ticker lookup
 │   │   │   ├── watchlist_manager.py    # Watchlist CRUD
-│   │   │   ├── somi_signal_engine.py   # Entry/exit signals
 │   │   │   ├── backtest.py             # Strategy backtesting
 │   │   │   └── market_regime.py        # Regime detection
 │   │   │
