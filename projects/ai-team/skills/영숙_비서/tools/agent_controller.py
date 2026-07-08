@@ -291,7 +291,7 @@ def stop_all_bots() -> str:
         if name in _KEEP_ON_SHUTDOWN or name not in AGENTS:
             kept.append(name)
             continue
-        if name in _KEEPALIVE_LABELS:          # launchd KeepAlive → launchctl 정지(부활 차단)
+        if name in _KEEPALIVE_LABELS and sys.platform == "darwin":  # launchd KeepAlive → launchctl 정지(부활 차단)
             _launchctl("off", _KEEPALIVE_LABELS[name])
             stopped.append(f"{name}(launchd)")
         else:                                   # 워치독 관리 → kill (플래그로 재기동 차단)
@@ -314,7 +314,7 @@ def start_all_bots() -> str:
         name = get_agent_name(key)
         if name in _KEEP_ON_SHUTDOWN or name not in AGENTS:
             continue
-        if name in _KEEPALIVE_LABELS:
+        if name in _KEEPALIVE_LABELS and sys.platform == "darwin":
             _launchctl("on", _KEEPALIVE_LABELS[name])
             started.append(f"{name}(launchd)")
         else:
