@@ -747,12 +747,12 @@ def _auto_buy_paper(proposals: list[dict], slot_kind: str = "buy", regime: str =
     trader = KISTrader()
     if not trader.paper:  # 안전장치: 실거래면 자동매수 금지
         return []
-    # 오전 신규매수 차단(2026-07-07 실거래 69건 분석): 오전(09~12시) 매수 25건 누적 -22.1%
-    # (승률 28%) vs 오후(13~15시) 44건 +123.3%(승률 70%·PF 2.09). 아침 갭·급등 추격이 꼭지
-    # 매수의 주범(손절의 64%가 매수 후 +0.5%도 못 감). 오전엔 발굴·관찰만, 체결은 오후부터.
-    buy_from = os.getenv("SOMI_PAPER_BUY_FROM", "13:00")
+    # 오전 차단 해제(오너 지시 2026-07-08 "종일 매수"): 모의 원칙은 종일 공격적 매수·데이터 수집.
+    # 오전 열세 분석(69건: 오전 PF 0.6 vs 오후 2.1, 2026-07-07)은 유효한 발견이나 모의 게이트가
+    # 아니라 실거래 도입 판단 자료로만 쓴다. 시간대는 포지션 메타에 계속 기록돼 학습에 반영.
+    buy_from = os.getenv("SOMI_PAPER_BUY_FROM", "09:00")
     if datetime.now().strftime("%H:%M") < buy_from:
-        return [f"⏰ 신규매수 대기 — 오전 체결 차단({buy_from}부터, 69건 분석: 오전 PF 0.6 vs 오후 2.1)"]
+        return [f"⏰ 신규매수 대기 — 체결 시작 전({buy_from}부터)"]
     held = load_positions()
     done, bought = [], 0
     # 당일 손절 종목 재진입 금지(2026-07-07 오너 지적 "비쌀때 사서 쌀때 파냐") — 덕성이 11:27 매수
