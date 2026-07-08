@@ -108,10 +108,11 @@ def review_news() -> dict:
     except Exception as exc:
         return {"grade": "unknown", "review": f"(검토 프롬프트 로드 실패: {exc})"}
     prompt = tmpl.replace("{보고서}", _news_report_text())
-    # 검수는 품질이 중요 → 클라우드(gpt→gemini) 직접 호출. (text()는 env상 Ollama 우선이라 '-' 빈응답 위험)
+    # 검수는 품질이 중요 → 클라우드(구독 클로드→gemini) 직접 호출. (text()는 env상 Ollama 우선이라 '-' 빈응답 위험)
+    # llm.gpt는 유료 API 퇴출 리팩터링에서 제거됨 — 잔존 참조가 다이제스트 3종을 전멸시켰다(2026-07-08)
     from _shared import llm
     out = ""
-    for fn in (llm.gpt, llm.gemini):
+    for fn in (llm.claude_code, llm.gemini):
         try:
             out = (fn(prompt, max_tokens=500, temperature=0.2) or "").strip()
         except Exception:
