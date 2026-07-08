@@ -86,25 +86,42 @@ def load_encrypted(enc_path: Path) -> dict[str, str]:
 # ==================== LOAD ENV ====================
 
 def load_env(start: str | None = None) -> None:
-    """Load .env.encrypted or .env into os.environ."""
+    """Load .env.encrypted or .env into os.environ.
+
+    스테일 상속 근절(2026-07-08 사고): 장수 부모(워치독·스케줄러)가 옛 .env 값을 os.environ에
+    물고 있다가 자식 데몬에 유전 — .env에서 '지운' 키는 update()로는 영원히 안 지워져
+    삭제한 설정(SOMI_CANDIDATES_BEAR)이 며칠씩 되살아났다. 해법: 로드한 키 목록을
+    _AILAB_ENV_KEYS로 남기고, 다음 load_env(자식 포함)가 그 목록을 먼저 청소한 뒤
+    현재 파일로 새로 채운다 — .env 파일이 유일한 진실이 된다."""
     root = find_root(start)
+
+    # 직전 로드(부모에게 상속받은 것 포함)가 넣었던 키를 먼저 제거 — 삭제된 키의 유령 방지
+    for k in os.environ.pop("_AILAB_ENV_KEYS", "").split(","):
+        if k:
+            os.environ.pop(k, None)
+
+    def _apply(env: dict) -> None:
+        os.environ.update(env)
+        os.environ["_AILAB_ENV_KEYS"] = ",".join(env.keys())
 
     # Try encrypted first
     enc = root / ".env.encrypted"
     if enc.exists():
         env = load_encrypted(enc)
         if env:
-            os.environ.update(env)
+            _apply(env)
             return
 
     # Fallback to plaintext
     plain = root / ".env"
     if plain.exists():
+        env = {}
         for line in plain.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ[k.strip()] = v.strip().strip('"').strip("'")
+                env[k.strip()] = v.strip().strip('"').strip("'")
+        _apply(env)
 
 
 # ==================== VALIDATION ====================
