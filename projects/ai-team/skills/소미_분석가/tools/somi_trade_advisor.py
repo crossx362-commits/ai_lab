@@ -376,6 +376,9 @@ def _doctrine_audit() -> list[str]:
         v.append(f"BEAR_GATE_BUMP={bump} — 모의는 0(오너 지시 2026-07-03, 하락장도 기본 60 거래)")
     if th["require_rr"]:
         v.append("손익비 하드게이트 켜짐 — 모의는 해제가 기본")
+    bear_pool = os.getenv("SOMI_CANDIDATES_BEAR")
+    if bear_pool and int(bear_pool) < 40:
+        v.append(f"SOMI_CANDIDATES_BEAR={bear_pool} — 하락장 후보풀 확대(기본 40)가 env로 무력화됨")
     return v
 
 
