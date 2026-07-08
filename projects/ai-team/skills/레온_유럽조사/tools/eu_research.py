@@ -41,7 +41,8 @@ def collect() -> dict:
         "fx": research.fx("EUR", "GBP", "RUB"),
         "web_issues": research.web_brief(
             "오늘 유럽 증시 주요 뉴스를 국가별로 정리하라: 영국·프랑스·독일·러시아·오스트리아. "
-            "각 국가 1~2줄, 지수·핵심 이슈 위주로 간결히. ECB·영란은행(BoE) 정책도 포함."
+            "각 국가 1~2줄, 핵심 이슈 위주로 간결히. ECB·영란은행(BoE) 정책도 포함."
+            + research.date_rule()
         ),
         "note": "ECB 정책·유럽 거시는 키/소스 추가 시 확장 예정",
     }

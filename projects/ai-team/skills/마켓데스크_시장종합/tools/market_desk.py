@@ -243,6 +243,22 @@ def build() -> dict:
 
     # 데이터 요약 (LLM 입력 + 본문)
     facts = []
+    # 시장경보 실측 최우선 주입(2026-07-08 사고: 서킷브레이커 다음날 데스크 코멘트에 급락 언급 zero) —
+    # 가격모니터가 실측으로 기록한 지수 급락 단계(index_crash_state.json)를 첫 사실로 넣어
+    # 코멘트·브리프가 '오늘 시장에서 제일 중요한 일'을 절대 빼먹지 않게 한다.
+    crash_line = ""
+    try:
+        import json as _json
+        _cs = _json.loads((PROJECT_ROOT / "output" / "cache" / "index_crash_state.json")
+                          .read_text(encoding="utf-8"))
+        if _cs.get("date") == datetime.now().strftime("%Y-%m-%d"):
+            hits = [f"{k} {min(v):+.0f}% 단계({'서킷브레이커권' if min(v) <= -8 else '사이드카권'}) 진입"
+                    for k, v in (_cs.get("sent") or {}).items() if v]
+            if hits:
+                crash_line = "🚨 시장경보(당일 실측): " + " · ".join(hits)
+                facts.append(crash_line)
+    except Exception:
+        pass
     if fx.get("KRW"):
         facts.append(f"USD/KRW {fx['KRW']:.1f}")
     for label, reg in (("미국", us), ("아시아", asia), ("유럽", eu)):
@@ -302,6 +318,8 @@ def build() -> dict:
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     md_lines = [f"# 📋 시장 종합 브리프 — {now}", ""]
+    if crash_line:   # 시장경보는 LLM 재량에 안 맡기고 본문 최상단에 직접 박는다(2026-07-08)
+        md_lines += [f"**{crash_line}**", ""]
     if fx.get("KRW"):
         krw = f"USD/KRW {fx['KRW']:.1f}"
         jpy = f" · USD/JPY {fx['JPY']:.1f}" if fx.get("JPY") else ""

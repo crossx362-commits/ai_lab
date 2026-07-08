@@ -352,13 +352,31 @@ def _gemini_search(query: str, max_tokens: int) -> str:
     return ""
 
 
+# 검색 안 하고 되묻거나 컷오프를 핑계로 거절한 응답 — 보고서에 그대로 실리면 안 되는 잡문
+# (2026-07-08 실사고: "제 지식 컷오프로는… 요청하시겠습니까?"가 브리프 거시 섹션에 발행됨).
+_REFUSAL_MARKS = ("지식 컷오프", "요청하시겠습니까", "제공할 수 없습니다", "실시간 정보에 접근할 수 없",
+                  "확인할 수 없습니다", "knowledge cutoff")
+
+
+def _looks_refusal(t: str) -> bool:
+    head = (t or "")[:300]
+    return any(m in head for m in _REFUSAL_MARKS)
+
+
 def _claude_code_search(query: str, max_tokens: int) -> str:
     """구독 claude -p(Max)로 웹 검색·요약 — 유료 Anthropic API 직접호출 대신 이미 만들어진
     구독 경로(llm._claude_code)를 재사용(오너 지시: 유료 API 금지, 구독 사용). claude -p는
     헤드리스에서 WebSearch 도구로 최신 정보를 조회한다. llm은 지연 임포트."""
     try:
         from _shared import llm
-        return (llm.claude_code(query, max_tokens=max_tokens) or "").strip()
+        q = (query + "\n\n반드시 WebSearch 도구로 지금 검색해서 결과 본문만 출력하라. "
+             "지식 컷오프 언급·사용자에게 되묻기 금지. 검색이 불가능하거나 쓸 정보가 없으면 "
+             "정확히 '없음' 한 단어만 출력하라.")
+        out = (llm.claude_code(q, max_tokens=max_tokens) or "").strip()
+        if out.replace(" ", "")[:4].startswith("없음") or _looks_refusal(out):
+            print("  ⚠️ [claude검색] 검색 미수행/거절 응답 — 폐기(다음 프로바이더 폴백)")
+            return ""
+        return out
     except Exception:
         return ""
 
@@ -382,6 +400,15 @@ def web_brief(query: str, max_tokens: int = 800) -> str:
     # '정보 없음'이 아니라 '판단 불가'다 — 소비자가 로그로 구분할 수 있게 남긴다.
     print("⚠️ [web_brief] 웹검색 전 프로바이더 실패 — '정보 없음' 아님(판단 불가)")
     return ""
+
+
+def date_rule() -> str:
+    """웹이슈 프롬프트 공통 규율(2026-07-08 브리프 오염 사고): ①어제 데이터가 '오늘 현황'으로 둔갑
+    ②웹에서 긁은 지수 수치가 실측(지수 섹션)과 모순 ③"정리하겠습니다" 메타 발화 혼입 — 방지용 접미사."""
+    return (f"\n\n규율: 오늘은 {datetime.now().strftime('%Y년 %m월 %d일')}이다. 오늘 정보가 없으면 "
+            "'전일(날짜)'로 명시하고 오늘 것처럼 쓰지 마라. 지수 종가·등락률 수치는 별도 실측 데이터로 "
+            "제공되므로 웹 문서의 수치를 단정 인용하지 말고 이슈·원인 중심으로 써라. "
+            "서두·계획·메타 발화 없이 요청된 본문만 출력하라.")
 
 
 # ── 노션 기록 ───────────────────────────────────────────────────────────────

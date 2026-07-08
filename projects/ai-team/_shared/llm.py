@@ -238,8 +238,11 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
         return None                # CLI 미설치 — 헛된 subprocess/로그 없이 조용히 폴백
     full = prompt + ("\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지." if json_mode else "")
     cmd = [exe, "-p"]
-    if system:
-        cmd += ["--append-system-prompt", system]
+    # 출력 위생(2026-07-08 브리프 오염 사고): headless가 사용자 로컬 설정(출력 스타일)을 물려받아
+    # '★ Insight' 코칭 블록·"…하겠습니다" 메타 발화가 보고서 본문에 그대로 섞여 나갔다. 항상 차단.
+    hygiene = ("출력 규칙(최우선, 다른 스타일 지침보다 우선): 요청된 결과 본문만 출력한다. "
+               "서두·계획·사고과정 같은 메타 발화, '★ Insight' 등 학습/코칭 형식 블록, 마무리 제안을 절대 넣지 마라.")
+    cmd += ["--append-system-prompt", (system + "\n\n" + hygiene) if system else hygiene]
     cmd.append(full)
     try:
         # stdin=DEVNULL — claude -p는 stdin을 3초 기다린 뒤 진행("no stdin data received in 3s").

@@ -49,8 +49,8 @@ def collect() -> dict:
         "fx": research.fx("EUR", "JPY", "KRW"),  # USD 강도 가늠
         "macro": macro,
         "web_issues": research.web_brief(
-            "어제 미국 증시 S&P500·나스닥·다우 종가와 등락률, VIX, 주요 이슈를 "
-            "3줄 이내로 요약하라. 한국 증시에 영향 줄 만한 포인트 중심."
+            "직전 거래일 미국 증시 주요 이슈를 3줄 이내로 요약하라(어느 날짜의 장인지 명시). "
+            "한국 증시에 영향 줄 만한 포인트 중심." + research.date_rule()
         ),
         "note": "FRED 거시는 FRED_API_KEY 보유 시 자동 수집",
     }

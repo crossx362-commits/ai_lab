@@ -46,7 +46,7 @@ def collect() -> dict:
         "news": research.news_rss("https://www.hankyung.com/feed/finance", 8),
         "web_issues": research.web_brief(
             "오늘 아시아 증시 주요 뉴스·핫이슈를 국가별로 정리하라: 한국·중국·일본·베트남. "
-            "각 국가 1~2줄, 지수 등락과 핵심 이슈(종목·정책·수급) 위주로 간결히."
+            "각 국가 1~2줄, 핵심 이슈(종목·정책·수급) 위주로 간결히." + research.date_rule()
         ),
     }
     research.save_region("asia", payload)
