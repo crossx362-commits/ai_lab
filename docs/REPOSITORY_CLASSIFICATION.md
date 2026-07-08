@@ -1,8 +1,8 @@
 ﻿# Repository Classification
 
-Last reviewed: 2026-06-17
+Last reviewed: 2026-07-08
 
-This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`. It is intentionally an operating index, not a replacement for `PROJECT_OVERVIEW.md`.
+This file classifies the active Markdown files, scripts, and bots in `ai_lab`. It is intentionally an operating index, not a replacement for `PROJECT_OVERVIEW.md`.
 
 ## Source Areas
 
@@ -22,18 +22,16 @@ This file classifies the active Markdown files, scripts, and bots in `D:\ai_lab`
 
 ## Script And Bot Categories
 
+Stock/crypto trading agents and scripts (소미·한별·행크·유나·레온·마켓데스크, and the earlier
+데이브·레오·시그널·펄스 generation) were fully removed 2026-07-08 per owner instruction — recoverable
+from git history if ever needed. Current categories:
+
 | Category | Primary Files | Merge / Cleanup Rule |
 | --- | --- | --- |
-| Trading launchers | `projects/ai-team/scripts/start_trading_team.py`, `run_trading_team_background.py`, `run_trader_daemon.py`, root `start_trading.bat`, `restart_trading.bat` | Keep Python scripts as canonical. Root batch files are Windows convenience wrappers only. |
-| Trading bots | `skills/시그널_분석가/tools/market_signal.py`, `skills/펄스_애널리스트/tools/market_pulse.py`, `skills/데이브_주식/tools/upbit_auto_trader.py`, `skills/레오_트레이더/tools/leo_aggressive_trader.py` | Do not merge: different risk profiles and daemon cadences. |
-| Trading utilities | `check_holdings.py`, `daily_balance_check.py`, `daily_trading_learning.py`, `upbit_public.py`, `upbit_analyzer.py` | Keep as support tools. Move new shared exchange logic into `_shared/` only after cross-agent testing. |
-| Telegram bot | `skills/영숙_비서/tools/telegram_receiver.py`, `start_telegram_bot.ps1`, `scripts/start_youngsuk_bot.cmd`, `run_youngsuk_daemon.py` | `telegram_receiver.py` is canonical; wrappers only start and supervise it. |
-| Scheduling and reports | `calendar_manager.py`, `posting_scheduler.py`, `reports_manager.py`, `schedule_manager.py`, `start_daily_automation.py` | Keep separated by workflow; only consolidate if duplicated function bodies appear. |
-| Orchestration | `예원_CEO/tools/yewon_dispatcher.py`, `upload_manager.py`, `skill_auditor.py`, `evaluate_feedback.py` | Keep under 예원 because these control cross-agent routing. |
-| Infra | `케빈_인프라/tools/vercel_manager.py`, `sync_env_to_vercel.py`, `supabase_manager.py`, `petnna_monitor.py` | Keep under 케빈. These can change live cloud resources. |
-| Developer health/tools | `코다리_개발자/tools/web_preview.py`, `web_init.py`, `agent_health_check.py`, `ollama_health_check.py`, `lint_test.py` | Keep under 코다리. |
-| Security/investigation | `경수_수사관/tools/comment_forensics.py`, `content_inspector.py`, `approval_kyungsoo.py` | Keep under 경수. |
-| Legal/tax | `로율_변호사/tools/tax_simulator.py` | Keep under 로율. |
+| Telegram bot | `skills/영숙_비서/tools/telegram_receiver.py`, `agent_controller.py`, `schedule_manager.py` | `telegram_receiver.py` is canonical; `agent_controller.py` starts/supervises daemons. |
+| Scheduling and reports | `calendar_manager.py`, `posting_scheduler.py`, `reports_manager.py`, `schedule_manager.py` | Keep separated by workflow; only consolidate if duplicated function bodies appear. |
+| Orchestration | `예원_CEO/tools/yewon_dispatcher.py`, `upload_manager.py`, `skill_auditor.py`, `harness_manager.py`, `harness_monitor.py` | Keep under 예원 because these control cross-agent routing and the watchdog. |
+| Petnna QA/dev team | `봄이_QA/tools/petnna_qa_patrol.py`, `수리_개발자/tools/petnna_dev_engine.py`, `미오_디자인/`, `나무_기획/`, `백호_백엔드/`, `테오_테스트/` | Petnna-facing agents; keep each under its own agent folder. |
 | Petnna frontend | `projects/petnna/js/*.js`, `projects/petnna/js/templates/*.js`, `projects/petnna/api/*.js`, `projects/petnna/sw.js` | App source. Do not merge without browser testing. |
 | Extension source | `projects/ai-team/src/*.ts` | VS Code extension source. Do not mix with runtime bot scripts. |
 

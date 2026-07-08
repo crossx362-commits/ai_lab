@@ -1,21 +1,24 @@
 # AI Lab System Architecture
 
-**Last Updated**: 2026-06-29  
-**System Status**: 7 Agents (3 active daemons + 4 research agents)
+**Last Updated**: 2026-07-08
+**System Status**: 8 agents — orchestration/secretary (예원·영숙) + Petnna QA/dev team (봄이·수리·미오·나무·백호·테오)
 
 ---
 
 ## Executive Summary
 
-AI Lab is a multi-agent stock market analysis and orchestration system running on Windows 11. It combines:
+AI Lab runs a multi-agent automation system centered on **Petnna** (a pet-care web app) plus general
+orchestration/Telegram infrastructure. Stock/crypto trading agents (소미·한별·행크·유나·레온·마켓데스크,
+and the earlier 데이브·레오·시그널·펄스 generation) were fully removed 2026-07-08 per owner instruction —
+recoverable from git history if ever needed. The system now combines:
 
-1. **Data Collection**: 4 geopolitical research agents (US/EU/Asia/Quant)
-2. **Data Integration**: Market Desk consolidates research into global briefs
-3. **Stock Analysis**: Somi scores watchlist securities with supply/demand metrics
-4. **Decision Support**: Trade advisor provides buy signals and position management
-5. **Orchestration**: Yewon CEO dispatches tasks; Youngsuk secretary handles Telegram interface
+1. **Orchestration**: 예원 (CEO) dispatches tasks, runs the harness/watchdog, reviews skill docs
+2. **Telegram Gateway**: 영숙 (secretary) handles all natural-language interaction, calendar, scheduled jobs
+3. **Petnna QA loop**: 봄이 (QA patrol) finds issues → 수리 (dev engine) fixes low-risk ones in isolated branches
+4. **Petnna growth loop**: 미오 (design review) + 나무 (product/roadmap) propose improvements → shared backlog → 수리 implements
+5. **Petnna reliability**: 백호 (backend/schema guard) audits Supabase contract drift, 테오 (test engineer) writes/runs E2E tests
 
-The system is **NOT an automated trader** — all trades require explicit approval via Telegram.
+There is no automated trading or financial execution anywhere in this system.
 
 ---
 
@@ -30,235 +33,153 @@ The system is **NOT an automated trader** — all trades require explicit approv
     ┌────────────────────────────────────────┐
     │  영숙 (Youngsuk) — Secretary Bot       │
     │  - Polling Telegram messages           │
-    │  - GPT-4o-mini function calling        │
-    │  - Route to agents/tools               │
+    │  - Function calling → tools            │
+    │  - Calendar, scheduled jobs, reports   │
     └────┬─────────────────────────┬────────┘
          │                         │
     ┌────▼────────────┐      ┌────▼──────────────────┐
-    │ Keyword Match   │      │ Task Dispatch         │
-    │ (영숙_비서)      │      │ → yewon_dispatcher    │
-    └────┬────────────┘      └────┬──────────────────┘
-         │                         │
-         ▼                         ▼
+    │ Direct tools     │      │ Task Dispatch         │
+    │ (calendar/status)│      │ → yewon_dispatcher    │
+    └──────────────────┘      └────┬──────────────────┘
+                                    │
+                                    ▼
     ┌────────────────────────────────────────┐
-    │  예원 (Yewon) — CEO Orchestrator      │
+    │  예원 (Yewon) — CEO Orchestrator       │
     │  - Harness health check (check_all.py) │
-    │  - Skill auditor                       │
-    │  - Agent coordination                  │
-    └────┬─────────────────────────┬────────┘
-         │                         │
-         ├─────────────────────────┼─────────────────────────┐
-         │                         │                         │
-         ▼                         ▼                         ▼
-    ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-    │ 소미 (Somi)      │  │ 조사팀 (Research)│  │ 마켓데스크       │
-    │ Stock Analyst    │  │ Hank/Yuna/Leon  │  │ (Market Desk)    │
-    └──────────────────┘  └──────────────────┘  └──────────────────┘
-         │                         │                         │
-         ▼                         ▼                         ▼
-    ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-    │ KIS API          │  │ Web Scraping     │  │ Consolidation    │
-    │ Stock Data       │  │ + Research.py    │  │ → market_brief   │
-    │ + Scoring        │  │ Region JSONs     │  │ + Commentary     │
-    └──────────────────┘  └──────────────────┘  └──────────────────┘
-         │                                           │
-         └───────────────────────┬───────────────────┘
-                                 │
-                         ┌───────▼────────┐
-                         │ Output Storage │
-                         │ /output/       │
-                         │ - cache/       │
-                         │ - research/    │
-                         │ - trading_logs │
-                         └────────────────┘
+    │  - Watchdog (harness_monitor.py)       │
+    │  - Skill auditor, content feedback     │
+    └─────────────────────────────────────────┘
+
+┌─────────────────────────── Petnna QA/Dev Loop ───────────────────────────┐
+│                                                                            │
+│  봄이 (QA patrol) ──findings──┐                                          │
+│  미오 (design review) ──ideas─┼──► output/qa/petnna/backlog.json          │
+│  나무 (product/PM) ──ideas────┘              │                            │
+│                                               ▼                           │
+│                              수리 (dev engine): isolated git worktree,    │
+│                              claude -p headless fix, re-run 봄이 gate,    │
+│                              auto-merge only low-risk P2/P3               │
+│                                               │                           │
+│  백호 (backend guard) ──schema/RLS audit──────┤                           │
+│  테오 (E2E tests) ──write+run Playwright──────┘                           │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Agent Roster
 
-### Tier 1: Core Orchestration (Always Running)
+### Core Orchestration (Always Running)
 
-| Agent | Role | Primary Tool | Type | Schedule |
-|-------|------|--------------|------|----------|
-| **영숙** (Youngsuk) | Telegram secretary bot | `telegram_receiver.py` | Continuous Daemon | 24/7 polling |
-| **예원** (Yewon) | CEO task dispatcher | `yewon_dispatcher.py` | On-demand via Telegram | Reactive |
+| Agent | Role | Primary Tool | Type |
+|-------|------|--------------|------|
+| **영숙** (Youngsuk) | Telegram secretary bot | `telegram_receiver.py` | Continuous daemon (24/7 polling) |
+| **예원** (Yewon) | CEO — dispatch, harness, watchdog | `yewon_dispatcher.py`, `harness_manager.py`, `harness_monitor.py` | Continuous daemon + reactive |
 
-### Tier 2: Stock Analysis (Market Hours)
+### Petnna QA/Dev Team
 
-| Agent | Role | Primary Tools | Type | Schedule |
-|-------|------|---------------|------|----------|
-| **소미** (Somi) | Domestic stock analyst | `somi_kis_reporter.py`, `somi_trade_advisor.py` | Scheduled + Daemon | 09:30/12:00/15:40 (reports); 24/7 (price monitor) |
+| Agent | Role | Primary Tool | Cadence |
+|-------|------|--------------|---------|
+| **봄이** (Bomi) | QA patrol — console/JS errors, 404s, broken images, a11y, SEO basics | `petnna_qa_patrol.py` | Daily patrol + on file-change |
+| **수리** (Suri) | Dev engine — reads 봄이/미오/나무 findings, fixes one low-risk issue per cycle in an isolated worktree branch via `claude -p`, re-gates with 봄이, auto-merges only if safe | `petnna_dev_engine.py` | Continuous daemon |
+| **미오** (Mio) | Design review — weekly screenshot-based UX/visual review | `petnna_design_review.py` | Weekly (Mon 11:00) |
+| **나무** (Namu) | Product/PM — weekly feature roadmap & competitor research, proposals only (no code) | `petnna_product_manager.py` | Weekly (Tue 11:00) |
+| **백호** (Baekho) | Backend guard — Supabase schema/RLS vs. frontend contract audit | `petnna_backend_guard.py` | Daily |
+| **테오** (Teo) | E2E test engineer — writes + runs Playwright tests for uncovered flows | `petnna_test_engineer.py` | Daily + on file-change |
 
-### Tier 3: Research (Geopolitical)
-
-| Agent | Role | Region | Primary Tool | Schedule |
-|-------|------|--------|--------------|----------|
-| **행크** (Hank) | US market researcher | America | `us_research.py` | Every 30 min (daemon) |
-| **유나** (Yuna) | Asia market researcher | Asia/Korea | `asia_research.py` | Every 30 min (daemon) |
-| **레온** (Leon) | EU market researcher | Europe | `eu_research.py` | Every 30 min (daemon) |
-| **한별** (Hanbyul) | Quantitative analyst | Global | `quant_analyzer.py` | On-demand |
-
-### Tier 4: Integration
-
-| Agent | Role | Primary Tool | Schedule |
-|-------|------|--------------|----------|
-| **마켓데스크** (Market Desk) | Global brief consolidator | `market_desk.py` | Every hour (daemon) |
+**Safety rails on 수리** (the only agent that writes to `master`): always works in an isolated git
+worktree/branch, never touches files outside `projects/petnna/`, refuses to merge if it touches
+forbidden paths (supabase/api/migrations/payments/env/deploy config), refuses merge if 봄이's
+re-check shows the issue unresolved or metrics regressed, gives up after 3 failures on the same
+issue (escalates to a notification instead of looping). P0/P1 findings always go to a human, never
+auto-merged.
 
 ---
 
-## Data Flow
-
-### 1. News & Market Data Collection
+## Data Flow: Petnna QA/Dev Loop
 
 ```
-Web Sources (Yahoo Finance, DART, etc.)
-    ↓
-research.py (shared module)
-    ├── fx() — USD rates vs. KRW/EUR/JPY
-    ├── index_quote() — S&P500, KOSPI, etc.
-    ├── dart_recent() — Corporate disclosures for watchlist
-    └── web_brief() — LLM-powered web scraping summary
-    ↓
-Stored as: output/research/region_{us|asia|eu}.json
+봄이 (daily patrol) ──┐
+미오 (weekly design) ──┼──► output/qa/petnna/backlog.json (shared backlog)
+나무 (weekly roadmap) ─┘
+                                    │
+                                    ▼
+                    수리 picks highest-impact, lowest-risk item
+                                    │
+                    isolated git worktree branch
+                    claude -p headless makes a minimal fix
+                                    │
+                    re-run 봄이 patrol against the branch (gate)
+                                    │
+              ┌─────────────────────┴─────────────────────┐
+              ▼                                            ▼
+       gate passes, low-risk P2/P3               gate fails OR P0/P1/high-risk
+              │                                            │
+       auto-merge to master                    leave branch, notify for review
 ```
 
-### 2. Regional Intelligence Integration
-
-```
-행크 (US)        유나 (Asia)       레온 (Europe)
-  ↓                ↓                 ↓
-region_us.json   region_asia.json  region_eu.json
-  │                │                 │
-  └────────────────┼─────────────────┘
-                   ↓
-            마켓데스크 (Market Desk)
-                   ↓
-         1. Aggregate indices/FX/news
-         2. Match against Somi candidates
-         3. LLM impact scoring (-2 to +2)
-         4. Generate market_brief.md
-                   ↓
-         Telegram notification to user
-```
-
-### 3. Stock Analysis Pipeline
-
-```
-KIS API (Korea Investment & Securities)
-    ↓
-Watchlist (somi_watchlist.json)
-    ↓
-┌─ somi_kis_reporter.py (정기 보고)
-│     • Supply/demand heatmap
-│     • Volume, large trades
-│     • Somi confidence score
-│
-├─ somi_screener.py (유망 종목 발굴)
-│     • Top 100 stocks by daily turnover
-│     • Score by Somi metrics
-│     • Return top N candidates
-│
-├─ somi_trade_advisor.py (매수 판단)
-│     • Buy signals based on regimes
-│     • Entry price suggestions
-│     • Position sizing by conviction
-│
-├─ somi_price_monitor.py (실시간 감시)
-│     • Watch for ±5% moves
-│     • Volume surges (>150% avg)
-│     • Alert via Telegram
-│
-└─ somi_position_monitor.py (포지션 관리)
-      • Check take-profit targets
-      • Monitor stop-loss levels
-      • Trail stops if enabled
-```
-
-### 4. Decision-to-Execution
-
-```
-User (Telegram)
-    ↓ "종목 ABC 매수할까?"
-    ↓
-영숙 (Youngsuk) recognizes stock query
-    ↓ Calls trade_advisor.analyze()
-    ↓
-somi_trade_advisor.py evaluates:
-  • Regime (bull/bear/sideways)
-  • Entry price
-  • Risk/reward
-  • Conviction score
-    ↓
-예원 (Yewon) routes to kis_trader.py
-    ↓
-kis_trader.place_order()
-    ↓
-Confirmation + order status back to Telegram
-```
+백호 and 테오 run independently (schema audit, E2E suite) and file their own findings into the
+same backlog/notification channels; they do not gate 수리's merges directly today.
 
 ---
 
 ## Shared Module System
 
-All agents inherit from **5 core modules** in `projects/ai-team/_shared/`:
+All agents inherit from core modules in `projects/ai-team/_shared/`:
 
 ### env.py — Environment & Secrets
 - `load_env()`: Decrypt & load `.env` at startup
 - `encrypt(plaintext, ciphertext)`: Symmetric encryption for secrets
-- Validates API keys: Gemini, OpenAI, UPBIT, TELEGRAM, KIS, NOTION, SUPABASE, etc.
+- Validates required API keys (Telegram, Gemini, Notion, Supabase, etc.)
 
 **Never hardcode credentials.** Always call `load_env()` first.
 
 ### llm.py — Unified LLM Client
-Priority fallback chain:
-1. **Ollama** (local, free): `deepseek-coder`, `qwen2.5` for coding/blog tasks
-2. **GPT-4o-mini** (paid): Cloud fallback, function calling
-3. **Gemini** (paid): Final fallback
+Priority fallback chain (all subscription-based — no paid API calls by default, owner instruction):
+1. **Ollama** (local, free) — auto-detects installed model
+2. **Claude Code CLI** (`claude -p`, subscription) — primary cloud fallback
+3. **Codex CLI** (`codex exec`, subscription) — secondary cloud fallback
+4. **Gemini** (free tier) — final fallback
 
 ```python
 from _shared.llm import text
 
-# Local-first (Ollama → GPT → Gemini)
+# Local-first (Ollama → Claude subscription → Codex subscription → Gemini)
 response = text("프롬프트", lm_first=True, task="coding")
 
 # Cloud-first
 response = text("프롬프트", lm_first=False)
-
-# JSON mode
-response = text(prompt, json_mode=True)
 ```
 
 ### notify.py — Telegram & Daemon Status
 - `send(msg)`: Post to Telegram chat
 - `agent_status()`: Health check for all agents
-  - Continuous daemons: `youngsuk`, `somi_monitor`
-  - Scheduled services: `somi`, `somi_screener`, `somi_position`, `yewon_selfheal`, `harness`
-  - Returns: `{"youngsuk": "up,12345", "somi": "scheduled", "harness": "down"}`
+  - `CONTINUOUS_DAEMONS`: `youngsuk`, `yewon`, `bomi_qa`, `scheduler`
+  - `SCHEDULED_SERVICES`: `yewon_selfheal`, `harness`
+  - Returns e.g. `{"youngsuk": "up,12345", "harness": "scheduled"}`
 
 ### process.py — Mutex & Duplicate Prevention
 ```python
 from _shared.process import ProcessLock
 
-with ProcessLock("somi_kis_reporter"):
+with ProcessLock("some_daemon_name"):
     # Only one instance can execute here at a time
     # Prevents zombie processes, race conditions
 ```
 
-### registry.py — Agent Registry (SSOT)
-Single source of truth for agent metadata:
-- Loads from `output/cache/agent_registry.json`
-- Auto-discovers agents with `SKILL.md`
-- Provides: `active_agents()`, `get_agent(id)`, `route_by_keyword(msg)`, `tools_for(agent_id)`
+### research.py — HTTP + Notion Helpers
+Trimmed 2026-07-08 to only the functions with live consumers: `_get`/`get_json` (HTTP),
+`load_market_brief()` (always returns `{}` now — no producer since 마켓데스크 was removed;
+kept for `morning_brief.py`'s fallback path), `notion_page()`/`notion_report()` (used by
+`reports_manager.py`, `notion_publish.py`, `notify.py`). Region/watchlist/DART/fx/index-quote
+functions were removed — no consumers remain; restore from git history if a research agent
+returns.
 
-### research.py — Market Data Collection
-Shared utilities for all research agents:
-- `fx(codes)`: USD rates
-- `index_quote(symbol)`: Yahoo Finance quotes
-- `dart_recent(codes, days)`: Corporate filings
-- `web_brief(prompt)`: LLM-powered web summaries
-- `save_region()` / `load_region()`: JSON persistence
-- `fear_greed()`: Market psychology index
+### registry.py — Agent Registry (SSOT)
+- Loads from `output/cache/agent_registry.json`, merged with dynamic discovery of
+  `skills/<agent>/SKILL.md` folders
+- New agents are added by `agent_factory.py` as `status: quarantined` until approved
 
 ---
 
@@ -266,26 +187,22 @@ Shared utilities for all research agents:
 
 ### Continuous Daemons
 
-Run 24/7 with process-level mutex to prevent duplicates:
-
-| Daemon | Script | Role | Restarts |
-|--------|--------|------|----------|
-| `youngsuk` | `telegram_receiver.py` | Telegram polling | auto-restart if crash |
-| `somi_monitor` | `somi_price_monitor.py` | Real-time alerts | auto-restart if crash |
+| Daemon | Script | Role |
+|--------|--------|------|
+| `youngsuk` | `telegram_receiver.py` | Telegram polling |
+| `yewon` | `harness_monitor.py` | Watchdog — auto-restarts down daemons, redeploys on `git pull` |
+| `bomi_qa` | `petnna_qa_patrol.py` | Petnna QA patrol |
+| `scheduler` | `schedule_manager.py` | Windows-only scheduled-job executor (macOS uses launchd instead) |
 
 Restart via:
 ```bash
-# Windows
 python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 restart
-python projects/ai-team/skills/소미_분석가/tools/somi_price_monitor.py --daemon
+python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 봄이 restart
 ```
 
 ### Scheduled Services (launchd on macOS / Task Scheduler on Windows)
 
 ```
-com.ailab.somi                15:40 KST (close-of-day report)
-com.ailab.somi_screener       09:30, 15:50 KST (top candidates)
-com.ailab.somi_position       장중 (position check)
 com.ailab.yewon_selfheal      08:00 KST (system self-heal)
 com.ailab.harness             09:00, 21:00 KST (health check)
 ```
@@ -293,16 +210,15 @@ com.ailab.harness             09:00, 21:00 KST (health check)
 정시 잡의 단일 진실원천은 `영숙_비서/tools/schedules.json`이며
 `schedule_sync.py sync`가 잡별 `com.ailab.sched.*` launchd 에이전트로 materialize 한다.
 
-### Ops Hygiene Automation (2026-07-04)
+### Ops Hygiene Automation
 
 | Job | Schedule | Script (영숙_비서/tools/) | Role |
 |-----|----------|--------------------------|------|
-| `llm_probe` | 평일 07:25 | `llm_probe.py` | 로컬(Ollama)·클라우드(GPT/Gemini) 실제 챗 응답 점검 — 실패 시에만 텔레그램 경보 |
+| `llm_probe` | 평일 07:25 | `llm_probe.py` | 로컬(Ollama)·구독 클로드·Gemini 실제 챗 응답 점검 — 실패 시에만 텔레그램 경보 |
 | `log_janitor` | 매일 04:10 | `log_janitor.py` | output 로그 회전(5MB+, copytruncate)·45일 사어 로그 삭제 |
-| `state_backup` | 매일 20:00 | `state_backup.py` | output/cache(청산기록·watchlist)+.env → `~/ai_lab_backups` 스냅샷(14일 보관) |
+| `state_backup` | 매일 20:00 | `state_backup.py` | output/cache + .env → `~/ai_lab_backups` 스냅샷(14일 보관) |
 
-`check_all.py`의 `ops_hygiene` 검사가 디스크 여유·백업 신선도(50h)를 감시한다.
-데몬 생성 스냅샷 리포트(`reports/research/*_latest.md`)는 git 미추적(풀 배포 차단 방지).
+`check_all.py`의 `ops_hygiene` 검사가 디스크 여유·백업 신선도를 감시한다.
 
 ---
 
@@ -311,13 +227,14 @@ com.ailab.harness             09:00, 21:00 KST (health check)
 ```
 ai_lab/
 ├── projects/ai-team/
-│   ├── _shared/                 # Shared modules (5 files + research/registry)
+│   ├── _shared/                 # Shared modules
 │   │   ├── env.py              # Secrets management
-│   │   ├── llm.py              # Unified LLM client
+│   │   ├── llm.py              # Unified LLM client (Ollama → subscription CLIs → Gemini)
 │   │   ├── notify.py           # Telegram + daemon status
 │   │   ├── process.py          # Mutex/lock
 │   │   ├── registry.py         # Agent metadata (SSOT)
-│   │   ├── research.py         # Market data collection
+│   │   ├── research.py         # HTTP + Notion helpers (trimmed 2026-07-08)
+│   │   ├── growth.py           # Agent self-learning records/proposals
 │   │   ├── utils.py            # Path/resource utilities
 │   │   ├── calendar_client.py  # Google Calendar API
 │   │   └── agent_loop.py       # Agent polling loop
@@ -327,48 +244,27 @@ ai_lab/
 │   │   │   ├── yewon_dispatcher.py     # Main orchestrator
 │   │   │   ├── yewon_orchestrator.py   # Task routing
 │   │   │   ├── yewon_self_heal.py      # Auto-recovery
-│   │   │   ├── harness_manager.py      # Health check
+│   │   │   ├── harness_manager.py      # Health check wrapper
+│   │   │   ├── harness_monitor.py      # Watchdog daemon
 │   │   │   ├── skill_auditor.py        # Doc validation
-│   │   │   ├── breaking_monitor.py     # News alerts
+│   │   │   ├── daily_feedback_scheduler.py  # Content feedback
 │   │   │   └── agent_factory.py        # Agent creation
 │   │   │
 │   │   ├── 영숙_비서/tools/
 │   │   │   ├── telegram_receiver.py    # Main bot
 │   │   │   ├── agent_controller.py     # Process mgmt
-│   │   │   ├── schedule_manager.py     # Calendar sync
-│   │   │   ├── schedule_sync.py        # iCal integration
+│   │   │   ├── schedule_manager.py     # Scheduled-job executor
 │   │   │   ├── morning_brief.py        # Daily summary
 │   │   │   ├── reports_manager.py      # Report archival
 │   │   │   ├── calendar_manager.py     # Google Calendar
-│   │   │   └── youtube_recommender.py  # Content feed
+│   │   │   └── llm_probe.py            # LLM chain health probe
 │   │   │
-│   │   ├── 소미_분석가/tools/
-│   │   │   ├── somi_kis_reporter.py    # Periodic reports
-│   │   │   ├── somi_screener.py        # Find candidates
-│   │   │   ├── somi_trade_advisor.py   # Buy signals
-│   │   │   ├── somi_price_monitor.py   # Real-time watch
-│   │   │   ├── somi_position_monitor.py│ # Position mgmt
-│   │   │   ├── short_covering_analyzer.py │ # Short supply
-│   │   │   ├── kis_trader.py           # Order execution
-│   │   │   ├── stock_search.py         # Ticker lookup
-│   │   │   ├── watchlist_manager.py    # Watchlist CRUD
-│   │   │   ├── backtest.py             # Strategy backtesting
-│   │   │   └── market_regime.py        # Regime detection
-│   │   │
-│   │   ├── 행크_미국조사/tools/
-│   │   │   └── us_research.py          # US market intel
-│   │   │
-│   │   ├── 유나_아시아조사/tools/
-│   │   │   └── asia_research.py        # Asia/Korea intel
-│   │   │
-│   │   ├── 레온_유럽조사/tools/
-│   │   │   └── eu_research.py          # EU market intel
-│   │   │
-│   │   ├── 한별_퀀트/tools/
-│   │   │   └── quant_analyzer.py       # Quantitative analysis
-│   │   │
-│   │   ├── 마켓데스크_시장종합/tools/
-│   │   │   └── market_desk.py          # Global integration
+│   │   ├── 봄이_QA/tools/petnna_qa_patrol.py
+│   │   ├── 수리_개발자/tools/petnna_dev_engine.py
+│   │   ├── 미오_디자인/tools/petnna_design_review.py
+│   │   ├── 나무_기획/tools/petnna_product_manager.py
+│   │   ├── 백호_백엔드/tools/petnna_backend_guard.py
+│   │   ├── 테오_테스트/tools/petnna_test_engineer.py
 │   │   │
 │   │   └── 공용스킬/
 │   │       └── SKILL.md documents
@@ -376,145 +272,21 @@ ai_lab/
 │   ├── harness/
 │   │   └── check_all.py                # System health check
 │   │
+│   ├── plugins/                        # Claude Code plugin marketplace (youngsuk-briefing only)
+│   │
 │   ├── src/
 │   │   ├── extension.ts                # VS Code extension
-│   │   ├── agents.ts                   # Agent registry (TS)
-│   │   └── webview/                    # Frontend
+│   │   └── agents.ts                   # Agent registry (TS)
 │   │
 │   └── tests/
-│       └── (test files)
 │
 ├── output/
-│   ├── research/                       # Regional briefs
-│   │   ├── region_us.json
-│   │   ├── region_asia.json
-│   │   ├── region_eu.json
-│   │   ├── market_brief.md
-│   │   └── market_brief.json
-│   │
-│   ├── cache/                          # Runtime cache
-│   │   ├── somi_watchlist.json
-│   │   ├── agent_registry.json
-│   │   └── ...
-│   │
-│   ├── bot_logs/                       # Agent logs
-│   │   ├── youngsuk.log
-│   │   ├── somi.log
-│   │   └── ...
-│   │
-│   └── trading_logs/                   # Trade history
-│       └── kis_orders_*.json
+│   ├── qa/petnna/                      # QA backlog, dev-engine reports, test results
+│   ├── cache/                          # Runtime cache (agent registry, watchdog state)
+│   └── bot_logs/                       # Agent logs
 │
 ├── .env                                # Encrypted secrets (NEVER commit)
 └── CLAUDE.md                           # This repo's guidelines
-```
-
----
-
-## Key Data Structures
-
-### Watchlist (somi_watchlist.json)
-
-```json
-{
-  "종목코드": "종목명",
-  "005930": "삼성전자",
-  "000660": "SK하이닉스",
-  "035720": "카카오"
-}
-```
-
-Used by `somi_kis_reporter`, research agents, and market desk for scope.
-
-### Regional Brief (region_{us|asia|eu}.json)
-
-```json
-{
-  "region": "us",
-  "indices": {
-    "S&P500": {"close": 5800.5, "chg_pct": +1.2},
-    "VIX": {"close": 14.2, "chg_pct": -2.1}
-  },
-  "fx": {"EUR": 1.09, "JPY": 147.5, "KRW": 1318},
-  "macro": {"연준기금금리": 5.5},
-  "web_issues": "어제 AI 호재로 나스닥 +2%, VIX -3%...",
-  "updated": "2026-06-29T15:40:00"
-}
-```
-
-### Market Brief (market_brief.json)
-
-```json
-{
-  "indices": {
-    "KOSPI": {"score": 0, "reason": "특이 뉴스 없음"},
-    "005930": {"score": +1, "reason": "AI 칩 수급 호재"}
-  },
-  "compiled_at": "2026-06-29T16:00:00",
-  "regions": {
-    "us": {...},
-    "asia": {...},
-    "eu": {...}
-  }
-}
-```
-
-### Agent Registry (agent_registry.json)
-
-```json
-{
-  "agents": {
-    "somi": {
-      "display": "소미",
-      "folder": "소미_분석가",
-      "role": "Domestic stock analyst",
-      "keywords": ["소미", "국내주식", "수급"],
-      "tools": [...],
-      "daemons": {...},
-      "scheduled": {...},
-      "status": "active"
-    },
-    ...
-  }
-}
-```
-
----
-
-## Execution Schedules
-
-### Market Hours (09:00~16:00 KST)
-
-```
-09:00  ├─ 예원 harness: Full system health check
-       └─ 예원 yewon_selfheal: Auto-repair if needed
-
-09:30  ├─ 소미 screener: Top 50 candidates by turnover
-       ├─ 행크/유나/레온: Regional data refresh
-       └─ 마켓데스크: Consolidated brief generation
-
-12:00  ├─ 소미 kis_reporter: Noon market snapshot
-       └─ Research agents: Continuous refresh (30-min intervals)
-
-15:40  ├─ 소미 kis_reporter: Close-of-day report (watchlist)
-       ├─ 소미 screener: Final candidates for next day
-       ├─ 마켓데스크: Final brief before market close
-       └─ Telegram notification to user
-
-15:50  └─ 소미 screener: Last refresh before market close
-
-Post-Market (16:00~)
-
-18:00  └─ 예원 yewon_selfheal: Post-close health check
-```
-
-### Off-Market (16:00~09:00 KST)
-
-```
-24/7   ├─ 영숙 telegram_receiver: Polling for user commands (every 1 sec)
-       ├─ 소미 somi_price_monitor: Alert on ±5% or +150% volume
-       ├─ 행크/유나/레온: Continuous regional data (every 30 min)
-       └─ 마켓데스크: Hourly brief generation
 ```
 
 ---
@@ -524,12 +296,7 @@ Post-Market (16:00~)
 ### Telegram Flow
 
 1. **User sends message** → `telegram_receiver.py` polls
-2. **GPT-4o-mini function calling** parses intent:
-   - `get_agent_status()` → Check daemon status
-   - `dispatch()` → Route to CEO
-   - `stock_search()` → Look up ticker
-   - `trade()` → Place order via KIS
-   - `fetch_brief()` → Get market brief
+2. Function calling parses intent: `get_agent_status()`, `list_calendar()`, `dispatch()` → CEO orchestration
 3. **Response** sent back to user with result/status
 
 ### Error Handling
@@ -541,29 +308,23 @@ try:
     # risky operation
 except Exception as e:
     send(f"⚠️ {AGENT_NAME} error: {e}")
-    raise  # or swallow if non-critical
 ```
 
 ---
 
 ## Key Implementation Patterns
 
-### 1. Import Pattern (6-level path finding)
+### 1. Import Pattern (root-finding)
 
 ```python
 import os, sys
-from pathlib import Path
-
-_here = Path(__file__).resolve().parent
-PROJECT_ROOT = _here.parents[4]  # 4 levels up to ai_lab/
-AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
-sys.path.insert(0, str(AI_TEAM_ROOT))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 from _shared.llm import text
 from _shared.notify import send
 from _shared.env import load_env
 
-load_env(str(PROJECT_ROOT))
+load_env()
 ```
 
 ### 2. Mutex Lock (Daemon Protection)
@@ -571,111 +332,42 @@ load_env(str(PROJECT_ROOT))
 ```python
 from _shared.process import ProcessLock
 
-with ProcessLock("somi_kis_reporter"):
-    # Prevents duplicate execution
-    # Auto-cleans on exit
-```
-
-### 3. Scheduled Service (launchd plist)
-
-```xml
-<key>StartCalendarInterval</key>
-<array>
-  <dict>
-    <key>Hour</key><integer>15</integer>
-    <key>Minute</key><integer>40</integer>
-  </dict>
-</array>
+with ProcessLock("daemon_name"):
+    # Prevents duplicate execution, auto-cleans on exit
 ```
 
 ---
 
 ## Security
 
-### Environment Variables
-
-- **All secrets encrypted** in `.env` (AES-256 via `env.py`)
-- **Never committed** to git
-- **Loaded at startup** via `load_env()`
-- **Auto-decrypted** on read
-
-Required keys:
-```
-TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-OPENAI_API_KEY, GEMINI_API_KEY
-KIS_ACCOUNT, KIS_PASSWORD
-UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY
-DART_API_KEY
-NOTION_API_KEY, NOTION_DATABASE_ID
-```
-
-### Code Protection
-
-1. **No hardcoded credentials**
-2. **Mutex prevents race conditions**
-3. **Subprocess isolation** (env vars not leaked)
-4. **Telegram fallback** for all errors
-5. **JSON atomic writes** (`.tmp` + `os.replace()`)
+- **All secrets encrypted** in `.env`, never committed
+- **Loaded at startup** via `load_env()`, auto-decrypted on read
+- **No hardcoded credentials**, mutex prevents race conditions, Telegram fallback for all errors
+- **JSON atomic writes** (`.tmp` + `os.replace()`)
 
 ---
 
 ## Troubleshooting
 
 ### Check Agent Status
-
 ```bash
 python -c "from _shared.notify import status_report; print(status_report())"
 ```
 
 ### Restart a Daemon
-
 ```bash
-# Telegram command
-"영숙 재시작해"  → triggers agent_controller.py
-
-# Manual restart (Windows)
 python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 restart
 ```
 
-### View Logs
-
+### View Logs / System Check
 ```bash
-# Telegram logs
-output/bot_logs/youngsuk.log
-
-# System check
 python projects/ai-team/harness/check_all.py
-
-# Agent registry
-python -m _shared.registry --all --json
-```
-
-### Force Data Refresh
-
-```bash
-# Somi report
-python projects/ai-team/skills/소미_분석가/tools/somi_kis_reporter.py --send
-
-# Market desk
-python projects/ai-team/skills/마켓데스크_시장종합/tools/market_desk.py --send
 ```
 
 ---
 
 ## Limitations & Known Issues
 
-1. **KIS API Rate Limits**: Max 40 requests/min (buffered)
-2. **Ollama Required**: For local LLM fallback (optional but recommended)
-3. **Process Lock Across FS**: Windows mutex names are case-insensitive
-4. **launchd macOS Only**: Windows uses Task Scheduler (future work)
-5. **Python 3.9+**: Required for walrus operator, type hints
-
----
-
-## Future Enhancements
-
-1. **Windows Task Scheduler Support**: Replace launchd for Windows 11
-2. **Reinforcement Learning**: Trade signal optimization
-3. **Multi-Account Support**: Separate watchlists per strategy
-4. **Real-time Streaming**: WebSocket instead of polling
-5. **Advanced Backtesting**: Walk-forward analysis, regime testing
+1. **Ollama Required**: For local LLM fallback (optional but recommended)
+2. **launchd macOS Only**: Windows uses the `scheduler` daemon (`schedule_manager.py --daemon`) instead
+3. **수리's auto-merge is petnna-only**: any change outside `projects/petnna/` requires a human
