@@ -142,7 +142,7 @@ const SAJU_TEMPLATE = `
                     <span class="bg-sky-100 text-sky-800 p-1.5 rounded-lg">水<br>(물)</span>
                 </div>
                 <div class="text-[9px] text-amber-900 bg-white/70 p-2 rounded-xl border border-amber-200/30">
-                    <span class="block font-black">🌿 기운의 찰떡 궁합 예시</span>
+                    <span class="block font-black">🌿 기운의 찰떡 조화 예시</span>
                     <span class="block mt-0.5 leading-snug">수생목(水生木): 물이 나무를 기르듯 조화로운 상생 인연!</span>
                 </div>
             </div>

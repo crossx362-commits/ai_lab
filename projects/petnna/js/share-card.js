@@ -214,9 +214,9 @@ function generateSajuShareCard() {
 
     ctx.font = 'bold 38px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.fillStyle = '#fbbf24';
-    ctx.fillText('반려동물 사주 궁합 분석', W / 2, 300);
+    ctx.fillText('반려동물 사주 조화도 분석', W / 2, 300);
 
-    // 궁합 점수 원형
+    // 조화도 점수 원형
     const cx = W / 2, cy = 560, r = 160;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
     const circleGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
@@ -235,9 +235,9 @@ function generateSajuShareCard() {
     ctx.fillText(`${score}%`, W / 2, cy + 40);
     ctx.fillStyle = '#d1d5db';
     ctx.font = 'bold 32px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-    ctx.fillText('궁합 점수', W / 2, cy + 100);
+    ctx.fillText('조화도 점수', W / 2, cy + 100);
 
-    // 궁합 제목
+    // 조화도 제목
     if (sajuData.compatTitle) {
         ctx.fillStyle = '#fef9c3';
         ctx.font = 'bold 48px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
@@ -326,8 +326,8 @@ async function shareSajuCard() {
     const score = pet.sajuData.compatScore || 0;
     await _downloadOrShare(
         canvas, 'petna-saju.png',
-        `${petName}의 사주 궁합 ${score}%`,
-        `🔯 ${petName}의 사주팔자 궁합이 ${score}%! #펫과나 #반려동물사주 #럭키맥싱`
+        `${petName}의 사주 조화도 ${score}%`,
+        `🔯 ${petName}의 사주팔자 조화도가 ${score}%! #펫과나 #반려동물사주 #럭키맥싱`
     );
 }
 

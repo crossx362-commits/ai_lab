@@ -287,16 +287,16 @@ const AppRouter = {
 
         // 5.1. 모바일 상단 헤더 페이지 타이틀 업데이트
         const mobileTitles = {
-            mypet: '🏠 마이펫',
-            health: '🏥 건강',
-            walk: '🗺️ 산책',
-            saju: '☯️ 조화도',
-            social: '👥 소셜 피드',
-            album: '📖 일기장',
-            shop: '🐾 펫라이프',
-            settings: '⚙️ 설정',
-            mailbox: '📮 우체통',
-            cart: '🛒 장바구니'
+            mypet: '마이펫',
+            health: '건강',
+            walk: '산책',
+            saju: '조화도',
+            social: '소셜 피드',
+            album: '일기장',
+            shop: '펫라이프',
+            settings: '설정',
+            mailbox: '우체통',
+            cart: '장바구니'
         };
         const mobileTitleEl = document.getElementById('mobile-page-title');
         if (mobileTitleEl && mobileTitles[tabName]) {

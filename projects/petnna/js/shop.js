@@ -109,27 +109,31 @@ function selectIslandShop(shopId, location = null) {
         }
 
         // 지시선(Connector Line) 및 정보 말풍선(Callout Bubble) 동적 렌더링
+        // 실제 매장 데이터(petlife-locations.js)는 lat/lng만 있고 position(left/top)이 없는
+        // 레거시 퍼센트 좌표 전용 UI라 위치 정보가 없으면 건너뜀 (Leaflet 지도가 위치 표시를 담당)
         const connectorLine = document.getElementById('map-connector-line');
         const calloutBubble = document.getElementById('map-html-callout');
         const calloutText = document.getElementById('map-callout-text');
 
-        const leftPct = parseFloat(location.position.left);
-        const topPct = parseFloat(location.position.top);
+        if (location.position) {
+            const leftPct = parseFloat(location.position.left);
+            const topPct = parseFloat(location.position.top);
 
-        if (calloutBubble && calloutText) {
-            calloutBubble.style.left = location.position.left;
-            calloutBubble.style.top = location.position.top;
-            calloutText.textContent = location.name;
-            calloutBubble.classList.remove('hidden');
-            calloutBubble.style.display = 'block';
+            if (calloutBubble && calloutText) {
+                calloutBubble.style.left = location.position.left;
+                calloutBubble.style.top = location.position.top;
+                calloutText.textContent = location.name;
+                calloutBubble.classList.remove('hidden');
+                calloutBubble.style.display = 'block';
+            }
+
+            if (connectorLine) {
+                // viewBox가 0 0 100 100이므로 퍼센트 수치 그대로 사용 가능
+                connectorLine.setAttribute('d', `M ${leftPct} ${topPct} L 100 ${topPct}`);
+                connectorLine.setAttribute('opacity', '0.8');
+            }
         }
 
-        if (connectorLine) {
-            // viewBox가 0 0 100 100이므로 퍼센트 수치 그대로 사용 가능
-            connectorLine.setAttribute('d', `M ${leftPct} ${topPct} L 100 ${topPct}`);
-            connectorLine.setAttribute('opacity', '0.8');
-        }
-        
         if (typeof showToast === 'function') {
             showToast(`🗺️ ${location.name} 영토가 활성화되었습니다!`);
         }

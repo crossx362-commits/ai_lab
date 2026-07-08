@@ -1,7 +1,7 @@
 // room-harmony.js — 방에 조화도 통합 및 테마 변경
 
 // 조화도에 따른 방 테마 정의
-const ROOM_THEMES = {
+const HARMONY_THEMES = {
     perfect: {
         score: 90,
         name: '완벽한 조화',
@@ -46,11 +46,11 @@ const ROOM_THEMES = {
 
 // 조화도 점수로 테마 가져오기
 function getThemeByHarmonyScore(score) {
-    if (score >= 90) return ROOM_THEMES.perfect;
-    if (score >= 75) return ROOM_THEMES.great;
-    if (score >= 60) return ROOM_THEMES.good;
-    if (score >= 40) return ROOM_THEMES.normal;
-    return ROOM_THEMES.challenging;
+    if (score >= 90) return HARMONY_THEMES.perfect;
+    if (score >= 75) return HARMONY_THEMES.great;
+    if (score >= 60) return HARMONY_THEMES.good;
+    if (score >= 40) return HARMONY_THEMES.normal;
+    return HARMONY_THEMES.challenging;
 }
 
 // 방 테마 업데이트 (조화도 기반)
@@ -102,7 +102,7 @@ function updateRoomThemeByHarmony() {
 
         // 조화도 결과가 있으면 점수와 메시지 표시
         let score = 0;
-        let message = '조화도 탭에서 사주 궁합을 분석해보세요';
+        let message = '조화도 탭에서 사주 조화도를 분석해보세요';
         let isMeasured = false;
 
         if (harmonyResult && harmonyResult.avgScore) {
@@ -116,7 +116,7 @@ function updateRoomThemeByHarmony() {
         } else if (sajuData && sajuData.compatScore) {
             score = Math.round(sajuData.compatScore);
             isMeasured = true;
-            message = sajuData.compatTitle ? `${sajuData.compatTitle}: ${sajuData.pastDesc || ''}` : '사주 궁합 분석 완료!';
+            message = sajuData.compatTitle ? `${sajuData.compatTitle}: ${sajuData.pastDesc || ''}` : '사주 조화도 분석 완료!';
         }
 
         if (isMeasured) {
@@ -133,7 +133,7 @@ function updateRoomThemeByHarmony() {
                 scoreEl.className = 'text-[9px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full';
             }
             if (messageEl) {
-                messageEl.textContent = '조화도 탭에서 사주 궁합을 분석해보세요';
+                messageEl.textContent = '조화도 탭에서 사주 조화도를 분석해보세요';
             }
         }
     }

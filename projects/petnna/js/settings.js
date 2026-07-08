@@ -780,7 +780,7 @@ function resetToRichDemoData() {
                     },
                     harmonyData: {
                         level: 4,
-                        title: "찰떡궁합 베스트 프렌드",
+                        title: "찰떡조화 베스트 프렌드",
                         solution: "서로를 잘 이해하는 안정적인 관계입니다. 산책과 놀이 루틴을 유지하면 더 좋아져요.",
                         sajuScore: 88,
                         iqScore: 84,

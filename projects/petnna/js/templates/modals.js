@@ -405,7 +405,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                     <span id="neighbor-pet-personality" class="font-bold text-gray-700">산책을 너무 좋아함</span>
                 </div>
                 <div>
-                    <span class="block text-[9px] text-gray-400">우리 댕이와의 궁합 💖</span>
+                    <span class="block text-[9px] text-gray-400">우리 댕이와의 조화도 💖</span>
                     <span id="neighbor-chemistry" class="font-bold text-rose-500 font-mono text-xs">95%</span>
                 </div>
                 <div>
@@ -510,16 +510,16 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
             <div class="bg-teal-50/30 p-3 rounded-2xl border border-teal-100/50">
                 <label class="block font-bold text-gray-600 mb-2">💩 오늘 우리 아이의 배변 상태는?</label>
                 <div class="grid grid-cols-4 gap-2">
-                    <button id="poop-type-null" onclick="selectPoopType('null')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-400 font-bold hover:bg-gray-50 flex flex-col items-center justify-center gap-1 transition-all">
+                    <button type="button" id="poop-type-null" onclick="selectPoopType('null')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-400 font-bold hover:bg-gray-50 flex flex-col items-center justify-center gap-1 transition-all">
                         <span class="text-xl">🤷</span>없음
                     </button>
-                    <button id="poop-type-normal" onclick="selectPoopType('normal')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
+                    <button type="button" id="poop-type-normal" onclick="selectPoopType('normal')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
                         <span class="text-xl">💩</span>건강한 변
                     </button>
-                    <button id="poop-type-hard" onclick="selectPoopType('hard')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
+                    <button type="button" id="poop-type-hard" onclick="selectPoopType('hard')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
                         <span class="text-xl">🪨</span>딱딱한 변
                     </button>
-                    <button id="poop-type-liquid" onclick="selectPoopType('liquid')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
+                    <button type="button" id="poop-type-liquid" onclick="selectPoopType('liquid')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
                         <span class="text-xl">💦</span>묽은 변
                     </button>
                 </div>
