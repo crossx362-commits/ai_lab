@@ -927,7 +927,7 @@ function generateHarmonyReport() {
     if (resContainer) resContainer.classList.remove('hidden');
     if (typeof PetHarmonyView !== 'undefined') PetHarmonyView.enrichOnMeasure();
 
-    // 1. 사주 궁합 점수 (Real score check)
+    // 1. 사주 조화도 점수 (Real score check)
     let sajuScore = 0;
     if (typeof savedSajuScore !== 'undefined' && savedSajuScore > 0) {
         sajuScore = savedSajuScore;
@@ -1010,7 +1010,7 @@ function generateHarmonyReport() {
             solution = "당신과 펫은 전생에서부터 이어진 완벽한 인연입니다. 말하지 않아도 통하는 교감 수준에 도달했습니다. 지금처럼 서로를 아끼며 최고의 라이프스타일을 유지하세요.";
         } else if (avgScore >= 80) {
             level = 4;
-            title = "찰떡궁합 베스트 프렌드";
+            title = "찰떡조화 베스트 프렌드";
             solution = "서로의 다름을 이해하고 맞춰나가는 훌륭한 관계입니다. 가끔은 펫의 엉뚱한 행동도 귀엽게 넘어갈 수 있는 여유가 생겼군요! 조금만 더 교감 시간을 늘리면 완벽합니다.";
         } else if (avgScore >= 70) {
             level = 3;

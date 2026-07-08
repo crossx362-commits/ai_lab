@@ -84,7 +84,7 @@ const MYPET_TEMPLATE = `
                                         <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
                                     <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5">
-                                        조화도 탭에서 사주 궁합을 분석해보세요
+                                        조화도 탭에서 사주 조화도를 분석해보세요
                                     </div>
                                 </div>
                                 <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[9px] font-bold text-brand-500 hover:text-brand-600 mt-1">

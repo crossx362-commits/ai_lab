@@ -45,11 +45,11 @@
             <p class="text-[11px] text-gray-600 mt-3 leading-snug bg-rose-50/60 rounded-xl p-2.5">${hd.relation ? hd.relation.text : ''}</p>
           </div>
           <div>
-            <h4 class="text-xs font-black text-gray-700 mb-2">💞 영역별 궁합</h4>
+            <h4 class="text-xs font-black text-gray-700 mb-2">💞 영역별 조화도</h4>
             <div class="grid grid-cols-2 gap-2">${(hd.areas || []).map(areaCard).join('')}</div>
           </div>
           ${luck !== null ? `<div class="bg-gradient-to-r from-rose-50 to-amber-50 rounded-2xl border border-rose-100 p-3 text-center">
-            <span class="text-[11px] font-black text-gray-600">오늘의 궁합 지수</span>
+            <span class="text-[11px] font-black text-gray-600">오늘의 조화도 지수</span>
             <span class="text-[18px] font-black text-rose-600 ml-2">${luck}</span>
             <p class="text-[10px] text-gray-500 mt-1">${luck >= 70 ? '💞 오늘은 함께하기 좋은 날! 펫게임 XP 1.2배 버프 발동 중' : '평온한 하루 — 꾸준한 케어가 내일의 운을 만들어요'}</p>
           </div>` : ''}
@@ -107,7 +107,7 @@
             ${cells}
           </div>
           <div class="mt-2 text-center bg-amber-50 rounded-xl py-1.5">
-            <span class="text-[10px] font-bold text-gray-500">오늘의 궁합 지수</span>
+            <span class="text-[10px] font-bold text-gray-500">오늘의 조화도 지수</span>
             <span class="text-[14px] font-black text-rose-600 ml-1.5">${idx}</span>
           </div>
         </div>`;

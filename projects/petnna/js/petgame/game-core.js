@@ -98,7 +98,7 @@
         g.hunger = Math.min(100, g.hunger + f.hunger);
         g.happy = Math.min(100, g.happy + f.happy);
         let xpGain = f.xp;
-        // 조화도 버프: 오늘 궁합 ≥70 → XP 1.2배 (하모니 모듈·측정 데이터 없으면 무영향)
+        // 조화도 버프: 오늘 조화도 ≥70 → XP 1.2배 (하모니 모듈·측정 데이터 없으면 무영향)
         try {
             if (typeof PetHarmony !== 'undefined' && pet.harmonyData && pet.harmonyData.elements) {
                 const idx = PetHarmony.todayIndex(pet.harmonyData.score || pet.harmonyData.avgScore, pet.harmonyData.elements.pet.dominant);

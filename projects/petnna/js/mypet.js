@@ -1644,7 +1644,7 @@ function renderMyPets() {
 
     if (petStageSajuBadge) {
         if (current.sajuData) {
-            petStageSajuBadge.innerText = `☯️ 궁합 ${current.sajuData.compatScore}점`;
+            petStageSajuBadge.innerText = `☯️ 조화도 ${current.sajuData.compatScore}점`;
             petStageSajuBadge.classList.remove('hidden');
         } else {
             petStageSajuBadge.classList.add('hidden');
@@ -2781,15 +2781,26 @@ function closeHealthReportModal() {
 }
 
 function selectPoopType(type) {
-    currentHealthLog.poop = type;
+    const normalizedType = (type === null || type === undefined || type === 'null') ? null : type;
+    const selectedId = normalizedType === null ? 'poop-type-null' : `poop-type-${normalizedType}`;
+    currentHealthLog.poop = normalizedType;
     const btns = document.querySelectorAll('.health-poop-btn');
     btns.forEach(btn => {
-        if (btn.id === `poop-type-${type}`) {
-            btn.classList.add('border-brand-500', 'bg-brand-50');
-            btn.classList.remove('border-gray-200');
+        const selected = btn.id === selectedId;
+        btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        if (selected) {
+            btn.classList.add('border-brand-500', 'bg-brand-50', 'text-brand-700', 'shadow-sm', 'ring-2', 'ring-brand-200');
+            btn.classList.remove('border-gray-200', 'bg-white', 'text-gray-400', 'text-gray-700');
         } else {
-            btn.classList.remove('border-brand-500', 'bg-brand-50');
-            btn.classList.add('border-gray-200');
+            btn.classList.remove('border-brand-500', 'bg-brand-50', 'text-brand-700', 'shadow-sm', 'ring-2', 'ring-brand-200');
+            btn.classList.add('border-gray-200', 'bg-white');
+            if (btn.id === 'poop-type-null') {
+                btn.classList.add('text-gray-400');
+                btn.classList.remove('text-gray-700');
+            } else {
+                btn.classList.add('text-gray-700');
+                btn.classList.remove('text-gray-400');
+            }
         }
     });
 }
@@ -2897,14 +2908,14 @@ function shareSajuToFeed() {
     const petSummary = current.sajuData.petSummary || "";
     const ownerSummary = current.sajuData.ownerSummary || "";
     const pastDesc = current.sajuData.pastDesc || "";
-    const tagsStr = "#펫나사주 #영혼조화도 #반려견궁합 #PetNa";
+    const tagsStr = "#펫나사주 #영혼조화도 #반려견조화도 #PetNa";
 
-    let postContent = `🔮 [펫과나 평생 사주 & 궁합 매칭 완료] 🔮\n\n` +
+    let postContent = `🔮 [펫과나 평생 사주 & 조화도 매칭 완료] 🔮\n\n` +
         `🐾 ${pName}의 사주 기질: [ ${petSummary} ]\n` +
         `🧔 집사의 사주 기질: [ ${ownerSummary} ]\n\n` +
-        `💖 궁합 지표: "${compatTitle}" (점수: ${compatScore}점)\n` +
+        `💖 조화도 지표: "${compatTitle}" (점수: ${compatScore}점)\n` +
         `📜 전생 인연설: ${pastDesc}\n\n` +
-        `우리 아이와 저의 평생 인연 분석 결과입니다. 정말 신기하게 딱 들어맞네요! 🥰 이웃님들도 아이와의 궁합을 한 번 분석해보세요! ${tagsStr}`;
+        `우리 아이와 저의 평생 인연 분석 결과입니다. 정말 신기하게 딱 들어맞네요! 🥰 이웃님들도 아이와의 조화도를 한 번 분석해보세요! ${tagsStr}`;
 
     const newPost = {
         id: Date.now(),

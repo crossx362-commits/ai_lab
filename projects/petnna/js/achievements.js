@@ -35,7 +35,7 @@ const ACHIEVEMENTS = [
     { id: 'first_pet',        emoji: '🐾',    name: '첫 만남',        desc: '반려동물을 처음 등록했어요',         check: () => typeof pets !== 'undefined' && pets.length > 0 },
     { id: 'first_walk',       emoji: '🗺️',   name: '첫 산책',        desc: '첫 번째 산책을 기록했어요',           check: () => typeof walks !== 'undefined' && walks.length > 0 },
     { id: 'first_ai',         emoji: '🏥',    name: 'AI 닥터',        desc: 'AI 건강 분석을 처음 받았어요',        check: () => { const a = typeof getHealthAnalyses === 'function' ? getHealthAnalyses() : []; return a.length > 0; } },
-    { id: 'first_saju',       emoji: '🔯',    name: '운명의 실',      desc: '사주 궁합 분석을 완료했어요',          check: () => typeof pets !== 'undefined' && pets.length > 0 && !!pets[0]?.sajuData },
+    { id: 'first_saju',       emoji: '🔯',    name: '운명의 실',      desc: '사주 조화도 분석을 완료했어요',          check: () => typeof pets !== 'undefined' && pets.length > 0 && !!pets[0]?.sajuData },
     { id: 'first_post',       emoji: '📢',    name: '이웃 자랑',      desc: '소셜 피드에 첫 글을 올렸어요',         check: () => { const p = typeof posts !== 'undefined' ? posts : []; return p.some(post => post.petName !== '초코'); } },
     { id: 'streak_7',         emoji: '🔥',    name: '7일 집사',       desc: '7일 연속 건강 기록 달성!',            check: () => typeof calcHealthStreak === 'function' && calcHealthStreak() >= 7 },
     { id: 'streak_30',        emoji: '🔥🔥',  name: '30일 전설',      desc: '30일 연속 건강 기록 달성!',           check: () => typeof calcHealthStreak === 'function' && calcHealthStreak() >= 30 },

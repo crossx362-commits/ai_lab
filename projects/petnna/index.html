@@ -49,7 +49,7 @@
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="css/leaflet.css">
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css?v=163">
+    <link rel="stylesheet" href="css/style.css?v=164">
     <link rel="stylesheet" href="css/modern-design.css?v=160">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>
@@ -84,8 +84,8 @@
     <!-- Core Logic Scripts -->
     <!-- (1) 전역 상태 및 유틸 데이터 -->
     <script src="js/state.js?v=160"></script>
-    <script src="js/harmony/harmony-core.js?v=1"></script>
-    <script src="js/harmony/harmony-view.js?v=2"></script>
+    <script src="js/harmony/harmony-core.js?v=2"></script>
+    <script src="js/harmony/harmony-view.js?v=3"></script>
     <script src="js/petgame/game-items.js?v=1"></script>
     <script src="js/petgame/game-core.js?v=2"></script>
     <script src="js/petgame/game-stage.js?v=6"></script>
@@ -95,47 +95,47 @@
     <script src="js/ai-health.js?v=160"></script>
     <script src="js/vet-chat.js?v=160"></script>
     <script src="js/freemium.js?v=160"></script>
-    <script src="js/achievements.js?v=160"></script>
-    <script src="js/share-card.js?v=160"></script>
+    <script src="js/achievements.js?v=161"></script>
+    <script src="js/share-card.js?v=161"></script>
     <script src="js/health-dashboard.js?v=160"></script>
     <script src="js/health-tutorial.js?v=160"></script>
     <script src="js/care-scheduler.js?v=160"></script>
     <script src="js/care-scheduler-ui.js?v=160"></script>
     <script src="js/report-dashboard.js?v=160"></script>
     <script src="js/pet-emotion.js?v=160"></script>
-    <script src="js/onboarding.js?v=160"></script>
+    <script src="js/onboarding.js?v=161"></script>
     <script src="js/monthly-report-modal.js?v=160"></script>
 
     <!-- (2) HTML 템플릿 정의 (app.js 보다 반드시 먼저 로드) -->
-    <script src="js/templates/mypet.js?v=162"></script>
+    <script src="js/templates/mypet.js?v=163"></script>
     <script src="js/templates/health.js?v=160"></script>
     <script src="js/templates/walk.js?v=160"></script>
-    <script src="js/templates/saju.js?v=162"></script>
+    <script src="js/templates/saju.js?v=163"></script>
     <script src="js/templates/social.js?v=160"></script>
     <script src="js/templates/album.js?v=160"></script>
     <script src="js/templates/shop.js?v=160"></script>
     <script src="js/templates/shop-island.js?v=160"></script>
     <script src="js/templates/settings.js?v=160"></script>
     <script src="js/templates/cart.js?v=160"></script>
-    <script src="js/templates/modals.js?v=160"></script>
+    <script src="js/templates/modals.js?v=162"></script>
 
     <!-- (3) 각 영역 독립 컨트롤러 -->
-    <script src="js/mypet.js?v=161"></script>
+    <script src="js/mypet.js?v=163"></script>
     <script src="js/health.js?v=160"></script>
-    <script src="js/room-harmony.js?v=160"></script>
+    <script src="js/room-harmony.js?v=161"></script>
     <script src="js/nearby-places.js?v=160"></script>
     <script src="js/walk.js?v=161"></script>
-    <script src="js/saju.js?v=162"></script>
+    <script src="js/saju.js?v=163"></script>
     <script src="js/social.js?v=160"></script>
     <script src="js/album.js?v=161"></script>
     <script src="js/petlife-locations.js?v=160"></script>
     <script src="js/petlife-map.js?v=160"></script>
     <script src="js/shop.js?v=160"></script>
-    <script src="js/settings.js?v=160"></script>
+    <script src="js/settings.js?v=161"></script>
     <script src="js/mailbox.js?v=160"></script>
 
     <!-- (4) 메인 라우터 및 부트스트랩 진입점 -->
-    <script src="js/app.js?v=161"></script>
+    <script src="js/app.js?v=162"></script>
 </head>
 
 <body class="text-gray-800 bg-slate-50">
@@ -143,14 +143,14 @@
     <header class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-amber-50 shadow-sm" style="display:none;">
         <div class="max-w-6xl mx-auto px-4 py-3">
             <nav class="flex items-center gap-2">
-                <button class="tab-btn" data-tab="mypet" onclick="switchTab('mypet')">🏠 마이펫</button>
-                <button class="tab-btn" data-tab="health" onclick="switchTab('health')">🏥 건강</button>
-                <button class="tab-btn" data-tab="walk" onclick="switchTab('walk')">🗺️ 산책</button>
-                <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')">☯️ 조화도</button>
-                <button class="tab-btn" data-tab="social" onclick="switchTab('social')">👥 소셜</button>
-                <button class="tab-btn" data-tab="album" onclick="switchTab('album')">📖 일기장</button>
-                <button class="tab-btn" data-tab="shop" onclick="switchTab('shop')">🐾 펫라이프</button>
-                <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 설정</button>
+                <button class="tab-btn" data-tab="mypet" onclick="switchTab('mypet')"><img class="nav-tab-icon" src="images/nav-icons/mypet.png" alt="" aria-hidden="true">마이펫</button>
+                <button class="tab-btn" data-tab="health" onclick="switchTab('health')"><img class="nav-tab-icon" src="images/nav-icons/health.png" alt="" aria-hidden="true">건강</button>
+                <button class="tab-btn" data-tab="walk" onclick="switchTab('walk')"><img class="nav-tab-icon" src="images/nav-icons/walk.png" alt="" aria-hidden="true">산책</button>
+                <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')"><img class="nav-tab-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">조화도</button>
+                <button class="tab-btn" data-tab="social" onclick="switchTab('social')"><img class="nav-tab-icon" src="images/nav-icons/social.png" alt="" aria-hidden="true">소셜</button>
+                <button class="tab-btn" data-tab="album" onclick="switchTab('album')"><img class="nav-tab-icon" src="images/nav-icons/album.png" alt="" aria-hidden="true">일기장</button>
+                <button class="tab-btn" data-tab="shop" onclick="switchTab('shop')"><img class="nav-tab-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">펫라이프</button>
+                <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')"><img class="nav-tab-icon" src="images/nav-icons/settings.png" alt="" aria-hidden="true">설정</button>
             </nav>
         </div>
     </header>
@@ -179,27 +179,27 @@
     <!-- 📱 모바일 하단 네비게이션 -->
     <nav id="mobile-navbar" class="mobile-bottom-nav hidden">
         <button class="mobile-tab-btn text-brand-500" data-tab="mypet" onclick="switchTab('mypet')">
-            <span class="text-2xl">🏠</span>
+            <img class="mobile-nav-icon" src="images/nav-icons/mypet.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">마이펫</span>
         </button>
         <button class="mobile-tab-btn text-gray-400" data-tab="health" onclick="switchTab('health')">
-            <span class="text-2xl">🏥</span>
+            <img class="mobile-nav-icon" src="images/nav-icons/health.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">건강</span>
         </button>
         <button class="mobile-tab-btn text-gray-400" data-tab="walk" onclick="switchTab('walk')">
-            <span class="text-2xl">🗺️</span>
+            <img class="mobile-nav-icon" src="images/nav-icons/walk.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">산책</span>
         </button>
         <button class="mobile-tab-btn text-gray-400" data-tab="social" onclick="switchTab('social')">
-            <span class="text-2xl">👥</span>
+            <img class="mobile-nav-icon" src="images/nav-icons/social.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">소셜</span>
         </button>
         <button class="mobile-tab-btn text-gray-400" data-tab="album" onclick="switchTab('album')">
-            <span class="text-2xl">📖</span>
+            <img class="mobile-nav-icon" src="images/nav-icons/album.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">일기장</span>
         </button>
         <button class="mobile-tab-btn text-gray-400" data-tab="shop" onclick="switchTab('shop')">
-            <span class="text-2xl">🐾</span>
+            <img class="mobile-nav-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
         </button>
     </nav>
