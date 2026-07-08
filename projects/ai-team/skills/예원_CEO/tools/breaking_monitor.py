@@ -38,7 +38,9 @@ QUERY = (
     "지금 한국·미국 증시에 투자자에게 즉시 알릴 만한 긴급 속보나 중대 이슈가 있는가? "
     "예: 주요 지수 급락(2% 이상)·서킷브레이커·사이드카 발동·대형 기업 악재·정책/금리 충격·"
     "지정학 리스크. 정말 중대한 건이 있으면 '[긴급] ' 으로 시작해 한두 줄로 요약하고, "
-    "평범하거나 특별한 속보가 없으면 정확히 '없음' 한 단어만 출력하라."
+    "평범하거나 특별한 속보가 없으면 정확히 '없음' 한 단어만 출력하라. "
+    "단, 오늘이 아니라 어제·그 이전에 발생한 사건은 긴급이 아니다 — '없음'을 출력하라. "
+    "데이터를 확인할 수 없거나 판단이 어려우면 추측하지 말고 '없음'을 출력하라."
 )
 
 
@@ -81,12 +83,14 @@ def _save_state(d: dict) -> None:
 def detect() -> str | None:
     r = (research.web_brief(QUERY, max_tokens=300) or "").strip()
     if not r:
+        print("⚠️ 웹검색 응답 없음 — '속보 없음'이 아니라 판단 불가(LLM/검색 실패 의심)")
         return None
     head = r.replace(" ", "")[:4]
     if head.startswith("없음") or r.strip() == "없음":
         return None
-    if "긴급" not in r and "[긴급]" not in r:
-        # 명시적 긴급 표식이 없으면 보수적으로 보류(오탐 방지)
+    if not r.startswith("[긴급]"):
+        # '[긴급]'으로 시작하지 않으면 보류 — 본문 중간의 '긴급' 단어에 낚여
+        # 잡문("실시간 데이터를 확인할 수 없습니다" 등)을 전송한 사고(2026-07-07 14:00) 방지
         return None
     return r
 
@@ -108,13 +112,20 @@ def check_and_send(force: bool = False) -> bool:
             print(f"⚠️ 오탐 차단 — 속보는 지수하락 주장이나 실제 {snap}")
             return False
 
-    key = issue[:40]
-    state = _load_state()
+    # 중복 억제: LLM이 매번 문구를 바꿔 써 '앞 40자' 키가 무력화 → 하루 3연발 사고(2026-07-08).
+    # 지수급락류는 '날짜+카테고리'로 하루 1회, 그 외는 기존 앞 40자+쿨다운.
     now = datetime.now()
+    if claims_drop:
+        key = now.strftime("%Y-%m-%d") + ":지수급락"
+    else:
+        key = issue[:40]
+    state = _load_state()
     if not force and state.get("key") == key and state.get("ts"):
         try:
-            if (now - datetime.fromisoformat(state["ts"])).total_seconds() < COOLDOWN_SEC:
-                print("동일 속보 쿨다운 — 전송 생략")
+            same_day = state["ts"][:10] == now.strftime("%Y-%m-%d")
+            in_cooldown = (now - datetime.fromisoformat(state["ts"])).total_seconds() < COOLDOWN_SEC
+            if (claims_drop and same_day) or in_cooldown:
+                print("동일 속보 중복 — 전송 생략")
                 return False
         except Exception:
             pass

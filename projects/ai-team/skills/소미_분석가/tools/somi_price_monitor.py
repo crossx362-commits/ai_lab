@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -50,6 +51,47 @@ MOVE_WINDOW_SEC = 300          # 급변동 판정 시간창(5분)
 
 def _is_paper() -> bool:
     return os.getenv("KIS_PAPER", "false").strip().lower() in {"1", "true", "yes", "y"}
+
+
+# 지수 급락 실측 즉시 경보(2026-07-08 사고: 코스피 장중 -8.2% 서킷브레이커를 웹검색 LLM이 놓쳐
+# 하루 늦게 보고). 긴급 시장경보는 뉴스가 아니라 '시세 실측'이 1차 — LLM·웹검색 무관하게 작동.
+# 지수 직접시세 대신 프록시 ETF(KODEX200/코스닥150) 전일대비 사용(속보감시와 동일 방식).
+INDEX_PROXY = {"코스피": "069500", "코스닥": "229200"}
+CRASH_STAGES = tuple(float(x) for x in os.getenv("SOMI_INDEX_CRASH_STAGES", "-5,-8").split(","))
+CRASH_STATE = PROJECT_ROOT / "output" / "cache" / "index_crash_state.json"
+
+
+def index_crash_watch(kis: KISClient) -> None:
+    """코스피/코스닥 급락 단계(-5% 사이드카권, -8% 서킷브레이커권) 진입 시 즉시 텔레그램.
+    지수·단계당 하루 1회(파일 상태 — 데몬 재시작에도 중복 없음). 매 사이클 호출(1분)."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    try:
+        st = json.loads(CRASH_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        st = {}
+    if st.get("date") != today:
+        st = {"date": today, "sent": {}}
+    changed = False
+    for label, code in INDEX_PROXY.items():
+        try:
+            chg = num(kis.quote(code).get("prdy_ctrt"))
+        except Exception:
+            continue
+        done = st["sent"].get(label, [])
+        for stage in sorted(CRASH_STAGES, reverse=True):
+            if chg <= stage and stage not in done:
+                tag = "서킷브레이커권" if stage <= -8 else "사이드카권"
+                ok = send(f"🚨 [지수 급락 — 실측] {label} {chg:+.2f}% ({tag} {stage:+.0f}% 진입)\n"
+                          f"보유 포지션·신규 매수 점검 필요. (시세 기반 즉시 경보 — 뉴스 대기 없음)")
+                log(f"지수 급락 경보: {label} {chg:+.2f}% (단계 {stage}, 전송 {'성공' if ok else '실패 — 다음 사이클 재시도'})")
+                if not ok:
+                    continue   # 전송 실패면 미기록 → 1분 뒤 재시도(전송 성공만 하루 1회 소진)
+                done.append(stage)
+                changed = True
+        st["sent"][label] = done
+    if changed:
+        CRASH_STATE.parent.mkdir(parents=True, exist_ok=True)
+        CRASH_STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
 
 
 def log(message: str) -> None:
@@ -191,6 +233,7 @@ class PriceMonitor:
             log(f"감지 기준: 등락률 ±{PRICE_CHANGE_THRESHOLD}%, 거래량 {VOLUME_RATIO_THRESHOLD}배")
 
             monitors = {}  # {symbol: PriceMonitor}
+            kis_idx = KISClient()   # 지수 급락 감시 전용(사이클마다 재생성 방지)
 
             while True:
                 try:
@@ -221,6 +264,12 @@ class PriceMonitor:
                     if now.minute == 0:
                         for monitor in monitors.values():
                             monitor.update_baseline()
+
+                    # 지수 급락 실측 경보(사이드카/서킷권) — watchlist와 무관하게 항상
+                    try:
+                        index_crash_watch(kis_idx)
+                    except Exception as exc:
+                        log(f"지수 급락 감시 오류: {exc}")
 
                     # 각 종목 급변동 체크
                     for monitor in monitors.values():
