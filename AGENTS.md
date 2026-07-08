@@ -61,6 +61,7 @@ python projects/ai-team/scripts/cleanup_duplicate_processes.py
 | 예원 (Yewon) | CEO — Task dispatcher & orchestrator | `yewon_dispatcher.py`, `upload_manager.py` |
 | 영숙 (Youngsuk) | Secretary — Telegram bot & calendar | `telegram_receiver.py`, `calendar_manager.py` |
 | 봄이 (Bomi) | QA — 펫나 상시 자동 순찰/검수 | `petnna_qa_patrol.py` (skills/봄이_QA, SKILL.md=QA 헌장) |
+| 수리 (Suri) | Dev — 펫나 자동 개선 엔진 (QA 결과→수정→재검수→저위험 자동 병합) | `petnna_dev_engine.py` (skills/수리_개발자, SKILL.md=개발 헌장) |
 
 ### Shared Module System
 
@@ -398,6 +399,7 @@ if hasattr(sys.stdout, "reconfigure"):
 | **예원_CEO** | 오케스트레이션·라우팅·하네스 체크·워치독 | `yewon_dispatcher.py`, `harness_manager.py`, `harness_monitor.py` |
 | **영숙_비서** | 텔레그램 봇·스케줄러·캘린더 | `telegram_receiver.py`, `schedule_manager.py` |
 | **봄이_QA** | 펫나 QA 상시 순찰 | `petnna_qa_patrol.py` |
+| **수리_개발자** | 펫나 자동 개선 엔진 (봄이 결과 소비, 격리 브랜치 수정·게이트 병합) | `petnna_dev_engine.py` |
 
 > 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크 등)는 2026-07-08 오너 지시로 전부 삭제됨 (git 이력에서 복구 가능).
 

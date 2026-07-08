@@ -112,7 +112,7 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 
 ## 🤖 AI Agent System Architecture
 
-### Agent Roster (3 Agents — 2026-07-08 주식·코인 전면 삭제)
+### Agent Roster (4 Agents — 2026-07-08 주식·코인 전면 삭제, 봄이·수리 추가)
 
 > 오너 지시(2026-07-08)로 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크·지아)와 도구·스케줄·데몬 전부 삭제. 남은 에이전트는 아래 3명.
 
@@ -121,6 +121,7 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 | 예원 (Yewon) | CEO — 오케스트레이션·하네스·워치독·콘텐츠 피드백 | `yewon_dispatcher.py`, `harness_manager.py`, `harness_monitor.py`, `skill_auditor.py`, `daily_feedback_scheduler.py` |
 | 영숙 (Youngsuk) | Secretary — 텔레그램 게이트웨이·일정·정시 잡 | `telegram_receiver.py`, `schedule_manager.py`, `agent_controller.py`, `calendar_manager.py` |
 | 봄이 (Bomi) | QA — 펫나 상시 순찰 | `petnna_qa_patrol.py` |
+| 수리 (Suri) | Dev — 펫나 자동 개선 엔진: QA 결과→격리 브랜치 수정→재검수→저위험만 자동 병합 | `petnna_dev_engine.py` (헌장: `skills/수리_개발자/SKILL.md`, 산출물: `output/qa/petnna/dev/`) |
 
 
 ### Shared Module System (Unified, 5 Files)
@@ -248,20 +249,10 @@ Logs: `projects/ai-team/skills/영숙_비서/tools/telegram_receiver.log`
 
 ## 🌐 Petnna Project
 
-### Local Development
+### QA & Auto-Improvement (봄이·수리)
 
-Start web preview server:
-```bash
-python projects/ai-team/skills/코다리_개발자/tools/web_preview.py
-# → http://localhost:8000
-```
-
-### UI/UX Review
-
-Run automated design review:
-```bash
-python projects/ai-team/skills/티모_디자이너/tools/petnna_reviewer.py
-```
+- **봄이** (`skills/봄이_QA/tools/petnna_qa_patrol.py`) — 상시 순찰: 콘솔/JS 오류·404·깨진 이미지·접근성·가로스크롤·SEO 점검, P0/P1 즉시 텔레그램 알림, 보고서 `output/qa/petnna/`.
+- **수리** (`skills/수리_개발자/tools/petnna_dev_engine.py`) — 봄이 결과를 읽어 저위험 P2/P3를 격리 브랜치에서 자동 수정·재검수 후 게이트 통과 시만 master 병합. master 직접 수정 없음, 금지 경로(supabase·api·결제 등) 접촉 시 병합 거부.
 
 ### Structure
 
@@ -296,48 +287,12 @@ projects/petnna/
 ### Process Management
 
 - **Daemons use Windows Named Mutex** (`process_lock.py`) to prevent duplicates
-- **Cleanup zombies**: `cleanup_duplicate_processes.py`
-- **Monitor processes**: `monitor_processes.py --daemon`
+- **Cleanup zombies**: `python projects/ai-team/scripts/cleanup_duplicate_processes.py`
 
 ### Logging
 
 - Agent logs: `output/bot_logs/`
 - System logs: `.logs/`
-- Trading logs: Check respective trader scripts
-
----
-
-## 🎯 Common Tasks
-
-### Daily Automation
-
-```bash
-python projects/ai-team/scripts/start_daily_automation.py
-```
-
-This runs:
-- Upload status checks
-- Calendar sync
-- Report generation
-
-### Agent Health Check
-
-```bash
-python projects/ai-team/scripts/agents/test_agent_api_connections.py
-```
-
-Verifies:
-- Ollama server running
-- Gemini API key valid
-- Telegram bot token working
-
-### Scan Environment Variable Usage
-
-```bash
-python projects/ai-team/scripts/scan_env_usage.py
-```
-
-Shows which `.py` files use which env vars.
 
 ---
 

@@ -312,8 +312,6 @@ def check_classification_layout():
         if p in {
             ".telegram_sent_cache.json",
             "reports/status/harness_latest.json",
-            "reports/research/crypto_market_intel.json",
-            "reports/research/hyunbin_alert_state.json",
             "projects/ai-team/skills/영숙_비서/tools/last_run.json",
         }
     ]

@@ -1,8 +1,0 @@
-{
-  "name": "yewon-research-dispatcher",
-  "version": "0.1.0",
-  "description": "예원(CEO) 리서치 오케스트레이터 에이전트 — 섹터/테마/종목 요청을 소미 스킬로 분해·지휘하고 검수 게이트와 함께 취합",
-  "author": {
-    "name": "ai_lab (준)"
-  }
-}
