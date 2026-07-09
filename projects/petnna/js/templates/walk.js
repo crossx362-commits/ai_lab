@@ -1,7 +1,7 @@
 const WALK_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
     <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-stretch">
-    <div class="flex-1 min-w-0 bg-white rounded-2xl pt-4 px-4 pb-0 border border-amber-50 shadow-sm relative overflow-hidden sm:flex sm:flex-col">
+    <div class="flex-1 min-w-0 bg-white rounded-2xl p-4 border border-amber-50 shadow-sm relative overflow-hidden sm:flex sm:flex-col">
 
         <!-- ── 헤더 ────────────────────────────────────────────────── -->
         <div class="flex items-center justify-between mb-3">
