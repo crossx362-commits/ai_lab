@@ -1,7 +1,7 @@
 const WALK_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
     <div class="flex flex-col sm:flex-row gap-4 items-start">
-    <div class="flex-1 min-w-0 bg-white rounded-2xl p-4 border border-amber-50 shadow-sm relative overflow-hidden">
+    <div class="flex-1 min-w-0 bg-white rounded-2xl pt-4 px-4 pb-0 border border-amber-50 shadow-sm relative overflow-hidden">
 
         <!-- ── 헤더 ────────────────────────────────────────────────── -->
         <div class="flex items-center justify-between mb-3">
@@ -51,7 +51,7 @@ const WALK_TEMPLATE = `
         </div>
 
         <!-- ── 지도 (Critical: 최소 280px 확보) ──────────────────────── -->
-        <div class="relative w-full bg-gray-100 rounded-2xl overflow-hidden border border-amber-100/50 shadow-inner z-10"
+        <div class="relative w-full bg-gray-100 rounded-t-2xl overflow-hidden border-x border-t border-amber-100/50 shadow-inner z-10"
             style="height: clamp(360px, 70vh, 760px);">
             <div id="map" class="w-full h-full"></div>
 
