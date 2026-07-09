@@ -71,6 +71,9 @@ function renderHealthTab() {
 
     // 식사 일지 렌더링
     if (typeof renderMealLogsList === 'function') renderMealLogsList();
+
+    // 예측 웰니스 이상감지 카드
+    if (typeof renderWellnessCard === 'function') renderWellnessCard();
 }
 
 // 펫 선택 드롭다운 업데이트

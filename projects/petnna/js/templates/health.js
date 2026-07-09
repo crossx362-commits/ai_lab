@@ -35,6 +35,8 @@ const HEALTH_TEMPLATE = `
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">
 
+    <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
+    <div id="wellness-anomaly-card"></div>
 
     <!-- 📋 오늘의 건강 기록 -->
     <div class="card-modern p-6">
