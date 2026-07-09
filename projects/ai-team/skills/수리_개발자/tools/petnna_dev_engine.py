@@ -164,6 +164,32 @@ def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=120)
 
 
+def sync_merged_branches(state: dict) -> list[str]:
+    """사람이 수동 병합·삭제한 PR대기 브랜치를 완료로 정리한다.
+
+    백로그(미오·나무) 과제는 자동 병합이 없어 항상 PR대기로 남고, 사람이 검토 후
+    병합하면 브랜치를 지운다. 그런데 그 병합을 STATE에 되돌리는 로직이 없어
+    유령 PR대기가 SURI_MAX_PENDING 상한을 영구히 막던 버그(2026-07-09 발견:
+    미오_1~5가 master에 병합됐는데도 PR대기 5개로 남아 수리가 15시간 정지).
+    브랜치가 refs/heads에 없으면 병합 후 삭제로 보고 완료 처리 → 상한 자동 해제.
+    """
+    cleared = []
+    for fp, rec in state.get("issues", {}).items():
+        if rec.get("status") != "PR대기":
+            continue
+        br = rec.get("branch")
+        if not br:
+            continue
+        r = _git(["rev-parse", "--verify", "--quiet", f"refs/heads/{br}"], PROJECT_ROOT)
+        if r.returncode != 0:  # 브랜치 부재 = 사람이 병합 후 삭제
+            rec["status"] = "완료"
+            rec["merged_detected"] = datetime.now().isoformat()
+            cleared.append(fp)
+    if cleared:
+        save_dev_state(state)
+    return cleared
+
+
 # ── 백로그(미오·나무) — QA 이슈가 없을 때 소비, 항상 PR대기(자동 병합 없음) ──
 
 def _load_backlog() -> dict:
@@ -358,6 +384,7 @@ def improve_cycle(do_send: bool = True) -> str:
 def _improve_cycle(do_send: bool = True) -> str:
     findings, qa_last_run = load_qa_findings()
     state = load_dev_state()
+    freed = sync_merged_branches(state)  # 수동 병합된 PR대기 정리 → 상한 자동 해제
     picked = select_issue(findings, state, qa_last_run) if findings else None
     is_backlog = False
     if not picked:  # QA 이슈가 없으면 백로그(미오·나무 과제) 소비 — 항상 PR대기
