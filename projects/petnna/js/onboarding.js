@@ -30,6 +30,12 @@ const ONBOARDING_STEPS = [
         content: "반려동물의 사주팔자를 분석하고,\n집사님과의 조화도, 방 풍수까지 확인하세요.\n재미있는 운세 게임도 즐겨보세요!",
         icon: "☯️",
         tab: "saju"
+    },
+    {
+        title: "이제 첫 반려동물을 등록해볼까요? 🐾",
+        content: "프로필만 등록하면 건강 분석·산책 기록·사주까지\n바로 시작할 수 있어요. 1분이면 충분해요!",
+        icon: "🐾",
+        isRegister: true
     }
 ];
 
@@ -109,7 +115,7 @@ function showOnboardingModal() {
                     </button>
                 `}
                 <button onclick="nextOnboardingStep()" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 text-white font-black hover:shadow-lg transition-all">
-                    ${currentOnboardingStep === ONBOARDING_STEPS.length - 1 ? '시작하기 🚀' : '다음 →'}
+                    ${step.isRegister ? '🐾 반려동물 등록하기' : (currentOnboardingStep === ONBOARDING_STEPS.length - 1 ? '시작하기 🚀' : '다음 →')}
                 </button>
             </div>
         </div>
