@@ -33,6 +33,7 @@ class HarnessManager:
         self.reports_dir.mkdir(parents=True, exist_ok=True)
 
     def run_harness(self) -> str:
+        nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
         result = subprocess.run(
             [sys.executable, str(self.harness)],
             cwd=str(AI_TEAM),
@@ -42,6 +43,7 @@ class HarnessManager:
             errors="replace",
             timeout=120,
             env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"},
+            **nowin,
         )
         return result.stdout or result.stderr or ""
 

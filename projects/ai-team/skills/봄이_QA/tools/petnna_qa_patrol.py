@@ -390,11 +390,12 @@ def _convene_council(topic: str, context: str, priority: str) -> None:
     """큰 이슈 → 전 에이전트 긴급 회의 소집 (비차단, 24h 중복 방지는 회의 쪽에서)."""
     import subprocess
     council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
     try:
         subprocess.Popen([sys.executable, str(council), "--topic", topic[:200],
                           "--context", context[:1500], "--priority", priority],
-                         cwd=str(PROJECT_ROOT), start_new_session=True,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                         cwd=str(PROJECT_ROOT),
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
         print(f"[회의 소집] {topic[:80]}")
     except Exception as e:
         print(f"[회의 소집 실패] {e}")

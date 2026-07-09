@@ -178,12 +178,13 @@ def run_audit(do_send: bool) -> None:
         if new_p1:
             import subprocess
             council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
+            nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
             try:
                 subprocess.Popen([sys.executable, str(council),
                                   "--topic", f"백엔드 계약 위반: {new_p1[0]['title'][:120]}",
                                   "--context", new_p1[0]["detail"][:1500], "--priority", "P1"],
-                                 cwd=str(PROJECT_ROOT), start_new_session=True,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                 cwd=str(PROJECT_ROOT),
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
             except Exception:
                 pass
 

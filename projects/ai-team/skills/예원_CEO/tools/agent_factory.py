@@ -248,12 +248,13 @@ def _trial_run(agent_id: str) -> tuple[bool, str]:
     script = AI_TEAM / meta["tools"][0]["script"]
     if not script.exists():
         return False, "스크립트 없음"
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     try:
         r = subprocess.run(
             [sys.executable, str(script), "시범 실행 점검"],
             cwd=str(PROJECT_ROOT), capture_output=True, text=True,
             encoding="utf-8", errors="replace", timeout=30,
-            env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"},
+            env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"}, **nowin,
         )
         return (r.returncode == 0), (r.stdout or r.stderr or "").strip()[:200]
     except Exception as e:

@@ -157,10 +157,14 @@ def _delete(items: list[dict]) -> set[str]:
     return changed
 
 
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
+
 def _verify(changed: set[str]) -> bool:
     for rel in changed:
         r = subprocess.run([sys.executable, "-m", "py_compile", os.path.join(_root, rel)],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+                           capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           **_NOWIN)
         if r.returncode != 0:
             print(f"❌ py_compile 실패: {rel}\n{r.stderr}")
             return False
@@ -168,14 +172,14 @@ def _verify(changed: set[str]) -> bool:
 
 
 def _rollback(changed: set[str]) -> None:
-    subprocess.run(["git", "checkout", "--"] + list(changed), cwd=_root, capture_output=True)
+    subprocess.run(["git", "checkout", "--"] + list(changed), cwd=_root, capture_output=True, **_NOWIN)
 
 
 def _commit(changed: set[str], n: int) -> bool:
-    subprocess.run(["git", "add"] + list(changed), cwd=_root, capture_output=True)
+    subprocess.run(["git", "add"] + list(changed), cwd=_root, capture_output=True, **_NOWIN)
     msg = f"chore(예원): 데드코드 자동정리 — 미사용 함수 {n}개 제거 (코드검수기)"
     r = subprocess.run(["git", "commit", "-m", msg], cwd=_root, capture_output=True,
-                       text=True, encoding="utf-8", errors="replace")
+                       text=True, encoding="utf-8", errors="replace", **_NOWIN)
     return r.returncode == 0
 
 

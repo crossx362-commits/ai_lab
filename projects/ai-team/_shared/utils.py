@@ -3,8 +3,11 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
+
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
 
 
 # ==================== SCHEDULE SLOT GATE ====================
@@ -74,7 +77,7 @@ def check_command(cmd: str) -> bool:
 def run_silent(cmd: list[str], timeout: int = 30) -> bool:
     """Run command silently, return success."""
     try:
-        subprocess.run(cmd, capture_output=True, timeout=timeout, check=True)
+        subprocess.run(cmd, capture_output=True, timeout=timeout, check=True, **_NOWIN)
         return True
     except Exception:
         return False
@@ -94,7 +97,7 @@ def convert_video(input_path: str | Path, output_path: str | Path, codec: str = 
         return False
     try:
         cmd = ["ffmpeg", "-i", str(input_path), "-c:v", codec, "-y", str(output_path)]
-        subprocess.run(cmd, capture_output=True, check=True, timeout=120)
+        subprocess.run(cmd, capture_output=True, check=True, timeout=120, **_NOWIN)
         print(f"✅ Converted: {output_path}")
         return True
     except Exception as e:

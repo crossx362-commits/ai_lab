@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -34,6 +35,7 @@ for _p in (str(AI_TEAM_ROOT),
         sys.path.insert(0, _p)
 
 from _shared.env import load_env
+from _shared.notify import send as tg_send
 from _shared.process import ProcessLock
 from _shared import growth
 
@@ -47,6 +49,7 @@ load_env(str(PROJECT_ROOT))
 try:
     from telegram import Update
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+    from telegram.error import Conflict as TgConflict
 except ImportError as exc:
     print(f"Dependencies not installed: {exc}")
     print("Run: pip install python-telegram-bot")
@@ -142,12 +145,13 @@ def _launch_dev_task(request: str) -> str:
     except Exception:
         pass
     branch = "tg-dev-" + datetime.now().strftime("%m%d-%H%M%S")
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
     try:
         subprocess.Popen(
             [sys.executable, str(DEV_RUNNER), branch, request],
             cwd=str(PROJECT_ROOT),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True,
+            **nowin,
         )
     except Exception as exc:
         return f"개발 작업 시작 실패: {exc}"
@@ -201,6 +205,33 @@ async def _status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 _ALLOWED_CHAT_IDS = {c.strip() for c in (os.getenv("TELEGRAM_CHAT_ID", "")).split(",") if c.strip()}
 
+_CONFLICT_STATE_FILE = PROJECT_ROOT / "output" / "cache" / "youngsuk_conflict_alert.json"
+_CONFLICT_ALERT_COOLDOWN_SEC = 1800  # 30분 — 다른 기기 폴링 충돌은 반복 스팸 대신 주기적 1회만
+
+
+async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """폴링 루프 에러 핸들러 — 등록 안 하면 PTB가 매 재시도마다 전체 스택트레이스를
+    로그에 찍는다(Conflict는 재시도가 잦아 순식간에 로그가 수십MB로 불어남, 2026-07-09 확인).
+    Conflict(다른 기기가 동시에 getUpdates 폴링 중 — 대개 맥)는 한 줄 로그 + 쿨다운 텔레그램 알림만,
+    나머지 에러는 한 줄 로그만 남기고 폴링은 계속(run_polling이 알아서 재시도)."""
+    err = context.error
+    if isinstance(err, TgConflict):
+        bc.log("getUpdates Conflict — 다른 기기(맥 등)에서 동시 폴링 중으로 추정")
+        try:
+            now = time.time()
+            last = 0.0
+            if _CONFLICT_STATE_FILE.exists():
+                last = json.loads(_CONFLICT_STATE_FILE.read_text(encoding="utf-8")).get("ts", 0.0)
+            if now - last > _CONFLICT_ALERT_COOLDOWN_SEC:
+                _CONFLICT_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                _CONFLICT_STATE_FILE.write_text(json.dumps({"ts": now}), encoding="utf-8")
+                tg_send("⚠️ 영숙 텔레그램 폴링 충돌 — 다른 기기(맥 등)에서 같은 봇을 동시에 실행 중인 것 같아요. "
+                        "한쪽만 남기고 꺼주세요 (agent_controller.py 영숙 stop).")
+        except Exception:
+            pass
+        return
+    bc.log(f"Polling error: {err}")
+
 
 async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 발신자 잠금 — fail-closed: 허용 목록이 비면 전부 거부. user.id·chat.id 모두 대조(그룹 권한상승 차단)
@@ -242,6 +273,7 @@ def main() -> int:
         app.add_handler(CommandHandler("start", _start))
         app.add_handler(CommandHandler("status", _status))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _message))
+        app.add_error_handler(_error_handler)
 
         bc.log("Youngsuk Telegram bot started (polling mode)")
         app.run_polling(allowed_updates=["message"], drop_pending_updates=True)

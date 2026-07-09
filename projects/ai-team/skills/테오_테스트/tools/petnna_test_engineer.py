@@ -205,10 +205,11 @@ def generate_test(do_send: bool) -> bool:
             path.unlink(missing_ok=True)
             print(f"[테오] 신규 테스트 불안정({i+1}회차 실패) → 폐기: {err}")
             return False
-    subprocess.run(["git", "add", str(path)], cwd=str(PROJECT_ROOT), capture_output=True)
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+    subprocess.run(["git", "add", str(path)], cwd=str(PROJECT_ROOT), capture_output=True, **nowin)
     name = getattr(_load_test(path), "NAME", path.stem)
     subprocess.run(["git", "commit", "-m", f"test(petnna): E2E '{name}' 추가 (테오 자동 생성)"],
-                   cwd=str(PROJECT_ROOT), capture_output=True)
+                   cwd=str(PROJECT_ROOT), capture_output=True, **nowin)
     print(f"[테오] 신규 테스트 채택: {path.name} — {name}")
     if do_send:
         send(f"🧷 테오 — 새 E2E 테스트 추가\n{name} ({path.name}), 2회 연속 통과 확인 후 채택")

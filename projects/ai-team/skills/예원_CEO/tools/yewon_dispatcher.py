@@ -30,6 +30,7 @@ JSON 객체만 반환하세요.
 
 
 def _run_script(args: list[str], timeout: int = 120, extra_env: dict[str, str] | None = None) -> tuple[int, str]:
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     result = subprocess.run(
         args,
         cwd=PROJECT_ROOT,
@@ -39,6 +40,7 @@ def _run_script(args: list[str], timeout: int = 120, extra_env: dict[str, str] |
         errors="replace",
         timeout=timeout,
         env={**os.environ, "PYTHONUTF8": "1", **(extra_env or {})},
+        **nowin,
     )
     return result.returncode, (result.stdout or result.stderr or "").strip()
 

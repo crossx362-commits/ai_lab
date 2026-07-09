@@ -46,10 +46,11 @@ CHECK_ONLY = "--check" in sys.argv
 
 
 def _run(args: list[str], timeout: int = 60) -> tuple[int, str]:
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     try:
         r = subprocess.run(args, cwd=str(PROJECT_ROOT), capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=timeout,
-                           env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"})
+                           env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"}, **nowin)
         return r.returncode, (r.stdout or r.stderr or "").strip()
     except Exception as e:
         return 1, str(e)

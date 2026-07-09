@@ -70,7 +70,8 @@ def _script_running(script_name: str) -> bool:
                 "Select-Object -ExpandProperty ProcessId"
             )
             out = subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
-                                 capture_output=True, text=True, timeout=10).stdout
+                                 capture_output=True, text=True, timeout=10,
+                                 creationflags=subprocess.CREATE_NO_WINDOW).stdout
         else:
             out = subprocess.run(["pgrep", "-f", script_name],
                                  capture_output=True, text=True, timeout=10).stdout
@@ -156,8 +157,9 @@ def execute_schedule(schedule: Dict):
             print(f"  [영숙] {schedule_id} 스킵 — {script} 프로세스 이미 가동 중(이중실행 방지)")
             return
         try:
+            popen_kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
             subprocess.Popen(run_cmd, cwd=PROJECT_ROOT,
-                             env={**os.environ, "PYTHONUTF8": "1"})
+                             env={**os.environ, "PYTHONUTF8": "1"}, **popen_kwargs)
             print(f"  [영숙] 명령 실행 시작: {' '.join(run_cmd)}")
         except Exception as exc:
             print(f"  [영숙] 명령 실행 실패: {exc}")

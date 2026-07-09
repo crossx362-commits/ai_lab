@@ -62,6 +62,9 @@ def age_text(path: Path) -> str:
     return dt.strftime("%m/%d %H:%M")
 
 
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
+
 def git_lines(*args: str) -> list[str]:
     try:
         out = subprocess.run(
@@ -69,6 +72,7 @@ def git_lines(*args: str) -> list[str]:
             capture_output=True,
             text=True,
             timeout=10,
+            **_NOWIN,
         ).stdout
         return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
     except Exception:
@@ -109,6 +113,7 @@ def find_python_pids(script_name: str) -> list[str]:
                 capture_output=True,
                 text=True,
                 timeout=5,
+                **_NOWIN,
             ).stdout
         return [p for p in out.split() if p.isdigit()]
     except Exception:
