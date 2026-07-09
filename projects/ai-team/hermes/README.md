@@ -48,6 +48,24 @@ python hermes auth add openai-codex     # 프롬프트에서 N(전용 새 세션
 4. 현행 유지 — 6개 claude -p 데몬이 결정론 작업엔 이미 우수. 헤르메스는 챗 게이트웨이/자연어크론 등 특기 용도로만.
 → 오너 결정 대기. (설치·스킬·설정은 다 준비됨 — 모델만 정해지면 즉시 착수.)
 
+
+## 최종 결론 (2026-07-09 실증 완료): 헤르메스 자체 루프 = 무료 불가
+Claude Max OAuth를 헤르메스에 물려 백호 감사 실행 → **HTTP 400: "Third-party apps now draw
+from your extra usage, not your plan limits."** Anthropic 정책 변경으로 **제3자 앱(헤르메스)이
+Max 구독 토큰을 쓰면 유료 extra usage 과금**(현재 잔액 0 → 차단). `claude -p`(Claude Code
+자체)만 Max 플랜 포함 무료.
+
+→ **"헤르메스 자체 에이전트 루프 + 강한 모델 + 무료 + 이 맥"은 물리적으로 불가**(전 경로 실증):
+로컬(16GB→12b 약함)·Gemini무료(5req/min)·AnthropicAPI(크레딧0)·ClaudeMax(제3자 유료)·코덱스(제외).
+
+## 남은 진짜 선택지 (오너 결정)
+- **A. 무료 하이브리드**: 헤르메스가 스케줄러/오케스트레이터, 실제 에이전트는 기존 `claude -p`
+  스크립트(`--no-agent`)로 실행. Claude 사용·무료·무로그인·헤르메스가 실행엔진. 단 헤르메스
+  자가학습/메모리 루프는 못 씀(그건 유료라). 사실상 launchd+α. **내가 지금 바로 구축 가능.**
+- **B. 유료 수용**: extra usage 충전 or OpenRouter 소액 → 헤르메스 네이티브 자가학습 루프 풀가동.
+- **C. 1회 구독 로그인**: 코덱스/Copilot/Nous 중 하나 대화형 로그인(코덱스는 오너 제외).
+- **D. 현행 유지**: 6개 claude -p 데몬 그대로(결정론 작업엔 이미 최적). 헤르메스 보류.
+
 ## 진행 상태
 - [x] Phase 1: 설치·로컬 Ollama 설정·텔레그램 안전·e2e 검증
 - [x] 레퍼런스 스킬 1개(petnna-backend-audit) 작성·심링크 설치
