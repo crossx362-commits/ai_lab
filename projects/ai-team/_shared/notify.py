@@ -6,6 +6,7 @@ send/report 등을 더 이상 갖지 않는다. status_report()는 텔레그램 
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -28,6 +29,13 @@ CONTINUOUS_DAEMONS = {
 # macOS는 아래 데몬을 launchd 정시 잡으로 운영 → 상시 프로세스가 없어도 launchd에 적재돼 있으면
 # 정상(scheduled)으로 본다. (윈도우는 launchd 없음 → 프로세스 기준 그대로). 워치독 오탐 재시작 방지.
 _LAUNCHD_FALLBACK = {}
+
+# 펫나 6종 데몬은 이중 가동 방지를 위해 Windows에선 기본 미실행(PETNNA_AGENTS_ON_WINDOWS=true로만 해제,
+# 각 데몬 daemon()이 기동 즉시 자진 종료). 이 경우 프로세스 부재가 '정상'이므로 'down'으로 집계하면
+# 워치독(check_and_restart_bots)이 매 주기 재시작+텔레그램 스팸을 낸다 → 'disabled'로 표기해 재시작 대상 제외.
+_PETNNA_WINDOWS_GATED = {
+    "bomi_qa", "suri_dev", "teo_test", "baekho_backend", "mio_design", "namu_pm",
+}
 
 # 정시 잡(예원 등)은 단일 스케줄러 데몬이 아니라 잡별 독립 launchd 에이전트로 운영
 # (com.ailab.sched.*) — SPOF 제거. 집계로 정상 여부 판단.
@@ -124,6 +132,9 @@ def agent_status() -> dict[str, str]:
         pids = _find_pids(script)
         if pids:
             status[name] = ",".join(pids)
+        elif (sys.platform == "win32" and name in _PETNNA_WINDOWS_GATED
+              and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true"):
+            status[name] = "disabled"    # Windows 미가동이 설계상 정상 → 재시작/경보 금지
         elif sys.platform != "win32" and name in _LAUNCHD_FALLBACK and _launchd_loaded(_LAUNCHD_FALLBACK[name]):
             status[name] = "scheduled"   # macOS: launchd 정시 잡으로 운영 중 → 정상
         else:
@@ -144,6 +155,8 @@ def status_report() -> str:
         label = _AGENT_LABELS.get(name, name)
         if state == "down":
             mark = "🔴 중지"
+        elif state == "disabled":
+            mark = "⚪ 비활성 (이 기계에선 미운영)"
         elif state == "scheduled":
             mark = "🟢 정상 (예약 실행 대기)"
         elif state.startswith("sched:"):
