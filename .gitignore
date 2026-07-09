@@ -40,7 +40,11 @@ gmail_client_secret.json
 youtube_token.pickle
 
 # Generated media and preview artifacts
-output/
+output/*
+# 단, 에이전트 레지스트리 메타(SSOT)는 캐시가 아니라 버전관리 대상 — 기계 간 전파 필요
+!output/cache/
+output/cache/*
+!output/cache/agent_registry.json
 # 데몬이 상시 갱신하는 스냅샷 리포트 — 추적하면 트리가 늘 더러워져 git pull 배포가 막힘
 reports/research/*_latest.md
 *.mp3
