@@ -174,7 +174,7 @@ def _build_report(results: dict[str, dict], overlaps: list[str], timestamp: str)
     """텔레그램 보고 메시지 생성."""
     lines = [f"📋 [CEO 예원] 주간 에이전트 스킬 문서 감사 보고 ({timestamp})\n"]
 
-    # 에이전트별 스킬 문서 평가. 투자/매수판단 점수는 소미 분석 도구만 산출한다.
+    # 에이전트별 스킬 문서 평가(완성도·전문성).
     lines.append("에이전트별 스킬 문서 평가:")
     for agent, r in results.items():
         c = r.get("completeness")

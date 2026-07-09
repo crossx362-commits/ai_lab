@@ -796,12 +796,12 @@ import { AgentDef, AGENTS, AGENT_ORDER, SPECIALIST_IDS } from './agents';
 
 
 /* 교차검증 도메인 → 소집 에이전트 매핑. agents.ts의 councilDomains 값과 키가 일치해야 함. */
-/* v2.90.0 — 실존 에이전트(예원·영숙·소미)만 남기면서 council 비움. 가짜 에이전트
-   ID를 소집하던 도메인은 빈 배열로 두어 _detectHighRisk가 ghost를 부르지 않게 함. */
+/* v2.90.0 — 실존 에이전트만 남기면서 council 비움(2026-07-08 주식 도메인 삭제로 소미도 제거).
+   가짜/삭제된 ID를 소집하던 도메인은 빈 배열로 두어 _detectHighRisk가 ghost를 부르지 않게 함. */
 const COUNCIL_MAP: Record<string, string[]> = {
     content_publish: [],
     code_deploy:     [],
-    business:        ['somi'],
+    business:        [],
     video_quality:   [],
 };
 
@@ -880,7 +880,6 @@ const WORLD_LAYOUT = {
   agents: {
     ceo:       { building: 'office', localX: 88, localY: 88 },
     secretary: { building: 'office', localX: 82, localY: 58 },
-    somi:      { building: 'office', localX: 28, localY: 38 },
   } as Record<string, AgentDeskRef>,
 
   // Visit-zones for idle wandering / autonomous behavior. Office-only.
@@ -900,8 +899,6 @@ const CUSTOM_MAP_DESKS: Record<string, DeskPos> = {
   ceo:        { x: 8,  y: 22 },
   // Front desk just outside CEO's office — Secretary station
   secretary:  { x: 18, y: 33 },
-  // Center cubicle cluster — Somi (국내주식 수급 분석가)
-  somi:       { x: 41, y: 53 },
 };
 
 /** Convert each agent's building-local desk into world % coords. */
@@ -1148,8 +1145,8 @@ const ALWAYS_ON_AGENTS: Set<string> = new Set(['ceo']);
 /* v2.89.156 — 데모용·신규 사용자 첫 경험 회복. "유튜브 + 매출 종합 보고서" 같은 합성 명령에서
    펄스(business) 가 비활성이라 조용히 drop 되던 사고 차단. 옵션 전체를 기본 ON 으로. Luna 만 LOCKED 유지.
    사용자는 언제든 직원 패널에서 개별 OFF 가능. */
-const DEFAULT_ON_AGENTS: Set<string> = new Set(['secretary', 'somi']);
-const OPTIONAL_AGENTS_DEFAULT: Set<string> = new Set(['secretary', 'somi']);
+const DEFAULT_ON_AGENTS: Set<string> = new Set(['secretary', 'bomi']);
+const OPTIONAL_AGENTS_DEFAULT: Set<string> = new Set(['secretary', 'bomi']);
 
 function _hiredJsonPath(): string {
   return path.join(getCompanyDir(), '_shared', 'hired.json');
@@ -1236,7 +1233,7 @@ function readActiveAgents(): Record<string, { activatedAt: string }> {
        이전엔 ALWAYS_ON 이었던 secretary·youtube·writer·designer 도 자동 활성화 (사용자
        경험 유지). 한 번만 실행: _migrated_v2 플래그로 표시. */
     if (data._migrated && !data._migrated_v2) {
-      const carryOver = ['secretary', 'somi'];
+      const carryOver = ['secretary', 'bomi'];
       let touched = false;
       for (const id of carryOver) {
         if (!data[id]) {
@@ -2051,9 +2048,9 @@ async function classifyToAgent(text: string): Promise<string> {
         if (AGENTS[id]) return id;
     } catch { /* fall through to keyword router */ }
     const lower = text.toLowerCase();
-    /* v2.90.0 — 실존 에이전트(예원·영숙·소미)만 라우팅. 주식/수급은 소미,
-       일정·메일·브리핑은 영숙, 그 외 기획·종합 판단은 예원(ceo)이 받음. */
-    if (/주식|종목|수급|매수|매도|공매도|대차|코스피|코스닥|증시/.test(lower)) return 'somi';
+    /* v2.90.0 — 실존 에이전트(예원·영숙)만 라우팅. 일정·메일·브리핑은 영숙,
+       그 외 기획·종합 판단은 예원(ceo)이 받음. (2026-07-08 주식 도메인 삭제로
+       소미 라우팅 규칙 제거.) */
     if (/일정|할일|todo|미팅|알림|메일|brief|브리핑|캘린더/.test(lower)) return 'secretary';
     if (/유튜브|youtube|영상|채널|구독|썸네일|기획|전략|매출|수익/.test(lower)) return 'ceo';
     return 'secretary'; // safe default — secretary triages
@@ -6563,7 +6560,7 @@ function setToolEnabled(agentId: string, toolName: string, enabled: boolean) {
  *  business/writer/researcher 의 카탈로그 도구가 모두 "있는 것처럼" 표시돼서
  *  사용자가 _agents/<id>/tools.md 열고 "왜 작동 안 하지?" 혼란 발생. */
 const AGENT_TOOLS_CATALOG: Record<string, { tool: string; desc: string; planned?: boolean }[]> = {
-    // v2.90.0 — 실존 에이전트(예원·영숙·소미)만 유지. 가짜 에이전트 카탈로그 전부 삭제.
+    // v2.90.0 — 실존 에이전트만 유지. 가짜 에이전트 카탈로그 전부 삭제(2026-07-08 소미도 제거).
     ceo: [
         { tool: 'router', desc: '사용자 명령 → 적합한 에이전트로 분배 (CEO 클래시파이어 내장)' },
         { tool: 'dispatcher', desc: '작업 분해 후 적임 에이전트에 디스패치 (yewon_dispatcher)' },
@@ -6581,16 +6578,6 @@ const AGENT_TOOLS_CATALOG: Record<string, { tool: string; desc: string; planned?
         { tool: 'reports_manager', desc: 'reports 폴더 정리·요약' },
         { tool: 'email_triage', desc: 'IMAP/Gmail 분류 + 답장 초안', planned: true },
     ],
-    somi: [
-        { tool: 'kis_reporter', desc: 'KIS API 기반 종목 수급 분석 정기 리포트' },
-        { tool: 'screener', desc: '거래대금 상위 후보를 소미 점수로 채점해 유망종목 발굴' },
-        { tool: 'trade_advisor', desc: '매수/매도 판단·매수 가능 구간 제안' },
-        { tool: 'position_monitor', desc: '보유 포지션 익절/손절 실시간 감시' },
-        { tool: 'price_monitor', desc: '관심종목 급변동 실시간 감시' },
-        { tool: 'short_covering', desc: '대차잔고·공매도 기반 숏커버링 정황 분석' },
-        { tool: 'watchlist', desc: '관심종목 등록·관리 (watchlist_manager)' },
-        { tool: 'stock_search', desc: '종목명/코드 검색' },
-    ]
 };
 
 /** Seed `_agents/<id>/tools.md` — declares the agent's tool roster + autonomy
@@ -6672,9 +6659,9 @@ _레벨을 어떻게 골라야 할지 모르겠다면 \`2 (Draft)\`가 안전한
  *  (architecturally the messenger) so non-developers can input via the UI. */
 function _seedAgentToolsIfMissing(agentId: string) {
   try {
-    /* v2.90.0 — 실존 에이전트(예원·영숙·소미)만 도구 시드. secretary(영숙)는
-       텔레그램 자격증명 + 구글 캘린더 쓰기 도구를 소유. 가짜 에이전트
-       (youtube·editor·arin·developer·business) 시드 분기는 삭제. */
+    /* v2.90.0 — 실존 에이전트만 도구 시드. secretary(영숙)는
+       텔레그램 자격증명 + 구글 캘린더 쓰기 도구를 소유. 가짜/삭제된 에이전트
+       (youtube·editor·arin·developer·business·2026-07-08 소미) 시드 분기는 삭제. */
     if (agentId === 'secretary') {
       const toolsDir = path.join(getCompanyDir(), '_agents', agentId, 'tools');
       fs.mkdirSync(toolsDir, { recursive: true });
@@ -13330,11 +13317,8 @@ body.floorplan .conf-room,body.floorplan .location{display:none!important}
 .desk[data-agent="ceo"] .ds-screen::before{background:radial-gradient(circle at 50% 50%,rgba(0,255,65,.4) 0%,rgba(0,255,65,0) 1px,rgba(0,255,65,.1) 2px,rgba(0,255,65,0) 3px,rgba(0,255,65,.1) 6px,rgba(0,255,65,0) 7px,rgba(0,255,65,.08) 12px,rgba(0,255,65,0) 13px),conic-gradient(from 0deg,rgba(0,255,65,.5),transparent 70%);animation:radarSweep 4s linear infinite}
 @keyframes radarSweep{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
-/* v2.90.0 — 가짜 에이전트(developer·designer·youtube·instagram·business) 화면 CSS 삭제. */
-
-/* Somi: 국내주식 수급 — pink candlestick ticker */
-.desk[data-agent="somi"] .ds-screen::before{background:linear-gradient(0deg,rgba(236,72,153,.7) 0%,rgba(236,72,153,.7) 40%,transparent 40%) 6% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.7) 0%,rgba(236,72,153,.7) 70%,transparent 70%) 24% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.5) 0%,rgba(236,72,153,.5) 50%,transparent 50%) 42% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.7) 0%,rgba(236,72,153,.7) 85%,transparent 85%) 60% 100%/10% 100% no-repeat,linear-gradient(0deg,rgba(236,72,153,.6) 0%,rgba(236,72,153,.6) 60%,transparent 60%) 78% 100%/10% 100% no-repeat;animation:barsRise 2.4s ease-in-out infinite alternate}
-@keyframes barsRise{from{filter:brightness(.7)}to{filter:brightness(1.2)}}
+/* v2.90.0 — 가짜 에이전트(developer·designer·youtube·instagram·business) 화면 CSS 삭제.
+   2026-07-08 — 소미(국내주식 수급) 화면 CSS도 도메인 삭제로 제거. */
 
 /* Secretary: scrolling event list */
 .desk[data-agent="secretary"] .ds-screen::before{background:repeating-linear-gradient(0deg,rgba(52,211,153,.55) 0 2px,transparent 2px 4px,rgba(52,211,153,.3) 4px 5px,transparent 5px 8px);background-size:100% 16px;animation:listScroll 4s linear infinite}
