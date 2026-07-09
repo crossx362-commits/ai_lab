@@ -51,7 +51,7 @@ const WALK_TEMPLATE = `
         </div>
 
         <!-- ── 지도 (Critical: 최소 280px 확보) ──────────────────────── -->
-        <div class="relative w-full bg-gray-100 rounded-t-2xl overflow-hidden border-x border-t border-amber-100/50 shadow-inner z-10 h-[clamp(360px,70vh,760px)] sm:h-auto sm:flex-1 sm:min-h-[360px]">
+        <div class="relative w-full bg-gray-100 rounded-2xl overflow-hidden border border-amber-100/50 shadow-inner z-10 h-[clamp(360px,70vh,760px)] sm:h-auto sm:flex-1 sm:min-h-[360px]">
             <div id="map" class="w-full h-full"></div>
 
             <!-- 일시정지 오버레이 (기본 hidden) -->
