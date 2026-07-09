@@ -35,6 +35,19 @@ python hermes auth add openai-codex     # 프롬프트에서 N(전용 새 세션
 로그인 후 알려주면 config를 openai-codex로 전환하고 6개 네이티브 에이전트 구축 착수.
 안전 확인: 위 진단이 기존 codex CLI(_shared/llm.py) 인증을 깨지 않음(검증 완료).
 
+
+## 모델 벽 (2026-07-09 실측) — 오너 결정 필요
+코덱스 제외(오너) 후, "강한 모델 + 무료 + 로그인없음 + 이 맥(16GB RAM)"이 동시에 되는 길 없음:
+- 로컬 대형: **16GB RAM 한계로 ~12b급뿐** → gemma4:12b가 도구루프 실패(검증). 32b+ 미탑재.
+- Gemini 무료: 분당 5요청 → 에이전트 루프 즉시 429 초과(실측). 게다가 기존 시스템도 쓰는 키.
+- Anthropic API: 크레딧 소진(llm_probe 로그). Claude Max 구독은 헤르메스에 raw 모델로 못 꽂음(claude -p는 자체 에이전트).
+남은 실제 선택지(하나의 제약을 완화해야 함):
+1. 1회 구독 로그인 허용(Copilot `GITHUB_TOKEN` / Nous `hermes auth add nous`) — 강함·거의무료.
+2. 소액 유료(OpenRouter 크레딧) — 최고 품질, 비용 정책 완화.
+3. Windows PC에서 Hermes 실행(RAM/GPU 여유 시 로컬 대형 가능).
+4. 현행 유지 — 6개 claude -p 데몬이 결정론 작업엔 이미 우수. 헤르메스는 챗 게이트웨이/자연어크론 등 특기 용도로만.
+→ 오너 결정 대기. (설치·스킬·설정은 다 준비됨 — 모델만 정해지면 즉시 착수.)
+
 ## 진행 상태
 - [x] Phase 1: 설치·로컬 Ollama 설정·텔레그램 안전·e2e 검증
 - [x] 레퍼런스 스킬 1개(petnna-backend-audit) 작성·심링크 설치
