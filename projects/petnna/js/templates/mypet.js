@@ -32,11 +32,11 @@ const MYPET_TEMPLATE = `
     <div class="grid grid-cols-2 gap-3">
         <div class="card-modern bg-brand-50/50 p-3.5 space-y-1.5">
             <span class="block text-xs font-semibold text-brand-600">🧔 집사 오늘의 운세</span>
-            <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+            <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
         </div>
         <div class="card-modern bg-amber-50/50 p-3.5 space-y-1.5">
             <span class="block text-xs font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
-            <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+            <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
         </div>
     </div>
 
@@ -261,7 +261,7 @@ const MYPET_TEMPLATE = `
                         <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="butler-condition-bar" class="bg-brand-400 h-full transition-all duration-700" style="width:85%"></div>
                         </div>
-                        <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all">로딩 중...</p>
+                        <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
                     <div class="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-100">
                         <div class="flex justify-between items-center mb-1.5">
@@ -274,7 +274,7 @@ const MYPET_TEMPLATE = `
                         <div class="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="pet-condition-bar" class="bg-amber-400 h-full transition-all duration-700" style="width:90%"></div>
                         </div>
-                        <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all">로딩 중...</p>
+                        <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
                 </div>
 
