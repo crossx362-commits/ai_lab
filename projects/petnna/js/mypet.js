@@ -1685,6 +1685,7 @@ function renderMyPets() {
     // ── 📊 펄스 패치: 산책 streak 배너 + 월간 리포트 카드 갱신 ──
     if (typeof renderWalkStreakBanner === 'function') renderWalkStreakBanner();
     if (typeof renderMonthlyReport === 'function') renderMonthlyReport('monthly-report-card');
+    if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
 }
 
 function getPast7DaysLabels() {

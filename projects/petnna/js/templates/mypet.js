@@ -321,6 +321,21 @@ const MYPET_TEMPLATE = `
 
         <!-- 건강 요약 카드 (이전 위치에서 제거됨) -->
 
+        <!-- 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
+        <div class="card-modern overflow-hidden">
+            <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fa-solid fa-notes-medical text-rose-500"></i>건강수첩
+                </h2>
+                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-full transition-all">
+                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
+                </button>
+            </div>
+            <div class="px-5 py-4">
+                <div id="medical-records-timeline"></div>
+            </div>
+        </div>
+
         <!-- 사주/조화도 결과 카드 (숨김 — 배지에 통합) -->
         <div id="mypet-saju-card" style="display:none;">
             <!-- 결과가 없을 때의 UI -->
