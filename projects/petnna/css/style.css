@@ -69,13 +69,11 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* 🖥️ 데스크톱 브랜드 배경 — 카드 밖 무채색 여백에 은은한 웜톤 그라디언트로 펫 케어 정체성 부여.
-   모바일(여백 부담)·dark/sepia 테마는 현행 유지. */
-@media (min-width: 768px) {
-    body:not(.theme-dark):not(.theme-sepia) {
-        background-image: linear-gradient(160deg, #fdf8f3 0%, #f4e7dc 100%);
-        background-attachment: fixed;
-    }
+/* 🐾 브랜드 톤 배경 — 파우 아이콘의 브라운 램프(brand-50~200)를 활용한 웜 그라디언트로
+   '펫 플랫폼' 따뜻한 첫인상 제공. 모바일 포함 전 화면 적용, dark/sepia 테마는 현행 유지. */
+body:not(.theme-dark):not(.theme-sepia) {
+    background-image: linear-gradient(160deg, #faf3ef 0%, #f4e2d9 100%);
+    background-attachment: fixed;
 }
 
 /* 탭 버튼 한 줄 유지 및 네비게이션 가로 스크롤 보정 */
