@@ -4,13 +4,15 @@
 
 window.medicalRecords = window.medicalRecords || [];
 
+// dot/pill은 정적 Tailwind 클래스로 명시 — 런타임 `bg-${color}-400` 조합은 Play CDN이
+// 생성하지 못해 색이 사라진다(빌드타임 JIT 대상 밖). 명시 클래스만 안전.
 const MEDICAL_CATEGORIES = {
-    visit:     { label: '진료/방문', icon: '🏥', color: 'rose' },
-    vaccine:   { label: '예방접종', icon: '💉', color: 'emerald' },
-    checkup:   { label: '정기검진', icon: '🩺', color: 'sky' },
-    surgery:   { label: '수술',     icon: '🔪', color: 'amber' },
-    medication:{ label: '투약/처방', icon: '💊', color: 'violet' },
-    other:     { label: '기타',     icon: '📋', color: 'gray' }
+    visit:     { label: '진료/방문', icon: '🏥', dot: 'bg-rose-400',    pill: 'bg-rose-50 text-rose-700' },
+    vaccine:   { label: '예방접종', icon: '💉', dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700' },
+    checkup:   { label: '정기검진', icon: '🩺', dot: 'bg-sky-400',     pill: 'bg-sky-50 text-sky-700' },
+    surgery:   { label: '수술',     icon: '🔪', dot: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700' },
+    medication:{ label: '투약/처방', icon: '💊', dot: 'bg-violet-400',  pill: 'bg-violet-50 text-violet-700' },
+    other:     { label: '기타',     icon: '📋', dot: 'bg-stone-400',   pill: 'bg-stone-100 text-stone-600' }
 };
 
 function _medicalEmail() {
@@ -62,24 +64,38 @@ function renderMedicalRecordsTimeline() {
 
     if (records.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-6 text-gray-400">
-                <div class="text-3xl mb-2">🏥</div>
-                <p class="text-xs font-medium">아직 저장된 의료 기록이 없어요.</p>
-                <p class="text-[10px] mt-1">병원 방문·예방접종·진료비를 기록해보세요.</p>
+            <div class="text-center py-8 px-4">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-50 flex items-center justify-center text-2xl mb-3">🏥</div>
+                <p class="text-sm font-bold text-gray-700">아직 건강 기록이 없어요</p>
+                <p class="text-xs text-gray-400 mt-1 keep-all leading-relaxed">병원 방문·예방접종·진료비를 기록해<br>우리 아이 건강 히스토리를 만들어보세요</p>
             </div>`;
         return;
     }
+
+    // 누적 요약 — 코랄 스탯 카드(브랜드 앵커)
+    const totalCost = records.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0);
+    const summaryHtml = `
+        <div class="flex items-stretch gap-2 mb-3">
+            <div class="flex-1 rounded-2xl bg-brand-50/70 border border-brand-100 px-3.5 py-2.5">
+                <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wide">누적 진료비</div>
+                <div class="text-lg font-black text-brand-800 tabular-nums leading-tight">${totalCost.toLocaleString('ko-KR')}<span class="text-xs font-bold text-brand-600 ml-0.5">원</span></div>
+            </div>
+            <div class="rounded-2xl bg-brand-50/70 border border-brand-100 px-3.5 py-2.5 text-right">
+                <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wide">기록</div>
+                <div class="text-lg font-black text-brand-800 tabular-nums leading-tight">${records.length}<span class="text-xs font-bold text-brand-600 ml-0.5">건</span></div>
+            </div>
+        </div>`;
 
     // 백신 접종 이력 자동 정리
     const vaccines = records.filter(r => r.category === 'vaccine');
     let vaccineHtml = '';
     if (vaccines.length > 0) {
         const items = vaccines.slice(0, 4).map(v =>
-            `<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">💉 ${_esc(v.diagnosis || v.hospital || '접종')} · ${v.visitDate || ''}</span>`
+            `<span class="inline-flex items-center gap-1 bg-white text-emerald-700 border border-emerald-200/70 text-[10px] font-bold px-2 py-0.5 rounded-full">💉 ${_esc(v.diagnosis || v.hospital || '접종')} · ${v.visitDate || ''}</span>`
         ).join('');
         vaccineHtml = `
-            <div class="mb-3 p-2.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
-                <div class="text-[10px] font-black text-emerald-700 mb-1.5">💉 예방접종 이력 (${vaccines.length})</div>
+            <div class="mb-3 p-3 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
+                <div class="text-[10px] font-black text-emerald-700 mb-1.5 uppercase tracking-wide">💉 예방접종 이력 · ${vaccines.length}건</div>
                 <div class="flex flex-wrap gap-1.5">${items}</div>
             </div>`;
     }
@@ -88,31 +104,31 @@ function renderMedicalRecordsTimeline() {
         const cat = MEDICAL_CATEGORIES[r.category] || MEDICAL_CATEGORIES.other;
         const cost = (parseFloat(r.cost) || 0);
         const costHtml = cost > 0
-            ? `<span class="text-xs font-black text-rose-600">${cost.toLocaleString('ko-KR')}원</span>`
+            ? `<span class="inline-flex items-center bg-brand-50 text-brand-700 text-xs font-black px-2 py-0.5 rounded-lg tabular-nums">${cost.toLocaleString('ko-KR')}원</span>`
             : '';
         const photoHtml = r.photo
-            ? `<img loading="lazy" src="${_esc(r.photo)}" onclick="window.open('${_esc(r.photo)}','_blank')" class="w-14 h-14 rounded-lg object-cover border border-gray-200 cursor-pointer shrink-0" alt="검사지/영수증">`
+            ? `<img loading="lazy" src="${_esc(r.photo)}" onclick="window.open('${_esc(r.photo)}','_blank')" class="w-14 h-14 rounded-xl object-cover border border-gray-200 cursor-pointer shrink-0 hover:opacity-90 transition-opacity" alt="검사지/영수증">`
             : '';
         const notesHtml = r.notes
             ? `<p class="text-[11px] text-gray-500 mt-1 keep-all leading-snug">${_esc(r.notes)}</p>`
             : '';
         return `
-            <div class="relative pl-4 pb-3 border-l-2 border-gray-100 last:border-transparent">
-                <span class="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-${cat.color}-400 border-2 border-white"></span>
-                <div class="card-modern bg-white p-3 shadow-soft">
-                    <div class="flex items-start justify-between gap-2">
+            <div class="relative pl-5 pb-3.5 border-l-2 border-brand-100 last:border-transparent last:pb-0">
+                <span class="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full ${cat.dot} ring-2 ring-white"></span>
+                <div class="rounded-2xl bg-white border border-gray-100 p-3.5 shadow-soft">
+                    <div class="flex items-start justify-between gap-2.5">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="inline-flex items-center gap-1 bg-${cat.color}-50 text-${cat.color}-700 text-[10px] font-black px-2 py-0.5 rounded-lg">${cat.icon} ${cat.label}</span>
-                                <span class="text-[11px] font-bold text-gray-500">${_esc(r.visitDate || '')}</span>
+                                <span class="inline-flex items-center gap-1 ${cat.pill} text-[10px] font-black px-2 py-0.5 rounded-lg">${cat.icon} ${cat.label}</span>
+                                <span class="text-[11px] font-bold text-gray-400 tabular-nums">${_esc(r.visitDate || '')}</span>
                             </div>
-                            <div class="mt-1.5 text-sm font-black text-gray-800 keep-all">${_esc(r.hospital || '병원 미기재')}</div>
+                            <div class="mt-2 text-sm font-black text-gray-800 keep-all leading-tight">${_esc(r.hospital || '병원 미기재')}</div>
                             ${r.diagnosis ? `<div class="text-xs text-gray-600 mt-0.5 keep-all">${_esc(r.diagnosis)}</div>` : ''}
                             ${notesHtml}
-                            <div class="mt-1.5 flex items-center gap-3">
+                            <div class="mt-2 flex items-center gap-2.5">
                                 ${costHtml}
-                                <button onclick="openMedicalRecordModal(${r.id})" class="text-[10px] font-bold text-gray-400 hover:text-brand-500">수정</button>
-                                <button onclick="deleteMedicalRecord(${r.id})" class="text-[10px] font-bold text-gray-400 hover:text-rose-500">삭제</button>
+                                <button onclick="openMedicalRecordModal(${r.id})" class="text-[11px] font-bold text-gray-400 hover:text-brand-600 transition-colors">수정</button>
+                                <button onclick="deleteMedicalRecord(${r.id})" class="text-[11px] font-bold text-gray-400 hover:text-rose-500 transition-colors">삭제</button>
                             </div>
                         </div>
                         ${photoHtml}
@@ -121,12 +137,7 @@ function renderMedicalRecordsTimeline() {
             </div>`;
     }).join('');
 
-    const totalCost = records.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0);
-    const totalHtml = totalCost > 0
-        ? `<div class="text-[11px] font-bold text-gray-500 mb-2">누적 진료비 <span class="text-rose-600 font-black">${totalCost.toLocaleString('ko-KR')}원</span> · 총 ${records.length}건</div>`
-        : `<div class="text-[11px] font-bold text-gray-500 mb-2">총 ${records.length}건</div>`;
-
-    container.innerHTML = totalHtml + vaccineHtml + `<div class="mt-1">${cards}</div>`;
+    container.innerHTML = summaryHtml + vaccineHtml + `<div class="mt-1">${cards}</div>`;
 }
 
 function _esc(s) {
@@ -147,7 +158,7 @@ function _ensureMedicalModal() {
     wrap.innerHTML = `
     <div id="medical-record-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm items-center justify-center z-[100] p-4 hidden">
         <div class="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div class="sticky top-0 bg-gradient-to-r from-rose-500 to-rose-600 px-5 py-4 rounded-t-3xl flex items-center justify-between">
+            <div class="sticky top-0 bg-gradient-to-r from-brand-500 to-brand-600 px-5 py-4 rounded-t-3xl flex items-center justify-between">
                 <h2 class="text-base font-bold text-white"><i class="fa-solid fa-notes-medical mr-1.5"></i>건강수첩 기록</h2>
                 <button onclick="closeMedicalRecordModal()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -155,33 +166,33 @@ function _ensureMedicalModal() {
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 mb-1">방문일</label>
-                        <input type="date" id="medical-visit-date" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-rose-400 text-xs">
+                        <input type="date" id="medical-visit-date" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-500 mb-1">구분</label>
-                        <select id="medical-category" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-rose-400 text-xs bg-white">${options}</select>
+                        <select id="medical-category" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs bg-white">${options}</select>
                     </div>
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 mb-1">병원명</label>
-                    <input type="text" id="medical-hospital" placeholder="○○동물병원" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-rose-400 text-xs">
+                    <input type="text" id="medical-hospital" placeholder="○○동물병원" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 mb-1">진단/처방</label>
-                    <input type="text" id="medical-diagnosis" placeholder="예: 종합백신 3차 / 외이염" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-rose-400 text-xs">
+                    <input type="text" id="medical-diagnosis" placeholder="예: 종합백신 3차 / 외이염" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 mb-1">진료비 (원)</label>
-                    <input type="number" id="medical-cost" placeholder="0" min="0" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-rose-400 text-xs">
+                    <input type="number" id="medical-cost" placeholder="0" min="0" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 mb-1">메모</label>
-                    <textarea id="medical-notes" rows="2" placeholder="특이사항, 다음 방문 안내 등" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-rose-400 text-xs resize-none"></textarea>
+                    <textarea id="medical-notes" rows="2" placeholder="특이사항, 다음 방문 안내 등" class="w-full border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand-400 text-xs resize-none"></textarea>
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-gray-500 mb-1">영수증/검사지 사진</label>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="document.getElementById('medical-photo-input').click()" class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-rose-50 hover:border-rose-200">
+                        <button type="button" onclick="document.getElementById('medical-photo-input').click()" class="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-brand-50 hover:border-brand-200 transition-colors">
                             <i class="fa-solid fa-camera mr-1"></i>사진 첨부
                         </button>
                         <img id="medical-photo-preview" class="hidden w-12 h-12 rounded-lg object-cover border border-gray-200">
@@ -189,7 +200,7 @@ function _ensureMedicalModal() {
                     </div>
                     <input type="file" id="medical-photo-input" accept="image/*" class="hidden" onchange="handleMedicalPhotoUpload(event)">
                 </div>
-                <button onclick="saveMedicalRecord()" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm py-3 rounded-2xl transition-all">저장</button>
+                <button onclick="saveMedicalRecord()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm py-3 rounded-2xl transition-all shadow-soft">저장</button>
             </div>
         </div>
     </div>`;

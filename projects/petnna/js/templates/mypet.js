@@ -325,9 +325,9 @@ const MYPET_TEMPLATE = `
         <div class="card-modern overflow-hidden">
             <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
                 <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fa-solid fa-notes-medical text-rose-500"></i>건강수첩
+                    <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
                 </h2>
-                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded-full transition-all">
+                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
                     <i class="fa-solid fa-plus mr-1"></i>기록 추가
                 </button>
             </div>
