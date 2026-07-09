@@ -51,8 +51,8 @@ const MYPET_TEMPLATE = `
 
             <!-- 헤더 -->
             <div class="px-6 pt-5 pb-4 border-b border-gray-100">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
+                <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+                    <div class="min-w-0 lg:shrink-0">
                         <h2 class="text-xl font-bold text-gray-900 keep-all mb-1.5" id="pet-room-name-wrapper">
                             <span id="pet-room-name">댕이의 하루 방 🏠</span>
                         </h2>
@@ -66,24 +66,24 @@ const MYPET_TEMPLATE = `
                             </span>
                         </div>
                     </div>
-                    <div class="flex items-start gap-2 shrink-0">
-                        <!-- 사주 정보 카드 -->
-                        <div id="room-saju-card" class="bg-gradient-to-br from-brand-50 to-brand-50 border border-brand-200 rounded-xl px-3.5 py-3 max-w-sm shadow-soft">
+                    <div class="flex items-center gap-2 w-full lg:flex-1 lg:min-w-0">
+                        <!-- 사주 정보 카드 (남는 가로 공간을 채우도록 flex-1) -->
+                        <div id="room-saju-card" class="flex-1 min-w-0 bg-gradient-to-br from-brand-50 to-brand-50 border border-brand-200 rounded-xl px-3.5 py-3 shadow-soft">
                             <div class="text-[10px] leading-relaxed space-y-1.5">
                                 <div class="flex items-center justify-between mb-1">
                                     <span class="font-black text-brand-700">🔮 사주 분석</span>
                                     <span id="room-saju-score" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">미측정</span>
                                 </div>
-                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5">
-                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1">
+                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5 lg:space-y-0 lg:flex lg:items-stretch lg:gap-4">
+                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 lg:flex-1 lg:min-w-0 lg:border-b-0 lg:border-r lg:pr-4 lg:pb-0">
                                         <span class="font-bold text-brand-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
                                         <div id="room-saju-owner-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
-                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1">
+                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 lg:flex-1 lg:min-w-0 lg:border-b-0 lg:border-r lg:pr-4 lg:pb-0">
                                         <span class="font-bold text-amber-600">🐾 펫</span>: <span id="room-saju-pet">--년생</span>
                                         <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
-                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5">
+                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5 lg:pt-0 lg:flex-1 lg:min-w-0">
                                         조화도 탭에서 사주 조화도를 분석해보세요
                                     </div>
                                 </div>
