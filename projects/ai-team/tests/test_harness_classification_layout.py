@@ -35,10 +35,9 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
             original_root = module.ROOT
             original_checks = {
                 "check_env": module.check_env,
+                "check_ops_hygiene": module.check_ops_hygiene,
                 "check_runtime": module.check_runtime,
                 "check_schedule": module.check_schedule,
-                "check_somi": module.check_somi,
-                "check_agent_links": module.check_agent_links,
                 "check_structure": module.check_structure,
                 "check_classification_layout": module.check_classification_layout,
                 "check_report_layout": module.check_report_layout,
@@ -49,10 +48,9 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
             try:
                 module.ROOT = Path(tmp)
                 module.check_env = lambda: ("OK", "env")
+                module.check_ops_hygiene = lambda: ("OK", "ops hygiene")
                 module.check_runtime = lambda: ("OK", "runtime")
                 module.check_schedule = lambda: ("OK", "schedule")
-                module.check_somi = lambda: ("OK", "somi")
-                module.check_agent_links = lambda: ("OK", "agent links")
                 module.check_structure = lambda: ("OK", "structure")
                 module.check_classification_layout = lambda: ("OK", "classification")
                 module.check_report_layout = lambda: ("OK", "reports")
@@ -81,15 +79,17 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 root / "docs" / "setup",
                 root / "docs" / "plans",
                 root / "docs" / "archive",
+                root / "reports",
                 root / "reports" / "research",
                 root / "reports" / "status",
                 petnna / "docs",
+                petnna / "api",
+                petnna / "css",
+                petnna / "js" / "templates",
                 ai_team / "docs",
                 ai_team / "harness",
                 ai_team / "_shared",
-                ai_team / "scripts" / "agents",
                 ai_team / "skills" / "공용스킬",
-                ai_team / "skills" / "데이브_주식",
                 ai_team / "assets" / "brain-seeds",
             ]:
                 path.mkdir(parents=True, exist_ok=True)
@@ -106,8 +106,21 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 ai_team / "scripts" / "README.md",
                 ai_team / "skills" / "README.md",
                 ai_team / "harness" / "check_all.py",
-                ai_team / "skills" / "데이브_주식" / "SKILL.md",
+                ai_team / "skills" / "영숙_비서" / "tools" / "calendar_manager.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "posting_scheduler.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "reports_manager.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "schedule_manager.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "upload_approval_flow.py",
+                ai_team / "skills" / "예원_CEO" / "tools" / "evaluate_feedback.py",
+                ai_team / "skills" / "예원_CEO" / "tools" / "skill_auditor.py",
+                ai_team / "skills" / "예원_CEO" / "tools" / "upload_manager.py",
                 petnna / "index.html",
+                petnna / "sw.js",
+                petnna / "js" / "app.js",
+                petnna / "js" / "state.js",
+                petnna / "js" / "settings.js",
+                petnna / "api" / "ai-health.js",
+                ai_team / "src" / "extension.ts",
             ]:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("", encoding="utf-8")
@@ -172,6 +185,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 root / "docs" / "setup",
                 root / "docs" / "plans",
                 root / "docs" / "archive",
+                root / "reports",
                 root / "reports" / "research",
                 root / "reports" / "status",
                 petnna / "docs",
@@ -181,7 +195,6 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 ai_team / "docs",
                 ai_team / "harness",
                 ai_team / "_shared",
-                ai_team / "scripts" / "agents",
                 ai_team / "skills" / "공용스킬",
                 ai_team / "assets" / "brain-seeds",
                 root / "projects" / "reports" / "harness",
@@ -199,13 +212,17 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 root / "docs" / "TELEGRAM_BOT_README.md",
                 ai_team / "README.md",
                 ai_team / "scripts" / "README.md",
-                ai_team / "scripts" / "check_holdings.py",
-                ai_team / "scripts" / "daily_balance_check.py",
-                ai_team / "scripts" / "daily_trading_learning.py",
-                ai_team / "scripts" / "start_daily_automation.py",
-                ai_team / "scripts" / "start_trading_team.py",
                 ai_team / "skills" / "README.md",
                 ai_team / "harness" / "check_all.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "calendar_manager.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "posting_scheduler.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "reports_manager.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "schedule_manager.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "telegram_receiver.py",
+                ai_team / "skills" / "영숙_비서" / "tools" / "upload_approval_flow.py",
+                ai_team / "skills" / "예원_CEO" / "tools" / "evaluate_feedback.py",
+                ai_team / "skills" / "예원_CEO" / "tools" / "skill_auditor.py",
+                ai_team / "skills" / "예원_CEO" / "tools" / "upload_manager.py",
                 petnna / "index.html",
                 petnna / "sw.js",
                 petnna / "js" / "app.js",
@@ -215,17 +232,14 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
                 ai_team / "src" / "extension.ts",
             ]
             for agent, tools in {
-                "경수_수사관": ["approval_kyungsoo.py", "comment_forensics.py", "content_inspector.py"],
-                "데이브_주식": ["upbit_analyzer.py", "upbit_auto_trader.py", "upbit_public.py"],
-                "레오_트레이더": ["leo_aggressive_trader.py"],
-                "로율_변호사": ["tax_simulator.py"],
-                "영숙_비서": ["calendar_manager.py", "posting_scheduler.py", "reports_manager.py", "schedule_manager.py", "telegram_receiver.py", "upload_approval_flow.py"],
-                "예원_CEO": ["evaluate_feedback.py", "skill_auditor.py", "upload_manager.py", "yewon_dispatcher.py"],
-                "케빈_인프라": ["petnna_monitor.py", "supabase_manager.py", "sync_env_to_vercel.py", "vercel_manager.py"],
-                "코다리_개발자": ["agent_health_check.py", "ollama_health_check.py", "web_init.py", "web_preview.py"],
-                "티모_디자이너": ["petnna_reviewer.py"],
-                "시그널_분석가": ["market_signal.py"],
-                "펄스_애널리스트": ["market_pulse.py"],
+                "예원_CEO": ["yewon_dispatcher.py", "harness_monitor.py"],
+                "영숙_비서": ["agent_controller.py", "tg_dev_runner.py"],
+                "봄이_QA": ["petnna_qa_patrol.py"],
+                "수리_개발자": ["petnna_dev_engine.py"],
+                "테오_테스트": ["petnna_test_engineer.py"],
+                "백호_백엔드": ["petnna_backend_guard.py"],
+                "미오_디자인": ["petnna_design_review.py"],
+                "나무_기획": ["petnna_product_manager.py"],
             }.items():
                 required_files.append(ai_team / "skills" / agent / "SKILL.md")
                 for tool in tools:

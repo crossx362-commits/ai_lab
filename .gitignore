@@ -23,21 +23,7 @@ reports/harness/*.json
 # 성장루프 학습 런타임 로그(append-only 산출물)
 reports/learning/reward/
 reports/learning/punishment/
-reports/research/backtest_results.json
-reports/research/.stock_dynamic_watch.json
-reports/research/crypto_market_intel.json
-reports/research/hyunbin_alert_state.json
-reports/research/hyunbin_research.json
-reports/research/market_pulse.json
-reports/research/market_signal.json
-reports/research/market_signal_state.json
-reports/research/pulse_state.json
-reports/trading/backtests/*.jsonl
 reports/uploads/
-
-# Trading/runtime state
-projects/ai-team/skills/*/tools/.consecutive_holds.txt
-projects/ai-team/skills/*/tools/.last_decision.json
 projects/ai-team/skills/*/tools/last_run.json
 
 # Secrets and credentials

@@ -1,49 +1,34 @@
-﻿# AI Team - Multi-Agent Trading System
+# AI Team
 
-**Status**: ✅ Production Ready (마이그레이션 완료)  
-**Last Updated**: 2026-06-18
+**Status**: ✅ Production (예원·영숙 + 펫나 자동개발팀 6명)
+**Last Updated**: 2026-07-09
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### 1. Configure Environment
 ```bash
-pip install pyupbit requests cryptography google-generativeai
-```
-
-### 2. Configure Environment
-```bash
-# 환경변수 설정
-cp .env.example .env
-nano .env
-
-# 암호화 (선택사항)
 python _shared/env.py encrypt .env .env.encrypted
 ```
 
-### 3. Run Trading Bots
+### 2. Run Core Daemons
 ```bash
-# 데이브 (보수적)
-python skills/데이브_주식/tools/upbit_auto_trader.py --daemon
-
-# 레오 (공격적)
-python skills/레오_트레이더/tools/leo_aggressive_trader.py --daemon
-
-# 시그널 (시장 인텔)
-python skills/시그널_분석가/tools/market_signal.py --daemon
-
 # 영숙 (텔레그램 봇)
 python skills/영숙_비서/tools/telegram_receiver.py
+
+# 예원 (하네스 워치독)
+python skills/예원_CEO/tools/harness_monitor.py
 ```
 
-### 4. Check Status
+또는 개별 에이전트 제어:
 ```bash
-# 하네스로 시스템 상태 확인
-python harness/check_all.py
+python skills/영숙_비서/tools/agent_controller.py <에이전트명> start|stop|restart|status
+```
 
-# 보유 현황 확인
-python scripts/check_holdings.py
+### 3. Check Status
+```bash
+python harness/check_all.py
 ```
 
 ---
@@ -52,28 +37,26 @@ python scripts/check_holdings.py
 
 ```
 projects/ai-team/
-├── _shared/                  # 통합 모듈 (5 files, 667 lines)
-│   ├── env.py               # 환경변수 통합
-│   ├── llm.py               # LLM 클라이언트 (Ollama → GPT → Gemini)
-│   ├── notify.py            # Telegram + 에이전트 상태
-│   ├── process.py           # ProcessLock + DuplicateGuard
-│   └── utils.py             # 유틸리티
-├── harness/                 # 시스템 검증
-│   ├── check_all.py         # 전체 상태 체크
+├── _shared/                  # 공통 모듈
+│   ├── env.py                # 환경변수 통합
+│   ├── llm.py                # LLM 클라이언트 (Ollama → 구독 CLI → Gemini)
+│   ├── telegram.py           # 텔레그램 발신 (전 에이전트 공용, 유일 경로)
+│   ├── notify.py             # 데몬 프로세스 상태 조회
+│   ├── process.py            # ProcessLock + DuplicateGuard
+│   └── utils.py              # 유틸리티
+├── harness/                  # 시스템 검증
+│   ├── check_all.py          # 전체 상태 체크
 │   └── README.md
-├── scripts/                 # 운영 스크립트
-│   ├── check_holdings.py
-│   ├── daily_balance_check.py
-│   └── start_trading_team.py
-├── skills/                  # 에이전트별 도구
-│   ├── 데이브_주식/
-│   ├── 레오_트레이더/
-│   ├── 시그널_분석가/
-│   ├── 펄스_애널리스트/
-│   ├── 영숙_비서/
+├── skills/                   # 에이전트별 도구
 │   ├── 예원_CEO/
-│   └── ...
-└── docs/                    # 문서
+│   ├── 영숙_비서/
+│   ├── 봄이_QA/
+│   ├── 수리_개발자/
+│   ├── 테오_테스트/
+│   ├── 백호_백엔드/
+│   ├── 미오_디자인/
+│   └── 나무_기획/
+└── docs/                     # 문서
 ```
 
 ---
@@ -82,24 +65,25 @@ projects/ai-team/
 
 | Agent | Role | Status |
 |-------|------|--------|
-| **데이브** | 보수적 매매 (BTC, ETH, SOL, XRP) | ✅ Active |
-| **레오** | 공격적 단타 (DOGE, PEPE, NEAR, SUI) | ✅ Active |
-| **펄스** | 시장 인텔 수집 (Fear & Greed, 김프) | ✅ Active |
-| **영숙** | Telegram 봇 + 스케줄러 | ✅ Active |
-| **예원** | CEO - Task dispatcher | 🟡 Manual |
-| **케빈** | Vercel + Supabase 인프라 | 🟡 Manual |
-| **티모** | UI/UX 리뷰 | 🟡 Manual |
-| **코다리** | 개발자 - Health checks | 🟡 Manual |
+| **예원** | CEO — 오케스트레이션·하네스·워치독 | ✅ Active |
+| **영숙** | 텔레그램 게이트웨이·일정·정시 잡 | ✅ Active |
+| **봄이** | 펫나 QA 상시 순찰 | ✅ Active |
+| **수리** | 펫나 자동 개선 엔진 | ✅ Active |
+| **테오** | 펫나 E2E 테스트 자동화 | ✅ Active |
+| **백호** | Supabase 계약 감사 | ✅ Active |
+| **미오** | 펫나 디자인 리뷰 | ✅ Active |
+| **나무** | 펫나 기획 PM | ✅ Active |
+
+> 과거 주식·코인 트레이딩 에이전트(소미·한별·행크·유나·레온·마켓데스크·지아)와 그 이전 세대
+> 에이전트(데이브·레오·시그널·펄스·케빈·경수·코다리·티모·로율)는 전부 삭제됨 —
+> git 이력에서 복구 가능.
 
 ---
 
 ## 📚 Documentation
 
-- **[MIGRATION_COMPLETE.md](MIGRATION_COMPLETE.md)** - 마이그레이션 최종 요약
-- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - 마이그레이션 가이드
-- **[CONSOLIDATION_SUMMARY.md](CONSOLIDATION_SUMMARY.md)** - 프로젝트 개요
-- **[harness/README.md](harness/README.md)** - 하네스 사용법
-- **[../../CLAUDE.md](../../CLAUDE.md)** - 전체 시스템 가이드
+- **[harness/README.md](harness/README.md)** — 하네스 사용법
+- **[../../CLAUDE.md](../../CLAUDE.md)** — 전체 시스템 가이드
 
 ---
 
@@ -110,24 +94,14 @@ projects/ai-team/
 python harness/check_all.py
 ```
 
-### Restart Bots
+### Restart a Daemon
 ```bash
-# 개별 재시작
-pkill -f upbit_auto_trader.py
-python skills/데이브_주식/tools/upbit_auto_trader.py --daemon
-
-# 전체 재시작
-bash scripts/launchd/uninstall.sh  # macOS
-bash scripts/launchd/install.sh
+python skills/영숙_비서/tools/agent_controller.py 영숙 restart
 ```
 
 ### View Logs
 ```bash
-# 트레이딩 로그
-tail -f output/trading_logs/dave_*.log
-
-# 영숙 봇 로그
-tail -f skills/영숙_비서/tools/telegram_receiver.log
+tail -f output/bot_logs/youngsuk_telegram.out.log
 ```
 
 ---
@@ -136,51 +110,20 @@ tail -f skills/영숙_비서/tools/telegram_receiver.log
 
 ### Bot Not Running
 ```bash
-# 프로세스 확인
-ps aux | grep python
-
-# 락 파일 확인 (Windows)
-# Named Mutex 자동 해제됨
-
-# 수동 재시작
-python skills/데이브_주식/tools/upbit_auto_trader.py --once
+python skills/영숙_비서/tools/agent_controller.py 영숙 status
+python skills/영숙_비서/tools/agent_controller.py 영숙 restart
 ```
 
 ### Environment Variables Missing
 ```bash
-# .env 복호화
 python _shared/env.py decrypt .env.encrypted .env.decrypted
-
-# 환경변수 검증
-python scripts/agents/check_agent_env_connections.py
 ```
 
 ### Import Errors
 ```bash
-# 통합 모듈 확인
-ls -la _shared/{env,llm,notify,process,utils}.py
-
-# 하네스로 구조 검증
+ls -la _shared/{env,llm,telegram,notify,process,utils}.py
 python harness/check_all.py
 ```
-
----
-
-## 📊 Migration Stats
-
-**Completed**: 2026-06-18  
-**Files Changed**: 53  
-**Modules Consolidated**: 24 → 5 (**82% reduction**)  
-**Token Savings**: 3,718 → 667 lines  
-
----
-
-## 🏆 Credits
-
-- **Architecture**: Unified module system
-- **Migration**: Automated batch conversion (53 files)
-- **Testing**: Harness-based validation
-- **Documentation**: 6 comprehensive guides
 
 ---
 

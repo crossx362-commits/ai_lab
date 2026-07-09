@@ -78,7 +78,7 @@ All agents use centralized utilities in `projects/ai-team/_shared/`:
 | `ollama_client.py` | Local Ollama LLM with task-based model selection |
 | `telegram_notifier.py` | Send notifications to Telegram |
 | `process_lock.py` | Windows Named Mutex for preventing duplicate processes |
-| `agent_status.py` | Get status reports for all 13 agents |
+| `agent_status.py` | Get status reports for all agents |
 | `duplicate_guard.py` | Prevent duplicate content uploads |
 
 **Import pattern** used by all agents:
@@ -152,53 +152,9 @@ See `.env` for full list. Key variables:
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 - `GEMINI_API_KEY`
 - `ANTHROPIC_API_KEY` (Codex fallback)
-- `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`
 - `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID`
 - `NOTION_API_KEY`, `NOTION_DATABASE_ID`
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-
----
-
-## 📊 Trading System
-
-### Trading Team Components
-
-1. **Market Intelligence** (`market_signal.py`, `market_pulse.py`):
-   - Fetches Upbit market data
-   - Analyzes price trends, order book depth
-   - Publishes to `reports/research/market_signal.json` and compatible `market_pulse.json`
-
-2. **Conservative Trader** (`upbit_auto_trader.py`):
-   - Reads market intelligence
-   - Executes safe trades with stop-loss
-   - Logs all trades
-
-3. **Aggressive Trader** (`leo_aggressive_trader.py`):
-   - High-frequency day trading
-   - Tighter risk tolerance
-   - More volatile strategy
-
-### Public API Fallback
-
-If `pyupbit` module is unavailable, `upbit_public.py` provides fallback REST API access.
-
-### Trading Commands
-
-Start live trading:
-```bash
-cd projects/ai-team/scripts
-python start_trading_team.py --live
-```
-
-Check holdings:
-```bash
-python check_holdings.py
-```
-
-Daily balance check:
-```bash
-python daily_balance_check.py
-```
 
 ---
 
@@ -208,7 +164,7 @@ python daily_balance_check.py
 
 The bot uses Gemini Function Calling to map natural language to tools:
 
-- **"현황 보고해줘" / "다들 뭐해?"** → `get_agent_status()` (shows all 13 agents)
+- **"현황 보고해줘" / "다들 뭐해?"** → `get_agent_status()` (shows all agents)
 - **"일정 알려줘" / "캘린더 확인해봐"** → `list_calendar()`
 - **"에이전트 작업 요청"** → `dispatch()` → CEO orchestration
 
@@ -282,7 +238,6 @@ projects/petnna/
 
 - Agent logs: `output/bot_logs/`
 - System logs: `.logs/`
-- Trading logs: Check respective trader scripts
 
 ---
 

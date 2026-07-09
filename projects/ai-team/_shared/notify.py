@@ -101,7 +101,7 @@ def _launchd_loaded(label: str) -> bool:
         return False
     for line in result.stdout.splitlines():
         parts = line.split()
-        if parts and parts[-1] == label:  # 마지막 컬럼=라벨 정확 일치 (somi/somi_screener 혼동 방지)
+        if parts and parts[-1] == label:  # 마지막 컬럼=라벨 정확 일치 (접두사 겹침으로 인한 오탐 방지)
             return True
     return False
 

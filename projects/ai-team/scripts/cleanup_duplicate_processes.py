@@ -99,8 +99,7 @@ def terminate(pid: int) -> str:
 def format_removed_message(removed: list[tuple[str, int, str]]) -> str | None:
     if not removed:
         return None
-    quiet_labels = ("시그널", "signal", "market_signal")
-    visible = [item for item in removed if not any(q in item[0].lower() for q in quiet_labels)]
+    visible = removed
     if not visible:
         return None
     lines = ["중복 프로세스 정리 완료"]
