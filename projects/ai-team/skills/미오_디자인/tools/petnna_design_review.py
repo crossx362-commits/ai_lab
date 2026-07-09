@@ -37,11 +37,13 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.llm import text as llm_text  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
 PETNNA_ROOT = PROJECT_ROOT / "projects" / "petnna"
 OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "design"
+
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "mio_slots.json"
 PORT = int(os.getenv("MIO_PORT", "8936"))
@@ -114,19 +116,43 @@ def review(do_send: bool) -> None:
            if design_md.exists() else
            "일반 UX 휴리스틱(시각 위계·CTA 가시성·여백·타이포·일관성·모바일 터치 영역)으로 평가하고, "
            "필요하면 references/awesome-design-md/ 의 실사이트 디자인 시스템을 참고하라.")
-    ok, out = run_claude(
+    # 1단계: 자유 형식 리뷰 (JSON 강제 없음 — 스키마를 걸면 오히려 "오너에게 보고하는
+    # 디자이너" 대화체로 이탈하는 경우가 잦았다, 2026-07-09 나무에서 확인).
+    ok, analysis = run_claude(
         "너는 시니어 프로덕트 디자이너다. 펫나(펫 케어 플랫폼 SPA)의 현재 화면을 리뷰하라.\n"
         f"스크린샷을 Read 도구로 열어 실제로 보라: {', '.join(str(s) for s in shots)}\n"
         f"{ref}\n"
         "모르는 디자인 트렌드·근거는 웹서치로 확인하라.\n\n"
-        "출력: 반드시 JSON 배열만. 각 항목 {\"title\": \"개선 제목(한국어, 구체적으로)\", "
-        "\"detail\": \"무엇을 어떻게 바꿀지 + 근거\", \"priority\": \"P2|P3\"}. "
-        "실행 가능하고 CSS/HTML 수준에서 구현 가능한 것 위주로 3~6개. 코드는 수정하지 마라.",
+        "실행 가능하고 CSS/HTML 수준에서 구현 가능한 것 위주로 3~6개 제안하라. 코드는 수정하지 마라.",
         PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
-        permission_mode="plan")
-    items = extract_json(out) if ok else None
+        permission_mode="acceptEdits")
+    if not ok or not analysis:
+        print(f"[미오] 리뷰 실패: {analysis[-200:] if analysis else '응답 없음'}")
+        if do_send:
+            send("🎨 미오 — 이번 주 디자인 리뷰 실패(리뷰 단계), 다음 주기 재시도", silent=True)
+        return
+
+    # 2단계: 별도의 단순 추출 호출로 위 리뷰에서 항목만 JSON화.
+    extracted = llm_text(
+        "다음은 앱 디자인 리뷰다. 여기서 실제로 제안된 구체적 개선 항목들만 뽑아 JSON으로 "
+        "정리하라. 새로운 내용을 추가하지 말고 리뷰 내용만 반영하라.\n\n"
+        f"[리뷰]\n{analysis[:6000]}\n\n"
+        "출력은 반드시 JSON 객체 하나: "
+        '{"items": [{"title": "개선 제목(한국어, 구체적으로)", "detail": "무엇을 어떻게 바꿀지 + 근거", '
+        '"priority": "P2 또는 P3"}]}. 구체적 개선 제안이 없으면 items를 빈 배열로 하라.',
+        json_mode=True, task="coding",
+    )
+    parsed = extract_json(extracted) if extracted else None
+    if isinstance(parsed, dict):
+        items = parsed.get("items")
+    elif isinstance(parsed, list):
+        # extract_json()은 텍스트에서 먼저 발견되는 대괄호 쌍을 우선 시도하므로
+        # {"items":[...]}의 안쪽 배열만 반환되는 경우가 있다 — 그대로 받아들인다.
+        items = parsed
+    else:
+        items = None
     if not isinstance(items, list):
-        print(f"[미오] 리뷰 실패/파싱 불가: {out[-200:] if out else '응답 없음'}")
+        print(f"[미오] 리뷰 실패/파싱 불가: {extracted[-200:] if extracted else '응답 없음'}")
         if do_send:
             send("🎨 미오 — 이번 주 디자인 리뷰 실패(응답 파싱 불가), 다음 주기 재시도", silent=True)
         return

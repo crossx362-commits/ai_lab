@@ -35,11 +35,13 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.llm import text as llm_text  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
 PETNNA_ROOT = PROJECT_ROOT / "projects" / "petnna"
 OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "product"
+
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "namu_slots.json"
 PLAN_WEEKDAY = int(os.getenv("NAMU_WEEKDAY", "1"))  # 1=화요일
@@ -79,7 +81,9 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
 
 def plan(do_send: bool) -> None:
     print(f"[{datetime.now()}] 🌳 나무 기획 사이클 시작")
-    ok, out = run_claude(
+    # 1단계: 자유 형식 리서치·분석 (JSON 강제 없음 — 스키마를 걸면 오히려
+    # "오너에게 보고하는 PM" 대화체로 이탈하는 경우가 잦았다, 2026-07-09 확인).
+    ok, analysis = run_claude(
         "너는 펫 케어 플랫폼의 시니어 PM이다. 펫나(projects/petnna, 정적 SPA + Supabase, "
         "펫 힐링/케어 플랫폼: 건강 대시보드·산책·앨범·소셜·상점·지도·사주·게임 등)의 다음 개선을 기획하라.\n\n"
         f"[현재 기능 모듈]\n{feature_inventory()}\n\n"
@@ -88,15 +92,37 @@ def plan(do_send: bool) -> None:
         "인기 기능을 조사하라.\n"
         "2. 현재 기능 대비 갭을 분석하라. 필요하면 projects/petnna/의 코드·문서를 Read로 확인하라.\n"
         "3. '정적 SPA + Supabase' 제약 안에서 1~3일 규모로 구현 가능한 소기능 3~5개를 제안하라. "
-        "대규모 인프라·네이티브 전용 기능은 제외.\n\n"
-        "출력: 반드시 JSON 배열만. 각 항목 {\"title\": \"기능 제목(한국어)\", "
-        "\"detail\": \"무엇을·왜(트렌드/경쟁 근거)·간단한 구현 방향\", \"priority\": \"P2|P3\"}. "
-        "코드는 수정하지 마라.",
+        "대규모 인프라·네이티브 전용 기능은 제외. 코드는 수정하지 마라.",
         PROJECT_ROOT, timeout=900, allowed_tools="Read,WebSearch,WebFetch",
-        permission_mode="plan")
-    items = extract_json(out) if ok else None
+        permission_mode="acceptEdits")
+    if not ok or not analysis:
+        print(f"[나무] 리서치 실패: {analysis[-200:] if analysis else '응답 없음'}")
+        if do_send:
+            send("🌳 나무 — 이번 주 기획 사이클 실패(리서치 단계), 다음 주기 재시도", silent=True)
+        return
+
+    # 2단계: 별도의 단순 추출 호출로 위 분석에서 항목만 JSON화.
+    # 리서치와 포맷팅을 한 호출에 섞지 않아야 포맷 준수율이 오른다.
+    extracted = llm_text(
+        "다음은 펫 케어 앱 기능 기획 분석이다. 여기서 실제로 제안된 구체적 신규 기능들만 뽑아 "
+        "JSON으로 정리하라. 새로운 내용을 추가하지 말고 분석 내용만 반영하라.\n\n"
+        f"[분석]\n{analysis[:6000]}\n\n"
+        "출력은 반드시 JSON 객체 하나: "
+        '{"items": [{"title": "기능 제목(한국어)", "detail": "무엇을·왜·구현 방향", '
+        '"priority": "P2 또는 P3"}]}. 구체적 기능 제안이 없으면 items를 빈 배열로 하라.',
+        json_mode=True, task="coding",
+    )
+    parsed = extract_json(extracted) if extracted else None
+    if isinstance(parsed, dict):
+        items = parsed.get("items")
+    elif isinstance(parsed, list):
+        # extract_json()은 텍스트에서 먼저 발견되는 대괄호 쌍을 우선 시도하므로
+        # {"items":[...]}의 안쪽 배열만 반환되는 경우가 있다 — 그대로 받아들인다.
+        items = parsed
+    else:
+        items = None
     if not isinstance(items, list):
-        print(f"[나무] 기획 실패/파싱 불가: {out[-200:] if out else '응답 없음'}")
+        print(f"[나무] 기획 실패/파싱 불가: {extracted[-200:] if extracted else '응답 없음'}")
         if do_send:
             send("🌳 나무 — 이번 주 기획 사이클 실패(응답 파싱 불가), 다음 주기 재시도", silent=True)
         return

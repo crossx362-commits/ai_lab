@@ -129,7 +129,7 @@ def llm_analysis(findings: list[dict]) -> str:
         "안전한 수정 방향(마이그레이션 SQL 초안 포함 가능)을 5줄 이내씩 제시하라. "
         "모르는 Supabase/PostgREST 동작은 웹서치로 확인하라. 코드는 수정하지 마라.",
         PROJECT_ROOT, timeout=600, allowed_tools="WebSearch,WebFetch",
-        permission_mode="plan")
+        permission_mode="acceptEdits")
     return out[:2500] if ok else ""
 
 

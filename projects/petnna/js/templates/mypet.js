@@ -92,6 +92,12 @@ const MYPET_TEMPLATE = `
                                 </button>
                             </div>
                         </div>
+                        <!-- 펫 추가 (주요 기능 상시 노출 — 설정 메뉴 안에만 있던 것을 헤더로 승격) -->
+                        <button onclick="openPetRegistrationModal()" id="room-add-pet-btn" title="펫 추가"
+                            class="h-9 px-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white flex items-center gap-1.5 transition-all shrink-0 shadow-soft">
+                            <i class="fa-solid fa-plus text-sm"></i>
+                            <span class="text-xs font-black">펫 추가</span>
+                        </button>
                         <!-- 설정 버튼 -->
                         <button onclick="toggleRoomSettings()" id="room-settings-btn"
                             class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all shrink-0">
