@@ -136,7 +136,7 @@ const MYPET_TEMPLATE = `
                 <div id="butler-profile-editor-panel" class="hidden mt-3 bg-white border border-brand-100 p-4 rounded-2xl space-y-3 text-xs">
                     <div class="flex items-center justify-between pb-1 border-b border-gray-100">
                         <span class="font-black text-gray-700"><i class="fa-solid fa-user-gear mr-1 text-brand-500"></i>집사 프로필</span>
-                        <button onclick="toggleButlerProfileEdit()" class="text-gray-300 hover:text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="toggleButlerProfileEdit()" class="text-gray-300 hover:text-gray-500" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="shrink-0">
@@ -168,7 +168,7 @@ const MYPET_TEMPLATE = `
                 <div id="pet-profile-editor-panel" class="hidden mt-3 bg-white border border-amber-100 p-4 rounded-2xl space-y-3 text-xs">
                     <div class="flex items-center justify-between pb-1 border-b border-gray-100">
                         <span class="font-black text-gray-700"><i class="fa-solid fa-paw mr-1 text-amber-500"></i>방 & 펫 설정</span>
-                        <button onclick="togglePetProfileEdit()" class="text-gray-300 hover:text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="togglePetProfileEdit()" class="text-gray-300 hover:text-gray-500" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="room-layout-picker">
                         <button id="room-layout-living" onclick="setRoomLayoutForActivePet('living')" class="room-layout-option is-active">

@@ -133,7 +133,7 @@ const ALBUM_TEMPLATE = `
     <div class="bg-white rounded-3xl p-6 w-full max-w-xs space-y-4 shadow-2xl animate-fade-in">
         <div class="flex items-center justify-between">
             <h3 class="font-black text-gray-800 text-sm">⚖️ 체중 기록</h3>
-            <button onclick="closeWeightLogModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeWeightLogModal()" class="text-gray-400 hover:text-gray-600" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="space-y-3">
             <div>
@@ -165,7 +165,7 @@ const ALBUM_TEMPLATE = `
             <h3 class="font-black text-brand-800 text-sm"><i class="fa-solid fa-wand-magic-sparkles mr-1 text-brand-500"></i> 일기장 꾸미기 & 쓰기</h3>
             <div class="flex items-center gap-3">
                 <button onclick="resetStickerCanvas()" class="text-[10px] text-gray-500 hover:text-red-500 font-bold px-2 py-1 bg-white rounded-lg shadow-sm">초기화</button>
-                <button onclick="closeDiaryComposerModal()" class="text-brand-400 hover:text-brand-600 text-lg"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeDiaryComposerModal()" class="text-brand-400 hover:text-brand-600 text-lg" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
         
@@ -304,7 +304,7 @@ const ALBUM_TEMPLATE = `
     <div class="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
         <div class="bg-brand-50 p-4 flex justify-between items-center border-b border-brand-100">
             <h3 class="font-black text-brand-800 text-sm"><i class="fa-solid fa-user-plus mr-1"></i> 교환 일기 친구 초대</h3>
-            <button onclick="closeFriendInviteModal()" class="text-brand-400 hover:text-brand-600"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeFriendInviteModal()" class="text-brand-400 hover:text-brand-600" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="p-5 space-y-4">
             <p class="text-[11px] text-gray-500 font-medium leading-relaxed">

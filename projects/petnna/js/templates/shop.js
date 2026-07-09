@@ -378,7 +378,7 @@ const SHOP_TEMPLATE = `
                 <span class="text-3xl">🛁</span>
                 <h3 class="font-black text-gray-800 text-base">펫 스파 & 미용</h3>
             </div>
-            <button onclick="toggleShopSection('healing-spa')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="toggleShopSection('healing-spa')" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
@@ -409,7 +409,7 @@ const SHOP_TEMPLATE = `
                 <span class="text-3xl">🏕️</span>
                 <h3 class="font-black text-gray-800 text-base">반려동물 동반 캠핑</h3>
             </div>
-            <button onclick="toggleShopSection('healing-camping')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="toggleShopSection('healing-camping')" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
@@ -440,7 +440,7 @@ const SHOP_TEMPLATE = `
                 <span class="text-3xl">🌸</span>
                 <h3 class="font-black text-gray-800 text-base">펫 마사지 & 테라피</h3>
             </div>
-            <button onclick="toggleShopSection('healing-therapy')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="toggleShopSection('healing-therapy')" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
@@ -463,7 +463,7 @@ const SHOP_TEMPLATE = `
                 <span class="text-3xl">🏨</span>
                 <h3 class="font-black text-gray-800 text-base">펫호텔 (위탁)</h3>
             </div>
-            <button onclick="toggleShopSection('care-hotel')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="toggleShopSection('care-hotel')" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>
@@ -486,7 +486,7 @@ const SHOP_TEMPLATE = `
                 <span class="text-3xl">🏥</span>
                 <h3 class="font-black text-gray-800 text-base">동물병원 픽업·동행</h3>
             </div>
-            <button onclick="toggleShopSection('care-hospital')" class="text-gray-400 hover:text-gray-600">
+            <button onclick="toggleShopSection('care-hospital')" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                 <i class="fa-solid fa-xmark text-xl"></i>
             </button>
         </div>

@@ -101,7 +101,7 @@ const SOCIAL_TEMPLATE = `
                         <i class="fa-solid fa-circle-notch animate-spin text-xs"></i>
                         <span>사진 업로드 중...</span>
                     </div>
-                    <button onclick="clearAttachedPhoto()" class="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="clearAttachedPhoto()" class="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
                 </div>
 
                 <!-- 동영상 구간 슬라이더 (트리머) -->
