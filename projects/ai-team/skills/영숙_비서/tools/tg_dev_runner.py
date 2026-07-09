@@ -19,7 +19,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.insert(0, str(PROJECT_ROOT / "projects" / "ai-team"))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 

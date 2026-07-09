@@ -21,7 +21,8 @@ AI_TEAM = Path(__file__).resolve().parents[1]
 ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
-from _shared.notify import CONTINUOUS_DAEMONS, send  # noqa: E402
+from _shared.notify import CONTINUOUS_DAEMONS  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 
 
 def _python_processes() -> list[dict]:

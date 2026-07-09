@@ -39,7 +39,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))

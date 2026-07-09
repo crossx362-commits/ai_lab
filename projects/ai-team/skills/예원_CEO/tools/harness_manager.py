@@ -19,7 +19,8 @@ PROJECT_ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env import load_env
-from _shared.notify import agent_status, send
+from _shared.notify import agent_status
+from _shared.telegram import send
 
 load_env(str(PROJECT_ROOT))
 

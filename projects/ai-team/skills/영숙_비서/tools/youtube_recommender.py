@@ -16,7 +16,7 @@ for _ in range(6):
     _root = os.path.dirname(_root)
 sys.path.insert(0, _root)
 import urllib.request
-from _shared.notify import send
+from _shared.telegram import send
 from _shared.env import load_env as _load_env
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 

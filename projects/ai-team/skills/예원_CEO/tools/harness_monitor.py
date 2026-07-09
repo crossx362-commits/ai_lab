@@ -8,7 +8,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
-from _shared.notify import send, agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
+from _shared.notify import agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
+from _shared.telegram import send
 from _shared.process import ProcessLock
 from _shared import growth
 

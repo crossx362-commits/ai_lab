@@ -453,7 +453,7 @@ def main() -> int:
 
     if worst >= 1:
         try:
-            from _shared.notify import send
+            from _shared.telegram import send
             issues = [r for r in results if r["status"] != "OK"]
             lines = [f"{r['status']} {r['name']}: {r['message'][:80]}" for r in issues]
             send(f"[하네스] {overall}\n" + "\n".join(lines))

@@ -31,7 +31,8 @@ PROJECT_ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env import load_env            # noqa: E402
-from _shared.notify import send, agent_status, _AGENT_LABELS, CONTINUOUS_DAEMONS  # noqa: E402
+from _shared.notify import agent_status, _AGENT_LABELS, CONTINUOUS_DAEMONS  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 from _shared.registry import load_registry  # noqa: E402
 
 load_env()

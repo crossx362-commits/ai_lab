@@ -1,20 +1,14 @@
-"""Telegram notification and current ai-team daemon status helpers."""
+"""ai-team 데몬 상태 조회 헬퍼 — 프로세스/launchd 생존 여부만 다룬다.
+
+텔레그램 발신은 `_shared/telegram.py`로 분리됨(2026-07-09 재구축) — 이 모듈은
+send/report 등을 더 이상 갖지 않는다. status_report()는 텔레그램 API를 안 건드리는
+순수 상태-텍스트 생성기라 여기 남아있다(호출부가 그 문자열을 어떻게 보낼지는 모른다)."""
 
 from __future__ import annotations
 
-import json
-import os
-import re
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 from datetime import datetime
-
-# 텔레그램이 지원하는 HTML 태그 — 이 태그가 있을 때만 parse_mode=HTML을 쓴다.
-# 평문(태그 없음)은 파싱 자체를 안 하므로 '<', '&' 등 어떤 문자가 와도 400이 원천 불가능.
-_TG_HTML_TAG = re.compile(
-    r"</?(b|strong|i|em|u|ins|s|strike|del|code|pre|a|tg-spoiler|blockquote)\b", re.IGNORECASE)
 
 
 # 상시 데몬 (프로세스가 계속 떠 있어야 정상)
@@ -58,49 +52,6 @@ _AGENT_LABELS = {
     "namu_pm": "나무 (펫나 기획)",
     "harness": "하네스 (시스템 점검)",
 }
-
-
-def send(msg: str, silent: bool = False) -> bool:
-    """Send a Telegram message when credentials are configured."""
-    if os.getenv("SUPPRESS_TELEGRAM") == "true":
-        print(f"[Telegram suppressed] {msg[:100]}")
-        return True
-
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print("[Telegram] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
-        return False
-
-    def _post(parse_mode: str | None) -> dict:
-        body = {"chat_id": chat_id, "text": msg[:4096], "disable_notification": silent}
-        if parse_mode:
-            body["parse_mode"] = parse_mode
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return json.loads(response.read().decode("utf-8"))
-
-    wants_html = bool(_TG_HTML_TAG.search(msg))
-    try:
-        try:
-            result = _post("HTML" if wants_html else None)
-        except urllib.error.HTTPError as he:
-            if he.code != 400 or not wants_html:
-                raise
-            # HTML 태그가 있어도 본문 나머지가 파싱을 깨면 400 → 평문 폴백(서식은 잃어도 전달 보장)
-            result = _post(None)
-        if result.get("ok"):
-            print(f"[Telegram] Sent {len(msg)} chars")
-            return True
-        print(f"[Telegram] API error: {result}")
-        return False
-    except Exception as exc:
-        print(f"[Telegram] {exc}")
-        return False
 
 
 def _find_pids(script_name: str) -> list[str]:
@@ -203,30 +154,4 @@ def status_report() -> str:
     return "\n".join(lines)
 
 
-def publish_report(title: str, body: str) -> bool:
-    """보고서·브리핑은 노션에 작성하고 텔레그램엔 '제목 + 노션 링크'만 보낸다.
-    노션 불가(키 없음/실패) 시 본문을 텔레그램으로 폴백 전송(보고 유실 방지)."""
-    url = ""
-    try:
-        from _shared import research
-        url = research.notion_report(title, body)
-    except Exception:
-        url = ""
-    if url:
-        return send(f"📄 {title}\n{url}")
-    # 폴백: 노션 실패 → 본문 그대로 전송(분할)
-    ok = True
-    for i in range(0, len(body), 3900):
-        ok = send(body[i:i + 3900]) and ok
-    return ok
-
-
-def report(agent: str, action: str, detail: str = "") -> None:
-    msg = f"[{agent}] {action}"
-    if detail:
-        msg += f"\n{detail}"
-    send(msg, silent=True)
-
-
-telegram = send
 status = agent_status

@@ -28,7 +28,7 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 from _shared.env import load_env
-from _shared.notify import send
+from _shared.telegram import send
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 load_env()

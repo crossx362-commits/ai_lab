@@ -32,7 +32,7 @@ sys.path.insert(0, str(AI_TEAM))
 from _shared.registry import active_agents, route_by_keyword, get_agent  # noqa: E402
 from _shared.agent_loop import run_agent                       # noqa: E402
 from _shared.llm import text as llm_text, is_available as llm_available  # noqa: E402
-from _shared.notify import report                              # noqa: E402
+from _shared.telegram import report                            # noqa: E402
 
 sys.path.insert(0, str(_here))
 import agent_factory                                           # noqa: E402

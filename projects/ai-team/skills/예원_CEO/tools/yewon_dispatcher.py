@@ -10,7 +10,7 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, AI_TEAM_ROOT)
 
 from _shared.llm import text as llm_text
-from _shared.notify import report
+from _shared.telegram import report
 
 ACTIVE_AGENT_KEYWORDS = {
     "somi": ["소미", "somi", "국내주식", "종목", "수급", "세력", "큰 수익", "매수", "매수판단", "숏커버링", "공매도", "대차잔고", "우리기술"],

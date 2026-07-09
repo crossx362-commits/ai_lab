@@ -1,5 +1,5 @@
 ﻿import json
-from _shared.notify import send
+from _shared.telegram import send
 from _shared.llm import ollama as lm_chat, is_available as lm_available
 
 # 즉시 반려 기준 — 이 키워드가 포함되면 Ollama 검토 없이 바로 거부

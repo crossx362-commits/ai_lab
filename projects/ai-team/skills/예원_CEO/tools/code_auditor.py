@@ -34,7 +34,7 @@ _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
-from _shared.notify import send
+from _shared.telegram import send
 from _shared.env import find_root
 
 _root = find_root(_here)

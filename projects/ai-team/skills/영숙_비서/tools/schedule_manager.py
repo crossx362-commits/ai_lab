@@ -26,7 +26,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(_here, "..", "..", "..", "..", "..")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "projects", "ai-team"))
 
-from _shared.notify import send
+from _shared.telegram import send
 from _shared.llm import is_available as lm_available
 
 SCHEDULES_FILE = os.path.join(_here, "schedules.json")
