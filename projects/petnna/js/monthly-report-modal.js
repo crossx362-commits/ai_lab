@@ -97,6 +97,28 @@ function updateMonthlyReportData() {
         : 0;
     const careRateEl = document.getElementById('report-modal-care-rate');
     if (careRateEl) careRateEl.textContent = `${careRate}%`;
+
+    // ── 지난 달 대비 개인화 비교 ──────────────────────────────
+    let ly = now.getFullYear(), lm = now.getMonth() - 1;
+    if (lm < 0) { lm = 11; ly -= 1; }
+    const lastMonth = `${ly}-${String(lm + 1).padStart(2, '0')}`;
+
+    const lastWalks = walkList.filter(w => getRecordDate(w).startsWith(lastMonth));
+    const lastDistance = lastWalks.reduce((s, w) => s + (parseFloat(w.distance) || 0), 0);
+    const lastLogs = healthHistory.filter(h => getRecordDate(h).startsWith(lastMonth));
+
+    const applyDelta = (id, cur, prev, unit, digits) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const d = cur - prev;
+        const fmt = (n) => digits ? Math.abs(n).toFixed(digits) : Math.abs(n);
+        if (d > 0.0001) { el.textContent = `▲ ${fmt(d)}${unit}`; el.style.color = '#059669'; }
+        else if (d < -0.0001) { el.textContent = `▼ ${fmt(d)}${unit}`; el.style.color = '#dc2626'; }
+        else { el.textContent = '– 동일'; el.style.color = '#9ca3af'; }
+    };
+    applyDelta('report-modal-walk-count-delta', monthlyWalks.length, lastWalks.length, '회', 0);
+    applyDelta('report-modal-distance-delta', totalDistance, lastDistance, 'km', 1);
+    applyDelta('report-modal-log-delta', monthlyLogs.length, lastLogs.length, '회', 0);
 }
 
 // 모달 템플릿
@@ -147,6 +169,28 @@ const MONTHLY_REPORT_MODAL = `
                             <i class="fa-solid fa-fire text-emerald-500 mr-1"></i>
                             매일 건강 기록 달성
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 지난 달 대비 (개인화 비교) -->
+            <div class="card-modern bg-violet-50/40 p-4">
+                <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-trend-up text-violet-500"></i>
+                    지난 달 대비
+                </h3>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                        <div class="text-xs text-gray-500 mb-0.5">산책</div>
+                        <div class="text-sm font-bold" id="report-modal-walk-count-delta">–</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-0.5">거리</div>
+                        <div class="text-sm font-bold" id="report-modal-distance-delta">–</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-0.5">건강기록</div>
+                        <div class="text-sm font-bold" id="report-modal-log-delta">–</div>
                     </div>
                 </div>
             </div>

@@ -26,7 +26,7 @@ if _root not in sys.path:
 
 from _shared.env import load_env
 from _shared.llm import ollama, claude_code, gemini
-from _shared.notify import send
+from _shared.telegram import send
 
 load_env()
 

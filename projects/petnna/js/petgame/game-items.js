@@ -9,6 +9,9 @@
         { id: 'meat',   name: '고기',    emoji: '🍖', img: P + 'food/meat.png',   price: 40,  hunger: 50,  happy: 15, xp: 15 },
         { id: 'cake',   name: '케이크',  emoji: '🍰', img: P + 'food/cake.png',   price: 60,  hunger: 40,  happy: 40, xp: 20 },
         { id: 'bento',  name: '특식 도시락', emoji: '🍱', img: P + 'food/bento.png', price: 100, hunger: 100, happy: 100, xp: 30 },
+        { id: 'churu',  name: '츄르',    emoji: '🐟', img: P + 'food/churu.png',  price: 35,  hunger: 25,  happy: 30, xp: 12 },
+        { id: 'yogurt', name: '요거트',  emoji: '🍦', img: P + 'food/yogurt.png', price: 50,  hunger: 30,  happy: 35, xp: 16 },
+        { id: 'jerky',  name: '수제 육포', emoji: '🥓', img: P + 'food/jerky.png', price: 90,  hunger: 70,  happy: 45, xp: 28 },
     ];
 
     // sizeClass → 스테이지 기본 px (스펙: L 140–180, M 90–130, S 50–80 → 중간값)
@@ -51,6 +54,12 @@
         item('fireplace',   '벽난로',   '🔥', 'room', 'L', 450, 7),
         // Lv10 킹
         item('golden_doghouse', '황금 개집', '👑', 'yard', 'L', 999, 10),
+        // 코인 상점 확장 (2026-07-09) — 이모지 폴백으로 안전, 실결제 무관
+        item('scratcher',   '스크래처',   '🪵', 'room', 'S', 45,  2),
+        item('hammock',     '해먹',       '🪢', 'yard', 'M', 130, 3),
+        item('aquarium',    '어항',       '🐠', 'room', 'M', 170, 4),
+        item('teepee',      '펫 텐트',    '⛺', 'room', 'M', 160, 5),
+        item('snowman',     '눈사람',     '⛄', 'yard', 'M', 220, 6),
     ];
 
     const THEMES = [

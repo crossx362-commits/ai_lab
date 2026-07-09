@@ -39,7 +39,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -246,10 +246,14 @@ def claude_fix(worktree: Path, finding: dict) -> tuple[bool, str]:
         "- 마지막에 어떤 파일을 왜 바꿨는지 1~3줄로 요약하라."
     )
     try:
+        # env: 죽은 ANTHROPIC_API_KEY(.env, 크레딧0) 상속 차단 — 남아있으면 claude가
+        # 구독 OAuth 대신 그 키로 인증해 credit-balance 오류로 실패한다(2026-07-09 사고, llm.py 동일 수정).
+        _env = {k: v for k, v in os.environ.items()
+                if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")}
         r = subprocess.run([cli, "-p", prompt, "--permission-mode", "acceptEdits",
                             "--allowedTools", "WebSearch,WebFetch"],
                            cwd=str(worktree), capture_output=True, text=True,
-                           timeout=CLAUDE_TIMEOUT)
+                           timeout=CLAUDE_TIMEOUT, env=_env)
         tail = (r.stdout or r.stderr or "").strip()[-500:]
         return r.returncode == 0, tail
     except subprocess.TimeoutExpired:
@@ -482,11 +486,12 @@ def _improve_cycle(do_send: bool = True) -> str:
             # 반복 실패 = 구조적 문제 → 전 에이전트 긴급 회의 소집(비차단)
             try:
                 council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
+                nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
                 subprocess.Popen([sys.executable, str(council),
                                   "--topic", f"수리 {MAX_ATTEMPTS}회 실패 보류: {f.get('title','')[:120]}",
                                   "--context", "\n".join(log)[:1500], "--priority", "P1"],
-                                 cwd=str(PROJECT_ROOT), start_new_session=True,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                 cwd=str(PROJECT_ROOT),
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
                 log.append("- 긴급 회의 소집됨(전 에이전트)")
             except Exception:
                 pass

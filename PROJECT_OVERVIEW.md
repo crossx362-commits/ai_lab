@@ -1,6 +1,6 @@
-﻿# 🏗️ Connect AI Lab — 전체 프로젝트 개요
+# 🏗️ Connect AI Lab — 전체 프로젝트 개요
 
-> 마지막 업데이트: 2026-06-16
+> 마지막 업데이트: 2026-07-09 (2026-07-08 오너 지시로 주식·코인 트레이딩 도메인 전면 삭제, 펫나 자동개발팀으로 재편)
 
 ---
 
@@ -13,7 +13,7 @@ ai_lab/
 │   └── petnna/           # 🐾 펫과나 웹 앱
 ├── reports/              # 📊 리포트 및 로그
 ├── docs/                 # 📄 문서
-├── output/               # 🎬 생성 결과물
+├── output/                # 🎬 생성 결과물
 └── .agent/               # ⚙️ 로컬 스킬·메모리·도구
 ```
 
@@ -23,191 +23,94 @@ ai_lab/
 
 ```
                    예원 (CEO)
-              최고 총괄 오케스트레이터
+              오케스트레이션·하네스·워치독
                         |
-              영숙 (Executive 비서)
-           텔레그램 최우선 순위 독점
+              영숙 (비서)
+        텔레그램 게이트웨이·일정·정시 잡
                         |
-     ┌──────────────────┼──────────────────┬──────────────────┐
-     |                  |                  |                  |
-   케빈 (Kevin)      데이브 (Dave)      레오 (Leo)        펄스 (pulse)
- DevOps 인프라      보수적 매매        공격적 단타       시장 정보 수집
+     ┌───────┬──────────┼──────────┬───────┬───────┐
+     |       |          |          |       |       |
+   봄이     수리        테오       백호     미오     나무
+   QA       Dev         Test       Backend Design   PM
 ```
-
----
 
 ## 👥 에이전트 상세 역할
 
-### 1. 예원 (CEO) — 최고 총괄 오케스트레이터
-**직급**: 최고 경영자 및 중앙 컨트롤러
+### 1. 예원 (Yewon) — CEO
+- 오케스트레이션·하네스 체크·워치독·콘텐츠 피드백. 펫나 긴급 회의(전 에이전트 소집) 의장.
+- **주요 도구**: `yewon_dispatcher.py`, `harness_manager.py`, `harness_monitor.py`, `skill_auditor.py`, `petnna_council.py`
 
-#### 핵심 책임
-1. **태스크 아키텍처링 & 플래닝**: 사장님 비즈니스 명령 분석 후 최소 동원 원칙(최대 2~3명 제한)에 기반한 최적의 에이전트 배치 및 실행 JSON 분배.
-2. **원점 라우팅 제어**: 단건 메시지 유입 시 오직 가용 대상 에이전트 ID 1개만 JSON 포맷으로 정밀 반환.
-3. **시스템 가용성 거버넌스**: 코다리 3시간 헬스 체크 로그 마스터 수령 및 인프라 안전성 스캔.
-5. **에이전트 스킬 검토 및 자가 진화 감사**: `skill_auditor.py`로 전 에이전트 스킬 완성도 Ollama 다차원 채점 후 주간 리포팅.
+### 2. 영숙 (Youngsuk) — Secretary
+- 텔레그램 게이트웨이(폴링·발신은 `_shared/telegram.py`), 일정, 정시 잡 실행자.
+- **주요 도구**: `telegram_receiver.py`, `schedule_manager.py`, `agent_controller.py`, `calendar_manager.py`
 
-**주요 도구**: `yewon_dispatcher.py`, `skill_auditor.py`  
-**스케줄**: 매주 월요일 09:00 KST 전체 스킬 감사 | 상시 명령 분배
+### 3. 봄이 (Bomi) — QA
+- 펫나 상시 순찰: 콘솔/JS 오류·404·깨진 이미지·접근성·가로스크롤·SEO 점검, P0/P1 즉시 텔레그램.
+- **주요 도구**: `petnna_qa_patrol.py`
 
----
+### 4. 수리 (Suri) — Dev
+- 봄이 결과를 읽어 저위험 P2/P3를 격리 브랜치에서 자동 수정·재검수 후 게이트 통과 시만 master 병합. QA 이슈 없으면 미오·나무 백로그 과제 구현(항상 PR대기, 자동 병합 없음).
+- **주요 도구**: `petnna_dev_engine.py`
 
-### 2. 영숙 (Youngsuk) — 사장님 전담 Executive 비서
-**직급**: 수석 보좌 비서
+### 5. 테오 (Teo) — Test
+- Playwright E2E 테스트 자동 작성(하루 1개, 2회 연속 통과 시 채택·flaky 폐기), 매일 + 변경 시 전체 스위트 실행.
+- **주요 도구**: `petnna_test_engineer.py`
 
-#### 핵심 책임
-1. **텔레그램 최우선 챗 인터셉트**: 사장님 메시지를 모든 에이전트 중 최우선 독점 수신. 단순 일상·일정은 직접 처리, 창작·분석 업무는 예원 CEO에게 dispatch 포워딩.
-2. **구글 캘린더 연동**: 자연어 파싱 기반 캘린더 CRUD 제어 (표준 JSON 규격 단일 블록 응답).
-3. **일일 정기 업로드 총괄**: 매일 새벽 03:00 `upload_manager.py` 트리거 → 누락 파이프라인 선제 자율 실행 후 통합 브리핑.
-4. **AI 모델**: Gemini 2.5 Flash (Fallback: GPT-4o mini → Ollama)
+### 6. 백호 (Baekho) — Backend
+- Supabase 스키마·RLS vs 프론트 쿼리 계약 감사(매일, 읽기 전용).
+- **주요 도구**: `petnna_backend_guard.py`
 
-**주요 도구**: `telegram_receiver.py`, `upload_manager.py`, `google_calendar.py`, `youtube_recommender.py`  
-**스케줄**: 03:00 업로드 점검 | 04:00 리포트 정리 | 상시 텔레그램 모니터링
+### 7. 미오 (Mio) — Design
+- 주 1회(월) 스크린샷 기반 UX·시각 리뷰 → 공유 백로그 적재.
+- **주요 도구**: `petnna_design_review.py`
 
----
+### 8. 나무 (Namu) — PM
+- 주 1회(화) 웹서치 트렌드·경쟁 조사 → 기능 백로그 적재.
+- **주요 도구**: `petnna_product_manager.py`
 
-### 3. 데이브 (Dave) — 보수적 암호화폐 트레이더
-**직급**: 보수적 매매 봇
-
-#### 핵심 책임
-- **감시 코인 (14개)**: SOL, XRP, DOGE, NEAR, SUI, SEI, STX, HBAR, ADA, AVAX, LINK, PEPE, BTC, ETH
-- **진입 조건**: 퀀트 스코어 ≥3.0점 + LLM(GPT-4o mini) 최종 검증 + 연준 이벤트 HIGH 구간 진입 금지
-- **실행 주기**: 30초마다 전체 코인 스캔
-
-**퀀트 지표 (10개)**: EMA200(+4) · Supertrend(+3) · StochRSI(+3) · Heikin Ashi(+3) · Volume Spike(+2) · OBV 다이버전스(+2) · CVD 다이버전스(+2) · 세력 매집 패턴(+2) · 워시트레이딩 페널티(-3) · 4시간봉 모멘텀(+2)
-
-**주요 도구**: `upbit_auto_trader.py`  
-**상태**: ✅ 실행 중
+> 과거 주식·코인 트레이딩 에이전트(소미·한별·행크·유나·레온·마켓데스크·지아)와 그 이전 세대 에이전트(데이브·레오·시그널·펄스·케빈·경수·코다리·티모·로율)는 전부 삭제됨(2026-07-08 및 그 이전 정리) — git 이력에서 복구 가능. 자세한 내용과 삭제 배경은 `CLAUDE.md`의 하네스 가드레일 섹션 참고.
 
 ---
 
-### 4. 레오 (Leo) — 공격적 단타 트레이더
-**직급**: 고변동성 알트코인 단타 봇
-
-#### 핵심 책임
-- **감시 코인 (7개)**: DOGE, PEPE, NEAR, SUI, SEI, HBAR, STX
-- **진입 조건**: 퀀트 스코어 ≥2.0점 (데이브보다 낮음) + 데이브 보유 코인 제외
-- **실행 주기**: 10초마다 스캔
-- **위험 관리**: 연속 손절 3회 → 30분 휴식 | 일일 손실 -5% → 거래 중단 | 시간당 5회 거래 제한
-
-**주요 도구**: `leo_aggressive_trader.py`, `leo_learning_system.py`  
-**상태**: ✅ 실행 중
-
----
-
-### 5. 시그널 (signal) / 펄스 (pulse) — 시장 정보 수집 + 시장 애널리스트
-**직급**: 시장 정보 수집 에이전트 & Market Analyst
-
-#### 핵심 책임
-- **수집 데이터**: 연준 이벤트(FOMC·CPI·NFP) | 공포탐욕지수(Alternative.me) | 김치 프리미엄(업비트 vs 바이낸스) | 암호화폐 뉴스(CryptoPanic)
-- **출력**: `reports/research/crypto_market_intel.json`
-- **시장 분석**: 시그널은 코인/주식 공통 시장 스냅샷을 생성하고, 펄스는 그 리포트를 기반으로 흐름을 해석
-
-**주요 도구**: `market_signal.py`, `market_pulse.py`  
-**스케줄**: 5분마다 시장 정보 갱신 | 1시간 주기 리서치 | 6시간 심층 조사
-
----
-
-### 6. 케빈 (Kevin) — DevOps & 클라우드 인프라 아키텍트
-**직급**: 수석 인프라 엔지니어
-
-#### 핵심 책임
-1. **Vercel 인프라 최적화**: `ignoredBuildStep` 스크립트로 불필요한 빌드 방지, Vercel Cron Job(`0 6,18 * * *`)으로 임시 자원 배치 정리.
-2. **Supabase 백엔드 관리**: PostgreSQL 마이그레이션 형상 제어 및 환경 변수 동기화.
-3. **Petnna PWA 모니터링**: `petnna_monitor.py`로 도메인 응답·PWA 파일 무결성·DB 로그인 실시간 스캔. 이상 감지 시 텔레그램 즉시 알림.
-
-**주요 도구**: `vercel_manager.py`, `supabase_manager.py`, `petnna_monitor.py`  
-**스케줄**: 매 시간 헬스 체크 | 매일 06:00 KST 전체 가용성 리포트 | 06시/18시 가비지 컬렉션
-
----
-
-### 7. 경수 (Gyeongsu) — 사이버 수사관
-**직급**: Cyber Investigation Officer
-
-- **핵심 책임**: 유튜브·SNS 댓글 악플 및 조직적 어뷰징 Ollama 판별·분류, Google Sheets 증거 아카이빙. 소스 코드 API Key 탈취 시도 및 보안 취약점 스캔.
-- **주요 도구**: `comment_forensics.py`, Google Sheets API, YouTube API 커스텀 스캐너
-- **스케줄**: 실시간 모니터링 | 악플 급증 감지 시 텔레그램 즉시 알림
-
----
-
-### 10. 코다리 (Kodari) — 풀스택 개발자
-**직급**: Full-Stack Web Developer
-
-- **핵심 책임**: Vite + React + TypeScript + Tailwind v4 기반 petnna 프로젝트 아키텍처 설계 및 빌드. 2시간 주기 Ollama·텔레그램 API·구글 캘린더 토큰 헬스 체크 후 예원 CEO 상태 보고.
-- **주요 도구**: `web_init.py`, `pack_apply.py`, `agent_health_check.py`, `ollama_health_check.py`
-- **스케줄**: 2시간 간격 헬스 체크 | 온디맨드 웹 개발 (DeepSeek 전용 연동)
-
----
-
-### 11. 티모 (Timo) — 수석 UI/UX 디자이너
-**직급**: Senior UI/UX Designer
-
-- **핵심 책임**: NN Group·F-Pattern 등 사용성 논문 팩트 기반 인터페이스 설계. `petnna_reviewer.py`로 petnna 모듈 자율 웹 리뷰 및 UI 결함 텔레그램 보정 리포트 전송. 7대 검수 기준(시각계층·가독성·터치타겟·빈상태·반응형·일관성·WCAG) 준수 CSS/JS 스니펫 구현 출력.
-- **주요 도구**: `petnna_reviewer.py`
-- **스케줄**: 매주 화·금 10:00 KST 소스코드 UI 자율 점검
-
----
-
-### 12. 로율 (Lolaw) — 법률·세무 고문
-**직급**: Legal & Tax Advisor
-
-- **핵심 책임**: 대한민국 민법·상속세·증여세법 기반 세액 산출 시뮬레이터 운영. petnna 개인정보처리방침·약관·저작권 법률 검토 관할.
-- **주요 도구**: `tax_simulator.py`, 대한민국 법령·판례 연동 크롤러
-- **스케줄**: 매주 월요일 10:00 KST 주간 컴플라이언스 감사 | 매월 1일 법률 오딧
-
----
-
-## 🔄 트레이딩 팀 협업 흐름
+## 🔄 펫나 자동 개발 루프
 
 ```
-펄스 (5분마다 시장 정보 수집)
-  ↓ 연준 이벤트 · 공포탐욕지수 · 김치프리미엄
-  ├→ 데이브 (30초 주기, 퀀트 3점 + LLM 검증 → 보수적 매매)
-  └→ 레오  (10초 주기, 퀀트 2점 → 공격적 단타)
-  
-매일 자정: 거래 기록 분석 → Ollama 인사이트 → 전략 개선
+봄이(발견) · 백호(DB 계약) · 테오(회귀 테스트)
+  ↓
+수리(수정/구현, 격리 브랜치)
+  ↓
+봄이 재검수 → 저위험 P2/P3만 자동 병합, 나머지는 사람 검토 대기
+
+미오(디자인) · 나무(기획) → output/qa/petnna/backlog.json 과제 적재
+  → 수리가 QA 이슈 없을 때 브랜치 구현(자동 병합 없음)
 ```
+
+큰 이슈(봄이 신규 P0/P1, 수리 3회 실패 보류, 백호 신규 P1 계약 위반)는 `petnna_council.py`가
+전 에이전트 긴급 회의를 자동 소집한다.
 
 ### 실행 명령
 ```bash
-# 트레이딩 팀 시작 (실거래)
-python projects/ai-team/scripts/start_trading_team.py --live
-
 # 텔레그램 봇 시작
-cmd /c projects\ai-team\scripts\start_youngsuk_bot.cmd
-```
+python projects/ai-team/skills/영숙_비서/tools/telegram_receiver.py
 
----
-
-## 🔄 웹/인프라 협업 흐름
-
-```
-코다리 (Vite + React + TS 개발)
-  ↓
-티모 (7대 사용성 지표 리뷰 + CSS/JS 스니펫 출력)
-  ↓
-경수 (소스 코드 취약점 · API Key 노출 스캔)
-  ↓
-케빈 (Vercel 프로덕션 배포 + PWA 시간별 모니터링)
-  ↓
-코다리 (2시간 주기 에이전트 API 헬스 체크 → 예원 CEO 보고)
+# 개별 에이전트 제어 (start|stop|restart|status)
+python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 restart
 ```
 
 ---
 
 ## 🐾 펫과나 (Petnna) 프로젝트
 
-**배포 URL**: https://petnna.vercel.app  
-**버전**: v1.3.0 | **상태**: 프로덕션 운영 중
+**배포 URL**: https://petnna.vercel.app
 
 | 기능 | 상태 |
 |------|------|
-| AI 건강 분석 (Gemini API) | ✅ 완료 |
-| GPS 산책 트래킹 (Leaflet.js) | ✅ 완료 |
-| 사주팔자 성향 분석 | ✅ 완료 |
-| 디지털 일기장 (PDF 내보내기) | ✅ 완료 |
-| 소셜 네트워크 (Supabase) | ✅ 완료 |
-| 마이펫 관리 | ✅ 완료 |
+| AI 건강 분석 (Gemini API) | ✅ |
+| GPS 산책 트래킹 (Leaflet.js) | ✅ |
+| 사주팔자 성향 분석 | ✅ |
+| 디지털 일기장 (PDF 내보내기) | ✅ |
+| 소셜 네트워크 (Supabase) | ✅ |
+| 마이펫 관리 | ✅ |
 
 **기술 스택**: HTML5 · Tailwind CSS · JavaScript ES6+ · Leaflet.js · Chart.js · Supabase (PostgreSQL) · Gemini API · Vercel
 
@@ -217,17 +120,14 @@ cmd /c projects\ai-team\scripts\start_youngsuk_bot.cmd
 
 ```
 projects/ai-team/skills/
-├── 예원_CEO/tools/          yewon_dispatcher.py · skill_auditor.py
-├── 영숙_비서/tools/          telegram_receiver.py · upload_manager.py
-├── 데이브_주식/tools/        upbit_auto_trader.py
-├── 레오_트레이더/tools/       leo_aggressive_trader.py
-├── 시그널_분석가/tools/       market_signal.py
-├── 펄스_애널리스트/tools/     market_pulse.py
-├── 케빈_인프라/tools/        vercel_manager.py · petnna_monitor.py
-├── 경수_수사관/tools/        comment_forensics.py
-├── 코다리_개발자/tools/       agent_health_check.py · web_init.py
-├── 티모_디자이너/tools/       petnna_reviewer.py
-└── 로율_변호사/tools/        tax_simulator.py
+├── 예원_CEO/tools/        yewon_dispatcher.py · harness_manager.py · harness_monitor.py · petnna_council.py
+├── 영숙_비서/tools/        telegram_receiver.py · schedule_manager.py · agent_controller.py
+├── 봄이_QA/tools/          petnna_qa_patrol.py
+├── 수리_개발자/tools/       petnna_dev_engine.py
+├── 테오_테스트/tools/       petnna_test_engineer.py
+├── 백호_백엔드/tools/       petnna_backend_guard.py
+├── 미오_디자인/tools/       petnna_design_review.py
+└── 나무_기획/tools/         petnna_product_manager.py
 ```
 
 ---
@@ -239,41 +139,26 @@ projects/ai-team/skills/
 GEMINI_API_KEY          # Google AI
 TELEGRAM_BOT_TOKEN      # 텔레그램 봇
 TELEGRAM_CHAT_ID
-UPBIT_ACCESS_KEY        # 업비트 실거래
-UPBIT_SECRET_KEY
-OPENAI_API_KEY          # GPT-4o mini 폴백
-ANTHROPIC_API_KEY       # Claude 폴백
+NOTION_API_KEY          # 보고서 발행
+NOTION_DATABASE_ID
 SUPABASE_URL            # 펫과나 DB
 SUPABASE_ANON_KEY
-VERCEL_TOKEN            # 배포
 ```
 
+클라우드 LLM은 유료 API가 아니라 구독 CLI(`claude -p`/`codex exec`) + Gemini 무료 할당량을 쓴다
+— 자세한 내용은 `CLAUDE.md`의 AI Model Strategy 섹션 참고.
+
 ### 보안
-- 원본 `.env`, `client_secret.json`은 Git 제외
-- 암호화 저장: `.env.encrypted`, `client_secret.json.encrypted`
-- 복호화: `python decrypt_all_secrets.py` (비밀번호: 별도 관리)
-
----
-
-## 📊 실행 중인 에이전트 현황 (2026-06-16 기준)
-
-| 에이전트 | 역할 | 주기 | 상태 |
-|---------|------|------|------|
-| 펄스 | 시장 정보 수집 | 5분 | ✅ 실행 중 |
-| 데이브 | 보수적 매매 | 30초 | ✅ 실행 중 |
-| 레오 | 공격적 단타 | 10초 | ✅ 실행 중 |
-| 영숙 | 텔레그램 비서 | 상시 | ✅ 실행 중 |
-| 케빈 | PWA 모니터링 | 1시간 | ✅ 실행 중 |
-| 코다리 | 헬스 체크 | 2시간 | ✅ 실행 중 |
+- 원본 `.env`는 Git 제외
+- 암호화 저장: `.env.encrypted`
+- 복호화: `python projects/ai-team/_shared/env.py decrypt .env.encrypted .env.decrypted`
 
 ---
 
 ## 📝 로그 위치
 
 ```
-output/bot_logs/youngsuk_daemon.out.log    # 영숙 봇
-output/bot_logs/youngsuk_daemon.err.log
-reports/history/                            # 에이전트별 히스토리
-reports/inspection/petnna_inspection_report.md
-reports/research/crypto_market_intel.json  # 펄스 시장 정보
+output/bot_logs/                            # 봇/데몬 stdout·stderr
+output/qa/petnna/                           # 봄이·수리·테오·백호·미오·나무 산출물
+reports/status/                             # 하네스 상태
 ```

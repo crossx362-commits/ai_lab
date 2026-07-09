@@ -34,7 +34,7 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import send  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
@@ -129,7 +129,7 @@ def llm_analysis(findings: list[dict]) -> str:
         "안전한 수정 방향(마이그레이션 SQL 초안 포함 가능)을 5줄 이내씩 제시하라. "
         "모르는 Supabase/PostgREST 동작은 웹서치로 확인하라. 코드는 수정하지 마라.",
         PROJECT_ROOT, timeout=600, allowed_tools="WebSearch,WebFetch",
-        permission_mode="plan")
+        permission_mode="acceptEdits")
     return out[:2500] if ok else ""
 
 
@@ -178,12 +178,13 @@ def run_audit(do_send: bool) -> None:
         if new_p1:
             import subprocess
             council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
+            nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
             try:
                 subprocess.Popen([sys.executable, str(council),
                                   "--topic", f"백엔드 계약 위반: {new_p1[0]['title'][:120]}",
                                   "--context", new_p1[0]["detail"][:1500], "--priority", "P1"],
-                                 cwd=str(PROJECT_ROOT), start_new_session=True,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                                 cwd=str(PROJECT_ROOT),
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
             except Exception:
                 pass
 

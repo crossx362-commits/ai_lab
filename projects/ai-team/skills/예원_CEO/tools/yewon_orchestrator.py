@@ -32,7 +32,7 @@ sys.path.insert(0, str(AI_TEAM))
 from _shared.registry import active_agents, route_by_keyword, get_agent  # noqa: E402
 from _shared.agent_loop import run_agent                       # noqa: E402
 from _shared.llm import text as llm_text, is_available as llm_available  # noqa: E402
-from _shared.notify import report                              # noqa: E402
+from _shared.telegram import report                            # noqa: E402
 
 sys.path.insert(0, str(_here))
 import agent_factory                                           # noqa: E402
@@ -112,7 +112,7 @@ def _make_plan(message: str) -> list[dict]:
     # 매칭 에이전트 없음 → CEO 작업이 아니면 자율 생성 대상으로
     low = message.lower()
     if any(h in low for h in _CEO_HINTS):
-        return [{"step": 1, "agent": "ceo", "task": message[:300], "depends_on": []}]
+        return [{"step": 1, "agent": "yewon", "task": message[:300], "depends_on": []}]
     return [{"step": 1, "agent": "new", "task": message[:300], "depends_on": [],
              "new_role": message[:80], "new_keywords": []}]
 

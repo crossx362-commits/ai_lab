@@ -15,7 +15,7 @@ import subprocess
 _here = os.path.dirname(os.path.abspath(__file__))
 _ai_team_root = os.path.abspath(os.path.join(_here, "..", "..", ".."))
 sys.path.insert(0, _ai_team_root)
-from _shared.notify import send as _send_telegram
+from _shared.telegram import send as _send_telegram
 from _shared.env import load_env
 PROJECT_ROOT = os.path.abspath(os.path.join(_ai_team_root, "..", ".."))
 

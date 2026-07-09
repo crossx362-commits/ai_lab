@@ -74,7 +74,7 @@ const WALK_TEMPLATE = `
                             <span id="p-detail-badge" class="bg-emerald-100 text-emerald-800 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">PARK</span>
                             <h4 id="p-detail-name" class="font-bold text-xs text-gray-800 mt-1">센트럴 파크</h4>
                         </div>
-                        <button onclick="closePlacePanel()" class="text-gray-400 hover:text-gray-600 p-1">
+                        <button onclick="closePlacePanel()" class="text-gray-400 hover:text-gray-600 p-1" aria-label="닫기">
                             <i class="fa-solid fa-xmark text-base"></i>
                         </button>
                     </div>
@@ -132,7 +132,7 @@ const WALK_TEMPLATE = `
                     <i class="fa-solid fa-floppy-disk text-base"></i> 저장
                 </button>
                 <button onclick="cancelDrawnRoute()"
-                    class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-1.5 transition-all min-h-[44px]">
+                    class="bg-gray-700 hover:bg-gray-800 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-1.5 transition-all min-h-[44px]" aria-label="닫기">
                     <i class="fa-solid fa-xmark text-base"></i> 종료
                 </button>
             </div>

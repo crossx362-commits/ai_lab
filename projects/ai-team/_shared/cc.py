@@ -8,10 +8,20 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
+
+_DEAD_PAID_KEYS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
+
+
+def _subscription_env() -> dict:
+    """죽은 ANTHROPIC_API_KEY(크레딧0) 상속 차단 — CLI가 API키 대신 구독 OAuth로 인증하게
+    강제한다(2026-07-09: 이 키가 남아있으면 claude -p가 "credit balance too low"를
+    응답처럼 뱉어 그대로 사용자에게 노출되는 사고가 났다)."""
+    return {k: v for k, v in os.environ.items() if k not in _DEAD_PAID_KEYS}
 
 
 def find_claude() -> str | None:
@@ -36,7 +46,8 @@ def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
     try:
-        r = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, timeout=timeout,
+                            env=_subscription_env())
         out = (r.stdout or "").strip() or (r.stderr or "").strip()
         return r.returncode == 0, out
     except subprocess.TimeoutExpired:

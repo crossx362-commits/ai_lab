@@ -143,8 +143,26 @@ function renderSocialRoom() {
 }
 
 // 2. 중앙 서브탭 스위칭 매니저
+// 모바일 오프캔버스: 좌측 이웃 집사 패널 열기/닫기 (데스크톱 lg+는 그리드 상시 노출)
+function toggleSocialFriendsPanel() {
+    const panel = document.getElementById('social-friends-panel');
+    const backdrop = document.getElementById('social-friends-backdrop');
+    if (!panel) return;
+    const isOpen = panel.classList.contains('pn-open');
+    if (isOpen) {
+        panel.classList.remove('pn-open');
+        if (backdrop) backdrop.classList.add('hidden');
+    } else {
+        panel.classList.add('pn-open');
+        if (backdrop) backdrop.classList.remove('hidden');
+    }
+}
+
 function switchSocialSubTab(subTab) {
     activeSocialSubTab = subTab;
+    // 서브탭 전환 시 모바일 드로어가 열려 있으면 닫아 컨텐츠를 가리지 않게 한다
+    const _fp = document.getElementById('social-friends-panel');
+    if (_fp && _fp.classList.contains('pn-open')) toggleSocialFriendsPanel();
 
     const feedBtn = document.getElementById('social-subtab-feed-btn');
     const chatBtn = document.getElementById('social-subtab-chat-btn');
@@ -419,6 +437,10 @@ function renderFeed() {
                     <i class="fa-regular fa-comment-dots"></i>
                     <span class="font-mono text-[10px]">${post.comments ? post.comments.length : 0}</span>
                 </button>
+                <button onclick="sharePost(${post.id})" class="flex items-center space-x-1 hover:text-brand-500 transition-colors" aria-label="공유">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span class="text-[10px]">공유</span>
+                </button>
             </div>
         `;
 
@@ -475,6 +497,22 @@ function renderFeed() {
 }
 
 // 4. 자랑 피드 액션 핸들러들
+async function sharePost(postId) {
+    const p = posts.find(item => item.id === postId);
+    if (!p) return;
+    const text = `${p.petName}님의 펫과나 이야기\n\n${(p.content || '').trim()}`.trim();
+    if (navigator.share) {
+        try { await navigator.share({ title: '펫과나', text, url: location.origin }); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }  // 사용자가 취소한 경우 폴백 안 함
+    }
+    try {
+        await navigator.clipboard.writeText(text + '\n' + location.origin);
+        showToast('📋 게시물을 복사했어요 — 붙여넣어 공유하세요!');
+    } catch (e) {
+        showToast('이 환경에서는 공유를 지원하지 않아요.');
+    }
+}
+
 function togglePostLike(postId) {
     const p = posts.find(item => item.id === postId);
     if (!p) return;

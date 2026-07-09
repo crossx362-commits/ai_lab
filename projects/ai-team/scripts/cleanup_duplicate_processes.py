@@ -21,7 +21,8 @@ AI_TEAM = Path(__file__).resolve().parents[1]
 ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
-from _shared.notify import CONTINUOUS_DAEMONS, send  # noqa: E402
+from _shared.notify import CONTINUOUS_DAEMONS  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 
 
 def _python_processes() -> list[dict]:
@@ -98,8 +99,7 @@ def terminate(pid: int) -> str:
 def format_removed_message(removed: list[tuple[str, int, str]]) -> str | None:
     if not removed:
         return None
-    quiet_labels = ("시그널", "signal", "market_signal")
-    visible = [item for item in removed if not any(q in item[0].lower() for q in quiet_labels)]
+    visible = removed
     if not visible:
         return None
     lines = ["중복 프로세스 정리 완료"]

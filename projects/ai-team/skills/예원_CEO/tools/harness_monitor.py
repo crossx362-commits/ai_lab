@@ -8,11 +8,17 @@ if hasattr(sys.stdout, "reconfigure"):
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
-from _shared.notify import send, agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
+from _shared.notify import agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
+from _shared.telegram import send
 from _shared.process import ProcessLock
 from _shared import growth
 
 load_env()
+
+# 콘솔 없는 데몬(agent_controller가 CREATE_NO_WINDOW로 기동)이 git/python 등 콘솔 서브시스템
+# 자식을 창 숨김 없이 spawn하면 Windows가 매번 새 콘솔 창을 띄운다 — 5분 주기 run_harness/_git_out가
+# 그 주범이었다(2026-07-09, "창 자꾸 켜졌다 꺼진다" 신고로 발견). 모든 win32 subprocess 호출에 적용.
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
 
 
 def growth_report() -> str:
@@ -49,7 +55,8 @@ def run_harness():
         text=True,
         encoding="utf-8",
         errors="replace",
-        env=env
+        env=env,
+        **_NOWIN,
     )
     return result.stdout or result.stderr or ""
 
@@ -64,7 +71,7 @@ def _restart_bot(name: str) -> None:
     if sys.platform == "win32":
         subprocess.run(
             [sys.executable, controller, name, "restart"],
-            capture_output=True, timeout=30,
+            capture_output=True, timeout=30, **_NOWIN,
         )
     else:
         domain = f"gui/{os.getuid()}"
@@ -93,7 +100,8 @@ def _bots_off() -> bool:
 def _git_out(*args: str) -> str:
     try:
         r = subprocess.run(["git", "-c", "core.quotepath=false", *args], cwd=ROOT_DIR,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20,
+                           **_NOWIN)
         return r.stdout.strip()
     except Exception:
         return ""

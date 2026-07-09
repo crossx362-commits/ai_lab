@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Youngsuk Telegram bot — 게이트웨이.
+"""영숙 텔레그램 게이트웨이 (2026-07-09 재구축).
 
-역할: 텔레그램 폴링·핸들러·LLM 함수호출 디스패치.
-도메인 툴은 각 주인 에이전트 모듈이 소유하고, 여기서는 BOT_TOOLS를 수집해 병합만 한다:
-  - bot_common(bc)      : 의도 판별·서브프로세스 (공유 헬퍼)
-  - bot_tools_info(info): 날씨·일정 (영숙 본연)
-  - yewon_bot_tools(yewon): 오케스트레이션 (예원)"""
+역할: 텔레그램 폴링·핸들러·LLM 함수호출 디스패치. 도메인 툴은 각 주인 에이전트
+모듈이 소유하고, 여기서는 BOT_TOOLS를 수집해 병합만 한다:
+  - bot_common(bc)        : 의도 판별·서브프로세스 (공유 헬퍼)
+  - bot_tools_info(info)  : 날씨·일정 (영숙 본연)
+  - yewon_bot_tools(yewon): 오케스트레이션 (예원)
+
+발신은 `_shared.telegram`(전 에이전트 공용) 하나로만 한다 — 이 파일이 sendMessage를
+직접 호출하지 않는다."""
 
 from __future__ import annotations
 
@@ -15,14 +18,13 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
-
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-
 
 HERE = Path(__file__).resolve()
 AI_TEAM_ROOT = HERE.parents[3]
@@ -34,6 +36,7 @@ for _p in (str(AI_TEAM_ROOT),
         sys.path.insert(0, _p)
 
 from _shared.env import load_env
+from _shared.telegram import send as tg_send, should_poll
 from _shared.process import ProcessLock
 from _shared import growth
 
@@ -41,12 +44,12 @@ import bot_common as bc
 import bot_tools_info as info
 import yewon_bot_tools as yewon
 
-
 load_env(str(PROJECT_ROOT))
 
 try:
     from telegram import Update
     from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+    from telegram.error import Conflict as TgConflict
 except ImportError as exc:
     print(f"Dependencies not installed: {exc}")
     print("Run: pip install python-telegram-bot")
@@ -75,27 +78,24 @@ AVAILABLE_FUNCTIONS = {t["schema"]["function"]["name"]: t["handler"] for t in _A
 
 
 def web_search(query: str) -> str:
-    """검색 요청 폴백. 실제 검색 도구가 없으면 GPT에 넘기지 않고 안내만 반환합니다."""
+    """검색 요청 폴백. 실제 검색 도구가 없으면 안내만 반환합니다."""
     return f"검색 기능이 아직 연결되지 않았습니다. 요청: {query}"
 
 
-def _call_llm(prompt: str, system: str = SYSTEM) -> str:
-    """클라우드 우선 폴백 — llm.text(lm_first=False)가 GPT→Gemini→클로드→로컬(승급) 전체
-    체인을 담당(2026-07-03)."""
+def _chat(prompt: str, system: str = SYSTEM) -> str:
+    """일반 대화 — 구독 클로드 우선 폴백 체인(llm.text, lm_first=False)."""
     from _shared import llm
     try:
         result = llm.text(prompt, system=system, max_tokens=800, temperature=0.8, lm_first=False)
     except Exception as exc:
-        bc.log(f"_call_llm 실패: {exc}")
+        bc.log(f"_chat 실패: {exc}")
         result = None
     return result or "지금은 답변을 만들기 어려워요. 잠시 후 다시 시도해줘요."
 
 
-def handle_with_gpt(text: str) -> str:
-    """자연어 → 도구 선택·실행 (구독/로컬 LLM 체인 수동 tool use — 크레딧 불필요, 2026-07-05).
-    구 클로드 API tool use는 크레딧0에서 마비 → llm.text(구독 클로드 우선) 기반으로 전환.
-    ①도구 선택(JSON) ②실행 ③결과를 영숙 말투로 요약. 딱 맞는 도구 없으면 일반 대화.
-    (함수명은 handle_message 호환성 위해 유지)"""
+def route_message(text: str) -> str:
+    """자연어 → 도구 선택·실행. 구독/로컬 LLM 체인으로 수동 tool use(API 크레딧 불필요).
+    ①도구 선택(JSON) ②실행 ③결과를 영숙 말투로 요약. 딱 맞는 도구 없으면 일반 대화."""
     from _shared import llm
     tool_lines = "\n".join(
         f"- {t['schema']['function']['name']}: {t['schema']['function']['description'][:70]}"
@@ -124,10 +124,10 @@ def handle_with_gpt(text: str) -> str:
             system=SYSTEM, max_tokens=800, lm_first=False)
         return ans or str(result)
     # 딱 맞는 도구 없음 → 일반 대화(심리 프롬프트)
-    return _call_llm(text, PSYCHOLOGY_SYSTEM)
+    return _chat(text, PSYCHOLOGY_SYSTEM)
 
 
-DEV_RUNNER = Path(__file__).resolve().parent / "tg_dev_runner.py"
+DEV_RUNNER = HERE.parent / "tg_dev_runner.py"
 
 
 def _launch_dev_task(request: str) -> str:
@@ -142,12 +142,14 @@ def _launch_dev_task(request: str) -> str:
     except Exception:
         pass
     branch = "tg-dev-" + datetime.now().strftime("%m%d-%H%M%S")
+    nowin = ({"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32"
+             else {"start_new_session": True})
     try:
         subprocess.Popen(
             [sys.executable, str(DEV_RUNNER), branch, request],
             cwd=str(PROJECT_ROOT),
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True,
+            **nowin,
         )
     except Exception as exc:
         return f"개발 작업 시작 실패: {exc}"
@@ -156,7 +158,7 @@ def _launch_dev_task(request: str) -> str:
 
 
 def handle_message(text: str) -> str:
-    """Telegram 자연어 메시지를 처리합니다. 운영 명령은 '의미'로 인식합니다(정해진 단어 불필요)."""
+    """텔레그램 자연어 메시지를 처리한다. 운영 명령은 '의미'로 인식(정해진 단어 불필요)."""
     text = (text or "").strip()
     if not text:
         return "메시지가 비어 있어요."
@@ -185,10 +187,10 @@ def handle_message(text: str) -> str:
     if bc.is_search_request(text):
         return web_search(text)
 
-    gpt_response = handle_with_gpt(text)
-    if not gpt_response.startswith("요청 처리 중 오류가 발생했습니다:"):
-        return gpt_response
-    return _call_llm(text, PSYCHOLOGY_SYSTEM)
+    routed = route_message(text)
+    if not routed.startswith("요청 처리 중 오류가 발생했습니다:"):
+        return routed
+    return _chat(text, PSYCHOLOGY_SYSTEM)
 
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -200,6 +202,34 @@ async def _status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 _ALLOWED_CHAT_IDS = {c.strip() for c in (os.getenv("TELEGRAM_CHAT_ID", "")).split(",") if c.strip()}
+
+_CONFLICT_STATE_FILE = PROJECT_ROOT / "output" / "cache" / "youngsuk_conflict_alert.json"
+_CONFLICT_ALERT_COOLDOWN_SEC = 1800  # 30분 — 다른 기기 폴링 충돌은 반복 스팸 대신 주기적 1회만
+
+
+async def _error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """폴링 루프 에러 핸들러 — 등록 안 하면 PTB가 매 재시도마다 전체 스택트레이스를
+    로그에 찍는다(Conflict는 재시도가 잦아 순식간에 로그가 수십MB로 불어남, 2026-07-09 확인).
+    Conflict(다른 기기가 동시에 getUpdates 폴링 중 — 대개 맥)는 한 줄 로그 + 쿨다운 텔레그램 알림만,
+    나머지 에러는 한 줄 로그만 남기고 폴링은 계속(run_polling이 알아서 재시도)."""
+    err = context.error
+    if isinstance(err, TgConflict):
+        bc.log("getUpdates Conflict — 다른 기기(맥 등)에서 동시 폴링 중으로 추정")
+        try:
+            now = time.time()
+            last = 0.0
+            if _CONFLICT_STATE_FILE.exists():
+                last = json.loads(_CONFLICT_STATE_FILE.read_text(encoding="utf-8")).get("ts", 0.0)
+            if now - last > _CONFLICT_ALERT_COOLDOWN_SEC:
+                _CONFLICT_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+                _CONFLICT_STATE_FILE.write_text(json.dumps({"ts": now}), encoding="utf-8")
+                tg_send("⚠️ 영숙 텔레그램 폴링 충돌 — 다른 기기(맥 등)에서 같은 봇을 동시에 실행 중인 것 같아요. "
+                        "한쪽만 남기고 꺼주세요 (agent_controller.py 영숙 stop), 또는 .env에 "
+                        "TELEGRAM_POLL_HOST를 지정해두면 그 기기 외엔 자동으로 폴링을 안 해요.")
+        except Exception:
+            pass
+        return
+    bc.log(f"Polling error: {err}")
 
 
 async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -236,12 +266,20 @@ def main() -> int:
         print("TELEGRAM_BOT_TOKEN is not configured.")
         return 1
 
-    # 단일 인스턴스 보장 — 중복 폴러가 getUpdates Conflict를 일으키지 않도록
+    # 다기기 폴링 충돌 방지 — .env TELEGRAM_POLL_HOST가 지정돼 있는데 이 기기가 아니면
+    # 아예 폴링을 시작하지 않는다(미지정이면 항상 허용 = 기존 동작과 동일, 회귀 없음).
+    ok, reason = should_poll()
+    print(f"[영숙] 폴링 소유권 확인: {reason}")
+    if not ok:
+        return 0
+
+    # 같은 기기 내 중복 폴러 방지(다른 기기는 위 should_poll이 담당)
     with ProcessLock("youngsuk_telegram"):
         app = Application.builder().token(token).build()
         app.add_handler(CommandHandler("start", _start))
         app.add_handler(CommandHandler("status", _status))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _message))
+        app.add_error_handler(_error_handler)
 
         bc.log("Youngsuk Telegram bot started (polling mode)")
         app.run_polling(allowed_updates=["message"], drop_pending_updates=True)

@@ -1,8 +1,24 @@
 const SOCIAL_TEMPLATE = `
+<style>
+/* 소셜 좌측 이웃 패널 — 모바일 오프캔버스 드로어 (이 앱 Tailwind 빌드가 transform 유틸 미지원이라 명시 CSS로 처리) */
+@media (max-width: 1023px){
+  #social-friends-panel{ position:fixed; top:0; bottom:0; left:0; z-index:50; width:min(320px,85vw);
+    transform:translateX(-100%); transition:transform .3s ease-out; overflow-y:auto; }
+  #social-friends-panel.pn-open{ transform:translateX(0); }
+}
+@media (min-width: 1024px){
+  #social-friends-panel{ position:static; transform:none; width:auto; max-width:none; }
+}
+</style>
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
 
-    <!-- 1열: 왼쪽 패널 - 친구 검색, 대기 신청, 친구 리스트 (lg:col-span-1) -->
-    <div class="lg:col-span-1 order-last lg:order-first bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-6">
+    <!-- 1열: 왼쪽 패널 - 친구 검색, 대기 신청, 친구 리스트 (데스크톱: 그리드 1열 / 모바일: 오프캔버스 드로어) -->
+    <div id="social-friends-panel" class="lg:col-span-1 lg:order-first overflow-y-auto lg:overflow-visible bg-white rounded-none lg:rounded-3xl p-5 border-r lg:border border-amber-50 shadow-2xl lg:shadow-sm space-y-6">
+        <!-- 모바일 드로어 닫기 -->
+        <button onclick="toggleSocialFriendsPanel()" aria-label="친구 목록 닫기"
+            class="lg:hidden absolute top-3 right-3 w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
         <!-- 친구 검색 & 신청 기능 -->
         <div>
             <h3 class="font-black text-gray-800 text-sm mb-3 flex items-center">
@@ -33,8 +49,16 @@ const SOCIAL_TEMPLATE = `
         </div>
     </div>
 
+    <!-- 모바일 친구 패널 백드롭 -->
+    <div id="social-friends-backdrop" onclick="toggleSocialFriendsPanel()" class="fixed inset-0 bg-black/40 z-40 hidden lg:!hidden"></div>
+
     <!-- 2&3열: 중앙 패널 - 서브탭 조작계 + (피드 타임라인 OR DM 대화창) (lg:col-span-2) -->
     <div class="lg:col-span-2 space-y-4">
+        <!-- 모바일: 이웃 집사 목록 열기 (데스크톱은 좌측 패널 상시 노출이라 숨김) -->
+        <button onclick="toggleSocialFriendsPanel()"
+            class="lg:hidden w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600 font-black text-xs border border-brand-100 transition-colors">
+            <i class="fa-solid fa-user-group"></i> 이웃 집사 목록 열기
+        </button>
         <!-- 중앙 서브 네비게이션 탭 -->
         <div class="flex border border-amber-50 mb-2 bg-white p-1.5 rounded-2xl shadow-sm space-x-1.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 justify-start scroll-mask">
             <button onclick="switchSocialSubTab('feed')" id="social-subtab-feed-btn" 
@@ -77,7 +101,7 @@ const SOCIAL_TEMPLATE = `
                         <i class="fa-solid fa-circle-notch animate-spin text-xs"></i>
                         <span>사진 업로드 중...</span>
                     </div>
-                    <button onclick="clearAttachedPhoto()" class="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="clearAttachedPhoto()" class="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
                 </div>
 
                 <!-- 동영상 구간 슬라이더 (트리머) -->

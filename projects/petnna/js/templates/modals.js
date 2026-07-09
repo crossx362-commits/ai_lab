@@ -6,7 +6,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 후원 결제 모달 -->
 <div id="donation-payment-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative border border-amber-100 max-h-[90vh] overflow-y-auto no-scrollbar">
-        <button onclick="closeDonationModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeDonationModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <div class="text-center space-y-3 mb-6">
             <div class="w-14 h-14 bg-rose-50 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">💝</div>
             <h4 class="font-black text-gray-800 text-base">펫과나 동행 후원하기</h4>
@@ -45,7 +45,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 1:1 문의 접수 모달 -->
 <div id="inquiry-write-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl relative border border-amber-100 max-h-[90vh] overflow-y-auto no-scrollbar">
-        <button onclick="closeInquiryWriteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeInquiryWriteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-pen-nib text-brand-500 mr-2"></i>1:1 안심 신문고 문의 접수
         </h4>
@@ -80,7 +80,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 1:1 문의 상세 보기 모달 -->
 <div id="inquiry-detail-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl relative border border-amber-100 max-h-[90vh] overflow-y-auto no-scrollbar">
-        <button onclick="closeInquiryDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeInquiryDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-clipboard-question text-brand-500 mr-2"></i>문의 상세 내역 및 답변
         </h4>
@@ -371,7 +371,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <div id="neighbor-profile-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[120] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative border border-amber-100/60 overflow-y-auto no-scrollbar max-h-[90vh]">
         <!-- 닫기 버튼 -->
-        <button onclick="closeNeighborProfileModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeNeighborProfileModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none transition-colors" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         
         <!-- 프로필 카드 헤더 / 아바타 및 이름 -->
         <div class="text-center space-y-4 mb-6">
@@ -452,7 +452,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <div id="walk-trail-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl relative border border-amber-100/60 overflow-y-auto no-scrollbar max-h-[90vh]">
         <!-- 닫기 버튼 -->
-        <button onclick="closeWalkTrailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none transition-colors z-[120]"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeWalkTrailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none transition-colors z-[120]" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-route text-brand-500 mr-2"></i> 안심 산책 정복 트랙 지도 🗺️
@@ -500,7 +500,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 건강 기록 일지 모달 -->
 <div id="health-log-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl relative border border-teal-100 max-h-[90vh] overflow-y-auto no-scrollbar">
-        <button onclick="closeHealthLogModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeHealthLogModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-notes-medical text-teal-500 mr-2"></i>오늘의 스마트 건강 기록 일지
         </h4>
@@ -562,7 +562,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
         <div class="bg-gradient-to-r from-brand-500 to-brand-600 p-5 text-center relative shrink-0">
             <h3 class="text-lg font-black text-white tracking-tight drop-shadow-sm">이번 달 맞춤 헬스 리포트 🔮</h3>
             <p class="text-brand-100 text-[10px] mt-1 font-medium">우리 아이 기질 기반 심층 분석</p>
-            <button onclick="closeHealthReportModal()" class="absolute right-4 top-4 text-white/80 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-colors">
+            <button onclick="closeHealthReportModal()" class="absolute right-4 top-4 text-white/80 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-colors" aria-label="닫기">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
@@ -640,7 +640,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <div id="letter-write-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl shadow-2xl relative border border-amber-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto no-scrollbar flex flex-col">
         <!-- 닫기 버튼 -->
-        <button onclick="closeLetterWriteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none z-10">
+        <button onclick="closeLetterWriteModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none z-10" aria-label="닫기">
             <i class="fa-solid fa-xmark text-lg"></i>
         </button>
         
@@ -743,7 +743,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <div id="letter-detail-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl shadow-2xl relative border border-amber-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto no-scrollbar flex flex-col">
         <!-- 닫기 버튼 -->
-        <button onclick="closeLetterDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none z-10">
+        <button onclick="closeLetterDetailModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none z-10" aria-label="닫기">
             <i class="fa-solid fa-xmark text-lg"></i>
         </button>
         
@@ -810,7 +810,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 🚨 시스템 오류 로그 상세 보기 모달 -->
 <div id="error-log-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl relative border border-rose-100 max-h-[90vh] overflow-y-auto no-scrollbar flex flex-col">
-        <button onclick="closeErrorLogModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeErrorLogModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-bug text-rose-500 mr-2"></i>시스템 오류 로그 목록 🚨
         </h4>
@@ -840,7 +840,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 자랑글 수정 모달 ✏️ -->
 <div id="feed-edit-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-50 p-4 hidden">
     <div class="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative border border-amber-100 max-h-[90vh] overflow-y-auto no-scrollbar flex flex-col">
-        <button onclick="closeFeedEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeFeedEditModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-pen-to-square text-brand-500 mr-2"></i>자랑글 수정 ✏️
         </h4>
@@ -895,7 +895,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 📒 반려 생활수첩 모달 -->
 <div id="notebook-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl relative border border-amber-100 max-h-[90vh] overflow-y-auto no-scrollbar flex flex-col">
-        <button onclick="closeNotebookModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeNotebookModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-address-book text-brand-500 mr-2"></i>반려 생활수첩 📝
         </h4>
@@ -992,7 +992,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <div id="photobook-publish-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[120] p-4 hidden">
     <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl relative border border-amber-100 max-h-[92vh] overflow-y-auto no-scrollbar flex flex-col">
         <!-- 닫기 버튼 -->
-        <button onclick="closePhotobookPublishModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none z-10">
+        <button onclick="closePhotobookPublishModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none z-10" aria-label="닫기">
             <i class="fa-solid fa-xmark text-lg"></i>
         </button>
         
@@ -1107,7 +1107,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 <!-- 돌봄 일정 추가 모달 -->
 <div id="care-schedule-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
     <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl relative border border-sky-100 max-h-[90vh] overflow-y-auto no-scrollbar">
-        <button onclick="closeCareScheduleModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeCareScheduleModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
         <h4 class="font-black text-gray-800 text-sm flex items-center border-b pb-3 mb-4">
             <i class="fa-solid fa-calendar-plus text-sky-500 mr-2"></i>돌봄 일정 추가
         </h4>

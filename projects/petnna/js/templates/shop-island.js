@@ -117,7 +117,7 @@ const SHOP_ISLAND_TEMPLATE = `
                   <span class="text-3xl">🛁</span>
                   <h3 class="font-black text-gray-800 text-base">포레스트 힐 펫 스파</h3>
               </div>
-              <button onclick="toggleShopSection('healing-spa'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600">
+              <button onclick="toggleShopSection('healing-spa'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                   <i class="fa-solid fa-xmark text-xl"></i>
               </button>
           </div>
@@ -148,7 +148,7 @@ const SHOP_ISLAND_TEMPLATE = `
                   <span class="text-3xl">🏕️</span>
                   <h3 class="font-black text-gray-800 text-base">도그빌 오션 캠핑장</h3>
               </div>
-              <button onclick="toggleShopSection('healing-camping'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600">
+              <button onclick="toggleShopSection('healing-camping'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                   <i class="fa-solid fa-xmark text-xl"></i>
               </button>
           </div>
@@ -171,7 +171,7 @@ const SHOP_ISLAND_TEMPLATE = `
                   <span class="text-3xl">🌸</span>
                   <h3 class="font-black text-gray-800 text-base">아로마 펫 테라피 살롱</h3>
               </div>
-              <button onclick="toggleShopSection('healing-therapy'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600">
+              <button onclick="toggleShopSection('healing-therapy'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                   <i class="fa-solid fa-xmark text-xl"></i>
               </button>
           </div>
@@ -202,7 +202,7 @@ const SHOP_ISLAND_TEMPLATE = `
                   <span class="text-3xl">🏨</span>
                   <h3 class="font-black text-gray-800 text-base">가든 테라스 펫 리조트</h3>
               </div>
-              <button onclick="toggleShopSection('healing-hotel'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600">
+              <button onclick="toggleShopSection('healing-hotel'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                   <i class="fa-solid fa-xmark text-xl"></i>
               </button>
           </div>
@@ -233,7 +233,7 @@ const SHOP_ISLAND_TEMPLATE = `
                   <span class="text-3xl">🏥</span>
                   <h3 class="font-black text-gray-800 text-base">24시 센트럴 메디컬 센터</h3>
               </div>
-              <button onclick="toggleShopSection('healing-hospital'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600">
+              <button onclick="toggleShopSection('healing-hospital'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                   <i class="fa-solid fa-xmark text-xl"></i>
               </button>
           </div>
@@ -264,7 +264,7 @@ const SHOP_ISLAND_TEMPLATE = `
                   <span class="text-3xl">🛒</span>
                   <h3 class="font-black text-gray-800 text-base">펫라이프 프리미엄 멀티샵</h3>
               </div>
-              <button onclick="toggleShopSection('healing-shopping'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600">
+              <button onclick="toggleShopSection('healing-shopping'); closeQuestPanel();" class="text-gray-400 hover:text-gray-600" aria-label="닫기">
                   <i class="fa-solid fa-xmark text-xl"></i>
               </button>
           </div>

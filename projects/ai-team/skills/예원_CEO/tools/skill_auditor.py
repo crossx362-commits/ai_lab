@@ -23,7 +23,7 @@ if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
 from _shared.llm import text as lm_chat, is_available as lm_available
-from _shared.notify import send
+from _shared.telegram import send
 from _shared.env import find_root
 _root = find_root(_here)
 

@@ -163,6 +163,20 @@ def _ollama(prompt: str, system: str = "", max_tokens: int = 2000, temperature: 
 # 유료 API 경로(_gpt=OpenAI / _claude=Anthropic Messages)는 제거됨 —
 # 유료 API 미사용(오너 지시). 클라우드는 구독 CLI(_claude_code/_gpt_codex) + Gemini만.
 
+_DEAD_PAID_KEYS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+                   "OPENAI_API_KEY", "OPENAI_BASE_URL")
+
+
+def _subscription_cli_env() -> dict:
+    """구독 CLI(claude -p/codex exec) subprocess 환경 — 죽은 유료 API 키 제거.
+
+    .env의 ANTHROPIC_API_KEY/OPENAI_API_KEY는 크레딧 0으로 죽어있지만 load_env()가
+    os.environ에 계속 얹어놓는다. subprocess.run은 기본으로 부모 env를 물려주므로
+    이 키들이 claude/codex CLI에 그대로 상속되면 CLI가 구독 OAuth 대신 API키 인증을
+    시도해 "credit balance too low" 같은 과금 오류를 낸다(2026-07-09 실제 사고 —
+    영숙 텔레그램 응답에 이 원문이 그대로 노출됨). CLI는 반드시 구독 세션으로만 인증해야 한다."""
+    return {k: v for k, v in os.environ.items() if k not in _DEAD_PAID_KEYS}
+
 
 # ==================== GEMINI (무료 할당량) ====================
 
@@ -248,9 +262,14 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
         # stdin=DEVNULL — claude -p는 stdin을 3초 기다린 뒤 진행("no stdin data received in 3s").
         # detached 데몬은 상속 stdin이 닫힌 핸들이라 그 대기가 빈 응답을 유발할 수 있어 명시 차단
         # (하루 수백 호출 × 3초 절약 + 재현성). 검증: 10.9s→8.6s, 응답 동일(2026-07-07).
+        # env=_subscription_cli_env() — 죽은 ANTHROPIC_API_KEY 상속 차단(구독 OAuth 강제).
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=150,
-                            encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
+                            encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
+                            env=_subscription_cli_env())
         out = (r.stdout or "").strip()
+        if r.returncode != 0:
+            print(f"  ❌ [ClaudeCode] exit {r.returncode}: {(r.stderr or out)[:150]}")
+            return None
         if not out or (json_mode and not _json_ok(out)):
             print(f"  ⚠️ [ClaudeCode] {'empty' if not out else 'invalid json'}")
             return None
@@ -278,9 +297,13 @@ def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperatur
     fd, outfile = tempfile.mkstemp(suffix=".txt")
     os.close(fd)
     try:
-        subprocess.run([exe, "exec", "--skip-git-repo-check", "-o", outfile, full],
+        r = subprocess.run([exe, "exec", "--skip-git-repo-check", "-o", outfile, full],
                        capture_output=True, text=True, timeout=180,
-                       encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
+                       encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
+                       env=_subscription_cli_env())
+        if r.returncode != 0:
+            print(f"  ❌ [GptCodex] exit {r.returncode}: {(r.stderr or '')[:150]}")
+            return None
         with open(outfile, encoding="utf-8") as f:
             out = f.read().strip()
         if not out or (json_mode and not _json_ok(out)):

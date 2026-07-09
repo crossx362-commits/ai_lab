@@ -32,11 +32,11 @@ const MYPET_TEMPLATE = `
     <div class="grid grid-cols-2 gap-3">
         <div class="card-modern bg-brand-50/50 p-3.5 space-y-1.5">
             <span class="block text-xs font-semibold text-brand-600">🧔 집사 오늘의 운세</span>
-            <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+            <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
         </div>
         <div class="card-modern bg-amber-50/50 p-3.5 space-y-1.5">
             <span class="block text-xs font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
-            <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all">로딩 중...</p>
+            <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
         </div>
     </div>
 
@@ -92,6 +92,12 @@ const MYPET_TEMPLATE = `
                                 </button>
                             </div>
                         </div>
+                        <!-- 펫 추가 (주요 기능 상시 노출 — 설정 메뉴 안에만 있던 것을 헤더로 승격) -->
+                        <button onclick="openPetRegistrationModal()" id="room-add-pet-btn" title="펫 추가"
+                            class="h-9 px-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white flex items-center gap-1.5 transition-all shrink-0 shadow-soft">
+                            <i class="fa-solid fa-plus text-sm"></i>
+                            <span class="text-xs font-black">펫 추가</span>
+                        </button>
                         <!-- 설정 버튼 -->
                         <button onclick="toggleRoomSettings()" id="room-settings-btn"
                             class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all shrink-0">
@@ -130,7 +136,7 @@ const MYPET_TEMPLATE = `
                 <div id="butler-profile-editor-panel" class="hidden mt-3 bg-white border border-brand-100 p-4 rounded-2xl space-y-3 text-xs">
                     <div class="flex items-center justify-between pb-1 border-b border-gray-100">
                         <span class="font-black text-gray-700"><i class="fa-solid fa-user-gear mr-1 text-brand-500"></i>집사 프로필</span>
-                        <button onclick="toggleButlerProfileEdit()" class="text-gray-300 hover:text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="toggleButlerProfileEdit()" class="text-gray-300 hover:text-gray-500" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="flex items-center gap-3">
                         <div class="shrink-0">
@@ -162,7 +168,7 @@ const MYPET_TEMPLATE = `
                 <div id="pet-profile-editor-panel" class="hidden mt-3 bg-white border border-amber-100 p-4 rounded-2xl space-y-3 text-xs">
                     <div class="flex items-center justify-between pb-1 border-b border-gray-100">
                         <span class="font-black text-gray-700"><i class="fa-solid fa-paw mr-1 text-amber-500"></i>방 & 펫 설정</span>
-                        <button onclick="togglePetProfileEdit()" class="text-gray-300 hover:text-gray-500"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="togglePetProfileEdit()" class="text-gray-300 hover:text-gray-500" aria-label="닫기"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="room-layout-picker">
                         <button id="room-layout-living" onclick="setRoomLayoutForActivePet('living')" class="room-layout-option is-active">
@@ -255,7 +261,7 @@ const MYPET_TEMPLATE = `
                         <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="butler-condition-bar" class="bg-brand-400 h-full transition-all duration-700" style="width:85%"></div>
                         </div>
-                        <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all">로딩 중...</p>
+                        <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
                     <div class="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-100">
                         <div class="flex justify-between items-center mb-1.5">
@@ -268,7 +274,7 @@ const MYPET_TEMPLATE = `
                         <div class="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="pet-condition-bar" class="bg-amber-400 h-full transition-all duration-700" style="width:90%"></div>
                         </div>
-                        <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all">로딩 중...</p>
+                        <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
                 </div>
 

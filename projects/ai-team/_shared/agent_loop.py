@@ -42,12 +42,13 @@ def _run_tool(tool: dict, message: str) -> tuple[int, str]:
         return 1, f"(스크립트 없음: {tool['script']})"
     args = [str(a).replace("{message}", message) for a in tool.get("args", [])]
     env = {**os.environ, "PYTHONUTF8": "1", **(tool.get("env") or {})}
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     try:
         r = subprocess.run(
             [sys.executable, str(script), *args],
             cwd=str(PROJECT_ROOT), capture_output=True, text=True,
             encoding="utf-8", errors="replace",
-            timeout=int(tool.get("timeout", 120)), env=env,
+            timeout=int(tool.get("timeout", 120)), env=env, **nowin,
         )
         return r.returncode, (r.stdout or r.stderr or "").strip()
     except subprocess.TimeoutExpired:

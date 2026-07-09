@@ -1,0 +1,255 @@
+{
+  "agents": {
+    "yewon": {
+      "display": "예원",
+      "folder": "예원_CEO",
+      "role": "CEO — 오케스트레이션·하네스·워치독·작업 분배",
+      "keywords": [
+        "예원",
+        "yewon",
+        "ceo",
+        "하네스",
+        "harness",
+        "스킬 감사",
+        "작업 분배",
+        "라우팅",
+        "오케스트레이션",
+        "워치독",
+        "점검",
+        "현황",
+        "상태"
+      ],
+      "tools": [
+        {
+          "name": "harness",
+          "desc": "시스템 구조 하네스 점검 1회",
+          "script": "skills/예원_CEO/tools/harness_manager.py",
+          "args": [],
+          "timeout": 180
+        }
+      ],
+      "daemons": {
+        "yewon": "harness_monitor.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "youngsuk": {
+      "display": "영숙",
+      "folder": "영숙_비서",
+      "role": "비서 — 텔레그램 게이트웨이·일정·정시 잡",
+      "keywords": [
+        "영숙",
+        "youngsuk",
+        "비서",
+        "일정",
+        "캘린더",
+        "스케줄",
+        "리포트",
+        "텔레그램"
+      ],
+      "tools": [],
+      "daemons": {
+        "youngsuk": "telegram_receiver.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "bomi": {
+      "display": "봄이",
+      "folder": "봄이_QA",
+      "role": "QA — 펫나 상시 순찰(콘솔/JS 오류·404·접근성·가로스크롤·SEO)",
+      "keywords": [
+        "봄이",
+        "bomi",
+        "qa",
+        "순찰",
+        "콘솔",
+        "접근성",
+        "가로스크롤",
+        "펫나"
+      ],
+      "tools": [
+        {
+          "name": "patrol",
+          "desc": "펫나 QA 전체 순찰 1회",
+          "script": "skills/봄이_QA/tools/petnna_qa_patrol.py",
+          "args": [
+            "--once"
+          ],
+          "timeout": 180
+        }
+      ],
+      "daemons": {
+        "bomi_qa": "petnna_qa_patrol.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "suri": {
+      "display": "수리",
+      "folder": "수리_개발자",
+      "role": "Dev — 펫나 자동 개선(저위험 버그 수정·백로그 구현·PR 대기)",
+      "keywords": [
+        "수리",
+        "suri",
+        "개발",
+        "자동 수정",
+        "백로그",
+        "저위험",
+        "병합",
+        "구현"
+      ],
+      "tools": [
+        {
+          "name": "cycle",
+          "desc": "펫나 개선 사이클 1회(격리 브랜치)",
+          "script": "skills/수리_개발자/tools/petnna_dev_engine.py",
+          "args": [
+            "--once"
+          ],
+          "timeout": 600
+        }
+      ],
+      "daemons": {
+        "suri_dev": "petnna_dev_engine.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "teo": {
+      "display": "테오",
+      "folder": "테오_테스트",
+      "role": "Test — 펫나 E2E 테스트 자동 작성·회귀 실행",
+      "keywords": [
+        "테오",
+        "teo",
+        "테스트",
+        "e2e",
+        "회귀",
+        "test"
+      ],
+      "tools": [
+        {
+          "name": "run",
+          "desc": "E2E 스위트 1회 실행",
+          "script": "skills/테오_테스트/tools/petnna_test_engineer.py",
+          "args": [
+            "--run"
+          ],
+          "timeout": 600
+        }
+      ],
+      "daemons": {
+        "teo_test": "petnna_test_engineer.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "baekho": {
+      "display": "백호",
+      "folder": "백호_백엔드",
+      "role": "Backend — Supabase 스키마·RLS vs 프론트 쿼리 계약 감사(읽기 전용)",
+      "keywords": [
+        "백호",
+        "baekho",
+        "supabase",
+        "스키마",
+        "rls",
+        "백엔드",
+        "계약",
+        "쿼리"
+      ],
+      "tools": [
+        {
+          "name": "audit",
+          "desc": "백엔드 계약 감사 1회(읽기 전용)",
+          "script": "skills/백호_백엔드/tools/petnna_backend_guard.py",
+          "args": [
+            "--once"
+          ],
+          "timeout": 180
+        }
+      ],
+      "daemons": {
+        "baekho_backend": "petnna_backend_guard.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "mio": {
+      "display": "미오",
+      "folder": "미오_디자인",
+      "role": "Design — 펫나 스크린샷 기반 UX·시각 리뷰",
+      "keywords": [
+        "미오",
+        "mio",
+        "디자인",
+        "ux",
+        "시각",
+        "스크린샷"
+      ],
+      "tools": [
+        {
+          "name": "review",
+          "desc": "디자인 리뷰 1회(요일 무관)",
+          "script": "skills/미오_디자인/tools/petnna_design_review.py",
+          "args": [
+            "--once"
+          ],
+          "timeout": 300
+        }
+      ],
+      "daemons": {
+        "mio_design": "petnna_design_review.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    },
+    "namu": {
+      "display": "나무",
+      "folder": "나무_기획",
+      "role": "PM — 펫나 트렌드·경쟁 조사, 기능 백로그 적재",
+      "keywords": [
+        "나무",
+        "namu",
+        "pm",
+        "기획",
+        "트렌드",
+        "경쟁"
+      ],
+      "tools": [
+        {
+          "name": "research",
+          "desc": "기획/트렌드 조사 1회(요일 무관)",
+          "script": "skills/나무_기획/tools/petnna_product_manager.py",
+          "args": [
+            "--once"
+          ],
+          "timeout": 300
+        }
+      ],
+      "daemons": {
+        "namu_pm": "petnna_product_manager.py"
+      },
+      "scheduled": {},
+      "status": "active",
+      "created_by": "manual_registry_rebuild",
+      "created_at": "2026-07-09T12:30:01"
+    }
+  }
+}

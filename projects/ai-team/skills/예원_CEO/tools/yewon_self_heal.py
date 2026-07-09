@@ -31,7 +31,8 @@ PROJECT_ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env import load_env            # noqa: E402
-from _shared.notify import send, agent_status, _AGENT_LABELS, CONTINUOUS_DAEMONS  # noqa: E402
+from _shared.notify import agent_status, _AGENT_LABELS, CONTINUOUS_DAEMONS  # noqa: E402
+from _shared.telegram import send  # noqa: E402
 from _shared.registry import load_registry  # noqa: E402
 
 load_env()
@@ -46,10 +47,11 @@ CHECK_ONLY = "--check" in sys.argv
 
 
 def _run(args: list[str], timeout: int = 60) -> tuple[int, str]:
+    nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     try:
         r = subprocess.run(args, cwd=str(PROJECT_ROOT), capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=timeout,
-                           env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"})
+                           env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"}, **nowin)
         return r.returncode, (r.stdout or r.stderr or "").strip()
     except Exception as e:
         return 1, str(e)

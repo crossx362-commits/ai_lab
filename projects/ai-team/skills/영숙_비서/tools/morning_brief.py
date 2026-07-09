@@ -25,7 +25,8 @@ AI_TEAM_ROOT = PROJECT_ROOT / "projects" / "ai-team"
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
-from _shared.notify import publish_report, status_report  # noqa: E402
+from _shared.notify import status_report  # noqa: E402
+from _shared.telegram import publish_report  # noqa: E402
 from _shared import research  # noqa: E402
 
 CAL_CACHE = AI_TEAM_ROOT / "_shared" / "calendar_cache.md"

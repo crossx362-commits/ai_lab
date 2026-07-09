@@ -19,7 +19,8 @@ PROJECT_ROOT = AI_TEAM.parents[1]
 sys.path.insert(0, str(AI_TEAM))
 
 from _shared.env import load_env
-from _shared.notify import agent_status, send
+from _shared.notify import agent_status
+from _shared.telegram import send
 
 load_env(str(PROJECT_ROOT))
 
@@ -33,6 +34,7 @@ class HarnessManager:
         self.reports_dir.mkdir(parents=True, exist_ok=True)
 
     def run_harness(self) -> str:
+        nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
         result = subprocess.run(
             [sys.executable, str(self.harness)],
             cwd=str(AI_TEAM),
@@ -42,6 +44,7 @@ class HarnessManager:
             errors="replace",
             timeout=120,
             env={**os.environ, "PYTHONUTF8": "1", "SUPPRESS_TELEGRAM": "true"},
+            **nowin,
         )
         return result.stdout or result.stderr or ""
 
