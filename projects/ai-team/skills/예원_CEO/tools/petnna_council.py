@@ -57,8 +57,15 @@ PERSONAS = [
 ]
 
 
+FAIL_SENTINEL = "(의견 수집 실패)"
+
+
+def _topic_key(topic: str) -> str:
+    return hashlib.md5(topic.encode("utf-8")).hexdigest()[:10]
+
+
 def _recent_meeting(topic: str) -> bool:
-    key = hashlib.md5(topic.encode("utf-8")).hexdigest()[:10]
+    key = _topic_key(topic)
     try:
         state = json.loads(STATE.read_text(encoding="utf-8"))
     except Exception:
@@ -72,6 +79,17 @@ def _recent_meeting(topic: str) -> bool:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
     return False
+
+
+def _clear_cooldown(topic: str) -> None:
+    """인프라 전멸(전원 의견수집실패)로 끝난 회의는 쿨다운을 소진시키지 않는다 —
+    안 그러면 그 이슈가 24h 동안 재소집 불가로 방치된다(수리의 '인프라 실패 미차감'과 동일 원칙)."""
+    try:
+        state = json.loads(STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    state.pop(_topic_key(topic), None)
+    STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def _opinion(name: str, role: str, folder: str, topic: str, context: str, priority: str) -> tuple[str, str]:
@@ -91,7 +109,7 @@ def _opinion(name: str, role: str, folder: str, topic: str, context: str, priori
     )
     ok, out = run_claude(prompt, PROJECT_ROOT, timeout=420,
                          allowed_tools="Read,WebSearch,WebFetch", permission_mode="plan")
-    return name, (out.strip()[:1200] if ok and out else "(의견 수집 실패)")
+    return name, (out.strip()[:1200] if ok and out else FAIL_SENTINEL)
 
 
 def convene(topic: str, context: str, priority: str) -> None:
@@ -104,6 +122,13 @@ def convene(topic: str, context: str, priority: str) -> None:
             futures = [ex.submit(_opinion, n, r, f, topic, context, priority)
                        for n, r, f in PERSONAS]
             opinions = [fu.result() for fu in futures]
+
+        if all(op == FAIL_SENTINEL for _, op in opinions):
+            # 전원 실패 = 개별 판단이 아니라 그 시점 클로드 호출 자체가 전멸(레이트리밋/타임아웃).
+            # 이슈 탓이 아니므로 쿨다운을 소진시키지 않고 다음 트리거에서 바로 재시도 가능하게 한다.
+            _clear_cooldown(topic)
+            print(f"[{datetime.now()}] 회의 전원 의견수집 실패(인프라) — 쿨다운 미소진, 재시도 대기: {topic[:80]}")
+            return
 
         opinion_text = "\n\n".join(f"### {name}\n{op}" for name, op in opinions)
         ok, out = run_claude(
@@ -119,6 +144,11 @@ def convene(topic: str, context: str, priority: str) -> None:
             "— 자동 실행이 위험한 항목은 title 앞에 [승인필요]를 붙여라. 액션이 없으면 빈 배열.",
             PROJECT_ROOT, timeout=420, allowed_tools="Read", permission_mode="plan")
         verdict = out.strip() if ok and out else "(의장 종합 실패)"
+        if not (ok and out):
+            # 전문가 의견은 살아있는데 의장 합성만 인프라 문제로 실패 — 의견은 회의록에 보존하되
+            # 쿨다운은 소진시키지 않아 다음 트리거에서 곧바로 재종합 시도가 가능하게 한다.
+            _clear_cooldown(topic)
+            print(f"[{datetime.now()}] 의장 종합 실패(인프라) — 쿨다운 미소진, 의견은 보존")
 
         # 액션아이템 → 백로그(source=회의). [승인필요]·owner=사람 항목은 적재만 하고 수리가 안 집도록 보류 상태.
         actions = extract_json(verdict) or []
