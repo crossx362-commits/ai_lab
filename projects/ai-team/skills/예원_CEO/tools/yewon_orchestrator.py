@@ -112,7 +112,7 @@ def _make_plan(message: str) -> list[dict]:
     # 매칭 에이전트 없음 → CEO 작업이 아니면 자율 생성 대상으로
     low = message.lower()
     if any(h in low for h in _CEO_HINTS):
-        return [{"step": 1, "agent": "ceo", "task": message[:300], "depends_on": []}]
+        return [{"step": 1, "agent": "yewon", "task": message[:300], "depends_on": []}]
     return [{"step": 1, "agent": "new", "task": message[:300], "depends_on": [],
              "new_role": message[:80], "new_keywords": []}]
 
