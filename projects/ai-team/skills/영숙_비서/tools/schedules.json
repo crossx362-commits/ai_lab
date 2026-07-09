@@ -1,6 +1,6 @@
 {
  "version": "2.0.0",
- "updated": "2026-06-27",
+ "updated": "2026-07-09T22:06:39.769243",
  "_note": "정시 잡은 영숙(운영 위생)·예원(피드백·감사) 일반 작업만 유지.",
  "schedules": [
   {
@@ -97,6 +97,13 @@
    "cron": "0 11 * * *",
    "enabled": true,
    "description": "펫나 6종 에이전트 산출물 신선도 감사 (Hermes 크론 호환, 데몬 생존 아닌 산출물 기준)"
+  },
+  {
+   "id": "petnna_pr_review",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pr_reviewer.py --send",
+   "cron": "0 */2 * * *",
+   "enabled": true,
+   "description": "예원 — 펫나 PR대기 브랜치 자동 검토·병합 결정 (수리 적체 상한 자동 해제, 오너 검토 위임)"
   }
  ]
 }

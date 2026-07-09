@@ -36,17 +36,23 @@ PYBIN = sys.executable
 
 
 def _parse_field(field: str, lo: int, hi: int) -> list[int]:
-    """cron 필드 → 정수 리스트. '*'·'a-b'·'a,b'·'n' 지원."""
+    """cron 필드 → 정수 리스트. '*'·'a-b'·'a,b'·'n'·스텝('*/n'·'a-b/n') 지원."""
     field = field.strip()
-    if field == "*":
-        return list(range(lo, hi + 1))
     out: list[int] = []
     for part in field.split(","):
-        if "-" in part:
-            a, b = part.split("-")
-            out.extend(range(int(a), int(b) + 1))
+        step = 1
+        if "/" in part:
+            part, step_s = part.split("/")
+            step = int(step_s)
+        if part == "*":
+            a, b = lo, hi
+        elif "-" in part:
+            a_s, b_s = part.split("-")
+            a, b = int(a_s), int(b_s)
         else:
             out.append(int(part))
+            continue
+        out.extend(range(a, b + 1, step))
     return out
 
 
