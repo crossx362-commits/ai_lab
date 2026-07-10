@@ -99,11 +99,8 @@ def terminate(pid: int) -> str:
 def format_removed_message(removed: list[tuple[str, int, str]]) -> str | None:
     if not removed:
         return None
-    visible = removed
-    if not visible:
-        return None
     lines = ["중복 프로세스 정리 완료"]
-    lines.extend(f"- {label}: pid {pid} {status}" for label, pid, status in visible)
+    lines.extend(f"- {label}: pid {pid} {status}" for label, pid, status in removed)
     return "\n".join(lines)
 
 

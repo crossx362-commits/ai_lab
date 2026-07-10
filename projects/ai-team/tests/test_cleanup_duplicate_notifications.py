@@ -17,24 +17,21 @@ def load_cleanup_module():
 
 
 class CleanupDuplicateNotificationTests(unittest.TestCase):
-    def test_signal_duplicate_cleanup_is_not_notified(self):
+    def test_no_removal_produces_no_message(self):
+        module = load_cleanup_module()
+
+        self.assertIsNone(module.format_removed_message([]))
+
+    def test_removed_process_is_notified(self):
         module = load_cleanup_module()
 
         message = module.format_removed_message([
-            ("시그널 시장정보", 12345, "terminated"),
-        ])
-
-        self.assertIsNone(message)
-
-    def test_non_hyunbin_duplicate_cleanup_is_notified(self):
-        module = load_cleanup_module()
-
-        message = module.format_removed_message([
-            ("데이브 트레이더", 12345, "terminated"),
+            ("봄이 QA 순찰", 12345, "terminated"),
         ])
 
         self.assertIsNotNone(message)
-        self.assertIn("데이브 트레이더", message)
+        self.assertIn("봄이 QA 순찰", message)
+        self.assertIn("12345", message)
 
 
 if __name__ == "__main__":

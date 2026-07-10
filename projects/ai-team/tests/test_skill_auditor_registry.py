@@ -23,13 +23,13 @@ class SkillAuditorRegistryTests(unittest.TestCase):
     def test_auditor_targets_every_registered_agent_with_skill_file(self):
         auditor = load_auditor()
 
-        from _shared.agent_registry import scan_agents
+        from _shared.registry import SKILLS_DIR, active_agents
 
         expected_agents = []
-        for info in scan_agents().values():
-            agent_dir = pathlib.Path(info["path"]).parents[1]
-            if (agent_dir / "SKILL.md").exists():
-                expected_agents.append(info["name"].split("_", 1)[0])
+        for meta in active_agents().values():
+            folder = meta.get("folder")
+            if folder and (SKILLS_DIR / folder / "SKILL.md").exists():
+                expected_agents.append(meta["display"])
 
         missing = sorted(set(expected_agents) - set(auditor.AGENTS))
 
@@ -49,8 +49,11 @@ class SkillAuditorRegistryTests(unittest.TestCase):
             cwd=str(ROOT.parents[1]),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             env=env,
-            timeout=10,
+            # 실측 10.3s(2026-07-10) — 옛 10s 제한은 사실상 동률이라 상시 flaky였다.
+            timeout=60,
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
