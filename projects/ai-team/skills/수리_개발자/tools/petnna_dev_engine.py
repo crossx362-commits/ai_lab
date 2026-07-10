@@ -237,6 +237,11 @@ def claude_fix(worktree: Path, finding: dict) -> tuple[bool, str]:
         f"- 제목: {finding.get('title')}\n- URL: {finding.get('url')} / 환경: {finding.get('env')}\n"
         f"- 상세: {finding.get('detail') or '(없음)'}\n\n"
         "[규칙]\n"
+        # 저장소 CLAUDE.md의 '계획 → 오너 승인 → 수정' 절차를 헤드리스 세션이 그대로 따라
+        # 계획만 쓰고 끝내는 사고(2026-07-10). 승인자가 없는 자동 실행임을 명시한다.
+        "- 비대화형 자동 실행이다. 승인을 묻지 말고 지금 파일을 직접 편집하라.\n"
+        "- 계획·분석만 서술하고 편집 없이 끝내면 실패로 처리된다. 반드시 파일을 바꿔라.\n"
+        "- 과제가 추상적이면 가장 작고 안전한 첫걸음 하나를 골라 실제로 구현하라.\n"
         "- projects/petnna/ 아래 파일만 수정한다. 그 외 파일은 절대 수정 금지.\n"
         "- 이 과제와 무관한 개선·리팩터링·포맷 변경 금지. diff를 최소화하라.\n"
         "- 새 라이브러리 추가 금지. 기존 코드 스타일·디자인 시스템을 따르라.\n"
@@ -349,7 +354,9 @@ def _cycle_guard():
 def improve_cycle(do_send: bool = True) -> str:
     guard = _cycle_guard()
     if guard is None:
-        return "다른 개선 사이클 진행 중 — 이번 틱 스킵"
+        msg = "다른 개선 사이클 진행 중 — 이번 틱 스킵"
+        print(msg)
+        return msg
     try:
         return _improve_cycle(do_send)
     finally:
@@ -368,7 +375,9 @@ def _improve_cycle(do_send: bool = True) -> str:
         picked = select_backlog(state)
         is_backlog = bool(picked)
     if not picked:
-        return "처리 가능한 이슈/과제 없음 — 대기"
+        msg = "처리 가능한 이슈/과제 없음 — 대기"
+        print(msg)   # 무출력 exit 0은 '할 일 없음'과 '고장'을 구분 못 하게 만든다
+        return msg
     fp, f = picked
     rec = state["issues"].setdefault(fp, {"attempts": 0, "status": "대기", "title": f.get("title")})
     rec["attempts"] += 1
@@ -564,8 +573,7 @@ def main() -> None:
     if args.daemon:
         daemon()
     else:
-        # 반환 문자열(스킵/대기 사유)을 버리면 --once가 무출력 exit 0 → 조용한 실패로 오인된다
-        print(improve_cycle(do_send=not args.no_send))
+        improve_cycle(do_send=not args.no_send)
 
 
 if __name__ == "__main__":
