@@ -293,7 +293,12 @@ def _find_duplicate_branch(branch: str) -> str | None:
 
 def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
     """diff 범위 게이트: petnna 한정·크기 제한·금지 경로/내용."""
-    num = _git(["diff", "master", "--numstat"], worktree).stdout.strip()
+    # 'master'가 아니라 분기점(merge-base)과 비교한다. 사이클이 도는 동안 다른 에이전트가
+    # master에 커밋하면(테오의 E2E 자동 커밋 등) 그 커밋이 뒤집혀 '브랜치가 petnna 밖 파일을
+    # 고쳤다'는 오탐이 나 멀쩡한 패치를 스스로 거부한다(2026-07-10 관측).
+    # 워킹트리 미커밋 변경까지 잡는 기존 안전 성질은 커밋 해시와 비교해도 그대로 유지된다.
+    base = _git(["merge-base", "master", "HEAD"], worktree).stdout.strip() or "master"
+    num = _git(["diff", base, "--numstat"], worktree).stdout.strip()
     if not num:
         return False, "변경 없음", []
     files, total = [], 0
@@ -312,7 +317,7 @@ def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
         return False, f"금지 경로 접촉(병합 대기): {hit[:3]}", files
     if len(files) > MAX_FILES or total > MAX_LINES:
         return False, f"변경 과대(파일 {len(files)}·{total}줄) — PR 분리 필요", files
-    diff_text = _git(["diff", "master"], worktree).stdout
+    diff_text = _git(["diff", base], worktree).stdout
     added = "\n".join(ln for ln in diff_text.splitlines() if ln.startswith("+"))
     if FORBIDDEN_DIFF.search(added):
         return False, "추가된 줄에 시크릿/인증 의심 패턴", files
