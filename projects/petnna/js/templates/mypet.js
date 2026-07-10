@@ -367,6 +367,16 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
+        <!-- 버디 산책 스트릭 (함께 이어가기) -->
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+            <div id="buddy-streak-card">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-people-arrows text-gray-300"></i>
+                    <span>이웃과 함께 산책 스트릭을 쌓아보세요!</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 일일 챌린지 -->
         <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-3 shadow-sm">
             <div id="daily-challenges"></div>

@@ -103,6 +103,7 @@ const AppConstants = {
         CUSTOM_ROUTES: 'petna_custom_routes',
         PET_SAJU: 'petna_pet_saju',
         BUTLER_SAJU: 'petna_butler_saju',
+        BUDDY_PAIR: 'petna_buddy_pair',
     }
 };
 
