@@ -1689,6 +1689,7 @@ function renderMyPets() {
     if (typeof renderBuddyStreakCard === 'function') renderBuddyStreakCard();
     if (typeof renderMonthlyReport === 'function') renderMonthlyReport('monthly-report-card');
     if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
+    if (typeof renderPreventiveCareDashboard === 'function') renderPreventiveCareDashboard();
 }
 
 function getPast7DaysLabels() {
