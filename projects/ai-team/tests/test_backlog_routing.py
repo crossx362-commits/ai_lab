@@ -17,6 +17,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 COUNCIL_PATH = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
 TEO_PATH = AI_TEAM_ROOT / "skills" / "테오_테스트" / "tools" / "petnna_test_engineer.py"
+MIO_PATH = AI_TEAM_ROOT / "skills" / "미오_디자인" / "tools" / "petnna_design_review.py"
 
 
 def load(name: str, path: Path):
@@ -34,17 +35,73 @@ class CouncilOwnerRouting(unittest.TestCase):
         self.council = load("council_under_test", COUNCIL_PATH)
 
     def test_consumers_get_auto_track(self):
-        for owner in ("", "수리", "테오"):
-            self.assertFalse(self.council.needs_human("E2E 테스트 작성", owner),
+        for owner in ("", "수리", "테오", "미오"):
+            self.assertFalse(self.council.needs_human("카드 여백 개선", owner),
                              f"{owner!r}는 백로그를 소비하므로 자동 트랙이어야 한다")
 
     def test_non_consumers_go_to_human_track(self):
-        for owner in ("백호", "미오", "나무", "사람"):
+        for owner in ("백호", "나무", "사람"):
             self.assertTrue(self.council.needs_human("시안 기준 명시", owner),
                             f"{owner!r}는 백로그를 읽지 않으므로 사람 트랙이어야 한다")
 
     def test_approval_tag_overrides_consumer_owner(self):
-        self.assertTrue(self.council.needs_human("[승인필요] 스키마 변경", "수리"))
+        self.assertTrue(self.council.needs_human("[승인필요] 카드 여백 개선", "수리"))
+
+    def test_db_auth_task_never_enters_auto_loop(self):
+        """수리는 supabase·migration diff를 병합할 수 없다 — 3회 실패 낭비 방지."""
+        self.assertTrue(self.council.needs_human(
+            "QR 미아방지 공개 프로필", "수리", "public_pet_profiles 신규 테이블 + RLS 정책 추가"))
+
+
+class DbAuthGate(unittest.TestCase):
+    """적재 시점 DB/인증 판별 — 범위는 회의가 명시한 것으로 좁힌다(오탐 금지)."""
+
+    def setUp(self):
+        from _shared.backlog import touches_db_auth
+        self.touches = touches_db_auth
+
+    def test_flags_db_and_auth_work(self):
+        for text in ("supabase.js 쿼리 추가", "migrations/ 스키마 변경", "RLS 정책 손질",
+                     "신규 테이블 medical_records", "api_key 회전"):
+            self.assertTrue(self.touches(text), f"{text!r}는 수리가 병합 못 한다")
+
+    def test_does_not_flag_plain_ui_work(self):
+        for text in ("로그인 화면 여백 개선", "카드 타이포 계층 강화",
+                     "소셜 버튼 아이콘 정렬", "인증 완료 토스트 색상"):
+            self.assertFalse(self.touches(text), f"{text!r}는 순수 UI인데 보류로 새어나갔다")
+
+    def test_detail_is_searched_too(self):
+        self.assertTrue(self.touches("건강수첩", "supabase에 medical_records 테이블 추가"))
+
+
+class MioBacklogConsumption(unittest.TestCase):
+    """미오는 배정된 디자인 과제를 리뷰 지침으로 집고, 산출물을 남긴 뒤에만 닫는다."""
+
+    def setUp(self):
+        self.mio = load("mio_under_test", MIO_PATH)
+        self.tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+
+    def _write(self, items):
+        self.tmp.write_text(json.dumps({"items": items}, ensure_ascii=False), encoding="utf-8")
+        return mock.patch.object(self.mio, "BACKLOG", self.tmp)
+
+    def test_picks_only_own_waiting_design_tasks(self):
+        with self._write([
+            {"id": "a", "owner": "미오", "status": "대기", "type": "디자인"},
+            {"id": "b", "owner": "미오", "status": "보류", "type": "디자인"},
+            {"id": "c", "owner": "테오", "status": "대기", "type": "디자인"},
+            {"id": "d", "owner": "미오", "status": "대기", "type": "기획"},
+        ]):
+            self.assertEqual([t["id"] for t in self.mio._assigned_tasks()], ["a"])
+
+    def test_close_marks_only_given_ids(self):
+        with self._write([
+            {"id": "a", "owner": "미오", "status": "대기", "type": "디자인"},
+            {"id": "b", "owner": "미오", "status": "대기", "type": "디자인"},
+        ]):
+            self.mio._close_tasks(["a"])
+            got = {i["id"]: i["status"] for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
+            self.assertEqual(got, {"a": "완료", "b": "대기"})
 
 
 class TeoBacklogConsumption(unittest.TestCase):

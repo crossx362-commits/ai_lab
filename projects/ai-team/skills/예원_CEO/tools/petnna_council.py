@@ -39,6 +39,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.backlog import touches_db_auth  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -46,14 +47,20 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "council"
 STATE = OUT_DIR / "state.json"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 
-# 백로그를 실제로 소비하는 에이전트만. 나머지(백호·미오·나무)는 적재만 하고 읽지 않아
+# 백로그를 실제로 소비하는 에이전트만. 나머지(백호·나무)는 적재만 하고 읽지 않아
 # 대기 상태로 배정하면 아무도 집지 않은 채 영원히 남는다 → 사람 검토 트랙(보류)으로 보낸다.
-AUTO_OWNERS = ("", "수리", "테오")
+# 새 에이전트를 여기 추가하려면 먼저 그 도구에 백로그 소비 코드를 넣어라.
+AUTO_OWNERS = ("", "수리", "테오", "미오")
 
 
-def needs_human(title: str, owner: str) -> bool:
-    """자동 루프가 집으면 안 되는 항목인가 — 승인 필요하거나, 소비자 없는 owner에 배정됐거나."""
-    return "[승인필요]" in title or owner not in AUTO_OWNERS
+def needs_human(title: str, owner: str, detail: str = "") -> bool:
+    """자동 루프가 집으면 안 되는 항목인가.
+
+    ①승인 필요 ②소비자 없는 owner에 배정 ③DB/인증 접촉(수리가 병합 못 함 → 3회 실패 낭비).
+    """
+    return ("[승인필요]" in title
+            or owner not in AUTO_OWNERS
+            or touches_db_auth(title, detail))
 COOLDOWN_H = 24
 
 PERSONAS = [
@@ -171,7 +178,7 @@ def convene(topic: str, context: str, priority: str) -> None:
             title = (a.get("title") or "").strip()
             if not title or title in existing:
                 continue
-            human = needs_human(title, a.get("owner", ""))
+            human = needs_human(title, a.get("owner", ""), a.get("detail") or "")
             data["items"].append({
                 "id": f"회의_{datetime.now():%Y%m%d%H%M}_{added}",
                 "title": title[:120], "detail": (a.get("detail") or "")[:500],

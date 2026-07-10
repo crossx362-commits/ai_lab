@@ -36,6 +36,7 @@ from _shared.process import ProcessLock  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
+from _shared.backlog import touches_db_auth  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -65,12 +66,17 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
         title = (it.get("title") or "").strip()
         if not title or title in existing:
             continue
+        detail = (it.get("detail") or "")[:500]
+        # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
+        db_auth = touches_db_auth(title, detail)
         data["items"].append({
             "id": f"{source}_{datetime.now():%Y%m%d}_{added}",
             "title": title[:120],
-            "detail": (it.get("detail") or "")[:500],
+            "detail": detail,
             "priority": it.get("priority") if it.get("priority") in ("P2", "P3") else "P3",
-            "type": itype, "source": source, "status": "대기",
+            "type": itype, "source": source,
+            "status": "보류" if db_auth else "대기",
+            "gate": "DB/인증" if db_auth else "",
             "created": datetime.now().isoformat(),
         })
         added += 1

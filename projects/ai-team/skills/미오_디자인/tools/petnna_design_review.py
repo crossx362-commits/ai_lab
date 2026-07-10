@@ -38,6 +38,7 @@ from _shared.process import ProcessLock  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
+from _shared.backlog import touches_db_auth  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -94,12 +95,17 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
         title = (it.get("title") or "").strip()
         if not title or title in existing:
             continue
+        detail = (it.get("detail") or "")[:500]
+        # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
+        db_auth = touches_db_auth(title, detail)
         data["items"].append({
             "id": f"{source}_{datetime.now():%Y%m%d}_{added}",
             "title": title[:120],
-            "detail": (it.get("detail") or "")[:500],
+            "detail": detail,
             "priority": it.get("priority") if it.get("priority") in ("P1", "P2", "P3") else "P3",
-            "type": itype, "source": source, "status": "대기",
+            "type": itype, "source": source,
+            "status": "보류" if db_auth else "대기",
+            "gate": "DB/인증" if db_auth else "",
             "created": datetime.now().isoformat(),
         })
         added += 1
@@ -108,9 +114,33 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
     return added
 
 
+def _assigned_tasks() -> list[dict]:
+    """회의가 미오에게 배정한 대기 중 디자인 과제 — 이번 리뷰에서 반영할 지침."""
+    try:
+        items = json.loads(BACKLOG.read_text(encoding="utf-8"))["items"]
+    except Exception:
+        return []
+    return [i for i in items
+            if i.get("owner") == "미오" and i.get("status") == "대기" and i.get("type") == "디자인"]
+
+
+def _close_tasks(task_ids: list[str]) -> None:
+    if not task_ids:
+        return
+    try:
+        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    for i in data["items"]:
+        if i.get("id") in task_ids:
+            i["status"] = "완료"
+    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def review(do_send: bool) -> None:
     print(f"[{datetime.now()}] 🎨 미오 디자인 리뷰 시작")
     shots = take_screenshots()
+    assigned = _assigned_tasks()
     design_md = PETNNA_ROOT / "DESIGN.md"
     ref = (f"디자인 기준 문서 {design_md} 를 Read로 읽고 그 기준으로 평가하라."
            if design_md.exists() else
@@ -118,11 +148,16 @@ def review(do_send: bool) -> None:
            "필요하면 references/awesome-design-md/ 의 실사이트 디자인 시스템을 참고하라.")
     # 1단계: 자유 형식 리뷰 (JSON 강제 없음 — 스키마를 걸면 오히려 "오너에게 보고하는
     # 디자이너" 대화체로 이탈하는 경우가 잦았다, 2026-07-09 나무에서 확인).
+    charter = ""
+    if assigned:
+        charter = ("\n[회의가 이번 리뷰에 배정한 과제 — 반드시 다루어라]\n"
+                   + "\n".join(f"- {t['title']}: {t.get('detail', '')}" for t in assigned) + "\n")
     ok, analysis = run_claude(
         "너는 시니어 프로덕트 디자이너다. 펫나(펫 케어 플랫폼 SPA)의 현재 화면을 리뷰하라.\n"
         f"스크린샷을 Read 도구로 열어 실제로 보라: {', '.join(str(s) for s in shots)}\n"
         f"{ref}\n"
-        "모르는 디자인 트렌드·근거는 웹서치로 확인하라.\n\n"
+        "모르는 디자인 트렌드·근거는 웹서치로 확인하라.\n"
+        f"{charter}\n"
         "실행 가능하고 CSS/HTML 수준에서 구현 가능한 것 위주로 3~6개 제안하라. 코드는 수정하지 마라.",
         PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
         permission_mode="acceptEdits")
@@ -165,6 +200,8 @@ def review(do_send: bool) -> None:
     lines += ["", f"스크린샷: {', '.join(s.name for s in shots)}",
               f"백로그 신규 적재: {added}건 → 수리가 브랜치 구현(자동 병합 없음)"]
     report.write_text("\n".join(lines), encoding="utf-8")
+    # 배정 과제는 리뷰가 실제로 산출물을 남긴 뒤에만 닫는다(실패 시 대기로 남아 다음 주기 재시도).
+    _close_tasks([t["id"] for t in assigned])
     print(f"리뷰 완료 — 제안 {len(items)}건, 백로그 적재 {added}건, {report}")
     if do_send:
         msg = [f"🎨 미오 디자인 리뷰 — 제안 {len(items)}건 (백로그 적재 {added})"]
