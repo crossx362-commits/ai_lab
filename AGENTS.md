@@ -2,13 +2,15 @@
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
+> 사람이 읽는 운영 매뉴얼·사고 런북·문서 색인은 [HANDBOOK.md](HANDBOOK.md)에 있다.
+
 ---
 
 ## 🏗️ Repository Structure
 
 This is a monorepo containing:
 
-1. **ai-team/** — Multi-agent AI automation framework (예원·영숙·봄이 3 agents)
+1. **ai-team/** — Multi-agent AI automation framework (8 agents: 예원·영숙·봄이·수리·테오·백호·미오·나무)
 2. **petnna/** — Pet healing platform (web/hybrid app)
 3. **Root scripts/** — Daemon management
 

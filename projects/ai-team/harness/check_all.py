@@ -233,6 +233,7 @@ def check_structure():
 def check_classification_layout():
     required_files = [
         ROOT / "AGENTS.md",
+        ROOT / "HANDBOOK.md",
         ROOT / "PROJECT_OVERVIEW.md",
         ROOT / "README.md",
         ROOT / "CLAUDE.md",
@@ -363,6 +364,7 @@ def check_root_layout():
         "CLAUDE.md",
         "DESIGN.md",
         "ENV_MANIFEST.json",
+        "HANDBOOK.md",
         "PROJECT_OVERVIEW.md",
         "README.md",
         "SKILL.md",

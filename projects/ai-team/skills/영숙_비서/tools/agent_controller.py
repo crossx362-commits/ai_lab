@@ -259,7 +259,10 @@ def start_all_bots() -> str:
     started = []
     for key in CONTINUOUS_DAEMONS:
         name = get_agent_name(key)
-        if name in _KEEP_ON_SHUTDOWN or name not in AGENTS:
+        # _KEEP_ON_SHUTDOWN은 '정지 제외' 목록이지 '기동 제외'가 아니다. 여기서 건너뛰면
+        # 영숙·예원이 다른 이유로 죽었을 때 봇다켜가 영원히 못 살린다 — 예원이 워치독이라
+        # "누락분은 워치독이 복구" 안내도 거짓이 된다(2026-07-10 함대 전멸 때 실제 발생).
+        if name not in AGENTS:
             continue
         if name in _KEEPALIVE_LABELS and sys.platform == "darwin":
             _launchctl("on", _KEEPALIVE_LABELS[name])
