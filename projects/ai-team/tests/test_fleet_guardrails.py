@@ -9,6 +9,7 @@
 """
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -121,6 +122,62 @@ class ScrubSecretsTests(unittest.TestCase):
     def test_anthropic_api_key_still_removed(self):
         # CLAUDE_* 보존 규칙이 ANTHROPIC_API_KEY까지 살려주면 안 된다(구독 OAuth 우회).
         self.assertNotIn("ANTHROPIC_API_KEY", scrub_secrets({"ANTHROPIC_API_KEY": "x"}))
+
+
+MONITOR_PATH = (AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "harness_monitor.py")
+
+
+class WatchdogSelfReplace(unittest.TestCase):
+    """워치독 자가교체 — 구 프로세스가 살아 있으면 신 프로세스가 락에 걸려 즉사한다.
+
+    2026-07-10 사고: 7/8 코드의 워치독이 이틀간 자가교체에 실패해 함대 전체가
+    묵은 코드로 돌았다(수리는 이미 고쳐진 diff 게이트 오탐을 그대로 재현). macOS에서
+    워치독은 launchd KeepAlive가 소유하므로, 죽는 것이 곧 새 코드로의 교체다.
+    """
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("harness_monitor_under_test", MONITOR_PATH)
+        self.mon = importlib.util.module_from_spec(spec)
+        sys.modules["harness_monitor_under_test"] = self.mon
+        spec.loader.exec_module(self.mon)
+
+    def _arrange(self, tmpdir, changed: str):
+        head_state = Path(tmpdir) / "head.json"
+        head_state.write_text('{"head": "old"}', encoding="utf-8")
+
+        def fake_git(*args):
+            if args[:1] == ("rev-parse",):
+                return "new"
+            if args[:1] == ("diff",):
+                return changed
+            return ""
+
+        return (mock.patch.object(self.mon, "HEAD_STATE", str(head_state)),
+                mock.patch.object(self.mon, "_git_out", fake_git),
+                mock.patch.object(self.mon, "_bots_off", lambda: False),
+                mock.patch.object(self.mon, "send", lambda *a, **k: None),
+                mock.patch.object(self.mon, "sys", mock.Mock(platform="darwin", exit=sys.exit)))
+
+    def test_shared_change_makes_watchdog_exit_for_launchd_to_replace(self):
+        shared = "projects/ai-team/_shared/backlog.py"
+        with tempfile.TemporaryDirectory() as td:
+            patches = self._arrange(td, shared)
+            with patches[0], patches[1], patches[2], patches[3], patches[4], \
+                    mock.patch.object(self.mon, "_daemon_dirs",
+                                      lambda: {"yewon": "projects/ai-team/skills/예원_CEO/tools"}), \
+                    mock.patch.object(self.mon, "_restart_bot", lambda n: None):
+                with self.assertRaises(SystemExit):
+                    self.mon.restart_on_code_update()
+
+    def test_unrelated_change_does_not_kill_the_watchdog(self):
+        with tempfile.TemporaryDirectory() as td:
+            patches = self._arrange(td, "projects/ai-team/skills/봄이_QA/tools/petnna_qa_patrol.py")
+            with patches[0], patches[1], patches[2], patches[3], patches[4], \
+                    mock.patch.object(self.mon, "_daemon_dirs",
+                                      lambda: {"yewon": "projects/ai-team/skills/예원_CEO/tools",
+                                               "bomi_qa": "projects/ai-team/skills/봄이_QA/tools"}), \
+                    mock.patch.object(self.mon, "_restart_bot", lambda n: None):
+                self.mon.restart_on_code_update()  # 예외 없이 반환해야 한다
 
 
 HEARTBEAT_PATH = (AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "fleet_heartbeat.py")

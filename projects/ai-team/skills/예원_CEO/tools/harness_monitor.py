@@ -165,10 +165,19 @@ def restart_on_code_update() -> None:
         except Exception:
             pass  # 실패해도 다음 주기 워치독이 down 감지 후 재시도
     if self_restart:
-        controller = os.path.join(os.path.dirname(__file__), "..", "..", "영숙_비서", "tools",
-                                  "agent_controller.py")
-        kwargs = {"creationflags": 0x08000008} if sys.platform == "win32" else {"start_new_session": True}
-        subprocess.Popen([sys.executable, controller, "yewon", "restart"], **kwargs)
+        if sys.platform == "win32":
+            controller = os.path.join(os.path.dirname(__file__), "..", "..", "영숙_비서", "tools",
+                                      "agent_controller.py")
+            subprocess.Popen([sys.executable, controller, "yewon", "restart"],
+                             creationflags=0x08000008)
+        else:
+            # macOS: 워치독은 launchd(com.ailab.yewon_monitor, KeepAlive=true)가 소유한다.
+            # 컨트롤러로 자기를 재시작시키면 구 프로세스가 살아 있는 동안 신 프로세스가
+            # ProcessLock에 걸려 즉사하고, 구 코드가 조용히 계속 돈다(2026-07-10 관측:
+            # 7/8 코드의 워치독이 이틀간 자가교체에 실패, 함대 전체가 묵은 코드로 가동).
+            # 그냥 죽는 게 정답 — 락이 풀리고 launchd가 새 코드로 즉시 되살린다.
+            print("[예원] 코드 갱신 — 자가교체를 위해 종료(launchd가 새 코드로 재기동)", flush=True)
+            sys.exit(0)  # SystemExit은 except Exception에 안 걸린다 — ProcessLock.__exit__까지 돈다
 
 
 # 하네스 이슈 → 원인 에이전트 자동 복구 매핑: (검사명, 메시지 부분문자열, 재시작 대상)
