@@ -332,6 +332,163 @@ function deleteMedicalRecord(recordId) {
     }
 }
 
+// ===== 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) =====
+// care-scheduler(예정 투약 일정) + medical-records(접종 이력)를 조합해
+// '다음 투약 D-Day' 카드 · 백신 진행바 · 중복 투약 경고를 렌더한다.
+
+function _careSchedulesState() {
+    return (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules'))
+        || { schedules: [], completionHistory: [] };
+}
+
+// 반복/일회성 예방 일정의 '다음 예정일' 계산 (daily/weekly는 카운트다운 대상 아님)
+function _nextPreventiveDue(schedule) {
+    const today0 = new Date();
+    today0.setHours(0, 0, 0, 0);
+    if (schedule.repeat === 'once') {
+        if (schedule.completed || !schedule.date) return null;
+        return new Date(schedule.date + 'T00:00:00');
+    }
+    if (schedule.repeat === 'monthly') {
+        const baseStr = schedule.lastCompleted || schedule.date || schedule.createdAt;
+        if (!baseStr) return null;
+        const due = new Date(baseStr);
+        due.setHours(0, 0, 0, 0);
+        // 완료 이력이 있으면 그 다음 달이 다음 투약일
+        if (schedule.lastCompleted) due.setMonth(due.getMonth() + 1);
+        while (due < today0) due.setMonth(due.getMonth() + 1);
+        return due;
+    }
+    return null;
+}
+
+function _ddayLabel(due) {
+    const today0 = new Date();
+    today0.setHours(0, 0, 0, 0);
+    const days = Math.round((due - today0) / 86400000);
+    if (days < 0) return { text: `${Math.abs(days)}일 지남`, tone: 'overdue' };
+    if (days === 0) return { text: '오늘', tone: 'today' };
+    if (days <= 3) return { text: `D-${days}`, tone: 'soon' };
+    return { text: `D-${days}`, tone: 'ok' };
+}
+
+function renderPreventiveCareDashboard() {
+    const container = document.getElementById('preventive-care-dashboard');
+    if (!container) return;
+
+    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const state = _careSchedulesState();
+    const schedules = (state.schedules || []).filter(s =>
+        (!pet || String(s.petId) === String(pet.id)) &&
+        (s.type === 'medicine' || s.type === 'vet')
+    );
+
+    // 1) 다음 투약 D-Day 카드
+    const due = schedules
+        .map(s => ({ s, due: _nextPreventiveDue(s) }))
+        .filter(x => x.due)
+        .sort((a, b) => a.due - b.due)
+        .slice(0, 4);
+
+    // 2) 백신 진행바 — 제목에 '백신' 포함 일정 기준
+    const vaccineScheds = schedules.filter(s => (s.title || '').includes('백신'));
+    const vaccineDone = vaccineScheds.filter(s => s.lastCompleted).length;
+    const vaccineRecords = (Array.isArray(window.medicalRecords) ? window.medicalRecords : [])
+        .filter(r => r.category === 'vaccine' && (!pet || String(r.petId) === String(pet.id))).length;
+
+    // 3) 중복 투약 경고 — 같은 제목 monthly 일정 2개↑ 또는 같은 날 같은 투약 완료 2회↑
+    const dupWarnings = [];
+    const titleCount = {};
+    schedules.forEach(s => {
+        if (s.repeat === 'monthly') titleCount[s.title] = (titleCount[s.title] || 0) + 1;
+    });
+    Object.entries(titleCount).forEach(([title, n]) => {
+        if (n > 1) dupWarnings.push(`"${title}" 예방 일정이 ${n}개 중복 등록됨`);
+    });
+    const sameDay = {};
+    (state.completionHistory || []).forEach(c => {
+        if (c.type !== 'medicine') return;
+        if (pet && String(c.petId) !== String(pet.id)) return;
+        const day = (c.completedAt || '').slice(0, 10);
+        const key = day + '|' + c.title;
+        sameDay[key] = (sameDay[key] || 0) + 1;
+    });
+    Object.entries(sameDay).forEach(([key, n]) => {
+        if (n > 1) {
+            const [day, title] = key.split('|');
+            dupWarnings.push(`${day} "${title}" ${n}회 중복 투약 기록`);
+        }
+    });
+
+    // 표시할 내용이 하나도 없으면 카드 숨김
+    if (due.length === 0 && vaccineScheds.length === 0 && dupWarnings.length === 0 && vaccineRecords === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const toneCls = {
+        overdue: 'bg-rose-50 text-rose-700 border-rose-200',
+        today: 'bg-amber-50 text-amber-700 border-amber-200',
+        soon: 'bg-amber-50 text-amber-700 border-amber-200',
+        ok: 'bg-brand-50 text-brand-700 border-brand-200'
+    };
+
+    const ddayCards = due.map(({ s, due }) => {
+        const d = _ddayLabel(due);
+        const icon = (typeof getCareTypeIcon === 'function') ? getCareTypeIcon(s.type) : '💊';
+        const dateStr = `${due.getMonth() + 1}/${due.getDate()}`;
+        return `
+            <div class="flex items-center gap-2 p-2.5 rounded-xl border ${toneCls[d.tone]}">
+                <span class="text-lg">${icon}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[11px] font-black truncate">${_esc(s.title)}</div>
+                    <div class="text-[9px] font-bold opacity-70 tabular-nums">${dateStr} 예정</div>
+                </div>
+                <span class="text-xs font-black tabular-nums shrink-0">${d.text}</span>
+            </div>`;
+    }).join('');
+
+    const ddayHtml = due.length > 0 ? `
+        <div class="grid grid-cols-2 gap-2 mb-3">${ddayCards}</div>` : '';
+
+    let vaccineHtml = '';
+    if (vaccineScheds.length > 0) {
+        const pct = Math.round((vaccineDone / vaccineScheds.length) * 100);
+        vaccineHtml = `
+            <div class="mb-3">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-wide">💉 백신 스케줄</span>
+                    <span class="text-[10px] font-bold text-gray-500 tabular-nums">${vaccineDone}/${vaccineScheds.length} 접종</span>
+                </div>
+                <div class="h-2 w-full bg-emerald-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-emerald-500 rounded-full transition-all" style="width:${pct}%"></div>
+                </div>
+            </div>`;
+    } else if (vaccineRecords > 0) {
+        vaccineHtml = `
+            <div class="mb-3 text-[10px] font-bold text-emerald-700">💉 접종 완료 ${vaccineRecords}건 (예정 백신 일정 없음)</div>`;
+    }
+
+    const warnHtml = dupWarnings.length > 0 ? `
+        <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-200">
+            <div class="text-[10px] font-black text-rose-700 mb-1">⚠️ 중복 투약 경고</div>
+            ${dupWarnings.map(w => `<p class="text-[10px] text-rose-600 keep-all leading-snug">· ${_esc(w)}</p>`).join('')}
+        </div>` : '';
+
+    container.innerHTML = `
+        <div class="card-modern overflow-hidden mb-3">
+            <div class="px-5 pt-4 pb-3 border-b border-gray-100">
+                <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-heart text-brand-500"></i>투약·정기예방
+                </h2>
+            </div>
+            <div class="px-5 py-4">
+                ${ddayHtml}${vaccineHtml}${warnHtml}
+            </div>
+        </div>`;
+}
+window.renderPreventiveCareDashboard = renderPreventiveCareDashboard;
+
 // 초기 로드 (Supabase 동기화 전 localStorage 즉시 반영)
 window.addEventListener('DOMContentLoaded', () => {
     loadMedicalRecords();

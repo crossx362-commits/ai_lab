@@ -324,6 +324,9 @@ const MYPET_TEMPLATE = `
 
         <!-- 건강 요약 카드 (이전 위치에서 제거됨) -->
 
+        <!-- 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
+        <div id="preventive-care-dashboard"></div>
+
         <!-- 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
         <div class="card-modern overflow-hidden">
             <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
