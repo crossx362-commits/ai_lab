@@ -204,8 +204,13 @@ python .../agent_controller.py 봇다켜
 (영문 별칭도 됨: `bomi` `suri` `teo` `baekho` `mio` `namu` …)
 
 ### 4-3. 코드 배포
-**맥**: `git pull`만 하면 된다 — 워치독이 HEAD 변화를 감지해 데몬을 자동 교체한다.
-**Windows**: 자동 재배포 워치독이 없다 → **커밋 후 수동 재기동 필요**.
+`git pull`만 하면 된다 — 워치독 예원이 HEAD 변화를 감지해 변경 폴더의 데몬을 자동 교체한다
+(`harness_monitor.restart_on_code_update`, `_shared` 변경 시 전 데몬 + 자기 자신).
+**플랫폼 분기 없음 — 맥·Windows 모두 동작한다**(2026-07-10 실측: 커밋마다 예원 PID 자동 교체됨).
+
+전제는 **예원이 살아 있을 것**. 죽어 있으면 아무것도 갱신되지 않는다.
+"고쳤는데 왜 그대로냐" = ①예원 생존 ②데몬 재기동 여부 순으로 확인.
+함대가 통째로 꺼진 상태에서 pull로 되살리는 건 §4-5(post-merge 훅)가 담당한다.
 
 ### 4-4. 설정 변경 (⚠️ 함정)
 `load_env()`는 `.env.encrypted`가 있으면 **그것만 읽고 즉시 반환**한다.
@@ -218,7 +223,36 @@ python projects/ai-team/_shared/env.py encrypt .env .env.encrypted
 ```
 적용 확인은 `load_env()` 후 `os.getenv()`로.
 
-### 4-5. 외부 하트비트 (함대 밖 감시선)
+### 4-5. 기계 전환 — git pull로 자동 기동
+
+새 기계에서 **딱 한 번**만 실행하면, 그 뒤로는 `git pull`만으로 함대가 뜬다.
+(`core.hooksPath`는 `.git/config`에 있어 커밋으로 전파되지 않는다 — 그래서 한 번은 필요하다.)
+
+```bash
+# 맥에서 (playwright 있는 인터프리터로!)
+git pull
+python3 projects/ai-team/scripts/fleet_bootstrap.py --setup
+git add .env.encrypted && git commit -m "chore: 운영기를 맥으로 지정" && git push
+```
+
+`--setup` = post-merge 훅 활성화 + 이 기계를 운영기로 지정 + `BOTS_OFF` 해제 + 즉시 기동.
+
+**훅은 기동보다 거부가 본업이다.** 세 관문을 다 통과해야만 뜬다:
+
+| 관문 | 막는 사고 |
+|---|---|
+| `BOTS_OFF` 플래그 없을 것 | 오너가 내려둔 기계를 pull이 멋대로 깨우는 것 |
+| 이 기계가 지정 운영기일 것 | **두 기계가 각자 master에 병합하는 이중 가동** |
+| playwright 있는 인터프리터일 것 | 봄이·미오 기동 즉시 사망 |
+
+운영기 지정자는 `TELEGRAM_POLL_HOST`를 **재사용**한다 — 개념을 하나로 유지해야
+텔레그램 폴링 소유자와 함대 운영기가 어긋나지 않는다.
+`output/cache/*`는 gitignore라 `BOTS_OFF`·인터프리터 핀은 기계마다 독립이다.
+
+주의: post-merge 훅은 **실제 병합이 일어날 때만** 실행된다.
+`Already up to date`면 안 불리고, `git pull --rebase`에서도 안 불린다.
+
+### 4-6. 외부 하트비트 (함대 밖 감시선)
 함대와 **같이 죽지 않는** 유일한 장치. Windows 작업 스케줄러가 5분마다 새 프로세스로 띄운다.
 `down`/`misconfig`를 감지하면 텔레그램(30분 쿨다운), 워치독 예원이 죽어 있으면 **직접 되살린다**
 (예원은 스스로를 재시작하지 못한다 — `harness_monitor.check_and_restart_bots`가 `yewon`을 제외).
@@ -229,7 +263,7 @@ python projects/ai-team/skills/예원_CEO/tools/fleet_heartbeat.py --install  # 
 ```
 등록 확인: `Get-ScheduledTask -TaskName AiLabFleetHeartbeat` → `Ready` / `PT5M`
 
-### 4-6. 시스템 점검 / 긴급회의
+### 4-7. 시스템 점검 / 긴급회의
 ```bash
 python projects/ai-team/harness/check_all.py
 python projects/ai-team/skills/예원_CEO/tools/petnna_council.py --topic "안건"

@@ -202,5 +202,49 @@ class EscalationPolicyTests(unittest.TestCase):
         send.assert_called_once()
 
 
+BOOTSTRAP_PATH = AI_TEAM_ROOT / "scripts" / "fleet_bootstrap.py"
+
+
+def load_bootstrap():
+    spec = importlib.util.spec_from_file_location("fleet_bootstrap_under_test", BOOTSTRAP_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class BootstrapGateTests(unittest.TestCase):
+    """post-merge 훅의 진짜 일은 기동이 아니라 '이중 가동 거부'다."""
+
+    def _gates(self, env, flag_exists=False):
+        fb = load_bootstrap()
+        flag = mock.Mock()
+        flag.exists.return_value = flag_exists
+        with mock.patch.object(fb, "BOTS_OFF_FLAG", flag), \
+             mock.patch.dict("os.environ", env, clear=False):
+            return fb.gates()
+
+    def test_bots_off_blocks_start(self):
+        ok, why = self._gates({}, flag_exists=True)
+        self.assertFalse(ok)
+        self.assertIn("BOTS_OFF", why)
+
+    def test_non_designated_host_blocks_start(self):
+        # 이중 가동 참사 방지 — 두 기계가 각자 master에 병합하면 끝장이다.
+        ok, why = self._gates({"TELEGRAM_POLL_HOST": "some-other-machine"})
+        self.assertFalse(ok)
+        self.assertIn("이중 가동 방지", why)
+        self.assertIn("--claim-ops-host", why)  # 해결 명령을 반드시 알려준다
+
+    def test_designated_host_passes(self):
+        fb = load_bootstrap()
+        ok, _ = self._gates({"TELEGRAM_POLL_HOST": fb._host()})
+        self.assertTrue(ok)
+
+    def test_unset_host_passes(self):
+        # 아직 기기를 지정 안 한 상태는 허용(should_poll과 같은 규약).
+        ok, _ = self._gates({"TELEGRAM_POLL_HOST": ""})
+        self.assertTrue(ok)
+
+
 if __name__ == "__main__":
     unittest.main()
