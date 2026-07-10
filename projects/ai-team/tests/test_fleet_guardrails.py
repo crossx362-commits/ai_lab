@@ -123,5 +123,65 @@ class ScrubSecretsTests(unittest.TestCase):
         self.assertNotIn("ANTHROPIC_API_KEY", scrub_secrets({"ANTHROPIC_API_KEY": "x"}))
 
 
+HEARTBEAT_PATH = (AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "fleet_heartbeat.py")
+
+
+def load_heartbeat():
+    spec = importlib.util.spec_from_file_location("fleet_heartbeat_under_test", HEARTBEAT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class EscalationPolicyTests(unittest.TestCase):
+    """HANDBOOK §7 — 기준은 심각도가 아니라 '자동으로 낫는가'다."""
+
+    def _run(self, status, prior_state=None):
+        hb = load_heartbeat()
+        saved = {}
+        with mock.patch.object(hb, "agent_status", return_value=status), \
+             mock.patch.object(hb, "send") as send, \
+             mock.patch.object(hb, "_revive_watchdog", return_value="ok") as revive, \
+             mock.patch.object(hb, "_load_state", return_value=dict(prior_state or {})), \
+             mock.patch.object(hb, "_save_state", side_effect=saved.update):
+            hb.check()
+        return send, revive, saved
+
+    def test_healthy_fleet_is_silent(self):
+        send, _, _ = self._run({"youngsuk": "111", "yewon": "222"})
+        send.assert_not_called()
+
+    def test_single_down_waits_one_cycle(self):
+        # 워치독이 5분 내 살릴 수 있다 → 첫 감지는 조용히.
+        send, _, saved = self._run({"youngsuk": "111", "yewon": "222", "bomi_qa": "down"})
+        send.assert_not_called()
+        self.assertEqual(saved["down_streak"]["count"], 1)
+
+    def test_single_down_alerts_on_second_cycle(self):
+        # 두 번째에도 같은 봇이 죽어 있으면 = 자동복구가 졌다.
+        prior = {"down_streak": {"key": "down=bomi_qa|misconfig=", "count": 1}}
+        send, _, _ = self._run({"yewon": "222", "bomi_qa": "down"}, prior)
+        send.assert_called_once()
+        self.assertIn("자동복구 실패", send.call_args[0][0])
+
+    def test_misconfig_alerts_immediately(self):
+        # 재시작으로 안 낫는다 → 유예 없이 즉시.
+        send, _, _ = self._run({"yewon": "222", "bomi_qa": "misconfig"})
+        send.assert_called_once()
+        self.assertIn("PETNNA_AGENTS_ON_WINDOWS", send.call_args[0][0])
+
+    def test_three_down_alerts_immediately(self):
+        send, _, _ = self._run({"yewon": "222", "bomi_qa": "down",
+                                "suri_dev": "down", "teo_test": "down"})
+        send.assert_called_once()
+        self.assertIn("동시 다운", send.call_args[0][0])
+
+    def test_watchdog_down_alerts_and_revives(self):
+        # 복구 책임자가 죽으면 아무도 못 살린다 → 즉시 + 직접 기동.
+        send, revive, _ = self._run({"yewon": "down", "youngsuk": "111"})
+        revive.assert_called_once()
+        send.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

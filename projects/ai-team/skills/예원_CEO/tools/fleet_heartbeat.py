@@ -70,6 +70,7 @@ def check() -> int:
 
     if not down and not misconfig:
         state["last_ok"] = now.isoformat()
+        state["down_streak"] = {}
         _save_state(state)
         print(f"[하트비트] 정상 — {len(status)}종 가동")
         return 0
@@ -78,8 +79,23 @@ def check() -> int:
     if "yewon" in down:
         revived = _revive_watchdog()
 
-    # 같은 문제 조합이 계속되면 30분에 한 번만 알린다.
+    # 에스컬레이션 정책(HANDBOOK §7): 기준은 심각도가 아니라 '자동으로 낫는가'다.
+    # 즉시 경보 — 워치독이 못 고치거나(misconfig), 워치독 자신이 죽었거나,
+    # 단일 봇 사고로 보기 어려운 동시 다운(≥3종).
+    urgent = bool(misconfig) or "yewon" in down or len(down) >= 3
+
+    # 그 외 단일·이중 다운은 워치독에게 한 주기(5분) 기회를 준다.
+    # 다음 점검에도 같은 봇이 죽어 있으면 = 자동복구가 졌다 → 경보.
     key = f"down={','.join(down)}|misconfig={','.join(misconfig)}"
+    streak = state.get("down_streak") or {}
+    streak = {"key": key, "count": streak.get("count", 0) + 1} if streak.get("key") == key \
+        else {"key": key, "count": 1}
+    state["down_streak"] = streak
+
+    if not urgent and streak["count"] < 2:
+        _save_state(state)
+        print(f"[하트비트] {', '.join(down)} 다운 — 워치독 복구 대기(1주기 유예)")
+        return 0
     prev_key, prev_ts = state.get("alert_key"), state.get("alert_ts")
     cooled = True
     if prev_key == key and prev_ts:
@@ -89,13 +105,16 @@ def check() -> int:
         except Exception:
             cooled = True
 
-    lines = ["🚨 [하트비트] 함대 이상 감지"]
+    head = "🚨 [하트비트] 함대 이상" if urgent else "🔴 [하트비트] 자동복구 실패(2주기 연속)"
+    lines = [head]
     if misconfig:
         lines.append(f"🟠 설정 유실({len(misconfig)}): {', '.join(misconfig)}")
         lines.append("   → PETNNA_AGENTS_ON_WINDOWS 부재. 재시작으로 안 낫는다.")
         lines.append("   → git checkout HEAD -- .env.encrypted (키 diff 먼저 확인)")
     if down:
         lines.append(f"🔴 중지({len(down)}): {', '.join(down)}")
+    if len(down) >= 3:
+        lines.append("   → 동시 다운. 단일 봇 사고가 아니다 — 공통 원인(.env·기계·전원) 의심")
     if revived:
         lines.append(f"🔄 워치독 예원 재기동 시도: {revived}")
     msg = "\n".join(lines)
