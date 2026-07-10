@@ -139,7 +139,12 @@ class EscalationPolicyTests(unittest.TestCase):
     def _run(self, status, prior_state=None):
         hb = load_heartbeat()
         saved = {}
-        with mock.patch.object(hb, "agent_status", return_value=status), \
+        # 실제 BOTS_OFF 플래그 파일에 의존하면 안 된다 — 오너가 '봇 다 꺼'를 한 상태에서
+        # 테스트를 돌리면 check()가 조기 종료해 5건이 한꺼번에 거짓 실패한다(실제로 겪음).
+        no_flag = mock.Mock()
+        no_flag.exists.return_value = False
+        with mock.patch.object(hb, "BOTS_OFF_FLAG", no_flag), \
+             mock.patch.object(hb, "agent_status", return_value=status), \
              mock.patch.object(hb, "send") as send, \
              mock.patch.object(hb, "_revive_watchdog", return_value="ok") as revive, \
              mock.patch.object(hb, "_load_state", return_value=dict(prior_state or {})), \

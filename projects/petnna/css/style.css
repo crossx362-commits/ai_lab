@@ -69,6 +69,13 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* 🐾 브랜드 톤 배경 — 파우 아이콘의 브라운 램프(brand-50~200)를 활용한 웜 그라디언트로
+   '펫 플랫폼' 따뜻한 첫인상 제공. 모바일 포함 전 화면 적용, dark/sepia 테마는 현행 유지. */
+body:not(.theme-dark):not(.theme-sepia) {
+    background-image: linear-gradient(160deg, #faf3ef 0%, #f4e2d9 100%);
+    background-attachment: fixed;
+}
+
 /* 탭 버튼 한 줄 유지 및 네비게이션 가로 스크롤 보정 */
 .tab-btn {
     white-space: nowrap !important;
@@ -1391,3 +1398,49 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
         padding-bottom: calc(70px + env(safe-area-inset-bottom));
     }
 }
+
+/* 로그인/회원가입 입력: leading 아이콘 + floating label + 브랜드 포커스 링 (WCAG 2.4.7/1.4.1) */
+.floating-field { position: relative; }
+.floating-input {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.25rem 0.875rem 0.375rem 2.5rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color .18s, box-shadow .18s;
+}
+.floating-input:focus {
+    border-color: #a9583e;                 /* brand-600 테라코타 */
+    box-shadow: 0 0 0 2px rgba(169, 88, 62, .55);
+}
+.floating-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: #9ca3af;
+    pointer-events: none;
+    transition: color .18s;
+}
+.floating-input:focus ~ .floating-icon { color: #a9583e; }
+.floating-label {
+    position: absolute;
+    left: 2.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.875rem;
+    color: #9ca3af;
+    pointer-events: none;
+    transition: top .18s, font-size .18s, color .18s, transform .18s;
+}
+.floating-input:focus ~ .floating-label,
+.floating-input:not(:placeholder-shown) ~ .floating-label {
+    top: 0.5rem;
+    transform: translateY(0);
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+.floating-input:focus ~ .floating-label { color: #a9583e; }

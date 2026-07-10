@@ -101,6 +101,22 @@ function initWalkSimulator() {
         maxZoom: 20
     }).addTo(mapInstance);
 
+    // 지도 프레임이 sm+에서 flex로 늘어나므로, 레이아웃 확정 후 타일 크기 재계산
+    // (누락 시 늘어난 하단이 회색 빈 공간으로 남는다)
+    requestAnimationFrame(() => mapInstance && mapInstance.invalidateSize());
+    setTimeout(() => mapInstance && mapInstance.invalidateSize(), 250);
+
+    // 자동 사이즈 조절: 컨테이너 크기가 바뀔 때마다(창 리사이즈·기기 회전·사이드바 높이
+    // 변화 등) 타일을 자동 재계산해 빈 공간 없이 항상 프레임을 채운다. 재로드 불필요.
+    if (window.ResizeObserver && !WalkModule._mapResizeObserver) {
+        let _rt;
+        WalkModule._mapResizeObserver = new ResizeObserver(() => {
+            clearTimeout(_rt);
+            _rt = setTimeout(() => mapInstance && mapInstance.invalidateSize(), 120);
+        });
+        WalkModule._mapResizeObserver.observe(mapContainer);
+    }
+
     // 📍 현재 위치 이동 함수
     function moveToMyLocation() {
         if (!navigator.geolocation) {

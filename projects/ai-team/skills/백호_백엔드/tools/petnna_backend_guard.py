@@ -44,6 +44,7 @@ load_env(str(PROJECT_ROOT))
 PETNNA_ROOT = PROJECT_ROOT / "projects" / "petnna"
 OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "backend"
 STATE = OUT_DIR / "state.json"
+BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "baekho_slots.json"
 
 
@@ -146,6 +147,42 @@ def diff_with_prev(findings: list[dict]) -> tuple[list, list]:
     return sorted(now - prev), sorted(prev - now)
 
 
+# ── 회의/사람이 백호에게 위임한 조사 과제 소비 ──────────────
+# (2026-07-09 발견: 회의가 owner=백호로 액션을 위임해도 이걸 읽어 실행하는
+#  루프가 없어 조사 과제가 영구 대기하던 공백 — 여기서 메운다. 읽기 전용 조사만
+#  수행, 코드/DB는 건드리지 않는다 — 수정 필요 결론이면 별도 [승인필요] 항목으로.)
+
+def investigate_assigned_tasks(do_send: bool) -> int:
+    try:
+        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    todo = [it for it in data["items"] if it.get("owner") == "백호" and it.get("status") == "대기"]
+    for it in todo:
+        print(f"[백호] 위임 조사 착수: {it['title'][:60]}")
+        ok, out = run_claude(
+            "너는 펫나 백엔드 지킴이 백호다. 회의에서 위임받은 조사 과제를 처리하라 — "
+            "결론만 명확히, 코드/DB는 절대 수정하지 마라(읽기 전용 조사).\n\n"
+            f"[조사 과제] {it['title']}\n상세: {it.get('detail', '')}\n\n"
+            "projects/petnna/supabase_schema.sql·migrations/·js/ 를 Read로 직접 확인해 결론을 내라. "
+            "모르는 사실은 웹서치로 확인. 결론은 6줄 이내: 무엇을 확인했는지, 결론, "
+            "후속 조치가 필요하면 무엇인지(신규 테이블 필요 여부 등 명확히).",
+            PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
+            permission_mode="plan")
+        if not (ok and out):
+            print(f"[백호] 조사 실패(인프라) — 다음 주기 재시도: {it['title'][:60]}")
+            continue  # 시도 미차감 원칙과 동일 — 대기 상태 유지, 다음 주기 재시도
+        it["status"] = "완료"
+        it["finding"] = out.strip()[:1500]
+        it["updated"] = datetime.now().isoformat()
+        print(f"[백호] 조사 완료: {it['title'][:60]}")
+        if do_send:
+            send(f"🐯 백호 — 위임 조사 완료: {it['title'][:80]}\n{out.strip()[:800]}", silent=True)
+    if todo:
+        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return len(todo)
+
+
 def run_audit(do_send: bool) -> None:
     print(f"[{datetime.now()}] 🐯 백호 감사 시작")
     findings = audit()
@@ -200,6 +237,7 @@ def daemon() -> None:
             try:
                 if due_slot(slots, SLOT_STATE, weekdays_only=False):
                     run_audit(do_send=True)
+                investigate_assigned_tasks(do_send=True)  # 빈 목록이면 즉시 반환 — 매 주기 저비용 확인
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 백호 오류: {e}")
                 try:
@@ -212,11 +250,15 @@ def daemon() -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description="백호 — 펫나 백엔드 지킴이")
     ap.add_argument("--once", action="store_true", help="감사 1회")
+    ap.add_argument("--tasks", action="store_true", help="위임 조사 과제만 즉시 처리")
     ap.add_argument("--send", action="store_true")
     ap.add_argument("--daemon", action="store_true")
     args = ap.parse_args()
     if args.daemon:
         daemon()
+    elif args.tasks:
+        n = investigate_assigned_tasks(do_send=args.send)
+        print(f"위임 과제 {n}건 처리")
     else:
         run_audit(do_send=args.send)
 

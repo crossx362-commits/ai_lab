@@ -55,6 +55,7 @@ class HarnessManager:
             "_shared/llm.py",
             "_shared/notify.py",
             "_shared/process.py",
+            "skills/봄이_QA/SKILL.md",
             "skills/영숙_비서/SKILL.md",
             "skills/예원_CEO/SKILL.md",
         ]:
