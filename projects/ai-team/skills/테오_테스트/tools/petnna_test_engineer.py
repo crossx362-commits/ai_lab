@@ -49,6 +49,7 @@ PETNNA_ROOT = PROJECT_ROOT / "projects" / "petnna"
 E2E_DIR = PETNNA_ROOT / "tests" / "e2e"
 OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "tests"
 RESULTS = OUT_DIR / "results.json"
+BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "teo_slots.json"
 PORT = int(os.getenv("TEO_PORT", "8935"))
 MAX_TESTS = int(os.getenv("TEO_MAX", "8"))
@@ -171,15 +172,45 @@ def covered_flows() -> str:
     return ", ".join(names) if names else "(없음)"
 
 
+def _backlog_task() -> dict | None:
+    """회의가 테오에게 배정한 대기 중 테스트 과제 1건(우선순위·생성순)."""
+    try:
+        items = json.loads(BACKLOG.read_text(encoding="utf-8"))["items"]
+    except Exception:
+        return None
+    mine = [i for i in items
+            if i.get("owner") == "테오" and i.get("status") == "대기" and i.get("type") == "테스트"]
+    mine.sort(key=lambda i: (i.get("priority", "P2"), i.get("created", "")))
+    return mine[0] if mine else None
+
+
+def _backlog_done(task_id: str) -> None:
+    try:
+        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    for i in data["items"]:
+        if i.get("id") == task_id:
+            i["status"] = "완료"
+    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def generate_test(do_send: bool) -> bool:
     existing = list_tests()
     if len(existing) >= MAX_TESTS:
         return False
+    task = _backlog_task()
+    if task:
+        target = (f"[회의 배정 과제 — 이 흐름을 최우선으로 커버하라]\n"
+                  f"- {task['title']}\n  {task.get('detail', '')}\n\n")
+    else:
+        target = (f"[커버 후보(우선순위 순, 미커버 중 택1)]\n"
+                  + "\n".join(f"- {f}" for f in CORE_FLOWS) + "\n\n")
     prompt = (
         "너는 펫나(projects/petnna, 정적 SPA) E2E 테스트 엔지니어다. "
         "Playwright(Python sync) E2E 테스트 파일을 '하나만' 새로 만들어라.\n\n"
         f"[이미 커버된 흐름]\n{covered_flows()}\n\n"
-        f"[커버 후보(우선순위 순, 미커버 중 택1)]\n" + "\n".join(f"- {f}" for f in CORE_FLOWS) + "\n\n"
+        + target +
         "[계약 — 반드시 지켜라]\n"
         "- 파일 위치: projects/petnna/tests/e2e/test_<영문슬러그>.py (새 파일 1개만 생성)\n"
         "- 파일은 NAME = \"<흐름 이름(한국어)>\" 상수와 def run(page, base_url): 함수를 정의한다.\n"
@@ -210,6 +241,8 @@ def generate_test(do_send: bool) -> bool:
     name = getattr(_load_test(path), "NAME", path.stem)
     subprocess.run(["git", "commit", "-m", f"test(petnna): E2E '{name}' 추가 (테오 자동 생성)"],
                    cwd=str(PROJECT_ROOT), capture_output=True, **nowin)
+    if task:  # 채택(2회 연속 통과)된 뒤에만 과제를 닫는다 — 폐기 시엔 대기로 남아 재시도
+        _backlog_done(task["id"])
     print(f"[테오] 신규 테스트 채택: {path.name} — {name}")
     if do_send:
         send(f"🧷 테오 — 새 E2E 테스트 추가\n{name} ({path.name}), 2회 연속 통과 확인 후 채택")

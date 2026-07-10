@@ -45,6 +45,15 @@ load_env(str(PROJECT_ROOT))
 OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "council"
 STATE = OUT_DIR / "state.json"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
+
+# 백로그를 실제로 소비하는 에이전트만. 나머지(백호·미오·나무)는 적재만 하고 읽지 않아
+# 대기 상태로 배정하면 아무도 집지 않은 채 영원히 남는다 → 사람 검토 트랙(보류)으로 보낸다.
+AUTO_OWNERS = ("", "수리", "테오")
+
+
+def needs_human(title: str, owner: str) -> bool:
+    """자동 루프가 집으면 안 되는 항목인가 — 승인 필요하거나, 소비자 없는 owner에 배정됐거나."""
+    return "[승인필요]" in title or owner not in AUTO_OWNERS
 COOLDOWN_H = 24
 
 PERSONAS = [
@@ -150,7 +159,7 @@ def convene(topic: str, context: str, priority: str) -> None:
             _clear_cooldown(topic)
             print(f"[{datetime.now()}] 의장 종합 실패(인프라) — 쿨다운 미소진, 의견은 보존")
 
-        # 액션아이템 → 백로그(source=회의). [승인필요]·owner=사람 항목은 적재만 하고 수리가 안 집도록 보류 상태.
+        # 액션아이템 → 백로그(source=회의). [승인필요]·소비자 없는 owner 항목은 적재만 하고 자동 루프가 안 집도록 보류 상태.
         actions = extract_json(verdict) or []
         added = 0
         try:
@@ -162,13 +171,13 @@ def convene(topic: str, context: str, priority: str) -> None:
             title = (a.get("title") or "").strip()
             if not title or title in existing:
                 continue
-            needs_human = "[승인필요]" in title or a.get("owner") == "사람"
+            human = needs_human(title, a.get("owner", ""))
             data["items"].append({
                 "id": f"회의_{datetime.now():%Y%m%d%H%M}_{added}",
                 "title": title[:120], "detail": (a.get("detail") or "")[:500],
                 "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
                 "type": a.get("type", "기획"), "source": "회의",
-                "status": "보류" if needs_human else "대기",
+                "status": "보류" if human else "대기",
                 "owner": a.get("owner", ""), "created": datetime.now().isoformat(),
             })
             added += 1

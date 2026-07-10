@@ -378,10 +378,13 @@ def check_root_layout():
         "client_secret.json.encrypted",
         "vercel.json",
     }
+    # output/ 아래지만 생성물이 아니라 버전관리 대상인 설정(.gitignore가 명시 예외).
+    tracked_output_config = {"output/cache/agent_registry.json"}
     tracked = git_tracked()
     root_files = [p for p in tracked if "/" not in p or p == ".codex/environments/environment.toml"]
     unexpected = sorted(p for p in root_files if p not in allowed_root_files)
-    generated = sorted(p for p in tracked if p.startswith("output/"))
+    generated = sorted(p for p in tracked
+                       if p.startswith("output/") and p not in tracked_output_config)
     problems = []
     if unexpected:
         problems.append("unexpected root files: " + ", ".join(unexpected[:8]))
