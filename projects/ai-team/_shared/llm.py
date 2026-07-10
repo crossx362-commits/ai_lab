@@ -256,15 +256,16 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
     # '★ Insight' 코칭 블록·"…하겠습니다" 메타 발화가 보고서 본문에 그대로 섞여 나갔다. 항상 차단.
     hygiene = ("출력 규칙(최우선, 다른 스타일 지침보다 우선): 요청된 결과 본문만 출력한다. "
                "서두·계획·사고과정 같은 메타 발화, '★ Insight' 등 학습/코칭 형식 블록, 마무리 제안을 절대 넣지 마라.")
-    cmd += ["--append-system-prompt", (system + "\n\n" + hygiene) if system else hygiene]
-    cmd.append(full)
+    # argv에 개행이 들어가면 Windows의 claude.CMD(npm 셔임)가 거기서 명령줄을 잘라 뒤 인자를 통째로
+    # 잃는다(2026-07-10 사고). 시스템 프롬프트는 한 줄로 접고, 본문은 stdin으로 넘긴다.
+    cmd += ["--append-system-prompt",
+            ((system + "\n\n" + hygiene) if system else hygiene).replace("\n", " ")]
     try:
-        # stdin=DEVNULL — claude -p는 stdin을 3초 기다린 뒤 진행("no stdin data received in 3s").
-        # detached 데몬은 상속 stdin이 닫힌 핸들이라 그 대기가 빈 응답을 유발할 수 있어 명시 차단
-        # (하루 수백 호출 × 3초 절약 + 재현성). 검증: 10.9s→8.6s, 응답 동일(2026-07-07).
+        # 프롬프트를 stdin으로 주므로 과거의 stdin=DEVNULL(3초 대기 회피)은 불필요하다 —
+        # 파이프가 즉시 닫혀 대기가 발생하지 않는다.
         # env=_subscription_cli_env() — 죽은 ANTHROPIC_API_KEY 상속 차단(구독 OAuth 강제).
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=150,
-                            encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
+        r = subprocess.run(cmd, input=full, capture_output=True, text=True, timeout=150,
+                            encoding="utf-8", errors="replace",
                             env=_subscription_cli_env())
         out = (r.stdout or "").strip()
         if r.returncode != 0:
