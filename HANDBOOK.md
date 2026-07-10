@@ -10,9 +10,12 @@
 
 ## 1. 문서 지도 — 여기가 유일한 진입점
 
-저장소에 문서가 **80개**다. 전부를 한 파일로 합칠 수는 없다 —
+저장소에 문서가 **97개**다(`references/`·`connect-ai*/` 제외). 전부를 한 파일로 합칠 수는 없다 —
 하네스(`check_all.py`)가 특정 경로의 존재를 계약으로 강제하고, 일부는 웹앱이 서빙한다(§1-4).
 그래서 **물리적 병합 대신 이 색인 하나**로 모은다. 길을 잃으면 여기로 돌아온다.
+
+> 개수 재확인: `git -c core.quotepath=false ls-files '*.md'`
+> (`core.quotepath=false` 없이 세면 한글 경로가 따옴표로 감싸여 `^` 앵커가 빗나가 **과소 집계**된다)
 
 ### 1-1. 상황별 — 대부분 이 표에서 끝난다
 
@@ -40,9 +43,18 @@
 | **C. 기록** | `reports/*`, `docs/superpowers/*`, `*/CHANGELOG.md` | 그때의 사실. 지금의 지침이 아니다. |
 | **D. 보관** | `docs/archive/*` | **운영 지침으로 쓰지 마라.** |
 
-### 1-3. 전체 색인 (80개)
+### 1-3. 전체 색인 (97개)
 
-**루트 — 하네스가 존재를 강제 (7)**
+| 영역 | 개수 |
+|---|---|
+| `projects/ai-team/` | 38 |
+| `docs/` | 27 |
+| `reports/` | 14 |
+| `projects/petnna/` | 10 |
+| 루트 | 7 |
+| `projects/bboggl/` | 1 |
+
+**루트 7개 — `DESIGN.md` 뺀 6개는 하네스가 존재를 강제**
 | 파일 | 대상 독자 | 상태 |
 |---|---|---|
 | `HANDBOOK.md` | **사람(오너)** | 이 문서. 진입점 |
@@ -53,46 +65,44 @@
 | `SKILL.md` | AI | 스킬 시스템 포인터 |
 | `DESIGN.md` | AI/디자인 | 디자인 시스템 |
 
-**docs/ — 정식 참조 (7)**
-`AI_LAB_SYSTEM_ARCHITECTURE.md`(아키텍처) · `REPOSITORY_CLASSIFICATION.md`(배치 규칙, 이 색인과 다름) ·
-`TELEGRAM_BOT_README.md` · `AGENT_GROWTH_DOCTRINE.md` · `AGENT_ADVANCEMENT_DESIGN.md` ·
-`CLEANUP_SUMMARY_2026-06-27.md`(C등급) · `plans/README.md`
+**docs/ — 27개**
+- 최상위 6: `AI_LAB_SYSTEM_ARCHITECTURE.md`(아키텍처) · `REPOSITORY_CLASSIFICATION.md`(배치 규칙, 이 색인과 다름) ·
+  `TELEGRAM_BOT_README.md` · `AGENT_GROWTH_DOCTRINE.md` · `AGENT_ADVANCEMENT_DESIGN.md` · `CLEANUP_SUMMARY_2026-06-27.md`(C등급)
+- `setup/` 8: `ENV_SECURITY_RULES.md` ⭐ · `ENCRYPTED_SECRETS_README.md` · `ENV_STATUS.md` ·
+  `AI_TEAM_AUTOMATION_README.md` · `DAILY_AUTOMATION_SETUP.md` · `NOTION_SETUP.md` · `QUICK_START_NOTION.md` · `SETUP_INSTAGRAM.md`
+- `archive/` 6 (D등급) · `superpowers/` 6 (C등급) · `plans/` 1 — **읽되 따르지 마라**
 
-**docs/setup/ — 설정 가이드 (8)**
-`ENV_SECURITY_RULES.md` ⭐ · `ENCRYPTED_SECRETS_README.md` · `ENV_STATUS.md` ·
-`AI_TEAM_AUTOMATION_README.md` · `DAILY_AUTOMATION_SETUP.md` ·
-`NOTION_SETUP.md` · `QUICK_START_NOTION.md` · `SETUP_INSTAGRAM.md`
+**projects/ai-team/ — 38개**
+- `skills/` 18: 봇 헌장 8(`예원_CEO`·`영숙_비서`·`봄이_QA`·`수리_개발자`·`테오_테스트`·`백호_백엔드`·`미오_디자인`·`나무_기획`/`SKILL.md`) 🔒
+  + `공용스킬/` 7(공통 지식·토큰 최적화·멀티에이전트 토론·리서치모드 등) + `README.md` + 영숙 tools 2
+- `docs/` 6: `AI_MODEL_STRATEGY.md` ⭐ · `AI_QUALITY_OPTIMIZATION.md` · `AGENT_COMPATIBILITY.md` ·
+  `GEMINI_TOKEN_OPTIMIZATION.md` · `AGENT_PIPELINE_REVIEW.md` · `progress.md`
+- 최상위 3: `README.md` · `CLAUDE.md`(하위 스코프) · `CHANGELOG.md`
+- `plugins/` 4 · `assets/` 4(brain-seeds 템플릿, 라이브러리 자산) · `harness/` 1 · `scripts/` 1 · `_shared/` 1
 
-**docs/archive/ (6) + docs/superpowers/ (6)** — D·C등급. 읽되 따르지 마라.
-
-**projects/ai-team/ — 프레임워크 (13)**
-`docs/AI_MODEL_STRATEGY.md` ⭐ · `docs/AI_QUALITY_OPTIMIZATION.md` · `docs/AGENT_COMPATIBILITY.md` ·
-`docs/GEMINI_TOKEN_OPTIMIZATION.md` · `docs/AGENT_PIPELINE_REVIEW.md` · `docs/progress.md` ·
-`README.md` · `CLAUDE.md`(하위 스코프) · `CHANGELOG.md` ·
-`harness/README.md` · `scripts/README.md` · `skills/README.md` · `plugins/README.md`
-
-**봇 헌장 — 옮기면 하네스가 깨진다 (8 + 공용 7)**
-`skills/<예원_CEO|영숙_비서|봄이_QA|수리_개발자|테오_테스트|백호_백엔드|미오_디자인|나무_기획>/SKILL.md`
-`skills/공용스킬/` — 공통 스킬 지식, 토큰 최적화, 멀티에이전트 토론, 리서치모드 등 7종
-
-**projects/petnna/ — 제품 (10)**
+**projects/petnna/ — 10개**
 `README.md` · `CHANGELOG.md` · `DEVELOPMENT_REPORT.md` · `SETUP_SUPABASE.md` ·
 `PRIVACY_POLICY.md` 🔒 · `TERMS_OF_SERVICE.md` 🔒 (웹앱이 `/`에서 서빙 — 이동 금지) · `docs/` 4종
 
-**projects/bboggl/README.md** (1)
+**projects/bboggl/README.md** — 1개
 
-**reports/ — C등급 기록 (13)**
-`README.md` · `channel_registration_status.md` ·
-`research/` 2 · `history/` 5 · `meetings/` 4 · `inspection/` 1
+**reports/ — 14개, 전부 C등급 기록**
+`README.md` · `channel_registration_status.md` · `research/` 2 · `history/` 5 · `meetings/` 4 · `inspection/` 1
 
 ### 1-4. 옮길 수 없는 것과 이유
 
-| 대상 | 잠긴 이유 | 근거 |
+| 대상 | 잠긴 이유 | 근거 (함수 기준 — 라인은 밀린다) |
 |---|---|---|
-| 루트 6개 문서 | 하네스가 존재 검사 | `check_all.py:232` |
-| 루트 파일 전반 | 화이트리스트 밖이면 경고 | `check_all.py:355` |
-| 각 봇 `SKILL.md` | 하네스가 봇별 존재 검사 | `check_all.py:291` |
-| petnna 법무문서 | 앱이 `/PRIVACY_POLICY.md`로 링크 | `js/templates/settings.js:328` |
+| 루트 **6개** `.md`<br>`AGENTS`·`HANDBOOK`·`PROJECT_OVERVIEW`·`README`·`CLAUDE`·`SKILL` | 하네스가 존재 검사 → 없으면 FAIL | `check_all.py:233` `check_classification_layout()` |
+| `docs/REPOSITORY_CLASSIFICATION.md`<br>`docs/TELEGRAM_BOT_README.md` | 같은 필수 목록 | 〃 |
+| `ai-team/README.md`·`scripts/README.md`·`skills/README.md` | 같은 필수 목록 | 〃 |
+| 루트 파일 전반 (`DESIGN.md` 포함) | 화이트리스트 밖이면 WARN | `check_all.py:358` `check_root_layout()` |
+| 각 봇 `SKILL.md` 8개 | 하네스가 봇별 존재 검사 | `check_all.py:292` |
+| petnna 법무문서 2개 | 앱이 `/PRIVACY_POLICY.md`로 링크 | `js/templates/settings.js:339` |
+
+`DESIGN.md`는 **필수가 아니라 허용**이다 — 지워도 FAIL은 안 나고, 옮기면 WARN만 난다.
+
+> 라인 번호는 코드가 바뀌면 밀린다. **함수명으로 찾아라.** 이 표의 번호는 2026-07-10 실측값이다.
 
 ### 1-5. 알려진 부채
 
@@ -247,7 +257,7 @@ git checkout HEAD -- .env.encrypted
 `_KEEP_ON_SHUTDOWN = {"영숙","예원"}`을 `start_all_bots`가 **기동 제외 목록으로 오용**했다.
 "정지 제외"와 "기동 제외"는 다른 정책이다. 둘이 다른 이유로 죽으면 `봇다켜`가 영원히 못 살렸고,
 출력의 "워치독이 자동 복구합니다"는 **예원이 그 워치독이라 거짓**이었다.
-→ [agent_controller.py:262](projects/ai-team/skills/영숙_비서/tools/agent_controller.py:262) 수정 완료.
+→ [agent_controller.py:265](projects/ai-team/skills/영숙_비서/tools/agent_controller.py:265) `start_all_bots()` 수정 완료.
 **복구 책임자를 복구 대상에서 빼지 마라.**
 
 ### 「봇은 떠 있는데 결과물이 없다」
