@@ -35,14 +35,36 @@ class CouncilOwnerRouting(unittest.TestCase):
         self.council = load("council_under_test", COUNCIL_PATH)
 
     def test_consumers_get_auto_track(self):
-        for owner in ("", "수리", "테오", "미오"):
+        for owner in ("", "수리", "테오", "미오", "백호"):
             self.assertFalse(self.council.needs_human("카드 여백 개선", owner),
                              f"{owner!r}는 백로그를 소비하므로 자동 트랙이어야 한다")
 
     def test_non_consumers_go_to_human_track(self):
-        for owner in ("백호", "나무", "사람"):
+        for owner in ("나무", "사람"):
             self.assertTrue(self.council.needs_human("시안 기준 명시", owner),
                             f"{owner!r}는 백로그를 읽지 않으므로 사람 트랙이어야 한다")
+
+    def test_every_auto_owner_actually_has_consume_code(self):
+        """AUTO_OWNERS에 이름만 올리는 실수를 막는다 — 소비 함수가 실재해야 한다.
+
+        (2026-07-10: `grep -c backlog`로 소비 여부를 눈대중해 백호를 오분류했다.
+        백호는 상수명이 대문자 BACKLOG라 잡히지 않았을 뿐 완전한 소비자였다.)
+        """
+        consumers = {
+            "수리": (AI_TEAM_ROOT / "skills/수리_개발자/tools/petnna_dev_engine.py", "select_backlog"),
+            "테오": (AI_TEAM_ROOT / "skills/테오_테스트/tools/petnna_test_engineer.py", "_backlog_task"),
+            "미오": (AI_TEAM_ROOT / "skills/미오_디자인/tools/petnna_design_review.py", "_assigned_tasks"),
+            "백호": (AI_TEAM_ROOT / "skills/백호_백엔드/tools/petnna_backend_guard.py",
+                    "investigate_assigned_tasks"),
+        }
+        for owner in self.council.AUTO_OWNERS:
+            if owner == "":
+                continue
+            self.assertIn(owner, consumers, f"{owner}가 AUTO_OWNERS인데 소비 함수가 등록돼 있지 않다")
+            path, func = consumers[owner]
+            src = path.read_text(encoding="utf-8")
+            self.assertIn(f"def {func}", src, f"{owner}의 소비 함수 {func}가 사라졌다")
+            self.assertIn("BACKLOG", src, f"{owner}가 백로그를 읽지 않는다")
 
     def test_approval_tag_overrides_consumer_owner(self):
         self.assertTrue(self.council.needs_human("[승인필요] 카드 여백 개선", "수리"))
