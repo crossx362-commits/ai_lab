@@ -250,9 +250,13 @@ def claude_fix(worktree: Path, finding: dict) -> tuple[bool, str]:
         # 구독 OAuth 대신 그 키로 인증해 credit-balance 오류로 실패한다(2026-07-09 사고, llm.py 동일 수정).
         _env = {k: v for k, v in os.environ.items()
                 if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")}
-        r = subprocess.run([cli, "-p", prompt, "--permission-mode", "acceptEdits",
+        # 프롬프트는 stdin으로 — Windows의 claude.CMD(npm 셔임)는 argv에 담긴 개행에서
+        # 인자를 잘라 첫 줄만 전달한다(2026-07-10 사고: 과제 본문이 통째로 유실돼
+        # 클로드가 "과제가 안 보인다"고 되물었고, rc=0이라 엔진은 성공으로 오판).
+        r = subprocess.run([cli, "-p", "--permission-mode", "acceptEdits",
                             "--allowedTools", "WebSearch,WebFetch"],
-                           cwd=str(worktree), capture_output=True, text=True,
+                           cwd=str(worktree), input=prompt, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace",
                            timeout=CLAUDE_TIMEOUT, env=_env)
         tail = (r.stdout or r.stderr or "").strip()[-500:]
         return r.returncode == 0, tail

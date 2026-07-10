@@ -42,11 +42,14 @@ def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
     cli = find_claude()
     if not cli:
         return False, "claude CLI 미발견 (PATH·표준 경로 모두 없음)"
-    cmd = [cli, "-p", prompt, "--permission-mode", permission_mode]
+    cmd = [cli, "-p", "--permission-mode", permission_mode]
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
     try:
-        r = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, timeout=timeout,
+        # 프롬프트는 argv가 아니라 stdin으로 전달한다 — Windows의 claude.CMD(npm 셔임)가
+        # 개행이 든 argv를 첫 줄에서 잘라먹는다(2026-07-10 사고).
+        r = subprocess.run(cmd, cwd=str(cwd), input=prompt, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace", timeout=timeout,
                             env=_subscription_env())
         out = (r.stdout or "").strip() or (r.stderr or "").strip()
         return r.returncode == 0, out
