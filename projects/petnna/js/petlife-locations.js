@@ -15,6 +15,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '강남 역삼동 24시 응급센터. 최신 의료 장비를 갖춘 종합 동물병원',
         website: 'https://www.sncamc.co.kr/',
         services: ['24시 응급진료', '외과수술', '내과진료', '건강검진', '입원케어'],
+        tags: ['야간진료', '예약가능', '평균진료비 높음'],
         color: '#dc2626',
         lat: 37.4979, // 강남구 역삼동
         lng: 127.0376
@@ -30,6 +31,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '성동구 24시 응급 동물병원. 전문 수의사팀 상주',
         website: 'http://www.cenamc.kr/',
         services: ['24시 응급', 'CT/MRI', '심장검사', '안과진료'],
+        tags: ['야간진료', '예약가능', '평균진료비 높음'],
         color: '#dc2626',
         lat: 37.5635, // 성동구
         lng: 127.0376
@@ -45,6 +47,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '영등포 24시 동물병원. 365일 언제나 진료 가능',
         website: 'https://amc24in.com/',
         services: ['응급진료', '외과', '내과', '피부과'],
+        tags: ['야간진료', '예약가능', '평균진료비 보통'],
         color: '#e11d48',
         lat: 37.5326, // 영등포구
         lng: 126.9026
@@ -267,6 +270,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '차병원사거리 근처, 언주역 4번 출구 인근 동물병원',
         website: '#',
         services: ['일반진료', '예방접종', '건강검진', '수술'],
+        tags: ['예약가능', '평균진료비 보통'],
         color: '#dc2626',
         lat: 37.5145,
         lng: 127.0470
@@ -282,6 +286,7 @@ const PETLIFE_REAL_LOCATIONS = [
         description: '24시간 응급 진료 동물병원',
         website: 'https://www.namc.co.kr/',
         services: ['24시 응급', '외과', '내과', '영상진단'],
+        tags: ['야간진료', '예약가능', '평균진료비 높음'],
         color: '#dc2626',
         lat: 37.5500,
         lng: 126.9900

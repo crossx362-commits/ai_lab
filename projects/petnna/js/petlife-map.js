@@ -123,9 +123,12 @@ function renderPetlifeMarkers() {
         const marker = L.marker([location.lat, location.lng], { icon: icon })
             .addTo(petlifeMap)
             .bindPopup(`
-                <div style="text-align:center;padding:8px;">
+                <div style="text-align:center;padding:8px;min-width:150px;">
                     <div style="font-size:28px;margin-bottom:8px;">${location.emoji}</div>
                     <div style="font-weight:900;font-size:13px;color:#0f172a;margin-bottom:4px;">${location.name}</div>
+                    ${renderPetlifeTags(location)}
+                    ${renderPetlifeRating(location.id)}
+                    ${renderPetlifeCall(location)}
                     <button onclick="openPetlifeShop('${location.id}')" style="
                         background: linear-gradient(135deg, ${location.color}, ${adjustColorBrightness(location.color, -20)});
                         color: white;
@@ -135,7 +138,7 @@ function renderPetlifeMarkers() {
                         font-size: 11px;
                         font-weight: 800;
                         cursor: pointer;
-                        margin-top: 4px;
+                        margin-top: 6px;
                     ">상세보기 →</button>
                 </div>
             `);
@@ -297,6 +300,82 @@ function adjustColorBrightness(hex, percent) {
     ).toString(16).slice(1);
 }
 
+// 지도 핀 팝업: 태그 칩 렌더링 (야간진료/예약가능/평균진료비 등)
+function renderPetlifeTags(location) {
+    if (!location.tags || !location.tags.length) return '';
+    const chips = location.tags.map(t => `
+        <span style="
+            display:inline-block;
+            background:${location.color}18;
+            color:${location.color};
+            border:1px solid ${location.color}40;
+            padding:2px 7px;
+            border-radius:999px;
+            font-size:10px;
+            font-weight:700;
+            margin:2px 2px 0 2px;
+        ">${t}</span>`).join('');
+    return `<div style="margin-bottom:4px;line-height:1.6;">${chips}</div>`;
+}
+
+// 사용자 별점: localStorage에 위치별 저장 (실제 예약 연동 없음, 로컬 평가만)
+function getPetlifeRating(id) {
+    try {
+        const store = JSON.parse(localStorage.getItem('petnna_petlife_ratings') || '{}');
+        return Number(store[id]) || 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+function setPetlifeRating(id, value) {
+    try {
+        const store = JSON.parse(localStorage.getItem('petnna_petlife_ratings') || '{}');
+        store[id] = value;
+        localStorage.setItem('petnna_petlife_ratings', JSON.stringify(store));
+    } catch (e) { /* localStorage 불가 시 무시 */ }
+    const el = document.getElementById('petlife-stars-' + id);
+    if (el) el.innerHTML = petlifeStarsHtml(id, value);
+    if (typeof showToast === 'function') showToast(`⭐ ${value}점으로 평가했어요`);
+}
+
+function petlifeStarsHtml(id, rating) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        const filled = i <= rating;
+        html += `<span onclick="setPetlifeRating('${id}',${i})" style="
+            cursor:pointer;
+            font-size:16px;
+            color:${filled ? '#f59e0b' : '#cbd5e1'};
+        ">★</span>`;
+    }
+    return html;
+}
+
+function renderPetlifeRating(id) {
+    const rating = getPetlifeRating(id);
+    return `<div id="petlife-stars-${id}" style="margin-bottom:4px;">${petlifeStarsHtml(id, rating)}</div>`;
+}
+
+// 전화 링크: 실제 번호일 때만 tel: 링크, 아니면 안내 문구
+function renderPetlifeCall(location) {
+    const phone = location.phone || '';
+    if (!/\d{2,}[-\s]?\d/.test(phone)) return '';
+    const tel = phone.replace(/[^0-9+]/g, '');
+    return `<a href="tel:${tel}" style="
+        display:inline-block;
+        background:#f1f5f9;
+        color:#0f172a;
+        border:1px solid #cbd5e1;
+        padding:5px 12px;
+        border-radius:8px;
+        font-size:11px;
+        font-weight:800;
+        text-decoration:none;
+        margin-top:4px;
+    ">📞 ${phone}</a>`;
+}
+
 // 펫라이프 지도 필터 적용
 function applyPetlifeMapFilters() {
     if (typeof PETLIFE_REAL_LOCATIONS === 'undefined') return;
@@ -342,3 +421,4 @@ window.initPetlifeMap = initPetlifeMap;
 window.moveToMyLocation = moveToMyLocation;
 window.toggleMapStyle = toggleMapStyle;
 window.applyPetlifeMapFilters = applyPetlifeMapFilters;
+window.setPetlifeRating = setPetlifeRating;
