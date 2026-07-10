@@ -239,9 +239,19 @@ def check_and_restart_bots():
         try:
             _restart_bot(name)
         except Exception:
-            pass  # 실패해도 다음 주기에 재시도
+            pass  # 실패해도 아래 재확인에서 걸린다
 
-    send(f"🔄 [예원] 봇 다운 감지 → 재시작 시도\nDown: {', '.join(down_bots)}")
+    # 에스컬레이션 정책(HANDBOOK §7): 재시작이 성공했으면 오너가 할 게 없다 → 조용히.
+    # 실패한 것만 알린다. 예전엔 성공·실패 구분 없이 매번 텔레그램을 보내 경보 피로를 만들었다.
+    time.sleep(8)  # 데몬 기동 여유
+    after = agent_status()
+    failed = [n for n in down_bots if after.get(n, "down") in ("down", "misconfig")]
+    revived = [n for n in down_bots if n not in failed]
+    if revived:
+        print(f"✅ 자동 복구: {', '.join(revived)}")
+    if failed:
+        send(f"🚨 [예원] 봇 재시작 실패 — 자동복구 실패\n실패: {', '.join(failed)}"
+             + (f"\n복구됨: {', '.join(revived)}" if revived else ""))
     return True
 
 def main():

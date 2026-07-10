@@ -96,6 +96,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
 
             for path in [
                 root / "AGENTS.md",
+                root / "HANDBOOK.md",
                 root / "PROJECT_OVERVIEW.md",
                 root / "README.md",
                 root / "CLAUDE.md",
@@ -204,6 +205,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
 
             required_files = [
                 root / "AGENTS.md",
+                root / "HANDBOOK.md",
                 root / "PROJECT_OVERVIEW.md",
                 root / "README.md",
                 root / "CLAUDE.md",

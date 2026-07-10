@@ -1,0 +1,9 @@
+#!/bin/sh
+# git pull 후 함대 자동 기동. 관문(BOTS_OFF·운영기·playwright)은 fleet_bootstrap.py가 판단한다.
+# pull 자체는 절대 실패시키지 않는다.
+ROOT="$(git rev-parse --show-toplevel)"
+PIN="$ROOT/output/cache/BOOTSTRAP_PYTHON"
+if [ -f "$PIN" ]; then PY="$(cat "$PIN")"; \
+elif command -v python3 >/dev/null 2>&1; then PY=python3; \
+else PY=python; fi
+"$PY" "$ROOT/projects/ai-team/scripts/fleet_bootstrap.py" || true

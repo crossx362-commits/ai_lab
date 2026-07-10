@@ -2,7 +2,9 @@
 
 AI agent automation and Petnna web app monorepo.
 
-Last reviewed: 2026-06-17
+**👉 운영 매뉴얼·사고 런북·전체 문서 색인: [HANDBOOK.md](HANDBOOK.md)**
+
+Last reviewed: 2026-07-10
 
 ## Current Layout
 

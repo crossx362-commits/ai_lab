@@ -18,6 +18,7 @@ python projects/ai-team/harness/check_all.py
 | File | Purpose |
 | --- | --- |
 | `cleanup_duplicate_processes.py` | Cleans duplicate Python daemon processes. |
+| `fleet_bootstrap.py` | `git pull` 후 함대 자동 기동(post-merge 훅). 기계 전환은 `--setup` 한 번. 세 관문(BOTS_OFF·지정 운영기·playwright)을 통과할 때만 뜬다 — 이중 가동 방지가 본업. 절차: [HANDBOOK §4-5](../../../HANDBOOK.md) |
 
 ## Placement Rules
 
