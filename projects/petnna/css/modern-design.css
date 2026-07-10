@@ -71,7 +71,7 @@ body.theme-dark .shadow-soft-lg {
 
 .input-modern:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(169, 88, 62, 0.2);
 }
 
 /* 현대적 배지 */

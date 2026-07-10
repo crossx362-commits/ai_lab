@@ -571,6 +571,15 @@ a:focus-visible {
     outline-offset: 2px !important;
 }
 
+/* 🎨 폼 필드 포커스 브랜드화 — 기본 파란 아웃라인 대신 브랜드 브라운 링 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: none !important;
+    border-color: #a9583e !important;       /* brand-600 테라코타 */
+    box-shadow: 0 0 0 3px rgba(169, 88, 62, .35) !important;
+}
+
 /* 멀티펫 스테이지 리스트 */
 #pet-stage-list {
     width: 100%;
