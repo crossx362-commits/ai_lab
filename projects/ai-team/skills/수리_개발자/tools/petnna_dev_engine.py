@@ -560,7 +560,8 @@ def main() -> None:
     if args.daemon:
         daemon()
     else:
-        improve_cycle(do_send=not args.no_send)
+        # 반환 문자열(스킵/대기 사유)을 버리면 --once가 무출력 exit 0 → 조용한 실패로 오인된다
+        print(improve_cycle(do_send=not args.no_send))
 
 
 if __name__ == "__main__":
