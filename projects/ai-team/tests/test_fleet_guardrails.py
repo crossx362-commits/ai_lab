@@ -151,6 +151,20 @@ class EscalationPolicyTests(unittest.TestCase):
         send, _, _ = self._run({"youngsuk": "111", "yewon": "222"})
         send.assert_not_called()
 
+    def test_bots_off_flag_suppresses_everything(self):
+        # '봇 다 꺼'는 의도된 정지다. 경보도 부활도 하면 안 된다(오너가 기계를 옮길 때).
+        hb = load_heartbeat()
+        flag = mock.Mock()
+        flag.exists.return_value = True
+        with mock.patch.object(hb, "BOTS_OFF_FLAG", flag), \
+             mock.patch.object(hb, "agent_status") as status, \
+             mock.patch.object(hb, "send") as send, \
+             mock.patch.object(hb, "_revive_watchdog") as revive:
+            self.assertEqual(hb.check(), 0)
+        status.assert_not_called()
+        send.assert_not_called()
+        revive.assert_not_called()
+
     def test_single_down_waits_one_cycle(self):
         # 워치독이 5분 내 살릴 수 있다 → 첫 감지는 조용히.
         send, _, saved = self._run({"youngsuk": "111", "yewon": "222", "bomi_qa": "down"})

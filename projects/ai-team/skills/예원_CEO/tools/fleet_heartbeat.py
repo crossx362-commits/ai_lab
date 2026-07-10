@@ -29,6 +29,9 @@ load_env()
 
 TASK_NAME = "AiLabFleetHeartbeat"
 STATE = find_root() / "output" / "cache" / "fleet_heartbeat.json"
+# '봇 다 꺼'(agent_controller.stop_all_bots)가 세우는 부활 억제 플래그.
+# 이걸 안 보면 의도적 정지를 '함대 이상'으로 오인해 5분마다 경보 + 예원을 되살린다.
+BOTS_OFF_FLAG = find_root() / "output" / "cache" / "BOTS_OFF"
 ALERT_COOLDOWN_SEC = 1800  # 같은 문제로 30분 내 재알림 금지 — 경보 피로 방지
 _NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
 
@@ -59,6 +62,10 @@ def _revive_watchdog() -> str:
 
 
 def check() -> int:
+    if BOTS_OFF_FLAG.exists():
+        # 오너가 의도적으로 내렸다(정비·기계 이동). 경보도 부활도 하지 않는다.
+        print("[하트비트] BOTS_OFF — 의도된 정지, 점검 생략")
+        return 0
     status = agent_status()
     down = sorted(k for k, v in status.items() if v == "down")
     misconfig = sorted(k for k, v in status.items() if v == "misconfig")
