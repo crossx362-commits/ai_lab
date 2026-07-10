@@ -13,6 +13,9 @@ const SHOP_ISLAND_TEMPLATE = `
     <span class="iw-badge">REAL-TIME MAP</span>
   </div>
 
+  <!-- 반려동물 맞춤 추천 TOP3 -->
+  <div id="reco-card-shop" class="mb-4"></div>
+
   <!-- 3-Col 레이아웃 -->
   <div class="iw-layout">
 

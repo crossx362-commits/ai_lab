@@ -121,6 +121,7 @@ const TabControllers = {
         },
         render() {
             if (typeof renderShop === 'function') renderShop();
+            if (typeof renderPetRecoCard === 'function') renderPetRecoCard('reco-card-shop');
             // 펫라이프 실시간 지도 초기화
             setTimeout(() => {
                 if (typeof initPetlifeMap === 'function') initPetlifeMap();
