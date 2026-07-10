@@ -253,6 +253,139 @@ function renderWalkStreakBanner() {
         </div>`;
 }
 
+// ── 🤝 버디 산책 스트릭 (함께 이어가기) ───────────────────────────────────
+// 개인 산책 streak을 소셜화: 친구와 짝을 맺어 '함께 연속 산책일'을 쌓고,
+// 오늘 아직 산책 전이면 서로에게 넛지(응원)를 보낼 수 있게 한다.
+function getBuddyPair() {
+    try {
+        const raw = localStorage.getItem(AppConstants.StorageKeys.BUDDY_PAIR);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function saveBuddyPair(pair) {
+    try {
+        if (pair) localStorage.setItem(AppConstants.StorageKeys.BUDDY_PAIR, JSON.stringify(pair));
+        else localStorage.removeItem(AppConstants.StorageKeys.BUDDY_PAIR);
+    } catch {}
+}
+
+// 짝 맺기: 친구 목록에서 선택한 이웃과 버디 페어 생성
+function setBuddy(friendId) {
+    const list = typeof friends !== 'undefined' ? friends : [];
+    const f = list.find(x => String(x.id) === String(friendId));
+    if (!f) { if (typeof showToast === 'function') showToast('버디로 맺을 이웃을 선택해주세요.'); return; }
+    saveBuddyPair({
+        id: f.id, nickname: f.nickname, petName: f.petName, avatar: f.avatar,
+        since: new Date().toISOString().split('T')[0],
+    });
+    if (typeof showToast === 'function') showToast(`${f.nickname}님과 버디 산책을 시작했어요! 🤝`);
+    renderBuddyStreakCard();
+}
+
+function unpairBuddy() {
+    saveBuddyPair(null);
+    if (typeof showToast === 'function') showToast('버디 산책을 해제했어요.');
+    renderBuddyStreakCard();
+}
+
+// 함께 연속 산책일 = 짝을 맺은 날 이후 내가 산책을 이어온 연속일(개인 streak을 페어 시점으로 상한)
+function calcBuddyStreak() {
+    const pair = getBuddyPair();
+    if (!pair) return 0;
+    const myStreak = calcWalkStreak();
+    if (!pair.since) return myStreak;
+    const today = new Date().toISOString().split('T')[0];
+    const sinceDays = Math.floor((new Date(today) - new Date(pair.since)) / (1000*60*60*24)) + 1;
+    return Math.max(0, Math.min(myStreak, sinceDays));
+}
+
+// 오늘 아직 산책 기록이 없으면 위기(스트릭이 이미 쌓여 있을 때만 위기로 간주)
+function isBuddyStreakAtRisk() {
+    if (!getBuddyPair()) return false;
+    const today = new Date().toISOString().split('T')[0];
+    const walkedToday = (typeof walks !== 'undefined' ? walks : [])
+        .some(w => w.savedAt && w.savedAt.split('T')[0] === today);
+    return !walkedToday && calcWalkStreak() >= 1;
+}
+
+// 버디에게 넛지(응원) 전송 — 기존 채팅 히스토리에 메시지 적재
+function sendBuddyNudge() {
+    const pair = getBuddyPair();
+    if (!pair) return;
+    if (typeof chatHistories === 'undefined') return;
+    if (!chatHistories[pair.id]) chatHistories[pair.id] = [];
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const days = calcBuddyStreak();
+    chatHistories[pair.id].push({
+        sender: 'me', time: timeStr,
+        text: `🔥 우리 함께 산책 ${days}일째! 오늘도 같이 이어가요 🐾`,
+    });
+    if (typeof saveState === 'function') saveState();
+    if (typeof showToast === 'function') showToast(`${pair.nickname}님에게 넛지를 보냈어요! 🐾`);
+    renderBuddyStreakCard();
+}
+
+function renderBuddyStreakCard() {
+    const el = document.getElementById('buddy-streak-card');
+    if (!el) return;
+    const pair = getBuddyPair();
+
+    // 미페어 상태: 친구 중에서 버디를 고르는 선택 UI
+    if (!pair) {
+        const list = typeof friends !== 'undefined' ? friends : [];
+        if (list.length === 0) {
+            el.innerHTML = `
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-people-arrows text-gray-300"></i>
+                    <span>이웃을 맺으면 함께 산책 스트릭을 쌓을 수 있어요!</span>
+                </div>`;
+            return;
+        }
+        const options = list.map(f =>
+            `<option value="${f.id}">${escapeHtml(f.nickname)} (${escapeHtml(f.petName)})</option>`).join('');
+        el.innerHTML = `
+            <div class="flex items-center gap-1.5 mb-2">
+                <span class="text-[11px] font-black text-gray-700">🤝 버디 산책</span>
+                <span class="text-[9px] text-gray-400 font-medium">친구와 함께 연속일 쌓기</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <select id="buddy-pick-select" class="flex-1 min-w-0 text-[10px] font-bold text-gray-700 bg-white border border-amber-200 rounded-lg px-2 py-1.5">
+                    ${options}
+                </select>
+                <button onclick="setBuddy(document.getElementById('buddy-pick-select').value)"
+                    class="shrink-0 bg-brand-500 hover:bg-brand-600 text-white font-black text-[10px] px-2.5 py-1.5 rounded-lg transition-colors">짝 맺기</button>
+            </div>`;
+        return;
+    }
+
+    // 페어 상태: 함께 연속일 + 위기 시 넛지
+    const days = calcBuddyStreak();
+    const atRisk = isBuddyStreakAtRisk();
+    el.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 min-w-0">
+                <img loading="lazy" src="${pair.avatar}" class="w-7 h-7 object-cover rounded-full border border-amber-100 shrink-0" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(pair.nickname)}'">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-black text-gray-700 truncate">🤝 ${escapeHtml(pair.nickname)}님과 함께</p>
+                    <p class="text-[9px] text-gray-400 font-medium">함께 연속 산책</p>
+                </div>
+            </div>
+            <span class="streak-badge shrink-0"><i class="fa-solid fa-fire"></i> ${days}일</span>
+        </div>
+        ${atRisk ? `
+        <div class="bg-rose-50 border border-rose-100 rounded-xl p-2 flex items-center justify-between gap-2">
+            <p class="text-[10px] font-bold text-rose-600 min-w-0">오늘 아직 산책 전! ${days}일 기록이 끊길 위기예요.</p>
+            <button onclick="sendBuddyNudge()" class="shrink-0 bg-rose-500 hover:bg-rose-600 text-white font-black text-[9px] px-2 py-1 rounded-lg transition-colors">넛지 보내기</button>
+        </div>` : `
+        <div class="flex items-center justify-between gap-2">
+            <p class="text-[9px] text-gray-400 font-medium">오늘도 함께 이어가는 중! 👏</p>
+            <button onclick="sendBuddyNudge()" class="shrink-0 text-[9px] font-bold text-brand-500 hover:text-brand-600">응원 보내기</button>
+        </div>`}
+        <button onclick="unpairBuddy()" class="mt-1.5 text-[8px] text-gray-300 hover:text-gray-400 font-bold">버디 해제</button>`;
+}
+
 // ── 📊 펄스: 월간 리포트 카드 (PetDesk 벤치마크) ──────────────────────────
 function renderMonthlyReport(targetElId) {
     const el = document.getElementById(targetElId || 'monthly-report-card');
