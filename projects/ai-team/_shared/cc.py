@@ -16,12 +16,35 @@ from pathlib import Path
 
 _DEAD_PAID_KEYS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
 
+# 헤드리스 세션에 시크릿을 상속시키지 않는다. 나무(PM)가 웹서치 결과를 백로그에 적재하고
+# 수리가 그걸 읽어 코드를 쓰므로, 신뢰 불가 웹 텍스트가 코드 쓰는 세션의 입력이 된다
+# (프롬프트 인젝션 표면). 백로그는 자동 병합되지 않지만, 인젝션된 지시가 세션 안에서
+# 시크릿을 읽어 유출하는 것은 병합 게이트로 막지 못한다 → env에서 아예 제거한다.
+_SECRET_MARKERS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL")
+# 패턴 오탐 보존: CLAUDE_* 는 구독 CLI 인증(예: CLAUDE_CODE_OAUTH_TOKEN)에 필요할 수 있고,
+# MAX_THINKING_TOKENS는 시크릿이 아니라 동작 설정이다.
+_SECRET_KEEP_PREFIX = ("CLAUDE",)
+_SECRET_KEEP_EXACT = frozenset({"MAX_THINKING_TOKENS"})
+
+
+def scrub_secrets(env: dict) -> dict:
+    """시크릿 패턴에 걸리는 환경변수를 제거한다(보존목록 우선)."""
+    out = {}
+    for k, v in env.items():
+        upper = k.upper()
+        if upper in _SECRET_KEEP_EXACT or upper.startswith(_SECRET_KEEP_PREFIX):
+            out[k] = v
+        elif not any(m in upper for m in _SECRET_MARKERS):
+            out[k] = v
+    return out
+
 
 def _subscription_env() -> dict:
     """죽은 ANTHROPIC_API_KEY(크레딧0) 상속 차단 — CLI가 API키 대신 구독 OAuth로 인증하게
     강제한다(2026-07-09: 이 키가 남아있으면 claude -p가 "credit balance too low"를
-    응답처럼 뱉어 그대로 사용자에게 노출되는 사고가 났다)."""
-    return {k: v for k, v in os.environ.items() if k not in _DEAD_PAID_KEYS}
+    응답처럼 뱉어 그대로 사용자에게 노출되는 사고가 났다).
+    더해 모든 시크릿을 제거한다(scrub_secrets)."""
+    return scrub_secrets({k: v for k, v in os.environ.items() if k not in _DEAD_PAID_KEYS})
 
 
 def find_claude() -> str | None:

@@ -126,15 +126,20 @@ def _sched_count() -> int:
 
 def agent_status() -> dict[str, str]:
     """상시 데몬은 프로세스, 예약 서비스는 launchd 적재 여부로 상태 판정.
-    값: 'up,<pid>' | 'scheduled' | 'sched:<n>'(정시 잡 n개) | 'down'."""
+    값: 'up,<pid>' | 'scheduled' | 'sched:<n>'(정시 잡 n개) | 'down' | 'disabled' | 'misconfig'."""
     status: dict[str, str] = {}
+    # 게이트 플래그의 '부재'와 '명시적 OFF'를 구분한다(2026-07-10 함대 전멸 사고).
+    # 부재 = .env 재암호화 중 유실됐을 수 있다 → 'misconfig'(경보 대상).
+    # 명시적 false = 이 기계에선 안 돌리는 게 설계상 정상 → 'disabled'(경보/재시작 제외).
+    # 둘을 같은 'disabled'로 인코딩하면 안전장치가 침묵장치로 뒤집힌다.
+    gate = os.getenv("PETNNA_AGENTS_ON_WINDOWS")
     for name, script in CONTINUOUS_DAEMONS.items():
         pids = _find_pids(script)
         if pids:
             status[name] = ",".join(pids)
         elif (sys.platform == "win32" and name in _PETNNA_WINDOWS_GATED
-              and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true"):
-            status[name] = "disabled"    # Windows 미가동이 설계상 정상 → 재시작/경보 금지
+              and gate != "true"):
+            status[name] = "disabled" if gate is not None else "misconfig"
         elif sys.platform != "win32" and name in _LAUNCHD_FALLBACK and _launchd_loaded(_LAUNCHD_FALLBACK[name]):
             status[name] = "scheduled"   # macOS: launchd 정시 잡으로 운영 중 → 정상
         else:
@@ -157,6 +162,8 @@ def status_report() -> str:
             mark = "🔴 중지"
         elif state == "disabled":
             mark = "⚪ 비활성 (이 기계에선 미운영)"
+        elif state == "misconfig":
+            mark = "🟠 설정 유실 — PETNNA_AGENTS_ON_WINDOWS 없음 (.env 재암호화 확인)"
         elif state == "scheduled":
             mark = "🟢 정상 (예약 실행 대기)"
         elif state.startswith("sched:"):

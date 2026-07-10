@@ -178,9 +178,15 @@ def check_runtime():
 
     extra = {k: v for k, v in status.items() if k not in merged}
     down = [k for k, v in merged.items() if v == "down"]
+    # 'misconfig' = 게이트 플래그 유실. 데몬이 자진 종료해 프로세스가 없는 상태라
+    # 재시작으로는 안 낫는다 → down보다 강하게 FAIL로 올려 사람이 .env를 고치게 한다.
+    misconfig = [k for k, v in merged.items() if v == "misconfig"]
     parts = [f"{k}={v}" for k, v in {**merged, **extra}.items()]
     if runtime_error:
         parts.insert(0, f"agent_status fallback used: {runtime_error}")
+    if misconfig:
+        return fail("PETNNA_AGENTS_ON_WINDOWS 유실 → " + ", ".join(misconfig)
+                    + " | " + "; ".join(parts))
     return (warn if down or runtime_error else ok)("; ".join(parts))
 
 
