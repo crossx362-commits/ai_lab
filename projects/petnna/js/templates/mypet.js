@@ -40,6 +40,9 @@ const MYPET_TEMPLATE = `
         </div>
     </div>
 
+    <!-- 반려동물 맞춤 추천 TOP3 -->
+    <div id="reco-card-home"></div>
+
     <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
 

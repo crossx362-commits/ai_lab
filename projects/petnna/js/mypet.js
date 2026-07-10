@@ -1232,6 +1232,8 @@ function renderMyPets() {
         return;
     }
 
+    if (typeof renderPetRecoCard === 'function') renderPetRecoCard('reco-card-home');
+
     const roomNameEl = document.getElementById('pet-room-name');
     if (roomNameEl) {
         if (current.roomName) {
