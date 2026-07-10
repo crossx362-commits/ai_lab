@@ -1,0 +1,6 @@
+# git 훅은 맥/리눅스의 /bin/sh가 실행한다. Windows에서 커밋하면 core.autocrlf가
+# 인덱스에 CRLF를 넣어 맥에서 "/bin/sh^M: bad interpreter"로 죽는다 — 그것도 조용히.
+# (워킹트리에 LF로 써도 소용없다. 변환은 git add 시점에 일어난다.)
+.githooks/** text eol=lf
+*.sh text eol=lf
+*.command text eol=lf

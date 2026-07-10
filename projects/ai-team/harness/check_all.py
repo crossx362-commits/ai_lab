@@ -365,6 +365,7 @@ def check_root_layout():
     allowed_root_files = {
         ".codex/environments/environment.toml",
         ".env.encrypted",
+        ".gitattributes",
         ".gitignore",
         "AGENTS.md",
         "CLAUDE.md",
