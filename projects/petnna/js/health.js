@@ -61,6 +61,10 @@ function renderHealthTab() {
     // 오늘의 건강 기록 업데이트
     updateTodayHealthDisplay();
 
+    // 투약·정기예방 대시보드 + 건강수첩 (마이펫 탭에서 이동)
+    if (typeof renderPreventiveCareDashboard === 'function') renderPreventiveCareDashboard();
+    if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();

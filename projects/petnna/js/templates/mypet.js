@@ -281,25 +281,10 @@ const MYPET_TEMPLATE = `
                     </div>
                 </div>
 
-                <!-- 건강 + 바로가기 아이콘 바 -->
+                <!-- 바로가기 아이콘 바 (일일 건강 로그는 건강 탭으로 이동) -->
                 <div class="bg-gray-50 rounded-2xl border border-gray-100 px-3 py-2.5">
-                    <div class="flex items-center justify-between">
-                        <!-- 건강 3칸 -->
-                        <div class="flex gap-4">
-                            <div class="text-center">
-                                <span id="health-log-poop" class="text-lg leading-none block">-</span>
-                                <span class="text-[9px] text-gray-400 font-bold mt-0.5 block">배변</span>
-                            </div>
-                            <div class="text-center">
-                                <span id="health-log-food" class="text-sm font-black text-gray-700 block">-g</span>
-                                <span class="text-[9px] text-gray-400 font-bold mt-0.5 block">식사</span>
-                            </div>
-                            <div class="text-center">
-                                <span id="health-log-water" class="text-sm font-black text-gray-700 block">-ml</span>
-                                <span class="text-[9px] text-gray-400 font-bold mt-0.5 block">음수</span>
-                            </div>
-                        </div>
-                        <!-- 아이콘 버튼 3개 -->
+                    <div class="flex items-center justify-end">
+                        <!-- 아이콘 버튼 -->
                         <div class="flex items-center gap-1.5">
                             <button onclick="openHealthLogModal()" title="건강 기록"
                                 class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 flex items-center justify-center transition-all">
@@ -326,25 +311,7 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 건강 요약 카드 (이전 위치에서 제거됨) -->
-
-        <!-- 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
-        <div id="preventive-care-dashboard"></div>
-
-        <!-- 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
-        <div class="card-modern overflow-hidden">
-            <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-                <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
-                </h2>
-                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
-                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
-                </button>
-            </div>
-            <div class="px-5 py-4">
-                <div id="medical-records-timeline"></div>
-            </div>
-        </div>
+        <!-- 투약·정기예방 대시보드 + 건강수첩은 건강 탭으로 이동됨 -->
 
         <!-- 사주/조화도 결과 카드 (숨김 — 배지에 통합) -->
         <div id="mypet-saju-card" style="display:none;">

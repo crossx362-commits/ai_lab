@@ -77,6 +77,24 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
+    <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
+    <div id="preventive-care-dashboard"></div>
+
+    <!-- 📔 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
+    <div class="card-modern overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
+            </h2>
+            <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
+                <i class="fa-solid fa-plus mr-1"></i>기록 추가
+            </button>
+        </div>
+        <div class="px-5 py-4">
+            <div id="medical-records-timeline"></div>
+        </div>
+    </div>
+
     <!-- 📈 건강 트렌드 차트 -->
     <div class="card-modern p-6">
         <div class="flex items-center justify-between mb-6">

@@ -1688,8 +1688,7 @@ function renderMyPets() {
     if (typeof renderWalkStreakBanner === 'function') renderWalkStreakBanner();
     if (typeof renderBuddyStreakCard === 'function') renderBuddyStreakCard();
     if (typeof renderMonthlyReport === 'function') renderMonthlyReport('monthly-report-card');
-    if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
-    if (typeof renderPreventiveCareDashboard === 'function') renderPreventiveCareDashboard();
+    // 투약 대시보드·건강수첩 렌더는 건강 탭(renderHealthTab)으로 이동됨
 }
 
 function getPast7DaysLabels() {
