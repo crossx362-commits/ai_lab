@@ -35,9 +35,10 @@ if _ai_team_root not in sys.path:
     sys.path.insert(0, _ai_team_root)
 
 from _shared.telegram import send
-from _shared.env import find_root
+from _shared.env import find_root, load_env
 
 _root = find_root(_here)
+load_env(_root)  # 누락 시 launchd 잡이 TELEGRAM_BOT_TOKEN 등을 못 읽어 전송 조용히 실패(2026-07-11 발견)
 CHECK_ONLY = "--check" in sys.argv or "--apply" not in sys.argv
 SEND_TG = "--send" in sys.argv
 

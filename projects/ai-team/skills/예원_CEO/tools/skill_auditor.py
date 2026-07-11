@@ -24,8 +24,9 @@ if _ai_team_root not in sys.path:
 
 from _shared.llm import text as lm_chat, is_available as lm_available
 from _shared.telegram import send
-from _shared.env import find_root
+from _shared.env import find_root, load_env
 _root = find_root(_here)
+load_env(_root)  # 누락 시 launchd 잡이 TELEGRAM_BOT_TOKEN 등을 못 읽어 전송 조용히 실패(2026-07-11 발견)
 
 SKILLS_DIR = os.path.join(_root, "projects", "ai-team", "skills")
 DRY_RUN    = "--check" in sys.argv
