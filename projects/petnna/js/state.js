@@ -116,9 +116,11 @@ const AppLogger = {
         }
     },
     addErrorLog(type, message, errorObj) {
+        // stack은 try 밖의 _uploadErrorLog(하단)에서도 참조하므로 함수 스코프에 선언한다.
+        // (과거 try 블록 안 let stack 이라 150행에서 ReferenceError→원격 업로드 불발+유령 에러)
+        let stack = '';
         try {
             const logs = this.getErrorLogs();
-            let stack = '';
             if (errorObj) {
                 if (errorObj.stack) {
                     stack = errorObj.stack;
