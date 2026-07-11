@@ -135,7 +135,7 @@ function renderPetRecoCard(containerId) {
                 <h3 class="text-sm font-bold text-gray-900">${petNameJosa(pet.name)} 맞는 맞춤 추천 TOP3</h3>
             </div>
             <p class="text-[10px] text-gray-400 -mt-1">품종·나이·체중·알러지 정보를 반영했어요</p>
-            <div class="space-y-2">${rows}</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">${rows}</div>
         </div>
     `;
 }
