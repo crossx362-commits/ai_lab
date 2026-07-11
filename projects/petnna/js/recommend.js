@@ -129,13 +129,13 @@ function renderPetRecoCard(containerId) {
     `).join('');
 
     container.innerHTML = `
-        <div class="card-modern bg-amber-50/50 p-4 space-y-2.5">
+        <div class="card-modern bg-amber-50/50 p-4 space-y-2.5 max-w-3xl mx-auto">
             <div class="flex items-center gap-1.5">
                 <span class="text-base" aria-hidden="true">🎯</span>
                 <h3 class="text-sm font-bold text-gray-900">${petNameJosa(pet.name)} 맞는 맞춤 추천 TOP3</h3>
             </div>
             <p class="text-[10px] text-gray-400 -mt-1">품종·나이·체중·알러지 정보를 반영했어요</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">${rows}</div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">${rows}</div>
         </div>
     `;
 }
