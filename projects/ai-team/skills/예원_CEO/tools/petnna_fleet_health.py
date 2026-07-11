@@ -15,8 +15,12 @@
 from __future__ import annotations
 
 import argparse
+import os
+import re
 import sys
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -48,6 +52,60 @@ AGENTS = [
 ]
 
 
+MIGRATIONS = PROJECT_ROOT / "projects" / "petnna" / "migrations"
+_SUPA_SQL_LINK = "https://supabase.com/dashboard/project/{ref}/sql/new"
+
+
+def _declared_tables() -> dict[str, str]:
+    """migrations/*.sql이 선언하는 테이블 → 선언 파일명 매핑(CREATE TABLE만)."""
+    out: dict[str, str] = {}
+    if not MIGRATIONS.exists():
+        return out
+    pat = re.compile(
+        r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(?:public\.)?([a-zA-Z_][a-zA-Z0-9_]*)", re.I)
+    for f in sorted(MIGRATIONS.glob("*.sql")):
+        for name in pat.findall(f.read_text(encoding="utf-8", errors="replace")):
+            out.setdefault(name, f.name)
+    return out
+
+
+def _table_exists(url: str, key: str, table: str) -> bool | None:
+    """라이브 Supabase에 테이블이 있는가. True/False, 판정 불가 시 None.
+    RLS로 anon select가 막혀도(401/403) 테이블은 존재하는 것으로 본다.
+    PGRST205(schema cache에 없음)만 '없음'으로 판정한다."""
+    req = urllib.request.Request(
+        f"{url}/rest/v1/{table}?select=*&limit=1",
+        headers={"apikey": key, "Authorization": f"Bearer {key}"})
+    try:
+        with urllib.request.urlopen(req, timeout=12):
+            return True
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            return True
+        try:
+            body = e.read().decode("utf-8", "replace")
+        except Exception:
+            body = ""
+        if "PGRST205" in body:
+            return False
+        return None
+    except Exception:
+        return None
+
+
+def migration_gap() -> list[tuple[str, str]]:
+    """선언됐지만 라이브 DB에 없는 (테이블, 마이그레이션파일) 목록."""
+    url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    key = os.getenv("SUPABASE_ANON_KEY", "")
+    if not url or not key:
+        return []
+    missing = []
+    for table, fname in sorted(_declared_tables().items()):
+        if _table_exists(url, key, table) is False:
+            missing.append((table, fname))
+    return missing
+
+
 def _newest_mtime(directory: Path, pattern: str) -> float | None:
     if not directory.exists():
         return None
@@ -73,12 +131,30 @@ def audit(do_send: bool) -> int:
             lines.append(f"  ⚠️ {label}: {age_h:.0f}h 무갱신 (임계 {limit/HOUR:.0f}h 초과)")
         else:
             lines.append(f"  ✅ {label}: {age_h:.0f}h 전 산출")
+    # 미적용 마이그레이션 감지 — 기능은 배포됐는데 라이브 DB에 테이블이 없어
+    # localStorage 폴백으로만 조용히 도는 상황을 자동 포착(2026-07-11 4개 누락 사고 방지).
+    gap = migration_gap()
+    if gap:
+        lines.append("  🗄️ 미적용 마이그레이션: "
+                     + ", ".join(f"{t}({f})" for t, f in gap))
+    else:
+        lines.append("  ✅ DB 스키마: 선언된 테이블 전부 라이브 적용됨")
     print("\n".join(lines))
-    if stale and do_send:
-        send("⚠️ [예원] 펫나 함대 신선도 경보 — 죽은 잡 의심\n"
-             + "\n".join(f"· {s}" for s in stale)
-             + "\n(Hermes 크론 산출물이 임계 초과로 무갱신)", silent=False)
-    return len(stale)
+
+    if do_send and (stale or gap):
+        parts = []
+        if stale:
+            parts.append("⚠️ 함대 신선도 경보 — 죽은 잡 의심\n"
+                         + "\n".join(f"· {s}" for s in stale)
+                         + "\n(Hermes 크론 산출물이 임계 초과로 무갱신)")
+        if gap:
+            ref = os.getenv("SUPABASE_URL", "").split("//")[-1].split(".")[0]
+            link = _SUPA_SQL_LINK.format(ref=ref) if ref else "Supabase SQL Editor"
+            parts.append("🗄️ 미적용 마이그레이션 " + str(len(gap)) + "개 — 기능이 localStorage로만 동작 중\n"
+                         + "\n".join(f"· {t} → migrations/{f}" for t, f in gap)
+                         + f"\n실행: {link} 에 해당 SQL 붙여넣고 Run")
+        send("[예원] 펫나 감사\n\n" + "\n\n".join(parts), silent=False)
+    return len(stale) + len(gap)
 
 
 def main() -> None:
