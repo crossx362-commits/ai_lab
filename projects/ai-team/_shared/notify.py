@@ -124,22 +124,38 @@ def _sched_count() -> int:
                if ln.split() and ln.split()[-1].startswith(SCHED_PREFIX))
 
 
+def _petnna_gate_state() -> str | None:
+    """이 기계에서 펫나 6종 데몬이 게이트(비활성) 대상이면 상태 문자열, 아니면 None.
+
+    `process.petnna_single_machine_guard()`와 동일한 판정(정책파일 `fleet_machine_policy.json`
+    우선, 없으면 구형 `PETNNA_AGENTS_ON_WINDOWS` 플래그 폴백) — 예전엔 이 함수가 win32만 보고
+    정책파일을 몰라, 지정 기계가 바뀌어도 상태표시가 안 따라가는 불일치가 있었다(2026-07-11 발견)."""
+    from _shared.process import read_fleet_policy
+    primary = str(read_fleet_policy().get("primary_platform", "")).strip()
+    if primary:
+        return "disabled" if sys.platform != primary else None
+
+    # 정책파일 없음 — 구형 플래그 방식. 부재(misconfig)와 명시적 OFF(disabled)를 구분한다
+    # (2026-07-10 함대 전멸 사고: 둘을 같은 'disabled'로 인코딩하면 안전장치가 침묵장치로 뒤집힌다).
+    gate = os.getenv("PETNNA_AGENTS_ON_WINDOWS")
+    if sys.platform == "win32" and gate != "true":
+        return "disabled" if gate is not None else "misconfig"
+    if sys.platform != "win32" and gate == "true":
+        return "disabled"
+    return None
+
+
 def agent_status() -> dict[str, str]:
     """상시 데몬은 프로세스, 예약 서비스는 launchd 적재 여부로 상태 판정.
     값: 'up,<pid>' | 'scheduled' | 'sched:<n>'(정시 잡 n개) | 'down' | 'disabled' | 'misconfig'."""
     status: dict[str, str] = {}
-    # 게이트 플래그의 '부재'와 '명시적 OFF'를 구분한다(2026-07-10 함대 전멸 사고).
-    # 부재 = .env 재암호화 중 유실됐을 수 있다 → 'misconfig'(경보 대상).
-    # 명시적 false = 이 기계에선 안 돌리는 게 설계상 정상 → 'disabled'(경보/재시작 제외).
-    # 둘을 같은 'disabled'로 인코딩하면 안전장치가 침묵장치로 뒤집힌다.
-    gate = os.getenv("PETNNA_AGENTS_ON_WINDOWS")
+    gate_state = _petnna_gate_state()
     for name, script in CONTINUOUS_DAEMONS.items():
         pids = _find_pids(script)
         if pids:
             status[name] = ",".join(pids)
-        elif (sys.platform == "win32" and name in _PETNNA_WINDOWS_GATED
-              and gate != "true"):
-            status[name] = "disabled" if gate is not None else "misconfig"
+        elif gate_state and name in _PETNNA_WINDOWS_GATED:
+            status[name] = gate_state
         elif sys.platform != "win32" and name in _LAUNCHD_FALLBACK and _launchd_loaded(_LAUNCHD_FALLBACK[name]):
             status[name] = "scheduled"   # macOS: launchd 정시 잡으로 운영 중 → 정상
         else:

@@ -1,6 +1,5 @@
 {
   "git.enabled": true,
-  "git.path": "C:\\Program Files\\Git\\cmd\\git.exe",
   "git.useIntegratedAskPass": false,
   "git.terminalAuthentication": false,
   "git.autoRepositoryDetection": false,

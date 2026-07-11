@@ -18,6 +18,7 @@ AI_TEAM_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared import notify  # noqa: E402
+from _shared import process as _process_mod  # noqa: E402
 from _shared.cc import scrub_secrets  # noqa: E402
 
 CONTROLLER_PATH = (AI_TEAM_ROOT / "skills" / "영숙_비서" / "tools" / "agent_controller.py")
@@ -31,12 +32,17 @@ def load_controller():
 
 
 class GateFlagStateTests(unittest.TestCase):
-    """플래그 '부재'와 '명시적 OFF'는 다른 상태여야 한다."""
+    """플래그 '부재'와 '명시적 OFF'는 다른 상태여야 한다(정책파일이 없는 구형 경로).
+
+    정책파일(`fleet_machine_policy.json`)이 이미 실존해 `primary_platform`을 선언하고
+    있으므로, 이 구형 플래그 경로를 재현하려면 `read_fleet_policy`를 빈 dict로 패치해
+    "정책파일 없음"이던 과거 상태를 흉내낸다."""
 
     def _status_with(self, env_value):
         env = {} if env_value is None else {"PETNNA_AGENTS_ON_WINDOWS": env_value}
         with mock.patch.object(notify, "_find_pids", return_value=[]), \
              mock.patch.object(sys, "platform", "win32"), \
+             mock.patch.object(_process_mod, "read_fleet_policy", return_value={}), \
              mock.patch.dict("os.environ", env, clear=True):
             return notify.agent_status()
 
@@ -59,6 +65,31 @@ class GateFlagStateTests(unittest.TestCase):
     def test_status_report_surfaces_misconfig(self):
         with mock.patch.object(notify, "agent_status", return_value={"bomi_qa": "misconfig"}):
             self.assertIn("PETNNA_AGENTS_ON_WINDOWS", notify.status_report())
+
+
+class GatePolicyFileStateTests(unittest.TestCase):
+    """정책파일(`fleet_machine_policy.json`)이 있으면 그게 최우선 — 지정 기계가 아니면
+    플랫폼과 무관하게 'disabled', 지정 기계면 항상 게이트 해제(2026-07-11 발견: 예전엔
+    이 함수가 win32만 보고 정책파일을 몰라 process.petnna_single_machine_guard()와
+    판정이 어긋날 수 있었다)."""
+
+    def _status_with_policy(self, primary_platform, current_platform):
+        with mock.patch.object(notify, "_find_pids", return_value=[]), \
+             mock.patch.object(sys, "platform", current_platform), \
+             mock.patch.object(_process_mod, "read_fleet_policy",
+                                return_value={"primary_platform": primary_platform}), \
+             mock.patch.dict("os.environ", {}, clear=True):
+            return notify.agent_status()
+
+    def test_non_primary_platform_is_disabled_regardless_of_flag(self):
+        status = self._status_with_policy("darwin", "win32")
+        for name in notify._PETNNA_WINDOWS_GATED:
+            self.assertEqual(status[name], "disabled")
+
+    def test_primary_platform_is_never_gated(self):
+        status = self._status_with_policy("darwin", "darwin")
+        for name in notify._PETNNA_WINDOWS_GATED:
+            self.assertEqual(status[name], "down", f"{name}: 지정 기계면 게이트 없이 down(프로세스 없음)")
 
 
 class StartAllBotsTests(unittest.TestCase):

@@ -304,7 +304,7 @@ projects/petnna/
 1. **Preserve import paths** — All agents use the 6-level root-finding pattern
 2. **Use UTF-8 encoding** — Set `PYTHONUTF8=1` or `sys.stdout.reconfigure(encoding="utf-8")`
 3. **Test with Ollama first** — Most agents default to local LLM
-4. **Check for mutex locks** — Use `process_lock.py` for daemon scripts to prevent duplicates
+4. **Check for mutex locks** — Use `_shared/process.py`(`ProcessLock`)로 daemon 스크립트 중복 방지
 
 ### When Adding New Agents
 
@@ -315,7 +315,7 @@ projects/petnna/
 
 ### Process Management
 
-- **Daemons use Windows Named Mutex** (`process_lock.py`) to prevent duplicates
+- **Daemons use `_shared/process.py`'s `ProcessLock`** to prevent duplicates(맥은 `fcntl.flock`, Windows는 Named Mutex — 이미 크로스플랫폼 구현)
 - **Cleanup zombies**: `python projects/ai-team/scripts/cleanup_duplicate_processes.py`
 
 ### Logging
@@ -331,7 +331,7 @@ projects/petnna/
 - **Match existing patterns** — Don't refactor agent import logic
 - **No premature abstractions** — Agents prefer explicit over DRY
 - **Surgical changes only** — Don't "improve" adjacent code
-- **Test on Windows** — This repo runs primarily on Windows 11
+- **Test on macOS** — 2026-07-11 오너 지시로 맥이 메인 운영 기계로 확정(`_shared/fleet_machine_policy.json`의 `primary_platform: "darwin"`). Windows 전용으로만 동작하고 맥에서 검증 안 되는 기능은 추가하지 마라.
 
 ### Error Handling
 
