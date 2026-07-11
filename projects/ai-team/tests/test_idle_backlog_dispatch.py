@@ -28,6 +28,14 @@ class IdleBacklogDispatchTests(unittest.TestCase):
     def setUp(self):
         self.hm = load()
         self.tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+        # dispatch_idle_backlog_work()는 ROOT_DIR/output/bot_logs에 실행 로그를 남긴다 —
+        # 패치 안 하면 테스트가 실제 운영 로그 파일에 흔적을 남긴다(2026-07-11 리뷰 중
+        # 실제로 발생 확인: 테스트가 output/bot_logs/mio_design_review.out.log를 오염시켰다).
+        self.fake_root = Path(tempfile.mkdtemp())
+        (self.fake_root / "output" / "bot_logs").mkdir(parents=True)
+        self._root_patch = mock.patch.object(self.hm, "ROOT_DIR", str(self.fake_root))
+        self._root_patch.start()
+        self.addCleanup(self._root_patch.stop)
 
     def _write(self, items):
         self.tmp.write_text(json.dumps({"items": items}, ensure_ascii=False), encoding="utf-8")
@@ -78,6 +86,18 @@ class IdleBacklogDispatchTests(unittest.TestCase):
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm, "_bots_off", return_value=True):
             self.assertEqual(self.hm.dispatch_idle_backlog_work({}), [])
+
+    def test_dispatch_output_is_logged_not_discarded(self):
+        """2026-07-11 리뷰 중 발견 — DEVNULL로 버리면 자동 디스패치 실행이 실패해도
+        흔적이 안 남는다. 정상 데몬과 같은 bot_logs 파일에 이어 쓰여야 한다."""
+        self._write([{"owner": "미오", "status": "대기"}])
+        with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
+             mock.patch.object(self.hm.subprocess, "Popen", return_value=mock.Mock()), \
+             mock.patch.object(self.hm, "_bots_off", return_value=False):
+            self.hm.dispatch_idle_backlog_work({})
+            out_log = self.fake_root / "output" / "bot_logs" / "mio_design_review.out.log"
+            self.assertTrue(out_log.exists(), "디스패치 마커가 로그 파일에 남아야 한다")
+            self.assertIn("예원 유휴감지 디스패치", out_log.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

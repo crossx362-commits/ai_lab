@@ -190,10 +190,11 @@ def restart_on_code_update() -> None:
 BACKLOG_PATH = os.path.join(ROOT_DIR, "output", "qa", "petnna", "backlog.json")
 DISPATCH_COOLDOWN_SEC = 1200  # 같은 담당자 재디스패치 최소 간격(중복 기동 스팸 방지)
 DISPATCH_TARGETS = {
-    # owner(백로그) → (스크립트 상대경로, 인자)
-    "미오": ("미오_디자인/tools/petnna_design_review.py", ["--send"]),
-    "테오": ("테오_테스트/tools/petnna_test_engineer.py", ["--gen", "--send"]),
-    "백호": ("백호_백엔드/tools/petnna_backend_guard.py", ["--tasks", "--send"]),
+    # owner(백로그) → (스크립트 상대경로, 인자, 로그 베이스명 — bot_logs의 기존 파일과 동일해야
+    # 정상 데몬 실행 로그와 한곳에서 이어 보인다. advisory_lock 이름과도 일치시킴).
+    "미오": ("미오_디자인/tools/petnna_design_review.py", ["--send"], "mio_design_review"),
+    "테오": ("테오_테스트/tools/petnna_test_engineer.py", ["--gen", "--send"], "teo_test_engineer"),
+    "백호": ("백호_백엔드/tools/petnna_backend_guard.py", ["--tasks", "--send"], "baekho_backend_guard"),
     # 수리는 자체 주기(기본 1시간)가 이미 짧고 매 사이클 백로그를 직접 확인하므로 제외.
 }
 
@@ -218,19 +219,27 @@ def dispatch_idle_backlog_work(state: dict) -> list[str]:
     now = time.time()
     dispatched = []
     skills_dir = os.path.join(os.path.dirname(__file__), "..")
+    log_dir = os.path.join(ROOT_DIR, "output", "bot_logs")
     for owner in owners:
         last = state.get(owner, 0.0)
         if now - last < DISPATCH_COOLDOWN_SEC:
             continue
-        rel_script, args = DISPATCH_TARGETS[owner]
+        rel_script, args, log_name = DISPATCH_TARGETS[owner]
         script = os.path.join(skills_dir, rel_script)
         try:
+            # DEVNULL로 버리면 예원이 자동 디스패치한 실행이 실패해도 흔적이 안 남는다
+            # (2026-07-11 리뷰 중 발견) — 평소 데몬이 쓰는 것과 같은 로그 파일에 이어 쓴다.
+            out_f = open(os.path.join(log_dir, f"{log_name}.out.log"), "a", encoding="utf-8")
+            err_f = open(os.path.join(log_dir, f"{log_name}.err.log"), "a", encoding="utf-8")
+            print(f"[{datetime.now()}] === 예원 유휴감지 디스패치 ===", file=out_f, flush=True)
             subprocess.Popen(
                 [sys.executable, script, *args],
-                cwd=ROOT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                cwd=ROOT_DIR, stdout=out_f, stderr=err_f,
                 start_new_session=(sys.platform != "win32"),
                 **_NOWIN,
             )
+            out_f.close()
+            err_f.close()
             state[owner] = now
             dispatched.append(owner)
         except Exception as e:
