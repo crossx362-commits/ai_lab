@@ -166,6 +166,31 @@ class MioBacklogConsumption(unittest.TestCase):
             got = {i["id"]: i["status"] for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
             self.assertEqual(got, {"a": "완료", "b": "대기"})
 
+    def test_real_review_failure_counts_against_assigned_task_attempts(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-11): 미오는 테오·백호와 달리 배정
+        과제 실패를 attempts에 전혀 반영하지 않아 상한·보류 전환이 없었다 — 대칭 맞춤."""
+        with self._write([
+            {"id": "a", "title": "배정 과제", "owner": "미오", "status": "대기", "type": "디자인", "attempts": 2},
+        ]), \
+             mock.patch.object(self.mio, "take_screenshots", return_value=[]), \
+             mock.patch.object(self.mio, "run_claude", return_value=(True, "이해가 안 갑니다")), \
+             mock.patch.object(self.mio, "llm_text", return_value="이것도 JSON이 아님"):
+            self.mio.review(do_send=False)
+        item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+        self.assertEqual(item["attempts"], 3)
+        self.assertEqual(item["status"], "보류", "3회 실패 후 보류로 전환돼야 한다")
+
+    def test_infra_failure_does_not_count_against_assigned_task_attempts(self):
+        with self._write([
+            {"id": "a", "title": "배정 과제", "owner": "미오", "status": "대기", "type": "디자인"},
+        ]), \
+             mock.patch.object(self.mio, "take_screenshots", return_value=[]), \
+             mock.patch.object(self.mio, "run_claude",
+                              return_value=(False, "claude CLI 미발견 (PATH·표준 경로 모두 없음)")):
+            self.mio.review(do_send=False)
+        item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+        self.assertNotIn("attempts", item, "인프라 실패는 시도 횟수에 반영되면 안 된다")
+
 
 class TeoBacklogConsumption(unittest.TestCase):
     """테오는 자기에게 배정된 대기 중 테스트 과제를 집고, 채택 후에만 닫는다."""

@@ -38,7 +38,7 @@ from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_gu
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
-from _shared.backlog import touches_db_auth  # noqa: E402
+from _shared.backlog import touches_db_auth, is_infra_failure, record_backlog_task_failure  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -163,6 +163,12 @@ def review(do_send: bool) -> None:
         permission_mode="acceptEdits")
     if not ok or not analysis:
         print(f"[미오] 리뷰 실패: {analysis[-200:] if analysis else '응답 없음'}")
+        # 테오·백호와 대칭(자동 파이프라인 감사 도구가 발견, 2026-07-11): 배정 과제가
+        # 있었는데 인프라 사유가 아니면 attempts를 반영해야 상한 도달 시 '보류'로
+        # 전환된다 — 안 그러면 좀비 배정 과제가 시간당(MIO_ASSIGNED_POLL_SEC) 무한 재시도.
+        if assigned and not is_infra_failure(analysis):
+            for t in assigned:
+                record_backlog_task_failure(BACKLOG, t["id"])
         if do_send:
             send("🎨 미오 — 이번 주 디자인 리뷰 실패(리뷰 단계), 다음 주기 재시도", silent=True)
         return
@@ -188,6 +194,9 @@ def review(do_send: bool) -> None:
         items = None
     if not isinstance(items, list):
         print(f"[미오] 리뷰 실패/파싱 불가: {extracted[-200:] if extracted else '응답 없음'}")
+        if assigned and not is_infra_failure(extracted):
+            for t in assigned:
+                record_backlog_task_failure(BACKLOG, t["id"])
         if do_send:
             send("🎨 미오 — 이번 주 디자인 리뷰 실패(응답 파싱 불가), 다음 주기 재시도", silent=True)
         return
