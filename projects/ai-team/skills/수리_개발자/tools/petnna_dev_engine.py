@@ -42,7 +42,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
 from _shared.cc import scrub_secrets  # noqa: E402
-from _shared.backlog import promote_approved_holds  # noqa: E402
+from _shared.backlog import promote_approved_holds, is_infra_failure  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -477,7 +477,10 @@ def _improve_cycle(do_send: bool = True) -> str:
         if not ok:
             # 인프라 실패(CLI 부재·타임아웃·과부하)는 이슈 탓이 아님 — 시도 미차감
             # (주식 시절 교훈: 크레딧/PATH 장애를 '전략 실패'로 오판해 멀쩡한 걸 보류시킴)
-            if any(k in note for k in ("미발견", "타임아웃", "rate limit", "429", "529", "verloaded")):
+            # is_infra_failure()는 _shared/backlog.py 공용 판정 — 테오·백호도 같은 걸 쓴다.
+            # 예전엔 이 키워드 목록을 여기 따로 하드코딩해, 목록이 갱신되면 이 파일만 빠져
+            # 조용히 어긋날 수 있었다(자동 파이프라인 감사 도구가 발견, 2026-07-11).
+            if is_infra_failure(note):
                 rec["attempts"] = max(0, rec["attempts"] - 1)
                 log.append("- 인프라 실패로 판정 — 시도 미차감, 다음 틱 재시도")
             raise RuntimeError("claude 수정 실패")

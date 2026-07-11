@@ -335,6 +335,15 @@ class TaskFailureTrackingTests(unittest.TestCase):
         self.assertEqual(item["attempts"], 3)
         self.assertEqual(item["status"], "보류")
 
+    def test_suri_uses_shared_infra_keyword_check_not_hardcoded_copy(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-11): 수리가 인프라 실패 키워드 목록을
+        _shared/backlog.is_infra_failure 대신 자기 파일에 하드코딩 중복해뒀었다 — 목록이
+        갱신되면 수리만 조용히 안 따라가는 어긋남(AUTO_OWNERS·needs_human과 같은 계열)."""
+        src = (AI_TEAM_ROOT / "skills" / "수리_개발자" / "tools" / "petnna_dev_engine.py").read_text(encoding="utf-8")
+        self.assertIn("is_infra_failure", src, "수리는 공용 is_infra_failure를 import해서 써야 한다")
+        self.assertNotIn('"미발견", "타임아웃"', src,
+                         "인프라 키워드를 여기 하드코딩하면 _shared/backlog.py와 어긋날 수 있다")
+
 
 if __name__ == "__main__":
     unittest.main()
