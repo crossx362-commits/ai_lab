@@ -92,6 +92,17 @@
    "priority": "medium"
   },
   {
+   "id": "yewon_pipeline_audit",
+   "agent": "예원",
+   "task": "펫나 파이프라인 딥 로직 감사",
+   "cron": "0 9 * * 0",
+   "description": "배정과제 방치·조용한 예외삼킴·안전장치 비대칭 등 실행로직 결함 점검(읽기전용) — 고확신 발견만 백로그 보류(사람검토)로 적재, skill_auditor(월)·code_auditor(토)와 안 겹치게 일요일",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pipeline_audit.py --send",
+   "enabled": true,
+   "run": true,
+   "priority": "medium"
+  },
+  {
    "id": "petnna_fleet_health",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_fleet_health.py --once --send",
    "cron": "0 11 * * *",
