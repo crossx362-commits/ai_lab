@@ -197,9 +197,13 @@ def _backlog_done(task_id: str) -> None:
 
 def generate_test(do_send: bool) -> bool:
     existing = list_tests()
-    if len(existing) >= MAX_TESTS:
-        return False
     task = _backlog_task()
+    # MAX_TESTS 상한은 '자유탐색으로 커버리지 넓히기'의 무한증식 방지용이지, 회의·예원이
+    # 명시 배정한 과제까지 막으면 안 된다 — 2026-07-11 발견: 상한(기본 8)에 도달한 뒤로
+    # 배정된 테스트 과제 2건이 generate_test() 진입 즉시 반환돼 영원히 생성되지 않았다
+    # (백로그엔 '대기'로 남아있는데 아무도 집지 못하는 조용한 방치 상태).
+    if not task and len(existing) >= MAX_TESTS:
+        return False
     if task:
         target = (f"[회의 배정 과제 — 이 흐름을 최우선으로 커버하라]\n"
                   f"- {task['title']}\n  {task.get('detail', '')}\n\n")
