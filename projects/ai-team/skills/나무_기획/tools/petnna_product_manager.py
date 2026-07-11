@@ -156,16 +156,19 @@ def daemon() -> None:
         print(f"[{datetime.now()}] 나무 데몬 시작 — 매주 요일 {PLAN_WEEKDAY}, {','.join(slots)}")
         while True:
             try:
-                if datetime.now().weekday() == PLAN_WEEKDAY and \
-                        due_slot(slots, SLOT_STATE, weekdays_only=False):
-                    # "namu_product_manager"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
-                    # 비치명적 락 — 수동 --once 실행과 겹쳐도 데몬이 죽지 않는다(자동 파이프라인
-                    # 감사 도구가 발견한 비대칭: 미오·테오·백호만 이 보호가 있었음, 2026-07-11).
-                    with advisory_lock("namu_product_manager") as got:
-                        if got:
+                # "namu_product_manager"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
+                # 비치명적 락 — 수동 --once 실행과 겹쳐도 데몬이 죽지 않는다(자동 파이프라인
+                # 감사 도구가 발견한 비대칭: 미오·테오·백호만 이 보호가 있었음, 2026-07-11).
+                # due_slot()은 호출 즉시 "오늘 실행됨"을 기록하므로(부작용) 락 밖에서 먼저
+                # 부르면, 락을 못 잡아 plan()이 스킵돼도 슬롯은 이미 소진돼 그 주 전체가
+                # 유실된다(미오·테오·봄이에서 동일 패턴을 2차 감사가 발견 후 대칭 수정).
+                with advisory_lock("namu_product_manager") as got:
+                    if got:
+                        if datetime.now().weekday() == PLAN_WEEKDAY and \
+                                due_slot(slots, SLOT_STATE, weekdays_only=False):
                             plan(do_send=True)
-                        else:
-                            print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
+                    else:
+                        print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 나무 오류: {e}")
                 try:

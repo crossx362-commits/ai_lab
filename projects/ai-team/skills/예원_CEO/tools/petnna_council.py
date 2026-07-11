@@ -39,7 +39,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.backlog import touches_db_auth, owner_type_mismatch, AUTO_OWNERS  # noqa: E402
+from _shared.backlog import needs_human, AUTO_OWNERS  # noqa: E402,F401
 
 load_env(str(PROJECT_ROOT))
 
@@ -47,22 +47,10 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "council"
 STATE = OUT_DIR / "state.json"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 
-# AUTO_OWNERS는 _shared/backlog.py가 단일 소스(promote_approved_holds도 같은 값을 써야
-# owner-불일치 항목을 잘못 승격시키지 않는다 — 2026-07-11 두 곳에 따로 정의했다 어긋난 사고).
-
-
-def needs_human(title: str, owner: str, detail: str = "", item_type: str = "") -> bool:
-    """자동 루프가 집으면 안 되는 항목인가.
-
-    ①승인 필요 ②소비자 없는 owner에 배정 ③DB/인증 접촉(수리가 병합 못 함 → 3회 실패 낭비)
-    ④owner는 소비자가 있어도 그 owner가 실제로 안 보는 type으로 배정(예: 테오에게 type=기획) —
-    자동 파이프라인 감사 도구가 발견한 좀비 대기 패턴(2026-07-11). item_type을 안 넘기면
-    이 검사는 건너뛴다(하위호환 — 기존 호출부·테스트가 type을 몰라도 그대로 동작).
-    """
-    return ("[승인필요]" in title
-            or owner not in AUTO_OWNERS
-            or owner_type_mismatch(owner, item_type)
-            or touches_db_auth(title, detail))
+# needs_human()·AUTO_OWNERS는 _shared/backlog.py가 단일 소스 — promote_approved_holds()도
+# 같은 판정 함수(structurally_blocked)를 써야 사유가 늘 때마다 두 곳이 어긋나지 않는다
+# (2026-07-11 같은 종류 사고 2연발: owner-불일치 → type-불일치, 그래서 아예 함수를
+# backlog.py로 옮겨 이 파일은 재수출만 한다).
 COOLDOWN_H = 24
 
 PERSONAS = [

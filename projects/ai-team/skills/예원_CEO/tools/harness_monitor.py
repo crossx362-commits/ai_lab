@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
 from _shared.notify import agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
 from _shared.telegram import send
-from _shared.process import ProcessLock
+from _shared.process import ProcessLock, read_fleet_policy
 from _shared.backlog import owner_type_mismatch
 from _shared import growth
 
@@ -217,8 +217,16 @@ def _pending_backlog_owners() -> set[str]:
 
 def dispatch_idle_backlog_work(state: dict) -> list[str]:
     """백로그에 '대기' 과제가 있는 담당자를 요일/슬롯과 무관하게 즉시 깨운다.
-    state: {owner: last_dispatch_epoch} (데몬 메모리 상주, 재시작 시 리셋되나 무해)."""
+    state: {owner: last_dispatch_epoch, "_fail_alert_ts": epoch} (데몬 메모리 상주, 재시작 시 리셋되나 무해)."""
     if _bots_off():
+        return []
+    # 이 기계가 펫나 에이전트 담당(primary)이 아니면 디스패치도 하지 않는다(자동 파이프라인
+    # 감사 도구가 발견, 2026-07-11) — daemon()의 petnna_single_machine_guard()는 각 에이전트
+    # 스크립트 안에서만 걸리는데, 여기서 비데몬 모드(--send 등)로 직접 실행하면 그 가드를
+    # 안 거친다. primary가 아닌 기계에서 예원이 돌면 이중 가동 참사(단일 기계 가드의 존재
+    # 이유)를 코드가 아니라 문서로만 막는 셈이 된다.
+    primary = str(read_fleet_policy().get("primary_platform", "")).strip()
+    if primary and sys.platform != primary:
         return []
     owners = _pending_backlog_owners()
     if not owners:
@@ -233,6 +241,7 @@ def dispatch_idle_backlog_work(state: dict) -> list[str]:
             continue
         rel_script, args, log_name = DISPATCH_TARGETS[owner]
         script = os.path.join(skills_dir, rel_script)
+        out_f = err_f = None
         try:
             # DEVNULL로 버리면 예원이 자동 디스패치한 실행이 실패해도 흔적이 안 남는다
             # (2026-07-11 리뷰 중 발견) — 평소 데몬이 쓰는 것과 같은 로그 파일에 이어 쓴다.
@@ -245,12 +254,24 @@ def dispatch_idle_backlog_work(state: dict) -> list[str]:
                 start_new_session=(sys.platform != "win32"),
                 **_NOWIN,
             )
-            out_f.close()
-            err_f.close()
             state[owner] = now
             dispatched.append(owner)
         except Exception as e:
+            # 2차 감사가 발견(2026-07-11): 예외 경로에서 열린 로그 fd가 안 닫혀 누수되고,
+            # 실패가 print만 되고 텔레그램엔 안 보여 오너가 반복 실패를 알 방법이 없었다.
             print(f"[예원] {owner} 디스패치 실패: {e}")
+            alert_ts = state.get("_fail_alert_ts", 0.0)
+            if now - alert_ts > DISPATCH_COOLDOWN_SEC:
+                try:
+                    send(f"⚠️ [예원] 유휴감지 디스패치 실패 — {owner}: {str(e)[:150]}", silent=True)
+                    state["_fail_alert_ts"] = now
+                except Exception:
+                    pass
+        finally:
+            if out_f:
+                out_f.close()
+            if err_f:
+                err_f.close()
     return dispatched
 
 

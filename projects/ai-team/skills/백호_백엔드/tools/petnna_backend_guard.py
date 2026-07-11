@@ -38,6 +38,7 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
+from _shared.backlog import is_infra_failure, apply_task_failure, TASK_MAX_ATTEMPTS  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -170,8 +171,19 @@ def investigate_assigned_tasks(do_send: bool) -> int:
             PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
             permission_mode="plan")
         if not (ok and out):
-            print(f"[백호] 조사 실패(인프라) — 다음 주기 재시도: {it['title'][:60]}")
-            continue  # 시도 미차감 원칙과 동일 — 대기 상태 유지, 다음 주기 재시도
+            # 인프라 실패(CLI 부재·타임아웃 등)는 과제 탓이 아니다 — 시도 미차감(수리
+            # _improve_cycle과 동일 원칙). 그 외 진짜 실패는 attempts를 반영해야 과제
+            # 자체가 구조적으로 실패하는 경우(자동 파이프라인 감사 도구가 발견, 2026-07-11:
+            # 이전엔 상한 자체가 없어 300초마다 영원히 재조사했다) 상한 도달 시 보류로
+            # 전환된다. 이 루프는 여러 과제를 순회 후 한 번만 저장하므로 apply_task_failure로
+            # 메모리상 항목만 갱신 — record_backlog_task_failure(파일 즉시 저장)를 쓰면
+            # 아래 최종 BACKLOG.write_text가 이 변경을 덮어써 버린다.
+            if is_infra_failure(out):
+                print(f"[백호] 조사 실패(인프라) — 다음 주기 재시도: {it['title'][:60]}")
+            else:
+                apply_task_failure(it)
+                print(f"[백호] 조사 실패(시도 {it.get('attempts')}/{TASK_MAX_ATTEMPTS}): {it['title'][:60]}")
+            continue
         it["status"] = "완료"
         it["finding"] = out.strip()[:1500]
         it["updated"] = datetime.now().isoformat()

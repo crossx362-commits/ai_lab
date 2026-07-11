@@ -273,6 +273,68 @@ class PromoteApprovedHoldsTests(unittest.TestCase):
                      "status": "보류", "owner": "수리", "approved_by": "오너"}])
         self.assertEqual(self.promote(self.tmp), [])
 
+    def test_owner_type_mismatch_never_promoted_even_with_approval(self):
+        """자동 파이프라인 감사 도구가 2번째로 발견(2026-07-11): needs_human()에
+        owner_type_mismatch 사유를 추가했을 때 이 함수를 안 고치면, owner는 소비자가
+        있어도(테오) type이 안 맞는(디자인) 항목이 승인만 받으면 '대기'로 승격되지만
+        여전히 테오 _backlog_task()가 못 집는 좀비가 된다 — owner-불일치 사고의 재발."""
+        self._write([{"id": "d", "title": "이상 배정", "type": "디자인",
+                     "status": "보류", "owner": "테오", "approved_by": "오너"}])
+        promoted = self.promote(self.tmp)
+        self.assertEqual(promoted, [])
+        item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+        self.assertEqual(item["status"], "보류",
+                         "owner+type 불일치는 승인해도 아무도 못 집는 좀비 — 보류 유지가 맞다")
+
+    def test_owner_type_match_is_promoted(self):
+        self._write([{"id": "e", "title": "정상 배정", "type": "테스트",
+                     "status": "보류", "owner": "테오", "approved_by": "오너"}])
+        self.assertEqual(self.promote(self.tmp), ["e"])
+
+
+class TaskFailureTrackingTests(unittest.TestCase):
+    """배정 과제 재시도 상한 공용 헬퍼 — 2026-07-11 2차 감사(테오에 이어 백호도 같은
+    문제)로 _shared/backlog.py에 단일화. 새 에이전트가 배정 과제를 소비할 때
+    각자 재구현하지 말고 이 함수들을 재사용해야 또 어긋나지 않는다."""
+
+    def setUp(self):
+        from _shared.backlog import is_infra_failure, apply_task_failure, record_backlog_task_failure
+        self.is_infra = is_infra_failure
+        self.apply_failure = apply_task_failure
+        self.record_failure = record_backlog_task_failure
+        self.tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+
+    def test_infra_keywords_detected(self):
+        for text in ("claude CLI 미발견 (PATH·표준 경로 모두 없음)", "claude -p 타임아웃(600s)",
+                     "429 Too Many Requests", "rate limit exceeded"):
+            self.assertTrue(self.is_infra(text), f"{text!r}는 인프라 실패로 인식돼야 한다")
+
+    def test_non_infra_text_not_flagged(self):
+        self.assertFalse(self.is_infra("이해가 안 갑니다, 다시 설명해주세요"))
+        self.assertFalse(self.is_infra(""))
+        self.assertFalse(self.is_infra(None))
+
+    def test_apply_task_failure_is_in_place_no_io(self):
+        item = {"id": "x", "owner": "백호", "status": "대기"}
+        self.apply_failure(item, max_attempts=3)
+        self.assertEqual(item["attempts"], 1)
+        self.assertEqual(item["status"], "대기", "상한 미만이면 대기 유지")
+
+    def test_apply_task_failure_holds_at_cap(self):
+        item = {"id": "x", "owner": "백호", "status": "대기", "attempts": 2}
+        self.apply_failure(item, max_attempts=3)
+        self.assertEqual(item["attempts"], 3)
+        self.assertEqual(item["status"], "보류")
+        self.assertIn("백호", item["gate"])
+
+    def test_record_backlog_task_failure_persists_to_file(self):
+        self.tmp.write_text(json.dumps({"items": [
+            {"id": "a", "owner": "테오", "status": "대기", "attempts": 2}]}), encoding="utf-8")
+        self.record_failure(self.tmp, "a", max_attempts=3)
+        item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+        self.assertEqual(item["attempts"], 3)
+        self.assertEqual(item["status"], "보류")
+
 
 if __name__ == "__main__":
     unittest.main()

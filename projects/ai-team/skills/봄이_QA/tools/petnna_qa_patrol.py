@@ -38,7 +38,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
+from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -590,25 +590,36 @@ def daemon() -> None:
     slots = os.getenv("BOMI_QA_SLOTS", "09:20").split(",")
     poll = int(os.getenv("BOMI_QA_POLL_SEC", "300"))
     cooldown = int(os.getenv("BOMI_QA_COOLDOWN_SEC", "1800"))
-    with ProcessLock("bomi_qa_patrol"):
+    with ProcessLock("bomi_qa_patrol_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
         print(f"[{datetime.now()}] 봄이 데몬 시작 — 정기 {','.join(slots)} + 변경 감지(폴링 {poll}s)")
         last_digest = _tree_digest()
         last_patrol = 0.0
         while True:
             try:
-                slot = due_slot(slots, SLOT_STATE, weekdays_only=False)
                 digest = _tree_digest()
                 changed = digest != last_digest
-                if slot or (changed and time.time() - last_patrol > cooldown):
-                    reason = f"정기({slot})" if slot else "변경 감지"
-                    print(f"[{datetime.now()}] 순찰 트리거: {reason}")
-                    patrol(do_send=True)
-                    if slot:
-                        fleet_freshness_audit()
-                    last_patrol = time.time()
-                    last_digest = _tree_digest()
-                elif changed:
-                    last_digest = digest  # 쿨다운 내 변경은 기록만 (다음 폴링서 재평가 안 하도록)
+                # "bomi_qa_patrol"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는 비치명적
+                # 락 — 수동 --once 실행과 겹쳐도(포트 8933 바인딩·qa_state.json 동시쓰기
+                # 방지) 데몬이 죽지 않는다. due_slot()은 호출 즉시 "오늘 실행됨"을
+                # 기록해버리므로(부작용) 락 밖에서 먼저 부르면, 락을 못 잡아 patrol이
+                # 스킵돼도 슬롯은 이미 소진돼 그날 정기 순찰(+ fleet_freshness_audit)이
+                # 통째로 유실된다(2026-07-11 2차 파이프라인 감사가 발견 — 백호만 이 순서가
+                # 맞았음, 대칭 맞춤).
+                with advisory_lock("bomi_qa_patrol") as got:
+                    if got:
+                        slot = due_slot(slots, SLOT_STATE, weekdays_only=False)
+                        if slot or (changed and time.time() - last_patrol > cooldown):
+                            reason = f"정기({slot})" if slot else "변경 감지"
+                            print(f"[{datetime.now()}] 순찰 트리거: {reason}")
+                            patrol(do_send=True)
+                            if slot:
+                                fleet_freshness_audit()
+                            last_patrol = time.time()
+                            last_digest = _tree_digest()
+                        elif changed:
+                            last_digest = digest  # 쿨다운 내 변경은 기록만(다음 폴링서 재평가 안 하도록)
+                    else:
+                        print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 순찰 오류: {e}")
                 try:
@@ -628,9 +639,13 @@ def main() -> None:
     if args.daemon:
         daemon()
     else:
-        findings = patrol(do_send=args.send)
-        c = counts(findings)
-        print(f"판정: {verdict(c)} | {c}")
+        with advisory_lock("bomi_qa_patrol") as got:
+            if not got:
+                print("다른 실행이 진행 중 — 건너뜀")
+                return
+            findings = patrol(do_send=args.send)
+            c = counts(findings)
+            print(f"판정: {verdict(c)} | {c}")
 
 
 if __name__ == "__main__":

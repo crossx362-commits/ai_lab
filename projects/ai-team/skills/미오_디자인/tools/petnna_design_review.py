@@ -224,22 +224,25 @@ def daemon() -> None:
         last_assigned_check = 0.0
         while True:
             try:
-                due_full = (datetime.now().weekday() == REVIEW_WEEKDAY
-                            and due_slot(slots, SLOT_STATE, weekdays_only=False))
-                due_assigned = (not due_full and _assigned_tasks()
-                                 and time.time() - last_assigned_check > assigned_poll)
-                if due_full or due_assigned:
-                    # "mio_design_review"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
-                    # 비치명적 락 — 예원 워치독의 수동 디스패치와 실행 시점이 겹쳐도
-                    # 데몬이 죽지 않고 이번 주기를 건너뛴다(2026-07-11).
-                    with advisory_lock("mio_design_review") as got:
-                        if got:
+                # "mio_design_review"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는 비치명적
+                # 락 — 예원 워치독의 수동 디스패치와 실행 시점이 겹쳐도 데몬이 죽지 않고
+                # 이번 주기를 건너뛴다(2026-07-11). due_slot()은 호출 즉시 "오늘 실행됨"을
+                # 기록해버리므로(부작용) 락 밖에서 먼저 부르면, 락을 못 잡아 review()가
+                # 스킵돼도 슬롯은 이미 소진돼 다음 주까지 그 주 전체 리뷰가 통째로 유실된다
+                # (2026-07-11 2차 파이프라인 감사가 발견 — 백호만 이 순서가 맞았음, 대칭).
+                with advisory_lock("mio_design_review") as got:
+                    if got:
+                        due_full = (datetime.now().weekday() == REVIEW_WEEKDAY
+                                    and due_slot(slots, SLOT_STATE, weekdays_only=False))
+                        due_assigned = (not due_full and _assigned_tasks()
+                                         and time.time() - last_assigned_check > assigned_poll)
+                        if due_full or due_assigned:
                             if due_assigned:
                                 print(f"[{datetime.now()}] 배정 과제 발견 — 요일 무관 즉시 리뷰")
                             review(do_send=True)
                             last_assigned_check = time.time()
-                        else:
-                            print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
+                    else:
+                        print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 미오 오류: {e}")
                 try:

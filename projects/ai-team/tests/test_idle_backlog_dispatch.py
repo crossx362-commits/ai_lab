@@ -36,6 +36,13 @@ class IdleBacklogDispatchTests(unittest.TestCase):
         self._root_patch = mock.patch.object(self.hm, "ROOT_DIR", str(self.fake_root))
         self._root_patch.start()
         self.addCleanup(self._root_patch.stop)
+        # 기본값: 이 기계가 항상 primary(실제 platform과 일치)라고 가정 — 실제
+        # fleet_machine_policy.json 내용·실행 플랫폼에 기존 테스트들이 우연히 좌우되지
+        # 않게 한다(2026-07-11 2차 감사가 발견한 single-machine 가드 우회 결함 수정 후 추가).
+        self._policy_patch = mock.patch.object(
+            self.hm, "read_fleet_policy", return_value={"primary_platform": sys.platform})
+        self._policy_patch.start()
+        self.addCleanup(self._policy_patch.stop)
 
     def _write(self, items):
         self.tmp.write_text(json.dumps({"items": items}, ensure_ascii=False), encoding="utf-8")
@@ -98,6 +105,52 @@ class IdleBacklogDispatchTests(unittest.TestCase):
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm, "_bots_off", return_value=True):
             self.assertEqual(self.hm.dispatch_idle_backlog_work({}), [])
+
+    def test_non_primary_machine_never_dispatches(self):
+        """2차 자동 파이프라인 감사가 발견(2026-07-11): daemon()의 petnna_single_machine_guard는
+        각 에이전트 스크립트 안에서만 걸리는데, dispatch_idle_backlog_work는 비데몬 모드로
+        직접 실행해 그 가드를 우회한다 — primary가 아닌 기계에서 이중 가동될 수 있었다."""
+        self._write([{"owner": "미오", "status": "대기"}])
+        other_platform = "win32" if sys.platform != "win32" else "darwin"
+        with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
+             mock.patch.object(self.hm, "read_fleet_policy",
+                              return_value={"primary_platform": other_platform}), \
+             mock.patch.object(self.hm.subprocess, "Popen") as fake_popen, \
+             mock.patch.object(self.hm, "_bots_off", return_value=False):
+            self.assertEqual(self.hm.dispatch_idle_backlog_work({}), [])
+            fake_popen.assert_not_called()
+
+    def test_no_policy_file_falls_back_to_dispatching(self):
+        """정책파일이 없으면(과거 상태) 기존처럼 디스패치를 막지 않는다(하위호환)."""
+        self._write([{"owner": "미오", "status": "대기"}])
+        with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
+             mock.patch.object(self.hm, "read_fleet_policy", return_value={}), \
+             mock.patch.object(self.hm.subprocess, "Popen", return_value=mock.Mock()), \
+             mock.patch.object(self.hm, "_bots_off", return_value=False):
+            self.assertEqual(self.hm.dispatch_idle_backlog_work({}), ["미오"])
+
+    def test_popen_failure_closes_log_handles_and_alerts_once(self):
+        """2차 감사가 발견(2026-07-11): Popen 예외 경로에서 로그 fd가 안 닫혀 누수되고,
+        실패가 텔레그램으로 안 올라가 오너가 반복 실패를 알 방법이 없었다."""
+        self._write([{"owner": "미오", "status": "대기"}])
+        opened = []
+        real_open = open
+
+        def tracking_open(path, *a, **kw):
+            f = real_open(path, *a, **kw)
+            opened.append(f)
+            return f
+
+        with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
+             mock.patch.object(self.hm.subprocess, "Popen", side_effect=OSError("실행 실패")), \
+             mock.patch.object(self.hm, "_bots_off", return_value=False), \
+             mock.patch.object(self.hm, "send") as fake_send, \
+             mock.patch("builtins.open", side_effect=tracking_open):
+            self.hm.dispatch_idle_backlog_work({})
+        fake_send.assert_called_once()
+        self.assertTrue(opened, "로그 파일이 열렸어야 한다")
+        self.assertTrue(all(f.closed for f in opened),
+                        "Popen 실패 시에도 열었던 로그 fd는 반드시 닫혀야 한다(누수 방지)")
 
     def test_dispatch_output_is_logged_not_discarded(self):
         """2026-07-11 리뷰 중 발견 — DEVNULL로 버리면 자동 디스패치 실행이 실패해도

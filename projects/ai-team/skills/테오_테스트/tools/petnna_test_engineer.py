@@ -42,6 +42,9 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
+from _shared.backlog import (  # noqa: E402
+    is_infra_failure, record_backlog_task_failure, TASK_MAX_ATTEMPTS as _TASK_MAX_ATTEMPTS,
+)
 
 load_env(str(PROJECT_ROOT))
 
@@ -197,23 +200,13 @@ def _backlog_done(task_id: str) -> None:
 
 # 배정 테스트 과제에 상한 없이 무한 재시도되던 결함(자동 파이프라인 감사 도구가 발견,
 # 2026-07-11) — 수리의 MAX_ATTEMPTS·보류·회의소집과 같은 계열의 안전장치를 테오에도 둔다.
-TASK_MAX_ATTEMPTS = 3
+# 이 로직 자체는 _shared/backlog.py 공용 함수로 이관(2차 감사에서 백호도 같은 문제가
+# 있는 게 드러나 각 에이전트가 따로 구현하면 또 어긋난다는 걸 확인 — 단일 소스화).
+TASK_MAX_ATTEMPTS = _TASK_MAX_ATTEMPTS
 
 
 def _backlog_task_failed(task_id: str) -> None:
-    """배정 과제 생성·안정성 게이트 실패 시 attempts 증가, 상한 도달 시 '보류'로 전환해
-    무한 재시도(특히 예원 워치독의 20분 재디스패치와 겹쳐 flaky 흐름을 영원히 재시도)를 막는다."""
-    try:
-        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except Exception:
-        return
-    for i in data["items"]:
-        if i.get("id") == task_id:
-            i["attempts"] = i.get("attempts", 0) + 1
-            if i["attempts"] >= TASK_MAX_ATTEMPTS:
-                i["status"] = "보류"
-                i["gate"] = "테오 반복 실패(구조적 원인 필요)"
-    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    record_backlog_task_failure(BACKLOG, task_id, TASK_MAX_ATTEMPTS)
 
 
 def generate_test(do_send: bool) -> bool:
@@ -251,7 +244,11 @@ def generate_test(do_send: bool) -> bool:
     new = [p for p in list_tests() if p not in existing]
     if not new:
         print(f"[테오] 테스트 생성 실패: {out[-200:]}")
-        if task:
+        # 인프라 실패(CLI 부재·타임아웃·과부하)는 과제 탓이 아니다 — 수리 _improve_cycle과
+        # 같은 원칙(자동 파이프라인 감사 도구가 발견, 2026-07-11): 이걸 attempts에 넣으면
+        # claude CLI가 잠깐 안 보이기만 해도 멀쩡한 배정 과제가 몇 번 안에 '보류'로
+        # 오탈락한다(특히 예원 워치독 20분 디스패치와 겹치면 더 빨리 소진).
+        if task and not is_infra_failure(out):
             _backlog_task_failed(task["id"])
         return False
     path = new[0]
@@ -268,9 +265,24 @@ def generate_test(do_send: bool) -> bool:
     nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     subprocess.run(["git", "add", str(path)], cwd=str(PROJECT_ROOT), capture_output=True, **nowin)
     name = getattr(_load_test(path), "NAME", path.stem)
-    subprocess.run(["git", "commit", "-m", f"test(petnna): E2E '{name}' 추가 (테오 자동 생성)"],
-                   cwd=str(PROJECT_ROOT), capture_output=True, **nowin)
-    if task:  # 채택(2회 연속 통과)된 뒤에만 과제를 닫는다 — 폐기 시엔 대기로 남아 재시도
+    c = subprocess.run(["git", "commit", "-m", f"test(petnna): E2E '{name}' 추가 (테오 자동 생성)"],
+                       cwd=str(PROJECT_ROOT), capture_output=True, text=True, **nowin)
+    if c.returncode != 0:
+        # 커밋 실패(pre-commit 훅·서명 등)를 확인 안 하면 채택으로 로그·완료 처리되고
+        # 파일은 스테이징된 채 미커밋으로 남는다(자동 파이프라인 감사 도구가 발견,
+        # 2026-07-11) — master 기준 워크트리를 쓰는 수리·봄이가 이 테스트를 못 보고,
+        # 동시 세션 자동커밋이 이 스테이징을 엉뚱한 커밋에 쓸어담을 위험도 있다.
+        subprocess.run(["git", "reset", "--", str(path)], cwd=str(PROJECT_ROOT), capture_output=True, **nowin)
+        path.unlink(missing_ok=True)
+        print(f"[테오] 신규 테스트 커밋 실패 → 폐기: {c.stderr.strip()[-200:]}")
+        # 2차 감사가 발견한 비대칭(2026-07-11): flaky 폐기 경로는 attempts를 올리는데
+        # 커밋 실패 경로만 안 올리면, pre-commit 훅이 계속 거부하는 구조적 문제에서
+        # TASK_MAX_ATTEMPTS·보류 전환이 영원히 발동 안 한다 — 대칭을 맞춘다(git 실패는
+        # run_claude 인프라 실패와 달리 '몇 초 후 저절로 낫는' 성질이 아니므로 미차감 대상 아님).
+        if task:
+            _backlog_task_failed(task["id"])
+        return False
+    if task:  # 채택(2회 연속 통과 + 커밋 성공)된 뒤에만 과제를 닫는다 — 실패 시엔 대기로 남아 재시도
         _backlog_done(task["id"])
     print(f"[테오] 신규 테스트 채택: {path.name} — {name}")
     if do_send:
@@ -301,29 +313,31 @@ def daemon() -> None:
         last_run = 0.0
         while True:
             try:
-                slot = due_slot(slots, SLOT_STATE, weekdays_only=False)
                 digest = _tree_digest()
                 changed = digest != last_digest
-                if slot:
-                    # "teo_test_engineer"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
-                    # 비치명적 락 — 예원 워치독의 수동 디스패치와 겹쳐도 데몬이 죽지 않는다.
-                    with advisory_lock("teo_test_engineer") as got:
-                        if got:
+                # "teo_test_engineer"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는 비치명적
+                # 락 — 예원 워치독의 수동 디스패치와 겹쳐도 데몬이 죽지 않는다. due_slot()은
+                # 호출 즉시 "오늘 실행됨"을 기록해버리므로(부작용) 락 밖에서 먼저 부르면,
+                # 락을 못 잡아 generate_test+report가 스킵돼도 슬롯은 이미 소진돼 그날
+                # 생성·회귀 실행이 통째로 유실된다(2026-07-11 2차 파이프라인 감사가 발견 —
+                # 백호만 이 순서가 맞았음, 대칭 맞춤).
+                with advisory_lock("teo_test_engineer") as got:
+                    if got:
+                        slot = due_slot(slots, SLOT_STATE, weekdays_only=False)
+                        if slot:
                             generate_test(do_send=True)  # 하루 1개 생성 시도(상한 도달 시 no-op)
                             report(run_suite(), do_send=True)
                             last_run = time.time()
                             last_digest = _tree_digest()
-                        else:
-                            print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
-                elif changed and time.time() - last_run > cooldown:
-                    print(f"[{datetime.now()}] 변경 감지 → 스위트 실행")
-                    with advisory_lock("teo_test_engineer") as got:
-                        if got:
+                        elif changed and time.time() - last_run > cooldown:
+                            print(f"[{datetime.now()}] 변경 감지 → 스위트 실행")
                             report(run_suite(), do_send=True)
                             last_run = time.time()
                             last_digest = _tree_digest()
-                elif changed:
-                    last_digest = digest
+                        elif changed:
+                            last_digest = digest
+                    else:
+                        print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 테오 오류: {e}")
                 try:
