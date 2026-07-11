@@ -223,7 +223,13 @@ result = ollama("프롬프트", task="blog")
 
 ### Encryption/Decryption
 
-Encrypt all secrets:
+`.env.encrypted`는 `getpass.getuser()@platform.node()`로 파생한 **기계+계정 전용** 키라
+git으로 공유할 수 없다(2026-07-11 발견: Windows가 마지막으로 재암호화한 뒤로 맥에서
+복호화가 계속 조용히 실패해 이 맥이 며칠간 평문 `.env`로만 강등 운영됐다 — `load_env()`가
+이제 실패 시 stderr 경보를 남기도록 수정됨). 그래서 `.env.encrypted`는 git 추적에서
+제거하고 `.gitignore`에 추가했다 — **로컬 전용 파일**로만 쓸 것, 커밋하지 마라.
+
+로컬에서 암호화(선택, 안 해도 평문 `.env`로 정상 동작):
 ```bash
 python projects/ai-team/_shared/env.py encrypt .env .env.encrypted
 ```
@@ -239,7 +245,6 @@ See `.env` for full list. Key variables:
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 - `GEMINI_API_KEY`
 - `ANTHROPIC_API_KEY` (Claude fallback)
-- `UPBIT_ACCESS_KEY`, `UPBIT_SECRET_KEY`
 - `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_ACCOUNT_ID`
 - `NOTION_API_KEY`, `NOTION_DATABASE_ID`
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`
@@ -394,6 +399,7 @@ if hasattr(sys.stdout, "reconfigure"):
   1. **`select_issue()`의 재발 감지가 attempts 필터에 곧바로 걸려 무력화됨** — "완료" 이슈가 재발하면 재도전해야 하는데(`fixed_at < qa_last_run`), 첫 라운드에 이미 쌓인 `attempts`(예: 2회 실패+3회째 성공=3)가 바로 다음 줄의 `attempts >= MAX_ATTEMPTS` 필터에 걸려 후보에서 조용히 탈락했다. 재도전 자체가 없으니 3회 실패 알림·회의 소집도 안 뜨는 방치 상태 — dev_state.json에서 실제로 이 조건에 걸렸던 이슈(`H1 3개(중복)`, attempts=3)를 확인. 수리: 재발 판정 시 `rec["attempts"] = 0`으로 리셋(새 라운드 취급). 회귀 테스트 `tests/test_dev_engine_select_issue.py`(5개, 재발 재시도·리셋·정상완료 유지·보류 유지·MAX_ATTEMPTS 준수) 신설.
   2. **`promote_approved_holds()`가 "gate 필드"만 보고 "owner 불일치"라는 세 번째 보류 사유를 놓침** — `petnna_council.py`가 항목을 `보류`로 보내는 이유는 셋(승인필요·owner 불일치·DB/인증)인데, `gate` 필드는 DB/인증일 때만 붙는다(`needs_human()` 반환값을 그대로 `status`에만 쓰고 사유는 안 남김). 그래서 나무처럼 백로그를 안 읽는 owner에게 배정돼 보류된 항목이 오너 승인만 받으면(DB/인증 무관이면) `대기`로 승격됐는데, owner는 여전히 소비자 없는 값이라 아무도 안 집는 좀비 상태가 됐다 — 방치를 없앤 게 아니라 모양만 바꾼 것(재현 확인, 실 운영엔 아직 이 조건에 해당하는 승인된 항목이 없어 피해 0건). 수리: `AUTO_OWNERS`를 `_shared/backlog.py`로 옮겨 단일 소스화(`petnna_council.py`는 이제 여기서 import — 두 곳에 따로 정의하면 한쪽만 갱신돼 어긋나는 패턴, 오늘 세 번째 반복). `promote_approved_holds()`에 `owner in AUTO_OWNERS` 체크 추가. 회귀 테스트 4개(`test_backlog_routing.py::PromoteApprovedHoldsTests`) 신설. **교훈**: "왜 보류인가"의 사유가 여러 개일 때 상태값 하나(`status`)에만 뭉뚱그리면, 나중에 그 상태를 재검토하는 코드가 사유 중 일부만 알고 판단해 놓친 사유를 그대로 승격시킨다 — 사유별로 구분 가능한 필드(`gate`처럼)를 모든 라우팅 이유에 일관되게 남길 것.
 - **죽은 의존성·이름 오해 소지 디렉토리·관리 사각지대 정리(2026-07-11)** — "개발에 불필요하거나 안 쓰는 거나 오래된 거 찾아" 지시로 전수 조사. 확인된 것만 정리, 애매한 건 물어봄: ①`projects/petnna/package.json`의 `@capacitor/*`(코드 미사용, node_modules 미설치, 오너 확인 후 삭제)·`mcp-server-openai`(완전히 죽은 유료API 의존성) 제거 + `npm install --package-lock-only`로 lockfile 동기화(1078줄 감소). ②`output/trading_logs/` — 2026-07-08 주식 전면삭제 이후에도 `com.ailab.harness`·`com.ailab.youngsuk`(순수 텔레그램 봇) 로그가 이 이름의 디렉토리에 계속 쌓이던 오해 소지 — `output/bot_logs/`로 통합 이동, 두 plist의 `StandardOutPath`/`StandardErrorPath`·`log_janitor.py`의 `LOG_DIRS`·`schedules.json` 설명 갱신 후 `launchctl unload/load`로 즉시 반영 확인. 겸사겸사 `output/bot_logs/`에 널려있던 **죽은 주식 에이전트 잔존 로그**(hank_us_research·kodari_health·leon_eu_research·research_asia/desk/desk_pm/eu/us·hanbyul_quant_tune·strategy_lab·yuna_asia_research)도 삭제(어떤 launchd 잡도 이 이름들을 안 씀 — 실제로 사어 상태 확인 후 제거). ③`output/qa/petnna/`(스크린샷·리포트·loop 로그)가 `log_janitor` 관리 밖이라 무한 증식하던 사각지대(76개 스크린샷 3.3MB가 3일 만에 축적) — 오너 승인 후 `log_janitor.py`에 `_sweep_qa_petnna()` 추가: `report_*`·`loop_*`·`minutes_*`·`review_*`·`plan_*` 접두 파일과 `shots/` 폴더만 STALE_DAYS(45일) 초과 시 삭제, `backlog.json`류 지속 상태 파일은 접두 패턴에 안 걸려 자동 보존. 회귀 테스트 `tests/test_log_janitor.py` 신설(신선/사어/상태파일 구분 검증). **판정 기준**: `HANDBOOK.md`가 이미 C/D등급으로 분류해둔 문서(`AGENT_ADVANCEMENT_DESIGN.md` 등, 소미 언급 있음)는 의도된 아카이브이므로 손대지 않음 — "오래됨"과 "이미 의도적으로 격리됨"을 구분할 것.
+- **`.env.encrypted`를 git 추적에서 완전히 제거 — 기계별 파생 키로는 애초에 공유가 불가능한 파일이었다(2026-07-11, 같은 날 후속)** — 위 정리 지시 중 `.env`(로컬)에서 죽은 KIS/UPBIT/DART/SOMI 변수 9개를 지우다가, `.env.encrypted`는 사실 **git 추적 파일**이고 최근 커밋(`56a1e9a8`, 2026-07-10)이 Windows 계정(`DESKTOP-QFF0O34`) 키로 재암호화한 상태라 이 맥 계정 키(`junholee@Junhoui-MacBookAir.local`)로는 복호화가 `InvalidSignature`로 실패한다는 걸 발견했다. `load_env()`는 실패를 조용히 삼키고 평문 `.env`로 강등해 이 맥이 최소 7/10부터 아무 경고 없이 평문 `.env`로만 운영되고 있었을 가능성이 있었다(1차 수정: 실패 시 stderr 경보 추가). 오너 지시("지워버려")로 근본 처리: `.env.encrypted`를 `git rm` + `.gitignore`에 추가 — 애초에 `getpass.getuser()@platform.node()` 파생 키는 기계+계정 전용이라 git으로 공유될 수 없는 것을, 그런 목적(암호화된 시크릿의 기계 간 배포)으로 써온 것 자체가 설계 오류였다(같은 날 앞서 고친 `fleet_machine_policy.json`/`TELEGRAM_POLL_HOST` 사고와 동일 계열 — 단, 그건 평범한 플래그라 평문+git으로 대체 가능했지만 이건 진짜 API 키라 평문 git 대체는 불가, 그래서 "각 기계가 자기 로컬 `.env.encrypted`(또는 평문 `.env`)만 갖고 git에는 아예 안 올린다"가 맞는 해법). CLAUDE.md 🔐 섹션의 죽은 `UPBIT_ACCESS_KEY`/`UPBIT_SECRET_KEY` 언급도 같이 제거. **잔여 리스크**: Windows 쪽이 `.env.encrypted` 하나에만 의존해 시크릿을 로드해왔다면 다음 `git pull` 후 그 파일이 사라져 로컬 평문 `.env`가 없으면 시크릿 로딩이 깨질 수 있다 — Windows가 켜지면 가장 먼저 로컬 `.env` 존재 여부부터 확인할 것. **교훈**: "암호화됐으니 커밋해도 안전하다"는 그 키가 정말 모두가 공유 가능한 키일 때만 맞다 — 기계 파생 키로 암호화한 파일은 사실상 평문 커밋과 마찬가지로 단일 기계 전용이며, git 추적 대상으로 삼는 순간부터 다른 기계를 조용히 걷어차기 시작한다.
 
 ---
 

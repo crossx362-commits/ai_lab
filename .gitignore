@@ -32,6 +32,7 @@ projects/ai-team/skills/*/tools/last_run.json
 .env.key
 .env.backup*
 .env_backup_secure/
+.env.encrypted
 .env.encrypted.backup
 client_secret.json
 client_secret.json.template
