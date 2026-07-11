@@ -381,6 +381,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     applyThemeStyles(settings_theme);
 
+    // 📸 디자인 캡처용 데모 진입 (미오 디자인 리뷰 파이프라인) — ?demo=1 이면 데모 세션을 심어 로그인 게이트를 통과.
+    // 기존 데모 계정(butler@petna.co.kr)만 사용하며 새 자격증명을 추가하지 않는다. 캡처(비파괴 읽기 전용) 용도.
+    try {
+        const _params = new URLSearchParams(window.location.search);
+        if ((_params.get('demo') === '1' || _params.get('capture') === '1') &&
+            localStorage.getItem('petna_is_logged_in') !== 'true') {
+            localStorage.setItem('petna_is_logged_in', 'true');
+            localStorage.setItem('petna_user_email', 'butler@petna.co.kr');
+            const _tab = _params.get('tab');
+            if (_tab) localStorage.setItem('petna_active_tab', _tab);
+        }
+    } catch (e) { console.warn('데모 진입 파라미터 처리 오류:', e); }
+
     // 🔓 로그인 세션 확인 및 레이아웃 상태 설정
     const isLoggedIn = localStorage.getItem('petna_is_logged_in') === 'true';
     const loginOverlay = document.getElementById('login-landing-overlay');
