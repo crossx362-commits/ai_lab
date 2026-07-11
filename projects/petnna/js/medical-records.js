@@ -72,17 +72,25 @@ function renderMedicalRecordsTimeline() {
         return;
     }
 
-    // 누적 요약 — 코랄 스탯 카드(브랜드 앵커)
+    // 누적 요약 — 비용(핵심)을 시각적 앵커로 강조, 건수·이번 달은 보조 톤
     const totalCost = records.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0);
+    const _thisMonth = new Date().toISOString().slice(0, 7);
+    const monthly = (typeof getMonthlyHospitalSummary === 'function')
+        ? getMonthlyHospitalSummary(_thisMonth)
+        : { count: 0, totalCost: 0 };
     const summaryHtml = `
         <div class="flex items-stretch gap-2 mb-3">
-            <div class="flex-1 rounded-2xl bg-brand-50/70 border border-brand-100 px-3.5 py-2.5">
-                <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wide">누적 진료비</div>
-                <div class="text-lg font-black text-brand-800 tabular-nums leading-tight">${totalCost.toLocaleString('ko-KR')}<span class="text-xs font-bold text-brand-600 ml-0.5">원</span></div>
+            <div class="flex-1 rounded-2xl bg-brand-500 border border-brand-500 px-3.5 py-2.5 shadow-soft">
+                <div class="text-[10px] font-bold text-white/80 uppercase tracking-wide">누적 진료비</div>
+                <div class="text-2xl font-black text-white tabular-nums leading-tight">${totalCost.toLocaleString('ko-KR')}<span class="text-sm font-bold text-white/80 ml-0.5">원</span></div>
             </div>
-            <div class="rounded-2xl bg-brand-50/70 border border-brand-100 px-3.5 py-2.5 text-right">
+            <div class="rounded-2xl bg-brand-50/70 border border-brand-100 px-3 py-2.5 text-right">
+                <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wide">이번 달</div>
+                <div class="text-sm font-black text-brand-800 tabular-nums leading-tight">${monthly.totalCost.toLocaleString('ko-KR')}<span class="text-[10px] font-bold text-brand-600 ml-0.5">원</span></div>
+            </div>
+            <div class="rounded-2xl bg-brand-50/70 border border-brand-100 px-3 py-2.5 text-right">
                 <div class="text-[10px] font-bold text-brand-600 uppercase tracking-wide">기록</div>
-                <div class="text-lg font-black text-brand-800 tabular-nums leading-tight">${records.length}<span class="text-xs font-bold text-brand-600 ml-0.5">건</span></div>
+                <div class="text-sm font-black text-brand-800 tabular-nums leading-tight">${records.length}<span class="text-[10px] font-bold text-brand-600 ml-0.5">건</span></div>
             </div>
         </div>`;
 
