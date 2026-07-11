@@ -169,6 +169,23 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
+            <!-- 증상 빠른 진단 (규칙 기반 트리아지 — AI 백엔드 없이도 작동) -->
+            <button onclick="SymptomTriage.open()" class="card-modern bg-gradient-to-br from-rose-50 to-pink-50 p-6 text-left group hover:scale-[1.02] transition-all">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="text-5xl">🩺</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900">증상 빠른 진단</h3>
+                            <p class="text-xs text-rose-600 mt-1">이 아이 기준 긴급도 안내</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500">견종·나이·체중 반영</p>
+                    <i class="fa-solid fa-stethoscope text-rose-500 text-xl group-hover:scale-110 transition-transform"></i>
+                </div>
+            </button>
+
             <!-- 음성 상담 -->
             <button onclick="startVoiceConsultation()" class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-6 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-4">

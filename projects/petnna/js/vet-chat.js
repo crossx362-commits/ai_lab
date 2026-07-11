@@ -20,6 +20,9 @@ async function sendVetChatMessage(userMessage) {
     const petName = pet?.name || '반려동물';
     const breed = pet?.breed || '품종 미상';
     const age = pet?.age ? `${pet.age}살` : '나이 미상';
+    // '이 아이 기준' 개인화 컨텍스트 (회의 202607111333 채택 — 체중·성격 추가 주입)
+    const weight = pet?.weight ? `${pet.weight}kg` : '';
+    const personality = pet?.personality || '';
 
     vetChatHistory.push({ role: 'user', text: userMessage.trim() });
 
@@ -36,7 +39,9 @@ async function sendVetChatMessage(userMessage) {
                 message: userMessage.trim(),
                 petName,
                 breed,
-                age
+                age,
+                weight,
+                personality
             })
         });
         const data = await res.json().catch(() => ({}));
