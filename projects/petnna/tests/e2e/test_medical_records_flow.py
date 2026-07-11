@@ -1,6 +1,6 @@
 """펫나 E2E — 건강수첩 방문 기록 추가·월간 병원비 요약 조회 검증.
 
-로그인된 상태(로컬스토리지 주입)에서 마이펫 탭의 건강수첩 카드로 진입해
+로그인된 상태(로컬스토리지 주입)에서 건강 탭의 건강수첩 카드로 진입해
 '기록 추가' 모달을 열어 방문 기록(병원명·진료비)을 저장하고,
 타임라인에 기록과 '누적 진료비' 요약이 렌더되는지 확인한다.
 이어서 월간 병원비 요약 함수(getMonthlyHospitalSummary)가 방금 추가한
@@ -33,7 +33,7 @@ def run(page, base_url):
     page.add_init_script(
         "localStorage.setItem('petna_is_logged_in','true');"
         "localStorage.setItem('petna_user_email','e2e_medical@petna.co.kr');"
-        "localStorage.setItem('petna_active_tab','mypet');"
+        "localStorage.setItem('petna_active_tab','health');"  # 건강수첩이 건강 탭으로 이동(2026-07-11 재배치)
         "localStorage.setItem('petna_pets', %s);" % json.dumps(json.dumps([_PET]))
     )
 
