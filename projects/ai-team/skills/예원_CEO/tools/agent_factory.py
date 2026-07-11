@@ -158,7 +158,7 @@ def propose(need: str) -> dict:
     )
     spec = None
     if llm_available():
-        raw = llm_text(prompt, json_mode=True, max_tokens=200, temperature=0.4, lm_first=False)
+        raw = llm_text(prompt, json_mode=True, max_tokens=200, temperature=0.4, lm_first=True)  # 스펙 생성 — 올라마 우선(폴백 유지)
         if raw:
             a, b = raw.find("{"), raw.rfind("}")
             try:

@@ -194,7 +194,7 @@ def orchestrate(message: str) -> str:
         joined = "\n\n".join(f"step{k}:\n{v[:600]}" for k, v in done.items())
         summary = llm_text(
             f"다음은 '{message}' 지시에 대한 단계별 결과다. CEO 관점 3~4줄 최종 종합:\n\n{joined}",
-            max_tokens=300, temperature=0.4, lm_first=False)
+            max_tokens=300, temperature=0.4, lm_first=True)  # 결과 요약 — 올라마로 충분
         if summary:
             out_blocks.append(f"\n🏁 [예원 최종 종합]\n{summary.strip()}")
 

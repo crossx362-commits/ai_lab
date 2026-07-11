@@ -33,7 +33,8 @@ sys.path.insert(0, str(SURI_TOOLS))
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
-from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.cc import extract_json  # noqa: E402
+from _shared.llm import text as llm_text  # noqa: E402  (병합 품질 판단 — 올라마 우선, 실패 시 구독 폴백)
 
 import petnna_dev_engine as eng  # noqa: E402  (게이트·git·상태 재사용)
 
@@ -81,9 +82,11 @@ def _ask_yewon(title: str, detail: str, diff: str, files: list[str]) -> tuple[st
         ("\n...(생략)" if len(diff) > MAX_DIFF_CHARS else "") + "\n```\n\n"
         '반드시 JSON만 출력: {"decision":"approve"|"reject","reason":"<한 줄 근거(한국어)>"}'
     )
-    ok, out = run_claude(prompt, eng.PROJECT_ROOT, timeout=300, allowed_tools="")
-    if not ok:
-        return "defer", f"예원 판단 실패: {out[:120]}"
+    # 도구 불필요(diff는 프롬프트에 포함) → 올라마 우선. 하드 안전게이트(경로·크기·E2E)는
+    # 이미 통과했고, 애매하면 reject/defer가 안전한 판단이라 로컬 품질로도 리스크 제한적.
+    out = llm_text(prompt, json_mode=True, lm_first=True, max_tokens=1500)
+    if not out:
+        return "defer", "예원 판단 실패: LLM 응답 없음"
     data = extract_json(out) or {}
     decision = str(data.get("decision", "")).lower()
     reason = str(data.get("reason", "")).strip()[:200]

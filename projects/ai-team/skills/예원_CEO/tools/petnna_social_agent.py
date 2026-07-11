@@ -40,9 +40,9 @@ from _shared.env import load_env  # noqa: E402
 load_env(str(PROJECT_ROOT))
 
 try:
-    from _shared.cc import run_claude  # noqa: E402
+    from _shared.llm import text as llm_text  # noqa: E402  (올라마 우선 — 순수 텍스트라 로컬로 충분)
 except Exception:
-    run_claude = None
+    llm_text = None
 
 # AI 이웃 페르소나(social.js AI_AGENT_FRIENDS와 정렬 — 사용자 친구목록과 동일 인물이 글을 쓴다)
 PERSONAS = [
@@ -116,7 +116,8 @@ def _recent_agent_post_count(hours: int = 3) -> int:
 
 
 def _gen_content(persona: dict) -> str:
-    if run_claude:
+    # 순수 텍스트 생성이라 올라마(로컬)로 충분 — llm.text가 Ollama 우선, 실패 시 구독 폴백.
+    if llm_text:
         prompt = (
             f"너는 반려동물 소셜앱 '펫과나'의 이웃 '{persona['name']}'이다. 성격: {persona['tone']}.\n"
             "반려동물 일상을 자랑하는 짧은 게시글 1개를 한국어로 써라. 규칙:\n"
@@ -124,11 +125,11 @@ def _gen_content(persona: dict) -> str:
             "- 광고·외부링크·해시태그 남발·개인정보 금지. 게시글 본문만 출력(따옴표·설명 없이)."
         )
         try:
-            ok, out = run_claude(prompt, str(PROJECT_ROOT), timeout=120, allowed_tools="")
-            if ok and out and out.strip():
-                text = out.strip().strip('"').split("\n")[0][:280]
-                if len(text) >= 6:
-                    return text
+            out = llm_text(prompt, task="blog", lm_first=True, max_tokens=200, temperature=0.9)
+            if out and out.strip():
+                line = out.strip().strip('"').split("\n")[0][:280]
+                if len(line) >= 6:
+                    return line
         except Exception:
             pass
     return random.choice(TEMPLATES)
