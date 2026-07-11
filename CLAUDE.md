@@ -274,7 +274,7 @@ Logs: `projects/ai-team/skills/영숙_비서/tools/telegram_receiver.log`
 
 ### QA & Auto-Improvement (봄이·수리)
 
-- **봄이** (`skills/봄이_QA/tools/petnna_qa_patrol.py`) — 상시 순찰: 콘솔/JS 오류·404·깨진 이미지·접근성·가로스크롤·SEO 점검, P0/P1 즉시 텔레그램 알림, 보고서 `output/qa/petnna/`.
+- **봄이** (`skills/봄이_QA/tools/petnna_qa_patrol.py`) — 상시 순찰: 콘솔/JS 오류·404·깨진 이미지·접근성·가로스크롤·SEO + **로그인 후 클릭 인터랙션**(더미 계정 우회로 전 탭 전환·주요 모달 열기가 오류/빈 화면 없이 되는지, `interactive_checks`) 점검, P0/P1 즉시 텔레그램 알림, 보고서 `output/qa/petnna/`. 인터랙션 점검은 **비파괴**(탭 전환·모달 open/close만, 저장/삭제/전송 등 쓰기는 안 함 — 앱이 실 Supabase 연결이라 오염 방지).
 - **수리** (`skills/수리_개발자/tools/petnna_dev_engine.py`) — 봄이 결과를 읽어 저위험 P2/P3를 격리 브랜치에서 자동 수정·재검수 후 게이트 통과 시만 master 병합. master 직접 수정 없음, 금지 경로(supabase·api·결제 등) 접촉 시 병합 거부.
 
 ### Structure

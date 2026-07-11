@@ -143,6 +143,118 @@ def static_checks() -> list[dict]:
     return findings
 
 
+# 로그인 후 클릭 인터랙션 점검용 더미 반려동물(테오 E2E와 동일한 localStorage 우회)
+_QA_PET = {
+    "id": 990199, "name": "순찰견", "breed": "믹스", "type": "dog",
+    "imageUrl": "", "age": "3살", "weight": "8", "gender": "남아",
+    "personality": "온순", "hunger": 70, "happy": 80,
+}
+# 클릭 순회 대상 탭(우체통 mailbox는 social 서브탭으로 라우팅 → tab-social에서 확인)
+_TAB_SWEEP = ["mypet", "health", "walk", "saju", "social", "album", "shop", "settings", "mailbox"]
+_MIN_TAB_CHARS = 40  # 이보다 적으면 빈 화면 의심
+
+
+def interactive_checks(page, port: int, env_name: str) -> list[dict]:
+    """로그인 후 실제 클릭 흐름 점검 — 탭 전환·주요 모달 열기가 오류 없이 동작하는지.
+    비파괴 원칙: 탭 전환과 모달 open/close만 하고 저장·삭제·전송 등 쓰기는 절대 하지 않는다
+    (앱은 실 Supabase에 연결돼 있어 쓰기 시 실 데이터 오염 위험)."""
+    findings = []
+    url = f"http://127.0.0.1:{port}/index.html"
+    # 로그인 게이팅 우회 + 더미 펫 주입(goto 전 실행)
+    page.add_init_script(
+        "try{localStorage.setItem('petna_is_logged_in','true');"
+        "localStorage.setItem('petna_user_email','qa_patrol@petna.co.kr');"
+        "localStorage.setItem('petna_pets', %s);}catch(e){}" % json.dumps(json.dumps([_QA_PET]))
+    )
+    try:
+        page.goto(url, wait_until="load", timeout=30000)
+        page.wait_for_timeout(2200)  # SPA 초기 렌더 + 로그인 우회 반영 대기
+    except Exception as e:
+        return [_finding("P1", "기능", "/index.html", env_name,
+                         "로그인 후 앱 진입 실패", str(e)[:150])]
+    # 로그인 오버레이 숨기고 메인 강제 표시(자동 로그인 완료 흐름 대체)
+    try:
+        page.evaluate(
+            "() => { const ov=document.getElementById('login-landing-overlay'); if(ov) ov.style.display='none';"
+            " document.body.classList.add('logged-in');"
+            " const h=document.querySelector('header'); if(h) h.style.display='block';"
+            " const m=document.querySelector('main'); if(m) m.style.display='block'; }")
+    except Exception:
+        pass
+    # 탭 순회 — switchTab 예외·빈 렌더·클릭 중 JS 오류 수집
+    try:
+        sweep = page.evaluate(
+            "(tabs) => {"
+            "  const res=[]; const errs=[];"
+            "  window.addEventListener('error', e=>errs.push(String(e.message||e.error)));"
+            "  if (typeof switchTab !== 'function') return {noSwitch:true, res:[], errs:[]};"
+            "  for (const t of tabs) {"
+            "    let threw=null;"
+            "    try { switchTab(t); } catch(e){ threw=String(e).slice(0,150); }"
+            "    const id = (t==='mailbox') ? 'tab-social' : ('tab-'+t);"
+            "    const el=document.getElementById(id);"
+            "    const chars = el ? (el.innerText||'').replace(/\\s+/g,'').length : -1;"
+            "    res.push({tab:t, threw:threw, chars:chars});"
+            "  }"
+            "  try { switchTab('mypet'); } catch(e){}"
+            "  return {res:res, errs:errs};"
+            "}", _TAB_SWEEP)
+    except Exception as e:
+        return [_finding("P1", "기능", "/index.html", env_name,
+                         "탭 클릭 순회 실행 실패", str(e)[:150])]
+    if sweep.get("noSwitch"):
+        return [_finding("P1", "기능", "/index.html", env_name,
+                         "switchTab 함수 없음 — 탭 전환 불가", "앱 초기화 실패 의심")]
+    for r in sweep["res"]:
+        if r["threw"]:
+            findings.append(_finding("P1", "기능", "/index.html", env_name,
+                                     f"탭 클릭 오류: {r['tab']} 전환 중 예외", r["threw"]))
+        elif r["chars"] != -1 and r["chars"] < _MIN_TAB_CHARS:
+            findings.append(_finding("P1", "기능", "/index.html", env_name,
+                                     f"탭 빈 화면: {r['tab']} 클릭 후 콘텐츠 없음",
+                                     f"렌더 콘텐츠 {r['chars']}자 — 렌더 트리거 누락 의심"))
+    for e in sweep["errs"][:5]:
+        findings.append(_finding("P2", "기능", "/index.html", env_name,
+                                 f"클릭 중 JS 오류: {str(e)[:120]}"))
+    # 주요 모달 open→close (비파괴 — 열고 즉시 닫음, 저장 안 함)
+    # 닫기는 클래스 기반(hidden 추가·flex 제거) + 인라인 display 클리어로 한다.
+    # 인라인 display:none을 박으면 다음 모달의 class 기반 open(flex)을 눌러버려
+    # '안열림' 오탐이 난다(앱은 정상). 열림 판정도 방금 연 모달 자신으로만 한다.
+    try:
+        modal_probe = page.evaluate(
+            "() => {"
+            "  const out={};"
+            "  const targets=[['펫 등록','openPetRegistrationModal',null],"
+            "    ['건강 기록','openHealthLogModal','health-log-modal'],"
+            "    ['건강수첩','openMedicalRecordModal','medical-record-modal']];"
+            "  const closeAll=()=>{"
+            "    ['closeMedicalRecordModal','closeModal'].forEach(cf=>{if(typeof window[cf]==='function'){try{window[cf]();}catch(e){}}});"
+            "    document.querySelectorAll('[id$=\"-modal\"]').forEach(m=>{m.classList.add('hidden');m.classList.remove('flex');if(m.style)m.style.display='';});"
+            "  };"
+            "  for (const [name, fn, mid] of targets) {"
+            "    if (typeof window[fn] !== 'function') { out[name]='함수없음'; continue; }"
+            "    closeAll();"
+            "    try {"
+            "      window[fn]();"
+            "      let opened;"
+            "      if (mid) { const el=document.getElementById(mid); opened = !!el && getComputedStyle(el).display!=='none' && el.offsetHeight>0; }"
+            "      else { opened=[...document.querySelectorAll('[id$=\"-modal\"]')].some(m=>getComputedStyle(m).display!=='none'&&m.offsetHeight>0); }"
+            "      out[name]=opened?'ok':'안열림';"
+            "      closeAll();"
+            "    } catch(e){ out[name]='오류'; }"
+            "  }"
+            "  return out;"
+            "}")
+    except Exception:
+        modal_probe = {}
+    for name, st in modal_probe.items():
+        if st in ("안열림", "오류", "함수없음"):
+            findings.append(_finding("P2", "기능", "/index.html", env_name,
+                                     f"모달 열기 실패: {name} ({st})",
+                                     "버튼 클릭해도 모달이 열리지 않음"))
+    return findings
+
+
 def browser_patrol(port: int) -> list[dict]:
     from playwright.sync_api import sync_playwright
 
@@ -258,6 +370,13 @@ def browser_patrol(port: int) -> list[dict]:
                         pri, "기능", f"/{doc}", env_name,
                         f"앱 오류로그[{lg.get('type')}]: {msg}",
                         (str(lg.get("stack", ""))[:300] or "스택 없음") + " — AppLogger 수집(순찰 세션)"))
+
+            # 로그인 후 클릭 인터랙션 점검(탭 전환·모달 열기) — 정적 로드가 못 잡는 동작 오류 포착
+            try:
+                findings.extend(interactive_checks(page, port, env_name))
+            except Exception as e:
+                findings.append(_finding("P2", "기능", "/index.html", env_name,
+                                         "인터랙션 점검 실행 오류", str(e)[:150]))
             ctx.close()
         browser.close()
     return findings
@@ -350,7 +469,8 @@ def write_report(findings: list[dict], delta: dict, pages: list[str]) -> Path:
     lines.append(f"- 반복(3회+): {len(delta['repeated'])}건")
     lines.append("")
     lines.append("## 5. 미검수 영역 (추가 확인 필요)")
-    lines.append("- 로그인 이후 화면·Supabase 연동 흐름 — 더미 계정 미설정으로 자동 검수 제외")
+    lines.append("- 로그인 후 클릭 인터랙션(탭 전환·주요 모달 열기)은 더미 계정 우회로 자동 점검 중 — "
+                 "단 폼 저장·삭제·전송 등 쓰기 흐름은 실 DB 오염 방지를 위해 비검수(비파괴 원칙)")
     lines.append("- Firefox/WebKit 크로스브라우저, Lighthouse 성능 점수 — 도구 추가 시 확장")
     QA_DIR.mkdir(parents=True, exist_ok=True)
     path = QA_DIR / f"report_{now:%Y%m%d_%H%M}.md"
