@@ -59,7 +59,7 @@ hotfix/ fix/ ui/ perf/ a11y/ test/ refactor/ docs/ + 커밋 타입 fix|feat|perf
 P0/심각 P1 발견 시 일반 개선 중단 → 원인 축소 → 최근 변경 확인 → 롤백이 안전하면 롤백 우선 제안
 → 최소 범위 핫픽스 브랜치 → 재현 테스트 → 핵심 테스트 → 즉시 재검수 → 사후 원인 분석 보고.
 
-## 펫나 현재 운영 구성 (2026-07-08)
+## 펫나 현재 운영 구성 (2026-07-08, 백로그 소비 2026-07-09 추가)
 
 - 대상: `projects/petnna/` (정적 SPA). 이슈 소스: 봄이 `output/qa/petnna/qa_state.json`
 - 엔진: `tools/petnna_dev_engine.py` — 기본 1시간 주기(`SURI_POLL_SEC`), 루프당 1건
@@ -68,3 +68,14 @@ P0/심각 P1 발견 시 일반 개선 중단 → 원인 축소 → 최근 변경
 - 재검수: 브랜치 사본에 봄이 순찰(포트 8934) — 대상 해결 + 지표 비악화 확인 후에만 병합
 - 산출물: 루프 보고서 `output/qa/petnna/dev/loop_*.md`, 상태 `dev_state.json`, 텔레그램(병합/대기/보류)
 - 운영 배포 없음(기본 금지). 미자동 영역: 성능 측정(Lighthouse)·에러 로그 수집 인프라 — 도구 추가 시 확장
+
+### 두 번째 역할 — 백로그(신규 기능) 구현
+
+QA 이슈가 없을 때는 놀지 않고 공유 백로그(`output/qa/petnna/backlog.json` — 미오·나무·회의가 적재)에서
+`대기` 상태 항목을 집어 브랜치 구현한다(`select_backlog`). 단, 이쪽은 **자동 병합이 없다** — 항상
+PR대기로 사람 검토(또는 예원 `petnna_pr_reviewer.py`의 안전게이트 검토)를 기다린다. `owner`가
+`_shared/backlog.AUTO_OWNERS`(수리·테오·미오·백호, 또는 미지정)에 속한 항목만 집는다 — 나무처럼
+백로그를 안 읽는 owner에 배정된 항목이나 DB/인증 접촉 항목(`touches_db_auth`)은 애초에 `보류`로 적재돼
+집지 않는다. `PR대기` 브랜치가 `SURI_MAX_PENDING`(기본 5)개 이상이면 신규 백로그 착수를 멈춘다(QA 버그
+수정은 계속). 오너 승인(`approved_by`) + 재검토 통과 시 `보류`도 `promote_approved_holds()`가 자동으로
+`대기`로 승격시켜준다.

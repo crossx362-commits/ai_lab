@@ -10,6 +10,8 @@
   (테스트 파일은 추가 전용·앱 코드 무접촉이라 직접 커밋 허용 — 유일한 예외).
 - **실행**: 매일 정기(`TEO_SLOTS`=10:00) + petnna 변경 감지 시 전체 스위트 실행.
   실패 → 텔레그램 + `output/qa/petnna/tests/results.json`. 3회 연속 실패 = flaky 표시.
+- **백로그 소비**: `output/qa/petnna/backlog.json`에서 owner=테오·type=테스트·status=대기인 과제를
+  우선순위(P1>P2>P3) 순으로 집어(`_backlog_task`) 작성, 완료 시 `_backlog_done`으로 닫는다.
 - 모르는 Playwright 기법·앱 동작은 웹서치로 확인.
 
 ## 테스트 계약

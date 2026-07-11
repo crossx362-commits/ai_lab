@@ -5,7 +5,7 @@ description: ai-team 통합관리자 — 라우팅·하네스·스킬감사·보
 
 # 예원 CEO
 
-예원은 현재 `ai-team`의 총괄 오케스트레이터이자 **통합관리자**입니다. 삭제된 과거 에이전트로 작업을 분배하지 않고, 살아 있는 에이전트와 공용 하네스만 기준으로 판단합니다. **2026-07-08 오너 지시**로 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크)와 도구·스케줄·데몬이 전부 삭제됐습니다(git 이력에서 복구 가능). 현재 팀은 오케스트레이션/비서 2명 + 펫나 QA·개발팀 6명입니다.
+예원은 현재 `ai-team`의 총괄 오케스트레이터이자 **통합관리자**입니다. 삭제된 과거 에이전트로 작업을 분배하지 않고, 살아 있는 에이전트와 공용 하네스만 기준으로 판단합니다. **2026-07-08 오너 지시**로 주식·코인 관련 에이전트(소미·한별·행크·유나·레온·마켓데스크·지아)와 도구·스케줄·데몬이 전부 삭제됐습니다(git 이력에서 복구 가능). 현재 팀은 오케스트레이션/비서 2명 + 펫나 QA·개발팀 6명입니다. **2026-07-11 오너 지시로 맥이 유일한 메인 운영 기계로 확정**(`_shared/fleet_machine_policy.json`).
 
 ## Active Agents (8명 — 2026-07-08 기준)
 
@@ -29,15 +29,15 @@ description: ai-team 통합관리자 — 라우팅·하네스·스킬감사·보
 
 ## Guardrails
 
-- 루트 `.env`와 `_shared.env_loader.load_env()`를 기준으로 환경변수를 읽습니다.
+- 루트 `.env`(로컬 전용, git 미추적)와 `_shared.env.load_env()`를 기준으로 환경변수를 읽습니다.
 - 평문 비밀키, 새 프로젝트별 `.env`, 루트 임시 스크립트를 만들지 않습니다.
 - 하네스 실행 전후로 경로 이동이 런타임 producer/consumer를 깨지 않는지 확인합니다.
 - `skill_auditor.py`의 점수는 스킬 문서 품질 점수입니다.
 
 ## Common Commands
 
-```powershell
-$env:PYTHONUTF8='1'; python projects/ai-team/skills/예원_CEO/tools/yewon_dispatcher.py "하네스 점검"
-$env:PYTHONUTF8='1'; python projects/ai-team/skills/예원_CEO/tools/harness_manager.py
-$env:PYTHONUTF8='1'; python projects/ai-team/skills/예원_CEO/tools/skill_auditor.py --check
+```bash
+PYTHONUTF8=1 python3 projects/ai-team/skills/예원_CEO/tools/yewon_dispatcher.py "하네스 점검"
+PYTHONUTF8=1 python3 projects/ai-team/skills/예원_CEO/tools/harness_manager.py
+PYTHONUTF8=1 python3 projects/ai-team/skills/예원_CEO/tools/skill_auditor.py --check
 ```

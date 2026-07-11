@@ -78,4 +78,5 @@
 - 자동 순찰: `tools/petnna_qa_patrol.py` — 정기(BOMI_QA_SLOTS, 기본 09:20 매일) + 파일 변경 감지 시 재검수
 - 산출물: `output/qa/petnna/report_*.md` + 스크린샷(`shots/`) + 상태(`qa_state.json`), 텔레그램 요약·긴급 알림
 - 자동 범위: 콘솔/JS 오류, 리소스 404, 깨진 이미지, 접근성 기초, 모바일 가로스크롤, SEO 기초, 임시문구, 빈 화면
-- 미자동(추가 확인 필요): 로그인 후 영역(더미 계정 미설정), Firefox/WebKit, Lighthouse 성능, 심층 UX/콘텐츠 판단
+- 자동 범위(추가): 로그인 후 클릭 인터랙션(`interactive_checks`) — 더미 계정 우회로 전 탭 전환·주요 모달 열기가 오류/빈 화면 없이 되는지 점검(비파괴, 저장/삭제/전송 등 쓰기는 안 함)
+- 미자동(추가 확인 필요): Firefox/WebKit, Lighthouse 성능, 심층 UX/콘텐츠 판단

@@ -12,6 +12,8 @@
 3. 제안 3~6개(JSON, CSS/HTML 수준 구현 가능한 것만) → `output/qa/petnna/backlog.json` 적재
 4. 수리가 QA 이슈 없을 때 백로그를 집어 브랜치 구현 — **자동 병합 없음, 항상 사람 검토**
 5. 리뷰 보고서 `output/qa/petnna/design/` + 텔레그램 요약
+6. `output/qa/petnna/backlog.json`에서 owner=미오로 배정된 디자인 과제도 소비(`_assigned_tasks`) —
+   리뷰 지침으로 집어 산출물을 남긴 뒤에만 완료 처리(`_close_tasks`)
 
 ## 금지
 코드 직접 수정(제안만), 구현 불가능한 대규모 리디자인 제안, 근거 없는 취향 지적.
