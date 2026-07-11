@@ -207,3 +207,24 @@ class DuplicateGuard:
         if len(self.cache) < before:
             self._save()
             print(f"  🧹 Cleared {before - len(self.cache)} old entries")
+
+
+# ==================== 펫나 단일 기계 운영 가드 (양방향) ====================
+# 발견(2026-07-11): 기존 가드는 "Windows에서 PETNNA_AGENTS_ON_WINDOWS!=true면 자가종료"
+# 방향만 있었다 — Windows가 아닌 기계(맥)엔 대칭 체크가 없어, 플래그가 명시적으로
+# true(=Windows가 유일 운영기계로 지정됨)여도 맥이 계속 돌 수 있었다(실제로 6종 중 5개가
+# 맥에서 가동 중이었던 사고 — 이 세션에서 발견). petnna_single_machine_guard()는 양방향을 본다:
+#   - Windows인데 플래그가 true가 아니면 자가종료(기존 동작 유지)
+#   - Windows가 아닌데 플래그가 true(=Windows 전용 지정)면 자가종료(신규)
+# 플래그 미설정(둘 다 아님)이면 기존과 동일하게 양쪽 다 실행 허용(현재 기본값, 무변경).
+def petnna_single_machine_guard(agent_label: str = "펫나 에이전트") -> bool:
+    """단일 기계 운영 위반이면 True(호출자는 즉시 return해야 함) + 안내 출력."""
+    flag = os.getenv("PETNNA_AGENTS_ON_WINDOWS")
+    if sys.platform == "win32" and flag != "true":
+        print(f"{agent_label}는 맥 전용(이중 가동 방지) — PETNNA_AGENTS_ON_WINDOWS=true로만 해제")
+        return True
+    if sys.platform != "win32" and flag == "true":
+        print(f"{agent_label}는 Windows 전용으로 지정됨(PETNNA_AGENTS_ON_WINDOWS=true) — "
+              f"이 기계({sys.platform})에서 자가 종료(이중 가동 방지)")
+        return True
+    return False

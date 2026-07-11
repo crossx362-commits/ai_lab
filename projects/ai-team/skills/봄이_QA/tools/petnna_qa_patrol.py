@@ -38,7 +38,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock  # noqa: E402
+from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -585,8 +585,7 @@ def fleet_freshness_audit() -> None:
 
 
 def daemon() -> None:
-    if sys.platform == "win32" and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true":
-        print("펫나 에이전트는 맥 전용(이중 가동 방지)")
+    if petnna_single_machine_guard("봄이"):
         return
     slots = os.getenv("BOMI_QA_SLOTS", "09:20").split(",")
     poll = int(os.getenv("BOMI_QA_POLL_SEC", "300"))

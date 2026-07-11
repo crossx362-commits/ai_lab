@@ -40,7 +40,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock  # noqa: E402
+from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
 from _shared.cc import scrub_secrets  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
@@ -573,9 +573,8 @@ def _improve_cycle(do_send: bool = True) -> str:
 
 
 def daemon() -> None:
-    # 펫나 함대는 단일 기계 운영 — Windows 이중 가동 시 양쪽이 master에 병합해 충돌(주식 US 이중데몬 교훈)
-    if sys.platform == "win32" and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true":
-        print("펫나 에이전트는 맥 전용(이중 가동 방지) — PETNNA_AGENTS_ON_WINDOWS=true로만 해제")
+    # 펫나 함대는 단일 기계 운영 — 이중 가동 시 양쪽이 master에 병합해 충돌(주식 US 이중데몬 교훈)
+    if petnna_single_machine_guard("수리"):
         return
     with ProcessLock("suri_dev_engine"):
         # 기동 정리: 중단된 사이클의 워크트리 잔재 제거(다른 사이클 진행 중이면 건너뜀)

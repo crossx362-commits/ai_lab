@@ -32,7 +32,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock  # noqa: E402
+from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
@@ -149,8 +149,7 @@ def plan(do_send: bool) -> None:
 
 
 def daemon() -> None:
-    if sys.platform == "win32" and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true":
-        print("펫나 에이전트는 맥 전용(이중 가동 방지)")
+    if petnna_single_machine_guard("나무"):
         return
     slots = os.getenv("NAMU_SLOTS", "11:00").split(",")
     with ProcessLock("namu_product_manager"):

@@ -39,7 +39,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock  # noqa: E402
+from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
 
@@ -261,8 +261,7 @@ def _tree_digest() -> str:
 
 
 def daemon() -> None:
-    if sys.platform == "win32" and os.getenv("PETNNA_AGENTS_ON_WINDOWS") != "true":
-        print("펫나 에이전트는 맥 전용(이중 가동 방지)")
+    if petnna_single_machine_guard("테오"):
         return
     slots = os.getenv("TEO_SLOTS", "10:00").split(",")
     poll = int(os.getenv("TEO_POLL_SEC", "300"))
