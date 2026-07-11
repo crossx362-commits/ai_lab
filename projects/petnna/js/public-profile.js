@@ -37,6 +37,13 @@
     }
     function toast(msg) { if (typeof window.showToast === "function") window.showToast(msg); }
 
+    // esc() 후 http(s) URL을 클릭 가능한 a 태그로 감싼다(오픈채팅 링크 활성화).
+    function linkify(s) {
+        return esc(s).replace(/https?:\/\/[^\s<]+/g, function (u) {
+            return '<a href="' + u + '" target="_blank" rel="noopener noreferrer nofollow" class="text-brand-600 underline break-all">' + u + "</a>";
+        });
+    }
+
     // 전화번호 마스킹: 가운데를 가려 원문 미보관. 010-1234-5678 → 010-****-5678
     function maskPhone(raw) {
         var digits = String(raw || "").replace(/[^0-9]/g, "");
@@ -437,7 +444,7 @@
                 '<span class="text-base font-black tracking-wide text-gray-800">' + esc(profile.contact_masked) + "</span></div>";
         }
         if (profile.note) {
-            contact += '<p class="text-sm text-gray-600 mt-1.5 text-center leading-relaxed">' + esc(profile.note) + "</p>";
+            contact += '<p class="text-sm text-gray-600 mt-1.5 text-center leading-relaxed">' + linkify(profile.note) + "</p>";
         }
         if (!contact) contact = '<p class="text-sm text-gray-500 text-center">보호자 연락처가 등록되어 있지 않아요.</p>';
 
@@ -448,7 +455,7 @@
 
             (photo
                 ? '<img src="' + esc(photo) + '" alt="" class="w-full h-56 object-cover">'
-                : '<div class="w-full h-40 flex items-center justify-center bg-brand-50 text-6xl">🐶</div>') +
+                : '<div class="w-full h-56 flex items-center justify-center bg-brand-50 text-6xl">🐶</div>') +
 
             '<div class="px-6 pt-4 pb-2 text-center">' +
             (name ? '<h1 class="text-2xl font-black text-gray-900">' + esc(name) + "</h1>" : "") +
