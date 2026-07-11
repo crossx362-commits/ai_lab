@@ -111,6 +111,10 @@ def load_env(start: str | None = None) -> None:
         if env:
             _apply(env)
             return
+        # 복호화 실패(다른 기계 키로 암호화된 경우 등) — 조용히 넘어가면 이 기계가
+        # 계속 옛 평문 .env로 강등 운영되는 걸 아무도 모른다(2026-07-11 발견).
+        print(f"⚠️  {enc} 복호화 실패 — 이 기계({getpass.getuser()}@{platform.node()})의 키와 "
+              "안 맞을 수 있음. 평문 .env로 강등.", file=sys.stderr)
 
     # Fallback to plaintext
     plain = root / ".env"
