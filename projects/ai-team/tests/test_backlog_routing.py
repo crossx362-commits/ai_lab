@@ -171,5 +171,49 @@ class TeoBacklogConsumption(unittest.TestCase):
             self.assertEqual(items, {"d": "완료", "e": "대기"})
 
 
+class PromoteApprovedHoldsTests(unittest.TestCase):
+    """오너 승인된 보류 항목 자동 승격 — 2026-07-11 '승격해도 여전히 좀비' 사고를 굳힌다.
+
+    council이 '보류'로 라우팅하는 이유는 셋(승인필요·owner 불일치·DB/인증)인데 `gate`
+    필드는 DB/인증일 때만 붙는다. owner 불일치(나무처럼 백로그를 안 읽는 owner)로
+    보류된 항목은 gate가 없어 승인만 받으면 '대기'로 승격됐지만, owner가 여전히
+    소비자 없는 값이라 아무도 안 집는 좀비 상태가 됐다 — 방치를 모양만 바꾼 것.
+    """
+
+    def setUp(self):
+        from _shared.backlog import promote_approved_holds
+        self.promote = promote_approved_holds
+        self.tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+
+    def _write(self, items):
+        self.tmp.write_text(json.dumps({"items": items}, ensure_ascii=False), encoding="utf-8")
+
+    def test_owner_without_consumer_is_never_promoted(self):
+        self._write([{"id": "a", "title": "나무과제", "detail": "순수 UI",
+                     "status": "보류", "owner": "나무", "approved_by": "오너"}])
+        promoted = self.promote(self.tmp)
+        self.assertEqual(promoted, [])
+        item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+        self.assertEqual(item["status"], "보류", "소비자 없는 owner는 승격해도 좀비 상태 — 보류 유지가 맞다")
+
+    def test_consumer_owner_is_promoted(self):
+        for owner in ("수리", "테오", "미오", "백호", ""):
+            with self.subTest(owner=owner):
+                self._write([{"id": "x", "title": "과제", "detail": "순수 UI",
+                             "status": "보류", "owner": owner, "approved_by": "오너"}])
+                promoted = self.promote(self.tmp)
+                self.assertEqual(promoted, ["x"], f"owner={owner!r}는 승격돼야 한다")
+
+    def test_hard_gate_blocks_promotion_regardless_of_approval(self):
+        self._write([{"id": "b", "title": "DB트리거", "detail": "SQL 콘솔 실행 필요",
+                     "status": "보류", "owner": "사람", "gate": "DB/인증", "approved_by": "오너"}])
+        self.assertEqual(self.promote(self.tmp), [])
+
+    def test_db_auth_content_still_blocks_even_with_valid_owner(self):
+        self._write([{"id": "c", "title": "웹푸시", "detail": "Supabase reminders 테이블 필요",
+                     "status": "보류", "owner": "수리", "approved_by": "오너"}])
+        self.assertEqual(self.promote(self.tmp), [])
+
+
 if __name__ == "__main__":
     unittest.main()

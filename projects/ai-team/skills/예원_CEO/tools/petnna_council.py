@@ -39,7 +39,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.backlog import touches_db_auth  # noqa: E402
+from _shared.backlog import touches_db_auth, AUTO_OWNERS  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -47,11 +47,8 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "council"
 STATE = OUT_DIR / "state.json"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 
-# 백로그를 실제로 소비하는 에이전트만. 나무는 적재만 하고 읽지 않아, 대기 상태로 배정하면
-# 아무도 집지 않은 채 영원히 남는다 → 사람 검토 트랙(보류)으로 보낸다.
-# 새 에이전트를 여기 추가하려면 먼저 그 도구에 백로그 소비 코드를 넣어라.
-#   수리 select_backlog · 테오 _backlog_task · 미오 _assigned_tasks · 백호 investigate_assigned_tasks
-AUTO_OWNERS = ("", "수리", "테오", "미오", "백호")
+# AUTO_OWNERS는 _shared/backlog.py가 단일 소스(promote_approved_holds도 같은 값을 써야
+# owner-불일치 항목을 잘못 승격시키지 않는다 — 2026-07-11 두 곳에 따로 정의했다 어긋난 사고).
 
 
 def needs_human(title: str, owner: str, detail: str = "") -> bool:

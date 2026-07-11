@@ -36,6 +36,14 @@ def touches_db_auth(title: str, detail: str = "") -> bool:
     return bool(DB_AUTH_PATTERN.search(f"{title}\n{detail}"))
 
 
+# 백로그를 실제로 소비하는 owner만. 여기 없는 owner(예: 나무 — 적재만 하고 안 읽음)로
+# 배정된 항목은 '대기'로 만들어봤자 아무도 안 집는다. petnna_council.py가 이 상수를
+# import해 쓴다(단일 소스 — 두 곳에 따로 정의하면 한쪽만 갱신돼 어긋난다, 2026-07-11 교훈).
+# 새 에이전트를 추가하려면 먼저 그 도구에 백로그 소비 코드를 넣고 여기 추가할 것.
+#   수리 select_backlog · 테오 _backlog_task · 미오 _assigned_tasks · 백호 investigate_assigned_tasks
+AUTO_OWNERS = ("", "수리", "테오", "미오", "백호")
+
+
 # ==================== 승인된 보류 항목 자동 승격 ====================
 # 배경(2026-07-11): "개선 신규 아이디어는 누가 개발하냐" 질문 계기로 발견 — 나무_20260708_4
 # (트리아지)·나무_20260709_3(QOL)이 오너 승인(approved_by)까지 났는데도 `보류`에 그대로
@@ -48,7 +56,14 @@ def promote_approved_holds(backlog_path) -> list[str]:
     """오너 승인(approved_by)됐지만 `보류`에 남은 항목을 재검토해, 재검토해도 여전히
     DB/인증을 접촉하지 않으면 `대기`로 승격(owner 미지정이면 수리로)한다.
     명시적 `gate` 필드(예: "DB/인증")가 있는 항목은 오너 승인 여부와 무관하게 절대
-    건드리지 않는다 — 그런 항목은 사람이 물리적으로(SQL 콘솔 실행 등) 처리해야 한다."""
+    건드리지 않는다 — 그런 항목은 사람이 물리적으로(SQL 콘솔 실행 등) 처리해야 한다.
+
+    버그 발견·수정(2026-07-11, 파이프라인 재검토 중): council.py가 '보류'로 라우팅하는
+    이유는 세 가지(승인필요·owner 불일치·DB/인증)인데 `gate` 필드는 DB/인증일 때만
+    붙는다 — owner 불일치(예: 나무처럼 백로그를 안 읽는 owner)로 보류된 항목은 gate가
+    없어 이 함수가 그냥 통과시켰다. 그러면 '대기'로 승격은 되는데 owner가 여전히
+    소비자 없는 값이라 아무도 안 집는 좀비 상태가 된다 — 방치를 없앤 게 아니라 모양만
+    바꾼 것. owner가 AUTO_OWNERS(백로그를 실제로 읽는 owner)에 속할 때만 승격한다."""
     path = Path(backlog_path)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -62,13 +77,15 @@ def promote_approved_holds(backlog_path) -> list[str]:
             continue  # 하드 게이트 — 승인과 무관하게 사람 전용
         if not it.get("approved_by"):
             continue  # 오너 승인 없으면 승격 후보 아님
+        if it.get("owner", "") not in AUTO_OWNERS:
+            continue  # 소비자 없는 owner — 승격해도 아무도 안 집는다(좀비 방지)
         if touches_db_auth(it.get("title", ""), it.get("detail", "")):
             continue  # 재검토해도 DB/인증 접촉 — 보류 유지
         it["status"] = "대기"
         if not it.get("owner"):
             it["owner"] = "수리"
         it["updated"] = datetime.now().isoformat()
-        it["promotion_note"] = "오너 승인 + 재검토(DB/인증 미접촉) 자동 승격"
+        it["promotion_note"] = "오너 승인 + 재검토(DB/인증 미접촉·소비자 있는 owner) 자동 승격"
         promoted.append(it.get("id", "?"))
     if promoted:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")

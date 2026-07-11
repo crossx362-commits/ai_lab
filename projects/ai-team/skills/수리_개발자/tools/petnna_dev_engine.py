@@ -134,7 +134,13 @@ def load_qa_findings() -> tuple[dict, str]:
 
 
 def select_issue(findings: dict, state: dict, qa_last_run: str) -> tuple[str, dict] | None:
-    """우선순위 → 안전 유형 우선 → 반복 횟수 순. 보류/PR대기/완료(재발 아님)는 제외."""
+    """우선순위 → 안전 유형 우선 → 반복 횟수 순. 보류/PR대기/완료(재발 아님)는 제외.
+
+    버그 발견·수정(2026-07-11): "완료" 이슈가 재발해도 attempts는 첫 라운드(예: 2회
+    실패+1회 성공=3)에 이미 MAX_ATTEMPTS에 도달해 있어, 바로 아래 attempts 필터에
+    걸려 재도전 후보에서 조용히 탈락했다 — 재발이 감지됐는데도 수리가 영원히 무시하고
+    3회 실패 알림·회의 소집도 안 뜨는(재시도 자체를 안 하니) 방치 상태가 됐다. 재발은
+    새로운 라운드이므로 attempts를 리셋한다."""
     candidates = []
     for fp, f in findings.items():
         rec = state["issues"].get(fp, {})
@@ -142,9 +148,9 @@ def select_issue(findings: dict, state: dict, qa_last_run: str) -> tuple[str, di
         if status == "보류" or status == "PR대기":
             continue
         if status == "완료":
-            # 병합 이후의 순찰에서 다시 나타났으면 재발로 보고 재도전
+            # 병합 이후의 순찰에서 다시 나타났으면 재발로 보고 재도전(새 라운드 — 시도 리셋)
             if rec.get("fixed_at", "") < qa_last_run:
-                pass
+                rec["attempts"] = 0
             else:
                 continue
         if rec.get("attempts", 0) >= MAX_ATTEMPTS:
