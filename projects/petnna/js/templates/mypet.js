@@ -77,16 +77,16 @@ const MYPET_TEMPLATE = `
                                     <span class="font-black text-brand-700">🔮 사주 분석</span>
                                     <span id="room-saju-score" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">미측정</span>
                                 </div>
-                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5 lg:space-y-0 lg:flex lg:items-stretch lg:gap-4">
-                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 lg:flex-1 lg:min-w-0 lg:border-b-0 lg:border-r lg:pr-4 lg:pb-0">
+                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5 md:space-y-0 md:flex md:items-stretch md:gap-4">
+                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 md:flex-1 md:min-w-0 md:border-b-0 md:border-r md:pr-4 md:pb-0">
                                         <span class="font-bold text-brand-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
                                         <div id="room-saju-owner-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
-                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 lg:flex-1 lg:min-w-0 lg:border-b-0 lg:border-r lg:pr-4 lg:pb-0">
+                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 md:flex-1 md:min-w-0 md:border-b-0 md:border-r md:pr-4 md:pb-0">
                                         <span class="font-bold text-amber-600">🐾 펫</span>: <span id="room-saju-pet">--년생</span>
                                         <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
                                     </div>
-                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5 lg:pt-0 lg:flex-1 lg:min-w-0">
+                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5 md:pt-0 md:flex-1 md:min-w-0">
                                         조화도 탭에서 사주 조화도를 분석해보세요
                                     </div>
                                 </div>
