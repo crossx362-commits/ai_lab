@@ -267,6 +267,7 @@
             '<div class="w-full flex items-center gap-1.5">' +
             '<input readonly value="' + esc(url) + '" class="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] text-gray-500">' +
             '<button onclick="PublicProfile.copy(\'' + esc(url) + '\')" class="rounded-lg bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 text-xs font-bold whitespace-nowrap">복사</button>' +
+            '<button onclick="PublicProfile.print(\'' + esc(profile.token) + '\')" class="rounded-lg border border-gray-200 hover:bg-gray-50 px-3 py-1.5 text-xs font-bold whitespace-nowrap">인쇄</button>' +
             '<button onclick="PublicProfile.preview(\'' + esc(profile.token) + '\')" class="rounded-lg border border-gray-200 hover:bg-gray-50 px-3 py-1.5 text-xs font-bold whitespace-nowrap">미리보기</button>' +
             "</div></div>";
         var qel = document.getElementById("pp-qr");
@@ -283,6 +284,44 @@
         } else { toast("이 브라우저는 자동 복사를 지원하지 않아요"); }
     }
     function preview(token) { window.open(publicUrl(token), "_blank"); }
+
+    // 목걸이·하네스용 QR 태그를 별도 창에서 인쇄. QR SVG는 부모 창에서 생성해 주입.
+    function print(token) {
+        var profile = localGet(token);
+        if (!profile || profile.is_public === false) { toast("공개 중인 프로필만 인쇄할 수 있어요"); return; }
+        var url = publicUrl(token);
+        var name = (profile.public_fields && profile.public_fields.name) || "우리 아이";
+        var qrHtml = '<p style="font-size:12px;color:#999">QR 생성 실패</p>';
+        if (typeof window.qrcode === "function") {
+            try {
+                var qr = window.qrcode(0, "M");
+                qr.addData(url); qr.make();
+                qrHtml = qr.createSvgTag(6, 4);
+            } catch (e) { /* keep fallback */ }
+        }
+        var w = window.open("", "_blank", "width=420,height=560");
+        if (!w) { toast("팝업이 차단됐어요 — 팝업을 허용해 주세요"); return; }
+        w.document.write(
+            '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+            '<title>미아방지 QR — ' + esc(name) + '</title>' +
+            '<style>@media print{@page{margin:12mm}}' +
+            'body{font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;' +
+            'margin:0;display:flex;justify-content:center;padding:24px}' +
+            '.card{width:300px;border:2px solid #f43f5e;border-radius:18px;padding:20px;text-align:center}' +
+            '.hd{color:#f43f5e;font-weight:800;font-size:15px;margin:0 0 10px}' +
+            '.qr{width:200px;height:200px;margin:0 auto}.qr svg{width:100%;height:100%}' +
+            '.nm{font-weight:800;font-size:18px;margin:12px 0 2px}' +
+            '.tip{color:#888;font-size:11px;line-height:1.5;margin-top:8px}' +
+            '.url{color:#aaa;font-size:9px;word-break:break-all;margin-top:6px}</style></head>' +
+            '<body onload="window.focus();window.print()">' +
+            '<div class="card"><p class="hd">🆘 저를 발견하셨나요?</p>' +
+            '<div class="qr">' + qrHtml + '</div>' +
+            '<p class="nm">' + esc(name) + '</p>' +
+            '<p class="tip">QR을 스캔하면 보호자 연락처가 보여요.<br>목걸이·하네스에 달아 주세요 🙏</p>' +
+            '<p class="url">' + esc(url) + '</p></div></body></html>'
+        );
+        w.document.close();
+    }
 
     // 모달 헬퍼: 앱의 showCustomDialog 우선, 없으면 자체 오버레이
     function showModal(title, bodyHtml, buttons) {
@@ -435,7 +474,7 @@
     }
 
     // 공개 API
-    window.PublicProfile = { open: open, copy: copy, preview: preview, close: close, _route: route };
+    window.PublicProfile = { open: open, copy: copy, preview: preview, print: print, close: close, _route: route };
 
     // defer 스크립트라 DOM 준비됨. 즉시 라우팅 판정.
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", route);
