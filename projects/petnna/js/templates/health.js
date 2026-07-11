@@ -251,6 +251,9 @@ const HEALTH_TEMPLATE = `
         <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
         <div id="preventive-care-dashboard"></div>
 
+        <!-- 💛 몸무게/QOL 주간 체크인 -->
+        <div id="qol-checkin-widget"></div>
+
         <!-- 📊 월간 종합 리포트 -->
         <div class="card-modern p-4">
             <div class="flex justify-between items-center mb-4">

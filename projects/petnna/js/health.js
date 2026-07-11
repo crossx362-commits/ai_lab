@@ -65,6 +65,9 @@ function renderHealthTab() {
     if (typeof renderPreventiveCareDashboard === 'function') renderPreventiveCareDashboard();
     if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
 
+    // 몸무게/QOL 주간 체크인 (백로그 나무_20260709_3, 오너 승인 2026-07-10)
+    if (typeof QolCheckin !== 'undefined') QolCheckin.renderWidget('qol-checkin-widget');
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
