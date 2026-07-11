@@ -154,6 +154,50 @@ if (sys.platform == "win32" and not _has_win32) or (sys.platform != "win32" and 
                     pass
 
 
+# ==================== ADVISORY LOCK (non-fatal — for work-execution mutual exclusion) ====================
+
+import contextlib
+
+
+@contextlib.contextmanager
+def advisory_lock(name: str):
+    """비치명적 상호배제 락 — 충돌 시 `ProcessLock`처럼 `sys.exit`하지 않고 `False`를 yield한다.
+
+    배경(2026-07-11): 펫나 상시 데몬(미오 등)은 `ProcessLock(name)`으로 데몬 전체 수명 동안
+    락을 쥐고 있다. 예원 워치독이 유휴 감지로 같은 스크립트를 수동 디스패치하려 하면(직접
+    실행, `--daemon` 아님) 그 시점에 데몬이 실제로 일하고 있을 수도, 그냥 자고 있을 수도
+    있다 — 이걸 판별하려고 같은 이름의 `ProcessLock`을 쓰면 상시 데몬 쪽이 이미 락을 쥔
+    상태라 매번 충돌해 `sys.exit(0)`이 상시 루프 안에서 터져 데몬 자체가 죽는다.
+
+    이 락은 대신 "실제 작업 실행 구간"에만 짧게 잡는다 — 데몬은 주기적으로 깨어나 실제
+    review()/generate_test() 등을 부를 때만 이걸로 감싸고, 수동 디스패치도 똑같이 감싼다.
+    같은 이름이면 `ProcessLock`과 파일을 공유해 서로를 인식하되, 충돌해도 `yield False`로
+    "이번엔 건너뛰어라"라고 알릴 뿐 프로세스를 죽이지 않는다."""
+    if sys.platform == "win32" and _has_win32:
+        mutex = win32event.CreateMutex(None, False, f"Global\\{name}")
+        got = win32api.GetLastError() != winerror.ERROR_ALREADY_EXISTS
+        try:
+            yield got
+        finally:
+            win32api.CloseHandle(mutex)
+        return
+    if _has_fcntl:
+        fd = open(Path(f"/tmp/{name}.lock"), "w")
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            got = True
+        except IOError:
+            got = False
+        try:
+            yield got
+        finally:
+            if got:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            fd.close()
+        return
+    yield True  # 락 메커니즘 자체가 없는 환경 — 기존 폴백과 동일 원칙(그냥 진행)
+
+
 # ==================== DUPLICATE GUARD (Content Hash) ====================
 
 class DuplicateGuard:

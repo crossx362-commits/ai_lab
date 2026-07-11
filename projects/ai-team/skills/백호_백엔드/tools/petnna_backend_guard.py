@@ -35,7 +35,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
+from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
 
@@ -230,13 +230,19 @@ def daemon() -> None:
     if petnna_single_machine_guard("백호"):
         return
     slots = os.getenv("BAEKHO_SLOTS", "10:30").split(",")
-    with ProcessLock("baekho_backend_guard"):
+    with ProcessLock("baekho_backend_guard_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
         print(f"[{datetime.now()}] 백호 데몬 시작 — 매일 {','.join(slots)}")
         while True:
             try:
-                if due_slot(slots, SLOT_STATE, weekdays_only=False):
-                    run_audit(do_send=True)
-                investigate_assigned_tasks(do_send=True)  # 빈 목록이면 즉시 반환 — 매 주기 저비용 확인
+                # "baekho_backend_guard"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
+                # 비치명적 락 — 예원 워치독의 수동 디스패치와 겹쳐도 데몬이 죽지 않는다.
+                with advisory_lock("baekho_backend_guard") as got:
+                    if got:
+                        if due_slot(slots, SLOT_STATE, weekdays_only=False):
+                            run_audit(do_send=True)
+                        investigate_assigned_tasks(do_send=True)  # 빈 목록이면 즉시 반환 — 매 주기 저비용 확인
+                    else:
+                        print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 백호 오류: {e}")
                 try:
@@ -255,11 +261,16 @@ def main() -> None:
     args = ap.parse_args()
     if args.daemon:
         daemon()
-    elif args.tasks:
-        n = investigate_assigned_tasks(do_send=args.send)
-        print(f"위임 과제 {n}건 처리")
-    else:
-        run_audit(do_send=args.send)
+        return
+    with advisory_lock("baekho_backend_guard") as got:
+        if not got:
+            print("다른 실행이 진행 중 — 건너뜀")
+            return
+        if args.tasks:
+            n = investigate_assigned_tasks(do_send=args.send)
+            print(f"위임 과제 {n}건 처리")
+        else:
+            run_audit(do_send=args.send)
 
 
 if __name__ == "__main__":

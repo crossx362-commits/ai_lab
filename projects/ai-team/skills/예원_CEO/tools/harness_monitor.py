@@ -180,6 +180,64 @@ def restart_on_code_update() -> None:
             sys.exit(0)  # SystemExit은 except Exception에 안 걸린다 — ProcessLock.__exit__까지 돈다
 
 
+# ==================== 유휴 감지 → 즉시 작업 디스패치 ====================
+# 배경(2026-07-11, 오너 "왜 다 노냐 계속 일하라고"): 미오(주 1회 월요일)·테오(하루 1회 10시)는
+# 백로그에 배정된 과제가 있어도 자기 정기 슬롯까지 최대 며칠을 기다렸다(미오는 최대 6일).
+# 각 데몬 내부에 배정과제 폴링을 추가했지만(미오 1시간, 테오는 여전히 하루 1회), 예원 워치독
+# (5분 주기)이 한 번 더 감시해 그보다 훨씬 빨리 깨우는 게 "놀면 바로 일 시킨다"에 부합한다.
+# 각 스크립트의 실행구간은 advisory_lock으로 보호돼 있어(2026-07-11) 데몬 자체 주기와
+# 겹쳐도 안전하게 스킵된다 — 여기서는 그냥 쏘고 신경 쓰지 않는다(백그라운드, 논블로킹).
+BACKLOG_PATH = os.path.join(ROOT_DIR, "output", "qa", "petnna", "backlog.json")
+DISPATCH_COOLDOWN_SEC = 1200  # 같은 담당자 재디스패치 최소 간격(중복 기동 스팸 방지)
+DISPATCH_TARGETS = {
+    # owner(백로그) → (스크립트 상대경로, 인자)
+    "미오": ("미오_디자인/tools/petnna_design_review.py", ["--send"]),
+    "테오": ("테오_테스트/tools/petnna_test_engineer.py", ["--gen", "--send"]),
+    "백호": ("백호_백엔드/tools/petnna_backend_guard.py", ["--tasks", "--send"]),
+    # 수리는 자체 주기(기본 1시간)가 이미 짧고 매 사이클 백로그를 직접 확인하므로 제외.
+}
+
+
+def _pending_backlog_owners() -> set[str]:
+    try:
+        with open(BACKLOG_PATH, encoding="utf-8") as f:
+            items = json.load(f).get("items", [])
+    except Exception:
+        return set()
+    return {i.get("owner") for i in items if i.get("status") == "대기" and i.get("owner") in DISPATCH_TARGETS}
+
+
+def dispatch_idle_backlog_work(state: dict) -> list[str]:
+    """백로그에 '대기' 과제가 있는 담당자를 요일/슬롯과 무관하게 즉시 깨운다.
+    state: {owner: last_dispatch_epoch} (데몬 메모리 상주, 재시작 시 리셋되나 무해)."""
+    if _bots_off():
+        return []
+    owners = _pending_backlog_owners()
+    if not owners:
+        return []
+    now = time.time()
+    dispatched = []
+    skills_dir = os.path.join(os.path.dirname(__file__), "..")
+    for owner in owners:
+        last = state.get(owner, 0.0)
+        if now - last < DISPATCH_COOLDOWN_SEC:
+            continue
+        rel_script, args = DISPATCH_TARGETS[owner]
+        script = os.path.join(skills_dir, rel_script)
+        try:
+            subprocess.Popen(
+                [sys.executable, script, *args],
+                cwd=ROOT_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=(sys.platform != "win32"),
+                **_NOWIN,
+            )
+            state[owner] = now
+            dispatched.append(owner)
+        except Exception as e:
+            print(f"[예원] {owner} 디스패치 실패: {e}")
+    return dispatched
+
+
 # 하네스 이슈 → 원인 에이전트 자동 복구 매핑: (검사명, 메시지 부분문자열, 재시작 대상)
 # 대상은 agent_controller ALIASES에 있는 영어 키. 재시작으로 해결 가능한 이슈만 등록
 # (파일 파손 등 재시작으로 안 낫는 건 알림만 — 데이터 삭제류 복구는 자동화 금지).
@@ -270,6 +328,7 @@ def main():
     last_growth_date = None
     last_issue_sig = ""
     remedy_state: dict = {}
+    dispatch_state: dict = {}
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -305,6 +364,14 @@ def main():
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
                     time.sleep(10)  # 재시작 대기
+
+                # 유휴 감지: 백로그에 배정 과제가 있는데 정기 슬롯이 아직 안 왔으면 즉시 디스패치
+                try:
+                    dispatched = dispatch_idle_backlog_work(dispatch_state)
+                    if dispatched:
+                        print(f"[예원] 유휴 담당자 즉시 디스패치: {', '.join(dispatched)}")
+                except Exception as e:
+                    print(f"백로그 디스패치 오류: {e}")
 
                 # 성장 점검: 하루 1회(17시 이후) 발송 — 스팸 방지
                 now = datetime.now()

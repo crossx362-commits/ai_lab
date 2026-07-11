@@ -39,7 +39,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
+from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
 
@@ -266,7 +266,7 @@ def daemon() -> None:
     slots = os.getenv("TEO_SLOTS", "10:00").split(",")
     poll = int(os.getenv("TEO_POLL_SEC", "300"))
     cooldown = int(os.getenv("TEO_COOLDOWN_SEC", "1200"))
-    with ProcessLock("teo_test_engineer"):
+    with ProcessLock("teo_test_engineer_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
         print(f"[{datetime.now()}] 테오 데몬 시작 — 정기 {','.join(slots)} + 변경 감지")
         last_digest = _tree_digest()
         last_run = 0.0
@@ -276,15 +276,23 @@ def daemon() -> None:
                 digest = _tree_digest()
                 changed = digest != last_digest
                 if slot:
-                    generate_test(do_send=True)  # 하루 1개 생성 시도(상한 도달 시 no-op)
-                    report(run_suite(), do_send=True)
-                    last_run = time.time()
-                    last_digest = _tree_digest()
+                    # "teo_test_engineer"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
+                    # 비치명적 락 — 예원 워치독의 수동 디스패치와 겹쳐도 데몬이 죽지 않는다.
+                    with advisory_lock("teo_test_engineer") as got:
+                        if got:
+                            generate_test(do_send=True)  # 하루 1개 생성 시도(상한 도달 시 no-op)
+                            report(run_suite(), do_send=True)
+                            last_run = time.time()
+                            last_digest = _tree_digest()
+                        else:
+                            print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
                 elif changed and time.time() - last_run > cooldown:
                     print(f"[{datetime.now()}] 변경 감지 → 스위트 실행")
-                    report(run_suite(), do_send=True)
-                    last_run = time.time()
-                    last_digest = _tree_digest()
+                    with advisory_lock("teo_test_engineer") as got:
+                        if got:
+                            report(run_suite(), do_send=True)
+                            last_run = time.time()
+                            last_digest = _tree_digest()
                 elif changed:
                     last_digest = digest
             except Exception as e:
@@ -306,10 +314,14 @@ def main() -> None:
     if args.daemon:
         daemon()
         return
-    if args.gen:
-        generate_test(do_send=args.send)
-    if args.run or not args.gen:
-        report(run_suite(), do_send=args.send)
+    with advisory_lock("teo_test_engineer") as got:
+        if not got:
+            print("다른 실행이 진행 중 — 건너뜀")
+            return
+        if args.gen:
+            generate_test(do_send=args.send)
+        if args.run or not args.gen:
+            report(run_suite(), do_send=args.send)
 
 
 if __name__ == "__main__":

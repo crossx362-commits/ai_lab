@@ -34,7 +34,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
+from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
@@ -214,13 +214,32 @@ def daemon() -> None:
     if petnna_single_machine_guard("미오"):
         return
     slots = os.getenv("MIO_SLOTS", "11:00").split(",")
-    with ProcessLock("mio_design_review"):
-        print(f"[{datetime.now()}] 미오 데몬 시작 — 매주 요일 {REVIEW_WEEKDAY}, {','.join(slots)}")
+    # 배정 과제(회의·예원이 백로그에 올린 것)는 주간 전체 리뷰 요일까지 기다리면 최대 6일
+    # 방치될 수 있다(2026-07-11 발견 — 오너 "왜 다 노냐" 지적). 배정 과제가 있으면 요일과
+    # 무관하게 이 주기마다 즉시 처리, 없으면 기존대로 주 1회 전체 트렌드 리뷰만 수행.
+    assigned_poll = int(os.getenv("MIO_ASSIGNED_POLL_SEC", "3600"))
+    with ProcessLock("mio_design_review_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
+        print(f"[{datetime.now()}] 미오 데몬 시작 — 매주 요일 {REVIEW_WEEKDAY} 전체리뷰 "
+              f"{','.join(slots)} + 배정과제는 {assigned_poll}s마다 확인")
+        last_assigned_check = 0.0
         while True:
             try:
-                if datetime.now().weekday() == REVIEW_WEEKDAY and \
-                        due_slot(slots, SLOT_STATE, weekdays_only=False):
-                    review(do_send=True)
+                due_full = (datetime.now().weekday() == REVIEW_WEEKDAY
+                            and due_slot(slots, SLOT_STATE, weekdays_only=False))
+                due_assigned = (not due_full and _assigned_tasks()
+                                 and time.time() - last_assigned_check > assigned_poll)
+                if due_full or due_assigned:
+                    # "mio_design_review"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
+                    # 비치명적 락 — 예원 워치독의 수동 디스패치와 실행 시점이 겹쳐도
+                    # 데몬이 죽지 않고 이번 주기를 건너뛴다(2026-07-11).
+                    with advisory_lock("mio_design_review") as got:
+                        if got:
+                            if due_assigned:
+                                print(f"[{datetime.now()}] 배정 과제 발견 — 요일 무관 즉시 리뷰")
+                            review(do_send=True)
+                            last_assigned_check = time.time()
+                        else:
+                            print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 미오 오류: {e}")
                 try:
@@ -239,7 +258,13 @@ def main() -> None:
     if args.daemon:
         daemon()
     else:
-        review(do_send=args.send)
+        # 수동 실행도 데몬의 실행구간 락과 상호배제(비치명적) — 예원 워치독의 자동
+        # 디스패치와 데몬 자체 주기가 겹쳐도 스크린샷·백로그 동시쓰기 경합을 막는다.
+        with advisory_lock("mio_design_review") as got:
+            if got:
+                review(do_send=args.send)
+            else:
+                print("다른 실행이 진행 중 — 건너뜀")
 
 
 if __name__ == "__main__":
