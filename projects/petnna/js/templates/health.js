@@ -246,7 +246,7 @@ const HEALTH_TEMPLATE = `
     <!-- /왼쪽 컬럼 끝 -->
 
     <!-- 오른쪽 컬럼 (투약·정기예방 + 월간 리포트 + 건강수첩 + 영양관리 + 돌봄 스케줄러) -->
-    <div class="lg:col-span-4 space-y-4">
+    <div class="lg:col-span-4 space-y-4 lg:sticky lg:top-20 lg:self-start">
 
         <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
         <div id="preventive-care-dashboard"></div>
