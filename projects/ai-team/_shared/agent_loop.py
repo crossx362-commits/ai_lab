@@ -141,7 +141,7 @@ def run_agent(agent_id: str, message: str, max_steps: int = MAX_STEPS_DEFAULT) -
 def _cli() -> None:
     import argparse
     p = argparse.ArgumentParser(description="에이전트 판단 루프")
-    p.add_argument("agent", help="에이전트 id (somi/youngsuk/ceo)")
+    p.add_argument("agent", help="에이전트 id (youngsuk/ceo)")
     p.add_argument("message", help="요청 메시지")
     p.add_argument("--max-steps", type=int, default=MAX_STEPS_DEFAULT)
     args = p.parse_args()

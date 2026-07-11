@@ -5,8 +5,8 @@
 쪼개고(plan), 의존성 순서대로 실행한 뒤 결과를 취합한다.
 
 플랜 형식:
-  [{"step":1,"agent":"somi","task":"...","depends_on":[]},
-   {"step":2,"agent":"youngsuk","task":"...","depends_on":[1]}]
+  [{"step":1,"agent":"youngsuk","task":"...","depends_on":[]},
+   {"step":2,"agent":"bomi","task":"...","depends_on":[1]}]
 
 폴백: LLM 미가용/플랜 실패 시 단일 키워드 라우팅(= 기존 dispatcher 동작)으로 안전 강등.
 작업 상태는 output/cache/task_queue.json 에 기록(재시작 복원·감사용).
