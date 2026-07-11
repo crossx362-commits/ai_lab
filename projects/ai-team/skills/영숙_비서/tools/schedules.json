@@ -104,6 +104,13 @@
    "cron": "0 */2 * * *",
    "enabled": true,
    "description": "예원 — 펫나 PR대기 브랜치 자동 검토·병합 결정 (수리 적체 상한 자동 해제, 오너 검토 위임)"
+  },
+  {
+   "id": "petnna_social",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_social_agent.py --once --send",
+   "cron": "30 10,15,20 * * *",
+   "enabled": true,
+   "description": "펫과나 이웃 활동 — AI 페르소나가 반려동물 게시글 작성 + 실제 유저 글에 댓글·좋아요(비스팸: 회당 1글, 최근 3h 2글 상한)"
   }
  ]
 }
