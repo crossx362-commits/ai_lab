@@ -14,7 +14,10 @@
 오탐 주의: 판별 범위는 회의가 명시한 것(신규 테이블·RLS·supabase.js·migration)으로만
 좁힌다. "로그인"·"인증" 같은 흔한 UI 낱말을 넣으면 순수 디자인 과제까지 보류로 새어나간다.
 """
+import json
 import re
+from datetime import datetime
+from pathlib import Path
 
 # 회의가 명시한 범위 — DB 스키마·RLS·supabase 직접 접촉·마이그레이션.
 DB_AUTH_PATTERN = re.compile(
@@ -31,3 +34,42 @@ DB_AUTH_PATTERN = re.compile(
 def touches_db_auth(title: str, detail: str = "") -> bool:
     """DB/인증 계층을 요구해 수리 자동 루프가 병합할 수 없는 과제인가."""
     return bool(DB_AUTH_PATTERN.search(f"{title}\n{detail}"))
+
+
+# ==================== 승인된 보류 항목 자동 승격 ====================
+# 배경(2026-07-11): "개선 신규 아이디어는 누가 개발하냐" 질문 계기로 발견 — 나무_20260708_4
+# (트리아지)·나무_20260709_3(QOL)이 오너 승인(approved_by)까지 났는데도 `보류`에 그대로
+# 남아 수리 자동 루프(대기만 소비)가 절대 못 집었다. 실측 결과 touches_db_auth()는 둘 다
+# False(DB/인증 무관 순수 프론트)였다 — 즉 정당한 이유 없이 보류에 갇힌 것. 반면 같은 시기
+# 나무_20260709_0(웹 푸시, "Supabase reminders 테이블" 명시)은 True — 이건 계속 보류가 맞다.
+# 오너 지시: "오너 승인된 건만 자동 재검토해 순수 프론트면 대기로 승격"(수동 라이브 세션
+# 없이도 수리가 새 아이디어를 스스로 개발하게).
+def promote_approved_holds(backlog_path) -> list[str]:
+    """오너 승인(approved_by)됐지만 `보류`에 남은 항목을 재검토해, 재검토해도 여전히
+    DB/인증을 접촉하지 않으면 `대기`로 승격(owner 미지정이면 수리로)한다.
+    명시적 `gate` 필드(예: "DB/인증")가 있는 항목은 오너 승인 여부와 무관하게 절대
+    건드리지 않는다 — 그런 항목은 사람이 물리적으로(SQL 콘솔 실행 등) 처리해야 한다."""
+    path = Path(backlog_path)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    promoted: list[str] = []
+    for it in data.get("items", []):
+        if it.get("status") != "보류":
+            continue
+        if it.get("gate"):
+            continue  # 하드 게이트 — 승인과 무관하게 사람 전용
+        if not it.get("approved_by"):
+            continue  # 오너 승인 없으면 승격 후보 아님
+        if touches_db_auth(it.get("title", ""), it.get("detail", "")):
+            continue  # 재검토해도 DB/인증 접촉 — 보류 유지
+        it["status"] = "대기"
+        if not it.get("owner"):
+            it["owner"] = "수리"
+        it["updated"] = datetime.now().isoformat()
+        it["promotion_note"] = "오너 승인 + 재검토(DB/인증 미접촉) 자동 승격"
+        promoted.append(it.get("id", "?"))
+    if promoted:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    return promoted

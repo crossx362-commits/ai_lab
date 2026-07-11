@@ -42,6 +42,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
 from _shared.cc import scrub_secrets  # noqa: E402
+from _shared.backlog import promote_approved_holds  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -412,6 +413,9 @@ def _improve_cycle(do_send: bool = True) -> str:
     findings, qa_last_run = load_qa_findings()
     state = load_dev_state()
     freed = sync_merged_branches(state)  # 수동 병합된 PR대기 정리 → 상한 자동 해제
+    promoted = promote_approved_holds(BACKLOG)  # 오너 승인+재검토 통과 보류 항목 → 대기 승격
+    if promoted:
+        print(f"[승격] 오너 승인 보류 항목 {len(promoted)}건 자동 대기 전환: {', '.join(promoted)}")
     picked = select_issue(findings, state, qa_last_run) if findings else None
     is_backlog = False
     if not picked:  # QA 이슈가 없으면 백로그(미오·나무 과제) 소비 — 항상 PR대기
