@@ -313,6 +313,10 @@ const MYPET_TEMPLATE = `
                                 <i class="fa-solid fa-envelope text-amber-400 text-sm"></i>
                                 <span id="mailbox-unread-count-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
                             </button>
+                            <button onclick="PublicProfile.open()" title="미아방지 QR"
+                                class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-rose-300 hover:bg-rose-50 flex items-center justify-center transition-all">
+                                <i class="fa-solid fa-qrcode text-rose-400 text-sm"></i>
+                            </button>
                         </div>
                     </div>
                     <!-- 사주 조언 한 줄 -->

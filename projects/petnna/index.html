@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 딥링크(/p/<token> 미아방지 프로필 등)에서도 상대경로 리소스가 루트 기준으로 로드되도록 -->
+    <base href="/">
     <title>펫과나 — AI 건강분석·산책·사주 반려동물 케어 올인원</title>
     <meta name="description" content="사진 한 장으로 AI 건강분석, 산책 GPS 기록, 반려동물 사주팔자까지. 펫과나에서 반려동물의 모든 케어를 한 곳에서.">
     <!-- OG / 카카오·인스타 링크 공유 -->
@@ -136,6 +138,10 @@
     <script defer src="js/shop.js?v=160"></script>
     <script defer src="js/settings.js?v=161"></script>
     <script defer src="js/mailbox.js?v=160"></script>
+
+    <!-- 🆘 미아방지 공개 프로필(QR) — 로컬 QR 생성 + /p/<token> 습득자 페이지 -->
+    <script defer src="js/qrcode.min.js"></script>
+    <script defer src="js/public-profile.js?v=3"></script>
 
     <!-- (4) 메인 라우터 및 부트스트랩 진입점 -->
     <script defer src="js/app.js?v=162"></script>
