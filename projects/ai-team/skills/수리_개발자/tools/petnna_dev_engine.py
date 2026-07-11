@@ -136,11 +136,19 @@ def load_qa_findings() -> tuple[dict, str]:
 def select_issue(findings: dict, state: dict, qa_last_run: str) -> tuple[str, dict] | None:
     """우선순위 → 안전 유형 우선 → 반복 횟수 순. 보류/PR대기/완료(재발 아님)는 제외.
 
-    버그 발견·수정(2026-07-11): "완료" 이슈가 재발해도 attempts는 첫 라운드(예: 2회
+    버그 발견·수정(2026-07-11 1차): "완료" 이슈가 재발해도 attempts는 첫 라운드(예: 2회
     실패+1회 성공=3)에 이미 MAX_ATTEMPTS에 도달해 있어, 바로 아래 attempts 필터에
     걸려 재도전 후보에서 조용히 탈락했다 — 재발이 감지됐는데도 수리가 영원히 무시하고
     3회 실패 알림·회의 소집도 안 뜨는(재시도 자체를 안 하니) 방치 상태가 됐다. 재발은
-    새로운 라운드이므로 attempts를 리셋한다."""
+    새로운 라운드이므로 attempts를 리셋한다.
+
+    버그 발견·수정(2026-07-11 2차, 자동 파이프라인 감사 도구가 발견): 1차 수정이 attempts만
+    리셋하고 status는 '완료'로 남겨둬서, 재도전이 다시 실패해도 status가 계속 '완료'라
+    다음 사이클 select_issue()가 "재발"로 또 판정해 attempts를 또 0으로 리셋한다 — attempts가
+    절대 누적되지 않아 _improve_cycle의 MAX_ATTEMPTS 도달→'보류'+회의소집 에스컬레이션이
+    이 경로에서는 영원히 발동하지 않는다(가장 escalation이 필요한 "재발 후 계속 실패"
+    상황에서 아무 안전장치도 없이 매 주기 조용히 재시도만 반복). status를 '대기'로도
+    되돌려 재도전 결과가 정상적으로 escalation 경로를 타게 한다."""
     candidates = []
     for fp, f in findings.items():
         rec = state["issues"].get(fp, {})
@@ -148,9 +156,10 @@ def select_issue(findings: dict, state: dict, qa_last_run: str) -> tuple[str, di
         if status == "보류" or status == "PR대기":
             continue
         if status == "완료":
-            # 병합 이후의 순찰에서 다시 나타났으면 재발로 보고 재도전(새 라운드 — 시도 리셋)
+            # 병합 이후의 순찰에서 다시 나타났으면 재발로 보고 재도전(새 라운드 — 시도·상태 리셋)
             if rec.get("fixed_at", "") < qa_last_run:
                 rec["attempts"] = 0
+                rec["status"] = "대기"
             else:
                 continue
         if rec.get("attempts", 0) >= MAX_ATTEMPTS:

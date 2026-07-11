@@ -32,7 +32,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock, petnna_single_machine_guard  # noqa: E402
+from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
@@ -152,13 +152,20 @@ def daemon() -> None:
     if petnna_single_machine_guard("나무"):
         return
     slots = os.getenv("NAMU_SLOTS", "11:00").split(",")
-    with ProcessLock("namu_product_manager"):
+    with ProcessLock("namu_product_manager_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
         print(f"[{datetime.now()}] 나무 데몬 시작 — 매주 요일 {PLAN_WEEKDAY}, {','.join(slots)}")
         while True:
             try:
                 if datetime.now().weekday() == PLAN_WEEKDAY and \
                         due_slot(slots, SLOT_STATE, weekdays_only=False):
-                    plan(do_send=True)
+                    # "namu_product_manager"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
+                    # 비치명적 락 — 수동 --once 실행과 겹쳐도 데몬이 죽지 않는다(자동 파이프라인
+                    # 감사 도구가 발견한 비대칭: 미오·테오·백호만 이 보호가 있었음, 2026-07-11).
+                    with advisory_lock("namu_product_manager") as got:
+                        if got:
+                            plan(do_send=True)
+                        else:
+                            print(f"[{datetime.now()}] 다른 실행이 진행 중 — 이번 주기 건너뜀")
             except Exception as e:
                 print(f"[{datetime.now()}] ⚠️ 나무 오류: {e}")
                 try:
@@ -177,7 +184,11 @@ def main() -> None:
     if args.daemon:
         daemon()
     else:
-        plan(do_send=args.send)
+        with advisory_lock("namu_product_manager") as got:
+            if got:
+                plan(do_send=args.send)
+            else:
+                print("다른 실행이 진행 중 — 건너뜀")
 
 
 if __name__ == "__main__":

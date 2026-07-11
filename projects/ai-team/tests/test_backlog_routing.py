@@ -74,6 +74,47 @@ class CouncilOwnerRouting(unittest.TestCase):
         self.assertTrue(self.council.needs_human(
             "QR 미아방지 공개 프로필", "수리", "public_pet_profiles 신규 테이블 + RLS 정책 추가"))
 
+    def test_owner_type_mismatch_goes_to_human_track(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-11): 테오 _backlog_task()는
+        type=='테스트'만, 미오 _assigned_tasks()는 type=='디자인'만 본다 — owner는
+        소비자가 있어도 type이 안 맞으면 '대기'로 적재해도 아무도 못 집는 좀비가 된다."""
+        self.assertTrue(self.council.needs_human("이상한 배정", "테오", "", "기획"),
+                        "테오에게 type=기획 배정은 테오가 못 집으므로 사람 트랙이어야 한다")
+        self.assertTrue(self.council.needs_human("이상한 배정", "미오", "", "백엔드"),
+                        "미오에게 type=백엔드 배정은 미오가 못 집으므로 사람 트랙이어야 한다")
+
+    def test_owner_type_match_stays_auto(self):
+        self.assertFalse(self.council.needs_human("정상 배정", "테오", "", "테스트"))
+        self.assertFalse(self.council.needs_human("정상 배정", "미오", "", "디자인"))
+
+    def test_missing_type_does_not_block_backward_compat(self):
+        """item_type을 안 넘기는 기존 호출부·테스트는 그대로 동작해야 한다(하위호환)."""
+        self.assertFalse(self.council.needs_human("타입 모름", "테오"))
+
+
+class OwnerTypeMismatchTests(unittest.TestCase):
+    """자동 파이프라인 감사 도구가 발견(2026-07-11): owner+type 조합이 실제 소비 함수의
+    필터와 안 맞으면 '대기'로 적재돼도 아무도 못 집는 좀비가 된다."""
+
+    def setUp(self):
+        from _shared.backlog import owner_type_mismatch
+        self.mismatch = owner_type_mismatch
+
+    def test_teo_only_consumes_test_type(self):
+        self.assertTrue(self.mismatch("테오", "기획"))
+        self.assertFalse(self.mismatch("테오", "테스트"))
+
+    def test_mio_only_consumes_design_type(self):
+        self.assertTrue(self.mismatch("미오", "백엔드"))
+        self.assertFalse(self.mismatch("미오", "디자인"))
+
+    def test_owners_without_type_restriction_never_mismatch(self):
+        for owner in ("백호", "수리", ""):
+            self.assertFalse(self.mismatch(owner, "아무거나"))
+
+    def test_empty_type_never_mismatch(self):
+        self.assertFalse(self.mismatch("테오", ""))
+
 
 class DbAuthGate(unittest.TestCase):
     """적재 시점 DB/인증 판별 — 범위는 회의가 명시한 것으로 좁힌다(오탐 금지)."""
@@ -169,6 +210,24 @@ class TeoBacklogConsumption(unittest.TestCase):
             self.teo._backlog_done("d")
             items = {i["id"]: i["status"] for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
             self.assertEqual(items, {"d": "완료", "e": "대기"})
+
+    def test_failed_task_accumulates_attempts_and_stays_waiting_under_cap(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-11): 상한 없이 무한 재시도되던 결함
+        회귀 — 상한 미만이면 계속 재시도할 수 있게 '대기' 상태를 유지해야 한다."""
+        with self._write([{"id": "a", "owner": "테오", "status": "대기", "type": "테스트"}]):
+            self.teo._backlog_task_failed("a")
+            item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+            self.assertEqual(item["attempts"], 1)
+            self.assertEqual(item["status"], "대기", "상한 미만이면 계속 재시도 가능해야 한다")
+
+    def test_task_held_after_max_attempts(self):
+        with self._write([{"id": "a", "owner": "테오", "status": "대기", "type": "테스트",
+                          "attempts": self.teo.TASK_MAX_ATTEMPTS - 1}]):
+            self.teo._backlog_task_failed("a")
+            item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
+            self.assertEqual(item["attempts"], self.teo.TASK_MAX_ATTEMPTS)
+            self.assertEqual(item["status"], "보류",
+                             "상한 도달 시 무한 재시도 대신 보류로 전환해야 한다")
 
 
 class PromoteApprovedHoldsTests(unittest.TestCase):

@@ -1,10 +1,16 @@
 """수리 select_issue() 회귀 테스트 — 2026-07-11 '재발 무시' 버그를 테스트로 굳힌다.
 
-발견 경위: "완료" 이슈가 재발하면 재도전해야 하는데, attempts 필드가 첫 라운드
+발견 경위(1차): "완료" 이슈가 재발하면 재도전해야 하는데, attempts 필드가 첫 라운드
 (예: 2회 실패 + 3회째 성공 = attempts 3)에 이미 MAX_ATTEMPTS(3)에 도달해 있어,
 재발 판정 바로 다음 줄의 attempts 필터에 걸려 조용히 탈락했다. 재발이 감지됐는데도
 수리가 영원히 무시하고 재시도 자체를 안 하니 3회 실패 알림·회의 소집도 안 뜨는
 방치 상태가 됐다(dev_state.json에서 실제 사례 확인: 'H1 3개(중복)' 이슈).
+
+발견 경위(2차, 자동 파이프라인 감사 도구가 발견): 1차 수정이 attempts만 리셋하고
+status는 '완료'로 남겨둬서, 재도전이 다시 실패해도 status가 계속 '완료'라 다음
+사이클이 또 "재발"로 오판해 attempts를 또 0으로 리셋 — attempts가 절대 누적되지
+않아 MAX_ATTEMPTS 도달→보류→회의소집 에스컬레이션이 이 경로에서는 영원히 발동하지
+않았다. status도 '대기'로 되돌리도록 수정.
 """
 import importlib.util
 import unittest
@@ -59,6 +65,26 @@ class SelectIssueReoccurrenceTests(unittest.TestCase):
         state = {"issues": {"d": {"status": "대기", "attempts": 3}}}
         findings = {"d": {"priority": "P1", "type": "기능", "title": "3회실패중"}}
         self.assertIsNone(self.eng.select_issue(findings, state, "2026-07-11T12:00:00"))
+
+    def test_reoccurrence_resets_status_to_waiting_not_done(self):
+        """2차 버그: status가 '완료'로 남으면 다음 사이클도 계속 '재발'로 오판해
+        attempts가 영원히 누적되지 않는다 — status도 '대기'로 되돌려야 한다."""
+        state = {"issues": {"a": {"status": "완료", "attempts": 3,
+                                  "fixed_at": "2026-07-01T00:00:00"}}}
+        findings = {"a": {"priority": "P2", "type": "접근성", "title": "재발"}}
+        self.eng.select_issue(findings, state, "2026-07-11T12:00:00")
+        self.assertEqual(state["issues"]["a"]["status"], "대기",
+                         "재발 처리 후 status가 '완료'로 남아있으면 다음 사이클도 재발로 오판한다")
+
+    def test_repeated_failure_after_reoccurrence_can_finally_reach_max_attempts(self):
+        """status가 '대기'로 바뀐 뒤에는(재발 처리 완료 후 재시도가 또 실패하는 상황을
+        시뮬레이션) 더 이상 '재발' 분기를 안 타므로 attempts가 정상적으로 누적돼
+        MAX_ATTEMPTS에 도달하면 제외돼야 한다(수정 전에는 영원히 0으로 리셋돼 불가능했다)."""
+        state = {"issues": {"a": {"status": "대기", "attempts": self.eng.MAX_ATTEMPTS,
+                                  "fixed_at": "2026-07-01T00:00:00"}}}
+        findings = {"a": {"priority": "P2", "type": "접근성", "title": "재발 후 계속 실패"}}
+        result = self.eng.select_issue(findings, state, "2026-07-11T12:00:00")
+        self.assertIsNone(result, "status가 '대기'면 재발 리셋 분기를 안 타 attempts 상한이 정상 작동해야 한다")
 
 
 if __name__ == "__main__":

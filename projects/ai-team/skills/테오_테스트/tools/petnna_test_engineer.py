@@ -195,6 +195,27 @@ def _backlog_done(task_id: str) -> None:
     BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+# 배정 테스트 과제에 상한 없이 무한 재시도되던 결함(자동 파이프라인 감사 도구가 발견,
+# 2026-07-11) — 수리의 MAX_ATTEMPTS·보류·회의소집과 같은 계열의 안전장치를 테오에도 둔다.
+TASK_MAX_ATTEMPTS = 3
+
+
+def _backlog_task_failed(task_id: str) -> None:
+    """배정 과제 생성·안정성 게이트 실패 시 attempts 증가, 상한 도달 시 '보류'로 전환해
+    무한 재시도(특히 예원 워치독의 20분 재디스패치와 겹쳐 flaky 흐름을 영원히 재시도)를 막는다."""
+    try:
+        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    for i in data["items"]:
+        if i.get("id") == task_id:
+            i["attempts"] = i.get("attempts", 0) + 1
+            if i["attempts"] >= TASK_MAX_ATTEMPTS:
+                i["status"] = "보류"
+                i["gate"] = "테오 반복 실패(구조적 원인 필요)"
+    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def generate_test(do_send: bool) -> bool:
     existing = list_tests()
     task = _backlog_task()
@@ -230,6 +251,8 @@ def generate_test(do_send: bool) -> bool:
     new = [p for p in list_tests() if p not in existing]
     if not new:
         print(f"[테오] 테스트 생성 실패: {out[-200:]}")
+        if task:
+            _backlog_task_failed(task["id"])
         return False
     path = new[0]
     # 안정성 게이트: 2회 연속 통과해야 채택
@@ -239,6 +262,8 @@ def generate_test(do_send: bool) -> bool:
             err = list(r.values())[0].get("error", "?")[-200:] if r else "실행 불가"
             path.unlink(missing_ok=True)
             print(f"[테오] 신규 테스트 불안정({i+1}회차 실패) → 폐기: {err}")
+            if task:
+                _backlog_task_failed(task["id"])
             return False
     nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     subprocess.run(["git", "add", str(path)], cwd=str(PROJECT_ROOT), capture_output=True, **nowin)

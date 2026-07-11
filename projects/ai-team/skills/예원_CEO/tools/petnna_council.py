@@ -39,7 +39,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.backlog import touches_db_auth, AUTO_OWNERS  # noqa: E402
+from _shared.backlog import touches_db_auth, owner_type_mismatch, AUTO_OWNERS  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -51,13 +51,17 @@ BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 # owner-불일치 항목을 잘못 승격시키지 않는다 — 2026-07-11 두 곳에 따로 정의했다 어긋난 사고).
 
 
-def needs_human(title: str, owner: str, detail: str = "") -> bool:
+def needs_human(title: str, owner: str, detail: str = "", item_type: str = "") -> bool:
     """자동 루프가 집으면 안 되는 항목인가.
 
-    ①승인 필요 ②소비자 없는 owner에 배정 ③DB/인증 접촉(수리가 병합 못 함 → 3회 실패 낭비).
+    ①승인 필요 ②소비자 없는 owner에 배정 ③DB/인증 접촉(수리가 병합 못 함 → 3회 실패 낭비)
+    ④owner는 소비자가 있어도 그 owner가 실제로 안 보는 type으로 배정(예: 테오에게 type=기획) —
+    자동 파이프라인 감사 도구가 발견한 좀비 대기 패턴(2026-07-11). item_type을 안 넘기면
+    이 검사는 건너뛴다(하위호환 — 기존 호출부·테스트가 type을 몰라도 그대로 동작).
     """
     return ("[승인필요]" in title
             or owner not in AUTO_OWNERS
+            or owner_type_mismatch(owner, item_type)
             or touches_db_auth(title, detail))
 COOLDOWN_H = 24
 
@@ -176,7 +180,8 @@ def convene(topic: str, context: str, priority: str) -> None:
             title = (a.get("title") or "").strip()
             if not title or title in existing:
                 continue
-            human = needs_human(title, a.get("owner", ""), a.get("detail") or "")
+            human = needs_human(title, a.get("owner", ""), a.get("detail") or "",
+                                a.get("type", "기획"))
             data["items"].append({
                 "id": f"회의_{datetime.now():%Y%m%d%H%M}_{added}",
                 "title": title[:120], "detail": (a.get("detail") or "")[:500],

@@ -51,6 +51,18 @@ class IdleBacklogDispatchTests(unittest.TestCase):
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)):
             self.assertEqual(self.hm._pending_backlog_owners(), {"미오", "테오"})
 
+    def test_type_mismatched_assignment_is_never_dispatched(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-11): owner=테오인데 type이 '테스트'가
+        아니면 테오의 _backlog_task()가 절대 못 집는다 — 디스패치해봤자 20분마다 영구
+        재점화만 하는 좀비. 방어적으로 디스패치 후보에서도 제외해야 한다."""
+        self._write([
+            {"owner": "테오", "status": "대기", "type": "기획"},   # 불일치 — 제외돼야
+            {"owner": "테오", "status": "대기", "type": "테스트"},  # 일치 — 포함돼야
+            {"owner": "미오", "status": "대기", "type": "백엔드"},  # 불일치 — 제외돼야
+        ])
+        with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)):
+            self.assertEqual(self.hm._pending_backlog_owners(), {"테오"})
+
     def test_missing_backlog_file_is_not_fatal(self):
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp.parent / "없음.json")):
             self.assertEqual(self.hm._pending_backlog_owners(), set())

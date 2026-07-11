@@ -36,6 +36,26 @@ def touches_db_auth(title: str, detail: str = "") -> bool:
     return bool(DB_AUTH_PATTERN.search(f"{title}\n{detail}"))
 
 
+# owner가 실제로 소비하는 type 제약(자동 파이프라인 감사 도구가 발견, 2026-07-11).
+# 테오 _backlog_task()는 type=='테스트'만, 미오 _assigned_tasks()는 type=='디자인'만 본다 —
+# 그런데 council.needs_human()은 owner만 보고 type은 안 봐서, owner=테오인데 type이
+# '테스트'가 아닌 항목이 '대기'로 적재되면 아무도 못 집는 좀비가 된다(현재 실사례는 없지만
+# 재현 가능한 잠재 결함). 여기 없는 owner(백호·수리)는 type 필터가 없어 제약 없음.
+OWNER_ALLOWED_TYPES = {
+    "테오": {"테스트"},
+    "미오": {"디자인"},
+}
+
+
+def owner_type_mismatch(owner: str, item_type: str) -> bool:
+    """이 owner가 실제로 소비할 수 없는 type으로 배정됐는가.
+    item_type이 비어있으면(호출부가 아직 모름) 판단 보류 — 있는데 안 맞을 때만 True."""
+    if not item_type:
+        return False
+    allowed = OWNER_ALLOWED_TYPES.get(owner)
+    return bool(allowed) and item_type not in allowed
+
+
 # 백로그를 실제로 소비하는 owner만. 여기 없는 owner(예: 나무 — 적재만 하고 안 읽음)로
 # 배정된 항목은 '대기'로 만들어봤자 아무도 안 집는다. petnna_council.py가 이 상수를
 # import해 쓴다(단일 소스 — 두 곳에 따로 정의하면 한쪽만 갱신돼 어긋난다, 2026-07-11 교훈).
