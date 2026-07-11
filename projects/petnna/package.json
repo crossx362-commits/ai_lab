@@ -1,16 +1,8 @@
 {
   "scripts": {
-    "build": "node inject-env.js",
-    "cap:init": "npx cap init",
-    "cap:add-android": "npx cap add android",
-    "cap:sync": "npx cap sync",
-    "cap:open-android": "npx cap open android"
+    "build": "node inject-env.js"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.4",
-    "@capacitor/cli": "^8.3.4",
-    "@capacitor/core": "^8.3.4",
-    "@vercel/blob": "^0.23.3",
-    "mcp-server-openai": "^0.0.1"
+    "@vercel/blob": "^0.23.3"
   }
 }
