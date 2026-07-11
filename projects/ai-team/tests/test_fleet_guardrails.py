@@ -270,14 +270,18 @@ def load_bootstrap():
 
 
 class BootstrapGateTests(unittest.TestCase):
-    """post-merge 훅의 진짜 일은 기동이 아니라 '이중 가동 거부'다."""
+    """post-merge 훅의 진짜 일은 기동이 아니라 '이중 가동 거부'다.
 
-    def _gates(self, env, flag_exists=False):
+    2026-07-11 통합: TELEGRAM_POLL_HOST(.env.encrypted, 기계별 파생 키라 두 기계가
+    같은 값을 못 봄)를 폐기하고 fleet_machine_policy.json(평문, git 추적, 펫나 데몬
+    가드와 공유)으로 옮겼다 — env 대신 read_fleet_policy()를 패치한다."""
+
+    def _gates(self, policy, flag_exists=False):
         fb = load_bootstrap()
         flag = mock.Mock()
         flag.exists.return_value = flag_exists
         with mock.patch.object(fb, "BOTS_OFF_FLAG", flag), \
-             mock.patch.dict("os.environ", env, clear=False):
+             mock.patch.object(fb, "read_fleet_policy", return_value=policy):
             return fb.gates()
 
     def test_bots_off_blocks_start(self):
@@ -285,21 +289,21 @@ class BootstrapGateTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("BOTS_OFF", why)
 
-    def test_non_designated_host_blocks_start(self):
+    def test_non_designated_platform_blocks_start(self):
         # 이중 가동 참사 방지 — 두 기계가 각자 master에 병합하면 끝장이다.
-        ok, why = self._gates({"TELEGRAM_POLL_HOST": "some-other-machine"})
+        other = "win32" if sys.platform != "win32" else "darwin"
+        ok, why = self._gates({"primary_platform": other})
         self.assertFalse(ok)
         self.assertIn("이중 가동 방지", why)
         self.assertIn("--claim-ops-host", why)  # 해결 명령을 반드시 알려준다
 
-    def test_designated_host_passes(self):
-        fb = load_bootstrap()
-        ok, _ = self._gates({"TELEGRAM_POLL_HOST": fb._host()})
+    def test_designated_platform_passes(self):
+        ok, _ = self._gates({"primary_platform": sys.platform})
         self.assertTrue(ok)
 
-    def test_unset_host_passes(self):
+    def test_unset_platform_passes(self):
         # 아직 기기를 지정 안 한 상태는 허용(should_poll과 같은 규약).
-        ok, _ = self._gates({"TELEGRAM_POLL_HOST": ""})
+        ok, _ = self._gates({})
         self.assertTrue(ok)
 
 

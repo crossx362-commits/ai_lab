@@ -1,7 +1,7 @@
 {
   "primary_platform": "darwin",
-  "primary_platform_note": "darwin=맥, win32=Windows. 펫나 데몬 6종(봄이·수리·테오·백호·미오·나무)은 이 값과 다른 플랫폼에서 daemon() 진입 시 자가종료한다(petnna_single_machine_guard, _shared/process.py).",
-  "why_this_file_not_env": "기존엔 PETNNA_AGENTS_ON_WINDOWS를 .env.encrypted(기계+계정별 파생 키로 암호화 — _shared/env.py _get_key)에 넣었는데, 그 키가 machine+user 조합이라 맥과 Windows가 같은 암호문을 서로 복호화하지 못한다. 그 결과 두 기계가 실제로는 '다른 설정'을 보고 있었고, 2026-07-10에 Windows를 운영기계로 정했다는 결정이 맥에는 전혀 전달되지 않아 맥에서 5개 데몬이 무방비로 가동되는 사고로 이어졌다(2026-07-11 발견). 이 파일은 평문+git 추적이라 두 기계가 git pull만 하면 반드시 같은 값을 본다.",
+  "primary_platform_note": "darwin=맥, win32=Windows. 이 값과 다른 플랫폼에서는: ①펫나 데몬 6종(봄이·수리·테오·백호·미오·나무)이 daemon() 진입 시 자가종료(petnna_single_machine_guard, _shared/process.py) ②scripts/fleet_bootstrap.py의 git pull 후 자동기동 훅이 기동을 거부(gates(), 2026-07-11부터 TELEGRAM_POLL_HOST 대체). 두 메커니즘이 이 파일 하나를 공유한다 — read_fleet_policy()/write_fleet_policy().",
+  "why_this_file_not_env": "기존엔 PETNNA_AGENTS_ON_WINDOWS(펫나 데몬)와 TELEGRAM_POLL_HOST(전체 함대 부트스트랩)를 각각 .env.encrypted(기계+계정별 파생 키로 암호화 — _shared/env.py _get_key)에 넣었는데, 그 키가 machine+user 조합이라 맥과 Windows가 같은 암호문을 서로 복호화하지 못한다. 그 결과 두 기계가 실제로는 '다른 설정'을 보고 있었고, 2026-07-10에 Windows를 운영기계로 정했다는 결정이 맥에는 전혀 전달되지 않아 맥에서 5개 데몬이 무방비로 가동되는 사고로 이어졌다(2026-07-11 발견). 이 파일은 평문+git 추적이라 두 기계가 git pull만 하면 반드시 같은 값을 본다. 같은 날 두 번째로, TELEGRAM_POLL_HOST도 동일한 결함을 안고 있었음을 발견해 이 파일로 통합했다(오너 지시: \"합칠 수 있는 거 합쳐서 줄이자\") — claim이 더 이상 .env.encrypted를 안 건드리니 이전보다 안전해졌다.",
   "updated": "2026-07-11",
-  "updated_by": "오너 지시 — \"윈도우 메인 아닌데 왜 윈도우 따라가지 맥이 메인임\""
+  "updated_by": "오너 지시 — \"윈도우 메인 아닌데 왜 윈도우 따라가지 맥이 메인임\" + \"합칠 수 있는 거 합쳐서 줄이자\""
 }

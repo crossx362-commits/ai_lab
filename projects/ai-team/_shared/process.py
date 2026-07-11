@@ -209,7 +209,7 @@ class DuplicateGuard:
             print(f"  🧹 Cleared {before - len(self.cache)} old entries")
 
 
-# ==================== 펫나 단일 기계 운영 가드 (git 동기화 정책 파일 우선) ====================
+# ==================== 함대 단일 기계 운영 정책 (git 동기화 정책 파일) ====================
 # 2차 발견(2026-07-11, 같은 날): 양방향 가드로 고친 PETNNA_AGENTS_ON_WINDOWS 플래그 자체가
 # .env.encrypted(기계+계정 파생 키로 암호화 — _shared/env.py _get_key)에 있어, 맥과 Windows가
 # 애초에 "같은 값"을 본 적이 없었다(서로의 암호문을 못 읽으므로 각자 평문 폴백/자기 값을 봄).
@@ -217,18 +217,34 @@ class DuplicateGuard:
 # 읽을 수 있게 고쳐 쓸 방법이 없다 — 잘못 건드리면 Windows 설정 전체가 깨진다.
 # 해법: fleet_machine_policy.json(평문, git 추적)에 "누가 메인인지"를 선언한다. git pull만
 # 하면 두 기계가 항상 동일한 값을 보므로 암호화 키 불일치 문제가 구조적으로 사라진다.
-# 정책 파일이 있으면 그 값이 최우선이고, 없거나 파싱 실패 시에만 구형 플래그 방식으로 폴백
-# (하위호환 — 정책 파일 배포 전 상태에서도 동작 유지).
+#
+# 3차 통합(2026-07-11, 같은 날): scripts/fleet_bootstrap.py가 TELEGRAM_POLL_HOST(역시
+# .env.encrypted 저장 — 위와 똑같은 결함)로 "이중 가동 방지"를 별도로 구현하고 있었다.
+# 그 파일 독스트링엔 이미 "새 개념을 만들지 않아야 두 곳이 어긋나지 않는다"고 적혀 있었는데,
+# 이 정책 파일을 만들며 그 원칙을 어긴 셈이었다(오너 지적 — "합칠 수 있는 거 합쳐서 줄이자").
+# read_fleet_policy()로 정책 파일 읽기를 한 곳에 모으고, petnna_single_machine_guard()와
+# fleet_bootstrap.gates() 양쪽이 이 함수를 공유한다 — TELEGRAM_POLL_HOST/.env.encrypted 경로는
+# fleet_bootstrap.py에서 폐기(이 파일로 완전히 대체).
 _FLEET_POLICY_PATH = Path(__file__).resolve().parent / "fleet_machine_policy.json"
+
+
+def write_fleet_policy(policy: dict) -> Path:
+    """fleet_machine_policy.json을 갱신한다(전체 덮어쓰기). 반환값은 파일 경로(호출자 로그용)."""
+    _FLEET_POLICY_PATH.write_text(json.dumps(policy, ensure_ascii=False, indent=2), encoding="utf-8")
+    return _FLEET_POLICY_PATH
+
+
+def read_fleet_policy() -> dict:
+    """fleet_machine_policy.json을 읽는다. 없거나 파싱 실패하면 {}."""
+    try:
+        return json.loads(_FLEET_POLICY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def petnna_single_machine_guard(agent_label: str = "펫나 에이전트") -> bool:
     """단일 기계 운영 위반이면 True(호출자는 즉시 return해야 함) + 안내 출력."""
-    try:
-        policy = json.loads(_FLEET_POLICY_PATH.read_text(encoding="utf-8"))
-        primary = str(policy.get("primary_platform", "")).strip()
-    except Exception:
-        primary = ""
+    primary = str(read_fleet_policy().get("primary_platform", "")).strip()
 
     if primary:
         if sys.platform != primary:
