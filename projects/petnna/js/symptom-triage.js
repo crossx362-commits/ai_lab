@@ -208,6 +208,7 @@
             '수의사의 진료·진단을 대체하지 않아요. 조금이라도 걱정되면 병원에 문의하세요.</p></div>' +
             ((r.picks.length || String(free).trim())
                 ? '<button onclick="SymptomTriage.saveToRecord()" class="mt-3 w-full rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-xs font-bold">📋 건강수첩에 저장 · 재방문 알림 받기</button>'
+                + '<button onclick="SymptomTriage.openPrepCard()" class="mt-2 w-full rounded-xl border border-brand-200 hover:bg-brand-50 py-2 text-xs font-bold text-brand-600">🏥 병원 방문 준비 카드 만들기</button>'
                 : "") +
             (typeof openVetChatModal === "function"
                 ? '<button onclick="SymptomTriage.close(); openVetChatModal();" class="mt-3 w-full rounded-xl border border-gray-200 hover:bg-gray-50 py-2 text-xs font-bold text-gray-600">AI 수의사에게 자세히 물어보기 →</button>'
@@ -216,6 +217,137 @@
     }
 
     function close() { var el = document.getElementById("st-overlay"); if (el) el.remove(); }
+
+    // ── 병원 방문 준비 카드 (나무_20260708 백로그) ─────────────────
+    // 트리아지 결과 + 증상별 질문 체크리스트 + 최근 접종/투약을 묶어
+    // 수의사에게 그대로 보여줄 수 있는 요약 카드를 만든다. 결정론적 규칙 기반.
+    var VET_QUESTIONS = {
+        breath:  ["헐떡임/숨찬 증상이 언제부터, 쉴 때도 나타나나요?"],
+        cough:   ["기침 소리(마른/젖은)와 하루 중 심해지는 시간대는?"],
+        vomit:   ["구토 횟수·내용물(음식/거품/피)과 물은 마시는지?"],
+        diarr:   ["설사 횟수·색·혈액 여부와 식욕은 어떤지?"],
+        noapp:   ["마지막으로 잘 먹은 시점과 물 섭취량은?"],
+        limp:    ["절뚝임이 어느 다리·언제 시작됐고 만지면 아파하나요?"],
+        seizure: ["발작 지속 시간·빈도와 전후 행동 변화는?"],
+        blood:   ["출혈 부위·양과 색(선홍/검붉음)은?"],
+        itch:    ["가려워하는 부위와 피부 발적·탈모 여부는?"],
+        eye:     ["분비물 색·양과 눈/귀를 비비는지?"],
+        poison:  ["섭취한 물질·추정량과 섭취 시각은?"],
+    };
+    var VET_QUESTIONS_GENERAL = [
+        "증상이 처음 나타난 시점과 이후 변화 양상",
+        "평소와 다른 식사·배변·활동량 변화",
+        "현재 먹이는 사료·간식·영양제/복용 중인 약",
+        "최근 환경 변화(이사·새 음식·산책지 등)",
+    ];
+
+    function recentMeds() {
+        var list = (typeof getMedicalRecordsForActivePet === "function") ? getMedicalRecordsForActivePet() : [];
+        if (!Array.isArray(list)) return [];
+        return list.filter(function (r) {
+            return r && (r.category === "vaccine" || r.category === "medication");
+        }).slice(0, 4);
+    }
+
+    function buildChecklist(picks) {
+        var qs = [];
+        picks.forEach(function (s) {
+            var extra = VET_QUESTIONS[s.id];
+            if (extra) extra.forEach(function (q) { if (qs.indexOf(q) === -1) qs.push(q); });
+        });
+        VET_QUESTIONS_GENERAL.forEach(function (q) { if (qs.indexOf(q) === -1) qs.push(q); });
+        return qs;
+    }
+
+    function medLabel(r) {
+        var cat = r.category === "vaccine" ? "💉 접종" : "💊 투약";
+        var name = r.diagnosis || r.hospital || (r.category === "vaccine" ? "접종" : "처방");
+        return cat + " " + name + (r.visitDate ? " · " + r.visitDate : "");
+    }
+
+    function cardText() {
+        if (!lastResult || !lastResult.pet) return "";
+        var pet = lastResult.pet, r = lastResult.result, free = String(lastResult.free || "").trim();
+        var meta = LEVEL_META[r.level];
+        var symptomText = r.picks.map(function (s) { return s.label; }).join(", ");
+        var lines = [
+            "🏥 병원 방문 준비 카드 — " + (pet.name || "우리 아이"),
+            "긴급도: " + meta.emoji + " " + meta.label,
+            "증상: " + (symptomText || "-") + (free ? " / " + free : ""),
+            "",
+            "[수의사에게 물어볼 것]",
+        ];
+        buildChecklist(r.picks).forEach(function (q, i) { lines.push((i + 1) + ". " + q); });
+        var meds = recentMeds();
+        if (meds.length) {
+            lines.push("");
+            lines.push("[최근 접종/투약]");
+            meds.forEach(function (m) { lines.push("· " + medLabel(m).replace(/^[💉💊]\s*/, "").replace(/^접종\s|^투약\s/, "")); });
+        }
+        lines.push("");
+        lines.push("※ 참고용 요약이며 수의사 진료를 대체하지 않습니다. — 펫과나");
+        return lines.join("\n");
+    }
+
+    function openPrepCard() {
+        if (!lastResult || !lastResult.pet) return;
+        var pet = lastResult.pet, r = lastResult.result, free = String(lastResult.free || "").trim();
+        var meta = LEVEL_META[r.level];
+        var symptomText = r.picks.map(function (s) { return s.label; }).join(", ");
+        var checklistHtml = buildChecklist(r.picks).map(function (q) {
+            return '<li class="flex gap-2 text-xs text-gray-700"><span class="text-brand-400 mt-0.5">☐</span><span>' + esc(q) + "</span></li>";
+        }).join("");
+        var meds = recentMeds();
+        var medsHtml = meds.length
+            ? '<div class="flex flex-wrap gap-1.5">' + meds.map(function (m) {
+                return '<span class="inline-flex items-center bg-white border border-gray-200 text-[11px] font-bold text-gray-600 px-2 py-0.5 rounded-full">' + esc(medLabel(m)) + "</span>";
+            }).join("") + "</div>"
+            : '<p class="text-xs text-gray-400">기록된 접종/투약 정보가 없어요.</p>';
+
+        var old = document.getElementById("st-prep-overlay");
+        if (old) old.remove();
+        var overlay = document.createElement("div");
+        overlay.id = "st-prep-overlay";
+        overlay.className = "fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4";
+        overlay.innerHTML =
+            '<div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">' +
+            '<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 sticky top-0 bg-white">' +
+            '<h3 class="text-base font-extrabold text-gray-900">🏥 병원 방문 준비 카드</h3>' +
+            '<button onclick="SymptomTriage.closePrepCard()" class="text-gray-300 hover:text-gray-500 text-xl leading-none">&times;</button></div>' +
+            '<div class="px-5 py-4 space-y-4">' +
+            '<div class="rounded-xl border px-4 py-3 ' + meta.cls + '">' +
+            '<div class="flex items-center gap-2"><span class="text-xl">' + meta.emoji + '</span>' +
+            '<span class="text-sm font-black">' + esc(pet.name || "우리 아이") + ' · ' + meta.label + '</span></div>' +
+            '<p class="text-xs mt-1.5">증상: ' + esc(symptomText || "-") + (free ? ' / ' + esc(free) : "") + "</p></div>" +
+            '<div><p class="text-xs font-bold text-gray-500 mb-2">수의사에게 물어볼 것</p>' +
+            '<ul class="space-y-1.5">' + checklistHtml + "</ul></div>" +
+            '<div><p class="text-xs font-bold text-gray-500 mb-2">최근 접종/투약</p>' + medsHtml + "</div>" +
+            '<p class="text-[11px] text-gray-400 leading-relaxed">※ 이 카드는 참고용 요약이며 수의사의 진료·진단을 대체하지 않아요.</p>' +
+            '</div>' +
+            '<div class="px-5 py-3 border-t border-gray-100 flex gap-2 sticky bottom-0 bg-white">' +
+            '<button onclick="SymptomTriage.sharePrepCard()" class="flex-1 rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-sm font-bold">📤 공유 · 복사</button>' +
+            "</div></div>";
+        overlay.addEventListener("click", function (e) { if (e.target === overlay) closePrepCard(); });
+        document.body.appendChild(overlay);
+    }
+
+    function closePrepCard() { var el = document.getElementById("st-prep-overlay"); if (el) el.remove(); }
+
+    function sharePrepCard() {
+        var txt = cardText();
+        if (!txt) return;
+        if (navigator.share) {
+            navigator.share({ title: "병원 방문 준비 카드", text: txt }).catch(function () {});
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(function () {
+                if (typeof showToast === "function") showToast("준비 카드를 복사했어요 📋");
+            }).catch(function () {});
+        } else if (typeof showToast === "function") {
+            showToast("공유를 지원하지 않는 환경이에요");
+        }
+    }
 
     // 긴급도별 재방문 리마인더 계획 (once 일정 — 며칠 뒤 병원/관찰 알림)
     var REVISIT = {
@@ -270,5 +402,6 @@
         }
     }
 
-    window.SymptomTriage = { open: open, run: run, close: close, saveToRecord: saveToRecord, _triage: triage };
+    window.SymptomTriage = { open: open, run: run, close: close, saveToRecord: saveToRecord,
+        openPrepCard: openPrepCard, closePrepCard: closePrepCard, sharePrepCard: sharePrepCard, _triage: triage };
 })();
