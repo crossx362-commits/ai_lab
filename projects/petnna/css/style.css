@@ -576,12 +576,17 @@ a:focus-visible {
 }
 
 /* 🎨 폼 필드 포커스 브랜드화 — 기본 파란 아웃라인 대신 브랜드 브라운 링 */
+/* 마우스 클릭·키보드 모두 동일한 브랜드 피드백(border-color + box-shadow) 제공 */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+textarea:focus,
+select:focus,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
     outline: none !important;
     border-color: #a9583e !important;       /* brand-600 테라코타 */
     box-shadow: 0 0 0 3px rgba(169, 88, 62, .35) !important;
+    transition: border-color .18s, box-shadow .18s;
 }
 
 /* 멀티펫 스테이지 리스트 */
