@@ -81,7 +81,58 @@ function renderHealthTab() {
 
     // 예측 웰니스 이상감지 카드
     if (typeof renderWellnessCard === 'function') renderWellnessCard();
+
+    // 일일 권장 사료량 계산기 (RER/MER)
+    renderFoodCalculator();
 }
+
+// 일일 권장 사료량 계산기 (RER/MER)
+// RER = 70 × 체중(kg)^0.75, MER = RER × 활동계수 (종·중성화·활동량 기반)
+function renderFoodCalculator() {
+    const body = document.getElementById('food-calc-body');
+    const empty = document.getElementById('food-calc-empty');
+    if (!body || !empty) return;
+
+    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const weight = pet ? parseFloat(pet.weight) : NaN;
+
+    if (!pet || !(weight > 0)) {
+        body.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+    body.classList.remove('hidden');
+    empty.classList.add('hidden');
+
+    const isCat = (pet.type === 'cat');
+    const neutered = /중성화/.test(pet.gender || '');
+
+    const weightEl = document.getElementById('food-calc-weight');
+    const neuterEl = document.getElementById('food-calc-neuter');
+    if (weightEl) weightEl.textContent = `${weight} kg`;
+    if (neuterEl) neuterEl.textContent = neutered ? '중성화 완료' : '미중성화';
+
+    // 활동계수: 중성화 성체 기준값에서 활동량으로 가감 (수의영양 표준 범위)
+    const base = isCat ? (neutered ? 1.2 : 1.4) : (neutered ? 1.6 : 1.8);
+    const activity = document.getElementById('food-calc-activity')?.value || 'normal';
+    const delta = activity === 'low' ? -0.4 : (activity === 'high' ? 0.4 : 0);
+    const factor = Math.max(0.8, base + delta);
+
+    const rer = 70 * Math.pow(weight, 0.75);
+    const mer = rer * factor;
+
+    const density = parseFloat(document.getElementById('food-calc-density')?.value) || 350;
+    const grams = density > 0 ? (mer / density) * 100 : 0;
+
+    const rerEl = document.getElementById('food-calc-rer');
+    const merEl = document.getElementById('food-calc-mer');
+    const gramsEl = document.getElementById('food-calc-grams');
+    if (rerEl) rerEl.textContent = `${Math.round(rer)} kcal`;
+    if (merEl) merEl.textContent = `${Math.round(mer)} kcal`;
+    if (gramsEl) gramsEl.textContent = `${Math.round(grams)} g`;
+}
+
+window.renderFoodCalculator = renderFoodCalculator;
 
 // 펫 선택 드롭다운 업데이트
 function updateHealthPetSelector() {
