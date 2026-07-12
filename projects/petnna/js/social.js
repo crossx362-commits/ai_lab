@@ -201,10 +201,52 @@ function switchSocialSubTab(subTab) {
     }
 }
 
+// 견종·건강고민별 커뮤니티 채널 (스키마 변경 없이 글 내용/해시태그로 분류)
+const FEED_TOPIC_CHANNELS = [
+    { id: 'all',      label: '전체',       emoji: '🐾', keywords: [] },
+    { id: 'shihtzu',  label: '시츄',       emoji: '🐶', keywords: ['시츄', '시추'] },
+    { id: 'maltese',  label: '말티즈',     emoji: '🐕', keywords: ['말티즈'] },
+    { id: 'poodle',   label: '푸들',       emoji: '🦮', keywords: ['푸들', '푸숑'] },
+    { id: 'pome',     label: '포메',       emoji: '🦊', keywords: ['포메', '포메라니안'] },
+    { id: 'cat',      label: '고양이',     emoji: '🐱', keywords: ['고양이', '냥이', '냥스타'] },
+    { id: 'patella',  label: '슬개골',     emoji: '🦴', keywords: ['슬개골', '파텔라'] },
+    { id: 'dental',   label: '치아·구강',  emoji: '🦷', keywords: ['치아', '스케일링', '치석', '구강'] },
+    { id: 'skin',     label: '피부·알러지',emoji: '🌿', keywords: ['피부', '알러지', '아토피', '가려움'] },
+    { id: 'diet',     label: '체중·식단',  emoji: '🥗', keywords: ['다이어트', '체중', '비만', '사료', '식단'] },
+];
+let activeFeedTopic = 'all';
+
+function postMatchesTopic(post, topicId) {
+    if (topicId === 'all') return true;
+    const topic = FEED_TOPIC_CHANNELS.find(t => t.id === topicId);
+    if (!topic || topic.keywords.length === 0) return true;
+    const text = (post.content || '').toLowerCase();
+    return topic.keywords.some(kw => text.includes(kw.toLowerCase()));
+}
+
+function selectFeedTopic(topicId) {
+    activeFeedTopic = topicId;
+    renderFeed();
+}
+
+function renderTopicFilter() {
+    const bar = document.getElementById('feed-topic-filter');
+    if (!bar) return;
+    bar.innerHTML = FEED_TOPIC_CHANNELS.map(t => {
+        const active = t.id === activeFeedTopic;
+        const cls = active
+            ? 'bg-brand-500 text-white border-brand-500'
+            : 'bg-white text-gray-600 border-amber-100 hover:bg-brand-50';
+        return `<button onclick="selectFeedTopic('${t.id}')" class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-colors ${cls}">${t.emoji} ${escapeHtml(t.label)}</button>`;
+    }).join('');
+}
+
 // 3. 자랑 피드 타임라인 렌더러
 function renderFeed() {
     const feedContainer = document.getElementById('feed-list');
     if (!feedContainer) return;
+
+    renderTopicFilter();
 
     feedContainer.innerHTML = '';
 
@@ -226,10 +268,15 @@ function renderFeed() {
     });
 
     const blockedList = typeof getBlockedNeighbors === 'function' ? getBlockedNeighbors() : [];
-    const visiblePosts = posts.filter(post => !blockedList.some(b => b.petName === post.petName));
+    const visiblePosts = posts
+        .filter(post => !blockedList.some(b => b.petName === post.petName))
+        .filter(post => postMatchesTopic(post, activeFeedTopic));
 
     if (visiblePosts.length === 0) {
-        feedContainer.innerHTML = `<div class="bg-white rounded-3xl p-8 border border-amber-50 text-center text-gray-400 text-xs">피드가 비어있습니다. 첫 소식을 업로드해 보세요! 📢</div>`;
+        const emptyMsg = activeFeedTopic === 'all'
+            ? '피드가 비어있습니다. 첫 소식을 업로드해 보세요! 📢'
+            : '이 채널에 아직 글이 없어요. 해시태그로 첫 글을 남겨보세요! 🏷️';
+        feedContainer.innerHTML = `<div class="bg-white rounded-3xl p-8 border border-amber-50 text-center text-gray-400 text-xs">${emptyMsg}</div>`;
         return;
     }
 

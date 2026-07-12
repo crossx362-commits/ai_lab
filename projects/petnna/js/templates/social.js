@@ -167,6 +167,11 @@ const SOCIAL_TEMPLATE = `
                 </div>
             </div>
 
+            <!-- 견종·건강고민별 커뮤니티 채널 필터 칩 -->
+            <div id="feed-topic-filter" class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                <!-- 동적 필터 칩이 JS를 통해 빌드됨 -->
+            </div>
+
             <!-- 타임라인 피드 리스트 -->
             <div id="feed-list" class="space-y-6">
                 <!-- 동적 피드 카드가 JS를 통해 빌드됨 -->
