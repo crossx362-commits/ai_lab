@@ -305,9 +305,14 @@ const HEALTH_TEMPLATE = `
                 <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
                     <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
                 </h2>
-                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
-                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
+                        <i class="fa-solid fa-id-card mr-1"></i>응급·여행 카드
+                    </button>
+                    <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
+                        <i class="fa-solid fa-plus mr-1"></i>기록 추가
+                    </button>
+                </div>
             </div>
             <div class="px-5 py-4">
                 <div id="medical-records-timeline"></div>
