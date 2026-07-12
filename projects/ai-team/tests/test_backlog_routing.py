@@ -18,6 +18,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 COUNCIL_PATH = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
 TEO_PATH = AI_TEAM_ROOT / "skills" / "테오_테스트" / "tools" / "petnna_test_engineer.py"
 MIO_PATH = AI_TEAM_ROOT / "skills" / "미오_디자인" / "tools" / "petnna_design_review.py"
+NAMU_PATH = AI_TEAM_ROOT / "skills" / "나무_기획" / "tools" / "petnna_product_manager.py"
 
 
 def load(name: str, path: Path):
@@ -207,6 +208,70 @@ class MioBacklogConsumption(unittest.TestCase):
             self.mio.review(do_send=False)
         item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
         self.assertNotIn("attempts", item, "인프라 실패는 시도 횟수에 반영되면 안 된다")
+
+
+class NamuBacklogWriteTests(unittest.TestCase):
+    """나무 add_backlog_items()의 id 충돌 방지 — 자동 파이프라인 감사 도구가 발견
+    (2026-07-12): 미오에만 적용된 수정이 나무엔 누락된 비대칭이었다."""
+
+    def setUp(self):
+        self.namu = load("namu_under_test", NAMU_PATH)
+        self.tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+
+    def _write(self, items):
+        self.tmp.write_text(json.dumps({"items": items}, ensure_ascii=False), encoding="utf-8")
+        return mock.patch.object(self.namu, "BACKLOG", self.tmp)
+
+    def test_two_calls_never_produce_colliding_ids(self):
+        with self._write([]):
+            self.namu.add_backlog_items(
+                [{"title": "제안 A", "detail": "d", "priority": "P2"}], source="나무", itype="기획")
+            self.namu.add_backlog_items(
+                [{"title": "제안 B", "detail": "d", "priority": "P2"}], source="나무", itype="기획")
+            items = json.loads(self.tmp.read_text(encoding="utf-8"))["items"]
+        ids = [i["id"] for i in items]
+        self.assertEqual(len(ids), len(set(ids)), f"두 번의 적재가 id를 공유하면 안 된다: {ids}")
+
+
+class BacklogReadFailureSafetyTests(unittest.TestCase):
+    """backlog.json 읽기가 실패하면(다른 프로세스의 non-atomic write 도중 읽었을 가능성)
+    빈 dict로 대체해 통째로 덮어쓰면 안 된다 — 자동 파이프라인 감사 도구가 발견
+    (2026-07-12): 미오·나무·회의 셋 다 이 함정이 있었다. 미오·나무는 add_backlog_items()가
+    write를 건너뛰고 return 0, 회의는 액션아이템 적재만 건너뛰고 회의록·텔레그램은 계속."""
+
+    def _corrupt(self, tmp):
+        tmp.write_text("{not valid json", encoding="utf-8")  # 실제 backlog.json 존재 + 파싱 실패 재현
+
+    def test_mio_skips_write_on_corrupt_backlog(self):
+        mio = load("mio_corrupt_under_test", MIO_PATH)
+        tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+        self._corrupt(tmp)
+        with mock.patch.object(mio, "BACKLOG", tmp):
+            added = mio.add_backlog_items(
+                [{"title": "새 제안", "detail": "d", "priority": "P2"}], source="미오", itype="디자인")
+        self.assertEqual(added, 0)
+        self.assertEqual(tmp.read_text(encoding="utf-8"), "{not valid json",
+                         "파싱 실패 시 기존(손상됐더라도) 파일을 덮어쓰면 안 된다")
+
+    def test_namu_skips_write_on_corrupt_backlog(self):
+        namu = load("namu_corrupt_under_test", NAMU_PATH)
+        tmp = Path(tempfile.mkdtemp()) / "backlog.json"
+        self._corrupt(tmp)
+        with mock.patch.object(namu, "BACKLOG", tmp):
+            added = namu.add_backlog_items(
+                [{"title": "새 제안", "detail": "d", "priority": "P2"}], source="나무", itype="기획")
+        self.assertEqual(added, 0)
+        self.assertEqual(tmp.read_text(encoding="utf-8"), "{not valid json")
+
+    def test_missing_file_still_starts_fresh(self):
+        """파일이 아예 없는 건(첫 실행) 손상과 다르다 — 빈 백로그로 정상 시작해야 한다."""
+        mio = load("mio_missing_under_test", MIO_PATH)
+        tmp = Path(tempfile.mkdtemp()) / "backlog.json"  # 생성 안 함 — 없는 파일
+        with mock.patch.object(mio, "BACKLOG", tmp):
+            added = mio.add_backlog_items(
+                [{"title": "첫 제안", "detail": "d", "priority": "P2"}], source="미오", itype="디자인")
+        self.assertEqual(added, 1)
+        self.assertTrue(tmp.exists())
 
 
 class TeoBacklogConsumption(unittest.TestCase):

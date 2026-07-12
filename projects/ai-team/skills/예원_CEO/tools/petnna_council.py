@@ -179,26 +179,34 @@ def convene(topic: str, context: str, priority: str) -> None:
         added = 0
         try:
             data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-        except Exception:
+        except FileNotFoundError:
             data = {"items": []}
-        existing = {i.get("title") for i in data["items"]}
-        for a in actions if isinstance(actions, list) else []:
-            title = (a.get("title") or "").strip()
-            if not title or title in existing:
-                continue
-            human = needs_human(title, a.get("owner", ""), a.get("detail") or "",
-                                a.get("type", "기획"))
-            data["items"].append({
-                "id": f"회의_{datetime.now():%Y%m%d%H%M}_{added}",
-                "title": title[:120], "detail": (a.get("detail") or "")[:500],
-                "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
-                "type": a.get("type", "기획"), "source": "회의",
-                "status": "보류" if human else "대기",
-                "owner": a.get("owner", ""), "created": datetime.now().isoformat(),
-            })
-            added += 1
-        BACKLOG.parent.mkdir(parents=True, exist_ok=True)
-        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        except Exception as e:
+            # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
+            # 빈 dict로 대체해 아래에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
+            # (자동 파이프라인 감사 도구가 발견, 2026-07-12). 액션아이템 적재는 건너뛰되
+            # 회의록·텔레그램은 이미 만들어진 대로 계속 진행 — 기존 백로그 파일 보존.
+            print(f"[회의] 백로그 읽기 실패(파일 손상 가능) — 액션아이템 적재 건너뜀: {e}")
+            data = None
+        if data is not None:
+            existing = {i.get("title") for i in data["items"]}
+            for a in actions if isinstance(actions, list) else []:
+                title = (a.get("title") or "").strip()
+                if not title or title in existing:
+                    continue
+                human = needs_human(title, a.get("owner", ""), a.get("detail") or "",
+                                    a.get("type", "기획"))
+                data["items"].append({
+                    "id": f"회의_{datetime.now():%Y%m%d%H%M}_{added}",
+                    "title": title[:120], "detail": (a.get("detail") or "")[:500],
+                    "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
+                    "type": a.get("type", "기획"), "source": "회의",
+                    "status": "보류" if human else "대기",
+                    "owner": a.get("owner", ""), "created": datetime.now().isoformat(),
+                })
+                added += 1
+            BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+            BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         minutes = OUT_DIR / f"minutes_{datetime.now():%Y%m%d_%H%M}.md"

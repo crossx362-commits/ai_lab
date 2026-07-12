@@ -87,8 +87,16 @@ def take_screenshots() -> list[Path]:
 def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
     try:
         data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except Exception:
+    except FileNotFoundError:
         data = {"items": []}
+    except Exception as e:
+        # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
+        # 빈 dict로 대체해 이 함수 끝에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
+        # (자동 파이프라인 감사 도구가 발견, 2026-07-12: 6개 도구가 락 없이 backlog.json에
+        # 동시 접근하는 경합의 가장 파괴적인 구체 사례). 이번 적재는 건너뛰고 다음 주기에
+        # 재시도한다 — 기존 파일을 그대로 보존.
+        print(f"[미오] 백로그 읽기 실패(파일 손상 가능) — 이번 적재는 건너뜀: {e}")
+        return 0
     existing = {i.get("title") for i in data["items"]}
     # id 충돌 방지 — 시각(초 단위)만으로는 같은 날 review()가 두 번 불릴 때(배정과제
     # 폴링+정기리뷰가 겹치는 경우, 2026-07-11 폴링 도입으로 실현 가능해짐) 여전히 같은
