@@ -1,5 +1,13 @@
 const WALK_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
+    <!-- ── 날씨 연동 산책 안심 코치 ──────────────────────────────── -->
+    <div id="walk-weather-coach" class="bg-white rounded-2xl p-3 border border-amber-50 shadow-sm">
+        <div class="flex items-center gap-2 text-xs text-gray-400">
+            <i class="fa-solid fa-cloud-sun-rain text-brand-400"></i>
+            <span>날씨 안심 코치 불러오는 중…</span>
+        </div>
+    </div>
+
     <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-stretch">
     <div class="flex-1 min-w-0 bg-white rounded-2xl p-4 border border-amber-50 shadow-sm relative overflow-hidden sm:flex sm:flex-col">
 
