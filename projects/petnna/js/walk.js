@@ -1195,6 +1195,105 @@ function renderWalkHistory() {
     });
 }
 
+// ── 산책메이트 라이트 (동네 태그 기반 옵트인, 클라이언트 전용) ──────────
+const WALKMATE_STORAGE_KEY = 'petna_walkmate';
+
+// 베타 샘플 프로필 — 실제 이웃이 옵트인하기 전까지 매칭 감을 보여주는 예시 데이터
+const WALKMATE_SAMPLE_MATES = [
+    { name: '초코 아빠', pet: '초코 (푸들)', dong: '역삼동', time: '아침', emoji: '🐩' },
+    { name: '보리 언니', pet: '보리 (믹스견)', dong: '역삼동', time: '저녁', emoji: '🐕' },
+    { name: '나비 집사', pet: '나비 (코숏)', dong: '삼성동', time: '저녁', emoji: '🐈' },
+    { name: '몽이 누나', pet: '몽이 (말티즈)', dong: '삼성동', time: '아침', emoji: '🐶' },
+    { name: '두부 아빠', pet: '두부 (시바)', dong: '연남동', time: '오후', emoji: '🐕‍🦺' },
+    { name: '루비 집사', pet: '루비 (포메)', dong: '연남동', time: '저녁', emoji: '🦮' },
+];
+
+function getWalkMateState() {
+    try {
+        return JSON.parse(localStorage.getItem(WALKMATE_STORAGE_KEY)) || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveWalkMateState(state) {
+    localStorage.setItem(WALKMATE_STORAGE_KEY, JSON.stringify(state));
+}
+
+function renderWalkMate() {
+    const box = document.getElementById('walkmate-section');
+    if (!box) return;
+    const state = getWalkMateState();
+
+    if (!state.optIn) {
+        box.innerHTML = `
+            <div class="space-y-2.5">
+                <input type="text" id="walkmate-dong-input" maxlength="20" value="${(state.dong || '').replace(/"/g, '')}"
+                    placeholder="우리 동네 (예: 역삼동)"
+                    class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-brand-400 transition-colors">
+                <button onclick="optInWalkMate()"
+                    class="w-full bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-hand-holding-heart"></i> 함께 산책해요 켜기
+                </button>
+            </div>`;
+        return;
+    }
+
+    const dong = state.dong || '';
+    const mates = WALKMATE_SAMPLE_MATES.filter(m => dong && m.dong.includes(dong));
+    const matesHtml = mates.length
+        ? mates.map(m => `
+            <div class="flex items-center gap-3 p-3 bg-gray-50/80 border border-gray-100 rounded-2xl">
+                <span class="text-2xl leading-none">${m.emoji}</span>
+                <div class="flex-grow min-w-0">
+                    <p class="text-xs font-bold text-gray-800 truncate">${m.name} · <span class="text-gray-500 font-semibold">${m.pet}</span></p>
+                    <p class="text-[10px] text-gray-400 font-semibold">📍 ${m.dong} · 주로 ${m.time} 산책</p>
+                </div>
+                <button onclick="greetWalkMate('${m.name}')"
+                    class="shrink-0 text-[10px] bg-white hover:bg-brand-50 border border-brand-200 text-brand-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all">
+                    <i class="fa-solid fa-paw mr-1"></i>인사
+                </button>
+            </div>`).join('')
+        : `<div class="text-center py-5 space-y-1">
+                <span class="text-3xl">🐾</span>
+                <p class="text-[11px] text-gray-400 font-semibold">'${dong}'에서 아직 매칭된 이웃이 없어요.</p>
+                <p class="text-[10px] text-gray-300">이웃이 옵트인하면 여기에 나타나요!</p>
+           </div>`;
+
+    box.innerHTML = `
+        <div class="space-y-2.5">
+            <div class="flex items-center justify-between bg-brand-50/60 border border-brand-100/40 rounded-2xl px-3 py-2">
+                <span class="text-[11px] font-bold text-brand-700"><i class="fa-solid fa-location-dot mr-1"></i>${dong || '동네 미설정'} · 산책메이트 켜짐</span>
+                <button onclick="optOutWalkMate()" class="text-[10px] text-gray-400 hover:text-red-500 font-bold transition-colors">끄기</button>
+            </div>
+            <div class="space-y-2">${matesHtml}</div>
+            <p class="text-[9px] text-gray-300 text-center">베타 샘플 프로필입니다. 실제 이웃 매칭은 순차 오픈돼요.</p>
+        </div>`;
+}
+
+function optInWalkMate() {
+    const input = document.getElementById('walkmate-dong-input');
+    const dong = input ? input.value.trim() : '';
+    if (!dong) {
+        if (typeof showToast === 'function') showToast('동네 이름을 입력해 주세요! 🏡');
+        return;
+    }
+    saveWalkMateState({ optIn: true, dong });
+    renderWalkMate();
+    if (typeof showToast === 'function') showToast(`'${dong}' 산책메이트를 켰어요! 🐾`);
+}
+
+function optOutWalkMate() {
+    const state = getWalkMateState();
+    saveWalkMateState({ optIn: false, dong: state.dong || '' });
+    renderWalkMate();
+    if (typeof showToast === 'function') showToast('산책메이트를 껐어요.');
+}
+
+function greetWalkMate(name) {
+    if (typeof showToast === 'function') showToast(`${name}님에게 산책 인사를 보냈어요! 🐾`);
+}
+
 function deleteWalkLog(id) {
     walks = walks.filter(w => w.id !== id);
     saveState();
