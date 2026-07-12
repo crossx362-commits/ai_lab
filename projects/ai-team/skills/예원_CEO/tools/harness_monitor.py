@@ -10,8 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from _shared.env import load_env
 from _shared.notify import agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
 from _shared.telegram import send
-from _shared.process import ProcessLock, read_fleet_policy
-from _shared.backlog import owner_can_consume
+from _shared.process import ProcessLock
 from _shared import growth
 
 load_env()
@@ -181,107 +180,14 @@ def restart_on_code_update() -> None:
             sys.exit(0)  # SystemExit은 except Exception에 안 걸린다 — ProcessLock.__exit__까지 돈다
 
 
-# ==================== 유휴 감지 → 즉시 작업 디스패치 ====================
-# 배경(2026-07-11, 오너 "왜 다 노냐 계속 일하라고"): 미오(주 1회 월요일)·테오(하루 1회 10시)는
-# 백로그에 배정된 과제가 있어도 자기 정기 슬롯까지 최대 며칠을 기다렸다(미오는 최대 6일).
-# 각 데몬 내부에 배정과제 폴링을 추가했지만(미오 1시간, 테오는 여전히 하루 1회), 예원 워치독
-# (5분 주기)이 한 번 더 감시해 그보다 훨씬 빨리 깨우는 게 "놀면 바로 일 시킨다"에 부합한다.
-# 각 스크립트의 실행구간은 advisory_lock으로 보호돼 있어(2026-07-11) 데몬 자체 주기와
-# 겹쳐도 안전하게 스킵된다 — 여기서는 그냥 쏘고 신경 쓰지 않는다(백그라운드, 논블로킹).
-BACKLOG_PATH = os.path.join(ROOT_DIR, "output", "qa", "petnna", "backlog.json")
-DISPATCH_COOLDOWN_SEC = 1200  # 같은 담당자 재디스패치 최소 간격(중복 기동 스팸 방지)
-DISPATCH_TARGETS = {
-    # owner(백로그) → (스크립트 상대경로, 인자, 로그 베이스명 — bot_logs의 기존 파일과 동일해야
-    # 정상 데몬 실행 로그와 한곳에서 이어 보인다. advisory_lock 이름과도 일치시킴).
-    "미오": ("미오_디자인/tools/petnna_design_review.py", ["--send"], "mio_design_review"),
-    "테오": ("테오_테스트/tools/petnna_test_engineer.py", ["--gen", "--send"], "teo_test_engineer"),
-    "백호": ("백호_백엔드/tools/petnna_backend_guard.py", ["--tasks", "--send"], "baekho_backend_guard"),
-    # 수리는 자체 주기(기본 1시간)가 이미 짧고 매 사이클 백로그를 직접 확인하므로 제외.
-}
-
-
-def _pending_backlog_owners() -> set[str]:
-    try:
-        with open(BACKLOG_PATH, encoding="utf-8") as f:
-            items = json.load(f).get("items", [])
-    except Exception:
-        return set()
-    # owner_can_consume: owner는 소비자가 있어도 담당 도구가 안 보는 type이면(예: 테오에게
-    # type=기획, 또는 type 미지정) 디스패치해봤자 그 도구가 못 집는다 — 20분마다 영구
-    # 재점화만 하게 된다(자동 파이프라인 감사 도구가 2026-07-11·2026-07-12 두 차례 발견).
-    # owner_type_mismatch()(적재/라우팅용, type 모름=관대)와 달리 이건 디스패치 판정이라
-    # type이 비어 있으면 테오·미오는 확실히 못 집으므로 엄격하게 본다.
-    return {i.get("owner") for i in items
-            if i.get("status") == "대기" and i.get("owner") in DISPATCH_TARGETS
-            and owner_can_consume(i.get("owner"), i.get("type", ""))}
-
-
-def dispatch_idle_backlog_work(state: dict) -> list[str]:
-    """백로그에 '대기' 과제가 있는 담당자를 요일/슬롯과 무관하게 즉시 깨운다.
-    state: {owner: last_dispatch_epoch, "_fail_alert_ts": epoch} (데몬 메모리 상주, 재시작 시 리셋되나 무해)."""
-    if _bots_off():
-        return []
-    # 이 기계가 펫나 에이전트 담당(primary)이 아니면 디스패치도 하지 않는다(자동 파이프라인
-    # 감사 도구가 발견, 2026-07-11) — daemon()의 petnna_single_machine_guard()는 각 에이전트
-    # 스크립트 안에서만 걸리는데, 여기서 비데몬 모드(--send 등)로 직접 실행하면 그 가드를
-    # 안 거친다. primary가 아닌 기계에서 예원이 돌면 이중 가동 참사(단일 기계 가드의 존재
-    # 이유)를 코드가 아니라 문서로만 막는 셈이 된다.
-    primary = str(read_fleet_policy().get("primary_platform", "")).strip()
-    if primary and sys.platform != primary:
-        return []
-    owners = _pending_backlog_owners()
-    if not owners:
-        return []
-    now = time.time()
-    dispatched = []
-    # __file__ = skills/예원_CEO/tools/harness_monitor.py — skills/까지 두 단계 위로
-    # (tools→예원_CEO→skills). 한 단계만 올라가면 skills/예원_CEO가 되어 rel_script
-    # ("테오_테스트/tools/...")와 합쳐질 때 skills/예원_CEO/테오_테스트/... 라는
-    # 존재하지 않는 경로가 만들어진다 — 2026-07-11 밤부터 다음날 낮까지 20분마다
-    # 계속 이 오류로 디스패치가 조용히 실패하고 있었다(오너가 "지금은 뭐해"로
-    # 실제 로그를 확인하다 발견). Popen()은 python3 자체는 성공적으로 띄우므로
-    # 예외를 안 던져 fd누수/텔레그램 경보 코드가 이 실패를 못 잡았다 — Popen 성공이
-    # "스크립트가 정상 실행됨"을 보장하지 않는다는 걸 놓친 것.
-    skills_dir = os.path.join(os.path.dirname(__file__), "..", "..")
-    log_dir = os.path.join(ROOT_DIR, "output", "bot_logs")
-    for owner in owners:
-        last = state.get(owner, 0.0)
-        if now - last < DISPATCH_COOLDOWN_SEC:
-            continue
-        rel_script, args, log_name = DISPATCH_TARGETS[owner]
-        script = os.path.join(skills_dir, rel_script)
-        out_f = err_f = None
-        try:
-            # DEVNULL로 버리면 예원이 자동 디스패치한 실행이 실패해도 흔적이 안 남는다
-            # (2026-07-11 리뷰 중 발견) — 평소 데몬이 쓰는 것과 같은 로그 파일에 이어 쓴다.
-            out_f = open(os.path.join(log_dir, f"{log_name}.out.log"), "a", encoding="utf-8")
-            err_f = open(os.path.join(log_dir, f"{log_name}.err.log"), "a", encoding="utf-8")
-            print(f"[{datetime.now()}] === 예원 유휴감지 디스패치 ===", file=out_f, flush=True)
-            subprocess.Popen(
-                [sys.executable, script, *args],
-                cwd=ROOT_DIR, stdout=out_f, stderr=err_f,
-                start_new_session=(sys.platform != "win32"),
-                **_NOWIN,
-            )
-            state[owner] = now
-            dispatched.append(owner)
-        except Exception as e:
-            # 2차 감사가 발견(2026-07-11): 예외 경로에서 열린 로그 fd가 안 닫혀 누수되고,
-            # 실패가 print만 되고 텔레그램엔 안 보여 오너가 반복 실패를 알 방법이 없었다.
-            print(f"[예원] {owner} 디스패치 실패: {e}")
-            alert_ts = state.get("_fail_alert_ts", 0.0)
-            if now - alert_ts > DISPATCH_COOLDOWN_SEC:
-                try:
-                    send(f"⚠️ [예원] 유휴감지 디스패치 실패 — {owner}: {str(e)[:150]}", silent=True)
-                    state["_fail_alert_ts"] = now
-                except Exception:
-                    pass
-        finally:
-            if out_f:
-                out_f.close()
-            if err_f:
-                err_f.close()
-    return dispatched
+# ==================== 유휴감지 디스패치 — 도입 후 제거(2026-07-12) ====================
+# 2026-07-11 "왜 다 노냐 계속 일하라고" 지적으로 예원 워치독이 backlog.json을 직접 보고
+# 미오·테오·백호를 크로스프로세스로 깨우는 기능을 만들었으나, 24시간 안에 사고 6건을
+# 냈다(sys.exit 위험·출력 유실·due_slot 부작용으로 슬롯 유실·단일기계가드 우회·fd누수·
+# 스크립트 경로 오류로 3시간+ 전면 실패). 검토 결과 수리·백호는 이미 자체 폴링이 있었고
+# 미오도 이미 자체 폴링으로 고쳐뒀던 터라, 남은 건 테오뿐이었다 — 크로스프로세스 조율
+# 대신 테오에도 미오와 같은 자체 폴링(daemon()의 TEO_ASSIGNED_POLL_SEC)을 추가해 이
+# 기능 전체를 제거했다. "각자 자기 배정만 본다"가 "한 곳이 전부 조율한다"보다 안전하다.
 
 
 # 하네스 이슈 → 원인 에이전트 자동 복구 매핑: (검사명, 메시지 부분문자열, 재시작 대상)
@@ -374,7 +280,6 @@ def main():
     last_growth_date = None
     last_issue_sig = ""
     remedy_state: dict = {}
-    dispatch_state: dict = {}
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -410,14 +315,6 @@ def main():
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
                     time.sleep(10)  # 재시작 대기
-
-                # 유휴 감지: 백로그에 배정 과제가 있는데 정기 슬롯이 아직 안 왔으면 즉시 디스패치
-                try:
-                    dispatched = dispatch_idle_backlog_work(dispatch_state)
-                    if dispatched:
-                        print(f"[예원] 유휴 담당자 즉시 디스패치: {', '.join(dispatched)}")
-                except Exception as e:
-                    print(f"백로그 디스패치 오류: {e}")
 
                 # 성장 점검: 하루 1회(17시 이후) 발송 — 스팸 방지
                 now = datetime.now()

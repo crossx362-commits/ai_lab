@@ -307,28 +307,45 @@ def daemon() -> None:
     slots = os.getenv("TEO_SLOTS", "10:00").split(",")
     poll = int(os.getenv("TEO_POLL_SEC", "300"))
     cooldown = int(os.getenv("TEO_COOLDOWN_SEC", "1200"))
+    # 배정 테스트 과제(회의·예원이 백로그에 올린 것)는 하루 1회 슬롯까지 기다리면 최대
+    # 24h 방치된다 — 예원 워치독의 크로스프로세스 디스패치로 이 문제를 풀었었지만
+    # (2026-07-11), 그 기능 자체가 sys.exit 위험·출력 유실·경로 버그 등 6건의 사고를
+    # 냈다(2026-07-12 검토). 수리·백호·미오는 이미 자체 폴링으로 이 문제가 없었으므로,
+    # 테오도 미오와 같은 패턴(요일/슬롯 무관 주기적 자체 확인)으로 자체 해결하고 예원의
+    # 디스패치 자체를 제거했다 — 크로스프로세스 조율보다 각자 자기 배정만 보는 쪽이
+    # 훨씬 단순하고 안전하다.
+    assigned_poll = int(os.getenv("TEO_ASSIGNED_POLL_SEC", "3600"))
     with ProcessLock("teo_test_engineer_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
-        print(f"[{datetime.now()}] 테오 데몬 시작 — 정기 {','.join(slots)} + 변경 감지")
+        print(f"[{datetime.now()}] 테오 데몬 시작 — 정기 {','.join(slots)} + 변경 감지 "
+              f"+ 배정과제는 {assigned_poll}s마다 확인")
         last_digest = _tree_digest()
         last_run = 0.0
+        last_assigned_check = 0.0
         while True:
             try:
                 digest = _tree_digest()
                 changed = digest != last_digest
                 # "teo_test_engineer"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는 비치명적
-                # 락 — 예원 워치독의 수동 디스패치와 겹쳐도 데몬이 죽지 않는다. due_slot()은
-                # 호출 즉시 "오늘 실행됨"을 기록해버리므로(부작용) 락 밖에서 먼저 부르면,
-                # 락을 못 잡아 generate_test+report가 스킵돼도 슬롯은 이미 소진돼 그날
-                # 생성·회귀 실행이 통째로 유실된다(2026-07-11 2차 파이프라인 감사가 발견 —
-                # 백호만 이 순서가 맞았음, 대칭 맞춤).
+                # 락 — 수동 --gen 실행과 겹쳐도 데몬이 죽지 않는다. due_slot()은 호출 즉시
+                # "오늘 실행됨"을 기록해버리므로(부작용) 락 밖에서 먼저 부르면, 락을 못 잡아
+                # generate_test+report가 스킵돼도 슬롯은 이미 소진돼 그날 생성·회귀 실행이
+                # 통째로 유실된다(2026-07-11 2차 파이프라인 감사가 발견 — 백호만 이 순서가
+                # 맞았음, 대칭 맞춤).
                 with advisory_lock("teo_test_engineer") as got:
                     if got:
                         slot = due_slot(slots, SLOT_STATE, weekdays_only=False)
+                        due_assigned = (not slot and _backlog_task()
+                                         and time.time() - last_assigned_check > assigned_poll)
                         if slot:
                             generate_test(do_send=True)  # 하루 1개 생성 시도(상한 도달 시 no-op)
                             report(run_suite(), do_send=True)
                             last_run = time.time()
                             last_digest = _tree_digest()
+                            last_assigned_check = time.time()
+                        elif due_assigned:
+                            print(f"[{datetime.now()}] 배정 과제 발견 — 슬롯 무관 즉시 생성")
+                            generate_test(do_send=True)
+                            last_assigned_check = time.time()
                         elif changed and time.time() - last_run > cooldown:
                             print(f"[{datetime.now()}] 변경 감지 → 스위트 실행")
                             report(run_suite(), do_send=True)

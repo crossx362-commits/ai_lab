@@ -58,20 +58,6 @@ def owner_type_mismatch(owner: str, item_type: str) -> bool:
     return bool(allowed) and item_type not in allowed
 
 
-def owner_can_consume(owner: str, item_type: str) -> bool:
-    """이 owner가 이 type의 배정 과제를 실제로 소비할 수 있는가(디스패치 판정용).
-
-    owner_type_mismatch()의 역(逆)이 아니다 — 그쪽은 "type 모름=관대하게 통과"지만,
-    이 함수는 "이미 backlog.json에 있는 구체적 항목을 지금 당장 디스패치해도 되는가"를
-    묻는다. type이 비어 있으면 테오·미오는 확실히 못 집으므로(정확히 '테스트'/'디자인'만
-    본다) 여기서는 엄격하게 False다. 안 그러면 owner=테오·type='' 항목이 방어 필터를
-    통과해 20분마다 영구 재디스패치되는 좀비가 된다(자동 파이프라인 감사 도구가
-    2026-07-12에 발견 — 현재는 council이 항상 type을 채워 자연 발생 경로는 없지만,
-    수동/외부 적재나 향후 프롬프트 변경에 대비한 방어)."""
-    allowed = OWNER_ALLOWED_TYPES.get(owner)
-    if not allowed:
-        return True  # 제약 없는 owner(백호·수리)는 항상 소비 가능
-    return item_type in allowed
 
 
 # 백로그를 실제로 소비하는 owner만. 여기 없는 owner(예: 나무 — 적재만 하고 안 읽음)로
