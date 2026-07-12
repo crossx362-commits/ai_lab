@@ -147,6 +147,87 @@ function renderHealthCalendar() {
         </div>`;
 }
 
+// 복약 순응도 30일 트래커 (care-scheduler 투약 기록 기반 히트맵 + 순응률%)
+function renderMedAdherenceTracker() {
+    const el = document.getElementById('med-adherence-tracker');
+    if (!el) return;
+
+    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const petId = activePet ? activePet.id : null;
+
+    const medSchedules = careSchedules.schedules.filter(s =>
+        s.type === 'medicine' && (petId == null || s.petId == null || s.petId === petId));
+
+    // 투약 일정이 없으면 위젯 숨김 (공간 절약)
+    if (medSchedules.length === 0) {
+        el.innerHTML = '';
+        el.style.display = 'none';
+        return;
+    }
+    el.style.display = 'block';
+
+    const medDone = careSchedules.completionHistory.filter(c =>
+        c.type === 'medicine' && (petId == null || c.petId == null || c.petId === petId));
+
+    // 주어진 날짜(dateStr)에 특정 투약 일정이 예정돼 있었는지 (care-scheduler getTodaySchedules 로직과 동일)
+    function expectedOn(schedule, dateObj, dateStr) {
+        if (schedule.createdAt && new Date(schedule.createdAt).toISOString().split('T')[0] > dateStr) return false;
+        if (schedule.repeat === 'daily') return true;
+        if (schedule.repeat === 'weekly') return (schedule.repeatDays || []).includes(dateObj.getDay());
+        if (schedule.repeat === 'monthly') {
+            const base = new Date(schedule.date || schedule.createdAt);
+            return base.getDate() === dateObj.getDate();
+        }
+        if (schedule.repeat === 'once') return schedule.date === dateStr;
+        return false;
+    }
+
+    const today = new Date();
+    let totalExpected = 0, totalTaken = 0;
+
+    const cells = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (29 - i));
+        const dateStr = d.toISOString().split('T')[0];
+        const expected = medSchedules.filter(s => expectedOn(s, d, dateStr)).length;
+        const taken = medDone.filter(c => (c.completedAt || '').startsWith(dateStr)).length;
+        totalExpected += expected;
+        totalTaken += Math.min(taken, expected);
+
+        const isToday = dateStr === today.toISOString().split('T')[0];
+        let bg, label;
+        if (expected === 0 && taken === 0) { bg = 'bg-gray-100'; label = '예정 없음'; }
+        else if (taken >= (expected || 1)) { bg = 'bg-emerald-400'; label = '복용 완료'; }
+        else if (taken > 0) { bg = 'bg-amber-300'; label = '일부 복용'; }
+        else { bg = 'bg-rose-300'; label = '미복용'; }
+        if (isToday) bg += ' ring-1 ring-amber-400';
+        return `<div class="w-3 h-3 rounded-sm ${bg}" title="${dateStr} · ${label} (${taken}/${expected})"></div>`;
+    }).join('');
+
+    const rate = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 100;
+    const rateColor = rate >= 80 ? 'text-emerald-600' : rate >= 60 ? 'text-amber-600' : 'text-rose-600';
+
+    el.innerHTML = `
+        <div class="card-modern p-4">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">💊</span>
+                    <h3 class="text-sm font-bold text-gray-900">복약 순응도 (최근 30일)</h3>
+                </div>
+                <span class="text-xl font-black ${rateColor}">${rate}%</span>
+            </div>
+            <div class="flex flex-wrap gap-0.5">${cells}</div>
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+                <span class="w-3 h-3 rounded-sm bg-emerald-400 inline-block"></span><span class="text-[9px] text-gray-400">복용</span>
+                <span class="w-3 h-3 rounded-sm bg-amber-300 inline-block ml-1"></span><span class="text-[9px] text-gray-400">일부</span>
+                <span class="w-3 h-3 rounded-sm bg-rose-300 inline-block ml-1"></span><span class="text-[9px] text-gray-400">미복용</span>
+                <span class="w-3 h-3 rounded-sm bg-gray-100 inline-block ml-1"></span><span class="text-[9px] text-gray-400">예정 없음</span>
+            </div>
+        </div>`;
+}
+window.renderMedAdherenceTracker = renderMedAdherenceTracker;
+
 // 월별 건강 리포트 PDF (window.print 기반, 프리미엄 기능)
 function generateHealthReportPDF() {
     if (typeof isPremium === 'function' && !isPremium()) {
