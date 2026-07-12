@@ -89,6 +89,9 @@ function renderHealthTab() {
     // 예측 웰니스 이상감지 카드
     if (typeof renderWellnessCard === 'function') renderWellnessCard();
 
+    // 주간 건강 변화 조기경보 리포트 카드
+    if (typeof renderWeeklyReportCard === 'function') renderWeeklyReportCard();
+
     // 일일 권장 사료량 계산기 (RER/MER)
     renderFoodCalculator();
 }
