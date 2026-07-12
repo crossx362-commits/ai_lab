@@ -1818,6 +1818,42 @@ function renderStatsChart() {
         }
     ] : [];
 
+    // 목표(이상) 체중선 — 사용자가 지정한 목표(pet.goalWeight)가 있으면 우선,
+    // 없으면 표준 밴드 중앙값을 이상체중으로 사용
+    let goalWeight = currentPet ? parseFloat(currentPet.goalWeight) : NaN;
+    if (!(goalWeight > 0) && weightBand) goalWeight = (weightBand.min + weightBand.max) / 2;
+    const goalDataset = (goalWeight > 0) ? [{
+        label: '목표 체중 (kg)',
+        data: labels.map(() => goalWeight),
+        type: 'line',
+        borderColor: 'rgba(16, 185, 129, 0.9)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [6, 3],
+        pointRadius: 0,
+        fill: false,
+        yAxisID: 'y-weight',
+        order: 4
+    }] : [];
+
+    // 증감 화살표 + 목표까지 진행 상황(부제로 표시)
+    const knownWeights = dailyWeight.filter(v => v != null);
+    const latestWeight = knownWeights.length ? knownWeights[knownWeights.length - 1] : null;
+    const prevWeight = knownWeights.length > 1 ? knownWeights[knownWeights.length - 2] : null;
+    let weightSubtitle = '';
+    if (latestWeight != null) {
+        const diff = (prevWeight != null) ? (latestWeight - prevWeight) : 0;
+        const arrow = diff > 0.05 ? '▲' : (diff < -0.05 ? '▼' : '＝');
+        const diffTxt = (prevWeight != null) ? `${arrow} ${diff > 0 ? '+' : ''}${diff.toFixed(1)}kg` : `${arrow} 변화 없음`;
+        weightSubtitle = `현재 ${latestWeight.toFixed(1)}kg · ${diffTxt}`;
+        if (goalWeight > 0) {
+            const toGoal = latestWeight - goalWeight;
+            const goalTxt = Math.abs(toGoal) < 0.05 ? '목표 달성 🎯'
+                : (toGoal > 0 ? `목표까지 ${toGoal.toFixed(1)}kg 감량` : `목표까지 ${Math.abs(toGoal).toFixed(1)}kg 증량`);
+            weightSubtitle += ` · ${goalTxt}`;
+        }
+    }
+
     if (hasWalkData) {
         walks.forEach(w => {
             let idx = -1;
@@ -1866,6 +1902,7 @@ function renderStatsChart() {
             labels: labels,
             datasets: [
                 ...bandDatasets,
+                ...goalDataset,
                 {
                     label: '산책 거리 (km)',
                     data: dailyDistance,
@@ -1917,6 +1954,13 @@ function renderStatsChart() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                subtitle: {
+                    display: !!weightSubtitle,
+                    text: weightSubtitle,
+                    color: chartTextColor,
+                    font: { family: 'Noto Sans KR', size: 11, weight: 'bold' },
+                    padding: { bottom: 6 }
+                },
                 legend: {
                     position: 'top',
                     labels: {
