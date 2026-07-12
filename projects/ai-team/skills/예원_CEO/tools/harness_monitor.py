@@ -234,7 +234,15 @@ def dispatch_idle_backlog_work(state: dict) -> list[str]:
         return []
     now = time.time()
     dispatched = []
-    skills_dir = os.path.join(os.path.dirname(__file__), "..")
+    # __file__ = skills/예원_CEO/tools/harness_monitor.py — skills/까지 두 단계 위로
+    # (tools→예원_CEO→skills). 한 단계만 올라가면 skills/예원_CEO가 되어 rel_script
+    # ("테오_테스트/tools/...")와 합쳐질 때 skills/예원_CEO/테오_테스트/... 라는
+    # 존재하지 않는 경로가 만들어진다 — 2026-07-11 밤부터 다음날 낮까지 20분마다
+    # 계속 이 오류로 디스패치가 조용히 실패하고 있었다(오너가 "지금은 뭐해"로
+    # 실제 로그를 확인하다 발견). Popen()은 python3 자체는 성공적으로 띄우므로
+    # 예외를 안 던져 fd누수/텔레그램 경보 코드가 이 실패를 못 잡았다 — Popen 성공이
+    # "스크립트가 정상 실행됨"을 보장하지 않는다는 걸 놓친 것.
+    skills_dir = os.path.join(os.path.dirname(__file__), "..", "..")
     log_dir = os.path.join(ROOT_DIR, "output", "bot_logs")
     for owner in owners:
         last = state.get(owner, 0.0)

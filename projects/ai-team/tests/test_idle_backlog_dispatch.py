@@ -7,6 +7,7 @@
 """
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -22,6 +23,27 @@ def load():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class DispatchTargetPathsAreReal(unittest.TestCase):
+    """실제 파일시스템 경로 검증 — 2026-07-12 실사고 회귀.
+
+    dispatch_idle_backlog_work()의 skills_dir 계산이 한 단계만 올라가(`..`) 실제로는
+    skills/예원_CEO/테오_테스트/... 라는 존재하지 않는 경로를 만들고 있었다. 그런데
+    다른 모든 테스트는 subprocess.Popen을 모킹해버려서 이 오류를 한 번도 못 잡았다 —
+    Popen()은 python3 자체는 성공적으로 띄우므로 예외를 안 던지고, 스크립트 자체가
+    없다는 건 그 서브프로세스의 stderr에만 나타난다(디스패치 함수는 이걸 확인 안 함).
+    실제로 2026-07-11 밤부터 다음날 낮까지 20분마다 계속 조용히 실패하고 있었다
+    (오너가 "지금은 뭐해"로 실제 로그를 직접 보다가 발견). 이 테스트는 Popen을
+    모킹하지 않고 DISPATCH_TARGETS의 모든 경로가 실제 파일로 존재하는지 확인한다."""
+
+    def test_all_dispatch_target_scripts_exist_on_disk(self):
+        hm = load()
+        skills_dir = os.path.join(os.path.dirname(hm.__file__), "..", "..")
+        for owner, (rel_script, args, log_name) in hm.DISPATCH_TARGETS.items():
+            full = os.path.normpath(os.path.join(skills_dir, rel_script))
+            self.assertTrue(os.path.isfile(full),
+                            f"{owner} 디스패치 대상 스크립트가 실제로 없다: {full}")
 
 
 class IdleBacklogDispatchTests(unittest.TestCase):
