@@ -1703,6 +1703,51 @@ function getPast7DaysLabels() {
     return labels;
 }
 
+// 종/품종별 표준 체중 밴드(kg) — 오버레이 참고용 근사치
+const PET_WEIGHT_BANDS = {
+    cat: { min: 3.5, max: 5.5 },
+    dog: { min: 5, max: 30 },
+    _breeds: {
+        '토이푸들': { min: 2, max: 4 },
+        '푸들': { min: 4, max: 8 },
+        '말티즈': { min: 2, max: 4 },
+        '포메라니안': { min: 1.5, max: 3.5 },
+        '치와와': { min: 1.5, max: 3 },
+        '시바': { min: 8, max: 11 },
+        '골든리트리버': { min: 25, max: 34 },
+        '리트리버': { min: 25, max: 34 },
+        '허스키': { min: 16, max: 27 },
+        '달마시안': { min: 20, max: 32 },
+        '웰시코기': { min: 10, max: 14 },
+        '코기': { min: 10, max: 14 }
+    }
+};
+
+// 펫의 품종·종에 맞는 표준 체중 밴드를 반환(품종 우선, 없으면 종 단위)
+function getPetWeightBand(pet) {
+    if (!pet) return null;
+    const breed = (pet.breed || '').replace(/\s/g, '');
+    const breeds = PET_WEIGHT_BANDS._breeds;
+    for (const key in breeds) {
+        if (breed.includes(key)) return breeds[key];
+    }
+    if (pet.type === 'cat') return PET_WEIGHT_BANDS.cat;
+    return PET_WEIGHT_BANDS.dog;
+}
+
+// 오늘 날짜로 실제 체중을 기록(같은 날은 덮어씀)
+function recordPetWeight(pet, weightKg) {
+    if (!pet) return;
+    const w = parseFloat(weightKg);
+    if (!(w > 0)) return;
+    if (!Array.isArray(pet.weightLog)) pet.weightLog = [];
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = pet.weightLog.find(e => e.date === today);
+    if (existing) existing.weight = w;
+    else pet.weightLog.push({ date: today, weight: w });
+    pet.weightLog.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function renderStatsChart() {
     const ctx = document.getElementById('pet-stats-chart');
     if (!ctx) return;
@@ -1724,15 +1769,54 @@ function renderStatsChart() {
     const dailyDistance = hasWalkData ? [0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0];
     const dailyWalkCount = hasWalkData ? [0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0];
     const dailyMealCount = hasMealData ? [0, 0, 0, 0, 0, 0, 0] : [0, 0, 0, 0, 0, 0, 0];
-    const dailyWeight = [
-        baseWeight - 0.15,
-        baseWeight - 0.1,
-        baseWeight - 0.05,
-        baseWeight - 0.08,
-        baseWeight,
-        baseWeight - 0.02,
-        baseWeight
-    ];
+
+    // 실제 체중 로그(pet.weightLog: [{date:'YYYY-MM-DD', weight}])를 7일 라벨에 매핑.
+    // 해당 날짜 기록이 없으면 직전 기록을 이어받고(carry-forward), 로그 자체가 없으면 현재 체중으로 표시.
+    const past7Dates = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        past7Dates.push(d.toISOString().slice(0, 10));
+    }
+    const wLog = (currentPet && Array.isArray(currentPet.weightLog)) ? currentPet.weightLog : [];
+    let lastKnownWeight = null;
+    wLog.forEach(e => { if (e.date <= past7Dates[0]) lastKnownWeight = e.weight; });
+    const dailyWeight = past7Dates.map(date => {
+        const entry = wLog.find(e => e.date === date);
+        if (entry) { lastKnownWeight = entry.weight; return entry.weight; }
+        return lastKnownWeight != null ? lastKnownWeight : (baseWeight || null);
+    });
+
+    // 종/품종별 표준 체중 밴드 오버레이
+    const weightBand = (typeof getPetWeightBand === 'function') ? getPetWeightBand(currentPet) : null;
+    const bandDatasets = weightBand ? [
+        {
+            label: '표준 상한 (kg)',
+            data: labels.map(() => weightBand.max),
+            type: 'line',
+            borderColor: 'rgba(148, 163, 184, 0.45)',
+            backgroundColor: 'rgba(148, 163, 184, 0.12)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            fill: '+1',
+            yAxisID: 'y-weight',
+            order: 5
+        },
+        {
+            label: '표준 하한 (kg)',
+            data: labels.map(() => weightBand.min),
+            type: 'line',
+            borderColor: 'rgba(148, 163, 184, 0.45)',
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            fill: false,
+            yAxisID: 'y-weight',
+            order: 6
+        }
+    ] : [];
 
     if (hasWalkData) {
         walks.forEach(w => {
@@ -1781,6 +1865,7 @@ function renderStatsChart() {
         data: {
             labels: labels,
             datasets: [
+                ...bandDatasets,
                 {
                     label: '산책 거리 (km)',
                     data: dailyDistance,
@@ -1969,6 +2054,8 @@ function saveNotebookEdit() {
     current.gender = document.getElementById('edit-nb-gender').value.trim() || current.gender;
     current.weight = document.getElementById('edit-nb-weight').value.trim() || current.weight;
     current.personality = document.getElementById('edit-nb-personality').value.trim() || current.personality;
+
+    if (typeof recordPetWeight === 'function') recordPetWeight(current, current.weight);
 
     saveState();
     if (typeof updatePetInSupabase === 'function') {
@@ -2316,6 +2403,8 @@ function submitPetRegistration() {
         hunger: 70,
         happy: 80
     };
+
+    if (typeof recordPetWeight === 'function') recordPetWeight(newPet, finalWeight);
 
     pets = [...pets, newPet];
     activePetIndex = pets.length - 1; // 새로 추가한 펫을 활성 펫으로
