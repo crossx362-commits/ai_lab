@@ -257,6 +257,9 @@ const HEALTH_TEMPLATE = `
         <!-- 🐾 BCS 체형 셀프체크 위저드 -->
         <div id="bcs-wizard-widget"></div>
 
+        <!-- 🍽️ 일일 급식·칼로리 트래커 -->
+        <div id="calorie-tracker-widget"></div>
+
         <!-- 📊 월간 종합 리포트 -->
         <div class="card-modern p-4">
             <div class="flex justify-between items-center mb-4">

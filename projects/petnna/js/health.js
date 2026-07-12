@@ -71,6 +71,9 @@ function renderHealthTab() {
     // BCS 체형 셀프체크 위저드 (백로그 나무_20260712143815, P3)
     if (typeof BcsWizard !== 'undefined') BcsWizard.renderWidget('bcs-wizard-widget');
 
+    // 일일 급식·칼로리 트래커 (백로그 나무_20260712143815, P3)
+    if (typeof CalorieTracker !== 'undefined') CalorieTracker.renderWidget('calorie-tracker-widget');
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
