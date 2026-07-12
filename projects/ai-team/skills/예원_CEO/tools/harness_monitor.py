@@ -11,7 +11,7 @@ from _shared.env import load_env
 from _shared.notify import agent_status, _LAUNCHD_FALLBACK, CONTINUOUS_DAEMONS
 from _shared.telegram import send
 from _shared.process import ProcessLock, read_fleet_policy
-from _shared.backlog import owner_type_mismatch
+from _shared.backlog import owner_can_consume
 from _shared import growth
 
 load_env()
@@ -206,13 +206,14 @@ def _pending_backlog_owners() -> set[str]:
             items = json.load(f).get("items", [])
     except Exception:
         return set()
-    # owner_type_mismatch: owner는 소비자가 있어도 담당 도구가 안 보는 type이면(예: 테오에게
-    # type=기획) 디스패치해봤자 그 도구가 못 집는다 — 20분마다 영구 재점화만 하게 된다
-    # (자동 파이프라인 감사 도구가 발견, 2026-07-11). 이제 적재 시점(council.needs_human)에서
-    # 막지만, 방어적으로 디스패치 시점에도 한 번 더 걸러 다른 경로로 생긴 항목도 안전하게 한다.
+    # owner_can_consume: owner는 소비자가 있어도 담당 도구가 안 보는 type이면(예: 테오에게
+    # type=기획, 또는 type 미지정) 디스패치해봤자 그 도구가 못 집는다 — 20분마다 영구
+    # 재점화만 하게 된다(자동 파이프라인 감사 도구가 2026-07-11·2026-07-12 두 차례 발견).
+    # owner_type_mismatch()(적재/라우팅용, type 모름=관대)와 달리 이건 디스패치 판정이라
+    # type이 비어 있으면 테오·미오는 확실히 못 집으므로 엄격하게 본다.
     return {i.get("owner") for i in items
             if i.get("status") == "대기" and i.get("owner") in DISPATCH_TARGETS
-            and not owner_type_mismatch(i.get("owner"), i.get("type", ""))}
+            and owner_can_consume(i.get("owner"), i.get("type", ""))}
 
 
 def dispatch_idle_backlog_work(state: dict) -> list[str]:

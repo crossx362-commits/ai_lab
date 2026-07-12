@@ -49,8 +49,8 @@ class IdleBacklogDispatchTests(unittest.TestCase):
 
     def test_only_dispatch_target_owners_with_waiting_status(self):
         self._write([
-            {"owner": "미오", "status": "대기"},
-            {"owner": "테오", "status": "대기"},
+            {"owner": "미오", "status": "대기", "type": "디자인"},
+            {"owner": "테오", "status": "대기", "type": "테스트"},
             {"owner": "수리", "status": "대기"},   # 자체 주기로 제외 대상
             {"owner": "나무", "status": "보류"},   # 상태가 대기 아님
             {"owner": "백호", "status": "완료"},   # 상태가 대기 아님
@@ -70,12 +70,26 @@ class IdleBacklogDispatchTests(unittest.TestCase):
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)):
             self.assertEqual(self.hm._pending_backlog_owners(), {"테오"})
 
+    def test_empty_type_for_restricted_owner_is_never_dispatched(self):
+        """2차 자동 파이프라인 감사가 발견(2026-07-12): owner_type_mismatch()는 type이
+        비어있으면 관대하게 통과시키는데(적재 시점용 설계), 그걸 디스패치 필터에도 그대로
+        썼더니 owner=테오·type='' 항목이 필터를 통과해 20분마다 영구 재점화될 뻔했다 —
+        테오는 정확히 type=='테스트'만 집으므로 type 미지정도 디스패치 시점엔 제외해야
+        한다. owner_can_consume()(엄격판)으로 교체해 수정."""
+        self._write([
+            {"owner": "테오", "status": "대기"},              # type 없음 — 제외돼야
+            {"owner": "미오", "status": "대기", "type": ""},   # type 빈 문자열 — 제외돼야
+            {"owner": "백호", "status": "대기"},              # 제약 없는 owner — 포함돼야
+        ])
+        with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)):
+            self.assertEqual(self.hm._pending_backlog_owners(), {"백호"})
+
     def test_missing_backlog_file_is_not_fatal(self):
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp.parent / "없음.json")):
             self.assertEqual(self.hm._pending_backlog_owners(), set())
 
     def test_dispatch_spawns_process_per_pending_owner(self):
-        self._write([{"owner": "미오", "status": "대기"}, {"owner": "테오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}, {"owner": "테오", "status": "대기", "type": "테스트"}])
         calls = []
 
         def fake_popen(cmd, **kw):
@@ -90,7 +104,7 @@ class IdleBacklogDispatchTests(unittest.TestCase):
             self.assertEqual(len(calls), 2)
 
     def test_cooldown_prevents_repeat_dispatch(self):
-        self._write([{"owner": "미오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}])
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm.subprocess, "Popen", return_value=mock.Mock()), \
              mock.patch.object(self.hm, "_bots_off", return_value=False):
@@ -101,7 +115,7 @@ class IdleBacklogDispatchTests(unittest.TestCase):
             self.assertEqual(second, [], "쿨다운 내 재디스패치는 없어야 한다")
 
     def test_bots_off_flag_suppresses_dispatch(self):
-        self._write([{"owner": "미오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}])
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm, "_bots_off", return_value=True):
             self.assertEqual(self.hm.dispatch_idle_backlog_work({}), [])
@@ -110,7 +124,7 @@ class IdleBacklogDispatchTests(unittest.TestCase):
         """2차 자동 파이프라인 감사가 발견(2026-07-11): daemon()의 petnna_single_machine_guard는
         각 에이전트 스크립트 안에서만 걸리는데, dispatch_idle_backlog_work는 비데몬 모드로
         직접 실행해 그 가드를 우회한다 — primary가 아닌 기계에서 이중 가동될 수 있었다."""
-        self._write([{"owner": "미오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}])
         other_platform = "win32" if sys.platform != "win32" else "darwin"
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm, "read_fleet_policy",
@@ -122,7 +136,7 @@ class IdleBacklogDispatchTests(unittest.TestCase):
 
     def test_no_policy_file_falls_back_to_dispatching(self):
         """정책파일이 없으면(과거 상태) 기존처럼 디스패치를 막지 않는다(하위호환)."""
-        self._write([{"owner": "미오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}])
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm, "read_fleet_policy", return_value={}), \
              mock.patch.object(self.hm.subprocess, "Popen", return_value=mock.Mock()), \
@@ -132,7 +146,7 @@ class IdleBacklogDispatchTests(unittest.TestCase):
     def test_popen_failure_closes_log_handles_and_alerts_once(self):
         """2차 감사가 발견(2026-07-11): Popen 예외 경로에서 로그 fd가 안 닫혀 누수되고,
         실패가 텔레그램으로 안 올라가 오너가 반복 실패를 알 방법이 없었다."""
-        self._write([{"owner": "미오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}])
         opened = []
         real_open = open
 
@@ -155,7 +169,7 @@ class IdleBacklogDispatchTests(unittest.TestCase):
     def test_dispatch_output_is_logged_not_discarded(self):
         """2026-07-11 리뷰 중 발견 — DEVNULL로 버리면 자동 디스패치 실행이 실패해도
         흔적이 안 남는다. 정상 데몬과 같은 bot_logs 파일에 이어 쓰여야 한다."""
-        self._write([{"owner": "미오", "status": "대기"}])
+        self._write([{"owner": "미오", "status": "대기", "type": "디자인"}])
         with mock.patch.object(self.hm, "BACKLOG_PATH", str(self.tmp)), \
              mock.patch.object(self.hm.subprocess, "Popen", return_value=mock.Mock()), \
              mock.patch.object(self.hm, "_bots_off", return_value=False):

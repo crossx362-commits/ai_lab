@@ -116,6 +116,32 @@ class OwnerTypeMismatchTests(unittest.TestCase):
         self.assertFalse(self.mismatch("테오", ""))
 
 
+class OwnerCanConsumeTests(unittest.TestCase):
+    """디스패치 판정용 엄격판 — owner_type_mismatch와 달리 type 미지정을 봐주지 않는다
+    (2차 자동 파이프라인 감사가 2026-07-12에 발견: 관대한 판정을 디스패치 필터에도
+    그대로 써서 owner=테오·type='' 항목이 20분마다 영구 재점화될 뻔했다)."""
+
+    def setUp(self):
+        from _shared.backlog import owner_can_consume
+        self.can_consume = owner_can_consume
+
+    def test_restricted_owner_requires_exact_type(self):
+        self.assertTrue(self.can_consume("테오", "테스트"))
+        self.assertFalse(self.can_consume("테오", "기획"))
+        self.assertTrue(self.can_consume("미오", "디자인"))
+        self.assertFalse(self.can_consume("미오", "백엔드"))
+
+    def test_restricted_owner_rejects_empty_type(self):
+        """owner_type_mismatch와 정반대 지점 — 여기선 미지정 type을 절대 봐주지 않는다."""
+        self.assertFalse(self.can_consume("테오", ""))
+        self.assertFalse(self.can_consume("미오", ""))
+
+    def test_unrestricted_owner_always_can_consume(self):
+        for owner in ("백호", "수리", ""):
+            self.assertTrue(self.can_consume(owner, ""))
+            self.assertTrue(self.can_consume(owner, "아무거나"))
+
+
 class DbAuthGate(unittest.TestCase):
     """적재 시점 DB/인증 판별 — 범위는 회의가 명시한 것으로 좁힌다(오탐 금지)."""
 

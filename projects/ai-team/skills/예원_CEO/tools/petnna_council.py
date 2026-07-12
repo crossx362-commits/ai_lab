@@ -70,21 +70,36 @@ def _topic_key(topic: str) -> str:
     return hashlib.md5(topic.encode("utf-8")).hexdigest()[:10]
 
 
-def _recent_meeting(topic: str) -> bool:
+def _is_recent_meeting(topic: str) -> bool:
+    """순수 조회(부작용 없음) — 같은 안건이 쿨다운 내에 이미 열렸는가."""
     key = _topic_key(topic)
     try:
         state = json.loads(STATE.read_text(encoding="utf-8"))
     except Exception:
         state = {}
     last = state.get(key)
-    if last:
-        from datetime import datetime as dt
-        if (dt.now() - dt.fromisoformat(last)).total_seconds() < COOLDOWN_H * 3600:
-            return True
+    if not last:
+        return False
+    from datetime import datetime as dt
+    return (dt.now() - dt.fromisoformat(last)).total_seconds() < COOLDOWN_H * 3600
+
+
+def _mark_meeting(topic: str) -> None:
+    """실제로 회의가 열리기로 확정된 뒤(락 획득 후)에만 쿨다운을 기록한다.
+
+    버그 발견·수정(2026-07-12, 자동 파이프라인 감사): 예전엔 이 기록이 ProcessLock
+    획득 *전에* 일어났다 — 동시에 다른 안건의 회의 B가 트리거되면, B는 자기 topic을
+    먼저 기록한 뒤 ProcessLock 충돌로 sys.exit(0)해 실제로는 한 번도 안 열렸는데
+    24시간 재소집 금지 상태가 됐다(회의 없이 쿨다운만 소진). 락을 먼저 잡고 그
+    안에서만 기록하도록 순서를 바꿔, 실제로 진행되는 회의만 쿨다운을 소진시킨다."""
+    key = _topic_key(topic)
+    try:
+        state = json.loads(STATE.read_text(encoding="utf-8"))
+    except Exception:
+        state = {}
     state[key] = datetime.now().isoformat()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
-    return False
 
 
 def _clear_cooldown(topic: str) -> None:
@@ -119,10 +134,13 @@ def _opinion(name: str, role: str, folder: str, topic: str, context: str, priori
 
 
 def convene(topic: str, context: str, priority: str) -> None:
-    if _recent_meeting(topic):
+    if _is_recent_meeting(topic):
         print(f"[회의] 동일 안건 {COOLDOWN_H}시간 내 개최됨 — 생략: {topic[:60]}")
         return
     with ProcessLock("petnna_council"):
+        # 락을 실제로 잡은 뒤에만 쿨다운을 기록한다 — 락 충돌로 sys.exit(0)하면 이 줄까지
+        # 아예 도달 못 해, 실제로 안 열린 회의가 24h 봉쇄되는 사고를 막는다(위 주석 참고).
+        _mark_meeting(topic)
         print(f"[{datetime.now()}] 🏛️ 긴급 회의 소집 — {topic[:80]}")
         with ThreadPoolExecutor(max_workers=3) as ex:
             futures = [ex.submit(_opinion, n, r, f, topic, context, priority)
