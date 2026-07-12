@@ -1187,6 +1187,7 @@ function renderWalkHistory() {
             <div class="flex space-x-2 w-full sm:w-auto shrink-0 justify-end" onclick="event.stopPropagation()">
                 <button onclick="addWalkToAlbum(${w.id})" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-amber-50 border border-amber-200 text-amber-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-images mr-1"></i>앨범에 추가</button>
                 <button onclick="shareWalkToFeed(${w.id})" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-brand-50 border border-brand-200 text-brand-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-share mr-1"></i> 피드 발행</button>
+                <button onclick="shareWalkReportCard(${w.id})" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-image mr-1"></i> 리포트 카드</button>
                 <button onclick="copyWalkShareCode('${codeString}')" class="flex-grow sm:flex-none text-[10px] bg-white hover:bg-amber-50 border border-amber-200 text-brand-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all"><i class="fa-solid fa-copy mr-1"></i> 코드 복사</button>
                 <button onclick="deleteWalkLog(${w.id})" class="text-gray-300 hover:text-red-500 py-1.5 px-2 text-xs transition-colors"><i class="fa-solid fa-trash-can"></i></button>
             </div>
