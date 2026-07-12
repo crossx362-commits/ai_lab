@@ -181,6 +181,16 @@ def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=120)
 
 
+def _push_master() -> str:
+    """자동 병합 후 원격 push — 없으면 로컬 master에만 쌓이고 GitHub·배포는 영원히
+    안 바뀐다(2026-07-12 오너 발견: 이 자동 병합 경로에 push 호출이 아예 없어 커밋
+    18개가 로컬에만 쌓여 있었음, 예원 PR 리뷰어도 동일 결함이라 같이 수정)."""
+    p = _git(["push"], PROJECT_ROOT)
+    if p.returncode == 0:
+        return "push 완료"
+    return f"push 실패(로컬 병합은 유지됨): {p.stderr.strip()[:150]}"
+
+
 def sync_merged_branches(state: dict) -> list[str]:
     """사람이 수동 병합·삭제한 PR대기 브랜치를 완료로 정리한다.
 
@@ -538,7 +548,7 @@ def _improve_cycle(do_send: bool = True) -> str:
                     merged = True
                     rec["status"] = "완료"
                     rec["fixed_at"] = datetime.now().isoformat()
-                    log.append("- 자동 병합: 완료 (봄이가 변경 감지로 재순찰 예정)")
+                    log.append(f"- 자동 병합: 완료 ({_push_master()}, 봄이가 변경 감지로 재순찰 예정)")
                 else:
                     rec["status"] = "PR대기"
                     log.append(f"- 병합 실패 → 브랜치 대기: {m.stderr.strip()[:150]}")

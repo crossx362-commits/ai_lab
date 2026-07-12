@@ -45,7 +45,11 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "product"
 
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "namu_slots.json"
-PLAN_WEEKDAY = int(os.getenv("NAMU_WEEKDAY", "1"))  # 1=화요일
+PLAN_WEEKDAY = int(os.getenv("NAMU_WEEKDAY", "1"))  # 1=화요일(NAMU_DAILY=false일 때만 사용)
+# 기본 매일 실행(2026-07-12 오너 승인) — 주 1회만 새 아이디어를 만들면 백로그가
+# 비었을 때 다음 예정일(화요일)까지 수리가 할 일이 없어 "에이전트가 논다"는
+# 지적이 반복됐다(같은 날 두 번째 재발). NAMU_DAILY=false로 과거 주 1회로 복귀 가능.
+PLAN_DAILY = os.getenv("NAMU_DAILY", "true").lower() != "false"
 
 
 def feature_inventory() -> str:
@@ -173,7 +177,8 @@ def daemon() -> None:
         return
     slots = os.getenv("NAMU_SLOTS", "11:00").split(",")
     with ProcessLock("namu_product_manager_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
-        print(f"[{datetime.now()}] 나무 데몬 시작 — 매주 요일 {PLAN_WEEKDAY}, {','.join(slots)}")
+        cadence = "매일" if PLAN_DAILY else f"매주 요일 {PLAN_WEEKDAY}"
+        print(f"[{datetime.now()}] 나무 데몬 시작 — {cadence}, {','.join(slots)}")
         while True:
             try:
                 # "namu_product_manager"(daemon 접미사 없음)는 실행 구간에만 짧게 잡는
@@ -184,7 +189,7 @@ def daemon() -> None:
                 # 유실된다(미오·테오·봄이에서 동일 패턴을 2차 감사가 발견 후 대칭 수정).
                 with advisory_lock("namu_product_manager") as got:
                     if got:
-                        if datetime.now().weekday() == PLAN_WEEKDAY and \
+                        if (PLAN_DAILY or datetime.now().weekday() == PLAN_WEEKDAY) and \
                                 due_slot(slots, SLOT_STATE, weekdays_only=False):
                             plan(do_send=True)
                     else:

@@ -107,6 +107,16 @@ def _merge(branch: str) -> tuple[bool, str]:
     return True, "master 병합 완료"
 
 
+def _push_master() -> str:
+    """병합 후 원격 push — 이게 없으면 로컬 master에만 쌓이고 GitHub·배포는
+    영원히 안 바뀐다(2026-07-12 오너 발견: 18커밋이 push 안 된 채 로컬에만 쌓여
+    있었음 — 수리·예원 둘 다 merge만 하고 push하는 코드가 아예 없었다)."""
+    p = eng._git(["push"], eng.PROJECT_ROOT)
+    if p.returncode == 0:
+        return "✅ push 완료"
+    return f"⚠️ push 실패(로컬 병합은 유지됨): {p.stderr.strip()[:150]}"
+
+
 def review_all(do_send: bool = True) -> str:
     state = eng.load_dev_state()
     eng.sync_merged_branches(state)  # 수동 병합 정리 먼저
@@ -176,6 +186,8 @@ def review_all(do_send: bool = True) -> str:
     body = "\n".join(lines) if lines else "처리 없음"
     merged_n = sum(1 for x in lines if x.startswith("✅"))
     rejected_n = sum(1 for x in lines if x.startswith("🛑"))
+    if merged_n:
+        body += f"\n{_push_master()}"
     if do_send and lines:
         send(f"🧭 예원 — 펫나 PR 검토 {len(pend)}건 (병합 {merged_n}·반려 {rejected_n})\n\n{body}",
              silent=(merged_n == 0))

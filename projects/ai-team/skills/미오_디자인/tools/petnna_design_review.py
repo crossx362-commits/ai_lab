@@ -48,7 +48,11 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "design"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "mio_slots.json"
 PORT = int(os.getenv("MIO_PORT", "8936"))
-REVIEW_WEEKDAY = int(os.getenv("MIO_WEEKDAY", "0"))  # 0=월요일
+REVIEW_WEEKDAY = int(os.getenv("MIO_WEEKDAY", "0"))  # 0=월요일(MIO_DAILY=false일 때만 사용)
+# 기본 매일 실행(2026-07-12 오너 승인) — 주 1회만 새 아이디어를 만들면 백로그가
+# 비었을 때 다음 예정일(월요일)까지 수리가 할 일이 없어 "에이전트가 논다"는
+# 지적이 반복됐다(같은 날 두 번째 재발, 나무와 동일 조치). MIO_DAILY=false로 복귀 가능.
+REVIEW_DAILY = os.getenv("MIO_DAILY", "true").lower() != "false"
 
 
 class _SilentHandler(http.server.SimpleHTTPRequestHandler):
@@ -248,7 +252,8 @@ def daemon() -> None:
     # 무관하게 이 주기마다 즉시 처리, 없으면 기존대로 주 1회 전체 트렌드 리뷰만 수행.
     assigned_poll = int(os.getenv("MIO_ASSIGNED_POLL_SEC", "3600"))
     with ProcessLock("mio_design_review_daemon"):  # 중복 데몬 기동 방지(상시 보유, 이 이름 전용)
-        print(f"[{datetime.now()}] 미오 데몬 시작 — 매주 요일 {REVIEW_WEEKDAY} 전체리뷰 "
+        cadence = "매일 전체리뷰" if REVIEW_DAILY else f"매주 요일 {REVIEW_WEEKDAY} 전체리뷰"
+        print(f"[{datetime.now()}] 미오 데몬 시작 — {cadence} "
               f"{','.join(slots)} + 배정과제는 {assigned_poll}s마다 확인")
         last_assigned_check = 0.0
         while True:
@@ -261,7 +266,7 @@ def daemon() -> None:
                 # (2026-07-11 2차 파이프라인 감사가 발견 — 백호만 이 순서가 맞았음, 대칭).
                 with advisory_lock("mio_design_review") as got:
                     if got:
-                        due_full = (datetime.now().weekday() == REVIEW_WEEKDAY
+                        due_full = ((REVIEW_DAILY or datetime.now().weekday() == REVIEW_WEEKDAY)
                                     and due_slot(slots, SLOT_STATE, weekdays_only=False))
                         due_assigned = (not due_full and _assigned_tasks()
                                          and time.time() - last_assigned_check > assigned_poll)
