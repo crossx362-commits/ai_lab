@@ -507,18 +507,34 @@ def urgent_message(findings) -> str | None:
 # ── 실행 ───────────────────────────────────────────────────
 
 def _convene_council(topic: str, context: str, priority: str) -> None:
-    """큰 이슈 → 전 에이전트 긴급 회의 소집 (비차단, 24h 중복 방지는 회의 쪽에서)."""
+    """큰 이슈 → 전 에이전트 긴급 회의 소집 (비차단, 24h 중복 방지는 회의 쪽에서).
+
+    stdout/stderr를 DEVNULL로 버리지 않는다 — 동시에 다른 안건 회의가 진행 중이면
+    ProcessLock 충돌로 회의가 실제로 안 열린 채 조용히 종료되는데(2026-07-12 자동
+    파이프라인 감사가 발견 — 어제 유휴디스패치를 제거하게 만든 'Popen 성공 ≠ 스크립트
+    실행 성공' 패턴과 동일 계열), DEVNULL이면 이 트리거 쪽에서 그 사실을 알 방법이
+    없다. bot_logs에 이어 써서 최소한 사후에 로그로 확인 가능하게 한다."""
     import subprocess
     council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
     nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
+    log_dir = PROJECT_ROOT / "output" / "bot_logs"
+    out_f = err_f = None
     try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        out_f = open(log_dir / "petnna_council_trigger.out.log", "a", encoding="utf-8")
+        err_f = open(log_dir / "petnna_council_trigger.err.log", "a", encoding="utf-8")
+        print(f"[{datetime.now()}] === 봄이 회의 소집: {topic[:80]} ===", file=out_f, flush=True)
         subprocess.Popen([sys.executable, str(council), "--topic", topic[:200],
                           "--context", context[:1500], "--priority", priority],
-                         cwd=str(PROJECT_ROOT),
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
+                         cwd=str(PROJECT_ROOT), stdout=out_f, stderr=err_f, **nowin)
         print(f"[회의 소집] {topic[:80]}")
     except Exception as e:
         print(f"[회의 소집 실패] {e}")
+    finally:
+        if out_f:
+            out_f.close()
+        if err_f:
+            err_f.close()
 
 
 def patrol(do_send: bool) -> list[dict]:

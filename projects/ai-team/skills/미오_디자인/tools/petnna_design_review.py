@@ -90,6 +90,12 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
     except Exception:
         data = {"items": []}
     existing = {i.get("title") for i in data["items"]}
+    # id 충돌 방지 — 시각(초 단위)만으로는 같은 날 review()가 두 번 불릴 때(배정과제
+    # 폴링+정기리뷰가 겹치는 경우, 2026-07-11 폴링 도입으로 실현 가능해짐) 여전히 같은
+    # 초에 호출되면 서로 다른 항목이 같은 id를 가질 수 있다 — id로 조회하는 수리
+    # dev_state의 attempts 오집계 위험(자동 파이프라인 감사 도구가 발견, 2026-07-12).
+    # 시각 대신 "실제로 존재하는 id와 겹치지 않을 때까지 증가"로 근본 해결.
+    existing_ids = {i.get("id") for i in data["items"]}
     added = 0
     for it in items:
         title = (it.get("title") or "").strip()
@@ -98,8 +104,14 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
         detail = (it.get("detail") or "")[:500]
         # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
         db_auth = touches_db_auth(title, detail)
+        stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        new_id = f"{source}_{stamp}_{added}"
+        while new_id in existing_ids:
+            added += 1
+            new_id = f"{source}_{stamp}_{added}"
+        existing_ids.add(new_id)
         data["items"].append({
-            "id": f"{source}_{datetime.now():%Y%m%d}_{added}",
+            "id": new_id,
             "title": title[:120],
             "detail": detail,
             "priority": it.get("priority") if it.get("priority") in ("P1", "P2", "P3") else "P3",

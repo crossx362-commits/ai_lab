@@ -73,6 +73,30 @@ class InvestigateAssignedTasksFailureTests(unittest.TestCase):
         self.assertEqual(n, 1)
         rc.assert_called_once()
 
+    def test_concurrent_write_during_processing_is_not_clobbered(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-12): 예전엔 시작 시점 스냅샷을
+        run_claude(최대 600s) 동안 들고 있다가 맨 마지막에 통째로 덮어써, 그 사이
+        다른 에이전트가 backlog.json에 적재한 내용을 유실할 수 있었다. 이제는 과제
+        처리 직후 파일을 다시 읽어 해당 항목만 갱신하므로, run_claude 호출 도중(실제로는
+        그 반환 직후) 다른 프로세스가 추가한 항목이 살아남아야 한다."""
+        with self._write([{"id": "a", "title": "조사 과제", "owner": "백호", "status": "대기"}]):
+            def fake_run_claude(*args, **kwargs):
+                # run_claude가 오래 걸리는 동안 다른 에이전트(예: 미오)가 새 항목을
+                # 적재했다고 시뮬레이션 — investigate_assigned_tasks가 이 반환 직후
+                # 파일을 다시 읽으므로 이 변경을 봐야 한다.
+                data = json.loads(self.tmp.read_text(encoding="utf-8"))
+                data["items"].append({"id": "concurrent", "title": "동시 적재된 항목",
+                                      "owner": "미오", "status": "대기", "type": "디자인"})
+                self.tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                return (True, "결론: 문제 없음")
+
+            with mock.patch.object(self.baekho, "run_claude", side_effect=fake_run_claude):
+                self.baekho.investigate_assigned_tasks(do_send=False)
+
+        items = {i["id"]: i for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
+        self.assertEqual(items["a"]["status"], "완료")
+        self.assertIn("concurrent", items, "처리 도중 다른 에이전트가 적재한 항목이 유실되면 안 된다")
+
 
 if __name__ == "__main__":
     unittest.main()

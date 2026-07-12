@@ -170,28 +170,34 @@ def investigate_assigned_tasks(do_send: bool) -> int:
             "후속 조치가 필요하면 무엇인지(신규 테이블 필요 여부 등 명확히).",
             PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
             permission_mode="plan")
+        # 매 과제 처리 직후 백로그를 다시 읽어 해당 항목만 갱신·즉시 저장한다(자동
+        # 파이프라인 감사 도구가 발견, 2026-07-12) — 예전엔 시작 시점 스냅샷을 과제
+        # 수만큼(run_claude 최대 600s×N) 들고 있다가 맨 마지막에 통째로 덮어써, 그 사이
+        # 다른 에이전트가 backlog.json에 적재·변경한 내용을 유실할 위험이 있었다.
+        try:
+            fresh = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        target = next((x for x in fresh["items"] if x.get("id") == it.get("id")), None)
+        if target is None:
+            continue  # 그 사이 항목이 없어짐(수동 삭제 등) — 스킵
         if not (ok and out):
             # 인프라 실패(CLI 부재·타임아웃 등)는 과제 탓이 아니다 — 시도 미차감(수리
             # _improve_cycle과 동일 원칙). 그 외 진짜 실패는 attempts를 반영해야 과제
-            # 자체가 구조적으로 실패하는 경우(자동 파이프라인 감사 도구가 발견, 2026-07-11:
-            # 이전엔 상한 자체가 없어 300초마다 영원히 재조사했다) 상한 도달 시 보류로
-            # 전환된다. 이 루프는 여러 과제를 순회 후 한 번만 저장하므로 apply_task_failure로
-            # 메모리상 항목만 갱신 — record_backlog_task_failure(파일 즉시 저장)를 쓰면
-            # 아래 최종 BACKLOG.write_text가 이 변경을 덮어써 버린다.
+            # 자체가 구조적으로 실패하는 경우 상한 도달 시 보류로 전환된다.
             if is_infra_failure(out):
                 print(f"[백호] 조사 실패(인프라) — 다음 주기 재시도: {it['title'][:60]}")
             else:
-                apply_task_failure(it)
-                print(f"[백호] 조사 실패(시도 {it.get('attempts')}/{TASK_MAX_ATTEMPTS}): {it['title'][:60]}")
-            continue
-        it["status"] = "완료"
-        it["finding"] = out.strip()[:1500]
-        it["updated"] = datetime.now().isoformat()
-        print(f"[백호] 조사 완료: {it['title'][:60]}")
-        if do_send:
-            send(f"🐯 백호 — 위임 조사 완료: {it['title'][:80]}\n{out.strip()[:800]}", silent=True)
-    if todo:
-        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+                apply_task_failure(target)
+                print(f"[백호] 조사 실패(시도 {target.get('attempts')}/{TASK_MAX_ATTEMPTS}): {it['title'][:60]}")
+        else:
+            target["status"] = "완료"
+            target["finding"] = out.strip()[:1500]
+            target["updated"] = datetime.now().isoformat()
+            print(f"[백호] 조사 완료: {it['title'][:60]}")
+            if do_send:
+                send(f"🐯 백호 — 위임 조사 완료: {it['title'][:80]}\n{out.strip()[:800]}", silent=True)
+        BACKLOG.write_text(json.dumps(fresh, ensure_ascii=False, indent=1), encoding="utf-8")
     return len(todo)
 
 
@@ -228,14 +234,27 @@ def run_audit(do_send: bool) -> None:
             import subprocess
             council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
             nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
+            # DEVNULL이면 락 충돌로 회의가 실제로 안 열려도 흔적이 안 남는다(2026-07-12
+            # 자동 파이프라인 감사가 발견 — 유휴디스패치 제거 원인과 동일 계열 패턴).
+            log_dir = PROJECT_ROOT / "output" / "bot_logs"
+            out_f = err_f = None
             try:
+                log_dir.mkdir(parents=True, exist_ok=True)
+                out_f = open(log_dir / "petnna_council_trigger.out.log", "a", encoding="utf-8")
+                err_f = open(log_dir / "petnna_council_trigger.err.log", "a", encoding="utf-8")
+                print(f"[{datetime.now()}] === 백호 회의 소집: {new_p1[0]['title'][:80]} ===",
+                      file=out_f, flush=True)
                 subprocess.Popen([sys.executable, str(council),
                                   "--topic", f"백엔드 계약 위반: {new_p1[0]['title'][:120]}",
                                   "--context", new_p1[0]["detail"][:1500], "--priority", "P1"],
-                                 cwd=str(PROJECT_ROOT),
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
+                                 cwd=str(PROJECT_ROOT), stdout=out_f, stderr=err_f, **nowin)
             except Exception:
                 pass
+            finally:
+                if out_f:
+                    out_f.close()
+                if err_f:
+                    err_f.close()
 
 
 def daemon() -> None:

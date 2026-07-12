@@ -166,6 +166,23 @@ class MioBacklogConsumption(unittest.TestCase):
             got = {i["id"]: i["status"] for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
             self.assertEqual(got, {"a": "완료", "b": "대기"})
 
+    def test_add_backlog_items_id_includes_seconds_not_just_date(self):
+        """자동 파이프라인 감사 도구가 발견(2026-07-12): id가 날짜까지만 있어서(시각 없이)
+        같은 날 review()가 두 번 불리면(배정과제 폴링+정기리뷰가 겹치는 경우, 2026-07-11
+        폴링 도입으로 실현 가능해짐) 서로 다른 두 항목이 같은 id를 가질 수 있었다 —
+        id로 조회하는 수리 dev_state의 attempts 오집계 위험. council과 같은 정밀도로 통일."""
+        with self._write([]):
+            self.mio.add_backlog_items(
+                [{"title": "제안 A", "detail": "d", "priority": "P2"}], source="미오", itype="디자인")
+            self.mio.add_backlog_items(
+                [{"title": "제안 B", "detail": "d", "priority": "P2"}], source="미오", itype="디자인")
+            items = json.loads(self.tmp.read_text(encoding="utf-8"))["items"]
+        ids = [i["id"] for i in items]
+        self.assertEqual(len(ids), len(set(ids)), f"두 번의 적재가 id를 공유하면 안 된다: {ids}")
+        for i in ids:
+            # source_YYYYMMDDHHMMSS_added 형태 — 초 단위까지 포함해야 한다
+            self.assertRegex(i, r"^미오_\d{14}_\d+$", f"id에 초 단위 시각이 빠져 있다: {i}")
+
     def test_real_review_failure_counts_against_assigned_task_attempts(self):
         """자동 파이프라인 감사 도구가 발견(2026-07-11): 미오는 테오·백호와 달리 배정
         과제 실패를 attempts에 전혀 반영하지 않아 상한·보류 전환이 없었다 — 대칭 맞춤."""

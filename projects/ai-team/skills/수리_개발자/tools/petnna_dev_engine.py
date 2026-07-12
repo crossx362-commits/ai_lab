@@ -562,17 +562,30 @@ def _improve_cycle(do_send: bool = True) -> str:
             rec["status"] = "보류"
             log.append(f"- {MAX_ATTEMPTS}회 실패 → 보류 전환, 구조적 원인 분석 필요")
             # 반복 실패 = 구조적 문제 → 전 에이전트 긴급 회의 소집(비차단)
+            # DEVNULL이면 락 충돌로 회의가 실제로 안 열려도 흔적이 안 남는다(2026-07-12
+            # 자동 파이프라인 감사가 발견 — 유휴디스패치 제거 원인과 동일 계열 패턴).
+            out_f = err_f = None
             try:
                 council = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_council.py"
                 nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {"start_new_session": True}
+                log_dir = PROJECT_ROOT / "output" / "bot_logs"
+                log_dir.mkdir(parents=True, exist_ok=True)
+                out_f = open(log_dir / "petnna_council_trigger.out.log", "a", encoding="utf-8")
+                err_f = open(log_dir / "petnna_council_trigger.err.log", "a", encoding="utf-8")
+                print(f"[{datetime.now()}] === 수리 회의 소집: {f.get('title','')[:80]} ===",
+                      file=out_f, flush=True)
                 subprocess.Popen([sys.executable, str(council),
                                   "--topic", f"수리 {MAX_ATTEMPTS}회 실패 보류: {f.get('title','')[:120]}",
                                   "--context", "\n".join(log)[:1500], "--priority", "P1"],
-                                 cwd=str(PROJECT_ROOT),
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **nowin)
+                                 cwd=str(PROJECT_ROOT), stdout=out_f, stderr=err_f, **nowin)
                 log.append("- 긴급 회의 소집됨(전 에이전트)")
             except Exception:
                 pass
+            finally:
+                if out_f:
+                    out_f.close()
+                if err_f:
+                    err_f.close()
         rec["branch"] = branch
         save_dev_state(state)
         if is_backlog:
