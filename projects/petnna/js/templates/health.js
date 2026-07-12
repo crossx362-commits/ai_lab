@@ -251,6 +251,9 @@ const HEALTH_TEMPLATE = `
         <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
         <div id="preventive-care-dashboard"></div>
 
+        <!-- 💊 복약 순응도 30일 트래커 -->
+        <div id="med-adherence-tracker"></div>
+
         <!-- 💛 몸무게/QOL 주간 체크인 -->
         <div id="qol-checkin-widget"></div>
 
