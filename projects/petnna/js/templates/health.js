@@ -254,6 +254,9 @@ const HEALTH_TEMPLATE = `
         <!-- 💛 몸무게/QOL 주간 체크인 -->
         <div id="qol-checkin-widget"></div>
 
+        <!-- 🐾 BCS 체형 셀프체크 위저드 -->
+        <div id="bcs-wizard-widget"></div>
+
         <!-- 📊 월간 종합 리포트 -->
         <div class="card-modern p-4">
             <div class="flex justify-between items-center mb-4">

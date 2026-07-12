@@ -68,6 +68,9 @@ function renderHealthTab() {
     // 몸무게/QOL 주간 체크인 (백로그 나무_20260709_3, 오너 승인 2026-07-10)
     if (typeof QolCheckin !== 'undefined') QolCheckin.renderWidget('qol-checkin-widget');
 
+    // BCS 체형 셀프체크 위저드 (백로그 나무_20260712143815, P3)
+    if (typeof BcsWizard !== 'undefined') BcsWizard.renderWidget('bcs-wizard-widget');
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
