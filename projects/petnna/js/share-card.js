@@ -466,3 +466,148 @@ async function shareCompatChallenge(pet, compatScore) {
         `☯️ 우리 ${petName}와 나는 조화도 ${Math.round(compatScore)}%! 당신의 펫과 조화도는? #펫과나 #조화도챌린지`
     );
 }
+
+// ─── 산책 리포트 카드 (경로 썸네일 + 거리·시간·칼로리·배변마커, 1080×1080) ──
+function _drawWalkRoute(ctx, coords, marks, box) {
+    // box = {x, y, w, h} — 경로 좌표를 박스에 맞춰 그린다
+    ctx.fillStyle = '#eef7f0';
+    ctx.beginPath();
+    ctx.roundRect(box.x, box.y, box.w, box.h, 28);
+    ctx.fill();
+
+    const pts = Array.isArray(coords) ? coords.filter(c => Array.isArray(c) && c.length >= 2) : [];
+    if (pts.length < 2) {
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '38px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🐾 경로 기록 없음', box.x + box.w / 2, box.y + box.h / 2 + 12);
+        return;
+    }
+
+    const lats = pts.map(p => p[0]), lngs = pts.map(p => p[1]);
+    let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const spanLat = Math.max(maxLat - minLat, 1e-6);
+    const spanLng = Math.max(maxLng - minLng, 1e-6);
+    const pad = 60;
+    const iw = box.w - pad * 2, ih = box.h - pad * 2;
+    const scale = Math.min(iw / spanLng, ih / spanLat);
+    const offX = box.x + pad + (iw - spanLng * scale) / 2;
+    const offY = box.y + pad + (ih - spanLat * scale) / 2;
+    // 위도는 위로 갈수록 커지므로 y축 반전
+    const toXY = (lat, lng) => [offX + (lng - minLng) * scale, offY + (maxLat - lat) * scale];
+
+    ctx.strokeStyle = '#e37736';
+    ctx.lineWidth = 10;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+        const [x, y] = toXY(p[0], p[1]);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 시작/끝 지점
+    const [sx, sy] = toXY(pts[0][0], pts[0][1]);
+    const [ex, ey] = toXY(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath(); ctx.arc(sx, sy, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(ex, ey, 16, 0, Math.PI * 2); ctx.fill();
+
+    // 배변/마킹 마커
+    const markEmoji = { poop: '💩', pee: '💦', sniff: '👃' };
+    (Array.isArray(marks) ? marks : []).forEach(m => {
+        if (typeof m?.lat !== 'number' || typeof m?.lng !== 'number') return;
+        const [mx, my] = toXY(m.lat, m.lng);
+        ctx.font = '36px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(markEmoji[m.type] || '📍', mx, my + 12);
+    });
+}
+
+function generateWalkReportCard(w) {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const petName = pet?.name || '댕이';
+
+    const S = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = S; canvas.height = S;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createLinearGradient(0, 0, S, S);
+    grad.addColorStop(0, '#eef7f0');
+    grad.addColorStop(1, '#d1e9d8');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, S, S);
+
+    // 헤더 배너
+    ctx.fillStyle = '#0f9d58';
+    ctx.beginPath();
+    ctx.roundRect(40, 40, S - 80, 140, 28);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 50px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🦮 ${petName}의 산책 리포트`, S / 2, 122);
+
+    // 경로 썸네일
+    _drawWalkRoute(ctx, w.coords, w.marks, { x: 40, y: 210, w: S - 80, h: 480 });
+
+    // 핵심 지표 3개
+    const stats = [
+        ['📏 거리', `${w.distance} km`],
+        ['⏱️ 시간', `${w.duration || '-'}`],
+        ['🔥 칼로리', `${w.calories} kcal`],
+    ];
+    const cardW = (S - 80 - 40) / 3;
+    stats.forEach((s, i) => {
+        const cx = 40 + i * (cardW + 20);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.roundRect(cx, 730, cardW, 150, 24);
+        ctx.fill();
+        ctx.fillStyle = '#166534';
+        ctx.font = '32px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(s[0], cx + cardW / 2, 790);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 46px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        ctx.fillText(s[1], cx + cardW / 2, 848);
+    });
+
+    // 배변/마킹 요약
+    ctx.fillStyle = '#166534';
+    ctx.font = 'bold 44px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`💩 ${w.poop || 0}회   💦 ${w.pee || 0}회   👃 ${w.sniff || 0}회`, S / 2, 950);
+
+    // 하단 브랜드
+    ctx.fillStyle = '#0f9d58';
+    ctx.beginPath();
+    ctx.roundRect(40, S - 130, S - 80, 90, 24);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 38px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText('Pet & Na — AI 반려동물 케어 올인원', S / 2, S - 72);
+
+    return canvas;
+}
+
+async function shareWalkReportCard(walkId) {
+    const list = (typeof walks !== 'undefined' && Array.isArray(walks)) ? walks : [];
+    const w = list.find(item => item.id === walkId);
+    if (!w) {
+        if (typeof showToast === 'function') showToast('산책 기록을 찾을 수 없어요');
+        return;
+    }
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const petName = pet?.name || '댕이';
+    const canvas = generateWalkReportCard(w);
+    await _downloadOrShare(
+        canvas, 'petna-walk-report.png',
+        `${petName}의 산책 리포트 🦮`,
+        `🦮 ${petName}와 ${w.distance}km 산책 완료! ⏱️${w.duration || ''} 🔥${w.calories}kcal #펫과나 #산책 #반려견산책`
+    );
+}
