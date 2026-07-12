@@ -1055,6 +1055,89 @@ function toggleMarkingButtons(enable) {
     }
 }
 
+// ── 날씨 연동 산책 안심 코치 ──────────────────────────────────────────
+// open-meteo(무료·키 불필요)로 기온·자외선·강수·미세먼지를 조회해 walk 탭 상단에
+// '산책 최적 시간대'와 폭염(발바닥 화상)·한파·미세먼지·자외선 경보 배지를 표시한다.
+let walkWeatherCoachLoaded = false;
+async function renderWalkWeatherCoach(force = false) {
+    const box = document.getElementById('walk-weather-coach');
+    if (!box) return;
+    if (walkWeatherCoachLoaded && !force) return;
+    walkWeatherCoachLoaded = true;
+
+    let lat = 37.5665, lng = 126.9780; // 서울 기본값
+    try {
+        const pos = await new Promise((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+    } catch (_) { /* 실패 시 서울 기본값 유지 */ }
+
+    try {
+        const [wxRes, aqRes] = await Promise.all([
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,uv_index,precipitation&hourly=temperature_2m,uv_index,precipitation_probability&forecast_days=1&timezone=Asia/Seoul`),
+            fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10&timezone=Asia/Seoul`)
+        ]);
+        const wx = await wxRes.json();
+        const aq = await aqRes.json();
+
+        const temp = wx.current.temperature_2m;
+        const feels = wx.current.apparent_temperature;
+        const uv = wx.current.uv_index;
+        const precip = wx.current.precipitation;
+        const pm10 = aq && aq.current ? aq.current.pm10 : null;
+
+        // ── 다음 12시간 중 '산책 최적 시간대' 계산 (위험 점수 최소 시각) ──
+        let bestLabel = null;
+        try {
+            const h = wx.hourly;
+            const nowIdx = h.time.findIndex(t => new Date(t).getTime() >= Date.now());
+            let best = null;
+            for (let i = Math.max(nowIdx, 0); i < Math.min((nowIdx < 0 ? 0 : nowIdx) + 12, h.time.length); i++) {
+                const t = h.temperature_2m[i];
+                const u = h.uv_index[i];
+                const p = h.precipitation_probability[i] ?? 0;
+                // 이상치(18~24°C)에서 멀수록, 자외선·강수확률이 높을수록 위험
+                const score = Math.abs(t - 21) * 1.2 + Math.max(0, u - 3) * 2 + p * 0.15
+                    + (t >= 31 ? 40 : 0) + (t <= -4 ? 30 : 0);
+                if (best === null || score < best.score) best = { score, hour: new Date(h.time[i]).getHours() };
+            }
+            if (best) bestLabel = `${best.hour}시경`;
+        } catch (_) { /* hourly 누락 시 최적 시간대 생략 */ }
+
+        const badges = [];
+        const badge = (cls, icon, text) =>
+            `<span class="inline-flex items-center gap-1 text-[11px] font-bold py-1 px-2.5 rounded-lg ${cls}">${icon} ${text}</span>`;
+
+        if (bestLabel) badges.push(badge('bg-emerald-50 text-emerald-700 border border-emerald-100', '🐾', `산책 추천 ${bestLabel}`));
+        if (temp >= 31) badges.push(badge('bg-rose-50 text-rose-600 border border-rose-100', '🔥', `폭염 ${Math.round(temp)}°C · 발바닥 화상 주의`));
+        else if (feels >= 33) badges.push(badge('bg-orange-50 text-orange-600 border border-orange-100', '🥵', `체감 ${Math.round(feels)}°C · 무더위 주의`));
+        if (temp <= -4 || feels <= -6) badges.push(badge('bg-sky-50 text-sky-700 border border-sky-100', '🥶', `한파 체감 ${Math.round(feels)}°C · 짧게`));
+        if (pm10 !== null && pm10 > 80) badges.push(badge('bg-stone-100 text-stone-600 border border-stone-200', '😷', `미세먼지 나쁨 ${Math.round(pm10)}㎍`));
+        if (uv >= 8) badges.push(badge('bg-purple-50 text-purple-600 border border-purple-100', '☀️', `자외선 매우높음 ${Math.round(uv)}`));
+        if (precip > 0) badges.push(badge('bg-blue-50 text-blue-600 border border-blue-100', '🌧️', '강수 중 · 우비 챙기기'));
+
+        if (badges.length === 0 || (badges.length === 1 && bestLabel))
+            badges.push(badge('bg-brand-50 text-brand-700 border border-brand-100', '✅', `산책 좋아요 · ${Math.round(temp)}°C`));
+
+        box.innerHTML =
+            `<div class="flex items-center gap-1.5 mb-2">
+                <i class="fa-solid fa-cloud-sun-rain text-brand-400 text-sm"></i>
+                <span class="text-xs font-bold text-gray-700">날씨 안심 코치</span>
+                <span class="text-[10px] text-gray-400 ml-auto">현재 ${Math.round(temp)}°C · 자외선 ${Math.round(uv)}</span>
+            </div>
+            <div class="flex flex-wrap gap-1.5">${badges.join('')}</div>`;
+    } catch (err) {
+        console.warn('[PETNA] 날씨 안심 코치 오류', err);
+        box.innerHTML =
+            `<div class="flex items-center gap-2 text-[11px] text-gray-400">
+                <i class="fa-solid fa-cloud-sun-rain"></i>
+                <span>날씨 정보를 불러오지 못했어요. 잠시 후 다시 시도돼요.</span>
+            </div>`;
+        walkWeatherCoachLoaded = false; // 다음 진입 시 재시도
+    }
+}
+
 function renderWalkHistory() {
     const list = document.getElementById('walk-history-list');
     if (!list) return;
