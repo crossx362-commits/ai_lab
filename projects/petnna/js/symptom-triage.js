@@ -11,6 +11,7 @@
 (function () {
     "use strict";
 
+    var lastResult = null; // 마지막 진단 결과(건강수첩 저장·리마인더 생성에 사용)
     var L = { home: 1, vet: 2, emerg: 3 };
     var LEVEL_META = {
         1: { key: "home",  label: "집에서 관찰", emoji: "🏠", cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -185,6 +186,7 @@
         document.querySelectorAll("#st-chips .st-chip.st-on").forEach(function (b) { selected.push(b.dataset.id); });
         var free = (document.getElementById("st-free") || {}).value || "";
         var r = triage(pet, selected, free);
+        lastResult = { pet: pet, result: r, free: free };
         var meta = LEVEL_META[r.level];
         var box = document.getElementById("st-result");
         if (!box) return;
@@ -204,6 +206,9 @@
             '<div class="mt-3 rounded-xl bg-gray-50 px-3 py-2.5">' +
             '<p class="text-[11px] text-gray-500 leading-relaxed">⚠️ 이 안내는 보호자의 초기 판단을 돕는 <b>참고용</b>이며 ' +
             '수의사의 진료·진단을 대체하지 않아요. 조금이라도 걱정되면 병원에 문의하세요.</p></div>' +
+            ((r.picks.length || String(free).trim())
+                ? '<button onclick="SymptomTriage.saveToRecord()" class="mt-3 w-full rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-xs font-bold">📋 건강수첩에 저장 · 재방문 알림 받기</button>'
+                : "") +
             (typeof openVetChatModal === "function"
                 ? '<button onclick="SymptomTriage.close(); openVetChatModal();" class="mt-3 w-full rounded-xl border border-gray-200 hover:bg-gray-50 py-2 text-xs font-bold text-gray-600">AI 수의사에게 자세히 물어보기 →</button>'
                 : "");
@@ -212,5 +217,58 @@
 
     function close() { var el = document.getElementById("st-overlay"); if (el) el.remove(); }
 
-    window.SymptomTriage = { open: open, run: run, close: close, _triage: triage };
+    // 긴급도별 재방문 리마인더 계획 (once 일정 — 며칠 뒤 병원/관찰 알림)
+    var REVISIT = {
+        3: { days: 0, type: "vet", title: "🚨 응급 방문 후 경과 확인" },
+        2: { days: 2, type: "vet", title: "🏥 병원 내원 예정" },
+        1: { days: 2, type: "vet", title: "🩺 증상 경과 재확인" },
+    };
+    function fmtDate(d) {
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    // 결과를 건강수첩에 저장 + 긴급도별 재방문 리마인더 자동 생성
+    function saveToRecord() {
+        if (!lastResult || !lastResult.pet) return;
+        var pet = lastResult.pet, r = lastResult.result, free = String(lastResult.free || "").trim();
+        if (!r.picks.length && !free) {
+            if (typeof showToast === "function") showToast("증상을 먼저 선택해 주세요 🐾");
+            return;
+        }
+        var meta = LEVEL_META[r.level];
+        var symptomText = r.picks.map(function (s) { return s.label; }).join(", ");
+        var summary = "증상 트리아지 · " + meta.label
+            + (symptomText ? " (" + symptomText + ")" : "")
+            + (free ? " / " + free : "");
+
+        // 1) 재방문 리마인더 자동 생성 (긴급도별 — care-scheduler)
+        var plan = REVISIT[r.level] || REVISIT[1];
+        var due = new Date();
+        due.setDate(due.getDate() + plan.days);
+        if (typeof addCareSchedule === "function") {
+            addCareSchedule({
+                petId: pet.id,
+                type: plan.type,
+                title: plan.title,
+                time: "10:00",
+                repeat: "once",
+                date: fmtDate(due),
+                notes: summary,
+            });
+        }
+
+        // 2) 건강수첩 모달을 요약으로 채워 저장 유도 (medical-records)
+        if (typeof openMedicalRecordModal === "function") {
+            close();
+            openMedicalRecordModal();
+            var cat = document.getElementById("medical-category");
+            var diag = document.getElementById("medical-diagnosis");
+            var notes = document.getElementById("medical-notes");
+            if (cat) cat.value = "visit";
+            if (diag) diag.value = symptomText || meta.label;
+            if (notes) notes.value = summary;
+        }
+    }
+
+    window.SymptomTriage = { open: open, run: run, close: close, saveToRecord: saveToRecord, _triage: triage };
 })();
