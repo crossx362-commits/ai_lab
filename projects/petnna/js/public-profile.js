@@ -187,6 +187,16 @@
         var buttons = [
             { text: existing ? "QR 갱신" : "QR 만들기", primary: true, closeOnClick: false, onClick: function () { save(pet); } },
         ];
+        if (typeof window.publishLostBroadcast === "function") {
+            buttons.push({
+                text: "🆘 실종 신고(긴급 알림)", danger: true, closeOnClick: true,
+                onClick: function () {
+                    var contact = ((document.getElementById("pp-contact") || {}).value || "").trim();
+                    var note = ((document.getElementById("pp-note") || {}).value || "").trim();
+                    window.publishLostBroadcast({ petName: pet.name, contact: contact, note: note });
+                },
+            });
+        }
         if (existing) {
             buttons.push({ text: isPublic ? "공개 중지" : "다시 공개", closeOnClick: false, onClick: function () { toggle(pet, existingToken); } });
             buttons.push({ text: "삭제", danger: true, closeOnClick: false, onClick: function () { remove(pet, existingToken); } });

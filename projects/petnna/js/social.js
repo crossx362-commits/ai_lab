@@ -474,6 +474,28 @@ function renderFeed() {
             `;
         }
 
+        let lostReportCard = '';
+        if (post.lostReport) {
+            const lr = post.lostReport;
+            const hasCoords = typeof lr.lat === 'number' && typeof lr.lng === 'number';
+            const mapUrl = hasCoords
+                ? `https://www.openstreetmap.org/?mlat=${lr.lat}&mlon=${lr.lng}#map=17/${lr.lat}/${lr.lng}`
+                : '';
+            lostReportCard = `
+                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 space-y-2">
+                    <span class="inline-flex items-center gap-1 bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">
+                        <i class="fa-solid fa-triangle-exclamation"></i> 실종 긴급 브로드캐스트
+                    </span>
+                    <p class="text-[11px] text-rose-700 font-bold leading-snug">📍 마지막 위치: ${escapeHtml(lr.place || (hasCoords ? '지도 핀 참고' : '위치 정보 없음'))}</p>
+                    ${lr.contact ? `<p class="text-[10px] text-gray-500">연락처: ${escapeHtml(lr.contact)}</p>` : ''}
+                    ${hasCoords ? `<a href="${mapUrl}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 bg-rose-500 hover:bg-rose-600 text-white font-bold text-[10px] py-1.5 px-3.5 rounded-xl shadow transition-all">
+                        <i class="fa-solid fa-map-location-dot"></i> 지도에서 실종 위치 보기
+                    </a>` : ''}
+                    <p class="text-[10px] text-rose-500 font-bold">🔎 목격하셨다면 아래 댓글로 제보해 주세요!</p>
+                </div>
+            `;
+        }
+
         let actions = `
             <div class="flex items-center space-x-4 pt-3 border-t text-xs font-bold text-gray-500">
                 <button onclick="togglePostLike(${post.id})" class="inline-flex items-center justify-center gap-1 hover:text-rose-500 transition-colors ${post.liked ? 'text-rose-500' : ''}">
@@ -531,14 +553,14 @@ function renderFeed() {
 
         let commentForm = `
             <div class="flex items-center space-x-2">
-                <input type="text" id="comment-input-${post.id}" placeholder="사랑스런 댓글을 달아 소통하세요..." class="flex-grow border border-gray-200 rounded-xl px-3 py-2 text-[11px] outline-none focus:border-brand-500 bg-gray-50/20" onkeydown="if(event.key === 'Enter') submitFeedComment(${post.id})">
+                <input type="text" id="comment-input-${post.id}" placeholder="${post.lostReport ? '🔎 목격 정보를 제보해 주세요...' : '사랑스런 댓글을 달아 소통하세요...'}" class="flex-grow border border-gray-200 rounded-xl px-3 py-2 text-[11px] outline-none focus:border-brand-500 bg-gray-50/20" onkeydown="if(event.key === 'Enter') submitFeedComment(${post.id})">
                 <button onclick="submitFeedComment(${post.id})" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[10px] py-2 px-3.5 rounded-xl transition-colors shrink-0">
                     등록
                 </button>
             </div>
         `;
 
-        card.innerHTML = header + mediaView + walkAttachedCard + healthAttachedCard + aiHealthAttachedCard + actions + commentsListHtml + commentForm;
+        card.innerHTML = header + lostReportCard + mediaView + walkAttachedCard + healthAttachedCard + aiHealthAttachedCard + actions + commentsListHtml + commentForm;
         feedContainer.appendChild(card);
     });
 }
@@ -1239,6 +1261,63 @@ function submitFeedPost() {
         showToast("자랑 피드가 활기차게 발행되었습니다! 🎉");
     }
 }
+
+// 5-1. 🆘 실종 긴급 브로드캐스트 — 미아방지 QR과 연계해 소셜 피드에 지도 핀 게시글 자동 발행
+function publishLostBroadcast(opts) {
+    opts = opts || {};
+    const currentPet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const petName = opts.petName || (currentPet ? currentPet.name : "우리 아이");
+    const petAvatar = (currentPet && currentPet.type === 'custom' && currentPet.imageUrl)
+        ? currentPet.imageUrl
+        : "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=150";
+
+    function createPost(lat, lng, place) {
+        const lost = {
+            contact: opts.contact || "",
+            note: opts.note || "",
+            place: place || "",
+            reportedAt: new Date().toISOString(),
+        };
+        if (typeof lat === 'number' && typeof lng === 'number') { lost.lat = lat; lost.lng = lng; }
+
+        const bodyLines = [
+            `🆘 [실종 긴급] ${petName}(을)를 찾습니다!`,
+            opts.note ? opts.note.trim() : "",
+            "목격하신 이웃님은 댓글로 제보 부탁드려요. 🙏",
+        ].filter(Boolean);
+
+        const newPost = {
+            id: Date.now(),
+            petName: petName,
+            petAvatar: petAvatar,
+            content: bodyLines.join("\n"),
+            likes: 0,
+            liked: false,
+            comments: [],
+            lostReport: lost,
+        };
+        posts.unshift(newPost);
+        saveState();
+        if (typeof uploadPostToSupabase === 'function') {
+            try { uploadPostToSupabase(newPost); } catch (e) { console.error("Supabase lost post upload failed:", e); }
+        }
+        if (typeof switchSocialSubTab === 'function') switchSocialSubTab('feed');
+        if (typeof renderFeed === 'function') renderFeed();
+        showToast("🆘 실종 긴급 알림을 이웃 피드에 발행했어요. 함께 찾아봐요!");
+    }
+
+    if (navigator.geolocation) {
+        showToast("현재 위치를 확인 중… 잠시만요");
+        navigator.geolocation.getCurrentPosition(
+            function (pos) { createPost(pos.coords.latitude, pos.coords.longitude, opts.place || "현재 위치 기준"); },
+            function () { createPost(null, null, opts.place || ""); },
+            { timeout: 8000 }
+        );
+    } else {
+        createPost(null, null, opts.place || "");
+    }
+}
+if (typeof window !== 'undefined') window.publishLostBroadcast = publishLostBroadcast;
 
 // 6. 1:1 대화창(DM) 관련 로직
 function selectActiveChatFriend(id) {
