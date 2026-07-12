@@ -71,10 +71,10 @@ body {
 
 /* 🐾 브랜드 톤 배경 — 파우 아이콘의 브라운 램프(brand-50~200)를 활용한 웜 그라디언트로
    '펫 플랫폼' 따뜻한 첫인상 제공. 모바일 포함 전 화면 적용, dark/sepia 테마는 현행 유지.
-   위에 발자국 패턴 타일(fill-opacity 0.04)을 얹어 브랜드 감성 강화. */
+   위에 발자국 패턴 타일(fill-opacity 0.07)을 얹어 브랜드 감성·카드 대비 강화. */
 body:not(.theme-dark):not(.theme-sepia) {
     background-image:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23b1451c' fill-opacity='0.04'%3E%3Cellipse cx='30' cy='42' rx='9' ry='7'/%3E%3Ccircle cx='20' cy='30' r='3.6'/%3E%3Ccircle cx='30' cy='26' r='3.6'/%3E%3Ccircle cx='40' cy='30' r='3.6'/%3E%3Cellipse cx='90' cy='96' rx='9' ry='7'/%3E%3Ccircle cx='80' cy='84' r='3.6'/%3E%3Ccircle cx='90' cy='80' r='3.6'/%3E%3Ccircle cx='100' cy='84' r='3.6'/%3E%3C/g%3E%3C/svg%3E"),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23b1451c' fill-opacity='0.07'%3E%3Cellipse cx='30' cy='42' rx='9' ry='7'/%3E%3Ccircle cx='20' cy='30' r='3.6'/%3E%3Ccircle cx='30' cy='26' r='3.6'/%3E%3Ccircle cx='40' cy='30' r='3.6'/%3E%3Cellipse cx='90' cy='96' rx='9' ry='7'/%3E%3Ccircle cx='80' cy='84' r='3.6'/%3E%3Ccircle cx='90' cy='80' r='3.6'/%3E%3Ccircle cx='100' cy='84' r='3.6'/%3E%3C/g%3E%3C/svg%3E"),
         linear-gradient(160deg, #fff8f2 0%, #ffe9dc 100%);
     background-size: 120px 120px, cover;
     background-attachment: fixed;
