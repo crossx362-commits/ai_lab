@@ -3,7 +3,7 @@
        기존 보라(#8b5cf6) → 코랄(#cc785c). dark/sepia 테마는 그대로 유지. */
     --color-bg-app: #faf9f5;      /* canvas */
     --color-text-main: #141413;   /* ink */
-    --color-bg-card: #fffdf9;     /* warm white card (캔버스 위 대비 유지) */
+    --color-bg-card: #fffefc;     /* near-white card (웜 배경 위 대비 확보) */
     --color-border-card: #e6dfd8; /* hairline */
     --color-bg-header: rgba(250, 249, 245, 0.85);
     --color-accent: #cc785c;      /* primary coral */
@@ -72,7 +72,7 @@ body {
 /* 🐾 브랜드 톤 배경 — 파우 아이콘의 브라운 램프(brand-50~200)를 활용한 웜 그라디언트로
    '펫 플랫폼' 따뜻한 첫인상 제공. 모바일 포함 전 화면 적용, dark/sepia 테마는 현행 유지. */
 body:not(.theme-dark):not(.theme-sepia) {
-    background-image: linear-gradient(160deg, #faf3ef 0%, #f4e2d9 100%);
+    background-image: linear-gradient(160deg, #fff8f2 0%, #ffe9dc 100%);
     background-attachment: fixed;
 }
 
