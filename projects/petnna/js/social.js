@@ -429,15 +429,15 @@ function renderFeed() {
 
         let actions = `
             <div class="flex items-center space-x-4 pt-3 border-t text-xs font-bold text-gray-500">
-                <button onclick="togglePostLike(${post.id})" class="flex items-center space-x-1 hover:text-rose-500 transition-colors ${post.liked ? 'text-rose-500' : ''}">
+                <button onclick="togglePostLike(${post.id})" class="inline-flex items-center justify-center gap-1 hover:text-rose-500 transition-colors ${post.liked ? 'text-rose-500' : ''}">
                     <i class="${post.liked ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
                     <span class="font-mono text-[10px]">${post.likes}</span>
                 </button>
-                <button onclick="focusCommentInput(${post.id})" class="flex items-center space-x-1 hover:text-brand-500 transition-colors">
+                <button onclick="focusCommentInput(${post.id})" class="inline-flex items-center justify-center gap-1 hover:text-brand-500 transition-colors">
                     <i class="fa-regular fa-comment-dots"></i>
                     <span class="font-mono text-[10px]">${post.comments ? post.comments.length : 0}</span>
                 </button>
-                <button onclick="sharePost(${post.id})" class="flex items-center space-x-1 hover:text-brand-500 transition-colors" aria-label="공유">
+                <button onclick="sharePost(${post.id})" class="inline-flex items-center justify-center gap-1 hover:text-brand-500 transition-colors" aria-label="공유">
                     <i class="fa-solid fa-share-nodes"></i>
                     <span class="text-[10px]">공유</span>
                 </button>
