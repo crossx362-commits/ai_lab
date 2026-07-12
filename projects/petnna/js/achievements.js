@@ -406,6 +406,127 @@ function renderWeeklyWalkChallenge() {
         ${done ? '<p class="text-[10px] text-amber-600 font-black text-center mt-2">🎉 이번 주 목표 달성! 🎯 뱃지를 획득했어요!</p>' : ''}`;
 }
 
+// ── 🏆 주간 케어 챌린지 (매주 회전하는 목표) ───────────────────────────────
+// 주(週)마다 하나의 케어 목표가 자동 회전한다(산책·건강기록·AI케어). 진행바로
+// 달성률을 보여주고, 달성 시 그 주 한 번만 축하 애니메이션을 재생한다.
+// 데이터는 기존 walks / healthLogs / getHealthAnalyses()를 재사용(신규 저장 없음).
+const WEEKLY_CARE_GOALS = [
+    {
+        id: 'walk',
+        emoji: '🗺️',
+        title: '산책 챌린지',
+        unit: '회',
+        target: 3,
+        desc: '이번 주 산책 3회를 채워요',
+        action: "switchTab('walk')",
+        actionLabel: '산책하기',
+        progress: () => (typeof getWeeklyWalkProgress === 'function' ? getWeeklyWalkProgress().count : 0),
+    },
+    {
+        id: 'health_log',
+        emoji: '📝',
+        title: '건강 기록 챌린지',
+        unit: '일',
+        target: 4,
+        desc: '이번 주 4일 건강을 기록해요',
+        action: 'openHealthLogModal',
+        actionLabel: '기록하기',
+        progress: () => {
+            const start = _weekStartStr();
+            const hist = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
+            return hist.filter(h => h.date && h.date >= start &&
+                (h.food > 0 || h.water > 0 || (h.poop !== null && h.poop !== undefined))).length;
+        },
+    },
+    {
+        id: 'ai_care',
+        emoji: '🏥',
+        title: 'AI 건강 케어',
+        unit: '회',
+        target: 2,
+        desc: '이번 주 AI 건강 분석 2회',
+        action: "switchTab('health')",
+        actionLabel: '분석하기',
+        progress: () => {
+            const start = _weekStartStr();
+            const a = typeof getHealthAnalyses === 'function' ? getHealthAnalyses() : [];
+            return a.filter(x => x.analyzedAt && x.analyzedAt.split('T')[0] >= start).length;
+        },
+    },
+];
+
+// 이번 주에 해당하는 목표 하나를 결정적으로 선택(주 시작 날짜 기준 회전)
+function getWeeklyCareGoal() {
+    const start = _weekStartStr();
+    const weekIdx = Math.floor(new Date(start).getTime() / (1000 * 60 * 60 * 24 * 7));
+    return WEEKLY_CARE_GOALS[((weekIdx % WEEKLY_CARE_GOALS.length) + WEEKLY_CARE_GOALS.length) % WEEKLY_CARE_GOALS.length];
+}
+
+// 그 주 축하 애니메이션을 이미 재생했는지 (주 키 저장)
+function _careCelebrated(wk) {
+    try { return (JSON.parse(localStorage.getItem('petna_weekly_care_celebrated') || '[]')).includes(wk); }
+    catch { return false; }
+}
+function _markCareCelebrated(wk) {
+    try {
+        const arr = JSON.parse(localStorage.getItem('petna_weekly_care_celebrated') || '[]');
+        if (!arr.includes(wk)) { arr.push(wk); localStorage.setItem('petna_weekly_care_celebrated', JSON.stringify(arr)); }
+    } catch {}
+}
+
+function renderWeeklyCareChallenge() {
+    const el = document.getElementById('weekly-care-challenge');
+    if (!el) return;
+    const goal = getWeeklyCareGoal();
+    const cur = Math.max(0, goal.progress());
+    const pct = Math.min(100, Math.round((cur / goal.target) * 100));
+    const done = cur >= goal.target;
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-black text-gray-700">🏆 이번 주 케어 챌린지</span>
+            <span class="text-[9px] font-bold text-gray-400">매주 회전</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="weekly-care-emoji" class="text-2xl ${done ? 'animate-bounce' : ''}">${goal.emoji}</span>
+            <div class="flex-1 min-w-0">
+                <p class="text-[11px] font-black ${done ? 'text-amber-600' : 'text-gray-700'}">${goal.title}</p>
+                <p class="text-[9px] text-gray-400 font-medium truncate">${goal.desc}</p>
+            </div>
+            <span class="text-[11px] font-black ${done ? 'text-amber-500' : 'text-brand-600'} whitespace-nowrap">${done ? '🎉' : `${cur}/${goal.target}${goal.unit}`}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-1.5 mt-2 overflow-hidden">
+            <div class="bg-gradient-to-r from-brand-400 to-amber-400 h-full rounded-full transition-all duration-700" style="width:${pct}%"></div>
+        </div>
+        ${done
+            ? '<p class="text-[10px] text-amber-600 font-black text-center mt-2">🎉 이번 주 케어 챌린지 달성! 멋져요!</p>'
+            : `<button onclick="${goal.action.includes('(') ? goal.action : goal.action + '()'}" class="w-full mt-2 text-[10px] font-black py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition-colors">${goal.actionLabel}</button>`}`;
+
+    // 달성 시 그 주 한 번만 축하 애니메이션
+    if (done) {
+        const wk = _weekStartStr();
+        if (!_careCelebrated(wk)) {
+            _markCareCelebrated(wk);
+            _playCareCelebration(el);
+            if (typeof showToast === 'function') showToast(`🏆 주간 케어 챌린지 달성: ${goal.title}!`);
+        }
+    }
+}
+
+// 위젯 위로 이모지가 튀어오르는 간단한 축하 연출(Tailwind animate 재사용, 신규 CSS 없음)
+function _playCareCelebration(el) {
+    const burst = document.createElement('div');
+    burst.className = 'absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden';
+    burst.innerHTML = ['🎉', '✨', '🏆', '🎊', '⭐'].map((e, i) =>
+        `<span class="absolute text-xl animate-ping" style="left:${15 + i * 18}%;top:${20 + (i % 2) * 30}%;animation-duration:1s;">${e}</span>`
+    ).join('');
+    const host = el.parentElement || el;
+    const prevPos = host.style.position;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    host.appendChild(burst);
+    setTimeout(() => { burst.remove(); if (!prevPos) host.style.position = prevPos; }, 1600);
+}
+
 // ── 🤝 버디 산책 스트릭 (함께 이어가기) ───────────────────────────────────
 // 개인 산책 streak을 소셜화: 친구와 짝을 맺어 '함께 연속 산책일'을 쌓고,
 // 오늘 아직 산책 전이면 서로에게 넛지(응원)를 보낼 수 있게 한다.

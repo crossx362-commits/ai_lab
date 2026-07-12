@@ -1685,6 +1685,7 @@ function renderMyPets() {
     if (typeof updateRoomThemeByHarmony === 'function') updateRoomThemeByHarmony();
 
     // ── 📊 펄스 패치: 산책 streak 배너 + 월간 리포트 카드 갱신 ──
+    if (typeof renderWeeklyCareChallenge === 'function') renderWeeklyCareChallenge();
     if (typeof renderWeeklyWalkChallenge === 'function') renderWeeklyWalkChallenge();
     if (typeof renderWalkStreakBanner === 'function') renderWalkStreakBanner();
     if (typeof renderBuddyStreakCard === 'function') renderBuddyStreakCard();
