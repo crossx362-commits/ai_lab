@@ -265,6 +265,55 @@
         return cat + " " + name + (r.visitDate ? " · " + r.visitDate : "");
     }
 
+    // ── 건강 지표 수집(체중 추세·BCS·QoL) — 각 모듈의 localStorage에서 읽음 ──
+    function _petId() { var p = activePet(); return p ? p.id : null; }
+
+    function qolHistory() {
+        var id = _petId();
+        if (id == null) return [];
+        try { return (JSON.parse(localStorage.getItem("petna_qol_checkins")) || {})[String(id)] || []; }
+        catch (e) { return []; }
+    }
+
+    function latestQol() {
+        var h = qolHistory();
+        if (!h.length) return null;
+        var last = h[h.length - 1];
+        return { total: last.total, date: String(last.date || "").slice(0, 10) };
+    }
+
+    function latestBcs() {
+        var d = window.BcsWizardData, id = _petId();
+        if (!d || id == null) return null;
+        var h = d.history(id);
+        if (!h || !h.length) return null;
+        var last = h[h.length - 1];
+        return { score: last.score, cat: d.classify(last.score), date: String(last.date || "").slice(0, 10) };
+    }
+
+    function weightTrend() {
+        var pts = qolHistory()
+            .filter(function (r) { return r.weight != null && r.weight !== "" && !isNaN(parseFloat(r.weight)); })
+            .map(function (r) { return parseFloat(r.weight); });
+        if (!pts.length) {
+            var pet = activePet(), pw = pet ? parseFloat(pet.weight) : NaN;
+            if (!isNaN(pw)) pts.push(pw);
+        }
+        if (!pts.length) return null;
+        return { latest: pts[pts.length - 1], delta: +(pts[pts.length - 1] - pts[0]).toFixed(1), count: pts.length };
+    }
+
+    function healthMetricLines() {
+        var lines = [], w = weightTrend(), b = latestBcs(), q = latestQol();
+        if (w) {
+            lines.push("체중: " + w.latest + "kg"
+                + (w.count > 1 ? " (이전 대비 " + (w.delta >= 0 ? "+" : "") + w.delta + "kg · " + w.count + "회 기록)" : ""));
+        }
+        if (b) lines.push("BCS: " + b.score.toFixed(1) + "/5.0 · " + b.cat.label + (b.date ? " (" + b.date + ")" : ""));
+        if (q) lines.push("QoL(삶의 질): " + Number(q.total).toFixed(1) + "/5.0" + (q.date ? " (" + q.date + ")" : ""));
+        return lines;
+    }
+
     function cardText() {
         if (!lastResult || !lastResult.pet) return "";
         var pet = lastResult.pet, r = lastResult.result, free = String(lastResult.free || "").trim();
@@ -274,9 +323,15 @@
             "🏥 병원 방문 준비 카드 — " + (pet.name || "우리 아이"),
             "긴급도: " + meta.emoji + " " + meta.label,
             "증상: " + (symptomText || "-") + (free ? " / " + free : ""),
-            "",
-            "[수의사에게 물어볼 것]",
         ];
+        var metrics = healthMetricLines();
+        if (metrics.length) {
+            lines.push("");
+            lines.push("[건강 지표]");
+            metrics.forEach(function (m) { lines.push("· " + m); });
+        }
+        lines.push("");
+        lines.push("[수의사에게 물어볼 것]");
         buildChecklist(r.picks).forEach(function (q, i) { lines.push((i + 1) + ". " + q); });
         var meds = recentMeds();
         if (meds.length) {
@@ -303,6 +358,12 @@
                 return '<span class="inline-flex items-center bg-white border border-gray-200 text-[11px] font-bold text-gray-600 px-2 py-0.5 rounded-full">' + esc(medLabel(m)) + "</span>";
             }).join("") + "</div>"
             : '<p class="text-xs text-gray-400">기록된 접종/투약 정보가 없어요.</p>';
+        var metrics = healthMetricLines();
+        var metricsHtml = metrics.length
+            ? '<div class="flex flex-wrap gap-1.5">' + metrics.map(function (m) {
+                return '<span class="inline-flex items-center bg-brand-50 border border-brand-100 text-[11px] font-bold text-brand-700 px-2 py-0.5 rounded-full">' + esc(m) + "</span>";
+            }).join("") + "</div>"
+            : '<p class="text-xs text-gray-400">기록된 체중·BCS·QoL 데이터가 없어요.</p>';
 
         var old = document.getElementById("st-prep-overlay");
         if (old) old.remove();
@@ -319,12 +380,14 @@
             '<div class="flex items-center gap-2"><span class="text-xl">' + meta.emoji + '</span>' +
             '<span class="text-sm font-black">' + esc(pet.name || "우리 아이") + ' · ' + meta.label + '</span></div>' +
             '<p class="text-xs mt-1.5">증상: ' + esc(symptomText || "-") + (free ? ' / ' + esc(free) : "") + "</p></div>" +
+            '<div><p class="text-xs font-bold text-gray-500 mb-2">건강 지표 (체중·BCS·QoL)</p>' + metricsHtml + "</div>" +
             '<div><p class="text-xs font-bold text-gray-500 mb-2">수의사에게 물어볼 것</p>' +
             '<ul class="space-y-1.5">' + checklistHtml + "</ul></div>" +
             '<div><p class="text-xs font-bold text-gray-500 mb-2">최근 접종/투약</p>' + medsHtml + "</div>" +
             '<p class="text-[11px] text-gray-400 leading-relaxed">※ 이 카드는 참고용 요약이며 수의사의 진료·진단을 대체하지 않아요.</p>' +
             '</div>' +
             '<div class="px-5 py-3 border-t border-gray-100 flex gap-2 sticky bottom-0 bg-white">' +
+            '<button onclick="SymptomTriage.printPrepCard()" class="flex-1 rounded-xl border border-brand-200 hover:bg-brand-50 text-brand-600 py-2.5 text-sm font-bold">🖨️ 인쇄</button>' +
             '<button onclick="SymptomTriage.sharePrepCard()" class="flex-1 rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-sm font-bold">📤 공유 · 복사</button>' +
             "</div></div>";
         overlay.addEventListener("click", function (e) { if (e.target === overlay) closePrepCard(); });
@@ -332,6 +395,35 @@
     }
 
     function closePrepCard() { var el = document.getElementById("st-prep-overlay"); if (el) el.remove(); }
+
+    // 준비 카드를 인쇄용 문서로 열기(window.print — 건강수첩 리포트와 동일 패턴)
+    function printPrepCard() {
+        var txt = cardText();
+        if (!txt) return;
+        var pet = (lastResult && lastResult.pet) || activePet() || {};
+        var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+            + "<title>병원 방문 준비 카드 — " + esc(pet.name || "우리 아이") + "</title><style>"
+            + "body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;margin:0;padding:32px;color:#1f2937;background:#fff}"
+            + "h1{font-size:20px;font-weight:900;color:#a9583e;margin:0 0 4px}"
+            + ".sub{font-size:12px;color:#6b7280;margin-bottom:16px}"
+            + "pre{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.7;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:18px}"
+            + ".footer{margin-top:24px;text-align:center;font-size:10px;color:#d1d5db}"
+            + "@media print{body{padding:0 20px}button{display:none}}</style></head><body>"
+            + '<h1>🏥 병원 방문 준비 카드</h1>'
+            + '<p class="sub">' + esc(pet.name || "우리 아이") + " · 생성일: " + new Date().toLocaleDateString("ko-KR") + "</p>"
+            + "<pre>" + esc(txt) + "</pre>"
+            + '<div class="footer">🐾 펫과나 (Pet & Na) — AI 반려동물 케어 올인원</div>'
+            + '<div style="text-align:center;margin-top:20px"><button onclick="window.print()" style="background:#a9583e;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF로 저장</button></div>'
+            + "</body></html>";
+        var url = URL.createObjectURL(new Blob([html], { type: "text/html; charset=utf-8" }));
+        var win = window.open(url, "_blank");
+        if (!win) {
+            URL.revokeObjectURL(url);
+            if (typeof showToast === "function") showToast("팝업 차단을 해제해주세요");
+            return;
+        }
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    }
 
     function sharePrepCard() {
         var txt = cardText();
@@ -403,5 +495,6 @@
     }
 
     window.SymptomTriage = { open: open, run: run, close: close, saveToRecord: saveToRecord,
-        openPrepCard: openPrepCard, closePrepCard: closePrepCard, sharePrepCard: sharePrepCard, _triage: triage };
+        openPrepCard: openPrepCard, closePrepCard: closePrepCard, sharePrepCard: sharePrepCard,
+        printPrepCard: printPrepCard, _triage: triage };
 })();
