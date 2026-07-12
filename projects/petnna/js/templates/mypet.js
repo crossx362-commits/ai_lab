@@ -331,6 +331,16 @@ const MYPET_TEMPLATE = `
     <!-- 오른쪽: 챌린지 + 업적 -->
     <div class="lg:col-span-3 space-y-2.5">
 
+        <!-- 주간 케어 챌린지 (매주 회전하는 목표) -->
+        <div class="bg-gradient-to-br from-brand-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+            <div id="weekly-care-challenge">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-trophy text-gray-300"></i>
+                    <span>이번 주 케어 챌린지를 확인해보세요!</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 주간 산책 챌린지 (개인 목표 링) -->
         <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
             <div id="weekly-walk-challenge">
