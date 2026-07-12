@@ -49,6 +49,8 @@ const ACHIEVEMENTS = [
     { id: 'walk_streak_7',    emoji: '🥇',    name: '주간 산책왕',    desc: '7일 연속 산책 달성! 최고예요!',        check: () => calcWalkStreak() >= 7 },
     { id: 'walk_streak_14',   emoji: '🏆',    name: '2주 챔피언',     desc: '14일 연속 산책! 놀라운 의지력!',       check: () => calcWalkStreak() >= 14 },
     { id: 'walk_streak_30',   emoji: '💎',    name: '30일 산책 전설', desc: '30일 연속 산책! 진정한 집사의 길!',   check: () => calcWalkStreak() >= 30 },
+    // ── 주간 산책 챌린지 달성 뱃지 (개인 목표 링) ──
+    { id: 'weekly_goal',      emoji: '🎯',    name: '주간 목표 달성', desc: '이번 주 산책 목표를 달성했어요!',      check: () => hasMetWeeklyWalkGoal() },
 ];
 
 function getUnlockedAchievements() {
@@ -251,6 +253,157 @@ function renderWalkStreakBanner() {
             <div class="bg-gradient-to-r from-orange-400 to-brand-500 h-full rounded-full transition-all duration-700"
                  style="width:${pct}%"></div>
         </div>`;
+}
+
+// ── 🎯 주간 산책 챌린지 (개인 목표 링) ────────────────────────────────────
+// walk streak 위에 이번 주 목표(거리·횟수)를 설정하고 진행 링으로 보여준다.
+// 목표 달성 시 '주간 목표 달성' 뱃지를 부여. 주 시작은 월요일 기준.
+const WEEKLY_WALK_GOAL_DEFAULT = { distance: 5, count: 5 };
+
+function _weekStartStr(d = new Date()) {
+    const dt = new Date(d);
+    const day = (dt.getDay() + 6) % 7; // 월=0 ... 일=6
+    dt.setDate(dt.getDate() - day);
+    return dt.toISOString().split('T')[0];
+}
+
+function getWeeklyWalkGoal() {
+    try {
+        const raw = localStorage.getItem(AppConstants.StorageKeys.WEEKLY_WALK_GOAL);
+        if (!raw) return { ...WEEKLY_WALK_GOAL_DEFAULT };
+        const g = JSON.parse(raw);
+        return {
+            distance: Number(g.distance) > 0 ? Number(g.distance) : WEEKLY_WALK_GOAL_DEFAULT.distance,
+            count: Number(g.count) > 0 ? Math.round(Number(g.count)) : WEEKLY_WALK_GOAL_DEFAULT.count,
+        };
+    } catch { return { ...WEEKLY_WALK_GOAL_DEFAULT }; }
+}
+
+function saveWeeklyWalkGoal(goal) {
+    try { localStorage.setItem(AppConstants.StorageKeys.WEEKLY_WALK_GOAL, JSON.stringify(goal)); } catch {}
+}
+
+// 이번 주 산책 집계 (월요일 시작, streak 배너와 동일하게 savedAt 기준)
+function getWeeklyWalkProgress() {
+    const start = _weekStartStr();
+    const weekWalks = (typeof walks !== 'undefined' ? walks : []).filter(w => {
+        const d = w.savedAt ? w.savedAt.split('T')[0] : null;
+        return d && d >= start;
+    });
+    const distance = weekWalks.reduce((s, w) => s + (parseFloat(w.distance) || 0), 0);
+    return { count: weekWalks.length, distance };
+}
+
+// 목표 달성한 주(週)를 기록 — 뱃지는 한 번 달성하면 영구 유지
+function _getMetWeeks() {
+    try { return JSON.parse(localStorage.getItem(AppConstants.StorageKeys.WEEKLY_WALK_GOAL_MET) || '[]'); }
+    catch { return []; }
+}
+
+function hasMetWeeklyWalkGoal() {
+    return _getMetWeeks().length > 0;
+}
+
+// 이번 주 목표 달성 시 주 키를 기록(중복 방지)
+function _recordWeeklyGoalIfMet() {
+    const goal = getWeeklyWalkGoal();
+    const prog = getWeeklyWalkProgress();
+    if (prog.distance >= goal.distance && prog.count >= goal.count) {
+        const wk = _weekStartStr();
+        const met = _getMetWeeks();
+        if (!met.includes(wk)) {
+            met.push(wk);
+            try { localStorage.setItem(AppConstants.StorageKeys.WEEKLY_WALK_GOAL_MET, JSON.stringify(met)); } catch {}
+        }
+    }
+}
+
+// 목표 설정: 거리 → 횟수 순으로 입력
+function setWeeklyWalkGoal() {
+    const cur = getWeeklyWalkGoal();
+    if (typeof showCustomDialog !== 'function') return;
+    showCustomDialog({
+        title: '주간 목표 — 거리 🎯',
+        message: '이번 주 산책 목표 거리를 입력하세요 (km)',
+        icon: '📏',
+        type: 'prompt',
+        val: String(cur.distance),
+        placeholder: '예: 5',
+        onConfirm: (distRaw) => {
+            const distance = Math.max(0.1, parseFloat(distRaw) || cur.distance);
+            showCustomDialog({
+                title: '주간 목표 — 횟수 🎯',
+                message: '이번 주 산책 목표 횟수를 입력하세요 (회)',
+                icon: '🔁',
+                type: 'prompt',
+                val: String(cur.count),
+                placeholder: '예: 5',
+                onConfirm: (cntRaw) => {
+                    const count = Math.max(1, Math.round(parseInt(cntRaw) || cur.count));
+                    saveWeeklyWalkGoal({ distance, count });
+                    if (typeof showToast === 'function') showToast(`이번 주 목표: ${distance}km · ${count}회 🎯`);
+                    renderWeeklyWalkChallenge();
+                }
+            });
+        }
+    });
+}
+
+function renderWeeklyWalkChallenge() {
+    const el = document.getElementById('weekly-walk-challenge');
+    if (!el) return;
+    _recordWeeklyGoalIfMet();
+
+    const goal = getWeeklyWalkGoal();
+    const prog = getWeeklyWalkProgress();
+    const distPct = Math.min(1, prog.distance / goal.distance);
+    const countPct = Math.min(1, prog.count / goal.count);
+    const overall = Math.round(((distPct + countPct) / 2) * 100);
+    const done = prog.distance >= goal.distance && prog.count >= goal.count;
+
+    // SVG 진행 링
+    const r = 26, c = 2 * Math.PI * r;
+    const offset = c * (1 - overall / 100);
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-black text-gray-700">🎯 주간 산책 챌린지</span>
+            <button onclick="setWeeklyWalkGoal()" class="text-[9px] font-bold text-brand-500 hover:text-brand-600">목표 설정</button>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="relative shrink-0" style="width:64px;height:64px;">
+                <svg width="64" height="64" viewBox="0 0 64 64" class="-rotate-90">
+                    <circle cx="32" cy="32" r="${r}" fill="none" stroke="#f1e4d6" stroke-width="7"></circle>
+                    <circle cx="32" cy="32" r="${r}" fill="none" stroke="${done ? '#f59e0b' : '#ea6d3a'}" stroke-width="7"
+                        stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"
+                        style="transition:stroke-dashoffset 0.7s ease;"></circle>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-[13px] font-black ${done ? 'text-amber-500' : 'text-brand-600'}">${done ? '🎉' : overall + '%'}</span>
+                </div>
+            </div>
+            <div class="flex-1 min-w-0 space-y-1">
+                <div>
+                    <div class="flex items-center justify-between text-[10px] font-bold">
+                        <span class="text-gray-500">📏 거리</span>
+                        <span class="${distPct >= 1 ? 'text-amber-600' : 'text-gray-700'}">${prog.distance.toFixed(1)} / ${goal.distance}km</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1 overflow-hidden mt-0.5">
+                        <div class="bg-brand-500 h-full rounded-full transition-all duration-700" style="width:${Math.round(distPct * 100)}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between text-[10px] font-bold">
+                        <span class="text-gray-500">🔁 횟수</span>
+                        <span class="${countPct >= 1 ? 'text-amber-600' : 'text-gray-700'}">${prog.count} / ${goal.count}회</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1 overflow-hidden mt-0.5">
+                        <div class="bg-amber-400 h-full rounded-full transition-all duration-700" style="width:${Math.round(countPct * 100)}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ${done ? '<p class="text-[10px] text-amber-600 font-black text-center mt-2">🎉 이번 주 목표 달성! 🎯 뱃지를 획득했어요!</p>' : ''}`;
 }
 
 // ── 🤝 버디 산책 스트릭 (함께 이어가기) ───────────────────────────────────

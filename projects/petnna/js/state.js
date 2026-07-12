@@ -104,6 +104,8 @@ const AppConstants = {
         PET_SAJU: 'petna_pet_saju',
         BUTLER_SAJU: 'petna_butler_saju',
         BUDDY_PAIR: 'petna_buddy_pair',
+        WEEKLY_WALK_GOAL: 'petna_weekly_walk_goal',
+        WEEKLY_WALK_GOAL_MET: 'petna_weekly_walk_goal_met',
     }
 };
 
