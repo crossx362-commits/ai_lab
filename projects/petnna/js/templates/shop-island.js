@@ -366,11 +366,12 @@ const SHOP_ISLAND_TEMPLATE = `
   letter-spacing: 0.08em;
   color: #64748b;
   margin: 0;
+  padding: 0 4px;
 }
 .panel-divider {
   border: none;
-  border-top: 1.5px solid #f1f5f9;
-  margin: 4px 0;
+  border-top: 1.5px solid #e2e8f0;
+  margin: 8px 0;
 }
 
 /* ===== 필터 리스트 ===== */
