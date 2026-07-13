@@ -65,6 +65,19 @@ function generateWeeklyHealthData() {
         healthLogs.history = healthLogs.history.slice(0, 90);
     }
 
+    // "오늘의 기록"(식사량/음수량/배변) 카드는 healthLogs.today를 별도로 읽는데,
+    // 위에서 채운 건 healthLogs.history뿐이라 데모 데이터를 눌러도 반영 안 보이던
+    // 버그(2026-07-13 오너 발견) — 방금 생성한 이력에 오늘 날짜 항목이 있으면 동기화.
+    const todayStr = today.toISOString().split('T')[0];
+    const todayEntry = healthLogs.history.find(h => h.date === todayStr);
+    if (todayEntry) {
+        if (!healthLogs.today) healthLogs.today = {};
+        healthLogs.today.food = todayEntry.food;
+        healthLogs.today.water = todayEntry.water;
+        healthLogs.today.poop = todayEntry.poop;
+        healthLogs.today.date = todayStr;
+    }
+
     if (typeof saveState === 'function') saveState();
     if (typeof renderHealthTab === 'function') renderHealthTab();
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
