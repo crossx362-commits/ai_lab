@@ -589,6 +589,19 @@ select:focus-visible {
     transition: border-color .18s, box-shadow .18s;
 }
 
+/* ♿ 인풋 대비·접근성 보강 — 아이보리 배경 위 옅은 테두리·플레이스홀더 명도 상향(WCAG) */
+/* 다크 테마 제외(밝은 잉크라 옅은 값이 맞음). 포커스 시엔 위 브랜드 링이 우선. */
+body:not(.theme-dark) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(:focus),
+body:not(.theme-dark) textarea:not(:focus),
+body:not(.theme-dark) select:not(:focus) {
+    border-color: #c9beb2;
+}
+body:not(.theme-dark) input::placeholder,
+body:not(.theme-dark) textarea::placeholder {
+    color: #78716c;
+    opacity: 1;
+}
+
 /* 멀티펫 스테이지 리스트 */
 #pet-stage-list {
     width: 100%;
