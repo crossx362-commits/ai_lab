@@ -1,6 +1,9 @@
 const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
-    
+
+    <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
+    <div id="health-digest-banner"></div>
+
     <!-- 날짜 & 날씨 -->
     <div class="glass rounded-xl px-4 py-3 shadow-soft">
         <div class="flex items-center justify-between gap-4">

@@ -1233,6 +1233,7 @@ function renderMyPets() {
     }
 
     if (typeof renderPetRecoCard === 'function') renderPetRecoCard('reco-card-home');
+    if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
 
     const roomNameEl = document.getElementById('pet-room-name');
     if (roomNameEl) {
