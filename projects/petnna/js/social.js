@@ -54,6 +54,70 @@ function ensureAgentFriends() {
     }
 }
 
+// 주간 산책 챌린지 리더보드 — routes(walks)·profiles(friends) 데이터 재사용, 게이미피케이션
+// 친구는 AI 이웃이라 실 산책 데이터가 없어 이번 주 키로 시드된 가상 점수를 부여(주중 고정).
+function _leaderboardSeed(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0) / 4294967295;
+}
+
+function renderWalkLeaderboard() {
+    const box = document.getElementById('walk-leaderboard-list');
+    if (!box) return;
+
+    const weekKey = (typeof _weekStartStr === 'function') ? _weekStartStr() : new Date().toISOString().split('T')[0];
+
+    // 내 이번 주 실적 (routes 재사용)
+    const myProg = (typeof getWeeklyWalkProgress === 'function') ? getWeeklyWalkProgress() : { count: 0, distance: 0 };
+    const myBadges = (typeof getUnlockedAchievements === 'function') ? getUnlockedAchievements().length : 0;
+    const myNick = (typeof AppStore !== 'undefined' && AppStore.getState) ? (AppStore.getState('settings_nickname') || '나') : '나';
+
+    const rows = [{
+        me: true, nickname: myNick, avatar: null,
+        distance: Math.round(myProg.distance * 100) / 100, walks: myProg.count, badges: myBadges
+    }];
+
+    (typeof friends !== 'undefined' ? friends : []).forEach(f => {
+        const s = _leaderboardSeed(`${weekKey}:${f.id}`);
+        const s2 = _leaderboardSeed(`${weekKey}:${f.id}:c`);
+        rows.push({
+            me: false, nickname: f.nickname, avatar: f.avatar,
+            distance: Math.round((2 + s * 18) * 100) / 100,   // 2.0 ~ 20.0 km
+            walks: 2 + Math.floor(s2 * 12),                    // 2 ~ 13회
+            badges: 0
+        });
+    });
+
+    rows.sort((a, b) => b.distance - a.distance || b.walks - a.walks);
+
+    const medals = ['🥇', '🥈', '🥉'];
+    box.innerHTML = rows.map((r, i) => {
+        const rank = medals[i] || `<span class="text-gray-400 font-black">${i + 1}</span>`;
+        const mine = r.me ? 'bg-brand-50 border-brand-200' : 'border-transparent hover:bg-gray-50';
+        const avatar = r.avatar
+            ? `<img loading="lazy" src="${r.avatar}" class="w-7 h-7 object-cover rounded-full border border-amber-100" onerror="this.style.display='none'">`
+            : `<span class="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-xs">🐾</span>`;
+        const badge = (r.me && r.badges > 0)
+            ? `<span class="text-[8px] text-amber-600 font-black bg-amber-50 border border-amber-100 rounded px-1 shrink-0">🏅${r.badges}</span>`
+            : (i === 0 ? `<span class="text-[8px] text-amber-600 font-black bg-amber-50 border border-amber-100 rounded px-1 shrink-0">👑 1위</span>` : '');
+        return `
+            <div class="p-2 rounded-2xl border-2 ${mine} flex items-center justify-between gap-2 transition-colors">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-5 text-center text-sm shrink-0">${rank}</span>
+                    ${avatar}
+                    <span class="font-bold text-gray-700 text-[11px] truncate flex items-center gap-1">
+                        ${escapeHtml(r.nickname)} ${r.me ? '<span class="text-[8px] text-brand-500 font-black">(나)</span>' : ''} ${badge}
+                    </span>
+                </div>
+                <div class="text-right shrink-0 text-[10px] leading-tight">
+                    <span class="font-black text-brand-700 block">${r.distance.toFixed(2)} km</span>
+                    <span class="text-gray-400 block">${r.walks}회</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
 // 1. 소셜 & 피드 메인 렌더링 진입점
 function renderSocialRoom() {
     ensureAgentFriends();
@@ -134,6 +198,9 @@ function renderSocialRoom() {
             });
         }
     }
+
+    // 주간 산책 챌린지 리더보드 렌더링
+    renderWalkLeaderboard();
 
     // 중앙 서브탭 동기화 및 렌더링
     switchSocialSubTab(activeSocialSubTab);

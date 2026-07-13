@@ -47,6 +47,14 @@ const SOCIAL_TEMPLATE = `
                 <!-- 동적 친구들 주소록 로딩 -->
             </div>
         </div>
+
+        <!-- 주간 산책 챌린지 리더보드 (게이미피케이션) -->
+        <div class="space-y-3">
+            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider">🏆 주간 산책 챌린지</h4>
+            <div id="walk-leaderboard-list" class="space-y-2">
+                <!-- 동적 리더보드 로딩 -->
+            </div>
+        </div>
     </div>
 
     <!-- 모바일 친구 패널 백드롭 -->
