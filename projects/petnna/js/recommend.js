@@ -74,11 +74,31 @@ function recoAllergens(pet) {
     return hit;
 }
 
+// 최근 건강 로그(healthLogs.history 최근 7일)에서 케어 관심사 추정
+function recoLogConcerns() {
+    const hist = (typeof healthLogs !== 'undefined' && Array.isArray(healthLogs.history)) ? healthLogs.history : [];
+    const recent = hist.slice(-7);
+    const concerns = new Set();
+    if (recent.length === 0) return concerns;
+
+    const abnormalPoop = recent.filter(h => h && (h.poop === 'hard' || h.poop === 'liquid')).length;
+    if (abnormalPoop >= 2) concerns.add('digestion');
+
+    const lowWaterDays = recent.filter(h => h && typeof h.water === 'number' && h.water > 0 && h.water < 80).length;
+    if (lowWaterDays >= 2) concerns.add('hydration');
+
+    const offDays = recent.filter(h => h && (h.condition === 'sick' || h.condition === 'tired')).length;
+    if (offDays >= 3) concerns.add('vitality');
+
+    return concerns;
+}
+
 function getPetRecommendations(pet) {
     if (!pet) return [];
     const stage = recoLifeStage(pet);
     const heavy = recoIsHeavy(pet);
     const allergens = recoAllergens(pet);
+    const logConcerns = recoLogConcerns();
 
     const scored = RECO_CATALOG
         .filter(item => !item.allergens.some(a => allergens.includes(a)))
@@ -88,12 +108,39 @@ function getPetRecommendations(pet) {
             if (item.stages.includes(stage)) score += 3;
             if (heavy && (item.concerns.includes('joint') || item.concerns.includes('weight'))) score += 3;
             if (item.concerns.includes('general')) score += 1;
+            // 최근 로그에서 감지한 관심사를 다루는 아이템 가점
+            if (logConcerns.has('digestion') && item.concerns.includes('digestion')) score += 4;
+            if (logConcerns.has('vitality') && item.concerns.includes('general')) score += 2;
             return { item, score };
         })
         .filter(s => s.score > 0)
         .sort((a, b) => b.score - a.score);
 
     return scored.slice(0, 3).map(s => s.item);
+}
+
+// 프로필 + 최근 로그 기반 초개인화 케어 팁 (최대 2개)
+function getPetCareTips(pet) {
+    if (!pet) return [];
+    const stage = recoLifeStage(pet);
+    const allergens = recoAllergens(pet);
+    const logConcerns = recoLogConcerns();
+    const tips = [];
+
+    if (logConcerns.has('digestion')) tips.push({ emoji: '💩', text: '최근 배변 상태가 고르지 않아요. 저자극 식단과 유산균으로 장 건강을 챙겨주세요.' });
+    if (logConcerns.has('hydration')) tips.push({ emoji: '💧', text: '최근 음수량이 적어요. 신선한 물을 여러 곳에 두거나 습식 급여로 수분을 늘려주세요.' });
+    if (logConcerns.has('vitality')) tips.push({ emoji: '🩺', text: '컨디션이 저하된 날이 잦아요. 증상이 이어지면 수의사 상담을 권해요.' });
+
+    if (tips.length < 2) {
+        if (stage === 'puppy') tips.push({ emoji: '🌱', text: '성장기예요. 고품질 단백질과 규칙적인 급여로 발달을 도와주세요.' });
+        else if (stage === 'senior') tips.push({ emoji: '🧓', text: '시니어 시기예요. 관절·치아 관리와 정기 건강검진을 챙겨주세요.' });
+        else tips.push({ emoji: '⚖️', text: '적정 체중 유지가 건강의 기본이에요. 간식은 하루 열량의 10% 이내로 주세요.' });
+    }
+    if (tips.length < 2 && allergens.length > 0) {
+        tips.push({ emoji: '🚫', text: '알러지 정보를 반영해 자극 성분을 뺀 간식을 추천했어요. 새 간식은 소량부터 시작하세요.' });
+    }
+
+    return tips.slice(0, 2);
 }
 
 function petNameJosa(name) {
@@ -115,6 +162,15 @@ function renderPetRecoCard(containerId) {
         return;
     }
 
+    const tips = getPetCareTips(pet);
+    const tipsHtml = tips.length === 0 ? '' : `
+        <div class="space-y-1.5">${tips.map(t => `
+            <div class="flex items-start gap-2 p-2 rounded-2xl bg-white/60 border border-amber-50">
+                <span class="text-base shrink-0" aria-hidden="true">${t.emoji}</span>
+                <p class="text-[10px] text-gray-600 leading-snug">${t.text}</p>
+            </div>`).join('')}
+        </div>`;
+
     const rows = items.map(item => `
         <div class="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 border border-amber-50">
             <span class="text-2xl shrink-0" aria-hidden="true">${item.emoji}</span>
@@ -134,7 +190,8 @@ function renderPetRecoCard(containerId) {
                 <span class="text-base" aria-hidden="true">🎯</span>
                 <h3 class="text-sm font-bold text-gray-900">${petNameJosa(pet.name)} 맞는 맞춤 추천 TOP3</h3>
             </div>
-            <p class="text-[10px] text-gray-400 -mt-1">품종·나이·체중·알러지 정보를 반영했어요</p>
+            <p class="text-[10px] text-gray-400 -mt-1">품종·나이·체중·알러지와 최근 건강 로그를 반영했어요</p>
+            ${tipsHtml}
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">${rows}</div>
         </div>
     `;
