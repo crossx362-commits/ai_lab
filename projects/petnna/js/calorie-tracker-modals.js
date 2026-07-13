@@ -148,6 +148,46 @@
         CT().renderWidget("calorie-tracker-widget");
     }
 
+    // ── 사료 열량(kcal/100g) 설정 모달 — 권장 사료량(g) 환산용 ────────
+    function openDensity() {
+        var pet = CT()._activePet();
+        if (!pet) return;
+        closeModal();
+        var cur = CT()._densityFor(pet.id);
+
+        var overlay = document.createElement("div");
+        overlay.id = "cal-overlay";
+        overlay.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4";
+        overlay.innerHTML =
+            '<div class="w-full max-w-sm rounded-2xl bg-white shadow-2xl">' +
+            '<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">' +
+            '<h3 class="text-base font-extrabold text-gray-900">🥣 사료 열량 설정</h3>' +
+            '<button onclick="CalorieTracker.close()" class="text-gray-300 hover:text-gray-500 text-xl leading-none">&times;</button></div>' +
+            '<div class="px-5 py-4 space-y-2">' +
+            '<label class="text-xs font-bold text-gray-500">100g당 kcal</label>' +
+            '<input id="cal-density-input" type="number" min="100" max="600" step="10" value="' + cur + '" ' +
+            'class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none">' +
+            '<p class="text-[11px] text-gray-400 leading-relaxed">사료 포장지의 100g당 열량을 입력하세요 (건사료 평균 약 350).</p>' +
+            "</div>" +
+            '<div class="px-5 py-3 border-t border-gray-100">' +
+            '<button onclick="CalorieTracker.setDensity()" class="w-full rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-sm font-bold">저장</button>' +
+            "</div></div>";
+        overlay.addEventListener("click", function (e) { if (e.target === overlay) closeModal(); });
+        document.body.appendChild(overlay);
+    }
+
+    function setDensity() {
+        var pet = CT()._activePet();
+        if (!pet) return;
+        var v = parseFloat((document.getElementById("cal-density-input") || {}).value);
+        if (!(v > 0)) { toast("100g당 kcal을 입력해 주세요"); return; }
+        var map = CT()._loadDensities();
+        map[String(pet.id)] = v;
+        CT()._saveDensities(map);
+        closeModal();
+        CT().renderWidget("calorie-tracker-widget");
+    }
+
     function closeModal() { var el = document.getElementById("cal-overlay"); if (el) el.remove(); }
 
     Object.assign(window.CalorieTracker, {
@@ -156,6 +196,8 @@
         remove: remove,
         openFactor: openFactor,
         setFactor: setFactor,
+        openDensity: openDensity,
+        setDensity: setDensity,
         close: closeModal,
     });
 })();

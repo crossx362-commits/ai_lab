@@ -205,23 +205,6 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
-            <!-- PDF 리포트 -->
-            <button onclick="generateHealthReportPDF()" class="card-modern bg-gradient-to-br from-orange-50 to-amber-50 p-6 text-left group hover:scale-[1.02] transition-all">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="text-5xl">📄</div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900">PDF 리포트</h3>
-                            <p class="text-xs text-orange-600 mt-1">건강 분석 문서화</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-xs bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1 rounded-full font-bold">PRO</span>
-                    <i class="fa-solid fa-file-pdf text-orange-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-            </button>
-
         </div>
 
         <!-- AI 건강 분석 숨겨진 입력 & 결과 -->
@@ -448,69 +431,6 @@ const HEALTH_TEMPLATE = `
                     </div>
                     <p class="text-[10px] text-gray-400 text-center">체중 기반 권장 음수량 (50ml/kg)</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- 🥣 일일 권장 사료량 계산기 (RER/MER) -->
-        <div class="card-modern p-5">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="text-3xl">🥣</span>
-                <div>
-                    <h3 class="text-base font-bold text-gray-900">일일 권장 사료량</h3>
-                    <p class="text-[10px] text-gray-500">체중·중성화·활동량 기반 RER/MER 계산</p>
-                </div>
-            </div>
-
-            <div id="food-calc-empty" class="hidden text-center text-xs text-gray-400 py-4">
-                마이펫에 체중을 입력하면 권장 사료량이 계산됩니다.
-            </div>
-
-            <div id="food-calc-body" class="space-y-3">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-gray-500">현재 체중</span>
-                    <span id="food-calc-weight" class="font-bold text-gray-800">-- kg</span>
-                </div>
-                <div class="flex items-center justify-between text-xs">
-                    <span class="text-gray-500">중성화 여부</span>
-                    <span id="food-calc-neuter" class="font-bold text-gray-800">--</span>
-                </div>
-
-                <div>
-                    <label class="text-[10px] font-semibold text-gray-500">활동량</label>
-                    <select id="food-calc-activity" onchange="renderFoodCalculator()"
-                        class="w-full mt-1 border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
-                        <option value="low">🛋️ 저활동 (실내·노령·체중감량)</option>
-                        <option value="normal" selected>🚶 보통 (일반 성견·성묘)</option>
-                        <option value="high">🏃 활발 (활동적·운동견)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="text-[10px] font-semibold text-gray-500">사료 열량 (kcal/100g)</label>
-                    <input type="number" id="food-calc-density" value="350" min="100" max="600" step="10"
-                        onchange="renderFoodCalculator()" oninput="renderFoodCalculator()"
-                        class="w-full mt-1 border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
-                    <p class="text-[9px] text-gray-400 mt-1">사료 포장지의 100g당 열량을 입력하세요 (건사료 평균 약 350)</p>
-                </div>
-
-                <div class="grid grid-cols-3 gap-2 pt-1">
-                    <div class="bg-gray-50 rounded-xl p-2 text-center">
-                        <div class="text-[9px] text-gray-400">RER</div>
-                        <div id="food-calc-rer" class="text-sm font-bold text-gray-700">-- kcal</div>
-                    </div>
-                    <div class="bg-amber-50 rounded-xl p-2 text-center">
-                        <div class="text-[9px] text-amber-500">MER (하루)</div>
-                        <div id="food-calc-mer" class="text-sm font-black text-amber-600">-- kcal</div>
-                    </div>
-                    <div class="bg-amber-500 rounded-xl p-2 text-center">
-                        <div class="text-[9px] text-amber-100">권장 사료량</div>
-                        <div id="food-calc-grams" class="text-sm font-black text-white">-- g</div>
-                    </div>
-                </div>
-
-                <p class="text-[9px] text-gray-400 text-center leading-relaxed">
-                    RER = 70 × 체중(kg)<sup>0.75</sup>, MER = RER × 활동계수.<br>참고용 추정치이며 정확한 급여량은 수의사와 상담하세요.
-                </p>
             </div>
         </div>
 

@@ -11,6 +11,10 @@
 
     var LS_KEY = "petna_calorie_logs"; // { [petId]: { [YYYY-MM-DD]: [{id, label, kind, kcal}] } }
     var LS_FACTOR = "petna_calorie_factor"; // { [petId]: factorValue }
+    var LS_DENSITY = "petna_calorie_density"; // { [petId]: kcal per 100g } — 건강 탭의 별도
+    // "일일 권장 사료량 계산기" 카드와 계산식(RER×활동계수)이 완전히 중복이라 여기로 흡수
+    // (2026-07-13 오너 지시 "건강탭 정리, 합칠건 합치고"). 그램 환산만 이 위젯에 추가.
+    var DEFAULT_DENSITY = 350;
 
     // 활동/생애 단계별 계수 (개·고양이 공통 근사; 표준 DER 계수)
     var FACTORS = [
@@ -37,6 +41,12 @@
     function saveAll(map) { localStorage.setItem(LS_KEY, JSON.stringify(map)); }
     function loadFactors() { try { return JSON.parse(localStorage.getItem(LS_FACTOR)) || {}; } catch (e) { return {}; } }
     function saveFactors(map) { localStorage.setItem(LS_FACTOR, JSON.stringify(map)); }
+    function loadDensities() { try { return JSON.parse(localStorage.getItem(LS_DENSITY)) || {}; } catch (e) { return {}; } }
+    function saveDensities(map) { localStorage.setItem(LS_DENSITY, JSON.stringify(map)); }
+    function densityFor(petId) {
+        var d = loadDensities()[String(petId)];
+        return typeof d === "number" && d > 0 ? d : DEFAULT_DENSITY;
+    }
 
     function todayKey() {
         var d = new Date();
@@ -78,6 +88,8 @@
 
         var factor = factorFor(pet.id);
         var factorLabel = (FACTORS.filter(function (f) { return f.v === factor; })[0] || {}).label || "보통 활동";
+        var density = densityFor(pet.id);
+        var grams = target ? Math.round((target / density) * 100) : null;
 
         var logs = todayLogs(pet.id);
         var listHtml = logs.length
@@ -105,9 +117,14 @@
                   '<div class="w-full h-2.5 rounded-full bg-gray-100 overflow-hidden mb-1">' +
                   '<div class="h-full rounded-full ' + barColor + ' transition-all" style="width:' + pct + '%"></div>' +
                   "</div>" +
-                  '<div class="flex items-center justify-between text-[11px] text-gray-400 mb-3">' +
+                  '<div class="flex items-center justify-between text-[11px] text-gray-400 mb-2">' +
                   '<button onclick="CalorieTracker.openFactor()" class="hover:text-brand-500 underline decoration-dotted">활동량: ' + esc(factorLabel) + '</button>' +
                   '<span>' + (over ? "권장량 초과 ⚠️" : pct + "% 급여") + '</span>' +
+                  "</div>" +
+                  '<div class="flex items-center justify-between text-[11px] bg-amber-50/60 rounded-lg px-2.5 py-1.5 mb-3">' +
+                  '<span class="text-gray-500">권장 사료량(건사료 기준)</span>' +
+                  '<span class="font-bold text-amber-600">' + grams + 'g' +
+                  ' <button onclick="CalorieTracker.openDensity()" class="text-gray-400 hover:text-amber-500 underline decoration-dotted font-normal ml-1">(' + density + 'kcal/100g)</button></span>' +
                   "</div>"
                 : '<p class="text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2 mb-3">권장 칼로리를 계산하려면 마이펫에서 체중을 입력해 주세요 ⚖️</p>') +
             '<div class="border-t border-gray-100 pt-2">' + listHtml + "</div>" +
@@ -122,6 +139,9 @@
         _saveAll: saveAll,
         _loadFactors: loadFactors,
         _saveFactors: saveFactors,
+        _loadDensities: loadDensities,
+        _saveDensities: saveDensities,
+        _densityFor: densityFor,
         _todayKey: todayKey,
         _todayLogs: todayLogs,
         _factorFor: factorFor,
