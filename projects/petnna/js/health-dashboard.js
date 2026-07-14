@@ -221,6 +221,33 @@ function renderMedAdherenceTracker() {
     const rate = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 100;
     const rateColor = rate >= 80 ? 'text-emerald-600' : rate >= 60 ? 'text-amber-600' : 'text-rose-600';
 
+    // 이번 주 놓친 약(제목별 미복용 일수) — 예전엔 별도 "위클리 카드"였으나 30일
+    // 트래커와 계산 로직이 완전히 중복이라 여기로 흡수(2026-07-14 오너 지시
+    // "건강탭 정리, 합칠건 합치고" — 어제 사료량 계산기 흡수와 동일 원칙).
+    const missedByTitle = {};
+    for (let i = 1; i < 7; i++) { // 오늘(i=0)은 아직 예정 시간 전일 수 있어 제외
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const takenTitles = medDone.filter(c => (c.completedAt || '').startsWith(dateStr)).map(c => c.title);
+        medSchedules.forEach(s => {
+            if (!expectedOn(s, d, dateStr)) return;
+            const idx = takenTitles.indexOf(s.title);
+            if (idx >= 0) takenTitles.splice(idx, 1);
+            else missedByTitle[s.title] = (missedByTitle[s.title] || 0) + 1;
+        });
+    }
+    const missedEntries = Object.entries(missedByTitle).sort((a, b) => b[1] - a[1]);
+    const missedHtml = missedEntries.length > 0
+        ? `<div class="mt-2 pt-2 border-t border-gray-100">
+            <p class="text-[9px] font-black text-gray-500 mb-1.5">😿 이번 주 놓친 약</p>
+            <div class="flex flex-wrap gap-1.5">
+                ${missedEntries.map(([title, n]) =>
+                    `<span class="inline-flex items-center gap-1 bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-lg">💊 ${_esc(title)} <span class="text-[9px] text-rose-400">${n}일</span></span>`
+                ).join('')}
+            </div>
+        </div>` : '';
+
     el.innerHTML = `
         <div class="card-modern p-4">
             <div class="flex justify-between items-center mb-3">
@@ -237,108 +264,10 @@ function renderMedAdherenceTracker() {
                 <span class="w-3 h-3 rounded-sm bg-rose-300 inline-block ml-1"></span><span class="text-[9px] text-gray-400">미복용</span>
                 <span class="w-3 h-3 rounded-sm bg-gray-100 inline-block ml-1"></span><span class="text-[9px] text-gray-400">예정 없음</span>
             </div>
-        </div>`;
-}
-window.renderMedAdherenceTracker = renderMedAdherenceTracker;
-
-// 💊 복약 순응도 위클리 카드 — 최근 7일 복약률(%) + 놓친 약을 achievements 스타일 카드로 요약
-function renderMedAdherenceWeeklyCard() {
-    const el = document.getElementById('med-adherence-weekly-card');
-    if (!el) return;
-
-    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
-    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
-    const petId = activePet ? activePet.id : null;
-
-    const medSchedules = careSchedules.schedules.filter(s =>
-        s.type === 'medicine' && (petId == null || s.petId == null || s.petId === petId));
-
-    // 투약 일정이 없으면 카드 숨김 (공간 절약)
-    if (medSchedules.length === 0) {
-        el.innerHTML = '';
-        el.style.display = 'none';
-        return;
-    }
-    el.style.display = 'block';
-
-    const medDone = careSchedules.completionHistory.filter(c =>
-        c.type === 'medicine' && (petId == null || c.petId == null || c.petId === petId));
-
-    // 특정 날짜에 해당 투약 일정이 예정돼 있었는지 (30일 트래커와 동일 로직)
-    function expectedOn(schedule, dateObj, dateStr) {
-        if (schedule.createdAt && new Date(schedule.createdAt).toISOString().split('T')[0] > dateStr) return false;
-        if (schedule.repeat === 'daily') return true;
-        if (schedule.repeat === 'weekly') return (schedule.repeatDays || []).includes(dateObj.getDay());
-        if (schedule.repeat === 'monthly') {
-            const base = new Date(schedule.date || schedule.createdAt);
-            return base.getDate() === dateObj.getDate();
-        }
-        if (schedule.repeat === 'once') return schedule.date === dateStr;
-        return false;
-    }
-
-    const today = new Date();
-    let weekExpected = 0, weekTaken = 0;
-    const missedByTitle = {}; // 놓친 약: 제목별 미복용 일수
-
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        const takenTitles = medDone
-            .filter(c => (c.completedAt || '').startsWith(dateStr))
-            .map(c => c.title);
-        medSchedules.forEach(s => {
-            if (!expectedOn(s, d, dateStr)) return;
-            weekExpected++;
-            const idx = takenTitles.indexOf(s.title);
-            if (idx >= 0) {
-                weekTaken++;
-                takenTitles.splice(idx, 1); // 같은 약 중복 매칭 방지
-            } else {
-                // 오늘 아직 예정 시간이 안 됐을 수 있으므로 오늘은 놓침 집계 제외
-                if (i > 0) missedByTitle[s.title] = (missedByTitle[s.title] || 0) + 1;
-            }
-        });
-    }
-
-    const rate = weekExpected > 0 ? Math.round((weekTaken / weekExpected) * 100) : 100;
-    const rateColor = rate >= 80 ? 'text-emerald-600' : rate >= 60 ? 'text-amber-600' : 'text-rose-600';
-    const barColor = rate >= 80 ? 'bg-emerald-400' : rate >= 60 ? 'bg-amber-400' : 'bg-rose-400';
-    const missedEntries = Object.entries(missedByTitle).sort((a, b) => b[1] - a[1]);
-
-    const missedHtml = missedEntries.length > 0 ? `
-        <div class="mt-3 pt-3 border-t border-gray-100">
-            <p class="text-[10px] font-black text-gray-500 mb-1.5">😿 놓친 약</p>
-            <div class="flex flex-wrap gap-1.5">
-                ${missedEntries.map(([title, n]) =>
-                    `<span class="inline-flex items-center gap-1 bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-lg">💊 ${_esc(title)} <span class="text-[9px] text-rose-400">${n}일</span></span>`
-                ).join('')}
-            </div>
-        </div>` : `
-        <div class="mt-3 pt-3 border-t border-gray-100">
-            <p class="text-[10px] font-black text-emerald-600 text-center">🎉 이번 주 놓친 약 없이 완벽 복약!</p>
-        </div>`;
-
-    el.innerHTML = `
-        <div class="card-modern p-4">
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">💊</span>
-                    <div>
-                        <h3 class="text-sm font-bold text-gray-900">주간 복약 순응도</h3>
-                        <p class="text-[9px] text-gray-400 font-medium">최근 7일 · ${weekTaken}/${weekExpected}회 복용</p>
-                    </div>
-                </div>
-                <span class="text-2xl font-black ${rateColor} tabular-nums">${rate}%</span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div class="${barColor} h-full rounded-full transition-all duration-700" style="width:${rate}%"></div>
-            </div>
             ${missedHtml}
         </div>`;
 }
-window.renderMedAdherenceWeeklyCard = renderMedAdherenceWeeklyCard;
+window.renderMedAdherenceTracker = renderMedAdherenceTracker;
 
 // 월별 건강 리포트 PDF (window.print 기반, 프리미엄 기능)
 function generateHealthReportPDF() {
