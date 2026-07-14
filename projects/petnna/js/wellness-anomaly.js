@@ -18,6 +18,17 @@
         { key: 'food',  label: '식사량', unit: 'g',  emoji: '🍚' },
     ];
 
+    // 배변 건강 신호(핏펫 '어헤드' 벤치마크, 백로그 나무 제안):
+    // 'normal' 외 굳기(soft/hard/liquid)를 이상변으로 보고, 최근 기록이
+    // STOOL_STREAK일 연속 이상이면 wellness 신호로 전달한다. z-score와 달리
+    // 표본 하한 없이 소수 기록으로도 조기 감지(설사·변비는 빠른 대응이 중요).
+    const STOOL_STREAK = 3;
+    const STOOL_ABNORMAL = {
+        soft:   { label: '무른 변', emoji: '💩' },
+        hard:   { label: '딱딱한 변(변비)', emoji: '🪨' },
+        liquid: { label: '설사', emoji: '💦' },
+    };
+
     function _mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }
     function _std(a, m) { return Math.sqrt(a.reduce((s, x) => s + (x - m) * (x - m), 0) / a.length); }
 
@@ -57,6 +68,29 @@
         return findings;
     }
 
+    // 순수 함수: history → 배변 이상 소견(없으면 null).
+    // 배변 기록이 있는 항목만 날짜 내림차순으로 보고, 가장 최근부터 이어지는
+    // 이상변 연속 횟수가 STOOL_STREAK 이상이면 소견을 반환한다.
+    function analyzeStool(history) {
+        const dated = (history || [])
+            .filter(d => d && d.poop && (d.poop === 'normal' || STOOL_ABNORMAL[d.poop]))
+            .slice()
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        let streak = 0;
+        let type = null;
+        for (const d of dated) {
+            if (STOOL_ABNORMAL[d.poop]) { streak++; if (!type) type = d.poop; }
+            else break;
+        }
+        if (streak < STOOL_STREAK) return null;
+        const info = STOOL_ABNORMAL[type];
+        return { metric: 'poop', poop: type, label: info.label, emoji: info.emoji, days: streak };
+    }
+
+    function _stoolText(f) {
+        return `최근 ${f.days}일 연속 ${f.label} 기록이 있어요. 지속되면 수의사 상담을 권해요`;
+    }
+
     function _findingText(f) {
         const dir = f.direction === 'up' ? '높아요' : '낮아요';
         const arrow = f.direction === 'up' ? '급증' : '급감';
@@ -75,9 +109,12 @@
         if (!host) return;
         const history = (typeof healthLogs !== 'undefined' && healthLogs) ? healthLogs.history : [];
         const findings = analyzeWellness(history);
+        const stool = analyzeStool(history);
         const samples = _sampleCount();
 
-        if (samples < MIN_SAMPLES + RECENT_DAYS) {
+        // 배변 이상은 표본 하한과 무관하게 조기 감지 — z-score 표본이 부족해도
+        // 이상변 연속이면 경고 카드로 바로 노출한다.
+        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool) {
             // 표본 부족 — 조용히 안내(알림 없음)
             host.innerHTML = `
             <div class="card-modern p-5 border border-brand-100/60">
@@ -95,7 +132,7 @@
             return;
         }
 
-        if (findings.length === 0) {
+        if (findings.length === 0 && !stool) {
             host.innerHTML = `
             <div class="card-modern p-5 border border-emerald-100">
                 <div class="flex items-center gap-3">
@@ -110,7 +147,12 @@
             return;
         }
 
-        const items = findings.map(f => `
+        const stoolItem = stool ? `
+            <li class="flex items-start gap-2 text-sm text-amber-900">
+                <span class="mt-0.5">${stool.emoji}</span>
+                <span>${_stoolText(stool)}</span>
+            </li>` : '';
+        const items = stoolItem + findings.map(f => `
             <li class="flex items-start gap-2 text-sm text-amber-900">
                 <span class="mt-0.5">${f.emoji}</span>
                 <span>${_findingText(f)}</span>
@@ -127,19 +169,21 @@
             <ul class="space-y-1.5 pl-1">${items}</ul>
         </div>`;
 
-        _maybeNotify(findings);
+        _maybeNotify(findings, stool);
     }
 
-    // 확정 이상 → 토스트 1회(하루 1회 억제)
-    function _maybeNotify(findings) {
-        if (!findings.length) return;
+    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 이상을 우선 노출.
+    function _maybeNotify(findings, stool) {
+        if (!stool && !findings.length) return;
         const today = (typeof healthLogs !== 'undefined' && healthLogs && healthLogs.today && healthLogs.today.date)
             || new Date().toISOString().slice(0, 10);
         const flagKey = 'petna_wellness_alerted_' + today;
         try { if (localStorage.getItem(flagKey)) return; localStorage.setItem(flagKey, '1'); } catch (e) { return; }
-        if (typeof showToast === 'function') showToast('🔮 ' + _findingText(findings[0]));
+        const msg = stool ? stool.emoji + ' ' + _stoolText(stool) : '🔮 ' + _findingText(findings[0]);
+        if (typeof showToast === 'function') showToast(msg);
     }
 
     window.analyzeWellness = analyzeWellness;
+    window.analyzeStool = analyzeStool;
     window.renderWellnessCard = renderWellnessCard;
 })();
