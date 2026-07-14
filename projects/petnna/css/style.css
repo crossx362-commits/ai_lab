@@ -566,12 +566,19 @@ body.theme-sepia .border-gray-100 {
     -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
 }
 
-/* ♿ 키보드 접근성 포커스 스타일 보강 */
+/* ♿ 키보드 접근성 포커스 링 (WCAG 2.4.7) — 브랜드 테라코타 2px outline + 2px offset */
+/* 모든 포커스 가능 요소를 포괄해 키보드 탐색 위치를 명확히 표시 */
+a:focus-visible,
+button:focus-visible,
 .tab-btn:focus-visible,
 .mobile-tab-btn:focus-visible,
-button:focus-visible,
-a:focus-visible {
-    outline: 3px solid #e37736 !important;
+[tabindex]:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="link"]:focus-visible,
+summary:focus-visible,
+[contenteditable]:focus-visible {
+    outline: 2px solid #a9583e !important;   /* brand-600 테라코타 */
     outline-offset: 2px !important;
 }
 
