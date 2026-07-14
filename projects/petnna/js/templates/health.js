@@ -249,6 +249,9 @@ const HEALTH_TEMPLATE = `
         <!-- 🍽️ 일일 급식·칼로리 트래커 -->
         <div id="calorie-tracker-widget"></div>
 
+        <!-- 🏥 병원비 제보·비교 보드 -->
+        <div id="vet-cost-board-widget"></div>
+
         <!-- 📊 월간 종합 리포트 -->
         <div class="card-modern p-4">
             <div class="flex justify-between items-center mb-4">

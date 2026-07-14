@@ -75,6 +75,9 @@ function renderHealthTab() {
     // 일일 급식·칼로리 트래커 (백로그 나무_20260712143815, P3)
     if (typeof CalorieTracker !== 'undefined') CalorieTracker.renderWidget('calorie-tracker-widget');
 
+    // 병원비 제보·비교 보드 (백로그 나무, P3)
+    if (typeof VetCostBoard !== 'undefined') VetCostBoard.renderWidget('vet-cost-board-widget');
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
