@@ -64,6 +64,7 @@ function renderHealthTab() {
     // 투약·정기예방 대시보드 + 건강수첩 (마이펫 탭에서 이동)
     if (typeof renderPreventiveCareDashboard === 'function') renderPreventiveCareDashboard();
     if (typeof renderMedAdherenceTracker === 'function') renderMedAdherenceTracker();
+    if (typeof renderMedAdherenceWeeklyCard === 'function') renderMedAdherenceWeeklyCard();
     if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
 
     // 몸무게/QOL 주간 체크인 (백로그 나무_20260709_3, 오너 승인 2026-07-10)

@@ -240,6 +240,9 @@ const HEALTH_TEMPLATE = `
         <!-- 💊 복약 순응도 30일 트래커 -->
         <div id="med-adherence-tracker"></div>
 
+        <!-- 💊 복약 순응도 위클리 카드 (주간 복약률 + 놓친 약) -->
+        <div id="med-adherence-weekly-card"></div>
+
         <!-- 💛 몸무게/QOL 주간 체크인 -->
         <div id="qol-checkin-widget"></div>
 
