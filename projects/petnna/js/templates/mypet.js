@@ -1,6 +1,9 @@
 const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
 
+    <!-- 📌 선제 케어 넛지 '오늘 챙길 것' (care-nudge.js가 채움, 챙길 게 있을 때만 노출) -->
+    <div id="care-nudge-banner"></div>
+
     <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
     <div id="health-digest-banner"></div>
 
