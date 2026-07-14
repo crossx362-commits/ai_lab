@@ -106,6 +106,7 @@ const AppConstants = {
         BUDDY_PAIR: 'petna_buddy_pair',
         WEEKLY_WALK_GOAL: 'petna_weekly_walk_goal',
         WEEKLY_WALK_GOAL_MET: 'petna_weekly_walk_goal_met',
+        HOOD_CHALLENGE_MET: 'petna_hood_challenge_met',
     }
 };
 

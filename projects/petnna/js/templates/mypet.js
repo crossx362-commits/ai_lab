@@ -374,6 +374,16 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
+        <!-- 동네 그룹 챌린지 (협력형 공동 목표) -->
+        <div class="bg-gradient-to-br from-emerald-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
+            <div id="hood-challenge">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-house-chimney text-gray-300"></i>
+                    <span>동네 이웃들과 공동 목표에 도전해보세요!</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 일일 챌린지 -->
         <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-3 shadow-sm">
             <div id="daily-challenges"></div>

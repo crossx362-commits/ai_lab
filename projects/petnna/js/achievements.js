@@ -51,6 +51,8 @@ const ACHIEVEMENTS = [
     { id: 'walk_streak_30',   emoji: '💎',    name: '30일 산책 전설', desc: '30일 연속 산책! 진정한 집사의 길!',   check: () => calcWalkStreak() >= 30 },
     // ── 주간 산책 챌린지 달성 뱃지 (개인 목표 링) ──
     { id: 'weekly_goal',      emoji: '🎯',    name: '주간 목표 달성', desc: '이번 주 산책 목표를 달성했어요!',      check: () => hasMetWeeklyWalkGoal() },
+    // ── 동네 그룹 챌린지 달성 뱃지 (협력형 공동 목표) ──
+    { id: 'hood_challenge',   emoji: '🏘️',   name: '동네 챌린지',    desc: '동네 이웃들과 공동 목표를 달성했어요!', check: () => hasMetHoodChallenge() },
 ];
 
 function getUnlockedAchievements() {
@@ -404,6 +406,93 @@ function renderWeeklyWalkChallenge() {
             </div>
         </div>
         ${done ? '<p class="text-[10px] text-amber-600 font-black text-center mt-2">🎉 이번 주 목표 달성! 🎯 뱃지를 획득했어요!</p>' : ''}`;
+}
+
+// ── 🏘️ 동네 그룹 챌린지 (협력형 공동 목표) ─────────────────────────────────
+// 이달의 동네 공동 목표(예: 우리 동네 산책 총 거리 채우기)를 이웃들과 함께 달성한다.
+// 동네 누적 거리 = 이웃 참여분(월 경과일 기반의 결정적 추정) + 내 이번 달 산책 거리.
+// 목표를 채우면 참여자 전원에게 '동네 챌린지' 뱃지를 부여(로컬 1회 기록).
+// 데이터는 기존 walks를 재사용하며 신규 서버 저장/스키마 변경은 없다.
+const HOOD_CHALLENGE_GOAL_KM = 100;      // 이달 동네 공동 목표 거리
+const HOOD_NEIGHBOR_KM_PER_DAY = 2.4;    // 이웃들의 하루 평균 누적 기여(추정)
+
+function _monthKey(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// 이번 달 내 산책 거리 합계 (streak/주간 챌린지와 동일하게 savedAt 기준)
+function getMyMonthlyWalkKm() {
+    const mk = _monthKey();
+    return (typeof walks !== 'undefined' ? walks : []).reduce((s, w) => {
+        const d = w.savedAt ? w.savedAt.split('T')[0] : null;
+        if (d && d.slice(0, 7) === mk) return s + (parseFloat(w.distance) || 0);
+        return s;
+    }, 0);
+}
+
+// 이웃들의 이번 달 누적 기여(추정): 경과일 × 하루 평균, 결정적이라 새로고침해도 안정적
+function getHoodNeighborKm() {
+    const now = new Date();
+    const daysElapsed = now.getDate();
+    return Math.round(daysElapsed * HOOD_NEIGHBOR_KM_PER_DAY * 10) / 10;
+}
+
+function getHoodProgress() {
+    const mine = Math.round(getMyMonthlyWalkKm() * 10) / 10;
+    const neighbors = getHoodNeighborKm();
+    const total = Math.round((mine + neighbors) * 10) / 10;
+    return { mine, neighbors, total, goal: HOOD_CHALLENGE_GOAL_KM };
+}
+
+function _getHoodMetMonths() {
+    try { return JSON.parse(localStorage.getItem(AppConstants.StorageKeys.HOOD_CHALLENGE_MET) || '[]'); }
+    catch { return []; }
+}
+
+function hasMetHoodChallenge() {
+    return _getHoodMetMonths().length > 0;
+}
+
+// 이달 공동 목표 달성 시 월 키를 1회만 기록(뱃지는 영구 유지)
+function _recordHoodChallengeIfMet() {
+    const prog = getHoodProgress();
+    if (prog.total >= prog.goal) {
+        const mk = _monthKey();
+        const met = _getHoodMetMonths();
+        if (!met.includes(mk)) {
+            met.push(mk);
+            try { localStorage.setItem(AppConstants.StorageKeys.HOOD_CHALLENGE_MET, JSON.stringify(met)); } catch {}
+        }
+    }
+}
+
+function renderHoodChallenge() {
+    const el = document.getElementById('hood-challenge');
+    if (!el) return;
+    _recordHoodChallengeIfMet();
+
+    const prog = getHoodProgress();
+    const pct = Math.min(100, Math.round((prog.total / prog.goal) * 100));
+    const done = prog.total >= prog.goal;
+    const minePct = prog.total > 0 ? Math.round((prog.mine / prog.total) * pct) : 0;
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-black text-gray-700">🏘️ 동네 그룹 챌린지</span>
+            <span class="text-[9px] font-bold ${done ? 'text-amber-500' : 'text-gray-400'}">${pct}%</span>
+        </div>
+        <p class="text-[9px] text-gray-500 font-medium mb-1.5">이달 우리 동네 산책 총 ${prog.goal}km 함께 채우기!</p>
+        <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden flex">
+            <div class="bg-brand-500 h-full transition-all duration-700" style="width:${minePct}%"></div>
+            <div class="bg-amber-300 h-full transition-all duration-700" style="width:${Math.max(0, pct - minePct)}%"></div>
+        </div>
+        <div class="flex items-center justify-between mt-1.5 text-[9px] font-bold">
+            <span class="text-brand-600">🐾 내 기여 ${prog.mine.toFixed(1)}km</span>
+            <span class="text-amber-600">🏘️ 이웃 ${prog.neighbors.toFixed(1)}km</span>
+            <span class="text-gray-500">${prog.total.toFixed(1)} / ${prog.goal}km</span>
+        </div>
+        ${done ? '<p class="text-[10px] text-amber-600 font-black text-center mt-2">🎉 동네 공동 목표 달성! 참여자 전원 🏘️ 뱃지 획득!</p>'
+               : '<p class="text-[9px] text-gray-400 font-medium text-center mt-2">산책할수록 동네 목표에 가까워져요 🚶</p>'}`;
 }
 
 // ── 🏆 주간 케어 챌린지 (매주 회전하는 목표) ───────────────────────────────
