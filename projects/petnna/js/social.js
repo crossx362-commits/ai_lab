@@ -604,7 +604,7 @@ function renderFeed() {
                         ${repliesHtml}
                         <div id="reply-form-${post.id}-${ci}" class="hidden ml-4 mt-1">
                             <div class="flex items-center gap-1.5">
-                                <input type="text" id="reply-input-${post.id}-${ci}" placeholder="답글을 입력하세요..." class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 bg-white" onkeydown="if(event.key==='Enter') submitFeedReply(${post.id}, ${ci})">
+                                <input type="text" id="reply-input-${post.id}-${ci}" placeholder="답글을 입력하세요..." class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 focus:bg-white bg-[#F7F4F0]" onkeydown="if(event.key==='Enter') submitFeedReply(${post.id}, ${ci})">
                                 <button onclick="submitFeedReply(${post.id}, ${ci})" class="bg-brand-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0">등록</button>
                             </div>
                         </div>
@@ -620,7 +620,7 @@ function renderFeed() {
 
         let commentForm = `
             <div class="flex items-center space-x-2">
-                <input type="text" id="comment-input-${post.id}" placeholder="${post.lostReport ? '🔎 목격 정보를 제보해 주세요...' : '사랑스런 댓글을 달아 소통하세요...'}" class="flex-grow border border-gray-200 rounded-xl px-3 py-2 text-[11px] outline-none focus:border-brand-500 bg-gray-50/20" onkeydown="if(event.key === 'Enter') submitFeedComment(${post.id})">
+                <input type="text" id="comment-input-${post.id}" placeholder="${post.lostReport ? '🔎 목격 정보를 제보해 주세요...' : '사랑스런 댓글을 달아 소통하세요...'}" class="flex-grow border border-gray-200 rounded-xl px-3 py-2 text-[11px] outline-none focus:border-brand-500 focus:bg-white bg-[#F7F4F0]" onkeydown="if(event.key === 'Enter') submitFeedComment(${post.id})">
                 <button onclick="submitFeedComment(${post.id})" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[10px] py-2 px-3.5 rounded-xl transition-colors shrink-0">
                     등록
                 </button>
