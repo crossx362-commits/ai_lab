@@ -15,22 +15,17 @@ body.theme-dark .glass {
 
 /* 부드러운 그림자 시스템 */
 .shadow-soft {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-soft);
 }
 
 .shadow-soft-lg {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.08);
-}
-
-body.theme-dark .shadow-soft,
-body.theme-dark .shadow-soft-lg {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-soft-lg);
 }
 
 /* 현대적 버튼 스타일 */
 .btn-modern {
     font-weight: 600;
-    border-radius: 12px;
+    border-radius: var(--radius-form);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     letter-spacing: -0.01em;
 }
@@ -48,7 +43,7 @@ body.theme-dark .shadow-soft-lg {
 .card-modern {
     background-color: var(--color-bg-card);
     border: 1px solid var(--color-border-card);
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     transition: all 0.25s ease;
 }
 
@@ -62,7 +57,7 @@ body.theme-dark .shadow-soft-lg {
 .input-modern {
     background: var(--color-bg-card);
     border: 1.5px solid var(--color-border-card);
-    border-radius: 12px;
+    border-radius: var(--radius-form);
     padding: 0.75rem 1rem;
     font-size: 0.9375rem;
     transition: all 0.2s ease;
