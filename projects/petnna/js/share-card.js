@@ -527,6 +527,25 @@ function _drawWalkRoute(ctx, coords, marks, box) {
     });
 }
 
+// 산책 데이터 기반 AI 한 줄 코멘트 (규칙 기반, 외부 API 불필요 · 결정론적)
+function _walkAiComment(w, petName) {
+    const name = petName || '댕이';
+    const dist = parseFloat(w?.distance) || 0;
+    const kcal = parseInt(w?.calories) || 0;
+    const sniff = parseInt(w?.sniff) || 0;
+    const pee = parseInt(w?.pee) || 0;
+    const poop = parseInt(w?.poop) || 0;
+    const parts = [];
+    if (dist >= 3) parts.push(`${dist.toFixed(1)}km 완주, ${name} 오늘 체력왕이네요! 🏅`);
+    else if (dist >= 1.5) parts.push(`${dist.toFixed(1)}km 알찬 산책으로 ${name}의 스트레스가 쑥 내려갔어요.`);
+    else if (dist > 0) parts.push(`짧아도 ${name}에겐 소중한 바깥 나들이였어요. 🌿`);
+    else parts.push(`${name}와 함께한 오늘의 안심 산책 기록이에요.`);
+    if (sniff >= 3) parts.push('킁킁 냄새 탐험을 많이 해서 두뇌 자극도 충분했어요.');
+    else if (poop >= 1 && pee >= 1) parts.push('배변도 규칙적이라 컨디션이 좋아 보여요.');
+    else if (kcal >= 150) parts.push(`${kcal}kcal이나 소모했으니 오늘 밤은 푹 잘 거예요. 💤`);
+    return parts.join(' ');
+}
+
 function generateWalkReportCard(w) {
     const pet = typeof getActivePet === 'function' ? getActivePet() : null;
     const petName = pet?.name || '댕이';
@@ -553,7 +572,22 @@ function generateWalkReportCard(w) {
     ctx.fillText(`🦮 ${petName}의 산책 리포트`, S / 2, 122);
 
     // 경로 썸네일
-    _drawWalkRoute(ctx, w.coords, w.marks, { x: 40, y: 210, w: S - 80, h: 480 });
+    _drawWalkRoute(ctx, w.coords, w.marks, { x: 40, y: 210, w: S - 80, h: 360 });
+
+    // AI 한 줄 코멘트 밴드
+    const aiComment = _walkAiComment(w, petName);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(40, 585, S - 80, 110, 24);
+    ctx.fill();
+    ctx.fillStyle = '#0f9d58';
+    ctx.font = 'bold 28px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('🤖 AI 산책 코멘트', 70, 623);
+    ctx.fillStyle = '#334155';
+    ctx.font = '27px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    _wrapText(ctx, aiComment, S / 2, 660, S - 160, 34);
 
     // 핵심 지표 3개
     const stats = [
@@ -605,9 +639,10 @@ async function shareWalkReportCard(walkId) {
     const pet = typeof getActivePet === 'function' ? getActivePet() : null;
     const petName = pet?.name || '댕이';
     const canvas = generateWalkReportCard(w);
+    const aiComment = _walkAiComment(w, petName);
     await _downloadOrShare(
         canvas, 'petna-walk-report.png',
         `${petName}의 산책 리포트 🦮`,
-        `🦮 ${petName}와 ${w.distance}km 산책 완료! ⏱️${w.duration || ''} 🔥${w.calories}kcal #펫과나 #산책 #반려견산책`
+        `🦮 ${petName}와 ${w.distance}km 산책 완료! ⏱️${w.duration || ''} 🔥${w.calories}kcal\n🤖 ${aiComment} #펫과나 #산책 #반려견산책`
     );
 }
