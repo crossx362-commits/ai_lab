@@ -4,6 +4,9 @@ const MYPET_TEMPLATE = `
     <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
     <div id="health-digest-banner"></div>
 
+    <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
+    <div id="memory-flashback-banner"></div>
+
     <!-- 날짜 & 날씨 -->
     <div class="glass rounded-xl px-4 py-3 shadow-soft">
         <div class="flex items-center justify-between gap-4">
