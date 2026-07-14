@@ -35,6 +35,7 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402  (병합 품질 판단 — 올라마 우선, 실패 시 구독 폴백)
+from _shared.backlog import recent_reviewed_items, format_recent_decisions  # noqa: E402
 
 import petnna_dev_engine as eng  # noqa: E402  (게이트·git·상태 재사용)
 
@@ -65,18 +66,24 @@ def _backlog_detail(fp: str) -> dict:
     return {}
 
 
-def _ask_yewon(title: str, detail: str, diff: str, files: list[str]) -> tuple[str, str]:
+def _ask_yewon(title: str, detail: str, diff: str, files: list[str],
+                item_type: str = "", item_id: str = "") -> tuple[str, str]:
     """예원(클로드)에게 diff 리뷰를 맡겨 approve/reject 결정을 받는다."""
+    recent = recent_reviewed_items(eng.BACKLOG, limit=8, item_type=item_type, exclude_id=item_id)
+    recent_block = format_recent_decisions(recent)
     prompt = (
         "너는 펫나(반려동물 웹앱) 개발팀 CEO '예원'이다. 수리가 자동 구현한 아래 UI/UX "
         "브랜치를 master(운영)에 병합할지 최종 결정하라. 안전 게이트(경로·크기·E2E)는 이미 "
         "통과했다. 너는 품질만 본다.\n\n"
         f"[과제] {title}\n[상세] {detail or '(없음)'}\n"
         f"[변경 파일] {', '.join(files[:8])}\n\n"
+        + (recent_block + "\n\n" if recent_block else "") +
         "[판단 기준]\n"
         "- 과제 의도에 부합하는가, 디자인 시스템(코랄 brand-500 계열·기존 톤)과 어긋나지 않는가\n"
         "- 명백한 회귀·레이아웃 파손·접근성 후퇴 위험이 없는가\n"
         "- 운영에 바로 나가도 부끄럽지 않은 완성도인가\n"
+        "- 위 [최근 검토된 관련 결정]과 모순되는 변경(예: 최근 승인·통합한 걸 다시 분리·되돌림)은 "
+        "아니었는가 — 모순되면 실질 피해가 적어 보여도 reject하라(디자인이 매번 진자처럼 왔다갔다 하는 것 방지)\n"
         "애매하면 reject(사람 검토로 남김)가 안전하다. 과하게 관대하지 마라.\n\n"
         "[diff]\n```diff\n" + diff[:MAX_DIFF_CHARS] +
         ("\n...(생략)" if len(diff) > MAX_DIFF_CHARS else "") + "\n```\n\n"
@@ -154,7 +161,8 @@ def review_all(do_send: bool = True) -> str:
             elif not diff.strip():
                 decision, reason = "reject", "빈 diff(변경 없음)"
             else:
-                decision, reason = _ask_yewon(title, it.get("detail", ""), diff, files)
+                decision, reason = _ask_yewon(title, it.get("detail", ""), diff, files,
+                                               item_type=it.get("type", ""), item_id=fp)
 
             if decision == "approve":
                 merged, mnote = _merge(branch)
@@ -162,7 +170,7 @@ def review_all(do_send: bool = True) -> str:
                     rec["status"] = "완료"
                     rec["reviewed_by"] = "예원"
                     rec["reviewed_at"] = datetime.now().isoformat()
-                    eng._update_backlog(fp, "완료")
+                    eng._update_backlog(fp, "완료", reason)
                     applied = True
                     lines.append(f"✅ 병합 — {title[:40]}\n   예원: {reason}")
                 else:
@@ -172,7 +180,7 @@ def review_all(do_send: bool = True) -> str:
                 rec["reviewed_by"] = "예원"
                 rec["reviewed_at"] = datetime.now().isoformat()
                 rec["review_reason"] = reason
-                eng._update_backlog(fp, "보류")
+                eng._update_backlog(fp, "보류", reason)
                 applied = True
                 lines.append(f"🛑 반려 — {title[:40]}\n   예원: {reason}")
             else:  # defer — 이번엔 판단 못 함, PR대기 유지

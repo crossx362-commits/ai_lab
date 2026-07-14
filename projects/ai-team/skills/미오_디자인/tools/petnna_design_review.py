@@ -38,7 +38,10 @@ from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_gu
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
-from _shared.backlog import touches_db_auth, is_infra_failure, record_backlog_task_failure  # noqa: E402
+from _shared.backlog import (  # noqa: E402
+    touches_db_auth, is_infra_failure, record_backlog_task_failure,
+    recent_reviewed_items, format_recent_decisions,
+)
 
 load_env(str(PROJECT_ROOT))
 
@@ -176,13 +179,21 @@ def review(do_send: bool) -> None:
     if assigned:
         charter = ("\n[회의가 이번 리뷰에 배정한 과제 — 반드시 다루어라]\n"
                    + "\n".join(f"- {t['title']}: {t.get('detail', '')}" for t in assigned) + "\n")
+    # 최근 검토된 디자인 결정 참고(2026-07-14 오너 지시) — 매 주기 스크린샷만 보고
+    # 새로 진단하면 며칠 전 예원이 승인한 결정("A를 B로 합침")을 기억 없이 그대로
+    # 뒤집는 제안("다시 A와 B로 나눔")을 반복해 냈다. 최근 완료·보류 이력을 프롬프트에
+    # 줘서 이미 정해진 방향을 재차 뒤집는 제안을 사전에 걸러낸다.
+    recent = recent_reviewed_items(BACKLOG, limit=8, item_type="디자인")
+    recent_block = format_recent_decisions(recent)
     ok, analysis = run_claude(
         "너는 시니어 프로덕트 디자이너다. 펫나(펫 케어 플랫폼 SPA)의 현재 화면을 리뷰하라.\n"
         f"스크린샷을 Read 도구로 열어 실제로 보라: {', '.join(str(s) for s in shots)}\n"
         f"{ref}\n"
         "모르는 디자인 트렌드·근거는 웹서치로 확인하라.\n"
         f"{charter}\n"
-        "실행 가능하고 CSS/HTML 수준에서 구현 가능한 것 위주로 3~6개 제안하라. 코드는 수정하지 마라.",
+        + (recent_block + "\n\n" if recent_block else "") +
+        "실행 가능하고 CSS/HTML 수준에서 구현 가능한 것 위주로 3~6개 제안하라. 코드는 수정하지 마라. "
+        "위 [최근 검토된 관련 결정]과 모순되는(이미 승인·병합된 걸 다시 뒤집는) 제안은 하지 마라.",
         PROJECT_ROOT, timeout=600, allowed_tools="Read,WebSearch,WebFetch",
         permission_mode="acceptEdits")
     if not ok or not analysis:

@@ -226,12 +226,20 @@ def _load_backlog() -> dict:
         return {"items": []}
 
 
-def _update_backlog(item_id: str, status: str) -> None:
+def _update_backlog(item_id: str, status: str, reason: str = "") -> None:
+    """reason은 review_reason으로 backlog.json에 같이 저장한다 — 예전엔 dev_state.json
+    (issues[fp]["review_reason"])에만 남아 브랜치 정리 후 사실상 사라졌다. 최근 결정을
+    참고하는 recent_reviewed_items()(_shared/backlog.py)가 backlog.json만 읽으므로
+    여기 안 남기면 "왜 그렇게 결정했는지"가 미오·예원 양쪽에서 다시 안 보인다
+    (2026-07-14 발견 — 디자인 진자 방지 장치를 만들다가 정작 사유가 저장 안 되고
+    있었다는 걸 알게 됨). reason 없이 호출(수리 자체 자동병합 등)하면 기존 값 유지."""
     data = _load_backlog()
     for it in data["items"]:
         if it.get("id") == item_id:
             it["status"] = status
             it["updated"] = datetime.now().isoformat()
+            if reason:
+                it["review_reason"] = reason
     BACKLOG.parent.mkdir(parents=True, exist_ok=True)
     BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 

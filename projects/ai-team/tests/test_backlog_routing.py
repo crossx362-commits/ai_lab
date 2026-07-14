@@ -452,5 +452,80 @@ class TaskFailureTrackingTests(unittest.TestCase):
                          "인프라 키워드를 여기 하드코딩하면 _shared/backlog.py와 어긋날 수 있다")
 
 
+class RecentDecisionsTests(unittest.TestCase):
+    """디자인 진자 방지(2026-07-14) — 미오·예원이 최근 결정을 참고하는 공용 헬퍼."""
+
+    def setUp(self):
+        from _shared.backlog import recent_reviewed_items, format_recent_decisions
+        self.recent = recent_reviewed_items
+        self.fmt = format_recent_decisions
+        self.tmp = Path(tempfile.mkstemp(suffix=".json")[1])
+        self.addCleanup(self.tmp.unlink)
+
+    def _write(self, items):
+        self.tmp.write_text(json.dumps({"items": items}), encoding="utf-8")
+
+    def test_filters_to_completed_and_held_only(self):
+        self._write([
+            {"id": "a", "status": "완료", "updated": "2026-07-14T10:00:00"},
+            {"id": "b", "status": "보류", "updated": "2026-07-14T09:00:00"},
+            {"id": "c", "status": "대기", "updated": "2026-07-14T11:00:00"},
+            {"id": "d", "status": "PR대기", "updated": "2026-07-14T12:00:00"},
+        ])
+        ids = [it["id"] for it in self.recent(self.tmp)]
+        self.assertEqual(set(ids), {"a", "b"})
+
+    def test_sorted_newest_first(self):
+        self._write([
+            {"id": "old", "status": "완료", "updated": "2026-07-10T00:00:00"},
+            {"id": "new", "status": "완료", "updated": "2026-07-14T00:00:00"},
+        ])
+        ids = [it["id"] for it in self.recent(self.tmp)]
+        self.assertEqual(ids, ["new", "old"])
+
+    def test_type_filter(self):
+        self._write([
+            {"id": "d1", "type": "디자인", "status": "완료", "updated": "2026-07-14T00:00:00"},
+            {"id": "p1", "type": "기획", "status": "완료", "updated": "2026-07-14T00:00:00"},
+        ])
+        ids = [it["id"] for it in self.recent(self.tmp, item_type="디자인")]
+        self.assertEqual(ids, ["d1"])
+
+    def test_excludes_self(self):
+        self._write([
+            {"id": "self", "status": "완료", "updated": "2026-07-14T00:00:00"},
+            {"id": "other", "status": "완료", "updated": "2026-07-13T00:00:00"},
+        ])
+        ids = [it["id"] for it in self.recent(self.tmp, exclude_id="self")]
+        self.assertEqual(ids, ["other"])
+
+    def test_missing_backlog_returns_empty_not_fatal(self):
+        self.assertEqual(self.recent(self.tmp.parent / "does-not-exist.json"), [])
+
+    def test_format_includes_reason_and_status(self):
+        block = self.fmt([{"title": "회원가입 버튼 통합", "status": "완료",
+                            "review_reason": "레이아웃 파손 없이 개선"}])
+        self.assertIn("완료", block)
+        self.assertIn("회원가입 버튼 통합", block)
+        self.assertIn("레이아웃 파손 없이 개선", block)
+
+    def test_format_empty_list_returns_empty_string(self):
+        self.assertEqual(self.fmt([]), "")
+
+    def test_yewon_reviewer_passes_type_and_excludes_self(self):
+        """예원의 _ask_yewon 호출부가 item_type·item_id를 실제로 넘기는지 — 안 넘기면
+        recent_reviewed_items가 전체 미필터 결과를 주거나 자기 자신과 비교하게 된다."""
+        src = (AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_pr_reviewer.py").read_text(encoding="utf-8")
+        self.assertIn("recent_reviewed_items", src)
+        self.assertIn('item_type=it.get("type"', src)
+        self.assertIn("item_id=fp", src)
+
+    def test_mio_review_passes_recent_decisions_to_prompt(self):
+        """미오가 리뷰 생성 시 최근 디자인 결정을 실제로 프롬프트에 넣는지."""
+        src = (AI_TEAM_ROOT / "skills" / "미오_디자인" / "tools" / "petnna_design_review.py").read_text(encoding="utf-8")
+        self.assertIn("recent_reviewed_items", src)
+        self.assertIn('item_type="디자인"', src)
+
+
 if __name__ == "__main__":
     unittest.main()

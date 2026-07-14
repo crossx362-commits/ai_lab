@@ -92,6 +92,48 @@ def needs_human(title: str, owner: str, detail: str = "", item_type: str = "") -
     return "[승인필요]" in title or structurally_blocked(owner, item_type, title, detail)
 
 
+# ==================== 최근 결정 참고(디자인 진자 방지) ====================
+# 배경(2026-07-14): 미오가 매주기 스크린샷만 보고 새로 진단하다 보니, 바로 며칠 전
+# 예원이 승인·병합한 결정("회원가입 버튼을 인라인으로 합침")을 기억 없이 정반대로
+# 되돌리는 제안("다시 분리형 버튼으로")을 내는 일이 반복됐다(오너 발견). 예원의 리뷰도
+# diff 하나만 보고 과거 맥락 없이 판단해 이런 반전을 그대로 승인해버린다. 근본 원인은
+# 두 에이전트 다 "최근 무엇이 왜 결정됐는지"에 접근할 방법이 없었다는 것 — 이 함수로
+# 백로그의 완료·보류 이력을 양쪽(제안 생성 시 미오, 최종 판단 시 예원)에 공유한다.
+
+def recent_reviewed_items(backlog_path, limit: int = 8, item_type: str = "",
+                           exclude_id: str = "") -> list[dict]:
+    """최근 검토 완료(완료·보류)된 백로그 항목 — updated 내림차순.
+
+    item_type을 넘기면 그 타입만("디자인"/"기획") 필터링. exclude_id는 지금 판단 중인
+    항목 자신을 결과에서 빼기 위함(자기 자신과 비교하는 무의미한 경우 방지)."""
+    try:
+        data = json.loads(Path(backlog_path).read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+    items = [it for it in data.get("items", [])
+             if it.get("status") in ("완료", "보류") and it.get("id") != exclude_id]
+    if item_type:
+        items = [it for it in items if it.get("type") == item_type]
+    items.sort(key=lambda it: it.get("updated", ""), reverse=True)
+    return items[:limit]
+
+
+def format_recent_decisions(items: list[dict]) -> str:
+    """recent_reviewed_items() 결과를 LLM 프롬프트에 넣을 텍스트 블록으로 변환.
+    항목이 없으면 빈 문자열(프롬프트에 불필요한 섹션 추가 안 함)."""
+    if not items:
+        return ""
+    lines = ["[최근 검토된 관련 결정 — 이미 정해진 방향을 기억 없이 뒤집는 제안·승인 금지]"]
+    for it in items:
+        status = it.get("status", "")
+        reason = it.get("review_reason", "")
+        line = f"- [{status}] {it.get('title', '')}"
+        if reason:
+            line += f" (사유: {reason})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 # ==================== 배정 과제 재시도 상한(공용) ====================
 # 배경(2026-07-11, 자동 파이프라인 감사 도구): 테오에 이 로직을 처음 넣을 때는
 # petnna_test_engineer.py 안에 직접 구현했는데, 곧바로 백호도 investigate_assigned_tasks()에
