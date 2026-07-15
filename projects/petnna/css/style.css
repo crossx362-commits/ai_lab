@@ -1487,7 +1487,7 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
 .floating-input:not(:placeholder-shown) ~ .floating-label {
     top: 0.5rem;
     transform: translateY(0);
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     font-weight: 700;
 }
 .floating-input:focus ~ .floating-label { color: #a9583e; }
