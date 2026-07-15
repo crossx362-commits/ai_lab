@@ -53,6 +53,8 @@ const ACHIEVEMENTS = [
     { id: 'weekly_goal',      emoji: '🎯',    name: '주간 목표 달성', desc: '이번 주 산책 목표를 달성했어요!',      check: () => hasMetWeeklyWalkGoal() },
     // ── 동네 그룹 챌린지 달성 뱃지 (협력형 공동 목표) ──
     { id: 'hood_challenge',   emoji: '🏘️',   name: '동네 챌린지',    desc: '동네 이웃들과 공동 목표를 달성했어요!', check: () => hasMetHoodChallenge() },
+    // ── 🎓 훈련 미션: 주간 훈련 체크리스트 전 항목 완료 시 부여 ──
+    { id: 'training_master',  emoji: '🎓',    name: '훈련 마스터',    desc: '주간 훈련 미션을 모두 완료했어요!',    check: () => typeof hasMetTrainingMaster === 'function' && hasMetTrainingMaster() },
 ];
 
 function getUnlockedAchievements() {
@@ -827,4 +829,149 @@ function renderMonthlyReport(targetElId) {
                 </div>
             </div>` : ''}
         </div>`;
+}
+
+// ── 🎓 AI 훈련 미션 카드 (견종·나이 기반 주간 체크리스트) ─────────────────────
+// 반려동물의 종(dog/cat/기타)과 나이(자견/성견/노령)에 맞춘 주간 훈련 미션 4가지를
+// 결정적으로 생성하고 체크리스트로 제공한다. 한 주 미션을 모두 완료하면 '훈련 마스터'
+// 뱃지를 부여(로컬 1회 기록). 완료 상태는 주(週)+펫 단위로 저장돼 매주 자동 초기화된다.
+// 데이터는 기존 pets(getActivePet)를 재사용하며 신규 서버 저장/스키마 변경은 없다.
+function _petAgeYears(pet) {
+    if (!pet || !pet.age) return null;
+    const m = String(pet.age).match(/\d+/);
+    return m ? parseInt(m[0], 10) : null;
+}
+
+// 나이 단계: 어린(young) / 노령(senior) / 성체(adult) — 숫자 + 라이프스테이지 텍스트 병행
+function _petLifeStage(pet) {
+    const txt = pet && pet.age ? String(pet.age) : '';
+    const yrs = _petAgeYears(pet);
+    if (/자견|유년|아기|퍼피|자묘/.test(txt) || (yrs !== null && yrs < 2)) return 'young';
+    if (/노령|시니어|노견|노묘/.test(txt) || (yrs !== null && yrs >= 8)) return 'senior';
+    return 'adult';
+}
+
+// 종·나이 기반 주간 훈련 미션 4가지 생성(결정적)
+function getTrainingMissions(pet) {
+    const type = pet && pet.type ? pet.type : 'dog';
+    const stage = _petLifeStage(pet);
+
+    const bySpecies = {
+        dog: [
+            { id: 'basic_cmd', emoji: '🐕', label: '기본 명령어 연습', desc: '앉아·기다려를 하루 5분씩 연습' },
+            { id: 'nosework',  emoji: '👃', label: '노즈워크 놀이',   desc: '간식 숨기기로 후각 자극하기' },
+        ],
+        cat: [
+            { id: 'hunt_play', emoji: '🐈', label: '사냥 놀이',       desc: '낚싯대 장난감으로 사냥 본능 자극' },
+            { id: 'scratch',   emoji: '🪵', label: '스크래처 유도',   desc: '올바른 스크래처 사용 습관 들이기' },
+        ],
+        default: [
+            { id: 'bonding',   emoji: '🤲', label: '교감 시간',       desc: '조용히 손 위 간식으로 신뢰 쌓기' },
+            { id: 'explore',   emoji: '🧩', label: '안전한 탐험',     desc: '새 은신처·놀이터로 환경 자극 주기' },
+        ],
+    };
+
+    const byStage = {
+        young:  { id: 'socialize', emoji: '🌱', label: '사회화 훈련', desc: '새 사람·소리에 부드럽게 노출하기' },
+        adult:  { id: 'grooming',  emoji: '🪮', label: '브러싱 케어',  desc: '빗질로 교감하며 털·피부 관리' },
+        senior: { id: 'gentle',    emoji: '💗', label: '저강도 운동',  desc: '관절에 무리 없는 가벼운 활동' },
+    };
+
+    const common = { id: 'reward', emoji: '🍖', label: '칭찬·보상', desc: '잘했을 때 즉시 칭찬으로 강화하기' };
+
+    return [...(bySpecies[type] || bySpecies.default), byStage[stage] || byStage.adult, common];
+}
+
+// 완료 상태: { "<주키>": { "<펫id>": ["미션id", ...] } } 형태로 저장
+function _getTrainingState() {
+    try { return JSON.parse(localStorage.getItem(AppConstants.StorageKeys.TRAINING_MISSIONS) || '{}'); }
+    catch { return {}; }
+}
+
+function _getWeekPetMissions(pet) {
+    const wk = _weekStartStr();
+    const st = _getTrainingState();
+    const petKey = pet && pet.id != null ? String(pet.id) : 'none';
+    return (st[wk] && Array.isArray(st[wk][petKey])) ? st[wk][petKey] : [];
+}
+
+function toggleTrainingMission(missionId) {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : (typeof pets !== 'undefined' ? pets[0] : null);
+    if (!pet) return;
+    const wk = _weekStartStr();
+    const petKey = String(pet.id);
+    const st = _getTrainingState();
+    if (!st[wk]) st[wk] = {};
+    const done = new Set(st[wk][petKey] || []);
+    if (done.has(missionId)) done.delete(missionId); else done.add(missionId);
+    st[wk][petKey] = [...done];
+    try { localStorage.setItem(AppConstants.StorageKeys.TRAINING_MISSIONS, JSON.stringify(st)); } catch {}
+
+    // 이번 주 전 미션 완료 시 '훈련 마스터' 뱃지 기록(중복 방지)
+    const missions = getTrainingMissions(pet);
+    if (missions.every(m => done.has(m.id))) {
+        try {
+            const met = JSON.parse(localStorage.getItem(AppConstants.StorageKeys.TRAINING_MISSIONS_MET) || '[]');
+            const key = `${wk}:${petKey}`;
+            if (!met.includes(key)) {
+                met.push(key);
+                localStorage.setItem(AppConstants.StorageKeys.TRAINING_MISSIONS_MET, JSON.stringify(met));
+                if (typeof showToast === 'function') showToast('🎓 훈련 마스터 뱃지 획득! 이번 주 미션 완료!');
+            }
+        } catch {}
+    }
+    renderTrainingMissions();
+    if (typeof renderAchievementBadges === 'function') renderAchievementBadges();
+}
+
+function hasMetTrainingMaster() {
+    try { return JSON.parse(localStorage.getItem(AppConstants.StorageKeys.TRAINING_MISSIONS_MET) || '[]').length > 0; }
+    catch { return false; }
+}
+
+function renderTrainingMissions() {
+    const el = document.getElementById('training-mission-card');
+    if (!el) return;
+    const pet = typeof getActivePet === 'function' ? getActivePet() : (typeof pets !== 'undefined' ? pets[0] : null);
+    if (!pet) {
+        el.innerHTML = `
+            <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                <i class="fa-solid fa-graduation-cap text-gray-300"></i>
+                <span>반려동물을 등록하면 맞춤 훈련 미션이 열려요!</span>
+            </div>`;
+        return;
+    }
+    const missions = getTrainingMissions(pet);
+    const done = new Set(_getWeekPetMissions(pet));
+    const doneCount = missions.filter(m => done.has(m.id)).length;
+    const pct = Math.round(doneCount / missions.length * 100);
+    const allDone = doneCount === missions.length;
+    const stageLabel = { young: '자견/자묘', adult: '성체', senior: '노령' }[_petLifeStage(pet)] || '성체';
+
+    const items = missions.map(m => {
+        const isDone = done.has(m.id);
+        return `
+        <button onclick="toggleTrainingMission('${m.id}')"
+            class="w-full text-left flex items-center gap-2 p-2 rounded-xl transition-colors ${isDone ? 'bg-emerald-50 border border-emerald-100' : 'bg-gray-50 border border-gray-100 hover:bg-amber-50'}">
+            <span class="text-base shrink-0">${isDone ? '✅' : m.emoji}</span>
+            <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-black ${isDone ? 'text-emerald-700 line-through' : 'text-gray-700'}">${m.label}</p>
+                <p class="text-[8px] text-gray-400 font-medium truncate">${m.desc}</p>
+            </div>
+        </button>`;
+    }).join('');
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-black text-gray-700">🎓 AI 훈련 미션</span>
+            <span class="text-[9px] font-bold text-gray-400">${escapeHtml(pet.breed || '')} · ${stageLabel}</span>
+        </div>
+        <p class="text-[9px] text-gray-500 font-medium mb-2">${escapeHtml(pet.name)}에게 맞춘 이번 주 훈련 체크리스트</p>
+        <div class="w-full bg-gray-100 rounded-full h-1.5 mb-2 overflow-hidden">
+            <div class="bg-gradient-to-r from-brand-400 to-amber-400 h-full rounded-full transition-all duration-500" style="width:${pct}%"></div>
+        </div>
+        <div class="space-y-1.5">${items}</div>
+        ${allDone
+            ? '<p class="text-[10px] text-emerald-600 font-black text-center mt-2">🎉 이번 주 훈련 미션 완료! 🎓 뱃지를 획득했어요!</p>'
+            : `<p class="text-[9px] text-gray-400 font-medium text-center mt-2">${doneCount}/${missions.length} 완료 · 매주 새 미션이 열려요</p>`}`;
 }
