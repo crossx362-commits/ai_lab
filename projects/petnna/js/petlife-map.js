@@ -4,6 +4,7 @@
 
 let petlifeMap = null;
 let petlifeMarkers = [];
+let petlifeLostMarkers = [];
 let petlifeMyLocationMarker = null;
 let petlifeMyLocationCircle = null;
 let currentMapStyle = 'voyager'; // voyager, satellite, dark
@@ -63,6 +64,8 @@ function initPetlifeMap() {
 
     // 가맹점 마커 추가
     renderPetlifeMarkers();
+    // 🆘 실종 브로드캐스트 핀 추가 (이웃 피드에 발행된 실종 게시글)
+    renderLostPetMarkers();
 
     // 100ms 후 지도 크기 재조정 (렌더링 완료 대기)
     setTimeout(() => {
@@ -149,6 +152,68 @@ function renderPetlifeMarkers() {
         });
 
         petlifeMarkers.push(marker);
+    });
+}
+
+// 🆘 실종 브로드캐스트 핀 렌더링 — posts 중 lostReport 좌표가 있는 게시글을 붉은 핀으로 노출
+function renderLostPetMarkers() {
+    if (!petlifeMap) return;
+
+    // 기존 실종 핀 제거
+    petlifeLostMarkers.forEach(marker => petlifeMap.removeLayer(marker));
+    petlifeLostMarkers = [];
+
+    const list = (typeof posts !== 'undefined' && Array.isArray(posts)) ? posts : [];
+    const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s == null ? '' : s));
+
+    list.forEach(post => {
+        const lr = post && post.lostReport;
+        if (!lr || typeof lr.lat !== 'number' || typeof lr.lng !== 'number') return;
+
+        const icon = L.divIcon({
+            html: `
+                <div style="
+                    background:#f43f5e;
+                    width:44px;
+                    height:44px;
+                    border-radius:50% 50% 50% 0;
+                    transform:rotate(-45deg);
+                    border:3px solid white;
+                    box-shadow:0 4px 12px rgba(244,63,94,0.4);
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    animation:lost-pin-pulse 1.4s infinite;
+                ">
+                    <span style="font-size:20px;transform:rotate(45deg);line-height:1;">🆘</span>
+                </div>
+                <style>
+                @keyframes lost-pin-pulse {
+                    0%   { box-shadow:0 0 0 0px rgba(244,63,94,0.45); }
+                    100% { box-shadow:0 0 0 16px rgba(244,63,94,0); }
+                }
+                </style>
+            `,
+            className: '',
+            iconSize: [44, 44],
+            iconAnchor: [22, 44],
+            popupAnchor: [0, -44]
+        });
+
+        const marker = L.marker([lr.lat, lr.lng], { icon: icon, zIndexOffset: 900 })
+            .addTo(petlifeMap)
+            .bindPopup(`
+                <div style="text-align:center;padding:8px;min-width:160px;">
+                    <div style="display:inline-block;background:#f43f5e;color:white;font-weight:900;font-size:10px;padding:2px 8px;border-radius:999px;margin-bottom:6px;">🆘 실종 긴급</div>
+                    <div style="font-weight:900;font-size:14px;color:#0f172a;margin-bottom:4px;">${esc(post.petName || '우리 아이')}(을)를 찾아요</div>
+                    ${lr.place ? `<div style="font-size:11px;color:#e11d48;font-weight:700;margin-bottom:2px;">📍 ${esc(lr.place)}</div>` : ''}
+                    ${lr.contact ? `<div style="font-size:11px;color:#64748b;">연락처: ${esc(lr.contact)}</div>` : ''}
+                    ${lr.note ? `<div style="font-size:11px;color:#475569;margin-top:4px;line-height:1.4;">${esc(lr.note)}</div>` : ''}
+                    <div style="font-size:10px;color:#f43f5e;font-weight:700;margin-top:6px;">목격하셨다면 이웃 피드 댓글로 제보해 주세요 🙏</div>
+                </div>
+            `);
+
+        petlifeLostMarkers.push(marker);
     });
 }
 
@@ -273,6 +338,7 @@ function toggleMapStyle() {
 
     // 마커 다시 추가 (레이어 순서 유지)
     renderPetlifeMarkers();
+    renderLostPetMarkers();
 
     const styleNames = {
         voyager: '기본 지도',
@@ -418,6 +484,7 @@ function applyPetlifeMapFilters() {
 
 // 전역 함수 등록
 window.initPetlifeMap = initPetlifeMap;
+window.renderLostPetMarkers = renderLostPetMarkers;
 window.moveToMyLocation = moveToMyLocation;
 window.toggleMapStyle = toggleMapStyle;
 window.applyPetlifeMapFilters = applyPetlifeMapFilters;
