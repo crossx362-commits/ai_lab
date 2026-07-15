@@ -89,6 +89,9 @@ function renderHealthTab() {
     // 식사 일지 렌더링
     if (typeof renderMealLogsList === 'function') renderMealLogsList();
 
+    // 데일리 컨디션 원탭 로그 위젯
+    if (typeof DailyCondition !== 'undefined') DailyCondition.renderWidget('daily-condition-widget');
+
     // 예측 웰니스 이상감지 카드
     if (typeof renderWellnessCard === 'function') renderWellnessCard();
 

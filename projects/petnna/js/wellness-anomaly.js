@@ -29,6 +29,15 @@
         liquid: { label: '설사', emoji: '💦' },
     };
 
+    // 데일리 컨디션 원탭 로그(daily-condition.js) 연결(백로그 나무 제안):
+    // 식욕·활력이 최근 CONDITION_STREAK일 연속 '저하(low)'면 조기 신호로 본다.
+    // 배변과 동일하게 표본 하한 없이 소수 기록으로도 감지한다.
+    const CONDITION_STREAK = 3;
+    const CONDITION_ABNORMAL = {
+        appetite: { low: { label: '식욕 저하', emoji: '😔' } },
+        activity: { low: { label: '활력 저하', emoji: '😴' } },
+    };
+
     function _mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }
     function _std(a, m) { return Math.sqrt(a.reduce((s, x) => s + (x - m) * (x - m), 0) / a.length); }
 
@@ -87,8 +96,36 @@
         return { metric: 'poop', poop: type, label: info.label, emoji: info.emoji, days: streak };
     }
 
+    // 순수 함수: history → 식욕·활력 저하 소견 배열(없으면 빈 배열).
+    // 각 필드에서 가장 최근부터 이어지는 'low' 연속이 CONDITION_STREAK 이상이면 보고.
+    function analyzeCondition(history) {
+        const findings = [];
+        for (const field of ['appetite', 'activity']) {
+            const map = CONDITION_ABNORMAL[field];
+            const dated = (history || [])
+                .filter(d => d && d[field])
+                .slice()
+                .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            let streak = 0;
+            let val = null;
+            for (const d of dated) {
+                if (map[d[field]]) { streak++; if (!val) val = d[field]; }
+                else break;
+            }
+            if (streak >= CONDITION_STREAK && val) {
+                const info = map[val];
+                findings.push({ metric: field, field, value: val, label: info.label, emoji: info.emoji, days: streak });
+            }
+        }
+        return findings;
+    }
+
     function _stoolText(f) {
         return `최근 ${f.days}일 연속 ${f.label} 기록이 있어요. 지속되면 수의사 상담을 권해요`;
+    }
+
+    function _conditionText(f) {
+        return `최근 ${f.days}일 연속 ${f.label} 기록이 있어요. 컨디션을 살펴봐 주세요`;
     }
 
     function _findingText(f) {
@@ -110,11 +147,12 @@
         const history = (typeof healthLogs !== 'undefined' && healthLogs) ? healthLogs.history : [];
         const findings = analyzeWellness(history);
         const stool = analyzeStool(history);
+        const conditions = analyzeCondition(history);
         const samples = _sampleCount();
 
-        // 배변 이상은 표본 하한과 무관하게 조기 감지 — z-score 표본이 부족해도
-        // 이상변 연속이면 경고 카드로 바로 노출한다.
-        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool) {
+        // 배변·컨디션 이상은 표본 하한과 무관하게 조기 감지 — z-score 표본이
+        // 부족해도 이상변/저하 연속이면 경고 카드로 바로 노출한다.
+        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool && !conditions.length) {
             // 표본 부족 — 조용히 안내(알림 없음)
             host.innerHTML = `
             <div class="card-modern p-5 border border-brand-100/60">
@@ -132,7 +170,7 @@
             return;
         }
 
-        if (findings.length === 0 && !stool) {
+        if (findings.length === 0 && !stool && !conditions.length) {
             host.innerHTML = `
             <div class="card-modern p-5 border border-emerald-100">
                 <div class="flex items-center gap-3">
@@ -152,7 +190,12 @@
                 <span class="mt-0.5">${stool.emoji}</span>
                 <span>${_stoolText(stool)}</span>
             </li>` : '';
-        const items = stoolItem + findings.map(f => `
+        const conditionItems = conditions.map(c => `
+            <li class="flex items-start gap-2 text-sm text-amber-900">
+                <span class="mt-0.5">${c.emoji}</span>
+                <span>${_conditionText(c)}</span>
+            </li>`).join('');
+        const items = stoolItem + conditionItems + findings.map(f => `
             <li class="flex items-start gap-2 text-sm text-amber-900">
                 <span class="mt-0.5">${f.emoji}</span>
                 <span>${_findingText(f)}</span>
@@ -169,21 +212,25 @@
             <ul class="space-y-1.5 pl-1">${items}</ul>
         </div>`;
 
-        _maybeNotify(findings, stool);
+        _maybeNotify(findings, stool, conditions);
     }
 
-    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 이상을 우선 노출.
-    function _maybeNotify(findings, stool) {
-        if (!stool && !findings.length) return;
+    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 > 컨디션 > z 순으로 우선 노출.
+    function _maybeNotify(findings, stool, conditions) {
+        conditions = conditions || [];
+        if (!stool && !conditions.length && !findings.length) return;
         const today = (typeof healthLogs !== 'undefined' && healthLogs && healthLogs.today && healthLogs.today.date)
             || new Date().toISOString().slice(0, 10);
         const flagKey = 'petna_wellness_alerted_' + today;
         try { if (localStorage.getItem(flagKey)) return; localStorage.setItem(flagKey, '1'); } catch (e) { return; }
-        const msg = stool ? stool.emoji + ' ' + _stoolText(stool) : '🔮 ' + _findingText(findings[0]);
+        const msg = stool ? stool.emoji + ' ' + _stoolText(stool)
+            : conditions.length ? conditions[0].emoji + ' ' + _conditionText(conditions[0])
+            : '🔮 ' + _findingText(findings[0]);
         if (typeof showToast === 'function') showToast(msg);
     }
 
     window.analyzeWellness = analyzeWellness;
     window.analyzeStool = analyzeStool;
+    window.analyzeCondition = analyzeCondition;
     window.renderWellnessCard = renderWellnessCard;
 })();
