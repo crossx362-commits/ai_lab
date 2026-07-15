@@ -6,6 +6,7 @@
 """
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -459,7 +460,11 @@ class RecentDecisionsTests(unittest.TestCase):
         from _shared.backlog import recent_reviewed_items, format_recent_decisions
         self.recent = recent_reviewed_items
         self.fmt = format_recent_decisions
-        self.tmp = Path(tempfile.mkstemp(suffix=".json")[1])
+        # mkstemp는 열린 fd를 돌려준다 — 닫지 않으면 Windows에서 unlink이
+        # WinError 32(사용 중)로 실패한다(맥에서는 통과해 눈에 안 띄던 버그).
+        fd, name = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        self.tmp = Path(name)
         self.addCleanup(self.tmp.unlink)
 
     def _write(self, items):

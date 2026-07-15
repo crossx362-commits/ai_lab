@@ -27,6 +27,14 @@ from _shared.utils import find_root
 
 load_env()
 
+# pythonw.exe(콘솔 없음)로 등록하면서 필요해진 안전장치 — 콘솔이 없으면 sys.stdout/stderr가
+# None이라 print()가 그대로 죽는다. 로그 파일로 돌려 받는다(2026-07-13, 창 플래시 사고 수정).
+if sys.stdout is None or not hasattr(sys.stdout, "write"):
+    _log_path = find_root() / "output" / "bot_logs" / "fleet_heartbeat.log"
+    _log_path.parent.mkdir(parents=True, exist_ok=True)
+    _logf = open(_log_path, "a", encoding="utf-8", errors="replace")
+    sys.stdout = sys.stderr = _logf
+
 TASK_NAME = "AiLabFleetHeartbeat"
 STATE = find_root() / "output" / "cache" / "fleet_heartbeat.json"
 # '봇 다 꺼'(agent_controller.stop_all_bots)가 세우는 부활 억제 플래그.
@@ -141,13 +149,18 @@ def install() -> int:
         print("Windows 전용. macOS는 launchd(com.ailab.*)로 등록하라.")
         return 2
     script = os.path.abspath(__file__)
+    # pythonw.exe(콘솔 서브시스템 아님)로 등록 — python.exe로 등록하면 작업 스케줄러가
+    # 인터랙티브 세션에 5분마다 콘솔 창을 새로 띄워 잠깐 플래시한다(2026-07-13 발견).
+    pythonw = sys.executable.replace("python.exe", "pythonw.exe")
+    if not os.path.isfile(pythonw):
+        pythonw = sys.executable  # pythonw 없는 배포본 폴백(콘솔 플래시 감수)
     # /f 덮어쓰기, /sc minute /mo 5 = 5분 주기. 관리자 권한 불필요(현재 사용자 컨텍스트).
     cmd = ["schtasks", "/create", "/tn", TASK_NAME, "/f", "/sc", "minute", "/mo", "5",
-           "/tr", f'"{sys.executable}" "{script}"']
+           "/tr", f'"{pythonw}" "{script}"']
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     print((r.stdout or r.stderr).strip())
     if r.returncode == 0:
-        print(f"등록 완료: {TASK_NAME} (5분 주기, 인터프리터 {sys.executable})")
+        print(f"등록 완료: {TASK_NAME} (5분 주기, 인터프리터 {pythonw})")
     return r.returncode
 
 

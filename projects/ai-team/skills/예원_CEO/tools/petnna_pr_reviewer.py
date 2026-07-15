@@ -102,6 +102,24 @@ def _ask_yewon(title: str, detail: str, diff: str, files: list[str],
     return decision, reason or "(근거 없음)"
 
 
+def _reject_route(rec: dict, reason: str, quality: bool) -> str:
+    """반려 라우팅 — 품질 반려는 시도 한도 내에서 피드백과 함께 수리에게 되돌린다.
+
+    크리틱 환류 루프(2026-07-15): 예전엔 모든 반려가 즉시 '보류'(사람 검토 대기)라
+    예원의 반려 사유가 기록만 되고 재사용되지 않았다 — 리뷰어의 노트를 작성자에게
+    돌려줘 재작업시키는 루프가 없었던 것. 품질 반려(_ask_yewon 판단)는 MAX_ATTEMPTS
+    내라면 '대기'로 되돌리고 사유를 rec["review_feedback"]에 쌓는다 — 수리가 재시도
+    프롬프트에 이 피드백을 주입해(claude_fix) 같은 실수를 반복하지 않게 한다.
+    하드 게이트 반려(금지경로·E2E 신규실패·빈 diff)와 한도 소진은 기존대로 '보류'
+    (구조적 문제 — 같은 프롬프트로 재시도해도 같은 결과라 환류 무의미).
+    재시도 상한은 수리 쪽 attempts/MAX_ATTEMPTS가 그대로 문다 — 무한 핑퐁 없음.
+    """
+    if quality and rec.get("attempts", 0) < eng.MAX_ATTEMPTS:
+        rec["review_feedback"] = (rec.get("review_feedback") or [])[-4:] + [reason]
+        return "대기"
+    return "보류"
+
+
 def _merge(branch: str) -> tuple[bool, str]:
     dirty = eng._git(["status", "--porcelain", "--", "projects/petnna"],
                      eng.PROJECT_ROOT).stdout.strip()
@@ -154,6 +172,7 @@ def review_all(do_send: bool = True) -> str:
             diff = eng._git(["diff", f"master...{branch}", "--", "projects/petnna"],
                             eng.PROJECT_ROOT).stdout
 
+            quality = False  # 하드 게이트 반려 vs 품질 반려 구분(_reject_route 환류 판정용)
             if not gate_ok:
                 decision, reason = "reject", f"안전 게이트 거부: {gate_note}"
             elif new_fail:
@@ -161,6 +180,7 @@ def review_all(do_send: bool = True) -> str:
             elif not diff.strip():
                 decision, reason = "reject", "빈 diff(변경 없음)"
             else:
+                quality = True
                 decision, reason = _ask_yewon(title, it.get("detail", ""), diff, files,
                                                item_type=it.get("type", ""), item_id=fp)
 
@@ -176,13 +196,17 @@ def review_all(do_send: bool = True) -> str:
                 else:
                     lines.append(f"⏸️ 승인했으나 {mnote} — {title[:40]}")
             elif decision == "reject":
-                rec["status"] = "보류"
+                new_status = _reject_route(rec, reason, quality)
+                rec["status"] = new_status
                 rec["reviewed_by"] = "예원"
                 rec["reviewed_at"] = datetime.now().isoformat()
                 rec["review_reason"] = reason
-                eng._update_backlog(fp, "보류", reason)
+                eng._update_backlog(fp, new_status, reason)
                 applied = True
-                lines.append(f"🛑 반려 — {title[:40]}\n   예원: {reason}")
+                if new_status == "대기":
+                    lines.append(f"🔁 반려→피드백 재시도 — {title[:40]}\n   예원: {reason}")
+                else:
+                    lines.append(f"🛑 반려 — {title[:40]}\n   예원: {reason}")
             else:  # defer — 이번엔 판단 못 함, PR대기 유지
                 lines.append(f"↩️ 보류(판단 실패) — {title[:40]}: {reason}")
         finally:
@@ -193,7 +217,7 @@ def review_all(do_send: bool = True) -> str:
 
     body = "\n".join(lines) if lines else "처리 없음"
     merged_n = sum(1 for x in lines if x.startswith("✅"))
-    rejected_n = sum(1 for x in lines if x.startswith("🛑"))
+    rejected_n = sum(1 for x in lines if x.startswith(("🛑", "🔁")))
     if merged_n:
         body += f"\n{_push_master()}"
     if do_send and lines:

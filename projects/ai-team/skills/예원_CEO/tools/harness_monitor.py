@@ -30,12 +30,10 @@ def growth_report() -> str:
     # 반복 문제: 같은 부족점이 2회 이상, 또는 평균 총점 60 미만
     repeated = [f"{a}: 평균 {d['avg_total']}점({d['count']}건)"
                 for a, d in summ.items() if d["count"] >= 2 and d["avg_total"] < 60]
-    no_log = []  # 주식 에이전트 삭제(2026-07-08)로 성장기록 누락 점검 대상 없음
     proposals = growth.list_proposals()
     lines = ["[예원 시스템 점검]"]
     lines.append(f"- 정상 에이전트: {len(normal)}종 ({', '.join(normal) or '-'})")
     lines.append(f"- 이상 에이전트: {', '.join(down) if down else '없음'}")
-    lines.append(f"- 성장기록 누락: {', '.join(no_log) if no_log else '없음'}")
     lines.append(f"- 반복 문제: {'; '.join(repeated) if repeated else '없음'}")
     if proposals:
         lines.append(f"- 사용자 승인 필요 개선안: {len(proposals)}건")
@@ -91,6 +89,27 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 HEAD_STATE = os.path.join(ROOT_DIR, "output", "cache", "watchdog_git_head.json")
 # 텔레그램 "봇 다 꺼"가 세우는 플래그 — 존재하면 워치독이 다운 봇을 되살리지 않는다(원격 종료 유지).
 BOTS_OFF_FLAG = os.path.join(ROOT_DIR, "output", "cache", "BOTS_OFF")
+# remedy_state(일일 자동복구 횟수 상한 카운터)를 메모리에만 두면 예원 자가교체(git pull
+# 후 재시작)마다 리셋돼 REMEDY_MAX_PER_DAY 상한이 무력화된다(2026-07-13 파이프라인 감사가
+# 발견). 재시작 사이에도 오늘 몇 번 복구했는지 이어지도록 파일로 영속화한다.
+REMEDY_STATE_FILE = os.path.join(ROOT_DIR, "output", "cache", "yewon_remedy_state.json")
+
+
+def _load_remedy_state() -> dict:
+    try:
+        with open(REMEDY_STATE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_remedy_state(state: dict) -> None:
+    try:
+        os.makedirs(os.path.dirname(REMEDY_STATE_FILE), exist_ok=True)
+        with open(REMEDY_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
 
 
 def _bots_off() -> bool:
@@ -122,6 +141,46 @@ def _daemon_dirs() -> dict:
         return out
     except Exception:
         return {}
+
+
+AUTO_PULL_SEC = int(os.getenv("YEWON_AUTO_PULL_SEC", "900"))  # 15분 주기, 0이면 비활성
+
+
+def auto_pull() -> str | None:
+    """원격 신규 커밋을 fast-forward로만 자동 반영 — "push만 하면 운영기에 적용"의 마지막
+    수동 구멍(pull 자체) 봉합(2026-07-15 오너 지시 "풀받으면 바로 적용되게"). pull 이후는
+    이미 전자동이었다(post-merge 훅 fleet_bootstrap + 아래 restart_on_code_update) —
+    pull을 시킬 사람만 없었다. ff-only라 로컬 커밋과 갈라졌거나 작업트리와 충돌하면
+    아무것도 바꾸지 않고 물러난다(안전). 성공하면 같은 워치독 틱의
+    restart_on_code_update()가 HEAD 변화를 감지해 데몬을 새 코드로 교체한다.
+    반환: 보고할 일 없으면 None, 있으면 로그/알림용 한 줄."""
+    if _bots_off():
+        return None  # 원격 종료 상태 — 코드도 움직이지 않는다
+    if _git_out("rev-parse", "--abbrev-ref", "HEAD") != "master":
+        return None  # master가 아닌 체크아웃(작업 중 브랜치 등)엔 손대지 않는다
+    try:
+        f = subprocess.run(["git", "fetch", "--quiet", "origin"], cwd=ROOT_DIR,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120, **_NOWIN)
+    except Exception:
+        return None  # 오프라인/일시 네트워크 — 다음 주기 재시도(소음 없음)
+    if f.returncode != 0:
+        return None
+    behind = _git_out("rev-list", "--count", "HEAD..origin/master")
+    if behind in ("", "0"):
+        return None
+    try:
+        m = subprocess.run(["git", "merge", "--ff-only", "origin/master"], cwd=ROOT_DIR,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120, **_NOWIN)
+    except Exception as e:
+        return f"원격 {behind}커밋 뒤처짐 — ff 병합 실행 실패: {e}"
+    if m.returncode != 0:
+        # 로컬 분기(미push 커밋)나 작업트리 충돌 — ff-only는 아무것도 안 바꿨다.
+        # 조용히 계속 뒤처지는 건 침묵 실패이므로 보고 대상.
+        return (f"원격 {behind}커밋 뒤처짐 + ff 불가(로컬 분기/충돌) — 수동 확인 필요: "
+                + (m.stderr or m.stdout).strip()[:120])
+    return f"원격 {behind}커밋 자동 반영(ff) — 데몬 교체는 코드 갱신 감지기가 이어서 처리"
 
 
 def restart_on_code_update() -> None:
@@ -279,7 +338,9 @@ def main():
 
     last_growth_date = None
     last_issue_sig = ""
-    remedy_state: dict = {}
+    last_pull_ts = 0.0   # 0 = 기동 첫 틱에 즉시 pull(부팅 직후 최신화)
+    last_pull_note = ""
+    remedy_state: dict = _load_remedy_state()
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -302,9 +363,23 @@ def main():
                     print("⚠️  이슈 감지")
                     # 자동 복구: 원인 에이전트 재시작(쿨다운·일일상한) — 결과는 텔레그램 보고
                     acts = auto_remediate(remedy_state)
+                    _save_remedy_state(remedy_state)
                     if acts:
                         send("🔧 [예원] 하네스 이슈 자동 복구\n" + "\n".join(acts))
                         last_issue_sig = ""  # 복구 후 상태 재평가 — 다음 사이클 결과를 다시 보고
+
+                # 원격 자동 pull(ff-only) — 이제 push만 하면 다음 주기 안에 이 기계에 반영(2026-07-15)
+                if AUTO_PULL_SEC > 0 and time.time() - last_pull_ts >= AUTO_PULL_SEC:
+                    last_pull_ts = time.time()
+                    try:
+                        note = auto_pull()
+                    except Exception as e:
+                        note = f"자동 pull 오류: {e}"
+                    if note:
+                        print(f"[자동pull] {note}")
+                        if "불가" in note and note != last_pull_note:
+                            send("⚠️ [예원] 자동 pull 정체 — " + note, silent=True)
+                        last_pull_note = note
 
                 # git pull 감지 → 변경 데몬 새 코드로 자동 교체 (풀만 하면 반영)
                 try:

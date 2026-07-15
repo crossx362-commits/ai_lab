@@ -235,12 +235,15 @@ def generate_test(do_send: bool) -> bool:
         "- run은 playwright sync Page를 받아 page.goto(base_url)부터 흐름을 검증하고, 실패는 assert로 표현한다.\n"
         "- 앱 코드(index.html·js·css)는 절대 수정 금지. 테스트 파일 외 어떤 파일도 만들지/바꾸지 마라.\n"
         "- 외부 네트워크(수파베이스 등) 성공에 의존하지 마라 — 화면 구조·가시성 위주로 검증.\n"
-        "- 셀렉터는 index.html/js를 실제로 읽고 존재하는 것만 사용. 불확실하면 더 안정적인 상위 요소로.\n"
+        "- 셀렉터를 고르기 전에, index.html·관련 js에서 id/data-testid/class 후보만 뽑아내는 파이썬 "
+        "스크립트를 작성해 `python3 -c \"...\"`로 Bash 실행하라(다른 bash 명령·파일쓰기 금지) — "
+        "파일 전체를 눈으로 훑지 말고 스크립트로 걸러낸 후보 중 실존하는 것만 사용해라. "
+        "불확실하면 더 안정적인 상위 요소로.\n"
         "- 대기는 page.wait_for_selector/expect 계열로, time.sleep 금지(2.5초 초기 렌더 대기 1회는 허용).\n"
         "- 마지막에 만든 파일 경로와 검증 내용을 1~2줄로 요약하라."
     )
     ok, out = run_claude(prompt, PROJECT_ROOT, timeout=900,
-                         allowed_tools="WebSearch,WebFetch")
+                         allowed_tools="Read,Bash(python3:*),Bash(python:*),WebSearch,WebFetch")
     new = [p for p in list_tests() if p not in existing]
     if not new:
         print(f"[테오] 테스트 생성 실패: {out[-200:]}")
