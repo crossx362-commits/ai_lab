@@ -12,7 +12,12 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+# 콘솔 없는 데몬에서 claude.CMD(npm 셔임) 호출 시 매번 새 콘솔 창이 플래시되는 것을 막는다
+# (2026-07-09 가드레일, 이 파일은 당시 전수 수정에서 빠져 있었음 — 2026-07-13 발견).
+_NOWIN = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
 
 _DEAD_PAID_KEYS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
 
@@ -58,6 +63,10 @@ def find_claude() -> str | None:
     return None
 
 
+_OUTPUT_HYGIENE = ("출력 규칙(최우선, 다른 스타일 지침보다 우선): 요청된 결과 본문만 출력한다. "
+                   "서두·계획·사고과정 같은 메타 발화, '★ Insight' 등 학습/코칭 형식 블록, 마무리 제안을 절대 넣지 마라.")
+
+
 def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
                allowed_tools: str = "WebSearch,WebFetch",
                permission_mode: str = "acceptEdits") -> tuple[bool, str]:
@@ -65,7 +74,11 @@ def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
     cli = find_claude()
     if not cli:
         return False, "claude CLI 미발견 (PATH·표준 경로 모두 없음)"
-    cmd = [cli, "-p", "--permission-mode", permission_mode]
+    # 헤드리스 세션이 사용자 로컬 출력 스타일(learning 모드의 '★ Insight' 등)을 물려받아
+    # 보고서 본문에 그대로 섞여 나가는 것을 막는다(2026-07-08 llm.py._claude_code 가드레일과
+    # 동형 — 이 함수엔 빠져 있었다, 2026-07-13 발견: petnna_backend_guard.llm_analysis() 실
+    # 호출에서 실제로 재현됨).
+    cmd = [cli, "-p", "--permission-mode", permission_mode, "--append-system-prompt", _OUTPUT_HYGIENE]
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
     try:
@@ -73,7 +86,7 @@ def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
         # 개행이 든 argv를 첫 줄에서 잘라먹는다(2026-07-10 사고).
         r = subprocess.run(cmd, cwd=str(cwd), input=prompt, capture_output=True, text=True,
                             encoding="utf-8", errors="replace", timeout=timeout,
-                            env=_subscription_env())
+                            env=_subscription_env(), **_NOWIN)
         out = (r.stdout or "").strip() or (r.stderr or "").strip()
         return r.returncode == 0, out
     except subprocess.TimeoutExpired:

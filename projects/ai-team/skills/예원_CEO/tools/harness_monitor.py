@@ -30,12 +30,10 @@ def growth_report() -> str:
     # 반복 문제: 같은 부족점이 2회 이상, 또는 평균 총점 60 미만
     repeated = [f"{a}: 평균 {d['avg_total']}점({d['count']}건)"
                 for a, d in summ.items() if d["count"] >= 2 and d["avg_total"] < 60]
-    no_log = []  # 주식 에이전트 삭제(2026-07-08)로 성장기록 누락 점검 대상 없음
     proposals = growth.list_proposals()
     lines = ["[예원 시스템 점검]"]
     lines.append(f"- 정상 에이전트: {len(normal)}종 ({', '.join(normal) or '-'})")
     lines.append(f"- 이상 에이전트: {', '.join(down) if down else '없음'}")
-    lines.append(f"- 성장기록 누락: {', '.join(no_log) if no_log else '없음'}")
     lines.append(f"- 반복 문제: {'; '.join(repeated) if repeated else '없음'}")
     if proposals:
         lines.append(f"- 사용자 승인 필요 개선안: {len(proposals)}건")
@@ -91,6 +89,27 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "
 HEAD_STATE = os.path.join(ROOT_DIR, "output", "cache", "watchdog_git_head.json")
 # 텔레그램 "봇 다 꺼"가 세우는 플래그 — 존재하면 워치독이 다운 봇을 되살리지 않는다(원격 종료 유지).
 BOTS_OFF_FLAG = os.path.join(ROOT_DIR, "output", "cache", "BOTS_OFF")
+# remedy_state(일일 자동복구 횟수 상한 카운터)를 메모리에만 두면 예원 자가교체(git pull
+# 후 재시작)마다 리셋돼 REMEDY_MAX_PER_DAY 상한이 무력화된다(2026-07-13 파이프라인 감사가
+# 발견). 재시작 사이에도 오늘 몇 번 복구했는지 이어지도록 파일로 영속화한다.
+REMEDY_STATE_FILE = os.path.join(ROOT_DIR, "output", "cache", "yewon_remedy_state.json")
+
+
+def _load_remedy_state() -> dict:
+    try:
+        with open(REMEDY_STATE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_remedy_state(state: dict) -> None:
+    try:
+        os.makedirs(os.path.dirname(REMEDY_STATE_FILE), exist_ok=True)
+        with open(REMEDY_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
 
 
 def _bots_off() -> bool:
@@ -279,7 +298,7 @@ def main():
 
     last_growth_date = None
     last_issue_sig = ""
-    remedy_state: dict = {}
+    remedy_state: dict = _load_remedy_state()
     with ProcessLock("yewon_monitor"):
         try:
             while True:
@@ -302,6 +321,7 @@ def main():
                     print("⚠️  이슈 감지")
                     # 자동 복구: 원인 에이전트 재시작(쿨다운·일일상한) — 결과는 텔레그램 보고
                     acts = auto_remediate(remedy_state)
+                    _save_remedy_state(remedy_state)
                     if acts:
                         send("🔧 [예원] 하네스 이슈 자동 복구\n" + "\n".join(acts))
                         last_issue_sig = ""  # 복구 후 상태 재평가 — 다음 사이클 결과를 다시 보고

@@ -55,8 +55,11 @@ class InvestigateAssignedTasksFailureTests(unittest.TestCase):
         self.assertEqual(item["status"], "보류", "상한 도달 시 무한 재조사 대신 보류로 전환해야 한다")
 
     def test_success_marks_done_and_stores_finding(self):
+        # 2026-07-13 배칭 적용 이후 run_claude는 항목별 결론이 아니라 전체 과제를 담은
+        # JSON 배열([{"id", "conclusion"}])을 한 번에 반환한다 — 모의 응답도 그 계약을 따라야 한다.
+        batched = json.dumps([{"id": "a", "conclusion": "결론: 문제 없음"}], ensure_ascii=False)
         with self._write([{"id": "a", "title": "조사 과제", "owner": "백호", "status": "대기"}]), \
-             mock.patch.object(self.baekho, "run_claude", return_value=(True, "결론: 문제 없음")):
+             mock.patch.object(self.baekho, "run_claude", return_value=(True, batched)):
             n = self.baekho.investigate_assigned_tasks(do_send=False)
         self.assertEqual(n, 1)
         item = json.loads(self.tmp.read_text(encoding="utf-8"))["items"][0]
@@ -88,7 +91,8 @@ class InvestigateAssignedTasksFailureTests(unittest.TestCase):
                 data["items"].append({"id": "concurrent", "title": "동시 적재된 항목",
                                       "owner": "미오", "status": "대기", "type": "디자인"})
                 self.tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-                return (True, "결론: 문제 없음")
+                # 2026-07-13 배칭 적용 이후 계약: JSON 배열([{"id", "conclusion"}]).
+                return (True, json.dumps([{"id": "a", "conclusion": "결론: 문제 없음"}], ensure_ascii=False))
 
             with mock.patch.object(self.baekho, "run_claude", side_effect=fake_run_claude):
                 self.baekho.investigate_assigned_tasks(do_send=False)

@@ -591,6 +591,13 @@ def fleet_freshness_audit() -> None:
               ("미오 디자인 리뷰", qa_base / "design", 8 * 24), ("나무 기획", qa_base / "product", 8 * 24)]
     stale = []
     for name, path, hours in checks:
+        if not path.exists():
+            # rglob()이 없는 경로에선 빈 제너레이터를 내놔 max(default=0)이 잡히고,
+            # time.time()-0이 항상 기준을 넘겨 "디렉터리 미생성"을 "무산출 경보"로
+            # 오판했다(2026-07-13 파이프라인 감사가 발견). 설치 초기처럼 아직 산출물이
+            # 한 번도 안 쌓인 정상 상태를 죽은 데몬으로 잘못 알리는 것을 막는다.
+            stale.append(f"- {name}: 디렉터리 미생성(아직 첫 산출물 없음)")
+            continue
         newest = max((p.stat().st_mtime for p in path.rglob("*") if p.is_file()), default=0)
         if time.time() - newest > hours * 3600:
             stale.append(f"- {name}: {int((time.time() - newest) / 3600)}시간째 무산출 (기준 {hours}h)")

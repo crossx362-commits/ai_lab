@@ -247,6 +247,8 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
     if not _cloud_llm_allowed():
         return None
     import subprocess
+    import sys
+    _nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     exe = _find_cli("claude")
     if not exe:
         return None                # CLI 미설치 — 헛된 subprocess/로그 없이 조용히 폴백
@@ -266,7 +268,7 @@ def _claude_code(prompt: str, system: str = "", max_tokens: int = 2000, temperat
         # env=_subscription_cli_env() — 죽은 ANTHROPIC_API_KEY 상속 차단(구독 OAuth 강제).
         r = subprocess.run(cmd, input=full, capture_output=True, text=True, timeout=150,
                             encoding="utf-8", errors="replace",
-                            env=_subscription_cli_env())
+                            env=_subscription_cli_env(), **_nowin)
         out = (r.stdout or "").strip()
         if r.returncode != 0:
             print(f"  ❌ [ClaudeCode] exit {r.returncode}: {(r.stderr or out)[:150]}")
@@ -290,7 +292,8 @@ def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperatur
     로컬+클로드가 대부분 커버하게 해 Plus 한도 소진을 막는다. subprocess+훅이라 느림."""
     if not _cloud_llm_allowed():
         return None
-    import subprocess, tempfile
+    import subprocess, sys, tempfile
+    _nowin = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     exe = _find_cli("codex")
     if not exe:
         return None               # CLI 미설치 — 헛된 subprocess/로그 없이 조용히 폴백
@@ -301,7 +304,7 @@ def _gpt_codex(prompt: str, system: str = "", max_tokens: int = 2000, temperatur
         r = subprocess.run([exe, "exec", "--skip-git-repo-check", "-o", outfile, full],
                        capture_output=True, text=True, timeout=180,
                        encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
-                       env=_subscription_cli_env())
+                       env=_subscription_cli_env(), **_nowin)
         if r.returncode != 0:
             print(f"  ❌ [GptCodex] exit {r.returncode}: {(r.stderr or '')[:150]}")
             return None
