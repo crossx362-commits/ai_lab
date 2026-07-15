@@ -611,11 +611,13 @@ function generateWalkReportCard(w) {
         ctx.fillText(s[1], cx + cardW / 2, 848);
     });
 
-    // 배변/마킹 요약
+    // 배변/급수/냄새 요약 + 기분(선택 시)
+    const moodMeta = WALK_MOODS.find(m => m.key === w.mood);
+    const moodStr = moodMeta ? `   ${moodMeta.emoji} ${moodMeta.label}` : '';
     ctx.fillStyle = '#166534';
-    ctx.font = 'bold 44px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.font = `bold ${moodStr ? 40 : 44}px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(`💩 ${w.poop || 0}회   💦 ${w.pee || 0}회   👃 ${w.sniff || 0}회`, S / 2, 950);
+    ctx.fillText(`💩 ${w.poop || 0}회   💦 ${w.pee || 0}회   👃 ${w.sniff || 0}회${moodStr}`, S / 2, 950);
 
     // 하단 브랜드
     ctx.fillStyle = '#0f9d58';
@@ -629,20 +631,65 @@ function generateWalkReportCard(w) {
     return canvas;
 }
 
-async function shareWalkReportCard(walkId) {
+// 산책 기분 옵션 (원탭 이모지 토글)
+const WALK_MOODS = [
+    { key: 'happy', emoji: '😄', label: '신남' },
+    { key: 'calm', emoji: '😌', label: '편안' },
+    { key: 'tired', emoji: '😴', label: '지침' },
+    { key: 'anxious', emoji: '😰', label: '불안' },
+];
+
+let _pendingWalkMood = null;
+function _selectWalkMood(key, el) {
+    _pendingWalkMood = (_pendingWalkMood === key) ? null : key;
+    document.querySelectorAll('.walk-mood-opt').forEach(b =>
+        b.classList.remove('ring-2', 'ring-brand-500', 'bg-brand-50'));
+    if (_pendingWalkMood && el) el.classList.add('ring-2', 'ring-brand-500', 'bg-brand-50');
+}
+
+// 리포트 카드 생성 전 기분 이모지를 원탭으로 고르게 하는 다이얼로그
+function _promptWalkMood(current, onDone) {
+    _pendingWalkMood = current || null;
+    if (typeof showCustomDialog !== 'function') { onDone(current || null); return; }
+    const opts = WALK_MOODS.map(m => `
+        <button type="button" class="walk-mood-opt flex flex-col items-center gap-1 py-2 rounded-xl border border-gray-100 transition-all ${current === m.key ? 'ring-2 ring-brand-500 bg-brand-50' : ''}" onclick="_selectWalkMood('${m.key}', this)">
+            <span class="text-2xl">${m.emoji}</span>
+            <span class="text-[10px] font-bold text-gray-600">${m.label}</span>
+        </button>`).join('');
+    showCustomDialog({
+        title: '오늘 산책 기분은? 🐾',
+        message: `<div class="text-[11px] text-gray-400 mb-2">기분을 골라 카드에 담아보세요 (선택 안 함도 가능)</div><div class="grid grid-cols-4 gap-2">${opts}</div>`,
+        icon: '🎨',
+        type: 'confirm',
+        allowHtml: true,
+        onConfirm: () => onDone(_pendingWalkMood),
+    });
+}
+
+async function _renderAndShareWalkCard(w) {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const petName = pet?.name || '댕이';
+    const canvas = generateWalkReportCard(w);
+    const aiComment = _walkAiComment(w, petName);
+    const moodMeta = WALK_MOODS.find(m => m.key === w.mood);
+    const moodTxt = moodMeta ? ` ${moodMeta.emoji}${moodMeta.label}` : '';
+    await _downloadOrShare(
+        canvas, 'petna-walk-report.png',
+        `${petName}의 산책 리포트 🦮`,
+        `🦮 ${petName}와 ${w.distance}km 산책 완료!${moodTxt} ⏱️${w.duration || ''} 🔥${w.calories}kcal\n🤖 ${aiComment} #펫과나 #산책 #반려견산책`
+    );
+}
+
+function shareWalkReportCard(walkId) {
     const list = (typeof walks !== 'undefined' && Array.isArray(walks)) ? walks : [];
     const w = list.find(item => item.id === walkId);
     if (!w) {
         if (typeof showToast === 'function') showToast('산책 기록을 찾을 수 없어요');
         return;
     }
-    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
-    const petName = pet?.name || '댕이';
-    const canvas = generateWalkReportCard(w);
-    const aiComment = _walkAiComment(w, petName);
-    await _downloadOrShare(
-        canvas, 'petna-walk-report.png',
-        `${petName}의 산책 리포트 🦮`,
-        `🦮 ${petName}와 ${w.distance}km 산책 완료! ⏱️${w.duration || ''} 🔥${w.calories}kcal\n🤖 ${aiComment} #펫과나 #산책 #반려견산책`
-    );
+    _promptWalkMood(w.mood, (mood) => {
+        w.mood = mood || undefined;
+        if (typeof saveState === 'function') saveState();
+        _renderAndShareWalkCard(w);
+    });
 }
