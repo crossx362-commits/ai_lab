@@ -1370,6 +1370,7 @@ function publishLostBroadcast(opts) {
         }
         if (typeof switchSocialSubTab === 'function') switchSocialSubTab('feed');
         if (typeof renderFeed === 'function') renderFeed();
+        if (typeof window.renderLostPetMarkers === 'function') window.renderLostPetMarkers();
         showToast("🆘 실종 긴급 알림을 이웃 피드에 발행했어요. 함께 찾아봐요!");
     }
 
