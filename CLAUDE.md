@@ -129,7 +129,7 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 | 미오 (Mio) | Design — 주 1회(월) 스크린샷 기반 UX·시각 리뷰 → 공유 백로그 적재 | `petnna_design_review.py` (보고서: `output/qa/petnna/design/`) |
 | 나무 (Namu) | PM — 주 1회(화) 웹서치 트렌드·경쟁 조사 → 기능 백로그 적재 | `petnna_product_manager.py` (보고서: `output/qa/petnna/product/`) |
 
-**펫나 자동 개발 루프**: 봄이(발견)·백호(DB 계약)·테오(회귀 테스트) → 수리(수정/구현) → 봄이 재검수 → 저위험 P2/P3만 자동 병합. 미오(디자인)·나무(기획)가 `output/qa/petnna/backlog.json`에 과제 적재 → 수리가 QA 이슈 없을 때 브랜치 구현(자동 병합 없음, 사람 검토). 봄이는 순찰 중 앱 자체 오류수집기(AppLogger→localStorage)도 흡수(global_error=P1). 전 에이전트 클로드 세션에 웹서치 허용(모르는 건 검색). 공용 헬퍼: `_shared/cc.py`(claude -p 헤드리스).
+**펫나 자동 개발 루프**: 봄이(발견)·백호(DB 계약)·테오(회귀 테스트) → 수리(수정/구현) → 봄이 재검수 → 저위험 P2/P3만 자동 병합. 미오(디자인)·나무(기획)가 `output/qa/petnna/backlog.json`에 과제 적재 → 수리가 QA 이슈 없을 때 브랜치 구현(자동 병합 없음, 사람 검토). 봄이는 순찰 중 앱 자체 오류수집기(AppLogger→localStorage)도 흡수(global_error=P1). 전 에이전트 클로드 세션에 웹서치 허용(모르는 건 검색). 공용 헬퍼: `_shared/cc.py`(claude -p 헤드리스). **반려 피드백 환류(크리틱 루프, 2026-07-15)**: 예원 PR 리뷰의 품질 반려는 시도 한도(MAX_ATTEMPTS) 내라면 `보류`가 아니라 `대기`로 되돌리며 반려 사유를 `review_feedback`에 적재 — 수리가 재시도 프롬프트에 그 사유를 주입받아 같은 실수를 반복하지 않는다(하드 게이트 반려·한도 소진만 보류, 회귀 테스트 `tests/test_review_feedback_loop.py`).
 
 **펫나 가드레일 (주식 모의거래 교훈 이식, 2026-07-08)**:
 - **산출물 감사**: 예원이 매일(11:00) 함대 신선도 감사(`petnna_fleet_health.py`, launchd `com.ailab.sched.petnna_fleet_health`) — 데몬이 떠 있어도 산출물(보고서/루프/결과)이 30h(주간 에이전트 8일) 무갱신이면 죽은 잡 의심 경보. "프로세스 생존 ≠ 일하는 중". (2026-07-09 발견: 스크립트만 있고 정시 잡 미등록으로 한 번도 자동 실행된 적 없던 공백 — schedules.json 등록 완료.)
