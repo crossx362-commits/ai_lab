@@ -198,10 +198,14 @@ function renderCareScheduler() {
     const parentBox = container.closest('.bg-gradient-to-br');
 
     const autoReminderBtn = `
-        <div class="mb-2">
+        <div class="mb-2 flex gap-1.5">
             <button onclick="triggerAgeBasedReminders()"
-                class="w-full flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
+                class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
                 🔔 월령별 알림 자동 추가
+            </button>
+            <button onclick="if(window.CareShare)CareShare.share()"
+                class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
+                👨‍👩‍👧 가족 공유
             </button>
         </div>`;
 
