@@ -252,6 +252,9 @@ const HEALTH_TEMPLATE = `
         <!-- 🍽️ 일일 급식·칼로리 트래커 -->
         <div id="calorie-tracker-widget"></div>
 
+        <!-- 🍚 맞춤 식단·급여량 추천 카드 (체형·체중·활동량 기반) -->
+        <div id="diet-recommend-widget"></div>
+
         <!-- 🏥 병원비 제보·비교 보드 -->
         <div id="vet-cost-board-widget"></div>
 
