@@ -340,80 +340,10 @@ const MYPET_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 오른쪽: 챌린지 + 업적 -->
+    <!-- 오른쪽: 조화도 + 챌린지/업적 통합 카드 (2026-07-16 정리 전엔 개별 박스 9개가 세로로 나열돼 있었다) -->
     <div class="lg:col-span-3 space-y-2.5">
 
-        <!-- 주간 케어 챌린지 (매주 회전하는 목표) -->
-        <div class="bg-gradient-to-br from-brand-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="weekly-care-challenge">
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                    <i class="fa-solid fa-trophy text-gray-300"></i>
-                    <span>이번 주 케어 챌린지를 확인해보세요!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 주간 산책 챌린지 (개인 목표 링) -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="weekly-walk-challenge">
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                    <i class="fa-solid fa-bullseye text-gray-300"></i>
-                    <span>이번 주 산책 목표를 세워보세요!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 산책 streak 배너 -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="walk-streak-banner">
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                    <i class="fa-solid fa-fire text-gray-300"></i>
-                    <span>산책을 시작하면 streak이 쌓여요!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 버디 산책 스트릭 (함께 이어가기) -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="buddy-streak-card">
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                    <i class="fa-solid fa-people-arrows text-gray-300"></i>
-                    <span>이웃과 함께 산책 스트릭을 쌓아보세요!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 동네 그룹 챌린지 (협력형 공동 목표) -->
-        <div class="bg-gradient-to-br from-emerald-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="hood-challenge">
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                    <i class="fa-solid fa-house-chimney text-gray-300"></i>
-                    <span>동네 이웃들과 공동 목표에 도전해보세요!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- AI 훈련 미션 (견종·나이 기반 주간 체크리스트) -->
-        <div class="bg-gradient-to-br from-brand-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="training-mission-card">
-                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
-                    <i class="fa-solid fa-graduation-cap text-gray-300"></i>
-                    <span>맞춤 훈련 미션을 확인해보세요!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 일일 챌린지 -->
-        <div class="bg-gradient-to-br from-orange-50 to-amber-50/60 border border-amber-200/60 rounded-xl p-3 shadow-sm">
-            <div id="daily-challenges"></div>
-        </div>
-
-        <!-- 업적 배지 -->
-        <div class="bg-gradient-to-br from-amber-50 to-yellow-50/60 border border-amber-200/60 rounded-xl p-2.5 shadow-sm">
-            <div id="achievement-badges"></div>
-        </div>
-
-        <!-- 조화도 카드 -->
+        <!-- 조화도 카드 (점수 중심 요약 지표라 상단에 독립 유지) -->
         <div id="harmony-widget-card" class="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-3 shadow-sm">
             <div class="flex items-center justify-between mb-2">
                 <h3 class="text-[10px] font-black text-gray-700">
@@ -435,6 +365,48 @@ const MYPET_TEMPLATE = `
                     <span id="harmony-widget-pet" class="font-bold text-gray-700">--년생</span>
                 </div>
             </div>
+        </div>
+
+        <!-- 챌린지 & 업적 통합 카드 (각 항목은 achievements.js가 그대로 채움 — 겉박스만 하나로 합침) -->
+        <div class="card-modern divide-y divide-gray-100 overflow-hidden">
+            <div class="p-2.5"><div id="weekly-care-challenge">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-trophy text-gray-300"></i>
+                    <span>이번 주 케어 챌린지를 확인해보세요!</span>
+                </div>
+            </div></div>
+            <div class="p-2.5"><div id="weekly-walk-challenge">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-bullseye text-gray-300"></i>
+                    <span>이번 주 산책 목표를 세워보세요!</span>
+                </div>
+            </div></div>
+            <div class="p-2.5"><div id="walk-streak-banner">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-fire text-gray-300"></i>
+                    <span>산책을 시작하면 streak이 쌓여요!</span>
+                </div>
+            </div></div>
+            <div class="p-2.5"><div id="buddy-streak-card">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-people-arrows text-gray-300"></i>
+                    <span>이웃과 함께 산책 스트릭을 쌓아보세요!</span>
+                </div>
+            </div></div>
+            <div class="p-2.5"><div id="hood-challenge">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-house-chimney text-gray-300"></i>
+                    <span>동네 이웃들과 공동 목표에 도전해보세요!</span>
+                </div>
+            </div></div>
+            <div class="p-2.5"><div id="training-mission-card">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-graduation-cap text-gray-300"></i>
+                    <span>맞춤 훈련 미션을 확인해보세요!</span>
+                </div>
+            </div></div>
+            <div class="p-3"><div id="daily-challenges"></div></div>
+            <div class="p-2.5"><div id="achievement-badges"></div></div>
         </div>
 
     </div>

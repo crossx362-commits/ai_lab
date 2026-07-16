@@ -35,14 +35,17 @@ const HEALTH_TEMPLATE = `
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">
 
-    <!-- 📝 데일리 컨디션 원탭 로그 (daily-condition.js가 채움) -->
-    <div id="daily-condition-widget"></div>
+    <!-- 조기 감지·경보 배너 묶음 (각자 다른 모듈이 채우되, 한 그룹으로 보이도록 간격만 좁힘) -->
+    <div class="space-y-2">
+        <!-- 📝 데일리 컨디션 원탭 로그 (daily-condition.js가 채움) -->
+        <div id="daily-condition-widget"></div>
 
-    <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
-    <div id="wellness-anomaly-card"></div>
+        <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
+        <div id="wellness-anomaly-card"></div>
 
-    <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
-    <div id="weekly-report-card"></div>
+        <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
+        <div id="weekly-report-card"></div>
+    </div>
 
     <!-- 📋 오늘의 건강 기록 -->
     <div class="card-modern p-6">
@@ -237,26 +240,34 @@ const HEALTH_TEMPLATE = `
     <!-- 오른쪽 컬럼 (투약·정기예방 + 월간 리포트 + 건강수첩 + 영양관리 + 돌봄 스케줄러) -->
     <div class="lg:col-span-4 space-y-4 lg:sticky lg:top-20 lg:self-start">
 
-        <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
-        <div id="preventive-care-dashboard"></div>
+        <!-- 케어 위젯 묶음 (각자 다른 모듈이 자체 카드로 채움 — 라벨로 한 그룹임을 표시) -->
+        <div class="space-y-2">
+            <div class="flex items-center gap-2 px-1">
+                <i class="fa-solid fa-kit-medical text-brand-400 text-xs"></i>
+                <span class="text-[11px] font-black text-gray-400 tracking-wide">케어 위젯</span>
+            </div>
 
-        <!-- 💊 복약 순응도 30일 트래커 (이번 주 놓친 약 요약 포함) -->
-        <div id="med-adherence-tracker"></div>
+            <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
+            <div id="preventive-care-dashboard"></div>
 
-        <!-- 💛 몸무게/QOL 주간 체크인 -->
-        <div id="qol-checkin-widget"></div>
+            <!-- 💊 복약 순응도 30일 트래커 (이번 주 놓친 약 요약 포함) -->
+            <div id="med-adherence-tracker"></div>
 
-        <!-- 🐾 BCS 체형 셀프체크 위저드 -->
-        <div id="bcs-wizard-widget"></div>
+            <!-- 💛 몸무게/QOL 주간 체크인 -->
+            <div id="qol-checkin-widget"></div>
 
-        <!-- 🍽️ 일일 급식·칼로리 트래커 -->
-        <div id="calorie-tracker-widget"></div>
+            <!-- 🐾 BCS 체형 셀프체크 위저드 -->
+            <div id="bcs-wizard-widget"></div>
 
-        <!-- 🍚 맞춤 식단·급여량 추천 카드 (체형·체중·활동량 기반) -->
-        <div id="diet-recommend-widget"></div>
+            <!-- 🍽️ 일일 급식·칼로리 트래커 -->
+            <div id="calorie-tracker-widget"></div>
 
-        <!-- 🏥 병원비 제보·비교 보드 -->
-        <div id="vet-cost-board-widget"></div>
+            <!-- 🍚 맞춤 식단·급여량 추천 카드 (체형·체중·활동량 기반) -->
+            <div id="diet-recommend-widget"></div>
+
+            <!-- 🏥 병원비 제보·비교 보드 -->
+            <div id="vet-cost-board-widget"></div>
+        </div>
 
         <!-- 📊 월간 종합 리포트 -->
         <div class="card-modern p-4">
