@@ -100,6 +100,9 @@ function renderHealthTab() {
 
     // 주간 건강 변화 조기경보 리포트 카드
     if (typeof renderWeeklyReportCard === 'function') renderWeeklyReportCard();
+
+    // 케어위젯 노출/클릭 최소 계측(회의_202607162027_3) — 위젯 DOM이 막 채워진 뒤 관측 시작
+    if (typeof observeCareWidgetsForInstrumentation === 'function') observeCareWidgetsForInstrumentation();
 }
 
 // 펫 선택 드롭다운 업데이트

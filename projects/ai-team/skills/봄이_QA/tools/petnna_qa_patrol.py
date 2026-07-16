@@ -52,6 +52,12 @@ VIEWPORTS = {"desktop(1440x900)": (1440, 900), "mobile(390x844)": (390, 844)}
 PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 REPEAT_THRESHOLD = 3  # 같은 문제 3회 이상 = 반복 장애
 
+# AppLogger.getErrorLogs()는 원래 진짜 오류(global_error 등) 전용이었는데,
+# 케어위젯 실사용 계측(회의_202607162027_3, care-widget-instrumentation.js)이
+# 같은 파이프라인을 재사용해 'widget_view'/'widget_click' 타입도 여기 섞여 들어온다.
+# 이건 오류가 아니라 순수 사용 데이터이므로 QA 이슈로 오탐 처리하면 안 된다.
+APP_LOG_NON_ISSUE_TYPES = {"widget_view", "widget_click"}
+
 
 # ── 로컬 서버 ──────────────────────────────────────────────
 
@@ -359,6 +365,8 @@ def browser_patrol(port: int) -> list[dict]:
                     app_logs = []
                 seen_msgs = set()
                 for lg in app_logs:
+                    if lg.get("type") in APP_LOG_NON_ISSUE_TYPES:
+                        continue  # 사용 계측 로그 — 오류 아님, QA 이슈로 만들지 않는다
                     # 타임스탬프·숫자 가변부 정규화 → 순찰 간 동일 오류로 지문 유지
                     msg = re.sub(r"\d+", "#", str(lg.get("message", ""))[:110])
                     key = f"{lg.get('type')}|{msg}"

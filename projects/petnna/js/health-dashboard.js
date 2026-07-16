@@ -7,6 +7,7 @@ function saveHealthHistoryToday() {
     const existing = healthLogs.history.findIndex(h => h.date === today);
     const entry = { ...healthLogs.today, date: today };
     if (existing >= 0) {
+        entry._remoteId = healthLogs.history[existing]._remoteId; // 이전 동기화 id 유지(upsert 안정성)
         healthLogs.history[existing] = entry;
     } else {
         healthLogs.history.unshift(entry);
@@ -14,6 +15,10 @@ function saveHealthHistoryToday() {
     }
     if (typeof saveState === 'function') saveState();
     if (typeof updateHealthTutorialVisibility === 'function') updateHealthTutorialVisibility();
+    // 실사용자 기록만 서버 동기화 — generateWeeklyHealthData()의 데모/랜덤 데이터는 대상 아님
+    if (typeof window.uploadHealthLogToSupabase === 'function') {
+        Promise.resolve(window.uploadHealthLogToSupabase(entry)).catch(() => {});
+    }
 }
 
 // 일주일치 랜덤 건강 데이터 생성 (누를 때마다 새로운 주 추가)

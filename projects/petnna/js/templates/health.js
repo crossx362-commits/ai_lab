@@ -241,8 +241,9 @@ const HEALTH_TEMPLATE = `
     <div class="lg:col-span-4 space-y-4 lg:sticky lg:top-20 lg:self-start">
 
         <!-- 케어 위젯 묶음 (각자 다른 모듈이 자체 카드로 채움 — 4개 기능군 소제목으로 재그룹화,
-             2026-07-16 개선회의 결정 회의_202607162027_1 + 미오 스타일·간격 제안 반영) -->
-        <div class="space-y-2">
+             2026-07-16 개선회의 결정 회의_202607162027_1 + 미오 스타일·간격 제안 반영)
+             id는 care-widget-instrumentation.js의 노출/클릭 최소 계측(회의_202607162027_3)이 사용 -->
+        <div id="care-widgets-group" class="space-y-2">
             <div class="flex items-center gap-2 px-1">
                 <i class="fa-solid fa-kit-medical text-brand-400 text-xs"></i>
                 <span class="text-[11px] font-black text-gray-400 tracking-wide">케어 위젯</span>

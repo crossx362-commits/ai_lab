@@ -244,6 +244,8 @@ const SupabaseService = {
             this.syncProfile();
             this.syncAlbums();
             this.syncRoutes();
+            this.syncMedicalRecords();
+            this.syncHealthLogs();
             this.startRealtimeFeed();
         }
     },
@@ -992,6 +994,159 @@ const SupabaseService = {
                 if (typeof renderCustomRoutesList === 'function') renderCustomRoutesList();
             }
         }
+    },
+
+    // ── 건강수첩(medical_records) / 건강기록(health_logs) 실 배선 ──────────
+    // 2026-07-16 개선회의(회의_202607162027_2) 결정 반영. 두 테이블 모두
+    // RLS가 auth.uid() = user_id로 스코프돼 있어(마이그레이션 add_health_logs.sql·
+    // add_medical_records.sql, 오너 승인 2026-07-10), 실제 Supabase Auth 세션이
+    // 없으면(카카오/구글 미연동, 이메일 로컬 로그인만 한 경우) auth.uid()가 null이라
+    // 어떤 쓰기도 RLS에서 거부된다 — 그래서 매 호출마다 auth.getUser()로 실사용자를
+    // 확인하고, 없으면 조용히 로컬 전용으로 남긴다(에러 아님, 정상 동작).
+    // 사진(photos)은 별도 storage 버킷 정책(Dashboard 수동 생성)이 아직 없어 동기화
+    // 대상에서 제외 — base64를 jsonb에 그대로 넣으면 스키마 의도(스토리지 경로)에도
+    // 어긋나고 행 용량도 커진다.
+    async _authUser() {
+        if (!this.isConnected || !this.client) return null;
+        try {
+            const { data: { user } } = await this.client.auth.getUser();
+            return user || null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    async uploadMedicalRecord(record) {
+        const user = await this._authUser();
+        if (!user) return; // 실 Supabase 세션 없음 — 로컬 전용 유지
+        try {
+            const { error } = await this.client
+                .from('medical_records')
+                .upsert([{
+                    id: record.id,
+                    user_id: user.id,
+                    email: record.email || user.email || '',
+                    pet_id: record.petId != null ? String(record.petId) : null,
+                    category: record.category || 'other',
+                    visit_date: record.visitDate,
+                    title: record.diagnosis || record.hospital || '건강수첩 기록',
+                    detail: record.notes || null,
+                    hospital: record.hospital || null,
+                    cost: record.cost || 0,
+                }]);
+            if (error) throw error;
+            if (typeof AppLogger !== 'undefined') AppLogger.info(`건강수첩(ID: ${record.id})이 Supabase에 동기화되었습니다.`);
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 건강수첩 업로드 실패", e);
+            else console.error("🔴 Supabase 건강수첩 업로드 실패:", e.message);
+        }
+    },
+
+    async deleteMedicalRecordRemote(recordId) {
+        const user = await this._authUser();
+        if (!user) return;
+        try {
+            const { error } = await this.client.from('medical_records').delete().eq('id', recordId);
+            if (error) throw error;
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 건강수첩 삭제 실패", e);
+            else console.error("🔴 Supabase 건강수첩 삭제 실패:", e.message);
+        }
+    },
+
+    async syncMedicalRecords() {
+        const user = await this._authUser();
+        if (!user) return;
+        try {
+            const { data, error } = await this._withRetry(() =>
+                this.client.from('medical_records').select('*').eq('user_id', user.id)
+            );
+            if (error) throw error;
+            if (data && data.length > 0 && typeof window.medicalRecords !== 'undefined') {
+                const remote = data.map(row => ({
+                    id: row.id,
+                    petId: row.pet_id,
+                    email: row.email,
+                    visitDate: row.visit_date,
+                    category: row.category,
+                    hospital: row.hospital,
+                    diagnosis: row.title,
+                    cost: row.cost,
+                    notes: row.detail,
+                    photo: '',
+                    createdAt: row.created_at,
+                }));
+                const localOnly = (window.medicalRecords || [])
+                    .filter(r => !remote.some(rr => String(rr.id) === String(r.id)));
+                window.medicalRecords = [...remote, ...localOnly];
+                if (typeof saveMedicalRecordsLocal === 'function') saveMedicalRecordsLocal();
+                if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
+                if (typeof AppLogger !== 'undefined') AppLogger.info("Supabase로부터 건강수첩을 동기화했습니다.");
+            }
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 건강수첩 동기화 실패", e);
+            else console.error("🔴 Supabase 건강수첩 동기화 실패:", e.message);
+        }
+    },
+
+    async uploadHealthLog(entry) {
+        const user = await this._authUser();
+        if (!user) return;
+        try {
+            if (!entry._remoteId) entry._remoteId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+            const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || user.email || '';
+            const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+            const { error } = await this.client
+                .from('health_logs')
+                .upsert([{
+                    id: entry._remoteId,
+                    user_id: user.id,
+                    email,
+                    pet_id: activePet ? String(activePet.id) : null,
+                    log_date: entry.date,
+                    water: entry.water || null,
+                    food: entry.food || null,
+                    poop: entry.poop || null,
+                    condition: entry.condition || null,
+                }], { onConflict: 'user_id,pet_id,log_date' });
+            if (error) throw error;
+            if (typeof saveState === 'function') saveState(); // entry._remoteId 캐시 영속화
+            if (typeof AppLogger !== 'undefined') AppLogger.info(`건강기록(${entry.date})이 Supabase에 동기화되었습니다.`);
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 건강기록 업로드 실패", e);
+            else console.error("🔴 Supabase 건강기록 업로드 실패:", e.message);
+        }
+    },
+
+    async syncHealthLogs() {
+        const user = await this._authUser();
+        if (!user) return;
+        try {
+            const { data, error } = await this._withRetry(() =>
+                this.client.from('health_logs').select('*').eq('user_id', user.id)
+            );
+            if (error) throw error;
+            if (data && data.length > 0 && typeof healthLogs !== 'undefined') {
+                if (!healthLogs.history) healthLogs.history = [];
+                const localByDate = {};
+                healthLogs.history.forEach(h => { localByDate[h.date] = h; });
+                data.forEach(row => {
+                    localByDate[row.log_date] = {
+                        date: row.log_date, water: row.water, food: row.food,
+                        poop: row.poop, condition: row.condition, _remoteId: row.id,
+                    };
+                });
+                healthLogs.history = Object.values(localByDate)
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(0, 90);
+                if (typeof saveState === 'function') saveState();
+                if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
+                if (typeof AppLogger !== 'undefined') AppLogger.info("Supabase로부터 건강기록을 동기화했습니다.");
+            }
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 건강기록 동기화 실패", e);
+            else console.error("🔴 Supabase 건강기록 동기화 실패:", e.message);
+        }
     }
 };
 
@@ -1027,6 +1182,11 @@ window.syncAlbumsFromSupabase = () => SupabaseService.syncAlbums();
 window.uploadRouteToSupabase = (routeItem) => SupabaseService.uploadRoute(routeItem);
 window.deleteRouteFromSupabase = (routeId) => SupabaseService.deleteRoute(routeId);
 window.syncRoutesFromSupabase = () => SupabaseService.syncRoutes();
+window.uploadMedicalRecordToSupabase = (record) => SupabaseService.uploadMedicalRecord(record);
+window.deleteMedicalRecordFromSupabase = (recordId) => SupabaseService.deleteMedicalRecordRemote(recordId);
+window.syncMedicalRecordsFromSupabase = () => SupabaseService.syncMedicalRecords();
+window.uploadHealthLogToSupabase = (entry) => SupabaseService.uploadHealthLog(entry);
+window.syncHealthLogsFromSupabase = () => SupabaseService.syncHealthLogs();
 
 // 초기 구동
 SupabaseService.init();
@@ -1039,5 +1199,7 @@ window.addEventListener('DOMContentLoaded', () => {
         SupabaseService.syncProfile();
         SupabaseService.syncAlbums();
         SupabaseService.syncRoutes();
+        SupabaseService.syncMedicalRecords();
+        SupabaseService.syncHealthLogs();
     }
 });
