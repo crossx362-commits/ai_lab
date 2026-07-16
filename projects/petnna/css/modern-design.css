@@ -53,6 +53,14 @@ body.theme-dark .glass {
     transform: translateY(-2px);
 }
 
+/* 카드 내부 수직 리듬 정리 (미오 제안, P3)
+   요소 특이도(0,2,1)로 Tailwind 단일 클래스(gap-*, mb-*)를 이겨 전역 적용.
+   아이콘-제목 간격은 소폭 확대, 헤더-본문 그룹 간 여백은 그룹 내(12px)보다 확실히 크게. */
+.card-modern > h3:first-child {
+    gap: 0.625rem;          /* 아이콘-제목 간격 소폭 확대 (8→10px) */
+    margin-bottom: 1.25rem; /* 헤더-본문 그룹 간 여백 강화 (20px) */
+}
+
 /* 세련된 입력 필드 */
 .input-modern {
     background: var(--color-bg-card);
