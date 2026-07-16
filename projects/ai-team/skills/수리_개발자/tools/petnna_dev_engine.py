@@ -218,6 +218,11 @@ def sync_merged_branches(state: dict) -> list[str]:
             cleared.append(fp)
     if cleared:
         save_dev_state(state)
+        # 백로그(미오·나무) 과제는 dev_state뿐 아니라 backlog.json도 PR대기로 남아있다 —
+        # 여기서 안 되돌리면 사람이 이미 병합·삭제한 항목이 backlog.json엔 영원히
+        # PR대기로 남는 유령이 된다(2026-07-16 발견: 나무_20260715110905_1).
+        for fp in cleared:
+            _update_backlog(fp, "완료")
     return cleared
 
 

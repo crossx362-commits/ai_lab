@@ -24,7 +24,7 @@ DB_AUTH_PATTERN = re.compile(
     r"supabase"
     r"|migration|마이그레이션"
     r"|\bRLS\b|row level security"
-    r"|신규\s*테이블|테이블\s*추가|스키마\s*(변경|추가|마이그)"
+    r"|신규\s*테이블|테이블\s*추가|테이블.{0,4}신설|스키마\s*(변경|추가|마이그)"
     r"|\bschema\b"
     r"|api[_\s-]?key|시크릿|\bsecret\b",
     re.IGNORECASE,

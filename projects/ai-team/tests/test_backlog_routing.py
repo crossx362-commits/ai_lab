@@ -130,6 +130,13 @@ class DbAuthGate(unittest.TestCase):
                      "신규 테이블 medical_records", "api_key 회전"):
             self.assertTrue(self.touches(text), f"{text!r}는 수리가 병합 못 한다")
 
+    def test_flags_table_word_order_reversed(self):
+        """'신규 테이블'/'테이블 추가' 어순만 잡던 사각지대 — 2026-07-16 발견
+        (나무_20260716110717_2 "lost_pets 테이블을 신설하여"가 게이트 없이 대기로 샘)."""
+        for text in ("lost_pets 테이블을 신설하여 실종 제보를 수집",
+                     "새 테이블을 신설해서 배지 이력을 저장"):
+            self.assertTrue(self.touches(text), f"{text!r}는 테이블 신설인데 안 걸렸다")
+
     def test_does_not_flag_plain_ui_work(self):
         for text in ("로그인 화면 여백 개선", "카드 타이포 계층 강화",
                      "소셜 버튼 아이콘 정렬", "인증 완료 토스트 색상"):
