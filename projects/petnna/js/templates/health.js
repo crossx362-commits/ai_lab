@@ -254,6 +254,8 @@ const HEALTH_TEMPLATE = `
                 <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">투약·복약</span>
                 <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
                 <div id="preventive-care-dashboard"></div>
+                <!-- 🗒️ 생애주기 예방케어 체크리스트 (종·나이·중성화 기반 권장 항목, 나무 P2) -->
+                <div id="preventive-checklist"></div>
                 <!-- 💊 복약 순응도 30일 트래커 (이번 주 놓친 약 요약 포함) -->
                 <div id="med-adherence-tracker"></div>
             </div>
