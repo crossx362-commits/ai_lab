@@ -380,6 +380,33 @@ function _ddayLabel(due) {
     return { text: `D-${days}`, tone: 'ok' };
 }
 
+// 건강수첩(medical_records) 방문주기 리마인더 — visit_date + category로 다음 예정일 추정.
+// 예방접종·정기검진은 연 1회 권장이라 '마지막 기록 + 12개월'을 다음 권장일로 안내한다.
+// care-scheduler(예정 투약 일정)와 독립: 사용자가 접종 이력만 남겨도 다음 방문을 챙겨준다.
+const MEDICAL_REMINDER_RULES = {
+    vaccine: { label: '예방접종', icon: '💉', months: 12 },
+    checkup: { label: '정기검진', icon: '🩺', months: 12 }
+};
+
+function _medicalVisitReminders() {
+    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const list = (Array.isArray(window.medicalRecords) ? window.medicalRecords : [])
+        .filter(r => !pet || String(r.petId) === String(pet.id));
+    const reminders = [];
+    Object.entries(MEDICAL_REMINDER_RULES).forEach(([cat, rule]) => {
+        const recs = list
+            .filter(r => r.category === cat && r.visitDate)
+            .sort((a, b) => (b.visitDate || '').localeCompare(a.visitDate || ''));
+        if (recs.length === 0) return;
+        const last = recs[0].visitDate;
+        const due = new Date(last + 'T00:00:00');
+        if (isNaN(due.getTime())) return;
+        due.setMonth(due.getMonth() + rule.months);
+        reminders.push({ rule, due, last });
+    });
+    return reminders.sort((a, b) => a.due - b.due);
+}
+
 function renderPreventiveCareDashboard() {
     const container = document.getElementById('preventive-care-dashboard');
     if (!container) return;
@@ -428,8 +455,11 @@ function renderPreventiveCareDashboard() {
         }
     });
 
+    // 4) 건강수첩 방문주기 리마인더 (접종·검진 이력 → 다음 권장일)
+    const visitReminders = _medicalVisitReminders();
+
     // 표시할 내용이 하나도 없으면 카드 숨김
-    if (due.length === 0 && vaccineScheds.length === 0 && dupWarnings.length === 0 && vaccineRecords === 0) {
+    if (due.length === 0 && vaccineScheds.length === 0 && dupWarnings.length === 0 && vaccineRecords === 0 && visitReminders.length === 0) {
         container.innerHTML = '';
         return;
     }
@@ -458,6 +488,26 @@ function renderPreventiveCareDashboard() {
 
     const ddayHtml = due.length > 0 ? `
         <div class="grid grid-cols-2 gap-2 mb-3">${ddayCards}</div>` : '';
+
+    const reminderHtml = visitReminders.length > 0 ? `
+        <div class="mb-3">
+            <div class="text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-wide">🔔 다음 방문 예정 · 건강수첩 기준</div>
+            <div class="grid grid-cols-2 gap-2">
+                ${visitReminders.map(({ rule, due, last }) => {
+                    const d = _ddayLabel(due);
+                    const dateStr = `${due.getFullYear()}.${due.getMonth() + 1}.${due.getDate()}`;
+                    return `
+                        <div class="flex items-center gap-2 p-2.5 rounded-xl border ${toneCls[d.tone]}">
+                            <span class="text-lg">${rule.icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[11px] font-black truncate">${rule.label}</div>
+                                <div class="text-[9px] font-bold opacity-70 tabular-nums">${dateStr} 권장 · 최근 ${_esc(last)}</div>
+                            </div>
+                            <span class="text-xs font-black tabular-nums shrink-0">${d.text}</span>
+                        </div>`;
+                }).join('')}
+            </div>
+        </div>` : '';
 
     let vaccineHtml = '';
     if (vaccineScheds.length > 0) {
@@ -491,7 +541,7 @@ function renderPreventiveCareDashboard() {
                 </h2>
             </div>
             <div class="px-5 py-4">
-                ${ddayHtml}${vaccineHtml}${warnHtml}
+                ${reminderHtml}${ddayHtml}${vaccineHtml}${warnHtml}
             </div>
         </div>`;
 }
