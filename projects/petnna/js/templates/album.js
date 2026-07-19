@@ -123,6 +123,7 @@ const ALBUM_TEMPLATE = `
                     체중을 기록하면 성장 그래프가 나타납니다!
                 </div>
                 <div id="growth-latest" class="mt-2 text-[10px] text-gray-500 font-medium"></div>
+                <div id="growth-nudge" class="mt-1.5 text-[10px] font-bold hidden"></div>
             </div>
         </div>
     </div>
@@ -141,6 +142,12 @@ const ALBUM_TEMPLATE = `
                 <input type="number" id="weight-log-input" step="0.1" min="0" max="100"
                     placeholder="예: 4.2"
                     class="w-full border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-emerald-400 text-sm font-bold text-center">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-500 mb-1">목표 체중 (선택, kg)</label>
+                <input type="number" id="weight-goal-input" step="0.1" min="0" max="100" placeholder="예: 4.0"
+                    class="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-emerald-400 text-xs font-bold text-center">
+                <p class="text-[9px] text-gray-400 mt-1">목표를 넣으면 그래프에 목표선과 추세 예측선이 표시돼요.</p>
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-gray-500 mb-1">메모 (선택)</label>
