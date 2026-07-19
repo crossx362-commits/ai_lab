@@ -128,7 +128,12 @@ def _merge(branch: str) -> tuple[bool, str]:
     m = eng._git(["merge", "--no-ff", branch, "-m",
                   f"merge: {branch} (예원 자동 검토 승인)"], eng.PROJECT_ROOT)
     if m.returncode != 0:
-        return False, f"병합 실패: {m.stderr.strip()[:150]}"
+        # 충돌 시 mid-merge 상태를 방치하면 충돌 마커가 박힌 작업트리가 그대로 남아
+        # 다음 커밋·배포를 오염시킨다(2026-07-19 실사고: 나무_20260717110713_1 병합
+        # 충돌이 index.html에 마커 박힌 채 방치 → 문서 두 벌이 통째로 섞여 서빙됨).
+        # 즉시 원상복구 — abort 실패(MERGE_HEAD 없음 등)는 무해하므로 결과 무시.
+        eng._git(["merge", "--abort"], eng.PROJECT_ROOT)
+        return False, f"병합 실패(원상복구됨): {m.stderr.strip()[:150]}"
     return True, "master 병합 완료"
 
 

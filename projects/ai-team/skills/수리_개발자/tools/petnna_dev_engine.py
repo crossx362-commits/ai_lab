@@ -572,8 +572,11 @@ def _improve_cycle(do_send: bool = True) -> str:
                     rec["fixed_at"] = datetime.now().isoformat()
                     log.append(f"- 자동 병합: 완료 ({_push_master()}, 봄이가 변경 감지로 재순찰 예정)")
                 else:
+                    # 충돌 잔재(mid-merge 마커 작업트리) 방치 금지 — 즉시 원상복구
+                    # (2026-07-19 예원 리뷰어 쪽 실사고와 동일 계열 예방)
+                    _git(["merge", "--abort"], PROJECT_ROOT)
                     rec["status"] = "PR대기"
-                    log.append(f"- 병합 실패 → 브랜치 대기: {m.stderr.strip()[:150]}")
+                    log.append(f"- 병합 실패(원상복구됨) → 브랜치 대기: {m.stderr.strip()[:150]}")
         else:
             rec["status"] = "PR대기" if (resolved and not_worse and tests_ok) else rec.get("status", "대기")
             reason = ("E2E 신규 실패" if not tests_ok else
