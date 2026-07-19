@@ -187,8 +187,130 @@ function getWeeklyCareStats() {
     return stats;
 }
 
+// ── 이달의 투약 순응도 (투약/구충 챙김률) ──────────────────────
+// 일정 하나가 [start, end] 로컬 구간에 몇 번 예정되는지 계산 (생성일 이전은 제외)
+function countScheduledOccurrences(schedule, start, end) {
+    const sameLocalDate = (d, y, m, day) => d.getFullYear() === y && d.getMonth() === m && d.getDate() === day;
+    let count = 0;
+    const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const createdRaw = schedule.createdAt ? new Date(schedule.createdAt) : null;
+    const created = createdRaw ? new Date(createdRaw.getFullYear(), createdRaw.getMonth(), createdRaw.getDate()) : null;
+    const monthlyRef = new Date(schedule.date || schedule.createdAt || Date.now());
+    while (cur <= endDay) {
+        if (!created || cur >= created) {
+            if (schedule.repeat === 'daily') count++;
+            else if (schedule.repeat === 'weekly') { if ((schedule.repeatDays || []).includes(cur.getDay())) count++; }
+            else if (schedule.repeat === 'monthly') { if (monthlyRef.getDate() === cur.getDate()) count++; }
+            else if (schedule.repeat === 'once' && schedule.date) {
+                const p = schedule.date.split('-');
+                if (p.length === 3 && sameLocalDate(cur, +p[0], +p[1] - 1, +p[2])) count++;
+            }
+        }
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+// 이번 달 투약/구충(type==='medicine') 챙김률 집계
+function getMonthlyMedicationAdherence() {
+    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const petId = activePet ? activePet.id : null;
+    const belongs = (o) => petId == null || o.petId == null || o.petId === petId;
+
+    const completed = careSchedules.completionHistory.filter(c => {
+        if (c.type !== 'medicine' || !belongs(c)) return false;
+        const d = new Date(c.completedAt);
+        return d >= monthStart && d <= now;
+    }).length;
+
+    let expected = 0;
+    careSchedules.schedules.forEach(s => {
+        if (s.type === 'medicine' && belongs(s)) expected += countScheduledOccurrences(s, monthStart, now);
+    });
+
+    const rate = expected === 0 ? null : Math.min(100, Math.round((completed / expected) * 100));
+    return { completed, expected, rate };
+}
+
+// 순응도 → 배지 등급
+function getAdherenceTier(rate) {
+    if (rate >= 90) return { emoji: '🥇', label: '금 배지', ring: '#f59e0b', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' };
+    if (rate >= 70) return { emoji: '🥈', label: '은 배지', ring: '#64748b', text: 'text-slate-700', bg: 'bg-slate-50', border: 'border-slate-200' };
+    if (rate >= 50) return { emoji: '🥉', label: '동 배지', ring: '#ea580c', text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
+    return { emoji: '🌱', label: '새싹', ring: '#9ca3af', text: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200' };
+}
+
+// 공유용 텍스트 (Web Share → 클립보드 폴백)
+function shareMedicationAdherence() {
+    const { completed, expected, rate } = getMonthlyMedicationAdherence();
+    if (rate === null) {
+        if (typeof showToast === 'function') showToast('공유할 투약 기록이 없어요 💊');
+        return;
+    }
+    const pet = (typeof getActivePet === 'function' && getActivePet()) ? getActivePet().name : '우리 아이';
+    const tier = getAdherenceTier(rate);
+    const month = new Date().getMonth() + 1;
+    const text = `${tier.emoji} ${pet}의 ${month}월 투약/구충 챙김률 ${rate}% (${completed}/${expected}) — ${tier.label} 획득! 🐾 #펫과나`;
+    if (navigator.share) {
+        navigator.share({ title: '이달의 투약 순응도', text: text }).catch(function () {});
+        return;
+    }
+    const done = () => { if (typeof showToast === 'function') showToast('순응도 카드를 복사했어요! 붙여넣어 공유하세요 💊'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { window.prompt('공유 문구', text); });
+    } else {
+        window.prompt('공유 문구', text);
+    }
+}
+
+// 이달의 투약 순응도 카드 렌더링
+function renderMedicationAdherenceCard() {
+    const el = document.getElementById('medication-adherence-card');
+    if (!el) return;
+    const { completed, expected, rate } = getMonthlyMedicationAdherence();
+    const month = new Date().getMonth() + 1;
+
+    if (rate === null) {
+        el.innerHTML = `
+            <div class="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-3 text-center text-gray-400">
+                <div class="text-lg mb-0.5">💊</div>
+                <p class="text-[10px]">투약/구충 일정을 추가하면 이달의 챙김률을 볼 수 있어요</p>
+            </div>`;
+        return;
+    }
+
+    const tier = getAdherenceTier(rate);
+    const deg = Math.round(rate * 3.6);
+
+    el.innerHTML = `
+        <div class="rounded-xl border ${tier.border} ${tier.bg} p-3 flex items-center gap-3">
+            <div class="relative w-14 h-14 shrink-0 rounded-full"
+                style="background: conic-gradient(${tier.ring} ${deg}deg, #e5e7eb ${deg}deg);">
+                <div class="absolute inset-1.5 rounded-full bg-white flex items-center justify-center">
+                    <span class="text-sm font-black ${tier.text}">${rate}%</span>
+                </div>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-sm">${tier.emoji}</span>
+                    <span class="text-xs font-black text-gray-800">${month}월 투약·구충 챙김률</span>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-0.5">${completed}/${expected}회 완료 · <span class="font-bold ${tier.text}">${tier.label}</span></p>
+            </div>
+            <button onclick="shareMedicationAdherence()"
+                class="shrink-0 px-2.5 py-1.5 bg-white hover:bg-gray-50 border ${tier.border} ${tier.text} text-[10px] font-black rounded-lg transition-all">
+                공유
+            </button>
+        </div>`;
+}
+
 // 돌봄 스케줄러 렌더링
 function renderCareScheduler() {
+    if (typeof renderMedicationAdherenceCard === 'function') renderMedicationAdherenceCard();
     const container = document.getElementById('care-scheduler-container');
     if (!container) return;
 

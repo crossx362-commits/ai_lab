@@ -382,6 +382,9 @@ const HEALTH_TEMPLATE = `
                 <div id="care-scheduler-container" class="space-y-2"></div>
             </div>
 
+            <!-- 이달의 투약 순응도 카드 (care-scheduler.js renderMedicationAdherenceCard) -->
+            <div id="medication-adherence-card"></div>
+
             <!-- 달력 헤더 -->
             <div class="flex justify-between items-center">
                 <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600 transition-colors">
