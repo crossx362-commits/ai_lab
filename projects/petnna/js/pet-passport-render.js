@@ -20,6 +20,18 @@
             || localStorage.getItem("petna_user_email") || "";
     }
 
+    // ── 응급 대비 정보(만성질환·혈액형) — 펫별 localStorage, 스키마 변경 없음 ──
+    function emergencyKey(pet) {
+        return "petna_emergency_" + (pet && pet.id != null ? pet.id : "default");
+    }
+    function getEmergency(pet) {
+        try { return JSON.parse(localStorage.getItem(emergencyKey(pet)) || "{}") || {}; }
+        catch (e) { return {}; }
+    }
+    function setEmergency(pet, data) {
+        try { localStorage.setItem(emergencyKey(pet), JSON.stringify(data || {})); } catch (e) { /* ignore */ }
+    }
+
     // 활성 펫의 접종 이력(건강수첩 category=vaccine) — 최신순
     function vaccineRecords(pet) {
         var list = Array.isArray(window.medicalRecords) ? window.medicalRecords : [];
@@ -50,6 +62,9 @@
         ];
         if (pet.allergies) lines.push("알러지: " + pet.allergies);
         if (pet.meds) lines.push("복용약: " + pet.meds);
+        var em = getEmergency(pet);
+        if (em.chronic) lines.push("만성질환: " + em.chronic);
+        if (em.blood) lines.push("혈액형: " + em.blood);
         if (vs.length) { lines.push("접종:"); lines = lines.concat(vs); }
         var contact = ownerContact();
         if (contact) lines.push("보호자 연락: " + contact);
@@ -93,15 +108,25 @@
             (pet.personality ? '<div class="col-span-2">' + infoRow("성격·특징", pet.personality) + "</div>" : "") +
             "</div>";
 
-        var alerts = "";
-        if (pet.allergies || pet.meds) {
-            alerts =
-                '<div class="rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3 space-y-1.5">' +
-                '<p class="text-[11px] font-black text-rose-600">⚠️ 응급 주의</p>' +
-                (pet.allergies ? '<p class="text-xs text-gray-700"><b>알러지</b> · ' + esc(pet.allergies) + "</p>" : "") +
-                (pet.meds ? '<p class="text-xs text-gray-700"><b>복용약</b> · ' + esc(pet.meds) + "</p>" : "") +
-                "</div>";
-        }
+        var em = getEmergency(pet);
+        var alerts =
+            '<div class="rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3 space-y-2">' +
+            '<p class="text-[11px] font-black text-rose-600">⚠️ 응급 대비 정보</p>' +
+            (pet.allergies ? '<p class="text-xs text-gray-700"><b>알러지</b> · ' + esc(pet.allergies) + "</p>" : "") +
+            (pet.meds ? '<p class="text-xs text-gray-700"><b>복용약</b> · ' + esc(pet.meds) + "</p>" : "") +
+            (em.chronic ? '<p class="text-xs text-gray-700"><b>만성질환</b> · ' + esc(em.chronic) + "</p>" : "") +
+            (em.blood ? '<p class="text-xs text-gray-700"><b>혈액형</b> · ' + esc(em.blood) + "</p>" : "") +
+            '<div class="grid grid-cols-2 gap-2 pt-1">' +
+            '<input id="pass-em-chronic" type="text" value="' + esc(em.chronic || "") + '" placeholder="만성질환" class="rounded-lg border border-rose-200 bg-white px-2 py-1 text-xs">' +
+            '<input id="pass-em-blood" type="text" value="' + esc(em.blood || "") + '" placeholder="혈액형(예: DEA1.1+)" class="rounded-lg border border-rose-200 bg-white px-2 py-1 text-xs">' +
+            "</div>" +
+            '<button onclick="PetPassport.saveEmergency()" class="w-full rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold py-1.5">응급 정보 저장</button>' +
+            "</div>";
+
+        var hospitalHtml =
+            '<button onclick="PetPassport.findHospitals()" class="w-full rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-center hover:bg-amber-100">' +
+            '<p class="text-sm font-black text-amber-700">🏥 인근 24시간 응급 동물병원 찾기</p>' +
+            '<p class="text-[10px] text-amber-600/80 mt-0.5">지도에서 가까운 동물병원을 확인해요</p></button>';
 
         var vs = vaccineRecords(pet);
         var vaccineHtml = "";
@@ -142,7 +167,7 @@
                 : '<div class="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center text-3xl">🐶</div>') +
             '<div><h2 class="text-lg font-black text-gray-900">' + esc(pet.name || "우리 아이") + "</h2>" +
             '<p class="text-[11px] text-gray-400">펫과나 응급·여행 프로필</p></div></div>' +
-            basics + alerts + vaccineHtml + visitHtml + contactHtml +
+            basics + alerts + vaccineHtml + visitHtml + contactHtml + hospitalHtml +
             '<div class="flex flex-col items-center gap-2 pt-2 border-t border-gray-100">' +
             '<div id="pass-qr" class="bg-white p-2 rounded-xl border border-gray-100 flex items-center justify-center" style="min-height:120px"></div>' +
             '<p class="text-[10px] text-gray-400 text-center">QR을 스캔하면 위 정보 요약이 오프라인으로 열려요</p></div>' +
@@ -152,6 +177,8 @@
     window.PetPassportRender = {
         esc: esc,
         ownerContact: ownerContact,
+        getEmergency: getEmergency,
+        setEmergency: setEmergency,
         vaccineRecords: vaccineRecords,
         recentVisits: recentVisits,
         passportText: passportText,

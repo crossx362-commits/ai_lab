@@ -46,6 +46,27 @@
 
     function close() { var el = document.getElementById("pass-modal-overlay"); if (el) el.remove(); }
 
+    // 응급 정보(만성질환·혈액형) 저장 후 카드 재렌더(QR·표시 갱신)
+    function saveEmergency() {
+        var pet = activePet();
+        if (!pet || !render()) return;
+        var c = document.getElementById("pass-em-chronic");
+        var b = document.getElementById("pass-em-blood");
+        render().setEmergency(pet, {
+            chronic: c ? c.value.trim() : "",
+            blood: b ? b.value.trim() : "",
+        });
+        close(); open();
+        toast("응급 정보를 저장했어요 🚑");
+    }
+
+    // 인근 24시간 동물병원 — 산책 탭 지도로 이동
+    function findHospitals() {
+        close();
+        if (typeof window.switchTab === "function") window.switchTab("walk");
+        else toast("산책 탭에서 주변 동물병원을 확인해 주세요");
+    }
+
     // 병원/펫시터용 인쇄 — 부모 창에서 QR SVG 생성해 주입
     function print() {
         var pet = activePet();
@@ -65,6 +86,7 @@
         var visits = render().recentVisits(pet).map(function (r) {
             return "<li>🏥 " + esc(r.visitDate || "") + " · " + esc(r.diagnosis || r.hospital || "진료") + "</li>";
         }).join("");
+        var em = render().getEmergency(pet);
         var contact = render().ownerContact();
 
         var w = window.open("", "_blank", "width=460,height=680");
@@ -94,10 +116,12 @@
             "<div><b>성별</b>" + esc(pet.gender || "-") + "</div>" +
             "<div><b>체중</b>" + esc(pet.weight != null && pet.weight !== "" ? pet.weight + " kg" : "-") + "</div>" +
             "</div>" +
-            ((pet.allergies || pet.meds)
+            ((pet.allergies || pet.meds || em.chronic || em.blood)
                 ? '<div class="alert">⚠️ ' +
                 (pet.allergies ? "<b>알러지</b> " + esc(pet.allergies) + "  " : "") +
-                (pet.meds ? "<b>복용약</b> " + esc(pet.meds) : "") + "</div>"
+                (pet.meds ? "<b>복용약</b> " + esc(pet.meds) + "  " : "") +
+                (em.chronic ? "<b>만성질환</b> " + esc(em.chronic) + "  " : "") +
+                (em.blood ? "<b>혈액형</b> " + esc(em.blood) : "") + "</div>"
                 : "") +
             (vs ? '<div class="sec"><h4>접종 이력</h4><ul>' + vs + "</ul></div>" : "") +
             (visits ? '<div class="sec"><h4>최근 진료</h4><ul>' + visits + "</ul></div>" : "") +
@@ -109,5 +133,5 @@
         w.document.close();
     }
 
-    window.PetPassport = { open: open, close: close, print: print };
+    window.PetPassport = { open: open, close: close, print: print, saveEmergency: saveEmergency, findHospitals: findHospitals };
 })();
