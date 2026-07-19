@@ -477,7 +477,9 @@ function openWeightLogModal() {
     if (!pet) { if (typeof showToast === 'function') showToast('먼저 반려동물을 등록해주세요'); return; }
     const modal = document.getElementById('weight-log-modal');
     const input = document.getElementById('weight-log-input');
+    const goalInput = document.getElementById('weight-goal-input');
     if (input && pet.weight) input.value = pet.weight;
+    if (goalInput) goalInput.value = pet.weightGoal || '';
     if (modal) modal.classList.remove('hidden');
 }
 
@@ -494,6 +496,8 @@ function submitWeightLog() {
 
     const pet = typeof getActivePet === 'function' ? getActivePet() : null;
     if (!pet) return;
+    const goalVal = parseFloat(document.getElementById('weight-goal-input')?.value);
+    pet.weightGoal = (goalVal && goalVal > 0) ? goalVal : null;
     if (!pet.weightHistory) pet.weightHistory = [];
     pet.weightHistory.unshift({
         date: new Date().toISOString().split('T')[0],
@@ -539,21 +543,65 @@ function renderGrowthChart() {
     const isDark = document.body.classList.contains('theme-dark');
     const textColor = isDark ? '#d1d1e0' : '#6b7280';
 
+    // 체중 목표 & 추세 예측 (선형회귀) — 목표선 + 예측선 오버레이 + 넛지
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const goal = pet && pet.weightGoal > 0 ? parseFloat(pet.weightGoal) : null;
+    const day0 = Date.parse(sorted[0].date);
+    const pts = sorted.map(h => ({ x: (Date.parse(h.date) - day0) / 86400000, y: h.weight }));
+    const reg = linearRegression(pts);
+
+    // 미래 예측 구간: 기록 평균 간격만큼 앞으로 몇 스텝 투영
+    const lastX = pts[pts.length - 1].x;
+    const step = Math.max(7, pts.length > 1 ? lastX / (pts.length - 1) : 7);
+    const FUTURE_STEPS = reg ? 3 : 0;
+    const futureDates = [];
+    for (let i = 1; i <= FUTURE_STEPS; i++) {
+        const d = new Date(day0 + (lastX + step * i) * 86400000);
+        futureDates.push({ x: lastX + step * i, label: d.toISOString().slice(5, 10) });
+    }
+
+    const labels = sorted.map(h => h.date.slice(5)).concat(futureDates.map(f => f.label));
+    const datasets = [{
+        label: '체중',
+        data: sorted.map(h => h.weight).concat(futureDates.map(() => null)),
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#10b981',
+        tension: 0.3,
+        fill: true
+    }];
+
+    if (reg) {
+        const allX = pts.map(p => p.x).concat(futureDates.map(f => f.x));
+        datasets.push({
+            label: '추세 예측',
+            data: allX.map(x => Math.round((reg.slope * x + reg.intercept) * 10) / 10),
+            borderColor: '#6366f1',
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            pointRadius: 0,
+            tension: 0,
+            fill: false
+        });
+    }
+
+    if (goal) {
+        datasets.push({
+            label: '목표',
+            data: labels.map(() => goal),
+            borderColor: '#f59e0b',
+            borderWidth: 1.5,
+            borderDash: [2, 2],
+            pointRadius: 0,
+            fill: false
+        });
+    }
+
     _growthChart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: sorted.map(h => h.date.slice(5)),
-            datasets: [{
-                data: sorted.map(h => h.weight),
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16,185,129,0.08)',
-                borderWidth: 2,
-                pointRadius: 3,
-                pointBackgroundColor: '#10b981',
-                tension: 0.3,
-                fill: true
-            }]
-        },
+        data: { labels, datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -564,6 +612,63 @@ function renderGrowthChart() {
             }
         }
     });
+
+    renderGrowthNudge(goal, reg, lastX, latest.weight);
+}
+
+// 최소제곱 선형회귀 — 점이 2개 미만이거나 x가 모두 같으면 null
+function linearRegression(pts) {
+    const n = pts.length;
+    if (n < 2) return null;
+    let sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (const p of pts) { sx += p.x; sy += p.y; sxx += p.x * p.x; sxy += p.x * p.y; }
+    const denom = n * sxx - sx * sx;
+    if (denom === 0) return null;
+    const slope = (n * sxy - sx * sy) / denom;
+    const intercept = (sy - slope * sx) / n;
+    return { slope, intercept };
+}
+
+// 목표 대비 추세 넛지: 도달 예상 시점 또는 식단 점검 권유
+function renderGrowthNudge(goal, reg, lastX, latestWeight) {
+    const el = document.getElementById('growth-nudge');
+    if (!el) return;
+    if (!goal) { el.classList.add('hidden'); el.textContent = ''; return; }
+
+    const diff = latestWeight - goal;
+    if (Math.abs(diff) < 0.05) {
+        el.textContent = '🎉 목표 체중에 거의 도달했어요! 지금 상태를 유지해요.';
+        el.style.color = '#059669';
+        el.classList.remove('hidden');
+        return;
+    }
+
+    const needLose = diff > 0; // 목표보다 무거움 → 감량 필요
+    if (!reg) {
+        el.textContent = `🎯 목표까지 ${Math.abs(diff).toFixed(1)}kg ${needLose ? '감량' : '증량'}이 필요해요. 기록이 쌓이면 도달 예측을 보여드릴게요.`;
+        el.style.color = '#4f46e5';
+        el.classList.remove('hidden');
+        return;
+    }
+    // 추세가 목표 방향으로 움직이는지 (감량 필요 시 slope<0, 증량 필요 시 slope>0)
+    const towardGoal = reg && ((needLose && reg.slope < -0.0001) || (!needLose && reg.slope > 0.0001));
+
+    if (towardGoal) {
+        const xGoal = (goal - reg.intercept) / reg.slope;
+        const days = Math.round(xGoal - lastX);
+        if (days > 0 && days <= 365) {
+            el.textContent = `📉 현재 추세라면 약 ${days}일 후 목표 체중(${goal}kg) 도달 예상이에요.`;
+        } else {
+            el.textContent = `✅ 목표(${goal}kg) 방향으로 잘 가고 있어요.`;
+        }
+        el.style.color = '#4f46e5';
+    } else {
+        el.textContent = needLose
+            ? `⚠️ 목표(${goal}kg)보다 무겁고 추세가 개선되지 않아요. 식단·활동량 점검이 필요해요.`
+            : `⚠️ 목표(${goal}kg)에 미치지 못하고 추세가 개선되지 않아요. 식단·급여량 점검이 필요해요.`;
+        el.style.color = '#d97706';
+    }
+    el.classList.remove('hidden');
 }
 
 // ─── 일기장 고도화 함수들 ────────────────────────────────────────
