@@ -750,7 +750,7 @@ function stopAndSaveWalk() {
                         }
                         return streak;
                     })();
-                    setTimeout(() => {
+                    const offerSocialShare = () => {
                         showCustomDialog({
                             title: "소셜 피드 공유 📢",
                             message: `${petName}의 산책 기록을 이웃에게 공유할까요?\n${distKm.toFixed(1)}km · ${durText} · ${kcal}kcal`,
@@ -776,6 +776,21 @@ function stopAndSaveWalk() {
                                 }
                             }
                         });
+                    };
+                    // 산책 종료 → 경로 썸네일·지표·배변 카운트를 담은 리포트 카드 이미지 공유 제안 (거절 시에도 소셜 공유 제안)
+                    setTimeout(() => {
+                        if (typeof shareWalkReportCard === 'function') {
+                            showCustomDialog({
+                                title: "산책 리포트 카드 🖼️",
+                                message: `${petName}의 산책을 경로·거리·시간·배변 기록이 담긴 이미지 카드로 저장/공유할까요?`,
+                                icon: "🦮",
+                                type: "confirm",
+                                onConfirm: () => { shareWalkReportCard(completedSession.id); offerSocialShare(); },
+                                onCancel: () => offerSocialShare()
+                            });
+                        } else {
+                            offerSocialShare();
+                        }
                     }, 3000);
                 } catch(e) {}
             })();
@@ -916,7 +931,7 @@ function discardWalk() {
                         }
                         return streak;
                     })();
-                    setTimeout(() => {
+                    const offerSocialShare = () => {
                         showCustomDialog({
                             title: "소셜 피드 공유 📢",
                             message: `${petName}의 산책 기록을 이웃에게 공유할까요?\n${distKm.toFixed(1)}km · ${durText} · ${kcal}kcal`,
@@ -942,6 +957,21 @@ function discardWalk() {
                                 }
                             }
                         });
+                    };
+                    // 산책 종료 → 경로 썸네일·지표·배변 카운트를 담은 리포트 카드 이미지 공유 제안 (거절 시에도 소셜 공유 제안)
+                    setTimeout(() => {
+                        if (typeof shareWalkReportCard === 'function') {
+                            showCustomDialog({
+                                title: "산책 리포트 카드 🖼️",
+                                message: `${petName}의 산책을 경로·거리·시간·배변 기록이 담긴 이미지 카드로 저장/공유할까요?`,
+                                icon: "🦮",
+                                type: "confirm",
+                                onConfirm: () => { shareWalkReportCard(completedSession.id); offerSocialShare(); },
+                                onCancel: () => offerSocialShare()
+                            });
+                        } else {
+                            offerSocialShare();
+                        }
                     }, 3000);
                 } catch(e) {}
             })();
