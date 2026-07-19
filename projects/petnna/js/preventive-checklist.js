@@ -135,12 +135,33 @@
         catch (e) { return {}; }
     }
 
+    // 이미 코인을 지급한 항목 기록(펫별) — 체크/해제 반복으로 코인 파밍 방지
+    function _rewardKey(pet) {
+        return 'petnna_prevcare_reward_' + (pet && pet.id != null ? pet.id : 'x');
+    }
+    function _getRewarded(pet) {
+        try { return JSON.parse(localStorage.getItem(_rewardKey(pet)) || '{}') || {}; }
+        catch (e) { return {}; }
+    }
+
+    const COIN_PER_ITEM = 5;
+
     function togglePreventiveCheck(idx) {
         const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
         if (!pet) return;
         const map = _getChecked(pet);
         map[idx] = !map[idx];
         try { localStorage.setItem(_checkKey(pet), JSON.stringify(map)); } catch (e) {}
+        // 항목을 처음 완료할 때만 1회 코인 지급(해제 후 재체크는 미지급)
+        if (map[idx]) {
+            const rewarded = _getRewarded(pet);
+            if (!rewarded[idx]) {
+                rewarded[idx] = true;
+                try { localStorage.setItem(_rewardKey(pet), JSON.stringify(rewarded)); } catch (e) {}
+                if (typeof _earnCoins === 'function') _earnCoins(pet, COIN_PER_ITEM, '예방케어 확인');
+                if (typeof saveState === 'function') saveState();
+            }
+        }
         renderPreventiveChecklist();
     }
 
@@ -179,7 +200,7 @@
             </div>
             <div class="px-5 py-4">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-wide">권장 예방 항목</span>
+                    <span class="text-[10px] font-black text-emerald-700 uppercase tracking-wide">권장 예방 항목 · 확인 시 🐾+${COIN_PER_ITEM}</span>
                     <span class="text-[10px] font-bold text-gray-500 tabular-nums">${doneCount}/${items.length} 확인</span>
                 </div>
                 <div class="h-2 w-full bg-emerald-100 rounded-full overflow-hidden mb-2.5">
