@@ -1447,6 +1447,23 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
     }
 }
 
+/* 카드 병합 래퍼(2026-07-19) — 서로 다른 모듈이 각자 card-modern으로 그리는 위젯들을
+   겉카드 하나로 합칠 때 사용. 내부 카드의 테두리·라운드·호버 이동을 지우고
+   구분선만 남겨 한 카드처럼 보이게 한다(모듈 렌더 코드는 무수정). */
+.card-merge > div > .card-modern {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.card-merge > div > .card-modern:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+.card-merge > div + div > .card-modern {
+    border-top: 1px solid var(--color-border-card);
+}
+
 /* 로그인/회원가입 입력: leading 아이콘 + floating label + 브랜드 포커스 링 (WCAG 2.4.7/1.4.1) */
 .floating-field { position: relative; }
 .floating-input {
