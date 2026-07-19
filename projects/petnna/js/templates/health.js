@@ -190,6 +190,23 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
+            <!-- 응급 카드 (상황별 1차 처치 + 24h 병원 연결 — 정적, 백엔드 없이 작동) -->
+            <button onclick="EmergencyCard.open()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-red-50 to-rose-50 p-4 text-left group hover:scale-[1.02] transition-all">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="text-4xl">🚨</div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">응급 카드</h3>
+                            <p class="text-xs text-red-600 mt-1">1차 처치 + 24h 병원</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500">중독·이물질·경련 등</p>
+                    <i class="fa-solid fa-kit-medical text-red-500 text-xl group-hover:scale-110 transition-transform"></i>
+                </div>
+            </button>
+
             <!-- 음성 상담 -->
             <button onclick="startVoiceConsultation()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-3">
