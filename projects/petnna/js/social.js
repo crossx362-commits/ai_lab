@@ -271,6 +271,7 @@ function switchSocialSubTab(subTab) {
 // 견종·건강고민별 커뮤니티 채널 (스키마 변경 없이 글 내용/해시태그로 분류)
 const FEED_TOPIC_CHANNELS = [
     { id: 'all',      label: '전체',       emoji: '🐾', keywords: [] },
+    { id: 'qna',      label: '건강 Q&A',   emoji: '❓', keywords: ['#질문', '질문'] },
     { id: 'shihtzu',  label: '시츄',       emoji: '🐶', keywords: ['시츄', '시추'] },
     { id: 'maltese',  label: '말티즈',     emoji: '🐕', keywords: ['말티즈'] },
     { id: 'poodle',   label: '푸들',       emoji: '🦮', keywords: ['푸들', '푸숑'] },
@@ -356,7 +357,7 @@ function renderFeed() {
                 <div class="flex items-center space-x-2.5 cursor-pointer hover:opacity-85 transition-opacity" onclick="showOwnerProfile('${post.petName}', '${post.petAvatar}')" title="이웃집사 프로필 보기">
                     <img loading="lazy" src="${post.petAvatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${post.petName}'">
                     <div>
-                        <span class="font-black text-xs text-gray-800 block flex items-center gap-1">${post.petName} <span class="bg-brand-550/10 text-[8px] text-brand-600 px-1 py-0.2 rounded font-extrabold border border-brand-200/50">프로필</span></span>
+                        <span class="font-black text-xs text-gray-800 block flex items-center gap-1">${post.petName} <span class="bg-brand-550/10 text-[8px] text-brand-600 px-1 py-0.2 rounded font-extrabold border border-brand-200/50">프로필</span>${_isQuestionPost(post) ? `<span class="bg-amber-100 text-[8px] text-amber-700 px-1 py-0.2 rounded font-extrabold border border-amber-200">❓ Q&A</span>` : ''}</span>
                         <span class="text-[9px] text-gray-400 block">이웃 반려 생활가</span>
                     </div>
                 </div>
@@ -689,6 +690,8 @@ function submitFeedComment(postId) {
         author: settings_nickname,
         text: text
     });
+
+    _rewardQnaAnswer(p);
 
     saveState();
     renderFeed();
@@ -1236,6 +1239,45 @@ function insertHashtags() {
     textarea.value = cur ? `${cur}\n\n${tags}` : tags;
     textarea.focus();
     showToast('해시태그가 추가되었습니다 #️⃣');
+}
+
+// 건강 Q&A: 질문 글로 표시(#질문 태그) — 답변 댓글에 발자국코인 보상
+function insertQuestionTag() {
+    const textarea = document.getElementById('feed-input-content');
+    if (!textarea) return;
+    if (_isQuestionText(textarea.value)) {
+        showToast('이미 질문 글로 표시되어 있어요 ❓');
+        textarea.focus();
+        return;
+    }
+    const cur = textarea.value.trim();
+    textarea.value = cur ? `#질문 ${cur}` : '#질문 ';
+    textarea.focus();
+    showToast('질문 글로 표시됐어요! 답변 이웃에게 🐾코인이 지급돼요 ❓');
+}
+
+function _isQuestionText(text) {
+    return /#?질문/.test(text || '');
+}
+
+function _isQuestionPost(post) {
+    return !!post && _isQuestionText(post.content);
+}
+
+const QNA_ANSWER_COIN_REWARD = 5;
+
+// 질문 글에 처음 답변한 이웃에게 발자국코인 지급(자기 질문 셀프 답변·중복 지급 제외)
+function _rewardQnaAnswer(post) {
+    if (!_isQuestionPost(post)) return;
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    if (!pet) return;
+    if (post.petName && pet.name === post.petName) return; // 셀프 답변 제외
+    const myAnswers = (post.comments || []).filter(c => c.author === settings_nickname).length;
+    if (myAnswers !== 1) return; // 이 글에 첫 답변일 때만 1회 지급
+    if (typeof _earnCoins === 'function') {
+        _earnCoins(pet, QNA_ANSWER_COIN_REWARD, '건강 Q&A 답변');
+        saveState();
+    }
 }
 
 function confirmWalkAttachment(walkId) {
