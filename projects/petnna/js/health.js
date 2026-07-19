@@ -101,8 +101,38 @@ function renderHealthTab() {
     // 주간 건강 변화 조기경보 리포트 카드
     if (typeof renderWeeklyReportCard === 'function') renderWeeklyReportCard();
 
+    // 돌봄 스케줄러 카드(오늘의 일정·준수율 배지·달력·다가오는 돌봄) — 마이펫→건강 탭
+    // 이전(99757d36) 때 템플릿 id에 -health 접미사가 붙으며 이 호출들이 빠져 카드가
+    // 영구 빈 채로 방치됐던 버그(2026-07-19 수리). renderCalendar가 upcoming까지 그린다.
+    if (typeof renderCareScheduler === 'function') renderCareScheduler();
+    if (typeof updateCareCompletionBadge === 'function') updateCareCompletionBadge();
+    if (typeof renderCalendar === 'function') renderCalendar();
+
+    // 위젯이 전부 빈 기능군은 소제목째 숨김(고아 소제목 방지)
+    updateCareWidgetGroupVisibility();
+
     // 케어위젯 노출/클릭 최소 계측(회의_202607162027_3) — 위젯 DOM이 막 채워진 뒤 관측 시작
     if (typeof observeCareWidgetsForInstrumentation === 'function') observeCareWidgetsForInstrumentation();
+}
+
+// 케어 위젯 기능군 소제목 정리 — 그룹 내 위젯 mount가 전부 비어 있으면(일정 없음 등으로
+// 위젯이 스스로 숨은 상태) 소제목·구분선까지 통째로 숨긴다. 위젯이 다시 차면 재노출.
+function updateCareWidgetGroupVisibility() {
+    const wrap = document.getElementById('care-widgets-group');
+    if (!wrap) return;
+    let visibleGroups = 0;
+    wrap.querySelectorAll('[data-care-group]').forEach(group => {
+        const mounts = group.querySelectorAll(':scope > div[id]');
+        const hasContent = [...mounts].some(m =>
+            m.innerHTML.trim() !== '' && m.style.display !== 'none');
+        group.classList.toggle('hidden', !hasContent);
+        if (hasContent) visibleGroups++;
+    });
+    // 전 그룹이 비면 '케어 위젯' 라벨도 숨김
+    const label = wrap.firstElementChild;
+    if (label && !label.hasAttribute('data-care-group')) {
+        label.classList.toggle('hidden', visibleGroups === 0);
+    }
 }
 
 // 펫 선택 드롭다운 업데이트

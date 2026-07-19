@@ -249,8 +249,10 @@ const HEALTH_TEMPLATE = `
                 <span class="text-[11px] font-black text-gray-400 tracking-wide">케어 위젯</span>
             </div>
 
+            <!-- 각 그룹: 위젯이 전부 빈 상태면 updateCareWidgetGroupVisibility()가 소제목째 숨긴다
+                 (투약 일정 없는 사용자에게 '투약·복약' 고아 소제목이 뜨던 버그, 2026-07-19) -->
             <!-- 투약·복약 -->
-            <div class="space-y-2">
+            <div data-care-group class="space-y-2">
                 <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">투약·복약</span>
                 <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
                 <div id="preventive-care-dashboard"></div>
@@ -259,7 +261,7 @@ const HEALTH_TEMPLATE = `
             </div>
 
             <!-- 체형·체중 -->
-            <div class="space-y-2 pt-4 border-t border-gray-100">
+            <div data-care-group class="space-y-2 pt-4 border-t border-gray-100">
                 <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">체형·체중</span>
                 <!-- 💛 몸무게/QOL 주간 체크인 -->
                 <div id="qol-checkin-widget"></div>
@@ -268,7 +270,7 @@ const HEALTH_TEMPLATE = `
             </div>
 
             <!-- 영양 -->
-            <div class="space-y-2 pt-4 border-t border-gray-100">
+            <div data-care-group class="space-y-2 pt-4 border-t border-gray-100">
                 <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">영양</span>
                 <!-- 🍽️ 일일 급식·칼로리 트래커 -->
                 <div id="calorie-tracker-widget"></div>
@@ -277,7 +279,7 @@ const HEALTH_TEMPLATE = `
             </div>
 
             <!-- 비용 -->
-            <div class="space-y-2 pt-4 border-t border-gray-100">
+            <div data-care-group class="space-y-2 pt-4 border-t border-gray-100">
                 <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">비용</span>
                 <!-- 🏥 병원비 제보·비교 보드 -->
                 <div id="vet-cost-board-widget"></div>
@@ -355,13 +357,15 @@ const HEALTH_TEMPLATE = `
                 </button>
             </div>
 
-            <!-- 오늘의 일정 -->
+            <!-- 오늘의 일정 — id는 접미사 없이: care-scheduler.js·walk.js 렌더러가 이 이름을 찾는다.
+                 (마이펫→건강 탭 이전(99757d36) 때 -health 접미사가 붙으며 배선이 끊겨
+                  달력·일정이 영구 빈 채로 방치됐던 버그, 2026-07-19 수리) -->
             <div class="bg-gradient-to-br from-sky-50 to-blue-50/60 border border-sky-100 rounded-xl p-4 space-y-2">
                 <div class="flex items-center justify-between">
                     <span class="text-sm font-black text-gray-700">📅 오늘의 일정</span>
-                    <span id="care-completion-badge-health" class="text-xs font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"></span>
+                    <span id="care-completion-badge" class="text-xs font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full"></span>
                 </div>
-                <div id="care-scheduler-container-health" class="space-y-2"></div>
+                <div id="care-scheduler-container" class="space-y-2"></div>
             </div>
 
             <!-- 달력 헤더 -->
@@ -369,7 +373,7 @@ const HEALTH_TEMPLATE = `
                 <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
-                <span id="calendar-month-year-health" class="font-black text-sm text-gray-700">2026년 6월</span>
+                <span id="calendar-month-year" class="font-black text-sm text-gray-700"></span>
                 <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
@@ -379,14 +383,14 @@ const HEALTH_TEMPLATE = `
             <div class="grid grid-cols-7 gap-1.5 text-center text-xs text-gray-400 font-bold uppercase tracking-wider border-b pb-2">
                 <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
             </div>
-            <div id="calendar-days-health" class="grid grid-cols-7 gap-1.5 text-center text-sm">
+            <div id="calendar-days" class="grid grid-cols-7 gap-1.5 text-center text-sm">
                 <!-- 날짜들 동적 생성 -->
             </div>
 
             <!-- 다가오는 주요 돌봄 -->
             <div class="space-y-3 pt-4 border-t border-gray-100">
                 <span class="block text-xs text-gray-400 font-bold uppercase tracking-wider">다가오는 핵심 돌봄 3</span>
-                <div id="upcoming-schedules-health" class="space-y-2.5">
+                <div id="upcoming-schedules" class="space-y-2.5">
                     <!-- JS 동적 생성 -->
                 </div>
             </div>

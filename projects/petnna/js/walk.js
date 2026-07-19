@@ -1469,8 +1469,9 @@ function loadFeedWalkOnMap(postId) {
     }, 300);
 }
 
-let calendarYear = 2026;
-let calendarMonth = 4;
+// 데모 시절 2026년 5월 하드코딩 → 현재 달로 초기화(달력 카드 재배선 시 발견, 2026-07-19)
+let calendarYear = new Date().getFullYear();
+let calendarMonth = new Date().getMonth();
 
 function renderCalendar() {
     const monthYearEl = document.getElementById('calendar-month-year');
@@ -1497,7 +1498,8 @@ function renderCalendar() {
 
         const fullDateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        if (day === 17 && calendarMonth === 4 && calendarYear === 2026) {
+        const _t = new Date();
+        if (day === _t.getDate() && calendarMonth === _t.getMonth() && calendarYear === _t.getFullYear()) {
             cell.className = "py-2.5 bg-brand-500 text-white rounded-xl cursor-pointer relative font-bold flex flex-col items-center justify-center shadow-sm";
         }
 
@@ -1588,7 +1590,13 @@ function renderUpcomingSchedules() {
     if (!container) return;
 
     container.innerHTML = '';
-    const sorted = [...schedules].sort((a, b) => new Date(a.date) - new Date(b.date));
+    // '다가오는' 카드이므로 오늘 이후만, 템플릿 라벨(핵심 돌봄 3)대로 3건 상한
+    // (과거 데모 일정까지 전부 나열되던 문제 — 달력 카드 재배선 시 발견, 2026-07-19)
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sorted = [...schedules]
+        .filter(s => s.date >= todayStr)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .slice(0, 3);
 
     if (sorted.length === 0) {
         container.innerHTML = `<div class="text-center py-4 text-[11px] text-gray-400">다가오는 일정이 비어있습니다.</div>`;
