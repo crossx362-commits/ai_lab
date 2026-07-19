@@ -77,7 +77,7 @@
                     <p class="text-xs text-gray-500 mt-0.5">배변·식욕·활력을 한 번의 탭으로 기록해요. 예측 웰니스에 반영됩니다.</p>
                 </div>
             </div>
-            <div class="space-y-3">${rows}</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">${rows}</div>
         </div>`;
     }
 

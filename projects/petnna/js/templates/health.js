@@ -47,13 +47,13 @@ const HEALTH_TEMPLATE = `
         <div id="weekly-report-card"></div>
     </div>
 
-    <!-- 📋 오늘의 건강 기록 -->
-    <div class="card-modern p-6">
-        <div class="flex items-center justify-between mb-6">
+    <!-- 📋 오늘의 건강 기록 (카드 크기 균형: 우측 컬럼 밀도에 맞춰 p-6·5xl→p-4·4xl 축소, 2026-07-19) -->
+    <div class="card-modern p-5">
+        <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
-                <div class="text-4xl">📋</div>
+                <div class="text-3xl">📋</div>
                 <div>
-                    <h2 class="text-lg font-bold text-gray-900">오늘의 기록</h2>
+                    <h2 class="text-base font-bold text-gray-900">오늘의 기록</h2>
                     <p class="text-xs text-gray-500">빠른 건강 체크</p>
                 </div>
             </div>
@@ -62,37 +62,37 @@ const HEALTH_TEMPLATE = `
             </button>
         </div>
 
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-3 gap-3">
             <!-- 식사량 -->
-            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-amber-50 to-orange-50 p-6 text-center group hover:scale-105 transition-transform">
-                <div class="text-5xl mb-3">🍖</div>
-                <div id="health-today-food" class="text-3xl font-bold text-amber-600 mb-2">--g</div>
+            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center group hover:scale-105 transition-transform">
+                <div class="text-4xl mb-2">🍖</div>
+                <div id="health-today-food" class="text-2xl font-bold text-amber-600 mb-1">--g</div>
                 <div class="text-xs text-gray-600 font-semibold">식사량</div>
             </button>
 
             <!-- 음수량 -->
-            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-6 text-center group hover:scale-105 transition-transform">
-                <div class="text-5xl mb-3">💧</div>
-                <div id="health-today-water" class="text-3xl font-bold text-sky-600 mb-2">--ml</div>
+            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-center group hover:scale-105 transition-transform">
+                <div class="text-4xl mb-2">💧</div>
+                <div id="health-today-water" class="text-2xl font-bold text-sky-600 mb-1">--ml</div>
                 <div class="text-xs text-gray-600 font-semibold">음수량</div>
             </button>
 
             <!-- 배변 -->
-            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-rose-50 to-pink-50 p-6 text-center group hover:scale-105 transition-transform">
-                <div class="text-5xl mb-3">💩</div>
-                <div id="health-today-poop" class="text-3xl font-bold text-rose-600 mb-2">--회</div>
+            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-rose-50 to-pink-50 p-4 text-center group hover:scale-105 transition-transform">
+                <div class="text-4xl mb-2">💩</div>
+                <div id="health-today-poop" class="text-2xl font-bold text-rose-600 mb-1">--회</div>
                 <div class="text-xs text-gray-600 font-semibold">배변</div>
             </button>
         </div>
     </div>
 
     <!-- 📈 건강 트렌드 차트 -->
-    <div class="card-modern p-6">
-        <div class="flex items-center justify-between mb-6">
+    <div class="card-modern p-5">
+        <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
-                <div class="text-4xl">📈</div>
+                <div class="text-3xl">📈</div>
                 <div>
-                    <h2 class="text-lg font-bold text-gray-900">7일 건강 트렌드</h2>
+                    <h2 class="text-base font-bold text-gray-900">7일 건강 트렌드</h2>
                     <p class="text-xs text-gray-500">데이터로 보는 변화</p>
                 </div>
             </div>
@@ -145,12 +145,12 @@ const HEALTH_TEMPLATE = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <!-- AI 건강 분석 -->
-            <button onclick="triggerAiHealthAnalysis()" class="card-modern bg-gradient-to-br from-brand-50 to-brand-50 p-6 text-left group hover:scale-[1.02] transition-all">
+            <button onclick="triggerAiHealthAnalysis()" class="card-modern bg-gradient-to-br from-brand-50 to-brand-50 p-5 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="text-5xl">🔬</div>
+                        <div class="text-4xl">🔬</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">건강 분석</h3>
+                            <h3 class="text-base font-bold text-gray-900">건강 분석</h3>
                             <p class="text-xs text-brand-600 mt-1">사진으로 10가지 항목 체크</p>
                         </div>
                     </div>
@@ -162,12 +162,12 @@ const HEALTH_TEMPLATE = `
             </button>
 
             <!-- AI 수의사 -->
-            <button onclick="openVetChatModal()" class="card-modern bg-gradient-to-br from-emerald-50 to-teal-50 p-6 text-left group hover:scale-[1.02] transition-all">
+            <button onclick="openVetChatModal()" class="card-modern bg-gradient-to-br from-emerald-50 to-teal-50 p-5 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="text-5xl">🏥</div>
+                        <div class="text-4xl">🏥</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">AI 수의사</h3>
+                            <h3 class="text-base font-bold text-gray-900">AI 수의사</h3>
                             <p class="text-xs text-emerald-600 mt-1">증상 상담 즉시 답변</p>
                         </div>
                     </div>
@@ -179,12 +179,12 @@ const HEALTH_TEMPLATE = `
             </button>
 
             <!-- 증상 빠른 진단 (규칙 기반 트리아지 — AI 백엔드 없이도 작동) -->
-            <button onclick="SymptomTriage.open()" class="card-modern bg-gradient-to-br from-rose-50 to-pink-50 p-6 text-left group hover:scale-[1.02] transition-all">
+            <button onclick="SymptomTriage.open()" class="card-modern bg-gradient-to-br from-rose-50 to-pink-50 p-5 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="text-5xl">🩺</div>
+                        <div class="text-4xl">🩺</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">증상 빠른 진단</h3>
+                            <h3 class="text-base font-bold text-gray-900">증상 빠른 진단</h3>
                             <p class="text-xs text-rose-600 mt-1">이 아이 기준 긴급도 안내</p>
                         </div>
                     </div>
@@ -196,12 +196,12 @@ const HEALTH_TEMPLATE = `
             </button>
 
             <!-- 음성 상담 -->
-            <button onclick="startVoiceConsultation()" class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-6 text-left group hover:scale-[1.02] transition-all">
+            <button onclick="startVoiceConsultation()" class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-5 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="text-5xl">🎤</div>
+                        <div class="text-4xl">🎤</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">음성 상담</h3>
+                            <h3 class="text-base font-bold text-gray-900">음성 상담</h3>
                             <p class="text-xs text-sky-600 mt-1">증상 말로 설명하기</p>
                         </div>
                     </div>
