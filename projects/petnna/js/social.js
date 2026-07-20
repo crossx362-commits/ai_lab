@@ -702,6 +702,65 @@ function submitFeedComment(postId) {
     }
 }
 
+// 🔎 실종 핀 '목격 제보' — 이웃이 목격 위치·시간을 코멘트로 누적하고 보호자에게 알림(편지)을 보낸다.
+function submitSightingReport(postId) {
+    const p = (typeof posts !== 'undefined') ? posts.find(item => item.id === postId) : null;
+    if (!p || !p.lostReport) return;
+
+    const note = (typeof prompt === 'function')
+        ? (prompt('🔎 목격 정보를 알려주세요 (예: 어디서, 어떤 모습이었는지)', '') || '').trim()
+        : '';
+
+    function finish(lat, lng, place) {
+        const now = new Date();
+        const timeLabel = now.toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', month: '2-digit', day: '2-digit' });
+        const reporter = (typeof settings_nickname !== 'undefined' && settings_nickname) ? settings_nickname : '이웃';
+
+        const sighting = { reporter: reporter, place: place || '', note: note, reportedAt: now.toISOString() };
+        if (typeof lat === 'number' && typeof lng === 'number') { sighting.lat = lat; sighting.lng = lng; }
+        if (!Array.isArray(p.lostReport.sightings)) p.lostReport.sightings = [];
+        p.lostReport.sightings.push(sighting);
+
+        const commentText = [`🔎 목격 제보 (${timeLabel})`, place ? `📍 ${place}` : '', note].filter(Boolean).join(' · ');
+        if (!p.comments) p.comments = [];
+        p.comments.push({ author: reporter, text: commentText });
+
+        if (typeof letters !== 'undefined' && Array.isArray(letters)) {
+            const guardian = (p.petName ? `${p.petName} 집사님` : '집사님');
+            letters.unshift({
+                id: Date.now(),
+                sender: reporter,
+                receiver: guardian,
+                petName: p.petName || '',
+                content: `[To. ${guardian}] 🔎 ${p.petName || '아이'} 목격 제보가 도착했어요! ${commentText}`,
+                date: '방금 전',
+                isRead: false,
+                folder: 'inbox',
+                stamp: '🔎'
+            });
+            if (typeof updateMailboxBadge === 'function') updateMailboxBadge();
+        }
+
+        saveState();
+        if (typeof renderFeed === 'function') renderFeed();
+        if (typeof window.renderLostPetMarkers === 'function') window.renderLostPetMarkers();
+        if (typeof updatePostCommentsInSupabase === 'function') updatePostCommentsInSupabase(postId, p.comments);
+        if (typeof showToast === 'function') showToast('🙏 목격 제보가 등록되고 보호자에게 알림이 전송됐어요!');
+    }
+
+    if (navigator.geolocation) {
+        if (typeof showToast === 'function') showToast('📍 목격 위치를 확인 중…');
+        navigator.geolocation.getCurrentPosition(
+            pos => finish(pos.coords.latitude, pos.coords.longitude, '제보자 현재 위치'),
+            () => finish(null, null, ''),
+            { timeout: 8000 }
+        );
+    } else {
+        finish(null, null, '');
+    }
+}
+if (typeof window !== 'undefined') window.submitSightingReport = submitSightingReport;
+
 function toggleFeedReplyInput(postId, commentIdx) {
     const form = document.getElementById(`reply-form-${postId}-${commentIdx}`);
     if (!form) return;
