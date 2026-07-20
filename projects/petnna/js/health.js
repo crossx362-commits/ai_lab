@@ -64,6 +64,7 @@ function renderHealthTab() {
     // 투약·정기예방 대시보드 + 건강수첩 (마이펫 탭에서 이동)
     if (typeof renderPreventiveCareDashboard === 'function') renderPreventiveCareDashboard();
     if (typeof renderPreventiveChecklist === 'function') renderPreventiveChecklist();
+    if (typeof renderPreventiveTimeline === 'function') renderPreventiveTimeline();
     if (typeof renderMedAdherenceTracker === 'function') renderMedAdherenceTracker();
     if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
 

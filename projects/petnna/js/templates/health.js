@@ -270,6 +270,8 @@ const HEALTH_TEMPLATE = `
                 <div id="preventive-care-dashboard"></div>
                 <!-- 🗒️ 생애주기 예방케어 체크리스트 (종·나이·중성화 기반 권장 항목, 나무 P2) -->
                 <div id="preventive-checklist"></div>
+                <!-- 📅 생애주기 예방 타임라인 (종·나이 기반 시기별 케어 흐름 + 리마인더, 나무 P3) -->
+                <div id="preventive-timeline"></div>
                 <!-- 💊 복약 순응도 30일 트래커 (이번 주 놓친 약 요약 포함) -->
                 <div id="med-adherence-tracker"></div>
             </div>
