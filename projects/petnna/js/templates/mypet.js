@@ -405,6 +405,12 @@ const MYPET_TEMPLATE = `
                     <span>맞춤 훈련 미션을 확인해보세요!</span>
                 </div>
             </div></div>
+            <div class="p-2.5"><div id="daily-care-streak-banner">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-calendar-check text-gray-300"></i>
+                    <span>산책·급여·투약 중 하나만 완료해도 케어 스트릭이 시작돼요!</span>
+                </div>
+            </div></div>
             <div class="p-3"><div id="daily-challenges"></div></div>
             <div class="p-2.5"><div id="achievement-badges"></div></div>
         </div>
