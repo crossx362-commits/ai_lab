@@ -55,6 +55,10 @@ const ACHIEVEMENTS = [
     { id: 'hood_challenge',   emoji: '🏘️',   name: '동네 챌린지',    desc: '동네 이웃들과 공동 목표를 달성했어요!', check: () => hasMetHoodChallenge() },
     // ── 🎓 훈련 미션: 주간 훈련 체크리스트 전 항목 완료 시 부여 ──
     { id: 'training_master',  emoji: '🎓',    name: '훈련 마스터',    desc: '주간 훈련 미션을 모두 완료했어요!',    check: () => typeof hasMetTrainingMaster === 'function' && hasMetTrainingMaster() },
+    // ── 🗓️ 데일리 케어 스트릭(산책·급여·투약·건강기록 통합) 뱃지 ──
+    { id: 'care_streak_3',    emoji: '🗓️',   name: '3일 케어',       desc: '3일 연속 데일리 케어 달성!',           check: () => typeof calcDailyCareStreak === 'function' && calcDailyCareStreak() >= 3 },
+    { id: 'care_streak_7',    emoji: '📅',    name: '주간 케어러',    desc: '7일 연속 데일리 케어 달성!',           check: () => typeof calcDailyCareStreak === 'function' && calcDailyCareStreak() >= 7 },
+    { id: 'care_streak_30',   emoji: '👑',    name: '한달 케어 전설', desc: '30일 연속 데일리 케어! 진정한 집사!',  check: () => typeof calcDailyCareStreak === 'function' && calcDailyCareStreak() >= 30 },
 ];
 
 function getUnlockedAchievements() {
@@ -257,6 +261,94 @@ function renderWalkStreakBanner() {
             <div class="bg-gradient-to-r from-orange-400 to-brand-500 h-full rounded-full transition-all duration-700"
                  style="width:${pct}%"></div>
         </div>`;
+}
+
+// ── 🗓️ 데일리 케어 스트릭 (산책·급여·투약·건강기록 통합) ───────────────────
+// 산책·케어일정(급여/투약 등) 완료·건강 기록 중 하나라도 있는 날을 "케어한 날"로 보고
+// 연속 달성일을 집계한다. 산책만 세는 calcWalkStreak과 달리 일상 케어 전반을 훅으로 삼는다.
+// 데이터는 기존 walks / careSchedules.completionHistory / healthLogs를 재사용(신규 저장 없음).
+function _dailyCareDates() {
+    const set = new Set();
+    // 산책
+    (typeof walks !== 'undefined' ? walks : []).forEach(w => {
+        const d = w.savedAt ? w.savedAt.split('T')[0] : null;
+        if (d) set.add(d);
+    });
+    // 케어 일정 완료(급여·투약 등)
+    try {
+        const cs = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || null;
+        (cs && Array.isArray(cs.completionHistory) ? cs.completionHistory : []).forEach(c => {
+            const d = c.completedAt ? c.completedAt.split('T')[0] : null;
+            if (d) set.add(d);
+        });
+    } catch {}
+    // 건강 기록(식사·음수·배변)
+    const hist = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
+    hist.forEach(h => {
+        if (h.date && (h.food > 0 || h.water > 0 || (h.poop !== null && h.poop !== undefined))) set.add(h.date);
+    });
+    return set;
+}
+
+function calcDailyCareStreak() {
+    const dates = _dailyCareDates();
+    if (dates.size === 0) return 0;
+    const today = new Date().toISOString().split('T')[0];
+    // 오늘 케어했으면 오늘부터, 아니면 어제부터 연속 집계(오늘은 아직 진행 중일 수 있음)
+    let checkDate = new Date(today);
+    if (!dates.has(today)) checkDate.setDate(checkDate.getDate() - 1);
+    let streak = 0;
+    for (let i = 0; i < 366; i++) {
+        const ds = checkDate.toISOString().split('T')[0];
+        if (dates.has(ds)) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+        else break;
+    }
+    return streak;
+}
+
+// 오늘 아직 케어 기록이 없으면 스트릭이 이미 쌓여 있을 때만 위기로 간주
+function isDailyCareStreakAtRisk() {
+    const today = new Date().toISOString().split('T')[0];
+    return !_dailyCareDates().has(today) && calcDailyCareStreak() >= 1;
+}
+
+function renderDailyCareStreakBanner() {
+    const el = document.getElementById('daily-care-streak-banner');
+    if (!el) return;
+    const streak = calcDailyCareStreak();
+    const atRisk = isDailyCareStreakAtRisk();
+
+    if (streak < 1) {
+        el.innerHTML = `
+            <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                <i class="fa-solid fa-calendar-check text-gray-300"></i>
+                <span>산책·급여·투약 중 하나만 완료해도 케어 스트릭이 시작돼요!</span>
+            </div>`;
+        return;
+    }
+
+    const milestones = [3, 7, 14, 30, 60, 100];
+    const nextGoal = milestones.find(m => m > streak) || streak + 10;
+    const pct = Math.min(100, Math.round((streak / nextGoal) * 100));
+    const emoji = streak >= 30 ? '💎' : streak >= 14 ? '🏆' : streak >= 7 ? '🥇' : '🏅';
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="streak-badge shrink-0"><i class="fa-solid fa-calendar-check"></i> ${streak}일 케어</span>
+                <div class="min-w-0">
+                    <p class="text-[11px] font-black text-gray-700">데일리 케어 연속 달성!</p>
+                    <p class="text-[9px] text-gray-400 font-medium truncate">목표 ${nextGoal}일까지 ${nextGoal - streak}일 남음</p>
+                </div>
+            </div>
+            <div class="text-2xl shrink-0">${emoji}</div>
+        </div>
+        <div class="mt-2 w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-400 to-brand-500 h-full rounded-full transition-all duration-700" style="width:${pct}%"></div>
+        </div>
+        ${atRisk ? `
+        <p class="text-[9px] text-rose-500 font-bold mt-1.5">⚠️ 오늘 아직 케어 전! 오늘의 미션을 완료해 ${streak}일 스트릭을 이어가세요.</p>`
+        : `<p class="text-[9px] text-emerald-600 font-medium mt-1.5">오늘도 케어 완료! 내일도 이어가요 🐾</p>`}`;
 }
 
 // ── 🎯 주간 산책 챌린지 (개인 목표 링) ────────────────────────────────────

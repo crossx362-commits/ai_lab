@@ -1679,6 +1679,7 @@ function renderMyPets() {
     if (typeof updateAiHealthUsageBadge === 'function') updateAiHealthUsageBadge();
     if (typeof renderHealthStreak === 'function') renderHealthStreak();
     if (typeof renderHealthCalendar === 'function') renderHealthCalendar();
+    if (typeof renderDailyCareStreakBanner === 'function') renderDailyCareStreakBanner();
     if (typeof renderDailyChallenges === 'function') renderDailyChallenges();
     if (typeof renderTrainingMissions === 'function') renderTrainingMissions();
     if (typeof renderAchievementBadges === 'function') renderAchievementBadges();
