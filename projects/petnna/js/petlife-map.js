@@ -209,7 +209,9 @@ function renderLostPetMarkers() {
                     ${lr.place ? `<div style="font-size:11px;color:#e11d48;font-weight:700;margin-bottom:2px;">📍 ${esc(lr.place)}</div>` : ''}
                     ${lr.contact ? `<div style="font-size:11px;color:#64748b;">연락처: ${esc(lr.contact)}</div>` : ''}
                     ${lr.note ? `<div style="font-size:11px;color:#475569;margin-top:4px;line-height:1.4;">${esc(lr.note)}</div>` : ''}
-                    <div style="font-size:10px;color:#f43f5e;font-weight:700;margin-top:6px;">목격하셨다면 이웃 피드 댓글로 제보해 주세요 🙏</div>
+                    ${Array.isArray(lr.sightings) && lr.sightings.length ? `<div style="font-size:10px;color:#2563eb;font-weight:700;margin-top:6px;">🔎 목격 제보 ${lr.sightings.length}건 누적</div>` : ''}
+                    <button onclick="if(window.submitSightingReport)window.submitSightingReport(${post.id})" style="margin-top:8px;width:100%;background:#f43f5e;color:white;font-weight:800;font-size:11px;padding:7px 0;border:none;border-radius:8px;cursor:pointer;">🔎 목격 제보하기</button>
+                    <div style="font-size:9px;color:#94a3b8;margin-top:4px;">위치·시간이 코멘트로 누적되고 보호자에게 알림이 갑니다</div>
                 </div>
             `);
 
