@@ -29,6 +29,14 @@
         liquid: { label: '설사', emoji: '💦' },
     };
 
+    // 소변 색 셀프체크(daily-condition.js urine 필드 연동, 백로그 나무 제안
+    // '홈 셀프 건강검사 트래커'): 붉은색(혈뇨)·진한색(탈수·농축뇨)은 급성 신호라
+    // 배변 연속(STOOL_STREAK)과 달리 가장 최근 기록 1건만 이상이어도 즉시 감지한다.
+    const URINE_ABNORMAL = {
+        red:  { label: '붉은 소변(혈뇨 의심)', emoji: '🔴' },
+        dark: { label: '진한 소변(탈수·농축 의심)', emoji: '🟠' },
+    };
+
     // 데일리 컨디션 원탭 로그(daily-condition.js) 연결(백로그 나무 제안):
     // 식욕·활력이 최근 CONDITION_STREAK일 연속 '저하(low)'면 조기 신호로 본다.
     // 배변과 동일하게 표본 하한 없이 소수 기록으로도 감지한다.
@@ -105,6 +113,20 @@
         return { metric: 'poop', poop: type, label: info.label, emoji: info.emoji, days: streak };
     }
 
+    // 순수 함수: history → 소변 색 이상 소견(없으면 null).
+    // 가장 최근 소변 기록이 이상색이면 즉시 보고(혈뇨·농축뇨는 조기 대응이 중요).
+    function analyzeUrine(history) {
+        const dated = (history || [])
+            .filter(d => d && d.urine && (d.urine === 'normal' || URINE_ABNORMAL[d.urine]))
+            .slice()
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        if (!dated.length) return null;
+        const latest = dated[0].urine;
+        if (!URINE_ABNORMAL[latest]) return null;
+        const info = URINE_ABNORMAL[latest];
+        return { metric: 'urine', urine: latest, label: info.label, emoji: info.emoji };
+    }
+
     // 순수 함수: history → 식욕·활력 저하 소견 배열(없으면 빈 배열).
     // 각 필드에서 가장 최근부터 이어지는 'low' 연속이 CONDITION_STREAK 이상이면 보고.
     function analyzeCondition(history) {
@@ -167,6 +189,10 @@
         return `최근 ${f.days}일 연속 ${f.label} 기록이 있어요. 지속되면 수의사 상담을 권해요`;
     }
 
+    function _urineText(f) {
+        return `가장 최근 ${f.label} 기록이 있어요. 지속되면 수의사 상담을 권해요`;
+    }
+
     function _conditionText(f) {
         return `최근 ${f.days}일 연속 ${f.label} 기록이 있어요. 컨디션을 살펴봐 주세요`;
     }
@@ -191,13 +217,14 @@
         const weightHistory = (typeof getWeightHistory === 'function') ? getWeightHistory() : [];
         const findings = analyzeWellness(history);
         const stool = analyzeStool(history);
+        const urine = analyzeUrine(history);
         const conditions = analyzeCondition(history);
         const weight = analyzeWeight(weightHistory);
         const samples = _sampleCount();
 
-        // 배변·컨디션·체중 급변은 표본 하한과 무관하게 조기 감지 — z-score 표본이
+        // 배변·소변·컨디션·체중 급변은 표본 하한과 무관하게 조기 감지 — z-score 표본이
         // 부족해도 이상변/저하 연속·체중 급변이면 경고 카드로 바로 노출한다.
-        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool && !conditions.length && !weight) {
+        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool && !urine && !conditions.length && !weight) {
             // 표본 부족 — 조용히 안내(알림 없음)
             host.innerHTML = `
             <div class="card-modern p-5 border border-brand-100/60">
@@ -215,7 +242,7 @@
             return;
         }
 
-        if (findings.length === 0 && !stool && !conditions.length && !weight) {
+        if (findings.length === 0 && !stool && !urine && !conditions.length && !weight) {
             host.innerHTML = `
             <div class="card-modern p-5 border border-emerald-100">
                 <div class="flex items-center gap-3">
@@ -235,6 +262,11 @@
                 <span class="mt-0.5">${stool.emoji}</span>
                 <span>${_stoolText(stool)}</span>
             </li>` : '';
+        const urineItem = urine ? `
+            <li class="flex items-start gap-2 text-sm text-amber-900">
+                <span class="mt-0.5">${urine.emoji}</span>
+                <span>${_urineText(urine)}</span>
+            </li>` : '';
         const weightItem = weight ? `
             <li class="flex items-start gap-2 text-sm text-amber-900">
                 <span class="mt-0.5">${weight.emoji}</span>
@@ -245,11 +277,18 @@
                 <span class="mt-0.5">${c.emoji}</span>
                 <span>${_conditionText(c)}</span>
             </li>`).join('');
-        const items = stoolItem + weightItem + conditionItems + findings.map(f => `
+        const items = stoolItem + urineItem + weightItem + conditionItems + findings.map(f => `
             <li class="flex items-start gap-2 text-sm text-amber-900">
                 <span class="mt-0.5">${f.emoji}</span>
                 <span>${_findingText(f)}</span>
             </li>`).join('');
+        // 벳챗 유도: 이상 소견이 있을 때 AI 수의사 상담 CTA(백로그 나무 '홈 셀프
+        // 건강검사 트래커 — 이상 징후 시 벳챗 유도'). openVetChatModal은 vet-chat.js.
+        const vetCta = (typeof openVetChatModal === 'function') ? `
+            <button type="button" onclick="openVetChatModal()"
+                class="mt-3 w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-white py-2 text-xs font-bold transition-colors">
+                🩺 AI 수의사에게 상담하기
+            </button>` : '';
         host.innerHTML = `
         <div class="card-modern p-5 border border-amber-200 bg-amber-50/40">
             <div class="flex items-center gap-3 mb-2">
@@ -260,20 +299,22 @@
                 </div>
             </div>
             <ul class="space-y-1.5 pl-1">${items}</ul>
+            ${vetCta}
         </div>`;
 
-        _maybeNotify(findings, stool, conditions, weight);
+        _maybeNotify(findings, stool, urine, conditions, weight);
     }
 
-    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 > 체중 > 컨디션 > z 순으로 우선 노출.
-    function _maybeNotify(findings, stool, conditions, weight) {
+    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 > 소변 > 체중 > 컨디션 > z 순으로 우선 노출.
+    function _maybeNotify(findings, stool, urine, conditions, weight) {
         conditions = conditions || [];
-        if (!stool && !weight && !conditions.length && !findings.length) return;
+        if (!stool && !urine && !weight && !conditions.length && !findings.length) return;
         const today = (typeof healthLogs !== 'undefined' && healthLogs && healthLogs.today && healthLogs.today.date)
             || new Date().toISOString().slice(0, 10);
         const flagKey = 'petna_wellness_alerted_' + today;
         try { if (localStorage.getItem(flagKey)) return; localStorage.setItem(flagKey, '1'); } catch (e) { return; }
         const msg = stool ? stool.emoji + ' ' + _stoolText(stool)
+            : urine ? urine.emoji + ' ' + _urineText(urine)
             : weight ? weight.emoji + ' ' + _weightText(weight)
             : conditions.length ? conditions[0].emoji + ' ' + _conditionText(conditions[0])
             : '🔮 ' + _findingText(findings[0]);
@@ -282,6 +323,7 @@
 
     window.analyzeWellness = analyzeWellness;
     window.analyzeStool = analyzeStool;
+    window.analyzeUrine = analyzeUrine;
     window.analyzeCondition = analyzeCondition;
     window.analyzeWeight = analyzeWeight;
     window.renderWellnessCard = renderWellnessCard;

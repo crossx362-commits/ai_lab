@@ -17,6 +17,14 @@
             ],
         },
         {
+            field: 'urine', label: '소변 색', icon: '🚽',
+            options: [
+                { value: 'normal', emoji: '🟡', text: '연노랑' },
+                { value: 'dark', emoji: '🟠', text: '진한색' },
+                { value: 'red', emoji: '🔴', text: '붉은색' },
+            ],
+        },
+        {
             field: 'appetite', label: '식욕', icon: '🍽️',
             options: [
                 { value: 'good', emoji: '😋', text: '좋음' },
@@ -74,10 +82,10 @@
                 <div class="text-2xl">📝</div>
                 <div class="min-w-0">
                     <h3 class="text-sm font-bold text-gray-900">오늘의 컨디션 원탭 기록</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">배변·식욕·활력을 한 번의 탭으로 기록해요. 예측 웰니스에 반영됩니다.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">배변·소변 색·식욕·활력을 한 번의 탭으로 기록해요. 예측 웰니스에 반영됩니다.</p>
                 </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">${rows}</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${rows}</div>
         </div>`;
     }
 
