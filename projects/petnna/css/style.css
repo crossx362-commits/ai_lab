@@ -1486,7 +1486,7 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
     transform: translateY(-50%);
     width: 20px;
     height: 20px;
-    color: #6b7280;
+    color: #b78a76;                        /* brand 갈색 톤 (기본), 포커스 시 진해짐 */
     pointer-events: none;
     transition: color .18s;
 }
