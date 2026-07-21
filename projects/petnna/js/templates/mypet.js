@@ -1,54 +1,57 @@
 const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
 
-    <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
-    <div id="care-check-banner"></div>
-
-    <!-- 📌 선제 케어 넛지 '오늘 챙길 것' (care-nudge.js가 채움, 챙길 게 있을 때만 노출) -->
-    <div id="care-nudge-banner"></div>
-
     <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
     <div id="health-digest-banner"></div>
 
     <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
     <div id="memory-flashback-banner"></div>
 
-    <!-- 날짜 & 날씨 -->
-    <div class="glass rounded-xl px-4 py-3 shadow-soft">
-        <div class="flex items-center justify-between gap-4">
-            <!-- 날짜/시간 -->
-            <div class="flex items-center gap-4">
-                <div>
-                    <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
-                    <span id="mypet-time-display" class="text-xl font-bold font-mono text-gray-900">14:30:00</span>
-                </div>
-                <!-- 날씨 -->
-                <div class="flex items-center gap-2.5 border-l border-gray-200 pl-4">
-                    <i class="fa-solid fa-sun text-2xl text-amber-400" id="mypet-weather-icon"></i>
+    <!-- 오늘 요약 카드: 케어체크 + 챙길 것 + 날짜/날씨 + 운세를 한 카드로 통합 -->
+    <div class="card-modern divide-y divide-gray-100 overflow-hidden">
+        <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
+        <div id="care-check-banner"></div>
+
+        <!-- 📌 선제 케어 넛지 '오늘 챙길 것' (care-nudge.js가 채움, 챙길 게 있을 때만 노출) -->
+        <div id="care-nudge-banner"></div>
+
+        <!-- 날짜 & 날씨 -->
+        <div class="px-4 py-3">
+            <div class="flex items-center justify-between gap-4">
+                <!-- 날짜/시간 -->
+                <div class="flex items-center gap-4">
                     <div>
-                        <span id="mypet-weather-temp" class="block text-base font-bold text-gray-900">24°C</span>
-                        <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
+                        <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
+                        <span id="mypet-time-display" class="text-xl font-bold font-mono text-gray-900">14:30:00</span>
+                    </div>
+                    <!-- 날씨 -->
+                    <div class="flex items-center gap-2.5 border-l border-gray-200 pl-4">
+                        <i class="fa-solid fa-sun text-2xl text-amber-400" id="mypet-weather-icon"></i>
+                        <div>
+                            <span id="mypet-weather-temp" class="block text-base font-bold text-gray-900">24°C</span>
+                            <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
+                        </div>
                     </div>
                 </div>
+                <!-- 미세먼지/습도 -->
+                <div class="flex items-center gap-3 text-sm font-medium text-gray-600">
+                    <span class="flex items-center gap-1">😷 <span id="mypet-weather-dust">--</span></span>
+                    <span class="flex items-center gap-1">💧 <span id="mypet-weather-humidity">--%</span></span>
+                </div>
             </div>
-            <!-- 미세먼지/습도 -->
-            <div class="flex items-center gap-3 text-sm font-medium text-gray-600">
-                <span class="flex items-center gap-1">😷 <span id="mypet-weather-dust">--</span></span>
-                <span class="flex items-center gap-1">💧 <span id="mypet-weather-humidity">--%</span></span>
-            </div>
+            <div id="mypet-weekly-weather-container" class="hidden"></div>
         </div>
-        <div id="mypet-weekly-weather-container" class="hidden"></div>
-    </div>
 
-    <!-- 오늘의 운세 (집사 + 펫) -->
-    <div class="grid grid-cols-2 gap-3">
-        <div class="card-modern bg-brand-50/50 p-3.5 space-y-1.5">
-            <span class="block text-xs font-semibold text-brand-600">🧔 집사 오늘의 운세</span>
-            <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
-        </div>
-        <div class="card-modern bg-amber-50/50 p-3.5 space-y-1.5">
-            <span class="block text-xs font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
-            <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+        <!-- 오늘의 운세 (집사 + 펫) -->
+        <div class="grid grid-cols-2 divide-x divide-gray-100">
+            <div class="bg-brand-50/50 p-3.5 space-y-1.5">
+                <span class="block text-xs font-semibold text-brand-600">🧔 집사 오늘의 운세</span>
+                <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+            </div>
+            <div class="bg-amber-50/50 p-3.5 space-y-1.5">
+                <span class="block text-xs font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
+                <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+            </div>
         </div>
     </div>
 

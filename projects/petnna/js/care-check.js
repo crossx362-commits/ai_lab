@@ -26,10 +26,11 @@
         const host = document.getElementById('care-check-banner');
         if (!host) return;
         const items = _pendingToday();
-        if (items.length === 0) { host.innerHTML = ''; return; }
+        if (items.length === 0) { host.innerHTML = ''; host.hidden = true; return; }
+        host.hidden = false;
 
         const hasMed = items.some(i => i.type === 'medicine');
-        const wrap = hasMed ? 'border-rose-200 bg-rose-50/50' : 'border-brand-100';
+        const wrap = hasMed ? 'bg-rose-50/50' : '';
         const badgeCls = hasMed ? 'bg-rose-100 text-rose-800' : 'bg-brand-50 text-brand-700';
         const titleEmoji = hasMed ? '💊' : '📋';
 
@@ -48,7 +49,7 @@
         }).join('');
 
         host.innerHTML = `
-        <div class="card-modern p-3.5 border ${wrap}">
+        <div class="p-3.5 ${wrap}">
             <div class="flex items-center gap-2 mb-2">
                 <span class="text-xl shrink-0">${titleEmoji}</span>
                 <span class="text-sm font-bold text-gray-900 flex-1">오늘의 투약·케어 체크</span>

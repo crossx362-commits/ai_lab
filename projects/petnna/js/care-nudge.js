@@ -13,15 +13,9 @@
         return (typeof healthLogs !== 'undefined' && healthLogs && healthLogs.history) ? healthLogs.history : [];
     }
 
-    // 오늘 예정된 돌봄 일정 중 아직 완료하지 않은 것(임박순).
-    function _pendingCare() {
-        if (typeof getTodaySchedules !== 'function') return [];
-        const today = new Date().toISOString().split('T')[0];
-        return getTodaySchedules().filter(s => !(s.lastCompleted && s.lastCompleted.startsWith(today)));
-    }
-
-    // 순수 함수: 로그·일정 → 넛지 항목 배열. 챙길 게 없으면 빈 배열.
-    function buildCareNudge(history, pendingCare) {
+    // 순수 함수: 건강 로그 → 넛지 항목 배열. 챙길 게 없으면 빈 배열.
+    // 돌봄 일정(pendingCare)은 바로 위 '오늘의 투약·케어 체크' 카드에서 이미 보여주므로 중복 노출하지 않는다.
+    function buildCareNudge(history) {
         const items = [];
 
         // 건강 이상: 배변 우선, 다음 z-score 급변
@@ -35,12 +29,6 @@
             items.push({ emoji: f.emoji, text: `${f.label} 평소보다 ${Math.abs(f.pct)}% ${dir} — 확인하기`, urgent: f.direction === 'down' });
         }
 
-        // 임박 돌봄 일정
-        for (const s of (pendingCare || [])) {
-            const icon = (typeof getCareTypeIcon === 'function') ? getCareTypeIcon(s.type) : '📋';
-            items.push({ emoji: icon, text: `${s.time} ${s.title}`, urgent: false });
-        }
-
         return items.slice(0, MAX_ITEMS);
     }
 
@@ -51,11 +39,12 @@
     function renderCareNudgeBanner() {
         const host = document.getElementById('care-nudge-banner');
         if (!host) return;
-        const items = buildCareNudge(_history(), _pendingCare());
-        if (items.length === 0) { host.innerHTML = ''; return; }
+        const items = buildCareNudge(_history());
+        if (items.length === 0) { host.innerHTML = ''; host.hidden = true; return; }
+        host.hidden = false;
 
         const urgent = items.some(i => i.urgent);
-        const wrap = urgent ? 'border-amber-200 bg-amber-50/50 hover:border-amber-300' : 'border-brand-100 hover:border-brand-200';
+        const wrap = urgent ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50';
         const badgeCls = urgent ? 'bg-amber-100 text-amber-800' : 'bg-brand-50 text-brand-700';
         const rows = items.map(i => `
             <li class="flex items-start gap-2 text-xs text-gray-700">
@@ -63,7 +52,7 @@
                 <span class="min-w-0 flex-1 truncate">${i.text}</span>
             </li>`).join('');
         host.innerHTML = `
-        <button type="button" onclick="renderCareNudgeGo()" class="w-full text-left card-modern p-3.5 border ${wrap} transition-colors">
+        <button type="button" onclick="renderCareNudgeGo()" class="w-full text-left p-3.5 ${wrap} transition-colors">
             <div class="flex items-center gap-2 mb-2">
                 <span class="text-xl shrink-0">📌</span>
                 <span class="text-sm font-bold text-gray-900 flex-1">오늘 챙길 것</span>
