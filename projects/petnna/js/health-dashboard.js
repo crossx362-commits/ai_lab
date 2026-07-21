@@ -203,6 +203,7 @@ function renderMedAdherenceTracker() {
 
     const today = new Date();
     let totalExpected = 0, totalTaken = 0;
+    let weekExpected = 0, weekTaken = 0; // 최근 7일(이번 주) 순응률용
 
     const cells = Array.from({ length: 30 }, (_, i) => {
         const d = new Date(today);
@@ -212,6 +213,7 @@ function renderMedAdherenceTracker() {
         const taken = medDone.filter(c => (c.completedAt || '').startsWith(dateStr)).length;
         totalExpected += expected;
         totalTaken += Math.min(taken, expected);
+        if (i >= 23) { weekExpected += expected; weekTaken += Math.min(taken, expected); } // 마지막 7칸 = 최근 7일
 
         const isToday = dateStr === today.toISOString().split('T')[0];
         let bg, label;
@@ -225,6 +227,9 @@ function renderMedAdherenceTracker() {
 
     const rate = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 100;
     const rateColor = rate >= 80 ? 'text-emerald-600' : rate >= 60 ? 'text-amber-600' : 'text-rose-600';
+
+    const weekRate = weekExpected > 0 ? Math.round((weekTaken / weekExpected) * 100) : 100;
+    const weekRateColor = weekRate >= 80 ? 'text-emerald-600' : weekRate >= 60 ? 'text-amber-600' : 'text-rose-600';
 
     // 이번 주 놓친 약(제목별 미복용 일수) — 예전엔 별도 "위클리 카드"였으나 30일
     // 트래커와 계산 로직이 완전히 중복이라 여기로 흡수(2026-07-14 오너 지시
@@ -260,7 +265,10 @@ function renderMedAdherenceTracker() {
                     <span class="text-2xl">💊</span>
                     <h3 class="text-sm font-bold text-gray-900">복약 순응도 (최근 30일)</h3>
                 </div>
-                <span class="text-xl font-black ${rateColor}">${rate}%</span>
+                <div class="text-right leading-tight">
+                    <span class="text-xl font-black ${rateColor}">${rate}%</span>
+                    <p class="text-[9px] font-bold text-gray-400 -mt-0.5">이번 주 <span class="${weekRateColor}">${weekRate}%</span></p>
+                </div>
             </div>
             <div class="flex flex-wrap gap-0.5">${cells}</div>
             <div class="flex items-center gap-2 mt-2 flex-wrap">
