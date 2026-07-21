@@ -1682,6 +1682,7 @@ function renderMyPets() {
     if (typeof renderDailyCareStreakBanner === 'function') renderDailyCareStreakBanner();
     if (typeof renderDailyChallenges === 'function') renderDailyChallenges();
     if (typeof renderTrainingMissions === 'function') renderTrainingMissions();
+    if (typeof renderTrainingPassport === 'function') renderTrainingPassport();
     if (typeof renderAchievementBadges === 'function') renderAchievementBadges();
     if (typeof checkNewAchievements === 'function') setTimeout(checkNewAchievements, 800);
     if (typeof renderCareScheduler === 'function') renderCareScheduler();
