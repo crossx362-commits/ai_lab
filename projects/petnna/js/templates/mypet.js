@@ -408,6 +408,12 @@ const MYPET_TEMPLATE = `
                     <span>맞춤 훈련 미션을 확인해보세요!</span>
                 </div>
             </div></div>
+            <div class="p-2.5"><div id="training-passport-card">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-passport text-gray-300"></i>
+                    <span>익힌 훈련을 패스포트에 기록해보세요!</span>
+                </div>
+            </div></div>
             <div class="p-2.5"><div id="daily-care-streak-banner">
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
                     <i class="fa-solid fa-calendar-check text-gray-300"></i>
