@@ -174,6 +174,75 @@ const SETTINGS_TEMPLATE = `
             </div>
         </div>
 
+    </div>
+
+    <!-- 오른쪽 패널: 데이터 백업 및 복구 관리소 -->
+    <div class="space-y-6">
+        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
+            <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
+                <i class="fa-solid fa-database text-brand-500 mr-2"></i>안심 데이터 보관소 🗄️
+            </h3>
+            <div class="space-y-2.5 text-xs">
+                <!-- 풍요로운 데모 데이터 셋업 -->
+                <button onclick="resetToRichDemoData()"
+                    class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                    <span>🪄 일주일 데모 데이터 주입</span>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <!-- JSON 내보내기 -->
+                <button onclick="exportAllDataAsJSON()"
+                    class="w-full bg-amber-50 hover:bg-amber-100 text-brand-800 border border-amber-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                    <span>💾 데이터 전체 내보내기 (JSON)</span>
+                    <i class="fa-solid fa-file-export"></i>
+                </button>
+
+                <!-- JSON 불러오기 -->
+                <div class="relative w-full">
+                    <input type="file" id="import-json-file" onchange="importDataFromJSON(event)"
+                        accept=".json" class="absolute inset-0 opacity-0 cursor-pointer">
+                    <div
+                        class="w-full bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                        <span>📂 백업 파일 불러오기 (JSON)</span>
+                        <i class="fa-solid fa-file-import"></i>
+                    </div>
+                </div>
+
+                <!-- 공장 초기화 -->
+                <button onclick="wipeAllAppData()"
+                    class="w-full bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between mb-2">
+                    <span>🗑️ 보관소 완전 삭제 (초기화)</span>
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+
+                <!-- 보관소 완전 파괴 -->
+                <button onclick="destroyAllLocalStorage()"
+                    class="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 px-4 rounded-xl transition-all flex items-center justify-between shadow-md">
+                    <span>🚨 보관소 완전 파괴 (전체 초기화)</span>
+                    <i class="fa-solid fa-bomb animate-pulse"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 🚨 시스템 오류 로그 -->
+        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
+            <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
+                <i class="fa-solid fa-bug text-rose-500 mr-2 animate-pulse"></i>시스템 오류 로그 🚨
+            </h3>
+            <p class="text-xs text-gray-500 leading-relaxed">
+                앱 실행 중 발생한 예외 상황 및 오류 경고 로그를 안전하게 보관 및 모니터링합니다.
+            </p>
+            <div class="flex gap-2">
+                <button onclick="openErrorLogModal()" class="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 rounded-xl transition-all text-center text-xs">
+                    <i class="fa-solid fa-clipboard-list mr-1"></i>오류 로그 보기
+                </button>
+                <button onclick="clearSystemErrorLogs()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl transition-all text-center text-xs">
+                    <i class="fa-solid fa-trash-can mr-1"></i>로그 비우기
+                </button>
+            </div>
+        </div>
+
+        <!-- 지원 카드(FAQ·신문고)는 좌측 과밀 해소를 위해 우측 이동 — 2026-07-21 -->
         <!-- 📞 펫과나 헬프 데스크 (자주 묻는 질문) -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
@@ -249,73 +318,6 @@ const SETTINGS_TEMPLATE = `
                         <!-- Dynamic Rows -->
                     </tbody>
                 </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- 오른쪽 패널: 데이터 백업 및 복구 관리소 -->
-    <div class="space-y-6">
-        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
-            <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-database text-brand-500 mr-2"></i>안심 데이터 보관소 🗄️
-            </h3>
-            <div class="space-y-2.5 text-xs">
-                <!-- 풍요로운 데모 데이터 셋업 -->
-                <button onclick="resetToRichDemoData()"
-                    class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
-                    <span>🪄 일주일 데모 데이터 주입</span>
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
-
-                <!-- JSON 내보내기 -->
-                <button onclick="exportAllDataAsJSON()"
-                    class="w-full bg-amber-50 hover:bg-amber-100 text-brand-800 border border-amber-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
-                    <span>💾 데이터 전체 내보내기 (JSON)</span>
-                    <i class="fa-solid fa-file-export"></i>
-                </button>
-
-                <!-- JSON 불러오기 -->
-                <div class="relative w-full">
-                    <input type="file" id="import-json-file" onchange="importDataFromJSON(event)"
-                        accept=".json" class="absolute inset-0 opacity-0 cursor-pointer">
-                    <div
-                        class="w-full bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
-                        <span>📂 백업 파일 불러오기 (JSON)</span>
-                        <i class="fa-solid fa-file-import"></i>
-                    </div>
-                </div>
-
-                <!-- 공장 초기화 -->
-                <button onclick="wipeAllAppData()"
-                    class="w-full bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between mb-2">
-                    <span>🗑️ 보관소 완전 삭제 (초기화)</span>
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-
-                <!-- 보관소 완전 파괴 -->
-                <button onclick="destroyAllLocalStorage()"
-                    class="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 px-4 rounded-xl transition-all flex items-center justify-between shadow-md">
-                    <span>🚨 보관소 완전 파괴 (전체 초기화)</span>
-                    <i class="fa-solid fa-bomb animate-pulse"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- 🚨 시스템 오류 로그 -->
-        <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
-            <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-bug text-rose-500 mr-2 animate-pulse"></i>시스템 오류 로그 🚨
-            </h3>
-            <p class="text-xs text-gray-500 leading-relaxed">
-                앱 실행 중 발생한 예외 상황 및 오류 경고 로그를 안전하게 보관 및 모니터링합니다.
-            </p>
-            <div class="flex gap-2">
-                <button onclick="openErrorLogModal()" class="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold py-2.5 rounded-xl transition-all text-center text-xs">
-                    <i class="fa-solid fa-clipboard-list mr-1"></i>오류 로그 보기
-                </button>
-                <button onclick="clearSystemErrorLogs()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl transition-all text-center text-xs">
-                    <i class="fa-solid fa-trash-can mr-1"></i>로그 비우기
-                </button>
             </div>
         </div>
 

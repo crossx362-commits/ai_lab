@@ -7,7 +7,12 @@ const SOCIAL_TEMPLATE = `
   #social-friends-panel.pn-open{ transform:translateX(0); }
 }
 @media (min-width: 1024px){
-  #social-friends-panel{ position:static; transform:none; width:auto; max-width:none; }
+  /* 피드(중앙)가 수십 화면 분량이라 스크롤 시 양옆 패널이 텅 비던 문제 —
+     sticky + 내부 스크롤로 항상 시야에 유지(2026-07-21) */
+  #social-friends-panel{ position:sticky; top:5rem; align-self:start;
+    max-height:calc(100vh - 6rem); overflow-y:auto; transform:none; width:auto; max-width:none; }
+  #social-right-panel{ position:sticky; top:5rem; align-self:start;
+    max-height:calc(100vh - 6rem); overflow-y:auto; }
 }
 </style>
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
@@ -271,8 +276,9 @@ const SOCIAL_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 4열: 오른쪽 패널 - 동네 핫플레이스 + 나를 좋아하는 이웃 집사 알림 (lg:col-span-1) -->
-    <div class="lg:col-span-1 space-y-6">
+    <!-- 4열: 오른쪽 패널 - 동네 핫플레이스 + 나를 좋아하는 이웃 집사 알림 (lg:col-span-1)
+         id는 위 스타일 블록의 sticky 규칙이 사용 -->
+    <div id="social-right-panel" class="lg:col-span-1 space-y-6">
         <!-- 동네 인기 급상승 플레이스 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h4 class="font-black text-gray-800 text-sm flex items-center">
