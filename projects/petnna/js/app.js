@@ -498,15 +498,32 @@ function toggleAuthForm(mode) {
     }
 }
 
+// 로그인 허용 이메일 게이트(오너 지시 2026-07-21 "나 말고 다른사람 로그인 못하게").
+// _env_.ALLOWED_LOGIN_EMAILS(콤마 구분)가 비어 있으면 제한 없음(다른 배포 호환).
+// 주의: 클라이언트 게이트는 우회 가능 — 진짜 강제는 migrations/restrict_signups_allowlist.sql
+// (auth.users BEFORE INSERT 트리거)을 Supabase 대시보드에서 실행해야 완성된다.
+function _isAllowedLoginEmail(email) {
+    const raw = (window._env_ && window._env_.ALLOWED_LOGIN_EMAILS) || '';
+    const list = raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (list.length === 0) return true;
+    return list.includes(String(email || '').trim().toLowerCase());
+}
+
+function _rejectDisallowedLogin() {
+    if (typeof showToast === 'function') showToast("🔒 초대된 계정만 이용할 수 있어요.");
+}
+
 async function executeSignUp() {
     const nicknameInput = document.getElementById('signup-nickname-input');
     const emailInput = document.getElementById('signup-email-input');
     const passwordInput = document.getElementById('signup-password-input');
-    
+
     if (!nicknameInput || !nicknameInput.value.trim() || !emailInput || !emailInput.value.trim() || !passwordInput || !passwordInput.value.trim()) {
         showToast("모든 회원가입 입력 항목을 입력해 주세요.");
         return;
     }
+
+    if (!_isAllowedLoginEmail(emailInput.value)) { _rejectDisallowedLogin(); return; }
     
     const nickname = nicknameInput.value.trim();
     const email = emailInput.value.trim();
@@ -580,6 +597,9 @@ async function executeLogin(email = "", password = "", bypassVerification = fals
         if (passwordInput) passwordInput.focus();
         return;
     }
+
+    // 허용 이메일 게이트 — 데모 계정(butler) 기본값 폴백 포함 전부 이 게이트를 지난다
+    if (!_isAllowedLoginEmail(finalEmail)) { _rejectDisallowedLogin(); return; }
 
     // 로딩 상태 표시
     let originalBtnHTML = '';

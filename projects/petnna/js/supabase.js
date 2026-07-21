@@ -172,6 +172,19 @@ const SupabaseService = {
 
     _completeOAuthLogin(session) {
         const user = session.user;
+        // 허용 이메일 게이트(오너 지시 2026-07-21) — 소셜(카카오/구글) 로그인은 어떤
+        // 계정으로 올지 미리 알 수 없어 콜백에서 차단하고 세션을 즉시 파기한다.
+        // app.js의 _isAllowedLoginEmail과 동일 규칙(_env_.ALLOWED_LOGIN_EMAILS, 빈 값=제한 없음).
+        const _raw = (window._env_ && window._env_.ALLOWED_LOGIN_EMAILS) || '';
+        const _allow = _raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        if (_allow.length > 0 && !_allow.includes(String(user.email || '').trim().toLowerCase())) {
+            this.client.auth.signOut();
+            try {
+                localStorage.removeItem('petna_is_logged_in');
+            } catch (e) { /* 무시 */ }
+            if (typeof showToast === 'function') showToast("🔒 초대된 계정만 이용할 수 있어요.");
+            return;
+        }
         const nickname =
             user.user_metadata?.full_name ||
             user.user_metadata?.name ||
