@@ -343,7 +343,25 @@ function escapeHtml(str) {
 }
 
 function switchTab(tabName) {
+    _countTabView(tabName);
     AppRouter.switchTab(tabName);
+}
+
+// 경량 탭뷰 계측(2026-07-21 회의 결정) — 외부 analytics 없이 localStorage 카운터만.
+// 탭 우선순위 재정렬(조화도 강등)이 정성 판단이었어서, 2주 축적 후 실데이터로
+// 2차 재정렬을 판단하기 위한 근거 수집. 날짜별 {tab: count} 구조라 기간 필터 가능.
+// 조회: JSON.parse(localStorage.getItem('petna_tab_views'))
+function _countTabView(tabName) {
+    try {
+        const all = JSON.parse(localStorage.getItem('petna_tab_views') || '{}');
+        const day = new Date().toISOString().split('T')[0];
+        if (!all[day]) all[day] = {};
+        all[day][tabName] = (all[day][tabName] || 0) + 1;
+        // 60일 초과 이력은 정리(무한 증식 방지)
+        const days = Object.keys(all).sort();
+        while (days.length > 60) delete all[days.shift()];
+        localStorage.setItem('petna_tab_views', JSON.stringify(all));
+    } catch (e) { /* 저장 불가 환경 — 계측 생략, 앱 동작 무해 */ }
 }
 
 // 페이지 벗어날 때 확인창 표시 (비활성화됨)
