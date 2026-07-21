@@ -48,9 +48,12 @@
 
         // 클릭은 위젯마다 내부 마크업이 달라 위임 리스너 하나로 처리 —
         // 각 렌더 함수 내부를 건드리지 않는 wrapper-only 계측(오늘 UI 정리와 동일 원칙).
-        if (!group._petnaClickBound) {
-            group._petnaClickBound = true;
-            group.addEventListener('click', (ev) => {
+        // 위임은 탭 전체에 바인딩: 칼로리·식단·병원비 위젯이 우측 레일 과밀 해소로
+        // 왼쪽 컬럼으로 이동(2026-07-21)해 그룹 밖에 있어도 계측이 유지되도록.
+        const tab = document.getElementById('tab-health') || group;
+        if (!tab._petnaClickBound) {
+            tab._petnaClickBound = true;
+            tab.addEventListener('click', (ev) => {
                 const host = CARE_WIDGET_IDS
                     .map((id) => document.getElementById(id))
                     .find((el) => el && el.contains(ev.target));

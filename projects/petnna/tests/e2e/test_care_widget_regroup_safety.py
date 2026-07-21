@@ -36,15 +36,16 @@ _MYPET_CARD_CHILDREN = [
 ]
 
 # 건강 '케어 위젯' 라벨과 한 그룹으로 묶여야 하는 케어 위젯 호스트들
+# (칼로리·식단·병원비는 우측 레일 과밀 해소로 왼쪽 컬럼 이동 — 2026-07-21, 그룹 검증 대상 제외)
 _HEALTH_CARE_WIDGETS = [
     "preventive-care-dashboard",
     "med-adherence-tracker",
     "qol-checkin-widget",
     "bcs-wizard-widget",
-    "calorie-tracker-widget",
-    "diet-recommend-widget",
-    "vet-cost-board-widget",
 ]
+
+# 왼쪽 컬럼으로 이동한 위젯 — 그룹 밖이어도 반드시 존재·렌더돼야 한다
+_MOVED_WIDGETS = ["calorie-tracker-widget", "diet-recommend-widget", "vet-cost-board-widget"]
 
 
 def run(page, base_url):
@@ -120,3 +121,15 @@ def run(page, base_url):
     assert b.get("group"), "'케어 위젯' 라벨을 감싸는 그룹 컨테이너(.space-y-2)가 없음"
     assert b["missing"] == [], \
         f"다음 케어 위젯 호스트가 '케어 위젯' 그룹 밖으로 빠짐: {b['missing']}"
+
+    # === Part C. 왼쪽 컬럼으로 이동한 위젯(칼로리·식단·병원비)은 그룹 밖에서도 렌더돼야 한다 ===
+    moved = page.evaluate(
+        """(ids) => ids.map(id => {
+            const el = document.getElementById(id);
+            return { id, exists: !!el, filled: el ? el.innerHTML.trim().length > 0 : false };
+        })""",
+        _MOVED_WIDGETS,
+    )
+    for m in moved:
+        assert m["exists"], f"이동한 위젯 {m['id']}가 DOM에서 사라짐 (재배치 회귀)"
+        assert m["filled"], f"이동한 위젯 {m['id']}가 렌더되지 않음 (renderHealthTab 배선 확인)"

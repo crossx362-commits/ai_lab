@@ -126,6 +126,110 @@ const HEALTH_TEMPLATE = `
         <div id="health-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
     </div>
 
+    <!-- 🍖 영양 관리 섹션 -->
+    <div class="card-modern p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🍖</span>
+                <div>
+                    <h3 class="text-base font-bold text-gray-900">영양 관리</h3>
+                    <p class="text-[10px] text-gray-500">식사 · 시간 · 음수</p>
+                </div>
+            </div>
+            <button onclick="toggleMealForm(true)" class="btn-modern bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-xs">
+                <i class="fa-solid fa-plus mr-1"></i>기록
+            </button>
+        </div>
+
+        <!-- 탭 버튼 (밥먹/시간/음수) -->
+        <div class="flex gap-2 mb-3 p-1 bg-gray-100 rounded-xl">
+            <button id="meal-tab-food" onclick="switchMealTab('food')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all bg-white text-amber-600 shadow-sm">
+                🍽️ 밥먹
+            </button>
+            <button id="meal-tab-time" onclick="switchMealTab('time')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
+                ⏰ 시간
+            </button>
+            <button id="meal-tab-water" onclick="switchMealTab('water')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
+                💧 음수
+            </button>
+        </div>
+
+        <!-- 기록 추가 폼 -->
+        <div id="meal-form" class="hidden card-modern bg-amber-50/50 p-3 space-y-2 mb-3">
+            <div class="flex items-center gap-2 text-amber-800 font-bold text-[10px]">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>새로운 기록 추가</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <select id="meal-type" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
+                    <option value="아침">🌅 아침 밥</option>
+                    <option value="점심">☀️ 점심 밥</option>
+                    <option value="저녁">🌙 저녁 밥</option>
+                    <option value="간식">🍖 간식 공급</option>
+                </select>
+                <input type="time" id="meal-time" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
+            </div>
+            <input type="text" id="meal-notes" placeholder="사료명, 양 (예: 연어 습식 80g)"
+                class="w-full text-[11px] border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all">
+            <div class="flex gap-2 text-xs">
+                <button onclick="toggleMealForm(false)" class="flex-1 btn-modern bg-gray-100 hover:bg-gray-200 text-gray-700 py-2">취소</button>
+                <button onclick="saveMealRecord()" class="flex-1 btn-modern bg-amber-500 hover:bg-amber-600 text-white py-2">저장하기</button>
+            </div>
+        </div>
+
+        <!-- 탭 컨텐츠 -->
+        <div id="meal-content-food" class="meal-tab-content">
+            <div id="meal-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
+        </div>
+        <div id="meal-content-time" class="meal-tab-content hidden">
+            <div id="meal-timeline" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
+        </div>
+        <div id="meal-content-water" class="meal-tab-content hidden">
+            <div class="p-3 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-600">오늘 음수량</span>
+                    <span class="text-lg font-black text-sky-600" id="health-today-water-tab">-- ml</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2.5">
+                    <div id="water-progress-bar" class="bg-gradient-to-r from-sky-400 to-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-400">
+                    <span>0ml</span>
+                    <span id="water-goal-label" class="font-semibold text-sky-500">목표: -- ml</span>
+                    <span id="water-goal-max">--ml</span>
+                </div>
+                <p class="text-[10px] text-gray-400 text-center">체중 기반 권장 음수량 (50ml/kg)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🍽️ 일일 급식·칼로리 트래커 + 🍚 맞춤 식단 추천 (케어위젯 영양 그룹에서 이동, 2026-07-21) -->
+    <div id="calorie-tracker-widget"></div>
+    <div id="diet-recommend-widget"></div>
+
+    <!-- 📔 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
+    <div class="card-modern overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
+            </h2>
+            <div class="flex items-center gap-1.5">
+                <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
+                    <i class="fa-solid fa-id-card mr-1"></i>응급·여행 카드
+                </button>
+                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
+                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
+                </button>
+            </div>
+        </div>
+        <div class="px-5 py-4">
+            <div id="medical-records-timeline"></div>
+        </div>
+    </div>
+
+    <!-- 🏥 병원비 제보·비교 보드 (케어위젯 비용 그룹에서 이동 — 건강수첩과 짝, 2026-07-21) -->
+    <div id="vet-cost-board-widget"></div>
+
     <!-- 🤖 AI 기능 — 흩어진 카드 4장 + 안내 카드를 한 카드 안 타일로 병합(2026-07-19) -->
     <div class="card-modern p-5 space-y-4">
         <div class="flex items-center gap-3">
@@ -285,21 +389,9 @@ const HEALTH_TEMPLATE = `
                 <div id="bcs-wizard-widget"></div>
             </div>
 
-            <!-- 영양 -->
-            <div data-care-group class="space-y-2 pt-4 border-t border-gray-100">
-                <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">영양</span>
-                <!-- 🍽️ 일일 급식·칼로리 트래커 -->
-                <div id="calorie-tracker-widget"></div>
-                <!-- 🍚 맞춤 식단·급여량 추천 카드 (체형·체중·활동량 기반) -->
-                <div id="diet-recommend-widget"></div>
-            </div>
 
-            <!-- 비용 -->
-            <div data-care-group class="space-y-2 pt-4 border-t border-gray-100">
-                <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">비용</span>
-                <!-- 🏥 병원비 제보·비교 보드 -->
-                <div id="vet-cost-board-widget"></div>
-            </div>
+            <!-- 영양(칼로리·식단)·비용(병원비) 그룹은 우측 레일 과밀 해소를 위해
+                 왼쪽 컬럼(영양 관리·건강수첩 옆)으로 이동 — 2026-07-21 -->
         </div>
 
         <!-- 📊 월간 종합 리포트 -->
@@ -341,25 +433,6 @@ const HEALTH_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 📔 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
-        <div class="card-modern overflow-hidden">
-            <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-                <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
-                </h2>
-                <div class="flex items-center gap-1.5">
-                    <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
-                        <i class="fa-solid fa-id-card mr-1"></i>응급·여행 카드
-                    </button>
-                    <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
-                        <i class="fa-solid fa-plus mr-1"></i>기록 추가
-                    </button>
-                </div>
-            </div>
-            <div class="px-5 py-4">
-                <div id="medical-records-timeline"></div>
-            </div>
-        </div>
 
         <!-- 돌봄 스케줄러 📅 -->
         <div class="card-modern p-5 space-y-4">
@@ -415,82 +488,6 @@ const HEALTH_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 🍖 영양 관리 섹션 -->
-        <div class="card-modern p-5">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                    <span class="text-3xl">🍖</span>
-                    <div>
-                        <h3 class="text-base font-bold text-gray-900">영양 관리</h3>
-                        <p class="text-[10px] text-gray-500">식사 · 시간 · 음수</p>
-                    </div>
-                </div>
-                <button onclick="toggleMealForm(true)" class="btn-modern bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 text-xs">
-                    <i class="fa-solid fa-plus mr-1"></i>기록
-                </button>
-            </div>
-
-            <!-- 탭 버튼 (밥먹/시간/음수) -->
-            <div class="flex gap-2 mb-3 p-1 bg-gray-100 rounded-xl">
-                <button id="meal-tab-food" onclick="switchMealTab('food')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all bg-white text-amber-600 shadow-sm">
-                    🍽️ 밥먹
-                </button>
-                <button id="meal-tab-time" onclick="switchMealTab('time')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
-                    ⏰ 시간
-                </button>
-                <button id="meal-tab-water" onclick="switchMealTab('water')" class="flex-1 py-2 rounded-lg font-bold text-xs transition-all text-gray-500 hover:text-gray-700">
-                    💧 음수
-                </button>
-            </div>
-
-            <!-- 기록 추가 폼 -->
-            <div id="meal-form" class="hidden card-modern bg-amber-50/50 p-3 space-y-2 mb-3">
-                <div class="flex items-center gap-2 text-amber-800 font-bold text-[10px]">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span>새로운 기록 추가</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <select id="meal-type" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
-                        <option value="아침">🌅 아침 밥</option>
-                        <option value="점심">☀️ 점심 밥</option>
-                        <option value="저녁">🌙 저녁 밥</option>
-                        <option value="간식">🍖 간식 공급</option>
-                    </select>
-                    <input type="time" id="meal-time" class="border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all text-[11px]">
-                </div>
-                <input type="text" id="meal-notes" placeholder="사료명, 양 (예: 연어 습식 80g)"
-                    class="w-full text-[11px] border-2 border-amber-200 rounded-xl p-2 outline-none bg-white font-medium focus:border-amber-400 transition-all">
-                <div class="flex gap-2 text-xs">
-                    <button onclick="toggleMealForm(false)" class="flex-1 btn-modern bg-gray-100 hover:bg-gray-200 text-gray-700 py-2">취소</button>
-                    <button onclick="saveMealRecord()" class="flex-1 btn-modern bg-amber-500 hover:bg-amber-600 text-white py-2">저장하기</button>
-                </div>
-            </div>
-
-            <!-- 탭 컨텐츠 -->
-            <div id="meal-content-food" class="meal-tab-content">
-                <div id="meal-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
-            </div>
-            <div id="meal-content-time" class="meal-tab-content hidden">
-                <div id="meal-timeline" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
-            </div>
-            <div id="meal-content-water" class="meal-tab-content hidden">
-                <div class="p-3 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-gray-600">오늘 음수량</span>
-                        <span class="text-lg font-black text-sky-600" id="health-today-water-tab">-- ml</span>
-                    </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2.5">
-                        <div id="water-progress-bar" class="bg-gradient-to-r from-sky-400 to-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div class="flex justify-between text-[10px] text-gray-400">
-                        <span>0ml</span>
-                        <span id="water-goal-label" class="font-semibold text-sky-500">목표: -- ml</span>
-                        <span id="water-goal-max">--ml</span>
-                    </div>
-                    <p class="text-[10px] text-gray-400 text-center">체중 기반 권장 음수량 (50ml/kg)</p>
-                </div>
-            </div>
-        </div>
 
     </div>
     <!-- /오른쪽 컬럼 끝 -->
