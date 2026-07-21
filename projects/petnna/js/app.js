@@ -963,7 +963,7 @@ function updateSocialLinkButtons() {
                 btn.className = "py-2 rounded-xl border-2 border-brand-500 bg-brand-50 font-bold text-center flex items-center justify-center gap-1 text-brand-700 text-[11px] transition-all";
                 btn.innerHTML = `<i class="fa-solid fa-circle-check text-brand-600"></i>연동 완료`;
             } else {
-                btn.className = "py-2 rounded-xl border border-gray-200 bg-white font-bold text-center flex items-center justify-center gap-1 hover:bg-gray-50/20 text-gray-700 text-[11px] transition-all";
+                btn.className = "py-2 rounded-xl border border-gray-300 bg-white font-bold text-center flex items-center justify-center gap-1 hover:bg-gray-50/20 text-gray-700 text-[11px] transition-all";
                 if (p === 'kakao') btn.innerHTML = `<i class="fa-solid fa-comment text-yellow-600"></i>카카오 연동`;
                 if (p === 'naver') btn.innerHTML = `<i class="fa-solid fa-n text-emerald-600"></i>네이버 연동`;
                 if (p === 'google') btn.innerHTML = `<i class="fa-brands fa-google text-rose-600"></i>구글 연동`;

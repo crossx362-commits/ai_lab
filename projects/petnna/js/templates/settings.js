@@ -33,8 +33,8 @@ const SETTINGS_TEMPLATE = `
                 <div class="space-y-1.5">
                     <span class="block font-bold text-gray-400 text-[10px] uppercase">간편 로그인 SNS 연동</span>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="toggleSocialLoginLink('kakao')" id="link-btn-kakao" class="py-2 rounded-xl border border-gray-200 bg-white font-bold text-center flex items-center justify-center gap-1 hover:bg-yellow-50/20"><i class="fa-solid fa-comment text-yellow-600"></i>카카오 연동</button>
-                        <button onclick="toggleSocialLoginLink('google')" id="link-btn-google" class="py-2 rounded-xl border border-gray-200 bg-white font-bold text-center flex items-center justify-center gap-1 hover:bg-rose-50/20"><i class="fa-brands fa-google text-rose-600"></i>구글 연동</button>
+                        <button onclick="toggleSocialLoginLink('kakao')" id="link-btn-kakao" class="py-2 rounded-xl border border-gray-300 bg-white font-bold text-center flex items-center justify-center gap-1 hover:bg-yellow-50/20"><i class="fa-solid fa-comment text-yellow-600"></i>카카오 연동</button>
+                        <button onclick="toggleSocialLoginLink('google')" id="link-btn-google" class="py-2 rounded-xl border border-gray-300 bg-white font-bold text-center flex items-center justify-center gap-1 hover:bg-rose-50/20"><i class="fa-brands fa-google text-rose-600"></i>구글 연동</button>
                     </div>
                 </div>
                 <div class="flex gap-2">
