@@ -43,3 +43,26 @@ def run(page, base_url):
 
     # 부트스트랩 중 치명적 JS 예외가 없어야 한다.
     assert not js_errors, f"초기 로딩 중 미처리 JS 예외 발생: {js_errors[:3]}"
+
+    # === 모바일 하단 네비 순서·개수 고정 (2026-07-21 회의 결정) ===
+    # 로그인 상태로 재진입해 하단 네비가 결정된 6칸 구성·순서와 일치하는지 검증.
+    # 데스크톱 탭 재정렬(조화도 유틸 강등)이 모바일 6칸(조화도·설정 제외)을
+    # 건드리지 않았는지 회귀로 잡는다.
+    import json as _json
+    _pet = {"id": 990721, "name": "네비견", "breed": "믹스", "type": "dog",
+            "imageUrl": "", "age": "2살", "weight": "8", "gender": "남아",
+            "personality": "온순", "hunger": 70, "happy": 80}
+    page.add_init_script(
+        "localStorage.setItem('petna_is_logged_in','true');"
+        "localStorage.setItem('petna_user_email','e2e_mobilenav@petna.co.kr');"
+        "localStorage.setItem('petna_pets', %s);" % _json.dumps(_json.dumps([_pet]))
+    )
+    page.goto(base_url)
+    page.wait_for_selector("#mobile-navbar", state="visible", timeout=15000)
+    nav_tabs = page.evaluate(
+        "() => [...document.querySelectorAll('#mobile-navbar .mobile-tab-btn')]"
+        ".map(b => b.getAttribute('data-tab'))"
+    )
+    expected = ["mypet", "health", "walk", "social", "album", "shop"]
+    assert nav_tabs == expected, \
+        f"모바일 하단 네비 구성/순서 회귀: {nav_tabs} (기대: {expected})"
