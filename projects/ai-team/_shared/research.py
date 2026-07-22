@@ -3,8 +3,8 @@
 """공통 HTTP·노션 기록 모듈.
 
 주식·코인 조사팀(행크/유나/레온/마켓데스크/소미) 전용 함수는 도메인 삭제(2026-07-08)와
-함께 제거됨 — 필요해지면 git 이력에서 복구 가능. 현재 살아있는 소비처: morning_brief.py
-(load_market_brief), reports_manager.py(notion_page), notify.py/notion_publish.py(notion_report).
+함께 제거됨 — 필요해지면 git 이력에서 복구 가능. 현재 살아있는 소비처:
+reports_manager.py(notion_page), notify.py/notion_publish.py(notion_report).
 """
 
 from __future__ import annotations
@@ -12,11 +12,6 @@ from __future__ import annotations
 import json
 import os
 import urllib.request
-from pathlib import Path
-
-_HERE = Path(__file__).resolve().parent
-PROJECT_ROOT = _HERE.parents[2]              # _shared → ai-team → projects → ai_lab
-RESEARCH_DIR = PROJECT_ROOT / "output" / "research"
 
 
 # ── HTTP ────────────────────────────────────────────────────────────────────
@@ -28,15 +23,6 @@ def _get(url: str, timeout: int = 12) -> str:
 
 def get_json(url: str, timeout: int = 12) -> dict:
     return json.loads(_get(url, timeout))
-
-
-def load_market_brief() -> dict:
-    """마켓데스크 종합 브리프. 데스크 삭제(2026-07-08) 후로는 항상 {} — 소비처는 폴백 처리."""
-    f = RESEARCH_DIR / "market_brief.json"
-    try:
-        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
-    except Exception:
-        return {}
 
 
 # ── 노션 기록 ───────────────────────────────────────────────────────────────

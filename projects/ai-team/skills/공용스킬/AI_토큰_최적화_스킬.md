@@ -6,8 +6,8 @@
 ---
 
 ## ✅ 적용 대상
-- **필수**: 소미, 영숙, 예원 (API 사용 에이전트)
-- **권장**: 마켓데스크·행크·유나·레온·한별 포함 모든 에이전트
+- **필수**: 영숙, 예원 (API 사용 에이전트)
+- **권장**: 봄이·수리·테오·백호·미오·나무 포함 모든 에이전트
 
 ---
 
@@ -18,22 +18,22 @@
 #### ❌ 잘못된 예
 ```python
 system = """
-# 소미 분석가 완전 가이드
+# 봄이 QA 순찰 완전 가이드
 
 ## 소개
-소미는 세계 최고의 주식 분석가로서 다음과 같은 역할을 수행합니다:
-- 국내주식 수급·숏커버링 분석
-- 시장 국면·이슈 임팩트 모니터링
+봄이는 펫나 앱의 QA 담당으로서 다음과 같은 역할을 수행합니다:
+- 콘솔·JS 오류, 404, 깨진 이미지 탐지
+- 접근성·가로스크롤·SEO 점검
 [30KB의 장황한 설명...]
 """
 ```
 
 #### ✅ 올바른 예
 ```python
-system = """AI 트레이더. 규칙:
-1. FOMC/CPI 24h전후→HOLD
-2. 김프는 단독 SELL/HOLD 금지
-3. 가격↓+OBV↑→BUY
+system = """QA 순찰 AI. 규칙:
+1. 콘솔 오류 발견→P1 즉시 알림
+2. 404/깨진 이미지→P2
+3. 접근성 위반→P3
 [핵심만 7개]"""
 ```
 
@@ -73,20 +73,20 @@ system = """규칙 7개
 #### ❌ 잘못된 예
 ```python
 prompt = f"""
-현재 비트코인 시세는 {price}원입니다.
-현재 추세는 {trend}입니다.
-RSI 지표 값은 {rsi}입니다.
-거래량은 {volume}입니다.
+반려동물의 최근 체중은 {weight}kg입니다.
+활동량 추세는 {activity_trend}입니다.
+배변 이상 징후 점수는 {stool_score}입니다.
+식욕 변화율은 {appetite_pct}%입니다.
 """
 ```
 
 #### ✅ 올바른 예
 ```python
 # 구분자 압축
-prompt = f"BTC:{price}|{trend}|RSI:{rsi}|Vol:{volume}"
+prompt = f"체중:{weight}kg|활동:{activity_trend}|배변:{stool_score}|식욕:{appetite_pct}%"
 
 # 또는 JSON 압축
-prompt = json.dumps({"c":price,"t":trend,"r":rsi,"v":volume})
+prompt = json.dumps({"w":weight,"a":activity_trend,"s":stool_score,"f":appetite_pct})
 ```
 
 ---
@@ -134,14 +134,14 @@ config = types.GenerateContentConfig(
 
 ```python
 system = """분석 단계:
-1. 추세는? (상승/하락/횡보)
-2. 거래량은? (증가/감소)
-3. 지표는? (과열/정상/과매도)
-4. 결론: BUY/SELL/HOLD + 이유"""
+1. 증상 패턴은? (급성/만성/정상범위)
+2. 최근 변화 추세는? (악화/개선/유지)
+3. 위험도는? (높음/보통/낮음)
+4. 결론: 병원 상담 권고/경과 관찰/정상 + 이유"""
 ```
 
 **적용 대상:**
-- 중요한 판단 (투자, 의료, 법률)
+- 중요한 판단 (건강 분석, 법률)
 - 복잡한 분석
 - 다단계 추론 필요 시
 
@@ -149,34 +149,33 @@ system = """분석 단계:
 
 ## 📊 통합 적용 템플릿 (2026-06-17 최신)
 
-### 소미 분석가 예시 (점수 기반)
+### 봄이 QA 심각도 판정 예시 (점수 기반)
 
 ```python
-def analyze_stock(ticker, current_price, current_trend, indicators):
+def analyze_qa_issue(page, issue_type, signals):
     # 1. 공통 + 특화 프롬프트 조합
-    common = get_common_analyst_prompt()  # 공통 원칙 ~500 토큰
-    somi_specific = """
---- 소미 특화 ---
-성향: 수급 기반 보수적 판단
+    common = get_common_judge_prompt()  # 공통 원칙 ~500 토큰
+    bomi_specific = """
+--- 봄이 특화 ---
+성향: 사용자 영향 기반 보수적 판단
 점수 → 판단:
-60~100: 분할 관찰 가능
-40~59: 관찰 우선
-0~39: 신규 매수 보류"""
+60~100: P0/P1 즉시 알림
+40~59: P2 백로그 적재
+0~39: P3 관찰"""
     
-    system = common + somi_specific  # 총 ~700 토큰
+    system = common + bomi_specific  # 총 ~700 토큰
     
     # 2. 점수 계산 (코드가 수행)
-    scores = calculate_trade_score(indicators, current_trend)
+    scores = calculate_severity_score(signals, issue_type)
     
     # 3. 간소화된 입력 (LLM은 판단만)
-    prompt = f"""종목: {ticker}
-가격: {current_price}원
-추세: {current_trend}
+    prompt = f"""페이지: {page}
+이슈유형: {issue_type}
 총점: {scores['total']}/100
-RSI: {indicators['RSI']}
-OBV: {indicators['OBV']}
-리스크상태: 정상
-최근HOLD: {consecutive_holds}회"""
+콘솔오류: {signals['console_errors']}
+영향탭수: {signals['affected_tabs']}
+회귀여부: {signals['is_regression']}
+최근발견: {recent_occurrences}회"""
     
     # 4. API 호출: 구조화 + 토큰 제한
     response = lm_chat(
@@ -189,14 +188,14 @@ OBV: {indicators['OBV']}
     
     return response
 
-def calculate_trade_score(indicators: dict, current_trend: str) -> dict:
+def calculate_severity_score(signals: dict, issue_type: str) -> dict:
     """점수 계산은 코드가 수행 (일관성 보장)"""
     score = 0
-    if "상승" in current_trend: score += 20
-    if indicators.get('VolumeSpike') == '급증': score += 20
-    if indicators.get('StochRSI_상태') == '골든크로스': score += 20
+    if signals.get('console_errors'): score += 20
+    if signals.get('is_regression'): score += 20
+    if signals.get('affected_tabs', 0) >= 2: score += 20
     # ...
-    return {'total': score, 'trend': 20, 'volume': 20, ...}
+    return {'total': score, 'console': 20, 'regression': 20, ...}
 ```
 
 ---
@@ -251,33 +250,33 @@ system = """비서 영숙. 규칙:
 3. 구동→dispatch()"""
 ```
 
-### 소미/마켓데스크 (공통 구조)
+### 봄이/백호 (공통 구조)
 ```python
 # 공통 프롬프트 함수
-def get_common_analyst_prompt():
+def get_common_judge_prompt():
     """공통 원칙 ~500 토큰"""
-    return """너는 국내주식 분석 최종 판단 AI다.
-목표는 제한된 토큰으로 기대값이 양수인 제안을 반복하는 것이다.
+    return """너는 펫나 QA 최종 판단 AI다.
+목표는 제한된 토큰으로 정확한 심각도 판정을 반복하는 것이다.
 ...
 출력 JSON:
-{"verdict":"buy|hold|avoid","score":0-100,"confidence":0-100,"reason":"40자이내"}"""
+{"verdict":"p0|p1|p2|p3","score":0-100,"confidence":0-100,"reason":"40자이내"}"""
 
-# 소미 특화 (매수 제안)
-def load_somi_prompt():
-    common = get_common_analyst_prompt()
+# 봄이 특화 (프론트 QA)
+def load_bomi_prompt():
+    common = get_common_judge_prompt()
     return common + """
---- 소미 특화 ---
-성향: 수급·손익비 기반 보수적
-60↑ 분할 관찰 / 40↑ 관찰 우선 / 미만 보류
+--- 봄이 특화 ---
+성향: 사용자 영향 기반 보수적
+60↑ 즉시 알림 / 40↑ 백로그 적재 / 미만 관찰
 ..."""
 
-# 마켓데스크 특화 (이슈 임팩트)
-def load_marketdesk_prompt():
-    common = get_common_analyst_prompt()
+# 백호 특화 (백엔드 계약 감사)
+def load_baekho_prompt():
+    common = get_common_judge_prompt()
     return common + """
---- 마켓데스크 특화 ---
-대상: 지수·섹터·뉴스 이슈
-issue_impact는 json_mode 고정 (하네스 가드레일)
+--- 백호 특화 ---
+대상: Supabase 스키마·RLS vs 프론트 쿼리 계약
+읽기 전용, json_mode 고정 (하네스 가드레일)
 ..."""
 ```
 

@@ -170,11 +170,9 @@ with ProcessLock("some_daemon_name"):
 
 ### research.py — HTTP + Notion Helpers
 Trimmed 2026-07-08 to only the functions with live consumers: `_get`/`get_json` (HTTP),
-`load_market_brief()` (always returns `{}` now — no producer since 마켓데스크 was removed;
-kept for `morning_brief.py`'s fallback path), `notion_page()`/`notion_report()` (used by
-`reports_manager.py`, `notion_publish.py`, `notify.py`). Region/watchlist/DART/fx/index-quote
-functions were removed — no consumers remain; restore from git history if a research agent
-returns.
+`notion_page()`/`notion_report()` (used by `reports_manager.py`, `notion_publish.py`, `notify.py`).
+Region/watchlist/DART/fx/index-quote/market-brief functions were removed — no consumers remain;
+restore from git history if a research agent returns.
 
 ### registry.py — Agent Registry (SSOT)
 - Loads from `output/cache/agent_registry.json`, merged with dynamic discovery of
