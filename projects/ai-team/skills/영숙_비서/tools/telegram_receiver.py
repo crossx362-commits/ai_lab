@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import os
 import subprocess
@@ -77,6 +78,27 @@ TOOLS = [t["schema"] for t in _ALL_BOT_TOOLS]
 AVAILABLE_FUNCTIONS = {t["schema"]["function"]["name"]: t["handler"] for t in _ALL_BOT_TOOLS}
 
 
+def _adapt_args(fn, args: dict | None) -> dict:
+    """LLM이 만든 인자 키가 핸들러 파라미터명과 어긋나도 안전하게 매핑한다.
+    (예: dispatch_to_yewon 파라미터는 text지만 도구 설명이 '작업 요청'이라 LLM이 task로 냄 —
+    2026-07-22 예원 위임 실패의 원인.) 정확히 일치하는 키만 남기고, 아직 안 채워진 파라미터가
+    있으면 매칭 안 된 남은 값을 정의 순서대로 채워 이름 흔들림을 흡수한다. **kwargs 함수는
+    그대로 통과, 함수가 못 받는 잉여 키는 조용히 버려 TypeError(unexpected keyword)를 막는다."""
+    args = dict(args or {})
+    params = inspect.signature(fn).parameters
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return args
+    named = {k: v for k, v in args.items() if k in params}
+    unfilled = [n for n, p in params.items()
+                if n not in named
+                and p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                               inspect.Parameter.KEYWORD_ONLY)]
+    leftover = [v for k, v in args.items() if k not in params]
+    for name, val in zip(unfilled, leftover):
+        named[name] = val
+    return named
+
+
 def web_search(query: str) -> str:
     """검색 요청 폴백. 실제 검색 도구가 없으면 안내만 반환합니다."""
     return f"검색 기능이 아직 연결되지 않았습니다. 요청: {query}"
@@ -115,7 +137,7 @@ def route_message(text: str) -> str:
     if fn:
         bc.log(f"Calling {tool} with {sel.get('args')}")
         try:
-            result = fn(**(sel.get("args") or {}))
+            result = fn(**_adapt_args(fn, sel.get("args")))
         except Exception as e:
             result = f"도구 실행 실패: {e}"
         ans = llm.text(
