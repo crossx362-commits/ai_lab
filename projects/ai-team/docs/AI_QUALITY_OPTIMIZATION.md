@@ -11,19 +11,19 @@
 
 **적용 전:**
 ```python
-system = """너는 트레이더다. BUY/SELL/HOLD를 결정해라."""
+system = """너는 QA 판정 AI다. P0/P1/P2/P3를 결정해라."""
 ```
 
 **적용 후:**
 ```python
-system = """너는 트레이더다.
+system = """너는 QA 판정 AI다.
 
 예시:
-입력: BTC 95M원|상승추세|RSI:75|OBV상승
-출력: {"decision":"BUY","percentage":30,"reason":"OBV 다이버전스 매집"}
+입력: 콘솔오류있음|영향탭2개|회귀아님|접근성정상
+출력: {"decision":"P1","score":70,"reason":"콘솔 오류 + 다중 탭 영향"}
 
-입력: BTC 95M원|하락추세|RSI:85|OBV하락
-출력: {"decision":"HOLD","percentage":0,"reason":"과열 + OBV 분산"}
+입력: 콘솔오류없음|영향탭1개|회귀아님|접근성경미
+출력: {"decision":"P3","score":20,"reason":"경미한 접근성 이슈만"}
 
 이제 분석:"""
 ```
@@ -40,22 +40,22 @@ system = """너는 트레이더다.
 
 **일반 프롬프트:**
 ```python
-"BTC 매수/매도/관망 결정해줘"
+"이 QA 이슈 심각도 판정해줘"
 ```
 
 **CoT 적용:**
 ```python
-"""BTC 분석:
-1. 현재 추세는? (상승/하락/횡보)
-2. 거래량은 어떤가? (증가/감소)
-3. 기술지표는? (과열/정상/과매도)
-4. 결론: BUY/SELL/HOLD + 이유"""
+"""QA 이슈 분석:
+1. 콘솔 오류가 있는가? (있음/없음)
+2. 영향 범위는? (전체/일부 탭)
+3. 회귀인가? (신규/기존)
+4. 결론: P0/P1/P2/P3 + 이유"""
 ```
 
 **효과:**
 - LLM이 단계별로 사고 → 더 정확한 결론
 - 토큰 약간 증가하지만 품질 크게 향상
-- 투자 판단 같은 중요 작업에 필수
+- 우선순위 판정 같은 중요 작업에 필수
 
 ---
 
@@ -66,13 +66,13 @@ system = """너는 트레이더다.
 ```python
 from pydantic import BaseModel
 
-class TradeDecision(BaseModel):
-    decision: str  # BUY/SELL/HOLD
-    percentage: int  # 0-100
+class QaVerdict(BaseModel):
+    decision: str  # P0/P1/P2/P3
+    score: int  # 0-100
     reason: str  # 1문장
 
 config = types.GenerateContentConfig(
-    response_schema=TradeDecision,
+    response_schema=QaVerdict,
     response_mime_type="application/json"
 )
 ```
@@ -90,18 +90,18 @@ config = types.GenerateContentConfig(
 **적용 전:**
 ```python
 prompt = f"""
-현재 비트코인 시세는 {price}원입니다.
-현재 추세는 {trend}입니다.
-RSI 지표는 {rsi}입니다.
-OBV 지표는 {obv}입니다.
-매수/매도를 결정해주세요.
+페이지: {page}입니다.
+이슈 유형은 {issue_type}입니다.
+콘솔 오류는 {console_errors}건입니다.
+영향받는 탭 수는 {affected_tabs}개입니다.
+심각도를 판정해주세요.
 """
 ```
 
 **적용 후:**
 ```python
 # 구분자 기반 압축
-prompt = f"BTC:{price}|{trend}|RSI:{rsi}|OBV:{obv}→결정?"
+prompt = f"{page}:{issue_type}|오류:{console_errors}|영향탭:{affected_tabs}→판정?"
 ```
 
 **효과:**
@@ -121,20 +121,20 @@ prompt = f"BTC:{price}|{trend}|RSI:{rsi}|OBV:{obv}→결정?"
 
 **적용 전 (8,000 토큰):**
 ```markdown
-# 데이브 트레이더 매뉴얼
+# 봄이 QA 매뉴얼
 ## 1. 소개
-데이브는 세계 최고의 트레이더로...
-## 2. 매크로 분석
-연준의 정책을 분석할 때는...
+봄이는 펫나 앱의 QA 담당으로서...
+## 2. 점검 항목
+콘솔 오류를 분석할 때는...
 [30KB의 상세 설명]
 ```
 
 **적용 후 (500 토큰):**
 ```markdown
-AI 트레이더 데이브. 규칙:
-1. FOMC 전후 24h → HOLD
-2. 김프 15%+ → SELL
-3. OBV↑+가격↓ → BUY
+QA 판정 AI 봄이. 규칙:
+1. 콘솔 오류 → P1
+2. 회귀 발생 → P1
+3. 접근성 위반만 → P3
 [7개 핵심 규칙만]
 ```
 
@@ -150,16 +150,16 @@ AI 트레이더 데이브. 규칙:
 **적용 전:**
 ```python
 # 항상 전체 데이터 전송
-prompt = f"{all_indicators}{all_history}{all_news}..."
+prompt = f"{all_console_logs}{all_screenshots}{all_history}..."
 ```
 
 **적용 후:**
 ```python
 # 상황에 따라 필요한 것만
 if decision_type == "quick":
-    prompt = f"BTC:{price}|{trend}|RSI:{rsi}"
+    prompt = f"{page}:{issue_type}|오류:{console_errors}"
 elif decision_type == "detailed":
-    prompt = f"BTC:{price}|{all_indicators}|{recent_news}"
+    prompt = f"{page}:{issue_type}|{all_console_logs}|{recent_history}"
 ```
 
 **효과:**
@@ -174,7 +174,7 @@ elif decision_type == "detailed":
 
 **용도별 최적값:**
 ```python
-# 정확한 분석/판단 (트레이딩, 데이터 분석)
+# 정확한 분석/판단 (QA 심각도, 데이터 분석)
 temperature = 0.1  # 가장 확률 높은 답만
 
 # 일반 대화 (영숙 챗봇)
@@ -187,7 +187,7 @@ temperature = 0.9  # 다양한 아이디어
 **효과:**
 - 낮은 temperature = 짧고 결정론적
 - 토큰 10-20% 감소
-- 투자 판단은 반드시 0.1 사용
+- 판정 작업은 반드시 0.1 사용
 
 ---
 
@@ -210,15 +210,15 @@ temperature = 0.9  # 다양한 아이디어
 
 ---
 
-## 📊 종합 적용 예시 (데이브 트레이더)
+## 📊 종합 적용 예시 (봄이 QA)
 
 ### Before (12,000 토큰)
 ```python
 system = load_full_manual()  # 8,000 토큰
 prompt = f"""
-현재 비트코인 시세 정보:
-가격: {price}
-추세: {trend}
+현재 QA 점검 정보:
+페이지: {page}
+이슈유형: {issue_type}
 [장황한 설명... 2,000 토큰]
 """
 max_output_tokens = 2000
@@ -228,10 +228,10 @@ temperature = 0.7
 ### After (1,500 토큰)
 ```python
 # 1. System: 핵심만 (500 토큰)
-system = """트레이더. 규칙 7개 + 예시 2개"""
+system = """QA 판정 AI. 규칙 7개 + 예시 2개"""
 
 # 2. Prompt: 압축 (200 토큰)
-prompt = f"BTC:{price}|{trend}|RSI:{rsi}|OBV:{obv}"
+prompt = f"{page}:{issue_type}|오류:{console_errors}|영향탭:{affected_tabs}"
 
 # 3. Output: 제한 (500 토큰)
 max_output_tokens = 500
@@ -240,7 +240,7 @@ max_output_tokens = 500
 temperature = 0.1
 
 # 5. Structured Output
-response_schema = TradeDecision
+response_schema = QaVerdict
 ```
 
 **결과:**

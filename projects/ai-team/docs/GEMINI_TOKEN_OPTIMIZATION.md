@@ -1,7 +1,7 @@
 # Gemini API 토큰 절약 가이드
 
 ## 🎯 현재 문제점
-- **데이브 system instruction**: 31KB (약 8,000 토큰)
+- **비대한 system instruction**: 31KB (약 8,000 토큰)
 - **매 API 호출마다 전송**: 입력 토큰 낭비
 - **Context Caching 시도**: 32,768 토큰 padding → 더 많은 토큰 소비
 - **Free tier 제한**: gemini-2.5-flash 하루 20회만 가능
@@ -12,18 +12,18 @@
 **적용 전:**
 ```python
 # 31KB 전체 로드
-system_instruction = load_system_instruction()  # SKILL.md + indicators_knowledge.md
+system_instruction = load_system_instruction()  # SKILL.md + 전체 참고자료
 ```
 
 **적용 후:**
 ```python
 # 핵심만 요약 (2-3KB)
 system_instruction = """
-너는 AI 트레이더 데이브. 
-- 연준 이벤트 전후 HOLD
-- OBV 다이버전스 매집 신호 포착
-- 호가창 허매수/매도 벽 간파
-- 최종 결정: BUY/SELL/HOLD + 비중 0-100%
+너는 QA 판정 AI 봄이. 
+- 콘솔 오류 즉시 P1 처리
+- 회귀 발생 여부 우선 확인
+- 접근성 위반 패턴 간파
+- 최종 결정: P0/P1/P2/P3 + 확신도 0-100%
 """
 ```
 
@@ -31,10 +31,10 @@ system_instruction = """
 **적용 전:**
 ```python
 prompt = f"""
-현재 시세: {current_price}
-현재 추세: {current_trend}
-보조지표: {json.dumps(indicators, indent=2, ensure_ascii=False)}
-매물대 상위 3구간: {json.dumps(volume_profile, indent=2)}
+현재 페이지: {page}
+이슈 유형: {issue_type}
+상세 신호: {json.dumps(signals, indent=2, ensure_ascii=False)}
+영향받는 탭 상위 3개: {json.dumps(affected_tabs, indent=2)}
 ... (장황한 설명)
 """
 ```
@@ -42,7 +42,7 @@ prompt = f"""
 **적용 후:**
 ```python
 # JSON 압축, 불필요한 설명 제거
-prompt = f"BTC {current_price}원|{current_trend}|OBV:{indicators['OBV']}|RSI:{indicators['RSI']}"
+prompt = f"{page}|{issue_type}|오류:{signals['console_errors']}|탭:{signals['affected_tabs']}"
 ```
 
 ### 3. max_output_tokens 제한
@@ -65,14 +65,14 @@ max_output_tokens=500  # JSON 응답은 500토큰이면 충분
 **해결:**
 ```python
 # Context Caching 완전 비활성화
-# get_dave_context_cache() 함수 사용 중단
+# get_agent_context_cache() 함수 사용 중단
 ```
 
 ### 5. Structured Output 활용
 **JSON mode 대신 Pydantic schema 사용:**
 ```python
 config = types.GenerateContentConfig(
-    response_schema=TradeDecision,  # Pydantic 모델
+    response_schema=QaVerdict,  # Pydantic 모델
     response_mime_type="application/json"
 )
 # → LLM이 정확한 형식만 출력하므로 토큰 절약

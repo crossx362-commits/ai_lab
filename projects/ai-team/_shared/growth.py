@@ -56,7 +56,7 @@ def record(agent: str, *, role: str = "", data: str = "", judgment: str = "",
 
 def add_proposal(agent: str, problem: str, fix: str, effect: str = "",
                  risk: str = "", approval_needed: bool = True) -> None:
-    """개선 제안 보관 — 승인 전 적용 금지. 예원/마켓데스크가 수집해 사용자에 승인 요청."""
+    """개선 제안 보관 — 승인 전 적용 금지. 예원이 수집해 사용자에 승인 요청."""
     try:
         GROWTH_DIR.mkdir(parents=True, exist_ok=True)
         items = list_proposals(unresolved_only=False)
