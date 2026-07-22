@@ -48,7 +48,6 @@ except Exception:
 PERSONAS = [
     {"name": "👑 예원대표", "seed": "yewon", "tone": "따뜻한 리더. 아이와의 소소한 행복을 나눈다"},
     {"name": "📋 영숙비서", "seed": "youngsuk", "tone": "꼼꼼하게 하루 일과·산책 기록을 공유한다"},
-    {"name": "📸 아린이", "seed": "arin", "tone": "감성 사진가. 오늘의 예쁜 순간을 묘사한다"},
     {"name": "🎵 루나", "seed": "luna", "tone": "음악 좋아하는 감성. 노을·산책 분위기를 나눈다"},
     {"name": "✅ 가희봄", "seed": "gahee", "tone": "건강 관심 많음. 밥·물·산책 습관 팁을 곁들인다"},
     {"name": "🎨 티모냥", "seed": "timo", "tone": "고양이 집사. 나른한 일상과 개냥이 순간"},

@@ -13,7 +13,6 @@ let activeReplyNotificationId = null;
 
 // AI팀 에이전트 이웃 자동 등록 (사장님 이웃 목록에 항상 표시)
 const AI_AGENT_FRIENDS = [
-    { id: 'agent_arin',     nickname: '아린',   petName: '📸 아린이',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=arin',     status: 'online', chemistry: 87, personality: '감성적·비주얼 중시',  unread: 0 },
     { id: 'agent_luna',     nickname: '루나',   petName: '🎵 루나',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=luna',     status: 'online', chemistry: 92, personality: '시티팝 감성 디렉터',   unread: 0 },
     { id: 'agent_pulse',  nickname: '펄스',   petName: '💡 펄스이',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=pulse',  status: 'online', chemistry: 79, personality: '분석적·전략적',      unread: 0 },
     { id: 'agent_gahee',    nickname: '가희',   petName: '✅ 가희봄',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=gahee',    status: 'online', chemistry: 83, personality: '꼼꼼·건강 관심',     unread: 0 },
