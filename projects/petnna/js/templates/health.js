@@ -206,6 +206,7 @@ const HEALTH_TEMPLATE = `
     <!-- 🍽️ 일일 급식·칼로리 트래커 + 🍚 맞춤 식단 추천 (케어위젯 영양 그룹에서 이동, 2026-07-21) -->
     <div id="calorie-tracker-widget"></div>
     <div id="diet-recommend-widget"></div>
+    <div id="daily-care-tip-widget"></div>
 
     <!-- 📔 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
     <div class="card-modern overflow-hidden">
