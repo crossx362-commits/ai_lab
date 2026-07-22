@@ -1333,6 +1333,7 @@ function renderWalkChallenge() {
 
 // ── 산책메이트 라이트 (동네 태그 기반 옵트인, 클라이언트 전용) ──────────
 const WALKMATE_STORAGE_KEY = 'petna_walkmate';
+const WALKMATE_TIME_SLOTS = ['아침', '오후', '저녁'];
 
 // 베타 샘플 프로필 — 실제 이웃이 옵트인하기 전까지 매칭 감을 보여주는 예시 데이터
 const WALKMATE_SAMPLE_MATES = [
@@ -1362,11 +1363,17 @@ function renderWalkMate() {
     const state = getWalkMateState();
 
     if (!state.optIn) {
+        const timeOpts = WALKMATE_TIME_SLOTS.map(t =>
+            `<option value="${t}"${state.time === t ? ' selected' : ''}>${t} 산책</option>`).join('');
         box.innerHTML = `
             <div class="space-y-2.5">
                 <input type="text" id="walkmate-dong-input" maxlength="20" value="${(state.dong || '').replace(/"/g, '')}"
                     placeholder="우리 동네 (예: 역삼동)"
                     class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-brand-400 transition-colors">
+                <select id="walkmate-time-input"
+                    class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-brand-400 transition-colors bg-white">
+                    ${timeOpts}
+                </select>
                 <button onclick="optInWalkMate()"
                     class="w-full bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-hand-holding-heart"></i> 함께 산책해요 켜기
@@ -1376,20 +1383,29 @@ function renderWalkMate() {
     }
 
     const dong = state.dong || '';
-    const mates = WALKMATE_SAMPLE_MATES.filter(m => dong && m.dong.includes(dong));
+    const myTime = state.time || '';
+    const mates = WALKMATE_SAMPLE_MATES
+        .filter(m => dong && m.dong.includes(dong))
+        .sort((a, b) => (myTime && b.time === myTime ? 1 : 0) - (myTime && a.time === myTime ? 1 : 0));
     const matesHtml = mates.length
-        ? mates.map(m => `
-            <div class="flex items-center gap-3 p-3 bg-gray-50/80 border border-gray-100 rounded-2xl">
+        ? mates.map(m => {
+            const timeMatch = myTime && m.time === myTime;
+            const timeBadge = timeMatch
+                ? '<span class="text-[9px] font-bold bg-brand-100 text-brand-700 px-1.5 py-0.5 rounded-full ml-1">시간대 일치</span>'
+                : '';
+            return `
+            <div class="flex items-center gap-3 p-3 ${timeMatch ? 'bg-brand-50/70 border-brand-100' : 'bg-gray-50/80 border-gray-100'} border rounded-2xl">
                 <span class="text-2xl leading-none">${m.emoji}</span>
                 <div class="flex-grow min-w-0">
                     <p class="text-xs font-bold text-gray-800 truncate">${m.name} · <span class="text-gray-500 font-semibold">${m.pet}</span></p>
-                    <p class="text-[10px] text-gray-400 font-semibold">📍 ${m.dong} · 주로 ${m.time} 산책</p>
+                    <p class="text-[10px] text-gray-400 font-semibold">📍 ${m.dong} · 주로 ${m.time} 산책${timeBadge}</p>
                 </div>
                 <button onclick="greetWalkMate('${m.name}')"
                     class="shrink-0 text-[10px] bg-white hover:bg-brand-50 border border-brand-200 text-brand-700 font-bold py-1.5 px-3 rounded-xl shadow-sm transition-all">
                     <i class="fa-solid fa-paw mr-1"></i>인사
                 </button>
-            </div>`).join('')
+            </div>`;
+        }).join('')
         : `<div class="text-center py-5 space-y-1">
                 <span class="text-3xl">🐾</span>
                 <p class="text-[11px] text-gray-400 font-semibold">'${dong}'에서 아직 매칭된 이웃이 없어요.</p>
@@ -1399,7 +1415,7 @@ function renderWalkMate() {
     box.innerHTML = `
         <div class="space-y-2.5">
             <div class="flex items-center justify-between bg-brand-50/60 border border-brand-100/40 rounded-2xl px-3 py-2">
-                <span class="text-[11px] font-bold text-brand-700"><i class="fa-solid fa-location-dot mr-1"></i>${dong || '동네 미설정'} · 산책메이트 켜짐</span>
+                <span class="text-[11px] font-bold text-brand-700"><i class="fa-solid fa-location-dot mr-1"></i>${dong || '동네 미설정'}${myTime ? ' · ' + myTime + ' 산책' : ''} · 산책메이트 켜짐</span>
                 <button onclick="optOutWalkMate()" class="text-[10px] text-gray-400 hover:text-red-500 font-bold transition-colors">끄기</button>
             </div>
             <div class="space-y-2">${matesHtml}</div>
@@ -1414,14 +1430,16 @@ function optInWalkMate() {
         if (typeof showToast === 'function') showToast('동네 이름을 입력해 주세요! 🏡');
         return;
     }
-    saveWalkMateState({ optIn: true, dong });
+    const timeInput = document.getElementById('walkmate-time-input');
+    const time = timeInput && WALKMATE_TIME_SLOTS.includes(timeInput.value) ? timeInput.value : WALKMATE_TIME_SLOTS[0];
+    saveWalkMateState({ optIn: true, dong, time });
     renderWalkMate();
-    if (typeof showToast === 'function') showToast(`'${dong}' 산책메이트를 켰어요! 🐾`);
+    if (typeof showToast === 'function') showToast(`'${dong}' ${time} 산책메이트를 켰어요! 🐾`);
 }
 
 function optOutWalkMate() {
     const state = getWalkMateState();
-    saveWalkMateState({ optIn: false, dong: state.dong || '' });
+    saveWalkMateState({ optIn: false, dong: state.dong || '', time: state.time || '' });
     renderWalkMate();
     if (typeof showToast === 'function') showToast('산책메이트를 껐어요.');
 }
