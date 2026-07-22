@@ -40,7 +40,7 @@ from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
 from _shared.backlog import (  # noqa: E402
     touches_db_auth, is_infra_failure, record_backlog_task_failure,
-    recent_reviewed_items, format_recent_decisions,
+    recent_reviewed_items, format_recent_decisions, mio_implementation_task,
 )
 
 load_env(str(PROJECT_ROOT))
@@ -160,7 +160,18 @@ def _close_tasks(task_ids: list[str]) -> None:
         return
     for i in data["items"]:
         if i.get("id") in task_ids:
-            i["status"] = "완료"
+            # 미오는 Read/WebSearch/WebFetch만 써서 코드를 절대 못 고친다 — 배정 과제가
+            # 실제 구현 착수를 요구하면(리뷰·시안이 아니라) 완료 처리해도 구현은 영영
+            # 일어나지 않은 채 백로그에서만 사라진다(2026-07-16 사고: 회의_202607162027_1
+            # "케어위젯 재그룹화"가 커밋도 dev_state 항목도 없이 완료 처리됨). 사람이
+            # owner를 수리 등으로 재배정하도록 보류로 되돌린다(ingestion 단계
+            # structurally_blocked()가 앞으로 걸러내지만, 이미 대기에 들어온 잔재에
+            # 대한 방어선).
+            if mio_implementation_task(i.get("title", ""), i.get("detail", "")):
+                i["status"] = "보류"
+                i["gate"] = "미오 구현불가 — owner 재배정 필요"
+            else:
+                i["status"] = "완료"
     BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 

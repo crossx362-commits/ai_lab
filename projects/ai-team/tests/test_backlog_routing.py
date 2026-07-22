@@ -93,6 +93,23 @@ class CouncilOwnerRouting(unittest.TestCase):
         """item_type을 안 넘기는 기존 호출부·테스트는 그대로 동작해야 한다(하위호환)."""
         self.assertFalse(self.council.needs_human("타입 모름", "테오"))
 
+    def test_mio_implementation_shaped_task_goes_to_human_track(self):
+        """2026-07-16 사고: owner=미오+type=디자인은 owner_type_mismatch 기준으론 정상
+        배정이지만, 배정 내용이 실제 구현 착수를 요구하면 미오는 Read/WebSearch/WebFetch
+        만 써서 절대 해낼 수 없다 — 완료 처리해도 코드는 안 바뀐다(회의_202607162027_1
+        "케어위젯 재그룹화"가 커밋도 dev_state 항목도 없이 완료 처리됐던 실제 사고)."""
+        self.assertTrue(self.council.needs_human(
+            "건강 케어위젯 7종 → 4개 기능군 소제목 재그룹화", "미오",
+            "각 모듈 JS 렌더 무손상, 템플릿 wrapper만 추가. 투약·복약 / 체형·체중(BCS·QOL) / "
+            "영양(칼로리·식단) / 비용 4개 소제목으로 space-y 그룹화(커밋 61505944와 동일 저위험 "
+            "패턴). 접이식 아님, 소제목만. 테오 E2E 채택 후 착수, 신규 회귀 통과 필수.", "디자인"))
+
+    def test_mio_review_request_stays_auto(self):
+        """반대 사례 — 진짜 리뷰·시안 요청은 여전히 자동 트랙(대기)이어야 한다."""
+        self.assertFalse(self.council.needs_human(
+            "오늘 변경분 디자인 리뷰 — 습득자 페이지·건강탭 2컬럼", "미오",
+            "문제 발견 시 개선 과제로 적재", "디자인"))
+
 
 class OwnerTypeMismatchTests(unittest.TestCase):
     """자동 파이프라인 감사 도구가 발견(2026-07-11): owner+type 조합이 실제 소비 함수의
@@ -116,6 +133,37 @@ class OwnerTypeMismatchTests(unittest.TestCase):
 
     def test_empty_type_never_mismatch(self):
         self.assertFalse(self.mismatch("테오", ""))
+
+
+class MioImplementationGateTests(unittest.TestCase):
+    """미오는 리뷰·시안 산출물만 만든다(코드 편집 도구 없음) — 실제 구현 착수를 요구하는
+    배정 과제를 완료 처리하면 코드는 안 바뀐 채 백로그에서만 사라진다(2026-07-16 사고:
+    회의_202607162027_1). 판별 범위는 실행 착수 언어("착수"·"구현")로만 좁힌다(오탐 주의 —
+    실제 백로그의 미오 자체 제안 74건을 전수 확인해 오탐 0건)."""
+
+    def setUp(self):
+        from _shared.backlog import mio_implementation_task
+        self.implies = mio_implementation_task
+
+    def test_flags_execution_language(self):
+        self.assertTrue(self.implies(
+            "건강 케어위젯 7종 → 4개 기능군 소제목 재그룹화",
+            "각 모듈 JS 렌더 무손상, 템플릿 wrapper만 추가. 투약·복약 / 체형·체중(BCS·QOL) / "
+            "영양(칼로리·식단) / 비용 4개 소제목으로 space-y 그룹화. 테오 E2E 채택 후 착수, "
+            "신규 회귀 통과 필수."))
+        self.assertTrue(self.implies("이 기능 구현해줘", ""))
+
+    def test_does_not_flag_review_requests(self):
+        for title, detail in [
+            ("건강수첩 화면 시안 기준 명시",
+             "차기 미오 리뷰에서 건강수첩·병원비 요약 섹션의 시각 기준을 정의"),
+            ("오늘 변경분 디자인 리뷰 — 습득자 페이지·건강탭 2컬럼·와이드 레이아웃",
+             "정보 우선순위 검토. 문제 발견 시 개선 과제로 적재."),
+            ("QOL 주간 체크인 시안 별도 적재",
+             "이번 사이클 개발 대상 아님(후순위 보류). 미오 시안만 백로그 대기로 준비"),
+        ]:
+            self.assertFalse(self.implies(title, detail),
+                             f"{title!r}는 리뷰 요청인데 구현 과제로 오탐됨")
 
 
 class DbAuthGate(unittest.TestCase):
@@ -174,6 +222,25 @@ class MioBacklogConsumption(unittest.TestCase):
             self.mio._close_tasks(["a"])
             got = {i["id"]: i["status"] for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
             self.assertEqual(got, {"a": "완료", "b": "대기"})
+
+    def test_close_reroutes_implementation_shaped_task_instead_of_completing(self):
+        """방어선(defense-in-depth) — ingestion 단계 structurally_blocked()가 이제 이런
+        과제를 애초에 '대기'로 못 들어오게 막지만, 이미 대기에 남아 있던 잔재나 다른
+        경로로 삽입된 항목까지 대비해 _close_tasks() 자체도 완료 처리를 거부해야 한다
+        (2026-07-16 사고 회귀 방지: 회의_202607162027_1이 커밋·dev_state 없이 완료됨)."""
+        with self._write([
+            {"id": "a", "owner": "미오", "status": "대기", "type": "디자인",
+             "title": "케어위젯 재그룹화",
+             "detail": "템플릿 wrapper만 추가, 테오 E2E 채택 후 착수"},
+            {"id": "b", "owner": "미오", "status": "대기", "type": "디자인",
+             "title": "오늘 변경분 리뷰", "detail": "문제 발견 시 개선 과제로 적재"},
+        ]):
+            self.mio._close_tasks(["a", "b"])
+            items = {i["id"]: i for i in json.loads(self.tmp.read_text(encoding="utf-8"))["items"]}
+        self.assertEqual(items["a"]["status"], "보류",
+                         "구현 착수를 요구하는 과제를 완료 처리하면 코드 없이 사라진다")
+        self.assertIn("gate", items["a"])
+        self.assertEqual(items["b"]["status"], "완료", "정상 리뷰 요청은 그대로 완료 처리돼야 한다")
 
     def test_add_backlog_items_id_includes_seconds_not_just_date(self):
         """자동 파이프라인 감사 도구가 발견(2026-07-12): id가 날짜까지만 있어서(시각 없이)

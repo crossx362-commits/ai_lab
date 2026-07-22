@@ -83,6 +83,21 @@ def owner_type_mismatch(owner: str, item_type: str) -> bool:
     return bool(allowed) and item_type not in allowed
 
 
+# 미오는 리뷰·시안 산출물만 만든다 — petnna_design_review.py의 run_claude 호출은
+# allowed_tools="Read,WebSearch,WebFetch"뿐이라 코드/템플릿을 절대 못 고친다. owner=미오
+# +type=디자인은 owner_type_mismatch() 기준으론 "정상 배정"이지만, 배정 과제의 내용
+# 자체가 이미 결정된 구현 착수를 요구하면(시안·검토 요청이 아니라) 미오가 리뷰 한 번
+# 돌리고 완료 처리해도 실제 코드 변경은 영영 일어나지 않는다(2026-07-16 사고: 회의가
+# "커밋 61505944와 동일 패턴으로 착수하라"고 배정한 케어위젯 재그룹화 과제가 미오 손에서
+# 완료 처리됐지만 커밋도 dev_state 항목도 없었다 — 결국 사람이 수동 구현). "착수"·"구현"은
+# 실행 지시 언어라 리뷰 요청 문장에는 쓰이지 않는다 — 실제 백로그 74건의 미오 자체 제안
+# (source=미오, owner 없음)을 전수 확인해 오탐 0건 확인(2026-07-16).
+MIO_EXECUTION_PATTERN = re.compile(r"착수|구현하|구현할|구현해")
+
+
+def mio_implementation_task(title: str, detail: str = "") -> bool:
+    """미오에게 배정된 과제가 리뷰·시안이 아니라 실제 구현 착수를 요구하는가."""
+    return bool(MIO_EXECUTION_PATTERN.search(f"{title}\n{detail}"))
 
 
 # 백로그를 실제로 소비하는 owner만. 여기 없는 owner(예: 나무 — 적재만 하고 안 읽음)로
@@ -103,10 +118,14 @@ def structurally_blocked(owner: str, item_type: str, title: str, detail: str = "
     owner_type_mismatch를 추가했을 때 promote_approved_holds()는 갱신을 까먹어 또 같은
     계열의 좀비(owner=테오+type=디자인 같은 배정이 승인만 받으면 승격되지만 여전히 아무도
     못 집는 상태)가 재발했다 — 2026-07-10 owner-불일치 사고와 동일한 실수의 반복. 사유
-    나열을 이 함수 하나로 단일화해 두 호출부가 항상 같은 판정을 보게 한다."""
+    나열을 이 함수 하나로 단일화해 두 호출부가 항상 같은 판정을 보게 한다.
+
+    2026-07-16 추가: owner=미오+type=디자인은 카테고리상 정상 배정이어도, 내용이 실제
+    구현 착수를 요구하면 미오가 못 해낼 일을 떠맡는 것이다(mio_implementation_task)."""
     return (owner not in AUTO_OWNERS
             or owner_type_mismatch(owner, item_type)
-            or touches_db_auth(title, detail))
+            or touches_db_auth(title, detail)
+            or (owner == "미오" and mio_implementation_task(title, detail)))
 
 
 def needs_human(title: str, owner: str, detail: str = "", item_type: str = "") -> bool:
