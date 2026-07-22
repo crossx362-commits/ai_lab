@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import random
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -44,16 +45,48 @@ try:
 except Exception:
     llm_text = None
 
-# AI 이웃 페르소나(social.js AI_AGENT_FRIENDS와 정렬 — 사용자 친구목록과 동일 인물이 글을 쓴다)
-PERSONAS = [
-    {"name": "👑 예원대표", "seed": "yewon", "tone": "따뜻한 리더. 아이와의 소소한 행복을 나눈다"},
-    {"name": "📋 영숙비서", "seed": "youngsuk", "tone": "꼼꼼하게 하루 일과·산책 기록을 공유한다"},
-    {"name": "🎵 루나", "seed": "luna", "tone": "음악 좋아하는 감성. 노을·산책 분위기를 나눈다"},
-    {"name": "✅ 가희봄", "seed": "gahee", "tone": "건강 관심 많음. 밥·물·산책 습관 팁을 곁들인다"},
-    {"name": "🎨 티모냥", "seed": "timo", "tone": "고양이 집사. 나른한 일상과 개냥이 순간"},
-    {"name": "⚙️ 케빈", "seed": "kevin", "tone": "든든한 성격. 대형견·활동적인 하루를 나눈다"},
-    {"name": "💻 코다리", "seed": "kodari", "tone": "귀여운 것에 진심. 간식·장난감 자랑"},
-]
+# ── AI 이웃 페르소나 — 앱 친구목록(social.js AI_AGENT_FRIENDS)이 유일한 소스 ──
+# 예전엔 이 목록을 여기 하드코딩으로 복제해, 앱에서 이웃을 지워도 게시가 계속돼 '유령'이
+# 남았다(2026-07-22 아린 사고). 이제 social.js를 파싱해 파생하므로, 앱에서 이웃을 지우면
+# 게시도 자동으로 멈춘다. stale 폴백 목록을 두지 않는다 — 그 복사본이 다시 드리프트해
+# 유령을 만든다. 파싱 실패는 조용히 넘기지 않고 경보 후 게시를 건너뛴다(원인 가시화).
+_SOCIAL_JS = PROJECT_ROOT / "projects" / "petnna" / "js" / "social.js"
+
+
+def _persona_alert(msg: str) -> None:
+    print(f"⚠️ 페르소나 로드: {msg}")
+    try:
+        from _shared.telegram import send
+        send(f"⚠️ [펫과나 이웃] 페르소나 로드 실패 — 게시 중단\n{msg}", silent=True)
+    except Exception:
+        pass
+
+
+def _load_personas() -> list[dict]:
+    """social.js의 AI_AGENT_FRIENDS에서 이웃 페르소나(name·seed·tone)를 파생한다(단일 소스)."""
+    try:
+        src = _SOCIAL_JS.read_text(encoding="utf-8")
+    except Exception as e:
+        _persona_alert(f"social.js 읽기 실패: {e}")
+        return []
+    m = re.search(r"AI_AGENT_FRIENDS\s*=\s*\[(.*?)\]\s*;", src, re.S)
+    if not m:
+        _persona_alert("social.js에서 AI_AGENT_FRIENDS 배열을 못 찾음")
+        return []
+    out: list[dict] = []
+    for obj in re.findall(r"\{[^{}]*\}", m.group(1)):
+        name = re.search(r"petName:\s*'([^']+)'", obj)
+        seed = re.search(r"seed=([A-Za-z0-9_]+)", obj)
+        tone = re.search(r"personality:\s*'([^']+)'", obj)
+        if name and seed:
+            out.append({"name": name.group(1), "seed": seed.group(1),
+                        "tone": tone.group(1) if tone else "반려동물과의 일상을 따뜻하게 나눈다"})
+    if not out:
+        _persona_alert("AI_AGENT_FRIENDS 파싱 결과 0명")
+    return out
+
+
+PERSONAS = _load_personas()
 
 # Claude 실패 시 폴백(따뜻·다양·광고 없음). {n} = 반려동물 애칭 자리
 TEMPLATES = [
@@ -188,6 +221,9 @@ def run_once(do_send: bool) -> None:
     url, key = _supa()
     if not url or not key:
         print("SUPABASE_URL/ANON_KEY 없음 — 중단")
+        return
+    if not PERSONAS:
+        print("이웃 페르소나 없음(social.js 파싱 실패/이웃 0명) — 활동 생략")
         return
     lines = [f"[{datetime.now():%Y-%m-%d %H:%M}] 🏘️ 펫과나 이웃 활동"]
     posted = None
