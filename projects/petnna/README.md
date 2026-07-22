@@ -32,13 +32,13 @@ projects/petnna/
 
 ## Local Preview
 
-From the repository root, use the ai-team web preview helper:
+Serve the app directory with a static server:
 
 ```bash
-python projects/ai-team/skills/코다리_개발자/tools/web_preview.py
+python3 -m http.server 8901 --directory projects/petnna
 ```
 
-Or serve the app directory with a static server:
+or:
 
 ```bash
 cd projects/petnna
@@ -48,7 +48,7 @@ npx serve .
 ## Deployment
 
 The app is configured for Vercel. Project-specific plaintext `.env` files should
-not be committed. Use the root `D:\ai_lab\.env` for local secrets and configure
+not be committed. Use the root `ai_lab/.env` for local secrets and configure
 deployment secrets in Vercel.
 
 Useful files:
@@ -63,11 +63,8 @@ Useful files:
 ## Operating Notes
 
 - Do not merge frontend modules without browser testing.
-- Run the UI review helper after visual changes:
-
-```bash
-python projects/ai-team/skills/티모_디자이너/tools/petnna_reviewer.py
-```
-
+- 미오 (Design) runs a weekly screenshot-based UX review
+  (`projects/ai-team/skills/미오_디자인/tools/petnna_design_review.py`) that feeds the
+  shared backlog — don't rely on it as a per-change check.
 - Generated output belongs under root `output/` or `reports/`, not inside the
   app source tree unless it is an intentional checked-in asset.

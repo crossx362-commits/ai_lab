@@ -164,7 +164,7 @@ class HarnessClassificationLayoutTests(unittest.TestCase):
         original_git_tracked_ignored = module.git_tracked_ignored
         try:
             module.git_tracked = lambda: []
-            module.git_tracked_ignored = lambda: ["projects/ai-team/skills/케빈_인프라/tools/supabase/.temp/project-ref"]
+            module.git_tracked_ignored = lambda: ["projects/ai-team/skills/백호_백엔드/tools/supabase/.temp/project-ref"]
 
             status, message = module.check_classification_layout()
         finally:
