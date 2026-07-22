@@ -61,6 +61,15 @@ body.theme-dark .glass {
     margin-bottom: 1.25rem; /* 헤더-본문 그룹 간 여백 강화 (20px) */
 }
 
+/* 모바일 카드 좌우 여백 보장 (미오 제안, P3)
+   Tailwind px-4(16px)를 최소값으로 유지하되, 노치 기기 가로모드에서 safe-area가
+   파고들어도 카드가 가장자리에 붙지 않도록 max()로 하한 16px를 보장.
+   main.max-w-7xl(0,2,1)로 단일 클래스 .px-4(0,1,0)를 이겨 적용. */
+main.max-w-7xl {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+}
+
 /* 세련된 입력 필드 */
 .input-modern {
     background: var(--color-bg-card);
