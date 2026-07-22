@@ -36,6 +36,20 @@ def touches_db_auth(title: str, detail: str = "") -> bool:
     return bool(DB_AUTH_PATTERN.search(f"{title}\n{detail}"))
 
 
+# 백로그 정규 상태 어휘 — 이 넷만 소비자(수리·예원·council)가 읽고 옮긴다.
+# 어휘 밖 값(예: '진행'·'완료(부분)')은 어떤 도구도 안 읽어 항목이 영구 정지한다
+# ("'진행' 상태는 아무도 안 읽는 무덤" 교훈, CLAUDE.md). 코드는 이 값을 만들지 않지만
+# 수동 편집으로 새면 조용히 방치되므로, 신선도 감사가 noncanonical_items()로 감지·경보한다
+# (비변경 — 데이터를 바꾸지 않고 유령만 드러낸다).
+CANONICAL_STATUSES = ("대기", "보류", "PR대기", "완료")
+
+
+def noncanonical_items(items: list) -> list:
+    """정규 상태 어휘 밖 status를 가진 백로그 항목 — 소비자가 없어 정지한 유령."""
+    return [it for it in (items or [])
+            if isinstance(it, dict) and it.get("status") not in CANONICAL_STATUSES]
+
+
 # owner가 실제로 소비하는 type 제약(자동 파이프라인 감사 도구가 발견, 2026-07-11).
 # 테오 _backlog_task()는 type=='테스트'만, 미오 _assigned_tasks()는 type=='디자인'만 본다 —
 # 그런데 council.needs_human()은 owner만 보고 type은 안 봐서, owner=테오인데 type이

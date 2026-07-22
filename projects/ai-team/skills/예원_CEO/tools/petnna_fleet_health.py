@@ -36,6 +36,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
+from _shared.backlog import noncanonical_items  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -174,6 +175,17 @@ def _newest_mtime(directory: Path, pattern: str) -> float | None:
     return max(f.stat().st_mtime for f in files)
 
 
+def backlog_ghosts() -> list[dict]:
+    """백로그에서 정규 어휘 밖 상태로 정지한 항목(id·status) — 소비자 없는 유령.
+    코드는 이런 값을 안 만들지만 수동 편집으로 새면 아무 도구도 안 옮겨 영구 방치된다."""
+    try:
+        data = json.loads((QA / "backlog.json").read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    items = data if isinstance(data, list) else (data.get("items") or data.get("backlog") or [])
+    return [{"id": g.get("id", "?"), "status": g.get("status")} for g in noncanonical_items(items)]
+
+
 def audit(do_send: bool) -> int:
     now = time.time()
     lines = [f"[{datetime.now():%Y-%m-%d %H:%M}] 🩺 예원 함대 신선도 감사"]
@@ -208,9 +220,14 @@ def audit(do_send: bool) -> int:
                      + ", ".join(f"{t}({f})" for t, f in gap))
     elif not applied:
         lines.append("  ✅ DB 스키마: 선언된 테이블 전부 라이브 적용됨")
+    # 백로그 비어휘 상태(정지 유령) 감지 — 어떤 소비자도 안 읽어 영구 방치된 항목.
+    ghosts = backlog_ghosts()
+    if ghosts:
+        lines.append("  👻 백로그 정지 유령(비어휘 상태): "
+                     + ", ".join(f"{g['id']}={g['status']}" for g in ghosts))
     print("\n".join(lines))
 
-    if do_send and (stale or gap or applied or failed):
+    if do_send and (stale or gap or applied or failed or ghosts):
         parts = []
         if stale:
             parts.append("⚠️ 함대 신선도 경보 — 죽은 잡 의심\n"
@@ -226,8 +243,11 @@ def audit(do_send: bool) -> int:
             parts.append("🗄️ 미적용 마이그레이션 " + str(len(gap)) + "개" + why + "\n"
                          + "\n".join(f"· {t} → migrations/{f}" for t, f in gap)
                          + f"\n실행: {link}")
-        send("[예원] 펫나 감사\n\n" + "\n\n".join(parts), silent=not (stale or gap or failed))
-    return len(stale) + len(gap)
+        if ghosts:
+            parts.append("👻 백로그 정지 유령 " + str(len(ghosts)) + "개 (비어휘 상태 — 수동 확인)\n"
+                         + "\n".join(f"· {g['id']} = {g['status']}" for g in ghosts))
+        send("[예원] 펫나 감사\n\n" + "\n\n".join(parts), silent=not (stale or gap or failed or ghosts))
+    return len(stale) + len(gap) + len(ghosts)
 
 
 def main() -> None:
