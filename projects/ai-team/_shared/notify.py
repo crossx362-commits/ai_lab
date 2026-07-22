@@ -145,15 +145,29 @@ def _petnna_gate_state() -> str | None:
     return None
 
 
+def _off_primary_machine() -> bool:
+    """정책파일(fleet_machine_policy.json)에 운영 플랫폼이 명시돼 있고 이 기계가 그와 다르면 True.
+    이 경우 텔레그램 폴링(영숙)은 정책상 운영기계만 담당하므로, 비운영 기계의 프로세스 부재는 '정상'이다."""
+    from _shared.process import read_fleet_policy
+    primary = str(read_fleet_policy().get("primary_platform", "")).strip()
+    return bool(primary) and sys.platform != primary
+
+
 def agent_status() -> dict[str, str]:
     """상시 데몬은 프로세스, 예약 서비스는 launchd 적재 여부로 상태 판정.
     값: 'up,<pid>' | 'scheduled' | 'sched:<n>'(정시 잡 n개) | 'down' | 'disabled' | 'misconfig'."""
     status: dict[str, str] = {}
     gate_state = _petnna_gate_state()
+    off_primary = _off_primary_machine()
     for name, script in CONTINUOUS_DAEMONS.items():
         pids = _find_pids(script)
         if pids:
             status[name] = ",".join(pids)
+        elif name == "youngsuk" and off_primary:
+            # 텔레그램 폴링은 정책상 운영기계(현재 맥)만 담당 — 비운영 기계에선 telegram_receiver가
+            # 폴링 소유권 확인 후 자진 종료한다. 여기서 'down'으로 집계하면 워치독이 5분마다
+            # 재시작→다시 자진종료→'재시작 실패' 스팸을 낸다(2026-07-22 사고). 'disabled'로 표기해 제외.
+            status[name] = "disabled"
         elif gate_state and name in _PETNNA_WINDOWS_GATED:
             status[name] = gate_state
         elif sys.platform != "win32" and name in _LAUNCHD_FALLBACK and _launchd_loaded(_LAUNCHD_FALLBACK[name]):
