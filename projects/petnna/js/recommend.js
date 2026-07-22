@@ -119,30 +119,6 @@ function getPetRecommendations(pet) {
     return scored.slice(0, 3).map(s => s.item);
 }
 
-// 프로필 + 최근 로그 기반 초개인화 케어 팁 (최대 2개)
-function getPetCareTips(pet) {
-    if (!pet) return [];
-    const stage = recoLifeStage(pet);
-    const allergens = recoAllergens(pet);
-    const logConcerns = recoLogConcerns();
-    const tips = [];
-
-    if (logConcerns.has('digestion')) tips.push({ emoji: '💩', text: '최근 배변 상태가 고르지 않아요. 저자극 식단과 유산균으로 장 건강을 챙겨주세요.' });
-    if (logConcerns.has('hydration')) tips.push({ emoji: '💧', text: '최근 음수량이 적어요. 신선한 물을 여러 곳에 두거나 습식 급여로 수분을 늘려주세요.' });
-    if (logConcerns.has('vitality')) tips.push({ emoji: '🩺', text: '컨디션이 저하된 날이 잦아요. 증상이 이어지면 수의사 상담을 권해요.' });
-
-    if (tips.length < 2) {
-        if (stage === 'puppy') tips.push({ emoji: '🌱', text: '성장기예요. 고품질 단백질과 규칙적인 급여로 발달을 도와주세요.' });
-        else if (stage === 'senior') tips.push({ emoji: '🧓', text: '시니어 시기예요. 관절·치아 관리와 정기 건강검진을 챙겨주세요.' });
-        else tips.push({ emoji: '⚖️', text: '적정 체중 유지가 건강의 기본이에요. 간식은 하루 열량의 10% 이내로 주세요.' });
-    }
-    if (tips.length < 2 && allergens.length > 0) {
-        tips.push({ emoji: '🚫', text: '알러지 정보를 반영해 자극 성분을 뺀 간식을 추천했어요. 새 간식은 소량부터 시작하세요.' });
-    }
-
-    return tips.slice(0, 2);
-}
-
 function petNameJosa(name) {
     const n = String(name || '');
     if (!n) return '우리 아이에게';
@@ -162,37 +138,22 @@ function renderPetRecoCard(containerId) {
         return;
     }
 
-    const tips = getPetCareTips(pet);
-    const tipsHtml = tips.length === 0 ? '' : `
-        <div class="space-y-1.5">${tips.map(t => `
-            <div class="flex items-start gap-2 p-2 rounded-2xl bg-white/60 border border-amber-50">
-                <span class="text-base shrink-0" aria-hidden="true">${t.emoji}</span>
-                <p class="text-[10px] text-gray-600 leading-snug">${t.text}</p>
-            </div>`).join('')}
-        </div>`;
-
+    // 오늘 요약 카드에 병합된 심플 표기(2026-07-22) — 팁·사유 문구 없이 추천 3개만 한 줄로
     const rows = items.map(item => `
-        <div class="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 border border-amber-50">
-            <span class="text-2xl shrink-0" aria-hidden="true">${item.emoji}</span>
-            <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                    <h4 class="font-bold text-gray-800 text-xs truncate">${item.name}</h4>
-                    <span class="shrink-0 bg-brand-500 text-white font-mono text-[9px] font-black px-1.5 py-0.5 rounded-full">${item.kind}</span>
-                </div>
-                <p class="text-[10px] text-gray-500 leading-snug mt-0.5">${item.reason}</p>
-            </div>
+        <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-amber-50/60 border border-amber-100 lg:flex-1 min-w-0" title="${item.reason}">
+            <span class="text-base shrink-0" aria-hidden="true">${item.emoji}</span>
+            <span class="text-xs font-bold text-gray-800 truncate">${item.name}</span>
+            <span class="ml-auto shrink-0 bg-brand-500 text-white font-mono text-[9px] font-black px-1.5 py-0.5 rounded-full">${item.kind}</span>
         </div>
     `).join('');
 
     container.innerHTML = `
-        <div class="card-modern bg-amber-50/50 p-4 space-y-2.5 max-w-3xl mx-auto">
-            <div class="flex items-center gap-1.5">
-                <span class="text-base" aria-hidden="true">🎯</span>
-                <h3 class="text-sm font-bold text-gray-900">${petNameJosa(pet.name)} 맞는 맞춤 추천 TOP3</h3>
+        <div class="px-4 py-3">
+            <div class="flex items-center gap-1.5 mb-2">
+                <span class="text-sm" aria-hidden="true">🎯</span>
+                <h3 class="text-xs font-bold text-gray-900">${petNameJosa(pet.name)} 맞는 맞춤 추천 TOP3</h3>
             </div>
-            <p class="text-[10px] text-gray-400 -mt-1">품종·나이·체중·알러지와 최근 건강 로그를 반영했어요</p>
-            ${tipsHtml}
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">${rows}</div>
+            <div class="flex flex-col lg:flex-row gap-1.5">${rows}</div>
         </div>
     `;
 }

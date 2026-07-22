@@ -53,10 +53,10 @@ const MYPET_TEMPLATE = `
                 <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
             </div>
         </div>
-    </div>
 
-    <!-- 반려동물 맞춤 추천 TOP3 -->
-    <div id="reco-card-home"></div>
+        <!-- 반려동물 맞춤 추천 TOP3 (별도 카드였다가 요약 카드에 병합, 2026-07-22) -->
+        <div id="reco-card-home" class="empty:hidden"></div>
+    </div>
 
     <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
@@ -344,7 +344,8 @@ const MYPET_TEMPLATE = `
     </div>
 
     <!-- 오른쪽: 조화도 + 챌린지/업적 통합 카드 (2026-07-16 정리 전엔 개별 박스 9개가 세로로 나열돼 있었다) -->
-    <div class="lg:col-span-3 space-y-2.5">
+    <!-- 왼쪽 하루 방 카드보다 콘텐츠가 훨씬 길어 하단이 안 맞던 문제 → sticky+내부 스크롤로 정렬(2026-07-22) -->
+    <div class="lg:col-span-3 space-y-2.5 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
 
         <!-- 조화도 카드 (점수 중심 요약 지표라 상단에 독립 유지) -->
         <div id="harmony-widget-card" class="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-3 shadow-sm">
