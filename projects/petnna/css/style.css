@@ -623,7 +623,7 @@ body:not(.theme-dark) select:not(:focus) {
 }
 body:not(.theme-dark) input::placeholder,
 body:not(.theme-dark) textarea::placeholder {
-    color: #78716c;
+    color: #6b6b6b;
     opacity: 1;
 }
 
