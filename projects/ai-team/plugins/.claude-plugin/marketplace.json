@@ -1,11 +1,10 @@
 {
-  "name": "ai-lab-korea-finance",
+  "name": "ai-lab",
   "owner": {
     "name": "ai_lab (준)"
   },
   "metadata": {
-    "description": "ai_lab Claude Code 플러그인 마켓플레이스 (주식·코인 플러그인은 2026-07-08 도메인 삭제로 제거)",
-    "basedOn": "github.com/anthropics/financial-services-plugins"
+    "description": "ai_lab Claude Code 플러그인 마켓플레이스"
   },
   "plugins": [
     {

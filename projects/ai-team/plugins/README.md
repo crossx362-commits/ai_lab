@@ -1,7 +1,6 @@
 # ai_lab 플러그인 마켓플레이스
 
-Claude Code 플러그인 마켓플레이스. 주식·코인 관련 플러그인(소미 리서치, 예원 리서치 디스패처)은
-2026-07-08 오너 지시로 도메인 전체 삭제와 함께 제거됨.
+Claude Code 플러그인 마켓플레이스.
 
 ## 구성
 
@@ -15,10 +14,8 @@ Claude Code 플러그인 마켓플레이스. 주식·코인 관련 플러그인(
 
 ```
 /plugin marketplace add d:/ai_lab/projects/ai-team/plugins
-/plugin install youngsuk-briefing@ai-lab-korea-finance
+/plugin install youngsuk-briefing@ai-lab
 ```
-
-> 마켓플레이스 이름은 `.claude-plugin/marketplace.json`의 `ai-lab-korea-finance`(레거시 이름 유지 — 이미 등록된 로컬 참조 보존).
 
 설치 후 사용 예:
 - `/데일리브리핑` → 영숙 일일 브리핑
