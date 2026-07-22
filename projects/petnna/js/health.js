@@ -80,6 +80,9 @@ function renderHealthTab() {
     // 맞춤 식단·급여량 추천 카드 (백로그 나무, P2 — 체형·체중·활동량 종합)
     if (typeof DietRecommend !== 'undefined') DietRecommend.renderWidget('diet-recommend-widget');
 
+    // AI 맞춤 데일리 케어 팁 카드 (백로그 나무, P3 — 프로필 기반 오늘의 팁)
+    if (typeof DailyCareTip !== 'undefined') DailyCareTip.renderWidget('daily-care-tip-widget');
+
     // 병원비 제보·비교 보드 (백로그 나무, P3)
     if (typeof VetCostBoard !== 'undefined') VetCostBoard.renderWidget('vet-cost-board-widget');
 

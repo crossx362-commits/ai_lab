@@ -10,7 +10,7 @@
     const CARE_WIDGET_IDS = [
         'preventive-care-dashboard', 'med-adherence-tracker', 'qol-checkin-widget',
         'bcs-wizard-widget', 'calorie-tracker-widget', 'diet-recommend-widget',
-        'vet-cost-board-widget',
+        'daily-care-tip-widget', 'vet-cost-board-widget',
     ];
 
     function seenKey(kind, id) { return `petna_widget_${kind}_seen_${id}`; }
