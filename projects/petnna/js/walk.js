@@ -649,6 +649,7 @@ function stopAndSaveWalk() {
 
             _setWalkStatusBadge('idle');
             renderWalkHistory();
+            if (typeof renderWalkChallenge === 'function') renderWalkChallenge();
             renderMyPets();
 
             // ── 🔧 코다리: 산책 완료 → 자동 일기 Draft 생성 (Woofz 자동 로깅 벤치마크) ──
@@ -907,6 +908,7 @@ function discardWalk() {
 
             _setWalkStatusBadge('idle');
             renderWalkHistory();
+            if (typeof renderWalkChallenge === 'function') renderWalkChallenge();
             renderMyPets();
 
             (function _offerWalkSocialShare() {
@@ -1224,6 +1226,109 @@ function renderWalkHistory() {
         `;
         list.appendChild(el);
     });
+}
+
+// ── 주간 산책 챌린지 + 익명 리더보드 (walks 누적치 기반, 클라이언트 전용) ──
+const WALK_CHALLENGE_GOAL_KEY = 'petna_walk_challenge_goal';
+const WALK_CHALLENGE_GOAL_OPTIONS = [3, 5, 7];
+
+// 이번 주(월~일) 시작 시각 — walk.id(=Date.now())로 주간 집계
+function _walkWeekStart(d = new Date()) {
+    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+}
+
+function getWeeklyWalkStats() {
+    const start = _walkWeekStart().getTime();
+    const end = start + 7 * 24 * 60 * 60 * 1000;
+    let count = 0, dist = 0;
+    const list = (typeof walks !== 'undefined' && Array.isArray(walks)) ? walks : [];
+    list.forEach(w => {
+        const t = Number(w.id);
+        if (!isNaN(t) && t >= start && t < end) {
+            count++;
+            dist += parseFloat(w.distance) || 0;
+        }
+    });
+    return { count, dist };
+}
+
+function getWalkChallengeGoal() {
+    const v = parseInt(localStorage.getItem(WALK_CHALLENGE_GOAL_KEY), 10);
+    return WALK_CHALLENGE_GOAL_OPTIONS.includes(v) ? v : 5;
+}
+
+function setWalkChallengeGoal(n) {
+    if (WALK_CHALLENGE_GOAL_OPTIONS.includes(n)) {
+        localStorage.setItem(WALK_CHALLENGE_GOAL_KEY, String(n));
+        renderWalkChallenge();
+    }
+}
+
+// 익명 이웃 랭킹 샘플 — 실제 이웃 집계 서버가 붙기 전까지 랭킹 감을 보여주는 예시(정직 표기)
+const WALK_LEADERBOARD_SAMPLE = [
+    { emoji: '🐕', dist: 12.4, walks: 6 },
+    { emoji: '🦮', dist: 9.1, walks: 5 },
+    { emoji: '🐩', dist: 6.8, walks: 4 },
+    { emoji: '🐈', dist: 3.2, walks: 3 },
+];
+
+function renderWalkChallenge() {
+    const box = document.getElementById('walk-challenge-section');
+    if (!box) return;
+
+    const { count, dist } = getWeeklyWalkStats();
+    const goal = getWalkChallengeGoal();
+    const pct = Math.min(100, goal > 0 ? Math.round((count / goal) * 100) : 0);
+    const done = count >= goal;
+
+    const goalBtns = WALK_CHALLENGE_GOAL_OPTIONS.map(n => `
+        <button onclick="setWalkChallengeGoal(${n})"
+            class="flex-1 text-[10px] font-bold py-1.5 rounded-lg transition-all ${n === goal
+            ? 'bg-brand-500 text-white shadow-sm'
+            : 'bg-gray-50 text-gray-500 hover:bg-brand-50'}">${n}회</button>`).join('');
+
+    const rows = [...WALK_LEADERBOARD_SAMPLE, { dist, walks: count, isMe: true, emoji: '⭐' }]
+        .sort((a, b) => b.dist - a.dist)
+        .map((r, i) => {
+            const medal = ['🥇', '🥈', '🥉'][i] || `<span class="text-gray-400 font-mono text-[10px]">${i + 1}</span>`;
+            const label = r.isMe ? '우리 아이 (나)' : '익명의 산책러';
+            return `
+            <div class="flex items-center gap-2.5 p-2.5 rounded-xl ${r.isMe
+                ? 'bg-brand-50/70 border border-brand-200'
+                : 'bg-gray-50/80 border border-gray-100'}">
+                <span class="w-5 text-center text-sm leading-none">${medal}</span>
+                <span class="text-lg leading-none">${r.emoji}</span>
+                <span class="flex-grow text-[11px] font-bold ${r.isMe ? 'text-brand-700' : 'text-gray-700'} truncate">${label}</span>
+                <span class="text-[10px] text-gray-400 font-bold">${r.walks}회</span>
+                <span class="text-[11px] font-black text-gray-800 font-mono">${r.dist.toFixed(1)}km</span>
+            </div>`;
+        }).join('');
+
+    box.innerHTML = `
+        <div class="space-y-3">
+            <div class="flex items-center justify-between text-[11px] font-bold text-gray-500">
+                <span>이번 주 산책 <span class="text-brand-600">${count}</span>회 · <span class="text-brand-600">${dist.toFixed(1)}</span>km</span>
+                <span>${done ? '🎉 목표 달성!' : `목표까지 ${Math.max(0, goal - count)}회`}</span>
+            </div>
+            <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full ${done ? 'bg-emerald-400' : 'bg-brand-500'} rounded-full transition-all" style="width:${pct}%"></div>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="text-[10px] text-gray-400 font-bold shrink-0">주간 목표</span>
+                ${goalBtns}
+            </div>
+            <div class="pt-1 space-y-2">
+                <p class="text-[10px] text-gray-400 font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-ranking-star text-brand-400"></i>
+                    동네 익명 리더보드
+                    <span class="text-[8px] text-brand-500 bg-brand-50 px-1 py-0.5 rounded">샘플</span>
+                </p>
+                ${rows}
+                <p class="text-[9px] text-gray-300 leading-relaxed">개인정보 없이 산책 기록만 익명으로 비교해요. 이웃 순위는 실제 집계 연동 전 예시 데이터입니다.</p>
+            </div>
+        </div>`;
 }
 
 // ── 산책메이트 라이트 (동네 태그 기반 옵트인, 클라이언트 전용) ──────────
