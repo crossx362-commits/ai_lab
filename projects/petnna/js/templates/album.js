@@ -123,6 +123,7 @@ const ALBUM_TEMPLATE = `
                     체중을 기록하면 성장 그래프가 나타납니다!
                 </div>
                 <div id="growth-latest" class="mt-2 text-[10px] text-gray-500 font-medium"></div>
+                <div id="growth-ring" class="mt-2 hidden"></div>
                 <div id="growth-nudge" class="mt-1.5 text-[10px] font-bold hidden"></div>
             </div>
         </div>
