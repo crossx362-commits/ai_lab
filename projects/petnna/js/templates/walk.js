@@ -304,6 +304,18 @@ const WALK_TEMPLATE = `
         <div id="walk-history-list" class="space-y-3 max-h-[300px] overflow-y-auto no-scrollbar"></div>
     </div>
 
+    <!-- ── 주간 산책 챌린지 + 익명 리더보드 ───────────────────────────── -->
+    <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+            <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-medal text-brand-500 text-lg"></i>
+                주간 산책 챌린지
+            </h4>
+            <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">이번 주</span>
+        </div>
+        <div id="walk-challenge-section"></div>
+    </div>
+
     <!-- ── 산책메이트 라이트 (동네 태그 기반 옵트인) ──────────────────── -->
     <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
         <div class="flex items-center justify-between">
