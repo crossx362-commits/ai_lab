@@ -7,13 +7,13 @@
 
 ### 위치
 ```
-d:/ai_lab/.env (암호화된 중앙 파일)
+ai_lab/.env (평문, 로컬 전용) 또는 ai_lab/.env.encrypted (선택, 기계+계정 전용 키)
 ```
 
 ### 접근 방법
 ```python
-from _shared.env_loader import load_env
-load_env(PROJECT_ROOT)  # 자동 복호화 후 로드
+from _shared.env import load_env
+load_env(PROJECT_ROOT)  # .env.encrypted 있으면 복호화 후 로드, 없으면 평문 .env
 ```
 
 ## 🚫 금지 사항
@@ -30,6 +30,6 @@ load_env(PROJECT_ROOT)  # 자동 복호화 후 로드
 
 ---
 
-**적용 대상:** 모든 AI 에이전트 (루나, 아린, 경수, 영숙, 펄스, 코다리, 예원, 티모, 케빈, 로율)
-**관리자:** 케빈
-**마지막 업데이트:** 2026-06-01
+**적용 대상:** 모든 AI 에이전트 (예원, 영숙, 봄이, 수리, 테오, 백호, 미오, 나무)
+**관리자:** 오너
+**마지막 업데이트:** 2026-07-22
