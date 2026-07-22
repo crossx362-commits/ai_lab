@@ -50,6 +50,17 @@ def noncanonical_items(items: list) -> list:
             if isinstance(it, dict) and it.get("status") not in CANONICAL_STATUSES]
 
 
+def canonical_target(status) -> str | None:
+    """비어휘 상태를 안전하게 정규화할 대상 정규 상태. 확신 없으면 None(사람 확인 필요).
+
+    '완료' 변형('완료(부분)'·'완료됨' 등)만 자동 정규화한다 — 종결이라 자동 루프에 다시
+    진입하지 않아 안전하고, 이미 정지한 항목이라 잃을 작업도 없다. '진행'처럼 활성 루프로
+    되돌려야 할 수 있는 값은 owner 트랙을 잘못 바꿀 위험이 있어 자동화하지 않고 경보한다."""
+    if isinstance(status, str) and status.startswith("완료"):
+        return "완료"
+    return None
+
+
 # owner가 실제로 소비하는 type 제약(자동 파이프라인 감사 도구가 발견, 2026-07-11).
 # 테오 _backlog_task()는 type=='테스트'만, 미오 _assigned_tasks()는 type=='디자인'만 본다 —
 # 그런데 council.needs_human()은 owner만 보고 type은 안 봐서, owner=테오인데 type이

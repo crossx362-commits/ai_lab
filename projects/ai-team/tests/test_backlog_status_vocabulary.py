@@ -12,7 +12,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from _shared.backlog import CANONICAL_STATUSES, noncanonical_items
+from _shared.backlog import CANONICAL_STATUSES, noncanonical_items, canonical_target
 
 
 class NoncanonicalItemsTests(unittest.TestCase):
@@ -37,6 +37,19 @@ class NoncanonicalItemsTests(unittest.TestCase):
         self.assertEqual(noncanonical_items([]), [])
         self.assertEqual(noncanonical_items(None), [])
         self.assertEqual(noncanonical_items(["not-a-dict", 3]), [])
+
+
+class CanonicalTargetTests(unittest.TestCase):
+    def test_완료_variants_normalize_to_완료(self):
+        self.assertEqual(canonical_target("완료(부분)"), "완료")
+        self.assertEqual(canonical_target("완료됨"), "완료")
+
+    def test_ambiguous_statuses_escalate(self):
+        # '진행' 등은 활성 루프로 되돌릴지 불확실 → 자동화 안 함(사람 확인)
+        self.assertIsNone(canonical_target("진행"))
+        self.assertIsNone(canonical_target("취소"))
+        self.assertIsNone(canonical_target(None))
+        self.assertIsNone(canonical_target(""))
 
 
 if __name__ == "__main__":

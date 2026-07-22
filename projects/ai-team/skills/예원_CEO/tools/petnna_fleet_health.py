@@ -36,7 +36,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.backlog import noncanonical_items  # noqa: E402
+from _shared.backlog import noncanonical_items, canonical_target  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -175,15 +175,33 @@ def _newest_mtime(directory: Path, pattern: str) -> float | None:
     return max(f.stat().st_mtime for f in files)
 
 
-def backlog_ghosts() -> list[dict]:
-    """백로그에서 정규 어휘 밖 상태로 정지한 항목(id·status) — 소비자 없는 유령.
-    코드는 이런 값을 안 만들지만 수동 편집으로 새면 아무 도구도 안 옮겨 영구 방치된다."""
+def remediate_backlog_ghosts() -> tuple[list[dict], list[dict]]:
+    """백로그 비어휘 상태(정지 유령)를 안전 매핑 가능하면 자동 정규화(파일 기록),
+    아니면 미해결로 남긴다. 오너 지시(2026-07-22): '텔레그램 보내기 전에 먼저 고쳐' —
+    고칠 수 있는 건 조용히 고치고, 못 고치는 것(사람 확인 필요)만 경보한다.
+    반환: (fixed[{id,from,status}], unresolved[{id,status}])."""
+    path = QA / "backlog.json"
     try:
-        data = json.loads((QA / "backlog.json").read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return []
+        return [], []
     items = data if isinstance(data, list) else (data.get("items") or data.get("backlog") or [])
-    return [{"id": g.get("id", "?"), "status": g.get("status")} for g in noncanonical_items(items)]
+    fixed: list[dict] = []
+    unresolved: list[dict] = []
+    for it in noncanonical_items(items):
+        tgt = canonical_target(it.get("status"))
+        if tgt:
+            fixed.append({"id": it.get("id", "?"), "from": it.get("status"), "status": tgt})
+            it["normalized_from"] = it.get("status")
+            it["status"] = tgt
+        else:
+            unresolved.append({"id": it.get("id", "?"), "status": it.get("status")})
+    if fixed:
+        try:  # 다른 도구와 동일 포맷(indent=1) 유지, 해당 항목만 바꿔 즉시 기록
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        except Exception:
+            pass
+    return fixed, unresolved
 
 
 def audit(do_send: bool) -> int:
@@ -220,10 +238,12 @@ def audit(do_send: bool) -> int:
                      + ", ".join(f"{t}({f})" for t, f in gap))
     elif not applied:
         lines.append("  ✅ DB 스키마: 선언된 테이블 전부 라이브 적용됨")
-    # 백로그 비어휘 상태(정지 유령) 감지 — 어떤 소비자도 안 읽어 영구 방치된 항목.
-    ghosts = backlog_ghosts()
+    # 백로그 비어휘 상태(정지 유령): 먼저 자동 정규화, 못 고친 것만 아래에서 경보.
+    fixed, ghosts = remediate_backlog_ghosts()
+    for f in fixed:
+        lines.append(f"  🔧 백로그 유령 자동 정규화: {f['id']} {f['from']}→{f['status']}")
     if ghosts:
-        lines.append("  👻 백로그 정지 유령(비어휘 상태): "
+        lines.append("  👻 백로그 정지 유령(자동정규화 불가·사람 확인 필요): "
                      + ", ".join(f"{g['id']}={g['status']}" for g in ghosts))
     print("\n".join(lines))
 
