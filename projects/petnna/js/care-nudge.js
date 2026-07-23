@@ -15,6 +15,8 @@
 
     // 순수 함수: 건강 로그 → 넛지 항목 배열. 챙길 게 없으면 빈 배열.
     // 돌봄 일정(pendingCare)은 바로 위 '오늘의 투약·케어 체크' 카드에서 이미 보여주므로 중복 노출하지 않는다.
+    // 판정은 wellness-anomaly.js의 순수 함수(analyze*)만 재사용 — 신규 로직 없음.
+    // 백로그 나무 'AI 건강 이상 조기경보': 체중·식욕·활력·소변 신호까지 홈 배너로 조기 노출.
     function buildCareNudge(history) {
         const items = [];
 
@@ -23,6 +25,24 @@
         if (stool) {
             items.push({ emoji: stool.emoji, text: `${stool.label} ${stool.days}일 연속 — 컨디션 살펴보기`, urgent: true });
         }
+        // 소변 색 이상(혈뇨·농축뇨) — 급성 신호, 최근 1건만 이상이어도 노출
+        const urine = (typeof analyzeUrine === 'function') ? analyzeUrine(history) : null;
+        if (urine) {
+            items.push({ emoji: urine.emoji, text: `${urine.label} — 지속되면 상담 권장`, urgent: true });
+        }
+        // 식욕·활력 저하 연속
+        const conditions = (typeof analyzeCondition === 'function') ? analyzeCondition(history) : [];
+        for (const c of conditions) {
+            items.push({ emoji: c.emoji, text: `${c.label} ${c.days}일 연속 — 컨디션 살펴보기`, urgent: true });
+        }
+        // 체중 급변
+        const weight = (typeof analyzeWeight === 'function' && typeof getWeightHistory === 'function')
+            ? analyzeWeight(getWeightHistory()) : null;
+        if (weight) {
+            const dir = weight.direction === 'up' ? '급증' : '급감';
+            items.push({ emoji: weight.emoji, text: `체중 평소보다 ${Math.abs(weight.pct)}% ${dir} — 확인하기`, urgent: weight.direction === 'down' });
+        }
+        // 음수·식사량 z-score 급변
         const daily = (typeof analyzeWellness === 'function') ? analyzeWellness(history) : [];
         for (const f of daily) {
             const dir = f.direction === 'up' ? '급증' : '급감';
@@ -51,15 +71,24 @@
                 <span class="mt-0.5 shrink-0">${i.emoji}</span>
                 <span class="min-w-0 flex-1 truncate">${i.text}</span>
             </li>`).join('');
+        // 이상 신호가 있으면 증상분류(SymptomTriage)·벳챗으로 바로 연결(백로그 나무 조기경보).
+        const triageBtn = (urgent && typeof SymptomTriage !== 'undefined' && SymptomTriage && typeof SymptomTriage.open === 'function') ? `
+            <button type="button" onclick="SymptomTriage.open()" class="flex-1 rounded-lg border border-amber-200 bg-white hover:bg-amber-50 py-2 text-xs font-bold text-amber-700 transition-colors">🩺 증상 분류</button>` : '';
+        const vetBtn = (urgent && typeof openVetChatModal === 'function') ? `
+            <button type="button" onclick="openVetChatModal()" class="flex-1 rounded-lg bg-amber-500 hover:bg-amber-600 py-2 text-xs font-bold text-white transition-colors">💬 AI 수의사</button>` : '';
+        const cta = (triageBtn || vetBtn) ? `<div class="flex gap-2 mt-2.5">${triageBtn}${vetBtn}</div>` : '';
         host.innerHTML = `
-        <button type="button" onclick="renderCareNudgeGo()" class="w-full text-left p-3.5 ${wrap} transition-colors">
-            <div class="flex items-center gap-2 mb-2">
-                <span class="text-xl shrink-0">📌</span>
-                <span class="text-sm font-bold text-gray-900 flex-1">오늘 챙길 것</span>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${badgeCls} shrink-0">${items.length}건</span>
-            </div>
-            <ul class="space-y-1.5 pl-1">${rows}</ul>
-        </button>`;
+        <div class="p-3.5 ${wrap} transition-colors">
+            <button type="button" onclick="renderCareNudgeGo()" class="w-full text-left">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xl shrink-0">📌</span>
+                    <span class="text-sm font-bold text-gray-900 flex-1">오늘 챙길 것</span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${badgeCls} shrink-0">${items.length}건</span>
+                </div>
+                <ul class="space-y-1.5 pl-1">${rows}</ul>
+            </button>
+            ${cta}
+        </div>`;
     }
 
     window.buildCareNudge = buildCareNudge;
