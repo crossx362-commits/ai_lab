@@ -125,6 +125,20 @@
                 "</button>";
         }).join("");
 
+        // BCS·중성화 여부 기반 추천 계수(있으면 원탭 적용 배너)
+        var rec = CT()._recommendFactor(pet);
+        var recHtml = "";
+        if (rec) {
+            recHtml =
+                '<button type="button" onclick="CalorieTracker.setFactor(' + rec.v + ')" ' +
+                'class="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand-300 bg-brand-50/70 hover:bg-brand-50 transition-all mb-1">' +
+                '<span class="text-lg">✨</span>' +
+                '<span class="flex-1 text-left text-xs font-bold text-brand-600">추천 ×' + rec.v +
+                ' <span class="font-normal text-gray-400">(' + esc(rec.reason) + ')</span></span>' +
+                '<span class="text-[11px] text-brand-500 font-bold">적용</span>' +
+                "</button>";
+        }
+
         var overlay = document.createElement("div");
         overlay.id = "cal-overlay";
         overlay.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4";
@@ -133,7 +147,7 @@
             '<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">' +
             '<h3 class="text-base font-extrabold text-gray-900">🐾 활동량 설정</h3>' +
             '<button onclick="CalorieTracker.close()" class="text-gray-300 hover:text-gray-500 text-xl leading-none">&times;</button></div>' +
-            '<div class="px-5 py-4 space-y-2">' + opts + "</div></div>";
+            '<div class="px-5 py-4 space-y-2">' + recHtml + opts + "</div></div>";
         overlay.addEventListener("click", function (e) { if (e.target === overlay) closeModal(); });
         document.body.appendChild(overlay);
     }

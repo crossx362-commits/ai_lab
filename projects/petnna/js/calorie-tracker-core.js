@@ -61,6 +61,36 @@
         return typeof f === "number" ? f : DEFAULT_FACTOR;
     }
 
+    // 중성화 여부: pet.gender 문자열에 "중성화"가 있으면 true (state.js 표기 규칙)
+    function neuteredFor(pet) {
+        return !!(pet && typeof pet.gender === "string" && pet.gender.indexOf("중성화") !== -1);
+    }
+    // 최근 BCS 판정 키(under/ideal/over) — 기록 없으면 null
+    function latestBcsKey(petId) {
+        try {
+            var hist = window.BcsWizardData && window.BcsWizardData.history(petId);
+            if (!hist || !hist.length) return null;
+            var last = hist[hist.length - 1];
+            return window.BcsWizardData.classify(last.score).key;
+        } catch (e) { return null; }
+    }
+    // 체중감량 우선순위: BCS 과체중→감량(1.2), 저체중→증량(2.0),
+    // 정상/미기록이면 중성화 여부로 저활동(1.4)·보통활동(1.6) 추천.
+    function recommendFactor(pet) {
+        if (!pet) return null;
+        var bcs = latestBcsKey(pet.id);
+        var reasons = [];
+        var v;
+        if (bcs === "over") { v = 1.2; reasons.push("BCS 과체중"); }
+        else if (bcs === "under") { v = 2.0; reasons.push("BCS 저체중"); }
+        else {
+            if (bcs === "ideal") reasons.push("BCS 정상");
+            if (neuteredFor(pet)) { v = 1.4; reasons.push("중성화 완료"); }
+            else { v = 1.6; reasons.push("중성화 안 함"); }
+        }
+        return { v: v, reason: reasons.join(" · ") };
+    }
+
     // DER(kcal/일) 계산: 체중 없으면 null
     function targetKcal(pet) {
         var w = parseFloat(pet && pet.weight);
@@ -145,6 +175,8 @@
         _todayKey: todayKey,
         _todayLogs: todayLogs,
         _factorFor: factorFor,
+        _neuteredFor: neuteredFor,
+        _recommendFactor: recommendFactor,
         renderWidget: renderWidget,
     };
 })();
