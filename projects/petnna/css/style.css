@@ -601,9 +601,11 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
     outline: none !important;
+    border-width: 2px !important;           /* 포커스 시 2px 테라코타 border 명시 */
     border-color: #a9583e !important;       /* brand-600 테라코타 */
+    background-color: rgba(204, 120, 92, .06) !important; /* 옅은 브랜드 배경 틴트 */
     box-shadow: 0 0 0 3px rgba(169, 88, 62, .35) !important;
-    transition: border-color .18s, box-shadow .18s;
+    transition: border-color .18s, box-shadow .18s, background-color .18s;
 }
 
 /* ♿ 체크박스·라디오·레인지 키보드 포커스 — 위 폼 규칙에서 제외돼 표시가 없던 갭 보강 */
