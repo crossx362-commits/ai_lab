@@ -15,6 +15,9 @@ const MYPET_TEMPLATE = `
         <!-- 📌 선제 케어 넛지 '오늘 챙길 것' (care-nudge.js가 채움, 챙길 게 있을 때만 노출) -->
         <div id="care-nudge-banner"></div>
 
+        <!-- 📊 오늘의 케어 통합 요약: 산책·급여·케어·기분·이상신호 한 줄 (today-care-card.js) -->
+        <div id="today-care-strip"></div>
+
         <!-- 날짜 & 날씨 -->
         <div class="px-4 py-3">
             <div class="flex items-center justify-between gap-4">
