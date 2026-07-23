@@ -1235,6 +1235,7 @@ function renderMyPets() {
     if (typeof renderPetRecoCard === 'function') renderPetRecoCard('reco-card-home');
     if (typeof renderCareCheckBanner === 'function') renderCareCheckBanner();
     if (typeof renderCareNudgeBanner === 'function') renderCareNudgeBanner();
+    if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
 
