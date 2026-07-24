@@ -587,6 +587,36 @@ function startFortuneDraw() {
     
     const ownerText = document.getElementById('fortune-owner-text');
     if (ownerText) ownerText.innerText = ownerFortunes[index3];
+
+    updateFortuneStreak(today);
+}
+
+// 오늘의 운세 연속출석 스트릭(localStorage) — 뽑을 때마다 하루 1회 카운트,
+// 어제 뽑았으면 +1, 하루 이상 걸렀으면 1로 리셋, 같은 날 재뽑기는 유지.
+function updateFortuneStreak(today) {
+    const email = (typeof settings_email !== 'undefined') ? settings_email : 'butler@petna.co.kr';
+    const key = `petna_fortune_streak_${email}`;
+    const todayStr = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+
+    let record = { last: '', count: 0 };
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw) record = JSON.parse(raw);
+    } catch (e) { record = { last: '', count: 0 }; }
+
+    if (record.last !== todayStr) {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = `${yesterday.getFullYear()}-${yesterday.getMonth()+1}-${yesterday.getDate()}`;
+        record.count = (record.last === yStr) ? (record.count || 0) + 1 : 1;
+        record.last = todayStr;
+        try { localStorage.setItem(key, JSON.stringify(record)); } catch (e) {}
+    }
+
+    const badge = document.getElementById('fortune-streak-badge');
+    const countEl = document.getElementById('fortune-streak-count');
+    if (countEl) countEl.innerText = record.count;
+    if (badge) badge.classList.remove('hidden');
 }
 
 

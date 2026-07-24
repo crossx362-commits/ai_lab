@@ -216,6 +216,7 @@ const SAJU_TEMPLATE = `
                     <div class="text-center border-b border-emerald-200/50 pb-2.5">
                         <h3 class="text-base font-black text-emerald-800" id="fortune-today-date">2026년 5월 23일</h3>
                         <p class="text-xs font-black text-emerald-600 mt-1" id="fortune-main-keyword">"뜻밖의 간식을 득템하는 날!"</p>
+                        <span id="fortune-streak-badge" class="hidden inline-flex items-center gap-1 mt-2 bg-amber-100 text-amber-700 font-black text-[10px] py-1 px-2.5 rounded-full border border-amber-200">🔥 연속출석 <strong id="fortune-streak-count">1</strong>일</span>
                     </div>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
