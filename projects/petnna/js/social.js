@@ -117,6 +117,98 @@ function renderWalkLeaderboard() {
     }).join('');
 }
 
+// 산책 메이트 매칭 — 내 반려동물과 크기·성향이 비슷한 동네 이웃을 추천, 산책 요청은 기존 편지(우체통)로 연동.
+// 이웃(AI 이웃)은 실제 크기 데이터가 없어 id로 시드된 고정 프로필을 부여(주중 무관 항상 동일).
+const WALK_MATE_SIZES = ['소형', '중형', '대형'];
+const WALK_MATE_TEMPERS = ['활발함', '차분함', '사교적', '조심스러움'];
+
+function _walkMateSizeBand(weightKg) {
+    const w = parseFloat(weightKg);
+    if (!isFinite(w) || w <= 0) return '중형';
+    if (w < 7) return '소형';
+    if (w <= 25) return '중형';
+    return '대형';
+}
+
+function _walkMateTemperOf(personality) {
+    const p = String(personality || '');
+    if (/활발|활동|산책|에너지|쳇바퀴/.test(p)) return '활발함';
+    if (/도도|조용|차분|얌전/.test(p)) return '차분함';
+    if (/사교|친화|간식|러버/.test(p)) return '사교적';
+    if (/겁|조심|소심|예민/.test(p)) return '조심스러움';
+    return '사교적';
+}
+
+function _walkMateSeededProfile(id) {
+    const s1 = _leaderboardSeed(`mate:${id}:size`);
+    const s2 = _leaderboardSeed(`mate:${id}:temper`);
+    return {
+        size: WALK_MATE_SIZES[Math.floor(s1 * WALK_MATE_SIZES.length) % WALK_MATE_SIZES.length],
+        temper: WALK_MATE_TEMPERS[Math.floor(s2 * WALK_MATE_TEMPERS.length) % WALK_MATE_TEMPERS.length]
+    };
+}
+
+function renderWalkMates() {
+    const box = document.getElementById('walk-mate-list');
+    if (!box) return;
+
+    const myPet = (typeof getActivePet === 'function') ? getActivePet() : ((typeof pets !== 'undefined' && pets[0]) || null);
+    const mySize = _walkMateSizeBand(myPet ? myPet.weight : null);
+    const myTemper = _walkMateTemperOf(myPet ? myPet.personality : null);
+
+    const list = (typeof friends !== 'undefined' ? friends : []).filter(f => {
+        return typeof isBlockedByIdOrNickname === 'function' ? !isBlockedByIdOrNickname(f) : true;
+    });
+
+    if (list.length === 0) {
+        box.innerHTML = `<div class="text-[10px] text-gray-400 text-center py-3">이웃을 추가하면 산책 메이트를 추천해드려요.</div>`;
+        return;
+    }
+
+    const sizeIdx = s => WALK_MATE_SIZES.indexOf(s);
+    const rows = list.map(f => {
+        const prof = _walkMateSeededProfile(f.id);
+        const sizeGap = Math.abs(sizeIdx(prof.size) - sizeIdx(mySize));
+        const sizeScore = sizeGap === 0 ? 55 : (sizeGap === 1 ? 25 : 5);
+        const temperScore = prof.temper === myTemper ? 40 : 12;
+        const score = Math.min(99, sizeScore + temperScore);
+        return { f, prof, score };
+    }).sort((a, b) => b.score - a.score).slice(0, 4);
+
+    box.innerHTML = rows.map(({ f, prof, score }) => {
+        const matchColor = score >= 80 ? 'text-emerald-600 bg-emerald-50 border-emerald-100'
+            : (score >= 55 ? 'text-brand-600 bg-brand-50 border-brand-100' : 'text-gray-500 bg-gray-50 border-gray-100');
+        return `
+            <div class="p-2.5 rounded-2xl border-2 border-transparent hover:bg-gray-50 flex items-center justify-between gap-2 transition-colors">
+                <div class="flex items-center gap-2 min-w-0">
+                    <img loading="lazy" src="${f.avatar}" class="w-8 h-8 object-cover rounded-full border border-amber-100 shrink-0" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(f.nickname)}'">
+                    <div class="min-w-0 leading-tight">
+                        <span class="font-bold text-gray-700 text-[11px] block truncate">${escapeHtml(f.nickname)} <span class="font-medium text-gray-400 text-[9px]">(${escapeHtml(f.petName)})</span></span>
+                        <span class="text-gray-400 text-[9px] block truncate">${prof.size} · ${prof.temper}</span>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end shrink-0 gap-1">
+                    <span class="text-[8px] font-black px-1.5 py-0.5 rounded-full border ${matchColor}">궁합 ${score}%</span>
+                    <button onclick="requestPlaydate('${escapeHtml(f.nickname).replace(/'/g, "\\'")}', '${escapeHtml(f.petName).replace(/'/g, "\\'")}')" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[9px] px-2 py-1 rounded-lg transition-colors whitespace-nowrap">산책 요청</button>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// 산책/플레이데이트 요청 — 기존 편지 쓰기(우체통) 모달을 재사용해 이웃에게 발송
+function requestPlaydate(nickname, petName) {
+    if (typeof openWriteLetterModal !== 'function') {
+        if (typeof showToast === 'function') showToast('우체통 기능을 불러올 수 없어요.');
+        return;
+    }
+    openWriteLetterModal(nickname);
+    const contentEl = document.getElementById('letter-write-content');
+    if (contentEl) {
+        contentEl.value = `안녕하세요! ${petName || '반려동물'}와 우리 아이가 산책 궁합이 잘 맞을 것 같아요. 이번 주에 동네에서 함께 산책 플레이데이트 어떠세요? 🐾`;
+        if (typeof updateLetterCharCount === 'function') updateLetterCharCount();
+    }
+}
+
 // 1. 소셜 & 피드 메인 렌더링 진입점
 function renderSocialRoom() {
     ensureAgentFriends();
@@ -200,6 +292,9 @@ function renderSocialRoom() {
 
     // 주간 산책 챌린지 리더보드 렌더링
     renderWalkLeaderboard();
+
+    // 산책 메이트 매칭 추천 렌더링
+    renderWalkMates();
 
     // 중앙 서브탭 동기화 및 렌더링
     switchSocialSubTab(activeSocialSubTab);
