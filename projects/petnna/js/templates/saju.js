@@ -434,17 +434,32 @@ const SAJU_TEMPLATE = `
                     <h4 class="font-black text-rose-900 text-xs mt-3" id="harmony-res-title">"영혼의 단짝, 완벽한 듀오!"</h4>
                     
                     <div class="w-full space-y-2 mt-4 text-[10px] text-left">
-                        <div class="bg-gray-50 p-2 rounded-xl flex justify-between items-center border">
-                            <span class="text-gray-500 font-bold">☯️ 명리 기운 조화 (사주)</span>
-                            <span id="harmony-score-saju" class="font-black text-brand-600">90%</span>
+                        <div class="bg-gray-50 p-2 rounded-xl border">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 font-bold">☯️ 명리 기운 조화 (사주)</span>
+                                <span id="harmony-score-saju" class="font-black text-brand-600">90%</span>
+                            </div>
+                            <div class="mt-1.5 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div id="harmony-bar-saju" class="h-full rounded-full bg-brand-500 transition-all duration-500" style="width:0%"></div>
+                            </div>
                         </div>
-                        <div class="bg-gray-50 p-2 rounded-xl flex justify-between items-center border">
-                            <span class="text-gray-500 font-bold">🐾 라이프스타일 조화 (MBTI)</span>
-                            <span id="harmony-score-mbti" class="font-black text-pink-600">85%</span>
+                        <div class="bg-gray-50 p-2 rounded-xl border">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 font-bold">🐾 라이프스타일 조화 (MBTI)</span>
+                                <span id="harmony-score-mbti" class="font-black text-pink-600">85%</span>
+                            </div>
+                            <div class="mt-1.5 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div id="harmony-bar-mbti" class="h-full rounded-full bg-pink-500 transition-all duration-500" style="width:0%"></div>
+                            </div>
                         </div>
-                        <div class="bg-gray-50 p-2 rounded-xl flex justify-between items-center border">
-                            <span class="text-gray-500 font-bold">🧠 인지 교감 조화 (지능/눈치)</span>
-                            <span id="harmony-score-iq" class="font-black text-sky-600">95%</span>
+                        <div class="bg-gray-50 p-2 rounded-xl border">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500 font-bold">🧠 인지 교감 조화 (지능/눈치)</span>
+                                <span id="harmony-score-iq" class="font-black text-sky-600">95%</span>
+                            </div>
+                            <div class="mt-1.5 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                <div id="harmony-bar-iq" class="h-full rounded-full bg-sky-500 transition-all duration-500" style="width:0%"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

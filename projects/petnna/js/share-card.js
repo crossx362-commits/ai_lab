@@ -431,12 +431,12 @@ async function generateHarmonyShareCard() {
         _wrapText(ctx, `“${title}”`, W / 2, 1035, W - 140, 56);
     }
 
-    // 세부 점수 칩 (측정된 항목만)
+    // 세부 점수 칩 + 게이지 바 (측정된 항목만) — 브랜드/핑크/스카이 컬러
     const chips = [
-        ['☯️ 명리', hd.sajuScore], ['🐾 성향', hd.mbtiScore], ['🧠 교감', hd.iqScore],
+        ['☯️ 명리', hd.sajuScore, '#a9583e'], ['🐾 성향', hd.mbtiScore, '#ec4899'], ['🧠 교감', hd.iqScore, '#0ea5e9'],
     ].filter(c => c[1] > 0);
     if (chips.length) {
-        const cw = 260, chH = 76, gap = 24;
+        const cw = 260, chH = 100, gap = 24;
         const totalW = chips.length * cw + (chips.length - 1) * gap;
         const sx = (W - totalW) / 2, sy = 1110;
         chips.forEach((c, i) => {
@@ -446,7 +446,14 @@ async function generateHarmonyShareCard() {
             ctx.fillStyle = '#9f1239';
             ctx.font = 'bold 30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`${c[0]} ${Math.round(c[1])}%`, x + cw / 2, sy + 48);
+            ctx.fillText(`${c[0]} ${Math.round(c[1])}%`, x + cw / 2, sy + 42);
+            // 게이지 바 (트랙 + 채움)
+            const bx = x + 24, by = sy + 64, bw = cw - 48, bh = 14;
+            ctx.fillStyle = '#f1f5f9';
+            ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 7); ctx.fill();
+            const pct = Math.max(0, Math.min(100, c[1])) / 100;
+            ctx.fillStyle = c[2];
+            ctx.beginPath(); ctx.roundRect(bx, by, Math.max(bh, bw * pct), bh, 7); ctx.fill();
         });
     }
 
