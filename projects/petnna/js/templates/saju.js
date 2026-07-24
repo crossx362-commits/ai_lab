@@ -463,6 +463,9 @@ const SAJU_TEMPLATE = `
                         <button onclick="shareHarmonyToSocial()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">
                             <i class="fa-solid fa-share-nodes mr-1"></i>소셜 피드에 자랑하기
                         </button>
+                        <button onclick="shareHarmonyCard()" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-black py-2 rounded-xl text-[10px] transition-colors shadow-sm text-center">
+                            <i class="fa-solid fa-image mr-1"></i>공유카드 이미지 저장/공유
+                        </button>
                     </div>
                 </div>
             </div>

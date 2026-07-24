@@ -331,6 +331,157 @@ async function shareSajuCard() {
     );
 }
 
+// ─── 영혼 조화도 종합 카드 (세로 4:5 = 1080×1350) ─────────────────────
+// crossOrigin='anonymous' — CORS 헤더 없는 서버면 onerror로 떨어져 캔버스 오염(toDataURL 실패) 방지
+function _loadImage(url) {
+    return new Promise((resolve) => {
+        if (!url) { resolve(null); return; }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+}
+
+function _petEmoji(pet) {
+    return pet?.type === 'cat' ? '🐱' : pet?.type === 'rabbit' ? '🐰' : pet?.type === 'hamster' ? '🐹' : '🐶';
+}
+
+function _harmonyEmoji(score) {
+    if (score >= 90) return '💖';
+    if (score >= 75) return '💛';
+    if (score >= 60) return '💚';
+    if (score >= 40) return '💙';
+    return '🤍';
+}
+
+async function generateHarmonyShareCard() {
+    const pet = typeof getSajuPet === 'function' ? getSajuPet()
+        : (typeof getActivePet === 'function' ? getActivePet() : null);
+    const hd = (typeof getCurrentHarmonyResult === 'function' ? getCurrentHarmonyResult() : null) || pet?.harmonyData || {};
+    const petName = pet?.name || '댕이';
+    const nickname = (typeof settings_nickname !== 'undefined' && settings_nickname) ? settings_nickname : '집사';
+    const score = Math.round(hd.avgScore || 0);
+    const title = hd.title || '';
+    const emoji = _harmonyEmoji(score);
+
+    const W = 1080, H = 1350;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // 배경 — 로즈/앰버 그라데이션 (조화도 UI 테마)
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#fff1f2');
+    grad.addColorStop(1, '#ffedd5');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 헤더 배너
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.roundRect(40, 40, W - 80, 130, 24);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 50px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('💞 영혼 조화도 결과', W / 2, 122);
+
+    // 펫 아바타 (이미지 → 실패 시 이모지)
+    const cx = W / 2, cy = 360, r = 120;
+    const avatarImg = await _loadImage(pet?.imageUrl);
+    if (avatarImg) {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+        ctx.drawImage(avatarImg, cx - r, cy - r, r * 2, r * 2);
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = '#f43f5e'; ctx.lineWidth = 10; ctx.stroke();
+    } else {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = '#fecdd3'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.font = '150px serif'; ctx.textAlign = 'center';
+        ctx.fillText(_petEmoji(pet), cx, cy + 52);
+    }
+
+    // 집사 × 펫 이름
+    ctx.fillStyle = '#9f1239';
+    ctx.font = 'bold 56px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(`👑 ${nickname} × ${_petEmoji(pet)} ${petName}`, W / 2, 560);
+
+    // 궁합 이모지 (대형)
+    ctx.font = '90px serif';
+    ctx.fillText(emoji, W / 2, 700);
+
+    // 대형 종합점수
+    const scoreColor = score >= 80 ? '#e11d48' : score >= 60 ? '#f59e0b' : '#0ea5e9';
+    ctx.fillStyle = scoreColor;
+    ctx.font = 'bold 200px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(`${score}`, W / 2, 900);
+    ctx.font = 'bold 44px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText('종합 조화도 점수', W / 2, 960);
+
+    // 등급 타이틀
+    if (title) {
+        ctx.fillStyle = '#be123c';
+        ctx.font = 'bold 46px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        _wrapText(ctx, `“${title}”`, W / 2, 1035, W - 140, 56);
+    }
+
+    // 세부 점수 칩 (측정된 항목만)
+    const chips = [
+        ['☯️ 명리', hd.sajuScore], ['🐾 성향', hd.mbtiScore], ['🧠 교감', hd.iqScore],
+    ].filter(c => c[1] > 0);
+    if (chips.length) {
+        const cw = 260, chH = 76, gap = 24;
+        const totalW = chips.length * cw + (chips.length - 1) * gap;
+        const sx = (W - totalW) / 2, sy = 1110;
+        chips.forEach((c, i) => {
+            const x = sx + i * (cw + gap);
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.roundRect(x, sy, cw, chH, 18); ctx.fill();
+            ctx.fillStyle = '#9f1239';
+            ctx.font = 'bold 30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${c[0]} ${Math.round(c[1])}%`, x + cw / 2, sy + 48);
+        });
+    }
+
+    // 해시태그
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('#펫과나 #영혼조화도 #반려동물 #펫스타그램', W / 2, 1250);
+
+    // 워터마크
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.font = '26px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText('🐾 펫과나 (Pet & Na) — petnna.app', W / 2, 1310);
+
+    return canvas;
+}
+
+async function shareHarmonyCard() {
+    const hd = (typeof getCurrentHarmonyResult === 'function') ? getCurrentHarmonyResult() : null;
+    if (!hd || !hd.avgScore) {
+        if (typeof showToast === 'function') showToast('⚠️ 조화도를 먼저 측정해주세요!');
+        return;
+    }
+    const pet = typeof getSajuPet === 'function' ? getSajuPet()
+        : (typeof getActivePet === 'function' ? getActivePet() : null);
+    const petName = pet?.name || '댕이';
+    const score = Math.round(hd.avgScore);
+    const canvas = await generateHarmonyShareCard();
+    await _downloadOrShare(
+        canvas, 'petna-harmony.png',
+        `${petName}와 나의 영혼 조화도 ${score}점`,
+        `${_harmonyEmoji(score)} ${petName}와 나의 영혼 조화도 ${score}점! #펫과나 #영혼조화도`
+    );
+}
+
 // ─── 신규 펫 탄생 카드 ────────────────────────────────────────────────────────
 function generateWelcomeCard(pet) {
     const petName = pet?.name || '새 친구';
