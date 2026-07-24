@@ -922,8 +922,11 @@ function initMypetWeatherWidget() {
             const humidityEl = document.getElementById('mypet-weather-humidity');
             const dustEl = document.getElementById('mypet-weather-dust');
             const uvEl = document.getElementById('mypet-weather-uv');
+            const mobileTempEl = document.getElementById('mobile-weather-temp');
+            const mobileIconEl = document.getElementById('mobile-weather-icon');
 
             if (weatherTempEl) weatherTempEl.innerText = `${temp}°C`;
+            if (mobileTempEl) mobileTempEl.innerText = `${temp}°C`;
             if (humidityEl) humidityEl.innerText = `습도 ${humidity}%`;
 
             // weathercode → 아이콘/설명
@@ -947,6 +950,7 @@ function initMypetWeatherWidget() {
             }
             if (weatherIconEl) weatherIconEl.className = `${iconClass} text-2xl`;
             if (weatherDescEl) weatherDescEl.innerText = descText;
+            if (mobileIconEl) mobileIconEl.className = iconClass;
 
             // pm10 → 미세먼지 등급
             if (dustEl) {
@@ -981,6 +985,8 @@ function initMypetWeatherWidget() {
             const temp = Math.round(18 + 7 * Math.sin((hour - 8) / 24 * 2 * Math.PI));
             const weatherTempEl = document.getElementById('mypet-weather-temp');
             if (weatherTempEl) weatherTempEl.innerText = `${temp}°C`;
+            const mobileTempEl = document.getElementById('mobile-weather-temp');
+            if (mobileTempEl) mobileTempEl.innerText = `${temp}°C`;
             const humidityEl = document.getElementById('mypet-weather-humidity');
             if (humidityEl) {
                 const humidity = Math.round(60 - 15 * Math.sin((hour - 8) / 24 * 2 * Math.PI));
@@ -992,12 +998,13 @@ function initMypetWeatherWidget() {
     function updateClockAndWeather() {
         const timeEl = document.getElementById('mypet-time-display');
         const dateEl = document.getElementById('mypet-date-display');
+        const mobileTimeEl = document.getElementById('mobile-time-display');
 
         const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
 
         if (timeEl && dateEl) {
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             timeEl.innerText = `${hours}:${minutes}:${seconds}`;
 
@@ -1008,6 +1015,7 @@ function initMypetWeatherWidget() {
             const day = days[now.getDay()];
             dateEl.innerText = `${year}. ${month}. ${date} (${day})`;
         }
+        if (mobileTimeEl) mobileTimeEl.innerText = `${hours}:${minutes}`;
     }
 
     function updateTodayFortune() {

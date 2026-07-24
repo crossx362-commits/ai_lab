@@ -18,32 +18,7 @@ const MYPET_TEMPLATE = `
         <!-- 📊 오늘의 케어 통합 요약: 산책·급여·케어·기분·이상신호 한 줄 (today-care-card.js) -->
         <div id="today-care-strip"></div>
 
-        <!-- 날짜 & 날씨 -->
-        <div class="px-4 py-3">
-            <div class="flex items-center justify-between gap-4">
-                <!-- 날짜/시간 -->
-                <div class="flex items-center gap-4">
-                    <div>
-                        <span id="mypet-date-display" class="block text-xs font-medium text-gray-500">2026. 05. 23 (토)</span>
-                        <span id="mypet-time-display" class="text-xl font-bold font-mono text-gray-900">14:30:00</span>
-                    </div>
-                    <!-- 날씨 -->
-                    <div class="flex items-center gap-2.5 border-l border-gray-200 pl-4">
-                        <i class="fa-solid fa-sun text-2xl text-amber-400" id="mypet-weather-icon"></i>
-                        <div>
-                            <span id="mypet-weather-temp" class="block text-base font-bold text-gray-900">24°C</span>
-                            <span id="mypet-weather-desc" class="block text-xs font-medium text-gray-500">맑음 (서울)</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- 미세먼지/습도 -->
-                <div class="flex items-center gap-3 text-sm font-medium text-gray-600">
-                    <span class="flex items-center gap-1">😷 <span id="mypet-weather-dust">--</span></span>
-                    <span class="flex items-center gap-1">💧 <span id="mypet-weather-humidity">--%</span></span>
-                </div>
-            </div>
-            <div id="mypet-weekly-weather-container" class="hidden"></div>
-        </div>
+        <!-- 날짜/날씨는 2026-07-24부터 전 탭 공통 상단 헤더에 표시(index.html) -->
 
         <!-- 오늘의 운세 (집사 + 펫) -->
         <div class="grid grid-cols-2 divide-x divide-gray-100">

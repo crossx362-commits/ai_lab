@@ -132,7 +132,7 @@
     <script defer src="js/training-passport.js?v=1"></script>
 
     <!-- (2) HTML 템플릿 정의 (app.js 보다 반드시 먼저 로드) -->
-    <script defer src="js/templates/mypet.js?v=173"></script>
+    <script defer src="js/templates/mypet.js?v=174"></script>
     <script defer src="js/templates/health.js?v=177"></script>
     <script defer src="js/templates/walk.js?v=165"></script>
     <script defer src="js/templates/saju.js?v=163"></script>
@@ -146,7 +146,7 @@
 
     <!-- (3) 각 영역 독립 컨트롤러 -->
     <script defer src="js/recommend.js?v=3"></script>
-    <script defer src="js/mypet.js?v=167"></script>
+    <script defer src="js/mypet.js?v=168"></script>
     <script defer src="js/health.js?v=172"></script>
     <script defer src="js/care-widget-instrumentation.js?v=2"></script>
     <script defer src="js/room-harmony.js?v=161"></script>
@@ -190,6 +190,25 @@
                      (2026-07-21 회의 결정 — 계측 데이터 없는 정성 판단, 설정은 관례상 최후미) -->
                 <button class="tab-btn" data-tab="saju" onclick="switchTab('saju')"><img class="nav-tab-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">조화도</button>
                 <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')"><img class="nav-tab-icon" src="images/nav-icons/settings.png" alt="" aria-hidden="true">설정</button>
+
+                <!-- 🕐 시간/날씨 — 전 탭 공통 상단 표시(2026-07-24, 마이펫 카드에서 헤더로 이동) -->
+                <div class="ml-auto flex items-center gap-3 text-xs font-medium text-gray-600 shrink-0">
+                    <div class="text-right">
+                        <span id="mypet-date-display" class="block text-[10px] text-gray-400">2026. 05. 23 (토)</span>
+                        <span id="mypet-time-display" class="block text-sm font-bold font-mono text-gray-900">14:30:00</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 border-l border-gray-200 pl-3">
+                        <i class="fa-solid fa-sun text-lg text-amber-400" id="mypet-weather-icon"></i>
+                        <div>
+                            <span id="mypet-weather-temp" class="block text-sm font-bold text-gray-900">24°C</span>
+                            <span id="mypet-weather-desc" class="block text-[10px] text-gray-400">맑음 (서울)</span>
+                        </div>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-2">
+                        <span class="flex items-center gap-1">😷 <span id="mypet-weather-dust">--</span></span>
+                        <span class="flex items-center gap-1">💧 <span id="mypet-weather-humidity">--%</span></span>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -198,7 +217,12 @@
     <div id="mobile-header" class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-amber-50 shadow-sm px-4 py-3 flex items-center justify-between md:hidden" style="display:none;">
         <span class="flex items-center gap-1 font-black text-brand-700"><span class="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-brand-400 to-brand-700 shadow-sm"><i class="fa-solid fa-paw text-white text-[11px]" aria-hidden="true"></i></span><span class="text-sm">펫과나</span></span>
         <h1 id="mobile-page-title" class="text-sm font-black text-gray-800">마이펫</h1>
-        <div class="w-12"></div>
+        <!-- 🕐 시간/날씨 컴팩트 표시(2026-07-24, 마이펫 카드에서 헤더로 이동) -->
+        <div class="flex items-center gap-1.5 text-[11px] font-bold text-gray-700 shrink-0">
+            <i class="fa-solid fa-sun text-amber-400" id="mobile-weather-icon"></i>
+            <span id="mobile-weather-temp">24°C</span>
+            <span class="font-mono text-gray-500" id="mobile-time-display">14:30</span>
+        </div>
     </div>
 
     <!-- Main content -->
