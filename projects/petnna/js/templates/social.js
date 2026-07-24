@@ -60,6 +60,14 @@ const SOCIAL_TEMPLATE = `
                 <!-- 동적 리더보드 로딩 -->
             </div>
         </div>
+
+        <!-- 산책 메이트 매칭 (동네 플레이데이트) -->
+        <div class="space-y-3">
+            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider">🐾 산책 메이트 추천</h4>
+            <div id="walk-mate-list" class="space-y-2">
+                <!-- 동적 산책 메이트 로딩 -->
+            </div>
+        </div>
     </div>
 
     <!-- 모바일 친구 패널 백드롭 -->
