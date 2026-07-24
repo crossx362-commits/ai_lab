@@ -1020,7 +1020,10 @@ function initMypetWeatherWidget() {
 
     function updateTodayFortune() {
         const today = new Date();
-        const dateNum = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate();
+        // 날짜만 시드로 쓰면 모든 펫이 그날 동일한 운세를 받는다(2026-07-24 회의 발견) — 펫 식별자를 섞어 펫별로 다르게.
+        const fortuneActivePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+        const petSeedPart = fortuneActivePet ? String(fortuneActivePet.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0) : 0;
+        const dateNum = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate() + petSeedPart;
 
         const petFortunes = [
             "뜻밖의 특급 간식을 득템하는 날! 🥩",

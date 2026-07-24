@@ -7,8 +7,9 @@ const SAJU_TEMPLATE = `
         <div id="saju-pet-list" class="flex gap-2 flex-wrap"></div>
     </div>
 
-    <!-- 사주/테스트 서브 탭 내비게이션 (그라데이션 및 활성 스타일 보강) -->
-    <div class="flex space-x-1.5 overflow-x-auto no-scrollbar pb-1 shrink-0">
+    <!-- 사주/테스트 서브 탭 내비게이션 — 모바일은 4열 그리드로 7개 전부 노출(스크롤에 가려 3개가
+         숨던 문제 해결, 2026-07-24), 데스크톱(md+)은 기존처럼 한 줄 -->
+    <div class="grid grid-cols-4 gap-1.5 md:flex md:space-x-1.5 md:gap-0 md:overflow-x-auto md:no-scrollbar pb-1 shrink-0">
         <button onclick="switchSajuSubTab('harmony')" id="saju-tab-harmony"
             class="saju-subtab-btn whitespace-nowrap bg-rose-500 text-white font-black text-xs py-2 px-3.5 rounded-xl shadow-sm transition-all flex items-center gap-1">
             <span>💞</span> 영혼 조화도

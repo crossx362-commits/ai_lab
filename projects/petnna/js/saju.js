@@ -544,7 +544,10 @@ function startFortuneDraw() {
     const todayDateEl = document.getElementById('fortune-today-date');
     if(todayDateEl) todayDateEl.innerText = dateStr;
 
-    const seed = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate();
+    // 날짜만 시드로 쓰면 모든 펫이 그날 동일한 운세를 받는다(2026-07-24 회의 발견) — 펫 식별자를 섞어 펫별로 다르게.
+    const fortunePet = (typeof getSajuPet === 'function') ? getSajuPet() : null;
+    const petSeedPart = fortunePet ? String(fortunePet.id).split('').reduce((a, c) => a + c.charCodeAt(0), 0) : 0;
+    const seed = today.getFullYear() * 10000 + (today.getMonth()+1) * 100 + today.getDate() + petSeedPart;
     let randomValue = (seed * 9301 + 49297) % 233280;
     randomValue = randomValue / 233280;
 
