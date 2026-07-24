@@ -15,6 +15,10 @@ function addCareSchedule(schedule) {
         completed: false,
         lastCompleted: null,
         notes: schedule.notes || '',
+        // 처방약 리필 카운트다운 (투약 타입에서만 사용)
+        pillTotal: schedule.pillTotal || null,
+        dosePerDay: schedule.dosePerDay || null,
+        refillStart: schedule.refillStart || null,
         createdAt: new Date().toISOString()
     };
     careSchedules.schedules.push(newSchedule);
@@ -308,6 +312,40 @@ function renderMedicationAdherenceCard() {
         </div>`;
 }
 
+// 처방약 리필: 남은 일수 계산 (총 수량 / 1일 투여 횟수 - 경과 일수)
+function getMedicationRefillInfo(schedule) {
+    if (!schedule || schedule.type !== 'medicine') return null;
+    const total = parseFloat(schedule.pillTotal);
+    const perDay = parseFloat(schedule.dosePerDay);
+    if (!(total > 0) || !(perDay > 0)) return null;
+
+    const startRaw = schedule.refillStart || schedule.createdAt;
+    const start = startRaw ? new Date(startRaw) : new Date();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysElapsed = Math.max(0, Math.round((today - startDay) / dayMs));
+
+    const totalDays = total / perDay;
+    const remainingDays = Math.max(0, Math.floor(totalDays - daysElapsed));
+    const needRefill = remainingDays <= 3; // 3일 이하 남으면 재처방 알림
+    return { remainingDays, needRefill, totalDays: Math.floor(totalDays) };
+}
+
+// 리필 배지 HTML (없으면 빈 문자열)
+function renderRefillBadge(schedule) {
+    const info = getMedicationRefillInfo(schedule);
+    if (!info) return '';
+    if (info.remainingDays <= 0) {
+        return `<span class="inline-block mt-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">💊 약 소진 · 재처방 필요</span>`;
+    }
+    if (info.needRefill) {
+        return `<span class="inline-block mt-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">💊 ${info.remainingDays}일 남음 · 재처방 준비</span>`;
+    }
+    return `<span class="inline-block mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-600">💊 약 ${info.remainingDays}일분 남음</span>`;
+}
+
 // 돌봄 스케줄러 렌더링
 function renderCareScheduler() {
     if (typeof renderMedicationAdherenceCard === 'function') renderMedicationAdherenceCard();
@@ -370,6 +408,7 @@ function renderCareScheduler() {
                         <span class="text-[11px] font-medium">${schedule.title}</span>
                     </div>
                     ${schedule.notes ? `<p class="text-[9px] text-gray-500 mt-0.5">${schedule.notes}</p>` : ''}
+                    ${renderRefillBadge(schedule)}
                 </div>
                 ${!isCompleted ? `
                     <button onclick="completeCareSchedule(${schedule.id})"

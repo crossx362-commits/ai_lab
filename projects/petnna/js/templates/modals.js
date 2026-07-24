@@ -1192,6 +1192,16 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 <input id="care-schedule-date" type="date" class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
             </div>
 
+            <!-- 처방약 리필 카운트다운 (투약 타입 선택 시) -->
+            <div id="care-schedule-refill-field" class="hidden">
+                <label class="block text-[10px] text-gray-400 font-bold mb-1.5">💊 처방약 리필 (선택)</label>
+                <div class="flex gap-1.5">
+                    <input id="care-schedule-pill-total" type="number" min="0" step="1" placeholder="총 수량(정)" class="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
+                    <input id="care-schedule-dose-per-day" type="number" min="0" step="0.5" placeholder="1일 투여 횟수" class="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:border-sky-400 transition-colors">
+                </div>
+                <p class="text-[9px] text-gray-400 mt-1">남은 약이 소진될 시점을 자동 계산해 재처방 알림을 띄워요</p>
+            </div>
+
             <!-- 메모 -->
             <div>
                 <label class="block text-[10px] text-gray-400 font-bold mb-1.5">메모 (선택)</label>

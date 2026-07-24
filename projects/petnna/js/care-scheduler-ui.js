@@ -63,6 +63,10 @@ function closeCareScheduleModal() {
     if (titleInput) titleInput.value = '';
     const notesInput = document.getElementById('care-schedule-notes');
     if (notesInput) notesInput.value = '';
+    const pillTotalInput = document.getElementById('care-schedule-pill-total');
+    if (pillTotalInput) pillTotalInput.value = '';
+    const dosePerDayInput = document.getElementById('care-schedule-dose-per-day');
+    if (dosePerDayInput) dosePerDayInput.value = '';
 
     selectedCareType = 'feed';
     selectedRepeatDays = [0, 1, 2, 3, 4, 5, 6];
@@ -83,6 +87,10 @@ function selectCareType(type, btnElement) {
         btnElement.classList.add('bg-sky-500', 'text-white', 'border-sky-500');
         btnElement.classList.remove('bg-white', 'border-gray-200');
     }
+
+    // 처방약 리필 필드는 투약(medicine) 타입일 때만 노출
+    const refillField = document.getElementById('care-schedule-refill-field');
+    if (refillField) refillField.classList.toggle('hidden', type !== 'medicine');
 }
 
 // 반복 설정 변경 시 요일/날짜 필드 토글
@@ -158,6 +166,19 @@ function submitCareSchedule() {
         date: repeat === 'once' && dateInput ? dateInput.value : null,
         notes: notes
     };
+
+    // 처방약 리필: 투약 타입 + 총 수량·1일 투여 횟수 입력 시에만 저장
+    if (selectedCareType === 'medicine') {
+        const pillTotalInput = document.getElementById('care-schedule-pill-total');
+        const dosePerDayInput = document.getElementById('care-schedule-dose-per-day');
+        const pillTotal = pillTotalInput ? parseFloat(pillTotalInput.value) : NaN;
+        const dosePerDay = dosePerDayInput ? parseFloat(dosePerDayInput.value) : NaN;
+        if (pillTotal > 0 && dosePerDay > 0) {
+            schedule.pillTotal = pillTotal;
+            schedule.dosePerDay = dosePerDay;
+            schedule.refillStart = new Date().toISOString();
+        }
+    }
 
     if (typeof addCareSchedule === 'function') {
         addCareSchedule(schedule);
