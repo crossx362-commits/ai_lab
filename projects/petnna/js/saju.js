@@ -1009,16 +1009,23 @@ function generateHarmonyReport() {
     const scoreIqEl = document.getElementById('harmony-score-iq');
     const scoreMbtiEl = document.getElementById('harmony-score-mbti');
     
-    // Populate score cards with status badges
+    // Populate score cards with status badges + gauge bars
+    const setBar = (id, score) => {
+        const bar = document.getElementById(id);
+        if (bar) bar.style.width = `${Math.max(0, Math.min(100, score))}%`;
+    };
     if (scoreSajuEl) {
         scoreSajuEl.innerHTML = sajuScore > 0 ? `<span class="text-brand-600 font-extrabold font-mono">${sajuScore}%</span>` : `<span class="text-rose-500 font-bold">미진단 ⚠️</span>`;
     }
+    setBar('harmony-bar-saju', sajuScore);
     if (scoreIqEl) {
         scoreIqEl.innerHTML = iqScore > 0 ? `<span class="text-sky-600 font-extrabold font-mono">${iqScore}%</span>` : `<span class="text-rose-500 font-bold">미진단 ⚠️</span>`;
     }
+    setBar('harmony-bar-iq', iqScore);
     if (scoreMbtiEl) {
         scoreMbtiEl.innerHTML = mbtiScore > 0 ? `<span class="text-pink-600 font-extrabold font-mono">${mbtiScore}%</span>` : `<span class="text-rose-500 font-bold">미진단 ⚠️</span>`;
     }
+    setBar('harmony-bar-mbti', mbtiScore);
     
     // Calculate overall average based on completed tests only
     const completedScores = [sajuScore, iqScore, mbtiScore].filter(s => s > 0);
