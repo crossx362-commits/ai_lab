@@ -68,11 +68,12 @@
         const host = document.getElementById('health-digest-banner');
         if (!host) return;
         const d = buildHealthDigest(_history(), _weight());
-        if (!d) { host.innerHTML = ''; return; }
+        if (!d) { host.innerHTML = ''; host.hidden = true; return; }
+        host.hidden = false;
 
         if (d.level === 'ok') {
             host.innerHTML = `
-            <button type="button" onclick="renderHealthDigestGo()" class="w-full text-left card-modern p-3.5 border border-emerald-100 flex items-center gap-3 hover:border-emerald-200 transition-colors">
+            <button type="button" onclick="renderHealthDigestGo()" class="w-full text-left p-3.5 flex items-center gap-3 hover:bg-emerald-50/40 transition-colors">
                 <span class="text-xl">🩺</span>
                 <span class="min-w-0 flex-1 text-xs font-medium text-gray-600 truncate">건강 조기감지 · ${d.summary}</span>
                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 shrink-0">이상 없음</span>
@@ -81,14 +82,14 @@
         }
 
         const high = d.level === 'high';
-        const wrap = high ? 'border-red-200 bg-red-50/50 hover:border-red-300' : 'border-amber-200 bg-amber-50/50 hover:border-amber-300';
+        const wrap = high ? 'bg-red-50/50 hover:bg-red-50' : 'bg-amber-50/50 hover:bg-amber-50';
         const badgeCls = high ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800';
         const badgeTxt = high ? '주의 필요' : '관찰 권장';
         const emoji = high ? '🚨' : '⚠️';
         const titleCls = high ? 'text-red-900' : 'text-amber-900';
         const more = d.count > 1 ? ` 외 ${d.count - 1}건` : '';
         host.innerHTML = `
-        <button type="button" onclick="renderHealthDigestGo()" class="w-full text-left card-modern p-3.5 border ${wrap} flex items-center gap-3 transition-colors">
+        <button type="button" onclick="renderHealthDigestGo()" class="w-full text-left p-3.5 ${wrap} flex items-center gap-3 transition-colors">
             <span class="text-xl shrink-0">${emoji}</span>
             <span class="min-w-0 flex-1">
                 <span class="block text-xs font-bold ${titleCls} truncate">${d.summary}${more}</span>

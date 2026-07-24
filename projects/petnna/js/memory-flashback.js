@@ -78,11 +78,12 @@
         const host = document.getElementById('memory-flashback-banner');
         if (!host) return;
         const m = buildMemoryFlashback(_albums(), _walks(), new Date());
-        if (!m) { host.innerHTML = ''; return; }
+        if (!m) { host.innerHTML = ''; host.hidden = true; return; }
+        host.hidden = false;
 
         if (m.kind === 'onThisDay') {
             host.innerHTML = `
-            <button type="button" onclick="renderMemoryFlashbackOpen(${m.id})" class="w-full text-left card-modern p-3.5 border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 flex items-center gap-3 hover:border-amber-300 transition-colors">
+            <button type="button" onclick="renderMemoryFlashbackOpen(${m.id})" class="w-full text-left p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 flex items-center gap-3 hover:from-amber-100 transition-colors">
                 <span class="text-xl shrink-0">📅</span>
                 <span class="min-w-0 flex-1">
                     <span class="block text-xs font-black text-amber-900">${m.years}년 전 오늘의 추억</span>
@@ -99,7 +100,7 @@
         if (m.photoCount > 0) parts.push(`일기 ${m.photoCount}개`);
         const target = m.walkCount > 0 ? 'renderMemoryFlashbackWalk()' : 'renderMemoryFlashbackOpen()';
         host.innerHTML = `
-        <button type="button" onclick="${target}" class="w-full text-left card-modern p-3.5 border border-brand-100 bg-brand-50/40 flex items-center gap-3 hover:border-brand-200 transition-colors">
+        <button type="button" onclick="${target}" class="w-full text-left p-3.5 bg-brand-50/40 flex items-center gap-3 hover:bg-brand-50 transition-colors">
             <span class="text-xl shrink-0">✨</span>
             <span class="min-w-0 flex-1">
                 <span class="block text-xs font-black text-brand-700">이번 달 하이라이트</span>

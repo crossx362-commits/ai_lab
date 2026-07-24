@@ -1,11 +1,14 @@
 const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
 
-    <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
-    <div id="health-digest-banner"></div>
+    <!-- 알림 카드: 건강 조기감지 다이제스트 + 추억 다시보기를 한 카드로 통합(2026-07-24) -->
+    <div id="home-alerts-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
+        <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
+        <div id="health-digest-banner"></div>
 
-    <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
-    <div id="memory-flashback-banner"></div>
+        <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
+        <div id="memory-flashback-banner"></div>
+    </div>
 
     <!-- 오늘 요약 카드: 케어체크 + 챙길 것 + 날짜/날씨 + 운세를 한 카드로 통합 -->
     <div class="card-modern divide-y divide-gray-100 overflow-hidden">

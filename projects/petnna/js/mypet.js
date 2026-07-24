@@ -1246,6 +1246,13 @@ function renderMyPets() {
     if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
+    // 둘 다 숨겨지면(챙길 알림 없음) 빈 카드 껍데기가 남지 않도록 부모도 접는다.
+    const alertsCard = document.getElementById('home-alerts-card');
+    if (alertsCard) {
+        const healthHidden = document.getElementById('health-digest-banner')?.hidden !== false;
+        const memoryHidden = document.getElementById('memory-flashback-banner')?.hidden !== false;
+        alertsCard.hidden = healthHidden && memoryHidden;
+    }
 
     const roomNameEl = document.getElementById('pet-room-name');
     if (roomNameEl) {
