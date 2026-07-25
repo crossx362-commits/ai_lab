@@ -132,17 +132,43 @@ def _live_probe() -> list[dict]:
         except Exception:
             pass          # 네트워크 일시 오류는 이슈로 만들지 않는다
     # 2) 스토리지 버킷 — 코드가 참조하는 버킷이 실제로 있는가
+    #
+    # ⚠️ `GET storage/v1/bucket`(버킷 목록)을 쓰면 안 된다 — anon 키는 목록 조회 권한이
+    # 없어서 **오류가 아니라 빈 배열 []을 HTTP 200으로** 돌려준다. 그걸 "버킷 0개"로
+    # 읽으면 참조된 버킷 전부가 '없음' P1으로 올라간다(2026-07-25 실제 오탐: 버킷이
+    # 멀쩡히 있는데 petnna-media 부재 P1을 발행해 오너를 콘솔로 보낼 뻔했다).
+    # 버킷별로 object/list를 POST해 404/"not found"일 때만 부재로 판정하고,
+    # 그 밖의 응답은 '판정 불가'로 두어 침묵한다(오탐 금지 원칙).
+    def _bucket_missing(name: str):
+        """True=부재 확실, False=존재 확실, None=판정 불가(권한·네트워크 등)."""
+        req = urllib.request.Request(
+            f"{url}/storage/v1/object/list/{name}",
+            data=json.dumps({"prefix": "", "limit": 1}).encode(),
+            headers={"apikey": key, "Authorization": f"Bearer {key}",
+                     "Content-Type": "application/json"},
+            method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=12):
+                return False                      # 200 = 버킷 실재
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", "replace")[:200].lower()
+            if e.code == 404 or "not found" in body:
+                return True
+            return None                           # 401/403 등은 권한 문제 — 판정 불가
+        except Exception:
+            return None
+
     try:
-        buckets = {b.get("name") for b in (_get("storage/v1/bucket") or [])}
         referenced = set()
         for js in (PETNNA_ROOT / "js").rglob("*.js"):
             for m in re.finditer(r"storage\s*\.\s*from\(\s*['\"]([^'\"]+)['\"]", js.read_text(encoding="utf-8", errors="replace")):
                 referenced.add(m.group(1))
-        for b in sorted(referenced - buckets):
-            findings.append({"priority": "P1",
-                             "title": f"[라이브] 스토리지 버킷 '{b}' 없음",
-                             "detail": "코드가 이 버킷에 업로드하는데 실제로 존재하지 않음 — "
-                                       "사진·이미지 업로드가 전부 조용히 실패한다(Supabase 콘솔에서 생성 필요)"})
+        for b in sorted(referenced):
+            if _bucket_missing(b) is True:
+                findings.append({"priority": "P1",
+                                 "title": f"[라이브] 스토리지 버킷 '{b}' 없음",
+                                 "detail": "코드가 이 버킷에 업로드하는데 실제로 존재하지 않음 — "
+                                           "사진·이미지 업로드가 전부 조용히 실패한다(Supabase 콘솔에서 생성 필요)"})
     except Exception:
         pass
     return findings

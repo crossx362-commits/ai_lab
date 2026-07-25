@@ -7,6 +7,7 @@
 통일해 고쳤다.
 """
 import importlib.util
+import io
 import json
 import sys
 import tempfile
@@ -104,3 +105,56 @@ class InvestigateAssignedTasksFailureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LiveProbeBucketTests(unittest.TestCase):
+    """버킷 부재 판정 오탐 회귀 — 2026-07-25.
+
+    `GET storage/v1/bucket`(버킷 목록)은 anon 키에 권한이 없어 **오류가 아니라
+    빈 배열 []을 HTTP 200으로** 돌려준다. 이걸 "버킷 0개"로 읽던 초판 프로브가
+    멀쩡히 존재하는 petnna-media를 P1 '없음'으로 발행해, 오너를 Supabase 콘솔로
+    보낼 뻔했다(실제 오탐). 이제 버킷별 object/list를 POST해 404/"not found"일
+    때만 부재로 판정하고, 권한 문제(401/403)나 네트워크 오류는 침묵한다.
+    """
+
+    def setUp(self):
+        self.baekho = load()
+
+    def _probe_with(self, opener):
+        """SUPABASE 자격증명과 urlopen을 갈아끼우고 _live_probe()의 버킷 소견만 뽑는다."""
+        env = {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_ANON_KEY": "anon-key"}
+        with mock.patch.dict("os.environ", env, clear=False), \
+             mock.patch.object(self.baekho, "scan_frontend", return_value={"tables": set()}), \
+             mock.patch("urllib.request.urlopen", side_effect=opener):
+            found = self.baekho._live_probe()
+        return [f for f in found if "버킷" in f["title"]]
+
+    def test_permission_denied_listing_is_not_reported_as_missing(self):
+        """존재하는 버킷: object/list가 200 → 소견 없음(빈 목록에 속지 않는다)."""
+        class _Resp:
+            def read(self): return b"[]"
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+        self.assertEqual(self._probe_with(lambda *a, **kw: _Resp()), [])
+
+    def test_missing_bucket_is_reported(self):
+        """진짜 없는 버킷: object/list가 404 → P1 발행."""
+        import urllib.error
+
+        def opener(req, *a, **kw):
+            raise urllib.error.HTTPError(
+                req.full_url, 404, "Not Found", {}, io.BytesIO(b'{"message":"Bucket not found"}'))
+
+        found = self._probe_with(opener)
+        self.assertTrue(found, "실제로 없는 버킷인데 P1이 발행되지 않음")
+        self.assertTrue(all(f["priority"] == "P1" for f in found))
+
+    def test_auth_error_is_silent(self):
+        """401/403은 권한 문제이지 부재 근거가 아니다 → 침묵(오탐 금지)."""
+        import urllib.error
+
+        def opener(req, *a, **kw):
+            raise urllib.error.HTTPError(
+                req.full_url, 401, "Unauthorized", {}, io.BytesIO(b'{"message":"unauthorized"}'))
+
+        self.assertEqual(self._probe_with(opener), [])
