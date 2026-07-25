@@ -523,6 +523,8 @@ function renderGrowthChart() {
     if (history.length === 0) {
         chartContainer.style.display = 'none';
         if (emptyEl) emptyEl.classList.remove('hidden');
+        const ringEl = document.getElementById('growth-ring');
+        if (ringEl) { ringEl.classList.add('hidden'); ringEl.innerHTML = ''; }
         return;
     }
     chartContainer.style.display = 'block';
@@ -614,6 +616,57 @@ function renderGrowthChart() {
     });
 
     renderGrowthNudge(goal, reg, lastX, latest.weight);
+    renderGrowthRing(goal, sorted[0].weight, latest.weight);
+}
+
+// 목표 달성률 진척 링 — 시작 체중에서 목표까지의 진행도를 링으로 시각화 + 주간 코칭 문구
+function renderGrowthRing(goal, startWeight, currentWeight) {
+    const el = document.getElementById('growth-ring');
+    if (!el) return;
+    if (!goal || !(startWeight > 0) || !(currentWeight > 0)) {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        return;
+    }
+
+    const span = startWeight - goal; // 감량 목표면 +, 증량 목표면 -
+    let pct;
+    if (Math.abs(span) < 0.05) {
+        pct = Math.abs(currentWeight - goal) < 0.05 ? 100 : 0;
+    } else {
+        pct = ((startWeight - currentWeight) / span) * 100;
+    }
+    pct = Math.max(0, Math.min(100, Math.round(pct)));
+    const done = pct >= 100;
+
+    const r = 22, c = 2 * Math.PI * r;
+    const offset = c * (1 - pct / 100);
+    const remain = Math.abs(currentWeight - goal);
+    const coach = done
+        ? '🎉 목표 체중을 달성했어요! 이번 주도 지금 컨디션을 꾸준히 유지해요.'
+        : (currentWeight > goal
+            ? `이번 주도 조금씩! 목표까지 ${remain.toFixed(1)}kg 감량이면 달성이에요.`
+            : `이번 주도 조금씩! 목표까지 ${remain.toFixed(1)}kg 증량이면 달성이에요.`);
+
+    el.classList.remove('hidden');
+    el.innerHTML = `
+        <div class="flex items-center gap-3">
+            <div class="relative shrink-0" style="width:56px;height:56px;">
+                <svg width="56" height="56" viewBox="0 0 56 56" class="-rotate-90">
+                    <circle cx="28" cy="28" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="6"></circle>
+                    <circle cx="28" cy="28" r="${r}" fill="none" stroke="${done ? '#f59e0b' : '#10b981'}" stroke-width="6"
+                        stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"
+                        style="transition:stroke-dashoffset 0.7s ease;"></circle>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-[12px] font-black ${done ? 'text-amber-500' : 'text-emerald-600'}">${done ? '🎯' : pct + '%'}</span>
+                </div>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-black text-gray-600 mb-0.5">목표 달성률</p>
+                <p class="text-[10px] font-bold text-gray-500 leading-snug">${coach}</p>
+            </div>
+        </div>`;
 }
 
 // 최소제곱 선형회귀 — 점이 2개 미만이거나 x가 모두 같으면 null
