@@ -234,6 +234,9 @@ const HEALTH_TEMPLATE = `
     <!-- 🏥 병원비 제보·비교 보드 (케어위젯 비용 그룹에서 이동 — 건강수첩과 짝, 2026-07-21) -->
     <div id="vet-cost-board-widget"></div>
 
+    <!-- 💰 반려동물 가계부 (백로그 나무, P3 — 카테고리별 지출·월별 집계) -->
+    <div id="expense-tracker-widget"></div>
+
     <!-- 🤖 AI 기능 — 흩어진 카드 4장 + 안내 카드를 한 카드 안 타일로 병합(2026-07-19) -->
     <div class="card-modern p-5 space-y-4">
         <div class="flex items-center gap-3">

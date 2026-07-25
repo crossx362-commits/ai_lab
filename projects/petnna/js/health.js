@@ -86,6 +86,9 @@ function renderHealthTab() {
     // 병원비 제보·비교 보드 (백로그 나무, P3)
     if (typeof VetCostBoard !== 'undefined') VetCostBoard.renderWidget('vet-cost-board-widget');
 
+    // 반려동물 가계부 (백로그 나무, P3 — 카테고리별 지출·월별 집계)
+    if (typeof ExpenseTracker !== 'undefined') ExpenseTracker.renderWidget('expense-tracker-widget');
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
