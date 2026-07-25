@@ -343,6 +343,12 @@ def claude_fix(worktree: Path, finding: dict) -> tuple[bool, str]:
         "- 이 과제와 무관한 개선·리팩터링·포맷 변경 금지. diff를 최소화하라.\n"
         "- 새 라이브러리 추가 금지. 기존 코드 스타일·디자인 시스템을 따르라.\n"
         "- 테스트 삭제·규칙 완화·secret/키 추가 금지.\n"
+        # 게이트(_stale_cache_versions)가 이걸 강제한다 — 지시가 없으면 구현자는 js만
+        # 고치고 끝내고, 게이트가 매번 거부해 과제가 시도만 소진하고 보류로 밀린다
+        # (2026-07-25: 게이트를 먼저 넣고 이 지시를 빠뜨릴 뻔했다).
+        "- js/*.js 를 수정했다면 index.html에서 그 파일의 `?v=` 숫자를 반드시 +1 하라.\n"
+        "  (안 올리면 브라우저가 캐시된 옛 파일을 써서 변경이 반영되지 않는다. 새 js를\n"
+        "   추가했다면 index.html에 `<script defer src=\"js/새파일.js?v=1\"></script>`도 넣어라.)\n"
         "- 모르는 API·기법은 웹서치로 확인하고 감으로 구현하지 마라.\n"
         "- git 커밋은 하지 마라(커밋은 엔진이 한다).\n"
         "- 마지막에 어떤 파일을 왜 바꿨는지 1~3줄로 요약하라."
@@ -426,6 +432,40 @@ def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
         return False, (f"캐시버전 미갱신: {stale[:3]} — index.html의 ?v= 를 올리지 않으면 "
                        "브라우저가 옛 JS를 계속 받아 기능이 반영되지 않는다"), files
     return True, f"파일 {len(files)}개·{total}줄", files
+
+
+def _autobump_cache_versions(worktree: Path) -> list[str]:
+    """미커밋 상태에서 수정된 js의 index.html `?v=` 를 +1 한다. 보정한 목록을 돌려준다.
+
+    커밋 전에 부르는 것이 전제다(`git status`로 변경 파일을 본다). 새로 추가된 js는
+    script 태그를 만드는 판단이 필요하므로 건드리지 않는다 — 그건 구현자 몫이고,
+    빠지면 게이트가 아니라 '기능이 안 뜬다'로 드러난다.
+    """
+    idx_path = worktree / "projects/petnna/index.html"
+    if not idx_path.exists():
+        return []
+    status = _git(["status", "--porcelain", "--", "projects/petnna"], worktree).stdout
+    changed = []
+    for line in status.splitlines():
+        code, _, path = line[:2], line[2:3], line[3:].strip()
+        if code.strip() in ("A", "??"):        # 신규 파일은 대상 아님
+            continue
+        if path.endswith(".js") and path.startswith("projects/petnna/js/"):
+            changed.append(path[len("projects/petnna/"):])
+    if not changed:
+        return []
+    text = idx_path.read_text(encoding="utf-8", errors="replace")
+    bumped = []
+    for rel in changed:
+        pat = re.compile(re.escape(rel) + r"\?v=(\d+)")
+        m = pat.search(text)
+        if not m:
+            continue                            # index.html이 안 싣는 js — 대상 아님
+        text = text.replace(m.group(0), f"{rel}?v={int(m.group(1)) + 1}", 1)
+        bumped.append(f"{rel}→{int(m.group(1)) + 1}")
+    if bumped:
+        idx_path.write_text(text, encoding="utf-8")
+    return bumped
 
 
 def _stale_cache_versions(worktree: Path, base: str, files: list[str]) -> list[str]:
@@ -547,6 +587,14 @@ def _improve_cycle(do_send: bool = True) -> str:
                 rec["attempts"] = max(0, rec["attempts"] - 1)
                 log.append("- 인프라 실패로 판정 — 시도 미차감, 다음 틱 재시도")
             raise RuntimeError("claude 수정 실패")
+
+        # 구현자가 index.html의 ?v= 를 안 올렸으면 엔진이 기계적으로 채운다.
+        # 프롬프트로 지시는 하지만 LLM이 잊으면 게이트가 거부해 브랜치가 PR대기로만
+        # 쌓이고 자동 병합 루프가 무력화된다 — 버전 +1은 순수 기계 작업이라 사람이
+        # 판단할 여지가 없으니 자동화한다(게이트는 그래도 최후 백스톱으로 남긴다).
+        bumped = _autobump_cache_versions(wt)
+        if bumped:
+            log.append(f"- 캐시버전 자동 보정: {', '.join(bumped[:4])}")
 
         ctype = COMMIT_TYPE.get(f.get("type", ""), "fix")
         _git(["add", "-A", "projects/petnna"], wt)

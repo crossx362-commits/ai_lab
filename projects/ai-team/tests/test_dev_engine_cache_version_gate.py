@@ -101,5 +101,62 @@ class CacheVersionGateTests(unittest.TestCase):
         self.assertTrue(ok, f"js가 아닌 변경이 캐시버전으로 거부됨: {msg}")
 
 
+class AutobumpCacheVersionTests(unittest.TestCase):
+    """엔진의 기계적 캐시버전 보정 — 게이트만으로는 부족한 이유.
+
+    프롬프트로 "?v= 를 올려라"라고 지시해도 LLM이 잊으면 게이트가 거부하고, 그 브랜치는
+    PR대기로만 쌓여 자동 병합 루프가 무력화된다(PR대기 상한 5에 걸리면 신규 착수도 멈춤).
+    버전 +1은 판단 여지가 없는 순수 기계 작업이라 엔진이 커밋 직전에 직접 채운다.
+    """
+
+    def setUp(self):
+        self.suri = load()
+        self.repo = Path(tempfile.mkdtemp())
+        pet = self.repo / "projects" / "petnna" / "js"
+        pet.mkdir(parents=True)
+        (self.repo / "projects/petnna/index.html").write_text(
+            _INDEX.format(album=161, extra=""), encoding="utf-8")
+        (pet / "album.js").write_text("// v1\n", encoding="utf-8")
+        _git(["init", "-q", "-b", "master"], self.repo)
+        _git(["config", "user.email", "t@t"], self.repo)
+        _git(["config", "user.name", "t"], self.repo)
+        _git(["add", "-A"], self.repo)
+        _git(["commit", "-qm", "base"], self.repo)
+
+    def _index(self):
+        return (self.repo / "projects/petnna/index.html").read_text(encoding="utf-8")
+
+    def test_modified_js_gets_version_bumped(self):
+        (self.repo / "projects/petnna/js/album.js").write_text("// 수정\n", encoding="utf-8")
+        bumped = self.suri._autobump_cache_versions(self.repo)
+        self.assertTrue(bumped, "수정된 js인데 버전이 보정되지 않음")
+        self.assertIn("js/album.js?v=162", self._index())
+
+    def test_untouched_js_is_left_alone(self):
+        (self.repo / "projects/petnna/js/album.js").write_text("// 수정\n", encoding="utf-8")
+        self.suri._autobump_cache_versions(self.repo)
+        self.assertIn("js/other.js?v=7", self._index(), "건드리지 않은 js의 버전이 바뀜")
+
+    def test_new_js_is_not_bumped(self):
+        """신규 js는 script 태그 생성 판단이 필요해 엔진이 손대지 않는다."""
+        (self.repo / "projects/petnna/js/brand-new.js").write_text("// new\n", encoding="utf-8")
+        self.assertEqual(self.suri._autobump_cache_versions(self.repo), [])
+
+    def test_no_js_change_is_noop(self):
+        (self.repo / "projects/petnna/README.md").write_text("문서\n", encoding="utf-8")
+        self.assertEqual(self.suri._autobump_cache_versions(self.repo), [])
+        self.assertIn("js/album.js?v=161", self._index())
+
+    def test_autobump_then_gate_passes(self):
+        """보정 후에는 게이트가 통과해야 한다(둘이 서로 어긋나지 않는지)."""
+        _git(["checkout", "-q", "-b", "work"], self.repo)
+        (self.repo / "projects/petnna/js/album.js").write_text("// 수정\n", encoding="utf-8")
+        self.suri._autobump_cache_versions(self.repo)
+        _git(["add", "-A"], self.repo)
+        _git(["commit", "-qm", "change"], self.repo)
+        ok, msg, _ = self.suri.diff_gate(self.repo)
+        self.assertTrue(ok, f"자동 보정 후에도 게이트가 거부함: {msg}")
+
+
 if __name__ == "__main__":
     unittest.main()
