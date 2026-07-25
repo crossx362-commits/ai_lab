@@ -420,7 +420,38 @@ def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
     added = "\n".join(ln for ln in diff_text.splitlines() if ln.startswith("+"))
     if FORBIDDEN_DIFF.search(added):
         return False, "추가된 줄에 시크릿/인증 의심 패턴", files
+
+    stale = _stale_cache_versions(worktree, base, files)
+    if stale:
+        return False, (f"캐시버전 미갱신: {stale[:3]} — index.html의 ?v= 를 올리지 않으면 "
+                       "브라우저가 옛 JS를 계속 받아 기능이 반영되지 않는다"), files
     return True, f"파일 {len(files)}개·{total}줄", files
+
+
+def _stale_cache_versions(worktree: Path, base: str, files: list[str]) -> list[str]:
+    """수정된 js 중 index.html의 `?v=` 가 그대로인 것들.
+
+    이 저장소는 모든 JS를 `<script src="js/x.js?v=N">`로 싣는다. JS만 고치고 N을
+    안 올리면 브라우저가 캐시된 옛 파일을 계속 써서 **기능이 배포돼도 안 보인다**.
+    2026-07-25 검토에서 PR대기 브랜치 2개가 전부 이 상태였다(사람이 눈으로 잡음).
+    새로 추가된 js는 script 태그 자체가 새로 생기므로 대상에서 제외한다.
+    """
+    idx = "projects/petnna/index.html"
+    old_idx = _git(["show", f"{base}:{idx}"], worktree).stdout
+    new_idx = (worktree / idx).read_text(encoding="utf-8", errors="replace") \
+        if (worktree / idx).exists() else ""
+    if not old_idx or not new_idx:
+        return []                       # index.html을 못 읽으면 판정 불가 — 오탐 금지
+    stale = []
+    for f in files:
+        if not f.endswith(".js") or not f.startswith("projects/petnna/js/"):
+            continue
+        rel = f[len("projects/petnna/"):]
+        pat = re.compile(re.escape(rel) + r"\?v=(\d+)")
+        old_m, new_m = pat.search(old_idx), pat.search(new_idx)
+        if old_m and new_m and old_m.group(1) == new_m.group(1):
+            stale.append(rel)
+    return stale
 
 
 # ── 개선 사이클 ────────────────────────────────────────────
