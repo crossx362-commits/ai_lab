@@ -13,7 +13,7 @@
 
 셀렉터 주의(2026-07-25 수정): 원래 `.card-modern.divide-y.divide-gray-100`이
 "정확히 1개"라고 가정했으나, 마이펫 탭에 같은 클래스 조합의 카드가 3개
-(#home-alerts-card·#home-summary-card·#home-challenge-card)로 늘며 깨졌다 —
+(#home-today-card·#home-challenge-card 등)로 늘며 깨졌다 —
 클래스 개수 가정 대신 **#home-challenge-card ID**로 잡는다.
 
 외부 네트워크(수파베이스)에 의존하지 않는다 — 템플릿 정적 마크업 구조·가시성만

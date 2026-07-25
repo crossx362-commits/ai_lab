@@ -1,17 +1,18 @@
 const MYPET_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
 
-    <!-- 알림 카드: 건강 조기감지 다이제스트 + 추억 다시보기를 한 카드로 통합(2026-07-24) -->
-    <div id="home-alerts-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
+    <!-- 오늘 카드: 알림(건강 다이제스트·추억)·챙길 것·케어 요약·운세를 한 카드로 통합
+         (2026-07-25 오너 지시 — 알림 카드와 요약 카드가 같은 '오늘' 정보라 두 장으로
+         나뉠 이유가 없었다). divide-y는 hidden이 아닌 형제 사이에만 선을 그으므로
+         비어서 hidden 처리된 배너는 구분선을 만들지 않는다 — 각 배너 렌더러가
+         내용 없을 때 host.hidden = true로 두는 규약에 의존한다. -->
+    <div id="home-today-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
         <!-- 🩺 홈 건강 조기감지 다이제스트 (health-digest.js가 채움, 위험 시에만 노출) -->
         <div id="health-digest-banner"></div>
 
         <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
         <div id="memory-flashback-banner"></div>
-    </div>
 
-    <!-- 오늘 요약 카드: 케어체크 + 챙길 것 + 날짜/날씨 + 운세를 한 카드로 통합 -->
-    <div id="home-summary-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
         <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
         <div id="care-check-banner"></div>
 
@@ -24,14 +25,20 @@ const MYPET_TEMPLATE = `
         <!-- 날짜/날씨는 2026-07-24부터 전 탭 공통 상단 헤더에 표시(index.html) -->
 
         <!-- 오늘의 운세 (집사 + 펫) -->
-        <div class="grid grid-cols-2 divide-x divide-gray-100">
-            <div class="bg-brand-50/50 p-3.5 space-y-1.5">
-                <span class="block text-xs font-semibold text-brand-600">🧔 집사 오늘의 운세</span>
-                <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+            <div class="bg-brand-50/40 px-4 py-3 flex items-start gap-2.5">
+                <span class="text-base leading-none mt-0.5 shrink-0">🧔</span>
+                <div class="min-w-0">
+                    <span class="block text-[11px] font-bold text-brand-600 mb-0.5">집사 오늘의 운세</span>
+                    <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+                </div>
             </div>
-            <div class="bg-amber-50/50 p-3.5 space-y-1.5">
-                <span class="block text-xs font-semibold text-amber-600">🐾 펫 오늘의 운세</span>
-                <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+            <div class="bg-amber-50/40 px-4 py-3 flex items-start gap-2.5">
+                <span class="text-base leading-none mt-0.5 shrink-0">🐾</span>
+                <div class="min-w-0">
+                    <span class="block text-[11px] font-bold text-amber-600 mb-0.5">펫 오늘의 운세</span>
+                    <p id="mypet-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+                </div>
             </div>
         </div>
 

@@ -93,10 +93,10 @@
         const handler = s.action || `switchTab('${s.tab}')`;
         return `
         <button type="button" onclick="${handler}"
-            class="flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg hover:bg-gray-50 transition-colors outline-none min-w-0">
-            <span class="text-lg leading-none">${s.emoji}</span>
-            <span class="text-[10px] font-semibold text-gray-500">${s.label}</span>
-            <span class="text-[11px] font-bold ${valCls} truncate max-w-full">${s.value}</span>
+            class="flex flex-col items-center gap-1 py-2 px-1 rounded-xl hover:bg-gray-50 active:scale-95 transition-all outline-none min-w-0">
+            <span class="text-xl leading-none">${s.emoji}</span>
+            <span class="text-[10px] font-semibold text-gray-400">${s.label}</span>
+            <span class="text-xs font-black ${valCls} truncate max-w-full">${s.value}</span>
         </button>`;
     }
 
@@ -108,13 +108,16 @@
         const cells = [_walkStat(), _mealStat(), _careStat(), _moodStat(), _anomalyStat()]
             .filter(Boolean).map(_cell).join('');
 
+        // 5칸을 카드 전체 폭(데스크톱 1400px+)에 늘리면 칸마다 아이콘 하나가 덩그러니
+        // 남아 허전하다 — 폭을 제한한다. 가운데 정렬(mx-auto)하면 왼쪽 끝의 소제목과
+        // 통계가 따로 노는 것처럼 보여서, 소제목과 같은 왼쪽 기준으로 맞춘다.
         host.innerHTML = `
-        <div class="px-3 py-2.5">
-            <div class="flex items-center gap-1.5 mb-1.5 px-1">
+        <div class="px-4 py-3">
+            <div class="flex items-center gap-1.5 mb-2">
                 <span class="text-sm">📊</span>
                 <span class="text-xs font-bold text-gray-700">오늘의 케어 요약</span>
             </div>
-            <div class="grid grid-cols-5 gap-1">${cells}</div>
+            <div class="grid grid-cols-5 gap-1 max-w-xl">${cells}</div>
         </div>`;
     }
 

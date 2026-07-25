@@ -1,7 +1,7 @@
 """펫나 E2E — 상단 케어 배너 divider 가시성 안전망.
 
-마이펫 홈의 '오늘 요약' 통합카드(templates/mypet.js의 `#home-summary-card`)는
-상단에 두 개의 조건부 배너를 품는다:
+마이펫 홈의 '오늘' 통합카드(templates/mypet.js의 `#home-today-card`)는
+상단에 조건부 배너들을 품는다(그중 아래 둘을 검증):
   1) #care-check-banner  (care-check.js — 오늘 due 투약·케어, 있을 때만 노출)
   2) #care-nudge-banner  (care-nudge.js — 오늘 챙길 것, 있을 때만 노출)
 
@@ -15,9 +15,10 @@
 위에 붕 뜬 선이 나타나는 회귀를 이 테스트가 잡는다.
 
 셀렉터 주의(2026-07-25 수정): `.card-modern.divide-y.divide-gray-100` 클래스
-조합은 마이펫 탭에 여러 카드(#home-alerts-card·#home-summary-card·
-#home-challenge-card)가 공유하므로 클래스가 아니라 **#home-summary-card ID**로
-잡는다 — 첫 매치가 hidden 카드면 visible 대기가 영영 안 끝나는 함정이 있었다.
+조합은 마이펫 탭의 여러 카드(#home-today-card·#home-challenge-card)가
+공유하므로 클래스가 아니라 **#home-today-card ID**로 잡는다 — 첫 매치가 hidden
+카드면 visible 대기가 영영 안 끝나는 함정이 있었다. (같은 날 알림 카드
+#home-alerts-card와 #home-summary-card가 이 카드로 통합됐다.)
 또한 날짜/날씨 블록은 2026-07-24 상단 헤더로 이동해 카드 안에 없다 — 배너 아래
 '첫 번째 hidden 아닌 형제'를 측정 대상으로 삼는다.
 
@@ -53,7 +54,16 @@ _APPLY_COMBO = r"""
     if (typeof window.renderCareCheckBanner === 'function') window.renderCareCheckBanner();
     if (typeof window.renderCareNudgeBanner === 'function') window.renderCareNudgeBanner();
 
-    const card = document.getElementById('home-summary-card');
+    // 2026-07-25 알림 카드가 이 카드로 통합되면서 건강 다이제스트·추억 배너가
+    // care-check 앞에 붙었다. 이 테스트가 통제하는 건 아래 두 배너뿐이므로,
+    // 앞선 두 배너는 앱과 같은 규약(빈 내용 + hidden)으로 접어 care-check를
+    // '첫 보이는 자식'으로 만든 뒤 구분선을 측정한다.
+    ['health-digest-banner', 'memory-flashback-banner'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) { el.innerHTML = ''; el.hidden = true; }
+    });
+
+    const card = document.getElementById('home-today-card');
     const cc = document.getElementById('care-check-banner');
     const cn = document.getElementById('care-nudge-banner');
     if (!card || !cc || !cn) return { ok: false };
@@ -80,8 +90,12 @@ _APPLY_COMBO = r"""
         check: measure(cc),
         nudge: measure(cn),
         date: dateBlock ? measure(dateBlock) : null,
-        // care-check는 카드의 첫 자식이라 항상 top-border 0이어야 한다(검증용).
-        checkIsFirst: card.firstElementChild === cc,
+        // care-check 앞에 '보이는' 형제가 없어야 top-border가 0이다. care-check 자신이
+        // 비어 hidden인 조합도 있으므로 "첫 보이는 자식"이 아니라 "앞에 보이는 형제 없음"
+        // 으로 판정한다(전자는 빈 조합에서 항상 거짓이 된다).
+        checkIsFirst: [...card.children]
+            .slice(0, [...card.children].indexOf(cc))
+            .every(el => el.hidden === true),
     };
 }
 """
@@ -100,29 +114,36 @@ def run(page, base_url):
 
     # 통합카드가 마이펫 탭에 렌더될 때까지 대기.
     card = page.wait_for_selector(
-        "#home-summary-card",
+        "#home-today-card",
         state="visible", timeout=15000,
     )
-    assert card is not None, "마이펫 탭에 '오늘 요약' 통합카드(#home-summary-card)가 렌더되지 않음"
+    assert card is not None, "마이펫 탭에 '오늘 요약' 통합카드(#home-today-card)가 렌더되지 않음"
 
     # 배너 두 개가 카드 안에 실재하는지 확인.
     banners = page.evaluate(
         """() => {
-            const card = document.getElementById('home-summary-card');
+            const card = document.getElementById('home-today-card');
             const cc = document.getElementById('care-check-banner');
             const cn = document.getElementById('care-nudge-banner');
+            const strip = document.getElementById('today-care-strip');
+            // 2026-07-25 알림 카드가 이 카드로 통합돼 첫 자식은 건강 다이제스트다.
+            // 검증할 계약은 "care-check가 첫 자식"이 아니라 "조건부 배너들이 모두
+            // 상시 블록(케어 요약)보다 앞에 있다" — 그래야 배너가 비었을 때
+            // divide-y 유령 구분선이 상시 블록 위에 생기는 회귀를 잡을 수 있다.
+            const before = (a, b) => !!a && !!b
+                && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
             return {
                 cc: !!cc && card.contains(cc),
                 cn: !!cn && card.contains(cn),
-                ccFirst: card.firstElementChild === cc,
-                order: cc && cn ? (cc.compareDocumentPosition(cn)
-                    & Node.DOCUMENT_POSITION_FOLLOWING) > 0 : false,
+                bannersBeforeStrip: before(cc, strip) && before(cn, strip),
+                order: before(cc, cn),
             };
         }"""
     )
     assert banners["cc"], "#care-check-banner가 통합카드 안에 없음(구조 회귀)"
     assert banners["cn"], "#care-nudge-banner가 통합카드 안에 없음(구조 회귀)"
-    assert banners["ccFirst"], "#care-check-banner가 통합카드 첫 자식이 아님 — divide-y 순서 회귀"
+    assert banners["bannersBeforeStrip"], \
+        "조건부 배너가 상시 블록(#today-care-strip)보다 뒤에 있음 — divide-y 순서 회귀"
     assert banners["order"], "care-nudge가 care-check 뒤에 오지 않음 — 상단 배너 순서 회귀"
 
     # 4가지 표시 조합 × 기대치. (check, nudge) → 각 배너/날짜블록의 가시성·구분선.
@@ -144,10 +165,10 @@ def run(page, base_url):
         c, n, d = r["check"], r["nudge"], r["date"]
         assert d is not None, f"[{desc}] care-nudge 아래 날짜 블록을 찾지 못함(구조 회귀)"
 
-        # care-check는 언제나 카드 첫 자식 → top-border 0.
-        assert r["checkIsFirst"], f"[{desc}] care-check가 첫 자식이 아님"
+        # care-check 앞에 보이는 형제가 없어야 → top-border 0.
+        assert r["checkIsFirst"], f"[{desc}] care-check 앞에 보이는 형제가 있음 — divide-y 순서 회귀"
         assert c["borderTop"] == 0, \
-            f"[{desc}] care-check(첫 자식)에 유령 top-border {c['borderTop']}px 발생"
+            f"[{desc}] care-check 앞에 보이는 형제가 없는데 유령 top-border {c['borderTop']}px 발생"
 
         # --- care-check 상태 ---
         if cc_fill:

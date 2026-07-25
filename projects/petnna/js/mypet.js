@@ -1249,13 +1249,9 @@ function renderMyPets() {
     if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
-    // 둘 다 숨겨지면(챙길 알림 없음) 빈 카드 껍데기가 남지 않도록 부모도 접는다.
-    const alertsCard = document.getElementById('home-alerts-card');
-    if (alertsCard) {
-        const healthHidden = document.getElementById('health-digest-banner')?.hidden !== false;
-        const memoryHidden = document.getElementById('memory-flashback-banner')?.hidden !== false;
-        alertsCard.hidden = healthHidden && memoryHidden;
-    }
+    // 2026-07-25 알림 카드를 '오늘 카드'로 통합하면서 부모 접기 로직을 제거했다.
+    // 통합 카드는 알림이 없어도 케어 요약·운세를 항상 담으므로 접으면 안 된다
+    // (예전엔 알림 둘 다 비면 껍데기만 남아 접었지만, 이제 접으면 멀쩡한 내용이 사라진다).
 
     const roomNameEl = document.getElementById('pet-room-name');
     if (roomNameEl) {
