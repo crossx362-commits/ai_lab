@@ -1265,6 +1265,27 @@ function _renderDiaryList(container, emptyState, displayList) {
 
     const myEmail = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || '';
 
+    // 타임라인 상단 감성 훅: '○년 전 오늘의 추억'이 있으면 스크롤 유도 배너를 첫 노드로 노출
+    // (memory-flashback.js의 buildMemoryFlashback 재사용, 데이터 없으면 훅 자체를 생략)
+    if (typeof buildMemoryFlashback === 'function') {
+        const flash = buildMemoryFlashback(albums, (typeof walks !== 'undefined' ? walks : []), new Date());
+        if (flash && flash.kind === 'onThisDay' && flash.id != null) {
+            container.insertAdjacentHTML('beforeend', `
+                <div class="relative z-10 mb-8">
+                    <div class="absolute -left-7 top-4 w-4 h-4 bg-amber-400 border-4 border-white rounded-full shadow-sm"></div>
+                    <button type="button" onclick="scrollToEntry(${flash.id})" class="w-full text-left bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 p-3.5 rounded-2xl shadow-sm flex items-center gap-3 hover:from-amber-100 transition-colors">
+                        <span class="text-xl shrink-0">📅</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-xs font-black text-amber-900">${flash.years}년 전 오늘의 추억이 있어요</span>
+                            <span class="block text-[11px] text-amber-600 font-medium truncate mt-0.5">그날의 기록으로 이동해 다시 만나보세요 · ${flash.text}</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right text-amber-400 text-xs shrink-0"></i>
+                    </button>
+                </div>
+            `);
+        }
+    }
+
     displayList.forEach((item, idx) => {
         const filterVal = getFilterCSSValue(item.filter || 'natural');
         const isFriend = item.email && item.email !== myEmail;
