@@ -17,6 +17,15 @@
             ],
         },
         {
+            field: 'poopColor', label: '배변 색', icon: '🎨',
+            options: [
+                { value: 'normal', emoji: '🟤', text: '갈색' },
+                { value: 'black', emoji: '⚫', text: '검은색' },
+                { value: 'red', emoji: '🔴', text: '붉은색' },
+                { value: 'white', emoji: '⚪', text: '회백색' },
+            ],
+        },
+        {
             field: 'urine', label: '소변 색', icon: '🚽',
             options: [
                 { value: 'normal', emoji: '🟡', text: '연노랑' },

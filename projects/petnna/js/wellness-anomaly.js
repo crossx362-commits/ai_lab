@@ -29,6 +29,16 @@
         liquid: { label: '설사', emoji: '💦' },
     };
 
+    // 배변 색 셀프체크(daily-condition.js poopColor 필드 연동, 백로그 나무 제안
+    // '배변 상태 로그 — 색상·굳기'): 흑색변(상부 소화기 출혈)·혈변(하부 출혈)·
+    // 회백색변(담즙·췌장 이상)은 급성 신호라 굳기 연속(STOOL_STREAK)과 달리
+    // 소변 색처럼 가장 최근 기록 1건만 이상이어도 즉시 감지한다.
+    const STOOL_COLOR_ABNORMAL = {
+        black: { label: '검은색 변(상부 출혈 의심)', emoji: '⚫' },
+        red:   { label: '붉은 변(혈변 의심)', emoji: '🔴' },
+        white: { label: '회백색 변(담즙·췌장 이상 의심)', emoji: '⚪' },
+    };
+
     // 소변 색 셀프체크(daily-condition.js urine 필드 연동, 백로그 나무 제안
     // '홈 셀프 건강검사 트래커'): 붉은색(혈뇨)·진한색(탈수·농축뇨)은 급성 신호라
     // 배변 연속(STOOL_STREAK)과 달리 가장 최근 기록 1건만 이상이어도 즉시 감지한다.
@@ -113,6 +123,20 @@
         return { metric: 'poop', poop: type, label: info.label, emoji: info.emoji, days: streak };
     }
 
+    // 순수 함수: history → 배변 색 이상 소견(없으면 null).
+    // 가장 최근 배변 색 기록이 이상색이면 즉시 보고(혈변·담즙 이상은 급성 신호).
+    function analyzeStoolColor(history) {
+        const dated = (history || [])
+            .filter(d => d && d.poopColor && (d.poopColor === 'normal' || STOOL_COLOR_ABNORMAL[d.poopColor]))
+            .slice()
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        if (!dated.length) return null;
+        const latest = dated[0].poopColor;
+        if (!STOOL_COLOR_ABNORMAL[latest]) return null;
+        const info = STOOL_COLOR_ABNORMAL[latest];
+        return { metric: 'poopColor', poopColor: latest, label: info.label, emoji: info.emoji };
+    }
+
     // 순수 함수: history → 소변 색 이상 소견(없으면 null).
     // 가장 최근 소변 기록이 이상색이면 즉시 보고(혈뇨·농축뇨는 조기 대응이 중요).
     function analyzeUrine(history) {
@@ -189,6 +213,10 @@
         return `최근 ${f.days}일 연속 ${f.label} 기록이 있어요. 지속되면 수의사 상담을 권해요`;
     }
 
+    function _stoolColorText(f) {
+        return `가장 최근 ${f.label} 기록이 있어요. 병원 진료를 권해요`;
+    }
+
     function _urineText(f) {
         return `가장 최근 ${f.label} 기록이 있어요. 지속되면 수의사 상담을 권해요`;
     }
@@ -217,6 +245,7 @@
         const weightHistory = (typeof getWeightHistory === 'function') ? getWeightHistory() : [];
         const findings = analyzeWellness(history);
         const stool = analyzeStool(history);
+        const stoolColor = analyzeStoolColor(history);
         const urine = analyzeUrine(history);
         const conditions = analyzeCondition(history);
         const weight = analyzeWeight(weightHistory);
@@ -224,7 +253,7 @@
 
         // 배변·소변·컨디션·체중 급변은 표본 하한과 무관하게 조기 감지 — z-score 표본이
         // 부족해도 이상변/저하 연속·체중 급변이면 경고 카드로 바로 노출한다.
-        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool && !urine && !conditions.length && !weight) {
+        if (samples < MIN_SAMPLES + RECENT_DAYS && !stool && !stoolColor && !urine && !conditions.length && !weight) {
             // 표본 부족 — 조용히 안내(알림 없음)
             host.innerHTML = `
             <div class="card-modern p-5 border border-brand-100/60">
@@ -242,7 +271,7 @@
             return;
         }
 
-        if (findings.length === 0 && !stool && !urine && !conditions.length && !weight) {
+        if (findings.length === 0 && !stool && !stoolColor && !urine && !conditions.length && !weight) {
             host.innerHTML = `
             <div class="card-modern p-5 border border-emerald-100">
                 <div class="flex items-center gap-3">
@@ -262,6 +291,11 @@
                 <span class="mt-0.5">${stool.emoji}</span>
                 <span>${_stoolText(stool)}</span>
             </li>` : '';
+        const stoolColorItem = stoolColor ? `
+            <li class="flex items-start gap-2 text-sm text-amber-900">
+                <span class="mt-0.5">${stoolColor.emoji}</span>
+                <span>${_stoolColorText(stoolColor)}</span>
+            </li>` : '';
         const urineItem = urine ? `
             <li class="flex items-start gap-2 text-sm text-amber-900">
                 <span class="mt-0.5">${urine.emoji}</span>
@@ -277,7 +311,7 @@
                 <span class="mt-0.5">${c.emoji}</span>
                 <span>${_conditionText(c)}</span>
             </li>`).join('');
-        const items = stoolItem + urineItem + weightItem + conditionItems + findings.map(f => `
+        const items = stoolItem + stoolColorItem + urineItem + weightItem + conditionItems + findings.map(f => `
             <li class="flex items-start gap-2 text-sm text-amber-900">
                 <span class="mt-0.5">${f.emoji}</span>
                 <span>${_findingText(f)}</span>
@@ -302,18 +336,19 @@
             ${vetCta}
         </div>`;
 
-        _maybeNotify(findings, stool, urine, conditions, weight);
+        _maybeNotify(findings, stool, stoolColor, urine, conditions, weight);
     }
 
-    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 > 소변 > 체중 > 컨디션 > z 순으로 우선 노출.
-    function _maybeNotify(findings, stool, urine, conditions, weight) {
+    // 확정 이상 → 토스트 1회(하루 1회 억제). 배변 색(병원 신호) > 배변 굳기 > 소변 > 체중 > 컨디션 > z 순으로 우선 노출.
+    function _maybeNotify(findings, stool, stoolColor, urine, conditions, weight) {
         conditions = conditions || [];
-        if (!stool && !urine && !weight && !conditions.length && !findings.length) return;
+        if (!stool && !stoolColor && !urine && !weight && !conditions.length && !findings.length) return;
         const today = (typeof healthLogs !== 'undefined' && healthLogs && healthLogs.today && healthLogs.today.date)
             || new Date().toISOString().slice(0, 10);
         const flagKey = 'petna_wellness_alerted_' + today;
         try { if (localStorage.getItem(flagKey)) return; localStorage.setItem(flagKey, '1'); } catch (e) { return; }
-        const msg = stool ? stool.emoji + ' ' + _stoolText(stool)
+        const msg = stoolColor ? stoolColor.emoji + ' ' + _stoolColorText(stoolColor)
+            : stool ? stool.emoji + ' ' + _stoolText(stool)
             : urine ? urine.emoji + ' ' + _urineText(urine)
             : weight ? weight.emoji + ' ' + _weightText(weight)
             : conditions.length ? conditions[0].emoji + ' ' + _conditionText(conditions[0])
@@ -323,6 +358,7 @@
 
     window.analyzeWellness = analyzeWellness;
     window.analyzeStool = analyzeStool;
+    window.analyzeStoolColor = analyzeStoolColor;
     window.analyzeUrine = analyzeUrine;
     window.analyzeCondition = analyzeCondition;
     window.analyzeWeight = analyzeWeight;
