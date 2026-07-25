@@ -58,6 +58,7 @@
         const type = (pet && pet.type) || 'dog';
         const phases = TIMELINE[type] || TIMELINE._default;
         const yrs = _ageYears(pet);
+        const name = (pet && pet.name) ? String(pet.name).trim() : '';
 
         // 리마인더: 현재 시기가 있으면 그 시기, 아니면(미상) 첫 시기의 케어를 안내.
         const curIdx = phases.findIndex(p => _phaseState(p, yrs) === 'current');
@@ -78,7 +79,7 @@
                 `<li class="text-[10px] leading-snug keep-all ${st === 'future' ? 'text-gray-400' : 'text-gray-600'}">· ${_esc(t)}</li>`
             ).join('');
             return `
-            <li class="relative pl-6 pb-3 last:pb-0">
+            <li class="relative pl-6 pb-3 last:pb-0" data-phase-node>
                 <span class="absolute left-0 top-1 w-3 h-3 rounded-full ${dotCls}"></span>
                 <div class="flex items-center gap-1.5 mb-0.5">
                     <span class="shrink-0">${phase.icon}</span>
@@ -99,15 +100,26 @@
                 </p>
             </div>` : '';
 
+        // 서사 시작점: 생애 rail이 '탄생'에서 출발하도록 origin 노드를 맨 위에 둔다.
+        const originNode = `
+            <li class="relative pl-6 pb-3">
+                <span class="absolute left-0 top-1 w-3 h-3 rounded-full bg-amber-300 ring-4 ring-amber-100"></span>
+                <div class="flex items-center gap-1.5">
+                    <span class="shrink-0">🐣</span>
+                    <span class="text-[12px] font-bold text-gray-900">탄생</span>
+                    <span class="text-[9px] font-semibold text-gray-400">이야기의 시작</span>
+                </div>
+            </li>`;
+
         host.innerHTML = `
         <div class="card-modern overflow-hidden mb-3">
             <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center gap-2">
                 <i class="fa-solid fa-timeline text-brand-500"></i>
-                <h2 class="text-base font-bold text-gray-900 flex-1">생애주기 예방 타임라인</h2>
+                <h2 class="text-base font-bold text-gray-900 flex-1">${name ? _esc(name) + '의 생애 여정' : '생애주기 예방 타임라인'}</h2>
             </div>
             ${reminder}
             <div class="px-5 py-3">
-                <ul class="relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">${rows}</ul>
+                <ul class="relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">${originNode}${rows}</ul>
                 <p class="mt-2 text-[9px] text-gray-400 keep-all leading-snug">※ 일반 가이드입니다. 실제 접종·검진 일정은 반려동물 상태에 따라 담당 수의사와 상담하세요.</p>
             </div>
         </div>`;
