@@ -183,11 +183,25 @@ const AppLogger = {
                 user_agent: (navigator && navigator.userAgent ? navigator.userAgent : '').slice(0, 500),
                 session_id: this._remoteSessionId()
             };
-            Promise.resolve(supabaseClient.from('error_logs').insert(row)).catch(() => {});
+            // 실패를 완전히 삼키면 파이프라인이 죽어도 아무도 모른다(2026-07-25 사고:
+            // error_logs의 anon INSERT 정책이 라이브 DB에 미적용이라 42501로 전량 거부되고
+            // 있었는데, .catch(()=>{})가 삼켜 로컬 8건이 쌓이는 동안 원격은 0건이었다).
+            // 앱 동작에는 영향을 주지 않되(사용자에게 안 띄움), 세션당 1회 콘솔 경고를 남겨
+            // 봄이 순찰의 콘솔 오류 수집과 개발자 도구 양쪽에서 보이게 한다.
+            Promise.resolve(supabaseClient.from('error_logs').insert(row)).catch((err) => {
+                if (this._remoteUploadFailed) return;
+                this._remoteUploadFailed = true;
+                console.error('[AppLogger] 원격 오류로그 전송 실패 — 오류 수집 파이프라인 점검 필요:',
+                    (err && (err.code || err.message)) || err);
+            });
         } catch (e) {
-            // 업로드 실패는 조용히 무시
+            if (!this._remoteUploadFailed) {
+                this._remoteUploadFailed = true;
+                console.error('[AppLogger] 원격 오류로그 전송 예외:', e && e.message);
+            }
         }
     },
+    _remoteUploadFailed: false,
     clearErrorLogs() {
         try {
             localStorage.removeItem('petna_error_logs');

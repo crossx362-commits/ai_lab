@@ -89,6 +89,65 @@ def scan_frontend() -> dict:
     return {"tables": used_tables, "rpcs": used_rpcs}
 
 
+def _live_probe() -> list[dict]:
+    """라이브 Supabase에 실제 요청을 날려 '파일엔 있는데 DB엔 없는' 어긋남을 잡는다.
+
+    기존 audit()은 전부 SQL 파일 파싱이라 **마이그레이션이 실제로 적용됐는지**를 볼 수 없다.
+    2026-07-25 하루에만 같은 원인으로 3건이 터졌다: ①posts.attached_walk 컬럼 부재로 모든
+    글 동기화가 조용히 실패 ②스토리지 버킷이 0개라 모든 사진 업로드 실패 ③error_logs의
+    anon INSERT 정책 미적용으로 오류 수집 파이프라인 전체 사망. 전부 파일엔 정상이었다.
+
+    anon 키로 할 수 있는 비파괴 확인만 한다(SELECT 1건 + 버킷 목록) — 쓰기는 하지 않는다.
+    """
+    url = os.getenv("SUPABASE_URL", "").rstrip("/")
+    key = os.getenv("SUPABASE_ANON_KEY", "")
+    if not url or not key:
+        return []          # 자격증명 없으면 조용히 통과(로컬 점검 환경 등) — 오탐 금지
+    import urllib.error
+    import urllib.request
+
+    def _get(path: str, timeout: int = 12):
+        req = urllib.request.Request(
+            f"{url}/{path}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            raw = r.read().decode("utf-8", "replace")
+            return json.loads(raw) if raw else None
+
+    findings = []
+    # 1) 프론트가 실제로 쓰는 테이블이 라이브에 존재하는가(42P01 = 테이블 없음)
+    for t in sorted(scan_frontend()["tables"]):
+        try:
+            _get(f"rest/v1/{t}?select=*&limit=1")
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", "replace")[:200]
+            if "42P01" in body or e.code == 404:
+                findings.append({"priority": "P1",
+                                 "title": f"[라이브] 테이블 '{t}'가 실제 DB에 없음",
+                                 "detail": f"프론트는 쓰는데 라이브 DB에 부재 — 마이그레이션 미적용 의심. {body[:120]}"})
+            elif e.code not in (401, 403):   # 401/403은 RLS 차단 = 테이블은 존재(정상일 수 있음)
+                findings.append({"priority": "P2",
+                                 "title": f"[라이브] 테이블 '{t}' 조회 실패 ({e.code})",
+                                 "detail": body[:150]})
+        except Exception:
+            pass          # 네트워크 일시 오류는 이슈로 만들지 않는다
+    # 2) 스토리지 버킷 — 코드가 참조하는 버킷이 실제로 있는가
+    try:
+        buckets = {b.get("name") for b in (_get("storage/v1/bucket") or [])}
+        referenced = set()
+        for js in (PETNNA_ROOT / "js").rglob("*.js"):
+            for m in re.finditer(r"storage\s*\.\s*from\(\s*['\"]([^'\"]+)['\"]", js.read_text(encoding="utf-8", errors="replace")):
+                referenced.add(m.group(1))
+        for b in sorted(referenced - buckets):
+            findings.append({"priority": "P1",
+                             "title": f"[라이브] 스토리지 버킷 '{b}' 없음",
+                             "detail": "코드가 이 버킷에 업로드하는데 실제로 존재하지 않음 — "
+                                       "사진·이미지 업로드가 전부 조용히 실패한다(Supabase 콘솔에서 생성 필요)"})
+    except Exception:
+        pass
+    return findings
+
+
 def audit() -> list[dict]:
     sql = _sql_sources()
     if not sql.strip():
@@ -116,6 +175,11 @@ def audit() -> list[dict]:
     for t in sorted(schema["tables"] - used):
         findings.append({"priority": "P3", "title": f"테이블 '{t}' 프론트 미사용",
                          "detail": "정리 후보(서버 전용일 수 있음 — 추가 확인 필요)"})
+    # 파일 파싱만으로는 '마이그레이션 미적용'을 못 본다 — 라이브 DB 실측을 덧붙인다(2026-07-25).
+    try:
+        findings.extend(_live_probe())
+    except Exception as e:
+        print(f"[백호] 라이브 DB 실측 건너뜀: {e}")
     return findings
 
 

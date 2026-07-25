@@ -32,9 +32,15 @@
     function _mealStat() {
         const list = (typeof meals !== 'undefined' && Array.isArray(meals)) ? meals : [];
         const count = list.filter(m => _isTodayId(m.id)).length;
+        // 급여 기록 폼(meal-form)은 건강 탭에 있다 — 건강 탭으로 이동한 뒤 폼을 연다.
+        // (탭 전환이 템플릿 렌더를 트리거하므로 폼 열기는 다음 틱으로 미룬다)
+        const goLog = "switchTab('health'); setTimeout(() => { "
+            + "if (typeof toggleMealForm === 'function') toggleMealForm(true); "
+            + "const f = document.getElementById('meal-form'); "
+            + "if (f) f.scrollIntoView({behavior:'smooth', block:'center'}); }, 250)";
         return count === 0
-            ? { emoji: '🍽️', label: '급여', value: '아직', done: false, tab: 'mypet' }
-            : { emoji: '🍽️', label: '급여', value: `${count}회`, done: true, tab: 'mypet' };
+            ? { emoji: '🍽️', label: '급여', value: '아직', done: false, tab: 'health', action: goLog }
+            : { emoji: '🍽️', label: '급여', value: `${count}회`, done: true, tab: 'health', action: goLog };
     }
 
     function _careStat() {
@@ -81,8 +87,12 @@
     function _cell(s) {
         if (!s) return '';
         const valCls = s.warn ? 'text-amber-700' : (s.done ? 'text-gray-900' : 'text-gray-400');
+        // 이 카드는 마이펫 탭에 있으므로 tab이 'mypet'이면 switchTab은 제자리 이동 =
+        // 클릭해도 아무 반응이 없다(2026-07-25 오너 지적: "급여 클릭해도 아무 반응 없다").
+        // 그런 셀은 탭 이동 대신 실제 기록 동작(action)을 부르게 한다.
+        const handler = s.action || `switchTab('${s.tab}')`;
         return `
-        <button type="button" onclick="switchTab('${s.tab}')"
+        <button type="button" onclick="${handler}"
             class="flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg hover:bg-gray-50 transition-colors outline-none min-w-0">
             <span class="text-lg leading-none">${s.emoji}</span>
             <span class="text-[10px] font-semibold text-gray-500">${s.label}</span>

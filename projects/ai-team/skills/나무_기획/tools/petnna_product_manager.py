@@ -36,7 +36,9 @@ from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_gu
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
-from _shared.backlog import touches_db_auth  # noqa: E402
+from _shared.backlog import (  # noqa: E402
+    touches_db_auth, recent_reviewed_items, format_recent_decisions,
+)
 
 load_env(str(PROJECT_ROOT))
 
@@ -111,13 +113,20 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
 
 def plan(do_send: bool) -> None:
     print(f"[{datetime.now()}] 🌳 나무 기획 사이클 시작")
+    # 이미 검토·기각된 기획을 매주 다시 제안하는 것을 막는다(2026-07-25 배선).
+    # 미오·예원 PR리뷰어는 이미 이 블록을 프롬프트에 넣는데 나무만 빠져 있어,
+    # 오너가 위험을 이유로 기각한 아이디어(예: 유료 산책대행 매칭 — 배상책임·보험
+    # 부재)를 다음 사이클에 그대로 재제안할 수 있었다.
+    recent_block = format_recent_decisions(
+        recent_reviewed_items(BACKLOG, limit=8, item_type="기획"))
     # 1단계: 자유 형식 리서치·분석 (JSON 강제 없음 — 스키마를 걸면 오히려
     # "오너에게 보고하는 PM" 대화체로 이탈하는 경우가 잦았다, 2026-07-09 확인).
     ok, analysis = run_claude(
         "너는 펫 케어 플랫폼의 시니어 PM이다. 펫나(projects/petnna, 정적 SPA + Supabase, "
         "펫 힐링/케어 플랫폼: 건강 대시보드·산책·앨범·소셜·상점·지도·사주·게임 등)의 다음 개선을 기획하라.\n\n"
         f"[현재 기능 모듈]\n{feature_inventory()}\n\n"
-        "[할 일]\n"
+        + (recent_block + "\n\n" if recent_block else "")
+        + "[할 일]\n"
         "1. 웹서치로 2026년 펫 케어/펫테크 앱 트렌드와 대표 경쟁 서비스(펫프렌즈·핏펫·해외 Rover/Wag 등)의 "
         "인기 기능을 조사하라.\n"
         "2. 현재 기능 대비 갭을 분석하라. 필요하면 projects/petnna/의 코드·문서를 Read로 확인하라.\n"

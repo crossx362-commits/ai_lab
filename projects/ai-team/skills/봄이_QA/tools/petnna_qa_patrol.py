@@ -259,6 +259,36 @@ def interactive_checks(page, port: int, env_name: str) -> list[dict]:
                                      f"모달 열기 실패: {name} ({st})",
                                      "버튼 클릭해도 모달이 열리지 않음"))
 
+    # 무반응 버튼 — onclick이 "지금 보고 있는 탭으로 이동"이라 눌러도 아무 일이 없는 버튼(2026-07-25 사고).
+    # 오너 지적("급여 클릭해도 아무 반응 없다"): 마이펫 홈의 케어요약 급여 셀이 switchTab('mypet')이었는데,
+    # 그 카드 자체가 마이펫 탭에 있어 제자리 이동 = 무반응이었다. 기존 점검은 '탭 전환이 되는가'·'모달이
+    # 열리는가'만 봐서, 오류도 안 나고 화면도 안 비는 이 유형을 구조적으로 못 잡았다.
+    try:
+        # 현재 탭은 AppRouter(전역 const라 window 속성이 아님) 대신 DOM에서 읽는다 —
+        # 보이는 .tab-content의 id가 'tab-<name>'이라 내부 변수에 의존하지 않고 판정 가능.
+        dead = page.evaluate(
+            "() => {"
+            "  const vis=[...document.querySelectorAll('.tab-content')]"
+            "    .find(e=>!e.classList.contains('hidden'));"
+            "  const cur = vis ? vis.id.replace(/^tab-/,'') : '';"
+            "  if (!cur) return [];"
+            "  const out=[];"
+            "  vis.querySelectorAll('button[onclick]').forEach(b=>{"
+            "    const h=(b.getAttribute('onclick')||'').replace(/\\s/g,'');"
+            "    const m=h.match(/^switchTab\\('([a-z]+)'\\);?$/i);"   # 단일 switchTab 호출만(뒤에 다른 동작이 붙으면 무반응 아님)
+            "    if (m && m[1]===cur) out.push((b.innerText||'').trim().replace(/\\s+/g,' ').slice(0,24));"
+            "  });"
+            "  return out.slice(0,6);"
+            "}")
+    except Exception:
+        dead = []
+    for label in (dead or []):
+        findings.append(_finding(
+            "P2", "기능", "/index.html", env_name,
+            f"무반응 버튼: '{label}' — 현재 탭으로 이동만 함",
+            "onclick이 지금 보고 있는 탭으로의 switchTab이라 클릭해도 화면이 그대로다 — "
+            "실제 동작(모달·폼 열기 등)으로 바꾸거나 다른 탭을 가리켜야 한다"))
+
     # 내비 도달성 — 데스크톱 헤더에만 있고 모바일 하단바에 없는 탭 탐지(2026-07-25 사고).
     # 설정 탭이 모바일에서 완전히 도달 불가(어디에도 switchTab('settings') 진입점 없음)
     # 상태로 방치됐는데, 탭 순회(_TAB_SWEEP)는 switchTab을 직접 호출하므로 "화면은
