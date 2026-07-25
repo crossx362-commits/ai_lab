@@ -301,6 +301,58 @@ def auto_remediate(state: dict) -> list[str]:
     return actions
 
 
+LAUNCH_AGENTS_DIR = os.path.expanduser("~/Library/LaunchAgents")
+
+
+def _plist_script(path: str) -> str | None:
+    """plist의 ProgramArguments에서 실행 대상 .py 경로를 뽑는다(없으면 None)."""
+    try:
+        out = subprocess.run(
+            ["/usr/libexec/PlistBuddy", "-c", "Print :ProgramArguments", path],
+            capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return None
+    for line in out.splitlines():
+        tok = line.strip()
+        if tok.endswith(".py"):
+            return tok
+    return None
+
+
+def audit_background_jobs() -> list[str]:
+    """등록된 백그라운드 작업(launchd)이 아직 '할 일이 있는' 상태인지 점검한다.
+
+    오너 지시(2026-07-25): "백그라운드 작업도 예원이가 항상 체크해 필요없는거면 꺼".
+    죽은 참조를 실제로 겪었다 — 주식 도메인 삭제(2026-07-08) 때 status_dashboard.py가
+    지워졌는데 .claude/launch.json 항목만 남아 실행 시도가 계속 실패했다. launchd도
+    같은 함정이 있어(대상 스크립트가 사라져도 plist는 남는다) 매 사이클 점검한다.
+
+    자동 종료 범위는 **대상 스크립트가 실재하지 않는 잡**으로만 좁힌다 — 이건 절대
+    정상 동작할 수 없는 게 자명해 오판 여지가 없다. "산출물이 오래됐다" 같은 판단은
+    petnna_fleet_health.py가 별도로 하며, 여기서 끄지 않는다(살아있는 잡을 죽일 위험).
+    """
+    if not os.path.isdir(LAUNCH_AGENTS_DIR):
+        return []
+    actions = []
+    for fn in sorted(os.listdir(LAUNCH_AGENTS_DIR)):
+        if not (fn.startswith("com.ailab.") and fn.endswith(".plist")):
+            continue
+        path = os.path.join(LAUNCH_AGENTS_DIR, fn)
+        script = _plist_script(path)
+        if not script or os.path.exists(script):
+            continue
+        label = fn[:-len(".plist")]
+        try:
+            subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/{label}"],
+                           capture_output=True, timeout=15)
+            os.rename(path, path + ".disabled")
+            actions.append(f"🧹 {label} 중지 — 대상 스크립트 없음({os.path.basename(script)}), "
+                           f"plist는 .disabled로 보존")
+        except Exception as e:
+            actions.append(f"⚠️ {label} 정리 실패(대상 없음: {os.path.basename(script)}): {e}")
+    return actions
+
+
 def check_and_restart_bots():
     """봇 상태 확인 및 재시작 (best-effort)"""
     if _bots_off():
@@ -340,6 +392,7 @@ def main():
     last_issue_sig = ""
     last_pull_ts = 0.0   # 0 = 기동 첫 틱에 즉시 pull(부팅 직후 최신화)
     last_pull_note = ""
+    last_jobs_ts = 0.0   # 0 = 기동 첫 틱에 즉시 백그라운드 작업 점검
     remedy_state: dict = _load_remedy_state()
     with ProcessLock("yewon_monitor"):
         try:
@@ -390,6 +443,18 @@ def main():
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
                     time.sleep(10)  # 재시작 대기
+
+                # 백그라운드 작업 점검 — 대상 스크립트가 사라진 죽은 잡을 끈다(1시간 주기).
+                # plist는 자주 안 바뀌므로 5분마다 돌 필요가 없다.
+                if time.time() - last_jobs_ts >= 3600:
+                    last_jobs_ts = time.time()
+                    try:
+                        job_acts = audit_background_jobs()
+                    except Exception as e:
+                        job_acts = [f"⚠️ 백그라운드 작업 점검 오류: {e}"]
+                    if job_acts:
+                        print("\n".join(job_acts))
+                        send("🧹 [예원] 백그라운드 작업 정리\n" + "\n".join(job_acts))
 
                 # 성장 점검: 하루 1회(17시 이후) 발송 — 스팸 방지
                 now = datetime.now()

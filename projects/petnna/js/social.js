@@ -12,17 +12,19 @@ let trimEnd = 5;
 let activeReplyNotificationId = null;
 
 // AI팀 에이전트 이웃 자동 등록 (사장님 이웃 목록에 항상 표시)
+// ⚠️ 현존 에이전트만 등록한다(오너 지시 2026-07-25). 이 배열은 petnna_social_agent.py가
+// 이웃 글·댓글을 쓸 때 참조하는 단일 소스라, 삭제된 에이전트를 여기 남겨두면 그 이름으로
+// 계속 새 글이 발행된다 — 실제로 2026-07-08에 지운 루나·펄스·티모·케빈·코다리·경수·로율이
+// 여기 남아 피드에 글을 쓰고 있었다(루나 9건 등). 로스터가 바뀌면 이 배열도 같이 고칠 것.
 const AI_AGENT_FRIENDS = [
-    { id: 'agent_luna',     nickname: '루나',   petName: '🎵 루나',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=luna',     status: 'online', chemistry: 92, personality: '시티팝 감성 디렉터',   unread: 0 },
-    { id: 'agent_pulse',  nickname: '펄스',   petName: '💡 펄스이',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=pulse',  status: 'online', chemistry: 79, personality: '분석적·전략적',      unread: 0 },
-    { id: 'agent_gahee',    nickname: '가희',   petName: '✅ 가희봄',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=gahee',    status: 'online', chemistry: 83, personality: '꼼꼼·건강 관심',     unread: 0 },
-    { id: 'agent_timo',     nickname: '티모',   petName: '🎨 티모냥',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=timo',     status: 'online', chemistry: 76, personality: '감각적·디자인 중시',  unread: 0 },
-    { id: 'agent_kevin',    nickname: '케빈',   petName: '⚙️ 케빈',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=kevin',    status: 'online', chemistry: 81, personality: '인프라·안정 중시',    unread: 0 },
-    { id: 'agent_kodari',   nickname: '코다리', petName: '💻 코다리',   avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=kodari',   status: 'online', chemistry: 88, personality: '개발·구현 전문가',    unread: 0 },
-    { id: 'agent_kyungsu',  nickname: '경수',   petName: '🔍 경수탐정', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=kyungsu',  status: 'online', chemistry: 85, personality: '분석·조사 전문가',    unread: 0 },
-    { id: 'agent_royul',    nickname: '로율',   petName: '⚖️ 로율법사', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=royul',    status: 'online', chemistry: 78, personality: '법률·컴플라이언스',   unread: 0 },
-    { id: 'agent_youngsuk', nickname: '영숙',   petName: '📋 영숙비서', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=youngsuk', status: 'online', chemistry: 91, personality: '일정·업무 관리',     unread: 0 },
     { id: 'agent_yewon',    nickname: '예원',   petName: '👑 예원대표', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=yewon',    status: 'online', chemistry: 95, personality: 'CEO·의사결정 리더',  unread: 0 },
+    { id: 'agent_youngsuk', nickname: '영숙',   petName: '📋 영숙비서', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=youngsuk', status: 'online', chemistry: 91, personality: '일정·업무 관리',     unread: 0 },
+    { id: 'agent_bomi',     nickname: '봄이',   petName: '🌸 봄이',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=bomi',     status: 'online', chemistry: 87, personality: '꼼꼼·건강 관심',     unread: 0 },
+    { id: 'agent_suri',     nickname: '수리',   petName: '🔧 수리',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=suri',     status: 'online', chemistry: 88, personality: '개선·해결 전문가',    unread: 0 },
+    { id: 'agent_teo',      nickname: '테오',   petName: '🧷 테오',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=teo',      status: 'online', chemistry: 82, personality: '검증·신중',          unread: 0 },
+    { id: 'agent_baekho',   nickname: '백호',   petName: '🐯 백호',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=baekho',   status: 'online', chemistry: 84, personality: '안정·기반 중시',      unread: 0 },
+    { id: 'agent_mio',      nickname: '미오',   petName: '🎨 미오',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=mio',      status: 'online', chemistry: 86, personality: '감각적·디자인 중시',  unread: 0 },
+    { id: 'agent_namu',     nickname: '나무',   petName: '🌱 나무',     avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=namu',     status: 'online', chemistry: 83, personality: '기획·트렌드 탐색',    unread: 0 },
 ];
 
 const BOT_NAMES = ['송이','바람','치즈','토리','초코','해피','나비','보리','하늘','구름'];

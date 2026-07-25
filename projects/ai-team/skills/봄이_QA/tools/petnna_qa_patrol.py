@@ -258,6 +258,29 @@ def interactive_checks(page, port: int, env_name: str) -> list[dict]:
             findings.append(_finding("P2", "기능", "/index.html", env_name,
                                      f"모달 열기 실패: {name} ({st})",
                                      "버튼 클릭해도 모달이 열리지 않음"))
+
+    # 내비 도달성 — 데스크톱 헤더에만 있고 모바일 하단바에 없는 탭 탐지(2026-07-25 사고).
+    # 설정 탭이 모바일에서 완전히 도달 불가(어디에도 switchTab('settings') 진입점 없음)
+    # 상태로 방치됐는데, 탭 순회(_TAB_SWEEP)는 switchTab을 직접 호출하므로 "화면은
+    # 정상 렌더"로 통과해 버렸다 — 렌더 가능 여부와 사용자가 갈 수 있는지는 다른 문제다.
+    try:
+        nav = page.evaluate(
+            "() => {"
+            "  const d=[...document.querySelectorAll('header nav .tab-btn')]"
+            "    .map(b=>b.getAttribute('data-tab')).filter(Boolean);"
+            "  const m=[...document.querySelectorAll('#mobile-navbar .mobile-tab-btn')]"
+            "    .map(b=>b.getAttribute('data-tab')).filter(Boolean);"
+            "  return {desktop:d, mobile:m};"
+            "}")
+    except Exception:
+        nav = None
+    if nav and nav.get("desktop") and nav.get("mobile"):
+        orphan = [t for t in nav["desktop"] if t not in nav["mobile"]]
+        if orphan:
+            findings.append(_finding(
+                "P2", "기능", "/index.html", env_name,
+                f"모바일에서 도달 불가한 탭: {', '.join(orphan)}",
+                "데스크톱 헤더엔 있으나 모바일 하단 네비에 없음 — 모바일 사용자는 진입 경로 없음"))
     return findings
 
 

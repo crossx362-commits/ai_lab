@@ -83,7 +83,37 @@ def _load_personas() -> list[dict]:
                         "tone": tone.group(1) if tone else "반려동물과의 일상을 따뜻하게 나눈다"})
     if not out:
         _persona_alert("AI_AGENT_FRIENDS 파싱 결과 0명")
+    else:
+        _warn_stale_personas(out)
     return out
+
+
+def _warn_stale_personas(personas: list[dict]) -> None:
+    """현존 에이전트가 아닌 페르소나가 섞여 있으면 경보한다(오너 지시 2026-07-25).
+
+    사고: 2026-07-08에 삭제한 에이전트(루나·펄스·티모·케빈·코다리·경수·로율·아린)가
+    social.js AI_AGENT_FRIENDS에 그대로 남아, 그 이름으로 피드에 계속 새 글이 발행되고
+    있었다(발견 시 루나 9건 등 죽은 페르소나 글 32건). 로스터에서 에이전트를 지울 때
+    이 배열을 같이 고쳐야 한다는 걸 강제할 방법이 없어 조용히 어긋난 것 —
+    registry(살아있는 에이전트 단일 소스)와 대조해 어긋나면 즉시 알린다.
+    """
+    try:
+        # load_registry()는 {agent_id: meta} 형태를 돌려준다(예: {'yewon': {'display': '예원', ...}}).
+        from _shared.registry import load_registry
+        alive = {m.get("display", "") for m in (load_registry() or {}).values()
+                 if m.get("status") == "active"}
+        alive.discard("")
+    except Exception:
+        return          # 레지스트리를 못 읽으면 판정 불가 — 조용히 통과(오탐 금지)
+    if not alive:
+        return
+    stale = [p["name"] for p in personas
+             if not any(a in p["name"] for a in alive)]
+    if stale:
+        _persona_alert(
+            "현존하지 않는 에이전트 페르소나가 이웃 목록에 남아 있음: "
+            + ", ".join(stale)
+            + " — social.js AI_AGENT_FRIENDS를 현 로스터로 정리할 것")
 
 
 PERSONAS = _load_personas()
