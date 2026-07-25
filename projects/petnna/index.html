@@ -132,9 +132,9 @@
     <script defer src="js/training-passport.js?v=1"></script>
 
     <!-- (2) HTML 템플릿 정의 (app.js 보다 반드시 먼저 로드) -->
-    <script defer src="js/templates/mypet.js?v=177"></script>
+    <script defer src="js/templates/mypet.js?v=178"></script>
     <script defer src="js/templates/health.js?v=177"></script>
-    <script defer src="js/templates/walk.js?v=165"></script>
+    <script defer src="js/templates/walk.js?v=166"></script>
     <script defer src="js/templates/saju.js?v=164"></script>
     <script defer src="js/templates/social.js?v=161"></script>
     <script defer src="js/templates/album.js?v=160"></script>
@@ -146,7 +146,7 @@
 
     <!-- (3) 각 영역 독립 컨트롤러 -->
     <script defer src="js/recommend.js?v=3"></script>
-    <script defer src="js/mypet.js?v=170"></script>
+    <script defer src="js/mypet.js?v=171"></script>
     <script defer src="js/health.js?v=172"></script>
     <script defer src="js/care-widget-instrumentation.js?v=2"></script>
     <script defer src="js/room-harmony.js?v=161"></script>
@@ -264,6 +264,17 @@
         <button class="mobile-tab-btn text-gray-400" data-tab="shop" onclick="switchTab('shop')">
             <img class="mobile-nav-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
+        </button>
+        <!-- 조화도·설정은 데스크톱 헤더엔 있는데 모바일 하단바에만 빠져 있었다(2026-07-25 발견):
+             조화도는 마이펫 카드 안 작은 링크로만, 설정은 아예 진입 경로가 없어 모바일에서
+             도달 불가였다. 데스크톱과 동일하게 8탭 전부 노출한다. -->
+        <button class="mobile-tab-btn text-gray-400" data-tab="saju" onclick="switchTab('saju')">
+            <img class="mobile-nav-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">
+            <span class="text-[10px] font-bold mt-0.5">조화도</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400" data-tab="settings" onclick="switchTab('settings')">
+            <img class="mobile-nav-icon" src="images/nav-icons/settings.png" alt="" aria-hidden="true">
+            <span class="text-[10px] font-bold mt-0.5">설정</span>
         </button>
     </nav>
 

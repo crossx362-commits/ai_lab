@@ -63,6 +63,18 @@ def run(page, base_url):
         "() => [...document.querySelectorAll('#mobile-navbar .mobile-tab-btn')]"
         ".map(b => b.getAttribute('data-tab'))"
     )
-    expected = ["mypet", "health", "walk", "social", "album", "shop"]
+    # 2026-07-25: 조화도·설정 추가로 6→8. 데스크톱 헤더엔 8탭이 다 있는데 모바일 하단바에만
+    # 빠져 있어서, 설정은 앱 어디서도 도달 불가·조화도는 마이펫 카드 속 작은 링크로만 갈 수
+    # 있었다. 아래 데스크톱-모바일 동등성 단언이 이 부재를 구조적으로 다시 못 생기게 막는다.
+    expected = ["mypet", "health", "walk", "social", "album", "shop", "saju", "settings"]
     assert nav_tabs == expected, \
         f"모바일 하단 네비 구성/순서 회귀: {nav_tabs} (기대: {expected})"
+
+    # 데스크톱 헤더에 있는 탭은 모바일에서도 반드시 도달 가능해야 한다(누락 = 기능 고아화).
+    desktop_tabs = page.evaluate(
+        "() => [...document.querySelectorAll('header nav .tab-btn')]"
+        ".map(b => b.getAttribute('data-tab'))"
+    )
+    missing_on_mobile = [t for t in desktop_tabs if t and t not in nav_tabs]
+    assert not missing_on_mobile, \
+        f"데스크톱에만 있고 모바일에서 도달 불가한 탭: {missing_on_mobile}"

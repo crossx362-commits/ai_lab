@@ -58,8 +58,11 @@ const WALK_TEMPLATE = `
                 data-cat="hospital"><span class="mr-1">🏥</span>병원</button>
         </div>
 
-        <!-- ── 지도 (Critical: 최소 280px 확보) ──────────────────────── -->
-        <div class="relative w-full bg-gray-100 rounded-2xl overflow-hidden border border-amber-100/50 shadow-inner z-10 h-[clamp(360px,70vh,760px)] sm:h-auto sm:flex-1 sm:min-h-[360px]">
+        <!-- ── 지도 (Critical: 최소 280px 확보) ──────────────────────────────────
+             모바일 높이 70vh→45vh(2026-07-25): 70vh는 375px 폭 화면에서 ~568px라
+             1:1.5 세로 비율이 돼 길쭉해 보이고 아래 콘텐츠도 안 보였다. 45vh면 폭과
+             비슷한 높이(~365px)라 지도가 정사각형에 가깝게 잡힌다. 데스크톱(sm+)은 무변경. -->
+        <div class="relative w-full bg-gray-100 rounded-2xl overflow-hidden border border-amber-100/50 shadow-inner z-10 h-[clamp(300px,45vh,560px)] sm:h-auto sm:flex-1 sm:min-h-[360px]">
             <div id="map" class="w-full h-full"></div>
 
             <!-- 일시정지 오버레이 (기본 hidden) -->

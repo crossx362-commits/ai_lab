@@ -35,8 +35,8 @@ const MYPET_TEMPLATE = `
             </div>
         </div>
 
-        <!-- 반려동물 맞춤 추천 TOP3 (별도 카드였다가 요약 카드에 병합, 2026-07-22) -->
-        <div id="reco-card-home" class="empty:hidden"></div>
+        <!-- 맞춤 추천 TOP3는 펫라이프 탭(#reco-card-shop)으로 일원화 — 마이펫은 오늘의
+             케어·상태에 집중(2026-07-25 오너 지시, 두 탭 중복 노출 해소) -->
     </div>
 
     <!-- ===== 방 + 사이드바를 나란히 배치 ===== -->

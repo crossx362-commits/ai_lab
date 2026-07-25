@@ -1243,7 +1243,7 @@ function renderMyPets() {
         return;
     }
 
-    if (typeof renderPetRecoCard === 'function') renderPetRecoCard('reco-card-home');
+    // 맞춤 추천 렌더는 펫라이프 탭(app.js의 reco-card-shop)이 전담 — 마이펫 중복 제거(2026-07-25)
     if (typeof renderCareCheckBanner === 'function') renderCareCheckBanner();
     if (typeof renderCareNudgeBanner === 'function') renderCareNudgeBanner();
     if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
