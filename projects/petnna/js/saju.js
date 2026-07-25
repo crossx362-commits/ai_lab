@@ -74,9 +74,15 @@ function switchMbtiMode(mode) {
     const resultScreen = document.getElementById('mbti-result-container');
     
     const savedCode = (mode === 'pet') ? savedPetMbti : savedOwnerMbti;
-    
+
+    // 질문 카드를 감싼 그리드도 같이 여닫아야 한다. 안쪽 두 화면(start·stepper)만 숨기면
+    // 껍데기 카드(p-5 + border)가 남아 텅 빈 흰 상자로 보인다 — finishMbtiTest는 그리드를
+    // 숨기고 resetMbtiTest는 되살리는데 이 복원 경로만 빠져 있었다(2026-07-25 오너 신고).
+    const testGrid = document.getElementById('mbti-test-grid');
+
     if (savedCode) {
         if (startScreen) startScreen.classList.add('hidden');
+        if (testGrid) testGrid.classList.add('hidden');
         if (resultScreen) resultScreen.classList.remove('hidden');
         
         let title = "";
@@ -109,8 +115,9 @@ function switchMbtiMode(mode) {
         if (descEl) descEl.innerText = desc;
     } else {
         if (resultScreen) resultScreen.classList.add('hidden');
+        if (testGrid) testGrid.classList.remove('hidden');
         if (startScreen) startScreen.classList.remove('hidden');
-        
+
         const nameInput = document.getElementById('mbti-target-name');
         if (nameInput) {
             if (mode === 'pet') {
