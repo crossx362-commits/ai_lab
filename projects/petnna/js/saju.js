@@ -1074,6 +1074,9 @@ function generateHarmonyReport() {
     
     const resLevelEl = document.getElementById('harmony-res-level');
     if (resLevelEl) resLevelEl.innerText = level > 0 ? `${level}단계` : "대기";
+
+    const resRingEl = document.getElementById('harmony-res-ring');
+    if (resRingEl) resRingEl.style.background = `conic-gradient(#f43f5e ${avgScore}%, #ffe4e6 0)`;
     
     const resTitleEl = document.getElementById('harmony-res-title');
     if (resTitleEl) resTitleEl.innerText = "\"" + title + "\"";

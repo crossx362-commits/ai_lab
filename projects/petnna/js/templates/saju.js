@@ -424,9 +424,9 @@ const SAJU_TEMPLATE = `
                 <!-- 왼쪽 2열: 종합 등급 원형 대시보드 및 지표 -->
                 <div class="md:col-span-2 bg-white p-4 rounded-2xl border border-rose-800/10 flex flex-col items-center justify-center text-center shadow-sm">
                     <div class="relative w-24 h-24 flex items-center justify-center">
-                        <div class="absolute inset-0 rounded-full border-4 border-rose-100"></div>
-                        <div class="absolute inset-0 rounded-full border-4 border-rose-500 border-t-transparent animate-spin duration-3000 opacity-80"></div>
-                        <div class="text-center">
+                        <div id="harmony-res-ring" class="absolute inset-0 rounded-full" style="background: conic-gradient(#f43f5e 0%, #ffe4e6 0);"></div>
+                        <div class="absolute inset-[6px] rounded-full bg-white"></div>
+                        <div class="text-center relative">
                             <span class="text-[8px] font-black text-rose-500 block">종합 조화 등급</span>
                             <span class="block text-2xl font-black text-rose-600 font-mono mt-0.5" id="harmony-res-level">5단계</span>
                         </div>
