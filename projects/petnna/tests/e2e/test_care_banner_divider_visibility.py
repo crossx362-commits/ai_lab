@@ -1,7 +1,7 @@
 """펫나 E2E — 상단 케어 배너 divider 가시성 안전망.
 
-마이펫 홈의 '오늘 요약' 통합카드(templates/mypet.js의
-`.card-modern.divide-y.divide-gray-100`)는 상단에 두 개의 조건부 배너를 품는다:
+마이펫 홈의 '오늘 요약' 통합카드(templates/mypet.js의 `#home-summary-card`)는
+상단에 두 개의 조건부 배너를 품는다:
   1) #care-check-banner  (care-check.js — 오늘 due 투약·케어, 있을 때만 노출)
   2) #care-nudge-banner  (care-nudge.js — 오늘 챙길 것, 있을 때만 노출)
 
@@ -11,8 +11,15 @@
 
 회귀 위험: 배너가 비었는데도 `hidden`을 걸지 않으면(빈 채 노출), 높이 0짜리
 유령 요소가 divide-y의 '보이는 선행 형제'로 취급돼 아래 블록 위에 유령 구분선
-+ 빈 간격이 생긴다. 특히 **상단 2블록이 동시에 빈 경우** 날짜/날씨 블록 위에
-붕 뜬 선이 나타나는 회귀를 이 테스트가 잡는다.
++ 빈 간격이 생긴다. 특히 **상단 2블록이 동시에 빈 경우** 그 아래 첫 상시 블록
+위에 붕 뜬 선이 나타나는 회귀를 이 테스트가 잡는다.
+
+셀렉터 주의(2026-07-25 수정): `.card-modern.divide-y.divide-gray-100` 클래스
+조합은 마이펫 탭에 여러 카드(#home-alerts-card·#home-summary-card·
+#home-challenge-card)가 공유하므로 클래스가 아니라 **#home-summary-card ID**로
+잡는다 — 첫 매치가 hidden 카드면 visible 대기가 영영 안 끝나는 함정이 있었다.
+또한 날짜/날씨 블록은 2026-07-24 상단 헤더로 이동해 카드 안에 없다 — 배너 아래
+'첫 번째 hidden 아닌 형제'를 측정 대상으로 삼는다.
 
 외부 네트워크(수파베이스)에 의존하지 않는다 — 로그인 게이팅은 앱이 읽는
 localStorage 플래그로 우회하고, 두 배너의 데이터 소스 함수를 테스트에서
@@ -46,12 +53,16 @@ _APPLY_COMBO = r"""
     if (typeof window.renderCareCheckBanner === 'function') window.renderCareCheckBanner();
     if (typeof window.renderCareNudgeBanner === 'function') window.renderCareNudgeBanner();
 
-    const card = document.querySelector('#tab-mypet .card-modern.divide-y.divide-gray-100');
+    const card = document.getElementById('home-summary-card');
     const cc = document.getElementById('care-check-banner');
     const cn = document.getElementById('care-nudge-banner');
     if (!card || !cc || !cn) return { ok: false };
-    // care-nudge 바로 아래 = 날짜/날씨 블록(항상 보이는 첫 콘텐츠 셀). 유령 구분선의 표적.
-    const dateBlock = cn.nextElementSibling;
+    // care-nudge 아래 첫 '펼쳐진' 형제(항상 보이는 첫 콘텐츠 셀). 유령 구분선의 표적.
+    // (날짜/날씨 블록은 2026-07-24 헤더로 이동 — 특정 블록이 아니라 구조로 찾는다)
+    let dateBlock = cn.nextElementSibling;
+    while (dateBlock && (dateBlock.hidden || dateBlock.innerHTML.trim() === '')) {
+        dateBlock = dateBlock.nextElementSibling;
+    }
 
     const measure = (el) => {
         const cs = getComputedStyle(el);
@@ -89,16 +100,15 @@ def run(page, base_url):
 
     # 통합카드가 마이펫 탭에 렌더될 때까지 대기.
     card = page.wait_for_selector(
-        "#tab-mypet .card-modern.divide-y.divide-gray-100",
+        "#home-summary-card",
         state="visible", timeout=15000,
     )
-    assert card is not None, "마이펫 탭에 '오늘 요약' divide-y 통합카드가 렌더되지 않음"
+    assert card is not None, "마이펫 탭에 '오늘 요약' 통합카드(#home-summary-card)가 렌더되지 않음"
 
     # 배너 두 개가 카드 안에 실재하는지 확인.
     banners = page.evaluate(
         """() => {
-            const card = document.querySelector(
-                '#tab-mypet .card-modern.divide-y.divide-gray-100');
+            const card = document.getElementById('home-summary-card');
             const cc = document.getElementById('care-check-banner');
             const cn = document.getElementById('care-nudge-banner');
             return {

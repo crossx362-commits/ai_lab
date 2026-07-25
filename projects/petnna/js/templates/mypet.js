@@ -11,7 +11,7 @@ const MYPET_TEMPLATE = `
     </div>
 
     <!-- 오늘 요약 카드: 케어체크 + 챙길 것 + 날짜/날씨 + 운세를 한 카드로 통합 -->
-    <div class="card-modern divide-y divide-gray-100 overflow-hidden">
+    <div id="home-summary-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
         <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
         <div id="care-check-banner"></div>
 
@@ -353,7 +353,7 @@ const MYPET_TEMPLATE = `
         </div>
 
         <!-- 챌린지 & 업적 통합 카드 (각 항목은 achievements.js가 그대로 채움 — 겉박스만 하나로 합침) -->
-        <div class="card-modern divide-y divide-gray-100 overflow-hidden">
+        <div id="home-challenge-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
             <div class="p-2.5"><div id="weekly-care-challenge">
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
                     <i class="fa-solid fa-trophy text-gray-300"></i>

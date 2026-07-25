@@ -1,15 +1,20 @@
 """펫나 E2E — 케어위젯 소제목 재그룹화 안전망.
 
-마이펫 탭의 '챌린지·업적 통합카드'(templates/mypet.js의
-`.card-modern.divide-y.divide-gray-100`)와 건강 탭의 '케어 위젯' 섹션
-라벨(templates/health.js)이 재구성 착수 전 기준선대로 유지되는지 회귀 검증한다.
+마이펫 탭의 '챌린지·업적 통합카드'(templates/mypet.js의 `#home-challenge-card`)와
+건강 탭의 '케어 위젯' 섹션 라벨(templates/health.js)이 재구성 착수 전
+기준선대로 유지되는지 회귀 검증한다.
 
 앞으로 소제목/그룹핑을 재구성할 때 아래 구조가 조용히 깨지는 걸 막는 선행 안전망:
-  A) 마이펫: divide-y 통합카드가 정확히 1개(겉박스 하나로 합쳐진 상태)이고,
+  A) 마이펫: 챌린지·업적 통합카드(#home-challenge-card)가 존재하고,
      챌린지·업적 자식 셀들(weekly-care-challenge 등)이 모두 그 한 박스의
      divide-y 자식으로 들어 있는지(분리된 개별 카드로 흩어지지 않았는지).
   B) 건강: '케어 위젯' 그룹 라벨이 실제로 보이고, 케어 위젯 호스트들
      (preventive-care-dashboard 등)이 그 라벨과 같은 그룹 컨테이너 안에 묶여 있는지.
+
+셀렉터 주의(2026-07-25 수정): 원래 `.card-modern.divide-y.divide-gray-100`이
+"정확히 1개"라고 가정했으나, 마이펫 탭에 같은 클래스 조합의 카드가 3개
+(#home-alerts-card·#home-summary-card·#home-challenge-card)로 늘며 깨졌다 —
+클래스 개수 가정 대신 **#home-challenge-card ID**로 잡는다.
 
 외부 네트워크(수파베이스)에 의존하지 않는다 — 템플릿 정적 마크업 구조·가시성만
 검증한다. 로그인 게이팅은 앱이 읽는 localStorage 플래그를 주입해 우회한다(실제 인증 없음).
@@ -60,32 +65,29 @@ def run(page, base_url):
 
     page.goto(base_url)
 
-    # === Part A. 마이펫 divide-y 통합카드 구조 ===
+    # === Part A. 마이펫 챌린지·업적 통합카드 구조 ===
     card = page.wait_for_selector(
-        "#tab-mypet .card-modern.divide-y.divide-gray-100",
+        "#home-challenge-card",
         state="visible", timeout=15000,
     )
-    assert card is not None, "마이펫 탭에 divide-y 통합카드가 렌더되지 않음"
+    assert card is not None, "마이펫 탭에 챌린지·업적 통합카드(#home-challenge-card)가 렌더되지 않음"
 
     a = page.evaluate(
         """(ids) => {
-            const cards = [...document.querySelectorAll(
-                '#tab-mypet .card-modern.divide-y.divide-gray-100')];
-            if (cards.length !== 1) return { count: cards.length };
-            const box = cards[0];
+            const box = document.getElementById('home-challenge-card');
+            if (!box) return { found: false };
             const missing = [];
             for (const id of ids) {
                 const el = document.getElementById(id);
-                if (!el || el.closest('.card-modern.divide-y.divide-gray-100') !== box) {
+                if (!el || el.closest('#home-challenge-card') !== box) {
                     missing.push(id);
                 }
             }
-            return { count: 1, directChildren: box.children.length, missing };
+            return { found: true, directChildren: box.children.length, missing };
         }""",
         _MYPET_CARD_CHILDREN,
     )
-    assert a["count"] == 1, \
-        f"챌린지·업적 통합카드는 divide-y 박스 정확히 1개여야 하나 {a['count']}개 (재그룹화로 흩어짐?)"
+    assert a.get("found"), "#home-challenge-card를 DOM에서 찾지 못함 (재그룹화로 흩어짐?)"
     assert a["missing"] == [], \
         f"다음 챌린지·업적 셀이 통합카드 밖으로 분리됨: {a['missing']}"
     assert a["directChildren"] >= len(_MYPET_CARD_CHILDREN), \
