@@ -312,6 +312,23 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
+            <!-- 급여 가능 음식 검색기 "이거 먹어도 돼?" (정적 안전/주의/금지 표 — 백엔드 없이 작동) -->
+            <button onclick="FoodSafety.open()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-lime-50 to-green-50 p-4 text-left group hover:scale-[1.02] transition-all">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="text-4xl">🍽️</div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">이거 먹어도 돼?</h3>
+                            <p class="text-xs text-green-600 mt-1">음식 안전 검색</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500">개·고양이 안전/주의/금지</p>
+                    <i class="fa-solid fa-bowl-food text-green-500 text-xl group-hover:scale-110 transition-transform"></i>
+                </div>
+            </button>
+
             <!-- 음성 상담 -->
             <button onclick="startVoiceConsultation()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-left group hover:scale-[1.02] transition-all">
                 <div class="flex items-start justify-between mb-3">
