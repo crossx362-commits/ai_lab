@@ -154,6 +154,110 @@ function _esc(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// 병원비 예측 MVP — 과거 진료 기록의 기간·총액으로 향후 12개월 진료비를 결정론적으로 추정.
+// 기록이 유의미한 기간(최소 2건·30일 이상)에 걸쳐 있으면 일평균×365로 연환산,
+// 그렇지 않으면 예측 불가(null)로 처리해 근거 없는 숫자를 만들지 않는다.
+function predictAnnualVetCost(records) {
+    const withDate = (records || []).filter(r => r.visitDate && (parseFloat(r.cost) || 0) > 0);
+    if (withDate.length < 2) return null;
+    const dates = withDate.map(r => new Date(r.visitDate + 'T00:00:00').getTime()).filter(t => !isNaN(t));
+    if (dates.length < 2) return null;
+    const spanDays = (Math.max.apply(null, dates) - Math.min.apply(null, dates)) / 86400000;
+    if (spanDays < 30) return null;
+    const total = withDate.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0);
+    return Math.round((total / spanDays) * 365);
+}
+
+// 건강수첩 PDF 내보내기 — 수의사 방문용 요약(반려 정보·진료 이력·진료비 아카이브·예측).
+// pet-passport 인쇄 패턴 준수: 새 창에 정적 HTML 주입 후 window.print()로 PDF 저장/인쇄.
+function exportMedicalRecordsPDF() {
+    const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    if (!pet) {
+        if (typeof showToast === 'function') showToast('⚠️ 먼저 반려동물을 등록해주세요.');
+        return;
+    }
+    const records = getMedicalRecordsForActivePet();
+    if (records.length === 0) {
+        if (typeof showToast === 'function') showToast('⚠️ 내보낼 건강 기록이 없어요.');
+        return;
+    }
+
+    const totalCost = records.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0);
+    const predicted = predictAnnualVetCost(records);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const rows = records.map(r => {
+        const cat = MEDICAL_CATEGORIES[r.category] || MEDICAL_CATEGORIES.other;
+        const cost = (parseFloat(r.cost) || 0);
+        return '<tr>' +
+            '<td>' + _esc(r.visitDate || '') + '</td>' +
+            '<td>' + cat.icon + ' ' + _esc(cat.label) + '</td>' +
+            '<td>' + _esc(r.hospital || '-') + '</td>' +
+            '<td>' + _esc(r.diagnosis || '-') + '</td>' +
+            '<td class="num">' + (cost > 0 ? cost.toLocaleString('ko-KR') + '원' : '-') + '</td>' +
+            '</tr>';
+    }).join('');
+
+    const predHtml = predicted != null
+        ? '<div class="pred"><b>향후 12개월 예상 진료비</b>약 ' + predicted.toLocaleString('ko-KR') +
+          '원<span class="tip">과거 기록의 일평균 진료비를 연환산한 추정치예요</span></div>'
+        : '<div class="pred muted">예상 진료비는 30일 이상 기간의 진료비 기록 2건 이상이 모이면 산출돼요</div>';
+
+    const w = window.open('', '_blank', 'width=720,height=900');
+    if (!w) {
+        if (typeof showToast === 'function') showToast('팝업이 차단됐어요 — 팝업을 허용해 주세요');
+        return;
+    }
+    w.document.write(
+        '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+        '<title>건강수첩 — ' + _esc(pet.name || '') + '</title>' +
+        '<style>@media print{@page{margin:14mm}}' +
+        'body{font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;margin:0;padding:28px;color:#1f2937}' +
+        '.hd{color:#6366f1;font-weight:800;font-size:16px;margin:0 0 2px}' +
+        '.nm{font-weight:800;font-size:24px;margin:0 0 2px}' +
+        '.sub{color:#9ca3af;font-size:12px;margin:0 0 16px}' +
+        '.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:16px;font-size:13px}' +
+        '.grid b{color:#6b7280;font-weight:700;font-size:11px;display:block}' +
+        '.cards{display:flex;gap:10px;margin-bottom:16px}' +
+        '.stat{flex:1;border:1px solid #e0e7ff;background:#eef2ff;border-radius:12px;padding:10px 12px}' +
+        '.stat b{color:#6366f1;font-weight:700;font-size:11px;display:block}' +
+        '.stat .v{font-weight:800;font-size:18px}' +
+        '.pred{border:1px solid #c7d2fe;background:#f5f3ff;border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:15px;font-weight:800;color:#4338ca}' +
+        '.pred b{color:#6b7280;font-weight:700;font-size:11px;display:block}' +
+        '.pred.muted{background:#f9fafb;border-color:#e5e7eb;color:#9ca3af;font-weight:600;font-size:12px}' +
+        '.pred .tip{display:block;color:#9ca3af;font-size:10px;font-weight:600;margin-top:2px}' +
+        'h4{margin:0 0 6px;font-size:13px;color:#6366f1}' +
+        'table{width:100%;border-collapse:collapse;font-size:12px}' +
+        'th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #f0f0f3}' +
+        'th{color:#6b7280;font-size:11px;background:#fafafa}' +
+        'td.num,th.num{text-align:right;white-space:nowrap}' +
+        '.foot{color:#9ca3af;font-size:10px;text-align:center;margin-top:18px}</style></head>' +
+        '<body onload="window.focus();window.print()">' +
+        '<p class="hd">📔 펫과나 건강수첩</p>' +
+        '<p class="nm">' + _esc(pet.name || '우리 아이') + '</p>' +
+        '<p class="sub">발급일 ' + today + '</p>' +
+        '<div class="grid">' +
+        '<div><b>종/품종</b>' + _esc([pet.type, pet.breed].filter(Boolean).join(' / ') || '-') + '</div>' +
+        '<div><b>나이</b>' + _esc(pet.age != null && pet.age !== '' ? pet.age : '-') + '</div>' +
+        '<div><b>성별</b>' + _esc(pet.gender || '-') + '</div>' +
+        '<div><b>체중</b>' + _esc(pet.weight != null && pet.weight !== '' ? pet.weight + ' kg' : '-') + '</div>' +
+        '</div>' +
+        '<div class="cards">' +
+        '<div class="stat"><b>누적 진료비</b><span class="v">' + totalCost.toLocaleString('ko-KR') + '원</span></div>' +
+        '<div class="stat"><b>총 기록</b><span class="v">' + records.length + '건</span></div>' +
+        '</div>' +
+        predHtml +
+        '<h4>🏥 진료비 아카이브</h4>' +
+        '<table><thead><tr><th>방문일</th><th>구분</th><th>병원</th><th>진단/처방</th><th class="num">진료비</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table>' +
+        '<p class="foot">본 건강수첩은 펫과나 앱에서 자동 생성되었습니다 · 수의사 방문 시 참고용</p>' +
+        '</body></html>'
+    );
+    w.document.close();
+}
+window.exportMedicalRecordsPDF = exportMedicalRecordsPDF;
+window.predictAnnualVetCost = predictAnnualVetCost;
+
 // ===== 기록 추가/수정 모달 =====
 let _medicalPhotoData = null;   // 현재 편집 중 사진 dataURL/URL
 let _editingMedicalId = null;
