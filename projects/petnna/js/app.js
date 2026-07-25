@@ -64,7 +64,6 @@ const TabControllers = {
             if (typeof renderCalendar === 'function') renderCalendar();
             if (typeof renderWalkHistory === 'function') renderWalkHistory();
             if (typeof renderWalkChallenge === 'function') renderWalkChallenge();
-            if (typeof renderWalkMate === 'function') renderWalkMate();
             if (typeof renderWalkWeatherCoach === 'function') renderWalkWeatherCoach();
             setTimeout(() => {
                 if (typeof initWalkSimulator === 'function') initWalkSimulator();
@@ -87,6 +86,7 @@ const TabControllers = {
         },
         render() {
             if (typeof renderSocialRoom === 'function') renderSocialRoom();
+            if (typeof renderWalkMate === 'function') renderWalkMate();
         },
         destroy() {
             if (typeof AppLogger !== 'undefined') {

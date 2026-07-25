@@ -337,18 +337,8 @@ const WALK_TEMPLATE = `
         <div id="walk-challenge-section"></div>
     </div>
 
-    <!-- ── 산책메이트 라이트 (동네 태그 기반 옵트인) ──────────────────── -->
-    <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
-        <div class="flex items-center justify-between">
-            <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
-                <i class="fa-solid fa-people-group text-brand-500 text-lg"></i>
-                산책메이트 라이트
-                <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">베타</span>
-            </h4>
-        </div>
-        <p class="text-[11px] text-gray-500 -mt-1">동네 태그를 등록하고 옵트인하면 같은 동네 반려인을 찾아드려요. 위치는 공유되지 않고 동네 이름만 사용해요.</p>
-        <div id="walkmate-section"></div>
-    </div>
+    <!-- 산책메이트 라이트는 소셜 탭(이웃 패널)으로 이동했다 — 2026-07-25 오너 지시.
+         소셜의 '산책 메이트 추천'과 같은 기능이라 두 탭에 나뉘어 있을 이유가 없다. -->
 
 </div>
 `;
