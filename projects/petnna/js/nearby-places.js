@@ -125,7 +125,9 @@ async function fetchNearbyPlaces(lat, lng, radiusMeters = 1500) {
         if (typeof showToast === 'function') {
             showToast('주변 장소를 불러오는데 실패했습니다. 다시 시도해주세요.');
         }
-        return nearbyPlacesCache; // 기존 캐시라도 반환
+        // 실패를 호출부에 알린다 — 안 알리면 캐시 개수로 "✅ N개 로드 완료" 토스트가
+        // 실패 토스트 바로 뒤에 떠서 서로 모순된다(2026-07-25 검수에서 재현).
+        return { ...nearbyPlacesCache, failed: true }; // 기존 캐시라도 반환
     }
 }
 
@@ -180,7 +182,9 @@ async function loadAndRenderNearbyPlaces() {
         renderPlacesOnMap(uniquePlaces);
     }
 
-    if (typeof showToast === 'function') {
+    // 실패했으면 fetchNearbyPlaces가 이미 실패 토스트를 띄웠다 — 여기서 성공 토스트를
+    // 또 띄우면 "실패했습니다" 바로 뒤에 "로드 완료"가 붙어 사용자가 뭘 믿을지 알 수 없다.
+    if (typeof showToast === 'function' && !nearby.failed) {
         const total = uniquePlaces.length;
         const parks = uniquePlaces.filter(p => p.category === 'park').length;
         const cafes = uniquePlaces.filter(p => p.category === 'cafe').length;
