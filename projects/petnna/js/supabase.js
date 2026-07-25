@@ -381,28 +381,41 @@ const SupabaseService = {
                 if (uploadedUrl) {
                     imageUrl = uploadedUrl;
                     newPost.image = uploadedUrl;
+                } else {
+                    // 스토리지 업로드 실패(예: petnna-media 버킷 부재) 시 data: URL을 그대로
+                    // insert에 실으면 포스트 전체 동기화가 실패한다(2026-07-25 발견) —
+                    // 이미지는 로컬 피드에만 남기고 DB에는 텍스트 포스트로 강등해 동기화를 살린다.
+                    imageUrl = null;
                 }
             }
 
-            const { data, error } = await this.client
-                .from('posts')
-                .insert([
-                    {
-                        pet_name: newPost.petName,
-                        pet_avatar: newPost.petAvatar,
-                        content: newPost.content,
-                        image: imageUrl || null,
-                        is_video: newPost.isVideo || false,
-                        video_url: newPost.videoUrl || null,
-                        likes: newPost.likes || 0,
-                        comments: JSON.stringify(newPost.comments || []),
-                        attached_walk: newPost.attachedWalk ? JSON.stringify(newPost.attachedWalk) : null
-                        // attached_ai_health는 스키마에 컬럼이 없으므로 주석 처리
-                        // TODO: Supabase에서 attached_ai_health 컬럼 추가 필요
-                    }
-                ])
-                .select();
-                
+            const row = {
+                pet_name: newPost.petName,
+                pet_avatar: newPost.petAvatar,
+                content: newPost.content,
+                image: imageUrl || null,
+                is_video: newPost.isVideo || false,
+                video_url: newPost.videoUrl || null,
+                likes: newPost.likes || 0,
+                comments: JSON.stringify(newPost.comments || []),
+                attached_walk: newPost.attachedWalk ? JSON.stringify(newPost.attachedWalk) : null
+                // attached_ai_health는 스키마에 컬럼이 없으므로 주석 처리
+                // TODO: Supabase에서 attached_ai_health 컬럼 추가 필요
+            };
+            let { data, error } = await this.client.from('posts').insert([row]).select();
+
+            // 라이브 DB에 없는 컬럼(PGRST204, 예: attached_walk 미적용)이면 그 컬럼만 빼고
+            // 1회 재시도 — 컬럼 하나 때문에 포스트 전체 동기화가 죽는 것을 막는다(2026-07-25 발견:
+            // supabase_schema.sql의 attached_walk ALTER가 라이브에 미적용이라 모든 포스트
+            // 업로드가 조용히 실패 중이었다). pets 동기화의 PGRST204 처리와 같은 원칙.
+            if (error && error.code === 'PGRST204') {
+                const m = String(error.message || '').match(/'([^']+)' column/);
+                if (m && m[1] in row) {
+                    delete row[m[1]];
+                    ({ data, error } = await this.client.from('posts').insert([row]).select());
+                }
+            }
+
             if (error) throw error;
 
             if (data && data.length > 0) {

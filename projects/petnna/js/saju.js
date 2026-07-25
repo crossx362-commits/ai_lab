@@ -226,7 +226,7 @@ function saveHarmonyToWidget() {
 window.saveHarmonyToWidget = saveHarmonyToWidget;
 
 // 조화도를 소셜 피드에 공유
-function shareHarmonyToSocial() {
+async function shareHarmonyToSocial() {
     const harmonyResult = getCurrentHarmonyResult();
     const pet = getSajuPet() || ((typeof getActivePet === 'function') ? getActivePet() : null);
     const ownerName = (typeof settings_nickname !== 'undefined' && settings_nickname) ? settings_nickname : '집사';
@@ -237,6 +237,20 @@ function shareHarmonyToSocial() {
         }
         return;
     }
+
+    // 시각화 카드 첨부(2026-07-25 회의 결정 2호) — 기존 텍스트 전용 포스트에 조화도 카드
+    // 이미지를 더한다. 피드용은 절반 크기 JPEG로 다운스케일(localStorage·업로드 부담 최소화).
+    // 이미지 생성 실패는 무시하고 텍스트 공유는 그대로 진행(비차단).
+    let cardImage = null;
+    try {
+        if (typeof generateHarmonyShareCard === 'function') {
+            const card = await generateHarmonyShareCard();
+            const small = document.createElement('canvas');
+            small.width = 540; small.height = 675;
+            small.getContext('2d').drawImage(card, 0, 0, 540, 675);
+            cardImage = small.toDataURL('image/jpeg', 0.85);
+        }
+    } catch (e) { /* 카드 실패 시 텍스트만 공유 */ }
 
     const score = Math.round(harmonyResult.avgScore);
     const petName = pet?.name || '댕이';
@@ -268,7 +282,7 @@ function shareHarmonyToSocial() {
         petName: petName,
         petAvatar: petAvatar,
         content: `${emoji} 영혼의 조화도 측정 결과: ${score}점!\n\n${message}`,
-        image: null,
+        image: cardImage,
         isVideo: false,
         videoUrl: null,
         likes: 0,
@@ -281,6 +295,11 @@ function shareHarmonyToSocial() {
     // posts 배열에 추가
     if (typeof posts !== 'undefined') {
         posts.unshift(newPost);
+    }
+
+    // Supabase 동기화 — uploadPost가 data: 이미지를 스토리지에 올리고 URL로 치환한다.
+    if (typeof uploadPostToSupabase === 'function') {
+        try { uploadPostToSupabase(newPost); } catch (e) {}
     }
 
     if (typeof saveState === 'function') saveState();
@@ -551,32 +570,104 @@ function startFortuneDraw() {
     let randomValue = (seed * 9301 + 49297) % 233280;
     randomValue = randomValue / 233280;
 
+    // 운세 풀 각 5→20개 확장(2026-07-25 회의 결정 1호) — 5개일 땐 5~6일이면 반복 체감돼
+    // 재방문 동력이 죽는 게 핵심 병목이었다. 톤은 기존(밝고 유머러스) 유지.
     const keywords = [
         "뜻밖의 특급 간식을 득템하는 날!",
         "에너지가 넘쳐 산책이 즐거운 날!",
         "포근한 이불 속에서 늦잠 자기 딱 좋은 날!",
         "주인과의 텔레파시가 100% 통하는 날!",
-        "새로운 장난감이나 친구를 만날 수 있는 날!"
+        "새로운 장난감이나 친구를 만날 수 있는 날!",
+        "털이 유난히 반짝반짝 빛나는 날!",
+        "낮잠 명당 자리를 새로 발견하는 날!",
+        "간식 협상에서 승리할 확률 99%인 날!",
+        "귀여움이 폭발해 모두를 홀리는 날!",
+        "숨겨둔 장난감이 다시 나타나는 행운의 날!",
+        "집사의 무릎을 독차지하기 좋은 날!",
+        "새로운 냄새 탐험이 대성공하는 날!",
+        "사진이 유난히 잘 나오는 포토제닉한 날!",
+        "밥그릇이 두 번 채워질지도 모르는 날!",
+        "창밖 구경이 유난히 재미있는 날!",
+        "애교 한 방으로 원하는 걸 다 얻는 날!",
+        "몸이 가벼워 점프력이 최고조인 날!",
+        "이웃 친구에게 인기 만점인 날!",
+        "빗질이 유난히 시원하고 기분 좋은 날!",
+        "하루 종일 콧노래(골골송)가 나오는 날!"
     ];
-    
-    const petFortunes = [
+
+    // 펫 운세 — 강아지/고양이 1단계 분기(고양이는 산책 대신 우다다·그루밍·캣타워 언어)
+    const petFortunesDog = [
         "오늘은 컨디션이 최고조에 달합니다. 꼬리가 하루 종일 멈추지 않을 예정이니 마음껏 뛰어놀게 해주세요!",
         "조금 나른하고 귀찮은 하루입니다. 억지로 무언가를 하기보다는 따뜻한 곳에서 푹 쉬는 것이 최고입니다.",
         "식욕이 폭발하는 날입니다. 자꾸만 주방 쪽을 서성이며 간식을 요구할 수 있으니 체중 관리에 유의하세요.",
         "보호자의 껌딱지가 되는 날입니다. 평소보다 더 많이 안아주고 쓰다듬어 주면 행복지수가 200% 상승합니다.",
-        "장난기가 발동하여 집안을 우다다 뛰어다닐 수 있습니다. 위험한 물건은 미리 치워두는 센스가 필요합니다."
+        "장난기가 발동하여 집안을 우다다 뛰어다닐 수 있습니다. 위험한 물건은 미리 치워두는 센스가 필요합니다.",
+        "산책길에서 마음이 통하는 친구를 만날 수 있는 날입니다. 평소보다 조금 긴 코스를 추천합니다.",
+        "코가 유난히 예민해지는 날입니다. 냄새 탐험 시간을 충분히 주면 두뇌 자극과 스트레스 해소에 최고입니다.",
+        "오늘은 훈련 습득력이 빛나는 날입니다. 새로운 개인기 하나를 가르쳐 보기 딱 좋은 타이밍이에요.",
+        "물 마시는 양이 평소보다 늘 수 있는 날입니다. 물그릇을 깨끗하게 새로 채워주면 좋아요.",
+        "낯선 소리에 조금 예민해질 수 있습니다. 포근한 담요와 좋아하는 장난감으로 안정감을 만들어 주세요.",
+        "공놀이 실력이 물오르는 날입니다. 열 번 던지면 아홉 번은 물어올 기세이니 마음껏 칭찬해 주세요.",
+        "오늘은 미용과 빗질이 잘 받는 날입니다. 목욕을 계획했다면 오늘이 적기입니다.",
+        "동네 순찰 본능이 강해지는 날입니다. 산책 중 마킹 포인트가 늘어도 너그럽게 기다려 주세요.",
+        "집사 퇴근 시간을 기가 막히게 예측하는 날입니다. 현관 앞 마중 확률 100%!",
+        "간식 숨긴 곳을 전부 기억해내는 천재견 모드입니다. 노즈워크 장난감으로 실력 발휘를 시켜주세요.",
+        "오늘은 일광욕이 보약인 날입니다. 햇살 좋은 창가 자리를 양보해 주세요.",
+        "꿈나라에서 대모험을 펼치는 날입니다. 자면서 다리를 파닥거려도 걱정 마세요, 즐거운 꿈입니다.",
+        "새 이불이나 방석에 유난히 애착이 생기는 날입니다. 포근한 잠자리를 선물하면 감동합니다.",
+        "보호자의 기분을 귀신같이 읽는 날입니다. 우울한 기색이 보이면 먼저 다가가 위로해줄 거예요.",
+        "오늘의 한 마디: 짖음도 애교로 통하는 날! 원하는 게 있으면 당당하게 표현하세요."
     ];
+    const petFortunesCat = [
+        "오늘은 골골송 볼륨이 최대치인 날입니다. 무릎을 내어주면 몇 시간이고 행복을 나눠줄 거예요.",
+        "그루밍에 진심인 날입니다. 평소보다 털 정리에 공을 들이니 빗질로 거들어 주면 금상첨화입니다.",
+        "우다다 타임이 평소보다 길어질 수 있습니다. 새벽 질주에 대비해 취침 전 사냥놀이로 에너지를 빼주세요.",
+        "캣타워 꼭대기에서 세상을 내려다보고 싶은 날입니다. 방해하지 말고 왕좌를 지켜드리세요.",
+        "식욕이 폭발하는 날입니다. 사료 그릇 앞에서 야옹 시위를 벌일 수 있으니 급여량 관리에 유의하세요.",
+        "숨숨집에서 재충전이 필요한 날입니다. 억지로 꺼내지 말고 조용히 기다려주면 먼저 다가옵니다.",
+        "창밖 새 관찰(캣TV)이 유난히 재미있는 날입니다. 커튼을 활짝 열어주면 채터링 공연을 볼 수 있어요.",
+        "박스 사랑이 폭발하는 날입니다. 택배 상자를 버리기 전에 먼저 검수를 맡겨주세요.",
+        "낚싯대 장난감 사냥 본능이 최고조입니다. 10분 사냥놀이면 오늘 밤 꿀잠이 보장됩니다.",
+        "물 마시는 양이 평소보다 늘 수 있는 날입니다. 정수기나 새 물로 취향을 저격해 주세요.",
+        "오늘은 집사 노트북 위가 세상에서 제일 따뜻해 보이는 날입니다. 재택근무 중이라면 각오하세요.",
+        "털이 유난히 부드럽고 윤기 나는 날입니다. 셀카 대신 냥카를 찍어 자랑해 보세요.",
+        "높은 곳 점프 성공률 100%인 날입니다. 냉장고 위 신영역 개척에 도전할지도 모릅니다.",
+        "꾹꾹이 서비스가 나오는 특별한 날입니다. 담요 위 꾹꾹이는 최상급 애정 표현이니 마음껏 누리세요.",
+        "낯선 소리에 조금 예민해질 수 있는 날입니다. 숨을 곳과 조용한 시간을 확보해 주세요.",
+        "오늘은 츄르 협상력이 최강인 날입니다. 그 눈빛을 이길 집사는 세상에 없습니다.",
+        "해가 드는 자리를 따라 이동하며 일광욕 순회공연을 하는 날입니다. 명당을 비워두세요.",
+        "집사의 손길이 유난히 그리운 날입니다. 턱 밑과 볼을 부드럽게 긁어주면 행복지수 급상승!",
+        "사냥 선물(장난감)을 물어다 줄 수 있는 날입니다. 살아있는 게 아니길 빌며 칭찬해 주세요.",
+        "오늘의 한 마디: 도도함 속 애정 표현이 빛나는 날! 꼬리로 슬쩍 감아주는 인사를 놓치지 마세요."
+    ];
+    const petFortunes = (fortunePet && fortunePet.type === 'cat') ? petFortunesCat : petFortunesDog;
 
     const ownerFortunes = [
         "우연히 들른 펫샵이나 온라인 몰에서 원하던 용품을 역대급 할인가에 득템할 수 있는 행운이 따릅니다.",
         "펫과 산책을 하다가 평소 인사하고 싶었던 동네 보호자와 즐거운 대화를 나누게 될 지도 모릅니다.",
         "펫의 귀여운 돌발 행동 덕분에 배꼽 잡고 크게 웃을 일이 생깁니다. 카메라를 항상 대기시켜 두세요!",
         "오늘은 조금 피곤한 하루가 될 수 있습니다. 퇴근 후 펫을 껴안고 일찍 잠자리에 드는 것을 추천합니다.",
-        "펫의 새로운 매력 포인트를 발견하게 되는 날입니다. 우리 애가 이런 면이 있었어? 하며 놀라게 될 것입니다."
+        "펫의 새로운 매력 포인트를 발견하게 되는 날입니다. 우리 애가 이런 면이 있었어? 하며 놀라게 될 것입니다.",
+        "찍어둔 펫 사진이 SNS에서 뜻밖의 인기를 얻을 수 있는 날입니다. 자신 있게 업로드해 보세요.",
+        "밀린 집안일이 술술 풀리는 날입니다. 청소를 마친 보송한 이불 위에서 펫과 뒹굴 자격이 충분합니다.",
+        "오랜 친구에게서 반가운 연락이 올 수 있습니다. 펫 자랑으로 대화가 두 배 즐거워질 거예요.",
+        "지갑 사정에 작은 여유가 생기는 날입니다. 펫 간식 하나 정도의 플렉스는 우주가 허락했습니다.",
+        "펫과 함께 새로운 길로 산책하면 좋은 기운이 따라오는 날입니다. 늘 가던 코스에서 한 블록만 벗어나 보세요.",
+        "집중력이 유난히 좋은 날입니다. 미뤄둔 일을 오전에 끝내고 오후는 펫과의 시간으로 보상하세요.",
+        "따뜻한 차 한 잔과 무릎 위 펫이 완벽한 조합인 날입니다. 잠깐의 여유가 큰 충전이 됩니다.",
+        "펫 용품 정리에 좋은 날입니다. 안 쓰는 장난감을 정리하다 추억의 물건을 발견할지도 모릅니다.",
+        "몸을 가볍게 움직이면 운이 트이는 날입니다. 펫과의 아침 산책이 하루 전체를 바꿔줄 거예요.",
+        "예상치 못한 칭찬을 듣게 되는 날입니다. 펫 덕분에 미소가 늘어난 게 비결입니다.",
+        "오늘은 결정 운이 좋은 날입니다. 고민하던 펫 용품이 있다면 오늘 고르는 선택이 정답입니다.",
+        "펫의 건강 상태를 점검하기 좋은 날입니다. 체중과 식사량을 기록해두면 나중에 큰 자산이 됩니다.",
+        "주변에 작은 친절을 베풀면 두 배로 돌아오는 날입니다. 이웃 보호자에게 먼저 인사해 보세요.",
+        "창밖 하늘이 유난히 예쁜 날입니다. 펫과 함께 노을 산책으로 하루를 마무리해 보세요.",
+        "펫과 눈을 맞추는 시간만큼 행운이 쌓이는 날입니다. 바쁜 하루라도 아침 눈인사는 잊지 마세요."
     ];
 
     const index1 = Math.floor(randomValue * keywords.length);
-    const index2 = Math.floor((randomValue * 10) % petFortunes.length);
+    // 곱수 1000 — 기존 10은 풀이 20개로 늘면 randomValue*10 ∈ [0,10)라 인덱스 0~9만 닿는다.
+    const index2 = Math.floor((randomValue * 1000) % petFortunes.length);
     const index3 = Math.floor((randomValue * 100) % ownerFortunes.length);
 
     const mainKeyword = document.getElementById('fortune-main-keyword');
@@ -614,9 +705,16 @@ function updateFortuneStreak(today) {
     }
 
     const badge = document.getElementById('fortune-streak-badge');
-    const countEl = document.getElementById('fortune-streak-count');
-    if (countEl) countEl.innerText = record.count;
-    if (badge) badge.classList.remove('hidden');
+    if (badge) {
+        // 뱃지 단계화(2026-07-25 회의 결정, 오너 승인 후 착수): 7일 🔥 → 30일 💎 → 100일 👑.
+        // 단계별로 이모지·색만 바꾸고 구조는 유지(카운트 로직 무변).
+        const c = record.count;
+        const tier = c >= 100 ? { emoji: '👑', cls: 'bg-violet-100 text-violet-700 border-violet-200' }
+            : c >= 30 ? { emoji: '💎', cls: 'bg-sky-100 text-sky-700 border-sky-200' }
+            : { emoji: '🔥', cls: 'bg-amber-100 text-amber-700 border-amber-200' };
+        badge.className = `inline-flex items-center gap-1 mt-2 font-black text-[10px] py-1 px-2.5 rounded-full border ${tier.cls}`;
+        badge.innerHTML = `${tier.emoji} 연속출석 <strong id="fortune-streak-count">${c}</strong>일`;
+    }
 }
 
 
