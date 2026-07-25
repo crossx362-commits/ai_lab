@@ -66,31 +66,23 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
                     <div class="flex items-center gap-2 w-full lg:flex-1 lg:min-w-0">
-                        <!-- 사주 정보 카드 (남는 가로 공간을 채우도록 flex-1) -->
-                        <div id="room-saju-card" class="flex-1 min-w-0 bg-gradient-to-br from-brand-50 to-brand-50 border border-brand-200 rounded-xl px-3.5 py-3 shadow-soft">
-                            <div class="text-[10px] leading-relaxed space-y-1.5">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="font-black text-brand-700">🔮 사주 분석</span>
-                                    <span id="room-saju-score" class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">미측정</span>
+                        <!-- 사주 + 영혼 조화도 통합 카드(2026-07-25 오너 지시) — 원래 사주 분석은
+                             여기, 조화도 점수는 우측 사이드바에 따로 있었는데 둘 다 같은 진단에서
+                             나온 결과인데다 집사·펫 년생과 진입 버튼까지 중복이었다. 한 카드로 합치고
+                             room-harmony.js가 값을 쓰는 ID는 전부 그대로 보존한다. -->
+                        <!-- 표면은 점수 요약만, 상세는 클릭 시 모달(오너 지시 2026-07-25 "단순하게
+                             보이게 하고 클릭하면 작은창 떠서 자세히") -->
+                        <button type="button" id="room-saju-card" onclick="openSajuHarmonyDetail()"
+                            class="flex-1 min-w-0 text-left bg-gradient-to-br from-brand-50 to-rose-50 border border-brand-200 rounded-xl px-3.5 py-3 shadow-soft hover:border-brand-300 transition-colors">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[10px] font-black text-brand-700 shrink-0">🔮 사주 · <span id="harmony-widget-icon">💖</span> 조화도</span>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <span id="harmony-widget-score" class="text-sm font-black text-rose-600">--점</span>
+                                    <i class="fa-solid fa-chevron-right text-brand-300 text-[9px]"></i>
                                 </div>
-                                <div id="room-saju-result" class="text-gray-700 font-medium space-y-1.5 md:space-y-0 md:flex md:items-stretch md:gap-4">
-                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 md:flex-1 md:min-w-0 md:border-b-0 md:border-r md:pr-4 md:pb-0">
-                                        <span class="font-bold text-brand-600">👤 집사</span>: <span id="room-saju-butler">--년생</span>
-                                        <div id="room-saju-owner-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
-                                    </div>
-                                    <div class="text-[9px] text-gray-500 border-b border-brand-100/50 pb-1 md:flex-1 md:min-w-0 md:border-b-0 md:border-r md:pr-4 md:pb-0">
-                                        <span class="font-bold text-amber-600">🐾 펫</span>: <span id="room-saju-pet">--년생</span>
-                                        <div id="room-saju-pet-summary" class="mt-0.5 text-[9px] text-gray-600 font-normal"></div>
-                                    </div>
-                                    <div id="room-saju-message" class="text-[9px] text-gray-600 leading-snug pt-0.5 md:pt-0 md:flex-1 md:min-w-0">
-                                        조화도 탭에서 사주 조화도를 분석해보세요
-                                    </div>
-                                </div>
-                                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[9px] font-bold text-brand-500 hover:text-brand-600 mt-1">
-                                    조화도 분석하기 →
-                                </button>
                             </div>
-                        </div>
+                            <div id="harmony-widget-title" class="text-[9px] font-bold text-rose-700 mt-0.5">조화도를 측정해보세요</div>
+                        </button>
                         <!-- 펫 추가 (주요 기능 상시 노출 — 설정 메뉴 안에만 있던 것을 헤더로 승격) -->
                         <button onclick="openPetRegistrationModal()" id="room-add-pet-btn" title="펫 추가"
                             class="h-9 px-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white flex items-center gap-1.5 transition-all shrink-0 shadow-soft">
@@ -328,29 +320,8 @@ const MYPET_TEMPLATE = `
     <!-- 왼쪽 하루 방 카드보다 콘텐츠가 훨씬 길어 하단이 안 맞던 문제 → sticky+내부 스크롤로 정렬(2026-07-22) -->
     <div class="lg:col-span-3 space-y-2.5 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
 
-        <!-- 조화도 카드 (점수 중심 요약 지표라 상단에 독립 유지) -->
-        <div id="harmony-widget-card" class="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200 rounded-xl p-3 shadow-sm">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-[10px] font-black text-gray-700">
-                    <span id="harmony-widget-icon">💖</span> 영혼의 조화도
-                </h3>
-                <button onclick="switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)" class="text-[8px] font-bold text-rose-500 hover:text-rose-600">측정하기</button>
-            </div>
-            <div class="text-center mb-2">
-                <div id="harmony-widget-score" class="text-2xl font-black text-rose-600 mb-0.5">--점</div>
-                <div id="harmony-widget-title" class="text-[9px] font-bold text-gray-700">조화도를 측정해보세요</div>
-            </div>
-            <div class="space-y-1 pt-2 border-t border-rose-100">
-                <div class="flex items-center justify-between text-[9px]">
-                    <span class="text-gray-500">👤 집사</span>
-                    <span id="harmony-widget-butler" class="font-bold text-gray-700">--년생</span>
-                </div>
-                <div class="flex items-center justify-between text-[9px]">
-                    <span class="text-gray-500">🐾 펫</span>
-                    <span id="harmony-widget-pet" class="font-bold text-gray-700">--년생</span>
-                </div>
-            </div>
-        </div>
+        <!-- 조화도 위젯은 좌측 '사주 · 조화도' 통합 카드로 흡수(2026-07-25 오너 지시).
+             집사·펫 년생과 진입 버튼이 사주 카드와 중복이라 한 카드로 합쳤다. -->
 
         <!-- 챌린지 & 업적 통합 카드 (각 항목은 achievements.js가 그대로 채움 — 겉박스만 하나로 합침) -->
         <div id="home-challenge-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
@@ -482,6 +453,50 @@ const MYPET_TEMPLATE = `
                     나중에
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- 🔮 사주 · 조화도 상세 모달 — 카드 표면은 점수 요약만 보이고 상세는 여기서 본다.
+         room-harmony.js가 값을 쓰는 ID들이 여기 살아 있어야 하므로(숨겨져 있어도 textContent
+         쓰기는 정상 동작) 이 블록을 제거하거나 ID를 바꾸지 말 것. -->
+    <div id="saju-harmony-modal" class="fixed inset-0 bg-black/60 items-center justify-center z-[110] p-4 hidden">
+        <div class="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl relative border border-brand-100 max-h-[90vh] overflow-y-auto no-scrollbar">
+            <button onclick="closeSajuHarmonyDetail()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 outline-none" aria-label="닫기">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center space-y-1 mb-4">
+                <div class="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center text-2xl mx-auto shadow-inner">🔮</div>
+                <h4 class="font-black text-gray-800 text-sm">사주 · 영혼 조화도</h4>
+                <div class="flex items-center justify-center gap-2 pt-1">
+                    <span id="room-saju-score" class="text-[10px] font-bold text-brand-700 bg-brand-50 px-2.5 py-1 rounded-full">미측정</span>
+                </div>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div class="bg-brand-50/40 rounded-2xl p-3 border border-brand-100/50">
+                    <span class="font-bold text-brand-600 text-[11px]">👤 집사</span>
+                    <span class="text-gray-600 text-[11px]">· <span id="room-saju-butler">--년생</span></span>
+                    <div id="room-saju-owner-summary" class="mt-1 text-[11px] text-gray-700"></div>
+                </div>
+                <div class="bg-amber-50/40 rounded-2xl p-3 border border-amber-100/50">
+                    <span class="font-bold text-amber-600 text-[11px]">🐾 펫</span>
+                    <span class="text-gray-600 text-[11px]">· <span id="room-saju-pet">--년생</span></span>
+                    <div id="room-saju-pet-summary" class="mt-1 text-[11px] text-gray-700"></div>
+                </div>
+                <div id="room-saju-message" class="text-[11px] text-gray-600 leading-relaxed text-center px-1">
+                    조화도 탭에서 사주 조화도를 분석해보세요
+                </div>
+                <!-- 조화도 전체 상세(세부점수·오행분포·영역별·종합처방) — 모달 열 때 동적 렌더.
+                     areas·elements는 배열/객체라 정적 ID로는 표현 불가하므로 렌더 함수가 채운다. -->
+                <div id="saju-harmony-detail" class="space-y-3"></div>
+            </div>
+            <button onclick="closeSajuHarmonyDetail(); switchTab('saju'); setTimeout(() => switchSajuSubTab('harmony'), 200)"
+                class="w-full mt-4 btn-modern bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-xs font-bold rounded-xl">
+                사주·조화도 분석하기 →
+            </button>
+            <!-- 구 조화도 위젯이 쓰던 년생 ID — 위 집사/펫 줄이 같은 값을 보여주므로 숨기되,
+                 room-harmony.js의 기존 쓰기는 그대로 살린다 -->
+            <span id="harmony-widget-butler" class="hidden"></span>
+            <span id="harmony-widget-pet" class="hidden"></span>
         </div>
     </div>
 

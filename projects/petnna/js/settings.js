@@ -33,6 +33,8 @@ function renderSettings() {
         renderServiceStatusPanel();
     }
 
+    renderDemoModeBanner();
+
     const themes = ['light', 'sepia', 'dark'];
     themes.forEach(t => {
         const btn = document.getElementById(`btn-theme-${t}`);
@@ -778,15 +780,22 @@ function resetToRichDemoData() {
                         ownerSummary: "火 (불) 기운이 강한 따뜻한 보호자",
                         petSummary: "木 (나무) 기운이 밝은 활동형 펫"
                     },
-                    harmonyData: {
+                    // 오행·영역별 상세(elements/relation/areas/measuredAt)는 실제 측정 흐름과
+                    // 같은 PetHarmony.analyze로 만든다 — 손으로 적으면 계산기가 바뀔 때 데모만
+                    // 옛 모양으로 남아 조화도 상세창이 반쯤 빈 채로 뜬다.
+                    harmonyData: Object.assign({
                         level: 4,
                         title: "찰떡조화 베스트 프렌드",
                         solution: "서로를 잘 이해하는 안정적인 관계입니다. 산책과 놀이 루틴을 유지하면 더 좋아져요.",
                         sajuScore: 88,
                         iqScore: 84,
                         mbtiScore: 92,
-                        avgScore: 88
-                    }
+                        avgScore: 88,
+                        petBirth: "2024-03-14",
+                        ownerBirth: "1992-06-16"
+                    }, (typeof PetHarmony !== 'undefined')
+                        ? PetHarmony.analyze("2024-03-14", "1992-06-16")
+                        : {})
                 },
                 { ...INITIAL_PETS[1], id: 102, name: "나비", roomName: "나비의 조용한 창가", hunger: 68, happy: 86, mbtiCode: "INFJ", iqScore: 116 },
                 { ...INITIAL_PETS[2], id: 103, name: "솜이", roomName: "솜이의 당근 정원", hunger: 76, happy: 89 }
@@ -881,7 +890,9 @@ function resetToRichDemoData() {
                 cart: [],
                 friends: INITIAL_FRIENDS,
                 letters: INITIAL_LETTERS,
-                customRoutes: []
+                customRoutes: [],
+                petSaju: { year: "2024", birthDate: "2024-03-14" },
+                butlerSaju: { year: "1992", birthDate: "1992-06-16" }
             };
 
             Object.entries(demoState).forEach(([key, value]) => {
@@ -910,12 +921,66 @@ function resetToRichDemoData() {
             });
             localStorage.setItem("petna_premium", "demo");
 
+            // AppStore 스키마 밖에서 자기 localStorage 키를 직접 읽는 모듈들 —
+            // 여기 빠져 있으면 그 탭만 계속 빈 화면이라 "데이터 반영 안 되는 데가 많다"가 된다.
+            const demoEmail = (typeof settings_email !== 'undefined' && settings_email)
+                || localStorage.getItem('petna_user_email') || 'butler@petna.co.kr';
+
+            localStorage.setItem(`petna_medical_records_${demoEmail}`, JSON.stringify([
+                { id: 901, petId: 101, email: demoEmail, visitDate: dayKey(4), category: 'checkup', hospital: '송도 24시 동물병원', diagnosis: '연간 종합검진 — 전 항목 정상', cost: 128000, notes: '혈액·초음파 이상 없음. 체중 6.4kg 유지.', photo: '', createdAt: isoAt(4, 11, 0) },
+                { id: 902, petId: 101, email: demoEmail, visitDate: dayKey(38), category: 'vaccine', hospital: '송도 24시 동물병원', diagnosis: '종합백신 5차 접종', cost: 42000, notes: '접종 후 이상반응 없음.', photo: '', createdAt: isoAt(38, 10, 30) },
+                { id: 903, petId: 101, email: demoEmail, visitDate: dayKey(96), category: 'medication', hospital: '연수 펫클리닉', diagnosis: '외이염 — 점이액 처방', cost: 35000, notes: '하루 2회 7일 투약 후 완치.', photo: '', createdAt: isoAt(96, 16, 20) }
+            ]));
+
+            localStorage.setItem('petna_qol_checkins', JSON.stringify({
+                "101": [0, 7, 14, 21].reverse().map((off, i) => ({
+                    date: isoAt(off, 20, 0),
+                    scores: { appetite: 5, energy: 4 + (i % 2), elimination: 4, comfort: 4, happiness: 5 },
+                    total: (22 + (i % 2)) / 5,
+                    weight: 6.6 - (i * 0.05)
+                }))
+            }));
+
+            localStorage.setItem('petna_health_analyses', JSON.stringify([
+                { date: isoAt(1, 21, 0), petName: '초코', summary: '최근 7일 식사·음수 패턴이 안정적입니다. 배변 상태도 정상 범위.', risk: 'low', advice: '현재 루틴을 유지하세요.' },
+                { date: isoAt(9, 21, 0), petName: '초코', summary: '음수량이 평소보다 12% 낮았습니다.', risk: 'watch', advice: '물그릇 위치를 바꿔보고 3일 뒤 재확인하세요.' }
+            ]));
+
+            localStorage.setItem(`petna_owner_iq_${demoEmail}`, "121");
+            localStorage.setItem(`petna_owner_mbti_${demoEmail}`, "ENFJ");
+
+            // 데모 데이터는 로컬 전용이다. 이 플래그가 없으면 새로고침 직후 클라우드 동기화가
+            // pets/posts/albums/healthLogs를 DB 내용으로 덮어써 방금 주입한 데이터가 사라진다.
+            localStorage.setItem('petna_demo_mode', '1');
+
             showToast("전체 데모 데이터 주입이 끝났습니다. 새로고침 중...");
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         }
     });
+}
+
+// 데모 모드 해제 — 플래그만 지우고 새로고침하면 클라우드 동기화가 실제 데이터를 되돌린다.
+function exitDemoMode() {
+    showCustomDialog({
+        title: "데모 모드 종료",
+        message: "데모 데이터를 걷어내고 실제 계정 데이터로 되돌립니다. 데모 중에 만든 로컬 기록은 사라집니다.",
+        icon: "🔌",
+        type: "confirm",
+        onConfirm: () => {
+            localStorage.removeItem('petna_demo_mode');
+            localStorage.removeItem('petna_premium');
+            showToast("데모 모드를 종료했습니다. 새로고침 중...");
+            setTimeout(() => window.location.reload(), 800);
+        }
+    });
+}
+
+function renderDemoModeBanner() {
+    const banner = document.getElementById('demo-mode-banner');
+    if (!banner) return;
+    banner.classList.toggle('hidden', localStorage.getItem('petna_demo_mode') !== '1');
 }
 
 function exportAllDataAsJSON() {

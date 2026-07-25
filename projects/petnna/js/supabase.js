@@ -249,8 +249,21 @@ const SupabaseService = {
         }
     },
 
+    // 🪄 데모 모드 — 설정의 '데모 데이터 주입'이 켜는 로컬 전용 플래그.
+    // sync* 함수들은 DB에 행이 하나라도 있으면 로컬 상태를 통째로 덮어쓰고 saveState()까지
+    // 부르기 때문에, 데모 데이터가 주입 직후 새로고침에서 1초도 못 버티고 지워졌다
+    // (2026-07-25 발견 — "임시데이터 추가해도 반영 안 됨"의 진짜 원인).
+    // 데모 모드에서는 원격 → 로컬 방향 동기화를 통째로 멈춘다.
+    isDemoMode() {
+        try { return localStorage.getItem('petna_demo_mode') === '1'; } catch (e) { return false; }
+    },
+
     async startSync() {
         await this.handleOAuthCallback();
+        if (this.isDemoMode()) {
+            console.warn('🪄 데모 모드 — 클라우드 동기화를 건너뜁니다 (설정 > 데모 모드 종료로 해제)');
+            return;
+        }
         if (this.isConnected) {
             this.syncPets();
             this.syncFeed();
@@ -266,7 +279,7 @@ const SupabaseService = {
     _realtimeChannel: null,
 
     startRealtimeFeed() {
-        if (!this.isConnected || !this.client) return;
+        if (!this.isConnected || !this.client || this.isDemoMode()) return;
         if (this._realtimeChannel) {
             this.client.removeChannel(this._realtimeChannel);
         }
@@ -314,7 +327,7 @@ const SupabaseService = {
     },
 
     async syncPets() {
-        if (!this.isConnected || !this.client) return { success: false, reason: 'not_connected' };
+        if (!this.isConnected || !this.client || this.isDemoMode()) return { success: false, reason: 'not_connected' };
         
         try {
             const { data, error } = await this._withRetry(() =>
@@ -450,7 +463,7 @@ const SupabaseService = {
     },
 
     async syncFeed() {
-        if (!this.isConnected || !this.client) return;
+        if (!this.isConnected || !this.client || this.isDemoMode()) return;
         
         try {
             const { data, error } = await this._withRetry(() =>
@@ -761,7 +774,7 @@ const SupabaseService = {
     },
 
     async syncProfile() {
-        if (!this.isConnected || !this.client) return;
+        if (!this.isConnected || !this.client || this.isDemoMode()) return;
         const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
             const { data, error } = await this.client
@@ -879,7 +892,7 @@ const SupabaseService = {
     },
 
     async syncAlbums() {
-        if (!this.isConnected || !this.client) return;
+        if (!this.isConnected || !this.client || this.isDemoMode()) return;
         const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
             const { data, error } = await this._withRetry(() =>
@@ -982,7 +995,7 @@ const SupabaseService = {
     },
 
     async syncRoutes() {
-        if (!this.isConnected || !this.client) return;
+        if (!this.isConnected || !this.client || this.isDemoMode()) return;
         const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
             const { data, error } = await this._withRetry(() =>
@@ -1081,6 +1094,7 @@ const SupabaseService = {
     },
 
     async syncMedicalRecords() {
+        if (this.isDemoMode()) return;
         const user = await this._authUser();
         if (!user) return;
         try {
@@ -1145,6 +1159,7 @@ const SupabaseService = {
     },
 
     async syncHealthLogs() {
+        if (this.isDemoMode()) return;
         const user = await this._authUser();
         if (!user) return;
         try {

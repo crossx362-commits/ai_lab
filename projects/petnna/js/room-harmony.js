@@ -150,25 +150,26 @@ function updateRoomThemeByHarmony() {
     // 방 배경 테마 변경
     roomCard.className = `bg-gradient-to-br ${theme.bgGradient} rounded-3xl border ${theme.borderColor} shadow-lg overflow-hidden transition-all duration-500`;
 
-    // 조화도 위젯 카드 업데이트 (오른쪽 사이드바)
-    const harmonyWidgetCard = document.getElementById('harmony-widget-card');
-    if (harmonyWidgetCard) {
-        const widgetIcon = document.getElementById('harmony-widget-icon');
-        const widgetScore = document.getElementById('harmony-widget-score');
-        const widgetTitle = document.getElementById('harmony-widget-title');
-        const widgetButler = document.getElementById('harmony-widget-butler');
-        const widgetPet = document.getElementById('harmony-widget-pet');
+    // 조화도 표시 업데이트 — 2026-07-25 사주 카드와 통합되며 별도 사이드바 카드
+    // (#harmony-widget-card)가 사라졌다. 컨테이너 존재를 조건으로 걸면 통합 후 이 블록이
+    // 통째로 건너뛰어 점수가 영원히 '--점'으로 남으므로, 개별 엘리먼트 가드만 쓴다.
+    const widgetIcon = document.getElementById('harmony-widget-icon');
+    const widgetScore = document.getElementById('harmony-widget-score');
+    const widgetTitle = document.getElementById('harmony-widget-title');
+    const widgetButler = document.getElementById('harmony-widget-butler');
+    const widgetPet = document.getElementById('harmony-widget-pet');
 
-        if (widgetIcon) widgetIcon.textContent = theme.icon.split('')[0];
-        if (widgetScore) widgetScore.textContent = `${score}점`;
-        if (widgetTitle) widgetTitle.textContent = theme.name;
+    // split('')은 이모지(서로게이트 쌍)를 반으로 잘라 깨진 문자(\ud83d)를 만든다 —
+    // 스프레드는 코드포인트 단위라 이모지 1개가 온전히 나온다(2026-07-25 통합 중 발견).
+    if (widgetIcon) widgetIcon.textContent = [...theme.icon][0] || theme.icon;
+    if (widgetScore) widgetScore.textContent = `${score}점`;
+    if (widgetTitle) widgetTitle.textContent = theme.name;
 
-        if (widgetButler && butlerSaju) {
-            widgetButler.textContent = `${butlerSaju.year || butlerYear}년생`;
-        }
-        if (widgetPet && petSaju) {
-            widgetPet.textContent = `${petSaju.year || petYear}년생`;
-        }
+    if (widgetButler && butlerSaju) {
+        widgetButler.textContent = `${butlerSaju.year || butlerYear}년생`;
+    }
+    if (widgetPet && petSaju) {
+        widgetPet.textContent = `${petSaju.year || petYear}년생`;
     }
 
     console.log(`✨ Room theme updated: ${theme.name} (${score}점)`);

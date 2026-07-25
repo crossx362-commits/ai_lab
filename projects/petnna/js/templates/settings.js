@@ -183,6 +183,24 @@ const SETTINGS_TEMPLATE = `
                 <i class="fa-solid fa-database text-brand-500 mr-2"></i>안심 데이터 보관소 🗄️
             </h3>
             <div class="space-y-2.5 text-xs">
+                <!-- 데모 모드 표시 (주입 시에만 노출) -->
+                <div id="demo-mode-banner" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
+                    <div class="flex items-start gap-2">
+                        <span class="text-base leading-none">🪄</span>
+                        <div class="min-w-0">
+                            <div class="font-black text-emerald-800">데모 모드 켜짐</div>
+                            <div class="text-[11px] text-emerald-700 leading-relaxed mt-0.5">
+                                화면의 모든 기록은 로컬 데모 데이터입니다. 실제 계정 데이터를 덮어쓰지 않도록
+                                클라우드 동기화가 멈춰 있습니다.
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="exitDemoMode()"
+                        class="w-full bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold py-2 rounded-lg transition-all">
+                        데모 모드 종료하고 실제 데이터로 복귀
+                    </button>
+                </div>
+
                 <!-- 풍요로운 데모 데이터 셋업 -->
                 <button onclick="resetToRichDemoData()"
                     class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">

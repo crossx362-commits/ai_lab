@@ -2340,6 +2340,122 @@ function openPetRegistrationModal() {
     }
 }
 
+// 사주·조화도 상세 모달 — 홈 카드는 점수 요약만 보이고, 상세는 여기서 연다(오너 지시 2026-07-25).
+// 조화도 데이터(harmonyData)는 세부점수 3종·오행 분포·영역별 4종+팁·궁합 관계·종합 처방까지
+// 담고 있어 정적 마크업으로는 다 못 그린다 — 열 때마다 최신 값으로 렌더한다.
+const _HARMONY_ELEM_COLOR = {
+    '목': 'text-emerald-600', '화': 'text-rose-600', '토': 'text-amber-700',
+    '금': 'text-gray-600', '수': 'text-sky-600',
+};
+
+function _harmonyGradeCls(grade) {
+    if (grade === '좋음' || grade === '최고') return 'text-emerald-600 bg-emerald-50';
+    if (grade === '보통') return 'text-amber-600 bg-amber-50';
+    if (grade === '노력') return 'text-orange-600 bg-orange-50';
+    return 'text-rose-600 bg-rose-50';
+}
+
+function renderSajuHarmonyDetail() {
+    const host = document.getElementById('saju-harmony-detail');
+    if (!host) return;
+    const hd = (typeof getCurrentHarmonyResult === 'function') ? getCurrentHarmonyResult() : null;
+    if (!hd || !hd.avgScore) {
+        host.innerHTML = `
+        <div class="text-[13px] text-gray-400 text-center py-4 border-t border-gray-100 leading-relaxed">
+            아직 조화도를 측정하지 않았어요.<br>아래 버튼으로 분석을 시작해보세요.
+        </div>`;
+        return;
+    }
+    const esc = (s) => (typeof escapeHtml === 'function') ? escapeHtml(String(s ?? '')) : String(s ?? '');
+
+    // 세부 점수 3종(측정된 것만) — 조화도 탭의 게이지와 같은 지표
+    const subs = [
+        ['☯️ 명리', hd.sajuScore, 'bg-brand-500'],
+        ['🐾 성향', hd.mbtiScore, 'bg-pink-500'],
+        ['🧠 교감', hd.iqScore, 'bg-sky-500'],
+    ].filter(s => s[1] > 0);
+    const subsHtml = subs.length ? `
+        <div class="space-y-2.5 pt-4 border-t border-gray-100">
+            <div class="text-xs font-black text-gray-800">세부 점수</div>
+            ${subs.map(([label, val, color]) => `
+            <div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                    <span class="text-gray-600 font-medium">${label}</span>
+                    <span class="font-black text-gray-800 tabular-nums">${Math.round(val)}%</span>
+                </div>
+                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full ${color} rounded-full" style="width:${Math.max(0, Math.min(100, val))}%"></div>
+                </div>
+            </div>`).join('')}
+        </div>` : '';
+
+    // 오행 궁합(상생/상극) + 주 기운
+    const rel = hd.relation || {};
+    const el = hd.elements || {};
+    const relCls = rel.type === '상생' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100';
+    const relHtml = rel.text ? `
+        <div class="pt-4 border-t border-gray-100">
+            <div class="text-xs font-black text-gray-800 mb-2">오행 궁합
+                ${rel.type ? `<span class="ml-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${rel.type === '상생' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${esc(rel.type)}</span>` : ''}
+            </div>
+            <div class="flex items-center justify-center gap-3 mb-2.5 text-[13px]">
+                <span class="text-gray-500">🐾 펫 <b class="${_HARMONY_ELEM_COLOR[el.pet?.dominant] || 'text-gray-700'}">${esc(el.pet?.dominant || '-')}</b></span>
+                <span class="text-gray-300">×</span>
+                <span class="text-gray-500">👤 집사 <b class="${_HARMONY_ELEM_COLOR[el.owner?.dominant] || 'text-gray-700'}">${esc(el.owner?.dominant || '-')}</b></span>
+            </div>
+            <div class="text-[13px] text-gray-700 leading-relaxed keep-all p-3 rounded-xl border ${relCls}">${esc(rel.text)}</div>
+        </div>` : '';
+
+    // 영역별 조화도(놀이·식사·산책·휴식) + 각 영역 실천 팁
+    const areas = Array.isArray(hd.areas) ? hd.areas : [];
+    const areasHtml = areas.length ? `
+        <div class="pt-4 border-t border-gray-100">
+            <div class="text-xs font-black text-gray-800 mb-2">영역별 조화도</div>
+            <div class="space-y-2.5">
+                ${areas.map(a => `
+                <div class="bg-gray-50/70 rounded-xl p-3 border border-gray-100">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[13px] font-black text-gray-800">${esc(a.emoji || '')} ${esc(a.name || '')}</span>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${_harmonyGradeCls(a.grade)}">${esc(a.grade || '')} ${Math.round(a.score || 0)}</span>
+                    </div>
+                    <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+                        <div class="h-full bg-brand-400 rounded-full" style="width:${Math.max(0, Math.min(100, a.score || 0))}%"></div>
+                    </div>
+                    <div class="text-xs text-gray-600 leading-relaxed keep-all">${esc(a.tip || '')}</div>
+                </div>`).join('')}
+            </div>
+        </div>` : '';
+
+    // 종합 처방 + 측정일
+    const solHtml = hd.solution ? `
+        <div class="pt-4 border-t border-gray-100">
+            <div class="text-xs font-black text-gray-800 mb-2">종합 처방</div>
+            <div class="text-[13px] text-gray-700 leading-relaxed keep-all bg-brand-50/40 rounded-xl p-3 border border-brand-100/50">${esc(hd.solution)}</div>
+        </div>` : '';
+    const metaHtml = hd.measuredAt
+        ? `<div class="text-[10px] text-gray-400 text-center pt-3">측정일 ${esc(hd.measuredAt)}</div>` : '';
+
+    host.innerHTML = subsHtml + relHtml + areasHtml + solHtml + metaHtml;
+}
+
+function openSajuHarmonyDetail() {
+    const modal = document.getElementById('saju-harmony-modal');
+    if (!modal) return;
+    renderSajuHarmonyDetail();   // 열 때마다 최신 조화도 값으로 다시 그린다
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeSajuHarmonyDetail() {
+    const modal = document.getElementById('saju-harmony-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+window.openSajuHarmonyDetail = openSajuHarmonyDetail;
+window.closeSajuHarmonyDetail = closeSajuHarmonyDetail;
+
 function closePetRegistrationModal() {
     const modal = document.getElementById('pet-reg-modal');
     if (modal) {
