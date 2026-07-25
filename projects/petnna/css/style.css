@@ -90,6 +90,20 @@ body:not(.theme-dark):not(.theme-sepia) {
     background-attachment: fixed;
 }
 
+/* 🖥️ 데스크톱: 중앙 정렬로 카드 밖 브라운 여백이 넓게 보이므로 발자국 패턴을
+   조금 진하게(0.025→0.045) 하고 상·하단 웜 그라디언트를 얹어 브랜드 무드 강화
+   (미오 리뷰 — 데스크톱 배경 여백 활용). 모바일·dark·sepia는 현행 유지. */
+@media (min-width: 1024px) {
+    body:not(.theme-dark):not(.theme-sepia) {
+        background-image:
+            radial-gradient(ellipse at 50% 0%, rgba(177, 69, 28, 0.06), transparent 40%),
+            radial-gradient(ellipse at 50% 100%, rgba(177, 69, 28, 0.05), transparent 40%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23b1451c' fill-opacity='0.045'%3E%3Cellipse cx='30' cy='42' rx='9' ry='7'/%3E%3Ccircle cx='20' cy='30' r='3.6'/%3E%3Ccircle cx='30' cy='26' r='3.6'/%3E%3Ccircle cx='40' cy='30' r='3.6'/%3E%3Cellipse cx='90' cy='96' rx='9' ry='7'/%3E%3Ccircle cx='80' cy='84' r='3.6'/%3E%3Ccircle cx='90' cy='80' r='3.6'/%3E%3Ccircle cx='100' cy='84' r='3.6'/%3E%3C/g%3E%3C/svg%3E"),
+            linear-gradient(160deg, #fff8f2 0%, #ffe9dc 100%);
+        background-size: cover, cover, 120px 120px, cover;
+    }
+}
+
 /* 탭 버튼 한 줄 유지 및 네비게이션 가로 스크롤 보정 */
 .tab-btn {
     white-space: nowrap !important;
