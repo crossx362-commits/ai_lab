@@ -330,7 +330,7 @@ const WALK_TEMPLATE = `
         <div class="flex items-center justify-between">
             <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
                 <i class="fa-solid fa-medal text-brand-500 text-lg"></i>
-                주간 산책 챌린지
+                내 주간 산책 목표
             </h4>
             <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">이번 주</span>
         </div>

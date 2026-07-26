@@ -322,6 +322,22 @@ const AppStore = {
                 }
             });
 
+            // 옛 저장분 보정: id 없이 저장된 앨범 항목에 id를 채운다.
+            // walk.js의 자동 산책 일기가 최상위 id를 안 넣어(2026-07-26 수정) 이미 저장된
+            // 항목들이 전부 undefined다 — album.js:1441의 findIndex가 첫 항목만 잡아
+            // 여러 개 중 무엇을 눌러도 같은 게 발행된다. 로드 시 한 번 채워 구제한다.
+            try {
+                const _alb = this._state.albums;
+                if (Array.isArray(_alb)) {
+                    let _seq = 0;
+                    _alb.forEach((a) => {
+                        if (a && (a.id === undefined || a.id === null || a.id === '')) {
+                            a.id = `legacy-${Date.parse(a.savedAt || a.createdAt || '') || 0}-${_seq++}`;
+                        }
+                    });
+                }
+            } catch (e) { /* 보정 실패는 무시 — 렌더는 계속되어야 한다 */ }
+
             this._state.settings_nickname = localStorage.getItem(`${AppConstants.StorageKeys.USER_NICKNAME}_${targetEmail}`) || localStorage.getItem(AppConstants.StorageKeys.USER_NICKNAME) || "초코 집사";
             this._state.settings_avatar = localStorage.getItem(`petna_user_avatar_${targetEmail}`) || localStorage.getItem(`petna_user_avatar`) || "🧔";
             this._state.settings_photo_url = localStorage.getItem(`petna_user_photo_url_${targetEmail}`) || localStorage.getItem(`petna_user_photo_url`) || "";

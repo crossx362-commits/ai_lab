@@ -313,7 +313,107 @@ def interactive_checks(page, port: int, env_name: str) -> list[dict]:
                 "데스크톱 헤더엔 있으나 모바일 하단 네비에 없음 — 모바일 사용자는 진입 경로 없음"))
 
     findings.extend(layout_waste_checks(page, env_name))
+    findings.extend(duplication_checks(page, env_name))
     return findings
+
+
+# 중복·유사 분류 점검 (2026-07-26 오너 지시로 자동화).
+#
+# 오늘 사람이 손으로 훑어 찾아낸 것을 기계가 재현한다:
+#   1) 중복 element ID — 전 탭을 순회한 뒤 DOM 전체에서 같은 id가 2개 이상
+#      (실제 발견: diary-entry-undefined ×3 → album.js가 id로 항목을 찾는 탓에
+#       산책 일기를 여러 개 써도 항상 첫 번째만 피드에 발행되던 진짜 오작동)
+#   2) id에 undefined/null/NaN이 박힌 것 — 위 사고의 근본 신호
+#   3) 탭을 넘나드는 같은/포함 관계 제목 — 같은 이름이 두 탭에 있으면 사용자는
+#      같은 기능으로 읽는다(실제 발견: '주간 산책 챌린지'가 산책·소셜 양쪽에
+#      있었는데 하나는 내 목표, 하나는 이웃 랭킹이었다)
+#
+# P2(중복 ID·깨진 id)와 P3(제목 충돌)로 나눈다 — 전자는 기능 오작동으로 이어지고
+# 후자는 이름 판단이라 사람이 정해야 한다.
+def duplication_checks(page, env_name: str) -> list[dict]:
+    findings = []
+    titles_by_tab = {}
+    for tab in _TAB_SWEEP:
+        try:
+            page.evaluate(f"() => {{ if (typeof switchTab==='function') switchTab('{tab}'); }}")
+            page.wait_for_timeout(600)
+            # 요청한 탭과 실제로 보이는 컨테이너가 다르면 건너뛴다 —
+            # mailbox는 social의 서브탭이라 switchTab('mailbox')를 해도 tab-social이
+            # 그대로 보인다. 이걸 안 걸러 social의 제목을 자기 자신과 비교해
+            # '탭 간 충돌' 5건을 오탐했다(2026-07-26).
+            res = page.evaluate(_TAB_TITLES_JS)
+            if not res or res.get("tabId") != f"tab-{tab}":
+                continue
+            titles_by_tab[tab] = res.get("titles") or []
+        except Exception:
+            continue
+
+    # 1)·2) DOM 전체 id 상태 — 전 탭을 이미 순회했으므로 모든 탭 내용이 DOM에 있다
+    try:
+        idinfo = page.evaluate(_DUP_ID_JS)
+    except Exception:
+        idinfo = None
+    for dup in (idinfo or {}).get("dups", [])[:3]:
+        findings.append(_finding(
+            "P2", "기능", "/index.html", env_name,
+            f"중복 element ID: '{dup['id']}' {dup['count']}개",
+            "같은 id가 여러 개면 getElementById가 첫 번째만 잡는다 — id로 항목을 "
+            "찾는 코드(삭제·공유 등)가 엉뚱한 대상에 동작할 수 있다"))
+    for bad in (idinfo or {}).get("broken", [])[:3]:
+        findings.append(_finding(
+            "P2", "기능", "/index.html", env_name,
+            f"id에 미정의 값이 들어감: '{bad}'",
+            "템플릿이 `id=prefix-${obj.id}` 형태로 만드는데 원본에 id가 없다는 뜻 — "
+            "그 항목들이 서로 구분되지 않는다"))
+
+    # 3) 탭을 넘나드는 제목 충돌(같거나 한쪽이 다른 쪽을 포함)
+    seen = []
+    for tab, titles in titles_by_tab.items():
+        for t in titles or []:
+            for otab, ot in seen:
+                if otab == tab:
+                    continue
+                if t == ot or (len(t) >= 6 and len(ot) >= 6 and (t in ot or ot in t)):
+                    findings.append(_finding(
+                        "P3", "UI", "/index.html", env_name,
+                        f"탭 간 제목 충돌: '{t}' ({otab} ↔ {tab})",
+                        "같은 이름이 두 탭에 있으면 사용자는 같은 기능으로 읽는다 — "
+                        "실제로 다른 기능이라면 이름을 구분할 것"))
+                    break
+            seen.append((tab, t))
+    # 같은 제목쌍이 여러 번 잡히지 않게 앞쪽 3건만
+    return findings[:6]
+
+
+_TAB_TITLES_JS = r"""
+() => {
+  const tab = [...document.querySelectorAll('.tab-content')].find(t => !t.classList.contains('hidden'));
+  if (!tab) return { tabId: null, titles: [] };
+  const vis = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const out = new Set();
+  tab.querySelectorAll('h2,h3,h4').forEach((h) => {
+    if (!vis(h)) return;
+    const t = (h.textContent || '').replace(/\s+/g, ' ').trim();
+    // 이모지·기호를 걷어내고 글자만 비교한다(🏆 유무로 다른 제목이 되지 않게)
+    const norm = t.replace(/[^가-힣a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    if (norm.length >= 4 && norm.length <= 24) out.add(norm);
+  });
+  return { tabId: tab.id, titles: [...out] };
+}
+"""
+
+_DUP_ID_JS = r"""
+() => {
+  const counts = {};
+  document.querySelectorAll('[id]').forEach((e) => { counts[e.id] = (counts[e.id] || 0) + 1; });
+  const dups = Object.entries(counts).filter(([, n]) => n > 1)
+      .map(([id, count]) => ({ id, count }));
+  // null은 '없음' 선택지처럼 의도된 값일 수 있어 제외한다(poop-type-null 오탐).
+  // undefined·NaN은 어떤 경우에도 의도적으로 넣지 않는다.
+  const broken = Object.keys(counts).filter((id) => /(undefined|NaN)/.test(id));
+  return { dups, broken };
+}
+"""
 
 
 # 데스크톱 레이아웃 낭비·중복 구조 점검 (2026-07-26 오너 지시로 자동화).

@@ -24,22 +24,28 @@ const SOCIAL_TEMPLATE = `
             class="lg:hidden absolute top-3 right-3 w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
             <i class="fa-solid fa-xmark"></i>
         </button>
-        <!-- 산책 메이트 매칭 (동네 플레이데이트) — 2026-07-25 오너 지시로 패널 맨 위 -->
-        <div class="space-y-3">
-            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider">🐾 산책 메이트 추천</h4>
-            <div id="walk-mate-list" class="space-y-2">
-                <!-- 동적 산책 메이트 로딩 -->
-            </div>
-        </div>
+        <!-- 산책 메이트 — 2026-07-26 두 블록을 한 섹션으로 병합.
+             '추천'(이웃 목록 기반 궁합 매칭)과 '라이트'(동네 태그 옵트인)가 둘 다
+             '같이 산책할 사람 찾기'인데 제목이 달라 별개 기능처럼 보였다.
+             한 제목 아래 '추천 목록'과 '동네에서 찾기'로 역할만 구분한다. -->
+        <div id="social-walkmate-group" class="space-y-3">
+            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider">🐾 산책 메이트 찾기</h4>
 
-        <!-- 산책메이트 라이트 (동네 태그 기반 옵트인) — 2026-07-25 산책 탭에서 이동 -->
-        <div class="space-y-3 pt-3 border-t border-gray-100">
-            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                🧭 산책메이트 라이트
-                <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full normal-case tracking-normal">베타</span>
-            </h4>
-            <p class="text-[11px] text-gray-500">동네 태그를 등록하고 옵트인하면 같은 동네 반려인을 찾아드려요. 위치는 공유되지 않고 동네 이름만 사용해요.</p>
-            <div id="walkmate-section"></div>
+            <div class="space-y-2">
+                <span class="block text-[10px] font-bold text-gray-400">이웃 중에서 추천</span>
+                <div id="walk-mate-list" class="space-y-2">
+                    <!-- 동적 산책 메이트 로딩 -->
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-3 border-t border-gray-100">
+                <span class="block text-[10px] font-bold text-gray-400 flex items-center gap-1.5">
+                    동네에서 찾기
+                    <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">베타</span>
+                </span>
+                <p class="text-[11px] text-gray-500">동네 태그를 등록하고 옵트인하면 같은 동네 반려인을 찾아드려요. 위치는 공유되지 않고 동네 이름만 사용해요.</p>
+                <div id="walkmate-section"></div>
+            </div>
         </div>
 
         <!-- 친구 검색 & 신청 기능 -->
@@ -73,7 +79,7 @@ const SOCIAL_TEMPLATE = `
 
         <!-- 주간 산책 챌린지 리더보드 (게이미피케이션) -->
         <div class="space-y-3">
-            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider">🏆 주간 산책 챌린지</h4>
+            <h4 class="font-black text-gray-600 text-xs uppercase tracking-wider">🏆 이웃 산책 랭킹</h4>
             <div id="walk-leaderboard-list" class="space-y-2">
                 <!-- 동적 리더보드 로딩 -->
             </div>

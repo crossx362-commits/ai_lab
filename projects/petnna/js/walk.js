@@ -701,6 +701,11 @@ function stopAndSaveWalk() {
                     ];
 
                     const draftItem = {
+                        // 최상위 id 필수 — album.js:1441이 `albums.findIndex(a => a.id === item.id)`로
+                        // 항목을 찾는다. id가 없으면 자동 산책 일기가 전부 undefined가 돼
+                        // 여러 개 중 무엇을 눌러도 **항상 첫 번째**가 피드에 발행됐다
+                        // (2026-07-26 중복 ID 전수조사에서 diary-entry-undefined ×3으로 발견).
+                        id: Date.now(),
                         url:'', isVideo:false, start:0, end:0, filter:'natural',
                         isWalkCard:true, isAutoDraft:true,
                         savedAt: now.toISOString(),

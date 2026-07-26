@@ -166,7 +166,7 @@ const HEALTH_TEMPLATE = `
             </h2>
             <div class="flex items-center gap-1.5">
                 <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
-                    <i class="fa-solid fa-id-card mr-1"></i>응급·여행 카드
+                    <i class="fa-solid fa-id-card mr-1"></i>응급·여행 프로필
                 </button>
                 <button onclick="exportMedicalRecordsPDF()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF 내보내기
@@ -347,7 +347,7 @@ const HEALTH_TEMPLATE = `
                     <div class="flex items-center gap-3">
                         <div class="text-4xl">🚨</div>
                         <div>
-                            <h3 class="text-base font-bold text-gray-900">응급 카드</h3>
+                            <h3 class="text-base font-bold text-gray-900">응급 처치 가이드</h3>
                             <p class="text-xs text-red-600 mt-1">1차 처치 + 24h 병원</p>
                         </div>
                     </div>
