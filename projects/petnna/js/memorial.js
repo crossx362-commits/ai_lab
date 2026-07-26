@@ -37,6 +37,13 @@
         return _daysBetween(today, next);
     }
 
+    // 추모 모드 여부 판정의 단일 소스. 케어 유도 모듈들이 이걸 묻는다 —
+    // 각자 pet.memorial을 따로 읽으면 판정 기준이 갈라져 한쪽만 갱신되는 사고가 난다.
+    function isMemorialPet(pet) {
+        const p = (pet === undefined) ? _activePet() : pet;
+        return !!(p && p.memorial);
+    }
+
     // 순수 함수: pet → 추모 정보 또는 null(추모 상태 아님)
     function buildMemorialInfo(pet, now) {
         now = now || new Date();
@@ -196,6 +203,7 @@
         if (fields) fields.classList.toggle('hidden', !(cb && cb.checked));
     }
 
+    window.isMemorialPet = isMemorialPet;
     window.buildMemorialInfo = buildMemorialInfo;
     window.renderMemorialBanner = renderMemorialBanner;
     window.openMemorialSpace = openMemorialSpace;

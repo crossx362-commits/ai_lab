@@ -59,6 +59,11 @@
     function renderCareNudgeBanner() {
         const host = document.getElementById('care-nudge-banner');
         if (!host) return;
+        // 추모 모드에서는 케어 유도를 띄우지 않는다 — 무지개다리를 건넌 아이에게
+        // 산책·급여·투약을 독촉하는 건 위로가 아니라 상처다(2026-07-26 오너 지시).
+        if (typeof isMemorialPet === 'function' && isMemorialPet()) {
+            host.innerHTML = ''; host.hidden = true; return;
+        }
         const items = buildCareNudge(_history());
         if (items.length === 0) { host.innerHTML = ''; host.hidden = true; return; }
         host.hidden = false;

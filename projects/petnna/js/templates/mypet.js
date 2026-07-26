@@ -36,7 +36,7 @@ const MYPET_TEMPLATE = `
                     <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                 </div>
             </div>
-            <div class="bg-amber-50/40 px-4 py-3 flex items-start gap-2.5">
+            <div id="mypet-fortune-cell" class="bg-amber-50/40 px-4 py-3 flex items-start gap-2.5">
                 <span class="text-base leading-none mt-0.5 shrink-0">🐾</span>
                 <div class="min-w-0">
                     <span class="block text-[11px] font-bold text-amber-600 mb-0.5">펫 오늘의 운세</span>
@@ -249,8 +249,9 @@ const MYPET_TEMPLATE = `
 
                 <div id="petgame-root" class="w-full"></div>
 
-                <!-- 펫 스탯바 + 코인 + 데일리 미션 -->
-                <div class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 space-y-1.5">
+                <!-- 펫 스탯바 + 코인 + 데일리 미션 (추모 모드에선 숨김 — 허기 게이지·먹이주기 미션은
+                     무지개다리를 건넌 아이에게 부적절하다) -->
+                <div id="pet-game-panel" class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 space-y-1.5">
                     <div id="pet-game-stat-bars"></div>
                     <div id="pet-daily-missions"></div>
                 </div>
