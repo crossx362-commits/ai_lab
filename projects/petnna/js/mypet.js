@@ -1249,6 +1249,17 @@ function renderMyPets() {
     if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
+    if (typeof renderMemorialBanner === 'function') renderMemorialBanner();
+    // 추모 모드: 케어 유도 계열을 통째로 접는다. 각 배너는 자체 가드로 이미 숨지만,
+    // 펫 운세·육성 게임은 자기 렌더러가 없어 여기서 직접 토글한다.
+    // (집사 운세는 보호자 본인 것이라 남긴다.)
+    const _memorial = (typeof isMemorialPet === 'function') && isMemorialPet();
+    const _fortuneCell = document.getElementById('mypet-fortune-cell');
+    if (_fortuneCell) _fortuneCell.hidden = _memorial;
+    const _gamePanel = document.getElementById('pet-game-panel');
+    if (_gamePanel) _gamePanel.hidden = _memorial;
+    const _gameRoot = document.getElementById('petgame-root');
+    if (_gameRoot) _gameRoot.hidden = _memorial;
     // 2026-07-25 알림 카드를 '오늘 카드'로 통합하면서 부모 접기 로직을 제거했다.
     // 통합 카드는 알림이 없어도 케어 요약·운세를 항상 담으므로 접으면 안 된다
     // (예전엔 알림 둘 다 비면 껍데기만 남아 접었지만, 이제 접으면 멀쩡한 내용이 사라진다).
@@ -2766,6 +2777,13 @@ function togglePetProfileEdit() {
                     imgEl.src = current.imageUrl || "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&q=80&w=300";
                 }
                 updateRoomLayoutControls(normalizeRoomLayout(current.roomLayout || 'living'));
+                const memCb = document.getElementById('settings-pet-memorial');
+                const birthEl = document.getElementById('settings-pet-birthdate');
+                const memDateEl = document.getElementById('settings-pet-memorialdate');
+                if (memCb) memCb.checked = !!current.memorial;
+                if (birthEl) birthEl.value = current.birthDate || "";
+                if (memDateEl) memDateEl.value = current.memorialDate || "";
+                if (typeof toggleMemorialFields === 'function') toggleMemorialFields();
                 tempPetRoomPhotoUrl = "";
             }
         }
@@ -2821,7 +2839,14 @@ function savePetProfileAndRoom() {
     current.name = nameInput;
     current.roomName = roomNameInput || `${nameInput}의 하루 방 🏠`;
     current.roomLayout = normalizeRoomLayout(current.roomLayout || 'living');
-    
+
+    const memCb = document.getElementById('settings-pet-memorial');
+    const birthEl = document.getElementById('settings-pet-birthdate');
+    const memDateEl = document.getElementById('settings-pet-memorialdate');
+    if (memCb) current.memorial = memCb.checked;
+    if (birthEl) current.birthDate = birthEl.value || "";
+    if (memDateEl) current.memorialDate = memDateEl.value || "";
+
     if (tempPetRoomPhotoUrl) {
         current.imageUrl = tempPetRoomPhotoUrl;
         current.type = 'custom'; // type is custom so that image is rendered

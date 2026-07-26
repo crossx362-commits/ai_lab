@@ -13,6 +13,9 @@ const MYPET_TEMPLATE = `
         <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
         <div id="memory-flashback-banner"></div>
 
+        <!-- 🌈 무지개다리 추모 공간 (memorial.js가 채움, 펫이 추모 모드일 때만 노출) -->
+        <div id="memorial-banner"></div>
+
         <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
         <div id="care-check-banner"></div>
 
@@ -33,7 +36,7 @@ const MYPET_TEMPLATE = `
                     <p id="mypet-butler-fortune-text" class="text-xs font-medium text-gray-700 leading-relaxed keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                 </div>
             </div>
-            <div class="bg-amber-50/40 px-4 py-3 flex items-start gap-2.5">
+            <div id="mypet-fortune-cell" class="bg-amber-50/40 px-4 py-3 flex items-start gap-2.5">
                 <span class="text-base leading-none mt-0.5 shrink-0">🐾</span>
                 <div class="min-w-0">
                     <span class="block text-[11px] font-bold text-amber-600 mb-0.5">펫 오늘의 운세</span>
@@ -220,6 +223,23 @@ const MYPET_TEMPLATE = `
                             </div>
                         </div>
                     </div>
+                    <!-- 🌈 무지개다리 추모 모드 (P2, 나무 제안) — 함께한 날·기일/생일 안내 -->
+                    <div class="pt-2 border-t border-gray-100 space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="settings-pet-memorial" onchange="toggleMemorialFields()" class="accent-indigo-500">
+                            <span class="font-black text-gray-600">🌈 무지개다리 추모 모드</span>
+                        </label>
+                        <div id="settings-memorial-fields" class="hidden grid grid-cols-2 gap-2">
+                            <label class="block">
+                                <span class="block text-[10px] font-bold text-gray-400 mb-0.5">생일</span>
+                                <input type="date" id="settings-pet-birthdate" class="w-full border rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 text-xs">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-bold text-gray-400 mb-0.5">기일</span>
+                                <input type="date" id="settings-pet-memorialdate" class="w-full border rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 text-xs">
+                            </label>
+                        </div>
+                    </div>
                     <button onclick="savePetProfileAndRoom()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2 rounded-xl transition-all">저장</button>
                 </div>
             </div>
@@ -229,8 +249,9 @@ const MYPET_TEMPLATE = `
 
                 <div id="petgame-root" class="w-full"></div>
 
-                <!-- 펫 스탯바 + 코인 + 데일리 미션 -->
-                <div class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 space-y-1.5">
+                <!-- 펫 스탯바 + 코인 + 데일리 미션 (추모 모드에선 숨김 — 허기 게이지·먹이주기 미션은
+                     무지개다리를 건넌 아이에게 부적절하다) -->
+                <div id="pet-game-panel" class="bg-white border border-gray-100 rounded-2xl px-3 py-2.5 space-y-1.5">
                     <div id="pet-game-stat-bars"></div>
                     <div id="pet-daily-missions"></div>
                 </div>
