@@ -96,7 +96,7 @@ const HEALTH_TEMPLATE = `
          맞춤 식단·7일 트렌드를 흡수해 한 카드로 병합(2026-07-26 오너 지시).
          왼쪽 컬럼에 흩어져 있던 카드 5장을 한 장으로 줄인다.
          card-merge가 각 위젯이 그리는 내부 card-modern 테두리를 지우고 사이에 구분선을 넣는다. -->
-    <div class="card-modern card-merge overflow-hidden">
+    <div id="health-passport-group" class="card-modern card-merge overflow-hidden">
     <div class="overflow-hidden">
         <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -203,8 +203,10 @@ const HEALTH_TEMPLATE = `
 
     <!-- 📈 7일 건강 트렌드 ('오늘의 기록' 카드에서 이 묶음으로 이동) -->
     <div class="card-modern p-5">
-        <!-- 📈 7일 건강 트렌드 (병합 전 별도 카드 — 소제목 행으로 흡수) -->
-        <div class="flex items-center gap-2 mt-5 pt-4 border-t border-gray-100 mb-3">
+        <!-- 📈 7일 건강 트렌드 — 2026-07-26 이 카드로 옮기며 상단 구분선(mt-5 pt-4 border-t)
+             제거. 원래 '오늘의 기록' 안에서 위 내용과 나누는 선이었는데, 카드 최상단이 되면서
+             위에 아무것도 없는 채 선만 떠 있었다(회의에서 테오가 지목). -->
+        <div class="flex items-center gap-2 mb-3">
             <span class="text-xl">📈</span>
             <span class="text-sm font-bold text-gray-900">7일 건강 트렌드</span>
             <span class="text-xs text-gray-400">데이터로 보는 변화</span>
@@ -247,7 +249,7 @@ const HEALTH_TEMPLATE = `
          (2026-07-26 오너 지시). 둘 다 '돈' 주제인데 카드 두 장으로 나뉘어 있었고,
          가계부는 기록이 없으면 179px짜리 빈 카드만 덩그러니 남았다.
          card-merge가 내부 card-modern 테두리를 지우고 사이에 구분선을 넣는다. -->
-    <div class="card-modern card-merge overflow-hidden">
+    <div id="health-cost-group" class="card-modern card-merge overflow-hidden">
         <!-- 💰 반려동물 가계부 (백로그 나무, P3 — 카테고리별 지출·월별 집계) -->
         <div id="expense-tracker-widget"></div>
 
@@ -415,7 +417,7 @@ const HEALTH_TEMPLATE = `
                 <!-- 오늘 체크 + 정기예방 대시보드를 한 카드로 병합(2026-07-26 오너 지시).
                      둘 다 '무슨 약/케어가 언제'라 따로 둘 이유가 없고, 대시보드는 항목이
                      한둘일 때 아래가 크게 비어 보였다. card-merge가 내부 카드 테두리를 지운다. -->
-                <div class="card-modern card-merge overflow-hidden">
+                <div id="health-medication-group" class="card-modern card-merge overflow-hidden">
                     <!-- 💊 오늘 투약·케어 체크 (care-check.js가 채움) — 2026-07-26 마이펫에서 이동 -->
                     <div id="care-check-banner"></div>
                     <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
