@@ -20,6 +20,15 @@
         if (typeof window.getActivePet === "function") return window.getActivePet();
         return (typeof pets !== "undefined" && pets && pets[0]) || null;
     }
+    // 프로필에 등록된 알러지/기피 성분(pet.allergies, 자유입력) → 개별 성분 배열
+    function allergens(pet) {
+        var src = pet && (pet.allergies || pet.allergy);
+        if (!src) return [];
+        if (Array.isArray(src)) src = src.join(",");
+        return String(src).split(/[,、/·\n]+/)
+            .map(function (t) { return t.trim(); })
+            .filter(function (t) { return t.length >= 1; });
+    }
     function densityFor(petId) {
         if (window.CalorieTracker && typeof window.CalorieTracker._densityFor === "function") {
             return window.CalorieTracker._densityFor(petId);
@@ -119,6 +128,13 @@
             (r.adj.note
                 ? '<p class="mt-2 text-[11px] text-' + (r.cat ? r.cat.color : "gray") + '-600 bg-' + (r.cat ? r.cat.color : "gray") + '-50 rounded-lg px-2.5 py-1.5">' + esc(r.adj.note) + "</p>"
                 : "") +
+            (function () {
+                var al = allergens(pet);
+                if (!al.length) return "";
+                return '<div class="mt-2 flex items-start gap-1.5 text-[11px] text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5">' +
+                    '<span>⚠️</span><span><b>알러지/기피 성분</b> ' + al.map(esc).join(", ") +
+                    ' — 사료·간식 성분표에서 이 성분을 확인하고, <button onclick="if(window.FoodSafety)FoodSafety.open()" class="underline font-bold">급여 가능 음식 검색</button>으로 대조하세요.</span></div>';
+            })() +
             '<p class="mt-2 text-[10px] text-gray-400 leading-relaxed">※ 룰 기반 참고용 추천입니다. 실제 급여량은 사료 포장 지침·수의사 상담을 우선하세요.</p>' +
             "</div>";
     }
