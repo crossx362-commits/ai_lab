@@ -35,12 +35,11 @@ const HEALTH_TEMPLATE = `
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">
 
-    <!-- 조기 감지·경보 묶음 — 개별 카드 3장을 card-merge 래퍼로 한 카드처럼 병합
-         (각 모듈이 그리는 내부 card-modern 테두리는 style.css .card-merge 규칙이 지움, 2026-07-19) -->
+    <!-- 조기 감지·경보 묶음 — 개별 카드를 card-merge 래퍼로 한 카드처럼 병합
+         (각 모듈이 그리는 내부 card-modern 테두리는 style.css .card-merge 규칙이 지움, 2026-07-19)
+         2026-07-26: 원탭 컨디션 로그는 '오늘 입력'이라 여기(분석 결과 묶음)에서 빼
+         '오늘의 기록' 카드로 옮겼다 — 입력은 입력끼리, 분석은 분석끼리. -->
     <div class="card-modern card-merge overflow-hidden">
-        <!-- 📝 데일리 컨디션 원탭 로그 (daily-condition.js가 채움) -->
-        <div id="daily-condition-widget"></div>
-
         <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
         <div id="wellness-anomaly-card"></div>
 
@@ -64,7 +63,10 @@ const HEALTH_TEMPLATE = `
             </button>
         </div>
 
-        <div class="grid grid-cols-3 gap-3">
+        <!-- 배변 타일은 제거(2026-07-26) — 아래 '원탭 컨디션'의 배변 칩과 같은 필드
+             (healthLogs.today.poop)를 읽어 같은 값을 두 번 보여주고 있었다.
+             수치 입력(섭취)은 여기, 상태 입력은 원탭으로 역할을 나눈다. -->
+        <div class="grid grid-cols-2 gap-3">
             <!-- 식사량 -->
             <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center group hover:scale-105 transition-transform">
                 <div class="text-4xl mb-2">🍖</div>
@@ -79,13 +81,12 @@ const HEALTH_TEMPLATE = `
                 <div class="text-xs text-gray-600 font-semibold">음수량</div>
             </button>
 
-            <!-- 배변 -->
-            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-rose-50 to-pink-50 p-4 text-center group hover:scale-105 transition-transform">
-                <div class="text-4xl mb-2">💩</div>
-                <div id="health-today-poop" class="text-2xl font-bold text-rose-600 mb-1">--회</div>
-                <div class="text-xs text-gray-600 font-semibold">배변</div>
-            </button>
         </div>
+
+        <!-- 📝 원탭 컨디션 로그 (daily-condition.js가 채움) — 2026-07-26 오너 지시로
+             '오늘의 컨디션 원탭 기록' 별도 카드를 이 카드에 흡수. 같은 날의 같은 기록을
+             카드 두 장이 따로 묻던 구조를 없앤다(배변이 양쪽에 중복 노출됐다). -->
+        <div id="daily-condition-widget" class="mt-4"></div>
 
         <!-- 📈 7일 건강 트렌드 (병합 전 별도 카드 — 소제목 행으로 흡수) -->
         <div class="flex items-center gap-2 mt-5 pt-4 border-t border-gray-100 mb-3">
@@ -394,8 +395,15 @@ const HEALTH_TEMPLATE = `
             <!-- 투약·복약 -->
             <div data-care-group class="space-y-2">
                 <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">투약·복약</span>
-                <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
-                <div id="preventive-care-dashboard"></div>
+                <!-- 오늘 체크 + 정기예방 대시보드를 한 카드로 병합(2026-07-26 오너 지시).
+                     둘 다 '무슨 약/케어가 언제'라 따로 둘 이유가 없고, 대시보드는 항목이
+                     한둘일 때 아래가 크게 비어 보였다. card-merge가 내부 카드 테두리를 지운다. -->
+                <div class="card-modern card-merge overflow-hidden">
+                    <!-- 💊 오늘 투약·케어 체크 (care-check.js가 채움) — 2026-07-26 마이펫에서 이동 -->
+                    <div id="care-check-banner"></div>
+                    <!-- 💉 투약·정기예방 대시보드 (심장사상충/구충/백신 카운트다운) -->
+                    <div id="preventive-care-dashboard"></div>
+                </div>
                 <!-- 🗒️ 생애주기 예방케어 체크리스트 (종·나이·중성화 기반 권장 항목, 나무 P2) -->
                 <div id="preventive-checklist"></div>
                 <!-- 📅 생애주기 예방 타임라인 (종·나이 기반 시기별 케어 흐름 + 리마인더, 나무 P3) -->

@@ -311,7 +311,135 @@ def interactive_checks(page, port: int, env_name: str) -> list[dict]:
                 "P2", "기능", "/index.html", env_name,
                 f"모바일에서 도달 불가한 탭: {', '.join(orphan)}",
                 "데스크톱 헤더엔 있으나 모바일 하단 네비에 없음 — 모바일 사용자는 진입 경로 없음"))
+
+    findings.extend(layout_waste_checks(page, env_name))
     return findings
+
+
+# 데스크톱 레이아웃 낭비·중복 구조 점검 (2026-07-26 오너 지시로 자동화).
+#
+# 오너가 반복해서 지적한 세 가지를 사람 눈 대신 기계가 잡는다:
+#   1) 카드 폭은 넓은데 안의 콘텐츠가 절반도 안 차 오른쪽이 텅 빈 행
+#      (예: 케어 요약 5칸을 max-w-xl로 묶어 1400px 카드의 1/3만 쓰던 것)
+#   2) 같은 탭에 제목이 겹치는 카드 — 같은 데이터를 두 카드가 따로 묻는 신호
+#      (예: '오늘의 기록' 옆에 '오늘의 컨디션 원탭 기록'이 따로 있던 것)
+#   3) 카드 속 카드 — 감싼 카드 안에서 자식이 또 카드 테두리를 그려 이중 액자가 되는 것
+#
+# 전부 '보기 나쁨'이라 자동 수정은 하지 않고 P3로 보고만 한다(오탐 여지가 있어
+# 자동 병합 대상으로 만들지 않는다 — 판단은 사람/디자이너 몫).
+_WASTE_MIN_CARD_W = 700      # 이 폭 미만 카드는 애초에 여백이 남을 수 없다
+_WASTE_FILL_RATIO = 0.5      # 콘텐츠가 카드 안쪽 폭의 이 비율 미만이면 낭비로 본다
+
+
+def layout_waste_checks(page, env_name: str) -> list[dict]:
+    findings = []
+    try:
+        page.set_viewport_size({"width": 1440, "height": 900})
+    except Exception:
+        return findings
+    for tab in _TAB_SWEEP:
+        try:
+            page.evaluate(f"() => {{ if (typeof switchTab==='function') switchTab('{tab}'); }}")
+            page.wait_for_timeout(700)
+            res = page.evaluate(_LAYOUT_WASTE_JS)
+        except Exception:
+            continue
+        for w in (res or {}).get("waste", [])[:2]:
+            findings.append(_finding(
+                "P3", "UI", f"/index.html#{tab}", env_name,
+                f"[{tab}] 가로 여백 낭비: '{w['label']}' 콘텐츠가 카드 폭의 {w['fill']}%만 사용",
+                f"카드 {w['cardW']}px 안에서 내용이 {w['contentW']}px — 넓은 화면에서 오른쪽이 비어 보인다"))
+        for t in (res or {}).get("dupTitles", [])[:2]:
+            findings.append(_finding(
+                "P3", "UI", f"/index.html#{tab}", env_name,
+                f"[{tab}] 제목이 겹치는 카드: '{t}'",
+                "같은 데이터를 카드 두 장이 따로 묻고 있을 수 있다 — 병합 검토 대상"))
+        for n in (res or {}).get("nested", [])[:2]:
+            findings.append(_finding(
+                "P3", "UI", f"/index.html#{tab}", env_name,
+                f"[{tab}] 카드 속 카드: '{n}'",
+                "감싼 카드 안에서 자식이 또 카드 테두리를 그려 이중 액자가 된다"))
+    return findings
+
+
+_LAYOUT_WASTE_JS = r"""
+() => {
+  const MINW = %d, RATIO = %s;
+  const vis = (el) => { const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const tab = [...document.querySelectorAll('.tab-content')].find(t => !t.classList.contains('hidden'));
+  if (!tab) return { waste: [], dupTitles: [], nested: [] };
+  const cards = [...tab.querySelectorAll('.card-modern')].filter(vis);
+
+  // 1) 가로 여백 낭비: '넓은 부모 안에서 혼자 쪼그라든 콘텐츠 묶음'을 찾는다.
+  //    카드 직계 자식만 보면 안 된다 — 실제 낭비는 자식 *안쪽*에서 생긴다
+  //    (케어 요약은 카드 자식은 full-width인데 그 안 그리드만 max-w-xl로 좁았다.
+  //     첫 버전이 직계만 봐서 네거티브 컨트롤을 통과시켰다, 2026-07-26).
+  const waste = [];
+  for (const c of cards) {
+    const cr = c.getBoundingClientRect();
+    if (cr.width < MINW) continue;
+    const cs = getComputedStyle(c);
+    const inner = cr.width - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+    if (inner <= 0) continue;
+    const label = (c.querySelector('h2,h3,h4')?.textContent || c.id || '(제목 없음)')
+      .replace(/\s+/g, ' ').trim().slice(0, 30);
+    for (const el of [...c.querySelectorAll('*')].filter(vis)) {
+      if (el.children.length < 2) continue;              // 콘텐츠 묶음만(라벨·단일요소 제외)
+      const p = el.parentElement;
+      if (!p || !vis(p)) continue;
+      const ew = el.getBoundingClientRect().width;
+      const pw = p.getBoundingClientRect().width;
+      if (pw < inner * 0.9) continue;                    // 부모가 이미 좁으면 의도된 컬럼
+      if (ew >= pw * RATIO) continue;                    // 부모 폭을 충분히 쓰면 정상
+      // 같은 행을 나눠 쓰는 형제(그리드·플렉스 칸)는 좁은 게 정상이다.
+      // 폭이 비슷한 형제가 있으면 '한 행을 N등분한 칸'으로 보고 넘어간다
+      // (첫 버전이 케어 요약 5칸을 전부 낭비로 신고했다 — 오탐, 2026-07-26).
+      const sibs = [...p.children].filter(s => s !== el && vis(s));
+      if (sibs.some(s => Math.abs(s.getBoundingClientRect().width - ew) < ew * 0.2)) continue;
+      waste.push({ label, fill: Math.round(ew / inner * 100),
+                   cardW: Math.round(cr.width), contentW: Math.round(ew) });
+      break;                                             // 카드당 1건이면 충분
+    }
+  }
+
+  // 2) 제목 중복(한쪽이 다른 쪽을 포함하는 관계도 중복으로 본다)
+  //    card-merge 래퍼와 그 안의 카드는 '같은 제목 요소 하나'를 각각 집어오므로
+  //    제목 텍스트가 아니라 **제목 요소 자체**로 먼저 중복을 제거해야 한다
+  //    (안 그러면 병합 카드마다 자기 제목이 중복이라고 보고한다 — 실제 오탐 발생).
+  const seenEls = new Set();
+  const titles = [];
+  for (const c of cards) {
+    const h = c.querySelector('h2,h3,h4');
+    if (!h || seenEls.has(h)) continue;
+    seenEls.add(h);
+    const t = (h.textContent || '').replace(/\s+/g, ' ').trim();
+    if (t.length >= 4) titles.push(t);
+  }
+  const dupTitles = [];
+  for (let i = 0; i < titles.length; i++) {
+    for (let j = i + 1; j < titles.length; j++) {
+      if (titles[i] === titles[j] || titles[i].includes(titles[j]) || titles[j].includes(titles[i])) {
+        if (!dupTitles.includes(titles[i])) dupTitles.push(titles[i]);
+      }
+    }
+  }
+
+  // 3) 카드 속 카드 — card-merge 래퍼는 내부 테두리를 지우는 의도된 패턴이라 제외
+  const nested = [];
+  for (const c of cards) {
+    if (c.classList.contains('card-merge') || c.closest('.card-merge')) continue;
+    const inner = [...c.querySelectorAll('.card-modern')].filter(vis)
+        .filter(x => !x.closest('.card-merge'));
+    if (inner.length) {
+      const outer = (c.querySelector('h2,h3,h4')?.textContent || c.id || '').replace(/\s+/g,' ').trim().slice(0,24);
+      const innerT = (inner[0].querySelector('h2,h3,h4')?.textContent || '').replace(/\s+/g,' ').trim().slice(0,24);
+      if (outer && innerT) nested.push(`${outer} > ${innerT}`);
+    }
+  }
+  return { waste, dupTitles, nested };
+}
+""" % (_WASTE_MIN_CARD_W, _WASTE_FILL_RATIO)
 
 
 def browser_patrol(port: int) -> list[dict]:

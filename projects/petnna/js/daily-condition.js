@@ -85,14 +85,15 @@
                     ${g.options.map(o => _btn(g.field, o, today[g.field] === o.value)).join('')}
                 </div>
             </div>`).join('');
+        // 2026-07-26 '오늘의 기록' 카드 안으로 들어갔다 — 자체 카드 테두리·제목을 유지하면
+        // 카드 속 카드가 되고 "오늘의 기록 / 오늘의 컨디션 원탭 기록" 제목이 겹친다.
+        // 같은 카드의 '7일 건강 트렌드'와 동일한 소제목 행 패턴으로 맞춘다.
         host.innerHTML = `
-        <div class="card-modern p-5 border border-brand-100/60">
-            <div class="flex items-center gap-3 mb-3">
-                <div class="text-2xl">📝</div>
-                <div class="min-w-0">
-                    <h3 class="text-sm font-bold text-gray-900">오늘의 컨디션 원탭 기록</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">배변·소변 색·식욕·활력을 한 번의 탭으로 기록해요. 예측 웰니스에 반영됩니다.</p>
-                </div>
+        <div class="pt-4 border-t border-gray-100">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-xl">📝</span>
+                <span class="text-sm font-bold text-gray-900">원탭 컨디션</span>
+                <span class="text-xs text-gray-400 truncate">배변·소변 색·식욕·활력</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${rows}</div>
         </div>`;

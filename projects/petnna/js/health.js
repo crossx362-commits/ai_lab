@@ -100,8 +100,12 @@ function renderHealthTab() {
     // 식사 일지 렌더링
     if (typeof renderMealLogsList === 'function') renderMealLogsList();
 
-    // 데일리 컨디션 원탭 로그 위젯
+    // 데일리 컨디션 원탭 로그 위젯 (2026-07-26 '오늘의 기록' 카드 안으로 이동)
     if (typeof DailyCondition !== 'undefined') DailyCondition.renderWidget('daily-condition-widget');
+
+    // 오늘 투약·케어 체크 — 2026-07-26 마이펫에서 이 탭으로 이동했다.
+    // 호스트를 옮기면서 렌더 호출을 같이 안 옮기면 호스트만 있고 영영 비어 있게 된다.
+    if (typeof renderCareCheckBanner === 'function') renderCareCheckBanner();
 
     // 예측 웰니스 이상감지 카드
     if (typeof renderWellnessCard === 'function') renderWellnessCard();
@@ -223,15 +227,10 @@ function updateTodayHealthDisplay() {
 
     const foodEl = document.getElementById('health-today-food');
     const waterEl = document.getElementById('health-today-water');
-    const poopEl = document.getElementById('health-today-poop');
 
     if (foodEl) foodEl.textContent = logs.food ? `${logs.food}g` : '--g';
     if (waterEl) waterEl.textContent = logs.water ? `${logs.water}ml` : '--ml';
 
-    if (poopEl) {
-        const poopTypes = { normal: '정상', soft: '무름', hard: '딱딱', liquid: '설사' };
-        poopEl.textContent = logs.poop ? poopTypes[logs.poop] || '--' : '--';
-    }
 }
 
 // AI 사용 횟수 업데이트

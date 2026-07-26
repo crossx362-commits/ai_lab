@@ -2,7 +2,8 @@
 
 마이펫 홈의 '오늘' 통합카드(templates/mypet.js의 `#home-today-card`)는
 상단에 조건부 배너들을 품는다(그중 아래 둘을 검증):
-  1) #care-check-banner  (care-check.js — 오늘 due 투약·케어, 있을 때만 노출)
+  1) #memory-flashback-banner (memory-flashback.js — 추억 회고, 있을 때만 노출)
+     ※ 원래 여기 있던 #care-check-banner는 2026-07-26 건강 탭으로 이동했다.
   2) #care-nudge-banner  (care-nudge.js — 오늘 챙길 것, 있을 때만 노출)
 
 두 스크립트는 노출할 내용이 없으면 `host.innerHTML=''; host.hidden=true`로
@@ -40,31 +41,33 @@ _PET = {
 
 # 한 조합의 상태를 구동(데이터 소스 스텁)하고, 통합카드 상단 3요소를 측정하는 JS.
 #   check / nudge : 각 배너를 채울지 여부(True→내용 있음, False→비움)
-# 반환: care-check / care-nudge / 그 아래 날짜블록의 가시성·구분선 폭.
+# 반환: 추억배너 / care-nudge / 그 아래 첫 상시블록의 가시성·구분선 폭.
 _APPLY_COMBO = r"""
 ([check, nudge]) => {
     // --- 데이터 소스 스텁: 렌더 함수가 typeof로 참조하는 전역만 교체 ---
-    window.getTodaySchedules = () => check
-        ? [{ id: 1, type: 'medicine', time: '09:00', title: 'E2E 투약', lastCompleted: null }]
-        : [];
+    // 2026-07-26 care-check 배너는 건강 탭으로 이동했다. 이 카드에 남은 조건부 배너 중
+    // 테스트가 통제할 수 있는 건 care-nudge 하나뿐이라, 'check' 축은 추억 배너로 옮겼다.
     window.analyzeStool = () => nudge ? { emoji: '💩', label: '무름', days: 3 } : null;
     window.analyzeWellness = () => [];
 
     // --- 실제 앱 렌더 함수 호출(진짜 innerHTML/hidden 토글 + divide-y CSS 적용) ---
-    if (typeof window.renderCareCheckBanner === 'function') window.renderCareCheckBanner();
     if (typeof window.renderCareNudgeBanner === 'function') window.renderCareNudgeBanner();
 
-    // 2026-07-25 알림 카드가 이 카드로 통합되면서 건강 다이제스트·추억 배너가
-    // care-check 앞에 붙었다. 이 테스트가 통제하는 건 아래 두 배너뿐이므로,
-    // 앞선 두 배너는 앱과 같은 규약(빈 내용 + hidden)으로 접어 care-check를
-    // '첫 보이는 자식'으로 만든 뒤 구분선을 측정한다.
-    ['health-digest-banner', 'memory-flashback-banner'].forEach((id) => {
+    // 이 테스트가 통제하는 건 care-nudge 하나다. 앞선 조건부 배너들은 앱과 같은 규약
+    // (빈 내용 + hidden)으로 접어 통제 대상을 '앞에 보이는 형제가 없는' 상태로 만든 뒤
+    // 구분선을 측정한다. check 축은 추억 배너를 직접 채워 재현한다.
+    ['health-digest-banner', 'memorial-banner'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) { el.innerHTML = ''; el.hidden = true; }
     });
+    const mf = document.getElementById('memory-flashback-banner');
+    if (mf) {
+        if (check) { mf.innerHTML = '<div class="p-3 text-xs">E2E 추억</div>'; mf.hidden = false; }
+        else { mf.innerHTML = ''; mf.hidden = true; }
+    }
 
     const card = document.getElementById('home-today-card');
-    const cc = document.getElementById('care-check-banner');
+    const cc = document.getElementById('memory-flashback-banner');
     const cn = document.getElementById('care-nudge-banner');
     if (!card || !cc || !cn) return { ok: false };
     // care-nudge 아래 첫 '펼쳐진' 형제(항상 보이는 첫 콘텐츠 셀). 유령 구분선의 표적.
@@ -90,7 +93,7 @@ _APPLY_COMBO = r"""
         check: measure(cc),
         nudge: measure(cn),
         date: dateBlock ? measure(dateBlock) : null,
-        // care-check 앞에 '보이는' 형제가 없어야 top-border가 0이다. care-check 자신이
+        // 통제 배너 앞에 '보이는' 형제가 없어야 top-border가 0이다. 그 배너 자신이
         // 비어 hidden인 조합도 있으므로 "첫 보이는 자식"이 아니라 "앞에 보이는 형제 없음"
         // 으로 판정한다(전자는 빈 조합에서 항상 거짓이 된다).
         checkIsFirst: [...card.children]
@@ -123,11 +126,11 @@ def run(page, base_url):
     banners = page.evaluate(
         """() => {
             const card = document.getElementById('home-today-card');
-            const cc = document.getElementById('care-check-banner');
+            const cc = document.getElementById('memory-flashback-banner');
             const cn = document.getElementById('care-nudge-banner');
             const strip = document.getElementById('today-care-strip');
             // 2026-07-25 알림 카드가 이 카드로 통합돼 첫 자식은 건강 다이제스트다.
-            // 검증할 계약은 "care-check가 첫 자식"이 아니라 "조건부 배너들이 모두
+            // 검증할 계약은 "특정 배너가 첫 자식"이 아니라 "조건부 배너들이 모두
             // 상시 블록(케어 요약)보다 앞에 있다" — 그래야 배너가 비었을 때
             // divide-y 유령 구분선이 상시 블록 위에 생기는 회귀를 잡을 수 있다.
             const before = (a, b) => !!a && !!b
@@ -140,11 +143,11 @@ def run(page, base_url):
             };
         }"""
     )
-    assert banners["cc"], "#care-check-banner가 통합카드 안에 없음(구조 회귀)"
+    assert banners["cc"], "#memory-flashback-banner가 통합카드 안에 없음(구조 회귀)"
     assert banners["cn"], "#care-nudge-banner가 통합카드 안에 없음(구조 회귀)"
     assert banners["bannersBeforeStrip"], \
         "조건부 배너가 상시 블록(#today-care-strip)보다 뒤에 있음 — divide-y 순서 회귀"
-    assert banners["order"], "care-nudge가 care-check 뒤에 오지 않음 — 상단 배너 순서 회귀"
+    assert banners["order"], "care-nudge가 추억 배너 뒤에 오지 않음 — 상단 배너 순서 회귀"
 
     # 4가지 표시 조합 × 기대치. (check, nudge) → 각 배너/날짜블록의 가시성·구분선.
     #   - 빈 배너: hidden=True, 높이 0, (아래 유령 구분선 없음)
@@ -165,18 +168,18 @@ def run(page, base_url):
         c, n, d = r["check"], r["nudge"], r["date"]
         assert d is not None, f"[{desc}] care-nudge 아래 날짜 블록을 찾지 못함(구조 회귀)"
 
-        # care-check 앞에 보이는 형제가 없어야 → top-border 0.
-        assert r["checkIsFirst"], f"[{desc}] care-check 앞에 보이는 형제가 있음 — divide-y 순서 회귀"
+        # 통제 배너 앞에 보이는 형제가 없어야 → top-border 0.
+        assert r["checkIsFirst"], f"[{desc}] 통제 배너 앞에 보이는 형제가 있음 — divide-y 순서 회귀"
         assert c["borderTop"] == 0, \
-            f"[{desc}] care-check 앞에 보이는 형제가 없는데 유령 top-border {c['borderTop']}px 발생"
+            f"[{desc}] 앞에 보이는 형제가 없는데 유령 top-border {c['borderTop']}px 발생"
 
-        # --- care-check 상태 ---
+        # --- 통제 배너(추억) 상태 ---
         if cc_fill:
             assert not c["hidden"] and not c["empty"] and c["offsetH"] > 0, \
-                f"[{desc}] care-check가 채워졌는데 노출 안 됨: {c}"
+                f"[{desc}] 추억 배너가 채워졌는데 노출 안 됨: {c}"
         else:
             assert c["hidden"] and c["empty"] and c["offsetH"] == 0, \
-                f"[{desc}] care-check가 비었는데 접히지 않음(hidden 미설정) — 유령 배너: {c}"
+                f"[{desc}] 추억 배너가 비었는데 접히지 않음(hidden 미설정) — 유령 배너: {c}"
 
         # --- care-nudge 상태 ---
         if cn_fill:
@@ -209,7 +212,7 @@ def run(page, base_url):
         # 접힌 배너는 어떤 조합에서도 화면 높이를 차지하지 않아야 한다(유령 간격 방지).
         if not cc_fill:
             assert c["display"] == "none", \
-                f"[{desc}] 빈 care-check가 display:{c['display']} — 접히지 않아 간격 차지"
+                f"[{desc}] 빈 추억 배너가 display:{c['display']} — 접히지 않아 간격 차지"
         if not cn_fill:
             assert n["display"] == "none", \
                 f"[{desc}] 빈 care-nudge가 display:{n['display']} — 접히지 않아 간격 차지"

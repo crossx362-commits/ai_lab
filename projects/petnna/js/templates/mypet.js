@@ -16,8 +16,9 @@ const MYPET_TEMPLATE = `
         <!-- 🌈 무지개다리 추모 공간 (memorial.js가 채움, 펫이 추모 모드일 때만 노출) -->
         <div id="memorial-banner"></div>
 
-        <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
-        <div id="care-check-banner"></div>
+        <!-- 💊 오늘의 투약·케어 체크는 건강 탭 '투약·복약' 그룹으로 이동(2026-07-26 오너 지시).
+             마이펫에는 아래 '오늘의 케어 요약'의 💊 칸이 남은 건수만 보여주고, 실제 목록은
+             건강 탭 한 곳에서만 관리한다. -->
 
         <!-- 📌 선제 케어 넛지 '오늘 챙길 것' (care-nudge.js가 채움, 챙길 게 있을 때만 노출) -->
         <div id="care-nudge-banner"></div>
