@@ -201,6 +201,15 @@ const SETTINGS_TEMPLATE = `
                     </button>
                 </div>
 
+                <!-- 온보딩 다시 보기 — restartOnboarding()이 onboarding.js:174에 있는데
+                     부르는 곳이 한 군데도 없어 사용자가 다시 볼 방법이 없었다
+                     (2026-07-26 2차 회의). skipOnboarding이 약속한 진입점 복원. -->
+                <button onclick="restartOnboarding()"
+                    class="w-full bg-brand-50 hover:bg-brand-100 text-brand-800 border border-brand-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                    <span>🧭 앱 사용법 다시 보기</span>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
                 <!-- 풍요로운 데모 데이터 셋업 -->
                 <button onclick="resetToRichDemoData()"
                     class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">

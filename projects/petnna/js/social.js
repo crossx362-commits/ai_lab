@@ -2162,12 +2162,14 @@ function showOwnerProfile(petName, petAvatar) {
     // 1. 친구 데이터베이스에서 검색
     let friend = friends.find(f => f.petName === petName || f.nickname === petName);
     
-    // 2. 만약 내 펫이라면?
-    const myPetName = pets[0] ? pets[0].name : "댕이";
+    // 2. 만약 내 펫이라면? — 활성 펫 기준(pets[0] 고정이면 두 번째 펫부터는
+    //    '내 펫'으로 인식되지 않는다, 2026-07-26 2차 회의 계열 결함)
+    const _myPet = (typeof getActivePet === 'function') ? getActivePet() : (pets && pets[0]);
+    const myPetName = _myPet ? _myPet.name : "댕이";
     
     let profileData = {};
     if (petName === myPetName) {
-        const myPet = pets[0] || {};
+        const myPet = _myPet || {};
         profileData = {
             nickname: "나 (보호자)",
             petName: myPetName,

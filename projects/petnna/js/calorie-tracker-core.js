@@ -177,7 +177,7 @@
                   '<span class="font-bold text-amber-600">' + grams + 'g' +
                   ' <button onclick="CalorieTracker.openDensity()" class="text-gray-400 hover:text-amber-500 underline decoration-dotted font-normal ml-1">(' + density + 'kcal/100g)</button></span>' +
                   "</div>"
-                : '<p class="text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2 mb-3">권장 칼로리를 계산하려면 마이펫에서 체중을 입력해 주세요 ⚖️</p>') +
+                : '<p class="text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2 mb-3">권장 칼로리를 계산하려면 <button onclick="switchTab(\'mypet\')" class="underline font-bold hover:text-amber-700">마이펫에서 체중을 입력</button>해 주세요 ⚖️</p>') +
             '<div class="border-t border-gray-100 pt-2">' + listHtml + "</div>" +
             "</div>";
     }

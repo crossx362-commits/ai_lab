@@ -29,7 +29,10 @@ function switchMealTab(tab) {
         if (waterEl && waterMain) waterEl.textContent = waterMain.textContent;
 
         // 체중 기반 목표 (50ml/kg), 펫 데이터에서 추출
-        const pet = (typeof pets !== 'undefined' && pets.length > 0) ? pets[0] : null;
+        // 활성 펫 기준이어야 한다 — pets[0]로 두면 펫을 전환해도 물 목표가
+        // 첫 펫 체중에 고정된다(2026-07-26 2차 회의에서 테오가 발견).
+        const pet = (typeof getActivePet === 'function') ? getActivePet()
+            : ((typeof pets !== 'undefined' && pets.length > 0) ? pets[0] : null);
         const weight = pet ? parseFloat(pet.weight) : 0;
         const goalMl = weight > 0 ? Math.round(weight * 50) : 300;
 
@@ -52,6 +55,18 @@ function switchMealTab(tab) {
 }
 
 function renderHealthTab() {
+    // 펫 0마리면 위젯을 그리지 않고 등록 유도만 보인다 — 예전엔 '--g / 0회' 카드가
+    // 그대로 떠서 신규 사용자가 무엇을 해야 할지 알 수 없었다(2026-07-26 2차 회의).
+    const _pets = (typeof pets !== 'undefined' && Array.isArray(pets)) ? pets : [];
+    const _empty = document.getElementById('health-empty-state');
+    const _grid = document.getElementById('health-main-grid');
+    if (_empty && _grid) {
+        const none = _pets.length === 0;
+        _empty.classList.toggle('hidden', !none);
+        _grid.classList.toggle('hidden', none);
+        if (none) return;   // 위젯 렌더 자체를 건너뛴다(빈 값 계산·경보 방지)
+    }
+
     // 펫 선택 드롭다운 초기화
     updateHealthPetSelector();
 

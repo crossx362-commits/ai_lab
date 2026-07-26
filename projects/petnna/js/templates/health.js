@@ -40,8 +40,25 @@ const HEALTH_TEMPLATE = `
         <div id="weekly-report-card"></div>
     </div>
 
+    <!-- 펫이 없을 때 — 위젯들이 '--g / 0회'만 늘어놓는 대신 등록을 유도한다
+         (2026-07-26 2차 회의: 신규 사용자가 건강 탭에서 아무 안내 없이 빈 숫자만 봄).
+         renderHealthTab()이 펫 0마리일 때 이걸 켜고 아래 2컬럼을 숨긴다. -->
+    <div id="health-empty-state" class="hidden card-modern p-8 text-center space-y-4">
+        <div class="text-6xl">🩺</div>
+        <div class="space-y-1.5">
+            <p class="text-lg font-black text-gray-800 keep-all">반려동물을 먼저 등록해주세요</p>
+            <p class="text-xs text-gray-400 font-medium leading-relaxed keep-all">
+                등록하면 식사·음수 기록, 건강 트렌드, AI 건강분석을<br>바로 쓸 수 있어요
+            </p>
+        </div>
+        <button onclick="switchTab('mypet')"
+            class="btn-modern bg-brand-500 hover:bg-brand-600 text-white px-5 py-2.5 text-sm font-bold">
+            <i class="fa-solid fa-plus mr-1.5"></i>마이펫에서 등록하기
+        </button>
+    </div>
+
     <!-- 2컬럼 레이아웃 -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+    <div id="health-main-grid" class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
 
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">

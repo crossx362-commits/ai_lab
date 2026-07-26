@@ -87,7 +87,7 @@
             el.innerHTML =
                 '<div class="card-modern p-5">' +
                 '<h3 class="text-base font-bold text-gray-900 flex items-center gap-2 mb-2"><span class="text-xl">🍚</span>맞춤 식단·급여량 추천</h3>' +
-                '<p class="text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2">추천을 계산하려면 마이펫에서 체중을 입력해 주세요 ⚖️</p>' +
+                '<p class="text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2">추천을 계산하려면 <button onclick="switchTab(\'mypet\')" class="underline font-bold hover:text-amber-700">마이펫에서 체중을 입력</button>해 주세요 ⚖️</p>' +
                 "</div>";
             return;
         }
