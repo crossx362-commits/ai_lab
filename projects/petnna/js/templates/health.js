@@ -232,11 +232,17 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 🏥 병원비 제보·비교 보드 (케어위젯 비용 그룹에서 이동 — 건강수첩과 짝, 2026-07-21) -->
-    <div id="vet-cost-board-widget"></div>
+    <!-- 💰 비용 묶음 — 가계부(내 지출)와 병원비 보드(동네 평균가)를 한 카드로 병합
+         (2026-07-26 오너 지시). 둘 다 '돈' 주제인데 카드 두 장으로 나뉘어 있었고,
+         가계부는 기록이 없으면 179px짜리 빈 카드만 덩그러니 남았다.
+         card-merge가 내부 card-modern 테두리를 지우고 사이에 구분선을 넣는다. -->
+    <div class="card-modern card-merge overflow-hidden">
+        <!-- 💰 반려동물 가계부 (백로그 나무, P3 — 카테고리별 지출·월별 집계) -->
+        <div id="expense-tracker-widget"></div>
 
-    <!-- 💰 반려동물 가계부 (백로그 나무, P3 — 카테고리별 지출·월별 집계) -->
-    <div id="expense-tracker-widget"></div>
+        <!-- 🏥 병원비 제보·비교 보드 (케어위젯 비용 그룹에서 이동 — 건강수첩과 짝, 2026-07-21) -->
+        <div id="vet-cost-board-widget"></div>
+    </div>
 
     <!-- 🤖 AI 기능 — 흩어진 카드 4장 + 안내 카드를 한 카드 안 타일로 병합(2026-07-19) -->
     <div class="card-modern p-5 space-y-4">
