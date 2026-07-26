@@ -88,45 +88,39 @@ const HEALTH_TEMPLATE = `
              카드 두 장이 따로 묻던 구조를 없앤다(배변이 양쪽에 중복 노출됐다). -->
         <div id="daily-condition-widget" class="mt-4"></div>
 
-        <!-- 📈 7일 건강 트렌드 (병합 전 별도 카드 — 소제목 행으로 흡수) -->
-        <div class="flex items-center gap-2 mt-5 pt-4 border-t border-gray-100 mb-3">
-            <span class="text-xl">📈</span>
-            <span class="text-sm font-bold text-gray-900">7일 건강 트렌드</span>
-            <span class="text-xs text-gray-400">데이터로 보는 변화</span>
-        </div>
-
-        <!-- 사용법 안내 (데이터 없을 때만 표시) -->
-        <div id="health-tutorial-main" class="hidden card-modern bg-brand-50/50 p-4 mb-4">
-            <div class="flex items-start gap-3">
-                <span class="text-3xl">💡</span>
-                <div class="flex-1 space-y-2">
-                    <p class="text-sm font-bold text-brand-700">건강 트렌드 사용법</p>
-                    <ul class="text-xs text-gray-600 space-y-1.5 leading-relaxed">
-                        <li class="flex items-start gap-2">
-                            <span class="text-brand-500 mt-0.5">•</span>
-                            <span>매일 <strong class="text-brand-600">건강 기록</strong> 버튼으로 식사·음수·배변을 기록하세요</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-brand-500 mt-0.5">•</span>
-                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">건강점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-brand-500 mt-0.5">•</span>
-                            <span>테스트하려면 위의 <strong class="text-brand-600">데모 데이터</strong> 버튼을 눌러보세요</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-gradient-to-br from-sky-50 to-blue-50 rounded-2xl p-4 border border-sky-100" style="min-height:120px; max-height:180px;">
-            <canvas id="health-trend-chart-main"></canvas>
-        </div>
-
-        <!-- 90일 캘린더 히트맵 -->
-        <div id="health-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
     </div>
 
+
+    <div id="daily-care-tip-widget"></div>
+
+    <!-- 📔 건강수첩 묶음 — 건강수첩(의료 이력) 아래로 영양 관리·일일 급식/칼로리·
+         맞춤 식단·7일 트렌드를 흡수해 한 카드로 병합(2026-07-26 오너 지시).
+         왼쪽 컬럼에 흩어져 있던 카드 5장을 한 장으로 줄인다.
+         card-merge가 각 위젯이 그리는 내부 card-modern 테두리를 지우고 사이에 구분선을 넣는다. -->
+    <div class="card-modern card-merge overflow-hidden">
+    <div class="overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
+            </h2>
+            <div class="flex items-center gap-1.5">
+                <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
+                    <i class="fa-solid fa-id-card mr-1"></i>응급·여행 카드
+                </button>
+                <button onclick="exportMedicalRecordsPDF()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
+                    <i class="fa-solid fa-file-pdf mr-1"></i>PDF 내보내기
+                </button>
+                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
+                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
+                </button>
+            </div>
+        </div>
+        <div class="px-5 py-4">
+            <div id="medical-records-timeline"></div>
+        </div>
+    </div>
+
+    <!-- 🍖 영양 관리 (별도 카드 → 이 묶음으로 흡수) -->
     <!-- 🍖 영양 관리 섹션 -->
     <div class="card-modern p-5">
         <div class="flex items-center justify-between mb-4">
@@ -204,32 +198,50 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
-    <!-- 🍽️ 일일 급식·칼로리 트래커 + 🍚 맞춤 식단 추천 (케어위젯 영양 그룹에서 이동, 2026-07-21) -->
+    <!-- 🍽️ 일일 급식·칼로리 + 🍚 맞춤 식단 추천 -->
     <div id="calorie-tracker-widget"></div>
     <div id="diet-recommend-widget"></div>
-    <div id="daily-care-tip-widget"></div>
 
-    <!-- 📔 반려 건강수첩 (병원 방문·진료비·서류 아카이브) — localStorage MVP -->
-    <div class="card-modern overflow-hidden">
-        <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-            <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
-            </h2>
-            <div class="flex items-center gap-1.5">
-                <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
-                    <i class="fa-solid fa-id-card mr-1"></i>응급·여행 카드
-                </button>
-                <button onclick="exportMedicalRecordsPDF()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
-                    <i class="fa-solid fa-file-pdf mr-1"></i>PDF 내보내기
-                </button>
-                <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
-                    <i class="fa-solid fa-plus mr-1"></i>기록 추가
-                </button>
+    <!-- 📈 7일 건강 트렌드 ('오늘의 기록' 카드에서 이 묶음으로 이동) -->
+    <div class="card-modern p-5">
+        <!-- 📈 7일 건강 트렌드 (병합 전 별도 카드 — 소제목 행으로 흡수) -->
+        <div class="flex items-center gap-2 mt-5 pt-4 border-t border-gray-100 mb-3">
+            <span class="text-xl">📈</span>
+            <span class="text-sm font-bold text-gray-900">7일 건강 트렌드</span>
+            <span class="text-xs text-gray-400">데이터로 보는 변화</span>
+        </div>
+
+        <!-- 사용법 안내 (데이터 없을 때만 표시) -->
+        <div id="health-tutorial-main" class="hidden card-modern bg-brand-50/50 p-4 mb-4">
+            <div class="flex items-start gap-3">
+                <span class="text-3xl">💡</span>
+                <div class="flex-1 space-y-2">
+                    <p class="text-sm font-bold text-brand-700">건강 트렌드 사용법</p>
+                    <ul class="text-xs text-gray-600 space-y-1.5 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>매일 <strong class="text-brand-600">건강 기록</strong> 버튼으로 식사·음수·배변을 기록하세요</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">건강점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>테스트하려면 위의 <strong class="text-brand-600">데모 데이터</strong> 버튼을 눌러보세요</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
-        <div class="px-5 py-4">
-            <div id="medical-records-timeline"></div>
+
+        <div class="bg-gradient-to-br from-sky-50 to-blue-50 rounded-2xl p-4 border border-sky-100" style="min-height:120px; max-height:180px;">
+            <canvas id="health-trend-chart-main"></canvas>
         </div>
+
+        <!-- 90일 캘린더 히트맵 -->
+        <div id="health-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
+    </div>
     </div>
 
     <!-- 💰 비용 묶음 — 가계부(내 지출)와 병원비 보드(동네 평균가)를 한 카드로 병합
