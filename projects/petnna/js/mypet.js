@@ -1794,7 +1794,8 @@ function renderStatsChart() {
 
     const labels = getPast7DaysLabels();
     const currentPet = getActivePet();
-    const baseWeight = currentPet ? parseFloat(currentPet.weight) || 8.4 : 8.4;
+    const parsedWeight = currentPet ? parseFloat(currentPet.weight) : NaN;
+    const baseWeight = parsedWeight > 0 ? parsedWeight : null;
 
     // 실제 walks/meals 데이터가 있을 때만 채움. 빈 배열로 시작하려면 0으로 초기화.
     const hasWalkData = walks && walks.length > 0;
@@ -1876,7 +1877,9 @@ function renderStatsChart() {
     const latestWeight = knownWeights.length ? knownWeights[knownWeights.length - 1] : null;
     const prevWeight = knownWeights.length > 1 ? knownWeights[knownWeights.length - 2] : null;
     let weightSubtitle = '';
-    if (latestWeight != null) {
+    if (latestWeight == null) {
+        weightSubtitle = '체중 미입력 · 프로필에서 체중을 등록하면 그래프가 표시돼요';
+    } else if (latestWeight != null) {
         const diff = (prevWeight != null) ? (latestWeight - prevWeight) : 0;
         const arrow = diff > 0.05 ? '▲' : (diff < -0.05 ? '▼' : '＝');
         const diffTxt = (prevWeight != null) ? `${arrow} ${diff > 0 ? '+' : ''}${diff.toFixed(1)}kg` : `${arrow} 변화 없음`;
