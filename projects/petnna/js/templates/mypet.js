@@ -13,6 +13,9 @@ const MYPET_TEMPLATE = `
         <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
         <div id="memory-flashback-banner"></div>
 
+        <!-- 🌈 무지개다리 추모 공간 (memorial.js가 채움, 펫이 추모 모드일 때만 노출) -->
+        <div id="memorial-banner"></div>
+
         <!-- 💊 오늘의 투약·케어 체크 (care-check.js가 채움, 오늘 due 항목 있을 때만 노출) -->
         <div id="care-check-banner"></div>
 
@@ -218,6 +221,23 @@ const MYPET_TEMPLATE = `
                                 <button onclick="changePetPresetPhoto('https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=300')" class="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-100 hover:scale-110 transition-transform"><img loading="lazy" src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover"></button>
                                 <button onclick="changePetPresetPhoto('https://images.unsplash.com/photo-1535268647977-a403b69fc756?auto=format&fit=crop&q=80&w=300')" class="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-100 hover:scale-110 transition-transform"><img loading="lazy" src="https://images.unsplash.com/photo-1535268647977-a403b69fc756?auto=format&fit=crop&q=80&w=100" class="w-full h-full object-cover"></button>
                             </div>
+                        </div>
+                    </div>
+                    <!-- 🌈 무지개다리 추모 모드 (P2, 나무 제안) — 함께한 날·기일/생일 안내 -->
+                    <div class="pt-2 border-t border-gray-100 space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="settings-pet-memorial" onchange="toggleMemorialFields()" class="accent-indigo-500">
+                            <span class="font-black text-gray-600">🌈 무지개다리 추모 모드</span>
+                        </label>
+                        <div id="settings-memorial-fields" class="hidden grid grid-cols-2 gap-2">
+                            <label class="block">
+                                <span class="block text-[10px] font-bold text-gray-400 mb-0.5">생일</span>
+                                <input type="date" id="settings-pet-birthdate" class="w-full border rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 text-xs">
+                            </label>
+                            <label class="block">
+                                <span class="block text-[10px] font-bold text-gray-400 mb-0.5">기일</span>
+                                <input type="date" id="settings-pet-memorialdate" class="w-full border rounded-lg px-2 py-1.5 outline-none focus:border-indigo-400 text-xs">
+                            </label>
                         </div>
                     </div>
                     <button onclick="savePetProfileAndRoom()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs py-2 rounded-xl transition-all">저장</button>
