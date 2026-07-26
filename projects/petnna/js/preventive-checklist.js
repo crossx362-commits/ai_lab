@@ -114,6 +114,35 @@
         },
     };
 
+    // 품종별 호발 질환 맞춤 예방 항목(정적 데이터). breed 문자열에 key 포함 시 매칭.
+    // mypet.js PET_WEIGHT_BANDS와 동일한 부분일치(breed.includes(key)) 패턴을 따른다.
+    // 출처: 품종별 유전·호발 질환 일반 가이드(고관절/슬개골/추간판/PRA/PKD 등).
+    const BREED_CARE = {
+        '리트리버': { icon: '🦴', text: '고관절·팔꿈치 이형성증, 종양(림프종) 조기 검진' },
+        '닥스훈트': { icon: '🦴', text: '추간판 질환(디스크) 예방 — 점프 자제·체중 관리' },
+        '웰시코기': { icon: '🦴', text: '추간판 질환·비만 주의 — 척추 부담 관리' },
+        '푸들': { icon: '👁️', text: '진행성 망막 위축(PRA) 정기 안검진·슬개골 점검' },
+        '말티즈': { icon: '🦵', text: '슬개골 탈구·치과 질환 정기 점검' },
+        '포메': { icon: '🦵', text: '슬개골 탈구·기관 허탈 주의 점검' },
+        '치와와': { icon: '🦵', text: '슬개골 탈구·치과 질환 정기 점검' },
+        '시츄': { icon: '😮‍💨', text: '단두종 호흡기·각막 질환 주의 점검' },
+        '불독': { icon: '😮‍💨', text: '단두종 호흡기 증후군·피부 주름 관리' },
+        '퍼그': { icon: '😮‍💨', text: '단두종 호흡기·안구 돌출 주의 점검' },
+        '페르시안': { icon: '💧', text: '다낭성 신장질환(PKD)·단두종 호흡기 정기 검진' },
+        '샴': { icon: '🫀', text: '심장질환·치과 질환 정기 점검' },
+        '토끼': { icon: '🦷', text: '치아 부정교합·소화기 정체 주의 점검' },
+        '햄스터': { icon: '🩺', text: '치아 과성장·종양 조기 관찰' },
+    };
+
+    function _breedItem(pet) {
+        const breed = (pet && pet.breed ? String(pet.breed) : '').replace(/\s/g, '');
+        if (!breed) return null;
+        for (const key in BREED_CARE) {
+            if (breed.includes(key)) return BREED_CARE[key];
+        }
+        return null;
+    }
+
     function _items(pet) {
         const type = (pet && pet.type) || 'dog';
         const stage = _lifeStage(pet);
@@ -124,6 +153,9 @@
             const already = items.some(i => i.text.includes('중성화'));
             if (!already) items.unshift({ icon: '✂️', text: '중성화 수술 여부 수의사 상담' });
         }
+        // 품종 맞춤 항목을 맨 끝에 추가(있을 때만)
+        const breedItem = _breedItem(pet);
+        if (breedItem) items.push(breedItem);
         return { stage, items };
     }
 
