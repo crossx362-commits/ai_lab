@@ -102,9 +102,35 @@
 
     var state = { species: "dog", query: "" };
 
+    // 활성 펫의 알러지/기피 성분(프로필 pet.allergies, 자유입력)을 토큰 배열로 파싱.
+    // 쉼표·공백·슬래시·가운뎃점 등으로 구분된 성분을 개별 키워드로 나눈다.
+    function petAllergens() {
+        var pet = (typeof window.getActivePet === "function") ? window.getActivePet() : null;
+        var src = pet && (pet.allergies || pet.allergy);
+        if (!src) return [];
+        if (Array.isArray(src)) src = src.join(",");
+        return String(src).toLowerCase()
+            .split(/[,、/·\s]+/)
+            .map(function (t) { return t.trim(); })
+            .filter(function (t) { return t.length >= 1; });
+    }
+
+    // 음식이 등록된 알러지 성분과 겹치면 true (이름/별칭 부분일치, 양방향).
+    function allergyHit(f) {
+        var toks = petAllergens();
+        if (!toks.length) return false;
+        var name = String(f.name || "").toLowerCase();
+        var hay = (name + " " + String(f.aka || "").toLowerCase());
+        return toks.some(function (t) { return hay.indexOf(t) !== -1 || (name && t.indexOf(name) !== -1); });
+    }
+
     function badge(level) {
         var L = LEVELS[level] || LEVELS.caution;
         return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ' + L.cls + '">' + L.dot + " " + L.label + "</span>";
+    }
+
+    function allergyBadge() {
+        return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border text-orange-700 bg-orange-50 border-orange-200">⚠️ 알러지 등록</span>';
     }
 
     function matches(f, q) {
@@ -116,15 +142,17 @@
     function rowHtml(f) {
         var level = state.species === "cat" ? f.cat : f.dog;
         var danger = level === "danger";
+        var allergy = allergyHit(f);
         var link = danger
             ? '<button onclick="FoodSafety.emergency()" class="mt-1.5 text-[11px] font-bold text-rose-600 underline">🚨 먹었어요 — 응급 카드 열기</button>'
             : "";
-        return '<div class="rounded-xl border border-gray-100 px-3 py-2.5">' +
-            '<div class="flex items-center justify-between gap-2">' +
+        return '<div class="rounded-xl border px-3 py-2.5 ' + (allergy ? "border-orange-200 bg-orange-50/40" : "border-gray-100") + '">' +
+            '<div class="flex items-center justify-between gap-2 flex-wrap">' +
             '<div class="flex items-center gap-2 min-w-0"><span class="text-lg shrink-0">' + f.emoji + "</span>" +
             '<span class="text-sm font-bold text-gray-900 truncate">' + esc(f.name) + "</span></div>" +
-            badge(level) + "</div>" +
+            '<div class="flex items-center gap-1">' + (allergy ? allergyBadge() : "") + badge(level) + "</div></div>" +
             '<p class="text-[11px] text-gray-600 leading-relaxed mt-1">' + esc(f.note) + "</p>" +
+            (allergy ? '<p class="text-[11px] font-bold text-orange-700 mt-1">⚠️ 우리 아이 프로필에 등록된 알러지/기피 성분과 겹쳐요 — 급여 전 확인하세요.</p>' : "") +
             link + "</div>";
     }
 
