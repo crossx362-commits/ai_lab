@@ -1478,6 +1478,10 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    /* 배경도 지운다 — 안 지우면 내부 카드만 불투명 흰색이라 겉카드가 glass처럼
+       반투명일 때 한 카드 안에서 배경이 갈려 보인다(2026-07-26 건강 헤더 병합에서 발견).
+       겉카드가 흰 card-modern인 기존 묶음들은 투명해져도 결과가 같아 무영향. */
+    background: transparent;
 }
 .card-merge > div > .card-modern:hover {
     transform: none;

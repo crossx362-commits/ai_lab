@@ -259,7 +259,7 @@
             <div class="card-modern p-5 border border-brand-100/60">
                 <div class="flex items-center gap-3">
                     <div class="text-2xl">🔮</div>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <h3 class="text-sm font-bold text-gray-900">예측 웰니스</h3>
                         <p class="text-xs text-gray-500 mt-0.5">
                             건강 기록이 ${MIN_SAMPLES + RECENT_DAYS}일 이상 쌓이면 평소와 다른 미세 변화를 자동으로 감지해요.

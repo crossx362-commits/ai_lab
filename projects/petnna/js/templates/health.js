@@ -3,8 +3,12 @@
 const HEALTH_TEMPLATE = `
 <div class="space-y-4 animate-fade-in">
 
-    <!-- 헤더 -->
-    <div class="glass rounded-2xl px-6 py-5 shadow-soft-lg border border-brand-100/50">
+    <!-- 헤더 + 조기감지 묶음 — 헤더 카드와 예측웰니스/주간리포트 카드를 한 장으로 병합
+         (2026-07-26 오너 지시). 헤더는 제목·컨트롤뿐이라 아래가 비었고, 상태 두 줄도
+         짧아 카드 두 장으로 나뉠 이유가 없었다. card-merge가 내부 테두리를 지우고
+         행 사이에 구분선을 넣는다. -->
+    <div class="glass rounded-2xl shadow-soft-lg border border-brand-100/50 card-merge overflow-hidden">
+        <div class="p-5">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center shadow-soft">
@@ -27,6 +31,13 @@ const HEALTH_TEMPLATE = `
                 </button>
             </div>
         </div>
+        </div>
+
+        <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
+        <div id="wellness-anomaly-card"></div>
+
+        <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
+        <div id="weekly-report-card"></div>
     </div>
 
     <!-- 2컬럼 레이아웃 -->
@@ -34,18 +45,6 @@ const HEALTH_TEMPLATE = `
 
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">
-
-    <!-- 조기 감지·경보 묶음 — 개별 카드를 card-merge 래퍼로 한 카드처럼 병합
-         (각 모듈이 그리는 내부 card-modern 테두리는 style.css .card-merge 규칙이 지움, 2026-07-19)
-         2026-07-26: 원탭 컨디션 로그는 '오늘 입력'이라 여기(분석 결과 묶음)에서 빼
-         '오늘의 기록' 카드로 옮겼다 — 입력은 입력끼리, 분석은 분석끼리. -->
-    <div class="card-modern card-merge overflow-hidden">
-        <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
-        <div id="wellness-anomaly-card"></div>
-
-        <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
-        <div id="weekly-report-card"></div>
-    </div>
 
     <!-- 📋 오늘의 기록 & 트렌드 — 같은 식사·음수·배변 데이터의 입력(오늘)과 조회(7일·90일)라
          별도 카드 2장이던 것을 한 카드로 병합(2026-07-19) -->

@@ -386,17 +386,29 @@ _LAYOUT_WASTE_JS = r"""
       .replace(/\s+/g, ' ').trim().slice(0, 30);
     for (const el of [...c.querySelectorAll('*')].filter(vis)) {
       if (el.children.length < 2) continue;              // 콘텐츠 묶음만(라벨·단일요소 제외)
+      // 제목+부제로 이뤄진 헤더 블록은 좁은 게 정상이다(오른쪽은 버튼 자리이거나
+      // 그냥 여백이어도 무방) — 2026-07-26 오탐 대부분이 이것이었다.
+      // 높이로 거르려 했더니 케어 요약 그리드(45px)까지 죽어 정탐을 잃었다.
+      // 제목 요소를 품고 있으면 헤더로 보고 건너뛴다 — 콘텐츠 덩어리는 제목을 안 품는다.
+      if (el.querySelector('h1,h2,h3,h4')) continue;
       const p = el.parentElement;
       if (!p || !vis(p)) continue;
       const ew = el.getBoundingClientRect().width;
       const pw = p.getBoundingClientRect().width;
       if (pw < inner * 0.9) continue;                    // 부모가 이미 좁으면 의도된 컬럼
       if (ew >= pw * RATIO) continue;                    // 부모 폭을 충분히 쓰면 정상
-      // 같은 행을 나눠 쓰는 형제(그리드·플렉스 칸)는 좁은 게 정상이다.
-      // 폭이 비슷한 형제가 있으면 '한 행을 N등분한 칸'으로 보고 넘어간다
-      // (첫 버전이 케어 요약 5칸을 전부 낭비로 신고했다 — 오탐, 2026-07-26).
-      const sibs = [...p.children].filter(s => s !== el && vis(s));
-      if (sibs.some(s => Math.abs(s.getBoundingClientRect().width - ew) < ew * 0.2)) continue;
+      // 낭비의 단위는 '요소 하나'가 아니라 '행'이다. 같은 행(세로로 겹치는 형제)까지
+      // 합쳐 **가로로 뻗은 범위(span)**가 부모 폭을 채우면 정상 레이아웃이다.
+      //  · 그리드 N등분 칸 → 형제들과 합쳐 전폭 → 통과
+      //  · justify-between 헤더(제목 좌 + 버튼 우) → 양끝이라 span은 전폭 → 통과
+      // 폭 '합계'로 재면 justify-between은 합이 작아 오탐이고(2026-07-26 오탐 2건),
+      // 세로 겹침을 안 보면 위아래 행까지 한 행으로 쳐서 진짜 낭비를 놓친다.
+      const er = el.getBoundingClientRect();
+      const row = [...p.children].filter(vis).map(s => s.getBoundingClientRect())
+          .filter(r => r.bottom > er.top + 1 && r.top < er.bottom - 1);
+      const spanL = Math.min(...row.map(r => r.left));
+      const spanR = Math.max(...row.map(r => r.right));
+      if ((spanR - spanL) >= pw * RATIO) continue;
       waste.push({ label, fill: Math.round(ew / inner * 100),
                    cardW: Math.round(cr.width), contentW: Math.round(ew) });
       break;                                             // 카드당 1건이면 충분

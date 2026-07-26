@@ -87,7 +87,7 @@
             <div class="card-modern p-5 border border-brand-100/60">
                 <div class="flex items-center gap-3">
                     <div class="text-2xl">📈</div>
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                         <h3 class="text-sm font-bold text-gray-900">주간 변화 리포트</h3>
                         <p class="text-xs text-gray-500 mt-0.5">
                             식욕·음수·체중을 2주 이상 기록하면 지난주 대비 변화를 자동으로 요약해 드려요.

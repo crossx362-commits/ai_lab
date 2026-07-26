@@ -75,8 +75,11 @@
         const host = document.getElementById(_hostId);
         if (!host) return;
         const today = _today();
-        const rows = GROUPS.map(g => `
-            <div>
+        // 항목이 5개라 2열 그리드에선 마지막 하나가 홀로 남아 오른쪽 절반이 빈다
+        // (봄이 layout_waste_checks가 '오늘의 기록 49%'로 잡아낸 실제 소견, 2026-07-26).
+        // 홀수 번째 마지막 항목은 두 칸을 쓰게 해 행을 채운다.
+        const rows = GROUPS.map((g, gi) => `
+            <div class="${(gi === GROUPS.length - 1 && GROUPS.length % 2 === 1) ? 'sm:col-span-2' : ''}">
                 <div class="flex items-center gap-1.5 mb-1.5">
                     <span class="text-sm">${g.icon}</span>
                     <span class="text-xs font-bold text-gray-700">${g.label}</span>
