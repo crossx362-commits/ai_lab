@@ -1238,6 +1238,7 @@ function renderWalkHistory() {
 // ── 주간 산책 챌린지 + 익명 리더보드 (walks 누적치 기반, 클라이언트 전용) ──
 const WALK_CHALLENGE_GOAL_KEY = 'petna_walk_challenge_goal';
 const WALK_CHALLENGE_GOAL_OPTIONS = [3, 5, 7];
+const WALK_CHALLENGE_BADGE_KEY = 'petna_walk_challenge_badges';
 
 // 이번 주(월~일) 시작 시각 — walk.id(=Date.now())로 주간 집계
 function _walkWeekStart(d = new Date()) {
@@ -1273,6 +1274,26 @@ function setWalkChallengeGoal(n) {
     }
 }
 
+// 주간 챌린지 배지 — 이번 주 목표 달성 시 1회 발급, 주(월요일 시작) 단위로 영속 보관
+function getWalkChallengeBadges() {
+    try {
+        const v = JSON.parse(localStorage.getItem(WALK_CHALLENGE_BADGE_KEY));
+        return Array.isArray(v) ? v : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function awardWalkChallengeBadgeIfDone(count, goal) {
+    if (count < goal) return;
+    const week = _walkWeekStart().getTime();
+    const badges = getWalkChallengeBadges();
+    if (badges.some(b => b.week === week)) return;
+    badges.unshift({ week, goal, earnedAt: Date.now() });
+    localStorage.setItem(WALK_CHALLENGE_BADGE_KEY, JSON.stringify(badges.slice(0, 12)));
+    if (typeof showToast === 'function') showToast(`🏅 이번 주 산책 챌린지 배지 획득! (${goal}회 달성)`);
+}
+
 // 익명 이웃 랭킹 샘플 — 실제 이웃 집계 서버가 붙기 전까지 랭킹 감을 보여주는 예시(정직 표기)
 const WALK_LEADERBOARD_SAMPLE = [
     { emoji: '🐕', dist: 12.4, walks: 6 },
@@ -1289,6 +1310,15 @@ function renderWalkChallenge() {
     const goal = getWalkChallengeGoal();
     const pct = Math.min(100, goal > 0 ? Math.round((count / goal) * 100) : 0);
     const done = count >= goal;
+
+    // 목표 달성 시 이번 주 배지 발급 (주 1회)
+    awardWalkChallengeBadgeIfDone(count, goal);
+    const badgeCount = getWalkChallengeBadges().length;
+
+    // 동네(지역 태그) 단위 랭킹 — 산책메이트에서 설정한 동네를 리더보드 범위로 사용
+    const mateState = (typeof getWalkMateState === 'function') ? getWalkMateState() : {};
+    const dong = (mateState && mateState.dong) ? String(mateState.dong).trim() : '';
+    const boardLabel = dong ? `${escapeHtml(dong)} 동네 익명 리더보드` : '동네 익명 리더보드';
 
     const goalBtns = WALK_CHALLENGE_GOAL_OPTIONS.map(n => `
         <button onclick="setWalkChallengeGoal(${n})"
@@ -1326,10 +1356,15 @@ function renderWalkChallenge() {
                 <span class="text-[10px] text-gray-400 font-bold shrink-0">주간 목표</span>
                 ${goalBtns}
             </div>
+            <div class="flex items-center gap-1.5 bg-amber-50/70 border border-amber-100 rounded-xl px-2.5 py-2">
+                <span class="text-base leading-none">🏅</span>
+                <span class="text-[10px] font-bold text-amber-800 flex-grow">주간 챌린지 배지 <span class="text-amber-600">${badgeCount}</span>개 획득</span>
+                <span class="text-[9px] text-amber-500 font-bold">${done ? '이번 주 완료 ✓' : `목표 달성 시 배지 지급`}</span>
+            </div>
             <div class="pt-1 space-y-2">
                 <p class="text-[10px] text-gray-400 font-bold flex items-center gap-1">
                     <i class="fa-solid fa-ranking-star text-brand-400"></i>
-                    동네 익명 리더보드
+                    ${boardLabel}
                     <span class="text-[8px] text-brand-500 bg-brand-50 px-1 py-0.5 rounded">샘플</span>
                 </p>
                 ${rows}
