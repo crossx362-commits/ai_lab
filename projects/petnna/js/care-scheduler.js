@@ -77,14 +77,33 @@ function completeCareSchedule(scheduleId, notes = '') {
     if (typeof updateCareCompletionBadge === 'function') updateCareCompletionBadge();
     if (typeof showToast === 'function') showToast(`"${schedule.title}" 완료! 🎉`);
 
-    // 건강 데이터와 연동 (식사/물)
-    if (schedule.type === 'feed' && typeof healthLogs !== 'undefined' && healthLogs.today) {
-        healthLogs.today.food = (healthLogs.today.food || 0) + 50; // 기본 50g
-        if (typeof saveHealthHistoryToday === 'function') saveHealthHistoryToday();
-    }
-    if (schedule.type === 'water' && typeof healthLogs !== 'undefined' && healthLogs.today) {
-        healthLogs.today.water = (healthLogs.today.water || 0) + 100; // 기본 100ml
-        if (typeof saveHealthHistoryToday === 'function') saveHealthHistoryToday();
+    // 건강 데이터와 연동 (식사/물) — 2026-07-26 회의 결정으로 '확인 후 기록'으로 변경.
+    // 예전엔 케어체크 완료만 눌러도 food +50g / water +100ml을 말없이 가산해,
+    // 사용자가 실제 급여량을 직접 적은 값과 충돌했다(같은 healthLogs.today.food).
+    // 임의 기본값이라 사용자가 원치 않을 수 있으므로 물어보고 반영한다.
+    var _link = (schedule.type === 'feed')
+        ? { field: 'food', amount: 50, unit: 'g', label: '급여' }
+        : (schedule.type === 'water' ? { field: 'water', amount: 100, unit: 'ml', label: '음수' } : null);
+    if (_link && typeof healthLogs !== 'undefined' && healthLogs.today) {
+        var _apply = function () {
+            healthLogs.today[_link.field] = (healthLogs.today[_link.field] || 0) + _link.amount;
+            if (typeof saveHealthHistoryToday === 'function') saveHealthHistoryToday();
+            if (typeof renderHealthTab === 'function') renderHealthTab();
+            if (typeof showToast === 'function') {
+                showToast(`${_link.label} ${_link.amount}${_link.unit} 기록했어요 📝`);
+            }
+        };
+        if (typeof showCustomDialog === 'function') {
+            showCustomDialog({
+                title: `${_link.label} 기록할까요?`,
+                message: `오늘 ${_link.label} 기록에 ${_link.amount}${_link.unit}를 더합니다. 실제 양이 다르면 '아니요'를 누르고 건강 탭에서 직접 입력하세요.`,
+                icon: schedule.type === 'feed' ? '🍖' : '💧',
+                type: 'confirm',
+                onConfirm: _apply
+            });
+        } else {
+            _apply();   // 다이얼로그를 못 쓰는 환경에서는 기존 동작 유지
+        }
     }
 
     return true;

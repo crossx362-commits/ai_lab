@@ -57,14 +57,20 @@
         return { mult: 1.0, note: "정상 체형 유지" };
     }
 
+    // 2026-07-26: 권장 kcal을 여기서 따로 계산하지 않는다.
+    // 같은 RER/DER 공식을 calorie-tracker도 써서 한 탭에 숫자가 두 개로 어긋났다
+    // (일일 급식·칼로리 287kcal vs 여기 269kcal). CalorieTracker.targetKcal을
+    // 단일 산출점으로 삼고, 이 위젯은 그 값의 '근거'(체중·체형·활동·밀도)만 설명한다.
+    // BCS 보정은 calorie-tracker로 옮겨갔으므로 여기선 표시용으로만 읽는다.
     function compute(pet) {
         var w = parseFloat(pet && pet.weight);
         if (!w || w <= 0) return null;
-        var rer = 70 * Math.pow(w, 0.75);
+        if (!window.CalorieTracker || typeof CalorieTracker.targetKcal !== 'function') return null;
+        var kcal = CalorieTracker.targetKcal(pet);
+        if (!kcal) return null;
         var act = walkActivity();
         var cat = bcsCategory(pet.id);
         var adj = bcsAdjust(cat);
-        var kcal = Math.round(rer * act.factor * adj.mult);
         var density = densityFor(pet.id);
         var grams = Math.round((kcal / density) * 100);
         return { weight: w, kcal: kcal, grams: grams, density: density, act: act, cat: cat, adj: adj };

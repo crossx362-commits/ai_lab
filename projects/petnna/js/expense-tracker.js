@@ -84,7 +84,8 @@
         el.innerHTML =
             '<div class="card-modern p-5">' +
             '<div class="flex items-center justify-between mb-3">' +
-            '<h3 class="text-base font-bold text-gray-900 flex items-center gap-2"><span class="text-xl">💰</span>반려동물 가계부</h3>' +
+            '<h3 class="text-base font-bold text-gray-900 flex items-center gap-2"><span class="text-xl">💰</span>반려동물 가계부' +
+            '<span class="text-[10px] font-bold text-gray-400">내 지출 기록</span></h3>' +
             '<button onclick="ExpenseTracker.open()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">지출 기록</button>' +
             "</div>" +
             '<div class="flex items-center justify-between mb-3">' +
@@ -112,7 +113,7 @@
             '<button onclick="ExpenseTracker.close()" class="text-gray-300 hover:text-gray-500 text-xl leading-none">&times;</button></div>' +
             '<div class="px-5 py-4 space-y-3">' +
             '<div><label class="text-xs font-bold text-gray-500">카테고리</label>' +
-            '<select id="expense-cat" class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none">' + catOptions + "</select></div>" +
+            '<select id="expense-cat" onchange="ExpenseTracker._toggleVetReport()" class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none">' + catOptions + "</select></div>" +
             '<div><label class="text-xs font-bold text-gray-500">금액(원)</label>' +
             '<input id="expense-amount" type="number" min="0" step="100" placeholder="예: 30000" ' +
             'class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"></div>' +
@@ -122,6 +123,17 @@
             '<div><label class="text-xs font-bold text-gray-500">메모(선택)</label>' +
             '<input id="expense-memo" type="text" maxlength="30" placeholder="예: 정기 예방접종" ' +
             'class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"></div>' +
+            // 병원 지출이면 시세 보드에 익명 제보할지 물어본다 — 같은 병원비를 두 폼에
+            // 각각 입력하던 이중 입력 제거(2026-07-26 회의). 넘어가는 건 금액·항목뿐이고
+            // 메모·날짜 등 개인 정보는 보내지 않는다(보드의 익명성 원칙 유지).
+            '<div id="expense-vetreport-wrap" class="hidden rounded-xl bg-brand-50/60 border border-brand-100 px-3 py-2.5">' +
+            '<label class="flex items-start gap-2 cursor-pointer">' +
+            '<input id="expense-vetreport" type="checkbox" class="mt-0.5 accent-brand-500">' +
+            '<span class="min-w-0"><span class="block text-xs font-bold text-brand-800">병원비 시세 보드에 익명 제보</span>' +
+            '<span class="block text-[10px] text-gray-500 leading-relaxed mt-0.5">금액과 진료 항목만 보냅니다. 병원명·메모는 보내지 않아요.</span></span>' +
+            '</label>' +
+            '<select id="expense-vetitem" class="mt-2 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs focus:border-brand-400 focus:outline-none">' +
+            vetItemOptions() + '</select></div>' +
             "</div>" +
             '<div class="px-5 py-3 border-t border-gray-100 flex gap-2">' +
             '<button onclick="ExpenseTracker.submit()" class="flex-1 rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-sm font-bold">저장</button>' +
@@ -145,6 +157,13 @@
         list.push({ cat: cat, amount: amount, memo: memo.slice(0, 30), date: date });
         saveAll(list);
 
+        // 병원 지출 + 제보 동의 시에만, 금액·항목만 익명 보드로 넘긴다.
+        var repCb = document.getElementById("expense-vetreport");
+        if (cat === "medical" && repCb && repCb.checked && window.VetCostBoard && VetCostBoard.report) {
+            var vItem = (document.getElementById("expense-vetitem") || {}).value;
+            if (VetCostBoard.report(vItem, amount, "")) toast("시세 보드에 익명 제보했어요 🙏");
+        }
+
         _selMonth = date.slice(0, 7); // 방금 기록한 달로 이동
         close();
         toast(catOf(cat).label + " " + fmt(amount) + "원 기록 완료! 💰");
@@ -155,5 +174,22 @@
 
     function close() { var el = document.getElementById("expense-overlay"); if (el) el.remove(); }
 
-    window.ExpenseTracker = { open: open, submit: submit, close: close, selectMonth: selectMonth, renderWidget: renderWidget };
+    // 병원 카테고리일 때만 제보 옵션을 보인다
+    function _toggleVetReport() {
+        var cat = (document.getElementById("expense-cat") || {}).value;
+        var wrap = document.getElementById("expense-vetreport-wrap");
+        if (wrap) wrap.classList.toggle("hidden", cat !== "medical");
+    }
+
+    // 시세 보드의 진료 항목 목록을 그대로 쓴다(항목 정의를 두 곳에 두지 않는다)
+    function vetItemOptions() {
+        var items = (window.VetCostBoard && VetCostBoard.ITEMS) ? VetCostBoard.ITEMS : [];
+        if (!items.length) return '<option value="">진료 항목</option>';
+        return items.map(function (it) {
+            return '<option value="' + esc(it.key) + '">' + esc(it.label) + "</option>";
+        }).join("");
+    }
+
+    window.ExpenseTracker = { open: open, submit: submit, close: close, selectMonth: selectMonth,
+                              _toggleVetReport: _toggleVetReport, renderWidget: renderWidget };
 })();

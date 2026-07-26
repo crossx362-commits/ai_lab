@@ -77,7 +77,8 @@
         el.innerHTML =
             '<div class="card-modern p-5">' +
             '<div class="flex items-center justify-between mb-3">' +
-            '<h3 class="text-base font-bold text-gray-900 flex items-center gap-2"><span class="text-xl">🏥</span>병원비 제보·비교 보드</h3>' +
+            '<h3 class="text-base font-bold text-gray-900 flex items-center gap-2"><span class="text-xl">🏥</span>병원비 시세 비교' +
+            '<span class="text-[10px] font-bold text-gray-400">익명 제보 · 내 가계부와 별개</span></h3>' +
             '<button onclick="VetCostBoard.open()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">금액 제보</button>' +
             "</div>" +
             '<p class="text-[11px] text-gray-400 mb-2">진료 항목별 실제 지불 금액을 익명으로 모아 평균가를 보여줘요' +
@@ -140,5 +141,22 @@
 
     function close() { var el = document.getElementById("vetcost-overlay"); if (el) el.remove(); }
 
-    window.VetCostBoard = { open: open, submit: submit, close: close, renderWidget: renderWidget };
+    // 외부(가계부)에서 익명 제보를 넣기 위한 API — 2026-07-26 회의 결정.
+    // 같은 병원비를 가계부와 여기 두 폼에 각각 입력하던 이중 입력을 없애되,
+    // **금액·항목·지역만** 받는다. 병원명·메모·날짜 등 개인 식별 가능 정보는
+    // 절대 받지 않는다(이 보드의 익명성 원칙 — 위 안내 문구와 같은 계약).
+    function report(item, amount, region) {
+        var amt = parseFloat(amount);
+        if (!item || !isFinite(amt) || amt <= 0) return false;
+        var list = loadAll();
+        list.push({ item: item, amount: amt, region: String(region || "").slice(0, 20),
+                    date: new Date().toISOString() });
+        saveAll(list);
+        renderWidget("vet-cost-board-widget");
+        return true;
+    }
+
+    // ITEMS도 내보낸다 — 가계부가 진료 항목 목록을 재사용해야 항목 정의가
+    // 두 곳으로 갈라지지 않는다(가계부에 따로 하드코딩하면 여기 항목이 늘 때 어긋난다).
+    window.VetCostBoard = { ITEMS: ITEMS, open: open, submit: submit, close: close, report: report, renderWidget: renderWidget };
 })();

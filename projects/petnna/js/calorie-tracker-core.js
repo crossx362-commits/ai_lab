@@ -91,12 +91,33 @@
         return { v: v, reason: reasons.join(" · ") };
     }
 
-    // DER(kcal/일) 계산: 체중 없으면 null
+    // BCS(체형) 보정 계수 — 과체중은 감량, 저체중은 증량 목표로 15% 조정.
+    // 2026-07-26 diet-recommend.js가 같은 RER/DER 공식으로 권장량을 따로 산출해
+    // 한 탭에서 숫자가 어긋났다(287kcal vs 269kcal). 보정을 이쪽으로 흡수해
+    // 권장 산출을 이 함수 하나로 단일화한다 — diet-recommend는 이 값을 읽어 설명만 한다.
+    // (2026-07-13에도 '일일 권장 사료량 계산기'를 같은 이유로 흡수했는데 재발했다.)
+    function bcsMult(petId) {
+        // BcsWizardData의 실제 API는 history(petId) + classify(score)다.
+        // (categoryFor 같은 건 없다 — 없는 함수를 부르면 가드에 걸려 보정이 조용히
+        //  영영 안 걸린다. 2026-07-26 작성 중 실제로 그렇게 짰다가 잡음.)
+        if (!window.BcsWizardData) return { mult: 1.0, note: "", cat: null };
+        try {
+            var h = window.BcsWizardData.history(petId);
+            if (!h || !h.length) return { mult: 1.0, note: "", cat: null };
+            var cat = window.BcsWizardData.classify(h[h.length - 1].score);
+            if (!cat) return { mult: 1.0, note: "", cat: null };
+            if (cat.key === "over") return { mult: 0.85, note: "과체중 판정 → 감량 목표로 15% 낮춤", cat: cat };
+            if (cat.key === "under") return { mult: 1.15, note: "저체중 판정 → 증량 목표로 15% 높임", cat: cat };
+            return { mult: 1.0, note: "정상 체형 유지", cat: cat };
+        } catch (e) { return { mult: 1.0, note: "", cat: null }; }
+    }
+
+    // DER(kcal/일) 계산: 체중 없으면 null. 활동계수(사용자 설정)×체형보정.
     function targetKcal(pet) {
         var w = parseFloat(pet && pet.weight);
         if (!w || w <= 0) return null;
         var rer = 70 * Math.pow(w, 0.75);
-        return Math.round(rer * factorFor(pet.id));
+        return Math.round(rer * factorFor(pet.id) * bcsMult(pet.id).mult);
     }
 
     function sumToday(petId) {
@@ -177,6 +198,9 @@
         _factorFor: factorFor,
         _neuteredFor: neuteredFor,
         _recommendFactor: recommendFactor,
+        targetKcal: targetKcal,
+        _bcsMult: bcsMult,
+        _densityForPet: densityFor,
         renderWidget: renderWidget,
     };
 })();

@@ -87,6 +87,51 @@ const HEALTH_TEMPLATE = `
              카드 두 장이 따로 묻던 구조를 없앤다(배변이 양쪽에 중복 노출됐다). -->
         <div id="daily-condition-widget" class="mt-4"></div>
 
+        <!-- 📈 7일 건강 트렌드 — 2026-07-26 회의 다수안(입력↔조회 인접) + 오너 승인으로
+             건강수첩 묶음에서 이 카드로 되돌림. 같은 식사·음수 데이터의 입력(위)과
+             조회(아래)라 한 카드에 붙어 있어야 동선이 짧다. -->
+        <div class="mt-5 pt-4 border-t border-gray-100">
+        <!-- 📈 7일 건강 트렌드 — 2026-07-26 이 카드로 옮기며 상단 구분선(mt-5 pt-4 border-t)
+             제거. 원래 '오늘의 기록' 안에서 위 내용과 나누는 선이었는데, 카드 최상단이 되면서
+             위에 아무것도 없는 채 선만 떠 있었다(회의에서 테오가 지목). -->
+        <div class="flex items-center gap-2 mb-3">
+            <span class="text-xl">📈</span>
+            <span class="text-sm font-bold text-gray-900">7일 건강 트렌드</span>
+            <span class="text-xs text-gray-400">데이터로 보는 변화</span>
+        </div>
+
+        <!-- 사용법 안내 (데이터 없을 때만 표시) -->
+        <div id="health-tutorial-main" class="hidden card-modern bg-brand-50/50 p-4 mb-4">
+            <div class="flex items-start gap-3">
+                <span class="text-3xl">💡</span>
+                <div class="flex-1 space-y-2">
+                    <p class="text-sm font-bold text-brand-700">건강 트렌드 사용법</p>
+                    <ul class="text-xs text-gray-600 space-y-1.5 leading-relaxed">
+                        <li class="flex items-start gap-2">
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>매일 <strong class="text-brand-600">건강 기록</strong> 버튼으로 식사·음수·배변을 기록하세요</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">건강점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-brand-500 mt-0.5">•</span>
+                            <span>테스트하려면 위의 <strong class="text-brand-600">데모 데이터</strong> 버튼을 눌러보세요</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-sky-50 to-blue-50 rounded-2xl p-4 border border-sky-100" style="min-height:120px; max-height:180px;">
+            <canvas id="health-trend-chart-main"></canvas>
+        </div>
+
+        <!-- 90일 캘린더 히트맵 -->
+        <div id="health-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
+        </div>
+
     </div>
 
 
@@ -201,48 +246,6 @@ const HEALTH_TEMPLATE = `
     <div id="calorie-tracker-widget"></div>
     <div id="diet-recommend-widget"></div>
 
-    <!-- 📈 7일 건강 트렌드 ('오늘의 기록' 카드에서 이 묶음으로 이동) -->
-    <div class="card-modern p-5">
-        <!-- 📈 7일 건강 트렌드 — 2026-07-26 이 카드로 옮기며 상단 구분선(mt-5 pt-4 border-t)
-             제거. 원래 '오늘의 기록' 안에서 위 내용과 나누는 선이었는데, 카드 최상단이 되면서
-             위에 아무것도 없는 채 선만 떠 있었다(회의에서 테오가 지목). -->
-        <div class="flex items-center gap-2 mb-3">
-            <span class="text-xl">📈</span>
-            <span class="text-sm font-bold text-gray-900">7일 건강 트렌드</span>
-            <span class="text-xs text-gray-400">데이터로 보는 변화</span>
-        </div>
-
-        <!-- 사용법 안내 (데이터 없을 때만 표시) -->
-        <div id="health-tutorial-main" class="hidden card-modern bg-brand-50/50 p-4 mb-4">
-            <div class="flex items-start gap-3">
-                <span class="text-3xl">💡</span>
-                <div class="flex-1 space-y-2">
-                    <p class="text-sm font-bold text-brand-700">건강 트렌드 사용법</p>
-                    <ul class="text-xs text-gray-600 space-y-1.5 leading-relaxed">
-                        <li class="flex items-start gap-2">
-                            <span class="text-brand-500 mt-0.5">•</span>
-                            <span>매일 <strong class="text-brand-600">건강 기록</strong> 버튼으로 식사·음수·배변을 기록하세요</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-brand-500 mt-0.5">•</span>
-                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">건강점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="text-brand-500 mt-0.5">•</span>
-                            <span>테스트하려면 위의 <strong class="text-brand-600">데모 데이터</strong> 버튼을 눌러보세요</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-gradient-to-br from-sky-50 to-blue-50 rounded-2xl p-4 border border-sky-100" style="min-height:120px; max-height:180px;">
-            <canvas id="health-trend-chart-main"></canvas>
-        </div>
-
-        <!-- 90일 캘린더 히트맵 -->
-        <div id="health-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
-    </div>
     </div>
 
     <!-- 💰 비용 묶음 — 가계부(내 지출)와 병원비 보드(동네 평균가)를 한 카드로 병합

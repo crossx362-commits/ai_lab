@@ -155,7 +155,7 @@
             '<button onclick="QolCheckin.close()" class="text-gray-300 hover:text-gray-500 text-xl leading-none">&times;</button></div>' +
             '<div class="px-5 py-4 space-y-4">' + qHtml +
             '<div><label class="text-xs font-bold text-gray-500">현재 체중(선택, kg)</label>' +
-            '<input id="qol-weight" type="number" step="0.1" min="0" placeholder="' + esc(pet.weight || "") + '" ' +
+            '<input id="qol-weight" type="number" step="0.1" min="0" value="' + esc(pet.weight || "") + '" ' +
             'class="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"></div>' +
             "</div>" +
             '<div class="px-5 py-3 border-t border-gray-100 flex gap-2 sticky bottom-0 bg-white">' +
@@ -196,10 +196,20 @@
         var weightInput = (document.getElementById("qol-weight") || {}).value;
         var weight = weightInput ? parseFloat(weightInput) : null;
 
+        // 체중 단일 소스는 pet.weight — QOL이 따로 들고 있으면 마이펫 프로필과 어긋난다
+        // (2026-07-26 회의: 두 곳에 저장되는데 동기화가 없어 어디 적을지 헷갈림).
+        // 여기 입력한 값은 pet.weight로 반영하고, QOL 이력엔 '그 시점 스냅샷'으로만 남긴다.
+        if (weight && weight > 0) {
+            pet.weight = String(weight);
+            if (typeof saveState === 'function') saveState();
+            if (typeof renderMyPets === 'function') renderMyPets();
+        }
+
         var map = loadAll();
         var key = String(pet.id);
         if (!map[key]) map[key] = [];
-        map[key].push({ date: new Date().toISOString(), scores: scores, total: total, weight: weight });
+        map[key].push({ date: new Date().toISOString(), scores: scores, total: total,
+                        weight: (weight && weight > 0) ? weight : (parseFloat(pet.weight) || null) });
         saveAll(map);
 
         close();

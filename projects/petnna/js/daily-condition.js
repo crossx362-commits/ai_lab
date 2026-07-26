@@ -96,6 +96,7 @@
             <div class="flex items-center gap-2 mb-3">
                 <span class="text-xl">📝</span>
                 <span class="text-sm font-bold text-gray-900">원탭 컨디션</span>
+                <span class="text-[10px] font-bold text-brand-500 bg-brand-50 px-1.5 py-0.5 rounded">입력</span>
                 <span class="text-xs text-gray-400 truncate">배변·소변 색·식욕·활력</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${rows}</div>

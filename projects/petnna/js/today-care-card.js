@@ -128,6 +128,7 @@
             <div class="flex items-center gap-1.5 mb-2">
                 <span class="text-sm">📊</span>
                 <span class="text-xs font-bold text-gray-700">오늘의 케어 요약</span>
+                <span class="text-[10px] font-bold text-gray-400">읽기 전용</span>
             </div>
             <div class="grid grid-cols-5 gap-1">${cells}</div>
         </div>`;
