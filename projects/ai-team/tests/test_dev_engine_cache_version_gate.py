@@ -147,6 +147,14 @@ class AutobumpCacheVersionTests(unittest.TestCase):
         self.assertEqual(self.suri._autobump_cache_versions(self.repo), [])
         self.assertIn("js/album.js?v=161", self._index())
 
+    def test_already_bumped_is_not_double_bumped(self):
+        """구현자가 이미 올렸으면 엔진이 또 올리지 않는다(2026-07-26 175→177 관측)."""
+        (self.repo / "projects/petnna/js/album.js").write_text("// 수정\n", encoding="utf-8")
+        (self.repo / "projects/petnna/index.html").write_text(
+            _INDEX.format(album=162, extra=""), encoding="utf-8")   # 구현자가 161→162
+        self.assertEqual(self.suri._autobump_cache_versions(self.repo), [])
+        self.assertIn("js/album.js?v=162", self._index(), "이미 올린 버전을 또 올림")
+
     def test_autobump_then_gate_passes(self):
         """보정 후에는 게이트가 통과해야 한다(둘이 서로 어긋나지 않는지)."""
         _git(["checkout", "-q", "-b", "work"], self.repo)

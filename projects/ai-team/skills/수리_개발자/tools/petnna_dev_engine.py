@@ -455,12 +455,19 @@ def _autobump_cache_versions(worktree: Path) -> list[str]:
     if not changed:
         return []
     text = idx_path.read_text(encoding="utf-8", errors="replace")
+    # 구현자가 이미 올렸으면 또 올리지 않는다 — 안 그러면 버전이 한 사이클에 2씩 뛴다
+    # (2026-07-26 추모 모드 브랜치에서 실제로 175→177로 관측). 기능상 무해하지만
+    # 로그·이력이 지저분해지고 "누가 올렸나"가 흐려진다.
+    head_text = _git(["show", "HEAD:projects/petnna/index.html"], worktree).stdout
     bumped = []
     for rel in changed:
         pat = re.compile(re.escape(rel) + r"\?v=(\d+)")
         m = pat.search(text)
         if not m:
             continue                            # index.html이 안 싣는 js — 대상 아님
+        head_m = pat.search(head_text) if head_text else None
+        if head_m and head_m.group(1) != m.group(1):
+            continue                            # 구현자가 이미 갱신함
         text = text.replace(m.group(0), f"{rel}?v={int(m.group(1)) + 1}", 1)
         bumped.append(f"{rel}→{int(m.group(1)) + 1}")
     if bumped:
