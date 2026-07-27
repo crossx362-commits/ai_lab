@@ -115,6 +115,12 @@ function renderHealthTab() {
     // 식사 일지 렌더링
     if (typeof renderMealLogsList === 'function') renderMealLogsList();
 
+    // 카드 접기 적용 — 위젯 렌더가 다 끝난 뒤에 감싸야 한다(먼저 감싸면 각 렌더러가
+    // innerHTML을 덮어쓰며 접기 UI를 날린다). 여러 번 불려도 이미 감싼 카드는 건너뛴다.
+    setTimeout(function () {
+        if (window.SectionCollapse) SectionCollapse.apply('health-main-grid');
+    }, 0);
+
     // 데일리 컨디션 원탭 로그 위젯 (2026-07-26 '오늘의 기록' 카드 안으로 이동)
     if (typeof DailyCondition !== 'undefined') DailyCondition.renderWidget('daily-condition-widget');
 
