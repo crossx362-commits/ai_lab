@@ -20,8 +20,20 @@ from datetime import datetime
 from pathlib import Path
 
 # 회의가 명시한 범위 — DB 스키마·RLS·supabase 직접 접촉·마이그레이션.
+#
+# 'supabase'를 맨몸으로 매칭하면 **코드 식별자를 언급만 해도** 보류로 샌다.
+# 2026-07-27 실사고: 3차 회의의 프론트 수정 3건(피드 재진입 가드·체중 입력 검증·
+# 오프라인 표기)이 설명문에 `supabase.js:385`·`SupabaseService.isConnected`·
+# `updatePetInSupabase`를 인용했다는 이유만으로 전부 자동 보류돼, 수리가 못 집고
+# 하루를 넘겼다. 셋 다 스키마 무접촉이다.
+# 다만 'supabase.js'를 통째로 빼면 안 된다 — 'supabase.js 쿼리 추가'는 진짜 데이터
+# 계층 작업이고 기존 테스트가 이를 지킨다(제외 범위를 넓혔다가 그 테스트가 잡아냈다).
+# 구분 기준은 **인용이냐 행위냐**다:
+#   · 제외: `supabase.js:385` 같은 파일:줄 인용, SupabaseService/SupabaseClient/
+#           ...InSupabase 같은 클라이언트 식별자 → 코드를 가리키는 말
+#   · 유지: 그 밖의 모든 'supabase' 언급 → 데이터 계층을 건드리겠다는 말
 DB_AUTH_PATTERN = re.compile(
-    r"supabase"
+    r"(?<![A-Za-z])supabase(?!\.js:\d|Service|Client)"
     r"|migration|마이그레이션"
     r"|\bRLS\b|row level security"
     r"|신규\s*테이블|테이블\s*추가|테이블.{0,4}신설|스키마\s*(변경|추가|마이그)"
