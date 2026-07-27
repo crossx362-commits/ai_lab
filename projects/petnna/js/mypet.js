@@ -2127,14 +2127,38 @@ function toggleNotebookEdit(isEdit) {
     }
 }
 
+// 체중 입력 검증 — 등록(saveRegister)과 수정(saveNotebookEdit)이 같은 규칙을 쓴다.
+// 예전엔 등록에만 검증이 있고 수정엔 없어서 'ㅇ' 같은 값이 그대로 저장·DB 영속화됐다
+// (실제로 DB에 체중이 'ㅇ'인 펫이 생긴 경로 — 2026-07-26 3차 회의에서 근원 특정).
+// 소비처는 NaN을 방어하고 있어 크래시는 없지만, 조용히 기본값으로 대체돼
+// 사용자는 자기가 넣은 값이 반영된 줄 안다.
+function isValidPetWeight(value) {
+    const s = String(value == null ? '' : value).trim();
+    if (!s) return true;                       // 미입력은 허용(선택 필드)
+    if (!/^[0-9]+(\.[0-9]+)?$/.test(s)) return false;
+    const w = parseFloat(s);
+    return w >= 0.1 && w <= 100;
+}
+
 function saveNotebookEdit() {
     const current = getActivePet();
     if (!current) return;
 
+    const weightEl = document.getElementById('edit-nb-weight');
+    const weightInput = weightEl ? weightEl.value.trim() : '';
+    if (!isValidPetWeight(weightInput)) {
+        if (typeof showToast === 'function') {
+            showToast('체중은 0.1 ~ 100 kg 사이 숫자로 입력해주세요 ⚖️');
+        }
+        if (weightEl) { weightEl.classList.add('border-rose-400'); weightEl.focus(); }
+        return;                                 // 저장 자체를 막는다
+    }
+    if (weightEl) weightEl.classList.remove('border-rose-400');
+
     current.breed = document.getElementById('edit-nb-breed').value.trim() || current.breed;
     current.age = document.getElementById('edit-nb-age').value.trim() || current.age;
     current.gender = document.getElementById('edit-nb-gender').value.trim() || current.gender;
-    current.weight = document.getElementById('edit-nb-weight').value.trim() || current.weight;
+    current.weight = weightInput || current.weight;
     current.personality = document.getElementById('edit-nb-personality').value.trim() || current.personality;
 
     if (typeof recordPetWeight === 'function') recordPetWeight(current, current.weight);

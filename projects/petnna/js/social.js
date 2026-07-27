@@ -1461,12 +1461,21 @@ function toggleAttachHealthLog() {
     }
 }
 
+// 발행 재진입 가드 — id:Date.now()로 동기 저장하므로 빠르게 두 번 누르면
+// 서로 다른 id의 글 두 개가 로컬·원격에 모두 발행된다(2026-07-26 3차 회의).
+let _feedPostSubmitting = false;
+
 function submitFeedPost() {
+    if (_feedPostSubmitting) return;            // 더블클릭 차단
     const textInput = document.getElementById('feed-input-content');
     if (!textInput || !textInput.value.trim()) {
         showToast("자랑하고 싶은 본문 이야기를 꼭 채워주세요!");
         return;
     }
+    _feedPostSubmitting = true;
+    // 동기 구간이 끝나면 해제한다(원격 업로드는 비동기라 완료를 기다리지 않는다 —
+    // 기다리면 오프라인일 때 버튼이 영영 안 풀린다).
+    setTimeout(() => { _feedPostSubmitting = false; }, 1200);
 
     const currentPet = getActivePet();
     const newPost = {
@@ -1514,15 +1523,22 @@ function submitFeedPost() {
     if (trimmer) trimmer.classList.add('hidden');
 
     renderFeed();
+    // uploadPost(supabase.js)는 미연결이면 조용히 return한다 — 연결 여부를 안 보고
+    // 무조건 '등록 완료'라고 하면 실제론 로컬에만 남았는데 사용자는 발행된 줄 안다
+    // (2026-07-26 3차 회의). 상태에 따라 정직하게 표기한다.
+    const _online = (typeof SupabaseService !== 'undefined') && SupabaseService.isConnected;
     if (typeof showCustomDialog === 'function') {
         showCustomDialog({
-            title: "발행 완료! 🐾🎉",
-            message: "집사님과 펫의 사랑스러운 자랑 글이 소셜 피드 타임라인에 성공적으로 등록되었습니다!",
-            icon: "✨",
+            title: _online ? "발행 완료! 🐾🎉" : "기기에 저장했어요 📝",
+            message: _online
+                ? "집사님과 펫의 사랑스러운 자랑 글이 소셜 피드 타임라인에 성공적으로 등록되었습니다!"
+                : "지금은 서버에 연결되지 않아 이 기기에만 저장했어요. 연결되면 이웃 피드에 올라갑니다.",
+            icon: _online ? "✨" : "📶",
             type: "alert"
         });
     } else {
-        showToast("자랑 피드가 활기차게 발행되었습니다! 🎉");
+        showToast(_online ? "자랑 피드가 활기차게 발행되었습니다! 🎉"
+                          : "기기에 저장했어요 — 연결되면 발행됩니다 📝");
     }
 }
 
