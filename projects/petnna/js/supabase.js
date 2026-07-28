@@ -1172,10 +1172,22 @@ const SupabaseService = {
                 const localByDate = {};
                 healthLogs.history.forEach(h => { localByDate[h.date] = h; });
                 data.forEach(row => {
-                    localByDate[row.log_date] = {
-                        date: row.log_date, water: row.water, food: row.food,
-                        poop: row.poop, condition: row.condition, _remoteId: row.id,
-                    };
+                    // 로컬 항목 위에 '덮어쓰기'가 아니라 '겹쳐쓰기'다 — 통째로 교체하면
+                    // health_logs 테이블에 컬럼이 없는 필드가 조용히 지워진다.
+                    // 원탭 컨디션(daily-condition.js)이 쓰는 poopColor·urine·appetite·activity가
+                    // 정확히 그 경우다: 테이블은 2026-07-10에 만들어져 이 네 컬럼이 없고,
+                    // uploadHealthLog도 안 올린다. 교체하던 시절엔 동기화가 한 번 돌 때마다
+                    // 네 필드가 사라져 wellness-anomaly의 혈변·혈뇨·식욕저하 감지가 입력을
+                    // 잃었다(2026-07-28 오너 신고 "기록이 반영이 안되 있는데"의 원인).
+                    // null/undefined인 원격 값은 덮지 않는다 — 다른 기기가 아직 안 올린
+                    // 항목의 null이 이 기기의 실제 기록을 지우면 그것도 같은 유실이다.
+                    const local = localByDate[row.log_date] || {};
+                    const merged = { ...local, date: row.log_date, _remoteId: row.id };
+                    const remote = { water: row.water, food: row.food, poop: row.poop, condition: row.condition };
+                    Object.keys(remote).forEach(k => {
+                        if (remote[k] !== null && remote[k] !== undefined) merged[k] = remote[k];
+                    });
+                    localByDate[row.log_date] = merged;
                 });
                 healthLogs.history = Object.values(localByDate)
                     .sort((a, b) => new Date(b.date) - new Date(a.date))
