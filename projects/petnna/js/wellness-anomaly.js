@@ -263,9 +263,9 @@
                         <h3 class="text-sm font-bold text-gray-900">예측 웰니스</h3>
                         <p class="text-xs text-gray-500 mt-0.5">
                             건강 기록이 ${MIN_SAMPLES + RECENT_DAYS}일 이상 쌓이면 평소와 다른 미세 변화를 자동으로 감지해요.
-                            <span class="text-brand-600 font-semibold">(현재 ${samples}일)</span>
                         </p>
                     </div>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-brand-50 text-brand-700">${samples}/${MIN_SAMPLES + RECENT_DAYS}일</span>
                 </div>
             </div>`;
             return;

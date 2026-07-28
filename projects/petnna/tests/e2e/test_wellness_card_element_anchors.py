@@ -7,7 +7,7 @@
 
 wellness-anomaly.js(renderWellnessCard)는 상태별로 아래 구조를 #wellness-anomaly-card
 호스트 안에 렌더한다 — 카피가 바뀌어도 이 골격은 유지된다:
-  • 표본 부족  → .card-modern.border-brand-100/60, 배지 span 없음, li 없음
+  • 표본 부족  → .card-modern.border-brand-100/60, 진행 배지 span, li 없음
   • 이상 없음  → .card-modern.border-emerald-100, 둥근 배지 span 존재, li 없음
   • 경고 감지  → .card-modern.border-amber-200, 이상 소견 수만큼 <ul><li> 생성
 
@@ -82,8 +82,10 @@ def run(page, base_url):
         f"표본 부족 상태의 시맨틱 색상 훅(border-brand-100)이 없음: {insufficient['cardClass']!r}"
     assert insufficient["liCount"] == 0, \
         f"표본 부족 카드에 소견 li가 있으면 안 됨: {insufficient}"
-    assert not insufficient["hasBadgeSpan"], \
-        f"표본 부족 카드에는 둥근 배지 span이 없어야 함: {insufficient}"
+    # 배지 span 유무는 더 이상 상태 구분에 쓰지 않는다 — 표본 부족 카드도 진행 배지
+    # ('10/17일')를 달게 됐기 때문(미오_20260726135917_1, 2026-07-28 병합).
+    # 세 상태는 이미 border-* 시맨틱 훅 + liCount로 완전히 구분되므로 판별력 손실은 없다.
+    # (이 단언이 그 개선을 3회 연속 막아 보류로 밀어냈다.)
 
     # === 2) 이상 없음 상태: emerald 색 카드 · 배지 span 존재 · 소견 li 없음 ===
     # water 표본 20개(>=17)를 전부 동일값으로 → 표준편차 0이라 z 판정 불가 → 이상 없음.
