@@ -1129,6 +1129,17 @@ const SupabaseService = {
         }
     },
 
+    // PostgREST가 '스키마에 없는 컬럼'을 거절할 때의 신호. 코드는 PGRST204,
+    // 메시지는 "Could not find the 'x' column of 'y' in the schema cache" 형태다.
+    // 다른 오류(권한·네트워크·제약 위반)를 여기로 흡수하면 진짜 실패가 조용히 묻히므로
+    // 이 두 신호만 본다.
+    _isUnknownColumn(error) {
+        if (!error) return false;
+        if (error.code === 'PGRST204') return true;
+        const m = String(error.message || '').toLowerCase();
+        return m.includes('column') && (m.includes('schema cache') || m.includes('does not exist'));
+    },
+
     async uploadHealthLog(entry) {
         const user = await this._authUser();
         if (!user) return;
@@ -1136,19 +1147,41 @@ const SupabaseService = {
             if (!entry._remoteId) entry._remoteId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
             const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || user.email || '';
             const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
-            const { error } = await this.client
-                .from('health_logs')
-                .upsert([{
-                    id: entry._remoteId,
-                    user_id: user.id,
-                    email,
-                    pet_id: activePet ? String(activePet.id) : null,
-                    log_date: entry.date,
-                    water: entry.water || null,
-                    food: entry.food || null,
-                    poop: entry.poop || null,
-                    condition: entry.condition || null,
-                }], { onConflict: 'user_id,pet_id,log_date' });
+            const base = {
+                id: entry._remoteId,
+                user_id: user.id,
+                email,
+                pet_id: activePet ? String(activePet.id) : null,
+                log_date: entry.date,
+                water: entry.water || null,
+                food: entry.food || null,
+                poop: entry.poop || null,
+                condition: entry.condition || null,
+            };
+            // 원탭 컨디션 4종(add_health_logs_condition_columns.sql, 오너 승인 2026-07-28).
+            // 마이그레이션이 아직 안 돌아간 프로젝트에서도 업로드가 통째로 깨지면 안 되므로,
+            // '컬럼 없음' 오류일 때만 이 네 개를 빼고 한 번 더 시도한다. 마이그레이션 실행과
+            // 배포 순서를 신경 쓰지 않아도 되고, 실행되는 순간부터 자동으로 올라간다.
+            const extra = {
+                poop_color: entry.poopColor || null,
+                urine: entry.urine || null,
+                appetite: entry.appetite || null,
+                activity: entry.activity || null,
+            };
+            const put = (row) => this.client.from('health_logs')
+                .upsert([row], { onConflict: 'user_id,pet_id,log_date' });
+
+            let { error } = await put({ ...base, ...extra });
+            if (error && this._isUnknownColumn(error)) {
+                if (!this._warnedHealthLogColumns) {
+                    this._warnedHealthLogColumns = true;
+                    const msg = "health_logs에 원탭 컨디션 컬럼이 없어 배변색·소변색·식욕·활력은 "
+                        + "이 기기에만 남습니다 — migrations/add_health_logs_condition_columns.sql 실행 필요";
+                    if (typeof AppLogger !== 'undefined') AppLogger.warn(msg);
+                    else console.warn("⚠️ " + msg);
+                }
+                ({ error } = await put(base));
+            }
             if (error) throw error;
             if (typeof saveState === 'function') saveState(); // entry._remoteId 캐시 영속화
             if (typeof AppLogger !== 'undefined') AppLogger.info(`건강기록(${entry.date})이 Supabase에 동기화되었습니다.`);
@@ -1175,15 +1208,22 @@ const SupabaseService = {
                     // 로컬 항목 위에 '덮어쓰기'가 아니라 '겹쳐쓰기'다 — 통째로 교체하면
                     // health_logs 테이블에 컬럼이 없는 필드가 조용히 지워진다.
                     // 원탭 컨디션(daily-condition.js)이 쓰는 poopColor·urine·appetite·activity가
-                    // 정확히 그 경우다: 테이블은 2026-07-10에 만들어져 이 네 컬럼이 없고,
-                    // uploadHealthLog도 안 올린다. 교체하던 시절엔 동기화가 한 번 돌 때마다
-                    // 네 필드가 사라져 wellness-anomaly의 혈변·혈뇨·식욕저하 감지가 입력을
-                    // 잃었다(2026-07-28 오너 신고 "기록이 반영이 안되 있는데"의 원인).
+                    // 정확히 그 경우였다: 테이블이 2026-07-10에 만들어져 이 네 컬럼이 없었고,
+                    // 교체하던 시절엔 동기화가 한 번 돌 때마다 네 필드가 사라져
+                    // wellness-anomaly의 혈변·혈뇨·식욕저하 감지가 입력을 잃었다
+                    // (2026-07-28 오너 신고 "기록이 반영이 안되 있는데"의 원인).
                     // null/undefined인 원격 값은 덮지 않는다 — 다른 기기가 아직 안 올린
                     // 항목의 null이 이 기기의 실제 기록을 지우면 그것도 같은 유실이다.
+                    // 네 컬럼은 add_health_logs_condition_columns.sql로 추가됐다(오너 승인
+                    // 2026-07-28). 아직 실행 전인 프로젝트에선 row에 키가 없어 undefined라
+                    // 자동으로 건너뛴다 — 실행 순서를 신경 쓸 필요가 없다.
                     const local = localByDate[row.log_date] || {};
                     const merged = { ...local, date: row.log_date, _remoteId: row.id };
-                    const remote = { water: row.water, food: row.food, poop: row.poop, condition: row.condition };
+                    const remote = {
+                        water: row.water, food: row.food, poop: row.poop, condition: row.condition,
+                        poopColor: row.poop_color, urine: row.urine,
+                        appetite: row.appetite, activity: row.activity,
+                    };
                     Object.keys(remote).forEach(k => {
                         if (remote[k] !== null && remote[k] !== undefined) merged[k] = remote[k];
                     });
