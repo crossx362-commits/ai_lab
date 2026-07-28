@@ -404,23 +404,32 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
-            <!-- 음성 상담 -->
-            <button onclick="startVoiceConsultation()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-left group hover:scale-[1.02] transition-all">
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center gap-3">
-                        <div class="text-4xl">🎤</div>
-                        <div>
-                            <h3 class="text-base font-bold text-gray-900">음성 상담</h3>
-                            <p class="text-xs text-sky-600 mt-1">증상 말로 설명하기</p>
+        </div>
+
+        <!-- 저빈도 항목은 접어서 모바일 스크롤 단축 (미오 P3, 2026-07-28) -->
+        <details class="group/more">
+            <summary class="flex items-center justify-center gap-1.5 cursor-pointer list-none text-xs font-semibold text-gray-500 hover:text-gray-700 py-1.5 select-none">
+                <span>다른 방법 더보기</span>
+                <i class="fa-solid fa-chevron-down text-[10px] transition-transform group-open/more:rotate-180"></i>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <!-- 음성 상담 -->
+                <button onclick="startVoiceConsultation()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-left group hover:scale-[1.02] transition-all">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="text-4xl">🎤</div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900">음성 상담</h3>
+                                <p class="text-xs text-sky-600 mt-1">증상 말로 설명하기</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="flex items-center justify-end">
-                    <i class="fa-solid fa-microphone text-sky-500 text-xl group-hover:scale-110 transition-transform"></i>
-                </div>
-            </button>
-
-        </div>
+                    <div class="flex items-center justify-end">
+                        <i class="fa-solid fa-microphone text-sky-500 text-xl group-hover:scale-110 transition-transform"></i>
+                    </div>
+                </button>
+            </div>
+        </details>
 
         <!-- AI 건강 분석 숨겨진 입력 & 결과 -->
         <input type="file" id="ai-health-photo-input-health" accept="image/*" class="hidden" onchange="runAiHealthAnalysis(event)">
