@@ -117,8 +117,21 @@
         // 정상 경로에서 반드시 되돌려야 한다(안 되돌리면 추모 모드를 꺼도 영구히 숨는다).
         host.hidden = false;
 
-        const cells = [_walkStat(), _mealStat(), _careStat(), _moodStat(), _anomalyStat()]
-            .filter(Boolean).map(_cell).join('');
+        const stats = [_walkStat(), _mealStat(), _careStat(), _moodStat(), _anomalyStat()]
+            .filter(Boolean);
+        const cells = stats.map(_cell).join('');
+
+        // 신규 사용자 유도: 핵심 활동(산책·급여·기분)이 모두 미기록이면, 회색 대시(-)
+        // 상태로만 두지 않고 '데모 데이터 눌러보기' 마이크로카피를 옅게 노출해
+        // 첫 화면 이탈을 줄인다(P3, 미오 제안). 기록이 하나라도 있으면 숨긴다.
+        const core = stats.filter(s => s.label === '산책' || s.label === '급여' || s.label === '기분');
+        const showDemoHint = core.length > 0 && core.every(s => !s.done)
+            && typeof resetToRichDemoData === 'function';
+        const demoHint = showDemoHint ? `
+            <button type="button" onclick="resetToRichDemoData()"
+                class="mt-2 w-full text-center text-[10px] text-gray-300 hover:text-brand-400 font-medium transition-colors">
+                아직 기록이 없어요 — <span class="underline">데모 데이터 눌러보기</span>
+            </button>` : '';
 
         // 예전엔 max-w-xl로 폭을 제한했는데, 데스크톱(1400px+)에서 오른쪽 2/3가 통째로
         // 비어 보였다(2026-07-26 오너 지적). 이제 전체 폭을 쓰되 칸 안을 가로 배치로
@@ -130,7 +143,7 @@
                 <span class="text-xs font-bold text-gray-700">오늘의 케어 요약</span>
                 <span class="text-[10px] font-bold text-gray-400">읽기 전용</span>
             </div>
-            <div class="grid grid-cols-5 gap-1">${cells}</div>
+            <div class="grid grid-cols-5 gap-1">${cells}</div>${demoHint}
         </div>`;
     }
 
