@@ -1,0 +1,49 @@
+"""펫나 E2E — 로그인 화면 데스크톱(lg) 뷰포트 레이아웃 회귀.
+
+1440px 폭에서 로그인 랜딩 오버레이가 열렸을 때
+브랜딩 패널(로고 아이콘·환영 헤딩)이 실제로 보이고,
+가로 스크롤(오버플로)이 발생하지 않는지 단언한다.
+데스크톱 split 회귀를 초록불이 보증하도록 하는 목적이며
+외부 네트워크(수파베이스) 성공에 의존하지 않고 화면 구조만 본다.
+"""
+
+NAME = "로그인 화면 데스크톱 뷰포트 브랜드 패널·가로 스크롤 부재"
+
+
+def run(page, base_url):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto(base_url)
+
+    # 로그인 랜딩 오버레이가 lg 뷰포트에서도 보여야 한다(비로그인 최초 진입).
+    overlay = page.wait_for_selector("#login-landing-overlay", state="visible", timeout=15000)
+    assert overlay is not None, "1440px에서 로그인 오버레이가 표시되지 않음"
+
+    # 뷰포트가 실제로 데스크톱 폭인지 확인(측정 신뢰성 담보).
+    inner_w = page.evaluate("() => window.innerWidth")
+    assert inner_w >= 1200, f"뷰포트 폭이 데스크톱이 아님(innerWidth={inner_w})"
+
+    # 브랜딩 패널: 로고(paw) 아이콘과 환영 헤딩이 보여야 한다.
+    paw = page.wait_for_selector("#login-landing-overlay .fa-paw", state="visible", timeout=5000)
+    assert paw is not None, "브랜드 로고 아이콘이 데스크톱에서 미표시"
+
+    heading = page.wait_for_selector("#login-landing-overlay h2", state="visible", timeout=5000)
+    assert "펫과나" in (heading.inner_text() or ""), "환영 헤딩 텍스트가 예상과 다름"
+
+    # 로그인 폼 요소도 데스크톱 폭에서 정상 노출되어야 한다.
+    assert page.locator("#google-login-btn").is_visible(), "구글 로그인 버튼 미표시(lg)"
+    assert page.locator("#login-email-input").is_visible(), "이메일 입력란 미표시(lg)"
+    assert page.locator("#login-submit-btn").is_visible(), "로그인 제출 버튼 미표시(lg)"
+
+    # 가로 스크롤(오버플로)이 없어야 한다 — 데스크톱 split 레이아웃 회귀 방지.
+    overflow_x = page.evaluate(
+        "() => document.documentElement.scrollWidth - document.documentElement.clientWidth"
+    )
+    assert overflow_x <= 1, f"데스크톱에서 가로 스크롤 오버플로 발생(초과폭={overflow_x}px)"
+
+    # 오버레이 카드가 뷰포트 가로 경계 안에 완전히 들어와야 한다.
+    box = page.locator("#login-landing-overlay > div").first.bounding_box()
+    assert box is not None, "오버레이 카드 박스를 측정하지 못함"
+    assert box["x"] >= -1, f"오버레이 카드가 좌측으로 벗어남(x={box['x']})"
+    assert box["x"] + box["width"] <= inner_w + 1, (
+        f"오버레이 카드가 우측 뷰포트를 벗어남(right={box['x'] + box['width']}, vw={inner_w})"
+    )
