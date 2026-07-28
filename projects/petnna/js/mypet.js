@@ -3061,11 +3061,12 @@ function openHealthLogModal() {
     const modal = document.getElementById('health-log-modal');
     if (!modal) return;
     
+    // today를 통째로 복사한다 — 이 모달이 안 묻는 필드(poop·poopColor·urine·
+    // appetite·activity)까지 들고 있어야 saveHealthLog의 전체 교체가 원탭 컨디션
+    // 기록을 지우지 않는다.
     const logs = (typeof healthLogs !== 'undefined' && healthLogs?.today) ? healthLogs.today : { poop: null, food: 0, water: 0 };
     currentHealthLog = { ...logs };
-    
-    selectPoopType(currentHealthLog.poop);
-    
+
     const foodSlider = document.getElementById('food-amount-slider');
     const foodDisp = document.getElementById('food-amount-disp');
     if (foodSlider && foodDisp) {
@@ -3109,30 +3110,9 @@ function closeHealthReportModal() {
     }
 }
 
-function selectPoopType(type) {
-    const normalizedType = (type === null || type === undefined || type === 'null') ? null : type;
-    const selectedId = normalizedType === null ? 'poop-type-null' : `poop-type-${normalizedType}`;
-    currentHealthLog.poop = normalizedType;
-    const btns = document.querySelectorAll('.health-poop-btn');
-    btns.forEach(btn => {
-        const selected = btn.id === selectedId;
-        btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
-        if (selected) {
-            btn.classList.add('border-brand-500', 'bg-brand-50', 'text-brand-700', 'shadow-sm', 'ring-2', 'ring-brand-200');
-            btn.classList.remove('border-gray-200', 'bg-white', 'text-gray-400', 'text-gray-700');
-        } else {
-            btn.classList.remove('border-brand-500', 'bg-brand-50', 'text-brand-700', 'shadow-sm', 'ring-2', 'ring-brand-200');
-            btn.classList.add('border-gray-200', 'bg-white');
-            if (btn.id === 'poop-type-null') {
-                btn.classList.add('text-gray-400');
-                btn.classList.remove('text-gray-700');
-            } else {
-                btn.classList.add('text-gray-700');
-                btn.classList.remove('text-gray-400');
-            }
-        }
-    });
-}
+// selectPoopType 제거(2026-07-28) — 유일한 호출부였던 모달의 배변 4지선다가
+// 원탭 컨디션과 순수 중복이라 함께 삭제됐다. 배변 입력은 이제 건강 탭
+// '원탭 컨디션'(daily-condition.js)이 단독으로 담당한다.
 
 function saveHealthLog() {
     const foodSlider = document.getElementById('food-amount-slider');

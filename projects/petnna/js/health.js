@@ -254,6 +254,65 @@ function updateTodayHealthDisplay() {
 
 }
 
+// ── 식사·음수 인라인 스테퍼 (2026-07-28 회의 결정) ──────────────────────────
+// 타일의 −/+ 로 오늘 섭취량을 바로 올리고 내린다. 저장 형식·경로는 모달과 완전히
+// 같다(healthLogs.today → saveHealthHistoryToday) — 여기서 다른 형식으로 쓰면
+// wellness-anomaly·주간리포트가 읽는 이력이 갈라진다(백호 지적).
+//
+// 상한은 모달 슬라이더와 동일(식사 500g / 음수 1000ml)하게 맞춘다.
+const INTAKE_MAX = { food: 500, water: 1000 };
+
+// 저장은 디바운스한다 — 연타할 때마다 saveState + Supabase 업로드가 나가면
+// 원격 동기화와 경합한다(나무 지적, 2026-07-25 sync 되감기 교훈).
+// 단 디바운스가 데이터를 삼키면 안 되므로, 화면을 떠날 때는 즉시 flush 한다.
+let _intakeSaveTimer = null;
+
+function _flushIntakeSave() {
+    if (!_intakeSaveTimer) return;
+    clearTimeout(_intakeSaveTimer);
+    _intakeSaveTimer = null;
+    if (typeof saveHealthHistoryToday === 'function') saveHealthHistoryToday();
+    else if (typeof saveState === 'function') saveState();
+    if (typeof renderWellnessCard === 'function') renderWellnessCard();
+    if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
+    if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
+}
+
+function adjustTodayIntake(field, delta) {
+    if (typeof healthLogs === 'undefined' || !healthLogs) return;
+    if (!(field in INTAKE_MAX)) return;
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    if (!healthLogs.today) healthLogs.today = { date: dateStr };
+
+    const cur = parseInt(healthLogs.today[field], 10) || 0;
+    const next = Math.max(0, Math.min(INTAKE_MAX[field], cur + delta));
+    if (next === cur) return;                      // 0에서 빼기·상한에서 더하기는 무시
+
+    healthLogs.today[field] = next;
+    healthLogs.today.date = dateStr;
+
+    updateTodayHealthDisplay();                    // 화면은 즉시
+    if (_intakeSaveTimer) clearTimeout(_intakeSaveTimer);
+    _intakeSaveTimer = setTimeout(() => {
+        _intakeSaveTimer = null;
+        if (typeof saveHealthHistoryToday === 'function') saveHealthHistoryToday();
+        else if (typeof saveState === 'function') saveState();
+        if (typeof renderWellnessCard === 'function') renderWellnessCard();
+        if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
+        if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
+        if (typeof showToast === 'function') showToast('오늘 기록 저장 완료! ✅');
+    }, 700);
+}
+
+// 탭을 숨기거나 페이지를 떠날 때 미저장분을 흘리지 않는다.
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') _flushIntakeSave();
+    });
+    window.addEventListener('pagehide', _flushIntakeSave);
+}
+
 // AI 사용 횟수 업데이트
 function updateAiUsageCount() {
     const usageEl = document.getElementById('ai-usage-count-health');

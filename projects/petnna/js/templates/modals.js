@@ -506,24 +506,13 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
         </h4>
         
         <div class="space-y-4 text-xs">
-            <!-- 배변 상태 기록 -->
-            <div class="bg-teal-50/30 p-3 rounded-2xl border border-teal-100/50">
-                <label class="block font-bold text-gray-600 mb-2">💩 오늘 우리 아이의 배변 상태는?</label>
-                <div class="grid grid-cols-4 gap-2">
-                    <button type="button" id="poop-type-null" onclick="selectPoopType('null')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-400 font-bold hover:bg-gray-50 flex flex-col items-center justify-center gap-1 transition-all">
-                        <span class="text-xl">🤷</span>없음
-                    </button>
-                    <button type="button" id="poop-type-normal" onclick="selectPoopType('normal')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
-                        <span class="text-xl">💩</span>건강한 변
-                    </button>
-                    <button type="button" id="poop-type-hard" onclick="selectPoopType('hard')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
-                        <span class="text-xl">🪨</span>딱딱한 변
-                    </button>
-                    <button type="button" id="poop-type-liquid" onclick="selectPoopType('liquid')" class="health-poop-btn py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-bold hover:bg-amber-50 flex flex-col items-center justify-center gap-1 transition-all">
-                        <span class="text-xl">💦</span>묽은 변
-                    </button>
-                </div>
-            </div>
+            <!-- 배변 4지선다는 제거(2026-07-28 회의 만장일치) — 건강 탭 '원탭 컨디션'이
+                 같은 healthLogs.today.poop에 같은 어휘(normal/hard/liquid)로 쓰고 있었고,
+                 여기 '없음'(selectPoopType('null') → poop=null)은 원탭의 같은 값 재탭 해제와
+                 결과가 동일했다. 즉 순수 중복이라 지워도 기록 능력이 줄지 않는다.
+                 (2026-07-26에 배변 '타일'만 지우고 이 모달은 손대지 않아 남아 있던 잔재.)
+                 poop 값 자체는 openHealthLogModal이 healthLogs.today를 통째로 복사하므로
+                 이 모달로 저장해도 보존된다. -->
 
             <!-- 식사량 기록 -->
             <div class="bg-teal-50/30 p-3 rounded-2xl border border-teal-100/50">
@@ -547,9 +536,10 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 <button onclick="saveHealthLog()" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
                     <i class="fa-solid fa-save"></i>건강 일지 안전하게 보관하기
                 </button>
-                <button onclick="generateWeeklyHealthData()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 rounded-2xl text-xs shadow-md transition-colors flex items-center justify-center gap-2 outline-none">
-                    <i class="fa-solid fa-dice"></i>일주일치 데이터 랜덤 생성
-                </button>
+                <!-- '일주일치 데이터 랜덤 생성' 버튼 제거(2026-07-28) — 건강 탭 헤더에
+                     같은 generateWeeklyHealthData() 버튼('데모 데이터')이 이미 있다
+                     (templates/health.js). 기록 모달 안에 데모 데이터 생성이 섞여 있으면
+                     실기록과 혼동되기도 한다. -->
             </div>
         </div>
     </div>

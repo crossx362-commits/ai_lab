@@ -312,8 +312,111 @@ def interactive_checks(page, port: int, env_name: str) -> list[dict]:
                 f"모바일에서 도달 불가한 탭: {', '.join(orphan)}",
                 "데스크톱 헤더엔 있으나 모바일 하단 네비에 없음 — 모바일 사용자는 진입 경로 없음"))
 
+    findings.extend(collapsible_reachability_checks(page, env_name))
     findings.extend(layout_waste_checks(page, env_name))
     findings.extend(duplication_checks(page, env_name))
+    return findings
+
+
+# 접이식(disclosure) 도달성 점검 — 2026-07-28 회의 결정 2의 병합 게이트.
+#
+# 카드가 길어질 때마다 "덜 쓰는 항목은 접자"는 결론이 반복되는데, 접기는 조용히
+# 기능을 없앨 수 있다: 패널만 숨기고 펼침 버튼을 빠뜨리면 그 입력은 렌더는 되지만
+# 사용자가 영영 도달할 수 없다(2026-07-25 설정 탭이 모바일에서 진입점 0이던 사고와
+# 같은 계열 — 그때도 "렌더된다"와 "갈 수 있다"를 구분하지 않아 QA를 통과했다).
+#
+# aria-expanded + aria-controls를 쓴 요소만 본다(WAI-ARIA disclosure 패턴).
+# 이 규약을 지키는 접이식이면 새로 만들어도 자동으로 이 점검을 받는다.
+# 클릭은 펼침/접힘 토글뿐이라 비파괴 원칙을 지킨다.
+def collapsible_reachability_checks(page, env_name: str) -> list[dict]:
+    findings = []
+    for tab in _TAB_SWEEP:
+        try:
+            page.evaluate(f"() => {{ if (typeof switchTab==='function') switchTab('{tab}'); }}")
+            page.wait_for_timeout(500)
+            items = page.evaluate(
+                "() => {"
+                "  const vis = e => !!(e && e.offsetParent !== null);"
+                "  const out = [];"
+                "  document.querySelectorAll('[aria-expanded][aria-controls]').forEach(t => {"
+                "    const panel = document.getElementById(t.getAttribute('aria-controls'));"
+                "    if (!panel) { out.push({toggleId: t.id||'', missingPanel: true}); return; }"
+                "    out.push({"
+                "      toggleId: t.id || '',"
+                "      label: (t.innerText||'').trim().replace(/\\s+/g,' ').slice(0,24),"
+                "      toggleVisible: vis(t),"
+                "      panelVisible: vis(panel),"
+                # 패널이 안 보이는 이유가 '접혀서'인지 '조상이 통째로 숨겨져서'인지 가른다.
+                # 다른 탭이 활성이거나 카드가 접혀 있으면 조상이 숨겨진 것이라 판정 대상이 아니다
+                # (이 구분 없이 짰다가 탭 8개 전부에서 같은 토글을 '도달 불가'로 오탐했다).
+                "      contextVisible: vis(panel.parentElement),"
+                "      panelId: panel.id,"
+                "      inputs: panel.querySelectorAll('button,input,select,textarea').length,"
+                "    });"
+                "  });"
+                "  return out;"
+                "}")
+        except Exception:
+            continue
+
+        for it in items or []:
+            where = it.get("toggleId") or it.get("label") or "(무명 토글)"
+            if it.get("missingPanel"):
+                findings.append(_finding(
+                    "P2", "기능", f"/index.html#{tab}", env_name,
+                    f"접이식 토글이 없는 패널을 가리킴: {where}",
+                    "aria-controls가 존재하지 않는 id를 가리킨다 — 눌러도 아무것도 안 펼쳐진다"))
+                continue
+            # 조상이 통째로 숨겨진 맥락(다른 탭·접힌 카드)이면 판정하지 않는다.
+            if not it.get("contextVisible"):
+                continue
+            # 보이는 맥락인데 패널이 접혀 있고 펼칠 버튼도 없으면 그 입력은 도달 불가다.
+            if not it.get("panelVisible") and not it.get("toggleVisible"):
+                findings.append(_finding(
+                    "P1", "기능", f"/index.html#{tab}", env_name,
+                    f"도달 불가 접이식: {where} → #{it.get('panelId')}",
+                    "패널이 접혀 있는데 펼침 버튼도 화면에 없다 — 그 안의 입력에 갈 방법이 없다"))
+                continue
+            if not it.get("toggleVisible"):
+                continue
+            # 실제로 눌러서 펼쳐지는지 + 펼친 뒤 입력 요소가 보이는지 확인한다.
+            try:
+                res = page.evaluate(
+                    "(id) => {"
+                    "  const vis = e => !!(e && e.offsetParent !== null);"
+                    "  const t = document.getElementById(id);"
+                    "  if (!t) return null;"
+                    "  const before = t.getAttribute('aria-controls');"
+                    "  const wasOpen = vis(document.getElementById(before));"
+                    "  t.click();"
+                    "  return { wasOpen, before };"
+                    "}", it.get("toggleId"))
+                if not res:
+                    continue
+                page.wait_for_timeout(250)
+                after = page.evaluate(
+                    "(pid) => {"
+                    "  const vis = e => !!(e && e.offsetParent !== null);"
+                    "  const p = document.getElementById(pid);"
+                    "  if (!p) return null;"
+                    "  const inputs = [...p.querySelectorAll('button,input,select,textarea')];"
+                    "  return { panelVisible: vis(p), visibleInputs: inputs.filter(vis).length };"
+                    "}", res["before"])
+            except Exception:
+                continue
+            if after is None:
+                continue
+            opened = after["panelVisible"] != res["wasOpen"]
+            if not opened:
+                findings.append(_finding(
+                    "P2", "기능", f"/index.html#{tab}", env_name,
+                    f"접이식 토글 무반응: {where}",
+                    "펼침 버튼을 눌러도 패널의 표시 상태가 바뀌지 않는다"))
+            elif after["panelVisible"] and after["visibleInputs"] == 0 and it.get("inputs", 0) > 0:
+                findings.append(_finding(
+                    "P2", "기능", f"/index.html#{tab}", env_name,
+                    f"펼쳤는데 입력이 안 보임: {where}",
+                    f"패널에 입력 요소가 {it.get('inputs')}개 있으나 펼친 뒤에도 하나도 보이지 않는다"))
     return findings
 
 

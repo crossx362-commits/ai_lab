@@ -54,6 +54,16 @@ def run(page, base_url):
 
     # ── 결정1: 원탭 기록 → 선택·저장 ──────────────────────────────
     page.click(_POOP_BTN)
+    # 배변 색은 2026-07-28 회의 결정으로 기본 접힘이 됐다(이상 있을 때만 보는 항목).
+    # 펼침 버튼을 먼저 눌러야 클릭할 수 있다 — 이 버튼이 사라지면 그 입력은
+    # 도달 불가가 되므로, 여기서 못 찾고 실패하는 것 자체가 도달성 회귀 신호다.
+    page.wait_for_selector("#condition-detail-toggle", state="visible", timeout=10000)
+    if not page.evaluate(
+        "() => { const p = document.getElementById('condition-detail-panel');"
+        "        return !!(p && p.offsetParent !== null); }"
+    ):
+        page.click("#condition-detail-toggle")
+        page.wait_for_selector(_COLOR_BTN, state="visible", timeout=10000)
     page.click(_COLOR_BTN)
 
     # 위젯 재렌더 후 두 버튼이 선택 상태로 그려져야 한다.

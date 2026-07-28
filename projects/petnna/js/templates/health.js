@@ -74,28 +74,57 @@ const HEALTH_TEMPLATE = `
                     <p class="text-xs text-gray-500">빠른 건강 체크</p>
                 </div>
             </div>
-            <button onclick="openHealthLogModal()" class="btn-modern bg-brand-500 hover:bg-brand-600 text-white px-4 py-2.5 text-sm">
-                <i class="fa-solid fa-plus mr-1.5"></i>기록
-            </button>
+            <!-- 헤더 [기록] 버튼 제거(2026-07-28 회의) — 아래 타일의 −/+ 로 바로 기록하고,
+                 정확한 수치는 값 자체를 눌러 모달로 넣는다. 이 버튼까지 있으면 같은 모달을
+                 여는 진입점이 한 카드 안에 셋이 된다. -->
         </div>
 
         <!-- 배변 타일은 제거(2026-07-26) — 아래 '원탭 컨디션'의 배변 칩과 같은 필드
              (healthLogs.today.poop)를 읽어 같은 값을 두 번 보여주고 있었다.
              수치 입력(섭취)은 여기, 상태 입력은 원탭으로 역할을 나눈다. -->
+        <!-- 식사·음수 인라인 스테퍼(2026-07-28 회의) — 값 표시만 하던 타일이 입력을 겸한다.
+             −/+ 는 값 양옆에 두어 카드 높이는 그대로다. 정확한 수치는 값을 눌러 모달로.
+             (모달은 마이펫 아이콘 바·오늘의 퀘스트·주간 챌린지도 부르므로 존치한다 —
+             회의는 건강 탭만 보고 '모달 폐기'를 논했으나 실제 호출부가 3곳 더 있었다.)
+             375px에서는 슬라이더보다 −/+ 가 오조작이 적다는 게 회의 다수 의견. -->
         <div class="grid grid-cols-2 gap-3">
             <!-- 식사량 -->
-            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center group hover:scale-105 transition-transform">
-                <div class="text-4xl mb-2">🍖</div>
-                <div id="health-today-food" class="text-2xl font-bold text-amber-600 mb-1">--g</div>
+            <div class="card-modern bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center">
+                <div class="text-3xl mb-1">🍖</div>
+                <div class="flex items-center justify-center gap-1.5 mb-1">
+                    <button type="button" id="food-step-minus" onclick="adjustTodayIntake('food', -10)"
+                        aria-label="식사량 10g 줄이기"
+                        class="w-8 h-8 shrink-0 rounded-full bg-white/80 border border-amber-200 text-amber-600 font-black
+                               hover:bg-white active:scale-95 transition-all outline-none">−</button>
+                    <button type="button" id="health-today-food" onclick="openHealthLogModal()"
+                        aria-label="식사량 정확히 입력"
+                        class="text-2xl font-bold text-amber-600 px-1 rounded hover:bg-white/70 transition-colors outline-none">--g</button>
+                    <button type="button" id="food-step-plus" onclick="adjustTodayIntake('food', 10)"
+                        aria-label="식사량 10g 늘리기"
+                        class="w-8 h-8 shrink-0 rounded-full bg-white/80 border border-amber-200 text-amber-600 font-black
+                               hover:bg-white active:scale-95 transition-all outline-none">+</button>
+                </div>
                 <div class="text-xs text-gray-600 font-semibold">식사량</div>
-            </button>
+            </div>
 
             <!-- 음수량 -->
-            <button onclick="openHealthLogModal()" class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-center group hover:scale-105 transition-transform">
-                <div class="text-4xl mb-2">💧</div>
-                <div id="health-today-water" class="text-2xl font-bold text-sky-600 mb-1">--ml</div>
+            <div class="card-modern bg-gradient-to-br from-sky-50 to-blue-50 p-4 text-center">
+                <div class="text-3xl mb-1">💧</div>
+                <div class="flex items-center justify-center gap-1.5 mb-1">
+                    <button type="button" id="water-step-minus" onclick="adjustTodayIntake('water', -50)"
+                        aria-label="음수량 50ml 줄이기"
+                        class="w-8 h-8 shrink-0 rounded-full bg-white/80 border border-sky-200 text-sky-600 font-black
+                               hover:bg-white active:scale-95 transition-all outline-none">−</button>
+                    <button type="button" id="health-today-water" onclick="openHealthLogModal()"
+                        aria-label="음수량 정확히 입력"
+                        class="text-2xl font-bold text-sky-600 px-1 rounded hover:bg-white/70 transition-colors outline-none">--ml</button>
+                    <button type="button" id="water-step-plus" onclick="adjustTodayIntake('water', 50)"
+                        aria-label="음수량 50ml 늘리기"
+                        class="w-8 h-8 shrink-0 rounded-full bg-white/80 border border-sky-200 text-sky-600 font-black
+                               hover:bg-white active:scale-95 transition-all outline-none">+</button>
+                </div>
                 <div class="text-xs text-gray-600 font-semibold">음수량</div>
-            </button>
+            </div>
 
         </div>
 
