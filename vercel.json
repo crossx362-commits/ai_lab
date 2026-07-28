@@ -1,7 +1,8 @@
 {
+  "_comment_active_config": "Vercel이 실제로 읽는 설정은 저장소 루트의 이 파일이다. projects/petnna/vercel.json도 존재하지만 그건 쓰이지 않는다 — 2026-07-26에 ignoreCommand로 인한 배포 스킵 사고를 고칠 때 그 쓰이지 않는 쪽만 고쳤고, 여기 남은 ignoreCommand 때문에 2026-07-28에 같은 사고가 그대로 재발했다(에이전트 코드만 담긴 커밋이 푸시 끝에 실리자 같은 푸시의 펫나 변경까지 배포가 통째로 스킵). 배포 설정을 고칠 땐 반드시 이 파일인지 확인할 것.",
+  "_comment_ignoreCommand": "제거됨(2026-07-26 1차 판단, 2026-07-28 이 파일에 실제 적용). 'git diff --quiet HEAD^ HEAD -- projects/petnna ...'는 마지막 커밋 하나(HEAD^..HEAD)만 본다. 푸시의 끝 커밋이 펫나 밖(문서·에이전트)만 건드리면 같은 푸시에 실린 펫나 코드까지 배포가 스킵된다. 이 유형은 자동 검증을 전부 빠져나간다 — 코드·E2E·QA 순찰이 모두 로컬을 보므로 전부 통과하는데 사용자만 옛 화면을 본다. 정적 사이트라 빌드 비용이 미미하니 항상 배포하는 쪽이 안전하다.",
   "buildCommand": "cd projects/petnna && npm run build || true",
   "outputDirectory": "projects/petnna",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- projects/petnna api vercel.json ':!*.md' ':!docs/'",
   "crons": [
     {
       "path": "/api/cleanup-projects",
