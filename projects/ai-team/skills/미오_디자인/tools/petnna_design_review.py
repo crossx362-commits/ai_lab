@@ -63,6 +63,27 @@ class _SilentHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+# 로그인 우회 + 더미 펫 주입 (봄이 interactive_checks와 같은 방식).
+#
+# 2026-07-28 발견: 이 함수는 원래 로그인 우회 없이 index.html만 열어서 **로그인 화면만**
+# 찍고 있었다. 앱 전체의 UX를 보는 게 미오의 일인데 9개 탭 중 1개(그것도 로그인 폼)만
+# 본 채 몇 달을 돌았고, 그 결과 백로그 보류 53건이 전부 비밀번호 토글·placeholder 대비·
+# 약관 문구 정렬 같은 로그인 화면 미세조정으로 채워졌다(같은 제안이 날마다 재생산됐다 —
+# 매번 똑같은 화면을 처음 보듯 리뷰했으니 당연하다).
+# 산출물이 '있다'와 '봐야 할 걸 봤다'는 다르다 — 신선도 감사는 전자만 본다.
+_MIO_PET = {
+    "id": 970750, "name": "디자인", "breed": "믹스", "type": "dog",
+    "imageUrl": "", "age": "3살", "weight": "6.4", "gender": "남아",
+    "personality": "온순", "hunger": 70, "happy": 80,
+}
+
+# 찍을 화면. 로그인 화면도 1장은 남긴다(첫인상이라 리뷰 가치가 있다).
+# 나머지는 사용자가 실제로 오래 머무는 탭들 — 탭마다 2뷰포트를 다 찍으면 장수가
+# 폭증해 LLM 프롬프트가 감당을 못 하므로, 데스크톱은 전 탭·모바일은 핵심 3탭만 찍는다.
+_MIO_TABS = ["mypet", "health", "walk", "social", "settings"]
+_MIO_MOBILE_TABS = ["mypet", "health", "walk"]
+
+
 def take_screenshots() -> list[Path]:
     from playwright.sync_api import sync_playwright
 
@@ -76,13 +97,44 @@ def take_screenshots() -> list[Path]:
         with sync_playwright() as p:
             browser = p.chromium.launch()
             for label, (w, h) in {"desktop": (1440, 900), "mobile": (390, 844)}.items():
+                # ① 로그인 화면 — 우회 없이 한 장
                 ctx = browser.new_context(viewport={"width": w, "height": h})
                 page = ctx.new_page()
                 page.goto(f"http://127.0.0.1:{PORT}/index.html", wait_until="load", timeout=30000)
                 page.wait_for_timeout(2500)
-                path = OUT_DIR / "shots" / f"{stamp}_{label}.png"
+                path = OUT_DIR / "shots" / f"{stamp}_{label}_login.png"
                 page.screenshot(path=str(path), full_page=True)
                 shots.append(path)
+                ctx.close()
+
+                # ② 로그인 후 각 탭
+                ctx = browser.new_context(viewport={"width": w, "height": h})
+                page = ctx.new_page()
+                page.add_init_script(
+                    "localStorage.setItem('petna_is_logged_in','true');"
+                    "localStorage.setItem('petna_user_email','mio_design@petna.co.kr');"
+                    # 주입한 펫이 원격 동기화로 덮이지 않게(2026-07-25 교훈) — 실 DB도 건드리지 않는다
+                    "localStorage.setItem('petna_demo_mode','1');"
+                    "localStorage.setItem('petna_pets', %s);" % json.dumps(json.dumps([_MIO_PET]))
+                )
+                try:
+                    page.goto(f"http://127.0.0.1:{PORT}/index.html", wait_until="load", timeout=30000)
+                    page.wait_for_timeout(3000)
+                    tabs = _MIO_TABS if label == "desktop" else _MIO_MOBILE_TABS
+                    for tab in tabs:
+                        try:
+                            page.evaluate(
+                                "(t) => { if (typeof switchTab === 'function') switchTab(t); }", tab)
+                            page.wait_for_timeout(1200)
+                            path = OUT_DIR / "shots" / f"{stamp}_{label}_{tab}.png"
+                            page.screenshot(path=str(path), full_page=True)
+                            shots.append(path)
+                        except Exception as e:
+                            print(f"[미오] {label}/{tab} 스크린샷 실패(건너뜀): {str(e)[:100]}")
+                except Exception as e:
+                    # 로그인 후 화면을 못 찍어도 로그인 화면 리뷰는 계속한다 —
+                    # 다만 조용히 넘어가면 또 '로그인 화면만 보는' 상태로 퇴화하므로 남긴다.
+                    print(f"[미오] 로그인 후 화면 촬영 실패: {str(e)[:150]}")
                 ctx.close()
             browser.close()
     finally:
@@ -178,6 +230,18 @@ def _close_tasks(task_ids: list[str]) -> None:
 def review(do_send: bool) -> None:
     print(f"[{datetime.now()}] 🎨 미오 디자인 리뷰 시작")
     shots = take_screenshots()
+    # 카나리아: 로그인 화면만 찍혔는지 확인한다. 2026-07-28까지 이 함수는 로그인 우회가
+    # 없어 몇 달간 로그인 폼 1장만 리뷰했고, 그 결과 백로그 보류 53건이 전부 로그인 화면
+    # 미세조정으로 채워졌다. 신선도 감사는 '산출물이 갱신됐나'만 보므로 이런 퇴화를
+    # 영원히 못 잡는다 — 봐야 할 걸 봤는지는 여기서 직접 확인한다.
+    if not any(t in s.name for s in shots for t in _MIO_TABS):
+        msg = ("🎨 미오 경고: 로그인 후 화면을 한 장도 못 찍었다 — 리뷰가 로그인 폼에만 갇힌다. "
+               "take_screenshots의 로그인 우회(petna_is_logged_in/petna_pets 주입)를 확인하라.")
+        print(msg)
+        try:
+            send(msg)
+        except Exception:
+            pass
     assigned = _assigned_tasks()
     design_md = PETNNA_ROOT / "DESIGN.md"
     ref = (f"디자인 기준 문서 {design_md} 를 Read로 읽고 그 기준으로 평가하라."
