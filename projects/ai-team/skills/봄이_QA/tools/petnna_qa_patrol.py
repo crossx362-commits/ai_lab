@@ -336,8 +336,26 @@ def collapsible_reachability_checks(page, env_name: str) -> list[dict]:
             page.wait_for_timeout(500)
             items = page.evaluate(
                 "() => {"
-                "  const vis = e => !!(e && e.offsetParent !== null);"
+                # offsetParent는 닫힌 <details> 콘텐츠를 못 가려낸다 — Chrome은 그걸
+                # content-visibility로 숨기고 레이아웃 트리에는 남겨둔다(2026-07-28 실측).
+                # checkVisibility()가 정확하고, 없는 브라우저에서만 offsetParent로 폴백한다.
+                "  const vis = e => !e ? false :"
+                "    (typeof e.checkVisibility === 'function' ? e.checkVisibility() : e.offsetParent !== null);"
                 "  const out = [];"
+                # 네이티브 <details>도 같은 규칙으로 본다 — summary가 항상 보이는 펼침
+                # 버튼이고, 열림 상태는 open 속성이다. aria 규약을 안 쓰는 접이식이
+                # 점검에서 통째로 빠지지 않게 한다.
+                "  document.querySelectorAll('details').forEach(d => {"
+                "    const s = d.querySelector(':scope > summary');"
+                "    if (!s) return;"
+                "    out.push({"
+                "      toggleId: s.id || '', native: true,"
+                "      label: (s.innerText||'').trim().replace(/\\s+/g,' ').slice(0,24),"
+                "      toggleVisible: vis(s), panelVisible: !!d.open,"
+                "      contextVisible: vis(d), panelId: d.id || '(details)',"
+                "      inputs: d.querySelectorAll('button,input,select,textarea').length - 0,"
+                "    });"
+                "  });"
                 "  document.querySelectorAll('[aria-expanded][aria-controls]').forEach(t => {"
                 "    const panel = document.getElementById(t.getAttribute('aria-controls'));"
                 "    if (!panel) { out.push({toggleId: t.id||'', missingPanel: true}); return; }"
