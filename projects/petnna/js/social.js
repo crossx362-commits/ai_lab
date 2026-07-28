@@ -701,7 +701,7 @@ function renderFeed() {
                         ${repliesHtml}
                         <div id="reply-form-${post.id}-${ci}" class="hidden ml-4 mt-1">
                             <div class="flex items-center gap-1.5">
-                                <input type="text" id="reply-input-${post.id}-${ci}" placeholder="답글을 입력하세요..." class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 focus:bg-white bg-[#F7F4F0]" onkeydown="if(event.key==='Enter') submitFeedReply(${post.id}, ${ci})">
+                                <input type="text" id="reply-input-${post.id}-${ci}" aria-label="답글 입력" placeholder="답글을 입력하세요..." class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 focus:bg-white bg-[#F7F4F0]" onkeydown="if(event.key==='Enter') submitFeedReply(${post.id}, ${ci})">
                                 <button onclick="submitFeedReply(${post.id}, ${ci})" class="bg-brand-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0">등록</button>
                             </div>
                         </div>
@@ -717,7 +717,7 @@ function renderFeed() {
 
         let commentForm = `
             <div class="flex items-center space-x-2">
-                <input type="text" id="comment-input-${post.id}" placeholder="${post.lostReport ? '🔎 목격 정보를 제보해 주세요...' : '사랑스런 댓글을 달아 소통하세요...'}" class="flex-grow border border-gray-200 rounded-xl px-3 py-2 text-[11px] outline-none focus:border-brand-500 focus:bg-white bg-[#F7F4F0]" onkeydown="if(event.key === 'Enter') submitFeedComment(${post.id})">
+                <input type="text" id="comment-input-${post.id}" aria-label="${post.lostReport ? '목격 정보 제보 입력' : '댓글 입력'}" placeholder="${post.lostReport ? '🔎 목격 정보를 제보해 주세요...' : '사랑스런 댓글을 달아 소통하세요...'}" class="flex-grow border border-gray-200 rounded-xl px-3 py-2 text-[11px] outline-none focus:border-brand-500 focus:bg-white bg-[#F7F4F0]" onkeydown="if(event.key === 'Enter') submitFeedComment(${post.id})">
                 <button onclick="submitFeedComment(${post.id})" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[10px] py-2 px-3.5 rounded-xl transition-colors shrink-0">
                     등록
                 </button>
@@ -1984,7 +1984,7 @@ function renderLikeNotifications() {
         if (isReplying) {
             replyFormHtml = `
                 <div class="mt-2.5 ml-10 p-2 bg-gray-50 border border-gray-100 rounded-xl flex gap-1.5 items-center shadow-inner">
-                    <input type="text" id="neighbor-reply-input-${n.id}" placeholder="${n.type === 'comment' ? '감사의 답장 메시지를 입력하세요...' : '감사의 반사 메시지를 입력하세요...'}" class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 bg-white" onkeydown="if(event.key==='Enter') submitNeighborReply(${n.id})">
+                    <input type="text" id="neighbor-reply-input-${n.id}" aria-label="감사 답장 입력" placeholder="${n.type === 'comment' ? '감사의 답장 메시지를 입력하세요...' : '감사의 반사 메시지를 입력하세요...'}" class="flex-grow border border-gray-200 rounded-lg px-2 py-1 text-[10px] outline-none focus:border-brand-500 bg-white" onkeydown="if(event.key==='Enter') submitNeighborReply(${n.id})">
                     <button onclick="submitNeighborReply(${n.id})" class="bg-brand-500 hover:bg-brand-600 text-white font-bold text-[9px] py-1.5 px-2.5 rounded-lg transition-colors shrink-0">
                         전송 💬
                     </button>
