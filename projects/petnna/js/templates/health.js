@@ -514,7 +514,7 @@ const HEALTH_TEMPLATE = `
                     </div>
                 </div>
                 <button onclick="generateHealthReportPDF()"
-                    class="btn-modern bg-brand-500 hover:bg-brand-600 text-white px-3 py-2 text-xs">
+                    class="btn-modern bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-100 px-3 py-2 text-xs">
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF
                 </button>
             </div>
