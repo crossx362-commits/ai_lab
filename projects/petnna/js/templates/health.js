@@ -78,7 +78,7 @@ const HEALTH_TEMPLATE = `
             <div class="flex items-center gap-3">
                 <div class="text-3xl">📋</div>
                 <div>
-                    <h2 class="text-base font-bold text-gray-900">오늘의 기록</h2>
+                    <h2 class="text-base font-semibold text-gray-900">오늘의 기록</h2>
                     <p class="text-xs text-gray-500">빠른 건강 체크</p>
                 </div>
             </div>
@@ -204,7 +204,7 @@ const HEALTH_TEMPLATE = `
     <div id="health-passport-group" class="card-modern card-merge overflow-hidden">
     <div class="overflow-hidden">
         <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
-            <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <i class="fa-solid fa-notes-medical text-brand-500"></i>건강수첩
             </h2>
             <div class="flex items-center gap-1.5">
@@ -234,7 +234,7 @@ const HEALTH_TEMPLATE = `
             <div class="flex items-center gap-2">
                 <span class="text-3xl">🍖</span>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900">영양 관리</h3>
+                    <h3 class="text-base font-semibold text-gray-900">영양 관리</h3>
                     <p class="text-[10px] text-gray-500">식사 · 시간 · 음수</p>
                 </div>
             </div>
@@ -334,7 +334,7 @@ const HEALTH_TEMPLATE = `
         <div class="flex items-center gap-3">
             <div class="text-3xl">🤖</div>
             <div>
-                <h3 class="text-base font-bold text-gray-900">AI 기능</h3>
+                <h3 class="text-base font-semibold text-gray-900">AI 기능</h3>
                 <p class="text-xs text-gray-500">사진·채팅·음성으로 빠른 건강 체크</p>
             </div>
         </div>
@@ -532,7 +532,7 @@ const HEALTH_TEMPLATE = `
                 <div class="flex items-center gap-2">
                     <span class="text-3xl">📊</span>
                     <div>
-                        <h3 class="text-base font-bold text-gray-900">월간 리포트</h3>
+                        <h3 class="text-base font-semibold text-gray-900">월간 리포트</h3>
                         <p class="text-[10px] text-gray-500">이번 달 요약</p>
                     </div>
                 </div>
