@@ -63,9 +63,17 @@ const HEALTH_TEMPLATE = `
     <!-- 왼쪽 컬럼 (메인 콘텐츠) -->
     <div class="lg:col-span-8 space-y-4">
 
+    <!-- 섹션 헤더로 좌측 카드들을 3개 논리 그룹(오늘 기록/건강 관리/AI 상담·도구)으로
+         묶어 시각 위계 부여(미오 P1, 2026-07-29). 케어 위젯 소제목과 동일 스타일. -->
+    <div class="flex items-center gap-2 px-1">
+        <span class="text-base">📋</span>
+        <span class="text-[11px] font-black text-gray-400 tracking-wide">오늘 기록</span>
+    </div>
+
     <!-- 📋 오늘의 기록 & 트렌드 — 같은 식사·음수·배변 데이터의 입력(오늘)과 조회(7일·90일)라
-         별도 카드 2장이던 것을 한 카드로 병합(2026-07-19) -->
-    <div class="card-modern p-5">
+         별도 카드 2장이던 것을 한 카드로 병합(2026-07-19). 이 섹션의 핵심 카드라
+         그림자를 강조(shadow-soft-lg)해 아래 보조 카드와 위계를 준다. -->
+    <div class="card-modern shadow-soft-lg p-5">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
                 <div class="text-3xl">📋</div>
@@ -180,6 +188,12 @@ const HEALTH_TEMPLATE = `
 
     </div>
 
+
+    <!-- 섹션: 건강 관리 (팁·건강수첩·비용) -->
+    <div class="flex items-center gap-2 px-1 pt-2">
+        <span class="text-base">🗂️</span>
+        <span class="text-[11px] font-black text-gray-400 tracking-wide">건강 관리 · 목표</span>
+    </div>
 
     <div id="daily-care-tip-widget"></div>
 
@@ -304,6 +318,12 @@ const HEALTH_TEMPLATE = `
 
         <!-- 🏥 병원비 제보·비교 보드 (케어위젯 비용 그룹에서 이동 — 건강수첩과 짝, 2026-07-21) -->
         <div id="vet-cost-board-widget"></div>
+    </div>
+
+    <!-- 섹션: AI 상담·도구 -->
+    <div class="flex items-center gap-2 px-1 pt-2">
+        <span class="text-base">🤖</span>
+        <span class="text-[11px] font-black text-gray-400 tracking-wide">AI 상담 · 도구</span>
     </div>
 
     <!-- 🤖 AI 기능 — 흩어진 카드 4장 + 안내 카드를 한 카드 안 타일로 병합(2026-07-19) -->
