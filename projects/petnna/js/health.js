@@ -335,7 +335,30 @@ function renderHealthTrendChartMain() {
 
     if (window.healthTrendChartMain) {
         window.healthTrendChartMain.destroy();
+        window.healthTrendChartMain = null;
     }
+
+    // 데이터가 하나도 없으면 빈 그래프 대신 empty-state 안내를 보여준다.
+    const container = canvas.parentElement;
+    const hasData = data.some(d => d.food > 0 || d.water > 0);
+    const emptyEl = container ? container.querySelector('.health-trend-empty') : null;
+
+    if (!hasData) {
+        canvas.style.display = 'none';
+        if (container && !emptyEl) {
+            const empty = document.createElement('div');
+            empty.className = 'health-trend-empty flex flex-col items-center justify-center text-center h-full py-6';
+            empty.innerHTML = `
+                <span class="text-4xl mb-2">📊</span>
+                <p class="text-sm font-bold text-gray-500">아직 표시할 데이터가 없어요</p>
+                <p class="text-xs text-gray-400 mt-1">건강 기록을 남기면 7일 트렌드가 그려집니다</p>`;
+            container.appendChild(empty);
+        }
+        return;
+    }
+
+    canvas.style.display = '';
+    if (emptyEl) emptyEl.remove();
 
     window.healthTrendChartMain = new Chart(ctx, {
         type: 'line',
