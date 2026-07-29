@@ -205,21 +205,21 @@ const SETTINGS_TEMPLATE = `
                      부르는 곳이 한 군데도 없어 사용자가 다시 볼 방법이 없었다
                      (2026-07-26 2차 회의). skipOnboarding이 약속한 진입점 복원. -->
                 <button onclick="restartOnboarding()"
-                    class="w-full bg-brand-50 hover:bg-brand-100 text-brand-800 border border-brand-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                    class="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 border-l-4 border-l-brand-400 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
                     <span>🧭 앱 사용법 다시 보기</span>
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
 
                 <!-- 풍요로운 데모 데이터 셋업 -->
                 <button onclick="resetToRichDemoData()"
-                    class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                    class="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 border-l-4 border-l-brand-400 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
                     <span>🪄 일주일 데모 데이터 주입</span>
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
 
                 <!-- JSON 내보내기 -->
                 <button onclick="exportAllDataAsJSON()"
-                    class="w-full bg-amber-50 hover:bg-amber-100 text-brand-800 border border-amber-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                    class="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 border-l-4 border-l-brand-400 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
                     <span>💾 데이터 전체 내보내기 (JSON)</span>
                     <i class="fa-solid fa-file-export"></i>
                 </button>
@@ -229,7 +229,7 @@ const SETTINGS_TEMPLATE = `
                     <input type="file" id="import-json-file" onchange="importDataFromJSON(event)"
                         accept=".json" class="absolute inset-0 opacity-0 cursor-pointer">
                     <div
-                        class="w-full bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
+                        class="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 border-l-4 border-l-brand-400 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between">
                         <span>📂 백업 파일 불러오기 (JSON)</span>
                         <i class="fa-solid fa-file-import"></i>
                     </div>
