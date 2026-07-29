@@ -51,11 +51,59 @@ def _roster_text() -> str:
     return "\n".join(lines)
 
 
+def _recent_context() -> str:
+    """계획 직전의 '방금 무슨 일이 있었나'를 몇 줄로 요약한다.
+
+    오너 지시는 짧다 — "검토해", "알아서 체크해", "계속". 이걸 푸는 건 오너가 아니라
+    CEO의 일인데, 예전 프롬프트엔 로스터와 원문만 들어가 **맥락 의존 지시를 풀 수가
+    없었다**(2026-07-28 실측: "검토해"가 항상 '전 도메인 훑기'로만 분해됐다. 방금 끝낸
+    작업을 검토하라는 뜻이어도 그걸 알 방법이 없었다).
+    비용을 낮추려 짧게 유지한다 — 실패해도 계획은 계속 진행되도록 전부 예외를 삼킨다.
+    """
+    import subprocess
+    lines = []
+    try:
+        r = subprocess.run(["git", "log", "--oneline", "-5"], cwd=str(PROJECT_ROOT),
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=10)
+        if r.returncode == 0 and r.stdout.strip():
+            lines.append("최근 커밋:\n"
+                         + "\n".join("  " + ln for ln in r.stdout.strip().splitlines()[:5]))
+    except Exception:
+        pass
+    try:
+        import json as _json
+        bl = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
+        data = _json.loads(bl.read_text(encoding="utf-8"))
+        items = data if isinstance(data, list) else data.get("items", [])
+        cnt = {}
+        for it in items:
+            cnt[it.get("status")] = cnt.get(it.get("status"), 0) + 1
+        waiting = [str(i.get("title", ""))[:40] for i in items if i.get("status") == "대기"][:3]
+        lines.append(f"백로그: {cnt} / 대기 상위: {', '.join(waiting) or '없음'}")
+    except Exception:
+        pass
+    try:
+        qa = PROJECT_ROOT / "output" / "qa" / "petnna"
+        reports = sorted(qa.glob("report_*.md"), reverse=True)
+        if reports:
+            head = reports[0].read_text(encoding="utf-8").splitlines()
+            hit = next((ln for ln in head if "문제:" in ln), "")
+            lines.append(f"최근 QA({reports[0].name}): {hit.strip('- ')}")
+    except Exception:
+        pass
+    return "\n".join(lines)
+
+
 def _plan_prompt(message: str) -> str:
+    ctx = _recent_context()
     return (
         "당신은 CEO 예원입니다. 아래 활성 에이전트가 있습니다:\n"
         f"{_roster_text()}\n\n"
-        f'지시: "{message}"\n\n'
+        + (f"[방금까지의 상황 — 지시가 짧으면 이걸로 대상을 좁히세요]\n{ctx}\n\n" if ctx else "")
+        + f'지시: "{message}"\n\n'
+        "지시가 짧고 목적어가 없으면(예: \"검토해\", \"계속\") 위 상황에서 **가장 최근에 손댄 것**을 "
+        "대상으로 삼으세요. 오너에게 되묻지 말고 CEO가 판단합니다.\n"
         "지시를 에이전트 작업들로 분해하세요. 한 에이전트로 충분하면 1개 step만.\n"
         "기존 에이전트 누구도 맡기 어려운 작업이면 agent를 \"new\"로 두고 "
         "new_role(한 줄 역할)·new_keywords(키워드 배열)를 채워 신규 에이전트를 만들게 하세요.\n"
@@ -100,7 +148,10 @@ def _parse_plan(raw: str | None, valid: set[str]) -> list[dict] | None:
 def _make_plan(message: str) -> list[dict]:
     valid = set(active_agents().keys())
     if llm_available():
-        raw = llm_text(_plan_prompt(message), json_mode=True, max_tokens=400,
+        # max_tokens는 1500↑ — 400이면 finish=length로 JSON이 잘려 구독 클로드·GPT가
+        # 둘 다 'invalid json'으로 탈락하고 로컬 모델로 조용히 강등된다(CLAUDE.md 가드레일,
+        # 2026-07-28 실측으로 실제 강등 확인: 오너 지시 계획을 gemma가 짜고 있었다).
+        raw = llm_text(_plan_prompt(message), json_mode=True, max_tokens=1600,
                        temperature=0.3, lm_first=False)
         plan = _parse_plan(raw, valid)
         if plan:

@@ -75,9 +75,29 @@ def _pick_ollama(models: list[str], task: str) -> str | None:
 
 
 def _json_ok(s: str) -> bool:
-    """관대한 JSON 판정 — 코드펜스/서문 허용(호출부와 동일한 find-슬라이스 방식)."""
+    """관대한 JSON 판정 — 코드펜스/서문 허용. 객체({...})와 배열([...]) 둘 다 본다.
+
+    2026-07-28 버그: 예전엔 `{`…`}` 구간만 잘라 검사해서, 원소가 2개 이상인 **배열**
+    응답(`[{...},{...}]`)이 항상 탈락했다. 첫 `{`부터 마지막 `}`까지를 자르면
+    `{...},{...}` 라는 JSON이 아닌 문자열이 나오기 때문이다(원소가 1개일 때만 우연히
+    통과했다). 예원 오케스트레이터의 계획은 **정의상 배열**이라, 2단계 이상 계획이면
+    구독 클로드·GPT가 매번 'invalid json'으로 버려지고 로컬 모델로 조용히 강등됐다.
+    """
+    # 여는 괄호는 '먼저 나온 것' 하나만 인정한다. 둘 다 시도하면 잘린 배열
+    # (`[{"a":1},` — max_tokens 초과로 끊긴 응답)이 그 안의 온전한 객체 하나 때문에
+    # 통과해, 절단 응답을 정상으로 받아들이는 원래 문제로 되돌아간다.
+    cands = [(c, i) for c, i in (("{", s.find("{")), ("[", s.find("["))) if i != -1]
+    if cands:
+        open_ch, i = min(cands, key=lambda t: t[1])
+        j = s.rfind("}" if open_ch == "{" else "]")
+        if j > i:
+            try:
+                json.loads(s[i:j + 1])
+                return True
+            except Exception:
+                pass
     try:
-        json.loads(s[s.find("{"):s.rfind("}") + 1])
+        json.loads(s.strip())
         return True
     except Exception:
         return False
