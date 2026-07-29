@@ -211,6 +211,9 @@ const HEALTH_TEMPLATE = `
                 <button onclick="PetPassport.open()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
                     <i class="fa-solid fa-id-card mr-1"></i>응급·여행 프로필
                 </button>
+                <button onclick="shareVetVisitCard()" class="text-xs font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-100 px-3 py-1.5 rounded-full transition-all">
+                    <i class="fa-solid fa-hospital mr-1"></i>병원 준비 카드
+                </button>
                 <button onclick="exportMedicalRecordsPDF()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF 내보내기
                 </button>

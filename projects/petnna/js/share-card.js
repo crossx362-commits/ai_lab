@@ -154,6 +154,135 @@ async function shareHealthCard() {
         `🐾 AI가 분석한 ${pet?.name || '우리 펫'}의 건강점수 확인해요! #펫과나 #AI건강분석`);
 }
 
+// ─── 병원 방문 준비 카드 (세로 4:5 = 1080×1350) ───────────────────
+// 최근 증상·체중 변화·투약 이력·질문 리스트를 자동 취합해 진료실에서 바로
+// 보여줄 수 있는 공유 카드. 기존 카드와 동일한 캔버스 렌더링 패턴 재사용.
+function _collectVetVisitData() {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    const history = (typeof healthLogs !== 'undefined' && healthLogs && Array.isArray(healthLogs.history)) ? healthLogs.history : [];
+    const weightHistory = typeof getWeightHistory === 'function' ? getWeightHistory() : (pet?.weightHistory || []);
+
+    // 최근 증상 — 웰니스 이상감지 결과를 그대로 취합(순수 함수, 외부 API 불필요)
+    const symptoms = [];
+    try {
+        if (typeof analyzeStoolColor === 'function') { const r = analyzeStoolColor(history); if (r) symptoms.push(`${r.emoji} ${r.label}`); }
+        if (typeof analyzeUrine === 'function') { const r = analyzeUrine(history); if (r) symptoms.push(`${r.emoji} ${r.label}`); }
+        if (typeof analyzeStool === 'function') { const r = analyzeStool(history); if (r) symptoms.push(`${r.emoji} ${r.label} (${r.days}일 연속)`); }
+        if (typeof analyzeCondition === 'function') { (analyzeCondition(history) || []).forEach(r => symptoms.push(`${r.emoji} ${r.label} (${r.days}일 연속)`)); }
+        if (typeof analyzeWellness === 'function') { (analyzeWellness(history) || []).forEach(r => symptoms.push(`${r.emoji} ${r.label} ${r.direction === 'up' ? '급증' : '급감'} (${r.pct > 0 ? '+' : ''}${r.pct}%)`)); }
+    } catch (e) { /* 분석 함수 미로드 — 증상 없음으로 처리 */ }
+
+    // 체중 변화 — 최신값과 직전 대비 증감
+    const wRows = (weightHistory || [])
+        .filter(d => d && typeof d.weight === 'number' && d.weight > 0)
+        .slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    let weightLine = null;
+    if (wRows.length) {
+        weightLine = `현재 ${wRows[0].weight}kg`;
+        if (wRows.length > 1) {
+            const diff = Math.round((wRows[0].weight - wRows[1].weight) * 10) / 10;
+            const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '=';
+            weightLine += `  (직전 ${wRows[1].weight}kg 대비 ${arrow}${Math.abs(diff)}kg)`;
+        }
+    } else if (pet?.weight) {
+        weightLine = `현재 ${pet.weight}kg`;
+    }
+
+    // 투약 이력 — 건강수첩의 투약/처방 기록 최근 3건
+    const records = typeof getMedicalRecordsForActivePet === 'function' ? getMedicalRecordsForActivePet() : [];
+    const meds = records.filter(r => r.category === 'medication').slice(0, 3)
+        .map(r => `${r.visitDate || ''} ${r.diagnosis || r.hospital || '투약'}`.trim());
+
+    // 질문 리스트 — 취합 결과에 따라 자동 제안(결정론적)
+    const questions = [];
+    if (symptoms.length) questions.push('최근 증상 관련 추가 검사가 필요할까요?');
+    if (weightLine && /[▲▼]/.test(weightLine)) questions.push('체중 변화의 원인은 무엇일까요?');
+    if (meds.length) questions.push('현재 투약을 계속해도 될까요? 부작용은?');
+    questions.push('다음 정기검진·예방접종은 언제인가요?');
+    if (questions.length < 3) questions.push('평소 식단·생활에서 주의할 점이 있나요?');
+
+    return { pet, symptoms, weightLine, meds, questions: questions.slice(0, 4) };
+}
+
+// 흰 카드 위에 제목 + 불릿 라인을 그리고 다음 섹션 y를 반환
+function _vetSection(ctx, title, lines, x, y, w) {
+    const pad = 28, titleH = 46, lineH = 44;
+    const rows = lines.length ? lines : ['기록 없음'];
+    const h = pad + titleH + rows.length * lineH + pad - 8;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 24); ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#0369a1';
+    ctx.font = 'bold 34px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(title, x + pad, y + pad + 30);
+    ctx.font = '30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    rows.forEach((ln, i) => {
+        ctx.fillStyle = lines.length ? '#334155' : '#9ca3af';
+        const ly = y + pad + titleH + i * lineH + 18;
+        _wrapText(ctx, `• ${ln}`, x + pad, ly, w - pad * 2, lineH);
+    });
+    return y + h + 20;
+}
+
+function generateVetVisitCard() {
+    const { pet, symptoms, weightLine, meds, questions } = _collectVetVisitData();
+    const petName = pet?.name || '댕이';
+    const today = new Date().toISOString().slice(0, 10);
+
+    const W = 1080, H = 1350;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // 배경 — 클리닉 블루 그라데이션
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#eff6ff');
+    grad.addColorStop(1, '#dbeafe');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 헤더 배너
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath(); ctx.roundRect(40, 40, W - 80, 130, 24); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 50px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏥 병원 방문 준비 카드', W / 2, 122);
+
+    // 펫 이름 + 날짜
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.fillText(`${petName} · ${today}`, W / 2, 235);
+
+    let y = 285;
+    const x = 60, w = W - 120;
+    y = _vetSection(ctx, '🩺 최근 증상', symptoms.slice(0, 4), x, y, w);
+    y = _vetSection(ctx, '⚖️ 체중 변화', weightLine ? [weightLine] : [], x, y, w);
+    y = _vetSection(ctx, '💊 투약 이력', meds, x, y, w);
+    y = _vetSection(ctx, '❓ 질문 리스트', questions, x, y, w);
+
+    // 워터마크
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.font = '26px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🐾 펫과나 (Pet & Na) — petnna.app', W / 2, H - 40);
+
+    return canvas;
+}
+
+async function shareVetVisitCard() {
+    const pet = typeof getActivePet === 'function' ? getActivePet() : null;
+    if (!pet) {
+        if (typeof showToast === 'function') showToast('먼저 반려동물을 등록해주세요 🐾');
+        return;
+    }
+    const canvas = generateVetVisitCard();
+    await _downloadOrShare(
+        canvas, 'petna-vet-visit.png', '병원 방문 준비 카드',
+        `🏥 ${pet.name || '우리 펫'} 병원 방문 준비 카드 — 최근 증상·체중·투약·질문 정리 #펫과나`
+    );
+}
+
 // ─── 사주 공유 카드 (세로 9:16 = 1080×1920, 쇼츠/릴스 최적) ──────
 function generateSajuShareCard() {
     const pet = typeof getActivePet === 'function' ? getActivePet() : null;
