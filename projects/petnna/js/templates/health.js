@@ -281,7 +281,7 @@ const HEALTH_TEMPLATE = `
 
         <!-- 탭 컨텐츠 -->
         <div id="meal-content-food" class="meal-tab-content">
-            <div id="meal-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
+            <div id="meal-list" class="grid grid-cols-1 lg:grid-cols-2 gap-1.5 content-start max-h-52 overflow-y-auto pr-0.5"></div>
         </div>
         <div id="meal-content-time" class="meal-tab-content hidden">
             <div id="meal-timeline" class="space-y-1.5 max-h-52 overflow-y-auto pr-0.5"></div>
