@@ -2279,7 +2279,7 @@ function renderMealLogsList() {
 
     if (!meals || meals.length === 0) {
         listContainer.innerHTML = `
-            <div class="text-center py-6 text-gray-400">
+            <div class="col-span-full text-center py-6 text-gray-400">
                 <div class="text-3xl mb-1.5">🍽️</div>
                 <p class="text-xs font-semibold">아직 식사 기록이 없어요</p>
                 <p class="text-[10px] mt-0.5 text-gray-300">기록 버튼으로 추가해보세요</p>
