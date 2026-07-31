@@ -56,11 +56,39 @@
     var BRACHY = ["시츄", "시추", "퍼그", "불독", "불도그", "페키니즈", "보스턴", "복서", "보스톤",
         "페르시안", "히말라얀", "엑조틱"];
 
+    // 증상 → 예상 검사/처치 항목(vet-cost-board ITEMS 키) 매핑. 기본 진찰료(checkup)는
+    // 항상 포함. 감별을 위해 흔히 동반되는 검사만 보수적으로 연결(과잉 추정 방지).
+    var COST_MAP = {
+        breath: ["xray"], cough: ["xray"], seizure: ["blood"], collapse: ["blood"],
+        bloat: ["xray", "ultrasound"], blood: ["blood"], nourine: ["ultrasound", "blood"],
+        poison: ["blood"], vomit: ["blood"], diarr: ["blood"], noapp: ["blood"],
+        limp: ["xray"], lethar: ["blood"],
+    };
+
     function esc(s) {
         if (typeof window.escapeHtml === "function") return window.escapeHtml(s);
         return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
         });
+    }
+    function fmt(n) { return Math.round(n).toLocaleString("ko-KR"); }
+
+    // 선택 증상 → vet-cost-board 제보 데이터로 예상 진료비 범위 추정.
+    // 제보가 있는 항목만 합산(없으면 null → 배지 미표시, 없는 값을 지어내지 않음).
+    function costEstimate(picks) {
+        if (!window.VetCostBoard || typeof window.VetCostBoard.summarize !== "function") return null;
+        var keys = { checkup: true };
+        (picks || []).forEach(function (s) {
+            (COST_MAP[s.id] || []).forEach(function (k) { keys[k] = true; });
+        });
+        var byKey = {};
+        window.VetCostBoard.summarize().forEach(function (r) { byKey[r.key] = r; });
+        var items = Object.keys(keys).map(function (k) { return byKey[k]; })
+            .filter(function (r) { return r && r.count; });
+        if (!items.length) return null;
+        var min = 0, max = 0;
+        items.forEach(function (r) { min += r.min; max += r.max; });
+        return { items: items, min: min, max: max };
     }
     function activePet() {
         if (typeof window.getActivePet === "function") return window.getActivePet();
@@ -197,12 +225,26 @@
                 return '<li class="text-xs text-gray-600 flex gap-1.5"><span class="text-brand-400">•</span><span>' + esc(x) + "</span></li>";
             }).join("") + "</ul>" : "";
 
+        var est = costEstimate(r.picks);
+        var costHtml = est
+            ? '<div class="mt-3 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2.5">' +
+              '<div class="flex items-center justify-between">' +
+              '<span class="text-xs font-bold text-brand-700">💰 예상 진료비 범위</span>' +
+              '<span class="text-sm font-black text-brand-700">' + fmt(est.min) + "~" + fmt(est.max) + "원</span></div>" +
+              '<div class="mt-1.5 flex flex-wrap gap-1">' + est.items.map(function (r2) {
+                  return '<span class="inline-flex items-center bg-white border border-brand-100 text-[10px] font-bold text-brand-600 px-2 py-0.5 rounded-full">' +
+                      esc(r2.label) + " " + fmt(r2.avg) + "원</span>";
+              }).join("") + "</div>" +
+              '<p class="text-[10px] text-brand-400 mt-1.5 leading-relaxed">이웃들의 익명 제보 평균 기준 추정치예요. 실제 비용은 병원·검사 범위에 따라 달라져요.</p></div>'
+            : "";
+
         box.innerHTML =
             '<div class="rounded-2xl border px-4 py-4 ' + meta.cls + '">' +
             '<div class="flex items-center gap-2"><span class="text-2xl">' + meta.emoji + "</span>" +
             '<span class="text-base font-black">' + meta.label + "</span></div>" +
             '<p class="text-xs mt-1.5 leading-relaxed">' + meta.desc + "</p>" +
             reasonsHtml + "</div>" +
+            costHtml +
             '<div class="mt-3 rounded-xl bg-gray-50 px-3 py-2.5">' +
             '<p class="text-[11px] text-gray-500 leading-relaxed">⚠️ 이 안내는 보호자의 초기 판단을 돕는 <b>참고용</b>이며 ' +
             '수의사의 진료·진단을 대체하지 않아요. 조금이라도 걱정되면 병원에 문의하세요.</p></div>' +

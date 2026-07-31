@@ -158,5 +158,5 @@
 
     // ITEMS도 내보낸다 — 가계부가 진료 항목 목록을 재사용해야 항목 정의가
     // 두 곳으로 갈라지지 않는다(가계부에 따로 하드코딩하면 여기 항목이 늘 때 어긋난다).
-    window.VetCostBoard = { ITEMS: ITEMS, open: open, submit: submit, close: close, report: report, renderWidget: renderWidget };
+    window.VetCostBoard = { ITEMS: ITEMS, open: open, submit: submit, close: close, report: report, renderWidget: renderWidget, summarize: summarize };
 })();
