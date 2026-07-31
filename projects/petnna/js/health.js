@@ -345,13 +345,20 @@ function renderHealthTrendChartMain() {
 
     if (!hasData) {
         canvas.style.display = 'none';
+        if (container) {
+            // empty 상태: 고정 높이의 절반 수준으로 압축 + 배경 톤 한 단계 연하게
+            container.style.minHeight = '60px';
+            container.style.maxHeight = 'none';
+            container.classList.remove('from-sky-50', 'to-blue-50', 'border-sky-100');
+            container.classList.add('from-gray-50', 'to-gray-50', 'border-gray-100');
+        }
         if (container && !emptyEl) {
             const empty = document.createElement('div');
-            empty.className = 'health-trend-empty flex flex-col items-center justify-center text-center h-full py-6';
+            empty.className = 'health-trend-empty flex flex-col items-center justify-center text-center h-full py-3';
             empty.innerHTML = `
-                <span class="text-4xl mb-2">📊</span>
-                <p class="text-sm font-bold text-gray-500">아직 표시할 데이터가 없어요</p>
-                <p class="text-xs text-gray-400 mt-1">건강 기록을 남기면 7일 트렌드가 그려집니다</p>`;
+                <span class="text-2xl mb-1">📊</span>
+                <p class="text-xs font-bold text-gray-500">아직 표시할 데이터가 없어요</p>
+                <p class="text-[10px] text-gray-400 mt-0.5">건강 기록을 남기면 7일 트렌드가 그려집니다</p>`;
             container.appendChild(empty);
         }
         return;
@@ -359,6 +366,13 @@ function renderHealthTrendChartMain() {
 
     canvas.style.display = '';
     if (emptyEl) emptyEl.remove();
+    if (container) {
+        // 데이터 복귀 시 원래 톤·높이로 복원
+        container.style.minHeight = '120px';
+        container.style.maxHeight = '180px';
+        container.classList.add('from-sky-50', 'to-blue-50', 'border-sky-100');
+        container.classList.remove('from-gray-50', 'to-gray-50', 'border-gray-100');
+    }
 
     window.healthTrendChartMain = new Chart(ctx, {
         type: 'line',
