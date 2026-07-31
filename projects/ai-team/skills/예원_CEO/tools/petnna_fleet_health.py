@@ -204,6 +204,41 @@ def remediate_backlog_ghosts() -> tuple[list[dict], list[dict]]:
     return fixed, unresolved
 
 
+DEPLOY_URL = os.getenv("PETNNA_DEPLOY_URL", "https://petnna.vercel.app")
+_ASSET_RE = re.compile(r'(?:src|href)="((?:js|css)/[^"?]+)\?v=(\d+)"')
+
+
+def deploy_drift() -> tuple[int, list[str]] | None:
+    """저장소의 index.html과 배포본의 자산 버전(?v=)을 대조한다.
+
+    왜 필요한가(2026-07-28·07-31 사고): 배포가 조용히 멈춰도 **자동 검증이 전부
+    통과한다** — 코드·E2E·QA 순찰이 모두 로컬을 보기 때문이다. 실제로 배포가 2.5일간
+    얼어 있었고, 그 사이 함대가 병합한 것이 사용자에게 하나도 가지 않았는데 어떤
+    경보도 뜨지 않았다. 신선도 감사가 '에이전트가 일했나'만 보고 '그 결과가 나갔나'는
+    안 봤던 것이다.
+
+    반환: (뒤처진 자산 수, 예시 몇 줄). 네트워크 실패 등 판정 불가면 None —
+    '판정 불가'를 '이상 없음'으로 뭉개지 않는다(2026-07-25 빈 응답 교훈).
+    """
+    local_html = PROJECT_ROOT / "projects" / "petnna" / "index.html"
+    try:
+        local = dict(_ASSET_RE.findall(local_html.read_text(encoding="utf-8")))
+    except Exception:
+        return None
+    try:
+        req = urllib.request.Request(f"{DEPLOY_URL}/index.html",
+                                     headers={"Cache-Control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            remote = dict(_ASSET_RE.findall(r.read().decode("utf-8", "replace")))
+    except Exception:
+        return None
+    if not remote:
+        return None
+    drift = [f"{p}: 로컬 v{v} / 배포 v{remote.get(p, '없음')}"
+             for p, v in local.items() if remote.get(p) != v]
+    return len(drift), drift[:5]
+
+
 def audit(do_send: bool) -> int:
     now = time.time()
     lines = [f"[{datetime.now():%Y-%m-%d %H:%M}] 🩺 예원 함대 신선도 감사"]
@@ -238,6 +273,15 @@ def audit(do_send: bool) -> int:
                      + ", ".join(f"{t}({f})" for t, f in gap))
     elif not applied:
         lines.append("  ✅ DB 스키마: 선언된 테이블 전부 라이브 적용됨")
+    # 배포 표류: 에이전트가 일해도 그 결과가 사용자에게 안 나가면 일하지 않은 것과 같다.
+    drift = deploy_drift()
+    if drift is None:
+        lines.append("  ❔ 배포 대조: 판정 불가(네트워크/파싱 실패)")
+    elif drift[0]:
+        lines.append(f"  🚨 배포 표류: 자산 {drift[0]}개가 배포본에 반영 안 됨")
+        lines.extend(f"      · {d}" for d in drift[1])
+    else:
+        lines.append("  ✅ 배포: 저장소와 배포본 자산 버전 일치")
     # 백로그 비어휘 상태(정지 유령): 먼저 자동 정규화, 못 고친 것만 아래에서 경보.
     fixed, ghosts = remediate_backlog_ghosts()
     for f in fixed:
@@ -247,8 +291,13 @@ def audit(do_send: bool) -> int:
                      + ", ".join(f"{g['id']}={g['status']}" for g in ghosts))
     print("\n".join(lines))
 
-    if do_send and (stale or gap or applied or failed or ghosts):
+    drifted = bool(drift and drift[0])
+    if do_send and (stale or gap or applied or failed or ghosts or drifted):
         parts = []
+        if drifted:
+            parts.append(f"🚨 배포 표류 — 자산 {drift[0]}개가 사용자에게 안 나감\n"
+                         + "\n".join(f"· {d}" for d in drift[1])
+                         + "\n(저장소는 최신인데 배포본이 뒤처짐 — Vercel 배포 실패/중단 확인)")
         if stale:
             parts.append("⚠️ 함대 신선도 경보 — 죽은 잡 의심\n"
                          + "\n".join(f"· {s}" for s in stale)
