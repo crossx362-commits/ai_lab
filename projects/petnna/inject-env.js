@@ -31,6 +31,14 @@ let html = fs.readFileSync(indexPath, 'utf8');
 const env = {
   SUPABASE_URL: process.env.SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+  // 가입 허용 이메일. 이 키가 목록에서 빠져 있어서 빌드가 돌 때마다 index.html에서
+  // 통째로 사라졌고, app.js는 값이 없으면 '제한 없음'으로 fail-open 한다
+  // (app.js:503, supabase.js:177). 즉 배포본에서 프론트 가입 게이트가 꺼져 있었다
+  // (2026-07-31 발견 — 배포본에 이 키가 0건).
+  // 기본값을 오너 이메일로 둬 fail-closed 한다 — 환경변수 미설정이 곧 '전면 개방'이
+  // 되면 안 된다. 진짜 방어선은 DB 트리거(migrations/restrict_signups_allowlist.sql)이고
+  // 이건 UI 단 이중 방어다.
+  ALLOWED_LOGIN_EMAILS: process.env.ALLOWED_LOGIN_EMAILS || 'crossx362@gmail.com',
   GEMINI_API_KEY: '',
   AI_HEALTH_ENABLED: process.env.AI_HEALTH_ENABLED || 'false',
   AI_HEALTH_PROXY_PATH: process.env.AI_HEALTH_PROXY_PATH || '/api/ai-health',
