@@ -1005,8 +1005,7 @@ function initMypetWeatherWidget() {
         const minutes = String(now.getMinutes()).padStart(2, '0');
 
         if (timeEl && dateEl) {
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            timeEl.innerText = `${hours}:${minutes}:${seconds}`;
+            timeEl.innerText = `${hours}:${minutes}`;
 
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
