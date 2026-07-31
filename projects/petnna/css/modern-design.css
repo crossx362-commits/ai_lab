@@ -53,6 +53,14 @@ body.theme-dark .glass {
     transform: translateY(-2px);
 }
 
+/* 주요(떠 있는) 카드 — 로그인 모달 등. 카드 스타일 통일(2026-07-31, 미오 제안 P3):
+   기존 ad-hoc rounded-3xl/shadow-2xl을 보조 카드(.card-modern)와 같은 토큰 계층으로 수렴.
+   배경은 호출부의 유틸리티(bg-white 등)에 맡기고 라운드/그림자만 토큰으로 통일. */
+.card-elevated {
+    border-radius: var(--radius-card-lg);
+    box-shadow: var(--shadow-card-lg);
+}
+
 /* 카드 내부 수직 리듬 정리 (미오 제안, P3)
    요소 특이도(0,2,1)로 Tailwind 단일 클래스(gap-*, mb-*)를 이겨 전역 적용.
    아이콘-제목 간격은 소폭 확대, 헤더-본문 그룹 간 여백은 그룹 내(12px)보다 확실히 크게. */
