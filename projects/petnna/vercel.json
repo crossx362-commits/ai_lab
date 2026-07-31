@@ -1,8 +1,6 @@
 {
-  "_comment_UNUSED": "이 파일은 Vercel이 읽지 않는다 — 실제 배포 설정은 저장소 루트의 vercel.json이다(루트에 vercel.json이 있으면 그것이 프로젝트 설정이 된다). 2026-07-26에 배포 스킵을 고치며 이 파일의 ignoreCommand만 지웠고, 루트 쪽은 그대로여서 2026-07-28에 같은 사고가 재발했다. 배포 동작을 바꾸려면 루트 vercel.json을 고칠 것.",
   "buildCommand": "npm run build || true",
   "outputDirectory": ".",
-  "_comment_ignoreCommand": "2026-07-26 제거됨. 'git diff --quiet HEAD^ HEAD -- . :!*.md :!docs/'로 문서 전용 커밋의 빌드를 아꼈는데, 이 판정은 마지막 커밋 하나(HEAD^..HEAD)만 본다. 푸시의 끝 커밋이 문서 전용이면 같은 푸시에 실린 실제 코드 변경까지 통째로 배포가 스킵됐다 — 실제로 건강 탭 카드 병합이 배포되지 않아 오너가 '안 합쳐졌는데'라고 지적했고, 저장소·로컬은 멀쩡한데 배포본만 4버전 뒤처져 있었다. 정적 사이트라 빌드 비용이 미미하니 항상 배포하는 쪽이 안전하다.",
   "headers": [
     {
       "source": "/index.html",
