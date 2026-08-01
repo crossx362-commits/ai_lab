@@ -19,6 +19,10 @@
        ad-hoc rounded-3xl/shadow-2xl 대신 아래 토큰(.card-elevated)으로 수렴. */
     --radius-card-lg: 24px;  /* 주요 카드(로그인 모달 등 떠 있는 카드) */
     --shadow-card-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    /* 카드 간 세로 리듬 토큰(2026-08-01, 미오 제안 P3): 탭마다 최상위 카드 스택이
+       space-y-4(16px)·space-y-6(24px)로 제각각이라 스캔 흐름이 들쭉날쭉했다.
+       카드 사이 간격을 이 한 값으로 통일한다(적용: modern-design.css). */
+    --card-gap: 16px;
 }
 
 body.theme-dark {

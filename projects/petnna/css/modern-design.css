@@ -78,6 +78,15 @@ main.max-w-7xl {
     padding-right: max(1rem, env(safe-area-inset-right));
 }
 
+/* 카드 간 세로 리듬 토큰화 (미오 제안, P3, 2026-08-01)
+   각 탭 최상위 카드 스택의 카드 사이 간격을 --card-gap으로 통일해
+   space-y-4(16px)·space-y-6(24px)로 갈리던 세로 리듬을 안정화한다.
+   .tab-content 직계 space-y-* 스택(0,4,0)으로 Tailwind space-y 자식 규칙(0,3,0)을 이긴다.
+   grid 래퍼(social·settings)·게임뷰(shop-island)는 직계에 space-y가 없어 영향받지 않는다. */
+.tab-content > [class*="space-y-"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: var(--card-gap);
+}
+
 /* 세련된 입력 필드 */
 .input-modern {
     background: var(--color-bg-card);
