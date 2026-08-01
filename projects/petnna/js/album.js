@@ -510,6 +510,9 @@ function submitWeightLog() {
     if (typeof PetGame !== 'undefined') PetGame.earnCare('health');
     closeWeightLogModal();
     renderGrowthChart();
+    // 방금 기록한 급격한 체중 변화가 즉시 이상 경보로 뜨도록 웰니스 카드도 갱신
+    // (analyzeWeight 기반 P2 경보 — 다음 탭 전환까지 지연되던 문제 방지)
+    if (typeof renderWellnessCard === 'function') renderWellnessCard();
     if (typeof showToast === 'function') showToast(`체중 ${val}kg 기록 완료! ⚖️`);
 }
 
