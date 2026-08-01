@@ -259,6 +259,40 @@ function getMonthlyMedicationAdherence() {
     return { completed, expected, rate };
 }
 
+// 연속 복용 스트릭: 투약(medicine) 완료가 하루 1건이라도 있는 날을 오늘(또는 어제)부터
+// 거슬러 올라가며 끊기지 않고 이어진 일수. 오늘 아직 안 챙겼어도 어제까지 이어졌으면 유지.
+function getMedicationStreak() {
+    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const petId = activePet ? activePet.id : null;
+    const belongs = (o) => petId == null || o.petId == null || o.petId === petId;
+
+    const localDay = (d) => {
+        const t = new Date(d);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    };
+    const days = new Set();
+    careSchedules.completionHistory.forEach(c => {
+        if (c.type === 'medicine' && belongs(c) && c.completedAt) days.add(localDay(c.completedAt));
+    });
+    if (days.size === 0) return { streak: 0, doneToday: false };
+
+    const today = new Date();
+    const todayStr = localDay(today);
+    const doneToday = days.has(todayStr);
+
+    // 오늘 챙겼으면 오늘부터, 아니면 어제부터 카운트 시작(오늘 미완료가 스트릭을 깨지 않도록).
+    const cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (!doneToday) cursor.setDate(cursor.getDate() - 1);
+
+    let streak = 0;
+    while (days.has(localDay(cursor))) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+    }
+    return { streak, doneToday };
+}
+
 // 순응도 → 배지 등급
 function getAdherenceTier(rate) {
     if (rate >= 90) return { emoji: '🥇', label: '금 배지', ring: '#f59e0b', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' };
@@ -308,6 +342,10 @@ function renderMedicationAdherenceCard() {
 
     const tier = getAdherenceTier(rate);
     const deg = Math.round(rate * 3.6);
+    const { streak, doneToday } = (typeof getMedicationStreak === 'function') ? getMedicationStreak() : { streak: 0, doneToday: false };
+    const streakBadge = streak > 0
+        ? `<span class="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${doneToday ? 'bg-orange-100 text-orange-700' : 'bg-amber-50 text-amber-600'}">🔥 ${streak}일 연속 복용${doneToday ? '' : ' · 오늘 챙기면 유지'}</span>`
+        : '';
 
     el.innerHTML = `
         <div class="rounded-xl border ${tier.border} ${tier.bg} p-3 flex items-center gap-3">
@@ -323,6 +361,7 @@ function renderMedicationAdherenceCard() {
                     <span class="text-xs font-black text-gray-800">${month}월 투약·구충 챙김률</span>
                 </div>
                 <p class="text-[10px] text-gray-500 mt-0.5">${completed}/${expected}회 완료 · <span class="font-bold ${tier.text}">${tier.label}</span></p>
+                ${streakBadge}
             </div>
             <button onclick="shareMedicationAdherence()"
                 class="shrink-0 px-2.5 py-1.5 bg-white hover:bg-gray-50 border ${tier.border} ${tier.text} text-[10px] font-black rounded-lg transition-all">
