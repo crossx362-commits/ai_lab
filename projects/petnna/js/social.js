@@ -1411,6 +1411,28 @@ function insertQuestionTag() {
     showToast('질문 글로 표시됐어요! 답변 이웃에게 🐾코인이 지급돼요 ❓');
 }
 
+// 동네 산책 메이트/플레이데이트 모집: 장소·시간 템플릿을 본문에 채워 넣고
+// #산책메이트 태그로 표시 — 별도 테이블 없이 기존 posts(anon insert) 파이프라인을
+// 그대로 재사용한다. 사용자가 대괄호 자리를 채워 '자랑 발행'하면 일반 글로 발행된다.
+function insertMeetupTemplate() {
+    const textarea = document.getElementById('feed-input-content');
+    if (!textarea) return;
+    if (_isMeetupText(textarea.value)) {
+        showToast('이미 산책 메이트 모집 글이에요 🐾');
+        textarea.focus();
+        return;
+    }
+    const template = `#산책메이트\n📍 장소: [만날 곳을 적어주세요]\n🕒 시간: [예: 내일 오후 3시]\n\n같이 산책하거나 놀 이웃을 찾아요! 관심 있으면 댓글 남겨주세요 🐾`;
+    const cur = textarea.value.trim();
+    textarea.value = cur ? `${template}\n\n${cur}` : template;
+    textarea.focus();
+    showToast('산책 메이트 모집 글이 준비됐어요! 장소·시간을 채워 발행해보세요 🐾');
+}
+
+function _isMeetupText(text) {
+    return /#?산책메이트|#?플레이데이트/.test(text || '');
+}
+
 function _isQuestionText(text) {
     return /#?질문/.test(text || '');
 }
