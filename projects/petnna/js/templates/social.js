@@ -201,6 +201,9 @@ const SOCIAL_TEMPLATE = `
                         <button onclick="insertQuestionTag()" class="bg-gray-50 hover:bg-amber-50 text-gray-600 hover:text-amber-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
                             <i class="fa-solid fa-circle-question mr-1 text-amber-500"></i> 질문하기
                         </button>
+                        <button onclick="insertMeetupTemplate()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
+                            <i class="fa-solid fa-people-group mr-1 text-brand-500"></i> 산책 메이트 모집
+                        </button>
                     </div>
                     <button onclick="submitFeedPost()" class="bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3 px-6 rounded-xl shadow-md transition-colors">
                         자랑 발행 🚀
