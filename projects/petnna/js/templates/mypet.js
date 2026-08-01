@@ -353,7 +353,7 @@ const MYPET_TEMPLATE = `
              집사·펫 년생과 진입 버튼이 사주 카드와 중복이라 한 카드로 합쳤다. -->
 
         <!-- 챌린지 & 업적 통합 카드 (각 항목은 achievements.js가 그대로 채움 — 겉박스만 하나로 합침) -->
-        <div id="home-challenge-card" class="card-modern divide-y divide-gray-100 overflow-hidden">
+        <div id="home-challenge-card" class="card-modern grid grid-cols-2 gap-2 p-2 lg:block lg:gap-0 lg:p-0 lg:divide-y lg:divide-gray-100 overflow-hidden">
             <div class="p-2.5"><div id="weekly-care-challenge">
                 <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
                     <i class="fa-solid fa-trophy text-gray-300"></i>
@@ -402,8 +402,8 @@ const MYPET_TEMPLATE = `
                     <span>산책·급여·투약 중 하나만 완료해도 케어 스트릭이 시작돼요!</span>
                 </div>
             </div></div>
-            <div class="p-3"><div id="daily-challenges"></div></div>
-            <div class="p-2.5"><div id="achievement-badges"></div></div>
+            <div class="p-3 col-span-2 lg:col-span-1"><div id="daily-challenges"></div></div>
+            <div class="p-2.5 col-span-2 lg:col-span-1"><div id="achievement-badges"></div></div>
         </div>
 
     </div>
