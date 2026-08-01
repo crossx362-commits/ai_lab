@@ -217,6 +217,9 @@ const HEALTH_TEMPLATE = `
                 <button onclick="exportMedicalRecordsPDF()" class="text-xs font-bold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-100 px-3 py-1.5 rounded-full transition-all">
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF 내보내기
                 </button>
+                <button onclick="InsuranceClaim.open()" class="text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 px-3 py-1.5 rounded-full transition-all">
+                    <i class="fa-solid fa-file-invoice-dollar mr-1"></i>보험 청구 패키지
+                </button>
                 <button onclick="openMedicalRecordModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
                     <i class="fa-solid fa-plus mr-1"></i>기록 추가
                 </button>
