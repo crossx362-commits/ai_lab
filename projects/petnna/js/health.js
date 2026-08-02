@@ -420,6 +420,14 @@ function renderHealthCalendarMain() {
     const el = document.getElementById('health-calendar-main');
     if (!el) return;
 
+    // 배변 캘린더는 **이 함수의 early return 위에서** 부른다. 아래 '기록 없음' 분기에서
+    // return하는 자리에 이 호출이 있으면, 기록이 하나도 없을 때 배변 캘린더가 아예 안 돌아
+    // 스스로 숨지 못하고 호스트 div의 border-t만 남는다 — 내용 없이 선 하나가 떠 있게 된다
+    // (2026-08-02 병합 검토에서 실측: 빈 계정에서 18px 높이 + 1px 상단선).
+    // 호출부를 renderHealthCalendarMain 바깥 5곳에 흩뿌리지 않는 이유는, 새 호출부가 생길 때
+    // 한 곳만 빠지는 비대칭이 이 저장소에서 반복돼 왔기 때문이다.
+    if (typeof renderPoopCalendarMain === 'function') renderPoopCalendarMain();
+
     const history = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
     const today = new Date();
 
@@ -451,8 +459,6 @@ function renderHealthCalendarMain() {
             <span class="w-3 h-3 rounded-sm bg-gray-100 inline-block"></span><span class="text-[9px] text-gray-400">기록 없음</span>
             <span class="w-3 h-3 rounded-sm bg-emerald-400 inline-block ml-2"></span><span class="text-[9px] text-gray-400">기록 완료</span>
         </div>`;
-
-    if (typeof renderPoopCalendarMain === 'function') renderPoopCalendarMain();
 }
 
 // 배변 건강 월간 캘린더 (이번 달, 배변 상태별 색상 코딩)
