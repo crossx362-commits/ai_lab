@@ -25,35 +25,48 @@
             id: "poison", emoji: "☠️", title: "중독 (초콜릿·포도·양파·자일리톨 등)",
             steps: [
                 "무엇을 언제·얼마나 먹었는지 파악하고 포장지·남은 것을 챙긴다.",
-                "임의로 토하게 하지 않는다 — 물질에 따라 더 위험할 수 있다.",
                 "24h 병원에 먼저 전화해 섭취물·체중을 알리고 지시를 따른다.",
             ],
-            warn: "부식성 물질(세제·표백제)·날카로운 것은 절대 구토 유도 금지.",
+            dont: [
+                "임의로 토하게 하지 않는다 — 물질에 따라 더 위험할 수 있다.",
+                "부식성 물질(세제·표백제)·날카로운 것은 절대 구토 유도 금지.",
+            ],
+            warn: "인터넷 정보로 자가 처치하지 말고 반드시 병원 지시를 따른다.",
         },
         {
             id: "choke", emoji: "🦴", title: "이물질 삼킴 · 질식",
             steps: [
-                "입안에 보이는 이물질만 조심히 제거(손가락을 물릴 수 있으니 주의).",
+                "입안에 보이는 이물질만 조심히 제거한다(물릴 수 있으니 주의).",
                 "숨을 못 쉬면 소형견은 등 위쪽을, 대형견은 명치 아래를 밀어 올린다.",
                 "호흡·의식이 없으면 지체 없이 즉시 병원으로 이동한다.",
             ],
-            warn: "억지로 깊이 손을 넣으면 이물질을 더 밀어 넣을 수 있다.",
+            dont: [
+                "억지로 깊이 손을 넣지 않는다 — 이물질을 더 밀어 넣을 수 있다.",
+                "안 보이는 이물질을 무리하게 찾으려 하지 않는다.",
+            ],
+            warn: "질식이 의심되면 처치와 동시에 병원으로 출발한다.",
         },
         {
             id: "bleed", emoji: "🩸", title: "출혈 · 외상",
             steps: [
                 "깨끗한 천·거즈로 상처를 직접 5분 이상 압박한다.",
-                "피가 배어도 천을 떼지 말고 그 위에 덧대어 계속 누른다.",
                 "지혈이 안 되거나 출혈이 심하면 압박한 채로 병원으로 이동한다.",
             ],
-            warn: "지혈대는 잘못 쓰면 조직 손상 — 압박 지혈을 우선.",
+            dont: [
+                "피가 배어도 천을 떼지 않는다 — 그 위에 덧대어 계속 누른다.",
+                "지혈대를 함부로 쓰지 않는다 — 잘못 쓰면 조직 손상.",
+            ],
+            warn: "지혈보다 압박 지혈을 우선한다.",
         },
         {
             id: "seizure", emoji: "⚡", title: "경련 · 발작",
             steps: [
-                "주변의 위험 물건을 치우고 아이를 만지거나 붙잡지 않는다.",
-                "입에 손·물건을 넣지 않는다(혀를 삼키지 않는다).",
+                "주변의 위험 물건을 치워 부딪히지 않게 한다.",
                 "발작 시작 시각을 재고, 5분 이상 지속되면 즉시 병원으로.",
+            ],
+            dont: [
+                "아이를 붙잡거나 억지로 만지지 않는다.",
+                "입에 손·물건을 넣지 않는다(혀를 삼키지 않는다).",
             ],
             warn: "발작 직후는 방향감각을 잃을 수 있으니 낙상 주의.",
         },
@@ -61,8 +74,12 @@
             id: "heat", emoji: "🥵", title: "열사병 (헐떡임·침흘림·쓰러짐)",
             steps: [
                 "그늘·시원한 곳으로 옮기고 미지근한 물로 몸을 적신다.",
-                "선풍기·바람으로 식히되 얼음물·찬물은 급격해 위험하니 피한다.",
+                "선풍기·바람으로 식히고 물을 조금씩 마시게 한다.",
                 "체온이 내려가도 반드시 병원 진료를 받는다(장기 손상 위험).",
+            ],
+            dont: [
+                "얼음물·찬물로 급격히 식히지 않는다 — 오히려 위험하다.",
+                "더운 차 안·땡볕에 잠깐이라도 방치하지 않는다.",
             ],
             warn: "차 안·더운 날 방치가 흔한 원인 — 예방이 최선.",
         },
@@ -70,10 +87,15 @@
             id: "burn", emoji: "🔥", title: "화상 · 화학물질 접촉",
             steps: [
                 "화상 부위를 미지근한 흐르는 물에 10분 이상 식힌다.",
-                "화학물질은 마르지 않게 충분히 물로 씻어내고 핥지 못하게 한다.",
-                "연고·기름을 바르지 말고 병원 진료를 받는다.",
+                "화학물질은 마르지 않게 충분히 물로 씻어낸다.",
+                "가급적 빨리 병원 진료를 받는다.",
             ],
-            warn: "얼음을 직접 대지 않는다 — 동상·조직 손상 위험.",
+            dont: [
+                "연고·기름을 바르지 않는다.",
+                "얼음을 직접 대지 않는다 — 동상·조직 손상 위험.",
+                "화학물질·상처 부위를 핥지 못하게 한다.",
+            ],
+            warn: "넓은 부위·화학 화상은 자가 처치보다 즉시 내원이 우선.",
         },
     ];
 
@@ -89,14 +111,24 @@
     }
 
     function guideHtml(g) {
-        var steps = g.steps.map(function (s, i) {
-            return '<li class="flex gap-2"><span class="text-rose-400 font-bold shrink-0">' + (i + 1) + ".</span><span>" + esc(s) + "</span></li>";
+        var doSteps = g.steps.map(function (s, i) {
+            return '<li class="flex gap-2"><span class="text-emerald-500 font-bold shrink-0">' + (i + 1) + ".</span><span>" + esc(s) + "</span></li>";
         }).join("");
+        var dontList = (g.dont || []).map(function (s) {
+            return '<li class="flex gap-2"><span class="text-rose-400 font-bold shrink-0">✕</span><span>' + esc(s) + "</span></li>";
+        }).join("");
+        var dontBlock = dontList
+            ? '<p class="text-[11px] font-bold text-rose-600 mt-1">🚫 하지 말아야 할 것</p>' +
+              '<ul class="space-y-1.5 text-xs text-gray-700 leading-relaxed">' + dontList + "</ul>"
+            : "";
         return '<details class="rounded-xl border border-gray-100 overflow-hidden">' +
             '<summary class="cursor-pointer select-none px-3 py-2.5 bg-gray-50 text-sm font-bold text-gray-800 flex items-center gap-2">' +
             '<span class="text-lg">' + g.emoji + "</span>" + esc(g.title) + "</summary>" +
-            '<div class="px-3 py-3 space-y-2"><ul class="space-y-1.5 text-xs text-gray-700 leading-relaxed">' + steps + "</ul>" +
-            '<p class="text-[11px] text-rose-500 bg-rose-50 rounded-lg px-2.5 py-1.5">⚠️ ' + esc(g.warn) + "</p></div></details>";
+            '<div class="px-3 py-3 space-y-2">' +
+            '<p class="text-[11px] font-bold text-emerald-600">✅ 지금 당장 해야 할 일</p>' +
+            '<ul class="space-y-1.5 text-xs text-gray-700 leading-relaxed">' + doSteps + "</ul>" +
+            dontBlock +
+            '<p class="text-[11px] text-rose-500 bg-rose-50 rounded-lg px-2.5 py-1.5 mt-1">⚠️ ' + esc(g.warn) + "</p></div></details>";
     }
 
     function hospitalHtml() {
