@@ -37,6 +37,16 @@
         return byType[pet.type] || '🐾';
     }
 
+    // 사용자 입력(펫 이름·일정 제목)은 반드시 이스케이프한다 — 이 저장소의 다른 위젯과
+    // 같은 관행. 안 하면 이름에 넣은 태그가 그대로 실행된다(2026-08-02 병합 검토에서
+    // 실제 실행 확인: name에 <img onerror>를 넣으니 스크립트가 돌았다).
+    function _esc(s) {
+        if (typeof window.escapeHtml === 'function') return window.escapeHtml(s);
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
     function _row(pet, idx) {
         const s = _petSummary(pet);
         const rate = s.rate === null ? '—' : `${s.rate}%`;
@@ -44,14 +54,14 @@
         let nextText = s.total === 0
             ? '<span class="text-gray-300">오늘 예정된 케어가 없어요</span>'
             : (s.next
-                ? `${typeof getCareTypeIcon === 'function' ? getCareTypeIcon(s.next.type) : '📋'} ${s.next.time || ''} ${s.next.title || (typeof getCareTypeName === 'function' ? getCareTypeName(s.next.type) : '')}`
+                ? `${typeof getCareTypeIcon === 'function' ? getCareTypeIcon(s.next.type) : '📋'} ${_esc(s.next.time || '')} ${_esc(s.next.title || (typeof getCareTypeName === 'function' ? getCareTypeName(s.next.type) : ''))}`
                 : '<span class="text-emerald-600">오늘 케어 모두 완료 🎉</span>');
         return `
         <button type="button" onclick="setActivePet(${idx})"
             class="w-full flex items-center gap-3 py-2.5 px-1 rounded-xl hover:bg-gray-50 active:scale-[0.99] transition-all text-left">
             <span class="text-2xl leading-none shrink-0">${_emoji(pet)}</span>
             <span class="flex flex-col min-w-0 flex-1">
-                <span class="text-sm font-bold text-gray-800 truncate">${pet.name || '반려동물'}</span>
+                <span class="text-sm font-bold text-gray-800 truncate">${_esc(pet.name || '반려동물')}</span>
                 <span class="text-[11px] text-gray-500 truncate">${nextText}</span>
             </span>
             <span class="flex flex-col items-end shrink-0">
