@@ -184,6 +184,9 @@ const HEALTH_TEMPLATE = `
 
         <!-- 90일 캘린더 히트맵 -->
         <div id="health-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
+
+        <!-- 배변 건강 월간 캘린더 (상태별 색상 코딩) -->
+        <div id="poop-calendar-main" class="mt-4 pt-4 border-t border-gray-200"></div>
         </div>
 
     </div>
