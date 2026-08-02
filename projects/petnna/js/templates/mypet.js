@@ -26,6 +26,9 @@ const MYPET_TEMPLATE = `
         <!-- 📊 오늘의 케어 통합 요약: 산책·급여·케어·기분·이상신호 한 줄 (today-care-card.js) -->
         <div id="today-care-strip"></div>
 
+        <!-- 🏠 다견/다묘 가정 통합 케어 대시보드 (multi-pet-dashboard.js, 펫 2마리+ 일 때만) -->
+        <div id="multi-pet-care-strip"></div>
+
         <!-- 날짜/날씨는 2026-07-24부터 전 탭 공통 상단 헤더에 표시(index.html) -->
 
         <!-- 오늘의 운세 (집사 + 펫) -->

@@ -1245,6 +1245,7 @@ function renderMyPets() {
     // 맞춤 추천 렌더는 펫라이프 탭(app.js의 reco-card-shop)이 전담 — 마이펫 중복 제거(2026-07-25)
     if (typeof renderCareNudgeBanner === 'function') renderCareNudgeBanner();
     if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
+    if (typeof renderMultiPetDashboard === 'function') renderMultiPetDashboard();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
     if (typeof renderMemorialBanner === 'function') renderMemorialBanner();
