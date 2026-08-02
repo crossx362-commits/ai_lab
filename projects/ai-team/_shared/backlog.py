@@ -16,6 +16,9 @@
 """
 import json
 import re
+import sys
+import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -289,3 +292,68 @@ def promote_approved_holds(backlog_path) -> list[str]:
     if promoted:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     return promoted
+
+
+# ── backlog.json 동시쓰기 방지 (2026-08-02) ────────────────────────────────
+#
+# 배경: backlog.json에 쓰는 도구가 7곳(나무·미오·백호·테오·수리·회의·예원감사)인데
+# 저마다 자기 이름의 advisory_lock만 쓴다 — 즉 **서로를 전혀 배제하지 못한다**.
+# 각 도구는 파일 전체를 읽어 고친 뒤 통째로 덮어쓰므로, 두 도구의 읽기·쓰기가 겹치면
+# 나중에 쓴 쪽이 먼저 쓴 쪽의 변경을 통째로 지운다. 파이프라인 감사가 2026-07-11에
+# 지적했고 "여러 파일을 한 번에 바꿔야 한다"는 이유로 미뤄져 있었다.
+#
+# advisory_lock을 그대로 쓸 수 없는 이유: 그건 비차단(LOCK_NB)이라 충돌 시 **건너뛴다**.
+# 건너뛰기는 '이번 사이클 스킵'엔 맞지만 백로그 쓰기엔 곧 데이터 유실이다 — 여기선
+# 잠깐 기다렸다가 쓰는 게 맞다. 그래서 짧은 타임아웃을 둔 차단 락을 따로 둔다.
+#
+# 타임아웃을 넘기면 락 없이 진행한다(예외를 던지지 않는다) — 락 획득 실패로 적재 자체가
+# 사라지는 것보다, 드문 경합을 감수하고 쓰는 편이 낫다. 대신 경고를 남겨 추적 가능하게 한다.
+_BACKLOG_LOCK_PATH = "/tmp/petnna_backlog_json.lock"
+
+
+@contextmanager
+def backlog_lock(timeout: float = 20.0):
+    """backlog.json read-modify-write 구간 전용 전역 락. 모든 도구가 이 하나를 공유한다.
+
+    사용:
+        with backlog_lock():
+            data = json.loads(BACKLOG.read_text(...))
+            ...수정...
+            BACKLOG.write_text(...)
+
+    반드시 **읽기부터** 감싸야 한다 — 쓰기만 감싸면 읽은 뒤 남이 바꾼 걸 덮어쓰는
+    read-modify-write 경합이 그대로 남는다.
+    """
+    if sys.platform == "win32":  # pragma: no cover - 운영 기계는 darwin
+        try:
+            yield True
+        finally:
+            pass
+        return
+    try:
+        import fcntl
+    except ImportError:  # pragma: no cover
+        yield True
+        return
+    fd = open(_BACKLOG_LOCK_PATH, "w")
+    deadline = time.time() + timeout
+    got = False
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                got = True
+                break
+            except OSError:
+                if time.time() >= deadline:
+                    print(f"[backlog] 락 대기 {timeout}s 초과 — 락 없이 진행(경합 가능)")
+                    break
+                time.sleep(0.2)
+        yield got
+    finally:
+        if got:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            except Exception:
+                pass
+        fd.close()

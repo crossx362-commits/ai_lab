@@ -36,7 +36,8 @@ from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_gu
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
-from _shared.backlog import (  # noqa: E402
+from _shared.backlog import (
+    backlog_lock,  # noqa: E402
     touches_db_auth, recent_reviewed_items, format_recent_decisions,
 )
 
@@ -62,53 +63,61 @@ def feature_inventory() -> str:
 
 
 def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
-    try:
-        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        data = {"items": []}
-    except Exception as e:
-        # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
-        # 빈 dict로 대체해 이 함수 끝에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
-        # (자동 파이프라인 감사 도구가 발견, 2026-07-12: 6개 도구가 락 없이 backlog.json에
-        # 동시 접근하는 경합의 가장 파괴적인 구체 사례). 이번 적재는 건너뛰고 다음 주기에
-        # 재시도한다 — 기존 파일을 그대로 보존.
-        print(f"[나무] 백로그 읽기 실패(파일 손상 가능) — 이번 적재는 건너뜀: {e}")
-        return 0
-    existing = {i.get("title") for i in data["items"]}
-    # id 충돌 방지 — 날짜만으론(%Y%m%d) 같은 날 plan()이 두 번 불리면(수동 --once가 화요일
-    # 정기 슬롯과 겹치거나, 향후 배정과제 자체폴링이 추가되는 경우) 서로 다른 항목이 같은
-    # id를 가질 수 있다 — id로 조회하는 수리 dev_state의 attempts 오집계 위험(미오에서
-    # 2026-07-12에 먼저 발견·수정된 것과 동일한 패턴이 나무에도 있었음 — 비대칭 방치).
-    # "실제 존재하는 id와 안 겹칠 때까지 증가"로 근본 해결(미오와 동일 패턴).
-    existing_ids = {i.get("id") for i in data["items"]}
-    added = 0
-    for it in items:
-        title = (it.get("title") or "").strip()
-        if not title or title in existing:
-            continue
-        detail = (it.get("detail") or "")[:500]
-        # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
-        db_auth = touches_db_auth(title, detail)
-        stamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        new_id = f"{source}_{stamp}_{added}"
-        while new_id in existing_ids:
+    # backlog.json은 여러 도구가 각자 읽고 통째로 덮어쓴다 — 공용 락으로 감싸지 않으면
+    # 나중에 쓴 쪽이 먼저 쓴 쪽의 변경을 지운다. 반드시 **읽기부터** 감싼다(2026-08-02).
+    with backlog_lock():
+        try:
+            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            data = {"items": []}
+        except Exception as e:
+            # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
+            # 빈 dict로 대체해 이 함수 끝에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
+            # (자동 파이프라인 감사 도구가 발견, 2026-07-12: 6개 도구가 락 없이 backlog.json에
+            # 동시 접근하는 경합의 가장 파괴적인 구체 사례). 이번 적재는 건너뛰고 다음 주기에
+            # 재시도한다 — 기존 파일을 그대로 보존.
+            print(f"[나무] 백로그 읽기 실패(파일 손상 가능) — 이번 적재는 건너뜀: {e}")
+            return 0
+        existing = {i.get("title") for i in data["items"]}
+        # id 충돌 방지 — 날짜만으론(%Y%m%d) 같은 날 plan()이 두 번 불리면(수동 --once가 화요일
+        # 정기 슬롯과 겹치거나, 향후 배정과제 자체폴링이 추가되는 경우) 서로 다른 항목이 같은
+        # id를 가질 수 있다 — id로 조회하는 수리 dev_state의 attempts 오집계 위험(미오에서
+        # 2026-07-12에 먼저 발견·수정된 것과 동일한 패턴이 나무에도 있었음 — 비대칭 방치).
+        # "실제 존재하는 id와 안 겹칠 때까지 증가"로 근본 해결(미오와 동일 패턴).
+        existing_ids = {i.get("id") for i in data["items"]}
+        added = 0
+        for it in items:
+            title = (it.get("title") or "").strip()
+            if not title or title in existing:
+                continue
+            detail = (it.get("detail") or "")[:500]
+            # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
+            db_auth = touches_db_auth(title, detail)
+            stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            # id 접미사 카운터(seq)와 적재 건수(added)를 분리한다. 예전엔 added 하나를
+            # 두 용도로 써서, id가 충돌해 카운터를 올릴 때마다 **반환하는 적재 건수까지
+            # 부풀려졌다**(파이프라인 감사 2026-07-19 지적). 호출부는 이 반환값으로
+            # "N건 적재" 알림을 보내므로 실제보다 많은 수가 보고됐다.
+            seq = added
+            new_id = f"{source}_{stamp}_{seq}"
+            while new_id in existing_ids:
+                seq += 1
+                new_id = f"{source}_{stamp}_{seq}"
+            existing_ids.add(new_id)
+            data["items"].append({
+                "id": new_id,
+                "title": title[:120],
+                "detail": detail,
+                "priority": it.get("priority") if it.get("priority") in ("P2", "P3") else "P3",
+                "type": itype, "source": source,
+                "status": "보류" if db_auth else "대기",
+                "gate": "DB/인증" if db_auth else "",
+                "created": datetime.now().isoformat(),
+            })
             added += 1
-            new_id = f"{source}_{stamp}_{added}"
-        existing_ids.add(new_id)
-        data["items"].append({
-            "id": new_id,
-            "title": title[:120],
-            "detail": detail,
-            "priority": it.get("priority") if it.get("priority") in ("P2", "P3") else "P3",
-            "type": itype, "source": source,
-            "status": "보류" if db_auth else "대기",
-            "gate": "DB/인증" if db_auth else "",
-            "created": datetime.now().isoformat(),
-        })
-        added += 1
-    BACKLOG.parent.mkdir(parents=True, exist_ok=True)
-    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
-    return added
+        BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        return added
 
 
 def plan(do_send: bool) -> None:

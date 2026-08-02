@@ -38,7 +38,8 @@ from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_gu
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
-from _shared.backlog import (  # noqa: E402
+from _shared.backlog import (
+    backlog_lock,  # noqa: E402
     touches_db_auth, is_infra_failure, record_backlog_task_failure,
     recent_reviewed_items, format_recent_decisions, mio_implementation_task,
 )
@@ -144,53 +145,61 @@ def take_screenshots() -> list[Path]:
 
 
 def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
-    try:
-        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        data = {"items": []}
-    except Exception as e:
-        # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
-        # 빈 dict로 대체해 이 함수 끝에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
-        # (자동 파이프라인 감사 도구가 발견, 2026-07-12: 6개 도구가 락 없이 backlog.json에
-        # 동시 접근하는 경합의 가장 파괴적인 구체 사례). 이번 적재는 건너뛰고 다음 주기에
-        # 재시도한다 — 기존 파일을 그대로 보존.
-        print(f"[미오] 백로그 읽기 실패(파일 손상 가능) — 이번 적재는 건너뜀: {e}")
-        return 0
-    existing = {i.get("title") for i in data["items"]}
-    # id 충돌 방지 — 시각(초 단위)만으로는 같은 날 review()가 두 번 불릴 때(배정과제
-    # 폴링+정기리뷰가 겹치는 경우, 2026-07-11 폴링 도입으로 실현 가능해짐) 여전히 같은
-    # 초에 호출되면 서로 다른 항목이 같은 id를 가질 수 있다 — id로 조회하는 수리
-    # dev_state의 attempts 오집계 위험(자동 파이프라인 감사 도구가 발견, 2026-07-12).
-    # 시각 대신 "실제로 존재하는 id와 겹치지 않을 때까지 증가"로 근본 해결.
-    existing_ids = {i.get("id") for i in data["items"]}
-    added = 0
-    for it in items:
-        title = (it.get("title") or "").strip()
-        if not title or title in existing:
-            continue
-        detail = (it.get("detail") or "")[:500]
-        # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
-        db_auth = touches_db_auth(title, detail)
-        stamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        new_id = f"{source}_{stamp}_{added}"
-        while new_id in existing_ids:
+    # backlog.json은 여러 도구가 각자 읽고 통째로 덮어쓴다 — 공용 락으로 감싸지 않으면
+    # 나중에 쓴 쪽이 먼저 쓴 쪽의 변경을 지운다. 반드시 **읽기부터** 감싼다(2026-08-02).
+    with backlog_lock():
+        try:
+            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            data = {"items": []}
+        except Exception as e:
+            # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
+            # 빈 dict로 대체해 이 함수 끝에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
+            # (자동 파이프라인 감사 도구가 발견, 2026-07-12: 6개 도구가 락 없이 backlog.json에
+            # 동시 접근하는 경합의 가장 파괴적인 구체 사례). 이번 적재는 건너뛰고 다음 주기에
+            # 재시도한다 — 기존 파일을 그대로 보존.
+            print(f"[미오] 백로그 읽기 실패(파일 손상 가능) — 이번 적재는 건너뜀: {e}")
+            return 0
+        existing = {i.get("title") for i in data["items"]}
+        # id 충돌 방지 — 시각(초 단위)만으로는 같은 날 review()가 두 번 불릴 때(배정과제
+        # 폴링+정기리뷰가 겹치는 경우, 2026-07-11 폴링 도입으로 실현 가능해짐) 여전히 같은
+        # 초에 호출되면 서로 다른 항목이 같은 id를 가질 수 있다 — id로 조회하는 수리
+        # dev_state의 attempts 오집계 위험(자동 파이프라인 감사 도구가 발견, 2026-07-12).
+        # 시각 대신 "실제로 존재하는 id와 겹치지 않을 때까지 증가"로 근본 해결.
+        existing_ids = {i.get("id") for i in data["items"]}
+        added = 0
+        for it in items:
+            title = (it.get("title") or "").strip()
+            if not title or title in existing:
+                continue
+            detail = (it.get("detail") or "")[:500]
+            # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
+            db_auth = touches_db_auth(title, detail)
+            stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            # id 접미사 카운터(seq)와 적재 건수(added)를 분리한다. 예전엔 added 하나를
+            # 두 용도로 써서, id가 충돌해 카운터를 올릴 때마다 **반환하는 적재 건수까지
+            # 부풀려졌다**(파이프라인 감사 2026-07-19 지적). 호출부는 이 반환값으로
+            # "N건 적재" 알림을 보내므로 실제보다 많은 수가 보고됐다.
+            seq = added
+            new_id = f"{source}_{stamp}_{seq}"
+            while new_id in existing_ids:
+                seq += 1
+                new_id = f"{source}_{stamp}_{seq}"
+            existing_ids.add(new_id)
+            data["items"].append({
+                "id": new_id,
+                "title": title[:120],
+                "detail": detail,
+                "priority": it.get("priority") if it.get("priority") in ("P1", "P2", "P3") else "P3",
+                "type": itype, "source": source,
+                "status": "보류" if db_auth else "대기",
+                "gate": "DB/인증" if db_auth else "",
+                "created": datetime.now().isoformat(),
+            })
             added += 1
-            new_id = f"{source}_{stamp}_{added}"
-        existing_ids.add(new_id)
-        data["items"].append({
-            "id": new_id,
-            "title": title[:120],
-            "detail": detail,
-            "priority": it.get("priority") if it.get("priority") in ("P1", "P2", "P3") else "P3",
-            "type": itype, "source": source,
-            "status": "보류" if db_auth else "대기",
-            "gate": "DB/인증" if db_auth else "",
-            "created": datetime.now().isoformat(),
-        })
-        added += 1
-    BACKLOG.parent.mkdir(parents=True, exist_ok=True)
-    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
-    return added
+        BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        return added
 
 
 def _assigned_tasks() -> list[dict]:
@@ -204,27 +213,30 @@ def _assigned_tasks() -> list[dict]:
 
 
 def _close_tasks(task_ids: list[str]) -> None:
-    if not task_ids:
-        return
-    try:
-        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except Exception:
-        return
-    for i in data["items"]:
-        if i.get("id") in task_ids:
-            # 미오는 Read/WebSearch/WebFetch만 써서 코드를 절대 못 고친다 — 배정 과제가
-            # 실제 구현 착수를 요구하면(리뷰·시안이 아니라) 완료 처리해도 구현은 영영
-            # 일어나지 않은 채 백로그에서만 사라진다(2026-07-16 사고: 회의_202607162027_1
-            # "케어위젯 재그룹화"가 커밋도 dev_state 항목도 없이 완료 처리됨). 사람이
-            # owner를 수리 등으로 재배정하도록 보류로 되돌린다(ingestion 단계
-            # structurally_blocked()가 앞으로 걸러내지만, 이미 대기에 들어온 잔재에
-            # 대한 방어선).
-            if mio_implementation_task(i.get("title", ""), i.get("detail", "")):
-                i["status"] = "보류"
-                i["gate"] = "미오 구현불가 — owner 재배정 필요"
-            else:
-                i["status"] = "완료"
-    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    # backlog.json은 여러 도구가 각자 읽고 통째로 덮어쓴다 — 공용 락으로 감싸지 않으면
+    # 나중에 쓴 쪽이 먼저 쓴 쪽의 변경을 지운다. 반드시 **읽기부터** 감싼다(2026-08-02).
+    with backlog_lock():
+        if not task_ids:
+            return
+        try:
+            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        for i in data["items"]:
+            if i.get("id") in task_ids:
+                # 미오는 Read/WebSearch/WebFetch만 써서 코드를 절대 못 고친다 — 배정 과제가
+                # 실제 구현 착수를 요구하면(리뷰·시안이 아니라) 완료 처리해도 구현은 영영
+                # 일어나지 않은 채 백로그에서만 사라진다(2026-07-16 사고: 회의_202607162027_1
+                # "케어위젯 재그룹화"가 커밋도 dev_state 항목도 없이 완료 처리됨). 사람이
+                # owner를 수리 등으로 재배정하도록 보류로 되돌린다(ingestion 단계
+                # structurally_blocked()가 앞으로 걸러내지만, 이미 대기에 들어온 잔재에
+                # 대한 방어선).
+                if mio_implementation_task(i.get("title", ""), i.get("detail", "")):
+                    i["status"] = "보류"
+                    i["gate"] = "미오 구현불가 — owner 재배정 필요"
+                else:
+                    i["status"] = "완료"
+        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def review(do_send: bool) -> None:

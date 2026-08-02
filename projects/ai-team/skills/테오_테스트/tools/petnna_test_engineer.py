@@ -42,7 +42,8 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude  # noqa: E402
-from _shared.backlog import (  # noqa: E402
+from _shared.backlog import (
+    backlog_lock,  # noqa: E402
     is_infra_failure, record_backlog_task_failure, TASK_MAX_ATTEMPTS as _TASK_MAX_ATTEMPTS,
 )
 
@@ -188,14 +189,17 @@ def _backlog_task() -> dict | None:
 
 
 def _backlog_done(task_id: str) -> None:
-    try:
-        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except Exception:
-        return
-    for i in data["items"]:
-        if i.get("id") == task_id:
-            i["status"] = "완료"
-    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    # backlog.json은 여러 도구가 각자 읽고 통째로 덮어쓴다 — 공용 락으로 감싸지 않으면
+    # 나중에 쓴 쪽이 먼저 쓴 쪽의 변경을 지운다. 반드시 **읽기부터** 감싼다(2026-08-02).
+    with backlog_lock():
+        try:
+            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        for i in data["items"]:
+            if i.get("id") == task_id:
+                i["status"] = "완료"
+        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 # 배정 테스트 과제에 상한 없이 무한 재시도되던 결함(자동 파이프라인 감사 도구가 발견,

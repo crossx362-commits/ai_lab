@@ -42,7 +42,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.cc import scrub_secrets  # noqa: E402
-from _shared.backlog import promote_approved_holds, is_infra_failure  # noqa: E402
+from _shared.backlog import promote_approved_holds, is_infra_failure, backlog_lock  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -242,15 +242,18 @@ def _update_backlog(item_id: str, status: str, reason: str = "") -> None:
     여기 안 남기면 "왜 그렇게 결정했는지"가 미오·예원 양쪽에서 다시 안 보인다
     (2026-07-14 발견 — 디자인 진자 방지 장치를 만들다가 정작 사유가 저장 안 되고
     있었다는 걸 알게 됨). reason 없이 호출(수리 자체 자동병합 등)하면 기존 값 유지."""
-    data = _load_backlog()
-    for it in data["items"]:
-        if it.get("id") == item_id:
-            it["status"] = status
-            it["updated"] = datetime.now().isoformat()
-            if reason:
-                it["review_reason"] = reason
-    BACKLOG.parent.mkdir(parents=True, exist_ok=True)
-    BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    # backlog.json은 여러 도구가 각자 읽고 통째로 덮어쓴다 — 공용 락으로 감싸지 않으면
+    # 나중에 쓴 쪽이 먼저 쓴 쪽의 변경을 지운다. 반드시 **읽기부터** 감싼다(2026-08-02).
+    with backlog_lock():
+        data = _load_backlog()
+        for it in data["items"]:
+            if it.get("id") == item_id:
+                it["status"] = status
+                it["updated"] = datetime.now().isoformat()
+                if reason:
+                    it["review_reason"] = reason
+        BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+        BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 def select_backlog(state: dict) -> tuple[str, dict] | None:
