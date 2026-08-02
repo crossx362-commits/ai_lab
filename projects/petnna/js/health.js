@@ -420,6 +420,14 @@ function renderHealthCalendarMain() {
     const el = document.getElementById('health-calendar-main');
     if (!el) return;
 
+    // 배변 캘린더는 **이 함수의 early return 위에서** 부른다. 아래 '기록 없음' 분기에서
+    // return하는 자리에 이 호출이 있으면, 기록이 하나도 없을 때 배변 캘린더가 아예 안 돌아
+    // 스스로 숨지 못하고 호스트 div의 border-t만 남는다 — 내용 없이 선 하나가 떠 있게 된다
+    // (2026-08-02 병합 검토에서 실측: 빈 계정에서 18px 높이 + 1px 상단선).
+    // 호출부를 renderHealthCalendarMain 바깥 5곳에 흩뿌리지 않는 이유는, 새 호출부가 생길 때
+    // 한 곳만 빠지는 비대칭이 이 저장소에서 반복돼 왔기 때문이다.
+    if (typeof renderPoopCalendarMain === 'function') renderPoopCalendarMain();
+
     const history = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
     const today = new Date();
 
@@ -452,6 +460,73 @@ function renderHealthCalendarMain() {
             <span class="w-3 h-3 rounded-sm bg-emerald-400 inline-block ml-2"></span><span class="text-[9px] text-gray-400">기록 완료</span>
         </div>`;
 }
+
+// 배변 건강 월간 캘린더 (이번 달, 배변 상태별 색상 코딩)
+// healthLogs.history의 poop 값(normal/hard/soft/liquid)을 달력 칸에 색으로 표시한다.
+// 색 어휘는 daily-condition.js·건강 리포트 PDF와 동일하게 맞춘다.
+function renderPoopCalendarMain() {
+    const el = document.getElementById('poop-calendar-main');
+    if (!el) return;
+
+    const history = (typeof healthLogs !== 'undefined' && healthLogs.history) ? healthLogs.history : [];
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth(); // 0-based
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+    // 이번 달 배변 기록이 하나도 없으면 숨김 (공간 절약, 기존 캘린더와 동일 정책)
+    const monthPoop = history.filter(h => h.date && h.date.startsWith(monthPrefix) && h.poop != null);
+    if (monthPoop.length === 0) {
+        el.innerHTML = '';
+        el.style.display = 'none';
+        return;
+    }
+    el.style.display = 'block';
+
+    const POOP_STYLE = {
+        normal: { bg: 'bg-emerald-400', label: '정상' },
+        hard:   { bg: 'bg-amber-400',   label: '딱딱' },
+        soft:   { bg: 'bg-orange-400',  label: '무름' },
+        liquid: { bg: 'bg-rose-400',    label: '설사' },
+    };
+
+    const poopByDay = {};
+    monthPoop.forEach(h => { poopByDay[h.date] = h.poop; });
+
+    const firstWeekday = new Date(year, month, 1).getDay(); // 0=일
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const weekdayHeader = ['일', '월', '화', '수', '목', '금', '토']
+        .map(d => `<div class="text-center text-[9px] font-bold text-gray-400">${d}</div>`).join('');
+
+    let cells = '';
+    for (let i = 0; i < firstWeekday; i++) cells += '<div></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${monthPrefix}-${String(day).padStart(2, '0')}`;
+        const poop = poopByDay[dateStr];
+        const style = poop ? POOP_STYLE[poop] : null;
+        const bg = style ? style.bg + ' text-white' : 'bg-gray-100 text-gray-400';
+        const ring = dateStr === todayStr ? ' ring-2 ring-amber-400' : '';
+        const title = style ? `${dateStr} · ${style.label}` : dateStr;
+        cells += `<div class="aspect-square flex items-center justify-center rounded-md text-[10px] font-bold ${bg}${ring}" title="${title}">${day}</div>`;
+    }
+
+    const legend = Object.values(POOP_STYLE).map(s =>
+        `<span class="w-3 h-3 rounded-sm ${s.bg} inline-block"></span><span class="text-[9px] text-gray-400 mr-2">${s.label}</span>`
+    ).join('');
+
+    el.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-base">💩</span>
+            <span class="text-sm font-bold text-gray-900">배변 월간 캘린더</span>
+            <span class="text-xs text-gray-400">${year}년 ${month + 1}월</span>
+        </div>
+        <div class="grid grid-cols-7 gap-1 mb-1">${weekdayHeader}</div>
+        <div class="grid grid-cols-7 gap-1">${cells}</div>
+        <div class="flex items-center gap-1 mt-2 flex-wrap">${legend}</div>`;
+}
+window.renderPoopCalendarMain = renderPoopCalendarMain;
 
 // 사용법 안내 표시 여부
 function updateHealthTutorialMainVisibility() {
