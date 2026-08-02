@@ -82,6 +82,36 @@ class WritersUseLockTests(unittest.TestCase):
         ("수리_개발자/tools/petnna_dev_engine.py", "_update_backlog"),
     ]
 
+    # 함수 안에 수분짜리 LLM 호출이 있어 **구간만** 감싼 것들.
+    # 통째로 감싸면 락을 붙들어 다른 도구를 전부 막으므로 첫 실행문 규칙을 적용하지 않는다.
+    # 대신 "백로그 읽기와 쓰기가 같은 with 블록 안에 있는가"를 본다.
+    SPAN_CASES = [
+        ("예원_CEO/tools/petnna_council.py", "convene"),
+        ("백호_백엔드/tools/petnna_backend_guard.py", "investigate_assigned_tasks"),
+    ]
+
+    def test_span_wrapped_read_and_write_together(self):
+        """구간만 감싼 경우: 읽기와 쓰기가 **같은** backlog_lock 블록 안에 있어야 한다."""
+        import ast
+        for rel, fn in self.SPAN_CASES:
+            path = AI_TEAM_ROOT / "skills" / rel
+            node = next((n for n in ast.walk(ast.parse(path.read_text(encoding="utf-8")))
+                         if isinstance(n, ast.FunctionDef) and n.name == fn), None)
+            self.assertIsNotNone(node, f"{rel}:{fn} 함수를 찾지 못함")
+            found = False
+            for w in [n for n in ast.walk(node) if isinstance(n, ast.With)]:
+                call = w.items[0].context_expr
+                if getattr(getattr(call, "func", None), "id", None) != "backlog_lock":
+                    continue
+                body = ast.dump(ast.Module(body=w.body, type_ignores=[]))
+                if "read_text" in body and "write_text" in body:
+                    found = True
+                    break
+            self.assertTrue(
+                found,
+                f"{rel}:{fn} 에서 백로그 읽기와 쓰기가 같은 backlog_lock 블록 안에 있지 않다 — "
+                f"쓰기만 감싸면 read-modify-write 경합이 그대로 남는다")
+
     def test_read_and_write_inside_lock(self):
         import ast
         for rel, fn in self.CASES:

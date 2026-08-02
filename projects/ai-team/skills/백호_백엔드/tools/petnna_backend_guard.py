@@ -38,7 +38,9 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.backlog import is_infra_failure, apply_task_failure, TASK_MAX_ATTEMPTS  # noqa: E402
+from _shared.backlog import (  # noqa: E402
+    is_infra_failure, apply_task_failure, TASK_MAX_ATTEMPTS, backlog_lock,
+)
 
 load_env(str(PROJECT_ROOT))
 
@@ -251,79 +253,82 @@ def diff_with_prev(findings: list[dict]) -> tuple[list, list]:
 #  수행, 코드/DB는 건드리지 않는다 — 수정 필요 결론이면 별도 [승인필요] 항목으로.)
 
 def investigate_assigned_tasks(do_send: bool) -> int:
-    try:
-        data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except Exception:
-        return 0
-    todo = [it for it in data["items"] if it.get("owner") == "백호" and it.get("status") == "대기"]
-    if not todo:
-        return 0
-    print(f"[백호] 위임 조사 착수: {len(todo)}건 — 한 번에 처리")
-    # 과제마다 run_claude를 반복 호출하던 것을 하나로 묶는다(2026-07-13, 프로그래매틱 툴
-    # 콜링 적용) — 항목마다 스키마·마이그레이션·js를 처음부터 다시 읽게 하던 반복 호출
-    # 대신, 모델이 직접 작은 파이썬 스크립트를 작성해 Bash(python 한정)로 실행하게 한다.
-    # 스크립트가 스키마·마이그레이션·js를 한 번만 읽어 과제별로 걸러내고, 원문이 아니라
-    # 필터링된 결론만 stdout으로 남기도록 강제 — "도구를 하나씩 부르는 대신 프로그램을
-    # 작성해 한 번에 실행, 중간 결과는 프로그램 안에서만 흐르고 최종 결과만 반환"하는
-    # 구조를 subprocess(Bash) 경계로 실제 재현한다(진짜 code_execution API는 크레딧 0원
-    # + 구독전용 정책으로 불가 — Bash(python)가 subscription CLI에서 낼 수 있는 최선의 근사).
-    listing = "\n".join(
-        f"{i}. [id={it.get('id')}] {it['title']}\n   상세: {it.get('detail', '')}"
-        for i, it in enumerate(todo, 1))
-    ok, out = run_claude(
-        "너는 펫나 백엔드 지킴이 백호다. 회의/사람이 위임한 아래 조사 과제들을 전부 처리하라 — "
-        "결론만 명확히, 코드/DB는 절대 수정하지 마라(읽기 전용 조사).\n\n"
-        f"[조사 과제 {len(todo)}건]\n{listing}\n\n"
-        "[처리 방식 — 반드시 이렇게 하라]\n"
-        "1. projects/petnna/supabase_schema.sql·migrations/*.sql·js/**/*.js 내용을 읽어 위 과제들을 "
-        "판정하는 파이썬 스크립트를 작성하라(정규식/문자열 검색으로 테이블·RLS·정책·함수 존재 여부를 "
-        "직접 판정 — 네가 나중에 눈으로 다시 훑지 말고 스크립트가 판정하게 하라).\n"
-        "2. 그 스크립트를 `python3 -c \"...\"` 형태로 Bash 실행해라(다른 bash 명령·파일쓰기 금지). "
-        "스크립트의 출력은 과제별 결론만 남기고(원본 파일 텍스트·중간 검색 결과는 출력하지 마라).\n"
-        "3. 스크립트만으로 판단이 안 되는 과제(코드 이해·설계 판단이 필요한 것)만 Read/웹서치를 추가로 써라.\n"
-        "과제마다 결론은 6줄 이내: 무엇을 확인했는지, 결론, 후속 조치가 필요하면 무엇인지(신규 테이블 필요 여부 등 명확히).\n\n"
-        "출력은 모든 과제를 담은 JSON 배열만(다른 텍스트 금지): "
-        '[{"id": "<과제 id 그대로>", "conclusion": "<6줄 이내 결론>"}]',
-        PROJECT_ROOT, timeout=900, allowed_tools="Read,Bash(python3:*),Bash(python:*),WebSearch,WebFetch",
-        permission_mode="plan")
-    results = extract_json(out) if ok and out else None
-    by_id = {}
-    if isinstance(results, list):
-        by_id = {str(r.get("id")): (r.get("conclusion") or "").strip()
-                 for r in results if isinstance(r, dict) and r.get("id")}
-    whole_call_infra_failed = not (ok and out) and is_infra_failure(out)
+    # 재읽기~쓰기 구간만 공용 락으로 감싼다 — 이 앞의 run_claude(최대 600s)까지
+    # 감싸면 락을 수분간 붙들어 다른 도구를 전부 막는다(2026-08-02).
+    with backlog_lock():
+        try:
+            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except Exception:
+            return 0
+        todo = [it for it in data["items"] if it.get("owner") == "백호" and it.get("status") == "대기"]
+        if not todo:
+            return 0
+        print(f"[백호] 위임 조사 착수: {len(todo)}건 — 한 번에 처리")
+        # 과제마다 run_claude를 반복 호출하던 것을 하나로 묶는다(2026-07-13, 프로그래매틱 툴
+        # 콜링 적용) — 항목마다 스키마·마이그레이션·js를 처음부터 다시 읽게 하던 반복 호출
+        # 대신, 모델이 직접 작은 파이썬 스크립트를 작성해 Bash(python 한정)로 실행하게 한다.
+        # 스크립트가 스키마·마이그레이션·js를 한 번만 읽어 과제별로 걸러내고, 원문이 아니라
+        # 필터링된 결론만 stdout으로 남기도록 강제 — "도구를 하나씩 부르는 대신 프로그램을
+        # 작성해 한 번에 실행, 중간 결과는 프로그램 안에서만 흐르고 최종 결과만 반환"하는
+        # 구조를 subprocess(Bash) 경계로 실제 재현한다(진짜 code_execution API는 크레딧 0원
+        # + 구독전용 정책으로 불가 — Bash(python)가 subscription CLI에서 낼 수 있는 최선의 근사).
+        listing = "\n".join(
+            f"{i}. [id={it.get('id')}] {it['title']}\n   상세: {it.get('detail', '')}"
+            for i, it in enumerate(todo, 1))
+        ok, out = run_claude(
+            "너는 펫나 백엔드 지킴이 백호다. 회의/사람이 위임한 아래 조사 과제들을 전부 처리하라 — "
+            "결론만 명확히, 코드/DB는 절대 수정하지 마라(읽기 전용 조사).\n\n"
+            f"[조사 과제 {len(todo)}건]\n{listing}\n\n"
+            "[처리 방식 — 반드시 이렇게 하라]\n"
+            "1. projects/petnna/supabase_schema.sql·migrations/*.sql·js/**/*.js 내용을 읽어 위 과제들을 "
+            "판정하는 파이썬 스크립트를 작성하라(정규식/문자열 검색으로 테이블·RLS·정책·함수 존재 여부를 "
+            "직접 판정 — 네가 나중에 눈으로 다시 훑지 말고 스크립트가 판정하게 하라).\n"
+            "2. 그 스크립트를 `python3 -c \"...\"` 형태로 Bash 실행해라(다른 bash 명령·파일쓰기 금지). "
+            "스크립트의 출력은 과제별 결론만 남기고(원본 파일 텍스트·중간 검색 결과는 출력하지 마라).\n"
+            "3. 스크립트만으로 판단이 안 되는 과제(코드 이해·설계 판단이 필요한 것)만 Read/웹서치를 추가로 써라.\n"
+            "과제마다 결론은 6줄 이내: 무엇을 확인했는지, 결론, 후속 조치가 필요하면 무엇인지(신규 테이블 필요 여부 등 명확히).\n\n"
+            "출력은 모든 과제를 담은 JSON 배열만(다른 텍스트 금지): "
+            '[{"id": "<과제 id 그대로>", "conclusion": "<6줄 이내 결론>"}]',
+            PROJECT_ROOT, timeout=900, allowed_tools="Read,Bash(python3:*),Bash(python:*),WebSearch,WebFetch",
+            permission_mode="plan")
+        results = extract_json(out) if ok and out else None
+        by_id = {}
+        if isinstance(results, list):
+            by_id = {str(r.get("id")): (r.get("conclusion") or "").strip()
+                     for r in results if isinstance(r, dict) and r.get("id")}
+        whole_call_infra_failed = not (ok and out) and is_infra_failure(out)
 
-    # 백로그를 다시 읽어 적용한다(2026-07-12 가드레일 유지) — 그 사이 다른 에이전트가
-    # backlog.json에 적재·변경한 내용을 유실하지 않도록 시작 시점 스냅샷을 쓰지 않는다.
-    try:
-        fresh = json.loads(BACKLOG.read_text(encoding="utf-8"))
-    except Exception as e:
-        # 조용한 반환은 호출자가 백로그 갱신 실패를 알 방법이 없다(2026-07-13 파이프라인
-        # 감사가 발견 — 미오·나무의 add_backlog_items는 이미 로그를 남기는데 여기만 비대칭).
-        print(f"[백호] 백로그 재읽기 실패(파일 손상 가능) — 과제 처리 결과 미반영: {e}")
-        return len(todo)
-    sent = []
-    for it in todo:
-        target = next((x for x in fresh["items"] if x.get("id") == it.get("id")), None)
-        if target is None:
-            continue  # 그 사이 항목이 없어짐(수동 삭제 등) — 스킵
-        conclusion = by_id.get(str(it.get("id")))
-        if conclusion:
-            target["status"] = "완료"
-            target["finding"] = conclusion[:1500]
-            target["updated"] = datetime.now().isoformat()
-            print(f"[백호] 조사 완료: {it['title'][:60]}")
-            sent.append(f"- {it['title'][:80]}\n  {conclusion[:400]}")
-        elif whole_call_infra_failed:
-            # 호출 자체가 인프라 사유로 전멸 — 과제 탓이 아니다. 시도 미차감(수리
-            # _improve_cycle과 동일 원칙), 다음 주기 통째로 재시도.
-            print(f"[백호] 조사 실패(인프라) — 다음 주기 재시도: {it['title'][:60]}")
-        else:
-            # 이 과제만 응답에서 누락됐거나 호출이 비-인프라 사유로 실패 — attempts를
-            # 반영해야 상한 도달 시 보류로 전환되는 안전장치가 유지된다.
-            apply_task_failure(target)
-            print(f"[백호] 조사 실패(시도 {target.get('attempts')}/{TASK_MAX_ATTEMPTS}): {it['title'][:60]}")
-    BACKLOG.write_text(json.dumps(fresh, ensure_ascii=False, indent=1), encoding="utf-8")
+        # 백로그를 다시 읽어 적용한다(2026-07-12 가드레일 유지) — 그 사이 다른 에이전트가
+        # backlog.json에 적재·변경한 내용을 유실하지 않도록 시작 시점 스냅샷을 쓰지 않는다.
+        try:
+            fresh = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except Exception as e:
+            # 조용한 반환은 호출자가 백로그 갱신 실패를 알 방법이 없다(2026-07-13 파이프라인
+            # 감사가 발견 — 미오·나무의 add_backlog_items는 이미 로그를 남기는데 여기만 비대칭).
+            print(f"[백호] 백로그 재읽기 실패(파일 손상 가능) — 과제 처리 결과 미반영: {e}")
+            return len(todo)
+        sent = []
+        for it in todo:
+            target = next((x for x in fresh["items"] if x.get("id") == it.get("id")), None)
+            if target is None:
+                continue  # 그 사이 항목이 없어짐(수동 삭제 등) — 스킵
+            conclusion = by_id.get(str(it.get("id")))
+            if conclusion:
+                target["status"] = "완료"
+                target["finding"] = conclusion[:1500]
+                target["updated"] = datetime.now().isoformat()
+                print(f"[백호] 조사 완료: {it['title'][:60]}")
+                sent.append(f"- {it['title'][:80]}\n  {conclusion[:400]}")
+            elif whole_call_infra_failed:
+                # 호출 자체가 인프라 사유로 전멸 — 과제 탓이 아니다. 시도 미차감(수리
+                # _improve_cycle과 동일 원칙), 다음 주기 통째로 재시도.
+                print(f"[백호] 조사 실패(인프라) — 다음 주기 재시도: {it['title'][:60]}")
+            else:
+                # 이 과제만 응답에서 누락됐거나 호출이 비-인프라 사유로 실패 — attempts를
+                # 반영해야 상한 도달 시 보류로 전환되는 안전장치가 유지된다.
+                apply_task_failure(target)
+                print(f"[백호] 조사 실패(시도 {target.get('attempts')}/{TASK_MAX_ATTEMPTS}): {it['title'][:60]}")
+        BACKLOG.write_text(json.dumps(fresh, ensure_ascii=False, indent=1), encoding="utf-8")
     if do_send and sent:
         send(f"🐯 백호 — 위임 조사 완료 {len(sent)}건\n\n" + "\n\n".join(sent), silent=True)
     return len(todo)

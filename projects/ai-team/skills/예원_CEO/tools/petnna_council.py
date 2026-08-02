@@ -39,7 +39,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.backlog import needs_human, AUTO_OWNERS  # noqa: E402,F401
+from _shared.backlog import needs_human, AUTO_OWNERS, backlog_lock  # noqa: E402,F401
 
 load_env(str(PROJECT_ROOT))
 
@@ -177,36 +177,49 @@ def convene(topic: str, context: str, priority: str) -> None:
         # 액션아이템 → 백로그(source=회의). [승인필요]·소비자 없는 owner 항목은 적재만 하고 자동 루프가 안 집도록 보류 상태.
         actions = extract_json(verdict) or []
         added = 0
-        try:
-            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-        except FileNotFoundError:
-            data = {"items": []}
-        except Exception as e:
-            # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
-            # 빈 dict로 대체해 아래에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
-            # (자동 파이프라인 감사 도구가 발견, 2026-07-12). 액션아이템 적재는 건너뛰되
-            # 회의록·텔레그램은 이미 만들어진 대로 계속 진행 — 기존 백로그 파일 보존.
-            print(f"[회의] 백로그 읽기 실패(파일 손상 가능) — 액션아이템 적재 건너뜀: {e}")
-            data = None
-        if data is not None:
-            existing = {i.get("title") for i in data["items"]}
-            for a in actions if isinstance(actions, list) else []:
-                title = (a.get("title") or "").strip()
-                if not title or title in existing:
-                    continue
-                human = needs_human(title, a.get("owner", ""), a.get("detail") or "",
-                                    a.get("type", "기획"))
-                data["items"].append({
-                    "id": f"회의_{datetime.now():%Y%m%d%H%M}_{added}",
-                    "title": title[:120], "detail": (a.get("detail") or "")[:500],
-                    "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
-                    "type": a.get("type", "기획"), "source": "회의",
-                    "status": "보류" if human else "대기",
-                    "owner": a.get("owner", ""), "created": datetime.now().isoformat(),
-                })
-                added += 1
-            BACKLOG.parent.mkdir(parents=True, exist_ok=True)
-            BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        # 백로그 읽기~쓰기만 공용 락으로 감싼다 — convene 전체를 감싸면 안에 있는
+        # 6인 병렬 LLM 호출(수분)이 락을 붙들어 다른 도구를 전부 막는다(2026-08-02).
+        with backlog_lock():
+            try:
+                data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+            except FileNotFoundError:
+                data = {"items": []}
+            except Exception as e:
+                # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
+                # 빈 dict로 대체해 아래에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
+                # (자동 파이프라인 감사 도구가 발견, 2026-07-12). 액션아이템 적재는 건너뛰되
+                # 회의록·텔레그램은 이미 만들어진 대로 계속 진행 — 기존 백로그 파일 보존.
+                print(f"[회의] 백로그 읽기 실패(파일 손상 가능) — 액션아이템 적재 건너뜀: {e}")
+                data = None
+            if data is not None:
+                existing = {i.get("title") for i in data["items"]}
+                # id 충돌 방지 — stamp가 분 단위라 같은 분에 다른 안건 회의가 열리면 서로 다른
+                # 액션아이템이 같은 id를 갖는다. 수리 dev_state가 id로 조회하므로 attempts가
+                # 뒤섞인다. 나무·미오는 2026-07-12에 고쳤는데 회의만 빠져 있었다(비대칭).
+                existing_ids = {i.get("id") for i in data["items"]}
+                for a in actions if isinstance(actions, list) else []:
+                    title = (a.get("title") or "").strip()
+                    if not title or title in existing:
+                        continue
+                    human = needs_human(title, a.get("owner", ""), a.get("detail") or "",
+                                        a.get("type", "기획"))
+                    seq = added
+                    new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
+                    while new_id in existing_ids:
+                        seq += 1
+                        new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
+                    existing_ids.add(new_id)
+                    data["items"].append({
+                        "id": new_id,
+                        "title": title[:120], "detail": (a.get("detail") or "")[:500],
+                        "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
+                        "type": a.get("type", "기획"), "source": "회의",
+                        "status": "보류" if human else "대기",
+                        "owner": a.get("owner", ""), "created": datetime.now().isoformat(),
+                    })
+                    added += 1
+                BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+                BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         minutes = OUT_DIR / f"minutes_{datetime.now():%Y%m%d_%H%M}.md"
