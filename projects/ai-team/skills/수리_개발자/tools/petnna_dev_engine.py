@@ -272,7 +272,25 @@ def select_backlog(state: dict) -> tuple[str, dict] | None:
                  f"검토·병합해 주시면 자동 재개합니다 (상한 SURI_MAX_PENDING={os.getenv('SURI_MAX_PENDING','5')})",
                  silent=True)
         return None
-    items = [it for it in _load_backlog()["items"]
+    backlog_items = _load_backlog()["items"]
+    # 백로그가 '대기'인데 dev_state는 '보류(시도 소진)'로 남아 있으면 새 라운드로 취급해
+    # attempts를 리셋한다. 사람이나 promote_approved_holds가 보류→대기로 되돌리는 경로가
+    # 있는데 그건 backlog.json만 고치므로, dev_state의 낡은 상한이 그대로 남아 아래 필터에서
+    # 조용히 탈락한다 — 수리 로그엔 '처리 가능한 과제 없음'만 찍혀 원인이 안 보인다
+    # (2026-08-03 실측: 미오 과제 2건이 이 상태로 방치. 게다가 그 3회 실패는 2026-07-28
+    # 구독 클로드 토큰 만료로 함대가 죽어 있던 구간에 소진된 것이라 과제 탓도 아니었다).
+    # select_issue()의 '재발 감지 시 attempts 리셋'과 같은 원칙을 백로그 쪽에도 맞춘다.
+    for it in backlog_items:
+        rec = state["issues"].get(it["id"])
+        if (it.get("status") == "대기" and rec
+                and rec.get("status") == "보류"
+                and rec.get("attempts", 0) >= MAX_ATTEMPTS):
+            rec["attempts"] = 0
+            rec["status"] = "대기"
+            rec["reopened_at"] = datetime.now().isoformat()
+            print(f"- 백로그 재개: {it['title'][:50]} (보류→대기, 시도 리셋)")
+
+    items = [it for it in backlog_items
              if it.get("status") == "대기"
              and it.get("owner", "") in ("", "수리")
              and state["issues"].get(it["id"], {}).get("attempts", 0) < MAX_ATTEMPTS]
