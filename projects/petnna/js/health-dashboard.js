@@ -263,11 +263,11 @@ function renderMedAdherenceTracker() {
             <div class="flex justify-between items-center mb-3">
                 <div class="flex items-center gap-2">
                     <span class="text-2xl">💊</span>
-                    <h3 class="text-sm font-bold text-gray-900">복약 순응도 (최근 30일)</h3>
+                    <h3 class="text-base font-bold text-gray-900">복약 순응도 (최근 30일)</h3>
                 </div>
                 <div class="text-right leading-tight">
                     <span class="text-xl font-black ${rateColor}">${rate}%</span>
-                    <p class="text-[9px] font-bold text-gray-400 -mt-0.5">이번 주 <span class="${weekRateColor}">${weekRate}%</span></p>
+                    <p class="text-xs font-bold text-gray-400 -mt-0.5">이번 주 <span class="${weekRateColor}">${weekRate}%</span></p>
                 </div>
             </div>
             <div class="flex flex-wrap gap-0.5">${cells}</div>
