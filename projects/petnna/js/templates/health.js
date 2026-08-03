@@ -485,7 +485,7 @@ const HEALTH_TEMPLATE = `
     <!-- /왼쪽 컬럼 끝 -->
 
     <!-- 오른쪽 컬럼 (투약·정기예방 + 월간 리포트 + 건강수첩 + 영양관리 + 돌봄 스케줄러) -->
-    <div class="lg:col-span-4 space-y-4 lg:sticky lg:top-20 lg:self-start">
+    <div class="lg:col-span-4 space-y-3 lg:sticky lg:top-20 lg:self-start">
 
         <!-- 케어 위젯 묶음 (각자 다른 모듈이 자체 카드로 채움 — 4개 기능군 소제목으로 재그룹화,
              2026-07-16 개선회의 결정 회의_202607162027_1 + 미오 스타일·간격 제안 반영)
