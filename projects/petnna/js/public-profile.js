@@ -115,6 +115,41 @@
         }
     }
 
+    // 🆘 실종(Lost) 원격 기록 — lost_pets 테이블(오너 전용 RLS). 익명 습득자는 이 테이블을
+    // 읽지 못하므로(공개 read 정책 없음) 습득자 배너는 public_pet_profiles.public_fields._lost
+    // 로 전달한다. user_id/email은 public_pet_profiles처럼 서버 기본값(auth.uid())에 맡긴다.
+    async function remoteLostReport(pet, profile) {
+        if (!connected()) return;
+        try {
+            var row = {
+                pet_id: String(pet.id),
+                kind: "lost",
+                status: "lost",
+                pet_name: pet.name || null,
+                breed: pet.breed || null,
+                place_label: (profile && profile.lost && profile.lost.place) || null,
+                note: (profile && profile.note) || null,
+                contact_masked: (profile && profile.contact_masked) || null,
+                happened_at: new Date().toISOString(),
+            };
+            var res = await SupabaseService.client.from("lost_pets").insert([row]);
+            if (res.error) throw res.error;
+        } catch (e) {
+            (window.AppLogger ? AppLogger.warn : console.warn)("실종 기록 원격 저장 실패(로컬은 유지)", e && e.message);
+        }
+    }
+    async function remoteLostResolve(pet) {
+        if (!connected()) return;
+        try {
+            var res = await SupabaseService.client.from("lost_pets")
+                .update({ status: "resolved", resolved_at: new Date().toISOString() })
+                .eq("pet_id", String(pet.id)).eq("status", "lost");
+            if (res.error) throw res.error;
+        } catch (e) {
+            (window.AppLogger ? AppLogger.warn : console.warn)("재회 처리 원격 반영 실패", e && e.message);
+        }
+    }
+
     // ── 공개 URL / QR ─────────────────────────────────────────
     function publicUrl(token) { return location.origin + "/p/" + token; }
 
@@ -187,13 +222,22 @@
         var buttons = [
             { text: existing ? "QR 갱신" : "QR 만들기", primary: true, closeOnClick: false, onClick: function () { save(pet); } },
         ];
-        if (typeof window.publishLostBroadcast === "function") {
+        var isLost = !!(pf && pf._lost);
+        if (existing && isLost) {
             buttons.push({
-                text: "🆘 실종 신고(긴급 알림)", danger: true, closeOnClick: true,
+                text: "🏠 재회 처리(복귀)", closeOnClick: false,
+                onClick: function () { resolveLost(pet, existingToken); },
+            });
+        } else {
+            buttons.push({
+                text: "🆘 실종 신고", danger: true, closeOnClick: !existing,
                 onClick: function () {
                     var contact = ((document.getElementById("pp-contact") || {}).value || "").trim();
                     var note = ((document.getElementById("pp-note") || {}).value || "").trim();
-                    window.publishLostBroadcast({ petName: pet.name, contact: contact, note: note });
+                    if (existing) markLost(pet);
+                    if (typeof window.publishLostBroadcast === "function") {
+                        window.publishLostBroadcast({ petName: pet.name, contact: contact, note: note });
+                    }
                 },
             });
         }
@@ -267,6 +311,35 @@
         await remoteDelete(token);
         toast("공개 프로필을 삭제했어요");
         if (typeof window.closeModal === "function") window.closeModal();
+    }
+
+    // 🆘 실종 신고: 공개 프로필을 '실종 배너'로 전환(public_fields._lost). 습득자 QR 페이지가
+    // 즉시 실종 상태를 보여준다. 오너 기록은 lost_pets 테이블에도 남긴다(이력·지도·재회용).
+    async function markLost(pet) {
+        var token = tokenForPet(pet.id);
+        var p = token ? localGet(token) : null;
+        if (!p) return;   // QR 프로필이 없으면 배너 전환 스킵(피드 방송은 별도로 진행)
+        p.public_fields = p.public_fields || {};
+        p.public_fields._lost = true;
+        p.lost = { place: (p.lost && p.lost.place) || "", reportedAt: new Date().toISOString() };
+        p.updated_at = new Date().toISOString();
+        localPut(p);
+        await remoteUpsert(p);
+        await remoteLostReport(pet, p);
+    }
+    // 🏠 재회 처리: 실종 배너를 내리고 lost_pets 를 resolved 로 종료.
+    async function resolveLost(pet, token) {
+        var p = token ? localGet(token) : null; if (!p) return;
+        p.public_fields = p.public_fields || {};
+        p.public_fields._lost = false;
+        if (p.lost) p.lost.resolvedAt = new Date().toISOString();
+        p.updated_at = new Date().toISOString();
+        localPut(p);
+        await remoteUpsert(p);
+        await remoteLostResolve(pet);
+        toast("🏠 재회를 축하해요! 실종 배너를 내렸어요");
+        showResult(p);
+        setTimeout(function () { open(); }, 400);
     }
 
     function showResult(profile) {
@@ -440,6 +513,7 @@
         }
 
         var f = profile.public_fields || {};
+        var isLost = !!f._lost;
         var photo = f.photo;
         var name = f.name;
         var rows =
@@ -458,10 +532,21 @@
         }
         if (!contact) contact = '<p class="text-sm text-gray-500 text-center">보호자 연락처가 등록되어 있지 않아요.</p>';
 
+        var lostBanner = isLost
+            ? '<div class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center">' +
+              '<p class="text-sm font-black text-rose-600">🆘 실종 신고된 아이예요</p>' +
+              '<p class="text-[11px] text-rose-500 mt-1">발견하셨다면 아래 연락처로 꼭 알려주세요 🙏</p></div>'
+            : "";
+        var topStrip = isLost
+            ? '<div class="text-white text-center py-3" style="background:#e11d48;">' +
+              '<p class="text-sm font-black tracking-wide">🆘 실종 상태예요 — 지금 집을 찾고 있어요!</p></div>'
+            : '<div class="bg-brand-500 text-white text-center py-3">' +
+              '<p class="text-sm font-bold tracking-wide">🆘 저를 발견하셨나요? 집을 찾고 있어요</p></div>';
+
         wrap.innerHTML =
+            lostBanner +
             '<div class="rounded-2xl bg-white shadow-xl overflow-hidden">' +
-            '<div class="bg-brand-500 text-white text-center py-3">' +
-            '<p class="text-sm font-bold tracking-wide">🆘 저를 발견하셨나요? 집을 찾고 있어요</p></div>' +
+            topStrip +
 
             (photo
                 ? '<img src="' + esc(photo) + '" alt="" class="w-full h-56 object-cover">'
