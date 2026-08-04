@@ -13,6 +13,9 @@ const MYPET_TEMPLATE = `
         <!-- 📅 추억 다시보기 자동 회고 (memory-flashback.js가 채움, 데이터 있을 때만 노출) -->
         <div id="memory-flashback-banner"></div>
 
+        <!-- 🎁 올해의 반려일기 리캡 (year-recap.js가 채움, 올해 기록 있을 때만 노출) -->
+        <div id="year-recap-banner"></div>
+
         <!-- 🌈 무지개다리 추모 공간 (memorial.js가 채움, 펫이 추모 모드일 때만 노출) -->
         <div id="memorial-banner"></div>
 
