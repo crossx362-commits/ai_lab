@@ -72,8 +72,10 @@ const HEALTH_TEMPLATE = `
 
     <!-- 📋 오늘의 기록 & 트렌드 — 같은 식사·음수·배변 데이터의 입력(오늘)과 조회(7일·90일)라
          별도 카드 2장이던 것을 한 카드로 병합(2026-07-19). 이 섹션의 핵심 카드라
-         그림자를 강조(shadow-soft-lg)해 아래 보조 카드와 위계를 준다. -->
-    <div class="card-modern shadow-soft-lg p-5">
+         그림자를 강조(shadow-soft-lg)해 아래 보조 카드와 위계를 준다.
+         id는 접기 상태 키를 안정화하고, 모바일 초기 진입 시 하위 카드를 접을 때
+         이 핵심 요약 카드만 펼친 채로 두기 위한 화이트리스트 앵커다(미오 P2, 2026-08-04). -->
+    <div id="health-today-record-card" class="card-modern shadow-soft-lg p-5">
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-3">
                 <div class="text-3xl">📋</div>

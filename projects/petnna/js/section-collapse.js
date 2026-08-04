@@ -15,6 +15,15 @@
 
     var LS_KEY = 'petna_collapsed_sections';   // { [sectionKey]: true }  — true면 접힘
 
+    // 모바일 초기 진입 시 하위 분석 카드를 한 번만 자동으로 접어 첫 스크롤 부담을 줄인다
+    // (미오 P2, 2026-08-04). 데스크톱은 건드리지 않고, 사용자가 이후 펼치면 그 선택을
+    // 존중하려고 1회만 적용했다는 표시를 남긴다.
+    var MOBILE_FOLD_KEY = 'petna_collapse_mobile_default_v1';
+    var MOBILE_BREAKPOINT = 1024;              // Tailwind lg — 이 미만이면 단일 컬럼(모바일)
+    // 접지 않고 항상 펼쳐둘 상단 핵심 요약 카드(오늘 기록). 이상 알림은 이 그리드 밖이라
+    // 애초에 감싸지지 않아 늘 노출된다.
+    var KEEP_EXPANDED = { 'health-today-record-card': true };
+
     function loadState() {
         try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; }
     }
@@ -102,12 +111,32 @@
                 if (wrap(card, key)) n++;
             });
         });
+        // 모바일 첫 진입이면 하위 카드를 기본 접힘으로(핵심 요약 제외) 씨딩한다.
+        maybeMobileDefaultCollapse(host, containerId);
         // 저장된 접힘 상태 반영
         var state = loadState();
         [].slice.call(host.querySelectorAll('[data-collapse-key]')).forEach(function (s) {
             paint(s, !!state[s.getAttribute('data-collapse-key')]);
         });
         return n;
+    }
+
+    // 모바일에서 처음 건강 그리드를 열 때 딱 한 번, 하위 분석 카드를 접어 저장한다.
+    // 이후엔 사용자의 펼침/접힘 선택을 그대로 따르도록 재실행하지 않는다.
+    function maybeMobileDefaultCollapse(host, containerId) {
+        if (containerId !== 'health-main-grid') return;
+        if ((window.innerWidth || 0) >= MOBILE_BREAKPOINT) return;   // 데스크톱은 무변경
+        var done;
+        try { done = localStorage.getItem(MOBILE_FOLD_KEY); } catch (e) { done = '1'; }
+        if (done) return;                                            // 이미 1회 적용됨
+        var state = loadState();
+        [].slice.call(host.querySelectorAll('[data-collapse-key]')).forEach(function (s) {
+            var key = s.getAttribute('data-collapse-key');
+            if (KEEP_EXPANDED[key]) return;
+            state[key] = true;
+        });
+        saveState(state);
+        try { localStorage.setItem(MOBILE_FOLD_KEY, '1'); } catch (e) { /* quota — 무시 */ }
     }
 
     function expandAll(containerId) {
