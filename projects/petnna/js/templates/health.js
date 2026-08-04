@@ -7,8 +7,8 @@ const HEALTH_TEMPLATE = `
          (2026-07-26 오너 지시). 헤더는 제목·컨트롤뿐이라 아래가 비었고, 상태 두 줄도
          짧아 카드 두 장으로 나뉠 이유가 없었다. card-merge가 내부 테두리를 지우고
          행 사이에 구분선을 넣는다. -->
-    <div class="glass rounded-2xl shadow-soft-lg border border-brand-100/50 card-merge overflow-hidden">
-        <div class="p-5">
+    <div class="glass rounded-2xl shadow-soft-lg border border-brand-100/50 card-merge overflow-hidden lg:grid lg:grid-cols-2 lg:gap-x-4 lg:items-start">
+        <div class="p-5 lg:col-span-2">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center shadow-soft">
