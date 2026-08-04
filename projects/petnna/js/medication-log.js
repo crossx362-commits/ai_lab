@@ -24,7 +24,11 @@
         } catch (e) { /* 저장 실패는 무해 — 화면 렌더는 계속 */ }
     }
 
-    function _todayStr() { return new Date().toISOString().split('T')[0]; }
+    // 날짜 키는 반드시 **로컬** 기준. toISOString()은 UTC라 KST 오전 9시 이전에는
+    // 전날을 돌려주고, 그러면 아침 투약이 어제 기록과 같은 키를 써서 덮어쓴다
+    // (로컬 findIndex도, 서버 UNIQUE(user_id,pet_id,schedule_id,log_date)도 같이 뭉갠다).
+    // _streak()가 쓰는 _dateStr과 같은 함수를 공유해 두 계산이 어긋나지 않게 한다.
+    function _todayStr() { return _dateStr(new Date()); }
     function _monthStr(d) { return String(d || _todayStr()).slice(0, 7); }
     function _activePetId() {
         const p = (typeof getActivePet === 'function') ? getActivePet() : null;
