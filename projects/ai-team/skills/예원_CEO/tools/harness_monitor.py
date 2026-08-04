@@ -459,8 +459,12 @@ def main():
                 except Exception as e:
                     print(f"코드 갱신 감지 오류: {e}")
 
-                # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
-                if check_and_restart_bots():
+                # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음).
+                # 단, 방금 재시작한 직후엔 건너뛴다 — 부팅 중인 데몬을 down으로 보고
+                # 한 번 더 죽여 재기동하면 막 시작한 사이클이 통째로 날아간다(2026-08-04 관측).
+                if time.time() - last_restart_ts < RESTART_GRACE_SEC:
+                    print("   (재시작 유예 중 — 봇 생존 점검 건너뜀)")
+                elif check_and_restart_bots():
                     last_restart_ts = time.time()
                     time.sleep(10)  # 재시작 대기
 

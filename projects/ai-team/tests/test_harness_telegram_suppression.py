@@ -117,6 +117,16 @@ class FixBeforeAlertOrderTests(unittest.TestCase):
         self.assertGreaterEqual(src.count("last_restart_ts"), 4,
                                 "재시작 경로 중 일부가 유예 타임스탬프를 안 남긴다")
 
+    def test_bot_revival_is_skipped_during_grace(self):
+        """부팅 중인 데몬을 down으로 보고 또 죽이면 막 시작한 사이클이 통째로 날아간다."""
+        path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"
+        lines = path.read_text(encoding="utf-8").splitlines()
+        idx = next(i for i, ln in enumerate(lines) if "check_and_restart_bots()" in ln and "elif" in ln or
+                   ("check_and_restart_bots()" in ln and ln.strip().startswith("if ")))
+        guard = "\n".join(lines[max(0, idx - 4):idx + 1])
+        self.assertIn("RESTART_GRACE_SEC", guard,
+                      "재시작 유예 중에도 봇 생존 점검이 돌아 방금 띄운 데몬을 다시 죽인다")
+
     def test_restart_on_code_update_reports_whether_it_restarted(self):
         """유예의 전제 — 코드 갱신 재시작기가 '재시작했다'를 호출자에게 알려야 한다."""
         module = load_module("harness_monitor_retval", "skills/예원_CEO/tools/harness_monitor.py")
