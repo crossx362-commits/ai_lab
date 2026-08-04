@@ -124,8 +124,18 @@ class FixBeforeAlertOrderTests(unittest.TestCase):
         idx = next(i for i, ln in enumerate(lines) if "check_and_restart_bots()" in ln and "elif" in ln or
                    ("check_and_restart_bots()" in ln and ln.strip().startswith("if ")))
         guard = "\n".join(lines[max(0, idx - 4):idx + 1])
-        self.assertIn("RESTART_GRACE_SEC", guard,
-                      "재시작 유예 중에도 봇 생존 점검이 돌아 방금 띄운 데몬을 다시 죽인다")
+        self.assertIn("REVIVE_GRACE_SEC", guard,
+                      "재시작 직후에도 봇 생존 점검이 돌아 방금 띄운 데몬을 다시 죽인다")
+
+    def test_revive_grace_is_shorter_than_alert_grace(self):
+        """경보를 미루는 것과 부활을 미루는 것은 비용이 다르다.
+
+        경보 유예가 길면 사람을 덜 부를 뿐이지만, 부활 유예가 길면 진짜 죽은 데몬을
+        그만큼 방치한다. 둘을 같은 상수로 묶으면 한쪽을 늘릴 때 다른 쪽이 딸려 간다.
+        """
+        mod = load_module("harness_monitor_grace", "skills/예원_CEO/tools/harness_monitor.py")
+        self.assertLess(mod.REVIVE_GRACE_SEC, mod.RESTART_GRACE_SEC,
+                        "부활 유예가 경보 유예보다 짧지 않다 — 죽은 데몬을 오래 방치한다")
 
     def test_restart_on_code_update_reports_whether_it_restarted(self):
         """유예의 전제 — 코드 갱신 재시작기가 '재시작했다'를 호출자에게 알려야 한다."""
