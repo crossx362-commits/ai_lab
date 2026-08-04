@@ -146,6 +146,9 @@ def _daemon_dirs() -> dict:
 AUTO_PULL_SEC = int(os.getenv("YEWON_AUTO_PULL_SEC", "900"))  # 15분 주기, 0이면 비활성
 # 예원이 데몬을 재시작한 직후 유예 — 이 안에 보이는 runtime down은 자기가 만든 과도상태다.
 RESTART_GRACE_SEC = int(os.getenv("YEWON_RESTART_GRACE_SEC", "300"))
+# 생존 점검 유예는 훨씬 짧게. 경보를 미루는 것(=사람을 안 부름)과 부활을 미루는 것
+# (=진짜 죽은 데몬을 방치)은 비용이 다르다 — 부팅 중 데몬을 또 죽이지 않을 만큼만 기다린다.
+REVIVE_GRACE_SEC = int(os.getenv("YEWON_REVIVE_GRACE_SEC", "60"))
 
 
 def auto_pull() -> str | None:
@@ -462,8 +465,8 @@ def main():
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음).
                 # 단, 방금 재시작한 직후엔 건너뛴다 — 부팅 중인 데몬을 down으로 보고
                 # 한 번 더 죽여 재기동하면 막 시작한 사이클이 통째로 날아간다(2026-08-04 관측).
-                if time.time() - last_restart_ts < RESTART_GRACE_SEC:
-                    print("   (재시작 유예 중 — 봇 생존 점검 건너뜀)")
+                if time.time() - last_restart_ts < REVIVE_GRACE_SEC:
+                    print("   (재시작 직후 — 봇 생존 점검 건너뜀)")
                 elif check_and_restart_bots():
                     last_restart_ts = time.time()
                     time.sleep(10)  # 재시작 대기

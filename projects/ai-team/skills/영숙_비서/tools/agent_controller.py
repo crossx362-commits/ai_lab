@@ -209,6 +209,13 @@ def start_agent(agent_name: str) -> str:
             # PYTHONUNBUFFERED(2026-07-03): 버퍼링 때문에 데몬 로그가 비어 관찰 불가 —
             # 미장소미 첫 세션 검증 불가 사례. 라인 단위 즉시 flush.
             env={**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"},
+            # 자기 세션·프로세스 그룹으로 분리(2026-08-04 사고). 이게 없으면 데몬이
+            # 자기를 띄운 쪽의 프로세스 그룹에 그대로 묶인다. 예원 워치독은
+            # launchd 잡이고 코드 갱신 때 데몬들을 재시작한 **직후 자가교체로 종료**하는데,
+            # launchd가 잡을 내리며 그 그룹을 정리하면 방금 띄운 데몬 6개가 통째로
+            # 같이 죽었다("Down: bomi_qa, suri_dev, ..."가 매 코드 갱신마다 반복된 원인).
+            # 상시 데몬은 자기를 띄운 프로세스의 수명과 무관해야 한다.
+            **({"start_new_session": True} if os.name != "nt" else {}),
         )
     return f"{name} 시작 완료 (PID: {process.pid})"
 
