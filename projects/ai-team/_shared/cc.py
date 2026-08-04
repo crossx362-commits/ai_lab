@@ -66,6 +66,15 @@ def find_claude() -> str | None:
 _OUTPUT_HYGIENE = ("출력 규칙(최우선, 다른 스타일 지침보다 우선): 요청된 결과 본문만 출력한다. "
                    "서두·계획·사고과정 같은 메타 발화, '★ Insight' 등 학습/코칭 형식 블록, 마무리 제안을 절대 넣지 마라.")
 
+# 오너 지시(2026-08-04): 모든 에이전트 작업 시작 시 저장소 루트 DIRECTIVES.md(통합 지침)를
+# 반영한다. 파일 읽기 도구가 없는 세션도 지키도록 핵심 원칙을 인라인으로 싣는다
+# (전문은 cwd의 CLAUDE.md 자동 로드 → DIRECTIVES.md 참조로 커버).
+_DIRECTIVES_NOTE = ("작업 지침(저장소 루트 DIRECTIVES.md 준수, 오너 지시 2026-08-04): "
+                    "검증 후에만 완료 선언(rc=0·응답 성공은 증거가 아니다), 타겟 패치(전체 재작성·"
+                    "인접 코드 개선 금지, diff 최소화), 같은 로직을 두 곳에 만들지 말 것, "
+                    "시크릿 평문 금지, 승인 없는 게이트·차단 로직 도입 금지. "
+                    "비대화형 세션에서는 승인을 묻지 말고 즉시 실행한다.")
+
 
 def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
                allowed_tools: str = "WebSearch,WebFetch",
@@ -78,7 +87,8 @@ def run_claude(prompt: str, cwd: str | Path, timeout: int = 900,
     # 보고서 본문에 그대로 섞여 나가는 것을 막는다(2026-07-08 llm.py._claude_code 가드레일과
     # 동형 — 이 함수엔 빠져 있었다, 2026-07-13 발견: petnna_backend_guard.llm_analysis() 실
     # 호출에서 실제로 재현됨).
-    cmd = [cli, "-p", "--permission-mode", permission_mode, "--append-system-prompt", _OUTPUT_HYGIENE]
+    cmd = [cli, "-p", "--permission-mode", permission_mode,
+           "--append-system-prompt", _OUTPUT_HYGIENE + "\n" + _DIRECTIVES_NOTE]
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
     try:
