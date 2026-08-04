@@ -230,12 +230,12 @@ const SOCIAL_TEMPLATE = `
             </div>
 
             <!-- 대화 메시지 목록 (스크롤) -->
-            <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50/40 no-scrollbar">
+            <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-4 bg-brand-50/20 no-scrollbar">
                 <!-- 동적 챗 버블 렌더링 -->
             </div>
 
             <!-- 지능형 대화 작성 표시기 (Typing Indicator) -->
-            <div id="chat-typing-indicator" class="px-4 py-2 text-[10px] text-gray-400 font-bold italic hidden bg-gray-50/40 shrink-0">
+            <div id="chat-typing-indicator" class="px-4 py-2 text-[10px] text-gray-400 font-bold italic hidden bg-brand-50/20 shrink-0">
                 <span id="typing-friend-name">상대방</span> 집사가 대답을 입력하는 중... 🐾
             </div>
 
