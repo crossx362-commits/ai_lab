@@ -208,6 +208,12 @@ def sync_merged_branches(state: dict) -> list[str]:
     유령 PR대기가 SURI_MAX_PENDING 상한을 영구히 막던 버그(2026-07-09 발견:
     미오_1~5가 master에 병합됐는데도 PR대기 5개로 남아 수리가 15시간 정지).
     브랜치가 refs/heads에 없으면 병합 후 삭제로 보고 완료 처리 → 상한 자동 해제.
+
+    병합했지만 **브랜치를 안 지운** 경우도 같이 본다(2026-08-04 실측): 사람이
+    `git merge`만 하고 브랜치를 남기면 여기서 안 걸리고, 뒤이어 도는 예원 PR
+    리뷰어가 `git diff master...branch`가 비었다는 이유로 "빈 diff(변경 없음)"
+    반려를 때린다 — 멀쩡히 병합돼 배포까지 된 작업이 '보류'로 기록되고 시도
+    횟수만 축난다. 병합 여부는 diff가 아니라 조상 관계로 판정해야 한다.
     """
     cleared = []
     for fp, rec in state.get("issues", {}).items():
@@ -220,6 +226,14 @@ def sync_merged_branches(state: dict) -> list[str]:
         if r.returncode != 0:  # 브랜치 부재 = 사람이 병합 후 삭제
             rec["status"] = "완료"
             rec["merged_detected"] = datetime.now().isoformat()
+            cleared.append(fp)
+            continue
+        # 브랜치는 남아 있지만 팁이 이미 master의 조상 = 병합 완료(브랜치만 잔재)
+        anc = _git(["merge-base", "--is-ancestor", br, "master"], PROJECT_ROOT)
+        if anc.returncode == 0:
+            rec["status"] = "완료"
+            rec["merged_detected"] = datetime.now().isoformat()
+            _git(["branch", "-d", br], PROJECT_ROOT)  # -d: 미병합이면 거부되므로 안전
             cleared.append(fp)
     if cleared:
         save_dev_state(state)
