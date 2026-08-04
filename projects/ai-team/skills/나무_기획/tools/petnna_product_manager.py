@@ -36,7 +36,8 @@ from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_gu
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
-from _shared.backlog import (
+from _shared.backlog import (  # noqa
+    all_known_titles,
     backlog_lock,  # noqa: E402
     touches_db_auth, recent_reviewed_items, format_recent_decisions,
 )
@@ -78,7 +79,9 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
             # 재시도한다 — 기존 파일을 그대로 보존.
             print(f"[나무] 백로그 읽기 실패(파일 손상 가능) — 이번 적재는 건너뜀: {e}")
             return 0
-        existing = {i.get("title") for i in data["items"]}
+        # 아카이브된 완료 항목의 제목까지 대조한다 — 활성 파일만 보면 이미 만든 기능을
+        # 다시 제안한다(2026-08-04 아카이브 분리 시 같이 처리).
+        existing = all_known_titles(BACKLOG, data)
         # id 충돌 방지 — 날짜만으론(%Y%m%d) 같은 날 plan()이 두 번 불리면(수동 --once가 화요일
         # 정기 슬롯과 겹치거나, 향후 배정과제 자체폴링이 추가되는 경우) 서로 다른 항목이 같은
         # id를 가질 수 있다 — id로 조회하는 수리 dev_state의 attempts 오집계 위험(미오에서

@@ -129,6 +129,13 @@
    "cron": "0 9 * * 3",
    "enabled": true,
    "description": "예원 백로그 위생감사 — 보류 항목 중복/사유해소 재판단(추측 금지, 확신 없으면 손대지 않음, 회의 오판 재발 방지 2026-08-04). 첫 실행 결과 확인 후 --apply로 전환 검토"
+  },
+  {
+   "id": "yewon_backlog_archive",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_archive.py",
+   "cron": "30 4 * * *",
+   "enabled": true,
+   "description": "예원 백로그 아카이브 — 오래된 완료 항목을 backlog_archive.json으로 분리(최근 40건은 활성 유지). 제목은 all_known_titles로 중복 대조에 계속 참여"
   }
  ]
 }

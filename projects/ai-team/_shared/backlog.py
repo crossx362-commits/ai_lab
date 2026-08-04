@@ -187,6 +187,86 @@ def needs_human(title: str, owner: str, detail: str = "", item_type: str = "") -
 # 두 에이전트 다 "최근 무엇이 왜 결정됐는지"에 접근할 방법이 없었다는 것 — 이 함수로
 # 백로그의 완료·보류 이력을 양쪽(제안 생성 시 미오, 최종 판단 시 예원)에 공유한다.
 
+# ── 완료 항목 아카이브 분리 (2026-08-04, 오너 지시) ──────────────────────
+#
+# backlog.json이 440건 353KB까지 커졌고 그중 376건(85%)이 '완료'다. 백로그에 쓰는 도구가
+# 7곳인데 전부 파일 전체를 읽고 통째로 덮어쓰므로, 죽은 완료 기록이 매 사이클 왕복하는
+# 순수 낭비다(경합 창도 그만큼 넓어진다).
+#
+# 그런데 완료 항목을 그냥 지우면 안 되는 이유가 둘 있다 — 실제로 읽는 코드가 있다:
+#   1) 미오·나무·회의의 중복 적재 방지: `existing = {title for ...}`로 **완료된 제목까지**
+#      대조해 같은 걸 다시 제안하지 않는다. 아카이브로 옮기고 끝내면 이미 만든 기능을
+#      매주 다시 제안한다(레지스트리 대조 없이 이름 목록을 옮긴 2026-07-25 사고와 같은 계열).
+#   2) recent_reviewed_items(): 최근 완료·보류 결정을 LLM 프롬프트에 실어 "디자인 진자"를
+#      막는다 — 최근 것만 보므로 오래된 완료는 아카이브로 가도 무방하다.
+#
+# 그래서 ①최근 완료 KEEP_RECENT건은 활성 파일에 남기고 ②아카이브의 **제목**은
+# all_known_titles()로 계속 대조에 참여시킨다. 아카이브는 append-only, 삭제 아님.
+
+ARCHIVE_NAME = "backlog_archive.json"
+KEEP_RECENT_DONE = 40
+
+
+def archive_path(backlog_path) -> Path:
+    return Path(backlog_path).parent / ARCHIVE_NAME
+
+
+def _sort_key(it: dict) -> str:
+    """updated가 없는 완료건이 108개 있다(2026-08-04 실측) — created로 폴백."""
+    return it.get("updated") or it.get("created") or ""
+
+
+def archived_titles(backlog_path) -> set:
+    """아카이브에 있는 제목 집합. 파일이 없으면 빈 집합(신규 설치에서 정상)."""
+    try:
+        data = json.loads(archive_path(backlog_path).read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return set()
+    return {it.get("title") for it in data.get("items", []) if it.get("title")}
+
+
+def all_known_titles(backlog_path, active_data: dict) -> set:
+    """중복 적재 판정용 — 활성 + 아카이브 전체 제목.
+
+    적재 도구(미오·나무·회의)는 반드시 이걸 써야 한다. 활성 파일만 보면 아카이브로
+    옮겨진 완료 기능을 다시 제안하게 된다."""
+    titles = {it.get("title") for it in active_data.get("items", []) if it.get("title")}
+    return titles | archived_titles(backlog_path)
+
+
+def archive_completed(backlog_path, keep_recent: int = KEEP_RECENT_DONE) -> int:
+    """오래된 '완료' 항목을 backlog_archive.json으로 옮긴다. 옮긴 건수 반환.
+
+    보류·대기·PR대기는 절대 안 건드린다(진행 중인 작업). 완료만, 그중에서도 최근
+    keep_recent건은 남긴다(recent_reviewed_items가 읽는 창)."""
+    path = Path(backlog_path)
+    with backlog_lock():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return 0
+        items = data.get("items", [])
+        done = [it for it in items if it.get("status") == "완료"]
+        if len(done) <= keep_recent:
+            return 0
+        done.sort(key=_sort_key, reverse=True)
+        to_move = {id(it) for it in done[keep_recent:]}
+        moved = [it for it in items if id(it) in to_move]
+        data["items"] = [it for it in items if id(it) not in to_move]
+
+        ap = archive_path(backlog_path)
+        try:
+            adata = json.loads(ap.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            adata = {"items": [], "_note": "완료된 백로그 기록 보관 — 제목은 중복 적재 방지에 계속 쓰인다(all_known_titles)"}
+        known = {it.get("id") for it in adata.get("items", [])}
+        adata["items"] = adata.get("items", []) + [it for it in moved if it.get("id") not in known]
+        adata["archived_at"] = datetime.now().isoformat()
+        ap.write_text(json.dumps(adata, ensure_ascii=False, indent=1), encoding="utf-8")
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+        return len(moved)
+
+
 def recent_reviewed_items(backlog_path, limit: int = 8, item_type: str = "",
                            exclude_id: str = "") -> list[dict]:
     """최근 검토 완료(완료·보류)된 백로그 항목 — updated 내림차순.

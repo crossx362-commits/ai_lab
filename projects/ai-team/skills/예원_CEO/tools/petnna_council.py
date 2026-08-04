@@ -40,6 +40,7 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.backlog import (  # noqa: E402,F401
+    all_known_titles,
     needs_human, AUTO_OWNERS, backlog_lock, waiting_lock,
     OWNER_CHOICES, HUMAN_OWNER, normalize_owner,
 )
@@ -265,7 +266,9 @@ def _hold_meeting(topic: str, context: str, priority: str) -> bool:
             print(f"[회의] 백로그 읽기 실패(파일 손상 가능) — 액션아이템 적재 건너뜀: {e}")
             data = None
         if data is not None:
-            existing = {i.get("title") for i in data["items"]}
+            # 아카이브된 완료 항목의 제목까지 대조한다 — 활성 파일만 보면 이미 만든 기능을
+            # 다시 제안한다(2026-08-04 아카이브 분리 시 같이 처리).
+            existing = all_known_titles(BACKLOG, data)
             # id 충돌 방지 — stamp가 분 단위라 같은 분에 다른 안건 회의가 열리면 서로 다른
             # 액션아이템이 같은 id를 갖는다. 수리 dev_state가 id로 조회하므로 attempts가
             # 뒤섞인다. 나무·미오는 2026-07-12에 고쳤는데 회의만 빠져 있었다(비대칭).
