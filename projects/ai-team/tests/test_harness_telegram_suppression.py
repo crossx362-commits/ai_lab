@@ -169,5 +169,32 @@ class FixBeforeAlertOrderTests(unittest.TestCase):
                                      f"'{phrase}'는 예원이 처리한 일인데 텔레그램으로 보낸다")
 
 
+class CheckAllNoDirectAlertTests(unittest.TestCase):
+    """오너 지시(2026-08-04): "예원이는 모든 텔레그램 메시지 보내기 전에 검수해."
+
+    harness/check_all.py는 4개 정식 호출자(harness_monitor·yewon_dispatcher·
+    harness_manager·yewon_self_heal)와 twice-daily launchd 잡 전부 SUPPRESS_TELEGRAM=true로
+    감싸 예원의 remediate-then-alert 파이프라인을 거치게 한다. 그런데 check_all.py 자신이
+    WARN/FAIL 시 직접 텔레그램을 보내는 코드를 갖고 있으면, 그 억제를 안 거는 수동/임시
+    실행(사람이 터미널에서 직접 돌리는 경우 등)마다 예원 검수를 건너뛰고 그대로 나간다
+    (2026-08-04 실측: 검수 목적의 수동 실행이 자가복구 가능한 FAIL을 그대로 페이지했다).
+    하네스는 읽기 전용 검증 엔진이니 페이지 여부 판단 자체를 하지 않아야 한다.
+    """
+
+    def test_main_never_calls_telegram_send_directly(self):
+        import ast
+        path = AI_TEAM / "harness" / "check_all.py"
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "main")
+        for node in ast.walk(fn):
+            if isinstance(node, ast.ImportFrom) and node.module == "_shared.telegram":
+                self.fail("check_all.py main()이 _shared.telegram을 직접 import한다 — "
+                          "예원 검수를 거치지 않고 사람에게 페이지할 수 있다")
+            if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "send":
+                self.fail("check_all.py main()이 send()를 직접 호출한다 — "
+                          "알림 여부 판단은 harness_monitor.auto_remediate 이후 예원의 몫이다")
+
+
 if __name__ == "__main__":
     unittest.main()

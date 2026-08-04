@@ -462,14 +462,10 @@ def main() -> int:
     )
     print(f"[OK] report: {status_dir / 'harness_latest.json'}")
 
-    if worst >= 1:
-        try:
-            from _shared.telegram import send
-            issues = [r for r in results if r["status"] != "OK"]
-            lines = [f"{r['status']} {r['name']}: {r['message'][:80]}" for r in issues]
-            send(f"[하네스] {overall}\n" + "\n".join(lines))
-        except Exception as e:
-            print(f"[WARN] telegram notify failed: {e}")
+    # 하네스는 읽기 전용 검증 엔진 — 사람에게 페이지할지는 여기서 결정하지 않는다.
+    # 판단(자가복구 시도 → 남은 것만 검수 후 발송)은 예원(harness_monitor.auto_remediate)의
+    # 몫이다. 이 스크립트가 직접 텔레그램을 보내면 수동/임시 실행마다 예원 검수를 우회해
+    # 고칠 수 있는 문제까지 그대로 사람에게 나간다(오너 지시 2026-08-04, DIRECTIVES §1-9).
 
     return worst
 
