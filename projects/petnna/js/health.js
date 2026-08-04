@@ -81,6 +81,7 @@ function renderHealthTab() {
     if (typeof renderPreventiveChecklist === 'function') renderPreventiveChecklist();
     if (typeof renderPreventiveTimeline === 'function') renderPreventiveTimeline();
     if (typeof renderMedAdherenceTracker === 'function') renderMedAdherenceTracker();
+    if (typeof renderMedicationLogTracker === 'function') renderMedicationLogTracker();
     if (typeof renderMedicalRecordsTimeline === 'function') renderMedicalRecordsTimeline();
 
     // 몸무게/QOL 주간 체크인 (백로그 나무_20260709_3, 오너 승인 2026-07-10)
