@@ -1159,7 +1159,32 @@ async function renderWalkWeatherCoach(force = false) {
         if (badges.length === 0 || (badges.length === 1 && bestLabel))
             badges.push(badge('bg-brand-50 text-brand-700 border border-brand-100', '✅', `산책 좋아요 · ${Math.round(temp)}°C`));
 
-        box.innerHTML =
+        // ── 오늘 산책 적합도 신호등 (온도·자외선·대기질 종합) ──
+        // 위험 요소가 하나라도 있으면 위험, 주의 요소만 있으면 주의, 없으면 적합
+        const danger = (temp >= 31) || (temp <= -4 || feels <= -6) || (uv >= 8)
+            || (pm10 !== null && pm10 > 80);
+        const caution = (feels >= 33) || (uv >= 6) || (precip > 0)
+            || (pm10 !== null && pm10 > 50);
+        const level = danger ? 'danger' : (caution ? 'caution' : 'good');
+        const LIGHT = {
+            danger:  { cls: 'bg-rose-50 text-rose-700 border-rose-200',       dot: 'bg-rose-500',    icon: '🔴', label: '위험', desc: '오늘은 산책을 미루거나 아주 짧게' },
+            caution: { cls: 'bg-amber-50 text-amber-700 border-amber-200',     dot: 'bg-amber-500',   icon: '🟡', label: '주의', desc: '짧게, 물·그늘 챙겨 다녀오세요' },
+            good:    { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', icon: '🟢', label: '적합', desc: '산책하기 좋은 날이에요' },
+        }[level];
+        const briefing =
+            `<div class="flex items-center gap-2.5 mb-2.5 py-2 px-3 rounded-xl border ${LIGHT.cls}">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 ${LIGHT.dot}"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 ${LIGHT.dot}"></span>
+                </span>
+                <div class="leading-tight">
+                    <div class="text-xs font-black">오늘 산책 ${LIGHT.label}</div>
+                    <div class="text-[10px] opacity-80">${LIGHT.desc}</div>
+                </div>
+                <span class="text-[10px] font-bold ml-auto whitespace-nowrap">${Math.round(temp)}°C · UV${Math.round(uv)}${pm10 !== null ? ` · 미세 ${Math.round(pm10)}` : ''}</span>
+            </div>`;
+
+        box.innerHTML = briefing +
             `<div class="flex items-center gap-1.5 mb-2">
                 <i class="fa-solid fa-cloud-sun-rain text-brand-400 text-sm"></i>
                 <span class="text-xs font-bold text-gray-700">날씨 안심 코치</span>
