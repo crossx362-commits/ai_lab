@@ -392,7 +392,8 @@ def main():
     """메인 루프"""
     print("🤖 [예원] 하네스 자동 감시 시작 (5분 주기)")
 
-    last_growth_date = None
+    # 하루 1회 발송 기록도 파일에 남긴다 — 메모리에만 두면 예원이 자가교체될 때마다
+    # 리셋돼 같은 일일 보고가 재발송된다(remedy_state와 같은 계열, 2026-08-04 실측).
     last_issue_sig = ""
     last_pull_ts = 0.0   # 0 = 기동 첫 틱에 즉시 pull(부팅 직후 최신화)
     last_pull_note = ""
@@ -477,10 +478,12 @@ def main():
 
                 # 성장 점검: 하루 1회(17시 이후) 발송 — 스팸 방지
                 now = datetime.now()
-                if now.hour >= 17 and last_growth_date != now.date():
+                today = now.date().isoformat()
+                if now.hour >= 17 and remedy_state.get("growth_sent_date") != today:
                     try:
                         send(growth_report())
-                        last_growth_date = now.date()
+                        remedy_state["growth_sent_date"] = today
+                        _save_remedy_state(remedy_state)
                     except Exception as e:
                         print(f"성장 점검 발송 오류: {e}")
 

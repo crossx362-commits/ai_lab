@@ -124,6 +124,20 @@ class FixBeforeAlertOrderTests(unittest.TestCase):
         self.assertIs(module.restart_on_code_update(), False,
                       "재시작하지 않았는데 참을 반환하면 유예가 잘못 걸려 진짜 down을 삼킨다")
 
+    def test_daily_growth_report_is_not_resent_after_restart(self):
+        """하루 1회 보고의 '보냈음' 기록은 재시작을 견뎌야 한다.
+
+        메모리 변수에만 두면 예원이 자가교체될 때마다 리셋돼 같은 일일 보고가 다시
+        나간다(2026-08-04 실측: 워치독을 두 번 교체하니 성장 점검이 두 번 왔다).
+        remedy_state가 이미 같은 이유로 파일 영속화돼 있으니 거기에 얹는다.
+        """
+        path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"
+        src = path.read_text(encoding="utf-8")
+        self.assertNotIn("last_growth_date", src,
+                         "일일 보고 발송 여부가 메모리 변수에 남아 있다 — 재시작마다 재발송된다")
+        self.assertIn('remedy_state.get("growth_sent_date")', src)
+        self.assertIn('remedy_state["growth_sent_date"] = today', src)
+
     def test_self_handled_events_are_not_telegrammed(self):
         """예원이 스스로 끝낸 일(코드 갱신 재시작·죽은 잡 정리)은 알림 대상이 아니다."""
         path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"
