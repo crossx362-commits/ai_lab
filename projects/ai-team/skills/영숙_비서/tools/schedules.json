@@ -136,6 +136,13 @@
    "cron": "30 4 * * *",
    "enabled": true,
    "description": "예원 백로그 아카이브 — 오래된 완료 항목을 backlog_archive.json으로 분리(최근 40건은 활성 유지). 제목은 all_known_titles로 중복 대조에 계속 참여"
+  },
+  {
+   "id": "petnna_daily_ideation",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_daily_ideation.py",
+   "cron": "0 8 * * *",
+   "enabled": true,
+   "description": "펫나 일일 상품성·경쟁력 강화 아이디어 회의(오너 지시 2026-08-04) — 전 에이전트 소집, 안건 고정(petnna_council.convene 직접 호출, CLI 아님 — schedule_sync가 공백을 quote 없이 split해 다단어 --topic이 argv에서 깨짐). 결과는 액션아이템으로 백로그(source=회의) 적재 → 수리가 이어서 구현"
   }
  ]
 }
