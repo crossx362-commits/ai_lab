@@ -332,6 +332,9 @@ const HEALTH_TEMPLATE = `
 
         <!-- 🏥 병원비 제보·비교 보드 (케어위젯 비용 그룹에서 이동 — 건강수첩과 짝, 2026-07-21) -->
         <div id="vet-cost-board-widget"></div>
+
+        <!-- 📦 재고 소진 D-day 추적기 (백로그 나무, P2 — 사료·용품 잔량·재구매 넛지) -->
+        <div id="inventory-tracker-widget"></div>
     </div>
 
     <!-- 섹션: AI 상담·도구 -->
