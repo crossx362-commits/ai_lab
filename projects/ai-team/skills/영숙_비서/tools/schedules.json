@@ -122,6 +122,13 @@
    "cron": "30 10,15,20 * * *",
    "enabled": true,
    "description": "펫과나 이웃 활동 — AI 페르소나가 반려동물 게시글 작성 + 실제 유저 글에 댓글·좋아요(비스팸: 회당 1글, 최근 3h 2글 상한)"
+  },
+  {
+   "id": "yewon_backlog_hygiene",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_hygiene.py --check --send",
+   "cron": "0 9 * * 3",
+   "enabled": true,
+   "description": "예원 백로그 위생감사 — 보류 항목 중복/사유해소 재판단(추측 금지, 확신 없으면 손대지 않음, 회의 오판 재발 방지 2026-08-04). 첫 실행 결과 확인 후 --apply로 전환 검토"
   }
  ]
 }
