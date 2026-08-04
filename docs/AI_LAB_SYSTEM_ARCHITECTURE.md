@@ -252,7 +252,6 @@ ai_lab/
 │   │   │   ├── telegram_receiver.py    # Main bot
 │   │   │   ├── agent_controller.py     # Process mgmt
 │   │   │   ├── schedule_manager.py     # Scheduled-job executor
-│   │   │   ├── morning_brief.py        # Daily summary
 │   │   │   ├── reports_manager.py      # Report archival
 │   │   │   ├── calendar_manager.py     # Google Calendar
 │   │   │   └── llm_probe.py            # LLM chain health probe

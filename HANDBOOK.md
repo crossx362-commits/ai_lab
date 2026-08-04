@@ -4,7 +4,7 @@
 > 이 문서는 구조를 설명하지 않는다 — 링크로 위임한다. 여기엔 **다른 어디에도 없는 것**만 담는다:
 > 회사 헌장, 사고 런북, 문서 지도.
 >
-> 마지막 검증: 2026-07-10 (9개 데몬 실행 확인, Windows 운영기)
+> 마지막 검증: 2026-07-10 (9개 데몬 실행 확인, Windows 운영기) / 2026-08-04 문서 정합 갱신 — **운영기는 맥**(2026-07-11 오너 지시, `_shared/fleet_machine_policy.json`)
 
 ---
 
@@ -111,7 +111,7 @@
 
 ### 1-5. 알려진 부채
 
-- `AGENTS.md` — "3 agents"로 낡음 (실제 9개 데몬)
+- ~~`AGENTS.md` — "3 agents"로 낡음~~ (2026-08-04 전면 갱신 — 링크 중심 경량판으로 재작성, 해소)
 - `README.md` · `PROJECT_OVERVIEW.md` · `docs/AI_LAB_SYSTEM_ARCHITECTURE.md` — 구조 설명 3중 중복
 - `reports/history/kevin_*.md` · `kodari_ollama_log.md` — 삭제된 에이전트의 로그 (C등급으로 보존)
 - `projects/ai-team/CLAUDE.md` — 루트 `CLAUDE.md`와 스코프 경계가 불분명
@@ -148,8 +148,10 @@ LLM은 **구독 CLI(`claude -p`, `codex exec`) + Gemini + 로컬(Ollama)** 만 �
 정보성 알림은 텔레그램 금지. **행동의 결과**만 보낸다. 단 P0/P1급 위기 경보는 예외.
 
 ### 2-7. 단일 기계 운영
-펫나 데몬 6종은 **Windows(이 기계)에서만** 돈다. 맥에서 같은 데몬을 켜면
-두 기계가 각자 master에 병합하는 참사가 난다.
+펫나 데몬은 **`_shared/fleet_machine_policy.json`의 `primary_platform` 기계에서만** 돈다
+(2026-07-11 오너 지시로 현재 **맥**, `"darwin"`). 다른 기계에서 같은 데몬을 켜면
+두 기계가 각자 master에 병합하는 참사가 난다. 기계를 바꾸려면 이 정책 파일 하나만
+고치고 git으로 전파한다 — 기계별 암호화 플래그로 합의를 공유하려 하지 마라.
 
 ---
 
@@ -157,13 +159,13 @@ LLM은 **구독 CLI(`claude -p`, `codex exec`) + Gemini + 로컬(Ollama)** 만 �
 
 **사람**: 오너 1인 (최종 승인권자)
 
-**봇 9종** — 전원 이 Windows 기계에서 상시 가동:
+**봇 9종** — 전원 운영 기계(현재 맥, §2-7)에서 상시 가동:
 
 | 봇 | 역할 | 자율성 |
 |---|---|---|
 | **예원** | CEO — 오케스트레이션·워치독·긴급회의 의장 | 자동 재시작 권한 |
 | **영숙** | 비서 — 텔레그램 게이트웨이 | 오너와 대화 |
-| **영숙스케줄** | 정시 잡 실행자 (Windows 유일 실행자) | — |
+| **영숙스케줄** | 정시 잡 실행자 (Windows 전용 — 맥은 launchd `com.ailab.sched.*`가 담당) | — |
 | **봄이** | QA — 펫나 상시 순찰, 함대 신선도 감사 | P0/P1 즉시 경보 |
 | **수리** | 개발 — QA 결과 자동 수정 | **저위험 P2/P3만 자동 병합** |
 | **테오** | 테스트 — E2E 자동 작성 (2회 연속 통과 시 채택) | master 자동 커밋 |
@@ -182,8 +184,10 @@ LLM은 **구독 CLI(`claude -p`, `codex exec`) + Gemini + 로컬(Ollama)** 만 �
 ## 4. 일상 운영
 
 ### 4-0. 운영 인터프리터 (가장 흔한 함정)
-PATH의 `python`은 hermes venv(3.11)라 **playwright가 없어** 봄이·미오가 즉사한다.
-컨트롤러를 켜는 파이썬이 함대 전체의 파이썬이 되므로, 반드시:
+컨트롤러를 켜는 파이썬이 함대 전체의 파이썬이 된다(`sys.executable` 상속).
+**playwright가 설치된 인터프리터**로 켜야 봄이·미오가 즉사하지 않는다.
+- 맥(운영기): `python3` (playwright 설치 확인: `python3 -c "import playwright"`)
+- Windows: PATH의 `python`은 hermes venv(3.11)라 playwright가 없다 — 반드시:
 
 ```
 C:\Users\User\AppData\Local\Programs\Python\Python313\python.exe
@@ -234,13 +238,14 @@ python projects/ai-team/_shared/env.py encrypt .env .env.encrypted
 (`core.hooksPath`는 `.git/config`에 있어 커밋으로 전파되지 않는다 — 그래서 한 번은 필요하다.)
 
 ```bash
-# 맥에서 (playwright 있는 인터프리터로!)
+# 새 운영기에서 (playwright 있는 인터프리터로!)
 git pull
 python3 projects/ai-team/scripts/fleet_bootstrap.py --setup
-git add .env.encrypted && git commit -m "chore: 운영기를 맥으로 지정" && git push
+git add projects/ai-team/_shared/fleet_machine_policy.json && git commit -m "chore: 운영기 지정 변경" && git push
 ```
 
 `--setup` = post-merge 훅 활성화 + 이 기계를 운영기로 지정 + `BOTS_OFF` 해제 + 즉시 기동.
+(⚠️ `.env.encrypted`는 절대 커밋하지 마라 — 기계별 파생 키라 공유 불가, 2026-07-11부로 git 추적 제거·gitignore.)
 
 **훅은 기동보다 거부가 본업이다.** 세 관문을 다 통과해야만 뜬다:
 
@@ -250,8 +255,8 @@ git add .env.encrypted && git commit -m "chore: 운영기를 맥으로 지정" &
 | 이 기계가 지정 운영기일 것 | **두 기계가 각자 master에 병합하는 이중 가동** |
 | playwright 있는 인터프리터일 것 | 봄이·미오 기동 즉시 사망 |
 
-운영기 지정자는 `TELEGRAM_POLL_HOST`를 **재사용**한다 — 개념을 하나로 유지해야
-텔레그램 폴링 소유자와 함대 운영기가 어긋나지 않는다.
+운영기 지정자는 `_shared/fleet_machine_policy.json`의 `primary_platform` **하나**다
+(2026-07-11 통합 — 구 `TELEGRAM_POLL_HOST`/`.env.encrypted` 방식은 폐기, `read_fleet_policy()`가 단일 판정).
 `output/cache/*`는 gitignore라 `BOTS_OFF`·인터프리터 핀은 기계마다 독립이다.
 
 주의: post-merge 훅은 **실제 병합이 일어날 때만** 실행된다.
@@ -259,6 +264,8 @@ git add .env.encrypted && git commit -m "chore: 운영기를 맥으로 지정" &
 
 ### 4-6. 외부 하트비트 (함대 밖 감시선)
 함대와 **같이 죽지 않는** 유일한 장치. Windows 작업 스케줄러가 5분마다 새 프로세스로 띄운다.
+(`--install`은 Windows 전용 — 맥에서는 launchd KeepAlive의 워치독 `com.ailab.yewon_monitor`가
+함대 밖 감시선 역할, 설치는 `deploy/install_yewon_monitor.command`.)
 `down`/`misconfig`를 감지하면 텔레그램(30분 쿨다운), 워치독 예원이 죽어 있으면 **직접 되살린다**
 (예원은 스스로를 재시작하지 못한다 — `harness_monitor.check_and_restart_bots`가 `yewon`을 제외).
 ```bash
