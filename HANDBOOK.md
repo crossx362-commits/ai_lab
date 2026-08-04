@@ -43,7 +43,7 @@
 | **C. 기록** | `reports/*`, `docs/superpowers/*`, `*/CHANGELOG.md` | 그때의 사실. 지금의 지침이 아니다. |
 | **D. 보관** | `docs/archive/*` | **운영 지침으로 쓰지 마라.** |
 
-### 1-3. 전체 색인 (90개, 2026-07-22 재검증 — 죽은 로스터 문서 7종 정리로 97→90)
+### 1-3. 전체 색인 (92개, 2026-08-04 재검증 — 7/22의 "90개"는 `docs/superpowers/`를 6으로 세서 2개 누락)
 
 | 영역 | 개수 |
 |---|---|
@@ -65,14 +65,14 @@
 | `SKILL.md` | AI | 스킬 시스템 포인터 |
 | `DESIGN.md` | AI/디자인 | 디자인 시스템 |
 
-**docs/ — 22개**
+**docs/ — 24개**
 - 최상위 6: `AI_LAB_SYSTEM_ARCHITECTURE.md`(아키텍처) · `REPOSITORY_CLASSIFICATION.md`(배치 규칙, 이 색인과 다름) ·
   `TELEGRAM_BOT_README.md` · `AGENT_GROWTH_DOCTRINE.md` · `AGENT_ADVANCEMENT_DESIGN.md` · `CLEANUP_SUMMARY_2026-06-27.md`(C등급)
 - `setup/` 3: `ENV_SECURITY_RULES.md` ⭐ · `ENCRYPTED_SECRETS_README.md` · `NOTION_SETUP.md`
   (2026-07-22: `ENV_STATUS.md`·`SETUP_INSTAGRAM.md`는 실제 자격증명 평문 노출 발견으로 삭제,
   `AI_TEAM_AUTOMATION_README.md`·`DAILY_AUTOMATION_SETUP.md`·`QUICK_START_NOTION.md`는 삭제된
   루나/아린 파이프라인 전용 가이드라 삭제)
-- `archive/` 6 (D등급) · `superpowers/` 6 (C등급) · `plans/` 1 — **읽되 따르지 마라**
+- `archive/` 6 (D등급) · `superpowers/` 8 (C등급, `plans/` 5 + `specs/` 3) · `plans/` 1 — **읽되 따르지 마라**
 
 **projects/ai-team/ — 36개**
 - `skills/` 18: 봇 헌장 8(`예원_CEO`·`영숙_비서`·`봄이_QA`·`수리_개발자`·`테오_테스트`·`백호_백엔드`·`미오_디자인`·`나무_기획`/`SKILL.md`) 🔒
