@@ -43,6 +43,9 @@ QA_EPHEMERAL_PREFIXES = ("report_", "loop_", "minutes_", "review_", "plan_")
 MAX_MB = 5
 TAIL_LINES = 2000
 STALE_DAYS = 45
+# 스크린샷은 최신 비교분만 쓸모 있는데 45일 보존이면 계속 쌓인다
+# (2026-08-04 정리 시점 output/qa/petnna 161MB 중 91MB가 7일 초과 스크린샷).
+QA_SHOTS_STALE_DAYS = 7
 
 
 def _rotate(path: str) -> str:
@@ -67,6 +70,13 @@ def _is_qa_ephemeral(dirpath: str, name: str) -> bool:
     return name.startswith(QA_EPHEMERAL_PREFIXES) and (name.endswith(".md") or name.endswith(".json"))
 
 
+def _qa_stale_days(dirpath: str, name: str) -> int:
+    """스크린샷은 짧게, 리포트·회의록은 STALE_DAYS."""
+    if os.path.basename(dirpath) == "shots" or name.endswith(".png"):
+        return QA_SHOTS_STALE_DAYS
+    return STALE_DAYS
+
+
 def _sweep_qa_petnna(now: float) -> list[str]:
     acts: list[str] = []
     if not os.path.isdir(QA_SWEEP_DIR):
@@ -78,9 +88,10 @@ def _sweep_qa_petnna(now: float) -> list[str]:
             path = os.path.join(dirpath, name)
             try:
                 st = os.stat(path)
-                if now - st.st_mtime > STALE_DAYS * 86400:
+                days = _qa_stale_days(dirpath, name)
+                if now - st.st_mtime > days * 86400:
                     os.remove(path)
-                    acts.append(f"삭제(사어 {STALE_DAYS}일+) {os.path.relpath(path, QA_SWEEP_DIR)}")
+                    acts.append(f"삭제(사어 {days}일+) {os.path.relpath(path, QA_SWEEP_DIR)}")
             except Exception as e:
                 acts.append(f"실패 {name}: {e}")
     return acts

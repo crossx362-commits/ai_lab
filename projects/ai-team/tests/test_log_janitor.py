@@ -68,6 +68,32 @@ class QaPetnnaSweepTests(unittest.TestCase):
         self.assertTrue(state_file.exists(), "지속 상태 파일은 나이와 무관하게 보존돼야 한다")
         self.assertEqual(len(acts), 2)
 
+    def test_screenshots_expire_sooner_than_reports(self):
+        """스크린샷은 QA_SHOTS_STALE_DAYS, 리포트는 STALE_DAYS — 2026-08-04."""
+        self.assertLess(self.jan.QA_SHOTS_STALE_DAYS, self.jan.STALE_DAYS)
+        self.assertEqual(self.jan._qa_stale_days("/x/qa/petnna/dev/qa_base/shots", "a.png"),
+                         self.jan.QA_SHOTS_STALE_DAYS)
+        self.assertEqual(self.jan._qa_stale_days("/x/qa/petnna/design", "review_20260101.png"),
+                         self.jan.QA_SHOTS_STALE_DAYS)
+        self.assertEqual(self.jan._qa_stale_days("/x/qa/petnna", "report_20260101_0000.md"),
+                         self.jan.STALE_DAYS)
+
+    def test_sweep_deletes_midaged_shot_but_keeps_midaged_report(self):
+        """스크린샷만 지워지고 같은 나이의 리포트는 남는 구간이 실제로 존재한다."""
+        import tempfile
+        tmp = Path(tempfile.mkdtemp())
+        self.jan.QA_SWEEP_DIR = str(tmp)
+        mid = (self.jan.QA_SHOTS_STALE_DAYS + self.jan.STALE_DAYS) / 2
+        shot = tmp / "shots" / "mid.png"
+        report = tmp / "report_mid.md"
+        self._touch(shot, age_days=mid)
+        self._touch(report, age_days=mid)
+
+        self.jan._sweep_qa_petnna(time.time())
+
+        self.assertFalse(shot.exists(), f"{mid}일 지난 스크린샷은 지워져야 한다")
+        self.assertTrue(report.exists(), f"{mid}일 지난 리포트는 아직 보존돼야 한다")
+
 
 if __name__ == "__main__":
     unittest.main()
