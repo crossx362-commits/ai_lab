@@ -357,3 +357,39 @@ def backlog_lock(timeout: float = 20.0):
             except Exception:
                 pass
         fd.close()
+
+
+# ── 액션아이템 owner 정규화 (2026-08-04) ──────────────────────────────────
+#
+# 회의(petnna_council)가 owner를 "수리|테오|백호|미오|나무|사람" 중에서 고르게 프롬프트에
+# 하드코딩해 뒀는데, 실제 소비자 목록인 AUTO_OWNERS엔 나무·사람이 없다. 그래서 회의가
+# 나무나 사람을 고를 때마다 **아무도 읽지 않는 항목**이 하나씩 생겼다 — 2026-08-04
+# 시점에 그렇게 쌓인 게 10건(사람 5·봄이 3·나무 2). 2026-07-10에 같은 사고를 한 번
+# 겪고 structurally_blocked()로 '걸러내기'는 했지만, **애초에 안 만들게** 하지는
+# 않아서 계속 재생산됐다.
+#
+# 여기서 두 가지를 한다:
+#  1) 프롬프트에 넣을 owner 목록을 이 파일에서 만들어 준다(OWNER_CHOICES) — 하드코딩된
+#     목록이 AUTO_OWNERS와 어긋나는 일이 구조적으로 불가능해진다.
+#  2) LLM이 그래도 목록 밖 owner를 뱉으면 적재 시점에 정규화한다(normalize_owner).
+#     '사람'은 유효한 트랙이라 남기되 gate로 명시해 '소비자 없음'과 구분한다.
+HUMAN_OWNER = "사람"
+
+# 회의 프롬프트에 제시할 선택지 — 소비자가 있는 owner + 사람(오너 판단 트랙).
+# ""(무지정)은 LLM에 제시하지 않는다(빈 문자열을 고르라고 하면 혼란만 준다).
+OWNER_CHOICES = tuple(o for o in AUTO_OWNERS if o) + (HUMAN_OWNER,)
+
+
+def normalize_owner(owner: str) -> tuple[str, str]:
+    """(정규화된 owner, 사유). 사유가 비어 있으면 변경 없음.
+
+    · AUTO_OWNERS에 있으면 그대로
+    · '사람'이면 그대로 — 오너 판단 트랙(소비자가 없는 게 정상)
+    · 그 외(나무·봄이 등 백로그를 읽지 않는 에이전트)는 ""로 되돌린다.
+      ""는 수리가 집는다 — 아무도 안 집는 것보다 낫고, 부적합하면 수리 게이트가 거른다.
+    """
+    o = (owner or "").strip()
+    if o in AUTO_OWNERS or o == HUMAN_OWNER:
+        return o, ""
+    return "", (f"owner '{o}'는 백로그를 읽지 않아 아무도 집지 못한다 — "
+                f"무지정으로 되돌려 수리가 집게 한다(소비자: {', '.join(x or '(무지정)' for x in AUTO_OWNERS)})")

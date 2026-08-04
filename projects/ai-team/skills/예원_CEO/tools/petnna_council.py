@@ -39,7 +39,9 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.backlog import needs_human, AUTO_OWNERS, backlog_lock  # noqa: E402,F401
+from _shared.backlog import (  # noqa: E402,F401
+    needs_human, AUTO_OWNERS, backlog_lock, OWNER_CHOICES, HUMAN_OWNER, normalize_owner,
+)
 
 load_env(str(PROJECT_ROOT))
 
@@ -164,7 +166,10 @@ def convene(topic: str, context: str, priority: str) -> None:
             "2. 결정 사항을 번호 목록으로.\n"
             "3. 마지막에 실행 액션아이템을 JSON 배열로: "
             "[{\"title\": \"...\", \"detail\": \"...\", \"priority\": \"P1|P2|P3\", "
-            "\"type\": \"기능|디자인|기획|테스트|백엔드\", \"owner\": \"수리|테오|백호|미오|나무|사람\"}] "
+            f"\"type\": \"기능|디자인|기획|테스트|백엔드\", \"owner\": \"{'|'.join(OWNER_CHOICES)}\"}}] "
+            "— owner는 위 목록에서만 고른다. 목록에 없는 에이전트(나무·봄이 등)는 백로그를 "
+            "읽지 않아 배정해도 아무도 집지 못한다. 구현 담당이 애매하면 '수리', 오너가 "
+            "직접 판단해야 하면 '사람'을 쓴다. "
             "— 자동 실행이 위험한 항목은 title 앞에 [승인필요]를 붙여라. 액션이 없으면 빈 배열.",
             PROJECT_ROOT, timeout=420, allowed_tools="Read", permission_mode="plan")
         verdict = out.strip() if ok and out else "(의장 종합 실패)"
@@ -201,7 +206,10 @@ def convene(topic: str, context: str, priority: str) -> None:
                     title = (a.get("title") or "").strip()
                     if not title or title in existing:
                         continue
-                    human = needs_human(title, a.get("owner", ""), a.get("detail") or "",
+                    # owner 정규화 — 목록 밖 owner를 그대로 적재하면 아무도 안 집는 유령이 된다
+                    # (2026-08-04 근본 수리: 프롬프트 목록과 AUTO_OWNERS가 어긋나 10건 누적).
+                    _owner, _onote = normalize_owner(a.get("owner", ""))
+                    human = needs_human(title, _owner, a.get("detail") or "",
                                         a.get("type", "기획"))
                     seq = added
                     new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
@@ -215,7 +223,9 @@ def convene(topic: str, context: str, priority: str) -> None:
                         "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
                         "type": a.get("type", "기획"), "source": "회의",
                         "status": "보류" if human else "대기",
-                        "owner": a.get("owner", ""), "created": datetime.now().isoformat(),
+                        "owner": _owner, "created": datetime.now().isoformat(),
+                        **({"owner_note": _onote} if _onote else {}),
+                        **({"gate": "사람 판단 트랙"} if _owner == HUMAN_OWNER else {}),
                     })
                     added += 1
                 BACKLOG.parent.mkdir(parents=True, exist_ok=True)
