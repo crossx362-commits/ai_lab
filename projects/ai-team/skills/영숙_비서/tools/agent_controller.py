@@ -145,6 +145,20 @@ def find_agent_process(agent_name: str) -> list[int]:
     return _process_query(needle)
 
 
+STOP_WAIT_SEC = 12.0   # SIGTERM 후 정상 종료를 기다리는 시간
+KILL_WAIT_SEC = 5.0    # SIGKILL 후 확인 대기
+
+
+def _wait_until_gone(name: str, timeout: float) -> bool:
+    """프로세스가 실제로 사라질 때까지 폴링. 사라졌으면 True, 시간 초과면 False."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not find_agent_process(name):
+            return True
+        time.sleep(0.3)
+    return not find_agent_process(name)
+
+
 def stop_agent(agent_name: str) -> str:
     name = get_agent_name(agent_name)
     if name not in AGENTS:
@@ -157,7 +171,19 @@ def stop_agent(agent_name: str) -> str:
             subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, creationflags=CREATE_NO_WINDOW)
         else:
             subprocess.run(["kill", str(pid)], capture_output=True)
-    return f"{name} 종료 완료 (PID: {', '.join(map(str, pids))})"
+    # 실제로 사라질 때까지 기다린다. 안 기다리면 restart의 start 단계가 아직 죽는 중인
+    # PID를 보고 "이미 실행 중"이라며 새 인스턴스를 안 띄우고, 그 직후 옛 프로세스가
+    # 죽어 결국 **아무것도 안 남는다**(2026-08-04: 펫나 6종이 이 경로로 전멸).
+    # SIGTERM을 받고도 사이클 중이면 늦게 끝나므로 유예 후 SIGKILL.
+    if _wait_until_gone(name, STOP_WAIT_SEC):
+        return f"{name} 종료 완료 (PID: {', '.join(map(str, pids))})"
+    for pid in find_agent_process(name):
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, creationflags=CREATE_NO_WINDOW)
+        else:
+            subprocess.run(["kill", "-9", str(pid)], capture_output=True)
+    _wait_until_gone(name, KILL_WAIT_SEC)
+    return f"{name} 강제 종료 (PID: {', '.join(map(str, pids))})"
 
 
 def start_agent(agent_name: str) -> str:
@@ -188,8 +214,7 @@ def start_agent(agent_name: str) -> str:
 
 
 def restart_agent(agent_name: str) -> str:
-    stop_result = stop_agent(agent_name)
-    time.sleep(1)
+    stop_result = stop_agent(agent_name)   # 종료 확인까지 기다린 뒤에 돌아온다
     return f"{stop_result}\n{start_agent(agent_name)}"
 
 
