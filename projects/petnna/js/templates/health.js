@@ -94,8 +94,11 @@ const HEALTH_TEMPLATE = `
              −/+ 는 값 양옆에 두어 카드 높이는 그대로다. 정확한 수치는 값을 눌러 모달로.
              (모달은 마이펫 아이콘 바·오늘의 퀘스트·주간 챌린지도 부르므로 존치한다 —
              회의는 건강 탭만 보고 '모달 폐기'를 논했으나 실제 호출부가 3곳 더 있었다.)
-             375px에서는 슬라이더보다 −/+ 가 오조작이 적다는 게 회의 다수 의견. -->
-        <div class="grid grid-cols-2 gap-3">
+             375px에서는 슬라이더보다 −/+ 가 오조작이 적다는 게 회의 다수 의견.
+             넓은 데스크톱에서 두 타일이 과도하게 늘어나 스테퍼 주변 여백만 커지던 것을
+             max-w-md mx-auto로 묶어 중앙 밀도를 확보(미오 P2, 2026-08-04). 모바일은
+             폭이 max-w-md 미만이라 기존과 동일하게 꽉 찬다. -->
+        <div class="grid grid-cols-2 gap-3 max-w-md mx-auto">
             <!-- 식사량 -->
             <div class="card-modern bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center">
                 <div class="text-3xl mb-1">🍖</div>
