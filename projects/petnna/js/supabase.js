@@ -272,6 +272,7 @@ const SupabaseService = {
             this.syncRoutes();
             this.syncMedicalRecords();
             this.syncHealthLogs();
+            this.syncMedicationLogs();
             this.startRealtimeFeed();
         }
     },
@@ -1240,6 +1241,54 @@ const SupabaseService = {
             if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 건강기록 동기화 실패", e);
             else console.error("🔴 Supabase 건강기록 동기화 실패:", e.message);
         }
+    },
+
+    // 투약 이행 로그(medication_logs) — care-check.js '먹였어요/건너뜀'이 남긴 기록을 올린다.
+    // UNIQUE(user_id,pet_id,schedule_id,log_date)로 같은 날 재기록 시 겹쳐 갱신된다.
+    async uploadMedicationLog(entry) {
+        const user = await this._authUser();
+        if (!user) return; // 실 세션 없음 — 로컬 전용 유지
+        try {
+            const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || user.email || '';
+            const { error } = await this.client
+                .from('medication_logs')
+                .upsert([{
+                    id: entry._remoteId,
+                    user_id: user.id,
+                    email,
+                    pet_id: entry.petId != null ? String(entry.petId) : null,
+                    schedule_id: entry.scheduleId != null ? String(entry.scheduleId) : null,
+                    kind: entry.kind || 'medicine',
+                    title: entry.title || '투약',
+                    log_date: entry.date,
+                    taken: !!entry.taken,
+                    taken_at: entry.takenAt || null,
+                }], { onConflict: 'user_id,pet_id,schedule_id,log_date' });
+            if (error) throw error;
+            if (typeof AppLogger !== 'undefined') AppLogger.info(`투약 이행 로그(${entry.date})가 Supabase에 동기화되었습니다.`);
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 투약 로그 업로드 실패", e);
+            else console.error("🔴 Supabase 투약 로그 업로드 실패:", e.message);
+        }
+    },
+
+    async syncMedicationLogs() {
+        if (this.isDemoMode()) return;
+        const user = await this._authUser();
+        if (!user) return;
+        try {
+            const { data, error } = await this._withRetry(() =>
+                this.client.from('medication_logs').select('*').eq('user_id', user.id)
+            );
+            if (error) throw error;
+            if (data && data.length > 0 && typeof MedicationLog !== 'undefined') {
+                MedicationLog.mergeRemote(data);
+                if (typeof AppLogger !== 'undefined') AppLogger.info("Supabase로부터 투약 이행 로그를 동기화했습니다.");
+            }
+        } catch (e) {
+            if (typeof AppLogger !== 'undefined') AppLogger.error("Supabase 투약 로그 동기화 실패", e);
+            else console.error("🔴 Supabase 투약 로그 동기화 실패:", e.message);
+        }
     }
 };
 
@@ -1280,6 +1329,8 @@ window.deleteMedicalRecordFromSupabase = (recordId) => SupabaseService.deleteMed
 window.syncMedicalRecordsFromSupabase = () => SupabaseService.syncMedicalRecords();
 window.uploadHealthLogToSupabase = (entry) => SupabaseService.uploadHealthLog(entry);
 window.syncHealthLogsFromSupabase = () => SupabaseService.syncHealthLogs();
+window.uploadMedicationLogToSupabase = (entry) => SupabaseService.uploadMedicationLog(entry);
+window.syncMedicationLogsFromSupabase = () => SupabaseService.syncMedicationLogs();
 
 // 초기 구동
 SupabaseService.init();
@@ -1294,5 +1345,6 @@ window.addEventListener('DOMContentLoaded', () => {
         SupabaseService.syncRoutes();
         SupabaseService.syncMedicalRecords();
         SupabaseService.syncHealthLogs();
+        SupabaseService.syncMedicationLogs();
     }
 });

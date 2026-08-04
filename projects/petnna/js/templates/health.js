@@ -521,6 +521,8 @@ const HEALTH_TEMPLATE = `
                 <div id="preventive-timeline"></div>
                 <!-- 💊 복약 순응도 30일 트래커 (이번 주 놓친 약 요약 포함) -->
                 <div id="med-adherence-tracker"></div>
+                <!-- 💊 투약 이행 로그(연속일·이번 달 이행률) — medication-log.js가 채움 -->
+                <div id="medication-log-tracker"></div>
             </div>
 
             <!-- 체형·체중 -->
