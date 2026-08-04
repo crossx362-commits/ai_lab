@@ -37,10 +37,11 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.process import ProcessLock  # noqa: E402
+from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.backlog import (  # noqa: E402,F401
-    needs_human, AUTO_OWNERS, backlog_lock, OWNER_CHOICES, HUMAN_OWNER, normalize_owner,
+    needs_human, AUTO_OWNERS, backlog_lock, waiting_lock,
+    OWNER_CHOICES, HUMAN_OWNER, normalize_owner,
 )
 
 load_env(str(PROJECT_ROOT))
@@ -135,115 +136,183 @@ def _opinion(name: str, role: str, folder: str, topic: str, context: str, priori
     return name, (out.strip()[:1200] if ok and out else FAIL_SENTINEL)
 
 
+PENDING = OUT_DIR / "pending_topics.json"
+MAX_DRAIN = 3   # 한 프로세스가 이어서 여는 대기 회의 수 상한(연쇄 폭주 방지)
+
+
+def _queue_topic(topic: str, context: str, priority: str) -> None:
+    """다른 안건의 회의가 진행 중이라 지금 열 수 없는 안건을 대기열에 남긴다.
+
+    예전엔 `ProcessLock`이 충돌 시 `sys.exit(0)`을 불러 **두 번째 회의가 흔적도 없이
+    사라졌다**(2026-07-12 파이프라인 감사 지적). 트리거 쪽(봄이·백호·수리)은 Popen으로
+    띄우기만 하므로 그 소멸을 알 수 없었고, 재소집 경로도 없었다.
+    """
+    with waiting_lock("petnna_council_queue", 10.0, label="회의대기열"):
+        try:
+            items = json.loads(PENDING.read_text(encoding="utf-8"))
+        except Exception:
+            items = []
+        if any(_topic_key(i.get("topic", "")) == _topic_key(topic) for i in items):
+            return   # 같은 안건이 이미 줄 서 있다
+        items.append({"topic": topic, "context": context, "priority": priority,
+                      "queued": datetime.now().isoformat()})
+        PENDING.parent.mkdir(parents=True, exist_ok=True)
+        PENDING.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"[회의] 다른 회의 진행 중 — 대기열에 적재: {topic[:60]}")
+
+
+def _pop_topic() -> dict | None:
+    with waiting_lock("petnna_council_queue", 10.0, label="회의대기열"):
+        try:
+            items = json.loads(PENDING.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+        if not items:
+            return None
+        head = items.pop(0)
+        PENDING.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
+        return head
+
+
 def convene(topic: str, context: str, priority: str) -> None:
     if _is_recent_meeting(topic):
         print(f"[회의] 동일 안건 {COOLDOWN_H}시간 내 개최됨 — 생략: {topic[:60]}")
         return
-    with ProcessLock("petnna_council"):
-        # 락을 실제로 잡은 뒤에만 쿨다운을 기록한다 — 락 충돌로 sys.exit(0)하면 이 줄까지
-        # 아예 도달 못 해, 실제로 안 열린 회의가 24h 봉쇄되는 사고를 막는다(위 주석 참고).
-        _mark_meeting(topic)
-        print(f"[{datetime.now()}] 🏛️ 긴급 회의 소집 — {topic[:80]}")
-        with ThreadPoolExecutor(max_workers=3) as ex:
-            futures = [ex.submit(_opinion, n, r, f, topic, context, priority)
-                       for n, r, f in PERSONAS]
-            opinions = [fu.result() for fu in futures]
-
-        if all(op == FAIL_SENTINEL for _, op in opinions):
-            # 전원 실패 = 개별 판단이 아니라 그 시점 클로드 호출 자체가 전멸(레이트리밋/타임아웃).
-            # 이슈 탓이 아니므로 쿨다운을 소진시키지 않고 다음 트리거에서 바로 재시도 가능하게 한다.
-            _clear_cooldown(topic)
-            print(f"[{datetime.now()}] 회의 전원 의견수집 실패(인프라) — 쿨다운 미소진, 재시도 대기: {topic[:80]}")
+    with advisory_lock("petnna_council") as got:
+        if not got:
+            # 죽지 않는다 — 줄을 서고, 진행 중인 회의가 끝나면서 우리 안건을 열어준다.
+            _queue_topic(topic, context, priority)
             return
+        if not _hold_meeting(topic, context, priority):
+            return   # 클로드가 죽어 있다 — 대기열을 건드리면 줄 선 안건까지 태운다
+        # 내 회의가 끝났으니 그 사이 밀린 안건을 이어서 연다. 락은 아직 내가 쥐고 있어
+        # 새 프로세스가 끼어들지 않고, 상한(MAX_DRAIN)으로 연쇄 폭주를 막는다.
+        for _ in range(MAX_DRAIN):
+            nxt = _pop_topic()
+            if not nxt:
+                break
+            if _is_recent_meeting(nxt["topic"]):
+                continue
+            print(f"[회의] 대기열 소진 — 이어서 개최: {nxt['topic'][:60]}")
+            if not _hold_meeting(nxt["topic"], nxt.get("context", ""), nxt.get("priority", "P1")):
+                # 인프라 실패 — 꺼낸 안건을 되돌려 놓는다. 안 그러면 큐에서만 빠지고
+                # 아무도 다시 열지 않아, 고치려던 '흔적 없는 유실'이 그대로 재현된다.
+                _queue_topic(nxt["topic"], nxt.get("context", ""), nxt.get("priority", "P1"))
+                break
 
-        opinion_text = "\n\n".join(f"### {name}\n{op}" for name, op in opinions)
-        ok, out = run_claude(
-            "너는 펫나 개발팀 CEO 예원, 이 긴급 회의의 의장이다. 군더더기 없이 핵심만.\n\n"
-            f"[안건] (우선순위 {priority})\n{topic}\n상세: {context or '(없음)'}\n\n"
-            f"[전문가 의견]\n{opinion_text}\n\n"
-            "[할 일]\n"
-            "1. 의견을 종합해 회의 결론을 5줄 이내로 내라(의견 충돌은 명시하고 판정하라).\n"
-            "2. 결정 사항을 번호 목록으로.\n"
-            "3. 마지막에 실행 액션아이템을 JSON 배열로: "
-            "[{\"title\": \"...\", \"detail\": \"...\", \"priority\": \"P1|P2|P3\", "
-            f"\"type\": \"기능|디자인|기획|테스트|백엔드\", \"owner\": \"{'|'.join(OWNER_CHOICES)}\"}}] "
-            "— owner는 위 목록에서만 고른다. 목록에 없는 에이전트(나무·봄이 등)는 백로그를 "
-            "읽지 않아 배정해도 아무도 집지 못한다. 구현 담당이 애매하면 '수리', 오너가 "
-            "직접 판단해야 하면 '사람'을 쓴다. "
-            "— 자동 실행이 위험한 항목은 title 앞에 [승인필요]를 붙여라. 액션이 없으면 빈 배열.",
-            PROJECT_ROOT, timeout=420, allowed_tools="Read", permission_mode="plan")
-        verdict = out.strip() if ok and out else "(의장 종합 실패)"
-        if not (ok and out):
-            # 전문가 의견은 살아있는데 의장 합성만 인프라 문제로 실패 — 의견은 회의록에 보존하되
-            # 쿨다운은 소진시키지 않아 다음 트리거에서 곧바로 재종합 시도가 가능하게 한다.
-            _clear_cooldown(topic)
-            print(f"[{datetime.now()}] 의장 종합 실패(인프라) — 쿨다운 미소진, 의견은 보존")
 
-        # 액션아이템 → 백로그(source=회의). [승인필요]·소비자 없는 owner 항목은 적재만 하고 자동 루프가 안 집도록 보류 상태.
-        actions = extract_json(verdict) or []
-        added = 0
-        # 백로그 읽기~쓰기만 공용 락으로 감싼다 — convene 전체를 감싸면 안에 있는
-        # 6인 병렬 LLM 호출(수분)이 락을 붙들어 다른 도구를 전부 막는다(2026-08-02).
-        with backlog_lock():
-            try:
-                data = json.loads(BACKLOG.read_text(encoding="utf-8"))
-            except FileNotFoundError:
-                data = {"items": []}
-            except Exception as e:
-                # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
-                # 빈 dict로 대체해 아래에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
-                # (자동 파이프라인 감사 도구가 발견, 2026-07-12). 액션아이템 적재는 건너뛰되
-                # 회의록·텔레그램은 이미 만들어진 대로 계속 진행 — 기존 백로그 파일 보존.
-                print(f"[회의] 백로그 읽기 실패(파일 손상 가능) — 액션아이템 적재 건너뜀: {e}")
-                data = None
-            if data is not None:
-                existing = {i.get("title") for i in data["items"]}
-                # id 충돌 방지 — stamp가 분 단위라 같은 분에 다른 안건 회의가 열리면 서로 다른
-                # 액션아이템이 같은 id를 갖는다. 수리 dev_state가 id로 조회하므로 attempts가
-                # 뒤섞인다. 나무·미오는 2026-07-12에 고쳤는데 회의만 빠져 있었다(비대칭).
-                existing_ids = {i.get("id") for i in data["items"]}
-                for a in actions if isinstance(actions, list) else []:
-                    title = (a.get("title") or "").strip()
-                    if not title or title in existing:
-                        continue
-                    # owner 정규화 — 목록 밖 owner를 그대로 적재하면 아무도 안 집는 유령이 된다
-                    # (2026-08-04 근본 수리: 프롬프트 목록과 AUTO_OWNERS가 어긋나 10건 누적).
-                    _owner, _onote = normalize_owner(a.get("owner", ""))
-                    human = needs_human(title, _owner, a.get("detail") or "",
-                                        a.get("type", "기획"))
-                    seq = added
+def _hold_meeting(topic: str, context: str, priority: str) -> bool:
+    """실제 회의 1회. 호출자가 이미 petnna_council 락을 쥐고 있어야 한다.
+
+    반환: 회의가 실제로 열렸으면 True, 인프라 사유(클로드 전멸)로 못 열었으면 False.
+    호출자는 False면 대기열 소진을 멈춘다 — 클로드가 죽어 있으면 다음 안건도
+    똑같이 실패하고, 그렇게 소진된 안건은 큐에서 빠진 채 사라진다.
+    """
+    # 락을 실제로 잡은 뒤에만 쿨다운을 기록한다 — 락 충돌로 회의가 안 열렸는데
+    # 24h 봉쇄되는 사고를 막는다(위 주석 참고).
+    _mark_meeting(topic)
+    print(f"[{datetime.now()}] 🏛️ 긴급 회의 소집 — {topic[:80]}")
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futures = [ex.submit(_opinion, n, r, f, topic, context, priority)
+                   for n, r, f in PERSONAS]
+        opinions = [fu.result() for fu in futures]
+
+    if all(op == FAIL_SENTINEL for _, op in opinions):
+        # 전원 실패 = 개별 판단이 아니라 그 시점 클로드 호출 자체가 전멸(레이트리밋/타임아웃).
+        # 이슈 탓이 아니므로 쿨다운을 소진시키지 않고 다음 트리거에서 바로 재시도 가능하게 한다.
+        _clear_cooldown(topic)
+        print(f"[{datetime.now()}] 회의 전원 의견수집 실패(인프라) — 쿨다운 미소진, 재시도 대기: {topic[:80]}")
+        return False
+
+    opinion_text = "\n\n".join(f"### {name}\n{op}" for name, op in opinions)
+    ok, out = run_claude(
+        "너는 펫나 개발팀 CEO 예원, 이 긴급 회의의 의장이다. 군더더기 없이 핵심만.\n\n"
+        f"[안건] (우선순위 {priority})\n{topic}\n상세: {context or '(없음)'}\n\n"
+        f"[전문가 의견]\n{opinion_text}\n\n"
+        "[할 일]\n"
+        "1. 의견을 종합해 회의 결론을 5줄 이내로 내라(의견 충돌은 명시하고 판정하라).\n"
+        "2. 결정 사항을 번호 목록으로.\n"
+        "3. 마지막에 실행 액션아이템을 JSON 배열로: "
+        "[{\"title\": \"...\", \"detail\": \"...\", \"priority\": \"P1|P2|P3\", "
+        f"\"type\": \"기능|디자인|기획|테스트|백엔드\", \"owner\": \"{'|'.join(OWNER_CHOICES)}\"}}] "
+        "— owner는 위 목록에서만 고른다. 목록에 없는 에이전트(나무·봄이 등)는 백로그를 "
+        "읽지 않아 배정해도 아무도 집지 못한다. 구현 담당이 애매하면 '수리', 오너가 "
+        "직접 판단해야 하면 '사람'을 쓴다. "
+        "— 자동 실행이 위험한 항목은 title 앞에 [승인필요]를 붙여라. 액션이 없으면 빈 배열.",
+        PROJECT_ROOT, timeout=420, allowed_tools="Read", permission_mode="plan")
+    verdict = out.strip() if ok and out else "(의장 종합 실패)"
+    if not (ok and out):
+        # 전문가 의견은 살아있는데 의장 합성만 인프라 문제로 실패 — 의견은 회의록에 보존하되
+        # 쿨다운은 소진시키지 않아 다음 트리거에서 곧바로 재종합 시도가 가능하게 한다.
+        _clear_cooldown(topic)
+        print(f"[{datetime.now()}] 의장 종합 실패(인프라) — 쿨다운 미소진, 의견은 보존")
+
+    # 액션아이템 → 백로그(source=회의). [승인필요]·소비자 없는 owner 항목은 적재만 하고 자동 루프가 안 집도록 보류 상태.
+    actions = extract_json(verdict) or []
+    added = 0
+    # 백로그 읽기~쓰기만 공용 락으로 감싼다 — convene 전체를 감싸면 안에 있는
+    # 6인 병렬 LLM 호출(수분)이 락을 붙들어 다른 도구를 전부 막는다(2026-08-02).
+    with backlog_lock():
+        try:
+            data = json.loads(BACKLOG.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            data = {"items": []}
+        except Exception as e:
+            # 파일은 있는데 파싱 실패(다른 프로세스의 non-atomic write 도중 읽었을 가능성) —
+            # 빈 dict로 대체해 아래에서 통째로 덮어쓰면 기존 백로그 전체가 소실된다
+            # (자동 파이프라인 감사 도구가 발견, 2026-07-12). 액션아이템 적재는 건너뛰되
+            # 회의록·텔레그램은 이미 만들어진 대로 계속 진행 — 기존 백로그 파일 보존.
+            print(f"[회의] 백로그 읽기 실패(파일 손상 가능) — 액션아이템 적재 건너뜀: {e}")
+            data = None
+        if data is not None:
+            existing = {i.get("title") for i in data["items"]}
+            # id 충돌 방지 — stamp가 분 단위라 같은 분에 다른 안건 회의가 열리면 서로 다른
+            # 액션아이템이 같은 id를 갖는다. 수리 dev_state가 id로 조회하므로 attempts가
+            # 뒤섞인다. 나무·미오는 2026-07-12에 고쳤는데 회의만 빠져 있었다(비대칭).
+            existing_ids = {i.get("id") for i in data["items"]}
+            for a in actions if isinstance(actions, list) else []:
+                title = (a.get("title") or "").strip()
+                if not title or title in existing:
+                    continue
+                # owner 정규화 — 목록 밖 owner를 그대로 적재하면 아무도 안 집는 유령이 된다
+                # (2026-08-04 근본 수리: 프롬프트 목록과 AUTO_OWNERS가 어긋나 10건 누적).
+                _owner, _onote = normalize_owner(a.get("owner", ""))
+                human = needs_human(title, _owner, a.get("detail") or "",
+                                    a.get("type", "기획"))
+                seq = added
+                new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
+                while new_id in existing_ids:
+                    seq += 1
                     new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
-                    while new_id in existing_ids:
-                        seq += 1
-                        new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
-                    existing_ids.add(new_id)
-                    data["items"].append({
-                        "id": new_id,
-                        "title": title[:120], "detail": (a.get("detail") or "")[:500],
-                        "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
-                        "type": a.get("type", "기획"), "source": "회의",
-                        "status": "보류" if human else "대기",
-                        "owner": _owner, "created": datetime.now().isoformat(),
-                        **({"owner_note": _onote} if _onote else {}),
-                        **({"gate": "사람 판단 트랙"} if _owner == HUMAN_OWNER else {}),
-                    })
-                    added += 1
-                BACKLOG.parent.mkdir(parents=True, exist_ok=True)
-                BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+                existing_ids.add(new_id)
+                data["items"].append({
+                    "id": new_id,
+                    "title": title[:120], "detail": (a.get("detail") or "")[:500],
+                    "priority": a.get("priority") if a.get("priority") in ("P1", "P2", "P3") else "P2",
+                    "type": a.get("type", "기획"), "source": "회의",
+                    "status": "보류" if human else "대기",
+                    "owner": _owner, "created": datetime.now().isoformat(),
+                    **({"owner_note": _onote} if _onote else {}),
+                    **({"gate": "사람 판단 트랙"} if _owner == HUMAN_OWNER else {}),
+                })
+                added += 1
+            BACKLOG.parent.mkdir(parents=True, exist_ok=True)
+            BACKLOG.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        minutes = OUT_DIR / f"minutes_{datetime.now():%Y%m%d_%H%M}.md"
-        minutes.write_text(
-            f"# 펫나 긴급 회의록 — {datetime.now():%Y-%m-%d %H:%M}\n\n"
-            f"## 안건 ({priority})\n{topic}\n\n상세: {context or '(없음)'}\n\n"
-            f"## 전문가 의견\n{opinion_text}\n\n## 의장(예원) 종합\n{verdict}\n\n"
-            f"## 백로그 적재: {added}건 (source=회의, 승인필요 항목은 보류 상태)\n",
-            encoding="utf-8")
-        print(f"[{datetime.now()}] 회의 종료 — 회의록 {minutes}, 액션 {added}건 적재")
-        # 결론 첫 부분만 텔레그램 (전문은 회의록)
-        head = verdict.split("```")[0].strip()[:1200]
-        send(f"🏛️ 펫나 긴급 회의 결과 — {topic[:70]}\n\n{head}\n\n"
-             f"액션 {added}건 백로그 적재 · 📄 {minutes}")
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    minutes = OUT_DIR / f"minutes_{datetime.now():%Y%m%d_%H%M}.md"
+    minutes.write_text(
+        f"# 펫나 긴급 회의록 — {datetime.now():%Y-%m-%d %H:%M}\n\n"
+        f"## 안건 ({priority})\n{topic}\n\n상세: {context or '(없음)'}\n\n"
+        f"## 전문가 의견\n{opinion_text}\n\n## 의장(예원) 종합\n{verdict}\n\n"
+        f"## 백로그 적재: {added}건 (source=회의, 승인필요 항목은 보류 상태)\n",
+        encoding="utf-8")
+    print(f"[{datetime.now()}] 회의 종료 — 회의록 {minutes}, 액션 {added}건 적재")
+    # 결론 첫 부분만 텔레그램 (전문은 회의록)
+    head = verdict.split("```")[0].strip()[:1200]
+    send(f"🏛️ 펫나 긴급 회의 결과 — {topic[:70]}\n\n{head}\n\n"
+         f"액션 {added}건 백로그 적재 · 📄 {minutes}")
+    return True
 
 
 def main() -> None:

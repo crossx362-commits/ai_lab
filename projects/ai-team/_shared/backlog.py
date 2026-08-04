@@ -348,7 +348,55 @@ def promote_approved_holds(backlog_path) -> list[str]:
 #
 # 타임아웃을 넘기면 락 없이 진행한다(예외를 던지지 않는다) — 락 획득 실패로 적재 자체가
 # 사라지는 것보다, 드문 경합을 감수하고 쓰는 편이 낫다. 대신 경고를 남겨 추적 가능하게 한다.
-_BACKLOG_LOCK_PATH = "/tmp/petnna_backlog_json.lock"
+
+
+@contextmanager
+def waiting_lock(name: str, timeout: float = 20.0, label: str = ""):
+    """짧게 기다렸다 잡는 파일 락 — read-modify-write 구간 전용(범용).
+
+    `advisory_lock`(비차단, 충돌 시 건너뜀)과 `ProcessLock`(충돌 시 sys.exit) 사이의
+    빈칸을 메운다. 상태 파일을 읽어 고쳐 쓰는 구간에서 '건너뛰기'는 곧 데이터 유실이고
+    'sys.exit'는 호출자를 죽인다 — 잠깐 기다렸다 쓰는 게 맞다.
+
+    타임아웃을 넘기면 예외 없이 락 없이 진행한다 — 락 획득 실패로 적재 자체가 사라지는
+    것보다, 드문 경합을 감수하고 쓰는 편이 낫다. 대신 경고를 남겨 추적 가능하게 한다.
+
+    새 상태 파일에 같은 성격의 락이 필요하면 관용구를 또 만들지 말고 이 함수를 써라
+    (2026-08-04: 회의 대기열이 네 번째 락 구현이 될 뻔했다).
+    """
+    if sys.platform == "win32":  # pragma: no cover - 운영 기계는 darwin
+        try:
+            yield True
+        finally:
+            pass
+        return
+    try:
+        import fcntl
+    except ImportError:  # pragma: no cover
+        yield True
+        return
+    fd = open(f"/tmp/{name}.lock", "w")
+    deadline = time.time() + timeout
+    got = False
+    try:
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                got = True
+                break
+            except OSError:
+                if time.time() >= deadline:
+                    print(f"[{label or name}] 락 대기 {timeout}s 초과 — 락 없이 진행(경합 가능)")
+                    break
+                time.sleep(0.2)
+        yield got
+    finally:
+        if got:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+            except Exception:
+                pass
+        fd.close()
 
 
 @contextmanager
@@ -364,39 +412,8 @@ def backlog_lock(timeout: float = 20.0):
     반드시 **읽기부터** 감싸야 한다 — 쓰기만 감싸면 읽은 뒤 남이 바꾼 걸 덮어쓰는
     read-modify-write 경합이 그대로 남는다.
     """
-    if sys.platform == "win32":  # pragma: no cover - 운영 기계는 darwin
-        try:
-            yield True
-        finally:
-            pass
-        return
-    try:
-        import fcntl
-    except ImportError:  # pragma: no cover
-        yield True
-        return
-    fd = open(_BACKLOG_LOCK_PATH, "w")
-    deadline = time.time() + timeout
-    got = False
-    try:
-        while True:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                got = True
-                break
-            except OSError:
-                if time.time() >= deadline:
-                    print(f"[backlog] 락 대기 {timeout}s 초과 — 락 없이 진행(경합 가능)")
-                    break
-                time.sleep(0.2)
+    with waiting_lock("petnna_backlog_json", timeout, label="backlog") as got:
         yield got
-    finally:
-        if got:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            except Exception:
-                pass
-        fd.close()
 
 
 # ── 액션아이템 owner 정규화 (2026-08-04) ──────────────────────────────────

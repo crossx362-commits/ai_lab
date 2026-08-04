@@ -86,7 +86,7 @@ class WritersUseLockTests(unittest.TestCase):
     # 통째로 감싸면 락을 붙들어 다른 도구를 전부 막으므로 첫 실행문 규칙을 적용하지 않는다.
     # 대신 "백로그 읽기와 쓰기가 같은 with 블록 안에 있는가"를 본다.
     SPAN_CASES = [
-        ("예원_CEO/tools/petnna_council.py", "convene"),
+        ("예원_CEO/tools/petnna_council.py", "_hold_meeting"),
         ("백호_백엔드/tools/petnna_backend_guard.py", "investigate_assigned_tasks"),
     ]
 

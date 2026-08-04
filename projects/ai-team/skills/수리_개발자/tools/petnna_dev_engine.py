@@ -120,6 +120,27 @@ def _counts(findings):
     return c
 
 
+def qa_not_worse(base, after, is_backlog: bool) -> bool:
+    """재검수 지표가 악화되지 않았는가 — 병합/PR대기 게이트의 핵심 판정.
+
+    회의 결정(회의_202607290811_3): 백로그(기능·디자인) 과제는 **P3 순증만으로는**
+    차단하지 않는다. 새 카드·섹션을 추가하면 봄이의 레이아웃 휴리스틱(전부 P3이고
+    오탐 여지가 있어 보고 전용)이 거의 항상 몇 건 늘어, `총건수 <= 이전` 규칙에
+    걸린 멀쩡한 구현이 3회 재시도 끝에 보류로 밀려났다. 신규 P0~P2는 여전히 차단하고,
+    백로그는 어차피 자동 병합 대상이 아니라 사람이 PR을 보므로 안전 여유가 있다.
+
+    QA 이슈 수정(is_backlog=False)은 자동 병합 경로라 기존 엄격한 규칙을 유지한다.
+    """
+    cb, ca = _counts(base), _counts(after)
+    if is_backlog:
+        base_ids = {x["id"] for x in base}
+        new_serious = any(x["id"] not in base_ids and x["priority"] in ("P0", "P1", "P2")
+                          for x in after)
+        return ca["P0"] == 0 and not new_serious
+    return (ca["P0"] == 0 and ca["P1"] <= cb["P1"]
+            and sum(ca.values()) <= sum(cb.values()))
+
+
 # ── 상태/이슈 선택 ─────────────────────────────────────────
 
 def load_dev_state() -> dict:
@@ -668,10 +689,20 @@ def _improve_cycle(do_send: bool = True) -> str:
         after_ids = {x["id"] for x in after}
         cb, ca = _counts(base), _counts(after)
         resolved = True if is_backlog else fp not in after_ids  # 백로그 과제는 QA 재현 항목 아님
-        not_worse = (ca["P0"] == 0 and ca["P1"] <= cb["P1"]
-                     and sum(ca.values()) <= sum(cb.values()))
+
+        new_findings = [x for x in after if x["id"] not in base_ids]
+        not_worse = qa_not_worse(base, after, is_backlog)
         log.append(f"- 재검수: 대상 {'해결' if resolved else '미해결'}, "
                    f"지표 {cb} → {ca} ({'악화 없음' if not_worse else '악화'})")
+        # 회의 결정(회의_202607290811_2): 악화를 카운트로만 보고하면 사람도 게이트도
+        # 판단할 수 없다 — 무엇이 새로 생겼는지 실체(우선순위·제목·증거)를 남긴다.
+        for x in new_findings[:6]:
+            log.append(f"  · 신규 {x['priority']}: {str(x.get('title',''))[:70]}"
+                       + (f" — {str(x.get('detail',''))[:80]}" if x.get("detail") else ""))
+        if len(new_findings) > 6:
+            log.append(f"  · … 신규 {len(new_findings) - 6}건 더 (전체는 봄이 보고서)")
+        # 신규 P3는 별도 백로그로 만들지 않는다 — 봄이 보고서에 이미 남아 다음 QA 사이클이
+        # 정규 경로로 집는다. 여기서 또 적재하면 같은 건이 두 트랙으로 중복된다.
 
         # 테오 E2E 게이트: 수정으로 새로 깨진 테스트가 있으면 병합 금지
         after_tests = run_e2e(wt / "projects" / "petnna")

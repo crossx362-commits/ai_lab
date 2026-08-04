@@ -53,20 +53,23 @@ class CooldownOrderingTests(unittest.TestCase):
                         "실제로 마킹한 뒤에는 쿨다운 내로 판정돼야 한다")
 
     def test_lock_conflict_never_marks_cooldown(self):
-        """convene()가 ProcessLock 충돌로 즉시 종료되는 경로를 재현 — 회의가 실제로
-        시작되지 않았다면 쿨다운이 기록되면 안 된다."""
+        """다른 회의가 진행 중이라 락을 못 잡은 경로 — 회의가 실제로 시작되지
+        않았다면 쿨다운이 기록되면 안 된다.
+
+        2026-08-04부터 이 경로는 sys.exit(0)이 아니라 '대기열 적재 후 정상 반환'이다
+        (두 번째 회의가 흔적 없이 사라지던 문제 수리, test_council_pending_queue.py).
+        쿨다운을 기록하면 안 된다는 계약 자체는 그대로다."""
         topic = "동시 트리거 안건"
 
-        class FakeConflictLock:
-            def __enter__(self):
-                raise SystemExit(0)  # ProcessLock 충돌 시 실제 동작과 동일
+        from contextlib import contextmanager
 
-            def __exit__(self, *a):
-                return False
+        @contextmanager
+        def busy(name):
+            yield False   # 다른 회의가 이미 락을 쥐고 있음
 
-        with mock.patch.object(self.council, "ProcessLock", return_value=FakeConflictLock()):
-            with self.assertRaises(SystemExit):
-                self.council.convene(topic, "", "P1")
+        self.council.PENDING = self.tmp_dir / "pending.json"
+        with mock.patch.object(self.council, "advisory_lock", busy):
+            self.council.convene(topic, "", "P1")
         self.assertFalse(self.council._is_recent_meeting(topic),
                          "락 충돌로 회의가 안 열렸으면 쿨다운도 기록되면 안 된다")
 
