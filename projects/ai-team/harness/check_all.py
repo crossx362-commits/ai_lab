@@ -368,6 +368,7 @@ def check_root_layout():
         "AGENTS.md",
         "CLAUDE.md",
         "DESIGN.md",
+        "DIRECTIVES.md",
         "ENV_MANIFEST.json",
         "HANDBOOK.md",
         "PROJECT_OVERVIEW.md",
