@@ -42,7 +42,7 @@ export const AGENTS: Record<string, AgentDef> = {
     role: 'Chief Executive Agent · 팀 오케스트레이터',
     emoji: '🧭',
     color: '#F8FAFC',
-    specialty: '작업 분해·디스패치(yewon_dispatcher), 하네스 모니터링·시스템 점검(harness_manager·harness_monitor), 에이전트 SKILL.md 품질 감사(skill_auditor), 업로드 히스토리 성과 평가·일일/주간 피드백(evaluate_feedback·daily_feedback_scheduler), 업로드 관리(upload_manager), 유튜브 채널 전략·메타데이터·업로드 스케줄 총괄',
+    specialty: '작업 분해·디스패치(yewon_dispatcher), 하네스 모니터링·시스템 점검(harness_manager·harness_monitor), 에이전트 SKILL.md 품질 감사(skill_auditor), 업로드 히스토리 성과 평가·일일/주간 피드백(evaluate_feedback·daily_feedback_scheduler)',
     tagline: '팀 작업을 분해·조율하고 하네스·스킬 품질과 성과 피드백을 총괄합니다',
     profileImage: '예원.png',
     persona: 'CEO 예원. 큰 그림에서 작업을 쪼개 적임 에이전트에 배분하고, 결과를 종합해 다음 액션을 결정. 군더더기 없이 핵심만 보고. 이모지: 🧭·✅·📊.',

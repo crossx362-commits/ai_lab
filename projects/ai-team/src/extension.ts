@@ -6567,7 +6567,6 @@ const AGENT_TOOLS_CATALOG: Record<string, { tool: string; desc: string; planned?
         { tool: 'harness_monitor', desc: '하네스 시스템 점검·상태 모니터링 (harness_manager·harness_monitor)' },
         { tool: 'skill_auditor', desc: '에이전트 SKILL.md 품질 주간 감사' },
         { tool: 'feedback_eval', desc: '업로드 성과 일일/주간 피드백 평가 (evaluate_feedback·daily_feedback_scheduler)' },
-        { tool: 'upload_manager', desc: '업로드 관리·승인 게이트' },
         { tool: 'team_briefing', desc: '주간 전체 회의 자동 진행 + 회의록 정리', planned: true },
     ],
     secretary: [

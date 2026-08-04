@@ -38,12 +38,12 @@
 
 | 등급 | 문서 | 뜻 |
 |---|---|---|
-| **A. 헌장** | 이 문서, `CLAUDE.md`, 각 봇 `SKILL.md` | 현재 유효. 어기면 사고. |
+| **A. 헌장** | 이 문서, `DIRECTIVES.md`, `CLAUDE.md`, 각 봇 `SKILL.md` | 현재 유효. 어기면 사고. |
 | **B. 정식 참조** | `docs/*.md`, `docs/setup/*`, `projects/ai-team/docs/*` | 현재 유효하나 낡을 수 있음. 코드와 다르면 **코드가 옳다**. |
 | **C. 기록** | `reports/*`, `docs/superpowers/*`, `*/CHANGELOG.md` | 그때의 사실. 지금의 지침이 아니다. |
 | **D. 보관** | `docs/archive/*` | **운영 지침으로 쓰지 마라.** |
 
-### 1-3. 전체 색인 (92개, 2026-08-04 재검증 — 7/22의 "90개"는 `docs/superpowers/`를 6으로 세서 2개 누락)
+### 1-3. 전체 색인 (93개, 2026-08-04 재검증 — 색인 92 + `DIRECTIVES.md` 신설)
 
 | 영역 | 개수 |
 |---|---|
@@ -51,13 +51,14 @@
 | `docs/` | 22 |
 | `reports/` | 14 |
 | `projects/petnna/` | 10 |
-| 루트 | 7 |
+| 루트 | 8 |
 | `projects/bboggl/` | 1 |
 
-**루트 7개 — `DESIGN.md` 뺀 6개는 하네스가 존재를 강제**
+**루트 8개 — `DESIGN.md` 뺀 7개는 하네스가 존재를 강제**
 | 파일 | 대상 독자 | 상태 |
 |---|---|---|
 | `HANDBOOK.md` | **사람(오너)** | 이 문서. 진입점 |
+| `DIRECTIVES.md` | **모두** | A등급. 통합 작업 지침 — 모든 작업 전 준수 |
 | `CLAUDE.md` | Claude Code | A등급. 가드레일 사고 기록 |
 | `AGENTS.md` | Codex | B등급 |
 | `PROJECT_OVERVIEW.md` | 사람 | 구조 개요 |
@@ -97,7 +98,7 @@
 
 | 대상 | 잠긴 이유 | 근거 (함수 기준 — 라인은 밀린다) |
 |---|---|---|
-| 루트 **6개** `.md`<br>`AGENTS`·`HANDBOOK`·`PROJECT_OVERVIEW`·`README`·`CLAUDE`·`SKILL` | 하네스가 존재 검사 → 없으면 FAIL | `check_all.py:233` `check_classification_layout()` |
+| 루트 **7개** `.md`<br>`AGENTS`·`HANDBOOK`·`PROJECT_OVERVIEW`·`README`·`CLAUDE`·`SKILL`·`DIRECTIVES` | 하네스가 존재 검사 → 없으면 FAIL | `check_all.py:233` `check_classification_layout()` |
 | `docs/REPOSITORY_CLASSIFICATION.md`<br>`docs/TELEGRAM_BOT_README.md` | 같은 필수 목록 | 〃 |
 | `ai-team/README.md`·`scripts/README.md`·`skills/README.md` | 같은 필수 목록 | 〃 |
 | 루트 파일 전반 (`DESIGN.md` 포함) | 화이트리스트 밖이면 WARN | `check_all.py:358` `check_root_layout()` |

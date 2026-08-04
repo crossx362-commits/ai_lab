@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 📖 시스템 이해 필수 문서
 
+**⚡ 통합 작업 지침**: [`DIRECTIVES.md`](DIRECTIVES.md) — **모든 작업(대화형·헤드리스·자동 루프) 전 필수 준수.** 오너 원칙 6개·작업 절차·안전 규칙·검증 체크리스트·진단 순서의 단일 요약. 아래 「하네스 가드레일」은 그 원장(개별 사고 세부)이다.
+
 **전체 문서 색인·권위 등급**: [`HANDBOOK.md`](HANDBOOK.md) — 문서끼리 모순되면 §1-2 등급이 판정한다(위쪽이 이김).
 
 **작업 전 반드시 읽기**: [`docs/AI_LAB_SYSTEM_ARCHITECTURE.md`](docs/AI_LAB_SYSTEM_ARCHITECTURE.md)
@@ -264,11 +266,12 @@ The bot uses Gemini Function Calling to map natural language to tools:
 ### Bot Architecture
 
 `telegram_receiver.py` consolidates:
-- Gemini Function Calling integration
+- Claude tool use function calling integration
 - Calendar manager (`calendar_manager.py`)
-- Posting scheduler (`posting_scheduler.py`)
 - Reports manager (`reports_manager.py`)
-- Upload approval flow (`upload_approval_flow.py`)
+
+(구 유튜브 업로드 파이프라인 `posting_scheduler.py`·`upload_approval_flow.py`·
+`upload_manager.py`·`youtube_recommender.py`는 2026-08-04 삭제 — 루나/아린 세대 잔재)
 
 Logs: `projects/ai-team/skills/영숙_비서/tools/telegram_receiver.log`
 

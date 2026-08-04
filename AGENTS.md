@@ -2,6 +2,7 @@
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
+> **⚡ 모든 작업 전 [DIRECTIVES.md](DIRECTIVES.md) 필수 준수** — 오너 원칙·작업 절차·안전 규칙·검증 체크리스트의 통합 지침.
 > 사람이 읽는 운영 매뉴얼·사고 런북·문서 색인은 [HANDBOOK.md](HANDBOOK.md)에 있다.
 
 ---
