@@ -99,6 +99,31 @@ class FixBeforeAlertOrderTests(unittest.TestCase):
         self.assertLess(first_remedy, first_alert,
                         "이슈 경보가 자동 복구보다 먼저 나간다 — 예원이 고칠 일까지 사람을 부른다")
 
+    def test_restart_grace_suppresses_self_made_downtime(self):
+        """예원이 방금 재시작한 데몬의 과도상태 down은 경보하지 않는다.
+
+        2026-08-04 실측: 코드 갱신으로 6개 데몬을 자기 손으로 교체한 직후 하네스가
+        그 6개를 down으로 보고, 그대로 텔레그램에 나갔다 — 예원이 만든 소음이다.
+        """
+        import ast
+        path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "main")
+        src = ast.dump(fn)
+        self.assertIn("RESTART_GRACE_SEC", src,
+                      "재시작 유예가 main 루프에 없다 — 자기가 만든 down을 그대로 알린다")
+        # 유예를 걸려면 재시작 시점을 알아야 한다: 세 갈래 모두 타임스탬프를 갱신하는가.
+        self.assertGreaterEqual(src.count("last_restart_ts"), 4,
+                                "재시작 경로 중 일부가 유예 타임스탬프를 안 남긴다")
+
+    def test_restart_on_code_update_reports_whether_it_restarted(self):
+        """유예의 전제 — 코드 갱신 재시작기가 '재시작했다'를 호출자에게 알려야 한다."""
+        module = load_module("harness_monitor_retval", "skills/예원_CEO/tools/harness_monitor.py")
+        module._bots_off = lambda: True     # 아무것도 안 하는 경로
+        self.assertIs(module.restart_on_code_update(), False,
+                      "재시작하지 않았는데 참을 반환하면 유예가 잘못 걸려 진짜 down을 삼킨다")
+
     def test_self_handled_events_are_not_telegrammed(self):
         """예원이 스스로 끝낸 일(코드 갱신 재시작·죽은 잡 정리)은 알림 대상이 아니다."""
         path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"

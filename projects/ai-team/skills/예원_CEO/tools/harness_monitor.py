@@ -144,6 +144,8 @@ def _daemon_dirs() -> dict:
 
 
 AUTO_PULL_SEC = int(os.getenv("YEWON_AUTO_PULL_SEC", "900"))  # 15분 주기, 0이면 비활성
+# 예원이 데몬을 재시작한 직후 유예 — 이 안에 보이는 runtime down은 자기가 만든 과도상태다.
+RESTART_GRACE_SEC = int(os.getenv("YEWON_RESTART_GRACE_SEC", "300"))
 
 
 def auto_pull() -> str | None:
@@ -183,31 +185,31 @@ def auto_pull() -> str | None:
     return f"원격 {behind}커밋 자동 반영(ff) — 데몬 교체는 코드 갱신 감지기가 이어서 처리"
 
 
-def restart_on_code_update() -> None:
+def restart_on_code_update() -> bool:
     """git pull 감지 → 변경 코드에 해당하는 데몬 자동 재시작 — '깃 풀만 하면 되게'(2026-07-02).
     _shared 변경은 전 데몬, tools 폴더 변경은 그 폴더 소속 데몬만. 자신(yewon)은
     분리 실행한 컨트롤러 restart로 최후 교체(뮤텍스 경합 없는 유일한 자가재시작 경로)."""
     if _bots_off():
-        return   # 원격 종료 상태 — 코드 변경돼도 데몬 되살리지 않음(HEAD 갱신도 보류)
+        return False   # 원격 종료 상태 — 코드 변경돼도 데몬 되살리지 않음(HEAD 갱신도 보류)
     head = _git_out("rev-parse", "HEAD")
     if not head:
-        return
+        return False
     try:
         with open(HEAD_STATE, encoding="utf-8") as f:
             last = json.load(f).get("head", "")
     except Exception:
         last = ""
     if head == last:
-        return
+        return False
     os.makedirs(os.path.dirname(HEAD_STATE), exist_ok=True)
     with open(HEAD_STATE, "w", encoding="utf-8") as f:   # 재시작 루프 방지 — 상태 먼저 기록
         json.dump({"head": head, "ts": datetime.now().isoformat(timespec="seconds")}, f)
     if not last:
-        return  # 첫 기동 — 기준점만 기록
+        return False  # 첫 기동 — 기준점만 기록
     changed = [p for p in _git_out("diff", "--name-only", f"{last}..{head}").splitlines()
                if p.endswith(".py")]
     if not changed:
-        return
+        return False
     dirs = _daemon_dirs()
     shared = any(p.startswith("projects/ai-team/_shared/") for p in changed)
     targets = [key for key, rel_dir in dirs.items()
@@ -215,7 +217,7 @@ def restart_on_code_update() -> None:
     self_restart = "yewon" in targets
     targets = [t for t in targets if t != "yewon"]
     if not (targets or self_restart):
-        return
+        return False
     print("🔄 [예원] 코드 갱신 감지(git pull) → 새 코드로 데몬 재시작\n"
          + ", ".join(targets + (["yewon(자가교체)"] if self_restart else [])))
     for name in targets:
@@ -223,6 +225,8 @@ def restart_on_code_update() -> None:
             _restart_bot(name)
         except Exception:
             pass  # 실패해도 다음 주기 워치독이 down 감지 후 재시도
+    if not self_restart:
+        return True   # 호출자가 재시작 유예를 걸 수 있게 — 방금 죽인 데몬을 down으로 경보하지 않는다
     if self_restart:
         if sys.platform == "win32":
             controller = os.path.join(os.path.dirname(__file__), "..", "..", "영숙_비서", "tools",
@@ -393,6 +397,7 @@ def main():
     last_pull_ts = 0.0   # 0 = 기동 첫 틱에 즉시 pull(부팅 직후 최신화)
     last_pull_note = ""
     last_jobs_ts = 0.0   # 0 = 기동 첫 틱에 즉시 백그라운드 작업 점검
+    last_restart_ts = time.time()  # 기동 자체가 재시작 — 첫 틱부터 유예 적용
     remedy_state: dict = _load_remedy_state()
     with ProcessLock("yewon_monitor"):
         try:
@@ -412,10 +417,18 @@ def main():
                     _save_remedy_state(remedy_state)
                     if acts:
                         print("🔧 자동 복구: " + " / ".join(acts))  # 고친 건 로그에만
+                        last_restart_ts = time.time()
                         time.sleep(10)                     # 재시작이 반영될 시간
                         output = run_harness()             # 복구 후 재평가
                         issues = [ln.strip() for ln in output.splitlines()
                                   if ln.startswith("[WARN]") or ln.startswith("[FAIL]")]
+                # 예원이 방금 재시작한 데몬은 다음 하네스 체크에서 잠시 down으로 보인다.
+                # 자기가 만든 과도상태를 사람에게 알리는 건 순수 소음이므로 유예를 준다
+                # (2026-08-04 실측: 코드 갱신 재시작 직후 6개 down 경보가 그대로 나갔다).
+                if issues and time.time() - last_restart_ts < RESTART_GRACE_SEC:
+                    issues = [i for i in issues if "runtime" not in i]
+                    if not issues:
+                        print("   (방금 재시작한 데몬의 과도상태 — 경보 유예)")
                 # 남은 이슈만, 그것도 '상태가 바뀔 때만' 보고(같은 이슈 5분마다 반복 스팸 방지).
                 sig = "\n".join(issues)
                 if sig != last_issue_sig:
@@ -440,12 +453,14 @@ def main():
 
                 # git pull 감지 → 변경 데몬 새 코드로 자동 교체 (풀만 하면 반영)
                 try:
-                    restart_on_code_update()
+                    if restart_on_code_update():
+                        last_restart_ts = time.time()
                 except Exception as e:
                     print(f"코드 갱신 감지 오류: {e}")
 
                 # 봇 상태는 항상 직접 확인 (하네스 stdout 파싱에 의존하지 않음)
                 if check_and_restart_bots():
+                    last_restart_ts = time.time()
                     time.sleep(10)  # 재시작 대기
 
                 # 백그라운드 작업 점검 — 대상 스크립트가 사라진 죽은 잡을 끈다(1시간 주기).
