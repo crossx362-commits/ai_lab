@@ -79,3 +79,6 @@ fix_agent_paths.py
 
 # Unity 프로젝트 (자체 .git 보유 — ai_lab 저장소에 섞지 않는다)
 My project/
+
+# git 내부 lock/temp 잔재가 중단된 작업 뒤 여기로 밀려나는 경우가 있다(2026-08-04)
+_to_delete/
