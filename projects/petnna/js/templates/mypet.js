@@ -32,6 +32,9 @@ const MYPET_TEMPLATE = `
         <!-- 🏠 다견/다묘 가정 통합 케어 대시보드 (multi-pet-dashboard.js, 펫 2마리+ 일 때만) -->
         <div id="multi-pet-care-strip"></div>
 
+        <!-- 🌗 노령케어 여정 진입점: 나이 입력→비용·간병·임종 준비 대시보드 (senior-care.js) -->
+        <div id="senior-care-entry"></div>
+
         <!-- 날짜/날씨는 2026-07-24부터 전 탭 공통 상단 헤더에 표시(index.html) -->
 
         <!-- 오늘의 운세 (집사 + 펫) -->
