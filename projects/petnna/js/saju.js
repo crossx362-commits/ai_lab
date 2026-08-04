@@ -379,11 +379,54 @@ function renderSajuTab() {
         if (resOwnerDesc) {
             resOwnerDesc.innerHTML = formatSajuDesc(current.sajuData.ownerDesc);
         }
+
+        renderSajuHistory(current);
     } else {
         if (inputContainer) inputContainer.classList.remove('hidden');
         if (loadingContainer) loadingContainer.classList.add('hidden');
         if (resultContainer) resultContainer.classList.add('hidden');
     }
+}
+
+// 궁합 점수 이력에 이번 측정을 누적하고 최근 5회만 유지(로컬 완결, Supabase 미접촉)
+function pushSajuScoreHistory(history, score) {
+    const list = Array.isArray(history) ? history.slice() : [];
+    const today = new Date();
+    const dateStr = `${today.getMonth() + 1}/${today.getDate()}`;
+    list.push({ date: dateStr, score: score });
+    return list.slice(-5);
+}
+
+// 최근 3~5회 점수 추이를 막대 그래프로 렌더(기존 저장펫은 빈 배열 폴백)
+function renderSajuHistory(pet) {
+    const section = document.getElementById('saju-history-section');
+    const chart = document.getElementById('saju-history-chart');
+    if (!section || !chart) return;
+
+    const history = (pet && pet.sajuData && Array.isArray(pet.sajuData.scoreHistory))
+        ? pet.sajuData.scoreHistory : [];
+
+    // 기록이 2회 미만이면 추이가 무의미하므로 숨김
+    if (history.length < 2) {
+        section.classList.add('hidden');
+        return;
+    }
+    section.classList.remove('hidden');
+
+    const avg = Math.round(history.reduce((a, h) => a + (h.score || 0), 0) / history.length);
+    const avgEl = document.getElementById('saju-history-avg');
+    if (avgEl) avgEl.textContent = `(평균 ${avg}점)`;
+
+    chart.innerHTML = history.map(h => {
+        const score = h.score || 0;
+        // 50~100 구간을 막대 높이 20~100%로 정규화
+        const pct = Math.max(20, Math.min(100, Math.round((score - 50) / 50 * 80) + 20));
+        return `<div class="flex flex-col items-center justify-end gap-1 flex-1 h-full">
+            <span class="text-[10px] font-black text-amber-800">${score}</span>
+            <div class="w-full max-w-[28px] rounded-t-md bg-gradient-to-t from-amber-400 to-rose-400" style="height:${pct}%"></div>
+            <span class="text-[9px] text-gray-400">${h.date || ''}</span>
+        </div>`;
+    }).join('');
 }
 
 function colorizeSajuElement(text) {
@@ -535,8 +578,14 @@ function startSajuAnalysis() {
         };
         
         if (typeof pets !== 'undefined' && pets.length > 0) {
-            getSajuPet().sajuData = sajuData;
-            
+            const sajuPet = getSajuPet();
+            // 궁합 점수 추이: 기존 히스토리를 이어받아 이번 점수를 누적(최근 5회)
+            const prevHistory = Array.isArray(sajuPet.sajuData && sajuPet.sajuData.scoreHistory)
+                ? sajuPet.sajuData.scoreHistory : [];
+            sajuData.scoreHistory = pushSajuScoreHistory(prevHistory, compatibility);
+            sajuPet.sajuData = sajuData;
+            renderSajuHistory(sajuPet);
+
             // Also store in AppStore immediately
             if (typeof AppStore !== 'undefined') {
                 AppStore.setState('petSaju', {

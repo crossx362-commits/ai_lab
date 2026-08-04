@@ -186,6 +186,12 @@ const SAJU_TEMPLATE = `
                     <div class="mt-2.5 bg-gray-50/50 p-3 rounded-xl border border-gray-100 text-[11px] text-gray-600 text-left leading-relaxed" id="res-desc-owner">사주 풀이</div>
                 </div>
             </div>
+
+            <!-- 궁합 점수 추이 (localStorage 누적, 최근 5회) -->
+            <div id="saju-history-section" class="hidden bg-white p-4 rounded-2xl border border-amber-800/10 shadow-sm">
+                <p class="text-[11px] font-black text-amber-900 mb-3 flex items-center gap-1"><span>📈</span> 궁합 점수 추이 <span class="text-[9px] font-bold text-gray-400" id="saju-history-avg"></span></p>
+                <div id="saju-history-chart" class="flex items-end justify-around gap-2 h-24"></div>
+            </div>
         </div>
     </div>
 
