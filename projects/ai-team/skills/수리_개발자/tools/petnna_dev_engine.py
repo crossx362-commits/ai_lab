@@ -141,6 +141,26 @@ def qa_not_worse(base, after, is_backlog: bool) -> bool:
             and sum(ca.values()) <= sum(cb.values()))
 
 
+def pr_ready(is_backlog: bool, gate_ok: bool, resolved: bool, not_worse: bool, tests_ok: bool) -> bool:
+    """브랜치를 PR대기(사람 검토)로 넘길지 — 재시도만 반복할지의 게이트.
+
+    회의 결정(회의_202608042225_1): 백로그(기획) 항목은 '시니어 케어' 허브 사례처럼
+    target 해결·P0/P1/P2 무신규·E2E 전부 통과인데도 신규 P3 1건 때문에 qa_not_worse가
+    악화로 판정해 PR대기에 못 이르고 3회 재시도 끝에 보류(+긴급회의 소집)까지 갔다.
+    백로그는 애초에 자동 병합 대상이 아니라 항상 사람이 본다 — 그리고 병합 직전에는
+    예원 PR 리뷰어(petnna_pr_reviewer.review_all)가 diff_gate·E2E·LLM 품질판단으로
+    독립적으로 다시 검증하므로, 엔진 자신의 '지표 비악화' 휴리스틱을 PR대기 진입
+    조건에서 빼도 안전망은 그대로 남는다. gate_ok(금지경로·크기)·tests_ok(E2E 회귀)는
+    그 자체로 기술적 정합성 문제라 계속 게이트로 쓴다 — 이번 결정은 not_worse만 뺀다.
+
+    QA 이슈 수정(is_backlog=False)은 자동 병합 경로라 기존 엄격 규칙(not_worse 포함)을
+    그대로 유지한다.
+    """
+    if is_backlog:
+        return gate_ok and tests_ok
+    return resolved and not_worse and tests_ok
+
+
 # ── 상태/이슈 선택 ─────────────────────────────────────────
 
 def load_dev_state() -> dict:
@@ -736,10 +756,14 @@ def _improve_cycle(do_send: bool = True) -> str:
                     rec["status"] = "PR대기"
                     log.append(f"- 병합 실패(원상복구됨) → 브랜치 대기: {m.stderr.strip()[:150]}")
         else:
-            rec["status"] = "PR대기" if (resolved and not_worse and tests_ok) else rec.get("status", "대기")
+            rec["status"] = "PR대기" if pr_ready(is_backlog, gate_ok, resolved, not_worse, tests_ok) \
+                else rec.get("status", "대기")
+            # gate_ok를 safe_priority보다 먼저 본다 — 안 그러면 백로그(safe_priority 항상
+            # False)는 diff_gate가 실제로 거부했어도 항상 "고위험 분류"로만 찍혀 진짜
+            # 사유(금지경로·크기 초과)가 로그에서 가려진다.
             reason = ("E2E 신규 실패" if not tests_ok else
-                      "고위험 분류" if not safe_priority else
-                      "게이트 거부" if not gate_ok else "재검수 미통과")
+                      "게이트 거부" if not gate_ok else
+                      "고위험 분류" if not safe_priority else "재검수 미통과")
             log.append(f"- 자동 병합 안 함({reason}) — "
                        + (f"브랜치 {branch} 검토 대기" if rec["status"] == "PR대기" else "다음 루프 재시도"))
     except _DuplicatePatch:
