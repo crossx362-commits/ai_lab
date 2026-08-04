@@ -1248,6 +1248,7 @@ function renderMyPets() {
     if (typeof renderMultiPetDashboard === 'function') renderMultiPetDashboard();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
+    if (typeof renderYearRecapBanner === 'function') renderYearRecapBanner();
     if (typeof renderMemorialBanner === 'function') renderMemorialBanner();
     // 추모 모드: 케어 유도 계열을 통째로 접는다. 각 배너는 자체 가드로 이미 숨지만,
     // 펫 운세·육성 게임은 자기 렌더러가 없어 여기서 직접 토글한다.
