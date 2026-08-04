@@ -50,3 +50,38 @@ class DbAuthGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DbAuthStrongWeakTests(unittest.TestCase):
+    """강/약 신호 분리 회귀 — 2026-08-04.
+
+    순수 키워드 매칭이던 시절, DB를 안 건드린다고 **명시한** 과제가 그 단어 자체에 걸려
+    영구 보류로 갔다. 실제 사례 2건:
+      · "localStorage 로컬 완결, Supabase 동기화 경로 미접촉" → 'Supabase'에 걸림
+      · "기존 저장펫은 빈 배열 폴백 마이그레이션" → 로컬 자료구조 변경인데 '마이그레이션'에 걸림
+
+    반대 방향(지나친 제외)이 더 위험하다 — 진짜 DB 작업이 자동 루프로 새면 수리가
+    병합할 수 없는 브랜치를 만들고 시도만 소진한다. 그래서 강 신호(신규 테이블·스키마
+    변경·RLS·시크릿)는 부정문이 있어도 그대로 막는다.
+    """
+
+    def test_explicit_no_contact_clears_weak_signal(self):
+        self.assertFalse(touches_db_auth(
+            "궁합 히스토리 (localStorage 추이)",
+            "빈 배열 폴백 마이그레이션. localStorage 로컬 완결, Supabase 동기화 경로 미접촉."))
+        self.assertFalse(touches_db_auth(
+            "localStorage 마이그레이션", "기존 데이터 모양 변경, 서버 연동 없음"))
+
+    def test_strong_signal_survives_negation(self):
+        """부정문으로 강 신호를 무력화할 수 있으면 게이트가 통째로 뚫린다."""
+        self.assertTrue(touches_db_auth("실종 모드", "posts 스키마 변경 필요. DB 미접촉."))
+        self.assertTrue(touches_db_auth("예약", "신규 테이블과 RLS 필요. supabase 미접촉."))
+        self.assertTrue(touches_db_auth("점검", "api_key 하드코딩 확인. DB 미접촉."))
+
+    def test_weak_signal_without_negation_still_blocks(self):
+        """부정 선언이 없으면 supabase 언급만으로도 사람 검토로 보낸다(기존 동작 유지)."""
+        self.assertTrue(touches_db_auth("가족 공동 돌봄", "Supabase를 활용하여 실시간 공유"))
+        self.assertTrue(touches_db_auth("supabase.js 쿼리 추가", "medical_records 조회 추가"))
+
+    def test_no_signal_is_not_blocked(self):
+        self.assertFalse(touches_db_auth("무해한 UI", "버튼 정렬만 조정"))

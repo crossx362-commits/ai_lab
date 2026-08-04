@@ -35,20 +35,48 @@ from pathlib import Path
 #   · 제외: `supabase.js:385` 같은 파일:줄 인용, SupabaseService/SupabaseClient/
 #           ...InSupabase 같은 클라이언트 식별자 → 코드를 가리키는 말
 #   · 유지: 그 밖의 모든 'supabase' 언급 → 데이터 계층을 건드리겠다는 말
-DB_AUTH_PATTERN = re.compile(
-    r"(?<![A-Za-z])supabase(?!\.js:\d|Service|Client)"
-    r"|migration|마이그레이션"
-    r"|\bRLS\b|row level security"
-    r"|신규\s*테이블|테이블\s*추가|테이블.{0,4}신설|스키마\s*(변경|추가|마이그)"
-    r"|\bschema\b"
+def touches_db_auth(title: str, detail: str = "") -> bool:
+    """이 과제가 DB/인증을 건드리는가 — 건드리면 자동 루프 밖(사람 검토)으로 보낸다.
+
+    신호를 강/약으로 나눈다(2026-08-04). 순수 키워드 매칭이던 시절엔 다음을 구분하지
+    못해 멀쩡한 과제가 영구 보류로 갔다:
+      · "localStorage 로컬 완결, Supabase 동기화 경로 미접촉" — 작성자가 안 건드린다고
+        못 박았는데 'Supabase' 한 단어에 걸렸다.
+      · "기존 저장펫은 빈 배열 폴백 마이그레이션" — DB 마이그레이션이 아니라 로컬
+        자료구조 변경인데 '마이그레이션'에 걸렸다.
+
+    강 신호(신규 테이블·스키마 변경·RLS·시크릿)는 부정문이 있어도 그대로 막는다 —
+    지나치게 넓게 제외하면 진짜 DB 작업이 자동 루프로 새어 들어간다(2026-07-11 교훈).
+    약 신호(supabase/마이그레이션 단어만)는 명시적 '미접촉' 선언이 있으면 무시한다.
+    """
+    text = f"{title}\n{detail}"
+    if _DB_STRONG.search(text):
+        return True
+    if _DB_NO_CONTACT.search(text):
+        return False
+    return bool(_DB_WEAK.search(text))
+
+
+# 강 신호 — 부정문이 있어도 사람 검토로 보낸다.
+_DB_STRONG = re.compile(
+    r"신규\s*테이블|테이블\s*추가|테이블.{0,4}신설|스키마\s*(변경|추가|마이그)"
+    r"|\bRLS\b|row level security|\bschema\b"
     r"|api[_\s-]?key|시크릿|\bsecret\b",
     re.IGNORECASE,
 )
 
+# 약 신호 — 단어만으로는 DB 변경인지 알 수 없다(조회일 수도, 로컬 마이그레이션일 수도).
+_DB_WEAK = re.compile(
+    r"(?<![A-Za-z])supabase(?!\.js:\d|Service|Client)|migration|마이그레이션",
+    re.IGNORECASE,
+)
 
-def touches_db_auth(title: str, detail: str = "") -> bool:
-    """DB/인증 계층을 요구해 수리 자동 루프가 병합할 수 없는 과제인가."""
-    return bool(DB_AUTH_PATTERN.search(f"{title}\n{detail}"))
+# "DB는 안 건드린다"는 명시적 선언 — 약 신호를 무력화한다.
+_DB_NO_CONTACT = re.compile(
+    r"(?:supabase|db|디비|서버|원격)[^.\n]{0,24}(?:미접촉|무접촉|접촉\s*없|건드리지\s*않|연동\s*없)"
+    r"|localstorage[^.\n]{0,20}(?:로컬\s*)?완결",
+    re.IGNORECASE,
+)
 
 
 # 백로그 정규 상태 어휘 — 이 넷만 소비자(수리·예원·council)가 읽고 옮긴다.
