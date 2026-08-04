@@ -229,7 +229,19 @@ def format_recent_decisions(items: list[dict]) -> str:
 # (수리는 attempts 감소, 테오는 별도 함수) — 여기 하나로 모아 새 에이전트가 배정 과제를
 # 소비할 때 이 함수만 재사용하면 되게 한다.
 TASK_MAX_ATTEMPTS = 3
-INFRA_FAILURE_KEYWORDS = ("미발견", "타임아웃", "rate limit", "429", "529", "verloaded")
+# 과제 탓이 아닌 실패 사유 — attempts에 반영하면 안 된다.
+#
+# 2026-08-04에 두 종류가 빠져 있는 걸 확인했다. 둘 다 실제로 과제를 죽였다:
+#  · 구독 클로드 토큰 만료 — 2026-07-27~28 36시간 동안 수리가 27회 실패했고, 그 실패가
+#    미오 과제 2건의 시도 3회를 통째로 소진해 영구 보류로 밀어냈다. 어제 '되살리는 쪽'
+#    (select_backlog의 attempts 리셋)만 고치고 '애초에 안 깎이게' 하는 쪽은 안 고쳤다.
+#  · 포트 충돌(Errno 48) — 사람이 임시로 E2E/QA를 돌리면 데몬의 정시 사이클과 포트가
+#    겹쳐 사이클 하나가 통째로 죽는다(2026-08-04 20:01 실측). 과제 품질과 무관하다.
+INFRA_FAILURE_KEYWORDS = (
+    "미발견", "타임아웃", "rate limit", "429", "529", "verloaded",
+    "Address already in use", "Errno 48",
+    "token has expired", "Failed to authenticate", "Re-authenticate",
+)
 
 
 def is_infra_failure(text: str) -> bool:

@@ -65,5 +65,50 @@ class HarnessTelegramSuppressionTests(unittest.TestCase):
         self.assertEqual(sent, [])
 
 
+class FixBeforeAlertOrderTests(unittest.TestCase):
+    """오너 지시(2026-08-04): "경고 메시지는 알아서 해결하고 텔레그램으로 보내지 마라."
+
+    워치독은 이슈를 보면 **먼저 auto_remediate로 고치고**, 고친 뒤에도 남은 것만 보고해야
+    한다. 옛 순서(감지 즉시 발송 → 그 다음 복구)는 예원이 10초 뒤 스스로 고칠 일까지
+    사람을 불렀다. 루프가 while True라 실행으로는 검증하기 어려워 호출 순서로 굳힌다.
+    """
+
+    def _loop_calls(self):
+        import ast
+        path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        fn = next(n for n in ast.walk(tree)
+                  if isinstance(n, ast.FunctionDef) and n.name == "main")
+        return ast.walk(fn)
+
+    def test_auto_remediate_runs_before_issue_alert(self):
+        import ast
+        first_remedy = first_alert = None
+        for node in self._loop_calls():
+            if not isinstance(node, ast.Call):
+                continue
+            name = getattr(node.func, "id", None)
+            if name == "auto_remediate" and first_remedy is None:
+                first_remedy = node.lineno
+            if name == "send" and node.args:
+                text = ast.dump(node.args[0])
+                if "이슈" in text and first_alert is None:
+                    first_alert = node.lineno
+        self.assertIsNotNone(first_remedy, "main 루프에서 auto_remediate 호출을 못 찾았다")
+        self.assertIsNotNone(first_alert, "main 루프에서 이슈 경보 send를 못 찾았다")
+        self.assertLess(first_remedy, first_alert,
+                        "이슈 경보가 자동 복구보다 먼저 나간다 — 예원이 고칠 일까지 사람을 부른다")
+
+    def test_self_handled_events_are_not_telegrammed(self):
+        """예원이 스스로 끝낸 일(코드 갱신 재시작·죽은 잡 정리)은 알림 대상이 아니다."""
+        path = AI_TEAM / "skills" / "예원_CEO" / "tools" / "harness_monitor.py"
+        src = path.read_text(encoding="utf-8")
+        for phrase in ("코드 갱신 감지(git pull)", "백그라운드 작업 정리"):
+            for line in src.splitlines():
+                if phrase in line:
+                    self.assertNotIn("send(", line,
+                                     f"'{phrase}'는 예원이 처리한 일인데 텔레그램으로 보낸다")
+
+
 if __name__ == "__main__":
     unittest.main()

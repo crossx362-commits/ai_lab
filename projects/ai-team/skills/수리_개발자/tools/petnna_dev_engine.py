@@ -56,7 +56,11 @@ BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"  # 미오·
 DEV_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "dev"
 DEV_STATE = DEV_DIR / "dev_state.json"
 WT_BASE = PROJECT_ROOT / "output" / "cache" / "suri_worktrees"
-QA_PORT = int(os.getenv("SURI_QA_PORT", "8934"))
+# 포트 0 = 커널이 비어 있는 포트를 골라 준다. 고정 포트를 쓰면 사람이 임시로 같은
+# 도구를 돌리거나 두 에이전트의 정시 슬롯이 겹칠 때 [Errno 48] Address already in use로
+# **사이클 하나가 통째로 죽는다**(2026-08-04 20:01 수리 실측). 자기 프로세스만 쓰는
+# 임시 정적 서버라 포트를 고정할 이유가 없다. 환경변수로 명시하면 그 값을 쓴다(디버깅용).
+QA_PORT = int(os.getenv("SURI_QA_PORT", "0"))
 POLL_SEC = int(os.getenv("SURI_POLL_SEC", "3600"))
 CLAUDE_TIMEOUT = int(os.getenv("SURI_CLAUDE_TIMEOUT", "900"))
 MAX_ATTEMPTS = 3
@@ -93,8 +97,9 @@ def run_qa(petnna_root: Path, out_dir: Path) -> list[dict]:
     qa.QA_DIR = out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     srv = qa.start_server(QA_PORT)
+    qa_port = srv.server_address[1]   # 포트 0이면 커널이 고른 실제 포트
     try:
-        findings = qa.static_checks() + qa.browser_patrol(QA_PORT)
+        findings = qa.static_checks() + qa.browser_patrol(qa_port)
     finally:
         srv.shutdown()
         srv.server_close()  # 소켓까지 닫아야 base→after 연속 실행이 포트 재사용 가능
@@ -536,7 +541,8 @@ def run_e2e(petnna_root: Path) -> dict:
     spec.loader.exec_module(teo)
     teo.PETNNA_ROOT = petnna_root
     teo.E2E_DIR = petnna_root / "tests" / "e2e"
-    teo.PORT = int(os.getenv("SURI_E2E_PORT", "8937"))
+    # 테오 스위트도 임시 포트로 — 수리 사이클과 테오 정시 슬롯이 겹쳐도 안 죽는다.
+    teo.PORT = int(os.getenv("SURI_E2E_PORT", "0"))
     return {k: v["ok"] for k, v in teo.run_suite().items()}
 
 

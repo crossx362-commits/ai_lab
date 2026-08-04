@@ -135,5 +135,46 @@ class WritersUseLockTests(unittest.TestCase):
                              f"{rel}:{fn} 이 backlog_lock이 아닌 {name}으로 감싸져 있다")
 
 
+class StaleBranchRemediationTests(unittest.TestCase):
+    """예원의 빈 브랜치 청소 — 진짜 작업이 있는 브랜치는 절대 지우면 안 된다(2026-08-04).
+
+    수리가 과제를 집으면 브랜치부터 만들고 클로드를 부른다. 그 호출이 인프라 사유로
+    죽으면 커밋 0개 브랜치만 남고, 쌓이면 사람이 '검토 적체'로 오독한다(실측: 8개 중
+    5개가 빈 껍데기). 이 세션이 하루 세 번 손으로 치우던 걸 오너 지시로 예원에게 넘겼다.
+
+    여기서 굳히는 것: 커밋이 하나라도 있으면 살아남는다. 이 단언이 깨지면 자동 청소가
+    사람 검토 대기 중인 실제 구현을 날린다.
+    """
+
+    def test_keeps_branches_with_commits_deletes_empty(self):
+        import subprocess, tempfile, importlib.util, os
+        path = AI_TEAM_ROOT / "skills" / "예원_CEO" / "tools" / "petnna_fleet_health.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            def git(*a):
+                return subprocess.run(["git", *a], cwd=tmp, capture_output=True, text=True)
+            git("init", "-q", "-b", "master")
+            git("config", "user.email", "t@t.t"); git("config", "user.name", "t")
+            (Path(tmp) / "a.txt").write_text("1")
+            git("add", "-A"); git("commit", "-qm", "base")
+            git("branch", "ui/petnna-empty")                  # 커밋 0개 → 삭제 대상
+            git("checkout", "-qb", "fix/petnna-real")
+            (Path(tmp) / "b.txt").write_text("2")
+            git("add", "-A"); git("commit", "-qm", "work")     # 커밋 1개 → 보존
+            git("checkout", "-q", "master")
+
+            spec = importlib.util.spec_from_file_location("fh_t", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            mod.PROJECT_ROOT = Path(tmp)
+            deleted = mod.remediate_stale_branches()
+
+            self.assertIn("ui/petnna-empty", deleted, "빈 브랜치를 안 지웠다")
+            self.assertNotIn("fix/petnna-real", deleted,
+                             "커밋이 있는 브랜치를 지웠다 — 검토 대기 중인 실제 구현이 날아간다")
+            remaining = git("branch", "--list").stdout
+            self.assertIn("fix/petnna-real", remaining)
+            self.assertNotIn("ui/petnna-empty", remaining)
+
+
 if __name__ == "__main__":
     unittest.main()

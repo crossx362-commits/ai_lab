@@ -47,7 +47,12 @@ PETNNA_ROOT = PROJECT_ROOT / "projects" / "petnna"
 QA_DIR = PROJECT_ROOT / "output" / "qa" / "petnna"
 STATE_PATH = QA_DIR / "qa_state.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "bomi_qa_slots.json"
-PORT = int(os.getenv("BOMI_QA_PORT", "8933"))
+# 포트 0 = 커널이 비어 있는 포트를 골라 준다. 고정 포트를 쓰면 사람이 임시로 같은
+# 도구를 돌리거나 두 에이전트의 정시 슬롯이 겹칠 때 [Errno 48] Address already in use로
+# **사이클 하나가 통째로 죽는다**(2026-08-04 20:01 수리 실측 — 이 세션의 병렬 E2E와 충돌).
+# 이 서버는 자기 프로세스만 쓰는 임시 정적 서버라 포트를 고정할 이유가 없다.
+# 환경변수로 명시하면 그 값을 쓴다(디버깅용).
+PORT = int(os.getenv("BOMI_QA_PORT", "0"))
 VIEWPORTS = {"desktop(1440x900)": (1440, 900), "mobile(390x844)": (390, 844)}
 PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 REPEAT_THRESHOLD = 3  # 같은 문제 3회 이상 = 반복 장애
@@ -960,10 +965,11 @@ def _convene_council(topic: str, context: str, priority: str) -> None:
 
 
 def patrol(do_send: bool) -> list[dict]:
-    print(f"[{datetime.now()}] 🧪 봄이 순찰 시작 (포트 {PORT})")
     srv = start_server(PORT)
+    port = srv.server_address[1]   # 포트 0이면 커널이 고른 실제 포트
+    print(f"[{datetime.now()}] 🧪 봄이 순찰 시작 (포트 {port})")
     try:
-        findings = static_checks() + browser_patrol(PORT)
+        findings = static_checks() + browser_patrol(port)
     finally:
         srv.shutdown()
         srv.server_close()  # 소켓까지 닫아야 같은 프로세스의 다음 순찰이 포트 재사용 가능

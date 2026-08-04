@@ -216,7 +216,7 @@ def restart_on_code_update() -> None:
     targets = [t for t in targets if t != "yewon"]
     if not (targets or self_restart):
         return
-    send("🔄 [예원] 코드 갱신 감지(git pull) → 새 코드로 데몬 재시작\n"
+    print("🔄 [예원] 코드 갱신 감지(git pull) → 새 코드로 데몬 재시작\n"
          + ", ".join(targets + (["yewon(자가교체)"] if self_restart else [])))
     for name in targets:
         try:
@@ -401,25 +401,29 @@ def main():
 
                 # 하네스 실행 (리포트 갱신 + 로그)
                 output = run_harness()
-                # WARN/FAIL은 '상태가 바뀔 때만' 텔레그램 보고(동일 이슈 5분마다 반복 스팸 방지).
-                # 해소되면 회복 알림 1회. (run_harness는 SUPPRESS_TELEGRAM이라 자체 발송 없음)
+                # 오너 지시(2026-08-04): "경고 메시지는 알아서 해결하고 텔레그램으로 보내지 마라."
+                # → 이슈를 보면 **먼저 고치고**, 고친 뒤에도 남아 있는 것만 보고한다.
+                #   감지 즉시 보내던 옛 순서는 예원이 5분 뒤 스스로 고칠 일까지 사람을 불렀다.
                 issues = [ln.strip() for ln in output.splitlines()
                           if ln.startswith("[WARN]") or ln.startswith("[FAIL]")]
+                if issues:
+                    print("⚠️  이슈 감지")
+                    acts = auto_remediate(remedy_state)   # 원인 에이전트 재시작(쿨다운·일일상한)
+                    _save_remedy_state(remedy_state)
+                    if acts:
+                        print("🔧 자동 복구: " + " / ".join(acts))  # 고친 건 로그에만
+                        time.sleep(10)                     # 재시작이 반영될 시간
+                        output = run_harness()             # 복구 후 재평가
+                        issues = [ln.strip() for ln in output.splitlines()
+                                  if ln.startswith("[WARN]") or ln.startswith("[FAIL]")]
+                # 남은 이슈만, 그것도 '상태가 바뀔 때만' 보고(같은 이슈 5분마다 반복 스팸 방지).
                 sig = "\n".join(issues)
                 if sig != last_issue_sig:
                     if issues:
-                        send("⚠️ [예원 하네스] 이슈 감지\n" + "\n".join(issues[:8]))
+                        send("⚠️ [예원 하네스] 자동 복구로 안 풀린 이슈\n" + "\n".join(issues[:8]))
                     elif last_issue_sig:
-                        send("✅ [예원 하네스] 이슈 해소 — 전 항목 정상")
+                        send("✅ [예원 하네스] 이슈 해소 — 전 항목 정상", silent=True)
                     last_issue_sig = sig
-                if issues:
-                    print("⚠️  이슈 감지")
-                    # 자동 복구: 원인 에이전트 재시작(쿨다운·일일상한) — 결과는 텔레그램 보고
-                    acts = auto_remediate(remedy_state)
-                    _save_remedy_state(remedy_state)
-                    if acts:
-                        send("🔧 [예원] 하네스 이슈 자동 복구\n" + "\n".join(acts))
-                        last_issue_sig = ""  # 복구 후 상태 재평가 — 다음 사이클 결과를 다시 보고
 
                 # 원격 자동 pull(ff-only) — 이제 push만 하면 다음 주기 안에 이 기계에 반영(2026-07-15)
                 if AUTO_PULL_SEC > 0 and time.time() - last_pull_ts >= AUTO_PULL_SEC:
@@ -454,7 +458,7 @@ def main():
                         job_acts = [f"⚠️ 백그라운드 작업 점검 오류: {e}"]
                     if job_acts:
                         print("\n".join(job_acts))
-                        send("🧹 [예원] 백그라운드 작업 정리\n" + "\n".join(job_acts))
+                        # 죽은 잡을 끈 것도 예원이 처리한 일 — 로그에만 남긴다(오너 지시 2026-08-04)
 
                 # 성장 점검: 하루 1회(17시 이후) 발송 — 스팸 방지
                 now = datetime.now()

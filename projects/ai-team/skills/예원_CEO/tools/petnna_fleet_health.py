@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -56,6 +57,18 @@ AGENTS = [
 
 MIGRATIONS = PROJECT_ROOT / "projects" / "petnna" / "migrations"
 _SUPA_SQL_LINK = "https://supabase.com/dashboard/project/{ref}/sql/new"
+
+# 라벨 → (스크립트 상대경로, 1회 실행 인자). 무갱신 에이전트를 예원이 직접 깨울 때 쓴다.
+AGENT_SCRIPTS = {
+    "백호(백엔드)": ("백호_백엔드/tools/petnna_backend_guard.py", ["--once"]),
+    "봄이(QA)":     ("봄이_QA/tools/petnna_qa_patrol.py", ["--once"]),
+    "테오(테스트)": ("테오_테스트/tools/petnna_test_engineer.py", ["--run"]),
+    "수리(개발)":   ("수리_개발자/tools/petnna_dev_engine.py", ["--once"]),
+    "미오(디자인)": ("미오_디자인/tools/petnna_design_review.py", ["--once"]),
+    "나무(기획)":   ("나무_기획/tools/petnna_product_manager.py", ["--once"]),
+}
+STATE_PATH = QA / "fleet_health_state.json"
+KICK_COOLDOWN = 6 * HOUR  # 같은 에이전트를 이 시간 안에 다시 깨우지 않는다(재점화 루프 방지)
 
 
 def _declared_tables() -> dict[str, str]:
@@ -175,6 +188,45 @@ def _newest_mtime(directory: Path, pattern: str) -> float | None:
     return max(f.stat().st_mtime for f in files)
 
 
+def remediate_stale_branches() -> list[str]:
+    """커밋이 하나도 없는 펫나 작업 브랜치를 지운다 — 잃을 게 없는 잔재다.
+
+    수리가 과제를 집으면 먼저 브랜치를 만들고 그 다음 클로드를 부른다. 그 호출이
+    인프라 사유(토큰 만료·포트 충돌·타임아웃)로 죽으면 **커밋 0개짜리 브랜치만** 남는다.
+    쌓이면 두 가지가 나빠진다:
+      · 사람이 `git branch`를 봤을 때 "검토 대기가 10개"로 보여 병목을 오판한다
+        (2026-08-04 실측: 8개 중 5개가 빈 껍데기였는데 적체로 읽혔다).
+      · SURI_MAX_PENDING 상한 판단을 흐린다.
+    이 세션이 같은 청소를 하루에 세 번 손으로 했다 — 오너 지시(2026-08-04)로 예원에게 넘긴다.
+
+    master에 없는 커밋이 하나라도 있으면 절대 지우지 않는다. 판정은 rev-list 카운트로
+    한다(브랜치 이름·시각 같은 간접 신호를 쓰면 진짜 작업을 날릴 수 있다).
+    """
+    import subprocess
+
+    def _git(*args: str) -> tuple[int, str]:
+        r = subprocess.run(["git", *args], cwd=str(PROJECT_ROOT), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=20)
+        return r.returncode, (r.stdout or "").strip()
+
+    rc, out = _git("branch", "--list", "fix/petnna-*", "ui/petnna-*",
+                   "feat/petnna-*", "hotfix/petnna-*")
+    if rc != 0 or not out:
+        return []
+    deleted = []
+    for line in out.splitlines():
+        br = line.strip().lstrip("* ").strip()
+        if not br:
+            continue
+        rc2, cnt = _git("rev-list", "--count", f"master..{br}")
+        if rc2 != 0 or cnt != "0":
+            continue          # 커밋이 있거나 판정 불가 → 손대지 않는다
+        rc3, _ = _git("branch", "-D", br)
+        if rc3 == 0:
+            deleted.append(br)
+    return deleted
+
+
 def remediate_backlog_ghosts() -> tuple[list[dict], list[dict]]:
     """백로그 비어휘 상태(정지 유령)를 안전 매핑 가능하면 자동 정규화(파일 기록),
     아니면 미해결로 남긴다. 오너 지시(2026-07-22): '텔레그램 보내기 전에 먼저 고쳐' —
@@ -239,6 +291,153 @@ def deploy_drift() -> tuple[int, list[str]] | None:
     return len(drift), drift[:5]
 
 
+def _state() -> dict:
+    try:
+        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_state(data: dict) -> None:
+    try:
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        STATE_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def remediate_stale_agents(stale: list[str]) -> tuple[list[str], list[str]]:
+    """무갱신 에이전트를 예원이 직접 1회 실행해 깨운다(오너 지시 2026-08-04:
+    "경고 메시지는 알아서 해결하고 텔레그램으로 보내지 마라").
+
+    반환: (깨운 라벨, 못 깨운 라벨). 못 깨운 것만 경보 대상이다.
+
+    가드는 전부 2026-07-11~12 유휴 디스패치 사고에서 실제로 터진 것들이다:
+      1. 단일 기계 정책을 먼저 본다 — 이걸 안 봐서 이중 가동 우회 경로가 생겼다.
+      2. 스크립트 경로 실재를 **띄우기 전에** 확인한다 — 경로가 틀려도 Popen은
+         성공하므로, 3시간 넘게 20분마다 조용히 전면 실패한 적이 있다.
+      3. 출력을 DEVNULL로 버리지 않고 평소 데몬과 같은 로그에 이어 쓴다.
+      4. 같은 에이전트를 쿨다운 안에 다시 깨우지 않는다.
+    """
+    if not stale:
+        return [], []
+    from _shared.process import petnna_single_machine_guard
+    if petnna_single_machine_guard("예원 자동 복구"):
+        return [], stale  # 이 기계는 운영기가 아니다 — 남의 함대를 깨우지 않는다
+
+    now = time.time()
+    st = _state()
+    kicks = st.setdefault("last_kick", {})
+    logdir = PROJECT_ROOT / "output" / "bot_logs"
+    logdir.mkdir(parents=True, exist_ok=True)
+    kicked, unfixable = [], []
+
+    for label in stale:
+        entry = AGENT_SCRIPTS.get(label)
+        if not entry:
+            unfixable.append(f"{label}: 실행 방법 미등록")
+            continue
+        rel, flags = entry
+        script = AI_TEAM_ROOT / "skills" / rel
+        if not script.is_file():
+            unfixable.append(f"{label}: 스크립트 없음({rel})")
+            continue
+        if now - float(kicks.get(label) or 0) < KICK_COOLDOWN:
+            unfixable.append(f"{label}: 직전 자동 복구 후에도 산출물 없음")
+            continue
+        log = logdir / (script.stem + ".log")
+        try:
+            fh = open(log, "a", encoding="utf-8", errors="replace")
+        except Exception as e:
+            unfixable.append(f"{label}: 로그 열기 실패({e})")
+            continue
+        try:
+            fh.write(f"\n[{datetime.now():%Y-%m-%d %H:%M}] 예원 자동 복구 — {label} 무갱신으로 1회 실행\n")
+            fh.flush()
+            subprocess.Popen([sys.executable, str(script), *flags],
+                             cwd=str(PROJECT_ROOT), stdout=fh, stderr=fh)
+            kicks[label] = now
+            kicked.append(label)
+        except Exception as e:
+            unfixable.append(f"{label}: 실행 실패({e})")
+        finally:
+            fh.close()  # 자식이 fd를 상속했으므로 부모는 닫아도 된다(fd 누수 방지)
+
+    st["last_kick"] = kicks
+    _save_state(st)
+    return kicked, unfixable
+
+
+def _vercel(path: str, body: dict | None = None) -> dict | None:
+    tok = os.getenv("VERCEL_TOKEN")
+    if not tok:
+        return None
+    try:
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(
+            "https://api.vercel.com" + path, data=data,
+            headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except Exception:
+        return None
+
+
+def remediate_deploy_drift() -> tuple[str, str]:
+    """배포 표류를 예원이 직접 해소한다. 반환: (결과코드, 사람이 읽을 설명).
+
+    결과코드: fixed(재배포 걸었음) | pending(빌드 진행 중) | blocked(사람 필요) | unknown
+
+    2026-07-26·07-28 사고 재발 방지: 저장소는 최신인데 사용자 화면이 옛것인 상황은
+    코드·E2E·QA가 전부 통과하므로 아무도 못 잡는다. 빌드가 스킵됐을 뿐이면(직전 배포가
+    READY) 같은 커밋으로 재배포를 걸면 끝난다 — 이건 예원이 조용히 처리한다.
+    빌드가 ERROR면 설정·소스 문제라 예원이 못 고치니 그 사유만 사람에게 넘긴다.
+    """
+    # 팀 id는 .vercel/project.json의 orgId가 정본 — env VERCEL_TEAM_ID는 낡아서 403이 난다.
+    pj = _project_json()
+    team = pj.get("orgId") or os.getenv("VERCEL_TEAM_ID", "")
+    proj = pj.get("projectId") or os.getenv("VERCEL_PROJECT_ID", "")
+    if not (team and proj):
+        return "unknown", "Vercel 프로젝트 식별 정보 없음"
+    lst = _vercel(f"/v6/deployments?projectId={proj}&teamId={team}&limit=1&target=production")
+    if not lst or not lst.get("deployments"):
+        return "unknown", "Vercel 배포 목록 조회 실패"
+    latest = lst["deployments"][0]
+    state = str(latest.get("state") or latest.get("readyState") or "")
+    if state in ("BUILDING", "QUEUED", "INITIALIZING"):
+        return "pending", f"빌드 진행 중({state}) — 곧 반영"
+    full = _vercel(f"/v13/deployments/{latest['uid']}?teamId={team}") or {}
+    if state == "ERROR":
+        return "blocked", f"직전 배포 실패: {full.get('errorMessage') or '사유 미확인'}"
+
+    src = full.get("gitSource") or {}
+    if not src.get("repoId"):
+        return "blocked", "재배포에 필요한 git 소스 정보 없음"
+    st = _state()
+    sha = str(src.get("sha") or "")
+    if st.get("redeploy_sha") == sha:
+        return "blocked", f"같은 커밋({sha[:8]})으로 이미 재배포했는데도 표류 지속 — 배포 설정 확인 필요"
+    made = _vercel(f"/v13/deployments?teamId={team}", {
+        "name": full.get("name") or "petnna",
+        "project": proj,
+        "target": "production",
+        "gitSource": {"type": src.get("type", "github"), "repoId": src["repoId"], "ref": "master"},
+    })
+    if not made:
+        return "blocked", "재배포 요청 실패(토큰 권한/네트워크 확인)"
+    st["redeploy_sha"] = sha
+    _save_state(st)
+    return "fixed", f"master 재배포 트리거함({made.get('id') or made.get('uid', '')})"
+
+
+def _project_json() -> dict:
+    try:
+        return json.loads((PROJECT_ROOT / "projects" / "petnna" / ".vercel" / "project.json")
+                          .read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 def audit(do_send: bool) -> int:
     now = time.time()
     lines = [f"[{datetime.now():%Y-%m-%d %H:%M}] 🩺 예원 함대 신선도 감사"]
@@ -275,13 +474,24 @@ def audit(do_send: bool) -> int:
         lines.append("  ✅ DB 스키마: 선언된 테이블 전부 라이브 적용됨")
     # 배포 표류: 에이전트가 일해도 그 결과가 사용자에게 안 나가면 일하지 않은 것과 같다.
     drift = deploy_drift()
+    drift_block = ""
     if drift is None:
         lines.append("  ❔ 배포 대조: 판정 불가(네트워크/파싱 실패)")
     elif drift[0]:
         lines.append(f"  🚨 배포 표류: 자산 {drift[0]}개가 배포본에 반영 안 됨")
         lines.extend(f"      · {d}" for d in drift[1])
+        code, why = remediate_deploy_drift()
+        lines.append(f"      ↳ 자동 대응[{code}]: {why}")
+        if code == "blocked":
+            drift_block = why
     else:
         lines.append("  ✅ 배포: 저장소와 배포본 자산 버전 일치")
+    # 인프라 사유로 죽은 사이클이 남긴 빈 브랜치 청소 — 잃을 게 없고, 쌓이면
+    # 검토 적체로 오독된다(오너 지시 2026-08-04: "이런건 다 예원이가 판단하고 배분해서 해결해").
+    dead_branches = remediate_stale_branches()
+    if dead_branches:
+        lines.append(f"  🧹 빈 작업 브랜치 정리: {len(dead_branches)}개 "
+                     + ", ".join(b.split("petnna-")[-1][:24] for b in dead_branches[:5]))
     # 백로그 비어휘 상태(정지 유령): 먼저 자동 정규화, 못 고친 것만 아래에서 경보.
     fixed, ghosts = remediate_backlog_ghosts()
     for f in fixed:
@@ -289,34 +499,33 @@ def audit(do_send: bool) -> int:
     if ghosts:
         lines.append("  👻 백로그 정지 유령(자동정규화 불가·사람 확인 필요): "
                      + ", ".join(f"{g['id']}={g['status']}" for g in ghosts))
+    # 무갱신 에이전트는 경보하지 말고 직접 깨운다 — 깨우지 못한 것만 아래에서 보고.
+    kicked, stale_unfixable = remediate_stale_agents(stale)
+    for k in kicked:
+        lines.append(f"  🔄 자동 복구 실행: {k} (1회 수동 사이클 기동)")
     print("\n".join(lines))
 
-    drifted = bool(drift and drift[0])
-    if do_send and (stale or gap or applied or failed or ghosts or drifted):
-        parts = []
-        if drifted:
-            parts.append(f"🚨 배포 표류 — 자산 {drift[0]}개가 사용자에게 안 나감\n"
-                         + "\n".join(f"· {d}" for d in drift[1])
-                         + "\n(저장소는 최신인데 배포본이 뒤처짐 — Vercel 배포 실패/중단 확인)")
-        if stale:
-            parts.append("⚠️ 함대 신선도 경보 — 죽은 잡 의심\n"
-                         + "\n".join(f"· {s}" for s in stale)
-                         + "\n(Hermes 크론 산출물이 임계 초과로 무갱신)")
-        if applied:
-            parts.append("🛠️ 마이그레이션 자동 적용 완료 (예원 · Management API)\n"
-                         + "\n".join(f"· migrations/{f}" for f in applied))
-        if gap:
-            ref = os.getenv("SUPABASE_URL", "").split("//")[-1].split(".")[0]
-            link = _SUPA_SQL_LINK.format(ref=ref) if ref else "Supabase SQL Editor"
-            why = " (자동적용 실패 — 토큰/SQL 확인)" if failed else " (토큰 없음 — 수동 실행 필요)"
-            parts.append("🗄️ 미적용 마이그레이션 " + str(len(gap)) + "개" + why + "\n"
-                         + "\n".join(f"· {t} → migrations/{f}" for t, f in gap)
-                         + f"\n실행: {link}")
-        if ghosts:
-            parts.append("👻 백로그 정지 유령 " + str(len(ghosts)) + "개 (비어휘 상태 — 수동 확인)\n"
-                         + "\n".join(f"· {g['id']} = {g['status']}" for g in ghosts))
-        send("[예원] 펫나 감사\n\n" + "\n\n".join(parts), silent=not (stale or gap or failed or ghosts))
-    return len(stale) + len(gap) + len(ghosts)
+    # 텔레그램은 **예원이 못 고친 것만** 나간다(오너 지시 2026-08-04).
+    # 자동 적용/정규화/청소/복구 실행은 로그에만 남기고 알리지 않는다.
+    parts = []
+    if drift_block:
+        parts.append("🚨 배포 표류 — 예원이 못 고침\n· " + drift_block)
+    if stale_unfixable:
+        parts.append("⚠️ 자동 복구 실패 에이전트\n"
+                     + "\n".join(f"· {s}" for s in stale_unfixable))
+    if gap:
+        ref = os.getenv("SUPABASE_URL", "").split("//")[-1].split(".")[0]
+        link = _SUPA_SQL_LINK.format(ref=ref) if ref else "Supabase SQL Editor"
+        why = " (자동적용 실패 — 토큰/SQL 확인)" if failed else " (토큰 없음 — 수동 실행 필요)"
+        parts.append("🗄️ 미적용 마이그레이션 " + str(len(gap)) + "개" + why + "\n"
+                     + "\n".join(f"· {t} → migrations/{f}" for t, f in gap)
+                     + f"\n실행: {link}")
+    if ghosts:
+        parts.append("👻 백로그 정지 유령 " + str(len(ghosts)) + "개 (자동 정규화 불가)\n"
+                     + "\n".join(f"· {g['id']} = {g['status']}" for g in ghosts))
+    if do_send and parts:
+        send("[예원] 펫나 감사 — 사람 확인 필요\n\n" + "\n\n".join(parts))
+    return len(stale_unfixable) + len(gap) + len(ghosts)
 
 
 def main() -> None:

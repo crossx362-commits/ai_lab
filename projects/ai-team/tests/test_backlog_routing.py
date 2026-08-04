@@ -608,3 +608,41 @@ class RecentDecisionsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InfraFailureKeywordTests(unittest.TestCase):
+    """인프라 실패 분류 회귀 — 2026-08-04.
+
+    과제 탓이 아닌 실패는 attempts에 반영하면 안 된다는 원칙은 있었는데, 정작 이 저장소를
+    실제로 무너뜨린 두 사유가 목록에 없었다:
+      · 구독 클로드 토큰 만료 — 2026-07-27~28 36시간 동안 수리 27회 실패. 그 실패가
+        미오 과제 2건의 시도 3회를 소진해 영구 보류로 밀어냈다.
+      · 포트 충돌(Errno 48) — 사람이 임시로 E2E를 돌리면 데몬 정시 사이클과 겹쳐
+        사이클이 통째로 죽는다(2026-08-04 20:01 실측).
+
+    반대 방향도 지킨다 — 진짜 실패(E2E 실패·단언 실패)를 인프라로 오분류하면
+    무한 재시도가 된다.
+    """
+
+    def test_auth_expiry_is_infra(self):
+        from _shared.backlog import is_infra_failure
+        self.assertTrue(is_infra_failure(
+            "Failed to authenticate. API Error: 401 OAuth access token has expired."))
+        self.assertTrue(is_infra_failure("Re-authenticate to continue."))
+
+    def test_port_collision_is_infra(self):
+        from _shared.backlog import is_infra_failure
+        self.assertTrue(is_infra_failure("[Errno 48] Address already in use"))
+        self.assertTrue(is_infra_failure("OSError: [Errno 48] Address already in use"))
+
+    def test_existing_infra_keywords_kept(self):
+        from _shared.backlog import is_infra_failure
+        for s in ("claude CLI 미발견", "타임아웃", "rate limit", "429", "Overloaded"):
+            self.assertTrue(is_infra_failure(s), s)
+
+    def test_real_failures_are_not_infra(self):
+        """진짜 실패를 인프라로 보면 무한 재시도가 된다 — 이쪽이 더 위험하다."""
+        from _shared.backlog import is_infra_failure
+        for s in ("AssertionError: 배지 표기 없음", "E2E 신규 실패: test_foo",
+                  "diff 게이트 거부: 금지 경로", ""):
+            self.assertFalse(is_infra_failure(s), s)

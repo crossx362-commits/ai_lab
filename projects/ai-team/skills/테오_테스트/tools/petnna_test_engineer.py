@@ -55,7 +55,12 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "tests"
 RESULTS = OUT_DIR / "results.json"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "teo_slots.json"
-PORT = int(os.getenv("TEO_PORT", "8935"))
+# 포트 0 = 커널이 비어 있는 포트를 골라 준다. 고정 포트를 쓰면 사람이 임시로 같은
+# 도구를 돌리거나 두 에이전트의 정시 슬롯이 겹칠 때 [Errno 48] Address already in use로
+# **사이클 하나가 통째로 죽는다**(2026-08-04 20:01 수리 실측 — 이 세션의 병렬 E2E와 충돌).
+# 이 서버는 자기 프로세스만 쓰는 임시 정적 서버라 포트를 고정할 이유가 없다.
+# 환경변수로 명시하면 그 값을 쓴다(디버깅용).
+PORT = int(os.getenv("TEO_PORT", "0"))
 MAX_TESTS = int(os.getenv("TEO_MAX", "8"))
 PER_TEST_TIMEOUT_MS = 30000
 
@@ -105,6 +110,7 @@ def run_suite(only: Path | None = None) -> dict:
     if not tests:
         return results
     srv = start_server(PORT)
+    port = srv.server_address[1]   # 포트 0이면 커널이 고른 실제 포트
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -116,7 +122,7 @@ def run_suite(only: Path | None = None) -> dict:
                     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
                     page = ctx.new_page()
                     page.set_default_timeout(PER_TEST_TIMEOUT_MS)
-                    mod.run(page, f"http://127.0.0.1:{PORT}/index.html")
+                    mod.run(page, f"http://127.0.0.1:{port}/index.html")
                     ctx.close()
                     results[name] = {"ok": True, "name": getattr(mod, "NAME", name),
                                      "sec": round(time.time() - t0, 1)}

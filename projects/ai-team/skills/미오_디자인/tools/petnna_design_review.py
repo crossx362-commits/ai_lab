@@ -51,7 +51,11 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "petnna" / "design"
 
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "petnna" / "backlog.json"
 SLOT_STATE = PROJECT_ROOT / "output" / "cache" / "mio_slots.json"
-PORT = int(os.getenv("MIO_PORT", "8936"))
+# 포트 0 = 커널이 비어 있는 포트를 골라 준다. 고정 포트를 쓰면 사람이 임시로 같은
+# 도구를 돌리거나 두 에이전트의 정시 슬롯이 겹칠 때 [Errno 48] Address already in use로
+# **사이클 하나가 통째로 죽는다**(2026-08-04 20:01 수리 실측). 자기 프로세스만 쓰는
+# 임시 정적 서버라 포트를 고정할 이유가 없다. 환경변수로 명시하면 그 값을 쓴다(디버깅용).
+PORT = int(os.getenv("MIO_PORT", "0"))
 REVIEW_WEEKDAY = int(os.getenv("MIO_WEEKDAY", "0"))  # 0=월요일(MIO_DAILY=false일 때만 사용)
 # 기본 매일 실행(2026-07-12 오너 승인) — 주 1회만 새 아이디어를 만들면 백로그가
 # 비었을 때 다음 예정일(월요일)까지 수리가 할 일이 없어 "에이전트가 논다"는
@@ -90,6 +94,7 @@ def take_screenshots() -> list[Path]:
 
     handler = lambda *a, **kw: _SilentHandler(*a, directory=str(PETNNA_ROOT), **kw)  # noqa: E731
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), handler)
+    port = srv.server_address[1]   # 포트 0이면 커널이 고른 실제 포트
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     shots = []
     stamp = datetime.now().strftime("%Y%m%d")
@@ -101,7 +106,7 @@ def take_screenshots() -> list[Path]:
                 # ① 로그인 화면 — 우회 없이 한 장
                 ctx = browser.new_context(viewport={"width": w, "height": h})
                 page = ctx.new_page()
-                page.goto(f"http://127.0.0.1:{PORT}/index.html", wait_until="load", timeout=30000)
+                page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load", timeout=30000)
                 page.wait_for_timeout(2500)
                 path = OUT_DIR / "shots" / f"{stamp}_{label}_login.png"
                 page.screenshot(path=str(path), full_page=True)
@@ -119,7 +124,7 @@ def take_screenshots() -> list[Path]:
                     "localStorage.setItem('petna_pets', %s);" % json.dumps(json.dumps([_MIO_PET]))
                 )
                 try:
-                    page.goto(f"http://127.0.0.1:{PORT}/index.html", wait_until="load", timeout=30000)
+                    page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="load", timeout=30000)
                     page.wait_for_timeout(3000)
                     tabs = _MIO_TABS if label == "desktop" else _MIO_MOBILE_TABS
                     for tab in tabs:
