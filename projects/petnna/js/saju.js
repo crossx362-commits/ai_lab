@@ -788,7 +788,12 @@ const IQ_QUESTIONS_PET = [
     { q: "내가 슬퍼서 울고 있을 때 펫의 반응은?", a: [{text:"다가와서 얼굴을 핥거나 위로해준다", score:15}, {text:"옆에 가만히 앉아 있어준다", score:10}, {text:"평소와 다름없이 자기 할 일을 한다", score:5}] },
     { q: "소파 밑으로 장난감이 굴러들어갔을 때?", a: [{text:"앞발을 사용해 어떻게든 꺼내려 한다", score:15}, {text:"나를 쳐다보며 꺼내달라고 짖는다", score:10}, {text:"포기하고 다른 걸 가지고 논다", score:5}] },
     { q: "TV에서 다른 동물 소리가 나면?", a: [{text:"화면을 뚫어지게 보거나 찾아다닌다", score:15}, {text:"귀만 쫑긋거리다 만다", score:10}, {text:"TV 소리인 줄 알고 무시한다", score:5}] },
-    { q: "낯선 사람이 집에 방문했을 때?", a: [{text:"경계하다가 내가 반기면 안심한다", score:15}, {text:"그냥 무조건 좋다고 꼬리친다", score:10}, {text:"구석에 숨어서 안 나온다", score:5}] }
+    { q: "낯선 사람이 집에 방문했을 때?", a: [{text:"경계하다가 내가 반기면 안심한다", score:15}, {text:"그냥 무조건 좋다고 꼬리친다", score:10}, {text:"구석에 숨어서 안 나온다", score:5}] },
+    { q: "간식 봉지를 부스럭거리는 소리를 냈을 때?", a: [{text:"자다가도 벌떡 일어나 순식간에 달려온다", score:15}, {text:"천천히 다가와 상황을 살핀다", score:10}, {text:"별 반응이 없다", score:5}] },
+    { q: "새로운 명령어(손, 기다려 등)를 가르칠 때?", a: [{text:"몇 번 만에 금방 알아듣고 따라 한다", score:15}, {text:"간식이 있어야 겨우 시늉한다", score:10}, {text:"아무리 해도 이해하지 못한다", score:5}] },
+    { q: "청소기를 돌리기 시작하면?", a: [{text:"소리의 정체를 파악하고 거리를 조절한다", score:15}, {text:"무조건 짖거나 도망친다", score:10}, {text:"신경도 안 쓰고 계속 잔다", score:5}] },
+    { q: "문이 살짝 열려 있는 것을 발견하면?", a: [{text:"코나 발로 밀어서 스스로 열고 나간다", score:15}, {text:"문 앞에서 열어달라고 낑낑댄다", score:10}, {text:"열려 있는 줄도 모른다", score:5}] },
+    { q: "가족 구성원마다 다르게 행동하나요?", a: [{text:"사람에 따라 태도와 애교를 완전히 바꾼다", score:15}, {text:"주는 사람에게만 조금 더 다가간다", score:10}, {text:"누구에게나 똑같이 대한다", score:5}] }
 ];
 
 const IQ_QUESTIONS_OWNER = [
@@ -801,7 +806,12 @@ const IQ_QUESTIONS_OWNER = [
     { q: "강아지가 내 발을 깔고 앉는 이유는?", a: [{text:"내 거야! 소유욕과 보호 본능", score:15}, {text:"발이 따뜻해서", score:10}, {text:"우연의 일치", score:5}] },
     { q: "고양이가 갑자기 미친듯이 우다다를 하는 이유는?", a: [{text:"남아도는 에너지를 발산하기 위해", score:15}, {text:"벌레를 쫓고 있어서", score:10}, {text:"귀신을 봤다", score:5}] },
     { q: "강아지가 나를 보고 엉덩이를 치켜들고 앞발을 낮춘다면?", a: [{text:"신나게 놀자는 플레이 바우", score:15}, {text:"스트레칭 중이다", score:10}, {text:"공격 준비 자세", score:5}] },
-    { q: "펫과 함께하는 삶에서 집사에게 가장 필요한 덕목은?", a: [{text:"무한한 인내와 세심한 관찰력", score:15}, {text:"돈벌어서 간식 사기", score:10}, {text:"일단 귀여워하기", score:5}] }
+    { q: "펫과 함께하는 삶에서 집사에게 가장 필요한 덕목은?", a: [{text:"무한한 인내와 세심한 관찰력", score:15}, {text:"돈벌어서 간식 사기", score:10}, {text:"일단 귀여워하기", score:5}] },
+    { q: "강아지가 배를 보이며 벌러덩 드러눕는 것은?", a: [{text:"편안함과 신뢰의 표현", score:15}, {text:"무조건 배를 만져달라는 뜻", score:10}, {text:"그냥 더워서", score:5}] },
+    { q: "고양이가 몸단장(그루밍)을 자주 하는 이유 중 하나는?", a: [{text:"청결 유지와 스트레스 해소", score:15}, {text:"심심할 때만", score:10}, {text:"털이 가려워서", score:5}] },
+    { q: "강아지가 밥 먹기 전 앞발로 땅을 파는 시늉을 하면?", a: [{text:"먹이를 숨기려는 본능적 행동", score:15}, {text:"밥이 마음에 안 든다는 뜻", score:10}, {text:"발이 간지러워서", score:5}] },
+    { q: "펫이 갑자기 밥을 안 먹을 때 가장 먼저 확인할 것은?", a: [{text:"컨디션·구강 상태 등 건강 신호", score:15}, {text:"사료가 오래됐는지", score:10}, {text:"일단 하루 지켜본다", score:5}] },
+    { q: "고양이가 높은 곳(캣타워 위 등)에 올라가길 좋아하는 이유는?", a: [{text:"안전하게 주변을 관찰하려는 본능", score:15}, {text:"단순히 따뜻해서", score:10}, {text:"내려오는 법을 몰라서", score:5}] }
 ];
 
 // ==========================================
@@ -817,7 +827,12 @@ const MBTI_QUESTIONS_PET = [
     { q: "밥 먹고 자고 노는 일상 루틴이 있다면?", a: [{text:"매일 일정한 시간에 밥과 산책을 정확히 요구한다", type:"J"}, {text:"배고플 때 먹고, 자고 싶을 때 잔다", type:"P"}] },
     { q: "잠자리를 선택할 때 펫의 취향은?", a: [{text:"항상 자는 지정석 푹신한 방석이 있다", type:"J"}, {text:"그날그날 끌리는 바닥이나 소파 아무데서나 잔다", type:"P"}] },
     { q: "다른 펫이 내 장난감을 뺏으려 한다면?", a: [{text:"절대 안 뺏겨! 으르렁거리며 사수한다", type:"T"}, {text:"어쩔 수 없지.. 하고 양보하거나 슬퍼한다", type:"F"}] },
-    { q: "주말에 집사가 하루종일 집에 있으면?", a: [{text:"나랑 놀자며 장난감을 계속 물어온다", type:"E"}, {text:"각자의 시간을 즐기며 조용히 옆에 누워있는다", type:"I"}] }
+    { q: "주말에 집사가 하루종일 집에 있으면?", a: [{text:"나랑 놀자며 장난감을 계속 물어온다", type:"E"}, {text:"각자의 시간을 즐기며 조용히 옆에 누워있는다", type:"I"}] },
+    { q: "산책길에서 처음 보는 강아지를 만나면?", a: [{text:"먼저 다가가 코인사를 시도한다", type:"E"}, {text:"주인 뒤로 슬쩍 숨거나 거리를 둔다", type:"I"}] },
+    { q: "갑자기 낯선 소리가 들렸을 때?", a: [{text:"소리가 난 쪽으로 곧장 달려가 확인한다", type:"S"}, {text:"일단 멈춰 서서 상황을 살핀다", type:"N"}] },
+    { q: "좋아하는 장난감을 대하는 태도는?", a: [{text:"보이는 대로 신나게 물고 흔든다", type:"S"}, {text:"자기만의 방식으로 이리저리 궁리하며 논다", type:"N"}] },
+    { q: "집사가 다른 동물을 쓰다듬고 있으면?", a: [{text:"질투하며 사이에 끼어들거나 삐진다", type:"F"}, {text:"별로 신경 쓰지 않고 자기 할 일을 한다", type:"T"}] },
+    { q: "처음 가보는 여행지나 낯선 공간에 도착하면?", a: [{text:"익숙한 자기 방석이나 담요부터 찾는다", type:"J"}, {text:"일단 여기저기 마음대로 돌아다니며 적응한다", type:"P"}] }
 ];
 
 const MBTI_QUESTIONS_OWNER = [
@@ -830,8 +845,25 @@ const MBTI_QUESTIONS_OWNER = [
     { q: "펫과 함께 1박 2일 여행을 갈 때 나의 스타일은?", a: [{text:"숙소부터 애견동반 식당까지 시간 단위로 계획을 짠다", type:"J"}, {text:"일단 출발! 가다가 좋아보이는 곳에 멈춘다", type:"P"}] },
     { q: "펫 용품 정리 및 청소 상태는?", a: [{text:"장난감 상자, 간식 서랍 등 항상 각 잡혀 정리되어 있다", type:"J"}, {text:"집안 곳곳에 장난감과 간식이 널브러져 있다", type:"P"}] },
     { q: "SNS에서 유행하는 펫 챌린지를 본다면?", a: [{text:"재밌어 보이네~ 하고 그냥 넘긴다", type:"S"}, {text:"우리 애도 해보자! 당장 카메라를 켠다", type:"N"}] },
-    { q: "펫의 생일날 나는 어떻게 파티를 준비하나요?", a: [{text:"케이크도 미리 주문하고 예쁜 옷 입혀서 스튜디오 파티!", type:"J"}, {text:"당일에 맛있는 특식 사주고 사진 몇 장 찍어준다", type:"P"}] }
+    { q: "펫의 생일날 나는 어떻게 파티를 준비하나요?", a: [{text:"케이크도 미리 주문하고 예쁜 옷 입혀서 스튜디오 파티!", type:"J"}, {text:"당일에 맛있는 특식 사주고 사진 몇 장 찍어준다", type:"P"}] },
+    { q: "펫과 놀 때 나의 에너지는?", a: [{text:"같이 뛰고 소리 내며 신나게 논다", type:"E"}, {text:"조용히 쓰다듬고 교감하는 걸 더 좋아한다", type:"I"}] },
+    { q: "펫 사진을 찍으면 나는?", a: [{text:"자연스러운 일상 순간을 있는 그대로 남긴다", type:"S"}, {text:"컨셉과 배경을 상상하며 감성샷을 연출한다", type:"N"}] },
+    { q: "펫이 집안에서 사고를 쳤을 때 나의 반응은?", a: [{text:"원인을 파악하고 재발 방지책부터 생각한다", type:"T"}, {text:"놀란 펫이 괜찮은지부터 살피고 달랜다", type:"F"}] },
+    { q: "펫의 건강관리 스타일은?", a: [{text:"예방접종·검진 일정을 달력에 정리해 챙긴다", type:"J"}, {text:"그때그때 필요해 보이면 병원에 데려간다", type:"P"}] },
+    { q: "새로운 펫용품 정보를 얻는 방법은?", a: [{text:"실사용 후기와 성분표를 꼼꼼히 비교한다", type:"S"}, {text:"트렌드나 감각적으로 끌리는 제품에 눈이 간다", type:"N"}] }
 ];
+
+// 문항 풀(15개)에서 매번 count개를 랜덤 출제 → 결과에 변동성을 줘 재검사 동기 부여.
+const QUIZ_PICK_COUNT = 10;
+function pickRandomQuestions(pool, count) {
+    if (!Array.isArray(pool) || pool.length <= count) return (pool || []).slice();
+    const arr = pool.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, count);
+}
 
 let iqCurrentStep = 0;
 let iqTotalScore = 0;
@@ -856,7 +888,7 @@ function resetIqTest() {
 function startIqTestStepper() {
     let name = document.getElementById('iq-target-name').value || (currentIqTarget === 'pet' ? '마이펫' : '집사');
     
-    currentIqQuestions = currentIqTarget === 'pet' ? IQ_QUESTIONS_PET : IQ_QUESTIONS_OWNER;
+    currentIqQuestions = pickRandomQuestions(currentIqTarget === 'pet' ? IQ_QUESTIONS_PET : IQ_QUESTIONS_OWNER, QUIZ_PICK_COUNT);
     iqCurrentStep = 0;
     iqTotalScore = 0;
     
@@ -992,7 +1024,7 @@ function resetMbtiTest() {
 function startMbtiTestStepper() {
     let name = document.getElementById('mbti-target-name').value || (currentMbtiTarget === 'pet' ? '마이펫' : '집사');
     
-    currentMbtiQuestions = currentMbtiTarget === 'pet' ? MBTI_QUESTIONS_PET : MBTI_QUESTIONS_OWNER;
+    currentMbtiQuestions = pickRandomQuestions(currentMbtiTarget === 'pet' ? MBTI_QUESTIONS_PET : MBTI_QUESTIONS_OWNER, QUIZ_PICK_COUNT);
     mbtiCurrentStep = 0;
     mbtiScores = { E:0, I:0, S:0, N:0, T:0, F:0, J:0, P:0 };
     
