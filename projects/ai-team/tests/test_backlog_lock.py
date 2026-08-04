@@ -166,6 +166,13 @@ class StaleBranchRemediationTests(unittest.TestCase):
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             mod.PROJECT_ROOT = Path(tmp)
+
+            # 갓 만든 브랜치는 '잔재'가 아니라 '작업 중'이다 — 수리가 브랜치를 만든 뒤
+            # 클로드를 부르는 수분 사이에 지우면 진행 중인 사이클을 날린다.
+            self.assertEqual(mod.remediate_stale_branches(), [],
+                             "방금 만든 빈 브랜치를 지웠다 — 진행 중인 수리 사이클이 날아간다")
+
+            mod.STALE_BRANCH_MIN_AGE = 0   # 나이 조건만 풀고 나머지 판정을 확인
             deleted = mod.remediate_stale_branches()
 
             self.assertIn("ui/petnna-empty", deleted, "빈 브랜치를 안 지웠다")

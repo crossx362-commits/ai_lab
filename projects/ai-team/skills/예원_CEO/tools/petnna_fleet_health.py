@@ -69,6 +69,9 @@ AGENT_SCRIPTS = {
 }
 STATE_PATH = QA / "fleet_health_state.json"
 KICK_COOLDOWN = 6 * HOUR  # 같은 에이전트를 이 시간 안에 다시 깨우지 않는다(재점화 루프 방지)
+# 빈 브랜치를 지우기 전 최소 나이 — 수리의 한 사이클(브랜치 생성 → 클로드 호출 → 커밋)보다
+# 넉넉히 길게. 이보다 어린 커밋 0개 브랜치는 잔재가 아니라 '작업 중'이다.
+STALE_BRANCH_MIN_AGE = 2 * HOUR
 
 
 def _declared_tables() -> dict[str, str]:
@@ -221,6 +224,16 @@ def remediate_stale_branches() -> list[str]:
         rc2, cnt = _git("rev-list", "--count", f"master..{br}")
         if rc2 != 0 or cnt != "0":
             continue          # 커밋이 있거나 판정 불가 → 손대지 않는다
+        # 수리는 브랜치를 먼저 만들고 그 다음 클로드를 부른다(수분 소요). 그 창에 지우면
+        # 진행 중인 사이클을 날린다 — 갓 만든 브랜치는 "실패 잔재"가 아니라 "작업 중"이다.
+        rc4, ts = _git("reflog", "show", "--date=unix", "--format=%gd", br)
+        if rc4 == 0 and ts:
+            try:
+                created = int(ts.splitlines()[-1].split("{")[1].split("}")[0])
+                if time.time() - created < STALE_BRANCH_MIN_AGE:
+                    continue
+            except (IndexError, ValueError):
+                continue      # 나이 판정 불가 → 안전측(보존)
         rc3, _ = _git("branch", "-D", br)
         if rc3 == 0:
             deleted.append(br)
