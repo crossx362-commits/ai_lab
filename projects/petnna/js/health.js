@@ -105,6 +105,9 @@ function renderHealthTab() {
     // 반려동물 가계부 (백로그 나무, P3 — 카테고리별 지출·월별 집계)
     if (typeof ExpenseTracker !== 'undefined') ExpenseTracker.renderWidget('expense-tracker-widget');
 
+    // 재고 소진 D-day 추적기 (백로그 나무, P2 — 사료·용품 잔량·재구매 넛지)
+    if (typeof InventoryTracker !== 'undefined') InventoryTracker.renderWidget('inventory-tracker-widget');
+
     // 차트 및 캘린더 렌더링
     if (typeof renderHealthTrendChartMain === 'function') renderHealthTrendChartMain();
     if (typeof renderHealthCalendarMain === 'function') renderHealthCalendarMain();
