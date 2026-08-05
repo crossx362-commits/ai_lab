@@ -944,6 +944,12 @@ const SupabaseService = {
     },
 
     async uploadRoute(routeItem) {
+        // 오프라인이면 산책로를 큐에 안전 저장하고 재연결 시 자동 재전송(offline-sync.js).
+        if (typeof navigator !== 'undefined' && navigator.onLine === false
+            && typeof window.OfflineSync !== 'undefined') {
+            window.OfflineSync.enqueue('route', routeItem);
+            return;
+        }
         if (!this.isConnected || !this.client) return;
         const email = (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
@@ -1142,6 +1148,12 @@ const SupabaseService = {
     },
 
     async uploadHealthLog(entry) {
+        // 오프라인이면 기록을 큐에 안전 저장하고 재연결 시 자동 재전송(offline-sync.js).
+        if (typeof navigator !== 'undefined' && navigator.onLine === false
+            && typeof window.OfflineSync !== 'undefined') {
+            window.OfflineSync.enqueue('healthLog', entry);
+            return;
+        }
         const user = await this._authUser();
         if (!user) return;
         try {
