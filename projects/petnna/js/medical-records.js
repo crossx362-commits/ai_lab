@@ -572,7 +572,7 @@ function renderPreventiveCareDashboard() {
         overdue: 'bg-rose-50 text-rose-700 border-rose-200',
         today: 'bg-amber-50 text-amber-700 border-amber-200',
         soon: 'bg-amber-50 text-amber-700 border-amber-200',
-        ok: 'bg-brand-50 text-brand-700 border-brand-200'
+        ok: 'bg-gray-100 text-gray-600 border-gray-200'
     };
 
     const ddayCards = due.map(({ s, due }) => {
