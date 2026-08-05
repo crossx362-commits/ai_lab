@@ -65,13 +65,32 @@ POLL_SEC = int(os.getenv("SURI_POLL_SEC", "3600"))
 CLAUDE_TIMEOUT = int(os.getenv("SURI_CLAUDE_TIMEOUT", "900"))
 MAX_ATTEMPTS = 3
 MAX_FILES, MAX_LINES = 6, 200
+# 신규 단일파일 예외(회의_202608050716 — 새 모듈 259줄+배선 20줄이 3회 반복 거부됨) 적용 시
+# 나머지(기존 파일 배선) 허용 줄 수. 상한 자체는 안 올린다 — 여러 기존 파일에 걸친 산개
+# 변경은 그대로 차단, "응집된 신규 파일 하나"만 예외.
+WIRING_MAX = 40
 
 # 자동 병합 후보 유형(P2/P3 한정). 그 외/그 이상은 브랜치 생성까지만.
 SAFE_TYPES = {"접근성", "SEO", "콘텐츠", "링크", "반응형", "기능"}
-# 이 경로를 건드린 diff는 자동 병합 금지(브랜치 대기) — 인증/결제/DB/배포/시크릿 계열
-FORBIDDEN_PATHS = ["api/", "migrations/", "supabase", "inject-env", "freemium",
+# 이 경로를 건드린 diff는 자동 병합 금지(브랜치 대기) — 인증/결제/배포/시크릿 계열.
+# 'supabase'는 여기 없다 — js/supabase.js(프론트 클라이언트 래퍼)에 대한 순수 로직 편집
+# (예: 오프라인 큐 가드)까지 통째로 막던 오탐이었다(회의_202608050439·202608051239).
+# 진짜 계약 변경(신규 .from()/.rpc() 호출)은 아래 _new_supabase_contract_calls()가 잡는다.
+FORBIDDEN_PATHS = ["api/", "migrations/", "inject-env", "freemium",
                    "manifest.json", "sw.js", "vercel.json", "package.json", "package-lock"]
-FORBIDDEN_DIFF = re.compile(r"api[_-]?key|secret|token|password|Bearer ", re.IGNORECASE)
+# 값이 할당된 시크릿 리터럴만 잡는다(따옴표 안 6자 이상 값). 낱말 자체(token/secret 등이
+# 든 식별자·주석·함수명)는 오탐이었다 — QR 공개프로필의 `tokenForPet`·`existingToken` 같은
+# 정당한 코드가 영구히 자동병합/PR대기에 못 갔다(회의_202608050439). 진짜 하드코딩 값
+# (api_key = "...", Bearer <토큰>)은 그대로 잡는다.
+FORBIDDEN_DIFF = re.compile(
+    r'(?:api[_-]?key|secret|token|password)\s*[:=]\s*["\'][^"\']{6,}["\']'
+    r'|Bearer\s+[A-Za-z0-9_\-.]{10,}',
+    re.IGNORECASE)
+# Supabase 계약 호출(.from()/.rpc()) — 'supabase'가 경로에 든 파일에서만 본다. 그 파일들은
+# 전부 Supabase 클라이언트 래퍼라 .from(/.rpc( 이 항상 진짜 테이블/RPC 호출이다(Array.from()
+# 같은 무관한 오탐이 이 파일들엔 없음 — 다른 일반 js 파일까지 이 패턴으로 훑으면
+# Array.from() 등에 오탐한다, 그래서 범위를 이 파일들로 좁힌다).
+FORBIDDEN_CONTRACT_CALL = re.compile(r"\.from\(|\.rpc\(")
 BRANCH_PREFIX = {"접근성": "a11y", "성능": "perf", "반응형": "ui", "UIUX": "ui",
                  "콘텐츠": "docs", "SEO": "fix", "링크": "fix", "기능": "fix",
                  "디자인": "ui", "기획": "feat"}
@@ -477,6 +496,40 @@ def _find_duplicate_branch(branch: str) -> str | None:
     return None
 
 
+def _new_supabase_contract_calls(worktree: Path, base: str, files: list[str]) -> list[str]:
+    """'supabase'가 경로에 든 파일에서 신규 .from()/.rpc() 호출이 추가됐는지(파일 단위
+    diff의 added 줄만 본다 — 기존 호출은 context 줄로 남아 안 걸린다)."""
+    hits = []
+    for f in files:
+        if "supabase" not in f:
+            continue
+        d = _git(["diff", base, "--", f], worktree).stdout
+        added = "\n".join(ln for ln in d.splitlines() if ln.startswith("+"))
+        if FORBIDDEN_CONTRACT_CALL.search(added):
+            hits.append(f)
+    return hits
+
+
+def _single_new_file_exception(worktree: Path, base: str, total: int) -> str | None:
+    """diff 크기 초과가 신규 파일 하나에 응집됐는지 — 여러 기존 파일에 걸친 산개 변경과
+    리스크 성격이 다르다(회의_202608050716). 파일 수 상한(MAX_FILES)은 그대로 강제되고,
+    이건 라인 상한만 예외를 준다."""
+    new_only = _git(["diff", base, "--numstat", "--diff-filter=A"], worktree).stdout.strip()
+    new_files = {}
+    for line in new_only.splitlines():
+        parts = line.split("\t")
+        if len(parts) != 3:
+            continue
+        add, rm, path = parts
+        new_files[path] = (int(add) if add.isdigit() else 0) + (int(rm) if rm.isdigit() else 0)
+    if len(new_files) != 1:
+        return None
+    wiring = total - next(iter(new_files.values()))
+    if wiring > WIRING_MAX:
+        return None
+    return f"신규 단일파일 예외, 배선 {wiring}줄"
+
+
 def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
     """diff 범위 게이트: petnna 한정·크기 제한·금지 경로/내용."""
     # 'master'가 아니라 분기점(merge-base)과 비교한다. 사이클이 도는 동안 다른 에이전트가
@@ -501,8 +554,17 @@ def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
     hit = [f for f in files if any(k in f for k in FORBIDDEN_PATHS)]
     if hit:
         return False, f"금지 경로 접촉(병합 대기): {hit[:3]}", files
-    if len(files) > MAX_FILES or total > MAX_LINES:
-        return False, f"변경 과대(파일 {len(files)}·{total}줄) — PR 분리 필요", files
+    contract_hit = _new_supabase_contract_calls(worktree, base, files)
+    if contract_hit:
+        return False, f"Supabase 신규 계약 접촉(.from/.rpc, 병합 대기): {contract_hit[:3]}", files
+    if len(files) > MAX_FILES:
+        return False, f"변경 과대(파일 {len(files)}개) — PR 분리 필요", files
+    size_note = ""
+    if total > MAX_LINES:
+        exc = _single_new_file_exception(worktree, base, total)
+        if not exc:
+            return False, f"변경 과대(파일 {len(files)}·{total}줄) — PR 분리 필요", files
+        size_note = f" ({exc})"
     diff_text = _git(["diff", base], worktree).stdout
     added = "\n".join(ln for ln in diff_text.splitlines() if ln.startswith("+"))
     if FORBIDDEN_DIFF.search(added):
@@ -512,7 +574,7 @@ def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
     if stale:
         return False, (f"캐시버전 미갱신: {stale[:3]} — index.html의 ?v= 를 올리지 않으면 "
                        "브라우저가 옛 JS를 계속 받아 기능이 반영되지 않는다"), files
-    return True, f"파일 {len(files)}개·{total}줄", files
+    return True, f"파일 {len(files)}개·{total}줄{size_note}", files
 
 
 def _autobump_cache_versions(worktree: Path) -> list[str]:
