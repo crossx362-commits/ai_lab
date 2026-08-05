@@ -42,9 +42,11 @@ h1 { font-size: 1.8rem; margin: 0 0 .25rem; }
 
 .panel h2 { font-size: 1.05rem; margin: 0 0 1rem; }
 
+/* 10rem이어야 입력 5개가 데스크톱에서 한 줄에 들어간다.
+   13rem이면 4칸까지만 잡혀 다섯째 항목이 혼자 다음 줄로 내려가고 오른쪽이 통째로 빈다. */
 form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 1rem;
 }
 
