@@ -108,7 +108,7 @@ const MYPET_TEMPLATE = `
                         </button>
                         <!-- 설정 버튼 -->
                         <button onclick="toggleRoomSettings()" id="room-settings-btn"
-                            class="w-9 h-9 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all shrink-0">
+                            class="w-11 h-11 rounded-xl bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 flex items-center justify-center transition-all shrink-0">
                             <i class="fa-solid fa-gear text-gray-400 hover:text-amber-500 text-sm" id="room-settings-icon"></i>
                         </button>
                     </div>
@@ -310,19 +310,19 @@ const MYPET_TEMPLATE = `
                         <!-- 아이콘 버튼 -->
                         <div class="flex items-center gap-1.5">
                             <button onclick="openHealthLogModal()" title="건강 기록"
-                                class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 flex items-center justify-center transition-all">
+                                class="w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-brand-300 hover:bg-brand-50 flex items-center justify-center transition-all">
                                 <i class="fa-solid fa-notes-medical text-brand-400 text-sm"></i>
                             </button>
                             <button onclick="openHealthReportModal()" title="맞춤 건강 조언"
-                                class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
+                                class="w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
                                 <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-sm"></i>
                             </button>
-                            <button onclick="switchTab('mailbox')" title="우체통" class="relative w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
+                            <button onclick="switchTab('mailbox')" title="우체통" class="relative w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-amber-300 hover:bg-amber-50 flex items-center justify-center transition-all">
                                 <i class="fa-solid fa-envelope text-amber-400 text-sm"></i>
                                 <span id="mailbox-unread-count-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
                             </button>
                             <button onclick="PublicProfile.open()" title="미아방지 QR"
-                                class="w-9 h-9 rounded-xl bg-white border border-gray-200 hover:border-rose-300 hover:bg-rose-50 flex items-center justify-center transition-all">
+                                class="w-11 h-11 rounded-xl bg-white border border-gray-200 hover:border-rose-300 hover:bg-rose-50 flex items-center justify-center transition-all">
                                 <i class="fa-solid fa-qrcode text-rose-400 text-sm"></i>
                             </button>
                         </div>
