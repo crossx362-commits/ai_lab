@@ -2642,7 +2642,7 @@ function renderCustomRoutesList() {
     routes.forEach(r => {
         const item = document.createElement('div');
         const isLoaded = (typeof SIMULATION_ROUTE_PATH !== 'undefined' && SIMULATION_ROUTE_PATH === r.coords);
-        item.className = `p-2.5 rounded-xl flex justify-between items-start text-xs transition-colors border ${isLoaded ? 'bg-brand-50/40 border-brand-300' : 'bg-gray-50 hover:bg-brand-50/30 border-gray-100/60'}`;
+        item.className = `px-2.5 py-2 rounded-xl flex justify-between items-start text-xs transition-colors border ${isLoaded ? 'bg-brand-50/40 border-brand-300' : 'bg-gray-50 hover:bg-brand-50/30 border-gray-100/60'}`;
 
         item.innerHTML = `
             <div class="space-y-1 min-w-0 flex-1 mr-2">
@@ -2652,9 +2652,9 @@ function renderCustomRoutesList() {
                     </button>
                     <span class="font-extrabold text-gray-800 truncate block text-[10px] leading-tight max-w-full">${r.name}</span>
                 </div>
-                <span class="text-[9px] text-brand-600 font-bold font-mono pl-0.5">📏 ${r.distance} km</span>
             </div>
             <div class="flex flex-col gap-1 shrink-0 w-[68px]">
+                <span class="text-[9px] text-brand-600 font-bold font-mono text-right tabular-nums">📏 ${r.distance} km</span>
                 <button onclick="loadCustomRouteOnMap(${r.id})"
                     class="w-full ${isLoaded ? 'bg-brand-500 text-white border-brand-500' : 'bg-white hover:bg-brand-50 text-brand-700 border-brand-200'} font-bold text-[10px] px-2 py-1 rounded-lg border transition-colors">
                     ${isLoaded ? '숨기기' : '지도 표시'}
