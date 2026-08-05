@@ -29,6 +29,24 @@
             .map(function (t) { return t.trim(); })
             .filter(function (t) { return t.length >= 1; });
     }
+    // 등록된 기저질환(만성질환) 텍스트 — 응급정보(petna_emergency_<id>.chronic)에서 읽음.
+    function chronic(pet) {
+        var em = (window.PetPassportRender && typeof window.PetPassportRender.getEmergency === "function")
+            ? window.PetPassportRender.getEmergency(pet) : null;
+        return em && em.chronic ? String(em.chronic).trim() : "";
+    }
+    // 기저질환별 식단 유의점 — 텍스트에 키워드가 걸리면 해당 안내를 노출.
+    function chronicTips(pet) {
+        var txt = chronic(pet);
+        if (!txt) return [];
+        var RULES = [
+            { k: /신장|신부전|콩팥|kidney/i, t: "저나트륨·저인 처방식 위주, 단백질 과다 주의" },
+            { k: /췌장|이자염/i, t: "저지방 식단 유지, 기름진 간식 금지" },
+            { k: /당뇨|혈당/i, t: "당분 낮은 급여, 일정한 식사 시간 유지" },
+            { k: /심장|심부전|heart/i, t: "나트륨 제한, 짠 간식 배제" }
+        ];
+        return RULES.filter(function (r) { return r.k.test(txt); }).map(function (r) { return r.t; });
+    }
     function densityFor(petId) {
         if (window.CalorieTracker && typeof window.CalorieTracker._densityFor === "function") {
             return window.CalorieTracker._densityFor(petId);
@@ -134,6 +152,12 @@
                 return '<div class="mt-2 flex items-start gap-1.5 text-[11px] text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5">' +
                     '<span>⚠️</span><span><b>알러지/기피 성분</b> ' + al.map(esc).join(", ") +
                     ' — 사료·간식 성분표에서 이 성분을 확인하고, <button onclick="if(window.FoodSafety)FoodSafety.open()" class="underline font-bold">급여 가능 음식 검색</button>으로 대조하세요.</span></div>';
+            })() +
+            (function () {
+                var tips = chronicTips(pet);
+                if (!tips.length) return "";
+                return '<div class="mt-2 flex items-start gap-1.5 text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-1.5">' +
+                    '<span>🩺</span><span><b>기저질환(' + esc(chronic(pet)) + ') 식단 유의</b> — ' + tips.map(esc).join(" · ") + '. 처방식·급여 계획은 수의사와 상의하세요.</span></div>';
             })() +
             '<p class="mt-2 text-[10px] text-gray-400 leading-relaxed">※ 룰 기반 참고용 추천입니다. 실제 급여량은 사료 포장 지침·수의사 상담을 우선하세요.</p>' +
             "</div>";
