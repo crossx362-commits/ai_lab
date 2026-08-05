@@ -82,3 +82,7 @@ My project/
 
 # git 내부 lock/temp 잔재가 중단된 작업 뒤 여기로 밀려나는 경우가 있다(2026-08-04)
 _to_delete/
+
+# git worktrees (로컬 전용 — 자동 커밋 에이전트가 쓸어담지 않도록)
+.worktrees/
+.superpowers/
