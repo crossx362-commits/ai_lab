@@ -289,6 +289,14 @@ const AppRouter = {
             }
         });
 
+        // 5.0.1. '더보기' 시트에 접힌 탭이 활성이면 더보기 버튼을 활성 표시
+        const moreBtn = document.getElementById('mobile-more-btn');
+        if (moreBtn) {
+            const inSheet = ['album', 'shop', 'saju', 'settings'].includes(tabName);
+            moreBtn.classList.toggle('text-brand-500', inSheet);
+            moreBtn.classList.toggle('text-gray-400', !inSheet);
+        }
+
         // 5.1. 모바일 상단 헤더 페이지 타이틀 업데이트
         const mobileTitles = {
             mypet: '마이펫',
@@ -345,8 +353,34 @@ function escapeHtml(str) {
 
 function switchTab(tabName) {
     _countTabView(tabName);
+    closeMobileMoreSheet();
     AppRouter.switchTab(tabName);
 }
+
+// 📱 하단바 '더보기' 시트 토글(2026-08-05) — 5칸으로 축약된 하단바에서 접힌 탭 노출
+const MOBILE_MORE_TABS = ['album', 'shop', 'saju', 'settings'];
+function toggleMobileMoreSheet() {
+    const sheet = document.getElementById('mobile-more-sheet');
+    const btn = document.getElementById('mobile-more-btn');
+    if (!sheet) return;
+    const willOpen = sheet.classList.contains('hidden');
+    sheet.classList.toggle('hidden', !willOpen);
+    if (btn) btn.setAttribute('aria-expanded', String(willOpen));
+}
+function closeMobileMoreSheet() {
+    const sheet = document.getElementById('mobile-more-sheet');
+    const btn = document.getElementById('mobile-more-btn');
+    if (sheet) sheet.classList.add('hidden');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+// 시트 바깥을 누르면 닫기(버튼·시트 내부 클릭은 유지)
+document.addEventListener('click', function (e) {
+    const sheet = document.getElementById('mobile-more-sheet');
+    if (!sheet || sheet.classList.contains('hidden')) return;
+    const btn = document.getElementById('mobile-more-btn');
+    if (sheet.contains(e.target) || (btn && btn.contains(e.target))) return;
+    closeMobileMoreSheet();
+});
 
 // 경량 탭뷰 계측(2026-07-21 회의 결정) — 외부 analytics 없이 localStorage 카운터만.
 // 탭 우선순위 재정렬(조화도 강등)이 정성 판단이었어서, 2주 축적 후 실데이터로

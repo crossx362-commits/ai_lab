@@ -51,7 +51,7 @@
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="css/leaflet.css">
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css?v=172">
+    <link rel="stylesheet" href="css/style.css?v=173">
     <link rel="stylesheet" href="css/modern-design.css?v=163">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>
@@ -181,7 +181,7 @@
     <script defer src="js/pet-passport.js?v=1"></script>
 
     <!-- (4) 메인 라우터 및 부트스트랩 진입점 -->
-    <script defer src="js/app.js?v=166"></script>
+    <script defer src="js/app.js?v=167"></script>
 </head>
 
 <body class="text-gray-800 bg-slate-50">
@@ -266,25 +266,33 @@
             <img class="mobile-nav-icon" src="images/nav-icons/social.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">소셜</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400" data-tab="album" onclick="switchTab('album')">
-            <img class="mobile-nav-icon" src="images/nav-icons/album.png" alt="" aria-hidden="true">
-            <span class="text-[10px] font-bold mt-0.5">일기장</span>
+        <!-- 더보기(2026-08-05): 하단바를 5칸으로 축약하고 나머지 탭(일기장·펫라이프·조화도·설정)을
+             접이식 시트로 옮긴다. 시트를 #mobile-navbar 안에 두어 모든 탭이 여전히 .mobile-tab-btn
+             으로 도달 가능하고 순서 회귀 테스트(test_mobile_viewport_layout)도 유지된다. -->
+        <button type="button" id="mobile-more-btn" class="mobile-more-btn text-gray-400"
+                aria-haspopup="true" aria-expanded="false" aria-controls="mobile-more-sheet"
+                onclick="toggleMobileMoreSheet()">
+            <span class="mobile-more-icon" aria-hidden="true">⋯</span>
+            <span class="text-[10px] font-bold mt-0.5">더보기</span>
         </button>
-        <button class="mobile-tab-btn text-gray-400" data-tab="shop" onclick="switchTab('shop')">
-            <img class="mobile-nav-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">
-            <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
-        </button>
-        <!-- 조화도·설정은 데스크톱 헤더엔 있는데 모바일 하단바에만 빠져 있었다(2026-07-25 발견):
-             조화도는 마이펫 카드 안 작은 링크로만, 설정은 아예 진입 경로가 없어 모바일에서
-             도달 불가였다. 데스크톱과 동일하게 8탭 전부 노출한다. -->
-        <button class="mobile-tab-btn text-gray-400" data-tab="saju" onclick="switchTab('saju')">
-            <img class="mobile-nav-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">
-            <span class="text-[10px] font-bold mt-0.5">조화도</span>
-        </button>
-        <button class="mobile-tab-btn text-gray-400" data-tab="settings" onclick="switchTab('settings')">
-            <img class="mobile-nav-icon" src="images/nav-icons/settings.png" alt="" aria-hidden="true">
-            <span class="text-[10px] font-bold mt-0.5">설정</span>
-        </button>
+        <div id="mobile-more-sheet" class="mobile-more-sheet hidden" role="menu" aria-label="더보기 메뉴">
+            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="album" onclick="switchTab('album')">
+                <img class="mobile-nav-icon" src="images/nav-icons/album.png" alt="" aria-hidden="true">
+                <span class="text-[10px] font-bold mt-0.5">일기장</span>
+            </button>
+            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="shop" onclick="switchTab('shop')">
+                <img class="mobile-nav-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">
+                <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
+            </button>
+            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="saju" onclick="switchTab('saju')">
+                <img class="mobile-nav-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">
+                <span class="text-[10px] font-bold mt-0.5">조화도</span>
+            </button>
+            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="settings" onclick="switchTab('settings')">
+                <img class="mobile-nav-icon" src="images/nav-icons/settings.png" alt="" aria-hidden="true">
+                <span class="text-[10px] font-bold mt-0.5">설정</span>
+            </button>
+        </div>
     </nav>
 
     <!-- ⚠️ 로그인 유도 모달 -->
