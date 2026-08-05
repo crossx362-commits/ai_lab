@@ -9,7 +9,7 @@ const SETTINGS_TEMPLATE = `
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
                     <i class="fa-solid fa-toggle-on text-brand-500 mr-2"></i>운영 서비스 상태
                 </h3>
-                <span class="text-[10px] font-black text-gray-400 bg-gray-50 px-2 py-1 rounded-full">env gate</span>
+                <span class="text-[10px] font-black text-gray-400 bg-gray-50 px-2.5 rounded-full h-6 inline-flex items-center">env gate</span>
             </div>
             <div id="service-status-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
             <p class="text-[10px] text-gray-400 font-medium leading-relaxed px-1">
@@ -325,7 +325,7 @@ const SETTINGS_TEMPLATE = `
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
                     <i class="fa-solid fa-pen-to-square text-brand-500 mr-2"></i>1:1 안심 신문고 (문의 게시판) ✍️
                 </h3>
-                <button onclick="openInquiryWriteModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[10px] py-1.5 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1">
+                <button onclick="openInquiryWriteModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[10px] h-6 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1">
                     <i class="fa-solid fa-feather-pointed"></i>문의 접수하기
                 </button>
             </div>
