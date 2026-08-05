@@ -19,6 +19,20 @@ function closeMonthlyReportModal() {
     }
 }
 
+// 통일된 빈 상태 표기: 데이터 있으면 원래 강조색, 없으면 중립 톤(gray-400) + '기록 전'
+function setReportStat(el, hasData, value) {
+    if (!el) return;
+    if (hasData) {
+        el.textContent = value;
+        el.style.color = '';
+        el.style.fontSize = '';
+    } else {
+        el.textContent = '기록 전';
+        el.style.color = '#9ca3af';
+        el.style.fontSize = '1.5rem';
+    }
+}
+
 function updateMonthlyReportData() {
     const pet = (typeof getActivePet === 'function') ? getActivePet() : null;
     const petName = pet?.name || '댕이';
@@ -34,12 +48,12 @@ function updateMonthlyReportData() {
     // 건강 점수
     const score = (typeof calcHealthScore === 'function') ? calcHealthScore() : 0;
     const scoreEl = document.getElementById('report-modal-health-score');
-    if (scoreEl) scoreEl.textContent = score || '--';
+    setReportStat(scoreEl, !!score, String(score));
 
     // 연속 기록
     const streak = (typeof calcHealthStreak === 'function') ? calcHealthStreak() : 0;
     const streakEl = document.getElementById('report-modal-streak');
-    if (streakEl) streakEl.textContent = streak ? `${streak}일` : '--일';
+    setReportStat(streakEl, !!streak, `${streak}일`);
 
     const thisMonth = now.toISOString().slice(0, 7);
     const getRecordDate = (record) => {
@@ -82,8 +96,8 @@ function updateMonthlyReportData() {
 
     const foodEl = document.getElementById('report-modal-food');
     const waterEl = document.getElementById('report-modal-water');
-    if (foodEl) foodEl.textContent = avgFood ? `${avgFood}g` : '--g';
-    if (waterEl) waterEl.textContent = avgWater ? `${avgWater}ml` : '--ml';
+    setReportStat(foodEl, !!avgFood, `${avgFood}g`);
+    setReportStat(waterEl, !!avgWater, `${avgWater}ml`);
 
     // 일정 준수율 계산
     const careState = (typeof AppStore !== 'undefined' && AppStore.getState)
