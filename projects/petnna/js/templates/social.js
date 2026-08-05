@@ -130,7 +130,7 @@ const SOCIAL_TEMPLATE = `
                 </div>
                 <textarea id="feed-input-content" rows="3"
                     placeholder="우리 아이의 이쁘고 귀여운 행동, 혹은 자랑하고 싶은 소식을 이웃들과 나눠보세요...!"
-                    class="w-full text-xs border border-gray-200 rounded-2xl p-4 outline-none focus:border-brand-500 resize-none bg-gray-50/20"></textarea>
+                    class="w-full min-h-[112px] text-xs border border-gray-200 rounded-2xl p-4 outline-none focus:border-brand-500 resize-none bg-gray-50/20"></textarea>
 
                 <!-- 직접 사진 첨부 미리보기 영역 -->
                 <div id="feed-photo-preview-container" class="hidden relative w-32 aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-inner border border-gray-200 group">
@@ -195,17 +195,17 @@ const SOCIAL_TEMPLATE = `
                         <button onclick="toggleAttachHealthLog()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
                             <i class="fa-solid fa-notes-medical mr-1 text-teal-500"></i> 건강 기록 첨부
                         </button>
-                        <button onclick="insertHashtags()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
+                        <button onclick="insertHashtags()" class="bg-transparent border border-gray-200 hover:border-brand-300 hover:bg-brand-50/40 text-gray-500 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
                             <i class="fa-solid fa-hashtag mr-1 text-brand-400"></i> 해시태그
                         </button>
-                        <button onclick="insertQuestionTag()" class="bg-gray-50 hover:bg-amber-50 text-gray-600 hover:text-amber-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
+                        <button onclick="insertQuestionTag()" class="bg-transparent border border-gray-200 hover:border-amber-300 hover:bg-amber-50/40 text-gray-500 hover:text-amber-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
                             <i class="fa-solid fa-circle-question mr-1 text-amber-500"></i> 질문하기
                         </button>
-                        <button onclick="insertMeetupTemplate()" class="bg-gray-50 hover:bg-brand-50 text-gray-600 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
+                        <button onclick="insertMeetupTemplate()" class="bg-transparent border border-gray-200 hover:border-brand-300 hover:bg-brand-50/40 text-gray-500 hover:text-brand-600 font-bold text-xs py-3 px-3 rounded-xl transition-all flex items-center">
                             <i class="fa-solid fa-people-group mr-1 text-brand-500"></i> 산책 메이트 모집
                         </button>
                     </div>
-                    <button onclick="submitFeedPost()" class="bg-brand-500 hover:bg-brand-600 text-white font-black text-xs py-3 px-6 rounded-xl shadow-md transition-colors">
+                    <button onclick="submitFeedPost()" class="bg-brand-600 hover:bg-brand-700 text-white font-black text-xs py-3 px-6 rounded-xl shadow-md transition-colors">
                         자랑 발행 🚀
                     </button>
                 </div>
