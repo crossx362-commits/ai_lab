@@ -124,6 +124,34 @@
         return toks.some(function (t) { return hay.indexOf(t) !== -1 || (name && t.indexOf(name) !== -1); });
     }
 
+    // 활성 펫의 기저질환(만성질환) 텍스트 — 응급정보(petna_emergency_<id>.chronic, 자유입력)에서 읽음.
+    function petConditionText() {
+        var pet = (typeof window.getActivePet === "function") ? window.getActivePet() : null;
+        if (!pet) return "";
+        var em = (window.PetPassportRender && typeof window.PetPassportRender.getEmergency === "function")
+            ? window.PetPassportRender.getEmergency(pet) : null;
+        return em && em.chronic ? String(em.chronic) : "";
+    }
+
+    // 기저질환 → 식이 위험 규칙. cond가 질환 텍스트에 걸리면 활성화되고,
+    // risk가 음식 이름/별칭/설명에 걸리면 그 음식이 해당 질환에 주의 대상.
+    var CONDITION_RULES = [
+        { cond: /신장|신부전|콩팥|kidney/i, risk: /소금|짠|나트륨|염분|고염|가공육|햄|베이컨|소시지/, warn: "나트륨·인이 높아 신장에 부담" },
+        { cond: /췌장|이자염/i, risk: /지방|기름|비계|고지방|베이컨|삼겹|버터|치즈|튀김/, warn: "고지방이라 췌장염을 악화시킬 수 있음" },
+        { cond: /당뇨|혈당/i, risk: /당분|설탕|시럽|꿀|당이|과당/, warn: "당분이 높아 혈당을 급격히 올림" },
+        { cond: /심장|심부전|heart/i, risk: /소금|짠|나트륨|염분|고염|가공육|햄|베이컨|소시지/, warn: "나트륨 제한이 필요" }
+    ];
+
+    // 활성 펫 기저질환과 겹치는 규칙들의 경고 문구 배열.
+    function conditionHits(f) {
+        var txt = petConditionText();
+        if (!txt) return [];
+        var hay = String(f.name || "") + " " + String(f.aka || "") + " " + String(f.note || "");
+        return CONDITION_RULES.filter(function (r) {
+            return r.cond.test(txt) && r.risk.test(hay);
+        }).map(function (r) { return r.warn; });
+    }
+
     function badge(level) {
         var L = LEVELS[level] || LEVELS.caution;
         return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ' + L.cls + '">' + L.dot + " " + L.label + "</span>";
@@ -131,6 +159,10 @@
 
     function allergyBadge() {
         return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border text-orange-700 bg-orange-50 border-orange-200">⚠️ 알러지 등록</span>';
+    }
+
+    function conditionBadge() {
+        return '<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border text-rose-700 bg-rose-50 border-rose-200">🩺 기저질환 주의</span>';
     }
 
     function matches(f, q) {
@@ -143,16 +175,19 @@
         var level = state.species === "cat" ? f.cat : f.dog;
         var danger = level === "danger";
         var allergy = allergyHit(f);
+        var conds = conditionHits(f);
+        var flagged = allergy || conds.length > 0;
         var link = danger
             ? '<button onclick="FoodSafety.emergency()" class="mt-1.5 text-[11px] font-bold text-rose-600 underline">🚨 먹었어요 — 응급 카드 열기</button>'
             : "";
-        return '<div class="rounded-xl border px-3 py-2.5 ' + (allergy ? "border-orange-200 bg-orange-50/40" : "border-gray-100") + '">' +
+        return '<div class="rounded-xl border px-3 py-2.5 ' + (flagged ? "border-orange-200 bg-orange-50/40" : "border-gray-100") + '">' +
             '<div class="flex items-center justify-between gap-2 flex-wrap">' +
             '<div class="flex items-center gap-2 min-w-0"><span class="text-lg shrink-0">' + f.emoji + "</span>" +
             '<span class="text-sm font-bold text-gray-900 truncate">' + esc(f.name) + "</span></div>" +
-            '<div class="flex items-center gap-1">' + (allergy ? allergyBadge() : "") + badge(level) + "</div></div>" +
+            '<div class="flex items-center gap-1">' + (allergy ? allergyBadge() : "") + (conds.length ? conditionBadge() : "") + badge(level) + "</div></div>" +
             '<p class="text-[11px] text-gray-600 leading-relaxed mt-1">' + esc(f.note) + "</p>" +
             (allergy ? '<p class="text-[11px] font-bold text-orange-700 mt-1">⚠️ 우리 아이 프로필에 등록된 알러지/기피 성분과 겹쳐요 — 급여 전 확인하세요.</p>' : "") +
+            (conds.length ? '<p class="text-[11px] font-bold text-rose-700 mt-1">🩺 등록된 기저질환 주의 — ' + esc(conds.join(" · ")) + '. 급여 전 수의사와 상의하세요.</p>' : "") +
             link + "</div>";
     }
 
