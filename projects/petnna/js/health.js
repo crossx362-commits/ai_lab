@@ -139,9 +139,11 @@ function renderHealthTab() {
     if (typeof renderWeeklyReportCard === 'function') renderWeeklyReportCard();
 
     // 상단 예측웰니스·주간리포트 접기: 실제 이상 소견(amber 경고 카드)이 있으면 모바일에서도
-    // 자동으로 펼쳐 놓치지 않게 하고, 평상시엔 접힌 1줄 요약으로 둔다(데스크톱은 CSS로 항상 펼침).
+    // 자동으로 펼쳐 놓치지 않게 하고, 평상시엔 접힌 1줄 요약으로 둔다.
+    // 데스크톱(lg=1024px+)에선 open 속성을 켜 본문을 실제로 펼친다 — CSS ::details-content
+    // 오버라이드(Chrome131+ 전용)에만 의존하지 않고 브라우저 무관하게 노출(요약은 CSS로 숨김).
     var _topFold = document.getElementById('health-top-analysis');
-    if (_topFold) _topFold.open = !!_topFold.querySelector('.border-amber-200');
+    if (_topFold) _topFold.open = (window.innerWidth >= 1024) || !!_topFold.querySelector('.border-amber-200');
 
     // 돌봄 스케줄러 카드(오늘의 일정·준수율 배지·달력·다가오는 돌봄) — 마이펫→건강 탭
     // 이전(99757d36) 때 템플릿 id에 -health 접미사가 붙으며 이 호출들이 빠져 카드가
