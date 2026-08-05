@@ -9,6 +9,7 @@
     "use strict";
 
     var LS_KEY = "petna_expense_records"; // [{ cat, amount, memo, date(YYYY-MM-DD) }]
+    var BUDGET_KEY = "petna_expense_budgets"; // { cat: 월예산(원) }
 
     var CATS = [
         { key: "food", label: "사료·간식", emoji: "🍚" },
@@ -29,6 +30,8 @@
 
     function loadAll() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch (e) { return []; } }
     function saveAll(list) { localStorage.setItem(LS_KEY, JSON.stringify(list)); }
+    function loadBudgets() { try { return JSON.parse(localStorage.getItem(BUDGET_KEY)) || {}; } catch (e) { return {}; } }
+    function saveBudgets(b) { localStorage.setItem(BUDGET_KEY, JSON.stringify(b)); }
 
     function catOf(key) {
         for (var i = 0; i < CATS.length; i++) if (CATS[i].key === key) return CATS[i];
@@ -58,6 +61,61 @@
         return list;
     }
 
+    // month(YYYY-MM)에서 delta개월 이동한 YYYY-MM
+    function shiftMonth(month, delta) {
+        var y = parseInt(month.slice(0, 4), 10);
+        var m = parseInt(month.slice(5, 7), 10) - 1 + delta;
+        return new Date(y, m, 1).toISOString().slice(0, 7);
+    }
+
+    // month에서 끝나는 최근 n개월 월별 총지출 [{month,total}]
+    function monthlyTotals(month, n) {
+        var recs = loadAll();
+        var out = [];
+        for (var i = n - 1; i >= 0; i--) {
+            var mm = shiftMonth(month, -i);
+            var t = recs.filter(function (r) { return (r.date || "").slice(0, 7) === mm; })
+                .reduce(function (a, r) { return a + (r.amount || 0); }, 0);
+            out.push({ month: mm, total: t });
+        }
+        return out;
+    }
+
+    // 값 배열을 미니 SVG 스파크라인으로
+    function sparkline(vals) {
+        if (!vals.length) return "";
+        var w = 120, h = 28, pad = 3;
+        var max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
+        var range = (max - min) || 1;
+        var step = vals.length > 1 ? (w - 2 * pad) / (vals.length - 1) : 0;
+        var pts = vals.map(function (v, i) {
+            var x = pad + i * step;
+            var y = h - pad - ((v - min) / range) * (h - 2 * pad);
+            return x.toFixed(1) + "," + y.toFixed(1);
+        });
+        var last = pts[pts.length - 1].split(",");
+        return '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+            '<polyline fill="none" stroke="#f0a05a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="' + pts.join(" ") + '"></polyline>' +
+            '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="2.5" fill="#e07b2f"></circle></svg>';
+    }
+
+    // 예산 준수·지출 추세로 0~100 지출 건강점수
+    function healthScore(month) {
+        var sum = summarize(month);
+        var budgets = loadBudgets();
+        var score = 100, budgeted = 0, over = 0;
+        sum.byCat.forEach(function (c) {
+            var b = budgets[c.key];
+            if (b > 0) {
+                budgeted++;
+                if (c.sum > b) { over++; score -= Math.min(30, Math.round(((c.sum - b) / b) * 30)); }
+            }
+        });
+        var totals = monthlyTotals(month, 2);
+        if (totals[0].total > 0 && totals[1].total > totals[0].total * 1.2) score -= 10;
+        return { score: Math.max(0, Math.min(100, score)), budgeted: budgeted, over: over };
+    }
+
     var _selMonth = null;
 
     // ── 위젯(건강 탭 삽입) ─────────────────────────────────────
@@ -66,6 +124,7 @@
         if (!el) return;
         var month = _selMonth || currentMonth();
         var sum = summarize(month);
+        var budgets = loadBudgets();
 
         var monthOpts = months().map(function (m) {
             return '<option value="' + m + '"' + (m === month ? " selected" : "") + ">" + esc(m) + "</option>";
@@ -73,13 +132,44 @@
 
         var bars = sum.byCat.map(function (c) {
             var pct = sum.total > 0 ? Math.round((c.sum / sum.total) * 100) : 0;
+            var b = budgets[c.key] || 0;
+            var over = b > 0 && c.sum > b;
+            var budgetPct = b > 0 ? Math.round((c.sum / b) * 100) : 0;
+            var badge = b > 0
+                ? (over
+                    ? '<span class="ml-1 text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full">예산초과 ' + budgetPct + "%</span>"
+                    : '<span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">' + budgetPct + "%</span>")
+                : "";
             return '<div class="py-1.5">' +
                 '<div class="flex items-center justify-between text-xs mb-1">' +
-                '<span class="text-gray-700">' + c.emoji + " " + esc(c.label) + "</span>" +
-                '<span class="text-brand-600 font-bold">' + fmt(c.sum) + "원</span></div>" +
+                '<span class="text-gray-700">' + c.emoji + " " + esc(c.label) + badge + "</span>" +
+                '<span class="' + (over ? "text-red-500" : "text-brand-600") + ' font-bold">' + fmt(c.sum) + "원" +
+                (b > 0 ? ' <span class="text-gray-300 font-normal">/ ' + fmt(b) + "</span>" : "") + "</span></div>" +
                 '<div class="h-2 rounded-full bg-gray-100 overflow-hidden">' +
-                '<div class="h-full rounded-full bg-brand-400" style="width:' + pct + '%"></div></div></div>';
+                '<div class="h-full rounded-full ' + (over ? "bg-red-400" : "bg-brand-400") + '" style="width:' + pct + '%"></div></div></div>';
         }).join("");
+
+        var insight = "";
+        if (sum.count || Object.keys(budgets).length) {
+            var hs = healthScore(month);
+            var totals = monthlyTotals(month, 6);
+            var prev = totals.length >= 2 ? totals[totals.length - 2].total : 0;
+            var delta = prev > 0 ? Math.round(((sum.total - prev) / prev) * 100) : 0;
+            var deltaLabel = prev > 0 ? (delta > 0 ? "▲ " + delta + "%" : delta < 0 ? "▼ " + Math.abs(delta) + "%" : "─ 0%") : "—";
+            var deltaColor = delta > 0 ? "text-red-500" : delta < 0 ? "text-emerald-600" : "text-gray-400";
+            var scoreColor = hs.score >= 80 ? "text-emerald-600" : hs.score >= 60 ? "text-amber-500" : "text-red-500";
+            insight =
+                '<div class="mb-3 rounded-xl bg-gray-50 px-3 py-2.5">' +
+                '<div class="flex items-center justify-between mb-1.5">' +
+                '<span class="text-[11px] font-bold text-gray-500">지출 건강점수' +
+                (hs.over ? ' <span class="text-red-500">· 예산초과 ' + hs.over + "건</span>" : "") + "</span>" +
+                '<span class="text-sm font-extrabold ' + scoreColor + '">' + hs.score + '<span class="text-[10px] text-gray-400 font-normal">/100</span></span></div>' +
+                '<div class="flex items-end justify-between gap-2">' +
+                '<div class="flex-1 min-w-0">' + sparkline(totals.map(function (t) { return t.total; })) + "</div>" +
+                '<div class="text-right shrink-0">' +
+                '<div class="text-[10px] text-gray-400">전월 대비</div>' +
+                '<div class="text-xs font-bold ' + deltaColor + '">' + deltaLabel + "</div></div></div></div>";
+        }
 
         el.innerHTML =
             '<div class="card-modern p-5">' +
@@ -90,7 +180,10 @@
             "</div>" +
             '<div class="flex items-center justify-between mb-3">' +
             '<select onchange="ExpenseTracker.selectMonth(this.value)" class="rounded-lg border border-gray-200 px-2 py-1 text-xs focus:border-brand-400 focus:outline-none">' + monthOpts + "</select>" +
-            '<span class="text-sm font-extrabold text-gray-900">합계 ' + fmt(sum.total) + "원</span></div>" +
+            '<div class="flex items-center gap-2">' +
+            '<button onclick="ExpenseTracker.openBudget()" class="text-xs font-bold text-brand-600 hover:text-brand-700">🎯 예산 설정</button>' +
+            '<span class="text-sm font-extrabold text-gray-900">합계 ' + fmt(sum.total) + "원</span></div></div>" +
+            insight +
             (sum.count ? '<div>' + bars + "</div>"
                 : '<p class="text-[11px] text-gray-300 py-4 text-center">이 달 지출 기록이 없어요. 지출을 추가해 보세요.</p>') +
             "</div>";
@@ -174,6 +267,50 @@
 
     function close() { var el = document.getElementById("expense-overlay"); if (el) el.remove(); }
 
+    // ── 카테고리별 월 예산 설정 모달 ──────────────────────────
+    function openBudget() {
+        closeBudget();
+        var budgets = loadBudgets();
+        var rows = CATS.map(function (c) {
+            var v = budgets[c.key] || "";
+            return '<div class="flex items-center justify-between gap-2">' +
+                '<label class="text-sm text-gray-700">' + c.emoji + " " + esc(c.label) + "</label>" +
+                '<input id="budget-' + c.key + '" type="number" min="0" step="1000" value="' + v + '" placeholder="미설정" ' +
+                'class="w-28 rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-right focus:border-brand-400 focus:outline-none"></div>';
+        }).join("");
+
+        var overlay = document.createElement("div");
+        overlay.id = "budget-overlay";
+        overlay.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4";
+        overlay.innerHTML =
+            '<div class="w-full max-w-md rounded-2xl bg-white shadow-2xl">' +
+            '<div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">' +
+            '<h3 class="text-base font-extrabold text-gray-900">🎯 카테고리별 월 예산</h3>' +
+            '<button onclick="ExpenseTracker.closeBudget()" class="text-gray-300 hover:text-gray-500 text-xl leading-none">&times;</button></div>' +
+            '<div class="px-5 py-4 space-y-2.5">' + rows +
+            '<p class="text-[10px] text-gray-400 pt-1">예산을 정하면 지출이 예산을 넘을 때 경고 배지와 건강점수에 반영돼요.</p></div>' +
+            '<div class="px-5 py-3 border-t border-gray-100 flex gap-2">' +
+            '<button onclick="ExpenseTracker.submitBudget()" class="flex-1 rounded-xl bg-brand-500 hover:bg-brand-600 text-white py-2.5 text-sm font-bold">저장</button>' +
+            "</div></div>";
+        overlay.addEventListener("click", function (e) { if (e.target === overlay) closeBudget(); });
+        document.body.appendChild(overlay);
+    }
+
+    function submitBudget() {
+        var budgets = {};
+        CATS.forEach(function (c) {
+            var el = document.getElementById("budget-" + c.key);
+            var v = el ? parseFloat(el.value) : NaN;
+            if (isFinite(v) && v > 0) budgets[c.key] = v;
+        });
+        saveBudgets(budgets);
+        closeBudget();
+        toast("월 예산을 저장했어요 🎯");
+        renderWidget("expense-tracker-widget");
+    }
+
+    function closeBudget() { var el = document.getElementById("budget-overlay"); if (el) el.remove(); }
+
     // 병원 카테고리일 때만 제보 옵션을 보인다
     function _toggleVetReport() {
         var cat = (document.getElementById("expense-cat") || {}).value;
@@ -191,5 +328,6 @@
     }
 
     window.ExpenseTracker = { open: open, submit: submit, close: close, selectMonth: selectMonth,
+                              openBudget: openBudget, submitBudget: submitBudget, closeBudget: closeBudget,
                               _toggleVetReport: _toggleVetReport, renderWidget: renderWidget };
 })();
