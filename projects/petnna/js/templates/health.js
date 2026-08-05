@@ -456,6 +456,23 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
+            <!-- 사료/간식 바코드 스캔 — Open Pet Food Facts 성분 조회 + 알러지 대조 (나무 P3) -->
+            <button onclick="FoodScanner.open()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 text-left group hover:scale-[1.02] transition-all">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="text-4xl">📷</div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">바코드 스캔</h3>
+                            <p class="text-xs text-indigo-600 mt-1">사료·간식 성분 조회</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500">알러지 성분 자동 대조</p>
+                    <i class="fa-solid fa-barcode text-indigo-500 text-xl group-hover:scale-110 transition-transform"></i>
+                </div>
+            </button>
+
         </div>
 
         <!-- 저빈도 항목은 접어서 모바일 스크롤 단축 (미오 P3, 2026-07-28) -->
