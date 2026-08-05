@@ -370,6 +370,83 @@ function renderMedicationAdherenceCard() {
         </div>`;
 }
 
+// ── 투약·케어 순응도 주간 리포트 ──────────────────────────────
+// 최근 7일(오늘 포함) 동안 투약(medicine) 일정의 예정 대비 완료를 집계해
+// 주간 이행률(%)·연속 스트릭·놓친 투약 목록을 만든다. (나무 백로그 P2)
+function getWeeklyCareComplianceReport() {
+    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const petId = activePet ? activePet.id : null;
+    const belongs = (o) => petId == null || o.petId == null || o.petId === petId;
+
+    const now = new Date();
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+
+    let expected = 0;
+    let completed = 0;
+    const missed = [];
+    careSchedules.schedules.forEach(s => {
+        if (s.type !== 'medicine' || !belongs(s)) return;
+        const exp = countScheduledOccurrences(s, weekStart, now);
+        if (exp === 0) return;
+        const done = careSchedules.completionHistory.filter(c => {
+            if (c.scheduleId !== s.id || c.type !== 'medicine') return false;
+            const d = new Date(c.completedAt);
+            return d >= weekStart && d <= now;
+        }).length;
+        const doneCapped = Math.min(done, exp);
+        expected += exp;
+        completed += doneCapped;
+        if (doneCapped < exp) missed.push({ title: s.title, missed: exp - doneCapped, expected: exp });
+    });
+
+    const rate = expected === 0 ? null : Math.min(100, Math.round((completed / expected) * 100));
+    const { streak, doneToday } = (typeof getMedicationStreak === 'function') ? getMedicationStreak() : { streak: 0, doneToday: false };
+    missed.sort((a, b) => b.missed - a.missed);
+    return { expected, completed, rate, streak, doneToday, missed };
+}
+
+// 주간 순응도 리포트 카드 렌더링
+function renderWeeklyCareReport() {
+    const el = document.getElementById('weekly-care-report-card');
+    if (!el) return;
+    const { expected, completed, rate, streak, missed } = getWeeklyCareComplianceReport();
+
+    if (rate === null) {
+        el.innerHTML = '';
+        return;
+    }
+
+    const barColor = rate >= 80 ? 'bg-emerald-500' : rate >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+    const rateText = rate >= 80 ? 'text-emerald-700' : rate >= 50 ? 'text-amber-700' : 'text-rose-700';
+    const streakBadge = streak > 0
+        ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-orange-50 text-orange-600">🔥 ${streak}일 연속</span>`
+        : '';
+    const missedHtml = missed.length === 0
+        ? `<p class="text-[10px] text-emerald-600 font-bold mt-1.5">🎉 이번 주 놓친 투약이 없어요!</p>`
+        : `<div class="mt-1.5 space-y-0.5">
+                <p class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">놓친 투약</p>
+                ${missed.slice(0, 3).map(m => `<p class="text-[10px] text-rose-600">💊 ${m.title} · ${m.missed}회 놓침</p>`).join('')}
+                ${missed.length > 3 ? `<p class="text-[9px] text-gray-400">외 ${missed.length - 3}건</p>` : ''}
+           </div>`;
+
+    el.innerHTML = `
+        <div class="rounded-xl border border-gray-200 bg-white p-3">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-black text-gray-800">📈 이번 주 투약 순응도</span>
+                ${streakBadge}
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="h-full ${barColor} rounded-full transition-all" style="width:${rate}%"></div>
+                </div>
+                <span class="text-xs font-black ${rateText}">${rate}%</span>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-1">최근 7일 ${completed}/${expected}회 완료</p>
+            ${missedHtml}
+        </div>`;
+}
+
 // 처방약 리필: 남은 일수 계산 (총 수량 / 1일 투여 횟수 - 경과 일수)
 function getMedicationRefillInfo(schedule) {
     if (!schedule || schedule.type !== 'medicine') return null;
@@ -407,6 +484,7 @@ function renderRefillBadge(schedule) {
 // 돌봄 스케줄러 렌더링
 function renderCareScheduler() {
     if (typeof renderMedicationAdherenceCard === 'function') renderMedicationAdherenceCard();
+    if (typeof renderWeeklyCareReport === 'function') renderWeeklyCareReport();
     const container = document.getElementById('care-scheduler-container');
     if (!container) return;
 
