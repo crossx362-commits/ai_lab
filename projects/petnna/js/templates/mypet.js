@@ -280,12 +280,12 @@ const MYPET_TEMPLATE = `
                         <div class="flex items-center gap-2 mb-1">
                             <div class="flex items-center gap-1 shrink-0">
                                 <span id="butler-condition-emoji" class="text-sm">🧔</span>
-                                <span class="text-[11px] font-black text-gray-600">집사</span>
+                                <span class="text-xs font-medium text-gray-500">집사</span>
                             </div>
                             <div class="flex-1 min-w-0 bg-gray-200 h-1.5 rounded-full overflow-hidden">
                                 <div id="butler-condition-bar" class="bg-brand-400 h-full transition-all duration-700" style="width:85%"></div>
                             </div>
-                            <span class="font-mono text-sm font-extrabold text-gray-700 shrink-0" id="butler-condition-pct">85%</span>
+                            <span class="font-mono text-base font-semibold text-gray-700 shrink-0" id="butler-condition-pct">85%</span>
                         </div>
                         <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
@@ -293,12 +293,12 @@ const MYPET_TEMPLATE = `
                         <div class="flex items-center gap-2 mb-1">
                             <div class="flex items-center gap-1 shrink-0">
                                 <span id="pet-condition-emoji" class="text-sm">🐕</span>
-                                <span class="text-[11px] font-black text-amber-700">펫</span>
+                                <span class="text-xs font-medium text-amber-600">펫</span>
                             </div>
                             <div class="flex-1 min-w-0 bg-amber-100 h-1.5 rounded-full overflow-hidden">
                                 <div id="pet-condition-bar" class="bg-amber-400 h-full transition-all duration-700" style="width:90%"></div>
                             </div>
-                            <span class="font-mono text-sm font-extrabold text-amber-600 shrink-0" id="pet-condition-pct">90%</span>
+                            <span class="font-mono text-base font-semibold text-amber-600 shrink-0" id="pet-condition-pct">90%</span>
                         </div>
                         <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
