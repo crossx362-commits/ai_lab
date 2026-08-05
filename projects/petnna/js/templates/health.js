@@ -7,8 +7,8 @@ const HEALTH_TEMPLATE = `
          (2026-07-26 오너 지시). 헤더는 제목·컨트롤뿐이라 아래가 비었고, 상태 두 줄도
          짧아 카드 두 장으로 나뉠 이유가 없었다. card-merge가 내부 테두리를 지우고
          행 사이에 구분선을 넣는다. -->
-    <div class="glass rounded-2xl shadow-soft-lg border border-brand-100/50 card-merge overflow-hidden lg:grid lg:grid-cols-2 lg:gap-x-4 lg:items-start">
-        <div class="p-5 lg:col-span-2">
+    <div class="glass rounded-2xl shadow-soft-lg border border-brand-100/50 overflow-hidden">
+        <div class="p-5">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-2xl flex items-center justify-center shadow-soft">
@@ -33,11 +33,26 @@ const HEALTH_TEMPLATE = `
         </div>
         </div>
 
-        <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
-        <div id="wellness-anomaly-card"></div>
+        <!-- 예측 웰니스·주간 리포트: 데이터가 적을 땐 큰 빈 카드 2장이 모바일에서 핵심 '오늘의
+             기록'을 아래로 밀어냈다. <details>로 접힌 1줄 요약으로 축소해 오늘의 기록을 먼저
+             노출한다(미오 P2, 2026-08-05). 데스크톱(lg)에서는 요약을 숨기고 본문을 항상 펼쳐
+             기존 2컬럼 레이아웃을 유지한다(css/style.css .health-top-analysis). 실제 이상
+             소견(amber 카드)이 있으면 renderHealthTab이 open 속성을 켜 모바일에서도 자동 노출. -->
+        <details id="health-top-analysis" class="health-top-analysis group/topfold border-t border-gray-100">
+            <summary class="lg:hidden flex items-center gap-2 px-5 py-3 cursor-pointer list-none select-none text-sm font-semibold text-gray-600">
+                <span class="text-lg">🔮</span>
+                <span>예측 웰니스 · 주간 리포트</span>
+                <span class="text-xs font-normal text-gray-400">건강 신호 요약</span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-gray-400 ml-auto transition-transform group-open/topfold:rotate-180"></i>
+            </summary>
+            <div class="health-top-analysis-body lg:grid lg:grid-cols-2 lg:gap-x-4 lg:items-start">
+                <!-- 🔮 예측 웰니스 이상감지 (wellness-anomaly.js가 채움) -->
+                <div id="wellness-anomaly-card"></div>
 
-        <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
-        <div id="weekly-report-card"></div>
+                <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
+                <div id="weekly-report-card"></div>
+            </div>
+        </details>
     </div>
 
     <!-- 펫이 없을 때 — 위젯들이 '--g / 0회'만 늘어놓는 대신 등록을 유도한다

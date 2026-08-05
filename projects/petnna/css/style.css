@@ -1546,6 +1546,34 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
     border-top: 1px solid var(--color-border-card);
 }
 
+/* 건강 탭 상단 예측웰니스·주간리포트 접기(미오 P2, 2026-08-05) — 모바일에선 <details>로
+   접어 핵심 '오늘의 기록'을 먼저 노출하고, 데스크톱(lg=1024px+)에선 요약을 숨기고 본문을
+   항상 펼쳐 기존 2컬럼 레이아웃을 유지한다. 내부 카드는 card-merge와 동일하게 평탄화하되
+   구분선은 세로로 쌓이는 모바일에서만 넣는다. */
+.health-top-analysis-body > div > .card-modern {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+}
+.health-top-analysis-body > div > .card-modern:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: transparent;
+}
+.health-top-analysis-body > div + div > .card-modern {
+    border-top: 1px solid var(--color-border-card);
+}
+@media (min-width: 1024px) {
+    /* 좌우 2컬럼 배치라 카드 사이 상단선은 불필요(헤더 아래 구분선은 details의 border-t가 담당) */
+    .health-top-analysis-body > div + div > .card-modern { border-top: 0; }
+    /* 요약 숨김 + 본문 강제 노출: 닫힌 details가 본문을 가리는 두 모델
+       (구형 display:none, 신형 ::details-content content-visibility) 모두 무력화 */
+    details.health-top-analysis > summary { display: none; }
+    details.health-top-analysis > .health-top-analysis-body { display: grid !important; }
+    details.health-top-analysis::details-content { content-visibility: visible !important; }
+}
+
 /* 로그인/회원가입 입력: leading 아이콘 + floating label + 브랜드 포커스 링 (WCAG 2.4.7/1.4.1) */
 .floating-field { position: relative; }
 .floating-input {
