@@ -97,6 +97,32 @@
             '</span><span class="text-sm font-black text-gray-800 break-words">' + esc(value) + "</span></div>";
     }
 
+    // ── 예상 수명 진행바 ─────────────────────────────────────────
+    // 나이/생일 데이터가 없으면 0% 회색 트랙만 노출되는 미관 문제를 막기 위해,
+    // 진행바 대신 "생일 입력 시 표시" 안내 텍스트로 대체한다(미오 제안).
+    var LIFE_SPAN = { dog: 13, cat: 15, rabbit: 9, hamster: 3, bird: 10 };
+    function petAgeYears(pet) {
+        var m = String(pet && pet.age != null ? pet.age : "").match(/\d+/);
+        return m ? parseInt(m[0], 10) : null;
+    }
+    function lifeBar(pet) {
+        var years = petAgeYears(pet);
+        if (years == null) {
+            return '<div class="rounded-2xl bg-gray-50 px-4 py-3 flex items-center gap-2">' +
+                '<span class="text-base leading-none">🎂</span>' +
+                '<div class="min-w-0"><span class="block text-[11px] font-black text-gray-500">예상 수명</span>' +
+                '<span class="text-[10px] text-gray-400 font-medium">생일·나이 입력 시 표시돼요</span></div></div>';
+        }
+        var span = LIFE_SPAN[pet && pet.type] || 13;
+        var pct = Math.max(2, Math.min(100, Math.round((years / span) * 100)));
+        return '<div class="rounded-2xl bg-gray-50 px-4 py-3">' +
+            '<div class="flex items-center justify-between mb-1.5">' +
+            '<span class="text-[11px] font-black text-gray-500">🕰️ 예상 수명</span>' +
+            '<span class="text-[10px] font-bold text-gray-400">' + years + '살 / 약 ' + span + '살</span></div>' +
+            '<div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">' +
+            '<div class="bg-brand-400 h-full rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div></div>';
+    }
+
     function cardBody(pet) {
         var photo = (pet.imageUrl) ? pet.imageUrl : "";
         var basics =
@@ -167,7 +193,7 @@
                 : '<div class="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center text-3xl">🐶</div>') +
             '<div><h2 class="text-lg font-black text-gray-900">' + esc(pet.name || "우리 아이") + "</h2>" +
             '<p class="text-[11px] text-gray-400">펫과나 응급·여행 프로필</p></div></div>' +
-            basics + alerts + vaccineHtml + visitHtml + contactHtml + hospitalHtml +
+            basics + lifeBar(pet) + alerts + vaccineHtml + visitHtml + contactHtml + hospitalHtml +
             '<div class="flex flex-col items-center gap-2 pt-2 border-t border-gray-100">' +
             '<div id="pass-qr" class="bg-white p-2 rounded-xl border border-gray-100 flex items-center justify-center" style="min-height:120px"></div>' +
             '<p class="text-[10px] text-gray-400 text-center">QR을 스캔하면 위 정보 요약이 오프라인으로 열려요</p></div>' +
