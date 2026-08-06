@@ -408,6 +408,12 @@ const MYPET_TEMPLATE = `
                     <span>산책·급여·투약 중 하나만 완료해도 케어 스트릭이 시작돼요!</span>
                 </div>
             </div></div>
+            <div class="p-2.5 col-span-2 lg:col-span-1"><div id="care-coin-shop">
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 font-bold">
+                    <i class="fa-solid fa-coins text-gray-300"></i>
+                    <span>케어를 완료하면 코인이 쌓여요!</span>
+                </div>
+            </div></div>
             <div class="p-3 col-span-2 lg:col-span-1"><div id="daily-challenges"></div></div>
             <div class="p-2.5 col-span-2 lg:col-span-1"><div id="achievement-badges"></div></div>
         </div>
