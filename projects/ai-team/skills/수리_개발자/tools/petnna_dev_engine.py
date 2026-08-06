@@ -65,6 +65,9 @@ POLL_SEC = int(os.getenv("SURI_POLL_SEC", "3600"))
 CLAUDE_TIMEOUT = int(os.getenv("SURI_CLAUDE_TIMEOUT", "900"))
 MAX_ATTEMPTS = 3
 MAX_FILES, MAX_LINES = 6, 200
+# 백로그(기능·디자인) 과제는 자동 병합이 없고 항상 사람/예원 검토를 거치므로 여유를 준다.
+# 이 값도 무한이 아니다 — 리뷰 가능한 크기를 넘으면 여전히 거부한다.
+BACKLOG_MAX_FILES, BACKLOG_MAX_LINES = 10, 400
 # 신규 단일파일 예외(회의_202608050716 — 새 모듈 259줄+배선 20줄이 3회 반복 거부됨) 적용 시
 # 나머지(기존 파일 배선) 허용 줄 수. 상한 자체는 안 올린다 — 여러 기존 파일에 걸친 산개
 # 변경은 그대로 차단, "응집된 신규 파일 하나"만 예외.
@@ -82,8 +85,16 @@ FORBIDDEN_PATHS = ["api/", "migrations/", "inject-env", "freemium",
 # 든 식별자·주석·함수명)는 오탐이었다 — QR 공개프로필의 `tokenForPet`·`existingToken` 같은
 # 정당한 코드가 영구히 자동병합/PR대기에 못 갔다(회의_202608050439). 진짜 하드코딩 값
 # (api_key = "...", Bearer <토큰>)은 그대로 잡는다.
+# 시크릿 하드코딩 탐지. 값이 **자격증명처럼 생겼을 때만** 잡는다 —
+# 공백 없는 순수 ASCII 문자열(`sk-live-...`, 16진/base64, 하드코딩된 비밀번호).
+#
+# 왜 이렇게 좁히나(2026-08-06): 예전 패턴은 값의 모양을 안 봐서
+# `password: "비밀번호를 입력해 주세요"` 같은 **UI 문구**까지 시크릿으로 잡았다.
+# 로그인 화면 개선 과제 9건이 3주 동안 8번 넘게 같은 오탐으로 반려됐고,
+# 어느 줄이 걸렸는지 로그에도 안 남아 아무도 원인을 못 찾았다.
+# 한글·공백이 든 문장은 자격증명이 아니다 — 그건 사람이 읽는 문구다.
 FORBIDDEN_DIFF = re.compile(
-    r'(?:api[_-]?key|secret|token|password)\s*[:=]\s*["\'][^"\']{6,}["\']'
+    r'(?:api[_-]?key|secret|token|password)\s*[:=]\s*["\'][\x21-\x7E]{6,}["\']'
     r'|Bearer\s+[A-Za-z0-9_\-.]{10,}',
     re.IGNORECASE)
 # Supabase 계약 호출(.from()/.rpc()) — 'supabase'가 경로에 든 파일에서만 본다. 그 파일들은
@@ -530,8 +541,15 @@ def _single_new_file_exception(worktree: Path, base: str, total: int) -> str | N
     return f"신규 단일파일 예외, 배선 {wiring}줄"
 
 
-def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
-    """diff 범위 게이트: petnna 한정·크기 제한·금지 경로/내용."""
+def diff_gate(worktree: Path, is_backlog: bool = False) -> tuple[bool, str, list[str]]:
+    """diff 범위 게이트: petnna 한정·크기 제한·금지 경로/내용.
+
+    is_backlog=True면 크기 상한을 완화한다. 자동 병합되는 QA 수정은 사람이 안 보므로
+    작게 유지해야 하지만, 백로그(기능·디자인) 과제는 **항상 PR대기로 사람/예원 검토를
+    거친다** — 여기에 200줄 상한을 그대로 적용한 결과, 기능 하나에 필요한 최소 변경이
+    구조적으로 상한을 넘어 12건이 "PR 분리 필요"로 영구 정지했다(2026-08-06 실측).
+    쪼개줄 담당자가 없는 상한은 거부 사유가 아니라 막다른 골목이다.
+    """
     # 'master'가 아니라 분기점(merge-base)과 비교한다. 사이클이 도는 동안 다른 에이전트가
     # master에 커밋하면(테오의 E2E 자동 커밋 등) 그 커밋이 뒤집혀 '브랜치가 petnna 밖 파일을
     # 고쳤다'는 오탐이 나 멀쩡한 패치를 스스로 거부한다(2026-07-10 관측).
@@ -557,18 +575,26 @@ def diff_gate(worktree: Path) -> tuple[bool, str, list[str]]:
     contract_hit = _new_supabase_contract_calls(worktree, base, files)
     if contract_hit:
         return False, f"Supabase 신규 계약 접촉(.from/.rpc, 병합 대기): {contract_hit[:3]}", files
-    if len(files) > MAX_FILES:
-        return False, f"변경 과대(파일 {len(files)}개) — PR 분리 필요", files
+    max_files = BACKLOG_MAX_FILES if is_backlog else MAX_FILES
+    max_lines = BACKLOG_MAX_LINES if is_backlog else MAX_LINES
+    if len(files) > max_files:
+        return False, f"변경 과대(파일 {len(files)}개 > {max_files}) — PR 분리 필요", files
     size_note = ""
-    if total > MAX_LINES:
+    if total > max_lines:
         exc = _single_new_file_exception(worktree, base, total)
         if not exc:
-            return False, f"변경 과대(파일 {len(files)}·{total}줄) — PR 분리 필요", files
+            return False, (f"변경 과대(파일 {len(files)}·{total}줄 > {max_lines}줄) — "
+                           "PR 분리 필요"), files
         size_note = f" ({exc})"
     diff_text = _git(["diff", base], worktree).stdout
-    added = "\n".join(ln for ln in diff_text.splitlines() if ln.startswith("+"))
-    if FORBIDDEN_DIFF.search(added):
-        return False, "추가된 줄에 시크릿/인증 의심 패턴", files
+    added = [ln for ln in diff_text.splitlines() if ln.startswith("+")]
+    for ln in added:
+        m = FORBIDDEN_DIFF.search(ln)
+        if m:
+            # 어느 줄이 왜 걸렸는지 남긴다 — 이게 없어서 9건이 3주간 원인 미상으로
+            # 반복 반려됐다(2026-08-06). 값 자체는 시크릿일 수 있으므로 싣지 않는다.
+            return False, (f"추가된 줄에 시크릿/인증 의심 패턴: "
+                           f"{ln.strip()[:60]}… (매치 키워드 '{m.group(0).split(chr(61))[0].split(chr(58))[0].strip()[:20]}')"), files
 
     stale = _stale_cache_versions(worktree, base, files)
     if stale:
@@ -661,6 +687,25 @@ def run_e2e(petnna_root: Path) -> dict:
     # 테오 스위트도 임시 포트로 — 수리 사이클과 테오 정시 슬롯이 겹쳐도 안 죽는다.
     teo.PORT = int(os.getenv("SURI_E2E_PORT", "0"))
     return {k: v["ok"] for k, v in teo.run_suite().items()}
+
+
+def confirm_new_failures(petnna_root: Path, suspects: list[str]) -> list[str]:
+    """'신규 실패'로 지목된 테스트를 다시 돌려 **재현되는 것만** 돌려준다.
+
+    왜 필요한가(2026-08-06 실측): 보류 67건 중 15건이 "E2E 신규 실패"로 반려됐는데,
+    로그인 화면 CSS 변경이 `test_medical_records_flow`를 깨뜨렸다는 식으로 변경과
+    무관한 테스트가 지목돼 있었고, 같은 시각 master 스위트는 34/34 통과였다.
+    한 번의 실패로 반려하면 flaky·순서의존 테스트가 멀쩡한 구현을 영구히 막는다.
+
+    재현되면 진짜 회귀이므로 그대로 반려하고, 재현되지 않으면 통과로 본다.
+    (2026-07-25 교훈 — "flaky 의심을 재시도로 넘기지 마라"와 충돌하지 않는다:
+     그때는 **3회 연속 같은 이유로 실패**한 결정론적 회귀였다. 여기서 걸러내는 것은
+     1회 실패이고, 재현되면 그대로 반려한다.)
+    """
+    if not suspects:
+        return []
+    again = run_e2e(petnna_root)
+    return sorted(t for t in suspects if not again.get(t, True))
 
 
 def improve_cycle(do_send: bool = True) -> str:
@@ -763,7 +808,7 @@ def _improve_cycle(do_send: bool = True) -> str:
             log.append(f"- 동일 패치가 이미 대기 중({dup}) — 신규 브랜치 폐기(중복 방지, 회의 결정)")
             raise _DuplicatePatch()
 
-        gate_ok, gate_note, files = diff_gate(wt)
+        gate_ok, gate_note, files = diff_gate(wt, is_backlog=is_backlog)
         log.append(f"- diff 게이트: {'통과' if gate_ok else '거부'} — {gate_note}")
         log.append(f"- 변경 파일: {', '.join(files[:6])}")
 
@@ -788,11 +833,15 @@ def _improve_cycle(do_send: bool = True) -> str:
 
         # 테오 E2E 게이트: 수정으로 새로 깨진 테스트가 있으면 병합 금지
         after_tests = run_e2e(wt / "projects" / "petnna")
-        new_fail = sorted(k for k, ok in after_tests.items()
+        suspects = sorted(k for k, ok in after_tests.items()
                           if not ok and base_tests.get(k, True))
+        new_fail = confirm_new_failures(wt / "projects" / "petnna", suspects)
+        flaky = [t for t in suspects if t not in new_fail]
         tests_ok = not new_fail
+        if flaky:
+            log.append(f"- E2E 재확인: {flaky} — 재현 안 됨(flaky), 차단 사유에서 제외")
         log.append(f"- E2E({len(after_tests)}개): "
-                   + ("전부 통과" if tests_ok else f"신규 실패 {new_fail} — 병합 차단"))
+                   + ("전부 통과" if tests_ok else f"신규 실패 {new_fail}(재현 확인) — 병합 차단"))
 
         # 백로그(기능/디자인 과제)는 자동 병합 대상이 아님 — 항상 사람 검토(PR대기)
         safe_priority = (not is_backlog and f.get("priority") in ("P2", "P3")

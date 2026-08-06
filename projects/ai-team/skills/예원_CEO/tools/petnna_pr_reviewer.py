@@ -170,10 +170,18 @@ def review_all(do_send: bool = True) -> str:
 
         applied = False
         try:
-            gate_ok, gate_note, files = eng.diff_gate(wt)
+            # 백로그(기능·디자인) 과제는 크기 상한이 완화된 기준으로 본다 —
+            # 수리 엔진과 같은 판정을 써야 '엔진은 통과, 리뷰어는 거부'로 어긋나지 않는다.
+            gate_ok, gate_note, files = eng.diff_gate(wt, is_backlog=bool(it))
             after = eng.run_e2e(wt / "projects" / "petnna")
-            new_fail = sorted(k for k, ok in after.items()
+            # 1회 실패로 반려하면 flaky·순서의존 테스트가 멀쩡한 구현을 영구히 막는다
+            # (2026-08-06 실측: 보류 15건이 변경과 무관한 테스트 지목으로 반려됨).
+            # 재현되는 것만 진짜 회귀로 본다.
+            suspects = sorted(k for k, ok in after.items()
                               if not ok and master_tests.get(k, True))
+            new_fail = eng.confirm_new_failures(wt / "projects" / "petnna", suspects)
+            if suspects and not new_fail:
+                lines.append(f"  ↻ {title[:30]} — E2E 실패 {suspects} 재현 안 됨(flaky), 계속 진행")
             diff = eng._git(["diff", f"master...{branch}", "--", "projects/petnna"],
                             eng.PROJECT_ROOT).stdout
 
