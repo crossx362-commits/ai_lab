@@ -171,6 +171,21 @@ class UnblockerTests(unittest.TestCase):
         freed = self.mod.release(rows, limit=3)
         self.assertEqual(len(freed), 3, "상한을 무시하고 한꺼번에 풀면 수리 큐가 묻힌다")
 
+    def test_fact_error_only_for_pre_facts_reviews(self):
+        """사실 주입 이전 판단만 '리뷰어 사실 오류'다.
+
+        낱말로만 가르면 사실을 알고 내린 정당한 색상 지적까지 뒤집는다 —
+        이 테스트를 쓰기 전에 실제로 그런 회귀를 냈다.
+        """
+        reason = "브랜드 컬러가 코랄이 아니라 보라 계열로 구현됨"
+        self.assertEqual(self.mod.classify(reason, predates_facts=True), "리뷰어 사실 오류")
+        self.assertEqual(self.mod.classify(reason, predates_facts=False), "품질 판단",
+                         "사실을 알고 내린 색상 지적까지 사실 오류로 취급했다")
+        self.assertFalse(self.mod._predates_facts(""),
+                         "판단 시각을 모르면 보존해야 한다")
+        self.assertTrue(self.mod._predates_facts("2026-07-01T10:00:00"))
+        self.assertFalse(self.mod._predates_facts("2026-09-01T10:00:00"))
+
     def test_unknown_e2e_state_is_preserved_not_released(self):
         """테스트 결과를 못 읽으면 '판정 불가'다 — 부재로 읽어 풀어버리면 안 된다."""
         self.mod.E2E_RESULTS = self.tmp / "없는파일.json"

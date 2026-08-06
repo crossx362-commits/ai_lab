@@ -43,6 +43,7 @@ from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
 from _shared.cc import scrub_secrets  # noqa: E402
 from _shared.backlog import promote_approved_holds, is_infra_failure, backlog_lock  # noqa: E402
+from _shared.petnna_facts import PETNNA_FACTS  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -453,6 +454,7 @@ def claude_fix(worktree: Path, finding: dict) -> tuple[bool, str]:
         "- projects/petnna/ 아래 파일만 수정한다. 그 외 파일은 절대 수정 금지.\n"
         "- 이 과제와 무관한 개선·리팩터링·포맷 변경 금지. diff를 최소화하라.\n"
         "- 새 라이브러리 추가 금지. 기존 코드 스타일·디자인 시스템을 따르라.\n"
+        + PETNNA_FACTS +
         "- 테스트 삭제·규칙 완화·secret/키 추가 금지.\n"
         # 게이트(_stale_cache_versions)가 이걸 강제한다 — 지시가 없으면 구현자는 js만
         # 고치고 끝내고, 게이트가 매번 거부해 과제가 시도만 소진하고 보류로 밀린다

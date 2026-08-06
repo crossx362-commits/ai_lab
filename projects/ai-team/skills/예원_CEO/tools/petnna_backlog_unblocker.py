@@ -73,7 +73,8 @@ MAX_RELEASE = int(os.getenv("YEWON_UNBLOCK_MAX", "8"))
 
 # 사람이 판단한 보류 — 절대 자동으로 되돌리지 않는다.
 HUMAN_MARKERS = ("오너 결정", "오너 지시", "사람 판단", "사람 검토", "승인필요",
-                 "당분간 나만", "공개 계획")
+                 "당분간 나만", "공개 계획", "오너 우선순위", "우선순위 판단",
+                 "에이전트 코드", "재판단할 것")
 
 
 def _reason(rec: dict, item: dict) -> str:
@@ -82,8 +83,11 @@ def _reason(rec: dict, item: dict) -> str:
         item.get("resolution", ""), item.get("note", "")) if x)
 
 
-def classify(reason: str) -> str:
-    """반려 사유를 자동 판정 가능한 범주로 접는다."""
+def classify(reason: str, predates_facts: bool = False) -> str:
+    """반려 사유를 자동 판정 가능한 범주로 접는다.
+
+    predates_facts: 이 판단이 PETNNA_FACTS 주입 이전이면 사실 착오 가능성을 본다.
+    """
     if not reason.strip():
         return "사유 미기록"
     if any(m in reason for m in HUMAN_MARKERS):
@@ -96,9 +100,25 @@ def classify(reason: str) -> str:
         return "금지 경로"
     if "E2E 신규 실패" in reason:
         return "E2E 신규 실패"
+    if _FACT_ERROR.search(reason) and predates_facts:
+        return "리뷰어 사실 오류"
     if "Supabase 신규 계약" in reason:
         return "DB 계약"
     return "품질 판단"
+
+
+# 리뷰어가 프로젝트 사실(앱 이름·brand 팔레트)을 몰라 낸 반려 — 재시도 대상이다.
+#
+# **텍스트만으로 판정하면 안 된다**: 사실을 주입한 뒤의 색상 지적은 정당한 판단인데,
+# "브랜드 컬러" 같은 낱말로 잡으면 그것까지 뒤집는다(회귀 테스트가 이 오류를 잡았다).
+# 그래서 **시점**으로 가른다 — 사실 주입 이전에 내려진 판단만 근거가 부족했던 것이다.
+_FACTS_INJECTED_AT = "2026-08-06T23:00:00"   # _shared/petnna_facts.py 도입 시각
+_FACT_ERROR = re.compile(r"'펫나'|브랜드 정체성|브랜드 컬러|코랄|coral", re.IGNORECASE)
+
+
+def _predates_facts(reviewed_at: str) -> bool:
+    """이 판단이 프로젝트 사실 주입 이전에 내려졌는가. 시각을 모르면 False(보존)."""
+    return bool(reviewed_at) and str(reviewed_at) < _FACTS_INJECTED_AT
 
 
 def _current_e2e_pass() -> set[str]:
@@ -115,6 +135,10 @@ def _gate_still_blocks(category: str, reason: str, passing: set[str]) -> bool:
 
     막히지 않는다면 그 보류는 이미 유효기간이 지난 것이므로 되돌린다.
     """
+    if category == "리뷰어 사실 오류":
+        # 프롬프트에 PETNNA_FACTS를 주입했으므로 같은 사실 착오는 재현되지 않는다.
+        # 진짜 색상 위반이면 리뷰어가 정확한 근거(brand-500)로 다시 반려한다.
+        return False
     if category == "시크릿 스캐너":
         # 스캐너를 값 모양 기준으로 좁혔다(2026-08-06). 옛 오탐은 더 이상 재현되지 않는다.
         # 진짜 시크릿이면 수리가 다시 구현할 때 그대로 다시 걸린다 — 되돌려도 안전하다.
@@ -147,7 +171,7 @@ def analyze() -> dict:
             continue
         item = items.get(fp, {})
         reason = _reason(rec, item)
-        cat = classify(reason)
+        cat = classify(reason, _predates_facts(rec.get("reviewed_at", "")))
         rows.append({
             "id": fp, "title": rec.get("title") or item.get("title", ""),
             "category": cat, "reason": reason,
