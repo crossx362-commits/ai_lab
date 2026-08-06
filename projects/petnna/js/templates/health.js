@@ -22,11 +22,11 @@ const HEALTH_TEMPLATE = `
             <div class="flex items-center gap-3">
                 <!-- 펫 선택 드롭다운 -->
                 <select id="health-pet-selector" onchange="onHealthPetChange()"
-                    class="px-4 py-2 bg-white border border-brand-200 rounded-xl text-sm font-bold text-brand-700 hover:border-brand-300 transition-colors cursor-pointer">
+                    class="h-9 px-4 py-0 bg-white border border-brand-200 rounded-xl text-sm font-bold text-brand-700 hover:border-brand-300 transition-colors cursor-pointer">
                     <option value="">펫 선택</option>
                 </select>
                 <button onclick="generateWeeklyHealthData()"
-                    class="btn-modern px-4 py-2 bg-brand-50 hover:bg-brand-100 text-brand-700 text-sm border border-brand-200/50">
+                    class="btn-modern inline-flex items-center h-9 px-4 py-0 bg-brand-50 hover:bg-brand-100 text-brand-700 text-sm border border-brand-200/50">
                     <i class="fa-solid fa-database text-xs mr-2"></i>데모 데이터
                 </button>
             </div>
