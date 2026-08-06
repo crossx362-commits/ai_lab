@@ -554,6 +554,9 @@ function placeMarking(type) {
 
     const marker = L.marker(currentPos, { icon: markingHtmlIcon }).addTo(mapInstance);
     marker.bindPopup(`<div class="text-xs font-bold text-center p-1">우리 아이의 흔적!<br>${emoji} 지점 등록 완료 🐾</div>`).openPopup();
+    // 확인 팝업은 토스트로 이미 안내되므로 지도 콘텐츠를 계속 가리지 않도록 잠시 뒤 자동 dismiss
+    // (마커 클릭 시 다시 열림). 사용자가 직접 닫으면 타이머는 무해하게 no-op.
+    setTimeout(() => { if (mapInstance && marker) marker.closePopup(); }, 2500);
 
     showToast(`실시간 위도에 '${emoji}' 흔적 마킹을 배치 완료했습니다!`);
 }
