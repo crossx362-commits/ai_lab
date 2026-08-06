@@ -33,15 +33,29 @@ def _ollama_base() -> str:
     return raw.rstrip("/")
 
 
+def _is_ollama_cloud(name: str) -> bool:
+    """Ollama '클라우드' 모델인가(`deepseek-v4-flash:0731-cloud`, `gpt-oss:120b-cloud` 등).
+
+    이름은 로컬 목록에 섞여 나오지만 실제 추론은 Ollama 서버가 아니라 원격에서 돈다 —
+    인증이 없으면 매 호출이 403 Forbidden이다(2026-08-06 실측: 미오·나무가 사이클마다
+    403 한 번 맞고 gemma4:12b로 폴백 중이었다). llm.py에서 Ollama 티어의 존재 이유는
+    '무료·로컬 최후선'이므로, 원격 유료 모델을 이 티어의 1순위로 두는 것 자체가 틀렸다.
+    """
+    return name.split(":")[-1].lower().endswith("cloud")
+
+
 def _list_ollama() -> list[str]:
-    """List Ollama models (exclude embeddings)."""
+    """List Ollama models (exclude embeddings, exclude cloud-tagged)."""
+    allow_cloud = os.getenv("AI_TEAM_ALLOW_OLLAMA_CLOUD", "").strip().lower() == "true"
     for attempt in range(3):
         try:
             url = _ollama_base() + "/v1/models"
             timeout = 45 if attempt == 0 else 15
             with urllib.request.urlopen(url, timeout=timeout) as r:
                 data = json.loads(r.read())
-            return [m["id"] for m in data.get("data", []) if "embed" not in m.get("id", "").lower()]
+            return [m["id"] for m in data.get("data", [])
+                    if "embed" not in m.get("id", "").lower()
+                    and (allow_cloud or not _is_ollama_cloud(m.get("id", "")))]
         except Exception as e:
             if attempt < 2:
                 time.sleep(2)

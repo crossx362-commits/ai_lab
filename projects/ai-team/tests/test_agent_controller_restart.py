@@ -13,6 +13,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 AI_TEAM_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(AI_TEAM_ROOT))
@@ -28,6 +29,11 @@ def _load():
 
 
 class RestartAlwaysLeavesSomethingRunningTests(unittest.TestCase):
+    def _patch(self, target, attr, replacement):
+        p = mock.patch.object(target, attr, replacement)
+        p.start()
+        self.addCleanup(p.stop)
+
     def setUp(self):
         self.mod = _load()
         self.killed = []
@@ -36,9 +42,15 @@ class RestartAlwaysLeavesSomethingRunningTests(unittest.TestCase):
         self.alive_reports = [[4242], [4242], []]
         self.mod.find_agent_process = lambda name: (
             self.alive_reports.pop(0) if self.alive_reports else [])
-        self.mod.subprocess.run = lambda *a, **k: self.killed.append(a[0]) or type(
-            "R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
-        self.mod.time.sleep = lambda s: None
+        # `self.mod.subprocess`는 이 테스트 전용 사본이 아니라 **프로세스 전역의 subprocess
+        # 모듈 객체**다. 직접 대입하면 복원되지 않아 이후 실행되는 모든 테스트가 가짜
+        # subprocess.run을 받는다(2026-08-06 실측: 알파벳 순으로 뒤에 오는 dev_engine
+        # 게이트·merge abort·sync merged 테스트 18개가 임시 git 저장소를 못 만들어
+        # '변경 없음'으로 무더기 실패 — 단독 실행하면 전부 통과해 원인이 안 보였다).
+        # patch.object + addCleanup으로 반드시 되돌린다. time.sleep도 같은 이유.
+        self._patch(self.mod.subprocess, "run", lambda *a, **k: self.killed.append(a[0]) or type(
+            "R", (), {"returncode": 0, "stdout": "", "stderr": ""})())
+        self._patch(self.mod.time, "sleep", lambda s: None)
         self.mod.STOP_WAIT_SEC = 0.3   # 실제 대기까지 재현할 필요는 없다
         self.mod.KILL_WAIT_SEC = 0.1
 
