@@ -1246,6 +1246,7 @@ function renderMyPets() {
     if (typeof renderCareNudgeBanner === 'function') renderCareNudgeBanner();
     if (typeof renderTodayCareCard === 'function') renderTodayCareCard();
     if (typeof renderMultiPetDashboard === 'function') renderMultiPetDashboard();
+    if (window.SeniorCare && typeof SeniorCare.renderEntry === 'function') SeniorCare.renderEntry();
     if (typeof renderHealthDigestBanner === 'function') renderHealthDigestBanner();
     if (typeof renderMemoryFlashbackBanner === 'function') renderMemoryFlashbackBanner();
     if (typeof renderYearRecapBanner === 'function') renderYearRecapBanner();
