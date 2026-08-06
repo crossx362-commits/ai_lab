@@ -256,6 +256,21 @@ const HEALTH_TEMPLATE = `
         </div>
     </div>
 
+    <!-- 📸 증상 사진 일지 (부위별 증상 사진 날짜순 누적) -->
+    <div class="card-modern overflow-hidden">
+        <div class="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <i class="fa-solid fa-camera text-brand-500"></i>증상 사진 일지
+            </h2>
+            <button onclick="openSymptomModal()" class="text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full transition-all shadow-soft">
+                <i class="fa-solid fa-plus mr-1"></i>사진 추가
+            </button>
+        </div>
+        <div class="px-5 py-4">
+            <div id="symptom-journal-timeline"></div>
+        </div>
+    </div>
+
     <!-- 🍖 영양 관리 (별도 카드 → 이 묶음으로 흡수) -->
     <!-- 🍖 영양 관리 섹션 -->
     <div class="card-modern p-5">
