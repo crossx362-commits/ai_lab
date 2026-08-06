@@ -158,8 +158,11 @@
                 '<button onclick="SeniorCare.open()" class="mt-2 text-xs font-bold text-white bg-brand-500 hover:bg-brand-600 px-3 py-1.5 rounded-full shadow-soft">여정 대시보드 열기</button>';
         }
 
+        // 호스트 #senior-care-entry의 부모가 이미 카드(#home-today-card .card-modern
+        // .divide-y)라 여기서 card-modern을 또 두면 '카드 속 카드'가 된다(봄이 QA 559a215bb044).
+        // 형제 섹션(오늘의 운세 등)과 같은 px-4 py-3 블록으로 맞춘다 — divide-y가 구분선을 준다.
         host.innerHTML =
-            '<div class="card-modern p-5">' +
+            '<div class="px-4 py-3">' +
             '<div class="flex items-center gap-2">' +
             '<span class="text-xl">🌗</span>' +
             '<h3 class="text-base font-bold text-gray-900">노령케어 여정</h3>' +
