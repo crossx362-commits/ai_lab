@@ -115,9 +115,9 @@ const SOCIAL_TEMPLATE = `
         </div>
 
         <!-- 서브탭 1: 이웃 자랑 피드 컨텐츠 -->
-        <div id="social-subtab-feed-content" class="space-y-6">
+        <div id="social-subtab-feed-content" class="space-y-4">
             <!-- 신규 피드 작성 박스 -->
-            <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
+            <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-3">
                 <div class="flex items-center space-x-3">
                     <span class="text-xl">📢</span>
                     <h3 class="font-black text-gray-800 text-sm">오늘 있었던 특별한 펫 일상 자랑하기</h3>
