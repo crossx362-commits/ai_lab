@@ -260,8 +260,15 @@ function updateTodayHealthDisplay() {
     const foodEl = document.getElementById('health-today-food');
     const waterEl = document.getElementById('health-today-water');
 
-    if (foodEl) foodEl.textContent = logs.food ? `${logs.food}g` : '--g';
-    if (waterEl) waterEl.textContent = logs.water ? `${logs.water}ml` : '--ml';
+    // 빈 상태는 대시(--) 대신 흐린 회색 "미입력"으로 의도를 명확히 한다(미오 P3).
+    if (foodEl) {
+        foodEl.textContent = logs.food ? `${logs.food}g` : '미입력';
+        foodEl.classList.toggle('text-gray-300', !logs.food);
+    }
+    if (waterEl) {
+        waterEl.textContent = logs.water ? `${logs.water}ml` : '미입력';
+        waterEl.classList.toggle('text-gray-300', !logs.water);
+    }
 
 }
 
