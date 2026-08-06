@@ -79,6 +79,32 @@ _DB_NO_CONTACT = re.compile(
 )
 
 
+# 에이전트 코드·운영 상태를 건드려야 하는 과제 — 수리는 못 한다.
+#
+# 왜 필요한가(2026-08-06 실측): 회의가 "diff_gate 크기 판정 개선"을 owner=수리로 적재했는데
+# diff_gate는 projects/ai-team 코드라 수리 헌장(projects/petnna 한정) 밖이다. 3회 실패로
+# 보류가 됐고, 그러자 다음 회의가 **"그 유령 과제를 종결하라"는 과제를 또 owner=수리로**
+# 적재했다 — 그것도 상태 파일 정리라 수리가 못 한다. 막힌 것을 치우라는 과제가 같은 이유로
+# 막히는 자기참조 루프다. 이런 과제는 애초에 자동 루프에 넣지 말고 사람 검토로 보낸다.
+_AGENT_OPS = re.compile(
+    r"projects/ai-team|ai-team/|_shared/|dev_state|backlog\.json|diff_gate"
+    r"|qa_state|harness|launchd|schedules\.json|워크트리|worktree"
+    r"|유령\s*과제|잔재\s*브랜치|브랜치\s*삭제|상태\s*파일"
+    r"|(?:봄이|수리|테오|백호|미오|나무|예원|영숙)\s*(?:QA|엔진|데몬|도구|스크립트|게이트|순찰|검수|리뷰어)",
+    re.IGNORECASE)
+
+
+def touches_agent_ops(title: str, detail: str = "") -> bool:
+    """이 과제가 에이전트 코드/운영 상태를 건드려야 하는가 — 그러면 수리가 못 한다.
+
+    수리 헌장은 `projects/petnna/` 한정이고 diff_gate가 그 밖 경로를 차단한다.
+    이런 과제를 자동 루프에 넣으면 **반드시** 3회 실패 후 보류로 간다 — 시도 3번과
+    클로드 호출 3번이 확정적으로 낭비되고, 사람은 그 사이 아무것도 모른다.
+    """
+    return bool(_AGENT_OPS.search(f"{title}\n{detail}"))
+
+
+
 # 백로그 정규 상태 어휘 — 이 넷만 소비자(수리·예원·council)가 읽고 옮긴다.
 # 어휘 밖 값(예: '진행'·'완료(부분)')은 어떤 도구도 안 읽어 항목이 영구 정지한다
 # ("'진행' 상태는 아무도 안 읽는 무덤" 교훈, CLAUDE.md). 코드는 이 값을 만들지 않지만
@@ -168,6 +194,7 @@ def structurally_blocked(owner: str, item_type: str, title: str, detail: str = "
     return (owner not in AUTO_OWNERS
             or owner_type_mismatch(owner, item_type)
             or touches_db_auth(title, detail)
+            or touches_agent_ops(title, detail)
             or (owner == "미오" and mio_implementation_task(title, detail)))
 
 
