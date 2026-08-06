@@ -888,6 +888,16 @@ def _improve_cycle(do_send: bool = True) -> str:
             _git(["branch", "-D", branch], PROJECT_ROOT)
         if rec["attempts"] >= MAX_ATTEMPTS and rec.get("status") not in ("완료", "PR대기"):
             rec["status"] = "보류"
+            # 사유를 반드시 남긴다(2026-08-06). 이게 없어서 보류 9건이 "왜 막혔는지 모르는"
+            # 상태로 무덤에 쌓였다 — 예원의 정체 해소기도, 사람도 재판단할 수 없다.
+            # 루프 로그에서 가장 구체적인 실패 줄을 골라 기록한다.
+            if not rec.get("review_reason"):
+                fail_lines = [ln for ln in log
+                              if any(k in ln for k in ("거부", "실패", "오류", "미해결", "악화"))]
+                rec["review_reason"] = (
+                    (fail_lines[-1].lstrip("- ").strip()[:220] if fail_lines
+                     else f"{MAX_ATTEMPTS}회 시도 실패 — 구체 사유 미확인")
+                    + f" ({MAX_ATTEMPTS}회 시도 후 보류)")
             log.append(f"- {MAX_ATTEMPTS}회 실패 → 보류 전환, 구조적 원인 분석 필요")
             # 반복 실패 = 구조적 문제 → 전 에이전트 긴급 회의 소집(비차단)
             # DEVNULL이면 락 충돌로 회의가 실제로 안 열려도 흔적이 안 남는다(2026-07-12
