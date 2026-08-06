@@ -1772,6 +1772,16 @@ function getPetWeightBand(pet) {
     return PET_WEIGHT_BANDS.dog;
 }
 
+// 현재 체중을 품종 표준 밴드와 비교해 상태를 판정(저/정상/과체중)
+function getWeightStatus(pet, weightKg) {
+    const band = getPetWeightBand(pet);
+    const w = parseFloat(weightKg);
+    if (!band || !(w > 0)) return null;
+    if (w < band.min) return { label: '저체중', emoji: '🔻', tone: 'low' };
+    if (w > band.max) return { label: '과체중', emoji: '🔺', tone: 'high' };
+    return { label: '정상', emoji: '✅', tone: 'normal' };
+}
+
 // 오늘 날짜로 실제 체중을 기록(같은 날은 덮어씀)
 function recordPetWeight(pet, weightKg) {
     if (!pet) return;
@@ -1886,6 +1896,10 @@ function renderStatsChart() {
         const arrow = diff > 0.05 ? '▲' : (diff < -0.05 ? '▼' : '＝');
         const diffTxt = (prevWeight != null) ? `${arrow} ${diff > 0 ? '+' : ''}${diff.toFixed(1)}kg` : `${arrow} 변화 없음`;
         weightSubtitle = `현재 ${latestWeight.toFixed(1)}kg · ${diffTxt}`;
+        const wStatus = getWeightStatus(currentPet, latestWeight);
+        if (wStatus && weightBand) {
+            weightSubtitle += ` · 품종표준(${weightBand.min}~${weightBand.max}kg) ${wStatus.emoji}${wStatus.label}`;
+        }
         if (goalWeight > 0) {
             const toGoal = latestWeight - goalWeight;
             const goalTxt = Math.abs(toGoal) < 0.05 ? '목표 달성 🎯'
