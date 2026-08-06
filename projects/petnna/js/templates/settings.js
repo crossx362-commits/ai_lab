@@ -20,7 +20,7 @@ const SETTINGS_TEMPLATE = `
         <!-- 🔒 로그인 및 보안 계정 관리 (Login & Security options) -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-shield-halved text-brand-500 mr-2"></i>로그인 및 보안 계정 관리 🔒
+                <i class="fa-solid fa-shield-halved text-brand-500 mr-2"></i>로그인 및 보안 계정 관리
             </h3>
             <div class="space-y-3.5 text-xs">
                 <div class="flex justify-between items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100/50">
@@ -52,7 +52,7 @@ const SETTINGS_TEMPLATE = `
         <!-- 📍 앱 권한 관리 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-3">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-bell text-brand-500 mr-2"></i>앱 권한 및 알림 설정 ⚙️
+                <i class="fa-solid fa-bell text-brand-500 mr-2"></i>앱 권한 및 알림 설정
             </h3>
             <div class="space-y-4 text-xs">
                 <!-- 위치 권한 토글 -->
@@ -102,7 +102,7 @@ const SETTINGS_TEMPLATE = `
         <!-- 화면 테마 설정 및 측정 표기법 단위 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-palette text-brand-500 mr-2"></i>테마 & 단위 가독성 설정 🎨
+                <i class="fa-solid fa-palette text-brand-500 mr-2"></i>테마 & 단위 가독성 설정
             </h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
                 <!-- 빛깔 테마 -->
@@ -180,7 +180,7 @@ const SETTINGS_TEMPLATE = `
     <div class="space-y-6">
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-database text-brand-500 mr-2"></i>안심 데이터 보관소 🗄️
+                <i class="fa-solid fa-database text-brand-500 mr-2"></i>안심 데이터 보관소
             </h3>
             <div class="space-y-2.5 text-xs">
                 <!-- 데모 모드 표시 (주입 시에만 노출) -->
@@ -273,7 +273,7 @@ const SETTINGS_TEMPLATE = `
         <!-- 📞 펫과나 헬프 데스크 (자주 묻는 질문) -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-circle-question text-brand-500 mr-2"></i>펫과나 헬프 데스크 (FAQ) 📞
+                <i class="fa-solid fa-circle-question text-brand-500 mr-2"></i>펫과나 헬프 데스크 (FAQ)
             </h3>
             <div class="space-y-2 text-xs">
                 <!-- FAQ 1 -->
@@ -323,7 +323,7 @@ const SETTINGS_TEMPLATE = `
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-black text-gray-800 text-sm flex items-center">
-                    <i class="fa-solid fa-pen-to-square text-brand-500 mr-2"></i>1:1 안심 신문고 (문의 게시판) ✍️
+                    <i class="fa-solid fa-pen-to-square text-brand-500 mr-2"></i>1:1 안심 신문고 (문의 게시판)
                 </h3>
                 <button onclick="openInquiryWriteModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold text-[10px] h-6 px-3 rounded-lg shadow-sm transition-all flex items-center gap-1">
                     <i class="fa-solid fa-feather-pointed"></i>문의 접수하기
@@ -351,7 +351,7 @@ const SETTINGS_TEMPLATE = `
         <!-- ⚖️ 법적 고지 및 약관 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-scale-balanced text-brand-500 mr-2"></i>법적 고지 및 약관 ⚖️
+                <i class="fa-solid fa-scale-balanced text-brand-500 mr-2"></i>법적 고지 및 약관
             </h3>
             <div class="space-y-2.5 text-xs">
                 <a href="/TERMS_OF_SERVICE.md" target="_blank" class="flex items-center justify-between bg-gray-50/60 p-3.5 rounded-xl border border-gray-100 hover:bg-brand-50 hover:border-brand-200 transition-all group">

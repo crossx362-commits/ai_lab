@@ -618,7 +618,7 @@ const HEALTH_TEMPLATE = `
         <div class="card-modern p-5 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b">
                 <h3 class="font-black text-gray-800 text-base flex items-center">
-                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러 📅
+                    <i class="fa-solid fa-calendar-days text-brand-500 mr-2"></i>돌봄 스케줄러
                 </h3>
                 <button onclick="openCareScheduleModal()"
                     class="text-brand-600 hover:text-brand-700 font-black text-sm">
