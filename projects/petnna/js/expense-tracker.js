@@ -19,6 +19,23 @@
         { key: "etc", label: "기타", emoji: "🐾" },
     ];
 
+    // 커뮤니티 평균 벤치마크 — KB금융 '2025 한국 반려동물 보고서'(2024년 기준)의
+    // 반려가구 월평균 양육비. 종별 평균이 있으면 그걸, 없으면 전체 평균을 기준으로
+    // 내 월 지출과 비교한다. 실측 통계라 감으로 만든 수치가 아니다(출처 주석 유지).
+    var BENCHMARK = { dog: 178000, cat: 175000, all: 194000 };
+
+    // 현재 반려동물 종(개/고양이)을 앱 상태에서 추정 — 없으면 전체 평균
+    function benchmarkMonthly() {
+        try {
+            var pets = (window.state && state.pets) || [];
+            var p = pets[(window.state && state.currentPetIndex) || 0] || pets[0];
+            var sp = p && String(p.species || p.type || "").toLowerCase();
+            if (sp && /고양이|cat|묘/.test(sp)) return { amount: BENCHMARK.cat, label: "반려묘 평균" };
+            if (sp && /강아지|개|dog|견/.test(sp)) return { amount: BENCHMARK.dog, label: "반려견 평균" };
+        } catch (e) {}
+        return { amount: BENCHMARK.all, label: "반려가구 평균" };
+    }
+
     function esc(s) {
         if (typeof window.escapeHtml === "function") return window.escapeHtml(s);
         return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -171,6 +188,32 @@
                 '<div class="text-xs font-bold ' + deltaColor + '">' + deltaLabel + "</div></div></div></div>";
         }
 
+        // ── 커뮤니티 평균 벤치마크(내 월 총지출 vs 평균) ─────────
+        var benchmark = "";
+        if (sum.count) {
+            var bm = benchmarkMonthly();
+            var ratio = bm.amount > 0 ? sum.total / bm.amount : 0;
+            var pctOfAvg = Math.round(ratio * 100);
+            var barPct = Math.max(2, Math.min(100, pctOfAvg));
+            var diff = pctOfAvg - 100;
+            var msg = diff <= -5 ? "평균보다 " + Math.abs(diff) + "% 적게 써요 👍"
+                : diff >= 5 ? "평균보다 " + diff + "% 더 써요"
+                : "평균과 비슷해요";
+            var barColor = diff >= 5 ? "bg-red-400" : diff <= -5 ? "bg-emerald-400" : "bg-brand-400";
+            var msgColor = diff >= 5 ? "text-red-500" : diff <= -5 ? "text-emerald-600" : "text-gray-500";
+            benchmark =
+                '<div class="mb-3 rounded-xl border border-brand-100 bg-brand-50/50 px-3 py-2.5">' +
+                '<div class="flex items-center justify-between mb-1.5">' +
+                '<span class="text-[11px] font-bold text-gray-500">커뮤니티 평균 벤치마크</span>' +
+                '<span class="text-[11px] font-bold ' + msgColor + '">' + msg + "</span></div>" +
+                '<div class="h-2 rounded-full bg-gray-100 overflow-hidden">' +
+                '<div class="h-full rounded-full ' + barColor + '" style="width:' + barPct + '%"></div></div>' +
+                '<div class="flex items-center justify-between mt-1 text-[10px] text-gray-400">' +
+                "<span>내 지출 " + fmt(sum.total) + "원</span>" +
+                "<span>" + esc(bm.label) + " " + fmt(bm.amount) + "원/월</span></div>" +
+                '<p class="text-[9px] text-gray-300 mt-1">출처: KB금융 2025 한국 반려동물 보고서(월평균 양육비)</p></div>';
+        }
+
         el.innerHTML =
             '<div class="card-modern p-5">' +
             '<div class="flex items-center justify-between mb-3">' +
@@ -184,6 +227,7 @@
             '<button onclick="ExpenseTracker.openBudget()" class="text-xs font-bold text-brand-600 hover:text-brand-700">🎯 예산 설정</button>' +
             '<span class="text-sm font-extrabold text-gray-900">합계 ' + fmt(sum.total) + "원</span></div></div>" +
             insight +
+            benchmark +
             (sum.count ? '<div>' + bars + "</div>"
                 : '<p class="text-[11px] text-gray-300 py-4 text-center">이 달 지출 기록이 없어요. 지출을 추가해 보세요.</p>') +
             "</div>";
