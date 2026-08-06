@@ -602,6 +602,8 @@ const HEALTH_TEMPLATE = `
                 <div id="qol-checkin-widget"></div>
                 <!-- 🐾 BCS 체형 셀프체크 위저드 -->
                 <div id="bcs-wizard-widget"></div>
+                <!-- 🔎 부위별 자가 건강점검 위저드 (백로그 나무, P3) -->
+                <div id="body-check-wizard-widget"></div>
             </div>
 
 
