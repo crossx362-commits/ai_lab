@@ -138,6 +138,9 @@ function renderHealthTab() {
     // 주간 건강 변화 조기경보 리포트 카드
     if (typeof renderWeeklyReportCard === 'function') renderWeeklyReportCard();
 
+    // 케어 스코어 & Proof-of-Care 공유 카드
+    if (typeof renderCareScoreCard === 'function') renderCareScoreCard();
+
     // 상단 예측웰니스·주간리포트 접기: 실제 이상 소견(amber 경고 카드)이 있으면 모바일에서도
     // 자동으로 펼쳐 놓치지 않게 하고, 평상시엔 접힌 1줄 요약으로 둔다.
     // 데스크톱(lg=1024px+)에선 open 속성을 켜 본문을 실제로 펼친다 — CSS ::details-content

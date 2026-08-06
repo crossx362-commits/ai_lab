@@ -51,6 +51,9 @@ const HEALTH_TEMPLATE = `
 
                 <!-- 📈 주간 건강 변화 조기경보 (weekly-report.js가 채움) -->
                 <div id="weekly-report-card"></div>
+
+                <!-- 🏆 케어 스코어 & Proof-of-Care 공유 (care-score.js가 채움) -->
+                <div id="care-score-card"></div>
             </div>
         </details>
     </div>
