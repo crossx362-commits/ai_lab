@@ -1707,6 +1707,7 @@ function renderMyPets() {
     if (typeof renderHealthCalendar === 'function') renderHealthCalendar();
     if (typeof renderDailyCareStreakBanner === 'function') renderDailyCareStreakBanner();
     if (typeof renderDailyChallenges === 'function') renderDailyChallenges();
+    if (typeof renderCareCoinShop === 'function') renderCareCoinShop();
     if (typeof renderTrainingMissions === 'function') renderTrainingMissions();
     if (typeof renderTrainingPassport === 'function') renderTrainingPassport();
     if (typeof renderAchievementBadges === 'function') renderAchievementBadges();
