@@ -959,7 +959,7 @@ def daemon() -> None:
                 if WT_BASE.exists():
                     for d in WT_BASE.iterdir():
                         _git(["worktree", "remove", "--force", str(d)], PROJECT_ROOT)
-        print(f"[독트린] 금지경로 {len(FORBIDDEN_PATHS)}종 · diff≤{MAX_FILES}파일/{MAX_LINES}줄 · "
+        print(f"[독트린] 금지경로 {len(FORBIDDEN_PATHS)}종 · diff≤{MAX_FILES}파일/{MAX_LINES}줄(자동병합) {BACKLOG_MAX_FILES}파일/{BACKLOG_MAX_LINES}줄(백로그) · "
               f"백로그 자동병합 금지 · E2E 게이트 · 적체상한 {os.getenv('SURI_MAX_PENDING', '5')}")
         print(f"[{datetime.now()}] 수리 데몬 시작 — QA 결과 {POLL_SEC}초 주기 확인")
         while True:
