@@ -476,6 +476,23 @@ const HEALTH_TEMPLATE = `
                 </div>
             </button>
 
+            <!-- 성분표 텍스트 붙여넣기 → 독성·알러지·기저질환 교차검증 + 안전 등급 (나무 P3) -->
+            <button onclick="IngredientScanner.open()" class="rounded-xl border border-gray-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-left group hover:scale-[1.02] transition-all">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="text-4xl">🧪</div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">성분 안전 스캐너</h3>
+                            <p class="text-xs text-amber-600 mt-1">성분표 붙여넣기 검사</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500">알러지·기저질환 교차검증</p>
+                    <i class="fa-solid fa-flask text-amber-500 text-xl group-hover:scale-110 transition-transform"></i>
+                </div>
+            </button>
+
         </div>
 
         <!-- 저빈도 항목은 접어서 모바일 스크롤 단축 (미오 P3, 2026-07-28) -->
