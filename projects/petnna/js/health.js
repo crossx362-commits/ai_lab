@@ -90,6 +90,9 @@ function renderHealthTab() {
     // BCS 체형 셀프체크 위저드 (백로그 나무_20260712143815, P3)
     if (typeof BcsWizard !== 'undefined') BcsWizard.renderWidget('bcs-wizard-widget');
 
+    // 부위별 자가 건강점검 위저드 (백로그 나무, P3 — 눈·귀·치아·피부 위험도 → 증상진단·병원비)
+    if (typeof BodyCheckWizard !== 'undefined') BodyCheckWizard.renderWidget('body-check-wizard-widget');
+
     // 일일 급식·칼로리 트래커 (백로그 나무_20260712143815, P3)
     if (typeof CalorieTracker !== 'undefined') CalorieTracker.renderWidget('calorie-tracker-widget');
 
