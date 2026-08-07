@@ -153,9 +153,9 @@
             const already = items.some(i => i.text.includes('중성화'));
             if (!already) items.unshift({ icon: '✂️', text: '중성화 수술 여부 수의사 상담' });
         }
-        // 품종 맞춤 항목을 맨 끝에 추가(있을 때만)
+        // 품종 호발질환 맞춤 항목은 최상단에 강조 노출(있을 때만)
         const breedItem = _breedItem(pet);
-        if (breedItem) items.push(breedItem);
+        if (breedItem) items.unshift(Object.assign({ hl: true }, breedItem));
         return { stage, items };
     }
 
@@ -212,13 +212,21 @@
 
         const rows = items.map((it, i) => {
             const on = !!checked[i];
+            const hl = !!it.hl;
+            const wrapCls = hl
+                ? 'w-full flex items-start gap-2.5 text-left p-2 rounded-xl bg-brand-50 ring-1 ring-brand-200 hover:bg-brand-100/70 transition-colors'
+                : 'w-full flex items-start gap-2.5 text-left p-2 rounded-xl hover:bg-brand-50/60 transition-colors';
+            const badge = hl
+                ? '<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black bg-brand-500 text-white shrink-0 align-middle">품종 맞춤</span>'
+                : '';
+            const textCls = on ? 'line-through text-gray-400' : (hl ? 'text-brand-800 font-semibold' : 'text-gray-700');
             return `
             <li>
                 <button type="button" onclick="togglePreventiveCheck(${i})"
-                    class="w-full flex items-start gap-2.5 text-left p-2 rounded-xl hover:bg-brand-50/60 transition-colors">
+                    class="${wrapCls}">
                     <span class="mt-0.5 shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center text-[10px] ${on ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 text-transparent'}">✓</span>
                     <span class="shrink-0">${it.icon}</span>
-                    <span class="min-w-0 flex-1 text-[11px] leading-snug keep-all ${on ? 'line-through text-gray-400' : 'text-gray-700'}">${_esc(it.text)}</span>
+                    <span class="min-w-0 flex-1 text-[11px] leading-snug keep-all ${textCls}">${_esc(it.text)}${badge}</span>
                 </button>
             </li>`;
         }).join('');

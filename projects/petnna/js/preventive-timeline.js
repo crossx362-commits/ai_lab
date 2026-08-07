@@ -41,6 +41,34 @@
         ],
     };
 
+    // 품종 호발질환 정적 매핑(부분일치). preventive-checklist.js BREED_CARE와 동일 관점의
+    // 생애 전반 강조 포커스 — 해당 품종이면 타임라인 상단에 배너로 강조한다.
+    const BREED_FOCUS = {
+        '리트리버': { icon: '🦴', text: '고관절·팔꿈치 이형성증, 종양(림프종) — 관절·체중 관리와 정기 검진' },
+        '닥스훈트': { icon: '🦴', text: '추간판 질환(디스크) — 점프 자제·체중 관리 평생 주의' },
+        '웰시코기': { icon: '🦴', text: '추간판 질환·비만 — 척추 부담 낮추는 관리 지속' },
+        '푸들': { icon: '👁️', text: '진행성 망막 위축(PRA)·슬개골 — 정기 안검진·관절 점검' },
+        '말티즈': { icon: '🦵', text: '슬개골 탈구·치과 질환 — 관절·구강 정기 점검' },
+        '포메': { icon: '🦵', text: '슬개골 탈구·기관 허탈 — 관절·호흡기 주의 점검' },
+        '치와와': { icon: '🦵', text: '슬개골 탈구·치과 질환 — 관절·구강 정기 점검' },
+        '시츄': { icon: '😮‍💨', text: '단두종 호흡기·각막 질환 — 여름 호흡 관리·안검진' },
+        '불독': { icon: '😮‍💨', text: '단두종 호흡기 증후군·피부 주름 — 호흡·피부 관리' },
+        '퍼그': { icon: '😮‍💨', text: '단두종 호흡기·안구 돌출 — 호흡·눈 상태 주의 점검' },
+        '페르시안': { icon: '💧', text: '다낭성 신장질환(PKD)·단두종 호흡기 — 신장 정기 검진' },
+        '샴': { icon: '🫀', text: '심장질환·치과 질환 — 심장·구강 정기 점검' },
+        '토끼': { icon: '🦷', text: '치아 부정교합·소화기 정체 — 치아·소화 상태 주의' },
+        '햄스터': { icon: '🩺', text: '치아 과성장·종양 — 치아·혹 조기 관찰' },
+    };
+
+    function _breedFocus(pet) {
+        const breed = (pet && pet.breed ? String(pet.breed) : '').replace(/\s/g, '');
+        if (!breed) return null;
+        for (const key in BREED_FOCUS) {
+            if (breed.includes(key)) return BREED_FOCUS[key];
+        }
+        return null;
+    }
+
     // 각 시기의 상태 판정: 나이 미상이면 전부 '예정'(current 없음).
     function _phaseState(phase, yrs) {
         if (yrs === null) return 'future';
@@ -92,6 +120,15 @@
             </li>`;
         }).join('');
 
+        const focus = _breedFocus(pet);
+        const breedBanner = focus ? `
+            <div class="mx-5 mb-3 px-3 py-2 rounded-xl bg-brand-50 border border-brand-200 flex items-start gap-2">
+                <span class="shrink-0 mt-0.5">${focus.icon}</span>
+                <p class="text-[10px] text-brand-800 leading-snug keep-all">
+                    <b>${_esc(String(pet.breed).trim())}</b> 품종 맞춤 강조 · ${_esc(focus.text)}
+                </p>
+            </div>` : '';
+
         const reminder = remindPhase ? `
             <div class="mx-5 mb-3 px-3 py-2 rounded-xl bg-brand-50 border border-brand-100 flex items-start gap-2">
                 <i class="fa-solid fa-bell text-brand-500 mt-0.5 shrink-0"></i>
@@ -117,6 +154,7 @@
                 <i class="fa-solid fa-timeline text-brand-500"></i>
                 <h2 class="text-base font-bold text-gray-900 flex-1">${name ? _esc(name) + '의 생애 여정' : '생애주기 예방 타임라인'}</h2>
             </div>
+            ${breedBanner}
             ${reminder}
             <div class="px-5 py-3">
                 <ul class="relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">${originNode}${rows}</ul>
