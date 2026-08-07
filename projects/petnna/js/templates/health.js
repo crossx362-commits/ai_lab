@@ -627,23 +627,27 @@ const HEALTH_TEMPLATE = `
                     <i class="fa-solid fa-file-pdf mr-1"></i>PDF
                 </button>
             </div>
+            <!-- 배경색 카드 비율을 줄여 히트맵처럼 보이던 현상 해결(미오 P2, 2026-08-07):
+                 핵심 지표(건강점수)만 bg-brand-50 + border-brand-100으로 강조하고
+                 나머지 3개는 기본 흰 카드(card-modern)로 되돌린다. 수치의 의미 구분은
+                 텍스트 색(emerald/amber/sky)이 유지한다. -->
             <div class="grid grid-cols-2 gap-2">
-                <div class="card-modern bg-brand-50/50 p-3 text-center">
+                <div class="card-modern bg-brand-50 border border-brand-100 p-3 text-center">
                     <div class="text-2xl mb-1">💯</div>
                     <div id="report-health-score" class="text-xl font-bold text-brand-600">--</div>
                     <div class="text-[10px] text-gray-600 font-semibold">건강점수</div>
                 </div>
-                <div class="card-modern bg-emerald-50/50 p-3 text-center">
+                <div class="card-modern p-3 text-center">
                     <div class="text-2xl mb-1">📅</div>
                     <div id="report-care-rate" class="text-xl font-bold text-emerald-600">--%</div>
                     <div class="text-[10px] text-gray-600 font-semibold">준수율</div>
                 </div>
-                <div class="card-modern bg-amber-50/50 p-3 text-center">
+                <div class="card-modern p-3 text-center">
                     <div class="text-2xl mb-1">🔥</div>
                     <div id="report-streak" class="text-xl font-bold text-amber-600">--일</div>
                     <div class="text-[10px] text-gray-600 font-semibold">연속기록</div>
                 </div>
-                <div class="card-modern bg-sky-50/50 p-3 text-center">
+                <div class="card-modern p-3 text-center">
                     <div class="text-2xl mb-1">🤖</div>
                     <div id="report-ai-count" class="text-xl font-bold text-sky-600">--회</div>
                     <div class="text-[10px] text-gray-600 font-semibold">AI분석</div>
