@@ -140,7 +140,7 @@ const SETTINGS_TEMPLATE = `
         <div class="bg-gradient-to-br from-amber-50/50 to-brand-50/30 rounded-3xl p-5 border border-amber-100 shadow-sm space-y-4 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-24 h-24 bg-brand-500/5 rounded-full -mr-8 -mt-8"></div>
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-heart text-rose-500 mr-2 animate-pulse"></i>따뜻한 동행 후원하기 💖
+                <i class="fa-solid fa-heart text-brand-500 mr-2 animate-pulse"></i>따뜻한 동행 후원하기 💖
             </h3>
             <p class="text-xs text-gray-500 leading-relaxed">
                 펫과나(Pet&Na)는 집사님들의 소중한 관심과 후원으로 무럭무럭 자라납니다. 후원금은 펫 사주 알고리즘 고도화와 안심 산책 데이터베이스 정밀 확장에 전액 사용됩니다.
@@ -254,7 +254,7 @@ const SETTINGS_TEMPLATE = `
         <!-- 🚨 시스템 오류 로그 -->
         <div class="bg-white rounded-3xl p-5 border border-amber-50 shadow-sm space-y-4">
             <h3 class="font-black text-gray-800 text-sm flex items-center border-b pb-2">
-                <i class="fa-solid fa-bug text-rose-500 mr-2 animate-pulse"></i>시스템 오류 로그 🚨
+                <i class="fa-solid fa-bug text-brand-500 mr-2"></i>시스템 오류 로그 🚨
             </h3>
             <p class="text-xs text-gray-500 leading-relaxed">
                 앱 실행 중 발생한 예외 상황 및 오류 경고 로그를 안전하게 보관 및 모니터링합니다.
