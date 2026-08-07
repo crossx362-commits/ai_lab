@@ -132,6 +132,9 @@ function renderHealthTab() {
     // 데일리 컨디션 원탭 로그 위젯 (2026-07-26 '오늘의 기록' 카드 안으로 이동)
     if (typeof DailyCondition !== 'undefined') DailyCondition.renderWidget('daily-condition-widget');
 
+    // 행동 큐 감정 디코더 위젯 (백로그 나무 P2) — 컨디션 로그 바로 아래
+    if (typeof BehaviorDecoder !== 'undefined') BehaviorDecoder.renderWidget('behavior-decoder-widget');
+
     // 오늘 투약·케어 체크 — 2026-07-26 마이펫에서 이 탭으로 이동했다.
     // 호스트를 옮기면서 렌더 호출을 같이 안 옮기면 호스트만 있고 영영 비어 있게 된다.
     if (typeof renderCareCheckBanner === 'function') renderCareCheckBanner();
