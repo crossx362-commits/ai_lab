@@ -242,20 +242,20 @@ const SHOP_ISLAND_TEMPLATE = `
           </div>
           <div class="space-y-2">
               <a href="https://www.petmeup.co.kr/?utm_source=petnna&utm_medium=app&utm_campaign=petlife" target="_blank" rel="noopener"
-                  class="flex items-center justify-between p-3 rounded-xl bg-red-50 hover:bg-red-100 transition-colors">
+                  class="flex items-center justify-between p-3 rounded-xl bg-brand-50 hover:bg-brand-100 transition-colors">
                   <div>
-                      <span class="block text-xs font-black text-red-800">펫미업 예약하기</span>
+                      <span class="block text-xs font-black text-brand-800">펫미업 예약하기</span>
                       <span class="text-[10px] text-gray-400">24시 응급 진료 및 안심 픽업 동행 서비스</span>
                   </div>
-                  <i class="fa-solid fa-arrow-up-right-from-square text-red-400 text-xs"></i>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-brand-400 text-xs"></i>
               </a>
               <a href="https://www.sncamc.co.kr/" target="_blank" rel="noopener"
-                  class="flex items-center justify-between p-3 rounded-xl bg-red-50 hover:bg-red-100 transition-colors">
+                  class="flex items-center justify-between p-3 rounded-xl bg-brand-50 hover:bg-brand-100 transition-colors">
                   <div>
-                      <span class="block text-xs font-black text-red-800">SNC 동물메디컬센터</span>
+                      <span class="block text-xs font-black text-brand-800">SNC 동물메디컬센터</span>
                       <span class="text-[10px] text-gray-400">최신 장비 연계 24시간 동물 종합 병원</span>
                   </div>
-                  <i class="fa-solid fa-arrow-up-right-from-square text-red-400 text-xs"></i>
+                  <i class="fa-solid fa-arrow-up-right-from-square text-brand-400 text-xs"></i>
               </a>
           </div>
       </div>
