@@ -145,6 +145,9 @@ function renderHealthTab() {
     // 주간 건강 변화 조기경보 리포트 카드
     if (typeof renderWeeklyReportCard === 'function') renderWeeklyReportCard();
 
+    // 이번 주 컨디션·급여·활동 요약 카드
+    if (typeof renderWeeklyConditionReport === 'function') renderWeeklyConditionReport();
+
     // 케어 스코어 & Proof-of-Care 공유 카드
     if (typeof renderCareScoreCard === 'function') renderCareScoreCard();
 
