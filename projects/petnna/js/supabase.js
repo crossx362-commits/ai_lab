@@ -37,12 +37,14 @@ const SupabaseService = {
             try {
                 return await fn();
             } catch (e) {
+                const msg = (e?.message || '').toLowerCase();
                 const isRetryable =
                     e?.code === '57014' ||
-                    e?.message?.includes('statement timeout') ||
-                    e?.message?.includes('Failed to fetch') ||
-                    e?.message?.includes('NetworkError') ||
-                    e?.message?.includes('network');
+                    msg.includes('statement timeout') ||
+                    msg.includes('failed to fetch') ||
+                    msg.includes('networkerror') ||
+                    msg.includes('network') ||        // ERR_NETWORK_CHANGED 등 모바일 네트워크 전환
+                    msg.includes('load failed');       // iOS Safari의 fetch 실패 메시지
                 if (attempt < maxRetries - 1 && isRetryable) {
                     await new Promise(r => setTimeout(r, baseDelayMs * Math.pow(2, attempt)));
                     continue;
