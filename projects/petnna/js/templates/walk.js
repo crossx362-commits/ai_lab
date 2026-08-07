@@ -236,6 +236,12 @@ const WALK_TEMPLATE = `
         <!-- 산책기록: 실시간 수치 + 제어 버튼 + 마킹 버튼 -->
         <div class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm space-y-3">
 
+            <!-- 헤더 (나만의 산책로 카드와 좌측 정렬·리듬 통일) -->
+            <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-shoe-prints text-brand-500 text-base"></i>
+                산책 기록
+            </h4>
+
             <!-- 실시간 수치 + 제어 버튼 -->
             <div class="p-3.5 bg-brand-50/60 rounded-2xl border border-brand-100/40 space-y-3">
 
