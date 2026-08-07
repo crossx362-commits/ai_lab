@@ -507,7 +507,11 @@ function renderCareScheduler() {
                 class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
                 📅 캘린더 내보내기
             </button>
-        </div>`;
+        </div>
+        <button onclick="if(window.HandoverSheet)HandoverSheet.open()"
+            class="w-full mb-2 flex items-center justify-center gap-1.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[11px] font-bold rounded-xl transition-all">
+            🏨 펫시터·호텔 인수인계 시트
+        </button>`;
 
     if (todaySchedules.length === 0) {
         container.innerHTML = autoReminderBtn + `
