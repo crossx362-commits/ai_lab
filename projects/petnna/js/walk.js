@@ -1101,6 +1101,7 @@ function toggleMarkingButtons(enable) {
 // open-meteo(무료·키 불필요)로 기온·자외선·강수·미세먼지를 조회해 walk 탭 상단에
 // '산책 최적 시간대'와 폭염(발바닥 화상)·한파·미세먼지·자외선 경보 배지를 표시한다.
 let walkWeatherCoachLoaded = false;
+let walkWeatherAlertLevel = null; // 같은 위험도 반복 알림 방지(세션당 단계별 1회)
 async function renderWalkWeatherCoach(force = false) {
     const box = document.getElementById('walk-weather-coach');
     if (!box) return;
@@ -1174,6 +1175,14 @@ async function renderWalkWeatherCoach(force = false) {
             caution: { cls: 'bg-amber-50 text-amber-700 border-amber-200',     dot: 'bg-amber-500',   icon: '🟡', label: '주의', desc: '짧게, 물·그늘 챙겨 다녀오세요' },
             good:    { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', icon: '🟢', label: '적합', desc: '산책하기 좋은 날이에요' },
         }[level];
+
+        // ── 위험·주의 단계 능동 경고 알림 (단계가 바뀔 때만 1회) ──
+        if ((level === 'danger' || level === 'caution') && walkWeatherAlertLevel !== level
+            && typeof showToast === 'function') {
+            showToast(`${LIGHT.icon} 오늘 산책 ${LIGHT.label} · ${LIGHT.desc}`);
+        }
+        walkWeatherAlertLevel = level;
+
         const briefing =
             `<div class="flex items-center gap-2.5 mb-2.5 py-2 px-3 rounded-xl border ${LIGHT.cls}">
                 <span class="relative flex h-2.5 w-2.5">
