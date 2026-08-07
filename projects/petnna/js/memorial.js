@@ -95,13 +95,13 @@
         const subText = sub.length ? sub.join(' · ') : '소중한 추억을 다시 만나보세요';
 
         host.innerHTML = `
-        <button type="button" onclick="openMemorialSpace()" class="w-full text-left p-3.5 bg-gradient-to-r from-slate-50 to-indigo-50 flex items-center gap-3 hover:from-slate-100 transition-colors">
+        <button type="button" onclick="openMemorialSpace()" class="w-full text-left p-3.5 bg-gradient-to-r from-slate-50 to-brand-50 flex items-center gap-3 hover:from-slate-100 transition-colors">
             <span class="text-xl shrink-0">🌈</span>
             <span class="min-w-0 flex-1">
-                <span class="block text-xs font-black text-indigo-900">${_esc(info.name)}의 추모 공간</span>
-                <span class="block text-[11px] text-indigo-500 font-medium truncate mt-0.5">${_esc(subText)}</span>
+                <span class="block text-xs font-black text-brand-900">${_esc(info.name)}의 추모 공간</span>
+                <span class="block text-[11px] text-brand-500 font-medium truncate mt-0.5">${_esc(subText)}</span>
             </span>
-            <i class="fa-solid fa-chevron-right text-indigo-300 text-xs shrink-0"></i>
+            <i class="fa-solid fa-chevron-right text-brand-300 text-xs shrink-0"></i>
         </button>`;
     }
 
@@ -138,24 +138,24 @@
 
         const avatar = info.imageUrl
             ? `<img src="${_esc(info.imageUrl)}" class="w-20 h-20 rounded-full object-cover mx-auto shadow-md border-2 border-white">`
-            : `<div class="w-20 h-20 rounded-full mx-auto bg-indigo-50 flex items-center justify-center text-3xl shadow-md">🐾</div>`;
+            : `<div class="w-20 h-20 rounded-full mx-auto bg-brand-50 flex items-center justify-center text-3xl shadow-md">🐾</div>`;
 
         panel.innerHTML = `
-        <div class="relative bg-gradient-to-b from-indigo-50 to-white px-6 pt-6 pb-5 text-center">
+        <div class="relative bg-gradient-to-b from-brand-50 to-white px-6 pt-6 pb-5 text-center">
             <button type="button" onclick="closeMemorialSpace()" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
             <div class="text-2xl mb-2">🌈</div>
             ${avatar}
             <h3 class="text-lg font-black text-gray-900 mt-3">${_esc(info.name)}</h3>
-            <p class="text-[11px] text-indigo-500 font-bold mt-0.5">무지개다리 건너 별이 된 우리 아이</p>
+            <p class="text-[11px] text-brand-500 font-bold mt-0.5">무지개다리 건너 별이 된 우리 아이</p>
             ${anni ? `<p class="text-xs font-black text-rose-500 mt-1.5">${_esc(anni)}</p>` : ''}
-            ${chips.length ? `<div class="flex flex-wrap justify-center gap-1.5 mt-3">${chips.map(function (c) { return `<span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 rounded-full px-2.5 py-1">${c}</span>`; }).join('')}</div>` : ''}
+            ${chips.length ? `<div class="flex flex-wrap justify-center gap-1.5 mt-3">${chips.map(function (c) { return `<span class="text-[10px] font-bold text-brand-600 bg-brand-50 rounded-full px-2.5 py-1">${c}</span>`; }).join('')}</div>` : ''}
         </div>
         <div class="px-5 pb-5 space-y-4">
             <div>
                 <p class="text-[11px] font-black text-gray-500 mb-2">📸 추모 갤러리</p>
                 ${gallery}
             </div>
-            <button type="button" onclick="shareMemorialCard()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs py-3 rounded-xl transition-colors shadow-soft">
+            <button type="button" onclick="shareMemorialCard()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs py-3 rounded-xl transition-colors shadow-soft">
                 <i class="fa-solid fa-share-nodes mr-1.5"></i>추모 카드 공유하기
             </button>
         </div>`;
