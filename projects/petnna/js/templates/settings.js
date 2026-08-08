@@ -11,7 +11,7 @@ const SETTINGS_TEMPLATE = `
                 </h3>
                 <span class="text-[10px] font-black text-gray-400 bg-gray-50 px-2.5 rounded-full h-6 inline-flex items-center">env gate</span>
             </div>
-            <div id="service-status-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            <div id="service-status-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2"></div>
             <p class="text-[10px] text-gray-400 font-medium leading-relaxed px-1">
                 AI와 결제는 현재 차단 상태로 운영됩니다. 배포 환경에서 플래그와 키를 켜면 같은 화면에서 즉시 준비 상태로 전환됩니다.
             </p>
