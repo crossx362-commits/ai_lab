@@ -225,6 +225,20 @@ def _llm_second_opinion(cands: list[dict]) -> dict[str, str]:
 
 
 def analyze() -> dict:
+    """보류 항목을 분석한다.
+
+    2026-08-08 수정: dev_state.issues만 순회하면 **수리가 한 번도 집지 않은 항목이
+    아예 안 보인다** — 실측 2026-08-08, 보류 50건 중 28건이 dev_state에 없었다
+    (회의·미오·나무가 적재 시점에 곧바로 gate="사람 판단 트랙"/"DB/인증" 등으로 보류
+    시킨 것들이라 수리 루프에 진입한 적이 없다). analyze()가 "구조적 정체 몇 건"을
+    보고할 때 실제로는 절반 넘게 안 보고 있었던 것.
+
+    dev_state에 없는 항목은 수리가 낸 반려 사유(review_reason)가 없으므로, 적재한
+    쪽이 이미 item 자체에 남긴 gate/resolution을 사유로 쓴다 — `_reason()`이 원래도
+    이 필드들을 함께 보므로 rec={}로 넘기면 그대로 동작한다. release()는 이미
+    dev_state에 항목이 없으면 그 부분만 건너뛰도록 짜여 있어(`rec = issues.get(fp);
+    if rec: ...`) 여기서 추가 처리가 필요 없다.
+    """
     try:
         backlog = json.loads(BACKLOG.read_text(encoding="utf-8"))
         dev = json.loads(DEV_STATE.read_text(encoding="utf-8"))
@@ -239,6 +253,13 @@ def analyze() -> dict:
         if rec.get("status") != "보류":
             continue
         item = items.get(fp, {})
+        # dev_state가 보류로 남아 있어도 백로그가 이미 다른 상태(예: 오늘 유령 과제로
+        # 완료 종결됨)면 뒤진 기록이다 — 계속 넣으면 release()가 사유 문구 매칭에만
+        # 기대어 우연히 안전한 것이지, 사유가 사람판단 마커와 안 겹치는 순간 방금
+        # 닫은 항목을 대기로 되돌려버린다(2026-08-08 실측: 이 세션이 오늘 종결한
+        # 유령 2건이 바로 이 상태였다). 백로그가 진실이므로 백로그 상태를 우선한다.
+        if fp in items and item.get("status") != "보류":
+            continue
         reason = _reason(rec, item)
         cat = classify(reason, _predates_facts(rec.get("reviewed_at", "")))
         rows.append({
@@ -247,6 +268,21 @@ def analyze() -> dict:
             "releasable": cat not in ("사람 판단(보존)", "사유 미기록")
                           and not _gate_still_blocks(cat, reason, passing),
         })
+
+    seen = set(issues)
+    for it in backlog.get("items", []):
+        fp = it.get("id")
+        if it.get("status") != "보류" or fp in seen:
+            continue
+        reason = _reason({}, it)
+        cat = classify(reason, False)   # dev_state가 없어 리뷰 시각 자체가 없다 — 보존 취급
+        rows.append({
+            "id": fp, "title": it.get("title", ""),
+            "category": cat, "reason": reason,
+            "releasable": cat not in ("사람 판단(보존)", "사유 미기록")
+                          and not _gate_still_blocks(cat, reason, passing),
+        })
+
     return {"rows": rows, "counts": Counter(r["category"] for r in rows),
             "passing_tests": len(passing)}
 

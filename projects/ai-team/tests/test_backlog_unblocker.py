@@ -194,6 +194,38 @@ class UnblockerTests(unittest.TestCase):
         self.assertFalse(self._cat(rows, "e1")["releasable"],
                          "테스트 결과 판정 불가인데 해소 가능으로 봤다")
 
+    def test_backlog_only_items_are_visible(self):
+        """2026-08-08: dev_state.issues만 순회하면 수리가 한 번도 안 집은 항목이
+        아예 안 보인다 — 회의·미오·나무가 적재 시점에 곧바로 gate로 보류시킨 것들.
+        실측 당일 보류 50건 중 28건이 이 상태였다."""
+        self.mod.BACKLOG.write_text(json.dumps({"items": [
+            {"id": "b1", "title": "가입 개방 대기", "status": "보류",
+             "owner": "사람", "gate": "오너 결정(2026-08-02): 당분간 나만"},
+        ]}, ensure_ascii=False), encoding="utf-8")
+        self.mod.DEV_STATE.write_text(json.dumps({"issues": {}}), encoding="utf-8")
+        rows = self.mod.analyze()["rows"]
+        self.assertEqual([r["id"] for r in rows], ["b1"],
+                         "dev_state에 없는 보류 항목이 분석에서 통째로 누락됐다")
+        self.assertFalse(self._cat(rows, "b1")["releasable"], "오너 결정을 뒤집었다")
+
+    def test_stale_dev_state_record_does_not_reopen_closed_item(self):
+        """dev_state가 보류로 남아 있어도 백로그가 이미 다른 상태면 뒤진 기록이다.
+
+        2026-08-08 실측: 유령 과제를 백로그에서 완료로 종결했는데 dev_state는 갱신
+        안 됐다. 옛 사유(review_reason)가 우연히 사람판단 마커와 안 겹치면 release()가
+        방금 닫은 항목을 대기로 되돌려버릴 뻔했다 — 백로그가 진실이므로 백로그 상태를
+        우선해야 한다."""
+        self.mod.BACKLOG.write_text(json.dumps({"items": [
+            {"id": "g1", "title": "유령 과제", "status": "완료",
+             "resolution": "이미 구현돼 있어 종결"},
+        ]}, ensure_ascii=False), encoding="utf-8")
+        self.mod.DEV_STATE.write_text(json.dumps({"issues": {
+            "g1": {"status": "보류", "title": "유령 과제", "attempts": 3,
+                  "review_reason": "안전 게이트 거부: 변경 과대(파일 1·50줄)"},
+        }}), encoding="utf-8")
+        rows = self.mod.analyze()["rows"]
+        self.assertEqual(rows, [], "이미 완료 종결된 항목을 뒤진 dev_state 기록으로 되살렸다")
+
 
 if __name__ == "__main__":
     unittest.main()
