@@ -447,6 +447,92 @@ function renderWeeklyCareReport() {
         </div>`;
 }
 
+// ── 케어 캘린더 히트맵 (로컬 완결형) ─────────────────────────────
+// 이번 주(일~토) completionHistory를 요일별로 재집계해 케어 밀도를 히트맵으로
+// 표시한다. 신규 스키마·DB 접촉 없음 — 기존 careSchedules 레코드만 사용.
+function getWeeklyCareHeatmap() {
+    const careSchedules = (typeof AppStore !== 'undefined' && AppStore.getState('careSchedules')) || { schedules: [], completionHistory: [] };
+    const activePet = (typeof getActivePet === 'function') ? getActivePet() : null;
+    const petId = activePet ? activePet.id : null;
+    const belongs = (o) => petId == null || o.petId == null || o.petId === petId;
+
+    const localDay = (d) => {
+        const t = new Date(d);
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    };
+
+    const today = new Date();
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+        days.push({ key: localDay(d), dow: i, count: 0, types: {}, isToday: localDay(d) === localDay(today) });
+    }
+    const byKey = {};
+    days.forEach(d => { byKey[d.key] = d; });
+
+    careSchedules.completionHistory.forEach(c => {
+        if (!belongs(c) || !c.completedAt) return;
+        const day = byKey[localDay(c.completedAt)];
+        if (!day) return;
+        day.count++;
+        day.types[c.type] = (day.types[c.type] || 0) + 1;
+    });
+
+    const total = days.reduce((s, d) => s + d.count, 0);
+    const max = days.reduce((m, d) => Math.max(m, d.count), 0);
+    return { days, total, max };
+}
+
+// 밀도 → 셀 색상 (brand 팔레트: 0=회색, 낮음→높음 brand-100/300/500)
+function careHeatmapCellClass(count, max) {
+    if (count === 0) return 'bg-gray-100 text-gray-300';
+    const ratio = max > 0 ? count / max : 0;
+    if (ratio <= 0.34) return 'bg-brand-100 text-brand-600';
+    if (ratio <= 0.67) return 'bg-brand-300 text-white';
+    return 'bg-brand-500 text-white';
+}
+
+// 케어 히트맵 카드 렌더링
+function renderCareHeatmap() {
+    const el = document.getElementById('care-heatmap-card');
+    if (!el) return;
+    const { days, total, max } = getWeeklyCareHeatmap();
+
+    if (total === 0) {
+        el.innerHTML = `
+            <div class="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-3 text-center text-gray-400">
+                <div class="text-lg mb-0.5">🗓️</div>
+                <p class="text-[10px]">이번 주 케어 기록이 쌓이면 요일별 밀도를 볼 수 있어요</p>
+            </div>`;
+        return;
+    }
+
+    const dowLabels = ['일', '월', '화', '수', '목', '금', '토'];
+    const cells = days.map(d => {
+        const cls = careHeatmapCellClass(d.count, max);
+        const ring = d.isToday ? ' ring-2 ring-brand-400' : '';
+        const breakdown = Object.keys(d.types)
+            .map(t => `${getCareTypeName(t)} ${d.types[t]}`)
+            .join(', ');
+        const title = d.count > 0 ? `${dowLabels[d.dow]}요일 ${d.count}건 (${breakdown})` : `${dowLabels[d.dow]}요일 기록 없음`;
+        return `
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-[9px] font-bold ${d.isToday ? 'text-brand-600' : 'text-gray-400'}">${dowLabels[d.dow]}</span>
+                <div title="${title}" class="w-full aspect-square rounded-lg ${cls}${ring} flex items-center justify-center text-[11px] font-black">${d.count}</div>
+            </div>`;
+    }).join('');
+
+    el.innerHTML = `
+        <div class="rounded-xl border border-gray-200 bg-white p-3">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-black text-gray-800">🗓️ 이번 주 케어 히트맵</span>
+                <span class="text-[10px] text-gray-500">총 ${total}건</span>
+            </div>
+            <div class="grid grid-cols-7 gap-1.5">${cells}</div>
+        </div>`;
+}
+
 // 처방약 리필: 남은 일수 계산 (총 수량 / 1일 투여 횟수 - 경과 일수)
 function getMedicationRefillInfo(schedule) {
     if (!schedule || schedule.type !== 'medicine') return null;
@@ -485,6 +571,7 @@ function renderRefillBadge(schedule) {
 function renderCareScheduler() {
     if (typeof renderMedicationAdherenceCard === 'function') renderMedicationAdherenceCard();
     if (typeof renderWeeklyCareReport === 'function') renderWeeklyCareReport();
+    if (typeof renderCareHeatmap === 'function') renderCareHeatmap();
     const container = document.getElementById('care-scheduler-container');
     if (!container) return;
 
