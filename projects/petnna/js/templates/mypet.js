@@ -278,7 +278,7 @@ const MYPET_TEMPLATE = `
                 <input type="file" id="pet-direct-upload" accept="image/*" class="hidden" onchange="uploadPetPhotoDirect(event)">
 
                 <!-- 컨디션 2칸 -->
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-3">
                     <div class="bg-gray-50 p-2.5 rounded-2xl border border-gray-100">
                         <div class="flex items-baseline justify-between mb-1.5">
                             <div class="flex items-center gap-1 min-w-0">
@@ -290,7 +290,7 @@ const MYPET_TEMPLATE = `
                         <div class="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="butler-condition-bar" class="bg-brand-500 h-full transition-all duration-700" style="width:85%"></div>
                         </div>
-                        <p id="butler-condition-desc" class="text-[10px] text-gray-500 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+                        <p id="butler-condition-desc" class="text-sm text-gray-500 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
                     <div class="bg-amber-50/60 p-2.5 rounded-2xl border border-amber-100">
                         <div class="flex items-baseline justify-between mb-1.5">
@@ -303,7 +303,7 @@ const MYPET_TEMPLATE = `
                         <div class="w-full bg-amber-100 h-1.5 rounded-full overflow-hidden mb-1">
                             <div id="pet-condition-bar" class="bg-amber-500 h-full transition-all duration-700" style="width:90%"></div>
                         </div>
-                        <p id="pet-condition-desc" class="text-[10px] text-amber-800/70 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
+                        <p id="pet-condition-desc" class="text-sm text-amber-800/70 font-medium leading-snug keep-all"><span class="skeleton" style="display:inline-block;width:6rem;height:0.7rem;vertical-align:middle" aria-label="로딩 중"></span></p>
                     </div>
                 </div>
 
@@ -335,7 +335,7 @@ const MYPET_TEMPLATE = `
                         </div>
                     </div>
                     <!-- 사주 조언 한 줄 -->
-                    <p id="personalized-health-tip" class="text-[10px] text-gray-400 font-medium mt-2 pt-2 border-t border-gray-100 keep-all leading-relaxed">✨ 분석 중...</p>
+                    <p id="personalized-health-tip" class="text-sm text-gray-400 font-medium mt-2 pt-2 border-t border-gray-100 keep-all leading-relaxed">✨ 분석 중...</p>
                 </div>
 
             </div>
