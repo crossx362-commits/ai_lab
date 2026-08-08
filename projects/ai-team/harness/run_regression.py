@@ -18,9 +18,13 @@
 동작
 ----
 · 실패가 없으면 조용하다(로그만). 오너 지시 §1-5 "경보는 못 고친 것만".
-· 실패가 있으면 실패 모듈·테스트 이름과 첫 단서를 텔레그램으로 보낸다.
-  예원이 자동으로 고칠 수 없는 종류라(코드 판단) 사람에게 알리는 것이 맞다.
-· 종료 코드: 실패 수(0이면 정상) — launchd 로그에서 바로 구분된다.
+· 실패가 있으면 **먼저 자기수정을 시도한다**(`ai_team_self_heal.attempt`, 오너 지시
+  2026-08-08 "문제 생기면 보고하지 않고 알아서 수정"). 격리 워크트리에서 고치고
+  회귀 스위트가 100% 통과해야만, 그리고 안전망 코드(게이트·락·백로그 판별 등)를
+  안 건드렸을 때만 master에 병합한다. 성공하면 텔레그램 없이 조용히 끝난다.
+· 자기수정이 실패했거나 안전망을 건드려 검토가 필요하면, 실패 모듈·테스트 이름과
+  자기수정 시도 결과를 텔레그램으로 보낸다.
+· 종료 코드: 자기수정 후에도 남은 실패 수(0이면 정상) — launchd 로그에서 바로 구분된다.
 """
 
 from __future__ import annotations
@@ -38,10 +42,13 @@ if hasattr(sys.stdout, "reconfigure"):
 
 AI_TEAM_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = AI_TEAM_ROOT.parents[1]
+HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(AI_TEAM_ROOT))
+sys.path.insert(0, str(HARNESS_DIR))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
+import ai_team_self_heal  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -93,10 +100,28 @@ def main() -> int:
     for mod, names in sorted(by_mod.items()):
         print(f"  · {mod}: {len(names)}건 — {', '.join(names[:3])}")
 
+    # 자기수정 시도(오너 지시 2026-08-08) — 실패를 텔레그램으로 보내기 전에 격리
+    # 워크트리에서 먼저 고쳐본다. 성공하면(회귀 100% + 안전망 미접촉) 조용히 끝난다.
+    summary = "\n".join(f"{mod}: {', '.join(names)}" for mod, names in sorted(by_mod.items()))
+    heal = ai_team_self_heal.attempt(summary)
+    if heal["healed"] and heal["committed"]:
+        print(f"{stamp} 🔧 자기수정 성공 — {heal['reason']}")
+        confirm = run_suite()
+        if confirm.get("ok"):
+            print(f"{stamp} 🧪 재확인: {confirm['total']}개 전부 통과")
+            return 0
+        # 매우 드문 경우(병합 직후 master에서 재확인이 다시 실패) — 조용히 넘어가지
+        # 않는다. 자기수정이 "고쳤다고 착각한 채 조용히 전멸"하면 안 된다는 원칙 그대로.
+        print(f"{stamp} ⚠️ 자기수정 병합했으나 master 재확인 실패 — 사람 검토 필요")
+        heal["reason"] += " (master 재확인에서 다시 실패 — 검토 필요)"
+    else:
+        print(f"{stamp} 🔧 자기수정 미해결 — {heal['reason']}")
+
     if args.send:
         lines = [f"· {mod} ({len(n)}건)" for mod, n in sorted(by_mod.items())]
         send(f"🧪 [하네스] 회귀 스위트 실패 {len(fails)}건 / 전체 {res['total']}개\n\n"
              + "\n".join(lines[:10])
+             + f"\n\n🔧 자기수정 시도: {heal['reason']}"
              + "\n\n단독 실행하면 통과하는데 여기서만 실패한다면 그건 그 테스트의 버그가 "
                "아니라 **앞선 테스트가 남긴 전역 상태**입니다(2026-08-08 subprocess 오염 사례).")
     return len(fails)
