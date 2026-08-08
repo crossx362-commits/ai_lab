@@ -308,13 +308,74 @@
         </div>
     </nav>
 
-    <!-- ⚠️ 로그인 유도 모달 -->
-    <div id="login-landing-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300" style="display:none;">
-        <div class="bg-white card-elevated p-7 pb-8 max-w-sm sm:p-8 w-full animate-scale-in">
-            <div class="text-center mb-3">
-                <div class="mb-2"><span class="inline-flex items-center justify-center rounded-full bg-brand-100 p-5"><i class="fa-solid fa-paw text-[3.5rem] bg-gradient-to-br from-brand-400 to-brand-700 bg-clip-text text-transparent"></i></span></div>
-                <h2 class="text-xl font-black text-gray-900 mb-2.5">펫과나에 오신 것을 환영합니다!</h2>
-                <p class="text-xs font-medium text-gray-500">반려동물과의 모든 순간을 기록하세요</p>
+    <!-- ⚠️ 로그인 랜딩 (2026-08-08 회의 결정: 모달 → 첫 페이지 병합, 데스크톱 2단 split)
+         ID `login-landing-overlay`는 절대 바꾸지 마라 — 화면 표시 말고도 **캡처 숨김 앵커**다:
+         care-share.js:83·public-profile.js:466이 `.cs-share-active #login-landing-overlay{display:none}`
+         로 공유 카드·실종 QR 이미지에서 이 창을 지운다. ID가 바뀌면 사용자가 공유한
+         이미지에 로그인 폼이 찍혀 나간다(회귀 테스트 tests/e2e/test_login_capture_hidden.py).
+         supabase.js:210·app.js 454/788/903도 이 ID로 표시/숨김을 제어한다. -->
+    <div id="login-landing-overlay" class="fixed inset-0 bg-brand-50 z-50 overflow-y-auto transition-all duration-300" style="display:none;">
+        <!-- full-bleed: 좌우에 크림 여백을 남기면 히어로 그라디언트가 중간에 잘려 어색하다.
+             인증 패널은 자체 폭(lg:w-[26rem])으로 고정하고 히어로가 나머지를 다 먹는다. -->
+        <div id="login-shell" class="min-h-full w-full flex flex-col lg:flex-row lg:items-stretch">
+
+            <!-- 좌: 히어로 — 데스크톱의 죽은 여백(실측 77.5%)을 가치 제안으로 바꾼다. -->
+            <div id="login-hero-panel" class="lg:flex-1 lg:min-w-0 bg-gradient-to-br from-brand-500 to-brand-700 text-white px-6 py-10 lg:px-12 lg:py-16 flex flex-col justify-center">
+                <div class="flex items-center gap-2.5 mb-6 lg:mb-8">
+                    <span class="inline-flex items-center justify-center rounded-2xl bg-white/15 p-2.5">
+                        <i class="fa-solid fa-paw text-2xl text-white"></i>
+                    </span>
+                    <span class="text-lg font-black tracking-tight">펫과나</span>
+                </div>
+                <h1 class="text-2xl lg:text-4xl font-black leading-[1.3] [word-break:keep-all] text-balance mb-3 lg:mb-4">
+                    반려동물의 건강·산책·사주까지,
+                    펫과나 하나로
+                </h1>
+                <p class="text-sm lg:text-base text-white/80 [word-break:keep-all] text-balance mb-8 lg:mb-10 max-w-md">
+                    AI가 건강 이상을 먼저 알려주고, 산책과 진료비까지 함께 기록해요.
+                </p>
+                <ul id="login-hero-features" class="grid grid-cols-2 gap-3 lg:gap-4 max-w-md">
+                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
+                        <span class="text-xl shrink-0" aria-hidden="true">🩺</span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold leading-snug">AI 건강분석</p>
+                            <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">사진 한 장으로 이상 신호</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
+                        <span class="text-xl shrink-0" aria-hidden="true">🐾</span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold leading-snug">산책 GPS</p>
+                            <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">경로·거리 자동 기록</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
+                        <span class="text-xl shrink-0" aria-hidden="true">🔮</span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold leading-snug">사주·궁합</p>
+                            <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">우리 아이와의 케미</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
+                        <span class="text-xl shrink-0" aria-hidden="true">📋</span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold leading-snug">건강수첩</p>
+                            <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">진료비·영수증 보관</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 우: 인증 -->
+            <div id="login-auth-panel" class="lg:w-[26rem] xl:w-[28rem] lg:shrink-0 bg-white px-6 py-10 lg:px-10 lg:py-16 flex flex-col justify-center">
+            <div class="w-full max-w-sm mx-auto">
+            <!-- 헤딩은 하나만 둔다. 이 앱에서 `hidden lg:block`으로 뷰포트별 두 벌을
+                 만드는 패턴은 **작동하지 않는다** — css/style.css:1285의
+                 `.hidden{display:none !important}`가 Tailwind의 `lg:block`을 항상 이긴다
+                 (2026-08-08 실측). 크기만 반응형으로 준다. -->
+            <div class="text-center lg:text-left mb-5 lg:mb-6">
+                <h2 class="text-lg lg:text-xl font-black text-gray-900 mb-1.5">펫과나 시작하기</h2>
+                <p class="text-xs font-medium text-gray-500">3초면 시작할 수 있어요</p>
             </div>
 
             <!-- 소셜 로그인 -->
@@ -395,8 +456,10 @@
             <p class="text-[11px] leading-[2.3] text-center text-balance [word-break:keep-all] text-gray-500 mt-4 px-8">
                 로그인하면 <span class="whitespace-nowrap"><a href="#" class="inline-flex items-center whitespace-nowrap min-h-[48px] px-1.5 -my-2.5 text-brand-700 font-semibold underline">이용약관</a> 및</span> <span class="whitespace-nowrap"><a href="#" class="inline-flex items-center whitespace-nowrap min-h-[48px] px-1.5 -my-2.5 text-brand-700 font-semibold underline">개인정보처리방침</a>에</span> 동의합니다.
             </p>
-        </div>
-    </div>
+            </div><!-- /max-w-sm -->
+            </div><!-- /#login-auth-panel -->
+        </div><!-- /#login-shell -->
+    </div><!-- /#login-landing-overlay -->
 
     <!-- 🔔 알림 토스트 -->
     <div id="toast" class="toast hidden"></div>

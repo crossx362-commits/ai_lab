@@ -47,3 +47,24 @@ def run(page, base_url):
     assert box["x"] + box["width"] <= inner_w + 1, (
         f"오버레이 카드가 우측 뷰포트를 벗어남(right={box['x'] + box['width']}, vw={inner_w})"
     )
+
+    # ── 2단 split (2026-08-08 회의 결정) ────────────────────────────────
+    # 데스크톱에서 좌측 히어로 패널이 보이고, 인증 카드와 **가로로 나란히** 놓인다.
+    # 카피 문구는 단언하지 않는다 — 리터럴을 못 박으면 문구 개선이 회귀로 잡힌다
+    # (2026-07-28 교훈: 카피를 단언하는 테스트는 회귀가 아니라 개선을 막는다).
+    hero = page.wait_for_selector("#login-hero-panel", state="visible", timeout=5000)
+    assert hero is not None, "데스크톱 좌측 히어로 패널이 없다 — split 레이아웃 미적용"
+
+    hero_box = page.locator("#login-hero-panel").bounding_box()
+    auth_box = page.locator("#login-auth-panel").bounding_box()
+    assert hero_box and auth_box, "히어로/인증 패널 박스를 측정하지 못함"
+    assert hero_box["x"] + hero_box["width"] <= auth_box["x"] + 1, (
+        "데스크톱에서 히어로와 인증 패널이 가로로 나란하지 않다 "
+        f"(hero right={hero_box['x'] + hero_box['width']}, auth x={auth_box['x']})")
+
+    # split의 존재 이유: 죽은 여백을 줄이는 것. 카드가 화면 폭을 충분히 쓰는지 본다.
+    shell = page.locator("#login-shell").bounding_box()
+    assert shell is not None, "#login-shell 을 찾지 못함"
+    assert shell["width"] >= inner_w * 0.5, (
+        f"데스크톱에서 로그인 셸이 화면 폭의 절반도 안 쓴다(폭 {shell['width']} / {inner_w}) — "
+        "split으로 바꾼 의미가 없다")
