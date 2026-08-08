@@ -567,7 +567,12 @@ body.theme-sepia .border-gray-100 {
 .mobile-tab-btn.text-brand-500 .mobile-nav-icon {
     opacity: 1;
     transform: scale(1.12) translateY(-1px);
-    filter: saturate(1.08) drop-shadow(0 2px 4px rgba(227, 119, 54, 0.2));
+    filter: saturate(1.08) drop-shadow(0 2px 4px rgba(204, 120, 92, 0.2));
+    /* 활성 탭 대비 강화: brand-500(#cc785c) 틴트 pill 배경 */
+    background: rgba(204, 120, 92, 0.14);
+    border-radius: 999px;
+    padding: 5px 11px !important;
+    box-sizing: content-box !important;
 }
 .mobile-tab-btn.text-brand-500 span {
     opacity: 1;
