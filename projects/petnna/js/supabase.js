@@ -120,6 +120,8 @@ const SupabaseService = {
     },
 
     async uploadMedia(fileOrBase64, path) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return null;
         if (!this.isConnected || !this.client) return null;
 
         try {
@@ -260,6 +262,30 @@ const SupabaseService = {
         try { return localStorage.getItem('petna_demo_mode') === '1'; } catch (e) { return false; }
     },
 
+    // 원격 **쓰기**를 막아야 하는 상태인가 (2026-08-08 오너 승인).
+    //
+    // isDemoMode()는 원격 → 로컬 방향(sync*)만 막고 있었다. 실측으로 확인한 결과
+    // upload/update/delete 16개 중 12개에는 인증 가드조차 없어 `isConnected`만 보고
+    // 그대로 서버로 나갔다. 그 상태에서 게스트(둘러보기) 진입을 열면 로그인하지 않은
+    // 방문자의 조작이 실제 DB에 쓰인다.
+    //
+    // 가드를 CTA마다 감싸지 않고 **데이터 계층 한 곳**에 둔다 — 호출부에만 걸면
+    // 새 호출부가 생길 때마다 뚫린다(2026-07-25 데모 동기화 사고의 교훈: "가드는
+    // 호출부가 아니라 함수 안에 넣어야 새 진입점이 생겨도 안 뚫린다").
+    //
+    // 데모/게스트에서도 로컬 저장은 정상 동작한다 — 화면상 기록은 그대로 남고
+    // 서버로만 안 나간다.
+    // **게스트만** 본다. 데모 모드(petna_demo_mode)는 포함하지 않는다 —
+    // 데모는 로그인한 오너가 설정에서 켜는 것이고, 기존 계약상 업로드는 그대로 나간다
+    // (tests/e2e/test_health_logs_condition_columns.py가 데모 모드에서 업로드 시도를
+    //  정상으로 단언한다). 처음엔 둘 다 넣었다가 그 테스트가 깨져 범위를 좁혔다 —
+    // 게스트 안전이 목적이지 데모 동작 변경이 목적이 아니다.
+    isReadOnlySession() {
+        try {
+            return localStorage.getItem('petna_guest_mode') === '1';
+        } catch (e) { return false; }
+    },
+
     async startSync() {
         await this.handleOAuthCallback();
         if (this.isDemoMode()) {
@@ -386,6 +412,8 @@ const SupabaseService = {
     },
 
     async uploadPost(newPost) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -542,6 +570,8 @@ const SupabaseService = {
     },
 
     async deletePost(postId) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -567,6 +597,8 @@ const SupabaseService = {
     },
 
     async updatePostLikes(postId, likes) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -592,6 +624,8 @@ const SupabaseService = {
     },
 
     async updatePostComments(postId, comments) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -617,6 +651,8 @@ const SupabaseService = {
     },
 
     async updatePostContent(postId, content, image = undefined, videoUrl = undefined, isVideo = undefined) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -648,6 +684,8 @@ const SupabaseService = {
 
 
     async updatePet(pet) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -730,6 +768,8 @@ const SupabaseService = {
     },
 
     async updateProfile(profile) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         const email = profile.email || (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
@@ -836,6 +876,8 @@ const SupabaseService = {
     },
 
     async uploadAlbum(albumItem) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         const email = albumItem.email || (typeof settings_email !== 'undefined' && settings_email) || localStorage.getItem('petna_user_email') || "butler@petna.co.kr";
         try {
@@ -873,6 +915,8 @@ const SupabaseService = {
     },
 
     async deleteAlbum(albumId) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         try {
             const { error } = await this.client
@@ -946,6 +990,8 @@ const SupabaseService = {
     },
 
     async uploadRoute(routeItem) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         // 오프라인이면 산책로를 큐에 안전 저장하고 재연결 시 자동 재전송(offline-sync.js).
         if (typeof navigator !== 'undefined' && navigator.onLine === false
             && typeof window.OfflineSync !== 'undefined') {
@@ -982,6 +1028,8 @@ const SupabaseService = {
     },
 
     async deleteRoute(routeId) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         if (!this.isConnected || !this.client) return;
         try {
             const { error } = await this.client
@@ -1065,6 +1113,8 @@ const SupabaseService = {
     },
 
     async uploadMedicalRecord(record) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         const user = await this._authUser();
         if (!user) return; // 실 Supabase 세션 없음 — 로컬 전용 유지
         try {
@@ -1091,6 +1141,8 @@ const SupabaseService = {
     },
 
     async deleteMedicalRecordRemote(recordId) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         const user = await this._authUser();
         if (!user) return;
         try {
@@ -1150,6 +1202,8 @@ const SupabaseService = {
     },
 
     async uploadHealthLog(entry) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         // 오프라인이면 기록을 큐에 안전 저장하고 재연결 시 자동 재전송(offline-sync.js).
         if (typeof navigator !== 'undefined' && navigator.onLine === false
             && typeof window.OfflineSync !== 'undefined') {
@@ -1260,6 +1314,8 @@ const SupabaseService = {
     // 투약 이행 로그(medication_logs) — care-check.js '먹였어요/건너뜀'이 남긴 기록을 올린다.
     // UNIQUE(user_id,pet_id,schedule_id,log_date)로 같은 날 재기록 시 겹쳐 갱신된다.
     async uploadMedicationLog(entry) {
+        // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
+        if (this.isReadOnlySession()) return;
         const user = await this._authUser();
         if (!user) return; // 실 세션 없음 — 로컬 전용 유지
         try {

@@ -72,7 +72,7 @@
 
     <!-- Supabase Cloud Sync Engine -->
     <script defer src="js/supabase-js.js"></script>
-    <script defer src="js/supabase.js?v=170"></script>
+    <script defer src="js/supabase.js?v=172"></script>
     <script defer src="js/offline-sync.js?v=1"></script>
 
     <!-- Leaflet Map JS -->
@@ -117,6 +117,7 @@
     <script defer src="js/freemium.js?v=160"></script>
     <script defer src="js/achievements.js?v=162"></script>
     <script defer src="js/care-coins.js?v=1"></script>
+    <script defer src="js/guest-mode.js?v=6"></script>
     <script defer src="js/share-card.js?v=163"></script>
     <script defer src="js/health-dashboard.js?v=164"></script>
     <script defer src="js/wellness-anomaly.js?v=171"></script>
@@ -377,6 +378,14 @@
                 <h2 class="text-lg lg:text-xl font-black text-gray-900 mb-1.5">펫과나 시작하기</h2>
                 <p class="text-xs font-medium text-gray-500">3초면 시작할 수 있어요</p>
             </div>
+
+            <!-- 가입 없이 둘러보기 (회의 결정 2026-08-08) — 계정 생성을 미루면 전환이 오른다.
+                 새 자격증명을 만들지 않고 기존 데모 세션 방식(butler@petna.co.kr)을 재사용하며,
+                 원격 쓰기는 supabase.js의 isReadOnlySession() 가드가 데이터 계층에서 막는다. -->
+            <button id="guest-enter-btn" onclick="enterGuestMode()"
+                class="w-full min-h-[48px] mb-4 flex items-center justify-center gap-2 border-2 border-dashed border-brand-300 hover:border-brand-500 hover:bg-brand-50 text-brand-700 rounded-xl font-bold text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2">
+                <span aria-hidden="true">👀</span> 가입 없이 먼저 둘러보기
+            </button>
 
             <!-- 소셜 로그인 -->
             <div class="space-y-3 mb-6">
