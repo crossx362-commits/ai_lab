@@ -15,7 +15,7 @@ const SOCIAL_TEMPLATE = `
     max-height:calc(100vh - 6rem); overflow-y:auto; }
 }
 </style>
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
+<div class="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_320px] gap-6 items-stretch">
 
     <!-- 1열: 왼쪽 패널 - 친구 검색, 대기 신청, 친구 리스트 (데스크톱: 그리드 1열 / 모바일: 오프캔버스 드로어) -->
     <div id="social-friends-panel" class="lg:col-span-1 lg:order-first overflow-y-auto lg:overflow-visible bg-white rounded-none lg:rounded-3xl p-5 border-r lg:border border-amber-50 shadow-2xl lg:shadow-sm space-y-6">
@@ -90,8 +90,8 @@ const SOCIAL_TEMPLATE = `
     <!-- 모바일 친구 패널 백드롭 -->
     <div id="social-friends-backdrop" onclick="toggleSocialFriendsPanel()" class="fixed inset-0 bg-black/40 z-40 hidden lg:!hidden"></div>
 
-    <!-- 2&3열: 중앙 패널 - 서브탭 조작계 + (피드 타임라인 OR DM 대화창) (lg:col-span-2) -->
-    <div class="lg:col-span-2 space-y-4">
+    <!-- 2열: 중앙 패널 - 서브탭 조작계 + (피드 타임라인 OR DM 대화창) (유동 컬럼) -->
+    <div class="lg:col-span-1 space-y-4">
         <!-- 모바일: 이웃 집사 목록 열기 (데스크톱은 좌측 패널 상시 노출이라 숨김) -->
         <button onclick="toggleSocialFriendsPanel()"
             class="lg:hidden w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600 font-black text-xs border border-brand-100 transition-colors">
