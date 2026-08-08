@@ -503,6 +503,10 @@ function renderCareScheduler() {
                 class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
                 👨‍👩‍👧 가족 공유
             </button>
+            <button onclick="if(window.CareHandoff)CareHandoff.open()"
+                class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
+                🩺 인수인계 시트
+            </button>
             <button onclick="if(window.exportCareScheduleIcs)exportCareScheduleIcs()"
                 class="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-brand-50 hover:bg-brand-100 border border-brand-200 text-brand-700 text-[10px] font-bold rounded-xl transition-all">
                 📅 캘린더 내보내기
