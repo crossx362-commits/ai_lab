@@ -9,7 +9,9 @@
     "use strict";
 
     var LS_KEY = "petna_inventory_items"; // [{ id, name, unit, total, daily, openDate(YYYY-MM-DD) }]
-    var NUDGE_DAYS = 7; // 남은 일수가 이 값 이하면 재구매 넛지
+    var NOTIFIED_KEY = "petna_inventory_notified"; // { itemId: "YYYY-MM-DD" } 하루 1회 알림 중복 방지
+    var NUDGE_DAYS = 7;     // 남은 일수가 이 값 이하면 재구매 넛지
+    var CRITICAL_DAYS = 3;  // 3일치 이하면 긴급 배지 + 브라우저 알림
 
     function esc(s) {
         if (typeof window.escapeHtml === "function") return window.escapeHtml(s);
@@ -51,23 +53,53 @@
         return { remaining: remaining, pct: pct, daysLeft: daysLeft, depletion: depletion };
     }
 
+    // shop 탭으로 원터치 이동(재구매)
+    function goShop() {
+        if (typeof window.switchTab === "function") window.switchTab("shop");
+    }
+
+    // 3일치 이하 품목을 브라우저 알림으로 1일 1회 통지(권한 있을 때만, 중복 방지)
+    function notifyCritical(items) {
+        if (!items || !items.length) return;
+        if (!("Notification" in window) || Notification.permission !== "granted") return;
+        var notified;
+        try { notified = JSON.parse(localStorage.getItem(NOTIFIED_KEY)) || {}; } catch (e) { notified = {}; }
+        var day = today();
+        var fresh = items.filter(function (it) { return notified[it.id] !== day; });
+        if (!fresh.length) return;
+        var names = fresh.map(function (it) { return it.name; }).join(", ");
+        try {
+            var n = new Notification("🛒 재구매가 필요해요", {
+                body: names + " 소진이 3일 내로 임박했어요. 탭하면 스토어로 이동해요.",
+                tag: "petna-inventory-restock"
+            });
+            n.onclick = function () { try { window.focus(); } catch (e) {} goShop(); n.close(); };
+        } catch (e) { /* 알림 실패는 무해 — 위젯 배지로 이미 노출됨 */ }
+        fresh.forEach(function (it) { notified[it.id] = day; });
+        try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(notified)); } catch (e) {}
+    }
+
     // ── 위젯(건강 탭 삽입) ─────────────────────────────────────
     function renderWidget(containerId) {
         var el = document.getElementById(containerId);
         if (!el) return;
         var list = loadAll();
 
+        var critical = [];
         var rows = list.map(function (it) {
             var c = compute(it);
             var barColor = c.pct > 50 ? "bg-brand-400" : (c.pct > 20 ? "bg-amber-400" : "bg-red-400");
             var low = c.daysLeft != null && c.daysLeft <= NUDGE_DAYS;
+            var crit = c.daysLeft != null && c.daysLeft <= CRITICAL_DAYS;
+            if (crit) critical.push(it);
             var ddText = c.daysLeft == null ? "—"
                 : (c.daysLeft <= 0 ? "소진됨" : "D-" + c.daysLeft);
             var ddColor = c.daysLeft != null && c.daysLeft <= 0 ? "text-red-500"
-                : (low ? "text-amber-600" : "text-gray-500");
+                : (crit ? "text-rose-600" : (low ? "text-amber-600" : "text-gray-500"));
             return '<div class="py-2 border-t border-gray-50 first:border-t-0">' +
                 '<div class="flex items-center justify-between mb-1">' +
-                '<span class="text-xs font-bold text-gray-800 truncate">' + esc(it.name) + "</span>" +
+                '<span class="text-xs font-bold text-gray-800 truncate">' + esc(it.name) +
+                (crit ? ' <span class="ml-1 align-middle text-[9px] font-extrabold text-rose-700 bg-rose-100 rounded-full px-1.5 py-0.5">임박</span>' : "") + "</span>" +
                 '<span class="flex items-center gap-2">' +
                 '<span class="text-xs font-extrabold ' + ddColor + '">' + ddText + "</span>" +
                 '<button onclick="InventoryTracker.remove(\'' + esc(it.id) + '\')" class="text-gray-300 hover:text-red-400 text-sm leading-none" aria-label="삭제">&times;</button>' +
@@ -77,8 +109,14 @@
                 '<div class="flex items-center justify-between text-[10px] text-gray-400 mt-1">' +
                 '<span>잔량 약 ' + fmt(c.remaining) + esc(it.unit || "") + " / " + fmt(it.total) + esc(it.unit || "") + "</span>" +
                 '<span>' + (c.depletion ? "소진 " + esc(c.depletion) : "") + "</span></div>" +
-                (low ? '<div class="mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 rounded-lg px-2 py-1">🛒 곧 소진돼요. 재구매를 준비하세요!</div>' : "");
+                (low ? '<div class="mt-1 flex items-center justify-between gap-2 text-[10px] font-bold ' +
+                    (crit ? "text-rose-700 bg-rose-50" : "text-amber-700 bg-amber-50") + ' rounded-lg px-2 py-1">' +
+                    '<span>🛒 ' + (crit ? "3일 내 소진돼요. 지금 재구매하세요!" : "곧 소진돼요. 재구매를 준비하세요!") + "</span>" +
+                    '<button onclick="InventoryTracker.goShop()" class="shrink-0 text-white bg-brand-500 hover:bg-brand-600 rounded-full px-2 py-0.5">재구매</button>' +
+                    "</div>" : "");
         }).join("");
+
+        notifyCritical(critical);
 
         el.innerHTML =
             '<div class="card-modern p-5">' +
@@ -159,5 +197,5 @@
 
     function close() { var el = document.getElementById("inventory-overlay"); if (el) el.remove(); }
 
-    window.InventoryTracker = { open: open, submit: submit, close: close, remove: remove, renderWidget: renderWidget };
+    window.InventoryTracker = { open: open, submit: submit, close: close, remove: remove, renderWidget: renderWidget, goShop: goShop };
 })();
