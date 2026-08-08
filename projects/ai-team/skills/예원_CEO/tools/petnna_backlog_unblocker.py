@@ -57,7 +57,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
-from _shared.backlog import backlog_lock  # noqa: E402
+from _shared.backlog import backlog_lock, already_exists_evidence  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -155,6 +155,75 @@ def _gate_still_blocks(category: str, reason: str, passing: set[str]) -> bool:
     return True                              # 금지 경로·DB 계약·품질 판단은 예원이 못 푼다
 
 
+# ── 유령 과제 탐지 (2026-08-08) ────────────────────────────────────────────
+#
+# 왜 필요한가: 회의·미오·나무가 "X를 구현하라"고 적재할 때 **X가 이미 있는지 확인하지
+# 않는다**. 2026-08-08 전수 조사에서 보류 53건 중 5건이 그 경로였고, 그중 3건은 회의가
+# 요구한 회귀 테스트까지 이미 존재했다(예: "structurally_blocked에 엔진 자기수정 판별
+# 추가 + 회귀 테스트 동반" → touches_agent_ops()와 test_backlog_agent_ops_routing.py가
+# 이미 있었다). 이런 항목은 자동 루프를 돌면 반드시 3회 실패하고, 사람이 전수 조사를
+# 해야만 발견된다.
+#
+# **절대 자동 종결하지 않는다 — 보고만 한다.** 같은 조사에서 반례를 봤다:
+# 미오_20260716231002_0(placeholder 대비 강화)은 "이미 완료"로 적혀 있었지만 실측하니
+# 5.3:1로 목표 7:1에 미달이었다. "있긴 한데 목표 미달"을 유령으로 닫으면 진짜 남은
+# 일이 사라진다. 기계는 실재만 말하고, 충분한지는 사람이 판단한다.
+#
+# analyze()와 달리 **백로그를 직접 순회한다** — analyze()는 dev_state를 돌기 때문에
+# 수리가 한 번도 집지 않은 항목(2026-08-08 기준 53건 중 23건)이 아예 안 보인다.
+
+# 판별 자체는 `_shared/backlog.already_exists_evidence()`가 한다 — 적재 시점(미오·나무)과
+# 여기(사후 감사)가 같은 판별을 써야 한 쪽만 갱신돼 어긋나지 않는다.
+
+
+def ghost_candidates() -> list[dict]:
+    """보류 항목 중 '요구한 산출물이 이미 실재하는' 것 — 종결 후보로 보고만 한다."""
+    try:
+        backlog = json.loads(BACKLOG.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    out = []
+    for it in backlog.get("items", []):
+        if it.get("status") != "보류":
+            continue
+        evidence = already_exists_evidence(it.get("title", ""), str(it.get("detail", "")))
+        if evidence:
+            out.append({"id": it.get("id"), "title": it.get("title", ""),
+                        "owner": it.get("owner", ""), "evidence": evidence,
+                        "detail": str(it.get("detail", ""))[:600]})
+    return out
+
+
+def _llm_second_opinion(cands: list[dict]) -> dict[str, str]:
+    """기계 신호가 붙은 후보에만 로컬 모델(Ollama 우선) 소견을 덧붙인다.
+
+    판정 권한은 없다 — 사람이 읽을 근거를 한 줄 더 얹을 뿐이다. 로컬이 죽어 있으면
+    조용히 건너뛴다(이 기능 때문에 정체 해소 본편이 실패하면 안 된다).
+    """
+    if not cands:
+        return {}
+    try:
+        from _shared.llm import text as llm_text
+    except Exception:
+        return {}
+    notes = {}
+    for c in cands[:5]:                      # 보고용이라 상위 몇 건이면 충분하다
+        try:
+            ans = llm_text(
+                "아래는 소프트웨어 백로그의 보류 과제와, 그 과제가 요구한 산출물이 "
+                "저장소에 이미 존재한다는 기계적 증거다. 이 과제가 '이미 구현돼 종결해도 되는 것'인지, "
+                "아니면 '일부만 구현돼 남은 일이 있는 것'인지 한 줄로만 답하라. 추측하지 말고 "
+                "증거가 부족하면 '판단 불가'라고 하라.\n\n"
+                f"[과제] {c['title']}\n[과제 상세] {c.get('detail', '')}\n"
+                "[증거] " + " / ".join(c["evidence"]),
+                lm_first=True, task="coding", max_tokens=200)
+            if ans:
+                notes[c["id"]] = ans.strip().splitlines()[0][:160]
+        except Exception:
+            continue
+    return notes
+
+
 def analyze() -> dict:
     try:
         backlog = json.loads(BACKLOG.read_text(encoding="utf-8"))
@@ -244,6 +313,26 @@ def run(do_send: bool, dry: bool = False) -> int:
                  + f"\n\n같은 사유가 {PATTERN_THRESHOLD}건 이상 반복되면 과제가 아니라 "
                    "게이트 쪽을 의심해야 합니다."
                  + (f"\n이번에 자동 해소한 것: {len(freed)}건" if freed else ""))
+
+    # 유령 과제 — 요구한 산출물이 이미 실재하는 보류. 보고만 하고 절대 자동 종결하지 않는다.
+    ghosts = ghost_candidates()
+    if ghosts:
+        notes = _llm_second_opinion(ghosts)
+        print(f"  👻 유령 과제 후보 {len(ghosts)}건 (요구 산출물이 이미 실재 — 사람 확인 필요):")
+        for g in ghosts:
+            print(f"    · [{g['id']}] {g['title'][:50]}")
+            for e in g["evidence"][:2]:
+                print(f"        {e}")
+            if notes.get(g["id"]):
+                print(f"        소견(로컬): {notes[g['id']]}")
+        if do_send:
+            lines = [f"· [{g['id']}] {g['title'][:44]}\n  {g['evidence'][0]}"
+                     + (f"\n  소견: {notes[g['id']]}" if notes.get(g["id"]) else "")
+                     for g in ghosts[:6]]
+            send(f"👻 [예원] 유령 과제 후보 {len(ghosts)}건 — 요구한 산출물이 이미 있습니다\n\n"
+                 + "\n".join(lines)
+                 + "\n\n자동 종결하지 않았습니다. '있긴 한데 목표 미달'일 수 있어 "
+                   "사람이 확인해야 합니다(2026-08-08 placeholder 대비 사례).")
     return len(freed)
 
 

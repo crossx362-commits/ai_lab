@@ -441,6 +441,84 @@ def promote_approved_holds(backlog_path) -> list[str]:
     return promoted
 
 
+# ── 유령 과제 판별: "요구한 산출물이 이미 실재하는가" (2026-08-08) ──────────
+#
+# 왜 필요한가(실측): 보류 53건 전수 조사에서 5건이 **이미 구현된 것을 다시 구현하라는
+# 제안**이었다. 그중 3건은 제안이 요구한 회귀 테스트까지 이미 존재했다. 이런 과제는
+# 자동 루프에 들어가면 반드시 3회 실패하고, 사람이 전수 조사를 해야만 발견된다.
+#
+# 여기 두는 이유: 적재 시점(미오·나무)과 사후 감사(예원 정체 해소기)가 **같은 판별을
+# 써야** 한 쪽만 갱신돼 어긋나지 않는다(CLAUDE.md가 반복해 지적한 재발 원인).
+#
+# **판정하지 않는다 — 증거만 돌려준다.** 반례가 실재한다: 미오_20260716231002_0
+# (placeholder 대비 강화)은 규칙이 이미 있었지만 5.3:1로 목표 7:1에 미달이었다.
+# "있긴 한데 목표 미달"을 유령으로 닫으면 진짜 남은 일이 사라진다. 증거는 사람이 읽는다.
+
+_ROOT = Path(__file__).resolve().parents[3]
+_TEST_REF = re.compile(r"(?:tests?/)?(test_[\w*]+\.py)")
+_FUNC_REF = re.compile(r"\b([a-z_][a-z0-9_]{4,})\(\)")
+_TEST_DIRS = ("projects/ai-team/tests", "projects/petnna/tests/e2e")
+_FUNC_STOPWORDS = {"print", "range", "append", "format", "update", "filter", "search"}
+# 검증·감사 과제는 **기존 산출물을 지목하는 게 정상**이라 실재가 완료 근거가 못 된다.
+# (2026-08-08 첫 실행 오탐: "test_offline_sync_queue.py가 flaky한지 검증하라"가
+#  그 테스트의 실재만으로 유령으로 잡혔다 — 만들라는 게 아니라 확인하라는 과제였다.)
+_VERIFY_TASK = re.compile(r"검증|확인|감사|점검|재현|판정")
+
+
+def is_verification_task(title: str) -> bool:
+    return bool(_VERIFY_TASK.search(title))
+
+
+def _existing_tests(pattern: str) -> list[str]:
+    hits = []
+    for d in _TEST_DIRS:
+        try:
+            hits += [str(p.relative_to(_ROOT)) for p in (_ROOT / d).glob(pattern)]
+        except Exception:
+            continue
+    return hits
+
+
+def _defined_symbols(names: set[str]) -> dict[str, str]:
+    """이름별 정의 위치 한 곳(py의 def, js의 function/const 화살표)."""
+    if not names:
+        return {}
+    found = {}
+    pats = {n: re.compile(rf"(?:^|\s)(?:def|function)\s+{re.escape(n)}\b"
+                          rf"|(?:const|let|var)\s+{re.escape(n)}\s*=") for n in names}
+    for root, glob_pat in ((_ROOT / "projects/ai-team", "*.py"),
+                           (_ROOT / "projects/petnna/js", "*.js")):
+        for path in root.rglob(glob_pat):
+            if "node_modules" in path.parts:
+                continue
+            try:
+                body = path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            for n, pat in pats.items():
+                if n not in found and pat.search(body):
+                    found[n] = str(path.relative_to(_ROOT))
+        if len(found) == len(names):
+            break
+    return found
+
+
+def already_exists_evidence(title: str, detail: str = "") -> list[str]:
+    """이 과제가 요구한 산출물이 이미 저장소에 있는가 — 증거 문자열 목록(없으면 빈 목록)."""
+    if is_verification_task(title):
+        return []
+    text_ = f"{title}\n{detail}"
+    evidence = []
+    for pat in sorted(set(_TEST_REF.findall(text_))):
+        hits = _existing_tests(pat)
+        if hits:
+            evidence.append(f"요구한 테스트 실재: {pat} → {hits[0]}")
+    names = {n for n in _FUNC_REF.findall(text_) if n not in _FUNC_STOPWORDS}
+    for n, where in sorted(_defined_symbols(names).items()):
+        evidence.append(f"요구한 함수 실재: {n}() → {where}")
+    return evidence
+
+
 # ── backlog.json 동시쓰기 방지 (2026-08-02) ────────────────────────────────
 #
 # 배경: backlog.json에 쓰는 도구가 7곳(나무·미오·백호·테오·수리·회의·예원감사)인데

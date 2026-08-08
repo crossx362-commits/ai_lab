@@ -39,6 +39,7 @@ from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.petnna_facts import VERIFY_BEFORE_PROPOSING  # noqa: E402
 from _shared.backlog import (  # noqa: E402,F401
     all_known_titles,
     needs_human, AUTO_OWNERS, backlog_lock, waiting_lock,
@@ -126,14 +127,19 @@ def _opinion(name: str, role: str, folder: str, topic: str, context: str, priori
         "- QA 상태: output/qa/petnna/qa_state.json / 보고서·감사·테스트 결과·백로그: output/qa/petnna/ 아래\n"
         "- 코드: projects/petnna/ / 대기 중 브랜치: git branch --list 'fix/petnna-*' 등은 회의록 컨텍스트 참고\n"
         "모르는 기술적 사실은 웹서치로 확인하라. 추측을 사실처럼 말하지 마라. 코드는 수정하지 마라.\n\n"
+        + VERIFY_BEFORE_PROPOSING +
         "[출력 — 이 형식 그대로, 총 7줄 이내]\n"
         "입장: <한 줄 — 예: 즉시 수정 / 병합 권고 / 롤백 / 보류 / 구조 개선 필요>\n"
         "근거: <최대 3줄, 실제 확인한 데이터 기반>\n"
         "제안 액션: <구체적 1~2개, 없으면 '없음'>\n"
         "리스크: <한 줄>"
     )
+    # Grep 필수(2026-08-08): VERIFY_BEFORE_PROPOSING이 "이미 있는지 Grep으로 확인하라"고
+    # 요구하는데 도구가 없으면 그 규칙은 지킬 수 없는 말이 된다 — 회의 제안 5건이
+    # 이미 구현된 것을 다시 만들라고 한 원인이다. plan 모드라 읽기 전용은 그대로다.
     ok, out = run_claude(prompt, PROJECT_ROOT, timeout=420,
-                         allowed_tools="Read,WebSearch,WebFetch", permission_mode="plan")
+                         allowed_tools="Read,Grep,Glob,WebSearch,WebFetch",
+                         permission_mode="plan")
     return name, (out.strip()[:1200] if ok and out else FAIL_SENTINEL)
 
 

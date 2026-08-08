@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "updated": "2026-08-06",
+  "updated": "2026-08-08",
   "_note": "정시 잡은 영숙(운영 위생)·예원(피드백·감사) 일반 작업만 유지.",
   "schedules": [
     {
@@ -154,6 +154,17 @@
       "enabled": true,
       "run": true,
       "priority": "normal"
+    },
+    {
+      "id": "harness_regression",
+      "agent": "예원",
+      "task": "회귀 스위트 전체 실행",
+      "cron": "40 7 * * *",
+      "description": "파이썬 회귀 스위트를 unittest discover로 **한 프로세스에서 전부** 실행. 2026-08-08에 324개 중 18개가 언제부터인지 모르게 빨간 채 방치돼 있던 것을 사람이 우연히 발견해 신설 — 파일 단위로 쪼개 돌리면 전역 상태 오염형 고장이 영원히 안 보이므로 discover 고정. 실패 시에만 텔레그램.",
+      "command": "python3 projects/ai-team/harness/run_regression.py --send",
+      "enabled": true,
+      "run": true,
+      "priority": "high"
     }
   ]
 }

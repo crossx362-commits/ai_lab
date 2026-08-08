@@ -40,6 +40,7 @@ from _shared.backlog import (  # noqa
     all_known_titles,
     backlog_lock,  # noqa: E402
     touches_db_auth, recent_reviewed_items, format_recent_decisions,
+    already_exists_evidence,
 )
 
 load_env(str(PROJECT_ROOT))
@@ -96,6 +97,13 @@ def add_backlog_items(items: list[dict], source: str, itype: str) -> int:
             detail = (it.get("detail") or "")[:500]
             # DB/인증 접촉 과제는 수리가 병합할 수 없다 — 자동 루프 밖(보류)으로 적재한다.
             db_auth = touches_db_auth(title, detail)
+            # 이미 있는 것을 다시 만들라는 제안인가(2026-08-08). 나무는 도구 없이 LLM만
+            # 쓰므로 스스로 Grep으로 확인할 수 없다 — 적재 시점에 기계적으로 대조해 증거를
+            # 상세 맨 앞에 붙인다. **차단하지 않는다**: '있긴 한데 목표 미달'은 유효한
+            # 제안이고(placeholder 대비 5.3:1 사례), 판정은 수리 프롬프트와 사람이 한다.
+            ghost = already_exists_evidence(title, detail)
+            if ghost:
+                detail = "[⚠️ 이미 실재 — 착수 전 확인] " + " / ".join(ghost[:2]) + "\n" + detail
             stamp = datetime.now().strftime("%Y%m%d%H%M%S")
             # id 접미사 카운터(seq)와 적재 건수(added)를 분리한다. 예전엔 added 하나를
             # 두 용도로 써서, id가 충돌해 카운터를 올릴 때마다 **반환하는 적재 건수까지
