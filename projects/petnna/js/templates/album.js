@@ -31,14 +31,16 @@ const ALBUM_TEMPLATE = `
     <!-- 메인 콘텐츠 영역 -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- 타임라인 컨테이너 (좌측 3/4) -->
-        <div class="lg:col-span-3 bg-white rounded-3xl p-5 border border-amber-50 shadow-sm min-h-[400px]">
-            <!-- 빈 상태일 때 보여줄 기본 일기장 플레이스홀더 -->
-            <div id="diary-empty-state" class="flex flex-col items-center justify-center h-full text-center py-10">
-                <div class="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mb-4 text-brand-500 text-3xl shadow-inner">
-                    <i class="fa-solid fa-book-heart"></i>
+        <div class="lg:col-span-3 bg-white rounded-3xl p-5 border border-amber-50 shadow-sm min-h-[240px]">
+            <!-- 빈 상태일 때 보여줄 기본 일기장 플레이스홀더 (여백 축소·아이콘+문구 1행 압축) -->
+            <div id="diary-empty-state" class="flex flex-col items-center justify-center h-full text-center py-6">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center text-brand-500 text-xl shadow-inner shrink-0">
+                        <i class="fa-solid fa-book-heart"></i>
+                    </div>
+                    <h3 class="text-gray-800 font-black text-sm">아직 작성된 일기가 없어요!</h3>
                 </div>
-                <h3 class="text-gray-800 font-black text-sm mb-2">아직 작성된 일기가 없어요!</h3>
-                <p class="text-gray-400 text-xs keep-all max-w-xs mb-5 leading-relaxed">우측 상단 '새로운 일기 쓰기' 버튼을 눌러 소중한 아이와의 첫 번째 추억을 남겨보세요. 일기를 꾸미고 친구들과 공유할 수 있어요.</p>
+                <p class="text-gray-400 text-xs keep-all max-w-xs mb-4 leading-relaxed">우측 상단 '새로운 일기 쓰기' 버튼을 눌러 소중한 아이와의 첫 번째 추억을 남겨보세요.</p>
                 <button onclick="openDiaryComposerModal()" class="bg-brand-500 text-white font-bold text-xs py-3 px-5 rounded-xl hover:bg-brand-600 transition-all shadow-md">
                     첫 일기 작성하기 ✍️
                 </button>
