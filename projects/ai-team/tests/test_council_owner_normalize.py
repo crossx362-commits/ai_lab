@@ -82,8 +82,24 @@ class CouncilPromptTests(unittest.TestCase):
                       "적재 시점 정규화가 없으면 LLM이 목록 밖 owner를 뱉을 때 그대로 들어간다")
 
     def test_human_track_is_labeled(self):
-        self.assertIn("사람 판단 트랙", self.src,
-                      "'사람' 항목은 gate로 구분돼야 '소비자 없음'과 헷갈리지 않는다")
+        """'사람' 배정은 '소비자 없는 owner'와 구분되는 사유로 기록돼야 한다.
+
+        예전엔 이 문자열이 petnna_council.py 소스에 있는지로 검사했는데, 그러면
+        판정 로직을 _shared/backlog.py 단일 소스로 옮기는 정당한 리팩터링이 막힌다
+        (2026-08-08에 실제로 막혔다). 문자열의 **위치**가 아니라 **판정 결과**를 본다.
+        """
+        import sys
+        sys.path.insert(0, str(AI_TEAM_ROOT))
+        from _shared.backlog import block_reason
+
+        human = block_reason("사람", "기획", "오너가 결정할 무언가", "")
+        orphan = block_reason("나무", "기획", "아무거나", "")
+        self.assertIsNotNone(human, "'사람' 배정이 사람 트랙으로 안 간다")
+        self.assertIn("사람 판단 트랙", human,
+                      f"'사람' 배정의 사유가 구분되지 않는다 → {human!r}")
+        self.assertNotEqual(human, orphan,
+                            "'사람'(의도적 배정)과 '소비자 없는 owner'(잘못된 배정)의 "
+                            "사유가 같다 — 나중에 재판단할 때 유령으로 오해한다")
 
 
 if __name__ == "__main__":

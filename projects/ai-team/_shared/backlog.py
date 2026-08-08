@@ -191,11 +191,53 @@ def structurally_blocked(owner: str, item_type: str, title: str, detail: str = "
 
     2026-07-16 추가: owner=미오+type=디자인은 카테고리상 정상 배정이어도, 내용이 실제
     구현 착수를 요구하면 미오가 못 해낼 일을 떠맡는 것이다(mio_implementation_task)."""
-    return (owner not in AUTO_OWNERS
-            or owner_type_mismatch(owner, item_type)
-            or touches_db_auth(title, detail)
-            or touches_agent_ops(title, detail)
-            or (owner == "미오" and mio_implementation_task(title, detail)))
+    return block_reason(owner, item_type, title, detail) is not None
+
+
+def block_reason(owner: str, item_type: str, title: str, detail: str = "") -> str | None:
+    """왜 사람 트랙인가 — 사유 한 줄. 막히지 않으면 None.
+
+    왜 bool이 아니라 사유가 필요한가(2026-08-08 실측): 회의가 보류로 적재할 때
+    `owner == '사람'`인 경우에만 gate를 남기고 나머지 사유(승인필요·DB/인증·에이전트
+    코드·owner 불일치)는 **아무 기록도 안 남겼다**. 그래서 보류 10건이 "왜 막혔는지
+    모르는" 상태로 쌓였고, 예원의 정체 해소기는 근거가 없어 판정 불가로 보존만 했다.
+
+    이건 2026-08-06에 고친 "수리 엔진의 3회 실패 보류가 사유를 안 남긴다"와 **같은
+    계열의 결함이 다른 지점에 있던 것**이다. 상태값 하나에 사유를 뭉뚱그리면, 나중에
+    그 상태를 재검토하는 코드가 놓친 사유를 그대로 승격시키거나 영구 방치한다.
+    사유 판정을 여기 하나로 모아 두 호출부(적재·승격)가 같은 문자열을 보게 한다.
+    """
+    # [승인필요]는 **여기 넣지 않는다** — 그건 오너가 승인하면 정상적으로 풀려야 하는
+    # 사유다. structurally_blocked가 이걸 쓰고 promote_approved_holds가 그 결과로
+    # 승격 여부를 정하므로, 여기 넣으면 승인받아도 영원히 승격되지 않는다.
+    # 적재 시 gate에 남길 사유는 hold_reason()이 [승인필요]까지 포함해 만든다.
+    if owner == HUMAN_OWNER:
+        # '사람'은 "소비자가 없어서" 막힌 게 아니라 **의도적으로 사람에게 배정한 것**이다.
+        # 둘을 같은 문구로 뭉뚱그리면 나중에 재판단할 때 "잘못 배정된 유령"으로 오해한다.
+        return "사람 판단 트랙 — 오너가 직접 판단해야 하는 항목"
+    if owner not in AUTO_OWNERS:
+        return f"소비자 없는 owner('{owner}') — 백로그를 읽는 에이전트가 아니다"
+    if owner_type_mismatch(owner, item_type):
+        return f"owner('{owner}')와 type('{item_type}') 불일치 — 그 owner가 소비하지 않는 type"
+    if touches_db_auth(title, detail):
+        return "DB/인증 접촉 — 금지 경로(migrations·RLS·시크릿)라 자동 루프가 못 한다"
+    if touches_agent_ops(title, detail):
+        return "에이전트 코드/운영 상태 — 수리 헌장(projects/petnna)을 벗어난다"
+    if owner == "미오" and mio_implementation_task(title, detail):
+        return "미오에게 구현 착수를 요구 — 미오는 리뷰·시안만 만든다(owner 재배정 필요)"
+    return None
+
+
+def hold_reason(title: str, owner: str, detail: str = "", item_type: str = "") -> str | None:
+    """적재 시점에 보류로 보낼 사유(= gate에 기록할 문자열). 안 막히면 None.
+
+    needs_human()과 같은 판정을 쓰되 **사유 문자열**을 돌려준다 — 회의·미오·나무가
+    보류로 적재하면서 이걸 gate에 남겨야, 나중에 예원의 정체 해소기와 사람이
+    "왜 막혔는지"를 알 수 있다(2026-08-08: 사유 없는 보류 10건이 판정 불가로 정체).
+    """
+    if "[승인필요]" in title:
+        return "승인필요 — 자동 실행이 위험한 항목(오너 승인 시 해제)"
+    return block_reason(owner, item_type, title, detail)
 
 
 def needs_human(title: str, owner: str, detail: str = "", item_type: str = "") -> bool:

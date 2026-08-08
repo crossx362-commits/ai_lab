@@ -42,7 +42,7 @@ from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.petnna_facts import VERIFY_BEFORE_PROPOSING  # noqa: E402
 from _shared.backlog import (  # noqa: E402,F401
     all_known_titles,
-    needs_human, AUTO_OWNERS, backlog_lock, waiting_lock,
+    needs_human, hold_reason, AUTO_OWNERS, backlog_lock, waiting_lock,
     OWNER_CHOICES, HUMAN_OWNER, normalize_owner,
 )
 
@@ -286,8 +286,12 @@ def _hold_meeting(topic: str, context: str, priority: str) -> bool:
                 # owner 정규화 — 목록 밖 owner를 그대로 적재하면 아무도 안 집는 유령이 된다
                 # (2026-08-04 근본 수리: 프롬프트 목록과 AUTO_OWNERS가 어긋나 10건 누적).
                 _owner, _onote = normalize_owner(a.get("owner", ""))
-                human = needs_human(title, _owner, a.get("detail") or "",
+                # 보류 여부와 **그 사유**를 같은 함수에서 받는다 — 사유를 안 남기면
+                # "왜 막혔는지 모르는" 보류가 쌓이고 예원의 정체 해소기도 판정 불가다
+                # (2026-08-08 실측: 그런 항목이 10건).
+                _hold = hold_reason(title, _owner, a.get("detail") or "",
                                     a.get("type", "기획"))
+                human = _hold is not None
                 seq = added
                 new_id = f"회의_{datetime.now():%Y%m%d%H%M}_{seq}"
                 while new_id in existing_ids:
@@ -302,7 +306,10 @@ def _hold_meeting(topic: str, context: str, priority: str) -> bool:
                     "status": "보류" if human else "대기",
                     "owner": _owner, "created": datetime.now().isoformat(),
                     **({"owner_note": _onote} if _onote else {}),
-                    **({"gate": "사람 판단 트랙"} if _owner == HUMAN_OWNER else {}),
+                    # 왜 보류인지 반드시 남긴다 — owner=사람일 때만 남기던 시절엔 나머지
+                    # 사유(승인필요·DB/인증·에이전트코드·owner 불일치)가 기록 없이
+                    # 쌓여 "왜 막혔는지 모르는" 보류 10건이 됐다(2026-08-08).
+                    **({"gate": _hold} if _hold else {}),
                 })
                 added += 1
             BACKLOG.parent.mkdir(parents=True, exist_ok=True)
