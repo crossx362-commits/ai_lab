@@ -622,7 +622,7 @@ const HEALTH_TEMPLATE = `
                     <span class="text-3xl">📊</span>
                     <div>
                         <h3 class="text-base font-semibold text-gray-900">월간 리포트</h3>
-                        <p class="text-[10px] text-gray-500">이번 달 요약</p>
+                        <p class="text-xs text-gray-500">이번 달 요약</p>
                     </div>
                 </div>
                 <button onclick="generateHealthReportPDF()"
