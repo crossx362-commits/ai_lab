@@ -688,6 +688,9 @@ const HEALTH_TEMPLATE = `
             <!-- 주간 투약 순응도 리포트 카드 (care-scheduler.js renderWeeklyCareReport) -->
             <div id="weekly-care-report-card"></div>
 
+            <!-- 이번 주 케어 히트맵 (care-scheduler.js renderCareHeatmap) -->
+            <div id="care-heatmap-card"></div>
+
             <!-- 달력 헤더 -->
             <div class="flex justify-between items-center">
                 <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600 transition-colors">
