@@ -309,7 +309,11 @@ const MYPET_TEMPLATE = `
 
                 <!-- 바로가기 아이콘 바 (일일 건강 로그는 건강 탭으로 이동) -->
                 <div class="bg-gray-50 rounded-2xl border border-gray-100 px-3 py-2.5">
-                    <div class="flex items-center justify-end">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-black text-gray-500 flex items-center gap-1.5 min-w-0">
+                            <i class="fa-solid fa-bolt text-brand-400 shrink-0"></i>
+                            <span class="truncate">건강 · 소통 바로가기</span>
+                        </span>
                         <!-- 아이콘 버튼 -->
                         <div class="flex items-center gap-1.5">
                             <button onclick="openHealthLogModal()" title="건강 기록"
