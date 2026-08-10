@@ -413,7 +413,8 @@ const SupabaseService = {
 
     async uploadPost(newPost) {
         // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
-        if (this.isReadOnlySession()) return;
+        // 게스트가 소셜 글을 올리면 RLS 403 대신 가입 유도(promptGuestSignup)로 감싼다.
+        if (this.isReadOnlySession()) { if (typeof promptGuestSignup === 'function') promptGuestSignup(); return; }
         if (!this.isConnected || !this.client) return;
         
         try {
@@ -1203,7 +1204,8 @@ const SupabaseService = {
 
     async uploadHealthLog(entry) {
         // 게스트·데모는 로컬에만 남긴다 — 원격 쓰기 금지(isReadOnlySession 참조).
-        if (this.isReadOnlySession()) return;
+        // 게스트가 건강 기록을 저장하면 RLS 403 대신 가입 유도(promptGuestSignup)로 감싼다.
+        if (this.isReadOnlySession()) { if (typeof promptGuestSignup === 'function') promptGuestSignup(); return; }
         // 오프라인이면 기록을 큐에 안전 저장하고 재연결 시 자동 재전송(offline-sync.js).
         if (typeof navigator !== 'undefined' && navigator.onLine === false
             && typeof window.OfflineSync !== 'undefined') {

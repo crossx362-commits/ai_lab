@@ -105,10 +105,24 @@
         window.addEventListener('resize', syncHeaderOffset);
     }
 
+    // 게스트가 쓰기 CTA(기록·소셜 등)를 눌렀을 때의 능동적 로그인 유도.
+    // 데이터 계층 가드(supabase.js isReadOnlySession)가 원격 쓰기를 이미 막아 RLS 403은
+    // 절대 노출되지 않는다 — 여기서는 "왜 저장이 안 됐는지"를 알리고 가입으로 유도만 한다.
+    // 세션당 1회만(디바운스): 쓰기 시도마다 토스트가 쏟아지면 도리어 방해가 된다.
+    var _signupPromptShown = false;
+    function promptGuestSignup() {
+        if (!isGuest() || _signupPromptShown) return;
+        _signupPromptShown = true;
+        if (typeof showToast === 'function') {
+            showToast('👀 둘러보기 중이라 이 기기에만 저장돼요 — 가입하면 기록이 남아요.');
+        }
+    }
+
     window.enterGuestMode = enterGuestMode;
     window.exitGuestMode = exitGuestMode;
     window.isGuestMode = isGuest;
     window.renderGuestBanner = renderGuestBanner;
+    window.promptGuestSignup = promptGuestSignup;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', renderGuestBanner);
