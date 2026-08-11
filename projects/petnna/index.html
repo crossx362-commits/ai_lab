@@ -323,10 +323,24 @@
              인증 패널은 자체 폭(lg:w-[26rem])으로 고정하고 히어로가 나머지를 다 먹는다. -->
         <div id="login-shell" class="min-h-full w-full flex flex-col lg:flex-row lg:items-stretch">
 
-            <!-- 좌: 히어로 — 데스크톱의 죽은 여백(실측 77.5%)을 가치 제안으로 바꾼다. -->
-            <div id="login-hero-panel" class="lg:flex-1 lg:min-w-0 bg-gradient-to-br from-brand-500 to-brand-700 text-white px-6 py-10 lg:px-12 lg:py-16 flex flex-col justify-center">
+            <!-- 좌: 히어로 — 데스크톱의 죽은 여백(실측 77.5%)을 가치 제안으로 바꾼다.
+                 내부는 max-w-xl로 묶어 패널 안에서 **가운데**에 둔다: 왼쪽에만 붙여두면
+                 h1만 패널 폭(862px)까지 늘어나고 그 아래는 476px에서 끊겨, 오른쪽 437px이
+                 통째로 비어 보였다(실측). 한 줄 길이도 너무 길어 읽기 나쁘다. -->
+            <div id="login-hero-panel" class="relative lg:flex-1 lg:min-w-0 bg-gradient-to-br from-brand-500 to-brand-700 text-white px-6 py-10 lg:px-12 lg:py-16 flex flex-col justify-center">
+                <!-- 평평한 그라디언트 하나면 넓은 화면에서 페인트칠한 벽처럼 보인다.
+                     좌상단 하이라이트·우하단 음영으로 빛의 방향만 만든다(브랜드 색 한정).
+                     ⚠️ overflow-hidden은 **이 장식 레이어에만** 건다. 패널 본체에 걸었더니
+                     flex 아이템의 `min-height:auto`가 0으로 바뀌어, 모바일(flex-col)에서
+                     히어로가 600px→195px로 찌그러지고 제 콘텐츠를 스스로 잘라먹었다(실측). -->
+                <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div class="absolute -top-40 -left-32 w-[36rem] h-[36rem] rounded-full bg-white/10 blur-3xl"></div>
+                    <div class="absolute -bottom-48 -right-32 w-[32rem] h-[32rem] rounded-full bg-brand-900/25 blur-3xl"></div>
+                </div>
+
+                <div class="relative w-full max-w-2xl mx-auto">
                 <div class="flex items-center gap-2.5 mb-6 lg:mb-8">
-                    <span class="inline-flex items-center justify-center rounded-2xl bg-white/15 p-2.5">
+                    <span class="inline-flex items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20 p-2.5">
                         <i class="fa-solid fa-paw text-2xl text-white"></i>
                     </span>
                     <span class="text-lg font-black tracking-tight">펫과나</span>
@@ -338,36 +352,41 @@
                 <p class="text-sm lg:text-base text-white/80 [word-break:keep-all] text-balance mb-8 lg:mb-10 max-w-md">
                     AI가 건강 이상을 먼저 알려주고, 산책과 진료비까지 함께 기록해요.
                 </p>
-                <ul id="login-hero-features" class="grid grid-cols-2 gap-3 lg:gap-4 max-w-md">
-                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
-                        <span class="text-xl shrink-0" aria-hidden="true">🩺</span>
+                <ul id="login-hero-features" class="grid grid-cols-2 gap-3 lg:gap-4">
+                    <li class="flex items-start gap-3 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-3.5">
+                        <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 text-lg" aria-hidden="true">🩺</span>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold leading-snug">AI 건강분석</p>
+                            <p class="text-[13px] font-bold leading-snug">AI 건강분석</p>
                             <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">사진 한 장으로 이상 신호</p>
                         </div>
                     </li>
-                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
-                        <span class="text-xl shrink-0" aria-hidden="true">🐾</span>
+                    <li class="flex items-start gap-3 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-3.5">
+                        <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 text-lg" aria-hidden="true">🐾</span>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold leading-snug">산책 GPS</p>
+                            <p class="text-[13px] font-bold leading-snug">산책 GPS</p>
                             <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">경로·거리 자동 기록</p>
                         </div>
                     </li>
-                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
-                        <span class="text-xl shrink-0" aria-hidden="true">🔮</span>
+                    <li class="flex items-start gap-3 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-3.5">
+                        <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 text-lg" aria-hidden="true">🔮</span>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold leading-snug">사주·궁합</p>
+                            <p class="text-[13px] font-bold leading-snug">사주·궁합</p>
                             <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">우리 아이와의 케미</p>
                         </div>
                     </li>
-                    <li class="flex items-start gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
-                        <span class="text-xl shrink-0" aria-hidden="true">📋</span>
+                    <li class="flex items-start gap-3 rounded-2xl bg-white/10 ring-1 ring-white/15 px-4 py-3.5">
+                        <span class="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/15 text-lg" aria-hidden="true">📋</span>
                         <div class="min-w-0">
-                            <p class="text-xs font-bold leading-snug">건강수첩</p>
+                            <p class="text-[13px] font-bold leading-snug">건강수첩</p>
                             <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">진료비·영수증 보관</p>
                         </div>
                     </li>
                 </ul>
+                <!-- 가입 전 불안(비용·약정)을 여기서 미리 없앤다. 오른쪽 CTA를 누르기 전에 읽힌다. -->
+                <p id="login-hero-trust" class="mt-6 lg:mt-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/60">
+                    <span>무료로 시작</span><span aria-hidden="true" class="text-white/30">·</span><span>카드 등록 없음</span><span aria-hidden="true" class="text-white/30">·</span><span>가입 없이 둘러보기</span>
+                </p>
+                </div><!-- /히어로 내부 -->
             </div>
 
             <!-- 우: 인증 -->
@@ -378,15 +397,17 @@
                  `.hidden{display:none !important}`가 Tailwind의 `lg:block`을 항상 이긴다
                  (2026-08-08 실측). 크기만 반응형으로 준다. -->
             <div class="text-center lg:text-left mb-5 lg:mb-6">
-                <h2 class="text-lg lg:text-xl font-black text-gray-900 mb-1.5">펫과나 시작하기</h2>
+                <h2 class="text-xl lg:text-2xl font-black text-gray-900 mb-1.5">펫과나 시작하기</h2>
                 <p class="text-xs font-medium text-gray-500">3초면 시작할 수 있어요</p>
             </div>
 
             <!-- 가입 없이 둘러보기 (회의 결정 2026-08-08) — 계정 생성을 미루면 전환이 오른다.
                  새 자격증명을 만들지 않고 기존 데모 세션 방식(butler@petna.co.kr)을 재사용하며,
                  원격 쓰기는 supabase.js의 isReadOnlySession() 가드가 데이터 계층에서 막는다. -->
+            <!-- 점선 테두리는 "업로드 영역/미완성"으로 읽힌다 — 채워진 연한 브랜드 칩으로
+                 바꿔 '완성된 2차 선택지'로 보이게 한다. 아래 소셜 버튼(흰 배경)과도 구분된다. -->
             <button id="guest-enter-btn" onclick="enterGuestMode()"
-                class="w-full min-h-[48px] mb-4 flex items-center justify-center gap-2 border-2 border-dashed border-brand-300 hover:border-brand-500 hover:bg-brand-50 text-brand-700 rounded-xl font-bold text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2">
+                class="w-full min-h-[48px] mb-4 flex items-center justify-center gap-2 bg-brand-50 border border-brand-200 hover:bg-brand-100 hover:border-brand-300 active:scale-[0.99] text-brand-700 rounded-xl font-bold text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2">
                 <span aria-hidden="true">👀</span> 가입 없이 먼저 둘러보기
             </button>
 
@@ -403,7 +424,7 @@
             </div>
 
             <!-- 구분선 -->
-            <div class="flex items-center gap-3 mt-8 mb-7">
+            <div class="flex items-center gap-3 mt-7 mb-6">
                 <div class="flex-1 h-px bg-gray-200"></div>
                 <span class="text-[11px] text-gray-400 font-bold leading-none">또는 이메일로</span>
                 <div class="flex-1 h-px bg-gray-200"></div>
@@ -465,8 +486,11 @@
                 </div>
             </div>
 
-            <p class="text-[11px] leading-[2.3] text-center text-balance [word-break:keep-all] text-gray-500 mt-4 px-8">
-                로그인하면 <span class="whitespace-nowrap"><a href="#" class="inline-flex items-center whitespace-nowrap min-h-[48px] px-1.5 -my-2.5 text-brand-700 font-semibold underline">이용약관</a> 및</span> <span class="whitespace-nowrap"><a href="#" class="inline-flex items-center whitespace-nowrap min-h-[48px] px-1.5 -my-2.5 text-brand-700 font-semibold underline">개인정보처리방침</a>에</span> 동의합니다.
+            <!-- 링크의 좌우 패딩(탭 영역 확보용)이 뒤따르는 조사와 사이를 벌려
+                 "개인정보처리방침 에"처럼 띄어쓰기 오타로 보였다 — px는 최소로 두고
+                 탭 영역은 min-h로만 확보한다. -->
+            <p class="text-[11px] leading-[2.3] text-center text-balance [word-break:keep-all] text-gray-500 mt-5 px-2">
+                로그인하면 <span class="whitespace-nowrap"><a href="#" class="inline-flex items-center whitespace-nowrap min-h-[44px] px-0.5 -my-2.5 text-brand-700 font-semibold underline">이용약관</a> 및</span> <span class="whitespace-nowrap"><a href="#" class="inline-flex items-center whitespace-nowrap min-h-[44px] px-0.5 -my-2.5 text-brand-700 font-semibold underline">개인정보처리방침</a>에</span> 동의합니다.
             </p>
             </div><!-- /max-w-sm -->
             </div><!-- /#login-auth-panel -->
