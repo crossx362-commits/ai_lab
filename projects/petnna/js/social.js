@@ -183,7 +183,7 @@ function renderWalkMates() {
         return `
             <div class="p-2.5 rounded-2xl border-2 border-transparent hover:bg-gray-50 flex items-center justify-between gap-2 transition-colors">
                 <div class="flex items-center gap-2 min-w-0">
-                    <img loading="lazy" src="${f.avatar}" class="w-8 h-8 object-cover rounded-full border border-amber-100 shrink-0" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(f.nickname)}'">
+                    <img loading="lazy" src="${f.avatar}" class="w-8 h-8 object-cover rounded-full border border-amber-100 shrink-0" onerror="avatarFallback(this)">
                     <div class="min-w-0 leading-tight">
                         <span class="font-bold text-gray-700 text-[11px] block truncate">${escapeHtml(f.nickname)} <span class="font-medium text-gray-400 text-[9px]">(${escapeHtml(f.petName)})</span></span>
                         <span class="text-gray-400 text-[9px] block truncate">${prof.size} · ${prof.temper}</span>
@@ -230,7 +230,7 @@ function renderSocialRoom() {
                 el.className = "p-2.5 bg-brand-50/40 border border-brand-100/50 rounded-2xl flex items-center justify-between gap-2";
                 el.innerHTML = `
                     <div class="flex items-center space-x-2 min-w-0">
-                        <img loading="lazy" src="${r.avatar}" class="w-7 h-7 object-cover rounded-full border border-amber-100" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(r.nickname)}'">
+                        <img loading="lazy" src="${r.avatar}" class="w-7 h-7 object-cover rounded-full border border-amber-100" onerror="avatarFallback(this)">
                         <div class="min-w-0 text-[10px]">
                             <span class="font-bold text-gray-700 block truncate">${escapeHtml(r.nickname)}</span>
                             <span class="text-gray-400 block truncate">${escapeHtml(r.petName)} (${escapeHtml(r.petBreed)})</span>
@@ -271,7 +271,7 @@ function renderSocialRoom() {
                 el.innerHTML = `
                     <div class="flex items-center space-x-3 min-w-0">
                         <div class="relative shrink-0">
-                            <img loading="lazy" src="${f.avatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(f.nickname)}'">
+                            <img loading="lazy" src="${f.avatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="avatarFallback(this)">
                             <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${stateColor}"></span>
                         </div>
                         <div class="min-w-0 text-xs">
@@ -452,7 +452,7 @@ function renderFeed() {
         let header = `
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-2.5 cursor-pointer hover:opacity-85 transition-opacity" onclick="showOwnerProfile('${post.petName}', '${post.petAvatar}')" title="이웃집사 프로필 보기">
-                    <img loading="lazy" src="${post.petAvatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${post.petName}'">
+                    <img loading="lazy" src="${post.petAvatar}" class="w-9 h-9 object-cover rounded-full border border-amber-100 shadow-sm" onerror="avatarFallback(this)">
                     <div>
                         <span class="font-black text-xs text-gray-800 block flex items-center gap-1">${post.petName} <span class="bg-brand-550/10 text-[8px] text-brand-600 px-1 py-0.2 rounded font-extrabold border border-brand-200/50">프로필</span>${_isQuestionPost(post) ? `<span class="bg-amber-100 text-[8px] text-amber-700 px-1 py-0.2 rounded font-extrabold border border-amber-200">❓ Q&A</span>` : ''}</span>
                         <span class="text-[9px] text-gray-400 block">이웃 반려 생활가</span>
@@ -1697,7 +1697,7 @@ function renderChatHistoryWindow() {
     // 헤더 정보 로드
     headerContainer.innerHTML = `
         <div class="flex items-center space-x-3">
-            <img loading="lazy" src="${partner.avatar}" class="w-10 h-10 object-cover rounded-full border border-amber-100 shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${partner.nickname}'">
+            <img loading="lazy" src="${partner.avatar}" class="w-10 h-10 object-cover rounded-full border border-amber-100 shadow-sm" onerror="avatarFallback(this)">
             <div>
                 <span class="font-black text-xs text-gray-800 flex items-center">
                     ${partner.nickname} <span class="bg-amber-100 text-brand-700 text-[8px] px-1.5 py-0.5 rounded ml-1.5">${partner.petBreed} (${partner.petName})</span>
@@ -1762,7 +1762,7 @@ function renderChatHistoryWindow() {
 
         let avatarMarkup = '';
         if (!isMe) {
-            avatarMarkup = `<img loading="lazy" src="${partner.avatar}" class="w-7 h-7 object-cover rounded-full border shadow-sm" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${partner.nickname}'">`;
+            avatarMarkup = `<img loading="lazy" src="${partner.avatar}" class="w-7 h-7 object-cover rounded-full border shadow-sm" onerror="avatarFallback(this)">`;
         }
 
         msgRow.innerHTML = `

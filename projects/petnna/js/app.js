@@ -351,6 +351,18 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// 아바타 이미지 로드 실패 시 외부 요청 없이 로컬 SVG로 대체
+// (외부 placehold.co 의존 제거 → ERR_CONNECTION_RESET 방지 + onerror 해제로 재시도 루프 차단)
+const _PET_AVATAR_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" rx="50" fill="#fbeee0"/><text x="50" y="63" font-size="46" text-anchor="middle" fill="#732f18" font-family="sans-serif">🐾</text></svg>'
+);
+function avatarFallback(el) {
+    if (!el) return;
+    el.onerror = null;
+    el.src = _PET_AVATAR_FALLBACK;
+}
+window.avatarFallback = avatarFallback;
+
 function switchTab(tabName) {
     _countTabView(tabName);
     closeMobileMoreSheet();

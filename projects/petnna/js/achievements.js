@@ -823,7 +823,7 @@ function renderBuddyStreakCard() {
     el.innerHTML = `
         <div class="flex items-center justify-between gap-2 mb-2">
             <div class="flex items-center gap-2 min-w-0">
-                <img loading="lazy" src="${pair.avatar}" class="w-7 h-7 object-cover rounded-full border border-amber-100 shrink-0" onerror="this.src='https://placehold.co/100/fbeee0/732f18?text=${escapeHtml(pair.nickname)}'">
+                <img loading="lazy" src="${pair.avatar}" class="w-7 h-7 object-cover rounded-full border border-amber-100 shrink-0" onerror="avatarFallback(this)">
                 <div class="min-w-0">
                     <p class="text-[11px] font-black text-gray-700 truncate">🤝 ${escapeHtml(pair.nickname)}님과 함께</p>
                     <p class="text-[9px] text-gray-400 font-medium">함께 연속 산책</p>
