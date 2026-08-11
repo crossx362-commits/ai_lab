@@ -80,11 +80,16 @@ class UnblockerKeepsUnknownReasonTests(unittest.TestCase):
         spec.loader.exec_module(mod)
         self.assertEqual(mod.classify(""), "사유 미기록")
         self.assertEqual(mod.classify("   "), "사유 미기록")
-        # analyze()의 releasable 조건에서 '사유 미기록'이 제외되는지 소스로 확인
-        src = _UNBLOCK.read_text(encoding="utf-8")
-        self.assertIn('"사유 미기록"', src)
-        self.assertIn('cat not in ("사람 판단(보존)", "사유 미기록")', src,
-                      "사유를 모르는 항목을 자동 해소 대상에 넣었다 — 근거 없이 되돌린다")
+        # 소스 문자열이 아니라 **실제 판정**을 본다 — 인라인 식을 문자열로 못 박으면
+        # 판정을 공용 함수(_releasable)로 모으는 정당한 리팩터링이 막힌다
+        # (2026-08-11에 실제로 막혔다).
+        spec = importlib.util.spec_from_file_location("ub_rel_t", _UNBLOCK)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        self.assertFalse(m._releasable({}, "사유 미기록", "", set()),
+                         "사유를 모르는 항목을 자동 해소 대상에 넣었다 — 근거 없이 되돌린다")
+        self.assertFalse(m._releasable({}, "사람 판단(보존)", "오너 결정", set()),
+                         "사람이 판단한 보류를 자동으로 되돌린다")
 
 
 if __name__ == "__main__":
