@@ -1,14 +1,15 @@
 const assert = require('assert');
 const I = require('../../js/petgame/game-items.js');
 
-// 먹이 6종, 스펙 가격
-assert.strictEqual(I.FOODS.length, 6);
+// 먹이: 기본 6종 가격 고정(부분집합 검증 — 카탈로그 확장에 안 깨짐), 전 품목 가격>0
 const priceMap = Object.fromEntries(I.FOODS.map(f => [f.id, f.price]));
-assert.deepStrictEqual(priceMap, { kibble: 10, bone: 20, milk: 15, meat: 40, cake: 60, bento: 100 });
+for (const [id, price] of Object.entries({ kibble: 10, bone: 20, milk: 15, meat: 40, cake: 60, bento: 100 })) {
+  assert.strictEqual(priceMap[id], price, `food price ${id}`);
+}
+for (const f of I.FOODS) assert.ok(f.price > 0, `food price>0 ${f.id}`);
 
-// 아이템 26종, id 유니크, 공간·해금레벨 유효
-assert.strictEqual(I.ITEMS.length, 26);
-assert.strictEqual(new Set(I.ITEMS.map(i => i.id)).size, 26);
+// 아이템 id 유니크, 공간·해금레벨 유효
+assert.strictEqual(new Set(I.ITEMS.map(i => i.id)).size, I.ITEMS.length);
 for (const it of I.ITEMS) {
   assert.ok(['room', 'yard'].includes(it.space), it.id);
   assert.ok(it.unlockLv >= 1 && it.unlockLv <= 10, it.id);
@@ -19,9 +20,9 @@ for (const it of I.ITEMS) {
 assert.strictEqual(I.ITEMS.filter(i => i.unlockLv === 1).length, 8);
 assert.ok(I.ITEMS.some(i => i.id === 'golden_doghouse' && i.unlockLv === 10));
 
-// 해금 필터: Lv1은 8종만, Lv10은 전체
+// 해금 필터: Lv1은 8종, Lv10은 전체(상대 단언 — 카탈로그 확장 자동 추종)
 assert.strictEqual(I.itemsForSpace('yard', 1).length + I.itemsForSpace('room', 1).length, 8);
-assert.strictEqual(I.itemsForSpace('yard', 10).length + I.itemsForSpace('room', 10).length, 26);
+assert.strictEqual(I.itemsForSpace('yard', 10).length + I.itemsForSpace('room', 10).length, I.ITEMS.length);
 
 // 성장 단계
 assert.strictEqual(I.stageForLevel(1).stage, 1);
