@@ -1292,6 +1292,11 @@ function renderMyPets() {
     if (weightEl) weightEl.innerText = current.weight + " kg";
     if (personalityEl) personalityEl.innerText = current.personality;
 
+    const allergiesEl = document.getElementById('pet-info-allergies');
+    if (allergiesEl) allergiesEl.innerText = (current.allergies && String(current.allergies).trim()) || '미등록';
+
+    renderProfileCompletion(current);
+
     // Render Butler & Pet Conditions
     const butlerCondEmoji = document.getElementById('butler-condition-emoji');
     const butlerCondTitle = document.getElementById('butler-condition-title');
@@ -2120,6 +2125,45 @@ function showerPet() {
     showToast("스파 목욕으로 펫 피로를 말끔히 풀어주었습니다.");
 }
 
+// 프로필 완성도 미터 + 다음 액션 추천 — 생활수첩에서 편집 가능한 항목의 채움율을 %로
+// 보여주고, 비어 있는 항목을 CTA로 유도해 신규 이탈을 줄인다.
+function computeProfileCompletion(pet) {
+    const filled = (v) => v != null && String(v).trim() !== '';
+    const fields = [
+        { key: 'breed', label: '품종' },
+        { key: 'age', label: '나이' },
+        { key: 'gender', label: '성별' },
+        { key: 'weight', label: '체중' },
+        { key: 'allergies', label: '알레르기' },
+        { key: 'personality', label: '성격' },
+    ];
+    const missing = fields.filter((f) => !filled(pet && pet[f.key]));
+    const done = fields.length - missing.length;
+    return { pct: Math.round((done / fields.length) * 100), missing };
+}
+
+function renderProfileCompletion(pet) {
+    const card = document.getElementById('profile-completion-card');
+    if (!card) return;
+    const { pct, missing } = computeProfileCompletion(pet);
+
+    const pctEl = document.getElementById('profile-completion-pct');
+    const barEl = document.getElementById('profile-completion-bar');
+    const hintEl = document.getElementById('profile-completion-hint');
+    const ctaEl = document.getElementById('profile-completion-cta');
+
+    if (pctEl) pctEl.innerText = `${pct}%`;
+    if (barEl) barEl.style.width = `${pct}%`;
+
+    if (missing.length === 0) {
+        if (hintEl) hintEl.innerText = '프로필을 모두 채웠어요! 맞춤 케어가 더 정확해져요 🎉';
+        if (ctaEl) ctaEl.classList.add('hidden');
+    } else {
+        if (hintEl) hintEl.innerText = `${missing.map((m) => m.label).join('·')} 항목을 채우면 맞춤 추천이 정확해져요.`;
+        if (ctaEl) ctaEl.classList.remove('hidden');
+    }
+}
+
 function toggleNotebookEdit(isEdit) {
     const viewMode = document.getElementById('notebook-view-mode');
     const editMode = document.getElementById('notebook-edit-mode');
@@ -2130,6 +2174,8 @@ function toggleNotebookEdit(isEdit) {
         document.getElementById('edit-nb-age').value = current.age;
         document.getElementById('edit-nb-gender').value = current.gender;
         document.getElementById('edit-nb-weight').value = current.weight;
+        const allergyEl = document.getElementById('edit-nb-allergies');
+        if (allergyEl) allergyEl.value = current.allergies || '';
         document.getElementById('edit-nb-personality').value = current.personality;
     }
 
@@ -2176,6 +2222,8 @@ function saveNotebookEdit() {
     current.age = document.getElementById('edit-nb-age').value.trim() || current.age;
     current.gender = document.getElementById('edit-nb-gender').value.trim() || current.gender;
     current.weight = weightInput || current.weight;
+    const allergyEl = document.getElementById('edit-nb-allergies');
+    if (allergyEl) current.allergies = allergyEl.value.trim();
     current.personality = document.getElementById('edit-nb-personality').value.trim() || current.personality;
 
     if (typeof recordPetWeight === 'function') recordPetWeight(current, current.weight);

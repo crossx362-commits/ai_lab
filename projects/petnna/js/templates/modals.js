@@ -902,6 +902,21 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
 
         <!-- 탭 1: 반려 프로필 관리 -->
         <div id="notebook-tab-content-info" class="space-y-4">
+            <!-- 프로필 완성도 미터 + 다음 액션 추천 -->
+            <div id="profile-completion-card" class="bg-brand-50 rounded-2xl p-3.5 border border-brand-100">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-xs font-black text-brand-700"><i class="fa-solid fa-circle-check mr-1"></i>프로필 완성도</span>
+                    <span id="profile-completion-pct" class="text-sm font-black text-brand-600">0%</span>
+                </div>
+                <div class="w-full h-2 bg-brand-100 rounded-full overflow-hidden">
+                    <div id="profile-completion-bar" class="h-full bg-brand-500 rounded-full transition-all duration-500" style="width:0%"></div>
+                </div>
+                <p id="profile-completion-hint" class="text-[11px] font-bold text-brand-700 mt-2 leading-relaxed"></p>
+                <button id="profile-completion-cta" type="button" onclick="toggleNotebookEdit(true)" class="hidden mt-2 w-full bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs py-2 rounded-xl shadow-sm">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i>빈 항목 채우기
+                </button>
+            </div>
+
             <div class="flex justify-between items-center">
                 <span class="text-xs font-bold text-gray-400">품종 스펙 및 성격 기재</span>
                 <button id="btn-notebook-toggle" onclick="toggleNotebookEdit(true)" class="text-brand-600 hover:text-brand-700 font-bold text-xs">
@@ -926,6 +941,10 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 <div class="flex justify-between py-1 border-b border-dashed border-gray-50">
                     <span class="text-gray-400">현재 몸무게</span>
                     <span id="pet-info-weight" class="font-bold">24.5 kg</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-dashed border-gray-50">
+                    <span class="text-gray-400">알레르기 / 기피 성분</span>
+                    <span id="pet-info-allergies" class="font-bold">-</span>
                 </div>
                 <div>
                     <span class="text-gray-400 block mb-1">우리 펫 성격 / 가치관</span>
@@ -952,6 +971,10 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                 <div>
                     <label class="block font-bold text-gray-500 mb-1">몸무게 (kg)</label>
                     <input type="text" id="edit-nb-weight" class="w-full border rounded-lg p-2 outline-none focus:border-brand-500 bg-white">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-500 mb-1">알레르기 / 기피 성분 <span class="text-gray-400 font-medium">(쉼표로 구분)</span></label>
+                    <input type="text" id="edit-nb-allergies" placeholder="예: 닭고기, 옥수수" class="w-full border rounded-lg p-2 outline-none focus:border-brand-500 bg-white">
                 </div>
                 <div>
                     <label class="block font-bold text-gray-500 mb-1">우리 펫 성격 / 가치관</label>
