@@ -553,8 +553,10 @@ function renderPoopCalendarMain() {
             <span class="text-sm font-bold text-gray-900">배변 월간 캘린더</span>
             <span class="text-xs text-gray-400">${year}년 ${month + 1}월</span>
         </div>
-        <div class="grid grid-cols-7 gap-1 mb-1">${weekdayHeader}</div>
-        <div class="grid grid-cols-7 gap-1">${cells}</div>
+        <div class="max-w-[280px]">
+            <div class="grid grid-cols-7 gap-1 mb-1">${weekdayHeader}</div>
+            <div class="grid grid-cols-7 gap-1">${cells}</div>
+        </div>
         <div class="flex items-center gap-1 mt-2 flex-wrap">${legend}</div>`;
 }
 window.renderPoopCalendarMain = renderPoopCalendarMain;

@@ -224,6 +224,25 @@ def _llm_second_opinion(cands: list[dict]) -> dict[str, str]:
     return notes
 
 
+def _releasable(item: dict, cat: str, reason: str, passing: set) -> bool:
+    """이 보류를 예원이 자동으로 되돌려도 되는가.
+
+    판정을 한 곳에 모은다 — 예전엔 analyze()의 두 순회(dev_state 기반·백로그 기반)에
+    같은 식이 복붙돼 있었고, 한쪽만 고치면 조용히 어긋난다.
+
+    `blocked_by_decision`은 **절대 우회하지 않는다**(2026-08-11 실사고): 오너 결정
+    대기로 묶어 둔 항목(웹 푸시·AI API 확장 등)을 해소기가 사유 문구만 보고 풀어버려,
+    수리가 sw.js를 건드리는 구현을 3회 시도하고 보류로 되돌아갔다. diff_gate가 자동
+    병합은 막았지만 사이클 3회가 낭비됐고 무엇보다 **오너 결정 절차가 우회됐다**.
+    사유 문구는 시간이 지나면 바뀔 수 있지만 이 필드는 명시적 링크다.
+    """
+    if item.get("blocked_by_decision"):
+        return False
+    if cat in ("사람 판단(보존)", "사유 미기록"):
+        return False
+    return not _gate_still_blocks(cat, reason, passing)
+
+
 def analyze() -> dict:
     """보류 항목을 분석한다.
 
@@ -265,8 +284,7 @@ def analyze() -> dict:
         rows.append({
             "id": fp, "title": rec.get("title") or item.get("title", ""),
             "category": cat, "reason": reason,
-            "releasable": cat not in ("사람 판단(보존)", "사유 미기록")
-                          and not _gate_still_blocks(cat, reason, passing),
+            "releasable": _releasable(item, cat, reason, passing),
         })
 
     seen = set(issues)
@@ -279,8 +297,7 @@ def analyze() -> dict:
         rows.append({
             "id": fp, "title": it.get("title", ""),
             "category": cat, "reason": reason,
-            "releasable": cat not in ("사람 판단(보존)", "사유 미기록")
-                          and not _gate_still_blocks(cat, reason, passing),
+            "releasable": _releasable(it, cat, reason, passing),
         })
 
     return {"rows": rows, "counts": Counter(r["category"] for r in rows),

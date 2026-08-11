@@ -171,6 +171,32 @@ class UnblockerTests(unittest.TestCase):
         freed = self.mod.release(rows, limit=3)
         self.assertEqual(len(freed), 3, "상한을 무시하고 한꺼번에 풀면 수리 큐가 묻힌다")
 
+    def test_owner_decision_link_is_never_released(self):
+        """오너 결정 대기로 묶은 항목은 사유 문구와 무관하게 절대 안 푼다.
+
+        2026-08-11 실사고: '웹 푸시 리마인더'가 결정_sw_web_push에 묶여 있었는데
+        해소기가 사유 문구만 보고 풀었다. 수리가 집어 sw.js를 건드리는 구현을 3회
+        시도하고 보류로 되돌아갔다 — diff_gate가 자동 병합은 막았지만 사이클 3회가
+        낭비됐고 오너 결정 절차가 우회됐다.
+        """
+        self._seed([
+            ("d1", "웹 푸시", "안전 게이트 거부: 추가된 줄에 시크릿/인증 의심 패턴",
+             {"blocked_by_decision": "결정_sw_web_push"}),
+            ("d2", "일반 과제", "안전 게이트 거부: 추가된 줄에 시크릿/인증 의심 패턴", None),
+        ])
+        rows = self.mod.analyze()["rows"]
+        self.assertFalse(self._cat(rows, "d1")["releasable"],
+                         "오너 결정에 묶인 항목을 풀었다 — 결정 절차가 우회된다")
+        self.assertTrue(self._cat(rows, "d2")["releasable"],
+                        "같은 사유의 일반 항목까지 막았다 — 해소기가 굶는다")
+
+    def test_releasable_logic_is_single_source(self):
+        """판정이 두 순회에 복붙돼 있으면 한쪽만 고쳐져 조용히 어긋난다."""
+        src = _UNBLOCK.read_text(encoding="utf-8")
+        self.assertIn("def _releasable(", src, "releasable 판정이 공용 함수로 없다")
+        self.assertEqual(src.count('"releasable": _releasable('), 2,
+                         "두 순회가 같은 판정 함수를 쓰지 않는다")
+
     def test_fact_error_only_for_pre_facts_reviews(self):
         """사실 주입 이전 판단만 '리뷰어 사실 오류'다.
 
