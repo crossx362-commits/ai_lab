@@ -18,7 +18,7 @@ const SOCIAL_TEMPLATE = `
 <div class="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_320px] gap-6 items-stretch">
 
     <!-- 1열: 왼쪽 패널 - 친구 검색, 대기 신청, 친구 리스트 (데스크톱: 그리드 1열 / 모바일: 오프캔버스 드로어) -->
-    <div id="social-friends-panel" class="lg:col-span-1 lg:order-first overflow-y-auto lg:overflow-visible bg-white rounded-none lg:rounded-3xl p-5 border-r lg:border border-amber-50 shadow-2xl lg:shadow-sm space-y-6">
+    <div id="social-friends-panel" class="lg:col-span-1 lg:order-first overflow-y-auto lg:overflow-visible bg-brand-50/40 rounded-none lg:rounded-3xl p-5 border-r-2 lg:border border-brand-100 shadow-2xl lg:shadow-sm space-y-6">
         <!-- 모바일 드로어 닫기 -->
         <button onclick="toggleSocialFriendsPanel()" aria-label="친구 목록 닫기"
             class="lg:hidden absolute top-3 right-3 w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
