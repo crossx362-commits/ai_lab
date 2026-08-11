@@ -128,3 +128,13 @@ def run(page, base_url):
         f"경고 상태의 색상 훅(border-amber-200)이 없음: {warn2['cardClass']!r}"
     assert warn2["liCount"] == 2, \
         f"소견 2건인데 li가 2개가 아님(li가 카피가 아니라 요소로 구동되는지 회귀): {warn2}"
+
+
+# 직접 실행 금지 가드(2026-08-11 사고) — 이 파일은 NAME/run() 만 정의하는 계약이라
+# `python3 이파일.py` 로 돌리면 run()이 호출되지 않아 **아무것도 안 하고 exit 0**이 된다.
+# 그 거짓 통과를 실제로 믿고 넘어간 적이 있어, 조용히 성공하는 대신 시끄럽게 죽인다.
+if __name__ == "__main__":
+    raise SystemExit(
+        "이 파일은 직접 실행하지 않는다(run()이 호출되지 않아 항상 성공한다). "
+        "python3 projects/petnna/tests/e2e/run_e2e.py 로 실행하라."
+    )

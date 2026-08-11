@@ -89,3 +89,13 @@ def run(page, base_url):
     card17 = _render_with_water_samples(page, 17)
     assert "건강 기록이" not in card17, \
         f"표본 17개(임계 도달)인데 표본 부족 안내 문구가 남아 있음: {card17[:150]!r}"
+
+
+# 직접 실행 금지 가드(2026-08-11 사고) — 이 파일은 NAME/run() 만 정의하는 계약이라
+# `python3 이파일.py` 로 돌리면 run()이 호출되지 않아 **아무것도 안 하고 exit 0**이 된다.
+# 그 거짓 통과를 실제로 믿고 넘어간 적이 있어, 조용히 성공하는 대신 시끄럽게 죽인다.
+if __name__ == "__main__":
+    raise SystemExit(
+        "이 파일은 직접 실행하지 않는다(run()이 호출되지 않아 항상 성공한다). "
+        "python3 projects/petnna/tests/e2e/run_e2e.py 로 실행하라."
+    )

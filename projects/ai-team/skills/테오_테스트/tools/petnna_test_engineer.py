@@ -94,6 +94,35 @@ def list_tests() -> list[Path]:
     return sorted(E2E_DIR.glob("test_*.py"))
 
 
+DIRECT_RUN_GUARD = (
+    '# 직접 실행 금지 가드(2026-08-11 사고) — 이 파일은 NAME/run() 만 정의하는 계약이라\n'
+    '# `python3 이파일.py` 로 돌리면 run()이 호출되지 않아 **아무것도 안 하고 exit 0**이 된다.\n'
+    '# 그 거짓 통과를 실제로 믿고 넘어간 적이 있어, 조용히 성공하는 대신 시끄럽게 죽인다.\n'
+    'if __name__ == "__main__":\n'
+    '    raise SystemExit(\n'
+    '        "이 파일은 직접 실행하지 않는다(run()이 호출되지 않아 항상 성공한다). "\n'
+    '        "python3 projects/petnna/tests/e2e/run_e2e.py 로 실행하라."\n'
+    '    )\n'
+)
+
+
+def _ensure_direct_run_guard(path: Path) -> None:
+    """생성된 테스트에 직접 실행 가드를 강제로 붙인다.
+
+    프롬프트에도 적었지만 LLM은 잊는다 — 잊었을 때의 결과가 '조용한 거짓 통과'라
+    오탐보다 누락이 훨씬 위험하므로, 프롬프트에 의존하지 않고 코드로 확정한다.
+    """
+    try:
+        src = path.read_text(encoding="utf-8")
+    except Exception:
+        return
+    if "__main__" in src:
+        return
+    if not src.endswith("\n"):
+        src += "\n"
+    path.write_text(src + "\n\n" + DIRECT_RUN_GUARD, encoding="utf-8")
+
+
 def _load_test(path: Path):
     spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
@@ -242,6 +271,13 @@ def generate_test(do_send: bool) -> bool:
         "[계약 — 반드시 지켜라]\n"
         "- 파일 위치: projects/petnna/tests/e2e/test_<영문슬러그>.py (새 파일 1개만 생성)\n"
         "- 파일은 NAME = \"<흐름 이름(한국어)>\" 상수와 def run(page, base_url): 함수를 정의한다.\n"
+        "- 파일 맨 끝에 다음 가드를 그대로 넣어라(직접 실행하면 run()이 안 불려 항상 성공하는 "
+        "거짓 통과를 막는다 — 2026-08-11 사고):\n"
+        "    if __name__ == \"__main__\":\n"
+        "        raise SystemExit(\n"
+        "            \"이 파일은 직접 실행하지 않는다(run()이 호출되지 않아 항상 성공한다). \"\n"
+        "            \"python3 projects/petnna/tests/e2e/run_e2e.py 로 실행하라.\"\n"
+        "        )\n"
         "- run은 playwright sync Page를 받아 page.goto(base_url)부터 흐름을 검증하고, 실패는 assert로 표현한다.\n"
         "- 앱 코드(index.html·js·css)는 절대 수정 금지. 테스트 파일 외 어떤 파일도 만들지/바꾸지 마라.\n"
         "- 외부 네트워크(수파베이스 등) 성공에 의존하지 마라 — 화면 구조·가시성 위주로 검증.\n"
@@ -265,6 +301,7 @@ def generate_test(do_send: bool) -> bool:
             _backlog_task_failed(task["id"])
         return False
     path = new[0]
+    _ensure_direct_run_guard(path)
     # 안정성 게이트: 2회 연속 통과해야 채택
     for i in range(2):
         r = run_suite(only=path)

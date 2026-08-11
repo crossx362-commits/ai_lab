@@ -59,6 +59,20 @@ def run(page, base_url):
         assert page.locator(sel).is_visible(), f"{sel} 이(가) 모바일에서 도달 가능해야 한다"
     assert _overflow_x(page) <= 1, "모바일 로그인 화면에 가로 스크롤이 없어야 한다"
 
+    # 회귀(2026-08-11): 히어로 패널 **본체**에 overflow-hidden을 걸면 flex 아이템의
+    # min-height:auto 가 0으로 바뀐다. 모바일(flex-col, min-h-full)에서 패널이 제
+    # 콘텐츠보다 작게 찌그러지고 그 내용을 스스로 잘라냈다(실측 422px→195px).
+    # 장식(그라디언트 블러)을 클리핑할 땐 패널이 아니라 별도 레이어에만 걸 것.
+    # is_visible()은 이 결함을 못 잡는다 — 잘려도 요소는 '보인다'.
+    clip = page.evaluate(
+        """() => { const el = document.getElementById('login-hero-panel');
+                   return { s: el.scrollHeight, c: el.clientHeight }; }"""
+    )
+    assert clip["s"] <= clip["c"] + 1, (
+        "모바일에서 히어로 패널이 제 콘텐츠를 잘라내면 안 된다 "
+        f"(scrollHeight={clip['s']}, clientHeight={clip['c']})"
+    )
+
     # ---- 회귀: 공유(care-share) 캡처 시 랜딩 오버레이가 실제로 숨는지 ----
     page.set_viewport_size({"width": 1440, "height": 900})
     page.goto(base_url)
@@ -104,4 +118,14 @@ def run(page, base_url):
     )
     assert not page.locator("#login-landing-overlay").is_visible(), (
         "실종 QR 캡처(pp-finder-active) 시 랜딩 오버레이가 CSS로 숨겨져야 한다"
+    )
+
+
+# 직접 실행 금지 가드(2026-08-11 사고) — 이 파일은 NAME/run() 만 정의하는 계약이라
+# `python3 이파일.py` 로 돌리면 run()이 호출되지 않아 **아무것도 안 하고 exit 0**이 된다.
+# 그 거짓 통과를 실제로 믿고 넘어간 적이 있어, 조용히 성공하는 대신 시끄럽게 죽인다.
+if __name__ == "__main__":
+    raise SystemExit(
+        "이 파일은 직접 실행하지 않는다(run()이 호출되지 않아 항상 성공한다). "
+        "python3 projects/petnna/tests/e2e/run_e2e.py 로 실행하라."
     )
