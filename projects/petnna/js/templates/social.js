@@ -216,6 +216,9 @@ const SOCIAL_TEMPLATE = `
                 <!-- 동적 필터 칩이 JS를 통해 빌드됨 -->
             </div>
 
+            <!-- 월간 포토 콘테스트 카드 (photo-contest.js가 렌더) -->
+            <div id="photo-contest-card"></div>
+
             <!-- 타임라인 피드 리스트 -->
             <div id="feed-list" class="space-y-6">
                 <!-- 동적 피드 카드가 JS를 통해 빌드됨 -->

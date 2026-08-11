@@ -152,6 +152,15 @@ function renderCareCoinShop() {
         <div class="space-y-1.5">${items}</div>`;
 }
 
+// 외부(포토 콘테스트 우승 보상 등)에서 코인을 적립할 때 쓰는 공용 헬퍼.
+// 멱등 처리는 호출자 책임(콘테스트는 월별 지급 목록으로 중복 방지).
+function awardCareCoins(amount) {
+    const n = Math.round(Number(amount) || 0);
+    if (n <= 0) return;
+    _coinSetBalance(_coinGetBalance() + n);
+}
+
 window.syncCareCoins = syncCareCoins;
 window.redeemCareReward = redeemCareReward;
 window.renderCareCoinShop = renderCareCoinShop;
+window.awardCareCoins = awardCareCoins;

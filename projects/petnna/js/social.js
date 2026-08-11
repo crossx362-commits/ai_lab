@@ -411,6 +411,7 @@ function renderFeed() {
     if (!feedContainer) return;
 
     renderTopicFilter();
+    if (typeof renderPhotoContestCard === 'function') renderPhotoContestCard();
 
     feedContainer.innerHTML = '';
 
