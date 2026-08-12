@@ -389,7 +389,7 @@ const SETTINGS_TEMPLATE = `
             </div>
 
             <p class="text-[9px] text-gray-400 font-medium leading-relaxed pt-2 border-t">
-                💡 AI 건강 분석은 참고용 정보이며, 의학적 진단을 대체하지 않습니다. 반려동물에게 이상 증상이 있을 경우 반드시 전문 수의사와 상담하시기 바랍니다.
+                💡 AI 건강기록은 참고용 정보이며, 의학적 진단을 대체하지 않습니다. 반려동물에게 이상 증상이 있을 경우 반드시 전문 수의사와 상담하시기 바랍니다.
             </p>
         </div>
 

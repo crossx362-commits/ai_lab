@@ -67,7 +67,11 @@
         return { emoji: '💛', label: '기분', value: '기록 전', done: false, tab: 'health' };
     }
 
-    // 이상신호: wellness-anomaly의 분석 함수를 재사용해 소견 유무만 요약한다.
+    // 관찰 요약: wellness-anomaly의 분석 함수를 재사용해 소견 유무만 요약한다.
+    // 라벨·값 문구는 판정("이상신호"/"이상 없음")이 아니라 관찰("건강 관찰"/
+    // "특이사항 없음")로 통일한다(2026-08-12 오너 지시 "건강점수 이상신호도 통일") —
+    // AI 사진분석에서 정리한 원칙(기록·관찰 우선, 진단·판정 지양)을 이 위젯에도 맞춘다.
+    // wellness-anomaly.js·test_wellness_anomaly_flow.py의 카드 문구도 함께 맞췄다.
     function _anomalyStat() {
         const history = (typeof healthLogs !== 'undefined' && healthLogs) ? healthLogs.history : [];
         let flagged = false;
@@ -78,10 +82,10 @@
             if (typeof analyzeWellness === 'function' && (analyzeWellness(history) || []).length) flagged = true;
             if (typeof analyzeWeight === 'function' && typeof getWeightHistory === 'function'
                 && analyzeWeight(getWeightHistory())) flagged = true;
-        } catch (e) { /* 분석 실패 시 이상 없음으로 간주 */ }
+        } catch (e) { /* 분석 실패 시 특이사항 없음으로 간주 */ }
         return flagged
-            ? { emoji: '⚠️', label: '이상신호', value: '주의', done: false, warn: true, tab: 'health' }
-            : { emoji: '🩺', label: '이상신호', value: '이상 없음', done: true, tab: 'health' };
+            ? { emoji: '⚠️', label: '건강 관찰', value: '확인 필요', done: false, warn: true, tab: 'health' }
+            : { emoji: '🩺', label: '건강 관찰', value: '특이사항 없음', done: true, tab: 'health' };
     }
 
     function _cell(s) {

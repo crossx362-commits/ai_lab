@@ -1,7 +1,7 @@
 """펫나 E2E — 오늘의 케어 통합 요약 스트립(여러 데이터원 집계 + 0건 empty-state).
 
 배경(회의 배정 과제 "통합 케어 타임라인 E2E 선행 작성"): 여러 데이터원(산책·급여·
-케어·기분·이상신호)의 항목을 한 화면에 모아 보여주고, 기록이 0건일 때의 empty-state를
+케어·기분·건강 관찰)의 항목을 한 화면에 모아 보여주고, 기록이 0건일 때의 empty-state를
 검증하는 게 목표다. 저장소를 실측한 결과 "각 데이터원을 시간순으로 펼치는 별도 타임라인
 컴포넌트"는 아직 존재하지 않고(care-timeline 류 id 없음), 여러 데이터원을 실제로 집계해
 렌더하는 실존 컴포넌트는 today-care-card.js의 '오늘의 케어 요약' 스트립(#today-care-strip)
@@ -10,7 +10,7 @@
 
 today-care-card.js(renderTodayCareCard)는 #today-care-strip 안에:
   • 산책(walks) · 급여(meals) · 케어(getTodaySchedules) · 기분(healthLogs.today)
-    · 이상신호(wellness 분석) 를 각각 한 칸(button)으로 집계 렌더한다.
+    · 건강 관찰(wellness 분석) 를 각각 한 칸(button)으로 집계 렌더한다.
   • 각 칸은 오늘 기록이 있으면 값(예: '1회 · 2.5km'), 없으면 empty 마커('아직'/'기록 전')를
     표시한다 — 즉 데이터원별 0건 empty-state가 칸 단위로 드러난다.
 
@@ -89,9 +89,9 @@ def run(page, base_url):
         f"활성 펫이 있는데 스트립이 숨겨짐/비어 있음(가시성 회귀): {empty}"
     assert "오늘의 케어 요약" in empty["text"], \
         f"통합 요약 헤더 텍스트가 없음: {empty['text']!r}"
-    # 여러 데이터원이 각각 한 칸으로 집계되는지(산책·급여는 항상, 기분·이상신호도 항상 렌더).
+    # 여러 데이터원이 각각 한 칸으로 집계되는지(산책·급여는 항상, 기분·건강 관찰도 항상 렌더).
     assert empty["buttonCount"] >= 4, f"집계 칸이 4개 미만(데이터원 집계 누락): {empty}"
-    for src in ("산책", "급여", "기분", "이상신호"):
+    for src in ("산책", "급여", "기분", "건강 관찰"):
         assert _cell_for(empty, src) is not None, \
             f"데이터원 '{src}' 집계 칸이 없음: {empty['cells']}"
     # 0건 empty-state 마커: 산책·급여는 '아직', 기분은 '기록 전'.

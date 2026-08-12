@@ -60,8 +60,11 @@
               max: WEIGHTS.health, detail: healthStreak + "일" },
             { key: "vet", label: "병원기록", ratio: _clamp01(vetCount / 3),
               max: WEIGHTS.vet, detail: vetCount + "건" },
-            { key: "wellness", label: "이상탐지 상태", ratio: wellnessR,
-              max: WEIGHTS.wellness, detail: wellnessR >= 1 ? "정상" : "주의" },
+            // 라벨·값 문구는 today-care-card.js·wellness-anomaly.js와 동일하게 통일한다
+            // (2026-08-12 오너 지시 "건강점수 이상신호도 통일") — "이상탐지 상태: 정상/주의"는
+            // 판정(verdict) 언어라 관찰(observation) 언어로: "건강 관찰: 특이사항 없음/확인 필요".
+            { key: "wellness", label: "건강 관찰", ratio: wellnessR,
+              max: WEIGHTS.wellness, detail: wellnessR >= 1 ? "특이사항 없음" : "확인 필요" },
         ];
 
         var score = 0;
@@ -97,11 +100,13 @@
         var g = r.grade;
         var rows = r.components.map(function (c) {
             var pct = Math.round((c.pts / c.max) * 100);
+            // 값 칸은 고정폭(w-14)이 아니라 shrink-0으로 둔다 — "특이사항 없음"처럼
+            // 다른 지표(%,일,건)보다 긴 값이 잘리거나 줄바꿈되지 않게(2026-08-12).
             return '<div class="flex items-center gap-2 text-[11px]">' +
                 '<span class="w-20 shrink-0 text-gray-500">' + _esc(c.label) + '</span>' +
                 '<div class="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">' +
                 '<div class="h-full rounded-full" style="width:' + pct + '%;background:' + g.color + '"></div></div>' +
-                '<span class="w-14 text-right font-bold text-gray-700">' + _esc(c.detail) + '</span></div>';
+                '<span class="shrink-0 whitespace-nowrap text-right font-bold text-gray-700">' + _esc(c.detail) + '</span></div>';
         }).join("");
 
         host.innerHTML =

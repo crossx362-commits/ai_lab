@@ -418,7 +418,7 @@ function generateSajuShareCard() {
     ctx.fillText('우리 반려동물의 사주를 확인하세요!', W / 2, 1630);
     ctx.fillStyle = '#9ca3af';
     ctx.font = '26px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-    ctx.fillText('AI 건강분석 · 산책 GPS · 소셜 피드', W / 2, 1680);
+    ctx.fillText('AI 건강기록 · 산책 GPS · 소셜 피드', W / 2, 1680);
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 30px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.fillText('🐾 펫과나 — 반려동물 케어 올인원', W / 2, 1730);

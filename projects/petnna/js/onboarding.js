@@ -3,7 +3,7 @@
 const ONBOARDING_STEPS = [
     {
         title: "펫과나에 오신 걸 환영합니다! 🐾",
-        content: "AI 건강 분석, GPS 산책 기록, 사주 조화도까지!\n반려동물을 위한 모든 케어를 한곳에서 관리하세요.",
+        content: "AI 건강기록, GPS 산책 기록, 사주 조화도까지!\n반려동물을 위한 모든 케어를 한곳에서 관리하세요.",
         icon: "🎉",
         image: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&q=80&w=400"
     },

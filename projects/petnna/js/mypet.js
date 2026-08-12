@@ -1195,12 +1195,12 @@ function showOnboardingCard() {
                 </div>
                 <div class="space-y-2">
                     <p class="text-xl font-black text-gray-800 keep-all">반려동물을 등록하고<br>케어를 시작해보세요</p>
-                    <p class="text-xs text-gray-400 font-medium leading-relaxed keep-all">AI 건강분석 · 산책 GPS · 사주팔자 · 소셜 피드<br>모든 케어를 한 곳에서</p>
+                    <p class="text-xs text-gray-400 font-medium leading-relaxed keep-all">AI 건강기록 · 산책 GPS · 사주팔자 · 소셜 피드<br>모든 케어를 한 곳에서</p>
                 </div>
                 <div class="grid grid-cols-3 gap-2.5 w-full max-w-xs">
                     <div class="flex flex-col items-center gap-1.5 bg-white/80 rounded-2xl p-3 border border-amber-100 shadow-xs">
-                        <span class="text-xl">🏥</span>
-                        <span class="text-[10px] font-black text-gray-600">AI 건강분석</span>
+                        <span class="text-xl">📋</span>
+                        <span class="text-[10px] font-black text-gray-600">AI 건강기록</span>
                     </div>
                     <div class="flex flex-col items-center gap-1.5 bg-white/80 rounded-2xl p-3 border border-amber-100 shadow-xs">
                         <span class="text-xl">🗺️</span>

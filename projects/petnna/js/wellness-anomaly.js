@@ -280,7 +280,7 @@
                         <h3 class="text-sm font-bold text-gray-900">예측 웰니스 · <span class="text-emerald-600">안정적</span></h3>
                         <p class="text-xs text-gray-500 mt-0.5">최근 ${RECENT_DAYS}일 음수·식사량이 평소 범위 안에 있어요. 계속 잘 돌보고 계세요! 🐾</p>
                     </div>
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">이상 없음</span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">특이사항 없음</span>
                 </div>
             </div>`;
             return;

@@ -572,7 +572,7 @@ ${typeof MONTHLY_REPORT_MODAL !== 'undefined' ? MONTHLY_REPORT_MODAL : ''}
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="bg-brand-100 text-brand-700 text-[9px] font-black px-2 py-0.5 rounded-full block mb-1">건강 점수</span>
+                    <span class="bg-brand-100 text-brand-700 text-[9px] font-black px-2 py-0.5 rounded-full block mb-1">케어 점수</span>
                     <span class="font-black text-brand-600 text-xl">92<span class="text-[10px] text-brand-400 ml-0.5">점</span></span>
                 </div>
             </div>

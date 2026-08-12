@@ -49,10 +49,10 @@
         },
         {
             key: 'care', emoji: '🤲', title: '2단계 · 간병',
-            desc: '삶의 질을 살피고 작은 이상신호를 놓치지 않아요.',
+            desc: '삶의 질을 살피고 작은 변화를 놓치지 않아요.',
             items: [
                 { emoji: '📋', label: '삶의 질(QOL) 주간 체크인', desc: '식욕·통증·활력 주간 기록', act: 'qol' },
-                { emoji: '🩺', label: '건강 이상신호 점검', desc: '대소변·체중·컨디션 변화 감지', act: 'wellness' }
+                { emoji: '🩺', label: '건강 변화 관찰', desc: '대소변·체중·컨디션 변화 감지', act: 'wellness' }
             ]
         },
         {

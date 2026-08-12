@@ -28,8 +28,8 @@ async function callPetnnaAiProxy(payload) {
             error: true,
             locked: true,
             message: (typeof notifyPetnnaServiceLocked === "function")
-                ? notifyPetnnaServiceLocked("AI 건강 분석")
-                : "AI 건강 분석은 현재 준비 중입니다.",
+                ? notifyPetnnaServiceLocked("AI 건강기록")
+                : "AI 건강기록은 현재 준비 중입니다.",
             disclaimer: AI_HEALTH_DISCLAIMER
         };
     }

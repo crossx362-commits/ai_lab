@@ -297,6 +297,11 @@ function generateHealthReportPDF() {
     const streak = typeof calcHealthStreak === 'function' ? calcHealthStreak() : 0;
     const analyses = typeof getHealthAnalyses === 'function' ? getHealthAnalyses() : [];
     const latestAI = analyses[0];
+    // mypet.js의 스키마 정규화를 재사용한다(신규 관찰형 observations{} + 옛 판정형
+    // eyes/skin/... 저장분 둘 다 흡수). 없으면 옛 스키마로 직접 폴백.
+    const latestObs = (latestAI && typeof _normalizeHealthResult === 'function')
+        ? _normalizeHealthResult(latestAI)
+        : { obs: latestAI || {}, points: [], note: '' };
 
     // 이번 달 기록만 필터
     const thisMonth = now.toISOString().slice(0, 7);
@@ -322,8 +327,9 @@ function generateHealthReportPDF() {
   table{width:100%;border-collapse:collapse;font-size:12px}
   th{background:#f4e2d9;color:#a9583e;padding:6px 8px;text-align:left}
   td{padding:5px 8px;border-bottom:1px solid #f3f4f6}
-  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
-  .ok{background:#d1fae5;color:#065f46}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}
+  /* 색 등급(ok/warn/bad) 제거(2026-08-12) — 관찰 문구는 자유 텍스트라 정상/주의
+     매칭이 더 이상 안 맞고, 애초에 색으로 등급을 매기는 것 자체가 판정이었다. */
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#f4e2d9;color:#8f4832}
   .footer{margin-top:32px;text-align:center;font-size:10px;color:#d1d5db}
   @media print{body{padding:0 20px}button{display:none}}
 </style>
@@ -334,10 +340,10 @@ function generateHealthReportPDF() {
 </div>
 
 <div class="grid" style="grid-template-columns:repeat(5,1fr)">
-  <div class="card"><div class="val" style="color:#a9583e">${score}</div><div class="lbl">건강 점수</div></div>
+  <div class="card"><div class="val" style="color:#a9583e">${score}</div><div class="lbl">케어 점수</div></div>
   <div class="card"><div class="val" style="color:#f59e0b">${streak}일</div><div class="lbl">연속 기록</div></div>
   <div class="card"><div class="val" style="color:#10b981">${recordDays}일</div><div class="lbl">이달 기록일</div></div>
-  <div class="card"><div class="val" style="color:#3b82f6">${analyses.length}회</div><div class="lbl">AI 분석 횟수</div></div>
+  <div class="card"><div class="val" style="color:#3b82f6">${analyses.length}회</div><div class="lbl">AI 기록 횟수</div></div>
   <div class="card"><div class="val" style="color:#0ea5e9">${(() => {
     if (typeof getWeeklyCareCompletionRate !== 'function') return '-';
     const rate = getWeeklyCareCompletionRate();
@@ -355,14 +361,15 @@ function generateHealthReportPDF() {
 </div>
 
 ${latestAI ? `<div class="section">
-  <h2>🏥 최근 AI 건강 분석</h2>
+  <h2>📋 최근 AI 건강기록</h2>
   <div class="card" style="text-align:left">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      ${[['눈',latestAI.eyes],['귀',latestAI.ears],['피부',latestAI.skin],['털',latestAI.coat],['치아',latestAI.teeth]].filter(([,v])=>v&&v!=='확인불가').map(([l,v])=>`<span class="badge ${v==='정상'||v==='윤기있음'?'ok':v==='주의'?'warn':'bad'}">${l}: ${v}</span>`).join('')}
+      ${[['눈',latestObs.obs.eyes],['귀',latestObs.obs.ears],['피부',latestObs.obs.skin],['털',latestObs.obs.coat],['치아',latestObs.obs.teeth]].filter(([,v])=>v&&v!=='확인불가').map(([l,v])=>`<span class="badge">${l}: ${v}</span>`).join('')}
     </div>
     <div style="font-size:12px;color:#4b5563">${latestAI.summary || ''}</div>
-    <div style="font-size:11px;color:#a9583e;margin-top:4px;font-weight:700">${latestAI.advice || ''}</div>
-    <div style="font-size:10px;color:#9ca3af;margin-top:4px">분석일: ${new Date(latestAI.analyzedAt || Date.now()).toLocaleDateString('ko-KR')}</div>
+    ${latestObs.points.length ? `<div style="font-size:11px;color:#a9583e;margin-top:4px;font-weight:700">진료 때 이야기할 것: ${latestObs.points.map(p=>`<span style="display:block;margin-top:2px;font-weight:500">· ${p}</span>`).join('')}</div>` : ''}
+    <div style="font-size:10px;color:#9ca3af;margin-top:4px">기록일: ${new Date(latestAI.analyzedAt || Date.now()).toLocaleDateString('ko-KR')}</div>
+    <div style="font-size:10px;color:#9ca3af;margin-top:6px;padding-top:6px;border-top:1px solid #f3f4f6">${latestAI.disclaimer || (typeof AI_HEALTH_DISCLAIMER !== 'undefined' ? AI_HEALTH_DISCLAIMER : '※ 이 기록은 참고용이며 의학적 진단이 아닙니다.')}</div>
   </div>
 </div>` : ''}
 

@@ -464,7 +464,7 @@ const MYPET_TEMPLATE = `
             <div class="grid grid-cols-2 gap-2">
                 <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">🏥</span>
-                    <span class="text-[11px] font-black text-brand-700">AI 건강분석 무제한</span>
+                    <span class="text-[11px] font-black text-brand-700">AI 건강기록 무제한</span>
                 </div>
                 <div class="flex items-center gap-2 bg-brand-50 rounded-xl p-2.5">
                     <span class="text-lg">📖</span>

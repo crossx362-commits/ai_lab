@@ -164,7 +164,7 @@ const MONTHLY_REPORT_MODAL = `
             <div class="grid grid-cols-2 gap-4">
                 <div class="card-modern bg-brand-50/50 p-5 text-center">
                     <div class="text-5xl font-bold text-brand-600 mb-3" id="report-modal-health-score">--</div>
-                    <div class="text-sm font-semibold text-gray-700">건강 점수</div>
+                    <div class="text-sm font-semibold text-gray-700">케어 점수</div>
                     <div class="text-xs text-gray-500 mt-1">최근 7일 평균</div>
                     <div class="mt-3 pt-3 border-t border-brand-200">
                         <div class="text-xs text-gray-600">

@@ -69,7 +69,7 @@ const HEALTH_TEMPLATE = `
         <div class="space-y-1.5">
             <p class="text-lg font-black text-gray-800 keep-all">반려동물을 먼저 등록해주세요</p>
             <p class="text-xs text-gray-400 font-medium leading-relaxed keep-all">
-                등록하면 식사·음수 기록, 건강 트렌드, AI 건강분석을<br>바로 쓸 수 있어요
+                등록하면 식사·음수 기록, 건강 트렌드, AI 건강기록을<br>바로 쓸 수 있어요
             </p>
         </div>
         <button onclick="switchTab('mypet')"
@@ -194,7 +194,7 @@ const HEALTH_TEMPLATE = `
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="text-brand-500 mt-0.5">•</span>
-                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">건강점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
+                            <span>7일간 기록이 쌓이면 자동으로 <strong class="text-brand-600">케어점수</strong>와 <strong class="text-brand-600">차트</strong>가 생성됩니다</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span class="text-brand-500 mt-0.5">•</span>
@@ -638,7 +638,7 @@ const HEALTH_TEMPLATE = `
                 <div class="card-modern bg-brand-50 border border-brand-100 p-3 text-center">
                     <div class="text-2xl mb-1">💯</div>
                     <div id="report-health-score" class="text-xl font-bold text-brand-600">--</div>
-                    <div class="text-[10px] text-gray-600 font-semibold">건강점수</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">케어점수</div>
                 </div>
                 <div class="card-modern p-3 text-center">
                     <div class="text-2xl mb-1">📅</div>
@@ -653,7 +653,7 @@ const HEALTH_TEMPLATE = `
                 <div class="card-modern p-3 text-center">
                     <div class="text-2xl mb-1">🤖</div>
                     <div id="report-ai-count" class="text-xl font-bold text-sky-600">--회</div>
-                    <div class="text-[10px] text-gray-600 font-semibold">AI분석</div>
+                    <div class="text-[10px] text-gray-600 font-semibold">AI기록</div>
                 </div>
             </div>
         </div>

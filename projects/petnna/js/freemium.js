@@ -124,7 +124,7 @@ function showPremiumWaitlist() {
     const email = typeof settings_email !== 'undefined' ? settings_email : '';
     showCustomDialog({
         title: "프리미엄 사전 신청 👑",
-        message: `월 ${PREMIUM_PRICE}로 AI 건강분석 무제한 + 건강 리포트 PDF + 우선 지원을 받으세요. 결제 오픈 시 이메일로 먼저 안내드립니다.`,
+        message: `월 ${PREMIUM_PRICE}로 AI 건강기록 무제한 + 건강 리포트 PDF + 우선 지원을 받으세요. 결제 오픈 시 이메일로 먼저 안내드립니다.`,
         type: "prompt",
         placeholder: email || "이메일 주소 입력",
         val: email,
