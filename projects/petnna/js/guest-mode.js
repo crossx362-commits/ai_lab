@@ -37,7 +37,26 @@
             if (typeof showToast === 'function') showToast('브라우저 저장소를 쓸 수 없어 둘러보기를 시작하지 못했습니다.');
             return;
         }
+        seedSamplePets();
         window.location.reload();
+    }
+
+    // 둘러보기인데 펫이 하나도 없으면 "첫 반려동물 등록하기" 빈 화면만 보인다 —
+    // 등록을 해야 볼 수 있으면 '가입 없이 둘러보기'라는 약속이 반쯤 깨진다.
+    // (이 파일 상단 주석은 원래 "INITIAL_PETS 샘플이 있어 빈 화면을 보지 않는다"고
+    //  적혀 있었지만 실제로 심는 코드가 없었다 — 실측으로 빈 화면 확인, 2026-08-12.)
+    //
+    // 이미 쓰던 기록이 있으면 절대 덮지 않는다. 비어 있을 때만 샘플을 넣는다.
+    function seedSamplePets() {
+        try {
+            if (typeof AppStore === 'undefined' || typeof INITIAL_PETS === 'undefined') return;
+            AppStore.load(DEMO_EMAIL);
+            if ((AppStore.getState('pets') || []).length) return;
+            AppStore.setState('pets', INITIAL_PETS.map(function (p) {
+                return JSON.parse(JSON.stringify(p));
+            }));
+            AppStore.save();
+        } catch (e) { /* 샘플이 없어도 앱은 열린다 — 빈 화면일 뿐 실패는 아니다 */ }
     }
 
     // 게스트 종료 = 데모 흔적을 걷고 로그인 화면으로.

@@ -1504,51 +1504,10 @@ body.theme-dark .field-error-msg { color:#fb7185 !important; }
     }
 }
 
-/* 📱 하단바 5칸 축약 + 더보기 시트(2026-08-05) — 탭당 터치 영역 56px↑/44px↑ 확보 */
+/* 📱 하단바 — 탭당 터치 영역 56px↑ 확보.
+   더보기 시트 관련 규칙(.mobile-more-*)은 2026-08-12에 제거했다: 오너 지시로
+   콘텐츠 탭 7개를 전부 한 줄에 노출하면서 시트 자체가 사라졌다(설정은 헤더 기어). */
 .mobile-tab-btn { min-height: 56px; }
-.mobile-bottom-nav { position: relative; }   /* 더보기 시트 절대배치 기준 */
-.mobile-more-btn {
-    flex: 1 !important;
-    min-height: 56px;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    cursor: pointer !important;
-    color: #8a7a66 !important;
-    transition: all 0.2s ease;
-}
-.mobile-more-btn.text-brand-500 { color: #e37736 !important; }
-.mobile-more-icon {
-    font-size: 25px !important;
-    line-height: 1 !important;
-    height: 25px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.72;
-    transition: all 0.2s ease;
-}
-.mobile-more-btn.text-brand-500 .mobile-more-icon { opacity: 1; }
-.mobile-more-btn span:last-child { font-size: 12px !important; margin-top: 3px !important; }
-.mobile-more-sheet {
-    position: absolute;
-    right: 8px;
-    bottom: calc(100% + 8px);
-    display: flex;
-    gap: 4px;
-    padding: 8px 6px;
-    background: var(--color-bg-card, #fffdf9);
-    border: 1px solid var(--color-border-card, #e6dfd8);
-    border-radius: 16px;
-    box-shadow: 0 6px 24px rgba(51, 41, 31, 0.16);
-    z-index: 46;
-}
-.mobile-more-sheet.hidden { display: none !important; }
-.mobile-more-sheet .mobile-tab-btn { min-width: 64px; }
 
 /* 카드 병합 래퍼(2026-07-19) — 서로 다른 모듈이 각자 card-modern으로 그리는 위젯들을
    겉카드 하나로 합칠 때 사용. 내부 카드의 테두리·라운드·호버 이동을 지우고

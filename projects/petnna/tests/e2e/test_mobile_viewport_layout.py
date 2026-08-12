@@ -66,18 +66,34 @@ def run(page, base_url):
     # 2026-07-25: 조화도·설정 추가로 6→8. 데스크톱 헤더엔 8탭이 다 있는데 모바일 하단바에만
     # 빠져 있어서, 설정은 앱 어디서도 도달 불가·조화도는 마이펫 카드 속 작은 링크로만 갈 수
     # 있었다. 아래 데스크톱-모바일 동등성 단언이 이 부재를 구조적으로 다시 못 생기게 막는다.
-    expected = ["mypet", "health", "walk", "social", "album", "shop", "saju", "settings"]
-    assert nav_tabs == expected, \
-        f"모바일 하단 네비 구성/순서 회귀: {nav_tabs} (기대: {expected})"
+    #
+    # 2026-08-12: 하단바는 콘텐츠 탭 7개, 설정은 헤더 기어로 분리했다(8칸이면 320px에서
+    # 칸이 40px로 줄어 권장 탭 타깃 44px 미달). 그래서 동등성은 "하단바에 있는가"가 아니라
+    # **"모바일 어디서든 진입점이 있는가"**로 본다 — 진입점 위치를 못 박으면 이 단언이
+    # 레이아웃 개선을 막는 족쇄가 된다(2026-07-28 교훈).
+    expected_bar = ["mypet", "health", "walk", "social", "album", "shop", "saju"]
+    assert nav_tabs == expected_bar, \
+        f"모바일 하단 네비 구성/순서 회귀: {nav_tabs} (기대: {expected_bar})"
+
+    # 하단바 밖의 모바일 진입점(헤더 기어 등)도 도달 경로로 인정한다.
+    header_entries = page.evaluate(
+        """() => [...document.querySelectorAll('#mobile-header [onclick*="switchTab"]')]
+             .filter(b => b.offsetParent !== null)
+             .map(b => (b.getAttribute('onclick') || '').match(/switchTab\\('([^']+)'/)?.[1])
+             .filter(Boolean)"""
+    )
+    reachable = set(nav_tabs) | set(header_entries)
 
     # 데스크톱 헤더에 있는 탭은 모바일에서도 반드시 도달 가능해야 한다(누락 = 기능 고아화).
     desktop_tabs = page.evaluate(
         "() => [...document.querySelectorAll('header nav .tab-btn')]"
         ".map(b => b.getAttribute('data-tab'))"
     )
-    missing_on_mobile = [t for t in desktop_tabs if t and t not in nav_tabs]
-    assert not missing_on_mobile, \
-        f"데스크톱에만 있고 모바일에서 도달 불가한 탭: {missing_on_mobile}"
+    missing_on_mobile = [t for t in desktop_tabs if t and t not in reachable]
+    assert not missing_on_mobile, (
+        f"데스크톱에만 있고 모바일에서 도달 불가한 탭: {missing_on_mobile} "
+        f"(하단바={nav_tabs}, 헤더진입점={header_entries})"
+    )
 
 
 # 직접 실행 금지 가드(2026-08-11 사고) — 이 파일은 NAME/run() 만 정의하는 계약이라

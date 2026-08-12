@@ -54,7 +54,7 @@
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="css/leaflet.css">
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css?v=176">
+    <link rel="stylesheet" href="css/style.css?v=177">
     <link rel="stylesheet" href="css/modern-design.css?v=163">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <script>
@@ -63,7 +63,7 @@
         "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sZ2pzZGZmZ2t5Z2F5bGJqb29jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMzI0NTUsImV4cCI6MjA5NDcwODQ1NX0.hcx23C6GcjLn3HgI8IWBECd8luWTPkvYwVmi42XFt-s",
         "ALLOWED_LOGIN_EMAILS": "crossx362@gmail.com",
         "GEMINI_API_KEY": "",
-        "AI_HEALTH_ENABLED": "false",
+        "AI_HEALTH_ENABLED": "true",
         "AI_HEALTH_PROXY_PATH": "/api/ai-health",
         "PAYMENTS_ENABLED": "false",
         "PREMIUM_ACTIVATION_ENABLED": "false",
@@ -121,7 +121,7 @@
     <script defer src="js/achievements.js?v=163"></script>
     <script defer src="js/care-coins.js?v=2"></script>
     <script defer src="js/photo-contest.js?v=1"></script>
-    <script defer src="js/guest-mode.js?v=7"></script>
+    <script defer src="js/guest-mode.js?v=8"></script>
     <script defer src="js/share-card.js?v=164"></script>
     <script defer src="js/health-dashboard.js?v=164"></script>
     <script defer src="js/wellness-anomaly.js?v=171"></script>
@@ -201,7 +201,7 @@
     <script defer src="js/handover-sheet.js?v=1"></script>
 
     <!-- (4) 메인 라우터 및 부트스트랩 진입점 -->
-    <script defer src="js/app.js?v=168"></script>
+    <script defer src="js/app.js?v=169"></script>
 </head>
 
 <body class="text-gray-800 bg-slate-50">
@@ -251,6 +251,15 @@
             <i class="fa-solid fa-sun text-amber-400" id="mobile-weather-icon"></i>
             <span id="mobile-weather-temp">24°C</span>
             <span class="font-mono text-gray-500" id="mobile-time-display">14:30</span>
+            <!-- 설정 진입점(2026-08-12) — 하단바에서 헤더로 옮겼다. 하단바가 7칸이 되면서
+                 8번째 칸을 넣을 자리가 없고, 설정은 목적지가 아니라 도구라 헤더가 맞다.
+                 ⚠️ 이 버튼이 유일한 모바일 설정 진입점이다 — 지우면 설정 탭이 다시
+                 도달 불가가 된다(2026-07-25 사고: 설정이 앱 어디서도 못 들어가던 적 있음). -->
+            <button id="mobile-settings-btn" type="button" onclick="switchTab('settings')"
+                    aria-label="설정"
+                    class="ml-0.5 shrink-0 inline-flex items-center justify-center w-[44px] h-[44px] -my-2 -mr-2 rounded-xl text-gray-500 hover:text-brand-600 hover:bg-brand-50 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
+                <i class="fa-solid fa-gear text-[15px]" aria-hidden="true"></i>
+            </button>
         </div>
     </div>
 
@@ -286,33 +295,23 @@
             <img class="mobile-nav-icon" src="images/nav-icons/social.png" alt="" aria-hidden="true">
             <span class="text-[10px] font-bold mt-0.5">소셜</span>
         </button>
-        <!-- 더보기(2026-08-05): 하단바를 5칸으로 축약하고 나머지 탭(일기장·펫라이프·조화도·설정)을
-             접이식 시트로 옮긴다. 시트를 #mobile-navbar 안에 두어 모든 탭이 여전히 .mobile-tab-btn
-             으로 도달 가능하고 순서 회귀 테스트(test_mobile_viewport_layout)도 유지된다. -->
-        <button type="button" id="mobile-more-btn" class="mobile-more-btn text-gray-400"
-                aria-haspopup="true" aria-expanded="false" aria-controls="mobile-more-sheet"
-                onclick="toggleMobileMoreSheet()">
-            <span class="mobile-more-icon" aria-hidden="true">⋯</span>
-            <span class="text-[10px] font-bold mt-0.5">더보기</span>
+        <!-- 더보기 시트 제거(2026-08-12 오너 지시 "메뉴 더보기로 하지말고 다 볼수 있어야") —
+             콘텐츠 탭 7개를 한 줄에 모두 노출한다. 설정만 헤더 기어로 옮겼다: 설정은
+             다른 탭과 같은 층위의 '목적지'가 아니라 도구라 헤더가 제자리이고, 8개를
+             넣으면 320px에서 칸이 40px로 줄어 권장 탭 타깃 44px을 못 맞춘다.
+             실측: 7칸이면 320px에서도 44.6px, 라벨(펫라이프 42px)도 안 넘친다. -->
+        <button class="mobile-tab-btn text-gray-400" data-tab="album" onclick="switchTab('album')">
+            <img class="mobile-nav-icon" src="images/nav-icons/album.png" alt="" aria-hidden="true">
+            <span class="text-[10px] font-bold mt-0.5">일기장</span>
         </button>
-        <div id="mobile-more-sheet" class="mobile-more-sheet hidden" role="menu" aria-label="더보기 메뉴">
-            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="album" onclick="switchTab('album')">
-                <img class="mobile-nav-icon" src="images/nav-icons/album.png" alt="" aria-hidden="true">
-                <span class="text-[10px] font-bold mt-0.5">일기장</span>
-            </button>
-            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="shop" onclick="switchTab('shop')">
-                <img class="mobile-nav-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">
-                <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
-            </button>
-            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="saju" onclick="switchTab('saju')">
-                <img class="mobile-nav-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">
-                <span class="text-[10px] font-bold mt-0.5">조화도</span>
-            </button>
-            <button class="mobile-tab-btn text-gray-400" role="menuitem" data-tab="settings" onclick="switchTab('settings')">
-                <img class="mobile-nav-icon" src="images/nav-icons/settings.png" alt="" aria-hidden="true">
-                <span class="text-[10px] font-bold mt-0.5">설정</span>
-            </button>
-        </div>
+        <button class="mobile-tab-btn text-gray-400" data-tab="shop" onclick="switchTab('shop')">
+            <img class="mobile-nav-icon" src="images/nav-icons/shop.png" alt="" aria-hidden="true">
+            <span class="text-[10px] font-bold mt-0.5">펫라이프</span>
+        </button>
+        <button class="mobile-tab-btn text-gray-400" data-tab="saju" onclick="switchTab('saju')">
+            <img class="mobile-nav-icon" src="images/nav-icons/harmony.png" alt="" aria-hidden="true">
+            <span class="text-[10px] font-bold mt-0.5">조화도</span>
+        </button>
     </nav>
 
     <!-- ⚠️ 로그인 랜딩 (2026-08-08 회의 결정: 모달 → 첫 페이지 병합, 데스크톱 2단 split)

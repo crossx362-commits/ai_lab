@@ -289,12 +289,16 @@ const AppRouter = {
             }
         });
 
-        // 5.0.1. '더보기' 시트에 접힌 탭이 활성이면 더보기 버튼을 활성 표시
-        const moreBtn = document.getElementById('mobile-more-btn');
-        if (moreBtn) {
-            const inSheet = ['album', 'shop', 'saju', 'settings'].includes(tabName);
-            moreBtn.classList.toggle('text-brand-500', inSheet);
-            moreBtn.classList.toggle('text-gray-400', !inSheet);
+        // 5.0.1. 설정은 하단바가 아니라 헤더 기어에 있다(2026-08-12) — 설정 탭일 때
+        //        기어를 활성색으로 바꿔 "지금 여기"를 알린다. 이게 없으면 설정 탭에서
+        //        하단바 7개가 전부 회색이라 현재 위치 표시가 사라진다.
+        const gearBtn = document.getElementById('mobile-settings-btn');
+        if (gearBtn) {
+            const onSettings = tabName === 'settings';
+            gearBtn.classList.toggle('text-brand-600', onSettings);
+            gearBtn.classList.toggle('bg-brand-50', onSettings);
+            gearBtn.classList.toggle('text-gray-500', !onSettings);
+            gearBtn.setAttribute('aria-current', onSettings ? 'page' : 'false');
         }
 
         // 5.1. 모바일 상단 헤더 페이지 타이틀 업데이트
@@ -365,34 +369,11 @@ window.avatarFallback = avatarFallback;
 
 function switchTab(tabName) {
     _countTabView(tabName);
-    closeMobileMoreSheet();
     AppRouter.switchTab(tabName);
 }
 
-// 📱 하단바 '더보기' 시트 토글(2026-08-05) — 5칸으로 축약된 하단바에서 접힌 탭 노출
-const MOBILE_MORE_TABS = ['album', 'shop', 'saju', 'settings'];
-function toggleMobileMoreSheet() {
-    const sheet = document.getElementById('mobile-more-sheet');
-    const btn = document.getElementById('mobile-more-btn');
-    if (!sheet) return;
-    const willOpen = sheet.classList.contains('hidden');
-    sheet.classList.toggle('hidden', !willOpen);
-    if (btn) btn.setAttribute('aria-expanded', String(willOpen));
-}
-function closeMobileMoreSheet() {
-    const sheet = document.getElementById('mobile-more-sheet');
-    const btn = document.getElementById('mobile-more-btn');
-    if (sheet) sheet.classList.add('hidden');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-}
-// 시트 바깥을 누르면 닫기(버튼·시트 내부 클릭은 유지)
-document.addEventListener('click', function (e) {
-    const sheet = document.getElementById('mobile-more-sheet');
-    if (!sheet || sheet.classList.contains('hidden')) return;
-    const btn = document.getElementById('mobile-more-btn');
-    if (sheet.contains(e.target) || (btn && btn.contains(e.target))) return;
-    closeMobileMoreSheet();
-});
+// (더보기 시트 토글·외부클릭 닫기 제거 2026-08-12 — 하단바가 7칸 전체 노출로
+//  바뀌면서 시트 자체가 사라졌다. 설정은 헤더 기어(#mobile-settings-btn)로.)
 
 // 경량 탭뷰 계측(2026-07-21 회의 결정) — 외부 analytics 없이 localStorage 카운터만.
 // 탭 우선순위 재정렬(조화도 강등)이 정성 판단이었어서, 2주 축적 후 실데이터로
