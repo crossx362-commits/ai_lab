@@ -1,7 +1,7 @@
 {
   "name": "펫과나 (Pet & Na)",
   "short_name": "펫과나",
-  "description": "AI 건강분석·산책·사주·소셜 — 반려동물 케어 올인원 앱",
+  "description": "건강기록·산책·사주·소셜 — 반려동물 케어 올인원 앱",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",

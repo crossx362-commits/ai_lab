@@ -6,18 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 딥링크(/p/<token> 미아방지 프로필 등)에서도 상대경로 리소스가 루트 기준으로 로드되도록 -->
     <base href="/">
-    <title>펫과나 — AI 건강분석·산책·사주 반려동물 케어 올인원</title>
-    <meta name="description" content="사진 한 장으로 AI 건강분석, 산책 GPS 기록, 반려동물 사주팔자까지. 펫과나에서 반려동물의 모든 케어를 한 곳에서.">
+    <!-- ⚠️ 메타 문구도 규제 안전 카피 대상이다(2026-08-12) — 링크 공유 카드·검색 결과는
+         앱 밖에 노출되는 마케팅 문구라 '진단·탐지' 표현을 쓰지 않는다. 근거는
+         #login-hero-disclaimer 위 주석 참고. -->
+    <title>펫과나 — 반려동물 건강기록·산책·사주 올인원</title>
+    <meta name="description" content="사진·증상·산책·진료비를 한곳에 기록하면 AI가 정리해 요약해요. 산책 GPS, 반려동물 사주까지 — 펫과나. ※AI 요약은 참고용이며 의학적 진단이 아닙니다.">
     <!-- OG / 카카오·인스타 링크 공유 -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="펫과나 — AI 반려동물 케어 올인원">
-    <meta property="og:description" content="AI 건강분석·산책 GPS·사주팔자·소셜 피드. 우리 반려동물의 모든 케어를 한 앱에서.">
+    <meta property="og:title" content="펫과나 — 반려동물 케어 올인원">
+    <meta property="og:description" content="건강기록·산책 GPS·사주·소셜 피드. 우리 반려동물의 모든 기록을 한 앱에서.">
     <meta property="og:image" content="https://placehold.co/1200x630/e37736/ffffff?text=🐾+Pet%26Na">
     <meta property="og:locale" content="ko_KR">
     <!-- 트위터 카드 -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="펫과나 — AI 반려동물 케어 올인원">
-    <meta name="twitter:description" content="AI 건강분석·산책 GPS·사주팔자·소셜 피드">
+    <meta name="twitter:title" content="펫과나 — 반려동물 케어 올인원">
+    <meta name="twitter:description" content="건강기록·산책 GPS·사주·소셜 피드">
     <meta name="twitter:image" content="https://placehold.co/1200x630/e37736/ffffff?text=🐾+Pet%26Na">
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -349,15 +352,20 @@
                     반려동물의 건강·산책·사주까지,
                     펫과나 하나로
                 </h1>
+                <!-- ⚠️ 규제 안전 카피(2026-08-12) — 사진 기반 '질병 탐지'는 한국에서
+                     동물용의료기기 품목허가 대상이다(에이아이포펫·십일리터 모두 허가 후 출시).
+                     우리는 허가가 없으므로 마케팅 문구에서 탐지·진단을 표방하지 않는다:
+                     '알려준다/이상 신호'가 아니라 '기록·정리'로만 말한다. 규제 판단은
+                     앱 내부 면책 문구가 아니라 **바깥에 내건 문구**를 본다. -->
                 <p class="text-sm lg:text-base text-white/80 [word-break:keep-all] text-balance mb-8 lg:mb-10 max-w-md">
-                    AI가 건강 이상을 먼저 알려주고, 산책과 진료비까지 함께 기록해요.
+                    사진·증상·산책·진료비를 한곳에 기록하면, AI가 정리해 변화를 한눈에 보여줘요.
                 </p>
                 <ul id="login-hero-features" class="grid grid-cols-2 gap-3 lg:gap-4">
                     <li class="flex items-start gap-2.5 sm:gap-3 rounded-2xl bg-white/10 ring-1 ring-white/15 px-3 py-3 sm:px-4 sm:py-3.5">
                         <span class="shrink-0 inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 text-base sm:text-lg" aria-hidden="true">🩺</span>
                         <div class="min-w-0">
-                            <p class="text-[13px] font-bold leading-snug">AI 건강분석</p>
-                            <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">사진 한 장으로 이상 신호</p>
+                            <p class="text-[13px] font-bold leading-snug">AI 건강기록</p>
+                            <p class="text-[11px] text-white/70 leading-snug [word-break:keep-all]">사진·증상을 정리해 요약</p>
                         </div>
                     </li>
                     <li class="flex items-start gap-2.5 sm:gap-3 rounded-2xl bg-white/10 ring-1 ring-white/15 px-3 py-3 sm:px-4 sm:py-3.5">
@@ -382,8 +390,13 @@
                         </div>
                     </li>
                 </ul>
+                <!-- 면책은 앱 안(js/ai-health.js AI_HEALTH_DISCLAIMER)에만 두면 부족하다 —
+                     규제·오인 판단은 가입 전에 보는 이 화면의 문구를 본다. 여기서도 밝힌다. -->
+                <p id="login-hero-disclaimer" class="mt-5 lg:mt-6 text-[11px] leading-relaxed text-white/55 [word-break:keep-all] max-w-md">
+                    ※ AI 요약은 기록을 돕는 참고용이며 의학적 진단이 아니에요. 이상이 느껴지면 수의사와 상담하세요.
+                </p>
                 <!-- 가입 전 불안(비용·약정)을 여기서 미리 없앤다. 오른쪽 CTA를 누르기 전에 읽힌다. -->
-                <p id="login-hero-trust" class="mt-6 lg:mt-8 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/60">
+                <p id="login-hero-trust" class="mt-4 lg:mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/60">
                     <span>무료로 시작</span><span aria-hidden="true" class="text-white/30">·</span><span>카드 등록 없음</span><span aria-hidden="true" class="text-white/30">·</span><span>가입 없이 둘러보기</span>
                 </p>
                 </div><!-- /히어로 내부 -->

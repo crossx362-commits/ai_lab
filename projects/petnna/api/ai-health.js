@@ -12,6 +12,49 @@ function sendJson(res, status, payload) {
 
 const MAX_IMAGE_BASE64_CHARS = Number(process.env.AI_HEALTH_MAX_IMAGE_BASE64_CHARS || 900000);
 
+// ── 남용 방지(2026-08-12) ────────────────────────────────────────────────
+// 이 핸들러는 인증이 없다. AI_HEALTH_ENABLED를 켜는 순간 /api/ai-health 는
+// **누구나 쓸 수 있는 공개 Gemini 프록시**가 된다(type:"vet-chat"은 자유 텍스트를
+// 그대로 전달) — 오너의 Gemini 크레딧이 그대로 남의 것이 된다.
+// 아래 둘은 완전한 인증이 아니라 '문턱'이다: 브라우저가 자동으로 붙이는 Origin을
+// 위조하는 건 curl 한 줄이면 된다. 진짜 방어는 Supabase JWT 검증인데, 그러면
+// 게스트(둘러보기)가 AI를 못 쓰게 되므로 그건 오너 결정 사항으로 남긴다.
+const ALLOWED_HOSTS = (process.env.AI_HEALTH_ALLOWED_HOSTS ||
+  "petnna.vercel.app,localhost,127.0.0.1").split(",").map(s => s.trim()).filter(Boolean);
+
+// 브라우저는 GET/HEAD가 아닌 요청에 Origin을 항상 붙인다 — 아예 없으면 스크립트다.
+function originAllowed(req) {
+  const raw = req.headers.origin || req.headers.referer || "";
+  if (!raw) return false;
+  try {
+    const host = new URL(raw).hostname;
+    return ALLOWED_HOSTS.some(h => host === h || host.endsWith("." + h));
+  } catch (e) {
+    return false;
+  }
+}
+
+const RATE_MAX = Number(process.env.AI_HEALTH_RATE_MAX || 20);
+const RATE_WINDOW_MS = Number(process.env.AI_HEALTH_RATE_WINDOW_MS || 3600000);
+const hits = new Map();
+
+// 서버리스라 인스턴스마다 카운터가 따로 놀고 콜드스타트로 리셋된다 — 즉 상한이
+// 정확히 지켜지진 않는다. 그래도 한 인스턴스에 쏟아지는 버스트는 실제로 끊긴다.
+function rateLimited(req) {
+  const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "unknown";
+  const now = Date.now();
+  if (hits.size > 5000) {
+    for (const [k, v] of hits) if (now > v.resetAt) hits.delete(k);
+  }
+  const rec = hits.get(ip);
+  if (!rec || now > rec.resetAt) {
+    hits.set(ip, { n: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+  rec.n += 1;
+  return rec.n > RATE_MAX;
+}
+
 function buildPrompt(body) {
   const petName = body.petName || "펫";
 
@@ -101,6 +144,16 @@ module.exports = async function handler(req, res) {
 
   if (process.env.AI_HEALTH_ENABLED !== "true" || !process.env.GEMINI_API_KEY) {
     return sendJson(res, 503, LOCKED_RESPONSE);
+  }
+
+  if (!originAllowed(req)) {
+    return sendJson(res, 403, { error: true, message: "허용되지 않은 요청 출처입니다." });
+  }
+  if (rateLimited(req)) {
+    return sendJson(res, 429, {
+      error: true,
+      message: "AI 요청이 너무 잦습니다. 잠시 후 다시 시도해주세요."
+    });
   }
 
   try {
