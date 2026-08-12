@@ -84,7 +84,7 @@
     function _rows(groups, today) {
         return groups.map((g, gi) => `
             <div class="${(gi === groups.length - 1 && groups.length % 2 === 1) ? 'sm:col-span-2' : ''}">
-                <div class="flex items-center gap-1.5 mb-1.5">
+                <div class="flex items-center gap-1.5 mb-1.5 pb-1 border-b border-gray-100">
                     <span class="text-sm">${g.icon}</span>
                     <span class="text-xs font-bold text-gray-700">${g.label}</span>
                 </div>
