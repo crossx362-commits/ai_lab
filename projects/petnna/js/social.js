@@ -613,27 +613,25 @@ function renderFeed() {
 
         let aiHealthAttachedCard = '';
         if (post.attachedAiHealth) {
+            // 점수 원·상태 색배지를 없앴다(2026-08-12) — 피드는 공개 게시물이라
+            // 허가 없는 등급·판정이 그대로 밖으로 나간다. 관찰 문구만 중립 톤으로.
+            // 옛 게시물(score/정상·주의 값)도 같은 자리에 그대로 표시된다.
             const h = post.attachedAiHealth;
-            const scoreColor = h.score >= 80 ? '#10b981' : h.score >= 60 ? '#f59e0b' : '#ef4444';
-            const badgeClass = (val) => val === '정상' ? 'bg-emerald-100 text-emerald-700' : val === '주의' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+            const chips = [
+                { label: '눈', val: h.eyes }, { label: '피부', val: h.skin },
+                { label: '털', val: h.coat }, { label: '체형', val: h.body },
+            ].filter(c => c.val && c.val !== '확인불가');
             aiHealthAttachedCard = `
                 <div class="bg-brand-50/40 p-3 border border-brand-100 rounded-2xl shadow-sm space-y-2">
                     <span class="block text-[8px] text-brand-600 font-bold uppercase tracking-wider flex items-center gap-1">
-                        <i class="fa-solid fa-microscope"></i> AI 건강 분석 결과 공유됨
+                        <i class="fa-solid fa-clipboard-list"></i> 건강 기록 공유됨
                     </span>
-                    <div class="flex items-center gap-3">
-                        <div class="text-center min-w-[44px]">
-                            <span class="block text-xl font-black" style="color:${scoreColor}">${h.score}</span>
-                            <span class="text-[8px] text-gray-400 font-bold">건강점수</span>
-                        </div>
-                        <div class="flex-1 space-y-1">
-                            <div class="flex gap-1 flex-wrap">
-                                <span class="text-[9px] px-1.5 py-0.5 rounded-full font-black ${badgeClass(h.eyes)}">눈 ${escapeHtml(h.eyes)}</span>
-                                <span class="text-[9px] px-1.5 py-0.5 rounded-full font-black ${badgeClass(h.skin)}">피부 ${escapeHtml(h.skin)}</span>
-                                <span class="text-[9px] px-1.5 py-0.5 rounded-full font-black ${badgeClass(h.body)}">체형 ${escapeHtml(h.body)}</span>
-                            </div>
-                            <p class="text-[10px] text-gray-600 leading-snug">${escapeHtml(h.summary || '')}</p>
-                        </div>
+                    <div class="space-y-1.5">
+                        ${chips.length ? `<div class="flex gap-1 flex-wrap">${chips.map(c => `
+                            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-medium bg-white text-gray-600 border border-brand-100">${c.label} ${escapeHtml(c.val)}</span>
+                        `).join('')}</div>` : ''}
+                        <p class="text-[10px] text-gray-600 leading-snug">${escapeHtml(h.summary || '')}</p>
+                        <p class="text-[9px] text-gray-400">※ 기록 참고용이며 의학적 진단이 아닙니다</p>
                     </div>
                 </div>
             `;

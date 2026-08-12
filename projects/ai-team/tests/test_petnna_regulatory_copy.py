@@ -124,5 +124,48 @@ class AiEndpointAbuseGuardTests(unittest.TestCase):
                       "이미지 크기 상한이 사라지면 한 요청으로 크레딧을 태울 수 있다")
 
 
+class RecordOnlyOutputTests(unittest.TestCase):
+    """출력 자체가 기록형이어야 한다(2026-08-12 오너 지시 "출력도 기록형으로").
+
+    카피만 바꾸고 출력이 "정상|주의|이상"·urgent·needsVet 그대로면 위험이 사라진 게
+    아니라 안 보이게 된 것이다 — 프롬프트가 판정을 요구하지 않는지 본다.
+    """
+
+    def setUp(self):
+        self.src = API.read_text(encoding="utf-8")
+        # 주석은 제외한다 — 왜 없앴는지 설명하는 주석에 옛 필드명이 등장한다.
+        self.code = re.sub(r"//.*", "", self.src)
+        self.code = re.sub(r"/\*.*?\*/", "", self.code, flags=re.S)
+
+    def test_record_only_constraint_is_prepended_to_every_health_prompt(self):
+        self.assertIn("RECORD_ONLY", self.code, "역할 제한 상수가 없다")
+        # photo·symptom·vet-chat 세 갈래 전부에 주입돼야 한다.
+        self.assertGreaterEqual(
+            self.code.count("${RECORD_ONLY}"), 3,
+            "건강 관련 프롬프트 갈래(photo·symptom·vet-chat)마다 역할 제한이 붙어야 한다",
+        )
+
+    def test_prompt_asks_for_no_verdicts(self):
+        banned = {
+            '"정상|주의|이상': "부위별 상태 판정 스케일",
+            '"score"': "건강 점수(등급)",
+            '"urgent"': "긴급도 판정",
+            '"needsVet"': "수의사 필요 여부 판정",
+            '"urgency"': "중증도 등급",
+            '"possibleCauses"': "원인 추정(감별진단)",
+        }
+        found = [f"{k} ({why})" for k, why in banned.items() if k in self.code]
+        self.assertEqual(
+            [], found,
+            "프롬프트가 아직 판정형 출력을 요구한다 — 기록형으로 바꿔라: " + ", ".join(found),
+        )
+
+    def test_no_claim_of_being_a_veterinarian(self):
+        self.assertNotIn(
+            "당신은 10년 경력의 친절한 수의사", self.code,
+            "AI가 수의사를 사칭하는 시스템 프롬프트가 남아 있다",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

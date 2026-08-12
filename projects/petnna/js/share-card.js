@@ -19,12 +19,7 @@ function _wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     return y;
 }
 
-function _statusColor(val) {
-    if (!val || val === '확인불가') return '#9ca3af';
-    if (['정상','윤기있음','촉촉함','적정','활발'].includes(val)) return '#10b981';
-    if (['주의','건조함','보통','저체중','과체중'].includes(val)) return '#f59e0b';
-    return '#ef4444';
-}
+// (_statusColor 제거 2026-08-12 — 판정 색을 없애면서 유일한 호출부가 사라졌다)
 
 async function _downloadOrShare(canvas, filename, title, text) {
     const dataUrl = canvas.toDataURL('image/png');
@@ -72,61 +67,47 @@ function generateShareCard(type = 'health') {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 52px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(type === 'health' ? '🏥 AI 건강 분석 결과' : '🔯 사주 분석 결과', S / 2, 130);
+    ctx.fillText(type === 'health' ? '📋 오늘의 건강 기록' : '🔯 사주 분석 결과', S / 2, 130);
 
     // 펫 이름
     ctx.fillStyle = '#374151';
     ctx.font = 'bold 40px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-    ctx.fillText(`${petName} 의 분석 결과`, S / 2, 250);
+    ctx.fillText(type === 'health' ? `${petName} 의 기록` : `${petName} 의 분석 결과`, S / 2, 250);
 
     if (type === 'health') {
-        const score = h.score ?? 0;
-        const scoreColor = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
-
-        // 점수 큰 원
-        ctx.beginPath();
-        ctx.arc(S / 2, 420, 110, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-        ctx.strokeStyle = scoreColor;
-        ctx.lineWidth = 8;
-        ctx.stroke();
-
-        ctx.fillStyle = scoreColor;
-        ctx.font = 'bold 100px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-        ctx.fillText(String(score), S / 2, 460);
-        ctx.fillStyle = '#6b7280';
-        ctx.font = 'bold 28px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-        ctx.fillText('건강점수', S / 2, 510);
-
-        // 10항목 배지 그리드
+        // 건강점수 원과 상태 색 배지를 없앴다(2026-08-12) — 이 카드는 사용자가 SNS에
+        // 올리는 **가장 노출이 큰 표면**이라, 허가 없는 등급·판정이 그대로 밖으로 나간다.
+        // 관찰 문구만 중립 톤으로 싣는다. 옛 저장분(판정형)도 같은 자리에 흡수된다.
+        const obs = h.observations || h;
         const items = [
-            { label:'눈', val: h.eyes }, { label:'귀', val: h.ears },
-            { label:'피부', val: h.skin }, { label:'털', val: h.coat },
-            { label:'치아', val: h.teeth }, { label:'코', val: h.nose },
-            { label:'자세', val: h.posture }, { label:'체중', val: h.weight },
-            { label:'활력', val: h.alertness }, { label:'발', val: h.paw },
+            { label:'눈', val: obs.eyes }, { label:'귀', val: obs.ears },
+            { label:'피부', val: obs.skin }, { label:'털', val: obs.coat },
+            { label:'치아', val: obs.teeth }, { label:'코', val: obs.nose },
+            { label:'자세', val: obs.posture }, { label:'체중', val: obs.weight },
+            { label:'활력', val: obs.alertness }, { label:'발', val: obs.paw },
         ].filter(i => i.val && i.val !== '확인불가');
 
-        const cols = 5;
-        const bW = 170, bH = 70, gapX = 16, gapY = 12;
+        // 관찰 문구는 한 줄짜리 배지보다 길다 — 2열로 넓게 잡는다.
+        const cols = 2;
+        const bW = 430, bH = 96, gapX = 20, gapY = 14;
         const totalW = cols * bW + (cols - 1) * gapX;
         const startX = (S - totalW) / 2;
-        let startY = 580;
+        const startY = 330;
 
-        items.forEach((item, idx) => {
-            const col = idx % cols;
-            const row = Math.floor(idx / cols);
-            const x = startX + col * (bW + gapX);
-            const y = startY + row * (bH + gapY);
+        items.slice(0, 8).forEach((item, idx) => {
+            const x = startX + (idx % cols) * (bW + gapX);
+            const y = startY + Math.floor(idx / cols) * (bH + gapY);
             ctx.fillStyle = '#fff';
             ctx.beginPath();
-            ctx.roundRect(x, y, bW, bH, 12);
+            ctx.roundRect(x, y, bW, bH, 14);
             ctx.fill();
-            ctx.fillStyle = _statusColor(item.val);
-            ctx.font = 'bold 22px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${item.label}: ${item.val}`, x + bW / 2, y + 42);
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = 'bold 20px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+            ctx.fillText(item.label, x + 20, y + 32);
+            ctx.fillStyle = '#4b5563';
+            ctx.font = '22px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+            _wrapText(ctx, String(item.val), x + 20, y + 62, bW - 40, 26);
         });
 
         // 요약
@@ -134,8 +115,14 @@ function generateShareCard(type = 'health') {
             ctx.fillStyle = '#4b5563';
             ctx.font = '28px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
             ctx.textAlign = 'center';
-            _wrapText(ctx, h.summary, S / 2, 900, S - 120, 38);
+            _wrapText(ctx, h.summary, S / 2, 870, S - 120, 38);
         }
+
+        // 카드가 앱 밖으로 나가므로 면책도 카드에 새겨 함께 나간다.
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '20px "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('※ 기록 참고용이며 의학적 진단이 아닙니다', S / 2, S - 80);
     }
 
     // 워터마크
@@ -150,8 +137,8 @@ function generateShareCard(type = 'health') {
 async function shareHealthCard() {
     const canvas = generateShareCard('health');
     const pet = typeof getActivePet === 'function' ? getActivePet() : null;
-    await _downloadOrShare(canvas, 'petna-health.png', '펫 AI 건강 분석',
-        `🐾 AI가 분석한 ${pet?.name || '우리 펫'}의 건강점수 확인해요! #펫과나 #AI건강분석`);
+    await _downloadOrShare(canvas, 'petna-health.png', '펫 건강 기록',
+        `🐾 ${pet?.name || '우리 펫'}의 오늘 건강 기록이에요! #펫과나 #건강기록`);
 }
 
 // ─── 병원 방문 준비 카드 (세로 4:5 = 1080×1350) ───────────────────

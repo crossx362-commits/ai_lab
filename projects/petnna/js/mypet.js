@@ -3308,57 +3308,60 @@ async function runAiHealthAnalysis(event) {
     event.target.value = "";
 }
 
-function _buildHealthResultCard(result) {
-    const score = result.score ?? 0;
-    const scoreColor = score >= 80 ? "#10b981" : score >= 60 ? "#f59e0b" : "#ef4444";
-    const scoreBg = score >= 80 ? "from-emerald-50 to-teal-50/60 border-emerald-100" : score >= 60 ? "from-amber-50 to-yellow-50/60 border-amber-100" : "from-red-50 to-rose-50/60 border-red-100";
-
-    const statusClass = (val) => {
-        if (!val || val === "확인불가") return "bg-gray-100 text-gray-400";
-        if (["정상","윤기있음","촉촉함","적정","활발"].includes(val)) return "bg-emerald-100 text-emerald-700";
-        if (["주의","건조함","보통","저체중","과체중"].includes(val)) return "bg-amber-100 text-amber-700";
-        return "bg-red-100 text-red-700";
+// 저장된 과거 분석(localStorage 최대 30건)은 옛 판정형 스키마
+// (eyes:"정상|주의|이상", score, urgent)로 남아 있다. 새 기록형 스키마
+// (observations{}, vetTalkingPoints[])와 둘 다 읽히도록 한 곳에서 흡수한다.
+function _normalizeHealthResult(result) {
+    const obs = result.observations || {
+        eyes: result.eyes, ears: result.ears, skin: result.skin, coat: result.coat,
+        teeth: result.teeth, nose: result.nose, posture: result.posture,
+        weight: result.weight, alertness: result.alertness, paw: result.paw,
     };
+    const points = Array.isArray(result.vetTalkingPoints) ? result.vetTalkingPoints
+        // 옛 기록의 urgentReason은 판정이지만 이미 저장된 사실이므로 버리지 않고
+        // '진료 때 이야기할 것'으로 옮겨 담는다(빨간 경고로는 더 이상 안 띄운다).
+        : [result.urgentReason, result.advice].filter(Boolean);
+    return { obs, points, note: result.recordNote || result.advice || "" };
+}
+
+function _buildHealthResultCard(result) {
+    // 건강점수·긴급 배너는 상태 판정이라 없앴다(2026-08-12) — 허가 없는 진단 표방을
+    // 피하고, 판정을 신뢰해 병원을 안 가는 '놓침'을 만들지 않기 위해서다.
+    // 대신 수의사 상담 안내는 조건부가 아니라 항상 보인다.
+    const { obs, points, note } = _normalizeHealthResult(result);
 
     const items = [
-        { label:"눈", val: result.eyes },
-        { label:"귀", val: result.ears },
-        { label:"피부", val: result.skin },
-        { label:"털", val: result.coat },
-        { label:"치아", val: result.teeth },
-        { label:"코", val: result.nose },
-        { label:"자세", val: result.posture },
-        { label:"체중", val: result.weight },
-        { label:"활력", val: result.alertness },
-        { label:"발", val: result.paw },
+        { label:"눈", val: obs.eyes }, { label:"귀", val: obs.ears },
+        { label:"피부", val: obs.skin }, { label:"털", val: obs.coat },
+        { label:"치아", val: obs.teeth }, { label:"코", val: obs.nose },
+        { label:"자세", val: obs.posture }, { label:"체중", val: obs.weight },
+        { label:"활력", val: obs.alertness }, { label:"발", val: obs.paw },
     ].filter(i => i.val && i.val !== "확인불가");
 
+    // 색으로 등급을 매기지 않는다 — 색 자체가 판정이 된다. 전부 같은 중립 톤.
     const itemsHtml = items.map(i => `
-        <div class="flex flex-col items-center gap-0.5 bg-white/70 rounded-xl p-1.5 border border-white">
-            <span class="text-[8px] text-gray-400 font-bold">${i.label}</span>
-            <span class="text-[9px] font-black px-1.5 py-0.5 rounded-full ${statusClass(i.val)}">${escapeHtml(i.val)}</span>
+        <div class="flex gap-1.5 bg-white/70 rounded-xl px-2 py-1.5 border border-white">
+            <span class="text-[9px] text-gray-400 font-bold shrink-0">${i.label}</span>
+            <span class="text-[9px] text-gray-700 font-medium leading-snug [word-break:keep-all]">${escapeHtml(i.val)}</span>
         </div>`).join('');
 
-    const urgentBanner = result.urgent ? `
-        <div class="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-            <i class="fa-solid fa-triangle-exclamation text-red-500 text-sm"></i>
-            <p class="text-[11px] text-red-600 font-black">${escapeHtml(result.urgentReason || "빠른 수의사 상담이 필요합니다")}</p>
+    const pointsHtml = points.length ? `
+        <div class="bg-brand-50 border border-brand-100 rounded-xl px-2.5 py-2">
+            <p class="text-[10px] text-brand-700 font-black mb-0.5">다음 진료 때 이야기할 것</p>
+            <ul class="space-y-0.5">${points.map(p =>
+                `<li class="text-[10px] text-brand-600 font-medium [word-break:keep-all]">• ${escapeHtml(p)}</li>`
+            ).join('')}</ul>
         </div>` : '';
 
     return `
-        <div class="bg-gradient-to-br ${scoreBg} border rounded-2xl p-3.5 space-y-3 animate-fade-in">
-            ${urgentBanner}
-            <div class="flex items-center gap-3">
-                <div class="flex flex-col items-center min-w-[56px] bg-white/80 rounded-2xl p-2.5 border border-white shadow-xs">
-                    <span class="text-2xl font-black" style="color:${scoreColor}">${score}</span>
-                    <span class="text-[8px] text-gray-400 font-bold mt-0.5">건강점수</span>
-                </div>
-                <div class="flex-1 space-y-1.5">
-                    <p class="text-[11px] text-gray-700 font-medium leading-snug">${escapeHtml(result.summary || "")}</p>
-                    <p class="text-[10px] text-brand-600 font-bold">${escapeHtml(result.advice || "")}</p>
-                </div>
+        <div class="bg-gradient-to-br from-brand-50 to-white border border-brand-100 rounded-2xl p-3.5 space-y-3 animate-fade-in">
+            <div class="space-y-1.5">
+                <p class="text-[11px] text-gray-700 font-medium leading-snug">${escapeHtml(result.summary || "")}</p>
+                ${note ? `<p class="text-[10px] text-brand-600 font-bold">${escapeHtml(note)}</p>` : ''}
             </div>
-            ${items.length > 0 ? `<div class="grid grid-cols-5 gap-1">${itemsHtml}</div>` : ""}
+            ${items.length > 0 ? `<div class="grid grid-cols-2 gap-1">${itemsHtml}</div>` : ""}
+            ${pointsHtml}
+            <p class="text-[9px] text-gray-400 leading-relaxed [word-break:keep-all]">${escapeHtml(result.disclaimer || AI_HEALTH_DISCLAIMER)}</p>
             <div class="flex gap-1.5">
                 <button onclick="shareHealthCard()" class="flex items-center gap-1 px-2.5 py-1.5 bg-white/80 hover:bg-white border border-brand-200 text-brand-700 font-black text-[10px] rounded-xl transition-all">
                     <i class="fa-solid fa-image text-[9px]"></i> 카드 저장
@@ -3455,29 +3458,30 @@ async function startVoiceConsultation() {
 
 function _buildVoiceResultCard(analysis) {
     if (analysis.error) return `<p class="text-xs text-red-500 p-2">${escapeHtml(analysis.message)}</p>`;
-    const urgencyColor = {
-        "즉시": "text-red-600 bg-red-50 border-red-200",
-        "24시간내": "text-amber-600 bg-amber-50 border-amber-200",
-        "일주일내": "text-blue-600 bg-blue-50 border-blue-200",
-        "관찰": "text-emerald-600 bg-emerald-50 border-emerald-200",
-    }[analysis.urgency] || "text-gray-600 bg-gray-50 border-gray-200";
 
-    const causesHtml = (analysis.possibleCauses || []).map(c =>
-        `<li class="text-[10px] text-gray-600 font-medium">• ${escapeHtml(c)}</li>`
-    ).join('');
+    // 긴급도 배지(즉시/24시간내/…)·원인 추정·"지금 할 수 있는 것"은 전부 판정·조치
+    // 안내라 없앴다(2026-08-12). 남기는 것은 ①보호자가 말한 것 ②더 기록할 것
+    // ③진료 때 물어볼 것 — 전부 기록 보조다. 옛 저장분 필드도 같이 흡수한다.
+    const section = (title, list) => {
+        const arr = (list || []).filter(Boolean);
+        if (!arr.length) return '';
+        return `
+            <div class="bg-brand-50 border border-brand-100 rounded-xl px-2.5 py-1.5">
+                <p class="text-[10px] text-brand-700 font-black">${title}</p>
+                <ul class="space-y-0.5">${arr.map(x =>
+                    `<li class="text-[10px] text-brand-600 font-medium [word-break:keep-all]">• ${escapeHtml(x)}</li>`
+                ).join('')}</ul>
+            </div>`;
+    };
 
     return `
         <div class="space-y-2 p-1">
-            <div class="flex items-center gap-1.5">
-                <span class="text-[9px] font-black px-2 py-0.5 rounded-full border ${urgencyColor}">${escapeHtml(analysis.urgency || "관찰")}</span>
-                ${analysis.needsVet ? '<span class="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">수의사 상담 권고</span>' : ''}
-            </div>
             <p class="text-[11px] text-gray-700 font-medium leading-snug">${escapeHtml(analysis.summary || "")}</p>
-            ${causesHtml ? `<ul class="space-y-0.5">${causesHtml}</ul>` : ""}
-            <div class="bg-brand-50 border border-brand-100 rounded-xl px-2.5 py-1.5">
-                <p class="text-[10px] text-brand-700 font-black">지금 할 수 있는 것</p>
-                <p class="text-[10px] text-brand-600 font-medium">${escapeHtml(analysis.immediateAction || "")}</p>
-            </div>
+            ${section("기록된 내용", analysis.recordedSymptoms || analysis.possibleCauses)}
+            ${section("집에서 더 기록해두면 좋은 것", analysis.observationChecklist)}
+            ${section("진료 때 이야기할 것",
+                      analysis.vetTalkingPoints || [analysis.immediateAction])}
+            <p class="text-[9px] text-gray-400 leading-relaxed [word-break:keep-all]">${escapeHtml(analysis.disclaimer || AI_HEALTH_DISCLAIMER)}</p>
         </div>`;
 }
 
@@ -3516,21 +3520,22 @@ function shareAiHealthToFeed() {
         id: Date.now(),
         petName,
         petAvatar,
-        content: `${petName}의 AI 건강점수: ${latest.score}점 🏥`,
+        content: `${petName}의 오늘 건강 기록 📋`,
         image: null,
         isVideo: false,
         videoUrl: null,
         attachedWalk: null,
         attachedHealth: null,
-        attachedAiHealth: {
-            score: latest.score,
-            eyes: latest.eyes,
-            skin: latest.skin,
-            body: latest.body || "정상",
-            summary: latest.summary,
-            advice: latest.advice,
-            analyzedAt: latest.analyzedAt
-        },
+        // 피드는 앱 밖으로도 나가는 공개 게시물이다 — 점수·판정을 싣지 않는다(2026-08-12).
+        // 관찰 문구 3개와 요약만. 옛 저장분은 _normalizeHealthResult가 흡수한다.
+        attachedAiHealth: (() => {
+            const { obs } = _normalizeHealthResult(latest);
+            return {
+                eyes: obs.eyes, skin: obs.skin, coat: obs.coat,
+                summary: latest.summary,
+                analyzedAt: latest.analyzedAt
+            };
+        })(),
         likes: 0,
         liked: false,
         comments: []
@@ -3538,7 +3543,7 @@ function shareAiHealthToFeed() {
     if (typeof posts !== 'undefined') {
         posts.unshift(newPost);
         saveState();
-        showToast("AI 건강 분석 결과가 피드에 공유되었습니다! 🏥");
+        showToast("건강 기록이 피드에 공유되었습니다! 📋");
         switchTab('social');
         switchSocialSubTab('feed');
     }
