@@ -1270,6 +1270,54 @@ function renderWalkHistory() {
         `;
         list.appendChild(el);
     });
+
+    renderWalkTodaySummary();
+}
+
+// ── 오늘 산책 요약 미니 통계 (오늘 완료한 산책 집계 — 오른쪽 컬럼 하단 밸런스) ──
+function renderWalkTodaySummary() {
+    const box = document.getElementById('walk-today-summary');
+    if (!box) return;
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const list = (typeof walks !== 'undefined' && Array.isArray(walks)) ? walks : [];
+    let count = 0, dist = 0, cal = 0;
+    list.forEach(w => {
+        const t = Number(w.id);
+        if (!isNaN(t) && t >= startOfDay) {
+            count++;
+            dist += parseFloat(w.distance) || 0;
+            cal += parseFloat(w.calories) || 0;
+        }
+    });
+
+    box.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-calendar-day text-brand-500 text-base"></i>
+                오늘 산책 요약
+            </h4>
+            <span class="text-[9px] font-bold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-full">오늘</span>
+        </div>
+        ${count === 0
+            ? `<p class="text-[11px] text-gray-400 font-semibold text-center py-2">아직 오늘 완료한 산책이 없어요 🐾</p>`
+            : `<div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-brand-50/60 py-2.5 px-1 rounded-xl border border-brand-100/40">
+                    <span class="text-sm font-bold text-brand-600 font-mono block leading-none">${count}</span>
+                    <span class="text-[9px] text-gray-500 font-semibold mt-1 block">산책</span>
+                </div>
+                <div class="bg-brand-50/60 py-2.5 px-1 rounded-xl border border-brand-100/40">
+                    <span class="text-sm font-bold text-brand-600 font-mono block leading-none">${dist.toFixed(2)}</span>
+                    <span class="text-[9px] text-gray-500 font-semibold mt-1 block">km</span>
+                </div>
+                <div class="bg-brand-50/60 py-2.5 px-1 rounded-xl border border-brand-100/40">
+                    <span class="text-sm font-bold text-rose-500 font-mono block leading-none">${Math.round(cal)}</span>
+                    <span class="text-[9px] text-gray-500 font-semibold mt-1 block">kcal</span>
+                </div>
+            </div>`
+        }
+    `;
 }
 
 // ── 주간 산책 챌린지 + 익명 리더보드 (walks 누적치 기반, 클라이언트 전용) ──

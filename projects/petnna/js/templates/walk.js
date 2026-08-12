@@ -319,6 +319,9 @@ const WALK_TEMPLATE = `
 
         </div>
 
+        <!-- ── 오늘 산책 요약 미니 통계 (오른쪽 컬럼 하단 여백 채움 · JS 렌더) ── -->
+        <div id="walk-today-summary" class="bg-white rounded-2xl p-4 border border-amber-50 shadow-sm"></div>
+
     </div>
     </div>
 
