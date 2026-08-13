@@ -61,7 +61,6 @@ public class W3Party : MonoBehaviour
 
     Member[] _party;
     Member[] _slots;
-    Sprite[] _slotSprites;
 
     // ── 몹 ───────────────────────────────────────────────
     const int MAXM = 200;
@@ -159,7 +158,9 @@ public class W3Party : MonoBehaviour
 
         // 파티 슬롯 5칸을 미리 만들고, 구성(§21-1f)에 따라 켜고 끈다
         _slots = new Member[5];
-        _slotSprites = new[] { bank.Player, bank.Mob(0), bank.Mob(1), bank.Summon, bank.Mob(2) };
+        // ⚠️ 여기서 예전엔 슬롯 5칸에 { Player, Mob0, Mob1, Summon, Mob2 }를 꽂았다 —
+        //    즉 파티원 다섯 중 넷이 **몹 스프라이트**로 그려지고 있었다(2026-08-13 발견).
+        //    이제 역할에 맞는 오너 픽셀아트를 쓴다. 배정은 BuildParty에서 Role 기준으로 한다.
         for (int i = 0; i < 5; i++)
         {
             var go = new GameObject("slot" + i, typeof(SpriteRenderer));
@@ -228,6 +229,19 @@ public class W3Party : MonoBehaviour
         _ => Role.Dps,
     };
 
+    /// <summary>
+    /// 파티 역할 → 오너 픽셀아트 직업.
+    /// Role과 SpriteBank.Job은 지금 우연히 순서가 같지만 캐스팅으로 엮지 않는다 —
+    /// 한쪽에 값이 끼면 조용히 어긋나는 종류의 결합이다.
+    /// </summary>
+    static SpriteBank.Job ArtOf(Role r) => r switch
+    {
+        Role.Tank => SpriteBank.Job.Tank,
+        Role.Healer => SpriteBank.Job.Healer,
+        Role.Buffer => SpriteBank.Job.Buffer,
+        _ => SpriteBank.Job.Dps,
+    };
+
     void NextStyle()
     {
         _qi++;
@@ -245,7 +259,7 @@ public class W3Party : MonoBehaviour
             var job = _setup.Jobs[i];
             m.Job = job;
             m.Role = RoleOf(job);
-            m.Sr.sprite = _slotSprites[i];
+            m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Role));
             m.MaxHp = m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f;
             m.Atk = m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f;
             m.Range = m.Role == Role.Dps ? 5.5f : m.Role == Role.Tank ? 1.3f : 6.5f;

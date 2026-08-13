@@ -141,40 +141,40 @@ public static class ProjectSetup
     static List<JobDef> MakeJobs()
     {
         var list = new List<JobDef>();
-        // (이름, 역할, 컨셉, 고유, HP, 공격, 사거리, 이동기형태, 리스크, 자동적합도, 스킬3)
-        var rows = new (string, RoleId, string, string, float, float, float, string, string, float, string[])[]
+        // (한글이름, 영문이름, 역할, 컨셉, 고유, HP, 공격, 사거리, 이동기형태, 리스크, 자동적합도, 스킬3)
+        var rows = new (string, string, RoleId, string, string, float, float, float, string, string, float, string[])[]
         {
-            ("수호기사", RoleId.탱, "정통 방패탱", "수호 게이지 — 피격·보호로 축적, 소모해 보호막", 320, 10, 1.3f, "방패 돌진", "최저", 0.35f,
+            ("수호기사", "guardian", RoleId.탱, "정통 방패탱", "수호 게이지 — 피격·보호로 축적, 소모해 보호막", 320, 10, 1.3f, "방패 돌진", "최저", 0.35f,
                 new[]{ "도발의 함성|광역 어그로 3초 — 원거리 몹까지 끈다|6|0|4.5",
                        "성채 방패|게이지 60 소모, 파티 보호막 40|0|0|8|60",
                        "최후의 보루|3초간 HP 1 미만으로 안 떨어짐|40|0|0" }),
-            ("광전사", RoleId.탱, "브루저(몸빵+근딜)", "분노 — HP가 낮을수록 공격력 상승", 260, 20, 1.5f, "구르기", "높음", 0.65f,
+            ("광전사", "berserker", RoleId.탱, "브루저(몸빵+근딜)", "분노 — HP가 낮을수록 공격력 상승", 260, 20, 1.5f, "구르기", "높음", 0.65f,
                 new[]{ "피의 갈증|타격 시 흡혈|0|1|0", "무모한 돌진|돌진+광역|8|1.4|3", "사혈|자기 HP 소모 폭딜|12|2.5|0" }),
-            ("검사", RoleId.딜, "근접 콤보 폭딜", "연격 스택 — 5스택에 일섬", 130, 26, 5.5f, "구르기", "중상", 0.7f,
+            ("검사", "swordsman", RoleId.딜, "근접 콤보 폭딜", "연격 스택 — 5스택에 일섬", 130, 26, 5.5f, "구르기", "중상", 0.7f,
                 new[]{ "연속베기|스택 축적|0|1|0", "발도|무적 프레임 대시 — 회피 겸용|8|1.2|0",
                        "일섬|스택 5 전량 소모 단일 폭딜|0|3.2|0|5" }),
-            ("궁수", RoleId.딜, "원거리 단일 저격", "집중 — 제자리에 서면 딜 상승", 115, 24, 8f, "백스텝", "낮음", 0.5f,
+            ("궁수", "archer", RoleId.딜, "원거리 단일 저격", "집중 — 제자리에 서면 딜 상승", 115, 24, 8f, "백스텝", "낮음", 0.5f,
                 new[]{ "조준 사격|단일 최고딜|3|2|0", "후퇴 사격|뒤로 점프하며 발사|7|1|0",
                        "매의 눈|대상 약점 노출 — 파티 딜 증가|20|0|0" }),
-            ("마법사", RoleId.딜, "광역 섬멸", "마나 순환 — 다른 스킬 연계 시 쿨감(마나 없음)", 110, 26, 6.5f, "점멸", "중", 0.9f,
+            ("마법사", "mage", RoleId.딜, "광역 섬멸", "마나 순환 — 다른 스킬 연계 시 쿨감(마나 없음)", 110, 26, 6.5f, "점멸", "중", 0.9f,
                 new[]{ "화염폭풍|장판 광역 — 4체 이상 밀집 시|5|1.2|3.2",
                        "점멸|순간이동 회피|8|0|0", "빙결|광역 슬로우|10|0.4|4" }),
-            ("소환사", RoleId.딜, "소환수 지속딜", "소환 슬롯 — 본체 대신 전투", 120, 14, 7f, "위치 교체", "최저급", 0.95f,
+            ("소환사", "summoner", RoleId.딜, "소환수 지속딜", "소환 슬롯 — 본체 대신 전투", 120, 14, 7f, "위치 교체", "최저급", 0.95f,
                 new[]{ "바위 골렘|탱형 소환|15|0|0", "임프 무리|딜형 다수 소환|12|0|0",
                        "희생 명령|소환수 폭발 광역딜|8|2|3.5" }),
-            ("사제", RoleId.힐, "순수 회복 특화", "신앙 — 회복 누적으로 축적, 소모해 기적", 150, 6, 6.5f, "짧은 스텝", "낮음", 0.2f,
+            ("사제", "priest", RoleId.힐, "순수 회복 특화", "신앙 — 회복 누적으로 축적, 소모해 기적", 150, 6, 6.5f, "짧은 스텝", "낮음", 0.2f,
                 new[]{ "성광|단일 대회복|1|0|0", "치유의 파동|광역 힐|1.4|0|7",
                        "기적|신앙 100 소모 — 파티 전체 완전 회복|0|0|99|100" }),
-            ("드루이드", RoleId.힐, "도트힐+도트딜 하이브리드", "자연 표식 — 아군 회복·적 피해 동시", 150, 10, 6f, "짧은 스텝", "중", 0.4f,
+            ("드루이드", "druid", RoleId.힐, "도트힐+도트딜 하이브리드", "자연 표식 — 아군 회복·적 피해 동시", 150, 10, 6f, "짧은 스텝", "중", 0.4f,
                 new[]{ "재생의 씨앗|도트힐|2|0|0", "가시덩굴|도트딜+둔화|4|0.8|3",
                        "야성 변신|짧게 곰 형태 — 임시 탱|30|0|0" }),
-            ("음유시인", RoleId.버퍼, "오라 증폭기", "악장 전환 — 진군가/수호가/질주가 상시 연주", 150, 8, 6.5f, "짧은 스텝", "낮음", 0.25f,
+            ("음유시인", "bard", RoleId.버퍼, "오라 증폭기", "악장 전환 — 진군가/수호가/질주가 상시 연주", 150, 8, 6.5f, "짧은 스텝", "낮음", 0.25f,
                 new[]{ "진군가|파티 공격 +15%|0|0|8", "수호가|파티 피해 -18%|0|0|8",
                        "피날레|현재 악장 효과 폭발|25|1.5|6" }),
-            ("주술사", RoleId.버퍼, "적 약화(디버프)", "저주 스택 — 같은 대상에 쌓을수록 증폭", 145, 12, 6f, "짧은 스텝", "낮음", 0.3f,
+            ("주술사", "shaman", RoleId.버퍼, "적 약화(디버프)", "저주 스택 — 같은 대상에 쌓을수록 증폭", 145, 12, 6f, "짧은 스텝", "낮음", 0.3f,
                 new[]{ "무기력의 저주|적 공깎|4|0|0", "부패|방깎+도트|5|0.6|0",
                        "속박 토템|설치형 — 범위 내 이속 감소|15|0|4" }),
-            ("정령사", RoleId.버퍼, "아군 강화(정령 부착)", "정령 계약 — 화/수/풍을 아군 1인에게 부착", 145, 10, 6.5f, "짧은 스텝", "낮음", 0.45f,
+            ("정령사", "elementalist", RoleId.버퍼, "아군 강화(정령 부착)", "정령 계약 — 화/수/풍을 아군 1인에게 부착", 145, 10, 6.5f, "짧은 스텝", "낮음", 0.45f,
                 new[]{ "화염 정령|부착 대상 공격에 화상|10|0|0", "물의 정령|부착 대상 지속 회복|10|0|0",
                        "바람 정령|부착 대상 이속·쿨감|10|0|0" }),
         };
@@ -182,13 +182,13 @@ public static class ProjectSetup
         foreach (var r in rows)
         {
             var a = ScriptableObject.CreateInstance<JobDef>();
-            a.직업명 = r.Item1; a.역할 = r.Item2; a.컨셉 = r.Item3; a.고유메커니즘 = r.Item4;
-            a.최대체력 = r.Item5; a.공격력 = r.Item6; a.사거리 = r.Item7;
-            a.이동기형태 = r.Item8; a.사망리스크 = r.Item9; a.자동사냥적합도 = r.Item10;
-            a.공격간격 = r.Item2 == RoleId.딜 ? 0.40f : 0.7f;
+            a.직업명 = r.Item1; a.역할 = r.Item3; a.컨셉 = r.Item4; a.고유메커니즘 = r.Item5;
+            a.최대체력 = r.Item6; a.공격력 = r.Item7; a.사거리 = r.Item8;
+            a.이동기형태 = r.Item9; a.사망리스크 = r.Item10; a.자동사냥적합도 = r.Item11;
+            a.공격간격 = r.Item3 == RoleId.딜 ? 0.40f : 0.7f;
 
             var skills = new List<SkillDef>();
-            foreach (var raw in r.Item11)
+            foreach (var raw in r.Item12)
             {
                 var p = raw.Split('|');
                 var sk = new SkillDef { 이름 = p[0], 설명 = p[1] };
@@ -199,7 +199,7 @@ public static class ProjectSetup
                 skills.Add(sk);
             }
             a.스킬 = skills.ToArray();
-            list.Add(Save(a, $"{ROOT}/Data/Jobs/Job_{r.Item1}.asset"));
+            list.Add(Save(a, $"{ROOT}/Data/Jobs/Job_{r.Item2}.asset"));
         }
         return list;
     }
@@ -208,40 +208,50 @@ public static class ProjectSetup
     static List<MobDef> MakeMobs()
     {
         var list = new List<MobDef>();
-        var basic = new (string, MobAi, float, string)[]
+        var basic = new (string, string, MobAi, float, string)[]
         {
-            ("추적형", MobAi.추적, 0.90f, "mob_chaser_0"),
-            ("포위형", MobAi.포위, 0.85f, "mob_swarmer_0"),
-            ("원거리형", MobAi.원거리, 0.65f, "mob_ranged_0"),
-            ("돌진형", MobAi.돌진, 0.90f, "mob_chaser_0"),
+            ("추적형", "chaser", MobAi.추적, 0.90f, "mob_chaser_0"),
+            ("포위형", "swarmer", MobAi.포위, 0.85f, "mob_swarmer_0"),
+            ("원거리형", "ranged", MobAi.원거리, 0.65f, "mob_ranged_0"),
+            ("돌진형", "charger", MobAi.돌진, 0.90f, "mob_chaser_0"),
         };
-        foreach (var f in new[] { MobFamily.야수, MobFamily.언데드, MobFamily.마족, MobFamily.기계, MobFamily.정령 })
-            foreach (var b in basic)
+
+        var familyNames = new (MobFamily, string)[]
+        {
+            (MobFamily.야수, "beast"),
+            (MobFamily.언데드, "undead"),
+            (MobFamily.마족, "demon"),
+            (MobFamily.기계, "machine"),
+            (MobFamily.정령, "elemental"),
+        };
+
+        foreach (var (f, fName) in familyNames)
+            foreach (var (bName, bNameEng, ai, speed, sprite) in basic)
             {
                 var a = ScriptableObject.CreateInstance<MobDef>();
-                a.이름 = $"{f}_{b.Item1}"; a.AI = b.Item2; a.계열 = f; a.속도배율 = b.Item3;
-                a.스프라이트 = LoadSprite(b.Item4);
+                a.이름 = $"{f}_{bName}"; a.AI = ai; a.계열 = f; a.속도배율 = speed;
+                a.스프라이트 = LoadSprite(sprite);
                 a.색조 = FamilyColor(f);
-                list.Add(Save(a, $"{ROOT}/Data/Mobs/Mob_{f}_{b.Item1}.asset"));
+                list.Add(Save(a, $"{ROOT}/Data/Mobs/Mob_{fName}_{bNameEng}.asset"));
             }
 
         // 정예 6유형 — 플레이어 직업 역할의 거울(§10-2)
-        var elites = new (EliteKind, string, Color)[]
+        var elites = new (EliteKind, string, string, Color)[]
         {
-            (EliteKind.수호자,   "주변 잡몹에 피해 감소 오라",       new Color(0.6f, 0.7f, 1f)),
-            (EliteKind.처형자,   "후열 돌진 폭딜",                   new Color(1f, 0.45f, 0.35f)),
-            (EliteKind.주술사,   "주변 몹 지속 회복 — 최우선 처치",  new Color(0.4f, 1f, 0.5f)),
-            (EliteKind.군단장,   "주변 몹 공속·이속 증가",           new Color(1f, 0.85f, 0.3f)),
-            (EliteKind.저주술사, "플레이어 회복량·이속 감소",        new Color(0.7f, 0.4f, 0.9f)),
-            (EliteKind.소환술사, "잡몹 지속 소환 — 방치하면 증식",   new Color(0.8f, 0.5f, 1f)),
+            (EliteKind.수호자,   "수호자", "warden", new Color(0.6f, 0.7f, 1f)),
+            (EliteKind.처형자,   "처형자", "executioner", new Color(1f, 0.45f, 0.35f)),
+            (EliteKind.주술사,   "주술사", "shaman", new Color(0.4f, 1f, 0.5f)),
+            (EliteKind.군단장,   "군단장", "legion_commander", new Color(1f, 0.85f, 0.3f)),
+            (EliteKind.저주술사, "저주술사", "curser", new Color(0.7f, 0.4f, 0.9f)),
+            (EliteKind.소환술사, "소환술사", "summoner", new Color(0.8f, 0.5f, 1f)),
         };
-        foreach (var e in elites)
+        foreach (var (kind, kindName, kindNameEng, color) in elites)
         {
             var a = ScriptableObject.CreateInstance<MobDef>();
-            a.이름 = "정예_" + e.Item1; a.정예유형 = e.Item1; a.AI = MobAi.추적;
+            a.이름 = "정예_" + kindName; a.정예유형 = kind; a.AI = MobAi.추적;
             a.속도배율 = 0.6f; a.체력배율 = 3.5f; a.크기 = 3.2f;
-            a.색조 = e.Item3; a.스프라이트 = LoadSprite("elite_healer_0");
-            list.Add(Save(a, $"{ROOT}/Data/Mobs/Elite_{e.Item1}.asset"));
+            a.색조 = color; a.스프라이트 = LoadSprite("elite_healer_0");
+            list.Add(Save(a, $"{ROOT}/Data/Mobs/Elite_{kindNameEng}.asset"));
         }
         return list;
     }
@@ -279,8 +289,18 @@ public static class ProjectSetup
     {
         var made = new List<GameObject>();
 
+        // 직업명 → 영문명 매핑
+        var jobNameMap = new Dictionary<string, string>
+        {
+            { "수호기사", "guardian" }, { "광전사", "berserker" }, { "검사", "swordsman" },
+            { "궁수", "archer" }, { "마법사", "mage" }, { "소환사", "summoner" },
+            { "사제", "priest" }, { "드루이드", "druid" }, { "음유시인", "bard" },
+            { "주술사", "shaman" }, { "정령사", "elementalist" },
+        };
+
         foreach (var j in jobs)
         {
+            var engName = jobNameMap.ContainsKey(j.직업명) ? jobNameMap[j.직업명] : j.직업명;
             var go = new GameObject(j.직업명, typeof(SpriteRenderer));
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = LoadPixelArt(j.역할,
@@ -290,18 +310,39 @@ public static class ProjectSetup
             sr.sortingOrder = 500;
             // 픽셀아트는 PPU 32라 이미 적정 크기 — 플레이스홀더처럼 키우면 뭉개진다
             go.transform.localScale = Vector3.one;
-            var path = $"{ROOT}/Prefabs/Characters/{j.직업명}.prefab";
+            var path = $"{ROOT}/Prefabs/Characters/{engName}.prefab";
             made.Add(PrefabUtility.SaveAsPrefabAsset(go, path));
             Object.DestroyImmediate(go);
         }
 
+        // 몬스터 프리팹 이름 매핑
+        var mobNameMap = new Dictionary<string, string>
+        {
+            // beast, undead, demon, machine, elemental + chaser, swarmer, ranged, charger
+            { "야수_추적형", "beast_chaser" }, { "야수_포위형", "beast_swarmer" },
+            { "야수_원거리형", "beast_ranged" }, { "야수_돌진형", "beast_charger" },
+            { "언데드_추적형", "undead_chaser" }, { "언데드_포위형", "undead_swarmer" },
+            { "언데드_원거리형", "undead_ranged" }, { "언데드_돌진형", "undead_charger" },
+            { "마족_추적형", "demon_chaser" }, { "마족_포위형", "demon_swarmer" },
+            { "마족_원거리형", "demon_ranged" }, { "마족_돌진형", "demon_charger" },
+            { "기계_추적형", "machine_chaser" }, { "기계_포위형", "machine_swarmer" },
+            { "기계_원거리형", "machine_ranged" }, { "기계_돌진형", "machine_charger" },
+            { "정령_추적형", "elemental_chaser" }, { "정령_포위형", "elemental_swarmer" },
+            { "정령_원거리형", "elemental_ranged" }, { "정령_돌진형", "elemental_charger" },
+            // elites
+            { "정예_수호자", "elite_warden" }, { "정예_처형자", "elite_executioner" },
+            { "정예_주술사", "elite_shaman" }, { "정예_군단장", "elite_legion_commander" },
+            { "정예_저주술사", "elite_curser" }, { "정예_소환술사", "elite_summoner" },
+        };
+
         foreach (var m in mobs)
         {
+            var engName = mobNameMap.ContainsKey(m.이름) ? mobNameMap[m.이름] : m.이름;
             var go = new GameObject(m.이름, typeof(SpriteRenderer));
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = m.스프라이트; sr.sharedMaterial = mat; sr.color = m.색조;
             go.transform.localScale = Vector3.one * m.크기;
-            var path = $"{ROOT}/Prefabs/Mobs/{m.이름}.prefab";
+            var path = $"{ROOT}/Prefabs/Mobs/{engName}.prefab";
             made.Add(PrefabUtility.SaveAsPrefabAsset(go, path));
             Object.DestroyImmediate(go);
         }
@@ -346,11 +387,11 @@ public static class ProjectSetup
         var party = new GameObject("Party").transform;
         var formation = new (string, Vector2)[]
         {
-            ("수호기사", new Vector2(0f, 1.8f)),
-            ("검사", new Vector2(-1.4f, -0.4f)),
-            ("마법사", new Vector2(1.4f, -0.4f)),
-            ("사제", new Vector2(-0.9f, -2.6f)),
-            ("음유시인", new Vector2(0.9f, -2.6f)),
+            ("guardian", new Vector2(0f, 1.8f)),
+            ("swordsman", new Vector2(-1.4f, -0.4f)),
+            ("mage", new Vector2(1.4f, -0.4f)),
+            ("priest", new Vector2(-0.9f, -2.6f)),
+            ("bard", new Vector2(0.9f, -2.6f)),
         };
         foreach (var (name, pos) in formation)
         {

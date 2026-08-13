@@ -34,7 +34,7 @@ public class TextureImportRules : AssetPostprocessor
             ti.spritePixelsPerUnit = 32;
             ti.spritePivot = new Vector2(0.5f, 0.06f);   // 발밑 피벗 — 쿼터뷰 Y정렬 기준
         }
-        else if (assetPath.Contains("/FX/") || assetPath.Contains("/출력_이펙트/"))
+        else if (assetPath.Contains("/FX/") || assetPath.Contains("/out_effects/"))
         {
             ti.textureType = TextureImporterType.Sprite;
             ti.spriteImportMode = SpriteImportMode.Single;

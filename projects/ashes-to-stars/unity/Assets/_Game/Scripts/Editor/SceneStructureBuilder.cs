@@ -21,7 +21,7 @@ using UnityEngine;
 public static class SceneStructureBuilder
 {
     const string DIR = "Assets/_Game/Scenes";
-    const string PATH = DIR + "/게임구조_전체.unity";
+    const string PATH = DIR + "/GameStructure_Overview.unity";
 
     static Material _matShared;
     static BalanceConfig _b;
@@ -161,7 +161,7 @@ public static class SceneStructureBuilder
     static void 시작화면(Transform g)
     {
         Note(g, "직업 2종을 골라 시작 (§3)");
-        var jobs = new[] { ("탱커", "수호기사"), ("딜러", "검사"), ("힐러", "사제"), ("버퍼", "음유시인") };
+        var jobs = new[] { ("탱커", "guardian"), ("딜러", "swordsman"), ("힐러", "priest"), ("버퍼", "bard") };
         for (int i = 0; i < 4; i++)
         {
             float x = -9f + i * 6f;
@@ -199,7 +199,7 @@ public static class SceneStructureBuilder
         var nt = t.AddComponent<NoiseTerrain>();
         nt.반경 = 12f; nt.ISO_Y = _b.ISO_Y; nt.격자간격 = 1.5f;
         Note(g, "지형·바닥만 노이즈맵 절차 생성");
-        var party = new[] { "수호기사", "검사", "마법사", "사제", "음유시인" };
+        var party = new[] { "guardian", "swordsman", "mage", "priest", "bard" };
         for (int i = 0; i < 5; i++) Chr(g, party[i], new Vector2(-4f + i * 2f, 0));
         Note(g, "출전 1~5명 자유 · 경험치는 레벨 비례 분배");
     }
@@ -208,7 +208,7 @@ public static class SceneStructureBuilder
     {
         Box(g, "웨이브 구간(자동)", new Vector2(-6, 0), new Vector2(12f, 10f), new Color(0.13f, 0.12f, 0.15f, 0.95f));
         Box(g, "종점 보스존(지휘 조작 열림)", new Vector2(7, 0), new Vector2(11f, 10f), new Color(0.30f, 0.11f, 0.13f, 0.95f));
-        Chr(g, "검사", new Vector2(-6, -1));
+        Chr(g, "swordsman", new Vector2(-6, -1));
         Note(g, "랜덤 생성 · 입장 제한 없음 · 사망 카운트 적용");
     }
 
@@ -231,11 +231,11 @@ public static class SceneStructureBuilder
         Box(g, "보스(페이즈마다 스킬 +1)", new Vector2(0, 5), new Vector2(7f, 5f), new Color(0.48f, 0.14f, 0.14f, 0.95f));
         Box(g, "장판_예고A", new Vector2(-6, 0), new Vector2(6f, 3f), new Color(0.75f, 0.2f, 0.2f, 0.30f));
         Box(g, "장판_예고B", new Vector2(6, -2), new Vector2(6f, 3f), new Color(0.75f, 0.2f, 0.2f, 0.30f));
-        Chr(g, "수호기사", new Vector2(0, 1));
-        Chr(g, "검사", new Vector2(-3, -2));
-        Chr(g, "마법사", new Vector2(3, -2));
-        Chr(g, "사제", new Vector2(-2, -5));
-        Chr(g, "음유시인", new Vector2(2, -5));
+        Chr(g, "guardian", new Vector2(0, 1));
+        Chr(g, "swordsman", new Vector2(-3, -2));
+        Chr(g, "mage", new Vector2(3, -2));
+        Chr(g, "priest", new Vector2(-2, -5));
+        Chr(g, "bard", new Vector2(2, -5));
         Note(g, "진형: 탱 앞 / 딜 중간 / 힐·버퍼 뒤 — 1인 클리어 거의 불가능");
     }
 
@@ -283,7 +283,7 @@ public static class SceneStructureBuilder
         Box(g, "보유 캐릭터 목록", new Vector2(-8, 0), new Vector2(8f, 12f), new Color(0.13f, 0.14f, 0.18f, 0.98f));
         Box(g, "장비 6부위", new Vector2(4, 3), new Vector2(12f, 6f), new Color(0.16f, 0.16f, 0.21f, 0.98f));
         Box(g, "합성(패시브 흡수, 슬롯 4)", new Vector2(4, -3.5f), new Vector2(12f, 4f), new Color(0.20f, 0.15f, 0.21f, 0.98f));
-        Chr(g, "수호기사", new Vector2(-8, 1));
+        Chr(g, "guardian", new Vector2(-8, 1));
         Note(g, "목숨 ❤❤❤ 상시 노출 · 마지막 목숨은 경고");
         Note(g, "전직 · 합성 · 장비 · 영묘(환생)");
     }

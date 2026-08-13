@@ -86,3 +86,9 @@ _to_delete/
 # git worktrees (로컬 전용 — 자동 커밋 에이전트가 쓸어담지 않도록)
 .worktrees/
 .superpowers/
+
+# Game build output (Ashes to Stars)
+projects/ashes-to-stars/build_w1_perf/
+projects/ashes-to-stars/build_w2_control/
+projects/ashes-to-stars/build_w3_party/
+projects/ashes-to-stars/results/

@@ -224,10 +224,17 @@ public class W2Arena : MonoBehaviour
             _plPos += input * MoveSpeed * dt;
         }
 
+        Vector2 prev = _plPos;
         _plPos = Vector2.ClampMagnitude(_plPos, SpawnRadius + 4f);
         _pl.position = ToScreen(_plPos, -1f);
         // 무적 중에는 반투명 — 피드백이 없으면 유저가 무적을 인지하지 못한다
         _plSr.color = _iframe > 0f ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
+
+        // 걷기 2프레임 토글. 정지하면 대기 프레임으로 돌아온다.
+        bool moving = (_plPos - prev).sqrMagnitude > 1e-6f;
+        _plSr.sprite = SpriteBank.Cached.CharAnim(SpriteBank.Job.Tank, moving, Time.time);
+        // 좌우 반전 — 방향별 스프라이트가 아직 없으므로 진행 방향만 뒤집어 표현한다
+        if (Mathf.Abs(_plPos.x - prev.x) > 1e-5f) _plSr.flipX = _plPos.x < prev.x;
     }
 
     /// <summary>자동 회피 봇 — 사람 없이 기계적으로 메커니즘을 검증한다</summary>

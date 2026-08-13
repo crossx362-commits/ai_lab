@@ -52,8 +52,8 @@ except Exception as e:                                    # 단독 실행도 가
 
 GAME = os.path.join(_root, "projects", "ashes-to-stars")
 UNITY_PROJECT = os.path.join(GAME, "unity")
-BUILD_DIR = os.path.join(GAME, "빌드_W1성능")
-LOG_DIR = os.path.join(GAME, "실행결과")
+BUILD_DIR = os.path.join(GAME, "build_w1_perf")
+LOG_DIR = os.path.join(GAME, "results")
 REPORT_DIR = os.path.join(_root, "output", "qa", "ashes-to-stars")
 
 UNITY_CANDIDATES = [

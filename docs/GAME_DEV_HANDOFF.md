@@ -36,21 +36,24 @@
 
 ```
 projects/ashes-to-stars/
-  unity/                     유니티 프로젝트 (Unity 6000.0.36f1로 열 것)
+  unity/                     유니티 프로젝트 (**Unity 6000.3.14f1** — ProjectVersion.txt가 정답)
     Assets/_Game/
       Data/                  ScriptableObject — 기획서 §18 수치가 여기 들어 있다
       Prefabs/               캐릭터 11 · 몬스터 26 · 투사체
-      Art/Sprites/<직업>/    오너가 준 픽셀아트를 잘라낸 것 (32장)
-      Scenes/                Sandbox · 게임구조_전체 ← 에디터에서 열어볼 씬
+      Art/FX · Art/Ground/   이펙트·바닥 텍스처
+      Scenes/                Sandbox · GameStructure_Overview ← 에디터에서 열어볼 씬
       Scripts/Runtime|Editor
-    Assets/Scripts/          W1~W3 검증용 (StressTest·W2Arena·W3Party)
+    Assets/Resources/sprites/          런타임이 실제로 읽는 유일한 곳
+      tank|dps|healer|buffer/          오너 픽셀아트 (직업 4 × 8프레임 = 32장)
+      mob_*.png · boss_*.png 등        블렌더 플레이스홀더
+    Assets/Scripts/          W1~W3 검증용 (StressTest·W2Arena·W3Party·SpriteBank)
   blender/                   에셋 생성 파이프라인 (헤드리스)
-    원본시트/                 오너가 준 시트 원본
-    시트_분할.py              시트 → 프레임 단위 스프라이트
-    생성_*.py                 캐릭터·바닥·이펙트·프랍 생성기
-    출력_*/                   생성 결과
-  빌드_W1성능/ W2조작/ W3파티/  스탠드얼론 빌드 (git 제외)
-  실행결과/                   측정 CSV·스크린샷·로그 (git 제외)
+    source_sheets/           오너가 준 시트 원본
+    split_sheets.py          시트 → 프레임 단위 스프라이트
+    gen_*.py                 캐릭터·바닥·이펙트·프랍 생성기
+    out_*/                   생성 결과
+  build_w1_perf/ build_w2_control/ build_w3_party/  스탠드얼론 빌드 (git 제외)
+  results/                    측정 CSV·스크린샷·로그 (git 제외)
 
 projects/ai-team/skills/마루_게임개발/tools/
   game_build_verify.py       빌드→실행→렌더 검증
@@ -64,14 +67,19 @@ output/qa/ashes-to-stars/    검증 리포트 (git 추적)
 ### 실행 명령 (검증된 것)
 
 ```bash
-# 유니티 빌드 (배치모드) — Unity.exe 경로는 6000.0.36f1
-"C:\Program Files\Unity\Hub\Editor\6000.0.36f1\Editor\Unity.exe" -batchmode -quit \
+# 유니티 빌드 (배치모드)
+# ⚠️ 버전을 문서에서 베끼지 말고 ProjectVersion.txt를 읽어라 — 한때 문서가 6000.0.36f1로
+#    낡아 있었고, 그 버전으로 배치를 돌리면 프로젝트 전체 재임포트가 터진다.
+# ⚠️ 에디터가 열려 있으면 배치는 "another Unity instance" 로 즉시 죽는다(exit 21).
+#    죽이기 전에 `wmic process where "name='Unity.exe'" get ProcessId,CommandLine` 로
+#    **오너가 Hub로 열어둔 에디터(-useHub)인지** 확인할 것. 그건 죽이면 안 된다.
+"C:\Program Files\Unity\Hub\Editor\6000.3.14f1\Editor\Unity.exe" -batchmode -quit \
   -projectPath "D:\ai_lab\projects\ashes-to-stars\unity" \
-  -executeMethod W1Runner.Build -logFile "...\실행결과\build.log"
+  -executeMethod W1Runner.Build -logFile "...\results\build.log"
 
 # 블렌더 (반드시 --factory-startup — 설치된 애드온이 에러를 뿜는다)
 "C:\Program Files\Blender Foundation\Blender 4.1\blender.exe" --background --factory-startup \
-  --python "D:\ai_lab\projects\ashes-to-stars\blender\생성_프랍.py"
+  --python "D:\ai_lab\projects\ashes-to-stars\blender\gen_props.py"
 ```
 
 ---
