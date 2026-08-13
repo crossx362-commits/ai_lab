@@ -23,18 +23,46 @@ namespace AshesToStars
         }
     }
 
-    /// <summary>영지 — 허브. 경매장·대장간·영묘는 건물을 눌러 들어간다(§16).</summary>
+    /// <summary>
+    /// 영지 — 허브. 경매장·대장간·영묘는 **영지 안 건물**로 들어간다(§16).
+    /// 씬을 새로 파지 않고 하위 화면으로 두는 것이 기획 의도다 —
+    /// "메뉴를 늘리지 않고 영지를 실제로 쓰게 만드는 배치"(§16).
+    /// </summary>
     public class EstateScreen : GameScreen
     {
-        protected override string Title => "영지";
-        protected override string Subtitle => "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)";
+        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대 }
+        Sub _sub = Sub.없음;
+
+        protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
+        protected override string Subtitle => _sub switch
+        {
+            Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
+            Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
+            Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
+            Sub.수비대 => "침략에 맞설 캐릭터를 세운다. 수비대도 죽으면 사라진다(§13-5)",
+            _ => "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
+        };
+
+        protected override void Update()
+        {
+            // 하위 화면에서 ESC는 영지로 — 허브 밖으로 튕겨나가지 않게
+            if (_sub != Sub.없음 && Input.GetKeyDown(KeyCode.Escape)) { _sub = Sub.없음; return; }
+            base.Update();
+        }
 
         protected override void Body(Rect r)
         {
-            if (Row(r, 0, "대장간", "장비 제작·강화 (§11)")) GameFlow.Go(GameFlow.Character);
-            if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)")) GameFlow.Go(GameFlow.Character);
-            if (Row(r, 2, "영묘", "환생 — 삭제된 캐릭터의 귀환 (§4)")) GameFlow.Go(GameFlow.Character);
-            if (Row(r, 3, "수비대 배치", "침략 방어 (§13-5)")) GameFlow.Go(GameFlow.WorldMap);
+            if (_sub != Sub.없음)
+            {
+                Info(r, 0, "아직 내용이 없다 — 수직 슬라이스에서 채운다(§21-2)");
+                if (Row(r, 1, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+                return;
+            }
+
+            if (Row(r, 0, "대장간", "장비 제작·강화 (§11)")) _sub = Sub.대장간;
+            if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)")) _sub = Sub.경매장;
+            if (Row(r, 2, "영묘", "환생 — 삭제된 캐릭터의 귀환 (§4)")) _sub = Sub.영묘;
+            if (Row(r, 3, "수비대 배치", "침략 방어 (§13-5)")) _sub = Sub.수비대;
         }
     }
 
@@ -100,36 +128,54 @@ namespace AshesToStars
     }
 
     /// <summary>
-    /// 전투 — 지금은 자리표시자다. 실제 전투는 W1~W3 검증 빌드에 있고,
-    /// 수직 슬라이스에서 이 화면으로 합류시킨다.
+    /// 전투 — W3Party 검증 빌드와 연동. 전투는 자동으로 시작되고
+    /// 결과가 나면 결과 화면으로 이동한다.
     /// </summary>
     public class BattleScreen : GameScreen
     {
         protected override string Title => "전투";
-        protected override string Subtitle => "잡몹 자동 · 보스 수동 지휘(§5). 검증 구현은 W1~W3 빌드에 있다";
+        protected override string Subtitle => "자동 전투 진행 중... W3Party 검증 빌드(§21)";
         protected override bool ShowBottomBar => false;
 
         float _t;
+        global::W3Party _battle;
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            // W3Party 컴포넌트 획득 또는 생성
+            _battle = GetComponent<global::W3Party>();
+            if (_battle == null)
+                _battle = gameObject.AddComponent<global::W3Party>();
+
+            // 게임 모드 설정: 표준 5인 한 판만 실행
+            _battle.GameMode = true;
+
+            // 전투 종료 콜백: 결과 저장 및 화면 이동
+            _battle.OnBattleEnd = OnBattleEnd;
+        }
+
         protected override void Update()
         {
             base.Update();
             _t += Time.deltaTime;
         }
 
+        void OnBattleEnd(bool survived)
+        {
+            if (survived)
+                GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
+            else
+                GameFlow.LastBattleSummary = $"전멸 — {_t:F1}초 생존";
+
+            GameFlow.Go(GameFlow.Result);
+        }
+
         protected override void Body(Rect r)
         {
             Info(r, 0, $"경과 {_t:F1}s");
-            if (Row(r, 1, "승리 처리", "결과 화면으로"))
-            {
-                GameFlow.LastBattleSummary = $"승리 — {_t:F1}초";
-                GameFlow.Go(GameFlow.Result);
-            }
-            if (Row(r, 2, "패배 처리", "사망 카운트 +1 (§4). 3회면 캐릭터 영구 삭제"))
-            {
-                GameFlow.LastBattleSummary = $"패배 — {_t:F1}초 · 사망 카운트 +1";
-                GameFlow.Go(GameFlow.Result);
-            }
-            if (Row(r, 3, "후퇴", "긴급 탈출 아이템(§4)")) GameFlow.Go(GameFlow.ReturnTo);
+            if (Row(r, 1, "후퇴", "긴급 탈출 아이템(§4)")) GameFlow.Go(GameFlow.ReturnTo);
         }
     }
 

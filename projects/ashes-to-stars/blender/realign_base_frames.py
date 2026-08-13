@@ -325,6 +325,62 @@ def clean_and_measure(sprite, min_blob=40):
     return sprite, bbox(body), bbox(kept)
 
 
+# 서 있는 자세들 — 이것끼리는 **키가 같아야** 한다.
+# 제외 이유:
+#   death  누워 있다 — 높이로 맞추면 거대해진다
+#   special 이펙트가 캐릭터보다 크다
+#   dash   돌진·구르기는 몸을 낮추는 동작이라 **낮은 게 정상**이다.
+#          여기 넣었더니 억지로 키워서 오히려 부자연스러웠다(실측 후 제외).
+STAND_STATES = {"idle", "walk", "attack", "hurt"}
+
+
+def normalize_height(cut):
+    """
+    프레임마다 다른 캐릭터 키를 idle 기준으로 통일한다.
+
+    왜 필요한가 (2026-08-13 오너 지적 "캐릭터 스프라이트 애니 높이 안맞음"):
+      공통 캔버스에 발밑을 맞춰도 **원본 그림 자체가 프레임마다 캐릭터를 다른 크기로**
+      그려놨다(생성 이미지라 일관성이 없다). 유니티에서 직업당 배율 하나로 묶어도
+      그 차이는 그대로 남아 재생하면 키가 들쭉날쭉해 보인다.
+
+    눕는 자세(death)·이펙트 프레임(special·invuln)은 높이로 맞추면 안 되므로
+    그 직업의 **서 있는 프레임 평균 배율**을 대신 쓴다.
+    """
+    ref = {}
+    for role, state, idx, sprite, body, kept in cut:
+        if state == "idle":
+            ref[role] = body[3] - body[1]
+
+    # 직업별 평균 배율 (눕는 자세에 쓸 값)
+    acc = {}
+    for role, state, idx, sprite, body, kept in cut:
+        h = body[3] - body[1]
+        if state in STAND_STATES and h > 0 and role in ref:
+            acc.setdefault(role, []).append(ref[role] / h)
+    avg = {r: sum(v) / len(v) for r, v in acc.items()}
+
+    out = []
+    for role, state, idx, sprite, body, kept in cut:
+        h = body[3] - body[1]
+        if role not in ref or h <= 0:
+            out.append((role, state, idx, sprite, body, kept))
+            continue
+
+        s = (ref[role] / h) if state in STAND_STATES else avg.get(role, 1.0)
+        s = max(0.55, min(1.8, s))              # 튀는 값이 캐릭터를 망가뜨리지 않게
+        if abs(s - 1.0) < 0.02:
+            out.append((role, state, idx, sprite, body, kept))
+            continue
+
+        # 픽셀아트라 NEAREST — 부드럽게 늘리면 도트가 뭉개진다
+        nw, nh = max(1, round(sprite.width * s)), max(1, round(sprite.height * s))
+        sprite = sprite.resize((nw, nh), Image.NEAREST)
+        body = tuple(int(round(v * s)) for v in body)
+        kept = tuple(int(round(v * s)) for v in kept)
+        out.append((role, state, idx, sprite, body, kept))
+    return out
+
+
 def main():
     im = Image.open(SRC).convert("RGB")
 
@@ -381,6 +437,8 @@ def main():
     for role, state, idx, bb, refs, src in plan:
         sprite, body, kept = clean_and_measure(cut_transparent(src, bb, refs))
         cut.append((role, state, idx, sprite, body, kept))
+
+    cut = normalize_height(cut)
 
     # 캔버스는 '노이즈를 뺀 실제 내용'이 다 들어갈 크기로 잡는다.
     # 본체 중심을 캔버스 중앙에 두므로, 본체 밖으로 뻗은 이펙트가 잘리지 않도록

@@ -33,6 +33,46 @@ public class SpriteBank
         DashA = 8, DashB = 9, DashC = 10, DashD = 11, Invuln = 12,
     }
 
+    // ── 오너 몬스터 아트 (2026-08-13) ────────────────────
+    // 지금은 1종. 종이 늘면 MOB_DIRS에 폴더명을 추가하면 된다.
+    public enum MobFrame
+    {
+        Idle0 = 0, Idle1, Idle2, Idle3,
+        Walk0, Walk1, Walk2, Walk3, Walk4, Walk5,
+        Atk0, Atk1, Atk2, Atk3,
+        Hurt0, Hurt1, Hurt2, Hurt3,
+        Death0, Death1, Death2, Death3,
+    }
+
+    static readonly string[] MOB_DIRS = { "mob01" };
+    static readonly string[] MOB_FRAMES =
+    {
+        "idle_00", "idle_01", "idle_02", "idle_03",
+        "walk_00", "walk_01", "walk_02", "walk_03", "walk_04", "walk_05",
+        "attack_00", "attack_01", "attack_02", "attack_03",
+        "hurt_00", "hurt_01", "hurt_02", "hurt_03",
+        "death_00", "death_01", "death_02", "death_03",
+    };
+
+    Sprite[][] _mobAnim;   // [몹종][프레임]
+
+    /// <summary>몹 애니메이션. 아트가 없으면 블렌더 플레이스홀더로 폴백한다.</summary>
+    public Sprite MobAnim(int kind, Motion m, float t)
+    {
+        if (_mobAnim == null || _mobAnim.Length == 0) return Mob(kind);
+        var row = _mobAnim[kind % _mobAnim.Length];
+        int i;
+        switch (m)
+        {
+            case Motion.Walk: i = (int)MobFrame.Walk0 + (int)(t / 0.11f) % 6; break;
+            case Motion.Attack: i = (int)MobFrame.Atk0 + Mathf.Clamp((int)(t / 0.09f), 0, 3); break;
+            case Motion.Hurt: i = (int)MobFrame.Hurt1; break;   // 붉게 물든 프레임이 피격 표시다
+            case Motion.Death: i = (int)MobFrame.Death0 + Mathf.Clamp((int)(t / 0.1f), 0, 3); break;
+            default: i = (int)MobFrame.Idle0 + (int)(t / 0.16f) % 4; break;
+        }
+        return row[Mathf.Clamp(i, 0, row.Length - 1)] ?? Mob(kind);
+    }
+
     static readonly string[] JOB_DIRS = { "tank", "dps", "healer", "buffer" };
     static readonly string[] JOB_FRAMES =
     {
@@ -96,10 +136,17 @@ public class SpriteBank
             foreach (var f in JOB_FRAMES)
                 charNames.Add($"{d}/{d}_{f}");
 
-        var srcNames = new string[baseNames.Length + charNames.Count];
+        var mobNames = new System.Collections.Generic.List<string>();
+        foreach (var d in MOB_DIRS)
+            foreach (var f in MOB_FRAMES)
+                mobNames.Add($"{d}/{d}_{f}");
+
+        var srcNames = new string[baseNames.Length + charNames.Count + mobNames.Count];
         baseNames.CopyTo(srcNames, 0);
         charNames.CopyTo(srcNames, baseNames.Length);
-        int CHAR0 = baseNames.Length;   // 캐릭터 구간 시작 인덱스
+        mobNames.CopyTo(srcNames, baseNames.Length + charNames.Count);
+        int CHAR0 = baseNames.Length;                      // 캐릭터 구간 시작
+        int MOB0 = baseNames.Length + charNames.Count;     // 몹 구간 시작
         int WHITE = srcNames.Length;    // 체력바용 흰 칸 — 파일이 아니라 코드로 만든다
 
         var texes = new Texture2D[srcNames.Length + 1];
@@ -131,8 +178,10 @@ public class SpriteBank
                 Debug.LogError($"[SpriteBank] 읽기 불가 텍스처: {t.name} — 아틀라스가 실패한다. " +
                                "Editor/TextureImportRules 확인할 것");
 
-        var atlas = new Texture2D(2048, 2048, TextureFormat.RGBA32, false);
-        var rects = atlas.PackTextures(texes, 2, 2048, false);
+        // 4096 — 캐릭터 4직업×13프레임 + 몹 22 + 플레이스홀더가 한 장에 들어가야 한다.
+        // 아틀라스가 넘치면 PackTextures가 **조용히 축소**해 스프라이트가 뭉개진다.
+        var atlas = new Texture2D(4096, 4096, TextureFormat.RGBA32, false);
+        var rects = atlas.PackTextures(texes, 2, 4096, false);
         // ✅ 픽셀아트라 Point — Bilinear면 도트가 뭉개진다(§17 아트 방향).
         //    아틀라스 한도를 2048로 올린 것은 캐릭터 16프레임이 추가됐기 때문이다.
         atlas.filterMode = FilterMode.Point;
@@ -240,6 +289,23 @@ public class SpriteBank
             b._job[j] = new Sprite[JOB_FRAMES.Length];
             for (int f = 0; f < JOB_FRAMES.Length; f++)
                 b._job[j][f] = MakeWith(CHAR0 + j * JOB_FRAMES.Length + f, ppu, pivot);
+        }
+
+        // 몹도 종별로 idle 한 장으로 배율을 정한다 — 캐릭터와 같은 이유(프레임마다 재면 튄다)
+        b._mobAnim = new Sprite[MOB_DIRS.Length][];
+        for (int k = 0; k < MOB_DIRS.Length; k++)
+        {
+            int idle = MOB0 + k * MOB_FRAMES.Length;
+            var rc = PxRect(idle);
+            var (bx0, by0, bx1, by1) = Bounds(idle);
+            float ppu = Mathf.Max(1, by1 - by0 + 1) / U_MOB;
+            var pivot = new Vector2(
+                Mathf.Clamp01(((bx0 + bx1) * 0.5f - rc.x) / rc.width),
+                Mathf.Clamp01((by0 - rc.y) / rc.height));
+
+            b._mobAnim[k] = new Sprite[MOB_FRAMES.Length];
+            for (int f = 0; f < MOB_FRAMES.Length; f++)
+                b._mobAnim[k][f] = MakeWith(MOB0 + k * MOB_FRAMES.Length + f, ppu, pivot);
         }
 
         // 체력바용 흰 사각형 — 아틀라스 마지막 칸이라 같은 머티리얼을 쓴다(배칭 유지)

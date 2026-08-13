@@ -22,7 +22,8 @@ public class TextureImportRules : AssetPostprocessor
         ti.textureCompression = TextureImporterCompression.Uncompressed;
         // ✅ 아트 방향이 픽셀아트로 확정(2026-08-13) — Bilinear면 도트가 뭉개진다
         ti.filterMode = FilterMode.Point;
-        ti.maxTextureSize = 2048;
+        // 오너 픽셀아트 도입 — 캐릭터 416×297급 + 런타임 아틀라스(캐릭터 52장 + 몹 22장 + 플레이스홀더) 수용
+        ti.maxTextureSize = 4096;
 
         if (assetPath.Contains("/sprites/") || assetPath.Contains("/Sprites/"))
         {

@@ -186,6 +186,16 @@ public class W3Party : MonoBehaviour
     bool _tauntEnabled = true;
     GUIStyle _hud;
 
+    // ── 게임 모드 ─────────────────────────────────────────
+    // 이 스크립트는 원래 **대조 실험용**이라 구성 5종을 자동 순회하고 CSV를 쓴다.
+    // 실제 게임 화면(Battle 씬)에서는 표준 5인 한 판만 돌고 끝나야 하므로 갈래를 나눈다.
+    // 검증 경로를 건드리지 않으려고 플래그로만 분기한다 — 측정 코드를 게임용으로
+    // 고쳐 쓰면 나중에 측정값이 왜 달라졌는지 아무도 모르게 된다.
+    [Header("게임 모드 (Battle 씬에서 켠다)")]
+    public bool GameMode;
+    /// <summary>판이 끝났을 때 호출. true=생존(상한 도달) / false=전멸</summary>
+    public System.Action<bool> OnBattleEnd;
+
     void Awake()
     {
         QualitySettings.vSyncCount = 0;
@@ -321,6 +331,8 @@ public class W3Party : MonoBehaviour
     void NextStyle()
     {
         _qi++;
+        // 게임 모드는 표준 5인(A) 한 판만 — 두 번째 구성으로 넘어가지 않는다
+        if (GameMode && _qi > 0) return;
         if (_qi >= SETUPS.Length) { Finish(); return; }
         _setup = SETUPS[_qi];
         _tauntEnabled = _setup.TauntEnabled;
@@ -466,6 +478,12 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < MAXM; i++)
         {
             if (!_mOn[i]) continue;
+
+            // 몹 애니메이션. 개체마다 시간을 어긋나게 줘야 100마리가 같은 프레임으로
+            // 군무를 추지 않는다 — 물량이 많을수록 동기화가 눈에 띈다(§10-2).
+            var mm = _mFlash[i] > 0f ? SpriteBank.Motion.Hurt : SpriteBank.Motion.Walk;
+            _mSr[i].sprite = bank.MobAnim(0, mm, _t + i * 0.37f);
+
             float ratio = _mMaxHp[i] > 0f ? _mHp[i] / _mMaxHp[i] : 1f;
             bool hurt = ratio < 0.999f;
             if (_mBarBg[i].gameObject.activeSelf != hurt)
@@ -886,6 +904,15 @@ public class W3Party : MonoBehaviour
         int aliveCount = 0;
         foreach (var m in _party) if (m.Alive) aliveCount++;
         // 상한까지 살아남았다면 압력이 부족했다는 뜻 — 그건 통과가 아니라 측정 실패다
+        // 게임 모드는 측정이 목적이 아니다 — CSV를 쓰지 않고 결과만 알리고 멈춘다.
+        // 여기서 CSV까지 쓰면 실제 플레이가 검증 데이터에 섞여 측정값을 오염시킨다.
+        if (GameMode)
+        {
+            OnBattleEnd?.Invoke(aliveCount > 0);
+            enabled = false;
+            return;
+        }
+
         string verdict = aliveCount > 0 ? "측정실패_상한도달" : "전멸";
         int 최종웨이브 = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         var ci = CultureInfo.InvariantCulture;
