@@ -67,6 +67,8 @@ public class W3Party : MonoBehaviour
 
         /// <summary>수동 이동 명령 목적지(§5). 있으면 AI 판단을 덮는다.</summary>
         public Vector2? Order;
+        /// <summary>명령 지점 표시(땅에 찍히는 점)</summary>
+        public SpriteRenderer Marker;
     }
 
     // ── 수동 지휘 상태 (§5 "보스는 수동 지휘") ──
@@ -247,6 +249,13 @@ public class W3Party : MonoBehaviour
             go.transform.localScale = Vector3.one;
             var m = new Member { Tr = go.transform, Sr = sr };
             MakeHpBar(go.transform, bank, out m.BarBg, out m.BarFg, 1.05f, 2.2f);
+
+            // 명령 지점 표시 — 캐릭터가 아니라 **월드에** 놓인다(따라다니면 안 된다)
+            var mk = new GameObject("order_mark", typeof(SpriteRenderer));
+            m.Marker = mk.GetComponent<SpriteRenderer>();
+            m.Marker.sprite = bank.White; m.Marker.sharedMaterial = bank.Mat;
+            m.Marker.color = new Color(1f, 0.85f, 0.35f, 0.55f);
+            mk.SetActive(false);
             _slots[i] = m;
             go.SetActive(false);
         }
@@ -525,6 +534,20 @@ public class W3Party : MonoBehaviour
             // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
             bool picked = _sel >= 0 && _sel < _party.Length && _party[_sel] == m;
             if (picked) m.Sr.color = new Color(1f, 0.96f, 0.72f);
+
+            // 이동 명령 지점 표시 — 명령이 들어갔는지 보이지 않으면 눌렀는지조차 알 수 없다
+            if (m.Marker != null)
+            {
+                bool show = m.Order.HasValue;
+                if (m.Marker.gameObject.activeSelf != show) m.Marker.gameObject.SetActive(show);
+                if (show)
+                {
+                    m.Marker.transform.position = ToScreen(m.Order.Value, -2f);
+                    m.Marker.sortingOrder = Depth(m.Order.Value.y) - 1;
+                    float pulse = 0.7f + Mathf.PingPong(_t * 1.6f, 0.35f);
+                    m.Marker.transform.localScale = new Vector3(pulse, pulse * ISO_Y, 1f);
+                }
+            }
             if (Mathf.Abs(m.Pos.x - m.PrevPos.x) > 1e-4f) m.Sr.flipX = m.Pos.x < m.PrevPos.x;
             m.PrevPos = m.Pos;
 
@@ -622,16 +645,16 @@ public class W3Party : MonoBehaviour
                 else { want = d.normalized; commanded = true; }
             }
 
-            if (commanded)
+            if (m.Role == Role.Tank)
             {
-                // 이동 명령 중에도 수호 게이지는 쌓인다(§3 고유 자원)
-                if (m.Role == Role.Tank) m.Gauge = Mathf.Min(100f, m.Gauge + dt * 14f);
-            }
-            else if (m.Role == Role.Tank)
-            {
-                // 수호기사: 무리 쪽으로 전진 + 수호 게이지 축적
-                int t2 = NearestMob(m.Pos, 99f);
-                if (t2 >= 0) want = (_mPos[t2] - m.Pos).normalized;
+                // ⚠️ 이동과 스킬을 **분리**한다. 예전엔 이 둘이 한 분기에 묶여 있어서
+                //    이동 명령을 내리는 순간 탱커가 도발·방패를 못 쓰게 됐다.
+                //    수동 지휘는 "어디로 갈지"를 지시하는 것이지 전투를 멈추는 게 아니다(§5).
+                if (!commanded)
+                {
+                    int t2 = NearestMob(m.Pos, 99f);
+                    if (t2 >= 0) want = (_mPos[t2] - m.Pos).normalized;
+                }
                 m.Gauge = Mathf.Min(100f, m.Gauge + dt * 14f);   // 피격·보호로 축적(단순화)
 
                 if (_tauntEnabled && m.SkillCd <= 0f && CountMobsNear(m.Pos, 4.5f) >= 3)
@@ -650,6 +673,10 @@ public class W3Party : MonoBehaviour
                     FlashParty();
                     _skillLog[1]++;
                 }
+            }
+            else if (commanded)
+            {
+                // 이동만 명령이 덮는다. 아래 공격·스킬 블록은 그대로 돈다.
             }
             else
             {
@@ -1127,7 +1154,9 @@ public class W3Party : MonoBehaviour
             s.Append($"{m.Role} {(m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망")}   ");
         GUI.Label(new Rect(14, 130, 900, 60), s.ToString(), _hud);
 
-        if (GameMode) CommandBar();
+        // 지휘 바는 항상 띄운다. 자동 전투 중에도 캐릭터를 골라 옮길 수 있어야 한다(오너 지시).
+        // "자동"은 **명령을 안 내렸을 때의 기본값**이지, 개입을 막는 모드가 아니다(§5).
+        CommandBar();
     }
 
     /// <summary>
