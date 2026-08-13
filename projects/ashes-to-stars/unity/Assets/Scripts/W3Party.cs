@@ -87,9 +87,13 @@ public class W3Party : MonoBehaviour
 
     [Header("잡몹 속도 (플레이어 기준 배율 — §18-11)")]
     public float PlayerSpeed = 4.2f;
-    public float ChaserRatio = 0.90f;      // W2에서 0.64는 카이팅 지배 전략이 됐다
-    public float SwarmerRatio = 0.80f;
-    public float RangedRatio = 0.70f;
+    // 기획서 §18-11 권장값 — 카이팅 시뮬레이션으로 도출됐다.
+    // 0.64였을 때 직선 도주가 지배 전략이 되어 잡몹이 위협이 안 됐다(§21-1c).
+    // ⚠️ 이 값은 MobDef 에셋과 **반드시 같아야** 한다 — 한때 여기만 0.80/0.70이라
+    //    같은 기획을 두 곳이 다르게 구현하고 있었다(정합성 감사로 발견).
+    public float ChaserRatio = 0.90f;
+    public float SwarmerRatio = 0.85f;
+    public float RangedRatio = 0.65f;
 
     const float ISO_Y = StressTest.ISO_Y;
     static Vector3 ToScreen(Vector2 w, float z = 0f) => new Vector3(w.x, w.y * ISO_Y, z);
