@@ -1,0 +1,26 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace AshesToStars
+{
+    // Unity는 MonoBehaviour마다 **클래스명과 같은 이름의 .cs 파일**을 요구한다.
+    // 한 파일(Screens.cs)에 화면 8종을 넣었더니 Unity가 대표 클래스를 못 찾아
+    // 첫 클래스(BattleRewardInfo)로 해석했고, 그것이 MonoBehaviour가 아니라서
+    // 씬의 컴포넌트를 통째로 떼어냈다("references runtime script in scene file. Fixing!").
+    // 그래서 클래스마다 파일을 나눈다 — 다시 합치지 마라.
+
+    /// <summary>타이틀 — 시작과 종료. 하단바 없음.</summary>
+    public class TitleScreen : GameScreen
+    {
+        protected override string Title => "재와 별";
+        protected override string Subtitle => "Ashes to Stars — 죽으면 캐릭터가 진짜 사라진다";
+        protected override bool ShowBottomBar => false;
+
+        protected override void Body(Rect r)
+        {
+            if (Row(r, 0, "게임 시작", "영지에서 시작한다 (§16 허브는 영지)")) GameFlow.Go(GameFlow.Estate);
+            if (Row(r, 1, "이어하기", "저장 슬롯 — 수직 슬라이스에서 구현")) GameFlow.Go(GameFlow.Estate);
+            if (Row(r, 2, "종료", "Application.Quit")) GameFlow.Quit();
+        }
+    }
+}

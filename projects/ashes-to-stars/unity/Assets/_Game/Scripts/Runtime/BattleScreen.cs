@@ -1,0 +1,183 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace AshesToStars
+{
+    // Unity는 MonoBehaviour마다 **클래스명과 같은 이름의 .cs 파일**을 요구한다.
+    // 한 파일(Screens.cs)에 화면 8종을 넣었더니 Unity가 대표 클래스를 못 찾아
+    // 첫 클래스(BattleRewardInfo)로 해석했고, 그것이 MonoBehaviour가 아니라서
+    // 씬의 컴포넌트를 통째로 떼어냈다("references runtime script in scene file. Fixing!").
+    // 그래서 클래스마다 파일을 나눈다 — 다시 합치지 마라.
+
+    /// <summary>
+    /// 전투 — W3Party 검증 빌드와 연동. 전투는 자동으로 시작되고
+    /// 결과가 나면 결과 화면으로 이동한다.
+    /// 보상 정보는 정적 필드에 저장되어 ResultScreen에서 읽는다.
+    /// </summary>
+    public class BattleScreen : GameScreen
+    {
+        protected override string Title => GameFlow.Kind == GameFlow.BattleKind.보스
+            ? $"보스전 · {GameFlow.BossFloor}층" : "전투";
+        protected override string Subtitle => GameFlow.Kind == GameFlow.BattleKind.보스
+            ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
+            : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
+        protected override bool ShowBottomBar => false;
+        // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
+        protected override bool OpaqueBackground => false;
+
+        float _t;
+        global::W3Party _battle;
+        static BattleRewardInfo _reward = new BattleRewardInfo();
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            // 전투 아레나(반경 14)가 화면에 다 들어오게 잡는다.
+            // 메뉴 화면 기준(size 8)이면 파티만 크게 잡히고 몰려오는 물량이 안 보인다.
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                cam.orthographicSize = 15f;
+                cam.transform.position = new Vector3(0, 0, -10);
+            }
+
+            // 보스전이면 기믹 3종이 도는 판을 얹는다(§9·§10-5).
+            // 잡몹 웨이브와 달리 §5가 "보스는 수동 지휘"라 한 구간이다.
+            if (GameFlow.Kind == GameFlow.BattleKind.보스)
+            {
+                var boss = gameObject.AddComponent<BossBattle>();
+                boss.OnBossDefeated += _ =>
+                {
+                    // 보스 격파 — 보상 계산 (§2 코어 루프: 재화 획득)
+                    CalculateVictoryReward(GameFlow.BossFloor);
+                    // 층을 실제로 돌파한다. 진행도가 안 오르면 §8의 "벽 콘텐츠"가 성립하지 않고
+                    // §10-6의 티어 상승(10층마다)도 영원히 일어나지 않는다.
+                    GameState.ClearFloor(GameFlow.BossFloor);
+                    GameFlow.LastBattleSummary =
+                        $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
+                    GameFlow.Go(GameFlow.Result);
+                };
+                boss.OnPartyWiped += () =>
+                {
+                    GameFlow.LastBattleSummary = $"보스전 패배 — {GameFlow.BossFloor}층";
+                    GameFlow.Go(GameFlow.Result);
+                };
+                boss.Begin(GameFlow.BossFloor, 1);
+            }
+
+            // W3Party 컴포넌트 획득 또는 생성
+            _battle = GetComponent<global::W3Party>();
+            if (_battle == null)
+                _battle = gameObject.AddComponent<global::W3Party>();
+
+            // 게임 모드 설정: 표준 5인 한 판만 실행
+            _battle.GameMode = true;
+
+            // 전투 종료 콜백: 결과 저장 및 화면 이동
+            _battle.OnBattleEnd = OnBattleEnd;
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            _t += Time.deltaTime;
+        }
+
+        /// <summary>
+        /// 전투 승리 시 보상을 계산한다 (§2·§18-1·§10-8·§18-4)
+        /// </summary>
+        void CalculateVictoryReward(int bossFloor)
+        {
+            _reward.Clear();
+            _reward.Survived = true;
+            _reward.BattleDurationSeconds = _t;
+
+            // 티어 결정 (§10-6: 탑 10층 돌파마다 필드 티어 상승)
+            // 프로토타입이므로 단순화: 층수 / 10을 티어로 (1~9층 = T0, 10~19층 = T1 등)
+            int tier = Mathf.Max(0, bossFloor / 10);
+            if (tier >= Economy.TierRevenueMultiplier.Length)
+                tier = Economy.TierRevenueMultiplier.Length - 1;
+
+            // 골드 지급 (§18-1 티어별 수익 곡선)
+            // 기본값: 티어별 1시간 수익 = TierRevenueMultiplier * 10,000 쿠퍼 (1 G/h = 10,000 쿠퍼)
+            // 보스 보상: 기본값의 약 15~20% (한판 15분 기준)
+            float tierRevenue = Economy.TierRevenueMultiplier[tier];
+            long baseGoldPerHour = (long)(tierRevenue * 10000); // 1시간 수익(쿠퍼)
+            float battleRewardRatio = 0.25f; // 보스는 1시간 수익의 25% (15분 기준)
+            _reward.GoldReward = (long)(baseGoldPerHour * battleRewardRatio);
+
+            // 드랍 롤 (§10-8, §18-4)
+            // 보스 출처 판정: 탑 10층 단위는 대보스, 5층 단위는 중간 레이드
+            Economy.DropSource dropSource = bossFloor % 10 == 0
+                ? Economy.DropSource.Tower10Boss
+                : Economy.DropSource.Tower5Boss;
+
+            // 골드를 **실제로 지갑에 넣는다**. 계산만 하고 반영하지 않으면
+            // §2의 순환("번 돈으로 다음 판에 들어간다")이 성립하지 않는다.
+            GameState.Earn(_reward.GoldReward);
+
+            // 드랍 롤 3회 (통상 3~5회 정도)
+            for (int i = 0; i < 3; i++)
+            {
+                var drop = Economy.RollDrop(dropSource);
+                if (!drop.HasValue) continue;
+
+                // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
+                // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.
+                if (GameState.Gain(drop.Value)) _reward.DroppedItems.Add(drop.Value);
+                else _reward.RejectedItems.Add(drop.Value);   // 소실이 아니라 획득 거부
+            }
+        }
+
+        void OnBattleEnd(bool survived)
+        {
+            if (survived)
+            {
+                // 보스전이 아닌 일반 전투는 보상을 계산하지 않았으므로 최소한의 정보만 표시
+                GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
+            }
+            else
+            {
+                GameFlow.LastBattleSummary = $"전멸 — {_t:F1}초 생존\n";
+
+                // 패배 시 출전 캐릭터에게 사망을 기록한다 (§4 사망 시스템)
+                // 현재는 W3Party 검증 빌드에서 전체 파티가 함께 전멸하는 구조
+                // (실제 게임에선 캐릭터별 생사 상태를 추적할 것 — §5·§10)
+                var characters = LifeSystem.GetCharacters();
+                var deletedCharacters = new System.Collections.Generic.List<string>();
+
+                foreach (var ch in characters)
+                {
+                    // 프로토타입: 전체 파티가 함께 전멸하는 것으로 단순화
+                    // (검증: W3Party 구조에서 개별 캐릭터 생사 추적은 별개 시스템)
+                    if (!ch.IsDeleted)  // 삭제된 캐릭터는 다시 죽지 않음
+                    {
+                        LifeSystem.RegisterDeath(ch, isPvp: false);  // PvE 사망으로 기록 (§4)
+                        if (ch.IsDeleted)
+                            deletedCharacters.Add(ch.Name);
+                    }
+                }
+
+                // 삭제된 캐릭터 안내
+                if (deletedCharacters.Count > 0)
+                {
+                    GameFlow.LastBattleSummary += $"\n🔴 {string.Join(", ", deletedCharacters)}이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)";
+                }
+            }
+
+            GameFlow.Go(GameFlow.Result);
+        }
+
+        protected override void Body(Rect r)
+        {
+            Info(r, 0, $"경과 {_t:F1}s");
+            if (Row(r, 1, "후퇴", "긴급 탈출 아이템(§4)")) GameFlow.Go(GameFlow.ReturnTo);
+        }
+
+        /// <summary>
+        /// ResultScreen이 보상 정보를 읽기 위한 접근자
+        /// </summary>
+        public static BattleRewardInfo _GetLastReward() => _reward;
+    }
+}

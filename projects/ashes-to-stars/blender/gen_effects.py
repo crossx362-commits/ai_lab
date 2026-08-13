@@ -366,6 +366,226 @@ def effect_hit():
     return names
 
 
+def effect_taunt():
+    """
+    도발의 함성 — 충격파 원형 확산
+    4프레임: 작음 → 중간 → 크게 → 소멸
+    """
+    names = []
+
+    for frame, (radius, opacity) in enumerate([
+        (0.5, 1.0),    # 프레임 0: 작은 고리
+        (1.2, 0.9),    # 프레임 1: 중간
+        (1.8, 0.5),    # 프레임 2: 크게
+        (2.3, 0.1),    # 프레임 3: 거의 소멸
+    ]):
+        reset()
+        setup_render(256, 256)
+        setup_camera_quarterish(distance=6.0, pitch=25.0)
+        setup_lights()
+
+        # 바닥 평면
+        bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, 0.01))
+
+        # 충격파 링 (도넛 모양)
+        bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=radius*0.15,
+                                          location=(0, 0, 0.15))
+        wave = bpy.context.object
+
+        # 노란색 충격파
+        yellow = (1.0, 0.9, 0.2)
+        m = mat_emissive("taunt_wave", yellow, emit_strength=opacity * 0.8)
+        wave.data.materials.append(m)
+
+        fname = os.path.join(OUT, f"fx_taunt_{frame:02d}.png")
+        render_to_file(fname, (256, 256))
+        names.append((f"fx_taunt_{frame:02d}", fname))
+
+    return names
+
+
+def effect_firestorm():
+    """
+    화염폭풍 — 불길 장판
+    4프레임: 불이 피어오르고 소멸
+    """
+    names = []
+
+    for frame, (scale, opacity) in enumerate([
+        (0.8, 1.0),    # 프레임 0: 첫 불길
+        (1.2, 0.85),   # 프레임 1: 성장
+        (1.3, 0.5),    # 프레임 2: 절정, 흐려짐
+        (0.9, 0.15),   # 프레임 3: 소멸
+    ]):
+        reset()
+        setup_render(256, 256)
+        setup_camera_quarterish(distance=6.0, pitch=25.0)
+        setup_lights()
+
+        # 바닥 평면 (불이 깔림)
+        bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, 0.01))
+        floor = bpy.context.object
+        floor_mat = mat_opaque("floor_dark", (0.3, 0.2, 0.1))
+        floor.data.materials.append(floor_mat)
+
+        # 불길 원형 분사 (여러 조각으로 표현)
+        fire_color = (1.0, 0.6, 0.0)
+        m = mat_emissive("firestorm", fire_color, emit_strength=opacity * 0.9)
+
+        for i in range(6):
+            angle = math.radians(60 * i)
+            x = math.cos(angle) * 0.7 * scale
+            y = math.sin(angle) * 0.7 * scale
+
+            # 불길 뭉치 (구체들)
+            for j, height_factor in enumerate([0.3, 0.7, 1.0]):
+                bpy.ops.mesh.primitive_uv_sphere_add(
+                    radius=0.25 * (1.0 - j*0.25),
+                    location=(x + math.cos(angle)*j*0.15,
+                             y + math.sin(angle)*j*0.15,
+                             0.1 + height_factor * 0.4)
+                )
+                flame = bpy.context.object
+                flame.data.materials.append(m)
+
+        fname = os.path.join(OUT, f"fx_firestorm_{frame:02d}.png")
+        render_to_file(fname, (256, 256))
+        names.append((f"fx_firestorm_{frame:02d}", fname))
+
+    return names
+
+
+def effect_heal_wave():
+    """
+    치유의 파동 — 위로 솟는 초록 파동
+    3프레임: 아래에서 위로
+    """
+    names = []
+
+    for frame, (y_pos, opacity) in enumerate([
+        (0.2, 1.0),    # 프레임 0: 아래에서 시작
+        (0.5, 0.7),    # 프레임 1: 중간 상승
+        (0.9, 0.2),    # 프레임 2: 위로 소멸
+    ]):
+        reset()
+        setup_render(256, 256)
+        setup_camera_quarterish(distance=6.0, pitch=25.0)
+        setup_lights()
+
+        # 바닥 평면
+        bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, 0.01))
+
+        # 회복 파동 (고리)
+        bpy.ops.mesh.primitive_torus_add(major_radius=1.5, minor_radius=0.2,
+                                          location=(0, 0, y_pos))
+        wave = bpy.context.object
+
+        # 밝은 초록색
+        green = (0.3, 1.0, 0.5)
+        m = mat_emissive("heal_wave", green, emit_strength=opacity * 0.8)
+        wave.data.materials.append(m)
+
+        # 상승 효과를 위해 추가 구체
+        for z_offset in [0.1, 0.3, 0.5]:
+            bpy.ops.mesh.primitive_uv_sphere_add(
+                radius=0.3,
+                location=(0, 0, y_pos + z_offset * 0.3)
+            )
+            sphere = bpy.context.object
+            sphere.data.materials.append(m)
+
+        fname = os.path.join(OUT, f"fx_heal_wave_{frame:02d}.png")
+        render_to_file(fname, (256, 256))
+        names.append((f"fx_heal_wave_{frame:02d}", fname))
+
+    return names
+
+
+def effect_miracle_light():
+    """
+    기적 — 금색 대형 광휘
+    단일 프레임: 밝은 금색 구체 + 고리
+    """
+    names = []
+
+    reset()
+    setup_render(256, 256)
+    setup_camera_quarterish(distance=6.0, pitch=20.0)
+    setup_lights()
+
+    # 바닥 평면
+    bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, 0.01))
+
+    # 큰 중앙 구체
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.2, location=(0, 0, 0.5))
+    center = bpy.context.object
+
+    # 밝은 금색
+    gold = (1.0, 0.9, 0.2)
+    m = mat_emissive("miracle_center", gold, emit_strength=1.2)
+    center.data.materials.append(m)
+
+    # 외부 고리
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.5, minor_radius=0.25,
+                                      location=(0, 0, 0.5))
+    ring = bpy.context.object
+    ring.data.materials.append(m)
+
+    fname = os.path.join(OUT, "fx_miracle_light.png")
+    render_to_file(fname, (256, 256))
+    names.append(("fx_miracle_light", fname))
+
+    return names
+
+
+def effect_bardic_aura():
+    """
+    음유시인 악장 — 음표 오라 링
+    2종류: 진군가(노란색) / 수호가(파란색)
+    """
+    names = []
+
+    for theme, (color, name) in [
+        ("attack", ((1.0, 0.9, 0.2), "진군가")),   # 노란색
+        ("defense", ((0.3, 0.7, 1.0), "수호가")),  # 파란색
+    ]:
+        reset()
+        setup_render(256, 256)
+        setup_camera_quarterish(distance=6.0, pitch=25.0)
+        setup_lights()
+
+        # 바닥 평면
+        bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, 0.01))
+
+        # 오라 링 (도넛)
+        bpy.ops.mesh.primitive_torus_add(major_radius=1.3, minor_radius=0.18,
+                                          location=(0, 0, 0.2))
+        aura = bpy.context.object
+
+        m = mat_emissive(f"aura_{theme}", color, emit_strength=0.7)
+        aura.data.materials.append(m)
+
+        # 음표 표현 (작은 구체 위아래)
+        for z_offset in [0.4, -0.1]:
+            for angle_mult in [0, 1, 2, 3]:
+                angle = math.radians(90 * angle_mult)
+                x = math.cos(angle) * 1.3
+                y = math.sin(angle) * 1.3
+
+                bpy.ops.mesh.primitive_uv_sphere_add(
+                    radius=0.15,
+                    location=(x, y, z_offset)
+                )
+                note = bpy.context.object
+                note.data.materials.append(m)
+
+        fname = os.path.join(OUT, f"fx_bardic_{theme}.png")
+        render_to_file(fname, (256, 256))
+        names.append((f"fx_bardic_{theme}", fname))
+
+    return names
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
 
@@ -392,6 +612,27 @@ def main():
     all_results.extend(effect_hit())
     total += 2
 
+    # ──── 스킬 이펙트 (신규) ────────────────────────────
+    print("[effects] 도발의 함성 (충격파)...")
+    all_results.extend(effect_taunt())
+    total += 4
+
+    print("[effects] 화염폭풍 (불길)...")
+    all_results.extend(effect_firestorm())
+    total += 4
+
+    print("[effects] 치유의 파동...")
+    all_results.extend(effect_heal_wave())
+    total += 3
+
+    print("[effects] 기적 (금색 광휘)...")
+    all_results.extend(effect_miracle_light())
+    total += 1
+
+    print("[effects] 음유시인 악장...")
+    all_results.extend(effect_bardic_aura())
+    total += 2
+
     # ──── 검증 테이블 ────────────────────────────
     print("\n" + "="*70)
     print("검증 결과 (픽셀 통계)")
@@ -416,6 +657,11 @@ def main():
             "fx_dash_trail": 400,
             "proj": 200,
             "fx_hit": 300,
+            "fx_taunt": 1200,    # 256×256, 충격파 링
+            "fx_firestorm": 1500, # 256×256, 불길
+            "fx_heal_wave": 1000, # 256×256, 파동
+            "fx_miracle": 1500,   # 256×256, 광휘
+            "fx_bardic": 1200,    # 256×256, 오라
         }
         threshold = next((v for k, v in thresholds.items() if k in name), 200)
 

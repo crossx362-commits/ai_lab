@@ -63,6 +63,12 @@ public class W3Party : MonoBehaviour
         public Vector2 PrevPos;              // 이동 여부 판정용
         public float AnimT;                  // 현재 동작이 시작된 뒤 흐른 시간
         public float AttackT, HurtT;         // 남은 동작 시간 (0보다 크면 그 동작 중)
+        /// <summary>
+        /// 스킬 동작(special 프레임) 재생 시간.
+        /// 시트의 "도발/회피/캐스팅/오라/제스처" 열이 곧 이 동작이다(§3) —
+        /// 프레임은 있는데 아무도 안 써서 스킬이 화면에서 평타와 구분되지 않았다.
+        /// </summary>
+        public float SkillT;
         public SpriteBank.Motion Mo;
 
         /// <summary>수동 이동 명령 목적지(§5). 있으면 AI 판단을 덮는다.</summary>
@@ -109,6 +115,48 @@ public class W3Party : MonoBehaviour
 
     SpriteRenderer _tauntRing, _stormRing;
     float _stormUntil; Vector2 _stormAt; float _stormR;
+
+    // ── 스킬 이펙트 (Resources/FX) ────────────────────────
+    // 절차 생성 링만으로는 어떤 스킬인지 구분이 안 된다. 실제 이펙트 아트를 얹는다.
+    // 아틀라스에 넣지 않는 이유: 동시에 떠 있는 이펙트가 많아야 두세 개라 배칭 이득이 없고,
+    // 큰 텍스처(256²)를 캐릭터 아틀라스에 밀어 넣으면 그쪽이 넘친다.
+    static Sprite[] _fxTaunt, _fxStorm, _fxHeal;
+    static Sprite _fxMiracle, _fxChantAtk, _fxChantDef;
+    static bool _fxLoaded;
+
+    static Sprite[] LoadFx(string prefix, int n)
+    {
+        var a = new Sprite[n];
+        for (int i = 0; i < n; i++) a[i] = Resources.Load<Sprite>($"FX/{prefix}{i:00}");
+        return a;
+    }
+
+    static void LoadFxOnce()
+    {
+        if (_fxLoaded) return;
+        _fxLoaded = true;
+        _fxTaunt = LoadFx("fx_taunt_", 4);
+        _fxStorm = LoadFx("fx_firestorm_", 4);
+        _fxHeal = LoadFx("fx_heal_wave_", 3);
+        _fxMiracle = Resources.Load<Sprite>("FX/fx_miracle_light");
+        _fxChantAtk = Resources.Load<Sprite>("FX/fx_bardic_attack");
+        _fxChantDef = Resources.Load<Sprite>("FX/fx_bardic_defense");
+
+        // 없으면 절차 생성 링으로 폴백한다 — 조용히 아무것도 안 뜨는 것보다 낫다
+        int missing = 0;
+        if (_fxTaunt[0] == null) missing++;
+        if (_fxStorm[0] == null) missing++;
+        if (missing > 0)
+            Debug.LogWarning($"[W3] 스킬 이펙트 {missing}종 누락 — Resources/FX 확인. 링으로 대체한다");
+    }
+
+    /// <summary>프레임 배열에서 경과 시간에 맞는 장을 고른다. 끝나면 마지막 장.</summary>
+    static Sprite FxFrame(Sprite[] a, float t, float dur)
+    {
+        if (a == null || a.Length == 0 || a[0] == null) return null;
+        int i = Mathf.Clamp(Mathf.FloorToInt(t / Mathf.Max(0.01f, dur) * a.Length), 0, a.Length - 1);
+        return a[i] ?? a[0];
+    }
 
     // 단색 사각형용 1×1 텍스처 캐시. IMGUI로 카드·바를 그리려면 색마다 텍스처가 필요하다.
     static readonly System.Collections.Generic.Dictionary<Color, Texture2D> _tints = new();
@@ -351,6 +399,7 @@ public class W3Party : MonoBehaviour
         GroundBuilder.Build(bank, Arena + 20f);
 
         // 스킬 범위 표시 두 장 — 매번 만들지 않고 켜고 끈다
+        LoadFxOnce();
         _tauntRing = MakeRing(bank, new Color(1f, 0.72f, 0.25f, 0.9f));
         _stormRing = MakeRing(bank, new Color(1f, 0.42f, 0.2f, 0.95f));
         // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
@@ -661,23 +710,35 @@ public class W3Party : MonoBehaviour
         if (_tauntRing.gameObject.activeSelf != taunting) _tauntRing.gameObject.SetActive(taunting);
         if (taunting)
         {
+            float elapsed = 3f - (_tauntUntil - _t);
             float k = Mathf.InverseLerp(_tauntUntil, _tauntUntil - 3f, _t);   // 남을수록 크게
+            var fx = FxFrame(_fxTaunt, elapsed, 3f);
+            if (fx != null) { _tauntRing.sprite = fx; _tauntRing.color = Color.white; }
+            else { var c = _tauntRing.color; c.a = 0.25f + k * 0.5f; _tauntRing.color = c; }
             PlaceRing(_tauntRing, tk.Pos, 4.5f * (0.55f + k * 0.45f));
-            var c = _tauntRing.color; c.a = 0.25f + k * 0.5f; _tauntRing.color = c;
         }
 
         bool storming = _t < _stormUntil;
         if (_stormRing.gameObject.activeSelf != storming) _stormRing.gameObject.SetActive(storming);
-        if (storming) PlaceRing(_stormRing, _stormAt, _stormR);
+        if (storming)
+        {
+            var fx = FxFrame(_fxStorm, 0.45f - (_stormUntil - _t), 0.45f);
+            if (fx != null) { _stormRing.sprite = fx; _stormRing.color = Color.white; }
+            PlaceRing(_stormRing, _stormAt, _stormR);
+        }
 
         foreach (var m in _party)
         {
             if (m.AttackT > 0f) m.AttackT -= dt;
             if (m.HurtT > 0f) m.HurtT -= dt;
+            if (m.SkillT > 0f) m.SkillT -= dt;
 
-            // 동작 우선순위: 사망 > 피격 > 공격 > 이동 > 대기
+            // 동작 우선순위: 사망 > 피격 > **스킬** > 공격 > 이동 > 대기.
+            // 스킬을 공격보다 위에 둔다 — 스킬을 쓰는 순간에도 평타 판정이 같이 돌기 때문에
+            // 아래에 두면 큰 동작이 평타 프레임에 묻혀 화면에서 구분되지 않는다.
             var want = !m.Alive ? SpriteBank.Motion.Death
                      : m.HurtT > 0f ? SpriteBank.Motion.Hurt
+                     : m.SkillT > 0f ? SpriteBank.Motion.Special
                      : m.AttackT > 0f ? SpriteBank.Motion.Attack
                      : (m.Pos - m.PrevPos).sqrMagnitude > 1e-5f ? SpriteBank.Motion.Walk
                      : SpriteBank.Motion.Idle;
@@ -829,7 +890,7 @@ public class W3Party : MonoBehaviour
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
                     m.SkillCd = 6f; m.Threat += 80f; _tauntUses++;
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
-                    _skillLog[0]++;
+                    _skillLog[0]++; m.SkillT = 0.55f;
                     FlashParty();                                 // 발동 순간을 눈에 띄게
                 }
                 if (force2 || m.Gauge >= 60f)
@@ -840,7 +901,7 @@ public class W3Party : MonoBehaviour
                     foreach (var o in _party)
                         if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f);
                     FlashParty();
-                    _skillLog[1]++;
+                    _skillLog[1]++; m.SkillT = 0.55f;
                 }
             }
             else if (commanded)
@@ -955,7 +1016,7 @@ public class W3Party : MonoBehaviour
                               : m.ForceSkill == 2 ? Chant.수호가
                               : (worstRatio < 0.45f ? Chant.수호가 : Chant.진군가);
                 if (m.ForceSkill != 0) m.ForceSkill = 0;
-                if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; }
+                if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; m.SkillT = 0.5f; }
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
                 m.Cd = 0.8f; m.Threat += 3f;
             }
@@ -987,7 +1048,7 @@ public class W3Party : MonoBehaviour
                     // ③ 기적 — 신앙 전량 소모, 파티 전체 완전 회복(§3)
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
-                    m.Cd = 2.0f; _healsCast++; _skillLog[3]++; FlashParty();
+                    m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
                 }
                 else if (m.ForceSkill == 1 || wounded >= 2)
                 {
@@ -996,7 +1057,7 @@ public class W3Party : MonoBehaviour
                     foreach (var o in _party)
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
                             m.Gauge += Heal(o, 14f * sp.DmgMul);
-                    m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++;
+                    m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
@@ -1012,7 +1073,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 1 || (m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
                 {
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
-                    m.SkillCd = 5f; m.Cd = 0.9f; _skillLog[5]++;
+                    m.SkillCd = 5f; m.Cd = 0.9f; _skillLog[5]++; m.SkillT = 0.6f;
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
@@ -1038,8 +1099,8 @@ public class W3Party : MonoBehaviour
                 m.Gauge += 1f;
                 float dmg = m.Atk;
                 // 일섬 — 버튼(슬롯1)이면 스택이 덜 찼어도 즉시 터뜨린다(§3 "스택 전량 소모")
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; }
-                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; }
+                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
                 m.Cd = 0.35f;
                 m.Threat += dmg * 0.4f;

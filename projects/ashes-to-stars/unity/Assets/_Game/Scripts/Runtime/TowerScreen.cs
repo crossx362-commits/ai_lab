@@ -1,0 +1,84 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace AshesToStars
+{
+    // Unity는 MonoBehaviour마다 **클래스명과 같은 이름의 .cs 파일**을 요구한다.
+    // 한 파일(Screens.cs)에 화면 8종을 넣었더니 Unity가 대표 클래스를 못 찾아
+    // 첫 클래스(BattleRewardInfo)로 해석했고, 그것이 MonoBehaviour가 아니라서
+    // 씬의 컴포넌트를 통째로 떼어냈다("references runtime script in scene file. Fixing!").
+    // 그래서 클래스마다 파일을 나눈다 — 다시 합치지 마라.
+
+    /// <summary>탑 — 최대 100층. 10층 돌파마다 필드·던전 난이도가 오른다(§8·§10-6).</summary>
+    public class TowerScreen : GameScreen
+    {
+        protected override string Title => $"탑 · {GameState.TowerFloor}층";
+        protected override string Subtitle =>
+            $"최대 100층. 10층 돌파마다 티어 상승(§8·§10-6) — 현재 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
+
+        bool _showLastLifeWarning = false;
+        // 필드 화면과 같은 규칙 — 값을 세우는 코드만 있고 이 필드·표시 화면이 없어서
+        // 컴파일이 깨져 있었다. 선언만 넣으면 골드 부족이 조용히 무시되므로 화면까지 맞춘다.
+        bool _showInsufficientGold = false;
+
+        protected override void Body(Rect r)
+        {
+            if (_showInsufficientGold)
+            {
+                // 골드 부족 경고 화면 (§18-2 진입 비용)
+                Info(r, 0, "⚠️ 골드가 부족합니다");
+                Info(r, 1, "탑 도전·레이드 입장에는 골드가 필요합니다(§18-2)\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
+
+                if (Row(r, 2, "확인", "돌아간다"))
+                    _showInsufficientGold = false;
+                return;
+            }
+
+            if (_showLastLifeWarning)
+            {
+                // 마지막 목숨 경고 화면
+                Info(r, 0, "⚠️ 주의! 마지막 목숨 캐릭터가 파티에 있습니다");
+                Info(r, 1, "사망 시 캐릭터가 영구 삭제되며\n장착 장비도 함께 사라집니다(§4)");
+
+                if (Row(r, 2, "계속 진행", "입장한다"))
+                {
+                    _showLastLifeWarning = false;
+                    GameFlow.GoBattle(GameFlow.Tower);
+                }
+                if (Row(r, 3, "취소", "파티를 다시 편성한다"))
+                    _showLastLifeWarning = false;
+                return;
+            }
+
+            if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
+            {
+                long towerCost = Economy.GetActionCost("TowerNormalFloor", GameState.Tier);
+                if (!GameState.Pay(towerCost)) _showInsufficientGold = true;
+                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
+                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
+            }
+            // 레이드는 **보스전**이다 — 잡몹 웨이브가 아니라 기믹 3종이 도는 판(§9·§10-5).
+            // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
+            if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
+            {
+                long raidCost = Economy.GetActionCost("Tower5BossRaid", GameState.Tier);
+                // 레이드 층은 현재 진행도에서 가장 가까운 5층 배수(§9 "5층 단위")
+                int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
+                if (!GameState.Pay(raidCost)) _showInsufficientGold = true;
+                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
+                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.보스, raidFloor);
+            }
+        }
+
+        bool HasLastLifeCharacter()
+        {
+            var characters = LifeSystem.GetCharacters();
+            foreach (var ch in characters)
+            {
+                if (!ch.IsDeleted && ch.DeathCount == 2)  // 2회 사망 = 마지막 목숨
+                    return true;
+            }
+            return false;
+        }
+    }
+}
