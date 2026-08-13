@@ -42,13 +42,13 @@ except Exception as e:
 
 GAME = os.path.join(_root, "projects", "ashes-to-stars")
 UNITY_PROJECT = os.path.join(GAME, "unity")
-LOG_DIR = os.path.join(GAME, "_logs")
+LOG_DIR = os.path.join(GAME, "실행결과")
 REPORT_DIR = os.path.join(_root, "output", "qa", "ashes-to-stars")
 
 # 빌드 디렉토리와 실행 파일
 BUILDS = {
     "w1": {
-        "dir": os.path.join(GAME, "_build"),
+        "dir": os.path.join(GAME, "빌드_W1성능"),
         "exe": "W1.exe",
         "runner": "W1Runner.Build",
         "csv": "w1_result.csv",
@@ -56,7 +56,7 @@ BUILDS = {
         "timeout": 300,
     },
     "w2": {
-        "dir": os.path.join(GAME, "_build_w2"),
+        "dir": os.path.join(GAME, "빌드_W2조작"),
         "exe": "W2.exe",
         "runner": "W2Runner.Build",
         "csv": "w2_result.csv",
@@ -65,7 +65,7 @@ BUILDS = {
         "args": ["--bot"],
     },
     "w3": {
-        "dir": os.path.join(GAME, "_build_w3"),
+        "dir": os.path.join(GAME, "빌드_W3파티"),
         "exe": "W3.exe",
         "runner": "W3Runner.Build",
         "csv": "w3_result.csv",

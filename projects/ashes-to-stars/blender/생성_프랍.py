@@ -15,11 +15,11 @@
   ② 팔레트 양자화(posterize) — 색 단계를 8~12개로 줄여 그라데이션을 없앤다
   ③ 1px 외곽선 — 픽셀아트 특유의 윤곽을 넣어 배경에서 분리되게 한다
 
-출력: ./props/<biome>_<name>_<variant>.png
+출력: ./출력_프랍/<biome>_<name>_<variant>.png
 """
 import bpy, bmesh, math, os, random
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "props")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "출력_프랍")
 SIZE = 96            # 렌더 해상도 = 도트 해상도
 CAM_PITCH = 30.0     # 쿼터뷰 하강각 — 캐릭터 스프라이트와 같아야 한다
 PALETTE_STEPS = 6    # 채널당 색 단계 (낮을수록 픽셀아트 느낌)

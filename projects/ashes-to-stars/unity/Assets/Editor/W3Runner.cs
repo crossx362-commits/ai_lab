@@ -41,7 +41,7 @@ public static class W3Runner
         PlayerSettings.defaultScreenHeight = 720;
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
 
-        var outDir = Path.GetFullPath("../_build_w3");
+        var outDir = Path.GetFullPath("../빌드_W3파티");
         Directory.CreateDirectory(outDir);
 
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions

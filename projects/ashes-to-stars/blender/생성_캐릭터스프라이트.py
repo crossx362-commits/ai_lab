@@ -14,7 +14,7 @@ Blender 4.1 headless 실행 전용.
 """
 import bpy, math, os, sys
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sprites")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "출력_캐릭터")
 SIZE = 128
 DIRS = 8          # 8방향
 CAM_PITCH = 30.0  # 쿼터뷰 하강각

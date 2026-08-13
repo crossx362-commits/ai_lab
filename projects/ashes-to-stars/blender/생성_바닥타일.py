@@ -18,7 +18,7 @@ seamless 보장:
 """
 import bpy, os, math
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ground")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "출력_바닥")
 SIZE = 512
 
 # (이름, 바탕색, 얼룩색, 노이즈 스케일, 보로노이 세기, 거칠기)

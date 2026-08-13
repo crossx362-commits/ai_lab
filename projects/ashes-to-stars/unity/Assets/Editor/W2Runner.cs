@@ -47,7 +47,7 @@ public static class W2Runner
         PlayerSettings.defaultScreenHeight = 720;
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
 
-        var outDir = Path.GetFullPath("../_build_w2");
+        var outDir = Path.GetFullPath("../빌드_W2조작");
         Directory.CreateDirectory(outDir);
         var exe = Path.Combine(outDir, "W2.exe");
 

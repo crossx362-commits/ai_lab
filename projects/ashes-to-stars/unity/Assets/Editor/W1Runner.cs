@@ -76,7 +76,7 @@ public static class W1Runner
             new[] { UnityEngine.Rendering.GraphicsDeviceType.Direct3D11 });
         PlayerSettings.gcIncremental = true;
 
-        var outDir = Path.GetFullPath("../_build");
+        var outDir = Path.GetFullPath("../빌드_W1성능");
         Directory.CreateDirectory(outDir);
         var exe = Path.Combine(outDir, "W1.exe");
 

@@ -8,11 +8,11 @@ Blender 4.1 headless 전용.
   장판 예고 표식, 폭발, 대시 잔상, 투사체, 피격 표시 등
   프로토타입 W2(탄막 회피 조작감) 필요 에셋을 단순 도형으로 렌더한다.
 
-출력: ./sprites_fx/<name>.png  (투명 배경)
+출력: ./출력_이펙트/<name>.png  (투명 배경)
 """
 import bpy, math, os, sys
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sprites_fx")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "출력_이펙트")
 RENDER_ENGINE = "BLENDER_EEVEE"  # EEVEE 우선, 없으면 WORKBENCH
 
 
