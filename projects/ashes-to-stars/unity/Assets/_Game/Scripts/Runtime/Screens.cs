@@ -149,8 +149,13 @@ namespace AshesToStars
                 else
                     GameFlow.GoBattle(GameFlow.Tower);
             }
+            // 레이드는 **보스전**이다 — 잡몹 웨이브가 아니라 기믹 3종이 도는 판(§9·§10-5).
+            // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
             if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
-                GameFlow.GoBattle(GameFlow.Tower);
+            {
+                if (HasLastLifeCharacter()) _showLastLifeWarning = true;
+                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.보스, 5);
+            }
         }
 
         bool HasLastLifeCharacter()
@@ -260,8 +265,11 @@ namespace AshesToStars
     /// </summary>
     public class BattleScreen : GameScreen
     {
-        protected override string Title => "전투";
-        protected override string Subtitle => "잡몹은 자동, 보스는 수동 지휘(§5)";
+        protected override string Title => GameFlow.Kind == GameFlow.BattleKind.보스
+            ? $"보스전 · {GameFlow.BossFloor}층" : "전투";
+        protected override string Subtitle => GameFlow.Kind == GameFlow.BattleKind.보스
+            ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
+            : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
         protected override bool ShowBottomBar => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
         protected override bool OpaqueBackground => false;
@@ -280,6 +288,24 @@ namespace AshesToStars
             {
                 cam.orthographicSize = 15f;
                 cam.transform.position = new Vector3(0, 0, -10);
+            }
+
+            // 보스전이면 기믹 3종이 도는 판을 얹는다(§9·§10-5).
+            // 잡몹 웨이브와 달리 §5가 "보스는 수동 지휘"라 한 구간이다.
+            if (GameFlow.Kind == GameFlow.BattleKind.보스)
+            {
+                var boss = gameObject.AddComponent<BossBattle>();
+                boss.OnBossDefeated += _ =>
+                {
+                    GameFlow.LastBattleSummary = $"보스 격파 — {GameFlow.BossFloor}층";
+                    GameFlow.Go(GameFlow.Result);
+                };
+                boss.OnPartyWiped += () =>
+                {
+                    GameFlow.LastBattleSummary = $"보스전 패배 — {GameFlow.BossFloor}층";
+                    GameFlow.Go(GameFlow.Result);
+                };
+                boss.Begin(GameFlow.BossFloor, 1);
             }
 
             // W3Party 컴포넌트 획득 또는 생성

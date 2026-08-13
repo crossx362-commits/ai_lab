@@ -45,6 +45,15 @@ namespace AshesToStars
         /// <summary>마지막 전투 결과. Result 화면이 읽는다.</summary>
         public static string LastBattleSummary = "";
 
+        /// <summary>
+        /// 전투 종류. §5가 "잡몹은 자동, **보스는 수동 지휘**"로 갈라놨으므로
+        /// 전투 화면이 무엇을 띄울지 알아야 한다.
+        /// </summary>
+        public enum BattleKind { 잡몹웨이브, 보스 }
+        public static BattleKind Kind = BattleKind.잡몹웨이브;
+        /// <summary>보스전일 때의 층수 — HP·목표시간·스킬 수가 여기서 나온다(§18-11)</summary>
+        public static int BossFloor = 5;
+
         public static void Go(string scene)
         {
             if (Application.CanStreamedLevelBeLoaded(scene))
@@ -59,9 +68,11 @@ namespace AshesToStars
         }
 
         /// <summary>전투로 들어가면서 돌아올 화면을 기억해 둔다.</summary>
-        public static void GoBattle(string returnScene)
+        public static void GoBattle(string returnScene, BattleKind kind = BattleKind.잡몹웨이브, int floor = 5)
         {
             ReturnTo = returnScene;
+            Kind = kind;
+            BossFloor = floor;
             Go(Battle);
         }
 
