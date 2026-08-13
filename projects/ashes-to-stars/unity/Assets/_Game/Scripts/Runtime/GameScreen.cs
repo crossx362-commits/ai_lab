@@ -112,6 +112,9 @@ namespace AshesToStars
             Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom));
 
             if (ShowBottomBar) BottomBar();
+            // 배경을 안 까는 화면(전투)에서는 밝은 바닥 위에 글씨가 놓여 안 읽힌다 —
+            // 안내 문구 뒤에도 판을 받친다(오너 지적 "글씨가 안보인다고")
+            if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
             GUI.Label(new Rect(48, REF_H - 28, 900, 22),
                       ShowBottomBar ? "ESC — 영지로" : "ESC — 뒤로", _small);
 

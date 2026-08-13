@@ -75,6 +75,19 @@ public class W3Party : MonoBehaviour
     int _sel = -1;                     // 선택된 파티 슬롯. -1이면 선택 없음
     GUIStyle _cmdBtn, _cmdLabel;
 
+    // 글자 뒤에 까는 반투명 판.
+    // 전투 화면은 배경을 안 깔기 때문에(카메라 렌더를 보여줘야 하므로) 밝은 바닥 위에
+    // 흰 글씨가 그대로 놓여 읽히지 않았다(오너 지적 "글씨가 안보인다고").
+    static Texture2D _scrimTex;
+    static Texture2D Scrim()
+    {
+        if (_scrimTex != null) return _scrimTex;
+        _scrimTex = new Texture2D(1, 1);
+        _scrimTex.SetPixel(0, 0, new Color(0.02f, 0.02f, 0.04f, 0.78f));
+        _scrimTex.Apply();
+        return _scrimTex;
+    }
+
     /// <summary>
     /// 머리 위 체력바를 만든다. 배경 + 전경 두 장이며 둘 다 아틀라스의 흰 칸을 쓰므로
     /// 배칭이 깨지지 않는다(W1 성능의 전제).
@@ -99,6 +112,25 @@ public class W3Party : MonoBehaviour
         fg.sprite = bank.White; fg.sharedMaterial = bank.Mat;
         fg.color = new Color(0.35f, 0.85f, 0.4f);
         fg.sortingOrder = 901;
+    }
+
+    /// <summary>
+    /// 발밑 그림자 — 유닛이 **바닥에 서 있다**는 인상의 핵심이다.
+    /// 그림자가 없으면 스프라이트가 공중에 떠 보여 쿼터뷰가 아니라 탑뷰처럼 읽힌다
+    /// (2026-08-13 오너 지적). 자식으로 달아 두면 유닛을 따라 저절로 움직인다.
+    /// </summary>
+    static void MakeShadow(Transform parent, SpriteBank bank, float w)
+    {
+        var go = new GameObject("shadow", typeof(SpriteRenderer));
+        go.transform.SetParent(parent, false);
+        go.transform.localPosition = new Vector3(0f, 0.06f, 0.05f);
+        // 쿼터뷰라 세로를 눌러 타원으로 — 정원이면 위에서 본 그림이 된다
+        go.transform.localScale = new Vector3(w, w * ISO_Y * 0.55f, 1f);
+        var sr = go.GetComponent<SpriteRenderer>();
+        sr.sprite = bank.White;
+        sr.sharedMaterial = bank.Mat;
+        sr.color = new Color(0f, 0f, 0f, 0.32f);
+        sr.sortingOrder = 200;              // 바닥보다 앞, 유닛보다 뒤
     }
 
     /// <summary>
@@ -250,6 +282,8 @@ public class W3Party : MonoBehaviour
             var m = new Member { Tr = go.transform, Sr = sr };
             MakeHpBar(go.transform, bank, out m.BarBg, out m.BarFg, 1.05f, 2.2f);
 
+            MakeShadow(go.transform, bank, 0.95f);
+
             // 명령 지점 표시 — 캐릭터가 아니라 **월드에** 놓인다(따라다니면 안 된다)
             var mk = new GameObject("order_mark", typeof(SpriteRenderer));
             m.Marker = mk.GetComponent<SpriteRenderer>();
@@ -272,6 +306,7 @@ public class W3Party : MonoBehaviour
             go.transform.SetParent(mr, false);
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sharedMaterial = bank.Mat;
+            MakeShadow(go.transform, bank, 0.62f);
             MakeHpBar(go.transform, bank, out _mBarBg[i], out _mBarFg[i], 0.7f, 1.7f);
             // 몹 체력바는 **다친 놈만** 보여준다 — 200마리가 전부 달고 있으면
             // 화면이 바 천지가 되고 정작 위험한 대상이 눈에 안 들어온다.
@@ -343,6 +378,19 @@ public class W3Party : MonoBehaviour
     /// 서로 올바른 순서로 겹친다.
     /// </summary>
     static int Depth(float worldY) => 1000 - Mathf.RoundToInt(worldY * 10f);
+
+    /// <summary>지정한 지점 주변 반경 안에서 가장 가까운 몹. 파티가 탱 기준으로 목표를 모으는 데 쓴다.</summary>
+    int NearestMobTo(Vector2 center, float radius)
+    {
+        int best = -1; float bd = radius * radius;
+        for (int i = 0; i < MAXM; i++)
+        {
+            if (!_mOn[i]) continue;
+            float d = (_mPos[i] - center).sqrMagnitude;
+            if (d < bd) { bd = d; best = i; }
+        }
+        return best;
+    }
 
     /// <summary>가장 몹이 밀집한 지점의 몹 인덱스. 마법사가 화염폭풍 자리를 고르는 근거(§10-2).</summary>
     int DensestMob(Vector2 from)
@@ -694,8 +742,11 @@ public class W3Party : MonoBehaviour
                 {
                     case Job.검사:
                     {
-                        // 근접 딜 — 가장 가까운 몹에 **붙는다**. 사거리(1.9) 안이면 제자리에서 벤다.
-                        int t = NearestMob(m.Pos, 99f);
+                        // 근접 딜 — **탱이 모아둔 무리**를 친다. 혼자 먼 몹을 쫓아가면
+                        // 탱의 보호를 벗어나 §10-4의 어그로 구조가 성립하지 않는다
+                        // (오너 지적 "탱커가 도발 써서 몹 모으고 … 이런식으로 가야지 다 따로노냐").
+                        int t = tank.Alive ? NearestMobTo(tank.Pos, 7f) : NearestMob(m.Pos, 99f);
+                        if (t < 0) t = NearestMob(m.Pos, 99f);
                         goal = t >= 0 ? _mPos[t] : anchor;
                         if (t >= 0 && (_mPos[t] - m.Pos).magnitude < m.Range * 0.9f) goal = m.Pos;
                         break;
@@ -703,7 +754,8 @@ public class W3Party : MonoBehaviour
                     case Job.마법사:
                     {
                         // 원거리 딜 — 밀집한 무리를 사거리 끝에서 노린다. 너무 붙으면 물러선다.
-                        int t = DensestMob(m.Pos);
+                        // 기준점을 탱으로 잡아 **탱이 모아둔 무리**가 우선 후보가 되게 한다.
+                        int t = DensestMob(tank.Alive ? tank.Pos : m.Pos);
                         if (t < 0) { goal = anchor + Vector2.right * lane; break; }
                         Vector2 away = (m.Pos - _mPos[t]);
                         float dist = away.magnitude;
@@ -713,12 +765,19 @@ public class W3Party : MonoBehaviour
                     }
                     case Job.사제:
                     {
-                        // 힐 — **가장 다친 아군** 곁으로. 단 몹과는 거리를 둔다(§10-4 후열 저격 대상)
-                        Member worst = null;
+                        // 힐 — 돌봐야 할 대상 곁으로. **탱을 우선**한다:
+                        // 설계상 피해를 받는 것이 탱이고(§10-4), 탱이 무너지면 후열이 그대로 노출된다.
+                        // 다만 다른 아군이 탱보다 확연히 위험하면 그쪽으로 간다.
+                        Member care = tank.Alive ? tank : null;
                         foreach (var o in _party)
-                            if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
-                        Vector2 care = worst != null ? worst.Pos : anchor;
-                        goal = care - Vector2.up * sp.KeepDist + Vector2.right * lane;
+                        {
+                            if (!o.Alive) continue;
+                            float r = o.Hp / o.MaxHp;
+                            if (care == null || r < care.Hp / care.MaxHp - 0.2f) care = o;
+                        }
+                        Vector2 cp = care != null ? care.Pos : anchor;
+                        // 대상보다 몹 반대편에 선다 — 힐 사거리는 닿되 최전선에는 안 서게
+                        goal = cp - Vector2.up * (sp.KeepDist * 0.9f) + Vector2.right * (lane * 0.6f);
                         break;
                     }
                     default:
@@ -1152,7 +1211,8 @@ public class W3Party : MonoBehaviour
         s.Append($"전열피격 {_frontlineHits} / 후열피격 {_backlineHits}\n");
         foreach (var m in _party)
             s.Append($"{m.Role} {(m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망")}   ");
-        GUI.Label(new Rect(14, 130, 900, 60), s.ToString(), _hud);
+        GUI.DrawTexture(new Rect(8, 126, 1000, 64), Scrim());
+        GUI.Label(new Rect(14, 130, 990, 60), s.ToString(), _hud);
 
         // 지휘 바는 항상 띄운다. 자동 전투 중에도 캐릭터를 골라 옮길 수 있어야 한다(오너 지시).
         // "자동"은 **명령을 안 내렸을 때의 기본값**이지, 개입을 막는 모드가 아니다(§5).
@@ -1168,9 +1228,11 @@ public class W3Party : MonoBehaviour
     {
         _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
-        { fontSize = 14, normal = { textColor = new Color(.72f, .75f, .85f) } };
+        { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
 
         float y = Screen.height - 92f, x = 16f;
+        // 지휘 바 전체에 판을 깔아 버튼·안내 문구가 바닥 위에서도 읽히게 한다
+        GUI.DrawTexture(new Rect(0, y - 34f, Screen.width, 100f), Scrim());
         for (int i = 0; i < _party.Length; i++)
         {
             var m = _party[i];
