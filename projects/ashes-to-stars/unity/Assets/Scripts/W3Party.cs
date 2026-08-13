@@ -108,6 +108,9 @@ public class W3Party : MonoBehaviour
     // 스킬 사용 횟수: 0도발 1성채방패 2치유파동 3기적 4악장전환 5화염폭풍 6일섬
     readonly int[] _skillLog = new int[7];
     float _healerDeadT;
+    // 사제 신앙의 판 최고치. 기적이 0회일 때 "신앙이 안 찼다"와 "조건이 안 걸렸다"를 가른다 —
+    // 추측으로 원인을 고르지 않기 위한 계측이다(2026-08-13).
+    float _faithPeak;
     string _outPath;
     readonly StringBuilder _csv = new StringBuilder();
     /// <summary>대조 실험 구성 (§21-1f) — 스타일은 균형형 고정, 구성만 바꾼다</summary>
@@ -145,7 +148,8 @@ public class W3Party : MonoBehaviour
                 float.TryParse(a[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out 최대시간);
         }
         _outPath ??= Path.Combine(Application.persistentDataPath, "w3_result.csv");
-        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict");
+        // faith_peak는 열 끝에 붙인다 — 중간에 끼우면 이 CSV를 읽는 기존 도구가 조용히 어긋난다
+        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict,faith_peak");
 
         BuildWorld();
         NextStyle();
@@ -230,6 +234,17 @@ public class W3Party : MonoBehaviour
     };
 
     /// <summary>
+    /// 실제로 채워진 HP만큼을 돌려준다 — 신앙(§3 "회복량 누적")의 계량 단위.
+    /// 이미 만피인 대상에 힐을 넣어도 신앙이 쌓이면 축적이 부풀려진다.
+    /// </summary>
+    static float Heal(Member o, float amount)
+    {
+        float before = o.Hp;
+        o.Hp = Mathf.Min(o.MaxHp, o.Hp + amount);
+        return o.Hp - before;
+    }
+
+    /// <summary>
     /// 파티 역할 → 오너 픽셀아트 직업.
     /// Role과 SpriteBank.Job은 지금 우연히 순서가 같지만 캐스팅으로 엮지 않는다 —
     /// 한쪽에 값이 끼면 조용히 어긋나는 종류의 결합이다.
@@ -294,7 +309,7 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < 시작웨이브; i++) SpawnMob();
 
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
-        _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f;
+        _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f;
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0;
         _tauntUntil = -1f; _partyChant = Chant.진군가;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
@@ -419,35 +434,47 @@ public class W3Party : MonoBehaviour
             }
             else if (m.Job == Job.사제)
             {
-                m.Gauge = Mathf.Min(100f, m.Gauge + 6f);    // 신앙 축적
                 int wounded = 0;
                 Member worst = null;
+                float worstRatio2 = 1f;
                 foreach (var o in _party)
                 {
                     if (!o.Alive) continue;
-                    if (o.Hp / o.MaxHp < 0.7f) wounded++;
-                    if (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp) worst = o;
+                    float r = o.Hp / o.MaxHp;
+                    if (r < 0.7f) wounded++;
+                    if (r < worstRatio2) worstRatio2 = r;
+                    if (worst == null || r < worst.Hp / worst.MaxHp) worst = o;
                 }
-                if (m.Gauge >= 100f && wounded >= 3)
+
+                // 📌 기적이 45초판·114초 전멸판 통틀어 **0회**였던 원인 (2026-08-13 규명)
+                //   ① 기적은 wounded>=3, 치유의 파동은 wounded>=2에서 발동한다.
+                //      파동이 부상자를 2명 이하로 계속 눌러 **3명이 되는 창이 열리지 않았다.**
+                //      파동으로도 못 막을 만큼 무너지면 그땐 이미 전멸 직전이라 사제도 같이 죽는다.
+                //      → 위급도(최저 HP 비율)를 **별도 축**으로 넣어 파동이 못 막는 상황을 잡는다.
+                //   ② 신앙을 행동 횟수(+6/회)로 쌓고 있었다. 기획서 §3은 "**회복량 누적**"이다.
+                //      → 실제 회복시킨 양을 그대로 신앙으로 환산한다(코드가 기획서를 따르게).
+                if (m.Gauge >= 100f && (wounded >= 3 || worstRatio2 < 0.35f))
                 {
-                    // ③ 기적 — 신앙 전량 소모, 파티 전체 대회복
+                    // ③ 기적 — 신앙 전량 소모, 파티 전체 완전 회복(§3)
                     m.Gauge = 0f;
-                    foreach (var o in _party) if (o.Alive) o.Hp = Mathf.Min(o.MaxHp, o.Hp + 70f);
+                    foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; FlashParty();
                 }
                 else if (wounded >= 2)
                 {
-                    // ② 치유의 파동 — 광역 힐
+                    // ② 치유의 파동 — 광역 힐. 회복시킨 만큼 신앙이 쌓인다(§3)
                     foreach (var o in _party)
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
-                            o.Hp = Mathf.Min(o.MaxHp, o.Hp + 14f * sp.DmgMul);
+                            m.Gauge += Heal(o, 14f * sp.DmgMul);
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++;
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
-                    worst.Hp = Mathf.Min(worst.MaxHp, worst.Hp + 24f * sp.DmgMul);
+                    m.Gauge += Heal(worst, 24f * sp.DmgMul);
                     m.Cd = 1.0f; m.Threat += 8f; _healsCast++;
                 }
+                m.Gauge = Mathf.Min(100f, m.Gauge);
+                if (m.Gauge > _faithPeak) _faithPeak = m.Gauge;
             }
             else if (m.Job == Job.마법사 && target >= 0)
             {
@@ -753,7 +780,8 @@ public class W3Party : MonoBehaviour
             _backlineHits.ToString(ci), _frontlineHits.ToString(ci),
             _shieldAbsorbed.ToString("F0", ci),
             _healerDeadT < 0 ? "-" : _healerDeadT.ToString("F1", ci),
-            최종웨이브.ToString(ci), (_kills / Mathf.Max(1f, _t)).ToString("F2", ci), verdict));
+            최종웨이브.ToString(ci), (_kills / Mathf.Max(1f, _t)).ToString("F2", ci), verdict,
+            _faithPeak.ToString("F0", ci)));
         Debug.Log($"[W3] {_setup.Name}: {_t:F1}s 생존 / 처치 {_kills} / 도발 {_tauntUses} / " +
                   $"후열피격 {_backlineHits} 전열피격 {_frontlineHits} / {verdict}");
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
