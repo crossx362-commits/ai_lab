@@ -318,6 +318,13 @@ public class W3Party : MonoBehaviour
     /// <summary>판이 끝났을 때 호출. true=생존(상한 도달) / false=전멸</summary>
     public System.Action<bool> OnBattleEnd;
 
+    /// <summary>파티원이 죽는 **순간** 호출 — (슬롯 번호, 직업 이름). §4의 목숨 카운트를 밖에서 올린다.</summary>
+    public System.Action<int, string> OnMemberDied;
+
+    readonly System.Collections.Generic.List<string> _deadJobs = new System.Collections.Generic.List<string>();
+    /// <summary>이번 판에서 죽은 직업 목록. 판이 끝난 뒤에도 조회할 수 있다.</summary>
+    public System.Collections.Generic.IReadOnlyList<string> DeadJobs => _deadJobs;
+
     void Awake()
     {
         QualitySettings.vSyncCount = 0;
@@ -581,6 +588,7 @@ public class W3Party : MonoBehaviour
 
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f;
+        _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0;
         _tauntUntil = -1f; _partyChant = Chant.진군가;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
@@ -1221,6 +1229,12 @@ public class W3Party : MonoBehaviour
             m.Tr.gameObject.SetActive(false);
             if (m.Role == Role.Healer && _healerDeadT < 0f) _healerDeadT = _t;
             Debug.Log($"[W3] {m.Role} 사망 @ {_t:F1}s");
+
+            // 누가 죽었는지 밖으로 알린다(§4). 예전엔 판이 끝날 때 생존 여부 하나만 넘겨서
+            // 목숨 카운트가 **파티 전멸 단위**로 뭉뚱그려졌다 — 실제로는 한 명만 죽는 판이 더 흔하다.
+            // 사망 처리는 이 한 곳뿐이고 Hp<=0이면 Alive가 false라 다시 들어오지 않으므로 중복 기록은 없다.
+            _deadJobs.Add(m.Job.ToString());
+            OnMemberDied?.Invoke(System.Array.IndexOf(_party, m), m.Job.ToString());
         }
     }
 

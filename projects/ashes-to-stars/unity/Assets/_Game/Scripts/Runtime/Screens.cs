@@ -112,7 +112,8 @@ namespace AshesToStars
     public class FieldScreen : GameScreen
     {
         protected override string Title => "필드";
-        protected override string Subtitle => "자동사냥으로 재화를 번다. 단기 루프의 출발점(§2·§6)";
+        protected override string Subtitle =>
+            $"자동사냥으로 재화를 번다(§2·§6) — 보유 {GameState.WalletText} · {GameState.BagText()}";
 
         bool _showLastLifeWarning = false;
         bool _showInsufficientGold = false;
@@ -158,14 +159,12 @@ namespace AshesToStars
             {
                 // 던전 입장에는 골드 비용 필요 (§18-2)
                 // TODO: 실제 지갑 시스템 필요. 지금은 T1 기준 0.02 G/h를 차감한다고 표시만 함
-                long dungeonCost = Economy.GetActionCost("DungeonEntry", 0); // T1 기준
-                Debug.Log($"[경제] 던전 입장 비용: {Economy.FormatCurrency(dungeonCost)} (§18-2)");
-
-                // 프로토타입: 골드 체크 없이 진입 허용 (실제는 지갑 체크 필요)
-                if (HasLastLifeCharacter())
-                    _showLastLifeWarning = true;
-                else
-                    GameFlow.GoBattle(GameFlow.Field);
+                // 실제로 차감한다. 모자라면 들어가지 못한다(§18-2).
+                // 부분 차감은 하지 않는다 — "돈은 냈는데 못 들어갔다"가 최악이다.
+                long dungeonCost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
+                if (!GameState.Pay(dungeonCost)) _showInsufficientGold = true;
+                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
+                else GameFlow.GoBattle(GameFlow.Field);
             }
             if (Row(r, 2, "자동화 일정", "무엇을 언제 시킬지 예약(§6)")) { }
         }
@@ -185,8 +184,9 @@ namespace AshesToStars
     /// <summary>탑 — 최대 100층. 10층 돌파마다 필드·던전 난이도가 오른다(§8·§10-6).</summary>
     public class TowerScreen : GameScreen
     {
-        protected override string Title => "탑";
-        protected override string Subtitle => "최대 100층. 10층 돌파마다 필드·던전 티어 상승(§8·§10-6)";
+        protected override string Title => $"탑 · {GameState.TowerFloor}층";
+        protected override string Subtitle =>
+            $"최대 100층. 10층 돌파마다 티어 상승(§8·§10-6) — 현재 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
 
         bool _showLastLifeWarning = false;
 
@@ -210,25 +210,21 @@ namespace AshesToStars
 
             if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
             {
-                // 탑 일반층 진입 비용 (§18-2)
-                long towerCost = Economy.GetActionCost("TowerNormalFloor", 0); // T1 기준
-                Debug.Log($"[경제] 탑 도전 비용: {Economy.FormatCurrency(towerCost)} (§18-2)");
-
-                if (HasLastLifeCharacter())
-                    _showLastLifeWarning = true;
-                else
-                    GameFlow.GoBattle(GameFlow.Tower);
+                long towerCost = Economy.GetActionCost("TowerNormalFloor", GameState.Tier);
+                if (!GameState.Pay(towerCost)) _showInsufficientGold = true;
+                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
+                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
             }
             // 레이드는 **보스전**이다 — 잡몹 웨이브가 아니라 기믹 3종이 도는 판(§9·§10-5).
             // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
             if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
             {
-                // 5층 중간 레이드 진입 비용 (§18-2)
-                long raidCost = Economy.GetActionCost("Tower5BossRaid", 0); // T1 기준
-                Debug.Log($"[경제] 레이드 입장 비용: {Economy.FormatCurrency(raidCost)} (§18-2)");
-
-                if (HasLastLifeCharacter()) _showLastLifeWarning = true;
-                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.보스, 5);
+                long raidCost = Economy.GetActionCost("Tower5BossRaid", GameState.Tier);
+                // 레이드 층은 현재 진행도에서 가장 가까운 5층 배수(§9 "5층 단위")
+                int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
+                if (!GameState.Pay(raidCost)) _showInsufficientGold = true;
+                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
+                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.보스, raidFloor);
             }
         }
 
@@ -375,7 +371,11 @@ namespace AshesToStars
                 {
                     // 보스 격파 — 보상 계산 (§2 코어 루프: 재화 획득)
                     CalculateVictoryReward(GameFlow.BossFloor);
-                    GameFlow.LastBattleSummary = $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초)";
+                    // 층을 실제로 돌파한다. 진행도가 안 오르면 §8의 "벽 콘텐츠"가 성립하지 않고
+                    // §10-6의 티어 상승(10층마다)도 영원히 일어나지 않는다.
+                    GameState.ClearFloor(GameFlow.BossFloor);
+                    GameFlow.LastBattleSummary =
+                        $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
                     GameFlow.Go(GameFlow.Result);
                 };
                 boss.OnPartyWiped += () =>
@@ -433,30 +433,20 @@ namespace AshesToStars
                 ? Economy.DropSource.Tower10Boss
                 : Economy.DropSource.Tower5Boss;
 
+            // 골드를 **실제로 지갑에 넣는다**. 계산만 하고 반영하지 않으면
+            // §2의 순환("번 돈으로 다음 판에 들어간다")이 성립하지 않는다.
+            GameState.Earn(_reward.GoldReward);
+
             // 드랍 롤 3회 (통상 3~5회 정도)
             for (int i = 0; i < 3; i++)
             {
                 var drop = Economy.RollDrop(dropSource);
-                if (drop.HasValue)
-                {
-                    // 소지 상한 체크 (§18-4)
-                    // 프로토타입에선 간단히: 부활초 3개, 귀환의 두루마리 5개 상한
-                    var itemCap = Economy.ItemCapacity[drop.Value];
-                    int currentCount = 0; // 프로토타입에서는 count 추적 없음, 실제는 인벤토리 시스템에서 관리
+                if (!drop.HasValue) continue;
 
-                    // 상한 체크: 부활초는 3개, 귀환의 두루마리는 5개 (§18-4)
-                    bool canAdd = drop.Value switch
-                    {
-                        Economy.LifeItem.RevivalTea => currentCount < 3,
-                        Economy.LifeItem.ScrollOfReturn => currentCount < 5,
-                        _ => true // 환생석·특수 직업 증표는 상한 없음
-                    };
-
-                    if (canAdd)
-                        _reward.DroppedItems.Add(drop.Value);
-                    else
-                        _reward.RejectedItems.Add(drop.Value);
-                }
+                // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
+                // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.
+                if (GameState.Gain(drop.Value)) _reward.DroppedItems.Add(drop.Value);
+                else _reward.RejectedItems.Add(drop.Value);   // 소실이 아니라 획득 거부
             }
         }
 
