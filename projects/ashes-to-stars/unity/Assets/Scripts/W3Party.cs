@@ -64,7 +64,14 @@ public class W3Party : MonoBehaviour
         public float AnimT;                  // 현재 동작이 시작된 뒤 흐른 시간
         public float AttackT, HurtT;         // 남은 동작 시간 (0보다 크면 그 동작 중)
         public SpriteBank.Motion Mo;
+
+        /// <summary>수동 이동 명령 목적지(§5). 있으면 AI 판단을 덮는다.</summary>
+        public Vector2? Order;
     }
+
+    // ── 수동 지휘 상태 (§5 "보스는 수동 지휘") ──
+    int _sel = -1;                     // 선택된 파티 슬롯. -1이면 선택 없음
+    GUIStyle _cmdBtn, _cmdLabel;
 
     /// <summary>
     /// 머리 위 체력바를 만든다. 배경 + 전경 두 장이며 둘 다 아틀라스의 흰 칸을 쓰므로
@@ -220,6 +227,9 @@ public class W3Party : MonoBehaviour
     {
         var bank = SpriteBank.Load();
         GroundBuilder.Build(bank, Arena + 20f);
+        // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
+        // 시드를 고정해 같은 판이면 같은 배치가 나오게 한다(측정 재현성).
+        AshesToStars.FieldDecor.Build(bank, Arena, 20260813, AshesToStars.FieldDecor.Biome.Field);
 
         // 파티 슬롯 5칸을 미리 만들고, 구성(§21-1f)에 따라 켜고 끈다
         _slots = new Member[5];
@@ -305,6 +315,42 @@ public class W3Party : MonoBehaviour
     };
 
     /// <summary>
+    /// 근접 직업인가(§3). 근접은 투사체를 쏘지 않는다 —
+    /// 예전엔 전 직업이 FireAlly로 탄을 날려 탱커·검사가 원거리처럼 보였다.
+    /// </summary>
+    static bool IsMelee(Job j) => j == Job.수호기사 || j == Job.검사;
+
+    /// <summary>공격 연출. 근접은 타격만, 원거리는 탄을 날린다.</summary>
+    void AttackFx(Member m, Vector2 targetPos)
+    {
+        m.AttackT = 0.26f;                       // 공격 애니메이션 재생 구간
+        if (!IsMelee(m.Job)) FireAlly(m.Pos, targetPos);
+    }
+
+    /// <summary>
+    /// 쿼터뷰 깊이 정렬 — **앞(y가 작은) 유닛이 뒤 유닛을 가려야** 입체로 보인다.
+    /// y를 ISO_Y로 눌러도 정렬이 없으면 전부 한 평면에 붙어 탑뷰처럼 읽힌다
+    /// (오너 지적 "탑뷰 아니고 쿼터뷰라고"). 파티와 몹이 **같은 공식**을 써야
+    /// 서로 올바른 순서로 겹친다.
+    /// </summary>
+    static int Depth(float worldY) => 1000 - Mathf.RoundToInt(worldY * 10f);
+
+    /// <summary>가장 몹이 밀집한 지점의 몹 인덱스. 마법사가 화염폭풍 자리를 고르는 근거(§10-2).</summary>
+    int DensestMob(Vector2 from)
+    {
+        int best = -1; float bestScore = -1f;
+        for (int i = 0; i < MAXM; i++)
+        {
+            if (!_mOn[i]) continue;
+            float d = (_mPos[i] - from).magnitude;
+            if (d > 18f) continue;
+            float score = CountMobsNear(_mPos[i], 3.2f) - d * 0.15f;
+            if (score > bestScore) { bestScore = score; best = i; }
+        }
+        return best;
+    }
+
+    /// <summary>
     /// 실제로 채워진 HP만큼을 돌려준다 — 신앙(§3 "회복량 누적")의 계량 단위.
     /// 이미 만피인 대상에 힐을 넣어도 신앙이 쌓이면 축적이 부풀려진다.
     /// </summary>
@@ -350,7 +396,17 @@ public class W3Party : MonoBehaviour
             m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Role));
             m.MaxHp = m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f;
             m.Atk = m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f;
-            m.Range = m.Role == Role.Dps ? 5.5f : m.Role == Role.Tank ? 1.3f : 6.5f;
+            // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
+            // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
+            // 검사가 멀찍이 서서 때리는 그림이 된다 — 오너 지적으로 발견.
+            m.Range = job switch
+            {
+                Job.수호기사 => 1.5f,   // 근접 탱 — 몹에 붙어야 도발·방패가 의미를 갖는다
+                Job.검사 => 1.9f,       // 근접 딜
+                Job.마법사 => 5.5f,
+                Job.사제 => 6.5f,
+                _ => 6.0f,              // 음유시인
+            };
             _party[i] = m;
         }
 
@@ -425,6 +481,7 @@ public class W3Party : MonoBehaviour
         if (AllDead() || _t >= 최대시간)
         { RecordAndNext(); return; }
 
+        TickCommand();
         TickParty(dt);
         TickMobs(dt);
         TickShots(dt);
@@ -463,6 +520,11 @@ public class W3Party : MonoBehaviour
             else m.AnimT += dt;
 
             m.Sr.sprite = bank.CharAnim(ArtOf(m.Role), m.Mo, m.AnimT);
+            m.Sr.sortingOrder = Depth(m.Pos.y);
+
+            // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
+            bool picked = _sel >= 0 && _sel < _party.Length && _party[_sel] == m;
+            if (picked) m.Sr.color = new Color(1f, 0.96f, 0.72f);
             if (Mathf.Abs(m.Pos.x - m.PrevPos.x) > 1e-4f) m.Sr.flipX = m.Pos.x < m.PrevPos.x;
             m.PrevPos = m.Pos;
 
@@ -483,6 +545,7 @@ public class W3Party : MonoBehaviour
             // 군무를 추지 않는다 — 물량이 많을수록 동기화가 눈에 띈다(§10-2).
             var mm = _mFlash[i] > 0f ? SpriteBank.Motion.Hurt : SpriteBank.Motion.Walk;
             _mSr[i].sprite = bank.MobAnim(0, mm, _t + i * 0.37f);
+            _mSr[i].sortingOrder = Depth(_mPos[i].y);
 
             float ratio = _mMaxHp[i] > 0f ? _mHp[i] / _mMaxHp[i] : 1f;
             bool hurt = ratio < 0.999f;
@@ -493,6 +556,45 @@ public class W3Party : MonoBehaviour
             }
             if (hurt) SetBar(_mBarFg[i], ratio, 0.66f);
         }
+    }
+
+    /// <summary>
+    /// 수동 지휘 입력 (§5) — 캐릭터를 골라 위치를 지시한다.
+    ///   숫자키 1~5 / 캐릭터 클릭 → 선택
+    ///   우클릭(또는 선택 상태에서 좌클릭 빈 땅) → 그 자리로 이동 명령
+    ///   ESC·0 → 선택 해제(다시 자동)
+    /// 기획서가 "2개 명령(위치·스킬)으로 5인을 다루는 방식은 전례가 드물다"고 한
+    /// V3 검증 대상이다. 여기서 굴러가야 보스전 지휘가 성립한다.
+    /// </summary>
+    void TickCommand()
+    {
+        if (_party == null) return;
+
+        for (int i = 0; i < _party.Length && i < 5; i++)
+            if (Input.GetKeyDown(KeyCode.Alpha1 + i) && _party[i].Alive) _sel = i;
+        if (Input.GetKeyDown(KeyCode.Alpha0)) _sel = -1;
+
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        // 화면 → 월드. ToScreen이 y를 ISO_Y로 눌렀으므로 되돌린다.
+        Vector3 w3 = cam.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 world = new Vector2(w3.x, w3.y / ISO_Y);
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            int hit = -1; float best = 1.6f;
+            for (int i = 0; i < _party.Length; i++)
+            {
+                if (!_party[i].Alive) continue;
+                float d = (_party[i].Pos - world).magnitude;
+                if (d < best) { best = d; hit = i; }
+            }
+            if (hit >= 0) _sel = hit;
+            else if (_sel >= 0) _party[_sel].Order = world;   // 선택 중이면 빈 땅 클릭 = 이동
+        }
+        if (Input.GetMouseButtonDown(1) && _sel >= 0 && _party[_sel].Alive)
+            _party[_sel].Order = world;
     }
 
     // ── 파티 자동 전투 ────────────────────────────────────
@@ -510,7 +612,22 @@ public class W3Party : MonoBehaviour
             int target = NearestMob(m.Pos, m.Range * 1.6f);
             Vector2 want = Vector2.zero;
 
-            if (m.Role == Role.Tank)
+            // ── 수동 지휘가 최우선 (§5 "잡몹은 자동, 보스는 수동 지휘") ──
+            // 명령이 있으면 AI 판단을 덮는다. 목적지에 닿으면 스스로 해제해 AI로 돌아간다.
+            bool commanded = false;
+            if (m.Order.HasValue)
+            {
+                Vector2 d = m.Order.Value - m.Pos;
+                if (d.magnitude < 0.5f) m.Order = null;
+                else { want = d.normalized; commanded = true; }
+            }
+
+            if (commanded)
+            {
+                // 이동 명령 중에도 수호 게이지는 쌓인다(§3 고유 자원)
+                if (m.Role == Role.Tank) m.Gauge = Mathf.Min(100f, m.Gauge + dt * 14f);
+            }
+            else if (m.Role == Role.Tank)
             {
                 // 수호기사: 무리 쪽으로 전진 + 수호 게이지 축적
                 int t2 = NearestMob(m.Pos, 99f);
@@ -536,18 +653,82 @@ public class W3Party : MonoBehaviour
             }
             else
             {
-                // 딜·힐: 탱 뒤에 붙되 스타일의 유지거리만큼 물러선다
-                Vector2 behind = tank.Alive ? tank.Pos - Vector2.up * sp.KeepDist : Vector2.zero;
-                want = (behind - m.Pos);
-                if (want.magnitude < 0.3f) want = Vector2.zero; else want = want.normalized;
+                // ── 직업별 이동 (§3) ──
+                // ⚠️ 예전엔 탱을 뺀 전원이 **똑같은 한 점**(탱 뒤)을 목표로 삼았다.
+                //    그래서 넷이 한 덩어리로 겹쳐 다녔고, §10-4가 말하는 전열/후열 구분이
+                //    화면에서 사라졌다(오너 지적 "다 똑같이 움직이자너").
+                //    직업마다 **무엇을 보고 어디로 가는가**가 달라야 역할이 눈에 읽힌다.
+                int slot = System.Array.IndexOf(_party, m);
+                float lane = (slot - (_party.Length - 1) * 0.5f) * 1.7f;
+                Vector2 anchor = tank.Alive ? tank.Pos : Vector2.zero;
+                Vector2 goal;
 
-                // 저체력이면 더 물러선다 (스타일별 임계)
+                switch (m.Job)
+                {
+                    case Job.검사:
+                    {
+                        // 근접 딜 — 가장 가까운 몹에 **붙는다**. 사거리(1.9) 안이면 제자리에서 벤다.
+                        int t = NearestMob(m.Pos, 99f);
+                        goal = t >= 0 ? _mPos[t] : anchor;
+                        if (t >= 0 && (_mPos[t] - m.Pos).magnitude < m.Range * 0.9f) goal = m.Pos;
+                        break;
+                    }
+                    case Job.마법사:
+                    {
+                        // 원거리 딜 — 밀집한 무리를 사거리 끝에서 노린다. 너무 붙으면 물러선다.
+                        int t = DensestMob(m.Pos);
+                        if (t < 0) { goal = anchor + Vector2.right * lane; break; }
+                        Vector2 away = (m.Pos - _mPos[t]);
+                        float dist = away.magnitude;
+                        away = dist > 0.01f ? away / dist : Vector2.up;
+                        goal = _mPos[t] + away * (m.Range * 0.85f) + Vector2.right * (lane * 0.5f);
+                        break;
+                    }
+                    case Job.사제:
+                    {
+                        // 힐 — **가장 다친 아군** 곁으로. 단 몹과는 거리를 둔다(§10-4 후열 저격 대상)
+                        Member worst = null;
+                        foreach (var o in _party)
+                            if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
+                        Vector2 care = worst != null ? worst.Pos : anchor;
+                        goal = care - Vector2.up * sp.KeepDist + Vector2.right * lane;
+                        break;
+                    }
+                    default:
+                    {
+                        // 음유시인 — 파티 무게중심 뒤. 오라가 전원에게 닿는 자리를 지킨다(§3)
+                        Vector2 c = Vector2.zero; int n = 0;
+                        foreach (var o in _party) if (o.Alive) { c += o.Pos; n++; }
+                        if (n > 0) c /= n;
+                        goal = c - Vector2.up * (sp.KeepDist * 1.15f) + Vector2.right * lane;
+                        break;
+                    }
+                }
+
+                want = goal - m.Pos;
+                want = want.magnitude < 0.35f ? Vector2.zero : want.normalized;
+
+                // 저체력이면 무엇을 하던 중이든 물러선다 (스타일별 임계)
                 if (m.Hp / m.MaxHp < sp.RetreatHp)
                 {
                     int near = NearestMob(m.Pos, 6f);
                     if (near >= 0) want = (m.Pos - _mPos[near]).normalized;
                 }
             }
+
+            // 서로 밀어내기 — 목표가 같아도 몸이 겹치지 않게.
+            // 진형 오프셋만으로는 이동 중에 여전히 뭉친다(오너 지적 "너무 뭉쳐서 움직임").
+            Vector2 sep = Vector2.zero;
+            foreach (var o in _party)
+            {
+                if (o == m || !o.Alive) continue;
+                Vector2 d = m.Pos - o.Pos;
+                float sq = d.sqrMagnitude;
+                if (sq > 1e-4f && sq < 2.25f)          // 1.5유닛 안쪽이면 민다
+                    sep += d / Mathf.Sqrt(sq) * (1.5f - Mathf.Sqrt(sq));
+            }
+            if (sep.sqrMagnitude > 1e-4f)
+                want = (want + sep * 1.4f).normalized;
 
             m.Pos += want * PlayerSpeed * 0.85f * dt;
             m.Pos = Vector2.ClampMagnitude(m.Pos, Arena + 3f);
@@ -630,7 +811,7 @@ public class W3Party : MonoBehaviour
                 _mHp[target] -= m.Atk * sp.DmgMul * ChantAtk();
                 m.Cd = 0.40f;
                 m.Threat += m.Atk * 0.4f;
-                FireAlly(m.Pos, _mPos[target]); FlashMob(target);
+                AttackFx(m, _mPos[target]); FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.검사 && target >= 0)
@@ -642,7 +823,7 @@ public class W3Party : MonoBehaviour
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
                 m.Cd = 0.35f;
                 m.Threat += dmg * 0.4f;
-                FireAlly(m.Pos, _mPos[target]); FlashMob(target);
+                AttackFx(m, _mPos[target]); FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (target >= 0)
@@ -650,7 +831,7 @@ public class W3Party : MonoBehaviour
                 _mHp[target] -= m.Atk * sp.DmgMul * ChantAtk();
                 m.Cd = m.Role == Role.Dps ? 0.40f : 0.7f;
                 m.Threat += m.Atk * 0.4f;
-                FireAlly(m.Pos, _mPos[target]);      // 공격이 보여야 전투처럼 보인다
+                AttackFx(m, _mPos[target]);          // 근접은 타격만, 원거리는 탄(§3)
                 FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
             }
@@ -944,7 +1125,57 @@ public class W3Party : MonoBehaviour
         s.Append($"전열피격 {_frontlineHits} / 후열피격 {_backlineHits}\n");
         foreach (var m in _party)
             s.Append($"{m.Role} {(m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망")}   ");
-        GUI.Label(new Rect(14, 10, 900, 60), s.ToString(), _hud);
+        GUI.Label(new Rect(14, 130, 900, 60), s.ToString(), _hud);
+
+        if (GameMode) CommandBar();
+    }
+
+    /// <summary>
+    /// 지휘 바 (§5) — 파티원 선택 버튼 + 선택한 캐릭터의 스킬 버튼.
+    /// 기획서가 말하는 "캐릭터 선택 → 위치 + 스킬" 두 명령 중 **스킬 쪽**이 여기다.
+    /// 위치 명령은 TickCommand(마우스)가 받는다.
+    /// </summary>
+    void CommandBar()
+    {
+        _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
+        _cmdLabel ??= new GUIStyle(GUI.skin.label)
+        { fontSize = 14, normal = { textColor = new Color(.72f, .75f, .85f) } };
+
+        float y = Screen.height - 92f, x = 16f;
+        for (int i = 0; i < _party.Length; i++)
+        {
+            var m = _party[i];
+            GUI.enabled = m.Alive;
+            string tag = (_sel == i ? "▶ " : "") + $"{i + 1}.{m.Job}";
+            if (GUI.Button(new Rect(x, y, 128, 34), tag, _cmdBtn)) _sel = (_sel == i ? -1 : i);
+            GUI.enabled = true;
+            x += 132;
+        }
+
+        GUI.Label(new Rect(16, y - 24, 900, 22),
+                  _sel < 0 ? "1~5 또는 클릭으로 캐릭터 선택 · 자동 전투 중"
+                           : $"[{_party[_sel].Job}] 선택됨 — 우클릭으로 이동 지시 · 0으로 해제", _cmdLabel);
+
+        if (_sel < 0 || !_party[_sel].Alive) return;
+
+        // 선택한 캐릭터의 고유 스킬 — 지금은 쿨다운을 0으로 만들어 **즉시 발동**시킨다.
+        // 실제 발동 판정은 TickParty의 직업 로직이 갖고 있으므로, 여기서 조건을 복제하지 않는다
+        // (같은 규칙을 두 곳에 두면 반드시 어긋난다 — 이 저장소가 반복해서 겪은 실패다).
+        var sel = _party[_sel];
+        string skill = sel.Job switch
+        {
+            Job.수호기사 => "도발의 함성",
+            Job.검사 => "일섬(연격 5)",
+            Job.마법사 => "화염폭풍",
+            Job.사제 => "기적",
+            _ => "악장 전환",
+        };
+        float bx = 16f + _party.Length * 132f + 24f;
+        GUI.enabled = sel.SkillCd <= 0f;
+        if (GUI.Button(new Rect(bx, y, 190, 34),
+                       sel.SkillCd > 0f ? $"{skill} ({sel.SkillCd:F1}s)" : skill, _cmdBtn))
+            sel.SkillCd = 0f;
+        GUI.enabled = true;
     }
 
     void Finish()
