@@ -104,6 +104,18 @@ public class W3Party : MonoBehaviour
     SpriteRenderer _tauntRing, _stormRing;
     float _stormUntil; Vector2 _stormAt; float _stormR;
 
+    // 단색 사각형용 1×1 텍스처 캐시. IMGUI로 카드·바를 그리려면 색마다 텍스처가 필요하다.
+    static readonly System.Collections.Generic.Dictionary<Color, Texture2D> _tints = new();
+    static Texture2D Tint(Color c)
+    {
+        if (_tints.TryGetValue(c, out var t) && t != null) return t;
+        t = new Texture2D(1, 1);
+        t.SetPixel(0, 0, c);
+        t.Apply();
+        _tints[c] = t;
+        return t;
+    }
+
     static Texture2D _scrimTex;
     static Texture2D Scrim()
     {
@@ -138,6 +150,24 @@ public class W3Party : MonoBehaviour
         fg.sprite = bank.White; fg.sharedMaterial = bank.Mat;
         fg.color = new Color(0.35f, 0.85f, 0.4f);
         fg.sortingOrder = 901;
+    }
+
+    /// <summary>
+    /// 아틀라스 스프라이트에서 **캐릭터 몸통만** 잘라내는 UV.
+    ///
+    /// 스프라이트 캔버스에는 이펙트 여백이 많아(416×297에 캐릭터는 150px 남짓)
+    /// 통째로 그리면 초상화가 깨알만 해진다. Sprite는 pivot(= 발밑)과 pixelsPerUnit을
+    /// 들고 있으므로 몸통 영역을 역산할 수 있다: 높이 = 화면 목표 유닛 × PPU.
+    /// </summary>
+    static Rect PortraitUV(Sprite sp)
+    {
+        const float CHAR_UNITS = 2.0f;           // SpriteBank의 U_CHAR와 같은 값
+        float h = CHAR_UNITS * sp.pixelsPerUnit;
+        float w = h * 0.78f;
+        float cx = sp.rect.x + sp.pivot.x;
+        float y0 = sp.rect.y + sp.pivot.y - h * 0.04f;   // 발밑을 살짝 포함
+        var t = sp.texture;
+        return new Rect((cx - w * 0.5f) / t.width, y0 / t.height, w / t.width, h / t.height);
     }
 
     /// <summary>스킬 범위 링 하나. 바닥에 눕혀 그리므로 세로를 ISO_Y로 누른다.</summary>
@@ -709,6 +739,10 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < _party.Length && i < 5; i++)
             if (Input.GetKeyDown(KeyCode.Alpha1 + i) && _party[i].Alive) _sel = i;
         if (Input.GetKeyDown(KeyCode.Alpha0)) _sel = -1;
+
+        // 스페이스 = 선택한 캐릭터의 고유 스킬. 마우스를 안 떼고 쓸 수 있어야 지휘가 빠르다(§5)
+        if (Input.GetKeyDown(KeyCode.Space) && _sel >= 0 && _party[_sel].Alive)
+            _party[_sel].SkillCd = 0f;
 
         var cam = Camera.main;
         if (cam == null) return;
@@ -1298,21 +1332,65 @@ public class W3Party : MonoBehaviour
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
         { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
 
-        float y = Screen.height - 92f, x = 16f;
-        // 지휘 바 전체에 판을 깔아 버튼·안내 문구가 바닥 위에서도 읽히게 한다
-        GUI.DrawTexture(new Rect(0, y - 34f, Screen.width, 100f), Scrim());
+        // ── 파티 목록 (인게임 캐릭터 선택) ──
+        // 이름만 있는 버튼으로는 누가 누군지, 누가 위험한지 한눈에 안 들어온다.
+        // 초상화 + HP + 목숨을 함께 보여야 §5의 "판을 읽고 지휘한다"가 가능해진다.
+        const float CW = 132f, CH = 96f, GAP = 6f;
+        float total = _party.Length * CW + (_party.Length - 1) * GAP;
+        float x = Mathf.Max(16f, (Screen.width - total) * 0.5f);
+        float y = Screen.height - CH - 34f;
+
+        GUI.DrawTexture(new Rect(0, y - 30f, Screen.width, CH + 64f), Scrim());
+
+        var bank = SpriteBank.Cached;
         for (int i = 0; i < _party.Length; i++)
         {
             var m = _party[i];
+            var card = new Rect(x + i * (CW + GAP), y, CW, CH);
+            bool picked = _sel == i;
+
+            // 선택 표시 — 테두리를 밝게
+            if (picked) GUI.DrawTexture(new Rect(card.x - 3, card.y - 3, card.width + 6, card.height + 6),
+                                        Tint(new Color(1f, 0.82f, 0.35f, 0.95f)));
+            GUI.DrawTexture(card, Tint(m.Alive ? new Color(.10f, .11f, .15f, .95f)
+                                               : new Color(.22f, .07f, .07f, .95f)));
+
+            // 초상화 — 아틀라스에서 몸통만 잘라 그린다
+            var sp = bank?.Char(ArtOf(m.Role));
+            if (sp != null)
+            {
+                var uv = PortraitUV(sp);
+                var pr = new Rect(card.x + 6, card.y + 4, 52, 66);
+                GUI.color = m.Alive ? Color.white : new Color(1f, .6f, .6f, .55f);
+                GUI.DrawTextureWithTexCoords(pr, sp.texture, uv);
+                GUI.color = Color.white;
+            }
+
+            GUI.Label(new Rect(card.x + 62, card.y + 6, CW - 66, 20), $"{i + 1}.{m.Job}", _cmdLabel);
+
+            // HP 바 — 숫자보다 길이가 빨리 읽힌다
+            float ratio = m.Alive ? Mathf.Clamp01(m.Hp / m.MaxHp) : 0f;
+            var bar = new Rect(card.x + 62, card.y + 30, CW - 70, 10);
+            GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height),
+                            Tint(ratio > .5f ? new Color(.35f, .85f, .4f)
+                               : ratio > .25f ? new Color(.95f, .78f, .3f)
+                                              : new Color(.9f, .3f, .3f)));
+            GUI.Label(new Rect(card.x + 62, card.y + 42, CW - 66, 18),
+                      m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
+
+            // 명령 상태 — 이동 지시가 걸려 있으면 표시
+            if (m.Order.HasValue)
+                GUI.Label(new Rect(card.x + 6, card.y + CH - 24, CW - 12, 20), "▶ 이동 중", _cmdLabel);
+
             GUI.enabled = m.Alive;
-            string tag = (_sel == i ? "▶ " : "") + $"{i + 1}.{m.Job}";
-            if (GUI.Button(new Rect(x, y, 128, 34), tag, _cmdBtn)) _sel = (_sel == i ? -1 : i);
+            if (GUI.Button(new Rect(card.x, card.y, card.width, card.height), GUIContent.none, GUIStyle.none))
+                _sel = picked ? -1 : i;
             GUI.enabled = true;
-            x += 132;
         }
 
-        GUI.Label(new Rect(16, y - 24, 900, 22),
-                  _sel < 0 ? "1~5 또는 클릭으로 캐릭터 선택 · 자동 전투 중"
+        GUI.Label(new Rect(16, y - 26, 1200, 22),
+                  _sel < 0 ? "카드를 클릭하거나 1~5 키로 캐릭터 선택 — 자동 전투 중"
                            : $"[{_party[_sel].Job}] 선택됨 — 우클릭으로 이동 지시 · 0으로 해제", _cmdLabel);
 
         if (_sel < 0 || !_party[_sel].Alive) return;
@@ -1329,10 +1407,10 @@ public class W3Party : MonoBehaviour
             Job.사제 => "기적",
             _ => "악장 전환",
         };
-        float bx = 16f + _party.Length * 132f + 24f;
+        // 스킬 버튼은 카드 줄 **위**에 둔다 — 카드와 겹치면 선택 클릭과 충돌한다
         GUI.enabled = sel.SkillCd <= 0f;
-        if (GUI.Button(new Rect(bx, y, 190, 34),
-                       sel.SkillCd > 0f ? $"{skill} ({sel.SkillCd:F1}s)" : skill, _cmdBtn))
+        if (GUI.Button(new Rect(Screen.width * 0.5f - 110f, y - 62f, 220, 32),
+                       sel.SkillCd > 0f ? $"{skill}  ({sel.SkillCd:F1}s)" : $"{skill}  [스페이스]", _cmdBtn))
             sel.SkillCd = 0f;
         GUI.enabled = true;
     }
