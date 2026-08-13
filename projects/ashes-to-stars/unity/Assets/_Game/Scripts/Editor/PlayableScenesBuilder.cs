@@ -38,6 +38,15 @@ public static class PlayableScenesBuilder
     [MenuItem("재와별/플레이 씬 생성", priority = 2)]
     public static void Build()
     {
+        // 플레이 중에는 EditorSceneManager.NewScene이 예외를 던진다(유니티 제약).
+        // 메뉴는 눌리는데 콘솔에만 빨간 줄이 뜨므로, 무엇을 해야 하는지 먼저 알린다.
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            EditorUtility.DisplayDialog("재와 별",
+                "플레이 중에는 씬을 만들 수 없다.\n\nPlay를 멈춘 뒤 다시 실행할 것.", "확인");
+            return;
+        }
+
         if (!Directory.Exists(DIR)) Directory.CreateDirectory(DIR);
 
         var paths = new List<string>();
