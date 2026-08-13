@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 370dd864a33e79b43be08393c78920fe, type: 3}
+  m_Name: "Race_\uC5D8\uD504"
+  m_EditorClassIdentifier: 
+  Id: 1
+  "\uC815\uCCB4\uC131": "\uC8FD\uC9C0 \uC54A\uC73C\uB824 \uC6C0\uC9C1\uC774\uB294
+    \uC720\uB9AC\uB300\uD3EC"
+  "\uACBD\uD5D8\uCE58\uBC30\uC728": 1
+  "\uC804\uC9C1\uC7AC\uB8CC\uBC30\uC728": 1
+  "\uC774\uC18D\uBC30\uC728": 1
+  "\uCCB4\uB825\uBC30\uC728": 0.85
+  "\uBC29\uC5B4\uBC30\uC728": 0.8
+  "\uD68C\uBCF5\uC2DC\uAC04": 24
+  "\uC601\uC9C0\uC0DD\uC0B0\uBC30\uC728": 1
+  "\uB4DC\uB78D\uB960\uBC30\uC728": 1
+  "\uACBD\uB9E4\uC218\uC218\uB8CC": 10
+  "\uACE0\uC720\uBA54\uCEE4\uB2C8\uC998": "\uBC14\uB78C\uC758 \uC778\uB3C4 \u2014
+    \uC774\uB3D9 \uC911 \uD68C\uD53C +15%, \uC6D4\uB4DC\uB9F5 \uD0D0\uD5D8 \uBC94\uC704
+    +30%"
+  "\uACE0\uC720\uBC1C\uB3D9\uD655\uB960": 0.15
+  "\uC804\uD22C\uB2F9\uBC1C\uB3D9": 1

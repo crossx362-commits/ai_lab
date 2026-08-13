@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: GameBalance
+  m_EditorClassIdentifier: Assembly-CSharp:AshesToStars:BalanceConfig
+  "\uD2F0\uC5B41\uC2DC\uAC04\uB2F9\uACE8\uB4DC": 1
+  "\uD2F0\uC5B4\uBC30\uC728": 1.6
+  "\uC2A4\uCF00\uC77C\uB9C1\uACC4\uC218": 0.65
+  "\uC18C\uAC01\uBAA9\uD45C": {x: 45, y: 55}
+  "\uD50C\uB808\uC774\uC5B4\uC774\uB3D9\uC18D\uB3C4": 4.2
+  "\uC0AC\uB9DD\uC0C1\uD55C": 3
+  "PvE\uD68C\uBCF5\uC2DC\uAC04": 24
+  "PvP\uD68C\uBCF5\uC2DC\uAC04": 12
+  "\uBD80\uD65C\uCD08\uC18C\uC9C0\uC0C1\uD55C": 3
+  "\uC7A1\uBAB9\uC0C1\uD55C": 500
+  "\uC18C\uD658\uC218\uC0C1\uD55C": 50
+  "\uD22C\uC0AC\uCCB4\uC0C1\uD55C": 200
+  ISO_Y: 0.5

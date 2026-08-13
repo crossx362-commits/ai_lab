@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: "Job_\uC218\uD638\uAE30\uC0AC"
+  m_EditorClassIdentifier: Assembly-CSharp:AshesToStars:JobDef
+  "\uC9C1\uC5C5\uBA85": "\uC218\uD638\uAE30\uC0AC"
+  "\uC5ED\uD560": 0
+  "\uCEE8\uC149": "\uC815\uD1B5 \uBC29\uD328\uD0F1"
+  "\uACE0\uC720\uBA54\uCEE4\uB2C8\uC998": "\uC218\uD638 \uAC8C\uC774\uC9C0 \u2014
+    \uD53C\uACA9\xB7\uBCF4\uD638\uB85C \uCD95\uC801, \uC18C\uBAA8\uD574 \uBCF4\uD638\uB9C9"
+  "\uCD5C\uB300\uCCB4\uB825": 320
+  "\uACF5\uACA9\uB825": 10
+  "\uC0AC\uAC70\uB9AC": 1.3
+  "\uACF5\uACA9\uAC04\uACA9": 0.7
+  "\uC774\uB3D9\uAE30\uD615\uD0DC": "\uBC29\uD328 \uB3CC\uC9C4"
+  "\uBB34\uC801\uC2DC\uAC04": 0.3
+  "\uC774\uB3D9\uAE30\uCFE8": 6
+  "\uC774\uB3D9\uAE30\uAC70\uB9AC": 3
+  "\uC2A4\uD0AC":
+  - "\uC774\uB984": "\uB3C4\uBC1C\uC758 \uD568\uC131"
+    "\uC124\uBA85": "\uAD11\uC5ED \uC5B4\uADF8\uB85C 3\uCD08 \u2014 \uC6D0\uAC70\uB9AC
+      \uBAB9\uAE4C\uC9C0 \uB048\uB2E4"
+    "\uCFE8\uB2E4\uC6B4": 6
+    "\uC704\uB825\uBC30\uC728": 0
+    "\uBC18\uACBD": 4.5
+    "\uC790\uC6D0\uC18C\uBAA8": 0
+    "\uCD08\uD544\uC0B4\uAE30": 0
+  - "\uC774\uB984": "\uC131\uCC44 \uBC29\uD328"
+    "\uC124\uBA85": "\uAC8C\uC774\uC9C0 60 \uC18C\uBAA8, \uD30C\uD2F0 \uBCF4\uD638\uB9C9
+      40"
+    "\uCFE8\uB2E4\uC6B4": 0
+    "\uC704\uB825\uBC30\uC728": 0
+    "\uBC18\uACBD": 8
+    "\uC790\uC6D0\uC18C\uBAA8": 60
+    "\uCD08\uD544\uC0B4\uAE30": 0
+  - "\uC774\uB984": "\uCD5C\uD6C4\uC758 \uBCF4\uB8E8"
+    "\uC124\uBA85": "3\uCD08\uAC04 HP 1 \uBBF8\uB9CC\uC73C\uB85C \uC548 \uB5A8\uC5B4\uC9D0"
+    "\uCFE8\uB2E4\uC6B4": 40
+    "\uC704\uB825\uBC30\uC728": 0
+    "\uBC18\uACBD": 0
+    "\uC790\uC6D0\uC18C\uBAA8": 0
+    "\uCD08\uD544\uC0B4\uAE30": 0
+  "\uC0AC\uB9DD\uB9AC\uC2A4\uD06C": "\uCD5C\uC800"
+  "\uC790\uB3D9\uC0AC\uB0E5\uC801\uD569\uB3C4": 0.35

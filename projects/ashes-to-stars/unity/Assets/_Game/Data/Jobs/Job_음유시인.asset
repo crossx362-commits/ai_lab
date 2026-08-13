@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: "Job_\uC74C\uC720\uC2DC\uC778"
+  m_EditorClassIdentifier: Assembly-CSharp:AshesToStars:JobDef
+  "\uC9C1\uC5C5\uBA85": "\uC74C\uC720\uC2DC\uC778"
+  "\uC5ED\uD560": 3
+  "\uCEE8\uC149": "\uC624\uB77C \uC99D\uD3ED\uAE30"
+  "\uACE0\uC720\uBA54\uCEE4\uB2C8\uC998": "\uC545\uC7A5 \uC804\uD658 \u2014 \uC9C4\uAD70\uAC00/\uC218\uD638\uAC00/\uC9C8\uC8FC\uAC00
+    \uC0C1\uC2DC \uC5F0\uC8FC"
+  "\uCD5C\uB300\uCCB4\uB825": 150
+  "\uACF5\uACA9\uB825": 8
+  "\uC0AC\uAC70\uB9AC": 6.5
+  "\uACF5\uACA9\uAC04\uACA9": 0.7
+  "\uC774\uB3D9\uAE30\uD615\uD0DC": "\uC9E7\uC740 \uC2A4\uD15D"
+  "\uBB34\uC801\uC2DC\uAC04": 0.3
+  "\uC774\uB3D9\uAE30\uCFE8": 6
+  "\uC774\uB3D9\uAE30\uAC70\uB9AC": 3
+  "\uC2A4\uD0AC":
+  - "\uC774\uB984": "\uC9C4\uAD70\uAC00"
+    "\uC124\uBA85": "\uD30C\uD2F0 \uACF5\uACA9 +15%"
+    "\uCFE8\uB2E4\uC6B4": 0
+    "\uC704\uB825\uBC30\uC728": 0
+    "\uBC18\uACBD": 8
+    "\uC790\uC6D0\uC18C\uBAA8": 0
+    "\uCD08\uD544\uC0B4\uAE30": 0
+  - "\uC774\uB984": "\uC218\uD638\uAC00"
+    "\uC124\uBA85": "\uD30C\uD2F0 \uD53C\uD574 -18%"
+    "\uCFE8\uB2E4\uC6B4": 0
+    "\uC704\uB825\uBC30\uC728": 0
+    "\uBC18\uACBD": 8
+    "\uC790\uC6D0\uC18C\uBAA8": 0
+    "\uCD08\uD544\uC0B4\uAE30": 0
+  - "\uC774\uB984": "\uD53C\uB0A0\uB808"
+    "\uC124\uBA85": "\uD604\uC7AC \uC545\uC7A5 \uD6A8\uACFC \uD3ED\uBC1C"
+    "\uCFE8\uB2E4\uC6B4": 25
+    "\uC704\uB825\uBC30\uC728": 1.5
+    "\uBC18\uACBD": 6
+    "\uC790\uC6D0\uC18C\uBAA8": 0
+    "\uCD08\uD544\uC0B4\uAE30": 0
+  "\uC0AC\uB9DD\uB9AC\uC2A4\uD06C": "\uB0AE\uC74C"
+  "\uC790\uB3D9\uC0AC\uB0E5\uC801\uD569\uB3C4": 0.25
