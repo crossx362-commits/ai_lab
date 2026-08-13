@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 0}
-  m_Name: "Elite_\uC18C\uD658\uC220\uC0AC"
+  m_Name: Elite_summoner
   m_EditorClassIdentifier: Assembly-CSharp:AshesToStars:MobDef
   "\uC774\uB984": "\uC815\uC608_\uC18C\uD658\uC220\uC0AC"
   AI: 0

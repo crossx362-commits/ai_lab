@@ -21,7 +21,10 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "source_sheets")
-OUT = os.path.abspath(os.path.join(HERE, "..", "unity", "Assets", "_Game", "Art", "Sprites"))
+# 스프라이트는 unity/Assets/Resources/sprites/ 아래에만 저장된다.
+# Resources.Load(path)는 Assets/Resources/ 밖을 못 읽어서,
+# 예전 경로(Assets/_Game/Art/Sprites)의 스프라이트들은 로드되지 않았다.
+OUT = os.path.abspath(os.path.join(HERE, "..", "unity", "Assets", "Resources", "sprites"))
 
 # 배경은 "어두운 색"이 아니라 **특정 색**이다.
 # 실측(2026-08-13): 시트 배경 = 밝기 13 안팎의 짙은 회색.
@@ -35,13 +38,24 @@ GAP_MIN = 6          # 셀 안에서 이만큼 연속으로 비면 프레임 경
 PAD = 2              # 잘라낸 뒤 남길 여백(px)
 
 SHEETS = {
-    "sheet3_character_design.png": {          # 실제 내용: 기본형 6상태 모션표
+    "sheet3_character_design.png": {
+        # 레거시 한글 명칭 — 기존 32장 보존용. 재생성 금지.
         "직업": ["탱커", "딜러", "힐러", "버퍼"],
         "상태": ["대기", "이동", "공격", "특수", "피격", "사망"],
-        # 칸마다 프레임이 몇 개인지 시트를 보고 적는다.
-        # 간격 자동 감지는 공격(칼 궤적이 두 포즈를 잇는다)에서 1개로 뭉치고
-        # 사망(떨어진 무기가 떨어져 있다)에서 2개로 갈렸다 — 눈으로 센 값이 정확하다.
         "프레임수": {"대기": 1, "이동": 2, "공격": 2, "특수": 1, "피격": 1, "사망": 1},
+    },
+    "sheet4_dash.png": {
+        # 2026-08-13 오너 제공. 이동기 동작(Dash, Invuln) 시각화.
+        # 시트 구조:
+        #   행: 탱, 근접딜, 원거리딜, 힐/버퍼 (4개)
+        #   열: 아이콘(건너뜀), 텍스트(건너뜀), 프레임1~4, 무적이펙트 (7개, 맨 앞 2개 제외하면 5개)
+        # skip 이후의 상대 인덱스:
+        #   0: 프레임1  1: 프레임2  2: 프레임3  3: 프레임4  4: 무적이펙트
+        "role": ["tank", "dps", "ranged", "healer"],
+        "frame_cols": [0, 1, 2, 3],  # skip 이후 열 인덱스 (프레임 4개)
+        "invuln_col": 4,  # skip 이후 열 인덱스 (무적 1개)
+        "skip_rows": 1,  # 첫 행(헤더) 건너뜀
+        "skip_cols": 2,  # 첫 2열(아이콘, 텍스트) 건너뜀
     },
 }
 
@@ -248,17 +262,172 @@ def process(path, spec):
     return total
 
 
+def process_sheet4(path, spec):
+    """
+    sheet4_dash.png 처리.
+
+    중요: 한 직업군(행)의 모든 프레임은 같은 크기여야 한다.
+    그렇지 않으면 유니티에서 pivot 고정 시 프레임마다 캐릭터가 튄다.
+
+    절차:
+    1. 각 셀의 내용물 바운딩 박스 구하기
+    2. 행별로 최대 폭·높이 찾기 → 공통 캔버스 크기 정하기
+    3. 각 프레임을 공통 캔버스에 배치:
+       - 가로: 내용물 중심을 캔버스 중앙에
+       - 세로: 내용물 바닥을 캔버스 바닥에 (발이 땅에 붙어 보이게)
+    """
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    print(f"\n[시트] {os.path.basename(path)}  {w}x{h}")
+
+    xs = find_lines(im, 0)
+    ys = find_lines(im, 1)
+    print(f"  격자선: 세로 {len(xs)}개 / 가로 {len(ys)}개")
+
+    roles = spec["role"]
+    frame_cols = spec["frame_cols"]
+    invuln_col = spec["invuln_col"]
+    skip_rows = spec["skip_rows"]
+    skip_cols = spec["skip_cols"]
+
+    xs = [0] + xs + [w]
+    ys = [0] + ys + [h]
+
+    need_cols = len(frame_cols) + 1 + skip_cols + 1
+    need_rows = len(roles) + skip_rows + 1
+    if len(xs) < need_cols or len(ys) < need_rows:
+        print(f"  ✗ 격자 감지 실패 — 행 경계 {len(ys)}/{need_rows}, 열 경계 {len(xs)}/{need_cols}")
+        return 0
+
+    total = 0
+    for r, role in enumerate(roles):
+        y0, y1 = ys[skip_rows + r] + 2, ys[skip_rows + r + 1] - 2
+
+        # 단계 1: 이 행의 모든 dash 프레임 바운딩 박스 수집
+        dash_bboxes = []
+        for col_idx in frame_cols:
+            x0, x1 = xs[skip_cols + col_idx] + 2, xs[skip_cols + col_idx + 1] - 2
+            if x1 > x0 and y1 > y0:
+                cell = content_bbox(im, x0, y0, x1, y1)
+                if cell is not None:
+                    dash_bboxes.append(cell)
+                else:
+                    dash_bboxes.append(None)
+            else:
+                dash_bboxes.append(None)
+
+        # 단계 2: Dash 캔버스 크기 결정 (모든 dash 프레임이 들어가는 최소 크기)
+        if any(b is not None for b in dash_bboxes):
+            dash_widths = [(b[2] - b[0] + 1) for b in dash_bboxes if b is not None]
+            dash_heights = [(b[3] - b[1] + 1) for b in dash_bboxes if b is not None]
+            canvas_w = max(dash_widths) + PAD * 2
+            canvas_h = max(dash_heights) + PAD * 2
+        else:
+            canvas_w, canvas_h = 64, 64  # 폴백
+
+        d = os.path.join(OUT, role)
+        os.makedirs(d, exist_ok=True)
+
+        # 단계 3: 각 dash 프레임을 캔버스에 배치해 저장
+        for frame_idx, (col_idx, bbox) in enumerate(zip(frame_cols, dash_bboxes)):
+            if bbox is None:
+                continue
+
+            cx0, cy0, cx1, cy1 = bbox
+            content_w = cx1 - cx0 + 1
+            content_h = cy1 - cy0 + 1
+
+            # 캔버스 안에서 프레임 배치
+            # 세로: 바닥 정렬 (cy1이 canvas_h - PAD와 같아야 함)
+            canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+            crop = im.crop((max(0, cx0 - PAD), max(0, cy0 - PAD),
+                            min(w, cx1 + PAD + 1), min(h, cy1 + PAD + 1)))
+            crop = make_transparent(crop)
+
+            # 캔버스에 페이스트할 위치 계산
+            # 가로: 중심 정렬
+            paste_x = (canvas_w - crop.width) // 2
+            # 세로: 바닥 정렬
+            paste_y = canvas_h - crop.height
+
+            canvas.paste(crop, (paste_x, paste_y), crop)
+
+            out = os.path.join(d, f"{role}_dash_{frame_idx:02d}.png")
+            canvas.save(out)
+            total += 1
+
+        # 단계 4: Invuln 프레임 (dash와는 별도 크기 그룹)
+        col_idx = invuln_col
+        x0, x1 = xs[skip_cols + col_idx] + 2, xs[skip_cols + col_idx + 1] - 2
+        if x1 > x0 and y1 > y0:
+            cell = content_bbox(im, x0, y0, x1, y1)
+            if cell is not None:
+                cx0, cy0, cx1, cy1 = cell
+                content_w = cx1 - cx0 + 1
+                content_h = cy1 - cy0 + 1
+
+                # invuln용 캔버스 (타이트하게, 여유 2px)
+                invuln_w = content_w + PAD * 2
+                invuln_h = content_h + PAD * 2
+                canvas = Image.new("RGBA", (invuln_w, invuln_h), (0, 0, 0, 0))
+
+                crop = im.crop((max(0, cx0 - PAD), max(0, cy0 - PAD),
+                                min(w, cx1 + PAD + 1), min(h, cy1 + PAD + 1)))
+                crop = make_transparent(crop)
+
+                # invuln도 바닥 정렬 (발밑이 같은 비율에 오도록)
+                paste_x = (invuln_w - crop.width) // 2
+                paste_y = invuln_h - crop.height
+
+                canvas.paste(crop, (paste_x, paste_y), crop)
+
+                out = os.path.join(d, f"{role}_invuln_00.png")
+                canvas.save(out)
+                total += 1
+
+        print(f"  {role}: dash {canvas_w}x{canvas_h} (4장) + invuln (1장)")
+
+    # Buffer는 healer의 sheet4 파일만 복사 (dash + invuln, 레거시 제외)
+    healer_dir = os.path.join(OUT, "healer")
+    buffer_dir = os.path.join(OUT, "buffer")
+    if os.path.isdir(healer_dir):
+        os.makedirs(buffer_dir, exist_ok=True)
+        import shutil
+        for fname in os.listdir(healer_dir):
+            # sheet4에서 생성된 파일만: healer_dash_* 또는 healer_invuln_*
+            if fname.startswith("healer_") and ("_dash_" in fname or "_invuln_" in fname):
+                src = os.path.join(healer_dir, fname)
+                new_fname = fname.replace("healer_", "buffer_")
+                dst = os.path.join(buffer_dir, new_fname)
+                shutil.copy2(src, dst)
+        print(f"  buffer: healer sheet4 파일 복사 완료 (5장)")
+        total += 5
+
+    return total
+
+
 def main():
     if not os.path.isdir(SRC):
         print(f"원본시트 폴더가 없다: {SRC}")
         return 1
+
+    # 이번 세션에서는 sheet4만 처리 (기존 32장 보존)
+    target = "sheet4_dash.png"
+
     grand = 0
-    for name, spec in SHEETS.items():
-        p = os.path.join(SRC, name)
-        if not os.path.isfile(p):
-            print(f"건너뜀(없음): {name}")
-            continue
-        grand += process(p, spec)
+    if target in SHEETS:
+        p = os.path.join(SRC, target)
+        if os.path.isfile(p):
+            spec = SHEETS[target]
+            if "role" in spec:  # sheet4 형식 판별
+                grand += process_sheet4(p, spec)
+            else:
+                grand += process(p, spec)
+        else:
+            print(f"파일이 없다: {target}")
+    else:
+        print(f"SHEETS에 정의되지 않음: {target}")
+
     print(f"\n[분할] 총 {grand}장 → {OUT}")
     return 0
 

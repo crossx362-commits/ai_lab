@@ -10,6 +10,8 @@ public class SpriteBank
 
     public Material Mat;
     public Sprite Player, Summon, Projectile, Ground;
+    /// <summary>체력바 등 단색 사각형용 흰 1유닛 스프라이트. 색은 SpriteRenderer.color로 준다.</summary>
+    public Sprite White;
     Sprite[] _mobs;
 
     public Sprite Mob(int i) => _mobs[Mathf.Clamp(i, 0, _mobs.Length - 1)];

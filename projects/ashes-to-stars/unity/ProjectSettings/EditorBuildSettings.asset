@@ -4,6 +4,30 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Title.unity
+    guid: 232d110c79cd4394786e83d5671b96c7
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Estate.unity
+    guid: 9d32f0ada53614e4c9116067e150ed17
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Field.unity
+    guid: 0fd1145f395fbea449d8b379e4b4c119
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Tower.unity
+    guid: 35480e14972e49745b09928ae52a2079
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/WorldMap.unity
+    guid: 9ee9b16a261d6094ca89991a44e347fa
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Character.unity
+    guid: 44c6a30b8c7c0444a9a7e5be7a16af13
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Battle.unity
+    guid: d6a747eb2f65ac74692c6f0b3ff84fa3
+  - enabled: 1
+    path: Assets/_Game/Scenes/Play/Result.unity
+    guid: 1d8497b097cc3fb40b756f5eeab4e9b0
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

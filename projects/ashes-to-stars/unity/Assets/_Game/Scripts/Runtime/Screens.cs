@@ -118,7 +118,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            GUI.Label(new Rect(r.x, r.y, 600, 24), $"경과 {_t:F1}s");
+            Info(r, 0, $"경과 {_t:F1}s");
             if (Row(r, 1, "승리 처리", "결과 화면으로"))
             {
                 GameFlow.LastBattleSummary = $"승리 — {_t:F1}초";
@@ -142,8 +142,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            GUI.Label(new Rect(r.x, r.y, 800, 26),
-                      string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "-" : GameFlow.LastBattleSummary);
+            Info(r, 0, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
             if (Row(r, 1, "계속", "들어온 화면으로 복귀")) GameFlow.Go(GameFlow.ReturnTo);
             if (Row(r, 2, "영지로", "허브 복귀(§16)")) GameFlow.Go(GameFlow.Estate);
         }

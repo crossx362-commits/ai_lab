@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 370dd864a33e79b43be08393c78920fe, type: 3}
+  m_Name: "Race_\uC218\uC778"
+  m_EditorClassIdentifier: Assembly-CSharp::AshesToStars.RaceDef
+  Id: 3
+  "\uC815\uCCB4\uC131": "\uBA3C\uC800 \uB36E\uCE58\uACE0 \uBA3C\uC800 \uBE60\uC9C0\uB294
+    \uC0AC\uB0E5\uAFBC"
+  "\uACBD\uD5D8\uCE58\uBC30\uC728": 1
+  "\uC804\uC9C1\uC7AC\uB8CC\uBC30\uC728": 1
+  "\uC774\uC18D\uBC30\uC728": 1
+  "\uCCB4\uB825\uBC30\uC728": 1
+  "\uBC29\uC5B4\uBC30\uC728": 1
+  "\uD68C\uBCF5\uC2DC\uAC04": 24
+  "\uC601\uC9C0\uC0DD\uC0B0\uBC30\uC728": 0.8
+  "\uB4DC\uB78D\uB960\uBC30\uC728": 1.15
+  "\uACBD\uB9E4\uC218\uC218\uB8CC": 10
+  "\uACE0\uC720\uBA54\uCEE4\uB2C8\uC998": "\uC57C\uC131 \uAC10\uAC01 \u2014 \uCE58\uBA85
+    \uD53C\uD574 \uC9C1\uC804 2\uCD08 \uC774\uC18D +50% (\uC804\uD22C\uB2F9 1\uD68C)"
+  "\uACE0\uC720\uBC1C\uB3D9\uD655\uB960": 1
+  "\uC804\uD22C\uB2F9\uBC1C\uB3D9": 1

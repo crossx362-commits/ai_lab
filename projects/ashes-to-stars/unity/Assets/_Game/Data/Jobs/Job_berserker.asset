@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 0}
-  m_Name: "Job_\uAD11\uC804\uC0AC"
+  m_Name: Job_berserker
   m_EditorClassIdentifier: Assembly-CSharp:AshesToStars:JobDef
   "\uC9C1\uC5C5\uBA85": "\uAD11\uC804\uC0AC"
   "\uC5ED\uD560": 0

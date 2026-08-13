@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 0}
-  m_Name: "Job_\uC0AC\uC81C"
+  m_Name: Job_priest
   m_EditorClassIdentifier: Assembly-CSharp:AshesToStars:JobDef
   "\uC9C1\uC5C5\uBA85": "\uC0AC\uC81C"
   "\uC5ED\uD560": 2
