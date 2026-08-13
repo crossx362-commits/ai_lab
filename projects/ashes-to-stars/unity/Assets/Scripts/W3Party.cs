@@ -67,6 +67,12 @@ public class W3Party : MonoBehaviour
 
         /// <summary>수동 이동 명령 목적지(§5). 있으면 AI 판단을 덮는다.</summary>
         public Vector2? Order;
+        /// <summary>
+        /// 강제 발동할 스킬 슬롯(0=없음, 1·2). 버튼을 누르면 세워지고 발동하면 0으로 돌아간다.
+        /// 쿨다운만 0으로 만드는 방식은 **조건이 안 맞으면 아무 일도 안 일어나** 눌러도 반응이 없다 —
+        /// 지휘가 성립하려면 "눌렀는데 왜 안 나가지"가 없어야 한다(§5).
+        /// </summary>
+        public int ForceSkill;
         /// <summary>명령 지점 표시(땅에 찍히는 점)</summary>
         public SpriteRenderer Marker;
     }
@@ -740,9 +746,12 @@ public class W3Party : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.Alpha1 + i) && _party[i].Alive) _sel = i;
         if (Input.GetKeyDown(KeyCode.Alpha0)) _sel = -1;
 
-        // 스페이스 = 선택한 캐릭터의 고유 스킬. 마우스를 안 떼고 쓸 수 있어야 지휘가 빠르다(§5)
-        if (Input.GetKeyDown(KeyCode.Space) && _sel >= 0 && _party[_sel].Alive)
-            _party[_sel].SkillCd = 0f;
+        // 스페이스 = 1번 스킬, Q = 2번 스킬. 마우스를 안 떼고 쓸 수 있어야 지휘가 빠르다(§5)
+        if (_sel >= 0 && _party[_sel].Alive)
+        {
+            if (Input.GetKeyDown(KeyCode.Space)) _party[_sel].ForceSkill = 1;
+            if (Input.GetKeyDown(KeyCode.Q)) _party[_sel].ForceSkill = 2;
+        }
 
         var cam = Camera.main;
         if (cam == null) return;
@@ -804,17 +813,21 @@ public class W3Party : MonoBehaviour
                 }
                 m.Gauge = Mathf.Min(100f, m.Gauge + dt * 14f);   // 피격·보호로 축적(단순화)
 
-                if (_tauntEnabled && m.SkillCd <= 0f && CountMobsNear(m.Pos, 4.5f) >= 3)
+                // 강제 발동(버튼)이면 조건을 건너뛴다 — 지휘는 "지금" 쓰는 것이다
+                bool force1 = m.ForceSkill == 1, force2 = m.ForceSkill == 2;
+                if (_tauntEnabled && (force1 || (m.SkillCd <= 0f && CountMobsNear(m.Pos, 4.5f) >= 3)))
                 {
+                    if (force1) m.ForceSkill = 0;
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
                     m.SkillCd = 6f; m.Threat += 80f; _tauntUses++;
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
                     _skillLog[0]++;
                     FlashParty();                                 // 발동 순간을 눈에 띄게
                 }
-                if (m.Gauge >= 60f)
+                if (force2 || m.Gauge >= 60f)
                 {
                     // ② 성채 방패 — 게이지를 소모해 파티 전체에 보호막
+                    if (force2) m.ForceSkill = 0;
                     m.Gauge = 0f;
                     foreach (var o in _party)
                         if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f);
@@ -928,7 +941,12 @@ public class W3Party : MonoBehaviour
                 // 악장 전환 — 위급하면 수호가, 아니면 진군가 (§3 고유 메커니즘)
                 float worstRatio = 1f;
                 foreach (var o in _party) if (o.Alive) worstRatio = Mathf.Min(worstRatio, o.Hp / o.MaxHp);
-                var wantChant = worstRatio < 0.45f ? Chant.수호가 : Chant.진군가;
+                // 버튼으로 악장을 직접 고를 수 있다 — §3이 "전환이 곧 운영"이라 한 부분이라
+                // 자동 판단만 두면 버퍼의 조작 여지가 사라진다.
+                var wantChant = m.ForceSkill == 1 ? Chant.진군가
+                              : m.ForceSkill == 2 ? Chant.수호가
+                              : (worstRatio < 0.45f ? Chant.수호가 : Chant.진군가);
+                if (m.ForceSkill != 0) m.ForceSkill = 0;
                 if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; }
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
                 m.Cd = 0.8f; m.Threat += 3f;
@@ -954,16 +972,19 @@ public class W3Party : MonoBehaviour
                 //      → 위급도(최저 HP 비율)를 **별도 축**으로 넣어 파동이 못 막는 상황을 잡는다.
                 //   ② 신앙을 행동 횟수(+6/회)로 쌓고 있었다. 기획서 §3은 "**회복량 누적**"이다.
                 //      → 실제 회복시킨 양을 그대로 신앙으로 환산한다(코드가 기획서를 따르게).
-                if (m.Gauge >= 100f && (wounded >= 3 || worstRatio2 < 0.35f))
+                // 기적: 버튼(슬롯2)이면 신앙만 있으면 바로 쓴다
+                if ((m.ForceSkill == 2 && m.Gauge >= 40f) || (m.Gauge >= 100f && (wounded >= 3 || worstRatio2 < 0.35f)))
                 {
+                    if (m.ForceSkill == 2) m.ForceSkill = 0;
                     // ③ 기적 — 신앙 전량 소모, 파티 전체 완전 회복(§3)
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; FlashParty();
                 }
-                else if (wounded >= 2)
+                else if (m.ForceSkill == 1 || wounded >= 2)
                 {
                     // ② 치유의 파동 — 광역 힐. 회복시킨 만큼 신앙이 쌓인다(§3)
+                    if (m.ForceSkill == 1) m.ForceSkill = 0;
                     foreach (var o in _party)
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
                             m.Gauge += Heal(o, 14f * sp.DmgMul);
@@ -980,8 +1001,9 @@ public class W3Party : MonoBehaviour
             else if (m.Job == Job.마법사 && target >= 0)
             {
                 // ① 화염폭풍 — 광역 장판. 밀도가 높을수록 이득(§10-2와 정합)
-                if (m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4)
+                if (m.ForceSkill == 1 || (m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
                 {
+                    if (m.ForceSkill == 1) m.ForceSkill = 0;
                     m.SkillCd = 5f; m.Cd = 0.9f; _skillLog[5]++;
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
@@ -1007,7 +1029,9 @@ public class W3Party : MonoBehaviour
                 // 연격 스택 → 일섬 (§3 고유 메커니즘)
                 m.Gauge += 1f;
                 float dmg = m.Atk;
-                if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; }
+                // 일섬 — 버튼(슬롯1)이면 스택이 덜 찼어도 즉시 터뜨린다(§3 "스택 전량 소모")
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; }
+                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
                 m.Cd = 0.35f;
                 m.Threat += dmg * 0.4f;
@@ -1394,25 +1418,47 @@ public class W3Party : MonoBehaviour
                            : $"[{_party[_sel].Job}] 선택됨 — 우클릭으로 이동 지시 · 0으로 해제", _cmdLabel);
 
         if (_sel < 0 || !_party[_sel].Alive) return;
+        SkillButtons(_party[_sel], y - 62f);
+    }
 
-        // 선택한 캐릭터의 고유 스킬 — 지금은 쿨다운을 0으로 만들어 **즉시 발동**시킨다.
-        // 실제 발동 판정은 TickParty의 직업 로직이 갖고 있으므로, 여기서 조건을 복제하지 않는다
-        // (같은 규칙을 두 곳에 두면 반드시 어긋난다 — 이 저장소가 반복해서 겪은 실패다).
-        var sel = _party[_sel];
-        string skill = sel.Job switch
+    /// <summary>
+    /// 선택한 캐릭터의 고유 스킬 버튼 2개(§3 대표 스킬).
+    /// 버튼은 쿨다운을 0으로 만드는 게 아니라 **강제 발동 슬롯**을 세운다 —
+    /// 쿨만 풀어주면 발동 조건(밀집·부상자 수 등)이 안 맞을 때 눌러도 아무 일이 안 일어나
+    /// "눌렀는데 왜 안 나가지"가 된다. 지휘는 지금 쓰는 것이다(§5).
+    /// </summary>
+    void SkillButtons(Member sel, float y)
+    {
+        (string a, string b) = sel.Job switch
         {
-            Job.수호기사 => "도발의 함성",
-            Job.검사 => "일섬(연격 5)",
-            Job.마법사 => "화염폭풍",
-            Job.사제 => "기적",
-            _ => "악장 전환",
+            Job.수호기사 => ("도발의 함성", "성채 방패"),
+            Job.검사 => ("일섬", "—"),
+            Job.마법사 => ("화염폭풍", "—"),
+            Job.사제 => ("치유의 파동", "기적"),
+            _ => ("진군가", "수호가"),
         };
-        // 스킬 버튼은 카드 줄 **위**에 둔다 — 카드와 겹치면 선택 클릭과 충돌한다
-        GUI.enabled = sel.SkillCd <= 0f;
-        if (GUI.Button(new Rect(Screen.width * 0.5f - 110f, y - 62f, 220, 32),
-                       sel.SkillCd > 0f ? $"{skill}  ({sel.SkillCd:F1}s)" : $"{skill}  [스페이스]", _cmdBtn))
-            sel.SkillCd = 0f;
-        GUI.enabled = true;
+
+        float w = 176f, gap = 8f;
+        float x = Screen.width * 0.5f - (w * 2 + gap) * 0.5f;
+
+        if (SkillBtn(new Rect(x, y, w, 34), a, sel, 1)) { }
+        if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 34), b, sel, 2)) { }
+
+        GUI.Label(new Rect(x, y - 20f, 520, 20),
+                  $"스킬 — 스페이스: {a}", _cmdLabel);
+    }
+
+    bool SkillBtn(Rect r, string label, Member m, int slot)
+    {
+        bool queued = m.ForceSkill == slot;
+        if (queued) GUI.DrawTexture(new Rect(r.x - 2, r.y - 2, r.width + 4, r.height + 4),
+                                    Tint(new Color(1f, 0.82f, 0.35f, 0.9f)));
+        if (GUI.Button(r, queued ? $"{label} ▶" : label, _cmdBtn))
+        {
+            m.ForceSkill = slot;
+            return true;
+        }
+        return false;
     }
 
     void Finish()
