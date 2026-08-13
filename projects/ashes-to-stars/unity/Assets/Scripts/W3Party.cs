@@ -78,6 +78,32 @@ public class W3Party : MonoBehaviour
     // 글자 뒤에 까는 반투명 판.
     // 전투 화면은 배경을 안 깔기 때문에(카메라 렌더를 보여줘야 하므로) 밝은 바닥 위에
     // 흰 글씨가 그대로 놓여 읽히지 않았다(오너 지적 "글씨가 안보인다고").
+    // 스킬 범위 표시용 원형 텍스처. 스킬이 수치로만 돌면 화면에서는 아무 일도 안 일어난 것처럼 보인다
+    // — 도발이 몹을 모으는 것도, 화염폭풍이 밀집을 노리는 것도 보여야 판단 근거가 된다(§5 수동 지휘).
+    static Sprite _ringSprite;
+    static Sprite Ring()
+    {
+        if (_ringSprite != null) return _ringSprite;
+        const int N = 128;
+        var t = new Texture2D(N, N, TextureFormat.RGBA32, false);
+        var px = new Color32[N * N];
+        float c = (N - 1) * 0.5f;
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++)
+            {
+                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
+                // 가장자리는 진하게, 안쪽은 옅게 — 범위가 어디까지인지 읽히게
+                byte a = d > 1f ? (byte)0 : (byte)(d > 0.86f ? 200 : 34 * (1f - d));
+                px[y * N + x] = new Color32(255, 255, 255, a);
+            }
+        t.SetPixels32(px); t.filterMode = FilterMode.Bilinear; t.Apply();
+        _ringSprite = Sprite.Create(t, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), N);
+        return _ringSprite;
+    }
+
+    SpriteRenderer _tauntRing, _stormRing;
+    float _stormUntil; Vector2 _stormAt; float _stormR;
+
     static Texture2D _scrimTex;
     static Texture2D Scrim()
     {
@@ -112,6 +138,25 @@ public class W3Party : MonoBehaviour
         fg.sprite = bank.White; fg.sharedMaterial = bank.Mat;
         fg.color = new Color(0.35f, 0.85f, 0.4f);
         fg.sortingOrder = 901;
+    }
+
+    /// <summary>스킬 범위 링 하나. 바닥에 눕혀 그리므로 세로를 ISO_Y로 누른다.</summary>
+    static SpriteRenderer MakeRing(SpriteBank bank, Color c)
+    {
+        var go = new GameObject("skill_ring", typeof(SpriteRenderer));
+        var sr = go.GetComponent<SpriteRenderer>();
+        sr.sprite = Ring();
+        sr.sharedMaterial = bank.Mat;
+        sr.color = c;
+        sr.sortingOrder = 210;          // 그림자(200)보다 앞, 유닛보다 뒤
+        go.SetActive(false);
+        return sr;
+    }
+
+    static void PlaceRing(SpriteRenderer sr, Vector2 world, float radius)
+    {
+        sr.transform.position = new Vector3(world.x, world.y * ISO_Y, -0.5f);
+        sr.transform.localScale = new Vector3(radius * 2f, radius * 2f * ISO_Y, 1f);
     }
 
     /// <summary>
@@ -261,6 +306,10 @@ public class W3Party : MonoBehaviour
     {
         var bank = SpriteBank.Load();
         GroundBuilder.Build(bank, Arena + 20f);
+
+        // 스킬 범위 표시 두 장 — 매번 만들지 않고 켜고 끈다
+        _tauntRing = MakeRing(bank, new Color(1f, 0.72f, 0.25f, 0.9f));
+        _stormRing = MakeRing(bank, new Color(1f, 0.42f, 0.2f, 0.95f));
         // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
         // 시드를 고정해 같은 판이면 같은 배치가 나오게 한다(측정 재현성).
         AshesToStars.FieldDecor.Build(bank, Arena, 20260813, AshesToStars.FieldDecor.Biome.Field);
@@ -561,6 +610,22 @@ public class W3Party : MonoBehaviour
     {
         var bank = SpriteBank.Cached;
 
+        // 도발 지속 구간 — 몹이 탱에게 끌리는 동안 탱 주변에 범위를 띄운다.
+        // 이게 없으면 "도발했다"가 수치로만 존재하고 화면에서는 아무 일도 안 일어난 것처럼 보인다.
+        var tk = _party.Length > 0 ? _party[0] : null;
+        bool taunting = _t < _tauntUntil && tk != null && tk.Alive;
+        if (_tauntRing.gameObject.activeSelf != taunting) _tauntRing.gameObject.SetActive(taunting);
+        if (taunting)
+        {
+            float k = Mathf.InverseLerp(_tauntUntil, _tauntUntil - 3f, _t);   // 남을수록 크게
+            PlaceRing(_tauntRing, tk.Pos, 4.5f * (0.55f + k * 0.45f));
+            var c = _tauntRing.color; c.a = 0.25f + k * 0.5f; _tauntRing.color = c;
+        }
+
+        bool storming = _t < _stormUntil;
+        if (_stormRing.gameObject.activeSelf != storming) _stormRing.gameObject.SetActive(storming);
+        if (storming) PlaceRing(_stormRing, _stormAt, _stormR);
+
         foreach (var m in _party)
         {
             if (m.AttackT > 0f) m.AttackT -= dt;
@@ -711,6 +776,7 @@ public class W3Party : MonoBehaviour
                     m.SkillCd = 6f; m.Threat += 80f; _tauntUses++;
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
                     _skillLog[0]++;
+                    FlashParty();                                 // 발동 순간을 눈에 띄게
                 }
                 if (m.Gauge >= 60f)
                 {
@@ -884,6 +950,8 @@ public class W3Party : MonoBehaviour
                 {
                     m.SkillCd = 5f; m.Cd = 0.9f; _skillLog[5]++;
                     Vector2 c = _mPos[target];
+                    // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
+                    _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
