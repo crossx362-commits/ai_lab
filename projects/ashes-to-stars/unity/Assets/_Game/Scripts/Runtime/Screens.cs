@@ -72,13 +72,47 @@ namespace AshesToStars
         protected override string Title => "필드";
         protected override string Subtitle => "자동사냥으로 재화를 번다. 단기 루프의 출발점(§2·§6)";
 
+        bool _showLastLifeWarning = false;
+
         protected override void Body(Rect r)
         {
+            if (_showLastLifeWarning)
+            {
+                // 마지막 목숨 경고 화면
+                Info(r, 0, "⚠️ 주의! 마지막 목숨 캐릭터가 파티에 있습니다");
+                Info(r, 1, "사망 시 캐릭터가 영구 삭제되며\n장착 장비도 함께 사라집니다(§4)");
+
+                if (Row(r, 2, "계속 진행", "입장한다"))
+                {
+                    _showLastLifeWarning = false;
+                    GameFlow.GoBattle(GameFlow.Field);
+                }
+                if (Row(r, 3, "취소", "파티를 다시 편성한다"))
+                    _showLastLifeWarning = false;
+                return;
+            }
+
             if (Row(r, 0, "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)"))
-                GameFlow.GoBattle(GameFlow.Field);
+            {
+                if (HasLastLifeCharacter())
+                    _showLastLifeWarning = true;
+                else
+                    GameFlow.GoBattle(GameFlow.Field);
+            }
             if (Row(r, 1, "던전 입장", "랜덤 생성 + 종점 보스 1체(§7)"))
                 GameFlow.GoBattle(GameFlow.Field);
             if (Row(r, 2, "자동화 일정", "무엇을 언제 시킬지 예약(§6)")) { }
+        }
+
+        bool HasLastLifeCharacter()
+        {
+            var characters = LifeSystem.GetCharacters();
+            foreach (var ch in characters)
+            {
+                if (!ch.IsDeleted && ch.DeathCount == 2)  // 2회 사망 = 마지막 목숨
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -88,12 +122,46 @@ namespace AshesToStars
         protected override string Title => "탑";
         protected override string Subtitle => "최대 100층. 10층 돌파마다 필드·던전 티어 상승(§8·§10-6)";
 
+        bool _showLastLifeWarning = false;
+
         protected override void Body(Rect r)
         {
+            if (_showLastLifeWarning)
+            {
+                // 마지막 목숨 경고 화면
+                Info(r, 0, "⚠️ 주의! 마지막 목숨 캐릭터가 파티에 있습니다");
+                Info(r, 1, "사망 시 캐릭터가 영구 삭제되며\n장착 장비도 함께 사라집니다(§4)");
+
+                if (Row(r, 2, "계속 진행", "입장한다"))
+                {
+                    _showLastLifeWarning = false;
+                    GameFlow.GoBattle(GameFlow.Tower);
+                }
+                if (Row(r, 3, "취소", "파티를 다시 편성한다"))
+                    _showLastLifeWarning = false;
+                return;
+            }
+
             if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
-                GameFlow.GoBattle(GameFlow.Tower);
+            {
+                if (HasLastLifeCharacter())
+                    _showLastLifeWarning = true;
+                else
+                    GameFlow.GoBattle(GameFlow.Tower);
+            }
             if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
                 GameFlow.GoBattle(GameFlow.Tower);
+        }
+
+        bool HasLastLifeCharacter()
+        {
+            var characters = LifeSystem.GetCharacters();
+            foreach (var ch in characters)
+            {
+                if (!ch.IsDeleted && ch.DeathCount == 2)  // 2회 사망 = 마지막 목숨
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -118,12 +186,71 @@ namespace AshesToStars
         protected override string Title => "캐릭터";
         protected override string Subtitle => "성장·전직·합성. 목숨 카운트가 여기서 보인다(§3·§4)";
 
+        int _selectedCharacter = -1;
+
         protected override void Body(Rect r)
         {
-            if (Row(r, 0, "파티 편성", "탱1·딜2·힐1·버퍼1 — 1인은 불가(§9, W3에서 검증)")) { }
-            if (Row(r, 1, "전직", "1차 전직 11종(§3)")) { }
-            if (Row(r, 2, "합성", "안 쓰는 캐릭터 → 패시브 흡수(§3)")) { }
-            if (Row(r, 3, "전투 스타일", "공격·균형·방어·생존 — 안전을 사면 효율을 잃는다(§3)")) { }
+            if (_selectedCharacter >= 0)
+            {
+                // 캐릭터 상세 화면
+                var characters = LifeSystem.GetCharacters();
+                if (_selectedCharacter < characters.Count)
+                {
+                    var ch = characters[_selectedCharacter];
+
+                    Info(r, 0, $"{ch.Name} ({ch.Job}) Lv.{ch.Level}");
+
+                    // 목숨 상태 표시
+                    if (ch.IsDeleted)
+                    {
+                        Info(r, 1, "❌ 삭제됨 — 환생석으로만 복구 가능(§4)");
+                    }
+                    else
+                    {
+                        string hearts = new string('❤', 3 - ch.DeathCount);
+                        string status = LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중";
+                        Info(r, 1, $"목숨: {hearts}({ch.DeathCount}/3) {status}");
+
+                        // 회복 중이면 시간 표시
+                        int recoveryTime = LifeSystem.GetRecoveryTimeRemaining(ch);
+                        if (recoveryTime > 0)
+                        {
+                            Info(r, 2, $"회복 시간: {LifeSystem.FormatRecoveryTime(recoveryTime)}");
+                        }
+                    }
+
+                    // 부활초 사용 버튼
+                    if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
+                    {
+                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/3)"))
+                        {
+                            LifeSystem.UseRevivePotion(ch);
+                        }
+                    }
+                    else if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() == 0)
+                    {
+                        Info(r, 3, "부활초 없음 — 던전·레이드에서 획득 가능(§4)");
+                    }
+
+                    if (Row(r, 4, "← 목록으로", "캐릭터 목록으로 돌아간다"))
+                        _selectedCharacter = -1;
+                }
+                return;
+            }
+
+            // 캐릭터 목록
+            var allCharacters = LifeSystem.GetCharacters();
+            for (int i = 0; i < allCharacters.Count; i++)
+            {
+                var ch = allCharacters[i];
+                string heartsStr = ch.IsDeleted ? "❌" : new string('❤', 3 - ch.DeathCount);
+                string name = $"{ch.Name} ({ch.Job}) - {heartsStr}";
+                if (Row(r, i, name, ch.IsDeleted ? "삭제됨" : (LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")))
+                    _selectedCharacter = i;
+            }
+
+            Info(r, allCharacters.Count + 1, "목숨 카운트가 여기서 보인다(§3·§4)");
+            if (Row(r, allCharacters.Count + 2, "파티 편성", "탱1·딜2·힐1·버퍼1 — 1인은 불가(§9, W3에서 검증)")) { }
         }
     }
 
@@ -134,8 +261,10 @@ namespace AshesToStars
     public class BattleScreen : GameScreen
     {
         protected override string Title => "전투";
-        protected override string Subtitle => "자동 전투 진행 중... W3Party 검증 빌드(§21)";
+        protected override string Subtitle => "잡몹은 자동, 보스는 수동 지휘(§5)";
         protected override bool ShowBottomBar => false;
+        // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
+        protected override bool OpaqueBackground => false;
 
         float _t;
         global::W3Party _battle;
@@ -143,6 +272,15 @@ namespace AshesToStars
         protected override void Awake()
         {
             base.Awake();
+
+            // 전투 아레나(반경 14)가 화면에 다 들어오게 잡는다.
+            // 메뉴 화면 기준(size 8)이면 파티만 크게 잡히고 몰려오는 물량이 안 보인다.
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                cam.orthographicSize = 15f;
+                cam.transform.position = new Vector3(0, 0, -10);
+            }
 
             // W3Party 컴포넌트 획득 또는 생성
             _battle = GetComponent<global::W3Party>();
@@ -165,9 +303,37 @@ namespace AshesToStars
         void OnBattleEnd(bool survived)
         {
             if (survived)
+            {
                 GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
+            }
             else
-                GameFlow.LastBattleSummary = $"전멸 — {_t:F1}초 생존";
+            {
+                GameFlow.LastBattleSummary = $"전멸 — {_t:F1}초 생존\n";
+
+                // 패배 시 출전 캐릭터에게 사망을 기록한다
+                // 현재는 W3Party 검증 빌드에서 전체 파티가 함께 전멸하는 구조
+                // (실제 게임에선 캐릭터별 생사 상태를 추적할 것 — §5·§10)
+                var characters = LifeSystem.GetCharacters();
+                var deletedCharacters = new System.Collections.Generic.List<string>();
+
+                foreach (var ch in characters)
+                {
+                    // 프로토타입: 전체 파티가 함께 전멸하는 것으로 단순화
+                    // (검증: W3Party 구조에서 개별 캐릭터 생사 추적은 별개 시스템)
+                    if (!ch.IsDeleted)  // 삭제된 캐릭터는 다시 죽지 않음
+                    {
+                        LifeSystem.RegisterDeath(ch, isPvp: false);  // PvE 사망으로 기록
+                        if (ch.IsDeleted)
+                            deletedCharacters.Add(ch.Name);
+                    }
+                }
+
+                // 삭제된 캐릭터 안내
+                if (deletedCharacters.Count > 0)
+                {
+                    GameFlow.LastBattleSummary += $"\n🔴 {string.Join(", ", deletedCharacters)}이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)";
+                }
+            }
 
             GameFlow.Go(GameFlow.Result);
         }

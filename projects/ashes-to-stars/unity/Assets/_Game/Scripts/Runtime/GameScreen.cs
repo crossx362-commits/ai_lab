@@ -18,12 +18,21 @@ namespace AshesToStars
         protected virtual string Subtitle => "";
         protected virtual bool ShowBottomBar => true;
 
+        /// <summary>
+        /// 화면 전체를 불투명 배경으로 덮을지.
+        /// ⚠️ 전투처럼 **카메라가 그린 장면을 보여줘야 하는 화면은 반드시 false**다.
+        ///    IMGUI는 카메라 렌더 결과 **위에** 그려지므로, 배경을 깔면 전투가 통째로 가려진다.
+        ///    실제로 그래서 "검은 화면만 나온다"는 보고가 나왔다(2026-08-13) —
+        ///    전투는 정상 작동 중이었고 가려져 있었을 뿐이다.
+        /// </summary>
+        protected virtual bool OpaqueBackground => true;
+
         // 기준 해상도 — 모든 좌표는 이 안에서 계산한다
         protected const float REF_W = 1280f, REF_H = 720f;
         protected const float BarH = 76f;
 
         GUIStyle _h1, _h2, _btn, _small, _panel;
-        Texture2D _bg, _line, _accent;
+        Texture2D _bg, _line, _accent, _scrim;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
         static readonly Color Dim = new Color(0.62f, 0.65f, 0.75f);
@@ -76,6 +85,7 @@ namespace AshesToStars
             _bg = Solid(new Color(0.05f, 0.05f, 0.08f));
             _line = Solid(new Color(1f, 1f, 1f, 0.10f));
             _accent = Solid(new Color(0.95f, 0.79f, 0.42f, 0.85f));
+            _scrim = Solid(new Color(0.03f, 0.03f, 0.05f, 0.72f));
         }
 
         void OnGUI()
@@ -88,9 +98,10 @@ namespace AshesToStars
             var saved = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(offset, Quaternion.identity, new Vector3(s, s, 1f));
 
-            GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _bg);
+            if (OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _bg);
 
-            // 제목판
+            // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
+            if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);
             GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _line);
             GUI.DrawTexture(new Rect(0, 116, REF_W, 2), _accent);
             GUI.Label(new Rect(48, 22, REF_W - 96, 56), Title, _h1);
