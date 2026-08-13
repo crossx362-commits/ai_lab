@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 370dd864a33e79b43be08393c78920fe, type: 3}
-  m_Name: "Race_\uC218\uC778"
+  m_Name: 
   m_EditorClassIdentifier: 
   Id: 3
   "\uC815\uCCB4\uC131": "\uBA3C\uC800 \uB36E\uCE58\uACE0 \uBA3C\uC800 \uBE60\uC9C0\uB294

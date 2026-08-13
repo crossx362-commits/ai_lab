@@ -77,9 +77,12 @@ public class W3Party : MonoBehaviour
     float[] _mFlash;
 
     // ── 설정 ─────────────────────────────────────────────
-    [Header("판 설정")]
-    public float RunSeconds = 45f;
-    public int WaveSize = 16;
+    [Header("판 설정 — 전멸까지 돌린다 (§21-1g)")]
+    [Tooltip("안전 상한. 이 시간을 넘으면 강제 종료 — 무한 루프 방지용이지 판정 기준이 아니다")]
+    public float 최대시간 = 240f;
+    [Tooltip("시작 웨이브 크기")] public int 시작웨이브 = 12;
+    [Tooltip("이 간격(초)마다 웨이브 압력이 한 단계 오른다")] public float 점증간격 = 12f;
+    [Tooltip("한 단계마다 늘어나는 동시 몹 수")] public int 단계당증가 = 6;
     public float Arena = 14f;
 
     [Header("잡몹 속도 (플레이어 기준 배율 — §18-11)")]
@@ -136,10 +139,10 @@ public class W3Party : MonoBehaviour
         {
             if (a[i] == "--out" && i + 1 < a.Length) _outPath = a[i + 1];
             if (a[i] == "--seconds" && i + 1 < a.Length)
-                float.TryParse(a[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out RunSeconds);
+                float.TryParse(a[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out 최대시간);
         }
         _outPath ??= Path.Combine(Application.persistentDataPath, "w3_result.csv");
-        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,verdict");
+        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict");
 
         BuildWorld();
         NextStyle();
@@ -270,7 +273,7 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < MAXP; i++) { _pOn[i] = false; _pTr[i].gameObject.SetActive(false); }
         if (_aOn != null) for (int i = 0; i < MAXP; i++) { _aOn[i] = false; _aTr[i].gameObject.SetActive(false); }
         _mAlive = 0;
-        for (int i = 0; i < WaveSize; i++) SpawnMob();
+        for (int i = 0; i < 시작웨이브; i++) SpawnMob();
 
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f;
@@ -307,7 +310,10 @@ public class W3Party : MonoBehaviour
     {
         float dt = Mathf.Min(Time.deltaTime, 0.05f);
         _t += dt; _framesThisRun++;
-        if (_t >= RunSeconds || AllDead())
+        // 전멸이 판정 기준이다. 시간 상한은 무한 루프를 막는 안전장치일 뿐 —
+        // 45초 고정 상한을 쓰던 1차 실험은 다섯 구성 중 넷이 완주해버려
+        // "얼마나 버티는가"를 물을 수 없었다(§21-1g).
+        if (AllDead() || _t >= 최대시간)
         { RecordAndNext(); return; }
 
         TickParty(dt);
@@ -315,7 +321,11 @@ public class W3Party : MonoBehaviour
         TickShots(dt);
         TickAllyShots(dt);
 
-        if (_mAlive < WaveSize / 2) for (int i = 0; i < 2; i++) SpawnMob();   // 웨이브 유지
+        // 웨이브 압력 점증 — 시간이 갈수록 동시 몹 수 목표가 올라간다.
+        // 이래야 모든 구성이 결국 무너지고 "언제 무너지는가"로 비교할 수 있다.
+        int 목표 = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
+        목표 = Mathf.Min(목표, MAXM - 20);
+        if (_mAlive < 목표) for (int i = 0; i < 2 && _mAlive < 목표; i++) SpawnMob();
     }
 
     // ── 파티 자동 전투 ────────────────────────────────────
@@ -559,7 +569,7 @@ public class W3Party : MonoBehaviour
             {
                 want = dir; spd = PlayerSpeed * 0.55f;
                 _mCd[i] -= dt;
-                if (_mCd[i] <= 0f && _mAlive < WaveSize * 2) { _mCd[i] = 5.0f; SpawnMob(); }
+                if (_mCd[i] <= 0f && _mAlive < MAXM - 20) { _mCd[i] = 5.0f; SpawnMob(); }
             }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
 
@@ -714,7 +724,9 @@ public class W3Party : MonoBehaviour
     {
         int aliveCount = 0;
         foreach (var m in _party) if (m.Alive) aliveCount++;
-        string verdict = aliveCount > 0 ? "SURVIVED" : "WIPE";
+        // 상한까지 살아남았다면 압력이 부족했다는 뜻 — 그건 통과가 아니라 측정 실패다
+        string verdict = aliveCount > 0 ? "측정실패_상한도달" : "전멸";
+        int 최종웨이브 = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         var ci = CultureInfo.InvariantCulture;
         _csv.AppendLine(string.Join(",",
             _setup.Name, _t.ToString("F1", ci), _kills.ToString(ci),
@@ -722,7 +734,8 @@ public class W3Party : MonoBehaviour
             _skillLog[6].ToString(ci), _skillLog[3].ToString(ci), _skillLog[4].ToString(ci),
             _backlineHits.ToString(ci), _frontlineHits.ToString(ci),
             _shieldAbsorbed.ToString("F0", ci),
-            _healerDeadT < 0 ? "-" : _healerDeadT.ToString("F1", ci), verdict));
+            _healerDeadT < 0 ? "-" : _healerDeadT.ToString("F1", ci),
+            최종웨이브.ToString(ci), (_kills / Mathf.Max(1f, _t)).ToString("F2", ci), verdict));
         Debug.Log($"[W3] {_setup.Name}: {_t:F1}s 생존 / 처치 {_kills} / 도발 {_tauntUses} / " +
                   $"후열피격 {_backlineHits} 전열피격 {_frontlineHits} / {verdict}");
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
@@ -737,7 +750,8 @@ public class W3Party : MonoBehaviour
     {
         _hud ??= new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Color.white } };
         var s = new StringBuilder();
-        s.Append($"구성 {_setup.Name}   경과 {_t:F0}s   처치 {_kills}   도발 {_tauntUses}   ");
+        int wave = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
+        s.Append($"구성 {_setup.Name}   경과 {_t:F0}s   웨이브목표 {wave}   처치 {_kills}   도발 {_tauntUses}   ");
         s.Append($"전열피격 {_frontlineHits} / 후열피격 {_backlineHits}\n");
         foreach (var m in _party)
             s.Append($"{m.Role} {(m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망")}   ");

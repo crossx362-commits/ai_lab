@@ -88,6 +88,24 @@ public static class ProjectSetup
     static Sprite LoadSprite(string name)
         => AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/Resources/sprites/{name}.png");
 
+    /// <summary>
+    /// 오너가 준 픽셀아트 스프라이트를 먼저 찾고, 없으면 블렌더 플레이스홀더로 떨어진다.
+    /// 방향별 시트가 아직 안 왔으므로(오너: "방향별로는 나중에 줄게") 정면 대기 프레임만 쓴다.
+    /// </summary>
+    static Sprite LoadPixelArt(RoleId role, string fallback)
+    {
+        string job = role switch
+        {
+            RoleId.탱 => "탱커",
+            RoleId.딜 => "딜러",
+            RoleId.힐 => "힐러",
+            _ => "버퍼",
+        };
+        var s = AssetDatabase.LoadAssetAtPath<Sprite>(
+            $"{ROOT}/Art/Sprites/{job}/{job}_대기_00.png");
+        return s != null ? s : LoadSprite(fallback);
+    }
+
     // ── 밸런스 ────────────────────────────────────────────
     static BalanceConfig MakeBalance()
         => Save(ScriptableObject.CreateInstance<BalanceConfig>(), ROOT + "/Data/GameBalance.asset");
@@ -265,11 +283,13 @@ public static class ProjectSetup
         {
             var go = new GameObject(j.직업명, typeof(SpriteRenderer));
             var sr = go.GetComponent<SpriteRenderer>();
-            sr.sprite = LoadSprite(j.역할 == RoleId.탱 ? "player_knight_0"
-                                 : j.역할 == RoleId.힐 ? "player_priest_0" : "player_mage_0");
+            sr.sprite = LoadPixelArt(j.역할,
+                j.역할 == RoleId.탱 ? "player_knight_0"
+                : j.역할 == RoleId.힐 ? "player_priest_0" : "player_mage_0");
             sr.sharedMaterial = mat;
             sr.sortingOrder = 500;
-            go.transform.localScale = Vector3.one * 2.8f;
+            // 픽셀아트는 PPU 32라 이미 적정 크기 — 플레이스홀더처럼 키우면 뭉개진다
+            go.transform.localScale = Vector3.one;
             var path = $"{ROOT}/Prefabs/Characters/{j.직업명}.prefab";
             made.Add(PrefabUtility.SaveAsPrefabAsset(go, path));
             Object.DestroyImmediate(go);
