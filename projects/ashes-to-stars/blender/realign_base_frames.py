@@ -63,6 +63,18 @@ COLS = [
 # (오너 지적으로 발견). 이런 건 자동 판정에 맡기지 말고 명시하는 편이 정직하다.
 WANT_OVERRIDE = {("buffer", "attack"): 1}
 
+# ── 시트4: 이동기(대시)·무적 표시 ──────────────────────────
+# 격자선 실측: 가로 8/83/298/508/723/952, 세로 5/165/307/535/771/1005/1237/1530
+# 맨 윗줄(8~83)은 헤더, 1·2열(~307)은 아이콘·한글 라벨이라 버린다.
+#   ⚠️ 이 헤더를 안 버려서 한 행씩 밀린 적이 있다 — dps 폴더에 탱커 그림이 들어갔다.
+#      그래서 아래 EXPECT_COLOR로 **결과 그림의 색까지 대조**한다.
+SRC4 = os.path.join(HERE, "source_sheets", "sheet4_dash.png")
+ROWS4 = [("tank", 83, 298), ("dps", 298, 508), ("ranged", 508, 723), ("healer", 723, 952)]
+COLS4 = [(307, 535), (535, 771), (771, 1005), (1005, 1237)]     # dash 4프레임
+INVULN4 = (1237, 1530)
+# 힐/버퍼는 시트가 한 행으로 합쳐 줬다 — 같은 그림을 buffer에도 복사한다
+ALSO_COPY = {"healer": "buffer"}
+
 
 def brightness(px):
     return (px[0] * 299 + px[1] * 587 + px[2] * 114) // 1000
@@ -223,6 +235,30 @@ def cut_transparent(im, box, refs):
                 seen[x][y] = True
                 q.append((x, y))
 
+    # 시작점이 하나도 없으면 flood fill은 아무 일도 안 하고 **배경이 통째로 남는다**.
+    # 격자선이 crop 가장자리에 걸린 셀에서 실제로 그랬다(sheet4 실측).
+    # 그럴 땐 가장자리에서 가장 흔한 색을 배경으로 인정하고 다시 시작한다.
+    if not q:
+        edge = Counter()
+        for x in range(w):
+            edge[px[x, 0][:3]] += 1
+            edge[px[x, h - 1][:3]] += 1
+        for y in range(h):
+            edge[px[0, y][:3]] += 1
+            edge[px[w - 1, y][:3]] += 1
+        if edge:
+            refs = list(refs) + [edge.most_common(1)[0][0]]
+            for x in range(w):
+                for y in (0, h - 1):
+                    if not seen[x][y] and is_bg(px[x, y][:3], refs):
+                        seen[x][y] = True
+                        q.append((x, y))
+            for y in range(h):
+                for x in (0, w - 1):
+                    if not seen[x][y] and is_bg(px[x, y][:3], refs):
+                        seen[x][y] = True
+                        q.append((x, y))
+
     while q:
         x, y = q.popleft()
         px[x, y] = (0, 0, 0, 0)
@@ -315,15 +351,35 @@ def main():
             while len(found) < want_default:
                 found.append(found[-1])
             for idx, bb in enumerate(found[:want_default]):
-                plan.append((role, state, idx, bb, refs))
+                plan.append((role, state, idx, bb, refs, im))
+
+    # ── 시트4(이동기)도 **같은 계획에 합친다** ──
+    # 따로 돌리면 공통 캔버스가 달라져(294 vs 382) 유니티에서 같은 PPU를 써도
+    # 대시 프레임만 크기가 어긋난다. 실제로 그렇게 어긋났었다.
+    im4 = Image.open(SRC4).convert("RGB")
+    for role, ry0, ry1 in ROWS4:
+        cells = [(f"dash", i, cx0, cx1) for i, (cx0, cx1) in enumerate(COLS4)]
+        cells.append(("invuln", 0, INVULN4[0], INVULN4[1]))
+        for state, idx, cx0, cx1 in cells:
+            # 격자선을 crop에 들이지 않으려고 셀 안쪽으로 물려 자른다.
+            # 격자선이 가장자리에 걸리면 flood fill 시작점이 없어 배경이 통째로 남는다.
+            ix0, iy0, ix1, iy1 = cx0 + 3, ry0 + 3, cx1 - 3, ry1 - 3
+            refs = sample_bg(im4, ix0, iy0, ix1, iy1)
+            bb = content_bbox(im4, ix0, iy0, ix1, iy1, refs)
+            if not bb:
+                print(f"  ⚠️ {role}_{state}_{idx}: 내용 없음")
+                continue
+            plan.append((role, state, idx, bb, refs, im4))
+            if role in ALSO_COPY:
+                plan.append((ALSO_COPY[role], state, idx, bb, refs, im4))
 
     if not plan:
         raise SystemExit("프레임을 하나도 찾지 못했다 — 격자 좌표를 확인할 것")
 
     # ── 2단계: 잘라내고 노이즈를 걸러 **본체 위치**를 잰다 ──
     cut = []
-    for role, state, idx, bb, refs in plan:
-        sprite, body, kept = clean_and_measure(cut_transparent(im, bb, refs))
+    for role, state, idx, bb, refs, src in plan:
+        sprite, body, kept = clean_and_measure(cut_transparent(src, bb, refs))
         cut.append((role, state, idx, sprite, body, kept))
 
     # 캔버스는 '노이즈를 뺀 실제 내용'이 다 들어갈 크기로 잡는다.

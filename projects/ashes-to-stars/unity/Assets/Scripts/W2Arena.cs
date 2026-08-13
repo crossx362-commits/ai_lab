@@ -103,7 +103,9 @@ public class W2Arena : MonoBehaviour
         _plSr.sprite = bank.Player;
         _plSr.sharedMaterial = bank.Mat;
         _plSr.sortingOrder = 500;
-        pgo.transform.localScale = Vector3.one * 3.0f;
+        // 크기는 SpriteBank가 스프라이트마다 실측해 PPU로 맞춘다.
+        // 여기서 손으로 곱하던 3.0배가 "캐릭터가 몹보다 6배 큰" 원인이었다.
+        pgo.transform.localScale = Vector3.one;
         _pl = pgo.transform;
         _hp = MaxHp;
 
@@ -126,7 +128,6 @@ public class W2Arena : MonoBehaviour
         {
             var go = new GameObject("m", typeof(SpriteRenderer));
             go.transform.SetParent(mr, false);
-            go.transform.localScale = Vector3.one * 2.2f;
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sharedMaterial = bank.Mat;
             go.SetActive(false);
