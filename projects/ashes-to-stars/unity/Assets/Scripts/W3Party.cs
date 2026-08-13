@@ -57,6 +57,56 @@ public class W3Party : MonoBehaviour
         public float Threat;                 // 어그로 수치
         public bool Alive => Hp > 0f;
         public float DeadT;
+
+        // ── 연출 ──
+        public SpriteRenderer BarBg, BarFg;  // 머리 위 체력바
+        public Vector2 PrevPos;              // 이동 여부 판정용
+        public float AnimT;                  // 현재 동작이 시작된 뒤 흐른 시간
+        public float AttackT, HurtT;         // 남은 동작 시간 (0보다 크면 그 동작 중)
+        public SpriteBank.Motion Mo;
+    }
+
+    /// <summary>
+    /// 머리 위 체력바를 만든다. 배경 + 전경 두 장이며 둘 다 아틀라스의 흰 칸을 쓰므로
+    /// 배칭이 깨지지 않는다(W1 성능의 전제).
+    /// </summary>
+    static void MakeHpBar(Transform parent, SpriteBank bank,
+                          out SpriteRenderer bg, out SpriteRenderer fg, float w, float y)
+    {
+        var bgo = new GameObject("hp_bg", typeof(SpriteRenderer));
+        bgo.transform.SetParent(parent, false);
+        bgo.transform.localPosition = new Vector3(0, y, -0.1f);
+        bgo.transform.localScale = new Vector3(w, 0.13f, 1f);
+        bg = bgo.GetComponent<SpriteRenderer>();
+        bg.sprite = bank.White; bg.sharedMaterial = bank.Mat;
+        bg.color = new Color(0.05f, 0.05f, 0.06f, 0.85f);
+        bg.sortingOrder = 900;
+
+        var fgo = new GameObject("hp_fg", typeof(SpriteRenderer));
+        fgo.transform.SetParent(parent, false);
+        fgo.transform.localPosition = new Vector3(0, y, -0.2f);
+        fgo.transform.localScale = new Vector3(w * 0.94f, 0.09f, 1f);
+        fg = fgo.GetComponent<SpriteRenderer>();
+        fg.sprite = bank.White; fg.sharedMaterial = bank.Mat;
+        fg.color = new Color(0.35f, 0.85f, 0.4f);
+        fg.sortingOrder = 901;
+    }
+
+    /// <summary>
+    /// 체력바를 비율에 맞춰 줄인다. 가운데가 아니라 **왼쪽 끝을 고정**해야
+    /// 줄어드는 방향이 한쪽으로 보인다 — 스케일만 줄이면 양쪽에서 줄어들어 어색하다.
+    /// </summary>
+    static void SetBar(SpriteRenderer fg, float ratio, float fullW)
+    {
+        ratio = Mathf.Clamp01(ratio);
+        var s = fg.transform.localScale;
+        fg.transform.localScale = new Vector3(fullW * ratio, s.y, 1f);
+        fg.transform.localPosition = new Vector3(-fullW * (1f - ratio) * 0.5f,
+                                                 fg.transform.localPosition.y,
+                                                 fg.transform.localPosition.z);
+        fg.color = ratio > 0.5f ? new Color(0.35f, 0.85f, 0.4f)
+                 : ratio > 0.25f ? new Color(0.95f, 0.78f, 0.3f)
+                 : new Color(0.9f, 0.3f, 0.3f);
     }
 
     Member[] _party;
@@ -65,7 +115,8 @@ public class W3Party : MonoBehaviour
     // ── 몹 ───────────────────────────────────────────────
     const int MAXM = 200;
     Transform[] _mTr; SpriteRenderer[] _mSr;
-    Vector2[] _mPos; float[] _mHp, _mCd, _mAtkCd; int[] _mKind; bool[] _mOn;
+    Vector2[] _mPos; float[] _mHp, _mCd, _mAtkCd, _mMaxHp; int[] _mKind; bool[] _mOn;
+    SpriteRenderer[] _mBarBg, _mBarFg;      // 몹 체력바 (다친 개체만 표시)
     // kind: 0 추적 / 1 포위 / 2 원거리 / 3 정예-치유 / 4 정예-소환
     int _mAlive;
 
@@ -171,14 +222,19 @@ public class W3Party : MonoBehaviour
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sharedMaterial = bank.Mat;
             sr.sortingOrder = 500;
-            go.transform.localScale = Vector3.one * 2.8f;
-            _slots[i] = new Member { Tr = go.transform, Sr = sr };
+            // 스케일 1.0 — 크기는 SpriteBank가 스프라이트마다 실측해 PPU로 맞춘다.
+            // 손으로 곱하던 2.8배가 "캐릭터가 몹보다 6배 큰" 원인이었다.
+            go.transform.localScale = Vector3.one;
+            var m = new Member { Tr = go.transform, Sr = sr };
+            MakeHpBar(go.transform, bank, out m.BarBg, out m.BarFg, 1.05f, 2.2f);
+            _slots[i] = m;
             go.SetActive(false);
         }
 
         _mTr = new Transform[MAXM]; _mSr = new SpriteRenderer[MAXM];
         _mPos = new Vector2[MAXM]; _mHp = new float[MAXM]; _mCd = new float[MAXM];
-        _mAtkCd = new float[MAXM];
+        _mAtkCd = new float[MAXM]; _mMaxHp = new float[MAXM];
+        _mBarBg = new SpriteRenderer[MAXM]; _mBarFg = new SpriteRenderer[MAXM];
         _mKind = new int[MAXM]; _mOn = new bool[MAXM]; _mFlash = new float[MAXM];
         var mr = new GameObject("Mobs").transform;
         for (int i = 0; i < MAXM; i++)
@@ -187,6 +243,11 @@ public class W3Party : MonoBehaviour
             go.transform.SetParent(mr, false);
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sharedMaterial = bank.Mat;
+            MakeHpBar(go.transform, bank, out _mBarBg[i], out _mBarFg[i], 0.7f, 1.7f);
+            // 몹 체력바는 **다친 놈만** 보여준다 — 200마리가 전부 달고 있으면
+            // 화면이 바 천지가 되고 정작 위험한 대상이 눈에 안 들어온다.
+            _mBarBg[i].gameObject.SetActive(false);
+            _mBarFg[i].gameObject.SetActive(false);
             go.SetActive(false);
             _mTr[i] = go.transform; _mSr[i] = sr;
         }
@@ -325,7 +386,7 @@ public class W3Party : MonoBehaviour
             _mPos[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Random.Range(Arena * 0.6f, Arena);
             int r = Random.Range(0, 100);
             _mKind[i] = r < 35 ? 0 : r < 60 ? 1 : r < 85 ? 2 : r < 94 ? 3 : 4;   // 정예 15%
-            _mHp[i] = _mKind[i] >= 3 ? 90f : 26f;
+            _mHp[i] = _mMaxHp[i] = _mKind[i] >= 3 ? 90f : 26f;
             _mCd[i] = Random.value * 2f;
             _mAtkCd[i] = Random.value * 0.8f; _mFlash[i] = 0f;
             _mOn[i] = true; _mAlive++;
@@ -333,7 +394,10 @@ public class W3Party : MonoBehaviour
             _mSr[i].color = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)      // 치유 정예 = 초록
                           : _mKind[i] == 4 ? new Color(0.8f, 0.5f, 1f)      // 소환 정예 = 보라
                           : Color.white;
-            _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? 3.2f : 2.2f);
+            // 정예만 조금 크게. 기본 크기는 SpriteBank가 실측 PPU로 맞춰 둔다.
+            _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? 1.4f : 1.0f);
+            _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
+            _mBarFg[i].gameObject.SetActive(false);
             _mTr[i].gameObject.SetActive(true);
             return;
         }
@@ -353,12 +417,64 @@ public class W3Party : MonoBehaviour
         TickMobs(dt);
         TickShots(dt);
         TickAllyShots(dt);
+        TickVisuals(dt);
 
         // 웨이브 압력 점증 — 시간이 갈수록 동시 몹 수 목표가 올라간다.
         // 이래야 모든 구성이 결국 무너지고 "언제 무너지는가"로 비교할 수 있다.
         int 목표 = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         목표 = Mathf.Min(목표, MAXM - 20);
         if (_mAlive < 목표) for (int i = 0; i < 2 && _mAlive < 목표; i++) SpawnMob();
+    }
+
+    /// <summary>
+    /// 연출 갱신 — 애니메이션 프레임, 좌우 반전, 체력바.
+    /// 전투 로직과 분리해 둔다: 여기서 하는 일은 화면 표현뿐이라
+    /// 이 함수를 통째로 빼도 측정 수치는 한 자리도 달라지지 않아야 한다.
+    /// </summary>
+    void TickVisuals(float dt)
+    {
+        var bank = SpriteBank.Cached;
+
+        foreach (var m in _party)
+        {
+            if (m.AttackT > 0f) m.AttackT -= dt;
+            if (m.HurtT > 0f) m.HurtT -= dt;
+
+            // 동작 우선순위: 사망 > 피격 > 공격 > 이동 > 대기
+            var want = !m.Alive ? SpriteBank.Motion.Death
+                     : m.HurtT > 0f ? SpriteBank.Motion.Hurt
+                     : m.AttackT > 0f ? SpriteBank.Motion.Attack
+                     : (m.Pos - m.PrevPos).sqrMagnitude > 1e-5f ? SpriteBank.Motion.Walk
+                     : SpriteBank.Motion.Idle;
+
+            if (want != m.Mo) { m.Mo = want; m.AnimT = 0f; }
+            else m.AnimT += dt;
+
+            m.Sr.sprite = bank.CharAnim(ArtOf(m.Role), m.Mo, m.AnimT);
+            if (Mathf.Abs(m.Pos.x - m.PrevPos.x) > 1e-4f) m.Sr.flipX = m.Pos.x < m.PrevPos.x;
+            m.PrevPos = m.Pos;
+
+            bool showBar = m.Alive;
+            if (m.BarBg.gameObject.activeSelf != showBar)
+            {
+                m.BarBg.gameObject.SetActive(showBar);
+                m.BarFg.gameObject.SetActive(showBar);
+            }
+            if (showBar) SetBar(m.BarFg, m.Hp / m.MaxHp, 0.99f);
+        }
+
+        for (int i = 0; i < MAXM; i++)
+        {
+            if (!_mOn[i]) continue;
+            float ratio = _mMaxHp[i] > 0f ? _mHp[i] / _mMaxHp[i] : 1f;
+            bool hurt = ratio < 0.999f;
+            if (_mBarBg[i].gameObject.activeSelf != hurt)
+            {
+                _mBarBg[i].gameObject.SetActive(hurt);
+                _mBarFg[i].gameObject.SetActive(hurt);
+            }
+            if (hurt) SetBar(_mBarFg[i], ratio, 0.66f);
+        }
     }
 
     // ── 파티 자동 전투 ────────────────────────────────────

@@ -21,10 +21,25 @@ public class SpriteBank
     // ⚠️ 파일이 Resources 밖(_Game/Art/Sprites)에 있으면 Resources.Load가 못 찾아
     //    화면엔 플레이스홀더만 나온다 — 실제로 그 상태로 W1~W3을 돌렸었다.
     public enum Job { Tank = 0, Dps = 1, Healer = 2, Buffer = 3 }
-    public enum Frame { Idle = 0, WalkA = 1, WalkB = 2, Attack = 3 }
+
+    /// <summary>
+    /// 프레임 순서는 JOB_FRAMES와 **반드시 같아야 한다** — 인덱스로 짝지어 로드한다.
+    /// 대시 4프레임은 §5 이동기(무적 0.3초)용이고, Invuln은 무적 구간 표시다.
+    /// </summary>
+    public enum Frame
+    {
+        Idle = 0, WalkA = 1, WalkB = 2, AttackA = 3, AttackB = 4,
+        Special = 5, Hurt = 6, Death = 7,
+        DashA = 8, DashB = 9, DashC = 10, DashD = 11, Invuln = 12,
+    }
 
     static readonly string[] JOB_DIRS = { "tank", "dps", "healer", "buffer" };
-    static readonly string[] JOB_FRAMES = { "idle_00", "walk_00", "walk_01", "attack_00" };
+    static readonly string[] JOB_FRAMES =
+    {
+        "idle_00", "walk_00", "walk_01", "attack_00", "attack_01",
+        "special_00", "hurt_00", "death_00",
+        "dash_00", "dash_01", "dash_02", "dash_03", "invuln_00",
+    };
 
     Sprite[][] _job;   // [직업][프레임]
 
@@ -35,11 +50,30 @@ public class SpriteBank
         return row[(int)f] ?? row[0] ?? Player;
     }
 
-    /// <summary>걷는 두 프레임을 시간으로 토글한다. 멈춰 있으면 대기 프레임.</summary>
-    public Sprite CharAnim(Job j, bool moving, float t)
+    /// <summary>캐릭터가 지금 무엇을 하고 있는가. 우선순위가 높은 것이 이긴다.</summary>
+    public enum Motion { Idle, Walk, Attack, Special, Hurt, Death, Dash }
+
+    /// <summary>
+    /// 상태와 경과 시간으로 프레임을 고른다.
+    /// 호출부는 "지금 무엇을 하는가"만 알면 되고 프레임 번호를 몰라도 된다 —
+    /// 프레임 구성이 바뀌어도 호출부를 안 고치게 하려는 것이다.
+    /// </summary>
+    public Sprite CharAnim(Job j, Motion m, float t)
     {
-        if (!moving) return Char(j, Frame.Idle);
-        return Char(j, (t % 0.36f) < 0.18f ? Frame.WalkA : Frame.WalkB);
+        switch (m)
+        {
+            case Motion.Walk:
+                return Char(j, (t % 0.36f) < 0.18f ? Frame.WalkA : Frame.WalkB);
+            case Motion.Attack:
+                // 앞 절반은 준비, 뒷 절반은 타격 — 짧아도 두 장이면 동작으로 읽힌다
+                return Char(j, (t % 0.24f) < 0.12f ? Frame.AttackA : Frame.AttackB);
+            case Motion.Dash:
+                return Char(j, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
+            case Motion.Special: return Char(j, Frame.Special);
+            case Motion.Hurt: return Char(j, Frame.Hurt);
+            case Motion.Death: return Char(j, Frame.Death);
+            default: return Char(j, Frame.Idle);
+        }
     }
 
     // Resources 아래 이름 (확장자 없음)
@@ -66,8 +100,9 @@ public class SpriteBank
         baseNames.CopyTo(srcNames, 0);
         charNames.CopyTo(srcNames, baseNames.Length);
         int CHAR0 = baseNames.Length;   // 캐릭터 구간 시작 인덱스
+        int WHITE = srcNames.Length;    // 체력바용 흰 칸 — 파일이 아니라 코드로 만든다
 
-        var texes = new Texture2D[srcNames.Length];
+        var texes = new Texture2D[srcNames.Length + 1];
         int charMissing = 0;
         for (int i = 0; i < srcNames.Length; i++)
         {
@@ -79,6 +114,8 @@ public class SpriteBank
                 if (i >= CHAR0) charMissing++;
             }
         }
+
+        texes[WHITE] = Solid(Color.white, 8);
 
         // 캐릭터 아트가 통째로 안 잡히면 조용히 플레이스홀더로 굴러가지 않게 막는다.
         // 실제로 파일이 Resources 밖에 있어 "적용했는데 화면엔 안 나오는" 상태로 검증을 돌렸다.
@@ -110,33 +147,103 @@ public class SpriteBank
         else
             Debug.Log($"[SpriteBank] 아틀라스 OK — 불투명 표본 {opaque}");
 
-        Sprite MakeAt(int i, float ppu)
+        // ── 크기·발밑 정렬을 스프라이트마다 **실측**해서 맞춘다 ────────────────
+        // 2026-08-13 오너 지적 "캐릭터가 몬스터에 비해 엄청 큼"의 원인:
+        //   몹 텍스처는 128×128인데 실제 몹은 26×30px뿐이고(블렌더 렌더가 여백투성이),
+        //   캐릭터는 294×239에 155px가 들어차 있다. 여기에 스케일까지 손으로 곱하니
+        //   화면상 캐릭터 3.17유닛 vs 몹 0.52유닛 — 6배가 됐다.
+        // 그래서 PPU를 손으로 정하지 않고, **불투명 영역의 실제 높이**를 재서
+        //   "화면에서 몇 유닛으로 보일지"(targetUnits)로 PPU를 역산한다.
+        //   pivot도 같은 bbox의 바닥·중앙으로 잡으므로 캔버스 여백이 얼마든 발이 땅에 붙는다.
+        var atlasPx = atlas.GetPixels32();
+        int aw = atlas.width;
+
+        Rect PxRect(int i)
         {
             var r = rects[i];
-            var px = new Rect(r.x * atlas.width, r.y * atlas.height,
-                              r.width * atlas.width, r.height * atlas.height);
-            return Sprite.Create(atlas, px, new Vector2(0.5f, 0.12f), ppu, 0,
-                                 SpriteMeshType.FullRect);
+            return new Rect(Mathf.Round(r.x * atlas.width), Mathf.Round(r.y * atlas.height),
+                            Mathf.Round(r.width * atlas.width), Mathf.Round(r.height * atlas.height));
         }
 
-        b.Player = MakeAt(0, 96f);
-        b._mobs = new[] { MakeAt(1, 128f), MakeAt(2, 128f), MakeAt(3, 128f) };
-        b.Summon = MakeAt(4, 150f);
-        b.Projectile = MakeAt(5, 300f);
+        /// 칸 안 불투명 픽셀의 경계(알파 40 이하는 그림자·잔광으로 보고 무시)
+        (int minX, int minY, int maxX, int maxY) Bounds(int i)
+        {
+            var px = PxRect(i);
+            int x0 = (int)px.x, y0 = (int)px.y, x1 = (int)px.xMax, y1 = (int)px.yMax;
+            int minX = x1, minY = y1, maxX = x0, maxY = y0;
+            bool any = false;
+            for (int y = y0; y < y1; y++)
+            {
+                int row = y * aw;
+                for (int x = x0; x < x1; x++)
+                {
+                    if (atlasPx[row + x].a <= 40) continue;
+                    any = true;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+            if (!any) { minX = x0; minY = y0; maxX = x1 - 1; maxY = y1 - 1; }
+            return (minX, minY, maxX, maxY);
+        }
 
-        // 오너 픽셀아트는 원본 크기가 제각각이다(129~154 × 157~184).
-        // PPU를 고정하면 키가 들쭉날쭉해지므로 **높이 기준으로 정규화**해 화면상 같은 키로 세운다.
-        const float CHAR_UNITS = 1.75f;
+        /// <summary>칸마다 내용을 실측해 크기·발밑을 맞춘다. 여백이 제각각인 몹·보스용.</summary>
+        Sprite MakeAt(int i, float targetUnits)
+        {
+            var px = PxRect(i);
+            var (minX, minY, maxX, maxY) = Bounds(i);
+            float ppu = Mathf.Max(1, maxY - minY + 1) / Mathf.Max(0.01f, targetUnits);
+            var pivot = new Vector2(
+                Mathf.Clamp01(((minX + maxX) * 0.5f - px.x) / px.width),
+                Mathf.Clamp01((minY - px.y) / px.height));
+            return Sprite.Create(atlas, px, pivot, ppu, 0, SpriteMeshType.FullRect);
+        }
+
+        /// <summary>
+        /// PPU와 pivot을 **밖에서 정해** 만든다. 캐릭터 프레임용.
+        /// 프레임마다 내용을 재면 공격처럼 몸을 숙이는 동작에서 확대율이 달라져
+        /// 캐릭터가 커졌다 작아졌다 한다 — 한 직업은 한 배율로 묶어야 한다.
+        /// </summary>
+        Sprite MakeWith(int i, float ppu, Vector2 pivot)
+            => Sprite.Create(atlas, PxRect(i), pivot, ppu, 0, SpriteMeshType.FullRect);
+
+        // 화면상 목표 크기(유닛). 여기 숫자만 고치면 전체 비율이 바뀐다.
+        const float U_CHAR = 2.0f;    // 파티원·플레이어
+        const float U_MOB = 1.5f;     // 잡몹 — 캐릭터보다 작아야 물량이 위협으로 읽힌다
+        const float U_ELITE = 2.2f;   // 정예
+        const float U_BOSS = 3.4f;    // 보스
+        const float U_PROJ = 0.4f;
+
+        b.Player = MakeAt(0, U_CHAR);
+        b._mobs = new[] { MakeAt(1, U_MOB), MakeAt(2, U_MOB), MakeAt(3, U_MOB) };
+        b.Summon = MakeAt(4, U_ELITE);
+        b.Projectile = MakeAt(5, U_PROJ);
+
+        // 직업마다 **idle 한 장**으로 배율과 발밑을 정하고 그 직업의 전 프레임에 같은 값을 쓴다.
+        //  ① 프레임마다 재면 공격처럼 몸을 숙이는 동작에서 확대율이 달라져 캐릭터가 커졌다 작아졌다 한다
+        //  ② 원본 시트는 직업마다 캐릭터를 다른 크기로 그려놨다(힐러가 탱커보다 크다).
+        //     idle 실측 높이를 U_CHAR로 맞추므로 **직업 간 키가 통일**된다(오너 지적 "높이도 맞춰야지").
+        // 프레임 사이 정렬은 이미지 단계에서 공통 캔버스·발밑 정렬로 끝냈으므로 여기서 또 재지 않는다.
         b._job = new Sprite[JOB_DIRS.Length][];
         for (int j = 0; j < JOB_DIRS.Length; j++)
         {
+            int idle = CHAR0 + j * JOB_FRAMES.Length;      // 0번이 idle
+            var rc = PxRect(idle);
+            var (bx0, by0, bx1, by1) = Bounds(idle);
+            float ppu = Mathf.Max(1, by1 - by0 + 1) / U_CHAR;
+            var pivot = new Vector2(
+                Mathf.Clamp01(((bx0 + bx1) * 0.5f - rc.x) / rc.width),
+                Mathf.Clamp01((by0 - rc.y) / rc.height));
+
             b._job[j] = new Sprite[JOB_FRAMES.Length];
             for (int f = 0; f < JOB_FRAMES.Length; f++)
-            {
-                int idx = CHAR0 + j * JOB_FRAMES.Length + f;
-                b._job[j][f] = MakeAt(idx, texes[idx].height / CHAR_UNITS);
-            }
+                b._job[j][f] = MakeWith(CHAR0 + j * JOB_FRAMES.Length + f, ppu, pivot);
         }
+
+        // 체력바용 흰 사각형 — 아틀라스 마지막 칸이라 같은 머티리얼을 쓴다(배칭 유지)
+        b.White = MakeAt(WHITE, 1f);
 
         // 조작 캐릭터도 플레이스홀더가 아니라 실제 아트로 — W2도 이 한 줄로 같이 반영된다
         b.Player = b.Char(Job.Tank);

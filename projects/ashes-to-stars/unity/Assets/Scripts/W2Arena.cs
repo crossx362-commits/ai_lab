@@ -231,8 +231,11 @@ public class W2Arena : MonoBehaviour
         _plSr.color = _iframe > 0f ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
 
         // 걷기 2프레임 토글. 정지하면 대기 프레임으로 돌아온다.
+        // CharAnim의 2번째 인자는 bool이 아니라 Motion이다 — 프레임 구성이 바뀌어도
+        // 호출부가 프레임 번호를 몰라도 되게 하려는 것(SpriteBank 주석 참조).
         bool moving = (_plPos - prev).sqrMagnitude > 1e-6f;
-        _plSr.sprite = SpriteBank.Cached.CharAnim(SpriteBank.Job.Tank, moving, Time.time);
+        var motion = moving ? SpriteBank.Motion.Walk : SpriteBank.Motion.Idle;
+        _plSr.sprite = SpriteBank.Cached.CharAnim(SpriteBank.Job.Tank, motion, Time.time);
         // 좌우 반전 — 방향별 스프라이트가 아직 없으므로 진행 방향만 뒤집어 표현한다
         if (Mathf.Abs(_plPos.x - prev.x) > 1e-5f) _plSr.flipX = _plPos.x < prev.x;
     }

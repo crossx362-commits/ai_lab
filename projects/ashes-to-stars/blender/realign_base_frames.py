@@ -58,22 +58,38 @@ COLS = [
     ("death", 1307, 1536, 1),
 ]
 
+# 직업별 예외. 버퍼의 공격은 '연주하는 캐릭터 1명 + 오른쪽으로 퍼지는 음표'라
+# 한 동작이지 2프레임이 아니다. 2로 자르면 두 번째가 **몸이 없고 음표만 있는 그림**이 된다
+# (오너 지적으로 발견). 이런 건 자동 판정에 맡기지 말고 명시하는 편이 정직하다.
+WANT_OVERRIDE = {("buffer", "attack"): 1}
+
 
 def brightness(px):
     return (px[0] * 299 + px[1] * 587 + px[2] * 114) // 1000
 
 
 def sample_bg(im, x0, y0, x1, y1):
-    """칸 모서리에서 배경색들을 뽑는다 — 모눈 무늬 때문에 여러 개다."""
+    """
+    셀 **테두리 전체**를 훑어 배경색들을 뽑는다 — 모눈 무늬 때문에 여러 개다.
+
+    좌상단 20×20만 보던 초기 방식은 그 구석에 이펙트가 걸린 셀에서 배경색을
+    잘못 잡아, 배경이 통째로 안 지워지고 검은 사각형으로 남았다(dps hurt 실측).
+    캐릭터는 셀 가운데에 있으니 **테두리는 거의 확실히 배경**이다.
+    """
     p = im.load()
     c = Counter()
-    for x in range(x0, min(x0 + 20, x1)):
-        for y in range(y0, min(y0 + 20, y1)):
+    for x in range(x0, x1, 2):
+        for y in range(y0, y1, 2):
             c[p[x, y]] += 1
     if not c:
         return [(13, 13, 15)]
-    total = sum(c.values())
-    return [col for col, n in c.most_common(6) if n / total >= 0.03]
+
+    # 밝은 색은 캐릭터다 — 흰 로브·금색 장식이 최빈에 들어도 배경으로 삼지 않는다.
+    dark = [(col, n) for col, n in c.most_common(20) if brightness(col) <= 45]
+    if not dark:
+        return [c.most_common(1)[0][0]]
+    total = sum(n for _, n in dark)
+    return [col for col, n in dark if n / total >= 0.015][:10]
 
 
 def is_bg(c, refs):
@@ -118,6 +134,11 @@ def split_frames(im, x0, y0, x1, y1, want, refs):
         frames.append((x0 + run, x1))
     frames = [f for f in frames if f[1] - f[0] >= 12]
 
+    # ⚠️ 병합은 **모든 경로에서** 해야 한다. 처음엔 골짜기 분할 뒤에만 걸었는데,
+    #    버퍼 공격처럼 1차 분할에서 이미 둘로 갈린 경우가 그대로 통과해
+    #    두 번째 프레임이 '음표만 있고 몸이 없는' 그림이 됐다(오너 지적으로 발견).
+    frames = merge_effect_only(frames, dens, x0)
+
     if len(frames) > want:
         frames = sorted(sorted(frames, key=lambda f: f[0] - f[1])[:want])
 
@@ -143,7 +164,29 @@ def split_frames(im, x0, y0, x1, y1, want, refs):
         out.append((prev, c))
         prev = c
     out.append((prev, b))
-    return [f for f in out if f[1] - f[0] >= 12]
+    return merge_effect_only([f for f in out if f[1] - f[0] >= 12], dens, x0)
+
+
+def merge_effect_only(frames, dens, x0):
+    """
+    캐릭터가 없고 **이펙트만 있는 조각**을 앞 프레임에 흡수시킨다.
+
+    버퍼의 공격은 '연주하는 캐릭터 1명 + 오른쪽으로 퍼지는 음표'인데,
+    기대 프레임 수를 2로 두고 자르니 두 번째 조각이 **음표만 있는 그림**이 됐다(실측).
+    프레임이 아니라 한 동작의 일부이므로 갈라서는 안 된다.
+    내용량(불투명 픽셀 수)이 가장 큰 조각의 25%도 안 되면 캐릭터가 아니라고 본다.
+    """
+    if len(frames) <= 1:
+        return frames
+    mass = [sum(dens[f[0] - x0:f[1] - x0]) for f in frames]
+    top = max(mass) if mass else 0
+    out = []
+    for f, m in zip(frames, mass):
+        if out and top > 0 and m < top * 0.45:
+            out[-1] = (out[-1][0], f[1])          # 앞 조각에 흡수
+        else:
+            out.append(f)
+    return out
 
 
 def content_bbox(im, x0, y0, x1, y1, refs):
@@ -191,6 +234,61 @@ def cut_transparent(im, box, refs):
     return crop
 
 
+def clean_and_measure(sprite, min_blob=40):
+    """
+    투명화하고 남은 **고립된 작은 조각**을 지우고, 캐릭터 본체의 위치를 돌려준다.
+
+    왜 필요한가 (2026-08-13 오너 지적 "센터 안 맞잖아"):
+      flood fill로 배경을 지워도 모눈 무늬 잔재가 점·선으로 남는다. 그 조각들이
+      바운딩 박스를 부풀려서 '내용물 중심'이 캐릭터 중심이 아니게 되고,
+      결과적으로 캐릭터가 캔버스 한쪽으로 치우친다.
+
+      허용오차를 더 올려 지우는 건 위험하다 — 잔재 (24,30,34)는 배경 (10,15,18)과
+      채널차 14~16인데 캐릭터 외곽선 (0,0,0)도 채널차 10~18이라 같이 날아간다.
+      그래서 색이 아니라 **크기**로 거른다.
+
+    반환: (정리된 이미지, 본체 bbox, 전체 bbox)
+      정렬은 **본체 bbox** 기준으로 해야 검 궤적 같은 이펙트가 붙어도 몸이 안 흔들린다.
+    """
+    w, h = sprite.size
+    px = sprite.load()
+    seen = [[False] * h for _ in range(w)]
+    blobs = []
+
+    for sx in range(w):
+        for sy in range(h):
+            if seen[sx][sy] or px[sx, sy][3] == 0:
+                continue
+            q, cells = deque([(sx, sy)]), []
+            seen[sx][sy] = True
+            while q:
+                x, y = q.popleft()
+                cells.append((x, y))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and not seen[nx][ny] and px[nx, ny][3] > 0:
+                        seen[nx][ny] = True
+                        q.append((nx, ny))
+            blobs.append(cells)
+
+    if not blobs:
+        return sprite, (0, 0, w, h), (0, 0, w, h)
+
+    body = max(blobs, key=len)
+    for cells in blobs:
+        if cells is body or len(cells) >= min_blob:
+            continue
+        for x, y in cells:                      # 노이즈 조각 제거
+            px[x, y] = (0, 0, 0, 0)
+
+    def bbox(cs):
+        xs = [c[0] for c in cs]; ys = [c[1] for c in cs]
+        return (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
+
+    kept = [c for b in blobs if b is body or len(b) >= min_blob for c in b]
+    return sprite, bbox(body), bbox(kept)
+
+
 def main():
     im = Image.open(SRC).convert("RGB")
 
@@ -198,27 +296,52 @@ def main():
     # 공통 캔버스를 정하려면 전체를 다 봐야 하기 때문이다.
     plan = []
     for role, ry0, ry1 in ROWS:
-        for state, cx0, cx1, want in COLS:
+        for state, cx0, cx1, want_default in COLS:
+            want = WANT_OVERRIDE.get((role, state), want_default)
             refs = sample_bg(im, cx0, ry0, cx1, ry1)
-            for idx, (fx0, fx1) in enumerate(split_frames(im, cx0, ry0, cx1, ry1, want, refs)):
+            found = []
+            for fx0, fx1 in split_frames(im, cx0, ry0, cx1, ry1, want, refs):
                 bb = content_bbox(im, fx0, ry0, fx1, ry1, refs)
                 if bb:
-                    plan.append((role, state, idx, bb, refs))
+                    found.append(bb)
+            if not found:
+                print(f"  ⚠️ {role}_{state}: 내용을 못 찾음")
+                continue
+            # 이펙트 조각을 병합하면 프레임 수가 기대보다 적어질 수 있다.
+            # 파일이 비면 런타임이 단색으로 대체해 화면에 빨간 사각형이 뜨므로,
+            # 마지막 프레임을 복제해 채운다 — 동작이 멈춰 보일 뿐 깨지지는 않는다.
+            # 파일 개수는 예외와 무관하게 want_default를 채운다 —
+            # 런타임이 attack_01을 찾다 실패하면 단색 사각형으로 대체되기 때문이다.
+            while len(found) < want_default:
+                found.append(found[-1])
+            for idx, bb in enumerate(found[:want_default]):
+                plan.append((role, state, idx, bb, refs))
 
     if not plan:
         raise SystemExit("프레임을 하나도 찾지 못했다 — 격자 좌표를 확인할 것")
 
-    cw = max(b[2] - b[0] for _, _, _, b, _ in plan) + PAD * 2
-    ch = max(b[3] - b[1] for _, _, _, b, _ in plan) + PAD * 2
-    print(f"공통 캔버스 {cw}×{ch}  (프레임 {len(plan)}장)")
-
-    # ── 2단계: 공통 캔버스에 가로 중앙 · 세로 바닥으로 배치 ──
-    made = {}
+    # ── 2단계: 잘라내고 노이즈를 걸러 **본체 위치**를 잰다 ──
+    cut = []
     for role, state, idx, bb, refs in plan:
-        sprite = cut_transparent(im, bb, refs)
+        sprite, body, kept = clean_and_measure(cut_transparent(im, bb, refs))
+        cut.append((role, state, idx, sprite, body, kept))
+
+    # 캔버스는 '노이즈를 뺀 실제 내용'이 다 들어갈 크기로 잡는다.
+    # 본체 중심을 캔버스 중앙에 두므로, 본체 밖으로 뻗은 이펙트가 잘리지 않도록
+    # 좌우로 필요한 만큼(최대치)을 양쪽에 확보한다.
+    left = max(bd[0] - kp[0] + (bd[2] - bd[0]) // 2 for _, _, _, _, bd, kp in cut)
+    right = max(kp[2] - bd[2] + (bd[2] - bd[0]) // 2 for _, _, _, _, bd, kp in cut)
+    cw = (max(left, right) + PAD) * 2
+    ch = max(kp[3] - kp[1] for _, _, _, _, _, kp in cut) + PAD * 2
+    print(f"공통 캔버스 {cw}×{ch}  (프레임 {len(cut)}장)")
+
+    # ── 3단계: 본체 가로 중앙 · 내용 바닥 정렬로 배치 ──
+    made = {}
+    for role, state, idx, sprite, body, kept in cut:
         canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        x = (cw - sprite.width) // 2                 # 가로: 중앙
-        y = ch - PAD - sprite.height                 # 세로: 바닥 (발이 기준선에 붙는다)
+        body_cx = (body[0] + body[2]) / 2.0
+        x = int(round(cw / 2.0 - body_cx))           # 가로: **본체 중심**을 캔버스 중앙에
+        y = ch - PAD - kept[3]                       # 세로: 내용 바닥을 기준선에
         canvas.paste(sprite, (x, y), sprite)
 
         d = os.path.join(OUT, role)
