@@ -288,11 +288,3 @@ public static class SceneStructureBuilder
         Note(g, "전직 · 합성 · 장비 · 영묘(환생)");
     }
 }
-
-/// <summary>씬을 연 사람이 무엇을 보고 있는지 인스펙터에서 읽을 수 있게</summary>
-public class SceneNote : MonoBehaviour
-{
-    public string 제목;
-    public string 기획서;
-    [TextArea(4, 14)] public string 설명;
-}
