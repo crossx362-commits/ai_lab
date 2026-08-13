@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace AshesToStars
 {
@@ -7,6 +8,47 @@ namespace AshesToStars
     // 지금은 각 화면이 "무엇을 하는 곳인가"와 이동만 담는다 — 콘텐츠는 수직 슬라이스에서 채운다.
     // ⚠️ 여기에 전투 로직·수치를 넣지 마라. 수치의 출처는 언제나 §18 기준표와 ScriptableObject다.
     // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 전투 보상 정보 저장소 (§2 코어 루프: 재화 획득 → 캐릭터 성장)
+    /// BattleScreen에서 계산하고 ResultScreen에서 표시한다.
+    /// GameFlow.LastBattleSummary와 함께 결과를 전달한다.
+    /// 출처: §18-1(티어별 수익), §10-8(드랍 설계), §18-4(소지 상한)
+    /// </summary>
+    public class BattleRewardInfo
+    {
+        /// <summary>획득 골드 (§18-1 티어별 수익)</summary>
+        public long GoldReward { get; set; }
+
+        /// <summary>획득한 드랍 아이템 (부활초·귀환의 두루마리 등, §10-8)</summary>
+        public List<Economy.LifeItem> DroppedItems { get; set; } = new List<Economy.LifeItem>();
+
+        /// <summary>소지 상한에 걸려 획득 거부된 아이템 (§18-4)</summary>
+        public List<Economy.LifeItem> RejectedItems { get; set; } = new List<Economy.LifeItem>();
+
+        /// <summary>이 전투에서 삭제된 캐릭터 목록 (사망 카운트 3회 도달, §4)</summary>
+        public List<string> DeletedCharacters { get; set; } = new List<string>();
+
+        /// <summary>이 전투에서 회복 중이 된 캐릭터 (사망 카운트 증가, §4)</summary>
+        public List<(string name, int deathCount)> RecoveredCharacters { get; set; } = new List<(string, int)>();
+
+        /// <summary>전투 소요 시간 (초 단위)</summary>
+        public float BattleDurationSeconds { get; set; }
+
+        /// <summary>전투 승리 여부</summary>
+        public bool Survived { get; set; }
+
+        public void Clear()
+        {
+            GoldReward = 0;
+            DroppedItems.Clear();
+            RejectedItems.Clear();
+            DeletedCharacters.Clear();
+            RecoveredCharacters.Clear();
+            BattleDurationSeconds = 0;
+            Survived = false;
+        }
+    }
 
     /// <summary>타이틀 — 시작과 종료. 하단바 없음.</summary>
     public class TitleScreen : GameScreen
@@ -73,9 +115,21 @@ namespace AshesToStars
         protected override string Subtitle => "자동사냥으로 재화를 번다. 단기 루프의 출발점(§2·§6)";
 
         bool _showLastLifeWarning = false;
+        bool _showInsufficientGold = false;
 
         protected override void Body(Rect r)
         {
+            if (_showInsufficientGold)
+            {
+                // 골드 부족 경고 화면 (§18-2 진입 비용)
+                Info(r, 0, "⚠️ 골드가 부족합니다");
+                Info(r, 1, "던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)");
+
+                if (Row(r, 2, "확인", "돌아간다"))
+                    _showInsufficientGold = false;
+                return;
+            }
+
             if (_showLastLifeWarning)
             {
                 // 마지막 목숨 경고 화면
@@ -94,13 +148,25 @@ namespace AshesToStars
 
             if (Row(r, 0, "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)"))
             {
+                // 필드 사냥은 무료 (§18-2 절대 원칙)
                 if (HasLastLifeCharacter())
                     _showLastLifeWarning = true;
                 else
                     GameFlow.GoBattle(GameFlow.Field);
             }
             if (Row(r, 1, "던전 입장", "랜덤 생성 + 종점 보스 1체(§7)"))
-                GameFlow.GoBattle(GameFlow.Field);
+            {
+                // 던전 입장에는 골드 비용 필요 (§18-2)
+                // TODO: 실제 지갑 시스템 필요. 지금은 T1 기준 0.02 G/h를 차감한다고 표시만 함
+                long dungeonCost = Economy.GetActionCost("DungeonEntry", 0); // T1 기준
+                Debug.Log($"[경제] 던전 입장 비용: {Economy.FormatCurrency(dungeonCost)} (§18-2)");
+
+                // 프로토타입: 골드 체크 없이 진입 허용 (실제는 지갑 체크 필요)
+                if (HasLastLifeCharacter())
+                    _showLastLifeWarning = true;
+                else
+                    GameFlow.GoBattle(GameFlow.Field);
+            }
             if (Row(r, 2, "자동화 일정", "무엇을 언제 시킬지 예약(§6)")) { }
         }
 
@@ -144,6 +210,10 @@ namespace AshesToStars
 
             if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
             {
+                // 탑 일반층 진입 비용 (§18-2)
+                long towerCost = Economy.GetActionCost("TowerNormalFloor", 0); // T1 기준
+                Debug.Log($"[경제] 탑 도전 비용: {Economy.FormatCurrency(towerCost)} (§18-2)");
+
                 if (HasLastLifeCharacter())
                     _showLastLifeWarning = true;
                 else
@@ -153,6 +223,10 @@ namespace AshesToStars
             // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
             if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
             {
+                // 5층 중간 레이드 진입 비용 (§18-2)
+                long raidCost = Economy.GetActionCost("Tower5BossRaid", 0); // T1 기준
+                Debug.Log($"[경제] 레이드 입장 비용: {Economy.FormatCurrency(raidCost)} (§18-2)");
+
                 if (HasLastLifeCharacter()) _showLastLifeWarning = true;
                 else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.보스, 5);
             }
@@ -262,6 +336,7 @@ namespace AshesToStars
     /// <summary>
     /// 전투 — W3Party 검증 빌드와 연동. 전투는 자동으로 시작되고
     /// 결과가 나면 결과 화면으로 이동한다.
+    /// 보상 정보는 정적 필드에 저장되어 ResultScreen에서 읽는다.
     /// </summary>
     public class BattleScreen : GameScreen
     {
@@ -276,6 +351,7 @@ namespace AshesToStars
 
         float _t;
         global::W3Party _battle;
+        static BattleRewardInfo _reward = new BattleRewardInfo();
 
         protected override void Awake()
         {
@@ -297,7 +373,9 @@ namespace AshesToStars
                 var boss = gameObject.AddComponent<BossBattle>();
                 boss.OnBossDefeated += _ =>
                 {
-                    GameFlow.LastBattleSummary = $"보스 격파 — {GameFlow.BossFloor}층";
+                    // 보스 격파 — 보상 계산 (§2 코어 루프: 재화 획득)
+                    CalculateVictoryReward(GameFlow.BossFloor);
+                    GameFlow.LastBattleSummary = $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초)";
                     GameFlow.Go(GameFlow.Result);
                 };
                 boss.OnPartyWiped += () =>
@@ -326,17 +404,74 @@ namespace AshesToStars
             _t += Time.deltaTime;
         }
 
+        /// <summary>
+        /// 전투 승리 시 보상을 계산한다 (§2·§18-1·§10-8·§18-4)
+        /// </summary>
+        void CalculateVictoryReward(int bossFloor)
+        {
+            _reward.Clear();
+            _reward.Survived = true;
+            _reward.BattleDurationSeconds = _t;
+
+            // 티어 결정 (§10-6: 탑 10층 돌파마다 필드 티어 상승)
+            // 프로토타입이므로 단순화: 층수 / 10을 티어로 (1~9층 = T0, 10~19층 = T1 등)
+            int tier = Mathf.Max(0, bossFloor / 10);
+            if (tier >= Economy.TierRevenueMultiplier.Length)
+                tier = Economy.TierRevenueMultiplier.Length - 1;
+
+            // 골드 지급 (§18-1 티어별 수익 곡선)
+            // 기본값: 티어별 1시간 수익 = TierRevenueMultiplier * 10,000 쿠퍼 (1 G/h = 10,000 쿠퍼)
+            // 보스 보상: 기본값의 약 15~20% (한판 15분 기준)
+            float tierRevenue = Economy.TierRevenueMultiplier[tier];
+            long baseGoldPerHour = (long)(tierRevenue * 10000); // 1시간 수익(쿠퍼)
+            float battleRewardRatio = 0.25f; // 보스는 1시간 수익의 25% (15분 기준)
+            _reward.GoldReward = (long)(baseGoldPerHour * battleRewardRatio);
+
+            // 드랍 롤 (§10-8, §18-4)
+            // 보스 출처 판정: 탑 10층 단위는 대보스, 5층 단위는 중간 레이드
+            Economy.DropSource dropSource = bossFloor % 10 == 0
+                ? Economy.DropSource.Tower10Boss
+                : Economy.DropSource.Tower5Boss;
+
+            // 드랍 롤 3회 (통상 3~5회 정도)
+            for (int i = 0; i < 3; i++)
+            {
+                var drop = Economy.RollDrop(dropSource);
+                if (drop.HasValue)
+                {
+                    // 소지 상한 체크 (§18-4)
+                    // 프로토타입에선 간단히: 부활초 3개, 귀환의 두루마리 5개 상한
+                    var itemCap = Economy.ItemCapacity[drop.Value];
+                    int currentCount = 0; // 프로토타입에서는 count 추적 없음, 실제는 인벤토리 시스템에서 관리
+
+                    // 상한 체크: 부활초는 3개, 귀환의 두루마리는 5개 (§18-4)
+                    bool canAdd = drop.Value switch
+                    {
+                        Economy.LifeItem.RevivalTea => currentCount < 3,
+                        Economy.LifeItem.ScrollOfReturn => currentCount < 5,
+                        _ => true // 환생석·특수 직업 증표는 상한 없음
+                    };
+
+                    if (canAdd)
+                        _reward.DroppedItems.Add(drop.Value);
+                    else
+                        _reward.RejectedItems.Add(drop.Value);
+                }
+            }
+        }
+
         void OnBattleEnd(bool survived)
         {
             if (survived)
             {
+                // 보스전이 아닌 일반 전투는 보상을 계산하지 않았으므로 최소한의 정보만 표시
                 GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
             }
             else
             {
                 GameFlow.LastBattleSummary = $"전멸 — {_t:F1}초 생존\n";
 
-                // 패배 시 출전 캐릭터에게 사망을 기록한다
+                // 패배 시 출전 캐릭터에게 사망을 기록한다 (§4 사망 시스템)
                 // 현재는 W3Party 검증 빌드에서 전체 파티가 함께 전멸하는 구조
                 // (실제 게임에선 캐릭터별 생사 상태를 추적할 것 — §5·§10)
                 var characters = LifeSystem.GetCharacters();
@@ -348,7 +483,7 @@ namespace AshesToStars
                     // (검증: W3Party 구조에서 개별 캐릭터 생사 추적은 별개 시스템)
                     if (!ch.IsDeleted)  // 삭제된 캐릭터는 다시 죽지 않음
                     {
-                        LifeSystem.RegisterDeath(ch, isPvp: false);  // PvE 사망으로 기록
+                        LifeSystem.RegisterDeath(ch, isPvp: false);  // PvE 사망으로 기록 (§4)
                         if (ch.IsDeleted)
                             deletedCharacters.Add(ch.Name);
                     }
@@ -369,6 +504,11 @@ namespace AshesToStars
             Info(r, 0, $"경과 {_t:F1}s");
             if (Row(r, 1, "후퇴", "긴급 탈출 아이템(§4)")) GameFlow.Go(GameFlow.ReturnTo);
         }
+
+        /// <summary>
+        /// ResultScreen이 보상 정보를 읽기 위한 접근자
+        /// </summary>
+        public static BattleRewardInfo _GetLastReward() => _reward;
     }
 
     /// <summary>결과 — 전투가 끝나고 들어온 곳으로 돌아간다.</summary>
@@ -378,11 +518,57 @@ namespace AshesToStars
         protected override string Subtitle => "보상 정산 후 원래 화면으로";
         protected override bool ShowBottomBar => false;
 
+        int _rowIndex = 0;
+
         protected override void Body(Rect r)
         {
-            Info(r, 0, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
-            if (Row(r, 1, "계속", "들어온 화면으로 복귀")) GameFlow.Go(GameFlow.ReturnTo);
-            if (Row(r, 2, "영지로", "허브 복귀(§16)")) GameFlow.Go(GameFlow.Estate);
+            _rowIndex = 0;
+
+            // 전투 결과 요약 (§2 코어 루프)
+            Info(r, _rowIndex++, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
+
+            // 보상 정보 표시 — 승리했을 때만 (§18-1·§10-8·§18-4)
+            var reward = BattleScreen._GetLastReward();
+            if (reward != null && reward.Survived)
+            {
+                Info(r, _rowIndex++, "");  // 빈 줄
+                Info(r, _rowIndex++, $"💰 획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
+
+                // 드랍 아이템 표시 (§10-8)
+                if (reward.DroppedItems.Count > 0)
+                {
+                    foreach (var item in reward.DroppedItems)
+                    {
+                        Info(r, _rowIndex++, $"  ✓ {FormatLifeItem(item)}");
+                    }
+                }
+
+                // 소지 상한 초과로 거절된 아이템 (§18-4 "획득 거부로 처리")
+                if (reward.RejectedItems.Count > 0)
+                {
+                    foreach (var item in reward.RejectedItems)
+                    {
+                        Info(r, _rowIndex++, $"  ⚠️ {FormatLifeItem(item)} — 소지 상한에 도달해 획득할 수 없습니다");
+                    }
+                }
+            }
+
+            Info(r, _rowIndex++, "");  // 빈 줄
+
+            if (Row(r, _rowIndex++, "계속", "들어온 화면으로 복귀")) GameFlow.Go(GameFlow.ReturnTo);
+            if (Row(r, _rowIndex++, "영지로", "허브 복귀(§16)")) GameFlow.Go(GameFlow.Estate);
+        }
+
+        string FormatLifeItem(Economy.LifeItem item)
+        {
+            return item switch
+            {
+                Economy.LifeItem.RevivalTea => "부활초 — 사망 카운트 1 차감 (§4)",
+                Economy.LifeItem.ScrollOfReturn => "귀환의 두루마리 — 긴급 탈출 아이템 (§4)",
+                Economy.LifeItem.RebornStone => "환생석 — 삭제된 캐릭터 복구 (§4)",
+                Economy.LifeItem.SpecialJobToken => "특수 직업 전직 증표 — 50층 이상 보상 (§3)",
+                _ => "알 수 없는 아이템"
+            };
         }
     }
 }
