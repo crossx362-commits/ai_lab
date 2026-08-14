@@ -1,0 +1,30 @@
+{
+  "_note": "프랍 명세. refs가 스타일 앵커(오너 캐릭터 시트에서 뽑은 것)다. 이 파일을 늘리면 물량이 늘어난다.",
+  "refs": ["anchor_characters.png"],
+  "assets": [
+    {
+      "name": "dungeon_pillar_0",
+      "prompt": "A broken ancient stone pillar in a ruined underground dungeon. Cracked grey granite, moss in the crevices, the top half snapped off and jagged. Roughly as tall as one of the characters in the reference image."
+    },
+    {
+      "name": "dungeon_crystal_0",
+      "prompt": "A cluster of glowing pale-blue crystals growing out of dark rock, waist-high, faint inner light. Dungeon environment prop."
+    },
+    {
+      "name": "dungeon_cover_0",
+      "prompt": "A chest-high chunk of collapsed stone masonry usable as battle cover, with rubble at its base. Dungeon environment prop, wider than it is tall."
+    },
+    {
+      "name": "ash_charred_0",
+      "prompt": "A burnt, charred tree stump on scorched grey ground, black cracked bark with faint dying embers in the splits. Prop for a burned wasteland biome."
+    },
+    {
+      "name": "estate_barrel_0",
+      "prompt": "A wooden barrel bound with dark iron hoops, slightly weathered, standing upright. Prop for a noble estate courtyard."
+    },
+    {
+      "name": "field_bush_0",
+      "prompt": "A dense dark-green shrub with small leaves and a few dry twigs, knee-high. Prop for a grassy field biome."
+    }
+  ]
+}
