@@ -35,7 +35,8 @@ sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
 sys.path.insert(0, _here)
 
 from game_platform import (                                  # noqa: E402
-    build_target, ensure_no_editor_lock, find_unity, player_path, terminate_player,
+    build_target, ensure_no_editor_lock, find_unity, player_managed_dll, player_path,
+    terminate_player,
 )
 
 try:
@@ -58,7 +59,6 @@ BUILDS = {
         "stem": "W1",
         "runner": "W1Runner.Build",
         "csv": "w1_result.csv",
-        "dll": os.path.join(UNITY_PROJECT, "Temp", "Managed", "Assembly-CSharp.dll"),
         "timeout": 300,
     },
     "w2": {
@@ -66,7 +66,6 @@ BUILDS = {
         "stem": "W2",
         "runner": "W2Runner.Build",
         "csv": "w2_result.csv",
-        "dll": os.path.join(UNITY_PROJECT, "Temp", "Managed", "Assembly-CSharp.dll"),
         "timeout": 120,
         "args": ["--bot"],
     },
@@ -75,29 +74,45 @@ BUILDS = {
         "stem": "W3",
         "runner": "W3Runner.Build",
         "csv": "w3_result.csv",
-        "dll": os.path.join(UNITY_PROJECT, "Temp", "Managed", "Assembly-CSharp.dll"),
         "timeout": 200,
     },
 }
 
-def check_build_freshness(build_key, build_before_time):
+def newest_source_mtime():
+    """Assets 아래 .cs 중 가장 최근 수정 시각."""
+    newest = 0.0
+    for base, _dirs, files in os.walk(os.path.join(UNITY_PROJECT, "Assets")):
+        for f in files:
+            if f.endswith(".cs"):
+                newest = max(newest, os.path.getmtime(os.path.join(base, f)))
+    return newest
+
+
+def check_build_freshness(build_key, build_before_time=None):
     """
-    빌드 갱신 확인. Assembly-CSharp.dll이 빌드 직전보다 새로운지 확인한다.
-    (2026-08-13 사고: 낡은 빌드로 측정해 잘못된 결과를 읽었다)
+    빌드 갱신 확인 — 산출물의 Assembly-CSharp.dll이 **소스보다 새로운지** 본다.
+    (2026-08-13 사고: 낡은 빌드로 측정해 불가능한 수치를 읽었다)
+
+    ⚠️ "빌드 시작 시각보다 새로운가"로 보면 안 된다 — 유니티 증분 빌드는
+       코드가 안 바뀌면 DLL을 다시 쓰지 않으므로, 정상 빌드가 매번 '낡음'으로 뒤집힌다(실측).
+       우리가 막으려는 사고는 "코드를 고쳤는데 옛 빌드로 측정하는 것"이니
+       기준은 빌드 시각이 아니라 **소스 시각**이다.
 
     반환: (ok, message)
     """
     spec = BUILDS[build_key]
-    dll_path = spec["dll"]
+    dll_path = player_managed_dll(spec["dir"], spec["stem"])
 
     if not os.path.exists(dll_path):
         return False, f"DLL 없음: {dll_path}"
 
     dll_mtime = os.path.getmtime(dll_path)
-    if dll_mtime < build_before_time:
-        return False, f"DLL 낡음 (빌드 전: {build_before_time:.0f}, DLL: {dll_mtime:.0f})"
+    src_mtime = newest_source_mtime()
+    if dll_mtime < src_mtime:
+        return False, (f"DLL이 소스보다 낡았다 (소스: {src_mtime:.0f}, DLL: {dll_mtime:.0f}) "
+                       "— 빌드가 코드 변경을 반영하지 못했다")
 
-    return True, f"DLL 신규 (빌드 후: {dll_mtime:.0f})"
+    return True, "DLL이 소스보다 새롭다"
 
 
 def build(unity, build_key):
@@ -132,6 +147,19 @@ def build(unity, build_key):
 
     errs = [l for l in text.splitlines() if "error CS" in l or "BuildFailed" in l]
     ok = r.returncode == 0 and not errs
+
+    # 유니티가 **애초에 안 돌았는데 rc=0** 인 경우가 있다.
+    # 실측(2026-08-14): Rosetta 2 미설치 상태의 맥 에디터는
+    #   "Rosetta 2 isn't installed …" 한 줄만 stdout에 뱉고 rc=0으로 즉시 종료한다.
+    #   로그 파일조차 안 생기는데 이 함수는 "빌드 성공 (0s)"을 찍었다.
+    # 「rc=0 ≠ 실행됨」 — 판정 근거는 **로그의 존재**다.
+    # ⚠️ 소요 시간으로 판정하지 마라: 증분 빌드는 3~4초 만에 정상 완료한다
+    #    (처음엔 dur<5를 미실행 신호로 넣었다가 멀쩡한 빌드를 실패로 뒤집었다 — 실측).
+    if ok and not text.strip():
+        head = (r.stdout or r.stderr or "").strip().splitlines()
+        why = head[0] if head else "로그 파일이 생성되지 않았다"
+        errs = [f"유니티가 실행되지 않았다(rc=0, {dur:.0f}s): {why}"]
+        ok = False
 
     if ok:
         # DLL 신선도 검증

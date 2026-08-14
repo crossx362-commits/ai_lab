@@ -102,6 +102,20 @@ def build_target():
     return "StandaloneLinux64"
 
 
+def player_managed_dll(build_dir, stem):
+    """
+    **빌드 산출물 안의** Assembly-CSharp.dll 경로.
+
+    프로젝트의 Temp/Managed/ 가 아니라 플레이어 쪽을 봐야 한다 —
+    「낡은 빌드로 측정」 사고(GAME_DEV_HANDOFF.md §5)가 정확히 이걸 확인하라고 남긴 교훈이고,
+    Temp/ 는 배치 종료 후 비워질 수 있어 맥에서는 항상 '없음'이 된다(실측).
+    """
+    if IS_MAC:
+        return os.path.join(build_dir, stem + ".app", "Contents", "Resources",
+                            "Data", "Managed", "Assembly-CSharp.dll")
+    return os.path.join(build_dir, stem + "_Data", "Managed", "Assembly-CSharp.dll")
+
+
 def player_path(build_dir, stem):
     """
     빌드 산출물의 실행 경로. 맥은 .app 번들 안의 바이너리를 직접 실행한다
