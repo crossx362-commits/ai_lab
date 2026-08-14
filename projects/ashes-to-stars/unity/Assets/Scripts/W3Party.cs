@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using AshesToStars;      // FxParticles — 검증 스크립트는 전역 네임스페이스, 게임 코드는 AshesToStars
 
 /// <summary>
 /// 재와 별 — W3 파티·자동 전투 검증 (§21 프로토타입 W3)
@@ -360,6 +361,7 @@ public class W3Party : MonoBehaviour
     int _seed = 20260814;
     int _reps = 1;
     int _rep;                    // 현재 구성의 몇 번째 반복인가
+    bool _shotThisRun;           // 이 판의 중반 스크린샷을 찍었는가
     Setup _setup;
     bool _tauntEnabled = true;
     GUIStyle _hud;
@@ -596,6 +598,7 @@ public class W3Party : MonoBehaviour
         if (GameMode && _qi > 0) return;
         if (_qi >= SETUPS.Length * _reps) { Finish(); return; }
         _rep = _qi % _reps;
+        _shotThisRun = false;
         _setup = SETUPS[_qi / _reps];
         // **판을 세우기 전에** 시드를 박는다. 스폰 위치·AI 배정이 여기서부터 뽑힌다.
         Random.InitState(RunSeed());
@@ -718,6 +721,16 @@ public class W3Party : MonoBehaviour
         // "얼마나 버티는가"를 물을 수 없었다(§21-1g).
         if (AllDead() || _t >= 최대시간)
         { RecordAndNext(); return; }
+
+        // 판 중반 스크린샷 — **판이 끝난 뒤에 찍으면 안 된다.**
+        // CaptureScreenshot은 그 프레임 끝에 찍히는데, 바로 다음 줄에서 다음 구성으로 넘어가므로
+        // 파일 이름은 A인데 화면은 "구성 B 경과 0s"인 그림이 저장됐다(실측). 전투 장면이 한 장도 없었다.
+        if (!_shotThisRun && _t >= 20f)
+        {
+            _shotThisRun = true;
+            var dir = Path.GetDirectoryName(_outPath);
+            ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"w3_{_setup.Name}.png"));
+        }
 
         TickCommand();
         TickParty(dt);
@@ -931,6 +944,7 @@ public class W3Party : MonoBehaviour
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
                     _skillLog[0]++; m.SkillT = 0.55f;
                     FlashParty();                                 // 발동 순간을 눈에 띄게
+                    FxParticles.Play(FxKind.도발, ToScreen(m.Pos), 1.2f);
                 }
                 if (force2 || m.Gauge >= 60f)
                 {
@@ -941,6 +955,7 @@ public class W3Party : MonoBehaviour
                         if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f);
                     FlashParty();
                     _skillLog[1]++; m.SkillT = 0.55f;
+                    foreach (var o in _party) if (o.Alive) FxParticles.Play(FxKind.무적, ToScreen(o.Pos));
                 }
             }
             else if (commanded)
@@ -1088,6 +1103,7 @@ public class W3Party : MonoBehaviour
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
+                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f);
                 }
                 else if (m.ForceSkill == 1 || wounded >= 2)
                 {
@@ -1097,6 +1113,7 @@ public class W3Party : MonoBehaviour
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
                             m.Gauge += Heal(o, 14f * sp.DmgMul);
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
+                    FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
@@ -1116,6 +1133,7 @@ public class W3Party : MonoBehaviour
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
+                    FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR);
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
@@ -1138,8 +1156,8 @@ public class W3Party : MonoBehaviour
                 m.Gauge += 1f;
                 float dmg = m.Atk;
                 // 일섬 — 버튼(슬롯1)이면 스택이 덜 찼어도 즉시 터뜨린다(§3 "스택 전량 소모")
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; }
-                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); }
+                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
                 m.Cd = 0.35f;
                 m.Threat += dmg * 0.4f;
@@ -1328,10 +1346,12 @@ public class W3Party : MonoBehaviour
         }
         if (dmg <= 0f) { if (front) _frontlineHits++; else _backlineHits++; return; }
         m.Hp -= dmg;
+        FxParticles.Play(FxKind.피격, ToScreen(m.Pos));
         if (front) _frontlineHits++; else _backlineHits++;
         if (m.Hp <= 0f)
         {
             m.Hp = 0f; m.DeadT = _t;
+            FxParticles.Play(FxKind.사망, ToScreen(m.Pos));
             m.Tr.gameObject.SetActive(false);
             if (m.Role == Role.Healer && _healerDeadT < 0f) _healerDeadT = _t;
             Debug.Log($"[W3] {m.Role} 사망 @ {_t:F1}s");
@@ -1443,8 +1463,6 @@ public class W3Party : MonoBehaviour
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
                   $"프레임 {_framesThisRun} / 초당근접 {_meleeHits / Mathf.Max(0.1f, _t):F0}");
 
-        var dir = Path.GetDirectoryName(_outPath);
-        ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"w3_{_setup.Name}.png"));
         NextStyle();
     }
 
