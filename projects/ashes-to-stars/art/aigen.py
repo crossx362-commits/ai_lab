@@ -114,10 +114,19 @@ def generate_hf(prompt: str, refs: list[str], model: str = "nano_banana_pro",
     for r in refs:
         cmd += ["--image-references", r]
 
-    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=900)
-    urls = [ln.strip() for ln in (p.stdout or "").splitlines() if ln.strip().startswith("http")]
+    # ⚠️ 산발 실패가 실재한다(2026-08-14 실측): **완전히 같은 요청**이 1차 실패·2차 성공했다.
+    #    처음엔 "강화한 프롬프트가 원인"이라 단정했는데 n=1 비교였고 틀렸다 —
+    #    같은 입력을 재실행해 재현되는지부터 봐야 원인을 말할 수 있다.
+    #    실패한 잡은 크레딧을 차감하지 않으므로 재시도 비용은 시간뿐이다.
+    urls = []
+    for attempt in range(1, 4):
+        p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=900)
+        urls = [ln.strip() for ln in (p.stdout or "").splitlines() if ln.strip().startswith("http")]
+        if urls:
+            break
+        print(f"   ↻ 재시도 {attempt}/3 — {((p.stdout or '') + (p.stderr or '')).strip()[:120]}")
     if not urls:
-        raise SystemExit(f"Higgsfield 실패: {(p.stdout or '') + (p.stderr or '')}"[:400])
+        raise SystemExit(f"Higgsfield 실패(3회): {(p.stdout or '') + (p.stderr or '')}"[:400])
 
     with urllib.request.urlopen(urls[-1], timeout=180) as r:
         data = r.read()
