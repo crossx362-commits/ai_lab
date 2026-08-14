@@ -40,6 +40,17 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 스프라이트 없이 **충돌만** 등록한다. 그림은 호출자가 이미 세운 경우에 쓴다
+        /// (필드 프랍을 노이즈로 심는 `FieldDecor`가 유일한 호출자).
+        ///
+        /// ⚠️ 순서 제약: `Clear()`가 이 목록을 비운다. 라운드마다 Clear가 돌면
+        ///    **Clear 뒤에** 다시 등록해야 한다. 그림은 남고 충돌만 사라지면
+        ///    "보이는데 통과되는" 상태가 되어 §10-2 엄폐가 조용히 거짓이 된다.
+        /// </summary>
+        public static void AddObstacle(Vector2 pos, float radius)
+            => _obstacles.Add(new Obstacle { Pos = pos, Radius = radius });
+
+        /// <summary>
         /// 템플릿대로 장애물을 깔고 스프라이트를 세운다.
         /// arenaRadius 안쪽에만 놓는다 — 밖에 놓으면 아무도 지나가지 않아 존재 이유가 없다.
         /// </summary>

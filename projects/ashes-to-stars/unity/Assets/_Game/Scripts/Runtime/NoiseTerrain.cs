@@ -14,7 +14,8 @@ namespace AshesToStars
     /// 무엇을 노이즈로 정하는가:
     ///   ① 바닥 색조 — 같은 텍스처를 쓰되 노이즈로 톤을 흔들어 "같은 타일 반복" 느낌을 없앤다
     ///   ② 지형 구역 — 노이즈 임계로 초지/바위/모래 같은 구역을 나눈다
-    ///   ③ 장애물 배치 — 노이즈 봉우리에 바위·덤불을 심는다. 위치 선정(§10-2)이 의미를 갖는 엄폐물
+    ///   ③ ~~장애물 배치~~ → **`FieldDecor`로 이관**(2026-08-14). 같은 노이즈를 보되
+    ///      아틀라스·배칭·엄폐물 등록까지 거기서 함께 처리한다. 노이즈 규칙은 `TerrainNoise` 공용.
     ///
     /// 성능 원칙(§10-9): 바닥은 **메시 1장 + 정점 색**으로 처리해 드로우콜 1을 유지한다.
     /// 타일을 수백 장 깔면 잡몹 500체 예산을 바닥이 먹는다.
@@ -27,10 +28,9 @@ namespace AshesToStars
         public float 격자간격 = 2f;
 
         [Header("노이즈")]
+        [Tooltip("같은 시드 = 같은 지형. 노이즈 계수는 TerrainNoise가 갖는다 — " +
+                 "여기서 따로 노출하면 프랍 배치와 다른 값이 되어 두 규칙이 어긋난다")]
         public int 시드 = 0;
-        [Tooltip("큰 지형 덩어리 크기")] public float 대형스케일 = 0.035f;
-        [Tooltip("잔무늬 크기")] public float 소형스케일 = 0.16f;
-        [Range(0f, 1f)] public float 잔무늬비중 = 0.35f;
 
         [Header("구역 색 (노이즈 임계로 갈린다)")]
         public Color 저지대 = new Color(0.16f, 0.22f, 0.15f);
@@ -38,12 +38,10 @@ namespace AshesToStars
         public Color 마른땅 = new Color(0.30f, 0.28f, 0.19f);
         public Color 바위 = new Color(0.26f, 0.26f, 0.28f);
 
-        [Header("장애물")]
-        [Tooltip("이 값을 넘는 노이즈 봉우리에 장애물을 심는다")]
-        [Range(0.5f, 0.95f)] public float 장애물임계 = 0.78f;
-        public int 장애물상한 = 120;
-        public Sprite[] 장애물스프라이트;
-        public Material 스프라이트머티리얼;
+        // ⚠️ 「장애물」 필드 4종(임계·상한·스프라이트·머티리얼)을 제거했다(2026-08-14).
+        //    인스펙터에 보이는데 아무도 안 채워서 배치가 **한 번도 돈 적이 없었다**.
+        //    보이는 설정은 "쓰이는 설정"이어야 한다 — 안 그러면 다음 사람이 채우고
+        //    동작을 기대하다 조용히 배신당한다. 배치는 이제 FieldDecor 하나가 맡는다.
 
         [Header("쿼터뷰")]
         public float ISO_Y = 0.5f;
@@ -59,16 +57,17 @@ namespace AshesToStars
             _oy = (float)rng.NextDouble() * 10000f;
 
             BuildGroundMesh();
-            ScatterProps(rng);
+            // 프랍 배치는 여기서 하지 않는다 — `FieldDecor`가 같은 노이즈(TerrainNoise)로
+            // 심고 아틀라스까지 묶어 배칭을 지킨다(2026-08-14 통합).
+            //   구 `ScatterProps`는 `장애물스프라이트`를 인스펙터로 채워야 했는데
+            //   아무도 채우지 않아 **한 번도 실행된 적이 없었다** — 살아 있는 줄 알았던
+            //   죽은 경로가 랜덤 배치(FieldDecor)와 공존하며 "노이즈로 심고 있다"는
+            //   착각을 만들었다. 지우는 것이 수리다.
         }
 
-        /// <summary>노이즈 값 0~1 — 대형 지형 + 잔무늬를 섞는다</summary>
+        /// <summary>노이즈 값 0~1 — 바닥 색조와 프랍 배치가 **같은 규칙**을 본다.</summary>
         public float Sample(float x, float y)
-        {
-            float big = Mathf.PerlinNoise(_ox + x * 대형스케일, _oy + y * 대형스케일);
-            float small = Mathf.PerlinNoise(_ox + 100f + x * 소형스케일, _oy + 100f + y * 소형스케일);
-            return Mathf.Clamp01(big * (1f - 잔무늬비중) + small * 잔무늬비중);
-        }
+            => TerrainNoise.Sample(new Vector2(_ox, _oy), x, y);
 
         Color ZoneColor(float n)
         {
@@ -133,36 +132,5 @@ namespace AshesToStars
             mr.receiveShadows = false;
         }
 
-        /// <summary>노이즈 봉우리에 장애물을 심는다 — 위치 선정(§10-2)이 의미를 갖는 엄폐물</summary>
-        void ScatterProps(System.Random rng)
-        {
-            if (장애물스프라이트 == null || 장애물스프라이트.Length == 0) return;
-
-            var root = new GameObject("Props").transform;
-            root.SetParent(transform, false);
-            int placed = 0;
-            float step = 격자간격 * 1.5f;
-
-            for (float y = -반경; y <= 반경 && placed < 장애물상한; y += step)
-                for (float x = -반경; x <= 반경 && placed < 장애물상한; x += step)
-                {
-                    if (x * x + y * y > 반경 * 반경) continue;
-                    if (Sample(x, y) < 장애물임계) continue;
-                    if (rng.NextDouble() > 0.45) continue;          // 봉우리마다 다 심으면 벽이 된다
-
-                    float jx = x + (float)(rng.NextDouble() - 0.5) * step;
-                    float jy = y + (float)(rng.NextDouble() - 0.5) * step;
-
-                    var go = new GameObject("prop", typeof(SpriteRenderer));
-                    go.transform.SetParent(root, false);
-                    go.transform.position = new Vector3(jx, jy * ISO_Y, 0f);
-                    var sr = go.GetComponent<SpriteRenderer>();
-                    sr.sprite = 장애물스프라이트[rng.Next(장애물스프라이트.Length)];
-                    if (스프라이트머티리얼 != null) sr.sharedMaterial = 스프라이트머티리얼;
-                    sr.sortingOrder = (int)(-jy * 16f);
-                    go.transform.localScale = Vector3.one * (1.4f + (float)rng.NextDouble() * 0.8f);
-                    placed++;
-                }
-        }
     }
 }

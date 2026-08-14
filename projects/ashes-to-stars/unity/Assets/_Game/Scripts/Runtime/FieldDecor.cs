@@ -23,6 +23,11 @@ namespace AshesToStars
         /// <summary>바이옴별 배경 테마</summary>
         public enum Biome { Field, Ash, Dungeon }
 
+        /// <summary>이 값을 넘는 노이즈 봉우리에만 심는다. 낮추면 들판이 숲이 된다.</summary>
+        const float PROP_THRESHOLD = 0.62f;
+        /// <summary>드로우콜이 아니라 **화면 가독성** 상한이다 — 너무 많으면 유닛이 묻힌다.</summary>
+        const int PROP_CAP = 90;
+
         /// <summary>
         /// 전투 공간 가장자리에 배경 프랍을 배치한다.
         /// </summary>
@@ -30,7 +35,13 @@ namespace AshesToStars
         /// <param name="arenaRadius">전투 아레나 반경</param>
         /// <param name="seed">난수 시드 (재현성)</param>
         /// <param name="biome">배경 테마 (프랍 선택에 영향)</param>
-        public static void Build(SpriteBank bank, float arenaRadius, int seed, Biome biome)
+        /// <param name="엄폐물">
+        /// true면 아레나 **안쪽**에도 심고 `ArenaLayout`에 장애물로 등록한다(실제로 막힌다).
+        /// 기본 false — W1~W3 검증은 빈 판이어야 구성 비교가 성립하기 때문이다.
+        /// 켜는 것은 게임플레이 결정이므로 호출부에서 명시적으로 넘긴다.
+        /// </param>
+        public static void Build(SpriteBank bank, float arenaRadius, int seed, Biome biome,
+                                 bool 엄폐물 = false)
         {
             Random.InitState(seed);
 
@@ -94,46 +105,62 @@ namespace AshesToStars
             var mat = new Material(sh) { enableInstancing = true };
             mat.mainTexture = atlas;
 
-            // ── 배치: arenaRadius ~ arenaRadius*1.8 링 ────────────────
-            const int PROP_COUNT_MIN = 30;
-            const int PROP_COUNT_MAX = 60;
-            int count = Random.Range(PROP_COUNT_MIN, PROP_COUNT_MAX + 1);
-
+            // ── 배치: 노이즈 봉우리 (2026-08-14 통합) ────────────────
+            // 이전에는 링 위 **완전 랜덤**이었다. 그러면 프랍이 고르게 흩뿌려져
+            // "저 바위 뒤로 돌아간다"가 성립하지 않는다 — 위치 선정(§10-2)이
+            // 판단이 되려면 프랍이 **덩어리로 뭉치고 사이에 길이 나야** 한다.
+            // 바닥 색조와 같은 노이즈(TerrainNoise)를 보므로 바위 구역에 바위가 난다.
             const float ISO_Y = StressTest.ISO_Y;
-
-            // 임시 게임 오브젝트 폴더 생성 (씬에서 찾기 쉽도록)
+            var origin = TerrainNoise.Origin(seed);
             var decorRoot = new GameObject("FieldDecor_Props");
 
-            for (int i = 0; i < count; i++)
-            {
-                // 링 위의 임의 위치 (아레나 밖에만)
-                float angle = Random.value * Mathf.PI * 2f;
-                float radius = Random.Range(arenaRadius, arenaRadius * 1.8f);
-                Vector2 worldPos = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+            float outer = arenaRadius * 1.8f;
+            float step = Mathf.Max(0.8f, arenaRadius * 0.09f);
+            int placed = 0, blockers = 0;
 
-                // 임의 프랍 선택
-                int propIdx = Random.Range(0, propNames.Length);
+            for (float y = -outer; y <= outer && placed < PROP_CAP; y += step)
+                for (float x = -outer; x <= outer && placed < PROP_CAP; x += step)
+                {
+                    float d2 = x * x + y * y;
+                    if (d2 > outer * outer) continue;
 
-                // 게임 오브젝트 생성
-                var go = new GameObject("prop_" + propNames[propIdx], typeof(SpriteRenderer));
-                go.transform.SetParent(decorRoot.transform, false);
+                    // 아레나 안쪽은 기본적으로 비운다 — W1~W3 검증은 **빈 판**이어야
+                    // 구성 비교가 성립한다(W3Party 주석 §3-4). 엄폐물을 켠 게임 모드에서만
+                    // 안쪽에 심고, 그때는 ArenaLayout에 장애물로 등록해 실제로 막는다.
+                    bool inside = d2 < arenaRadius * arenaRadius;
+                    if (inside && !엄폐물) continue;
+                    // 스폰 지점만은 어떤 모드에서도 비운다 — 시작하자마자 끼면 판이 망가진다
+                    if (d2 < (arenaRadius * 0.35f) * (arenaRadius * 0.35f)) continue;
 
-                // 위치: 쿼터뷰 변환 (ISO_Y로 y 압축) + z는 바닥 앞, 캐릭터 뒤
-                go.transform.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, 0.1f);
-                go.transform.localScale = Vector3.one;  // 프랍은 PPU로 크기 조정
+                    if (TerrainNoise.Sample(origin, x, y) < PROP_THRESHOLD) continue;
+                    if (Random.value > 0.45f) continue;      // 봉우리마다 다 심으면 벽이 된다
 
-                // 스프라이트 렌더러
-                var sr = go.GetComponent<SpriteRenderer>();
-                sr.sprite = Sprite.Create(atlas, rects[propIdx], Vector2.one * 0.5f, 32f, 0,
-                                         SpriteMeshType.FullRect);
-                sr.sharedMaterial = mat;
+                    var worldPos = new Vector2(x + (Random.value - 0.5f) * step,
+                                               y + (Random.value - 0.5f) * step);
+                    int propIdx = Random.Range(0, propNames.Length);
+                    if (texes[propIdx] == null) continue;     // 로드 실패분은 건너뛴다
 
-                // 정렬: y가 낮을수록 앞(화면에서 위쪽) — 캐릭터(500)보다 뒤
-                // 쿼터뷰 Y 좌표로 깊이 정렬하되, 프랍 기본층(100) + 미세 정렬
-                sr.sortingOrder = 100 - (int)(worldPos.y * 4f);
-            }
+                    var go = new GameObject("prop_" + propNames[propIdx], typeof(SpriteRenderer));
+                    go.transform.SetParent(decorRoot.transform, false);
+                    go.transform.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, 0.1f);
+                    go.transform.localScale = Vector3.one;   // 프랍은 PPU로 크기 조정
 
-            Debug.Log($"[FieldDecor] {biome} 프랍 {count}개 배치 (아틀라스 2048×2048, 배칭 유지)");
+                    var sr = go.GetComponent<SpriteRenderer>();
+                    sr.sprite = Sprite.Create(atlas, rects[propIdx], Vector2.one * 0.5f, 32f, 0,
+                                             SpriteMeshType.FullRect);
+                    sr.sharedMaterial = mat;
+                    // 정렬: y가 낮을수록 앞. 캐릭터(500)보다 뒤인 프랍 기본층(100)
+                    sr.sortingOrder = 100 - (int)(worldPos.y * 4f);
+
+                    // 아레나 안에 선 프랍은 **보이기만 하면 안 된다** — 지나갈 수 있으면
+                    // 엄폐가 성립하지 않고, 그림만 있는 장애물은 오히려 유저를 속인다.
+                    if (inside) { ArenaLayout.AddObstacle(worldPos, 0.9f); blockers++; }
+
+                    placed++;
+                }
+
+            Debug.Log($"[FieldDecor] {biome} 프랍 {placed}개 노이즈 배치" +
+                      (엄폐물 ? $" (아레나 내 엄폐물 {blockers}개 등록)" : " (아레나 밖 장식만)"));
         }
 
         static string[] GetPropNames(Biome biome) => biome switch
