@@ -1191,7 +1191,7 @@ public class W3Party : MonoBehaviour
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
-                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); Hitstop(5); Shake(0.45f);
+                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f); Hitstop(5); Shake(0.45f);
                 }
                 else if (m.ForceSkill == 1 || wounded >= 2)
                 {
@@ -1221,7 +1221,7 @@ public class W3Party : MonoBehaviour
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
-                    FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR); Shake(0.28f);
+                    FxParticles.Play(FxKind.마법진, ToScreen(c), _stormR); FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR); Shake(0.28f);
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
@@ -1307,6 +1307,9 @@ public class W3Party : MonoBehaviour
     void KillMob(int i)
     {
         _mOn[i] = false; _mAlive--; _kills++;
+        // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
+        // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
+        if ((_kills % 5) == 0) MobDeathPuff(_mPos[i]);
         _mTr[i].gameObject.SetActive(false);
     }
 
@@ -1559,6 +1562,9 @@ public class W3Party : MonoBehaviour
     }
 
     /// <summary>피격 몹을 흰색으로 잠깐 번쩍 — 뭘 때리고 있는지 보이게</summary>
+    /// <summary>몹이 죽은 자리에 먼지 한 줌. 500체 화면이므로 **아주 작게만** 쓴다.</summary>
+    void MobDeathPuff(Vector2 p) => FxParticles.Play(FxKind.먼지, ToScreen(p), 0.7f);
+
     void FlashMob(int i) { _mFlash[i] = 0.12f; }
 
     void Fire(Vector2 from, Vector2 dir)
