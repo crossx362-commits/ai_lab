@@ -1,170 +1,181 @@
 {
-  "version": "2.0.0",
-  "updated": "2026-08-08",
-  "_note": "정시 잡은 영숙(운영 위생)·예원(피드백·감사) 일반 작업만 유지.",
-  "schedules": [
-    {
-      "id": "yeongsuk_report_cleanup",
-      "agent": "영숙",
-      "task": "리포트 정리",
-      "cron": "0 4 * * *",
-      "description": "reports 폴더 정리 (30일 이상 로그 archive)",
-      "command": "python projects/ai-team/skills/영숙_비서/tools/reports_manager.py cleanup",
-      "enabled": true,
-      "run": true,
-      "priority": "low"
-    },
-    {
-      "id": "log_janitor",
-      "agent": "영숙",
-      "task": "output 로그 정리",
-      "cron": "10 4 * * *",
-      "description": "output/bot_logs 비대 로그 회전(5MB+) + 45일 사어 로그 삭제 + output/qa/petnna 스크린샷 7일 초과 삭제",
-      "command": "python projects/ai-team/skills/영숙_비서/tools/log_janitor.py",
-      "enabled": true,
-      "run": true,
-      "priority": "low"
-    },
-    {
-      "id": "llm_probe",
-      "agent": "영숙",
-      "task": "LLM 생존 프로브",
-      "cron": "25 7 * * 1-5",
-      "description": "로컬(Ollama)·클라우드(GPT·Gemini) 실제 챗 응답 점검 — 실패 시에만 경보 (조사 파이프라인 직전)",
-      "command": "python projects/ai-team/skills/영숙_비서/tools/llm_probe.py",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "state_backup",
-      "agent": "영숙",
-      "task": "상태·학습 데이터 백업",
-      "cron": "0 20 * * *",
-      "description": "output/cache(청산기록·watchlist·원장)·.env를 ~/ai_lab_backups 스냅샷 (14일 보관)",
-      "command": "python projects/ai-team/skills/영숙_비서/tools/state_backup.py",
-      "enabled": true,
-      "run": true,
-      "priority": "low"
-    },
-    {
-      "id": "yewon_daily_feedback",
-      "agent": "예원",
-      "task": "일일 피드백 평가",
-      "cron": "0 9 * * *",
-      "description": "업로드 히스토리 성과 평가",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/evaluate_feedback.py",
-      "enabled": true,
-      "run": true,
-      "priority": "low"
-    },
-    {
-      "id": "yewon_weekly_audit",
-      "agent": "예원",
-      "task": "주간 스킬 감사",
-      "cron": "0 9 * * 1",
-      "description": "에이전트 SKILL.md 품질 점검",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/skill_auditor.py --check",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "yewon_weekly_report",
-      "agent": "예원",
-      "task": "주간 종합 리포트",
-      "cron": "0 17 * * 5",
-      "description": "한 주 업로드/성과 피드백 주간 종합",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/daily_feedback_scheduler.py --weekly",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "yewon_code_audit",
-      "agent": "예원",
-      "task": "코드 데드코드 검수",
-      "cron": "0 10 * * 6",
-      "description": "미사용 함수 자동검출 — 고확신 자동삭제+커밋, 나머지 보고 (주말=장없음이라 데몬 재배포 무해)",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/code_auditor.py --check --send",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "yewon_pipeline_audit",
-      "agent": "예원",
-      "task": "펫나 파이프라인 딥 로직 감사",
-      "cron": "0 9 * * 0",
-      "description": "배정과제 방치·조용한 예외삼킴·안전장치 비대칭 등 실행로직 결함 점검(읽기전용) — 고확신 발견만 백로그 보류(사람검토)로 적재, skill_auditor(월)·code_auditor(토)와 안 겹치게 일요일",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pipeline_audit.py --send",
-      "enabled": true,
-      "run": true,
-      "priority": "medium"
-    },
-    {
-      "id": "petnna_fleet_health",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_fleet_health.py --once --send",
-      "cron": "0 11 * * *",
-      "enabled": true,
-      "description": "펫나 6종 에이전트 산출물 신선도 감사 (Hermes 크론 호환, 데몬 생존 아닌 산출물 기준)"
-    },
-    {
-      "id": "petnna_pr_review",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pr_reviewer.py --send",
-      "cron": "0 */2 * * *",
-      "enabled": true,
-      "description": "예원 — 펫나 PR대기 브랜치 자동 검토·병합 결정 (수리 적체 상한 자동 해제, 오너 검토 위임)"
-    },
-    {
-      "id": "petnna_social",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_social_agent.py --once --send",
-      "cron": "30 10,15,20 * * *",
-      "enabled": true,
-      "description": "펫과나 이웃 활동 — AI 페르소나가 반려동물 게시글 작성 + 실제 유저 글에 댓글·좋아요(비스팸: 회당 1글, 최근 3h 2글 상한)"
-    },
-    {
-      "id": "yewon_backlog_hygiene",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_hygiene.py --check --send",
-      "cron": "0 9 * * 3",
-      "enabled": true,
-      "description": "예원 백로그 위생감사 — 보류 항목 중복/사유해소 재판단(추측 금지, 확신 없으면 손대지 않음, 회의 오판 재발 방지 2026-08-04). 첫 실행 결과 확인 후 --apply로 전환 검토"
-    },
-    {
-      "id": "yewon_backlog_archive",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_archive.py",
-      "cron": "30 4 * * *",
-      "enabled": true,
-      "description": "예원 백로그 아카이브 — 오래된 완료 항목을 backlog_archive.json으로 분리(최근 40건은 활성 유지). 제목은 all_known_titles로 중복 대조에 계속 참여"
-    },
-    {
-      "id": "petnna_daily_ideation",
-      "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_daily_ideation.py",
-      "cron": "0 8 * * *",
-      "enabled": true,
-      "description": "펫나 일일 상품성·경쟁력 강화 아이디어 회의(오너 지시 2026-08-04) — 전 에이전트 소집, 안건 고정(petnna_council.convene 직접 호출, CLI 아님 — schedule_sync가 공백을 quote 없이 split해 다단어 --topic이 argv에서 깨짐). 결과는 액션아이템으로 백로그(source=회의) 적재 → 수리가 이어서 구현"
-    },
-    {
-      "id": "petnna_backlog_unblock",
-      "agent": "예원",
-      "task": "백로그 정체 해소",
-      "cron": "40 11 * * *",
-      "description": "보류 과제의 반려 사유를 분류해 게이트 결함으로 막힌 것만 대기로 되돌린다(사람 판단·금지 경로·품질 판단은 보존). 못 푼 구조적 정체만 보고.",
-      "command": "python3 projects/ai-team/skills/예원_CEO/tools/petnna_backlog_unblocker.py --once --send",
-      "enabled": true,
-      "run": true,
-      "priority": "normal"
-    },
-    {
-      "id": "harness_regression",
-      "agent": "예원",
-      "task": "회귀 스위트 전체 실행",
-      "cron": "40 7 * * *",
-      "description": "파이썬 회귀 스위트를 unittest discover로 **한 프로세스에서 전부** 실행. 2026-08-08에 324개 중 18개가 언제부터인지 모르게 빨간 채 방치돼 있던 것을 사람이 우연히 발견해 신설 — 파일 단위로 쪼개 돌리면 전역 상태 오염형 고장이 영원히 안 보이므로 discover 고정. 실패 시에만 텔레그램.",
-      "command": "python3 projects/ai-team/harness/run_regression.py --send",
-      "enabled": true,
-      "run": true,
-      "priority": "high"
-    }
-  ]
+ "version": "2.0.0",
+ "updated": "2026-08-14",
+ "_note": "정시 잡은 영숙(운영 위생)·예원(피드백·감사) 일반 작업만 유지.",
+ "schedules": [
+  {
+   "id": "yeongsuk_report_cleanup",
+   "agent": "영숙",
+   "task": "리포트 정리",
+   "cron": "0 4 * * *",
+   "description": "reports 폴더 정리 (30일 이상 로그 archive)",
+   "command": "python projects/ai-team/skills/영숙_비서/tools/reports_manager.py cleanup",
+   "enabled": true,
+   "run": true,
+   "priority": "low"
+  },
+  {
+   "id": "log_janitor",
+   "agent": "영숙",
+   "task": "output 로그 정리",
+   "cron": "10 4 * * *",
+   "description": "output/bot_logs 비대 로그 회전(5MB+) + 45일 사어 로그 삭제 + output/qa/petnna 스크린샷 7일 초과 삭제",
+   "command": "python projects/ai-team/skills/영숙_비서/tools/log_janitor.py",
+   "enabled": true,
+   "run": true,
+   "priority": "low"
+  },
+  {
+   "id": "llm_probe",
+   "agent": "영숙",
+   "task": "LLM 생존 프로브",
+   "cron": "25 7 * * 1-5",
+   "description": "로컬(Ollama)·클라우드(GPT·Gemini) 실제 챗 응답 점검 — 실패 시에만 경보 (조사 파이프라인 직전)",
+   "command": "python projects/ai-team/skills/영숙_비서/tools/llm_probe.py",
+   "enabled": true,
+   "run": true,
+   "priority": "medium"
+  },
+  {
+   "id": "state_backup",
+   "agent": "영숙",
+   "task": "상태·학습 데이터 백업",
+   "cron": "0 20 * * *",
+   "description": "output/cache(청산기록·watchlist·원장)·.env를 ~/ai_lab_backups 스냅샷 (14일 보관)",
+   "command": "python projects/ai-team/skills/영숙_비서/tools/state_backup.py",
+   "enabled": true,
+   "run": true,
+   "priority": "low"
+  },
+  {
+   "id": "yewon_daily_feedback",
+   "agent": "예원",
+   "task": "일일 피드백 평가",
+   "cron": "0 9 * * *",
+   "description": "업로드 히스토리 성과 평가",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/evaluate_feedback.py",
+   "enabled": true,
+   "run": true,
+   "priority": "low"
+  },
+  {
+   "id": "yewon_weekly_audit",
+   "agent": "예원",
+   "task": "주간 스킬 감사",
+   "cron": "0 9 * * 1",
+   "description": "에이전트 SKILL.md 품질 점검",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/skill_auditor.py --check",
+   "enabled": true,
+   "run": true,
+   "priority": "medium"
+  },
+  {
+   "id": "yewon_weekly_report",
+   "agent": "예원",
+   "task": "주간 종합 리포트",
+   "cron": "0 17 * * 5",
+   "description": "한 주 업로드/성과 피드백 주간 종합",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/daily_feedback_scheduler.py --weekly",
+   "enabled": true,
+   "run": true,
+   "priority": "medium"
+  },
+  {
+   "id": "yewon_code_audit",
+   "agent": "예원",
+   "task": "코드 데드코드 검수",
+   "cron": "0 10 * * 6",
+   "description": "미사용 함수 자동검출 — 고확신 자동삭제+커밋, 나머지 보고 (주말=장없음이라 데몬 재배포 무해)",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/code_auditor.py --check --send",
+   "enabled": true,
+   "run": true,
+   "priority": "medium"
+  },
+  {
+   "id": "yewon_pipeline_audit",
+   "agent": "예원",
+   "task": "펫나 파이프라인 딥 로직 감사",
+   "cron": "0 9 * * 0",
+   "description": "배정과제 방치·조용한 예외삼킴·안전장치 비대칭 등 실행로직 결함 점검(읽기전용) — 고확신 발견만 백로그 보류(사람검토)로 적재, skill_auditor(월)·code_auditor(토)와 안 겹치게 일요일",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pipeline_audit.py --send",
+   "enabled": true,
+   "run": true,
+   "priority": "medium"
+  },
+  {
+   "id": "petnna_fleet_health",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_fleet_health.py --once --send",
+   "cron": "0 11 * * *",
+   "enabled": true,
+   "description": "펫나 6종 에이전트 산출물 신선도 감사 (Hermes 크론 호환, 데몬 생존 아닌 산출물 기준)"
+  },
+  {
+   "id": "petnna_pr_review",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pr_reviewer.py --send",
+   "cron": "0 */2 * * *",
+   "enabled": true,
+   "description": "예원 — 펫나 PR대기 브랜치 자동 검토·병합 결정 (수리 적체 상한 자동 해제, 오너 검토 위임)"
+  },
+  {
+   "id": "petnna_social",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_social_agent.py --once --send",
+   "cron": "30 10,15,20 * * *",
+   "enabled": true,
+   "description": "펫과나 이웃 활동 — AI 페르소나가 반려동물 게시글 작성 + 실제 유저 글에 댓글·좋아요(비스팸: 회당 1글, 최근 3h 2글 상한)"
+  },
+  {
+   "id": "yewon_backlog_hygiene",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_hygiene.py --check --send",
+   "cron": "0 9 * * 3",
+   "enabled": true,
+   "description": "예원 백로그 위생감사 — 보류 항목 중복/사유해소 재판단(추측 금지, 확신 없으면 손대지 않음, 회의 오판 재발 방지 2026-08-04). 첫 실행 결과 확인 후 --apply로 전환 검토"
+  },
+  {
+   "id": "yewon_backlog_archive",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_archive.py",
+   "cron": "30 4 * * *",
+   "enabled": true,
+   "description": "예원 백로그 아카이브 — 오래된 완료 항목을 backlog_archive.json으로 분리(최근 40건은 활성 유지). 제목은 all_known_titles로 중복 대조에 계속 참여"
+  },
+  {
+   "id": "petnna_daily_ideation",
+   "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_daily_ideation.py",
+   "cron": "0 8 * * *",
+   "enabled": true,
+   "description": "펫나 일일 상품성·경쟁력 강화 아이디어 회의(오너 지시 2026-08-04) — 전 에이전트 소집, 안건 고정(petnna_council.convene 직접 호출, CLI 아님 — schedule_sync가 공백을 quote 없이 split해 다단어 --topic이 argv에서 깨짐). 결과는 액션아이템으로 백로그(source=회의) 적재 → 수리가 이어서 구현"
+  },
+  {
+   "id": "petnna_backlog_unblock",
+   "agent": "예원",
+   "task": "백로그 정체 해소",
+   "cron": "40 11 * * *",
+   "description": "보류 과제의 반려 사유를 분류해 게이트 결함으로 막힌 것만 대기로 되돌린다(사람 판단·금지 경로·품질 판단은 보존). 못 푼 구조적 정체만 보고.",
+   "command": "python3 projects/ai-team/skills/예원_CEO/tools/petnna_backlog_unblocker.py --once --send",
+   "enabled": true,
+   "run": true,
+   "priority": "normal"
+  },
+  {
+   "id": "harness_regression",
+   "agent": "예원",
+   "task": "회귀 스위트 전체 실행",
+   "cron": "40 7 * * *",
+   "description": "파이썬 회귀 스위트를 unittest discover로 **한 프로세스에서 전부** 실행. 2026-08-08에 324개 중 18개가 언제부터인지 모르게 빨간 채 방치돼 있던 것을 사람이 우연히 발견해 신설 — 파일 단위로 쪼개 돌리면 전역 상태 오염형 고장이 영원히 안 보이므로 discover 고정. 실패 시에만 텔레그램.",
+   "command": "python3 projects/ai-team/harness/run_regression.py --send",
+   "enabled": true,
+   "run": true,
+   "priority": "high"
+  },
+  {
+   "id": "game_council",
+   "agent": "마루",
+   "task": "게임 개발 회의",
+   "cron": "0 9,21 * * *",
+   "description": "기획서 기준 회의 → 액션아이템 + 작업지시서(ORDERS.md) 자동 생성",
+   "command": "python projects/ai-team/skills/마루_게임개발/tools/game_council.py",
+   "enabled": true,
+   "run": true,
+   "priority": "normal"
+  }
+ ]
 }
