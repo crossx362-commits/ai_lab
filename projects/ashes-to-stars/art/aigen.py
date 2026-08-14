@@ -86,19 +86,30 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
     raise SystemExit(f"이미지 없음: {json.dumps(res)[:400]}")
 
 
-def chroma_key(img: Image.Image, tol: int = 90) -> Image.Image:
-    """마젠타 배경 → 투명. 가장자리 마젠타 번짐까지 걷어낸다."""
+def chroma_key(img: Image.Image, tol: int = 120) -> Image.Image:
+    """마젠타 배경 → 투명 + 디스필.
+
+    거리 임계값만으로는 부족하다(2026-08-14 실측): 첫 판은 기둥 좌우 실루엣에
+    자주색 테두리가 그대로 남았다. 배경이 반투명하게 섞인 안티에일리어싱
+    가장자리는 '마젠타에 가깝진 않지만 마젠타 쪽으로 물든' 상태라 거리
+    테스트를 통과해버리기 때문이다.
+    → 알파는 거리로 자르되, **색은 별도로 디스필**한다. 마젠타는 R·B가 높고
+      G가 낮은 색이므로, G보다 과하게 높은 R·B를 끌어내리면 원래 색이 돌아온다.
+    """
     a = np.asarray(img).astype(np.int16)
     d = np.sqrt(((a - np.array(CHROMA)) ** 2).sum(axis=2))
     alpha = np.where(d < tol, 0, 255).astype(np.uint8)
 
-    # 마젠타 쪽으로 물든 가장자리 픽셀은 색을 되돌린다 (보라 테두리 방지)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    # 마젠타 오염도 = R·B 중 작은 쪽이 G를 얼마나 넘어서는가
+    spill = np.minimum(r, b) - g
+    hit = (alpha == 255) & (spill > 0)
+    cap = g + np.maximum(0, (spill * 0.25).astype(np.int16))  # G 기준으로 되돌린다
     rgb = a.copy()
-    fringe = (alpha == 255) & (d < tol * 2.2)
-    rgb[fringe, 0] = np.minimum(rgb[fringe, 0], rgb[fringe, 1] + 40)
-    rgb[fringe, 2] = np.minimum(rgb[fringe, 2], rgb[fringe, 1] + 40)
+    rgb[..., 0] = np.where(hit, np.minimum(r, cap), r)
+    rgb[..., 2] = np.where(hit, np.minimum(b, cap), b)
 
-    out = np.dstack([rgb.astype(np.uint8), alpha])
+    out = np.dstack([np.clip(rgb, 0, 255).astype(np.uint8), alpha])
     im = Image.fromarray(out, "RGBA")
 
     ys, xs = np.where(alpha > 0)
