@@ -137,26 +137,36 @@ namespace AshesToStars
             float battleRewardRatio = 0.25f; // 보스는 1시간 수익의 25% (15분 기준)
             _reward.GoldReward = (long)(baseGoldPerHour * battleRewardRatio);
 
-            // 드랍 롤 (§10-8, §18-4)
-            // 보스 출처 판정: 탑 10층 단위는 대보스, 5층 단위는 중간 레이드
-            Economy.DropSource dropSource = bossFloor % 10 == 0
-                ? Economy.DropSource.Tower10Boss
-                : Economy.DropSource.Tower5Boss;
+            // 드랍 출처 (§10-8). 던전 보스와 탑 보스는 **드랍 테이블이 다르다** —
+            // ✅ §7·§10-8: 환생석·전직 증표는 탑 등반의 고유 가치라 던전에서는 나오지 않는다.
+            // 예전에는 던전에서 이겨도 탑 보스 테이블로 굴려 환생석이 나올 수 있었다.
+            bool inDungeon = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
+            Economy.DropSource dropSource =
+                inDungeon
+                    ? (DungeonRun.Plan.Kind == DungeonKind.레이드급
+                        ? Economy.DropSource.RaidDungeon
+                        : Economy.DropSource.FieldDungeonBoss)
+                    : (bossFloor % 10 == 0 ? Economy.DropSource.Tower10Boss
+                                           : Economy.DropSource.Tower5Boss);
 
             // 골드를 **실제로 지갑에 넣는다**. 계산만 하고 반영하지 않으면
             // §2의 순환("번 돈으로 다음 판에 들어간다")이 성립하지 않는다.
             GameState.Earn(_reward.GoldReward);
 
-            // 드랍 롤 3회 (통상 3~5회 정도)
-            for (int i = 0; i < 3; i++)
+            // §10-8 판정 규칙대로 굴린다 — 일반 드랍은 보스 개체별, 희귀 고유템은 전투당 1회.
+            // 예전에는 테이블 전체를 3회 굴려 **환생석 기대값이 3배**가 됐다.
+            // 그러면 §18-4의 "리롤 노가다는 수지가 안 맞는다" 검산이 통째로 무너진다.
+            int bossCount = inDungeon ? DungeonRun.Plan.BossCount : 1;
+            uint dropSeed = inDungeon
+                ? DungeonRun.Plan.RunSeed
+                : (uint)(bossFloor * 2654435761u ^ (uint)System.DateTime.UtcNow.Ticks);
+            var dropRng = Rng.Stream(dropSeed, bossFloor, SeedChannel.Drop);
+            foreach (var drop in Economy.RollBattleDrops(dropSource, bossCount, ref dropRng))
             {
-                var drop = Economy.RollDrop(dropSource);
-                if (!drop.HasValue) continue;
-
                 // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
                 // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.
-                if (GameState.Gain(drop.Value)) _reward.DroppedItems.Add(drop.Value);
-                else _reward.RejectedItems.Add(drop.Value);   // 소실이 아니라 획득 거부
+                if (GameState.Gain(drop)) _reward.DroppedItems.Add(drop);
+                else _reward.RejectedItems.Add(drop);   // 소실이 아니라 획득 거부
             }
         }
 

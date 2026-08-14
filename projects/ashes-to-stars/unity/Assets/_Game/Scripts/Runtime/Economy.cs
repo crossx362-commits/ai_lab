@@ -152,46 +152,36 @@ namespace AshesToStars
             { (DropSource.Tower10Boss, LifeItem.SpecialJobToken), 0.02f },      // 50층 이상 보스 2% (여기선 10층으로 임시)
         };
 
-        /// <summary>
-        /// 주어진 출처에서 아이템을 롤한다. 드롭률에 따라 아이템을 반환하거나 null을 반환한다.
-        /// 랜덤 시드를 고정할 수 있다 (테스트용).
-        /// </summary>
-        public static LifeItem? RollDrop(DropSource source, int? seed = null)
-        {
-            // 시드 설정 (테스트 재현)
-            if (seed.HasValue)
-                Random.InitState(seed.Value);
-
-            foreach (var kvp in DropRates)
-            {
-                if (kvp.Key.Item1 == source)
-                {
-                    if (Random.value < kvp.Value)
-                        return kvp.Key.Item2;
-                }
-            }
-
-            return null;
-        }
+        /// <summary>희귀 고유템 — ⚠️ §10-8 "전투당 1회만 판정".</summary>
+        public static bool IsRare(LifeItem it) =>
+            it == LifeItem.RebornStone || it == LifeItem.SpecialJobToken;
 
         /// <summary>
-        /// 여러 원천을 동시에 롤한다. 결과를 드롭 아이템으로 반환한다.
-        /// (다중 보스 등에서 여러 드롭을 동시에 판정할 때 사용)
+        /// 한 전투의 드랍을 전부 판정한다 (✅ §10-8 드랍 판정 규칙).
+        ///
+        /// ⚠️ 규칙이 두 갈래다 — 이걸 지키지 않으면 §18-4의 리롤 억제 검산이 깨진다:
+        ///   · 일반 드랍(부활초·두루마리)은 **보스 개체별로** 굴린다 → 다중 등장이 "벌이가 좋은 판"이 된다
+        ///   · 희귀 고유템(환생석·전직 증표)은 **전투당 1회만** 굴린다 →
+        ///     3체 전투의 기대값이 3배가 되면 "리롤 노가다는 수지가 안 맞는다"가 무너진다
+        ///
+        /// 난수는 호출부가 넘긴 스트림을 쓴다. 예전에는 `Random.InitState`로 **전역 난수를 덮어써**
+        /// 던전 생성의 결정성을 밖에서 깨뜨렸다(§3-2 규칙 1).
+        /// 그리고 딕셔너리를 순회하며 **첫 히트 하나만** 돌려줘, 한 판에 두 종류가 나올 수 없었고
+        /// 우선순위가 딕셔너리 순회 순서에 달려 있었다(§3-2 규칙 3이 금지한 것).
         /// </summary>
-        public static List<LifeItem> RollDrops(List<DropSource> sources, int? seed = null)
+        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng)
         {
-            List<LifeItem> results = new List<LifeItem>();
+            var results = new List<LifeItem>();
+            if (bossCount < 1) bossCount = 1;
 
-            if (seed.HasValue)
-                Random.InitState(seed.Value);
-
-            foreach (var source in sources)
+            // 판정 순서를 열거형 순서로 고정한다 — 딕셔너리 순회 순서에 기대지 않는다
+            foreach (LifeItem it in System.Enum.GetValues(typeof(LifeItem)))
             {
-                var drop = RollDrop(source, null); // 이미 InitState 했으므로 seed=null
-                if (drop.HasValue)
-                    results.Add(drop.Value);
+                if (!DropRates.TryGetValue((source, it), out float rate)) continue;
+                int rolls = IsRare(it) ? 1 : bossCount;
+                for (int i = 0; i < rolls; i++)
+                    if (rng.Value01() < rate) results.Add(it);
             }
-
             return results;
         }
 

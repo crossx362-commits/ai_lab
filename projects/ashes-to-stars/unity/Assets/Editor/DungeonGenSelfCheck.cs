@@ -198,6 +198,40 @@ namespace AshesToStars
             Check(DungeonRun.State.Boons.Count == 0, "S8 ✅§7 — 던전을 나가면 강화가 사라진다");
             DungeonRun.End();
 
+            // ── S9 드랍 판정 (✅ §10-8) — 규칙이 두 갈래인지 실제로 확인한다
+            //    일반 드랍은 보스 개체별, 희귀 고유템은 **전투당 1회**.
+            //    이게 무너지면 §18-4의 리롤 억제 검산이 통째로 깨진다.
+            int rare1 = 0, rare3 = 0, tea1 = 0, tea3 = 0;
+            for (uint s2 = 1; s2 <= 20000u; s2++)
+            {
+                var r1 = Rng.Stream(s2, 0, SeedChannel.Drop);
+                foreach (var d in Economy.RollBattleDrops(Economy.DropSource.Tower10Boss, 1, ref r1))
+                { if (Economy.IsRare(d)) rare1++; if (d == Economy.LifeItem.RevivalTea) tea1++; }
+
+                var r3 = Rng.Stream(s2, 0, SeedChannel.Drop);
+                foreach (var d in Economy.RollBattleDrops(Economy.DropSource.Tower10Boss, 3, ref r3))
+                { if (Economy.IsRare(d)) rare3++; if (d == Economy.LifeItem.RevivalTea) tea3++; }
+            }
+            float rareRatio = rare1 == 0 ? 99f : (float)rare3 / rare1;
+            float teaRatio = tea1 == 0 ? 0f : (float)tea3 / tea1;
+            Check(rareRatio <= 1.15f,
+                  $"S9 §10-8 희귀템은 3체여도 기대값이 안 는다 (3체/1체 = {rareRatio:F2}배, 1.15 이하)");
+            Check(teaRatio >= 2.5f && teaRatio <= 3.5f,
+                  $"S9 §10-8 일반 드랍은 개체별로 는다 (3체/1체 = {teaRatio:F2}배, 3배 근처)");
+
+            // 던전에서는 환생석·증표가 나오지 않는다(✅ §7·§10-8 탑 고유 가치)
+            bool dungeonRare = false;
+            for (uint s2 = 1; s2 <= 20000u; s2++)
+            {
+                var rr = Rng.Stream(s2, 0, SeedChannel.Drop);
+                foreach (var d in Economy.RollBattleDrops(Economy.DropSource.FieldDungeonBoss, 3, ref rr))
+                    if (Economy.IsRare(d)) dungeonRare = true;
+                var rr2 = Rng.Stream(s2, 1, SeedChannel.Drop);
+                foreach (var d in Economy.RollBattleDrops(Economy.DropSource.RaidDungeon, 3, ref rr2))
+                    if (Economy.IsRare(d)) dungeonRare = true;
+            }
+            Check(!dungeonRare, "S9 던전(일반·레이드급)에서 환생석·전직 증표가 나오지 않는다");
+
             _log.AppendLine("  참고  계획 예시: " + DungeonGenerator.Generate(20260814u, 3).Signature());
 
             string head = _fail == 0 ? "[던전자가검사] PASS" : $"[던전자가검사] FAIL {_fail}건";
