@@ -232,6 +232,26 @@ namespace AshesToStars
             }
             Check(!dungeonRare, "S9 던전(일반·레이드급)에서 환생석·전직 증표가 나오지 않는다");
 
+            // ── S12 런 감사 로그 — 파일이 실제로 생기고, **그 시드로 판을 재현**할 수 있는가
+            string runDir = System.IO.Path.Combine(UnityEngine.Application.persistentDataPath, "runs");
+            if (System.IO.Directory.Exists(runDir))
+                foreach (var f in System.IO.Directory.GetFiles(runDir, "run_*_777.json")) System.IO.File.Delete(f);
+            DungeonRun.Begin(777u, 4, DungeonKind.일반, "Field");
+            string sigLive = DungeonRun.Plan.Signature();
+            DungeonRun.End();
+            var files = System.IO.Directory.Exists(runDir)
+                ? System.IO.Directory.GetFiles(runDir, "run_*_777.json") : new string[0];
+            Check(files.Length == 1, $"S12 런 로그 파일 생성 (실제 {files.Length}개)");
+            if (files.Length > 0)
+            {
+                string body = System.IO.File.ReadAllText(files[0]);
+                Check(body.Contains("\"seed\":777"), "S12 로그에 시드가 남는다");
+                // 로그의 시드로 다시 만들면 같은 계획이 나와야 한다 — 이게 사후 조사의 전부다
+                Check(DungeonGenerator.Generate(777u, 4).Signature() == sigLive,
+                      "S12 로그의 시드로 던전을 그대로 재현할 수 있다");
+                System.IO.File.Delete(files[0]);
+            }
+
             _log.AppendLine("  참고  계획 예시: " + DungeonGenerator.Generate(20260814u, 3).Signature());
 
             string head = _fail == 0 ? "[던전자가검사] PASS" : $"[던전자가검사] FAIL {_fail}건";

@@ -39,6 +39,50 @@ namespace AshesToStars
                       $"폴백={Plan.FallbackCount}\n[던전] 계획: {Plan.Signature()}");
             if (Plan.FallbackCount > 0)
                 Debug.LogWarning($"[던전] 폴백 {Plan.FallbackCount}회 — 조용한 품질 저하가 있었다(§3-6 R4)");
+
+            WriteRunLog();
+        }
+
+        /// <summary>
+        /// 런 감사 로그 (S12 · §3-2 규칙 4).
+        ///
+        /// "이 판에서 캐릭터가 삭제됐다"는 신고가 오면 **시드만으로 판을 다시 만든다.**
+        /// 영구사망 게임에서 이건 편의가 아니라 사후 조사 수단이다.
+        /// 저장 위치는 `Application.persistentDataPath/runs/` — 플레이어 빌드에서도 쓸 수 있는 유일한 곳이고,
+        /// 저장소 경로에 쓰면 배포본에서는 존재하지 않는 경로라 조용히 실패한다.
+        /// </summary>
+        static void WriteRunLog()
+        {
+            try
+            {
+                string dir = System.IO.Path.Combine(Application.persistentDataPath, "runs");
+                System.IO.Directory.CreateDirectory(dir);
+                string stamp = System.DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                string path = System.IO.Path.Combine(dir, $"run_{stamp}_{Plan.RunSeed}.json");
+
+                var kinds = new List<string>();
+                foreach (var n in Plan.Nodes) kinds.Add($"\"{n.Kind}\"");
+
+                string json =
+                    "{" +
+                    $"\"seed\":{Plan.RunSeed}," +
+                    $"\"tier\":{Plan.Tier}," +
+                    $"\"family\":\"{Plan.Family}\"," +
+                    $"\"kind\":\"{Plan.Kind}\"," +
+                    $"\"bossCount\":{Plan.BossCount}," +
+                    $"\"bossIndex\":{Plan.BossIndex}," +
+                    $"\"fallbacks\":{Plan.FallbackCount}," +
+                    $"\"nodes\":[{string.Join(",", kinds)}]," +
+                    $"\"signature\":\"{Plan.Signature().Replace("\"", "'")}\"" +
+                    "}";
+                System.IO.File.WriteAllText(path, json);
+            }
+            catch (System.Exception e)
+            {
+                // 로그를 못 써도 게임은 계속돼야 한다. 다만 **조용히** 넘어가지는 않는다 —
+                // 감사 로그가 없다는 사실 자체가 사후 조사에서 치명적이다.
+                Debug.LogWarning($"[던전] 런 로그 기록 실패: {e.Message}");
+            }
         }
 
         public static void End()
