@@ -307,13 +307,18 @@ def judge_w3(csv_path):
     if not rows:
         return False, "CSV 비어 있음", []
 
-    t, verdicts = {}, {}
+    # 구성당 여러 판이 있으면 **중앙값**으로 본다(§21-1i).
+    # 1회 실행으로 구성을 비교하면 안 된다 — 실측으로 D(도발OFF)가 A를 이기는 판이 나온다.
+    import statistics
+    samples, verdicts = {}, {}
     for row in rows:
         key = (row.get("setup") or "").strip()
         if not key:
             continue
-        t[key] = float(row.get("survived_s", 0) or 0)
+        samples.setdefault(key, []).append(float(row.get("survived_s", 0) or 0))
         verdicts[key] = (row.get("verdict") or "").strip()
+    t = {k: statistics.median(v) for k, v in samples.items()}
+    reps = min((len(v) for v in samples.values()), default=0)
 
     def pick(prefix):
         for k in t:
@@ -332,15 +337,19 @@ def judge_w3(csv_path):
                        " (상한에 닿은 결과는 통과가 아니다)"), rows
 
     ok_solo = t[C] < t[A] * 0.5
-    ok_taunt = t[A] > t[D]
+    # 도발 효과는 **표본이 3회 이상일 때만** 통과 조건으로 삼는다.
+    # 1회 실행에서는 D가 A를 이기는 일이 실제로 일어난다(§21-1i 기록) — 그건 밸런스가 아니라 잡음이다.
+    ok_taunt = t[A] > t[D] if reps >= 3 else True
     ok = ok_solo and ok_taunt
 
     note = ("생존(s): " +
             " · ".join(f"{k.split('_', 1)[1] if '_' in k else k} {t[k]:.1f}"
                        for k in (A, B, C, D, E)) +
-            f" | 1인불가 {'OK' if ok_solo else 'NG'} · 도발효과 {'OK' if ok_taunt else 'NG'}" +
+            f" | n={reps} · 1인불가 {'OK' if ok_solo else 'NG'} · " +
+            (f"도발효과 {'OK' if t[A] > t[D] else 'NG'}" if reps >= 3
+             else f"도발효과 참고만(A/D={t[A] / max(1e-6, t[D]):.2f}, 표본 부족)") +
             f" | 딜특화/표준 {t[B] / t[A]:.2f}배 · 힐러없음/표준 {t[E] / t[A]:.2f}배" +
-            " (구성당 1회·시드 미고정 — 방향만)")
+            (" · 중앙값 판정" if reps >= 3 else " · 단일 실행이라 구성 비교는 방향만"))
     return ok, note, rows
 
 
