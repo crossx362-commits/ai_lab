@@ -77,7 +77,10 @@ namespace AshesToStars
                 return;
             }
 
-            // 전투가 없는 노드(입구·강화)는 그 자리에서 통과한다
+            // 강화 노드는 화면에서 3택을 고른 뒤에 통과한다(DungeonScreen이 처리).
+            if (n.Kind == NodeKind.강화) return;
+
+            // 전투가 없는 노드(입구)는 그 자리에서 통과한다
             Complete(true);
         }
 
@@ -109,6 +112,22 @@ namespace AshesToStars
             if (!Active || PendingNode < 0 || PendingNode >= Plan.Nodes.Length) return null;
             return Plan.Nodes[PendingNode].Wave;
         }
+
+        /// <summary>이 노드의 3택 후보. 같은 노드를 다시 봐도 같은 후보가 나온다(시드 고정).</summary>
+        public static List<BoonId> DrawBoons(int node) =>
+            Active ? Boons.Draw(Plan.RunSeed, node, State.Boons) : new List<BoonId>();
+
+        /// <summary>강화를 하나 가져간다. ✅ §7 — 던전을 나가면 사라진다(저장하지 않는다).</summary>
+        public static void TakeBoon(BoonId id)
+        {
+            if (!Active) return;
+            if (!State.Boons.Contains((int)id)) State.Boons.Add((int)id);
+            Complete(true);
+            Debug.Log($"[던전] 강화 획득: {Boons.Def(id).Name} (보유 {State.Boons.Count})");
+        }
+
+        /// <summary>가져갈 강화가 없을 때 그냥 통과.</summary>
+        public static void TakeBoonSkip() => Complete(true);
 
         public static bool BossCleared =>
             Active && Plan.BossIndex >= 0 && State.Cleared.Contains(Plan.BossIndex);

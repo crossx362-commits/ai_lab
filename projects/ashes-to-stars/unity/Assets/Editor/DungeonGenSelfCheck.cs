@@ -173,6 +173,31 @@ namespace AshesToStars
             }
             Check(stuck == 0, $"런 진행 시뮬레이션 1,000판 — 갇힌 판 {stuck} (0이어야 한다, 최대 {maxSteps}걸음)");
 
+            // ── 강화 3택(S8) — ✅§7 3택 · §18-7 중복 제외 · 나가면 초기화
+            DungeonRun.Begin(4242u, 3, DungeonKind.일반, "Field");
+            var d1 = DungeonRun.DrawBoons(2);
+            var d2 = DungeonRun.DrawBoons(2);
+            Check(d1.Count == 3, $"S8 후보 3개 (실제 {d1.Count})");
+            Check(string.Join(",", d1) == string.Join(",", d2), "S8 같은 노드 → 같은 후보(시드 고정)");
+            Check(string.Join(",", d1) != string.Join(",", DungeonRun.DrawBoons(3)),
+                  "S8 노드가 다르면 후보가 다르다");
+
+            DungeonRun.EnterForTest(2);
+            DungeonRun.TakeBoon(d1[0]);
+            var d3 = DungeonRun.DrawBoons(2);
+            Check(!d3.Contains(d1[0]), "S8 §18-7 — 이미 보유한 강화는 후보에서 제외");
+
+            Boons.Multipliers(DungeonRun.State.Boons, out float ba, out float bh, out float bs,
+                              out float bc, out float bhl, out float bsh, out float br, out float bas);
+            bool anyChanged = ba != 1f || bh != 1f || bs != 1f || bc != 1f ||
+                              bhl != 1f || bsh != 1f || br != 1f || bas != 1f;
+            Check(anyChanged, "S8 강화가 실제 전투 배율로 환산된다");
+
+            DungeonRun.End();
+            DungeonRun.Begin(4242u, 3, DungeonKind.일반, "Field");
+            Check(DungeonRun.State.Boons.Count == 0, "S8 ✅§7 — 던전을 나가면 강화가 사라진다");
+            DungeonRun.End();
+
             _log.AppendLine("  참고  계획 예시: " + DungeonGenerator.Generate(20260814u, 3).Signature());
 
             string head = _fail == 0 ? "[던전자가검사] PASS" : $"[던전자가검사] FAIL {_fail}건";

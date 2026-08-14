@@ -54,6 +54,28 @@ namespace AshesToStars
             Info(r, 0, "현재 위치: " + Label(state.CurrentNode) +
                        (state.ElitesKilled > 0 ? $"   (정예 처치 {state.ElitesKilled})" : ""));
 
+            // 강화 노드에 들어와 있으면 3택을 고르기 전에는 다른 걸 못 한다 —
+            // 고르지 않고 지나갈 수 있으면 그건 선택이 아니라 장식이다.
+            if (DungeonRun.PendingNode >= 0 &&
+                plan.Nodes[DungeonRun.PendingNode].Kind == NodeKind.강화)
+            {
+                var picks = DungeonRun.DrawBoons(DungeonRun.PendingNode);
+                Info(r, 0, $"임시 강화 3택 — 던전을 나가면 사라진다(✅ §7). 보유 {state.Boons.Count}개");
+                if (picks.Count == 0)
+                {
+                    // 8종을 전부 가져간 경우. 없는 걸 지어내지 않고 그대로 통과시킨다.
+                    Info(r, 1, "더 가져갈 강화가 없다 — 이미 전부 보유했다(§18-7 중복 제외)");
+                    if (Row(r, 2, "통과", "다음 노드로")) DungeonRun.TakeBoonSkip();
+                    return;
+                }
+                for (int i = 0; i < picks.Count; i++)
+                {
+                    var d = Boons.Def(picks[i]);
+                    if (Row(r, i + 1, d.Name, d.Desc)) { DungeonRun.TakeBoon(picks[i]); return; }
+                }
+                return;
+            }
+
             var next = DungeonRun.NextNodes();
             int row = 1;
             if (next.Count == 0)

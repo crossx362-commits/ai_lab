@@ -373,6 +373,10 @@ public class W3Party : MonoBehaviour
     // 고쳐 쓰면 나중에 측정값이 왜 달라졌는지 아무도 모르게 된다.
     [Header("게임 모드 (Battle 씬에서 켠다)")]
     public bool GameMode;
+
+    // 던전 임시 강화 배율(§7). **게임 모드에서만** 적용한다 —
+    // 검증(W1~W3)은 강화 없는 기준선이어야 구성 비교가 성립한다.
+    float _bAtk = 1f, _bHp = 1f, _bSpd = 1f, _bCd = 1f, _bHeal = 1f, _bShield = 1f, _bRange = 1f, _bAtkSpd = 1f;
     /// <summary>판이 끝났을 때 호출. true=생존(상한 도달) / false=전멸</summary>
     public System.Action<bool> OnBattleEnd;
 
@@ -605,6 +609,11 @@ public class W3Party : MonoBehaviour
         _tauntEnabled = _setup.TauntEnabled;
         _style = Style.Balanced;                     // 스타일 고정 — 구성만 비교한다
 
+        // 던전 강화를 배율로 환산한다. 던전 밖(필드 사냥·검증)에서는 전부 1이다.
+        if (GameMode && DungeonRun.Active)
+            Boons.Multipliers(DungeonRun.State.Boons, out _bAtk, out _bHp, out _bSpd,
+                              out _bCd, out _bHeal, out _bShield, out _bRange, out _bAtkSpd);
+
         // 구성에 맞춰 파티를 짠다
         for (int i = 0; i < 5; i++) _slots[i].Tr.gameObject.SetActive(false);
         _party = new Member[_setup.Jobs.Length];
@@ -615,8 +624,8 @@ public class W3Party : MonoBehaviour
             m.Job = job;
             m.Role = RoleOf(job);
             m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Role));
-            m.MaxHp = m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f;
-            m.Atk = m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f;
+            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp;
+            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f) * _bAtk;
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
             // 검사가 멀찍이 서서 때리는 그림이 된다 — 오너 지적으로 발견.
@@ -628,6 +637,7 @@ public class W3Party : MonoBehaviour
                 Job.사제 => 6.5f,
                 _ => 6.0f,              // 음유시인
             };
+            m.Range *= _bRange;
             _party[i] = m;
         }
 
@@ -940,7 +950,7 @@ public class W3Party : MonoBehaviour
                 {
                     if (force1) m.ForceSkill = 0;
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
-                    m.SkillCd = 6f; m.Threat += 80f; _tauntUses++;
+                    m.SkillCd = 6f * _bCd; m.Threat += 80f; _tauntUses++;
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
                     _skillLog[0]++; m.SkillT = 0.55f;
                     FlashParty();                                 // 발동 순간을 눈에 띄게
@@ -952,7 +962,7 @@ public class W3Party : MonoBehaviour
                     if (force2) m.ForceSkill = 0;
                     m.Gauge = 0f;
                     foreach (var o in _party)
-                        if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f);
+                        if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f * _bShield);
                     FlashParty();
                     _skillLog[1]++; m.SkillT = 0.55f;
                     foreach (var o in _party) if (o.Alive) FxParticles.Play(FxKind.무적, ToScreen(o.Pos));
@@ -1052,7 +1062,7 @@ public class W3Party : MonoBehaviour
             if (sep.sqrMagnitude > 1e-4f)
                 want = (want + sep * 1.4f).normalized;
 
-            m.Pos += want * PlayerSpeed * 0.85f * dt;
+            m.Pos += want * PlayerSpeed * 0.85f * _bSpd * dt;   // 강화는 아군에게만 — 몹 속도에 걸지 마라
             m.Pos = Vector2.ClampMagnitude(m.Pos, Arena + 3f);
             m.Tr.position = ToScreen(m.Pos, -1f);
             m.Sr.color = m.Hp / m.MaxHp < 0.3f ? new Color(1f, 0.55f, 0.55f) : Color.white;
@@ -1111,13 +1121,13 @@ public class W3Party : MonoBehaviour
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
                     foreach (var o in _party)
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
-                            m.Gauge += Heal(o, 14f * sp.DmgMul);
+                            m.Gauge += Heal(o, 14f * sp.DmgMul * _bHeal);
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
-                    m.Gauge += Heal(worst, 24f * sp.DmgMul);
+                    m.Gauge += Heal(worst, 24f * sp.DmgMul * _bHeal);
                     m.Cd = 1.0f; m.Threat += 8f; _healsCast++;
                 }
                 m.Gauge = Mathf.Min(100f, m.Gauge);
@@ -1129,7 +1139,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 1 || (m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
                 {
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
-                    m.SkillCd = 5f; m.Cd = 0.9f; _skillLog[5]++; m.SkillT = 0.6f;
+                    m.SkillCd = 5f * _bCd; m.Cd = 0.9f / _bAtkSpd; _skillLog[5]++; m.SkillT = 0.6f;
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
@@ -1159,7 +1169,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); }
                 else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
-                m.Cd = 0.35f;
+                m.Cd = 0.35f / _bAtkSpd;
                 m.Threat += dmg * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
