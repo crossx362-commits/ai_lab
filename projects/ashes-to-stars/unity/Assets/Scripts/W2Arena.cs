@@ -350,6 +350,9 @@ public class W2Arena : MonoBehaviour
             p += _mVel[i] * dt;
             _mPos[i] = p;
             _mTr[i].position = ToScreen(p);
+            // 좌우 이동 = 스프라이트 반전(W3와 같은 규칙). 속도로 판정한다 —
+            // 여기는 속도를 Lerp로 굴리므로 위치 차분보다 방향이 안정적이다
+            if (Mathf.Abs(_mVel[i].x) > 0.05f) _mSr[i].flipX = _mVel[i].x < 0f;
             _mSr[i].sortingOrder = (int)(-p.y * 16f);
 
             // 접촉 판정

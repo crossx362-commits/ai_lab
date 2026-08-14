@@ -1253,9 +1253,15 @@ public class W3Party : MonoBehaviour
             }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
 
+            Vector2 prev = _mPos[i];
             p += want * spd * dt;
             _mPos[i] = p;
             _mTr[i].position = ToScreen(p);
+            // 좌우 이동을 스프라이트 반전으로 표현한다(방향별 그림이 아직 없다 — 아트문서 §0-A).
+            // 아군은 이미 이렇게 하고 있었는데 몹만 항상 같은 쪽을 보고 있어서,
+            // 왼쪽으로 몰려갈 때 전부 뒷걸음질치는 것처럼 보였다.
+            // ⚠️ 임계값 없이 매 프레임 갱신하면 정지한 몹이 부동소수 잡음으로 떨린다.
+            if (Mathf.Abs(p.x - prev.x) > 1e-4f) _mSr[i].flipX = p.x < prev.x;
             _mSr[i].sortingOrder = (int)(-p.y * 16f);
             if (_mFlash[i] > 0f)
             {
