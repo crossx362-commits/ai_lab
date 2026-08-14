@@ -29,6 +29,29 @@ namespace AshesToStars
         const int PROP_CAP = 90;
 
         /// <summary>
+        /// 아레나 **안쪽**에 선 프랍의 좌표. `ArenaLayout.Clear()`가 라운드마다 충돌 목록을
+        /// 비우므로, 그림은 그대로 두고 **충돌만 다시 등록**하기 위해 따로 기억한다.
+        /// 이게 없으면 "보이는데 통과되는" 상태가 되어 §10-2 엄폐가 조용히 거짓이 된다.
+        /// </summary>
+        static readonly System.Collections.Generic.List<Vector2> _cover =
+            new System.Collections.Generic.List<Vector2>();
+
+        /// <summary>안쪽 프랍의 충돌 반경 — 그림 크기가 아니라 "돌아가야 하는 정도"다.</summary>
+        const float COVER_RADIUS = 0.9f;
+
+        static GameObject _root;
+
+        /// <summary>
+        /// 기억해 둔 안쪽 프랍을 `ArenaLayout`에 다시 등록한다.
+        /// **`ArenaLayout.Clear()`·`Build()` 뒤에 부를 것** — 그 둘이 목록을 비운다.
+        /// </summary>
+        public static void RegisterCover()
+        {
+            for (int i = 0; i < _cover.Count; i++)
+                ArenaLayout.AddObstacle(_cover[i], COVER_RADIUS);
+        }
+
+        /// <summary>
         /// 전투 공간 가장자리에 배경 프랍을 배치한다.
         /// </summary>
         /// <param name="bank">게임 스프라이트 뱅크 (머티리얼 템플릿용)</param>
@@ -44,6 +67,11 @@ namespace AshesToStars
                                  bool 엄폐물 = false)
         {
             Random.InitState(seed);
+
+            // 다시 부를 수 있다 — 게임 진입부가 엄폐물을 켜며 한 번 더 부른다.
+            // 이전 프랍을 안 지우면 두 벌이 겹쳐 화면이 두 배로 지저분해진다.
+            if (_root != null) Object.Destroy(_root);
+            _cover.Clear();
 
             // ── 바이옴별 프랍 목록 ────────────────
             string[] propNames = GetPropNames(biome);
@@ -113,6 +141,7 @@ namespace AshesToStars
             const float ISO_Y = StressTest.ISO_Y;
             var origin = TerrainNoise.Origin(seed);
             var decorRoot = new GameObject("FieldDecor_Props");
+            _root = decorRoot;
 
             float outer = arenaRadius * 1.8f;
             float step = Mathf.Max(0.8f, arenaRadius * 0.09f);
@@ -154,13 +183,14 @@ namespace AshesToStars
 
                     // 아레나 안에 선 프랍은 **보이기만 하면 안 된다** — 지나갈 수 있으면
                     // 엄폐가 성립하지 않고, 그림만 있는 장애물은 오히려 유저를 속인다.
-                    if (inside) { ArenaLayout.AddObstacle(worldPos, 0.9f); blockers++; }
+                    if (inside) { _cover.Add(worldPos); blockers++; }
 
                     placed++;
                 }
 
+            if (엄폐물) RegisterCover();
             Debug.Log($"[FieldDecor] {biome} 프랍 {placed}개 노이즈 배치" +
-                      (엄폐물 ? $" (아레나 내 엄폐물 {blockers}개 등록)" : " (아레나 밖 장식만)"));
+                      (엄폐물 ? $" (아레나 내 엄폐물 {blockers}개)" : " (아레나 밖 장식만)"));
         }
 
         static string[] GetPropNames(Biome biome) => biome switch

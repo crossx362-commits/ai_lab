@@ -53,6 +53,14 @@ namespace AshesToStars
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
             GameState.Earn(500000);
 
+            if (_mode == "hunt")
+            {
+                // 던전 **밖** 경로 — 던전이 아닐 때도 전투가 정상인지 본다.
+                // 지금까지 스모크가 전부 던전이라 DungeonRun이 꺼진 경로는 한 번도 안 밟았다.
+                GameFlow.GoBattle(GameFlow.Field);
+                return;
+            }
+
             if (_mode == "boss")
             {
                 // 보스 노드까지 이겨서 가려면 몇 분이 걸린다 — 기믹 3종이 **도는지**만 보면 되므로
@@ -91,6 +99,13 @@ namespace AshesToStars
         void Update()
         {
             _t += Time.deltaTime;
+
+            if (_mode == "hunt")
+            {
+                if (_step == 0 && _t > 12f) { Shot("auto_field_hunt"); _step = 1; _t = 0f; }
+                else if (_step == 1 && _t > 1.5f) Finish();
+                return;
+            }
 
             if (_mode == "boss")
             {
