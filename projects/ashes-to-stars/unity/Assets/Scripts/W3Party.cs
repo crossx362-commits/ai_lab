@@ -326,9 +326,11 @@ public class W3Party : MonoBehaviour
     float _shieldAbsorbed;
     int _meleeHits, _shotHits, _framesThisRun;
     float _tauntUntil;                 // 도발이 원거리 몹까지 끄는 구간
+    float _lastStandUntil = -1f;       // 최후의 보루 지속(§3 수호기사)
+    float _lastStandCd = -1f;          // 최후의 보루 재사용 대기
     Chant _partyChant = Chant.진군가;   // 음유시인 악장 (파티 오라)
     // 스킬 사용 횟수: 0도발 1성채방패 2치유파동 3기적 4악장전환 5화염폭풍 6일섬
-    readonly int[] _skillLog = new int[7];
+    readonly int[] _skillLog = new int[8];   // 7 = 최후의 보루(§3 수호기사)
     float _healerDeadT;
     // 사제 신앙의 판 최고치. 기적이 0회일 때 "신앙이 안 찼다"와 "조건이 안 걸렸다"를 가른다 —
     // 추측으로 원인을 고르지 않기 위한 계측이다(2026-08-13).
@@ -413,7 +415,9 @@ public class W3Party : MonoBehaviour
     void BuildWorld()
     {
         var bank = SpriteBank.Load();
-        GroundBuilder.Build(bank, Arena + 20f);
+        // 던전 노드면 던전 바닥을 깐다(§3-4 — 아트 신규 0장, 기존 텍스처 재사용)
+        GroundBuilder.Build(bank, Arena + 20f,
+            DungeonRun.Active ? "ground/dungeon_rock_albedo" : "ground/field_plain_albedo");
 
         // 스킬 범위 표시 두 장 — 매번 만들지 않고 켜고 끈다
         LoadFxOnce();
@@ -609,8 +613,21 @@ public class W3Party : MonoBehaviour
         _tauntEnabled = _setup.TauntEnabled;
         _style = Style.Balanced;                     // 스타일 고정 — 구성만 비교한다
 
+        // 아레나 템플릿을 실제 장애물로 세운다(§3-4). 검증(W1~W3)은 항상 빈 판이어야
+        // 구성 비교가 성립하므로 **게임 모드 + 던전 노드**일 때만 깐다.
+        ArenaLayout.Clear();
+        // ⚠️ GameMode를 조건에 넣지 마라 — BattleScreen이 AddComponent **뒤에** 대입하므로
+        //    Awake(→NextStyle)가 도는 시점에는 아직 false다. 실제로 이것 때문에
+        //    장애물과 강화가 통째로 적용되지 않았다(스크린샷으로 발견).
+        //    DungeonRun.Active는 검증 빌드에서 절대 참이 될 수 없으므로 이것만으로 충분하다.
+        if (DungeonRun.Active && DungeonRun.PendingNode >= 0)
+        {
+            var node = DungeonRun.Plan.Nodes[DungeonRun.PendingNode];
+            ArenaLayout.Build(node.Template, node.TerrainSeed, Arena, SpriteBank.Cached.Mat);
+        }
+
         // 던전 강화를 배율로 환산한다. 던전 밖(필드 사냥·검증)에서는 전부 1이다.
-        if (GameMode && DungeonRun.Active)
+        if (DungeonRun.Active)
             Boons.Multipliers(DungeonRun.State.Boons, out _bAtk, out _bHp, out _bSpd,
                               out _bCd, out _bHeal, out _bShield, out _bRange, out _bAtkSpd);
 
@@ -672,7 +689,7 @@ public class W3Party : MonoBehaviour
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0;
-        _tauntUntil = -1f; _partyChant = Chant.진군가;
+        _tauntUntil = -1f; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
         Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")})");
     }
@@ -942,7 +959,11 @@ public class W3Party : MonoBehaviour
                     int t2 = NearestMob(m.Pos, 99f);
                     if (t2 >= 0) want = (_mPos[t2] - m.Pos).normalized;
                 }
-                m.Gauge = Mathf.Min(100f, m.Gauge + dt * 14f);   // 피격·보호로 축적(단순화)
+                // 수호 게이지는 §3대로 **피격·아군 보호**로 찬다(Damage에서 더한다).
+                // 예전에는 시간으로 찼다(dt*14) — 그러면 탱이 가만히 서 있어도 방패가 나가고,
+                // "맞아주는 것이 곧 자원"이라는 탱의 정체성이 성립하지 않는다.
+                // 아주 적은 자연 회복만 남긴다 — 도발이 실패해 한 대도 안 맞는 판에서 굳지 않게.
+                m.Gauge = Mathf.Min(100f, m.Gauge + dt * 2f);
 
                 // 강제 발동(버튼)이면 조건을 건너뛴다 — 지휘는 "지금" 쓰는 것이다
                 bool force1 = m.ForceSkill == 1, force2 = m.ForceSkill == 2;
@@ -1063,6 +1084,7 @@ public class W3Party : MonoBehaviour
                 want = (want + sep * 1.4f).normalized;
 
             m.Pos += want * PlayerSpeed * 0.85f * _bSpd * dt;   // 강화는 아군에게만 — 몹 속도에 걸지 마라
+            if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
             m.Pos = Vector2.ClampMagnitude(m.Pos, Arena + 3f);
             m.Tr.position = ToScreen(m.Pos, -1f);
             m.Sr.color = m.Hp / m.MaxHp < 0.3f ? new Color(1f, 0.55f, 0.55f) : Color.white;
@@ -1283,6 +1305,7 @@ public class W3Party : MonoBehaviour
 
             Vector2 prev = _mPos[i];
             p += want * spd * dt;
+            if (ArenaLayout.Any) p = ArenaLayout.Resolve(p, 0.3f);
             _mPos[i] = p;
             _mTr[i].position = ToScreen(p);
             // 좌우 이동을 스프라이트 반전으로 표현한다(방향별 그림이 아직 없다 — 아트문서 §0-A).
@@ -1347,6 +1370,7 @@ public class W3Party : MonoBehaviour
     void Damage(Member m, float dmg, bool front)
     {
         if (!m.Alive) return;
+        float incoming = dmg;
         if (_partyChant == Chant.수호가) dmg *= 0.82f;      // 음유시인 수호가 오라
         if (m.Shield > 0f)                                   // 수호기사 성채 방패가 먼저 깎인다
         {
@@ -1355,7 +1379,29 @@ public class W3Party : MonoBehaviour
             _shieldAbsorbed += absorbed;
         }
         if (dmg <= 0f) { if (front) _frontlineHits++; else _backlineHits++; return; }
+
+        // 수호 게이지 — §3 "피격·아군 보호 시 축적". 맞아주는 것이 탱의 자원이다.
+        var tank = _party.Length > 0 ? _party[0] : null;
+        if (tank != null && tank.Alive && tank.Role == Role.Tank)
+        {
+            // 자기가 맞으면 크게, 아군이 맞으면 작게 — 아군이 맞는 건 탱이 못 막은 것이다
+            tank.Gauge = Mathf.Min(100f, tank.Gauge + (m == tank ? incoming * 0.5f : incoming * 0.12f));
+        }
+
         m.Hp -= dmg;
+
+        // 최후의 보루(§3 수호기사 3번 스킬) — 3초간 HP가 1 미만으로 안 떨어진다.
+        // 자동 전투라 조건 발동으로 둔다: 치명타 한 방에 즉사하는 것을 한 번 막아준다.
+        if (m.Role == Role.Tank && m.Hp <= 0f && _t >= _lastStandCd)
+        {
+            m.Hp = 1f;
+            _lastStandUntil = _t + 3.0f;
+            _lastStandCd = _t + 60f;
+            _skillLog[7]++;
+            FxParticles.Play(FxKind.무적, ToScreen(m.Pos), 1.6f);
+            Debug.Log($"[W3] 최후의 보루 발동 @ {_t:F1}s");
+        }
+        if (m.Role == Role.Tank && _t < _lastStandUntil && m.Hp < 1f) m.Hp = 1f;
         FxParticles.Play(FxKind.피격, ToScreen(m.Pos));
         if (front) _frontlineHits++; else _backlineHits++;
         if (m.Hp <= 0f)

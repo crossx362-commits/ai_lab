@@ -12,6 +12,13 @@ namespace AshesToStars
     /// <summary>타이틀 — 시작과 종료. 하단바 없음.</summary>
     public class TitleScreen : GameScreen
     {
+        protected override void Awake()
+        {
+            base.Awake();
+            // `--auto dungeon`이 붙어 있을 때만 무인 스모크가 붙는다. 평소엔 아무 일도 없다.
+            DebugAutoPilot.BootstrapIfRequested();
+        }
+
         protected override string Title => "재와 별";
         protected override string Subtitle => "Ashes to Stars — 죽으면 캐릭터가 진짜 사라진다";
         protected override bool ShowBottomBar => false;

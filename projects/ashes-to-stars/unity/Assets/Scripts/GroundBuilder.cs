@@ -7,7 +7,11 @@ using UnityEngine;
 /// </summary>
 public static class GroundBuilder
 {
-    public static void Build(SpriteBank bank, float radius)
+    /// <summary>
+    /// 바닥을 깐다. `groundTex`로 바이옴 텍스처를 지정할 수 있다 —
+    /// 던전 노드에서 필드 잔디가 깔리면 "던전에 들어왔다"가 화면에서 부정된다.
+    /// </summary>
+    public static void Build(SpriteBank bank, float radius, string groundTex = "ground/field_plain_albedo")
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
         go.name = "Ground";
@@ -19,7 +23,7 @@ public static class GroundBuilder
         go.transform.position = new Vector3(0, 0, 1f);   // 스프라이트보다 뒤
         go.transform.localScale = new Vector3(size, size * StressTest.ISO_Y, 1f);
 
-        var tex = Resources.Load<Texture2D>("ground/field_plain_albedo");
+        var tex = Resources.Load<Texture2D>(groundTex) ?? Resources.Load<Texture2D>("ground/field_plain_albedo");
         var sh = Shader.Find("Unlit/Texture") ?? Shader.Find("Sprites/Default");
         var mat = new Material(sh);
 

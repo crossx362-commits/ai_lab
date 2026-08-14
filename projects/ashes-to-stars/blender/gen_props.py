@@ -35,6 +35,12 @@ PROPS = [
     ("dungeon", "pillar",  "pillar",  (0.34, 0.33, 0.36), 3),
     ("dungeon", "crystal", "spike",   (0.35, 0.55, 0.75), 3),
     ("dungeon", "rubble",  "rock",    (0.28, 0.27, 0.29), 3),
+    # 아레나 템플릿(던전 명세 §3-4)이 실제로 형태를 갖게 하는 두 종류.
+    #   wall  = choke 템플릿의 좁은 통로를 만드는 벽 조각
+    #   cover = pockets 템플릿의 가장자리 엄폐물 (✅ §10-2 원거리 몹 대응이 의미를 갖는 유일한 판)
+    # 기둥·잔해만으로는 "좁은 길"과 "숨을 곳"을 만들 수 없어 템플릿이 이름뿐인 값이 된다.
+    ("dungeon", "wall",    "wall",    (0.30, 0.29, 0.33), 3),
+    ("dungeon", "cover",   "cover",   (0.33, 0.31, 0.30), 3),
     ("estate",  "crate",   "crate",   (0.40, 0.29, 0.17), 2),
     ("estate",  "barrel",  "barrel",  (0.36, 0.26, 0.16), 2),
 ]
@@ -112,6 +118,27 @@ def build(kind, rgb, seed):
         o = bpy.context.object
         jitter_mesh(o, 0.06, seed)
         parts.append(o)
+
+    elif kind == "wall":
+        # 가로로 긴 벽 조각. 세로로 세우면 쿼터뷰에서 시야를 너무 가린다 —
+        # 낮고 길게 만들어 "지나갈 수 없다"만 읽히게 한다.
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0, 0, 0.35))
+        o = bpy.context.object
+        o.scale = (rnd.uniform(1.5, 2.2), 0.28, rnd.uniform(0.6, 0.85))
+        jitter_mesh(o, 0.05, seed)
+        parts.append(o)
+
+    elif kind == "cover":
+        # 허리 높이 엄폐물 — 뒤에 서면 원거리 투사체를 막는다는 인상이 나야 한다.
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0, 0, 0.3))
+        o = bpy.context.object
+        o.scale = (rnd.uniform(0.9, 1.3), 0.45, rnd.uniform(0.5, 0.7))
+        jitter_mesh(o, 0.07, seed)
+        parts.append(o)
+        # 위에 잔해 하나를 얹어 실루엣이 밋밋하지 않게
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=rnd.uniform(0.16, 0.24), subdivisions=1,
+                                              location=(rnd.uniform(-.3, .3), 0, 0.62))
+        parts.append(bpy.context.object)
 
     elif kind == "crate":
         bpy.ops.mesh.primitive_cube_add(size=0.8, location=(0, 0, 0.4),
