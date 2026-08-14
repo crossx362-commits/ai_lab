@@ -86,6 +86,37 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
     raise SystemExit(f"이미지 없음: {json.dumps(res)[:400]}")
 
 
+def generate_hf(prompt: str, refs: list[str], model: str = "nano_banana_pro",
+                resolution: str = "1k") -> Image.Image:
+    """Higgsfield CLI 경로.
+
+    Gemini API(종량제)와 같은 프롬프트·같은 앵커를 쓰되 구독 크레딧으로 돈다.
+    같은 Nano Banana Pro 모델이라 결과물은 동등하고, 크레딧 환산 단가가 더 싸다.
+    """
+    import shutil
+    import subprocess
+    import tempfile
+
+    cli = shutil.which("higgsfield") or "/opt/homebrew/bin/higgsfield"
+    cmd = [cli, "generate", "create", model, "--resolution", resolution,
+           "--aspect-ratio", "1:1", "--prompt", f"{prompt}\n\n{STYLE_RULES}",
+           "--wait", "--wait-timeout", "10m"]
+    for r in refs:
+        cmd += ["--image-references", r]
+
+    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=900)
+    urls = [ln.strip() for ln in (p.stdout or "").splitlines() if ln.strip().startswith("http")]
+    if not urls:
+        raise SystemExit(f"Higgsfield 실패: {(p.stdout or '') + (p.stderr or '')}"[:400])
+
+    with urllib.request.urlopen(urls[-1], timeout=180) as r:
+        data = r.read()
+    tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    tmp.write(data)
+    tmp.close()
+    return Image.open(tmp.name).convert("RGB")
+
+
 def chroma_key(img: Image.Image, tol: int = 120) -> Image.Image:
     """마젠타 배경 → 투명 + 디스필.
 
@@ -123,7 +154,8 @@ def main(argv=None):
     ap.add_argument("--spec", required=True, help="에셋 명세 JSON")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--only", help="이름에 이 문자열이 든 항목만")
-    ap.add_argument("--model", default=MODEL)
+    ap.add_argument("--model", default="")
+    ap.add_argument("--backend", choices=["gemini", "higgsfield"], default="higgsfield")
     ap.add_argument("--height", type=int, default=0, help="0이면 원본 크기 유지")
     ns = ap.parse_args(argv)
 
@@ -134,7 +166,7 @@ def main(argv=None):
         if not os.path.exists(r):
             raise SystemExit(f"참조 이미지 없음: {r}")
 
-    key = _api_key()
+    key = _api_key() if ns.backend == "gemini" else None
     os.makedirs(ns.out_dir, exist_ok=True)
 
     for item in spec["assets"]:
@@ -145,7 +177,11 @@ def main(argv=None):
         if os.path.exists(dst):
             print(f"건너뜀(이미 있음) {name}")
             continue
-        img = chroma_key(generate(item["prompt"], refs, key, ns.model))
+        if ns.backend == "gemini":
+            raw = generate(item["prompt"], refs, key, ns.model or MODEL)
+        else:
+            raw = generate_hf(item["prompt"], refs, ns.model or "nano_banana_pro")
+        img = chroma_key(raw)
         if ns.height and img.height > ns.height:
             w = max(1, round(img.width * ns.height / img.height))
             img = img.resize((w, ns.height), Image.Resampling.BOX)

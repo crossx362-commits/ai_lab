@@ -39,7 +39,7 @@ namespace AshesToStars
             if (DungeonRun.BossCleared)
             {
                 Info(r, 0, "종점 보스를 처치했다 — 던전 클리어");
-                Info(r, 1, "임시 강화는 여기서 사라진다(✅ §7). 재화·드랍은 이미 지갑에 들어갔다.");
+                Info(r, 1, "임시 강화는 여기서 사라진다(§7). 재화·드랍은 이미 지갑에 들어갔다.");
                 if (Row(r, 2, "던전 나가기", "필드로 돌아간다"))
                 {
                     DungeonRun.End();
@@ -60,7 +60,7 @@ namespace AshesToStars
                 plan.Nodes[DungeonRun.PendingNode].Kind == NodeKind.강화)
             {
                 var picks = DungeonRun.DrawBoons(DungeonRun.PendingNode);
-                Info(r, 0, $"임시 강화 3택 — 던전을 나가면 사라진다(✅ §7). 보유 {state.Boons.Count}개");
+                Info(r, 0, $"임시 강화 3택 — 던전을 나가면 사라진다(§7). 보유 {state.Boons.Count}개");
                 if (picks.Count == 0)
                 {
                     // 8종을 전부 가져간 경우. 없는 걸 지어내지 않고 그대로 통과시킨다.
@@ -82,7 +82,7 @@ namespace AshesToStars
             {
                 // 구성으로 완주를 보장하므로(G2) 여기 오는 것은 막다른 보상 분기를 다 턴 경우뿐이다.
                 Info(r, row++, "이 방향은 끝났다 — 돌아 나간다");
-                if (Row(r, row++, "던전 나가기", "재화는 유지, 강화는 초기화(✅ §7)"))
+                if (Row(r, row++, "던전 나가기", "재화는 유지, 강화는 초기화(§7)"))
                 {
                     DungeonRun.End();
                     GameFlow.Go(DungeonRun.ReturnScene);
@@ -101,7 +101,7 @@ namespace AshesToStars
                 }
             }
 
-            if (Row(r, row, "던전 포기", "여기서 나간다 — 강화는 사라진다(✅ §7)"))
+            if (Row(r, row, "던전 포기", "여기서 나간다 — 강화는 사라진다(§7)"))
             {
                 DungeonRun.End();
                 GameFlow.Go(DungeonRun.ReturnScene);
@@ -124,7 +124,7 @@ namespace AshesToStars
                 case NodeKind.보스:
                     return $"종점 보스 {DungeonRun.Plan.BossCount}체 · 기믹 · 수동 지휘가 열린다(§5·§10-1)";
                 case NodeKind.강화:
-                    return "임시 강화 3택 — 던전을 나가면 사라진다(✅ §7)";
+                    return "임시 강화 3택 — 던전을 나가면 사라진다(§7)";
                 case NodeKind.보상분기:
                     return $"막다른 보상 · 동시 {n.Wave?.TargetCount ?? 0}체 · {n.Template}";
                 case NodeKind.정예:

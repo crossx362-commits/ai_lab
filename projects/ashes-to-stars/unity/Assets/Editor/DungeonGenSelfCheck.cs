@@ -252,6 +252,34 @@ namespace AshesToStars
                 System.IO.File.Delete(files[0]);
             }
 
+            // ── S2·S3 파티 편성 — §4 목숨과 맞물리는지
+            GameState.ResetAll(); LifeSystem.ResetAll(); PartyState.ResetForTest();
+            var party = LifeSystem.GetCharacters();
+            Check(PartyState.Slots.Count > 0, "S3 편성이 비어 있지 않다(자동 채움)");
+            Check(PartyState.Slots.Count <= PartyState.MaxSlots,
+                  $"S3 상한 {PartyState.MaxSlots}인(§9) 준수 (실제 {PartyState.Slots.Count})");
+
+            // 회복 중인 캐릭터는 편성에서 빠져야 한다 — 화면을 안 거친 경로로도 막혀야 한다
+            LifeSystem.RegisterDeath(party[0]);
+            PartyState.Refresh();
+            Check(!PartyState.Contains(0), "S3 §4 회복 중인 캐릭터는 편성에서 제외된다");
+            Check(!PartyState.Toggle(0), "S3 §4 회복 중인 캐릭터는 넣을 수도 없다");
+            var jobs = PartyState.SortieJobs();
+            Check(jobs.Count == PartyState.Slots.Count, "S3 출전 직업 수 == 편성 인원");
+
+            // ── S11 레이드급 출현 (✅ §7)
+            RaidSpawn.Consume();
+            Check(!RaidSpawn.Active, "S11 평소에는 레이드급이 떠 있지 않다");
+            RaidSpawn.ForceSpawnForTest(4242u);
+            Check(RaidSpawn.Active && RaidSpawn.Seed == 4242u, "S11 출현하면 시드가 고정된다");
+            int rem1 = RaidSpawn.RemainingSec;
+            Check(rem1 > 0 && rem1 <= RaidSpawn.LifetimeSec, $"S11 남은 시간 {rem1}s (0~{RaidSpawn.LifetimeSec})");
+            Check(RaidSpawn.Seed == 4242u, "S11 다시 읽어도 시드가 같다 — 들락거리며 리롤 불가(§19)");
+            RaidSpawn.Consume();
+            Check(!RaidSpawn.Active, "S11 입장하면 필드에서 사라진다 — 반복 파밍 금지(✅§7 한정)");
+
+            GameState.ResetAll(); LifeSystem.ResetAll(); PartyState.ResetForTest();
+
             _log.AppendLine("  참고  계획 예시: " + DungeonGenerator.Generate(20260814u, 3).Signature());
 
             string head = _fail == 0 ? "[던전자가검사] PASS" : $"[던전자가검사] FAIL {_fail}건";

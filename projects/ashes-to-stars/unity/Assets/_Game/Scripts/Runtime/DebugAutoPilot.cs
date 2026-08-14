@@ -53,6 +53,14 @@ namespace AshesToStars
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
             GameState.Earn(500000);
 
+            if (_mode == "raid")
+            {
+                // ✅ §7 레이드급이 필드에 떠 있는 상태를 만든다 — 랜덤 출현을 기다릴 수 없으니 강제 소환
+                RaidSpawn.ForceSpawnForTest(_seed);
+                GameFlow.Go(GameFlow.Field);
+                return;
+            }
+
             if (_mode == "party")
             {
                 // 편성 화면만 확인한다. 회복 중·마지막 목숨 표시를 보려고 상태를 하나 만들어 둔다.
@@ -74,6 +82,13 @@ namespace AshesToStars
         void Update()
         {
             _t += Time.deltaTime;
+
+            if (_mode == "raid")
+            {
+                if (_step == 0 && _t > 1.2f) { Shot("auto_raid_field"); _step = 1; _t = 0f; }
+                else if (_step == 1 && _t > 1.5f) Finish();
+                return;
+            }
 
             if (_mode == "party")
             {

@@ -213,7 +213,7 @@ namespace AshesToStars
                 // 삭제된 캐릭터 안내
                 if (deletedCharacters.Count > 0)
                 {
-                    GameFlow.LastBattleSummary += $"\n🔴 {string.Join(", ", deletedCharacters)}이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)";
+                    GameFlow.LastBattleSummary += $"\n[삭제] {string.Join(", ", deletedCharacters)}이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)";
                 }
             }
 

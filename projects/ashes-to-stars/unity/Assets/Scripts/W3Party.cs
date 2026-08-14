@@ -501,6 +501,9 @@ public class W3Party : MonoBehaviour
             var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = bank.Projectile;
             sr.sharedMaterial = bank.Mat;
+            // 적 탄 = 붉은 자주. 아군 탄(노랑)과 **색으로** 갈라야 수백 발이 날아다닐 때 읽힌다.
+            // 모양으로 구분하려 하면 픽셀 크기에서 이미 실패한다.
+            sr.color = new Color(1f, 0.42f, 0.55f);
             sr.sortingOrder = 400;
             go.transform.localScale = Vector3.one * 1.0f;
             go.SetActive(false);
@@ -752,6 +755,8 @@ public class W3Party : MonoBehaviour
     /// **게임 모드에서만** 적용되고 검증 실행에는 영향이 없다.
     /// </summary>
     int _hitstop;
+    float _screenFlash;
+    Color _screenFlashColor = Color.white;
     public void Hitstop(int frames = 3) { if (GameMode) _hitstop = Mathf.Max(_hitstop, frames); }
 
     CameraFollow _cam;
@@ -1452,6 +1457,10 @@ public class W3Party : MonoBehaviour
         {
             m.Hp = 0f; m.DeadT = _t;
             FxParticles.Play(FxKind.사망, ToScreen(m.Pos));
+            // 파티원 사망은 §4에서 목숨이 깎이는 사건이다. 수백 마리가 얽힌 화면에서
+            // 유닛 하나가 사라지는 것으로는 **아무도 알아채지 못한다** — 화면을 한 번 붉게 친다.
+            _screenFlash = 0.35f; _screenFlashColor = new Color(0.9f, 0.15f, 0.2f);
+            Shake(0.6f); Hitstop(4);
             m.Tr.gameObject.SetActive(false);
             if (m.Role == Role.Healer && _healerDeadT < 0f) _healerDeadT = _t;
             Debug.Log($"[W3] {m.Role} 사망 @ {_t:F1}s");
@@ -1569,6 +1578,14 @@ public class W3Party : MonoBehaviour
     void OnGUI()
     {
         _hud ??= new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Color.white } };
+
+        // 화면 플래시 — 가장 싼 강조 수단이고, 파티클과 달리 **절대 묻히지 않는다**
+        if (_screenFlash > 0f)
+        {
+            _screenFlash -= Time.deltaTime;
+            var c = _screenFlashColor; c.a = Mathf.Clamp01(_screenFlash) * 0.35f;
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Tint(c));
+        }
         var s = new StringBuilder();
         int wave = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         s.Append($"구성 {_setup.Name}   경과 {_t:F0}s   웨이브목표 {wave}   처치 {_kills}   도발 {_tauntUses}   ");
