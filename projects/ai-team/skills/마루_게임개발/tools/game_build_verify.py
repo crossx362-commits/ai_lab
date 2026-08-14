@@ -26,7 +26,6 @@ import csv
 import glob
 import io
 import os
-import platform
 import subprocess
 import sys
 import time
@@ -43,6 +42,11 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, "projects")):
         break
 sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
+sys.path.insert(0, _here)
+
+from game_platform import (                                  # noqa: E402
+    build_target, ensure_no_editor_lock, find_unity, player_path, terminate_player,
+)
 
 try:
     from _shared.env import load_env
@@ -56,43 +60,9 @@ BUILD_DIR = os.path.join(GAME, "build_w1_perf")
 LOG_DIR = os.path.join(GAME, "results")
 REPORT_DIR = os.path.join(_root, "output", "qa", "ashes-to-stars")
 
-UNITY_CANDIDATES = [
-    r"C:\Program Files\Unity\Hub\Editor\6000.0.36f1\Editor\Unity.exe",
-    r"C:\Program Files\Unity\Hub\Editor\6000.2.14f1\Editor\Unity.exe",
-    "/Applications/Unity/Hub/Editor/6000.0.36f1/Unity.app/Contents/MacOS/Unity",
-]
-
 # 판정 기준 — 기획서 §21 프로토타입 검증 V1
 TARGET_FPS = 60.0
 TARGET_MOBS = 500
-
-
-def find_unity():
-    for p in UNITY_CANDIDATES:
-        if os.path.exists(p):
-            return p
-    hub = r"C:\Program Files\Unity\Hub\Editor"
-    if os.path.isdir(hub):
-        vers = sorted(os.listdir(hub), reverse=True)
-        for v in vers:
-            exe = os.path.join(hub, v, "Editor", "Unity.exe")
-            if os.path.exists(exe):
-                return exe
-    return None
-
-
-def kill_stale_unity():
-    """배치 빌드는 다른 인스턴스가 프로젝트를 열고 있으면 실패한다"""
-    if platform.system() != "Windows":
-        return
-    subprocess.run(["taskkill", "/IM", "Unity.exe", "/F"],
-                   capture_output=True, text=True)
-    lock = os.path.join(UNITY_PROJECT, "Temp", "UnityLockfile")
-    if os.path.exists(lock):
-        try:
-            os.remove(lock)
-        except OSError:
-            pass
 
 
 def build(unity):
@@ -104,6 +74,7 @@ def build(unity):
     t0 = time.time()
     r = subprocess.run(
         [unity, "-batchmode", "-quit", "-projectPath", UNITY_PROJECT,
+         "-buildTarget", build_target(),
          "-executeMethod", "W1Runner.Build", "-logFile", log],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=1800,
@@ -122,10 +93,7 @@ def build(unity):
 
 
 def run_player(timeout=300):
-    exe = os.path.join(BUILD_DIR, "W1.exe")
-    if platform.system() != "Windows":
-        print("[마루] Windows 전용 플레이어 — 실행 생략")
-        return None
+    exe = player_path(BUILD_DIR, "W1")
     if not os.path.exists(exe):
         print("[마루] 빌드 산출물 없음: " + exe)
         return None
@@ -145,7 +113,7 @@ def run_player(timeout=300):
         )
     except subprocess.TimeoutExpired:
         print("[마루] 타임아웃 — 강제 종료")
-        subprocess.run(["taskkill", "/IM", "W1.exe", "/F"], capture_output=True)
+        terminate_player(exe)
     return out_csv
 
 
@@ -259,11 +227,18 @@ def main():
 
     errs = []
     if not a.skip_build:
-        unity = find_unity()
+        unity, note = find_unity(UNITY_PROJECT)
         if not unity:
-            print("[마루] 유니티를 찾을 수 없다")
+            print(f"[마루] 유니티를 찾을 수 없다 — {note}")
             return 2
-        kill_stale_unity()
+        print(f"[마루] 유니티: {note} ({unity}) / 타겟 {build_target()}")
+
+        lock_ok, lock_msg = ensure_no_editor_lock(UNITY_PROJECT)
+        if not lock_ok:
+            print(f"[마루] 빌드 중단 — {lock_msg}")
+            write_report(False, f"에디터 락 — {lock_msg.splitlines()[0]}", [], [])
+            return 3
+
         ok, errs = build(unity)
         if not ok:
             write_report(False, "빌드 실패", [], errs)

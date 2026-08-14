@@ -1,7 +1,10 @@
 import os
 import shutil
 
-OUT = r"D:\ai_lab\projects\ashes-to-stars\unity\Assets\Resources\sprites"
+# 다른 split_*.py와 같은 방식 — 이 파일 위치 기준 상대 경로
+# (D:\ai_lab 하드코딩이던 것을 맥 이관하며 교체, 2026-08-14)
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.abspath(os.path.join(HERE, "..", "unity", "Assets", "Resources", "sprites"))
 roles = ['tank', 'dps', 'ranged', 'healer', 'buffer']
 
 # 불필요한 _dash_03 파일 삭제 (스크립트는 dash 3개만 만들었음)

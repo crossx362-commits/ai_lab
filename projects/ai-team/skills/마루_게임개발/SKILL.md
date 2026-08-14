@@ -94,18 +94,30 @@
 ## 기본값 (별도 지정 없을 때)
 
 - 대상: `projects/ashes-to-stars/unity/` 유니티 프로젝트
-- 빌드: Windows 스탠드얼론 (640x480, 1280x720 뷰포트)
+- 빌드: 현재 기계의 스탠드얼론 (맥=StandaloneOSX / Windows=StandaloneWindows64, 1280x720 뷰포트)
 - 타임아웃: 1800초(빌드), 300초(실행)
 - 샘플: 500체 동시 렌더링 + 기본 게임루프
 - 재시도: 빌드 실패 시 1회만 재시도 (구조 문제는 재시도 불가)
 
-## 현재 운영 구성 (2026-08-13)
+## 현재 운영 구성 (2026-08-14)
 
-- 도구: `tools/game_build_verify.py` (빌드+성능), `game_balance_sim.py` (수치 검산)
+- 도구: `tools/game_build_verify.py` (빌드+성능), `game_regression.py` (W1~W3 통합),
+  `game_balance_sim.py`·`game_kiting_sim.py` (수치 검산 — 유니티 없이 단독 실행 가능),
+  `game_platform.py` (플랫폼 의존 조각 **공용 모듈**)
 - 실행: 수동 주기 (아직 정시 잡 미등록) 또는 다른 에이전트 트리거
 - 산출물: `output/qa/ashes-to-stars/` (리포트 `report_*.md`, 스크린샷, CSV 결과)
-- 플랫폼: Windows만 (유니티 에디터/플레이어 모두)
-- 전제: 유니티 설치 경로 인식 (`UNITY_CANDIDATES` 자동감지)
+- 플랫폼: **맥이 운영 기계**(`_shared/fleet_machine_policy.json` primary_platform=darwin).
+  Windows·Linux는 폴백으로 남아 있고 스크립트 수정 없이 동작한다
+- 전제: 유니티 에디터 버전은 **ProjectVersion.txt가 유일한 정답** — 도구가 그 버전의
+  설치본만 찾는다(하드코딩 금지). 못 찾으면 설치된 버전 목록을 알리고 중단한다
+
+### 에디터 락 — 죽이지 않는다
+
+배치 빌드는 에디터가 프로젝트를 잡고 있으면 exit 21로 죽는다. 과거 이걸 `taskkill`로
+풀려다 **오너가 Hub로 열어둔 에디터를 날린 사고**가 있었다(GAME_DEV_HANDOFF.md §5).
+`game_platform.ensure_no_editor_lock()`은 발견 시 pid·커맨드라인을 보고하고
+**중단만** 한다. Windows에서 우리가 남긴 `-batchmode` 잔재만 예외적으로 정리한다.
+Unity Hub 자체는 에디터가 아니므로 락으로 세지 않는다.
 
 ## 사고 기록 & 교훈
 

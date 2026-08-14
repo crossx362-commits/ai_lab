@@ -49,13 +49,13 @@ public static class W2Runner
 
         var outDir = Path.GetFullPath("../build_w2_control");
         Directory.CreateDirectory(outDir);
-        var exe = Path.Combine(outDir, "W2.exe");
+        var exe = BuildPlatform.OutputPath(outDir, "W2");
 
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
             scenes = new[] { SCENE },
             locationPathName = exe,
-            target = BuildTarget.StandaloneWindows64,
+            target = BuildPlatform.Target,
             options = BuildOptions.Development,
         });
 

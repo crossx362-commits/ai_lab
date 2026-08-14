@@ -109,8 +109,8 @@ public static class PlayableScenesBuilder
         var opts = new BuildPlayerOptions
         {
             scenes = scenes.ToArray(),
-            locationPathName = Path.Combine(outDir, "AshesToStars.exe"),
-            target = BuildTarget.StandaloneWindows64,
+            locationPathName = BuildPlatform.OutputPath(outDir, "AshesToStars"),
+            target = BuildPlatform.Target,
             options = BuildOptions.None,
         };
         var report = BuildPipeline.BuildPlayer(opts);

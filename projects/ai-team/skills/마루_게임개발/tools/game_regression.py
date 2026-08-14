@@ -16,7 +16,6 @@ import csv
 import glob
 import io
 import os
-import platform
 import subprocess
 import sys
 import time
@@ -33,6 +32,11 @@ for _ in range(6):
     if os.path.isdir(os.path.join(_root, "projects")):
         break
 sys.path.insert(0, os.path.join(_root, "projects", "ai-team"))
+sys.path.insert(0, _here)
+
+from game_platform import (                                  # noqa: E402
+    build_target, ensure_no_editor_lock, find_unity, player_path, terminate_player,
+)
 
 try:
     from _shared.env import load_env
@@ -46,10 +50,12 @@ LOG_DIR = os.path.join(GAME, "results")
 REPORT_DIR = os.path.join(_root, "output", "qa", "ashes-to-stars")
 
 # 빌드 디렉토리와 실행 파일
+# "stem"은 확장자 없는 산출물 이름 — 실제 경로는 player_path()가 플랫폼별로 만든다
+# (맥은 W1.app/Contents/MacOS/W1, Windows는 W1.exe)
 BUILDS = {
     "w1": {
         "dir": os.path.join(GAME, "build_w1_perf"),
-        "exe": "W1.exe",
+        "stem": "W1",
         "runner": "W1Runner.Build",
         "csv": "w1_result.csv",
         "dll": os.path.join(UNITY_PROJECT, "Temp", "Managed", "Assembly-CSharp.dll"),
@@ -57,7 +63,7 @@ BUILDS = {
     },
     "w2": {
         "dir": os.path.join(GAME, "build_w2_control"),
-        "exe": "W2.exe",
+        "stem": "W2",
         "runner": "W2Runner.Build",
         "csv": "w2_result.csv",
         "dll": os.path.join(UNITY_PROJECT, "Temp", "Managed", "Assembly-CSharp.dll"),
@@ -66,48 +72,13 @@ BUILDS = {
     },
     "w3": {
         "dir": os.path.join(GAME, "build_w3_party"),
-        "exe": "W3.exe",
+        "stem": "W3",
         "runner": "W3Runner.Build",
         "csv": "w3_result.csv",
         "dll": os.path.join(UNITY_PROJECT, "Temp", "Managed", "Assembly-CSharp.dll"),
         "timeout": 200,
     },
 }
-
-UNITY_CANDIDATES = [
-    r"C:\Program Files\Unity\Hub\Editor\6000.0.36f1\Editor\Unity.exe",
-    r"C:\Program Files\Unity\Hub\Editor\6000.2.14f1\Editor\Unity.exe",
-    "/Applications/Unity/Hub/Editor/6000.0.36f1/Unity.app/Contents/MacOS/Unity",
-]
-
-
-def find_unity():
-    for p in UNITY_CANDIDATES:
-        if os.path.exists(p):
-            return p
-    hub = r"C:\Program Files\Unity\Hub\Editor"
-    if os.path.isdir(hub):
-        vers = sorted(os.listdir(hub), reverse=True)
-        for v in vers:
-            exe = os.path.join(hub, v, "Editor", "Unity.exe")
-            if os.path.exists(exe):
-                return exe
-    return None
-
-
-def kill_stale_unity():
-    """배치 빌드는 다른 인스턴스가 프로젝트를 열고 있으면 실패한다"""
-    if platform.system() != "Windows":
-        return
-    subprocess.run(["taskkill", "/IM", "Unity.exe", "/F"],
-                   capture_output=True, text=True)
-    lock = os.path.join(UNITY_PROJECT, "Temp", "UnityLockfile")
-    if os.path.exists(lock):
-        try:
-            os.remove(lock)
-        except OSError:
-            pass
-
 
 def check_build_freshness(build_key, build_before_time):
     """
@@ -147,6 +118,7 @@ def build(unity, build_key):
 
     r = subprocess.run(
         [unity, "-batchmode", "-quit", "-projectPath", UNITY_PROJECT,
+         "-buildTarget", build_target(),
          "-executeMethod", spec["runner"], "-logFile", log],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
         timeout=1800,
@@ -186,11 +158,7 @@ def run_player(build_key, timeout=None):
     if timeout is None:
         timeout = spec["timeout"]
 
-    exe = os.path.join(spec["dir"], spec["exe"])
-    if platform.system() != "Windows":
-        print(f"[마루] Windows 전용 플레이어 — {build_key} 실행 생략")
-        return None, False
-
+    exe = player_path(spec["dir"], spec["stem"])
     if not os.path.exists(exe):
         print(f"[마루] 빌드 산출물 없음: {exe}")
         return None, False
@@ -225,8 +193,7 @@ def run_player(build_key, timeout=None):
             return None, False
     except subprocess.TimeoutExpired:
         print(f"[마루] {build_key.upper()} 타임아웃 ({timeout}s) — 강제 종료")
-        exe_name = spec["exe"][:-4]  # 확장자 제거
-        subprocess.run(["taskkill", "/IM", spec["exe"], "/F"], capture_output=True)
+        terminate_player(exe)
         return None, False
 
 
@@ -402,12 +369,16 @@ def main():
 
     # 빌드 단계
     if not a.skip_build:
-        unity = find_unity()
+        unity, note = find_unity(UNITY_PROJECT)
         if not unity:
-            print("[마루] 유니티를 찾을 수 없다")
+            print(f"[마루] 유니티를 찾을 수 없다 — {note}")
             return 2
+        print(f"[마루] 유니티: {note} ({unity}) / 타겟 {build_target()}")
 
-        kill_stale_unity()
+        lock_ok, lock_msg = ensure_no_editor_lock(UNITY_PROJECT)
+        if not lock_ok:
+            print(f"[마루] 빌드 중단 — {lock_msg}")
+            return 3
 
         for build_key in targets:
             ok, errs, dur = build(unity, build_key)

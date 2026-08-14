@@ -66,21 +66,31 @@ output/qa/ashes-to-stars/    검증 리포트 (git 추적)
 
 ### 실행 명령 (검증된 것)
 
+> **2026-08-14: 맥이 유일한 운영 기계다.** 경로·프로세스 조회는 전부
+> `skills/마루_게임개발/tools/game_platform.py` 한 곳에서 판정한다. 아래 명령을
+> 손으로 치지 말고 도구를 쓰는 게 정답이다(도구가 버전·락·타겟을 알아서 본다).
+
 ```bash
-# 유니티 빌드 (배치모드)
-# ⚠️ 버전을 문서에서 베끼지 말고 ProjectVersion.txt를 읽어라 — 한때 문서가 6000.0.36f1로
-#    낡아 있었고, 그 버전으로 배치를 돌리면 프로젝트 전체 재임포트가 터진다.
-# ⚠️ 에디터가 열려 있으면 배치는 "another Unity instance" 로 즉시 죽는다(exit 21).
-#    죽이기 전에 `wmic process where "name='Unity.exe'" get ProcessId,CommandLine` 로
-#    **오너가 Hub로 열어둔 에디터(-useHub)인지** 확인할 것. 그건 죽이면 안 된다.
-"C:\Program Files\Unity\Hub\Editor\6000.3.14f1\Editor\Unity.exe" -batchmode -quit \
-  -projectPath "D:\ai_lab\projects\ashes-to-stars\unity" \
-  -executeMethod W1Runner.Build -logFile "...\results\build.log"
+# 권장 — 도구가 ProjectVersion.txt를 읽고 타겟(맥=StandaloneOSX)을 정한다
+python3 projects/ai-team/skills/마루_게임개발/tools/game_regression.py --only w1
+
+# 직접 부를 때 (맥). ⚠️ 버전을 문서에서 베끼지 말고 ProjectVersion.txt를 읽어라 —
+#    한때 문서가 6000.0.36f1로 낡아 있었고, 그 버전으로 돌리면 전체 재임포트가 터진다.
+# ⚠️ 에디터가 열려 있으면 배치는 "another Unity instance"로 즉시 죽는다(exit 21).
+#    **죽이지 마라.** 오너가 Hub로 연 에디터일 수 있다 — 도구는 보고하고 중단한다.
+#    확인은 `ps -Ao pid,command | grep -i 'Unity.app/Contents/MacOS/Unity'`.
+V=$(awk '/m_EditorVersion:/{print $2}' projects/ashes-to-stars/unity/ProjectSettings/ProjectVersion.txt)
+"/Applications/Unity/Hub/Editor/$V/Unity.app/Contents/MacOS/Unity" -batchmode -quit \
+  -projectPath "$PWD/projects/ashes-to-stars/unity" -buildTarget StandaloneOSX \
+  -executeMethod W1Runner.Build -logFile "$PWD/projects/ashes-to-stars/results/build.log"
 
 # 블렌더 (반드시 --factory-startup — 설치된 애드온이 에러를 뿜는다)
-"C:\Program Files\Blender Foundation\Blender 4.1\blender.exe" --background --factory-startup \
-  --python "D:\ai_lab\projects\ashes-to-stars\blender\gen_props.py"
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
+  --python projects/ashes-to-stars/blender/gen_props.py
 ```
+
+Windows에서 돌려야 할 일이 생기면 도구가 알아서 `C:\Program Files\Unity\Hub\Editor\<버전>\Editor\Unity.exe`
+와 `StandaloneWindows64`로 폴백한다 — 스크립트를 고칠 필요 없다.
 
 ---
 

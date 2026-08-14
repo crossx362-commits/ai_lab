@@ -47,8 +47,8 @@ public static class W3Runner
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
             scenes = new[] { SCENE },
-            locationPathName = Path.Combine(outDir, "W3.exe"),
-            target = BuildTarget.StandaloneWindows64,
+            locationPathName = BuildPlatform.OutputPath(outDir, "W3"),
+            target = BuildPlatform.Target,
             options = BuildOptions.Development,
         });
 

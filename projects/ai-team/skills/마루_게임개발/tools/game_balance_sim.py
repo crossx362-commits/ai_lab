@@ -428,7 +428,7 @@ def main():
                 print(f"  환생 Lv1→Lv50: {result['hours_to_lv50']:.1f}시간")
                 print(f"  초반 지분: {result['lv1_share_percent']:.2f}% → 중반: {result['lv50_share_percent']:.2f}%")
             if "total_day_full" in result:
-                print(f"  영지 전체 건설: {result['total_day_full']:.1f}일 (50% 단축 시 {result['total_day_shortcut50']:.1f}일)")
+                print(f"  영지 전체 건설: {result['total_day_full']:.1f}일 (50% 단축 시 {result['total_day_50pct_shortcut']:.1f}일)")
             if "estimated_penetration_pct" in result:
                 print(f"  50층 돌파율 추정: {result['estimated_penetration_pct']:.1f}% (목표 {result['target_range']})")
 
@@ -520,8 +520,8 @@ def main():
             if "total_day_full" in result:
                 f.write("#### 영지 건설 시간표\n\n")
                 f.write(f"- 본성 1→15 전체: **{result['total_day_full']:.1f}일** ({result['total_hour_full']:.1f}시간)\n")
-                if "total_day_shortcut50" in result:
-                    f.write(f"- 50% 단축 적용: {result['total_day_shortcut50']:.1f}일 ({result['total_hour_shortcut50']:.1f}시간)\n\n")
+                if "total_day_50pct_shortcut" in result:
+                    f.write(f"- 50% 단축 적용: {result['total_day_50pct_shortcut']:.1f}일 ({result['total_hour_50pct_shortcut']:.1f}시간)\n\n")
                 f.write("##### 레벨별 건설 시간\n\n")
                 f.write("| 레벨 | 소요 시간 | 누적 시간 |\n")
                 f.write("|------|----------|----------|\n")

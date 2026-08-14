@@ -72,19 +72,18 @@ public static class W1Runner
         PlayerSettings.defaultScreenHeight = 720;
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
         QualitySettings.vSyncCount = 0;
-        PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64,
-            new[] { UnityEngine.Rendering.GraphicsDeviceType.Direct3D11 });
+        BuildPlatform.ApplyGraphicsApi();
         PlayerSettings.gcIncremental = true;
 
         var outDir = Path.GetFullPath("../build_w1_perf");
         Directory.CreateDirectory(outDir);
-        var exe = Path.Combine(outDir, "W1.exe");
+        var exe = BuildPlatform.OutputPath(outDir, "W1");
 
         var opts = new BuildPlayerOptions
         {
             scenes = new[] { SCENE },
             locationPathName = exe,
-            target = BuildTarget.StandaloneWindows64,
+            target = BuildPlatform.Target,
             options = BuildOptions.Development | BuildOptions.AllowDebugging
         };
 
