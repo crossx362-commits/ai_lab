@@ -589,11 +589,20 @@ public class W3Party : MonoBehaviour
     /// 실제로 채워진 HP만큼을 돌려준다 — 신앙(§3 "회복량 누적")의 계량 단위.
     /// 이미 만피인 대상에 힐을 넣어도 신앙이 쌓이면 축적이 부풀려진다.
     /// </summary>
+    /// <summary>
+    /// 회복. 실제로 채워진 양만 돌려준다(과회복은 세지 않는다).
+    ///
+    /// ⚠️ 보스전 **힐 체크 기믹의 유일한 입력**이 이 함수다. 지금까지 아무도 보고하지 않아
+    /// `actualPartyHealing`이 언제나 0이었고, 그래서 힐 체크는 **무조건 실패 → 즉시 전멸**이었다.
+    /// 즉 던전·탑 보스전은 15초에 자동 패배하는 판이었다(실측: "Heal Check FAILED! 0 / 5000").
+    /// </summary>
     static float Heal(Member o, float amount)
     {
         float before = o.Hp;
         o.Hp = Mathf.Min(o.MaxHp, o.Hp + amount);
-        return o.Hp - before;
+        float healed = o.Hp - before;
+        AshesToStars.BossBattle.ReportHealingToActive(healed);
+        return healed;
     }
 
     /// <summary>
@@ -800,6 +809,10 @@ public class W3Party : MonoBehaviour
         TickCommand();
         TickParty(dt);
         TickMobs(dt);
+
+        // 겹침 해소 — 유닛이 서로 파고들면 실루엣이 먹혀 무엇이 몇 마리인지 안 읽힌다.
+        // 이동을 계산한 **뒤에** 한 번만 민다(이동 중에 밀면 추적이 흔들린다).
+        ResolveOverlap();
         TickShots(dt);
         TickAllyShots(dt);
         TickVisuals(dt);
@@ -1298,6 +1311,49 @@ public class W3Party : MonoBehaviour
     }
 
     // ── 몹 AI + 어그로 규칙 (§10-4) ───────────────────────
+    // 겹침 해소용 임시 버퍼 — 매 프레임 할당하면 GC가 튄다
+    Vector2[] _sepPos; bool[] _sepAlive;
+
+    /// <summary>
+    /// 몹과 파티를 한 배열에 모아 겹침을 푼다. 파티끼리·몹끼리·서로 전부 대상이다 —
+    /// 아군만 밀면 몹이 아군을 통과해 겹치고, 몹만 밀면 파티 5인이 한 점에 뭉친다.
+    /// 아군은 지시받은 위치가 있으므로 **덜 밀리게**(강도 0.35) 한다.
+    /// </summary>
+    void ResolveOverlap()
+    {
+        int n = MAXM + _party.Length;
+        if (_sepPos == null || _sepPos.Length < n) { _sepPos = new Vector2[n]; _sepAlive = new bool[n]; }
+
+        for (int i = 0; i < MAXM; i++) { _sepPos[i] = _mPos[i]; _sepAlive[i] = _mOn[i]; }
+        for (int k = 0; k < _party.Length; k++)
+        {
+            _sepPos[MAXM + k] = _party[k].Pos;
+            _sepAlive[MAXM + k] = _party[k].Alive;
+        }
+
+        UnitSeparation.Resolve(_sepPos, _sepAlive, n, 0.5f);
+
+        for (int i = 0; i < MAXM; i++)
+            if (_mOn[i])
+            {
+                var p = _sepPos[i];
+                if (ArenaLayout.Any) p = ArenaLayout.Resolve(p, 0.3f);
+                _mPos[i] = p;
+                _mTr[i].position = ToScreen(p);
+                _mSr[i].sortingOrder = Depth(p.y);
+            }
+
+        for (int k = 0; k < _party.Length; k++)
+        {
+            var m = _party[k];
+            if (!m.Alive) continue;
+            // 아군은 명령 위치를 지켜야 하므로 밀린 양의 일부만 반영한다
+            m.Pos = Vector2.Lerp(m.Pos, _sepPos[MAXM + k], 0.7f);
+            if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
+            m.Tr.position = ToScreen(m.Pos);
+        }
+    }
+
     void TickMobs(float dt)
     {
         var sp = Spec(_style);

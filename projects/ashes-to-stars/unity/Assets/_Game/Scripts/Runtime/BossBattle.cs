@@ -81,8 +81,15 @@ namespace AshesToStars
         /// <summary>
         /// 보스전 시작
         /// </summary>
-        public void Begin(int floor, int bossCount)
+        /// <param name="targetTimeOverride">
+        /// 목표 처치 시간(초)을 직접 지정한다. 던전 종점 보스가 이걸 쓴다 —
+        /// 몬스터문서 §7이 "**던전 보스 HP = 5인 파티 총 DPS × 75초**"로 못박았는데,
+        /// 탑 층수에서 유도하면 T4 던전이 35층 보스(300초)가 되어 파티가 18초 만에 전멸한다(실측).
+        /// 던전 난이도는 **던전 티어**에서 나와야지 탑 진행도에서 나오면 안 된다.
+        /// </param>
+        public void Begin(int floor, int bossCount, float targetTimeOverride = 0f)
         {
+            _active = this;
             this.currentFloor = floor;
             this.bossCount = Mathf.Clamp(bossCount, 1, 3);  // §10-7: 최대 3마리
             this.isActive = true;
@@ -93,7 +100,9 @@ namespace AshesToStars
             // §18-11: 목표 시간 계산
             // 5층 90초, 10층 180초, 50층+ 300초
             // 간단히: 5층 단위로 90초 + (층 / 10 - 1) × 90초
-            if (floor <= 5)
+            if (targetTimeOverride > 0f)
+                targetClearTime = targetTimeOverride;
+            else if (floor <= 5)
                 targetClearTime = 90f;
             else if (floor <= 10)
                 targetClearTime = 180f;
@@ -111,7 +120,12 @@ namespace AshesToStars
             // 힐 체크 (기믹 3)
             healCheckDuration = 15f;  // 문서에 없음, 임시 15초
             healCheckElapsed = 0f;
-            requiredPartyHealing = basePartyDps * 50f;  // 임시, 실제는 W3 테스트로 조정 필요
+            // 💡 힐 체크 요구량 — 문서에 수치가 없어 **실측 처리량**에서 유도한다.
+            // 사제 치유의 파동은 5인에게 14씩(쿨 1.4초) → 약 50/초. 15초면 750이 상한이다.
+            // 그 70%인 525를 요구선으로 둔다 — 힐러가 제 일을 하면 통과하고, 놀거나 죽으면 실패한다.
+            // 예전 값(basePartyDps × 50 = 5,000)은 상한의 6.7배라 **어떤 파티도 통과할 수 없었다**.
+            requiredPartyHealing = 0f;      // 창이 열릴 때 들어온 피해에서 정해진다(아래 ReportDamageToActive)
+            windowDamage = 0f;
 
             Debug.Log($"[BossBattle] Begin - Floor {floor}, Boss Count {this.bossCount}, " +
                 $"Target Clear Time {targetClearTime}s, Rage Timer {rageTimerDuration}s");
@@ -124,6 +138,34 @@ namespace AshesToStars
         {
             actualPartyHealing += amount;
         }
+
+        /// <summary>
+        /// 지금 도는 보스전에 회복량을 보고한다.
+        /// 전투 코드(W3Party)가 BossBattle 인스턴스를 몰라도 되게 정적 통로를 둔다 —
+        /// 참조를 넘기게 하면 그 배선을 잊는 순간 기믹이 조용히 죽는다(실제로 죽어 있었다).
+        /// </summary>
+        static BossBattle _active;
+        public static void ReportHealingToActive(float amount)
+        {
+            if (_active != null && _active.isActive) _active.ReportPartyHealing(amount);
+        }
+
+        /// <summary>
+        /// 파티가 받은 피해를 보고한다. 힐 체크의 요구량이 여기서 나온다.
+        ///
+        /// 💡 요구량을 **절대 수치로 두면 안 된다**: 파티가 만피면 회복이 0으로 잡혀
+        /// 아무리 잘해도 통과할 수 없다(실측: 15초 창에서 회복 21 / 요구 525).
+        /// 「들어온 피해의 일정 비율을 회복으로 되받아라」가 §10-5 힐 체크의 실제 의미다 —
+        /// 보스가 안 때리면 요구도 0이 되어 억지 실패가 생기지 않는다.
+        /// </summary>
+        public static void ReportDamageToActive(float amount)
+        {
+            if (_active != null && _active.isActive) _active.windowDamage += amount;
+        }
+        float windowDamage;
+
+        /// <summary>회복이 피해의 이만큼은 되어야 통과. 💡 문서 미정 — 실측으로 조정할 값.</summary>
+        public const float HealCheckRatio = 0.6f;
 
         // ===== PRIVATE: 보스 생성 =====
 
@@ -295,8 +337,9 @@ namespace AshesToStars
 
             healCheckElapsed = 0f;
             actualPartyHealing = 0f;
+            windowDamage = 0f;          // 이 창에서 들어온 피해만 센다
 
-            Debug.Log($"[BossBattle] Triggered Heal Check - Required: {requiredPartyHealing:F0}, Duration: {healCheckDuration}s");
+            Debug.Log($"[BossBattle] Triggered Heal Check - 회복이 이 창의 피해 × {HealCheckRatio:P0} 이상이어야 한다, {healCheckDuration}s");
         }
 
         // ===== PRIVATE: 이벤트 핸들러 =====
@@ -309,6 +352,10 @@ namespace AshesToStars
 
         private void OnHealCheckFailed()
         {
+            // 요구량은 **이 창에서 실제로 들어온 피해**에서 나온다.
+            // 절대 수치로 두면 파티가 만피일 때 회복이 0으로 잡혀 통과가 불가능해진다(실측).
+            requiredPartyHealing = windowDamage * HealCheckRatio;
+
             if (actualPartyHealing < requiredPartyHealing)
             {
                 Debug.Log($"[BossBattle] Heal Check FAILED! " +

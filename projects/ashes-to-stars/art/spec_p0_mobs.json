@@ -1,0 +1,24 @@
+{
+  "_note": "P0 검증용. 앵커는 무채색 몹 앵커(anchor_mobs_gray.png) — 계열 색조가 sr.color 곱셈 틴트라 원본이 무채색이어야 한다(연결검토 C3).",
+  "refs": ["anchor_mobs_gray.png"],
+
+  "rulesets": {
+    "sheet": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same soft shading and thin dark outlines, same 3/4 top-down quarter view with a ~30 degree downward camera angle. Not photorealistic, not 3D-rendered, not vector, no smooth gradients. CRITICAL LAYOUT: draw an animation sprite sheet as an even grid of cells. Every cell must contain the SAME single creature at the same scale, same canvas position, feet on the same baseline, only the pose differing. Do not vary the design, colours, size or proportions between cells. No grid lines, no labels, no numbers, no text. CRITICAL COLOR: the creature must be rendered in NEUTRAL DESATURATED GRAY-WHITE only, with no hue at all, so a palette tint can be applied later. The background must be a completely flat solid pure magenta (#FF00FF) filling every cell, with no ground, floor, shadow or scenery.",
+    "single": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same soft shading and thin dark outlines, same 3/4 top-down quarter view with a ~30 degree downward camera angle. Not photorealistic, not 3D-rendered, not vector, no smooth gradients. A single creature centered in frame, no text, no border. CRITICAL COLOR: rendered in NEUTRAL DESATURATED GRAY-WHITE only, no hue at all, so a palette tint can be applied later. CRITICAL: cut off cleanly at its own base — no ground, floor, terrain, dirt, shadow. The background must be completely flat solid pure magenta (#FF00FF)."
+  },
+
+  "assets": [
+    {
+      "name": "p0_sheet_chaser",
+      "rules_ref": "sheet",
+      "aspect": "3:2",
+      "keep_bg": true,
+      "prompt": "A 3-column by 2-row animation sprite sheet (6 cells) of ONE hostile creature: a quadruped charging beast, low forward-leaning stance, head down, lean muscular build, readable silhouette. Cell order left-to-right, top-to-bottom: (1) standing idle weight settled, (2) idle with head raised slightly, (3) walking front legs extended, (4) walking mid-stride opposite legs, (5) attack lunging forward jaws open, (6) collapsing dead on its side."
+    },
+    {
+      "name": "p0_single_chaser",
+      "rules_ref": "single",
+      "prompt": "A hostile creature: quadruped charging beast, low forward-leaning stance, head down, lean muscular build, readable silhouette, standing idle with weight settled."
+    }
+  ]
+}

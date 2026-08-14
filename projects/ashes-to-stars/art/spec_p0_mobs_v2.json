@@ -1,0 +1,20 @@
+{
+ "_note": "P0 검증용. 앵커는 무채색 몹 앵커(anchor_mobs_gray.png) — 계열 색조가 sr.color 곱셈 틴트라 원본이 무채색이어야 한다(연결검토 C3).",
+ "refs": [
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "sheet": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same soft shading and thin dark outlines, same 3/4 top-down quarter view with a ~30 degree downward camera angle. Not photorealistic, not 3D-rendered, not vector, no smooth gradients. CRITICAL LAYOUT: draw an animation sprite sheet as an even grid of cells. Every cell must contain the SAME single creature at the same scale, same canvas position, feet on the same baseline, only the pose differing. Do not vary the design, colours, size or proportions between cells. No grid lines, no labels, no numbers, no text. CRITICAL COLOR: the creature must be rendered in NEUTRAL DESATURATED GRAY-WHITE only, with no hue at all, so a palette tint can be applied later. The background must be a completely flat solid pure magenta (#FF00FF) filling every cell, with no ground, floor, shadow or scenery.",
+  "single": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same soft shading and thin dark outlines, same 3/4 top-down quarter view with a ~30 degree downward camera angle. Not photorealistic, not 3D-rendered, not vector, no smooth gradients. A single creature centered in frame, no text, no border. CRITICAL COLOR: rendered in NEUTRAL DESATURATED GRAY-WHITE only, no hue at all, so a palette tint can be applied later. CRITICAL: cut off cleanly at its own base — no ground, floor, terrain, dirt, shadow. The background must be completely flat solid pure magenta (#FF00FF).",
+  "sheet2": "CRITICAL CAMERA: every cell must be drawn in 3/4 TOP-DOWN QUARTER VIEW — the camera is pitched 30 degrees DOWNWARD and rotated 45 degrees, orthographic. The viewer looks DOWN at the creature from above and in front, seeing the top of its back and head. STRICTLY FORBIDDEN: pure side profile view, pure front view, eye-level view. Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. LAYOUT: an even grid of cells; every cell holds the SAME creature at the SAME scale and the SAME canvas position with feet on a common baseline, only the pose differs. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue, for later palette tint. Background: completely flat solid pure magenta #FF00FF across the whole image, no ground, no floor, no shadow, no scenery."
+ },
+ "assets": [
+  {
+   "name": "p0_sheet_chaser_v2",
+   "rules_ref": "sheet2",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 3-column by 2-row animation sprite sheet (6 cells) of ONE hostile creature seen from a 30-degree downward quarter view: a quadruped charging beast, low forward-leaning stance, head down, lean muscular build. Cells: (1) idle settled, (2) idle head raised, (3) walk front legs extended, (4) walk opposite legs, (5) attack lunging jaws open, (6) dead collapsed."
+  }
+ ]
+}

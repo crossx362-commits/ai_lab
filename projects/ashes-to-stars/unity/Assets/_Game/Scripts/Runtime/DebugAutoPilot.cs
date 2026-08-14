@@ -53,6 +53,15 @@ namespace AshesToStars
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
             GameState.Earn(500000);
 
+            if (_mode == "boss")
+            {
+                // 보스 노드까지 이겨서 가려면 몇 분이 걸린다 — 기믹 3종이 **도는지**만 보면 되므로
+                // 계획을 만든 뒤 종점 보스 노드로 바로 들어간다(검증용 지름길).
+                DungeonRun.Begin(_seed, 3, DungeonKind.일반, GameFlow.Field);
+                DungeonRun.Enter(DungeonRun.Plan.BossIndex);
+                return;
+            }
+
             if (_mode == "raid")
             {
                 // ✅ §7 레이드급이 필드에 떠 있는 상태를 만든다 — 랜덤 출현을 기다릴 수 없으니 강제 소환
@@ -82,6 +91,14 @@ namespace AshesToStars
         void Update()
         {
             _t += Time.deltaTime;
+
+            if (_mode == "boss")
+            {
+                // 기믹(동시 장판·쫄 소환·힐 체크)이 도는 구간을 노린다 — 시작 직후는 아직 아무것도 안 돈다
+                if (_step == 0 && _t > 18f) { Shot("auto_boss"); _step = 1; _t = 0f; }
+                else if (_step == 1 && _t > 1.5f) Finish();
+                return;
+            }
 
             if (_mode == "raid")
             {

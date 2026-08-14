@@ -39,9 +39,17 @@ STYLE_RULES = (
     "same dot size, same limited earthy palette, same soft shading and thin dark "
     "outlines, same 3/4 top-down quarter view with a ~30 degree downward camera angle. "
     "Do not use a photorealistic, 3D-rendered, vector, or smooth-gradient look. "
-    "Render a single object centered in frame, no ground shadow, no text, no border, "
-    "no extra props. The background must be a completely flat solid pure magenta "
-    "(#FF00FF) with nothing else on it."
+    "Render a single object centered in frame, no text, no border, no extra props. "
+    # 아래 문장은 2026-08-14 실측 후 강화됐다. "no ground shadow" 한 마디로는
+    # 그루터기·덤불 밑에 회색 지면 조각이 딸려 나왔다(지면 타일 위에 올리면
+    # 사각 얼룩이 된다). 모델은 '그림자'만 금지어로 읽고 '땅'은 배경이 아니라
+    # 대상의 일부로 취급한다 → 땅·흙·풀·잔디 조각을 개별로 금지해야 한다.
+    "CRITICAL: the object must be cut off cleanly at its own base. Do NOT draw any "
+    "ground, floor, terrain, soil, dirt patch, grass patch, snow patch, rubble scatter "
+    "or cast shadow beneath or around the object. Nothing but flat magenta may touch "
+    "the object's silhouette. "
+    "The background must be a completely flat solid pure magenta (#FF00FF) with "
+    "nothing else on it."
 )
 
 
@@ -87,7 +95,8 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
 
 
 def generate_hf(prompt: str, refs: list[str], model: str = "nano_banana_pro",
-                resolution: str = "1k") -> Image.Image:
+                resolution: str = "1k", aspect: str = "1:1",
+                rules: str = None) -> Image.Image:
     """Higgsfield CLI 경로.
 
     Gemini API(종량제)와 같은 프롬프트·같은 앵커를 쓰되 구독 크레딧으로 돈다.
@@ -99,7 +108,8 @@ def generate_hf(prompt: str, refs: list[str], model: str = "nano_banana_pro",
 
     cli = shutil.which("higgsfield") or "/opt/homebrew/bin/higgsfield"
     cmd = [cli, "generate", "create", model, "--resolution", resolution,
-           "--aspect-ratio", "1:1", "--prompt", f"{prompt}\n\n{STYLE_RULES}",
+           "--aspect-ratio", aspect,
+           "--prompt", f"{prompt}\n\n{rules or STYLE_RULES}",
            "--wait", "--wait-timeout", "10m"]
     for r in refs:
         cmd += ["--image-references", r]
@@ -177,11 +187,17 @@ def main(argv=None):
         if os.path.exists(dst):
             print(f"건너뜀(이미 있음) {name}")
             continue
+        # 항목이 자기 규칙을 갖고 있으면 그걸 쓴다 — 시트 생성처럼 "단일 오브젝트 중앙"
+        # 규칙이 정면으로 방해가 되는 경우가 있다. spec의 "rules_ref"는 spec 최상단
+        # "rulesets"에서 찾는다(프롬프트가 두 곳으로 갈라지지 않게 파일 안에 묶어 둔다).
+        rules = spec.get("rulesets", {}).get(item.get("rules_ref", ""), None)
+        aspect = item.get("aspect", "1:1")
         if ns.backend == "gemini":
             raw = generate(item["prompt"], refs, key, ns.model or MODEL)
         else:
-            raw = generate_hf(item["prompt"], refs, ns.model or "nano_banana_pro")
-        img = chroma_key(raw)
+            raw = generate_hf(item["prompt"], refs, ns.model or "nano_banana_pro",
+                              aspect=aspect, rules=rules)
+        img = chroma_key(raw) if not item.get("keep_bg") else raw.convert("RGBA")
         if ns.height and img.height > ns.height:
             w = max(1, round(img.width * ns.height / img.height))
             img = img.resize((w, ns.height), Image.Resampling.BOX)

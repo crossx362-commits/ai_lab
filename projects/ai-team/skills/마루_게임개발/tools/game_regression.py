@@ -431,7 +431,10 @@ def write_report(results, errs=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", choices=["w1", "w2", "w3"], help="하나만 실행")
-    ap.add_argument("--skip-build", action="store_true")
+    ap.add_argument("--skip-build", action="store_true",
+                    help="빌드만 건너뛴다(플레이어는 돈다)")
+    ap.add_argument("--judge-only", action="store_true",
+                    help="아무것도 실행하지 않고 기존 CSV만 다시 판정한다")
     ap.add_argument("--send", action="store_true", help="실패 시 텔레그램")
     a = ap.parse_args()
 
@@ -477,12 +480,22 @@ def main():
             results[build_key] = (ok, note, rows)
             print(f"[마루] {build_key.upper()} 판정: {'PASS' if ok else 'FAIL'} — {note}")
     else:
-        # --skip-build: 기존 빌드로 실행만
+        # --skip-build: **빌드만** 건너뛰고 플레이어는 돌린다.
+        # ⚠️ 예전에는 이 분기가 플레이어도 안 돌리고 **옛 CSV를 다시 판정**했다.
+        #    그래서 코드를 고치고 --skip-build로 재측정하면 몇 시간 전 수치가 그대로 나왔고,
+        #    "고쳤더니 결과가 이렇게 바뀌었다"는 비교가 통째로 거짓이 됐다(실측으로 발각).
+        #    판정만 다시 하고 싶으면 --judge-only를 쓴다.
         for build_key in targets:
             spec = BUILDS[build_key]
             csv_path = os.path.join(LOG_DIR, spec["csv"])
 
-            if not os.path.exists(csv_path):
+            if not a.judge_only:
+                csv_path, ran = run_player(build_key)
+                if not ran:
+                    results[build_key] = (False, "플레이어 실행 실패", [])
+                    continue
+
+            if not csv_path or not os.path.exists(csv_path):
                 print(f"[마루] {build_key.upper()} CSV 없음: {csv_path}")
                 results[build_key] = (False, "CSV 없음", [])
                 continue

@@ -75,9 +75,10 @@ namespace AshesToStars
                 };
                 // 마릿수는 던전 계획이 §10-7 확률(60/30/10)로 이미 뽑아뒀다 —
                 // 여기서 다시 1로 고정하면 그 결정이 화면에 도달하지 못한다.
-                int bossCount = (DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon)
-                    ? DungeonRun.Plan.BossCount : 1;
-                boss.Begin(GameFlow.BossFloor, bossCount);
+                bool dungeonBoss = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
+                int bossCount = dungeonBoss ? DungeonRun.Plan.BossCount : 1;
+                // 던전 종점 보스는 몬스터문서 §7의 **75초** 기준이다(탑 층수 스케일이 아니다)
+                boss.Begin(GameFlow.BossFloor, bossCount, dungeonBoss ? 75f : 0f);
             }
 
             // W3Party 컴포넌트 획득 또는 생성
