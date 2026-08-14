@@ -180,6 +180,23 @@ public class SpriteBank
 
         // 4096 — 캐릭터 4직업×13프레임 + 몹 22 + 플레이스홀더가 한 장에 들어가야 한다.
         // 아틀라스가 넘치면 PackTextures가 **조용히 축소**해 스프라이트가 뭉개진다.
+        //
+        // ⚠️ 그 "조용히"가 이 프로젝트에서 가장 위험한 실패 방식이다(§21-1b 계열).
+        //    넘쳐도 예외가 안 나고 화면도 그럴듯해서, 도트가 뭉개진 채 몇 주를 갈 수 있다.
+        //    그래서 담기 전에 면적을 재서 **먼저 소리를 지른다**.
+        //    실측 2026-08-14: 87장 9.77Mpx = 58%. 여유는 캐릭터 크기로 약 56장뿐이었다.
+        //    → 새로 넣는 아트는 높이 128px로 정규화할 것(아트 계획 §6 C2).
+        long usedPx = 0;
+        foreach (var t in texes) usedPx += (long)t.width * t.height;
+        const long ATLAS_PX = 4096L * 4096L;
+        float fill = usedPx / (float)ATLAS_PX;
+        if (fill > 0.85f)
+            Debug.LogError($"[SpriteBank] 아틀라스 과밀 {fill:P0} ({texes.Length}장) — " +
+                           "PackTextures가 조용히 축소해 도트가 뭉개진다. " +
+                           "입력을 128px로 정규화하거나 플레이스홀더를 정리할 것");
+        else if (fill > 0.70f)
+            Debug.LogWarning($"[SpriteBank] 아틀라스 {fill:P0} 찼다 ({texes.Length}장) — 곧 한계다");
+
         var atlas = new Texture2D(4096, 4096, TextureFormat.RGBA32, false);
         var rects = atlas.PackTextures(texes, 2, 4096, false);
         // ✅ 픽셀아트라 Point — Bilinear면 도트가 뭉개진다(§17 아트 방향).
