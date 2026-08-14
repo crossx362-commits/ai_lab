@@ -390,6 +390,22 @@ public class W3Party : MonoBehaviour
     [Header("게임 모드 (Battle 씬에서 켠다)")]
     public bool GameMode;
 
+    /// <summary>
+    /// 필드 전투에 **실제로 막히는** 엄폐물을 켠다(§10-2 — 원거리 몹 대응이 판단이 되려면
+    /// 돌아갈 지형이 있어야 한다). 던전은 `ArenaLayout` 템플릿이 이미 맡으므로 필드 전용이다.
+    ///
+    /// ⚠️ 왜 Awake가 아니라 별도 진입점인가: `GameMode`는 `BattleScreen`이 AddComponent
+    ///    **뒤에** 대입하므로 Awake 시점엔 false다. 모드로 분기하려다 조용히 꺼지는 사고를
+    ///    이미 겪었다(NextStyle 648 주석). 그래서 **켜는 쪽이 명시적으로 부른다.**
+    ///    검증(W1~W3)은 이 메서드를 부르지 않으므로 빈 판이 그대로 유지된다.
+    /// </summary>
+    public void EnableFieldCover()
+    {
+        if (DungeonRun.Active) return;              // 던전은 템플릿이 맡는다 — 두 벌이 겹치면 길이 막힌다
+        AshesToStars.FieldDecor.Build(SpriteBank.Load(), Arena, 20260813,
+                                      AshesToStars.FieldDecor.Biome.Field, 엄폐물: true);
+    }
+
     // 던전 임시 강화 배율(§7). **게임 모드에서만** 적용한다 —
     // 검증(W1~W3)은 강화 없는 기준선이어야 구성 비교가 성립한다.
     float _bAtk = 1f, _bHp = 1f, _bSpd = 1f, _bCd = 1f, _bHeal = 1f, _bShield = 1f, _bRange = 1f, _bAtkSpd = 1f;
@@ -439,6 +455,9 @@ public class W3Party : MonoBehaviour
         _stormRing = MakeRing(bank, new Color(1f, 0.42f, 0.2f, 0.95f));
         // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
         // 시드를 고정해 같은 판이면 같은 배치가 나오게 한다(측정 재현성).
+        // ⚠️ 여기서 엄폐물을 켜지 마라 — Awake 시점엔 GameMode가 아직 false다(아래 645 주석과
+        //    같은 함정). 게임 모드는 BattleScreen이 GameMode를 대입한 **뒤에**
+        //    EnableFieldCover()로 명시적으로 켠다.
         AshesToStars.FieldDecor.Build(bank, Arena, 20260813, AshesToStars.FieldDecor.Biome.Field);
 
         // 파티 슬롯 5칸을 미리 만들고, 구성(§21-1f)에 따라 켜고 끈다
@@ -651,6 +670,10 @@ public class W3Party : MonoBehaviour
             var node = DungeonRun.Plan.Nodes[DungeonRun.PendingNode];
             ArenaLayout.Build(node.Template, node.TerrainSeed, Arena, SpriteBank.Cached.Mat);
         }
+        // 필드 엄폐물은 그림이 라운드를 넘어 남는데 충돌 목록은 위 Clear/Build가 비운다.
+        // 다시 등록하지 않으면 **보이는데 통과되는** 상태가 된다 — 엄폐가 조용히 거짓이 되고,
+        // 이 저장소가 반복해서 겪은 「계산은 되는데 반영이 안 됨」의 거울상이다.
+        AshesToStars.FieldDecor.RegisterCover();
 
         // 던전 강화를 배율로 환산한다. 던전 밖(필드 사냥·검증)에서는 전부 1이다.
         if (DungeonRun.Active)

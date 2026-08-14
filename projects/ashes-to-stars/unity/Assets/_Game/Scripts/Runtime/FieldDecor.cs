@@ -44,6 +44,12 @@ namespace AshesToStars
         /// <summary>
         /// 기억해 둔 안쪽 프랍을 `ArenaLayout`에 다시 등록한다.
         /// **`ArenaLayout.Clear()`·`Build()` 뒤에 부를 것** — 그 둘이 목록을 비운다.
+        ///
+        /// ⚠️ 순서 의존: `_cover`는 static이라 **씬을 다시 로드해도 살아남는다.**
+        ///    지금은 `W3Party.Awake`가 `BuildWorld()`(→`Build`가 `_cover`를 비움) →
+        ///    `NextStyle()`(→여기) 순서라 옛 좌표가 등록될 창이 없다.
+        ///    이 순서를 뒤집으면 **이전 판의 좌표가 보이지 않는 벽**이 된다 —
+        ///    `ArenaLayout` 주석이 "이 게임에서 가장 화나는 버그"라고 적은 그것이다.
         /// </summary>
         public static void RegisterCover()
         {
