@@ -54,6 +54,15 @@ namespace AshesToStars
                     // 층을 실제로 돌파한다. 진행도가 안 오르면 §8의 "벽 콘텐츠"가 성립하지 않고
                     // §10-6의 티어 상승(10층마다)도 영원히 일어나지 않는다.
                     GameState.ClearFloor(GameFlow.BossFloor);
+                    // 던전 종점 보스는 **런의 끝**이다 — 노드 맵으로 돌아가 클리어를 보여준다.
+                    // 탑 레이드는 기존대로 결과 화면으로 간다(§8 벽 콘텐츠는 층 진행이 결과다).
+                    if (DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon)
+                    {
+                        DungeonRun.Complete(true);
+                        GameFlow.LastBattleSummary = $"던전 보스 격파 ({_t:F1}초)";
+                        GameFlow.Go(GameFlow.Dungeon);
+                        return;
+                    }
                     GameFlow.LastBattleSummary =
                         $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
                     GameFlow.Go(GameFlow.Result);
@@ -61,9 +70,14 @@ namespace AshesToStars
                 boss.OnPartyWiped += () =>
                 {
                     GameFlow.LastBattleSummary = $"보스전 패배 — {GameFlow.BossFloor}층";
+                    if (DungeonRun.Active) DungeonRun.End();   // ✅ §7 나가면 초기화
                     GameFlow.Go(GameFlow.Result);
                 };
-                boss.Begin(GameFlow.BossFloor, 1);
+                // 마릿수는 던전 계획이 §10-7 확률(60/30/10)로 이미 뽑아뒀다 —
+                // 여기서 다시 1로 고정하면 그 결정이 화면에 도달하지 못한다.
+                int bossCount = (DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon)
+                    ? DungeonRun.Plan.BossCount : 1;
+                boss.Begin(GameFlow.BossFloor, bossCount);
             }
 
             // W3Party 컴포넌트 획득 또는 생성
@@ -73,6 +87,22 @@ namespace AshesToStars
 
             // 게임 모드 설정: 표준 5인 한 판만 실행
             _battle.GameMode = true;
+
+            // 던전 노드는 **편성이 계획에서 온다**(§3-5 밀도 곡선). 여기서 꽂지 않으면
+            // 어느 노드를 들어가든 같은 판이 돌아 "던전이 매번 바뀐다"가 거짓말이 된다.
+            var wave = DungeonRun.PendingWave();
+            if (GameFlow.Kind == GameFlow.BattleKind.던전 && wave != null)
+            {
+                _battle.시작웨이브 = Mathf.Max(1, wave.StartCount);
+                _battle.최대시간 = Mathf.Max(20f, wave.DurationSec);
+                // 목표 동시 몹 수까지 DurationSec 동안 선형으로 올린다 —
+                // 웨이브 단계 수를 먼저 정하고 그 수로 증가폭을 나눈다.
+                const int steps = 5;
+                _battle.점증간격 = Mathf.Max(1f, wave.DurationSec / steps);
+                _battle.단계당증가 = Mathf.Max(1, (wave.TargetCount - wave.StartCount) / steps);
+                Debug.Log($"[던전] 노드 편성 주입: 시작 {wave.StartCount} → 목표 {wave.TargetCount} " +
+                          $"/ {wave.DurationSec:F0}s (단계 {steps})");
+            }
 
             // 전투 종료 콜백: 결과 저장 및 화면 이동
             _battle.OnBattleEnd = OnBattleEnd;
@@ -132,6 +162,17 @@ namespace AshesToStars
 
         void OnBattleEnd(bool survived)
         {
+            // 던전 안이면 결과 화면이 아니라 **노드 맵으로 돌아간다** — 런이 계속되기 때문이다.
+            // 진 경우에만 런을 끝낸다(사망 기록은 아래 공통 경로가 처리한다).
+            bool inDungeon = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
+            if (inDungeon && survived)
+            {
+                DungeonRun.Complete(true);
+                GameFlow.LastBattleSummary = $"노드 통과 — {_t:F1}초";
+                GameFlow.Go(GameFlow.Dungeon);
+                return;
+            }
+
             if (survived)
             {
                 // 보스전이 아닌 일반 전투는 보상을 계산하지 않았으므로 최소한의 정보만 표시
@@ -165,6 +206,9 @@ namespace AshesToStars
                     GameFlow.LastBattleSummary += $"\n🔴 {string.Join(", ", deletedCharacters)}이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)";
                 }
             }
+
+            // 던전에서 전멸하면 런은 거기서 끝난다(✅ §7 나가면 초기화)
+            if (DungeonRun.Active && !survived) DungeonRun.End();
 
             GameFlow.Go(GameFlow.Result);
         }

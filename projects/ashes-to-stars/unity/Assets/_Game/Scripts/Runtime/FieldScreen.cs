@@ -57,8 +57,9 @@ namespace AshesToStars
                         _showInsufficientGold = true;
                         return;
                     }
+                    bool dungeon = _pendingCost > 0;     // 비용이 붙은 것은 던전뿐이다(필드 사냥은 무료)
                     _pendingCost = 0;
-                    GameFlow.GoBattle(GameFlow.Field);
+                    if (dungeon) EnterDungeon(); else GameFlow.GoBattle(GameFlow.Field);
                 }
                 if (Row(r, 3, "취소", "파티를 다시 편성한다"))
                 {
@@ -97,10 +98,23 @@ namespace AshesToStars
                 }
                 else
                 {
-                    GameFlow.GoBattle(GameFlow.Field);
+                    EnterDungeon();
                 }
             }
             if (Row(r, 2, "자동화 일정", "무엇을 언제 시킬지 예약(§6)")) { }
+        }
+
+        /// <summary>
+        /// 던전 진입 — 계획을 만들고 노드 맵으로 간다.
+        ///
+        /// 시드는 **매번 달라야 한다**(✅ §7 "진입할 때마다 구조가 바뀜").
+        /// 프로토타입이라 로컬 시각·진행도에서 만든다(본게임은 서버, ✅ §22-2).
+        /// </summary>
+        void EnterDungeon()
+        {
+            uint seed = (uint)(System.DateTime.UtcNow.Ticks & 0x7FFFFFFF) ^ (uint)(GameState.TowerFloor * 2654435761u);
+            DungeonRun.Begin(seed, GameState.Tier, DungeonKind.일반, GameFlow.Field);
+            GameFlow.Go(GameFlow.Dungeon);
         }
 
         bool HasLastLifeCharacter()

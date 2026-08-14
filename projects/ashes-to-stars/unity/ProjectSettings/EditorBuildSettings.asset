@@ -24,6 +24,9 @@ EditorBuildSettings:
     path: Assets/_Game/Scenes/Play/Character.unity
     guid: 44c6a30b8c7c0444a9a7e5be7a16af13
   - enabled: 1
+    path: Assets/_Game/Scenes/Play/Dungeon.unity
+    guid: 5b2b9be3b718b4e25b3068ba845a3d4e
+  - enabled: 1
     path: Assets/_Game/Scenes/Play/Battle.unity
     guid: d6a747eb2f65ac74692c6f0b3ff84fa3
   - enabled: 1

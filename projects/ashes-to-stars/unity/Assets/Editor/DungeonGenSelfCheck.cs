@@ -148,6 +148,31 @@ namespace AshesToStars
                   System.Math.Abs(p3 - 10f) <= 3f,
                   $"§10-7 보스 마릿수 분포 {p1:F1}/{p2:F1}/{p3:F1}% (60/30/10 ±3%p)");
 
+            // ── 런 진행 시뮬레이션 — 실제로 노드를 밟아 보스까지 갈 수 있는가.
+            //    도달성(flood fill)은 "그래프에 길이 있다"만 본다. 이건 **DungeonRun의 규칙대로
+            //    걸었을 때** 도착하는지를 본다 — 클리어한 노드를 다시 안 가는 규칙 때문에
+            //    막다른 곳에 갇힐 수 있고, 그건 flood fill로는 절대 안 잡힌다.
+            int stuck = 0, maxSteps = 0;
+            for (uint s = 1; s <= 1000u; s++)
+            {
+                DungeonRun.Begin(s, (int)(s % 10), DungeonKind.일반, "Field");
+                int steps = 0;
+                while (!DungeonRun.BossCleared && steps < 40)
+                {
+                    var next = DungeonRun.NextNodes();
+                    if (next.Count == 0) break;
+                    // 사람이라면 보스로 가는 길을 고른다 — 보스가 보이면 그쪽, 아니면 첫 번째
+                    int pick = next.Contains(DungeonRun.Plan.BossIndex) ? DungeonRun.Plan.BossIndex : next[0];
+                    DungeonRun.EnterForTest(pick);
+                    DungeonRun.Complete(true);
+                    steps++;
+                }
+                if (!DungeonRun.BossCleared) stuck++;
+                if (steps > maxSteps) maxSteps = steps;
+                DungeonRun.End();
+            }
+            Check(stuck == 0, $"런 진행 시뮬레이션 1,000판 — 갇힌 판 {stuck} (0이어야 한다, 최대 {maxSteps}걸음)");
+
             _log.AppendLine("  참고  계획 예시: " + DungeonGenerator.Generate(20260814u, 3).Signature());
 
             string head = _fail == 0 ? "[던전자가검사] PASS" : $"[던전자가검사] FAIL {_fail}건";

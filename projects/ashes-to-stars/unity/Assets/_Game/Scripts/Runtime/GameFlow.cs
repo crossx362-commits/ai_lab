@@ -24,13 +24,14 @@ namespace AshesToStars
         public const string Tower = "Tower";
         public const string WorldMap = "WorldMap";
         public const string Character = "Character";
+        public const string Dungeon = "Dungeon";   // 던전 노드 맵(§7)
         public const string Battle = "Battle";
         public const string Result = "Result";
 
         /// <summary>빌드 세팅에 등록할 순서. 0번이 시작 씬이 된다.</summary>
         public static readonly string[] All =
         {
-            Title, Estate, Field, Tower, WorldMap, Character, Battle, Result,
+            Title, Estate, Field, Tower, WorldMap, Character, Dungeon, Battle, Result,
         };
 
         /// <summary>§16 하단 고정바 5칸. 어떤 화면에서도 2번 클릭 안에 이동 가능해야 한다.</summary>
@@ -49,7 +50,8 @@ namespace AshesToStars
         /// 전투 종류. §5가 "잡몹은 자동, **보스는 수동 지휘**"로 갈라놨으므로
         /// 전투 화면이 무엇을 띄울지 알아야 한다.
         /// </summary>
-        public enum BattleKind { 잡몹웨이브, 보스 }
+        // 던전은 잡몹 웨이브와 규칙이 같지만 **편성이 계획에서 온다**(DungeonRun.PendingWave).
+        public enum BattleKind { 잡몹웨이브, 보스, 던전 }
         public static BattleKind Kind = BattleKind.잡몹웨이브;
         /// <summary>보스전일 때의 층수 — HP·목표시간·스킬 수가 여기서 나온다(§18-11)</summary>
         public static int BossFloor = 5;
