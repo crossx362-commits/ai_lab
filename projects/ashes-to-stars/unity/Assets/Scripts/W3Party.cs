@@ -325,6 +325,7 @@ public class W3Party : MonoBehaviour
     float _t;
     int _kills, _tauntUses, _backlineHits, _frontlineHits, _healsCast;
     float _shieldAbsorbed;
+    int _supportHits;       // 힐·버퍼가 맞은 횟수 — 「후열 저격」이 실제로 일어나는지의 유일한 증거
     int _meleeHits, _shotHits, _framesThisRun;
     float _tauntUntil;                 // 도발이 원거리 몹까지 끄는 구간
     float _lastStandUntil = -1f;       // 최후의 보루 지속(§3 수호기사)
@@ -419,7 +420,7 @@ public class W3Party : MonoBehaviour
         }
         _outPath ??= Path.Combine(Application.persistentDataPath, "w3_result.csv");
         // 새 열은 **끝에만** 붙인다 — 중간에 끼우면 이 CSV를 읽는 기존 도구가 조용히 어긋난다
-        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict,faith_peak,seed,rep");
+        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict,faith_peak,seed,rep,support_hits");
 
         BuildWorld();
         NextStyle();
@@ -711,7 +712,7 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < 시작웨이브; i++) SpawnMob();
 
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
-        _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f;
+        _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0;
         _tauntUntil = -1f; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
@@ -733,9 +734,11 @@ public class W3Party : MonoBehaviour
             _mAtkCd[i] = Random.value * 0.8f; _mFlash[i] = 0f;
             _mOn[i] = true; _mAlive++;
             _mSr[i].sprite = SpriteBank.Cached.Mob(_mKind[i] == 2 ? 2 : _mKind[i] == 1 ? 1 : 0);
+            // 정예는 **역할 색이 먼저**다(치유·소환은 즉시 알아봐야 하는 대상이다).
+            // 그 외 잡몹만 계열 색조를 입는다(§10-3).
             _mSr[i].color = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)      // 치유 정예 = 초록
                           : _mKind[i] == 4 ? new Color(0.8f, 0.5f, 1f)      // 소환 정예 = 보라
-                          : Color.white;
+                          : FamilyTint();
             // 정예만 조금 크게. 기본 크기는 SpriteBank가 실측 PPU로 맞춰 둔다.
             _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? 1.4f : 1.0f);
             _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
@@ -990,7 +993,12 @@ public class W3Party : MonoBehaviour
         {
             if (!m.Alive) continue;
             m.Cd -= dt; m.SkillCd -= dt;
-            m.Threat = Mathf.Max(0f, m.Threat - dt * 2f);
+            // 위협 감쇠는 **비율**이어야 한다. 선형 −2/s인데 검사의 생성률이 40/s 이상이라
+            // 위협이 발산했다 — 100초면 4,000, 거리 환산 480유닛인데 아레나 반경은 14다.
+            // 즉 10초쯤부터 모든 근접 몹이 위치와 무관하게 딜러에게 갔고,
+            // 도발(+80 = 9.6유닛)은 그걸 뒤집을 수 없었다.
+            // τ=8초(도발 쿨 6초의 1.33배)로 정상상태를 만든다 — 도발이 항상 유효하게.
+            m.Threat *= Mathf.Exp(-dt / 8f);
 
             int target = NearestMob(m.Pos, m.Range * 1.6f);
             Vector2 want = Vector2.zero;
@@ -1304,6 +1312,25 @@ public class W3Party : MonoBehaviour
         return c;
     }
 
+    /// <summary>
+    /// 계열 색조(§10-3). 던전은 진입 전에 계열을 표시하는데, 화면에서는 전 계열이 **같은 그림**이라
+    /// 그 표시가 의미가 없었다. 아트문서 §0-B가 "종족 4종은 **팔레트 스왑**(신규 0장)"이라고
+    /// 정해둔 방식을 그대로 따른다 — 새 스프라이트를 그리지 않는다.
+    /// ⚠️ 색만 바꾼다. 실루엣은 건드리지 않는다(수백 마리 화면에서 구분은 실루엣이 먼저다).
+    /// </summary>
+    static Color FamilyTint()
+    {
+        if (!DungeonRun.Active) return Color.white;             // 필드·검증은 기본색
+        return DungeonRun.Plan.Family switch
+        {
+            MobFamily.야수 => new Color(1f, 0.86f, 0.78f),      // 살빛
+            MobFamily.언데드 => new Color(0.72f, 0.85f, 0.78f), // 시퍼런 회록
+            MobFamily.마족 => new Color(0.95f, 0.66f, 0.9f),    // 자주
+            MobFamily.기계 => new Color(0.78f, 0.85f, 1f),      // 강청
+            _ => new Color(0.8f, 1f, 0.92f),                    // 정령 — 옅은 청록
+        };
+    }
+
     void KillMob(int i)
     {
         _mOn[i] = false; _mAlive--; _kills++;
@@ -1429,6 +1456,7 @@ public class W3Party : MonoBehaviour
             }
             else if (_mKind[i] == 3) _mSr[i].color = new Color(0.4f, 1f, 0.5f);
             else if (_mKind[i] == 4) _mSr[i].color = new Color(0.8f, 0.5f, 1f);
+            else _mSr[i].color = FamilyTint();   // 섬광이 끝나면 흰색이 아니라 **계열색**으로 돌아온다
 
             // 근접 공격은 **쿨다운을 두고 한 번씩** — 매 프레임 피해를 주면
             // 초당 수천 번이 되어 파티가 4초 만에 녹는다(2026-08-13 실측 버그)
@@ -1465,13 +1493,21 @@ public class W3Party : MonoBehaviour
         {
             foreach (var m in _party) if (m.Alive && m.Role == Role.Tank) return m;
         }
+        // §10-4 "원거리 몹은 **후열(위협 낮은 쪽)** 저격".
+        // ⚠️ 예전 식 `MaxHp − Threat×6`의 **최솟값**을 골랐다 — 위협이 높을수록 점수가 낮아지므로
+        //    실제로는 **위협이 가장 높은 딜러**를 노렸다(주석과 정반대).
+        //    게다가 위협이 0이어도 딜러 130 < 힐·버퍼 150이라 **힐러·버퍼는 한 번도 저격당하지 않았다.**
+        //    그래서 "후열이 녹는다 → 도발로 끊는다"는 §10-4의 구조가 성립한 적이 없다.
+        //    탱을 제외한 뒤 **위협이 낮은 쪽**을 고른다(같으면 HP 낮은 쪽).
         Member best = null; float score = float.MaxValue;
         foreach (var m in _party)
         {
-            if (!m.Alive) continue;
-            float s = m.MaxHp - m.Threat * 6f;                    // HP 낮고 위협 낮은 쪽
+            if (!m.Alive || m.Role == Role.Tank) continue;
+            float s = m.Threat * 6f + m.MaxHp * 0.02f;
             if (s < score) { score = s; best = m; }
         }
+        if (best == null)                                        // 탱만 남았다면 탱을 친다
+            foreach (var m in _party) if (m.Alive) { best = m; break; }
         return best;
     }
 
@@ -1512,6 +1548,7 @@ public class W3Party : MonoBehaviour
         if (m.Role == Role.Tank && _t < _lastStandUntil && m.Hp < 1f) m.Hp = 1f;
         FxParticles.Play(FxKind.피격, ToScreen(m.Pos));
         if (front) _frontlineHits++; else _backlineHits++;
+        if (m.Role == Role.Healer || m.Role == Role.Buffer) _supportHits++;
         if (m.Hp <= 0f)
         {
             m.Hp = 0f; m.DeadT = _t;
@@ -1628,7 +1665,8 @@ public class W3Party : MonoBehaviour
             _shieldAbsorbed.ToString("F0", ci),
             _healerDeadT < 0 ? "-" : _healerDeadT.ToString("F1", ci),
             최종웨이브.ToString(ci), (_kills / Mathf.Max(1f, _t)).ToString("F2", ci), verdict,
-            _faithPeak.ToString("F0", ci), RunSeed().ToString(ci), _rep.ToString(ci)));
+            _faithPeak.ToString("F0", ci), RunSeed().ToString(ci), _rep.ToString(ci),
+            _supportHits.ToString(ci)));
         Debug.Log($"[W3] {_setup.Name}: {_t:F1}s 생존 / 처치 {_kills} / 도발 {_tauntUses} / " +
                   $"후열피격 {_backlineHits} 전열피격 {_frontlineHits} / {verdict}");
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
