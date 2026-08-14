@@ -21,6 +21,14 @@ namespace AshesToStars
         // 컴파일이 깨져 있었다. 선언만 넣으면 골드 부족이 조용히 무시되므로 화면까지 맞춘다.
         bool _showInsufficientGold = false;
 
+        // 경고에서 "계속 진행"을 눌렀을 때 비로소 낼 비용과, 그때 들어갈 판.
+        // 예전에는 ①버튼을 누른 즉시 차감해 취소하면 골드만 사라졌고
+        //          ②경고를 거친 레이드가 인자 없는 GoBattle로 떨어져 **잡몹 웨이브 5층**이 됐다.
+        //          (레이드를 고르고 경고에 "계속"을 눌렀는데 보스가 안 나오는 경로였다)
+        long _pendingCost = 0;
+        GameFlow.BattleKind _pendingKind = GameFlow.BattleKind.잡몹웨이브;
+        int _pendingFloor = 1;
+
         protected override void Body(Rect r)
         {
             if (_showInsufficientGold)
@@ -43,31 +51,62 @@ namespace AshesToStars
                 if (Row(r, 2, "계속 진행", "입장한다"))
                 {
                     _showLastLifeWarning = false;
-                    GameFlow.GoBattle(GameFlow.Tower);
+                    if (_pendingCost > 0 && !GameState.Pay(_pendingCost))
+                    {
+                        _pendingCost = 0;
+                        _showInsufficientGold = true;
+                        return;
+                    }
+                    _pendingCost = 0;
+                    GameFlow.GoBattle(GameFlow.Tower, _pendingKind, _pendingFloor);
                 }
                 if (Row(r, 3, "취소", "파티를 다시 편성한다"))
+                {
                     _showLastLifeWarning = false;
+                    _pendingCost = 0;   // 입장하지 않았으니 아무것도 내지 않는다
+                }
                 return;
             }
 
             if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
-            {
-                long towerCost = Economy.GetActionCost("TowerNormalFloor", GameState.Tier);
-                if (!GameState.Pay(towerCost)) _showInsufficientGold = true;
-                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
-                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
-            }
+                Enter(Economy.GetActionCost("TowerNormalFloor", GameState.Tier),
+                      GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
             // 레이드는 **보스전**이다 — 잡몹 웨이브가 아니라 기믹 3종이 도는 판(§9·§10-5).
             // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
             if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
             {
-                long raidCost = Economy.GetActionCost("Tower5BossRaid", GameState.Tier);
                 // 레이드 층은 현재 진행도에서 가장 가까운 5층 배수(§9 "5층 단위")
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
-                if (!GameState.Pay(raidCost)) _showInsufficientGold = true;
-                else if (HasLastLifeCharacter()) _showLastLifeWarning = true;
-                else GameFlow.GoBattle(GameFlow.Tower, GameFlow.BattleKind.보스, raidFloor);
+                Enter(Economy.GetActionCost("Tower5BossRaid", GameState.Tier),
+                      GameFlow.BattleKind.보스, raidFloor);
             }
+        }
+
+        /// <summary>
+        /// 입장 처리 — 잔액 확인 → (마지막 목숨이면 경고로 보류) → 차감 → 전투.
+        /// 두 버튼이 같은 순서를 쓰게 한 곳에 모은다. 복붙하면 한쪽만 고쳐진다.
+        /// </summary>
+        void Enter(long cost, GameFlow.BattleKind kind, int floor)
+        {
+            if (GameState.Wallet.Copper < cost)
+            {
+                _showInsufficientGold = true;
+                return;
+            }
+            if (HasLastLifeCharacter())
+            {
+                _pendingCost = cost;        // 아직 내지 않는다
+                _pendingKind = kind;
+                _pendingFloor = floor;
+                _showLastLifeWarning = true;
+                return;
+            }
+            if (!GameState.Pay(cost))
+            {
+                _showInsufficientGold = true;
+                return;
+            }
+            GameFlow.GoBattle(GameFlow.Tower, kind, floor);
         }
 
         bool HasLastLifeCharacter()
