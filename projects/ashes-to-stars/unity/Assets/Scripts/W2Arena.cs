@@ -36,11 +36,14 @@ public class W2Arena : MonoBehaviour
     [Header("잡몹 속도 배율 (§18-11 — 카이팅 시뮬레이션 권장값)")]
     public float ChaserRatio = 0.90f;    // 0.64였을 때 직선 도주가 지배 전략이 됐다
     public float SwarmerRatio = 0.85f;
+    /// <summary>봇이 유지하는 교전 거리(유닛). 이보다 멀면 몹 쪽으로 붙는다 — 사람은 죽이러 간다.</summary>
+    public float EngageRange = 2.2f;
     public float RangedRatio = 0.65f;
     public int MaxHp = 100;
 
     [Header("판(run) 설정")]
     public float RunSeconds = 60f;
+    int _seed = 20260814;
     public int MobCount = 120;
     public float SpawnRadius = 16f;
 
@@ -85,11 +88,15 @@ public class W2Arena : MonoBehaviour
         {
             if (args[i] == "--bot") _bot = true;
             if (args[i] == "--out" && i + 1 < args.Length) _outPath = args[i + 1];
+            // 시드 고정 — 스폰 위치·AI 배정이 매 실행 같아야 구성을 비교할 수 있다
+            if (args[i] == "--seed" && i + 1 < args.Length && int.TryParse(args[i + 1], out int sd))
+                _seed = sd;
             if (args[i] == "--seconds" && i + 1 < args.Length)
                 float.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out RunSeconds);
         }
         _outPath ??= Path.Combine(Application.persistentDataPath, "w2_result.csv");
 
+        Random.InitState(_seed);   // 스폰 위치·AI 배정을 뽑기 전에 박는다
         Build();
     }
 
@@ -166,9 +173,24 @@ public class W2Arena : MonoBehaviour
         _mTr[i].gameObject.SetActive(true);
     }
 
+    /// <summary>
+    /// 측정용 고정 스텝. W3와 같은 이유다 — `Time.deltaTime`이 가변이면
+    /// 같은 코드·같은 시드로도 결과가 흔들려 **비교 자체가 성립하지 않는다**.
+    /// 실측: 같은 빌드를 두 번 돌렸더니 대시 9회/피격 40회 → 대시 2회/피격 4회로 갈렸다.
+    /// </summary>
+    const float FixedStep = 1f / 60f;
+    float _stepAcc;
+
     void Update()
     {
-        float dt = Time.deltaTime;
+        _stepAcc += Mathf.Min(Time.deltaTime, 0.25f);
+        int steps = 0;
+        while (_stepAcc >= FixedStep && steps < 10) { _stepAcc -= FixedStep; steps++; Step(); }
+    }
+
+    void Step()
+    {
+        float dt = FixedStep;
         _t += dt;
         if (_t >= RunSeconds) { Finish(); return; }
 
@@ -264,9 +286,33 @@ public class W2Arena : MonoBehaviour
             if (m < 3f) away += d / (m + 0.01f) * (3f - m) * 0.7f;
         }
         // 도망만 치면 무리를 벗어나 검증이 무의미해진다 — 사람은 무리 속에서 싸운다.
-        // 중심에서 멀어질수록 되돌아오는 힘을 걸어 교전 거리를 유지시킨다.
-        float r = _plPos.magnitude;
-        if (r > 6f) away += (-_plPos / (r + 0.01f)) * (r - 6f) * 1.2f;
+        //
+        // ⚠️ 예전에는 "아레나 중심(r>6)으로 되돌아오는 힘"으로 교전을 유지시켰다. 그런데
+        //    플레이어가 몹보다 빠르므로(1.0 vs 0.85~0.90) 봇이 중심 근처를 **영원히 맴돌며**
+        //    한 번도 위협받지 않았다 — 실측: 60초 판에서 피격이 6.6초 이후 0건,
+        //    대시 1회, 무적 흡수 0회. 포위율은 95%로 찍히는데(3유닛 안에 3체 이상)
+        //    실제 접촉은 없다. **잴 수 없는 판이 만들어져 있었다**(측정 실패지 밸런스 문제가 아니다).
+        //
+        //    이 게임에서 플레이어는 몹을 죽여야 하므로 **교전 사거리 안에 있어야 한다**.
+        //    그래서 중심이 아니라 **가장 가까운 근접 몹**을 기준으로 교전 거리를 유지시킨다.
+        //    이래야 §5의 질문("0.3초 무적을 정확히 쓰면 한 번 산다")이 성립한다.
+        int engageIdx = -1; float engageD = 99f;
+        for (int i = 0; i < MAXM; i++)
+        {
+            if (!_mOn[i] || _mAi[i] == 3) continue;          // 원거리형은 교전 기준이 아니다
+            float m = (_mPos[i] - _plPos).magnitude;
+            if (m < engageD) { engageD = m; engageIdx = i; }
+        }
+        if (engageIdx >= 0 && engageD > EngageRange)
+        {
+            Vector2 toward = (_mPos[engageIdx] - _plPos).normalized;
+            away += toward * (engageD - EngageRange) * 1.5f;
+        }
+        else if (engageIdx < 0)
+        {
+            float r0 = _plPos.magnitude;                      // 근접 몹이 없으면 중앙으로
+            if (r0 > 6f) away += (-_plPos / (r0 + 0.01f)) * (r0 - 6f) * 1.2f;
+        }
 
         input = away.sqrMagnitude > 0.001f ? away.normalized : Vector2.zero;
         // 위협이 코앞이면 대시 — 사람이 "위험!"이라 느낄 거리에서만
@@ -348,13 +394,20 @@ public class W2Arena : MonoBehaviour
     /// <returns>true = 실제로 피해가 들어감 / false = 무적으로 흡수</returns>
     bool TryHit(int dmg, string src)
     {
+        // 피격 쿨다운을 **무적 판정보다 먼저** 본다.
+        // 이 창 안에서는 무적이 없었어도 피해가 안 들어가므로, 여기서 세면 "피한 것"이 아니다.
+        // 예전 순서(무적 먼저)로는 0.3초 무적 한 번에 흡수가 수십 회 찍혔다
+        // — 실측 대시 9회에 흡수 245회(대시당 27회). 프레임 수를 센 것이지 회피를 센 게 아니다.
+        // 흡수는 **피격과 같은 자에 놓여야** 비교가 성립한다(둘 다 0.4초 게이트).
+        if (_hitCd > 0f) return false;
+
         if (_iframe > 0f)
         {
-            _absorbs++;                         // ★ "방금 피했다"의 순간
+            _absorbs++;                         // ★ "무적이 없었으면 맞았을" 판정 = 방금 피했다
+            _hitCd = 0.4f;
             Log("absorb", src);
             return false;
         }
-        if (_hitCd > 0f) return false;
         _hitCd = 0.4f;
         _hp -= dmg;
         _hits++;
