@@ -352,6 +352,14 @@ public class W3Party : MonoBehaviour
         new Setup("E_힐러없음",  new[]{ Job.수호기사, Job.검사, Job.마법사, Job.검사, Job.음유시인 }),
     };
     int _qi = -1;
+
+    // ── 재현 가능한 측정 (2026-08-14) ─────────────────────────────
+    // 여태 몹 스폰이 시드 없는 난수였고 구성당 1회만 돌았다. 그래서 §21-1h의 "B −5.0%"처럼
+    // 작은 차이를 결론의 근거로 삼은 것이 **애초에 성립하지 않았다**(신뢰구간이 없다).
+    // 실행마다 시드를 고정하고 구성당 여러 번 돌려 중앙값으로 판정한다.
+    int _seed = 20260814;
+    int _reps = 1;
+    int _rep;                    // 현재 구성의 몇 번째 반복인가
     Setup _setup;
     bool _tauntEnabled = true;
     GUIStyle _hud;
@@ -384,10 +392,13 @@ public class W3Party : MonoBehaviour
             if (a[i] == "--out" && i + 1 < a.Length) _outPath = a[i + 1];
             if (a[i] == "--seconds" && i + 1 < a.Length)
                 float.TryParse(a[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out 최대시간);
+            if (a[i] == "--seed" && i + 1 < a.Length) int.TryParse(a[i + 1], out _seed);
+            if (a[i] == "--reps" && i + 1 < a.Length && int.TryParse(a[i + 1], out int rp))
+                _reps = Mathf.Clamp(rp, 1, 50);
         }
         _outPath ??= Path.Combine(Application.persistentDataPath, "w3_result.csv");
-        // faith_peak는 열 끝에 붙인다 — 중간에 끼우면 이 CSV를 읽는 기존 도구가 조용히 어긋난다
-        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict,faith_peak");
+        // 새 열은 **끝에만** 붙인다 — 중간에 끼우면 이 CSV를 읽는 기존 도구가 조용히 어긋난다
+        _csv.AppendLine("setup,survived_s,kills,taunts,shield,firestorm,ilseom,miracle,chant_sw,backline_hits,frontline_hits,shield_absorbed,healer_died_at,final_wave,kills_per_sec,verdict,faith_peak,seed,rep");
 
         BuildWorld();
         NextStyle();
@@ -572,13 +583,22 @@ public class W3Party : MonoBehaviour
         _ => SpriteBank.Job.Dps,
     };
 
+    /// <summary>
+    /// 이번 판의 시드. 구성·반복마다 달라야 하지만 **재실행하면 같은 값**이어야 한다 —
+    /// 그래야 "같은 조건에서 구성만 다르다"는 대조 실험이 성립한다.
+    /// </summary>
+    int RunSeed() => _seed + _qi / Mathf.Max(1, _reps) * 1000 + _rep;
+
     void NextStyle()
     {
         _qi++;
         // 게임 모드는 표준 5인(A) 한 판만 — 두 번째 구성으로 넘어가지 않는다
         if (GameMode && _qi > 0) return;
-        if (_qi >= SETUPS.Length) { Finish(); return; }
-        _setup = SETUPS[_qi];
+        if (_qi >= SETUPS.Length * _reps) { Finish(); return; }
+        _rep = _qi % _reps;
+        _setup = SETUPS[_qi / _reps];
+        // **판을 세우기 전에** 시드를 박는다. 스폰 위치·AI 배정이 여기서부터 뽑힌다.
+        Random.InitState(RunSeed());
         _tauntEnabled = _setup.TauntEnabled;
         _style = Style.Balanced;                     // 스타일 고정 — 구성만 비교한다
 
@@ -670,9 +690,28 @@ public class W3Party : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 측정용 고정 스텝(초). 시뮬레이션을 **프레임 시간과 분리**한다.
+    ///
+    /// 시드를 고정하고도 같은 시드 두 판이 어긋났다(실측: E 구성 처치 86 vs 64).
+    /// 원인은 난수가 아니라 `Time.deltaTime`이었다 — 프레임마다 dt가 달라
+    /// 이동·쿨다운·피격 판정이 매번 다른 지점에서 끊긴다.
+    /// **시드만으로는 재현되지 않는다**; 스텝을 고정해야 비로소 대조 실험이 성립한다.
+    /// </summary>
+    const float FixedStep = 1f / 60f;
+    float _stepAcc;
+
     void Update()
     {
-        float dt = Mathf.Min(Time.deltaTime, 0.05f);
+        // 프레임이 얼마나 걸렸든 1/60 단위로만 진행한다(한 프레임 최대 10스텝 — 스파이럴 방지)
+        _stepAcc += Mathf.Min(Time.deltaTime, 0.25f);
+        int steps = 0;
+        while (_stepAcc >= FixedStep && steps < 10) { _stepAcc -= FixedStep; steps++; Step(); }
+    }
+
+    void Step()
+    {
+        float dt = FixedStep;
         _t += dt; _framesThisRun++;
         // 전멸이 판정 기준이다. 시간 상한은 무한 루프를 막는 안전장치일 뿐 —
         // 45초 고정 상한을 쓰던 1차 실험은 다섯 구성 중 넷이 완주해버려
@@ -1392,7 +1431,7 @@ public class W3Party : MonoBehaviour
             _shieldAbsorbed.ToString("F0", ci),
             _healerDeadT < 0 ? "-" : _healerDeadT.ToString("F1", ci),
             최종웨이브.ToString(ci), (_kills / Mathf.Max(1f, _t)).ToString("F2", ci), verdict,
-            _faithPeak.ToString("F0", ci)));
+            _faithPeak.ToString("F0", ci), RunSeed().ToString(ci), _rep.ToString(ci)));
         Debug.Log($"[W3] {_setup.Name}: {_t:F1}s 생존 / 처치 {_kills} / 도발 {_tauntUses} / " +
                   $"후열피격 {_backlineHits} 전열피격 {_frontlineHits} / {verdict}");
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
