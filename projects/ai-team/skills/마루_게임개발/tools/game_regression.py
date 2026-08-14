@@ -283,33 +283,64 @@ def judge_w2(csv_path):
 
 
 def judge_w3(csv_path):
-    """W3 판정: 생존 시간이 Aggressive < Balanced < Defensive < Survival 순서인가"""
+    """
+    W3 판정 — 파티 구성 대조 실험(§21-1).
+
+    ⚠️ 옛 판정은 `style` 열과 Aggressive/Balanced/Defensive/Survival 을 찾았는데
+       CSV에는 그런 열도 그런 구성도 없다(실제 열은 `setup`, 구성은 A_표준5인 …).
+       그래서 **결과가 무엇이든 전부 0.0s로 읽고 항상 FAIL**을 냈다 — 판정이 아니라 소음이었다.
+       실제 실험 설계에 맞춰 다시 쓴다.
+
+    판정 기준(기획서 §21-1이 실제로 세운 가설만):
+      ① 모든 구성이 **전멸까지** 갔는가 — 시간 상한에 닿은 결과는 통과가 아니라 측정 실패(§5 함정표)
+      ② C(1인)이 압도적 최하 — "1인 공략 불가"(§3)
+      ③ A(표준5인) > D(도발OFF) — 도발이 실제로 생존에 기여하는가
+    B(딜특화)·E(힐러없음)는 **검증 중인 가설**이라 통과 조건에 넣지 않고 수치만 보고한다.
+
+    ⚠️ 구성당 1회 실행이고 몹 스폰에 시드 고정이 없다 — 수치는 방향으로만 읽어야 한다.
+    """
     if not csv_path or not os.path.exists(csv_path):
         return False, "CSV 없음", []
 
     with open(csv_path, encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
-
     if not rows:
         return False, "CSV 비어 있음", []
 
-    # 스타일별로 생존 시간 추출
-    styles = {}
+    t, verdicts = {}, {}
     for row in rows:
-        style = row.get("style", "Unknown").strip()
-        survived = float(row.get("survived_s", 0))
-        styles[style] = survived
+        key = (row.get("setup") or "").strip()
+        if not key:
+            continue
+        t[key] = float(row.get("survived_s", 0) or 0)
+        verdicts[key] = (row.get("verdict") or "").strip()
 
-    expected_order = ["Aggressive", "Balanced", "Defensive", "Survival"]
-    times = [styles.get(s, 0) for s in expected_order]
+    def pick(prefix):
+        for k in t:
+            if k.startswith(prefix):
+                return k
+        return None
 
-    # 단조 증가 확인
-    ok = all(times[i] < times[i+1] for i in range(len(times)-1))
+    A, B, C, D, E = (pick(x) for x in ("A_", "B_", "C_", "D_", "E_"))
+    missing = [n for n, k in zip("ABCDE", (A, B, C, D, E)) if k is None]
+    if missing:
+        return False, f"구성 누락: {', '.join(missing)}", rows
 
-    note = f"생존시간: {' < '.join([f'{s}({times[i]:.1f}s)' for i, s in enumerate(expected_order)])}"
-    if not ok:
-        note += " — 기준 미충족 (단조 증가 필요)"
+    not_wiped = [k for k in t if verdicts.get(k) != "전멸"]
+    if not_wiped:
+        return False, ("측정 실패 — 전멸까지 안 간 구성: " + ", ".join(not_wiped) +
+                       " (상한에 닿은 결과는 통과가 아니다)"), rows
 
+    ok_solo = t[C] < t[A] * 0.5
+    ok_taunt = t[A] > t[D]
+    ok = ok_solo and ok_taunt
+
+    note = ("생존(s): " +
+            " · ".join(f"{k.split('_', 1)[1] if '_' in k else k} {t[k]:.1f}"
+                       for k in (A, B, C, D, E)) +
+            f" | 1인불가 {'OK' if ok_solo else 'NG'} · 도발효과 {'OK' if ok_taunt else 'NG'}" +
+            f" | 딜특화/표준 {t[B] / t[A]:.2f}배 · 힐러없음/표준 {t[E] / t[A]:.2f}배" +
+            " (구성당 1회·시드 미고정 — 방향만)")
     return ok, note, rows
 
 
