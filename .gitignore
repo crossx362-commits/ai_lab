@@ -88,6 +88,8 @@ _to_delete/
 .superpowers/
 
 # Game build output (Ashes to Stars)
+# 빌드 산출물 — 이름을 하나씩 적으면 새 빌드(build_game)가 조용히 커밋된다(실제로 154MB가 들어갔다)
+projects/ashes-to-stars/build_*/
 projects/ashes-to-stars/build_w1_perf/
 projects/ashes-to-stars/build_w2_control/
 projects/ashes-to-stars/build_w3_party/
