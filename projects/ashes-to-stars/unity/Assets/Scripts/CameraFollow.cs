@@ -25,6 +25,19 @@ public class CameraFollow : MonoBehaviour
     Vector2 _lastTargetPos;
     Vector2 _lookDir;
 
+    // ── 화면 흔들림 ────────────────────────────────
+    // 타격감은 이펙트보다 화면 자체의 반응에서 더 크게 온다(Nijman, "The art of screenshake").
+    // 비용이 0이고 아트가 0장이라 이 게임처럼 화면에 수백 마리가 나오는 판에서 특히 값이 크다.
+    // ⚠️ 추종 결과에 **더한다** — SmoothDamp 대상 좌표를 흔들면 카메라가 목표를 따라 튄다.
+    float _shakeAmp, _shakeT;
+
+    /// <summary>화면을 흔든다. amp는 월드 단위(0.15~0.5 권장), dur는 초.</summary>
+    public void Shake(float amp, float dur = 0.18f)
+    {
+        _shakeAmp = Mathf.Max(_shakeAmp, amp);
+        _shakeT = Mathf.Max(_shakeT, dur);
+    }
+
     void LateUpdate()
     {
         if (Target == null) return;
@@ -43,8 +56,20 @@ public class CameraFollow : MonoBehaviour
 
         // 데드존 — 제자리 미동에 카메라가 흔들리지 않게
         Vector2 flat = new Vector2(want.x - transform.position.x, want.y - transform.position.y);
-        if (flat.magnitude < DeadZone) return;
+        if (flat.magnitude >= DeadZone)
+            transform.position = Vector3.SmoothDamp(transform.position, want, ref _vel, Smooth);
 
-        transform.position = Vector3.SmoothDamp(transform.position, want, ref _vel, Smooth);
+        ApplyShake();
+    }
+
+    void ApplyShake()
+    {
+        if (_shakeT <= 0f) return;
+        _shakeT -= Time.deltaTime;
+        if (_shakeT <= 0f) { _shakeAmp = 0f; return; }
+
+        // 감쇠하는 무작위 오프셋. 프레임마다 방향이 바뀌어야 '충격'으로 읽힌다
+        float k = _shakeAmp * (_shakeT / 0.18f);
+        transform.position += new Vector3(Random.Range(-k, k), Random.Range(-k, k) * 0.6f, 0f);
     }
 }

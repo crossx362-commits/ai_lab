@@ -54,6 +54,7 @@ public class W3Party : MonoBehaviour
         public float Hp, MaxHp, Atk, Range, Cd, SkillCd;
         public float Shield;              // 수호기사 성채 방패
         public float Gauge;               // 고유 자원: 수호게이지 / 연격스택 / 신앙
+        public float FlashT;              // 스킬 발동 섬광 잔여 시간
         public Chant Chant;               // 음유시인 악장
         public float Threat;                 // 어그로 수치
         public bool Alive => Hp > 0f;
@@ -355,6 +356,18 @@ public class W3Party : MonoBehaviour
         new Setup("E_힐러없음",  new[]{ Job.수호기사, Job.검사, Job.마법사, Job.검사, Job.음유시인 }),
     };
     int _qi = -1;
+
+    /// <summary>편성 화면이 정한 파티를 W3의 Job 배열로 바꾼다. 편성이 없으면 null(기본 구성 유지).</summary>
+    static Job[] PartySetup()
+    {
+        var names = PartyState.SortieJobs();
+        if (names == null || names.Count == 0) return null;
+        var jobs = new System.Collections.Generic.List<Job>();
+        foreach (var n in names)
+            if (System.Enum.TryParse(n, out Job j)) jobs.Add(j);
+            else jobs.Add(Job.검사);   // 아직 W3에 없는 전직은 근접 딜로 대체 — 조용히 빼면 인원이 줄어든다
+        return jobs.Count == 0 ? null : jobs.ToArray();
+    }
 
     // ── 재현 가능한 측정 (2026-08-14) ─────────────────────────────
     // 여태 몹 스폰이 시드 없는 난수였고 구성당 1회만 돌았다. 그래서 §21-1h의 "B −5.0%"처럼
@@ -731,8 +744,28 @@ public class W3Party : MonoBehaviour
     const float FixedStep = 1f / 60f;
     float _stepAcc;
 
+    /// <summary>
+    /// 히트스톱 — 큰 타격 순간 시뮬레이션을 몇 프레임 멈춘다.
+    ///
+    /// `Time.timeScale`을 쓰지 않는다: 이 스크립트는 측정 하네스이기도 해서
+    /// 전역 시간을 건드리면 CSV의 생존 시간이 오염된다. 고정 스텝을 건너뛰는 방식이라
+    /// **게임 모드에서만** 적용되고 검증 실행에는 영향이 없다.
+    /// </summary>
+    int _hitstop;
+    public void Hitstop(int frames = 3) { if (GameMode) _hitstop = Mathf.Max(_hitstop, frames); }
+
+    CameraFollow _cam;
+    void Shake(float amp)
+    {
+        if (!GameMode) return;                     // 측정 실행의 스크린샷 검증을 흔들지 않는다
+        _cam ??= Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
+        if (_cam != null) _cam.Shake(amp);
+    }
+
     void Update()
     {
+        if (_hitstop > 0) { _hitstop--; _stepAcc = 0f; return; }
+
         // 프레임이 얼마나 걸렸든 1/60 단위로만 진행한다(한 프레임 최대 10스텝 — 스파이럴 방지)
         _stepAcc += Mathf.Min(Time.deltaTime, 0.25f);
         int steps = 0;
@@ -831,6 +864,11 @@ public class W3Party : MonoBehaviour
             // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
             bool picked = _sel >= 0 && _sel < _party.Length && _party[_sel] == m;
             if (picked) m.Sr.color = new Color(1f, 0.96f, 0.72f);
+            if (m.FlashT > 0f)
+            {
+                m.FlashT -= dt;
+                m.Sr.color = Color.Lerp(m.Sr.color, Color.white, 0.85f);
+            }
 
             // 이동 명령 지점 표시 — 명령이 들어갔는지 보이지 않으면 눌렀는지조차 알 수 없다
             if (m.Marker != null)
@@ -1135,7 +1173,7 @@ public class W3Party : MonoBehaviour
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
-                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f);
+                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); Hitstop(5); Shake(0.45f);
                 }
                 else if (m.ForceSkill == 1 || wounded >= 2)
                 {
@@ -1165,7 +1203,7 @@ public class W3Party : MonoBehaviour
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
-                    FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR);
+                    FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR); Shake(0.28f);
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
@@ -1188,8 +1226,8 @@ public class W3Party : MonoBehaviour
                 m.Gauge += 1f;
                 float dmg = m.Atk;
                 // 일섬 — 버튼(슬롯1)이면 스택이 덜 찼어도 즉시 터뜨린다(§3 "스택 전량 소모")
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); }
-                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); Hitstop(3); Shake(0.2f); }
+                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); Hitstop(3); Shake(0.2f); }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
                 m.Cd = 0.35f / _bAtkSpd;
                 m.Threat += dmg * 0.4f;
@@ -1212,9 +1250,15 @@ public class W3Party : MonoBehaviour
     float ChantAtk() => _partyChant == Chant.진군가 ? 1.15f : 1.0f;
 
     /// <summary>파티 전체를 잠깐 번쩍 — 광역 스킬이 터진 걸 눈으로 알 수 있게</summary>
+    /// <summary>
+    /// 파티 전체를 잠깐 밝게 — 스킬이 나갔다는 신호.
+    ///
+    /// 예전에는 `Sr.color = Color.white`만 넣었는데, 매 프레임 색을 다시 칠하는 코드가 뒤에 있어
+    /// **한 프레임도 보이지 않는 죽은 코드**였다(조사에서 발견). 지속 시간을 갖는 값으로 바꾼다.
+    /// </summary>
     void FlashParty()
     {
-        foreach (var o in _party) if (o.Alive) o.Sr.color = Color.white;
+        foreach (var o in _party) if (o.Alive) o.FlashT = 0.12f;
     }
 
     bool AllDead()
@@ -1313,7 +1357,7 @@ public class W3Party : MonoBehaviour
             // 왼쪽으로 몰려갈 때 전부 뒷걸음질치는 것처럼 보였다.
             // ⚠️ 임계값 없이 매 프레임 갱신하면 정지한 몹이 부동소수 잡음으로 떨린다.
             if (Mathf.Abs(p.x - prev.x) > 1e-4f) _mSr[i].flipX = p.x < prev.x;
-            _mSr[i].sortingOrder = (int)(-p.y * 16f);
+            _mSr[i].sortingOrder = Depth(p.y);   // 파티와 **같은 공식**이어야 앞뒤가 맞는다(D2)
             if (_mFlash[i] > 0f)
             {
                 _mFlash[i] -= dt;

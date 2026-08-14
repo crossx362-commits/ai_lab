@@ -18,6 +18,7 @@ namespace AshesToStars
     {
         public static bool Requested { get; private set; }
         static uint _seed = 20260814u;
+        static string _mode = "dungeon";
         static string _shotDir;
 
         float _t;
@@ -30,7 +31,11 @@ namespace AshesToStars
             bool auto = false;
             for (int i = 0; i < a.Length; i++)
             {
-                if (a[i] == "--auto" && i + 1 < a.Length && a[i + 1] == "dungeon") auto = true;
+                if (a[i] == "--auto" && i + 1 < a.Length)
+                {
+                    auto = true;
+                    _mode = a[i + 1];      // dungeon | party
+                }
                 if (a[i] == "--seed" && i + 1 < a.Length && uint.TryParse(a[i + 1], out uint s)) _seed = s;
                 if (a[i] == "--shots" && i + 1 < a.Length) _shotDir = a[i + 1];
             }
@@ -47,6 +52,21 @@ namespace AshesToStars
         {
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
             GameState.Earn(500000);
+
+            if (_mode == "party")
+            {
+                // 편성 화면만 확인한다. 회복 중·마지막 목숨 표시를 보려고 상태를 하나 만들어 둔다.
+                var roster = LifeSystem.GetCharacters();
+                if (roster.Count >= 3)
+                {
+                    LifeSystem.RegisterDeath(roster[2]);                 // 회복 중 표시
+                    LifeSystem.RegisterDeath(roster[1]);
+                    LifeSystem.UseRevivePotion(roster[1]);               // 회복만 풀고 사망 1회 유지
+                    LifeSystem.RegisterDeath(roster[1]);                 // 마지막 목숨(2회)
+                }
+                GameFlow.Go(GameFlow.Party);
+                return;
+            }
             DungeonRun.Begin(_seed, 3, DungeonKind.일반, GameFlow.Field);
             GameFlow.Go(GameFlow.Dungeon);
         }
@@ -54,6 +74,15 @@ namespace AshesToStars
         void Update()
         {
             _t += Time.deltaTime;
+
+            if (_mode == "party")
+            {
+                // ⚠️ 찍고 바로 끄면 안 된다 — CaptureScreenshot은 그 프레임 **끝**에 기록된다.
+                //    같은 프레임에 Quit하면 파일이 안 생긴다(던전 경로에서 이미 겪은 함정과 같은 계열).
+                if (_step == 0 && _t > 1.2f) { Shot("auto_party"); _step = 1; _t = 0f; }
+                else if (_step == 1 && _t > 1.5f) Finish();
+                return;
+            }
 
             // 1) 노드 맵을 찍는다
             if (_step == 0 && _t > 1.2f)

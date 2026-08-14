@@ -45,7 +45,7 @@ namespace AshesToStars
 
             // 부드러운 원형 점 — 32×32 하나로 모든 이펙트를 만든다.
             // 픽셀아트에 딱딱한 사각 입자를 섞으면 도트가 아니라 노이즈로 보인다.
-            var tex = new Texture2D(32, 32, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            var tex = new Texture2D(32, 32, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
             for (int y = 0; y < 32; y++)
                 for (int x = 0; x < 32; x++)
                 {
@@ -92,7 +92,7 @@ namespace AshesToStars
         /// 이펙트를 한 번 재생한다. 위치는 **월드 좌표**(쿼터뷰 변환은 호출부가 이미 했다).
         /// scale로 장판 반지름 등을 넘긴다(1 = 기본 크기).
         /// </summary>
-        public static void Play(FxKind kind, Vector3 pos, float scale = 1f)
+        public static void Play(FxKind kind, Vector3 pos, float scale = 1f, Color? tint = null)
         {
             EnsureBuilt();
             var ps = _pool[_cursor];
@@ -171,6 +171,13 @@ namespace AshesToStars
                     break;
             }
 
+            if (tint.HasValue)
+            {
+                // 아트문서 §0-A: 무적 표시는 직업군별 색(탱=금 / 근접딜=보라 / 원거리딜=청록 / 지원=금+초록).
+                // 무적이 눈에 안 보이면 §5의 핵심 기술이 학습 불가능해진다.
+                var c = tint.Value;
+                main.startColor = Grad(c, Color.Lerp(c, Color.white, 0.5f));
+            }
             ps.Emit(count);
         }
 

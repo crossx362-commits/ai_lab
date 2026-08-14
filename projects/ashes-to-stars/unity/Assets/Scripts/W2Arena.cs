@@ -58,6 +58,7 @@ public class W2Arena : MonoBehaviour
     float _iframe, _dashCd, _dashT;
     Vector2 _dashDir;
     float _hitCd;                          // 피격 무적(연타 방지)
+    float _lastAuraT = -1f;                // 무적 오라를 마지막으로 뿌린 시각
 
     // ── 몹·투사체 ────────────────────────────────────────
     const int MAXM = 300, MAXP = 300;
@@ -243,6 +244,10 @@ public class W2Arena : MonoBehaviour
                 _iframe = DashIFrame;
                 _dashes++;
                 Log("dash", $"cd={DashCooldown}");
+                // ⭐ 무적 표시(아트문서 §0-A) — 이게 없으면 "0.3초 무적을 정확히 쓴다"는
+                //    §5의 핵심 기술을 **학습할 방법이 없다**. 지금까지 대시에 이펙트가 아예 없었다.
+                AshesToStars.FxParticles.Play(AshesToStars.FxKind.무적, ToScreen(_plPos), 1.2f,
+                                              new Color(1f, 0.84f, 0.35f));   // 탱 = 금색
             }
             _plPos += input * MoveSpeed * dt;
         }
@@ -252,6 +257,14 @@ public class W2Arena : MonoBehaviour
         _pl.position = ToScreen(_plPos, -1f);
         // 무적 중에는 반투명 — 피드백이 없으면 유저가 무적을 인지하지 못한다
         _plSr.color = _iframe > 0f ? new Color(1f, 1f, 1f, 0.45f) : Color.white;
+        // 무적이 **지속되는 동안** 오라를 흘린다. 한 번 터지고 마는 이펙트로는
+        // "지금 무적이다"가 아니라 "방금 뭔가 했다"로만 읽힌다.
+        if (_iframe > 0f && _t - _lastAuraT > 0.06f)
+        {
+            _lastAuraT = _t;
+            AshesToStars.FxParticles.Play(AshesToStars.FxKind.무적, ToScreen(_plPos), 0.7f,
+                                          new Color(1f, 0.9f, 0.45f));
+        }
 
         // 걷기 2프레임 토글. 정지하면 대기 프레임으로 돌아온다.
         // CharAnim의 2번째 인자는 bool이 아니라 Motion이다 — 프레임 구성이 바뀌어도

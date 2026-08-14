@@ -79,7 +79,10 @@ namespace AshesToStars
             }
 
             Info(r, allCharacters.Count + 1, "목숨 카운트가 여기서 보인다(§3·§4)");
-            if (Row(r, allCharacters.Count + 2, "파티 편성", "탱1·딜2·힐1·버퍼1 — 1인은 불가(§9, W3에서 검증)")) { }
+            // 빈 버튼이었다 — 눌러도 아무 일이 없으면 그건 없는 기능이다.
+            if (Row(r, allCharacters.Count + 2, "파티 편성",
+                    $"최대 5인(§9) · 지금 {PartyState.Slots.Count}명 편성됨 — 구성이 생존을 가른다(§21-1i)"))
+                GameFlow.Go(GameFlow.Party);
         }
     }
 }
