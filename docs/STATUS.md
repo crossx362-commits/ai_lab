@@ -172,7 +172,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 | **§10-5 보스 소환을 실몹으로** | 정상 **소환피해 24**(5마리, `shots/qa_boss_summon_on.png` 파티 포위 렌더) / 네거티브 **`BOSS_NO_SUMMON=1` → 0** (`boss_summon_NORMAL.log`·`_NEGCTRL.log`). 컴파일 PASS | `ecf4b4b4` |
 | 캐릭터 52장 화면 반영 확인 | `qa_hunt.png`에서 4직업이 새 아트로 표시·실루엣 구분됨 | `bcadbca1` |
 | **몹 chaser 계열 재생성(INBOX⭐)** | higgsfield 정상 생성(크레딧 1044→1030), 22프레임 반입, `game_asset_names` 통과, `qa_hunt.png`에서 늑대 실루엣 색조별 표시·캐릭터와 같은 세계관 | `20a048b9` |
-| **몹 charger 계열 재생성(INBOX⭐)** | 시트 A/B(생성 완료분) 처리·반입, 22프레임(동일 파일명→기존 meta 보존), `game_asset_names` 통과. **Read 육안검증**: 무채색 코뿔소 브루트(덩치·뿔·앞쏠림)·attack_00 wind-up 텔레그래프(§10-2)·캐릭터와 같은 셀셰이딩. 옛 art=매끈 3D톤 양(네거티브 자명). ⚠️인게임 qa_hunt는 GUI세션 대기(이 세션 유니티 실행 권한 없음) | (이 커밋) |
+| **몹 charger 계열 재생성(INBOX⭐)** | 시트 A/B(생성 완료분) 처리·반입, 22프레임(동일 파일명→기존 meta 보존), `game_asset_names` 통과. **Read 육안검증**: 무채색 코뿔소 브루트(덩치·뿔·앞쏠림)·attack_00 wind-up 텔레그래프(§10-2)·캐릭터와 같은 셀셰이딩. 옛 art=매끈 3D톤 양(네거티브 자명). ⚠️인게임 qa_hunt는 GUI세션 대기(이 세션 유니티 실행 권한 없음) | `c80c6d2f` |
 
 ## 막힌 것 · 보류
 
