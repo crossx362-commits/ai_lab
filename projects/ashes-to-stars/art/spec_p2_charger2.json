@@ -1,0 +1,17 @@
+{
+ "refs": [
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "m": "CRITICAL CAMERA: the camera is ABOVE the creature, pitched 30 degrees DOWNWARD, rotated 45 degrees (orthographic 3/4 top-down quarter view). You must SEE THE CREATURE'S BACK and the TOP of its head and shoulders; the body is FORESHORTENED, never stretched flat like a side profile. A pure side view, pure front view or eye-level view is WRONG. Copy the reference image's angle. Match the reference art style EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Thick solid masses readable at 128px tall. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty magenta gaps between cells. Same creature, same scale, same camera angle in every cell, feet on a common baseline. THE SIX POSES MUST DIFFER DRAMATICALLY — a viewer flipping through them must see obvious motion. Do not repeat a pose. Follow each cell's limb description literally. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery."
+ },
+ "assets": [
+  {
+   "name": "p2_charger_idle",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: an EXTREMELY FRONT-HEAVY battering beast. Its head and shoulders carry a HUGE THICK CURVED RAM HORN PLATE that is as wide as its whole body and dominates the silhouette, like a wedge or plough pushed ahead of it. The hindquarters are SMALL and TAPERED by comparison, so the outline is a fat triangle pointing forward. Short thick braced legs, body kept LOW to the ground. The horn mass must be unmistakable in pure black silhouette. Cells: (1) idle braced at rest, (2) idle head lowered pushing forward, (3) idle weight shifted back, (4) idle horn raised and turned, (5) walk one foreleg reaching forward body low, (6) walk legs gathered under body, hindquarters raised."
+  }
+ ]
+}

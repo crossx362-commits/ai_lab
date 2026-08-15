@@ -1,0 +1,31 @@
+{
+ "refs": [
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "m": "CRITICAL CAMERA: the camera is ABOVE the creature, pitched 30 degrees DOWNWARD, rotated 45 degrees (orthographic 3/4 top-down quarter view). You must SEE THE CREATURE'S BACK and the TOP of its head and shoulders; the body is FORESHORTENED, never stretched flat like a side profile. A pure side view, pure front view or eye-level view is WRONG. Copy the reference image's angle. Match the reference art style EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Thick solid masses readable at 128px tall. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty magenta gaps between cells. Same creature, same scale, same camera angle in every cell, feet on a common baseline. THE SIX POSES MUST DIFFER DRAMATICALLY — a viewer flipping through them must see obvious motion. Do not repeat a pose. Follow each cell's limb description literally. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery."
+ },
+ "assets": [
+  {
+   "name": "p2_swarmer_idle",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a small scuttling creature with MANY SHORT LIMBS and a WIDE LOW FLAT body, hugging the ground, much wider than it is tall. Cells: (1) idle standing at rest, weight settled, (2) idle weight shifted to one side, (3) idle head turned and lowered, (4) idle body coiled and tense ready to move, (5) walk one limb reaching far forward, body low and stretched, (6) walk limbs gathered close under the body, body at its highest."
+  },
+  {
+   "name": "p2_charger_idle",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a HEAVY BULKY beast with an OVERSIZED forward-facing RAM HORN and thick braced legs, front-heavy, massive shoulders. Cells: (1) idle standing at rest, weight settled, (2) idle weight shifted to one side, (3) idle head turned and lowered, (4) idle body coiled and tense ready to move, (5) walk one limb reaching far forward, body low and stretched, (6) walk limbs gathered close under the body, body at its highest."
+  },
+  {
+   "name": "p2_ranged_idle",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a SLENDER UPRIGHT bipedal figure holding a ranged weapon, THIN FRAGILE limbs, narrow frame, standing tall. Cells: (1) idle standing at rest, weight settled, (2) idle weight shifted to one side, (3) idle head turned and lowered, (4) idle body coiled and tense ready to move, (5) walk one limb reaching far forward, body low and stretched, (6) walk limbs gathered close under the body, body at its highest."
+  }
+ ]
+}

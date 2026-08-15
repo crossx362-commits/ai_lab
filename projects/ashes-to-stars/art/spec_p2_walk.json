@@ -1,0 +1,17 @@
+{
+ "refs": [
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "m": "CRITICAL CAMERA: the camera is ABOVE the creature, pitched 30 degrees DOWNWARD, rotated 45 degrees (orthographic 3/4 top-down quarter view). You must SEE THE CREATURE'S BACK and the TOP of its head and shoulders; the body is FORESHORTENED, never stretched flat like a side profile. A pure side view, pure front view or eye-level view is WRONG. Copy the reference image's angle. Match the reference art style EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Thick solid masses readable at 128px tall. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty magenta gaps between cells. Same creature, same scale, same camera angle in every cell, feet on a common baseline. THE SIX POSES MUST DIFFER DRAMATICALLY — a viewer flipping through them must see obvious motion. Do not repeat a pose. Follow each cell's limb description literally. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery."
+ },
+ "assets": [
+  {
+   "name": "p2_chaser_walk",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell walk-cycle sprite sheet of ONE hostile creature seen from above at 30 degrees: a quadruped charging beast, lean muscular build, back and shoulder blades visible from above. Full gait cycle, each cell a distinct moment: (1) CONTACT — front-left leg reaching far forward and planted, rear-right leg stretched far back, body low; (2) PASSING — all four legs gathered close under the belly, body at its highest, back arched up; (3) EXTENSION — front-right leg thrown far forward, rear-left kicked far back, body stretched long and low; (4) CONTACT MIRRORED — front-right planted forward, rear-left stretched back, head dipped down; (5) PASSING MIRRORED — legs bunched under the body, hindquarters raised higher than shoulders; (6) PUSH-OFF — both rear legs driving back together, front legs lifted off the ground, body pitched forward."
+  }
+ ]
+}
