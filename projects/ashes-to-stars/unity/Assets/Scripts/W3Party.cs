@@ -1224,7 +1224,13 @@ public class W3Party : MonoBehaviour
             // 동작 우선순위: 사망 > 피격 > **스킬** > 공격 > 이동 > 대기.
             // 스킬을 공격보다 위에 둔다 — 스킬을 쓰는 순간에도 평타 판정이 같이 돌기 때문에
             // 아래에 두면 큰 동작이 평타 프레임에 묻혀 화면에서 구분되지 않는다.
+            // ⚠️ 대시가 **피격·스킬보다 위**다. 이동기는 0.18초짜리 짧은 동작이라
+            //    아래에 두면 다른 상태에 묻혀 한 프레임도 안 보인다.
+            //    `dash_00~03`·`invuln_00` 아트와 `Motion.Dash`는 처음부터 있었는데
+            //    **부르는 곳만 없었다**(2026-08-15 전수 조사에서 발견) — 대시를 구현하면서도
+            //    그 아트를 안 쓰고 있었다.
             var want = !m.Alive ? SpriteBank.Motion.Death
+                     : m.DashT > 0f ? SpriteBank.Motion.Dash
                      : m.HurtT > 0f ? SpriteBank.Motion.Hurt
                      : m.SkillT > 0f ? SpriteBank.Motion.Special
                      : m.AttackT > 0f ? SpriteBank.Motion.Attack
@@ -1235,6 +1241,10 @@ public class W3Party : MonoBehaviour
             else m.AnimT += dt;
 
             m.Sr.sprite = bank.CharAnim(ArtOf(m.Role), m.Mo, m.AnimT);
+            // 무적 구간 표시 — 대시가 끝나고도 0.12초쯤 남는 무적을 화면에서 알 수 있게.
+            // 「정확히 쓰면 한 번 산다」(§5)가 성립하려면 **무적이 켜져 있다는 것이 보여야** 한다.
+            if (m.IFrame > 0f && m.DashT <= 0f)
+                m.Sr.sprite = bank.Char(ArtOf(m.Role), SpriteBank.Frame.Invuln);
             m.Sr.sortingOrder = Depth(m.Pos.y);
 
             // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
@@ -1719,6 +1729,18 @@ public class W3Party : MonoBehaviour
             _dashProbeFrom = m.Pos;
             bool fired = TryDash(m, new Vector2(1f, 0f));
             Debug.Log($"[QA-대시] 발동={fired} 직업={m.Job} 쿨={m.DashCd:F2}s 무적={m.IFrame:F2}s");
+            // 아트가 실제로 바뀌는지 — 「구현했는데 그림은 그대로」를 잡는 유일한 방법이다
+            // ⚠️ 이름으로 비교하지 마라 — 런타임에 만든 스프라이트는 **이름이 빈 문자열**이라
+            //    "다름 OK"가 항상 나온다(첫 구현이 그랬다. 판별력 0인 검사였다).
+            //    `rect`(아틀라스 안의 자리)로 봐야 실제로 다른 그림인지 알 수 있다.
+            var dashSp = SpriteBank.Cached.CharAnim(ArtOf(m.Role), SpriteBank.Motion.Dash, 0f);
+            var idleSp = SpriteBank.Cached.CharAnim(ArtOf(m.Role), SpriteBank.Motion.Idle, 0f);
+            var invSp = SpriteBank.Cached.Char(ArtOf(m.Role), SpriteBank.Frame.Invuln);
+            bool artOk = dashSp != null && idleSp != null && dashSp.rect != idleSp.rect;
+            bool invOk = invSp != null && idleSp != null && invSp.rect != idleSp.rect;
+            Debug.Log($"[QA-대시] 대시 아트 rect={dashSp?.rect} 대기 rect={idleSp?.rect} " +
+                      $"→ {(artOk ? "다름 OK" : "❌ 같다(아트 미반영)")} · " +
+                      $"무적 아트 {(invOk ? "다름 OK" : "❌ 같다")}");
             _dashProbeStep = 1; _dashProbeT = 0f;
             _dashProbeHp = m.Hp;
             Damage(m, 40f, true);                       // 무적 중 — 막혀야 한다
