@@ -6,7 +6,22 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-15 20:2x · 이터레이션(아트 트랙 — 몹 charger 재생성)
+최종 갱신: 2026-08-15 20:31 · 이터레이션(아트 트랙 — 몹 ranged 생성 착수)
+
+> **이번 이터 결과(아트): 큐 #1 「몹 실루엣 재생성」 3계열째 ranged 생성 착수.**
+> 시작 시 `git log`가 이터 중 `0bc4b950 → af9d43cb`로 움직여 **대화 세션이 살아 있음**을
+> 확정(af9d43cb=charger 인게임 확인 완료, 3초 전 커밋). `BossBattle.cs`에 커밋 안 된 WIP
+> (`bossDpsDisabled` 필드, #2b용)이 있어 **combat 파일은 손대지 않음**(충돌 회피).
+> 아트는 풀림 확정: `higgsfield account status`=976크레딧·plus, `generate list` 최근 20건 **전부
+> completed·waiting 0**(8슬롯 해제). 활성 잡 없어 이중생성 위험 없음.
+> **ranged 생성을 분리 세션으로 착수**: `aigen.py --spec spec_p2_ranged2.json --out-dir art/out_p2
+> --backend higgsfield`를 `start_new_session=True`로 Popen(**PGID==PID=48030 검증**, 로그
+> `/tmp/gen_ranged.log`). `art/.generating`에 표시 남김. 한 계열 20~40분·세션과 무관하게 생존.
+> **다음 세션이 할 일**: ①`art/.generating` 확인 후 2h 안이면 **재생성 금지**(크레딧 이중차감)
+> ②`art/out_p2/sheet_mob_ranged2_A.png`·`_B.png`가 나왔으면 charger와 동일 파이프라인으로 반입
+> (split→(sheet A 격자선 있으면 wipe_gridlines)→align→`Resources/sprites/mob_ranged` 덮어쓰기
+> →`game_asset_names.py` 통과→`qa_shot.sh hunt` 육안). 반입 후 남은 1계열 swarmer 동일 진행.
+> 안 나왔으면 곧장 코드 트랙(단, combat은 대화 세션 활성 여부 재확인).
 
 > **이번 이터 결과(아트): 큐 #1 「몹 실루엣 재생성」 2/4 완료 — charger✅ 반입.**
 > **아트 막힘은 풀렸다** — `higgsfield generate list`가 `waiting` 0·전부 `completed`(8슬롯 해제됨).
