@@ -19,8 +19,8 @@ public class SandboxNote : MonoBehaviour
         "수치를 고치려면 (플레이 없이 인스펙터에서):\n" +
         "  Assets/_Game/Data/GameBalance.asset  — 경제 앵커·성능 예산\n" +
         "  Assets/_Game/Data/Jobs/              — 직업 11종 스탯·스킬\n" +
-        "  Assets/_Game/Data/Races/             — 종족 4종 기울기\n" +
         "  Assets/_Game/Data/Mobs/              — 몬스터 속도·체력\n" +
+        "  Assets/Resources/races/              — 종족 4종 기울기(런타임이 읽는다)\n" +
         "  Assets/Resources/styles/             — 전투 스타일 4종(런타임이 읽는다)\n\n" +
         "검증 씬은 따로 있다:\n" +
         "  Assets/Scenes/W1  성능(500체 60fps)\n" +

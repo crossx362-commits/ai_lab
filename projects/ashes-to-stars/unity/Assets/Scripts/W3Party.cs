@@ -400,6 +400,9 @@ public class W3Party : MonoBehaviour
     // 추측으로 원인을 고르지 않기 위한 계측이다(2026-08-13).
     float _faithPeak;
     string _outPath;
+    /// <summary>검증 하네스가 `--race 엘프`로 종족을 강제할 때 그 이름. null이면 게임과
+    /// 똑같이 `RacePrefs.Get()`(계정 선택)을 쓴다 — 구성 비교는 종족을 고정해야 성립한다.</summary>
+    string _forcedRace;
     readonly StringBuilder _csv = new StringBuilder();
     /// <summary>대조 실험 구성 (§21-1f) — 스타일은 균형형 고정, 구성만 바꾼다</summary>
     struct Setup
@@ -503,6 +506,9 @@ public class W3Party : MonoBehaviour
             if (a[i] == "--seed" && i + 1 < a.Length) int.TryParse(a[i + 1], out _seed);
             if (a[i] == "--reps" && i + 1 < a.Length && int.TryParse(a[i + 1], out int rp))
                 _reps = Mathf.Clamp(rp, 1, 50);
+            // `--race`는 종족 배선(§3·§18-9) 검증용 — 하네스가 인간(기준) vs 엘프/드워프를
+            // 같은 시드로 돌려 배율이 결과에 반영되는지 CSV로 대조한다.
+            if (a[i] == "--race" && i + 1 < a.Length) _forcedRace = a[i + 1];
         }
         _outPath ??= Path.Combine(Application.persistentDataPath, "w3_result.csv");
         // 새 열은 **끝에만** 붙인다 — 중간에 끼우면 이 CSV를 읽는 기존 도구가 조용히 어긋난다
@@ -510,6 +516,31 @@ public class W3Party : MonoBehaviour
 
         BuildWorld();
         NextStyle();
+    }
+
+    /// <summary>선택된 종족(§3·§18-9)의 기울기를 파티 배율 버스에 곱해 넣는다. `RaceDef`
+    /// 에셋(Resources/races)을 읽는 유일한 런타임 소비처다. 전투에 걸리는 것은 체력·이속뿐 —
+    /// 방어/경험치/드랍/영지는 전투 밖 계량이라 W3에 없다. 실패해도(에셋 없음 등) 인간=1로
+    /// 조용히 넘어간다. `_forcedRace`(하네스 `--race`)가 있으면 그것, 없으면 계정 선택.</summary>
+    void ApplyRaceModifiers()
+    {
+        RaceId id = AshesToStars.RacePrefs.Default;
+        if (!string.IsNullOrEmpty(_forcedRace) && System.Enum.TryParse(_forcedRace, out RaceId forced))
+            id = forced;
+        else
+            id = AshesToStars.RacePrefs.Get();
+
+        var races = Resources.LoadAll<AshesToStars.RaceDef>("races");
+        AshesToStars.RaceDef def = null;
+        foreach (var r in races) if (r != null && r.Id == id) { def = r; break; }
+        if (def == null)
+        {
+            Debug.LogWarning($"[W3] 종족 에셋을 못 찾음(id={id}, Resources/races {races.Length}종) — 배율 1로 진행");
+            return;
+        }
+        _bHp *= def.체력배율;
+        _bSpd *= def.이속배율;
+        Debug.Log($"[W3] 종족={id} 체력×{def.체력배율:F2} 이속×{def.이속배율:F2} (누적 _bHp={_bHp:F2} _bSpd={_bSpd:F2})");
     }
 
     void BuildWorld()
@@ -765,6 +796,13 @@ public class W3Party : MonoBehaviour
         if (DungeonRun.Active)
             Boons.Multipliers(DungeonRun.State.Boons, out _bAtk, out _bHp, out _bSpd,
                               out _bCd, out _bHeal, out _bShield, out _bRange, out _bAtkSpd);
+
+        // 종족 기울기(§3·§18-9)를 파티 전체 배율 버스에 접는다. `RaceDef`(Resources/races)를
+        // 실제로 읽는 **유일한 런타임 소비처** — 이게 없으면 종족은 전투에 영향 0이다
+        // (「정의는 있고 부르는 곳이 0곳」을 CombatStyleDef와 같은 방식으로 닫는다).
+        // 전투에 걸리는 것은 체력·이속뿐이다(방어/경험치/드랍/영지는 전투 밖 계량이라 W3에 없다).
+        // 인간=모든 배율 1 → 종족 도입 전과 완전히 동일하게 돌아 기존 측정을 깨지 않는다.
+        ApplyRaceModifiers();
 
         // 구성에 맞춰 파티를 짠다
         for (int i = 0; i < 5; i++) _slots[i].Tr.gameObject.SetActive(false);

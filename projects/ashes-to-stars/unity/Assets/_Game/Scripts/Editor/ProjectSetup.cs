@@ -27,6 +27,7 @@ public static class ProjectSetup
         ROOT, ROOT + "/Art", ROOT + "/Art/Sprites", ROOT + "/Art/Ground", ROOT + "/Art/FX",
         ROOT + "/Data", ROOT + "/Data/Races", ROOT + "/Data/Jobs", ROOT + "/Data/Mobs",
         "Assets/Resources/styles",   // 전투 스타일은 런타임이 읽어야 하므로 Resources 아래
+        "Assets/Resources/races",    // 종족도 런타임(W3Party.ApplyRaceModifiers)이 읽는다 — 같은 이유
         ROOT + "/Prefabs", ROOT + "/Prefabs/Characters", ROOT + "/Prefabs/Mobs", ROOT + "/Prefabs/FX",
         ROOT + "/Scenes", ROOT + "/Materials",
         ROOT + "/Scripts", ROOT + "/Scripts/Runtime", ROOT + "/Scripts/Editor",
@@ -134,7 +135,9 @@ public static class ProjectSetup
             a.체력배율 = r.Item6; a.방어배율 = r.Item7; a.회복시간 = r.Item8;
             a.영지생산배율 = r.Item9; a.드랍률배율 = r.Item10; a.경매수수료 = r.Item11;
             a.고유메커니즘 = r.Item12; a.고유발동확률 = r.Item13;
-            Save(a, $"{ROOT}/Data/Races/Race_{r.Item1}.asset");
+            // 런타임(W3Party)이 Resources.LoadAll<RaceDef>("races")로 읽으므로 Resources 아래에 둔다
+            // (스타일과 같은 이유). Data/Races에 두면 빌드에 안 실려 소비처가 다시 죽는다.
+            Save(a, "Assets/Resources/races/Race_" + r.Item1 + ".asset");
         }
     }
 
