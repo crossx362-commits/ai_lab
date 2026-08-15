@@ -21,6 +21,8 @@ namespace AshesToStars
         static string _mode = "dungeon";
         static string _shotDir;
         static int _shotFrame;     // >0이면 이 프레임에 찍고 끝낸다(모드별 시나리오를 건너뛴다)
+        static float _shotSec;     // >0이면 이 **게임 시간**(초)에 찍는다. 기믹처럼 초 단위로
+                                   // 예약된 것을 보려면 프레임이 아니라 이걸 써야 한다
 
         float _t;
         int _step;
@@ -54,6 +56,8 @@ namespace AshesToStars
             if (_shotDir == null && !string.IsNullOrEmpty(envShots)) _shotDir = envShots;
             var envFrame = System.Environment.GetEnvironmentVariable("GAME_SHOT_FRAME");
             if (_shotFrame <= 0 && int.TryParse(envFrame, out int ef)) _shotFrame = ef;
+            var envSec = System.Environment.GetEnvironmentVariable("GAME_SHOT_SEC");
+            if (_shotSec <= 0f && float.TryParse(envSec, out float es)) _shotSec = es;
 
             if (!auto || Requested) return;
 
@@ -126,6 +130,18 @@ namespace AshesToStars
             {
                 if (_frames == _shotFrame) Shot($"qa_{_mode}");
                 else if (_frames >= _shotFrame + 8) Finish();
+                return;
+            }
+
+            // ── 시간 지정 캡처 (`GAME_SHOT_SEC`)
+            //    프레임 지정만으론 부족하다: 이 게임은 `targetFrameRate = -1`이라 4000fps로
+            //    돌고 `deltaTime`이 0.00025초다. 2400프레임을 돌려도 **게임 시간은 0.6초**뿐이라
+            //    6초 뒤 터지는 보스 기믹을 영영 못 본다(2026-08-15 실측).
+            //    "몇 프레임 뒤"와 "몇 초 뒤"는 이 프로젝트에서 전혀 다른 뜻이다.
+            if (_shotSec > 0f)
+            {
+                if (_t >= _shotSec && _step == 0) { Shot($"qa_{_mode}"); _step = 1; _t = 0f; }
+                else if (_step == 1 && _t > 0.5f) Finish();
                 return;
             }
 

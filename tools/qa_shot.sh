@@ -82,7 +82,7 @@ OUT="$SHOTS/qa_${MODE}.png"
 rm -f "$OUT"
 echo "▶ 실행: mode=$MODE frame=$FRAME"
 
-GAME_START="$MODE" GAME_SHOT_DIR="$SHOTS" GAME_SHOT_FRAME="$FRAME" \
+GAME_START="$MODE" GAME_SHOT_DIR="$SHOTS" GAME_SHOT_FRAME="$FRAME" GAME_SHOT_SEC="${GAME_SHOT_SEC:-}" \
   "$APP" -screen-width 1280 -screen-height 720 -screen-fullscreen 0 &
 PID=$!
 
