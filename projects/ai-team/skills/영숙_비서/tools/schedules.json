@@ -182,6 +182,17 @@
    "enabled": true,
    "run": true,
    "priority": "normal"
+  },
+  {
+   "id": "game_session_watch",
+   "agent": "예원",
+   "task": "재와별 세션 감시",
+   "cron": "*/10 * * * *",
+   "description": "게임 개발 세션 정체·생성물 표류·측정 공회전 감지 (문제 있을 때만 알림)",
+   "command": "python3 projects/ai-team/skills/예원_CEO/tools/game_session_watch.py --send",
+   "enabled": true,
+   "run": true,
+   "priority": "normal"
   }
  ]
 }
