@@ -41,6 +41,11 @@ namespace AshesToStars
 
         // 쫄 소환 (분리 소환 기믹)
         private List<GameObject> summonedMobs;
+        private bool summonActive;            // 소환 몹이 아직 정리 안 됐으면 위험 슬롯을 잡고 있다
+        private float summonGraceUntil;       // 스폰 직후 한 프레임은 「살아 있음 0」으로 오판 방지
+        // 네거티브 컨트롤: BOSS_NO_SUMMON=1이면 소환 기믹을 무력화한다 —
+        // 소환을 끄면 「소환 몹이 준 파티 피해」가 0으로 떨어지는지로 배선을 검증한다.
+        private bool summonDisabled;
 
         // 힐 체크 (지속 광역딜 기믹)
         private float healCheckDuration;
@@ -100,6 +105,10 @@ namespace AshesToStars
             // 파티가 자리를 잡을 시간을 주고 시작한다.
             this._nextGimmickAt = 6f;
             this._gimmickCursor = 0;
+            this.summonActive = false;
+            this.summonDisabled = System.Environment.GetEnvironmentVariable("BOSS_NO_SUMMON") == "1";
+            if (summonDisabled)
+                Debug.Log("[BossBattle] BOSS_NO_SUMMON=1 — 소환 기믹 비활성(네거티브 컨트롤)");
 
             // §18-11: 목표 시간 계산
             // 5층 90초, 10층 180초, 50층+ 300초
@@ -275,6 +284,16 @@ namespace AshesToStars
                 return;
             }
 
+            // 소환 슬롯 해제: 소환한 쫄이 전부 정리되면 위험 슬롯을 돌려줘 기믹이 다시 돌 수 있게 한다.
+            // 이 해제가 없으면 소환은 판당 한 번 터지고 슬롯을 영영 물고 있다(발동만 하고 안 도는 상태).
+            if (summonActive && elapsedTime > summonGraceUntil
+                && global::W3Party.SummonedAliveOnActive() == 0)
+            {
+                summonActive = false;
+                activeDangerMechanicsCount = Mathf.Max(0, activeDangerMechanicsCount - 1);
+                Debug.Log("[BossBattle] 소환 쫄 정리 완료 — 위험 슬롯 해제");
+            }
+
             // ── 기믹 발동. **이 배선이 통째로 없었다**(2026-08-15 발견: 기믹 3종이 정의만
             //    되고 호출부가 0곳). §10-5는 "1인 클리어 불가를 수치가 아니라 기믹으로
             //    구현한다"고 정했는데, 기믹이 안 돌면 그 확정이 코드에서 성립하지 않는다.
@@ -363,8 +382,11 @@ namespace AshesToStars
         /// <summary>
         /// 기믹 2: 쫄 소환 (분리 소환)
         /// </summary>
-        private void TriggerSummonMobs(int mobCount = 3)
+        private void TriggerSummonMobs(int mobCount = 5)
         {
+            // 네거티브 컨트롤: 소환을 끄면 위험 슬롯도 잡지 않고 조용히 지나간다.
+            if (summonDisabled) return;
+
             if (activeDangerMechanicsCount >= MAX_SIMULTANEOUS_DANGER_MECHANICS)
             {
                 Debug.Log("[BossBattle] Mob summon blocked - danger mechanics at limit");
@@ -372,17 +394,15 @@ namespace AshesToStars
             }
 
             activeDangerMechanicsCount++;
+            summonActive = true;
+            summonGraceUntil = elapsedTime + 0.5f;
 
-            for (int i = 0; i < mobCount; i++)
-            {
-                // 실제 구현은 W3Party의 몹 소환 시스템을 써야 함
-                // 여기서는 추적만 함
-                var mobGo = new GameObject($"SummonedMob_{i}");
-                mobGo.transform.parent = transform;
-                summonedMobs.Add(mobGo);
-            }
+            // 예전엔 빈 GameObject만 만들고 끝나서 소환 기믹이 파티에 아무 위협도 아니었다
+            // (2026-08-15 발견). 실제 W3Party 전투에 쫄을 밀어넣어 「§10-5 분리 소환」이
+            // 파티 피해로 성립하게 한다. W3Party가 도는 판이 아니면(예: 검증 하네스) 조용히 무시된다.
+            global::W3Party.SummonMobsToActive(mobCount);
 
-            Debug.Log($"[BossBattle] Triggered mob summon x{mobCount}, active danger mechanics: {activeDangerMechanicsCount}");
+            Debug.Log($"[BossBattle] Triggered mob summon x{mobCount} → W3Party, active danger mechanics: {activeDangerMechanicsCount}");
         }
 
         /// <summary>

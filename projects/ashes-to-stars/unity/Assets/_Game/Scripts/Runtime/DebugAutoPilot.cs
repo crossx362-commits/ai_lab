@@ -165,8 +165,14 @@ namespace AshesToStars
 
             if (_mode == "boss")
             {
-                // 기믹(동시 장판·쫄 소환·힐 체크)이 도는 구간을 노린다 — 시작 직후는 아직 아무것도 안 돈다
-                if (_step == 0 && _t > 18f) { Shot("auto_boss"); _step = 1; _t = 0f; }
+                // 소환(2번째 기믹, ~18초)이 터진 뒤 쫄이 파티에 붙어 때리는 구간을 노린다.
+                // 그래야 화면에 쫄이 보이고, 「소환 몹이 준 파티 피해」도 누적돼 로그로 읽힌다.
+                if (_step == 0 && _t > 30f)
+                {
+                    float summonDmg = global::W3Party.SummonDmgOnActive();
+                    Debug.Log($"[QA] 소환 몹이 파티에 준 피해(누적) = {summonDmg:F0}");
+                    Shot("auto_boss"); _step = 1; _t = 0f;
+                }
                 else if (_step == 1 && _t > 1.5f) Finish();
                 return;
             }

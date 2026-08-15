@@ -327,6 +327,15 @@ public class W3Party : MonoBehaviour
     // kind: 0 추적 / 1 포위 / 2 원거리 / 3 정예-치유 / 4 정예-소환
     int _mAlive;
 
+    // ── 보스 쫄 소환(§10-5) ───────────────────────────────
+    // 보스전 소환 기믹이 만든 몹만 별도로 표시한다. 소환 몹이 파티에 준 피해를 따로
+    // 셈해야 「소환 비활성 → 그 피해가 사라짐」 네거티브 컨트롤이 성립한다(웨이브 몹 피해와 분리).
+    // BossBattle 인스턴스를 몰라도 되게 정적 통로를 둔다(회복·피해 보고와 같은 idiom).
+    bool[] _mSummoned;
+    int _summonedAlive;                     // 지금 살아 있는 소환 몹 수 — 보스가 슬롯 해제를 판정
+    float _summonDmgToParty; int _summonHits;   // 소환 몹이 파티에 준 누적 피해·타격 수
+    static W3Party _game;                    // GameMode(실플레이) 판. 보스 기믹이 여기로 소환한다
+
     const int MAXP = 200;
     Transform[] _pTr; Vector2[] _pPos, _pVel; float[] _pLife; bool[] _pOn; int _pCur;
     // 아군 공격 연출용 별도 풀 (몹 탄과 색으로 구분)
@@ -552,6 +561,7 @@ public class W3Party : MonoBehaviour
         _mAtkCd = new float[MAXM]; _mMaxHp = new float[MAXM];
         _mBarBg = new SpriteRenderer[MAXM]; _mBarFg = new SpriteRenderer[MAXM];
         _mKind = new int[MAXM]; _mOn = new bool[MAXM]; _mFlash = new float[MAXM];
+        _mSummoned = new bool[MAXM];
         // 개체별 계열색을 **스폰 때 한 번 정해 기억한다.** 예전엔 피격 섬광이 끝날 때마다
         // `FamilyTint()`를 다시 불렀는데, 필드에서는 그 함수가 계열을 무작위로 굴리므로
         // **몹이 맞을 때마다 색이 바뀌어 깜빡였다**(오너 지적 2026-08-15, 내가 낸 버그).
@@ -818,12 +828,16 @@ public class W3Party : MonoBehaviour
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0;
+        _summonedAlive = 0; _summonDmgToParty = 0f; _summonHits = 0; _summonHbAt = 0f;
+        // 실플레이 판만 보스 소환의 대상이 된다. 검증(W1~W3)은 GameMode가 아니라 여기서 빠진다 —
+        // 측정 판에 소환이 끼면 구성 대조가 오염된다.
+        _game = GameMode ? this : null;
         _tauntUntil = -1f; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
         Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")})");
     }
 
-    void SpawnMob()
+    void SpawnMob(bool summoned = false)
     {
         for (int i = 0; i < MAXM; i++)
         {
@@ -832,9 +846,29 @@ public class W3Party : MonoBehaviour
             _mPos[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Random.Range(Arena * 0.6f, Arena);
             int r = Random.Range(0, 100);
             _mKind[i] = r < 35 ? 0 : r < 60 ? 1 : r < 85 ? 2 : r < 94 ? 3 : 4;   // 정예 15%
-            _mHp[i] = _mMaxHp[i] = _mKind[i] >= 3 ? 90f : 26f;
+            // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
+            // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
+            // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
+            if (summoned)
+            {
+                _mKind[i] = 1;
+                // §10-5 「분리 소환」은 파티 **한복판에** 나타나는 것이 요점이다. 아레나 가장자리에
+                // 스폰하면 달려오는 도중 전부 포커싱돼 죽어 위협이 안 된다(실측: 소환피해 0).
+                // 파티원 곁(근접 사거리 안)에 꽂아 즉시 후열을 물게 한다.
+                Vector2 anchor = _party != null && _party.Length > 0
+                    ? _party[Random.Range(0, _party.Length)].Pos : Vector2.zero;
+                // 근접 사거리(1.1) 안에 확실히 들도록 바싹 붙여 꽂는다 — 멀면 포위형 선회로
+                // 사거리 밖을 맴돌다 첫 타 전에 죽어 위협이 안 잡힌다(실측: 0.8 오프셋은 3마리 중 1마리만 명중).
+                _mPos[i] = anchor + new Vector2(Random.Range(-0.35f, 0.35f), Random.Range(-0.35f, 0.35f));
+            }
+            _mSummoned[i] = summoned;
+            if (summoned) _summonedAlive++;
+            // 소환 몹은 잡몹보다 훨씬 단단하게(220) — 파티 한복판에 떨어지면 순식간에 포커싱되므로,
+            // 즉사하면 「달려들어 후열을 문다」는 위협이 성립하지 않는다(실측: 90도 첫 타 전에 죽었다).
+            _mHp[i] = _mMaxHp[i] = summoned ? 220f : _mKind[i] >= 3 ? 90f : 26f;
             _mCd[i] = Random.value * 2f;
-            _mAtkCd[i] = Random.value * 0.8f; _mFlash[i] = 0f;
+            // 소환 몹은 사거리 안에 나타나므로 **곧바로** 한 대 문다 — 예고 후 대응할 수 있는 위협이 된다.
+            _mAtkCd[i] = summoned ? 0.15f : Random.value * 0.8f; _mFlash[i] = 0f;
             _mOn[i] = true; _mAlive++;
             // 스폰 그림과 애니메이션이 **같은 규칙**을 쓴다(MobSpriteKind가 단일 소스).
             // 예전엔 여기만 종류별이고 애니메이션은 0번 고정이라, 몹이 걷기 시작하는
@@ -855,6 +889,28 @@ public class W3Party : MonoBehaviour
             _mTr[i].gameObject.SetActive(true);
             return;
         }
+    }
+
+    // ── 보스 쫄 소환 정적 통로(§10-5) ─────────────────────
+    // BossBattle이 W3Party 인스턴스를 참조하지 않아도 되게 정적 진입을 둔다(회복/피해 보고와
+    // 같은 idiom). 실플레이 판(_game)이 없으면 조용히 무시 — 검증 하네스는 영향받지 않는다.
+
+    /// <summary>지금 도는 실플레이 판에 쫄 n마리를 소환한다.</summary>
+    public static void SummonMobsToActive(int n)
+    {
+        if (_game != null && _game.GameMode) _game.SummonMobs(n);
+    }
+
+    /// <summary>살아 있는 소환 몹 수. 보스가 「소환이 정리됐나」를 판정해 기믹 슬롯을 푼다.</summary>
+    public static int SummonedAliveOnActive() => _game != null ? _game._summonedAlive : 0;
+
+    /// <summary>소환 몹이 파티에 준 누적 피해. 네거티브 컨트롤의 측정값(QA 로그로 읽는다).</summary>
+    public static float SummonDmgOnActive() => _game != null ? _game._summonDmgToParty : 0f;
+
+    void SummonMobs(int n)
+    {
+        for (int k = 0; k < n; k++) SpawnMob(true);
+        Debug.Log($"[W3] 보스 소환 — 쫄 {n}마리 (현재 소환 생존 {_summonedAlive})");
     }
 
     /// <summary>
@@ -880,16 +936,106 @@ public class W3Party : MonoBehaviour
     Color _screenFlashColor = Color.white;
     public void Hitstop(int frames = 3) { if (GameMode) _hitstop = Mathf.Max(_hitstop, frames); }
 
+    // ── 스킬 발동 연출 (오너 지시 2026-08-15 「스킬 사용 시 사용했다는 느낌이 났으면」) ──
+    //
+    // 지금까지 스킬은 **수치로만** 존재했다. 파티가 잠깐 밝아지고 파티클이 조금 튀는 게
+    // 전부라, 도발이 나갔는지 성채 방패가 나갔는지 화면에서 구분되지 않았다.
+    // 바닥 범위 원은 오너가 지우라고 한 것이라 그 방향은 막혀 있다(§6-A).
+    //
+    // 그래서 셋을 겹친다. 하나만으로는 "느낌"이 안 난다:
+    //   ① **이름을 띄운다** — 무엇이 터졌는지 읽히는 유일한 신호다
+    //   ② **시간을 멈춘다**(히트스톱) — 큰 것일수록 길게. 타격감은 대부분 여기서 온다
+    //   ③ **화면을 흔든다** — 공격 계열만. 힐·보호막까지 흔들면 다급함이 뭉개진다
+    struct Callout { public string Text; public Vector2 At; public float T; public Color C; }
+    readonly System.Collections.Generic.List<Callout> _callouts = new();
+    const float CALLOUT_LIFE = 1.1f;
+
+    /// <summary>스킬 이름을 시전자 머리 위에 띄운다. 색으로 계열을 구분한다.</summary>
+    void SkillCast(Member m, string name, Color tint, int hitstop = 0, float shake = 0f)
+    {
+        m.SkillT = Mathf.Max(m.SkillT, 0.5f);          // 큰 동작을 확실히 재생
+        m.FlashT = Mathf.Max(m.FlashT, 0.14f);         // 시전자 자신을 번쩍
+        if (GameMode && _callouts.Count < 12)          // 난전에 12개 넘게 뜨면 글자밭이 된다
+            _callouts.Add(new Callout { Text = name, At = m.Pos, T = 0f, C = tint });
+        if (hitstop > 0) Hitstop(hitstop);
+        if (shake > 0f) Shake(shake);
+    }
+
+    void UpdateCallouts(float dt)
+    {
+        for (int i = _callouts.Count - 1; i >= 0; i--)
+        {
+            var c = _callouts[i];
+            c.T += dt;
+            if (c.T >= CALLOUT_LIFE) _callouts.RemoveAt(i);
+            else _callouts[i] = c;
+        }
+    }
+
+    /// <summary>
+    /// 떠오르는 스킬 이름. IMGUI로 그린다 — 이 프로젝트에는 uGUI가 없고(§GameFlow 주석),
+    /// 월드 좌표를 카메라로 화면 좌표에 옮겨 그 자리에 찍는다.
+    /// ⚠️ `GUI.matrix`가 걸린 구간에서 부르지 마라. 여기 좌표는 **실제 픽셀**이다.
+    /// </summary>
+    void DrawCallouts()
+    {
+        if (_callouts.Count == 0) return;
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        _calloutStyle ??= new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 20,
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter,
+        };
+
+        foreach (var c in _callouts)
+        {
+            float u = c.T / CALLOUT_LIFE;
+            var sp = cam.WorldToScreenPoint(new Vector3(c.At.x, c.At.y * ISO_Y, 0f));
+            if (sp.z < 0f) continue;                                  // 카메라 뒤
+            float y = Screen.height - sp.y - 46f - u * 34f;           // 위로 떠오른다
+            var r = new Rect(sp.x - 90f, y, 180f, 26f);
+
+            // 알파는 뒤쪽 절반에서만 뺀다 — 처음부터 흐려지면 읽기도 전에 사라진다
+            float a = u < 0.55f ? 1f : 1f - (u - 0.55f) / 0.45f;
+
+            _calloutStyle.normal.textColor = new Color(0f, 0f, 0f, a * 0.8f);
+            GUI.Label(new Rect(r.x + 2f, r.y + 2f, r.width, r.height), c.Text, _calloutStyle);  // 그림자
+            _calloutStyle.normal.textColor = new Color(c.C.r, c.C.g, c.C.b, a);
+            GUI.Label(r, c.Text, _calloutStyle);
+        }
+    }
+
+    GUIStyle _calloutStyle;
+
     CameraFollow _cam;
+
+    /// <summary>
+    /// 화면 흔들림 세기 배율. **호출부 숫자를 하나씩 고치지 마라** — 여기 하나만 만진다.
+    ///
+    /// 오너 지적 2026-08-15 「흔들림 너무 커, 좀 줄여줘」. 호출부가 여섯 곳이라 각각을
+    /// 고치면 다음에 또 조정할 때 어디를 봐야 하는지 알 수 없고, 한둘을 빠뜨려 세기가
+    /// 제각각이 된다. 상대 비율(기적이 일섬보다 크다)은 호출부가 정하고, **전체 크기는
+    /// 이 값 하나가 정한다.**
+    /// </summary>
+    const float SHAKE_SCALE = 0.35f;
+
     void Shake(float amp)
     {
         if (!GameMode) return;                     // 측정 실행의 스크린샷 검증을 흔들지 않는다
         _cam ??= Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
-        if (_cam != null) _cam.Shake(amp);
+        if (_cam != null) _cam.Shake(amp * SHAKE_SCALE);
     }
 
     void Update()
     {
+        // 실플레이 판을 보스 소환의 대상으로 등록한다. **여기서** 잡는다 —
+        // NextStyle은 Awake에서 도는데 그때 GameMode는 아직 false다(BattleScreen이 AddComponent
+        // 뒤에 대입하는 알려진 함정). Awake 시점에 잡으면 _game이 null로 굳어 소환이 조용히 샌다.
+        if (GameMode) _game = this;
+
         if (_hitstop > 0) { _hitstop--; _stepAcc = 0f; return; }
 
         // 프레임이 얼마나 걸렸든 1/60 단위로만 진행한다(한 프레임 최대 10스텝 — 스파이럴 방지)
@@ -898,10 +1044,19 @@ public class W3Party : MonoBehaviour
         while (_stepAcc >= FixedStep && steps < 10) { _stepAcc -= FixedStep; steps++; Step(); }
     }
 
+    float _summonHbAt;
     void Step()
     {
         float dt = FixedStep;
         _t += dt; _framesThisRun++;
+
+        // 보스 소환 배선의 측정 증거 — 캡처 경로(프레임/초 지정)와 무관하게 Player.log에 남긴다.
+        // 실플레이 판에서만, 10초마다 소환 생존·누적 피해를 찍는다(네거티브 컨트롤로 대조).
+        if (GameMode && _t >= _summonHbAt)
+        {
+            _summonHbAt = _t + 10f;
+            Debug.Log($"[QA] t={_t:F0}s 소환생존={_summonedAlive} 소환피해={_summonDmgToParty:F0}");
+        }
         // 전멸이 판정 기준이다. 시간 상한은 무한 루프를 막는 안전장치일 뿐 —
         // 45초 고정 상한을 쓰던 1차 실험은 다섯 구성 중 넷이 완주해버려
         // "얼마나 버티는가"를 물을 수 없었다(§21-1g).
@@ -919,6 +1074,7 @@ public class W3Party : MonoBehaviour
         }
 
         TickCommand();
+        UpdateCallouts(dt);
         TickParty(dt);
         TickMobs(dt);
 
@@ -1131,7 +1287,8 @@ public class W3Party : MonoBehaviour
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
                     m.SkillCd = 6f * _bCd; m.Threat += 80f; _tauntUses++;
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
-                    _skillLog[0]++; m.SkillT = 0.55f;
+                    _skillLog[0]++;
+                    SkillCast(m, "도발의 함성", new Color(1f, 0.78f, 0.32f), hitstop: 2);
                     FlashParty();                                 // 발동 순간을 눈에 띄게
                     FxParticles.Play(FxKind.도발, ToScreen(m.Pos), 1.2f);
                 }
@@ -1143,7 +1300,9 @@ public class W3Party : MonoBehaviour
                     foreach (var o in _party)
                         if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f * _bShield);
                     FlashParty();
-                    _skillLog[1]++; m.SkillT = 0.55f;
+                    _skillLog[1]++;
+                    SkillCast(m, "성채 방패", new Color(0.55f, 0.82f, 1f), hitstop: 2);
+                    FxPool.Play(FxPool.Kind.Shield, m.Pos, 1.6f);
                     foreach (var o in _party) if (o.Alive) FxParticles.Play(FxKind.무적, ToScreen(o.Pos));
                 }
             }
@@ -1294,7 +1453,8 @@ public class W3Party : MonoBehaviour
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
                     FxPool.Play(FxPool.Kind.Heal, m.Pos, 2.2f);
-                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f); Hitstop(5); Shake(0.45f);
+                    FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f);
+                    SkillCast(m, "기적", new Color(1f, 0.95f, 0.6f), hitstop: 5, shake: 0.45f);
                 }
                 else if (m.ForceSkill == 1 || wounded >= 2)
                 {
@@ -1305,6 +1465,7 @@ public class W3Party : MonoBehaviour
                             m.Gauge += Heal(o, 14f * sp.DmgMul * _bHeal);
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
+                    SkillCast(m, "치유 파동", new Color(0.55f, 1f, 0.65f), hitstop: 1);
                     FxPool.Play(FxPool.Kind.Heal, m.Pos, 1.4f);
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
@@ -1327,7 +1488,8 @@ public class W3Party : MonoBehaviour
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
                     // 화염폭풍은 **범위 원 대신** 불길 자체를 터뜨려 보여준다(바닥 링은 삭제됨).
                     FxPool.Play(FxPool.Kind.Fire, c, _stormR * 0.9f);
-                    FxParticles.Play(FxKind.마법진, ToScreen(c), _stormR); FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR); Shake(0.28f);
+                    FxParticles.Play(FxKind.마법진, ToScreen(c), _stormR); FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR);
+                    SkillCast(m, "화염 폭풍", new Color(1f, 0.55f, 0.25f), hitstop: 3, shake: 0.28f);
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
@@ -1350,8 +1512,12 @@ public class W3Party : MonoBehaviour
                 m.Gauge += 1f;
                 float dmg = m.Atk;
                 // 일섬 — 버튼(슬롯1)이면 스택이 덜 찼어도 즉시 터뜨린다(§3 "스택 전량 소모")
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); Hitstop(3); Shake(0.2f); }
-                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; m.SkillT = 0.5f; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target])); Hitstop(3); Shake(0.2f); }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target]));
+                    SkillCast(m, "일섬", new Color(0.85f, 0.95f, 1f), hitstop: 3, shake: 0.2f);
+                    FxPool.Play(FxPool.Kind.Slash, _mPos[target], 1.5f); }
+                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target]));
+                    SkillCast(m, "일섬", new Color(0.85f, 0.95f, 1f), hitstop: 3, shake: 0.2f);
+                    FxPool.Play(FxPool.Kind.Slash, _mPos[target], 1.5f); }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
                 m.Cd = 0.35f / _bAtkSpd;
                 m.Threat += dmg * 0.4f;
@@ -1492,6 +1658,7 @@ public class W3Party : MonoBehaviour
     void KillMob(int i)
     {
         _mOn[i] = false; _mAlive--; _kills++;
+        if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
         // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
         if ((_kills % 5) == 0) MobDeathPuff(_mPos[i]);
@@ -1634,7 +1801,10 @@ public class W3Party : MonoBehaviour
                 {
                     _mAtkCd[i] = 1.0f;
                     _meleeHits++;
-                    Damage(tgt, 6f * sp.TakenMul, tgt.Role == Role.Tank);
+                    float md = 6f * sp.TakenMul;
+                    Damage(tgt, md, tgt.Role == Role.Tank);
+                    // 소환 몹이 준 피해만 따로 센다 — 네거티브 컨트롤의 측정선(§10-5).
+                    if (_mSummoned[i]) { _summonDmgToParty += md; _summonHits++; }
                 }
             }
         }
@@ -1831,6 +2001,7 @@ public class W3Party : MonoBehaviour
         // 여기서 CSV까지 쓰면 실제 플레이가 검증 데이터에 섞여 측정값을 오염시킨다.
         if (GameMode)
         {
+            Debug.Log($"[W3] 판 종료 — 소환 몹이 파티에 준 피해 {_summonDmgToParty:F0} ({_summonHits}회)");
             OnBattleEnd?.Invoke(aliveCount > 0);
             enabled = false;
             return;
@@ -1866,6 +2037,9 @@ public class W3Party : MonoBehaviour
     void OnGUI()
     {
         _hud ??= new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Color.white } };
+
+        // 스킬 이름 — `GUI.matrix`를 건드리기 **전에** 그린다(여기 좌표는 실제 픽셀이다).
+        DrawCallouts();
 
         // 화면 플래시 — 가장 싼 강조 수단이고, 파티클과 달리 **절대 묻히지 않는다**
         if (_screenFlash > 0f)
