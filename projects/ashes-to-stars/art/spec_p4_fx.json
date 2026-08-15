@@ -1,0 +1,51 @@
+{
+ "_note": "P4 전투 이펙트(오너 지시 2026-08-15 '이펙트 효과도 병렬 개발'). 프레임 시트가 아니라 **한 장짜리 심볼**로 뽑는다 — 코드가 크기·투명도·회전을 굴려 애니메이션한다. 시트로 뽑으면 분할·정렬 파이프라인이 또 필요하고, 이 저장소는 그 단계에서 격자선·병합 사고를 반복해서 겪었다. 한 장이면 그 위험이 0이다.",
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "fx": "Match the art style of the reference image: hand-drawn pixel art, same dot size, thin dark outlines, limited palette, no smooth gradients, not 3D-rendered. This is a combat visual effect symbol viewed straight on, centered in frame, radially symmetric or centered composition, with bright saturated core fading to sparse pixels at the edge. No characters, no ground, no text, no border, no shadow. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "fx_hit",
+   "rules_ref": "fx",
+   "prompt": "A sharp impact spark burst: short white-hot spikes radiating outward from a small bright center, with a few detached pixel shards flying out. Pale yellow-white core, orange outer spikes."
+  },
+  {
+   "name": "fx_slash",
+   "rules_ref": "fx",
+   "prompt": "A single crescent sword slash arc, thin and sharp, bright white inner edge with a pale cyan outer glow, tapering to points at both ends. The arc curves from upper left to lower right."
+  },
+  {
+   "name": "fx_heal",
+   "rules_ref": "fx",
+   "prompt": "A soft healing ring: a flat elliptical ring of warm green light with small rising sparkles inside it, brightest at the ring itself, hollow in the middle."
+  },
+  {
+   "name": "fx_fire",
+   "rules_ref": "fx",
+   "prompt": "A burst of flame: overlapping tongues of orange and yellow fire radiating outward from a white-hot center, with dark red edges and a few loose embers."
+  },
+  {
+   "name": "fx_shield",
+   "rules_ref": "fx",
+   "prompt": "A protective barrier ring: a hexagonal-faceted ring of translucent pale blue light with brighter nodes at each corner, hollow in the middle."
+  },
+  {
+   "name": "fx_taunt",
+   "rules_ref": "fx",
+   "prompt": "A shout shockwave: three concentric expanding rings of pale amber light, thickest at the inner ring and faintest at the outer, hollow in the middle."
+  },
+  {
+   "name": "fx_summon",
+   "rules_ref": "fx",
+   "prompt": "A summoning rune circle seen from above: a flat purple magic circle with an outer ring, an inner ring, and angular arcane glyphs between them, glowing violet."
+  },
+  {
+   "name": "fx_death",
+   "rules_ref": "fx",
+   "prompt": "A dissipation puff: a small cloud of grey-white smoke wisps curling outward with scattered dark pixel motes, densest at the center."
+  }
+ ]
+}

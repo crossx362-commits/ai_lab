@@ -240,9 +240,17 @@ namespace AshesToStars
                 // PPU 32 고정이던 시절엔 128px 원본이 전부 4유닛 = 캐릭터(2유닛)의 두 배라
                 // 바위가 사람만 했다. 그 표는 2026-08-14에 만들어 두고 **읽는 곳이 0곳**이었다 —
                 // 마을을 세우면서 살렸다(집 4유닛 옆에 울타리 0.9유닛이라야 마을로 보인다).
-                float px = rects[propIdx].height * atlas.height;         // 아틀라스 UV → 픽셀
-                float ppu = px / Mathf.Max(0.05f, TargetUnits(propNames[propIdx]));
-                sr.sprite = Sprite.Create(atlas, rects[propIdx], Vector2.one * 0.5f, ppu, 0,
+                // ⚠️ `PackTextures`는 **정규화 UV**(0~1)를 돌려주는데 `Sprite.Create`는
+                //    **픽셀 좌표** Rect를 받는다. UV를 그대로 넘기면 0.06×0.06픽셀짜리
+                //    스프라이트가 되어 **아무것도 그려지지 않는다** — 그런데 배치 로그는
+                //    정상적으로 "프랍 90개"라고 말한다. 이 저장소가 반복해서 겪은
+                //    「수치는 전부 통과했는데 화면이 비어 있다」가 여기서도 일어나고 있었다
+                //    (2026-08-15 발견: 프랍은 도입 이래 한 번도 화면에 나온 적이 없다).
+                var uv = rects[propIdx];
+                var pxRect = new Rect(uv.x * atlas.width, uv.y * atlas.height,
+                                      uv.width * atlas.width, uv.height * atlas.height);
+                float ppu = pxRect.height / Mathf.Max(0.05f, TargetUnits(propNames[propIdx]));
+                sr.sprite = Sprite.Create(atlas, pxRect, Vector2.one * 0.5f, ppu, 0,
                                          SpriteMeshType.FullRect);
                 sr.sharedMaterial = mat;
                 // 정렬: y가 낮을수록 앞. 캐릭터(500)보다 뒤인 프랍 기본층(100)
@@ -253,6 +261,70 @@ namespace AshesToStars
                 if (asCover) { _cover.Add(worldPos); blockers++; }
                 return true;
             }
+        }
+
+        /// <summary>
+        /// 마을길. 녹지를 도는 **고리길** + 마을을 관통하는 **큰길** 두 줄을 깐다.
+        ///
+        /// 왜 프랍이 아니라 색 조각인가:
+        ///   길은 타일이지 물건이 아니다. 길 타일 아트를 새로 뽑아 이어 붙이면 이음매·
+        ///   회전·모서리 처리가 따라오는데, 이 게임의 바닥은 이미 노이즈로 칠한 단색
+        ///   평면이라 **같은 방식으로 흙색을 얹는 것**이 이음매 없이 자연스럽다.
+        ///   밟은 자국이 이어져 보이면 그게 길이다 — 그림이 정교할 필요는 없다.
+        ///
+        /// 정렬은 프랍(100)보다 **뒤**(50)다. 길 위에 집·수레가 서야 하기 때문이다.
+        /// </summary>
+        static int BuildRoads(float arenaRadius, float ringRoad)
+        {
+            const float ISO_Y = StressTest.ISO_Y;
+            var tex = new Texture2D(1, 1);
+            tex.SetPixel(0, 0, Color.white);
+            tex.Apply();
+            var sp = Sprite.Create(tex, new Rect(0, 0, 1, 1), Vector2.one * 0.5f, 1f);
+            var mat = new Material(Shader.Find("Sprites/Default"));
+
+            // 흙길 — 풀색 바닥 위에서 갈색이 너무 튀면 그림처럼 보인다. 반투명으로 눌러
+            // "밟혀서 풀이 벗겨진 자리"에 가깝게 만든다.
+            var dirt = new Color(0.42f, 0.34f, 0.24f, 0.55f);
+            int made = 0;
+
+            void Patch(Vector2 world, float w, float h, float rotDeg)
+            {
+                var go = new GameObject("road", typeof(SpriteRenderer));
+                go.transform.SetParent(_root.transform, false);
+                go.transform.position = new Vector3(world.x, world.y * ISO_Y, 0.2f);
+                go.transform.localRotation = Quaternion.Euler(0, 0, rotDeg);
+                go.transform.localScale = new Vector3(w, h * ISO_Y, 1f);
+                var sr = go.GetComponent<SpriteRenderer>();
+                sr.sprite = sp;
+                sr.sharedMaterial = mat;
+                sr.color = dirt;
+                sr.sortingOrder = 50;      // 프랍(100)보다 뒤 — 길 위에 물건이 선다
+                made++;
+            }
+
+            // ① 고리길 — 짧은 조각을 이어 원을 만든다. 조각마다 접선 방향으로 눕힌다.
+            const int SEG = 40;
+            float segLen = 2f * Mathf.PI * ringRoad / SEG * 1.35f;   // 겹치게 해서 이음매를 없앤다
+            for (int i = 0; i < SEG; i++)
+            {
+                float a = (i / (float)SEG) * Mathf.PI * 2f;
+                var p = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * ringRoad;
+                Patch(p, segLen, 1.5f, a * Mathf.Rad2Deg + 90f);
+            }
+
+            // ② 큰길 — 마을을 가로질러 들어오고 나간다. 고리길과 만나 교차로가 된다.
+            //    길이 마을 안에서 끝나면 "어디로도 이어지지 않는 길"이 되므로 화면 밖까지 뺀다.
+            float reach = arenaRadius * 1.9f;
+            for (int i = 0; i < 2; i++)
+            {
+                float a = i == 0 ? 0f : Mathf.PI * 0.5f;
+                var d = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                for (float t = -reach; t <= reach; t += 1.6f)
+                    Patch(d * t, 2.2f, 2.0f, a * Mathf.Rad2Deg);
+            }
+
+            return made;
         }
 
         /// <summary>
@@ -298,12 +370,21 @@ namespace AshesToStars
         /// <summary>
         /// 광장(아레나) 둘레에 마을을 세운다. 반환값은 실제로 선 구성물 수.
         ///
-        /// 배치 규칙 — 이 셋이 「마을처럼 보인다」를 만든다:
-        ///   ① 집은 광장 둘레 **일정 간격**으로. 무작위면 난개발로 읽힌다
-        ///   ② 집과 집 **사이를 울타리로 잇는다**. 빈틈이 있으면 흩어진 오두막이 된다
-        ///   ③ 길가에 가로등, 집 옆에 건초·수레 — 생활의 흔적이 있어야 폐허가 아니다
+        /// ── 왜 이 형태인가 (오너 지시 2026-08-15 「마을의 의미를 조사해서 배치」) ──
+        /// 중세 마을은 형태에 이름이 붙은 몇 가지 유형으로 나뉜다. 그중 **녹지형 마을
+        /// (Angerdorf / green village)** 은 공동 소유의 중앙 풀밭(anger)을 집들이 빙 둘러싸는
+        /// 형태다. 잉글랜드 북부에도 같은 계열이 있고, 특징이 셋이다:
+        ///   ① 중앙에 공유 녹지 — 우물·연못이 여기 있고, 밤에 가축을 여기 모았다
+        ///   ② 집은 **정면이 녹지를 향하고**, 헛간·축사는 **뒤쪽**에 둔다
+        ///   ③ 집 뒤로 각자의 텃밭(croft)이 울타리로 구획되고, 그 바깥을 **농로가 고리로 두른다**
         ///
-        /// 광장 안(아레나)에는 **우물 하나만** 둔다. 그 이상 넣으면 전투 공간이 좁아진다.
+        /// 우리 전투 아레나가 정확히 ①의 녹지에 해당한다 — 그래서 이 유형을 골랐다.
+        /// 직전 구현은 ②③이 빠져 있었다: 울타리가 집과 광장 **사이**에 있어 마당이 광장 쪽에
+        /// 있었고(실제와 반대), 무엇보다 **길이 하나도 없었다.** 마을은 길로 이어져야
+        /// 마을이지, 건물이 모여 있다고 마을이 아니다.
+        ///
+        /// 그래서 지금은: 녹지 둘레를 도는 **마을길(고리)** + 마을을 관통해 들어오고 나가는
+        /// **큰길(직선 2줄)** + 집 뒤 **텃밭 울타리** + 녹지의 우물.
         /// </summary>
         static int BuildVillage(float arenaRadius, string[] names,
                                 System.Func<int, Vector2, bool, bool> place)
@@ -312,11 +393,17 @@ namespace AshesToStars
             int Idx(string n) => System.Array.IndexOf(names, n);
             int n = 0;
 
-            // 집이 서는 고리 — 아레나 바로 바깥. 너무 멀면 화면 밖이라 안 보이고,
-            // 너무 가까우면 전투에 끼어든다.
-            float ringHouse = arenaRadius * 1.32f;
-            float ringFence = arenaRadius * 1.12f;   // 광장과 집 사이 = 마당 경계
-            float ringLamp = arenaRadius * 1.04f;    // 광장 가장자리 = 길가
+            // 반경 배치.
+            // ⚠️ 아레나 **바깥**에 두면 안 된다. 아레나 반경이 14인데 카메라가 보여주는
+            //    범위는 가로 ±14·세로 ±8이라, 1.3배 고리(18.5)는 **전부 화면 밖**이다
+            //    (실측 2026-08-15: 마을 45개가 섰다는 로그만 남고 화면엔 아무것도 없었다).
+            //    그래서 광장을 아레나 안쪽으로 좁혀 잡는다.
+            //
+            // 안쪽부터: 녹지(빈 광장) → 마을길 → 집(정면이 녹지를 향한다) → 텃밭 울타리
+            float ringRoad = arenaRadius * 0.62f;    // 마을길 — 집 앞을 도는 고리
+            float ringHouse = arenaRadius * 0.80f;   // 집은 길 바깥에 서서 길을 마주본다
+            float ringYard = arenaRadius * 0.98f;    // 텃밭 울타리는 집 **뒤**다(실제 마을의 croft)
+            float ringLamp = arenaRadius * 0.62f;    // 가로등은 길가에
 
             string[] houses = { "village_house_0", "village_house_1", "village_house_2",
                                 "village_barn_0" };
@@ -338,25 +425,28 @@ namespace AshesToStars
                     if (place(Idx(trinket), dir * ringHouse + side, false)) n++;
                 }
 
-                // ② 울타리 — 집터 앞을 가로지르고, 집터 경계에는 모서리 기둥
-                if (place(Idx("village_fence_1"), dir * ringFence, false)) n++;
-                float half = (Mathf.PI * 2f / LOTS) * 0.3f;
+                // ② 텃밭 울타리 — 집 **뒤**에 두른다. 광장 쪽이 아니라 바깥쪽이라야
+                //    "집 뒤로 각자의 텃밭이 있고 그 너머가 들판"이라는 실제 구조가 된다.
+                if (place(Idx("village_fence_1"), dir * ringYard, false)) n++;
+                float half = (Mathf.PI * 2f / LOTS) * 0.32f;
                 for (int s = -1; s <= 1; s += 2)
                 {
                     float fa = a + half * s;
                     var fd = new Vector2(Mathf.Cos(fa), Mathf.Sin(fa));
-                    if (place(Idx("village_fence_0"), fd * ringFence, false)) n++;
+                    if (place(Idx("village_fence_0"), fd * ringYard, false)) n++;
                 }
 
-                // ③ 가로등 — 집터 사이 길목마다
+                // ③ 가로등 — 집 사이 길목, 길가에
                 float la = a + (Mathf.PI / LOTS);
                 var ld = new Vector2(Mathf.Cos(la), Mathf.Sin(la));
                 if (place(Idx("village_lamp_0"), ld * ringLamp, false)) n++;
             }
 
-            // 우물 — 광장의 랜드마크. 중앙은 스폰 지점이라 비우고 한쪽으로 치운다.
+            // 우물 — 녹지의 랜드마크. 중앙은 스폰 지점이라 비우고 한쪽으로 치운다.
             // 엄폐 등록은 하지 않는다: 광장 안 장애물은 W1~W3 구성 비교를 흔든다(§3-4).
-            if (place(Idx("village_well_0"), new Vector2(arenaRadius * 0.62f, 0f), false)) n++;
+            if (place(Idx("village_well_0"), new Vector2(arenaRadius * 0.34f, 0f), false)) n++;
+
+            n += BuildRoads(arenaRadius, ringRoad);
 
             _ = ISO_Y;   // 좌표는 place가 ISO 보정한다 — 여기서 두 번 곱하지 않는다
             return n;

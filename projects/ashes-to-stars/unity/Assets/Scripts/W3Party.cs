@@ -135,28 +135,12 @@ public class W3Party : MonoBehaviour
     // 글자 뒤에 까는 반투명 판.
     // 전투 화면은 배경을 안 깔기 때문에(카메라 렌더를 보여줘야 하므로) 밝은 바닥 위에
     // 흰 글씨가 그대로 놓여 읽히지 않았다(오너 지적 "글씨가 안보인다고").
-    // 스킬 범위 표시용 원형 텍스처. 스킬이 수치로만 돌면 화면에서는 아무 일도 안 일어난 것처럼 보인다
-    // — 도발이 몹을 모으는 것도, 화염폭풍이 밀집을 노리는 것도 보여야 판단 근거가 된다(§5 수동 지휘).
-    static Sprite _ringSprite;
-    static Sprite Ring()
-    {
-        if (_ringSprite != null) return _ringSprite;
-        const int N = 128;
-        var t = new Texture2D(N, N, TextureFormat.RGBA32, false);
-        var px = new Color32[N * N];
-        float c = (N - 1) * 0.5f;
-        for (int y = 0; y < N; y++)
-            for (int x = 0; x < N; x++)
-            {
-                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
-                // 가장자리는 진하게, 안쪽은 옅게 — 범위가 어디까지인지 읽히게
-                byte a = d > 1f ? (byte)0 : (byte)(d > 0.86f ? 200 : 34 * (1f - d));
-                px[y * N + x] = new Color32(255, 255, 255, a);
-            }
-        t.SetPixels32(px); t.filterMode = FilterMode.Bilinear; t.Apply();
-        _ringSprite = Sprite.Create(t, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f), N);
-        return _ringSprite;
-    }
+    // ⛔ 절차 생성 링(`skill_ring`)은 **삭제됐다**(오너 지시 2026-08-15, 두 번 지적).
+    //    스킬 범위를 보여주려고 코드로 그린 흰 원이었는데, 이펙트 로딩이 상시 실패해서
+    //    (Texture2D로 임포트된 png를 `Load<Sprite>`로 읽고 있었다) 이 임시물이 화면의
+    //    기본값이 돼 있었다. 지금은 `Resources/fx/`의 실제 이펙트만 쓰고, 그림이 없으면
+    //    아무것도 안 그린다. **다시 만들지 마라** — 임시 대체물이 본물을 가리면
+    //    결함이 결함으로 보이지 않는다.
 
     SpriteRenderer _tauntRing, _stormRing;
     float _stormUntil; Vector2 _stormAt; float _stormR;
@@ -169,10 +153,32 @@ public class W3Party : MonoBehaviour
     static Sprite _fxMiracle, _fxChantAtk, _fxChantDef;
     static bool _fxLoaded;
 
+    /// <summary>
+    /// 이펙트 한 장을 읽는다.
+    ///
+    /// ⚠️ `Resources.Load&lt;Sprite&gt;`만 쓰면 **거의 항상 null이 온다.** 이 프로젝트의
+    ///    텍스처 임포트 규칙은 png를 Sprite가 아니라 Texture2D로 들여오기 때문이다.
+    ///    그래서 `Resources/fx/`에 멀쩡한 이펙트 그림이 28장 있는데도 전부 못 읽고
+    ///    절차 생성 링(`skill_ring`)으로 폴백하고 있었다 — 오너가 "이상한 skill_ring이
+    ///    자꾸 나온다"고 지적한 그것이다(2026-08-15). 경로 대소문자(FX/ vs fx/)까지
+    ///    겹쳐 있어서 **둘 다** 고친다.
+    /// </summary>
+    static Sprite LoadFxOne(string name)
+    {
+        var sp = Resources.Load<Sprite>("fx/" + name) ?? Resources.Load<Sprite>("FX/" + name);
+        if (sp != null) return sp;
+
+        var tex = Resources.Load<Texture2D>("fx/" + name) ?? Resources.Load<Texture2D>("FX/" + name);
+        if (tex == null) return null;
+        // 심볼은 대략 캐릭터(2유닛) 크기로 보이게 PPU를 높이 대비로 잡는다.
+        return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
+                             Vector2.one * 0.5f, tex.height / 2f, 0, SpriteMeshType.FullRect);
+    }
+
     static Sprite[] LoadFx(string prefix, int n)
     {
         var a = new Sprite[n];
-        for (int i = 0; i < n; i++) a[i] = Resources.Load<Sprite>($"FX/{prefix}{i:00}");
+        for (int i = 0; i < n; i++) a[i] = LoadFxOne($"{prefix}{i:00}");
         return a;
     }
 
@@ -183,16 +189,19 @@ public class W3Party : MonoBehaviour
         _fxTaunt = LoadFx("fx_taunt_", 4);
         _fxStorm = LoadFx("fx_firestorm_", 4);
         _fxHeal = LoadFx("fx_heal_wave_", 3);
-        _fxMiracle = Resources.Load<Sprite>("FX/fx_miracle_light");
-        _fxChantAtk = Resources.Load<Sprite>("FX/fx_bardic_attack");
-        _fxChantDef = Resources.Load<Sprite>("FX/fx_bardic_defense");
+        _fxMiracle = LoadFxOne("fx_miracle_light");
+        _fxChantAtk = LoadFxOne("fx_bardic_attack");
+        _fxChantDef = LoadFxOne("fx_bardic_defense");
 
-        // 없으면 절차 생성 링으로 폴백한다 — 조용히 아무것도 안 뜨는 것보다 낫다
+        // ⚠️ 폴백 링을 **없앴다**(오너 지시 2026-08-15 "이상한 skill_ring 자꾸 나오는데 지워라").
+        //    "조용히 안 뜨는 것보다 낫다"고 넣어 둔 절차 생성 원이었는데, 정작 로딩이
+        //    상시 실패하는 바람에 폴백이 **정상 화면을 대체**하고 있었다 — 임시 대체물이
+        //    본물을 가리면 결함이 결함으로 안 보인다. 이제 누락은 경고로만 말한다.
         int missing = 0;
         if (_fxTaunt[0] == null) missing++;
         if (_fxStorm[0] == null) missing++;
         if (missing > 0)
-            Debug.LogWarning($"[W3] 스킬 이펙트 {missing}종 누락 — Resources/FX 확인. 링으로 대체한다");
+            Debug.LogWarning($"[W3] 스킬 이펙트 {missing}종 누락 — Resources/fx 확인(대체 없이 안 그린다)");
     }
 
     /// <summary>프레임 배열에서 경과 시간에 맞는 장을 고른다. 끝나면 마지막 장.</summary>
@@ -269,12 +278,15 @@ public class W3Party : MonoBehaviour
         return new Rect((cx - w * 0.5f) / t.width, y0 / t.height, w / t.width, h / t.height);
     }
 
-    /// <summary>스킬 범위 링 하나. 바닥에 눕혀 그리므로 세로를 ISO_Y로 누른다.</summary>
-    static SpriteRenderer MakeRing(SpriteBank bank, Color c)
+    /// <summary>
+    /// 스킬 범위 이펙트 하나. 바닥에 눕혀 그리므로 세로를 ISO_Y로 누른다.
+    /// 스프라이트는 매 프레임 `Resources/fx/`에서 온 것으로 갈아 끼운다 — 여기서는
+    /// 비워 둔다(예전엔 절차 생성 원을 넣어 뒀고, 그게 지워야 했던 `skill_ring`이다).
+    /// </summary>
+    static SpriteRenderer MakeRing(SpriteBank bank, Color c, string name)
     {
-        var go = new GameObject("skill_ring", typeof(SpriteRenderer));
+        var go = new GameObject(name, typeof(SpriteRenderer));
         var sr = go.GetComponent<SpriteRenderer>();
-        sr.sprite = Ring();
         sr.sharedMaterial = bank.Mat;
         sr.color = c;
         sr.sortingOrder = 210;          // 그림자(200)보다 앞, 유닛보다 뒤
@@ -520,8 +532,8 @@ public class W3Party : MonoBehaviour
 
         // 스킬 범위 표시 두 장 — 매번 만들지 않고 켜고 끈다
         LoadFxOnce();
-        _tauntRing = MakeRing(bank, new Color(1f, 0.72f, 0.25f, 0.9f));
-        _stormRing = MakeRing(bank, new Color(1f, 0.42f, 0.2f, 0.95f));
+        _tauntRing = MakeRing(bank, new Color(1f, 0.72f, 0.25f, 0.9f), "fx_taunt");
+        _stormRing = MakeRing(bank, new Color(1f, 0.42f, 0.2f, 0.95f), "fx_firestorm");
         // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
         // 시드를 고정해 같은 판이면 같은 배치가 나오게 한다(측정 재현성).
         // ⚠️ 여기서 엄폐물을 켜지 마라 — Awake 시점엔 GameMode가 아직 false다(아래 645 주석과
@@ -846,12 +858,10 @@ public class W3Party : MonoBehaviour
             // 그 외 잡몹만 계열 색조를 입는다(§10-3).
             // 이 개체의 색을 **여기서 한 번** 정해 기억한다. 섬광 복원이 매번 다시 굴리면
             // 맞을 때마다 색이 바뀌어 깜빡인다.
-            _mTint[i] = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)
-                      : _mKind[i] == 4 ? new Color(0.8f, 0.5f, 1f)
-                      : FamilyTint();
-            _mSr[i].color = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)      // 치유 정예 = 초록
-                          : _mKind[i] == 4 ? new Color(0.8f, 0.5f, 1f)      // 소환 정예 = 보라
-                          : FamilyTint();
+            // 색은 종류에서 결정된다 — 정예 예외 분기를 여기 두면 두 곳이 어긋난다.
+            // (실제로 어긋나 있었다: 정예 초록이 언데드 초록과 거의 같은 색이었다)
+            _mTint[i] = FamilyTint(_mKind[i]);
+            _mSr[i].color = _mTint[i];
             // 정예만 조금 크게. 기본 크기는 SpriteBank가 실측 PPU로 맞춰 둔다.
             _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? 1.4f : 1.0f);
             _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
@@ -952,24 +962,26 @@ public class W3Party : MonoBehaviour
         // 도발 지속 구간 — 몹이 탱에게 끌리는 동안 탱 주변에 범위를 띄운다.
         // 이게 없으면 "도발했다"가 수치로만 존재하고 화면에서는 아무 일도 안 일어난 것처럼 보인다.
         var tk = _party.Length > 0 ? _party[0] : null;
-        bool taunting = _t < _tauntUntil && tk != null && tk.Alive;
+        // 이펙트 그림이 없으면 **아무것도 그리지 않는다.** 예전엔 절차 생성 원을 대신
+        // 띄웠는데, 로딩이 상시 실패하는 바람에 그 임시물이 화면의 기본값이 돼 있었다.
+        var tauntFx = FxFrame(_fxTaunt, 3f - (_tauntUntil - _t), 3f);
+        bool taunting = _t < _tauntUntil && tk != null && tk.Alive && tauntFx != null;
         if (_tauntRing.gameObject.activeSelf != taunting) _tauntRing.gameObject.SetActive(taunting);
         if (taunting)
         {
-            float elapsed = 3f - (_tauntUntil - _t);
             float k = Mathf.InverseLerp(_tauntUntil, _tauntUntil - 3f, _t);   // 남을수록 크게
-            var fx = FxFrame(_fxTaunt, elapsed, 3f);
-            if (fx != null) { _tauntRing.sprite = fx; _tauntRing.color = Color.white; }
-            else { var c = _tauntRing.color; c.a = 0.25f + k * 0.5f; _tauntRing.color = c; }
+            _tauntRing.sprite = tauntFx;
+            _tauntRing.color = Color.white;
             PlaceRing(_tauntRing, tk.Pos, 4.5f * (0.55f + k * 0.45f));
         }
 
-        bool storming = _t < _stormUntil;
+        var stormFx = FxFrame(_fxStorm, 0.45f - (_stormUntil - _t), 0.45f);
+        bool storming = _t < _stormUntil && stormFx != null;
         if (_stormRing.gameObject.activeSelf != storming) _stormRing.gameObject.SetActive(storming);
         if (storming)
         {
-            var fx = FxFrame(_fxStorm, 0.45f - (_stormUntil - _t), 0.45f);
-            if (fx != null) { _stormRing.sprite = fx; _stormRing.color = Color.white; }
+            _stormRing.sprite = stormFx;
+            _stormRing.color = Color.white;
             PlaceRing(_stormRing, _stormAt, _stormR);
         }
 
@@ -1454,19 +1466,39 @@ public class W3Party : MonoBehaviour
         _ => SpriteBank.MobKindBasic,
     };
 
-    static Color FamilyTint()
+    /// <summary>
+    /// 몹 색조. **같은 종류는 반드시 같은 색이다**(오너 지적 2026-08-15
+    /// "같은 종류 몬스터끼리는 색깔 같게 해, 같은 모양끼리 알록달록하냐").
+    ///
+    /// 직전 구현은 필드에서 **개체마다** 계열을 무작위로 굴렸다. 그래서 똑같이 생긴
+    /// 추격형 늑대가 하나는 주황, 옆의 하나는 자홍으로 서서 색이 아무 정보도 주지
+    /// 않았다 — 색이 정보가 되려면 **같은 것은 같은 색**이라는 규칙이 먼저다.
+    ///
+    /// 이제 색은 **종류(실루엣)에서 결정**된다. 화면에서 색과 모양이 항상 짝지어
+    /// 나오므로, 멀리서 색만 봐도 그게 원거리형인지 추격형인지 읽힌다.
+    /// 던전에서는 계획된 계열색이 전체에 걸리는데(§10-3), 그때도 한 던전 안에서는
+    /// 전부 같은 색이라 「같은 종류 같은 색」이 깨지지 않는다.
+    /// ⚠️ 검증 실행(W1~W3)은 흰색 유지 — 구성 대조 실험에 색이 끼면 안 된다.
+    /// </summary>
+    static Color FamilyTint(int kind)
     {
-        // 필드에서도 계열 색을 입힌다. 예전엔 던전 밖이면 흰색으로 돌려보내서
-        // **필드 전투의 몹이 전부 무채색으로 보였다**(오너 지적 2026-08-15 "몬스터 색이
-        // 다 비슷하잖아"). 계열은 §10-3의 직업 상성이라 필드에서도 읽혀야 한다.
-        // ⚠️ 검증 실행(W1~W3)은 흰색 유지 — 구성 대조 실험에 색이 끼면 안 된다.
         if (SuppressTint) return Color.white;
+        if (DungeonRun.Active) return TintOf(DungeonRun.Plan.Family);
 
-        // 던전 밖(필드)에서는 계열이 안 정해져 있으므로 **개체마다** 계열을 굴려
-        // 섞어 놓는다 — 필드는 여러 계열이 함께 나오는 곳이라는 표현이기도 하다.
-        var fam = DungeonRun.Active ? DungeonRun.Plan.Family
-                                    : (MobFamily)(Random.Range(0, 5));
-        return TintOf(fam);
+        // 잡몹 3종은 서로 최대한 먼 색상으로. 정예 2종은 잡몹이 쓰지 않는 색을 쓴다 —
+        // 등급이 크기(1.4배)만으로 구분되면 뭉쳐 있을 때 안 읽힌다(오너 지적 "등급도
+        // 같은 거 같은데"). 이제 색과 크기 **두 축**이 함께 등급을 말한다.
+        // ⚠️ 여기 번호는 **행동 종류**(`_mKind`)다. 실루엣은 `MobSpriteKind`가 1:1로
+        //    갈라주므로 종류마다 그림도 색도 하나씩 대응한다 — 그래서 같은 모양은 같은 색이 된다.
+        //    (실루엣 이름과 행동 이름이 어긋나 있다는 별개 문제는 STATUS.md에 적어 뒀다)
+        return kind switch
+        {
+            0 => TintOf(MobFamily.야수),      // 기본형(Basic 실루엣) — 주황
+            1 => TintOf(MobFamily.기계),      // 포위형(Chaser 실루엣) — 강청
+            2 => TintOf(MobFamily.언데드),    // 원거리형(Charger 실루엣) — 독초록
+            3 => new Color(1f, 0.30f, 0.30f), // 치유 정예(Ranged 실루엣) — 적색(잡몹에 없는 색)
+            _ => new Color(0.78f, 0.40f, 1f), // 소환 정예(Swarmer 실루엣) — 보라(잡몹에 없는 색)
+        };
     }
 
     /// <summary>
