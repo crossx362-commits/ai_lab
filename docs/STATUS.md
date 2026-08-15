@@ -6,9 +6,32 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-15 21:13 · 이터레이션(아트 트랙 — 큐 #1 마지막 계열 swarmer 생성 착수)
+최종 갱신: 2026-08-15 21:23 · 이터레이션(아트 트랙 — 큐 #1 마지막 계열 swarmer 반입 완료 → 4/4)
 
-> **이번 이터 결과(아트): 큐 #1 마지막 계열 swarmer 생성 착수 — 아트 막힘 완전 해소.**
+> **이번 이터 결과(아트): 큐 #1 「몹 실루엣 재생성」 4/4 완료 — swarmer✅ 반입.**
+> 직전 이터가 21:12 분리세션(pid=54305)으로 걸어둔 swarmer 생성이 **완료돼 있었다**: `out_p2/
+> sheet_mob_swarmer2_A.png`·`_B.png`(둘 다 21:13, `/tmp/gen_swarmer.log`에 두 시트 ✅), 활성
+> higgsfield 프로세스 0 → 이중생성 위험 없음. 이 세션이 **처리·반입**:
+> ①두 시트 검은 격자선 → `wipe_gridlines`(A 행9·열20, B 행22·열34 덮음) ②`split_ai_sheet`
+> **고정격자**(A 5×2=idle×4·walk×6). **⚠️ B는 spec이 4×3(12셀)을 요청했으나 higgsfield가
+> 4×4(16셀)로 생성** — 실측(896/4=224 정수, 896/3=298.67 비정수) + 16셀 라벨 몽타주로 확정.
+> 4×4를 `attack_00..03(row0)·hurt_00..03(row1)·skip×4(row2 중복 중립포즈)·death_00..03(row3)`로
+> 매핑, **row2 4셀은 skip으로 버림** ③`align_frames`로 22장 공통 222×122·바닥정렬
+> ④death 4장에 남은 격자선 파편(상단 2~3px 분리 밴드) — 바닥앵커 본체와 떨어진 상단 섬만 제거
+> (idle/hurt 등 단일밴드 프레임 무영향, 4장만 정리) ⑤`mob_swarmer/` **동일 파일명 덮어쓰기**
+> (dest+.meta 존재 단언 후 copy → **GUID 보존, git status png 22개만 M·meta 0**) ⑥`game_asset_names.py`
+> **✅ 이상 없음**. **아트 육안검증**(`output/qa/ashes-to-stars/shots/swarmer_frames_montage.png`):
+> 낮고 넓게 벌어진 다족 벌레형(§0-B 포위형), attack_02 물기 임팩트 별, death_01 뒤집혀 다리
+> 위로(죽은 벌레), 무채색 셀셰이딩 — 캐릭터·charger/chaser(4족)·ranged(2족직립)와 한눈에 갈림.
+> **네거티브 컨트롤**: 옛 swarmer 아트로 되돌리면 톤/실루엣이 갈림 → `git checkout HEAD -- .../mob_swarmer`(반입 전 커밋).
+> ⚠️ **인게임 hunt 확인만 미완**(charger·ranged와 동일 벽): 원본 unity는 오너 `-useHub` 에디터 락
+> (PID 46914, 죽이지 않음), unity_meas는 다른 배치빌드 진행중(PID 55542, 21:22) + swarmer 미동기.
+> **스프라이트 자산 자체는 검증됨. 다음 GUI/빌드 세션이 `qa_shot.sh hunt`로 인게임 배치만** 확인하면
+> #1 완전 종결. **큐 #1 4계열(chaser·charger·ranged·swarmer) 반입 전부 끝 — 다음은 위 「최우선」
+> 코드 트랙**(INBOX 「📋 기획서↔코드 대조」의 A 빈버튼/B 대시·구르기).
+> **⚠️ combat 파일 만지기 전 `stat -f %Sm W3Party.cs`**(이번 확인 시 21:07 = 대화세션 최근 편집).
+
+> **이전 이터 결과(아트): 큐 #1 마지막 계열 swarmer 생성 착수 — 아트 막힘 완전 해소.**
 > INBOX ⭐가 「아트 서버가 waiting 적체」라 했으나 **이 시각 실측으로 풀렸다**: `higgsfield
 > generate list` 최근 20건 **전부 completed·waiting 0**, 계정 964크레딧·plus. swarmer만
 > A/B 시트 미생성이라(`out_p2`에 `*swarmer2*` 없음, mob01~ranged는 반입됨) 마지막 계열을 걸었다.
@@ -144,7 +167,7 @@
 
 | # | 항목 | 통과 기준 | 네거티브 컨트롤 |
 |---|---|---|---|
-| 1 | **몹 AI 4계열 실루엣 재생성** ⭐ **3/4 반입 완료(chaser✅ charger✅ ranged✅) · swarmer 생성 착수(pid=54305, 21:12)** | §0-A 픽셀아트 화풍, **4 AI 실루엣** × 22프레임씩. 무채색 회색-백(색은 런타임 `MobDef.색조`). **ranged 반입 완료**(`f603e43d`, montage 육안 — 직립 2족 궁수, 4족과 갈림). **인게임 hunt 확인만 미완**(빌드 권한 없는 세션이라 GUI 세션 인계 — charger와 동일). 남은 swarmer: spec 확인 후 **1계열씩** 파이프라인(wipe→split→align→덮어쓰기→검사기→montage) | 옛 아트로 되돌리면 캐릭터와 톤이 갈림. ranged 재현: `git checkout f603e43d~1 -- .../mob_ranged` |
+| 1 | **몹 AI 4계열 실루엣 재생성** ⭐ **4/4 반입 완료(chaser✅ charger✅ ranged✅ swarmer✅)** — 아트 종결, 인게임 hunt 확인만 GUI세션 대기 | §0-A 픽셀아트 화풍, **4 AI 실루엣** × 22프레임씩. 무채색 회색-백(색은 런타임 `MobDef.색조`). **swarmer 반입 완료**(montage 육안 — 다족 벌레형 포위형, attack 임팩트·death 뒤집힘, 4족/2족과 갈림, `game_asset_names` 통과, meta보존). **인게임 hunt 확인만 미완**(오너 useHub 락+unity_meas 배치중 — GUI/빌드 세션 인계) | 옛 아트로 되돌리면 캐릭터와 톤이 갈림. swarmer 재현: `git checkout HEAD -- .../mob_swarmer`(반입 커밋 전) |
 | ~~2~~ | ~~**§10-5 보스 쫄 소환**~~ ✅ **통과 기준 충족** | 기믹 발동 배선은 `006564f8`가 이미 함(호출부 0곳 → `FireNextGimmick`). 이번 이터: **소환이 빈 GameObject가 아니라 진짜 W3Party 쫄을 파티 한복판에 스폰**해 실제로 때린다. 측정: 정상 **소환피해 24**(5마리 스폰·`shots/qa_boss_summon_on.png`에 파티 포위) | ✅ **`BOSS_NO_SUMMON=1` → 소환 0마리·소환피해 0** (`boss_summon_NEGCTRL.log` vs `_NORMAL.log`) |
 | 2b | **보스 나머지 통합(HP·장판·힐체크)** — #2에서 갈라져 나옴 | ⚠️ **보스 HP가 파티 DPS로 안 깎인다** → 페이즈 전환·`OnBossDefeated`가 HP로 안 뜬다(보스 층 클리어가 보스 컴포넌트로는 아직 불가). **장판(FloorAOE)은 파티 피해 0**이고 위험 슬롯을 영영 물어 소환이 판당 1회만 터진다. **힐체크 `ReportDamageToActive` 호출부 0곳** → 요구회복 0으로 항상 통과 | 각 기믹 비활성 시 해당 효과 소멸 |
 | 3 | **§3 RaceDef 배선** | 종족 4종이 전투에 영향 0. 런타임 소비처 ≥1 | 값 변경이 결과에 반영되는지 |
@@ -232,6 +255,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 | 캐릭터 52장 화면 반영 확인 | `qa_hunt.png`에서 4직업이 새 아트로 표시·실루엣 구분됨 | `bcadbca1` |
 | **몹 chaser 계열 재생성(INBOX⭐)** | higgsfield 정상 생성(크레딧 1044→1030), 22프레임 반입, `game_asset_names` 통과, `qa_hunt.png`에서 늑대 실루엣 색조별 표시·캐릭터와 같은 세계관 | `20a048b9` |
 | **몹 charger 계열 재생성(INBOX⭐)** | 시트 A/B(생성 완료분) 처리·반입, 22프레임(동일 파일명→기존 meta 보존), `game_asset_names` 통과. **Read 육안검증**: 무채색 코뿔소 브루트(덩치·뿔·앞쏠림)·attack_00 wind-up 텔레그래프(§10-2)·캐릭터와 같은 셀셰이딩. 옛 art=매끈 3D톤 양(네거티브 자명). ⚠️인게임 qa_hunt는 GUI세션 대기(이 세션 유니티 실행 권한 없음) | `c80c6d2f` |
+| **몹 swarmer 계열 재생성(INBOX⭐)** | 21:13 생성분 시트 A/B 처리·반입. **B가 4×3 spec인데 4×4로 생성 → 라벨몽타주+치수(896/4정수)로 확정 후 row2 중복행 skip**, 22프레임(동일 파일명→meta 보존, git png22 M·meta0), `game_asset_names` 통과. **montage 육안**(`shots/swarmer_frames_montage.png`): 다족 벌레형 포위형·attack_02 물기 임팩트·death_01 뒤집힘·무채색 셀셰이딩, 4족/2족과 갈림. death 4장 잔여 격자선 파편 제거. ⚠️인게임 qa_hunt GUI세션 대기 | `7e3c06ac` |
 
 ## 막힌 것 · 보류
 
