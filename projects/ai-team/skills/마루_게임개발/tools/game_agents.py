@@ -39,6 +39,7 @@ from _shared.env import load_env        # noqa: E402
 from _shared.telegram import send       # noqa: E402
 from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.llm import ollama  # noqa: E402
 
 import importlib.util as _u             # noqa: E402
 _spec = _u.spec_from_file_location("game_council", SCRIPT_DIR / "game_council.py")
@@ -60,8 +61,48 @@ BEATS = {
 }
 
 
+def _priority_ok(items) -> bool:
+    """우선순위 역할의 로컬 결과가 쓸 만한지. 미달이면 클로드로 승격.
+
+    `game_council._chair_ok`와 같은 원칙 — verify가 없는 항목은 검증 불가능한
+    지시를 만들 뿐이다.
+    """
+    if not isinstance(items, list):
+        return False
+    for i in items:
+        if not isinstance(i, dict) or not str(i.get("title", "")).strip():
+            return False
+        if not str(i.get("verify", "")).strip():
+            return False
+    return True
+
+
 def _beat(lens: str, focus: str, situation: str) -> tuple[str, str, list]:
-    """역할 하나가 자기 영역을 훑고 (보고서, 백로그항목) 반환."""
+    """역할 하나가 자기 영역을 훑고 (보고서, 백로그항목) 반환.
+
+    ⚠️ **"우선순위"만 로컬 모델 1순위다.** 나머지 5개 역할(정합성·구현·밸런스·연출·검증)은
+    Read/Grep으로 코드를 직접 읽어야 하는 에이전틱 작업이라 로컬 완성 호출로 옮길 수 없다
+    (도구 호출이 아니라 텍스트 생성 한 번이라서). 우선순위만 예외인 이유는 판단 재료가
+    이미 `situation`(ORDERS.md·백로그·커밋 로그)에 다 들어 있어서 추가로 파일을 읽을
+    필요가 없기 때문 — `game_council._chair`가 의견 텍스트만 보고 종합하는 것과 같은 조건이다.
+    """
+    if lens == "우선순위":
+        try:
+            local = ollama(
+                f"너는 게임 개발팀의 '우선순위' 담당이다. {BEATS[lens]}\n\n"
+                f"[현재 상태]\n{situation}\n\n"
+                "[출력]\n## 발견\n<3줄 이내>\n\n## 과제\nJSON 배열, 없으면 []:\n"
+                '[{"title":"...","detail":"...","priority":"P1|P2|P3","track":"개발|그래픽",'
+                '"verify":"통과 기준 + 네거티브 컨트롤","needs_owner":false}]',
+                task="coding", json_mode=False)
+            items = extract_json(local) if local else None
+            if _priority_ok(items):
+                print("[역할감사] 우선순위 = 로컬 모델(gemma) — 클로드 호출 생략")
+                return lens, (local or "").strip(), items
+            print("[역할감사] 우선순위 로컬 결과 미달 — 클로드로 승격")
+        except Exception as e:
+            print(f"[역할감사] 우선순위 로컬 실패({e}) — 클로드로 승격")
+
     prompt = (
         f"너는 '재와 별(Ashes to Stars)' 개발팀의 **{lens}** 담당이다.\n"
         f"너의 렌즈: {focus}\n\n[이번 점검 과제]\n{BEATS[lens]}\n\n"

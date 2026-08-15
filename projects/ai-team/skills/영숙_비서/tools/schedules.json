@@ -193,6 +193,17 @@
    "enabled": true,
    "run": true,
    "priority": "normal"
+  },
+  {
+   "id": "game_agents_priority",
+   "agent": "마루",
+   "task": "게임 우선순위 상시 점검(로컬)",
+   "cron": "*/20 * * * *",
+   "description": "ORDERS.md·백로그 순서 역전 감지 — 로컬 모델(gemma) 1순위, 미달시 클로드 승격",
+   "command": "python3 projects/ai-team/skills/마루_게임개발/tools/game_agents.py --roles 우선순위",
+   "enabled": true,
+   "run": true,
+   "priority": "low"
   }
  ]
 }
