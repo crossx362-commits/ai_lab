@@ -59,6 +59,12 @@ namespace AshesToStars
                 else GameFlow.Go(GameFlow.Field);
             }
 
+            // ⚠️ 진입점을 여기 두는 이유: 화면을 만들어도 **갈 수 있는 버튼이 없으면**
+            //    그 화면은 없는 것과 같다(이 저장소에 실제 전례가 있다 — 렌더 점검은
+            //    화면 함수를 직접 불러 확인하므로 도달 불가를 영원히 못 잡는다).
+            if (Row(r, row++, "전투 스타일", "직업별로 공격형·방어형 등을 고른다(§3)"))
+                GameFlow.Go(GameFlow.Style);
+
             if (Row(r, row, "돌아가기", "영지로")) GameFlow.Go(GameFlow.Estate);
         }
 

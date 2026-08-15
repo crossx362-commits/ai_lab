@@ -32,6 +32,7 @@ public static class PlayableScenesBuilder
         (GameFlow.WorldMap,  typeof(WorldMapScreen)),
         (GameFlow.Character, typeof(CharacterScreen)),
         (GameFlow.Party,     typeof(PartyScreen)),
+        (GameFlow.Style,     typeof(StyleScreen)),
         (GameFlow.Dungeon,   typeof(DungeonScreen)),
         (GameFlow.Battle,    typeof(BattleScreen)),
         (GameFlow.Result,    typeof(ResultScreen)),

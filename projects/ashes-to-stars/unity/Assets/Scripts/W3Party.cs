@@ -367,6 +367,22 @@ public class W3Party : MonoBehaviour
 
     // ── 계측 ─────────────────────────────────────────────
     Style _style = Style.Balanced;
+
+    /// <summary>
+    /// true면 파티 전원에게 `_style`을 그대로 먹인다 — **검증 전용**이다.
+    /// W1~W3 구성 비교는 스타일이 변수로 끼면 성립하지 않는다(같은 이유로 `SuppressTint`가 있다).
+    /// 게임 플레이에서는 false라야 플레이어의 직업별 선택이 반영된다.
+    /// </summary>
+    public static bool UseFixedStyle;
+
+    /// <summary>직업별 저장된 선택을 전투 스타일로 옮긴다(§3).</summary>
+    static Style StyleOf(Job job) => AshesToStars.CombatStylePrefs.Get(job.ToString()) switch
+    {
+        AshesToStars.StyleId.공격형 => Style.Aggressive,
+        AshesToStars.StyleId.방어형 => Style.Defensive,
+        AshesToStars.StyleId.생존형 => Style.Survival,
+        _ => Style.Balanced,
+    };
     float _t;
     int _kills, _tauntUses, _backlineHits, _frontlineHits, _healsCast;
     float _shieldAbsorbed;
@@ -780,7 +796,11 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < _party.Length; i++)
         {
             var m = _party[i];
-            m.Style = _style;
+            // 플레이어가 고른 스타일이 우선한다(§3, StyleScreen). `_style`은 W1~W3 **검증용**
+            // 일괄 지정값이라, 그것만 쓰면 게임에서는 네 스타일 중 균형형 하나만 돌았다.
+            // 검증 하네스(`SuppressTint`와 같은 계열의 `--out` 경로)는 지정값을 그대로 쓴다 —
+            // 구성 비교는 전원이 같은 스타일이어야 성립하기 때문이다.
+            m.Style = UseFixedStyle ? _style : StyleOf(m.Job);
             m.Hp = m.MaxHp;
             m.Threat = 0f; m.DeadT = 0f;
             m.Shield = 0f; m.Gauge = 0f; m.SkillCd = 0f; m.Chant = Chant.진군가;

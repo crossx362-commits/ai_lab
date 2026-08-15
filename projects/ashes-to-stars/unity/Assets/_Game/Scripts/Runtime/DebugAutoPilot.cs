@@ -98,6 +98,17 @@ namespace AshesToStars
                 return;
             }
 
+            if (_mode == "style")
+            {
+                // 전투 스타일 화면(§3). 기본값만 보이면 「고를 수 있다」가 확인되지 않으므로
+                // 서로 다른 스타일을 미리 넣어 **선택이 실제로 저장·표시되는지** 함께 본다.
+                CombatStylePrefs.Set("수호기사", StyleId.방어형);
+                CombatStylePrefs.Set("검사", StyleId.공격형);
+                CombatStylePrefs.Set("사제", StyleId.생존형);
+                GameFlow.Go(GameFlow.Style);
+                return;
+            }
+
             if (_mode == "party")
             {
                 // 편성 화면만 확인한다. 회복 중·마지막 목숨 표시를 보려고 상태를 하나 만들어 둔다.

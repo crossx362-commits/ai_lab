@@ -156,8 +156,16 @@ namespace AshesToStars
             float step = Mathf.Max(0.8f, arenaRadius * 0.09f);
             int placed = 0, blockers = 0;
 
-            for (float y = -outer; y <= outer && placed < PROP_CAP; y += step)
-                for (float x = -outer; x <= outer && placed < PROP_CAP; x += step)
+            // ⚠️ 상한을 루프 조건에 걸지 마라. `placed < PROP_CAP`을 for에 두면 맵을
+            //    아래(-outer)부터 훑다가 상한에 닿는 순간 멈춰서 **프랍이 전부 아래쪽
+            //    몇 줄에만 몰리고 그 위는 0개**가 된다. 임계를 낮춰 후보가 늘수록 더 심해진다
+            //    (실측 2026-08-15: 90개가 전부 화면 밖 하단, 카메라에는 거의 안 보였다).
+            //    그래서 **후보를 다 모은 뒤 균일하게 솎아낸다** — 밀도만 줄고 분포는 유지된다.
+            var cand = new System.Collections.Generic.List<Vector2>();
+            var candInside = new System.Collections.Generic.List<bool>();
+
+            for (float y = -outer; y <= outer; y += step)
+                for (float x = -outer; x <= outer; x += step)
                 {
                     float d2 = x * x + y * y;
                     if (d2 > outer * outer) continue;
@@ -176,33 +184,182 @@ namespace AshesToStars
                     // "덩어리로 뭉치고 사이에 길이 난다"가 유지된다.
                     if (Random.value > 0.62f) continue;
 
-                    var worldPos = new Vector2(x + (Random.value - 0.5f) * step,
-                                               y + (Random.value - 0.5f) * step);
-                    int propIdx = Random.Range(0, propNames.Length);
-                    if (texes[propIdx] == null) continue;     // 로드 실패분은 건너뛴다
+                    cand.Add(new Vector2(x + (Random.value - 0.5f) * step,
+                                         y + (Random.value - 0.5f) * step));
+                    candInside.Add(inside);
+                }
 
-                    var go = new GameObject("prop_" + propNames[propIdx], typeof(SpriteRenderer));
-                    go.transform.SetParent(decorRoot.transform, false);
-                    go.transform.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, 0.1f);
-                    go.transform.localScale = Vector3.one;   // 프랍은 PPU로 크기 조정
+            // 균일 솎아내기 — 후보가 상한보다 많으면 일정 간격으로 건너뛰며 고른다.
+            // 앞에서부터 자르면 다시 공간 편향이 생기므로 **간격(stride)**으로 고른다.
+            float keep = cand.Count > PROP_CAP ? (float)PROP_CAP / cand.Count : 1f;
+            float acc = 0f;
+            for (int ci = 0; ci < cand.Count; ci++)
+                {
+                    acc += keep;
+                    if (acc < 1f) continue;
+                    acc -= 1f;
 
-                    var sr = go.GetComponent<SpriteRenderer>();
-                    sr.sprite = Sprite.Create(atlas, rects[propIdx], Vector2.one * 0.5f, 32f, 0,
-                                             SpriteMeshType.FullRect);
-                    sr.sharedMaterial = mat;
-                    // 정렬: y가 낮을수록 앞. 캐릭터(500)보다 뒤인 프랍 기본층(100)
-                    sr.sortingOrder = 100 - (int)(worldPos.y * 4f);
-
-                    // 아레나 안에 선 프랍은 **보이기만 하면 안 된다** — 지나갈 수 있으면
-                    // 엄폐가 성립하지 않고, 그림만 있는 장애물은 오히려 유저를 속인다.
-                    if (inside) { _cover.Add(worldPos); blockers++; }
-
+                    var worldPos = cand[ci];
+                    bool inside = candInside[ci];
+                    // ⚠️ 산포 대상은 **자연물만**이다. 마을 구성물(집·울타리·우물)이 여기
+                    //    섞이면 집이 들판에 무작위로 흩어져 마을로 안 읽힌다 — 그것들은
+                    //    `BuildVillage`가 정해진 자리에 세운다.
+                    int propIdx = Random.Range(0, ScatterCount(biome, propNames.Length));
+                    if (!Place(propIdx, worldPos, inside)) continue;
                     placed++;
                 }
 
+            // ── 마을 (오너 지시 2026-08-15 「지형을 마을처럼 구성해」) ────────────────
+            // 아레나를 **마을 광장**으로 삼는다. 집을 광장 둘레에 세우고 사이를 울타리로
+            // 잇고 길가에 가로등을 놓으면, 전투 공간은 그대로 비어 있는 채로 화면이
+            // 마을로 읽힌다. 집을 노이즈로 흩뿌리지 않는 이유가 이것이다 — 마을은
+            // **간격이 일정하고 정면이 광장을 향할 때** 마을로 보인다.
+            int villageCount = 0;
+            if (biome == Biome.Field)
+                villageCount = BuildVillage(arenaRadius, propNames, Place);
+
             if (엄폐물) RegisterCover();
             Debug.Log($"[FieldDecor] {biome} 프랍 {placed}개 노이즈 배치" +
+                      (villageCount > 0 ? $" + 마을 구성물 {villageCount}개" : "") +
                       (엄폐물 ? $" (아레나 내 엄폐물 {blockers}개)" : " (아레나 밖 장식만)"));
+
+            // 로컬 함수 — 스캐터와 마을이 **같은 경로로** 프랍을 세운다.
+            // 두 벌로 나누면 정렬 순서·아틀라스·엄폐 등록 중 하나가 조용히 어긋난다.
+            bool Place(int propIdx, Vector2 worldPos, bool asCover)
+            {
+                if (propIdx < 0 || propIdx >= texes.Length) return false;
+                if (texes[propIdx] == null) return false;    // 로드 실패분은 건너뛴다
+
+                var go = new GameObject("prop_" + propNames[propIdx], typeof(SpriteRenderer));
+                go.transform.SetParent(decorRoot.transform, false);
+                go.transform.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, 0.1f);
+                go.transform.localScale = Vector3.one;   // 프랍은 PPU로 크기 조정
+
+                var sr = go.GetComponent<SpriteRenderer>();
+                // 크기는 **아트가 정한 목표 유닛**(prop_scale.json)에서 PPU를 역산한다.
+                // PPU 32 고정이던 시절엔 128px 원본이 전부 4유닛 = 캐릭터(2유닛)의 두 배라
+                // 바위가 사람만 했다. 그 표는 2026-08-14에 만들어 두고 **읽는 곳이 0곳**이었다 —
+                // 마을을 세우면서 살렸다(집 4유닛 옆에 울타리 0.9유닛이라야 마을로 보인다).
+                float px = rects[propIdx].height * atlas.height;         // 아틀라스 UV → 픽셀
+                float ppu = px / Mathf.Max(0.05f, TargetUnits(propNames[propIdx]));
+                sr.sprite = Sprite.Create(atlas, rects[propIdx], Vector2.one * 0.5f, ppu, 0,
+                                         SpriteMeshType.FullRect);
+                sr.sharedMaterial = mat;
+                // 정렬: y가 낮을수록 앞. 캐릭터(500)보다 뒤인 프랍 기본층(100)
+                sr.sortingOrder = 100 - (int)(worldPos.y * 4f);
+
+                // 아레나 안에 선 프랍은 **보이기만 하면 안 된다** — 지나갈 수 있으면
+                // 엄폐가 성립하지 않고, 그림만 있는 장애물은 오히려 유저를 속인다.
+                if (asCover) { _cover.Add(worldPos); blockers++; }
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 노이즈로 흩뿌려도 되는 프랍의 개수. 평원은 앞 8종(자연물)만 산포 대상이고
+        /// 뒤쪽 마을 구성물은 `BuildVillage`가 자리를 정한다.
+        /// </summary>
+        static int ScatterCount(Biome biome, int total) => biome == Biome.Field ? 8 : total;
+
+        // ── 프랍 목표 크기표 (art/prop_scale.json) ────────────────
+        // 단일 소스는 `art/prop_scale.json`이다. 아트가 크기를 정하고 코드는 읽기만 한다 —
+        // C# 상수로 옮겨 적으면 두 곳이 어긋나는 그 사고를 또 낸다.
+        // ⚠️ 아트 쪽 파일을 고쳤으면 `Assets/Resources/prop_scale.json`으로 복사해야 반영된다.
+        static System.Collections.Generic.Dictionary<string, float> _scale;
+        const float DEFAULT_UNITS = 1.0f;
+
+        static float TargetUnits(string name)
+        {
+            if (_scale == null)
+            {
+                _scale = new System.Collections.Generic.Dictionary<string, float>();
+                var ta = Resources.Load<TextAsset>("prop_scale");
+                if (ta == null)
+                {
+                    // 조용히 기본값으로 넘어가지 않는다 — 전부 1유닛이면 집이 사람만 해진다
+                    Debug.LogWarning("[FieldDecor] Resources/prop_scale.json 없음 — 프랍 크기가 전부 기본값이 된다");
+                }
+                else
+                {
+                    // 평평한 "이름": 숫자 목록이라 정식 JSON 파서가 필요 없다.
+                    // (JsonUtility는 사전을 못 읽고, 이 표에는 설명용 문자열 키도 섞여 있다)
+                    var mm = System.Text.RegularExpressions.Regex.Matches(
+                        ta.text, "\"([A-Za-z0-9_]+)\"\\s*:\\s*([0-9]*\\.?[0-9]+)");
+                    foreach (System.Text.RegularExpressions.Match m in mm)
+                        if (float.TryParse(m.Groups[2].Value,
+                                System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out float v))
+                            _scale[m.Groups[1].Value] = v;
+                }
+            }
+            return _scale.TryGetValue(name, out float u) ? u : DEFAULT_UNITS;
+        }
+
+        /// <summary>
+        /// 광장(아레나) 둘레에 마을을 세운다. 반환값은 실제로 선 구성물 수.
+        ///
+        /// 배치 규칙 — 이 셋이 「마을처럼 보인다」를 만든다:
+        ///   ① 집은 광장 둘레 **일정 간격**으로. 무작위면 난개발로 읽힌다
+        ///   ② 집과 집 **사이를 울타리로 잇는다**. 빈틈이 있으면 흩어진 오두막이 된다
+        ///   ③ 길가에 가로등, 집 옆에 건초·수레 — 생활의 흔적이 있어야 폐허가 아니다
+        ///
+        /// 광장 안(아레나)에는 **우물 하나만** 둔다. 그 이상 넣으면 전투 공간이 좁아진다.
+        /// </summary>
+        static int BuildVillage(float arenaRadius, string[] names,
+                                System.Func<int, Vector2, bool, bool> place)
+        {
+            const float ISO_Y = StressTest.ISO_Y;
+            int Idx(string n) => System.Array.IndexOf(names, n);
+            int n = 0;
+
+            // 집이 서는 고리 — 아레나 바로 바깥. 너무 멀면 화면 밖이라 안 보이고,
+            // 너무 가까우면 전투에 끼어든다.
+            float ringHouse = arenaRadius * 1.32f;
+            float ringFence = arenaRadius * 1.12f;   // 광장과 집 사이 = 마당 경계
+            float ringLamp = arenaRadius * 1.04f;    // 광장 가장자리 = 길가
+
+            string[] houses = { "village_house_0", "village_house_1", "village_house_2",
+                                "village_barn_0" };
+            const int LOTS = 8;                       // 광장을 둘러싼 집터 수
+
+            for (int i = 0; i < LOTS; i++)
+            {
+                float a = (i / (float)LOTS) * Mathf.PI * 2f;
+                var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+
+                // ① 집 — 종류를 돌아가며 써서 같은 집이 이웃하지 않게 한다
+                if (place(Idx(houses[i % houses.Length]), dir * ringHouse, false)) n++;
+
+                // ③ 집 옆 생활 흔적 — 한 집 걸러 하나씩(전부 두면 지저분하다)
+                if (i % 2 == 0)
+                {
+                    var side = new Vector2(-dir.y, dir.x) * (arenaRadius * 0.16f);
+                    string trinket = (i % 4 == 0) ? "village_haystack_0" : "village_cart_0";
+                    if (place(Idx(trinket), dir * ringHouse + side, false)) n++;
+                }
+
+                // ② 울타리 — 집터 앞을 가로지르고, 집터 경계에는 모서리 기둥
+                if (place(Idx("village_fence_1"), dir * ringFence, false)) n++;
+                float half = (Mathf.PI * 2f / LOTS) * 0.3f;
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    float fa = a + half * s;
+                    var fd = new Vector2(Mathf.Cos(fa), Mathf.Sin(fa));
+                    if (place(Idx("village_fence_0"), fd * ringFence, false)) n++;
+                }
+
+                // ③ 가로등 — 집터 사이 길목마다
+                float la = a + (Mathf.PI / LOTS);
+                var ld = new Vector2(Mathf.Cos(la), Mathf.Sin(la));
+                if (place(Idx("village_lamp_0"), ld * ringLamp, false)) n++;
+            }
+
+            // 우물 — 광장의 랜드마크. 중앙은 스폰 지점이라 비우고 한쪽으로 치운다.
+            // 엄폐 등록은 하지 않는다: 광장 안 장애물은 W1~W3 구성 비교를 흔든다(§3-4).
+            if (place(Idx("village_well_0"), new Vector2(arenaRadius * 0.62f, 0f), false)) n++;
+
+            _ = ISO_Y;   // 좌표는 place가 ISO 보정한다 — 여기서 두 번 곱하지 않는다
+            return n;
         }
 
         static string[] GetPropNames(Biome biome) => biome switch
@@ -214,6 +371,13 @@ namespace AshesToStars
                 "field_bush_0", "field_bush_1", "field_bush_2",
                 "field_rock_0", "field_rock_1", "field_rock_2",
                 "field_stump_0", "field_stump_1",
+                // 마을 구성물(오너 지시 2026-08-15). 노이즈 산포에는 **섞이지 않는다** —
+                // `NATURE_COUNT`로 앞쪽 자연물만 흩뿌리고, 아래 10종은 `BuildVillage`가
+                // 정해진 자리에 세운다. 집이 풀처럼 흩뿌려지면 마을이 아니라 난개발이다.
+                "village_house_0", "village_house_1", "village_house_2",
+                "village_barn_0", "village_well_0",
+                "village_fence_0", "village_fence_1",
+                "village_haystack_0", "village_cart_0", "village_lamp_0",
             },
 
             // ── 잿벌 (ash) ────────────────────

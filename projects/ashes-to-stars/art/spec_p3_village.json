@@ -1,0 +1,61 @@
+{
+ "_note": "P3 마을 프랍(오너 지시 2026-08-15 '지형을 마을처럼 구성해'). 이름은 FieldDecor.GetPropNames()의 Biome.Field 목록과 VillageLayout이 요구하는 값 그대로 — 어긋나면 game_asset_names.py가 누락으로 잡는다.",
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "prop": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same limited earthy palette, thin dark outlines, soft cel shading, 3/4 top-down quarter view with a ~30 degree downward camera. Not photorealistic, not 3D-rendered, no smooth gradients. A single object centered in frame, no text, no border, no extra props. The object stands alone with nothing drawn beneath it — no ground, no grass patch, no shadow of any kind. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "village_house_0",
+   "rules_ref": "prop",
+   "prompt": "A small peasant cottage with whitewashed daub walls, dark timber framing beams, and a steep thatched straw roof. One shuttered window and a plank door on the front face. Weathered, lived-in, humble. Seen from a 3/4 elevated angle so both the front wall and one side wall are visible."
+  },
+  {
+   "name": "village_house_1",
+   "rules_ref": "prop",
+   "prompt": "A slightly larger two-story village house with a stone ground floor and a timber upper floor that juts out over it. Red clay tile roof, a short chimney with faint smoke, two small windows. Seen from a 3/4 elevated angle so both the front wall and one side wall are visible."
+  },
+  {
+   "name": "village_house_2",
+   "rules_ref": "prop",
+   "prompt": "A tiny sagging hut with a patched thatched roof, crooked timber walls, and a low doorway covered by a hanging cloth. Poorer and smaller than a cottage, leaning slightly. Seen from a 3/4 elevated angle so both the front wall and one side wall are visible."
+  },
+  {
+   "name": "village_barn_0",
+   "rules_ref": "prop",
+   "prompt": "A wide low wooden barn with vertical dark plank walls, a broad sloped shingle roof, and tall double doors standing half open showing darkness inside. Seen from a 3/4 elevated angle so both the front wall and one side wall are visible."
+  },
+  {
+   "name": "village_well_0",
+   "rules_ref": "prop",
+   "prompt": "A round village well built of stacked grey fieldstone, waist-high, with a wooden post frame over it holding a rope and a hanging bucket. Small wooden roof over the frame."
+  },
+  {
+   "name": "village_fence_0",
+   "rules_ref": "prop",
+   "prompt": "A straight segment of rustic wooden fence: two horizontal weathered rails between squared posts, waist-high, grain visible, slightly uneven. The segment runs left to right across the frame."
+  },
+  {
+   "name": "village_fence_1",
+   "rules_ref": "prop",
+   "prompt": "A wooden fence corner: two rail segments meeting at a right angle around a thicker corner post, waist-high, weathered timber."
+  },
+  {
+   "name": "village_haystack_0",
+   "rules_ref": "prop",
+   "prompt": "A conical stack of dried golden hay piled around a central wooden pole, loose straw sticking out at the base, taller than a person."
+  },
+  {
+   "name": "village_cart_0",
+   "rules_ref": "prop",
+   "prompt": "A wooden two-wheeled handcart with spoked wheels, its shafts tipped down to rest on the ground, a few sacks and a barrel loaded in the bed."
+  },
+  {
+   "name": "village_lamp_0",
+   "rules_ref": "prop",
+   "prompt": "A tall wooden lamp post with an iron lantern housing at the top holding a small warm flame behind glass panes, a crossbar near the top."
+  }
+ ]
+}
