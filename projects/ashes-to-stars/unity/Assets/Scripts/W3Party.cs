@@ -803,7 +803,10 @@ public class W3Party : MonoBehaviour
             _mCd[i] = Random.value * 2f;
             _mAtkCd[i] = Random.value * 0.8f; _mFlash[i] = 0f;
             _mOn[i] = true; _mAlive++;
-            _mSr[i].sprite = SpriteBank.Cached.Mob(_mKind[i] == 2 ? 2 : _mKind[i] == 1 ? 1 : 0);
+            // 스폰 그림과 애니메이션이 **같은 규칙**을 쓴다(MobSpriteKind가 단일 소스).
+            // 예전엔 여기만 종류별이고 애니메이션은 0번 고정이라, 몹이 걷기 시작하는
+            // 순간 그림이 바뀌었다.
+            _mSr[i].sprite = SpriteBank.Cached.MobAnim(MobSpriteKind(_mKind[i]), SpriteBank.Motion.Idle, 0f);
             // 정예는 **역할 색이 먼저**다(치유·소환은 즉시 알아봐야 하는 대상이다).
             // 그 외 잡몹만 계열 색조를 입는다(§10-3).
             _mSr[i].color = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)      // 치유 정예 = 초록
@@ -993,7 +996,7 @@ public class W3Party : MonoBehaviour
             // 몹 애니메이션. 개체마다 시간을 어긋나게 줘야 100마리가 같은 프레임으로
             // 군무를 추지 않는다 — 물량이 많을수록 동기화가 눈에 띈다(§10-2).
             var mm = _mFlash[i] > 0f ? SpriteBank.Motion.Hurt : SpriteBank.Motion.Walk;
-            _mSr[i].sprite = bank.MobAnim(0, mm, _t + i * 0.37f);
+            _mSr[i].sprite = bank.MobAnim(MobSpriteKind(_mKind[i]), mm, _t + i * 0.37f);
             _mSr[i].sortingOrder = Depth(_mPos[i].y);
 
             float ratio = _mMaxHp[i] > 0f ? _mHp[i] / _mMaxHp[i] : 1f;
@@ -1388,6 +1391,26 @@ public class W3Party : MonoBehaviour
     /// 정해둔 방식을 그대로 따른다 — 새 스프라이트를 그리지 않는다.
     /// ⚠️ 색만 바꾼다. 실루엣은 건드리지 않는다(수백 마리 화면에서 구분은 실루엣이 먼저다).
     /// </summary>
+    /// <summary>
+    /// 몹 종류(`_mKind`) → 스프라이트 계열 인덱스(`SpriteBank.MOB_DIRS`).
+    ///
+    /// **스폰 시 정적 스프라이트와 매 프레임 애니메이션이 같은 규칙을 써야 한다** —
+    /// 예전엔 스폰은 종류별(`Cached.Mob(...)`)인데 애니메이션은 `MobAnim(0, ...)` 고정이라,
+    /// 몹이 처음 나올 때와 걷기 시작할 때 그림이 바뀌었다. 그 규칙을 여기 하나로 모은다.
+    ///
+    /// §10-2 계열: 0·1·2=잡몹(추격·돌진), 3=치유 정예, 4=소환 정예.
+    /// 정예 2종은 전용 아트가 아직 없어 원거리·군집 실루엣을 빌려 쓰되 색·크기로 구분한다
+    /// (스폰 코드가 이미 초록/보라 틴트와 1.4배 크기를 준다).
+    /// </summary>
+    static int MobSpriteKind(int kind) => kind switch
+    {
+        1 => SpriteBank.MobKindChaser,
+        2 => SpriteBank.MobKindCharger,
+        3 => SpriteBank.MobKindRanged,     // 치유 정예 — 후열형 실루엣
+        4 => SpriteBank.MobKindSwarmer,    // 소환 정예 — 군집형 실루엣
+        _ => SpriteBank.MobKindBasic,
+    };
+
     static Color FamilyTint()
     {
         if (!DungeonRun.Active) return Color.white;             // 필드·검증은 기본색

@@ -34,7 +34,8 @@ public class SpriteBank
     }
 
     // ── 오너 몬스터 아트 (2026-08-13) ────────────────────
-    // 지금은 1종. 종이 늘면 MOB_DIRS에 폴더명을 추가하면 된다.
+    // 종이 늘면 MOB_DIRS에 폴더명을 추가한다. 아틀라스·피벗·애니메이션은 배열 길이를
+    // 따라가므로 다른 곳은 손댈 필요가 없다(2026-08-15에 1종 → 5종으로 늘리며 확인).
     public enum MobFrame
     {
         Idle0 = 0, Idle1, Idle2, Idle3,
@@ -44,7 +45,12 @@ public class SpriteBank
         Death0, Death1, Death2, Death3,
     }
 
-    static readonly string[] MOB_DIRS = { "mob01" };
+    // 계열 순서가 곧 `MobAnim(kind, ...)`의 인덱스다 — 바꾸면 화면의 몹 그림이 통째로 어긋난다.
+    // 0번(mob01)은 기존 기본형이라 자리를 지킨다. 1~4는 §10-2 계열 구분용 P2 아트.
+    public const int MobKindBasic = 0, MobKindChaser = 1, MobKindCharger = 2,
+                     MobKindRanged = 3, MobKindSwarmer = 4;
+    static readonly string[] MOB_DIRS =
+        { "mob01", "mob_chaser", "mob_charger", "mob_ranged", "mob_swarmer" };
     static readonly string[] MOB_FRAMES =
     {
         "idle_00", "idle_01", "idle_02", "idle_03",
