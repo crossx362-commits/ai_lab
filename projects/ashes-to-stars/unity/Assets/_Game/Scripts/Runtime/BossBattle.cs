@@ -47,6 +47,10 @@ namespace AshesToStars
         // 소환을 끄면 「소환 몹이 준 파티 피해」가 0으로 떨어지는지로 배선을 검증한다.
         private bool summonDisabled;
 
+        // 네거티브 컨트롤: BOSS_NO_DPS=1이면 파티 피해가 보스 HP에 반영되지 않는다 —
+        // 이걸 끄면 보스 HP가 안 줄어 OnBossDefeated가 안 떠 층이 안 돌파되는지로 배선을 검증한다.
+        private bool bossDpsDisabled;
+
         // 힐 체크 (지속 광역딜 기믹)
         private float healCheckDuration;
         private float healCheckElapsed;
@@ -222,6 +226,7 @@ namespace AshesToStars
                     currentPhase = 0,
                     isActive = true
                 };
+                SpawnBossView(boss, i, bossCount);
                 bosses.Add(boss);
             }
 
@@ -310,6 +315,42 @@ namespace AshesToStars
         /// HP 구간으로 페이즈를 올린다(§10-5 기믹 #6 "페이즈 전환").
         /// 페이즈가 오르면 활성 스킬이 하나 늘고(`GetSkillCountForPhase`) 기믹 주기도 짧아진다.
         /// </summary>
+        /// <summary>
+        /// 보스를 화면에 세운다.
+        ///
+        /// **여기가 없어서 보스전에 보스가 없었다.** `BossInstance`는 HP·페이즈·좌표까지
+        /// 가진 실체인데 그리는 코드가 0곳이라, 기믹(장판·소환·회복)만 도는 유령 전투였다.
+        /// 아트도 `boss_0`(옛 3D 플레이스홀더) 한 장뿐이라 실루엣 구분 자체가 불가능했다 —
+        /// 그래서 §0-B의 「실루엣 4종 변주」 아트를 뽑아 여기에 물린다.
+        ///
+        /// 층으로 실루엣을 고른다(§0-B: 전용 모델을 만들지 않고 크기·색으로 변주).
+        /// </summary>
+        private void SpawnBossView(BossInstance boss, int i, int total)
+        {
+            var bank = SpriteBank.Load();
+            if (bank?.Boss == null || bank.Boss.Length == 0)
+            {
+                Debug.LogWarning("[BossBattle] 보스 스프라이트 없음 — 보스가 안 보인다");
+                return;
+            }
+
+            var go = new GameObject($"Boss_{i}");
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = bank.Boss[Mathf.Abs(currentFloor / 5 + i) % bank.Boss.Length];
+            sr.sharedMaterial = bank.Mat;
+            // 층이 높을수록 크게 — §0-B가 말한 "크기 변주"가 이것이다.
+            float scale = 1f + Mathf.Min(0.6f, currentFloor * 0.01f);
+            go.transform.localScale = new Vector3(scale, scale, 1f);
+
+            // 여러 마리면 좌우로 벌려 세운다(§10-5 다수 보스).
+            float span = total > 1 ? (i - (total - 1) * 0.5f) * 4.5f : 0f;
+            boss.position = new Vector3(span, 5.5f, 0f);
+            go.transform.position = new Vector3(boss.position.x,
+                                                boss.position.y * StressTest.ISO_Y, 0f);
+            sr.sortingOrder = 1000 - Mathf.RoundToInt(boss.position.y * 10f);   // 유닛과 같은 척도
+            boss.view = sr;
+        }
+
         private void UpdatePhase(BossInstance boss)
         {
             if (boss.phaseCount <= 1) return;
@@ -472,6 +513,10 @@ namespace AshesToStars
             public int phaseCount;           // 총 페이즈 개수
             public int currentPhase;         // 0부터 시작
             public bool isActive;
+            /// <summary>화면에 선 보스. 없으면 **기믹만 돌고 보스는 안 보인다**(2026-08-15까지 그랬다).</summary>
+            public SpriteRenderer view;
+            /// <summary>월드 좌표. 장판·소환이 보스 자리를 기준으로 터져야 위치가 뜻을 갖는다.</summary>
+            public Vector3 position;
 
             /// <summary>
             /// 페이즈별 활성 스킬 개수

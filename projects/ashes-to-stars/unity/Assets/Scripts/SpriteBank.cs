@@ -10,6 +10,8 @@ public class SpriteBank
 
     public Material Mat;
     public Sprite Player, Summon, Projectile, Ground;
+    /// <summary>보스 실루엣 4종(§0-B). 층·계열로 골라 크기·색을 변주해 쓴다.</summary>
+    public Sprite[] Boss;
     /// <summary>체력바 등 단색 사각형용 흰 1유닛 스프라이트. 색은 SpriteRenderer.color로 준다.</summary>
     public Sprite White;
     Sprite[] _mobs;
@@ -125,6 +127,10 @@ public class SpriteBank
     // Resources 아래 이름 (확장자 없음)
     static readonly string[] MOB_KEYS = { "mob_chaser_0", "mob_swarmer_0", "mob_ranged_0" };
 
+    /// <summary>보스 실루엣 4종. 층·계열로 골라 쓴다(§0-B 변주 원칙).</summary>
+    public static readonly string[] BOSS_KEYS =
+        { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
+
     public static SpriteBank Load()
     {
         if (Cached != null) return Cached;
@@ -133,7 +139,10 @@ public class SpriteBank
         var baseNames = new[]
         {
             "player_knight_0", MOB_KEYS[0], MOB_KEYS[1], MOB_KEYS[2],
-            "elite_healer_0", "boss_0"
+            "elite_healer_0", "boss_0",
+            // 보스 실루엣 4종(§0-B: 보스 20종에 전용 모델을 만들지 않고 **실루엣 4종을
+            // 크기·색·장식으로 변주**). 예전엔 `boss_0` 한 장뿐이라 모든 보스가 같은 그림이었다.
+            "boss_brute", "boss_serpent", "boss_wraith", "boss_construct"
         };
 
         // 캐릭터 픽셀아트를 같은 아틀라스에 싣는다 — 배칭이 깨지면 W1 성능 전제가 무너진다
@@ -291,7 +300,15 @@ public class SpriteBank
         b.Player = MakeAt(0, U_CHAR);
         b._mobs = new[] { MakeAt(1, U_MOB), MakeAt(2, U_MOB), MakeAt(3, U_MOB) };
         b.Summon = MakeAt(4, U_ELITE);
-        b.Projectile = MakeAt(5, U_PROJ);
+        // ⚠️ 예전엔 `MakeAt(5, U_PROJ)`였다 — 인덱스 5는 `boss_0`이라 **투사체가 보스
+        //    플레이스홀더 그림(회색 덩어리 + 원뿔)으로 그려지고 있었다**(2026-08-15 발견).
+        //    작게 그려져 아무도 눈치채지 못했다. 전용 아트가 생기기 전까지는 단색 점이
+        //    낫다 — 최소한 무엇인지 헷갈리지 않는다.
+        // 보스 실루엣 4종(§0-B). `U_BOSS`는 선언만 되고 **쓰이는 곳이 없었다** —
+        // 즉 보스 그림이 아틀라스에 실려도 보스 크기로 만들어진 적이 없다.
+        b.Boss = new Sprite[BOSS_KEYS.Length];
+        for (int i = 0; i < BOSS_KEYS.Length; i++)
+            b.Boss[i] = MakeAt(6 + i, U_BOSS);      // 6부터가 BOSS_KEYS 구간이다
 
         // 직업마다 **idle 한 장**으로 배율과 발밑을 정하고 그 직업의 전 프레임에 같은 값을 쓴다.
         //  ① 프레임마다 재면 공격처럼 몸을 숙이는 동작에서 확대율이 달라져 캐릭터가 커졌다 작아졌다 한다
@@ -333,6 +350,10 @@ public class SpriteBank
 
         // 체력바용 흰 사각형 — 아틀라스 마지막 칸이라 같은 머티리얼을 쓴다(배칭 유지)
         b.White = MakeAt(WHITE, 1f);
+
+        // ⚠️ **`b.White` 할당 뒤에 와야 한다.** 위쪽(다른 base 스프라이트와 같은 자리)에
+        //    뒀다가 null을 넣을 뻔했다 — 이 함수는 아래로 갈수록 채워지는 구조다.
+        b.Projectile = b.White;
 
         // 조작 캐릭터도 플레이스홀더가 아니라 실제 아트로 — W2도 이 한 줄로 같이 반영된다
         b.Player = b.Char(Job.Tank);
