@@ -82,7 +82,9 @@ while true; do
   echo "▶ 이터레이션 #$ITER  $(date '+%H:%M:%S')  → $LOG"
 
   # --continue를 쓰지 않는다. 매번 새 세션인 것이 이 루프의 핵심이다.
-  if claude -p "$PROMPT" --permission-mode acceptEdits >"$LOG" 2>&1; then
+  # `< /dev/null` — 무인 실행이라 stdin이 없다. 안 막으면 매번 3초를 기다리며
+  # "no stdin data received" 경고를 낸다(실측).
+  if claude -p "$PROMPT" --permission-mode acceptEdits >"$LOG" 2>&1 < /dev/null; then
     FAILS=0
     echo "✅ #$ITER 완료"
     tail -5 "$LOG" | sed 's/^/   /'
