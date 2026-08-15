@@ -49,7 +49,11 @@ FRAME="${2:-${GAME_SHOT_FRAME:-300}}"
 mkdir -p "$SHOTS"
 
 # ── 1. 에디터 락 확인. 남의 Unity를 죽이지 않는다(오너가 연 것일 수 있다)
-if [ -f "$PROJ/Temp/UnityLockfile" ] && pgrep -f "Unity.app/Contents/MacOS/Unity" | grep -qv VBCS 2>/dev/null; then
+# ⚠️ "락파일이 있다 + 유니티가 떠 있다"로 판정하면 **오탐한다.** 락파일은 배치 빌드가
+#    죽으면 남고, 떠 있는 유니티는 **다른 프로젝트**(원본)일 수 있다 — 실측 2026-08-15:
+#    사본으로 빌드하려는데 원본을 연 에디터 때문에 막혔다. **그 프로젝트를 실제로
+#    잡고 있는 프로세스가 있는지**로 본다.
+if pgrep -fl "Unity.app/Contents/MacOS/Unity" 2>/dev/null | grep -iv VBCS | grep -qiF -- "$PROJ"; then
   echo "⚠️ 유니티 에디터가 프로젝트를 잡고 있다 — 배치 빌드는 exit 21로 죽는다."
   echo "   에디터를 닫고 다시 실행하거나, --skip-build로 기존 빌드를 쓴다."
   [ "$SKIP_BUILD" = "0" ] && exit 21
@@ -71,6 +75,15 @@ if [ "$SKIP_BUILD" = "0" ]; then
   "$UNITY" -batchmode -quit -nographics -logFile "$BUILD.log" \
     -projectPath "$PROJ" -executeMethod PlayableScenesBuilder.BuildGame \
     -buildPath "$BUILD" || { echo "❌ 빌드 실패 — $BUILD.log 확인"; tail -20 "$BUILD.log"; exit 1; }
+  # ⚠️ **유니티는 컴파일 오류가 있어도 exit 0으로 끝난다.** 옛 어셈블리로 빌드해 버리고
+  #    "성공"이라고 말한다 — 실측 2026-08-15: 소스에 있는 로그가 빌드본에 없어서
+  #    "코드가 안 도는데 QA는 통과"인 상태가 됐다. **빌드 성공 ≠ 코드 반영**이다.
+  #    그래서 빌드 로그에서 컴파일 오류를 직접 찾아 실패로 말한다.
+  if grep -qE "error CS[0-9]+|Scripts have compiler errors" "$BUILD.log"; then
+    echo "❌ 컴파일 오류가 있다 — 빌드본은 **옛 코드**다(유니티는 이래도 exit 0을 낸다)"
+    grep -oE "Assets/[^ ]+\([0-9,]+\): error CS[0-9]+: .*" "$BUILD.log" | sort -u | head -5
+    exit 1
+  fi
   echo "✅ 빌드 완료"
 else
   echo "▶ 빌드 생략(--skip-build) — 기존 실행본 사용"

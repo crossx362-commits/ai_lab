@@ -101,6 +101,8 @@ public class W3Party : MonoBehaviour
         public float DashCd;              // 재사용 대기
         public float IFrame;              // 무적 잔여 — **사망 카운트에 직접 개입하는 능력**이다
         public Vector2 DashDir;
+        public float DangerT;             // 위험에 놓인 시간 — AI는 이게 쌓여야 반응한다(서툴게)
+        public float AiDashCheck;         // 다음 판단까지 남은 시간
         public float Gauge;               // 고유 자원: 수호게이지 / 연격스택 / 신앙
         public float FlashT;              // 스킬 발동 섬광 잔여 시간
         public Chant Chant;               // 음유시인 악장
@@ -888,7 +890,7 @@ public class W3Party : MonoBehaviour
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
-        _meleeHits = 0; _shotHits = 0; _framesThisRun = 0;
+        _meleeHits = 0; _shotHits = 0; _framesThisRun = 0; _aiDashUses = 0;
         _summonedAlive = 0; _summonDmgToParty = 0f; _summonHits = 0; _summonHbAt = 0f;
         // 실플레이 판만 보스 소환의 대상이 된다. 검증(W1~W3)은 GameMode가 아니라 여기서 빠진다 —
         // 측정 판에 소환이 끼면 구성 대조가 오염된다.
@@ -968,6 +970,14 @@ public class W3Party : MonoBehaviour
 
     /// <summary>소환 몹이 파티에 준 누적 피해. 네거티브 컨트롤의 측정값(QA 로그로 읽는다).</summary>
     public static float SummonDmgOnActive() => _game != null ? _game._summonDmgToParty : 0f;
+
+    /// <summary>
+    /// AI가 이동기를 쓴 횟수. **판이 끝나야 찍히는 로그로는 QA가 못 본다** —
+    /// 시각 QA는 지정 초에 캡처하고 즉시 종료하므로 판 종료 로그를 영영 안 만난다
+    /// (실측 2026-08-15: `[W3-DIAG]`에만 넣었더니 출력이 0줄이었다).
+    /// 그래서 캡처 시점에 밖에서 읽어갈 수 있게 연다.
+    /// </summary>
+    public static int AiDashUsesOnActive() => _game != null ? _game._aiDashUses : -1;
 
     void SummonMobs(int n)
     {
@@ -1170,8 +1180,10 @@ public class W3Party : MonoBehaviour
         //    스킬이 도는 것은 몹의 반응(끌려오는 것·죽는 것)과 시전자 동작으로 읽힌다.
         //    **다시 넣지 마라.** 범위를 보여주고 싶으면 원이 아닌 방식을 찾을 것.
 
-        foreach (var m in _party)
+        for (int mi = 0; mi < _party.Length; mi++)
         {
+            var m = _party[mi];
+            TickAiDash(m, mi, dt);
             if (m.AttackT > 0f) m.AttackT -= dt;
             if (m.HurtT > 0f) m.HurtT -= dt;
             if (m.SkillT > 0f) m.SkillT -= dt;
@@ -1716,6 +1728,61 @@ public class W3Party : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 자동 전투 AI의 이동기 사용 (§5 💡 「AI도 이동기를 쓰되 **타이밍이 서툴게**
+    /// — 예고 표식을 절반만 인지」). 수동 우대 원칙을 지키는 장치다: AI가 사람만큼
+    /// 잘 피하면 직접 조작할 이유가 사라진다.
+    ///
+    /// 서툴게 만드는 방법 셋(전부 기획서 의도를 그대로 옮긴 것):
+    ///   ① **인지율 50%** — 판단 시점마다 절반은 그냥 못 본다
+    ///   ② **반응 지연** — 위험에 `AI_REACT_DELAY`초 놓여 있어야 비로소 움직인다.
+    ///      사람은 예고를 보고 미리 피하지만 AI는 맞기 시작해야 안다
+    ///   ③ **판단 주기** — 매 프레임이 아니라 0.35초마다 본다
+    ///
+    /// ⚠️ 조작 중인 캐릭터(`_sel`)에는 걸지 않는다 — 플레이어가 아끼던 쿨다운을
+    ///    AI가 대신 태워버리면 수동 조작이 오히려 손해가 된다.
+    /// </summary>
+    const float AI_REACT_DELAY = 0.55f;
+    const float AI_SEE_CHANCE = 0.5f;
+    const float AI_CHECK_SEC = 0.35f;
+    /// <summary>AI가 실제로 이동기를 쓴 횟수. 0이면 배선했는데 안 도는 것이다 — 로그로 확인한다.</summary>
+    int _aiDashUses;
+
+    void TickAiDash(Member m, int index, float dt)
+    {
+        if (!GameMode || !m.Alive) return;
+        if (index == _sel) return;                       // 조작 중인 캐릭터는 사람 몫이다
+        if (m.DashCd > 0f || m.DashT > 0f) return;
+
+        // 위험 판정 — 이 전투에는 아직 돌진 예고 표식이 없으므로(§10-2 미구현)
+        // **밀집과 저체력**으로 대신 읽는다. 표식이 생기면 여기에 조건을 더할 것.
+        int near = CountMobsNear(m.Pos, 2.2f);
+        bool danger = near >= 3 || (m.Hp < m.MaxHp * 0.35f && near >= 1);
+
+        if (!danger) { m.DangerT = 0f; return; }
+        m.DangerT += dt;
+        if (m.DangerT < AI_REACT_DELAY) return;          // ② 늦게 반응한다
+
+        m.AiDashCheck -= dt;
+        if (m.AiDashCheck > 0f) return;                  // ③ 매 프레임 보지 않는다
+        m.AiDashCheck = AI_CHECK_SEC;
+        if (Random.value > AI_SEE_CHANCE) return;        // ① 절반은 못 본다
+
+        // 몹 무리의 반대쪽으로 뺀다
+        Vector2 away = Vector2.zero;
+        int cnt = 0;
+        for (int i = 0; i < MAXM; i++)
+        {
+            if (!_mOn[i]) continue;
+            var d = m.Pos - _mPos[i];
+            if (d.sqrMagnitude > 2.2f * 2.2f) continue;
+            away += d.normalized; cnt++;
+        }
+        if (cnt == 0) return;
+        if (TryDash(m, away / cnt)) _aiDashUses++;
+        m.DangerT = 0f;
+    }
+
     /// <summary>이동기 발동. 쿨이 남았거나 죽었으면 아무 일도 안 한다.</summary>
     bool TryDash(Member m, Vector2 dir)
     {
@@ -2243,6 +2310,7 @@ public class W3Party : MonoBehaviour
         catch (System.Exception e) { Debug.LogWarning($"[W3] 중간 저장 실패: {e.Message}"); }
         Debug.Log($"[W3] {_setup.Name}: {_t:F1}s 생존 / 처치 {_kills} / 도발 {_tauntUses} / " +
                   $"후열피격 {_backlineHits} 전열피격 {_frontlineHits} / {verdict}");
+        Debug.Log($"[W3-DIAG] AI 이동기 사용 {_aiDashUses}회");
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
                   $"프레임 {_framesThisRun} / 초당근접 {_meleeHits / Mathf.Max(0.1f, _t):F0}");
 

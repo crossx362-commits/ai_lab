@@ -203,7 +203,17 @@ namespace AshesToStars
             //    "몇 프레임 뒤"와 "몇 초 뒤"는 이 프로젝트에서 전혀 다른 뜻이다.
             if (_shotSec > 0f)
             {
-                if (_t >= _shotSec && _step == 0) { Shot($"qa_{_mode}"); _step = 1; _t = 0f; }
+                if (_t >= _shotSec && _step == 0)
+                {
+                    // 캡처 시점의 전투 계측을 함께 남긴다 — 판 종료 로그는 QA가 못 본다.
+                    // ⚠️ `global::`을 **보간 문자열 안에서** 쓰면 컴파일이 깨진다
+                    //    (`error CS0103: The name 'global' does not exist`). 이 파일은
+                    //    `AshesToStars` 네임스페이스 안이고 `W3Party`는 전역이라 한정자가
+                    //    필요한데, 반드시 **밖에서 지역변수로 받아** 넣을 것.
+                    int aiDash = global::W3Party.AiDashUsesOnActive();
+                    Debug.Log($"[QA] AI 이동기 사용 {aiDash}회 (-1이면 전투가 안 돌고 있다는 뜻)");
+                    Shot($"qa_{_mode}"); _step = 1; _t = 0f;
+                }
                 else if (_step == 1 && _t > 0.5f) Finish();
                 return;
             }
