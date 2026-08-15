@@ -96,6 +96,10 @@ namespace AshesToStars
             this.elapsedTime = 0f;
             this.activeDangerMechanicsCount = 0;
             this.actualPartyHealing = 0f;
+            // 첫 기믹은 곧바로 터뜨리지 않는다 — 진입 직후 즉사는 학습 기회가 없다.
+            // 파티가 자리를 잡을 시간을 주고 시작한다.
+            this._nextGimmickAt = 6f;
+            this._gimmickCursor = 0;
 
             // §18-11: 목표 시간 계산
             // 5층 90초, 10층 180초, 50층+ 300초
@@ -246,19 +250,78 @@ namespace AshesToStars
             }
         }
 
+        // 기믹 발동 주기(초). 페이즈가 오를수록 짧아진다 — §10-5 "페이즈마다 패턴이 바뀌어
+        // 한 가지 대응으로 못 버틴다". 값은 문서에 없어 여기서 제안한다(§18에 앵커 없음).
+        private const float GIMMICK_INTERVAL_BASE = 12f;
+        private const float GIMMICK_INTERVAL_PER_PHASE = 2.5f;
+        private float _nextGimmickAt;
+        private int _gimmickCursor;
+
         private void UpdateBosses()
         {
             int activeCount = 0;
             foreach (var boss in bosses)
             {
                 if (boss.isActive)
+                {
                     activeCount++;
+                    UpdatePhase(boss);
+                }
             }
 
             if (activeCount == 0)
             {
                 OnAllBossesDefeated();
+                return;
             }
+
+            // ── 기믹 발동. **이 배선이 통째로 없었다**(2026-08-15 발견: 기믹 3종이 정의만
+            //    되고 호출부가 0곳). §10-5는 "1인 클리어 불가를 수치가 아니라 기믹으로
+            //    구현한다"고 정했는데, 기믹이 안 돌면 그 확정이 코드에서 성립하지 않는다.
+            if (elapsedTime >= _nextGimmickAt)
+            {
+                FireNextGimmick();
+                int phase = bosses.Count > 0 ? bosses[0].currentPhase : 0;
+                float interval = Mathf.Max(4f, GIMMICK_INTERVAL_BASE - phase * GIMMICK_INTERVAL_PER_PHASE);
+                _nextGimmickAt = elapsedTime + interval;
+            }
+        }
+
+        /// <summary>
+        /// HP 구간으로 페이즈를 올린다(§10-5 기믹 #6 "페이즈 전환").
+        /// 페이즈가 오르면 활성 스킬이 하나 늘고(`GetSkillCountForPhase`) 기믹 주기도 짧아진다.
+        /// </summary>
+        private void UpdatePhase(BossInstance boss)
+        {
+            if (boss.phaseCount <= 1) return;
+            // 페이즈를 HP로 균등 분할한다 — 3페이즈면 66%·33%에서 전환
+            float ratio = boss.maxHp > 0f ? boss.currentHp / boss.maxHp : 1f;
+            int want = Mathf.Clamp(
+                Mathf.FloorToInt((1f - ratio) * boss.phaseCount), 0, boss.phaseCount - 1);
+            if (want <= boss.currentPhase) return;   // 되돌아가지 않는다(회복해도 페이즈는 유지)
+
+            boss.currentPhase = want;
+            remainingSkillCount = boss.GetSkillCountForPhase();
+            OnBossPhaseChange?.Invoke((want + 1) / (float)boss.phaseCount);
+            Debug.Log($"[보스] 페이즈 {want + 1}/{boss.phaseCount} 진입 — 활성 스킬 {remainingSkillCount}개");
+        }
+
+        /// <summary>
+        /// 기믹을 하나씩 돌아가며 발동한다.
+        /// ⚠️ 동시 상한(`MAX_SIMULTANEOUS_DANGER_MECHANICS` = 2, §10-7)을 지킨다 —
+        /// 상한이 없으면 "실수 1회가 즉사"가 아니라 "아무것도 못 하고 죽음"이 된다.
+        /// </summary>
+        private void FireNextGimmick()
+        {
+            if (activeDangerMechanicsCount >= MAX_SIMULTANEOUS_DANGER_MECHANICS) return;
+
+            switch (_gimmickCursor % 3)
+            {
+                case 0: TriggerFloorAOE(); break;      // #1 동시 다발 장판
+                case 1: TriggerSummonMobs(); break;    // #2 분리 소환
+                default: TriggerHealCheck(); break;    // #4 지속 광역딜(힐 체크)
+            }
+            _gimmickCursor++;
         }
 
         // ===== PRIVATE: 기믹 구현 =====
