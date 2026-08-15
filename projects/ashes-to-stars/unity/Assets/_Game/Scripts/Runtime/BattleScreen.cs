@@ -200,8 +200,24 @@ namespace AshesToStars
 
             if (survived)
             {
-                // 보스전이 아닌 일반 전투는 보상을 계산하지 않았으므로 최소한의 정보만 표시
-                GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
+                // ✅ §8 탑 등반 — 탑에서 온 잡몹웨이브("다음 층 도전")를 버티면 **한 층 오른다**.
+                // ClearFloor는 도입 이래 보스 격파(OnBossDefeated) 경로에서만 불렸다 — 그래서
+                // 정작 층수의 대부분인 일반 층은 이겨도 진행도가 안 올라, "다음 층 도전" 버튼이
+                // 라벨과 달리 같은 층을 무한 반복했다(§8 벽 콘텐츠·§10-6 티어·§15 침략 게이트가
+                // 열리지 않음 = "눌러도 규칙을 무시하는" 거짓 버튼). BossFloor엔 입장 시 층(TowerFloor)이
+                // 담겨 있다. 보스전은 위 OnBossDefeated가 따로 올리므로 IsTowerFloorClear가 잡몹웨이브만
+                // 참으로 걸러 이중 상승을 막는다.
+                if (GameFlow.IsTowerFloorClear(survived, inDungeon, GameFlow.ReturnTo, GameFlow.Kind))
+                {
+                    GameState.ClearFloor(GameFlow.BossFloor);
+                    GameFlow.LastBattleSummary =
+                        $"{GameFlow.BossFloor}층 돌파 — {_t:F1}초 · 다음 {GameState.TowerFloor}층";
+                }
+                else
+                {
+                    // 보스전이 아닌 일반 전투(필드 사냥 등)는 보상을 계산하지 않았으므로 최소한의 정보만 표시
+                    GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
+                }
             }
             else
             {

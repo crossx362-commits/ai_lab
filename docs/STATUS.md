@@ -6,9 +6,36 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-15 23:06 · 이터레이션(코드 — §15 침략 30층 해금 게이트)
+최종 갱신: 2026-08-15 23:2x · 이터레이션(코드 — §8 탑 등반 층 진행 배선)
 
-> **이번 이터 결과(코드): §15 침략 「탑 30층 해금」 게이트 — 경매장과 대칭을 맞췄다.**
+> **이번 이터 결과(코드): §8 탑 등반 — "다음 층 도전"을 이겨도 층이 안 올랐다. 진행도 배선.**
+> 「대기하지 마라」 지침대로 큐/INBOX/락 상태 재확인 → 여전히 전면 막힘(전직=오너 A/B/C 미결,
+> combat=대화세션 `W3Party.cs` 22:55 편집, GUI=오너 `-useHub` 락 PID 46914, 아트 생성 마커 없음).
+> 원장·코드를 훑어 **✅ 확정인데 소비처/배선이 어긋난 것**을 찾음 — **§8 탑 층 진행이 그것**이었다.
+> - **실측 근거(거짓 버튼)**: `TowerScreen`의 "다음 층 도전"(`BattleKind.잡몹웨이브`, 라벨="다음 층")을
+>   버텨 살아남아도 **층이 안 올랐다.** `GameState.ClearFloor`는 도입 이래 **보스 격파(`BattleScreen.cs:56`
+>   OnBossDefeated) 경로에서만** 불렸고, 층수의 대부분인 일반 층을 처리하는 `OnBattleEnd(survived)`는
+>   ClearFloor를 **안 불렀다**(그냥 "생존 N초"만 표시). 즉 §8 벽 콘텐츠·§10-6 티어 상승·**직전 이터가
+>   짠 §15 침략 30층 게이트**가 일반 등반으로는 영영 안 열렸다("눌러도 규칙 무시하는 거짓말" 계열).
+>   `BattleScreen.cs:54-55` 주석이 그 원칙을 적어놓고도 보스 경로에만 적용한 상태였다.
+> - **한 것(4파일)**: ①`GameFlow.cs` 순수 판정 `IsTowerFloorClear(survived,inDungeon,returnScene,kind)`
+>   =`survived && !inDungeon && returnScene==Tower && kind==잡몹웨이브`(보스 제외 → 이중 상승 방지) ②`BattleScreen.cs`
+>   OnBattleEnd 생존 분기에서 참이면 `ClearFloor(BossFloor)`(BossFloor엔 입장 시 TowerFloor가 담김) +
+>   "N층 돌파 · 다음 M층" 요약 ③`GameState.cs` `SetTowerFloorForTest`(단조증가라 자가검사가 층 복원할 수단
+>   부재) ④`LifeSystemSelfCheck` ⑪블록.
+> - **왜 오펀/추측이 아닌가**: `ClearFloor`·`TowerFloor`는 이미 존재하고 전방위로 소비된다(Tier·침략 게이트·
+>   경매장 게이트·난이도). 새 시스템 0. 보스 경로가 이미 같은 함수를 쓰던 **내부 선례**를 일반 층에 확장한 것.
+>   "다음 층 도전"이 실제로 층을 올리는 것은 §8·§1496(프로토타입 "5층까지+5층 보스") 확정 모델과 일치.
+> - **검증(헤드리스)**: `game_compile_check` **PASS(오류 0, 60소스)** · `game_asset_names` **✅ 이상 없음**.
+>   **불변식(SelfCheck ⑪)**: 탑 잡몹웨이브 생존→참 · 보스전→거짓(이중상승 방지) · 필드/전멸/던전→거짓 ·
+>   ClearFloor(1)→2층 · 지난 층 재도전은 진행도 유지(단조) · 재기동 후 유지. ⚠️**배치 SelfCheck·인게임은
+>   오너 `-useHub` 락으로 GUI/빌드 세션 대기**(표준 인계). 실행: `Unity -batchmode -quit -projectPath <프로젝트>
+>   -executeMethod AshesToStars.LifeSystemSelfCheck.Run`(⑪ 확인).
+> - **네거티브 컨트롤**: BattleScreen의 `ClearFloor(BossFloor)` 호출을 지우면 "다음 층 도전"을 이겨도 층이
+>   그대로 → §15 게이트·티어가 안 열리는 회귀. `IsTowerFloorClear`에서 `kind==잡몹웨이브` 조건을 빼면 보스전이
+>   이중으로 층을 올린다(SelfCheck ⑪ 두 번째 단언 FAIL).
+>
+> **이전 이터 결과(코드): §15 침략 「탑 30층 해금」 게이트 — 경매장과 대칭을 맞췄다.**
 > 「대기하지 마라」 지침대로 큐/INBOX/락 상태를 전수 재확인 → 여전히 전면 막힘(전직=오너 A/B/C
 > 미결, combat=대화세션 `W3Party.cs` 22:55 편집 중, GUI=오너 `-useHub` 락 PID 46914, 아트=
 > `spec_char_mage.json` 생성 중 pid 66926 생존). 원장을 훑어 **✅ 확정인데 소비처/게이트가 어긋난 것**을 찾음.
@@ -460,6 +487,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 | 항목 | 근거 | 커밋 |
 |---|---|---|
+| **§8 탑 등반 층 진행 배선** | "다음 층 도전"(잡몹웨이브)을 이겨도 층이 안 올랐다 — `ClearFloor`가 보스 격파에서만 불려 일반 층은 진행도에 반영 안 됨. `OnBattleEnd` 생존 분기에 `IsTowerFloorClear`(잡몹웨이브만·보스 제외 이중상승 방지)로 `ClearFloor(BossFloor)` 배선. 새 시스템 0(기존 ClearFloor·TowerFloor 재사용). `game_compile_check` PASS·`game_asset_names` ✅·SelfCheck ⑪(잡몹웨이브→참/보스→거짓/필드·전멸·던전→거짓·단조증가·재기동유지). ⚠️배치SelfCheck·인게임 GUI세션 대기 | (이 커밋) |
 | **§15 침략 30층 해금 게이트** | §15 ✅ "30층 이상 등반 시 해금"인데 `WorldMapScreen` 침략은 무게이트 상시 활성(층 1에서도 발동)이었고, **경매장은 이미 30층 게이트 존재**(`EstateScreen.cs:66`)·`SceneStructureBuilder.cs:156` "침략·경매장 동시 해금" — 비대칭을 해소. `TowerFloor>=30`만 라이브, 미만은 Locked(현재 층 표시). 신규 시스템·오펀 0(기존 TowerFloor·침략 배틀 재사용). `game_compile_check` PASS·`game_asset_names` ✅. ⚠️인게임 GUI세션 대기 | `29f1b991` |
 | **§12·§18-5 대출 시스템(핵심 슬라이스)** | `grep loan/debt` 전 코드 0곳이던 경제 키스톤. 소비처 실재분만: Earn 수입50% 자동상환(상시)·TowerScreen "대출받고 입장"(수동). 한도=순자산(지갑-부채)30%∧20G/h·티어, 이자 0.5%/h 복리. `game_compile_check` PASS·SelfCheck ⑩ 결정론 검증(30000한도·자동상환·복리>단리·재기동유지·상환0). 연체/파산 제재는 경매장·침략 부재로 유보(정직). ⚠️배치SelfCheck·인게임 GUI세션 대기 | `e88649b9` |
 | **§3·§18-6 캐릭터 성장(레벨업)** | `CharacterRecord.Exp`+직렬화(하위호환) · `ExpToNext=100×Lv^2.2`(1=100·2=459·10=15848·상한100) · `AwardBattleExp`가 출전파티에 레벨비례 분배(총100→5인 각20, 총합보존) · BattleScreen 골드옆 1회지급 · ResultScreen/CharacterScreen 표시 · `LifeSystemSelfCheck` ⑧. `game_compile_check` PASS·`game_asset_names` 이상무. ⚠️배치SelfCheck·인게임 GUI세션 대기, 절대총량은 프로토타입값 | `f5e0778b` |

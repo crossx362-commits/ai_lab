@@ -183,6 +183,32 @@ namespace AshesToStars
             Check(paid > 0 && GameState.Debt == 0,
                   $"수동 상환 후 부채 0 (갚음 {paid}, 부채 {GameState.Debt})");
 
+            // ⑪ §8 탑 등반 — "다음 층 도전"(잡몹웨이브)을 버티면 한 층 오른다.
+            //   도입 이래 ClearFloor가 보스 격파에서만 불려 일반 층 돌파가 진행도에 반영되지 않았다.
+            GameState.SetTowerFloorForTest(1);
+            Check(GameState.TowerFloor == 1, $"탑 층 베이스라인 1 (실제 {GameState.TowerFloor})");
+            // 판정: 탑에서 온 잡몹웨이브를 살아남으면 층 돌파 = 참
+            Check(GameFlow.IsTowerFloorClear(true, false, GameFlow.Tower, GameFlow.BattleKind.잡몹웨이브),
+                  "탑 잡몹웨이브 생존 → 층 돌파 판정 참(§8)");
+            // 이중 상승 방지: 보스전은 OnBossDefeated가 따로 올리므로 여기선 거짓
+            Check(!GameFlow.IsTowerFloorClear(true, false, GameFlow.Tower, GameFlow.BattleKind.보스),
+                  "탑 보스전은 이 경로에서 거짓(OnBossDefeated가 올림 — 이중 상승 방지)");
+            // 필드 사냥·전멸·던전은 탑 층을 올리지 않는다
+            Check(!GameFlow.IsTowerFloorClear(true, false, GameFlow.Field, GameFlow.BattleKind.잡몹웨이브),
+                  "필드 사냥 생존은 탑 층을 안 올린다");
+            Check(!GameFlow.IsTowerFloorClear(false, false, GameFlow.Tower, GameFlow.BattleKind.잡몹웨이브),
+                  "전멸은 층을 안 올린다");
+            Check(!GameFlow.IsTowerFloorClear(true, true, GameFlow.Tower, GameFlow.BattleKind.잡몹웨이브),
+                  "던전 런은 탑 층을 안 올린다(노드 맵으로 돌아감)");
+            // 실제 돌파: ClearFloor가 층을 하나 올리고, 재도전은 최고 기록을 안 내린다(단조 증가)
+            GameState.ClearFloor(1);
+            Check(GameState.TowerFloor == 2, $"1층 돌파 → 2층 (실제 {GameState.TowerFloor})");
+            GameState.ClearFloor(1);
+            Check(GameState.TowerFloor == 2, $"이미 지난 층 재도전은 진행도 유지 (실제 {GameState.TowerFloor})");
+            // 재기동 후에도 돌파한 층이 남는다(저장)
+            GameState.ForgetInMemoryForTest();
+            Check(GameState.TowerFloor == 2, $"재기동 후 돌파 층 유지 (실제 {GameState.TowerFloor})");
+
             // 뒷정리 — 검사가 실제 저장을 남기면 다음 플레이가 오염된다
             GameState.ResetAll();
             LifeSystem.ResetAll();

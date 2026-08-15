@@ -258,5 +258,9 @@ namespace AshesToStars
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
         /// (LifeSystem.ForgetInMemoryForTest와 같은 목적: 저장→재기동 유지를 자가검사가 확인)</summary>
         public static void ForgetInMemoryForTest() => _loaded = false;
+
+        /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만
+        /// 오른다)라 자가검사가 원래 층을 복원할 수단이 없으므로, 검사 전후로 층을 세팅/복원하는 데 쓴다.</summary>
+        public static void SetTowerFloorForTest(int floor) { Load(); _floor = Mathf.Max(1, floor); Save(); }
     }
 }

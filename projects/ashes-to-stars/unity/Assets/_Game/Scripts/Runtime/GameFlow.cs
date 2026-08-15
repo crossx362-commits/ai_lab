@@ -81,6 +81,20 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 이 전투 결과가 **탑 한 층 돌파**인가(§8) — 탑에서 온 잡몹웨이브("다음 층 도전")를
+        /// 버텨 살아남았고 던전 런이 아닐 때. 이게 참이면 층을 하나 올린다(GameState.ClearFloor).
+        ///
+        /// 이게 없으면 "다음 층 도전"을 아무리 이겨도 층이 그대로라 §8 벽 콘텐츠·§10-6 티어 상승·
+        /// §15 침략 해금이 영원히 안 열린다 — 버튼 라벨("다음 층")이 거짓말이 된다.
+        /// **보스전(레이드)은 BattleScreen의 OnBossDefeated가 이미 ClearFloor로 올리므로 여기서 제외**한다
+        /// (잡몹웨이브만 참 → 보스 층이 이중으로 오르는 것을 막는다).
+        ///
+        /// 순수 함수다(정적 상태를 안 읽는다) — 인자를 받아 판정하므로 SelfCheck가 씬 로드 없이 검증한다.
+        /// </summary>
+        public static bool IsTowerFloorClear(bool survived, bool inDungeon, string returnScene, BattleKind kind)
+            => survived && !inDungeon && returnScene == Tower && kind == BattleKind.잡몹웨이브;
+
+        /// <summary>
         /// 게임 종료. 에디터에서는 Application.Quit이 아무 일도 하지 않으므로
         /// 플레이 모드를 직접 끈다 — 안 그러면 "종료가 안 된다"고 오진하게 된다.
         /// </summary>
