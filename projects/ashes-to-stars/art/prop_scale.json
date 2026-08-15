@@ -1,0 +1,48 @@
+{
+  "_note": "프랍별 목표 월드 높이(유닛). 크기 결정권은 아트가 갖고, 코드는 이 값으로 PPU를 역산한다.",
+  "_why": [
+    "2026-08-14 실측: 32종을 전부 128px로 뽑았더니 바위가 사람만 하고 배럴이 사람만 했다.",
+    "FieldDecor는 PPU 32 고정이라 128px = 4유닛 = 캐릭터(2유닛)의 두 배가 된다.",
+    "이미지를 줄여서 맞추면 안 된다 — 덤불을 22px로 줄이면 디테일이 다 날아간다.",
+    "SpriteBank가 캐릭터에 이미 쓰는 방식(내용 높이를 재서 목표 유닛으로 PPU 역산)을",
+    "프랍에도 적용하면 원본은 최대 해상도로 남고 화면 크기만 맞는다."
+  ],
+  "_reference": { "character_units": 2.0, "comment": "캐릭터 키 = 2유닛. 모든 값은 이 기준의 상대 크기다." },
+
+  "field_bush_0": 0.75,
+  "field_bush_1": 0.75,
+  "field_bush_2": 0.65,
+  "field_rock_0": 0.90,
+  "field_rock_1": 0.70,
+  "field_rock_2": 0.30,
+  "field_stump_0": 0.80,
+  "field_stump_1": 0.75,
+
+  "ash_bone_0": 1.20,
+  "ash_bone_1": 0.70,
+  "ash_charred_0": 0.90,
+  "ash_charred_1": 0.50,
+  "ash_charred_2": 0.85,
+
+  "dungeon_crystal_0": 0.90,
+  "dungeon_crystal_1": 1.40,
+  "dungeon_crystal_2": 1.00,
+  "dungeon_pillar_0": 2.40,
+  "dungeon_pillar_1": 2.40,
+  "dungeon_pillar_2": 2.20,
+  "dungeon_rubble_0": 0.60,
+  "dungeon_rubble_1": 0.55,
+  "dungeon_rubble_2": 0.65,
+
+  "dungeon_wall_0": 1.50,
+  "dungeon_wall_1": 1.50,
+  "dungeon_wall_2": 1.50,
+  "dungeon_cover_0": 1.20,
+  "dungeon_cover_1": 1.20,
+  "dungeon_cover_2": 1.30,
+
+  "estate_crate_0": 0.80,
+  "estate_crate_1": 1.10,
+  "estate_barrel_0": 0.90,
+  "estate_barrel_1": 0.60
+}

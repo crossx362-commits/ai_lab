@@ -77,15 +77,24 @@ def inspect(path: str, want_gray: bool = False) -> dict:
     if ratio > 0.12:
         out["flags"].append(f"반투명 가장자리 {ratio*100:.1f}%")
 
-    # ④ 지면 조각 — 바닥이 몸통만큼 넓으면 땅이 딸려온 것
+    # ④ ~~지면 조각~~ — **폐기(2026-08-14)**. 지표는 남기되 판정에는 쓰지 않는다.
+    #
+    #   알려진 불량 표본(지면 조각이 눈에 보였던 첫 세대)으로 판별력을 재보니:
+    #     불량 _old_charred 0.61 · _old_bush 0.60
+    #     정상 dungeon_pillar_1 1.03 · pillar_2 1.41 · wall_0 0.42 · barrel_0 0.83
+    #   **불량이 정상보다 오히려 낮다.** 분포가 완전히 겹쳐 임계 조정으로 살릴 수 없다.
+    #   실제로 이 지표가 낸 지적 2건은 전부 오탐이었다(기둥 받침대는 기둥의 일부다).
+    #
+    #   내가 이걸 네거티브 컨트롤 없이 넣은 것이 잘못이다. 오탐만 내는 검수 항목은
+    #   없느니만 못하다 — 사람이 경고를 무시하기 시작하면 나머지 항목까지 같이 죽는다.
+    #   지면 조각을 정말 잡으려면 폭이 아니라 **색**(본체와 다른 중성 지면색이 바닥에
+    #   얇게 퍼짐)을 봐야 하고, 그건 표본을 더 모은 뒤에 검증하고 넣을 것.
     m = alpha > 128
     widths = m.sum(axis=1)
     h = len(widths)
     bot = widths[int(h * 0.88):].max() if h > 8 else 0
     mid = widths[int(h * 0.30):int(h * 0.70)].max() if h > 8 else 1
-    out["base_ratio"] = round(bot / max(1, mid), 2)
-    if out["base_ratio"] > 0.95:
-        out["flags"].append(f"지면 조각 의심 (바닥/몸통 {out['base_ratio']})")
+    out["base_ratio"] = round(bot / max(1, mid), 2)   # 참고값으로만 남긴다
 
     # ⑤ 축소 가독성 — 실사용 크기에서 내용이 남는가
     small = im.resize((max(1, round(im.width * 128 / im.height)), 128), Image.Resampling.BOX)
@@ -112,8 +121,12 @@ def main(argv=None):
     ap.add_argument("--no-name-check", action="store_true")
     ns = ap.parse_args(argv)
 
+    # 콘택트 시트·비교본은 에셋이 아니다. 접두 목록으로 막았더니 `sheet_all32`가 새어
+    # 들어와 "지면 조각 의심"으로 잡혔다(2026-08-14) — 산출물 이름이 늘 때마다 이 목록도
+    # 늘어야 하는 구조 자체가 약하다. 그래서 **요구 목록에 없는 이름은 에셋으로 안 본다**.
     files = sorted(f for f in os.listdir(ns.dir)
-                   if f.endswith(".png") and not f.startswith(("_", "compare")))
+                   if f.endswith(".png") and not f.startswith("_")
+                   and (ns.no_name_check or os.path.splitext(f)[0] in REQUIRED_PROPS))
     rows = [inspect(os.path.join(ns.dir, f), ns.gray) for f in files]
 
     # ① 이름 대조 — 코드가 요구하는데 없는 것
@@ -121,13 +134,25 @@ def main(argv=None):
     missing = [] if ns.no_name_check else [n for n in REQUIRED_PROPS if n not in have]
     extra = [] if ns.no_name_check else [n for n in have if n not in REQUIRED_PROPS]
 
+    # ⑦ 상대 크기 — 한 장 안에서는 절대 안 보이는 결함이다.
+    #    32종을 전부 128px로 뽑았더니 바위가 사람만 했다(2026-08-14). 검수 항목이
+    #    전부 "이미지 한 장 안"을 보게 설계돼 있어 이걸 통째로 놓쳤다.
+    #    목표 크기가 선언되지 않은 프랍은 화면에서 크기가 사고로 정해진다.
+    scale_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prop_scale.json")
+    no_scale = []
+    if os.path.exists(scale_path) and not ns.no_name_check:
+        with open(scale_path, encoding="utf-8") as f:
+            scale = {k: v for k, v in json.load(f).items() if not k.startswith("_")}
+        no_scale = [n for n in sorted(have) if n not in scale]
+
     flagged = [r for r in rows if r["flags"]]
     result = {"total": len(rows), "flagged": len(flagged),
-              "missing_required": missing, "unknown_names": extra, "rows": flagged}
+              "missing_required": missing, "unknown_names": extra,
+              "no_scale": no_scale, "rows": flagged}
 
     if ns.json:
         print(json.dumps(result, ensure_ascii=False))
-        return 1 if (flagged or missing) else 0
+        return 1 if (flagged or missing or no_scale) else 0
 
     print(f"검수 {len(rows)}장 — 지적 {len(flagged)}장")
     for r in flagged:
@@ -136,9 +161,12 @@ def main(argv=None):
         print(f"  ❌ 코드가 요구하는데 없음({len(missing)}): {', '.join(missing)}")
     if extra:
         print(f"  ℹ️ 코드가 안 쓰는 이름({len(extra)}): {', '.join(sorted(extra))}")
-    if not flagged and not missing:
+    if no_scale:
+        print(f"  ❌ 목표 크기 미선언({len(no_scale)}): {', '.join(no_scale)}"
+              " — prop_scale.json에 넣지 않으면 화면 크기가 사고로 정해진다")
+    if not flagged and not missing and not no_scale:
         print("  ✅ 지적 없음")
-    return 1 if (flagged or missing) else 0
+    return 1 if (flagged or missing or no_scale) else 0
 
 
 if __name__ == "__main__":

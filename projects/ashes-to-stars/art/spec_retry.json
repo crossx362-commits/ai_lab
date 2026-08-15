@@ -1,0 +1,25 @@
+{
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "prop": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same limited earthy palette, thin dark outlines, soft cel shading, 3/4 top-down quarter view with a ~30 degree downward camera. Not photorealistic, not 3D-rendered, no smooth gradients. A single object centered in frame, no text, no border, no extra props. The object stands alone with nothing drawn beneath it. CRITICAL SILHOUETTE: build the shape from THICK SOLID MASSES that stay readable when shrunk to 128 pixels tall. No thin wispy twigs, no hair-thin lines, no sparse scattered fragments — every part must be at least several pixels thick at that size. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "ash_charred_2",
+   "rules_ref": "prop",
+   "prompt": "A dense clump of thick charred branch stubs jutting up from a solid burnt base, blackened and cracked, chunky and compact rather than spindly. Burned wasteland biome, everything ash-dusted."
+  },
+  {
+   "name": "field_bush_1",
+   "rules_ref": "prop",
+   "prompt": "A rounded shrub of sage-green foliage in solid overlapping leaf clumps, slightly sparser and wider than a dense bush but still one solid mass. Grassy field biome."
+  },
+  {
+   "name": "dungeon_rubble_2",
+   "rules_ref": "prop",
+   "prompt": "A heap of rough broken masonry with one large cracked block on top, in COLD GREY stone matching the other dungeon rubble — no warm ochre or yellow tones. Ruined underground dungeon."
+  }
+ ]
+}
