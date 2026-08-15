@@ -98,6 +98,20 @@ namespace AshesToStars
                 return;
             }
 
+            if (_mode == "stress")
+            {
+                // 부하 측정(§10-9 「잡몹 상한에서 60fps」).
+                // ⚠️ `StressTest`는 완성돼 있는데 **어디서도 생성되지 않는 죽은 코드**였다
+                //    (`AddComponent<StressTest>` 0곳, 2026-08-15 확인). 즉 이 게임의
+                //    성능 기준은 **한 번도 실측된 적이 없다.** 상한을 올리려면 먼저
+                //    재야 하므로 진입점을 만든다.
+                //    CSV 경로는 `--out`으로 넘긴다(없으면 persistentDataPath에 숨는다).
+                var host = new GameObject("StressTest");
+                DontDestroyOnLoad(host);
+                host.AddComponent<global::StressTest>();
+                return;                       // 자체 수명주기로 돈다(끝나면 스스로 Quit)
+            }
+
             if (_mode == "estate")
             {
                 // 영묘(§4) 확인 — 삭제된 캐릭터와 환생석이 **둘 다 있어야** 화면이 성립한다.
@@ -189,6 +203,10 @@ namespace AshesToStars
                 else if (_step == 1 && _t > 1.5f) Finish();
                 return;
             }
+
+            // 부하 측정은 `StressTest`가 자체 수명주기로 돌고 스스로 종료한다.
+            // 여기서 손대면 측정 도중에 꺼져 CSV가 안 나온다.
+            if (_mode == "stress") return;
 
             if (_mode == "raid")
             {

@@ -320,7 +320,13 @@ public class W3Party : MonoBehaviour
     Member[] _slots;
 
     // ── 몹 ───────────────────────────────────────────────
-    const int MAXM = 200;
+    // §10-9는 잡몹 상한을 300~500으로 정했는데 코드는 200에 머물러 있었다.
+    // 200으로 둔 근거가 "성능이 걱정된다"였지 **측정이 아니었다** — `StressTest`는
+    // 완성돼 있었지만 어디서도 생성되지 않는 죽은 코드라 60fps 기준을 한 번도 잰 적이 없다.
+    // 진입점(`GAME_START=stress`)을 만들어 실측한 결과(`output/qa/ashes-to-stars/w1_result.csv`):
+    //   300체 최저 177.9fps · **500체 최저 106.7fps** · 700체 94.4 · 1000체 56.7(여기서 60 붕괴)
+    // 그래서 기획서 상한인 500을 그대로 쓴다. 1000은 실제로 못 버틴다.
+    const int MAXM = 500;
     Transform[] _mTr; SpriteRenderer[] _mSr;
     Vector2[] _mPos; float[] _mHp, _mCd, _mAtkCd, _mMaxHp; int[] _mKind; bool[] _mOn;
     SpriteRenderer[] _mBarBg, _mBarFg;      // 몹 체력바 (다친 개체만 표시)
