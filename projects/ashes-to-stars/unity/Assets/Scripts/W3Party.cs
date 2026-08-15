@@ -629,7 +629,16 @@ public class W3Party : MonoBehaviour
     {
         m.AttackT = 0.26f;                       // 공격 애니메이션 재생 구간
         if (!IsMelee(m.Job)) FireAlly(m.Pos, targetPos);
+
+        // 타격 이펙트 — 맞은 자리에 터진다. **초당 수십 번** 일어나므로 전부 뿌리면
+        // 화면이 이펙트로 덮인다. 근접은 베는 궤적, 그 외는 스파크로 갈라 두 종류가
+        // 섞이게 하고, 빈도를 솎아 "터지긴 하는데 시야는 살아 있는" 상태를 만든다.
+        _fxTick++;
+        if ((_fxTick & 1) == 0)
+            FxPool.Play(IsMelee(m.Job) ? FxPool.Kind.Slash : FxPool.Kind.Hit, targetPos, 0.8f);
     }
+
+    int _fxTick;    // 이펙트 솎아내기용 카운터
 
     /// <summary>
     /// 쿼터뷰 깊이 정렬 — **앞(y가 작은) 유닛이 뒤 유닛을 가려야** 입체로 보인다.
@@ -1284,6 +1293,7 @@ public class W3Party : MonoBehaviour
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
+                    FxPool.Play(FxPool.Kind.Heal, m.Pos, 2.2f);
                     FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f); Hitstop(5); Shake(0.45f);
                 }
                 else if (m.ForceSkill == 1 || wounded >= 2)
@@ -1295,6 +1305,7 @@ public class W3Party : MonoBehaviour
                             m.Gauge += Heal(o, 14f * sp.DmgMul * _bHeal);
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
+                    FxPool.Play(FxPool.Kind.Heal, m.Pos, 1.4f);
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
@@ -1314,6 +1325,8 @@ public class W3Party : MonoBehaviour
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
+                    // 화염폭풍은 **범위 원 대신** 불길 자체를 터뜨려 보여준다(바닥 링은 삭제됨).
+                    FxPool.Play(FxPool.Kind.Fire, c, _stormR * 0.9f);
                     FxParticles.Play(FxKind.마법진, ToScreen(c), _stormR); FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR); Shake(0.28f);
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
@@ -1482,6 +1495,9 @@ public class W3Party : MonoBehaviour
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
         // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
         if ((_kills % 5) == 0) MobDeathPuff(_mPos[i]);
+        // 정예는 매번 — 드물게 죽는 데다, 죽은 것이 화면에서 확실히 읽혀야 한다.
+        if (_mKind[i] >= 3 || (_kills % 3) == 0)
+            FxPool.Play(FxPool.Kind.Death, _mPos[i], _mKind[i] >= 3 ? 1.5f : 0.9f);
         _mTr[i].gameObject.SetActive(false);
     }
 
