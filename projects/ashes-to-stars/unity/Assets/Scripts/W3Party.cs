@@ -433,6 +433,12 @@ public class W3Party : MonoBehaviour
     public bool GameMode;
 
     /// <summary>
+    /// 계열 색조를 끈다. W1~W3 검증 하네스가 켜서 **구성 대조 실험에 색이 끼지 않게** 한다.
+    /// `FamilyTint`가 static이라 인스턴스 필드(`GameMode`)를 못 봐서 static으로 둔다.
+    /// </summary>
+    public static bool SuppressTint;
+
+    /// <summary>
     /// 필드 전투에 **실제로 막히는** 엄폐물을 켠다(§10-2 — 원거리 몹 대응이 판단이 되려면
     /// 돌아갈 지형이 있어야 한다). 던전은 `ArenaLayout` 템플릿이 이미 맡으므로 필드 전용이다.
     ///
@@ -469,7 +475,9 @@ public class W3Party : MonoBehaviour
         var a = System.Environment.GetCommandLineArgs();
         for (int i = 0; i < a.Length; i++)
         {
-            if (a[i] == "--out" && i + 1 < a.Length) _outPath = a[i + 1];
+            // `--out`은 검증 하네스(W1~W3)만 준다 — CSV를 받아 구성을 대조하는 실행이다.
+            // 그때만 계열 색조를 끈다. 색이 끼면 스크린샷 대조가 흔들린다.
+            if (a[i] == "--out" && i + 1 < a.Length) { _outPath = a[i + 1]; SuppressTint = true; }
             if (a[i] == "--seconds" && i + 1 < a.Length)
                 float.TryParse(a[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out 최대시간);
             if (a[i] == "--seed" && i + 1 < a.Length) int.TryParse(a[i + 1], out _seed);
@@ -1413,16 +1421,36 @@ public class W3Party : MonoBehaviour
 
     static Color FamilyTint()
     {
-        if (!DungeonRun.Active) return Color.white;             // 필드·검증은 기본색
-        return DungeonRun.Plan.Family switch
-        {
-            MobFamily.야수 => new Color(1f, 0.86f, 0.78f),      // 살빛
-            MobFamily.언데드 => new Color(0.72f, 0.85f, 0.78f), // 시퍼런 회록
-            MobFamily.마족 => new Color(0.95f, 0.66f, 0.9f),    // 자주
-            MobFamily.기계 => new Color(0.78f, 0.85f, 1f),      // 강청
-            _ => new Color(0.8f, 1f, 0.92f),                    // 정령 — 옅은 청록
-        };
+        // 필드에서도 계열 색을 입힌다. 예전엔 던전 밖이면 흰색으로 돌려보내서
+        // **필드 전투의 몹이 전부 무채색으로 보였다**(오너 지적 2026-08-15 "몬스터 색이
+        // 다 비슷하잖아"). 계열은 §10-3의 직업 상성이라 필드에서도 읽혀야 한다.
+        // ⚠️ 검증 실행(W1~W3)은 흰색 유지 — 구성 대조 실험에 색이 끼면 안 된다.
+        if (SuppressTint) return Color.white;
+
+        // 던전 밖(필드)에서는 계열이 안 정해져 있으므로 **개체마다** 계열을 굴려
+        // 섞어 놓는다 — 필드는 여러 계열이 함께 나오는 곳이라는 표현이기도 하다.
+        var fam = DungeonRun.Active ? DungeonRun.Plan.Family
+                                    : (MobFamily)(Random.Range(0, 5));
+        return TintOf(fam);
     }
+
+    /// <summary>
+    /// 계열 색조. **곱셈 틴트**라 원본이 회색(0.7 근처)이면 결과 채도가 그대로 깎인다 —
+    /// 예전 값은 전부 0.66~1.0 범위여서 곱한 뒤 채도가 15~30%밖에 안 됐고,
+    /// 화면에서 "다 비슷한 회색"으로 보였다(오너 지적 2026-08-15, 수치로 확인).
+    ///
+    /// 그래서 **약한 채널을 과감히 눌러** 색상 차이를 벌린다. §10-3이 계열을 직업 상성으로
+    /// 쓰는 이상 한눈에 갈려야 하고, 수백 마리 화면에서는 색이 그 유일한 단서다.
+    /// ⚠️ 밝기까지 낮추면 어두운 배경에서 안 보인다 — 강한 채널은 1.0 근처로 유지한다.
+    /// </summary>
+    static Color TintOf(MobFamily f) => f switch
+    {
+        MobFamily.야수 => new Color(1f, 0.62f, 0.38f),      // 주황 — 살빛을 진하게
+        MobFamily.언데드 => new Color(0.45f, 0.95f, 0.62f), // 독초록
+        MobFamily.마족 => new Color(0.98f, 0.35f, 0.85f),   // 자홍
+        MobFamily.기계 => new Color(0.45f, 0.75f, 1f),      // 강청
+        _ => new Color(0.55f, 0.95f, 1f),                   // 정령 — 청록
+    };
 
     void KillMob(int i)
     {
