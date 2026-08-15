@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""재와 별 — 에셋 네이밍·반영 검사기.
+
+오너 지시(2026-08-15): "파일 생성시 네이밍 관리 철저히".
+
+이 저장소에서 아트가 화면에 안 나온 사고는 전부 **이름**에서 왔다:
+- `Resources.Load`는 문자열로 찾는다 — 이름이 하나만 달라도 그 자산은 **조용히 없는 것**이 된다
+  (`[FieldDecor] 프랍 누락` 경고만 남고 게임은 그냥 안 그린다)
+- 2026-08-15: `Resources/props` 32장이 `art/out_ai` 32장과 **파일명은 같은데 내용은 전부 달랐다.**
+  목록·개수만 보면 정상이라 16시간 동안 아무도 몰랐고, 게임은 계속 어제 그림을 그렸다.
+- 같은 날: 생성 폴더에 `compare_*`·`sheet_all32`·`_old_*` 같은 대조본·임시본이 섞여
+  "39장 만들었는데 32장만 들어갔다"는 잘못된 개수 대조를 만들었다.
+
+그래서 **이름의 권위는 문서가 아니라 코드**다 — 런타임이 실제로 `Resources.Load`에 넘기는
+문자열을 소스에서 뽑아 그것과 대조한다. 문서에 적어두는 방식은 코드가 바뀌면 조용히 어긋난다.
+
+판정 3종:
+1. **누락** — 코드가 찾는데 파일이 없다 (게임에서 안 그려진다)
+2. **낡음** — 반영본과 생성본이 같은 이름인데 내용이 다르다 (가장 안 보이는 사고)
+3. **잡동사니** — 생성 폴더에 자산이 아닌 것이 섞였다 (개수 대조를 망친다)
+
+사용: `python3 game_asset_names.py [--strict]`   (--strict면 문제 발견 시 exit 1)
+"""
+
+from __future__ import annotations
+
+import argparse
+import filecmp
+import re
+import sys
+from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+ROOT = Path(__file__).resolve().parents[5]
+GAME = ROOT / "projects" / "ashes-to-stars"
+ASSETS = GAME / "unity" / "Assets"
+RES = ASSETS / "Resources"
+GEN = GAME / "art" / "out_ai"
+
+# 자산이 아닌 산출물 — 생성 폴더에 있어도 반입 대상이 아니다.
+JUNK = re.compile(r"^(_|compare|sheet_all|.*_sheet_scaled)")
+
+
+def _src(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _array(path: Path, name: str) -> list[str]:
+    """`name = { "a", "b" }` 형태의 **선언**에서 리터럴을 뽑는다.
+
+    ⚠️ `str.find(name)`으로 첫 언급을 잡으면 안 된다 — 대개 주석이나 호출부가 먼저 나와서
+    엉뚱한 구간을 읽는다(첫 구현이 정확히 이 오류로 4개 중 2개를 빈 값으로 돌려줬다).
+    고정 길이 창도 쓰지 않는다 — `JOB_DIRS`가 뒤따르는 `JOB_FRAMES`까지 먹었다.
+    중괄호로 범위를 닫는다.
+    """
+    m = re.search(re.escape(name) + r"\s*=\s*\{([^}]*)\}", _src(path))
+    return re.findall(r'"([a-z0-9_]+)"', m.group(1)) if m else []
+
+
+def _method_literals(path: Path, name: str) -> list[str]:
+    """메서드 **정의** 이후 본문에서 리터럴을 뽑는다(반환 배열이 여러 갈래인 경우)."""
+    src = _src(path)
+    m = re.search(r"\b(?:string\[\]|String\[\])\s+" + re.escape(name) + r"\s*\(", src)
+    if not m:
+        return []
+    return re.findall(r'"([a-z0-9_]+)"', src[m.start():m.start() + 1600])
+
+
+def expected() -> dict[str, list[str]]:
+    """런타임이 실제로 Resources.Load에 넘기는 이름을 소스에서 뽑는다."""
+    sb = ASSETS / "Scripts" / "SpriteBank.cs"
+    fd = ASSETS / "_Game" / "Scripts" / "Runtime" / "FieldDecor.cs"
+
+    jobs = _array(sb, "JOB_DIRS")
+    job_frames = _array(sb, "JOB_FRAMES")
+    mob_dirs = _array(sb, "MOB_DIRS")
+    mob_frames = _array(sb, "MOB_FRAMES")
+
+    out: dict[str, list[str]] = {}
+    if jobs and job_frames:
+        for j in jobs:
+            out[f"sprites/{j}"] = [f"{j}_{f}.png" for f in job_frames]
+    if mob_dirs and mob_frames:
+        for m in mob_dirs:
+            out[f"sprites/{m}"] = [f"{f}.png" for f in mob_frames]
+    props = _method_literals(fd, "GetPropNames")
+    if props:
+        out["props"] = sorted({f"{p}.png" for p in props})
+    return out
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--strict", action="store_true")
+    args = ap.parse_args()
+
+    problems: list[str] = []
+    exp = expected()
+    if not exp:
+        # 소스에서 하나도 못 뽑았으면 '이상 없음'이 아니라 **검사 불능**이다.
+        # 빈 결과를 통과로 읽으면 검사기가 침묵장치가 된다.
+        print("❌ 코드에서 기대 이름을 하나도 못 뽑았다 — 검사 불능(소스 구조가 바뀌었는지 확인)")
+        sys.exit(1)
+
+    # ── 1. 누락
+    for folder, names in exp.items():
+        d = RES / folder
+        have = {p.name for p in d.glob("*.png")} if d.exists() else set()
+        miss = [n for n in names if n not in have]
+        if miss:
+            problems.append(f"누락 {folder}: {len(miss)}개 — {', '.join(miss[:5])}"
+                            + (" …" if len(miss) > 5 else ""))
+
+    # ── 2. 낡음 (같은 이름, 다른 내용)
+    stale = []
+    if GEN.exists():
+        for src in GEN.glob("*.png"):
+            if JUNK.match(src.name):
+                continue
+            for d in RES.rglob(src.name):
+                if not filecmp.cmp(src, d, shallow=False):
+                    stale.append(src.name)
+                break
+    if stale:
+        problems.append(f"낡음(이름 같고 내용 다름) {len(stale)}개 — {', '.join(sorted(stale)[:5])}"
+                        + (" …" if len(stale) > 5 else "")
+                        + "  → 생성본이 게임에 반영되지 않았다")
+
+    # ── 3. 잡동사니
+    junk = [p.name for p in GEN.glob("*.png") if JUNK.match(p.name)] if GEN.exists() else []
+    if junk:
+        problems.append(f"생성 폴더에 자산 아닌 파일 {len(junk)}개 — {', '.join(sorted(junk)[:5])}"
+                        + (" …" if len(junk) > 5 else "")
+                        + "  → 개수 대조가 틀어진다. 대조본·임시본은 별도 폴더로")
+
+    # ── 4. meta 짝
+    for folder in exp:
+        d = RES / folder
+        if not d.exists():
+            continue
+        png, meta = len(list(d.glob("*.png"))), len(list(d.glob("*.png.meta")))
+        if png != meta:
+            problems.append(f"meta 불일치 {folder}: png {png} vs meta {meta} — GUID 고아 위험")
+
+    if not problems:
+        print("✅ 네이밍·반영 이상 없음")
+        return
+    for p in problems:
+        print(f"⚠️ {p}")
+    if args.strict:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
