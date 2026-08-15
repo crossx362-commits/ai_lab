@@ -49,6 +49,17 @@ namespace AshesToStars
                         Info(r, _rowIndex++, $"  ⚠️ {FormatLifeItem(item)} — 소지 상한에 도달해 획득할 수 없습니다");
                     }
                 }
+
+                // 경험치 분배 (§3 레벨 비례 · §18-6 성장) — 출전 파티가 나눠 갖는다
+                if (reward.ExpGains != null && reward.ExpGains.Count > 0)
+                {
+                    Info(r, _rowIndex++, "");  // 빈 줄
+                    Info(r, _rowIndex++, "📈 경험치 (출전 레벨 비례 분배, §3)");
+                    foreach (var line in reward.ExpGains)
+                    {
+                        Info(r, _rowIndex++, $"  {line}");
+                    }
+                }
             }
 
             Info(r, _rowIndex++, "");  // 빈 줄

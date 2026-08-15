@@ -26,6 +26,13 @@ namespace AshesToStars
         public string Job { get; set; }  // 기본 직업명 (예: "수호기사", "마법사")
         public int Level { get; set; }
 
+        /// <summary>
+        /// 현재 레벨에서 다음 레벨까지 쌓은 경험치(§3·§18-6). 레벨업 때 0으로 리셋된다.
+        /// 예전엔 Level이 생성값 그대로 굳어 성장이 "정의만 있고 소비처 0곳"이었다 —
+        /// 이제 전투 보상(ResultScreen 경유 BattleScreen)이 여기에 쌓인다.
+        /// </summary>
+        public long Exp { get; set; }
+
         /// <summary>누적 사망 횟수 (0~3, 3이면 삭제된 상태).</summary>
         public int DeathCount { get; set; }
 
@@ -40,6 +47,7 @@ namespace AshesToStars
             Name = name;
             Job = job;
             Level = level;
+            Exp = 0;
             DeathCount = 0;
             RecoveryEndTime = 0;
             IsDeleted = false;
@@ -126,6 +134,8 @@ namespace AshesToStars
                     DeathCount = SafeInt(p[3], 0),
                     RecoveryEndTime = SafeLong(p[4], 0),
                     IsDeleted = p[5] == "1",
+                    // 7번째 필드(경험치)는 나중에 추가됐다 — 옛 6필드 저장은 0으로 읽어 하위호환.
+                    Exp = p.Length > 6 ? SafeLong(p[6], 0) : 0,
                 };
                 _characters.Add(c);
             }
@@ -141,7 +151,8 @@ namespace AshesToStars
             foreach (var c in _characters)
                 sb.Append(c.Name).Append('\t').Append(c.Job).Append('\t').Append(c.Level)
                   .Append('\t').Append(c.DeathCount).Append('\t').Append(c.RecoveryEndTime)
-                  .Append('\t').Append(c.IsDeleted ? '1' : '0').Append('\n');
+                  .Append('\t').Append(c.IsDeleted ? '1' : '0')
+                  .Append('\t').Append(c.Exp).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
             PlayerPrefs.Save();
         }
@@ -172,6 +183,83 @@ namespace AshesToStars
         {
             EnsureLoaded();
             return _characters;
+        }
+
+        // ========== 성장 (§3 경험치 분배 · §18-6 레벨 곡선) ==========
+
+        /// <summary>레벨 상한(§18-6). 여기 도달하면 경험치를 더 쌓지 않는다.</summary>
+        public const int MaxLevel = 100;
+
+        /// <summary>
+        /// 레벨 L에서 L+1로 오르는 데 필요한 경험치 (§18-6: `100 × Lv^2.2`).
+        /// 단조 증가라 뒤로 갈수록 비싸진다. 만렙이면 무한대(더 안 오른다).
+        /// 예: Lv1→2 = 100 · Lv2→3 = 459 · Lv3→4 = 1121 · Lv10→11 = 15848.
+        /// </summary>
+        public static long ExpToNext(int level)
+        {
+            if (level >= MaxLevel) return long.MaxValue;
+            if (level < 1) level = 1;
+            return (long)(100.0 * System.Math.Pow(level, 2.2));
+        }
+
+        /// <summary>
+        /// 경험치를 더하고 레벨업을 처리한다(§18-6). 이번에 오른 레벨 수를 반환(0이면 그대로).
+        /// 삭제된 캐릭터·0 이하 입력은 무시한다. 저장은 호출부(AwardBattleExp)가 한다.
+        /// </summary>
+        public static int AddExp(CharacterRecord c, long amount)
+        {
+            if (c == null || c.IsDeleted || amount <= 0) return 0;
+            int gained = 0;
+            c.Exp += amount;
+            while (c.Level < MaxLevel && c.Exp >= ExpToNext(c.Level))
+            {
+                c.Exp -= ExpToNext(c.Level);
+                c.Level++;
+                gained++;
+            }
+            if (c.Level >= MaxLevel) c.Exp = 0;   // 만렙은 경험치를 쌓지 않는다
+            return gained;
+        }
+
+        /// <summary>
+        /// 전투 경험치를 **출전 파티**(PartyState.Slots)에 §3 레벨 비례로 분배한다.
+        ///   캐릭터 i 획득 = 총 × (Lv_i ÷ 출전 레벨 합) — 1명이면 100%, 다인이면 레벨 비례.
+        /// 삭제된 유령은 제외한다. 저장까지 하고, 화면에 보일 요약 줄들을 반환한다.
+        /// </summary>
+        public static List<string> AwardBattleExp(long totalExp)
+        {
+            var lines = new List<string>();
+            if (totalExp <= 0) return lines;
+            EnsureLoaded();
+
+            var deployed = new List<CharacterRecord>();
+            long levelSum = 0;
+            foreach (int idx in PartyState.Slots)
+            {
+                if (idx < 0 || idx >= _characters.Count) continue;
+                var c = _characters[idx];
+                if (c.IsDeleted) continue;
+                deployed.Add(c);
+                levelSum += c.Level;
+            }
+            if (deployed.Count == 0 || levelSum <= 0) return lines;
+
+            long distributed = 0;
+            for (int i = 0; i < deployed.Count; i++)
+            {
+                var c = deployed[i];
+                // 마지막 캐릭이 나머지를 흡수해 총합을 정확히 보존한다(정수 나눗셈 손실 방지).
+                long share = (i == deployed.Count - 1)
+                    ? totalExp - distributed
+                    : totalExp * c.Level / levelSum;
+                distributed += share;
+                int up = AddExp(c, share);
+                lines.Add(up > 0
+                    ? $"{c.Name} +{share} EXP → Lv.{c.Level}"
+                    : $"{c.Name} +{share} EXP");
+            }
+            Save();
+            return lines;
         }
 
         /// <summary>

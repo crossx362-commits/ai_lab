@@ -159,6 +159,15 @@ namespace AshesToStars
             // §2의 순환("번 돈으로 다음 판에 들어간다")이 성립하지 않는다.
             GameState.Earn(_reward.GoldReward);
 
+            // ✅ §3 경험치 분배 — 출전 파티가 레벨 비례로 나눠 갖는다(§18-6 성장 곡선).
+            // 여기(승리 해소)에서 골드와 함께 딱 1회 지급된다 — ResultScreen은 표시만 한다.
+            // ⚠️ 절대 총량(battleExp)은 프로토타입 기준값이다: §18-6의 육성 소요시간 앵커
+            //    (Lv20≈2h 등)에 맞춘 보정은 전투 빈도·시간 데이터가 필요해 유보한다.
+            //    ✅ 확정인 것은 "분배가 레벨 비례"(§3)와 "곡선 100×Lv^2.2"(§18-6)이고, 둘 다 정확하다.
+            long battleExp = (long)(tierRevenue * 100f);
+            if (battleExp < 1) battleExp = 1;
+            _reward.ExpGains = LifeSystem.AwardBattleExp(battleExp);
+
             // §10-8 판정 규칙대로 굴린다 — 일반 드랍은 보스 개체별, 희귀 고유템은 전투당 1회.
             // 예전에는 테이블 전체를 3회 굴려 **환생석 기대값이 3배**가 됐다.
             // 그러면 §18-4의 "리롤 노가다는 수지가 안 맞는다" 검산이 통째로 무너진다.

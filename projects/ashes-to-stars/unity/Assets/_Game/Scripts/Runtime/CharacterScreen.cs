@@ -13,9 +13,15 @@ namespace AshesToStars
     public class CharacterScreen : GameScreen
     {
         protected override string Title => "캐릭터";
-        // 부제가 광고하던 성장·전직·합성 중 실제로 되는 건 목숨·부활초뿐이다(§3 시스템 미구현).
-        // 없는 기능을 광고하면 "고장난 게임"으로 읽힌다 — 되는 것만 말하고, 나머지는 아래 잠김으로.
-        protected override string Subtitle => "목숨·부활초 관리(§4). 전직·합성은 준비 중 — 아래 잠김 표시(§3)";
+        // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
+        // 전직·합성은 아직 시스템이 없어(전직 재료·패시브 흡수 미구현) 아래 잠김으로 정직하게 남긴다.
+        protected override string Subtitle => "레벨·목숨·부활초 관리(§3·§4). 전직·합성은 준비 중 — 아래 잠김 표시(§3)";
+
+        /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
+        static string ExpText(CharacterRecord ch) =>
+            ch.Level >= LifeSystem.MaxLevel
+                ? $"Lv.{ch.Level} · EXP MAX"
+                : $"Lv.{ch.Level} · EXP {ch.Exp}/{LifeSystem.ExpToNext(ch.Level)}";
 
         int _selectedCharacter = -1;
 
@@ -29,7 +35,7 @@ namespace AshesToStars
                 {
                     var ch = characters[_selectedCharacter];
 
-                    Info(r, 0, $"{ch.Name} ({ch.Job}) Lv.{ch.Level}");
+                    Info(r, 0, $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
 
                     // 목숨 상태 표시
                     if (ch.IsDeleted)
@@ -76,7 +82,10 @@ namespace AshesToStars
                 var ch = allCharacters[i];
                 string heartsStr = ch.IsDeleted ? "❌" : new string('❤', 3 - ch.DeathCount);
                 string name = $"{ch.Name} ({ch.Job}) - {heartsStr}";
-                if (Row(r, i, name, ch.IsDeleted ? "삭제됨" : (LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")))
+                string sub = ch.IsDeleted
+                    ? "삭제됨"
+                    : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
+                if (Row(r, i, name, sub))
                     _selectedCharacter = i;
             }
 

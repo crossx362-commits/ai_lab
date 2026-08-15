@@ -80,9 +80,50 @@ namespace AshesToStars
             Check(GameState.Pay(400) && GameState.Wallet.Copper == 600,
                   $"진입 비용 차감 (실제 {GameState.Wallet.Copper})");
 
+            // ⑧ 성장(§3 경험치 분배 · §18-6 곡선) — 계산이 아니라 **다음 판에서 읽히는가**를 본다
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            PartyState.ResetForTest();
+
+            // 곡선: §18-6 100×Lv^2.2, 단조 증가
+            Check(LifeSystem.ExpToNext(1) == 100, $"Lv1→2 필요 경험치 100 (§18-6, 실제 {LifeSystem.ExpToNext(1)})");
+            Check(LifeSystem.ExpToNext(2) > LifeSystem.ExpToNext(1), "필요 경험치 단조 증가(뒤 레벨이 더 비싸다)");
+
+            // 임계 도달 시 딱 한 레벨 오르고 잔여 경험치 0
+            var g = LifeSystem.GetCharacters()[0];
+            int lv0 = g.Level;
+            long need = LifeSystem.ExpToNext(g.Level);
+            int up = LifeSystem.AddExp(g, need);
+            Check(up == 1 && g.Level == lv0 + 1, $"경험치 임계 도달 → 레벨업 (Lv {lv0}→{g.Level})");
+            Check(g.Exp == 0, $"레벨업 후 잔여 경험치 0 (실제 {g.Exp})");
+
+            // 레벨 상한 100 — 넘게 부어도 안 오른다
+            var h = LifeSystem.GetCharacters()[1];
+            h.Level = LifeSystem.MaxLevel;
+            Check(LifeSystem.AddExp(h, 999999) == 0 && h.Level == LifeSystem.MaxLevel,
+                  $"레벨 상한 {LifeSystem.MaxLevel}(§18-6) — 만렙은 더 안 오른다");
+
+            // 분배: 출전 파티(자동편성 5인, 전부 Lv1)에 총합 보존해서 나눈다(§3)
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            PartyState.ResetForTest();
+            var lines = LifeSystem.AwardBattleExp(100);
+            long sumExp = 0;
+            foreach (var c in LifeSystem.GetCharacters()) sumExp += c.Exp;
+            Check(sumExp == 100, $"경험치 총합 보존 (기대 100, 실제 {sumExp})");
+            Check(lines.Count == PartyState.Slots.Count && lines.Count > 0,
+                  $"출전 인원수만큼 분배 (편성 {PartyState.Slots.Count} / 분배 {lines.Count})");
+
+            // 재기동 후에도 경험치가 남는다 — 계산만 되고 저장 안 되면 성장이 사라진다
+            LifeSystem.ForgetInMemoryForTest();
+            long reloadedExp = 0;
+            foreach (var c in LifeSystem.GetCharacters()) reloadedExp += c.Exp;
+            Check(reloadedExp == 100, $"재기동 후 경험치 유지 (기대 100, 실제 {reloadedExp})");
+
             // 뒷정리 — 검사가 실제 저장을 남기면 다음 플레이가 오염된다
             GameState.ResetAll();
             LifeSystem.ResetAll();
+            PartyState.ResetForTest();
 
             string head = _fail == 0 ? "[자가검사] PASS" : $"[자가검사] FAIL {_fail}건";
             Debug.Log(head + "\n" + _log);

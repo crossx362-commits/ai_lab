@@ -20,6 +20,9 @@ namespace AshesToStars
         /// <summary>획득 골드 (§18-1 티어별 수익)</summary>
         public long GoldReward { get; set; }
 
+        /// <summary>경험치 분배 결과 표시 줄 (§3·§18-6). BattleScreen이 채우고 ResultScreen이 표시.</summary>
+        public List<string> ExpGains { get; set; } = new List<string>();
+
         /// <summary>획득한 드랍 아이템 (부활초·귀환의 두루마리 등, §10-8)</summary>
         public List<Economy.LifeItem> DroppedItems { get; set; } = new List<Economy.LifeItem>();
 
@@ -41,6 +44,7 @@ namespace AshesToStars
         public void Clear()
         {
             GoldReward = 0;
+            ExpGains.Clear();
             DroppedItems.Clear();
             RejectedItems.Clear();
             DeletedCharacters.Clear();
