@@ -63,11 +63,16 @@
 | 「왜 루프가 자꾸 멈추지」 | 인프라 장애를 실패로 세지 않도록 분류 + 백오프 | `66d0f9cb` |
 
 **진행 중(다음 세션이 이어받을 것)**
-- **나무 6종 생성 중** — `art/spec_p5_trees.json`, 출력 `art/out_p5_trees/`.
-  받으면 크로마키(aigen의 힉스필드 경로는 **크로마키를 안 한다**) → 높이 128 정규화 →
-  `Resources/props/` → `prop_scale.json`에 목표 유닛 추가 → **`FieldDecor.GetPropNames`의
-  Field 자연물 구간에 넣고 `ScatterCount`를 8에서 그만큼 늘릴 것**(안 늘리면 산포 대상이
-  안 되어 화면에 안 나온다) → `game_asset_names.py` → `qa_shot.sh hunt` 육안.
+- ~~**나무 6종 생성 중**~~ ✅ **완료·화면 확인 (2026-08-15 18:0x, 루프+대화 세션 동시 작업)**
+  6종 전부 생성→크로마키→128 정규화→`Resources/props/` 반입. 배선은 대화 세션이 커밋
+  (`53d676a2` — `ScatterCount`를 손으로 세지 않고 `village_` 접두 전까지 자동 카운트하도록
+  재작성). 루프가 짝 `.meta` 6종 반입(`88ec87d5` — png만 커밋되고 import 설정이 빠져 있었다).
+  **`qa_shot.sh hunt` 육안 확인**: field_tree 0~3·shrub_row가 마을 들판에 집보다 크게
+  산포돼 렌더됨(`shots/qa_hunt.png`). 검사기 통과.
+  ⚠️ **남은 것: `village_tree_0`(과수원 열매나무)는 반입·크기지정됐으나 `FieldDecor`에
+  배선 안 됨 → 화면에 안 나온다.** `village_` 접두라 자연물 산포에 넣으면 `ScatterCount`가
+  거기서 끊긴다 — 마을 구간에 넣고 `BuildVillage`가 집 옆에 세우도록 해야 한다(FieldDecor는
+  대화 세션 소유라 재충돌 피해 미착수).
 - **집이 그림일 뿐 통과된다** — 마을 구성물을 `place(..., asCover:false)`로 세워서
   몹·파티가 건물을 뚫고 지나간다. 막으려면 집만 골라 `_cover`에 넣어야 하는데,
   아레나 안 장애물 수가 크게 늘어 W1~W3 구성 비교(빈 판 전제)와 경로 탐색에 영향이 간다.
