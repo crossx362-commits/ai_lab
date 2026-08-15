@@ -426,6 +426,59 @@ def check_unclassified_files():
 
 
 
+def check_registry():
+    """레지스트리가 **실재하는 것만** 말하는지 본다(2026-08-15 신설).
+
+    두 방향으로 어긋날 수 있고, 이 저장소는 둘 다 겪었다:
+    ① **레지스트리에 있는데 실물이 없다** — 2026-07-25에 삭제된 페르소나 8명이
+       `social.js`에 남아 앱 피드에 계속 글을 썼다. 소비자가 살아 있으면
+       죽은 이름이 계속 산출물을 만든다.
+    ② **실물이 있는데 레지스트리에 없다** — 마루(게임개발)가 그랬다. 문서는 9명인데
+       레지스트리는 8명이라, 레지스트리를 읽는 도구들이 마루를 아예 몰랐다.
+
+    도구·정기잡 경로가 실재하는지까지 본다. 크론에 삭제된 에이전트 잡 10줄이
+    매일 조용히 실패하던 것과 같은 부류를 레지스트리에서 미리 막는다.
+    """
+    import json
+
+    reg = ROOT / "output" / "cache" / "agent_registry.json"
+    if not reg.exists():
+        return fail("agent_registry.json 없음 — 레지스트리를 읽는 도구가 전부 눈이 먼다")
+    try:
+        agents = json.loads(reg.read_text(encoding="utf-8"))["agents"]
+    except Exception as e:
+        return fail(f"agent_registry.json 파싱 실패: {e}")
+
+    skills = ROOT / "projects" / "ai-team" / "skills"
+    problems = []
+
+    for name, a in agents.items():
+        if a.get("status") != "active":
+            continue
+        folder = a.get("folder")
+        if folder and not (skills / folder).exists():
+            problems.append(f"{name}: 폴더 없음({folder})")
+        for t in a.get("tools", []):
+            if not (ROOT / "projects" / "ai-team" / t.get("script", "")).exists():
+                problems.append(f"{name}.{t.get('name')}: 스크립트 없음")
+        for jid, sc in (a.get("scheduled") or {}).items():
+            if not list((ROOT / "projects" / "ai-team").glob(f"**/{sc}")):
+                problems.append(f"{name}.{jid}: 정기잡 스크립트 없음({sc})")
+
+    # 반대 방향 — 스킬 폴더는 있는데 레지스트리에 없는 에이전트
+    known = {a.get("folder") for a in agents.values()}
+    if skills.exists():
+        for d in skills.iterdir():
+            if not d.is_dir() or d.name.startswith((".", "_")) or d.name == "공용스킬":
+                continue
+            if d.name not in known and (d / "tools").exists():
+                problems.append(f"레지스트리에 없는 에이전트 폴더: {d.name}")
+
+    if problems:
+        return warn("레지스트리 불일치 " + str(len(problems)) + "건 — " + "; ".join(problems[:4]))
+    return ok(f"레지스트리 {len(agents)}명 — 폴더·도구·정기잡 전부 실재")
+
+
 def main() -> int:
     checks = {
         "env": check_env,
@@ -438,6 +491,7 @@ def main() -> int:
         "root_layout": check_root_layout,
         "docs_encoding": check_docs_encoding,
         "unclassified_files": check_unclassified_files,
+        "registry": check_registry,
     }
     worst = 0
     results = []

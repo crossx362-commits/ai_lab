@@ -250,6 +250,64 @@
       "status": "active",
       "created_by": "manual_registry_rebuild",
       "created_at": "2026-07-09T12:30:01"
+    },
+    "maru": {
+      "display": "마루",
+      "folder": "마루_게임개발",
+      "role": "Game Dev — 재와 별(유니티) 빌드·성능·렌더링 검증, 밸런스 시뮬, 아트 반영 검사",
+      "keywords": [
+        "마루",
+        "maru",
+        "게임",
+        "game",
+        "재와별",
+        "재와 별",
+        "ashes",
+        "유니티",
+        "unity",
+        "빌드",
+        "밸런스",
+        "스프라이트",
+        "아트 반영"
+      ],
+      "tools": [
+        {
+          "name": "asset_names",
+          "desc": "에셋 네이밍·반영·미커밋 자산 검사",
+          "script": "skills/마루_게임개발/tools/game_asset_names.py",
+          "args": [],
+          "timeout": 120
+        },
+        {
+          "name": "regression",
+          "desc": "W3 밸런스 회귀 측정",
+          "script": "skills/마루_게임개발/tools/game_regression.py",
+          "args": [],
+          "timeout": 1800
+        },
+        {
+          "name": "build_verify",
+          "desc": "배치 빌드 + 실행 검증",
+          "script": "skills/마루_게임개발/tools/game_build_verify.py",
+          "args": [],
+          "timeout": 1800
+        },
+        {
+          "name": "council",
+          "desc": "기획서 기반 6인 회의 → 작업지시서",
+          "script": "skills/마루_게임개발/tools/game_council.py",
+          "args": [],
+          "timeout": 1800
+        }
+      ],
+      "daemons": {},
+      "scheduled": {
+        "game_council": "game_council.py",
+        "game_agents_priority": "game_agents.py"
+      },
+      "status": "active",
+      "created_by": "owner_request_2026-08-15",
+      "created_at": "2026-08-15T20:24:29"
     }
   }
 }
