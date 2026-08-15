@@ -98,6 +98,53 @@ def expected() -> dict[str, list[str]]:
     return out
 
 
+def scale_table_problems() -> list[str]:
+    """프랍 목표 크기표(`prop_scale.json`)의 세 가지 사고를 잡는다 — 전부 2026-08-15 실제 발생.
+
+    ① **두 벌이 어긋난다.** 단일 소스는 `art/prop_scale.json`이고 유니티는
+       `Assets/Resources/prop_scale.json`을 읽는다. 아트 쪽만 고치면 게임은 옛 크기를 쓴다.
+    ② **같은 키가 두 번 들어간다.** 루프와 대화 세션이 동시에 나무를 반입해 실제로 났다.
+       JSON은 뒤엣것이 이기지만 파서마다 달라 조용히 크기가 뒤바뀔 수 있다.
+    ③ **표에 없는 프랍**은 기본 1유닛으로 그려진다 — 집이 사람만 해지는 그 사고다.
+    """
+    import json
+
+    art = ROOT / "projects/ashes-to-stars/art/prop_scale.json"
+    res = RES / "prop_scale.json"        # ⚠️ RES가 이미 Resources다. parent는 Assets라 한 단계 위다
+    out: list[str] = []
+
+    if not art.exists() or not res.exists():
+        return ["prop_scale.json 없음 — 프랍 크기가 전부 기본값(1유닛)이 된다"]
+
+    a_txt, r_txt = art.read_text(encoding="utf-8"), res.read_text(encoding="utf-8")
+    if a_txt != r_txt:
+        out.append("prop_scale.json 두 벌이 다르다 — art/ 것을 Assets/Resources/로 복사할 것")
+
+    for label, txt in (("art", a_txt), ("Resources", r_txt)):
+        keys = re.findall(r'"([A-Za-z0-9_]+)"\s*:\s*[0-9.]+', txt)
+        dup = sorted({k for k in keys if keys.count(k) > 1})
+        if dup:
+            out.append(f"prop_scale.json({label}) 중복 키 {len(dup)}개 — {', '.join(dup[:5])}")
+        try:
+            json.loads(txt)
+        except Exception as e:      # noqa: BLE001 — 어떤 파싱 실패든 크기표가 통째로 죽는다
+            out.append(f"prop_scale.json({label}) 파싱 실패: {e}")
+
+    try:
+        table = json.loads(r_txt)
+    except Exception:               # noqa: BLE001 — 위에서 이미 보고했다
+        return out
+
+    props_dir = RES / "props"
+    have = {p.stem for p in props_dir.glob("*.png")} if props_dir.exists() else set()
+    missing = sorted(have - set(table))
+    if missing:
+        out.append(f"크기표에 없는 프랍 {len(missing)}개 — {', '.join(missing[:5])}"
+                   + (" …" if len(missing) > 5 else "")
+                   + "  → 기본 1유닛으로 그려진다(바위가 사람만 해지는 그 사고)")
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--strict", action="store_true")
@@ -150,6 +197,8 @@ def main() -> None:
         png, meta = len(list(d.glob("*.png"))), len(list(d.glob("*.png.meta")))
         if png != meta:
             problems.append(f"meta 불일치 {folder}: png {png} vs meta {meta} — GUID 고아 위험")
+
+    problems += scale_table_problems()
 
     if not problems:
         print("✅ 네이밍·반영 이상 없음")
