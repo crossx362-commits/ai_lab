@@ -327,6 +327,17 @@ public class W3Party : MonoBehaviour
     //   300체 최저 177.9fps · **500체 최저 106.7fps** · 700체 94.4 · 1000체 56.7(여기서 60 붕괴)
     // 그래서 기획서 상한인 500을 그대로 쓴다. 1000은 실제로 못 버틴다.
     const int MAXM = 500;
+
+    /// <summary>
+    /// 죽은 뒤 사망 모션이 도는 시간. 0이면 살아 있거나 이미 치워졌다.
+    ///
+    /// 오너 지적 2026-08-15 「몬스터 스프라이트에 죽는 모션 있는데 그냥 사라지게 하지 마」.
+    /// 몹마다 `death_00~03` 4장을 뽑아 놨는데 `KillMob`이 그 자리에서 오브젝트를 꺼서
+    /// **한 장도 화면에 안 나왔다** — 이 저장소의 「만들어 놓고 안 쓰는」 계열이 아트에도 있었다.
+    /// </summary>
+    float[] _mDeadT;
+    /// <summary>4프레임 × 0.1초(SpriteBank가 그렇게 끊는다) + 마지막 장을 잠깐 남긴다.</summary>
+    const float DEATH_ANIM_SEC = 0.55f;
     Transform[] _mTr; SpriteRenderer[] _mSr;
     Vector2[] _mPos; float[] _mHp, _mCd, _mAtkCd, _mMaxHp; int[] _mKind; bool[] _mOn;
     SpriteRenderer[] _mBarBg, _mBarFg;      // 몹 체력바 (다친 개체만 표시)
@@ -598,6 +609,7 @@ public class W3Party : MonoBehaviour
         _mAtkCd = new float[MAXM]; _mMaxHp = new float[MAXM];
         _mBarBg = new SpriteRenderer[MAXM]; _mBarFg = new SpriteRenderer[MAXM];
         _mKind = new int[MAXM]; _mOn = new bool[MAXM]; _mFlash = new float[MAXM];
+        _mDeadT = new float[MAXM];
         _mSummoned = new bool[MAXM];
         // 개체별 계열색을 **스폰 때 한 번 정해 기억한다.** 예전엔 피격 섬광이 끝날 때마다
         // `FamilyTint()`를 다시 불렀는데, 필드에서는 그 함수가 계열을 무작위로 굴리므로
@@ -862,7 +874,7 @@ public class W3Party : MonoBehaviour
                                 m.Role == Role.Tank ? 1.8f : m.Role == Role.Dps ? -0.4f : -2.6f);
             m.Tr.gameObject.SetActive(true);
         }
-        for (int i = 0; i < MAXM; i++) { _mOn[i] = false; _mTr[i].gameObject.SetActive(false); }
+        for (int i = 0; i < MAXM; i++) { _mOn[i] = false; _mDeadT[i] = 0f; _mTr[i].gameObject.SetActive(false); }
         for (int i = 0; i < MAXP; i++) { _pOn[i] = false; _pTr[i].gameObject.SetActive(false); }
         if (_aOn != null) for (int i = 0; i < MAXP; i++) { _aOn[i] = false; _aTr[i].gameObject.SetActive(false); }
         _mAlive = 0;
@@ -885,7 +897,8 @@ public class W3Party : MonoBehaviour
     {
         for (int i = 0; i < MAXM; i++)
         {
-            if (_mOn[i]) continue;
+            // 아직 사망 모션이 도는 슬롯을 재사용하면 **시체가 그 자리에서 되살아난다.**
+            if (_mOn[i] || _mDeadT[i] > 0f) continue;
             float a = Random.value * Mathf.PI * 2f;
             _mPos[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Random.Range(Arena * 0.6f, Arena);
             int r = Random.Range(0, 100);
@@ -1212,6 +1225,25 @@ public class W3Party : MonoBehaviour
 
         for (int i = 0; i < MAXM; i++)
         {
+            // 죽어가는 몹 — 사망 모션을 끝까지 돌린 뒤에 치운다.
+            // `_mOn`이 false라 아래 루프들(AI·타겟팅)은 이미 이 개체를 안 본다.
+            if (_mDeadT[i] > 0f)
+            {
+                _mDeadT[i] += dt;
+                if (_mDeadT[i] >= DEATH_ANIM_SEC)
+                {
+                    _mDeadT[i] = 0f;
+                    _mTr[i].gameObject.SetActive(false);
+                }
+                else
+                {
+                    _mSr[i].sprite = bank.MobAnim(MobSpriteKind(_mKind[i]),
+                                                  SpriteBank.Motion.Death, _mDeadT[i]);
+                    _mSr[i].sortingOrder = Depth(_mPos[i].y) - 1;   // 시체는 산 것보다 뒤로
+                }
+                continue;
+            }
+
             if (!_mOn[i]) continue;
 
             // 몹 애니메이션. 개체마다 시간을 어긋나게 줘야 100마리가 같은 프레임으로
@@ -1709,7 +1741,14 @@ public class W3Party : MonoBehaviour
         // 정예는 매번 — 드물게 죽는 데다, 죽은 것이 화면에서 확실히 읽혀야 한다.
         if (_mKind[i] >= 3 || (_kills % 3) == 0)
             FxPool.Play(FxPool.Kind.Death, _mPos[i], _mKind[i] >= 3 ? 1.5f : 0.9f);
-        _mTr[i].gameObject.SetActive(false);
+
+        // 오브젝트를 여기서 끄지 않는다 — 사망 모션이 돌 시간을 준다.
+        // `_mOn[i]`는 이미 false라 AI·타겟팅·피격 판정에서는 즉시 빠진다(시체가 싸우지 않는다).
+        // 실제로 치우는 것은 애니메이션 갱신부다.
+        _mDeadT[i] = 0.0001f;                       // 0이 아니어야 "죽어가는 중"으로 읽힌다
+        _mFlash[i] = 0f;                            // 피격 섬광이 남아 시체가 번쩍이지 않게
+        _mSr[i].color = _mTint[i];
+        _mSr[i].sprite = SpriteBank.Cached.MobAnim(MobSpriteKind(_mKind[i]), SpriteBank.Motion.Death, 0f);
     }
 
     // ── 몹 AI + 어그로 규칙 (§10-4) ───────────────────────

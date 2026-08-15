@@ -36,11 +36,18 @@ namespace AshesToStars
         /// 비우므로, 그림은 그대로 두고 **충돌만 다시 등록**하기 위해 따로 기억한다.
         /// 이게 없으면 "보이는데 통과되는" 상태가 되어 §10-2 엄폐가 조용히 거짓이 된다.
         /// </summary>
-        static readonly System.Collections.Generic.List<Vector2> _cover =
-            new System.Collections.Generic.List<Vector2>();
+        static readonly System.Collections.Generic.List<(Vector2 pos, float radius)> _cover =
+            new System.Collections.Generic.List<(Vector2, float)>();
 
         /// <summary>안쪽 프랍의 충돌 반경 — 그림 크기가 아니라 "돌아가야 하는 정도"다.</summary>
         const float COVER_RADIUS = 0.9f;
+
+        /// <summary>
+        /// 건물의 충돌 반경. 덤불과 같은 값을 쓰면 **집이 덤불만큼만 막아** 유닛이 벽을
+        /// 스치듯 지나간다 — 화면에는 큰 건물이 서 있는데 길막이 안 되니 오히려 더 이상하다.
+        /// 오너 지적 2026-08-15 「유저가 건물 전략적으로 활용할 수 있어야 된다」.
+        /// </summary>
+        const float BUILDING_RADIUS = 1.9f;
 
         static GameObject _root;
 
@@ -57,7 +64,7 @@ namespace AshesToStars
         public static void RegisterCover()
         {
             for (int i = 0; i < _cover.Count; i++)
-                ArenaLayout.AddObstacle(_cover[i], COVER_RADIUS);
+                ArenaLayout.AddObstacle(_cover[i].pos, _cover[i].radius);
         }
 
         /// <summary>
@@ -216,7 +223,7 @@ namespace AshesToStars
             // **간격이 일정하고 정면이 광장을 향할 때** 마을로 보인다.
             int villageCount = 0;
             if (biome == Biome.Field)
-                villageCount = BuildVillage(arenaRadius, propNames, Place);
+                villageCount = BuildVillage(arenaRadius, propNames, Place, 엄폐물);
 
             if (엄폐물) RegisterCover();
             Debug.Log($"[FieldDecor] {biome} 프랍 {placed}개 노이즈 배치" +
@@ -253,12 +260,25 @@ namespace AshesToStars
                 sr.sprite = Sprite.Create(atlas, pxRect, Vector2.one * 0.5f, ppu, 0,
                                          SpriteMeshType.FullRect);
                 sr.sharedMaterial = mat;
-                // 정렬: y가 낮을수록 앞. 캐릭터(500)보다 뒤인 프랍 기본층(100)
-                sr.sortingOrder = 100 - (int)(worldPos.y * 4f);
+                // ⚠️ 유닛과 **같은 척도**를 써야 한다. 예전엔 프랍이 `100 - y*4`,
+                //    유닛이 `1000 - y*10`이라 **유닛이 언제나 건물 위에 그려졌다** —
+                //    몹이 지붕 위에 서 있는 그림이 나왔고(실측 2026-08-15), 무엇보다
+                //    「집 뒤로 돌아가 숨는다」가 화면에서 성립하지 않았다. 엄폐물로
+                //    등록해 실제로 막아도, 뒤에 선 것이 안 가려지면 엄폐로 안 읽힌다.
+                //    공식은 W3Party.Depth와 동일하게 유지할 것 — 한쪽만 바꾸면 다시 어긋난다.
+                sr.sortingOrder = 1000 - Mathf.RoundToInt(worldPos.y * 10f);
 
                 // 아레나 안에 선 프랍은 **보이기만 하면 안 된다** — 지나갈 수 있으면
                 // 엄폐가 성립하지 않고, 그림만 있는 장애물은 오히려 유저를 속인다.
-                if (asCover) { _cover.Add(worldPos); blockers++; }
+                if (asCover)
+                {
+                    // 건물은 크게, 자연물은 기존대로. 이름으로 가른다 — 크기표(prop_scale)를
+                    // 다시 읽는 것보다 단순하고, 마을 구성물은 이미 접두로 구분돼 있다.
+                    bool building = propNames[propIdx].StartsWith("village_house_")
+                                 || propNames[propIdx] == "village_barn_0";
+                    _cover.Add((worldPos, building ? BUILDING_RADIUS : COVER_RADIUS));
+                    blockers++;
+                }
                 return true;
             }
         }
@@ -491,13 +511,32 @@ namespace AshesToStars
         /// **큰길(직선 2줄)** + 집 뒤 **텃밭 울타리** + 녹지의 우물.
         /// </summary>
         static int BuildVillage(float arenaRadius, string[] names,
-                                System.Func<int, Vector2, bool, bool> place)
+                                System.Func<int, Vector2, bool, bool> place, bool 엄폐물)
         {
             int Idx(string n) => System.Array.IndexOf(names, n);
             int n = 0;
 
             var roads = VillageRoads(arenaRadius);
             n += BuildRoads(arenaRadius, roads);
+
+            // ── 길 위에는 아무것도 세우지 않는다 (오너 지적 2026-08-15) ──
+            // 집이 길을 밟고 서 있으면 길이 길로 안 보인다. 그리고 여기서 막지 않으면
+            // **다른 길**(샛길·교차로)을 밟는다 — 자기 길에서만 떨어뜨려 놓는 것으로는
+            // 부족하다. 길 전체를 점으로 훑어 두고 거리로 판정한다.
+            var roadPts = new System.Collections.Generic.List<(Vector2 p, float half)>();
+            foreach (var r in roads)
+                for (float t = 0f; t <= 1f; t += 0.02f)
+                    roadPts.Add((OnRoad(r, t), r.Width * 0.5f));
+
+            bool OnAnyRoad(Vector2 at, float clearance)
+            {
+                for (int i = 0; i < roadPts.Count; i++)
+                {
+                    float need = roadPts[i].half + clearance;
+                    if ((at - roadPts[i].p).sqrMagnitude < need * need) return true;
+                }
+                return false;
+            }
 
             string[] houses = { "village_house_0", "village_house_1", "village_house_2",
                                 "village_barn_0" };
@@ -530,22 +569,35 @@ namespace AshesToStars
 
                         if (at.magnitude < clear) continue;
                         if (Mathf.Abs(at.x) > reach || Mathf.Abs(at.y) > reach * 0.8f) continue;
+                        // 집은 폭이 있으니 길에서 넉넉히 물러선다. 벽이 길에 닿기만 해도
+                        // 화면에서는 길을 막은 것으로 보인다.
+                        if (OnAnyRoad(at, 2.0f)) continue;
                         // 중심에서 멀수록 성기게 — 마을은 가장자리로 갈수록 흩어진다
                         float far = at.magnitude / (arenaRadius * 1.6f);
                         if (Random.value < far * 0.55f) continue;
 
                         string pick = houses[(lot * 3 + (s > 0 ? 1 : 0)) % houses.Length];
-                        if (!place(Idx(pick), at, false)) continue;
+                        // ── 건물을 **전략 요소**로 만든다 (오너 지적 2026-08-15) ──
+                        // 그림만 있는 건물은 유닛이 뚫고 지나가서 「저 집 뒤로 돌아간다」가
+                        // 성립하지 않는다 — §10-2가 요구하는 위치 선정이 거짓이 된다.
+                        // 엄폐물을 켠 게임 모드에서만 등록한다: W1~W3 구성 비교는 빈 판이
+                        // 전제라 여기에 장애물이 끼면 측정이 오염된다(§3-4).
+                        if (!place(Idx(pick), at, 엄폐물)) continue;
                         n++;
 
                         // 집 뒤(길 반대쪽) 텃밭 울타리 — 마당이 길 쪽에 있으면 실제와 반대다
-                        if (lot % 2 == 0 &&
-                            place(Idx("village_fence_0"), at + nrm * 2.6f * s, false)) n++;
+                        var fenceAt = at + nrm * 2.6f * s;
+                        if (lot % 2 == 0 && !OnAnyRoad(fenceAt, 0.6f) &&
+                            place(Idx("village_fence_0"), fenceAt, false)) n++;
 
                         // 생활 흔적 — 집 옆에 건초·수레. 전부 두면 지저분하다
                         if (lot % 4 == 0)
-                            if (place(Idx((lot % 8 == 0) ? "village_haystack_0" : "village_cart_0"),
-                                      at + d * 2.2f, false)) n++;
+                        {
+                            var side = at + d * 2.2f;
+                            if (!OnAnyRoad(side, 0.8f) &&
+                                place(Idx((lot % 8 == 0) ? "village_haystack_0" : "village_cart_0"),
+                                      side, false)) n++;
+                        }
                     }
 
                     // 가로등은 길가에, 큰길에만 드문드문
