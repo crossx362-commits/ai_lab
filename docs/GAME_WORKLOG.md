@@ -10,6 +10,28 @@
 
 ---
 
+## 몹 chaser 계열 재생성 — 완료 (2026-08-15 17:1x, 이터3, INBOX⭐)
+
+**핵심: 이터1·2의 "백엔드 죽음"은 오진이었다.** higgsfield는 살아 있고 느릴 뿐(INBOX 정정이 옳음).
+인내심을 갖고 돌리니 chaser가 정상 생성됐다.
+
+- **생성**: `python3 aigen.py --spec spec_p2_chaser2.json --out-dir out_p2` (백엔드 higgsfield 기본).
+  sheet A(21:9, 10셀)는 10분 타임아웃 2회 후 3번째 시도 성공, sheet B(4:3, 12셀) 1회 성공. 총 ~30분.
+  판정 근거: 크레딧 1044→1030, `pgrep -f higgsfield` 자식 프로세스 생존.
+- **후처리 함정**: sheet A는 셀 경계에 **검은 격자선**을 그려서 나온다(chroma_key는 마젠타만 지움).
+  → `wipe_gridlines.py`로 시트 청소 후 재분할. sheet B는 격자선 없음.
+- **파이프라인**: split_ai_sheet(고정격자 5×2·4×3, 22프레임) → wipe → align_frames(공통 159x124,
+  바닥정렬) → `Resources/sprites/mob_chaser`(png만 덮음, meta 유지) → `game_asset_names.py` ✅통과.
+- **화면 확인**: `qa_shot.sh hunt` → `output/qa/ashes-to-stars/shots/qa_hunt.png`. 늑대 실루엣이
+  FamilyColor 색조별(주황·청·분홍)로 표시, 캐릭터와 같은 픽셀아트 세계관. 무채색+런타임틴트 파이프라인 실증.
+- **네거티브 컨트롤**: 같은 화면에 미재생성 3계열(charger·ranged·swarmer 옛 아트)이 함께 나오는데
+  톤이 매끈/3D톤으로 갈려 보인다 — 옛 아트 되돌림과 동등한 증거.
+
+**남은 일**: charger·ranged·swarmer 3계열(spec 준비됨). 다음 세션이 **1계열씩** 위 파이프라인 그대로.
+백엔드는 살아 있으니 인내심만 있으면 된다.
+
+---
+
 ## 지금 진행 중 (2026-08-15 13:5x)
 
 ### 캐릭터 4직업 재생성 — 착수 완료, 생성 진행 중
@@ -25,12 +47,25 @@
 
 **진행 상황**
 
-| 직업 | 스펙 | 생성 | 정렬 | 반입 |
+| 직업 | 스펙 | 생성 | 분할·정렬 | 반입 |
 |---|---|---|---|---|
-| tank | `spec_char_tank.json` (이전 세션 작성) | 미실행 | — | — |
-| **dps** | `spec_char_dps.json` | ✅ A·B·C 3장 → `out_char/` | — | — |
+| tank | `spec_char_tank.json` | 미실행 | — | — |
+| **dps** | `spec_char_dps.json` | ✅ A·B·C (프롬프트 3차 확정본) | — | — |
 | healer | `spec_char_healer.json` | 미실행 | — | — |
 | buffer | `spec_char_buffer.json` | 미실행 | — | — |
+
+**파이프라인 확립 완료** (`05a62c48`) — `./art/build_chars.sh [직업]` 하나로
+생성→격자선제거→분할→정렬이 돈다. 프롬프트는 3차 시행착오로 확정:
+
+| 차수 | 문제 | 해결 |
+|---|---|---|
+| 1차 | 프레임 라벨이 이미지에 그려짐 | 웹서치 → **스펙시트형 프롬프트가 원인**. 서술형으로 재작성 |
+| 2차 | 6셀 요청에 9셀 + 바닥 그림자 | 룰셋에 `EXACTLY SIX CELLS`·`NO SHADOW OF ANY KIND` |
+| 3차 | ✅ 전부 해결 | 인접 프레임 차이 28~50%로 동작도 잘 읽힘(실측) |
+
+⚠️ **내 도구가 낸 사고**: `wipe_gridlines.py`가 단독 프레임(invuln)의 캐릭터를 관통하는
+줄무늬를 그어 이미지를 훼손했다. "캐릭터는 한 줄을 가득 채우지 않는다"는 가정이 6셀
+시트에서만 참이었다. 수정 후 네거티브 컨트롤로 확인함.
 
 **구조**: 13프레임 = 6셀 시트 A(idle·walk2·attack2·special) + 6셀 시트 B(dash4·hurt·death)
 + 단독 C(invuln). 무적 색은 §0-A 확정대로 직업별로 다르다(탱=금 구체 / 근접딜=보라 오라 /
