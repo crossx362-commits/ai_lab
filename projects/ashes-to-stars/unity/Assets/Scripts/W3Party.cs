@@ -343,6 +343,19 @@ public class W3Party : MonoBehaviour
     /// **한 장도 화면에 안 나왔다** — 이 저장소의 「만들어 놓고 안 쓰는」 계열이 아트에도 있었다.
     /// </summary>
     float[] _mDeadT;
+
+    // ── 돌진형(§10-2 「예고 표식 후 직선 돌진 — 회피 가능한 위협, 수동 조작 보상」) ──
+    // 3박자로 나눈다. **예고가 없으면 회피할 수 없고, 경직이 없으면 회피해도 보상이 없다.**
+    //   0 접근 → 1 예고(0.8s, 제자리에서 노려본다) → 2 돌진(1.2s, 직선 고속) → 3 경직(1.0s)
+    // 대시(§5)의 무적 0.3초가 이 돌진을 통과하는 「정확히 쓰면 한 번 산다」의 대상이다.
+    float[] _mChargeT; int[] _mChargePhase; Vector2[] _mChargeDir;
+    const float CHG_TELL = 0.8f, CHG_RUSH = 1.2f, CHG_STUN = 1.0f;
+    const float CHG_RANGE = 7.5f;      // 이 거리 안에 들어오면 예고를 시작한다
+    const float CHG_SPEED = 3.2f;      // 기본 이동 대비 배율 — 걸어서는 못 피한다
+    /// <summary>예고·돌진 횟수. 0이면 배선했는데 안 도는 것이다 — QA가 캡처 시점에 읽는다.</summary>
+    int _chargeTells, _chargeRushes;
+    public static (int tell, int rush) ChargeStatsOnActive()
+        => _game != null ? (_game._chargeTells, _game._chargeRushes) : (-1, -1);
     /// <summary>4프레임 × 0.1초(SpriteBank가 그렇게 끊는다) + 마지막 장을 잠깐 남긴다.</summary>
     const float DEATH_ANIM_SEC = 0.55f;
     Transform[] _mTr; SpriteRenderer[] _mSr;
@@ -617,6 +630,7 @@ public class W3Party : MonoBehaviour
         _mBarBg = new SpriteRenderer[MAXM]; _mBarFg = new SpriteRenderer[MAXM];
         _mKind = new int[MAXM]; _mOn = new bool[MAXM]; _mFlash = new float[MAXM];
         _mDeadT = new float[MAXM];
+        _mChargeT = new float[MAXM]; _mChargePhase = new int[MAXM]; _mChargeDir = new Vector2[MAXM];
         _mSummoned = new bool[MAXM];
         // 개체별 계열색을 **스폰 때 한 번 정해 기억한다.** 예전엔 피격 섬광이 끝날 때마다
         // `FamilyTint()`를 다시 불렀는데, 필드에서는 그 함수가 계열을 무작위로 굴리므로
@@ -881,7 +895,7 @@ public class W3Party : MonoBehaviour
                                 m.Role == Role.Tank ? 1.8f : m.Role == Role.Dps ? -0.4f : -2.6f);
             m.Tr.gameObject.SetActive(true);
         }
-        for (int i = 0; i < MAXM; i++) { _mOn[i] = false; _mDeadT[i] = 0f; _mTr[i].gameObject.SetActive(false); }
+        for (int i = 0; i < MAXM; i++) { _mOn[i] = false; _mDeadT[i] = 0f; _mChargePhase[i] = 0; _mTr[i].gameObject.SetActive(false); }
         for (int i = 0; i < MAXP; i++) { _pOn[i] = false; _pTr[i].gameObject.SetActive(false); }
         if (_aOn != null) for (int i = 0; i < MAXP; i++) { _aOn[i] = false; _aTr[i].gameObject.SetActive(false); }
         _mAlive = 0;
@@ -890,7 +904,7 @@ public class W3Party : MonoBehaviour
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
-        _meleeHits = 0; _shotHits = 0; _framesThisRun = 0; _aiDashUses = 0;
+        _meleeHits = 0; _shotHits = 0; _framesThisRun = 0; _aiDashUses = 0; _chargeTells = 0; _chargeRushes = 0;
         _summonedAlive = 0; _summonDmgToParty = 0f; _summonHits = 0; _summonHbAt = 0f;
         // 실플레이 판만 보스 소환의 대상이 된다. 검증(W1~W3)은 GameMode가 아니라 여기서 빠진다 —
         // 측정 판에 소환이 끼면 구성 대조가 오염된다.
@@ -909,7 +923,12 @@ public class W3Party : MonoBehaviour
             float a = Random.value * Mathf.PI * 2f;
             _mPos[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Random.Range(Arena * 0.6f, Arena);
             int r = Random.Range(0, 100);
-            _mKind[i] = r < 35 ? 0 : r < 60 ? 1 : r < 85 ? 2 : r < 94 ? 3 : 4;   // 정예 15%
+            // §10-2 AI 4종 + 정예 2종.
+            //   0 추적형 30% · 1 포위형 20% · 5 돌진형 25% · 2 원거리형 15% · 3/4 정예 10%
+            // 원거리형은 §10-2가 정한 **15~25%** 안에 둔다(많으면 접근 자체가 불가능해진다).
+            // 돌진형은 이번에 신설했다 — 「예고 표식 후 직선 돌진」이 §10-2의 4종 중
+            // 유일하게 **없던** 것이고, 대시(§5)를 넣은 지금이라야 회피가 성립한다.
+            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 96 ? 3 : 4;
             // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
             // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
             // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
@@ -933,6 +952,8 @@ public class W3Party : MonoBehaviour
             _mCd[i] = Random.value * 2f;
             // 소환 몹은 사거리 안에 나타나므로 **곧바로** 한 대 문다 — 예고 후 대응할 수 있는 위협이 된다.
             _mAtkCd[i] = summoned ? 0.15f : Random.value * 0.8f; _mFlash[i] = 0f;
+            // 슬롯 재사용 — 앞 개체의 돌진 단계가 남아 있으면 **스폰하자마자 돌진**한다
+            _mChargePhase[i] = 0; _mChargeT[i] = 0f;
             _mOn[i] = true; _mAlive++;
             // 스폰 그림과 애니메이션이 **같은 규칙**을 쓴다(MobSpriteKind가 단일 소스).
             // 예전엔 여기만 종류별이고 애니메이션은 0번 고정이라, 몹이 걷기 시작하는
@@ -1865,13 +1886,21 @@ public class W3Party : MonoBehaviour
     /// 정예 2종은 전용 아트가 아직 없어 원거리·군집 실루엣을 빌려 쓰되 색·크기로 구분한다
     /// (스폰 코드가 이미 초록/보라 틴트와 1.4배 크기를 준다).
     /// </summary>
+    /// <summary>
+    /// 행동 종류 → 실루엣. **둘이 어긋나 있었다** — 원거리형이 뿔 달린 돌진 실루엣
+    /// (Charger)을 쓰고, 포위형이 날렵한 늑대(Chaser)를 쓰고 있었다. INBOX의
+    /// 「실루엣이 그 몹의 행동을 예고해야 한다」가 정면으로 깨진 상태였다(2026-08-15 발견).
+    /// 이제 짝을 맞춘다: 포위형=군집형 · 돌진형=뿔·덩치 · 원거리형=직립·긴 팔.
+    /// ⚠️ 정예(4)는 추적형(0)과 실루엣을 공유한다 — §0-B가 「정예는 신규 아트 0장,
+    ///    색조·크기로만 변주」로 확정했기 때문이다. 크기 1.4배와 전용 색으로 갈린다.
+    /// </summary>
     static int MobSpriteKind(int kind) => kind switch
     {
-        1 => SpriteBank.MobKindChaser,
-        2 => SpriteBank.MobKindCharger,
-        3 => SpriteBank.MobKindRanged,     // 치유 정예 — 후열형 실루엣
-        4 => SpriteBank.MobKindSwarmer,    // 소환 정예 — 군집형 실루엣
-        _ => SpriteBank.MobKindBasic,
+        1 => SpriteBank.MobKindSwarmer,    // 포위형 — 낮고 넓게 벌어진 군집형
+        2 => SpriteBank.MobKindRanged,     // 원거리형 — 직립·긴 팔
+        3 => SpriteBank.MobKindChaser,     // 치유 정예
+        5 => SpriteBank.MobKindCharger,    // 돌진형 — 뿔·덩치·앞으로 쏠린 무게중심
+        _ => SpriteBank.MobKindBasic,      // 0 추적형 · 4 소환 정예(크기·색으로 갈린다)
     };
 
     /// <summary>
@@ -1901,11 +1930,12 @@ public class W3Party : MonoBehaviour
         //    (실루엣 이름과 행동 이름이 어긋나 있다는 별개 문제는 STATUS.md에 적어 뒀다)
         return kind switch
         {
-            0 => TintOf(MobFamily.야수),      // 기본형(Basic 실루엣) — 주황
-            1 => TintOf(MobFamily.기계),      // 포위형(Chaser 실루엣) — 강청
-            2 => TintOf(MobFamily.언데드),    // 원거리형(Charger 실루엣) — 독초록
-            3 => new Color(1f, 0.30f, 0.30f), // 치유 정예(Ranged 실루엣) — 적색(잡몹에 없는 색)
-            _ => new Color(0.78f, 0.40f, 1f), // 소환 정예(Swarmer 실루엣) — 보라(잡몹에 없는 색)
+            0 => TintOf(MobFamily.야수),      // 추적형 — 주황
+            1 => TintOf(MobFamily.기계),      // 포위형 — 강청
+            2 => TintOf(MobFamily.언데드),    // 원거리형 — 독초록
+            5 => new Color(1f, 0.82f, 0.30f), // 돌진형 — 황색. 예고를 봐야 하는 몹이라 눈에 띄어야 한다
+            3 => new Color(1f, 0.30f, 0.30f), // 치유 정예 — 적색(잡몹에 없는 색)
+            _ => new Color(0.78f, 0.40f, 1f), // 소환 정예 — 보라(잡몹에 없는 색)
         };
     }
 
@@ -2001,7 +2031,7 @@ public class W3Party : MonoBehaviour
 
             // 어그로: 근접은 최근접, 원거리는 **후열(위협 낮은 쪽) 저격**.
             // 단 탱의 도발(Threat 급등)이 그걸 끊는다 — 이 두 줄이 진형을 만든다.
-            Member tgt = _mKind[i] == 2 ? PickBackline() : PickNearestOrTaunt(p);
+            Member tgt = _mKind[i] == 2 ? PickBackline() : PickNearestOrTaunt(p);   // §10-4 후열 저격은 원거리형만
             if (tgt == null) continue;
 
             Vector2 to = tgt.Pos - p;
@@ -2010,7 +2040,42 @@ public class W3Party : MonoBehaviour
             float spd;
             Vector2 want;
 
-            if (_mKind[i] == 1)                                   // 포위형
+            if (_mKind[i] == 5)                                   // 돌진형 (§10-2)
+            {
+                _mChargeT[i] -= dt;
+                switch (_mChargePhase[i])
+                {
+                    case 1:                                        // 예고 — 제자리에서 노려본다
+                        want = Vector2.zero; spd = 0f;
+                        if (_mChargeT[i] <= 0f)
+                        {
+                            // 방향은 **예고가 끝나는 순간** 고정한다. 계속 따라오면
+                            // 회피가 불가능해져 "피할 수 있는 위협"이 거짓이 된다.
+                            _mChargeDir[i] = dir;
+                            _mChargePhase[i] = 2; _mChargeT[i] = CHG_RUSH;
+                        }
+                        break;
+                    case 2:                                        // 돌진 — 직선 고속
+                        want = _mChargeDir[i]; spd = PlayerSpeed * CHG_SPEED;
+                        if (_mChargeT[i] <= 0f) { _mChargePhase[i] = 3; _mChargeT[i] = CHG_STUN; _chargeRushes++; }
+                        break;
+                    case 3:                                        // 경직 — 회피에 대한 보상
+                        want = Vector2.zero; spd = 0f;
+                        if (_mChargeT[i] <= 0f) _mChargePhase[i] = 0;
+                        break;
+                    default:                                       // 접근
+                        want = dir; spd = PlayerSpeed * ChaserRatio;
+                        if (dist < CHG_RANGE)
+                        {
+                            _mChargePhase[i] = 1; _mChargeT[i] = CHG_TELL;
+                            _chargeTells++;
+                            // 예고 표식 — 이게 보이지 않으면 §10-2가 성립하지 않는다.
+                            FxPool.Play(FxPool.Kind.Taunt, p, 1.5f, new Color(1f, 0.75f, 0.2f, 0.9f));
+                        }
+                        break;
+                }
+            }
+            else if (_mKind[i] == 1)                              // 포위형
             {
                 Vector2 tan = new Vector2(-dir.y, dir.x);
                 float w = Mathf.Clamp01((dist - 2.5f) / 4f);

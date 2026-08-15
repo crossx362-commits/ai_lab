@@ -211,7 +211,9 @@ namespace AshesToStars
                     //    `AshesToStars` 네임스페이스 안이고 `W3Party`는 전역이라 한정자가
                     //    필요한데, 반드시 **밖에서 지역변수로 받아** 넣을 것.
                     int aiDash = global::W3Party.AiDashUsesOnActive();
-                    Debug.Log($"[QA] AI 이동기 사용 {aiDash}회 (-1이면 전투가 안 돌고 있다는 뜻)");
+                    var chg = global::W3Party.ChargeStatsOnActive();
+                    Debug.Log($"[QA] AI 이동기 사용 {aiDash}회 · 돌진형 예고 {chg.tell}회 → 돌진 {chg.rush}회 " +
+                              $"(-1이면 전투가 안 돌고 있다는 뜻)");
                     Shot($"qa_{_mode}"); _step = 1; _t = 0f;
                 }
                 else if (_step == 1 && _t > 0.5f) Finish();
