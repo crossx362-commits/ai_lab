@@ -23,7 +23,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 UNITY="${UNITY_BIN:-/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity}"
-PROJ="$PWD/projects/ashes-to-stars/unity"
+# 기본은 원본. 에디터가 원본을 잡고 있으면 사본으로 우회할 수 있다(CLAUDE.md §3) —
+# 그때는 `GAME_PROJ=.../unity_meas ./tools/qa_shot.sh …`.
+# 경로를 고정해 두면 **에디터가 열려 있는 동안 시각 검증이 통째로 막힌다.** 이 프로젝트는
+# 화면 확인이 완료 기준이라, 막히는 순간 완료 판정을 못 한다(2026-08-15 실제로 막혔다).
+PROJ="${GAME_PROJ:-$PWD/projects/ashes-to-stars/unity}"
 # ⚠️ 출력 경로는 `PlayableScenesBuilder.BuildGame`이 **하드코딩**한다(`../../build_game`).
 #    `-buildPath` 인자를 주면 받는 줄 알고 build_qa로 지정했다가, 빌드는 성공했는데
 #    실행본이 없다는 상태가 됐다(실측 2026-08-15). 빌더를 고치지 않는 이유는 다른

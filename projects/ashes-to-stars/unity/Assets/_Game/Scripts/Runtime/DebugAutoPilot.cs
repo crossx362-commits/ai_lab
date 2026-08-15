@@ -98,6 +98,19 @@ namespace AshesToStars
                 return;
             }
 
+            if (_mode == "estate")
+            {
+                // 영묘(§4) 확인 — 삭제된 캐릭터와 환생석이 **둘 다 있어야** 화면이 성립한다.
+                // 빈 목록만 찍으면 "환생할 수 있다"가 확인되지 않는다.
+                var roster = LifeSystem.GetCharacters();
+                if (roster.Count >= 2)
+                    for (int k = 0; k < 3; k++) LifeSystem.RegisterDeath(roster[1]);   // 3회 = 삭제
+                GameState.Gain(Economy.LifeItem.RebornStone, 2);
+                EstateScreen.AutoOpen = "영묘";   // 허브만 찍으면 채운 화면을 못 본다
+                GameFlow.Go(GameFlow.Estate);
+                return;
+            }
+
             if (_mode == "style")
             {
                 // 전투 스타일 화면(§3). 기본값만 보이면 「고를 수 있다」가 확인되지 않으므로

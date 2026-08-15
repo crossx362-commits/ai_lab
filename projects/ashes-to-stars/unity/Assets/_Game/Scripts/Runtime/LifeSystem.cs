@@ -260,6 +260,48 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 환생석으로 **삭제된** 캐릭터를 되돌린다(§4, 영묘).
+        ///
+        /// 부활초와 다른 자리다: 부활초는 사망 카운트를 1 깎아 **삭제를 미루는** 것이고,
+        /// 환생석은 이미 삭제된 것을 **되돌리는** 것이다. 그래서 조건도 정반대다
+        /// (`IsDeleted == false`를 요구하는 부활초 vs `true`를 요구하는 여기).
+        ///
+        /// 돌아온 캐릭터는 사망 카운트 0에서 다시 시작한다 — 3회 사망의 무게가
+        /// 환생 한 번으로 사라지면 목숨 시스템(§4)이 성립하지 않으므로, **환생석 자체가
+        /// 희소한 것**(10층 보스 드랍)으로 균형을 잡는다.
+        ///
+        /// ⚠️ 기획서 §4는 "장비는 함께 돌아오지 않는다"고 정했다. 지금은 장비 시스템이
+        ///    없어 그 조항이 구현할 것이 없다 — 장비가 생기면 **여기서 장비를 비워야 한다.**
+        /// </summary>
+        public static bool UseRebornStone(CharacterRecord character)
+        {
+            if (character == null || !character.IsDeleted)
+                return false;                      // 삭제되지 않은 캐릭터엔 쓸 이유가 없다
+
+            if (!GameState.Consume(Economy.LifeItem.RebornStone))
+                return false;
+
+            character.IsDeleted = false;
+            character.DeathCount = 0;
+            character.RecoveryEndTime = 0;
+            Save();
+
+            Debug.Log($"[환생석] {character.Name} 복구 — 사망 카운트 0으로 재시작 " +
+                      $"(남은 환생석: {GetRebornStones()})");
+            return true;
+        }
+
+        /// <summary>환생석 보유량. 단일 소스는 `GameState.Bag`이다(부활초와 같은 이유).</summary>
+        public static int GetRebornStones() => GameState.Bag.GetCount(Economy.LifeItem.RebornStone);
+
+        /// <summary>삭제되어 환생 대상이 되는 캐릭터들.</summary>
+        public static List<CharacterRecord> GetDeletedCharacters()
+        {
+            EnsureLoaded();
+            return _characters.FindAll(c => c.IsDeleted);
+        }
+
+        /// <summary>
         /// 부활초 개수를 얻는다.
         ///
         /// 단일 소스는 `GameState.Bag`이다. 예전에는 여기 별도 카운터(`_revivePotions`)가 있어
