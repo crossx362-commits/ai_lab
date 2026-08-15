@@ -6,11 +6,23 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-15 15:5x · 이터레이션 1
+최종 갱신: 2026-08-15 16:3x · 이터레이션 2
 
-> **이번 이터레이션 결과: 인프라 블록.** 큐 #1(몹 아트 재생성)에 착수했으나 이미지 생성
-> 백엔드 2종이 모두 죽어 있어 한 프레임도 못 뽑았다(아래 「막힌 것」). 게임 진척 대신 다음
-> 세션이 헛걸음하지 않게 **정밀 인계 + 설계 정정(§0-B) + 재실행 가능한 spec**을 남겼다.
+> **이번 이터레이션 결과: 인프라 블록 지속 + INBOX 전진.** 큐 #1(몹 아트 재생성)의
+> 두 백엔드가 **여전히 죽어 있음을 실측 재확인**했고(진단은 이전보다 정확해졌다, 아래
+> 「막힌 것」), 백엔드 없이 가능한 최대 전진으로 **INBOX 4계열 전부의 행동예고 spec을
+> 웹서치 기반으로 작성**했다(chaser는 기존, charger·ranged·swarmer 신규). 백엔드가 살아나면
+> 4계열을 한 번에 생성만 하면 되도록 정지 상태로 대기시켜 놓았다.
+>
+> **이터레이션 1과 다른 새 사실 3가지(다음 세션이 오판 안 하도록):**
+> 1. **Gemini는 "쿼터 리셋"으로 회복 안 된다** — 429 응답이 `limit: 0`이다. `gemini-3-pro-image`
+>    무료 티어가 구조적으로 0이라 **유료 결제만이 재개 경로다**(이전 STATUS의 "쿼터 리셋" 오답).
+> 2. **higgsfield 토큰은 유효하다**(`~/.config/higgsfield/credentials.json` expires_at 미래).
+>    즉 이전 세션의 "OAuth 대기 추정"은 오답 — 토큰은 멀쩡한데 `higgsfield generate`가
+>    비대화형 세션에서 15분+ 무출력으로 멈춘다(서비스/큐 stall). 재로그인해도 안 풀릴 것.
+> 3. **제3의 경로 후보**: Unity MCP `generate_image`(fal.ai/OpenRouter, 에디터 보안저장소 BYO키,
+>    생성물을 텍스처/스프라이트로 바로 반입). 이 세션에선 **툴 권한 미승인**으로 못 씀 —
+>    오너가 승인하면 higgsfield/Gemini 없이도 뚫릴 수 있다(list_providers로 키 설정부터 확인).
 
 ---
 
@@ -26,7 +38,7 @@
 
 | # | 항목 | 통과 기준 | 네거티브 컨트롤 |
 |---|---|---|---|
-| 1 | **몹 AI 4계열 실루엣 재생성** ⭐ ⛔인프라블록 | §0-A 픽셀아트 화풍, **4 AI 실루엣**(chaser·charger·ranged·swarmer) × 22프레임씩. **무채색 회색-백으로** 생성(색은 런타임 `MobDef.색조`가 입힘). 캐릭터와 같은 세계관 렌더 충실도 | 옛 저해상 anchor로 되돌리면 캐릭터와 톤이 갈림 |
+| 1 | **몹 AI 4계열 실루엣 재생성** ⭐ ⛔인프라블록(spec 4종 대기 완료) | §0-A 픽셀아트 화풍, **4 AI 실루엣**(chaser·charger·ranged·swarmer) × 22프레임씩. **무채색 회색-백으로** 생성(색은 런타임 `MobDef.색조`가 입힘). 캐릭터와 같은 세계관 렌더 충실도. **spec 4종 작성완료·백엔드만 살아나면 생성** | 옛 저해상 anchor로 되돌리면 캐릭터와 톤이 갈림 |
 | 2 | **§10-5 보스 쫄 소환** ⚠️생각보다 큼 | `BossBattle.cs:317`이 빈 GameObject만 만든다. **게다가 세 기믹(`TriggerFloorAOE`/`TriggerSummonMobs`/`TriggerHealCheck`)이 어디서도 호출되지 않는다** — 페이즈→기믹 트리거 시스템과 W3Party 전투 통합이 통째로 없다. "소환을 실몹으로" 한 줄이 아니라 기믹 발동 배선부터다 | 소환 비활성 시 그 페이즈 파티 피해가 사라짐 |
 | 3 | **§3 RaceDef 배선** | 종족 4종이 전투에 영향 0. 런타임 소비처 ≥1 | 값 변경이 결과에 반영되는지 |
 | 4 | **§16 영지 하위 건물 4종** | 대장간·경매장·영묘·수비대가 전부 "아직 내용이 없다" | — |
@@ -42,12 +54,19 @@
 AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임**이 옳다. 5장을 따로 그리면
 §0-B를 위반한다(물량 폭증·틴트 이중적용). 큐 #1을 그 뜻으로 다듬어 둠.
 
-**재실행 준비물**: `art/spec_p2_chaser2.json` — 개선 spec 이미 작성해 둠. 기존
-`anchor_mobs_gray.png`(캐릭터보다 저해상)에 **캐릭터 시트 `out_char/char_dps_A.png`를
-렌더링 충실도 앵커로 추가**하고 룰셋에 "충실도만 베끼고 색은 절대 회색 유지"를 못박았다.
-백엔드가 살아나면 `python3 aigen.py --spec spec_p2_chaser2.json --out-dir out_p2` →
-`split_ai_sheet.py`(A=10셀 idle×4·walk×6, B=12셀 attack×4·hurt×4·death×4) →
-`align_frames.py` → `Resources/sprites/mob_chaser`로. 통과하면 나머지 3계열도 spec 복제.
+**재실행 준비물 — 4계열 spec 전부 작성 완료(이터2)**: `art/spec_p2_{chaser,charger,ranged,swarmer}2.json`.
+넷 다 동일 구조: `anchor_mobs_gray.png` + **캐릭터 시트 `out_char/char_dps_A.png`(충실도 앵커)**,
+룰셋 `m2`(충실도만 베끼고 색은 무채색 유지), A=10셀(idle×4·walk×6)·B=12셀(attack×4·hurt×4·death×4).
+각 계열 프롬프트는 **INBOX 행동예고 표대로** 실루엣을 지었다(웹서치 anticipation 원칙 반영):
+- **chaser**(추격형): 날렵 늑대형·낮은 앞기운 자세 (기존, 이터1)
+- **charger**(돌진형): 육중·뿔·앞쏠린 무게중심 + attack 첫 프레임이 **명시적 WIND-UP 예고**(§10-2 0.8초)
+- **ranged**(원거리형): 직립 2족·긴 팔·활 지참 — 4족 근접과 한눈에 갈림
+- **swarmer**(포위형): 낮고 넓게 벌어진 다족 벌레형 — 무리 중 하나로 읽힘
+
+구조 검증 완료(4계열 A=10·B=12 셀·refs 존재·무채색 룰 포함, `scratchpad/validate_specs.py`).
+**백엔드 살아나면 계열마다**: `python3 aigen.py --spec spec_p2_<fam>2.json --out-dir out_p2` →
+`split_ai_sheet.py`(자동 격자검출, `--names idle_00..idle_03 walk_00..walk_05 attack_00..attack_03 hurt_00..hurt_03 death_00..death_03` — 순서는 A/B 셀 순서) →
+`align_frames.py <dir>` → `Resources/sprites/mob_<fam>` → `game_asset_names.py`로 반영 확인 → `qa_shot.sh hunt` 육안.
 
 ## 완료 (근거 포함)
 
@@ -68,15 +87,19 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 ## 막힌 것 · 보류
 
-**⛔ 이미지 생성 백엔드 2종 모두 죽음 (2026-08-15 이터레이션1, 실측)** — 큐 #1 아트
-재생성이 여기서 막혔다. 「인프라 실패 ≠ 이슈 실패」이므로 #1은 미완으로 남긴다(시도 차감 아님).
-- **higgsfield CLI**(aigen 기본 백엔드): 생성 호출이 11분+ 무출력으로 멈춤 → 대화형 OAuth
-  대기로 추정(higgsfield MCP도 "인증 필요"로 이 비대화형 세션에선 못 뚫음). 크레딧 미차감.
-- **gemini 백엔드**(`aigen.py --backend gemini`, `gemini-3-pro-image`): **HTTP 429 —
-  `generate_content_free_tier_input_token_count` 무료 티어 쿼터 소진**. 일/과금 한도라
-  이 세션 내 회복 안 됨.
-- **재개 조건**: ①오너가 대화형 세션에서 `higgsfield` 로그인 or ②Gemini 유료 결제/쿼터 리셋.
-  둘 중 하나 살아나면 `spec_p2_chaser2.json`으로 즉시 재실행(위 「설계 정정」 절차).
+**⛔ 이미지 생성 백엔드 2종 모두 죽음 (이터1 발견, 이터2 실측 재확인 + 진단 정정)** — 큐 #1
+아트 재생성이 여기서 막혔다. 「인프라 실패 ≠ 이슈 실패」이므로 #1은 미완으로 남긴다(시도 차감 아님).
+- **higgsfield CLI**(aigen 기본 백엔드): 이터2에서 시트 A 1장 생성을 15분 돌렸으나 무출력 stall
+  재현. **단, 토큰은 유효하다** — `~/.config/higgsfield/credentials.json`의 `expires_at`이 미래(이터2
+  확인). 따라서 이터1의 "OAuth 대기 추정"은 **오답**이었다: 인증이 아니라 서비스/큐 stall이고,
+  비대화형 세션에선 `higgsfield generate --wait`가 끝내 응답을 안 준다. 크레딧 미차감. **재로그인은
+  해결책이 아닐 가능성이 높다.**
+- **gemini 백엔드**(`aigen.py --backend gemini`, `gemini-3-pro-image`): 이터2 재확인 — HTTP 429이되
+  메시지가 `limit: 0`이다. 무료 티어가 **구조적으로 0**(일일 쿼터 소진이 아님). 따라서 "쿼터 리셋
+  기다리기"는 **재개 경로가 아니다** — 유료 결제(billing 활성화)만이 방법.
+- **재개 경로(정정)**: ①**Gemini billing 결제 활성화**(무료 티어=0이라 결제만 유효) or
+  ②**Unity MCP `generate_image` 툴 권한 승인** + fal.ai/OpenRouter 키 설정(제3 경로, 위 결과 요약 #3).
+  higgsfield 재로그인은 stall 원인이 인증이 아니므로 후순위. 살아나면 위 「재실행 준비물」로 4계열 즉시 생성.
 
 **탱 상시 DR 20%** — 도입 근거가 "E/A 0.67 → 0.60 이하"였는데 최신 측정에서 **E/A가 이미
 0.39**다(`w3_reps5.csv`). 힐러 가치가 충분히 나오고 있어 지금 넣으면 근거 없이 수치를

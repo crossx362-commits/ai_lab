@@ -1,17 +1,27 @@
 {
+ "_why": "돌진형 - INBOX 표: 덩치/뿔/앞으로 쏠린 무게중심. 10-2 예고 0.8초가 성립하려면 attack 첫 프레임의 wind-up(반대 동작)이 눈에 띄어야 한다(웹서치 anticipation 원칙). 근접 chaser와 한눈에 갈리도록 육중.",
  "refs": [
-  "anchor_mobs_gray.png"
+  "anchor_mobs_gray.png",
+  "out_char/char_dps_A.png"
  ],
  "rulesets": {
-  "m": "CRITICAL CAMERA: the camera is ABOVE the creature, pitched 30 degrees DOWNWARD, rotated 45 degrees (orthographic 3/4 top-down quarter view). You must SEE THE CREATURE'S BACK and the TOP of its head and shoulders; the body is FORESHORTENED, never stretched flat like a side profile. A pure side view, pure front view or eye-level view is WRONG. Copy the reference image's angle. Match the reference art style EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Thick solid masses readable at 128px tall. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty magenta gaps between cells. Same creature, same scale, same camera angle in every cell, feet on a common baseline. THE SIX POSES MUST DIFFER DRAMATICALLY — a viewer flipping through them must see obvious motion. Do not repeat a pose. Follow each cell's limb description literally. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery."
+  "m2": "CRITICAL CAMERA: every cell is drawn in 3/4 TOP-DOWN QUARTER VIEW — camera pitched 30 degrees DOWNWARD and rotated 45 degrees, orthographic; the viewer looks DOWN at the creature. STRICTLY FORBIDDEN: pure side profile, pure front view, eye-level view. RENDERING FIDELITY: match the pixel-art craft of the SECOND reference image (the armored character sheet) — the SAME small dot size, the SAME rich multi-tone cel shading with clear highlight and core-shadow bands, the SAME crisp thin dark outlines, the SAME level of readable detail. This creature must look like it belongs in the exact same game as that character, hand-drawn pixel art, NOT photorealistic, NOT 3D-rendered, no smooth gradients, no blurry airbrush. Build the shape from THICK SOLID MASSES readable at 128px tall — no hair-thin details. COLOR — ABSOLUTELY CRITICAL: render the creature in NEUTRAL DESATURATED GRAY-WHITE ONLY, a full grayscale value ramp from near-white highlights to near-black shadows, with ZERO hue, ZERO color, ZERO tint of any kind (no brown, no blue, no purple), because a palette color is applied at runtime. Ignore the colors of the reference images; copy only their craft and shading structure, never their hue. LAYOUT: an even grid of cells. Every cell holds the SAME creature at the SAME scale and the SAME canvas position with feet on a common baseline; only the pose differs. Do not change the design, proportions or size between cells. No grid lines, no labels, no numbers, no letters, no text. Background: completely flat solid pure magenta #FF00FF across the whole image, no ground, no floor, no shadow, no scenery.",
+  "m": "same as m2 fallback"
  },
  "assets": [
   {
-   "name": "p2_charger_idle",
-   "rules_ref": "m",
-   "aspect": "3:2",
+   "name": "sheet_mob_charger2_A",
+   "rules_ref": "m2",
+   "aspect": "21:9",
    "keep_bg": true,
-   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: an EXTREMELY FRONT-HEAVY battering beast. Its head and shoulders carry a HUGE THICK CURVED RAM HORN PLATE that is as wide as its whole body and dominates the silhouette, like a wedge or plough pushed ahead of it. The hindquarters are SMALL and TAPERED by comparison, so the outline is a fat triangle pointing forward. Short thick braced legs, body kept LOW to the ground. The horn mass must be unmistakable in pure black silhouette. Cells: (1) idle braced at rest, (2) idle head lowered pushing forward, (3) idle weight shifted back, (4) idle horn raised and turned, (5) walk one foreleg reaching forward body low, (6) walk legs gathered under body, hindquarters raised."
+   "prompt": "A 5-column by 2-row animation sprite sheet (10 cells) of ONE hostile creature: a massive heavy-set charging brute - a rhino/boar-like quadruped with a huge FORWARD-HEAVY bulk, a thick lowered HORNED head, broad armored shoulders, stubby hind legs, its whole weight pitched forward as if about to stampede; bulky and slow-looking, unmistakably NOT a lean fast predator. Cells left-to-right, top-to-bottom: (1) idle standing heavy and planted, (2) idle head lowered snorting, (3) idle front hoof pawing the ground, (4) idle weight rocking forward menacing, (5) walk heavy plodding front legs reaching, (6) walk mid-stride weight lumbering, (7) walk opposite legs reaching, (8) walk mid-stride other side, (9) walk pushing off with powerful shoulders, (10) walk gathering bulk forward"
+  },
+  {
+   "name": "sheet_mob_charger2_B",
+   "rules_ref": "m2",
+   "aspect": "4:3",
+   "keep_bg": true,
+   "prompt": "A 4-column by 3-row animation sprite sheet (12 cells) of ONE hostile creature: a massive heavy-set charging brute - a rhino/boar-like quadruped with a huge FORWARD-HEAVY bulk, a thick lowered HORNED head, broad armored shoulders, stubby hind legs, its whole weight pitched forward as if about to stampede; bulky and slow-looking, unmistakably NOT a lean fast predator. Cells left-to-right, top-to-bottom: (1) attack WIND-UP: deep crouch, head reared back, horns tilted up, muscles coiled - a clear telegraph pose, (2) attack EXPLODING forward, head dropping, horns leading, (3) attack full gore impact, horns thrust forward at end of charge, (4) attack overshooting and skidding into heavy recovery, (5) hurt head snapping back, (6) hurt staggered sideways off balance, (7) hurt bulk recoiling, (8) hurt recovering shaking head, (9) death front knees buckling, (10) death collapsing forward heavily, (11) death rolling to side, (12) death lying still on side"
   }
  ]
 }

@@ -1,0 +1,27 @@
+{
+ "_why": "원거리형 - INBOX 표: 서 있는 자세/긴 팔/발사체를 든 형태, 근접형과 한눈에 갈려야 도발(10-4)의 의미가 산다. 4족 근접 몹들과 확실히 대비되게 직립 2족/활 지참.",
+ "refs": [
+  "anchor_mobs_gray.png",
+  "out_char/char_dps_A.png"
+ ],
+ "rulesets": {
+  "m2": "CRITICAL CAMERA: every cell is drawn in 3/4 TOP-DOWN QUARTER VIEW — camera pitched 30 degrees DOWNWARD and rotated 45 degrees, orthographic; the viewer looks DOWN at the creature. STRICTLY FORBIDDEN: pure side profile, pure front view, eye-level view. RENDERING FIDELITY: match the pixel-art craft of the SECOND reference image (the armored character sheet) — the SAME small dot size, the SAME rich multi-tone cel shading with clear highlight and core-shadow bands, the SAME crisp thin dark outlines, the SAME level of readable detail. This creature must look like it belongs in the exact same game as that character, hand-drawn pixel art, NOT photorealistic, NOT 3D-rendered, no smooth gradients, no blurry airbrush. Build the shape from THICK SOLID MASSES readable at 128px tall — no hair-thin details. COLOR — ABSOLUTELY CRITICAL: render the creature in NEUTRAL DESATURATED GRAY-WHITE ONLY, a full grayscale value ramp from near-white highlights to near-black shadows, with ZERO hue, ZERO color, ZERO tint of any kind (no brown, no blue, no purple), because a palette color is applied at runtime. Ignore the colors of the reference images; copy only their craft and shading structure, never their hue. LAYOUT: an even grid of cells. Every cell holds the SAME creature at the SAME scale and the SAME canvas position with feet on a common baseline; only the pose differs. Do not change the design, proportions or size between cells. No grid lines, no labels, no numbers, no letters, no text. Background: completely flat solid pure magenta #FF00FF across the whole image, no ground, no floor, no shadow, no scenery.",
+  "m": "same as m2 fallback"
+ },
+ "assets": [
+  {
+   "name": "sheet_mob_ranged2_A",
+   "rules_ref": "m2",
+   "aspect": "21:9",
+   "keep_bg": true,
+   "prompt": "A 5-column by 2-row animation sprite sheet (10 cells) of ONE hostile creature: a gaunt UPRIGHT BIPED skirmisher - a hunched long-limbed creature standing on two legs, with disproportionately LONG thin arms, gripping a crude curved BOW (or sling) held ready to shoot, a lean bony torso, standing tall and hanging back from its prey; its silhouette must read instantly as a STANDING SHOOTER, completely unlike the four-legged charging beasts. Cells left-to-right, top-to-bottom: (1) idle standing upright, bow held low, (2) idle shifting weight, scanning for a target, (3) idle raising the bow slightly, alert, (4) idle nocking an arrow, (5) walk striding upright on two legs, bow in hand, (6) walk mid-stride arms swinging, (7) walk opposite leg forward, (8) walk mid-stride other side, (9) walk crouching lower while moving, (10) walk rising back to upright stride"
+  },
+  {
+   "name": "sheet_mob_ranged2_B",
+   "rules_ref": "m2",
+   "aspect": "4:3",
+   "keep_bg": true,
+   "prompt": "A 4-column by 3-row animation sprite sheet (12 cells) of ONE hostile creature: a gaunt UPRIGHT BIPED skirmisher - a hunched long-limbed creature standing on two legs, with disproportionately LONG thin arms, gripping a crude curved BOW (or sling) held ready to shoot, a lean bony torso, standing tall and hanging back from its prey; its silhouette must read instantly as a STANDING SHOOTER, completely unlike the four-legged charging beasts. Cells left-to-right, top-to-bottom: (1) attack DRAWING the bow fully back, arms taut - clear anticipation, (2) attack holding the aim steady, sighting the target, (3) attack LOOSING the arrow, arms and body snapping forward, (4) attack recovering, lowering the bow arm, (5) hurt flinching backward, (6) hurt staggered, bow arm dropping, (7) hurt doubled over, (8) hurt straightening up, (9) death dropping the bow, buckling, (10) death sinking to knees, (11) death toppling sideways, (12) death lying still"
+  }
+ ]
+}

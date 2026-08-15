@@ -63,6 +63,13 @@
 읽히고**, 캐릭터와 같은 세계관으로 보일 것. 네거티브 컨트롤 — 옛 아트로 되돌리면
 톤이 갈리는 것이 눈에 보여야 한다.
 
+> **⛔ 진행 상황 (2026-08-15 이터2)**: spec은 4계열 전부 준비됐으나(행동예고 프롬프트,
+> 웹서치 반영, `art/spec_p2_{chaser,charger,ranged,swarmer}2.json`) **이미지 생성 백엔드가
+> 살아 있어야 실행 가능하다.** 이 비대화형 세션에선 셋 다 막힘 — higgsfield는 stall(토큰은
+> 유효), Gemini는 무료티어 `limit:0`(유료결제 필요), Unity MCP `generate_image`는 툴 권한 미승인.
+> **오너 조치 필요**: Gemini billing 활성화 **또는** Unity MCP `generate_image` 툴 승인 중 하나.
+> 그러면 다음 세션이 spec으로 4계열을 바로 뽑는다(상세: `docs/STATUS.md` 「막힌 것」·「재실행 준비물」).
+
 ---
 
 ## 처리됨
