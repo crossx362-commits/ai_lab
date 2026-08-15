@@ -146,7 +146,24 @@ while true; do
   # --continue를 쓰지 않는다. 매번 새 세션인 것이 이 루프의 핵심이다.
   # `< /dev/null` — 무인 실행이라 stdin이 없다. 안 막으면 매번 3초를 기다리며
   # "no stdin data received" 경고를 낸다(실측).
-  if claude -p "$PROMPT" --permission-mode acceptEdits >"$LOG" 2>&1 < /dev/null; then
+  # ⚠️ `--allowedTools`가 없으면 **시각 QA가 통째로 막힌다.** `acceptEdits`는 파일 편집만
+  #    자동 승인하고 Bash는 여전히 승인을 묻는데, 무인 세션에는 답할 사람이 없어
+  #    `This command requires approval`로 거부된다. 실제로 charger 검증이 그렇게 막혀
+  #    "GUI 세션 대기"로 인계됐다(2026-08-15). 이 프로젝트는 **화면 확인이 완료 기준**이라
+  #    그게 막히면 루프가 완료 판정을 스스로 못 한다.
+  #    `settings.local.json`의 allow 목록만으로는 안 됐다 — 실측으로 확인했고,
+  #    `--allowedTools`로 넘긴 패턴은 통과했다(878KB 캡처 생성 확인).
+  if claude -p "$PROMPT" --permission-mode acceptEdits \
+       --allowedTools \
+         "Bash(./tools/qa_shot.sh:*)" \
+         "Bash(tools/qa_shot.sh:*)" \
+         "Bash(GAME_SHOT_SEC=*)" \
+         "Bash(GAME_START=*)" \
+         "Bash(GAME_SHOT_DIR=*)" \
+         "Bash(/Applications/Unity/Hub/Editor/*)" \
+         "Bash(python3:*)" \
+         "Bash(git:*)" \
+       >"$LOG" 2>&1 < /dev/null; then
     FAILS=0
     INFRA=0
     echo "✅ #$ITER 완료"
