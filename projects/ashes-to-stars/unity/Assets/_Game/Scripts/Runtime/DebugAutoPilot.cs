@@ -20,9 +20,11 @@ namespace AshesToStars
         static uint _seed = 20260814u;
         static string _mode = "dungeon";
         static string _shotDir;
+        static int _shotFrame;     // >0이면 이 프레임에 찍고 끝낸다(모드별 시나리오를 건너뛴다)
 
         float _t;
         int _step;
+        int _frames;
 
         /// <summary>타이틀 화면이 부팅될 때 한 번 호출한다.</summary>
         public static void BootstrapIfRequested()
@@ -38,7 +40,21 @@ namespace AshesToStars
                 }
                 if (a[i] == "--seed" && i + 1 < a.Length && uint.TryParse(a[i + 1], out uint s)) _seed = s;
                 if (a[i] == "--shots" && i + 1 < a.Length) _shotDir = a[i + 1];
+                // 캡처 시점을 **프레임 수**로 지정한다. 시간(초)은 기계마다 로딩이 달라
+                // 같은 순간을 못 잡는다 — 프레임은 결정적이다.
+                if (a[i] == "--shot-frame" && i + 1 < a.Length && int.TryParse(a[i + 1], out int f)) _shotFrame = f;
             }
+
+            // ── 환경변수 경로 (오너 지침 2026-08-15: `GAME_START=dungeon` 형태)
+            //    CLI 인자보다 **약하다** — 인자가 있으면 그쪽이 이긴다. 루프가 환경변수로 기본을
+            //    깔고, 특정 실행만 인자로 덮어쓰는 사용을 상정한 순서다.
+            var envStart = System.Environment.GetEnvironmentVariable("GAME_START");
+            if (!auto && !string.IsNullOrEmpty(envStart)) { auto = true; _mode = envStart.Trim(); }
+            var envShots = System.Environment.GetEnvironmentVariable("GAME_SHOT_DIR");
+            if (_shotDir == null && !string.IsNullOrEmpty(envShots)) _shotDir = envShots;
+            var envFrame = System.Environment.GetEnvironmentVariable("GAME_SHOT_FRAME");
+            if (_shotFrame <= 0 && int.TryParse(envFrame, out int ef)) _shotFrame = ef;
+
             if (!auto || Requested) return;
 
             Requested = true;
@@ -99,6 +115,19 @@ namespace AshesToStars
         void Update()
         {
             _t += Time.deltaTime;
+            _frames++;
+
+            // ── 프레임 지정 캡처 (오너 지침: "지정한 프레임에서 뷰포트를 PNG로 저장한 뒤 종료")
+            //    모드별 시나리오보다 **우선**한다. 시나리오는 "던전을 한 바퀴 돌며" 같은 서사를
+            //    태우지만, 시각 QA는 "그 화면을 지금 보여달라"가 전부다.
+            //    ⚠️ 찍은 프레임에 바로 Quit하면 파일이 안 생긴다 — CaptureScreenshot은 그 프레임
+            //       **끝**에 기록된다. 그래서 찍고 나서 몇 프레임 더 돌린 뒤 종료한다.
+            if (_shotFrame > 0)
+            {
+                if (_frames == _shotFrame) Shot($"qa_{_mode}");
+                else if (_frames >= _shotFrame + 8) Finish();
+                return;
+            }
 
             if (_mode == "hunt")
             {
