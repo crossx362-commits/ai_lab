@@ -1,0 +1,27 @@
+{
+ "_why": "몹 재생성 — 기존 anchor_mobs_gray는 캐릭터보다 저해상 저디테일이라 캐릭터와 톤이 갈렸다. 캐릭터 시트(char_dps_A)를 렌더링 충실도 앵커로 추가해 도트 크기·셰이딩·아웃라인 밀도를 캐릭터급으로 끌어올리되, 계열 색은 런타임 MobDef.색조가 입히므로(§0-B 규칙3, ProjectSetup.cs:348) 여기서는 무채색 회색-백으로 유지한다.",
+ "refs": [
+  "anchor_mobs_gray.png",
+  "out_char/char_dps_A.png"
+ ],
+ "rulesets": {
+  "m2": "CRITICAL CAMERA: every cell is drawn in 3/4 TOP-DOWN QUARTER VIEW — camera pitched 30 degrees DOWNWARD and rotated 45 degrees, orthographic; the viewer looks DOWN at the creature. STRICTLY FORBIDDEN: pure side profile, pure front view, eye-level view. RENDERING FIDELITY: match the pixel-art craft of the SECOND reference image (the armored character sheet) — the SAME small dot size, the SAME rich multi-tone cel shading with clear highlight and core-shadow bands, the SAME crisp thin dark outlines, the SAME level of readable detail. This creature must look like it belongs in the exact same game as that character, hand-drawn pixel art, NOT photorealistic, NOT 3D-rendered, no smooth gradients, no blurry airbrush. Build the shape from THICK SOLID MASSES readable at 128px tall — no hair-thin details. COLOR — ABSOLUTELY CRITICAL: render the creature in NEUTRAL DESATURATED GRAY-WHITE ONLY, a full grayscale value ramp from near-white highlights to near-black shadows, with ZERO hue, ZERO color, ZERO tint of any kind (no brown, no blue, no purple), because a palette color is applied at runtime. Ignore the colors of the reference images; copy only their craft and shading structure, never their hue. LAYOUT: an even grid of cells. Every cell holds the SAME creature at the SAME scale and the SAME canvas position with feet on a common baseline; only the pose differs. Do not change the design, proportions or size between cells. No grid lines, no labels, no numbers, no letters, no text. Background: completely flat solid pure magenta #FF00FF across the whole image, no ground, no floor, no shadow, no scenery.",
+  "m": "same as m2 fallback"
+ },
+ "assets": [
+  {
+   "name": "sheet_mob_chaser2_A",
+   "rules_ref": "m2",
+   "aspect": "21:9",
+   "keep_bg": true,
+   "prompt": "A 5-column by 2-row animation sprite sheet (10 cells) of ONE hostile creature: a lean quadruped charging beast — a wolf/hyena-like predator with a low forward-leaning stance, head carried low, taut muscular shoulders and haunches, short bristled fur, bared fangs. Cells left-to-right, top-to-bottom: (1) idle standing settled, (2) idle weight shifted, (3) idle head slightly raised alert, (4) idle tail low, (5) walk front legs extended reaching, (6) walk mid-stride, (7) walk opposite legs extended, (8) walk mid-stride other side, (9) walk pushing off hind legs, (10) walk gathering legs under body"
+  },
+  {
+   "name": "sheet_mob_chaser2_B",
+   "rules_ref": "m2",
+   "aspect": "4:3",
+   "keep_bg": true,
+   "prompt": "A 4-column by 3-row animation sprite sheet (12 cells) of ONE hostile creature: a lean quadruped charging beast — a wolf/hyena-like predator with a low forward-leaning stance, head carried low, taut muscular shoulders and haunches, short bristled fur, bared fangs. Cells left-to-right, top-to-bottom: (1) attack wind-up crouched coiled, (2) attack lunging forward, (3) attack strike jaws extended, (4) attack recovering, (5) hurt flinch back, (6) hurt staggered sideways, (7) hurt recoiling low, (8) hurt recovering, (9) death collapsing forward, (10) death on knees buckling, (11) death falling to side, (12) death lying still"
+  }
+ ]
+}
