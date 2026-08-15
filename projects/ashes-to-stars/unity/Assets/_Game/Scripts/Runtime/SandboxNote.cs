@@ -21,7 +21,7 @@ public class SandboxNote : MonoBehaviour
         "  Assets/_Game/Data/Jobs/              — 직업 11종 스탯·스킬\n" +
         "  Assets/_Game/Data/Races/             — 종족 4종 기울기\n" +
         "  Assets/_Game/Data/Mobs/              — 몬스터 속도·체력\n" +
-        "  Assets/_Game/Data/Styles/            — 전투 스타일 4종\n\n" +
+        "  Assets/Resources/styles/             — 전투 스타일 4종(런타임이 읽는다)\n\n" +
         "검증 씬은 따로 있다:\n" +
         "  Assets/Scenes/W1  성능(500체 60fps)\n" +
         "  Assets/Scenes/W2  조작감(대시 무적)\n" +

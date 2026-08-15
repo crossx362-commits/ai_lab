@@ -25,7 +25,8 @@ public static class ProjectSetup
     static readonly string[] FOLDERS =
     {
         ROOT, ROOT + "/Art", ROOT + "/Art/Sprites", ROOT + "/Art/Ground", ROOT + "/Art/FX",
-        ROOT + "/Data", ROOT + "/Data/Races", ROOT + "/Data/Jobs", ROOT + "/Data/Mobs", ROOT + "/Data/Styles",
+        ROOT + "/Data", ROOT + "/Data/Races", ROOT + "/Data/Jobs", ROOT + "/Data/Mobs",
+        "Assets/Resources/styles",   // 전투 스타일은 런타임이 읽어야 하므로 Resources 아래
         ROOT + "/Prefabs", ROOT + "/Prefabs/Characters", ROOT + "/Prefabs/Mobs", ROOT + "/Prefabs/FX",
         ROOT + "/Scenes", ROOT + "/Materials",
         ROOT + "/Scripts", ROOT + "/Scripts/Runtime", ROOT + "/Scripts/Editor",
@@ -280,7 +281,11 @@ public static class ProjectSetup
             var a = ScriptableObject.CreateInstance<CombatStyleDef>();
             a.Id = r.Item1; a.딜배율 = r.Item2; a.피해배율 = r.Item3;
             a.후퇴체력 = r.Item4; a.유지거리 = r.Item5; a.행동설명 = r.Item6;
-            Save(a, $"{ROOT}/Data/Styles/Style_{r.Item1}.asset");
+            // ⚠️ **Resources 아래에 쓴다.** 예전에는 `Data/Styles/`에 만들었는데
+            //    런타임은 `Resources/` 밖을 못 읽어서(이 저장소가 겪은 「Resources 밖 자산」 함정)
+            //    전투 코드가 이 에셋을 영영 못 봤고, 결국 코드 상수 표가 진짜 소스가 돼 있었다.
+            //    여기와 W3Party.Spec()이 같은 경로를 보게 해야 "인스펙터에서 고친다"가 성립한다.
+            Save(a, $"Assets/Resources/styles/Style_{r.Item1}.asset");
         }
     }
 
