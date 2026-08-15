@@ -138,7 +138,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 | 캐릭터 4직업 52프레임 재생성 | 캔버스 1종·발여백 0·검사기 통과·meta 52개 | `17657ae9` |
 | 화면 3종 실태 확정 | 파티편성·캐릭터 ✅구현 / 영지 ⚠️껍데기 | `fbc5bc69` |
 | 시각 QA 도구 + 자동 루프 | `qa_shot.sh` 전체 흐름 실증(692KB 캡처) · STOP·환경변수·가드 실측 | `bcadbca1` |
-| **§10-5 보스 소환을 실몹으로** | 정상 **소환피해 24**(5마리, `shots/qa_boss_summon_on.png` 파티 포위 렌더) / 네거티브 **`BOSS_NO_SUMMON=1` → 0** (`boss_summon_NORMAL.log`·`_NEGCTRL.log`). 컴파일 PASS | (이 커밋) |
+| **§10-5 보스 소환을 실몹으로** | 정상 **소환피해 24**(5마리, `shots/qa_boss_summon_on.png` 파티 포위 렌더) / 네거티브 **`BOSS_NO_SUMMON=1` → 0** (`boss_summon_NORMAL.log`·`_NEGCTRL.log`). 컴파일 PASS | `ecf4b4b4` |
 | 캐릭터 52장 화면 반영 확인 | `qa_hunt.png`에서 4직업이 새 아트로 표시·실루엣 구분됨 | `bcadbca1` |
 | **몹 chaser 계열 재생성(INBOX⭐)** | higgsfield 정상 생성(크레딧 1044→1030), 22프레임 반입, `game_asset_names` 통과, `qa_hunt.png`에서 늑대 실루엣 색조별 표시·캐릭터와 같은 세계관 | `20a048b9` |
 
