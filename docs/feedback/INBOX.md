@@ -12,6 +12,39 @@
 
 ## 대기 중
 
+### ⭐ 작업 분담 — 루프와 대화 세션의 파일 소유권 (2026-08-15 21:20~)
+
+두 세션이 같은 저장소에서 동시에 일한다. 루프는 충돌을 잘 피하고 있는데(이터3이
+`W3Party.cs` mtime을 보고 스스로 물러섰다) **피할 수 있는 일이 아트뿐이라 코드 트랙이
+통째로 멈춘다.** 그래서 소유권을 나눈다.
+
+**루프가 맡는다 (대화 세션은 안 건드린다)**
+- `projects/ashes-to-stars/art/**` — 아트 생성·분할·정렬 파이프라인 전부
+- `Assets/Resources/**` — 스프라이트·프랍·이펙트 반입
+- 화면 스크립트 중 **전투가 아닌 것**: `EstateScreen`·`FieldScreen`·`TowerScreen`·
+  `WorldMapScreen`·`CharacterScreen`·`PartyScreen`·`ResultScreen`·`StyleScreen`
+- `docs/STATUS.md` 갱신
+
+**대화 세션이 맡는다 (루프는 안 건드린다)**
+- `Assets/Scripts/W3Party.cs` — 전투 본체
+- `Assets/_Game/Scripts/Runtime/BossBattle.cs`·`FieldDecor.cs`·`ArenaLayout.cs`
+- `Assets/_Game/Scripts/Runtime/DebugAutoPilot.cs` — QA 모드
+- `tools/qa_shot.sh`·`loop/loop.sh`
+
+**둘 다 만져야 하면**: `touch loop/HOLD` → 작업 → 커밋 → `rm loop/HOLD`.
+루프는 이터레이션 경계에서 기다렸다 **스스로 재개**한다(30분 방치 시 자동 해제).
+
+**지금 루프가 할 것(우선순위)**
+1. `swarmer` 시트가 나왔으면 반입 → **큐 #1 4/4 종결**
+2. 보스 실루엣 4종(`art/out_p6_boss/`) 반입 — 크로마키(aigen의 힉스필드 경로는
+   크로마키를 **안 한다**) → 높이 정규화 → `Resources/sprites/` → `SpriteBank`가 읽는
+   이름과 대조 → `game_asset_names.py` → 화면 확인
+3. 기획서 §0-B 대비 비어 있는 아트: **영지 건물 7종**(현재 통·상자뿐, 건물 0장)
+
+**대화 세션이 할 것**: 대시·구르기(§5 ✅) — `W3Party`에 0곳. §10-2 「피할 수 있는
+위협」의 전제라 이게 없으면 돌진형 예고 3박자가 의미를 잃는다.
+
+
 ### 📋 기획서 ↔ 코드 대조 결과 (오너 지시 2026-08-15 「기획서 반영해서 개발 중인지 체크」)
 
 ✅ 확정 221건을 「정의는 있는데 **런타임 소비처가 0곳**인가」로 훑었다. 개수(grep -c)로는
