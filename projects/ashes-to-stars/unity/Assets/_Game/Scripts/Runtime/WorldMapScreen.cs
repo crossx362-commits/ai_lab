@@ -17,10 +17,10 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            if (Row(r, 0, "성계 이동", "영지 ↔ 월드맵 연결(§13-6)")) { }
+            Locked(r, 0, "성계 이동", "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)");
             if (Row(r, 1, "침략", "비동기 PvP — 30층 해금(§15)"))
                 GameFlow.GoBattle(GameFlow.WorldMap);
-            if (Row(r, 2, "랭킹", "주 단위 장기 루프(§15)")) { }
+            Locked(r, 2, "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)");
         }
     }
 }

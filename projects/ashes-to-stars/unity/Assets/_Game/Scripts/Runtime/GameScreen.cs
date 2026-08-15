@@ -165,6 +165,30 @@ namespace AshesToStars
             return hit;
         }
 
+        /// <summary>
+        /// **아직 못 만든 기능**의 줄. 눌리지 않고, 왜 안 되는지 화면에서 말한다.
+        ///
+        /// 2026-08-15 기획서 대조 감사에서 본문이 `{ }`인 버튼 6개가 나왔다 — 누르면
+        /// 아무 일도 안 일어난다. **미구현보다 나쁘다**: 사용자는 눌리는 버튼을 보고
+        /// 되는 기능이라 믿고, 아무 반응이 없으면 게임이 고장났다고 읽는다.
+        /// 만들 수 있으면 만들고, 못 만들면 **못 만들었다고 말하는 것**이 정직한 화면이다.
+        /// </summary>
+        protected void Locked(Rect r, int index, string label, string why)
+        {
+            Styles();
+            const float h = 58f, gap = 14f, bw = 300f;
+            var br = new Rect(r.x, r.y + index * (h + gap), bw, h);
+            if (br.yMax > r.yMax) return;
+
+            var prev = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, 0.42f);      // 눌리지 않는다는 것을 색으로 먼저 말한다
+            GUI.Label(br, label, _btn);                     // Button이 아니라 Label — 클릭 자체가 없다
+            GUI.color = prev;
+            GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - bw - 24, h - 12),
+                      // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
+                      "잠김 — " + why, _small);
+        }
+
         /// <summary>본문 안의 정보 한 줄(버튼 아님).</summary>
         protected void Info(Rect r, int index, string text)
         {

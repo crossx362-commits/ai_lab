@@ -2241,11 +2241,16 @@ public class W3Party : MonoBehaviour
         float w = 176f, gap = 8f;
         float x = Screen.width * 0.5f - (w * 2 + gap) * 0.5f;
 
-        if (SkillBtn(new Rect(x, y, w, 34), a, sel, 1)) { }
-        if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 34), b, sel, 2)) { }
+        // ⚠️ 예전엔 본문이 `{ }`였다 — 버튼이 눌리는데 **아무 일도 일어나지 않았다.**
+        //    키보드(스페이스/Q)로는 되는데 마우스로는 스킬을 아예 못 쓰는 상태였고,
+        //    §5의 「보스는 수동 지휘」가 마우스 유저에게는 성립하지 않았다.
+        //    미구현보다 나쁘다 — 눌리니까 사용자는 고장으로 읽는다(2026-08-15 감사에서 발견).
+        if (SkillBtn(new Rect(x, y, w, 34), a, sel, 1)) sel.ForceSkill = 1;
+        if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 34), b, sel, 2)) sel.ForceSkill = 2;
 
         GUI.Label(new Rect(x, y - 20f, 520, 20),
-                  $"스킬 — 스페이스: {a}", _cmdLabel);
+                  b != "—" ? $"스킬 — 스페이스/클릭: {a} · Q/클릭: {b}"
+                           : $"스킬 — 스페이스 또는 클릭: {a}", _cmdLabel);
     }
 
     bool SkillBtn(Rect r, string label, Member m, int slot)

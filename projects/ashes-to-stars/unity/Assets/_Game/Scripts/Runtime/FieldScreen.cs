@@ -127,9 +127,9 @@ namespace AshesToStars
                     else if (!GameState.Pay(raidCost)) _showInsufficientGold = true;
                     else EnterRaid();
                 }
-                if (Row(r, 3, "자동화 일정", "무엇을 언제 시킬지 예약(§6)")) { }
+                Locked(r, 3, "자동화 일정", "스케줄러 미구현 — 지금은 사냥을 직접 시작한다(§6)");
             }
-            else if (Row(r, 2, "자동화 일정", "무엇을 언제 시킬지 예약(§6)")) { }
+            else Locked(r, 2, "자동화 일정", "스케줄러 미구현 — 지금은 사냥을 직접 시작한다(§6)");
         }
 
         /// <summary>

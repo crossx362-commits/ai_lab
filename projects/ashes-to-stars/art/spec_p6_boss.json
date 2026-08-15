@@ -1,0 +1,32 @@
+{
+ "_note": "P6 보스 실루엣 4종(기획서 §0-B). 보스 20종에 전용 모델을 만들지 않는다 — **실루엣 4종을 크기·색·부착 장식으로 변주**하는 것이 아트 물량 최종 권위(§0-B)의 확정 규칙이다. 현재 보스 아트는 `sprites/boss_0.png` 한 장뿐이라 모든 보스가 같은 그림으로 나온다. 잡몹과 달리 보스는 화면에서 크게 보이므로 한 장씩 공들여 뽑고, 애니메이션은 후속(§2-3)으로 미룬다.",
+ "refs": [
+  "anchor_characters.png",
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "boss": "Match the art style of the reference images EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading, limited palette, 3/4 top-down quarter view with a ~30 degree downward camera. Not photorealistic, not 3D-rendered, no smooth gradients. A single creature centered in frame, facing the viewer's lower-left, standing on nothing — no ground, no shadow, no base. Much larger and heavier in presence than a common monster: this is a boss. No text, no border, no UI. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "boss_brute",
+   "rules_ref": "boss",
+   "prompt": "A hulking armored brute boss: massive shoulders and arms far thicker than its legs, plated shell over the back, a low heavy head with short blunt horns, knuckles resting on the ground. Its weight is forward — it looks like it charges. Muted iron-grey plating with dull red beneath the plates."
+  },
+  {
+   "name": "boss_serpent",
+   "rules_ref": "boss",
+   "prompt": "A coiled serpent boss reared up: a long scaled body spiraling beneath it, raised upper section with a wide flared hood, narrow fanged head, and thin whiskers trailing back. Deep green scales with a pale underbelly and amber eyes."
+  },
+  {
+   "name": "boss_wraith",
+   "rules_ref": "boss",
+   "prompt": "A floating wraith boss: a tattered robe with nothing solid inside, long ragged hem dissolving into wisps at the bottom, two long sleeves ending in bony hands, a hollow hood with two pale burning points for eyes. Dark violet cloth with cold blue inner glow."
+  },
+  {
+   "name": "boss_construct",
+   "rules_ref": "boss",
+   "prompt": "A stone construct boss: a broad blocky torso of carved masonry held together by glowing seams, oversized fists, a small featureless head sunk between the shoulders, cracks running across the chest. Weathered sandstone with hot orange light in the cracks."
+  }
+ ]
+}

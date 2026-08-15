@@ -98,6 +98,23 @@ namespace AshesToStars
                 return;
             }
 
+            // `GAME_START=go:Field` 처럼 **아무 화면이나** 바로 띄운다.
+            // 화면이 하나 늘 때마다 전용 모드를 추가하는 건 같은 일의 반복이다 —
+            // 씬 이름은 `GameFlow`가 이미 상수로 들고 있으니 그걸 그대로 받는다.
+            if (_mode.StartsWith("go:"))
+            {
+                string scene = _mode.Substring(3);
+                // 건물처럼 하위 화면이 있으면 `go:Estate/영묘` 로 안쪽까지 연다.
+                int slash = scene.IndexOf('/');
+                if (slash > 0)
+                {
+                    EstateScreen.AutoOpen = scene.Substring(slash + 1);
+                    scene = scene.Substring(0, slash);
+                }
+                GameFlow.Go(scene);
+                return;
+            }
+
             if (_mode == "stress")
             {
                 // 부하 측정(§10-9 「잡몹 상한에서 60fps」).
