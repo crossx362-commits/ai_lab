@@ -25,6 +25,7 @@ cd "$(dirname "$0")/.."
 
 ROOT="$PWD"
 STOP="$ROOT/loop/STOP"
+HOLD="$ROOT/loop/HOLD"
 LOG_DIR="$ROOT/loop/logs"
 MAX_FAILS="${LOOP_MAX_FAILS:-3}"
 COOLDOWN="${LOOP_COOLDOWN:-20}"
@@ -91,6 +92,28 @@ while true; do
   if [ -f "$STOP" ]; then
     echo "⏹  STOP 파일 발견 — 정지. 재개하려면: rm loop/STOP"
     exit 0
+  fi
+
+  # ── HOLD: 잠깐 비켜 준다(정지가 아니다) ────────────────
+  # 왜 STOP과 따로 있나: STOP은 사람이 다시 켜야 하는 **종료**다. 그런데 필요한 건
+  # "대화 세션이 공유 파일을 만지는 동안만 손을 떼는 것"이라, 끝나면 **스스로 재개**해야 한다.
+  # 실제 사고(2026-08-15): 대화 세션이 W3Party.cs를 고치는 중에 루프가 같은 파일을
+  # 커밋해 **남의 미커밋 변경을 자기 커밋에 쓸어담았다**(귀속이 어긋남, 내용 손실은 없었다).
+  # CLAUDE.md §7이 경고한 「커밋 오염」이 그대로 재발한 것이다.
+  if [ -f "$HOLD" ]; then
+    echo "⏸  HOLD — 다른 세션이 작업 중이다. 풀릴 때까지 기다린다($(date '+%H:%M:%S'))"
+    WAITED=0
+    while [ -f "$HOLD" ]; do
+      sleep 15
+      WAITED=$((WAITED + 15))
+      # 누가 HOLD를 만들어 놓고 잊으면 루프가 영원히 선다. 상한을 두고 스스로 푼다.
+      if [ "$WAITED" -ge "${LOOP_HOLD_MAX:-1800}" ]; then
+        echo "⚠️ HOLD가 ${WAITED}초째다 — 방치로 보고 해제한다(loop/HOLD 삭제)"
+        rm -f "$HOLD"
+        break
+      fi
+    done
+    echo "▶ HOLD 해제 — 재개"
   fi
 
   ITER=$((ITER + 1))

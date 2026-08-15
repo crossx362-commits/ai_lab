@@ -145,6 +145,51 @@ def scale_table_problems() -> list[str]:
     return out
 
 
+def untracked_asset_problems() -> list[str]:
+    """`Assets/` 아래에 **git이 모르는 자산**이 있으면 보고한다.
+
+    2026-08-15 사고: 전투 스타일 화면과 이펙트 8종을 만들어 코드까지 붙였는데
+    `Style.unity`·`fx_*.png`·새 스크립트 3개의 `.meta`가 **전부 추적 밖**이었다.
+    이 상태로 다른 기계가 받으면 코드만 있고 자산이 없어서, 씬 전환은 실패하고
+    이펙트는 조용히 안 그려진다 — 그런데 **작업한 기계에서는 전부 정상으로 보인다.**
+    로컬에서 잘 도는 것이 "커밋됐다"는 뜻이 아니다.
+
+    `.meta`가 특히 위험하다: meta 없이 스크립트만 커밋하면 다른 기계에서 GUID가
+    새로 생겨 **씬이 들고 있던 참조가 통째로 끊긴다.**
+    """
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard", "--", str(ASSETS)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30,
+        )
+    except Exception as e:                     # noqa: BLE001 — git이 없거나 저장소가 아니면 판정 불능
+        return [f"추적 상태 확인 불가: {e}"]
+    if out.returncode != 0:
+        return [f"추적 상태 확인 불가(git 오류): {out.stderr.strip()[:80]}"]
+
+    files = [f for f in out.stdout.splitlines() if f.strip()]
+    if not files:
+        return []
+
+    # 씬·스크립트·meta는 없으면 **기능이 깨진다**. 그림은 안 보일 뿐이다 — 나눠서 말한다.
+    critical = [f for f in files if f.endswith((".unity", ".cs", ".meta", ".asset", ".prefab"))]
+    rest = [f for f in files if f not in critical]
+
+    msgs = []
+    if critical:
+        msgs.append(f"⛔ 커밋 안 된 자산 {len(critical)}개(씬·스크립트·meta) — "
+                    + ", ".join(Path(f).name for f in critical[:4])
+                    + (" …" if len(critical) > 4 else "")
+                    + "  → 다른 기계에서 참조가 끊기거나 화면이 안 뜬다")
+    if rest:
+        msgs.append(f"커밋 안 된 자산 {len(rest)}개(그림 등) — "
+                    + ", ".join(Path(f).name for f in rest[:4])
+                    + (" …" if len(rest) > 4 else ""))
+    return msgs
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--strict", action="store_true")
@@ -199,6 +244,7 @@ def main() -> None:
             problems.append(f"meta 불일치 {folder}: png {png} vs meta {meta} — GUID 고아 위험")
 
     problems += scale_table_problems()
+    problems += untracked_asset_problems()
 
     if not problems:
         print("✅ 네이밍·반영 이상 없음")

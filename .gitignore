@@ -94,3 +94,9 @@ projects/ashes-to-stars/build_w1_perf/
 projects/ashes-to-stars/build_w2_control/
 projects/ashes-to-stars/build_w3_party/
 projects/ashes-to-stars/results/
+
+# 유니티 에디터가 Play 중에 저장하는 QA 캡처. **소스 자산이 아니다** —
+# Assets/ 안에 있으면 유니티가 빌드에 임포트하고, 매번 새 파일이 생겨 커밋이 지저분해진다.
+# 시각 QA의 정본은 `output/qa/ashes-to-stars/shots/`(qa_shot.sh)다.
+projects/ashes-to-stars/unity/Assets/Screenshots/
+projects/ashes-to-stars/unity/Assets/Screenshots.meta
