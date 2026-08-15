@@ -1,0 +1,31 @@
+{
+ "_note": "P7 이펙트 프레임 애니메이션(오너 지시 2026-08-15 「이펙트도 스프라이트로 만들어서 좀 더 화려하게」). 지금은 한 장짜리 심볼을 코드가 크기·투명도로 굴리는 방식이라 '터지는 맛'이 약하다. 6프레임 스트립으로 뽑아 프레임 애니메이션으로 올린다. ⚠️ 셀 수를 프롬프트에 **명시**하지 않으면 모델이 임의 개수를 그린다(캐릭터 시트에서 실측). 격자선·번호를 그리는 것도 막아야 한다 — 시트가 사양서처럼 읽히면 모델이 라벨을 그려 넣는다.",
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "fxsheet": "Hand-drawn pixel art in the same style as the reference image: same dot size, thin dark outlines, limited palette, no smooth gradients, not 3D-rendered. Lay out EXACTLY SIX square cells in ONE HORIZONTAL ROW, evenly spaced, reading left to right as a time sequence of one single effect. Every cell shows the same effect at a different moment. Do NOT draw any grid lines, frame borders, separators, numbers, labels or text of any kind. Do NOT draw any character, ground, shadow or scenery — only the effect itself, centered in its cell. Background of the whole image: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "fxa_slash",
+   "rules_ref": "fxsheet",
+   "prompt": "A sword slash. Frame 1: a thin faint crescent beginning. Frame 2: the crescent sharpens and brightens to white-hot. Frame 3: it is at full length, a wide bright arc with a pale cyan edge and small sparks flying off. Frame 4: the arc begins to thin and break apart. Frame 5: only fragments and sparks remain. Frame 6: a few fading motes."
+  },
+  {
+   "name": "fxa_hit",
+   "rules_ref": "fxsheet",
+   "prompt": "An impact burst. Frame 1: a tiny bright point. Frame 2: short white-hot spikes shoot outward. Frame 3: the burst is at full size, radiating orange spikes with detached shards flying out. Frame 4: the spikes shorten and the core dims. Frame 5: only scattered shards remain. Frame 6: a faint afterglow."
+  },
+  {
+   "name": "fxa_fire",
+   "rules_ref": "fxsheet",
+   "prompt": "A flame burst. Frame 1: a small ember at the base. Frame 2: flames climb upward, orange with a white-hot core. Frame 3: full bloom — wide overlapping tongues of orange and yellow fire with dark red edges. Frame 4: the flames narrow and lean, embers rising. Frame 5: mostly smoke with a few embers. Frame 6: thin smoke curls fading."
+  },
+  {
+   "name": "fxa_heal",
+   "rules_ref": "fxsheet",
+   "prompt": "A healing bloom. Frame 1: a small green glow at the bottom. Frame 2: a flat elliptical ring of warm green light forms and rises. Frame 3: the ring is widest and brightest with sparkles rising inside it. Frame 4: the ring widens further and thins. Frame 5: only rising sparkles remain. Frame 6: a couple of faint motes."
+  }
+ ]
+}

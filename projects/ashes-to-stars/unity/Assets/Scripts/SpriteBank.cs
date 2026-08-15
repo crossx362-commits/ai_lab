@@ -131,6 +131,22 @@ public class SpriteBank
     public static readonly string[] BOSS_KEYS =
         { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
 
+    /// <summary>가장자리를 깎은 둥근 점. 투사체처럼 **작게 그려지는 것**에 쓴다.</summary>
+    static Texture2D Dot(int n)
+    {
+        var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
+        float c = (n - 1) * 0.5f, r = c + 0.2f;
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / r;
+                // 안쪽은 꽉 차고 가장자리 한 겹만 반투명 — 픽셀아트라 계단이 보이는 편이 낫다
+                t.SetPixel(x, y, new Color(1f, 1f, 1f, d > 1f ? 0f : (d > 0.8f ? 0.55f : 1f)));
+            }
+        t.Apply();
+        return t;
+    }
+
     public static SpriteBank Load()
     {
         if (Cached != null) return Cached;
@@ -163,8 +179,9 @@ public class SpriteBank
         int CHAR0 = baseNames.Length;                      // 캐릭터 구간 시작
         int MOB0 = baseNames.Length + charNames.Count;     // 몹 구간 시작
         int WHITE = srcNames.Length;    // 체력바용 흰 칸 — 파일이 아니라 코드로 만든다
+        int DOT = WHITE + 1;            // 투사체용 둥근 점 — 아래 주석 참고
 
-        var texes = new Texture2D[srcNames.Length + 1];
+        var texes = new Texture2D[srcNames.Length + 2];
         int charMissing = 0;
         for (int i = 0; i < srcNames.Length; i++)
         {
@@ -178,6 +195,11 @@ public class SpriteBank
         }
 
         texes[WHITE] = Solid(Color.white, 8);
+        // 투사체 점.
+        // ⚠️ **흰 칸(1×1 단색)을 투사체로 쓰지 마라.** 키우면 언제나 **사각형**이라
+        //    화면에 분홍 네모가 떠 있는 그림이 된다(실측 2026-08-15, 내가 낸 회귀).
+        //    가장자리를 깎은 둥근 점이라야 "날아가는 것"으로 읽힌다.
+        texes[DOT] = Dot(12);
 
         // 캐릭터 아트가 통째로 안 잡히면 조용히 플레이스홀더로 굴러가지 않게 막는다.
         // 실제로 파일이 Resources 밖에 있어 "적용했는데 화면엔 안 나오는" 상태로 검증을 돌렸다.
@@ -353,7 +375,11 @@ public class SpriteBank
 
         // ⚠️ **`b.White` 할당 뒤에 와야 한다.** 위쪽(다른 base 스프라이트와 같은 자리)에
         //    뒀다가 null을 넣을 뻔했다 — 이 함수는 아래로 갈수록 채워지는 구조다.
-        b.Projectile = b.White;
+        // ⚠️⚠️ `b.White`를 **그대로 대입하지 마라.** White는 1유닛짜리라 투사체가
+        //    화면에 **큰 사각형**으로 그려진다(실측 2026-08-15: 분홍 덩어리 두 개가
+        //    화면 한복판에 떴다 — 내가 boss 커밋에서 낸 회귀다).
+        //    같은 아틀라스 칸을 **투사체 크기(U_PROJ)로 다시 만든다.**
+        b.Projectile = MakeAt(DOT, U_PROJ);
 
         // 조작 캐릭터도 플레이스홀더가 아니라 실제 아트로 — W2도 이 한 줄로 같이 반영된다
         b.Player = b.Char(Job.Tank);

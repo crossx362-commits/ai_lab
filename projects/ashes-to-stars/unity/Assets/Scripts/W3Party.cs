@@ -1383,6 +1383,8 @@ public class W3Party : MonoBehaviour
                     _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
                     _skillLog[0]++;
                     SkillCast(m, "도발의 함성", new Color(1f, 0.78f, 0.32f), hitstop: 2);
+                    FxParticles.Play(FxKind.쇼크웨이브, ToScreen(m.Pos), 1.8f,
+                                     new Color(1f, 0.78f, 0.32f));
                     FlashParty();                                 // 발동 순간을 눈에 띄게
                     FxParticles.Play(FxKind.도발, ToScreen(m.Pos), 1.2f);
                 }
@@ -1397,6 +1399,11 @@ public class W3Party : MonoBehaviour
                     _skillLog[1]++;
                     SkillCast(m, "성채 방패", new Color(0.55f, 0.82f, 1f), hitstop: 2);
                     FxPool.Play(FxPool.Kind.Shield, m.Pos, 1.6f);
+                    // 보호막은 **파티 전체**에 걸리는데 연출이 시전자에만 있으면
+                    // 누가 보호받는지 화면에서 안 읽힌다.
+                    foreach (var o in _party)
+                        if (o.Alive) FxParticles.Play(FxKind.광륜, ToScreen(o.Pos), 0.7f,
+                                                      new Color(0.55f, 0.82f, 1f));
                     foreach (var o in _party) if (o.Alive) FxParticles.Play(FxKind.무적, ToScreen(o.Pos));
                 }
             }
@@ -1584,6 +1591,8 @@ public class W3Party : MonoBehaviour
                     FxPool.Play(FxPool.Kind.Fire, c, _stormR * 0.9f);
                     FxParticles.Play(FxKind.마법진, ToScreen(c), _stormR); FxParticles.Play(FxKind.화염폭풍, ToScreen(c), _stormR);
                     SkillCast(m, "화염 폭풍", new Color(1f, 0.55f, 0.25f), hitstop: 3, shake: 0.28f);
+                    FxParticles.Play(FxKind.쇼크웨이브, ToScreen(c), _stormR * 0.8f,
+                                     new Color(1f, 0.6f, 0.25f));
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
@@ -1830,6 +1839,12 @@ public class W3Party : MonoBehaviour
             _ => "스텝",
         };
         SkillCast(m, label, new Color(0.85f, 0.9f, 1f));
+        // 파티클을 겹쳐 쏜다(오너 지시 2026-08-15 「이펙트 좀 더 화려하게」).
+        // 하나만 쏘면 "뭔가 났다" 정도고, **먼지(바닥) + 무적(몸) + 광륜(빛)** 세 겹이라야
+        // 이동기가 순간기술로 읽힌다. 빌트인 파이프라인엔 블룸이 없어서 광륜이 곧 빛이다.
+        FxParticles.Play(FxKind.먼지, ToScreen(m.Pos), 1.0f);
+        FxParticles.Play(FxKind.무적, ToScreen(m.Pos), 1.1f);
+        FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 0.8f, new Color(0.8f, 0.9f, 1f));
         return true;
     }
 
@@ -1967,7 +1982,14 @@ public class W3Party : MonoBehaviour
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
         // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
-        if ((_kills % 5) == 0) MobDeathPuff(_mPos[i]);
+        // 5마리에 1번은 지나치게 성겼다 — 처치가 화면에서 거의 안 읽혔다.
+        // 3마리에 1번으로 올리고, 정예는 매번 크게 터뜨린다(드물게 죽으므로 비용도 작다).
+        if ((_kills % 3) == 0) MobDeathPuff(_mPos[i]);
+        if (_mKind[i] >= 3)
+        {
+            FxParticles.Play(FxKind.쇼크웨이브, ToScreen(_mPos[i]), 1.2f);
+            FxParticles.Play(FxKind.광륜, ToScreen(_mPos[i]), 0.9f, _mTint[i]);
+        }
         // 정예는 매번 — 드물게 죽는 데다, 죽은 것이 화면에서 확실히 읽혀야 한다.
         if (_mKind[i] >= 3 || (_kills % 3) == 0)
             FxPool.Play(FxPool.Kind.Death, _mPos[i], _mKind[i] >= 3 ? 1.5f : 0.9f);
@@ -2061,7 +2083,15 @@ public class W3Party : MonoBehaviour
                         break;
                     case 2:                                        // 돌진 — 직선 고속
                         want = _mChargeDir[i]; spd = PlayerSpeed * CHG_SPEED;
-                        if (_mChargeT[i] <= 0f) { _mChargePhase[i] = 3; _mChargeT[i] = CHG_STUN; _chargeRushes++; }
+                        if (_mChargeT[i] <= 0f)
+                        {
+                            _mChargePhase[i] = 3; _mChargeT[i] = CHG_STUN; _chargeRushes++;
+                            // 멈추는 순간이 가장 세게 보여야 한다 — 경직은 반격의 창이고,
+                            // 그 창이 열렸다는 신호가 곧 「회피에 대한 보상」이다(§10-2).
+                            FxParticles.Play(FxKind.쇼크웨이브, ToScreen(p), 1.4f);
+                            FxParticles.Play(FxKind.먼지, ToScreen(p), 1.2f);
+                            Shake(0.16f);
+                        }
                         break;
                     case 3:                                        // 경직 — 회피에 대한 보상
                         want = Vector2.zero; spd = 0f;
@@ -2074,6 +2104,9 @@ public class W3Party : MonoBehaviour
                             _mChargePhase[i] = 1; _mChargeT[i] = CHG_TELL;
                             _chargeTells++;
                             // 예고 표식 — 이게 보이지 않으면 §10-2가 성립하지 않는다.
+                            // 바닥 마법진(예고는 바닥에 깔려야 진행 방향이 읽힌다) + 심볼을 겹친다.
+                            FxParticles.Play(FxKind.마법진, ToScreen(p), 1.6f,
+                                             new Color(1f, 0.78f, 0.25f));
                             FxPool.Play(FxPool.Kind.Taunt, p, 1.5f, new Color(1f, 0.75f, 0.2f, 0.9f));
                         }
                         break;
