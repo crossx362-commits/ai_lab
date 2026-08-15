@@ -96,6 +96,11 @@ public class W3Party : MonoBehaviour
         public float Hp, MaxHp, Atk, Range, Cd, SkillCd;
         public float Shield;              // 수호기사 성채 방패
         public bool Flip;                 // 마지막으로 향한 좌우. 미세 흔들림에 안 뒤집히게 유지한다
+        // ── 이동기(§5 ✅ 대시·구르기) ──
+        public float DashT;               // 이동기 진행 잔여 시간(>0이면 미끄러지는 중)
+        public float DashCd;              // 재사용 대기
+        public float IFrame;              // 무적 잔여 — **사망 카운트에 직접 개입하는 능력**이다
+        public Vector2 DashDir;
         public float Gauge;               // 고유 자원: 수호게이지 / 연격스택 / 신앙
         public float FlashT;              // 스킬 발동 섬광 잔여 시간
         public Chant Chant;               // 음유시인 악장
@@ -1131,6 +1136,7 @@ public class W3Party : MonoBehaviour
         }
 
         TickCommand();
+        TickDashProbe(dt);
         UpdateCallouts(dt);
         TickParty(dt);
         TickMobs(dt);
@@ -1169,6 +1175,18 @@ public class W3Party : MonoBehaviour
             if (m.AttackT > 0f) m.AttackT -= dt;
             if (m.HurtT > 0f) m.HurtT -= dt;
             if (m.SkillT > 0f) m.SkillT -= dt;
+
+            // ── 이동기(§5) ──
+            if (m.DashCd > 0f) m.DashCd -= dt;
+            if (m.IFrame > 0f) m.IFrame -= dt;
+            if (m.DashT > 0f)
+            {
+                m.DashT -= dt;
+                // 거리 = 기본 이동 3초분(기획서). `DASH_TIME` 동안 그만큼을 나눠 간다.
+                m.Pos += m.DashDir * (PlayerSpeed * 3f / DASH_TIME) * dt;
+                if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
+                m.Pos = Vector2.ClampMagnitude(m.Pos, Arena);   // 아레나 밖으로 못 빠져나간다
+            }
 
             // 동작 우선순위: 사망 > 피격 > **스킬** > 공격 > 이동 > 대기.
             // 스킬을 공격보다 위에 둔다 — 스킬을 쓰는 순간에도 평타 판정이 같이 돌기 때문에
@@ -1284,6 +1302,19 @@ public class W3Party : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Space)) _party[_sel].ForceSkill = 1;
             if (Input.GetKeyDown(KeyCode.Q)) _party[_sel].ForceSkill = 2;
+            // 이동기(§5) — Shift. 방향은 이동 입력, 없으면 가장 가까운 위협의 **반대쪽**으로.
+            // "피하려고 쓰는 것"이 기본 용도라 아무 방향도 안 주면 도망 방향이 맞다.
+            if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift))
+            {
+                var me = _party[_sel];
+                var dir = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+                if (dir.sqrMagnitude < 1e-4f)
+                {
+                    int near = NearestMob(me.Pos, 6f);
+                    if (near >= 0) dir = me.Pos - _mPos[near];
+                }
+                TryDash(me, dir);
+            }
         }
 
         var cam = Camera.main;
@@ -1610,6 +1641,104 @@ public class W3Party : MonoBehaviour
                 if (_mHp[target] <= 0f) KillMob(target);
             }
         }
+    }
+
+    // ── 이동기 수치 (§5 ✅ 오너 결정 2026-08-13) ─────────────────
+    // 기획서가 못 박은 값이다: 무적 0.3초 · 쿨다운 6초 · 거리 = 기본 이동 3초분.
+    // ⚠️ 무적 프레임은 **사망 카운트 시스템에 직접 개입**한다("정확히 쓰면 한 번 산다").
+    //    이 수치를 만질 땐 §18-8 사망 관련 수치와 함께 볼 것 — 죽음의 무게가 흔들린다.
+    const float DASH_IFRAME = 0.30f;
+    const float DASH_CD = 6.0f;
+    const float DASH_TIME = 0.18f;          // 미끄러지는 시간. 거리는 이 시간에 나눠 준다
+
+    /// <summary>직업별 변주(§5) — 외형만이 아니라 성능도 갈린다. (거리배율, 쿨배율)</summary>
+    static (float dist, float cd) DashSpec(Job j) => j switch
+    {
+        Job.수호기사 => (0.70f, 1.00f),   // 방패 돌진 — 짧다
+        Job.검사 => (1.00f, 1.00f),       // 구르기 — 표준
+        Job.마법사 => (1.35f, 1.30f),     // 점멸 — 멀리, 대신 쿨이 길다
+        Job.사제 => (0.75f, 0.70f),       // 짧은 스텝 — 자주 피하되 멀리 못 간다
+        _ => (0.80f, 0.75f),              // 음유시인 — 힐·버퍼 계열과 같은 성격
+    };
+
+    /// <summary>
+    /// 이동기 자가검사(`GAME_START=dash`). 무인 실행에서는 Shift를 누를 사람이 없어
+    /// **코드를 넣고도 한 번도 안 돌려본 채 "완료"라고 적기 쉽다** — 이 프로젝트가
+    /// 반복해서 겪은 실패다. 그래서 기획서가 못 박은 세 값을 스스로 재고 판정한다:
+    ///   ① 이동 거리 = 기본 이동 3초분   ② 무적 0.3초 동안 피해 0   ③ 쿨다운 6초
+    /// ②는 **네거티브 컨트롤**을 함께 돌린다 — 무적이 끝난 뒤 같은 피해가 들어가는지.
+    /// </summary>
+    public static bool QaDashProbe;
+    int _dashProbeStep;
+    float _dashProbeT;
+    Vector2 _dashProbeFrom;
+    float _dashProbeHp;
+
+    void TickDashProbe(float dt)
+    {
+        if (!QaDashProbe || _party == null || _party.Length == 0) return;
+        var m = _party[0];
+        if (!m.Alive) return;
+        _dashProbeT += dt;
+
+        if (_dashProbeStep == 0 && _dashProbeT > 2f)
+        {
+            _dashProbeFrom = m.Pos;
+            bool fired = TryDash(m, new Vector2(1f, 0f));
+            Debug.Log($"[QA-대시] 발동={fired} 직업={m.Job} 쿨={m.DashCd:F2}s 무적={m.IFrame:F2}s");
+            _dashProbeStep = 1; _dashProbeT = 0f;
+            _dashProbeHp = m.Hp;
+            Damage(m, 40f, true);                       // 무적 중 — 막혀야 한다
+            Debug.Log($"[QA-대시] 무적 중 피해40 → HP {_dashProbeHp:F0}→{m.Hp:F0} " +
+                      $"({(Mathf.Approximately(_dashProbeHp, m.Hp) ? "차단 OK" : "❌ 새어나감")})");
+            return;
+        }
+
+        if (_dashProbeStep == 1 && _dashProbeT > DASH_TIME + 0.05f)
+        {
+            float moved = (m.Pos - _dashProbeFrom).magnitude;
+            float want = PlayerSpeed * 3f * DashSpec(m.Job).dist;
+            Debug.Log($"[QA-대시] 이동거리 {moved:F2} (기대 {want:F2}, 오차 {(moved - want):F2}) " +
+                      $"— {(Mathf.Abs(moved - want) < want * 0.35f ? "PASS" : "❌ 어긋남")}");
+            _dashProbeStep = 2; _dashProbeT = 0f;
+            return;
+        }
+
+        // 네거티브 컨트롤 — 무적이 끝났으면 같은 피해가 **들어가야** 한다.
+        // 이게 없으면 "언제나 안 맞는" 버그를 통과로 읽는다.
+        if (_dashProbeStep == 2 && _dashProbeT > 0.6f)
+        {
+            float before = m.Hp;
+            Damage(m, 40f, true);
+            Debug.Log($"[QA-대시] 무적 종료 후 피해40 → HP {before:F0}→{m.Hp:F0} " +
+                      $"({(m.Hp < before ? "관통 OK(네거티브 컨트롤)" : "❌ 무적이 안 풀린다")})");
+            _dashProbeStep = 3;
+        }
+    }
+
+    /// <summary>이동기 발동. 쿨이 남았거나 죽었으면 아무 일도 안 한다.</summary>
+    bool TryDash(Member m, Vector2 dir)
+    {
+        if (m == null || !m.Alive || m.DashCd > 0f || m.DashT > 0f) return false;
+        if (dir.sqrMagnitude < 1e-4f) dir = new Vector2(m.Flip ? -1f : 1f, 0f);
+
+        var (distMul, cdMul) = DashSpec(m.Job);
+        m.DashDir = dir.normalized * distMul;
+        m.DashT = DASH_TIME;
+        m.DashCd = DASH_CD * cdMul;
+        m.IFrame = DASH_IFRAME;
+        m.SkillT = Mathf.Max(m.SkillT, DASH_TIME);        // 큰 동작으로 재생
+
+        string label = m.Job switch
+        {
+            Job.수호기사 => "방패 돌진",
+            Job.마법사 => "점멸",
+            Job.사제 => "스텝",
+            Job.검사 => "구르기",
+            _ => "스텝",
+        };
+        SkillCast(m, label, new Color(0.85f, 0.9f, 1f));
+        return true;
     }
 
     /// <summary>진군가면 공격 +15%, 수호가면 공격은 그대로 (방어는 Damage에서 처리)</summary>
@@ -1949,6 +2078,9 @@ public class W3Party : MonoBehaviour
     void Damage(Member m, float dmg, bool front)
     {
         if (!m.Alive) return;
+        // 무적 프레임(§5) — 진입점이 하나라서 여기 한 줄이면 모든 피해가 막힌다.
+        // 장판·투사체·근접이 각자 판정을 갖고 있었다면 어딘가는 반드시 새어나갔을 것이다.
+        if (m.IFrame > 0f) return;
         float incoming = dmg;
         if (_partyChant == Chant.수호가) dmg *= 0.82f;      // 음유시인 수호가 오라
         if (m.Shield > 0f)                                   // 수호기사 성채 방패가 먼저 깎인다

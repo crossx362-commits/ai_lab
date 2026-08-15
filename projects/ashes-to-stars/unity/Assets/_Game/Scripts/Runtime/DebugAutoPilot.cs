@@ -73,6 +73,14 @@ namespace AshesToStars
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
             GameState.Earn(500000);
 
+            if (_mode == "dash")
+            {
+                // 이동기 자가검사 — 전투를 띄우고 W3Party가 스스로 재고 판정한다.
+                global::W3Party.QaDashProbe = true;
+                GameFlow.GoBattle(GameFlow.Field);
+                return;
+            }
+
             if (_mode == "hunt")
             {
                 // 던전 **밖** 경로 — 던전이 아닐 때도 전투가 정상인지 본다.
