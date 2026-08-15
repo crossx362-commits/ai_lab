@@ -1,0 +1,27 @@
+{
+ "_note": "캐릭터 buffer 13프레임 = 6셀 시트 A(idle·walk2·attack2·special) + B(dash4·hurt·death) + 단독 C(invuln). 프레임 이름은 SpriteBank.JOB_FRAMES 규격 그대로 — 어긋나면 조용히 누락된다.",
+ "refs": [
+  "ref_buffer_identity.png"
+ ],
+ "rulesets": {
+  "c6": "Match the REFERENCE IMAGE EXACTLY: the SAME bard — a wide green witch hat with a gold band, dark-green coat with gold trim, holding a wooden lute across the chest. Reproduce the reference's hand-drawn pixel-art style precisely: same dot size, thin dark outlines, soft cel shading, same body proportions (stocky heroic chibi), same palette. THREE-QUARTER FRONT view at eye level, the FULL BODY standing, both feet visible on the ground. Not photorealistic, not 3D-rendered, no smooth gradients. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty pure-magenta gaps between the cells. The SAME knight, SAME scale, SAME camera angle in every cell, feet resting on a common baseline. The six poses MUST differ dramatically so motion is obvious when flipped through. Follow each cell's description literally. No grid lines, no labels, no text. COLOR: full color, matching the reference palette. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery.",
+  "c1": "Match the REFERENCE IMAGE EXACTLY: the SAME bard — wide green witch hat, dark-green gold-trimmed coat, wooden lute. Same hand-drawn pixel-art style, dot size, outlines, cel shading, proportions and palette as the reference. THREE-QUARTER FRONT view, full body standing, feet on the ground. Not photorealistic, not 3D. A SINGLE centered figure, no grid. No labels, no text. Background: flat solid pure magenta #FF00FF everywhere."
+ },
+ "assets": [
+  {
+   "name": "char_buffer_A",
+   "rules_ref": "c6",
+   "prompt": "A 6-cell sprite sheet of ONE bard (identical to the reference). Cells: (1) IDLE — standing at the ready, weight settled, weapon held naturally; (2) WALK step — left foot planted forward, right leg trailing back, torso leaning into the stride; (3) WALK step MIRRORED — right foot forward, left leg back, opposite arm swing; (4) ATTACK wind-up — weapon drawn far back, body coiled and loaded; (5) ATTACK strike — weapon swung all the way through to full extension, body committed forward; (6) SPECIAL — strumming the lute hard, one arm sweeping across the strings, musical energy radiating outward."
+  },
+  {
+   "name": "char_buffer_B",
+   "rules_ref": "c6",
+   "prompt": "A 6-cell sprite sheet of ONE bard (identical to the reference). Cells: (1) DASH start — pushing off with one foot, robes beginning to trail behind; (2) DASH mid — gliding low and fast, both feet barely off the ground, robes streaming back; (3) DASH full — at maximum extension of the glide, leaning forward, fabric fully swept; (4) DASH recover — planting the front foot and straightening up, robes settling; (5) HURT — flinching hard, head snapped back, one arm thrown up, staggering backward; (6) DEATH — collapsed on the ground, lying down, limbs slack, face down."
+  },
+  {
+   "name": "char_buffer_C",
+   "rules_ref": "c1",
+   "prompt": "A single centered figure of the SAME bard (identical to the reference), standing firm and braced, surrounded by a ring of golden and green light encircling the body — a translucent glow of light and sparks around the whole body, signalling invulnerability."
+  }
+ ]
+}
