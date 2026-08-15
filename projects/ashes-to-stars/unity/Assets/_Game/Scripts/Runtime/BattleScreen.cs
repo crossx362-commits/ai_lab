@@ -241,7 +241,25 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             Info(r, 0, $"경과 {_t:F1}s");
-            if (Row(r, 1, "후퇴", "긴급 탈출 아이템(§4)")) GameFlow.Go(GameFlow.ReturnTo);
+
+            // 긴급 탈출은 **귀환의 두루마리를 실제로 소모**한다(§4 — 희귀·고가 아이템).
+            // 예전엔 이 버튼이 아이템을 무시하고 공짜로 나갔다: 라벨은 "긴급 탈출 아이템"인데
+            // 소모처가 0곳이라 드랍된 두루마리는 영영 안 쓰였다(부활초·환생석과 달리 소비처 부재).
+            // 그래서 ①없으면 잠그고 ②있으면 1개 소모 후 탈출한다. 전투는 W3Party가 스스로
+            // OnBattleEnd로 종료하므로(잡몹/파티 전멸) 이 버튼을 잠가도 화면에 갇히지 않는다.
+            // ⚠️ §4의 "캐스팅 6초·피격 시 취소"는 전투 시뮬(W3Party) 소유라 여기선 미구현 —
+            //    지금은 즉시 소모형이다(STATUS 큐에 combat 후속으로 남김).
+            int scrolls = GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn);
+            if (scrolls > 0)
+            {
+                if (Row(r, 1, $"후퇴 (귀환의 두루마리 {scrolls})", "긴급 탈출 — 두루마리 1개 소모(§4)"))
+                {
+                    if (GameState.Consume(Economy.LifeItem.ScrollOfReturn))
+                        GameFlow.Go(GameFlow.ReturnTo);
+                }
+            }
+            else
+                Locked(r, 1, "후퇴", "귀환의 두루마리가 없다 — 긴급 탈출엔 이 희귀 아이템이 필요하다(§4)");
         }
 
         /// <summary>

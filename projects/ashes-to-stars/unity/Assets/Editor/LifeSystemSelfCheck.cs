@@ -120,6 +120,22 @@ namespace AshesToStars
             foreach (var c in LifeSystem.GetCharacters()) reloadedExp += c.Exp;
             Check(reloadedExp == 100, $"재기동 후 경험치 유지 (기대 100, 실제 {reloadedExp})");
 
+            // ⑨ 긴급 탈출(§4) — 귀환의 두루마리는 **소모처가 있어야** 한다.
+            //    BattleScreen "후퇴"가 이 불변식에 의존한다: 없으면 잠기고, 있으면 1개 줄며,
+            //    다 쓰면 다시 잠긴다. 예전엔 이 아이템이 드랍만 되고 소모처가 0곳이라 공짜 탈출이었다.
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Check(GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn) == 0,
+                  $"초기 귀환의 두루마리 0개 — 긴급 탈출은 희소(§4, 실제 {GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn)})");
+            Check(!GameState.Consume(Economy.LifeItem.ScrollOfReturn),
+                  "두루마리 0개일 때 소모 실패 → 후퇴 잠김(공짜 탈출 아님)");
+            GameState.Gain(Economy.LifeItem.ScrollOfReturn, 1);
+            Check(GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn) == 1, "두루마리 획득 반영");
+            Check(GameState.Consume(Economy.LifeItem.ScrollOfReturn)
+                  && GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn) == 0,
+                  "후퇴 시 두루마리 1개 실제 차감(§4)");
+            Check(!GameState.Consume(Economy.LifeItem.ScrollOfReturn), "다 쓰면 다시 잠김");
+
             // 뒷정리 — 검사가 실제 저장을 남기면 다음 플레이가 오염된다
             GameState.ResetAll();
             LifeSystem.ResetAll();
