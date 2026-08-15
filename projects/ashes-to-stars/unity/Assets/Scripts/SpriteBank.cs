@@ -22,7 +22,12 @@ public class SpriteBank
     // 직업 4종 × 프레임 4종. 블렌더 플레이스홀더와 달리 **실제 아트**다.
     // ⚠️ 파일이 Resources 밖(_Game/Art/Sprites)에 있으면 Resources.Load가 못 찾아
     //    화면엔 플레이스홀더만 나온다 — 실제로 그 상태로 W1~W3을 돌렸었다.
-    public enum Job { Tank = 0, Dps = 1, Healer = 2, Buffer = 3 }
+    /// <summary>
+    /// 아트 세트. ⚠️ **역할(Role)이 아니라 직업 단위**다 — 역할로 고르면 딜러 둘
+    /// (검사·마법사)이 **같은 그림**이 된다(오너 지적 2026-08-15 「딜러 마법사 검사
+    /// 같은 모양인데」). 순서는 `JOB_DIRS`와 인덱스로 짝지어지므로 **바꾸지 마라.**
+    /// </summary>
+    public enum Job { Tank = 0, Dps = 1, Healer = 2, Buffer = 3, Mage = 4 }
 
     /// <summary>
     /// 프레임 순서는 JOB_FRAMES와 **반드시 같아야 한다** — 인덱스로 짝지어 로드한다.
@@ -81,7 +86,7 @@ public class SpriteBank
         return row[Mathf.Clamp(i, 0, row.Length - 1)] ?? Mob(kind);
     }
 
-    static readonly string[] JOB_DIRS = { "tank", "dps", "healer", "buffer" };
+    static readonly string[] JOB_DIRS = { "tank", "dps", "healer", "buffer", "mage" };
     static readonly string[] JOB_FRAMES =
     {
         "idle_00", "walk_00", "walk_01", "attack_00", "attack_01",
@@ -92,9 +97,18 @@ public class SpriteBank
     Sprite[][] _job;   // [직업][프레임]
 
     /// <summary>직업·프레임별 픽셀아트. 로드 실패 시 플레이스홀더로 폴백한다.</summary>
+    /// <summary>아트가 아직 없는 직업. 그 자리에 붉은 사각형을 그리지 않고 딜러 아트로 대신한다.</summary>
+    bool[] _jobMissing;
+
     public Sprite Char(Job j, Frame f = Frame.Idle)
     {
-        var row = _job[(int)j];
+        int idx = (int)j;
+        // ⚠️ 아트가 없는 직업을 그대로 그리면 **붉은 단색 사각형**이 된다(로드 실패 대체물).
+        //    직업 단위 아트로 바꾸면서 `mage` 폴더가 아직 비어 있을 수 있는데, 그때
+        //    화면이 더 나빠지면 안 된다 — 도착 전까지는 딜러 아트로 버틴다.
+        //    아트가 들어오면 이 분기는 저절로 꺼진다(경고는 로드 때 한 번 남는다).
+        if (_jobMissing != null && idx < _jobMissing.Length && _jobMissing[idx]) idx = (int)Job.Dps;
+        var row = _job[idx];
         return row[(int)f] ?? row[0] ?? Player;
     }
 
@@ -338,9 +352,17 @@ public class SpriteBank
         //     idle 실측 높이를 U_CHAR로 맞추므로 **직업 간 키가 통일**된다(오너 지적 "높이도 맞춰야지").
         // 프레임 사이 정렬은 이미지 단계에서 공통 캔버스·발밑 정렬로 끝냈으므로 여기서 또 재지 않는다.
         b._job = new Sprite[JOB_DIRS.Length][];
+        b._jobMissing = new bool[JOB_DIRS.Length];
         for (int j = 0; j < JOB_DIRS.Length; j++)
         {
             int idle = CHAR0 + j * JOB_FRAMES.Length;      // 0번이 idle
+            // 이 직업의 아트가 통째로 없으면(파일 로드 실패로 단색 대체된 상태)
+            // 그리지 말고 딜러 아트로 대신한다 — `Char()`가 그 판정을 쓴다.
+            if (Resources.Load<Texture2D>($"sprites/{JOB_DIRS[j]}/{JOB_DIRS[j]}_{JOB_FRAMES[0]}") == null)
+            {
+                b._jobMissing[j] = true;
+                Debug.LogWarning($"[SpriteBank] 직업 아트 없음: {JOB_DIRS[j]} — 딜러 아트로 대체한다");
+            }
             var rc = PxRect(idle);
             var (bx0, by0, bx1, by1) = Bounds(idle);
             float ppu = Mathf.Max(1, by1 - by0 + 1) / U_CHAR;

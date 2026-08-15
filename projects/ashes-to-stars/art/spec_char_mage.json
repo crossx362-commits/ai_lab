@@ -1,0 +1,26 @@
+{
+ "_note": "마법사 캐릭터 아트(오너 지적 2026-08-15 「딜러 마법사 검사 같은 모양인데」). 원인은 아트가 **직업이 아니라 역할(Role)로** 골라져 검사·마법사가 같은 그림을 쓰던 것이다. `ranged/`는 5장, `dps_new/`는 0장이라 쓸 수 있는 두 번째 딜러 아트가 없었다. 프레임 규격·셀 배치는 `spec_char_dps.json`을 그대로 따른다 — 다르게 만들면 `align_frames`·`JOB_FRAMES` 계약이 깨진다.",
+ "refs": [
+  "ref_dps_identity.png"
+ ],
+ "rulesets": {
+  "c6": "Match the REFERENCE IMAGE's ART STYLE EXACTLY but the character is a MAGE, clearly different from the rogue: a deep indigo robe with wide sleeves and a long hem, a wide pointed hat casting shadow over the eyes, a gnarled wooden staff topped with a glowing pale-blue crystal held in one hand, a leather satchel at the hip. No hood, no scarf, no sword. Reproduce the reference's hand-drawn pixel-art style precisely: same dot size, thin dark outlines, soft cel shading, same body proportions (stocky heroic chibi), same palette. THREE-QUARTER FRONT view at eye level, the FULL BODY standing, both feet visible on the ground. Not photorealistic, not 3D-rendered, no smooth gradients. LAYOUT: EXACTLY SIX CELLS TOTAL — a 3-column by 2-row grid (3 across, 2 down). Do not draw seven, eight, or nine cells. Exactly 3 columns and exactly 2 rows with clear empty pure-magenta gaps between the cells. The SAME knight, SAME scale, SAME camera angle in every cell, feet resting on a common baseline. The six poses MUST differ dramatically so motion is obvious when flipped through. Follow each cell's description literally. ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE — no captions, no frame numbers, no state names, no letters, no digits, no watermark, no grid lines, no borders. Only the character art on the magenta field. COLOR: full color, matching the reference palette. Background: flat solid pure magenta #FF00FF everywhere, NO SHADOW OF ANY KIND — no drop shadow, no ellipse or blob under the feet, no contact shadow. The magenta must be perfectly flat and uniform right up to the character's outline. No ground, no scenery."
+ },
+ "assets": [
+  {
+   "name": "char_mage_A",
+   "rules_ref": "c6",
+   "prompt": "A 6-cell sprite sheet of ONE mage. Six poses of the same figure, reading left to right then top to bottom: standing at the ready, staff planted, robe settled; then left foot forward mid-stride, hem swinging back; then right foot forward, opposite sleeve swinging; then staff raised high overhead with the crystal flaring, body coiled; then thrusting the staff forward at full extension, sleeve trailing, body committed; then both hands out casting a wide spell, robe billowing outward."
+  },
+  {
+   "name": "char_mage_B",
+   "rules_ref": "c6",
+   "prompt": "A 6-cell sprite sheet of ONE mage. Six poses reading left to right then top to bottom: crouched low beginning a short blink-step, robe compressing; then body half-dissolving into drifting motes mid-blink; then reforming in a low landing stance; then recoiling from a hit, head snapped back, staff arm flung wide; then staggering on one knee, staff propping the body up; then collapsed on the ground, hat fallen beside, staff loose."
+  },
+  {
+   "name": "char_mage_C",
+   "rules_ref": "c6",
+   "prompt": "A single centered figure of the SAME mage, standing firm and braced, surrounded by a swirling violet aura wrapping the whole body — a translucent glow of light and sparks around the whole body, signalling invulnerability."
+  }
+ ]
+}

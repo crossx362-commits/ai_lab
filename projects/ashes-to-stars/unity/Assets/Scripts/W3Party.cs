@@ -725,12 +725,18 @@ public class W3Party : MonoBehaviour
     /// Role과 SpriteBank.Job은 지금 우연히 순서가 같지만 캐스팅으로 엮지 않는다 —
     /// 한쪽에 값이 끼면 조용히 어긋나는 종류의 결합이다.
     /// </summary>
-    static SpriteBank.Job ArtOf(Role r) => r switch
+    /// <summary>
+    /// 아트 선택. ⚠️ **역할이 아니라 직업으로** 고른다 — 역할로 고르면 딜러 둘
+    /// (검사·마법사)이 같은 그림이 되어 화면에서 구분되지 않는다(오너 지적 2026-08-15).
+    /// 파티 카드·전투 유닛이 같은 함수를 쓰므로 여기만 고치면 양쪽이 함께 갈린다.
+    /// </summary>
+    static SpriteBank.Job ArtOf(Job j) => j switch
     {
-        Role.Tank => SpriteBank.Job.Tank,
-        Role.Healer => SpriteBank.Job.Healer,
-        Role.Buffer => SpriteBank.Job.Buffer,
-        _ => SpriteBank.Job.Dps,
+        Job.수호기사 => SpriteBank.Job.Tank,
+        Job.마법사 => SpriteBank.Job.Mage,
+        Job.사제 => SpriteBank.Job.Healer,
+        Job.음유시인 => SpriteBank.Job.Buffer,
+        _ => SpriteBank.Job.Dps,          // 검사
     };
 
     /// <summary>
@@ -796,7 +802,7 @@ public class W3Party : MonoBehaviour
             var job = _setup.Jobs[i];
             m.Job = job;
             m.Role = RoleOf(job);
-            m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Role));
+            m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Job));
             m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp;
             m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f) * _bAtk;
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
@@ -1184,11 +1190,11 @@ public class W3Party : MonoBehaviour
             if (want != m.Mo) { m.Mo = want; m.AnimT = 0f; }
             else m.AnimT += dt;
 
-            m.Sr.sprite = bank.CharAnim(ArtOf(m.Role), m.Mo, m.AnimT);
+            m.Sr.sprite = bank.CharAnim(ArtOf(m.Job), m.Mo, m.AnimT);
             // 무적 구간 표시 — 대시가 끝나고도 0.12초쯤 남는 무적을 화면에서 알 수 있게.
             // 「정확히 쓰면 한 번 산다」(§5)가 성립하려면 **무적이 켜져 있다는 것이 보여야** 한다.
             if (m.IFrame > 0f && m.DashT <= 0f)
-                m.Sr.sprite = bank.Char(ArtOf(m.Role), SpriteBank.Frame.Invuln);
+                m.Sr.sprite = bank.Char(ArtOf(m.Job), SpriteBank.Frame.Invuln);
             m.Sr.sortingOrder = Depth(m.Pos.y);
 
             // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
@@ -1686,9 +1692,9 @@ public class W3Party : MonoBehaviour
             // ⚠️ 이름으로 비교하지 마라 — 런타임에 만든 스프라이트는 **이름이 빈 문자열**이라
             //    "다름 OK"가 항상 나온다(첫 구현이 그랬다. 판별력 0인 검사였다).
             //    `rect`(아틀라스 안의 자리)로 봐야 실제로 다른 그림인지 알 수 있다.
-            var dashSp = SpriteBank.Cached.CharAnim(ArtOf(m.Role), SpriteBank.Motion.Dash, 0f);
-            var idleSp = SpriteBank.Cached.CharAnim(ArtOf(m.Role), SpriteBank.Motion.Idle, 0f);
-            var invSp = SpriteBank.Cached.Char(ArtOf(m.Role), SpriteBank.Frame.Invuln);
+            var dashSp = SpriteBank.Cached.CharAnim(ArtOf(m.Job), SpriteBank.Motion.Dash, 0f);
+            var idleSp = SpriteBank.Cached.CharAnim(ArtOf(m.Job), SpriteBank.Motion.Idle, 0f);
+            var invSp = SpriteBank.Cached.Char(ArtOf(m.Job), SpriteBank.Frame.Invuln);
             bool artOk = dashSp != null && idleSp != null && dashSp.rect != idleSp.rect;
             bool invOk = invSp != null && idleSp != null && invSp.rect != idleSp.rect;
             Debug.Log($"[QA-대시] 대시 아트 rect={dashSp?.rect} 대기 rect={idleSp?.rect} " +
@@ -2482,7 +2488,7 @@ public class W3Party : MonoBehaviour
                                                : new Color(.22f, .07f, .07f, .95f)));
 
             // 초상화 — 아틀라스에서 몸통만 잘라 그린다
-            var sp = bank?.Char(ArtOf(m.Role));
+            var sp = bank?.Char(ArtOf(m.Job));
             if (sp != null)
             {
                 var uv = PortraitUV(sp);
