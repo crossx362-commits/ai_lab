@@ -94,7 +94,14 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
     raise SystemExit(f"이미지 없음: {json.dumps(res)[:400]}")
 
 
-def generate_hf(prompt: str, refs: list[str], model: str = "nano_banana_pro",
+# 오너 지시(2026-08-15): **이미지 생성은 전부 힉스필드 nano_banana_2로 통일한다.**
+# 모델이 섞이면 같은 프롬프트·같은 앵커를 줘도 화풍이 갈려서, 이 프로젝트가 계속
+# 싸우고 있는 "몹만 따로 논다"류의 문제가 생성 단계에서부터 들어온다.
+# `--model`로 덮어쓸 수는 있지만, 기본값을 바꾸지 마라.
+HF_MODEL = "nano_banana_2"
+
+
+def generate_hf(prompt: str, refs: list[str], model: str = HF_MODEL,
                 resolution: str = "1k", aspect: str = "1:1",
                 rules: str = None) -> Image.Image:
     """Higgsfield CLI 경로.
@@ -204,7 +211,7 @@ def main(argv=None):
         if ns.backend == "gemini":
             raw = generate(item["prompt"], refs, key, ns.model or MODEL)
         else:
-            raw = generate_hf(item["prompt"], refs, ns.model or "nano_banana_pro",
+            raw = generate_hf(item["prompt"], refs, ns.model or HF_MODEL,
                               aspect=aspect, rules=rules)
         img = chroma_key(raw) if not item.get("keep_bg") else raw.convert("RGBA")
         if ns.height and img.height > ns.height:

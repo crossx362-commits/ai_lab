@@ -204,7 +204,7 @@ namespace AshesToStars
                     // ⚠️ 산포 대상은 **자연물만**이다. 마을 구성물(집·울타리·우물)이 여기
                     //    섞이면 집이 들판에 무작위로 흩어져 마을로 안 읽힌다 — 그것들은
                     //    `BuildVillage`가 정해진 자리에 세운다.
-                    int propIdx = Random.Range(0, ScatterCount(biome, propNames.Length));
+                    int propIdx = Random.Range(0, ScatterCount(propNames));
                     if (!Place(propIdx, worldPos, inside)) continue;
                     placed++;
                 }
@@ -412,7 +412,30 @@ namespace AshesToStars
         /// 노이즈로 흩뿌려도 되는 프랍의 개수. 평원은 앞 8종(자연물)만 산포 대상이고
         /// 뒤쪽 마을 구성물은 `BuildVillage`가 자리를 정한다.
         /// </summary>
-        static int ScatterCount(Biome biome, int total) => biome == Biome.Field ? 8 : total;
+        // 평원 자연물 = 덤불3 + 바위3 + 그루터기2 + 나무4 + 과수원나무1 + 관목열1 = 14.
+        // 이 앞 14종만 노이즈 산포하고, 뒤 마을 구성물(집·울타리 등)은 BuildVillage가 세운다.
+        /// <summary>
+        /// 노이즈로 흩뿌려도 되는 프랍 수 = **`village_` 접두가 아닌 것의 개수**.
+        ///
+        /// ⚠️ 숫자를 손으로 적지 마라. 예전엔 `Field ? 8 : total` 같은 상수였는데,
+        ///    목록에 자연물을 추가하고 이 숫자를 안 올리면 새 프랍이 **조용히 안 나오고**,
+        ///    반대로 숫자만 크면 `village_house_*`가 뽑혀 **집이 들판에 흩뿌려진다.**
+        ///    실제로 2026-08-15에 두 방향 모두 발생했다(자연물 13 vs 상수 14로 어긋남).
+        ///    목록에서 직접 세면 두 곳을 따로 갱신할 일이 사라진다.
+        ///
+        /// 전제: 마을 구성물은 **이름이 `village_`로 시작하고 목록 뒤쪽에 모여 있다.**
+        /// 새 마을 물건을 넣을 땐 이 규칙을 지킬 것.
+        /// </summary>
+        static int ScatterCount(string[] names)
+        {
+            int n = 0;
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (names[i].StartsWith("village_")) break;   // 여기부터는 BuildVillage 몫
+                n++;
+            }
+            return n > 0 ? n : names.Length;                  // 전부 마을이면 그냥 다 쓴다
+        }
 
         // ── 프랍 목표 크기표 (art/prop_scale.json) ────────────────
         // 단일 소스는 `art/prop_scale.json`이다. 아트가 크기를 정하고 코드는 읽기만 한다 —
@@ -548,6 +571,12 @@ namespace AshesToStars
                 "field_bush_0", "field_bush_1", "field_bush_2",
                 "field_rock_0", "field_rock_1", "field_rock_2",
                 "field_stump_0", "field_stump_1",
+                // 나무(오너 지시 2026-08-15 「나무도 배치하고」). 평원에 키 큰 것이 하나도
+                // 없어서 마을만 덩그러니 서 있었다. 자연물이므로 노이즈 산포에 섞인다 —
+                // ⚠️ **반드시 마을 구성물 앞**에 둘 것. 뒤에 두면 `ScatterCount`가 잘라내
+                //    화면에 조용히 안 나온다.
+                "field_tree_0", "field_tree_1", "field_tree_2", "field_tree_3",
+                "field_shrub_row_0",
                 // 마을 구성물(오너 지시 2026-08-15). 노이즈 산포에는 **섞이지 않는다** —
                 // `NATURE_COUNT`로 앞쪽 자연물만 흩뿌리고, 아래 10종은 `BuildVillage`가
                 // 정해진 자리에 세운다. 집이 풀처럼 흩뿌려지면 마을이 아니라 난개발이다.

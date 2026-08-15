@@ -1,0 +1,41 @@
+{
+ "_note": "P5 나무(오너 지시 2026-08-15 '나무도 배치하고'). 현재 평원 자연물은 덤불·바위·그루터기뿐이라 키 큰 것이 하나도 없다 — 마을 사진에도 집 사이사이와 뒤편 산에 나무가 가장 많다. 이름은 FieldDecor.GetPropNames()의 Biome.Field 자연물 구간에 추가된다(ScatterCount도 같이 늘려야 산포 대상이 된다).",
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "prop": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same limited earthy palette, thin dark outlines, soft cel shading, 3/4 top-down quarter view with a ~30 degree downward camera. Not photorealistic, not 3D-rendered, no smooth gradients. A single object centered in frame, no text, no border, no extra props. The object stands alone with nothing drawn beneath it — no ground, no grass patch, no shadow of any kind. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "field_tree_0",
+   "rules_ref": "prop",
+   "prompt": "A broad deciduous tree with a thick brown trunk and a full rounded canopy of layered dark green leaves, taller than a house. Temperate countryside."
+  },
+  {
+   "name": "field_tree_1",
+   "rules_ref": "prop",
+   "prompt": "A tall narrow pine with a straight trunk and tiered dark blue-green needle branches tapering to a point. Temperate countryside."
+  },
+  {
+   "name": "field_tree_2",
+   "rules_ref": "prop",
+   "prompt": "An old gnarled tree leaning to one side, twisted bark, sparse canopy with a few bare branches poking out of the foliage. Temperate countryside."
+  },
+  {
+   "name": "field_tree_3",
+   "rules_ref": "prop",
+   "prompt": "A young slender sapling with a thin trunk and a small light-green canopy, about half the height of a grown tree. Temperate countryside."
+  },
+  {
+   "name": "village_tree_0",
+   "rules_ref": "prop",
+   "prompt": "A cultivated orchard tree with a short sturdy trunk, a neatly rounded canopy, and small red fruit dotted among the green leaves. Grown beside a farmhouse."
+  },
+  {
+   "name": "field_shrub_row_0",
+   "rules_ref": "prop",
+   "prompt": "A low hedge row of dense clipped green foliage, wider than tall, running left to right across the frame. Marks the edge of a field."
+  }
+ ]
+}
