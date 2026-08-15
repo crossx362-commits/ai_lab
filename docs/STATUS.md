@@ -460,7 +460,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 | 항목 | 근거 | 커밋 |
 |---|---|---|
-| **§15 침략 30층 해금 게이트** | §15 ✅ "30층 이상 등반 시 해금"인데 `WorldMapScreen` 침략은 무게이트 상시 활성(층 1에서도 발동)이었고, **경매장은 이미 30층 게이트 존재**(`EstateScreen.cs:66`)·`SceneStructureBuilder.cs:156` "침략·경매장 동시 해금" — 비대칭을 해소. `TowerFloor>=30`만 라이브, 미만은 Locked(현재 층 표시). 신규 시스템·오펀 0(기존 TowerFloor·침략 배틀 재사용). `game_compile_check` PASS·`game_asset_names` ✅. ⚠️인게임 GUI세션 대기 | (이 커밋) |
+| **§15 침략 30층 해금 게이트** | §15 ✅ "30층 이상 등반 시 해금"인데 `WorldMapScreen` 침략은 무게이트 상시 활성(층 1에서도 발동)이었고, **경매장은 이미 30층 게이트 존재**(`EstateScreen.cs:66`)·`SceneStructureBuilder.cs:156` "침략·경매장 동시 해금" — 비대칭을 해소. `TowerFloor>=30`만 라이브, 미만은 Locked(현재 층 표시). 신규 시스템·오펀 0(기존 TowerFloor·침략 배틀 재사용). `game_compile_check` PASS·`game_asset_names` ✅. ⚠️인게임 GUI세션 대기 | `29f1b991` |
 | **§12·§18-5 대출 시스템(핵심 슬라이스)** | `grep loan/debt` 전 코드 0곳이던 경제 키스톤. 소비처 실재분만: Earn 수입50% 자동상환(상시)·TowerScreen "대출받고 입장"(수동). 한도=순자산(지갑-부채)30%∧20G/h·티어, 이자 0.5%/h 복리. `game_compile_check` PASS·SelfCheck ⑩ 결정론 검증(30000한도·자동상환·복리>단리·재기동유지·상환0). 연체/파산 제재는 경매장·침략 부재로 유보(정직). ⚠️배치SelfCheck·인게임 GUI세션 대기 | `e88649b9` |
 | **§3·§18-6 캐릭터 성장(레벨업)** | `CharacterRecord.Exp`+직렬화(하위호환) · `ExpToNext=100×Lv^2.2`(1=100·2=459·10=15848·상한100) · `AwardBattleExp`가 출전파티에 레벨비례 분배(총100→5인 각20, 총합보존) · BattleScreen 골드옆 1회지급 · ResultScreen/CharacterScreen 표시 · `LifeSystemSelfCheck` ⑧. `game_compile_check` PASS·`game_asset_names` 이상무. ⚠️배치SelfCheck·인게임 GUI세션 대기, 절대총량은 프로토타입값 | `f5e0778b` |
 | §10-4 도발 하드 락 | **D/A 0.66** (목표 0.75 이하). 5회 중앙값 | `e5c5c6e1` |
