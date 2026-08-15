@@ -138,6 +138,21 @@ python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py
 이제 `game_asset_names.py`가 `Assets/` 아래 미추적 파일을 잡는다. **자산을 만들었으면
 검사기를 돌려라** — 그게 커밋 누락을 잡는 유일한 자동 장치다.
 
+## 정기 잡 — crontab은 비었다 (2026-08-15)
+
+**launchd(`com.ailab.*`)가 유일한 정기 잡 관리자다.** crontab은 비워 뒀다.
+
+이유: 크론에 남아 있던 10줄이 **전부 삭제된 에이전트**의 것이었고, 그중 9줄은
+스크립트 파일 자체가 없어 매일 조용히 실패하고 있었다(루나·아린·가희·현빈·티모 +
+`agent_self_learning.py`). 나머지 1줄(`telegram_receiver.py`)은 launchd
+`com.ailab.youngsuk`와 **같은 데몬을 두 메커니즘이 관리**하는 상태였다 —
+이 저장소가 반복해서 겪은 「두 개로 갈라진 메커니즘」이다.
+
+- 백업: `.logs/crontab_backup_20260815.txt` (**이 기계에만 있다** — `.logs`는 gitignore
+  대상이고 crontab 자체가 기계 로컬 설정이라 저장소로 공유하지 않는다)
+- 새 정기 잡은 `schedules.json` + launchd로만 등록할 것. 등록 후
+  `launchctl list | grep com.ailab.sched.<id>`로 **실제 등록까지** 확인한다
+
 ## 7. 이 프로젝트에서 반복해서 겪은 함정
 
 전체 목록은 `docs/GAME_DEV_HANDOFF.md` §5. 그중 세션 관리에서 새로 나온 것:
