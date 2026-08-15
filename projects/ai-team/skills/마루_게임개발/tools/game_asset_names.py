@@ -86,9 +86,12 @@ def expected() -> dict[str, list[str]]:
     if jobs and job_frames:
         for j in jobs:
             out[f"sprites/{j}"] = [f"{j}_{f}.png" for f in job_frames]
+    # 몹도 직업과 **같은 규칙**이다 — `SpriteBank.cs:141` 이 둘 다 `$"{d}/{d}_{f}"`로 조합한다.
+    # 첫 구현이 몹만 접두사 없이 기대해서 실재하는 22장을 전부 '누락'으로 신고했다
+    # (오탐은 없는 문제를 쫓게 만들어 진짜 문제를 덮는다 — 조합 규칙은 코드에서 확인할 것).
     if mob_dirs and mob_frames:
         for m in mob_dirs:
-            out[f"sprites/{m}"] = [f"{f}.png" for f in mob_frames]
+            out[f"sprites/{m}"] = [f"{m}_{f}.png" for f in mob_frames]
     props = _method_literals(fd, "GetPropNames")
     if props:
         out["props"] = sorted({f"{p}.png" for p in props})
