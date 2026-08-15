@@ -1496,8 +1496,23 @@ public class W3Party : MonoBehaviour
         }
     }
 
+    /// <summary>도발 반경 — 원거리 몹의 유지 거리(6.5)와 같아야 후열 저격을 실제로 끊는다.</summary>
+    const float TauntRadius = 6.5f;
+
     Member PickNearestOrTaunt(Vector2 p)
     {
+        // 도발은 **하드 락**이다(FFXIV Provoke 계열): 반경 안의 근접 몹은 위협·거리와 무관하게 탱을 본다.
+        // 예전에는 근접 몹에게 도발이 위협 +80(≈ 거리 9.6유닛)으로만 작용했는데,
+        // 위협은 감쇠하고 거리는 매 프레임 변하므로 "도발했는데 아무도 안 온다"가 자주 났다.
+        // 실측: 도발을 꺼도(D 구성) 생존이 표준의 0.85배 — 도발이 판을 거의 못 바꿨다.
+        if (_t < _tauntUntil)
+        {
+            var tank = _party.Length > 0 ? _party[0] : null;
+            if (tank != null && tank.Alive && tank.Role == Role.Tank &&
+                (tank.Pos - p).sqrMagnitude < TauntRadius * TauntRadius)
+                return tank;
+        }
+
         Member best = null; float score = float.MaxValue;
         foreach (var m in _party)
         {

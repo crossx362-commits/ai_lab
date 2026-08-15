@@ -17,7 +17,8 @@ using UnityEngine;
 /// </summary>
 public static class UnitSeparation
 {
-    /// <summary>유닛 반지름(월드 단위). 스프라이트 폭의 절반보다 살짝 작게 잡아 뭉침을 허용한다.</summary>
+    /// <summary>유닛 반지름(월드 단위). 스프라이트 폭의 절반보다 살짝 작게 잡아 뭉침을 허용한다.
+    /// 값을 키우면 실루엣은 잘 읽히지만 무리가 흩어져 뱀서류의 압박감이 줄어든다.</summary>
     public const float Radius = 0.34f;
 
     const float CellSize = Radius * 2f;
