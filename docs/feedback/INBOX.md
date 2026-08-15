@@ -95,6 +95,13 @@
 > (22프레임 반입·`qa_shot.sh hunt`에서 늑대 실루엣이 색조별로 화면에 정상 표시).
 > **남은 3계열**(charger·ranged·swarmer)은 spec 준비 완료, 백엔드 살아 있으니 다음 세션이
 > INBOX 지침대로 **1계열씩** 같은 파이프라인으로 뽑으면 된다(상세: `docs/STATUS.md`).
+>
+> **✅ 진행 상황 (2026-08-15 이터4): 아트 막힘 풀림 + charger 반입 완료.**
+> `higgsfield generate list` 실측 — `waiting` **0개**, 전부 `completed`. 위 "8슬롯 소진" 블록은
+> **해소됨**(오너 조치든 자연 만료든 슬롯이 열렸다). charger 시트 A/B는 이미 생성돼 있었고
+> (out_p2, 20:15·20:20) 이 세션이 처리·반입: 22프레임 → `Resources/sprites/mob_charger`,
+> `game_asset_names` 통과, **Read 육안검증**으로 코뿔소 브루트·wind-up 텔레그래프·셀셰이딩 확인.
+> **남은 2계열 ranged·swarmer**만 같은 파이프라인으로 뽑으면 #1 완료. 인게임 qa_hunt는 GUI세션 대기.
 > **핵심 교훈**: 이 백엔드는 한 계열(2시트)에 20~40분 걸린다 — 무출력 stall처럼 보여도
 > 크레딧·프로세스가 살아 있으면 기다려라. 절대 죽이지 마라.
 
