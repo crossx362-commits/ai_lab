@@ -102,7 +102,7 @@ namespace AshesToStars
 
             if (_mode == "hunt")
             {
-                if (_step == 0 && _t > 12f) { Shot("auto_field_hunt"); _step = 1; _t = 0f; }
+                if (_step == 0 && _t > 12f) { DumpHugeSprites(); Shot("auto_field_hunt"); _step = 1; _t = 0f; }
                 else if (_step == 1 && _t > 1.5f) Finish();
                 return;
             }
@@ -166,6 +166,29 @@ namespace AshesToStars
             }
 
             if (_step == 3 && _t > 1.5f) Finish();
+        }
+
+        /// <summary>
+        /// 화면에 거대한 것이 떠 있을 때 **무엇인지** 특정한다.
+        /// 필드 전투에서 아레나만 한 노란 타원이 나왔는데, 도발 링(반경 4.5)으로도
+        /// 장판 링(3.2)으로도 크기가 설명되지 않았다 — 짐작으로 고치면 멀쩡한 표시를 죽인다.
+        /// 그래서 실제로 화면에 있는 것 중 폭 10유닛이 넘는 스프라이트를 전부 찍는다.
+        /// </summary>
+        static void DumpHugeSprites()
+        {
+            var all = Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            int n = 0;
+            foreach (var sr in all)
+            {
+                if (!sr.enabled || sr.sprite == null) continue;
+                var b = sr.bounds.size;
+                if (b.x < 10f && b.y < 10f) continue;
+                Debug.Log($"[거대] {sr.name} 크기 {b.x:F1}x{b.y:F1} 스케일 {sr.transform.localScale} " +
+                          $"정렬 {sr.sortingOrder} 색 {sr.color} 스프라이트 {sr.sprite.name} " +
+                          $"부모 {(sr.transform.parent ? sr.transform.parent.name : "-")}");
+                n++;
+            }
+            Debug.Log($"[거대] 폭 10유닛 초과 스프라이트 {n}개 / 전체 {all.Length}개");
         }
 
         void Shot(string name)
