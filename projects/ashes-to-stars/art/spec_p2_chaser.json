@@ -1,0 +1,24 @@
+{
+ "refs": [
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "m": "CRITICAL CAMERA: every cell is drawn in 3/4 TOP-DOWN QUARTER VIEW — camera pitched 30 degrees DOWNWARD and rotated 45 degrees, orthographic; the viewer looks DOWN at the creature. STRICTLY FORBIDDEN: pure side profile, pure front view, eye-level view. Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Build the shape from THICK SOLID MASSES readable at 128px tall — no hair-thin details. LAYOUT: an even grid of cells. Every cell holds the SAME creature at the SAME scale and the SAME canvas position with feet on a common baseline; only the pose differs. Do not change the design, proportions or size between cells. No grid lines, no labels, no numbers, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue at all, so a palette tint can be applied later. Background: completely flat solid pure magenta #FF00FF across the whole image, no ground, no floor, no shadow, no scenery."
+ },
+ "assets": [
+  {
+   "name": "sheet_mob_chaser_A",
+   "rules_ref": "m",
+   "aspect": "21:9",
+   "keep_bg": true,
+   "prompt": "A 5-column by 2-row animation sprite sheet (10 cells) of ONE hostile creature: a quadruped charging beast, low forward-leaning stance, head down, lean muscular build. Cells left-to-right, top-to-bottom: (1) idle standing settled, (2) idle weight shifted, (3) idle head slightly raised, (4) idle tail low, (5) walk front legs extended, (6) walk mid-stride, (7) walk opposite legs extended, (8) walk mid-stride other side, (9) walk pushing off, (10) walk gathering under body"
+  },
+  {
+   "name": "sheet_mob_chaser_B",
+   "rules_ref": "m",
+   "aspect": "4:3",
+   "keep_bg": true,
+   "prompt": "A 4-column by 3-row animation sprite sheet (12 cells) of ONE hostile creature: a quadruped charging beast, low forward-leaning stance, head down, lean muscular build. Cells left-to-right, top-to-bottom: (1) attack wind-up crouched, (2) attack lunging forward, (3) attack strike extended, (4) attack recovering, (5) hurt flinch back, (6) hurt staggered, (7) hurt recoiling low, (8) hurt recovering, (9) death collapsing forward, (10) death on knees, (11) death falling to side, (12) death lying still"
+  }
+ ]
+}
