@@ -36,6 +36,16 @@ namespace AshesToStars
         /// </summary>
         protected virtual bool OpaqueBackground => true;
 
+        /// <summary>
+        /// 이 화면의 배경 그림(`Resources/bg/<이름>`). null이면 예전처럼 단색으로 칠한다.
+        ///
+        /// 전투 밖 화면 6종이 전부 **검은 배경에 글자 버튼**이었다(오너 질문 2026-08-15
+        /// 「UI랑 배경은 언제 만드니」). 배경은 아이콘보다 싸고(화면당 1장) 효과가 크다 —
+        /// 화면이 「여기가 어디인지」부터 말해준다.
+        /// ⚠️ 그림이 없으면 **조용히 단색으로** 돌아간다. 아트가 늦게 와도 화면이 깨지지 않는다.
+        /// </summary>
+        protected virtual string BackgroundArt => null;
+
         // 기준 해상도 — 모든 좌표는 이 안에서 계산한다
         protected const float REF_W = 1280f, REF_H = 720f;
         protected const float BarH = 76f;
@@ -97,6 +107,19 @@ namespace AshesToStars
             _scrim = Solid(new Color(0.03f, 0.03f, 0.05f, 0.72f));
         }
 
+        Texture2D _bgArt;
+        bool _bgTried;
+
+        /// <summary>배경 그림을 한 번만 찾아 기억한다. 없으면 다시 찾지 않는다.</summary>
+        Texture2D BgTex()
+        {
+            if (_bgTried) return _bgArt;
+            _bgTried = true;
+            var key = BackgroundArt;
+            if (!string.IsNullOrEmpty(key)) _bgArt = Resources.Load<Texture2D>("bg/" + key);
+            return _bgArt;
+        }
+
         void OnGUI()
         {
             Styles();
@@ -107,7 +130,18 @@ namespace AshesToStars
             var saved = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(offset, Quaternion.identity, new Vector3(s, s, 1f));
 
-            if (OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _bg);
+            if (OpaqueBackground)
+            {
+                var art = BgTex();
+                if (art != null)
+                {
+                    // 16:9 그림을 기준 해상도에 꽉 채운다. 그 위에 어두운 막을 한 겹 덮어
+                    // **글자 가독성을 지킨다** — 배경이 아무리 좋아도 읽히지 않으면 손해다.
+                    GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), art, ScaleMode.ScaleAndCrop);
+                    GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _scrim);
+                }
+                else GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _bg);
+            }
 
             // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
             if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);

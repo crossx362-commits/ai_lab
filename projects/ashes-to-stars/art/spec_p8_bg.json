@@ -1,0 +1,41 @@
+{
+ "_note": "P8 화면 배경 6장(오너 질문 2026-08-15 「UI랑 배경은 언제 만드니」). 전투 밖 화면 6종이 전부 **검은 배경에 글자 버튼**이었다. 배경은 UI 아이콘보다 싸고(6장) 효과가 크다 — 화면이 '어디인지'부터 말해준다. ⚠️ 배경 **위에 IMGUI 글자와 버튼이 얹힌다.** 그래서 중앙~좌측은 비교적 어둡고 단순해야 하고, 대비가 강한 무늬를 화면 가득 깔면 글자가 안 읽힌다. 세로 1280×720 비율.",
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "bg": "Hand-drawn pixel art in the same world as the reference image: same limited earthy palette, thin dark outlines on shapes, soft cel shading, no smooth photographic gradients, not 3D-rendered. A WIDE 16:9 SCENE viewed from a slightly elevated three-quarter angle. IMPORTANT: this is a BACKGROUND that dark UI text and buttons will be drawn on top of — keep the left half and the center calm and relatively dark, put the detail and brightness toward the upper right and the edges. Overall value should be MUTED and DARK so light text stays readable. No characters, no creatures, no text, no letters, no UI, no frames, no borders."
+ },
+ "assets": [
+  {
+   "name": "bg_estate",
+   "rules_ref": "bg",
+   "prompt": "A lord's estate courtyard at dusk seen from the main gate: a stone keep with warm lit windows on the right, low outbuildings and a smithy chimney trailing smoke, a packed-earth yard, banners on poles. Quiet, settled, the place you come home to."
+  },
+  {
+   "name": "bg_field",
+   "rules_ref": "bg",
+   "prompt": "Rolling grassland at overcast midday seen from a rise: wind-bent grass, scattered boulders and lone trees, a dirt track winding toward distant hills, a broken fence line. Open and exposed — the hunting ground."
+  },
+  {
+   "name": "bg_tower",
+   "rules_ref": "bg",
+   "prompt": "An immense dark tower seen from its base looking up and away: weathered black stone tiers vanishing into low cloud, a long stair climbing the right side, faint blue light leaking from arrow slits. Oppressive, vertical, the thing you climb."
+  },
+  {
+   "name": "bg_worldmap",
+   "rules_ref": "bg",
+   "prompt": "A star chart of a dark planetary system: a deep indigo void with scattered stars, three or four muted planet discs of different sizes, thin orbital arcs, faint nebula haze toward the upper right. Cold and vast."
+  },
+  {
+   "name": "bg_character",
+   "rules_ref": "bg",
+   "prompt": "The inside of a barracks hall at night: stone walls, a rack of spears and shields on the right, bedrolls along the left wall, a low fire in a brazier casting warm light, an open ledger on a table. Lived-in and dim."
+  },
+  {
+   "name": "bg_party",
+   "rules_ref": "bg",
+   "prompt": "A war room seen over the table: a large map spread across weathered wood with carved markers and a compass, lantern light from the upper right, chairs pushed back, a hanging banner behind. Planning before departure."
+  }
+ ]
+}

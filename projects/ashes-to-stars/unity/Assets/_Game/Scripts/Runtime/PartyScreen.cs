@@ -16,6 +16,7 @@ namespace AshesToStars
     public class PartyScreen : GameScreen
     {
         protected override string Title => "파티 편성";
+        protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
             $"최대 {PartyState.MaxSlots}인(§9) · 편성 {PartyState.Slots.Count}명 · " +
             $"1번 자리가 탱 자리다(§10-4 진형) · 부활초 {LifeSystem.GetRevivePotions()}/3";

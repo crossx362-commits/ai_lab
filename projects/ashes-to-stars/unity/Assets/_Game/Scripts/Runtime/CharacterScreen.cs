@@ -13,6 +13,7 @@ namespace AshesToStars
     public class CharacterScreen : GameScreen
     {
         protected override string Title => "캐릭터";
+        protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
         // 전직·합성은 아직 시스템이 없어(전직 재료·패시브 흡수 미구현) 아래 잠김으로 정직하게 남긴다.
         protected override string Subtitle => "레벨·목숨·부활초 관리(§3·§4). 전직·합성은 준비 중 — 아래 잠김 표시(§3)";

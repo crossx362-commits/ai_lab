@@ -20,6 +20,7 @@ namespace AshesToStars
         Sub _sub = Sub.없음;
 
         protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
+        protected override string BackgroundArt => "bg_estate";
         protected override string Subtitle => _sub switch
         {
             Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",

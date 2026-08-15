@@ -13,6 +13,7 @@ namespace AshesToStars
     public class WorldMapScreen : GameScreen
     {
         protected override string Title => "월드맵";
+        protected override string BackgroundArt => "bg_worldmap";
         protected override string Subtitle => "우주 성계. 침략은 탑 30층 달성 시 해금(§14·§15)";
 
         /// <summary>침략 해금 층(§15 ✅ "탑 30층 이상 등반 시 해금"). 경매장과 **동시** 해금이다
