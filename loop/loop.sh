@@ -130,7 +130,7 @@ while true; do
     INFRA=0
     echo "✅ #$ITER 완료"
     tail -5 "$LOG" | sed 's/^/   /'
-  elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
+  elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|session limit|usage limit|limit .*resets|quota|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
     # ── 인프라 장애는 **작업 실패로 세지 않는다.**
     #    2026-08-15 실측: 인증이 잠깐 흔들린 44초 사이에 재시도 3회가 전부 소진돼
     #    루프가 자멸했다(직후 `claude -p`는 정상 동작). 크레딧·레이트리밋·네트워크도
@@ -140,6 +140,29 @@ while true; do
     INFRA=$((INFRA + 1))
     WAIT=$((60 * INFRA * INFRA))
     [ "$WAIT" -gt 900 ] && WAIT=900          # 상한 15분 — 더 벌리면 복구를 놓친다
+
+    # ── 언제 풀리는지 **서버가 알려주면** 그때까지 기다린다.
+    #    구독 한도는 `You've hit your session limit · resets 8:10pm` 형태로 복구 시각을
+    #    준다. 이걸 무시하고 제곱 백오프만 돌면 풀리지도 않은 채 재시도를 반복하거나,
+    #    반대로 풀린 뒤에도 한참 자고 있게 된다.
+    #    실측 2026-08-15: 18:26에 한도에 걸렸는데 분류기가 'session limit'을 몰라
+    #    작업 실패로 세어 3회 만에 루프가 죽었고, 20:10 복구 뒤에도 **1시간 44분간
+    #    아무도 재개하지 않았다.**
+    RESET=$(grep -oiE 'resets? +[0-9]{1,2}(:[0-9]{2})? *(am|pm)' "$LOG" | head -1 \
+            | grep -oiE '[0-9]{1,2}(:[0-9]{2})? *(am|pm)')
+    if [ -n "$RESET" ]; then
+      NOW_S=$(date +%s)
+      # 오늘 그 시각. 이미 지났으면 내일로 넘긴다(자정을 넘긴 한도).
+      TGT_S=$(date -j -f "%Y-%m-%d %I:%M %p" "$(date +%Y-%m-%d) $(echo "$RESET" | tr 'a-z' 'A-Z' | sed -E 's/^([0-9]{1,2})( *)(AM|PM)$/\1:00 \3/; s/ +/ /g')" +%s 2>/dev/null || echo "")
+      if [ -n "$TGT_S" ]; then
+        [ "$TGT_S" -le "$NOW_S" ] && TGT_S=$((TGT_S + 86400))
+        UNTIL=$((TGT_S - NOW_S + 60))        # 1분 여유 — 경계에서 다시 걸리지 않게
+        if [ "$UNTIL" -gt 0 ] && [ "$UNTIL" -lt 43200 ]; then
+          WAIT=$UNTIL
+          echo "   ↳ 서버가 복구 시각을 알려줬다($RESET) — 그때까지 ${WAIT}초 기다린다"
+        fi
+      fi
+    fi
     echo "⏸  #$ITER 인프라 장애 (${INFRA}회) — ${WAIT}초 뒤 재시도. 실패로 세지 않는다"
     grep -iE 'not logged in|api error|rate.?limit|overloaded|credit|network' "$LOG" | head -2 | sed 's/^/   /'
     if [ "$INFRA" -ge "${LOOP_MAX_INFRA:-12}" ]; then

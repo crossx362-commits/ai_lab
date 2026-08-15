@@ -193,3 +193,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 **다음에 루프가 멈췄다면 이 순서로 볼 것**: ①`loop/loop_main.log`의 정지 사유
 ②`echo ok | claude -p`로 구독 토큰 직접 확인(만료면 사람이 `claude auth login`)
 ③그 외면 `loop/logs/iter_*.log` 마지막 것.
+
+## (해결됨) 루프 자동 정지 (2026-08-15 18:26)
+연속 3회 실패로 멈췄다. 마지막 로그: `/Users/junholee/ai_lab/loop/logs/iter_20260815_182611.log`
+원인을 확인하고 `rm loop/STOP` 후 재개할 것.
