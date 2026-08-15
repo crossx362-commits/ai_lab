@@ -47,6 +47,7 @@ from _shared.env import load_env        # noqa: E402
 from _shared.telegram import send       # noqa: E402
 from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
+from _shared.llm import ollama  # noqa: E402
 
 load_env(str(PROJECT_ROOT))
 
@@ -181,8 +182,51 @@ def _opinion(lens: str, focus: str, topic: str, situation: str) -> tuple[str, st
     return lens, (out.strip()[:1500] if ok and out else FAIL)
 
 
+def _chair_ok(items) -> bool:
+    """로컬 모델 결과를 받아들일지 판정. 미달이면 클로드로 넘긴다.
+
+    실측(2026-08-15, gemma4:12b): 종합 자체는 클로드와 실질적으로 같은 4항목을 냈지만
+    `verify`에 **네거티브 컨트롤이 빠졌다**. 이 저장소에서 통과 기준의 핵심은 "고쳤더니
+    좋아졌다"가 아니라 "되돌리면 다시 나빠지는가"다 — 그게 없으면 지시서가 검증 불가능한
+    작업을 시킨다. 그래서 그 한 가지를 게이트로 삼는다.
+    """
+    if not isinstance(items, list) or len(items) < 3:
+        return False
+    NEG = ("네거티브", "되돌리", "원복", "끄면", "제거 시", "비활성")
+    for i in items:
+        if not isinstance(i, dict) or not str(i.get("title", "")).strip():
+            return False
+        if not str(i.get("verify", "")).strip():
+            return False
+    # 전부는 과하다 — 과반이 네거티브 컨트롤을 담고 있으면 통과로 본다
+    withneg = sum(1 for i in items if any(k in str(i.get("verify", "")) for k in NEG))
+    return withneg * 2 >= len(items)
+
+
 def _chair(topic: str, situation: str, opinions: list[tuple[str, str]]) -> tuple[str, list]:
     text = "\n\n".join(f"### {n}\n{o}" for n, o in opinions)
+
+    # ── 1순위: 로컬 모델(토큰 0). 파일 도구가 필요 없는 단계라 옮길 수 있는 유일한 지점이다.
+    #    품질 미달이면 아래 클로드로 자동 승격하므로 손해가 없다.
+    try:
+        local = ollama(
+            "너는 게임 개발 회의 의장이다. 아래 의견을 종합해 다음 작업을 JSON 배열로 3~5개, 실행 순서대로 내라.\n"
+            '[{"title":"...","detail":"무엇을 어떻게 — 통과 기준까지","priority":"P1|P2|P3",'
+            '"track":"개발|그래픽","verify":"통과 기준 + **네거티브 컨트롤**(되돌리면 다시 나빠지는지)",'
+            '"needs_owner":true|false}]\n'
+            "- track: 유니티 C#·밸런스·측정은 '개발', 아트·스프라이트·연출은 '그래픽'.\n"
+            "- verify에는 반드시 네거티브 컨트롤을 넣어라. 없으면 그 항목은 검증 불가능하다.\n"
+            "- JSON만 출력하라.\n\n"
+            f"[안건]\n{topic}\n\n[의견]\n{text}",
+            task="coding", json_mode=True)
+        items = extract_json(local) if local else None
+        if _chair_ok(items):
+            print("[회의] 의장 종합 = 로컬 모델(gemma) — 클로드 호출 생략")
+            return ("(로컬 모델 종합 — 상세 의견은 위 각 절 참조)", items)
+        print("[회의] 로컬 종합이 품질 게이트 미달(네거티브 컨트롤 부족) — 클로드로 승격")
+    except Exception as e:
+        print(f"[회의] 로컬 종합 실패({e}) — 클로드로 승격")
+
     ok, out = run_claude(
         "너는 재와 별 개발팀의 마루, 이 회의의 의장이다. 헌장은 "
         "projects/ai-team/skills/마루_게임개발/SKILL.md 에 있다. 군더더기 없이 핵심만.\n\n"
