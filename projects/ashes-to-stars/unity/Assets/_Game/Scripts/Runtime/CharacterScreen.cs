@@ -13,7 +13,9 @@ namespace AshesToStars
     public class CharacterScreen : GameScreen
     {
         protected override string Title => "캐릭터";
-        protected override string Subtitle => "성장·전직·합성. 목숨 카운트가 여기서 보인다(§3·§4)";
+        // 부제가 광고하던 성장·전직·합성 중 실제로 되는 건 목숨·부활초뿐이다(§3 시스템 미구현).
+        // 없는 기능을 광고하면 "고장난 게임"으로 읽힌다 — 되는 것만 말하고, 나머지는 아래 잠김으로.
+        protected override string Subtitle => "목숨·부활초 관리(§4). 전직·합성은 준비 중 — 아래 잠김 표시(§3)";
 
         int _selectedCharacter = -1;
 
@@ -83,6 +85,14 @@ namespace AshesToStars
             if (Row(r, allCharacters.Count + 2, "파티 편성",
                     $"최대 5인(§9) · 지금 {PartyState.Slots.Count}명 편성됨 — 구성이 생존을 가른다(§21-1i)"))
                 GameFlow.Go(GameFlow.Party);
+
+            // 전직·합성(§3)은 아직 시스템이 없다(레벨업·전직 재료·패시브 전부 미구현).
+            // 부제가 광고하던 기능을 화면에서 조용히 빼면 "고장난 게임"으로 읽히므로,
+            // 영지·월드맵과 같은 잠김 표시로 "준비 중"임을 명시한다(오너 A지침 2026-08-15).
+            Locked(r, allCharacters.Count + 3, "전직",
+                   "준비 중 — 레벨·전직 재료·전직 시험이 필요하다(§3)");
+            Locked(r, allCharacters.Count + 4, "합성",
+                   "준비 중 — 1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다(§3)");
         }
     }
 }
