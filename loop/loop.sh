@@ -67,6 +67,27 @@ INBOX.md에 지시가 있으면 그것이 큐보다 앞선다.
 2. 네거티브 컨트롤 — 되돌리면 다시 깨지는지 확인
 3. 증거가 파일로 남을 것 — CSV·스크린샷·로그
 
+## 아트 생성을 걸 때 (실측 사고 2026-08-15)
+이미지 생성은 한 계열에 20~40분 걸린다. 그런데 **네가 백그라운드로 띄우고 이터레이션을
+끝내면 그 프로세스는 세션과 함께 죽는다** — 실제로 charger 시트 A만 나오고 B는 영영
+안 왔다(크레딧은 이미 나갔다). 다음을 지켜라:
+
+1. **떼어내서 띄운다.** 맥에는 `setsid`가 없다(실측 — `nohup: setsid: No such file or directory`).
+   파이썬으로 세션을 분리해 띄운다:
+   ```
+   python3 -c "import subprocess; f=open(\"/tmp/gen.log\",\"w\"); \
+   subprocess.Popen([\"python3\",\"aigen.py\",\"--spec\",\"<spec>\",\"--out-dir\",\"<dir>\"], \
+   stdout=f, stderr=subprocess.STDOUT, start_new_session=True)"
+   ```
+   `run_in_background`나 그냥 `&`로는 세션이 끝날 때 같이 죽는다.
+   확인법: `ps -o pid,pgid -p <PID>`에서 **PGID == PID**여야 분리된 것이다
+2. **표시를 남긴다.** 띄운 직후 `projects/ashes-to-stars/art/.generating`에
+   `<spec 이름> <시작시각>`을 적는다
+3. **다음 이터레이션은 먼저 그 표시와 출력 폴더를 본다.** 표시가 있고 2시간이 안 지났으면
+   **절대 다시 걸지 마라** — 크레딧이 두 배로 나간다. 결과가 다 나왔으면 표시를 지우고
+   반입 단계로 간다
+4. 생성이 도는 동안 대기하지 말고 **코드 트랙의 다른 항목**을 진행한다
+
 ## 화면을 바꿨으면 반드시 눈으로 봐라
   ./tools/qa_shot.sh [dungeon|hunt|boss|raid|party] [프레임]
 이 프로젝트는 "500체 700fps PASS"를 낸 화면이 텅 비어 있던 전례가 있다.
