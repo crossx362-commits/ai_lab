@@ -54,7 +54,12 @@ OUT_DIR = PROJECT_ROOT / "output" / "qa" / "ashes-to-stars" / "council"
 STATE = OUT_DIR / "state.json"
 BACKLOG = PROJECT_ROOT / "output" / "qa" / "ashes-to-stars" / "backlog.json"
 ORDERS = PROJECT_ROOT / "output" / "qa" / "ashes-to-stars" / "ORDERS.md"
-COOLDOWN_H = 24
+COOLDOWN_H = 24          # 특정 안건(--topic)의 중복 소집 방지
+# 정기 회의는 안건이 항상 같으므로 24h를 그대로 쓰면 **크론을 하루 2회 걸어도 1회만 돈다**
+# (2026-08-15 실측: 전날 22:36 회의 때문에 09:00 정기 회의가 "동일 안건 24시간 내 개최됨"으로
+#  통째로 생략됐다). 쿨다운의 목적은 같은 이슈를 연달아 태우지 않는 것이지 정기 점검을
+# 막는 게 아니다 — 상시 안건은 크론 간격(12h)보다 짧게 잡는다.
+STANDING_COOLDOWN_H = 10
 FAIL = "(의견 수집 실패)"
 
 DESIGN = "docs/GAME_DESIGN_ASHES_TO_STARS.md"
@@ -94,7 +99,8 @@ def _recent(topic: str) -> bool:
         return False
     if not last:
         return False
-    return (datetime.now() - datetime.fromisoformat(last)).total_seconds() < COOLDOWN_H * 3600
+    hours = STANDING_COOLDOWN_H if topic == DEFAULT_TOPIC else COOLDOWN_H
+    return (datetime.now() - datetime.fromisoformat(last)).total_seconds() < hours * 3600
 
 
 def _mark(topic: str, clear: bool = False) -> None:
@@ -190,7 +196,11 @@ def _chair(topic: str, situation: str, opinions: list[tuple[str, str]]) -> tuple
         '"needs_owner":true|false}]\n'
         "- track: 유니티 코드·밸런스·측정은 '개발', 아트·스프라이트·연출은 '그래픽'.\n"
         "- verify가 비면 안 된다. 이 팀은 '코드를 넣었다'와 '화면에 나왔다'를 구분한다.\n"
-        "- 기획서에 없는 새 메커니즘을 추가하거나 ✅ 확정을 뒤집는 것은 needs_owner=true.",
+        "- 기획서에 없는 새 메커니즘을 추가하거나 ✅ 확정을 뒤집는 것은 needs_owner=true.\n"
+        "- ⚠️ **미병합 브랜치·워크트리에 이미 구현된 것은 '새로 구현'으로 내지 마라.** 위 상태에 "
+        "브랜치 목록이 있다 — 그 안에 해당 기능이 있으면 title을 '<브랜치> 검토·병합'으로 내고 "
+        "detail에 병합 전 확인할 것을 적어라. 이걸 놓쳐서 이미 만들어둔 클래스를 다시 만들라는 "
+        "지시가 나간 적이 있다(2026-08-14 첫 회의).",
         PROJECT_ROOT, timeout=420, allowed_tools="Read", permission_mode="plan")
     if not ok or not out:
         return "(의장 종합 실패)", []
