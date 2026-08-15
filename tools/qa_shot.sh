@@ -24,8 +24,16 @@ cd "$(dirname "$0")/.."
 
 UNITY="${UNITY_BIN:-/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity}"
 PROJ="$PWD/projects/ashes-to-stars/unity"
-BUILD="$PWD/projects/ashes-to-stars/build_qa"
-APP="$BUILD/AshesToStars.app/Contents/MacOS/AshesToStars"
+# ⚠️ 출력 경로는 `PlayableScenesBuilder.BuildGame`이 **하드코딩**한다(`../../build_game`).
+#    `-buildPath` 인자를 주면 받는 줄 알고 build_qa로 지정했다가, 빌드는 성공했는데
+#    실행본이 없다는 상태가 됐다(실측 2026-08-15). 빌더를 고치지 않는 이유는 다른
+#    검증 도구들이 이미 이 경로를 전제로 돌고 있어서다 — 여기가 맞추는 편이 안전하다.
+BUILD="$PWD/projects/ashes-to-stars/build_game"
+# 실행 파일 이름을 하드코딩하지 않는다 — 유니티가 `AshesToStars`가 아니라 `unity`로
+# 만들어 두는 경우가 있다(실측: build_game/AshesToStars.app/Contents/MacOS/unity).
+# `.app` 안의 실행 가능한 파일을 그때그때 찾는다.
+find_app() { find "$BUILD" -maxdepth 4 -type f -perm +111 -path "*.app/Contents/MacOS/*" 2>/dev/null | head -1; }
+APP="$(find_app)"
 SHOTS="${GAME_SHOT_DIR:-$PWD/output/qa/ashes-to-stars/shots}"
 
 SKIP_BUILD=0
@@ -48,8 +56,8 @@ fi
 #    처음엔 `|| [ ! -x "$APP" ]`로 자동 빌드하게 짰는데, 그러면 --skip-build가 의도를
 #    잃고 에디터 락 가드까지 건너뛴다(실측: 락이 걸린 채 빌드가 돌아 exit 1).
 #    "빌드하지 말라"는 지시는 "없으면 만들어라"보다 강해야 한다.
-if [ "$SKIP_BUILD" = "1" ] && [ ! -x "$APP" ]; then
-  echo "❌ --skip-build인데 실행본이 없다: $APP"
+if [ "$SKIP_BUILD" = "1" ] && [ -z "$APP" ]; then
+  echo "❌ --skip-build인데 실행본이 없다 (탐색: $BUILD/*.app/Contents/MacOS/)"
   echo "   먼저 빌드하려면 --skip-build 없이 실행할 것(에디터를 닫아야 한다)"
   exit 1
 fi
@@ -64,7 +72,9 @@ else
   echo "▶ 빌드 생략(--skip-build) — 기존 실행본 사용"
 fi
 
-[ -x "$APP" ] || { echo "❌ 실행본이 없다: $APP"; exit 1; }
+APP="$(find_app)"      # 빌드 직후 다시 찾는다 — 처음 실행 때는 위에서 못 찾았다
+[ -n "$APP" ] && [ -x "$APP" ] || { echo "❌ 실행본을 못 찾았다 (탐색 경로: $BUILD/*.app/Contents/MacOS/)"; exit 1; }
+echo "▶ 실행본: $APP"
 
 # ── 3. 실제 창을 띄우고 찍고 닫는다
 #    -batchmode를 쓰지 않는다. 화면을 확인하는 게 목적이라 실제로 렌더돼야 한다.
