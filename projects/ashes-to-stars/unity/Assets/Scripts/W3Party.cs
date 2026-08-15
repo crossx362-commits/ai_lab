@@ -1690,6 +1690,12 @@ public class W3Party : MonoBehaviour
             최종웨이브.ToString(ci), (_kills / Mathf.Max(1f, _t)).ToString("F2", ci), verdict,
             _faithPeak.ToString("F0", ci), RunSeed().ToString(ci), _rep.ToString(ci),
             _supportHits.ToString(ci)));
+
+        // ⚠️ **판마다 즉시 쓴다.** 예전엔 전 구성이 끝난 뒤 Finish()에서 한 번에 썼는데,
+        //    5회 반복(25판·약 50분) 측정이 24판째에 세션 종료로 죽자 **결과가 통째로 사라졌다**.
+        //    긴 측정에서 "끝나야 저장"은 저장하지 않는 것과 같다.
+        try { File.WriteAllText(_outPath, _csv.ToString()); }
+        catch (System.Exception e) { Debug.LogWarning($"[W3] 중간 저장 실패: {e.Message}"); }
         Debug.Log($"[W3] {_setup.Name}: {_t:F1}s 생존 / 처치 {_kills} / 도발 {_tauntUses} / " +
                   $"후열피격 {_backlineHits} 전열피격 {_frontlineHits} / {verdict}");
         Debug.Log($"[W3-DIAG] 몹생존 {_mAlive} / 근접타격 {_meleeHits} / 투사체타격 {_shotHits} / " +
