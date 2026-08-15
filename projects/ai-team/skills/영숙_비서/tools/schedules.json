@@ -1,6 +1,6 @@
 {
  "version": "2.0.0",
- "updated": "2026-08-14",
+ "updated": "2026-08-15",
  "_note": "정시 잡은 영숙(운영 위생)·예원(피드백·감사) 일반 작업만 유지.",
  "schedules": [
   {
@@ -96,63 +96,69 @@
    "agent": "예원",
    "task": "펫나 파이프라인 딥 로직 감사",
    "cron": "0 9 * * 0",
-   "description": "배정과제 방치·조용한 예외삼킴·안전장치 비대칭 등 실행로직 결함 점검(읽기전용) — 고확신 발견만 백로그 보류(사람검토)로 적재, skill_auditor(월)·code_auditor(토)와 안 겹치게 일요일",
+   "description": "배정과제 방치·조용한 예외삼킴·안전장치 비대칭 등 실행로직 결함 점검(읽기전용) — 고확신 발견만 백로그 보류(사람검토)로 적재, skill_auditor(월)·code_auditor(토)와 안 겹치게 일요일 [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pipeline_audit.py --send",
-   "enabled": true,
-   "run": true,
+   "enabled": false,
+   "run": false,
    "priority": "medium"
   },
   {
    "id": "petnna_fleet_health",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_fleet_health.py --once --send",
    "cron": "0 11 * * *",
-   "enabled": true,
-   "description": "펫나 6종 에이전트 산출물 신선도 감사 (Hermes 크론 호환, 데몬 생존 아닌 산출물 기준)"
+   "enabled": false,
+   "description": "펫나 6종 에이전트 산출물 신선도 감사 (Hermes 크론 호환, 데몬 생존 아닌 산출물 기준) [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
+   "run": false
   },
   {
    "id": "petnna_pr_review",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_pr_reviewer.py --send",
    "cron": "0 */2 * * *",
-   "enabled": true,
-   "description": "예원 — 펫나 PR대기 브랜치 자동 검토·병합 결정 (수리 적체 상한 자동 해제, 오너 검토 위임)"
+   "enabled": false,
+   "description": "예원 — 펫나 PR대기 브랜치 자동 검토·병합 결정 (수리 적체 상한 자동 해제, 오너 검토 위임) [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
+   "run": false
   },
   {
    "id": "petnna_social",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_social_agent.py --once --send",
    "cron": "30 10,15,20 * * *",
-   "enabled": true,
-   "description": "펫과나 이웃 활동 — AI 페르소나가 반려동물 게시글 작성 + 실제 유저 글에 댓글·좋아요(비스팸: 회당 1글, 최근 3h 2글 상한)"
+   "enabled": false,
+   "description": "펫과나 이웃 활동 — AI 페르소나가 반려동물 게시글 작성 + 실제 유저 글에 댓글·좋아요(비스팸: 회당 1글, 최근 3h 2글 상한) [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
+   "run": false
   },
   {
    "id": "yewon_backlog_hygiene",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_hygiene.py --check --send",
    "cron": "0 9 * * 3",
-   "enabled": true,
-   "description": "예원 백로그 위생감사 — 보류 항목 중복/사유해소 재판단(추측 금지, 확신 없으면 손대지 않음, 회의 오판 재발 방지 2026-08-04). 첫 실행 결과 확인 후 --apply로 전환 검토"
+   "enabled": false,
+   "description": "예원 백로그 위생감사 — 보류 항목 중복/사유해소 재판단(추측 금지, 확신 없으면 손대지 않음, 회의 오판 재발 방지 2026-08-04). 첫 실행 결과 확인 후 --apply로 전환 검토 [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
+   "run": false
   },
   {
    "id": "yewon_backlog_archive",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_backlog_archive.py",
    "cron": "30 4 * * *",
-   "enabled": true,
-   "description": "예원 백로그 아카이브 — 오래된 완료 항목을 backlog_archive.json으로 분리(최근 40건은 활성 유지). 제목은 all_known_titles로 중복 대조에 계속 참여"
+   "enabled": false,
+   "description": "예원 백로그 아카이브 — 오래된 완료 항목을 backlog_archive.json으로 분리(최근 40건은 활성 유지). 제목은 all_known_titles로 중복 대조에 계속 참여 [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
+   "run": false
   },
   {
    "id": "petnna_daily_ideation",
    "command": "python projects/ai-team/skills/예원_CEO/tools/petnna_daily_ideation.py",
    "cron": "0 8 * * *",
-   "enabled": true,
-   "description": "펫나 일일 상품성·경쟁력 강화 아이디어 회의(오너 지시 2026-08-04) — 전 에이전트 소집, 안건 고정(petnna_council.convene 직접 호출, CLI 아님 — schedule_sync가 공백을 quote 없이 split해 다단어 --topic이 argv에서 깨짐). 결과는 액션아이템으로 백로그(source=회의) 적재 → 수리가 이어서 구현"
+   "enabled": false,
+   "description": "펫나 일일 상품성·경쟁력 강화 아이디어 회의(오너 지시 2026-08-04) — 전 에이전트 소집, 안건 고정(petnna_council.convene 직접 호출, CLI 아님 — schedule_sync가 공백을 quote 없이 split해 다단어 --topic이 argv에서 깨짐). 결과는 액션아이템으로 백로그(source=회의) 적재 → 수리가 이어서 구현 [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
+   "run": false
   },
   {
    "id": "petnna_backlog_unblock",
    "agent": "예원",
    "task": "백로그 정체 해소",
    "cron": "40 11 * * *",
-   "description": "보류 과제의 반려 사유를 분류해 게이트 결함으로 막힌 것만 대기로 되돌린다(사람 판단·금지 경로·품질 판단은 보존). 못 푼 구조적 정체만 보고.",
+   "description": "보류 과제의 반려 사유를 분류해 게이트 결함으로 막힌 것만 대기로 되돌린다(사람 판단·금지 경로·품질 판단은 보존). 못 푼 구조적 정체만 보고. [중단: 오너 지시 2026-08-15 펫나 전면 중단]",
    "command": "python3 projects/ai-team/skills/예원_CEO/tools/petnna_backlog_unblocker.py --once --send",
-   "enabled": true,
-   "run": true,
+   "enabled": false,
+   "run": false,
    "priority": "normal"
   },
   {

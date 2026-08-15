@@ -286,8 +286,25 @@ def read_fleet_policy() -> dict:
         return {}
 
 
+def petnna_off_switch() -> bool:
+    """오너가 펫나 전체를 중단시켰는가(`fleet_machine_policy.json`의 `petnna_enabled: false`).
+
+    '어느 기계에서 도는가'(primary_platform)와 '아예 도는가'는 다른 질문이다. 중단을 위해
+    primary_platform을 다른 플랫폼으로 돌려놓는 편법을 쓰면 ①정책 파일이 거짓을 말하게 되고
+    ②그 기계가 켜지는 순간 펫나가 되살아난다. 그래서 별도 스위치로 둔다.
+
+    ⚠️ 이 판정은 `process.petnna_single_machine_guard()`와 `notify._petnna_gate_state()`가
+    **공유**해야 한다 — 예전에 그 둘이 같은 판정을 따로 구현했다가 어긋난 적이 있다(2026-07-11).
+    """
+    return read_fleet_policy().get("petnna_enabled") is False
+
+
 def petnna_single_machine_guard(agent_label: str = "펫나 에이전트") -> bool:
     """단일 기계 운영 위반이면 True(호출자는 즉시 return해야 함) + 안내 출력."""
+    if petnna_off_switch():
+        print(f"{agent_label} — 펫나 전체 중단 상태(fleet_machine_policy.json: petnna_enabled=false). 자가 종료")
+        return True
+
     primary = str(read_fleet_policy().get("primary_platform", "")).strip()
 
     if primary:

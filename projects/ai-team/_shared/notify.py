@@ -130,7 +130,9 @@ def _petnna_gate_state() -> str | None:
     `process.petnna_single_machine_guard()`와 동일한 판정(정책파일 `fleet_machine_policy.json`
     우선, 없으면 구형 `PETNNA_AGENTS_ON_WINDOWS` 플래그 폴백) — 예전엔 이 함수가 win32만 보고
     정책파일을 몰라, 지정 기계가 바뀌어도 상태표시가 안 따라가는 불일치가 있었다(2026-07-11 발견)."""
-    from _shared.process import read_fleet_policy
+    from _shared.process import read_fleet_policy, petnna_off_switch
+    if petnna_off_switch():          # 오너가 펫나 전체를 중단 — 워치독 재시작·경보 대상에서 제외
+        return "disabled"
     primary = str(read_fleet_policy().get("primary_platform", "")).strip()
     if primary:
         return "disabled" if sys.platform != primary else None
