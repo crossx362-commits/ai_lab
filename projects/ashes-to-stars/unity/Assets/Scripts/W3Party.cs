@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -28,14 +29,55 @@ public class W3Party : MonoBehaviour
         public StyleSpec(float d, float t, float r, float k) { DmgMul = d; TakenMul = t; RetreatHp = r; KeepDist = k; }
     }
 
-    static StyleSpec Spec(Style s) => s switch
+    // ── 전투 스타일 수치의 단일 소스 (§3 전투 스타일 표) ──────────────
+    // 예전에는 이 표가 **코드에만** 있었고 `CombatStyleDef`(ScriptableObject)는
+    // 만들어만 두고 **읽는 곳이 0곳**이었다(grep 확인). 즉 기획자가 인스펙터에서 값을 바꿔도
+    // 전투는 코드 상수를 계속 썼다 — 에셋으로 옮긴 의미가 통째로 없었다.
+    //
+    // ⚠️ 기존 `_Game/Data/Styles/*.asset`은 **m_Script가 fileID 0으로 끊겨** 있었다
+    //    (CombatStyleDef.cs 머리 주석이 경고한 바로 그 사고). 게다가 `Resources/` 밖이라
+    //    런타임이 애초에 못 읽는다 — 이 저장소가 이미 겪은 「Resources 밖 자산」 함정이다.
+    //    그래서 `Assets/Resources/styles/`에 다시 만들어 넣었다.
+    //
+    // SO를 못 읽으면 아래 코드 표로 폴백한다. 검증(W1~W3)이 에셋 사고로 멈추면 안 되기 때문이다 —
+    // 다만 **조용히** 폴백하지 않는다(한 번 경고).
+    static Dictionary<Style, StyleSpec> _styleCache;
+    static bool _styleWarned;
+
+    static StyleSpec Spec(Style s)
     {
-        Style.Aggressive => new StyleSpec(1.15f, 1.20f, 0.00f, 0.9f),
-        Style.Balanced => new StyleSpec(1.00f, 1.00f, 0.15f, 1.4f),
-        Style.Defensive => new StyleSpec(0.90f, 0.85f, 0.30f, 2.6f),
-        Style.Survival => new StyleSpec(0.70f, 0.75f, 0.50f, 4.0f),
-        _ => new StyleSpec(1, 1, 0, 1.5f),
-    };
+        if (_styleCache == null)
+        {
+            _styleCache = new Dictionary<Style, StyleSpec>();
+            var defs = Resources.LoadAll<AshesToStars.CombatStyleDef>("styles");
+            foreach (var d in defs)
+            {
+                var key = d.Id switch
+                {
+                    AshesToStars.StyleId.공격형 => Style.Aggressive,
+                    AshesToStars.StyleId.방어형 => Style.Defensive,
+                    AshesToStars.StyleId.생존형 => Style.Survival,
+                    _ => Style.Balanced,
+                };
+                _styleCache[key] = new StyleSpec(d.딜배율, d.피해배율, d.후퇴체력, d.유지거리);
+            }
+            if (defs.Length == 0 && !_styleWarned)
+            {
+                _styleWarned = true;
+                Debug.LogWarning("[W3] Resources/styles 에 전투 스타일 에셋이 없다 — 코드 기본값으로 폴백");
+            }
+        }
+        if (_styleCache.TryGetValue(s, out var spec)) return spec;
+
+        return s switch
+        {
+            Style.Aggressive => new StyleSpec(1.15f, 1.20f, 0.00f, 0.9f),
+            Style.Balanced => new StyleSpec(1.00f, 1.00f, 0.15f, 1.4f),
+            Style.Defensive => new StyleSpec(0.90f, 0.85f, 0.30f, 2.6f),
+            Style.Survival => new StyleSpec(0.70f, 0.75f, 0.50f, 4.0f),
+            _ => new StyleSpec(1, 1, 0, 1.5f),
+        };
+    }
 
     // ── 파티원 ───────────────────────────────────────────
     enum Role { Tank, Dps, Healer, Buffer }
