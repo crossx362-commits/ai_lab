@@ -328,6 +328,57 @@ namespace AshesToStars
             return 8.0f; // 3회차 이상
         }
 
+        // ========== 대출 (§12 · §18-5) ==========
+        // "골드 = 목숨"이므로 대출은 곧 목숨을 빌리는 것이다(§12). 아래는 순수 계산만 —
+        // 상태(부채·기한)는 GameState가 들고, 실제 소비처는 TowerScreen "대출받고 입장"과
+        // GameState.Earn의 수입 50% 자동 상환이다.
+        //
+        // ⚠️ 유보(정직): §12 연체 제재(경매장 등록 금지·침략 불가)와 3회 연체 파산(영지 건물
+        //    강등)은 그 제재 대상 시스템(경매장·침략·영지 레벨)이 아직 없다. 지금 넣으면
+        //    "정의만 있고 소비처 0곳" 오펀이 된다 — 그 시스템들이 생길 때 함께 배선한다.
+        //    여기서는 소비처가 실재하는 ✅ 부분만 구현한다(대출·이자·자동상환·한도).
+
+        /// <summary>시간당 이자 (§18-5: 0.5%/h = 일 12%).</summary>
+        public const double LoanHourlyInterest = 0.005;
+
+        /// <summary>상환 기한 (§18-5: 72시간).</summary>
+        public const long LoanTermHours = 72;
+
+        /// <summary>수입 자동 상환 비율 (§18-5: 부채 보유 중 수입의 50% 자동 차감).</summary>
+        public const double LoanAutoRepayRate = 0.50;
+
+        /// <summary>절대 한도 기준 (§18-5: 20 G/h, T1 기준 20골드).</summary>
+        public const long LoanBaseGoldPerTier = 20;
+
+        /// <summary>
+        /// 대출 한도(쿠퍼). §18-5: **순자산의 30%**와 **20 G/h**(티어 비례) 중 **작은 값**.
+        /// "무자산 대출 방지"가 핵심 — 순자산 0이면 한도 0이라 못 빌린다.
+        ///
+        /// ⚠️ 순자산 근사(정직): 장비·영지 평가액 시스템이 아직 없어 순자산을 보유 골드로
+        ///    근사한다. 그래도 ✅ 원칙("무자산이면 못 빌린다")은 그대로 성립한다(잔고 0 → 한도 0).
+        ///    평가액 시스템이 생기면 netWorthCopper 인자만 실제 순자산으로 바꾸면 된다.
+        /// </summary>
+        public static long LoanLimitCopper(long netWorthCopper, int tier)
+        {
+            if (tier < 0) tier = 0;
+            long netCap = (long)(netWorthCopper * 0.30);
+            long absCap = LoanBaseGoldPerTier * (tier + 1) * COPPER_PER_GOLD;
+            long limit = System.Math.Min(netCap, absCap);
+            return limit < 0 ? 0 : limit;
+        }
+
+        /// <summary>
+        /// 이자 가산 — 잔액에 시간당 0.5% 복리(§18-5). 정수 반올림.
+        /// 결정론적이라(초월함수 1회) 자가검사가 배속·대기 없이 값을 검증할 수 있다.
+        /// </summary>
+        public static long AccrueLoan(long balanceCopper, long hours)
+        {
+            if (balanceCopper <= 0) return 0;
+            if (hours <= 0) return balanceCopper;
+            double grown = balanceCopper * System.Math.Pow(1.0 + LoanHourlyInterest, hours);
+            return (long)System.Math.Round(grown);
+        }
+
         // ========== 검산 & 검증 함수 ==========
 
         /// <summary>

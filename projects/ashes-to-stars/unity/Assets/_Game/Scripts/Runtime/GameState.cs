@@ -20,10 +20,17 @@ namespace AshesToStars
         const string K_COPPER = "ats.copper";
         const string K_FLOOR = "ats.tower_floor";
         const string K_ITEM = "ats.item.";
+        // 대출 상태(§12·§18-5) — 부채 잔액·마지막 이자 가산 시각·상환 기한(전부 유닉스초).
+        const string K_DEBT = "ats.loan.debt";
+        const string K_LOAN_AT = "ats.loan.accrued_at";
+        const string K_LOAN_DUE = "ats.loan.due_at";
 
         static Economy.Wallet _wallet;
         static Economy.LifeItemInventory _bag;
         static bool _loaded;
+        static long _debt;          // 부채 잔액(쿠퍼) — 이자 포함
+        static long _loanAccruedAt; // 마지막으로 이자를 가산한 시각(유닉스초)
+        static long _loanDueAt;     // 상환 기한(유닉스초). 부채 없으면 0
 
         /// <summary>지갑. §12의 쿠퍼–실버–골드 3단계는 Economy가 환산한다.</summary>
         public static Economy.Wallet Wallet { get { Load(); return _wallet; } }
@@ -63,6 +70,11 @@ namespace AshesToStars
                 int n = PlayerPrefs.GetInt(K_ITEM + it, 0);
                 if (n > 0) _bag.TryAdd(it, n);
             }
+
+            long.TryParse(PlayerPrefs.GetString(K_DEBT, "0"), out _debt);
+            long.TryParse(PlayerPrefs.GetString(K_LOAN_AT, "0"), out _loanAccruedAt);
+            long.TryParse(PlayerPrefs.GetString(K_LOAN_DUE, "0"), out _loanDueAt);
+            if (_debt < 0) _debt = 0;
         }
 
         static void Save()
@@ -72,17 +84,98 @@ namespace AshesToStars
             PlayerPrefs.SetInt(K_FLOOR, _floor);
             foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
                 PlayerPrefs.SetInt(K_ITEM + it, _bag.GetCount(it));
+            PlayerPrefs.SetString(K_DEBT, _debt.ToString());
+            PlayerPrefs.SetString(K_LOAN_AT, _loanAccruedAt.ToString());
+            PlayerPrefs.SetString(K_LOAN_DUE, _loanDueAt.ToString());
             PlayerPrefs.Save();
         }
 
-        /// <summary>보상 지급. 실제로 지갑에 들어가고 저장된다.</summary>
+        /// <summary>
+        /// 보상 지급. 실제로 지갑에 들어가고 저장된다.
+        /// §18-5: **부채 보유 중에는 수입의 50%가 자동 상환**된다 — 이것이 대출 상태의
+        /// 상시 소비처다(전투 보상이 이 경로로 들어온다). 빚이 없으면 종전과 동일하게 전액 입금.
+        /// </summary>
         public static void Earn(long copper)
         {
             Load();
             if (copper <= 0) return;
+            if (_debt > 0)
+            {
+                long toDebt = System.Math.Min((long)(copper * Economy.LoanAutoRepayRate), _debt);
+                if (toDebt > 0)
+                {
+                    _debt -= toDebt;
+                    copper -= toDebt;
+                    if (_debt == 0) _loanDueAt = 0;
+                }
+            }
             _wallet.TryAdd(copper);
             Save();
         }
+
+        // ========== 대출 (§12 · §18-5) ==========
+
+        /// <summary>현재 부채 잔액(쿠퍼) — 이자 포함.</summary>
+        public static long Debt { get { Load(); return _debt; } }
+
+        /// <summary>
+        /// 대출 총 한도(쿠퍼). 순자산 30%와 20G/h·티어 중 작은 값(§18-5).
+        /// 순자산 = 지갑 − 부채. **빌린 돈은 순자산을 늘리지 않는다**(안 그러면 대출→한도↑→
+        /// 대출의 무한 피드백 루프가 생긴다 — 자가검사 ⑩이 이 경계를 지킨다).
+        /// </summary>
+        public static long LoanLimit { get { Load(); return Economy.LoanLimitCopper(_wallet.Copper - _debt, Tier); } }
+
+        /// <summary>지금 더 빌릴 수 있는 금액(쿠퍼) = 한도 − 현재 부채(음수면 0).</summary>
+        public static long LoanBorrowable { get { Load(); long left = LoanLimit - _debt; return left < 0 ? 0 : left; } }
+
+        static long NowUnix() => System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        /// <summary>이자 가산 — 마지막 가산 이후 경과한 정수 시간만큼(§18-5 0.5%/h). 부채 없으면 무동작.</summary>
+        public static void AccrueLoan(long nowUnix)
+        {
+            Load();
+            if (_debt <= 0) return;
+            long hours = (nowUnix - _loanAccruedAt) / 3600;
+            if (hours <= 0) return;
+            _debt = Economy.AccrueLoan(_debt, hours);
+            _loanAccruedAt += hours * 3600;
+            Save();
+        }
+        public static void AccrueLoan() => AccrueLoan(NowUnix());
+
+        /// <summary>
+        /// 대출 — 한도 내에서만 성공. 성공 시 지갑에 들어가고 부채로 잡힌다(§12).
+        /// 한도 초과·무자산이면 **아무것도 하지 않고 false**(부분 대출 없음).
+        /// </summary>
+        public static bool Borrow(long copper, long nowUnix)
+        {
+            Load();
+            if (copper <= 0) return false;
+            AccrueLoan(nowUnix);
+            if (_debt + copper > LoanLimit) return false;
+            if (_debt == 0) { _loanAccruedAt = nowUnix; _loanDueAt = nowUnix + Economy.LoanTermHours * 3600; }
+            _debt += copper;
+            _wallet.TryAdd(copper);
+            Save();
+            return true;
+        }
+        public static bool Borrow(long copper) => Borrow(copper, NowUnix());
+
+        /// <summary>수동 상환 — 지갑에서 부채를 갚는다. 실제로 갚은 금액(쿠퍼)을 반환.</summary>
+        public static long Repay(long copper, long nowUnix)
+        {
+            Load();
+            AccrueLoan(nowUnix);
+            if (_debt <= 0 || copper <= 0) return 0;
+            long pay = System.Math.Min(copper, System.Math.Min(_debt, _wallet.Copper));
+            if (pay <= 0) return 0;
+            _wallet.TrySubtract(pay);
+            _debt -= pay;
+            if (_debt == 0) _loanDueAt = 0;
+            Save();
+            return pay;
+        }
+        public static long Repay(long copper) => Repay(copper, NowUnix());
 
         /// <summary>
         /// 진입 비용 차감. 모자라면 **차감하지 않고 false**를 돌려준다 —
@@ -154,8 +247,16 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey(K_FLOOR);
             foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
                 PlayerPrefs.DeleteKey(K_ITEM + it);
+            PlayerPrefs.DeleteKey(K_DEBT);
+            PlayerPrefs.DeleteKey(K_LOAN_AT);
+            PlayerPrefs.DeleteKey(K_LOAN_DUE);
             PlayerPrefs.Save();
+            _debt = _loanAccruedAt = _loanDueAt = 0;
             _loaded = false;
         }
+
+        /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
+        /// (LifeSystem.ForgetInMemoryForTest와 같은 목적: 저장→재기동 유지를 자가검사가 확인)</summary>
+        public static void ForgetInMemoryForTest() => _loaded = false;
     }
 }

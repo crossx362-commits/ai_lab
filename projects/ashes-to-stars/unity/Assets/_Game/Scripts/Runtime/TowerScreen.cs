@@ -35,10 +35,37 @@ namespace AshesToStars
             {
                 // 골드 부족 경고 화면 (§18-2 진입 비용)
                 Info(r, 0, "[주의] 골드가 부족합니다");
-                Info(r, 1, "탑 도전·레이드 입장에는 골드가 필요합니다(§18-2)\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
+                Info(r, 1, $"필요 {Economy.FormatCurrency(_pendingCost)} · 보유 {GameState.WalletText}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
 
-                if (Row(r, 2, "확인", "돌아간다"))
+                // §12 "골드가 없을 때 대출" — 빚을 내서라도 다음 판에. 골드는 곧 목숨이다.
+                // 무자산이면 한도 0이라 이 버튼이 안 뜬다(§18-5 무자산 대출 방지) → 필드 사냥으로 복구.
+                long shortfall = _pendingCost - GameState.Wallet.Copper;
+                Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 현재 부채 {Economy.FormatCurrency(GameState.Debt)} · 이자 시간당 0.5%(§18-5)");
+                int row = 3;
+                if (shortfall > 0 && GameState.LoanBorrowable >= shortfall)
+                {
+                    if (Row(r, row++, "대출받고 입장", "빚을 내서라도 다음 판에 — 골드는 곧 목숨이다(§12)"))
+                    {
+                        if (GameState.Borrow(shortfall) && GameState.Pay(_pendingCost))
+                        {
+                            _showInsufficientGold = false;
+                            var k = _pendingKind; int f = _pendingFloor;
+                            _pendingCost = 0;
+                            GameFlow.GoBattle(GameFlow.Tower, k, f);
+                            return;
+                        }
+                    }
+                }
+                else if (shortfall > 0)
+                {
+                    Info(r, row++, "대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)");
+                }
+
+                if (Row(r, row, "확인", "돌아간다"))
+                {
                     _showInsufficientGold = false;
+                    _pendingCost = 0;
+                }
                 return;
             }
 
@@ -51,9 +78,9 @@ namespace AshesToStars
                 if (Row(r, 2, "계속 진행", "입장한다"))
                 {
                     _showLastLifeWarning = false;
+                    // 대출 화면이 _pendingCost/Kind/Floor를 읽으므로 여기서 지우지 않는다.
                     if (_pendingCost > 0 && !GameState.Pay(_pendingCost))
                     {
-                        _pendingCost = 0;
                         _showInsufficientGold = true;
                         return;
                     }
@@ -90,6 +117,10 @@ namespace AshesToStars
         {
             if (GameState.Wallet.Copper < cost)
             {
+                // 대출 화면이 이 판의 비용·종류·층을 읽어 "대출받고 입장"을 성립시킨다.
+                _pendingCost = cost;
+                _pendingKind = kind;
+                _pendingFloor = floor;
                 _showInsufficientGold = true;
                 return;
             }
@@ -103,6 +134,9 @@ namespace AshesToStars
             }
             if (!GameState.Pay(cost))
             {
+                _pendingCost = cost;
+                _pendingKind = kind;
+                _pendingFloor = floor;
                 _showInsufficientGold = true;
                 return;
             }

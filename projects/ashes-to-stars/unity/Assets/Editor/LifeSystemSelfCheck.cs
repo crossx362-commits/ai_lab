@@ -136,6 +136,53 @@ namespace AshesToStars
                   "후퇴 시 두루마리 1개 실제 차감(§4)");
             Check(!GameState.Consume(Economy.LifeItem.ScrollOfReturn), "다 쓰면 다시 잠김");
 
+            // ⑩ 대출(§12·§18-5) — "골드가 없을 때 빚을 내고, 수입의 50%가 자동 상환된다".
+            //    TowerScreen "대출받고 입장"과 GameState.Earn 자동상환이 이 불변식에 의존한다.
+            //    계산이 아니라 **다음 판에서 읽히는가**(지갑에 실제로 들어오고 저장되는가)를 본다.
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            long now = 1000000L;   // 이자를 결정론적으로 검증하려고 시각을 주입한다
+
+            // 무자산 대출 방지(§18-5): 잔고 0 → 한도 0 → 못 빌린다
+            Check(GameState.LoanLimit == 0 && !GameState.Borrow(100, now),
+                  $"무자산이면 대출 불가(§18-5, 한도 {GameState.LoanLimit})");
+
+            // 한도 = min(순자산 30%, 20G/h·티어). 보유 10골드(=100000쿠퍼), T1 → 30% 캡이 지배.
+            GameState.Earn(100000);
+            long expectLimit = Economy.LoanLimitCopper(100000, GameState.Tier);   // 30000
+            Check(GameState.LoanLimit == expectLimit && expectLimit == 30000,
+                  $"대출 한도 = 순자산 30% (기대 30000, 실제 {GameState.LoanLimit})");
+
+            // 한도까지는 되고, 1쿠퍼라도 넘으면 거부(부분 대출 없음)
+            Check(GameState.Borrow(30000, now) && GameState.Wallet.Copper == 130000 && GameState.Debt == 30000,
+                  $"대출 시 지갑↑·부채↑ (지갑 {GameState.Wallet.Copper}, 부채 {GameState.Debt})");
+            Check(!GameState.Borrow(1, now) && GameState.Debt == 30000,
+                  "한도 초과 대출 거부(부분 대출 없음)");
+
+            // 수입 50% 자동 상환(§18-5) — 이것이 대출 상태의 상시 소비처
+            GameState.Earn(1000);
+            Check(GameState.Debt == 29500 && GameState.Wallet.Copper == 130500,
+                  $"수입 50% 자동 상환 (부채 {GameState.Debt}, 지갑 {GameState.Wallet.Copper})");
+
+            // 이자 복리(§18-5 0.5%/h) — 72시간 뒤 잔액이 Economy 계산과 정확히 일치하고 늘어난다
+            long beforeAccrual = GameState.Debt;
+            long expectAccrued = Economy.AccrueLoan(beforeAccrual, 72);
+            GameState.AccrueLoan(now + 72 * 3600);
+            Check(GameState.Debt == expectAccrued && GameState.Debt > beforeAccrual,
+                  $"72h 이자 가산 (기대 {expectAccrued}, 실제 {GameState.Debt}, 이전 {beforeAccrual})");
+            Check(Economy.AccrueLoan(20000, 72) > 27200,
+                  "복리가 단리(72×0.5%=36% → 27200)를 초과");
+
+            // 재기동 후에도 부채가 남는다 — 저장 안 되면 빚이 사라진다
+            GameState.ForgetInMemoryForTest();
+            Check(GameState.Debt == expectAccrued,
+                  $"재기동 후 부채 유지 (기대 {expectAccrued}, 실제 {GameState.Debt})");
+
+            // 수동 상환 — 지갑에서 갚은 만큼 부채가 준다. 다 갚으면 0.
+            long paid = GameState.Repay(GameState.Debt, now + 72 * 3600);
+            Check(paid > 0 && GameState.Debt == 0,
+                  $"수동 상환 후 부채 0 (갚음 {paid}, 부채 {GameState.Debt})");
+
             // 뒷정리 — 검사가 실제 저장을 남기면 다음 플레이가 오염된다
             GameState.ResetAll();
             LifeSystem.ResetAll();
