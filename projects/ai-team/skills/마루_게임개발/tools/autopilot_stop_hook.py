@@ -31,6 +31,7 @@ GAME_QA = ROOT / "output" / "qa" / "ashes-to-stars"
 ORDERS = GAME_QA / "ORDERS.md"
 OPT_IN = ROOT / ".claude" / "autopilot_sessions.txt"
 STATE = GAME_QA / "autopilot_state.json"
+DONE_DIR = GAME_QA / "autopilot_done"     # 세션이 자기 몫 완료를 선언하는 곳(파일명 = session_id)
 
 MAX_CONTINUES = 20       # 같은 지시서로 이어붙일 수 있는 최대 턴 수
 
@@ -61,8 +62,16 @@ def main() -> None:
 
     # 세션이 스스로 빠져나갈 문. 이게 없으면 상한(20턴)을 다 태우기 전엔 못 멈춘다 —
     # 지시서를 정말 다 끝낸 세션까지 붙잡는 것은 자동진행이 아니라 감금이다.
+    #
+    # ⚠️ **세션별로 따로 잡는다.** 처음엔 ORDERS.md 맨 위의 `# 완료` 한 줄을 탈출구로 삼았는데,
+    #    ORDERS.md는 두 세션이 **공유**하는 파일이라 한 세션이 자기 몫을 끝내고 완료를 적으면
+    #    아직 과제가 남은 다른 세션까지 같이 풀렸다(2026-08-15 실측: 그래픽이 완료를 적어
+    #    개발 세션의 1~3번이 남은 채로 훅이 해제됨). 공유 자원에 개별 신호를 쓰면 안 된다.
+    #
+    #    마커가 ORDERS.md보다 **새것일 때만** 유효하다 — 새 지시서가 오면 자동으로 재무장된다.
+    done = DONE_DIR / sid
     try:
-        if ORDERS.read_text(encoding="utf-8").lstrip().startswith("# 완료"):
+        if done.exists() and done.stat().st_mtime >= ORDERS.stat().st_mtime:
             _release()
     except Exception:
         _release()
@@ -99,7 +108,12 @@ def main() -> None:
             "- 각 항목의 '통과 기준·검증'을 충족해야 끝난 것이다. 코드를 넣은 것만으로는 아니다.\n"
             "- 항목을 끝내면 **자기가 고친 파일만** add해서 즉시 커밋한다.\n"
             "- 지목된 코드가 실제와 다르면(회의 결론은 가설이다) 오진 사유를 적고 그 항목을 종결한 뒤 다음으로 간다.\n"
-            "- 정말 전부 끝났으면 ORDERS.md 맨 위에 `# 완료` 한 줄을 남겨라 — 그러면 이 훅이 놓아준다.\n"
+            "- **네 트랙의 항목이 전부 끝났으면** `mkdir -p output/qa/ashes-to-stars/autopilot_done && "
+            "touch output/qa/ashes-to-stars/autopilot_done/$CLAUDE_SESSION_ID` 로 완료를 선언하라 — "
+            "그러면 이 훅이 놓아준다(새 지시서가 오면 자동으로 다시 걸린다). "
+            "session_id를 모르면 이 메시지 대신 ORDERS.md에 남은 항목을 계속 진행하라.\n"
+            "  ⚠️ ORDERS.md에 `# 완료`를 적는 것으로는 안 된다 — 그 파일은 다른 세션과 공유해서 "
+            "네 완료 선언이 남의 자동진행까지 풀어버린다.\n"
             "- 오너 판단이 필요한 항목([오너 판단 필요])은 건너뛰고 다음 항목으로 간다."
         )}))
 
