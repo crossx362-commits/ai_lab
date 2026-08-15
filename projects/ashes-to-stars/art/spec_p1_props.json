@@ -1,0 +1,171 @@
+{
+ "_note": "P1 환경 프랍. 이름은 FieldDecor.GetPropNames()·ArenaLayout 요구값 그대로 — 어긋나면 누락 경고.",
+ "refs": [
+  "anchor_characters.png"
+ ],
+ "rulesets": {
+  "prop": "Match the art style of the reference image EXACTLY: hand-drawn pixel art, same dot size, same limited earthy palette, thin dark outlines, soft cel shading, 3/4 top-down quarter view with a ~30 degree downward camera. Not photorealistic, not 3D-rendered, no smooth gradients. A single object centered in frame, no text, no border, no extra props. The object stands alone with nothing drawn beneath it. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "field_bush_0",
+   "rules_ref": "prop",
+   "prompt": "A dense dark-green shrub with small round leaves, knee-high, compact. Grassy field biome."
+  },
+  {
+   "name": "field_bush_1",
+   "rules_ref": "prop",
+   "prompt": "A wider sparse bush with thin twigs poking out and lighter sage-green foliage. Grassy field biome."
+  },
+  {
+   "name": "field_bush_2",
+   "rules_ref": "prop",
+   "prompt": "A low broad thicket of coarse leaves, flatter and wider than tall. Grassy field biome."
+  },
+  {
+   "name": "field_rock_0",
+   "rules_ref": "prop",
+   "prompt": "A single weathered grey boulder, rounded, with moss on one shoulder. Grassy field biome."
+  },
+  {
+   "name": "field_rock_1",
+   "rules_ref": "prop",
+   "prompt": "A cluster of three angular grey rocks of different sizes leaning together. Grassy field biome."
+  },
+  {
+   "name": "field_rock_2",
+   "rules_ref": "prop",
+   "prompt": "A flat wide slab of cracked grey stone lying low. Grassy field biome."
+  },
+  {
+   "name": "field_stump_0",
+   "rules_ref": "prop",
+   "prompt": "A cut tree stump with visible growth rings and rough bark, waist-high. Grassy field biome."
+  },
+  {
+   "name": "field_stump_1",
+   "rules_ref": "prop",
+   "prompt": "A broken jagged stump with splintered wood and one thick exposed root. Grassy field biome."
+  },
+  {
+   "name": "ash_bone_0",
+   "rules_ref": "prop",
+   "prompt": "A large bleached rib bone arching up out of nothing, pale ivory, cracked. Burned wasteland biome, everything ash-dusted."
+  },
+  {
+   "name": "ash_bone_1",
+   "rules_ref": "prop",
+   "prompt": "A weathered animal skull with long horns, pale grey-white, half-eroded. Burned wasteland biome, everything ash-dusted."
+  },
+  {
+   "name": "ash_charred_0",
+   "rules_ref": "prop",
+   "prompt": "A burnt charred tree stump, black cracked bark with faint dying embers in the splits. Burned wasteland biome, everything ash-dusted."
+  },
+  {
+   "name": "ash_charred_1",
+   "rules_ref": "prop",
+   "prompt": "A collapsed charred log, blackened and split lengthwise, ash-grey at the ends. Burned wasteland biome, everything ash-dusted."
+  },
+  {
+   "name": "ash_charred_2",
+   "rules_ref": "prop",
+   "prompt": "A cluster of thin scorched branches standing upright, brittle and black. Burned wasteland biome, everything ash-dusted."
+  },
+  {
+   "name": "dungeon_crystal_0",
+   "rules_ref": "prop",
+   "prompt": "A cluster of glowing pale-blue crystals growing from dark rock, waist-high, faint inner light. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_crystal_1",
+   "rules_ref": "prop",
+   "prompt": "A single tall angular blue crystal shard, taller than wide, softly luminous. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_crystal_2",
+   "rules_ref": "prop",
+   "prompt": "A low spread of small blue crystal points, wide and flat, faintly glowing. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_pillar_0",
+   "rules_ref": "prop",
+   "prompt": "A broken ancient stone pillar, cracked grey granite, top half snapped off jagged, moss in crevices. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_pillar_1",
+   "rules_ref": "prop",
+   "prompt": "A shorter squat stone column with a carved band near the top, chipped. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_pillar_2",
+   "rules_ref": "prop",
+   "prompt": "A leaning fractured pillar, tilted, with a crumbling base. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_rubble_0",
+   "rules_ref": "prop",
+   "prompt": "A pile of broken masonry blocks and small stone debris. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_rubble_1",
+   "rules_ref": "prop",
+   "prompt": "A scatter of shattered stone slabs, flatter and wider. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_rubble_2",
+   "rules_ref": "prop",
+   "prompt": "A heap of rough rubble with one large cracked block on top. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_wall_0",
+   "rules_ref": "prop",
+   "prompt": "A thick straight segment of ancient stone wall, chest-high, blocking, with mortar lines. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_wall_1",
+   "rules_ref": "prop",
+   "prompt": "A stone wall segment with a crumbled top edge and one missing block. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_wall_2",
+   "rules_ref": "prop",
+   "prompt": "A mossy stone wall segment, darker, with a vertical crack. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_cover_0",
+   "rules_ref": "prop",
+   "prompt": "A chest-high chunk of collapsed stone masonry usable as battle cover, rubble at its base, wider than tall. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_cover_1",
+   "rules_ref": "prop",
+   "prompt": "A toppled stone block on its side forming a low barrier, wide and solid. Ruined underground dungeon."
+  },
+  {
+   "name": "dungeon_cover_2",
+   "rules_ref": "prop",
+   "prompt": "A broken half-arch of stone leaning over, low enough to crouch behind. Ruined underground dungeon."
+  },
+  {
+   "name": "estate_crate_0",
+   "rules_ref": "prop",
+   "prompt": "A wooden supply crate with iron corner brackets, closed lid, slightly worn. Noble estate courtyard."
+  },
+  {
+   "name": "estate_crate_1",
+   "rules_ref": "prop",
+   "prompt": "Two stacked wooden crates, the upper one smaller and rotated. Noble estate courtyard."
+  },
+  {
+   "name": "estate_barrel_0",
+   "rules_ref": "prop",
+   "prompt": "A wooden barrel bound with dark iron hoops, standing upright, weathered. Noble estate courtyard."
+  },
+  {
+   "name": "estate_barrel_1",
+   "rules_ref": "prop",
+   "prompt": "A barrel lying on its side, one hoop loose, staves darkened. Noble estate courtyard."
+  }
+ ]
+}
