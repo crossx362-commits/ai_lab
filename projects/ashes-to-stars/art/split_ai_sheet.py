@@ -72,9 +72,19 @@ def auto_cell_boxes(img: Image.Image, tol: int = 120, min_gap_frac: float = 0.01
     row_gap = max(2, int(img.height * min_gap_frac))
     col_gap = max(2, int(img.width * min_gap_frac))
     boxes = []
+    # 유령 셀 거르기: 격자선을 지운 자리에 1~2px 잔여가 남아 셀로 잡힌다
+    # (2026-08-15 실측: 6셀 시트에서 폭 1px짜리 7번째 셀이 나와 이름 매핑이 어긋났다).
+    # 캐릭터 셀은 시트 폭·높이의 최소 5%는 된다 — 그보다 작으면 그림이 아니다.
+    min_w = max(4, int(img.width * 0.05))
+    min_h = max(4, int(img.height * 0.05))
+
     for y0, y1 in _segments(fg.any(axis=1), row_gap):
         band = fg[y0:y1]
+        if y1 - y0 < min_h:
+            continue
         for x0, x1 in _segments(band.any(axis=0), col_gap):
+            if x1 - x0 < min_w:
+                continue
             boxes.append((int(x0), int(y0), int(x1), int(y1)))
     return boxes
 
