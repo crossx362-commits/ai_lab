@@ -1,0 +1,95 @@
+{
+ "refs": [
+  "anchor_mobs_gray.png"
+ ],
+ "rulesets": {
+  "m6": "CRITICAL CAMERA: the camera is ABOVE the creature, pitched 30 degrees DOWNWARD, rotated 45 degrees (orthographic 3/4 top-down quarter view). You must SEE THE CREATURE'S BACK and the TOP of its head and shoulders; the body is FORESHORTENED, never stretched flat like a side profile. A pure side view, pure front view or eye-level view is WRONG. Copy the reference image's angle. Match the reference art style EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Thick solid masses readable at 128px tall. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty magenta gaps between cells. Same creature, same scale, same camera angle in every cell, feet on a common baseline. THE POSES MUST DIFFER DRAMATICALLY — a viewer flipping through them must see obvious motion. Do not repeat a pose. Follow each cell's limb description literally. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery.",
+  "m4": "CRITICAL CAMERA: the camera is ABOVE the creature, pitched 30 degrees DOWNWARD, rotated 45 degrees (orthographic 3/4 top-down quarter view). You must SEE THE CREATURE'S BACK and the TOP of its head and shoulders; the body is FORESHORTENED, never stretched flat like a side profile. A pure side view, pure front view or eye-level view is WRONG. Copy the reference image's angle. Match the reference art style EXACTLY: hand-drawn pixel art, same dot size, thin dark outlines, soft cel shading. Not photorealistic, not 3D-rendered, no smooth gradients. Thick solid masses readable at 128px tall. LAYOUT: a 2-column by 2-row grid of 4 cells with clear empty magenta gaps between cells. Same creature, same scale, same camera angle in every cell, feet on a common baseline. THE POSES MUST DIFFER DRAMATICALLY — a viewer flipping through them must see obvious motion. Do not repeat a pose. Follow each cell's limb description literally. No grid lines, no labels, no text. COLOR: NEUTRAL DESATURATED GRAY-WHITE only, no hue. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery."
+ },
+ "assets": [
+  {
+   "name": "p2_chaser_C",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a quadruped charging beast, lean muscular build, back and shoulder blades visible from above. Cells: (1) walk limb reaching far forward body stretched low, (2) walk limbs bunched under body at highest point, (3) walk opposite limb thrown forward body long, (4) walk driving off rear limbs together, (5) attack wind-up coiled back and low, (6) attack lunging forward reaching out."
+  },
+  {
+   "name": "p2_chaser_D",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a quadruped charging beast, lean muscular build, back and shoulder blades visible from above. Cells: (1) attack strike fully extended at maximum reach, (2) attack recovering pulling back, (3) hurt flinching sharply backward head snapped up, (4) hurt staggered sideways off balance, (5) hurt crouched low recoiling, (6) hurt straightening back up."
+  },
+  {
+   "name": "p2_chaser_E",
+   "rules_ref": "m4",
+   "aspect": "1:1",
+   "keep_bg": true,
+   "prompt": "A 4-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a quadruped charging beast, lean muscular build, back and shoulder blades visible from above. Cells: (1) death buckling as legs give way, (2) death collapsing onto its front, (3) death rolling onto its side, (4) death lying completely still and flat."
+  },
+  {
+   "name": "p2_swarmer_C",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a small scuttling creature with many short limbs and a wide low flat body hugging the ground. Cells: (1) walk limb reaching far forward body stretched low, (2) walk limbs bunched under body at highest point, (3) walk opposite limb thrown forward body long, (4) walk driving off rear limbs together, (5) attack wind-up coiled back and low, (6) attack lunging forward reaching out."
+  },
+  {
+   "name": "p2_swarmer_D",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a small scuttling creature with many short limbs and a wide low flat body hugging the ground. Cells: (1) attack strike fully extended at maximum reach, (2) attack recovering pulling back, (3) hurt flinching sharply backward head snapped up, (4) hurt staggered sideways off balance, (5) hurt crouched low recoiling, (6) hurt straightening back up."
+  },
+  {
+   "name": "p2_swarmer_E",
+   "rules_ref": "m4",
+   "aspect": "1:1",
+   "keep_bg": true,
+   "prompt": "A 4-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a small scuttling creature with many short limbs and a wide low flat body hugging the ground. Cells: (1) death buckling as legs give way, (2) death collapsing onto its front, (3) death rolling onto its side, (4) death lying completely still and flat."
+  },
+  {
+   "name": "p2_charger_C",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: an extremely front-heavy battering beast whose huge curved ram horn plate is as wide as its body, small tapered hindquarters, short thick legs. Cells: (1) walk limb reaching far forward body stretched low, (2) walk limbs bunched under body at highest point, (3) walk opposite limb thrown forward body long, (4) walk driving off rear limbs together, (5) attack wind-up coiled back and low, (6) attack lunging forward reaching out."
+  },
+  {
+   "name": "p2_charger_D",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: an extremely front-heavy battering beast whose huge curved ram horn plate is as wide as its body, small tapered hindquarters, short thick legs. Cells: (1) attack strike fully extended at maximum reach, (2) attack recovering pulling back, (3) hurt flinching sharply backward head snapped up, (4) hurt staggered sideways off balance, (5) hurt crouched low recoiling, (6) hurt straightening back up."
+  },
+  {
+   "name": "p2_charger_E",
+   "rules_ref": "m4",
+   "aspect": "1:1",
+   "keep_bg": true,
+   "prompt": "A 4-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: an extremely front-heavy battering beast whose huge curved ram horn plate is as wide as its body, small tapered hindquarters, short thick legs. Cells: (1) death buckling as legs give way, (2) death collapsing onto its front, (3) death rolling onto its side, (4) death lying completely still and flat."
+  },
+  {
+   "name": "p2_ranged_C",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a slender upright bipedal figure holding a ranged weapon, thin fragile limbs, narrow frame. Cells: (1) walk limb reaching far forward body stretched low, (2) walk limbs bunched under body at highest point, (3) walk opposite limb thrown forward body long, (4) walk driving off rear limbs together, (5) attack wind-up coiled back and low, (6) attack lunging forward reaching out."
+  },
+  {
+   "name": "p2_ranged_D",
+   "rules_ref": "m6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a slender upright bipedal figure holding a ranged weapon, thin fragile limbs, narrow frame. Cells: (1) attack strike fully extended at maximum reach, (2) attack recovering pulling back, (3) hurt flinching sharply backward head snapped up, (4) hurt staggered sideways off balance, (5) hurt crouched low recoiling, (6) hurt straightening back up."
+  },
+  {
+   "name": "p2_ranged_E",
+   "rules_ref": "m4",
+   "aspect": "1:1",
+   "keep_bg": true,
+   "prompt": "A 4-cell animation sprite sheet of ONE hostile creature seen from above at 30 degrees: a slender upright bipedal figure holding a ranged weapon, thin fragile limbs, narrow frame. Cells: (1) death buckling as legs give way, (2) death collapsing onto its front, (3) death rolling onto its side, (4) death lying completely still and flat."
+  }
+ ]
+}

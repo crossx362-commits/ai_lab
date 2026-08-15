@@ -1,0 +1,32 @@
+{
+ "refs": [
+  "ref_tank_identity.png"
+ ],
+ "rulesets": {
+  "c6": "Match the REFERENCE IMAGE EXACTLY: the SAME armored knight — dark-blue horsehair plume on a steel helm, gold-trimmed steel plate armor, a round deep-blue shield bearing a gold cross, a short steel sword. Reproduce the reference's hand-drawn pixel-art style precisely: same dot size, thin dark outlines, soft cel shading, same body proportions (stocky heroic chibi), same palette. THREE-QUARTER FRONT view at eye level, the FULL BODY standing, both feet visible on the ground. Not photorealistic, not 3D-rendered, no smooth gradients. LAYOUT: a 3-column by 2-row grid of 6 cells with clear empty pure-magenta gaps between the cells. The SAME knight, SAME scale, SAME camera angle in every cell, feet resting on a common baseline. The six poses MUST differ dramatically so motion is obvious when flipped through. Follow each cell's description literally. No grid lines, no labels, no text. COLOR: full color, matching the reference palette. Background: flat solid pure magenta #FF00FF everywhere, no ground, no shadow, no scenery.",
+  "c1": "Match the REFERENCE IMAGE EXACTLY: the SAME armored knight — dark-blue plume, gold-trimmed plate armor, round blue shield with a gold cross, short sword. Same hand-drawn pixel-art style, dot size, outlines, cel shading, proportions and palette as the reference. THREE-QUARTER FRONT view, full body standing, feet on the ground. Not photorealistic, not 3D. A SINGLE centered figure, no grid. No labels, no text. Background: flat solid pure magenta #FF00FF everywhere."
+ },
+ "assets": [
+  {
+   "name": "char_tank_A",
+   "rules_ref": "c6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE armored knight (identical to the reference). Cells: (1) IDLE — standing at the ready, shield held up in front, sword lowered at side, weight settled; (2) WALK step — left foot planted forward, right leg trailing back, torso leaning into the stride; (3) WALK step MIRRORED — right foot forward, left leg back, opposite arm swing; (4) ATTACK wind-up — sword drawn far back over the shoulder, shield braced forward, body coiled; (5) ATTACK strike — sword swung all the way across and down in front, body twisted through the swing at full extension; (6) SPECIAL — heroic power pose, sword thrust high overhead, shield raised, a burst of golden light around the blade."
+  },
+  {
+   "name": "char_tank_B",
+   "rules_ref": "c6",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE armored knight (identical to the reference). Cells: (1) DASH start — crouched low, leaning sharply forward, shield leading, about to lunge; (2) DASH mid — body stretched low and forward mid-lunge, trailing leg kicked far back, speed lines feel; (3) DASH full — charging at full extension, shield rammed forward, both legs off the ground driving ahead; (4) DASH recover — straightening back upright, slowing, shield settling; (5) HURT — flinching hard, head snapped back, staggered off balance, shield dropping; (6) DEATH — collapsed and lying flat on the ground, sword and shield fallen beside the body."
+  },
+  {
+   "name": "char_tank_C",
+   "rules_ref": "c1",
+   "aspect": "1:1",
+   "keep_bg": true,
+   "prompt": "A single centered figure of the SAME armored knight (identical to the reference), standing firm and braced, fully enclosed inside a glowing golden protective barrier — a translucent dome of golden light and sparks surrounding the whole body, signalling invulnerability."
+  }
+ ]
+}
