@@ -155,68 +155,14 @@ public class W3Party : MonoBehaviour
     // 절차 생성 링만으로는 어떤 스킬인지 구분이 안 된다. 실제 이펙트 아트를 얹는다.
     // 아틀라스에 넣지 않는 이유: 동시에 떠 있는 이펙트가 많아야 두세 개라 배칭 이득이 없고,
     // 큰 텍스처(256²)를 캐릭터 아틀라스에 밀어 넣으면 그쪽이 넘친다.
-    static Sprite[] _fxTaunt, _fxStorm, _fxHeal;
-    static Sprite _fxMiracle, _fxChantAtk, _fxChantDef;
-    static bool _fxLoaded;
+    // ⛔ 스킬 이펙트 **스프라이트 로딩 전체를 삭제했다**(2026-08-15).
+    //    `Resources/fx/`의 프레임 28장을 읽어 `_fxTaunt`·`_fxStorm`·`_fxHeal`·`_fxMiracle`·
+    //    `_fxChant*`에 담고 있었는데, 바닥 범위 링을 지운 뒤로 **그리는 곳이 0곳**이 됐다
+    //    (선언과 대입만 2회씩, 실측). 내가 링을 지우면서 만든 죽은 코드다.
+    //    지금 스킬 연출은 `FxPool`(한 장짜리 심볼 8종 + 코드 애니메이션)과
+    //    `SkillCast`(이름·히트스톱·흔들림)가 담당한다. 되살리려면 그 둘과 역할이
+    //    겹치지 않는지 먼저 볼 것 — 자산 자체는 `Resources/fx/`에 그대로 있다.
 
-    /// <summary>
-    /// 이펙트 한 장을 읽는다.
-    ///
-    /// ⚠️ `Resources.Load&lt;Sprite&gt;`만 쓰면 **거의 항상 null이 온다.** 이 프로젝트의
-    ///    텍스처 임포트 규칙은 png를 Sprite가 아니라 Texture2D로 들여오기 때문이다.
-    ///    그래서 `Resources/fx/`에 멀쩡한 이펙트 그림이 28장 있는데도 전부 못 읽고
-    ///    절차 생성 링(`skill_ring`)으로 폴백하고 있었다 — 오너가 "이상한 skill_ring이
-    ///    자꾸 나온다"고 지적한 그것이다(2026-08-15). 경로 대소문자(FX/ vs fx/)까지
-    ///    겹쳐 있어서 **둘 다** 고친다.
-    /// </summary>
-    static Sprite LoadFxOne(string name)
-    {
-        var sp = Resources.Load<Sprite>("fx/" + name) ?? Resources.Load<Sprite>("FX/" + name);
-        if (sp != null) return sp;
-
-        var tex = Resources.Load<Texture2D>("fx/" + name) ?? Resources.Load<Texture2D>("FX/" + name);
-        if (tex == null) return null;
-        // 심볼은 대략 캐릭터(2유닛) 크기로 보이게 PPU를 높이 대비로 잡는다.
-        return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height),
-                             Vector2.one * 0.5f, tex.height / 2f, 0, SpriteMeshType.FullRect);
-    }
-
-    static Sprite[] LoadFx(string prefix, int n)
-    {
-        var a = new Sprite[n];
-        for (int i = 0; i < n; i++) a[i] = LoadFxOne($"{prefix}{i:00}");
-        return a;
-    }
-
-    static void LoadFxOnce()
-    {
-        if (_fxLoaded) return;
-        _fxLoaded = true;
-        _fxTaunt = LoadFx("fx_taunt_", 4);
-        _fxStorm = LoadFx("fx_firestorm_", 4);
-        _fxHeal = LoadFx("fx_heal_wave_", 3);
-        _fxMiracle = LoadFxOne("fx_miracle_light");
-        _fxChantAtk = LoadFxOne("fx_bardic_attack");
-        _fxChantDef = LoadFxOne("fx_bardic_defense");
-
-        // ⚠️ 폴백 링을 **없앴다**(오너 지시 2026-08-15 "이상한 skill_ring 자꾸 나오는데 지워라").
-        //    "조용히 안 뜨는 것보다 낫다"고 넣어 둔 절차 생성 원이었는데, 정작 로딩이
-        //    상시 실패하는 바람에 폴백이 **정상 화면을 대체**하고 있었다 — 임시 대체물이
-        //    본물을 가리면 결함이 결함으로 안 보인다. 이제 누락은 경고로만 말한다.
-        int missing = 0;
-        if (_fxTaunt[0] == null) missing++;
-        if (_fxStorm[0] == null) missing++;
-        if (missing > 0)
-            Debug.LogWarning($"[W3] 스킬 이펙트 {missing}종 누락 — Resources/fx 확인(대체 없이 안 그린다)");
-    }
-
-    /// <summary>프레임 배열에서 경과 시간에 맞는 장을 고른다. 끝나면 마지막 장.</summary>
-    static Sprite FxFrame(Sprite[] a, float t, float dur)
-    {
-        if (a == null || a.Length == 0 || a[0] == null) return null;
-        int i = Mathf.Clamp(Mathf.FloorToInt(t / Mathf.Max(0.01f, dur) * a.Length), 0, a.Length - 1);
-        return a[i] ?? a[0];
-    }
 
     // 단색 사각형용 1×1 텍스처 캐시. IMGUI로 카드·바를 그리려면 색마다 텍스처가 필요하다.
     static readonly System.Collections.Generic.Dictionary<Color, Texture2D> _tints = new();
@@ -586,8 +532,6 @@ public class W3Party : MonoBehaviour
         // 던전 노드면 던전 바닥을 깐다(§3-4 — 아트 신규 0장, 기존 텍스처 재사용)
         GroundBuilder.Build(bank, Arena + 20f,
             DungeonRun.Active ? "ground/dungeon_rock_albedo" : "ground/field_plain_albedo");
-
-        LoadFxOnce();
         // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
         // 시드를 고정해 같은 판이면 같은 배치가 나오게 한다(측정 재현성).
         // ⚠️ 여기서 엄폐물을 켜지 마라 — Awake 시점엔 GameMode가 아직 false다(아래 645 주석과
@@ -1797,19 +1741,57 @@ public class W3Party : MonoBehaviour
         if (index == _sel) return;                       // 조작 중인 캐릭터는 사람 몫이다
         if (m.DashCd > 0f || m.DashT > 0f) return;
 
-        // 위험 판정 — 이 전투에는 아직 돌진 예고 표식이 없으므로(§10-2 미구현)
-        // **밀집과 저체력**으로 대신 읽는다. 표식이 생기면 여기에 조건을 더할 것.
+        // 위험 판정.
+        // ⭐ **돌진 예고를 최우선으로 본다** — §5 💡의 「예고 표식을 절반만 인지」는
+        //    애초에 예고가 존재한다는 전제의 문장이고, §10-2의 돌진형을 넣은 지금이라야
+        //    그 말이 그대로 성립한다. 예고가 없던 동안은 밀집·저체력으로 대신 읽었는데,
+        //    돌진형이 들어오자 분포가 바뀌어 **AI 이동기 사용이 4회 → 0회로 떨어졌다**(실측).
+        //    "피할 수 있는 위협"을 AI도 피할 수 있어야 잡몹 구간이 성립한다.
+        bool incoming = false;
+        for (int i = 0; i < MAXM && !incoming; i++)
+        {
+            if (!_mOn[i] || _mKind[i] != 5) continue;
+            if (_mChargePhase[i] != 1 && _mChargePhase[i] != 2) continue;   // 예고·돌진 중만
+            var d = m.Pos - _mPos[i];
+            if (d.sqrMagnitude > 8f * 8f) continue;
+            // 나를 향하고 있는가 — 옆으로 지나가는 돌진까지 피하면 과민하다
+            var face = _mChargePhase[i] == 2 ? _mChargeDir[i] : (m.Pos - _mPos[i]).normalized;
+            if (Vector2.Dot(face, -d.normalized) < -0.55f) incoming = true;
+        }
+
         int near = CountMobsNear(m.Pos, 2.2f);
-        bool danger = near >= 3 || (m.Hp < m.MaxHp * 0.35f && near >= 1);
+        bool danger = incoming || near >= 3 || (m.Hp < m.MaxHp * 0.35f && near >= 1);
+
+        // 돌진은 **예고 0.8초 안에** 피해야 의미가 있다 — 일반 위험보다 빨리 반응한다.
+        // 그래도 사람보다는 느리게(수동 우대): 지연을 없애지 않고 절반으로만 줄인다.
+        float reactDelay = incoming ? AI_REACT_DELAY * 0.5f : AI_REACT_DELAY;
 
         if (!danger) { m.DangerT = 0f; return; }
         m.DangerT += dt;
-        if (m.DangerT < AI_REACT_DELAY) return;          // ② 늦게 반응한다
+        if (m.DangerT < reactDelay) return;              // ② 늦게 반응한다
 
         m.AiDashCheck -= dt;
         if (m.AiDashCheck > 0f) return;                  // ③ 매 프레임 보지 않는다
         m.AiDashCheck = AI_CHECK_SEC;
         if (Random.value > AI_SEE_CHANCE) return;        // ① 절반은 못 본다
+
+        // 돌진을 피할 땐 **옆으로** 빠진다 — 뒤로 도망치면 직선 경로에 계속 남아
+        // 결국 맞는다. 이게 돌진형을 "회피 가능한 위협"으로 만드는 실제 동작이다.
+        if (incoming)
+        {
+            for (int i = 0; i < MAXM; i++)
+            {
+                if (!_mOn[i] || _mKind[i] != 5) continue;
+                if (_mChargePhase[i] != 1 && _mChargePhase[i] != 2) continue;
+                var d = m.Pos - _mPos[i];
+                if (d.sqrMagnitude > 8f * 8f) continue;
+                var axis = _mChargePhase[i] == 2 ? _mChargeDir[i] : (-d).normalized;
+                var side = new Vector2(-axis.y, axis.x);
+                if (Vector2.Dot(side, d) < 0f) side = -side;      // 이미 치우친 쪽으로
+                if (TryDash(m, side)) { _aiDashUses++; m.DangerT = 0f; }
+                return;
+            }
+        }
 
         // 몹 무리의 반대쪽으로 뺀다
         Vector2 away = Vector2.zero;
