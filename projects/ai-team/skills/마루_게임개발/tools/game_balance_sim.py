@@ -346,42 +346,58 @@ def check_manor_construction() -> dict:
 # 검증 6: 50층 돌파율 추정
 # ==============================================================================
 
+# 💡 리텐션 가정 — **기획서에 없는 값이다.** 여기 이름을 붙여 밖으로 드러낸다.
+# 50층 돌파율은 게임 수치가 아니라 "몇 시간 붙어 있느냐"에서 나오기 때문이다.
+# 실 서비스 지표가 생기면 이 한 줄만 바꾼다.
+RETENTION_HOURS_MEDIAN = 8.0    # 중앙값 플레이 시간(시간)
+RETENTION_HOURS_SIGMA = 1.1     # 로그정규 분산 — 상위 소수가 길게 하는 꼬리
+
+
 def check_layer50_penetration() -> dict:
     """
-    탑 난이도 곡선과 레벨링 시간으로
-    50층 돌파율이 10~15%가 맞는지 추정.
+    50층 돌파율 추정.
+
+    ⚠️ 예전 구현은 **게임 수치를 하나도 쓰지 않았다.**
+       `mean_layer=35 · stddev=15`이라는 어디에도 없는 두 상수만으로 26.9%를 만들어냈고,
+       계산해둔 `avg_user_power`·`layer50_power`는 **쓰지도 않았다**(죽은 변수).
+       게다가 `tower_power_scaling(60)`을 "평균 유저 전투력"으로 썼는데 그 함수의 인자는
+       레벨이 아니라 **층**이다 — 단위가 어긋나 있었다.
+       그 상태에서 목표(10~15%)에 맞추려고 상수를 만지는 것은 **원하는 답이 나오게 상수를 고르는 것**일 뿐
+       아무것도 검증하지 않는다.
+
+    그래서 실제로 근거가 있는 것에서 유도한다:
+      · §18-6 경험치 곡선(100×Lv^2.2)과 앵커(Lv50 = 15시간)
+      · 50층은 Lv50 전후를 전제로 설계됐다(§8 100층 ↔ Lv100)
+      → **50층 돌파 = 그 시간만큼 플레이한 유저의 비율**로 환산한다.
+    남은 미지수는 리텐션 하나이고, 그것을 상수로 드러내 감사 가능하게 만든다.
     """
-    # 가정: 평균 유저가 달성할 수 있는 최대층 = 경험치 육성이 충분한 수준
-    # 평균 유저: Lv60 정도 (Lv100의 1/3 진도)
-    avg_user_power = tower_power_scaling(60)
+    from math import log, erf, sqrt
 
-    # 50층 요구 전투력
-    layer50_power = tower_power_scaling(50)
+    hours_needed = leveling_hours(50, exp_for_level(20) / LEVEL_20_HOUR)
 
-    # 층 돌파율 추정 (단순화): 로지스틱 곡선
-    # P(layer) = 1 / (1 + exp(-(layer - mean_layer)/stddev))
-    # 평균 = 35층, 표준편차 = 15
-    mean_layer = 35
-    stddev_layer = 15
+    # 로그정규 분포에서 P(플레이시간 ≥ hours_needed)
+    mu = log(RETENTION_HOURS_MEDIAN)
+    z = (log(hours_needed) - mu) / RETENTION_HOURS_SIGMA
+    prob = 0.5 * (1.0 - erf(z / sqrt(2.0)))
 
-    # 50층 달성 확률 추정
-    z_score = (50 - mean_layer) / stddev_layer
-    prob_layer50 = 1.0 / (1.0 + exp(z_score))  # 로지스틱 역함수
-
-    penetration_pct = prob_layer50 * 100
-    target_min = 10
-    target_max = 15
+    penetration_pct = prob * 100
+    target_min, target_max = 10, 15
     in_range = target_min <= penetration_pct <= target_max
 
     return {
-        "status": "PASS" if in_range else "WARN",
-        "mean_layer": mean_layer,
-        "layer50_requirement": layer50_power,
+        # 이 값은 게임 수치가 아니라 **리텐션 가정**이 지배한다 —
+        # PASS/WARN으로 판정하면 "가정을 고쳐 통과시키는" 길이 열린다. 그래서 INFO다.
+        "status": "INFO",
+        "hours_for_level50": hours_needed,
+        "layer50_requirement": tower_power_scaling(50),
         "estimated_penetration_pct": penetration_pct,
         "target_range": f"{target_min}~{target_max}%",
         "in_range": in_range,
-        "reason": f"50층 돌파율: {penetration_pct:.1f}% (목표 {target_min}~{target_max}%: {'적정' if in_range else '조정 필요'})"
+        "reason": (f"50층 돌파율 추정 {penetration_pct:.1f}% (목표 {target_min}~{target_max}%) — "
+                   f"Lv50까지 {hours_needed:.1f}시간, 리텐션 중앙값 {RETENTION_HOURS_MEDIAN:.0f}h 가정. "
+                   f"⚠️ 이 수치는 리텐션 가정이 지배한다. 게임 수치를 바꿔도 거의 안 움직인다"),
     }
+
 
 # ==============================================================================
 # 메인 실행 및 리포트
