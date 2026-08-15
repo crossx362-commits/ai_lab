@@ -142,7 +142,6 @@ public class W3Party : MonoBehaviour
     //    아무것도 안 그린다. **다시 만들지 마라** — 임시 대체물이 본물을 가리면
     //    결함이 결함으로 보이지 않는다.
 
-    SpriteRenderer _tauntRing, _stormRing;
     float _stormUntil; Vector2 _stormAt; float _stormR;
 
     // ── 스킬 이펙트 (Resources/FX) ────────────────────────
@@ -278,27 +277,8 @@ public class W3Party : MonoBehaviour
         return new Rect((cx - w * 0.5f) / t.width, y0 / t.height, w / t.width, h / t.height);
     }
 
-    /// <summary>
-    /// 스킬 범위 이펙트 하나. 바닥에 눕혀 그리므로 세로를 ISO_Y로 누른다.
-    /// 스프라이트는 매 프레임 `Resources/fx/`에서 온 것으로 갈아 끼운다 — 여기서는
-    /// 비워 둔다(예전엔 절차 생성 원을 넣어 뒀고, 그게 지워야 했던 `skill_ring`이다).
-    /// </summary>
-    static SpriteRenderer MakeRing(SpriteBank bank, Color c, string name)
-    {
-        var go = new GameObject(name, typeof(SpriteRenderer));
-        var sr = go.GetComponent<SpriteRenderer>();
-        sr.sharedMaterial = bank.Mat;
-        sr.color = c;
-        sr.sortingOrder = 210;          // 그림자(200)보다 앞, 유닛보다 뒤
-        go.SetActive(false);
-        return sr;
-    }
-
-    static void PlaceRing(SpriteRenderer sr, Vector2 world, float radius)
-    {
-        sr.transform.position = new Vector3(world.x, world.y * ISO_Y, -0.5f);
-        sr.transform.localScale = new Vector3(radius * 2f, radius * 2f * ISO_Y, 1f);
-    }
+    // ⛔ `MakeRing`/`PlaceRing`은 **삭제됐다**(오너 지시 2026-08-15). 바닥에 원을 까는
+    //    범위 표시 자체를 없앴다 — 상세는 아래 전투 갱신부 주석 참조. 되살리지 마라.
 
     /// <summary>
     /// 발밑 그림자 — 유닛이 **바닥에 서 있다**는 인상의 핵심이다.
@@ -530,10 +510,7 @@ public class W3Party : MonoBehaviour
         GroundBuilder.Build(bank, Arena + 20f,
             DungeonRun.Active ? "ground/dungeon_rock_albedo" : "ground/field_plain_albedo");
 
-        // 스킬 범위 표시 두 장 — 매번 만들지 않고 켜고 끈다
         LoadFxOnce();
-        _tauntRing = MakeRing(bank, new Color(1f, 0.72f, 0.25f, 0.9f), "fx_taunt");
-        _stormRing = MakeRing(bank, new Color(1f, 0.42f, 0.2f, 0.95f), "fx_firestorm");
         // 배경 프랍 — 전투 공간 **바깥 링**에만 깔린다(안쪽에 두면 유닛과 겹쳐 시야를 가린다).
         // 시드를 고정해 같은 판이면 같은 배치가 나오게 한다(측정 재현성).
         // ⚠️ 여기서 엄폐물을 켜지 마라 — Awake 시점엔 GameMode가 아직 false다(아래 645 주석과
@@ -959,31 +936,11 @@ public class W3Party : MonoBehaviour
     {
         var bank = SpriteBank.Cached;
 
-        // 도발 지속 구간 — 몹이 탱에게 끌리는 동안 탱 주변에 범위를 띄운다.
-        // 이게 없으면 "도발했다"가 수치로만 존재하고 화면에서는 아무 일도 안 일어난 것처럼 보인다.
-        var tk = _party.Length > 0 ? _party[0] : null;
-        // 이펙트 그림이 없으면 **아무것도 그리지 않는다.** 예전엔 절차 생성 원을 대신
-        // 띄웠는데, 로딩이 상시 실패하는 바람에 그 임시물이 화면의 기본값이 돼 있었다.
-        var tauntFx = FxFrame(_fxTaunt, 3f - (_tauntUntil - _t), 3f);
-        bool taunting = _t < _tauntUntil && tk != null && tk.Alive && tauntFx != null;
-        if (_tauntRing.gameObject.activeSelf != taunting) _tauntRing.gameObject.SetActive(taunting);
-        if (taunting)
-        {
-            float k = Mathf.InverseLerp(_tauntUntil, _tauntUntil - 3f, _t);   // 남을수록 크게
-            _tauntRing.sprite = tauntFx;
-            _tauntRing.color = Color.white;
-            PlaceRing(_tauntRing, tk.Pos, 4.5f * (0.55f + k * 0.45f));
-        }
-
-        var stormFx = FxFrame(_fxStorm, 0.45f - (_stormUntil - _t), 0.45f);
-        bool storming = _t < _stormUntil && stormFx != null;
-        if (_stormRing.gameObject.activeSelf != storming) _stormRing.gameObject.SetActive(storming);
-        if (storming)
-        {
-            _stormRing.sprite = stormFx;
-            _stormRing.color = Color.white;
-            PlaceRing(_stormRing, _stormAt, _stormR);
-        }
+        // ⛔ 바닥에 까는 **범위 링 표시를 전부 없앴다**(오너 지시 2026-08-15, 네 번 지적).
+        //    도발·화염폭풍의 사거리를 바닥 원으로 보여주던 것인데, 원본이 절차 생성
+        //    흰 원이든 실제 이펙트 아트든 **바닥에 큰 원이 깔린다는 것 자체가 문제**였다.
+        //    스킬이 도는 것은 몹의 반응(끌려오는 것·죽는 것)과 시전자 동작으로 읽힌다.
+        //    **다시 넣지 마라.** 범위를 보여주고 싶으면 원이 아닌 방식을 찾을 것.
 
         foreach (var m in _party)
         {

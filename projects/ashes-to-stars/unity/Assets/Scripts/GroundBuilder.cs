@@ -62,7 +62,10 @@ public static class GroundBuilder
         var t = new Texture2D(N, N, TextureFormat.RGBA32, false);
         var px = new Color32[N * N];
         var clear = new Color32(0, 0, 0, 0);
-        var line = new Color32(255, 255, 255, 26);      // 아주 옅게 — 바닥 무늬를 덮으면 안 된다
+        // ⚠️ 옅게 유지할 것. 선이 진하면 **바닥 무늬가 아니라 디버그 격자로 읽힌다**
+        //    (2026-08-15 오너 지적 "바닥도 건물과 어울리게 바꿔"). 방향 단서라는 목적은
+        //    선이 보이는 것만으로 달성되고, 그 이상은 화면을 망친다.
+        var line = new Color32(255, 255, 255, 12);
         for (int y = 0; y < N; y++)
             for (int x = 0; x < N; x++)
             {
@@ -84,7 +87,8 @@ public static class GroundBuilder
 
         var sh = Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Transparent");
         var m = new Material(sh) { mainTexture = t };
-        m.mainTextureScale = new Vector2(size / 4f, size / 4f);
+        // 타일을 잘게. 크면 화면을 가로지르는 굵은 대각선이 되어 격자가 아니라 선으로 보인다.
+        m.mainTextureScale = new Vector2(size / 1.6f, size / 1.6f);
         g.GetComponent<MeshRenderer>().sharedMaterial = m;
     }
 }
