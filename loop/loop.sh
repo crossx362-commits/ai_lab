@@ -68,6 +68,7 @@ INBOX.md에 지시가 있으면 그것이 큐보다 앞선다.
 echo "🔁 재와 별 자동 루프 시작 — 멈추려면: touch loop/STOP"
 ITER=0
 FAILS=0
+INFRA=0
 
 while true; do
   if [ -f "$STOP" ]; then
@@ -86,10 +87,39 @@ while true; do
   # "no stdin data received" 경고를 낸다(실측).
   if claude -p "$PROMPT" --permission-mode acceptEdits >"$LOG" 2>&1 < /dev/null; then
     FAILS=0
+    INFRA=0
     echo "✅ #$ITER 완료"
     tail -5 "$LOG" | sed 's/^/   /'
+  elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
+    # ── 인프라 장애는 **작업 실패로 세지 않는다.**
+    #    2026-08-15 실측: 인증이 잠깐 흔들린 44초 사이에 재시도 3회가 전부 소진돼
+    #    루프가 자멸했다(직후 `claude -p`는 정상 동작). 크레딧·레이트리밋·네트워크도
+    #    같은 계열이다 — 이건 "같은 자리에서 계속 넘어지는 것"이 아니라 **기다리면
+    #    풀리는 것**이므로, 횟수를 태우지 말고 물러섰다 다시 온다.
+    #    (이 저장소가 펫나 엔진에서 이미 배운 규칙이다: 인프라 실패 ≠ 이슈 실패)
+    INFRA=$((INFRA + 1))
+    WAIT=$((60 * INFRA * INFRA))
+    [ "$WAIT" -gt 900 ] && WAIT=900          # 상한 15분 — 더 벌리면 복구를 놓친다
+    echo "⏸  #$ITER 인프라 장애 (${INFRA}회) — ${WAIT}초 뒤 재시도. 실패로 세지 않는다"
+    grep -iE 'not logged in|api error|rate.?limit|overloaded|credit|network' "$LOG" | head -2 | sed 's/^/   /'
+    if [ "$INFRA" -ge "${LOOP_MAX_INFRA:-12}" ]; then
+      echo "❌ 인프라 장애가 ${INFRA}회 연속 — 사람이 봐야 한다(구독 토큰 만료 의심: claude auth login)"
+      {
+        echo ""
+        echo "## ⚠️ 루프 정지 — 인프라 장애 지속 ($(date '+%Y-%m-%d %H:%M'))"
+        echo "\`claude -p\`가 ${INFRA}회 연속 실패했다. 마지막 로그: \`$LOG\`"
+        echo "1순위 의심: **구독 토큰 만료**. \`echo ok | claude -p\`로 직접 찔러 확인하고,"
+        echo "만료면 \`claude auth login\`(브라우저 OAuth라 사람만 가능) 후 \`rm loop/STOP\`."
+      } >> "$ROOT/docs/STATUS.md"
+      touch "$STOP"
+      exit 1
+    fi
+    sleep "$WAIT"
+    ITER=$((ITER - 1))                        # 인프라 장애는 이터레이션을 소비하지 않는다
+    continue
   else
     FAILS=$((FAILS + 1))
+    INFRA=0
     echo "⚠️ #$ITER 실패 ($FAILS/$MAX_FAILS)"
     tail -15 "$LOG" | sed 's/^/   /'
     if [ "$FAILS" -ge "$MAX_FAILS" ]; then
@@ -104,6 +134,9 @@ while true; do
       touch "$STOP"
       exit 1
     fi
+    # 작업 실패도 곧바로 다시 던지지 않는다 — 같은 실패를 20초 간격으로 반복하면
+    # 상한만 빨리 태우고 아무것도 달라지지 않는다.
+    sleep $((COOLDOWN * FAILS * 3))
   fi
 
   sleep "$COOLDOWN"
