@@ -6,7 +6,26 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-15 21:06 · 이터레이션(아트 트랙 — 몹 ranged 반입 완료)
+최종 갱신: 2026-08-15 21:13 · 이터레이션(아트 트랙 — 큐 #1 마지막 계열 swarmer 생성 착수)
+
+> **이번 이터 결과(아트): 큐 #1 마지막 계열 swarmer 생성 착수 — 아트 막힘 완전 해소.**
+> INBOX ⭐가 「아트 서버가 waiting 적체」라 했으나 **이 시각 실측으로 풀렸다**: `higgsfield
+> generate list` 최근 20건 **전부 completed·waiting 0**, 계정 964크레딧·plus. swarmer만
+> A/B 시트 미생성이라(`out_p2`에 `*swarmer2*` 없음, mob01~ranged는 반입됨) 마지막 계열을 걸었다.
+> **분리 세션으로 착수**: `aigen.py --spec spec_p2_swarmer2.json --out-dir out_p2 --backend
+> higgsfield`를 `start_new_session=True`로 Popen(**PGID==PID=54305 검증**, 로그 `/tmp/gen_swarmer.log`).
+> `art/.generating`에 `spec_p2_swarmer2.json 21:12 pid=54305` 표시. **크레딧 964→960으로 실호출
+> 확인**(무출력 stall 아님). 한 계열 20~40분·세션과 무관 생존.
+> **⚠️ 동시에 대화 세션이 살아 있다**: `W3Party.cs` mtime **21:07**(방금), `art/out_p6_boss/`에
+> 보스 4종(brute·serpent·wraith·construct, 21:07~21:10) 새로 생성됨 + `.generating`에
+> `spec_p6_boss.json 21:07` 표시(큐 밖, 대화 세션 소유로 추정 — 건드리지 않음). 그래서 이 세션은
+> **combat·보스·공유 씬을 일절 안 만졌다**(충돌 회피). swarmer 아트만 착수하고 종료.
+> **다음 세션이 할 일**: ①`art/.generating`의 swarmer 표시 확인 후 2h 안이면 **재생성 금지**(크레딧
+> 이중차감) ②`out_p2/sheet_mob_swarmer2_A.png`·`_B.png`가 나왔으면 charger/ranged와 동일 파이프라인
+> (sheet A 격자선 있으면 `wipe_gridlines`→`split_ai_sheet`(A 5×2 idle×4·walk×6, B 4×3 attack×4·
+> hurt×4·death×4)→`align_frames`→`Resources/sprites/mob_swarmer` 동일 파일명 덮어쓰기(meta 보존)→
+> `game_asset_names.py` 통과→montage 육안→`qa_shot.sh hunt`). 반입되면 **큐 #1 4/4 완전 종결**.
+> 안 나왔으면 곧장 코드 트랙(단 `W3Party.cs` mtime 재확인 — 대화 세션 활성 여부).
 
 > **⚠️ 다음 세션 최우선: INBOX 상단 21:01 신규 감사 「📋 기획서 ↔ 코드 대조」를 먼저 읽어라.**
 > 오너가 코드 트랙 우선순위를 새로 제시했다 — **A(눌러도 반응 없는 빈 버튼: 필드 자동화 일정,
@@ -125,7 +144,7 @@
 
 | # | 항목 | 통과 기준 | 네거티브 컨트롤 |
 |---|---|---|---|
-| 1 | **몹 AI 4계열 실루엣 재생성** ⭐ **3/4 완료(chaser✅ charger✅ ranged✅) — swarmer 남음** | §0-A 픽셀아트 화풍, **4 AI 실루엣** × 22프레임씩. 무채색 회색-백(색은 런타임 `MobDef.색조`). **ranged 반입 완료**(`f603e43d`, montage 육안 — 직립 2족 궁수, 4족과 갈림). **인게임 hunt 확인만 미완**(빌드 권한 없는 세션이라 GUI 세션 인계 — charger와 동일). 남은 swarmer: spec 확인 후 **1계열씩** 파이프라인(wipe→split→align→덮어쓰기→검사기→montage) | 옛 아트로 되돌리면 캐릭터와 톤이 갈림. ranged 재현: `git checkout f603e43d~1 -- .../mob_ranged` |
+| 1 | **몹 AI 4계열 실루엣 재생성** ⭐ **3/4 반입 완료(chaser✅ charger✅ ranged✅) · swarmer 생성 착수(pid=54305, 21:12)** | §0-A 픽셀아트 화풍, **4 AI 실루엣** × 22프레임씩. 무채색 회색-백(색은 런타임 `MobDef.색조`). **ranged 반입 완료**(`f603e43d`, montage 육안 — 직립 2족 궁수, 4족과 갈림). **인게임 hunt 확인만 미완**(빌드 권한 없는 세션이라 GUI 세션 인계 — charger와 동일). 남은 swarmer: spec 확인 후 **1계열씩** 파이프라인(wipe→split→align→덮어쓰기→검사기→montage) | 옛 아트로 되돌리면 캐릭터와 톤이 갈림. ranged 재현: `git checkout f603e43d~1 -- .../mob_ranged` |
 | ~~2~~ | ~~**§10-5 보스 쫄 소환**~~ ✅ **통과 기준 충족** | 기믹 발동 배선은 `006564f8`가 이미 함(호출부 0곳 → `FireNextGimmick`). 이번 이터: **소환이 빈 GameObject가 아니라 진짜 W3Party 쫄을 파티 한복판에 스폰**해 실제로 때린다. 측정: 정상 **소환피해 24**(5마리 스폰·`shots/qa_boss_summon_on.png`에 파티 포위) | ✅ **`BOSS_NO_SUMMON=1` → 소환 0마리·소환피해 0** (`boss_summon_NEGCTRL.log` vs `_NORMAL.log`) |
 | 2b | **보스 나머지 통합(HP·장판·힐체크)** — #2에서 갈라져 나옴 | ⚠️ **보스 HP가 파티 DPS로 안 깎인다** → 페이즈 전환·`OnBossDefeated`가 HP로 안 뜬다(보스 층 클리어가 보스 컴포넌트로는 아직 불가). **장판(FloorAOE)은 파티 피해 0**이고 위험 슬롯을 영영 물어 소환이 판당 1회만 터진다. **힐체크 `ReportDamageToActive` 호출부 0곳** → 요구회복 0으로 항상 통과 | 각 기믹 비활성 시 해당 효과 소멸 |
 | 3 | **§3 RaceDef 배선** | 종족 4종이 전투에 영향 0. 런타임 소비처 ≥1 | 값 변경이 결과에 반영되는지 |
