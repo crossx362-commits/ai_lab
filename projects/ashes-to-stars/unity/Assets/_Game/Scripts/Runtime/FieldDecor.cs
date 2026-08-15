@@ -24,7 +24,10 @@ namespace AshesToStars
         public enum Biome { Field, Ash, Dungeon }
 
         /// <summary>이 값을 넘는 노이즈 봉우리에만 심는다. 낮추면 들판이 숲이 된다.</summary>
-        const float PROP_THRESHOLD = 0.62f;
+        // 노이즈가 이 값을 넘는 칸에만 심는다. 0.62였을 때 **상한 90 중 실제 배치가 15개**뿐이라
+        // 화면이 허허벌판이었다(오너 지적 2026-08-15 "지형 좀 어떻게 해봐"). 노이즈 봉우리가
+        // 그만큼 드물다 — 임계를 내려 봉우리를 넓게 잡는다.
+        const float PROP_THRESHOLD = 0.48f;
         /// <summary>드로우콜이 아니라 **화면 가독성** 상한이다 — 너무 많으면 유닛이 묻힌다.</summary>
         const int PROP_CAP = 90;
 
@@ -168,7 +171,10 @@ namespace AshesToStars
                     if (d2 < (arenaRadius * 0.35f) * (arenaRadius * 0.35f)) continue;
 
                     if (TerrainNoise.Sample(origin, x, y) < PROP_THRESHOLD) continue;
-                    if (Random.value > 0.45f) continue;      // 봉우리마다 다 심으면 벽이 된다
+                    // 봉우리마다 다 심으면 벽이 된다. 다만 0.45는 임계(0.62)와 곱해져
+                    // 최종 밀도를 너무 깎았다 — 임계를 낮춘 지금은 이쪽을 조금 올려도
+                    // "덩어리로 뭉치고 사이에 길이 난다"가 유지된다.
+                    if (Random.value > 0.62f) continue;
 
                     var worldPos = new Vector2(x + (Random.value - 0.5f) * step,
                                                y + (Random.value - 0.5f) * step);

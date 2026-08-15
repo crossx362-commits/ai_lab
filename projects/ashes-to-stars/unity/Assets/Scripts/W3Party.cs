@@ -95,6 +95,7 @@ public class W3Party : MonoBehaviour
         public Job Job;
         public float Hp, MaxHp, Atk, Range, Cd, SkillCd;
         public float Shield;              // 수호기사 성채 방패
+        public bool Flip;                 // 마지막으로 향한 좌우. 미세 흔들림에 안 뒤집히게 유지한다
         public float Gauge;               // 고유 자원: 수호게이지 / 연격스택 / 신앙
         public float FlashT;              // 스킬 발동 섬광 잔여 시간
         public Chant Chant;               // 음유시인 악장
@@ -339,6 +340,8 @@ public class W3Party : MonoBehaviour
     // 아군 공격 연출용 별도 풀 (몹 탄과 색으로 구분)
     Transform[] _aTr; Vector2[] _aPos, _aVel; float[] _aLife; bool[] _aOn; int _aCur;
     float[] _mFlash;
+    Color[] _mTint;      // 개체별 계열색. 스폰 때 한 번 정하고 그대로 쓴다(깜빡임 방지)
+    bool[] _mFlip;       // 마지막으로 향한 방향. 미세 흔들림에 안 뒤집히게 이력을 둔다
 
     // ── 설정 ─────────────────────────────────────────────
     [Header("판 설정 — 전멸까지 돌린다 (§21-1g)")]
@@ -544,6 +547,10 @@ public class W3Party : MonoBehaviour
         _mAtkCd = new float[MAXM]; _mMaxHp = new float[MAXM];
         _mBarBg = new SpriteRenderer[MAXM]; _mBarFg = new SpriteRenderer[MAXM];
         _mKind = new int[MAXM]; _mOn = new bool[MAXM]; _mFlash = new float[MAXM];
+        // 개체별 계열색을 **스폰 때 한 번 정해 기억한다.** 예전엔 피격 섬광이 끝날 때마다
+        // `FamilyTint()`를 다시 불렀는데, 필드에서는 그 함수가 계열을 무작위로 굴리므로
+        // **몹이 맞을 때마다 색이 바뀌어 깜빡였다**(오너 지적 2026-08-15, 내가 낸 버그).
+        _mTint = new Color[MAXM]; _mFlip = new bool[MAXM];
         var mr = new GameObject("Mobs").transform;
         for (int i = 0; i < MAXM; i++)
         {
@@ -817,6 +824,11 @@ public class W3Party : MonoBehaviour
             _mSr[i].sprite = SpriteBank.Cached.MobAnim(MobSpriteKind(_mKind[i]), SpriteBank.Motion.Idle, 0f);
             // 정예는 **역할 색이 먼저**다(치유·소환은 즉시 알아봐야 하는 대상이다).
             // 그 외 잡몹만 계열 색조를 입는다(§10-3).
+            // 이 개체의 색을 **여기서 한 번** 정해 기억한다. 섬광 복원이 매번 다시 굴리면
+            // 맞을 때마다 색이 바뀌어 깜빡인다.
+            _mTint[i] = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)
+                      : _mKind[i] == 4 ? new Color(0.8f, 0.5f, 1f)
+                      : FamilyTint();
             _mSr[i].color = _mKind[i] == 3 ? new Color(0.4f, 1f, 0.5f)      // 치유 정예 = 초록
                           : _mKind[i] == 4 ? new Color(0.8f, 0.5f, 1f)      // 소환 정예 = 보라
                           : FamilyTint();
@@ -985,7 +997,10 @@ public class W3Party : MonoBehaviour
                     m.Marker.transform.localScale = new Vector3(pulse, pulse * ISO_Y, 1f);
                 }
             }
-            if (Mathf.Abs(m.Pos.x - m.PrevPos.x) > 1e-4f) m.Sr.flipX = m.Pos.x < m.PrevPos.x;
+            // 몹과 같은 이유로 이력을 둔다 — `1e-4`면 정지 중 미세 흔들림에도 뒤집힌다.
+            float mdx = m.Pos.x - m.PrevPos.x;
+            if (Mathf.Abs(mdx) > 0.02f) m.Flip = mdx < 0f;
+            m.Sr.flipX = m.Flip;
             m.PrevPos = m.Pos;
 
             bool showBar = m.Alive;
@@ -1568,16 +1583,22 @@ public class W3Party : MonoBehaviour
             // 아군은 이미 이렇게 하고 있었는데 몹만 항상 같은 쪽을 보고 있어서,
             // 왼쪽으로 몰려갈 때 전부 뒷걸음질치는 것처럼 보였다.
             // ⚠️ 임계값 없이 매 프레임 갱신하면 정지한 몹이 부동소수 잡음으로 떨린다.
-            if (Mathf.Abs(p.x - prev.x) > 1e-4f) _mSr[i].flipX = p.x < prev.x;
+            // ⚠️ 임계값이 중요하다. 예전엔 `1e-4`라 **미세한 흔들림에도 매 프레임 뒤집혀**
+            //    몹이 좌우로 파르르 떠는 것처럼 보였다(오너 지적 2026-08-15).
+            //    유닛 분리(UnitSeparation)가 서로 밀어내므로 정지 상태에서도 x가 조금씩 흔들린다.
+            //    한 프레임 이동량이 **실제로 방향이라 부를 만할 때**만 뒤집는다.
+            float dx = p.x - prev.x;
+            if (Mathf.Abs(dx) > 0.02f * Mathf.Max(0.016f, dt) / 0.016f) _mFlip[i] = dx < 0f;
+            _mSr[i].flipX = _mFlip[i];
             _mSr[i].sortingOrder = Depth(p.y);   // 파티와 **같은 공식**이어야 앞뒤가 맞는다(D2)
             if (_mFlash[i] > 0f)
             {
                 _mFlash[i] -= dt;
                 _mSr[i].color = Color.white;
             }
-            else if (_mKind[i] == 3) _mSr[i].color = new Color(0.4f, 1f, 0.5f);
-            else if (_mKind[i] == 4) _mSr[i].color = new Color(0.8f, 0.5f, 1f);
-            else _mSr[i].color = FamilyTint();   // 섬광이 끝나면 흰색이 아니라 **계열색**으로 돌아온다
+            // 섬광이 끝나면 **스폰 때 정한 그 색**으로 돌아온다. 여기서 FamilyTint()를
+            // 다시 부르면 필드에서는 계열이 매번 새로 굴려져 깜빡인다(2026-08-15 사고).
+            else _mSr[i].color = _mTint[i];
 
             // 근접 공격은 **쿨다운을 두고 한 번씩** — 매 프레임 피해를 주면
             // 초당 수천 번이 되어 파티가 4초 만에 녹는다(2026-08-13 실측 버그)
