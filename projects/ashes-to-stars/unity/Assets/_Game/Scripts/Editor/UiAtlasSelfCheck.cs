@@ -56,6 +56,11 @@ namespace AshesToStars
             var after = UiPages.AfterTabs(new Rect(0, 0, 100, 200));
             Debug.Assert(after.y > 0 && after.height < 200,
                 "[UiAtlasSelfCheck] 탭 아래 본문 영역이 줄지 않는다");
+            Debug.Assert(UiPages.EquipRingDegrees.Length == 6,
+                "[UiAtlasSelfCheck] 장비 링은 6칸");
+            var ring = UiPages.SlotOnRing(new Vector2(100, 100), 80f, 80f, -90f, 20f);
+            Debug.Assert(Mathf.Approximately(ring.center.x, 100f) && ring.center.y < 100f,
+                "[UiAtlasSelfCheck] 12시 칸은 초상 위에 있어야 한다");
 
             Debug.Assert(UiAtlas.BuildingKey("대장간") == "building_smith",
                 "[UiAtlasSelfCheck] 대장간 건물 키가 어긋난다");

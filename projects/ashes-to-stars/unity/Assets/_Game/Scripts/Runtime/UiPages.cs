@@ -13,6 +13,18 @@ namespace AshesToStars
         public static Rect AfterTabs(Rect r, float extra = 12f) =>
             new Rect(r.x, r.y + TabH + extra, r.width, Mathf.Max(40f, r.height - TabH - extra));
 
+        /// <summary>초상 둘레 장비 칸. 각도는 12시가 -90도.</summary>
+        public static Rect SlotOnRing(Vector2 center, float radiusX, float radiusY,
+                                      float degrees, float size)
+        {
+            float rad = degrees * Mathf.Deg2Rad;
+            float x = center.x + Mathf.Cos(rad) * radiusX - size * 0.5f;
+            float y = center.y + Mathf.Sin(rad) * radiusY - size * 0.5f;
+            return new Rect(x, y, size, size);
+        }
+
+        public static readonly float[] EquipRingDegrees = { -90f, -20f, 50f, 125f, 180f, -145f };
+
         public static Rect[] Grid(Rect r, int cols, int rows, float gap = 16f)
         {
             if (cols < 1) cols = 1;
