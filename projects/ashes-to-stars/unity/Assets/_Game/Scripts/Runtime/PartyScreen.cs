@@ -39,9 +39,10 @@ namespace AshesToStars
             {
                 var ch = roster[i];
                 bool inParty = PartyState.Contains(i);
-                string label = (inParty ? "★ " : "  ") + $"{ch.Name} · {ch.Job}";
+                string label = (inParty ? "★ " : "") + $"{ch.Name} · {ch.Job}";
+                string sub = StatusOf(ch, inParty);
 
-                if (Row(r, row++, label, StatusOf(ch, inParty)))
+                if (Row(r, row, label, "", leftPad: 56f))
                 {
                     if (!PartyState.Toggle(i))
                         _msg = LifeSystem.IsAvailable(ch)
@@ -49,10 +50,8 @@ namespace AshesToStars
                             : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
-
-                // 편성 화면과 전투 지휘 바가 같은 직업 초상화를 쓴다.
-                PortraitAtlas.Draw(new Rect(r.x + 6, r.y + (row - 1) * 72f + 4, 48, 48),
-                    PortraitAtlas.KeyForJob(ch.Job));
+                DrawSlotChrome(r, row, ch, sub);
+                row++;
             }
 
             if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
@@ -73,6 +72,20 @@ namespace AshesToStars
             if (Row(r, row, "돌아가기", "영지로")) GameFlow.Go(GameFlow.Estate);
         }
 
+        void DrawSlotChrome(Rect r, int index, CharacterRecord ch, string sub)
+        {
+            var br = RowButtonRect(r, index);
+            if (br.yMax > r.yMax) return;
+
+            var face = new Rect(br.x + 6, br.y + 5, 48, 48);
+            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
+            UiAtlas.DrawRosterFrame(face);
+            PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
+            var desc = RowDescRect(r, index);
+            float heartsW = UiAtlas.DrawRosterMarks(face, desc, ch.Job, ch.DeathCount, ch.IsDeleted);
+            Hint(new Rect(desc.x + heartsW + 6, desc.y + 6, desc.width - heartsW - 6, 22), sub);
+        }
+
         static string StatusOf(CharacterRecord ch, bool inParty)
         {
             if (ch.IsDeleted) return "삭제됨 — 환생석으로만 복구(§4)";
@@ -80,13 +93,9 @@ namespace AshesToStars
             int left = LifeSystem.GetRecoveryTimeRemaining(ch);
             if (left > 0) return $"회복 중 {LifeSystem.FormatRecoveryTime(left)} — 출전 불가(§4)";
 
-            string life = ch.DeathCount switch
-            {
-                0 => "목숨 3/3",
-                1 => "목숨 2/3",
-                _ => "[주의] 마지막 목숨 — 죽으면 영구 삭제(§4)",
-            };
-            return (inParty ? "편성됨 · " : "대기 · ") + life;
+            string mark = inParty ? "편성됨" : "대기";
+            if (ch.DeathCount >= 2) return $"{mark} · [주의] 마지막 목숨 — 죽으면 영구 삭제(§4)";
+            return mark;
         }
     }
 }

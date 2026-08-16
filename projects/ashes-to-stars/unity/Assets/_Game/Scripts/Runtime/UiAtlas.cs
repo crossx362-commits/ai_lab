@@ -208,6 +208,35 @@ namespace AshesToStars
             return 3f * (size + gap);
         }
 
+        /// <summary>
+        /// 명부 한 칸이 쓰는 조각. 캐릭터 화면만 연결하고 편성이 글자면
+        /// 같은 목숨이 두 화면에서 다르게 읽힌다.
+        /// </summary>
+        public static (string frame, string role, string heart0, string heart1, string heart2)
+            SlotChrome(string job, int deathCount, bool deleted)
+        {
+            return (
+                "portrait_frame",
+                RoleKey(job),
+                HeartKey(0, deathCount, deleted),
+                HeartKey(1, deathCount, deleted),
+                HeartKey(2, deathCount, deleted));
+        }
+
+        /// <summary>초상 뒤에 프레임만. 초상은 호출부가 이어서 그린다.</summary>
+        public static bool DrawRosterFrame(Rect face)
+        {
+            return Draw(new Rect(face.x - 2, face.y - 2, face.width + 4, face.height + 4),
+                "portrait_frame");
+        }
+
+        /// <summary>초상 위 역할 뱃지 + 오른쪽 목숨. 초상을 그린 뒤에 부른다.</summary>
+        public static float DrawRosterMarks(Rect face, Rect desc, string job, int deathCount, bool deleted)
+        {
+            Draw(new Rect(face.xMax - 8, face.yMax - 8, 20, 20), RoleKey(job));
+            return DrawHearts(new Rect(desc.x, desc.y + 4, 80, 22), deathCount, deleted);
+        }
+
         /// <summary>패널처럼 늘어나는 조각은 가장자리만 남기고 가운데를 늘린다.</summary>
         public static bool DrawSliced(Rect target, string key, float border = 12f, Color? tint = null)
         {

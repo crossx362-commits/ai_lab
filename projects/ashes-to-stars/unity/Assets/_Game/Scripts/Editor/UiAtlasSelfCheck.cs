@@ -83,6 +83,24 @@ namespace AshesToStars
             Debug.Assert(UiAtlas.HeaderKey("Party") == null,
                 "[UiAtlasSelfCheck] 매핑 없는 화면을 worldmap으로 숨기면 안 된다");
 
+            // 편성 화면이 목숨·역할을 글자로만 쓰면 캐릭터 화면과 같은 조각이 소비처 0곳이다.
+            var tankFull = UiAtlas.SlotChrome("탱", 0, false);
+            Debug.Assert(tankFull.frame == "portrait_frame" && tankFull.role == "tank"
+                         && tankFull.heart0 == "heart" && tankFull.heart2 == "heart",
+                "[UiAtlasSelfCheck] 편성 명부 크롬(탱·목숨3)이 어긋난다");
+            var dpsHurt = UiAtlas.SlotChrome("딜", 1, false);
+            Debug.Assert(dpsHurt.role == "damage" && dpsHurt.heart0 == "heart"
+                         && dpsHurt.heart2 == "heart_broken",
+                "[UiAtlasSelfCheck] 편성 명부 크롬(딜·사망1)이 어긋난다");
+            var dead = UiAtlas.SlotChrome("힐", 0, true);
+            Debug.Assert(dead.role == "healer" && dead.heart0 == "heart_broken"
+                         && dead.heart1 == "heart_broken" && dead.heart2 == "heart_broken",
+                "[UiAtlasSelfCheck] 편성 명부 크롬(삭제)이 어긋난다");
+            Debug.Assert(UiAtlas.SlotChrome("버퍼", 2, false).role == "buffer",
+                "[UiAtlasSelfCheck] 편성 명부 크롬(버퍼)이 어긋난다");
+            _ = nameof(UiAtlas.DrawRosterFrame);
+            _ = nameof(UiAtlas.DrawRosterMarks);
+
             Debug.Assert(UiAtlas.ButtonStateSamples.Length == 3,
                 "[UiAtlasSelfCheck] 버튼 3상태 견본 개수가 어긋난다");
             Debug.Assert(UiAtlas.ButtonKey(UiAtlas.ButtonStateSamples[0].hover,
