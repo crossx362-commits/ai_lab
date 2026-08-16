@@ -105,6 +105,24 @@
   .now-panel.idle .phase { color: var(--muted); }
   .now-panel .t { font-size: 16px; font-weight: 650; }
   .now-panel .log { margin-top: 10px; max-height: 160px; }
+  .charts { margin: 14px 24px 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; margin: 14px; } }
+  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; }
+  .bar-row { display: grid; grid-template-columns: 118px 1fr 36px; gap: 8px; align-items: center; margin: 7px 0; }
+  .bar-row .lab { font-size: 12px; color: var(--ink); }
+  .bar-track { height: 10px; background: #100e0c; border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--gold); border-radius: 99px; }
+  .bar-fill.ok { background: var(--ok); }
+  .bar-fill.hold { background: var(--hold); }
+  .bar-fill.muted { background: #3a342c; }
+  .bar-row .n { font-size: 12px; color: var(--muted); text-align: right; }
+  .stack { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: #100e0c; margin: 8px 0 6px; }
+  .stack span { display: block; height: 100%; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 76px; margin-top: 8px; }
+  .spark b { flex: 1; background: var(--gold); border-radius: 2px 2px 0 0; min-height: 2px; opacity: .85; }
+  .spark .cap { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -125,6 +143,7 @@
   <div class="meta" id="now-meta"></div>
   <div class="log" id="now-log" style="display:none"></div>
 </section>
+<div class="charts" id="charts"></div>
 <main>
   <div>
     <section>
@@ -280,6 +299,69 @@ function render(state) {
   $("commits").innerHTML = commits.length ? commits.map((c) => `
     <div class="commit"><span class="hash">${esc(c.hash)}</span><span class="when">${esc(c.when)}</span><span>${esc(c.subject)}</span></div>
   `).join("") : '<p class="empty">커밋 없음</p>';
+  renderCharts(state.charts || {});
+}
+
+function barClass(pct) {
+  if (pct >= 100) return "ok";
+  if (pct > 0) return "hold";
+  return "muted";
+}
+
+function renderCharts(c) {
+  const el = $("charts");
+  if (!el) return;
+  const gates = c.gates || [];
+  const weeks = c.weeks || [];
+  const q = c.queue || { done: 0, open: 0, blocked: 0, total: 0 };
+  const art = c.art || [];
+  const spark = c.commits || [];
+  const road = c.roadmap || [];
+  const qTot = q.total || 1;
+  const artMax = Math.max(1, ...art.map((a) => a.n));
+  const sparkMax = Math.max(1, ...spark.map((s) => s.n));
+  const bars = (rows) => rows.map((r) => {
+    const pct = r.pct == null ? 0 : r.pct;
+    return `<div class="bar-row"><div class="lab">${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
+      <div class="n">${pct}%</div></div>`;
+  }).join("");
+  el.innerHTML = `
+    <section class="chart">
+      <h2>프로토타입 관문</h2>
+      ${bars(gates)}
+      <div class="legend" style="margin-top:8px">STATUS·DESIGN·보드 결정에서 집계. V4 70%는 사람만 닫는다.</div>
+    </section>
+    <section class="chart">
+      <h2>로드맵 · 주차별</h2>
+      ${bars(road)}
+      ${weeks.map((w) => `<div class="bar-row"><div class="lab">${esc(w.id)}</div>
+        <div class="bar-track"><div class="bar-fill ${barClass(w.pct)}" style="width:${w.pct}%"></div></div>
+        <div class="n">${w.pct}%</div></div>`).join("")}
+    </section>
+    <section class="chart">
+      <h2>STATUS 큐 ${q.total}항</h2>
+      <div class="stack">
+        <span style="width:${100*q.done/qTot}%;background:var(--ok)"></span>
+        <span style="width:${100*q.open/qTot}%;background:var(--gold)"></span>
+        <span style="width:${100*q.blocked/qTot}%;background:var(--hold)"></span>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>완료 ${q.done}</span>
+        <span><i style="background:var(--gold)"></i>열림 ${q.open}</span>
+        <span><i style="background:var(--hold)"></i>선행 막힘 ${q.blocked}</span>
+      </div>
+    </section>
+    <section class="chart">
+      <h2>Resources ${art.reduce((s,a)=>s+a.n,0)}장</h2>
+      ${art.map((a) => `<div class="bar-row"><div class="lab">${esc(a.id)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${100*a.n/artMax}%"></div></div>
+        <div class="n">${a.n}</div></div>`).join("")}
+      <div class="spark">${spark.map((s) =>
+        `<b title="${esc(s.day)} ${s.n}커밋" style="height:${Math.max(4, 76*s.n/sparkMax)}px"></b>`
+      ).join("")}</div>
+      <div class="legend">아래 막대는 최근 14일 게임 커밋 수</div>
+    </section>`;
 }
 
 async function refresh() {

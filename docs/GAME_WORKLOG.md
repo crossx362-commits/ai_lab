@@ -10,6 +10,12 @@
 
 ---
 
+## 개발 현황 그래프 (2026-08-16)
+
+- 보드 `http://127.0.0.1:8766`에 관문·로드맵·큐·Resources 그래프. 숫자는
+  STATUS 큐 표·DESIGN 관문·§21-4·Resources PNG·git log에서만 집계.
+- V4 70%는 0%로 둔다. 자동 경계를 통과로 읽지 않는다.
+
 ## Resources 소비 대조·미사용 검사 (2026-08-16)
 
 - 검토: `unity/Assets/Resources` 267png / 45.8MB. 코드 `Resources.Load`·`GetPropNames`·

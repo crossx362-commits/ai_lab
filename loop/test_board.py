@@ -81,10 +81,57 @@ class ParseTests(unittest.TestCase):
 |---|---|---|---|
 | 1 | **몹 AI 재생성** 남은 확인 | 매트릭스 | 옛 mob01 |
 | ~~2~~ | ~~보스~~ ✅ | 끝 | 끝 |
-| 4 | **영지 건물 3종** | 소비처 | 거짓말 UI |
+| 4 | **영지 건물 3종** | 소비 시스템이 없어 잠금 | 거짓말 UI |
 """
         rows = board.parse_queue_table(table)
         self.assertEqual([r["title"] for r in rows], ["몹 AI 재생성", "영지 건물 3종"])
+
+    def test_queue_table_all_counts_done_and_blocked(self):
+        table = """
+## 다음 할 일 큐 (맨 위부터 하나씩)
+
+| # | 항목 | 통과 기준 | 네거티브 |
+|---|---|---|---|
+| 1 | **몹 AI 재생성** 남은 확인 | 매트릭스 | 옛 mob01 |
+| ~~2~~ | ~~보스~~ ✅ | 끝 | 끝 |
+| 4 | **영지 건물 3종** | 소비 시스템이 없어 잠금 | 거짓말 UI |
+"""
+        rows = board.parse_queue_table_all(table)
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(next(r for r in rows if r["title"] == "보스")["done"])
+        self.assertTrue(next(r for r in rows if "영지" in r["title"])["blocked"])
+        self.assertFalse(next(r for r in rows if "몹" in r["title"])["done"])
+
+    def test_progress_charts_uses_documents_not_guesses(self):
+        status = STATUS + """
+## 다음 할 일 큐 (맨 위부터 하나씩)
+
+| # | 항목 | 통과 기준 | 네거티브 |
+|---|---|---|---|
+| ~~2~~ | ~~보스~~ ✅ | 끝 | 끝 |
+| 4 | **영지 건물 3종** | 소비 시스템이 없어 | x |
+"""
+        design = DESIGN
+        game = """
+### 21-4. 주차별 진행
+
+| 주차 | 목표 | 관문 |
+|---|------|------|
+| ~~W1~~ | ~~유닛~~ | ✅ **완료 (2026-08-13) — V1 통과** |
+| **W6** | 외부 플레이테스트 | **V4 판정** |
+"""
+        charts = board.progress_charts(status, design, game, {
+            "x": {"title": "V2 사람 판정", "choice": "pass"},
+        })
+        self.assertEqual(charts["queue"]["done"], 1)
+        self.assertEqual(charts["queue"]["blocked"], 1)
+        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V2")["pct"], 100)
+        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V3")["pct"], 100)
+        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 0)
+        w1 = next(w for w in charts["weeks"] if w["id"] == "W1")
+        self.assertEqual(w1["pct"], 100)
+        w6 = next(w for w in charts["weeks"] if w["id"] == "W6")
+        self.assertEqual(w6["pct"], 0)
 
     def test_now_list_from_design(self):
         doc = """

@@ -150,6 +150,278 @@ def parse_queue_table(status: str) -> list[dict]:
     return out
 
 
+def parse_queue_table_all(status: str) -> list[dict]:
+    """큐 표 전체. 취소선 행도 남겨 완료/미완 비율을 센다."""
+    m = re.search(r"^## 다음 할 일 큐[^\n]*\n", status, re.M)
+    if not m:
+        return []
+    rest = status[m.end():]
+    end = re.search(r"^## |\n### ", rest)
+    block = rest[: end.start()] if end else rest
+    out = []
+    for line in block.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        raw_n = re.sub(r"~+", "", cells[0]).strip()
+        if not raw_n.isdigit():
+            continue
+        done = "| ~~" in line or cells[0].startswith("~~")
+        body = re.sub(r"~+", "", cells[1])
+        th = re.search(r"\*\*(.+?)\*\*", body)
+        title = (th.group(1) if th else body).strip()
+        title = re.sub(r"\s*✅.*$", "", title).strip()
+        if not title or title in ("항목", "#"):
+            continue
+        detail = re.sub(r"~+", "", cells[2] if len(cells) > 2 else body)
+        detail = re.sub(r"<[^>]+>", "", detail)
+        blob = title + " " + detail
+        blocked = (not done) and any(
+            k in blob for k in ("소비 시스템이 없어", "유보", "지금 넣으면 오펀")
+        )
+        out.append({
+            "n": raw_n,
+            "title": title[:160],
+            "detail": detail[:240],
+            "done": done,
+            "blocked": blocked,
+        })
+    return out
+
+
+def parse_weeks(game_design: str) -> list[dict]:
+    """원장 §21-4 주차별 표."""
+    m = re.search(
+        r"### 21-4\. 주차별 진행.*?\n\| 주차 \|[^\n]*\n\|[-| :]+\|\n(.*?)(?=\n\n|\n### |\Z)",
+        game_design,
+        re.S,
+    )
+    if not m:
+        return []
+    out = []
+    for line in m.group(1).splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        week = re.sub(r"[~*]+", "", cells[0]).strip()
+        if not re.match(r"W\d", week):
+            continue
+        goal = re.sub(r"[~*]+", "", cells[1]).strip()
+        gate = cells[2]
+        if "✅" in cells[0] + gate or ("완료" in gate and "미완" not in gate and "미통과" not in gate):
+            state, pct = "done", 100
+        elif any(k in gate for k in ("부분", "미완", "대기", "미통과")):
+            state, pct = "partial", 50
+        else:
+            state, pct = "open", 0
+        out.append({
+            "id": week.split()[0],
+            "label": week,
+            "goal": goal[:48],
+            "gate": re.sub(r"<[^>]+>", "", gate)[:80],
+            "state": state,
+            "pct": pct,
+        })
+    return out
+
+
+def _v2_passed(status: str, decisions: dict) -> bool:
+    if "V2 사람 판정 → 통과" in status:
+        return True
+    return any(
+        str(v.get("title") or "").startswith("V2") and v.get("choice") == "pass"
+        for v in (decisions or {}).values()
+    )
+
+
+def _v3_closed(design: str) -> bool:
+    return any(m.get("done") and "V3" in m["title"] for m in parse_milestones(design))
+
+
+def resource_bars() -> list[dict]:
+    res = ROOT / "projects" / "ashes-to-stars" / "unity" / "Assets" / "Resources"
+    if not res.is_dir():
+        return []
+    out = []
+    for folder in ("sprites", "FX", "ui", "bg", "props", "ground"):
+        d = res / folder
+        if not d.is_dir():
+            continue
+        pngs = list(d.rglob("*.png"))
+        kb = sum(p.stat().st_size for p in pngs) / 1024
+        out.append({"id": folder, "n": len(pngs), "kb": round(kb, 1)})
+    return out
+
+
+def commit_spark(days: int = 14) -> list[dict]:
+    try:
+        raw = subprocess.check_output(
+            [
+                "git", "log", f"--since={days}.days",
+                "--pretty=%ad", "--date=short",
+                "--", "projects/ashes-to-stars", "docs/STATUS.md",
+                "docs/DESIGN.md", "docs/GAME_DESIGN_ASHES_TO_STARS.md",
+            ],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=8,
+        )
+    except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired):
+        return []
+    counts: dict[str, int] = {}
+    for line in raw.splitlines():
+        day = line.strip()
+        if day:
+            counts[day] = counts.get(day, 0) + 1
+    from datetime import timedelta
+    today = datetime.now().date()
+    out = []
+    for i in range(days - 1, -1, -1):
+        day = (today - timedelta(days=i)).isoformat()
+        out.append({"day": day[5:], "n": counts.get(day, 0)})
+    return out
+
+
+def progress_charts(status: str | None = None, design: str | None = None,
+                    game_design: str | None = None, decisions: dict | None = None) -> dict:
+    """보드·이미지 공통. 숫자는 문서·파일·git에서만 온다."""
+    status = status if status is not None else _read(STATUS)
+    design = design if design is not None else _read(DESIGN)
+    game_design = game_design if game_design is not None else _read(GAME_DESIGN)
+    decisions = decisions if decisions is not None else load_decisions()
+
+    v2 = _v2_passed(status, decisions)
+    v3 = _v3_closed(design)
+    rows = parse_queue_table_all(status)
+    done_n = sum(1 for r in rows if r["done"])
+    blocked_n = sum(1 for r in rows if r["blocked"])
+    open_n = sum(1 for r in rows if not r["done"] and not r["blocked"])
+
+    weeks = parse_weeks(game_design)
+    for w in weeks:
+        if w["id"] == "W2" and v2:
+            w.update(state="done", pct=100, note="오너 통과")
+        elif w["id"] == "W4" and v3:
+            w.update(state="done", pct=100, note="V3 한 판 종단")
+        elif w["id"] == "W6":
+            w.update(state="open", pct=0, note="V4 70% 사람 관문")
+
+    gates = [
+        {"id": "V1", "label": "V1 성능", "pct": 100, "note": "W1 통과 · DOTS 불필요"},
+        {"id": "V2", "label": "V2 조작감", "pct": 100 if v2 else 0,
+         "note": "오너 보드 통과" if v2 else "사람 판정 남음"},
+        {"id": "V3", "label": "V3 보스 한 판", "pct": 100 if v3 else 0,
+         "note": "HP·페이즈·처치·층" if v3 else "한 판 미연결"},
+        {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
+        {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": 0,
+         "note": "사람 관문 · 자동 완료 금지"},
+    ]
+    proto_done = sum(1 for g in gates if g["pct"] >= 100)
+    roadmap = [
+        {"id": "0", "label": "0. 프로토타입",
+         "pct": round(100 * proto_done / max(len(gates), 1)),
+         "note": f"관문 {proto_done}/{len(gates)} · 남은 건 V4 70%"},
+        {"id": "1", "label": "1. 수직 슬라이스", "pct": 0, "note": "V4 이후"},
+        {"id": "2", "label": "2. 온라인 기반", "pct": 0, "note": "V4 이후"},
+        {"id": "3", "label": "3. 콘텐츠 확장", "pct": 0, "note": "V4 이후"},
+        {"id": "4", "label": "4. 폴리시·베타", "pct": 0, "note": "V4 이후"},
+        {"id": "5", "label": "5. 출시 준비", "pct": 0, "note": "V4 이후"},
+    ]
+    return {
+        "gates": gates,
+        "weeks": weeks,
+        "queue": {"done": done_n, "open": open_n, "blocked": blocked_n, "total": len(rows)},
+        "art": resource_bars(),
+        "commits": commit_spark(),
+        "roadmap": roadmap,
+    }
+
+
+def write_progress_png(path: Path, charts: dict | None = None) -> Path:
+    """같은 집계를 한 장으로 저장한다. 보드와 숫자가 같아야 한다."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    charts = charts or progress_charts()
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for name in ("Apple SD Gothic Neo", "AppleGothic", "Noto Sans CJK KR"):
+        try:
+            plt.rcParams["font.family"] = name
+            break
+        except Exception:
+            continue
+    plt.rcParams["axes.unicode_minus"] = False
+    bg, ink, gold, ok, hold, muted = "#12100e", "#efe8d8", "#d4a24c", "#6cba7a", "#e0a050", "#9a9184"
+    fig, axes = plt.subplots(2, 3, figsize=(13.2, 7.0), facecolor=bg)
+    fig.suptitle("재와 별 · 개발 현황", color=gold, fontsize=16, fontweight="bold", y=0.98)
+
+    def style(ax, title):
+        ax.set_facecolor("#1b1814")
+        ax.set_title(title, color=gold, fontsize=11, loc="left", pad=8)
+        ax.tick_params(colors=muted, labelsize=9)
+        for spine in ax.spines.values():
+            spine.set_color("#2e2922")
+
+    ax = axes[0, 0]
+    style(ax, "프로토타입 관문")
+    gates = charts["gates"]
+    colors = [ok if g["pct"] >= 100 else hold if g["pct"] > 0 else "#3a342c" for g in gates]
+    ax.barh([g["label"] for g in gates][::-1], [g["pct"] for g in gates][::-1], color=colors[::-1], height=0.55)
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("%", color=muted)
+
+    ax = axes[0, 1]
+    style(ax, "로드맵")
+    road = charts["roadmap"]
+    ax.barh([r["label"] for r in road][::-1], [r["pct"] for r in road][::-1],
+            color=[ok if r["pct"] >= 100 else gold if r["pct"] > 0 else "#3a342c" for r in road][::-1], height=0.55)
+    ax.set_xlim(0, 100)
+
+    ax = axes[0, 2]
+    style(ax, "주차별 W1–W6")
+    weeks = charts["weeks"]
+    ax.barh([w["id"] for w in weeks][::-1], [w["pct"] for w in weeks][::-1],
+            color=[ok if w["pct"] >= 100 else hold if w["pct"] > 0 else "#3a342c" for w in weeks][::-1], height=0.55)
+    ax.set_xlim(0, 100)
+
+    ax = axes[1, 0]
+    style(ax, f"STATUS 큐 {charts['queue']['total']}항")
+    q = charts["queue"]
+    ax.barh(["큐"], [q["done"]], color=ok, height=0.35, label=f"완료 {q['done']}")
+    ax.barh(["큐"], [q["open"]], left=[q["done"]], color=gold, height=0.35, label=f"열림 {q['open']}")
+    ax.barh(["큐"], [q["blocked"]], left=[q["done"] + q["open"]], color=hold, height=0.35,
+            label=f"선행 막힘 {q['blocked']}")
+    ax.set_xlim(0, max(q["total"], 1))
+    ax.legend(facecolor="#1b1814", edgecolor="#2e2922", labelcolor=ink, fontsize=8)
+    ax.set_yticks([])
+
+    ax = axes[1, 1]
+    style(ax, "Resources PNG")
+    art = charts["art"]
+    if art:
+        ax.barh([a["id"] for a in art][::-1], [a["n"] for a in art][::-1], color=gold, height=0.5)
+
+    ax = axes[1, 2]
+    style(ax, "14일 게임 커밋")
+    spark = charts["commits"]
+    if spark:
+        ax.fill_between(range(len(spark)), [s["n"] for s in spark], color=gold, alpha=0.35)
+        ax.plot(range(len(spark)), [s["n"] for s in spark], color=gold, linewidth=1.6)
+        step = max(1, len(spark) // 4)
+        ax.set_xticks(list(range(0, len(spark), step)))
+        ax.set_xticklabels([spark[i]["day"] for i in range(0, len(spark), step)])
+    ax.set_ylabel("커밋", color=muted)
+
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.savefig(path, dpi=140, facecolor=bg)
+    plt.close(fig)
+    return path
+
+
 def parse_now_list(design: str) -> list[dict]:
     """원장 「지금 당장 할 일」 번호 목록."""
     m = re.search(r"^### 지금 당장 할 일[^\n]*\n", design, re.M)
@@ -702,6 +974,7 @@ def build_state() -> dict:
         "loop": loop_flags(),
         "commits": recent_commits(),
         "git": dirty_files(),
+        "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
     }
 
 
