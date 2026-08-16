@@ -977,6 +977,7 @@ namespace AshesToStars
                 character.IsDeleted = true;
                 character.RecoveryEndTime = 0;
                 Memorial.Stamp(character);
+                Memorial.Open();
                 Equipment.DestroyEquippedOn(character);
                 Debug.Log($"[목숨] {character.Name} 특수 직업 즉시 소멸(§3)");
                 Save();
@@ -996,6 +997,7 @@ namespace AshesToStars
                 character.IsDeleted = true;
                 character.DeathCount = 3;  // 상한 유지
                 Memorial.Stamp(character);
+                Memorial.Open();
                 Equipment.DestroyEquippedOn(character);
                 Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. (3회 사망)");
             }

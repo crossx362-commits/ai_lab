@@ -1,11 +1,13 @@
 using System;
 using System.Text;
+using UnityEngine;
 
 namespace AshesToStars
 {
     /// <summary>
     /// 영묘 추모 기록(§4). 삭제되면 최고 층·마지막 출전·사망 원인·장착 이름을 남긴다.
-    /// 전투력은 안 돌려준다. QA_NO면 옛 이름·직업만.
+    /// 건물은 첫 캐릭터 삭제에 열린다(§13-2). 환생해도 다시 잠기지 않는다.
+    /// 전투력은 안 돌려준다. QA_NO면 옛 이름·직업만. QA_NO_MAUSOLEUM_UNLOCK면 항상 열림.
     /// </summary>
     public static class Memorial
     {
@@ -13,8 +15,14 @@ namespace AshesToStars
         public const int QaFloor = 30;
         public const string EnvShow = "QA_MEMORIAL";
         public const string EnvNo = "QA_NO_MEMORIAL";
+        public const string EnvShowUnlock = "QA_MAUSOLEUM_UNLOCK";
+        public const string EnvNoUnlock = "QA_NO_MAUSOLEUM_UNLOCK";
+        const string K_UNLOCKED = "ats.mausoleum.unlocked";
 
         static bool _qaSeeded;
+        static bool _unlockQaSeeded;
+        static bool _unlockLoaded;
+        static bool _everDeleted;
 
         public static bool Blocked
         {
@@ -23,6 +31,64 @@ namespace AshesToStars
                 string raw = Environment.GetEnvironmentVariable(EnvNo);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
+        }
+
+        public static bool UnlockBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoUnlock);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>첫 삭제에 연다. QA_NO면 옛 항상 열림. 지금 삭제 명부는 옛 저장 폴백.</summary>
+        public static bool Unlocked
+        {
+            get
+            {
+                if (UnlockBlocked) return true;
+                LoadUnlock();
+                if (_everDeleted) return true;
+                if (!HasDeletedNow()) return false;
+                Open();
+                return true;
+            }
+        }
+
+        public static string LockReason()
+        {
+            if (Unlocked) return null;
+            return "첫 캐릭터 삭제 시 해금 — 3회 사망한 캐릭터가 여기 잠든다(§13-2)";
+        }
+
+        public static string LockLine()
+        {
+            string why = LockReason();
+            return string.IsNullOrEmpty(why) ? "영묘 해금(§13-2)" : why;
+        }
+
+        /// <summary>삭제가 확정된 뒤에만 부른다. 환생해도 플래그는 남는다.</summary>
+        public static void Open()
+        {
+            LoadUnlock();
+            if (_everDeleted) return;
+            _everDeleted = true;
+            PlayerPrefs.SetInt(K_UNLOCKED, 1);
+            PlayerPrefs.Save();
+        }
+
+        static void LoadUnlock()
+        {
+            if (_unlockLoaded) return;
+            _unlockLoaded = true;
+            _everDeleted = PlayerPrefs.GetInt(K_UNLOCKED, 0) == 1;
+        }
+
+        static bool HasDeletedNow()
+        {
+            var dead = LifeSystem.GetDeletedCharacters();
+            return dead != null && dead.Count > 0;
         }
 
         public static bool HasRecord(CharacterRecord ch) =>
@@ -157,9 +223,39 @@ namespace AshesToStars
             LifeSystem.RegisterDeath(ch);
         }
 
+        /// <summary>시각 QA. QA_MAUSOLEUM_UNLOCK=1이면 삭제 없는 잠긴 영묘를 보여 준다.</summary>
+        public static void SeedUnlockQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable(EnvShowUnlock);
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            if (UnlockBlocked) return;
+            if (_unlockQaSeeded) return;
+            _unlockQaSeeded = true;
+            PlayerPrefs.DeleteKey(K_UNLOCKED);
+            _unlockLoaded = true;
+            _everDeleted = false;
+            var roster = LifeSystem.GetCharacters();
+            for (int i = 0; i < roster.Count; i++)
+            {
+                if (roster[i] == null || !roster[i].IsDeleted) continue;
+                roster[i].IsDeleted = false;
+            }
+            LifeSystem.PersistRoster();
+        }
+
         public static void ResetForTest()
         {
             _qaSeeded = false;
+            _unlockQaSeeded = false;
+            _unlockLoaded = false;
+            _everDeleted = false;
+            PlayerPrefs.DeleteKey(K_UNLOCKED);
+        }
+
+        public static void ForgetInMemoryForTest()
+        {
+            _unlockLoaded = false;
         }
     }
 }

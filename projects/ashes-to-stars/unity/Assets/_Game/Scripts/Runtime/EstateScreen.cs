@@ -31,7 +31,9 @@ namespace AshesToStars
         {
             Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
-            Sub.영묘 => Rebirth.MausoleumSubtitle(),
+            Sub.영묘 => Memorial.Unlocked
+                ? Rebirth.MausoleumSubtitle()
+                : Memorial.LockLine(),
             Sub.수비대 => DefenseState.Unlocked
                 ? "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)"
                 : DefenseState.LockLine(),
@@ -43,6 +45,9 @@ namespace AshesToStars
 
         static string SoftCapHubSubtitle()
         {
+            if (System.Environment.GetEnvironmentVariable(Memorial.EnvShowUnlock) == "1"
+                && !Memorial.UnlockBlocked)
+                return Memorial.LockLine();
             if (System.Environment.GetEnvironmentVariable(DefenseState.EnvShowUnlock) == "1"
                 && !DefenseState.UnlockBlocked)
                 return DefenseState.LockLine();
@@ -134,6 +139,7 @@ namespace AshesToStars
             AuctionState.SeedExpireQaIfRequested();
             Rebirth.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
+            Memorial.SeedUnlockQaIfRequested();
             DefenseState.SeedUnlockQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
@@ -202,9 +208,11 @@ namespace AshesToStars
                     auctionSub,
                     UiAtlas.BuildingKey("경매장"), locked: auctionLock != null))
                 _sub = Sub.경매장;
+            string mausoleumLock = Memorial.LockReason();
             if (DrawCard(cards[2], "영묘",
-                    $"환생석 {LifeSystem.GetRebornStones()}개 · 삭제된 캐릭터만",
-                    UiAtlas.BuildingKey("영묘")))
+                    mausoleumLock
+                        ?? $"환생석 {LifeSystem.GetRebornStones()}개 · 삭제된 캐릭터만",
+                    UiAtlas.BuildingKey("영묘"), locked: mausoleumLock != null))
                 _sub = Sub.영묘;
             string barracksLock = DefenseState.LockReason();
             if (DrawCard(cards[3], "수비대",
@@ -678,9 +686,17 @@ namespace AshesToStars
         /// </summary>
         void Mausoleum(Rect r)
         {
+            int row = 0;
+            string lockReason = Memorial.LockReason();
+            if (lockReason != null)
+            {
+                Info(r, row++, lockReason);
+                if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+                return;
+            }
+
             var dead = LifeSystem.GetDeletedCharacters();
             int stones = LifeSystem.GetRebornStones();
-            int row = 0;
 
             Info(r, row++, $"환생석 {stones}개 · 잠든 캐릭터 {dead.Count}명");
             if (!string.IsNullOrEmpty(Memorial.HubLine()))
