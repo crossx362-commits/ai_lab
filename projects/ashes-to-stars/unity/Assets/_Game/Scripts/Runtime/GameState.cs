@@ -261,6 +261,12 @@ namespace AshesToStars
             Economy.LifeItem.RebornStone => "환생석",
             Economy.LifeItem.AdvancementMaterial => "전직 재료",
             Economy.LifeItem.CraftHide => "사냥 가죽",
+            Economy.LifeItem.CraftFang => "송곳니",
+            Economy.LifeItem.CraftBone => "유골",
+            Economy.LifeItem.CraftPart => "부품",
+            Economy.LifeItem.CraftCrystal => "원소결정",
+            Economy.LifeItem.CraftDemonite => "마정석",
+            Economy.LifeItem.EnhanceStone => "강화석",
             _ => "특수 직업 증표",
         };
 

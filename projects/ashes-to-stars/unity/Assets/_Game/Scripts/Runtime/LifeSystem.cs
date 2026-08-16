@@ -78,8 +78,66 @@ namespace AshesToStars
         /// </summary>
         public bool IsRescue { get; set; }
 
-        /// <summary>장착 갑옷 id. 빈 값이면 미장착. 나머지 5부위는 다음 슬라이스.</summary>
-        public string EquippedArmorId { get; set; }
+        /// <summary>6부위 장착 id. 빈 칸은 null. 옛 저장의 갑옷 단독 필드는 Unpack이 받는다.</summary>
+        public readonly string[] EquippedIds = new string[Equipment.SlotCount];
+
+        public string EquippedArmorId
+        {
+            get => GetEquipped(EquipSlot.Armor);
+            set => SetEquipped(EquipSlot.Armor, value);
+        }
+
+        public string GetEquipped(EquipSlot slot)
+        {
+            int i = (int)slot;
+            if (i < 0 || i >= EquippedIds.Length) return null;
+            return EquippedIds[i];
+        }
+
+        public void SetEquipped(EquipSlot slot, string id)
+        {
+            int i = (int)slot;
+            if (i < 0 || i >= EquippedIds.Length) return;
+            EquippedIds[i] = string.IsNullOrEmpty(id) ? null : id;
+        }
+
+        public bool Wears(string gearId)
+        {
+            if (string.IsNullOrEmpty(gearId)) return false;
+            for (int i = 0; i < EquippedIds.Length; i++)
+                if (EquippedIds[i] == gearId) return true;
+            return false;
+        }
+
+        public void ClearEquipped()
+        {
+            for (int i = 0; i < EquippedIds.Length; i++) EquippedIds[i] = null;
+        }
+
+        public string PackEquipped()
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < Equipment.SlotCount; i++)
+            {
+                if (i > 0) sb.Append('|');
+                sb.Append(EquippedIds[i] ?? "");
+            }
+            return sb.ToString();
+        }
+
+        public void UnpackEquipped(string raw)
+        {
+            ClearEquipped();
+            if (string.IsNullOrEmpty(raw)) return;
+            if (raw.IndexOf('|') < 0)
+            {
+                EquippedArmorId = raw;
+                return;
+            }
+            var parts = raw.Split('|');
+            for (int i = 0; i < Equipment.SlotCount && i < parts.Length; i++)
+                if (!string.IsNullOrEmpty(parts[i])) EquippedIds[i] = parts[i];
+        }
 
         public CharacterRecord(string name, string job, int level = 1,
                                AdvancementTier advancement = AdvancementTier.Basic)
@@ -94,7 +152,6 @@ namespace AshesToStars
             RecoveryEndTime = 0;
             IsDeleted = false;
             IsRescue = false;
-            EquippedArmorId = null;
         }
     }
 
@@ -211,9 +268,10 @@ namespace AshesToStars
                         ? p[8] : LegacyCharacterId(p[0], p[1], legacyIndex),
                     // 10번째 필드는 긴급 재건 표시. 없던 저장은 일반 캐릭터다.
                     IsRescue = p.Length > 9 && p[9] == "1",
-                    // 11번째 필드는 장착 갑옷. 없던 저장은 미장착.
-                    EquippedArmorId = p.Length > 10 && !string.IsNullOrEmpty(p[10]) ? p[10] : null,
+                    // 11번째 필드는 장착 6부위(무기|투구|갑옷|장갑|신발|장신구).
+                    // 옛 저장은 갑옷 id 하나만 있어 Unpack이 그 칸에 넣는다.
                 };
+                c.UnpackEquipped(p.Length > 10 ? p[10] : "");
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -250,7 +308,7 @@ namespace AshesToStars
                   .Append('\t').Append(c.IsDeleted ? '1' : '0')
                   .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement)
                   .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0')
-                  .Append('\t').Append(c.EquippedArmorId ?? "").Append('\n');
+                  .Append('\t').Append(c.PackEquipped()).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -761,7 +819,7 @@ namespace AshesToStars
             character.IsDeleted = false;
             character.DeathCount = 0;
             character.RecoveryEndTime = 0;
-            character.EquippedArmorId = null;
+            character.ClearEquipped();
             Save();
 
             Debug.Log($"[환생석] {character.Name} 복구 — 사망 카운트 0으로 재시작 " +

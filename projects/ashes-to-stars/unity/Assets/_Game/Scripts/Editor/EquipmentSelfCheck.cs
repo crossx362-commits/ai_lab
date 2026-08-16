@@ -104,6 +104,111 @@ namespace AshesToStars
             Check(tableHasHide, "던전 보스 드랍 테이블에 사냥 가죽이 있다");
             Check(drops != null, "드랍 판정이 예외 없이 돈다");
 
+            Check(Equipment.SuccessPercent(0, RaceId.인간) == 100, "강화 +0 성공률 100%");
+            Check(Equipment.SuccessPercent(14, RaceId.인간) == 30, "강화 +14 성공률 30%");
+            Check(Equipment.SuccessPercent(14, RaceId.드워프) == 40, "드워프 강화 성공률 +10%p(§18-9)");
+            Check(Equipment.StoneCost(0) == 1 && Equipment.StoneCost(14) == 15, "강화석 비용 1+현재강");
+
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Equipment.ResetAll();
+            PartyState.ResetForTest();
+            var fresh = LifeSystem.GetCharacters();
+            var smith = fresh[0];
+            smith.Advancement = AdvancementTier.First;
+            smith.Job = "수호기사";
+            LifeSystem.PersistRoster();
+
+            foreach (var rec in Equipment.Recipes)
+            {
+                GameState.Gain(rec.Material, rec.Cost);
+                Check(Equipment.TryCraft(rec.Id), $"{rec.Name} 제작({GameState.Label(rec.Material)})");
+            }
+            Check(Equipment.All.Count == 6, "6부위가 가방에 있다");
+            for (int i = 0; i < Equipment.All.Count; i++)
+                Check(Equipment.TryEquip(smith, Equipment.All[i].Id), $"{Equipment.All[i].Name} 장착");
+            float sixMul = Equipment.HpMulOf(smith);
+            Check(sixMul > Equipment.LeatherArmorHpMul + 0.01f,
+                $"6부위 합산 체력 배율 {sixMul:0.000} > 흉갑 단독");
+
+            var armor = Equipment.Worn(smith, EquipSlot.Armor);
+            Check(armor != null, "갑옷 슬롯에 흉갑");
+            Check(Mathf.Approximately(Equipment.EffectiveHpMul(armor), Equipment.LeatherArmorHpMul),
+                "강화 0이면 유효 배율 = 기본 배율");
+
+            string oldFail = Environment.GetEnvironmentVariable("QA_ENHANCE_FAIL");
+            string oldOk = Environment.GetEnvironmentVariable("QA_ENHANCE_OK");
+            Environment.SetEnvironmentVariable("QA_ENHANCE_FAIL", "1");
+            Environment.SetEnvironmentVariable("QA_ENHANCE_OK", null);
+            GameState.Gain(Economy.LifeItem.EnhanceStone, Equipment.StoneCost(0));
+            int before = Equipment.All.Count;
+            Check(Equipment.TryEnhance(armor.Id, out bool failOk) && !failOk,
+                "QA_ENHANCE_FAIL=1이면 강화 실패");
+            Check(armor.Enhance == 0 && Equipment.All.Count == before,
+                "실패해도 장비는 파괴되지 않는다(§11)");
+            Check(GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone) == 0, "실패해도 강화석은 소모된다");
+
+            Environment.SetEnvironmentVariable("QA_ENHANCE_FAIL", null);
+            Environment.SetEnvironmentVariable("QA_ENHANCE_OK", "1");
+            GameState.Gain(Economy.LifeItem.EnhanceStone, Equipment.StoneCost(0));
+            Check(Equipment.TryEnhance(armor.Id, out bool ok) && ok && armor.Enhance == 1,
+                "QA_ENHANCE_OK=1이면 +1");
+            Check(Mathf.Approximately(Equipment.EffectiveHpMul(armor),
+                    Equipment.LeatherArmorHpMul * (1f + Equipment.EnhanceHpPerLevel)),
+                "강화 +1은 기본 배율에 2%를 곱한다");
+
+            int needToCap = 0;
+            for (int lv = armor.Enhance; lv < Equipment.MaxEnhance; lv++)
+                needToCap += Equipment.StoneCost(lv);
+            GameState.Gain(Economy.LifeItem.EnhanceStone, needToCap);
+            int guard = 0;
+            while (armor.Enhance < Equipment.MaxEnhance && guard++ < 20)
+                Check(Equipment.TryEnhance(armor.Id, out bool step) && step, $"+{armor.Enhance}까지 강제 성공");
+            Check(armor.Enhance == Equipment.MaxEnhance, "+15가 상한");
+            GameState.Gain(Economy.LifeItem.EnhanceStone, 20);
+            Check(!Equipment.TryEnhance(armor.Id, out bool over), "+15에서 강화 거부");
+            Check(!over && armor.Enhance == Equipment.MaxEnhance, "상한에서 석을 쓰지 않는다");
+            Environment.SetEnvironmentVariable("QA_ENHANCE_FAIL", oldFail);
+            Environment.SetEnvironmentVariable("QA_ENHANCE_OK", oldOk);
+
+            float cappedMul = Equipment.HpMulOf(smith);
+            PartyState.ResetForTest();
+            var sortie2 = PartyState.SortieCombatants();
+            Check(sortie2.Count > 0 && Mathf.Approximately(sortie2[0].HpMul, cappedMul),
+                "출전이 6부위+강화 합산을 전투에 넘긴다");
+
+            GameState.ForgetInMemoryForTest();
+            LifeSystem.ForgetInMemoryForTest();
+            Equipment.ForgetInMemoryForTest();
+            smith = LifeSystem.GetCharacters()[0];
+            armor = Equipment.Worn(smith, EquipSlot.Armor);
+            Check(armor != null && armor.Enhance == Equipment.MaxEnhance
+                  && Equipment.WornAll(smith).Count == 6,
+                "재기동 후에도 6부위와 +15가 남는다");
+
+            int bagBeforeDelete = Equipment.Unequipped().Count;
+            GameState.Gain(Economy.LifeItem.CraftHide, Equipment.LeatherArmorHideCost);
+            Check(Equipment.TryCraftLeatherArmor(), "가방에 여분 흉갑");
+            Check(Equipment.Unequipped().Count == bagBeforeDelete + 1, "미장착 흉갑은 가방에 남는다");
+            for (int k = 0; k < 3; k++) LifeSystem.RegisterDeath(smith);
+            Check(smith.IsDeleted, "3회 사망으로 삭제");
+            Check(Equipment.WornAll(smith).Count == 0, "삭제 캐릭터 슬롯은 비어 있다");
+            Check(Equipment.Unequipped().Count == bagBeforeDelete + 1,
+                "장착 6부위만 사라지고 가방 장비는 남는다(§4·§11)");
+
+            bool tableHasStone = false, tableHasFang = false;
+            for (uint s = 1; s <= 200; s++)
+            {
+                var r = Rng.Stream(s, 0, SeedChannel.Drop);
+                foreach (var d in Economy.RollBattleDrops(Economy.DropSource.FieldDungeonBoss, 1, ref r))
+                {
+                    if (d == Economy.LifeItem.EnhanceStone) tableHasStone = true;
+                    if (d == Economy.LifeItem.CraftFang) tableHasFang = true;
+                }
+            }
+            Check(tableHasStone, "던전 보스 드랍 테이블에 강화석이 있다");
+            Check(tableHasFang, "던전 보스 드랍 테이블에 송곳니가 있다");
+
             if (_fail == 0) Debug.Log("[EquipmentSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EquipmentSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EquipmentSelfCheck] FAIL {_fail}건");

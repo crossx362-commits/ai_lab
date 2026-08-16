@@ -386,7 +386,7 @@ namespace AshesToStars
         /// </summary>
         static void DumpHugeSprites()
         {
-            var all = Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            var all = UnityEngine.Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
             int n = 0;
             foreach (var sr in all)
             {
@@ -412,12 +412,30 @@ namespace AshesToStars
                 smith.Job = "수호기사";
                 LifeSystem.PersistRoster();
             }
-            int need = Equipment.LeatherArmorHideCost * 2;
-            int have = GameState.Bag.GetCount(Economy.LifeItem.CraftHide);
-            if (have < need) GameState.Gain(Economy.LifeItem.CraftHide, need - have);
-            if (Equipment.All.Count == 0) Equipment.TryCraftLeatherArmor();
-            if (string.IsNullOrEmpty(smith.EquippedArmorId) && Equipment.Unequipped().Count > 0)
-                Equipment.TryEquip(smith, Equipment.Unequipped()[0].Id);
+            foreach (var rec in Equipment.Recipes)
+            {
+                if (Equipment.CountOfRecipe(rec.Id) > 0) continue;
+                int have = GameState.Bag.GetCount(rec.Material);
+                if (have < rec.Cost) GameState.Gain(rec.Material, rec.Cost - have);
+                Equipment.TryCraft(rec.Id);
+            }
+            var bag = Equipment.Unequipped();
+            for (int i = 0; i < bag.Count; i++)
+                Equipment.TryEquip(smith, bag[i].Id);
+            var target = Equipment.FirstEnhanceable(smith);
+            if (target != null && target.Enhance < 3)
+            {
+                string old = System.Environment.GetEnvironmentVariable("QA_ENHANCE_OK");
+                System.Environment.SetEnvironmentVariable("QA_ENHANCE_OK", "1");
+                while (target.Enhance < 3)
+                {
+                    GameState.Gain(Economy.LifeItem.EnhanceStone, Equipment.StoneCost(target.Enhance));
+                    if (!Equipment.TryEnhance(target.Id, out _)) break;
+                }
+                System.Environment.SetEnvironmentVariable("QA_ENHANCE_OK", old);
+            }
+            int stones = GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone);
+            if (stones < 8) GameState.Gain(Economy.LifeItem.EnhanceStone, 8 - stones);
         }
 
         void Shot(string name)

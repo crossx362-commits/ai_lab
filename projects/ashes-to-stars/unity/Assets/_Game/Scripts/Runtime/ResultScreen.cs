@@ -86,7 +86,13 @@ namespace AshesToStars
                 Economy.LifeItem.RebornStone => "환생석 — 삭제된 캐릭터 복구 (§4)",
                 Economy.LifeItem.AdvancementMaterial => "전직 재료 — 1차 전직에 5개 필요 (§3)",
                 Economy.LifeItem.SpecialJobToken => "특수 직업 전직 증표 — 50층 이상 보상 (§3)",
-                Economy.LifeItem.CraftHide => "사냥 가죽 — 대장간 제작 재료 (§11)",
+                Economy.LifeItem.CraftHide => "사냥 가죽 — 대장간 갑옷 재료 (§11)",
+                Economy.LifeItem.CraftFang => "송곳니 — 대장간 무기 재료 (§11)",
+                Economy.LifeItem.CraftBone => "유골 — 대장간 투구 재료 (§11)",
+                Economy.LifeItem.CraftPart => "부품 — 대장간 장갑 재료 (§11)",
+                Economy.LifeItem.CraftCrystal => "원소결정 — 대장간 신발 재료 (§11)",
+                Economy.LifeItem.CraftDemonite => "마정석 — 대장간 장신구 재료 (§11)",
+                Economy.LifeItem.EnhanceStone => "강화석 — 장비 강화. 실패해도 파괴 없음 (§11)",
                 _ => "알 수 없는 아이템"
             };
         }

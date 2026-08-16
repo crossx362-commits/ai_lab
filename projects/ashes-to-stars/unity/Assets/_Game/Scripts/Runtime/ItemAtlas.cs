@@ -63,6 +63,12 @@ namespace AshesToStars
             Economy.LifeItem.RebornStone => "reborn_stone",
             Economy.LifeItem.SpecialJobToken => "special_job_token",
             Economy.LifeItem.CraftHide => "gloves",
+            Economy.LifeItem.CraftFang => "sword",
+            Economy.LifeItem.CraftBone => "helmet",
+            Economy.LifeItem.CraftPart => "shield",
+            Economy.LifeItem.CraftCrystal => "staff",
+            Economy.LifeItem.CraftDemonite => "amulet",
+            Economy.LifeItem.EnhanceStone => "gold",
             _ => item.ToString() == "AdvancementMaterial" ? "advancement_material" : null,
         };
     }

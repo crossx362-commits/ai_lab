@@ -6,10 +6,10 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 장비 6부위(§11). 첫 슬라이스는 갑옷 1종만 만든다.
+    /// 장비 6부위 + 강화 +15(§11). 실패해도 장비는 파괴되지 않는다.
     ///
-    /// 왜 지금인가: 오너가 §16 영지 3건물을 골랐고, 대장간은 수직 슬라이스의
-    /// 장비·제작이라 OUT이 아니다. 화면만 열고 전투가 안 읽으면 또 거짓말이다.
+    /// 전투 소비처는 기존 <see cref="HpMulOf"/> 한 줄이다. W3Party는 이 슬라이스에서
+    /// 건드리지 않는다 — 출전 계약이 곱한 체력 배율만 읽는다.
     /// </summary>
     public enum EquipSlot { Weapon, Helm, Armor, Gloves, Boots, Accessory }
 
@@ -21,6 +21,17 @@ namespace AshesToStars
         public string RecipeId;
         public string Name;
         public float HpMul = 1f;
+        public int Enhance;
+    }
+
+    public sealed class CraftRecipe
+    {
+        public string Id;
+        public string Name;
+        public EquipSlot Slot;
+        public Economy.LifeItem Material;
+        public int Cost;
+        public float BaseHpMul;
     }
 
     public static class Equipment
@@ -29,6 +40,27 @@ namespace AshesToStars
         public const string LeatherArmorName = "가죽 흉갑";
         public const int LeatherArmorHideCost = 5;
         public const float LeatherArmorHpMul = 1.15f;
+        public const int MaxEnhance = 15;
+        public const float EnhanceHpPerLevel = 0.02f;
+        public const int EnhanceFailStep = 5;
+        public const int DwarfSuccessBonus = 10;
+        public const int SlotCount = 6;
+
+        public static readonly CraftRecipe[] Recipes =
+        {
+            new CraftRecipe { Id = "fang_sword", Name = "송곳니 검", Slot = EquipSlot.Weapon,
+                Material = Economy.LifeItem.CraftFang, Cost = 5, BaseHpMul = 1.05f },
+            new CraftRecipe { Id = "bone_helm", Name = "유골 투구", Slot = EquipSlot.Helm,
+                Material = Economy.LifeItem.CraftBone, Cost = 5, BaseHpMul = 1.04f },
+            new CraftRecipe { Id = LeatherArmorRecipe, Name = LeatherArmorName, Slot = EquipSlot.Armor,
+                Material = Economy.LifeItem.CraftHide, Cost = LeatherArmorHideCost, BaseHpMul = LeatherArmorHpMul },
+            new CraftRecipe { Id = "part_gloves", Name = "부품 장갑", Slot = EquipSlot.Gloves,
+                Material = Economy.LifeItem.CraftPart, Cost = 5, BaseHpMul = 1.03f },
+            new CraftRecipe { Id = "crystal_boots", Name = "원소 신발", Slot = EquipSlot.Boots,
+                Material = Economy.LifeItem.CraftCrystal, Cost = 5, BaseHpMul = 1.03f },
+            new CraftRecipe { Id = "demon_charm", Name = "마정 장신구", Slot = EquipSlot.Accessory,
+                Material = Economy.LifeItem.CraftDemonite, Cost = 5, BaseHpMul = 1.04f },
+        };
 
         const string K_GEAR = "ats.gear";
 
@@ -36,6 +68,24 @@ namespace AshesToStars
         static bool _loaded;
 
         public static IReadOnlyList<GearItem> All { get { Load(); return _items; } }
+
+        public static string SlotName(EquipSlot slot) => slot switch
+        {
+            EquipSlot.Weapon => "무기",
+            EquipSlot.Helm => "투구",
+            EquipSlot.Armor => "갑옷",
+            EquipSlot.Gloves => "장갑",
+            EquipSlot.Boots => "신발",
+            EquipSlot.Accessory => "장신구",
+            _ => slot.ToString(),
+        };
+
+        public static CraftRecipe RecipeOf(string id)
+        {
+            for (int i = 0; i < Recipes.Length; i++)
+                if (Recipes[i].Id == id) return Recipes[i];
+            return null;
+        }
 
         static void Load()
         {
@@ -57,6 +107,7 @@ namespace AshesToStars
                     Name = p[3],
                     HpMul = float.TryParse(p[4], System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out float hp) ? hp : 1f,
+                    Enhance = p.Length > 5 && int.TryParse(p[5], out int en) ? Mathf.Clamp(en, 0, MaxEnhance) : 0,
                 };
                 _items.Add(item);
             }
@@ -75,7 +126,7 @@ namespace AshesToStars
                 var g = _items[i];
                 sb.Append(g.Id).Append('\t').Append(g.Slot).Append('\t').Append(g.RecipeId)
                   .Append('\t').Append(g.Name).Append('\t')
-                  .Append(g.HpMul.ToString(inv)).Append('\n');
+                  .Append(g.HpMul.ToString(inv)).Append('\t').Append(g.Enhance).Append('\n');
             }
             PlayerPrefs.SetString(K_GEAR, sb.ToString());
             PlayerPrefs.Save();
@@ -103,45 +154,144 @@ namespace AshesToStars
             return null;
         }
 
+        public static float EffectiveHpMul(GearItem gear)
+        {
+            if (gear == null || gear.HpMul <= 0f) return 1f;
+            return gear.HpMul * (1f + Mathf.Clamp(gear.Enhance, 0, MaxEnhance) * EnhanceHpPerLevel);
+        }
+
+        public static int StoneCost(int enhance) => 1 + Mathf.Clamp(enhance, 0, MaxEnhance - 1);
+
+        public static int SuccessPercent(int enhance, RaceId? race = null)
+        {
+            int pct = 100 - Mathf.Clamp(enhance, 0, MaxEnhance) * EnhanceFailStep;
+            if ((race ?? RacePrefs.Get()) == RaceId.드워프) pct += DwarfSuccessBonus;
+            return Mathf.Clamp(pct, 5, 100);
+        }
+
+        static bool WornByAnyone(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return false;
+            var roster = LifeSystem.GetCharacters();
+            for (int i = 0; i < roster.Count; i++)
+                if (roster[i].Wears(id)) return true;
+            return false;
+        }
+
         public static List<GearItem> Unequipped()
         {
             Load();
-            var roster = LifeSystem.GetCharacters();
-            var worn = new HashSet<string>();
-            for (int i = 0; i < roster.Count; i++)
-            {
-                string id = roster[i].EquippedArmorId;
-                if (!string.IsNullOrEmpty(id)) worn.Add(id);
-            }
             var list = new List<GearItem>();
             for (int i = 0; i < _items.Count; i++)
-                if (!worn.Contains(_items[i].Id)) list.Add(_items[i]);
+                if (!WornByAnyone(_items[i].Id)) list.Add(_items[i]);
+            return list;
+        }
+
+        public static GearItem Worn(CharacterRecord character, EquipSlot slot)
+        {
+            if (character == null) return null;
+            return Find(character.GetEquipped(slot));
+        }
+
+        public static List<GearItem> WornAll(CharacterRecord character)
+        {
+            var list = new List<GearItem>();
+            if (character == null) return list;
+            for (int i = 0; i < SlotCount; i++)
+            {
+                var g = Worn(character, (EquipSlot)i);
+                if (g != null) list.Add(g);
+            }
             return list;
         }
 
         public static float HpMulOf(CharacterRecord character)
         {
             if (character == null) return 1f;
-            var gear = Find(character.EquippedArmorId);
-            return gear == null || gear.HpMul <= 0f ? 1f : gear.HpMul;
+            float mul = 1f;
+            var worn = WornAll(character);
+            for (int i = 0; i < worn.Count; i++)
+                mul *= EffectiveHpMul(worn[i]);
+            return mul;
         }
 
-        public static bool TryCraftLeatherArmor()
+        public static GearItem FirstEnhanceable(CharacterRecord prefer = null)
+        {
+            if (prefer != null)
+            {
+                var mine = WornAll(prefer);
+                for (int i = 0; i < mine.Count; i++)
+                    if (mine[i].Enhance < MaxEnhance) return mine[i];
+                return null;
+            }
+            var roster = LifeSystem.GetCharacters();
+            for (int i = 0; i < roster.Count; i++)
+            {
+                if (roster[i].IsDeleted) continue;
+                var found = FirstEnhanceable(roster[i]);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        public static int CountOfRecipe(string recipeId)
+        {
+            Load();
+            int n = 0;
+            for (int i = 0; i < _items.Count; i++)
+                if (_items[i].RecipeId == recipeId) n++;
+            return n;
+        }
+
+        public static bool TryCraftLeatherArmor() => TryCraft(LeatherArmorRecipe);
+
+        public static bool TryCraft(string recipeId)
         {
             Load();
             if (!SmithUnlocked()) return false;
-            if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) < LeatherArmorHideCost) return false;
-            if (!GameState.Consume(Economy.LifeItem.CraftHide, LeatherArmorHideCost)) return false;
+            var recipe = RecipeOf(recipeId);
+            if (recipe == null) return false;
+            if (GameState.Bag.GetCount(recipe.Material) < recipe.Cost) return false;
+            if (!GameState.Consume(recipe.Material, recipe.Cost)) return false;
 
             _items.Add(new GearItem
             {
                 Id = Guid.NewGuid().ToString("N"),
-                Slot = EquipSlot.Armor,
-                RecipeId = LeatherArmorRecipe,
-                Name = LeatherArmorName,
-                HpMul = LeatherArmorHpMul,
+                Slot = recipe.Slot,
+                RecipeId = recipe.Id,
+                Name = recipe.Name,
+                HpMul = recipe.BaseHpMul,
+                Enhance = 0,
             });
             Save();
+            return true;
+        }
+
+        /// <summary>
+        /// 강화 시도. false = 시도 자체가 거부(석 부족·상한). true = 석을 썼다.
+        /// 실패해도 장비는 남는다(§11). 파괴 분기는 없다.
+        /// </summary>
+        public static bool TryEnhance(string gearId, out bool success)
+        {
+            success = false;
+            Load();
+            var gear = Find(gearId);
+            if (gear == null || gear.Enhance >= MaxEnhance) return false;
+            int cost = StoneCost(gear.Enhance);
+            if (GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone) < cost) return false;
+            if (!GameState.Consume(Economy.LifeItem.EnhanceStone, cost)) return false;
+
+            string fail = Environment.GetEnvironmentVariable("QA_ENHANCE_FAIL");
+            string ok = Environment.GetEnvironmentVariable("QA_ENHANCE_OK");
+            if (fail == "1") success = false;
+            else if (ok == "1") success = true;
+            else success = UnityEngine.Random.Range(0, 100) < SuccessPercent(gear.Enhance);
+
+            if (success)
+            {
+                gear.Enhance++;
+                Save();
+            }
             return true;
         }
 
@@ -150,23 +300,36 @@ namespace AshesToStars
             Load();
             if (character == null || character.IsDeleted) return false;
             var gear = Find(gearId);
-            if (gear == null || gear.Slot != EquipSlot.Armor) return false;
+            if (gear == null) return false;
 
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)
             {
-                if (roster[i].EquippedArmorId == gearId)
-                    roster[i].EquippedArmorId = null;
+                if (roster[i].Wears(gearId))
+                    roster[i].SetEquipped(gear.Slot, null);
+                if (roster[i] == character)
+                    roster[i].SetEquipped(gear.Slot, null);
             }
-            character.EquippedArmorId = gearId;
+            character.SetEquipped(gear.Slot, gearId);
             LifeSystem.PersistRoster();
             return true;
         }
 
         public static bool TryUnequip(CharacterRecord character)
         {
-            if (character == null || string.IsNullOrEmpty(character.EquippedArmorId)) return false;
-            character.EquippedArmorId = null;
+            if (character == null) return false;
+            if (!string.IsNullOrEmpty(character.EquippedArmorId))
+                return TryUnequip(character, EquipSlot.Armor);
+            for (int i = 0; i < SlotCount; i++)
+                if (!string.IsNullOrEmpty(character.GetEquipped((EquipSlot)i)))
+                    return TryUnequip(character, (EquipSlot)i);
+            return false;
+        }
+
+        public static bool TryUnequip(CharacterRecord character, EquipSlot slot)
+        {
+            if (character == null || string.IsNullOrEmpty(character.GetEquipped(slot))) return false;
+            character.SetEquipped(slot, null);
             LifeSystem.PersistRoster();
             return true;
         }
@@ -175,11 +338,25 @@ namespace AshesToStars
         public static void DestroyEquippedOn(CharacterRecord character)
         {
             Load();
-            if (character == null || string.IsNullOrEmpty(character.EquippedArmorId)) return;
-            string id = character.EquippedArmorId;
-            character.EquippedArmorId = null;
-            _items.RemoveAll(g => g.Id == id);
+            if (character == null) return;
+            var ids = new HashSet<string>();
+            for (int i = 0; i < SlotCount; i++)
+            {
+                string id = character.GetEquipped((EquipSlot)i);
+                if (!string.IsNullOrEmpty(id)) ids.Add(id);
+            }
+            character.ClearEquipped();
+            if (ids.Count == 0) return;
+            _items.RemoveAll(g => ids.Contains(g.Id));
             Save();
+        }
+
+        public static string MaterialSummary()
+        {
+            return $"{GameState.Label(Economy.LifeItem.CraftHide)} {GameState.Bag.GetCount(Economy.LifeItem.CraftHide)} · " +
+                   $"{GameState.Label(Economy.LifeItem.CraftFang)} {GameState.Bag.GetCount(Economy.LifeItem.CraftFang)} · " +
+                   $"{GameState.Label(Economy.LifeItem.CraftBone)} {GameState.Bag.GetCount(Economy.LifeItem.CraftBone)} · " +
+                   $"{GameState.Label(Economy.LifeItem.EnhanceStone)} {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}";
         }
 
         public static void ForgetInMemoryForTest()

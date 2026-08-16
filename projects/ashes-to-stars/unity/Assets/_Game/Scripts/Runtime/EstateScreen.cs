@@ -175,32 +175,62 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 대장간 — 사냥 가죽 5장으로 가죽 흉갑을 만들고 입힌다(§11).
-        /// 강화 +15·나머지 5부위·계열 재료는 다음 슬라이스. 해금은 1차 전직 시점(§13-2).
+        /// 대장간 — 계열 재료로 6부위를 만들고, 강화석으로 +15까지 올린다(§11).
+        /// 실패해도 장비는 남는다. 해금은 1차 전직 시점(§13-2).
         /// </summary>
         void Smith(Rect r)
         {
-            int hides = GameState.Bag.GetCount(Economy.LifeItem.CraftHide);
             int row = 0;
-            Info(r, row++, $"사냥 가죽 {hides}장 · 가죽 흉갑은 체력 ×{Equipment.LeatherArmorHpMul:0.00} (§11)");
+            Info(r, row++, Equipment.MaterialSummary() +
+                $" · 부품 {GameState.Bag.GetCount(Economy.LifeItem.CraftPart)}" +
+                $" · 원소 {GameState.Bag.GetCount(Economy.LifeItem.CraftCrystal)}" +
+                $" · 마정 {GameState.Bag.GetCount(Economy.LifeItem.CraftDemonite)}");
 
             if (!Equipment.SmithUnlocked())
             {
-                Locked(r, row++, "가죽 흉갑 제작",
+                Locked(r, row++, "제작·강화",
                     "1차 전직을 한 캐릭터가 있어야 대장간이 열린다(§13-2)");
             }
-            else if (hides < Equipment.LeatherArmorHideCost)
+            else
             {
-                Locked(r, row++, "가죽 흉갑 제작",
-                    $"가죽 {Equipment.LeatherArmorHideCost}장 필요 — 현재 {hides}장(필드 사냥)");
-            }
-            else if (Row(r, row++, "가죽 흉갑 제작",
-                         $"가죽 {Equipment.LeatherArmorHideCost}장 소비 · 갑옷 1개",
-                         "building_smith"))
-            {
-                _msg = Equipment.TryCraftLeatherArmor()
-                    ? "가죽 흉갑을 만들었다 — 아래에서 입힌다"
-                    : "제작에 실패했다 — 가죽 수와 전직 해금을 확인할 것";
+                var target = Equipment.FirstEnhanceable();
+                if (target != null)
+                {
+                    int cost = Equipment.StoneCost(target.Enhance);
+                    int stones = GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone);
+                    int pct = Equipment.SuccessPercent(target.Enhance);
+                    string label = $"{target.Name} +{target.Enhance} 강화";
+                    string desc = $"석 {cost}개 · 성공 {pct}% · 실패해도 파괴 없음(§11)";
+                    if (target.Enhance >= Equipment.MaxEnhance)
+                        Locked(r, row++, label, "+15가 상한이다");
+                    else if (stones < cost)
+                        Locked(r, row++, label, $"강화석 {cost}개 필요 — 현재 {stones}개(던전)");
+                    else if (Row(r, row++, label, desc, "building_smith"))
+                    {
+                        bool attempted = Equipment.TryEnhance(target.Id, out bool ok);
+                        _msg = !attempted
+                            ? "강화할 수 없다 — 석 수와 상한을 확인할 것"
+                            : ok
+                                ? $"{target.Name} 강화 성공 +{target.Enhance}"
+                                : $"{target.Name} 강화 실패 — 장비는 남았다";
+                    }
+                }
+
+                for (int i = 0; i < Equipment.Recipes.Length; i++)
+                {
+                    var rec = Equipment.Recipes[i];
+                    if (Equipment.CountOfRecipe(rec.Id) > 0) continue;
+                    int have = GameState.Bag.GetCount(rec.Material);
+                    string need = $"{GameState.Label(rec.Material)} {rec.Cost}장 · {Equipment.SlotName(rec.Slot)}";
+                    if (have < rec.Cost)
+                        Locked(r, row++, $"{rec.Name} 제작", $"{need} — 현재 {have}");
+                    else if (Row(r, row++, $"{rec.Name} 제작", need))
+                    {
+                        _msg = Equipment.TryCraft(rec.Id)
+                            ? $"{rec.Name}을(를) 만들었다 — 아래에서 입힌다"
+                            : "제작에 실패했다 — 재료와 전직 해금을 확인할 것";
+                    }
+                }
             }
 
             var roster = LifeSystem.GetCharacters();
@@ -208,13 +238,16 @@ namespace AshesToStars
             {
                 var ch = roster[i];
                 if (ch.IsDeleted) continue;
-                var worn = Equipment.Find(ch.EquippedArmorId);
-                if (worn != null)
+                var worn = Equipment.WornAll(ch);
+                if (worn.Count > 0)
                 {
-                    if (Row(r, row++, $"{ch.Name} · {worn.Name} 착용 중", "벗긴다"))
+                    string names = worn[0].Name + (worn[0].Enhance > 0 ? $"+{worn[0].Enhance}" : "");
+                    if (worn.Count > 1) names += $" 외 {worn.Count - 1}";
+                    if (Row(r, row++, $"{ch.Name} · {names}",
+                            $"체력 ×{Equipment.HpMulOf(ch):0.00} — 눌러 벗긴다"))
                     {
                         Equipment.TryUnequip(ch);
-                        _msg = $"{ch.Name}의 갑옷을 벗겼다";
+                        _msg = $"{ch.Name}의 장비를 벗겼다";
                     }
                     continue;
                 }
@@ -222,11 +255,11 @@ namespace AshesToStars
                 var bag = Equipment.Unequipped();
                 if (bag.Count == 0)
                 {
-                    Info(r, row++, $"{ch.Name} · 미착용 — 만들 갑옷이 없다");
+                    Info(r, row++, $"{ch.Name} · 미착용 — 만들 장비가 없다");
                     continue;
                 }
                 if (Row(r, row++, $"{ch.Name}에게 {bag[0].Name} 입히기",
-                        $"체력 ×{bag[0].HpMul:0.00}"))
+                        $"체력 ×{Equipment.EffectiveHpMul(bag[0]):0.00}"))
                 {
                     _msg = Equipment.TryEquip(ch, bag[0].Id)
                         ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"

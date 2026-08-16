@@ -130,8 +130,26 @@ namespace AshesToStars
             /// <summary>특수 직업 전직 증표 - 50층 이상 보스 드랍</summary>
             SpecialJobToken = 3,
 
-            /// <summary>사냥 가죽 — 대장간 제작 재료(§11). 별도 채집 없음.</summary>
-            CraftHide = 5
+            /// <summary>사냥 가죽 — 야수 계열 제작 재료(§11). 별도 채집 없음.</summary>
+            CraftHide = 5,
+
+            /// <summary>송곳니 — 야수 계열. 무기 제작.</summary>
+            CraftFang = 6,
+
+            /// <summary>유골 — 언데드 계열. 투구 제작.</summary>
+            CraftBone = 7,
+
+            /// <summary>부품 — 기계 계열. 장갑 제작.</summary>
+            CraftPart = 8,
+
+            /// <summary>원소결정 — 정령 계열. 신발 제작.</summary>
+            CraftCrystal = 9,
+
+            /// <summary>마정석 — 마족 계열. 장신구 제작.</summary>
+            CraftDemonite = 10,
+
+            /// <summary>강화석 — 던전·레이드 드랍. 장비 강화(§11·§12).</summary>
+            EnhanceStone = 11
         }
 
         /// <summary>
@@ -167,6 +185,24 @@ namespace AshesToStars
             { (DropSource.Tower5Boss, LifeItem.CraftHide), 0.50f },
             { (DropSource.Tower10Boss, LifeItem.CraftHide), 0.80f },
             { (DropSource.RaidDungeon, LifeItem.CraftHide), 1.00f },
+
+            // 계열 재료(§11 💡) — 사냥 드랍만. 확정 드랍률이 없어 가죽과 같은 프로토타입 값.
+            { (DropSource.FieldDungeonBoss, LifeItem.CraftFang), 0.35f },
+            { (DropSource.RaidDungeon, LifeItem.CraftFang), 0.80f },
+            { (DropSource.FieldDungeonBoss, LifeItem.CraftBone), 0.35f },
+            { (DropSource.RaidDungeon, LifeItem.CraftBone), 0.80f },
+            { (DropSource.FieldDungeonBoss, LifeItem.CraftPart), 0.35f },
+            { (DropSource.RaidDungeon, LifeItem.CraftPart), 0.80f },
+            { (DropSource.FieldDungeonBoss, LifeItem.CraftCrystal), 0.35f },
+            { (DropSource.RaidDungeon, LifeItem.CraftCrystal), 0.80f },
+            { (DropSource.FieldDungeonBoss, LifeItem.CraftDemonite), 0.35f },
+            { (DropSource.RaidDungeon, LifeItem.CraftDemonite), 0.80f },
+
+            // 강화석(§10-8 정예·던전, §12 강화). 희귀 고유템이 아니라 개체별 판정.
+            { (DropSource.FieldDungeonBoss, LifeItem.EnhanceStone), 0.40f },
+            { (DropSource.Tower5Boss, LifeItem.EnhanceStone), 0.50f },
+            { (DropSource.Tower10Boss, LifeItem.EnhanceStone), 0.70f },
+            { (DropSource.RaidDungeon, LifeItem.EnhanceStone), 1.00f },
         };
 
         /// <summary>희귀 고유템 — ⚠️ §10-8 "전투당 1회만 판정".</summary>
@@ -221,7 +257,13 @@ namespace AshesToStars
             { LifeItem.RebornStone, int.MaxValue },     // 환생석 무제한 (§18-4)
             { LifeItem.AdvancementMaterial, int.MaxValue }, // 전직 요구량 누적 파밍
             { LifeItem.SpecialJobToken, int.MaxValue },  // 특수 직업 증표 무제한 (§18-4)
-            { LifeItem.CraftHide, int.MaxValue }           // 제작 재료 — 상한 없음
+            { LifeItem.CraftHide, int.MaxValue },
+            { LifeItem.CraftFang, int.MaxValue },
+            { LifeItem.CraftBone, int.MaxValue },
+            { LifeItem.CraftPart, int.MaxValue },
+            { LifeItem.CraftCrystal, int.MaxValue },
+            { LifeItem.CraftDemonite, int.MaxValue },
+            { LifeItem.EnhanceStone, int.MaxValue },
         };
 
         /// <summary>
@@ -229,15 +271,15 @@ namespace AshesToStars
         /// </summary>
         public class LifeItemInventory
         {
-            private Dictionary<LifeItem, int> items = new Dictionary<LifeItem, int>()
+            private readonly Dictionary<LifeItem, int> items = NewBag();
+
+            static Dictionary<LifeItem, int> NewBag()
             {
-                { LifeItem.RevivalTea, 0 },
-                { LifeItem.ScrollOfReturn, 0 },
-                { LifeItem.RebornStone, 0 },
-                { LifeItem.AdvancementMaterial, 0 },
-                { LifeItem.SpecialJobToken, 0 },
-                { LifeItem.CraftHide, 0 }
-            };
+                var bag = new Dictionary<LifeItem, int>();
+                foreach (LifeItem it in System.Enum.GetValues(typeof(LifeItem)))
+                    bag[it] = 0;
+                return bag;
+            }
 
             /// <summary>
             /// 특정 아이템의 보유 개수를 반환한다.
