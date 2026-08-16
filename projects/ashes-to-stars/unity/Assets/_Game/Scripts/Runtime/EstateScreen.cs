@@ -49,7 +49,15 @@ namespace AshesToStars
         {
             if (!string.IsNullOrEmpty(AutoOpen))
             {
-                if (System.Enum.TryParse(AutoOpen, out Sub want)) _sub = want;
+                if (System.Enum.TryParse(AutoOpen, out Sub want))
+                {
+                    _sub = want;
+                    if (want == Sub.대장간)
+                    {
+                        for (int i = 0; i < Equipment.Recipes.Length; i++)
+                            GameState.Gain(Equipment.Recipes[i].Material, 4);
+                    }
+                }
                 AutoOpen = null;                 // 한 번만 — 이후엔 사람이 조작한다
             }
 
@@ -116,7 +124,8 @@ namespace AshesToStars
                     string desc = stones > 0
                         ? "환생석 1개를 써서 되돌린다 — 사망 0에서 다시 시작한다"
                         : "환생석이 없다 — 10층 보스가 떨어뜨린다";
-                    if (Row(r, row++, $"{ch.Name} · {ch.Job} Lv{ch.Level}", desc))
+                    if (Row(r, row++, $"{ch.Name} · {ch.Job} Lv{ch.Level}", desc,
+                            ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
                     {
                         if (stones <= 0) _msg = "환생석이 없다. 10층 보스를 잡아야 한다(§4)";
                         else if (LifeSystem.UseRebornStone(ch))
@@ -181,15 +190,13 @@ namespace AshesToStars
         void Smith(Rect r)
         {
             int row = 0;
-            Info(r, row++, Equipment.MaterialSummary() +
-                $" · 부품 {GameState.Bag.GetCount(Economy.LifeItem.CraftPart)}" +
-                $" · 원소 {GameState.Bag.GetCount(Economy.LifeItem.CraftCrystal)}" +
-                $" · 마정 {GameState.Bag.GetCount(Economy.LifeItem.CraftDemonite)}");
+            DrawSmithMaterials(r, row++);
 
             if (!Equipment.SmithUnlocked())
             {
                 Locked(r, row++, "제작·강화",
-                    "1차 전직을 한 캐릭터가 있어야 대장간이 열린다(§13-2)");
+                    "1차 전직을 한 캐릭터가 있어야 대장간이 열린다(§13-2)",
+                    "building_smith");
             }
             else
             {
@@ -201,11 +208,12 @@ namespace AshesToStars
                     int pct = Equipment.SuccessPercent(target.Enhance);
                     string label = $"{target.Name} +{target.Enhance} 강화";
                     string desc = $"석 {cost}개 · 성공 {pct}% · 실패해도 파괴 없음(§11)";
+                    string enhanceIcon = ItemAtlas.KeyFor(Economy.LifeItem.EnhanceStone);
                     if (target.Enhance >= Equipment.MaxEnhance)
-                        Locked(r, row++, label, "+15가 상한이다");
+                        Locked(r, row++, label, "+15가 상한이다", enhanceIcon);
                     else if (stones < cost)
-                        Locked(r, row++, label, $"강화석 {cost}개 필요 — 현재 {stones}개(던전)");
-                    else if (Row(r, row++, label, desc, "building_smith"))
+                        Locked(r, row++, label, $"강화석 {cost}개 필요 — 현재 {stones}개(던전)", enhanceIcon);
+                    else if (Row(r, row++, label, desc, enhanceIcon))
                     {
                         bool attempted = Equipment.TryEnhance(target.Id, out bool ok);
                         _msg = !attempted
@@ -222,9 +230,10 @@ namespace AshesToStars
                     if (Equipment.CountOfRecipe(rec.Id) > 0) continue;
                     int have = GameState.Bag.GetCount(rec.Material);
                     string need = $"{GameState.Label(rec.Material)} {rec.Cost}장 · {Equipment.SlotName(rec.Slot)}";
+                    string craftIcon = ItemAtlas.KeyForSlot(rec.Slot);
                     if (have < rec.Cost)
-                        Locked(r, row++, $"{rec.Name} 제작", $"{need} — 현재 {have}");
-                    else if (Row(r, row++, $"{rec.Name} 제작", need))
+                        Locked(r, row++, $"{rec.Name} 제작", $"{need} — 현재 {have}", craftIcon);
+                    else if (Row(r, row++, $"{rec.Name} 제작", need, craftIcon))
                     {
                         _msg = Equipment.TryCraft(rec.Id)
                             ? $"{rec.Name}을(를) 만들었다 — 아래에서 입힌다"
@@ -244,7 +253,8 @@ namespace AshesToStars
                     string names = worn[0].Name + (worn[0].Enhance > 0 ? $"+{worn[0].Enhance}" : "");
                     if (worn.Count > 1) names += $" 외 {worn.Count - 1}";
                     if (Row(r, row++, $"{ch.Name} · {names}",
-                            $"체력 ×{Equipment.HpMulOf(ch):0.00} — 눌러 벗긴다"))
+                            $"체력 ×{Equipment.HpMulOf(ch):0.00} — 눌러 벗긴다",
+                            ItemAtlas.KeyForGear(worn[0])))
                     {
                         Equipment.TryUnequip(ch);
                         _msg = $"{ch.Name}의 장비를 벗겼다";
@@ -259,7 +269,8 @@ namespace AshesToStars
                     continue;
                 }
                 if (Row(r, row++, $"{ch.Name}에게 {bag[0].Name} 입히기",
-                        $"체력 ×{Equipment.EffectiveHpMul(bag[0]):0.00}"))
+                        $"체력 ×{Equipment.EffectiveHpMul(bag[0]):0.00}",
+                        ItemAtlas.KeyForGear(bag[0])))
                 {
                     _msg = Equipment.TryEquip(ch, bag[0].Id)
                         ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"
@@ -269,6 +280,25 @@ namespace AshesToStars
 
             if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
             if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+        }
+
+        /// <summary>재료를 글자 나열로만 쓰면 아이템 아틀라스가 대장간에 소비처 0곳이다.</summary>
+        void DrawSmithMaterials(Rect r, int index)
+        {
+            var panel = new Rect(r.x - 12, r.y + index * (RowH + RowGap), r.width + 24, RowH);
+            if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
+                UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
+
+            var items = ItemAtlas.SmithMaterials;
+            float cell = Mathf.Min(96f, (r.width - 8f) / items.Length);
+            for (int i = 0; i < items.Length; i++)
+            {
+                float x = r.x + 4f + i * cell;
+                ItemAtlas.Draw(new Rect(x, panel.y + 6f, 40f, 40f), ItemAtlas.KeyFor(items[i]));
+                GUI.Label(new Rect(x + 42f, panel.y + 16f, cell - 46f, 26f),
+                    GameState.Bag.GetCount(items[i]).ToString(),
+                    new GUIStyle(GUI.skin.label) { fontSize = 18, normal = { textColor = new Color(0.95f, 0.79f, 0.42f) } });
+            }
         }
     }
 }

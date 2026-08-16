@@ -234,8 +234,7 @@ namespace AshesToStars
             Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
             if (!UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
                 GUI.Box(r, GUIContent.none);
-            bool hasIcon = !string.IsNullOrEmpty(iconKey)
-                && UiAtlas.Draw(new Rect(r.x + 8, r.y + 7, 44, 44), iconKey, tint);
+            bool hasIcon = ItemAtlas.DrawHud(new Rect(r.x + 8, r.y + 7, 44, 44), iconKey, tint);
             float pad = hasIcon ? 56f : leftPad;
             if (!string.IsNullOrEmpty(label))
             {
@@ -298,13 +297,13 @@ namespace AshesToStars
         /// 되는 기능이라 믿고, 아무 반응이 없으면 게임이 고장났다고 읽는다.
         /// 만들 수 있으면 만들고, 못 만들면 **못 만들었다고 말하는 것**이 정직한 화면이다.
         /// </summary>
-        protected void Locked(Rect r, int index, string label, string why)
+        protected void Locked(Rect r, int index, string label, string why, string iconKey = null)
         {
             Styles();
             var br = RowButtonRect(r, index);
             if (br.yMax > r.yMax) return;
 
-            DrawAtlasButton(br, label, locked: true);       // 회색 기본 스킨이 아니라 아틀라스 버튼을 흐리게
+            DrawAtlasButton(br, label, locked: true, iconKey: iconKey);
             GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
                       // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
                       "잠김 — " + why, _small);

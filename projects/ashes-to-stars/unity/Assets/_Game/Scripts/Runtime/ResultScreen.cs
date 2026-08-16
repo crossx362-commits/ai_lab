@@ -103,7 +103,7 @@ namespace AshesToStars
             if (!string.IsNullOrEmpty(iconKey))
             {
                 const float h = 58f, gap = 14f;
-                ItemAtlas.Draw(new Rect(r.x + 4, r.y + index * (h + gap) + 5, 48, 48), iconKey);
+                ItemAtlas.DrawHud(new Rect(r.x + 4, r.y + index * (h + gap) + 5, 48, 48), iconKey);
             }
         }
     }

@@ -176,7 +176,8 @@ namespace AshesToStars
                     // 부활초 사용 버튼
                     if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
                     {
-                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/3)"))
+                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/3)",
+                                ItemAtlas.KeyFor(Economy.LifeItem.RevivalTea)))
                         {
                             LifeSystem.UseRevivePotion(ch);
                         }
@@ -189,32 +190,39 @@ namespace AshesToStars
                     int advancementRow = 4;
                     if (ch.IsDeleted)
                     {
-                        Locked(r, advancementRow++, "1차 전직", "삭제된 캐릭터는 전직할 수 없다(§3·§4)");
+                        Locked(r, advancementRow++, "1차 전직", "삭제된 캐릭터는 전직할 수 없다(§3·§4)",
+                            ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial));
                     }
                     else if (ch.Advancement == AdvancementTier.Basic && ch.Level < 20)
                     {
-                        Locked(r, advancementRow++, "1차 전직", $"Lv20 필요 — 현재 Lv.{ch.Level}(§3)");
+                        Locked(r, advancementRow++, "1차 전직", $"Lv20 필요 — 현재 Lv.{ch.Level}(§3)",
+                            ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial));
                     }
                     else if (ch.Advancement == AdvancementTier.Basic)
                     {
                         int materials = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
                         if (materials < LifeSystem.FirstAdvancementMaterialCost)
                             Locked(r, advancementRow++, "1차 전직 시험",
-                                $"전직 재료 {LifeSystem.FirstAdvancementMaterialCost}개 필요 — 현재 {materials}개(던전 파밍)");
-                        else if (Row(r, advancementRow++, "1차 전직 시험", "역할별 직업 선택 후 비살상 훈련"))
+                                $"전직 재료 {LifeSystem.FirstAdvancementMaterialCost}개 필요 — 현재 {materials}개(던전 파밍)",
+                                ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial));
+                        else if (Row(r, advancementRow++, "1차 전직 시험", "역할별 직업 선택 후 비살상 훈련",
+                                     ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial)))
                             _choosingAdvancement = true;
                     }
                     else if (ch.Advancement == AdvancementTier.First && ch.Level < 50)
                     {
-                        Locked(r, advancementRow++, "2차 각성", $"Lv50 필요 — 현재 Lv.{ch.Level}(§3)");
+                        Locked(r, advancementRow++, "2차 각성", $"Lv50 필요 — 현재 Lv.{ch.Level}(§3)",
+                            ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial));
                     }
                     else if (ch.Advancement == AdvancementTier.First)
                     {
                         int materials = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
                         if (materials < LifeSystem.SecondAdvancementMaterialCost)
                             Locked(r, advancementRow++, "2차 각성 시험",
-                                $"전직 재료 {LifeSystem.SecondAdvancementMaterialCost}개 필요 — 현재 {materials}개(던전 파밍)");
-                        else if (Row(r, advancementRow++, "2차 각성 시험", $"{ch.Job} 심화 · 초필살기 해금 준비"))
+                                $"전직 재료 {LifeSystem.SecondAdvancementMaterialCost}개 필요 — 현재 {materials}개(던전 파밍)",
+                                ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial));
+                        else if (Row(r, advancementRow++, "2차 각성 시험", $"{ch.Job} 심화 · 초필살기 해금 준비",
+                                     ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial)))
                         {
                             if (LifeSystem.TryBeginSecondAdvancementTrial(ch)) _choosingAdvancement = true;
                         }

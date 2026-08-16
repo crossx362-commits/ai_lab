@@ -42,18 +42,28 @@ namespace AshesToStars
         public static bool IsReady => Texture != null;
         public static Rect RectFor(string key) => Pieces.TryGetValue(key, out var rect) ? rect : Rect.zero;
 
-        public static bool Draw(Rect target, string key)
+        public static bool Draw(Rect target, string key, Color? tint = null)
         {
             var texture = Texture;
             var source = RectFor(key);
             if (texture == null || source.width <= 0 || source.height <= 0) return false;
 
+            var saved = GUI.color;
+            GUI.color = tint ?? Color.white;
             GUI.DrawTextureWithTexCoords(target, texture, new Rect(
                 source.x / Width,
                 (Height - source.y - source.height) / Height,
                 source.width / Width,
                 source.height / Height), true);
+            GUI.color = saved;
             return true;
+        }
+
+        /// <summary>허브 조각이 없으면 아이템 아틀라스를 본다. Row가 UiAtlas만 쓰면 검·물약이 글자가 된다.</summary>
+        public static bool DrawHud(Rect target, string key, Color? tint = null)
+        {
+            if (string.IsNullOrEmpty(key)) return false;
+            return UiAtlas.Draw(target, key, tint) || Draw(target, key, tint);
         }
 
         public static string KeyFor(Economy.LifeItem item) => item switch
@@ -62,6 +72,7 @@ namespace AshesToStars
             Economy.LifeItem.ScrollOfReturn => "scroll_of_return",
             Economy.LifeItem.RebornStone => "reborn_stone",
             Economy.LifeItem.SpecialJobToken => "special_job_token",
+            Economy.LifeItem.AdvancementMaterial => "advancement_material",
             Economy.LifeItem.CraftHide => "gloves",
             Economy.LifeItem.CraftFang => "sword",
             Economy.LifeItem.CraftBone => "helmet",
@@ -69,7 +80,33 @@ namespace AshesToStars
             Economy.LifeItem.CraftCrystal => "staff",
             Economy.LifeItem.CraftDemonite => "amulet",
             Economy.LifeItem.EnhanceStone => "gold",
-            _ => item.ToString() == "AdvancementMaterial" ? "advancement_material" : null,
+            _ => null,
+        };
+
+        /// <summary>제작 결과는 재료가 아니라 부위 실루엣으로 읽힌다.</summary>
+        public static string KeyForSlot(EquipSlot slot) => slot switch
+        {
+            EquipSlot.Weapon => "sword",
+            EquipSlot.Helm => "helmet",
+            EquipSlot.Armor => "armor",
+            EquipSlot.Gloves => "gloves",
+            EquipSlot.Boots => "boots",
+            EquipSlot.Accessory => "amulet",
+            _ => null,
+        };
+
+        public static string KeyForGear(GearItem gear) =>
+            gear == null ? null : KeyForSlot(gear.Slot);
+
+        public static readonly Economy.LifeItem[] SmithMaterials =
+        {
+            Economy.LifeItem.CraftHide,
+            Economy.LifeItem.CraftFang,
+            Economy.LifeItem.CraftBone,
+            Economy.LifeItem.CraftPart,
+            Economy.LifeItem.CraftCrystal,
+            Economy.LifeItem.CraftDemonite,
+            Economy.LifeItem.EnhanceStone,
         };
     }
 }
