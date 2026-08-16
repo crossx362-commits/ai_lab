@@ -452,6 +452,9 @@ namespace AshesToStars
             GameState.ResetAll();
             LifeSystem.ResetAll();
             PartyState.ResetForTest();
+            // V4는 5층 동의 뒤의 살상 경로다. 동의 전 ApplyPveDefeat는 HP 1 귀환이다(§온보딩).
+            Check(DeathTraining.Consent(), "V4 검사는 영구 사망에 동의한 뒤");
+            Check(!DeathTraining.IsTraining, "동의 뒤엔 훈련이 아니다");
             var wipeRoster = LifeSystem.GetCharacters();
             Check(wipeRoster.Count == 5 && LifeSystem.LivingCount() == 5,
                   $"V4 베이스라인 로스터 5·생존 5 (실제 {wipeRoster.Count}/{LifeSystem.LivingCount()})");

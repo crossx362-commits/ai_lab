@@ -16,13 +16,22 @@ namespace AshesToStars
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Tower);
         protected override string BackgroundArt => "bg_tower";
         protected override bool ShowBossHpPreview => UiAtlas.QaShowBossHp;
-        protected override string Subtitle => TowerEnding.HasTitle
-            ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
-            : SoloRaidClear.HasAny
-                ? $"{SoloRaidClear.LastTitle} · 홀로 깬 레이드 {SoloRaidClear.Count} · 해금 T{GameState.UnlockedTier + 1}"
-                : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
+        protected override string Subtitle
+        {
+            get
+            {
+                string train = DeathTraining.Line();
+                string rest = TowerEnding.HasTitle
+                    ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
+                    : SoloRaidClear.HasAny
+                        ? $"{SoloRaidClear.LastTitle} · 홀로 깬 레이드 {SoloRaidClear.Count} · 해금 T{GameState.UnlockedTier + 1}"
+                        : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
+                return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
+            }
+        }
 
         bool _showLastLifeWarning = false;
+        bool _showDeathConsent = false;
         // 필드 화면과 같은 규칙 — 값을 세우는 코드만 있고 이 필드·표시 화면이 없어서
         // 컴파일이 깨져 있었다. 선언만 넣으면 골드 부족이 조용히 무시되므로 화면까지 맞춘다.
         bool _showInsufficientGold = false;
@@ -33,12 +42,47 @@ namespace AshesToStars
         //          (레이드를 고르고 경고에 "계속"을 눌렀는데 보스가 안 나오는 경로였다)
         long _pendingCost = 0;
         GameFlow.BattleKind _pendingKind = GameFlow.BattleKind.잡몹웨이브;
-        int _pendingFloor = 1;
+        int _pendingFloor = 0;
 
         protected override void Body(Rect r)
         {
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
+            DeathTraining.SeedQaIfRequested();
+            if (DeathTraining.QaPromptConsent)
+            {
+                _showDeathConsent = true;
+                DeathTraining.AckQaPrompt();
+            }
+            if (_showDeathConsent)
+            {
+                Info(r, 0, "[주의] " + DeathTraining.ConsentTitle());
+                Info(r, 1, DeathTraining.ConsentBody());
+                if (DrawChoice(r, "동의하고 입장", "이제부터 목숨이 깎인다(§4)", "tower",
+                               "아직 훈련", "5층 전에 돌아간다", "territory", out bool decline))
+                {
+                    DeathTraining.Consent();
+                    _showDeathConsent = false;
+                    if (_pendingFloor <= 0)
+                        return;
+                    if (_pendingCost > 0 && !GameState.Pay(_pendingCost))
+                    {
+                        _showInsufficientGold = true;
+                        return;
+                    }
+                    int f = _pendingFloor;
+                    var k = _pendingKind;
+                    _pendingCost = 0;
+                    _pendingFloor = 0;
+                    GameFlow.GoBattle(GameFlow.Tower, k, f);
+                }
+                else if (decline)
+                {
+                    _showDeathConsent = false;
+                    _pendingCost = 0;
+                }
+                return;
+            }
             if (_showInsufficientGold)
             {
                 Info(r, 0, "[주의] 골드가 부족합니다");
@@ -108,7 +152,10 @@ namespace AshesToStars
             if (DrawCard(cards[0], "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)", "tower"))
                 Enter(Economy.GetActionCost("TowerNormalFloor", GameState.UnlockedTier),
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
-            if (DrawCard(cards[1], "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)", "damage"))
+            if (DrawCard(cards[1], "레이드 (5층 단위)",
+                    DeathTraining.IsTraining
+                        ? DeathTraining.Line()
+                        : "5층마다 보스, 10층 단위는 대보스(§9)", "damage"))
             {
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
                 Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
@@ -135,6 +182,14 @@ namespace AshesToStars
                 _pendingKind = kind;
                 _pendingFloor = floor;
                 _showInsufficientGold = true;
+                return;
+            }
+            if (DeathTraining.NeedsConsent(floor))
+            {
+                _pendingCost = cost;
+                _pendingKind = kind;
+                _pendingFloor = floor;
+                _showDeathConsent = true;
                 return;
             }
             if (HasLastLifeCharacter())

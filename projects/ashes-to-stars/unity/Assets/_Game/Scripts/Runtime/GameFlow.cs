@@ -132,9 +132,16 @@ namespace AshesToStars
         /// 보스/전멸 패배가 목숨을 깎는 생산 경계(§4·§22 V4).
         /// BattleScreen OnBattleEnd·OnPartyWiped와 SelfCheck가 같은 함수를 쓴다.
         /// 출전 슬롯만 사망하고, 생존 0명이면 긴급 재건 1명을 붙인 뒤 편성을 다시 솎는다.
+        /// 5층 전 훈련이면 ApplyWipe를 안 타고 HP 1 귀환만 남긴다(§온보딩).
         /// </summary>
         public static PveDefeatReport ApplyPveDefeat(bool isPvp = false)
         {
+            if (!isPvp && DeathTraining.IsTraining)
+            {
+                var training = DeathTraining.ApplyReturn(PartyState.SortieRecords());
+                LastDefeatReport = training;
+                return training;
+            }
             var report = LifeSystem.ApplyWipe(PartyState.SortieRecords(), isPvp);
             PartyState.Refresh();
             LastDefeatReport = report;
@@ -192,6 +199,13 @@ namespace AshesToStars
         {
             if (report == null) return head;
             var sb = new System.Text.StringBuilder(head ?? "");
+            if (report.TrainingReturn)
+            {
+                sb.Append("\n").Append(DeathTraining.ReturnLine());
+                if (report.ReturnedNames.Count > 0)
+                    sb.Append("\n[귀환] ").Append(string.Join(", ", report.ReturnedNames));
+                return sb.ToString();
+            }
             if (report.FallenNames.Count > 0)
                 sb.Append("\n[사망] ").Append(string.Join(", ", report.FallenNames));
             if (report.RecoveredNames.Count > 0)

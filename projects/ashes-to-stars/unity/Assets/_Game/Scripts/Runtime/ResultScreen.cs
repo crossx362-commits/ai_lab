@@ -26,6 +26,7 @@ namespace AshesToStars
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
+            DeathTraining.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
@@ -110,6 +111,8 @@ namespace AshesToStars
             // 전투 결과 요약 (§2 코어 루프). 영구 손실은 골드보다 먼저 읽힌다(§16-7).
             Info(r, _rowIndex++, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
             var defeat = GameFlow.LastDefeatReport;
+            if (defeat != null && defeat.TrainingReturn)
+                Info(r, _rowIndex++, DeathTraining.ReturnLine());
             if (defeat != null && defeat.FallenNames.Count > 0)
                 Info(r, _rowIndex++, $"[사망] {string.Join(", ", defeat.FallenNames)}");
             if (defeat != null && defeat.DeletedNames.Count > 0)

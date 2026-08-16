@@ -211,9 +211,12 @@ namespace AshesToStars
         public readonly List<string> DeletedNames = new();
         /// <summary>PvP로 쓰러져 12시간 회복에 들어간 이름. 목숨은 안 깎인다(§15).</summary>
         public readonly List<string> RecoveredNames = new();
+        /// <summary>5층 전 비살상 훈련 귀환. 목숨은 그대로다(§온보딩).</summary>
+        public readonly List<string> ReturnedNames = new();
         public string RescueName;
         public int LivingCount;
         public bool RescueGranted;
+        public bool TrainingReturn;
     }
 
     /// <summary>
