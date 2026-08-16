@@ -2,6 +2,7 @@
 # 재와 별 — 자동 개발 루프
 #
 #   ./loop/loop.sh              # 무한 반복
+#   LOOP_AGENT=grok ./loop/loop.sh   # Grok 헤드리스 (클로드·코덱스 한도일 때)
 #   LOOP_AGENT=codex ./loop/loop.sh  # Codex 새 세션으로 반복
 #   touch loop/STOP             # 다음 이터레이션 시작 전에 멈춘다
 #   rm loop/STOP                # 다시 시작
@@ -30,17 +31,25 @@ HOLD="$ROOT/loop/HOLD"
 LOG_DIR="$ROOT/loop/logs"
 MAX_FAILS="${LOOP_MAX_FAILS:-3}"
 COOLDOWN="${LOOP_COOLDOWN:-20}"
-# 실행기: 환경변수 > loop/agent > claude.
-# 클로드 주간 한도에 걸리면 아래 루프가 Codex로 넘긴다 — 복구 시각까지
-# 자면 개발이 멈춘다(오너 2026-08-16, 한도 resets Aug 17 23:00).
+# 실행기: 환경변수 > loop/agent > grok.
+# 클로드·코덱스 둘 다 한도면 그록으로 간다(오너 2026-08-16).
 if [ -n "${LOOP_AGENT:-}" ]; then
   AGENT="$LOOP_AGENT"
 elif [ -f "$ROOT/loop/agent" ]; then
   AGENT=$(tr -d ' \t\r\n' < "$ROOT/loop/agent")
 else
-  AGENT=claude
+  AGENT=grok
 fi
-[ -n "$AGENT" ] || AGENT=claude
+[ -n "$AGENT" ] || AGENT=grok
+
+grok_bin() {
+  if [ -n "${GROK_BIN:-}" ] && [ -x "$GROK_BIN" ]; then printf '%s\n' "$GROK_BIN"; return 0; fi
+  if command -v grok >/dev/null 2>&1; then command -v grok; return 0; fi
+  for p in "$HOME/.grok/bin/grok" /opt/homebrew/bin/grok /usr/local/bin/grok; do
+    if [ -x "$p" ]; then printf '%s\n' "$p"; return 0; fi
+  done
+  return 1
+}
 
 mkdir -p "$LOG_DIR"
 
@@ -179,7 +188,23 @@ while true; do
   #    그게 막히면 루프가 완료 판정을 스스로 못 한다.
   #    `settings.local.json`의 allow 목록만으로는 안 됐다 — 실측으로 확인했고,
   #    `--allowedTools`로 넘긴 패턴은 통과했다(878KB 캡처 생성 확인).
-  if [ "$AGENT" = "codex" ]; then
+  if [ "$AGENT" = "grok" ]; then
+    # 그록 헤드리스는 stdin을 프롬프트로 읽지 않는다(실측 문서). --prompt-file 필수.
+    # -p/--single 이어도 도구를 여러 번 돌릴 수 있다. --continue 금지.
+    GB=$(grok_bin) || { echo "❌ grok CLI 없음" | tee -a "$LOG"; RESULT=127; GB=""; }
+    if [ -n "$GB" ]; then
+      printf '%s\n' "$PROMPT" > "$LOG_DIR/.prompt.txt"
+      "$GB" --prompt-file "$LOG_DIR/.prompt.txt" \
+        --cwd "$ROOT" \
+        --always-approve \
+        --permission-mode bypassPermissions \
+        --output-format plain \
+        --no-plan \
+        --max-turns "${LOOP_GROK_MAX_TURNS:-80}" \
+        >"$LOG" 2>&1
+      RESULT=$?
+    fi
+  elif [ "$AGENT" = "codex" ]; then
     # `codex exec`는 호출마다 새 세션이다. --ephemeral로 세션 파일도 남기지 않는다.
     # 실제 창 QA의 UPM IPC와 지정 파일 커밋은 workspace-write에서 차단됐다(2026-08-16 실측).
     # 이 저장소 전용 자동 개발 승인 범위에서 danger-full-access를 사용한다.
@@ -215,11 +240,11 @@ while true; do
     echo "✅ #$ITER 완료"
     tail -5 "$LOG" | sed 's/^/   /'
   elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|session limit|usage limit|limit .*resets|quota|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
-    # 클로드 주간 한도 → Codex로 즉시 전환. 복구 시각까지 자면 루프가 하루 이상 멈춘다.
-    if [ "$AGENT" = "claude" ] && command -v codex >/dev/null && \
-       grep -qiE 'weekly limit|session limit|usage limit|limit .*resets' "$LOG"; then
-      echo "🔀 클로드 한도 — Codex로 전환하고 바로 재개"
-      AGENT=codex
+    # 클로드·코덱스 한도 → 그록으로 즉시 전환. 복구 시각까지 자면 개발이 멈춘다.
+    if [ "$AGENT" != "grok" ] && grok_bin >/dev/null && \
+       grep -qiE 'weekly limit|session limit|usage limit|limit .*resets|try again at' "$LOG"; then
+      echo "🔀 $AGENT 한도 — Grok으로 전환하고 바로 재개"
+      AGENT=grok
       printf '%s\n' "$AGENT" > "$ROOT/loop/agent"
       ITER=$((ITER - 1))
       continue
