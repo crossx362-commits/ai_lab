@@ -82,7 +82,7 @@ public class W3Party : MonoBehaviour
     // ── 파티원 ───────────────────────────────────────────
     enum Role { Tank, Dps, Healer, Buffer }
     /// <summary>기획서 §3의 1차 전직 — 각자 고유 메커니즘 1개 + 대표 스킬</summary>
-    enum Job { 수호기사, 검사, 마법사, 사제, 음유시인 }
+    enum Job { 수호기사, 광전사, 검사, 궁수, 마법사, 소환사, 사제, 드루이드, 음유시인, 주술사, 정령사 }
     enum Chant { 진군가, 수호가 }        // 음유시인 악장 (§3 악장 전환)
 
     class Member
@@ -376,6 +376,7 @@ public class W3Party : MonoBehaviour
     int _supportHits;       // 힐·버퍼가 맞은 횟수 — 「후열 저격」이 실제로 일어나는지의 유일한 증거
     int _meleeHits, _shotHits, _framesThisRun;
     float _tauntUntil;                 // 도발이 원거리 몹까지 끄는 구간
+    Member _tauntMember;               // 도발을 실제 시전한 수호기사 — 파티 0번 고정 금지
     float _lastStandUntil = -1f;       // 최후의 보루 지속(§3 수호기사)
     float _lastStandCd = -1f;          // 최후의 보루 재사용 대기
     Chant _partyChant = Chant.진군가;   // 음유시인 악장 (파티 오라)
@@ -425,7 +426,7 @@ public class W3Party : MonoBehaviour
         foreach (var combatant in combatants)
         {
             if (System.Enum.TryParse(combatant.Job, out Job j)) jobs.Add(j);
-            else jobs.Add(Job.검사);   // 아직 W3에 없는 전직은 근접 딜로 대체 — 조용히 빼면 인원이 줄어든다
+            else jobs.Add(Job.검사);   // 손상된/미래 직업 저장만 안전 폴백 — 확정 1차 11종은 모두 enum에 있어야 한다
             advancements.Add(combatant.Advancement);
         }
         if (jobs.Count == 0) return null;
@@ -661,19 +662,52 @@ public class W3Party : MonoBehaviour
         }
     }
 
-    static Role RoleOf(Job j) => j switch
+    public static string FirstAdvancementRole(string job) => job switch
     {
-        Job.수호기사 => Role.Tank,
-        Job.사제 => Role.Healer,
-        Job.음유시인 => Role.Buffer,
-        _ => Role.Dps,
+        "수호기사" or "광전사" => "Tank",
+        "사제" or "드루이드" => "Healer",
+        "음유시인" or "주술사" or "정령사" => "Buffer",
+        _ => "Dps",
+    };
+
+    static Role RoleOf(Job j) => System.Enum.Parse<Role>(FirstAdvancementRole(j.ToString()));
+
+    public static float FirstAdvancementRange(string job) => job switch
+    {
+        "수호기사" => 1.5f, "광전사" => 1.8f, "검사" => 1.9f, "궁수" => 8.0f,
+        "마법사" => 5.5f, "소환사" => 7.0f, "사제" => 6.5f, "드루이드" => 6.0f,
+        "음유시인" => 6.0f, "주술사" => 6.0f, "정령사" => 6.5f, _ => 1.9f,
     };
 
     /// <summary>
     /// 근접 직업인가(§3). 근접은 투사체를 쏘지 않는다 —
     /// 예전엔 전 직업이 FireAlly로 탄을 날려 탱커·검사가 원거리처럼 보였다.
     /// </summary>
-    static bool IsMelee(Job j) => j == Job.수호기사 || j == Job.검사;
+    static bool IsMelee(Job j) => j == Job.수호기사 || j == Job.광전사 || j == Job.검사;
+
+    public static string FirstAdvancementMechanic(string job) => job switch
+    {
+        "수호기사" => "guard_gauge", "광전사" => "low_hp_rage", "검사" => "combo_stack",
+        "궁수" => "stationary_focus", "마법사" => "density_aoe", "소환사" => "summon_slot",
+        "사제" => "healing_faith", "드루이드" => "nature_mark", "음유시인" => "chant_swap",
+        "주술사" => "curse_stack", "정령사" => "element_attach", _ => "swordsman_fallback",
+    };
+
+    public static string[] FirstAdvancementSkillLabels(string job) => job switch
+    {
+        "수호기사" => new[] { "도발의 함성", "성채 방패" },
+        "광전사" => new[] { "광폭화", "대지 가르기" },
+        "검사" => new[] { "일섬", "—" },
+        "궁수" => new[] { "관통 사격", "집중 사격" },
+        "마법사" => new[] { "화염폭풍", "—" },
+        "소환사" => new[] { "소환수 돌격", "위치 교체" },
+        "사제" => new[] { "치유의 파동", "기적" },
+        "드루이드" => new[] { "자연 표식", "재생" },
+        "음유시인" => new[] { "진군가", "수호가" },
+        "주술사" => new[] { "저주 중첩", "쇠약 의식" },
+        "정령사" => new[] { "화염 정령", "물 정령" },
+        _ => new[] { "일섬", "연격" },
+    };
 
     /// <summary>공격 연출. 근접은 타격만, 원거리는 탄을 날린다.</summary>
     void AttackFx(Member m, Vector2 targetPos)
@@ -766,11 +800,11 @@ public class W3Party : MonoBehaviour
     /// </summary>
     static SpriteBank.Job ArtOf(Job j) => j switch
     {
-        Job.수호기사 => SpriteBank.Job.Tank,
+        Job.수호기사 or Job.광전사 => SpriteBank.Job.Tank,
         Job.마법사 => SpriteBank.Job.Mage,
-        Job.사제 => SpriteBank.Job.Healer,
-        Job.음유시인 => SpriteBank.Job.Buffer,
-        _ => SpriteBank.Job.Dps,          // 검사
+        Job.사제 or Job.드루이드 => SpriteBank.Job.Healer,
+        Job.음유시인 or Job.주술사 or Job.정령사 => SpriteBank.Job.Buffer,
+        _ => SpriteBank.Job.Dps,
     };
 
     /// <summary>
@@ -850,14 +884,7 @@ public class W3Party : MonoBehaviour
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
             // 검사가 멀찍이 서서 때리는 그림이 된다 — 오너 지적으로 발견.
-            m.Range = job switch
-            {
-                Job.수호기사 => 1.5f,   // 근접 탱 — 몹에 붙어야 도발·방패가 의미를 갖는다
-                Job.검사 => 1.9f,       // 근접 딜
-                Job.마법사 => 5.5f,
-                Job.사제 => 6.5f,
-                _ => 6.0f,              // 음유시인
-            };
+            m.Range = FirstAdvancementRange(job.ToString());
             m.Range *= _bRange;
             _party[i] = m;
         }
@@ -901,7 +928,7 @@ public class W3Party : MonoBehaviour
         // 실플레이 판만 보스 소환의 대상이 된다. 검증(W1~W3)은 GameMode가 아니라 여기서 빠진다 —
         // 측정 판에 소환이 끼면 구성 대조가 오염된다.
         _game = GameMode ? this : null;
-        _tauntUntil = -1f; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
+        _tauntUntil = -1f; _tauntMember = null; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
         Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")}, "
                   + $"스킬 [{string.Join(",", System.Array.ConvertAll(_party, m => m.SkillCount))}])");
@@ -1380,7 +1407,11 @@ public class W3Party : MonoBehaviour
     void TickParty(float dt)
     {
         var sp = Spec(_style);
-        var tank = _party[0];
+        Member tank = null;
+        foreach (var candidate in _party)
+            if (candidate.Alive && candidate.Role == Role.Tank && (tank == null || candidate.Job == Job.수호기사))
+            { tank = candidate; if (candidate.Job == Job.수호기사) break; }
+        if (tank == null) tank = _party[0];
 
         foreach (var m in _party)
         {
@@ -1406,7 +1437,7 @@ public class W3Party : MonoBehaviour
                 else { want = d.normalized; commanded = true; }
             }
 
-            if (m.Role == Role.Tank)
+            if (m.Job == Job.수호기사)
             {
                 // ⚠️ 이동과 스킬을 **분리**한다. 예전엔 이 둘이 한 분기에 묶여 있어서
                 //    이동 명령을 내리는 순간 탱커가 도발·방패를 못 쓰게 됐다.
@@ -1429,7 +1460,7 @@ public class W3Party : MonoBehaviour
                     if (force1) m.ForceSkill = 0;
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
                     m.SkillCd = 6f * _bCd; m.Threat += 80f; _tauntUses++;
-                    _tauntUntil = _t + 3.0f;                      // 3초간 원거리도 탱을 노린다
+                    _tauntUntil = _t + 3.0f; _tauntMember = m;    // 3초간 원거리도 시전자를 노린다
                     _skillLog[0]++;
                     SkillCast(m, "도발의 함성", new Color(1f, 0.78f, 0.32f), hitstop: 2);
                     FxParticles.Play(FxKind.쇼크웨이브, ToScreen(m.Pos), 1.8f,
@@ -1474,6 +1505,7 @@ public class W3Party : MonoBehaviour
 
                 switch (m.Job)
                 {
+                    case Job.광전사:
                     case Job.검사:
                     {
                         // 근접 딜 — **탱이 모아둔 무리**를 친다. 혼자 먼 몹을 쫓아가면
@@ -1485,7 +1517,9 @@ public class W3Party : MonoBehaviour
                         if (t >= 0 && (_mPos[t] - m.Pos).magnitude < m.Range * 0.9f) goal = m.Pos;
                         break;
                     }
+                    case Job.궁수:
                     case Job.마법사:
+                    case Job.소환사:
                     {
                         // 원거리 딜 — 밀집한 무리를 사거리 끝에서 노린다. 너무 붙으면 물러선다.
                         // 기준점을 탱으로 잡아 **탱이 모아둔 무리**가 우선 후보가 되게 한다.
@@ -1498,6 +1532,7 @@ public class W3Party : MonoBehaviour
                         break;
                     }
                     case Job.사제:
+                    case Job.드루이드:
                     {
                         // 힐 — 돌봐야 할 대상 곁으로. **탱을 우선**한다:
                         // 설계상 피해를 받는 것이 탱이고(§10-4), 탱이 무너지면 후열이 그대로 노출된다.
@@ -1664,6 +1699,81 @@ public class W3Party : MonoBehaviour
                 }
                 m.Gauge = Mathf.Min(100f, m.Gauge);
                 if (m.Gauge > _faithPeak) _faithPeak = m.Gauge;
+            }
+            else if (m.Job == Job.광전사 && target >= 0)
+            {
+                // 분노 — HP가 낮을수록 공격력이 상승한다. 두 번째 슬롯은 근처 적까지 가른다.
+                float rage = Mathf.Lerp(1.8f, 1f, m.Hp / m.MaxHp);
+                float dmg = m.Atk * rage;
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 1.8f; SkillCast(m, "광폭화", Color.red, 2, 0.2f); }
+                if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0;
+                    for (int j = 0; j < MAXM; j++)
+                        if (j != target && _mOn[j] && (_mPos[j] - m.Pos).sqrMagnitude < 6.25f)
+                        { _mHp[j] -= dmg; if (_mHp[j] <= 0f) KillMob(j); }
+                    SkillCast(m, "대지 가르기", new Color(1f, 0.5f, 0.25f), 3, 0.25f);
+                }
+                _mHp[target] -= dmg * sp.DmgMul * ChantAtk(); m.Cd = 0.5f / _bAtkSpd;
+                AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Job == Job.궁수 && target >= 0)
+            {
+                // 집중 — 제자리에 서서 쏠수록 강해지고, 이동/백스텝 대신 슬롯2로 즉시 집중한다.
+                if (m.ForceSkill == 2) { m.ForceSkill = 0; m.FocusUntil = _t + 4f; SkillCast(m, "집중 사격", Color.yellow, 1); }
+                float dmg = m.Atk * (_t < m.FocusUntil ? 1.6f : 1f);
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 2.4f; SkillCast(m, "관통 사격", Color.white, 2); }
+                _mHp[target] -= dmg * sp.DmgMul * ChantAtk(); m.Cd = 0.55f / _bAtkSpd;
+                AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Job == Job.소환사 && target >= 0)
+            {
+                // 소환 슬롯 — 본체의 매 공격 사이에 소환수가 같은 표적을 추가 타격한다.
+                m.Gauge = Mathf.Min(3f, m.Gauge + 1f);
+                float summonDmg = m.Atk * (m.Gauge >= 3f ? 1.8f : 0.8f);
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; summonDmg *= 2f; m.Gauge = 0f; SkillCast(m, "소환수 돌격", Color.cyan, 2); }
+                if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0;
+                    Member swap = null;
+                    foreach (var o in _party) if (o != m && o.Alive && (swap == null || (o.Pos - m.Pos).sqrMagnitude < (swap.Pos - m.Pos).sqrMagnitude)) swap = o;
+                    if (swap != null) { Vector2 old = m.Pos; m.Pos = swap.Pos; swap.Pos = old; }
+                    m.IFrame = Mathf.Max(m.IFrame, 0.8f); SkillCast(m, "위치 교체", Color.cyan, 1);
+                }
+                _mHp[target] -= summonDmg * sp.DmgMul * ChantAtk(); m.Cd = 0.7f;
+                FireAlly(m.Pos, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Job == Job.드루이드)
+            {
+                // 자연 표식 — 적 피해와 아군 재생을 한 행동에서 함께 만든다.
+                Member worst = null;
+                foreach (var o in _party) if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
+                if (worst != null) Heal(worst, (m.ForceSkill == 2 ? 28f : 10f) * _bHeal);
+                if (target >= 0) { _mHp[target] -= m.Atk * (m.ForceSkill == 1 ? 2f : 1f); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target); }
+                SkillCast(m, m.ForceSkill == 2 ? "재생" : "자연 표식", Color.green, 1); m.ForceSkill = 0; m.Cd = 1.0f;
+            }
+            else if (m.Job == Job.주술사 && target >= 0)
+            {
+                // 저주 스택 — 같은 대상에 반복할수록 증폭한다(프로토타입은 시전자 게이지로 계량).
+                m.Gauge = Mathf.Min(5f, m.Gauge + 1f); float dmg = m.Atk * (1f + m.Gauge * 0.2f);
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 5f; SkillCast(m, "저주 중첩", Color.magenta, 1); }
+                if (m.ForceSkill == 2) { m.ForceSkill = 0; _mAtkCd[target] = Mathf.Max(_mAtkCd[target], 2.5f); SkillCast(m, "쇠약 의식", Color.magenta, 1); }
+                _mHp[target] -= dmg; m.Cd = 0.8f; AttackFx(m, _mPos[target]); if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Job == Job.정령사)
+            {
+                // 정령 계약 — 화염은 아군 공격 템포, 물은 보호막으로 읽히는 부착 효과다.
+                if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) o.Shield = Mathf.Max(o.Shield, 20f * _bShield);
+                    SkillCast(m, "물 정령", Color.cyan, 1);
+                }
+                else
+                {
+                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) o.Cd = Mathf.Min(o.Cd, 0.15f);
+                    SkillCast(m, "화염 정령", new Color(1f, 0.45f, 0.2f), 1);
+                }
+                m.Cd = 1.2f;
             }
             else if (m.Job == Job.마법사 && target >= 0)
             {
@@ -2309,10 +2419,9 @@ public class W3Party : MonoBehaviour
         // 실측: 도발을 꺼도(D 구성) 생존이 표준의 0.85배 — 도발이 판을 거의 못 바꿨다.
         if (_t < _tauntUntil)
         {
-            var tank = _party.Length > 0 ? _party[0] : null;
-            if (tank != null && tank.Alive && tank.Role == Role.Tank &&
-                (tank.Pos - p).sqrMagnitude < TauntRadius * TauntRadius)
-                return tank;
+            if (_tauntMember != null && _tauntMember.Alive &&
+                (_tauntMember.Pos - p).sqrMagnitude < TauntRadius * TauntRadius)
+                return _tauntMember;
         }
 
         Member best = null; float score = float.MaxValue;
@@ -2331,7 +2440,7 @@ public class W3Party : MonoBehaviour
         // 도발 지속 중에는 원거리 몹도 탱을 노린다 — 안 그러면 후열이 일방적으로 녹는다
         if (_t < _tauntUntil)
         {
-            foreach (var m in _party) if (m.Alive && m.Role == Role.Tank) return m;
+            if (_tauntMember != null && _tauntMember.Alive) return _tauntMember;
         }
         // §10-4 "원거리 몹은 **후열(위협 낮은 쪽)** 저격".
         // ⚠️ 예전 식 `MaxHp − Threat×6`의 **최솟값**을 골랐다 — 위협이 높을수록 점수가 낮아지므로
@@ -2368,18 +2477,20 @@ public class W3Party : MonoBehaviour
         if (dmg <= 0f) { if (front) _frontlineHits++; else _backlineHits++; return; }
 
         // 수호 게이지 — §3 "피격·아군 보호 시 축적". 맞아주는 것이 탱의 자원이다.
-        var tank = _party.Length > 0 ? _party[0] : null;
-        if (tank != null && tank.Alive && tank.Role == Role.Tank)
+        Member guardian = null;
+        foreach (var candidate in _party)
+            if (candidate.Alive && candidate.Job == Job.수호기사) { guardian = candidate; break; }
+        if (guardian != null)
         {
             // 자기가 맞으면 크게, 아군이 맞으면 작게 — 아군이 맞는 건 탱이 못 막은 것이다
-            tank.Gauge = Mathf.Min(100f, tank.Gauge + (m == tank ? incoming * 0.5f : incoming * 0.12f));
+            guardian.Gauge = Mathf.Min(100f, guardian.Gauge + (m == guardian ? incoming * 0.5f : incoming * 0.12f));
         }
 
         m.Hp -= dmg;
 
         // 최후의 보루(§3 수호기사 3번 스킬) — 3초간 HP가 1 미만으로 안 떨어진다.
         // 자동 전투라 조건 발동으로 둔다: 치명타 한 방에 즉사하는 것을 한 번 막아준다.
-        if (m.Role == Role.Tank && m.Advancement != AdvancementTier.Basic
+        if (m.Job == Job.수호기사 && m.Advancement != AdvancementTier.Basic
             && m.Hp <= 0f && _t >= _lastStandCd)
         {
             m.Hp = 1f;
@@ -2389,7 +2500,7 @@ public class W3Party : MonoBehaviour
             FxParticles.Play(FxKind.무적, ToScreen(m.Pos), 1.6f);
             Debug.Log($"[W3] 최후의 보루 발동 @ {_t:F1}s");
         }
-        if (m.Role == Role.Tank && _t < _lastStandUntil && m.Hp < 1f) m.Hp = 1f;
+        if (m.Job == Job.수호기사 && _t < _lastStandUntil && m.Hp < 1f) m.Hp = 1f;
         FxParticles.Play(FxKind.피격, ToScreen(m.Pos));
         if (front) _frontlineHits++; else _backlineHits++;
         if (m.Role == Role.Healer || m.Role == Role.Buffer) _supportHits++;
@@ -2643,22 +2754,20 @@ public class W3Party : MonoBehaviour
     /// </summary>
     void SkillButtons(Member sel, float y)
     {
-        (string a, string b) = sel.Advancement == AdvancementTier.Basic
-            ? sel.Role switch
+        string a, b;
+        if (sel.Advancement == AdvancementTier.Basic)
+            (a, b) = sel.Role switch
             {
                 Role.Tank => ("도발", "방패벽"),
                 Role.Dps => ("강타", "집중"),
                 Role.Healer => ("치유", "정화"),
                 _ => ("고양", "쇠약"),
-            }
-            : sel.Job switch
+            };
+        else
         {
-            Job.수호기사 => ("도발의 함성", "성채 방패"),
-            Job.검사 => ("일섬", "—"),
-            Job.마법사 => ("화염폭풍", "—"),
-            Job.사제 => ("치유의 파동", "기적"),
-            _ => ("진군가", "수호가"),
-        };
+            string[] labels = FirstAdvancementSkillLabels(sel.Job.ToString());
+            a = labels[0]; b = labels[1];
+        }
 
         float w = 176f, gap = 8f;
         float x = Screen.width * 0.5f - (w * 2 + gap) * 0.5f;

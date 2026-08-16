@@ -173,6 +173,28 @@ namespace AshesToStars
                   && candidate.Id == stableId,
                   "재기동 후에도 1차 전직 결과·영속 캐릭터 ID 유지");
 
+            // W3가 지원하던 5직업 외 6종도 검사 폴백이 아니라 자기 전투 계약을 가져야 한다.
+            string[] distinctJobs = { "광전사", "궁수", "소환사", "드루이드", "주술사", "정령사" };
+            string[] expectedRoles = { "Tank", "Dps", "Dps", "Healer", "Buffer", "Buffer" };
+            float[] expectedRanges = { 1.8f, 8.0f, 7.0f, 6.0f, 6.0f, 6.5f };
+            var mechanicIds = new System.Collections.Generic.HashSet<string>();
+            for (int i = 0; i < distinctJobs.Length; i++)
+            {
+                string job = distinctJobs[i];
+                string[] labels = W3Party.FirstAdvancementSkillLabels(job);
+                string mechanic = W3Party.FirstAdvancementMechanic(job);
+                Check(labels != null && labels.Length == 2 && labels[0] != "—" && labels[1] != "—",
+                      $"{job} 1차 고유 스킬 2종이 전투 UI 계약에 존재");
+                Check(!string.IsNullOrEmpty(mechanic) && mechanic != "swordsman_fallback",
+                      $"{job}가 검사 폴백이 아닌 고유 전투 메커니즘을 소비");
+                Check(W3Party.FirstAdvancementRole(job) == expectedRoles[i]
+                      && System.Math.Abs(W3Party.FirstAdvancementRange(job) - expectedRanges[i]) < 0.001f,
+                      $"{job} 고유 역할·사거리 계약 ({expectedRoles[i]}, {expectedRanges[i]:F1})");
+                mechanicIds.Add(mechanic);
+            }
+            Check(mechanicIds.Count == distinctJobs.Length,
+                  $"미지원 1차 6종 메커니즘이 서로 구분됨 (기대 6, 실제 {mechanicIds.Count})");
+
             GameState.ResetAll();
             LifeSystem.ResetAll();
             PartyState.ResetForTest();
