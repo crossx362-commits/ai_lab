@@ -50,6 +50,18 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>로스터에서 한 명을 지운 뒤 인덱스를 당긴다. 파티와 같은 유령 슬롯을 막는다.</summary>
+        public static void NotifyRosterRemoved(int index)
+        {
+            Load();
+            for (int i = _slots.Count - 1; i >= 0; i--)
+            {
+                if (_slots[i] == index) _slots.RemoveAt(i);
+                else if (_slots[i] > index) _slots[i]--;
+            }
+            Save();
+        }
+
         public static bool Contains(int rosterIndex)
         {
             Load();

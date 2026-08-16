@@ -78,6 +78,18 @@ namespace AshesToStars
         /// </summary>
         public bool IsRescue { get; set; }
 
+        /// <summary>
+        /// 특수 직업(§3). 1회 사망 즉시 소멸·합성 재료 불가. 이 슬라이스에 전직은 없다 —
+        /// 플래그만 두어 재료 거부가 소비처를 갖게 한다.
+        /// </summary>
+        public bool IsSpecialJob { get; set; }
+
+        /// <summary>합성으로 흡수한 패시브(BoonId). 상한 4(§18-7).</summary>
+        public readonly System.Collections.Generic.List<int> AbsorbedBoons = new System.Collections.Generic.List<int>();
+
+        /// <summary>슬롯이 찬 뒤의 미확정 추첨. 없으면 -1.</summary>
+        public int PendingBoon { get; set; } = -1;
+
         /// <summary>6부위 장착 id. 빈 칸은 null. 옛 저장의 갑옷 단독 필드는 Unpack이 받는다.</summary>
         public readonly string[] EquippedIds = new string[Equipment.SlotCount];
 
@@ -137,6 +149,40 @@ namespace AshesToStars
             var parts = raw.Split('|');
             for (int i = 0; i < Equipment.SlotCount && i < parts.Length; i++)
                 if (!string.IsNullOrEmpty(parts[i])) EquippedIds[i] = parts[i];
+        }
+
+        public string PackAbsorbed()
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < AbsorbedBoons.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append(AbsorbedBoons[i]);
+            }
+            if (PendingBoon >= 0)
+            {
+                sb.Append(';');
+                sb.Append(PendingBoon);
+            }
+            return sb.ToString();
+        }
+
+        public void UnpackAbsorbed(string raw)
+        {
+            AbsorbedBoons.Clear();
+            PendingBoon = -1;
+            if (string.IsNullOrEmpty(raw)) return;
+            string absorbed = raw;
+            int semi = raw.IndexOf(';');
+            if (semi >= 0)
+            {
+                absorbed = raw.Substring(0, semi);
+                if (int.TryParse(raw.Substring(semi + 1), out int pending)) PendingBoon = pending;
+            }
+            if (string.IsNullOrEmpty(absorbed)) return;
+            var parts = absorbed.Split(',');
+            for (int i = 0; i < parts.Length; i++)
+                if (int.TryParse(parts[i], out int id)) AbsorbedBoons.Add(id);
         }
 
         public CharacterRecord(string name, string job, int level = 1,
@@ -272,6 +318,8 @@ namespace AshesToStars
                     // 옛 저장은 갑옷 id 하나만 있어 Unpack이 그 칸에 넣는다.
                 };
                 c.UnpackEquipped(p.Length > 10 ? p[10] : "");
+                // 12번째 필드는 흡수 패시브(+보류). 없던 저장은 빈 슬롯.
+                c.UnpackAbsorbed(p.Length > 11 ? p[11] : "");
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -308,7 +356,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.IsDeleted ? '1' : '0')
                   .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement)
                   .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0')
-                  .Append('\t').Append(c.PackEquipped()).Append('\n');
+                  .Append('\t').Append(c.PackEquipped())
+                  .Append('\t').Append(c.PackAbsorbed()).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -369,6 +418,26 @@ namespace AshesToStars
         {
             EnsureLoaded();
             Save();
+        }
+
+        /// <summary>
+        /// 합성 재료를 로스터에서 지운다. 영묘에 남기지 않는다(§3).
+        /// 출전·수비 인덱스를 먼저 당겨야 뒤에 있던 캐릭터가 유령 슬롯이 되지 않는다.
+        /// </summary>
+        public static bool SacrificeForFusion(CharacterRecord material)
+        {
+            EnsureLoaded();
+            if (material == null) return false;
+            int index = _characters.IndexOf(material);
+            if (index < 0) return false;
+            if (material.IsDeleted || material.IsSpecialJob
+                || material.Advancement == AdvancementTier.Basic)
+                return false;
+            Equipment.DestroyEquippedOn(material);
+            PartyState.NotifyRosterRemoved(index);
+            DefenseState.NotifyRosterRemoved(index);
+            _characters.RemoveAt(index);
+            return true;
         }
 
         // ========== 전직 (§3 기본직업 → Lv20 1차) ==========
@@ -820,6 +889,7 @@ namespace AshesToStars
             character.DeathCount = 0;
             character.RecoveryEndTime = 0;
             character.ClearEquipped();
+            Fusion.ClearAbsorbed(character);
             Save();
 
             Debug.Log($"[환생석] {character.Name} 복구 — 사망 카운트 0으로 재시작 " +

@@ -28,6 +28,7 @@ namespace AshesToStars
         Terrain = 6,    // NoiseTerrain
         Decor = 7,      // FieldDecor 프랍 배치
         Boss = 8,       // 보스 종류·마릿수
+        Fusion = 9,     // 합성 패시브 추첨(§3·§18-7)
     }
 
     /// <summary>

@@ -141,7 +141,7 @@ namespace AshesToStars
                     Job = CombatJob(character),
                     Advancement = character.Advancement,
                     Level = character.Level,
-                    HpMul = Equipment.HpMulOf(character),
+                    HpMul = Equipment.HpMulOf(character) * Fusion.HpMulOf(character),
                 });
             }
             return result;
@@ -162,6 +162,18 @@ namespace AshesToStars
 
         /// <summary>전투 결과를 로스터에 반영한 뒤 호출 — 죽은 캐릭터가 슬롯에 남지 않게.</summary>
         public static void Refresh() { Load(); Prune(); Save(); }
+
+        /// <summary>로스터에서 한 명을 지운 뒤 인덱스를 당긴다. 안 당기면 뒤 슬롯이 남의 캐릭터를 출전시킨다.</summary>
+        public static void NotifyRosterRemoved(int index)
+        {
+            Load();
+            for (int i = _slots.Count - 1; i >= 0; i--)
+            {
+                if (_slots[i] == index) _slots.RemoveAt(i);
+                else if (_slots[i] > index) _slots[i]--;
+            }
+            Save();
+        }
 
         /// <summary>테스트·디버그용.</summary>
         public static void ResetForTest()

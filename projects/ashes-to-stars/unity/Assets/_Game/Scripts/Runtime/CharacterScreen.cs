@@ -44,12 +44,21 @@ namespace AshesToStars
 
         int _selectedCharacter = -1;
         bool _choosingAdvancement;
+        bool _fusing;
+        int _fusionHost = -1;
+        int _fusionMaterial = -1;
 
         protected override void Body(Rect r)
         {
             GameFlow.RestorePlayRosterIfRequested();
             GameFlow.SeedV4WipeQaIfRequested();
             SeedRarityQaIfRequested();
+            SeedFusionQaIfRequested();
+            if (_fusing)
+            {
+                DrawFusion(r);
+                return;
+            }
             if (_selectedCharacter >= 0)
             {
                 // 캐릭터 상세 화면
@@ -235,6 +244,11 @@ namespace AshesToStars
                         Info(r, advancementRow++, "전직 단계: 2차 · 4스킬+초필 1개 해금");
                     }
 
+                    if (!ch.IsDeleted && ch.AbsorbedBoons.Count > 0)
+                        Info(r, advancementRow++, $"흡수 {Fusion.AbsorbedSummary(ch)} ({ch.AbsorbedBoons.Count}/{Fusion.SlotCap})");
+                    if (!ch.IsDeleted && ch.PendingBoon >= 0)
+                        Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
+
                     if (Row(r, advancementRow, "← 목록으로", "캐릭터 목록으로 돌아간다"))
                     {
                         _selectedCharacter = -1;
@@ -270,8 +284,32 @@ namespace AshesToStars
                     $"최대 5인(§9) · 지금 {PartyState.Slots.Count}명 편성됨 — 구성이 생존을 가른다(§21-1i)"))
                 GameFlow.Go(GameFlow.Party);
 
-            Locked(r, allCharacters.Count + 4, "합성",
-                   "준비 중 — 1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다(§3)");
+            int fusionRow = allCharacters.Count + 4;
+            CharacterRecord pendingHost = null;
+            for (int i = 0; i < allCharacters.Count; i++)
+                if (allCharacters[i].PendingBoon >= 0) { pendingHost = allCharacters[i]; break; }
+            if (pendingHost != null)
+            {
+                if (Row(r, fusionRow, "합성 결과 확인",
+                        $"{pendingHost.Name} · {Fusion.LabelOf((BoonId)pendingHost.PendingBoon)} — 교체하거나 버린다(§18-7)"))
+                {
+                    _fusing = true;
+                    _fusionHost = allCharacters.IndexOf(pendingHost);
+                    _fusionMaterial = -1;
+                }
+            }
+            else if (!Fusion.HasMaterial())
+            {
+                Locked(r, fusionRow, "합성",
+                       "1차 전직 이상 재료가 없다 — 기본직업은 갈 수 없다(§3·§18-7)");
+            }
+            else if (Row(r, fusionRow, "합성",
+                         "1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다. 되돌릴 수 없다(§3)"))
+            {
+                _fusing = true;
+                _fusionHost = -1;
+                _fusionMaterial = -1;
+            }
         }
 
         void DrawRosterDecor(Rect r, int index, CharacterRecord ch, string sub)
@@ -304,6 +342,122 @@ namespace AshesToStars
             if (roster.Count == 0) return;
             Equipment.SeedCraftedLoadoutForQa(roster[0]);
             if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedFusionQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_FUSION") != "1") return;
+            Fusion.SeedQaIfRequested();
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void DrawFusion(Rect r)
+        {
+            var roster = LifeSystem.GetCharacters();
+            if (_fusionHost >= 0 && _fusionHost < roster.Count && roster[_fusionHost].PendingBoon >= 0)
+            {
+                var host = roster[_fusionHost];
+                var pending = (BoonId)host.PendingBoon;
+                Info(r, 0, $"{host.Name} 슬롯이 찼다 — {Fusion.LabelOf(pending)}을(를) 본 뒤에 고른다(§18-7)");
+                for (int i = 0; i < host.AbsorbedBoons.Count && i < Fusion.SlotCap; i++)
+                {
+                    var have = (BoonId)host.AbsorbedBoons[i];
+                    if (Row(r, i + 1, $"교체 {i + 1}. {Fusion.LabelOf(have)}",
+                            $"{Fusion.LabelOf(have)}를 버리고 {Fusion.LabelOf(pending)}을(를) 넣는다"))
+                    {
+                        Fusion.AcceptReplace(host, i);
+                        _fusing = false;
+                        _selectedCharacter = _fusionHost;
+                    }
+                }
+                if (Row(r, 6, "버린다", "새 패시브는 영구 소실된다. 기존 4칸은 유지"))
+                {
+                    Fusion.DiscardPending(host);
+                    _fusing = false;
+                    _selectedCharacter = _fusionHost;
+                }
+                return;
+            }
+
+            if (_fusionHost < 0)
+            {
+                Info(r, 0, "받을 캐릭터를 고른다 — 흡수 슬롯은 이 캐릭터의 것이다");
+                int row = 1;
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    var ch = roster[i];
+                    if (!Fusion.CanBeHost(ch)) continue;
+                    if (Row(r, row++, $"{ch.Name} ({ch.Job})",
+                            Fusion.AbsorbedSummary(ch)))
+                        _fusionHost = i;
+                }
+                if (Row(r, row, "← 취소", "캐릭터 목록으로 돌아간다"))
+                    _fusing = false;
+                return;
+            }
+
+            if (_fusionHost >= roster.Count)
+            {
+                _fusing = false;
+                return;
+            }
+
+            var chosen = roster[_fusionHost];
+            if (_fusionMaterial < 0)
+            {
+                Info(r, 0, $"{chosen.Name}에게 바칠 재료 — 1차 이상, 이 캐릭터는 되돌릴 수 없다(§3)");
+                int row = 1;
+                bool any = false;
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    if (i == _fusionHost) continue;
+                    var ch = roster[i];
+                    if (!Fusion.CanBeMaterial(ch)) continue;
+                    var pool = Fusion.DrawPool(chosen, ch);
+                    if (pool.Count == 0)
+                    {
+                        Locked(r, row++, $"{ch.Name} ({ch.Job})", "이미 가진 패시브만 있어 흡수할 것이 없다");
+                        continue;
+                    }
+                    any = true;
+                    if (Row(r, row++, $"{ch.Name} ({ch.Job})",
+                            $"가능 {pool.Count}종 · 영묘에도 안 남는다"))
+                        _fusionMaterial = i;
+                }
+                if (!any) Info(r, row++, "지금 바칠 재료가 없다");
+                if (Row(r, row, "← 받는 캐릭터 다시", "호스트를 다시 고른다"))
+                    _fusionHost = -1;
+                return;
+            }
+
+            if (_fusionMaterial >= roster.Count)
+            {
+                _fusionMaterial = -1;
+                return;
+            }
+
+            var fodder = roster[_fusionMaterial];
+            Info(r, 0, $"{fodder.Name} ({fodder.Job}) → {chosen.Name}");
+            Info(r, 1, "이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3)");
+            if (Row(r, 2, "소멸시키고 흡수한다", "결과는 랜덤 1개. 슬롯이 차면 본 뒤에 교체/포기"))
+            {
+                uint seed = (uint)(Environment.TickCount ^ fodder.Id.GetHashCode());
+                if (Fusion.TryFuse(chosen, fodder, seed, out var picked))
+                {
+                    _fusionMaterial = -1;
+                    roster = LifeSystem.GetCharacters();
+                    _fusionHost = roster.IndexOf(chosen);
+                    if (chosen.PendingBoon < 0)
+                    {
+                        _fusing = false;
+                        _selectedCharacter = _fusionHost;
+                    }
+                    Debug.Log($"[합성] {chosen.Name} ← {Fusion.LabelOf(picked)}");
+                }
+                else _fusionMaterial = -1;
+            }
+            if (Row(r, 3, "← 재료 다시", "아직 소멸시키지 않았다"))
+                _fusionMaterial = -1;
         }
 
         /// <summary>장착 6칸. 글자만 있으면 등급 프레임 소비처가 0곳이다.</summary>
