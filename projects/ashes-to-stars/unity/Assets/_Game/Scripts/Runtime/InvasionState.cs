@@ -25,8 +25,14 @@ namespace AshesToStars
         public const string EnvNoCap = "QA_NO_LOOT_CAP";
         public const string EnvShowFloor = "QA_LOOT_FLOOR";
         public const string EnvNoFloor = "QA_NO_LOOT_FLOOR";
+        public const string EnvShowWarehouse = "QA_WAREHOUSE_LOOT";
+        public const string EnvNoWarehouse = "QA_NO_WAREHOUSE_LOOT";
         public const int HumanLootPercent = 100;
         public const int BeastLootPercent = 120;
+        /// <summary>§18-13 패자 손실. 창고 자원의 20%. 미수령 50%는 자동적립이라 별도 풀이 없다.</summary>
+        public const int WarehouseLootPercent = 20;
+        /// <summary>시각 QA·자가검사. 25000의 20%=5000=본성1 바닥.</summary>
+        public const long QaWarehouseCopper = 25_000;
         /// <summary>§18-13 약탈 상한. 티어 1시간 수익의 6시간치.</summary>
         public const int LootCapHours = 6;
         /// <summary>§18-13 승자 최소. 본성 1레벨당 0.5 G/h. Keep1=5000.</summary>
@@ -40,6 +46,7 @@ namespace AshesToStars
 
         static bool _loaded;
         static bool _qaFloorSeeded;
+        static bool _qaWarehouseSeeded;
         static bool _pending;
         static long _paid;
         static long _lastLoot;
@@ -134,6 +141,9 @@ namespace AshesToStars
         public static bool LootFloorBlocked =>
             Environment.GetEnvironmentVariable(EnvNoFloor) == "1";
 
+        public static bool LootWarehouseBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoWarehouse) == "1";
+
         /// <summary>§18-9 수인 약탈량 +20%. 에셋이 없으면 표로 폴백한다.</summary>
         public static int RaceLootPercent()
         {
@@ -216,10 +226,57 @@ namespace AshesToStars
             return $"승자 최소 0.5 G/h(§18-13) · {Economy.FormatCurrency(FloorCopper())}";
         }
 
-        /// <summary>승자 보상은 상대 영지 레벨(여기선 내 탑 층) 기준. 창고를 비워도 준다(§15 1-b).
+        /// <summary>로컬 별의 창고=지갑. 출정 비용을 뺀 뒤에는 낸 돈을 다시 더해
+        /// 미리보기와 정산이 같은 20%를 보게 한다.</summary>
+        public static long WarehouseCopper()
+        {
+            Load();
+            long n = GameState.Wallet.Copper;
+            if (_pending) n += _paid;
+            return n < 0 ? 0 : n;
+        }
+
+        public static long ApplyWarehouseLoot(long copper)
+        {
+            if (LootWarehouseBlocked) return copper;
+            if (copper < 0) return 0;
+            return copper * WarehouseLootPercent / 100;
+        }
+
+        public static string WarehouseLootLine()
+        {
+            if (LootWarehouseBlocked) return "창고 약탈 없음";
+            return $"창고 20%(§18-13) · {Economy.FormatCurrency(ApplyWarehouseLoot(WarehouseCopper()))}";
+        }
+
+        public static void SetWarehouseCopper(long copper)
+        {
+            if (copper < 0) copper = 0;
+            long have = GameState.Wallet.Copper;
+            if (have > copper) GameState.Pay(have - copper);
+            else if (have < copper) GameState.Grant(copper - have);
+        }
+
+        static long SortieFormulaCopper()
+        {
+            long baseLoot = Economy.GetActionCostBase("InvasionAttack", GameState.Tier) * 3;
+            if (baseLoot < 1000) baseLoot = 1000;
+            int empty = DefenseState.MaxSlots - DefenseState.Count;
+            long raw = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
+            return WorldStar.ApplyEnemy(raw);
+        }
+
+        static long WarehouseFormulaCopper()
+        {
+            long raw = ApplyWarehouseLoot(WarehouseCopper());
+            raw = ApplyRaceLoot(EstateDefense.ApplyToLoot(raw));
+            return WorldStar.ApplyEnemy(raw);
+        }
+
+        /// <summary>승자 보상은 상대 창고의 20%(§18-13). 미수령 50%는 자동적립이라 없다.
+        /// 창고를 비워도 본성×0.5 G/h는 준다(§15 1-b). QA_NO_WAREHOUSE_LOOT=1이면 옛 출정×3.
         /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.
         /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).
-        /// 방어로 작아져도 본성×0.5 G/h 밑으로 안 내려간다(§18-13).
         /// 마지막에 같은 티어 6 G/h로 자른다(§18-13). QA_NO_LOOT_CAP=1이면 안 자른다.</summary>
         public static long LootCopper()
         {
@@ -228,13 +285,13 @@ namespace AshesToStars
             {
                 raw = ForceLootBeforeCap;
             }
+            else if (LootWarehouseBlocked)
+            {
+                raw = SortieFormulaCopper();
+            }
             else
             {
-                long baseLoot = Economy.GetActionCostBase("InvasionAttack", GameState.Tier) * 3;
-                if (baseLoot < 1000) baseLoot = 1000;
-                int empty = DefenseState.MaxSlots - DefenseState.Count;
-                raw = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
-                raw = WorldStar.ApplyEnemy(raw);
+                raw = WarehouseFormulaCopper();
             }
             return ApplyLootCap(ApplyLootFloor(raw));
         }
@@ -261,15 +318,17 @@ namespace AshesToStars
         {
             Load();
             if (!_pending) return 0;
-            _pending = false;
             long loot = 0;
             if (won)
             {
+                // 대기를 끄기 전에 읽는다. 끄면 출정비가 빠진 지갑의 20%가 된다.
                 loot = LootCopper();
+                _pending = false;
                 _lastLoot = GameState.Earn(loot);
             }
             else
             {
+                _pending = false;
                 GameState.Pay(DefeatCost());
                 _lastLoot = 0;
             }
@@ -387,6 +446,29 @@ namespace AshesToStars
             Save();
         }
 
+        /// <summary>시각 QA. QA_WAREHOUSE_LOOT=1이면 30층·본성1·창고 25000으로 20%=5000을 보여 준다.
+        /// 오토파일럿 Grant(500000) 뒤에 불리므로 지갑을 여기서 25000으로 맞춘다.</summary>
+        public static void SeedWarehouseLootQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowWarehouse) != "1") return;
+            if (LootWarehouseBlocked) return;
+            if (_qaWarehouseSeeded) return;
+            _qaWarehouseSeeded = true;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.EnemyDebuff = false;
+            WorldStar.AllyBuff = false;
+            EstateBuild.ResetForTest();
+            EstateDefense.ResetForTest();
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            SetWarehouseCopper(QaWarehouseCopper);
+            ForceLootBeforeCap = 0;
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_PENDING);
@@ -399,6 +481,7 @@ namespace AshesToStars
             ForceRaceLootMul = 0f;
             ForceLootBeforeCap = 0;
             _qaFloorSeeded = false;
+            _qaWarehouseSeeded = false;
             _pending = false;
             _paid = 0;
             _lastLoot = 0;

@@ -36,7 +36,7 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             WorldStar.ResetForTest();
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
-            GameState.Grant(200_000);
+            GameState.Grant(100_000);
 
             Check(!WorldStar.EnemyDebuff && WorldStar.EnemyPercent() == 100,
                 "기본은 디버프 꺼짐 100");
@@ -80,7 +80,7 @@ namespace AshesToStars
             WorldStar.ResetForTest();
             WorldStar.EnemyDebuff = true;
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
-            GameState.Grant(200_000);
+            GameState.Grant(100_000);
 
             Environment.SetEnvironmentVariable(WorldStar.EnvShowDebuff, "1");
             InvasionState.SeedAuraDebuffQaIfRequested();

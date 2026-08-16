@@ -75,7 +75,7 @@ namespace AshesToStars
             InvasionState.ResetForTest();
             GameState.SetTowerFloorForTest(30);
             Check(!InvasionState.TryBegin(), "골드 0이면 출정 비용에서 거부");
-            GameState.Grant(200_000);
+            GameState.Grant(100_000);
             long sortie = InvasionState.SortieCost();
             long gold3 = GameState.Wallet.Copper;
             Check(InvasionState.TryBegin(), "출정 비용을 내고 침략이 시작된다");

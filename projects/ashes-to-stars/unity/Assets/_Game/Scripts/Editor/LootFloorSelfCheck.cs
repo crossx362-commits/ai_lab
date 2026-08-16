@@ -74,9 +74,11 @@ namespace AshesToStars
             InvasionState.ForceLootBeforeCap = 0;
 
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            InvasionState.ForceLootBeforeCap = 9_211;
             long t3 = InvasionState.LootCopper();
-            Check(t3 > 5_000, $"T3 공식은 바닥 위 (실제 {t3})");
+            Check(t3 == 9_211, $"강제 9211은 바닥 위 (실제 {t3})");
             Check(InvasionState.ApplyLootFloor(t3) == t3, "바닥 위는 안 올린다");
+            InvasionState.ForceLootBeforeCap = 0;
 
             GameState.Grant(500_000);
             InvasionState.ForceLootBeforeCap = 3_000;

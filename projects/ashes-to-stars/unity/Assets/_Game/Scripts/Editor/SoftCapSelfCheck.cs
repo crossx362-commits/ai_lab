@@ -101,8 +101,9 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             WorldStar.ResetForTest();
             GameState.SetTowerFloorForTest(1);
-            GameState.Grant(200_000);
+            GameState.Grant(50_000);
             long formula = InvasionState.LootCopper();
+            Check(formula == 10_000, $"창고 50000의 20%=10000 (실제 {formula})");
             Check(InvasionState.TryBegin(), "출정");
             long settled = InvasionState.Settle(true);
             Check(settled == formula && formula > 0 && formula <= 15_000,
