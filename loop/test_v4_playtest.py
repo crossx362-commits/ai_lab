@@ -116,6 +116,49 @@ class KitTests(unittest.TestCase):
         self.assertEqual(r["human_70"], "pending")
         self.assertEqual(r["deleted"], 10)
 
+    def test_v4b_zero_without_kit_progress(self):
+        self.assertEqual(board.v4_gate_pct({"n": 0, "ran": 0, "deleted": 0, "continued": 0}), 0)
+
+    def test_v4b_rises_with_sessions_but_caps_before_human(self):
+        st = {"n": 10, "ran": 10, "deleted": 10, "continued": 10}
+        self.assertEqual(board.v4_gate_pct(st), 90)
+        self.assertEqual(board.v4_gate_pct(st, decisions={
+            "x": {"title": "V4 외부 테스터 70%", "choice": "skip"},
+        }), 90)
+        self.assertEqual(board.v4_gate_pct(st, decisions={
+            "x": {"title": "V4 외부 테스터 70%", "choice": "pass"},
+        }), 100)
+
+    def test_proto_average_leaves_80_when_sessions_exist(self):
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            dest = tmp / "output/qa/ashes-to-stars/v4_playtest"
+            dest.mkdir(parents=True)
+            dest.joinpath("sessions.json").write_text(json.dumps({
+                "ran_at": "2026-08-16 18:55",
+                "sessions": [{
+                    "id": f"t{i:02d}", "deleted": True, "continued": True,
+                } for i in range(1, 11)],
+            }), encoding="utf-8")
+            board.ROOT = tmp
+            try:
+                charts = board.progress_charts(
+                    "V2 사람 판정 → 통과\n",
+                    "### 현재 핵심 미완 (원장 §22)\n\n"
+                    "- **V3 한 판 종단**(원장 1순위) ✅ 실행 증거 닫힘\n",
+                    "### 21-4. 주차별 진행\n| ~~W1~~ | x | ✅ 완료 |\n",
+                    {"x": {"title": "V2 사람 판정", "choice": "pass"}},
+                )
+            finally:
+                board.ROOT = old
+        v4b = next(g for g in charts["gates"] if g["id"] == "V4b")["pct"]
+        proto = next(r for r in charts["roadmap"] if r["id"] == "0")["pct"]
+        self.assertEqual(v4b, 90)
+        self.assertGreater(proto, 80)
+        self.assertLessEqual(proto, 90)
+        self.assertLess(proto, 100)
+
 
 if __name__ == "__main__":
     unittest.main()

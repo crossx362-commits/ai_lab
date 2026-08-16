@@ -138,14 +138,23 @@ class ParseTests(unittest.TestCase):
 | ~~W1~~ | ~~유닛~~ | ✅ **완료 (2026-08-13) — V1 통과** |
 | **W6** | 외부 플레이테스트 | **V4 판정** |
 """
-        charts = board.progress_charts(status, design, game, {
-            "x": {"title": "V2 사람 판정", "choice": "pass"},
-        })
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "output/qa/ashes-to-stars/v4_playtest").mkdir(parents=True)
+            board.ROOT = tmp
+            try:
+                charts = board.progress_charts(status, design, game, {
+                    "x": {"title": "V2 사람 판정", "choice": "pass"},
+                })
+            finally:
+                board.ROOT = old
         self.assertEqual(charts["queue"]["done"], 1)
         self.assertEqual(charts["queue"]["blocked"], 1)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V2")["pct"], 100)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V3")["pct"], 100)
-        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 0)
+        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 20)
+        self.assertLess(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 100)
         w1 = next(w for w in charts["weeks"] if w["id"] == "W1")
         self.assertEqual(w1["pct"], 100)
         w6 = next(w for w in charts["weeks"] if w["id"] == "W6")

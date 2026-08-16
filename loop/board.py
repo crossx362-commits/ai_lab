@@ -284,6 +284,39 @@ def _v3_closed(design: str) -> bool:
     return any(m.get("done") and "V3" in m["title"] for m in parse_milestones(design))
 
 
+def _v4_human_passed(status: str, decisions: dict | None) -> bool:
+    """사람 70%만 100이다. skip·실측 세션은 통과가 아니다."""
+    if re.search(r"V4.{0,24}70%.{0,24}→\s*통과", status or ""):
+        return True
+    for v in (decisions or {}).values():
+        title = str(v.get("title") or "")
+        if "V4" in title and "70%" in title and v.get("choice") == "pass":
+            return True
+    return False
+
+
+def v4_gate_pct(st: dict | None = None, decisions: dict | None = None,
+                status: str = "") -> int:
+    """V4b 진행. 키트·세션은 숫자를 올리고, 사람 70% 전에는 90이 상한이다.
+
+    예전엔 항상 0이라 10세션 삭제 실측이 있어도 프로토가 4/5=80%에 묶였다.
+    """
+    if _v4_human_passed(status, decisions):
+        return 100
+    st = st if st is not None else playtest_state()
+    target = 10
+    ran = min(int(st.get("ran") or 0), target)
+    deleted = min(int(st.get("deleted") or 0), target)
+    continued = min(int(st.get("continued") or 0), target)
+    pct = 0
+    if int(st.get("n") or 0) >= target:
+        pct += 20
+    pct += round(25 * ran / target)
+    pct += round(25 * deleted / target)
+    pct += round(20 * continued / target)
+    return min(90, pct)
+
+
 def resource_bars() -> list[dict]:
     res = ROOT / "projects" / "ashes-to-stars" / "unity" / "Assets" / "Resources"
     if not res.is_dir():
@@ -357,14 +390,17 @@ def progress_charts(status: str | None = None, design: str | None = None,
         {"id": "V3", "label": "V3 보스 한 판", "pct": 100 if v3 else 0,
          "note": "HP·페이즈·처치·층" if v3 else "한 판 미연결"},
         {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
-        {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": 0,
+        {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": v4_gate_pct(decisions=decisions, status=status),
          "note": v4_playtest_note()},
     ]
-    proto_done = sum(1 for g in gates if g["pct"] >= 100)
+    proto_pct = round(sum(g["pct"] for g in gates) / max(len(gates), 1))
+    proto_closed = sum(1 for g in gates if g["pct"] >= 100)
+    if any(g["pct"] < 100 for g in gates):
+        proto_pct = min(proto_pct, 90)
     roadmap = [
         {"id": "0", "label": "0. 프로토타입",
-         "pct": round(100 * proto_done / max(len(gates), 1)),
-         "note": f"관문 {proto_done}/{len(gates)} · 남은 건 V4 70%"},
+         "pct": proto_pct,
+         "note": f"관문 평균 · {proto_closed}/{len(gates)}닫힘 · 사람 70% 전 상한 90"},
         {"id": "1", "label": "1. 수직 슬라이스", "pct": 0, "note": "V4 이후"},
         {"id": "2", "label": "2. 온라인 기반", "pct": 0, "note": "V4 이후"},
         {"id": "3", "label": "3. 콘텐츠 확장", "pct": 0, "note": "V4 이후"},
@@ -703,12 +739,13 @@ def load_playtest_script() -> dict:
     }
 
 
-def v4_playtest_note() -> str:
-    st = playtest_state()
+def v4_playtest_note(st: dict | None = None) -> str:
+    st = st if st is not None else playtest_state()
+    pct = v4_gate_pct(st)
     if st["ran"] >= 10 and st["deleted"] >= 10:
-        return f"10세션 삭제 실측 · 사람 70% 대기"
+        return f"10세션 삭제 실측 {pct}% · 사람 70% 대기"
     if st["n"] == 10:
-        return "테스터 10명 키트 · 세션 대기"
+        return f"테스터 10명 키트 {pct}% · 세션 대기"
     return "사람 관문 · 자동 완료 금지"
 
 
