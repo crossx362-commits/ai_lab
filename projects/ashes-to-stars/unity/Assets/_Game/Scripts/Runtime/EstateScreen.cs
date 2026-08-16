@@ -16,7 +16,7 @@ namespace AshesToStars
     /// </summary>
     public class EstateScreen : GameScreen
     {
-        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대 }
+        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어 }
         Sub _sub = Sub.없음;
         int _hubPage;
 
@@ -32,6 +32,7 @@ namespace AshesToStars
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
             Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
             Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
+            Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             _ => "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
         };
 
@@ -68,6 +69,7 @@ namespace AshesToStars
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
             if (_sub == Sub.수비대) { Barracks(r); return; }
+            if (_sub == Sub.월드티어) { WorldTier(r); return; }
 
             if (_sub == Sub.경매장) { AuctionHouse(r); return; }
 
@@ -107,7 +109,13 @@ namespace AshesToStars
         void DrawEstateStatus(Rect r)
         {
             var cards = UiPages.Grid(r, 2, 2, 16f);
-            DrawCard(cards[0], $"탑 {GameState.TowerFloor}층", "10층마다 필드·던전 티어가 오른다", "tower", locked: true);
+            bool canPick = GameState.UnlockedTier > 0;
+            if (DrawCard(cards[0], $"세계 T{GameState.Tier + 1}",
+                    canPick
+                        ? $"해금 T{GameState.UnlockedTier + 1} · 탑 {GameState.TowerFloor}층 — 눌러 고른다"
+                        : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
+                    "tower", locked: !canPick))
+                _sub = Sub.월드티어;
             DrawCard(cards[1], Economy.FormatCurrency(GameState.Wallet.Copper),
                 GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
                 "building_auction", locked: true);
@@ -115,6 +123,30 @@ namespace AshesToStars
                 "편성은 캐릭터 탭 · 파티 화면", "characters", locked: true);
             DrawCard(cards[3], $"수비 {DefenseState.Count}/{DefenseState.MaxSlots}",
                 "비어 있으면 침략 약탈이 늘어난다", "building_barracks", locked: true);
+        }
+
+        void WorldTier(Rect r)
+        {
+            int row = 0;
+            Info(r, row++,
+                $"해금 T{GameState.UnlockedTier + 1} · 탑 {GameState.TowerFloor}층 · 최고 기록은 안 내려간다(§6)");
+            int unlocked = GameState.UnlockedTier;
+            int last = Mathf.Min(9, unlocked + 1);
+            for (int i = 0; i <= last && row < 8; i++)
+            {
+                string pay = Economy.FormatCurrency((long)(Economy.TierRevenueMultiplier[i] * 10000f)) + "/h";
+                if (i > unlocked)
+                {
+                    Locked(r, row++, $"T{i + 1}", $"탑 {i * 10 + 1}층에서 해금 — 현재 {GameState.TowerFloor}층");
+                    continue;
+                }
+                bool current = i == GameState.Tier;
+                if (Row(r, row++, $"T{i + 1} · {pay}",
+                        current ? "현재 세계 — 필드·던전·하위 레이드" : "이 티어로 세계를 맞춘다",
+                        "tower"))
+                    GameState.TrySelectTier(i);
+            }
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
         }
 
         /// <summary>

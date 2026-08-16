@@ -19,6 +19,7 @@ namespace AshesToStars
     {
         const string K_COPPER = "ats.copper";
         const string K_FLOOR = "ats.tower_floor";
+        const string K_TIER = "ats.world_tier";
         const string K_ITEM = "ats.item.";
         // 대출 상태(§12·§18-5) — 부채 잔액·마지막 이자 가산 시각·상환 기한(전부 유닉스초).
         const string K_DEBT = "ats.loan.debt";
@@ -56,12 +57,43 @@ namespace AshesToStars
             private set { _floor = Mathf.Max(1, value); Save(); }
         }
         static int _floor = 1;
+        // -1 = 한 번도 고르지 않음 → 해금 최고를 따른다. 옛 저장에 키가 없어도 같다.
+        static int _selectedTier = -1;
 
         /// <summary>
-        /// 현재 콘텐츠 티어. §10-6이 "탑 10층 돌파마다 한 단계"라고 정했다.
-        /// 수익 곡선(§18-1)과 진입 비용(§18-2)이 이 값을 쓴다.
+        /// 해금된 최고 티어(0=T1). 탑 최고 기록에서만 온다. 선택을 내려도 이 값은 안 내려간다(§6·§10-6).
         /// </summary>
-        public static int Tier => Mathf.Clamp((TowerFloor - 1) / 10, 0, 9);
+        public static int UnlockedTier
+        {
+            get { Load(); return Mathf.Clamp((_floor - 1) / 10, 0, 9); }
+        }
+
+        /// <summary>
+        /// 지금 세계의 콘텐츠 티어. 필드·던전·하위 레이드 난이도와 일반 보상·비용이 이걸 본다(§6).
+        /// 탑 도전 비용은 <see cref="UnlockedTier"/>를 쓴다 — 낮춘 세계로 고층 입장이 싸지면 안 된다.
+        /// </summary>
+        public static int Tier
+        {
+            get
+            {
+                Load();
+                int unlocked = UnlockedTier;
+                if (_selectedTier < 0) return unlocked;
+                return Mathf.Clamp(_selectedTier, 0, unlocked);
+            }
+        }
+
+        /// <summary>
+        /// 해금된 티어 중 하나를 고른다(§6). 해금보다 높거나 음수면 아무것도 안 바꾸고 false.
+        /// </summary>
+        public static bool TrySelectTier(int tier)
+        {
+            Load();
+            if (tier < 0 || tier > UnlockedTier) return false;
+            _selectedTier = tier;
+            Save();
+            return true;
+        }
 
         static void Load()
         {
@@ -75,6 +107,8 @@ namespace AshesToStars
             if (copper > 0) _wallet.TryAdd(copper);
 
             _floor = Mathf.Max(1, PlayerPrefs.GetInt(K_FLOOR, 1));
+            _selectedTier = PlayerPrefs.GetInt(K_TIER, -1);
+            ApplyQaWorldTierSeed();
 
             foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
             {
@@ -101,6 +135,7 @@ namespace AshesToStars
             if (!_loaded) return;
             PlayerPrefs.SetString(K_COPPER, _wallet.Copper.ToString());
             PlayerPrefs.SetInt(K_FLOOR, _floor);
+            PlayerPrefs.SetInt(K_TIER, _selectedTier);
             foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
                 PlayerPrefs.SetInt(K_ITEM + it, _bag.GetCount(it));
             PlayerPrefs.SetString(K_DEBT, _debt.ToString());
@@ -400,11 +435,35 @@ namespace AshesToStars
         static bool _failNextAtomicStageForTest;
         public static void FailNextAtomicStageForTest() => _failNextAtomicStageForTest = true;
 
-        /// <summary>탑 층 돌파. 최고 기록만 올라간다(재도전으로 내려가지 않는다).</summary>
+        /// <summary>탑 층 돌파. 최고 기록만 올라간다(재도전으로 내려가지 않는다).
+        /// 새 티어가 열리면 그 최고가 기본 선택이다(§6 "새로 해금한 최고 티어가 기본값").</summary>
         public static void ClearFloor(int floor)
         {
             Load();
-            if (floor >= _floor) TowerFloor = floor + 1;
+            if (floor < _floor) return;
+            int before = UnlockedTier;
+            TowerFloor = floor + 1;
+            if (UnlockedTier > before)
+            {
+                _selectedTier = UnlockedTier;
+                Save();
+            }
+        }
+
+        /// <summary>시각 QA. QA_WORLD_TIER=1이면 해금 T3(21층)·선택 T1을 심는다.</summary>
+        public static void SeedWorldTierQaIfRequested()
+        {
+            Load();
+            ApplyQaWorldTierSeed();
+        }
+
+        static void ApplyQaWorldTierSeed()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_WORLD_TIER");
+            if (string.IsNullOrEmpty(raw) || raw == "0") return;
+            if (_floor < 21) _floor = 21;
+            _selectedTier = 0;
+            Save();
         }
 
         /// <summary>지금 보유량을 화면에 쓸 문자열로. 예: "12골드 30실버".</summary>
@@ -445,6 +504,7 @@ namespace AshesToStars
         {
             PlayerPrefs.DeleteKey(K_COPPER);
             PlayerPrefs.DeleteKey(K_FLOOR);
+            PlayerPrefs.DeleteKey(K_TIER);
             foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
                 PlayerPrefs.DeleteKey(K_ITEM + it);
             PlayerPrefs.DeleteKey(K_DEBT);
@@ -461,6 +521,7 @@ namespace AshesToStars
             _bankruptThisLoan = false;
             _auctionBanUntil = _reloanUntil = 0;
             _qaLoanSeeded = false;
+            _selectedTier = -1;
             _loaded = false;
             Equipment.ResetAll();
             AuctionState.ResetForTest();

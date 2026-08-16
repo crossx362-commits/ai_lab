@@ -17,7 +17,7 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_tower";
         protected override bool ShowBossHpPreview => UiAtlas.QaShowBossHp;
         protected override string Subtitle =>
-            $"최대 100층. 10층 돌파마다 티어 상승(§8·§10-6) — 현재 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
+            $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
 
         bool _showLastLifeWarning = false;
         // 필드 화면과 같은 규칙 — 값을 세우는 코드만 있고 이 필드·표시 화면이 없어서
@@ -99,7 +99,7 @@ namespace AshesToStars
             }
 
             if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
-                Enter(Economy.GetActionCost("TowerNormalFloor", GameState.Tier),
+                Enter(Economy.GetActionCost("TowerNormalFloor", GameState.UnlockedTier),
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
             // 레이드는 **보스전**이다 — 잡몹 웨이브가 아니라 기믹 3종이 도는 판(§9·§10-5).
             // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
@@ -107,7 +107,7 @@ namespace AshesToStars
             {
                 // 레이드 층은 현재 진행도에서 가장 가까운 5층 배수(§9 "5층 단위")
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
-                Enter(Economy.GetActionCost("Tower5BossRaid", GameState.Tier),
+                Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
                       GameFlow.BattleKind.보스, raidFloor);
             }
         }
