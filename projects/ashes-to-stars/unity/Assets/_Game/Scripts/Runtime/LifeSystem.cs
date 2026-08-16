@@ -419,6 +419,37 @@ namespace AshesToStars
             return _characters;
         }
 
+        /// <summary>PlayerPrefs에 로스터 줄이 있는지. GetCharacters는 비면 5인을 만들어 항상 true가 된다.</summary>
+        public static bool HasSavedRoster() =>
+            !string.IsNullOrEmpty(PlayerPrefs.GetString(K_ROSTER, ""));
+
+        /// <summary>
+        /// 타이틀에서 고른 기본직업을 첫 캐릭터로 새 여정을 연다(§3).
+        /// 프로토타입 레이드는 5인이라 나머지 역할+여분 딜을 같이 넣는다.
+        /// Initialize()의 고정 5인과 달리 0번이 고른 직업이다.
+        /// </summary>
+        public static CharacterRecord BeginNewGame(string starterJob)
+        {
+            if (!IsBasicJob(starterJob)) return null;
+            ResetAll();
+            _loaded = true;
+            _characters.Clear();
+            _characters.Add(new CharacterRecord(BasicJobLabel(starterJob), starterJob, 10));
+            for (int i = 0; i < BasicJobs.Length; i++)
+            {
+                string job = BasicJobs[i];
+                if (job == starterJob) continue;
+                string name = job == "딜" ? "딜러1" : BasicJobLabel(job);
+                _characters.Add(new CharacterRecord(name, job, 10));
+            }
+            if (_characters.Count < 5)
+                _characters.Add(new CharacterRecord("딜러2", "딜", 10));
+            Save();
+            PartyState.ResetForTest();
+            _ = PartyState.Slots;
+            return _characters[0];
+        }
+
         /// <summary>기본직업 4종. 층 클리어 보상·시작 로스터가 같은 이름을 쓴다(§3).</summary>
         public static readonly string[] BasicJobs = { "탱", "딜", "힐", "버퍼" };
 
