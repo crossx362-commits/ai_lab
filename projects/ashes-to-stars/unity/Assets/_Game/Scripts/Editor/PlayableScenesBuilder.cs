@@ -36,6 +36,7 @@ public static class PlayableScenesBuilder
         (GameFlow.Dungeon,   typeof(DungeonScreen)),
         (GameFlow.Battle,    typeof(BattleScreen)),
         (GameFlow.Result,    typeof(ResultScreen)),
+        (GameFlow.VfxTest,   typeof(VfxTestScreen)),
     };
 
     [MenuItem("재와별/플레이 씬 생성", priority = 2)]

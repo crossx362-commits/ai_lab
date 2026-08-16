@@ -64,6 +64,7 @@ namespace AshesToStars
                 }
             }
 
+            if (Row(r, row++, "이펙트 테스트", "생성한 전투 이펙트를 한 화면에서 확인")) GameFlow.Go(GameFlow.VfxTest);
             if (Row(r, row, "돌아가기", "파티 편성으로")) GameFlow.Go(GameFlow.Party);
         }
 
