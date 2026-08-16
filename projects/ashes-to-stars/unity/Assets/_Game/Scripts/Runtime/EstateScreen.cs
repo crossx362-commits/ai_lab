@@ -16,7 +16,7 @@ namespace AshesToStars
     /// </summary>
     public class EstateScreen : GameScreen
     {
-        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어 }
+        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성 }
         Sub _sub = Sub.없음;
         int _hubPage;
 
@@ -33,6 +33,7 @@ namespace AshesToStars
             Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
             Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
+            Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
             _ => TowerEnding.HasTitle
                 ? $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)"
                 : SoloRaidClear.HasAny
@@ -72,6 +73,8 @@ namespace AshesToStars
                 AutoOpen = null;                 // 한 번만 — 이후엔 사람이 조작한다
             }
 
+            EstateBuild.Tick();
+            if (_sub == Sub.본성) { Keep(r); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
             if (_sub == Sub.수비대) { Barracks(r); return; }
@@ -115,31 +118,53 @@ namespace AshesToStars
         void DrawEstateStatus(Rect r)
         {
             var cards = UiPages.Grid(r, 2, 2, 16f);
+            string keepSub = EstateBuild.KeepBusy
+                ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}"
+                : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+            if (DrawCard(cards[0], "본성", keepSub, "territory"))
+                _sub = Sub.본성;
             bool canPick = GameState.UnlockedTier > 0;
-            if (DrawCard(cards[0], $"세계 T{GameState.Tier + 1}",
+            if (DrawCard(cards[1], $"세계 T{GameState.Tier + 1}",
                     canPick
                         ? $"해금 T{GameState.UnlockedTier + 1} · 탑 {GameState.TowerFloor}층 — 눌러 고른다"
                         : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            if (TowerEnding.HasTitle)
-                DrawCard(cards[1], TowerEnding.TitleName,
-                    TowerEnding.HasStarLook
-                        ? $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전(§8)"
-                        : "100층 최초 클리어 · 전투력 변화 없음(§8)",
-                    "tower", locked: true);
-            else if (SoloRaidClear.HasAny)
-                DrawCard(cards[1], SoloRaidClear.LastTitle,
-                    $"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력 변화 없음(§8)",
-                    "tower", locked: true);
-            else
-                DrawCard(cards[1], Economy.FormatCurrency(GameState.Wallet.Copper),
-                    GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
-                    "building_auction", locked: true);
-            DrawCard(cards[2], $"파티 {PartyState.Slots.Count}/{PartyState.MaxSlots}",
-                "편성은 캐릭터 탭 · 파티 화면", "characters", locked: true);
+            DrawCard(cards[2], Economy.FormatCurrency(GameState.Wallet.Copper),
+                GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
+                "building_auction", locked: true);
             DrawCard(cards[3], $"수비 {DefenseState.Count}/{DefenseState.MaxSlots}",
                 "비어 있으면 침략 약탈이 늘어난다", "building_barracks", locked: true);
+        }
+
+        void Keep(Rect r)
+        {
+            EstateBuild.Tick();
+            int lv = EstateBuild.KeepLevel;
+            Info(r, 0, $"본성 Lv{lv} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}(§18-12)");
+            if (EstateBuild.KeepBusy)
+            {
+                Info(r, 1, $"공사 중 Lv{lv} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}");
+                Info(r, 2, "끝나면 자동 적용 — 수령할 필요 없다(§13-2)");
+            }
+            else
+            {
+                string why = EstateBuild.WhyCannotUpgrade();
+                string label = $"Lv{lv} → {lv + 1}";
+                string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(lv))} · {FormatWait(EstateBuild.UpgradeSeconds(lv))}";
+                if (why != null)
+                    Locked(r, 1, label, why, "territory");
+                else if (Row(r, 1, label, desc, "territory"))
+                    EstateBuild.TryStartKeep();
+            }
+            if (Row(r, 3, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+        }
+
+        static string FormatWait(double seconds)
+        {
+            if (seconds >= 3600) return $"{seconds / 3600.0:0.#}시간";
+            if (seconds >= 60) return $"{seconds / 60.0:0.#}분";
+            return $"{seconds:0}초";
         }
 
         void WorldTier(Rect r)
