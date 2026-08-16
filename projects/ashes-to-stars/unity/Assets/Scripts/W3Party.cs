@@ -145,6 +145,20 @@ public class W3Party : MonoBehaviour
     int _sel = -1;                     // 선택된 파티 슬롯. -1이면 선택 없음
     GUIStyle _cmdBtn, _cmdLabel;
 
+    // HUD는 이 세 안전 영역만 쓴다. 월드 이펙트·전투 콜아웃과 겹치는 좌표를 만들지 않는다.
+    public const float CombatHudTopHeight = 72f;
+    public const float CombatHudBottomHeight = 148f;
+    public const int CombatHudRewardMaxEntries = 3;
+    public const float CombatHudRewardLifetime = 2.2f;
+
+    struct RewardEntry
+    {
+        public string Text;
+        public Color Color;
+        public float Age;
+    }
+    readonly List<RewardEntry> _rewardEntries = new();
+
     // 글자 뒤에 까는 반투명 판.
     // 전투 화면은 배경을 안 깔기 때문에(카메라 렌더를 보여줘야 하므로) 밝은 바닥 위에
     // 흰 글씨가 그대로 놓여 읽히지 않았다(오너 지적 "글씨가 안보인다고").
@@ -1155,7 +1169,10 @@ public class W3Party : MonoBehaviour
             var sp = cam.WorldToScreenPoint(new Vector3(c.At.x, c.At.y * ISO_Y, 0f));
             if (sp.z < 0f) continue;                                  // 카메라 뒤
             float y = Screen.height - sp.y - 46f - u * 34f;           // 위로 떠오른다
-            var r = new Rect(sp.x - 90f, y, 180f, 26f);
+            // 상단 요약, 우측 보상 레인, 하단 지휘 바는 월드 콜아웃이 침범하지 않는다.
+            y = Mathf.Clamp(y, CombatHudTopHeight + 26f, Screen.height - CombatHudBottomHeight - 28f);
+            float x = Mathf.Clamp(sp.x - 90f, Screen.width * .12f, Screen.width - 180f - 170f);
+            var r = new Rect(x, y, 180f, 26f);
 
             // 알파는 뒤쪽 절반에서만 뺀다 — 처음부터 흐려지면 읽기도 전에 사라진다
             float a = u < 0.55f ? 1f : 1f - (u - 0.55f) / 0.45f;
@@ -2286,6 +2303,8 @@ public class W3Party : MonoBehaviour
     void KillMob(int i)
     {
         _mOn[i] = false; _mAlive--; _kills++;
+        PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : "골드 +12   EXP +4",
+                   _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
         // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
@@ -2805,18 +2824,55 @@ public class W3Party : MonoBehaviour
             var c = _screenFlashColor; c.a = Mathf.Clamp01(_screenFlash) * 0.35f;
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Tint(c));
         }
-        var s = new StringBuilder();
         int wave = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
-        s.Append($"구성 {_setup.Name}   경과 {_t:F0}s   웨이브목표 {wave}   처치 {_kills}   도발 {_tauntUses}   ");
-        s.Append($"전열피격 {_frontlineHits} / 후열피격 {_backlineHits}\n");
-        foreach (var m in _party)
-            s.Append($"{m.Role} {(m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망")}   ");
-        GUI.DrawTexture(new Rect(8, 126, 1000, 64), Scrim());
-        GUI.Label(new Rect(14, 130, 990, 60), s.ToString(), _hud);
-
-        // 지휘 바는 항상 띄운다. 자동 전투 중에도 캐릭터를 골라 옮길 수 있어야 한다(오너 지시).
-        // "자동"은 **명령을 안 내렸을 때의 기본값**이지, 개입을 막는 모드가 아니다(§5).
+        DrawCombatSummary(wave);
+        DrawRewardRail();
         CommandBar();
+    }
+
+    void DrawCombatSummary(int wave)
+    {
+        var top = new Rect(0f, 0f, Screen.width, CombatHudTopHeight);
+        GUI.DrawTexture(top, Tint(new Color(.025f, .045f, .085f, .91f)));
+        GUI.DrawTexture(new Rect(0f, CombatHudTopHeight - 2f, Screen.width, 2f),
+                        Tint(new Color(.82f, .61f, .23f, .85f)));
+        _cmdLabel ??= new GUIStyle(GUI.skin.label) { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
+        GUI.Label(new Rect(18f, 12f, 480f, 24f), $"{시작웨이브}-{wave}  ·  {_setup.Name}", _cmdLabel);
+        GUI.Label(new Rect(18f, 38f, 540f, 22f), $"처치 {_kills}  ·  경과 {_t:F0}s", _cmdLabel);
+        GUI.Label(new Rect(Screen.width - 188f, 18f, 170f, 28f), "자동 전투  ·  ×2", _cmdLabel);
+    }
+
+    void PushReward(string text, Color color)
+    {
+        _rewardEntries.Insert(0, new RewardEntry { Text = text, Color = color, Age = 0f });
+        if (_rewardEntries.Count > CombatHudRewardMaxEntries)
+            _rewardEntries.RemoveRange(CombatHudRewardMaxEntries, _rewardEntries.Count - CombatHudRewardMaxEntries);
+    }
+
+    void DrawRewardRail()
+    {
+        float x = Screen.width - 178f;
+        float y = CombatHudTopHeight + 32f;
+        for (int i = _rewardEntries.Count - 1; i >= 0; i--)
+        {
+            var entry = _rewardEntries[i];
+            entry.Age += Time.deltaTime;
+            if (entry.Age >= CombatHudRewardLifetime) { _rewardEntries.RemoveAt(i); continue; }
+            _rewardEntries[i] = entry;
+        }
+
+        for (int i = 0; i < _rewardEntries.Count; i++)
+        {
+            var entry = _rewardEntries[i];
+            float a = Mathf.Clamp01(1f - entry.Age / CombatHudRewardLifetime);
+            var r = new Rect(x, y + i * 34f, 162f, 28f);
+            GUI.DrawTexture(r, Tint(new Color(.04f, .08f, .14f, .78f * a)));
+            _cmdLabel.normal.textColor = new Color(entry.Color.r, entry.Color.g, entry.Color.b, a);
+            GUI.Label(new Rect(r.x + 8f, r.y + 5f, r.width - 12f, r.height), entry.Text, _cmdLabel);
+        }
+        _cmdLabel.normal.textColor = new Color(.95f, .96f, 1f);
+        GUI.Label(new Rect(x, y + 108f, 162f, 20f), $"KILL STREAK  ×{Mathf.Max(1, _kills % 25)}", _cmdLabel);
+        GUI.Label(new Rect(x, y + 130f, 162f, 20f), $"획득 속도  +{Mathf.Max(1, _kills / Mathf.Max(1f, _t))} / min", _cmdLabel);
     }
 
     /// <summary>
@@ -2833,12 +2889,12 @@ public class W3Party : MonoBehaviour
         // ── 파티 목록 (인게임 캐릭터 선택) ──
         // 이름만 있는 버튼으로는 누가 누군지, 누가 위험한지 한눈에 안 들어온다.
         // 초상화 + HP + 목숨을 함께 보여야 §5의 "판을 읽고 지휘한다"가 가능해진다.
-        const float CW = 132f, CH = 96f, GAP = 6f;
+        const float CW = 88f, CH = 72f, GAP = 6f;
         float total = _party.Length * CW + (_party.Length - 1) * GAP;
         float x = Mathf.Max(16f, (Screen.width - total) * 0.5f);
-        float y = Screen.height - CH - 34f;
+        float y = Screen.height - CH - 18f;
 
-        GUI.DrawTexture(new Rect(0, y - 30f, Screen.width, CH + 64f), Scrim());
+        GUI.DrawTexture(new Rect(0, Screen.height - CombatHudBottomHeight, Screen.width, CombatHudBottomHeight), Scrim());
 
         var bank = SpriteBank.Cached;
         for (int i = 0; i < _party.Length; i++)
@@ -2854,7 +2910,7 @@ public class W3Party : MonoBehaviour
                                                : new Color(.22f, .07f, .07f, .95f)));
 
             // 새 파티 초상화 시트를 우선한다. 리소스가 없을 때만 기존 유닛 스프라이트로 복귀한다.
-            var pr = new Rect(card.x + 6, card.y + 4, 52, 66);
+            var pr = new Rect(card.x + 5, card.y + 5, 36, 46);
             var portraitTint = m.Alive ? Color.white : new Color(1f, .6f, .6f, .55f);
             if (!AshesToStars.PortraitAtlas.Draw(pr, AshesToStars.PortraitAtlas.KeyForJob(m.Job.ToString()), portraitTint))
             {
@@ -2868,22 +2924,22 @@ public class W3Party : MonoBehaviour
                 }
             }
 
-            GUI.Label(new Rect(card.x + 62, card.y + 6, CW - 66, 20), $"{i + 1}.{m.Job}", _cmdLabel);
+            GUI.Label(new Rect(card.x + 45, card.y + 6, CW - 48, 20), $"{i + 1}", _cmdLabel);
 
             // HP 바 — 숫자보다 길이가 빨리 읽힌다
             float ratio = m.Alive ? Mathf.Clamp01(m.Hp / m.MaxHp) : 0f;
-            var bar = new Rect(card.x + 62, card.y + 30, CW - 70, 10);
+            var bar = new Rect(card.x + 45, card.y + 30, CW - 50, 8);
             GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height),
                             Tint(ratio > .5f ? new Color(.35f, .85f, .4f)
                                : ratio > .25f ? new Color(.95f, .78f, .3f)
                                               : new Color(.9f, .3f, .3f)));
-            GUI.Label(new Rect(card.x + 62, card.y + 42, CW - 66, 18),
+            GUI.Label(new Rect(card.x + 5, card.y + 53, CW - 10, 16),
                       m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
 
             // 명령 상태 — 이동 지시가 걸려 있으면 표시
             if (m.Order.HasValue)
-                GUI.Label(new Rect(card.x + 6, card.y + CH - 24, CW - 12, 20), "▶ 이동 중", _cmdLabel);
+                GUI.Label(new Rect(card.x + 5, card.y + CH - 18, CW - 10, 16), "▶ 이동", _cmdLabel);
 
             GUI.enabled = m.Alive;
             if (GUI.Button(new Rect(card.x, card.y, card.width, card.height), GUIContent.none, GUIStyle.none))
@@ -2891,12 +2947,12 @@ public class W3Party : MonoBehaviour
             GUI.enabled = true;
         }
 
-        GUI.Label(new Rect(16, y - 26, 1200, 22),
+        GUI.Label(new Rect(16, Screen.height - CombatHudBottomHeight + 8f, 640, 22),
                   _sel < 0 ? "카드를 클릭하거나 1~5 키로 캐릭터 선택 — 자동 전투 중"
                            : $"[{_party[_sel].Job}] 선택됨 — 우클릭으로 이동 지시 · 0으로 해제", _cmdLabel);
 
         if (_sel < 0 || !_party[_sel].Alive) return;
-        SkillButtons(_party[_sel], y - 62f);
+        SkillButtons(_party[_sel], Screen.height - CombatHudBottomHeight + 36f);
     }
 
     /// <summary>
@@ -2922,8 +2978,9 @@ public class W3Party : MonoBehaviour
             a = labels[0]; b = labels[1];
         }
 
-        float w = 176f, gap = 8f;
-        float x = Screen.width * 0.5f - (w * 2 + gap) * 0.5f;
+        float w = 94f, gap = 6f;
+        int count = sel.Advancement == AdvancementTier.Second ? 3 : 2;
+        float x = Screen.width - (w * count + gap * (count - 1)) - 18f;
 
         // ⚠️ 예전엔 본문이 `{ }`였다 — 버튼이 눌리는데 **아무 일도 일어나지 않았다.**
         //    키보드(스페이스/Q)로는 되는데 마우스로는 스킬을 아예 못 쓰는 상태였고,
@@ -2944,9 +3001,7 @@ public class W3Party : MonoBehaviour
             GUI.enabled = true;
         }
 
-        GUI.Label(new Rect(x, y - 20f, 520, 20),
-                  b != "—" ? $"스킬 — 스페이스/클릭: {a} · Q/클릭: {b}"
-                           : $"스킬 — 스페이스 또는 클릭: {a}", _cmdLabel);
+        GUI.Label(new Rect(x, y - 20f, 320, 20), "선택 캐릭터 스킬", _cmdLabel);
     }
 
     bool SkillBtn(Rect r, string label, Member m, int slot)

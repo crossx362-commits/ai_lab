@@ -22,6 +22,7 @@ namespace AshesToStars
             ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
             : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
         protected override bool ShowBottomBar => false;
+        protected override bool ShowHeader => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
         protected override bool OpaqueBackground => false;
 
@@ -257,26 +258,8 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            Info(r, 0, $"경과 {_t:F1}s");
-
-            // 긴급 탈출은 **귀환의 두루마리를 실제로 소모**한다(§4 — 희귀·고가 아이템).
-            // 예전엔 이 버튼이 아이템을 무시하고 공짜로 나갔다: 라벨은 "긴급 탈출 아이템"인데
-            // 소모처가 0곳이라 드랍된 두루마리는 영영 안 쓰였다(부활초·환생석과 달리 소비처 부재).
-            // 그래서 ①없으면 잠그고 ②있으면 1개 소모 후 탈출한다. 전투는 W3Party가 스스로
-            // OnBattleEnd로 종료하므로(잡몹/파티 전멸) 이 버튼을 잠가도 화면에 갇히지 않는다.
-            // ⚠️ §4의 "캐스팅 6초·피격 시 취소"는 전투 시뮬(W3Party) 소유라 여기선 미구현 —
-            //    지금은 즉시 소모형이다(STATUS 큐에 combat 후속으로 남김).
-            int scrolls = GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn);
-            if (scrolls > 0)
-            {
-                if (Row(r, 1, $"후퇴 (귀환의 두루마리 {scrolls})", "긴급 탈출 — 두루마리 1개 소모(§4)"))
-                {
-                    if (GameState.Consume(Economy.LifeItem.ScrollOfReturn))
-                        GameFlow.Go(GameFlow.ReturnTo);
-                }
-            }
-            else
-                Locked(r, 1, "후퇴", "귀환의 두루마리가 없다 — 긴급 탈출엔 이 희귀 아이템이 필요하다(§4)");
+            // 전투 HUD는 W3Party가 전체 안전 영역을 소유한다. 여기서 공통 행을 그리면
+            // 우측 보상 레인과 중앙 전장을 다시 가리게 된다. 귀환은 ESC로 유지한다.
         }
 
         /// <summary>

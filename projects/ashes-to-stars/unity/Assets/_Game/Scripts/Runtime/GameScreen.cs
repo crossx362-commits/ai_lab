@@ -26,6 +26,8 @@ namespace AshesToStars
         protected abstract string Title { get; }
         protected virtual string Subtitle => "";
         protected virtual bool ShowBottomBar => true;
+        /// <summary>전투처럼 자체 HUD가 상단을 소유하는 화면은 공통 제목판을 숨긴다.</summary>
+        protected virtual bool ShowHeader => true;
 
         /// <summary>
         /// 화면 전체를 불투명 배경으로 덮을지.
@@ -146,16 +148,17 @@ namespace AshesToStars
                 else GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _bg);
             }
 
-            // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
-            if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);
-            GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _line);
-            GUI.DrawTexture(new Rect(0, 116, REF_W, 2), _accent);
-            // 한 장짜리 UI 아틀라스의 별자리 아이콘을 모든 화면의 공통 문장부호로 쓴다.
-            // 텍스트는 기존 IMGUI가 담당하므로 한국어 글리프가 이미지 품질에 좌우되지 않는다.
-            bool atlas = UiAtlas.Draw(new Rect(24, 18, 78, 78), "worldmap");
-            GUI.Label(new Rect(atlas ? 124 : 48, 22, REF_W - (atlas ? 172 : 96), 56), Title, _h1);
-            if (!string.IsNullOrEmpty(Subtitle))
-                GUI.Label(new Rect(50, 78, REF_W - 100, 30), Subtitle, _h2);
+            if (ShowHeader)
+            {
+                // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
+                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);
+                GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _line);
+                GUI.DrawTexture(new Rect(0, 116, REF_W, 2), _accent);
+                bool atlas = UiAtlas.Draw(new Rect(24, 18, 78, 78), "worldmap");
+                GUI.Label(new Rect(atlas ? 124 : 48, 22, REF_W - (atlas ? 172 : 96), 56), Title, _h1);
+                if (!string.IsNullOrEmpty(Subtitle))
+                    GUI.Label(new Rect(50, 78, REF_W - 100, 30), Subtitle, _h2);
+            }
 
             float bottom = ShowBottomBar ? BarH + 34f : 44f;
             Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom));
