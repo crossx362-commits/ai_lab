@@ -240,11 +240,58 @@ namespace AshesToStars
                 if (it == LifeItem.SpecialJobToken && !CanDropSpecialJobToken(towerFloor))
                     continue;
                 if (!DropRates.TryGetValue((source, it), out float rate)) continue;
+                float chance = ApplyDropRate(rate);
                 int rolls = IsRare(it) ? 1 : bossCount;
                 for (int i = 0; i < rolls; i++)
-                    if (rng.Value01() < rate) results.Add(it);
+                    if (rng.Value01() < chance) results.Add(it);
             }
             return results;
+        }
+
+        public const string EnvShowDrop = "QA_RACE_DROP";
+        public const string EnvNoDrop = "QA_NO_RACE_DROP";
+        public const int HumanDropPercent = 100;
+        public const int BeastDropPercent = 115;
+
+        /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForceRaceDropMul;
+
+        public static bool DropRaceBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoDrop) == "1";
+
+        /// <summary>§18-9 수인 드랍률 +15%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static int RaceDropPercent()
+        {
+            if (DropRaceBlocked) return HumanDropPercent;
+            if (ForceRaceDropMul > 0f) return Math.Max(1, (int)Math.Round(ForceRaceDropMul * 100.0));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].드랍률배율 > 0f)
+                        return Math.Max(1, (int)Math.Round(races[i].드랍률배율 * 100.0));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.수인 ? BeastDropPercent : HumanDropPercent;
+        }
+
+        public static float ApplyDropRate(float rate)
+        {
+            if (rate <= 0f) return 0f;
+            return rate * RaceDropPercent() / 100f;
+        }
+
+        public static string RaceDropLine()
+        {
+            int p = RaceDropPercent();
+            if (p == BeastDropPercent) return "수인 드랍 +15%(§18-9)";
+            return "종족 드랍 배율 없음";
         }
 
         /// <summary>

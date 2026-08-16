@@ -27,10 +27,13 @@ namespace AshesToStars
             SoloRaidClear.SeedQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
+            BattleScreen.SeedRaceDropRewardQaIfRequested();
 
             // 층 보상 선택이 남아 있으면 에필로그보다 먼저 5종을 한 화면에 보여 준다.
             // 예전엔 줄 목록이라 100층 자막이 있으면 힐·버퍼가 잘렸다.
-            if (FloorRecruit.AwaitingPick)
+            // QA_RACE_DROP은 드랍 문구를 찍어야 해서 남은 영입 카드를 가리지 않는다.
+            bool showRaceDrop = System.Environment.GetEnvironmentVariable(Economy.EnvShowDrop) == "1";
+            if (FloorRecruit.AwaitingPick && !showRaceDrop)
             {
                 Hint(new Rect(r.x, r.y, r.width, 24f), FloorRecruit.PickTitle());
                 string special = FloorRecruit.SpecialHint();
@@ -49,7 +52,7 @@ namespace AshesToStars
                 return;
             }
 
-            if (TowerEnding.PendingEpilogue)
+            if (TowerEnding.PendingEpilogue && !showRaceDrop)
             {
                 Info(r, _rowIndex++, $"{TowerEnding.TitleName} — 100층 최초 클리어(§8)");
                 Info(r, _rowIndex++, TowerEnding.EpilogueBody);
@@ -83,7 +86,7 @@ namespace AshesToStars
                 Info(r, _rowIndex++, $"{SoloRaidClear.LookName} · 전투력 변화 없음 · 같은 보스는 다시 안 준다");
             }
 
-            if (FloorRecruit.AwaitingPick)
+            if (FloorRecruit.AwaitingPick && !showRaceDrop)
             {
                 Info(r, _rowIndex++, FloorRecruit.PickTitle());
                 for (int i = 0; i < LifeSystem.BasicJobs.Length; i++)
@@ -118,6 +121,8 @@ namespace AshesToStars
             {
                 Info(r, _rowIndex++, "");  // 빈 줄
                 RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
+                if (Economy.RaceDropPercent() != Economy.HumanDropPercent || showRaceDrop)
+                    Info(r, _rowIndex++, Economy.RaceDropLine());
 
                 // 드랍 아이템 표시 (§10-8)
                 if (reward.DroppedItems.Count > 0)

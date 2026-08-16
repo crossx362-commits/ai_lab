@@ -359,6 +359,22 @@ namespace AshesToStars
         /// </summary>
         public static BattleRewardInfo _GetLastReward() => _reward;
 
+        /// <summary>QA_RACE_DROP=1이면 수인 + 가죽 1장으로 결과 화면을 연다.</summary>
+        public static void SeedRaceDropRewardQaIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable(Economy.EnvShowDrop) != "1") return;
+            RacePrefs.Set(RaceId.수인);
+            if (_reward.Survived && _reward.DroppedItems != null && _reward.DroppedItems.Count > 0
+                && Economy.RaceDropLine().Contains("+15%"))
+                return;
+            _reward.Clear();
+            _reward.Survived = true;
+            _reward.DroppedItems.Add(Economy.LifeItem.CraftHide);
+            if (string.IsNullOrEmpty(GameFlow.LastBattleSummary)
+                || !GameFlow.LastBattleSummary.Contains("+15%"))
+                GameFlow.LastBattleSummary = "생존 — " + Economy.RaceDropLine();
+        }
+
         /// <summary>QA_HUNT_EXP=1이면 결과 화면에 필드 생존 경험치 줄을 심는다.</summary>
         public static void SeedHuntExpRewardQaIfRequested()
         {
