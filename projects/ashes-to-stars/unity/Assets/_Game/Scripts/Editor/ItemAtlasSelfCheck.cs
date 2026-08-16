@@ -45,7 +45,10 @@ namespace AshesToStars
                 "[ItemAtlasSelfCheck] 장착 장비 아이콘이 부위와 어긋난다");
             Debug.Assert(ItemAtlas.KeyForGear(null) == null,
                 "[ItemAtlasSelfCheck] 빈 장비는 아이콘이 없어야 한다");
+            Debug.Assert(dummy.Grade == GearGrade.Common,
+                "[ItemAtlasSelfCheck] 기본 장비 등급은 일반이다");
             _ = nameof(ItemAtlas.DrawHud);
+            _ = nameof(ItemAtlas.DrawGear);
 
             Debug.Log("[ItemAtlasSelfCheck] PASS");
         }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 
 namespace AshesToStars
@@ -17,6 +18,7 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
         protected override string Subtitle => "레벨·목숨 관리와 Lv20 1차·Lv50 2차 비살상 전직 시험(§3·§4)";
+        protected override bool ShowRarityPreview => UiAtlas.QaShowRarity;
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
         static string ExpText(CharacterRecord ch) =>
@@ -47,6 +49,7 @@ namespace AshesToStars
         {
             GameFlow.RestorePlayRosterIfRequested();
             GameFlow.SeedV4WipeQaIfRequested();
+            SeedRarityQaIfRequested();
             if (_selectedCharacter >= 0)
             {
                 // 캐릭터 상세 화면
@@ -237,6 +240,7 @@ namespace AshesToStars
                         _selectedCharacter = -1;
                         _choosingAdvancement = false;
                     }
+                    DrawWornStrip(r, ch);
                 }
                 return;
             }
@@ -290,6 +294,30 @@ namespace AshesToStars
                 float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
                 UiAtlas.DrawMeter(new Rect(desc.x, desc.y + 32, Mathf.Min(220f, desc.width), 20),
                     "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
+            }
+        }
+
+        void SeedRarityQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_UI_RARITY") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            Equipment.SeedCraftedLoadoutForQa(roster[0]);
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        /// <summary>장착 6칸. 글자만 있으면 등급 프레임 소비처가 0곳이다.</summary>
+        void DrawWornStrip(Rect r, CharacterRecord ch)
+        {
+            const float size = 56f, gap = 8f;
+            float width = Equipment.SlotCount * (size + gap) - gap;
+            // 이름·목숨 아래 오른쪽. 바닥에 두면 전직 줄을 덮는다(실측).
+            var strip = new Rect(r.xMax - width, r.y + 2f * (RowH + RowGap), width, size);
+            if (strip.x < r.x + RowBtnW + 16f) strip.x = r.x + RowBtnW + 16f;
+            for (int i = 0; i < Equipment.SlotCount; i++)
+            {
+                var cell = new Rect(strip.x + i * (size + gap), strip.y, size, size);
+                ItemAtlas.DrawGear(cell, Equipment.Worn(ch, (EquipSlot)i));
             }
         }
     }

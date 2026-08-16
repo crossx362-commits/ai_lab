@@ -125,6 +125,34 @@ namespace AshesToStars
             Environment.GetEnvironmentVariable("QA_UI_STATES") == "1";
 
         /// <summary>
+        /// 등급 프레임 5종. RequiredKeys에만 있고 화면 소비처가 0곳이었다.
+        /// 제작품은 일반. 견본은 QA_UI_RARITY=1일 때만 나란히 그린다.
+        /// </summary>
+        public static string RarityKey(GearGrade grade) => grade switch
+        {
+            GearGrade.Uncommon => "rarity_uncommon",
+            GearGrade.Rare => "rarity_rare",
+            GearGrade.Heroic => "rarity_heroic",
+            GearGrade.Legendary => "rarity_legendary",
+            _ => "rarity_common",
+        };
+
+        public static readonly (GearGrade grade, string label)[] RaritySamples =
+        {
+            (GearGrade.Common, "일반"),
+            (GearGrade.Uncommon, "고급"),
+            (GearGrade.Rare, "희귀"),
+            (GearGrade.Heroic, "영웅"),
+            (GearGrade.Legendary, "전설"),
+        };
+
+        public static bool QaShowRarity =>
+            Environment.GetEnvironmentVariable("QA_UI_RARITY") == "1";
+
+        public static bool DrawRarity(Rect target, GearGrade grade, Color? tint = null) =>
+            Draw(target, RarityKey(grade), tint);
+
+        /// <summary>
         /// 화면 이름 → 제목 옆 아이콘. 기본값을 worldmap(나침반)으로 두면
         /// 필드·탑이 전부 월드맵처럼 읽힌다 — 아틀라스에 조각이 있는데 소비처가 없던 함정.
         /// 매핑 없는 화면은 null. 호출부가 폴백을 정한다.

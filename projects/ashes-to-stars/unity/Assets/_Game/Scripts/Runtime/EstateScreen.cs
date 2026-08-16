@@ -239,10 +239,10 @@ namespace AshesToStars
                     string desc = $"석 {cost}개 · 성공 {pct}% · 실패해도 파괴 없음(§11)";
                     string enhanceIcon = ItemAtlas.KeyFor(Economy.LifeItem.EnhanceStone);
                     if (target.Enhance >= Equipment.MaxEnhance)
-                        Locked(r, row++, label, "+15가 상한이다", enhanceIcon);
+                        Locked(r, row++, label, "+15가 상한이다", enhanceIcon, target.Grade);
                     else if (stones < cost)
-                        Locked(r, row++, label, $"강화석 {cost}개 필요 — 현재 {stones}개(던전)", enhanceIcon);
-                    else if (Row(r, row++, label, desc, enhanceIcon))
+                        Locked(r, row++, label, $"강화석 {cost}개 필요 — 현재 {stones}개(던전)", enhanceIcon, target.Grade);
+                    else if (Row(r, row++, label, desc, enhanceIcon, rarity: target.Grade))
                     {
                         bool attempted = Equipment.TryEnhance(target.Id, out bool ok);
                         _msg = !attempted
@@ -261,8 +261,8 @@ namespace AshesToStars
                     string need = $"{GameState.Label(rec.Material)} {rec.Cost}장 · {Equipment.SlotName(rec.Slot)}";
                     string craftIcon = ItemAtlas.KeyForSlot(rec.Slot);
                     if (have < rec.Cost)
-                        Locked(r, row++, $"{rec.Name} 제작", $"{need} — 현재 {have}", craftIcon);
-                    else if (Row(r, row++, $"{rec.Name} 제작", need, craftIcon))
+                        Locked(r, row++, $"{rec.Name} 제작", $"{need} — 현재 {have}", craftIcon, GearGrade.Common);
+                    else if (Row(r, row++, $"{rec.Name} 제작", need, craftIcon, rarity: GearGrade.Common))
                     {
                         _msg = Equipment.TryCraft(rec.Id)
                             ? $"{rec.Name}을(를) 만들었다 — 아래에서 입힌다"
@@ -283,7 +283,7 @@ namespace AshesToStars
                     if (worn.Count > 1) names += $" 외 {worn.Count - 1}";
                     if (Row(r, row++, $"{ch.Name} · {names}",
                             $"체력 ×{Equipment.HpMulOf(ch):0.00} — 눌러 벗긴다",
-                            ItemAtlas.KeyForGear(worn[0])))
+                            ItemAtlas.KeyForGear(worn[0]), rarity: worn[0].Grade))
                     {
                         Equipment.TryUnequip(ch);
                         _msg = $"{ch.Name}의 장비를 벗겼다";
@@ -299,7 +299,7 @@ namespace AshesToStars
                 }
                 if (Row(r, row++, $"{ch.Name}에게 {bag[0].Name} 입히기",
                         $"체력 ×{Equipment.EffectiveHpMul(bag[0]):0.00}",
-                        ItemAtlas.KeyForGear(bag[0])))
+                        ItemAtlas.KeyForGear(bag[0]), rarity: bag[0].Grade))
                 {
                     _msg = Equipment.TryEquip(ch, bag[0].Id)
                         ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"

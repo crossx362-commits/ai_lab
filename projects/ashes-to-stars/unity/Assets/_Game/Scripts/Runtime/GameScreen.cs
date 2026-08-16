@@ -172,11 +172,21 @@ namespace AshesToStars
             }
 
             float bottom = ShowBottomBar ? BarH + 34f : 44f;
-            bool preview = UiAtlas.QaShowButtonStates && ShowHeader;
-            float previewH = preview ? RowH + 12f : 0f;
+            bool buttonPreview = UiAtlas.QaShowButtonStates && ShowHeader;
+            bool rarityPreview = ShowRarityPreview;
+            float previewH = 0f;
+            if (buttonPreview) previewH += RowH + 12f;
+            if (rarityPreview) previewH += 80f;
             Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom - previewH));
-            if (preview)
-                DrawButtonStatePreview(new Rect(48, REF_H - bottom - RowH, 600f, RowH));
+            float previewY = REF_H - bottom;
+            if (rarityPreview)
+            {
+                previewY -= 72f;
+                DrawRarityPreview(new Rect(48, previewY, 720f, 72f));
+                previewY -= 8f;
+            }
+            if (buttonPreview)
+                DrawButtonStatePreview(new Rect(48, previewY - RowH, 600f, RowH));
 
             if (ShowBottomBar) BottomBar();
             // 배경을 안 까는 화면(전투)에서는 밝은 바닥 위에 글씨가 놓여 안 읽힌다 —
@@ -190,6 +200,9 @@ namespace AshesToStars
         }
 
         protected virtual void Overlay() { }
+
+        /// <summary>등급 견본은 캐릭터 상세처럼 빈 칸이 있는 화면만. 대장간에 띄우면 명부를 덮는다.</summary>
+        protected virtual bool ShowRarityPreview => false;
 
         protected abstract void Body(Rect r);
 
@@ -227,14 +240,18 @@ namespace AshesToStars
 
         /// <summary>텍스트와 클릭 판정은 IMGUI에 남기고, 배경만 새 픽셀아트 아틀라스로 교체한다.</summary>
         void DrawAtlasButton(Rect r, string label, bool locked = false, string iconKey = null, float leftPad = 0f,
-                             bool? forceHover = null, bool? forcePressed = null)
+                             bool? forceHover = null, bool? forcePressed = null, GearGrade? rarity = null)
         {
             bool hover = forceHover ?? (!locked && r.Contains(Event.current.mousePosition));
             bool pressed = forcePressed ?? (hover && Input.GetMouseButton(0));
             Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
             if (!UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
                 GUI.Box(r, GUIContent.none);
-            bool hasIcon = ItemAtlas.DrawHud(new Rect(r.x + 8, r.y + 7, 44, 44), iconKey, tint);
+            var iconRect = new Rect(r.x + 8, r.y + 7, 44, 44);
+            if (rarity.HasValue)
+                UiAtlas.DrawRarity(new Rect(iconRect.x - 6, iconRect.y - 6, 56f, 56f),
+                    rarity.Value, tint);
+            bool hasIcon = ItemAtlas.DrawHud(iconRect, iconKey, tint);
             float pad = hasIcon ? 56f : leftPad;
             if (!string.IsNullOrEmpty(label))
             {
@@ -263,6 +280,22 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>qa_shot에 마우스가 없어 5등급이 한 화면에 안 모인다. 견본만 나란히 그린다.</summary>
+        void DrawRarityPreview(Rect origin)
+        {
+            Styles();
+            var samples = UiAtlas.RaritySamples;
+            float cell = Mathf.Min(88f, origin.width / samples.Length);
+            for (int i = 0; i < samples.Length; i++)
+            {
+                var (grade, label) = samples[i];
+                var frame = new Rect(origin.x + i * cell, origin.y, 56f, 56f);
+                UiAtlas.DrawRarity(frame, grade);
+                ItemAtlas.DrawHud(new Rect(frame.x + 10f, frame.y + 10f, 36f, 36f), "sword");
+                GUI.Label(new Rect(frame.x, frame.yMax - 2f, cell - 8f, 18f), label, _small);
+            }
+        }
+
         protected Rect RowButtonRect(Rect r, int index) =>
             new Rect(r.x, r.y + index * (RowH + RowGap), RowBtnW, RowH);
 
@@ -276,13 +309,14 @@ namespace AshesToStars
         }
 
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
-        protected bool Row(Rect r, int index, string label, string desc = "", string iconKey = null, float leftPad = 0f)
+        protected bool Row(Rect r, int index, string label, string desc = "", string iconKey = null, float leftPad = 0f,
+                           GearGrade? rarity = null)
         {
             Styles();
             var br = RowButtonRect(r, index);
             if (br.yMax > r.yMax) return false;              // 영역을 넘으면 그리지 않는다
 
-            DrawAtlasButton(br, label, iconKey: iconKey, leftPad: leftPad);
+            DrawAtlasButton(br, label, iconKey: iconKey, leftPad: leftPad, rarity: rarity);
             bool hit = GUI.Button(br, GUIContent.none, GUIStyle.none);
             if (!string.IsNullOrEmpty(desc))
                 GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12), desc, _h2);
@@ -297,13 +331,14 @@ namespace AshesToStars
         /// 되는 기능이라 믿고, 아무 반응이 없으면 게임이 고장났다고 읽는다.
         /// 만들 수 있으면 만들고, 못 만들면 **못 만들었다고 말하는 것**이 정직한 화면이다.
         /// </summary>
-        protected void Locked(Rect r, int index, string label, string why, string iconKey = null)
+        protected void Locked(Rect r, int index, string label, string why, string iconKey = null,
+                              GearGrade? rarity = null)
         {
             Styles();
             var br = RowButtonRect(r, index);
             if (br.yMax > r.yMax) return;
 
-            DrawAtlasButton(br, label, locked: true, iconKey: iconKey);
+            DrawAtlasButton(br, label, locked: true, iconKey: iconKey, rarity: rarity);
             GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
                       // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
                       "잠김 — " + why, _small);

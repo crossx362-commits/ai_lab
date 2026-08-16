@@ -113,6 +113,24 @@ namespace AshesToStars
             Debug.Assert(UiAtlas.RectFor("field").width > 0 && UiAtlas.RectFor("tower").width > 0,
                 "[UiAtlasSelfCheck] 필드·탑 헤더 조각이 없다");
 
+            Debug.Assert(UiAtlas.RarityKey(GearGrade.Common) == "rarity_common"
+                         && UiAtlas.RarityKey(GearGrade.Uncommon) == "rarity_uncommon"
+                         && UiAtlas.RarityKey(GearGrade.Rare) == "rarity_rare"
+                         && UiAtlas.RarityKey(GearGrade.Heroic) == "rarity_heroic"
+                         && UiAtlas.RarityKey(GearGrade.Legendary) == "rarity_legendary",
+                "[UiAtlasSelfCheck] 5등급 키가 아틀라스 조각과 어긋난다");
+            Debug.Assert(UiAtlas.RaritySamples.Length == 5, "[UiAtlasSelfCheck] 등급 견본이 5종이 아니다");
+            Debug.Assert(UiAtlas.RaritySamples[0].label == "일반"
+                         && UiAtlas.RaritySamples[4].label == "전설",
+                "[UiAtlasSelfCheck] 등급 견본 라벨이 기획서 §11과 어긋난다");
+            for (int i = 0; i < UiAtlas.RaritySamples.Length; i++)
+            {
+                string key = UiAtlas.RarityKey(UiAtlas.RaritySamples[i].grade);
+                Debug.Assert(UiAtlas.RectFor(key).width > 0,
+                    $"[UiAtlasSelfCheck] 등급 조각 {key} 없음");
+            }
+            _ = nameof(UiAtlas.DrawRarity);
+
             Debug.Log("[UiAtlasSelfCheck] PASS");
         }
     }

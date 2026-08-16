@@ -13,6 +13,9 @@ namespace AshesToStars
     /// </summary>
     public enum EquipSlot { Weapon, Helm, Armor, Gloves, Boots, Accessory }
 
+    /// <summary>§11 위임 5단계. 제작품은 일반. 드랍 등급·랜덤 옵션은 이 슬라이스에 안 넣는다.</summary>
+    public enum GearGrade { Common, Uncommon, Rare, Heroic, Legendary }
+
     [Serializable]
     public sealed class GearItem
     {
@@ -22,6 +25,7 @@ namespace AshesToStars
         public string Name;
         public float HpMul = 1f;
         public int Enhance;
+        public GearGrade Grade = GearGrade.Common;
     }
 
     public sealed class CraftRecipe
@@ -69,6 +73,15 @@ namespace AshesToStars
 
         public static IReadOnlyList<GearItem> All { get { Load(); return _items; } }
 
+        public static string GradeLabel(GearGrade grade) => grade switch
+        {
+            GearGrade.Uncommon => "고급",
+            GearGrade.Rare => "희귀",
+            GearGrade.Heroic => "영웅",
+            GearGrade.Legendary => "전설",
+            _ => "일반",
+        };
+
         public static string SlotName(EquipSlot slot) => slot switch
         {
             EquipSlot.Weapon => "무기",
@@ -108,6 +121,7 @@ namespace AshesToStars
                     HpMul = float.TryParse(p[4], System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out float hp) ? hp : 1f,
                     Enhance = p.Length > 5 && int.TryParse(p[5], out int en) ? Mathf.Clamp(en, 0, MaxEnhance) : 0,
+                    Grade = p.Length > 6 && Enum.TryParse(p[6], out GearGrade gd) ? gd : GearGrade.Common,
                 };
                 _items.Add(item);
             }
@@ -126,7 +140,8 @@ namespace AshesToStars
                 var g = _items[i];
                 sb.Append(g.Id).Append('\t').Append(g.Slot).Append('\t').Append(g.RecipeId)
                   .Append('\t').Append(g.Name).Append('\t')
-                  .Append(g.HpMul.ToString(inv)).Append('\t').Append(g.Enhance).Append('\n');
+                  .Append(g.HpMul.ToString(inv)).Append('\t').Append(g.Enhance)
+                  .Append('\t').Append(g.Grade).Append('\n');
             }
             PlayerPrefs.SetString(K_GEAR, sb.ToString());
             PlayerPrefs.Save();
@@ -262,6 +277,7 @@ namespace AshesToStars
                 Name = recipe.Name,
                 HpMul = recipe.BaseHpMul,
                 Enhance = 0,
+                Grade = GearGrade.Common,
             });
             Save();
             return true;
@@ -358,6 +374,34 @@ namespace AshesToStars
                    $"{GameState.Label(Economy.LifeItem.CraftBone)} {GameState.Bag.GetCount(Economy.LifeItem.CraftBone)} · " +
                    $"{GameState.Label(Economy.LifeItem.EnhanceStone)} {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}";
         }
+
+        /// <summary>
+        /// 시각 QA가 캐릭터 화면에 6칸을 보여 주게 제작·장착한다.
+        /// DebugAutoPilot을 건드리지 않는다(대화 세션 소유).
+        /// </summary>
+        public static void SeedCraftedLoadoutForQa(CharacterRecord character)
+        {
+            if (character == null || character.IsDeleted) return;
+            if (character.Advancement == AdvancementTier.Basic)
+            {
+                character.Advancement = AdvancementTier.First;
+                if (character.Job == "탱") character.Job = "수호기사";
+                LifeSystem.PersistRoster();
+            }
+            for (int i = 0; i < Recipes.Length; i++)
+            {
+                var rec = Recipes[i];
+                if (CountOfRecipe(rec.Id) > 0) continue;
+                int have = GameState.Bag.GetCount(rec.Material);
+                if (have < rec.Cost) GameState.Gain(rec.Material, rec.Cost - have);
+                TryCraft(rec.Id);
+            }
+            var bag = Unequipped();
+            for (int i = 0; i < bag.Count; i++)
+                TryEquip(character, bag[i].Id);
+        }
+
+        public static void Flush() => Save();
 
         public static void ForgetInMemoryForTest()
         {

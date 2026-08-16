@@ -98,6 +98,19 @@ namespace AshesToStars
         public static string KeyForGear(GearItem gear) =>
             gear == null ? null : KeyForSlot(gear.Slot);
 
+        /// <summary>등급 프레임 안에 부위 아이콘. 빈 칸은 흐린 일반 테두리만.</summary>
+        public static bool DrawGear(Rect target, GearItem gear, Color? tint = null)
+        {
+            var grade = gear != null ? gear.Grade : GearGrade.Common;
+            Color? frameTint = tint ?? (gear == null ? new Color(1f, 1f, 1f, 0.35f) : (Color?)null);
+            bool framed = UiAtlas.DrawRarity(target, grade, frameTint);
+            if (gear == null) return framed;
+            float inset = Mathf.Min(10f, target.width * 0.18f);
+            return DrawHud(new Rect(target.x + inset, target.y + inset,
+                                    target.width - inset * 2f, target.height - inset * 2f),
+                           KeyForSlot(gear.Slot), tint) || framed;
+        }
+
         public static readonly Economy.LifeItem[] SmithMaterials =
         {
             Economy.LifeItem.CraftHide,

@@ -51,6 +51,18 @@ namespace AshesToStars
             Check(GameState.Bag.GetCount(Economy.LifeItem.CraftHide) == 0, "제작이 가죽을 소비한다");
             Check(Equipment.All.Count == 1 && Equipment.All[0].Name == Equipment.LeatherArmorName,
                 "제작된 흉갑이 가방에 있다");
+            Check(Equipment.All[0].Grade == GearGrade.Common
+                  && Equipment.GradeLabel(Equipment.All[0].Grade) == "일반",
+                "제작품은 일반 등급(§11)");
+            Equipment.All[0].Grade = GearGrade.Legendary;
+            Equipment.Flush();
+            Equipment.ForgetInMemoryForTest();
+            Check(Equipment.All.Count == 1 && Equipment.All[0].Grade == GearGrade.Legendary,
+                "등급이 저장에서 되살아난다");
+            Equipment.All[0].Grade = GearGrade.Common;
+            Equipment.Flush();
+            _ = nameof(ItemAtlas.DrawGear);
+            _ = nameof(UiAtlas.DrawRarity);
             Check(!Equipment.TryCraftLeatherArmor(), "가죽 0장이면 제작 거부");
 
             Check(Equipment.TryEquip(tank, Equipment.All[0].Id), "흉갑 장착");
@@ -125,6 +137,8 @@ namespace AshesToStars
                 Check(Equipment.TryCraft(rec.Id), $"{rec.Name} 제작({GameState.Label(rec.Material)})");
             }
             Check(Equipment.All.Count == 6, "6부위가 가방에 있다");
+            for (int i = 0; i < Equipment.All.Count; i++)
+                Check(Equipment.All[i].Grade == GearGrade.Common, $"{Equipment.All[i].Name} 제작=일반");
             for (int i = 0; i < Equipment.All.Count; i++)
                 Check(Equipment.TryEquip(smith, Equipment.All[i].Id), $"{Equipment.All[i].Name} 장착");
             float sixMul = Equipment.HpMulOf(smith);
