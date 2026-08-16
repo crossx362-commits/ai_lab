@@ -33,7 +33,7 @@
 >   마을 지형이 한 화면에 렌더됨을 확인(빈 화면 아님). `qa_shot.sh boss 600`은 기존 던전
 >   보스 지름길 — 층 숫자는 SelfCheck가 증명한다.
 > - **네거티브**: `ApplyTowerBossVictory`를 지우면 컴파일 RED. `BOSS_NO_DPS=1`이면 층이 안 오른다.
-> - 증거 `output/qa/ashes-to-stars/boss_run_*`.
+> - 코드 `ec927cbe`. 증거 `output/qa/ashes-to-stars/boss_run_*`.
 
 > **이전 이터 결과(코드/실행): UI 프레임 소비처 — 버튼 3상태·9-slice·체력바**
 
@@ -698,7 +698,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 | 항목 | 근거 | 커밋 |
 |---|---|---|
-| **V3 한 판 종단** | 파티 공격→HP 9000→4500(페이즈1)→0·장판/힐보고·소환·처치·층 5→6이 **같은 실행**. `ApplyTowerBossVictory`를 BattleScreen OnBossDefeated가 소비. Unity SelfCheck PASS, `qa_boss.png` 육안 확인. `BOSS_NO_DPS=1`이면 층 불변 | 이 커밋 |
+| **V3 한 판 종단** | 파티 공격→HP 9000→4500(페이즈1)→0·장판/힐보고·소환·처치·층 5→6이 **같은 실행**. `ApplyTowerBossVictory`를 BattleScreen OnBossDefeated가 소비. Unity SelfCheck PASS, `qa_boss.png` 육안 확인. `BOSS_NO_DPS=1`이면 층 불변 | `ec927cbe` |
 | **§8 탑 등반 층 진행 배선** | "다음 층 도전"(잡몹웨이브)을 이겨도 층이 안 올랐다 — `ClearFloor`가 보스 격파에서만 불려 일반 층은 진행도에 반영 안 됨. `OnBattleEnd` 생존 분기에 `IsTowerFloorClear`(잡몹웨이브만·보스 제외 이중상승 방지)로 `ClearFloor(BossFloor)` 배선. 새 시스템 0(기존 ClearFloor·TowerFloor 재사용). `game_compile_check` PASS·`game_asset_names` ✅·SelfCheck ⑪(잡몹웨이브→참/보스→거짓/필드·전멸·던전→거짓·단조증가·재기동유지). ⚠️배치SelfCheck·인게임 GUI세션 대기 | `feeb9f96` |
 | **§15 침략 30층 해금 게이트** | §15 ✅ "30층 이상 등반 시 해금"인데 `WorldMapScreen` 침략은 무게이트 상시 활성(층 1에서도 발동)이었고, **경매장은 이미 30층 게이트 존재**(`EstateScreen.cs:66`)·`SceneStructureBuilder.cs:156` "침략·경매장 동시 해금" — 비대칭을 해소. `TowerFloor>=30`만 라이브, 미만은 Locked(현재 층 표시). 신규 시스템·오펀 0(기존 TowerFloor·침략 배틀 재사용). `game_compile_check` PASS·`game_asset_names` ✅. ⚠️인게임 GUI세션 대기 | `29f1b991` |
 | **§12·§18-5 대출 시스템(핵심 슬라이스)** | `grep loan/debt` 전 코드 0곳이던 경제 키스톤. 소비처 실재분만: Earn 수입50% 자동상환(상시)·TowerScreen "대출받고 입장"(수동). 한도=순자산(지갑-부채)30%∧20G/h·티어, 이자 0.5%/h 복리. `game_compile_check` PASS·SelfCheck ⑩ 결정론 검증(30000한도·자동상환·복리>단리·재기동유지·상환0). 연체/파산 제재는 경매장·침략 부재로 유보(정직). ⚠️배치SelfCheck·인게임 GUI세션 대기 | `e88649b9` |
