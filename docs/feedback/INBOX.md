@@ -27,7 +27,7 @@
 `RegisterDeath(isPvp)`가 12시간 회복을 건다. `DefenseState.ApplyPvpRecover`가 수비를 소비.
 보호막과 같은 상수. SelfCheck 전항 PASS.
 PNG `defense_recover_shots/qa_go:{Character,Party}.png` — `수비대 회복 12시간 0분`.
-코드 (커밋 직후 해시).
+코드 `1a84fdb2`.
 
 ### ✅ 침략 보호막 12시간 (루프, 2026-08-16)
 
