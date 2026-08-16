@@ -13,7 +13,8 @@
   좌표를 손으로 박으면 시트가 조금만 달라져도 전부 어긋난다.
   격자선과 배경색은 규칙적이므로 코드가 찾게 하는 편이 안전하다.
 
-출력: ../unity/Assets/_Game/Art/Sprites/<직업>/<직업>_<상태>_<번호>.png
+출력: ../unity/Assets/Resources/sprites/<직업>/<직업>_<상태>_<번호>.png
+  ⚠️ Assets/_Game/Art/Sprites 는 Resources.Load가 못 읽는 옛 함정. 쓰지 마라.
 """
 import os
 import sys

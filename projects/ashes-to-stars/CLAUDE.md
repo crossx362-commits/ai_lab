@@ -102,6 +102,9 @@ python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py
   128px 원본이 전부 4유닛 = 캐릭터의 2배였다. 이 저장소의 미구현은 거의 항상 이 모양이다 —
   정의는 있고 부르는 곳이 없다(`CombatStyleDef`·보스 기믹·`RaceDef`가 전부 그랬다).
   **✅ 확정 기능이 화면에 없으면 `grep -rn`으로 소비처 개수부터 세라.**
+- **`Assets/_Game/Art`에 스프라이트를 두지 마라.** `Resources.Load`가 못 읽어 화면엔
+  플레이스홀더만 나온다(2026-08-13). 런타임 아트는 `Assets/Resources/`만. 빈 함정 폴더는
+  2026-08-16에 삭제했고 `game_asset_names.py`가 재발을 막는다.
 - **임시 대체물이 본물을 가리면 결함이 결함으로 안 보인다.** 스킬 이펙트 로딩이 상시 실패했는데
   (`Resources.Load<Sprite>`인데 png가 Texture2D로 임포트된다) 절차 생성 흰 원 폴백이 대신
   떠서, 몇 달 동안 "이펙트는 나온다"로 보였다. 폴백을 넣을 땐 **폴백이 떴다는 사실 자체가

@@ -98,6 +98,31 @@ def expected() -> dict[str, list[str]]:
     return out
 
 
+def art_trap_problems() -> list[str]:
+    """`Assets/_Game/Art`는 Resources.Load가 못 읽는 함정이다(2026-08-13 실측).
+
+    파일이 거기 있으면 화면엔 플레이스홀더만 나온다. 런타임 아트는
+    `Assets/Resources/`만 쓴다. 빈 폴더를 남겨 두면 같은 함정에 다시 넣게 된다.
+    """
+    out: list[str] = []
+    trap = ASSETS / "_Game" / "Art"
+    if trap.exists():
+        pngs = sorted(p.name for p in trap.rglob("*.png"))
+        if pngs:
+            out.append(
+                f"_Game/Art 함정에 PNG {len(pngs)}장 — Resources.Load 불가. "
+                f"Resources/로 옮겨라 ({', '.join(pngs[:5])}"
+                + (" …" if len(pngs) > 5 else "")
+                + ")"
+            )
+        else:
+            out.append("_Game/Art 빈 함정 폴더가 남아 있다 — 지워라. 런타임 아트는 Resources/")
+    stray_root = GAME / "out_p2_gem"
+    if stray_root.exists() and any(stray_root.iterdir()):
+        out.append("프로젝트 루트 out_p2_gem — 생성 원본은 art/out_* 아래만")
+    return out
+
+
 def scale_table_problems() -> list[str]:
     """프랍 목표 크기표(`prop_scale.json`)의 세 가지 사고를 잡는다 — 전부 2026-08-15 실제 발생.
 
@@ -245,6 +270,7 @@ def main() -> None:
 
     problems += scale_table_problems()
     problems += untracked_asset_problems()
+    problems += art_trap_problems()
 
     if not problems:
         print("✅ 네이밍·반영 이상 없음")
