@@ -360,7 +360,8 @@ namespace AshesToStars
             { "Tower10Boss", 0.15f },           // 10층 대보스: 0.15 G/h
             { "RaidDungeon", 0.12f },           // 레이드급 던전: 0.12 G/h
             { "InvasionAttack", 0.08f },        // 침략 출정: 0.08 G/h
-            { "InvasionAttackDefeat", 0.08f }   // 침략 패배 추가: +0.08 G/h
+            { "InvasionAttackDefeat", 0.08f },  // 침략 패배 추가: +0.08 G/h
+            { "Fusion", 2.0f }                  // 합성: 2 G/h (§18-7)
         };
 
         /// <summary>

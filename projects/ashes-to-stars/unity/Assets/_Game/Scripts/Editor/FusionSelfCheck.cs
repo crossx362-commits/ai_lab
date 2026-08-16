@@ -6,7 +6,7 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 합성 첫 슬라이스 자가검사. 재료가 사라지고 강골이 다음 판 HpMul에 남는지 본다.
+    /// 합성 자가검사. 재료 소멸·강골 HP + 비-HP 전투 배율·골드 2 G/h·인간 +20%p.
     /// </summary>
     public static class FusionSelfCheck
     {
@@ -30,6 +30,9 @@ namespace AshesToStars
             PartyState.ResetForTest();
             DefenseState.ResetForTest();
             Fusion.ForcePick = null;
+            Fusion.ForceRace = null;
+
+            GameState.Earn(1_000_000);
 
             var roster = LifeSystem.GetCharacters();
             Check(roster.Count >= 2, $"로스터 자동 생성 (실제 {roster.Count})");
@@ -128,9 +131,83 @@ namespace AshesToStars
             Check(host.AbsorbedBoons.Count == 0 && host.PendingBoon < 0,
                 "환생하면 흡수 패시브가 전부 소멸한다(§4)");
 
+            Check(Fusion.CostCopper(0) == Economy.GetActionCost("Fusion", 0),
+                "합성 비용 키가 2 G/h 표에 있다");
+            Check(Fusion.CostCopper(0) == 2L * Economy.COPPER_PER_GOLD,
+                $"T1 합성 비용 2 G/h = {2L * Economy.COPPER_PER_GOLD}쿠퍼 (실제 {Fusion.CostCopper(0)})");
+            Check(Fusion.CostCopper(1) == (long)(2.0f * 1.6f * Economy.COPPER_PER_GOLD),
+                "T2 합성 비용은 티어 수익에 비례한다");
+
+            long brokeBefore = roster.Count;
+            var brokeHost = new CharacterRecord("무일푼", "수호기사", 20, AdvancementTier.First);
+            var brokeMat = new CharacterRecord("못갈음", "검사", 20, AdvancementTier.First);
+            roster.Add(brokeHost);
+            roster.Add(brokeMat);
+            Fusion.ForcePick = BoonId.예리함;
+            while (GameState.Wallet.Copper > 0)
+                GameState.Pay(GameState.Wallet.Copper);
+            Check(!Fusion.TryFuse(brokeHost, brokeMat, 7u, out _), "골드 0이면 합성이 거부된다");
+            Check(roster.Contains(brokeMat), "골드 부족이면 재료를 소멸시키지 않는다");
+            Check(brokeHost.AbsorbedBoons.Count == 0, "골드 부족이면 패시브를 넣지 않는다");
+            GameState.Earn(Fusion.CostCopper());
+            long paid = GameState.Wallet.Copper;
+            Check(Fusion.TryFuse(brokeHost, brokeMat, 7u, out var edge)
+                  && edge == BoonId.예리함, "골드를 내면 예리함을 흡수한다");
+            Check(GameState.Wallet.Copper == paid - Fusion.CostCopper(),
+                "합성은 2 G/h를 실제로 차감한다");
+            Check(Mathf.Approximately(Fusion.CombatOf(brokeHost).Atk, 1.20f),
+                "예리함 공격 배율 1.20");
+            Check(Mathf.Approximately(Fusion.CombatOf(brokeHost).Hp, 1f),
+                "예리함만 있으면 체력 배율은 1");
+
+            PartyState.ResetForTest();
+            LifeSystem.GetCharacters().Clear();
+            LifeSystem.GetCharacters().Add(brokeHost);
+            var sortieAtk = PartyState.SortieCombatants();
+            Check(sortieAtk.Count > 0 && Mathf.Approximately(sortieAtk[0].Fuse.Atk, 1.20f),
+                "출전 계약이 예리함을 전투 Atk에 싣는다");
+            Check(Mathf.Approximately(global::W3Party.FusionStatMultiplier(sortieAtk[0].Fuse.Atk), 1.20f),
+                "전투 경로가 예리함 배율을 읽는다");
+
+            string oldFuse = Environment.GetEnvironmentVariable("QA_NO_FUSION");
+            Environment.SetEnvironmentVariable("QA_NO_FUSION", "1");
+            Check(Mathf.Approximately(Fusion.CombatOf(brokeHost).Atk, 1f),
+                "QA_NO_FUSION=1이면 예리함 배율도 1");
+            Environment.SetEnvironmentVariable("QA_NO_FUSION", oldFuse);
+
+            var priest = new CharacterRecord("사제재료", "사제", 20, AdvancementTier.First);
+            var tankHost = new CharacterRecord("탱호스트", "수호기사", 20, AdvancementTier.First);
+            var pool = Fusion.DrawPool(tankHost, priest);
+            Check(pool.Contains(BoonId.강골) && pool.Contains(BoonId.치유의손),
+                "사제 재료 풀은 강골·치유의손");
+            var pref = Fusion.PreferredInPool(tankHost, pool);
+            Check(pref.Count == 1 && pref[0] == BoonId.강골, "탱 호스트의 계열은 강골");
+
             Fusion.ForcePick = null;
+            Fusion.ForceRace = RaceId.인간;
+            int humanHit = 0, elfHit = 0, n = 200;
+            for (uint s = 1; s <= n; s++)
+                if (Fusion.Pick(pool, tankHost, s) == BoonId.강골) humanHit++;
+            Fusion.ForceRace = RaceId.엘프;
+            for (uint s = 1; s <= n; s++)
+                if (Fusion.Pick(pool, tankHost, s) == BoonId.강골) elfHit++;
+            float humanRate = humanHit / (float)n;
+            float elfRate = elfHit / (float)n;
+            Check(humanRate >= 0.62f,
+                $"인간 계열 적중 {humanRate:P0} ≥ 62%(§18-9 +20%p, 실제 {humanHit}/{n})");
+            Check(elfRate <= 0.58f,
+                $"비인간 계열 적중 {elfRate:P0} ≤ 58%(보정 없음, 실제 {elfHit}/{n})");
+            Check(humanHit > elfHit, "인간이 같은 시드에서 계열을 더 맞춘다");
+
+            Fusion.ForcePick = null;
+            Fusion.ForceRace = null;
             _ = nameof(Fusion.TryFuse);
             _ = nameof(Fusion.HpMulOf);
+            _ = nameof(Fusion.CombatOf);
+            _ = nameof(Fusion.CostCopper);
+            _ = nameof(Fusion.Pick);
+            _ = nameof(Fusion.PreferredInPool);
+            _ = nameof(global::W3Party.FusionStatMultiplier);
             _ = nameof(LifeSystem.SacrificeForFusion);
 
             if (_fail == 0) Debug.Log("[FusionSelfCheck] PASS\n" + _log);

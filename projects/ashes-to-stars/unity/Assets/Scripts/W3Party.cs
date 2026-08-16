@@ -96,6 +96,7 @@ public class W3Party : MonoBehaviour
         public AdvancementTier Advancement;
         public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
         public float Hp, MaxHp, Atk, Range, Cd, SkillCd;
+        public float FuseSpd = 1f, FuseCd = 1f, FuseHeal = 1f, FuseShield = 1f, FuseAtkSpd = 1f;
         public float Shield;              // 수호기사 성채 방패
         public float UltimateGauge;       // 2차 초필 전용 자원(직업 Gauge와 분리)
         public float UltimateCd;          // §18-6: 180초 재사용 대기
@@ -422,6 +423,7 @@ public class W3Party : MonoBehaviour
         public AdvancementTier[] Advancements;
         public int[] Levels;
         public float[] HpMuls;
+        public Fusion.CombatMuls[] Fuse;
         public bool TauntEnabled;
         public Setup(string n, Job[] j, bool taunt = true)
         {
@@ -429,9 +431,11 @@ public class W3Party : MonoBehaviour
             Advancements = new AdvancementTier[j.Length];
             Levels = new int[j.Length];
             HpMuls = new float[j.Length];
+            Fuse = new Fusion.CombatMuls[j.Length];
             for (int i = 0; i < Advancements.Length; i++) Advancements[i] = AdvancementTier.First;
             for (int i = 0; i < Levels.Length; i++) Levels[i] = 1;
             for (int i = 0; i < HpMuls.Length; i++) HpMuls[i] = 1f;
+            for (int i = 0; i < Fuse.Length; i++) Fuse[i] = Fusion.CombatMuls.Identity;
         }
     }
 
@@ -454,6 +458,7 @@ public class W3Party : MonoBehaviour
         var advancements = new System.Collections.Generic.List<AdvancementTier>();
         var levels = new System.Collections.Generic.List<int>();
         var hpMuls = new System.Collections.Generic.List<float>();
+        var fuse = new System.Collections.Generic.List<Fusion.CombatMuls>();
         foreach (var combatant in combatants)
         {
             if (System.Enum.TryParse(combatant.Job, out Job j)) jobs.Add(j);
@@ -461,12 +466,14 @@ public class W3Party : MonoBehaviour
             advancements.Add(combatant.Advancement);
             levels.Add(combatant.Level);
             hpMuls.Add(combatant.HpMul);
+            fuse.Add(combatant.Fuse);
         }
         if (jobs.Count == 0) return null;
         var setup = new Setup("편성 파티", jobs.ToArray());
         setup.Advancements = advancements.ToArray();
         setup.Levels = levels.ToArray();
         setup.HpMuls = hpMuls.ToArray();
+        setup.Fuse = fuse.ToArray();
         return setup;
     }
 
@@ -486,6 +493,15 @@ public class W3Party : MonoBehaviour
         if (System.Environment.GetEnvironmentVariable("QA_NO_GEAR") == "1") return 1f;
         return gearHpMul > 0f ? gearHpMul : 1f;
     }
+
+    /// <summary>합성 비-HP 배율. 0이하면 1 — 출전 계약이 비어 있어도 전투가 죽지 않는다.</summary>
+    public static float FusionStatMultiplier(float mul) => mul > 0f ? mul : 1f;
+
+    float SpdOf(Member m) => _bSpd * FusionStatMultiplier(m.FuseSpd);
+    float CdOf(Member m) => _bCd * FusionStatMultiplier(m.FuseCd);
+    float HealOf(Member m) => _bHeal * FusionStatMultiplier(m.FuseHeal);
+    float ShieldOf(Member m) => _bShield * FusionStatMultiplier(m.FuseShield);
+    float AtkSpdOf(Member m) => _bAtkSpd * FusionStatMultiplier(m.FuseAtkSpd);
 
     // ── 재현 가능한 측정 (2026-08-14) ─────────────────────────────
     // 여태 몹 스폰이 시드 없는 난수였고 구성당 1회만 돌았다. 그래서 §21-1h의 "B −5.0%"처럼
@@ -979,13 +995,21 @@ public class W3Party : MonoBehaviour
             float levelMul = LevelStatMultiplier(level);
             float gearMul = GearHpMultiplier(
                 _setup.HpMuls != null && i < _setup.HpMuls.Length ? _setup.HpMuls[i] : 1f);
+            var fuse = _setup.Fuse != null && i < _setup.Fuse.Length
+                ? _setup.Fuse[i] : Fusion.CombatMuls.Identity;
             m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp * levelMul * gearMul;
-            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f) * _bAtk * levelMul;
+            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f)
+                    * _bAtk * levelMul * FusionStatMultiplier(fuse.Atk);
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
             // 검사가 멀찍이 서서 때리는 그림이 된다 — 오너 지적으로 발견.
             m.Range = FirstAdvancementRange(job.ToString());
-            m.Range *= _bRange;
+            m.Range *= _bRange * FusionStatMultiplier(fuse.Range);
+            m.FuseSpd = FusionStatMultiplier(fuse.Speed);
+            m.FuseCd = FusionStatMultiplier(fuse.Cd);
+            m.FuseHeal = FusionStatMultiplier(fuse.Heal);
+            m.FuseShield = FusionStatMultiplier(fuse.Shield);
+            m.FuseAtkSpd = FusionStatMultiplier(fuse.AtkSpd);
             _party[i] = m;
         }
 
@@ -1705,7 +1729,7 @@ public class W3Party : MonoBehaviour
                 {
                     if (force1) m.ForceSkill = 0;
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
-                    m.SkillCd = 6f * _bCd; m.Threat += 80f; _tauntUses++;
+                    m.SkillCd = 6f * CdOf(m); m.Threat += 80f; _tauntUses++;
                     _tauntUntil = _t + 3.0f; _tauntMember = m;    // 3초간 원거리도 시전자를 노린다
                     _skillLog[0]++;
                     SkillCast(m, "도발의 함성", new Color(1f, 0.78f, 0.32f), hitstop: 2);
@@ -1720,7 +1744,7 @@ public class W3Party : MonoBehaviour
                     if (force2) m.ForceSkill = 0;
                     m.Gauge = 0f;
                     foreach (var o in _party)
-                        if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f * _bShield);
+                        if (o.Alive) o.Shield = Mathf.Max(o.Shield, 40f * ShieldOf(m));
                     FlashParty();
                     _skillLog[1]++;
                     SkillCast(m, "성채 방패", new Color(0.55f, 0.82f, 1f), hitstop: 2);
@@ -1831,7 +1855,7 @@ public class W3Party : MonoBehaviour
             if (sep.sqrMagnitude > 1e-4f)
                 want = (want + sep * 1.4f).normalized;
 
-            m.Pos += want * PlayerSpeed * 0.85f * _bSpd * dt;   // 강화는 아군에게만 — 몹 속도에 걸지 마라
+            m.Pos += want * PlayerSpeed * 0.85f * SpdOf(m) * dt;   // 강화는 아군에게만 — 몹 속도에 걸지 마라
             if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
             m.Pos = Vector2.ClampMagnitude(m.Pos, Arena + 3f);
             m.Tr.position = ToScreen(m.Pos, -1f);
@@ -1882,13 +1906,13 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 2)
                 {
                     m.ForceSkill = 0;
-                    if (worst != null) worst.Shield = Mathf.Max(worst.Shield, 18f * _bShield);
+                    if (worst != null) worst.Shield = Mathf.Max(worst.Shield, 18f * ShieldOf(m));
                     SkillCast(m, "정화", new Color(0.7f, 1f, 0.9f), hitstop: 1);
                 }
                 else if (worst != null && (m.ForceSkill == 1 || worst.Hp < worst.MaxHp))
                 {
                     m.ForceSkill = 0;
-                    Heal(worst, 22f * _bHeal); _healsCast++;
+                    Heal(worst, 22f * HealOf(m)); _healsCast++;
                     SkillCast(m, "치유", new Color(0.55f, 1f, 0.65f), hitstop: 1);
                 }
                 m.Cd = 1.0f;
@@ -1932,7 +1956,7 @@ public class W3Party : MonoBehaviour
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
                     foreach (var o in _party)
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
-                            m.Gauge += Heal(o, 14f * sp.DmgMul * _bHeal);
+                            m.Gauge += Heal(o, 14f * sp.DmgMul * HealOf(m));
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
                     SkillCast(m, "치유 파동", new Color(0.55f, 1f, 0.65f), hitstop: 1);
@@ -1940,7 +1964,7 @@ public class W3Party : MonoBehaviour
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
-                    m.Gauge += Heal(worst, 24f * sp.DmgMul * _bHeal);
+                    m.Gauge += Heal(worst, 24f * sp.DmgMul * HealOf(m));
                     m.Cd = 1.0f; m.Threat += 8f; _healsCast++;
                 }
                 m.Gauge = Mathf.Min(100f, m.Gauge);
@@ -1961,7 +1985,7 @@ public class W3Party : MonoBehaviour
                         { DamageMob(j, dmg); _qaAdvSlot2 += 1f; if (_mHp[j] <= 0f) KillMob(j); }
                     SkillCast(m, "대지 가르기", new Color(1f, 0.5f, 0.25f), 3, 0.25f);
                 }
-                DamageMob(target, dmg * sp.DmgMul * ChantAtk()); m.Cd = 0.5f / _bAtkSpd;
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk()); m.Cd = 0.5f / AtkSpdOf(m);
                 AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.궁수 && target >= 0)
@@ -1970,7 +1994,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 2) { m.ForceSkill = 0; m.FocusUntil = _t + 4f; _qaAdvSlot2 += 4f; SkillCast(m, "집중 사격", Color.yellow, 1); }
                 float dmg = m.Atk * (_t < m.FocusUntil ? 1.6f : 1f);
                 if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 2.4f; _qaAdvSlot1 += dmg; SkillCast(m, "관통 사격", Color.white, 2); }
-                DamageMob(target, dmg * sp.DmgMul * ChantAtk()); m.Cd = 0.55f / _bAtkSpd;
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk()); m.Cd = 0.55f / AtkSpdOf(m);
                 AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.소환사 && target >= 0)
@@ -1995,7 +2019,7 @@ public class W3Party : MonoBehaviour
                 // 자연 표식 — 적 피해와 아군 재생을 한 행동에서 함께 만든다.
                 Member worst = null;
                 foreach (var o in _party) if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
-                if (worst != null) { float healed = Heal(worst, (m.ForceSkill == 2 ? 28f : 10f) * _bHeal); if (m.ForceSkill == 2) _qaAdvSlot2 += healed; }
+                if (worst != null) { float healed = Heal(worst, (m.ForceSkill == 2 ? 28f : 10f) * HealOf(m)); if (m.ForceSkill == 2) _qaAdvSlot2 += healed; }
                 if (target >= 0) { float dealt = m.Atk * (m.ForceSkill == 1 ? 2f : 1f); DamageMob(target, dealt); if (m.ForceSkill == 1) _qaAdvSlot1 += dealt; FlashMob(target); if (_mHp[target] <= 0f) KillMob(target); }
                 SkillCast(m, m.ForceSkill == 2 ? "재생" : "자연 표식", Color.green, 1); m.ForceSkill = 0; m.Cd = 1.0f;
             }
@@ -2012,7 +2036,7 @@ public class W3Party : MonoBehaviour
                 // 정령 계약 — 화염은 아군 공격 템포, 물은 보호막으로 읽히는 부착 효과다.
                 if (m.ForceSkill == 2)
                 {
-                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) { float before = o.Shield; o.Shield = Mathf.Max(o.Shield, 20f * _bShield); _qaAdvSlot2 += o.Shield - before; }
+                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) { float before = o.Shield; o.Shield = Mathf.Max(o.Shield, 20f * ShieldOf(m)); _qaAdvSlot2 += o.Shield - before; }
                     SkillCast(m, "물 정령", Color.cyan, 1);
                 }
                 else
@@ -2029,7 +2053,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 1 || (m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
                 {
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
-                    m.SkillCd = 5f * _bCd; m.Cd = 0.9f / _bAtkSpd; _skillLog[5]++; m.SkillT = 0.6f;
+                    m.SkillCd = 5f * CdOf(m); m.Cd = 0.9f / AtkSpdOf(m); _skillLog[5]++; m.SkillT = 0.6f;
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
@@ -2069,7 +2093,7 @@ public class W3Party : MonoBehaviour
                     SkillCast(m, "강타", new Color(1f, 0.65f, 0.35f), hitstop: 2, shake: 0.15f);
                 }
                 DamageMob(target, dmg * sp.DmgMul * ChantAtk());
-                m.Cd = (_t < m.FocusUntil ? 0.22f : 0.40f) / _bAtkSpd;
+                m.Cd = (_t < m.FocusUntil ? 0.22f : 0.40f) / AtkSpdOf(m);
                 m.Threat += dmg * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
@@ -2087,7 +2111,7 @@ public class W3Party : MonoBehaviour
                     SkillCast(m, "일섬", new Color(0.85f, 0.95f, 1f), hitstop: 3, shake: 0.2f);
                     FxPool.Play(FxPool.Kind.Slash, _mPos[target], 1.5f); }
                 DamageMob(target, dmg * sp.DmgMul * ChantAtk());
-                m.Cd = 0.35f / _bAtkSpd;
+                m.Cd = 0.35f / AtkSpdOf(m);
                 m.Threat += dmg * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
@@ -2735,7 +2759,7 @@ public class W3Party : MonoBehaviour
             {
                 if (!ally.Alive) continue;
                 float before = ally.Shield;
-                ally.Shield = Mathf.Max(ally.Shield, 80f * _bShield);
+                ally.Shield = Mathf.Max(ally.Shield, 80f * ShieldOf(m));
                 ally.IFrame = Mathf.Max(ally.IFrame, 3f);
                 effect += ally.Shield - before;
                 FxParticles.Play(FxKind.무적, ToScreen(ally.Pos), 1.1f);
@@ -2758,9 +2782,9 @@ public class W3Party : MonoBehaviour
             foreach (var ally in _party)
             {
                 if (!ally.Alive) continue;
-                effect += Heal(ally, 100f * _bHeal);
+                effect += Heal(ally, 100f * HealOf(m));
                 float before = ally.Shield;
-                ally.Shield = Mathf.Max(ally.Shield, 30f * _bShield);
+                ally.Shield = Mathf.Max(ally.Shield, 30f * ShieldOf(m));
                 effect += ally.Shield - before;
             }
         }
@@ -2772,7 +2796,7 @@ public class W3Party : MonoBehaviour
                 ally.Cd = Mathf.Min(ally.Cd, 0f);
                 ally.SkillCd = Mathf.Min(ally.SkillCd, 0f);
                 float before = ally.Shield;
-                ally.Shield = Mathf.Max(ally.Shield, 40f * _bShield);
+                ally.Shield = Mathf.Max(ally.Shield, 40f * ShieldOf(m));
                 effect += (ally.Shield - before) + 1f;
             }
         }

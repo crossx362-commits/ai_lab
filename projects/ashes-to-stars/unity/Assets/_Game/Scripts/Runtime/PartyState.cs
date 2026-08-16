@@ -21,6 +21,7 @@ namespace AshesToStars
             public AdvancementTier Advancement;
             public int Level;
             public float HpMul = 1f;
+            public Fusion.CombatMuls Fuse = Fusion.CombatMuls.Identity;
             public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
             public bool HasUltimate => Advancement == AdvancementTier.Second;
             public int CommandCount => SkillCount + (HasUltimate ? 1 : 0);
@@ -136,12 +137,14 @@ namespace AshesToStars
             {
                 if (i < 0 || i >= roster.Count) continue;
                 var character = roster[i];
+                var fuse = Fusion.CombatOf(character);
                 result.Add(new SortieCombatant
                 {
                     Job = CombatJob(character),
                     Advancement = character.Advancement,
                     Level = character.Level,
-                    HpMul = Equipment.HpMulOf(character) * Fusion.HpMulOf(character),
+                    HpMul = Equipment.HpMulOf(character) * fuse.Hp,
+                    Fuse = fuse,
                 });
             }
             return result;

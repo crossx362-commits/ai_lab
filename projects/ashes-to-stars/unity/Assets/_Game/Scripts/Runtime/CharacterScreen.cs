@@ -335,7 +335,7 @@ namespace AshesToStars
                     "buffer", locked: true);
             }
             else if (DrawCard(cards[0], "합성 시작",
-                         "1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. 되돌릴 수 없다",
+                         $"1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. {Economy.FormatCurrency(Fusion.CostCopper())}(§18-7)",
                          "buffer"))
             {
                 _fusing = true;
@@ -343,7 +343,7 @@ namespace AshesToStars
                 _fusionMaterial = -1;
             }
             DrawCard(cards[1], "규칙",
-                "슬롯 4 · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
+                $"슬롯 4 · {Economy.FormatCurrency(Fusion.CostCopper())} · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
                 "heart", locked: true);
         }
 
@@ -383,7 +383,23 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable("QA_FUSION") != "1") return;
             Fusion.SeedQaIfRequested();
-            if (_selectedCharacter < 0) _selectedCharacter = 0;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _fusionHost = 0;
+            _fusionMaterial = -1;
+            for (int i = 1; i < roster.Count; i++)
+            {
+                if (!Fusion.CanBeMaterial(roster[i])) continue;
+                if (Fusion.DrawPool(roster[0], roster[i]).Count == 0) continue;
+                _fusionMaterial = i;
+                break;
+            }
+            if (_fusionMaterial >= 0)
+            {
+                _fusing = true;
+                _selectedCharacter = -1;
+            }
+            else if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 
         void DrawFusion(Rect r)
@@ -472,9 +488,16 @@ namespace AshesToStars
             }
 
             var fodder = roster[_fusionMaterial];
+            long cost = Fusion.CostCopper();
             Info(r, 0, $"{fodder.Name} ({fodder.Job}) → {chosen.Name}");
-            Info(r, 1, "이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3)");
-            if (Row(r, 2, "소멸시키고 흡수한다", "결과는 랜덤 1개. 슬롯이 차면 본 뒤에 교체/포기"))
+            Info(r, 1, $"이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3) · {Economy.FormatCurrency(cost)}");
+            if (GameState.Wallet.Copper < cost)
+            {
+                Locked(r, 2, "소멸시키고 흡수한다",
+                       $"골드 {Economy.FormatCurrency(cost)} 필요 — 지금 {GameState.WalletText}(§18-7)");
+            }
+            else if (Row(r, 2, "소멸시키고 흡수한다",
+                         $"결과는 랜덤 1개 · {Economy.FormatCurrency(cost)}. 슬롯이 차면 본 뒤에 교체/포기"))
             {
                 uint seed = (uint)(Environment.TickCount ^ fodder.Id.GetHashCode());
                 if (Fusion.TryFuse(chosen, fodder, seed, out var picked))
