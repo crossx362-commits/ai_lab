@@ -6,7 +6,7 @@ namespace AshesToStars
     public static class JobVfxSheets
     {
         public const int FrameCount = 8;
-        static readonly string[] Keys = { "tank_slash_sheet", "dps_slash_sheet", "mage_fire_sheet" };
+        static readonly string[] Keys = { "tank_slash_sheet", "dps_slash_sheet", "mage_fire_sheet", "priest_heal_sheet" };
         static Texture2D[] _textures;
 
         static void Load()
@@ -16,7 +16,16 @@ namespace AshesToStars
             for (int i = 0; i < Keys.Length; i++) _textures[i] = Resources.Load<Texture2D>("fx/" + Keys[i]);
         }
 
-        public static bool IsReady { get { Load(); return _textures[0] != null && _textures[1] != null && _textures[2] != null; } }
+        public static int SourceCount => Keys.Length;
+        public static bool IsReady
+        {
+            get
+            {
+                Load();
+                for (int i = 0; i < _textures.Length; i++) if (_textures[i] == null) return false;
+                return true;
+            }
+        }
 
         public static Sprite Frame(int style, int frame)
         {
