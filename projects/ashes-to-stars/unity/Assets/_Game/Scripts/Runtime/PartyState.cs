@@ -19,6 +19,7 @@ namespace AshesToStars
         {
             public string Job;
             public AdvancementTier Advancement;
+            public int Level;
             public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
             public bool HasUltimate => Advancement == AdvancementTier.Second;
             public int CommandCount => SkillCount + (HasUltimate ? 1 : 0);
@@ -122,6 +123,7 @@ namespace AshesToStars
                 {
                     Job = CombatJob(character),
                     Advancement = character.Advancement,
+                    Level = character.Level,
                 });
             }
             return result;

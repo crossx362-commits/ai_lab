@@ -420,12 +420,15 @@ public class W3Party : MonoBehaviour
         public string Name;
         public Job[] Jobs;
         public AdvancementTier[] Advancements;
+        public int[] Levels;
         public bool TauntEnabled;
         public Setup(string n, Job[] j, bool taunt = true)
         {
             Name = n; Jobs = j; TauntEnabled = taunt;
             Advancements = new AdvancementTier[j.Length];
+            Levels = new int[j.Length];
             for (int i = 0; i < Advancements.Length; i++) Advancements[i] = AdvancementTier.First;
+            for (int i = 0; i < Levels.Length; i++) Levels[i] = 1;
         }
     }
 
@@ -446,16 +449,29 @@ public class W3Party : MonoBehaviour
         if (combatants == null || combatants.Count == 0) return null;
         var jobs = new System.Collections.Generic.List<Job>();
         var advancements = new System.Collections.Generic.List<AdvancementTier>();
+        var levels = new System.Collections.Generic.List<int>();
         foreach (var combatant in combatants)
         {
             if (System.Enum.TryParse(combatant.Job, out Job j)) jobs.Add(j);
             else jobs.Add(Job.검사);   // 손상된/미래 직업 저장만 안전 폴백 — 확정 1차 11종은 모두 enum에 있어야 한다
             advancements.Add(combatant.Advancement);
+            levels.Add(combatant.Level);
         }
         if (jobs.Count == 0) return null;
         var setup = new Setup("편성 파티", jobs.ToArray());
         setup.Advancements = advancements.ToArray();
+        setup.Levels = levels.ToArray();
         return setup;
+    }
+
+    /// <summary>
+    /// §18-6 레벨을 전투력으로 소비한다. Lv1은 기존 기준선을 그대로 유지하고,
+    /// 레벨마다 HP·공격이 2%씩 단조 증가해 Lv100에서 2.98배가 된다.
+    /// </summary>
+    public static float LevelStatMultiplier(int level)
+    {
+        if (System.Environment.GetEnvironmentVariable("QA_NO_LEVEL_GROWTH") == "1") return 1f;
+        return 1f + 0.02f * (Mathf.Clamp(level, 1, AshesToStars.LifeSystem.MaxLevel) - 1);
     }
 
     // ── 재현 가능한 측정 (2026-08-14) ─────────────────────────────
@@ -944,8 +960,10 @@ public class W3Party : MonoBehaviour
                 : AdvancementTier.First;
             m.Role = RoleOf(job);
             m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Job));
-            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp;
-            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f) * _bAtk;
+            int level = _setup.Levels != null && i < _setup.Levels.Length ? _setup.Levels[i] : 1;
+            float levelMul = LevelStatMultiplier(level);
+            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp * levelMul;
+            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f) * _bAtk * levelMul;
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
             // 검사가 멀찍이 서서 때리는 그림이 된다 — 오너 지적으로 발견.
