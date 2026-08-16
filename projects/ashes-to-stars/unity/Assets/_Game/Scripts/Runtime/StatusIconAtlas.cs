@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -31,5 +32,47 @@ namespace AshesToStars
         static Texture2D Texture { get { if (!_tried) { _tried = true; _texture = Resources.Load<Texture2D>(ResourceKey); } return _texture; } }
         public static bool IsReady => Texture != null;
         public static Rect RectFor(string key) => Pieces.TryGetValue(key, out var rect) ? rect : Rect.zero;
+
+        public static bool QaShowAll =>
+            Environment.GetEnvironmentVariable("QA_STATUS_ICONS") == "1";
+
+        /// <summary>전투에서 실제로 켜진 것만. 없는 상태를 그리지 않는다.</summary>
+        public static List<string> LiveKeys(bool shield, bool taunt, bool focus, bool lastStand)
+        {
+            var keys = new List<string>(4);
+            if (shield || lastStand) keys.Add("shield");
+            if (taunt) keys.Add("taunt");
+            if (focus) keys.Add("attack_up");
+            return keys;
+        }
+
+        public static bool Draw(Rect target, string key, Color? tint = null)
+        {
+            var texture = Texture;
+            var source = RectFor(key);
+            if (texture == null || source.width <= 0 || source.height <= 0) return false;
+            var saved = GUI.color;
+            GUI.color = tint ?? Color.white;
+            GUI.DrawTextureWithTexCoords(target, texture, new Rect(
+                source.x / Width,
+                (Height - source.y - source.height) / Height,
+                source.width / Width,
+                source.height / Height), true);
+            GUI.color = saved;
+            return true;
+        }
+
+        /// <summary>한 줄로 최대 4개. 그린 개수를 돌려준다.</summary>
+        public static int DrawRow(Rect origin, IList<string> keys, float size = 18f, float gap = 2f)
+        {
+            if (keys == null || keys.Count == 0) return 0;
+            int n = 0;
+            for (int i = 0; i < keys.Count && n < 4; i++)
+            {
+                var cell = new Rect(origin.x + n * (size + gap), origin.y, size, size);
+                if (Draw(cell, keys[i])) n++;
+            }
+            return n;
+        }
     }
 }

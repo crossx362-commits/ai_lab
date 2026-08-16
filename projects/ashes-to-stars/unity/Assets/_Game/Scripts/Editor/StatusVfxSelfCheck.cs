@@ -11,6 +11,14 @@ namespace AshesToStars
             Debug.Assert(StatusVfxSheets.SourceCount == 7, "[StatusVfx] 상태·보스 기믹 시트 7종이 등록돼야 한다");
             foreach (var key in StatusIconAtlas.RequiredKeys)
                 Debug.Assert(StatusIconAtlas.RectFor(key).width > 0, $"[StatusVfx] 상태 아이콘 누락: {key}");
+            var live = StatusIconAtlas.LiveKeys(true, true, true, true);
+            Debug.Assert(live.Count == 3 && live[0] == "shield" && live[1] == "taunt" && live[2] == "attack_up",
+                "[StatusVfx] 켜진 상태만 아이콘으로 접혀야 한다");
+            Debug.Assert(StatusIconAtlas.LiveKeys(false, false, false, false).Count == 0,
+                "[StatusVfx] 꺼진 상태를 그리면 안 된다");
+            Debug.Assert(StatusIconAtlas.LiveKeys(false, false, false, true).Count == 1
+                         && StatusIconAtlas.LiveKeys(false, false, false, true)[0] == "shield",
+                "[StatusVfx] 최후의 보루는 방패 아이콘");
 
             for (int sheet = 0; sheet < StatusVfxSheets.SourceCount; sheet++)
                 for (int frame = 0; frame < 8; frame++)

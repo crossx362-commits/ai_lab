@@ -3092,6 +3092,16 @@ public class W3Party : MonoBehaviour
                 GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
                 GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height), Tint(fill));
             }
+            var statuses = AshesToStars.StatusIconAtlas.QaShowAll
+                ? new System.Collections.Generic.List<string>(AshesToStars.StatusIconAtlas.RequiredKeys)
+                : AshesToStars.StatusIconAtlas.LiveKeys(
+                    m.Shield > 0f,
+                    _tauntMember == m && _t < _tauntUntil,
+                    m.FocusUntil > _t,
+                    m.Job == Job.수호기사 && _t < _lastStandUntil);
+            AshesToStars.StatusIconAtlas.DrawRow(
+                new Rect(skills.x, card.y + SK * 2 + 10, 80, 18), statuses);
+
             GUI.Label(new Rect(skills.x, card.yMax - 22, card.xMax - skills.x - 6, 18),
                       m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
             if (m.Order.HasValue)
