@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""V4 테스터 10명 키트·보드 반영 회귀."""
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+import board  # noqa: E402
+import v4_playtest  # noqa: E402
+
+
+class KitTests(unittest.TestCase):
+    def test_ten_distinct_testers(self):
+        kit = v4_playtest.load_kit()
+        testers = kit["testers"]
+        self.assertEqual(len(testers), 10)
+        self.assertEqual(len({t["id"] for t in testers}), 10)
+        self.assertEqual(len({t["favorite"] for t in testers}), 10)
+        self.assertTrue(all(t["minutes"] >= 30 for t in testers))
+
+    def test_csharp_lists_same_ten(self):
+        kit = v4_playtest.load_kit()
+        cs = (HERE.parent / "projects/ashes-to-stars/unity/Assets/_Game/Scripts/Editor/V4ExternalPlaytest.cs"
+              ).read_text(encoding="utf-8")
+        for t in kit["testers"]:
+            self.assertIn(t["id"], cs)
+            self.assertIn(t["favorite"], cs)
+            self.assertIn(t["name"], cs)
+
+    def test_playtest_state_from_kit_without_sessions(self):
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "output/qa/ashes-to-stars/v4_playtest").mkdir(parents=True)
+            board.ROOT = tmp
+            try:
+                st = board.playtest_state()
+            finally:
+                board.ROOT = old
+        self.assertEqual(st["n"], 10)
+        self.assertEqual(st["ran"], 0)
+        self.assertEqual(st["human_70"], "pending")
+        self.assertEqual(st["sessions"][0]["tester"], "이서연")
+
+    def test_playtest_state_reads_sessions(self):
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            dest = tmp / "output/qa/ashes-to-stars/v4_playtest"
+            dest.mkdir(parents=True)
+            dest.joinpath("sessions.json").write_text(json.dumps({
+                "ran_at": "2026-08-16 19:00",
+                "sessions": [{
+                    "id": "t01", "tester": "이서연", "favorite": "백호",
+                    "deleted": True, "continued": True, "living": 4, "level": 20,
+                    "gear": True, "continue_path": "remaining_party",
+                }],
+            }, ensure_ascii=False), encoding="utf-8")
+            board.ROOT = tmp
+            try:
+                st = board.playtest_state()
+                note = board.v4_playtest_note()
+            finally:
+                board.ROOT = old
+        self.assertEqual(st["ran"], 1)
+        self.assertEqual(st["deleted"], 1)
+        self.assertTrue(st["sessions"][0]["deleted"])
+        self.assertEqual(st["human_70"], "pending")
+        self.assertIn("키트", note)
+
+    def test_report_does_not_close_human_gate(self):
+        kit = v4_playtest.load_kit()
+        old = (v4_playtest.OUT, v4_playtest.REPORT)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            v4_playtest.OUT = tmp
+            v4_playtest.REPORT = tmp / "report.json"
+            try:
+                r = v4_playtest.write_report(kit, {
+                    "ran_at": "now",
+                    "sessions": [{"id": "t01", "deleted": True, "continued": True}] * 10,
+                })
+            finally:
+                v4_playtest.OUT, v4_playtest.REPORT = old
+        self.assertEqual(r["human_70"], "pending")
+        self.assertEqual(r["deleted"], 10)
+
+
+if __name__ == "__main__":
+    unittest.main()

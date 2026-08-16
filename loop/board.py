@@ -76,6 +76,9 @@ _COMMIT_ALLOW = (
     "loop/board.py",
     "loop/board.html",
     "loop/test_board.py",
+    "loop/v4_playtest.py",
+    "loop/v4_testers.json",
+    "loop/test_v4_playtest.py",
     "loop/loop.sh",
     "projects/ashes-to-stars/art/",
     "projects/ashes-to-stars/unity/Assets/",
@@ -338,7 +341,7 @@ def progress_charts(status: str | None = None, design: str | None = None,
          "note": "HP·페이즈·처치·층" if v3 else "한 판 미연결"},
         {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
         {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": 0,
-         "note": "사람 관문 · 자동 완료 금지"},
+         "note": v4_playtest_note()},
     ]
     proto_done = sum(1 for g in gates if g["pct"] >= 100)
     roadmap = [
@@ -597,6 +600,64 @@ def _title_seen(title: str, seen: set[str]) -> bool:
         if s in title or title in s:
             return True
     return False
+
+
+def playtest_state() -> dict:
+    """V4 테스터 10명. 세션 JSON이 있으면 실측, 없으면 키트만."""
+    kit_raw = _read(HERE / "v4_testers.json")
+    testers = []
+    try:
+        testers = (json.loads(kit_raw) or {}).get("testers") or []
+    except json.JSONDecodeError:
+        testers = []
+    sess_path = ROOT / "output" / "qa" / "ashes-to-stars" / "v4_playtest" / "sessions.json"
+    sessions = []
+    ran_at = ""
+    if sess_path.is_file():
+        try:
+            blob = json.loads(sess_path.read_text(encoding="utf-8-sig"))
+            sessions = blob.get("sessions") or []
+            ran_at = blob.get("ran_at") or ""
+        except (OSError, json.JSONDecodeError):
+            sessions = []
+    by_id = {s.get("id"): s for s in sessions if s.get("id")}
+    rows = []
+    for t in testers:
+        s = by_id.get(t.get("id") or "") or {}
+        rows.append({
+            "id": t.get("id") or "",
+            "tester": t.get("name") or s.get("tester") or "",
+            "favorite": t.get("favorite") or s.get("favorite") or "",
+            "job": t.get("job") or "",
+            "first": t.get("first") or "",
+            "minutes": t.get("minutes") or s.get("minutes") or 0,
+            "level": s.get("level"),
+            "deleted": bool(s.get("deleted")),
+            "continued": bool(s.get("continued")),
+            "living": s.get("living"),
+            "gear": bool(s.get("gear")) if "gear" in s else bool(t.get("gear")),
+            "path": s.get("continue_path") or "",
+            "ran": bool(s),
+        })
+    deleted = sum(1 for r in rows if r["deleted"])
+    return {
+        "n": len(rows),
+        "ran": sum(1 for r in rows if r["ran"]),
+        "deleted": deleted,
+        "continued": sum(1 for r in rows if r["continued"]),
+        "human_70": "pending",
+        "ran_at": ran_at,
+        "sessions": rows,
+    }
+
+
+def v4_playtest_note() -> str:
+    st = playtest_state()
+    if st["ran"] >= 10 and st["deleted"] >= 10:
+        return f"10세션 삭제 실측 · 사람 70% 대기"
+    if st["n"] == 10:
+        return "테스터 10명 키트 · 세션 대기"
+    return "사람 관문 · 자동 완료 금지"
 
 
 def completed_posts(status: str, limit: int = 12) -> list[dict]:
@@ -1192,6 +1253,7 @@ def build_state() -> dict:
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "stuck": stuck_items(status, flags),
         "completed": completed_posts(status),
+        "playtest": playtest_state(),
     }
 
 
