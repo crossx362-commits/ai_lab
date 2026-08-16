@@ -27,9 +27,12 @@ namespace AshesToStars
             ["bard"] = Cell(2, 2), ["strategist"] = Cell(3, 2),
         };
 
+        // 전투 스프라이트와 같은 실루엣을 쓴다. 검사=후드 도적, 광전사=망치 드워프.
+        // dark_knight(백발 마검사)는 시트에 있으나 현 직업 트리에 없어서 연결하지 않는다.
         public static readonly string[] RequiredKeys =
         {
-            "tank_knight", "dark_knight", "fire_mage", "priest", "bard",
+            "tank_knight", "dwarf_guardian", "rogue", "ranger", "fire_mage",
+            "priest", "druid", "bard", "monk", "strategist",
         };
 
         static Texture2D Texture
@@ -51,16 +54,18 @@ namespace AshesToStars
         {
             return job switch
             {
-                "탱" => "tank_knight",
-                "딜" => "dark_knight",
-                "힐" => "priest",
-                "버퍼" => "bard",
-                "수호기사" => "tank_knight",
-                "검사" => "dark_knight",
+                "탱" or "수호기사" => "tank_knight",
+                "광전사" => "dwarf_guardian",
+                "딜" or "검사" => "rogue",
+                "궁수" => "ranger",
                 "마법사" => "fire_mage",
-                "사제" => "priest",
-                "음유시인" => "bard",
-                _ => "strategist",
+                "소환사" => "strategist",
+                "힐" or "사제" => "priest",
+                "드루이드" => "druid",
+                "버퍼" or "음유시인" => "bard",
+                "주술사" => "monk",
+                "정령사" => "monk",
+                _ => "tank_knight",
             };
         }
 
