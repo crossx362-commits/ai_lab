@@ -91,4 +91,24 @@ if [ ! -f "$TEST_ROOT/autonomous_prompt_seen" ]; then
   exit 1
 fi
 
+rm -f "$TEST_ROOT/loop/STOP" "$TEST_ROOT/codex_called" "$TEST_ROOT/claude_called"
+printf '%s\n' "codex" > "$TEST_ROOT/loop/agent"
+PATH="$TEST_ROOT/bin:$PATH" \
+TEST_ROOT="$TEST_ROOT" \
+FAKE_MODE=update_status \
+LOOP_COOLDOWN=0 \
+env -u LOOP_AGENT \
+bash "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/agentfile.log" 2>&1
+
+if [ ! -f "$TEST_ROOT/codex_called" ]; then
+  echo "FAIL: loop/agent=codex 인데 Codex를 부르지 않았다"
+  sed -n '1,80p' "$TEST_ROOT/agentfile.log"
+  exit 1
+fi
+if [ -f "$TEST_ROOT/claude_called" ]; then
+  echo "FAIL: loop/agent=codex 인데 Claude를 불렀다"
+  exit 1
+fi
+
 echo "PASS: Codex 실행기는 새 세션에서 별도 승인 질문 없이 구현하도록 호출된다"
+echo "PASS: loop/agent 파일이 LOOP_AGENT 미지정 시 실행기를 고른다"

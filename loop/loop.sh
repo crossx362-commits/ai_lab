@@ -30,7 +30,17 @@ HOLD="$ROOT/loop/HOLD"
 LOG_DIR="$ROOT/loop/logs"
 MAX_FAILS="${LOOP_MAX_FAILS:-3}"
 COOLDOWN="${LOOP_COOLDOWN:-20}"
-AGENT="${LOOP_AGENT:-claude}"
+# 실행기: 환경변수 > loop/agent > claude.
+# 클로드 주간 한도에 걸리면 아래 루프가 Codex로 넘긴다 — 복구 시각까지
+# 자면 개발이 멈춘다(오너 2026-08-16, 한도 resets Aug 17 23:00).
+if [ -n "${LOOP_AGENT:-}" ]; then
+  AGENT="$LOOP_AGENT"
+elif [ -f "$ROOT/loop/agent" ]; then
+  AGENT=$(tr -d ' \t\r\n' < "$ROOT/loop/agent")
+else
+  AGENT=claude
+fi
+[ -n "$AGENT" ] || AGENT=claude
 
 mkdir -p "$LOG_DIR"
 
@@ -205,6 +215,15 @@ while true; do
     echo "✅ #$ITER 완료"
     tail -5 "$LOG" | sed 's/^/   /'
   elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|session limit|usage limit|limit .*resets|quota|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
+    # 클로드 주간 한도 → Codex로 즉시 전환. 복구 시각까지 자면 루프가 하루 이상 멈춘다.
+    if [ "$AGENT" = "claude" ] && command -v codex >/dev/null && \
+       grep -qiE 'weekly limit|session limit|usage limit|limit .*resets' "$LOG"; then
+      echo "🔀 클로드 한도 — Codex로 전환하고 바로 재개"
+      AGENT=codex
+      printf '%s\n' "$AGENT" > "$ROOT/loop/agent"
+      ITER=$((ITER - 1))
+      continue
+    fi
     # ── 인프라 장애는 **작업 실패로 세지 않는다.**
     #    2026-08-15 실측: 인증이 잠깐 흔들린 44초 사이에 재시도 3회가 전부 소진돼
     #    루프가 자멸했다(직후 `claude -p`는 정상 동작). 크레딧·레이트리밋·네트워크도
