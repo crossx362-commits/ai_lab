@@ -58,7 +58,13 @@ namespace AshesToStars
 
         public static Rect LargeLook(Rect stage)
         {
-            return new Rect(stage.x + 16f, stage.y + 88f, LargeLookW, LargeLookH);
+            float maxH = Mathf.Max(160f, stage.height - 96f);
+            float h = Mathf.Min(LargeLookH, maxH);
+            float w = Mathf.Min(LargeLookW, stage.width * 0.46f, h * 0.88f);
+            h = Mathf.Min(h, w / 0.72f);
+            float y = stage.y + 70f;
+            if (y + h > stage.yMax - 8f) y = Mathf.Max(stage.y + 64f, stage.yMax - h - 8f);
+            return new Rect(stage.x + 16f, y, w, h);
         }
 
         /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>
@@ -70,6 +76,44 @@ namespace AshesToStars
             "마법사" or "소환사" => "mage",
             _ => "dps",
         };
+
+        public static string LookPath(string job, string frame)
+        {
+            string dir = LookDir(job);
+            return $"sprites/{dir}/{dir}_{frame}";
+        }
+
+        public static string WalkFrame() =>
+            (Time.unscaledTime % 0.36f) < 0.18f ? "walk_00" : "walk_01";
+
+        /// <summary>전신. walk면 idle/walk 두 장으로 걷는다. 어두운 판 위에서는 초상을 크게 깐다.</summary>
+        public static void DrawJobLook(Rect target, string job, bool walk, Color? tint = null)
+        {
+            var saved = GUI.color;
+            GUI.color = new Color(0.86f, 0.82f, 0.74f, 1f);
+            if (Texture2D.whiteTexture != null)
+                GUI.DrawTexture(target, Texture2D.whiteTexture);
+            GUI.color = saved;
+            UiAtlas.DrawRosterFrame(target);
+            var inner = new Rect(target.x + 6f, target.y + 6f, target.width - 12f, target.height - 12f);
+            string frame = walk ? WalkFrame() : "idle_00";
+            var tex = Resources.Load<Texture2D>(LookPath(job, frame));
+            if (tex == null && walk)
+                tex = Resources.Load<Texture2D>(LookPath(job, "idle_00"));
+            if (walk && tex != null)
+            {
+                GUI.color = tint ?? Color.white;
+                GUI.DrawTexture(inner, tex, ScaleMode.ScaleToFit, true);
+                GUI.color = saved;
+                return;
+            }
+            if (!PortraitAtlas.Draw(inner, PortraitAtlas.KeyForJob(job), tint) && tex != null)
+            {
+                GUI.color = tint ?? Color.white;
+                GUI.DrawTexture(inner, tex, ScaleMode.ScaleToFit, true);
+                GUI.color = saved;
+            }
+        }
 
         public static Rect[] Grid(Rect r, int cols, int rows, float gap = 16f)
         {

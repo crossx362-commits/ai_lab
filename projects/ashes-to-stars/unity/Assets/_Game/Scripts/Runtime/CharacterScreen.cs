@@ -63,6 +63,7 @@ namespace AshesToStars
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
+            StarterPick.SeedQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
@@ -639,16 +640,18 @@ namespace AshesToStars
 
             var face = UiPages.LargeLook(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
-            DrawIdleLook(face, ch.Job, tint);
+            DrawSelectedLook(face, ch.Job, tint);
             UiAtlas.Draw(new Rect(face.center.x - 16f, face.yMax - 18f, 32f, 32f),
                 UiAtlas.RoleKey(ch.Job));
 
             var center = face.center;
+            float ringX = face.width * 0.58f + 24f;
+            float ringY = face.height * 0.50f + 24f;
             for (int i = 0; i < RingSlots.Length; i++)
             {
                 var slot = RingSlots[i];
                 float deg = UiPages.EquipRingDegrees[i];
-                var slotRect = UiPages.SlotOnRing(center, 148f, 158f, deg, 52f);
+                var slotRect = UiPages.SlotOnRing(center, ringX, ringY, deg, 48f);
                 var worn = Equipment.Worn(ch, slot);
                 ItemAtlas.DrawGear(slotRect, worn);
                 if (worn == null)
@@ -758,21 +761,8 @@ namespace AshesToStars
             }
         }
 
-        static void DrawIdleLook(Rect target, string job, Color? tint)
-        {
-            string dir = UiPages.LookDir(job);
-            var tex = Resources.Load<Texture2D>($"sprites/{dir}/{dir}_idle_00");
-            if (tex == null)
-            {
-                UiAtlas.DrawRosterFrame(target);
-                PortraitAtlas.Draw(target, PortraitAtlas.KeyForJob(job), tint);
-                return;
-            }
-            var saved = GUI.color;
-            GUI.color = tint ?? Color.white;
-            GUI.DrawTexture(target, tex, ScaleMode.ScaleToFit, true);
-            GUI.color = saved;
-        }
+        static void DrawSelectedLook(Rect target, string job, Color? tint) =>
+            UiPages.DrawJobLook(target, job, false, tint);
 
         void DrawBagFilterTab(Rect tr, string label, int filter)
         {

@@ -34,6 +34,12 @@ namespace AshesToStars
             Check(look.width >= 160f && look.height >= 200f, "대형 모습은 160×200 이상");
             Check(look.width > 56f, "대형 모습이 목록 얼굴(56)보다 크다");
             Check(look.x >= stage.x && look.xMax <= stage.xMax, "대형 모습은 오른쪽 안에 있다");
+            Check(look.yMax <= stage.yMax + 0.01f, "모습이 오른쪽 패널 아래로 안 넘친다");
+
+            UiPages.RosterSplit(new Rect(0, 0, 1184, 348), out _, out var shortStage);
+            var shortLook = UiPages.LargeLook(shortStage);
+            Check(shortLook.yMax <= shortStage.yMax + 0.01f && shortLook.height >= 140f,
+                "720p 본문에서도 모습이 패널 안에 보인다");
 
             var c0 = UiPages.RosterCell(list, 0);
             var c1 = UiPages.RosterCell(list, 1);
