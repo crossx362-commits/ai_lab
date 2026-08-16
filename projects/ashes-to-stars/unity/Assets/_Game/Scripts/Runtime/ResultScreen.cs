@@ -25,6 +25,7 @@ namespace AshesToStars
             GameFlow.SeedV4WipeQaIfRequested();
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
+            BattleScreen.SeedHuntExpRewardQaIfRequested();
 
             if (TowerEnding.PendingEpilogue)
             {

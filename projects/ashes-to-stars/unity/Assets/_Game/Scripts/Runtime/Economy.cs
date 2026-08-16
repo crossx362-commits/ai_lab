@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -252,6 +253,55 @@ namespace AshesToStars
         /// 프로토타입 검증값: 생존 1회에 가죽 1장 — 대장간 루프가 화면에 보여야 한다.
         /// </summary>
         public static int FieldHuntHideCount() => 1;
+
+        /// <summary>
+        /// 잡몹 웨이브(필드·탑 일반층·던전 노드) 초당 경험치(T1, 종족 1.0).
+        /// §18-6 솔로 Lv20≈2시간: XP_total(20)=419390 / 7200s ≈ 58.
+        /// 예전엔 가죽이 전부여서 테스터가 30분을 살아도 레벨이 안 올랐다.
+        /// </summary>
+        public const float HuntExpPerSecond = 58f;
+
+        /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 계정 종족·에셋을 본다.</summary>
+        public static float ForceRaceXpMul;
+
+        /// <summary>§18-9 인간 경험치 +15%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static float RaceXpMul()
+        {
+            if (ForceRaceXpMul > 0f) return ForceRaceXpMul;
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].경험치배율 > 0f)
+                        return races[i].경험치배율;
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.인간 ? 1.15f : 1f;
+        }
+
+        /// <summary>
+        /// 잡몹 웨이브를 버틴 시간의 경험치 총량(§3·§6·§18-6). 선택 월드 티어를 곱한다.
+        /// 초가 0이하거나 QA_NO_HUNT_EXP=1이면 0 — 저체력 귀환·전멸은 호출부가 안 부른다.
+        /// </summary>
+        public static long WaveHuntExp(int tier, float seconds)
+        {
+            if (seconds <= 0f) return 0;
+            if (Environment.GetEnvironmentVariable("QA_NO_HUNT_EXP") == "1") return 0;
+            int t = tier;
+            if (t < 0) t = 0;
+            if (t >= TierRevenueMultiplier.Length) t = TierRevenueMultiplier.Length - 1;
+            long exp = (long)(HuntExpPerSecond * seconds * TierRevenueMultiplier[t]);
+            int racePct = (int)System.Math.Round(RaceXpMul() * 100.0);
+            if (racePct < 1) racePct = 100;
+            exp = exp * racePct / 100;
+            return exp < 1 ? 1 : exp;
+        }
 
         // ========== 소지 상한 (§4, §18-4) ==========
 

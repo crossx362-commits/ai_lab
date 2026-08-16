@@ -274,7 +274,9 @@ namespace AshesToStars
             if (inDungeon && survived)
             {
                 DungeonRun.Complete(true);
-                GameFlow.LastBattleSummary = $"노드 통과 — {_t:F1}초";
+                long nodeExp = Economy.WaveHuntExp(GameState.Tier, _t);
+                LifeSystem.AwardWaveHunt(_t);
+                GameFlow.LastBattleSummary = $"노드 통과 — {_t:F1}초 · EXP {nodeExp}";
                 GameFlow.Go(GameFlow.Dungeon);
                 return;
             }
@@ -291,12 +293,18 @@ namespace AshesToStars
                 if (GameFlow.IsTowerFloorClear(survived, inDungeon, GameFlow.ReturnTo, GameFlow.Kind))
                 {
                     GameState.ClearFloor(GameFlow.BossFloor);
+                    long floorExp = Economy.WaveHuntExp(GameState.Tier, _t);
+                    _reward.Clear();
+                    _reward.Survived = true;
+                    _reward.BattleDurationSeconds = _t;
+                    _reward.ExpGains = LifeSystem.AwardWaveHunt(_t);
                     GameFlow.LastBattleSummary =
-                        $"{GameFlow.BossFloor}층 돌파 — {_t:F1}초 · 다음 {GameState.TowerFloor}층";
+                        $"{GameFlow.BossFloor}층 돌파 — {_t:F1}초 · 다음 {GameState.TowerFloor}층 · EXP {floorExp}";
                 }
                 else
                 {
                     // 필드 사냥은 보스 테이블을 안 굴린다. 가죽은 여기서만 준다(§11).
+                    // 경험치는 가죽과 같이 생존 정산에서만 준다 — 예전엔 0이라 테스터 레벨이 안 올랐다.
                     if (GameFlow.ReturnTo == GameFlow.Field)
                     {
                         _reward.Clear();
@@ -308,7 +316,10 @@ namespace AshesToStars
                             for (int i = 0; i < hides; i++)
                                 _reward.DroppedItems.Add(Economy.LifeItem.CraftHide);
                         }
-                        GameFlow.LastBattleSummary = $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장";
+                        long huntExp = Economy.WaveHuntExp(GameState.Tier, _t);
+                        _reward.ExpGains = LifeSystem.AwardWaveHunt(_t);
+                        GameFlow.LastBattleSummary =
+                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · EXP {huntExp}";
                     }
                     else
                         GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
@@ -344,5 +355,22 @@ namespace AshesToStars
         /// ResultScreen이 보상 정보를 읽기 위한 접근자
         /// </summary>
         public static BattleRewardInfo _GetLastReward() => _reward;
+
+        /// <summary>QA_HUNT_EXP=1이면 결과 화면에 필드 생존 경험치 줄을 심는다.</summary>
+        public static void SeedHuntExpRewardQaIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable("QA_HUNT_EXP") != "1") return;
+            LifeSystem.SeedHuntExpQaIfRequested();
+            if (_reward.ExpGains != null && _reward.ExpGains.Count > 0) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            long exp = Economy.WaveHuntExp(GameState.Tier, 274f);
+            _reward.Clear();
+            _reward.Survived = true;
+            _reward.BattleDurationSeconds = 274f;
+            _reward.ExpGains.Add($"{roster[0].Name} +{exp} EXP → Lv.{roster[0].Level}");
+            if (string.IsNullOrEmpty(GameFlow.LastBattleSummary))
+                GameFlow.LastBattleSummary = $"생존 — 274.0초 · 사냥 가죽 1장 · EXP {exp}";
+        }
     }
 }

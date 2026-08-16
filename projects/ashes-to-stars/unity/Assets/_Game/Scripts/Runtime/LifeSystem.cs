@@ -705,6 +705,28 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 잡몹 웨이브(필드·탑 일반층·던전 노드)를 버틴 시간에 경험치를 준다(§3·§18-6).
+        /// 보스 격파는 <see cref="AwardBattleExp"/>를 직접 부른다. 전멸·저체력 귀환은 호출하지 않는다.
+        /// </summary>
+        public static List<string> AwardWaveHunt(float seconds)
+        {
+            return AwardBattleExp(Economy.WaveHuntExp(GameState.Tier, seconds));
+        }
+
+        /// <summary>QA_HUNT_EXP=1이면 솔로 한 판을 정산해 시작 로스터(Lv10)가 한 칸 오르게 한다.</summary>
+        public static void SeedHuntExpQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_HUNT_EXP");
+            if (raw != "1" && raw != "true") return;
+            EnsureLoaded();
+            if (_characters.Count == 0) return;
+            if (_characters[0].Level >= 11) return;
+            PartyState.SetSlotsForTest(0);
+            // Lv10→11 = 15848. T1·종족1.0에서 274초면 15892.
+            AwardWaveHunt(274f);
+        }
+
+        /// <summary>
         /// 캐릭터가 현재 출전 가능한 상태인지 확인한다.
         /// 삭제되었거나 회복 중이면 false.
         /// </summary>
