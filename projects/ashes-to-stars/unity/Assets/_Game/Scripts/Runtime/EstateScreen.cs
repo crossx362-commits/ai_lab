@@ -106,12 +106,15 @@ namespace AshesToStars
                 _sub = Sub.영공;
             if (System.Environment.GetEnvironmentVariable(EstateMine.EnvShowRace) == "1")
                 _hubPage = 1;
+            if (System.Environment.GetEnvironmentVariable(EstateMine.EnvShowSeize) == "1")
+                _hubPage = 1;
             if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1")
                 _hubPage = 1;
             WorldStar.SeedRaceSenseQaIfRequested();
             SoftCap.SeedQaIfRequested();
             EstateMine.SeedQaIfRequested();
             EstateMine.SeedRaceQaIfRequested();
+            EstateMine.SeedSeizeQaIfRequested();
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
@@ -215,9 +218,11 @@ namespace AshesToStars
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
             string mineRate = Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h";
-            string mineSub = EstateMine.RacePercent() != EstateMine.HumanPercent
-                ? mineRate + " · " + EstateMine.RaceLine()
-                : mineRate + " · 창고에 자동 적립(§13)";
+            string mineSub = mineRate + " · 창고에 자동 적립(§13)";
+            if (EstateMine.Seized)
+                mineSub = mineRate + " · " + EstateMine.SeizeLine();
+            else if (EstateMine.RacePercent() != EstateMine.HumanPercent)
+                mineSub = mineRate + " · " + EstateMine.RaceLine();
             DrawCard(cards[2], "광산", mineSub, "field", locked: true);
             string warehouse = $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
             if (!SoftCap.Blocked

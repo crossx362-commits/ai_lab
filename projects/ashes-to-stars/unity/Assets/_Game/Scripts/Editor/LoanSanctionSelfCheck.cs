@@ -6,7 +6,7 @@ namespace AshesToStars
 {
     /// <summary>
     /// 대출 연체·파산이 경매장/침략 문을 실제로 잠그는가.
-    /// 거래서버·침략 본게임·영지 생산·건물 레벨은 여기서 열지 않는다.
+    /// 영지 생산 압류는 MineSeizeSelfCheck. 건물 -1·아이템 30%는 아직 안 연다.
     /// </summary>
     public static class LoanSanctionSelfCheck
     {

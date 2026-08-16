@@ -13,9 +13,13 @@ namespace AshesToStars
         public const double FieldShare = 0.25;
         public const string EnvShowRace = "QA_RACE_MINE";
         public const string EnvNoRace = "QA_NO_RACE_MINE";
+        public const string EnvShowSeize = "QA_MINE_SEIZE";
+        public const string EnvNoSeize = "QA_NO_MINE_SEIZE";
         public const int HumanPercent = 100;
         public const int DwarfPercent = 120;
         public const int BeastPercent = 80;
+        public const int SeizeOverdue = 2;
+        public const int SeizePercent = 100;
 
         const string K_LAST = "ats.estate.mine_last";
         const string K_WASTE = "ats.estate.mine_waste";
@@ -24,6 +28,8 @@ namespace AshesToStars
         static bool _loaded;
         static bool _qaSeeded;
         static bool _raceQaSeeded;
+        static bool _seizeQaSeeded;
+        static long _lastSeized;
         static long _lastUnix;
         static long _wasted;
         static long _owed;
@@ -44,6 +50,27 @@ namespace AshesToStars
 
         public static bool RaceBlocked =>
             Environment.GetEnvironmentVariable(EnvNoRace) == "1";
+
+        public static bool SeizeBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSeize);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>§18-5 연체 2회면 영지 생산 100%가 빚으로 간다. 사냥 Earn의 50%와 다르다.</summary>
+        public static bool Seized =>
+            !SeizeBlocked && GameState.OverdueCount >= SeizeOverdue && GameState.Debt > 0;
+
+        public static long LastSeized { get { Load(); return _lastSeized; } }
+
+        public static string SeizeLine()
+        {
+            if (SeizeBlocked || !Seized) return "생산 압류 없음";
+            return "생산 압류 100%(§18-5)";
+        }
 
         /// <summary>§18-9 드워프 영지 생산 +20% · 수인 −20%. 에셋이 없으면 표로 폴백한다.</summary>
         public static int RacePercent()
@@ -120,9 +147,19 @@ namespace AshesToStars
             _owed %= 3600;
             if (produced <= 0)
             {
+                _lastSeized = 0;
                 Save();
                 return 0;
             }
+
+            GameState.RefreshSanctions(now);
+            long seized = 0;
+            if (Seized)
+            {
+                seized = GameState.RepayFromIncome(produced);
+                produced -= seized;
+            }
+            _lastSeized = seized;
 
             long room = RoomCopper();
             long add = produced < room ? produced : room;
@@ -130,7 +167,7 @@ namespace AshesToStars
             if (add > 0) GameState.Earn(add);
             if (waste > 0) _wasted += waste;
             Save();
-            return add;
+            return seized + add;
         }
 
         public static void SeedQaIfRequested()
@@ -144,6 +181,23 @@ namespace AshesToStars
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long have = GameState.Wallet.Copper;
             if (have > 0) GameState.Pay(have);
+            _loaded = true;
+            _lastUnix = NowUnix() - 3600;
+            Save();
+            Tick();
+        }
+
+        /// <summary>시각 QA. QA_MINE_SEIZE=1이면 연체 2회·빚 1만·1시간분 압류.</summary>
+        public static void SeedSeizeQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowSeize) != "1") return;
+            if (_seizeQaSeeded) return;
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.ResetForTest();
+            ResetForTest();
+            _seizeQaSeeded = true;
+            GameState.SeedMineSeizeLoan();
+            NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             _loaded = true;
             _lastUnix = NowUnix() - 3600;
             Save();
@@ -200,9 +254,11 @@ namespace AshesToStars
             _lastUnix = 0;
             _wasted = 0;
             _owed = 0;
+            _lastSeized = 0;
             _loaded = false;
             _qaSeeded = false;
             _raceQaSeeded = false;
+            _seizeQaSeeded = false;
             ForceRaceMul = 0f;
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }

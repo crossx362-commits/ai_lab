@@ -278,8 +278,28 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 수입에서 빚을 갚는다. 지갑은 안 건드린다.
+        /// 연체 2회 영지 생산 압류(§18-5)가 여기를 읽는다 — Earn의 50%와 다르다.
+        /// </summary>
+        public static long RepayFromIncome(long copper)
+        {
+            Load();
+            if (_debt <= 0 || copper <= 0) return 0;
+            long pay = System.Math.Min(copper, _debt);
+            _debt -= pay;
+            if (_debt == 0)
+            {
+                _loanDueAt = 0;
+                _overdueCount = 0;
+                _bankruptThisLoan = false;
+            }
+            Save();
+            return pay;
+        }
+
+        /// <summary>
         /// 만기가 지난 만큼 연체 횟수를 올린다. 정각은 아직 연체가 아니다(SelfCheck ⑩ 만기 이자).
-        /// 3회에서 파산 1회 — 건물 강등·아이템 압류는 소비 시스템이 없어 안 한다.
+        /// 3회에서 파산 1회 — 건물 강등·아이템 30% 압류는 아직 안 한다.
         /// </summary>
         public static void RefreshSanctions(long nowUnix)
         {
@@ -401,6 +421,22 @@ namespace AshesToStars
             }
             Save();
         }
+
+        /// <summary>시각 QA. 연체 2회·빚 1만·지갑 0. 광산 시드가 1시간을 넣는다.</summary>
+        public static void SeedMineSeizeLoan()
+        {
+            Load();
+            if (_wallet.Copper > 0) _wallet.TrySubtract(_wallet.Copper);
+            _debt = 10000;
+            _overdueCount = 2;
+            _loanDueAt = NowUnix() + Economy.LoanTermHours * 3600;
+            _loanAccruedAt = NowUnix();
+            _bankruptThisLoan = false;
+            if (_floor < 30) _floor = 30;
+            _selectedTier = 0;
+            Save();
+        }
+
         public static long Repay(long copper) => Repay(copper, NowUnix());
 
         /// <summary>
