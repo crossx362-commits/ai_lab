@@ -28,7 +28,7 @@
 직업명은 💡라 `IsSpecialJob`+기본 역할. 이 경로는 증표 0. 50층 드랍표 2%는 그대로.
 SelfCheck 전항 PASS. PNG `floor_recruit_shots/qa_go:{Result,Character}.png`
 `5층 레이드 — 기본 직업 2종을 고른다 (1/2)` · `당첨 — 2종을 고른 뒤 특수 직업 역할을 고른다`.
-`AddSpecialRecruit`를 빼면 컴파일 RED 3건.
+`AddSpecialRecruit`를 빼면 컴파일 RED 3건. 코드 `a9850be4`.
 
 ### ✅ 층을 클리어할때 — 기본직업 1종 선택 · 레이드 증표 2장 (루프, 2026-08-16)
 
