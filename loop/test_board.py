@@ -227,6 +227,101 @@ class ParseTests(unittest.TestCase):
         self.assertLess(html.find('class="request-top"'), html.find('id="stuck-box"'))
         self.assertIn("renderStuck", html)
 
+    def test_completed_posts_description_and_shot(self):
+        status = STATUS + """
+> **이번 이터 결과(코드/실행): 대장간 둘째 슬라이스 — 강화 +15.**
+> - 6부위 강화. 경매 거래서버는 안 열었다.
+> - **화면**: `smith_enhance_shots/ok.png` 318037B — 제목 영지·대장간.
+> - **코드** `783af30e`.
+
+## 다음 할 일 큐 (맨 위부터 하나씩)
+
+| # | 항목 | 통과 기준 | 네거티브 |
+|---|---|---|---|
+| ~~2~~ | ~~**보스 쫄 소환**~~ ✅ | 소환피해 24 · `shots/summon.png` | 소환 0 |
+| 4 | **영지 건물 3종** | 소비 시스템이 없어 | x |
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "smith_enhance_shots").mkdir()
+            (root / "shots").mkdir()
+            (root / "smith_enhance_shots" / "ok.png").write_bytes(b"\x89PNG")
+            (root / "shots" / "summon.png").write_bytes(b"\x89PNG")
+            old = board.QA_ROOT
+            board.QA_ROOT = root
+            try:
+                posts = board.completed_posts(status)
+            finally:
+                board.QA_ROOT = old
+        titles = [p["title"] for p in posts]
+        self.assertIn("대장간 둘째 슬라이스 — 강화 +15", titles)
+        smith = next(p for p in posts if "대장간" in p["title"])
+        self.assertIn("6부위", smith["detail"])
+        self.assertEqual(smith["commit"], "783af30e")
+        self.assertEqual(smith["shots"][0]["path"], "smith_enhance_shots/ok.png")
+        self.assertTrue(smith["shots"][0]["url"].startswith("/shots/"))
+        self.assertIn("보스 쫄 소환", titles)
+        self.assertNotIn("영지 건물 3종", titles)
+
+    def test_hinted_shots_ignore_body_non_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "smith_enhance_shots").mkdir()
+            (root / "v4_wipe_shots").mkdir()
+            (root / "smith_enhance_shots" / "qa_go_Estate_smith.png").write_bytes(b"\x89PNG")
+            (root / "v4_wipe_shots" / "qa_go:Result.png").write_bytes(b"\x89PNG")
+            old = board.QA_ROOT
+            board.QA_ROOT = root
+            try:
+                shots = board.hinted_shots(
+                    "긴급 탈출 6초 캐스트·피격 취소",
+                    "루프의 대장간 둘째는 안 넣었다. V4 70%는 안 열었다.",
+                )
+            finally:
+                board.QA_ROOT = old
+        self.assertEqual(shots, [])
+
+    def test_mentioned_shots_skips_old_compare(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "party_chrome_shots").mkdir()
+            (root / "shots").mkdir()
+            (root / "party_chrome_shots" / "qa_go:Party.png").write_bytes(b"\x89PNG")
+            (root / "shots" / "qa_go:Party.png").write_bytes(b"\x89PNG")
+            old = board.QA_ROOT
+            board.QA_ROOT = root
+            try:
+                shots = board.mentioned_shots(
+                    "화면 `party_chrome_shots/qa_go:Party.png` 하트 3칸.\n"
+                    "옛 `shots/qa_go:Party.png`과 갈림."
+                )
+            finally:
+                board.QA_ROOT = old
+        self.assertEqual(shots, ["party_chrome_shots/qa_go:Party.png"])
+
+    def test_read_shot_stays_inside_qa_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ok.png").write_bytes(b"\x89PNG\r\n")
+            secret = Path(tmp).parent / "secret.png"
+            old = board.QA_ROOT
+            board.QA_ROOT = root
+            try:
+                data, ctype, err = board.read_shot("ok.png")
+                self.assertEqual(ctype, "image/png")
+                self.assertTrue(data.startswith(b"\x89PNG"))
+                self.assertEqual(err, "")
+                missing, _, merr = board.read_shot("../" + secret.name)
+                self.assertIsNone(missing)
+                self.assertTrue(merr)
+            finally:
+                board.QA_ROOT = old
+
+    def test_board_html_completed_gallery(self):
+        html = (HERE / "board.html").read_text(encoding="utf-8")
+        self.assertLess(html.find('id="charts"'), html.find('id="done-gallery"'))
+        self.assertIn("renderCompleted", html)
+
 
 class WriteTests(unittest.TestCase):
     def test_request_lands_under_waiting(self):

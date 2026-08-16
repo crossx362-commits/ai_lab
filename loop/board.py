@@ -23,7 +23,7 @@ import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, unquote, urlparse
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -46,6 +46,28 @@ STATUS = ROOT / "docs" / "STATUS.md"
 DESIGN = ROOT / "docs" / "DESIGN.md"
 GAME_DESIGN = ROOT / "docs" / "GAME_DESIGN_ASHES_TO_STARS.md"
 INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
+QA_ROOT = ROOT / "output" / "qa" / "ashes-to-stars"
+
+# 본문에 경로가 없을 때만. 키워드 → 실측 PNG.
+_SHOT_HINTS = (
+    (("강화", "+15", "대장간 둘째"), "smith_enhance_shots/qa_go_Estate_smith.png"),
+    (("가죽", "흉갑", "대장간 첫"), "smith_shots/qa_go_Estate_smith.png"),
+    (("편성", "명부"), "party_chrome_shots/qa_go:Party.png"),
+    (("HUD", "초상을 키", "스킬을 붙"), "shots/qa_hunt.png"),
+    (("쫄 소환", "소환피해"), "shots/qa_boss_summon_on.png"),
+    (("V3", "한 판 종단", "보스 나머지"), "boss_run_shots/qa_boss.png"),
+    (("전직", "1차", "슬롯"), "first_advancement/광전사_normal/qa_advancement.png"),
+    (("2차", "각성", "초필"), "shots/qa_second_advancement.png"),
+    (("실루엣", "매트릭스", "swarmer", "몹 AI"), "shots/mob_family_matrix.png"),
+    (("V4", "삭제 루프", "와이프"), "v4_wipe_shots/qa_go:Result.png"),
+    (("필드·탑", "헤더", "버튼 3상태"), "ui_chrome_shots/qa_go:Field.png"),
+    (("아틀라스", "아이콘"), "ui_icon_shots/qa_go:Character.png"),
+    (("수비", "월드맵"), "defense_shots/qa_go:WorldMap.png"),
+    (("영지",), "shots/qa_estate.png"),
+    (("캐릭터",), "char_sprite_shots/qa_go:Character.png"),
+    (("던전",), "shots/qa_dungeon.png"),
+    (("사냥",), "shots/qa_hunt.png"),
+)
 
 # 보드 커밋이 쓸 수 있는 경로. 시크릿·유니티 캐시·루프 로그는 절대 안 넣는다.
 _COMMIT_ALLOW = (
@@ -481,6 +503,131 @@ def parse_results(status: str, limit: int = 8) -> list[dict]:
         })
     # 문서 위가 최신
     return found[:limit]
+
+
+_SHOT_PATH = re.compile(
+    r"(?:output/qa/ashes-to-stars/)?"
+    r"((?:[\w.\-]+/)*[\w.:\-]+\.(?:png|jpe?g|webp))",
+    re.I,
+)
+_SHOT_MIME = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+}
+
+
+def shot_file(rel: str) -> Path | None:
+    rel = (rel or "").replace("\\", "/").lstrip("/")
+    if not rel or ".." in rel.split("/"):
+        return None
+    full = (QA_ROOT / rel).resolve()
+    try:
+        full.relative_to(QA_ROOT.resolve())
+    except ValueError:
+        return None
+    return full if full.is_file() else None
+
+
+def read_shot(rel: str) -> tuple[bytes | None, str, str]:
+    """보드가 보여줄 QA PNG만. 루트 밖·비이미지는 거절."""
+    full = shot_file(rel)
+    if full is None:
+        return None, "", "없는 샷"
+    ctype = _SHOT_MIME.get(full.suffix.lower(), "")
+    if not ctype:
+        return None, "", "이미지가 아님"
+    try:
+        return full.read_bytes(), ctype, ""
+    except OSError as e:
+        return None, "", str(e)
+
+
+def mentioned_shots(text: str) -> list[str]:
+    """본문에 적힌 PNG만. '옛 샷' 비교용 경로는 빼 둔다."""
+    out: list[str] = []
+    seen: set[str] = set()
+    text = text or ""
+    for m in _SHOT_PATH.finditer(text):
+        rel = m.group(1)
+        line_at = text.rfind("\n", 0, m.start()) + 1
+        line = text[line_at:text.find("\n", m.end()) if text.find("\n", m.end()) >= 0 else len(text)]
+        if "옛" in line[: m.start() - line_at]:
+            continue
+        if "legacy" in rel.lower():
+            continue
+        if rel in seen or shot_file(rel) is None:
+            continue
+        seen.add(rel)
+        out.append(rel)
+    return out
+
+
+def hinted_shots(title: str, detail: str = "") -> list[str]:
+    """경로가 없을 때만. 제목만 본다 — 본문 '안 연 것'이 V4·대장간을 훔친다."""
+    blob = title or ""
+    out: list[str] = []
+    for keys, rel in _SHOT_HINTS:
+        if any(k in blob for k in keys) and shot_file(rel) is not None:
+            if rel not in out:
+                out.append(rel)
+            break
+    return out
+
+
+def summarize_done(body: str, limit: int = 220) -> str:
+    skip = ("화면", "TDD", "네거티브", "정직한", "코드 `", "코드:", "검증")
+    parts: list[str] = []
+    for line in (body or "").splitlines():
+        t = re.sub(r"^[-*>\s]+", "", line).strip()
+        t = re.sub(r"\*\*(.+?)\*\*", r"\1", t)
+        t = t.replace("**:", ":").replace("**", "")
+        if not t or t.startswith(skip):
+            continue
+        parts.append(t)
+        if sum(len(p) for p in parts) >= limit:
+            break
+    text = " ".join(parts)
+    return text[:limit].rstrip()
+
+
+def _title_seen(title: str, seen: set[str]) -> bool:
+    for s in seen:
+        if s in title or title in s:
+            return True
+    return False
+
+
+def completed_posts(status: str, limit: int = 12) -> list[dict]:
+    """완료된 개발 — STATUS 근거 + 실측 샷. 끝난 행만."""
+    posts: list[dict] = []
+    seen: set[str] = set()
+
+    def add(title: str, detail: str, commit: str = "", extra: str = "") -> None:
+        title = (title or "").strip()
+        if not title or _title_seen(title, seen):
+            return
+        shots = mentioned_shots(detail + " " + extra) or hinted_shots(title, detail)
+        posts.append({
+            "id": item_id("done:" + title + commit),
+            "title": title[:160],
+            "detail": summarize_done(detail) or (detail or "")[:220],
+            "commit": commit,
+            "shots": [
+                {"path": rel, "url": "/shots/" + quote(rel, safe="/")}
+                for rel in shots[:3]
+            ],
+        })
+        seen.add(title)
+
+    for it in parse_results(status, limit=24):
+        add(it["title"], it.get("body") or "", it.get("commit") or "")
+    for row in parse_queue_table_all(status):
+        if not row.get("done"):
+            continue
+        add(row["title"], row.get("detail") or "")
+    return posts[:limit]
 
 
 def parse_milestones(design: str) -> list[dict]:
@@ -1044,6 +1191,7 @@ def build_state() -> dict:
         "git": dirty_files(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "stuck": stuck_items(status, flags),
+        "completed": completed_posts(status),
     }
 
 
@@ -1100,6 +1248,20 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/state":
             self._json(200, build_state())
+            return
+        if path.startswith("/shots/"):
+            rel = unquote(path[len("/shots/"):])
+            data, ctype, err = read_shot(rel)
+            if data is None:
+                self.send_response(404)
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Cache-Control", "private, max-age=120")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
             return
         self.send_response(404)
         self.end_headers()

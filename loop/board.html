@@ -139,6 +139,35 @@
   .spark { display: flex; align-items: flex-end; gap: 3px; height: 76px; margin-top: 8px; }
   .spark b { flex: 1; background: var(--gold); border-radius: 2px 2px 0 0; min-height: 2px; opacity: .85; }
   .spark .cap { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; }
+  .done-wrap {
+    margin: 14px 24px 0; padding: 16px 16px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--panel);
+  }
+  .done-wrap h2 { color: var(--ok); }
+  .done-gallery {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px; margin-top: 10px;
+  }
+  .done-card {
+    background: #16130f; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .done-card .thumbs { display: grid; grid-template-columns: 1fr; background: #100e0c; }
+  .done-card .thumbs.n2 { grid-template-columns: 1fr 1fr; }
+  .done-card img {
+    width: 100%; height: 168px; object-fit: cover; object-position: top center;
+    display: block; cursor: zoom-in; background: #100e0c;
+  }
+  .done-card .pad { padding: 11px 12px 12px; }
+  .done-card .t { font-weight: 650; }
+  .done-card .d { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .done-card .hash { display: inline-block; margin-top: 8px; font-size: 12px; }
+  .lightbox {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: rgba(8,6,4,.88); align-items: center; justify-content: center;
+    padding: 24px; cursor: zoom-out;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 96vw; max-height: 92vh; object-fit: contain; border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -180,6 +209,12 @@
   <div class="log" id="now-log" style="display:none"></div>
 </section>
 <div class="charts" id="charts"></div>
+<section class="done-wrap" id="done-wrap">
+  <h2>완료된 개발</h2>
+  <p class="meta">STATUS에 근거가 남은 것만. 그림은 QA가 찍은 실측 샷이다.</p>
+  <div class="done-gallery" id="done-gallery"></div>
+</section>
+<div class="lightbox" id="lightbox"><img id="lightbox-img" alt=""></div>
 <main>
   <div>
     <section>
@@ -263,6 +298,27 @@ function esc(s) {
   return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }
 
+function renderCompleted(state) {
+  const wrap = $("done-wrap");
+  const el = $("done-gallery");
+  if (!wrap || !el) return;
+  const items = state.completed || [];
+  wrap.style.display = items.length ? "block" : "none";
+  el.innerHTML = items.map((it) => {
+    const shots = it.shots || [];
+    const thumbs = shots.length ? `<div class="thumbs${shots.length > 1 ? " n2" : ""}">${
+      shots.map((s) => `<img src="${esc(s.url)}" alt="${esc(it.title)}" data-full="${esc(s.url)}">`).join("")
+    }</div>` : "";
+    return `<article class="done-card">${thumbs}
+      <div class="pad">
+        <div class="t">${esc(it.title)}</div>
+        <div class="d">${esc(it.detail || "")}</div>
+        ${it.commit ? `<span class="hash">${esc(it.commit)}</span>` : ""}
+      </div>
+    </article>`;
+  }).join("");
+}
+
 function renderStuck(state) {
   const box = $("stuck-box");
   const list = $("stuck-list");
@@ -321,6 +377,7 @@ function render(state) {
       </div>
     </div>`).join("") : '<p class="empty">지금 고를 사람 판정은 없다</p>';
   renderStuck(state);
+  renderCompleted(state);
   renderItems($("milestones"), state.milestones || [], state);
   renderItems($("queue"), state.queue || [], state);
   $("log").textContent = L.log_tail || "(루프 로그 없음)";
@@ -507,6 +564,17 @@ $("btn-commit").onclick = async () => {
   } finally {
     $("btn-commit").disabled = false;
   }
+};
+
+$("done-gallery").onclick = (e) => {
+  const img = e.target.closest("img[data-full]");
+  if (!img) return;
+  $("lightbox-img").src = img.dataset.full;
+  $("lightbox").classList.add("show");
+};
+$("lightbox").onclick = () => {
+  $("lightbox").classList.remove("show");
+  $("lightbox-img").src = "";
 };
 
 refresh().catch((err) => { $("updated").textContent = "불러오기 실패: " + err.message; });
