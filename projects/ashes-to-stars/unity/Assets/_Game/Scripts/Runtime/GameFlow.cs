@@ -82,6 +82,17 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 침략 전투 진입. 연체 2회면 화면 버튼뿐 아니라 여기서도 거부한다(§18-5).
+        /// 침략 본게임(적 별·약탈)은 열지 않는다 — 잠금만 생산 경계다.
+        /// </summary>
+        public static bool TryGoInvasion()
+        {
+            if (!GameState.CanInvade()) return false;
+            GoBattle(WorldMap);
+            return true;
+        }
+
+        /// <summary>
         /// 이 전투 결과가 **탑 한 층 돌파**인가(§8) — 탑에서 온 잡몹웨이브("다음 층 도전")를
         /// 버텨 살아남았고 던전 런이 아닐 때. 이게 참이면 층을 하나 올린다(GameState.ClearFloor).
         ///

@@ -43,7 +43,7 @@ namespace AshesToStars
             if (invasionLock != null)
                 Locked(r, 1, "침략", invasionLock);
             else if (Row(r, 1, "침략", "비동기 PvP — 상대 별을 침공한다(§15)"))
-                GameFlow.GoBattle(GameFlow.WorldMap);
+                GameFlow.TryGoInvasion();
 
             Locked(r, 2, "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)");
             Info(r, 3, $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots} — 침략 전투는 아직 없다(§13-5)");

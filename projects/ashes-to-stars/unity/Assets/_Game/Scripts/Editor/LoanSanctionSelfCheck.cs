@@ -136,6 +136,8 @@ namespace AshesToStars
                 $"QA_LOAN_OVERDUE=2가 연체2·30층을 심는다 (연체 {GameState.OverdueCount}, 층 {GameState.TowerFloor})");
             Check(!GameState.CanInvade() && !GameState.CanUseAuction(),
                 "QA 시드에서 경매·침략이 둘 다 잠긴다");
+            Check(!GameFlow.TryGoInvasion(),
+                "QA 시드에서도 침략 전투에 못 들어간다");
             Environment.SetEnvironmentVariable("QA_LOAN_OVERDUE", oldQa);
 
             GameState.ResetAll();
