@@ -190,6 +190,12 @@ namespace AshesToStars
                 Check(W3Party.FirstAdvancementRole(job) == expectedRoles[i]
                       && System.Math.Abs(W3Party.FirstAdvancementRange(job) - expectedRanges[i]) < 0.001f,
                       $"{job} 고유 역할·사거리 계약 ({expectedRoles[i]}, {expectedRanges[i]:F1})");
+                string[] probeMetrics = W3Party.FirstAdvancementProbeMetricNames(job);
+                Check(probeMetrics.Length == 2
+                      && !string.IsNullOrEmpty(probeMetrics[0])
+                      && !string.IsNullOrEmpty(probeMetrics[1])
+                      && probeMetrics[0] != probeMetrics[1],
+                      $"{job} 슬롯1/2 실전 효과를 서로 다른 수치로 계측");
                 mechanicIds.Add(mechanic);
             }
             Check(mechanicIds.Count == distinctJobs.Length,

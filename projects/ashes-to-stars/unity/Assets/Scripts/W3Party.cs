@@ -455,6 +455,26 @@ public class W3Party : MonoBehaviour
     [Header("게임 모드 (Battle 씬에서 켠다)")]
     public bool GameMode;
 
+    /// <summary>QA에서 1차 전직 하나의 두 조작 슬롯을 실전투에 강제하는 직업명.</summary>
+    public static string QaFirstAdvancementJob;
+    public static int QaAdvancementDisabledSlot;
+    float _qaAdvSlot1, _qaAdvSlot2;
+    bool _qaAdvForced1, _qaAdvForced2;
+
+    public static string[] FirstAdvancementProbeMetricNames(string job) => job switch
+    {
+        "광전사" => new[] { "광폭화 피해", "대지 가르기 명중" },
+        "궁수" => new[] { "관통 사격 피해", "집중 지속초" },
+        "소환사" => new[] { "소환수 돌격 피해", "위치 교체 횟수" },
+        "드루이드" => new[] { "자연 표식 피해", "재생 회복" },
+        "주술사" => new[] { "저주 중첩", "쇠약 지연초" },
+        "정령사" => new[] { "화염 정령 가속 인원", "물 정령 보호막" },
+        _ => System.Array.Empty<string>(),
+    };
+
+    public static (float slot1, float slot2) FirstAdvancementProbeOnActive() =>
+        _game != null ? (_game._qaAdvSlot1, _game._qaAdvSlot2) : (-1f, -1f);
+
     /// <summary>
     /// 계열 색조를 끈다. W1~W3 검증 하네스가 켜서 **구성 대조 실험에 색이 끼지 않게** 한다.
     /// `FamilyTint`가 static이라 인스턴스 필드(`GameMode`)를 못 봐서 static으로 둔다.
@@ -929,6 +949,7 @@ public class W3Party : MonoBehaviour
         // 측정 판에 소환이 끼면 구성 대조가 오염된다.
         _game = GameMode ? this : null;
         _tauntUntil = -1f; _tauntMember = null; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
+        _qaAdvSlot1 = 0f; _qaAdvSlot2 = 0f; _qaAdvForced1 = false; _qaAdvForced2 = false;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
         Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")}, "
                   + $"스킬 [{string.Join(",", System.Array.ConvertAll(_party, m => m.SkillCount))}])");
@@ -1187,6 +1208,16 @@ public class W3Party : MonoBehaviour
         }
 
         TickCommand();
+        if (GameMode && !string.IsNullOrEmpty(QaFirstAdvancementJob))
+        {
+            foreach (var member in _party)
+            {
+                if (!member.Alive || member.Job.ToString() != QaFirstAdvancementJob) continue;
+                if (!_qaAdvForced1 && _t >= 1f) { if (QaAdvancementDisabledSlot != 1) member.ForceSkill = 1; _qaAdvForced1 = true; }
+                else if (!_qaAdvForced2 && _t >= 3f) { if (QaAdvancementDisabledSlot != 2) member.ForceSkill = 2; _qaAdvForced2 = true; }
+                break;
+            }
+        }
         TickDashProbe(dt);
         UpdateCallouts(dt);
         TickParty(dt);
@@ -1705,13 +1736,13 @@ public class W3Party : MonoBehaviour
                 // 분노 — HP가 낮을수록 공격력이 상승한다. 두 번째 슬롯은 근처 적까지 가른다.
                 float rage = Mathf.Lerp(1.8f, 1f, m.Hp / m.MaxHp);
                 float dmg = m.Atk * rage;
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 1.8f; SkillCast(m, "광폭화", Color.red, 2, 0.2f); }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 1.8f; _qaAdvSlot1 += dmg; SkillCast(m, "광폭화", Color.red, 2, 0.2f); }
                 if (m.ForceSkill == 2)
                 {
                     m.ForceSkill = 0;
                     for (int j = 0; j < MAXM; j++)
                         if (j != target && _mOn[j] && (_mPos[j] - m.Pos).sqrMagnitude < 6.25f)
-                        { _mHp[j] -= dmg; if (_mHp[j] <= 0f) KillMob(j); }
+                        { _mHp[j] -= dmg; _qaAdvSlot2 += 1f; if (_mHp[j] <= 0f) KillMob(j); }
                     SkillCast(m, "대지 가르기", new Color(1f, 0.5f, 0.25f), 3, 0.25f);
                 }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk(); m.Cd = 0.5f / _bAtkSpd;
@@ -1720,9 +1751,9 @@ public class W3Party : MonoBehaviour
             else if (m.Job == Job.궁수 && target >= 0)
             {
                 // 집중 — 제자리에 서서 쏠수록 강해지고, 이동/백스텝 대신 슬롯2로 즉시 집중한다.
-                if (m.ForceSkill == 2) { m.ForceSkill = 0; m.FocusUntil = _t + 4f; SkillCast(m, "집중 사격", Color.yellow, 1); }
+                if (m.ForceSkill == 2) { m.ForceSkill = 0; m.FocusUntil = _t + 4f; _qaAdvSlot2 += 4f; SkillCast(m, "집중 사격", Color.yellow, 1); }
                 float dmg = m.Atk * (_t < m.FocusUntil ? 1.6f : 1f);
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 2.4f; SkillCast(m, "관통 사격", Color.white, 2); }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 2.4f; _qaAdvSlot1 += dmg; SkillCast(m, "관통 사격", Color.white, 2); }
                 _mHp[target] -= dmg * sp.DmgMul * ChantAtk(); m.Cd = 0.55f / _bAtkSpd;
                 AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
             }
@@ -1731,13 +1762,13 @@ public class W3Party : MonoBehaviour
                 // 소환 슬롯 — 본체의 매 공격 사이에 소환수가 같은 표적을 추가 타격한다.
                 m.Gauge = Mathf.Min(3f, m.Gauge + 1f);
                 float summonDmg = m.Atk * (m.Gauge >= 3f ? 1.8f : 0.8f);
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; summonDmg *= 2f; m.Gauge = 0f; SkillCast(m, "소환수 돌격", Color.cyan, 2); }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; summonDmg *= 2f; _qaAdvSlot1 += summonDmg; m.Gauge = 0f; SkillCast(m, "소환수 돌격", Color.cyan, 2); }
                 if (m.ForceSkill == 2)
                 {
                     m.ForceSkill = 0;
                     Member swap = null;
                     foreach (var o in _party) if (o != m && o.Alive && (swap == null || (o.Pos - m.Pos).sqrMagnitude < (swap.Pos - m.Pos).sqrMagnitude)) swap = o;
-                    if (swap != null) { Vector2 old = m.Pos; m.Pos = swap.Pos; swap.Pos = old; }
+                    if (swap != null) { Vector2 old = m.Pos; m.Pos = swap.Pos; swap.Pos = old; _qaAdvSlot2 += 1f; }
                     m.IFrame = Mathf.Max(m.IFrame, 0.8f); SkillCast(m, "위치 교체", Color.cyan, 1);
                 }
                 _mHp[target] -= summonDmg * sp.DmgMul * ChantAtk(); m.Cd = 0.7f;
@@ -1748,16 +1779,16 @@ public class W3Party : MonoBehaviour
                 // 자연 표식 — 적 피해와 아군 재생을 한 행동에서 함께 만든다.
                 Member worst = null;
                 foreach (var o in _party) if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
-                if (worst != null) Heal(worst, (m.ForceSkill == 2 ? 28f : 10f) * _bHeal);
-                if (target >= 0) { _mHp[target] -= m.Atk * (m.ForceSkill == 1 ? 2f : 1f); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target); }
+                if (worst != null) { float healed = Heal(worst, (m.ForceSkill == 2 ? 28f : 10f) * _bHeal); if (m.ForceSkill == 2) _qaAdvSlot2 += healed; }
+                if (target >= 0) { float dealt = m.Atk * (m.ForceSkill == 1 ? 2f : 1f); _mHp[target] -= dealt; if (m.ForceSkill == 1) _qaAdvSlot1 += dealt; FlashMob(target); if (_mHp[target] <= 0f) KillMob(target); }
                 SkillCast(m, m.ForceSkill == 2 ? "재생" : "자연 표식", Color.green, 1); m.ForceSkill = 0; m.Cd = 1.0f;
             }
             else if (m.Job == Job.주술사 && target >= 0)
             {
                 // 저주 스택 — 같은 대상에 반복할수록 증폭한다(프로토타입은 시전자 게이지로 계량).
                 m.Gauge = Mathf.Min(5f, m.Gauge + 1f); float dmg = m.Atk * (1f + m.Gauge * 0.2f);
-                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 5f; SkillCast(m, "저주 중첩", Color.magenta, 1); }
-                if (m.ForceSkill == 2) { m.ForceSkill = 0; _mAtkCd[target] = Mathf.Max(_mAtkCd[target], 2.5f); SkillCast(m, "쇠약 의식", Color.magenta, 1); }
+                if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 5f; _qaAdvSlot1 += m.Gauge; SkillCast(m, "저주 중첩", Color.magenta, 1); }
+                if (m.ForceSkill == 2) { m.ForceSkill = 0; _mAtkCd[target] = Mathf.Max(_mAtkCd[target], 2.5f); _qaAdvSlot2 += 2.5f; SkillCast(m, "쇠약 의식", Color.magenta, 1); }
                 _mHp[target] -= dmg; m.Cd = 0.8f; AttackFx(m, _mPos[target]); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.정령사)
@@ -1765,12 +1796,13 @@ public class W3Party : MonoBehaviour
                 // 정령 계약 — 화염은 아군 공격 템포, 물은 보호막으로 읽히는 부착 효과다.
                 if (m.ForceSkill == 2)
                 {
-                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) o.Shield = Mathf.Max(o.Shield, 20f * _bShield);
+                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) { float before = o.Shield; o.Shield = Mathf.Max(o.Shield, 20f * _bShield); _qaAdvSlot2 += o.Shield - before; }
                     SkillCast(m, "물 정령", Color.cyan, 1);
                 }
                 else
                 {
-                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) o.Cd = Mathf.Min(o.Cd, 0.15f);
+                    bool forced = m.ForceSkill == 1;
+                    m.ForceSkill = 0; foreach (var o in _party) if (o.Alive) { o.Cd = Mathf.Min(o.Cd, 0.15f); if (forced) _qaAdvSlot1 += 1f; }
                     SkillCast(m, "화염 정령", new Color(1f, 0.45f, 0.2f), 1);
                 }
                 m.Cd = 1.2f;

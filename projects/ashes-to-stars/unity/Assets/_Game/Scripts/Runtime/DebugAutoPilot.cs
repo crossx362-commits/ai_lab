@@ -23,6 +23,7 @@ namespace AshesToStars
         static int _shotFrame;     // >0이면 이 프레임에 찍고 끝낸다(모드별 시나리오를 건너뛴다)
         static float _shotSec;     // >0이면 이 **게임 시간**(초)에 찍는다. 기믹처럼 초 단위로
                                    // 예약된 것을 보려면 프레임이 아니라 이걸 써야 한다
+        static string _advancementJob;
 
         float _t;
         int _step;
@@ -58,6 +59,7 @@ namespace AshesToStars
             if (_shotFrame <= 0 && int.TryParse(envFrame, out int ef)) _shotFrame = ef;
             var envSec = System.Environment.GetEnvironmentVariable("GAME_SHOT_SEC");
             if (_shotSec <= 0f && float.TryParse(envSec, out float es)) _shotSec = es;
+            _advancementJob = System.Environment.GetEnvironmentVariable("QA_ADV_JOB");
 
             if (!auto || Requested) return;
 
@@ -81,6 +83,27 @@ namespace AshesToStars
                 return;
             }
 
+            if (_mode == "advancement")
+            {
+                // 1차 6종의 슬롯 1/2를 실제 BattleScreen에서 강제 시전한다.
+                // 직업 계약만 확인하는 SelfCheck와 달리 피해·회복·보호막 수치가 남아야 통과다.
+                if (global::W3Party.FirstAdvancementProbeMetricNames(_advancementJob).Length != 2)
+                    throw new System.InvalidOperationException($"QA_ADV_JOB 미지정/미지원: {_advancementJob}");
+                LifeSystem.ResetAll();
+                LifeSystem.Initialize();
+                PartyState.ResetForTest();
+                var roster = LifeSystem.GetCharacters();
+                if (roster.Count == 0) throw new System.InvalidOperationException("전직 QA 로스터가 비어 있음");
+                roster[0].Job = _advancementJob;
+                roster[0].Advancement = AdvancementTier.First;
+                PartyState.Refresh();
+                global::W3Party.QaFirstAdvancementJob = _advancementJob;
+                int.TryParse(System.Environment.GetEnvironmentVariable("QA_ADV_NO_SLOT"),
+                             out global::W3Party.QaAdvancementDisabledSlot);
+                GameFlow.GoBattle(GameFlow.Field);
+                return;
+            }
+
             if (_mode == "hunt")
             {
                 // 던전 **밖** 경로 — 던전이 아닐 때도 전투가 정상인지 본다.
@@ -88,7 +111,6 @@ namespace AshesToStars
                 GameFlow.GoBattle(GameFlow.Field);
                 return;
             }
-
             if (_mode == "boss")
             {
                 // 보스 노드까지 이겨서 가려면 몇 분이 걸린다 — 기믹 3종이 **도는지**만 보면 되므로
@@ -224,6 +246,22 @@ namespace AshesToStars
             {
                 if (_step == 0 && _t > 12f) { DumpHugeSprites(); Shot("auto_field_hunt"); _step = 1; _t = 0f; }
                 else if (_step == 1 && _t > 1.5f) Finish();
+                return;
+            }
+
+            if (_mode == "advancement")
+            {
+                if (_step == 0 && _t > 8f)
+                {
+                    var metricNames = global::W3Party.FirstAdvancementProbeMetricNames(_advancementJob);
+                    var measured = global::W3Party.FirstAdvancementProbeOnActive();
+                    bool pass = measured.slot1 > 0f && measured.slot2 > 0f;
+                    Debug.Log($"[QA-전직] {_advancementJob} {metricNames[0]}={measured.slot1:F1} " +
+                              $"{metricNames[1]}={measured.slot2:F1} 판정={(pass ? "PASS" : "FAIL")}");
+                    Shot("qa_advancement"); _step = 1; _t = 0f;
+                    if (!pass) Debug.LogError($"[QA-전직] {_advancementJob} 슬롯 계측 0 감지");
+                }
+                else if (_step == 1 && _t > 0.5f) Finish();
                 return;
             }
 
