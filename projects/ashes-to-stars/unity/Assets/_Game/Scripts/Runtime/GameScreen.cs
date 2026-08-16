@@ -39,10 +39,12 @@ namespace AshesToStars
         protected virtual bool OpaqueBackground => true;
 
         /// <summary>
-        /// 제목 옆 아이콘. 기본은 나침반이라 모든 화면이 월드맵처럼 읽혔다.
-        /// 화면이 어디인지 아이콘이 말해야 허브 UI가 성립한다.
+        /// 제목 옆 아이콘. 매핑 없는 화면을 worldmap으로 숨기면 파티·결과가
+        /// 월드맵처럼 읽힌다 — SelfCheck가 Party=null을 단언하는 이유.
+        /// 허브 5칸만 아틀라스 조각이 화면과 같다. 없으면 아이콘 없이 제목만.
         /// </summary>
-        protected virtual string HeaderIcon => "worldmap";
+        protected virtual string HeaderIcon =>
+            UiAtlas.HeaderKey(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
 
         /// <summary>
         /// 이 화면의 배경 그림(`Resources/bg/<이름>`). null이면 예전처럼 단색으로 칠한다.
@@ -170,7 +172,11 @@ namespace AshesToStars
             }
 
             float bottom = ShowBottomBar ? BarH + 34f : 44f;
-            Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom));
+            bool preview = UiAtlas.QaShowButtonStates && ShowHeader;
+            float previewH = preview ? RowH + 12f : 0f;
+            Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom - previewH));
+            if (preview)
+                DrawButtonStatePreview(new Rect(48, REF_H - bottom - RowH, 600f, RowH));
 
             if (ShowBottomBar) BottomBar();
             // 배경을 안 까는 화면(전투)에서는 밝은 바닥 위에 글씨가 놓여 안 읽힌다 —
@@ -217,10 +223,11 @@ namespace AshesToStars
         }
 
         /// <summary>텍스트와 클릭 판정은 IMGUI에 남기고, 배경만 새 픽셀아트 아틀라스로 교체한다.</summary>
-        void DrawAtlasButton(Rect r, string label, bool locked = false, string iconKey = null, float leftPad = 0f)
+        void DrawAtlasButton(Rect r, string label, bool locked = false, string iconKey = null, float leftPad = 0f,
+                             bool? forceHover = null, bool? forcePressed = null)
         {
-            bool hover = !locked && r.Contains(Event.current.mousePosition);
-            bool pressed = hover && Input.GetMouseButton(0);
+            bool hover = forceHover ?? (!locked && r.Contains(Event.current.mousePosition));
+            bool pressed = forcePressed ?? (hover && Input.GetMouseButton(0));
             Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
             if (!UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
                 GUI.Box(r, GUIContent.none);
@@ -234,6 +241,23 @@ namespace AshesToStars
                 var lr = pad > 0f ? new Rect(r.x + pad, r.y, r.width - pad - 8f, r.height) : r;
                 GUI.Label(lr, label, pad > 0f ? _btnLeft : _btn);
                 GUI.color = prev;
+            }
+        }
+
+        /// <summary>
+        /// qa_shot에는 마우스가 없다. QA_UI_STATES=1일 때만 보통·호버·눌림을 나란히 그린다.
+        /// 플레이 화면에는 안 띄운다 — 견본이 실제 버튼처럼 읽히면 안 된다.
+        /// </summary>
+        void DrawButtonStatePreview(Rect origin)
+        {
+            Styles();
+            const float w = 180f, gap = 12f;
+            var samples = UiAtlas.ButtonStateSamples;
+            for (int i = 0; i < samples.Length; i++)
+            {
+                var (hover, pressed, label) = samples[i];
+                var br = new Rect(origin.x + i * (w + gap), origin.y, w, RowH);
+                DrawAtlasButton(br, label, forceHover: hover, forcePressed: pressed);
             }
         }
 

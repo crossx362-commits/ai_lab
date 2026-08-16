@@ -13,6 +13,7 @@ namespace AshesToStars
     public class FieldScreen : GameScreen
     {
         protected override string Title => "필드";
+        protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Field);
         protected override string BackgroundArt => "bg_field";
         protected override string Subtitle =>
             $"자동사냥으로 재화를 번다(§2·§6) — 보유 {GameState.WalletText} · {GameState.BagText()}";

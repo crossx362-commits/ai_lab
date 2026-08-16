@@ -70,6 +70,31 @@ namespace AshesToStars
                          && UiAtlas.HeartKey(2, 3, true) == "heart_broken",
                 "[UiAtlasSelfCheck] 삭제는 세 칸 모두 깨져야 한다");
 
+            Debug.Assert(UiAtlas.HeaderKey("Field") == "field" && UiAtlas.HeaderKey("필드") == "field",
+                "[UiAtlasSelfCheck] 필드 헤더는 나침반이 아니라 field 조각이어야 한다");
+            Debug.Assert(UiAtlas.HeaderKey("Tower") == "tower" && UiAtlas.HeaderKey("탑") == "tower",
+                "[UiAtlasSelfCheck] 탑 헤더는 나침반이 아니라 tower 조각이어야 한다");
+            Debug.Assert(UiAtlas.HeaderKey("Estate") == "territory"
+                         && UiAtlas.HeaderKey("Character") == "characters"
+                         && UiAtlas.HeaderKey("WorldMap") == "worldmap",
+                "[UiAtlasSelfCheck] 영지·캐릭터·월드맵 헤더 키가 어긋난다");
+            Debug.Assert(UiAtlas.HeaderKey("없는화면") == null,
+                "[UiAtlasSelfCheck] 모르는 화면은 null이어야 한다");
+            Debug.Assert(UiAtlas.HeaderKey("Party") == null,
+                "[UiAtlasSelfCheck] 매핑 없는 화면을 worldmap으로 숨기면 안 된다");
+
+            Debug.Assert(UiAtlas.ButtonStateSamples.Length == 3,
+                "[UiAtlasSelfCheck] 버튼 3상태 견본 개수가 어긋난다");
+            Debug.Assert(UiAtlas.ButtonKey(UiAtlas.ButtonStateSamples[0].hover,
+                                          UiAtlas.ButtonStateSamples[0].pressed) == "button_normal"
+                         && UiAtlas.ButtonKey(UiAtlas.ButtonStateSamples[1].hover,
+                                              UiAtlas.ButtonStateSamples[1].pressed) == "button_hover"
+                         && UiAtlas.ButtonKey(UiAtlas.ButtonStateSamples[2].hover,
+                                              UiAtlas.ButtonStateSamples[2].pressed) == "button_pressed",
+                "[UiAtlasSelfCheck] 견본 3칸이 보통·호버·눌림 조각과 어긋난다");
+            Debug.Assert(UiAtlas.RectFor("field").width > 0 && UiAtlas.RectFor("tower").width > 0,
+                "[UiAtlasSelfCheck] 필드·탑 헤더 조각이 없다");
+
             Debug.Log("[UiAtlasSelfCheck] PASS");
         }
     }

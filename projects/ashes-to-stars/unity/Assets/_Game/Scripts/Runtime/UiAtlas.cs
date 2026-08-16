@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -107,6 +108,49 @@ namespace AshesToStars
             if (pressed) return "button_pressed";
             if (hover) return "button_hover";
             return "button_normal";
+        }
+
+        /// <summary>
+        /// qa_shot에는 마우스가 없어서 호버·눌림이 안 보인다.
+        /// 견본 3칸을 나란히 그리면 조각이 서로 다른지 화면으로 판정할 수 있다.
+        /// </summary>
+        public static readonly (bool hover, bool pressed, string label)[] ButtonStateSamples =
+        {
+            (false, false, "보통"),
+            (true, false, "호버"),
+            (false, true, "눌림"),
+        };
+
+        public static bool QaShowButtonStates =>
+            Environment.GetEnvironmentVariable("QA_UI_STATES") == "1";
+
+        /// <summary>
+        /// 화면 이름 → 제목 옆 아이콘. 기본값을 worldmap(나침반)으로 두면
+        /// 필드·탑이 전부 월드맵처럼 읽힌다 — 아틀라스에 조각이 있는데 소비처가 없던 함정.
+        /// 매핑 없는 화면은 null. 호출부가 폴백을 정한다.
+        /// </summary>
+        public static string HeaderKey(string screen)
+        {
+            switch (screen)
+            {
+                case GameFlow.Field:
+                case "필드":
+                    return "field";
+                case GameFlow.Tower:
+                case "탑":
+                    return "tower";
+                case GameFlow.Estate:
+                case "영지":
+                    return "territory";
+                case GameFlow.Character:
+                case "캐릭터":
+                    return "characters";
+                case GameFlow.WorldMap:
+                case "월드맵":
+                    return "worldmap";
+                default:
+                    return null;
+            }
         }
 
         /// <summary>기본·1차 직업명을 역할 아이콘 키로 접는다. 모르는 이름은 딜.</summary>
