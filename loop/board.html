@@ -425,10 +425,13 @@ function grokTone(remain) {
 }
 
 function usageChip(g, name) {
-  if (!g || g.remain_pct == null)
-    return `<span class="u bad">${name} ?</span>`;
+  if (!g)
+    return `<span class="u bad">${name} 없음</span>`;
+  if (g.remain_pct == null)
+    return `<span class="u bad">${name} ${esc(g.error || "없음")}</span>`;
   const until = g.period_end ? ` ${g.period_end}` : "";
-  return `<span class="u ${grokTone(g.remain_pct)}">${name} <b>${g.remain_pct}%</b>${until}</span>`;
+  const stale = g.stale ? " · 직전" : "";
+  return `<span class="u ${grokTone(g.remain_pct)}">${name} <b>${g.remain_pct}%</b>${until}${stale}</span>`;
 }
 
 function renderGrokUsage(state) {

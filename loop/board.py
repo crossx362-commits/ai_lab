@@ -1648,6 +1648,8 @@ def grok_usage(now: float | None = None, fetch=None, force: bool = False) -> dic
             raw = fetch(token)
             out = summarize_grok_billing(
                 raw, fetched_at=datetime.now().strftime("%H:%M"))
+            if out.get("remain_pct") is None:
+                raise ValueError("billing missing usage percent")
             _usage_mem, _usage_at = out, now
             _save_usage_disk(out)
             return out
@@ -1781,6 +1783,8 @@ def claude_usage(now: float | None = None, fetch=None, force: bool = False) -> d
             raw = fetch(token)
             out = summarize_claude_usage(
                 raw, fetched_at=datetime.now().strftime("%H:%M"))
+            if out.get("remain_pct") is None:
+                raise ValueError("claude usage missing percent")
             _claude_mem, _claude_at = out, now
             _save_named_usage(CLAUDE_USAGE_CACHE, out)
             return out
@@ -1950,6 +1954,8 @@ def codex_usage(now: float | None = None, fetch=None, force: bool = False) -> di
             raw = fetch(token, account_id)
             out = summarize_codex_usage(
                 raw, fetched_at=datetime.now().strftime("%H:%M"))
+            if out.get("remain_pct") is None:
+                raise ValueError("codex usage missing percent")
             _codex_mem, _codex_at = out, now
             _save_named_usage(CODEX_USAGE_CACHE, out)
             return out

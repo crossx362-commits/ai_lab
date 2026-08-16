@@ -593,6 +593,29 @@ class GrokUsageTests(unittest.TestCase):
         self.assertEqual(a["remain_pct"], 56.0)
         self.assertEqual(b["remain_pct"], 56.0)
 
+    def test_empty_billing_keeps_last_number(self):
+        n = {"c": 0}
+
+        def fetch(_token):
+            n["c"] += 1
+            if n["c"] == 1:
+                return SAMPLE_BILLING
+            return {"config": {
+                "currentPeriod": SAMPLE_BILLING["config"]["currentPeriod"],
+            }}
+
+        old_tok = board._grok_token
+        board._grok_token = lambda: "tok"
+        try:
+            a = board.grok_usage(now=1000, fetch=fetch)
+            b = board.grok_usage(now=2000, fetch=fetch)
+        finally:
+            board._grok_token = old_tok
+        self.assertEqual(a["remain_pct"], 56.0)
+        self.assertEqual(b["remain_pct"], 56.0)
+        self.assertTrue(b["stale"])
+        self.assertFalse(b["ok"])
+
     def test_no_token_says_so(self):
         old_tok = board._grok_token
         old_disk = board._load_usage_disk
