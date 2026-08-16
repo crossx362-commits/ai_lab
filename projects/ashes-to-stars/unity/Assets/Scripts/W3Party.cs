@@ -148,7 +148,10 @@ public class W3Party : MonoBehaviour
 
     // HUD는 이 세 안전 영역만 쓴다. 월드 이펙트·전투 콜아웃과 겹치는 좌표를 만들지 않는다.
     public const float CombatHudTopHeight = 72f;
-    public const float CombatHudBottomHeight = 168f;
+    public const float CombatHudCardH = 168f;
+    public const float CombatHudHpH = 22f;
+    public const float CombatHudSkillMin = 52f;
+    public const float CombatHudBottomHeight = 176f;
     public const int CombatHudRewardMaxEntries = 3;
     public const float CombatHudRewardLifetime = 2.2f;
     public const bool CombatHudUsesFullWidthPanels = false;
@@ -3090,29 +3093,39 @@ public class W3Party : MonoBehaviour
     {
         _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
-        { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
+        { fontSize = 16, alignment = TextAnchor.MiddleCenter,
+          normal = { textColor = new Color(.95f, .96f, 1f) } };
 
-        // 초상은 얼굴을 읽을 크기여야 하고, 스킬은 초상 옆에 붙어 있어야 한다.
-        // 88×72 / 초상 36×46 은 깨알이라 누가 누군지 안 읽혔다(오너 2026-08-16).
-        const float PW = 92f, PH = 112f, SK = 40f, CW = 196f, CH = 132f, GAP = 10f;
-        float total = _party.Length * CW + (_party.Length - 1) * GAP;
-        float x = Mathf.Max(16f, (Screen.width - total) * 0.5f);
-        float y = Screen.height - CH - 12f;
+        // 에픽세븐·가디언테일즈형: 카드가 하단을 채우고, 스킬은 초상 옆을 꽉 채우며
+        // 체력바는 카드 아래를 가로로 두껍게. 검은 판은 얇게만(오너 2026-08-16).
+        const float Side = 8f, Gap = 6f, Pad = 4f;
+        float ch = CombatHudCardH, hpH = CombatHudHpH;
+        int n = Mathf.Max(1, _party.Length);
+        float cw = Mathf.Min(280f, (Screen.width - Side * 2f - (n - 1) * Gap) / n);
+        float total = n * cw + (n - 1) * Gap;
+        float x = (Screen.width - total) * 0.5f;
+        float y = Screen.height - ch - 4f;
 
         var bank = SpriteBank.Cached;
         for (int i = 0; i < _party.Length; i++)
         {
             var m = _party[i];
-            var card = new Rect(x + i * (CW + GAP), y, CW, CH);
+            var card = new Rect(x + i * (cw + Gap), y, cw, ch);
             bool picked = _sel == i;
 
-            if (picked) GUI.DrawTexture(new Rect(card.x - 3, card.y - 3, card.width + 6, card.height + 6),
-                                        Tint(new Color(1f, 0.82f, 0.35f, 0.95f)));
-            GUI.DrawTexture(card, Tint(m.Alive ? new Color(.10f, .11f, .15f, .95f)
-                                               : new Color(.22f, .07f, .07f, .95f)));
+            var chrome = m.Alive ? new Color(1f, 1f, 1f, 0.42f) : new Color(1f, 0.45f, 0.45f, 0.38f);
+            if (!AshesToStars.UiAtlas.DrawSliced(card, "panel", 12f, chrome))
+                GUI.DrawTexture(card, Tint(new Color(.12f, .12f, .14f, .45f)));
+            if (picked)
+                GUI.DrawTexture(new Rect(card.x, card.y, card.width, 3f),
+                    Tint(new Color(1f, 0.82f, 0.35f, 1f)));
 
-            var pr = new Rect(card.x + 6, card.y + 6, PW, PH);
-            AshesToStars.UiAtlas.Draw(new Rect(pr.x - 2, pr.y - 2, pr.width + 4, pr.height + 4), "portrait_frame");
+            var bar = new Rect(card.x + Pad, card.yMax - hpH - 3f, card.width - Pad * 2f, hpH);
+            float bodyH = bar.y - card.y - Pad;
+            float skillW = Mathf.Max(CombatHudSkillMin, (card.width - Pad * 3f) * 0.38f);
+            var pr = new Rect(card.x + Pad, card.y + Pad, card.width - Pad * 3f - skillW, bodyH);
+            var skills = new Rect(pr.xMax + Pad, card.y + Pad, skillW, bodyH);
+            AshesToStars.UiAtlas.Draw(new Rect(pr.x - 1, pr.y - 1, pr.width + 2, pr.height + 2), "portrait_frame");
             var portraitTint = m.Alive ? Color.white : new Color(1f, .6f, .6f, .55f);
             if (!AshesToStars.PortraitAtlas.Draw(pr, AshesToStars.PortraitAtlas.KeyForJob(m.Job.ToString()), portraitTint))
             {
@@ -3124,21 +3137,21 @@ public class W3Party : MonoBehaviour
                     GUI.color = Color.white;
                 }
             }
-            GUI.Label(new Rect(pr.x + 4, pr.y + 2, 24, 20), $"{i + 1}", _cmdLabel);
+            GUI.Label(new Rect(pr.x + 3, pr.y + 1, 22, 18), $"{i + 1}", _cmdLabel);
 
-            var skills = new Rect(pr.xMax + 8, card.y + 8, SK, SK * 2 + 6);
             DrawMemberSkills(m, i, skills);
 
             float ratio = m.Alive ? Mathf.Clamp01(m.Hp / m.MaxHp) : 0f;
-            var bar = new Rect(pr.x, pr.yMax - 16, pr.width, 12);
-            var fill = ratio > .5f ? new Color(.35f, .85f, .4f)
-                     : ratio > .25f ? new Color(.95f, .78f, .3f)
-                                    : new Color(.9f, .3f, .3f);
+            var fill = ratio > .5f ? new Color(.28f, .86f, .38f)
+                     : ratio > .25f ? new Color(.95f, .78f, .28f)
+                                    : new Color(.92f, .28f, .26f);
             if (!AshesToStars.UiAtlas.DrawMeter(bar, "hp_frame", ratio, fill))
             {
-                GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
-                GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height), Tint(fill));
+                GUI.DrawTexture(bar, Tint(new Color(0.08f, 0.08f, 0.08f, .55f)));
+                GUI.DrawTexture(new Rect(bar.x + 1, bar.y + 2, (bar.width - 2) * ratio, bar.height - 4), Tint(fill));
             }
+            GUI.Label(bar, m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
+
             var statuses = AshesToStars.StatusIconAtlas.QaShowAll
                 ? new System.Collections.Generic.List<string>(AshesToStars.StatusIconAtlas.RequiredKeys)
                 : AshesToStars.StatusIconAtlas.LiveKeys(
@@ -3147,24 +3160,13 @@ public class W3Party : MonoBehaviour
                     m.FocusUntil > _t,
                     m.Job == Job.수호기사 && _t < _lastStandUntil);
             AshesToStars.StatusIconAtlas.DrawRow(
-                new Rect(skills.x, card.y + SK * 2 + 10, 80, 18), statuses);
-
-            GUI.Label(new Rect(skills.x, card.yMax - 22, card.xMax - skills.x - 6, 18),
-                      m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
-            if (m.Order.HasValue)
-                GUI.Label(new Rect(skills.x, card.y + SK * 2 + 16, 80, 16), "▶ 이동", _cmdLabel);
+                new Rect(pr.x + 4, pr.yMax - 20, pr.width - 8, 16), statuses);
 
             GUI.enabled = m.Alive;
             if (GUI.Button(pr, GUIContent.none, GUIStyle.none))
                 _sel = picked ? -1 : i;
             GUI.enabled = true;
         }
-
-        var hint = new Rect(16, Screen.height - CH - 38f, 340f, 22f);
-        GUI.DrawTexture(hint, Tint(new Color(.02f, .02f, .04f, .62f)));
-        GUI.Label(new Rect(hint.x + 8f, hint.y + 2f, hint.width - 16f, hint.height),
-                  _sel < 0 ? "1~5 또는 초상 클릭 · 옆 아이콘이 스킬"
-                           : $"[{_party[_sel].Job}] 우클릭 이동 · 0 해제", _cmdLabel);
     }
 
     void DrawMemberSkills(Member m, int index, Rect col)
@@ -3184,17 +3186,19 @@ public class W3Party : MonoBehaviour
             a = labels[0]; b = labels[1];
         }
 
-        float s = col.width;
-        if (SkillIcon(new Rect(col.x, col.y, s, s), a, IconFor(m.Role, 1), m, index, 1) && m.Alive)
+        float gap = 4f;
+        float s = Mathf.Max(CombatHudSkillMin, (col.height - gap) * 0.5f);
+        s = Mathf.Min(s, col.width);
+        if (SkillIcon(new Rect(col.x, col.y, col.width, s), a, IconFor(m.Role, 1), m, index, 1) && m.Alive)
         { _sel = index; m.ForceSkill = 1; }
-        if (b != "—" && SkillIcon(new Rect(col.x, col.y + s + 6, s, s), b, IconFor(m.Role, 2), m, index, 2) && m.Alive)
+        if (b != "—" && SkillIcon(new Rect(col.x, col.y + s + gap, col.width, s), b, IconFor(m.Role, 2), m, index, 2) && m.Alive)
         { _sel = index; m.ForceSkill = 2; }
         if (m.Advancement == AdvancementTier.Second)
         {
             bool ready = CanUseUltimate(m.Advancement, m.UltimateGauge, m.UltimateCd);
-            var ur = new Rect(col.x + s + 6, col.y, s, s);
+            var ur = new Rect(col.x, col.y + (s + gap) * 2f, col.width, 22f);
             GUI.enabled = m.Alive && ready;
-            if (GUI.Button(ur, ready ? "각" : "쿨", _cmdBtn))
+            if (GUI.Button(ur, ready ? "각성" : "쿨", _cmdBtn))
             { _sel = index; m.ForceUltimate = true; }
             GUI.enabled = true;
         }
@@ -3205,8 +3209,8 @@ public class W3Party : MonoBehaviour
         bool queued = m.ForceSkill == slot;
         bool hover = r.Contains(Event.current.mousePosition);
         if (!AshesToStars.UiAtlas.Draw(r, AshesToStars.UiAtlas.ButtonKey(hover, queued)))
-            GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.06f, .12f, .22f, .94f)));
-        CombatIconAtlas.Draw(new Rect(r.x + 4, r.y + 4, r.width - 8, r.height - 8), icon);
+            GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.16f, .18f, .22f, .55f)));
+        CombatIconAtlas.Draw(new Rect(r.x + 2, r.y + 2, r.width - 4, r.height - 4), icon);
         if (hover) GUI.Label(new Rect(r.x, r.y - 16, 80, 16), label, _cmdLabel);
         if (m.Alive && GUI.Button(r, GUIContent.none, GUIStyle.none))
         {
