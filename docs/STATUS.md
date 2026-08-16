@@ -764,7 +764,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 | 항목 | 근거 | 커밋 |
 |---|---|---|
-| **UI 필드·탑 헤더 + 버튼 3상태 육안** | `HeaderKey`가 Field/Tower를 field/tower 조각에 연결. SelfCheck PASS. PNG: 필드=검+월계관 494741B, 탑=등대 230392B, 견본 보통/호버/눌림이 서로 다름. API 제거 시 컴파일 RED 16건 | 이 커밋 |
+| **UI 필드·탑 헤더 + 버튼 3상태 육안** | `HeaderKey`가 Field/Tower를 field/tower 조각에 연결. SelfCheck PASS. PNG: 필드=검+월계관 494741B, 탑=등대 230392B, 견본 보통/호버/눌림이 서로 다름. API 제거 시 컴파일 RED 16건 | `32a257d6` |
 | **UI 아이콘 소비처(영지 건물·캐릭터 초상/목숨)** | 아틀라스에 있던 건물4·하트2·역할4·xp/초상 프레임을 Estate/Character가 소비. 헤더가 화면과 일치. SelfCheck PASS. PNG: 영지 성+4건물, 캐릭터 파티아이콘+초상6+하트/XP. 정적 85소스 0오류 | `f690e210` |
 | **V4 패배→삭제→재건 자동 경계** | 출전만 사망·벤치 불변·3회 삭제·생존0=재건1·PvP 목숨0·재기동 유지. SelfCheck ⑫ PASS. PNG: 결과(영묘+재건1)·캐릭터(5인 삭제됨+재건1 출전가능). API 제거 시 컴파일 RED 17건 | `3b9563af` + 이 커밋 |
 | **V3 한 판 종단** | 파티 공격→HP 9000→4500(페이즈1)→0·장판/힐보고·소환·처치·층 5→6이 **같은 실행**. `ApplyTowerBossVictory`를 BattleScreen OnBossDefeated가 소비. Unity SelfCheck PASS, `qa_boss.png` 육안 확인. `BOSS_NO_DPS=1`이면 층 불변 | `ec927cbe` |
