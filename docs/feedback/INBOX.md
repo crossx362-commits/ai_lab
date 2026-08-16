@@ -22,6 +22,7 @@
 빈 `out_p2_gem`/`art/out_p2_charger_b` 삭제. `game_asset_names --strict`가 함정 재생성 시
 FAIL(네거티브 trap.png exit 1, 제거 후 PASS). README 폴더 지도.
 `./tools/qa_shot.sh`·Unity `Assets/Scripts`·build_* 는 안 건드림.
+코드 `8c0defaf` + `8c988f35`.
 
 ### ✅ 오너 판정 — V2 사람 판정 (통과) (오너 보드 2026-08-16 16:54)
 

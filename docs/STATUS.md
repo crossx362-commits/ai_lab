@@ -38,6 +38,11 @@
 >   기존(추적된 blender results·`.mcp.json`). 커밋 후 README는 unclassified에서 빠진다.
 > - **정직한 미완**: 저장소 전체 개편(docs/GAME_* 이동, tools/ 이관, Assets/Editor 통합,
 >   art/out_* 재배치)은 라이브 경로라 다음 슬라이스. 파티 헤더는 UI 큐.
+> - **코드** `8c0defaf`(삭제) + `8c988f35`(검사기·지도).
+> - ⚠️ 이 이터 중 다른 세션이 `art/.generating`에 `spec_p8_bg_rest.json 17:23 pid=83851`
+>   (PGID==PID, 생존)을 걸어 **타이틀·결과 배경**을 뽑고 있다. 다음 이터는 표시·산출을
+>   먼저 보고 **재생성 금지**. 그 세션 파일(Title/Result/Style/Dungeon/FieldDecor,
+>   ARTIFACT_INDEX)은 이 커밋에 안 넣었다.
 
 > **이전 이터 결과(코드/실행): UI 퀄리티 둘째 슬라이스 — 필드·탑 헤더 + 버튼 3상태 육안.**
 > - 큐 #1이자 INBOX UI의 남은 빈 칸. 아틀라스에 `field`/`tower`/`button_hover`/`button_pressed`가
@@ -783,7 +788,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 | 항목 | 근거 | 커밋 |
 |---|---|---|
-| **폴더 함정 정리(_Game/Art·qa_vfx_live)** | 빈 Art 함정 4 meta + 루트 유령 PNG 삭제. 검사기 네거티브 exit 1 / 정상 exit 0. 런타임 옛 경로 소비처 0. README 지도 | 이 커밋 |
+| **폴더 함정 정리(_Game/Art·qa_vfx_live)** | 빈 Art 함정 4 meta + 루트 유령 PNG 삭제. 검사기 네거티브 exit 1 / 정상 exit 0. 런타임 옛 경로 소비처 0. README 지도 | `8c0defaf` + `8c988f35` |
 | **UI 필드·탑 헤더 + 버튼 3상태 육안** | `HeaderKey`가 Field/Tower를 field/tower 조각에 연결. SelfCheck PASS. PNG: 필드=검+월계관 494741B, 탑=등대 230392B, 견본 보통/호버/눌림이 서로 다름. API 제거 시 컴파일 RED 16건 | `32a257d6` |
 | **UI 아이콘 소비처(영지 건물·캐릭터 초상/목숨)** | 아틀라스에 있던 건물4·하트2·역할4·xp/초상 프레임을 Estate/Character가 소비. 헤더가 화면과 일치. SelfCheck PASS. PNG: 영지 성+4건물, 캐릭터 파티아이콘+초상6+하트/XP. 정적 85소스 0오류 | `f690e210` |
 | **V4 패배→삭제→재건 자동 경계** | 출전만 사망·벤치 불변·3회 삭제·생존0=재건1·PvP 목숨0·재기동 유지. SelfCheck ⑫ PASS. PNG: 결과(영묘+재건1)·캐릭터(5인 삭제됨+재건1 출전가능). API 제거 시 컴파일 RED 17건 | `3b9563af` + 이 커밋 |
