@@ -231,7 +231,10 @@ namespace AshesToStars
             //    태우지만, 시각 QA는 "그 화면을 지금 보여달라"가 전부다.
             //    ⚠️ 찍은 프레임에 바로 Quit하면 파일이 안 생긴다 — CaptureScreenshot은 그 프레임
             //       **끝**에 기록된다. 그래서 찍고 나서 몇 프레임 더 돌린 뒤 종료한다.
-            if (_shotFrame > 0)
+            // 전직 계측 모드는 지정 시각까지 스킬을 실제 시전한 뒤 수치와 화면을 함께 남긴다.
+            // 일반 프레임 캡처가 먼저 종료하면 PNG만 생기고 [QA-전직] 증거가 사라진다.
+            bool ownsCapture = _mode == "advancement" || _mode == "second_advancement";
+            if (_shotFrame > 0 && !ownsCapture)
             {
                 if (_frames == _shotFrame) Shot($"qa_{_mode}");
                 else if (_frames >= _shotFrame + 8) Finish();
@@ -243,7 +246,7 @@ namespace AshesToStars
             //    돌고 `deltaTime`이 0.00025초다. 2400프레임을 돌려도 **게임 시간은 0.6초**뿐이라
             //    6초 뒤 터지는 보스 기믹을 영영 못 본다(2026-08-15 실측).
             //    "몇 프레임 뒤"와 "몇 초 뒤"는 이 프로젝트에서 전혀 다른 뜻이다.
-            if (_shotSec > 0f)
+            if (_shotSec > 0f && !ownsCapture)
             {
                 if (_t >= _shotSec && _step == 0)
                 {

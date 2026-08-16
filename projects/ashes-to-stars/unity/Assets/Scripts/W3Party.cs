@@ -1239,7 +1239,17 @@ public class W3Party : MonoBehaviour
             {
                 if (!member.Alive || member.Job.ToString() != QaFirstAdvancementJob) continue;
                 if (!_qaAdvForced1 && _t >= 1f) { if (QaAdvancementDisabledSlot != 1) member.ForceSkill = 1; _qaAdvForced1 = true; }
-                else if (!_qaAdvForced2 && _t >= 3f) { if (QaAdvancementDisabledSlot != 2) member.ForceSkill = 2; _qaAdvForced2 = true; }
+                else if (!_qaAdvForced2 && _t >= 3f)
+                {
+                    if (QaAdvancementDisabledSlot != 2)
+                    {
+                        // 재생은 만피 대상에게도 시전되지만 실제 회복량은 0이다.
+                        // QA에서는 회복 여지를 만들어 Heal 경로의 실효값을 검증한다.
+                        if (member.Job == Job.드루이드) member.Hp = Mathf.Min(member.Hp, member.MaxHp - 30f);
+                        member.ForceSkill = 2;
+                    }
+                    _qaAdvForced2 = true;
+                }
                 break;
             }
         }
@@ -1787,6 +1797,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 2)
                 {
                     m.ForceSkill = 0;
+                    _qaAdvSlot2 += 1f; // 아래 공통 공격으로 맞는 주 대상도 대지 가르기 명중이다.
                     for (int j = 0; j < MAXM; j++)
                         if (j != target && _mOn[j] && (_mPos[j] - m.Pos).sqrMagnitude < 6.25f)
                         { _mHp[j] -= dmg; _qaAdvSlot2 += 1f; if (_mHp[j] <= 0f) KillMob(j); }
