@@ -106,6 +106,37 @@ namespace AshesToStars
             GameState.ClearFloor(floor);
         }
 
+        /// <summary>마지막 PvE 패배 보고. Result 화면이 삭제·재건을 골드보다 먼저 읽는다.</summary>
+        public static PveDefeatReport LastDefeatReport;
+
+        /// <summary>
+        /// 보스/전멸 패배가 목숨을 깎는 생산 경계(§4·§22 V4).
+        /// BattleScreen OnBattleEnd·OnPartyWiped와 SelfCheck가 같은 함수를 쓴다.
+        /// 출전 슬롯만 사망하고, 생존 0명이면 긴급 재건 1명을 붙인 뒤 편성을 다시 솎는다.
+        /// </summary>
+        public static PveDefeatReport ApplyPveDefeat(bool isPvp = false)
+        {
+            var report = LifeSystem.ApplyWipe(PartyState.SortieRecords(), isPvp);
+            PartyState.Refresh();
+            LastDefeatReport = report;
+            return report;
+        }
+
+        public static string FormatDefeatSummary(string head, PveDefeatReport report)
+        {
+            if (report == null) return head;
+            var sb = new System.Text.StringBuilder(head ?? "");
+            if (report.FallenNames.Count > 0)
+                sb.Append("\n[사망] ").Append(string.Join(", ", report.FallenNames));
+            if (report.DeletedNames.Count > 0)
+                sb.Append("\n[삭제] ").Append(string.Join(", ", report.DeletedNames))
+                  .Append("이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)");
+            if (report.RescueGranted)
+                sb.Append("\n[긴급 재건] ").Append(report.RescueName)
+                  .Append(" — 생존 0명이라 Lv1 기본직업을 무료 지급");
+            return sb.ToString();
+        }
+
         /// <summary>
         /// 게임 종료. 에디터에서는 Application.Quit이 아무 일도 하지 않으므로
         /// 플레이 모드를 직접 끈다 — 안 그러면 "종료가 안 된다"고 오진하게 된다.

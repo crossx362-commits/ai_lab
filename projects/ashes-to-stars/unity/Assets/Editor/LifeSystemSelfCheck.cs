@@ -443,6 +443,65 @@ namespace AshesToStars
             GameState.ForgetInMemoryForTest();
             Check(GameState.TowerFloor == 2, $"재기동 후 돌파 층 유지 (실제 {GameState.TowerFloor})");
 
+            // ⑫ V4 삭제 루프 준비 — 보스/전멸이 출전 파티에만 사망을 남기고,
+            //    3회 삭제 뒤 생존 0명이면 긴급 재건 1명으로 계속 플레이한다.
+            //    예전 OnBattleEnd는 로스터 전원에게 RegisterDeath를 뿌렸고,
+            //    OnPartyWiped(힐체크 실패)는 결과 화면만 열고 목숨을 안 깎았다.
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            PartyState.ResetForTest();
+            var wipeRoster = LifeSystem.GetCharacters();
+            Check(wipeRoster.Count == 5 && LifeSystem.LivingCount() == 5,
+                  $"V4 베이스라인 로스터 5·생존 5 (실제 {wipeRoster.Count}/{LifeSystem.LivingCount()})");
+            _ = PartyState.Slots;
+            PartyState.Toggle(2);
+            PartyState.Toggle(3);
+            PartyState.Toggle(4);
+            Check(PartyState.Slots.Count == 2, $"출전 2명만 남김 (실제 {PartyState.Slots.Count})");
+
+            var firstWipe = GameFlow.ApplyPveDefeat();
+            Check(firstWipe.FallenNames.Count == 2 && firstWipe.DeletedNames.Count == 0,
+                  $"1회 패배: 출전 2명만 쓰러짐 (사망 {firstWipe.FallenNames.Count}, 삭제 {firstWipe.DeletedNames.Count})");
+            Check(wipeRoster[0].DeathCount == 1 && wipeRoster[1].DeathCount == 1,
+                  $"출전 사망 카운트 1 (실제 {wipeRoster[0].DeathCount}/{wipeRoster[1].DeathCount})");
+            Check(wipeRoster[2].DeathCount == 0 && wipeRoster[3].DeathCount == 0 && wipeRoster[4].DeathCount == 0,
+                  "벤치 3명은 목숨이 그대로다 — 로스터 전원이 죽으면 안 된다");
+            Check(firstWipe.LivingCount == 5 && !firstWipe.RescueGranted,
+                  $"회복 중은 생존으로 센다 — 긴급 재건 없음 (생존 {firstWipe.LivingCount}, 재건 {firstWipe.RescueGranted})");
+
+            var pvpWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[2] }, isPvp: true);
+            Check(pvpWipe.FallenNames.Count == 0 && wipeRoster[2].DeathCount == 0,
+                  "PvP 패배는 사망 카운트를 안 올린다(§4)");
+
+            var secondWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[0], wipeRoster[1] });
+            var thirdWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[0], wipeRoster[1] });
+            Check(wipeRoster[0].IsDeleted && wipeRoster[1].IsDeleted && thirdWipe.DeletedNames.Count == 2,
+                  $"출전 2명 3회 사망 = 삭제 (삭제목록 {thirdWipe.DeletedNames.Count})");
+            Check(LifeSystem.LivingCount() == 3 && !thirdWipe.RescueGranted,
+                  $"벤치 3명이 남아 재건은 안 나간다 (생존 {LifeSystem.LivingCount()})");
+
+            LifeSystem.ApplyWipe(new[] { wipeRoster[2], wipeRoster[3], wipeRoster[4] });
+            LifeSystem.ApplyWipe(new[] { wipeRoster[2], wipeRoster[3], wipeRoster[4] });
+            var lastWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[2], wipeRoster[3], wipeRoster[4] });
+            Check(lastWipe.RescueGranted && lastWipe.LivingCount == 1 && !string.IsNullOrEmpty(lastWipe.RescueName),
+                  $"전원 삭제 뒤 긴급 재건 1명 (재건={lastWipe.RescueGranted}, 생존={lastWipe.LivingCount}, 이름={lastWipe.RescueName})");
+            var rescue = LifeSystem.ActiveRescue();
+            Check(rescue != null && rescue.IsRescue && rescue.Level == 1 && rescue.Advancement == AdvancementTier.Basic
+                  && (rescue.Job == "탱" || rescue.Job == "딜" || rescue.Job == "힐" || rescue.Job == "버퍼")
+                  && !rescue.IsDeleted,
+                  $"재건은 기본직업 Lv1·무장비 (job={rescue?.Job}, lv={rescue?.Level}, rescue={rescue?.IsRescue})");
+
+            var extra = LifeSystem.EnsureEmergencyRecruit();
+            Check(extra == rescue && LifeSystem.LivingCount() == 1,
+                  "생존 재건이 있으면 두 번째 무료 영입이 나가지 않는다");
+
+            LifeSystem.ForgetInMemoryForTest();
+            PartyState.ResetForTest();
+            var reloadedWipe = LifeSystem.GetCharacters();
+            Check(reloadedWipe.Exists(c => c.IsDeleted) && reloadedWipe.Exists(c => c.IsRescue && !c.IsDeleted),
+                  "재기동 후에도 삭제와 긴급 재건이 남는다");
+            Check(LifeSystem.LivingCount() == 1, $"재기동 후 생존 1 (실제 {LifeSystem.LivingCount()})");
+
             // 뒷정리 — 검사가 실제 저장을 남기면 다음 플레이가 오염된다
             GameState.ResetAll();
             LifeSystem.ResetAll();

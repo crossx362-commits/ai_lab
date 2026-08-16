@@ -29,6 +29,7 @@ namespace AshesToStars
         float _t;
         global::W3Party _battle;
         static BattleRewardInfo _reward = new BattleRewardInfo();
+        bool _defeatApplied;
 
         protected override void Awake()
         {
@@ -74,7 +75,7 @@ namespace AshesToStars
                 };
                 boss.OnPartyWiped += () =>
                 {
-                    GameFlow.LastBattleSummary = $"보스전 패배 — {GameFlow.BossFloor}층";
+                    ApplyDefeatOnce($"보스전 패배 — {GameFlow.BossFloor}층");
                     if (DungeonRun.Active) DungeonRun.End();   // ✅ §7 나가면 초기화
                     GameFlow.Go(GameFlow.Result);
                 };
@@ -228,37 +229,22 @@ namespace AshesToStars
             }
             else
             {
-                GameFlow.LastBattleSummary = $"전멸 — {_t:F1}초 생존\n";
-
-                // 패배 시 출전 캐릭터에게 사망을 기록한다 (§4 사망 시스템)
-                // 현재는 W3Party 검증 빌드에서 전체 파티가 함께 전멸하는 구조
-                // (실제 게임에선 캐릭터별 생사 상태를 추적할 것 — §5·§10)
-                var characters = LifeSystem.GetCharacters();
-                var deletedCharacters = new System.Collections.Generic.List<string>();
-
-                foreach (var ch in characters)
-                {
-                    // 프로토타입: 전체 파티가 함께 전멸하는 것으로 단순화
-                    // (검증: W3Party 구조에서 개별 캐릭터 생사 추적은 별개 시스템)
-                    if (!ch.IsDeleted)  // 삭제된 캐릭터는 다시 죽지 않음
-                    {
-                        LifeSystem.RegisterDeath(ch, isPvp: false);  // PvE 사망으로 기록 (§4)
-                        if (ch.IsDeleted)
-                            deletedCharacters.Add(ch.Name);
-                    }
-                }
-
-                // 삭제된 캐릭터 안내
-                if (deletedCharacters.Count > 0)
-                {
-                    GameFlow.LastBattleSummary += $"\n[삭제] {string.Join(", ", deletedCharacters)}이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)";
-                }
+                // 힐체크 실패(OnPartyWiped)가 먼저 목숨을 깎았을 수 있다 — 한 판에 한 번만.
+                ApplyDefeatOnce($"전멸 — {_t:F1}초 생존");
             }
 
             // 던전에서 전멸하면 런은 거기서 끝난다(✅ §7 나가면 초기화)
             if (DungeonRun.Active && !survived) DungeonRun.End();
 
             GameFlow.Go(GameFlow.Result);
+        }
+
+        void ApplyDefeatOnce(string head)
+        {
+            if (_defeatApplied) return;
+            _defeatApplied = true;
+            var report = GameFlow.ApplyPveDefeat(isPvp: false);
+            GameFlow.LastBattleSummary = GameFlow.FormatDefeatSummary(head, report);
         }
 
         protected override void Body(Rect r)

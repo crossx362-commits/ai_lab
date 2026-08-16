@@ -106,6 +106,20 @@ namespace AshesToStars
             return jobs;
         }
 
+        /// <summary>지금 출전 슬롯의 로스터 레코드. 패배 시 이 명단만 목숨을 잃는다.</summary>
+        public static List<CharacterRecord> SortieRecords()
+        {
+            Load(); Prune();
+            var roster = LifeSystem.GetCharacters();
+            var result = new List<CharacterRecord>();
+            foreach (int i in _slots)
+            {
+                if (i < 0 || i >= roster.Count) continue;
+                result.Add(roster[i]);
+            }
+            return result;
+        }
+
         /// <summary>
         /// 전투가 읽는 캐릭터 계약. 직업명만 넘기면 기본직업을 1차 아키타입으로 어댑트하는 순간
         /// 전직 단계가 사라져 기본 2스킬과 1차 4스킬을 가를 수 없다.

@@ -72,6 +72,12 @@ namespace AshesToStars
         /// <summary>삭제됨 여부.</summary>
         public bool IsDeleted { get; set; }
 
+        /// <summary>
+        /// 생존 0명일 때만 나오는 긴급 재건 캐릭터(§3).
+        /// 동시에 살아있는 재건은 1명뿐이라, 일반 영입 비용을 우회하지 못한다.
+        /// </summary>
+        public bool IsRescue { get; set; }
+
         public CharacterRecord(string name, string job, int level = 1,
                                AdvancementTier advancement = AdvancementTier.Basic)
         {
@@ -84,7 +90,18 @@ namespace AshesToStars
             DeathCount = 0;
             RecoveryEndTime = 0;
             IsDeleted = false;
+            IsRescue = false;
         }
+    }
+
+    /// <summary>PvE 패배 한 번의 목숨 결과. BattleScreen·결과 화면·V4 SelfCheck가 같은 값을 본다.</summary>
+    public sealed class PveDefeatReport
+    {
+        public readonly List<string> FallenNames = new();
+        public readonly List<string> DeletedNames = new();
+        public string RescueName;
+        public int LivingCount;
+        public bool RescueGranted;
     }
 
     /// <summary>
@@ -188,6 +205,8 @@ namespace AshesToStars
                         : (IsFirstAdvancementJob(p[1]) ? AdvancementTier.First : AdvancementTier.Basic),
                     Id = p.Length > 8 && !string.IsNullOrEmpty(p[8])
                         ? p[8] : LegacyCharacterId(p[0], p[1], legacyIndex),
+                    // 10번째 필드는 긴급 재건 표시. 없던 저장은 일반 캐릭터다.
+                    IsRescue = p.Length > 9 && p[9] == "1",
                 };
                 _characters.Add(c);
                 legacyIndex++;
@@ -224,7 +243,7 @@ namespace AshesToStars
                   .Append('\t').Append(c.DeathCount).Append('\t').Append(c.RecoveryEndTime)
                   .Append('\t').Append(c.IsDeleted ? '1' : '0')
                   .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement)
-                  .Append('\t').Append(c.Id).Append('\n');
+                  .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0').Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -581,6 +600,86 @@ namespace AshesToStars
             }
 
             Save();
+        }
+
+        /// <summary>
+        /// 삭제되지 않은 캐릭터 수. 회복·수비·스케줄 중도 생존으로 센다(§3 긴급 재건 조건).
+        /// </summary>
+        public static int LivingCount()
+        {
+            EnsureLoaded();
+            int n = 0;
+            for (int i = 0; i < _characters.Count; i++)
+                if (!_characters[i].IsDeleted) n++;
+            return n;
+        }
+
+        /// <summary>지금 살아있는 긴급 재건 캐릭터. 없으면 null.</summary>
+        public static CharacterRecord ActiveRescue()
+        {
+            EnsureLoaded();
+            for (int i = 0; i < _characters.Count; i++)
+            {
+                var c = _characters[i];
+                if (c.IsRescue && !c.IsDeleted) return c;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 생존 0명일 때만 Lv1 기본직업 1명을 무료로 준다.
+        /// 살아있는 재건이 이미 있으면 그걸 돌려주고 새로 만들지 않는다.
+        /// </summary>
+        public static CharacterRecord EnsureEmergencyRecruit()
+        {
+            EnsureLoaded();
+            var active = ActiveRescue();
+            if (active != null) return active;
+            if (LivingCount() > 0) return null;
+
+            int n = 0;
+            for (int i = 0; i < _characters.Count; i++)
+                if (_characters[i].IsRescue) n++;
+            var rescue = new CharacterRecord($"재건{n + 1}", "딜", 1) { IsRescue = true };
+            _characters.Add(rescue);
+            Save();
+            Debug.Log($"[목숨] 긴급 재건 {rescue.Name} (딜 Lv1) — 생존 0명");
+            return rescue;
+        }
+
+        /// <summary>
+        /// PvE 패배의 생산 경계. 인자로 받은 출전 멤버만 사망하고, 그 뒤 생존이 0이면
+        /// 긴급 재건 1명을 붙인다. PvP는 목숨·재건 모두 그대로다.
+        /// </summary>
+        public static PveDefeatReport ApplyWipe(IReadOnlyList<CharacterRecord> members, bool isPvp = false)
+        {
+            var report = new PveDefeatReport();
+            EnsureLoaded();
+            if (!isPvp && members != null)
+            {
+                var seen = new HashSet<string>();
+                for (int i = 0; i < members.Count; i++)
+                {
+                    var ch = members[i];
+                    if (ch == null || ch.IsDeleted) continue;
+                    if (!string.IsNullOrEmpty(ch.Id) && !seen.Add(ch.Id)) continue;
+                    RegisterDeath(ch, isPvp: false);
+                    report.FallenNames.Add(ch.Name);
+                    if (ch.IsDeleted) report.DeletedNames.Add(ch.Name);
+                }
+            }
+
+            if (LivingCount() == 0)
+            {
+                var granted = EnsureEmergencyRecruit();
+                if (granted != null)
+                {
+                    report.RescueGranted = true;
+                    report.RescueName = granted.Name;
+                }
+            }
+            report.LivingCount = LivingCount();
+            return report;
         }
 
         /// <summary>

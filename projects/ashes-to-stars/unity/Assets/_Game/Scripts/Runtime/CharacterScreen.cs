@@ -137,7 +137,9 @@ namespace AshesToStars
                         return;
                     }
 
-                    Info(r, 0, $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
+                    Info(r, 0, ch.IsRescue
+                        ? $"{ch.Name} ({ch.Job}) · {ExpText(ch)} · 긴급 재건"
+                        : $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
 
                     // 목숨 상태 표시
                     if (ch.IsDeleted)
@@ -224,7 +226,9 @@ namespace AshesToStars
             {
                 var ch = allCharacters[i];
                 string heartsStr = ch.IsDeleted ? "❌" : new string('❤', 3 - ch.DeathCount);
-                string name = $"{ch.Name} ({ch.Job}) - {heartsStr}";
+                string name = ch.IsRescue
+                    ? $"{ch.Name} ({ch.Job}) - {heartsStr} · 재건"
+                    : $"{ch.Name} ({ch.Job}) - {heartsStr}";
                 string sub = ch.IsDeleted
                     ? "삭제됨"
                     : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
