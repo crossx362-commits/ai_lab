@@ -375,6 +375,23 @@ namespace AshesToStars
                 GameFlow.LastBattleSummary = "생존 — " + Economy.RaceDropLine();
         }
 
+        /// <summary>QA_RACE_ADV=1이면 인간 + 전직 재료 1개로 결과 화면을 연다.</summary>
+        public static void SeedRaceAdvMatRewardQaIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable(Economy.EnvShowAdvMat) != "1") return;
+            RacePrefs.Set(RaceId.인간);
+            if (_reward.Survived && _reward.DroppedItems != null
+                && _reward.DroppedItems.Contains(Economy.LifeItem.AdvancementMaterial)
+                && Economy.RaceAdvMatLine().Contains("+15%"))
+                return;
+            _reward.Clear();
+            _reward.Survived = true;
+            _reward.DroppedItems.Add(Economy.LifeItem.AdvancementMaterial);
+            if (string.IsNullOrEmpty(GameFlow.LastBattleSummary)
+                || !GameFlow.LastBattleSummary.Contains("전직 재료"))
+                GameFlow.LastBattleSummary = "생존 — " + Economy.RaceAdvMatLine();
+        }
+
         /// <summary>QA_HUNT_EXP=1이면 결과 화면에 필드 생존 경험치 줄을 심는다.</summary>
         public static void SeedHuntExpRewardQaIfRequested()
         {

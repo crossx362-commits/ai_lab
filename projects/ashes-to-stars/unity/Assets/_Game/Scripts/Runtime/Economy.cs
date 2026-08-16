@@ -241,6 +241,8 @@ namespace AshesToStars
                     continue;
                 if (!DropRates.TryGetValue((source, it), out float rate)) continue;
                 float chance = ApplyDropRate(rate);
+                if (it == LifeItem.AdvancementMaterial)
+                    chance = ApplyAdvMatRate(chance);
                 int rolls = IsRare(it) ? 1 : bossCount;
                 for (int i = 0; i < rolls; i++)
                     if (rng.Value01() < chance) results.Add(it);
@@ -292,6 +294,52 @@ namespace AshesToStars
             int p = RaceDropPercent();
             if (p == BeastDropPercent) return "수인 드랍 +15%(§18-9)";
             return "종족 드랍 배율 없음";
+        }
+
+        public const string EnvShowAdvMat = "QA_RACE_ADV";
+        public const string EnvNoAdvMat = "QA_NO_RACE_ADV";
+        public const int HumanAdvMatPercent = 115;
+        public const int OtherAdvMatPercent = 100;
+
+        /// <summary>SelfCheck가 전직 재료 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForceRaceAdvMatMul;
+
+        public static bool AdvMatRaceBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoAdvMat) == "1";
+
+        /// <summary>§18-9 인간 전직 재료 +15%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static int RaceAdvMatPercent()
+        {
+            if (AdvMatRaceBlocked) return OtherAdvMatPercent;
+            if (ForceRaceAdvMatMul > 0f) return Math.Max(1, (int)Math.Round(ForceRaceAdvMatMul * 100.0));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].전직재료배율 > 0f)
+                        return Math.Max(1, (int)Math.Round(races[i].전직재료배율 * 100.0));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.인간 ? HumanAdvMatPercent : OtherAdvMatPercent;
+        }
+
+        public static float ApplyAdvMatRate(float rate)
+        {
+            if (rate <= 0f) return 0f;
+            return rate * RaceAdvMatPercent() / 100f;
+        }
+
+        public static string RaceAdvMatLine()
+        {
+            if (RaceAdvMatPercent() == HumanAdvMatPercent && RacePrefs.Get() == RaceId.인간)
+                return "인간 전직 재료 +15%(§18-9)";
+            return "종족 전직 재료 배율 없음";
         }
 
         /// <summary>
