@@ -1071,6 +1071,7 @@ public class W3Party : MonoBehaviour
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0; _aiDashUses = 0; _chargeTells = 0; _chargeRushes = 0;
+        _bossAutoHits = 0;
         _summonedAlive = 0; _summonDmgToParty = 0f; _summonHits = 0; _summonHbAt = 0f;
         // 실플레이 판만 보스 소환의 대상이 된다. 검증(W1~W3)은 GameMode가 아니라 여기서 빠진다 —
         // 측정 판에 소환이 끼면 구성 대조가 오염된다.
@@ -1258,6 +1259,7 @@ public class W3Party : MonoBehaviour
             _mPos[i] = targets[n].Position;
             _mHp[i] = _mMaxHp[i] = targets[n].Hp;
             _mKind[i] = 0; _mSummoned[i] = false; _mOn[i] = true; _mAlive++;
+            _mAtkCd[i] = BossAtkWindup;
             _mSr[i].enabled = false;                 // BossBattle의 큰 실루엣이 화면 표현을 맡는다
             _mTr[i].gameObject.SetActive(true);      // 위치·타겟팅 슬롯은 살아 있어야 한다
         }
@@ -1455,6 +1457,7 @@ public class W3Party : MonoBehaviour
             ScreenCapture.CaptureScreenshot(Path.Combine(dir, $"w3_{_setup.Name}.png"));
         }
 
+        TickBossAttacks(dt);
         TickCommand();
         if (GameMode && !string.IsNullOrEmpty(QaFirstAdvancementJob))
         {
@@ -2562,6 +2565,50 @@ public class W3Party : MonoBehaviour
         _mSr[i].sprite = SpriteBank.Cached.MobAnim(MobSpriteKind(_mKind[i]), SpriteBank.Motion.Death, 0f);
     }
 
+    // ── 보스 기본 공격 ───────────────────────────────────
+    // 보스는 잡몹처럼 쫓아오지 않는다(TickMobs continue). 그 줄이 기본 공격까지
+    // 죽여 실루엣만 서 있었다. 사거리는 보스 자리(y≈5.5)에서 탱(y≈1.8)까지 닿게.
+    const float BossAtkRange = 8.5f;
+    const float BossAtkInterval = 1.6f;
+    const float BossAtkWindup = 1.2f;
+    const float BossAtkDamage = 22f;
+    const string BossNoAutoEnv = "BOSS_NO_AUTO";
+    int _bossAutoHits;
+    public static int BossAutoHitsOnActive() => _game != null ? _game._bossAutoHits : 0;
+
+    void TickBossAttacks(float dt)
+    {
+        bool blocked = System.Environment.GetEnvironmentVariable(BossNoAutoEnv) == "1";
+        bool enraged = AshesToStars.BossBattle.IsEnraged;
+        float interval = enraged ? 1.0f : BossAtkInterval;
+        float damage = enraged ? 30f : BossAtkDamage;
+        for (int i = 0; i < MAXM; i++)
+        {
+            if (!_mOn[i] || _mBossIndex[i] < 0) continue;
+            var tgt = PickNearestOrTaunt(_mPos[i]);
+            if (tgt == null) continue;
+            float dx = tgt.Pos.x - _mPos[i].x;
+            if (Mathf.Abs(dx) > 0.15f)
+            {
+                _mFlip[i] = dx < 0f;
+                AshesToStars.BossBattle.FaceActive(_mBossIndex[i], _mFlip[i]);
+            }
+            _mAtkCd[i] -= dt;
+            if (_mAtkCd[i] > 0f) continue;
+            _mAtkCd[i] = interval;
+            if (blocked) continue;
+            if ((tgt.Pos - _mPos[i]).magnitude > BossAtkRange) continue;
+            Damage(tgt, damage, tgt.Role == Role.Tank);
+            _meleeHits++;
+            _bossAutoHits++;
+            if (GameMode)
+            {
+                FxPool.Play(FxPool.Kind.Slash, tgt.Pos, 1.4f);
+                Shake(0.10f);
+            }
+        }
+    }
+
     // ── 몹 AI + 어그로 규칙 (§10-4) ───────────────────────
     // 겹침 해소용 임시 버퍼 — 매 프레임 할당하면 GC가 튄다
     Vector2[] _sepPos; bool[] _sepAlive;
@@ -2612,7 +2659,7 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < MAXM; i++)
         {
             if (!_mOn[i]) continue;
-            if (_mBossIndex[i] >= 0) continue;       // 공격은 받되 잡몹 AI로 이동·공격하지 않는다
+            if (_mBossIndex[i] >= 0) continue;       // 이동은 안 한다. 기본 공격은 TickBossAttacks.
             Vector2 p = _mPos[i];
 
             // 어그로: 근접은 최근접, 원거리는 **후열(위협 낮은 쪽) 저격**.

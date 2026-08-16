@@ -176,6 +176,16 @@ namespace AshesToStars
         /// </summary>
         static BossBattle _active;
         public static bool IsActive => _active != null && _active.isActive;
+        public static bool IsEnraged => _active != null && _active.isActive && _active.isEnraged;
+
+        /// <summary>실루엣이 때리는 쪽을 보게 한다. 슬롯 스프라이트는 꺼져 있다.</summary>
+        public static void FaceActive(int index, bool flipX)
+        {
+            if (_active == null || _active.bosses == null) return;
+            if (index < 0 || index >= _active.bosses.Count) return;
+            var view = _active.bosses[index].view;
+            if (view != null) view.flipX = flipX;
+        }
         public static void ReportHealingToActive(float amount)
         {
             if (_active != null && _active.isActive) _active.ReportPartyHealing(amount);
