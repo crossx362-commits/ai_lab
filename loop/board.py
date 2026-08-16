@@ -39,8 +39,14 @@ DECISIONS_PATH = HERE / "board_decisions.json"
 PID_PATH = HERE / "loop.pid"
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
 GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
+CLAUDE_USAGE_CACHE = HERE / "claude_usage.cache.json"
+CODEX_USAGE_CACHE = HERE / "codex_usage.cache.json"
+CODEX_AUTH = Path.home() / ".codex" / "auth.json"
 GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=credits"
+CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 _GROK_USAGE_TTL = 300
+_USAGE_TTL = 300
 _GROK_PRODUCTS = {
     "GrokBuild": "빌드",
     "GrokImagine": "이미지",
@@ -1527,6 +1533,308 @@ def grok_usage(now: float | None = None, fetch=None, force: bool = False) -> dic
         return summarize_grok_billing({}, error=err)
 
 
+def _first_access_token(obj) -> str:
+    if isinstance(obj, dict):
+        for k in ("accessToken", "access_token"):
+            v = obj.get(k)
+            if isinstance(v, str) and v:
+                return v
+        for v in obj.values():
+            t = _first_access_token(v)
+            if t:
+                return t
+    return ""
+
+
+def _claude_token() -> str:
+    try:
+        raw = subprocess.check_output(
+            ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+            text=True, timeout=6, stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return ""
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return ""
+    return _first_access_token(data)
+
+
+def fetch_claude_usage(token: str) -> dict:
+    req = urllib.request.Request(
+        CLAUDE_USAGE_URL,
+        headers={
+            "Authorization": "Bearer " + token,
+            "Accept": "application/json",
+            "anthropic-beta": "oauth-2025-04-20",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=12) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("claude usage not object")
+    return data
+
+
+def _window_used(block) -> float | None:
+    if not isinstance(block, dict):
+        return None
+    try:
+        return float(block.get("utilization"))
+    except (TypeError, ValueError):
+        return None
+
+
+def summarize_claude_usage(raw: dict, fetched_at: str = "",
+                           error: str | None = None, stale: bool = False) -> dict:
+    products = []
+    for key, label in (("five_hour", "5시간"), ("seven_day", "주간")):
+        used = _window_used((raw or {}).get(key))
+        if used is None:
+            continue
+        products.append({"id": key, "label": label, "used_pct": round(used, 1)})
+    used_pct = None
+    if products:
+        used_pct = max(p["used_pct"] for p in products)
+    remain_pct = None if used_pct is None else max(0.0, round(100.0 - used_pct, 1))
+    week = (raw or {}).get("seven_day") if isinstance(raw, dict) else None
+    reset = ""
+    if isinstance(week, dict):
+        reset = _fmt_period(str(week.get("resets_at") or ""))
+    return {
+        "ok": used_pct is not None and not error,
+        "used_pct": used_pct,
+        "remain_pct": remain_pct,
+        "period": "주간" if any(p["id"] == "seven_day" for p in products) else "5시간",
+        "period_start": "",
+        "period_end": reset,
+        "products": products,
+        "plan": "Max",
+        "fetched_at": fetched_at,
+        "stale": stale,
+        "error": error,
+    }
+
+
+_claude_mem: dict | None = None
+_claude_at = 0.0
+_claude_lock = threading.Lock()
+
+
+def claude_usage(now: float | None = None, fetch=None, force: bool = False) -> dict:
+    """클로드 구독(Max) 5시간·주간. 실패해도 캐시가 있으면 그걸 보여 준다."""
+    global _claude_mem, _claude_at
+    import time
+    now = time.time() if now is None else now
+    fetch = fetch or fetch_claude_usage
+    with _claude_lock:
+        if (not force and _claude_mem is not None
+                and now - _claude_at < _USAGE_TTL):
+            return _claude_mem
+        token = _claude_token()
+        if not token:
+            cached = _claude_mem or _load_named_usage(CLAUDE_USAGE_CACHE)
+            if cached:
+                out = dict(cached)
+                out["stale"] = True
+                out["ok"] = False
+                out["error"] = out.get("error") or "클로드 로그인 없음"
+                _claude_mem, _claude_at = out, now
+                return out
+            return summarize_claude_usage({}, error="클로드 로그인 없음")
+        try:
+            raw = fetch(token)
+            out = summarize_claude_usage(
+                raw, fetched_at=datetime.now().strftime("%H:%M"))
+            _claude_mem, _claude_at = out, now
+            _save_named_usage(CLAUDE_USAGE_CACHE, out)
+            return out
+        except urllib.error.HTTPError as e:
+            err = "클로드 로그인 만료" if e.code in (401, 403) else f"클로드 HTTP {e.code}"
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError):
+            err = "클로드 사용량을 못 읽음"
+        cached = _claude_mem or _load_named_usage(CLAUDE_USAGE_CACHE)
+        if cached:
+            out = dict(cached)
+            out["stale"] = True
+            out["ok"] = False
+            out["error"] = err
+            _claude_mem, _claude_at = out, now
+            return out
+        return summarize_claude_usage({}, error=err)
+
+
+def _codex_auth() -> tuple[str, str]:
+    try:
+        data = json.loads(CODEX_AUTH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "", ""
+    if not isinstance(data, dict):
+        return "", ""
+    tokens = data.get("tokens") if isinstance(data.get("tokens"), dict) else {}
+    tok = tokens.get("access_token") or ""
+    acct = tokens.get("account_id") or ""
+    return (tok if isinstance(tok, str) else ""), (acct if isinstance(acct, str) else "")
+
+
+def fetch_codex_usage(token: str, account_id: str = "") -> dict:
+    headers = {
+        "Authorization": "Bearer " + token,
+        "Accept": "application/json",
+    }
+    if account_id:
+        headers["ChatGPT-Account-Id"] = account_id
+    req = urllib.request.Request(CODEX_USAGE_URL, headers=headers, method="GET")
+    with urllib.request.urlopen(req, timeout=12) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("codex usage not object")
+    return data
+
+
+def _fmt_unix(ts) -> str:
+    try:
+        n = int(ts)
+    except (TypeError, ValueError):
+        return ""
+    if n <= 0:
+        return ""
+    try:
+        dt = datetime.fromtimestamp(n, tz=timezone.utc).astimezone(ZoneInfo("Asia/Seoul"))
+        return f"{dt.month}/{dt.day}"
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+
+def _window_seconds_label(seconds) -> str:
+    try:
+        n = int(seconds)
+    except (TypeError, ValueError):
+        return ""
+    if n >= 500_000:
+        return "이번 주"
+    if n >= 10_000:
+        return "5시간"
+    if n > 0:
+        return f"{max(1, n // 3600)}시간"
+    return ""
+
+
+def summarize_codex_usage(raw: dict, fetched_at: str = "",
+                          error: str | None = None, stale: bool = False) -> dict:
+    rl = (raw or {}).get("rate_limit") if isinstance(raw, dict) else None
+    if not isinstance(rl, dict):
+        rl = {}
+    win = rl.get("primary_window") if isinstance(rl.get("primary_window"), dict) else {}
+    used_pct = None
+    try:
+        used_pct = float(win.get("used_percent"))
+    except (TypeError, ValueError):
+        used_pct = None
+    remain_pct = None if used_pct is None else max(0.0, round(100.0 - used_pct, 1))
+    if used_pct is not None:
+        used_pct = round(used_pct, 1)
+    period = _window_seconds_label(win.get("limit_window_seconds"))
+    products = []
+    if used_pct is not None:
+        products.append({
+            "id": "primary",
+            "label": period or "한도",
+            "used_pct": used_pct,
+        })
+    sec = rl.get("secondary_window") if isinstance(rl.get("secondary_window"), dict) else None
+    if sec:
+        try:
+            s_used = round(float(sec.get("used_percent")), 1)
+            products.append({
+                "id": "secondary",
+                "label": _window_seconds_label(sec.get("limit_window_seconds")) or "보조",
+                "used_pct": s_used,
+            })
+        except (TypeError, ValueError):
+            pass
+    plan = str((raw or {}).get("plan_type") or "")
+    plan_label = {"plus": "Plus", "pro": "Pro", "free": "Free", "team": "Team"}.get(plan, plan)
+    return {
+        "ok": used_pct is not None and not error,
+        "used_pct": used_pct,
+        "remain_pct": remain_pct,
+        "period": period,
+        "period_start": "",
+        "period_end": _fmt_unix(win.get("reset_at")),
+        "products": products,
+        "plan": plan_label,
+        "fetched_at": fetched_at,
+        "stale": stale,
+        "error": error,
+    }
+
+
+_codex_mem: dict | None = None
+_codex_at = 0.0
+_codex_lock = threading.Lock()
+
+
+def _load_named_usage(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _save_named_usage(path: Path, data: dict) -> None:
+    try:
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def codex_usage(now: float | None = None, fetch=None, force: bool = False) -> dict:
+    """코덱스(ChatGPT Plus) 한도. 실패해도 캐시가 있으면 그걸 보여 준다."""
+    global _codex_mem, _codex_at
+    import time
+    now = time.time() if now is None else now
+    fetch = fetch or (lambda token, account_id="": fetch_codex_usage(token, account_id))
+    with _codex_lock:
+        if (not force and _codex_mem is not None
+                and now - _codex_at < _USAGE_TTL):
+            return _codex_mem
+        token, account_id = _codex_auth()
+        if not token:
+            cached = _codex_mem or _load_named_usage(CODEX_USAGE_CACHE)
+            if cached:
+                out = dict(cached)
+                out["stale"] = True
+                out["ok"] = False
+                out["error"] = out.get("error") or "코덱스 로그인 없음"
+                _codex_mem, _codex_at = out, now
+                return out
+            return summarize_codex_usage({}, error="코덱스 로그인 없음")
+        try:
+            raw = fetch(token, account_id)
+            out = summarize_codex_usage(
+                raw, fetched_at=datetime.now().strftime("%H:%M"))
+            _codex_mem, _codex_at = out, now
+            _save_named_usage(CODEX_USAGE_CACHE, out)
+            return out
+        except urllib.error.HTTPError as e:
+            err = "코덱스 로그인 만료" if e.code in (401, 403) else f"코덱스 HTTP {e.code}"
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError, TypeError):
+            err = "코덱스 사용량을 못 읽음"
+        cached = _codex_mem or _load_named_usage(CODEX_USAGE_CACHE)
+        if cached:
+            out = dict(cached)
+            out["stale"] = True
+            out["ok"] = False
+            out["error"] = err
+            _codex_mem, _codex_at = out, now
+            return out
+        return summarize_codex_usage({}, error=err)
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -1561,6 +1869,8 @@ def build_state() -> dict:
         "completed": completed_posts(status),
         "playtest": playtest_state(),
         "grok": grok_usage(),
+        "claude": claude_usage(),
+        "codex": codex_usage(),
     }
 
 

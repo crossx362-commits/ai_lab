@@ -609,8 +609,104 @@ class GrokUsageTests(unittest.TestCase):
         html = (HERE / "board.html").read_text(encoding="utf-8")
         self.assertIn('id="usage-box"', html)
         self.assertIn("renderGrokUsage", html)
-        self.assertIn("그록 남음", html)
+        self.assertIn("${label} 남음", html)
+        self.assertIn('id="usage-claude"', html)
+        self.assertIn('id="usage-codex"', html)
+        self.assertIn('grokPill(state.claude, "클로드")', html)
+        self.assertIn('grokPill(state.codex, "코덱스")', html)
         self.assertLess(html.find('id="usage-box"'), html.find('class="request-top"'))
+
+
+SAMPLE_CLAUDE = {
+    "five_hour": {"utilization": 12.5, "resets_at": None},
+    "seven_day": {"utilization": 40.0, "resets_at": "2026-08-17T14:00:00+00:00"},
+}
+
+SAMPLE_CODEX = {
+    "plan_type": "plus",
+    "rate_limit": {
+        "primary_window": {
+            "used_percent": 70.0,
+            "limit_window_seconds": 604800,
+            "reset_at": 1787444587,
+        },
+    },
+}
+
+
+class CliUsageTests(unittest.TestCase):
+    def setUp(self):
+        board._claude_mem = None
+        board._claude_at = 0.0
+        board._codex_mem = None
+        board._codex_at = 0.0
+        self._tmp = tempfile.TemporaryDirectory()
+        self._old_c = board.CLAUDE_USAGE_CACHE
+        self._old_x = board.CODEX_USAGE_CACHE
+        board.CLAUDE_USAGE_CACHE = Path(self._tmp.name) / "claude.json"
+        board.CODEX_USAGE_CACHE = Path(self._tmp.name) / "codex.json"
+
+    def tearDown(self):
+        board.CLAUDE_USAGE_CACHE = self._old_c
+        board.CODEX_USAGE_CACHE = self._old_x
+        board._claude_mem = None
+        board._codex_mem = None
+        self._tmp.cleanup()
+
+    def test_summarize_claude_windows(self):
+        out = board.summarize_claude_usage(SAMPLE_CLAUDE, fetched_at="22:00")
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["used_pct"], 40.0)
+        self.assertEqual(out["remain_pct"], 60.0)
+        self.assertEqual(out["period_end"], "8/17")
+        self.assertEqual([p["label"] for p in out["products"]], ["5시간", "주간"])
+
+    def test_summarize_codex_weekly(self):
+        out = board.summarize_codex_usage(SAMPLE_CODEX, fetched_at="22:00")
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["used_pct"], 70.0)
+        self.assertEqual(out["remain_pct"], 30.0)
+        self.assertEqual(out["period"], "이번 주")
+        self.assertEqual(out["plan"], "Plus")
+        self.assertTrue(out["period_end"])
+
+    def test_claude_no_token(self):
+        old = board._claude_token
+        board._claude_token = lambda: ""
+        try:
+            out = board.claude_usage(now=1, fetch=lambda t: SAMPLE_CLAUDE)
+        finally:
+            board._claude_token = old
+        self.assertFalse(out["ok"])
+        self.assertIn("로그인", out["error"])
+
+    def test_codex_no_token(self):
+        old = board._codex_auth
+        board._codex_auth = lambda: ("", "")
+        try:
+            out = board.codex_usage(now=1, fetch=lambda t, a="": SAMPLE_CODEX)
+        finally:
+            board._codex_auth = old
+        self.assertFalse(out["ok"])
+        self.assertIn("로그인", out["error"])
+
+    def test_claude_cache_skips_second_fetch(self):
+        n = {"c": 0}
+
+        def fetch(_token):
+            n["c"] += 1
+            return SAMPLE_CLAUDE
+
+        old = board._claude_token
+        board._claude_token = lambda: "tok"
+        try:
+            a = board.claude_usage(now=1000, fetch=fetch)
+            b = board.claude_usage(now=1100, fetch=fetch)
+        finally:
+            board._claude_token = old
+        self.assertEqual(n["c"], 1)
+        self.assertEqual(a["remain_pct"], 60.0)
+        self.assertEqual(b["remain_pct"], 60.0)
 
 
 class ResumeTests(unittest.TestCase):

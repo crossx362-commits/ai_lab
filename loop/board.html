@@ -117,8 +117,12 @@
     border: 1px solid var(--gold); background: #1f1a12;
   }
   .now-panel.idle { border-color: var(--line); background: var(--panel); }
+  .usage-row {
+    margin: 14px 24px 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  }
+  @media (max-width: 900px) { .usage-row { grid-template-columns: 1fr; margin: 14px; } }
   .usage-box {
-    margin: 14px 24px 0; padding: 14px 16px 12px; border-radius: 12px;
+    margin: 0; padding: 14px 16px 12px; border-radius: 12px;
     border: 1px solid var(--gold); background: #1f1a12;
   }
   .usage-box.low { border-color: var(--hold); }
@@ -205,13 +209,31 @@
   </div>
   <div class="pills" id="pills"></div>
 </header>
-<section class="usage-box" id="usage-box">
-  <div class="usage-head">
-    <h2 style="margin:0">그록 사용량</h2>
-    <div class="remain" id="usage-remain">불러오는 중…</div>
+<section class="usage-row" id="usage-row">
+  <div class="usage-box" id="usage-box">
+    <div class="usage-head">
+      <h2 style="margin:0">그록</h2>
+      <div class="remain" id="usage-remain">불러오는 중…</div>
+    </div>
+    <p class="meta" id="usage-meta"></p>
+    <div id="usage-bars"></div>
   </div>
-  <p class="meta" id="usage-meta"></p>
-  <div id="usage-bars"></div>
+  <div class="usage-box" id="usage-claude">
+    <div class="usage-head">
+      <h2 style="margin:0">클로드</h2>
+      <div class="remain" id="claude-remain">불러오는 중…</div>
+    </div>
+    <p class="meta" id="claude-meta"></p>
+    <div id="claude-bars"></div>
+  </div>
+  <div class="usage-box" id="usage-codex">
+    <div class="usage-head">
+      <h2 style="margin:0">코덱스</h2>
+      <div class="remain" id="codex-remain">불러오는 중…</div>
+    </div>
+    <p class="meta" id="codex-meta"></p>
+    <div id="codex-bars"></div>
+  </div>
 </section>
 <div class="banner" id="resume-bar">
   <div><strong>중단됨</strong> <span class="meta" id="resume-why"></span></div>
@@ -427,29 +449,31 @@ function grokTone(remain) {
   return "bad";
 }
 
-function grokPill(g) {
+function grokPill(g, name) {
   if (!g) return "";
-  if (g.remain_pct == null) return `<span class="pill bad">그록 사용량 ?</span>`;
+  const label = name || "그록";
+  if (g.remain_pct == null) return `<span class="pill bad">${label} 사용량 ?</span>`;
   const tone = grokTone(g.remain_pct);
   const stale = g.stale ? " · 옛값" : "";
-  return `<span class="pill ${tone}">그록 남음 ${g.remain_pct}%${stale}</span>`;
+  return `<span class="pill ${tone}">${label} 남음 ${g.remain_pct}%${stale}</span>`;
 }
 
-function renderGrokUsage(g) {
-  const box = $("usage-box");
+function renderUsageCard(boxId, remainId, metaId, barsId, g, emptyMsg) {
+  const box = $(boxId);
   if (!box) return;
   g = g || {};
   const remain = g.remain_pct;
   box.classList.toggle("low", remain != null && remain < 40);
   box.classList.toggle("empty", remain == null || remain < 15);
   if (remain == null) {
-    $("usage-remain").innerHTML = "확인 불가";
-    $("usage-meta").textContent = g.error || "그록 로그인이 없다";
-    $("usage-bars").innerHTML = "";
+    $(remainId).innerHTML = "확인 불가";
+    $(metaId).textContent = g.error || emptyMsg;
+    $(barsId).innerHTML = "";
     return;
   }
-  $("usage-remain").innerHTML = `남음 <b>${remain}%</b>`;
+  $(remainId).innerHTML = `남음 <b>${remain}%</b>`;
   const bits = [
+    g.plan || "",
     g.period || "",
     g.period_end ? (g.period_end + "까지") : "",
     g.used_pct != null ? ("씀 " + g.used_pct + "%") : "",
@@ -457,14 +481,18 @@ function renderGrokUsage(g) {
     g.stale ? "캐시" : "",
     g.error || "",
   ].filter(Boolean);
-  $("usage-meta").textContent = bits.join(" · ");
+  $(metaId).textContent = bits.join(" · ");
   const rows = (g.products || []).map((p) => {
     const used = p.used_pct == null ? 0 : p.used_pct;
     return `<div class="bar-row"><div class="lab">${esc(p.label)}</div>
       <div class="bar-track"><div class="bar-fill hold" style="width:${used}%"></div></div>
       <div class="n">${used}%</div></div>`;
   }).join("");
-  $("usage-bars").innerHTML = rows;
+  $(barsId).innerHTML = rows;
+}
+
+function renderGrokUsage(g) {
+  renderUsageCard("usage-box", "usage-remain", "usage-meta", "usage-bars", g, "그록 로그인이 없다");
 }
 
 function render(state) {
@@ -476,9 +504,15 @@ function render(state) {
     L.hold ? `<span class="pill bad">HOLD</span>` : "",
     L.stop ? `<span class="pill bad">STOP</span>` : "",
     L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
-    grokPill(state.grok),
+    grokPill(state.grok, "그록"),
+    grokPill(state.claude, "클로드"),
+    grokPill(state.codex, "코덱스"),
   ].join("");
   renderGrokUsage(state.grok);
+  renderUsageCard("usage-claude", "claude-remain", "claude-meta", "claude-bars",
+    state.claude, "클로드 로그인이 없다");
+  renderUsageCard("usage-codex", "codex-remain", "codex-meta", "codex-bars",
+    state.codex, "코덱스 로그인이 없다");
   const blocked = L.blocked || [];
   $("resume-bar").classList.toggle("show", blocked.length > 0);
   $("resume-why").textContent = blocked.length ? blocked.join(" · ") : "";
