@@ -44,6 +44,9 @@ namespace AshesToStars
 
         const int CAP = 96;          // 동시 표시 상한. 넘치면 가장 오래된 것을 재사용한다
         const float ISO_Y = StressTest.ISO_Y;
+        // 유닛은 화면 y에 따라 900~1100대까지 바뀐다. 고정 700이면 아래쪽 몹에 가려진다.
+        // 이펙트는 지시·피격 정보를 전달해야 하므로 모든 전투 유닛보다 앞에 둔다.
+        public const int FrontSortingOrder = 1200;
 
         static FxPool _inst;
         static bool[] _warned;
@@ -94,7 +97,7 @@ namespace AshesToStars
                 var go = new GameObject("fx");
                 go.transform.SetParent(transform, false);
                 _sr[i] = go.AddComponent<SpriteRenderer>();
-                _sr[i].sortingOrder = 700;      // 캐릭터(500)보다 앞 — 이펙트는 가려지면 의미가 없다
+                _sr[i].sortingOrder = FrontSortingOrder;
                 go.SetActive(false);
             }
         }
