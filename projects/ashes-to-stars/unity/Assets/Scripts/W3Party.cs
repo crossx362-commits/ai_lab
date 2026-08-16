@@ -2487,15 +2487,19 @@ public class W3Party : MonoBehaviour
             GUI.DrawTexture(card, Tint(m.Alive ? new Color(.10f, .11f, .15f, .95f)
                                                : new Color(.22f, .07f, .07f, .95f)));
 
-            // 초상화 — 아틀라스에서 몸통만 잘라 그린다
-            var sp = bank?.Char(ArtOf(m.Job));
-            if (sp != null)
+            // 새 파티 초상화 시트를 우선한다. 리소스가 없을 때만 기존 유닛 스프라이트로 복귀한다.
+            var pr = new Rect(card.x + 6, card.y + 4, 52, 66);
+            var portraitTint = m.Alive ? Color.white : new Color(1f, .6f, .6f, .55f);
+            if (!AshesToStars.PortraitAtlas.Draw(pr, AshesToStars.PortraitAtlas.KeyForJob(m.Job.ToString()), portraitTint))
             {
-                var uv = PortraitUV(sp);
-                var pr = new Rect(card.x + 6, card.y + 4, 52, 66);
-                GUI.color = m.Alive ? Color.white : new Color(1f, .6f, .6f, .55f);
-                GUI.DrawTextureWithTexCoords(pr, sp.texture, uv);
-                GUI.color = Color.white;
+                var sp = bank?.Char(ArtOf(m.Job));
+                if (sp != null)
+                {
+                    var uv = PortraitUV(sp);
+                    GUI.color = portraitTint;
+                    GUI.DrawTextureWithTexCoords(pr, sp.texture, uv);
+                    GUI.color = Color.white;
+                }
             }
 
             GUI.Label(new Rect(card.x + 62, card.y + 6, CW - 66, 20), $"{i + 1}.{m.Job}", _cmdLabel);

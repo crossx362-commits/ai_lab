@@ -49,6 +49,10 @@ namespace AshesToStars
                             : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
+
+                // 편성 화면과 전투 지휘 바가 같은 직업 초상화를 쓴다.
+                PortraitAtlas.Draw(new Rect(r.x + 6, r.y + (row - 1) * 72f + 4, 48, 48),
+                    PortraitAtlas.KeyForJob(ch.Job));
             }
 
             if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
