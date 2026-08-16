@@ -159,6 +159,16 @@ namespace AshesToStars
             var decorRoot = new GameObject("FieldDecor_Props");
             _root = decorRoot;
 
+            // 길을 먼저 계산한다. 산포가 길을 모르면 나무가 차도 한가운데 선다
+            // (오너 지적 「길 중간에 건물,나무 배치하지마」).
+            RoadPath[] roads = null;
+            var roadPts = new System.Collections.Generic.List<(Vector2 p, float half)>();
+            if (biome == Biome.Field)
+            {
+                roads = VillageRoads(arenaRadius);
+                CollectRoadPoints(roads, roadPts);
+            }
+
             float outer = arenaRadius * 1.8f;
             float step = Mathf.Max(0.8f, arenaRadius * 0.09f);
             int placed = 0, blockers = 0;
@@ -212,6 +222,9 @@ namespace AshesToStars
                     //    섞이면 집이 들판에 무작위로 흩어져 마을로 안 읽힌다 — 그것들은
                     //    `BuildVillage`가 정해진 자리에 세운다.
                     int propIdx = Random.Range(0, ScatterCount(propNames));
+                    if (BlocksRoad(propNames[propIdx]) &&
+                        HitsRoad(worldPos, roadPts, RoadClearance(propNames[propIdx])))
+                        continue;
                     if (!Place(propIdx, worldPos, inside)) continue;
                     placed++;
                 }
@@ -223,7 +236,7 @@ namespace AshesToStars
             // **간격이 일정하고 정면이 광장을 향할 때** 마을로 보인다.
             int villageCount = 0;
             if (biome == Biome.Field)
-                villageCount = BuildVillage(arenaRadius, propNames, Place, 엄폐물);
+                villageCount = BuildVillage(arenaRadius, propNames, Place, 엄폐물, roads, roadPts);
 
             if (엄폐물) RegisterCover();
             Debug.Log($"[FieldDecor] {biome} 프랍 {placed}개 노이즈 배치" +
@@ -292,7 +305,7 @@ namespace AshesToStars
         ///   평면이라 **같은 방식으로 흙색을 얹는 것**이 이음매 없이 자연스럽다.
         ///   밟은 자국이 이어져 보이면 그게 길이다 — 그림이 정교할 필요는 없다.
         ///
-        /// 정렬은 프랍(100)보다 **뒤**(50)다. 길 위에 집·수레가 서야 하기 때문이다.
+        /// 정렬은 프랍(100)보다 **뒤**(50)다. 흙길은 바닥에 깔고, 집·나무는 길 밖에 세운다.
         /// </summary>
         /// <summary>
         /// 마을길 하나. 직선 두 점 사이를 **활처럼 휘게** 지난다.
@@ -364,6 +377,49 @@ namespace AshesToStars
                 Width = 1.6f,
             };
             return new[] { main, b1, b2, b3 };
+        }
+
+        static void CollectRoadPoints(RoadPath[] roads,
+            System.Collections.Generic.List<(Vector2 p, float half)> dst)
+        {
+            foreach (var r in roads)
+                for (float t = 0f; t <= 1f; t += 0.02f)
+                    dst.Add((OnRoad(r, t), r.Width * 0.5f));
+        }
+
+        static bool HitsRoad(Vector2 at,
+            System.Collections.Generic.List<(Vector2 p, float half)> pts, float clearance)
+        {
+            for (int i = 0; i < pts.Count; i++)
+            {
+                float need = pts[i].half + clearance;
+                if ((at - pts[i].p).sqrMagnitude < need * need) return true;
+            }
+            return false;
+        }
+
+        static bool BlocksRoad(string name) =>
+            name.StartsWith("field_tree_") || name == "village_tree_0"
+            || name.StartsWith("village_house_") || name == "village_barn_0";
+
+        // 집은 폭이 ~2유닛이라 길 가장자리에서 그만큼 더 물러선다. 나무는 수관이 넓다.
+        static float RoadClearance(string name)
+        {
+            if (name.StartsWith("village_house_") || name == "village_barn_0") return 3.2f;
+            if (name.StartsWith("field_tree_") || name == "village_tree_0") return 2.4f;
+            return 1.2f;
+        }
+
+        /// <summary>자가검사용. 큰길 위의 한 점.</summary>
+        public static Vector2 SampleMainRoad(float arenaRadius, float t) =>
+            OnRoad(VillageRoads(arenaRadius)[0], t);
+
+        /// <summary>자가검사용. 이 자리에 나무·집을 세우면 길을 밟는가.</summary>
+        public static bool WouldBlockRoad(Vector2 world, float arenaRadius, float clearance)
+        {
+            var pts = new System.Collections.Generic.List<(Vector2 p, float half)>();
+            CollectRoadPoints(VillageRoads(arenaRadius), pts);
+            return HitsRoad(world, pts, clearance);
         }
 
         /// <summary>
@@ -511,32 +567,17 @@ namespace AshesToStars
         /// **큰길(직선 2줄)** + 집 뒤 **텃밭 울타리** + 녹지의 우물.
         /// </summary>
         static int BuildVillage(float arenaRadius, string[] names,
-                                System.Func<int, Vector2, bool, bool> place, bool 엄폐물)
+                                System.Func<int, Vector2, bool, bool> place, bool 엄폐물,
+                                RoadPath[] roads,
+                                System.Collections.Generic.List<(Vector2 p, float half)> roadPts)
         {
             int Idx(string n) => System.Array.IndexOf(names, n);
             int n = 0;
 
-            var roads = VillageRoads(arenaRadius);
             n += BuildRoads(arenaRadius, roads);
 
-            // ── 길 위에는 아무것도 세우지 않는다 (오너 지적 2026-08-15) ──
-            // 집이 길을 밟고 서 있으면 길이 길로 안 보인다. 그리고 여기서 막지 않으면
-            // **다른 길**(샛길·교차로)을 밟는다 — 자기 길에서만 떨어뜨려 놓는 것으로는
-            // 부족하다. 길 전체를 점으로 훑어 두고 거리로 판정한다.
-            var roadPts = new System.Collections.Generic.List<(Vector2 p, float half)>();
-            foreach (var r in roads)
-                for (float t = 0f; t <= 1f; t += 0.02f)
-                    roadPts.Add((OnRoad(r, t), r.Width * 0.5f));
-
-            bool OnAnyRoad(Vector2 at, float clearance)
-            {
-                for (int i = 0; i < roadPts.Count; i++)
-                {
-                    float need = roadPts[i].half + clearance;
-                    if ((at - roadPts[i].p).sqrMagnitude < need * need) return true;
-                }
-                return false;
-            }
+            // ── 길 위에는 집·나무를 세우지 않는다 (오너 지적 2026-08-15·2026-08-16) ──
+            bool OnAnyRoad(Vector2 at, float clearance) => HitsRoad(at, roadPts, clearance);
 
             string[] houses = { "village_house_0", "village_house_1", "village_house_2",
                                 "village_barn_0" };
@@ -564,14 +605,13 @@ namespace AshesToStars
                     {
                         // 줄이 자로 잰 듯하면 계획도시가 된다. 길에서 떨어진 거리와
                         // 길을 따라간 위치를 둘 다 흔들어 제각각으로 앉힌다.
-                        float off = (isMain ? 3.0f : 2.4f) + Random.Range(-0.5f, 1.1f);
+                        // 집 폭 ~2유닛 + 큰길 반폭 1.3. 예전 3.0은 벽이 차도에 들어왔다.
+                        float off = (isMain ? 4.6f : 4.0f) + Random.Range(-0.2f, 0.7f);
                         var at = c + nrm * off * s + d * Random.Range(-0.7f, 0.7f);
 
                         if (at.magnitude < clear) continue;
                         if (Mathf.Abs(at.x) > reach || Mathf.Abs(at.y) > reach * 0.8f) continue;
-                        // 집은 폭이 있으니 길에서 넉넉히 물러선다. 벽이 길에 닿기만 해도
-                        // 화면에서는 길을 막은 것으로 보인다.
-                        if (OnAnyRoad(at, 2.0f)) continue;
+                        if (OnAnyRoad(at, 3.2f)) continue;
                         // 중심에서 멀수록 성기게 — 마을은 가장자리로 갈수록 흩어진다
                         float far = at.magnitude / (arenaRadius * 1.6f);
                         if (Random.value < far * 0.55f) continue;
@@ -606,9 +646,9 @@ namespace AshesToStars
                 }
             }
 
-            // 우물 — 큰길가의 랜드마크. 싸울 자리 밖에 둔다.
+            // 우물 — 큰길가의 랜드마크. 차도 위는 피한다.
             var wellAt = OnRoad(roads[0], 0.46f) + new Vector2(0f, arenaRadius * 0.30f);
-            if (place(Idx("village_well_0"), wellAt, false)) n++;
+            if (!OnAnyRoad(wellAt, 1.4f) && place(Idx("village_well_0"), wellAt, false)) n++;
 
             return n;
         }
