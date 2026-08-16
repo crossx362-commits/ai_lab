@@ -55,6 +55,8 @@ namespace AshesToStars
                             ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(LifeSystem.GetRecoveryTimeRemaining(ch))} — 출전 불가(§15)"
                             : DefenseState.Contains(i)
                                 ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다(§13-5)"
+                                : HuntSchedule.Contains(i)
+                                    ? "일정 사냥 중이다 — 필드에서 일정을 꺼야 출전한다(§6)"
                                 : LifeSystem.IsAvailable(ch)
                                     ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
                                     : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
@@ -104,6 +106,8 @@ namespace AshesToStars
                 return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§15)";
             if (DefenseState.Contains(rosterIndex))
                 return "수비 배치 — 출전 불가(§13-5)";
+            if (HuntSchedule.Contains(rosterIndex))
+                return "일정 사냥 — 출전 불가(§6)";
             if (left > 0) return $"회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§4·§18-8)";
 
             string mark = inParty ? "편성됨" : "대기";

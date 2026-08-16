@@ -22,6 +22,7 @@ namespace AshesToStars
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
+                if (HuntSchedule.Running) rest = HuntSchedule.Line() + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -52,6 +53,7 @@ namespace AshesToStars
             HuntStart.SeedQaIfRequested();
             Economy.SeedHuntGoldQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
+            HuntSchedule.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
@@ -111,7 +113,7 @@ namespace AshesToStars
                 return;
             }
 
-            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var cards = UiPages.Grid(r, 2, 3, 16f);
             if (DrawCard(cards[0], "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)", "field"))
             {
                 if (HuntStart.Blocked)
@@ -169,6 +171,17 @@ namespace AshesToStars
                     "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)",
                     on ? "heart" : "heart_broken"))
                 LowHpReturn.Enabled = !on;
+
+            if (DrawCard(cards[4], HuntSchedule.CardTitle(), HuntSchedule.CardBody(),
+                    HuntSchedule.Running ? "field" : "heart"))
+            {
+                if (HuntSchedule.Running) HuntSchedule.Stop();
+                else if (!HuntSchedule.TryStart())
+                    _showInsufficientGold = false;
+            }
+            DrawCard(cards[5], "사망 없음",
+                "일정 사냥은 카운트를 안 올린다. 상한 12시간(§6)",
+                "heart_broken", locked: true);
         }
 
         void DrawHuntPick(Rect r)

@@ -93,6 +93,7 @@ namespace AshesToStars
         protected virtual void Update()
         {
             StarterSecond.Tick(Time.unscaledDeltaTime);
+            HuntSchedule.Tick(Time.unscaledDeltaTime);
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 if (!ShowBottomBar && Title == "재와 별") GameFlow.Quit();

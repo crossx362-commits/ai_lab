@@ -799,6 +799,7 @@ namespace AshesToStars
             if (ch.IsRescue) Line("긴급 재건");
             if (PartyState.Contains(_selectedCharacter)) Line("지금 출전 편성");
             if (DefenseState.Contains(_selectedCharacter)) Line("수비 배치 중");
+            if (HuntSchedule.Contains(_selectedCharacter)) Line("일정 사냥 중");
             if (TowerEnding.HasStarLook) Line(TowerEnding.LookName);
             if (SoloRaidClear.HasLook) Line(SoloRaidClear.LookName);
             if (!ch.IsDeleted && ch.AbsorbedBoons.Count > 0)
