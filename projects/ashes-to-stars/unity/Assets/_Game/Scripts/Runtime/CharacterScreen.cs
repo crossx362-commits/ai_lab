@@ -67,6 +67,10 @@ namespace AshesToStars
             StarterSecond.SeedQaIfRequested();
             SeedDefenseRecoverQaIfRequested();
             SeedRaceRecoverQaIfRequested();
+            Rebirth.SeedQaIfRequested();
+            if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "2"
+                && _selectedCharacter < 0)
+                _selectedCharacter = 0;
             if (StarterSecond.Pending)
             {
                 DrawStarterSecond(r);
@@ -182,6 +186,13 @@ namespace AshesToStars
         void DrawAttributes(Rect r, CharacterRecord ch)
         {
                     string detail = $"{ch.Name} ({ch.Job}) · {ExpText(ch)}";
+                    if (!ch.IsDeleted && ch.Level == Rebirth.StartLevel
+                        && !string.IsNullOrEmpty(Rebirth.LastName)
+                        && ch.Name == Rebirth.LastName)
+                        detail += " · " + Rebirth.DoneLine();
+                    else if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "2"
+                        && !ch.IsDeleted)
+                        detail += " · " + Rebirth.Line();
                     if (ch.IsRescue) detail += " · 긴급 재건";
                     if (ch.IsSpecialJob) detail += " · 특수 직업";
                     if (TowerEnding.HasStarLook) detail += $" · {TowerEnding.LookName}";

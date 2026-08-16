@@ -31,7 +31,7 @@ namespace AshesToStars
         {
             Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
-            Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
+            Sub.영묘 => Rebirth.MausoleumSubtitle(),
             Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
@@ -127,6 +127,9 @@ namespace AshesToStars
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
             AuctionState.SeedExpireQaIfRequested();
+            Rebirth.SeedQaIfRequested();
+            if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1")
+                _sub = Sub.영묘;
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1")
@@ -670,6 +673,8 @@ namespace AshesToStars
             int row = 0;
 
             Info(r, row++, $"환생석 {stones}개 · 잠든 캐릭터 {dead.Count}명");
+            if (!string.IsNullOrEmpty(Rebirth.Line()))
+                Info(r, row++, Rebirth.Line());
 
             if (dead.Count == 0)
             {
@@ -687,16 +692,16 @@ namespace AshesToStars
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone));
                         continue;
                     }
-                    string desc = stones > 0
-                        ? "환생석 1개를 써서 되돌린다 — 사망 0에서 다시 시작한다"
-                        : "환생석이 없다 — 10층 보스가 떨어뜨린다";
+                    string desc = Rebirth.RowDesc(ch, stones);
                     if (Row(r, row++, $"{ch.Name} · {ch.Job} Lv{ch.Level}", desc,
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
                     {
                         if (stones <= 0) _msg = "환생석이 없다. 10층 보스를 잡아야 한다(§4)";
                         else if (LifeSystem.UseRebornStone(ch))
                         {
-                            _msg = $"{ch.Name}이(가) 돌아왔다 — 사망 0에서 다시 시작한다";
+                            _msg = string.IsNullOrEmpty(Rebirth.DoneLine())
+                                ? $"{ch.Name}이(가) 돌아왔다 — 사망 0에서 다시 시작한다"
+                                : $"{ch.Name}이(가) 돌아왔다 — {Rebirth.DoneLine()}";
                             return;                     // 목록이 바뀌었으니 이번 프레임은 여기서 끝
                         }
                         else _msg = "환생에 실패했다 — 환생석 소모를 확인할 것";

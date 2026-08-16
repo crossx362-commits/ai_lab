@@ -1151,7 +1151,7 @@ namespace AshesToStars
         /// 희소한 것**(10층 보스 드랍)으로 균형을 잡는다.
         ///
         /// §4: 장비는 함께 돌아오지 않는다. 삭제가 장착 장비를 이미 지웠으므로
-        /// 환생 슬롯은 비어 있는 채로 시작한다.
+        /// 환생 슬롯은 비어 있는 채로 시작한다. 레벨은 1부터(§4·§3).
         /// </summary>
         public static bool UseRebornStone(CharacterRecord character)
         {
@@ -1169,9 +1169,10 @@ namespace AshesToStars
             character.RecoveryEndTime = 0;
             character.ClearEquipped();
             Fusion.ClearAbsorbed(character);
+            Rebirth.Apply(character);
             Save();
 
-            Debug.Log($"[환생석] {character.Name} 복구 — 사망 카운트 0으로 재시작 " +
+            Debug.Log($"[환생석] {character.Name} 복구 — 사망 0 · Lv{character.Level} " +
                       $"(남은 환생석: {GetRebornStones()})");
             return true;
         }
