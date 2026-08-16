@@ -22,7 +22,7 @@
 ### 진행 — §16 영지 하위 건물 3종 (오너 18:04 이걸로 진행 / 루프 첫 슬라이스)
 
 대장간: 사냥 가죽→흉갑→장착→전투 HP(`Equipment` + `W3Party.GearHpMultiplier`).
-SelfCheck 전항 PASS. PNG `smith_shots/qa_go_Estate_smith.png`.
+SelfCheck 전항 PASS. PNG `smith_shots/qa_go_Estate_smith.png`. 코드 `ec234975`.
 수비대 배치는 동시 세션 `DefenseState`(출전 제외)를 덮지 않고 SelfCheck PASS.
 경매장은 거래서버 없어 잠금 유지. 전체 3건물을 처리됨으로 옮기지 않는다.
 
