@@ -97,6 +97,7 @@ python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py
 - **`PackTextures`는 정규화 UV를 돌려주고 `Sprite.Create`는 픽셀 Rect를 받는다.** 그걸 그대로
   넘겨서 **프랍이 도입 이래 한 번도 안 그려지고 있었다.** 그런데 로그는 `프랍 90개 배치`로
   멀쩡했다. **화면이 비었는데 수치가 정상이면 이 계열부터 의심하라.**
+- **보스 패배 콜백이 결과 화면만 열고 목숨 경계를 안 부르면 V4가 통째로 거짓이다.** `OnPartyWiped`(힐체크 실패)는 예전에 요약만 쓰고 `RegisterDeath`를 안 불렀다. 전멸·힐체크 실패는 같은 `GameFlow.ApplyPveDefeat`를 타야 한다 — 출전 슬롯만, 로스터 전원 아님.
 - **`prop_scale.json`(프랍 목표 크기표)이 만들어진 채 읽는 코드가 0곳이었다.** PPU 32 고정이라
   128px 원본이 전부 4유닛 = 캐릭터의 2배였다. 이 저장소의 미구현은 거의 항상 이 모양이다 —
   정의는 있고 부르는 곳이 없다(`CombatStyleDef`·보스 기믹·`RaceDef`가 전부 그랬다).

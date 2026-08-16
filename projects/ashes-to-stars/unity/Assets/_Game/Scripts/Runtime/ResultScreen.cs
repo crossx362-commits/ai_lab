@@ -21,12 +21,15 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             _rowIndex = 0;
+            GameFlow.SeedV4WipeQaIfRequested();
 
             // 전투 결과 요약 (§2 코어 루프). 영구 손실은 골드보다 먼저 읽힌다(§16-7).
             Info(r, _rowIndex++, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
             var defeat = GameFlow.LastDefeatReport;
+            if (defeat != null && defeat.FallenNames.Count > 0)
+                Info(r, _rowIndex++, $"[사망] {string.Join(", ", defeat.FallenNames)}");
             if (defeat != null && defeat.DeletedNames.Count > 0)
-                Info(r, _rowIndex++, "재가 되어 영묘에 기록됩니다 — 확인 후 계속(§16-6)");
+                Info(r, _rowIndex++, $"[삭제] {string.Join(", ", defeat.DeletedNames)} — 재가 되어 영묘에 기록됩니다(§16-6)");
             if (defeat != null && defeat.RescueGranted)
                 Info(r, _rowIndex++, $"계속 플레이: {defeat.RescueName} (딜 Lv1)이 명부에 있습니다");
 

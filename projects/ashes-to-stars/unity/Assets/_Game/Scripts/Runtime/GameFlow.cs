@@ -122,6 +122,27 @@ namespace AshesToStars
             return report;
         }
 
+        static bool _v4WipeQaSeeded;
+
+        /// <summary>
+        /// 시각 QA용. QA_V4_WIPE=1이면 전원 3회 사망→삭제→긴급 재건 상태를 한 번만 만든다.
+        /// 결과·캐릭터 화면이 같은 시드를 본다.
+        /// </summary>
+        public static void SeedV4WipeQaIfRequested()
+        {
+            if (_v4WipeQaSeeded) return;
+            if (System.Environment.GetEnvironmentVariable("QA_V4_WIPE") != "1") return;
+            _v4WipeQaSeeded = true;
+            LifeSystem.ResetAll();
+            PartyState.ResetForTest();
+            var roster = LifeSystem.GetCharacters();
+            LifeSystem.ApplyWipe(roster);
+            LifeSystem.ApplyWipe(roster);
+            LastDefeatReport = LifeSystem.ApplyWipe(roster);
+            LastBattleSummary = FormatDefeatSummary("보스전 패배 — 5층", LastDefeatReport);
+            PartyState.Refresh();
+        }
+
         public static string FormatDefeatSummary(string head, PveDefeatReport report)
         {
             if (report == null) return head;

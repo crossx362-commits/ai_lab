@@ -44,6 +44,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            GameFlow.SeedV4WipeQaIfRequested();
             if (_selectedCharacter >= 0)
             {
                 // 캐릭터 상세 화면
