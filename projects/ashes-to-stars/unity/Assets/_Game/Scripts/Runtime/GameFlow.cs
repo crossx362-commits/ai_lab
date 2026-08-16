@@ -54,7 +54,7 @@ namespace AshesToStars
         /// 전투 화면이 무엇을 띄울지 알아야 한다.
         /// </summary>
         // 던전은 잡몹 웨이브와 규칙이 같지만 **편성이 계획에서 온다**(DungeonRun.PendingWave).
-        public enum BattleKind { 잡몹웨이브, 보스, 던전 }
+        public enum BattleKind { 잡몹웨이브, 보스, 던전, 침략 }
         public static BattleKind Kind = BattleKind.잡몹웨이브;
         /// <summary>보스전일 때의 층수 — HP·목표시간·스킬 수가 여기서 나온다(§18-11)</summary>
         public static int BossFloor = 5;
@@ -82,13 +82,13 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 침략 전투 진입. 연체 2회면 화면 버튼뿐 아니라 여기서도 거부한다(§18-5).
-        /// 침략 본게임(적 별·약탈)은 열지 않는다 — 잠금만 생산 경계다.
+        /// 침략 전투 진입. 연체 2회·출정 비용 부족이면 거부(§15·§18-5).
+        /// 본게임은 로컬 별 수비대와 싸우고 약탈을 정산한다. 다른 유저 서버는 아니다.
         /// </summary>
         public static bool TryGoInvasion()
         {
-            if (!GameState.CanInvade()) return false;
-            GoBattle(WorldMap);
+            if (!InvasionState.TryBegin()) return false;
+            GoBattle(WorldMap, BattleKind.침략, GameState.TowerFloor);
             return true;
         }
 

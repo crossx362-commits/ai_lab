@@ -17,10 +17,13 @@ namespace AshesToStars
     public class BattleScreen : GameScreen
     {
         protected override string Title => GameFlow.Kind == GameFlow.BattleKind.보스
-            ? $"보스전 · {GameFlow.BossFloor}층" : "전투";
+            ? $"보스전 · {GameFlow.BossFloor}층"
+            : GameFlow.Kind == GameFlow.BattleKind.침략 ? "침략" : "전투";
         protected override string Subtitle => GameFlow.Kind == GameFlow.BattleKind.보스
             ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
-            : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
+            : GameFlow.Kind == GameFlow.BattleKind.침략
+                ? "로컬 별 수비대. PvP 사망은 목숨을 깎지 않는다(§15)"
+                : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
         protected override bool ShowBottomBar => false;
         protected override bool ShowHeader => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
@@ -214,6 +217,18 @@ namespace AshesToStars
 
         void OnBattleEnd(bool survived)
         {
+            if (GameFlow.Kind == GameFlow.BattleKind.침략)
+            {
+                long loot = InvasionState.Settle(survived);
+                if (survived)
+                    GameFlow.LastBattleSummary =
+                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)} ({_t:F1}초)";
+                else
+                    ApplyDefeatOnce($"침략 패배 — {_t:F1}초", isPvp: true);
+                GameFlow.Go(GameFlow.Result);
+                return;
+            }
+
             // 던전 안이면 결과 화면이 아니라 **노드 맵으로 돌아간다** — 런이 계속되기 때문이다.
             // 진 경우에만 런을 끝낸다(사망 기록은 아래 공통 경로가 처리한다).
             bool inDungeon = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
@@ -272,11 +287,11 @@ namespace AshesToStars
             GameFlow.Go(GameFlow.Result);
         }
 
-        void ApplyDefeatOnce(string head)
+        void ApplyDefeatOnce(string head, bool isPvp = false)
         {
             if (_defeatApplied) return;
             _defeatApplied = true;
-            var report = GameFlow.ApplyPveDefeat(isPvp: false);
+            var report = GameFlow.ApplyPveDefeat(isPvp);
             GameFlow.LastBattleSummary = GameFlow.FormatDefeatSummary(head, report);
         }
 

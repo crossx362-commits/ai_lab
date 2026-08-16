@@ -42,7 +42,8 @@ namespace AshesToStars
             string invasionLock = InvasionHubLockReason();
             if (invasionLock != null)
                 Locked(r, 1, "침략", invasionLock);
-            else if (Row(r, 1, "침략", "비동기 PvP — 상대 별을 침공한다(§15)"))
+            else if (Row(r, 1, "침략",
+                         $"로컬 별 수비대 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§15)"))
                 GameFlow.TryGoInvasion();
 
             Locked(r, 2, "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)");

@@ -30,7 +30,7 @@ namespace AshesToStars
             Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
             Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
-            Sub.수비대 => "최대 5명. 전멸해도 사망 카운트는 없다. 침략 전투는 아직 없다(§13-5)",
+            Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
             _ => "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
         };
 
@@ -114,9 +114,67 @@ namespace AshesToStars
                 if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
                 return;
             }
+
             Info(r, row++,
-                "거래 서버가 없다 — 등록·구매는 열지 않는다. 문은 열렸지만 장은 없다(§12·OUT)");
-            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · 등록 2%·체결 8% 소각. 다른 유저 서버 아님.");
+            if (!string.IsNullOrEmpty(_msg))
+                Info(r, row++, _msg);
+
+            var lots = AuctionState.Lots;
+            for (int i = 0; i < lots.Count && row < 7; i++)
+            {
+                var lot = lots[i];
+                string who = lot.Npc ? "장" : "내 등록";
+                if (lot.Npc)
+                {
+                    if (Row(r, row++, $"구매 {lot.Label}",
+                            $"{who} · {Economy.FormatCurrency(lot.Price)}",
+                            ItemAtlas.KeyFor(ParseLotItem(lot))))
+                    {
+                        _msg = AuctionState.TryBuy(lot.Id)
+                            ? $"{lot.Label} 구매"
+                            : "구매 실패 — 골드 부족이거나 상한";
+                    }
+                }
+                else if (Row(r, row++, $"취소 {lot.Label}",
+                             $"{who} · {Economy.FormatCurrency(lot.Price)}"))
+                {
+                    _msg = AuctionState.TryCancel(lot.Id) ? "등록 취소 · 수수료는 소각" : "취소 실패";
+                }
+            }
+
+            var bag = Equipment.Unequipped();
+            if (bag.Count > 0 && row < 8)
+            {
+                var g = bag[0];
+                long price = 12_000 + g.Enhance * 2_000;
+                if (Row(r, row++, $"등록 {g.Name}",
+                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(price))} · {Economy.FormatCurrency(price)}"))
+                {
+                    _msg = AuctionState.TryListGear(g.Id, price)
+                        ? $"{g.Name} 등록"
+                        : "등록 실패 — 수수료·한도·잠금";
+                }
+            }
+            else if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) > 0 && row < 8)
+            {
+                const long hidePrice = 2_400;
+                if (Row(r, row++, "등록 사냥 가죽 1",
+                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(hidePrice))}"))
+                {
+                    _msg = AuctionState.TryListItem(Economy.LifeItem.CraftHide, 1, hidePrice)
+                        ? "가죽 등록" : "등록 실패";
+                }
+            }
+
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) { _msg = ""; _sub = Sub.없음; }
+        }
+
+        static Economy.LifeItem ParseLotItem(AuctionState.Lot lot)
+        {
+            if (lot != null && System.Enum.TryParse(lot.Key, out Economy.LifeItem it))
+                return it;
+            return Economy.LifeItem.EnhanceStone;
         }
 
         string _msg = "";

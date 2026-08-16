@@ -351,6 +351,38 @@ namespace AshesToStars
         }
 
         /// <summary>삭제된 캐릭터의 장착 6부위는 함께 사라진다(§4·§11). 가방의 나머지 장비는 남는다.</summary>
+        public static bool TryRemove(string gearId)
+        {
+            Load();
+            if (string.IsNullOrEmpty(gearId) || WornByAnyone(gearId)) return false;
+            int n = _items.RemoveAll(g => g.Id == gearId);
+            if (n > 0) Save();
+            return n > 0;
+        }
+
+        /// <summary>경매 취소·구매로 가방에 장비를 되돌린다. packed = recipeId|enhance.</summary>
+        public static bool RestoreListed(string packed, string label)
+        {
+            Load();
+            if (string.IsNullOrEmpty(packed)) return false;
+            var parts = packed.Split('|');
+            var rec = RecipeOf(parts[0]);
+            if (rec == null) return false;
+            int enh = 0;
+            if (parts.Length > 1) int.TryParse(parts[1], out enh);
+            _items.Add(new GearItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Slot = rec.Slot,
+                RecipeId = rec.Id,
+                Name = rec.Name,
+                HpMul = rec.BaseHpMul,
+                Enhance = Mathf.Clamp(enh, 0, MaxEnhance),
+            });
+            Save();
+            return true;
+        }
+
         public static void DestroyEquippedOn(CharacterRecord character)
         {
             Load();
