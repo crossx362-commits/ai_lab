@@ -20,6 +20,17 @@ namespace AshesToStars
                     $"[UiAtlasSelfCheck] {key}: 아틀라스 밖 영역 {rect}");
             }
 
+            Debug.Assert(UiAtlas.ButtonKey(false, false) == "button_normal",
+                "[UiAtlasSelfCheck] 기본 버튼 키가 아틀라스 조각과 어긋난다");
+            Debug.Assert(UiAtlas.ButtonKey(true, false) == "button_hover",
+                "[UiAtlasSelfCheck] 호버 버튼 키가 아틀라스 조각과 어긋난다");
+            Debug.Assert(UiAtlas.ButtonKey(false, true) == "button_pressed",
+                "[UiAtlasSelfCheck] 눌림이 호버보다 우선해야 한다");
+            Debug.Assert(UiAtlas.ButtonKey(true, true) == "button_pressed",
+                "[UiAtlasSelfCheck] 호버+눌림은 pressed 조각을 써야 한다");
+            Debug.Assert(UiAtlas.RectFor("hp_frame").width > 0,
+                "[UiAtlasSelfCheck] 체력바 프레임 조각이 없다");
+
             Debug.Log("[UiAtlasSelfCheck] PASS");
         }
     }

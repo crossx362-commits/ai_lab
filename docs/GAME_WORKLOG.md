@@ -10,6 +10,14 @@
 
 ---
 
+## UI 프레임 소비처 — 버튼 3상태·9-slice·체력바 (2026-08-16)
+
+- 클로드 주간 한도 세션이 배경 6장 반입 직후 「UI 프레임이 다음」에서 끊김.
+- 아틀라스 조각은 이미 있었는데 `button_hover`/`button_pressed`/`hp_frame` 소비처가 0곳.
+- `UiAtlas`에 ButtonKey·DrawSliced·DrawMeter를 두고 GameScreen·W3Party가 읽는다.
+- 검증: 컴파일 84소스 0오류, `unity_meas` `UiAtlasSelfCheck` PASS.
+- 다음: 아이콘(화면에 실제로 뜨는 것) 또는 V3 한 판 종단.
+
 ## V3 보스 HP — 파티 공격 배선, 실행 QA 대기 (2026-08-16)
 
 - 짧은 설계: `BossBattle`의 보스별 HP를 단일 권위로 유지하고, W3에는 화면을 중복해서 그리지 않는

@@ -208,11 +208,20 @@ namespace AshesToStars
         }
 
         /// <summary>텍스트와 클릭 판정은 IMGUI에 남기고, 배경만 새 픽셀아트 아틀라스로 교체한다.</summary>
-        void DrawAtlasButton(Rect r, string label)
+        void DrawAtlasButton(Rect r, string label, bool locked = false)
         {
-            if (!UiAtlas.Draw(r, "button_normal"))
+            bool hover = !locked && r.Contains(Event.current.mousePosition);
+            bool pressed = hover && Input.GetMouseButton(0);
+            Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
+            if (!UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
                 GUI.Box(r, GUIContent.none);
-            if (!string.IsNullOrEmpty(label)) GUI.Label(r, label, _btn);
+            if (!string.IsNullOrEmpty(label))
+            {
+                var prev = GUI.color;
+                if (locked) GUI.color = new Color(1f, 1f, 1f, 0.55f);
+                GUI.Label(r, label, _btn);
+                GUI.color = prev;
+            }
         }
 
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
@@ -245,10 +254,7 @@ namespace AshesToStars
             var br = new Rect(r.x, r.y + index * (h + gap), bw, h);
             if (br.yMax > r.yMax) return;
 
-            var prev = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, 0.42f);      // 눌리지 않는다는 것을 색으로 먼저 말한다
-            GUI.Label(br, label, _btn);                     // Button이 아니라 Label — 클릭 자체가 없다
-            GUI.color = prev;
+            DrawAtlasButton(br, label, locked: true);       // 회색 기본 스킨이 아니라 아틀라스 버튼을 흐리게
             GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - bw - 24, h - 12),
                       // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
                       "잠김 — " + why, _small);
@@ -260,7 +266,8 @@ namespace AshesToStars
             Styles();
             const float h = 58f, gap = 14f;
             var panel = new Rect(r.x - 12, r.y + index * (h + gap), r.width + 24, h);
-            UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
+            if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
+                UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
             GUI.Label(new Rect(r.x, r.y + index * (h + gap) + 14, r.width, 30), text, _panel);
         }
     }

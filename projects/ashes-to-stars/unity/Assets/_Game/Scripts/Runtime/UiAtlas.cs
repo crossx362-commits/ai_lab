@@ -87,6 +87,82 @@ namespace AshesToStars
             return true;
         }
 
+        /// <summary>호버·눌림을 아틀라스 3상태에 대응한다. 눌림이 호버보다 앞선다.</summary>
+        public static string ButtonKey(bool hover, bool pressed)
+        {
+            if (pressed) return "button_pressed";
+            if (hover) return "button_hover";
+            return "button_normal";
+        }
+
+        /// <summary>패널처럼 늘어나는 조각은 가장자리만 남기고 가운데를 늘린다.</summary>
+        public static bool DrawSliced(Rect target, string key, float border = 12f, Color? tint = null)
+        {
+            var texture = Texture;
+            var source = RectFor(key);
+            if (texture == null || source.width <= 0 || source.height <= 0) return false;
+
+            float b = Mathf.Min(border, source.width * 0.45f, source.height * 0.45f,
+                                target.width * 0.45f, target.height * 0.45f);
+            if (b < 1f) return Draw(target, key, tint);
+
+            var saved = GUI.color;
+            GUI.color = tint ?? Color.white;
+            float sx = source.x, sy = source.y, sw = source.width, sh = source.height;
+            float x0 = target.x, x1 = target.x + b, x2 = target.xMax - b, x3 = target.xMax;
+            float y0 = target.y, y1 = target.y + b, y2 = target.yMax - b, y3 = target.yMax;
+            DrawSrc(new Rect(x0, y0, b, b), new Rect(sx, sy, b, b), texture);
+            DrawSrc(new Rect(x1, y0, x2 - x1, b), new Rect(sx + b, sy, sw - 2f * b, b), texture);
+            DrawSrc(new Rect(x2, y0, b, b), new Rect(sx + sw - b, sy, b, b), texture);
+            DrawSrc(new Rect(x0, y1, b, y2 - y1), new Rect(sx, sy + b, b, sh - 2f * b), texture);
+            DrawSrc(new Rect(x1, y1, x2 - x1, y2 - y1), new Rect(sx + b, sy + b, sw - 2f * b, sh - 2f * b), texture);
+            DrawSrc(new Rect(x2, y1, b, y2 - y1), new Rect(sx + sw - b, sy + b, b, sh - 2f * b), texture);
+            DrawSrc(new Rect(x0, y2, b, b), new Rect(sx, sy + sh - b, b, b), texture);
+            DrawSrc(new Rect(x1, y2, x2 - x1, b), new Rect(sx + b, sy + sh - b, sw - 2f * b, b), texture);
+            DrawSrc(new Rect(x2, y2, b, b), new Rect(sx + sw - b, sy + sh - b, b, b), texture);
+            GUI.color = saved;
+            return true;
+        }
+
+        /// <summary>프레임 조각 안에 채움 막대를 그린다. 프레임이 없어도 막대는 그린다.</summary>
+        public static bool DrawMeter(Rect target, string frameKey, float fill01, Color fill)
+        {
+            bool framed = Draw(target, frameKey);
+            float padX = framed ? 10f : 0f;
+            float padY = framed ? 6f : 0f;
+            float w = Mathf.Max(0f, (target.width - padX * 2f) * Mathf.Clamp01(fill01));
+            if (w > 0f)
+            {
+                var saved = GUI.color;
+                GUI.color = fill;
+                GUI.DrawTexture(new Rect(target.x + padX, target.y + padY, w, target.height - padY * 2f), Pixel);
+                GUI.color = saved;
+            }
+            return framed;
+        }
+
+        static Texture2D _pixel;
+        static Texture2D Pixel
+        {
+            get
+            {
+                if (_pixel == null)
+                {
+                    _pixel = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                    _pixel.SetPixel(0, 0, Color.white);
+                    _pixel.Apply();
+                    _pixel.hideFlags = HideFlags.HideAndDontSave;
+                }
+                return _pixel;
+            }
+        }
+
+        static void DrawSrc(Rect dest, Rect source, Texture2D texture)
+        {
+            if (dest.width <= 0f || dest.height <= 0f || source.width <= 0f || source.height <= 0f) return;
+            GUI.DrawTextureWithTexCoords(dest, texture, TextureCoords(source), true);
+        }
+
         static Rect TextureCoords(Rect source)
         {
             return new Rect(

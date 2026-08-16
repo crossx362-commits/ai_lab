@@ -3065,14 +3065,17 @@ public class W3Party : MonoBehaviour
 
             GUI.Label(new Rect(card.x + 45, card.y + 6, CW - 48, 20), $"{i + 1}", _cmdLabel);
 
-            // HP 바 — 숫자보다 길이가 빨리 읽힌다
+            // HP 바 — 숫자보다 길이가 빨리 읽힌다. 프레임은 UI 아틀라스 소비처다.
             float ratio = m.Alive ? Mathf.Clamp01(m.Hp / m.MaxHp) : 0f;
-            var bar = new Rect(card.x + 45, card.y + 30, CW - 50, 8);
-            GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
-            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height),
-                            Tint(ratio > .5f ? new Color(.35f, .85f, .4f)
-                               : ratio > .25f ? new Color(.95f, .78f, .3f)
-                                              : new Color(.9f, .3f, .3f)));
+            var bar = new Rect(card.x + 44, card.y + 28, CW - 49, 14);
+            var fill = ratio > .5f ? new Color(.35f, .85f, .4f)
+                     : ratio > .25f ? new Color(.95f, .78f, .3f)
+                                    : new Color(.9f, .3f, .3f);
+            if (!AshesToStars.UiAtlas.DrawMeter(bar, "hp_frame", ratio, fill))
+            {
+                GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
+                GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height), Tint(fill));
+            }
             GUI.Label(new Rect(card.x + 5, card.y + 53, CW - 10, 16),
                       m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
 
@@ -3156,8 +3159,13 @@ public class W3Party : MonoBehaviour
     bool SkillBtn(Rect r, string label, string icon, Member m, int slot)
     {
         bool queued = m.ForceSkill == slot;
-        GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.06f, .12f, .22f, .94f)));
-        GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2f), Tint(queued ? new Color(1f, .82f, .35f) : new Color(.25f, .55f, .9f)));
+        bool hover = r.Contains(Event.current.mousePosition);
+        bool pressed = hover && Input.GetMouseButton(0);
+        if (!AshesToStars.UiAtlas.Draw(r, AshesToStars.UiAtlas.ButtonKey(hover, pressed || queued)))
+        {
+            GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.06f, .12f, .22f, .94f)));
+            GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2f), Tint(queued ? new Color(1f, .82f, .35f) : new Color(.25f, .55f, .9f)));
+        }
         CombatIconAtlas.Draw(new Rect(r.x + 6f, r.y + 5f, 28f, 28f), icon);
         GUI.Label(new Rect(r.x + 38f, r.y + 7f, r.width - 42f, 20f), queued ? label + " ▶" : label, _cmdLabel);
         GUI.Label(new Rect(r.x + 38f, r.y + 29f, r.width - 42f, 16f), slot == 1 ? "SPACE" : "Q", _cmdLabel);
