@@ -94,8 +94,11 @@ namespace AshesToStars
                 _hubPage = 3;
             if (System.Environment.GetEnvironmentVariable("QA_WORLD_AURA") == "1")
                 _sub = Sub.영공;
+            if (System.Environment.GetEnvironmentVariable(WorldStar.EnvShowSense) == "1")
+                _sub = Sub.영공;
             if (System.Environment.GetEnvironmentVariable(EstateMine.EnvShowRace) == "1")
                 _hubPage = 1;
+            WorldStar.SeedRaceSenseQaIfRequested();
             EstateMine.SeedQaIfRequested();
             EstateMine.SeedRaceQaIfRequested();
             EstateDefense.SeedQaIfRequested();
@@ -197,15 +200,20 @@ namespace AshesToStars
                     ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
                     : " · 넘치면 소멸"),
                 "building_auction", locked: true);
-            if (DrawCard(cards[4], "내 별 영공",
-                    WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel(),
-                    "worldmap"))
+            string auraSub = WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel();
+            if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
+                auraSub = WorldStar.RaceSenseLine() + " · " + auraSub;
+            if (DrawCard(cards[4], "내 별 영공", auraSub, "worldmap"))
                 _sub = Sub.영공;
         }
 
         void Aura(Rect r)
         {
-            Info(r, 0, "내 별 · " + WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel());
+            string auraInfo = "내 별 · " + WorldStar.SizeLabel(GameState.TowerFloor)
+                + " · " + WorldStar.AuraLabel();
+            if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
+                auraInfo = WorldStar.RaceSenseLine() + " · " + auraInfo;
+            Info(r, 0, auraInfo);
             var cards = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 168f), 2, 1, 16f);
             if (DrawCard(cards[0], WorldStar.AllyBuff ? "아군 버프 켜짐" : "아군 버프 꺼짐",
                     "광산 생산 ×" + WorldStar.AllyMul.ToString("0.00") + "(§14)",

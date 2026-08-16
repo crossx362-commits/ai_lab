@@ -135,6 +135,7 @@ public static class ProjectSetup
             a.체력배율 = r.Item6; a.방어배율 = r.Item7; a.회복시간 = r.Item8;
             a.영지생산배율 = r.Item9; a.드랍률배율 = r.Item10; a.경매수수료 = r.Item11;
             a.약탈량배율 = r.Item1 == RaceId.수인 ? 1.20f : 1f;
+            a.인식범위배율 = r.Item1 == RaceId.엘프 ? 1.20f : 1f;
             a.고유메커니즘 = r.Item12; a.고유발동확률 = r.Item13;
             // 런타임(W3Party)이 Resources.LoadAll<RaceDef>("races")로 읽으므로 Resources 아래에 둔다
             // (스타일과 같은 이유). Data/Races에 두면 빌드에 안 실려 소비처가 다시 죽는다.

@@ -42,9 +42,11 @@ namespace AshesToStars
                 "별 판과 카드가 겹치지 않는다");
 
             WorldStar.ResetForTest();
-            Check(WorldStar.Sense(1) == WorldStar.MinSense, "1층 영공은 최소");
-            Check(WorldStar.Sense(1) < WorldStar.Sense(50), "층이 오르면 영공이 넓어진다");
-            Check(Mathf.Abs(WorldStar.Sense(100) - WorldStar.MaxSense) < 0.01f, "100층 영공은 최대");
+            RacePrefs.Set(RaceId.인간);
+            Check(WorldStar.SenseBase(1) == WorldStar.MinSense, "1층 영공은 최소");
+            Check(WorldStar.SenseBase(1) < WorldStar.SenseBase(50), "층이 오르면 영공이 넓어진다");
+            Check(Mathf.Abs(WorldStar.SenseBase(100) - WorldStar.MaxSense) < 0.01f, "100층 영공은 최대");
+            Check(Mathf.Abs(WorldStar.Sense(1) - WorldStar.SenseBase(1)) < 0.01f, "인간은 기준 영공");
             Check(!WorldStar.AllyBuff && !WorldStar.EnemyDebuff, "기본은 영공 꺼짐 — 켠다");
             long raw = EstateMine.CopperPerHour();
             Check(EstateMine.CopperPerHourEffective() == raw, "끄면 광산은 기준값");

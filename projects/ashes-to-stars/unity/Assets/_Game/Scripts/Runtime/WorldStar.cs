@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace AshesToStars
@@ -5,6 +6,7 @@ namespace AshesToStars
     /// <summary>
     /// 월드맵 내 별(§14 ✅). 크기는 층에 따라 커지고, 인식 범위도 같이 넓어진다.
     /// 영공 버프/디버프는 영지에서 켠다. 10층 모양 연출은 💡라 안 넣는다.
+    /// 엘프는 같은 층에서 영공이 120%(§18-9). 탐험 범위 +30%는 안개 시스템이 없어 안 넣는다.
     /// </summary>
     public static class WorldStar
     {
@@ -16,6 +18,10 @@ namespace AshesToStars
         public const float MaxSense = 16f;
         public const float AllyBuffMul = 1.05f;
         public const float EnemyDebuffMul = 0.95f;
+        public const string EnvShowSense = "QA_RACE_SENSE";
+        public const string EnvNoSense = "QA_NO_RACE_SENSE";
+        public const int HumanSensePercent = 100;
+        public const int ElfSensePercent = 120;
 
         const string K_ALLY = "ats.star.ally";
         const string K_ENEMY = "ats.star.enemy";
@@ -23,6 +29,7 @@ namespace AshesToStars
         static bool _loaded;
         static bool _ally;
         static bool _enemy;
+        static bool _senseQaSeeded;
 
         public static int ClampFloor(int floor) => Mathf.Clamp(floor, 1, MaxFloor);
 
@@ -32,10 +39,52 @@ namespace AshesToStars
             return MinPx + (MaxPx - MinPx) * (f - 1) / (MaxFloor - 1);
         }
 
-        public static float Sense(int floor)
+        /// <summary>층만 본 기준 영공. 종족 배율은 `Sense`가 곱한다.</summary>
+        public static float SenseBase(int floor)
         {
             int f = ClampFloor(floor);
             return MinSense + (MaxSense - MinSense) * (f - 1) / (MaxFloor - 1);
+        }
+
+        /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForceRaceSenseMul;
+
+        public static bool SenseRaceBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoSense) == "1";
+
+        /// <summary>§18-9 엘프 별 인식 +20%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static int RaceSensePercent()
+        {
+            if (SenseRaceBlocked) return HumanSensePercent;
+            if (ForceRaceSenseMul > 0f) return Math.Max(1, (int)Math.Round(ForceRaceSenseMul * 100f));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].인식범위배율 > 0f)
+                        return Math.Max(1, (int)Math.Round(races[i].인식범위배율 * 100f));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.엘프 ? ElfSensePercent : HumanSensePercent;
+        }
+
+        public static float ApplyRaceSense(float radius) =>
+            radius * RaceSensePercent() / 100f;
+
+        /// <summary>같은 층에서 엘프 영공이 인간/드워프/수인의 120%(§18-9).</summary>
+        public static float Sense(int floor) => ApplyRaceSense(SenseBase(floor));
+
+        public static string RaceSenseLine()
+        {
+            if (RaceSensePercent() == ElfSensePercent && RacePrefs.Get() == RaceId.엘프)
+                return "엘프 인식 +20%(§18-9)";
+            return "종족 인식 배율 없음";
         }
 
         public static string SizeLabel(int floor) =>
@@ -78,6 +127,18 @@ namespace AshesToStars
             PlayerPrefs.SetInt(K_ENEMY, _enemy ? 1 : 0);
         }
 
+        /// <summary>시각 QA. QA_RACE_SENSE=1이면 엘프·30층으로 영공을 연다.</summary>
+        public static void SeedRaceSenseQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowSense) != "1") return;
+            if (SenseRaceBlocked) return;
+            if (_senseQaSeeded) return;
+            _senseQaSeeded = true;
+            RacePrefs.Set(RaceId.엘프);
+            if (GameState.TowerFloor < 30)
+                GameState.SetTowerFloorForTest(30);
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_ALLY);
@@ -85,6 +146,8 @@ namespace AshesToStars
             _loaded = false;
             _ally = false;
             _enemy = false;
+            _senseQaSeeded = false;
+            ForceRaceSenseMul = 0f;
         }
 
         public static Rect Plate(Rect body) =>
