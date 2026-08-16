@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>재와 별 · 개발 보드</title>
+<style>
+  :root {
+    --bg: #12100e;
+    --panel: #1b1814;
+    --line: #2e2922;
+    --gold: #d4a24c;
+    --ink: #efe8d8;
+    --muted: #9a9184;
+    --ok: #6cba7a;
+    --hold: #e0a050;
+    --stop: #d06450;
+    --chip: #26221c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header {
+    padding: 20px 24px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end;
+    justify-content: space-between;
+  }
+  h1 { margin: 0; font-size: 20px; letter-spacing: .04em; font-weight: 700; }
+  h1 span { color: var(--gold); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    border: 1px solid var(--line); background: var(--chip);
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--muted);
+  }
+  .pill.on { border-color: var(--gold); color: var(--gold); }
+  .pill.bad { border-color: var(--stop); color: var(--stop); }
+  .pill.ok { border-color: var(--ok); color: var(--ok); }
+  main { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; padding: 18px 24px 40px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 14px; } }
+  section {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 12px;
+  }
+  h2 { margin: 0 0 12px; font-size: 13px; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; }
+  .item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+  .item:first-of-type { border-top: 0; padding-top: 0; }
+  .item label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; flex: 1; }
+  .item input { margin-top: 4px; accent-color: var(--gold); }
+  .item .t { font-weight: 650; }
+  .item .d { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .item.done .t { color: var(--ok); }
+  .n { color: var(--gold); font-variant-numeric: tabular-nums; min-width: 1.4em; }
+  textarea, input[type=text] {
+    width: 100%; background: #100e0c; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; font: inherit;
+  }
+  textarea { min-height: 110px; resize: vertical; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
+  button {
+    background: var(--gold); color: #1a1408; border: 0; border-radius: 8px;
+    padding: 8px 14px; font-weight: 700; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  button.ghost.on { color: var(--hold); border-color: var(--hold); }
+  button:disabled { opacity: .5; cursor: wait; }
+  .msg { font-size: 13px; color: var(--ok); min-height: 1.2em; }
+  .msg.err { color: var(--stop); }
+  .log {
+    white-space: pre-wrap; font: 12px/1.45 ui-monospace, Menlo, monospace;
+    color: #cfc4b0; background: #100e0c; border-radius: 8px; padding: 10px;
+    max-height: 220px; overflow: auto;
+  }
+  .commit { font-size: 13px; padding: 6px 0; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+  .commit:first-of-type { border-top: 0; }
+  .hash { color: var(--gold); font-family: ui-monospace, Menlo, monospace; }
+  .when { color: var(--muted); min-width: 72px; }
+  details.inbox summary { cursor: pointer; color: var(--ink); font-weight: 650; }
+  details.inbox { padding: 8px 0; border-top: 1px solid var(--line); }
+  details.inbox:first-of-type { border-top: 0; }
+  details.inbox p { color: var(--muted); font-size: 13px; margin: 6px 0 0; white-space: pre-wrap; }
+  .empty { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>재와 별 <span>개발 보드</span></h1>
+    <div class="meta" id="updated">불러오는 중…</div>
+  </div>
+  <div class="pills" id="pills"></div>
+</header>
+<main>
+  <div>
+    <section>
+      <h2>원장 관문</h2>
+      <div id="milestones"></div>
+    </section>
+    <section style="margin-top:18px">
+      <h2>다음 할 일</h2>
+      <div id="queue"></div>
+    </section>
+    <section style="margin-top:18px">
+      <h2>요청하기</h2>
+      <input type="text" id="req-title" maxlength="80" placeholder="한 줄 제목 — 루프가 맨 먼저 읽는다">
+      <textarea id="req-body" placeholder="무엇을, 왜, 통과 기준까지. 모호하면 가장 좁게 해석된다."></textarea>
+      <div class="row">
+        <label class="meta"><input type="checkbox" id="req-resume"> HOLD 풀고 다음 이터에서 집게</label>
+        <button id="req-send" type="button">INBOX에 넣기</button>
+        <span class="msg" id="req-msg"></span>
+      </div>
+    </section>
+  </div>
+  <div>
+    <section>
+      <h2>루프</h2>
+      <div class="row" id="loop-btns">
+        <button class="ghost" data-act="hold" type="button">HOLD</button>
+        <button class="ghost" data-act="unhold" type="button">HOLD 해제</button>
+        <button class="ghost" data-act="stop" type="button">STOP</button>
+        <button class="ghost" data-act="unstop" type="button">STOP 해제</button>
+      </div>
+      <div class="log" id="log" style="margin-top:12px"></div>
+    </section>
+    <section style="margin-top:18px">
+      <h2>최근 완료</h2>
+      <div id="results"></div>
+    </section>
+    <section style="margin-top:18px">
+      <h2>INBOX 대기</h2>
+      <div id="inbox"></div>
+    </section>
+    <section style="margin-top:18px">
+      <h2>최근 커밋</h2>
+      <div id="commits"></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function api(path, body) {
+  const opt = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+  const r = await fetch(path, opt);
+  const data = await r.json();
+  if (!r.ok || data.ok === false) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+function checked(state, id) { return Boolean(state.checks && state.checks[id]); }
+
+function renderItems(el, items, state, extra) {
+  if (!items.length) { el.innerHTML = '<p class="empty">없음</p>'; return; }
+  el.innerHTML = items.map((it) => {
+    const on = it.done || checked(state, it.id);
+    return `<div class="item${on ? " done" : ""}">
+      ${it.n ? `<span class="n">${it.n}</span>` : ""}
+      <label>
+        <input type="checkbox" data-id="${it.id}" ${on && !it.done ? "checked" : ""} ${it.done ? "checked disabled" : ""}>
+        <div><div class="t">${esc(it.title)}</div><div class="d">${esc(it.detail || "")}</div></div>
+      </label>
+    </div>`;
+  }).join("");
+  extra && extra();
+}
+
+function esc(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function render(state) {
+  $("updated").textContent = "STATUS 갱신 · " + (state.updated || "시각 없음");
+  const L = state.loop || {};
+  $("pills").innerHTML = [
+    `<span class="pill on">실행기 ${esc(L.agent || "?")}</span>`,
+    L.hold ? `<span class="pill bad">HOLD</span>` : `<span class="pill ok">가동 가능</span>`,
+    L.stop ? `<span class="pill bad">STOP</span>` : "",
+    L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
+  ].join("");
+  renderItems($("milestones"), state.milestones || [], state);
+  renderItems($("queue"), state.queue || [], state);
+  $("log").textContent = L.log_tail || "(루프 로그 없음)";
+  const results = state.results || [];
+  $("results").innerHTML = results.length ? results.map((it) => `
+    <div class="item${checked(state, it.id) ? " done" : ""}">
+      <label>
+        <input type="checkbox" data-id="${it.id}" ${checked(state, it.id) ? "checked" : ""}>
+        <div><div class="t">${esc(it.title)}</div>
+        <div class="d">${it.commit ? it.commit + " · " : ""}${esc((it.body || "").slice(0, 180))}</div></div>
+      </label>
+    </div>`).join("") : '<p class="empty">기록 없음</p>';
+  const waiting = (state.inbox && state.inbox.waiting) || [];
+  $("inbox").innerHTML = waiting.length ? waiting.map((it) => `
+    <details class="inbox"><summary>${esc(it.title)}</summary><p>${esc(it.body)}</p></details>
+  `).join("") : '<p class="empty">대기 지시 없음 — 아래 요청이 여기로 간다</p>';
+  const commits = state.commits || [];
+  $("commits").innerHTML = commits.length ? commits.map((c) => `
+    <div class="commit"><span class="hash">${esc(c.hash)}</span><span class="when">${esc(c.when)}</span><span>${esc(c.subject)}</span></div>
+  `).join("") : '<p class="empty">커밋 없음</p>';
+}
+
+async function refresh() {
+  const state = await api("/api/state");
+  render(state);
+}
+
+document.addEventListener("change", async (e) => {
+  const box = e.target.closest("input[type=checkbox][data-id]");
+  if (!box) return;
+  try {
+    await api("/api/check", { id: box.dataset.id, done: box.checked });
+    await refresh();
+  } catch (err) { alert(err.message); }
+});
+
+$("req-send").onclick = async () => {
+  const title = $("req-title").value.trim();
+  const body = $("req-body").value.trim();
+  const msg = $("req-msg");
+  msg.className = "msg";
+  if (!title) { msg.className = "msg err"; msg.textContent = "제목이 필요하다"; return; }
+  $("req-send").disabled = true;
+  try {
+    const r = await api("/api/request", { title, body, resume: $("req-resume").checked });
+    msg.textContent = "넣음 · " + r.at;
+    $("req-title").value = "";
+    $("req-body").value = "";
+    await refresh();
+  } catch (err) {
+    msg.className = "msg err";
+    msg.textContent = err.message;
+  } finally {
+    $("req-send").disabled = false;
+  }
+};
+
+$("loop-btns").onclick = async (e) => {
+  const btn = e.target.closest("button[data-act]");
+  if (!btn) return;
+  try {
+    await api("/api/loop", { action: btn.dataset.act });
+    await refresh();
+  } catch (err) { alert(err.message); }
+};
+
+refresh().catch((err) => { $("updated").textContent = "불러오기 실패: " + err.message; });
+setInterval(() => refresh().catch(() => {}), 8000);
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@
 #   ./loop/loop.sh              # 무한 반복
 #   LOOP_AGENT=grok ./loop/loop.sh   # Grok 헤드리스 (클로드·코덱스 한도일 때)
 #   LOOP_AGENT=codex ./loop/loop.sh  # Codex 새 세션으로 반복
+#   python3 loop/board.py       # 진행·체크·요청 페이지 (http://127.0.0.1:8766)
 #   touch loop/STOP             # 다음 이터레이션 시작 전에 멈춘다
 #   rm loop/STOP                # 다시 시작
 #

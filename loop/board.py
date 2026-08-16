@@ -1,0 +1,398 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""재와 별 개발 보드 — 진행을 보고 체크하고 INBOX에 요청한다.
+
+    python3 loop/board.py          → http://127.0.0.1:8766
+    BOARD_HOST=127.0.0.1           이 기기만
+    BOARD_PORT=8766
+
+함대 FleetView(8765)와 별개다. 이 화면은 루프가 읽는 파일만 다룬다:
+STATUS.md · DESIGN.md · feedback/INBOX.md · loop/HOLD·STOP·agent.
+요청은 INBOX 「대기 중」에 붙고, 다음 이터레이션이 큐보다 먼저 읽는다.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import threading
+import webbrowser
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlparse
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+PORT = int(os.getenv("BOARD_PORT", "8766"))
+CHECKS_PATH = HERE / "board_checks.json"
+
+STATUS = ROOT / "docs" / "STATUS.md"
+DESIGN = ROOT / "docs" / "DESIGN.md"
+INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
+
+
+def _read(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def item_id(text: str) -> str:
+    return hashlib.sha1(text.strip().encode("utf-8")).hexdigest()[:12]
+
+
+def parse_queue(status: str) -> list[dict]:
+    """STATUS 「다음 할 일」 번호 목록."""
+    m = re.search(r"^## 다음 할 일[^\n]*\n", status, re.M)
+    if not m:
+        return []
+    rest = status[m.end():]
+    end = re.search(r"^## |\n최종 갱신:", rest)
+    block = rest[: end.start()] if end else rest
+    out = []
+    for line in block.splitlines():
+        hit = re.match(r"^(\d+)\.\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+)$", line.strip())
+        if not hit:
+            continue
+        title, detail = hit.group(2).strip(), hit.group(3).strip()
+        out.append({
+            "n": int(hit.group(1)),
+            "id": item_id(title),
+            "title": title,
+            "detail": detail,
+            "human": "사람" in detail or "자동검사로" in detail,
+        })
+    return out
+
+
+def parse_results(status: str, limit: int = 8) -> list[dict]:
+    """최근 이터 결과 블록. 최신이 앞."""
+    found = []
+    for m in re.finditer(
+        r"> \*\*(이번 이터 결과|이전 이터 결과)(?:\([^)]*\))?:\s*([^*]+?)\*\*\s*(.*?)\s*(?=\n> \*\*|\n최종 갱신:|\n## |\Z)",
+        status,
+        re.S,
+    ):
+        kind, title, body = m.group(1), m.group(2).strip(" ."), m.group(3)
+        body = re.sub(r"^>\s?", "", body, flags=re.M).strip()
+        if not title:
+            title = body.split("\n", 1)[0].strip(" .")
+        commit = ""
+        cm = re.search(r"`([0-9a-f]{8,40})`", body)
+        if cm:
+            commit = cm.group(1)[:8]
+        found.append({
+            "id": item_id(title + commit),
+            "kind": kind,
+            "title": title[:160],
+            "body": body[:700],
+            "commit": commit,
+        })
+    # 문서 위가 최신
+    return found[:limit]
+
+
+def parse_milestones(design: str) -> list[dict]:
+    m = re.search(r"### 현재 핵심 미완.*?\n\n(.*?)(?=\n## |\Z)", design, re.S)
+    if not m:
+        return []
+    out = []
+    for line in m.group(1).splitlines():
+        hit = re.match(r"^- \*\*(.+?)\*\*(.*)$", line.strip())
+        if not hit:
+            continue
+        title, rest = hit.group(1).strip(), hit.group(2).strip(" —-")
+        out.append({
+            "id": item_id(title),
+            "title": title,
+            "detail": rest,
+            "done": "✅" in line,
+        })
+    return out
+
+
+def parse_inbox(inbox: str) -> dict:
+    waiting, done = [], []
+
+    def section(name: str) -> str:
+        m = re.search(rf"^## {re.escape(name)}[^\n]*\n", inbox, re.M)
+        if not m:
+            return ""
+        rest = inbox[m.end():]
+        nxt = re.search(r"^## ", rest, re.M)
+        return rest[: nxt.start()] if nxt else rest
+
+    def headings(block: str, dest: list) -> None:
+        parts = re.split(r"^### ", block, flags=re.M)
+        for part in parts[1:]:
+            lines = part.strip().splitlines()
+            if not lines:
+                continue
+            title = lines[0].strip()
+            body = "\n".join(lines[1:]).strip()
+            dest.append({
+                "id": item_id(title),
+                "title": title[:180],
+                "body": body[:500],
+            })
+
+    headings(section("대기 중"), waiting)
+    headings(section("처리됨 — 최신") or section("처리됨"), done)
+    return {"waiting": waiting[:12], "done": done[:8]}
+
+
+def parse_updated(status: str) -> str:
+    m = re.search(r"^최종 갱신:\s*(.+)$", status, re.M)
+    return m.group(1).strip() if m else ""
+
+
+def load_checks() -> dict:
+    try:
+        data = json.loads(CHECKS_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_checks(data: dict) -> None:
+    CHECKS_PATH.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def write_request(title: str, body: str) -> str:
+    title = re.sub(r"\s+", " ", title).strip()
+    body = body.strip()
+    if not title:
+        raise ValueError("제목이 비어 있다")
+    if len(title) > 80:
+        title = title[:80]
+    if len(body) > 4000:
+        body = body[:4000]
+    text = _read(INBOX) or (
+        "# 오너 지시함 (INBOX) — 최우선\n\n## 대기 중\n"
+    )
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    block = f"\n### 📌 {title} (오너, {stamp})\n\n{body or '(본문 없음)'}\n\n"
+    marker = "## 대기 중"
+    idx = text.find(marker)
+    if idx < 0:
+        text = text.rstrip() + "\n\n## 대기 중\n" + block
+    else:
+        nl = text.find("\n", idx)
+        at = nl + 1 if nl >= 0 else idx + len(marker)
+        text = text[:at] + block + text[at:]
+    INBOX.parent.mkdir(parents=True, exist_ok=True)
+    INBOX.write_text(text, encoding="utf-8")
+    return stamp
+
+
+def loop_flags() -> dict:
+    agent = _read(HERE / "agent").strip() or os.getenv("LOOP_AGENT", "grok")
+    last_log = ""
+    main = ROOT / "loop" / "loop_main.log"
+    if main.is_file():
+        lines = main.read_text(encoding="utf-8", errors="replace").splitlines()
+        last_log = "\n".join(lines[-16:])
+    latest_iter = ""
+    log_dir = HERE / "logs"
+    if log_dir.is_dir():
+        iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
+        if iters:
+            latest_iter = iters[-1].name
+    return {
+        "agent": agent,
+        "hold": (HERE / "HOLD").exists(),
+        "stop": (HERE / "STOP").exists(),
+        "latest_iter": latest_iter,
+        "log_tail": last_log,
+    }
+
+
+def recent_commits() -> list[dict]:
+    try:
+        raw = subprocess.check_output(
+            [
+                "git", "log", "--pretty=format:%h\t%ad\t%s",
+                "--date=format:%m-%d %H:%M", "-12",
+                "--", "projects/ashes-to-stars", "docs/STATUS.md",
+                "docs/DESIGN.md", "docs/feedback/INBOX.md",
+            ],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            timeout=8,
+        )
+    except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired):
+        return []
+    out = []
+    for line in raw.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) == 3:
+            out.append({"hash": parts[0], "when": parts[1], "subject": parts[2]})
+    return out
+
+
+def build_state() -> dict:
+    status = _read(STATUS)
+    design = _read(DESIGN)
+    inbox = _read(INBOX)
+    checks = load_checks()
+    return {
+        "updated": parse_updated(status),
+        "queue": parse_queue(status),
+        "results": parse_results(status),
+        "milestones": parse_milestones(design),
+        "inbox": parse_inbox(inbox),
+        "checks": checks,
+        "loop": loop_flags(),
+        "commits": recent_commits(),
+    }
+
+
+def set_flag(name: str, on: bool) -> None:
+    if name not in ("HOLD", "STOP"):
+        raise ValueError("unknown flag")
+    path = HERE / name
+    if on:
+        path.write_text("", encoding="utf-8")
+    elif path.exists():
+        path.unlink()
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, fmt: str, *args) -> None:
+        return
+
+    def _json(self, code: int, payload) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _read_json(self) -> dict:
+        n = int(self.headers.get("Content-Length") or 0)
+        if n <= 0 or n > 200_000:
+            return {}
+        raw = self.rfile.read(n)
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def do_GET(self) -> None:
+        path = urlparse(self.path).path
+        if path in ("/", "/index.html"):
+            html = HERE / "board.html"
+            try:
+                body = html.read_bytes()
+            except OSError as e:
+                body = f"board.html 없음: {e}".encode("utf-8")
+                self.send_response(500)
+            else:
+                self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if path == "/api/state":
+            self._json(200, build_state())
+            return
+        self.send_response(404)
+        self.end_headers()
+
+    def do_POST(self) -> None:
+        path = urlparse(self.path).path
+        data = self._read_json()
+        try:
+            if path == "/api/request":
+                stamp = write_request(
+                    str(data.get("title") or ""),
+                    str(data.get("body") or ""),
+                )
+                if data.get("resume"):
+                    set_flag("HOLD", False)
+                self._json(200, {"ok": True, "at": stamp})
+                return
+            if path == "/api/check":
+                key = str(data.get("id") or "").strip()
+                if not re.fullmatch(r"[0-9a-f]{8,16}", key):
+                    self._json(400, {"ok": False, "error": "잘못된 id"})
+                    return
+                checks = load_checks()
+                if data.get("done"):
+                    checks[key] = {
+                        "at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "note": str(data.get("note") or "")[:120],
+                    }
+                else:
+                    checks.pop(key, None)
+                save_checks(checks)
+                self._json(200, {"ok": True, "checks": checks})
+                return
+            if path == "/api/loop":
+                action = str(data.get("action") or "")
+                if action == "hold":
+                    set_flag("HOLD", True)
+                elif action == "unhold":
+                    set_flag("HOLD", False)
+                elif action == "stop":
+                    set_flag("STOP", True)
+                elif action == "unstop":
+                    set_flag("STOP", False)
+                else:
+                    self._json(400, {"ok": False, "error": "알 수 없는 action"})
+                    return
+                self._json(200, {"ok": True, "loop": loop_flags()})
+                return
+        except ValueError as e:
+            self._json(400, {"ok": False, "error": str(e)})
+            return
+        self.send_response(404)
+        self.end_headers()
+
+
+def _lan_ip() -> str:
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+def main() -> None:
+    host = os.getenv("BOARD_HOST", "0.0.0.0")
+    srv = ThreadingHTTPServer((host, PORT), Handler)
+    print(f"재와 별 개발 보드  (ROOT={ROOT})")
+    print(f"  이 기기: http://127.0.0.1:{PORT}/")
+    if host != "127.0.0.1":
+        print(f"  다른 기기: http://{_lan_ip()}:{PORT}/")
+    print("  Ctrl+C 로 종료")
+    threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}/")).start()
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\n종료")
+        srv.shutdown()
+
+
+if __name__ == "__main__":
+    main()
