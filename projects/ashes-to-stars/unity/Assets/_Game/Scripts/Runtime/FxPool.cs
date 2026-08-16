@@ -52,6 +52,7 @@ namespace AshesToStars
         SpriteRenderer[] _sr;
         float[] _t, _life, _from, _to, _spin;
         Color[] _tint;
+        int[] _jobStyle;
         int _cursor;
 
         public static FxPool Instance
@@ -86,6 +87,7 @@ namespace AshesToStars
             _t = new float[CAP]; _life = new float[CAP];
             _from = new float[CAP]; _to = new float[CAP];
             _spin = new float[CAP]; _tint = new Color[CAP];
+            _jobStyle = new int[CAP];
 
             for (int i = 0; i < CAP; i++)
             {
@@ -125,6 +127,7 @@ namespace AshesToStars
             // 회전은 종류마다 성격이 다르다 — 충격파는 안 돌고 마법진은 천천히 돈다.
             p._spin[i] = kind == Kind.Summon ? 40f : kind == Kind.Slash ? Random.Range(-25f, 25f) : 0f;
             p._tint[i] = tint ?? Color.white;
+            p._jobStyle[i] = 0;
 
             var tr = p._sr[i].transform;
             tr.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, -0.2f);
@@ -132,6 +135,21 @@ namespace AshesToStars
             p._sr[i].sprite = p._sprites[k];
             p._sr[i].color = p._tint[i];
             p._sr[i].gameObject.SetActive(true);
+        }
+
+        /// <summary>4×2 직업 시트의 8프레임을 공격 수명 안에서 순서대로 재생한다.</summary>
+        public static void PlayJob(int style, Vector2 worldPos, float scale = 1f)
+        {
+            var p = Instance;
+            if (p == null || p._sr == null) return;
+            var first = JobVfxSheets.Frame(style, 0);
+            if (first == null) return;
+            int i = p._cursor; p._cursor = (p._cursor + 1) % CAP;
+            p._t[i] = 0f; p._life[i] = .34f; p._from[i] = .7f * scale; p._to[i] = 1.3f * scale;
+            p._spin[i] = 0f; p._tint[i] = Color.white; p._jobStyle[i] = style + 1;
+            var tr = p._sr[i].transform;
+            tr.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, -.2f); tr.localRotation = Quaternion.identity;
+            p._sr[i].sprite = first; p._sr[i].color = Color.white; p._sr[i].gameObject.SetActive(true);
         }
 
         void Update()
@@ -143,7 +161,10 @@ namespace AshesToStars
 
                 _t[i] += dt;
                 float u = _t[i] / _life[i];
-                if (u >= 1f) { _sr[i].gameObject.SetActive(false); continue; }
+                if (u >= 1f) { _jobStyle[i] = 0; _sr[i].gameObject.SetActive(false); continue; }
+
+                if (_jobStyle[i] > 0)
+                    _sr[i].sprite = JobVfxSheets.Frame(_jobStyle[i] - 1, Mathf.Min(7, (int)(u * 8f)));
 
                 // 크기는 처음에 빠르게 벌어지고 끝에서 느려진다 — 등속이면 밋밋하다.
                 float e = 1f - (1f - u) * (1f - u);

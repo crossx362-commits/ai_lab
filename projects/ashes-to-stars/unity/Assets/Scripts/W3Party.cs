@@ -659,7 +659,12 @@ public class W3Party : MonoBehaviour
         // 섞이게 하고, 빈도를 솎아 "터지긴 하는데 시야는 살아 있는" 상태를 만든다.
         _fxTick++;
         if ((_fxTick & 1) == 0)
-            FxPool.Play(IsMelee(m.Job) ? FxPool.Kind.Slash : FxPool.Kind.Hit, targetPos, 0.8f);
+        {
+            if (m.Job == Job.수호기사) FxPool.PlayJob(0, targetPos, 0.8f);
+            else if (m.Job == Job.검사) FxPool.PlayJob(1, targetPos, 0.8f);
+            else if (m.Job == Job.마법사) FxPool.PlayJob(2, targetPos, 0.9f);
+            else FxPool.Play(IsMelee(m.Job) ? FxPool.Kind.Slash : FxPool.Kind.Hit, targetPos, 0.8f);
+        }
     }
 
     int _fxTick;    // 이펙트 솎아내기용 카운터
