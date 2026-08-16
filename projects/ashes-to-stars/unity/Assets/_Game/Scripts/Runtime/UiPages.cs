@@ -83,10 +83,16 @@ namespace AshesToStars
             return $"sprites/{dir}/{dir}_{frame}";
         }
 
+        public const string IdleFrame = "idle_00";
+        /// <summary>시작 직업 카드는 idle(오너 21:52). 걷기로 바꾸면 SelfCheck가 실패한다.</summary>
+        public const bool StarterLookWalks = false;
+
         public static string WalkFrame() =>
             (Time.unscaledTime % 0.36f) < 0.18f ? "walk_00" : "walk_01";
 
-        /// <summary>전신. walk면 idle/walk 두 장으로 걷는다. 어두운 판 위에서는 초상을 크게 깐다.</summary>
+        public static string JobLookFrame(bool walk) => walk ? WalkFrame() : IdleFrame;
+
+        /// <summary>전신. 스프라이트가 있으면 그걸 그린다. 없을 때만 초상 폴백.</summary>
         public static void DrawJobLook(Rect target, string job, bool walk, Color? tint = null)
         {
             var saved = GUI.color;
@@ -96,23 +102,18 @@ namespace AshesToStars
             GUI.color = saved;
             UiAtlas.DrawRosterFrame(target);
             var inner = new Rect(target.x + 6f, target.y + 6f, target.width - 12f, target.height - 12f);
-            string frame = walk ? WalkFrame() : "idle_00";
+            string frame = JobLookFrame(walk);
             var tex = Resources.Load<Texture2D>(LookPath(job, frame));
             if (tex == null && walk)
-                tex = Resources.Load<Texture2D>(LookPath(job, "idle_00"));
-            if (walk && tex != null)
+                tex = Resources.Load<Texture2D>(LookPath(job, IdleFrame));
+            if (tex != null)
             {
                 GUI.color = tint ?? Color.white;
                 GUI.DrawTexture(inner, tex, ScaleMode.ScaleToFit, true);
                 GUI.color = saved;
                 return;
             }
-            if (!PortraitAtlas.Draw(inner, PortraitAtlas.KeyForJob(job), tint) && tex != null)
-            {
-                GUI.color = tint ?? Color.white;
-                GUI.DrawTexture(inner, tex, ScaleMode.ScaleToFit, true);
-                GUI.color = saved;
-            }
+            PortraitAtlas.Draw(inner, PortraitAtlas.KeyForJob(job), tint);
         }
 
         public static Rect[] Grid(Rect r, int cols, int rows, float gap = 16f)

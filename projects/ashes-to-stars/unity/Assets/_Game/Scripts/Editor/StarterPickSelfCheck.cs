@@ -51,6 +51,14 @@ namespace AshesToStars
                 "1차 마법사는 마딜 폴더를 빌린다");
             Check(UiPages.LookPath("마딜", "idle_00") == "sprites/mage/mage_idle_00",
                 "마딜 전신은 mage 폴더 — 빼면 dps로 폴백한다");
+            Check(!UiPages.StarterLookWalks, "시작 카드는 idle — 걷기로 바꾸면 FAIL");
+            Check(UiPages.JobLookFrame(false) == UiPages.IdleFrame
+                  && UiPages.IdleFrame == "idle_00",
+                "walk=false는 idle_00");
+            Check(UiPages.JobLookFrame(false).StartsWith("walk_") == false,
+                "시작 프레임 이름에 walk가 없다");
+            Check(UiPages.JobLookFrame(true).StartsWith("walk_"),
+                "walk=true만 걷기 — 되돌리면 idle과 안 갈린다");
 
             string root = Path.Combine(Application.dataPath, "Resources", "sprites");
             string[] frames = { "idle_00", "walk_00", "walk_01" };
@@ -119,6 +127,8 @@ namespace AshesToStars
             _ = nameof(StarterPick.SeedQaIfRequested);
             _ = nameof(LifeSystem.BeginNewGame);
             _ = nameof(UiPages.DrawJobLook);
+            _ = nameof(UiPages.StarterLookWalks);
+            _ = nameof(UiPages.JobLookFrame);
             _ = nameof(TitleScreen);
 
             Environment.SetEnvironmentVariable(StarterPick.EnvShow, show);

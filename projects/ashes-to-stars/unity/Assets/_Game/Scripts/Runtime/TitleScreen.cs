@@ -72,7 +72,7 @@ namespace AshesToStars
         void DrawStarterPick(Rect r)
         {
             Hint(new Rect(r.x, r.y, r.width, 28f),
-                "첫 캐릭터 — 기본직업 5종. 전신과 걷기가 서로 다르다(오너 21:38)");
+                "첫 캐릭터 — 기본직업 5종. idle 포즈로 고른다(오너 21:52)");
             var cells = UiPages.Grid(new Rect(r.x, r.y + 36f, r.width, r.height - 36f), 3, 2, 14f);
             var jobs = StarterPick.Jobs;
             for (int i = 0; i < jobs.Length && i < cells.Length; i++)
@@ -84,7 +84,7 @@ namespace AshesToStars
                     UiAtlas.Draw(card, "panel", tint);
                 float lookH = Mathf.Max(80f, card.height - 88f);
                 UiPages.DrawJobLook(new Rect(card.x + 16f, card.y + 10f, card.width - 32f, lookH),
-                    job, true);
+                    job, UiPages.StarterLookWalks);
                 Hint(new Rect(card.x + 12f, card.yMax - 70f, card.width - 24f, 28f),
                     LifeSystem.BasicJobLabel(job));
                 Hint(new Rect(card.x + 12f, card.yMax - 42f, card.width - 24f, 28f),
