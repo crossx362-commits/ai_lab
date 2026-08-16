@@ -15,8 +15,17 @@ namespace AshesToStars
         public const int KeepX = 2, KeepY = 3;
         public const int StoreX = 3, StoreY = 3;
         public const int MineX = 5, MineY = 3;
+        public const int SmithX = 0, SmithY = 6;
+        public const int AuctionX = 7, AuctionY = 6;
+        public const int MausoleumX = 0, MausoleumY = 4;
+        public const int BarracksX = 7, BarracksY = 4;
 
-        public enum Cell { Empty, Keep, Mine, Warehouse, Arrow, Magic, Wall, Trap }
+        // 뒤에만 붙인다. 저장이 int라 가운데 끼우면 옛 세이브가 벽을 대장간으로 읽는다.
+        public enum Cell
+        {
+            Empty, Keep, Mine, Warehouse, Arrow, Magic, Wall, Trap,
+            Smith, Auction, Mausoleum, Barracks,
+        }
         public enum Side { 북, 동, 남, 서 }
 
         public static readonly Side[] Sides = { Side.북, Side.동, Side.남, Side.서 };
@@ -44,7 +53,13 @@ namespace AshesToStars
             x >= 0 && y >= 0 && x < Size && y < Size;
 
         public static bool IsCore(Cell c) =>
-            c == Cell.Keep || c == Cell.Mine || c == Cell.Warehouse;
+            c == Cell.Keep || c == Cell.Mine || c == Cell.Warehouse
+            || c == Cell.Smith || c == Cell.Auction || c == Cell.Mausoleum
+            || c == Cell.Barracks;
+
+        public static bool IsHub(Cell c) =>
+            c == Cell.Keep || c == Cell.Smith || c == Cell.Auction
+            || c == Cell.Mausoleum || c == Cell.Barracks;
 
         public static bool IsDefense(Cell c) =>
             c == Cell.Arrow || c == Cell.Magic || c == Cell.Wall || c == Cell.Trap;
@@ -311,6 +326,44 @@ namespace AshesToStars
             _cells[KeepY * Size + KeepX] = Cell.Keep;
             _cells[StoreY * Size + StoreX] = Cell.Warehouse;
             _cells[MineY * Size + MineX] = Cell.Mine;
+            PlaceIfEmpty(SmithX, SmithY, Cell.Smith);
+            PlaceIfEmpty(AuctionX, AuctionY, Cell.Auction);
+            PlaceIfEmpty(MausoleumX, MausoleumY, Cell.Mausoleum);
+            PlaceIfEmpty(BarracksX, BarracksY, Cell.Barracks);
+        }
+
+        static void PlaceIfEmpty(int x, int y, Cell c)
+        {
+            if (!InBounds(x, y)) return;
+            if (_cells[y * Size + x] == Cell.Empty) _cells[y * Size + x] = c;
+        }
+
+        /// <summary>옛 세이브에 허브 4동이 없으면 빈 칸에 앉힌다. 있으면 그대로.</summary>
+        public static void EnsureHubBuildings()
+        {
+            Load();
+            EnsureOne(Cell.Smith, SmithX, SmithY);
+            EnsureOne(Cell.Auction, AuctionX, AuctionY);
+            EnsureOne(Cell.Mausoleum, MausoleumX, MausoleumY);
+            EnsureOne(Cell.Barracks, BarracksX, BarracksY);
+        }
+
+        static void EnsureOne(Cell c, int px, int py)
+        {
+            if (Count(c) > 0) return;
+            if (InBounds(px, py) && _cells[py * Size + px] == Cell.Empty)
+            {
+                _cells[py * Size + px] = c;
+                Save();
+                return;
+            }
+            for (int i = 0; i < _cells.Length; i++)
+            {
+                if (_cells[i] != Cell.Empty) continue;
+                _cells[i] = c;
+                Save();
+                return;
+            }
         }
 
         static void Load()
@@ -322,13 +375,15 @@ namespace AshesToStars
             if (string.IsNullOrEmpty(raw)) return;
             var parts = raw.Split(',');
             if (parts.Length != _cells.Length) return;
+            int max = (int)Cell.Barracks;
             for (int i = 0; i < _cells.Length; i++)
             {
                 int n;
                 if (!int.TryParse(parts[i], out n)) continue;
-                if (n < 0 || n > (int)Cell.Trap) continue;
+                if (n < 0 || n > max) continue;
                 _cells[i] = (Cell)n;
             }
+            EnsureHubBuildings();
         }
 
         static void Save()

@@ -31,6 +31,13 @@ namespace AshesToStars
                 "창고는 중앙 (3,3)");
             Check(EstateGrid.At(EstateGrid.MineX, EstateGrid.MineY) == EstateGrid.Cell.Mine,
                 "광산은 (5,3)");
+            Check(EstateGrid.At(EstateGrid.SmithX, EstateGrid.SmithY) == EstateGrid.Cell.Smith,
+                "대장간이 마을에 있다");
+            Check(EstateGrid.At(EstateGrid.AuctionX, EstateGrid.AuctionY) == EstateGrid.Cell.Auction,
+                "경매장이 마을에 있다");
+            Check(!EstateGrid.TryPickUp(EstateGrid.SmithX, EstateGrid.SmithY),
+                "대장간은 거둘 수 없다");
+            Check(EstateGrid.IsHub(EstateGrid.Cell.Barracks), "수비대는 허브 건물이다");
             Check(EstateGrid.PathLength(EstateGrid.Side.북) == 3, "열린 북 진입은 3칸");
             Check(EstateGrid.PathLength(EstateGrid.Side.서) == 3, "열린 서 진입은 3칸");
             Check(EstateGrid.PathLength(EstateGrid.Side.남) == 4, "열린 남 진입은 4칸");
