@@ -440,14 +440,20 @@ def parse_now_list(design: str) -> list[dict]:
 
 
 def needs_human(title: str, detail: str = "") -> bool:
-    """오너가 창을 열거나 범위를 고를 때만 사람 관문.
+    """오너가 창을 열거나 게임의 뼈대를 바꿀 때만 사람 관문.
 
-    오너 2026-08-16 「간단한건 알아서」: 호버 육안·헤더 아이콘처럼
-    qa_shot으로 닫는 배선은 체크를 기다리지 않는다. 맨낱말 '선택'은
-    전직 선택지까지 막아 버리므로 '오너 선택'만 본다.
+    오너 2026-08-16 「진형현황 내 선택은 정말 중요한거 아니면 알아서」:
+    대장간·레벨업·6초 캐스트·UI 배선은 선택이 아니다. 맨낱말 '사람'은
+    인수인계 문장까지 잡아 카드를 11장 만든다.
     """
     text = f"{title} {detail}"
-    return any(k in text for k in ("사람", "자동검사로", "오너 판정", "오너 선택"))
+    if any(k in text for k in ("외부 테스터", "외부 판정", "70%")):
+        return False
+    if "V2" in text and any(k in text for k in ("사람", "체감", "피했다")):
+        return True
+    if "오너 선택" in text:
+        return True
+    return any(k in text for k in ("가챠", "사망 삭제 폐지", "캐릭터 삭제 폐지"))
 
 
 def parse_results(status: str, limit: int = 8) -> list[dict]:
@@ -562,6 +568,8 @@ def pending_choices(queue: list[dict], milestones: list[dict],
     for src, kind in sources:
         for it in src:
             if it.get("done"):
+                continue
+            if not it.get("human"):
                 continue
             prev = decisions.get(it["id"]) or {}
             if kind != "queue" and prev.get("choice") in ("pass", "skip"):

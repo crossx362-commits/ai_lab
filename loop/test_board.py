@@ -69,9 +69,27 @@ class ParseTests(unittest.TestCase):
     def test_simple_wiring_is_not_owner_gate(self):
         self.assertFalse(board.needs_human("UI 호버/눌림 육안", "필드·탑 제목 아이콘"))
         self.assertFalse(board.needs_human("1차 전직 선택지", "역할별 2/4/2/3"))
+        self.assertFalse(board.needs_human("대장간 둘째 슬라이스", "강화 +15, 나머지 5부위"))
+        self.assertFalse(board.needs_human("긴급 탈출 6초 캐스팅", "피격 시 취소"))
+        self.assertFalse(board.needs_human("V4 외부 판정 후 확장", "70% 이상이 계속 플레이할 때만"))
+        self.assertFalse(board.needs_human("V4 외부 테스터 70%", "오너 보류"))
         self.assertTrue(board.needs_human("V2 사람 판정", "자동검사로 통과 선언 금지"))
-        self.assertTrue(board.needs_human("V4 외부 테스터 70%", "사람 판정"))
         self.assertTrue(board.needs_human("전직 분기", "오너 선택 A/B/C"))
+
+    def test_pending_choices_only_human_gates(self):
+        q = board.parse_queue(STATUS)
+        extra = [
+            {"id": "a", "title": "대장간 둘째", "detail": "강화", "human": False},
+            {"id": "b", "title": "V4 외부 테스터 70%", "detail": "오너 보류",
+             "human": board.needs_human("V4 외부 테스터 70%", "오너 보류")},
+        ]
+        miles = [{"id": "c", "title": "V2 사람 판정", "detail": "", "human": True, "done": False}]
+        pending = board.pending_choices(q, miles, {}, extra)
+        titles = [p["title"] for p in pending]
+        self.assertIn("V2 사람 판정", titles)
+        self.assertNotIn("대장간 둘째", titles)
+        self.assertNotIn("V4 외부 테스터 70%", titles)
+        self.assertTrue(all(p["human"] for p in pending))
 
     def test_queue_table_skips_done_rows(self):
         table = """
