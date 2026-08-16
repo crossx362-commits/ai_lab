@@ -78,6 +78,7 @@ _COMMIT_ALLOW = (
     "loop/test_board.py",
     "loop/v4_playtest.py",
     "loop/v4_testers.json",
+    "loop/v4_test_script.json",
     "loop/test_v4_playtest.py",
     "loop/loop.sh",
     "projects/ashes-to-stars/art/",
@@ -640,6 +641,7 @@ def playtest_state() -> dict:
             "ran": bool(s),
         })
     deleted = sum(1 for r in rows if r["deleted"])
+    script = load_playtest_script()
     return {
         "n": len(rows),
         "ran": sum(1 for r in rows if r["ran"]),
@@ -648,6 +650,40 @@ def playtest_state() -> dict:
         "human_70": "pending",
         "ran_at": ran_at,
         "sessions": rows,
+        "script": script,
+        "doc": "docs/V4_EXTERNAL_PLAYTEST.md",
+        "sheet": "docs/feedback/playtest_sheet.md",
+    }
+
+
+def load_playtest_script() -> dict:
+    raw = _read(HERE / "v4_test_script.json")
+    try:
+        data = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return {}
+    gates = data.get("gates") or []
+    return {
+        "title": data.get("title") or "",
+        "human_70": data.get("human_70") or "pending",
+        "fail_reasons": data.get("fail_reasons") or [],
+        "gates": [
+            {
+                "id": g.get("id") or "",
+                "title": g.get("title") or "",
+                "pass": g.get("pass") or "",
+                "testers": g.get("testers") or [],
+                "steps": [
+                    {
+                        "id": s.get("id") or "",
+                        "do": s.get("do") or "",
+                        "record": s.get("record") or "",
+                    }
+                    for s in (g.get("steps") or [])
+                ],
+            }
+            for g in gates
+        ],
     }
 
 

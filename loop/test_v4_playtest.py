@@ -17,6 +17,30 @@ import v4_playtest  # noqa: E402
 
 
 class KitTests(unittest.TestCase):
+    def test_script_has_v2_v3_v4_and_ten_testers(self):
+        script = json.loads((HERE / "v4_test_script.json").read_text(encoding="utf-8"))
+        ids = [g["id"] for g in script["gates"]]
+        self.assertEqual(ids, ["V2", "V3", "V4"])
+        v4 = next(g for g in script["gates"] if g["id"] == "V4")
+        self.assertEqual(len(v4["testers"]), 10)
+        self.assertEqual(len(v4["steps"]), 5)
+        self.assertEqual(script["human_70"], "pending")
+        self.assertIn("손실 분노", script["fail_reasons"])
+        loaded = board.load_playtest_script()
+        self.assertEqual(len(loaded["gates"]), 3)
+        self.assertTrue(loaded["gates"][0]["steps"][0]["do"])
+
+    def test_playtest_doc_and_sheet_exist(self):
+        root = HERE.parent
+        doc = (root / "docs" / "V4_EXTERNAL_PLAYTEST.md").read_text(encoding="utf-8")
+        sheet = (root / "docs" / "feedback" / "playtest_sheet.md").read_text(encoding="utf-8")
+        self.assertIn("V2-1", doc)
+        self.assertIn("V4-5", doc)
+        self.assertIn("개발자·오너", doc)
+        self.assertIn("t01 이서연", sheet)
+        self.assertIn("t10 신유라", sheet)
+        self.assertIn("즉시 계속", sheet)
+
     def test_ten_distinct_testers(self):
         kit = v4_playtest.load_kit()
         testers = kit["testers"]

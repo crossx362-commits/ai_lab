@@ -181,6 +181,9 @@
   }
   .tester-card .who { font-weight: 650; }
   .tester-card.ok { border-color: var(--ok); }
+  .script-gate { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .script-gate .t { margin-bottom: 4px; }
+  .script-gate ol { margin: 6px 0 0 1.2em; padding: 0; color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -226,6 +229,7 @@
   <h2>V4 외부 테스터 10</h2>
   <p class="meta" id="playtest-meta">키트를 불러오는 중…</p>
   <div class="playtest-grid" id="playtest-grid"></div>
+  <div id="playtest-script"></div>
 </section>
 <section class="done-wrap" id="done-wrap">
   <h2>완료된 개발</h2>
@@ -338,6 +342,21 @@ function renderPlaytest(state) {
         ? (t.deleted ? "삭제됨" : "삭제안됨") + " · 생존 " + (t.living ?? "?") + (t.continued ? " · 남은 파티로 계속" : "")
         : "세션 대기"}</div>
     </article>`).join("");
+  const scriptEl = $("playtest-script");
+  const script = P.script || {};
+  const gates = script.gates || [];
+  if (scriptEl) {
+    scriptEl.innerHTML = gates.length ? gates.map((g) => `
+      <div class="script-gate">
+        <div class="t">${esc(g.id)} · ${esc(g.title)}</div>
+        <div class="d">통과: ${esc(g.pass)} · ${ (g.testers || []).length }명</div>
+        <ol>${(g.steps || []).map((s) =>
+          `<li><strong>${esc(s.id)}</strong> ${esc(s.do)} — ${esc(s.record)}</li>`
+        ).join("")}</ol>
+      </div>`).join("") +
+      `<p class="meta" style="margin-top:10px">시험지 ${esc(P.doc || "")} · 응답란 ${esc(P.sheet || "")}. 사람 70%는 여기 답을 채우기 전에 닫지 않는다.</p>`
+      : "";
+  }
 }
 
 function renderCompleted(state) {
