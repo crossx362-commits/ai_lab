@@ -151,6 +151,7 @@ public class W3Party : MonoBehaviour
     public const int CombatHudRewardMaxEntries = 3;
     public const float CombatHudRewardLifetime = 2.2f;
     public const bool CombatHudUsesFullWidthPanels = false;
+    public const float CombatSkillFxScale = 1.4f;
 
     struct RewardEntry
     {
@@ -206,6 +207,9 @@ public class W3Party : MonoBehaviour
         _scrimTex.Apply();
         return _scrimTex;
     }
+
+    static void PlayJobFx(int style, Vector2 worldPos, float scale)
+        => FxPool.PlayJob(style, worldPos, scale * CombatSkillFxScale);
 
     /// <summary>
     /// 머리 위 체력바를 만든다. 배경 + 전경 두 장이며 둘 다 아틀라스의 흰 칸을 쓰므로
@@ -782,10 +786,10 @@ public class W3Party : MonoBehaviour
         _fxTick++;
         if ((_fxTick & 1) == 0)
         {
-            if (m.Job == Job.수호기사) FxPool.PlayJob(0, targetPos, 0.8f);
-            else if (m.Job == Job.검사) FxPool.PlayJob(1, targetPos, 0.8f);
-            else if (m.Job == Job.마법사) FxPool.PlayJob(2, targetPos, 0.9f);
-            else if (m.Job == Job.사제) FxPool.PlayJob(3, targetPos, 0.85f);
+            if (m.Job == Job.수호기사) PlayJobFx(0, targetPos, 0.8f);
+            else if (m.Job == Job.검사) PlayJobFx(1, targetPos, 0.8f);
+            else if (m.Job == Job.마법사) PlayJobFx(2, targetPos, 0.9f);
+            else if (m.Job == Job.사제) PlayJobFx(3, targetPos, 0.85f);
             else if (m.Job == Job.음유시인) FxPool.PlayAtlas("bard_note", targetPos, 0.8f);
             else FxPool.Play(IsMelee(m.Job) ? FxPool.Kind.Slash : FxPool.Kind.Hit, targetPos, 0.8f);
         }
@@ -1685,7 +1689,7 @@ public class W3Party : MonoBehaviour
                     FlashParty();
                     _skillLog[1]++;
                     SkillCast(m, "성채 방패", new Color(0.55f, 0.82f, 1f), hitstop: 2);
-                    FxPool.PlayJob(4, m.Pos, 1.6f);
+                    PlayJobFx(4, m.Pos, 1.6f);
                     // 보호막은 **파티 전체**에 걸리는데 연출이 시전자에만 있으면
                     // 누가 보호받는지 화면에서 안 읽힌다.
                     foreach (var o in _party)
@@ -1832,7 +1836,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill != 0) m.ForceSkill = 0;
                 if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; m.SkillT = 0.5f; }
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
-                FxPool.PlayJob(5, m.Pos, 1.6f);             // 새 음유시인 오라 8프레임
+                PlayJobFx(5, m.Pos, 1.6f);             // 새 음유시인 오라 8프레임
                 m.Cd = 0.8f; m.Threat += 3f;
             }
             else if (m.Advancement == AdvancementTier.Basic && m.Job == Job.사제)
@@ -1883,7 +1887,7 @@ public class W3Party : MonoBehaviour
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
-                    FxPool.PlayJob(3, m.Pos, 2.2f);
+                    PlayJobFx(3, m.Pos, 2.2f);
                     FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f);
                     SkillCast(m, "기적", new Color(1f, 0.95f, 0.6f), hitstop: 5, shake: 0.45f);
                 }
@@ -1897,7 +1901,7 @@ public class W3Party : MonoBehaviour
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
                     SkillCast(m, "치유 파동", new Color(0.55f, 1f, 0.65f), hitstop: 1);
-                    FxPool.PlayJob(3, m.Pos, 1.4f);
+                    PlayJobFx(3, m.Pos, 1.4f);
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
@@ -3105,15 +3109,15 @@ public class W3Party : MonoBehaviour
         //    키보드(스페이스/Q)로는 되는데 마우스로는 스킬을 아예 못 쓰는 상태였고,
         //    §5의 「보스는 수동 지휘」가 마우스 유저에게는 성립하지 않았다.
         //    미구현보다 나쁘다 — 눌리니까 사용자는 고장으로 읽는다(2026-08-15 감사에서 발견).
-        if (SkillBtn(new Rect(x, y, w, 34), a, sel, 1)) sel.ForceSkill = 1;
-        if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 34), b, sel, 2)) sel.ForceSkill = 2;
+        if (SkillBtn(new Rect(x, y, w, 52), a, IconFor(sel.Role, 1), sel, 1)) sel.ForceSkill = 1;
+        if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 52), b, IconFor(sel.Role, 2), sel, 2)) sel.ForceSkill = 2;
 
         if (sel.Advancement == AdvancementTier.Second)
         {
             bool ready = CanUseUltimate(sel.Advancement, sel.UltimateGauge, sel.UltimateCd);
             float ux = x + w * 2 + gap * 2;
             GUI.enabled = ready;
-            if (GUI.Button(new Rect(ux, y, w, 34),
+            if (GUI.Button(new Rect(ux, y, w, 52),
                            ready ? "각성 초필 [E]" : $"초필 {Mathf.FloorToInt(sel.UltimateGauge)}% / {Mathf.CeilToInt(Mathf.Max(0f, sel.UltimateCd))}s",
                            _cmdBtn))
                 sel.ForceUltimate = true;
@@ -3123,12 +3127,23 @@ public class W3Party : MonoBehaviour
         GUI.Label(new Rect(x, y - 20f, 320, 20), "선택 캐릭터 스킬", _cmdLabel);
     }
 
-    bool SkillBtn(Rect r, string label, Member m, int slot)
+    static string IconFor(Role role, int slot) => role switch
+    {
+        Role.Tank => slot == 1 ? "tank_taunt" : "tank_barrier",
+        Role.Dps => slot == 1 ? "damage_slash" : "damage_critical",
+        Role.Healer => slot == 1 ? "heal_staff" : "cleanse",
+        _ => slot == 1 ? "buffer_song" : "buffer_aura",
+    };
+
+    bool SkillBtn(Rect r, string label, string icon, Member m, int slot)
     {
         bool queued = m.ForceSkill == slot;
-        if (queued) GUI.DrawTexture(new Rect(r.x - 2, r.y - 2, r.width + 4, r.height + 4),
-                                    Tint(new Color(1f, 0.82f, 0.35f, 0.9f)));
-        if (GUI.Button(r, queued ? $"{label} ▶" : label, _cmdBtn))
+        GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.06f, .12f, .22f, .94f)));
+        GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2f), Tint(queued ? new Color(1f, .82f, .35f) : new Color(.25f, .55f, .9f)));
+        CombatIconAtlas.Draw(new Rect(r.x + 6f, r.y + 5f, 28f, 28f), icon);
+        GUI.Label(new Rect(r.x + 38f, r.y + 7f, r.width - 42f, 20f), queued ? label + " ▶" : label, _cmdLabel);
+        GUI.Label(new Rect(r.x + 38f, r.y + 29f, r.width - 42f, 16f), slot == 1 ? "SPACE" : "Q", _cmdLabel);
+        if (GUI.Button(r, GUIContent.none, GUIStyle.none))
         {
             m.ForceSkill = slot;
             return true;

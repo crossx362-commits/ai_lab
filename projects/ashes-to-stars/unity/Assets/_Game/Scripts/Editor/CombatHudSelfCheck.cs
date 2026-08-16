@@ -17,6 +17,8 @@ namespace AshesToStars
                 "[전투 HUD] 보상 문구는 오래 남아 전장을 가리면 안 된다");
             Debug.Assert(!W3Party.CombatHudUsesFullWidthPanels,
                 "[전투 HUD] 상·하단 전체 폭 패널은 전장을 가린다");
+            Debug.Assert(W3Party.CombatSkillFxScale >= 1.35f,
+                "[전투 HUD] 스킬 이펙트는 몬스터 무리에서도 읽힐 크기여야 한다");
             Debug.Log("[CombatHudSelfCheck] PASS");
         }
     }
