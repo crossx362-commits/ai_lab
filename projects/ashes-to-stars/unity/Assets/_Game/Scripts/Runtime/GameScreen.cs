@@ -62,7 +62,6 @@ namespace AshesToStars
         public const float HeaderH = 88f;
         public const float BodyTop = 100f;
         public const float BodyPadX = 36f;
-        protected const float BarH = 72f;
         protected const float RowH = 64f, RowGap = 12f, RowBtnW = 360f;
 
         GUIStyle _h1, _h2, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
@@ -182,7 +181,7 @@ namespace AshesToStars
                     GUI.Label(new Rect(atlas ? 90 : 28, 52, REF_W - 80, 30), Subtitle, _h2);
             }
 
-            float bottom = ShowBottomBar ? BarH + 28f : 36f;
+            float bottom = ShowBottomBar ? UiPages.NavReserve : 36f;
             bool buttonPreview = UiAtlas.QaShowButtonStates && ShowHeader;
             bool rarityPreview = ShowRarityPreview;
             bool bossHpPreview = ShowBossHpPreview;
@@ -208,11 +207,12 @@ namespace AshesToStars
                 DrawButtonStatePreview(new Rect(48, previewY - RowH, 600f, RowH));
 
             if (ShowBottomBar) BottomBar();
-            // 배경을 안 까는 화면(전투)에서는 밝은 바닥 위에 글씨가 놓여 안 읽힌다 —
-            // 안내 문구 뒤에도 판을 받친다(오너 지적 "글씨가 안보인다고")
-            if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
-            GUI.Label(new Rect(48, REF_H - 28, 900, 22),
-                      ShowBottomBar ? "ESC — 영지로" : "ESC — 뒤로", _small);
+            else
+            {
+                // 도크가 없는 화면만 바닥에 ESC를 둔다. 허브는 도크 왼쪽 빈 칸이 소비처다.
+                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
+                GUI.Label(new Rect(48, REF_H - 28, 900, 22), "ESC — 뒤로", _small);
+            }
             Overlay();
 
             GUI.matrix = saved;
@@ -230,31 +230,28 @@ namespace AshesToStars
 
         void BottomBar()
         {
-            float y = REF_H - BarH - 30f;
-            GUI.DrawTexture(new Rect(0, y - 10, REF_W, 1), _line);
-
             int n = GameFlow.BottomBar.Length;
-            float pad = 10f, w = (REF_W - 96 - pad * (n - 1)) / n;
+            var tiles = UiPages.NavDock(n, REF_W, REF_H);
+            float used = tiles[n - 1].xMax - tiles[0].x;
+            var plate = new Rect(tiles[0].x - 10f, tiles[0].y - 6f, used + 20f, UiPages.NavTileH + 12f);
+            if (!UiAtlas.DrawSliced(plate, "panel", 12f, new Color(1f, 1f, 1f, 0.72f)))
+                GUI.DrawTexture(new Rect(0, tiles[0].y - 8f, REF_W, 1), _line);
+
+            // ESC는 도크 왼쪽 빈 칸. 아래에 한 줄을 더 깔면 본문이 28px 죽는다.
+            GUI.Label(new Rect(16f, tiles[0].y + 24f, tiles[0].x - 24f, 22f),
+                "ESC — 영지로", _small);
+
             for (int i = 0; i < n; i++)
             {
                 var (scene, label) = GameFlow.BottomBar[i];
                 bool here = scene == UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                var r = new Rect(48 + i * (w + pad), y, w, BarH);
-                if (here) GUI.DrawTexture(new Rect(r.x, r.y - 4, r.width, 4), _accent);
+                var r = tiles[i];
+                if (here) GUI.DrawTexture(new Rect(r.x + 12f, r.y - 4f, r.width - 24f, 3f), _accent);
                 GUI.enabled = !here;
-                // 탭 배경에는 이름을 그리지 않는다. 기존에는 버튼 중앙의 이름 위에
-                // 아이콘을 덮어 그려서 "월드맵"처럼 글자가 반쯤 가려졌다.
                 DrawAtlasButton(r, null);
-                string icon = i switch
-                {
-                    0 => "territory",
-                    1 => "field",
-                    2 => "tower",
-                    3 => "worldmap",
-                    _ => "characters",
-                };
-                UiAtlas.DrawFit(new Rect(r.center.x - 22, r.y + 4, 44, 44), icon);
-                GUI.Label(new Rect(r.x + 4, r.y + 53, r.width - 8, 19), label, _navLabel);
+                string icon = UiPages.NavIcon(scene);
+                UiAtlas.DrawFit(new Rect(r.center.x - 18f, r.y + 4f, 36f, 36f), icon);
+                GUI.Label(new Rect(r.x + 2f, r.y + 42f, r.width - 4f, 24f), label, _navLabel);
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
             }

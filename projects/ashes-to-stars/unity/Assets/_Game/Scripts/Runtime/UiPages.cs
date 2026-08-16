@@ -10,6 +10,39 @@ namespace AshesToStars
         public const float TabH = 42f;
         public const float TabGap = 10f;
 
+        /// <summary>
+        /// §16 하단 5칸. 전체 폭을 5등분하면 229×72 알약이 된다(오너 21:45).
+        /// 아이콘+짧은 라벨의 타일을 가운데 모은다 — AFK·세븐나이츠 도크와 같다.
+        /// </summary>
+        public const float NavTileW = 88f;
+        public const float NavTileH = 70f;
+        public const float NavTileGap = 8f;
+        public const float NavMaxAspect = 1.45f;
+        /// <summary>본문이 비워 둘 아래 여백. 옛 BarH+28=100보다 작아야 공간이 늘어난다.</summary>
+        public const float NavReserve = 80f;
+
+        public static Rect[] NavDock(int count, float screenW = 1280f, float screenH = 720f)
+        {
+            if (count < 1) count = 1;
+            float used = count * NavTileW + (count - 1) * NavTileGap;
+            float x0 = (screenW - used) * 0.5f;
+            float y = screenH - NavTileH - 8f;
+            var tiles = new Rect[count];
+            for (int i = 0; i < count; i++)
+                tiles[i] = new Rect(x0 + i * (NavTileW + NavTileGap), y, NavTileW, NavTileH);
+            return tiles;
+        }
+
+        public static string NavIcon(string scene) => scene switch
+        {
+            "Estate" => "territory",
+            "Field" => "field",
+            "Tower" => "tower",
+            "WorldMap" => "worldmap",
+            "Character" => "characters",
+            _ => null,
+        };
+
         public static Rect AfterTabs(Rect r, float extra = 12f) =>
             new Rect(r.x, r.y + TabH + extra, r.width, Mathf.Max(40f, r.height - TabH - extra));
 

@@ -123,6 +123,27 @@ namespace AshesToStars
 
             Debug.Assert(GameScreen.HeaderH <= 92f && GameScreen.BodyTop <= 108f,
                 "[UiAtlasSelfCheck] 제목판이 다시 커지면 720p 본문이 카드 한 줄을 못 채운다");
+            var dock = UiPages.NavDock(GameFlow.BottomBar.Length);
+            Debug.Assert(dock.Length == 5, "[UiAtlasSelfCheck] 하단 도크는 §16 5칸");
+            float dockUsed = dock[4].xMax - dock[0].x;
+            Debug.Assert(dockUsed < 1280f * 0.55f && dock[0].x > 240f,
+                "[UiAtlasSelfCheck] 하단 5칸이 전체 폭을 5등분하면 길쭉한 알약이다");
+            for (int i = 0; i < dock.Length; i++)
+            {
+                float aspect = dock[i].width / dock[i].height;
+                Debug.Assert(aspect <= UiPages.NavMaxAspect && dock[i].width <= 100f,
+                    $"[UiAtlasSelfCheck] 도크 {i} 가로/세로={aspect:0.00} — 길쭉한 아이콘 버튼");
+            }
+            Debug.Assert(UiPages.NavReserve < 96f && UiPages.NavReserve > UiPages.NavTileH,
+                "[UiAtlasSelfCheck] 도크 아래 28px를 안 되돌리면 본문이 예전과 같다");
+            Debug.Assert(UiPages.NavIcon("Estate") == "territory"
+                         && UiPages.NavIcon("Field") == "field"
+                         && UiPages.NavIcon("Tower") == "tower"
+                         && UiPages.NavIcon("WorldMap") == "worldmap"
+                         && UiPages.NavIcon("Character") == "characters"
+                         && UiPages.NavIcon("Party") == null,
+                "[UiAtlasSelfCheck] 하단 도크 아이콘 키가 화면과 어긋난다");
+            _ = nameof(UiPages.NavDock);
             Debug.Assert(UiPages.CardMinIcon >= 72f,
                 "[UiAtlasSelfCheck] 카드 아이콘이 72보다 작으면 허브가 비어 보인다");
             var stretchBox = new Rect(0f, 0f, 400f, 180f);
