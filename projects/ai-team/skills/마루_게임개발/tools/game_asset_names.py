@@ -140,11 +140,16 @@ def expected() -> dict[str, list[str]]:
 
     bgs: list[str] = []
     uis: list[str] = []
+    chrome_names: list[str] = []
     for p in rt.glob("*.cs"):
-        bgs += re.findall(r'BackgroundArt\s*=>\s*"(bg_[a-z]+)"', _src(p))
-        uis += re.findall(r'ResourceKey\s*=\s*"ui/([^"]+)"', _src(p))
+        src = _src(p)
+        bgs += re.findall(r'BackgroundArt\s*=>\s*"(bg_[a-z]+)"', src)
+        uis += re.findall(r'ResourceKey\s*=\s*"ui/([^"]+)"', src)
+        chrome_names += re.findall(r'"ui/chrome/([^"]+)"', src)
     if bgs:
         out["bg"] = sorted({f"{n}.png" for n in bgs})
+    if chrome_names:
+        out["ui/chrome"] = sorted({f"{n}.png" for n in chrome_names})
     if uis:
         out["ui"] = sorted({f"{n}.png" for n in uis})
 

@@ -16,6 +16,25 @@ namespace AshesToStars
 
         static Texture2D _texture;
         static bool _tried;
+        static bool _chromeTried;
+        static readonly Dictionary<string, Texture2D> Chrome = new Dictionary<string, Texture2D>();
+
+        /// <summary>
+        /// Imagine 솔로 크롬. 값이 소스에서 코너로 남길 비율.
+        /// 옛 아틀라스 조각(수십 px)과 새 그림(수백 px)이 같은 픽셀 border를 쓰면
+        /// 장식이 늘어나 버린다.
+        /// </summary>
+        static readonly Dictionary<string, float> ChromeSlice = new Dictionary<string, float>
+        {
+            ["panel"] = 0.24f,
+            ["button_normal"] = 0.16f,
+            ["button_hover"] = 0.16f,
+            ["button_pressed"] = 0.16f,
+            ["portrait_frame"] = 0.32f,
+            ["hp_frame"] = 0.18f,
+            ["xp_frame"] = 0.16f,
+            ["boss_hp_frame"] = 0.18f,
+        };
 
         static readonly Dictionary<string, Rect> Pieces = new Dictionary<string, Rect>
         {
@@ -82,22 +101,66 @@ namespace AshesToStars
             }
         }
 
-        public static bool IsReady => Texture != null;
+        public static bool IsReady
+        {
+            get
+            {
+                EnsureChrome();
+                return Texture != null || Chrome.Count > 0;
+            }
+        }
+
+        static readonly string[] ChromePaths =
+        {
+            "ui/chrome/panel",
+            "ui/chrome/button_normal",
+            "ui/chrome/button_hover",
+            "ui/chrome/button_pressed",
+            "ui/chrome/portrait_frame",
+            "ui/chrome/hp_frame",
+            "ui/chrome/xp_frame",
+            "ui/chrome/boss_hp_frame",
+        };
+
+        static void EnsureChrome()
+        {
+            if (_chromeTried) return;
+            _chromeTried = true;
+            const string prefix = "ui/chrome/";
+            foreach (var path in ChromePaths)
+            {
+                var tex = Resources.Load<Texture2D>(path);
+                if (tex == null) continue;
+                Chrome[path.StartsWith(prefix) ? path.Substring(prefix.Length) : path] = tex;
+            }
+        }
+
+        static Texture2D TextureFor(string key, out Rect source)
+        {
+            EnsureChrome();
+            if (Chrome.TryGetValue(key, out var chrome) && chrome != null)
+            {
+                source = new Rect(0, 0, chrome.width, chrome.height);
+                return chrome;
+            }
+            source = Pieces.TryGetValue(key, out var rect) ? rect : Rect.zero;
+            return Texture;
+        }
 
         public static Rect RectFor(string key)
         {
-            return Pieces.TryGetValue(key, out var rect) ? rect : Rect.zero;
+            TextureFor(key, out var source);
+            return source;
         }
 
         public static bool Draw(Rect target, string key, Color? tint = null)
         {
-            var texture = Texture;
-            var source = RectFor(key);
+            var texture = TextureFor(key, out var source);
             if (texture == null || source.width <= 0 || source.height <= 0) return false;
 
             var saved = GUI.color;
             GUI.color = tint ?? Color.white;
-            GUI.DrawTextureWithTexCoords(target, texture, TextureCoords(source), true);
+            GUI.DrawTextureWithTexCoords(target, texture, TextureCoords(source, texture), true);
             GUI.color = saved;
             return true;
         }
@@ -352,28 +415,38 @@ namespace AshesToStars
         /// <summary>패널처럼 늘어나는 조각은 가장자리만 남기고 가운데를 늘린다.</summary>
         public static bool DrawSliced(Rect target, string key, float border = 12f, Color? tint = null)
         {
-            var texture = Texture;
-            var source = RectFor(key);
+            var texture = TextureFor(key, out var source);
             if (texture == null || source.width <= 0 || source.height <= 0) return false;
 
-            float b = Mathf.Min(border, source.width * 0.45f, source.height * 0.45f,
-                                target.width * 0.45f, target.height * 0.45f);
-            if (b < 1f) return Draw(target, key, tint);
+            float srcB, dstB;
+            if (Chrome.ContainsKey(key) && ChromeSlice.TryGetValue(key, out var frac))
+            {
+                srcB = Mathf.Min(source.width, source.height) * frac;
+                dstB = Mathf.Min(target.width, target.height) * frac;
+                srcB = Mathf.Min(srcB, source.width * 0.45f, source.height * 0.45f);
+                dstB = Mathf.Min(dstB, target.width * 0.45f, target.height * 0.45f);
+            }
+            else
+            {
+                srcB = dstB = Mathf.Min(border, source.width * 0.45f, source.height * 0.45f,
+                    target.width * 0.45f, target.height * 0.45f);
+            }
+            if (srcB < 1f || dstB < 1f) return Draw(target, key, tint);
 
             var saved = GUI.color;
             GUI.color = tint ?? Color.white;
             float sx = source.x, sy = source.y, sw = source.width, sh = source.height;
-            float x0 = target.x, x1 = target.x + b, x2 = target.xMax - b, x3 = target.xMax;
-            float y0 = target.y, y1 = target.y + b, y2 = target.yMax - b, y3 = target.yMax;
-            DrawSrc(new Rect(x0, y0, b, b), new Rect(sx, sy, b, b), texture);
-            DrawSrc(new Rect(x1, y0, x2 - x1, b), new Rect(sx + b, sy, sw - 2f * b, b), texture);
-            DrawSrc(new Rect(x2, y0, b, b), new Rect(sx + sw - b, sy, b, b), texture);
-            DrawSrc(new Rect(x0, y1, b, y2 - y1), new Rect(sx, sy + b, b, sh - 2f * b), texture);
-            DrawSrc(new Rect(x1, y1, x2 - x1, y2 - y1), new Rect(sx + b, sy + b, sw - 2f * b, sh - 2f * b), texture);
-            DrawSrc(new Rect(x2, y1, b, y2 - y1), new Rect(sx + sw - b, sy + b, b, sh - 2f * b), texture);
-            DrawSrc(new Rect(x0, y2, b, b), new Rect(sx, sy + sh - b, b, b), texture);
-            DrawSrc(new Rect(x1, y2, x2 - x1, b), new Rect(sx + b, sy + sh - b, sw - 2f * b, b), texture);
-            DrawSrc(new Rect(x2, y2, b, b), new Rect(sx + sw - b, sy + sh - b, b, b), texture);
+            float x0 = target.x, x1 = target.x + dstB, x2 = target.xMax - dstB;
+            float y0 = target.y, y1 = target.y + dstB, y2 = target.yMax - dstB;
+            DrawSrc(new Rect(x0, y0, dstB, dstB), new Rect(sx, sy, srcB, srcB), texture);
+            DrawSrc(new Rect(x1, y0, x2 - x1, dstB), new Rect(sx + srcB, sy, sw - 2f * srcB, srcB), texture);
+            DrawSrc(new Rect(x2, y0, dstB, dstB), new Rect(sx + sw - srcB, sy, srcB, srcB), texture);
+            DrawSrc(new Rect(x0, y1, dstB, y2 - y1), new Rect(sx, sy + srcB, srcB, sh - 2f * srcB), texture);
+            DrawSrc(new Rect(x1, y1, x2 - x1, y2 - y1), new Rect(sx + srcB, sy + srcB, sw - 2f * srcB, sh - 2f * srcB), texture);
+            DrawSrc(new Rect(x2, y1, dstB, y2 - y1), new Rect(sx + sw - srcB, sy + srcB, srcB, sh - 2f * srcB), texture);
+            DrawSrc(new Rect(x0, y2, dstB, dstB), new Rect(sx, sy + sh - srcB, srcB, srcB), texture);
+            DrawSrc(new Rect(x1, y2, x2 - x1, dstB), new Rect(sx + srcB, sy + sh - srcB, sw - 2f * srcB, srcB), texture);
+            DrawSrc(new Rect(x2, y2, dstB, dstB), new Rect(sx + sw - srcB, sy + sh - srcB, srcB, srcB), texture);
             GUI.color = saved;
             return true;
         }
@@ -381,7 +454,10 @@ namespace AshesToStars
         /// <summary>프레임 조각 안에 채움 막대를 그린다. 프레임이 없어도 막대는 그린다.</summary>
         public static bool DrawMeter(Rect target, string frameKey, float fill01, Color fill)
         {
-            bool framed = Draw(target, frameKey);
+            EnsureChrome();
+            bool framed = Chrome.ContainsKey(frameKey)
+                ? DrawSliced(target, frameKey, 10f)
+                : Draw(target, frameKey);
             float padX = framed ? 10f : 0f;
             float padY = framed ? 6f : 0f;
             float w = Mathf.Max(0f, (target.width - padX * 2f) * Mathf.Clamp01(fill01));
@@ -414,16 +490,19 @@ namespace AshesToStars
         static void DrawSrc(Rect dest, Rect source, Texture2D texture)
         {
             if (dest.width <= 0f || dest.height <= 0f || source.width <= 0f || source.height <= 0f) return;
-            GUI.DrawTextureWithTexCoords(dest, texture, TextureCoords(source), true);
+            GUI.DrawTextureWithTexCoords(dest, texture, TextureCoords(source, texture), true);
         }
 
-        static Rect TextureCoords(Rect source)
+        static Rect TextureCoords(Rect source, Texture2D texture)
         {
+            float w = texture != null ? texture.width : Width;
+            float h = texture != null ? texture.height : Height;
+            if (w <= 0f || h <= 0f) return Rect.zero;
             return new Rect(
-                source.x / Width,
-                (Height - source.y - source.height) / (float)Height,
-                source.width / Width,
-                source.height / Height);
+                source.x / w,
+                (h - source.y - source.height) / h,
+                source.width / w,
+                source.height / h);
         }
     }
 }
