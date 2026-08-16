@@ -24,6 +24,11 @@ namespace AshesToStars
         const string K_DEBT = "ats.loan.debt";
         const string K_LOAN_AT = "ats.loan.accrued_at";
         const string K_LOAN_DUE = "ats.loan.due_at";
+        const string K_OVERDUE = "ats.loan.overdue";
+        const string K_BANKRUPT = "ats.loan.bankrupt";
+        const string K_BANKRUPT_LOAN = "ats.loan.bankrupt_this";
+        const string K_AUCTION_BAN = "ats.loan.auction_ban_until";
+        const string K_RELOAN = "ats.loan.reloan_until";
 
         static Economy.Wallet _wallet;
         static Economy.LifeItemInventory _bag;
@@ -31,6 +36,12 @@ namespace AshesToStars
         static long _debt;          // 부채 잔액(쿠퍼) — 이자 포함
         static long _loanAccruedAt; // 마지막으로 이자를 가산한 시각(유닉스초)
         static long _loanDueAt;     // 상환 기한(유닉스초). 부채 없으면 0
+        static int _overdueCount;   // 이번 대출에서 넘긴 만기 횟수(갚으면 0)
+        static int _bankruptcyCount;
+        static bool _bankruptThisLoan;
+        static long _auctionBanUntil;
+        static long _reloanUntil;
+        static bool _qaLoanSeeded;
 
         /// <summary>지갑. §12의 쿠퍼–실버–골드 3단계는 Economy가 환산한다.</summary>
         public static Economy.Wallet Wallet { get { Load(); return _wallet; } }
@@ -74,7 +85,15 @@ namespace AshesToStars
             long.TryParse(PlayerPrefs.GetString(K_DEBT, "0"), out _debt);
             long.TryParse(PlayerPrefs.GetString(K_LOAN_AT, "0"), out _loanAccruedAt);
             long.TryParse(PlayerPrefs.GetString(K_LOAN_DUE, "0"), out _loanDueAt);
+            int.TryParse(PlayerPrefs.GetString(K_OVERDUE, "0"), out _overdueCount);
+            int.TryParse(PlayerPrefs.GetString(K_BANKRUPT, "0"), out _bankruptcyCount);
+            _bankruptThisLoan = PlayerPrefs.GetInt(K_BANKRUPT_LOAN, 0) == 1;
+            long.TryParse(PlayerPrefs.GetString(K_AUCTION_BAN, "0"), out _auctionBanUntil);
+            long.TryParse(PlayerPrefs.GetString(K_RELOAN, "0"), out _reloanUntil);
             if (_debt < 0) _debt = 0;
+            if (_overdueCount < 0) _overdueCount = 0;
+            if (_bankruptcyCount < 0) _bankruptcyCount = 0;
+            ApplyQaLoanSeed();
         }
 
         static void Save()
@@ -87,6 +106,11 @@ namespace AshesToStars
             PlayerPrefs.SetString(K_DEBT, _debt.ToString());
             PlayerPrefs.SetString(K_LOAN_AT, _loanAccruedAt.ToString());
             PlayerPrefs.SetString(K_LOAN_DUE, _loanDueAt.ToString());
+            PlayerPrefs.SetString(K_OVERDUE, _overdueCount.ToString());
+            PlayerPrefs.SetString(K_BANKRUPT, _bankruptcyCount.ToString());
+            PlayerPrefs.SetInt(K_BANKRUPT_LOAN, _bankruptThisLoan ? 1 : 0);
+            PlayerPrefs.SetString(K_AUCTION_BAN, _auctionBanUntil.ToString());
+            PlayerPrefs.SetString(K_RELOAN, _reloanUntil.ToString());
             PlayerPrefs.Save();
         }
 
@@ -106,7 +130,12 @@ namespace AshesToStars
                 {
                     _debt -= toDebt;
                     copper -= toDebt;
-                    if (_debt == 0) _loanDueAt = 0;
+                    if (_debt == 0)
+                    {
+                        _loanDueAt = 0;
+                        _overdueCount = 0;
+                        _bankruptThisLoan = false;
+                    }
                 }
             }
             _wallet.TryAdd(copper);
@@ -123,7 +152,16 @@ namespace AshesToStars
         /// 순자산 = 지갑 − 부채. **빌린 돈은 순자산을 늘리지 않는다**(안 그러면 대출→한도↑→
         /// 대출의 무한 피드백 루프가 생긴다 — 자가검사 ⑩이 이 경계를 지킨다).
         /// </summary>
-        public static long LoanLimit { get { Load(); return Economy.LoanLimitCopper(_wallet.Copper - _debt, Tier); } }
+        public static long LoanLimit { get { Load(); return Economy.LoanLimitCopper(_wallet.Copper - _debt, Tier, _bankruptcyCount); } }
+
+        /// <summary>이번 대출의 연체 횟수. 전액 상환하면 0. 파산 누적과 별개다.</summary>
+        public static int OverdueCount { get { Load(); return _overdueCount; } }
+
+        /// <summary>파산 누적 횟수(§18-5 신용도). 상환해도 줄지 않는다.</summary>
+        public static int BankruptcyCount { get { Load(); return _bankruptcyCount; } }
+
+        /// <summary>파산 경매 정지 종료 시각(유닉스초). 없으면 0.</summary>
+        public static long AuctionBanUntil { get { Load(); return _auctionBanUntil; } }
 
         /// <summary>지금 더 빌릴 수 있는 금액(쿠퍼) = 한도 − 현재 부채(음수면 0).</summary>
         public static long LoanBorrowable { get { Load(); long left = LoanLimit - _debt; return left < 0 ? 0 : left; } }
@@ -135,9 +173,10 @@ namespace AshesToStars
         {
             Load();
             if (_debt <= 0) return;
+            RefreshSanctions(nowUnix);
             long hours = (nowUnix - _loanAccruedAt) / 3600;
             if (hours <= 0) return;
-            _debt = Economy.AccrueLoan(_debt, hours);
+            _debt = Economy.AccrueLoan(_debt, hours, Economy.LoanInterestFactor(_overdueCount, _bankruptcyCount));
             _loanAccruedAt += hours * 3600;
             Save();
         }
@@ -152,8 +191,9 @@ namespace AshesToStars
             Load();
             if (copper <= 0) return false;
             AccrueLoan(nowUnix);
+            if (_debt == 0 && _reloanUntil > nowUnix) return false;
             if (_debt + copper > LoanLimit) return false;
-            if (_debt == 0) { _loanAccruedAt = nowUnix; _loanDueAt = nowUnix + Economy.LoanTermHours * 3600; }
+            if (_debt == 0) { _loanAccruedAt = nowUnix; _loanDueAt = nowUnix + Economy.LoanTermHours * 3600; _overdueCount = 0; _bankruptThisLoan = false; }
             _debt += copper;
             _wallet.TryAdd(copper);
             Save();
@@ -171,9 +211,139 @@ namespace AshesToStars
             if (pay <= 0) return 0;
             _wallet.TrySubtract(pay);
             _debt -= pay;
-            if (_debt == 0) _loanDueAt = 0;
+            if (_debt == 0)
+            {
+                _loanDueAt = 0;
+                _overdueCount = 0;
+                _bankruptThisLoan = false;
+            }
             Save();
             return pay;
+        }
+
+        /// <summary>
+        /// 만기가 지난 만큼 연체 횟수를 올린다. 정각은 아직 연체가 아니다(SelfCheck ⑩ 만기 이자).
+        /// 3회에서 파산 1회 — 건물 강등·아이템 압류는 소비 시스템이 없어 안 한다.
+        /// </summary>
+        public static void RefreshSanctions(long nowUnix)
+        {
+            Load();
+            if (_debt <= 0)
+            {
+                if (_overdueCount != 0)
+                {
+                    _overdueCount = 0;
+                    _bankruptThisLoan = false;
+                    Save();
+                }
+                return;
+            }
+            if (_loanDueAt <= 0) return;
+            bool changed = false;
+            while (nowUnix > _loanDueAt && _debt > 0)
+            {
+                _overdueCount++;
+                _loanDueAt += Economy.LoanTermHours * 3600;
+                changed = true;
+                if (_overdueCount >= 3 && !_bankruptThisLoan)
+                    ApplyBankruptcy(nowUnix);
+            }
+            if (changed) Save();
+        }
+        public static void RefreshSanctions() => RefreshSanctions(NowUnix());
+
+        static void ApplyBankruptcy(long nowUnix)
+        {
+            _bankruptThisLoan = true;
+            _bankruptcyCount++;
+            long ban = (long)Economy.LoanBankruptcyAuctionBanDays * 86400L;
+            long cool = (long)Economy.LoanReloanCooldownDays * 86400L;
+            _auctionBanUntil = nowUnix + ban;
+            _reloanUntil = nowUnix + cool;
+        }
+
+        /// <summary>§12·§18-5: 부채 보유·연체 1회·파산 7일 정지 중이면 경매장 문을 잠근다.</summary>
+        public static bool CanUseAuction(long nowUnix)
+        {
+            Load();
+            ApplyQaLoanSeed();
+            RefreshSanctions(nowUnix);
+            if (_auctionBanUntil > nowUnix) return false;
+            if (_overdueCount >= 1) return false;
+            if (_debt > 0) return false;
+            return true;
+        }
+        public static bool CanUseAuction() => CanUseAuction(NowUnix());
+
+        public static string AuctionBlockReason(long nowUnix)
+        {
+            Load();
+            RefreshSanctions(nowUnix);
+            if (_auctionBanUntil > nowUnix)
+            {
+                long left = _auctionBanUntil - nowUnix;
+                long days = (left + 86399) / 86400;
+                if (days < 1) days = 1;
+                return $"파산 — 경매장 {days}일 정지(§18-5)";
+            }
+            if (_overdueCount >= 1)
+                return $"연체 {_overdueCount}회 — 경매장 이용 정지(§12)";
+            if (_debt > 0)
+                return "부채 보유 중 — 경매 등록·구매 금지(§18-5)";
+            return "";
+        }
+        public static string AuctionBlockReason() => AuctionBlockReason(NowUnix());
+
+        /// <summary>§18-5: 연체 2회부터 침략 불가. 침략 본게임은 열지 않는다.</summary>
+        public static bool CanInvade(long nowUnix)
+        {
+            Load();
+            ApplyQaLoanSeed();
+            RefreshSanctions(nowUnix);
+            return _overdueCount < 2;
+        }
+        public static bool CanInvade() => CanInvade(NowUnix());
+
+        public static string InvasionBlockReason(long nowUnix)
+        {
+            Load();
+            RefreshSanctions(nowUnix);
+            if (_overdueCount >= 2)
+                return $"연체 {_overdueCount}회 — 침략 불가(§18-5)";
+            return "";
+        }
+        public static string InvasionBlockReason() => InvasionBlockReason(NowUnix());
+
+        /// <summary>
+        /// 시각 QA. QA_LOAN_OVERDUE=1|2|3이면 연체와 30층을 심는다.
+        /// DebugAutoPilot.Start가 Earn(500000)을 먼저 호출하면 자동상환이 빚·연체를 지운다 —
+        /// 잠금 API가 읽을 때마다 다시 심어 그 경로를 탄다.
+        /// </summary>
+        static void ApplyQaLoanSeed()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_LOAN_OVERDUE");
+            if (string.IsNullOrEmpty(raw)) return;
+            int n;
+            if (!int.TryParse(raw, out n) || n <= 0) return;
+            if (n > 3) n = 3;
+            bool ok = _overdueCount == n && _debt > 0 && _floor >= 30
+                      && (n < 3 || _auctionBanUntil > NowUnix());
+            if (_qaLoanSeeded && ok) return;
+            _qaLoanSeeded = true;
+            if (_wallet.Copper < 100000) _wallet.TryAdd(100000 - _wallet.Copper);
+            if (_debt <= 0) _debt = 10000;
+            _overdueCount = n;
+            _loanDueAt = NowUnix() + Economy.LoanTermHours * 3600;
+            _loanAccruedAt = NowUnix();
+            if (_floor < 30) _floor = 30;
+            if (n >= 3)
+            {
+                _bankruptThisLoan = true;
+                if (_bankruptcyCount < 1) _bankruptcyCount = 1;
+                if (_auctionBanUntil <= NowUnix())
+                    _auctionBanUntil = NowUnix() + (long)Economy.LoanBankruptcyAuctionBanDays * 86400L;
+            }
+            Save();
         }
         public static long Repay(long copper) => Repay(copper, NowUnix());
 
@@ -280,8 +450,17 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey(K_DEBT);
             PlayerPrefs.DeleteKey(K_LOAN_AT);
             PlayerPrefs.DeleteKey(K_LOAN_DUE);
+            PlayerPrefs.DeleteKey(K_OVERDUE);
+            PlayerPrefs.DeleteKey(K_BANKRUPT);
+            PlayerPrefs.DeleteKey(K_BANKRUPT_LOAN);
+            PlayerPrefs.DeleteKey(K_AUCTION_BAN);
+            PlayerPrefs.DeleteKey(K_RELOAN);
             PlayerPrefs.Save();
             _debt = _loanAccruedAt = _loanDueAt = 0;
+            _overdueCount = _bankruptcyCount = 0;
+            _bankruptThisLoan = false;
+            _auctionBanUntil = _reloanUntil = 0;
+            _qaLoanSeeded = false;
             _loaded = false;
             Equipment.ResetAll();
         }

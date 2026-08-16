@@ -403,13 +403,27 @@ namespace AshesToStars
         // 상태(부채·기한)는 GameState가 들고, 실제 소비처는 TowerScreen "대출받고 입장"과
         // GameState.Earn의 수입 50% 자동 상환이다.
         //
-        // ⚠️ 유보(정직): §12 연체 제재(경매장 등록 금지·침략 불가)와 3회 연체 파산(영지 건물
-        //    강등)은 그 제재 대상 시스템(경매장·침략·영지 레벨)이 아직 없다. 지금 넣으면
-        //    "정의만 있고 소비처 0곳" 오펀이 된다 — 그 시스템들이 생길 때 함께 배선한다.
-        //    여기서는 소비처가 실재하는 ✅ 부분만 구현한다(대출·이자·자동상환·한도).
+        // 연체 제재의 **계산 상수**. 상태·화면 잠금은 GameState / EstateScreen / WorldMapScreen.
+        // 정직한 미완(소비 시스템 없음): 영지 생산 압류 · 건물 -1레벨 · 비장착 아이템 30% 압류.
+        // 거래서버·침략 본게임은 OUT — 문은 잠그되 그 안은 열지 않는다.
 
         /// <summary>시간당 이자 (§18-5: 0.5%/h = 일 12%).</summary>
         public const double LoanHourlyInterest = 0.005;
+
+        /// <summary>연체 1회부터 이자 배율 (§12·§18-5: ×1.5).</summary>
+        public const double LoanOverdueInterestFactor = 1.5;
+
+        /// <summary>파산 1회당 한도 배율 (§18-5: -50%).</summary>
+        public const double LoanBankruptcyLimitFactor = 0.5;
+
+        /// <summary>파산 1회당 이자 추가 배율 (§18-5: +50%).</summary>
+        public const double LoanBankruptcyInterestFactor = 1.5;
+
+        /// <summary>파산 후 경매장 정지 일수 (§18-5: 7일).</summary>
+        public const int LoanBankruptcyAuctionBanDays = 7;
+
+        /// <summary>파산 후 재대출 유예 일수 (§18-5: 7일).</summary>
+        public const int LoanReloanCooldownDays = 7;
 
         /// <summary>상환 기한 (§18-5: 72시간).</summary>
         public const long LoanTermHours = 72;
@@ -428,24 +442,40 @@ namespace AshesToStars
         ///    근사한다. 그래도 ✅ 원칙("무자산이면 못 빌린다")은 그대로 성립한다(잔고 0 → 한도 0).
         ///    평가액 시스템이 생기면 netWorthCopper 인자만 실제 순자산으로 바꾸면 된다.
         /// </summary>
-        public static long LoanLimitCopper(long netWorthCopper, int tier)
+        public static long LoanLimitCopper(long netWorthCopper, int tier, int bankruptcyCount = 0)
         {
             if (tier < 0) tier = 0;
+            if (bankruptcyCount < 0) bankruptcyCount = 0;
             long netCap = (long)(netWorthCopper * 0.30);
             long absCap = LoanBaseGoldPerTier * (tier + 1) * COPPER_PER_GOLD;
             long limit = System.Math.Min(netCap, absCap);
+            for (int i = 0; i < bankruptcyCount; i++)
+                limit = (long)(limit * LoanBankruptcyLimitFactor);
             return limit < 0 ? 0 : limit;
         }
 
+        /// <summary>연체·파산이 이자에 곱해지는 배율. 연체 0·파산 0이면 1.</summary>
+        public static double LoanInterestFactor(int overdueCount, int bankruptcyCount)
+        {
+            double f = 1.0;
+            if (overdueCount >= 1) f *= LoanOverdueInterestFactor;
+            if (bankruptcyCount < 0) bankruptcyCount = 0;
+            for (int i = 0; i < bankruptcyCount; i++)
+                f *= LoanBankruptcyInterestFactor;
+            return f;
+        }
+
         /// <summary>
-        /// 이자 가산 — 잔액에 시간당 0.5% 복리(§18-5). 정수 반올림.
+        /// 이자 가산 — 잔액에 시간당 0.5%×배율 복리(§18-5). 정수 반올림.
         /// 결정론적이라(초월함수 1회) 자가검사가 배속·대기 없이 값을 검증할 수 있다.
+        /// interestFactor 기본 1 — 기존 SelfCheck ⑩(만기 정각 = 연체 전)이 이 경로다.
         /// </summary>
-        public static long AccrueLoan(long balanceCopper, long hours)
+        public static long AccrueLoan(long balanceCopper, long hours, double interestFactor = 1.0)
         {
             if (balanceCopper <= 0) return 0;
             if (hours <= 0) return balanceCopper;
-            double grown = balanceCopper * System.Math.Pow(1.0 + LoanHourlyInterest, hours);
+            if (interestFactor <= 0) interestFactor = 1.0;
+            double grown = balanceCopper * System.Math.Pow(1.0 + LoanHourlyInterest * interestFactor, hours);
             return (long)System.Math.Round(grown);
         }
 

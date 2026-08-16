@@ -21,23 +21,29 @@ namespace AshesToStars
         /// (SceneStructureBuilder "30층 돌파 → 침략·경매장 동시 해금").</summary>
         public const int InvasionUnlockFloor = 30;
 
+        /// <summary>허브 침략 버튼 잠금 사유. null이면 기존 GoBattle(WorldMap)만 유지한다.</summary>
+        public static string InvasionHubLockReason(long nowUnix)
+        {
+            if (GameState.TowerFloor < InvasionUnlockFloor)
+                return $"탑 {InvasionUnlockFloor}층 달성 시 해금(현재 {GameState.TowerFloor}층) — 30층 미만은 초보 보호(§15)";
+            if (!GameState.CanInvade(nowUnix))
+                return GameState.InvasionBlockReason(nowUnix);
+            return null;
+        }
+        public static string InvasionHubLockReason() => InvasionHubLockReason(
+            System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
         protected override void Body(Rect r)
         {
             Locked(r, 0, "성계 이동", "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)");
 
-            // §15 ✅ 침략은 탑 30층 달성 시 해금 — "30층 미만은 공격도 수비도 없음 = 초보 보호".
-            // 경매장(EstateScreen)은 이미 30층 게이트가 있는데(현재 층 표시) 침략만 무게이트라
-            // 둘이 "동시 해금"이어야 하는데도 대칭이 깨져 있었다("고장난 게임" 계열의 거짓말).
-            if (GameState.TowerFloor >= InvasionUnlockFloor)
-            {
-                if (Row(r, 1, "침략", "비동기 PvP — 상대 별을 침공한다(§15)"))
-                    GameFlow.GoBattle(GameFlow.WorldMap);
-            }
-            else
-            {
-                Locked(r, 1, "침략",
-                    $"탑 {InvasionUnlockFloor}층 달성 시 해금(현재 {GameState.TowerFloor}층) — 30층 미만은 초보 보호(§15)");
-            }
+            // §15 ✅ 침략은 탑 30층 달성 시 해금. 연체 2회면 그 위에서도 잠근다(§18-5).
+            // 침략 본게임(적 별·약탈)은 열지 않는다 — 문은 잠글 수 있어도 장은 없다.
+            string invasionLock = InvasionHubLockReason();
+            if (invasionLock != null)
+                Locked(r, 1, "침략", invasionLock);
+            else if (Row(r, 1, "침략", "비동기 PvP — 상대 별을 침공한다(§15)"))
+                GameFlow.GoBattle(GameFlow.WorldMap);
 
             Locked(r, 2, "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)");
             Info(r, 3, $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots} — 침략 전투는 아직 없다(§13-5)");

@@ -19,6 +19,9 @@ namespace AshesToStars
         enum Sub { 없음, 대장간, 경매장, 영묘, 수비대 }
         Sub _sub = Sub.없음;
 
+        /// <summary>경매장 해금 층(§12). 침략과 동시 해금이다.</summary>
+        public const int AuctionUnlockFloor = 30;
+
         protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Estate);
         protected override string BackgroundArt => "bg_estate";
@@ -65,29 +68,55 @@ namespace AshesToStars
             if (_sub == Sub.대장간) { Smith(r); return; }
             if (_sub == Sub.수비대) { Barracks(r); return; }
 
+            if (_sub == Sub.경매장) { AuctionHouse(r); return; }
+
             if (_sub != Sub.없음)
             {
-                // 제네릭 "아직 내용이 없다"는 "고장난 게임"으로 읽힌다(오너 지시). 영묘가
-                // 이미 있는 시스템으로 성립한 것과 달리, 아래 셋은 **소비할 시스템 자체가
-                // 없어서** 비어 있다 — 왜 비었는지·무엇이 있어야 채워지는지 건물마다 밝힌다.
-                // 채우면서도 소비처가 없으면 그 순간 또 "눌러도 아무 일 없는" 거짓말이 된다.
-                string why = _sub switch
-                {
-                    Sub.경매장 => $"탑 30층을 달성해야 열린다(현재 {GameState.TowerFloor}층) — " +
-                                  "골드가 곧 목숨이라 거래가 성립한다. 온라인 거래 서버가 필요하다(§12)",
-                    _ => "아직 내용이 없다 — 수직 슬라이스에서 채운다(§21-2)",
-                };
-                Info(r, 0, why);
+                Info(r, 0, "아직 내용이 없다 — 수직 슬라이스에서 채운다(§21-2)");
                 if (Row(r, 1, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
                 return;
             }
 
             if (Row(r, 0, "대장간", "장비 제작·강화 (§11)", UiAtlas.BuildingKey("대장간"))) _sub = Sub.대장간;
-            if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)", UiAtlas.BuildingKey("경매장"))) _sub = Sub.경매장;
+            string auctionLock = AuctionHubLockReason();
+            if (auctionLock != null)
+                Locked(r, 1, "경매장", auctionLock, UiAtlas.BuildingKey("경매장"));
+            else if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)", UiAtlas.BuildingKey("경매장")))
+                _sub = Sub.경매장;
             if (Row(r, 2, "영묘", $"환생 — 삭제된 캐릭터의 귀환 · 환생석 {LifeSystem.GetRebornStones()}개 (§4)",
                     UiAtlas.BuildingKey("영묘")))
                 _sub = Sub.영묘;
             if (Row(r, 3, "수비대 배치", "침략 방어 (§13-5)", UiAtlas.BuildingKey("수비대"))) _sub = Sub.수비대;
+        }
+
+        /// <summary>
+        /// 허브 경매 버튼 잠금 사유. null이면 들어간다.
+        /// 부채·연체·파산 정지가 층 게이트보다 앞선다 — 열려 보이면 안 된다.
+        /// </summary>
+        public static string AuctionHubLockReason(long nowUnix)
+        {
+            if (!GameState.CanUseAuction(nowUnix))
+                return GameState.AuctionBlockReason(nowUnix);
+            if (GameState.TowerFloor < AuctionUnlockFloor)
+                return $"탑 {AuctionUnlockFloor}층 달성 시 해금(현재 {GameState.TowerFloor}층) — 30층 미만은 초보 보호(§12)";
+            return null;
+        }
+        public static string AuctionHubLockReason() => AuctionHubLockReason(
+            System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+        void AuctionHouse(Rect r)
+        {
+            int row = 0;
+            string lockReason = AuctionHubLockReason();
+            if (lockReason != null)
+            {
+                Info(r, row++, lockReason);
+                if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+                return;
+            }
+            Info(r, row++,
+                "거래 서버가 없다 — 등록·구매는 열지 않는다. 문은 열렸지만 장은 없다(§12·OUT)");
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
         }
 
         string _msg = "";
