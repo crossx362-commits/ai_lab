@@ -81,13 +81,19 @@ namespace AshesToStars
             long loot = InvasionState.Settle(true);
             Check(loot > 0 && !InvasionState.Pending, "승리 약탈이 정산된다");
             Check(GameState.Wallet.Copper == gold3 - sortie + loot, "약탈이 지갑에 들어온다");
+            Check(InvasionState.ShieldActive, "정산 직후 보호막 12시간(§15)");
+            Check(!InvasionState.TryBegin(), "보호막 중 재출정 거부");
 
-            Check(InvasionState.TryBegin(), "두 번째 출정");
+            long t0 = InvasionState.NowUnix();
+            InvasionState.NowUnix = () => t0 + InvasionState.GuardSeconds + 1;
+            Check(!InvasionState.ShieldActive, "12시간 뒤 보호막이 끝난다");
+            Check(InvasionState.TryBegin(), "보호막이 끝나면 두 번째 출정");
             long gold4 = GameState.Wallet.Copper;
             InvasionState.Settle(false);
             Check(GameState.Wallet.Copper == gold4 - InvasionState.DefeatCost()
                   || GameState.Wallet.Copper <= gold4,
                 "패배 시 추가 소모");
+            InvasionState.NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             Environment.SetEnvironmentVariable("QA_LOAN_OVERDUE", "2");
             GameState.ResetAll();

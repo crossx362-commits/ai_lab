@@ -82,7 +82,7 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 침략 전투 진입. 연체 2회·출정 비용 부족이면 거부(§15·§18-5).
+        /// 침략 전투 진입. 연체 2회·출정 비용 부족·보호막이면 거부(§15·§18-5).
         /// 본게임은 로컬 별 수비대와 싸우고 약탈을 정산한다. 다른 유저 서버는 아니다.
         /// </summary>
         public static bool TryGoInvasion()

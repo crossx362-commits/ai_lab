@@ -29,13 +29,15 @@ namespace AshesToStars
                 return $"탑 {InvasionUnlockFloor}층 달성 시 해금(현재 {GameState.TowerFloor}층) — 30층 미만은 초보 보호(§15)";
             if (!GameState.CanInvade(nowUnix))
                 return GameState.InvasionBlockReason(nowUnix);
+            if (InvasionState.ShieldActive)
+                return InvasionState.ShieldBlockReason();
             return null;
         }
-        public static string InvasionHubLockReason() => InvasionHubLockReason(
-            System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        public static string InvasionHubLockReason() => InvasionHubLockReason(InvasionState.NowUnix());
 
         protected override void Body(Rect r)
         {
+            InvasionState.SeedQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
