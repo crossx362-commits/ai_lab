@@ -33,6 +33,7 @@ namespace AshesToStars
         global::W3Party _battle;
         static BattleRewardInfo _reward = new BattleRewardInfo();
         bool _defeatApplied;
+        float _bossMaxHp;
 
         protected override void Awake()
         {
@@ -88,6 +89,7 @@ namespace AshesToStars
                 int bossCount = dungeonBoss ? DungeonRun.Plan.BossCount : 1;
                 // 던전 종점 보스는 몬스터문서 §7의 **75초** 기준이다(탑 층수 스케일이 아니다)
                 boss.Begin(GameFlow.BossFloor, bossCount, dungeonBoss ? 75f : 0f);
+                _bossMaxHp = BossBattle.ActiveTotalHp;
             }
 
             // W3Party 컴포넌트 획득 또는 생성
@@ -143,9 +145,19 @@ namespace AshesToStars
 
         protected override void Overlay()
         {
+            float y = 10f;
+            if (BossBattle.IsActive && _bossMaxHp > 0f)
+            {
+                var bar = new Rect(360f, y, 560f, 36f);
+                int phases = UiAtlas.PhaseCountForFloor(GameFlow.BossFloor);
+                UiAtlas.DrawBossHp(bar, BossBattle.ActiveTotalHp, _bossMaxHp, phases);
+                GUI.Box(new Rect(bar.x, bar.yMax + 2f, bar.width, 20f),
+                    $"{GameFlow.BossFloor}층 보스  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
+                y = bar.yMax + 26f;
+            }
             if (!EmergencyEscape.Casting) return;
             float p = EmergencyEscape.Progress;
-            var box = new Rect(340f, 36f, 600f, 28f);
+            var box = new Rect(340f, y + 8f, 600f, 28f);
             GUI.Box(box, $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
             GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
         }

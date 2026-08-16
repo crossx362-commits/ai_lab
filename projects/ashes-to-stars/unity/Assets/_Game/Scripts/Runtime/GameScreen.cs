@@ -174,11 +174,19 @@ namespace AshesToStars
             float bottom = ShowBottomBar ? BarH + 34f : 44f;
             bool buttonPreview = UiAtlas.QaShowButtonStates && ShowHeader;
             bool rarityPreview = ShowRarityPreview;
+            bool bossHpPreview = ShowBossHpPreview;
             float previewH = 0f;
             if (buttonPreview) previewH += RowH + 12f;
             if (rarityPreview) previewH += 80f;
+            if (bossHpPreview) previewH += 132f;
             Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom - previewH));
             float previewY = REF_H - bottom;
+            if (bossHpPreview)
+            {
+                previewY -= 124f;
+                DrawBossHpPreview(new Rect(48, previewY, 720f, 116f));
+                previewY -= 8f;
+            }
             if (rarityPreview)
             {
                 previewY -= 72f;
@@ -203,6 +211,9 @@ namespace AshesToStars
 
         /// <summary>등급 견본은 캐릭터 상세처럼 빈 칸이 있는 화면만. 대장간에 띄우면 명부를 덮는다.</summary>
         protected virtual bool ShowRarityPreview => false;
+
+        /// <summary>보스 HP 견본은 탑처럼 보스전이 다음인 화면만. 영지에 띄우면 건물 줄을 덮는다.</summary>
+        protected virtual bool ShowBossHpPreview => false;
 
         protected abstract void Body(Rect r);
 
@@ -277,6 +288,21 @@ namespace AshesToStars
                 var (hover, pressed, label) = samples[i];
                 var br = new Rect(origin.x + i * (w + gap), origin.y, w, RowH);
                 DrawAtlasButton(br, label, forceHover: hover, forcePressed: pressed);
+            }
+        }
+
+        /// <summary>qa_shot에 마우스가 없어 보스전 한 판을 기다리지 않고 프레임·경계선을 본다.</summary>
+        void DrawBossHpPreview(Rect origin)
+        {
+            Styles();
+            var samples = UiAtlas.BossHpSamples;
+            float h = 28f, gap = 8f;
+            for (int i = 0; i < samples.Length; i++)
+            {
+                var (current, max, phases, label) = samples[i];
+                var bar = new Rect(origin.x, origin.y + i * (h + gap), origin.width - 160f, h);
+                UiAtlas.DrawBossHp(bar, current, max, phases);
+                GUI.Label(new Rect(bar.xMax + 10f, bar.y + 4f, 150f, 22f), label, _small);
             }
         }
 

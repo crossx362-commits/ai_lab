@@ -15,6 +15,7 @@ namespace AshesToStars
         protected override string Title => $"탑 · {GameState.TowerFloor}층";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Tower);
         protected override string BackgroundArt => "bg_tower";
+        protected override bool ShowBossHpPreview => UiAtlas.QaShowBossHp;
         protected override string Subtitle =>
             $"최대 100층. 10층 돌파마다 티어 상승(§8·§10-6) — 현재 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
 

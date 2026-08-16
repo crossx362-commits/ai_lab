@@ -65,7 +65,7 @@ namespace AshesToStars
             "heart", "heart_broken",
             "building_smith", "building_auction", "building_mausoleum", "building_barracks",
             "button_normal", "button_hover", "button_pressed", "panel", "hp_frame",
-            "xp_frame", "portrait_frame",
+            "xp_frame", "portrait_frame", "boss_hp_frame",
             "rarity_common", "rarity_uncommon", "rarity_rare", "rarity_heroic", "rarity_legendary",
         };
 
@@ -151,6 +151,56 @@ namespace AshesToStars
 
         public static bool DrawRarity(Rect target, GearGrade grade, Color? tint = null) =>
             Draw(target, RarityKey(grade), tint);
+
+        /// <summary>
+        /// 보스 HP 프레임. RequiredKeys·Pieces에만 있고 화면 소비처가 0곳이었다.
+        /// 파티 hp_frame과 다른 조각 — 상단 중앙에서 위험으로 읽혀야 한다(§16-1·§16-5).
+        /// </summary>
+        public const string BossHpFrameKey = "boss_hp_frame";
+
+        public static bool QaShowBossHp =>
+            Environment.GetEnvironmentVariable("QA_BOSS_HP") == "1";
+
+        /// <summary>§10-5 페이즈 수. BossBattle.CreateBosses와 같은 층 구간.</summary>
+        public static int PhaseCountForFloor(int floor)
+        {
+            if (floor <= 5) return 2;
+            if (floor <= 10) return 3;
+            return 4;
+        }
+
+        public static readonly (float current, float max, int phases, string label)[] BossHpSamples =
+        {
+            (9000f, 9000f, 2, "만피·2페이즈"),
+            (4500f, 9000f, 2, "1/2·경계"),
+            (1200f, 9000f, 3, "낮음·3페이즈"),
+        };
+
+        /// <summary>프레임 + 채움 + 페이즈 경계선. 경계선이 없으면 §16-5가 화면에 없다.</summary>
+        public static bool DrawBossHp(Rect target, float current, float max, int phaseCount)
+        {
+            float ratio = max > 0f ? Mathf.Clamp01(current / max) : 0f;
+            var fill = ratio > 0.5f ? new Color(0.78f, 0.16f, 0.18f)
+                     : ratio > 0.25f ? new Color(0.92f, 0.48f, 0.14f)
+                                    : new Color(0.95f, 0.22f, 0.16f);
+            bool framed = DrawMeter(target, BossHpFrameKey, ratio, fill);
+            int phases = Mathf.Max(1, phaseCount);
+            if (phases <= 1) return framed;
+
+            var saved = GUI.color;
+            GUI.color = new Color(1f, 0.92f, 0.55f, 0.95f);
+            float padX = framed ? 10f : 0f;
+            float padY = framed ? 6f : 4f;
+            float inner = Mathf.Max(0f, target.width - padX * 2f);
+            float h = Mathf.Max(4f, target.height - padY * 2f);
+            for (int i = 1; i < phases; i++)
+            {
+                float x = target.x + padX + inner * (i / (float)phases);
+                GUI.DrawTexture(new Rect(x - 1f, target.y + padY, 2f, h), Pixel);
+            }
+            GUI.color = saved;
+            return framed;
+        }
 
         /// <summary>
         /// 화면 이름 → 제목 옆 아이콘. 기본값을 worldmap(나침반)으로 두면

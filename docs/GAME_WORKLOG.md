@@ -10,6 +10,11 @@
 
 ---
 
+## 보스 HP 프레임 소비처 (2026-08-16)
+
+큐 UI 남은 것. `boss_hp_frame`은 아틀라스에만 있었다. `DrawBossHp` + BattleScreen Overlay.
+SelfCheck PASS. PNG 탑 견본 3칸 + 실전 7500/7500 페이즈 4. W3Party 안 건드림.
+
 ## 올라마 분담 (2026-08-16)
 
 `loop/ollama_split.py` — classify/copy. 실측 gemma4:12b JSON.

@@ -131,6 +131,22 @@ namespace AshesToStars
             }
             _ = nameof(UiAtlas.DrawRarity);
 
+            Debug.Assert(System.Array.IndexOf(UiAtlas.RequiredKeys, UiAtlas.BossHpFrameKey) >= 0,
+                "[UiAtlasSelfCheck] boss_hp_frame 이 RequiredKeys에 없다");
+            Debug.Assert(UiAtlas.RectFor(UiAtlas.BossHpFrameKey).width > 0,
+                "[UiAtlasSelfCheck] 보스 HP 프레임 조각이 없다");
+            Debug.Assert(UiAtlas.PhaseCountForFloor(1) == 2
+                         && UiAtlas.PhaseCountForFloor(5) == 2
+                         && UiAtlas.PhaseCountForFloor(10) == 3
+                         && UiAtlas.PhaseCountForFloor(50) == 4,
+                "[UiAtlasSelfCheck] 층별 페이즈 수가 §10-5와 어긋난다");
+            Debug.Assert(UiAtlas.BossHpSamples.Length == 3,
+                "[UiAtlasSelfCheck] 보스 HP 견본이 3칸이 아니다");
+            Debug.Assert(UiAtlas.BossHpSamples[1].current == 4500f
+                         && UiAtlas.BossHpSamples[1].phases == 2,
+                "[UiAtlasSelfCheck] 1/2 견본이 페이즈 경계와 어긋난다");
+            _ = nameof(UiAtlas.DrawBossHp);
+
             Debug.Log("[UiAtlasSelfCheck] PASS");
         }
     }

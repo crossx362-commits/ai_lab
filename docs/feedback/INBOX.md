@@ -180,7 +180,9 @@ Lv20에서 1차 전직 11종으로 세분화한 뒤 Lv50에서 같은 직업의 
 > 아이템 아틀라스 16조각을 대장간 재료/강화/장착·캐릭터 부활초·전직·영묘 환생석에 연결
 > (`63da5850`, PNG `item_icon_shots/qa_go_Estate_smith.png`).
 > 등급 프레임 5종을 캐릭터 장착 6칸·대장간 줄에 연결(`fa37a821`, PNG
-> `rarity_frame_shots/qa_go_Character.png`). 전체 「다른 게임만큼」은 닫지 않음.
+> `rarity_frame_shots/qa_go_Character.png`).
+> `boss_hp_frame`을 보스전 상단 중앙·탑 QA 견본에 연결(PNG `boss_hp_shots/qa_boss.png`·
+> `qa_go:Tower.png`). 전체 「다른 게임만큼」은 닫지 않음.
 
 
 ### 📌 처리 기록 — 「전직」을 막고 있던 설계 충돌 (루프, 2026-08-15 22:2x)
