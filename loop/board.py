@@ -1109,6 +1109,7 @@ def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict])
         return _now_short(_now_ing(work[-1]))
     if inbox_waiting:
         title = re.sub(r"^[📌⭐✅]\s*", "", inbox_waiting[0]["title"])
+        title = re.sub(r"\s*\(오너[^)]*\)\s*$", "", title)
         return _now_short(title) + " 하는 중"
     if queue:
         return _now_short(queue[0]["title"]) + " 하는 중"
