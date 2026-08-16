@@ -144,6 +144,36 @@ public class SpriteBank
     /// <summary>보스 실루엣 4종. 층·계열로 골라 쓴다(§0-B 변주 원칙).</summary>
     public static readonly string[] BOSS_KEYS =
         { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
+    static readonly string[] BOSS_DIRS =
+        { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
+    static readonly string[] BOSS_FRAMES =
+    {
+        "idle_00", "idle_01", "idle_02", "idle_03",
+        "attack_00", "attack_01", "attack_02", "attack_03",
+        "hurt_00", "hurt_01", "hurt_02", "hurt_03",
+        "death_00", "death_01", "death_02", "death_03",
+    };
+
+    Sprite[][] _bossAnim;
+
+    /// <summary>보스 애니. 폴더가 없으면 정지 실루엣으로 폴백한다(아틀라스에 안 넣는다 — 과밀 방지).</summary>
+    public Sprite BossAnim(int kind, Motion m, float t)
+    {
+        int k = Mathf.Abs(kind) % BOSS_KEYS.Length;
+        Sprite fallback = Boss != null && k < Boss.Length ? Boss[k] : null;
+        if (_bossAnim == null || k >= _bossAnim.Length || _bossAnim[k] == null)
+            return fallback;
+        var row = _bossAnim[k];
+        int i;
+        switch (m)
+        {
+            case Motion.Attack: i = 4 + Mathf.Clamp((int)(t / 0.10f), 0, 3); break;
+            case Motion.Hurt: i = 8 + Mathf.Clamp((int)(t / 0.08f), 0, 3); break;
+            case Motion.Death: i = 12 + Mathf.Clamp((int)(t / 0.12f), 0, 3); break;
+            default: i = (int)(t / 0.18f) % 4; break;
+        }
+        return row[Mathf.Clamp(i, 0, row.Length - 1)] ?? fallback;
+    }
 
     /// <summary>가장자리를 깎은 둥근 점. 투사체처럼 **작게 그려지는 것**에 쓴다.</summary>
     static Texture2D Dot(int n)
@@ -345,6 +375,23 @@ public class SpriteBank
         b.Boss = new Sprite[BOSS_KEYS.Length];
         for (int i = 0; i < BOSS_KEYS.Length; i++)
             b.Boss[i] = MakeAt(6 + i, U_BOSS);      // 6부터가 BOSS_KEYS 구간이다
+
+        // 보스 애니는 아틀라스 밖에 둔다. 4종×16장을  squish하면 도트가 뭉갠다.
+        b._bossAnim = new Sprite[BOSS_DIRS.Length][];
+        float bossPpu = 160f / U_BOSS;
+        for (int k = 0; k < BOSS_DIRS.Length; k++)
+        {
+            b._bossAnim[k] = new Sprite[BOSS_FRAMES.Length];
+            for (int f = 0; f < BOSS_FRAMES.Length; f++)
+            {
+                var tex = Resources.Load<Texture2D>(
+                    $"sprites/{BOSS_DIRS[k]}/{BOSS_DIRS[k]}_{BOSS_FRAMES[f]}");
+                if (tex == null) continue;
+                b._bossAnim[k][f] = Sprite.Create(
+                    tex, new Rect(0, 0, tex.width, tex.height),
+                    new Vector2(0.5f, 0.06f), bossPpu, 0, SpriteMeshType.FullRect);
+            }
+        }
 
         // 직업마다 **idle 한 장**으로 배율과 발밑을 정하고 그 직업의 전 프레임에 같은 값을 쓴다.
         //  ① 프레임마다 재면 공격처럼 몸을 숙이는 동작에서 확대율이 달라져 캐릭터가 커졌다 작아졌다 한다

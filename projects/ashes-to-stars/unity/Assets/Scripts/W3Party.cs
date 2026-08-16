@@ -2601,6 +2601,7 @@ public class W3Party : MonoBehaviour
             Damage(tgt, damage, tgt.Role == Role.Tank);
             _meleeHits++;
             _bossAutoHits++;
+            AshesToStars.BossBattle.PlayAttack(_mBossIndex[i]);
             if (GameMode)
             {
                 FxPool.Play(FxPool.Kind.Slash, tgt.Pos, 1.4f);

@@ -11,7 +11,7 @@
 | 기본 캐릭터 4종 | `out_char/` | `unity/Assets/Resources/sprites/{tank,dps,healer,buffer}/` | `SpriteBank.cs` | ✅ 4종 × 13프레임 반입·전투 표시 |
 | 마법사 | `out_char_mage/frames/` | `unity/Assets/Resources/sprites/mage/` | `SpriteBank.cs`, `StarterPick` | ✅ 13프레임 반입·전투·시작 마딜 카드 |
 | 몬스터 행동형 4종 | `out_p2/frames_*` | `unity/Assets/Resources/sprites/mob_{chaser,charger,ranged,swarmer}/` | `SpriteBank.cs` | ✅ 4종 × 22프레임 반입·상호 구분 화면 확인 |
-| 보스 실루엣 4종 | `out_p6_boss/` | `unity/Assets/Resources/sprites/boss_{brute,serpent,wraith,construct}.png` | `SpriteBank.cs`, `W3Party.cs` | 🟡 정적 4장 반입·보스전 표시, 방향·상태 애니메이션 미제작 |
+| 보스 실루엣 4종 | `out_p6_boss/` · 애니는 `out_boss_anim/` | `unity/Assets/Resources/sprites/boss_{brute,serpent,wraith,construct}/` 각 16프레임 | `SpriteBank.BossAnim`, `BossBattle` | 🟡 idle·attack·hurt·death 반입. 영상 파이프는 ZDR로 실패해 키프레임 편집 |
 | 화면 배경 9종 | `out_p8_bg/bg_*.png` · 타이틀은 Imagine `11.jpg` | `unity/Assets/Resources/bg/bg_*.png` | `GameScreen.cs` | 🟡 허브 6 + 결과·던전 유지. `bg_title`만 2026-08-17 Imagine 교체 |
 | UI 크롬 8종 | `art/out_ui_chrome/` | `unity/Assets/Resources/ui/chrome/{panel,button_*,portrait_frame,hp_frame,xp_frame,boss_hp_frame}.png` | `UiAtlas.cs` | 🟡 솔로 텍스처 우선, 아틀라스 아이콘은 유지. 화면 QA 전 |
 | 마을·나무 16종 | `out_p3_village/`, `out_p5_trees/` | `unity/Assets/Resources/props/` | `FieldDecor.cs` | ✅ `village_tree_0`을 집 옆에만 세움(`qa_hunt.png` 열매나무). 길에 안 올라감 |

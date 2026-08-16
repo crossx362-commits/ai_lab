@@ -110,6 +110,11 @@ def expected() -> dict[str, list[str]]:
     if mob_dirs and mob_frames:
         for m in mob_dirs:
             out[f"sprites/{m}"] = [f"{m}_{f}.png" for f in mob_frames]
+    boss_dirs = _array(sb, "BOSS_DIRS")
+    boss_frames = _array(sb, "BOSS_FRAMES")
+    if boss_dirs and boss_frames:
+        for d in boss_dirs:
+            out[f"sprites/{d}"] = [f"{d}_{f}.png" for f in boss_frames]
     props = set(_method_literals(fd, "GetPropNames"))
     # ArenaLayout은 GetPropNames에 없는 접두(cover·wall)로 던전 장애물을 세운다.
     al = ASSETS / "_Game" / "Scripts" / "Runtime" / "ArenaLayout.cs"

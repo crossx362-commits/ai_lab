@@ -81,6 +81,7 @@ namespace AshesToStars
 
         private void Update()
         {
+            UpdateBossViews(Time.deltaTime);
             if (!isActive) return;
 
             elapsedTime += Time.deltaTime;
@@ -186,6 +187,30 @@ namespace AshesToStars
             var view = _active.bosses[index].view;
             if (view != null) view.flipX = flipX;
         }
+
+        public static void PlayAttack(int index)
+        {
+            var b = Live(index);
+            if (b == null) return;
+            b.atkUntil = Time.time + 0.42f;
+            b.atkT0 = Time.time;
+        }
+
+        public static void PlayHurt(int index)
+        {
+            var b = Live(index);
+            if (b == null) return;
+            b.hurtUntil = Time.time + 0.22f;
+            b.hurtT0 = Time.time;
+        }
+
+        static BossInstance Live(int index)
+        {
+            if (_active == null || !_active.isActive || _active.bosses == null) return null;
+            if (index < 0 || index >= _active.bosses.Count) return null;
+            var b = _active.bosses[index];
+            return b != null && b.isActive ? b : null;
+        }
         public static void ReportHealingToActive(float amount)
         {
             if (_active != null && _active.isActive) _active.ReportPartyHealing(amount);
@@ -240,11 +265,12 @@ namespace AshesToStars
                     _active.UpdatePhase(boss);
                     boss.currentHp = 0f;
                     boss.isActive = false;
-                    if (boss.view != null) boss.view.gameObject.SetActive(false);
+                    if (boss.deadT <= 0f) boss.deadT = 0.001f;
                 }
                 else
                 {
                     _active.UpdatePhase(boss);
+                    PlayHurt(boss.index);
                 }
             }
 
@@ -263,9 +289,10 @@ namespace AshesToStars
             if (boss.currentHp <= 0f)
             {
                 boss.isActive = false;
-                if (boss.view != null) boss.view.gameObject.SetActive(false);
+                if (boss.deadT <= 0f) boss.deadT = 0.001f;
                 if (_active.bosses.All(b => !b.isActive)) _active.OnAllBossesDefeated();
             }
+            else PlayHurt(bossIndex);
             return true;
         }
 
@@ -436,7 +463,8 @@ namespace AshesToStars
 
             var go = new GameObject($"Boss_{i}");
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = bank.Boss[Mathf.Abs(currentFloor / 5 + i) % bank.Boss.Length];
+            boss.silo = Mathf.Abs(currentFloor / 5 + i) % bank.Boss.Length;
+            sr.sprite = bank.BossAnim(boss.silo, SpriteBank.Motion.Idle, 0f) ?? bank.Boss[boss.silo];
             sr.sharedMaterial = bank.Mat;
             // 층이 높을수록 크게 — §0-B가 말한 "크기 변주"가 이것이다.
             float scale = 1f + Mathf.Min(0.6f, currentFloor * 0.01f);
@@ -621,6 +649,37 @@ namespace AshesToStars
             healCheckActive = false;
         }
 
+        void UpdateBossViews(float dt)
+        {
+            var bank = SpriteBank.Cached ?? SpriteBank.Load();
+            if (bank == null || bosses == null) return;
+            foreach (var boss in bosses)
+            {
+                if (boss.view == null) continue;
+                if (boss.deadT > 0f)
+                {
+                    boss.deadT += dt;
+                    boss.view.sprite = bank.BossAnim(boss.silo, SpriteBank.Motion.Death, boss.deadT);
+                    if (boss.deadT > 0.55f) boss.view.gameObject.SetActive(false);
+                    continue;
+                }
+                if (!boss.isActive) continue;
+                var motion = SpriteBank.Motion.Idle;
+                float t = elapsedTime;
+                if (Time.time < boss.hurtUntil)
+                {
+                    motion = SpriteBank.Motion.Hurt;
+                    t = Time.time - boss.hurtT0;
+                }
+                else if (Time.time < boss.atkUntil)
+                {
+                    motion = SpriteBank.Motion.Attack;
+                    t = Time.time - boss.atkT0;
+                }
+                boss.view.sprite = bank.BossAnim(boss.silo, motion, t);
+            }
+        }
+
         private void OnAllBossesDefeated()
         {
             isActive = false;
@@ -642,6 +701,8 @@ namespace AshesToStars
             public SpriteRenderer view;
             /// <summary>월드 좌표. 장판·소환이 보스 자리를 기준으로 터져야 위치가 뜻을 갖는다.</summary>
             public Vector3 position;
+            public int silo;
+            public float atkUntil, atkT0, hurtUntil, hurtT0, deadT;
 
             /// <summary>
             /// 페이즈별 활성 스킬 개수
