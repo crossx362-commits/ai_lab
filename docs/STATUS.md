@@ -6,15 +6,43 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-17 · 루프(대출 순자산 장비·영지)
+최종 갱신: 2026-08-17 · 루프(필드 배회 보스)
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
-1. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)은 닫음. 허브 카드 여백은 다른 세션이 작업 중일 수 있다. 선택 카드 글자가 좁다. 전체 「다른 게임만큼」은 사람 육안.
-2. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`이 최고 층·마지막 출전·사망 원인·장착·동료를 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간은 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체는 💡/이미 `BossBattle` 상한. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
+1. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스는 닫음. 허브 카드 여백은 다른 세션이 작업 중일 수 있다. 선택 카드 글자가 좁다. 전체 「다른 게임만큼」은 사람 육안.
+2. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`이 최고 층·마지막 출전·사망 원인·장착·동료를 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간은 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 대출 순자산 — 장비·영지 평가를 읽는다.**
+> **이번 이터 결과(코드/실행): 필드 배회 보스 — 허브 출현 · 보스전 · FieldDungeonBoss.**
+> - 큐 1번은 사람 육안·다른 세션 가능이라 대기하지 않음. §10-1 ✅
+>   `필드 보스 | 오픈월드 배회`. 표와 §5 지휘 규칙만 있고 필드 소비처가 0곳이었다.
+> - **생산 소비처**: `FieldBoss.Tick`/`SpawnNow`/`Consume`/`BeginFight`/`EndFight`/
+>   `DropSource`/`FightFloor`/`Line`/`CardTitle`/`CardBody`/`BattleTitle`.
+>   `FieldScreen` 2×3 마지막 칸. `GameFlow.GoBattle`이 Fighting이면 탑 풀을 안 뽑는다.
+>   `BattleScreen`이 `FieldDungeonBoss`를 읽고 탑 층을 안 올린다.
+>   `RaidScale.Applies`/`RaidBossPool.Applies`가 Fighting을 읽는다.
+>   T1=5층·T2=15·T10=95. `QA_NO_FIELD_BOSS=1`이면 출현 없음.
+>   `QA_FIELD_BOSS=1`은 T1 재의 야수. 다중 3체·배회 스프라이트는 💡/W3Party.
+>   `W3Party`는 안 건드렸다.
+> - **통과 기준**: T1 층 5·이름 배회하는 재의 야수. T2 층 15.
+>   입장 중 하위 레이드 스케일·탑 풀 없음. 골드 2500(원래 층).
+>   차단하면 출현 0. 화면 `배회 보스 20:00` · `환생석 없음(§10-1·§10-8)`.
+> - **TDD/실행**: `unity_meas` `FieldBossSelfCheck` 전항 PASS
+>   (`field_boss_selfcheck.log`). `RaidScale`·`RaidBossPool` 회귀 PASS.
+> - **화면**(직접 열음, 빈 화면 아님, `QA_FIELD_BOSS=1`):
+>   `field_boss_shots/qa_go:Field.png` 794075B — 필드 2×3,
+>   자막 `배회 보스 배회하는 재의 야수(§10-1)`,
+>   카드 `배회 보스 20:00` · `배회하는 재의 야수 · 준비 없이 만나면 위험 ·
+>   환생석 없음(§10-1·§10-8)`. 옛 사망 없음 잠김 칸이 아님.
+> - **네거티브**: `BattleScreen`에서 `FieldBoss.DropSource`를 빼면 FAIL 1
+>   (`field_boss_negctrl.log`). `QA_NO`면 출현 없음.
+> - **정직한 미완**: 전장 위 배회 스프라이트는 W3Party라 안 넣음. 다중 3체는 💡.
+>   출현은 허브 카드(레이드급과 같은 첫 슬라이스). 샷 지갑 50골드는 이전 QA 잔재.
+>   원본 에디터 PID 75776은 죽이지 않았고 사본으로 빌드·촬영.
+> - **코드** `fe95b78f`. `W3Party`는 안 건드렸다.
+
+> **이전 이터 결과(코드/실행): 대출 순자산 — 장비·영지 평가를 읽는다.**
 > - 큐 1번은 사람 육안·다른 세션 가능이라 대기하지 않음. §18-5 ✅
 >   `한도 | 순자산(장비+영지 평가액)의 30%` 와 `20 G/h` 중 작은 값.
 >   `LoanLimitCopper`는 있었고 `GameState.LoanLimit`가 지갑만 봐 평가가 0곳이었다.
