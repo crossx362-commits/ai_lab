@@ -68,6 +68,8 @@ namespace AshesToStars
 
         public static void Go(string scene)
         {
+            if (scene != Battle)
+                FieldBoss.EndFight();
             if (Application.CanStreamedLevelBeLoaded(scene))
             {
                 SceneManager.LoadScene(scene);
@@ -85,7 +87,7 @@ namespace AshesToStars
             ReturnTo = returnScene;
             Kind = kind;
             BossFloor = floor;
-            if (kind == BattleKind.보스)
+            if (kind == BattleKind.보스 && !FieldBoss.Fighting)
                 RaidBossPool.Pick(floor);
             Go(Battle);
         }

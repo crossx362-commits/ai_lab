@@ -51,7 +51,8 @@ namespace AshesToStars
 
         /// <summary>이미 깬 탑 레이드만. 스케일 차단과 무관하다.</summary>
         public static bool Applies(int floor) =>
-            !Blocked && RaidScale.IsRaidFloor(floor) && floor < GameState.TowerFloor
+            !Blocked && !FieldBoss.Fighting && RaidScale.IsRaidFloor(floor)
+            && floor < GameState.TowerFloor
             && !(DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon);
 
         /// <summary>이미 깬 레이드 층. TowerFloor 51이면 5…50, 10종.</summary>

@@ -16,10 +16,14 @@ namespace AshesToStars
     /// </summary>
     public class BattleScreen : GameScreen
     {
-        protected override string Title => GameFlow.Kind == GameFlow.BattleKind.보스
+        protected override string Title => FieldBoss.Fighting
+            ? FieldBoss.BattleTitle()
+            : GameFlow.Kind == GameFlow.BattleKind.보스
             ? RaidBossPool.BattleTitle()
             : GameFlow.Kind == GameFlow.BattleKind.침략 ? "침략" : "전투";
-        protected override string Subtitle => GameFlow.Kind == GameFlow.BattleKind.보스
+        protected override string Subtitle => FieldBoss.Fighting
+            ? "필드 배회 보스 — 준비 없이 만나면 위험. 환생석 없음(§10-1·§10-8)"
+            : GameFlow.Kind == GameFlow.BattleKind.보스
             ? (string.IsNullOrEmpty(RaidBossPool.PickedLine())
                 ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
                 : RaidBossPool.PickedLine() + " · 기믹은 출현 보스(§9)")
@@ -56,9 +60,12 @@ namespace AshesToStars
             BossBattle activeBoss = null;
             if (GameFlow.Kind == GameFlow.BattleKind.보스)
             {
-                RaidBossPool.SeedQaIfRequested();
-                if (RaidBossPool.PickedFloor <= 0)
-                    RaidBossPool.Pick(GameFlow.BossFloor);
+                if (!FieldBoss.Fighting)
+                {
+                    RaidBossPool.SeedQaIfRequested();
+                    if (RaidBossPool.PickedFloor <= 0)
+                        RaidBossPool.Pick(GameFlow.BossFloor);
+                }
                 var boss = gameObject.AddComponent<BossBattle>();
                 activeBoss = boss;
                 boss.OnBossDefeated += _ =>
@@ -69,7 +76,9 @@ namespace AshesToStars
                     // §10-6의 티어 상승(10층마다)도 영원히 일어나지 않는다.
                     // 종단 SelfCheck가 같은 경계를 부른다 — 여기만 ClearFloor를 쓰면
                     // 검사가 생산 경로를 못 증명한다.
-                    GameFlow.ApplyTowerBossVictory(GameFlow.BossFloor);
+                    // 필드 배회 보스는 탑 층이 아니다(§10-1).
+                    if (!FieldBoss.Fighting)
+                        GameFlow.ApplyTowerBossVictory(GameFlow.BossFloor);
                     // 던전 종점 보스는 **런의 끝**이다 — 노드 맵으로 돌아가 클리어를 보여준다.
                     // 탑 레이드는 기존대로 결과 화면으로 간다(§8 벽 콘텐츠는 층 진행이 결과다).
                     if (DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon)
@@ -79,8 +88,9 @@ namespace AshesToStars
                         GameFlow.Go(GameFlow.Dungeon);
                         return;
                     }
-                    GameFlow.LastBattleSummary =
-                        $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
+                    GameFlow.LastBattleSummary = FieldBoss.Fighting
+                        ? $"필드 배회 보스 격파 — {FieldBoss.Name()}(§10-1)"
+                        : $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
                     GameFlow.Go(GameFlow.Result);
                 };
                 boss.OnPartyWiped += () =>
@@ -97,7 +107,9 @@ namespace AshesToStars
                 // 하위 레이드는 §18-10 계수 0.65로 목표 시간만 덮는다. BossBattle은 안 고친다.
                 // 출현 층은 풀 추첨(§9). 골드·경험은 입장 층, HP 시간은 입장 층 스케일.
                 float raidTime = dungeonBoss ? 75f : RaidScale.TargetSeconds(GameFlow.BossFloor);
-                int fightFloor = dungeonBoss ? GameFlow.BossFloor : RaidBossPool.FightFloor;
+                int fightFloor = dungeonBoss || FieldBoss.Fighting
+                    ? GameFlow.BossFloor
+                    : RaidBossPool.FightFloor;
                 boss.Begin(fightFloor, bossCount, raidTime);
                 _bossMaxHp = BossBattle.ActiveTotalHp;
             }
@@ -273,9 +285,11 @@ namespace AshesToStars
             // ✅ §7·§10-8: 환생석·전직 증표는 탑 등반의 고유 가치라 던전에서는 나오지 않는다.
             // 예전에는 던전에서 이겨도 탑 보스 테이블로 굴려 환생석이 나올 수 있었다.
             bool inDungeon = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
-            int dropFloor = inDungeon ? 0 : RaidBossPool.FightFloor;
+            int dropFloor = FieldBoss.Fighting || inDungeon ? 0 : RaidBossPool.FightFloor;
             Economy.DropSource dropSource =
-                inDungeon
+                FieldBoss.Fighting
+                    ? FieldBoss.DropSource
+                    : inDungeon
                     ? (DungeonRun.Plan.Kind == DungeonKind.레이드급
                         ? Economy.DropSource.RaidDungeon
                         : Economy.DropSource.FieldDungeonBoss)

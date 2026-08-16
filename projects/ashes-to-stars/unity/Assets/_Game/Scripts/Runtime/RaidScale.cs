@@ -73,7 +73,7 @@ namespace AshesToStars
 
         /// <summary>이미 깬 탑 레이드만. 첫 도전·던전은 원래 층.</summary>
         public static bool Applies(int floor) =>
-            !Blocked && IsRaidFloor(floor) && floor < GameState.TowerFloor
+            !Blocked && !FieldBoss.Fighting && IsRaidFloor(floor) && floor < GameState.TowerFloor
             && !(DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon);
 
         /// <summary>탑에서 여는 저층. 11층부터 5층이 하위가 된다.</summary>

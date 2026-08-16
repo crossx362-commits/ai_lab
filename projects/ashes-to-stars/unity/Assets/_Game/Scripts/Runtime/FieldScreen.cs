@@ -23,6 +23,7 @@ namespace AshesToStars
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
                 if (HuntSchedule.Running) rest = HuntSchedule.Line() + " · " + rest;
+                if (FieldBoss.Active) rest = FieldBoss.Line() + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -41,11 +42,13 @@ namespace AshesToStars
         long _pendingCost = 0;
         bool _pendingRaid;      // 경고를 거친 뒤 들어갈 곳이 레이드급인가
         bool _pendingHunt;      // 선택 뒤 마지막 목숨 경고를 거친 사냥 스타트
+        bool _pendingFieldBoss;
 
         protected override void Awake()
         {
             base.Awake();
             RaidSpawn.Tick();          // ✅ §7 레이드급 던전은 필드에 랜덤 출현한다
+            FieldBoss.Tick();          // ✅ §10-1 필드 배회 보스
         }
 
         protected override void Body(Rect r)
@@ -54,6 +57,7 @@ namespace AshesToStars
             Economy.SeedHuntGoldQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             HuntSchedule.SeedQaIfRequested();
+            FieldBoss.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
@@ -93,8 +97,10 @@ namespace AshesToStars
                     bool dungeon = _pendingCost > 0;
                     bool raid = _pendingRaid;
                     bool hunt = _pendingHunt;
-                    _pendingCost = 0; _pendingRaid = false; _pendingHunt = false;
+                    bool fieldBoss = _pendingFieldBoss;
+                    _pendingCost = 0; _pendingRaid = false; _pendingHunt = false; _pendingFieldBoss = false;
                     if (raid) EnterRaid();
+                    else if (fieldBoss) EnterFieldBoss();
                     else if (dungeon) EnterDungeon();
                     else if (hunt) EnterHunt();
                     else GameFlow.GoBattle(GameFlow.Field);
@@ -102,7 +108,7 @@ namespace AshesToStars
                 else if (cancel)
                 {
                     _showLastLifeWarning = false;
-                    _pendingCost = 0; _pendingRaid = false; _pendingHunt = false;
+                    _pendingCost = 0; _pendingRaid = false; _pendingHunt = false; _pendingFieldBoss = false;
                 }
                 return;
             }
@@ -179,9 +185,25 @@ namespace AshesToStars
                 else if (!HuntSchedule.TryStart())
                     _showInsufficientGold = false;
             }
-            DrawCard(cards[5], "사망 없음",
-                "일정 사냥은 카운트를 안 올린다. 상한 12시간(§6)",
-                "heart_broken", locked: true);
+            if (FieldBoss.Active)
+            {
+                if (DrawCard(cards[5], FieldBoss.CardTitle(), FieldBoss.CardBody(), "tower"))
+                {
+                    if (HasLastLifeCharacter())
+                    {
+                        _pendingFieldBoss = true;
+                        _showLastLifeWarning = true;
+                    }
+                    else
+                        EnterFieldBoss();
+                }
+            }
+            else
+            {
+                DrawCard(cards[5], "사망 없음",
+                    "일정 사냥은 카운트를 안 올린다. 상한 12시간(§6)",
+                    "heart_broken", locked: true);
+            }
         }
 
         void DrawHuntPick(Rect r)
@@ -267,6 +289,13 @@ namespace AshesToStars
             RaidSpawn.Consume();
             DungeonRun.Begin(seed, GameState.Tier, DungeonKind.레이드급, GameFlow.Field);
             GameFlow.Go(GameFlow.Dungeon);
+        }
+
+        void EnterFieldBoss()
+        {
+            FieldBoss.Consume();
+            FieldBoss.BeginFight();
+            GameFlow.GoBattle(GameFlow.Field, GameFlow.BattleKind.보스, FieldBoss.FightFloor);
         }
 
         bool HasLastLifeCharacter() => LastLifeWarn.HasAny();
