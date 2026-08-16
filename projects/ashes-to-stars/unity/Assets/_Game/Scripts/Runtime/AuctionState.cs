@@ -6,7 +6,7 @@ namespace AshesToStars
 {
     /// <summary>
     /// 로컬 경매장(§12·§18-3). 다른 유저 서버가 아니라 이 기기 장이다.
-    /// 드랍·제작만 등록. 등록 2%·체결 8%는 소각. 연체·부채면 GameState가 문을 잠근다.
+    /// 드랍·제작만 등록(증표·환생석 포함). 칭호·스킨·명예는 귀속. 등록 2%·체결 8%는 소각.
     /// 계정 종족이 인간이면 총 10%→7%(등록 1.4%·체결 5.6%, §18-9).
     /// 해금 후 7일은 판매만·구매 불가(§18-3·§18-14). QA_NO면 구매가 열린다.
     /// 등록 24시간 뒤 유찰 — 물건은 돌아오고 수수료는 소각(§18-3). QA_NO면 만료 안 함.
@@ -426,7 +426,7 @@ namespace AshesToStars
             SweepExpired();
             if (WhyCannotTrade() != null || qty <= 0 || price <= 0) return false;
             if (MineCount >= MaxMine) return false;
-            if (item == Economy.LifeItem.SpecialJobToken) return false;
+            if (!AuctionTrade.CanList(item)) return false;
             long fee = ListFee(price);
             if (!GameState.Pay(fee)) return false;
             if (!GameState.Consume(item, qty))
@@ -447,6 +447,13 @@ namespace AshesToStars
             });
             Save();
             return true;
+        }
+
+        /// <summary>칭호·스킨·명예. CanListBound가 거부하면 등록하지 않는다(§12).</summary>
+        public static bool TryListBound(string kind)
+        {
+            if (!AuctionTrade.CanListBound(kind)) return false;
+            return false;
         }
 
         public static bool TryBuy(string id)
@@ -505,6 +512,7 @@ namespace AshesToStars
             _openedAt = 0;
             _qaBuyLockSeeded = false;
             _qaExpireSeeded = false;
+            AuctionTrade.ResetForTest();
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 

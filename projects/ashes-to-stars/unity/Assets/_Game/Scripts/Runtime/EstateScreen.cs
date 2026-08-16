@@ -32,7 +32,7 @@ namespace AshesToStars
             Sub.대장간 => Equipment.SmithUnlocked()
                 ? "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)"
                 : Equipment.LockLine(),
-            Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
+            Sub.경매장 => AuctionHubLockReason() ?? AuctionTrade.TradeLine(),
             Sub.영묘 => Memorial.Unlocked
                 ? Rebirth.MausoleumSubtitle()
                 : Memorial.LockLine(),
@@ -142,6 +142,7 @@ namespace AshesToStars
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
             AuctionState.SeedExpireQaIfRequested();
+            AuctionTrade.SeedQaIfRequested();
             Rebirth.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
             Memorial.SeedUnlockQaIfRequested();
@@ -152,7 +153,8 @@ namespace AshesToStars
                 _sub = Sub.영묘;
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
-                || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1")
+                || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1"
+                || System.Environment.GetEnvironmentVariable(AuctionTrade.EnvShow) == "1")
                 _sub = Sub.경매장;
             if (StarterSecond.Pending)
             {
@@ -210,9 +212,11 @@ namespace AshesToStars
                 _sub = Sub.대장간;
             string auctionLock = AuctionHubLockReason();
             string auctionSub = auctionLock
-                ?? (AuctionState.CanBuy()
-                    ? "로컬 장 · " + AuctionState.FeeLine()
-                    : AuctionState.BuyLockLine());
+                ?? (System.Environment.GetEnvironmentVariable(AuctionTrade.EnvShow) == "1"
+                    ? AuctionTrade.TradeLine()
+                    : (AuctionState.CanBuy()
+                        ? "로컬 장 · " + AuctionState.FeeLine()
+                        : AuctionState.BuyLockLine()));
             if (DrawCard(cards[1], "경매장",
                     auctionSub,
                     UiAtlas.BuildingKey("경매장"), locked: auctionLock != null))
@@ -610,7 +614,7 @@ namespace AshesToStars
             }
 
             Info(r, row++,
-                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionState.FeeLine()}. 다른 유저 서버 아님.");
+                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionTrade.TradeLine()}");
             Info(r, row++, AuctionState.MineLine());
             string buyLock = AuctionState.BuyLockLine();
             if (!string.IsNullOrEmpty(buyLock))
@@ -646,7 +650,8 @@ namespace AshesToStars
                 if (lots[i].Npc) DrawLot(lots[i]);
 
             var bag = Equipment.Unequipped();
-            if (bag.Count > 0 && row < 8)
+            bool tradeQa = System.Environment.GetEnvironmentVariable(AuctionTrade.EnvShow) == "1";
+            if (!tradeQa && bag.Count > 0 && row < 8)
             {
                 var g = bag[0];
                 long price = 12_000 + g.Enhance * 2_000;
@@ -658,14 +663,14 @@ namespace AshesToStars
                         : "등록 실패 — 수수료·한도·잠금";
                 }
             }
-            else if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) > 0 && row < 8)
+            else if (AuctionTrade.TryFirstBag(out var bagItem, out int bagQty) && row < 8)
             {
-                const long hidePrice = 2_400;
-                if (Row(r, row++, "등록 사냥 가죽 1",
-                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(hidePrice))}"))
+                long price = AuctionTrade.ListPrice(bagItem);
+                if (Row(r, row++, $"등록 {GameState.Label(bagItem)} {bagQty}",
+                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(price))} · {Economy.FormatCurrency(price)}"))
                 {
-                    _msg = AuctionState.TryListItem(Economy.LifeItem.CraftHide, 1, hidePrice)
-                        ? "가죽 등록" : "등록 실패";
+                    _msg = AuctionState.TryListItem(bagItem, bagQty, price)
+                        ? $"{GameState.Label(bagItem)} 등록" : "등록 실패";
                 }
             }
 
