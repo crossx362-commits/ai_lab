@@ -474,6 +474,8 @@ namespace AshesToStars
             var pvpWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[2] }, isPvp: true);
             Check(pvpWipe.FallenNames.Count == 0 && wipeRoster[2].DeathCount == 0,
                   "PvP 패배는 사망 카운트를 안 올린다(§4)");
+            Check(pvpWipe.RecoveredNames.Count == 1 && !LifeSystem.IsAvailable(wipeRoster[2]),
+                  "PvP 패배는 12시간 회복이라 출전 불가(§15)");
 
             var secondWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[0], wipeRoster[1] });
             var thirdWipe = LifeSystem.ApplyWipe(new[] { wipeRoster[0], wipeRoster[1] });

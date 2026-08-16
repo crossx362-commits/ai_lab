@@ -194,6 +194,9 @@ namespace AshesToStars
             var sb = new System.Text.StringBuilder(head ?? "");
             if (report.FallenNames.Count > 0)
                 sb.Append("\n[사망] ").Append(string.Join(", ", report.FallenNames));
+            if (report.RecoveredNames.Count > 0)
+                sb.Append("\n[PvP 회복] ").Append(string.Join(", ", report.RecoveredNames))
+                  .Append(" — 12시간 출전 불가(§15)");
             if (report.DeletedNames.Count > 0)
                 sb.Append("\n[삭제] ").Append(string.Join(", ", report.DeletedNames))
                   .Append("이(가) 삭제되었습니다\n장착 장비도 함께 사라집니다(§4)");

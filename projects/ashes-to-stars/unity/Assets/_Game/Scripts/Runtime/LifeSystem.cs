@@ -209,6 +209,8 @@ namespace AshesToStars
     {
         public readonly List<string> FallenNames = new();
         public readonly List<string> DeletedNames = new();
+        /// <summary>PvP로 쓰러져 12시간 회복에 들어간 이름. 목숨은 안 깎인다(§15).</summary>
+        public readonly List<string> RecoveredNames = new();
         public string RescueName;
         public int LivingCount;
         public bool RescueGranted;
@@ -239,9 +241,9 @@ namespace AshesToStars
             { "버퍼", new[] { "음유시인", "주술사", "정령사" } },
         };
 
-        // 테스트용 배속 상수 (기본 1.0 = 실제 시간)
-        // Inspector에서 조정 가능하려면 더 큰 구조가 필요하므로, 여기선 고정값 유지
-        private const float TimeScale = 1.0f;  // 배속 1.0배 = 실제 시간
+        /// <summary>보호막과 같은 시계. SelfCheck가 12시간 ±1초를 주입한다.</summary>
+        public static Func<long> NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        public const string EnvNoRecover = "QA_NO_DEFENSE_RECOVER";
 
         /// <summary>
         /// 시스템 초기화. 프로토타입에서는 테스트용 캐릭터 5명을 만든다.
@@ -394,6 +396,7 @@ namespace AshesToStars
             _loaded = false;
             ActiveFirstTrial = null;
             ActiveSecondTrial = null;
+            NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             Equipment.ResetAll();
             DefenseState.ResetForTest();
             StarterSecond.ResetForTest();
@@ -852,19 +855,43 @@ namespace AshesToStars
             return true;
         }
 
+        /// <summary>침략 보호막과 같은 12시간(§15). 한쪽만 바꾸면 무방비 창이 생긴다.</summary>
+        public static long PvpRecoverSeconds() => InvasionState.DefenseRecoverSeconds;
+
+        public static bool RecoverBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoRecover);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>PvP로 쓰러진 캐릭터에 12시간 출전 불가를 건다. 목숨은 안 깎는다.</summary>
+        public static void StartPvpRecovery(CharacterRecord character)
+        {
+            if (character == null || character.IsDeleted) return;
+            if (RecoverBlocked) return;
+            character.RecoveryEndTime = GetCurrentUnixTime() + PvpRecoverSeconds();
+            Save();
+        }
+
         /// <summary>
         /// 사망을 기록한다.
-        /// isPvp가 true면 사망 카운트를 올리지 않는다(§4). 특수 직업에도 같다(§3).
-        /// 일반은 3회, 특수 직업은 PvE 1회에 즉시 소멸한다.
+        /// isPvp가 true면 사망 카운트를 올리지 않고 12시간 회복만 건다(§4·§15).
+        /// 특수 직업 PvP도 소멸하지 않는다(§3). 일반 PvE는 3회, 특수 PvE는 1회에 소멸.
         /// </summary>
         public static void RegisterDeath(CharacterRecord character, bool isPvp = false)
         {
             if (character == null || character.IsDeleted)
                 return;
 
-            // PvP 사망은 카운트하지 않음 (§4). 특수 직업도 같다(§3).
+            // PvP 사망은 카운트하지 않음 (§4). 특수 직업도 같다(§3). 회복 시계만 건다(§15).
             if (isPvp)
+            {
+                StartPvpRecovery(character);
                 return;
+            }
 
             if (character.IsSpecialJob)
             {
@@ -879,7 +906,7 @@ namespace AshesToStars
 
             // 회복 기간 설정 (1일 = 86,400초)
             long currentTime = GetCurrentUnixTime();
-            character.RecoveryEndTime = currentTime + (long)(RecoveryDurationSeconds / TimeScale);
+            character.RecoveryEndTime = currentTime + RecoveryDurationSeconds;
 
             // 사망 카운트 증가
             character.DeathCount++;
@@ -988,7 +1015,7 @@ namespace AshesToStars
         {
             var report = new PveDefeatReport();
             EnsureLoaded();
-            if (!isPvp && members != null)
+            if (members != null)
             {
                 var seen = new HashSet<string>();
                 for (int i = 0; i < members.Count; i++)
@@ -996,9 +1023,17 @@ namespace AshesToStars
                     var ch = members[i];
                     if (ch == null || ch.IsDeleted) continue;
                     if (!string.IsNullOrEmpty(ch.Id) && !seen.Add(ch.Id)) continue;
-                    RegisterDeath(ch, isPvp: false);
-                    report.FallenNames.Add(ch.Name);
-                    if (ch.IsDeleted) report.DeletedNames.Add(ch.Name);
+                    RegisterDeath(ch, isPvp);
+                    if (isPvp)
+                    {
+                        if (GetRecoveryTimeRemaining(ch) > 0)
+                            report.RecoveredNames.Add(ch.Name);
+                    }
+                    else
+                    {
+                        report.FallenNames.Add(ch.Name);
+                        if (ch.IsDeleted) report.DeletedNames.Add(ch.Name);
+                    }
                 }
             }
 
@@ -1129,14 +1164,7 @@ namespace AshesToStars
             return remaining > 0 ? (int)remaining : 0;
         }
 
-        /// <summary>
-        /// 현재 Unix 타임스탬프를 반환한다.
-        /// 배속 상수로 스케일할 수 있게 한다(테스트용).
-        /// </summary>
-        private static long GetCurrentUnixTime()
-        {
-            return (long)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds * TimeScale);
-        }
+        static long GetCurrentUnixTime() => NowUnix();
 
         /// <summary>
         /// 회복 시간을 "HH:MM:SS" 형식으로 포맷한다.
@@ -1147,6 +1175,15 @@ namespace AshesToStars
             int minutes = (seconds % 3600) / 60;
             int secs = seconds % 60;
             return $"{hours:D2}:{minutes:D2}:{secs:D2}";
+        }
+
+        /// <summary>보호막과 같은 말("12시간 0분"). 화면이 24시간 PvE 회복과 갈리게 한다.</summary>
+        public static string FormatRecoveryPhrase(int seconds)
+        {
+            if (seconds <= 0) return "";
+            if (seconds >= 3600) return $"{seconds / 3600}시간 {(seconds % 3600) / 60}분";
+            if (seconds >= 60) return $"{seconds / 60}분";
+            return $"{seconds}초";
         }
     }
 }

@@ -26,6 +26,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            DefenseState.SeedQaIfRequested();
             _page = DrawTabs(r, new[] { "편성", "출전" }, _page);
             var page = UiPages.AfterTabs(r);
             if (_page == 1)
@@ -50,11 +51,13 @@ namespace AshesToStars
                 if (DrawPartyCard(cell, ch, inParty, StatusOf(ch, i, inParty)))
                 {
                     if (!PartyState.Toggle(i))
-                        _msg = DefenseState.Contains(i)
-                            ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다(§13-5)"
-                            : LifeSystem.IsAvailable(ch)
-                                ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
-                                : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
+                        _msg = LifeSystem.GetRecoveryTimeRemaining(ch) > 0
+                            ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(LifeSystem.GetRecoveryTimeRemaining(ch))} — 출전 불가(§15)"
+                            : DefenseState.Contains(i)
+                                ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다(§13-5)"
+                                : LifeSystem.IsAvailable(ch)
+                                    ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
+                                    : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
             }
@@ -96,10 +99,11 @@ namespace AshesToStars
         static string StatusOf(CharacterRecord ch, int rosterIndex, bool inParty)
         {
             if (ch.IsDeleted) return "삭제됨 — 환생석으로만 복구(§4)";
+            int left = LifeSystem.GetRecoveryTimeRemaining(ch);
+            if (left > 0 && DefenseState.Contains(rosterIndex))
+                return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§15)";
             if (DefenseState.Contains(rosterIndex))
                 return "수비 배치 — 출전 불가(§13-5)";
-
-            int left = LifeSystem.GetRecoveryTimeRemaining(ch);
             if (left > 0) return $"회복 중 {LifeSystem.FormatRecoveryTime(left)} — 출전 불가(§4)";
 
             string mark = inParty ? "편성됨" : "대기";

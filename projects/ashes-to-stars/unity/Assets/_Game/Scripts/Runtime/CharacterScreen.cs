@@ -65,6 +65,7 @@ namespace AshesToStars
             SeedCharLookQaIfRequested();
             StarterPick.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
+            SeedDefenseRecoverQaIfRequested();
             if (StarterSecond.Pending)
             {
                 DrawStarterSecond(r);
@@ -215,7 +216,10 @@ namespace AshesToStars
                         int recoveryTime = LifeSystem.GetRecoveryTimeRemaining(ch);
                         if (recoveryTime > 0)
                         {
-                            Info(r, 2, $"회복 시간: {LifeSystem.FormatRecoveryTime(recoveryTime)}");
+                            bool posted = DefenseState.Contains(_selectedCharacter);
+                            Info(r, 2, posted
+                                ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(recoveryTime)} — 출전 불가(§15)"
+                                : $"회복 시간: {LifeSystem.FormatRecoveryTime(recoveryTime)}");
                         }
                     }
 
@@ -377,7 +381,7 @@ namespace AshesToStars
             for (int i = 0; i < allCharacters.Count; i++)
             {
                 var cell = UiPages.RosterCell(board, i);
-                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter);
+                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
                 if (GUI.Button(cell, GUIContent.none, GUIStyle.none))
                 {
                     _selectedCharacter = i;
@@ -390,13 +394,22 @@ namespace AshesToStars
                 GameFlow.Go(GameFlow.Party);
 
             var ch = allCharacters[_selectedCharacter];
+            int recoverLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
+            if (recoverLeft > 0)
+            {
+                Hint(new Rect(stage.x, stage.y, stage.width, 22f),
+                    DefenseState.Contains(_selectedCharacter)
+                        ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(recoverLeft)} — 출전 불가(§15)"
+                        : $"회복 시간: {LifeSystem.FormatRecoveryTime(recoverLeft)}");
+                stage = new Rect(stage.x, stage.y + 24f, stage.width, Mathf.Max(40f, stage.height - 24f));
+            }
             _detailPage = DrawTabs(stage, new[] { "장비", "속성" }, _detailPage);
             var detailBody = UiPages.AfterTabs(stage);
             if (_detailPage == 0) DrawEquipStudio(detailBody, ch);
             else DrawAttributes(detailBody, ch);
         }
 
-        void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected)
+        void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected, int rosterIndex)
         {
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : (Color?)null;
             UiAtlas.DrawSliced(cell, UiAtlas.ButtonKey(false, selected), 10f,
@@ -407,7 +420,13 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(face.xMax - 14f, face.yMax - 14f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
             string name = ch.IsRescue ? $"{ch.Name}·재건" : ch.Name;
             Hint(nameR, name);
-            Hint(jobR, ch.Job);
+            int cellLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
+            string job = ch.Job;
+            if (cellLeft > 0 && DefenseState.Contains(rosterIndex))
+                job = $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(cellLeft)}";
+            else if (cellLeft > 0)
+                job = LifeSystem.FormatRecoveryTime(cellLeft);
+            Hint(jobR, job);
             UiAtlas.DrawHearts(hearts, ch.DeathCount, ch.IsDeleted, ch.MaxLives);
         }
 
@@ -469,6 +488,13 @@ namespace AshesToStars
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             Equipment.SeedCraftedLoadoutForQa(roster[0]);
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedDefenseRecoverQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(DefenseState.EnvShow) != "1") return;
+            DefenseState.SeedQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 
