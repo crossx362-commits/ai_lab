@@ -38,7 +38,7 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             WorldStar.ResetForTest();
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
-            GameState.Earn(200_000);
+            GameState.Grant(200_000);
 
             RacePrefs.Set(RaceId.인간);
             Check(InvasionState.RaceLootPercent() == InvasionState.HumanLootPercent,
@@ -91,7 +91,7 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             GameState.ResetAll();
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
-            GameState.Earn(200_000);
+            GameState.Grant(200_000);
 
             Environment.SetEnvironmentVariable(InvasionState.EnvShowLoot, "1");
             InvasionState.SeedRaceLootQaIfRequested();

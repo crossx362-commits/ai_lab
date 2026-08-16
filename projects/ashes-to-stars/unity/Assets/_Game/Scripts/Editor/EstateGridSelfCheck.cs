@@ -97,7 +97,7 @@ namespace AshesToStars
 
             GameState.ResetAll();
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(1_000_000);
+            GameState.Grant(1_000_000);
             EstateGrid.ResetForTest();
             EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 3);
             EstateGrid.TryPlace(2, 1, EstateGrid.Cell.Wall);

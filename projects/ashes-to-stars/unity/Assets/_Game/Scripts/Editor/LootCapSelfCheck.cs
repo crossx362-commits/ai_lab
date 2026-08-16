@@ -80,7 +80,7 @@ namespace AshesToStars
             Check(InvasionState.LootCopper() == t10Cap, "차단을 풀면 다시 상한");
             InvasionState.ForceLootBeforeCap = 0;
 
-            GameState.Earn(500_000);
+            GameState.Grant(500_000);
             Check(!InvasionState.ShieldActive, "정산 전 보호막 없음");
             InvasionState.ForceLootBeforeCap = t10Cap + 50_000;
             Check(InvasionState.TryBegin(), "출정");

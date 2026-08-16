@@ -48,14 +48,14 @@ namespace AshesToStars
             long now = 1_700_000_000;
             EstateBuild.ResetForTest();
             EstateBuild.NowUnix = () => now;
-            GameState.Earn(EstateBuild.UpgradeCost(1));
+            GameState.Grant(EstateBuild.UpgradeCost(1));
             Check(EstateBuild.TryStartKeep(), "본성 공사 시작");
             Check(EstateBuild.RemainingSeconds() == 300, "본성 1→2는 300초");
             Check(EstateBuild.RushableSeconds() == 150, "단축 가능 150초");
             Check(EstateBuild.GoldCostToFloor() == 750, "바닥까지 골드 750");
             Check(EstateBuild.WhyCannotRushGold() != null, "공사비만 내면 단축 골드가 없다");
 
-            GameState.Earn(750);
+            GameState.Grant(750);
             long gold = GameState.Wallet.Copper;
             Check(EstateBuild.WhyCannotRushGold() == null, "골드만 있으면 단축 가능");
             Check(EstateBuild.TryRushGold(), "골드로 150초를 당긴다");
@@ -68,7 +68,7 @@ namespace AshesToStars
             EstateBuild.ResetForTest();
             GameState.ResetAll();
             EstateBuild.NowUnix = () => now;
-            GameState.Earn(EstateBuild.UpgradeCost(1));
+            GameState.Grant(EstateBuild.UpgradeCost(1));
             Check(EstateBuild.TryStartKeep(), "재료 단축용 공사");
             GameState.Gain(Economy.LifeItem.CraftHide, 1);
             Check(EstateBuild.TryRushMaterial(Economy.LifeItem.CraftHide, 1), "가죽 1장");
@@ -85,7 +85,7 @@ namespace AshesToStars
             EstateBuild.ResetForTest();
             GameState.ResetAll();
             EstateBuild.NowUnix = () => now;
-            GameState.Earn(EstateBuild.UpgradeCost(1));
+            GameState.Grant(EstateBuild.UpgradeCost(1));
             EstateBuild.TryStartKeep();
             now += 160;
             Check(EstateBuild.RemainingSeconds() == 140, "160초가 지나면 140초");
@@ -95,9 +95,9 @@ namespace AshesToStars
             EstateBuild.ResetForTest();
             GameState.ResetAll();
             EstateBuild.NowUnix = () => now;
-            GameState.Earn(EstateBuild.UpgradeCost(1));
+            GameState.Grant(EstateBuild.UpgradeCost(1));
             EstateBuild.TryStartKeep();
-            GameState.Earn(750);
+            GameState.Grant(750);
             EstateBuild.TryRushGold();
             long left = EstateBuild.RemainingSeconds();
             GameState.ForgetInMemoryForTest();
@@ -110,7 +110,7 @@ namespace AshesToStars
             EstateBuild.ResetForTest();
             GameState.ResetAll();
             EstateBuild.NowUnix = () => now;
-            GameState.Earn(EstateBuild.UpgradeCost(1) + 10_000);
+            GameState.Grant(EstateBuild.UpgradeCost(1) + 10_000);
             EstateBuild.TryStartKeep();
             Check(!EstateBuild.TryRushGold(), "QA_NO_RUSH=1이면 골드 거부");
             Check(EstateBuild.RemainingSeconds() == 300, "남은 시간 불변");
@@ -121,13 +121,13 @@ namespace AshesToStars
             EstateBuild.ResetForTest();
             EstateDefense.NowUnix = () => now;
             GameState.SetTowerFloorForTest(20);
-            GameState.Earn(EstateDefense.UpgradeCost(0));
+            GameState.Grant(EstateDefense.UpgradeCost(0));
             Check(EstateDefense.TryStart(EstateDefense.Kind.화살탑), "화살탑 공사");
             Check(Math.Abs(EstateDefense.RemainingSeconds() - 120) <= 1, "화살탑 1→는 120초");
             long defRush = EstateDefense.RushableSeconds();
             Check(defRush == 60, "화살탑 단축 가능 60초");
             long defPay = EstateDefense.GoldCostToFloor();
-            GameState.Earn(defPay);
+            GameState.Grant(defPay);
             Check(EstateDefense.TryRushGold(), "방어도 같은 단축을 쓴다");
             Check(EstateDefense.RemainingSeconds() == 60, "방어도 50%가 남는다");
             Check(!EstateDefense.TryRushGold(), "방어도 바닥에서 거부");

@@ -175,7 +175,7 @@ namespace AshesToStars
             }
             if (!LifeSystem.SacrificeForFusion(material))
             {
-                if (cost > 0) GameState.Earn(cost);
+                if (cost > 0) GameState.Grant(cost);
                 picked = default;
                 return false;
             }
@@ -256,7 +256,7 @@ namespace AshesToStars
 
             long cost = CostCopper();
             if (GameState.Wallet.Copper < cost * 2)
-                GameState.Earn(cost * 2 - GameState.Wallet.Copper);
+                GameState.Grant(cost * 2 - GameState.Wallet.Copper);
 
             if (!host.AbsorbedBoons.Contains((int)BoonId.예리함) && host.AbsorbedBoons.Count < SlotCap)
             {

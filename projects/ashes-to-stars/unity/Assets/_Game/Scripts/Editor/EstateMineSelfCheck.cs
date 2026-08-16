@@ -67,7 +67,7 @@ namespace AshesToStars
             EstateMine.NowUnix = () => now;
             EstateMine.Tick();
             long cap = EstateBuild.WarehouseCapCopper();
-            GameState.Earn(cap);
+            GameState.Grant(cap);
             now += 3600;
             Check(EstateMine.Tick() == 0 && GameState.Wallet.Copper == cap,
                 "창고가 가득이면 광산은 0");
@@ -78,7 +78,7 @@ namespace AshesToStars
             EstateMine.ResetForTest();
             EstateMine.NowUnix = () => now;
             EstateMine.Tick();
-            GameState.Earn(cap - 1000);
+            GameState.Grant(cap - 1000);
             now += 3600;
             Check(EstateMine.Tick() == 1000 && GameState.Wallet.Copper == cap,
                 "남은 칸만큼만 적립");
@@ -107,7 +107,7 @@ namespace AshesToStars
                 "재기동 뒤에도 적립이 남는다");
 
             GameState.ResetAll();
-            GameState.Earn(100_000);
+            GameState.Grant(100_000);
             Environment.SetEnvironmentVariable("QA_ESTATE_MINE", "1");
             EstateMine.ResetForTest();
             EstateMine.SeedQaIfRequested();

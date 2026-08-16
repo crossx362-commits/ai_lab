@@ -150,7 +150,7 @@ namespace AshesToStars
             RacePrefs.Set(RaceId.인간);
             GameState.SetTowerFloorForTest(30);
             if (GameState.Wallet.Copper < 50_000)
-                GameState.Earn(50_000);
+                GameState.Grant(50_000);
             if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) < 1)
                 GameState.Gain(Economy.LifeItem.CraftHide, 2);
             StarterSecond.ResetForTest();
@@ -217,7 +217,7 @@ namespace AshesToStars
             if (!GameState.Pay(fee)) return false;
             if (!Equipment.TryRemove(gearId))
             {
-                GameState.Earn(fee);
+                GameState.Grant(fee);
                 return false;
             }
             _lots.Add(new Lot
@@ -245,7 +245,7 @@ namespace AshesToStars
             if (!GameState.Pay(fee)) return false;
             if (!GameState.Consume(item, qty))
             {
-                GameState.Earn(fee);
+                GameState.Grant(fee);
                 return false;
             }
             _lots.Add(new Lot
@@ -275,7 +275,7 @@ namespace AshesToStars
             if (!GameState.Pay(lot.Price)) return false;
             if (!Grant(lot))
             {
-                GameState.Earn(lot.Price);
+                GameState.Grant(lot.Price);
                 return false;
             }
             _lots.Remove(lot);

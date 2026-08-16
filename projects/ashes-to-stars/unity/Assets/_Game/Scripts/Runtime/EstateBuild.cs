@@ -185,7 +185,7 @@ namespace AshesToStars
             _loaded = true;
             _level = 1;
             long cost = UpgradeCost(1);
-            GameState.Earn(cost + EstateRush.GoldCost(150, cost) + 1);
+            GameState.Grant(cost + EstateRush.GoldCost(150, cost) + 1);
             TryStartKeep();
             GameState.Gain(Economy.LifeItem.CraftHide, 3);
         }

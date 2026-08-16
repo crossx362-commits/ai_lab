@@ -32,7 +32,7 @@ namespace AshesToStars
             Fusion.ForcePick = null;
             Fusion.ForceRace = null;
 
-            GameState.Earn(1_000_000);
+            GameState.Grant(1_000_000);
 
             var roster = LifeSystem.GetCharacters();
             Check(roster.Count >= 2, $"로스터 자동 생성 (실제 {roster.Count})");
@@ -149,7 +149,7 @@ namespace AshesToStars
             Check(!Fusion.TryFuse(brokeHost, brokeMat, 7u, out _), "골드 0이면 합성이 거부된다");
             Check(roster.Contains(brokeMat), "골드 부족이면 재료를 소멸시키지 않는다");
             Check(brokeHost.AbsorbedBoons.Count == 0, "골드 부족이면 패시브를 넣지 않는다");
-            GameState.Earn(Fusion.CostCopper());
+            GameState.Grant(Fusion.CostCopper());
             long paid = GameState.Wallet.Copper;
             Check(Fusion.TryFuse(brokeHost, brokeMat, 7u, out var edge)
                   && edge == BoonId.예리함, "골드를 내면 예리함을 흡수한다");

@@ -309,7 +309,7 @@ namespace AshesToStars
                   "재기동 후에도 삭제 상태 유지(§4 영구사망)");
 
             // ⑦ 지갑도 같은 규칙 — 벌면 쌓이고 내면 줄고, 모자라면 **차감하지 않는다**
-            GameState.Earn(1000);
+            GameState.Grant(1000);
             Check(GameState.Wallet.Copper == 1000, $"보상 누적 (실제 {GameState.Wallet.Copper})");
             Check(!GameState.Pay(5000) && GameState.Wallet.Copper == 1000,
                   "잔액 부족 시 부분 차감 없음(§18-2)");
@@ -384,7 +384,7 @@ namespace AshesToStars
                   $"무자산이면 대출 불가(§18-5, 한도 {GameState.LoanLimit})");
 
             // 한도 = min(순자산 30%, 20G/h·티어). 보유 10골드(=100000쿠퍼), T1 → 30% 캡이 지배.
-            GameState.Earn(100000);
+            GameState.Grant(100000);
             long expectLimit = Economy.LoanLimitCopper(100000, GameState.Tier);   // 30000
             Check(GameState.LoanLimit == expectLimit && expectLimit == 30000,
                   $"대출 한도 = 순자산 30% (기대 30000, 실제 {GameState.LoanLimit})");
@@ -396,7 +396,7 @@ namespace AshesToStars
                   "한도 초과 대출 거부(부분 대출 없음)");
 
             // 수입 50% 자동 상환(§18-5) — 이것이 대출 상태의 상시 소비처
-            GameState.Earn(1000);
+            GameState.Grant(1000);
             Check(GameState.Debt == 29500 && GameState.Wallet.Copper == 130500,
                   $"수입 50% 자동 상환 (부채 {GameState.Debt}, 지갑 {GameState.Wallet.Copper})");
 

@@ -73,7 +73,7 @@ namespace AshesToStars
         void Start()
         {
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
-            GameState.Earn(500000);
+            GameState.Grant(500000);
 
             if (_mode == "dash")
             {

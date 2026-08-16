@@ -284,7 +284,8 @@ namespace AshesToStars
 
             // 골드를 **실제로 지갑에 넣는다**. 계산만 하고 반영하지 않으면
             // §2의 순환("번 돈으로 다음 판에 들어간다")이 성립하지 않는다.
-            GameState.Earn(_reward.GoldReward);
+            // §18-14 소프트캡은 Earn이 읽는다. 화면에 찍는 금액도 캡 뒤 값이다.
+            _reward.GoldReward = GameState.Earn(_reward.GoldReward);
 
             // ✅ §3 경험치 분배 — 출전 파티가 레벨 비례로 나눠 갖는다(§18-6 성장 곡선).
             // 여기(승리 해소)에서 골드와 함께 딱 1회 지급된다 — ResultScreen은 표시만 한다.

@@ -36,7 +36,7 @@ namespace AshesToStars
             Check(EstateScreen.AuctionHubLockReason() == null,
                 "30층·무부채면 경매장이 열린다");
 
-            GameState.Earn(100_000);
+            GameState.Grant(100_000);
             Check(AuctionState.Lots.Count >= 4, $"NPC 장이 선다 (실제 {AuctionState.Lots.Count})");
             var npc = AuctionState.Lots[0];
             long before = GameState.Wallet.Copper;
@@ -62,12 +62,12 @@ namespace AshesToStars
             Check(GameState.Bag.GetCount(Economy.LifeItem.CraftHide) == hides, "취소하면 가죽이 돌아온다");
             Check(GameState.Wallet.Copper == gold2 - fee, "취소해도 수수료는 안 돌아온다");
 
-            GameState.Earn(100_000);
+            GameState.Grant(100_000);
             Check(GameState.Borrow(10_000), "부채를 지면");
             Check(AuctionState.WhyCannotTrade() != null
                   && !AuctionState.TryListItem(Economy.LifeItem.CraftHide, 1, 2_400),
                 "부채 중에는 등록·구매가 거부된다(§18-5)");
-            GameState.Earn(GameState.Debt * 2);
+            GameState.Grant(GameState.Debt * 2);
 
             GameState.ResetAll();
             LifeSystem.ResetAll();
@@ -75,7 +75,7 @@ namespace AshesToStars
             InvasionState.ResetForTest();
             GameState.SetTowerFloorForTest(30);
             Check(!InvasionState.TryBegin(), "골드 0이면 출정 비용에서 거부");
-            GameState.Earn(200_000);
+            GameState.Grant(200_000);
             long sortie = InvasionState.SortieCost();
             long gold3 = GameState.Wallet.Copper;
             Check(InvasionState.TryBegin(), "출정 비용을 내고 침략이 시작된다");

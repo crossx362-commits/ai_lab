@@ -35,7 +35,7 @@ namespace AshesToStars
             Check(!InvasionState.ShieldActive, "시작 때 보호막 없음");
 
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(1_000_000);
+            GameState.Grant(1_000_000);
             long t0 = 1_700_000_000L;
             InvasionState.NowUnix = () => t0;
             Check(InvasionState.TryBegin(), "첫 출정");
@@ -74,7 +74,7 @@ namespace AshesToStars
             GameState.ResetAll();
             InvasionState.ResetForTest();
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(1_000_000);
+            GameState.Grant(1_000_000);
             InvasionState.NowUnix = () => t0;
             Environment.SetEnvironmentVariable(InvasionState.EnvNo, "1");
             Check(InvasionState.TryBegin(), "QA_NO면 첫 출정");

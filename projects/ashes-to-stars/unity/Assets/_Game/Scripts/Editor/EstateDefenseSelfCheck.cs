@@ -40,7 +40,7 @@ namespace AshesToStars
             Check(!EstateDefense.TryStart(EstateDefense.Kind.화살탑),
                 "19층·골드 없으면 안 선다");
             GameState.SetTowerFloorForTest(19);
-            GameState.Earn(EstateDefense.UpgradeCost(1));
+            GameState.Grant(EstateDefense.UpgradeCost(1));
             Check(!EstateDefense.TryStart(EstateDefense.Kind.화살탑),
                 "19층은 거부(20층부터)");
             GameState.SetTowerFloorForTest(20);
@@ -64,7 +64,7 @@ namespace AshesToStars
             Check(EstateDefense.TryStart(EstateDefense.Kind.마법탑) == false
                   || EstateDefense.WhyCannotStart(EstateDefense.Kind.마법탑) == null,
                 "화살탑 1이면 마법탑 사유가 순차가 아니다");
-            GameState.Earn(EstateDefense.UpgradeCost(0));
+            GameState.Grant(EstateDefense.UpgradeCost(0));
             Check(EstateDefense.TryStart(EstateDefense.Kind.마법탑), "화살탑 다음에 마법탑");
             now += 200;
             Check(EstateDefense.Level(EstateDefense.Kind.마법탑) == 1, "마법탑도 자동 적용");
@@ -95,7 +95,7 @@ namespace AshesToStars
                 "수비가 있으면 약탈이 더 줄어든다(§13-5)");
 
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(200_000);
+            GameState.Grant(200_000);
             DefenseState.ResetForTest();
             EstateDefense.GarrisonCount = () => 0;
             long withDef = InvasionState.LootCopper();

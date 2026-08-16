@@ -123,7 +123,7 @@ namespace AshesToStars
             GameState.ResetAll();
             WorldStar.ResetForTest();
             EstateMine.ResetForTest();
-            GameState.Earn(100_000);
+            GameState.Grant(100_000);
             Environment.SetEnvironmentVariable(EstateMine.EnvShowRace, "1");
             EstateMine.SeedRaceQaIfRequested();
             Check(RacePrefs.Get() == RaceId.드워프, "시드는 드워프를 고른다");

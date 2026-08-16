@@ -151,13 +151,33 @@ namespace AshesToStars
 
         /// <summary>
         /// 보상 지급. 실제로 지갑에 들어가고 저장된다.
+        /// §18-14: 시간당 수익 소프트캡을 먼저 읽는다 — 사냥·약탈·광산이 전부 여기를 탄다.
         /// §18-5: **부채 보유 중에는 수입의 50%가 자동 상환**된다 — 이것이 대출 상태의
         /// 상시 소비처다(전투 보상이 이 경로로 들어온다). 빚이 없으면 종전과 동일하게 전액 입금.
+        /// 돌려주는 값은 캡 적용 뒤 금액(빚으로 간 분도 포함).
         /// </summary>
-        public static void Earn(long copper)
+        public static long Earn(long copper)
         {
             Load();
-            if (copper <= 0) return;
+            if (copper <= 0) return 0;
+            copper = SoftCap.Apply(copper);
+            return Deposit(copper);
+        }
+
+        /// <summary>
+        /// 소프트캡을 타지 않는 입금. 환급·QA 시드·검사 준비금.
+        /// 대출 자동상환은 Earn과 같다 — 캡만 건너뛴다.
+        /// </summary>
+        public static long Grant(long copper)
+        {
+            Load();
+            if (copper <= 0) return 0;
+            return Deposit(copper);
+        }
+
+        static long Deposit(long copper)
+        {
+            long credited = copper;
             if (_debt > 0)
             {
                 long toDebt = System.Math.Min((long)(copper * Economy.LoanAutoRepayRate), _debt);
@@ -175,6 +195,7 @@ namespace AshesToStars
             }
             _wallet.TryAdd(copper);
             Save();
+            return credited;
         }
 
         // ========== 대출 (§12 · §18-5) ==========
@@ -538,6 +559,7 @@ namespace AshesToStars
             EstateMine.ResetForTest();
             EstateDefense.ResetForTest();
             EstateGrid.ResetForTest();
+            SoftCap.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
@@ -555,6 +577,7 @@ namespace AshesToStars
             EstateMine.ForgetInMemoryForTest();
             EstateDefense.ForgetInMemoryForTest();
             EstateGrid.ForgetInMemoryForTest();
+            SoftCap.ForgetInMemoryForTest();
         }
 
         /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만

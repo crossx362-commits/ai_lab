@@ -232,8 +232,7 @@ namespace AshesToStars
             if (won)
             {
                 loot = LootCopper();
-                GameState.Earn(loot);
-                _lastLoot = loot;
+                _lastLoot = GameState.Earn(loot);
             }
             else
             {

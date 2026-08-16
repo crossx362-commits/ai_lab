@@ -45,7 +45,7 @@ namespace AshesToStars
                 $"인간 문구 7%·1.4% (실제 {AuctionState.FeeLine()})");
 
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(100_000);
+            GameState.Grant(100_000);
             GameState.Gain(Economy.LifeItem.CraftHide, 2);
             long goldH = GameState.Wallet.Copper;
             Check(AuctionState.TryListItem(Economy.LifeItem.CraftHide, 1, 10_000), "인간 가죽 등록");
@@ -67,7 +67,7 @@ namespace AshesToStars
                 "엘프 문구에 인간이 안 나온다");
 
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(100_000);
+            GameState.Grant(100_000);
             GameState.Gain(Economy.LifeItem.CraftHide, 2);
             long goldE = GameState.Wallet.Copper;
             Check(AuctionState.TryListItem(Economy.LifeItem.CraftHide, 1, 10_000), "엘프 가죽 등록");

@@ -39,7 +39,7 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             WorldStar.ResetForTest();
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
-            GameState.Earn(200_000);
+            GameState.Grant(200_000);
 
             RacePrefs.Set(RaceId.인간);
             Check(Economy.RaceCostPercent() == Economy.HumanCostPercent,
@@ -104,7 +104,7 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             GameState.ResetAll();
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
-            GameState.Earn(200_000);
+            GameState.Grant(200_000);
 
             Environment.SetEnvironmentVariable(Economy.EnvShowCost, "1");
             InvasionState.SeedRaceCostQaIfRequested();

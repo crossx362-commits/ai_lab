@@ -46,7 +46,7 @@ namespace AshesToStars
             Check(EstateScreen.AuctionHubLockReason(now) == null, "30층·무부채면 경매장 문이 열린다");
             Check(WorldMapScreen.InvasionHubLockReason(now) == null, "30층·무연체면 침략 문이 열린다");
 
-            GameState.Earn(100000);
+            GameState.Grant(100000);
             Check(GameState.Borrow(30000, now), "30층에서 한도까지 대출");
             Check(!GameState.CanUseAuction(now)
                   && GameState.AuctionBlockReason(now).Contains("부채"),
@@ -91,7 +91,7 @@ namespace AshesToStars
 
             long repayAt = now + Term * 3 + 1;
             GameState.AccrueLoan(repayAt);
-            GameState.Earn(GameState.Debt * 2);
+            GameState.Grant(GameState.Debt * 2);
             Check(GameState.Debt == 0 && GameState.OverdueCount == 0,
                 $"상환 후 부채·연체 0 (부채 {GameState.Debt}, 연체 {GameState.OverdueCount})");
             Check(GameState.CanInvade(repayAt),
@@ -117,11 +117,11 @@ namespace AshesToStars
 
             GameState.ResetAll();
             GameState.SetTowerFloorForTest(30);
-            GameState.Earn(100000);
+            GameState.Grant(100000);
             Check(GameState.Borrow(10000, now), "두 번째 시나리오 대출");
             GameState.RefreshSanctions(now + Term + 1);
             GameState.AccrueLoan(now + Term + 1);
-            GameState.Earn(GameState.Debt * 2);
+            GameState.Grant(GameState.Debt * 2);
             Check(GameState.Debt == 0 && GameState.CanUseAuction(now + Term + 1)
                   && GameState.BankruptcyCount == 0,
                 "연체 1회만 갚으면 경매장이 바로 열린다(파산 정지 없음)");

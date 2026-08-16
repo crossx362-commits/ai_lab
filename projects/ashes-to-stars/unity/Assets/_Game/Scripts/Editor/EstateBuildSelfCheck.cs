@@ -37,7 +37,7 @@ namespace AshesToStars
                 "창고는 본성×12 G/h");
 
             Check(!EstateBuild.TryStartKeep(), "골드 없으면 안 오른다");
-            GameState.Earn(EstateBuild.UpgradeCost(1));
+            GameState.Grant(EstateBuild.UpgradeCost(1));
             long gold = GameState.Wallet.Copper;
             long now = 1_700_000_000;
             EstateBuild.NowUnix = () => now;

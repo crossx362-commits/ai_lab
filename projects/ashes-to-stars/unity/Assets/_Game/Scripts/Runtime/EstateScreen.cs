@@ -36,12 +36,20 @@ namespace AshesToStars
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
             Sub.영공 => "층을 오를수록 인식 범위가 넓어진다. 아군 버프·적 디버프를 켠다(§14)",
-            _ => TowerEnding.HasTitle
-                ? $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)"
-                : SoloRaidClear.HasAny
-                    ? $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)"
-                    : "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
+            _ => SoftCapHubSubtitle(),
         };
+
+        static string SoftCapHubSubtitle()
+        {
+            if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
+                && !SoftCap.Blocked)
+                return SoftCap.HourLine();
+            if (TowerEnding.HasTitle)
+                return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
+            if (SoloRaidClear.HasAny)
+                return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
+            return "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)";
+        }
 
         /// <summary>
         /// 시각 QA가 **건물 안쪽까지** 찍을 수 있게 하는 진입점(`GAME_START=estate`).
@@ -98,7 +106,10 @@ namespace AshesToStars
                 _sub = Sub.영공;
             if (System.Environment.GetEnvironmentVariable(EstateMine.EnvShowRace) == "1")
                 _hubPage = 1;
+            if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1")
+                _hubPage = 1;
             WorldStar.SeedRaceSenseQaIfRequested();
+            SoftCap.SeedQaIfRequested();
             EstateMine.SeedQaIfRequested();
             EstateMine.SeedRaceQaIfRequested();
             EstateDefense.SeedQaIfRequested();
@@ -200,12 +211,16 @@ namespace AshesToStars
                 ? mineRate + " · " + EstateMine.RaceLine()
                 : mineRate + " · 창고에 자동 적립(§13)";
             DrawCard(cards[2], "광산", mineSub, "field", locked: true);
-            DrawCard(cards[3], "창고",
-                $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}"
-                + (EstateMine.WastedCopper > 0
-                    ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
-                    : " · 넘치면 소멸"),
-                "building_auction", locked: true);
+            string warehouse = $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+            if (!SoftCap.Blocked
+                && (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
+                    || SoftCap.EarnedThisHour > 0))
+                warehouse += " · " + SoftCap.HourLine();
+            else if (EstateMine.WastedCopper > 0)
+                warehouse += $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸";
+            else
+                warehouse += " · 넘치면 소멸";
+            DrawCard(cards[3], "창고", warehouse, "building_auction", locked: true);
         }
 
         void Aura(Rect r)
