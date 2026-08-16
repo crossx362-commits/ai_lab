@@ -1153,6 +1153,27 @@ public class W3Party : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 살아 있는 출전 인원 중 가장 낮은 HP 비율. 필드 저체력 귀환(§4)이 읽는다.
+    /// 생존자가 없으면 1 — 전멸은 OnBattleEnd가 처리하고 여기서 귀환을 걸지 않는다.
+    /// </summary>
+    public static float ActivePartyLowestHpRatio
+    {
+        get
+        {
+            if (_game == null || !_game.GameMode) return 1f;
+            float worst = 1f;
+            bool any = false;
+            foreach (var member in _game._party)
+            {
+                if (!member.Alive || member.MaxHp <= 0f) continue;
+                any = true;
+                worst = Mathf.Min(worst, member.Hp / member.MaxHp);
+            }
+            return any ? worst : 1f;
+        }
+    }
+
     /// <summary>장판 중심을 실제 파티 위치에서 고른다. 실플레이가 없으면 호출자가 폴백한다.</summary>
     public static Vector2[] FloorAoeTargetsToActive(int count)
     {

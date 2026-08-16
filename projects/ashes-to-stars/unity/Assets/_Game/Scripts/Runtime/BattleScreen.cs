@@ -33,6 +33,7 @@ namespace AshesToStars
         global::W3Party _battle;
         static BattleRewardInfo _reward = new BattleRewardInfo();
         bool _defeatApplied;
+        bool _leftForSafety;
         float _bossMaxHp;
 
         protected override void Awake()
@@ -141,6 +142,12 @@ namespace AshesToStars
             var phase = EmergencyEscape.Tick(Time.deltaTime, hit);
             if (phase == EmergencyEscape.Phase.Escaped)
                 GameFlow.Go(GameFlow.Estate);
+
+            if (_leftForSafety || _defeatApplied) return;
+            bool watch = LowHpReturn.ShouldWatch(GameFlow.Kind, GameFlow.ReturnTo);
+            var leave = LowHpReturn.Tick(
+                Time.deltaTime, global::W3Party.ActivePartyLowestHpRatio, watch);
+            if (leave == LowHpReturn.Phase.Left) LeaveForLowHp();
         }
 
         protected override void Overlay()
@@ -155,11 +162,29 @@ namespace AshesToStars
                     $"{GameFlow.BossFloor}층 보스  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
                 y = bar.yMax + 26f;
             }
+            if (LowHpReturn.Leaving)
+            {
+                var leave = new Rect(340f, y + 8f, 600f, 28f);
+                GUI.Box(leave,
+                    $"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)");
+                float fill = 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
+                GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
+                y = leave.yMax + 8f;
+            }
             if (!EmergencyEscape.Casting) return;
             float p = EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);
             GUI.Box(box, $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
             GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
+        }
+
+        void LeaveForLowHp()
+        {
+            if (_leftForSafety || _defeatApplied) return;
+            _leftForSafety = true;
+            _reward.Clear();
+            GameFlow.LastBattleSummary = "저체력 귀환 — 이번 판 보상 없음(§4)";
+            GameFlow.Go(GameFlow.Estate);
         }
 
         /// <summary>
@@ -230,6 +255,7 @@ namespace AshesToStars
 
         void OnBattleEnd(bool survived)
         {
+            if (_leftForSafety) return;
             if (GameFlow.Kind == GameFlow.BattleKind.침략)
             {
                 long loot = InvasionState.Settle(survived);

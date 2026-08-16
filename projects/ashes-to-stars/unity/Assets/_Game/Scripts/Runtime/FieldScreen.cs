@@ -129,9 +129,9 @@ namespace AshesToStars
                     else if (!GameState.Pay(raidCost)) _showInsufficientGold = true;
                     else EnterRaid();
                 }
-                Locked(r, 3, "자동화 일정", "스케줄러 미구현 — 지금은 사냥을 직접 시작한다(§6)");
+                DrawLowHpReturnRow(r, 3);
             }
-            else Locked(r, 2, "자동화 일정", "스케줄러 미구현 — 지금은 사냥을 직접 시작한다(§6)");
+            else DrawLowHpReturnRow(r, 2);
         }
 
         /// <summary>
@@ -158,6 +158,15 @@ namespace AshesToStars
             RaidSpawn.Consume();
             DungeonRun.Begin(seed, GameState.Tier, DungeonKind.레이드급, GameFlow.Field);
             GameFlow.Go(GameFlow.Dungeon);
+        }
+
+        void DrawLowHpReturnRow(Rect r, int index)
+        {
+            bool on = LowHpReturn.Enabled;
+            if (Row(r, index, on ? "저체력 귀환 켜짐" : "저체력 귀환 꺼짐",
+                    "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)",
+                    on ? "heart" : "heart_broken"))
+                LowHpReturn.Enabled = !on;
         }
 
         bool HasLastLifeCharacter()
