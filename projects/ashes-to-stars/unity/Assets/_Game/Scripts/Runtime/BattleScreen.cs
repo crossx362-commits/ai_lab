@@ -17,10 +17,12 @@ namespace AshesToStars
     public class BattleScreen : GameScreen
     {
         protected override string Title => GameFlow.Kind == GameFlow.BattleKind.보스
-            ? $"보스전 · {GameFlow.BossFloor}층"
+            ? RaidBossPool.BattleTitle()
             : GameFlow.Kind == GameFlow.BattleKind.침략 ? "침략" : "전투";
         protected override string Subtitle => GameFlow.Kind == GameFlow.BattleKind.보스
-            ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
+            ? (string.IsNullOrEmpty(RaidBossPool.PickedLine())
+                ? "기믹 3종 — 동시 장판 · 쫄 소환 · 힐 체크. 수동 지휘로 대응한다(§5·§10-5)"
+                : RaidBossPool.PickedLine() + " · 기믹은 출현 보스(§9)")
             : GameFlow.Kind == GameFlow.BattleKind.침략
                 ? "로컬 별 수비대. PvP 사망은 목숨을 깎지 않는다(§15)"
                 : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
@@ -54,6 +56,9 @@ namespace AshesToStars
             BossBattle activeBoss = null;
             if (GameFlow.Kind == GameFlow.BattleKind.보스)
             {
+                RaidBossPool.SeedQaIfRequested();
+                if (RaidBossPool.PickedFloor <= 0)
+                    RaidBossPool.Pick(GameFlow.BossFloor);
                 var boss = gameObject.AddComponent<BossBattle>();
                 activeBoss = boss;
                 boss.OnBossDefeated += _ =>
@@ -90,8 +95,10 @@ namespace AshesToStars
                 int bossCount = dungeonBoss ? DungeonRun.Plan.BossCount : 1;
                 // 던전 종점 보스는 몬스터문서 §7의 **75초** 기준이다(탑 층수 스케일이 아니다).
                 // 하위 레이드는 §18-10 계수 0.65로 목표 시간만 덮는다. BossBattle은 안 고친다.
+                // 출현 층은 풀 추첨(§9). 골드·경험은 입장 층, HP 시간은 입장 층 스케일.
                 float raidTime = dungeonBoss ? 75f : RaidScale.TargetSeconds(GameFlow.BossFloor);
-                boss.Begin(GameFlow.BossFloor, bossCount, raidTime);
+                int fightFloor = dungeonBoss ? GameFlow.BossFloor : RaidBossPool.FightFloor;
+                boss.Begin(fightFloor, bossCount, raidTime);
                 _bossMaxHp = BossBattle.ActiveTotalHp;
             }
 
@@ -216,10 +223,10 @@ namespace AshesToStars
             if (BossBattle.IsActive && _bossMaxHp > 0f)
             {
                 var bar = new Rect(360f, y, 560f, 36f);
-                int phases = UiAtlas.PhaseCountForFloor(GameFlow.BossFloor);
+                int phases = UiAtlas.PhaseCountForFloor(RaidBossPool.FightFloor);
                 UiAtlas.DrawBossHp(bar, BossBattle.ActiveTotalHp, _bossMaxHp, phases);
                 Hint(new Rect(bar.x, bar.yMax + 2f, bar.width, 20f),
-                    $"{GameFlow.BossFloor}층 보스  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
+                    $"{RaidBossPool.BattleHint()}  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
                 y = bar.yMax + 26f;
             }
             if (LowHpReturn.Leaving)
@@ -266,13 +273,13 @@ namespace AshesToStars
             // ✅ §7·§10-8: 환생석·전직 증표는 탑 등반의 고유 가치라 던전에서는 나오지 않는다.
             // 예전에는 던전에서 이겨도 탑 보스 테이블로 굴려 환생석이 나올 수 있었다.
             bool inDungeon = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
+            int dropFloor = inDungeon ? 0 : RaidBossPool.FightFloor;
             Economy.DropSource dropSource =
                 inDungeon
                     ? (DungeonRun.Plan.Kind == DungeonKind.레이드급
                         ? Economy.DropSource.RaidDungeon
                         : Economy.DropSource.FieldDungeonBoss)
-                    : (bossFloor % 10 == 0 ? Economy.DropSource.Tower10Boss
-                                           : Economy.DropSource.Tower5Boss);
+                    : RaidBossPool.DropSourceFor(dropFloor);
 
             // 골드를 **실제로 지갑에 넣는다**. 계산만 하고 반영하지 않으면
             // §2의 순환("번 돈으로 다음 판에 들어간다")이 성립하지 않는다.
@@ -297,7 +304,7 @@ namespace AshesToStars
                 : (uint)(bossFloor * 2654435761u ^ (uint)System.DateTime.UtcNow.Ticks);
             var dropRng = Rng.Stream(dropSeed, bossFloor, SeedChannel.Drop);
             foreach (var drop in Economy.RollBattleDrops(dropSource, bossCount, ref dropRng,
-                         inDungeon ? 0 : bossFloor))
+                         dropFloor))
             {
                 // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
                 // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.

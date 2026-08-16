@@ -22,6 +22,7 @@ namespace AshesToStars
             {
                 string train = DeathTraining.Line();
                 string scale = RaidScale.Line();
+                string pool = RaidBossPool.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
@@ -29,6 +30,8 @@ namespace AshesToStars
                         : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
                 if (!string.IsNullOrEmpty(scale))
                     rest = scale + " · " + rest;
+                if (!string.IsNullOrEmpty(pool))
+                    rest = pool + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -53,6 +56,7 @@ namespace AshesToStars
             SoloRaidClear.SeedQaIfRequested();
             DeathTraining.SeedQaIfRequested();
             RaidScale.SeedQaIfRequested();
+            RaidBossPool.SeedQaIfRequested();
             if (DeathTraining.QaPromptConsent)
             {
                 _showDeathConsent = true;
@@ -169,7 +173,7 @@ namespace AshesToStars
             if (lower > 0)
             {
                 if (DrawCard(cards[2], $"하위 레이드 {lower}층",
-                        RaidScale.FormatLine(lower), "damage"))
+                        RaidBossPool.Line() + " · " + RaidScale.FormatLine(lower), "damage"))
                     Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
                           GameFlow.BattleKind.보스, lower);
             }

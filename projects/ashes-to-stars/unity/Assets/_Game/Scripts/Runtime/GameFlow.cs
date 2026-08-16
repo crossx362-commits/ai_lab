@@ -78,6 +78,8 @@ namespace AshesToStars
             ReturnTo = returnScene;
             Kind = kind;
             BossFloor = floor;
+            if (kind == BattleKind.보스)
+                RaidBossPool.Pick(floor);
             Go(Battle);
         }
 
