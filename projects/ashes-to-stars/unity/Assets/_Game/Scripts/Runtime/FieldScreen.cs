@@ -31,6 +31,7 @@ namespace AshesToStars
         /// </summary>
         long _pendingCost = 0;
         bool _pendingRaid;      // 경고를 거친 뒤 들어갈 곳이 레이드급인가
+        bool _pendingHunt;      // 선택 뒤 마지막 목숨 경고를 거친 사냥 스타트
 
         protected override void Awake()
         {
@@ -40,6 +41,8 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            HuntStart.SeedQaIfRequested();
+
             if (_showInsufficientGold)
             {
                 Info(r, 0, "[주의] 골드가 부족합니다");
@@ -70,26 +73,39 @@ namespace AshesToStars
                     }
                     bool dungeon = _pendingCost > 0;
                     bool raid = _pendingRaid;
-                    _pendingCost = 0; _pendingRaid = false;
+                    bool hunt = _pendingHunt;
+                    _pendingCost = 0; _pendingRaid = false; _pendingHunt = false;
                     if (raid) EnterRaid();
                     else if (dungeon) EnterDungeon();
+                    else if (hunt) EnterHunt();
                     else GameFlow.GoBattle(GameFlow.Field);
                 }
                 else if (cancel)
                 {
                     _showLastLifeWarning = false;
-                    _pendingCost = 0; _pendingRaid = false;
+                    _pendingCost = 0; _pendingRaid = false; _pendingHunt = false;
                 }
+                return;
+            }
+
+            if (HuntStart.Picking)
+            {
+                DrawHuntPick(r);
                 return;
             }
 
             var cards = UiPages.Grid(r, 2, 2, 16f);
             if (DrawCard(cards[0], "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)", "field"))
             {
-                if (HasLastLifeCharacter())
-                    _showLastLifeWarning = true;
+                if (HuntStart.Blocked)
+                {
+                    if (HasLastLifeCharacter())
+                        _showLastLifeWarning = true;
+                    else
+                        GameFlow.GoBattle(GameFlow.Field);
+                }
                 else
-                    GameFlow.GoBattle(GameFlow.Field);
+                    HuntStart.BeginPick();
             }
             long dungeonCost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
             if (DrawCard(cards[1], "던전 입장",
@@ -136,6 +152,65 @@ namespace AshesToStars
                     "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)",
                     on ? "heart" : "heart_broken"))
                 LowHpReturn.Enabled = !on;
+        }
+
+        void DrawHuntPick(Rect r)
+        {
+            Hint(new Rect(r.x, r.y, r.width, 24f), HuntStart.PickTitle);
+            Hint(new Rect(r.x, r.y + 26f, r.width, 22f), HuntStart.PickSubtitle);
+            var board = new Rect(r.x, r.y + 56f, r.width, Mathf.Max(80f, r.height - 56f - 180f));
+            var roster = LifeSystem.GetCharacters();
+            for (int i = 0; i < roster.Count; i++)
+            {
+                var ch = roster[i];
+                bool inParty = PartyState.Contains(i);
+                var cell = UiPages.RosterCell(board, i);
+                if (cell.yMax > board.yMax) break;
+                if (DrawHuntCard(cell, ch, inParty, HuntStart.StatusOf(ch, i, inParty)))
+                    PartyState.Toggle(i);
+            }
+
+            var actions = UiPages.Grid(new Rect(r.x, r.yMax - 168f, r.width, 168f), 2, 1, 16f);
+            bool can = PartyState.CanSortie;
+            if (DrawCard(actions[0], "스타트",
+                    can ? "전장으로 들어간다 — 들어가서 배치한다" : "한 명도 편성되지 않았다",
+                    "field", locked: !can))
+                TryLeavePick();
+            if (DrawCard(actions[1], "취소", "필드 허브로 돌아간다", "territory"))
+                HuntStart.Cancel();
+        }
+
+        bool DrawHuntCard(Rect cell, CharacterRecord ch, bool inParty, string status)
+        {
+            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
+            if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
+                UiAtlas.Draw(cell, "panel", tint);
+            UiPages.PartyCardLayout(cell, out var faceR, out var nameR, out var marks);
+            UiAtlas.DrawRosterFrame(faceR);
+            PortraitAtlas.Draw(faceR, PortraitAtlas.KeyForJob(ch.Job),
+                ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null);
+            UiAtlas.Draw(new Rect(faceR.xMax - 8f, faceR.yMax - 8f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
+            UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
+            Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
+            return GUI.Button(cell, GUIContent.none, GUIStyle.none);
+        }
+
+        void TryLeavePick()
+        {
+            if (!PartyState.CanSortie) return;
+            if (HasLastLifeCharacter())
+            {
+                _pendingHunt = true;
+                _showLastLifeWarning = true;
+                return;
+            }
+            EnterHunt();
+        }
+
+        void EnterHunt()
+        {
+            if (HuntStart.Picking && !HuntStart.ConfirmPick()) return;
+            GameFlow.GoBattle(GameFlow.Field);
         }
 
         /// <summary>

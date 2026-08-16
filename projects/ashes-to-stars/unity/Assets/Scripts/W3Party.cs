@@ -536,6 +536,11 @@ public class W3Party : MonoBehaviour
     // 고쳐 쓰면 나중에 측정값이 왜 달라졌는지 아무도 모르게 된다.
     [Header("게임 모드 (Battle 씬에서 켠다)")]
     public bool GameMode;
+    /// <summary>
+    /// 사냥 배치 중. ApplyGameParty 전에 켜면 몹을 안 뽑고 Step을 쉰다.
+    /// 탑·던전·QA 직행은 안 켠다 — 켜는 쪽은 HuntStart.ShouldHold.
+    /// </summary>
+    public bool CombatHeld;
     /// <summary>파티가 실제 HP를 잃은 시각. 긴급 탈출 캐스트 취소에 쓴다.</summary>
     public static float LastPartyDamageAt { get; private set; }
 
@@ -1057,7 +1062,10 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < MAXP; i++) { _pOn[i] = false; _pTr[i].gameObject.SetActive(false); }
         if (_aOn != null) for (int i = 0; i < MAXP; i++) { _aOn[i] = false; _aTr[i].gameObject.SetActive(false); }
         _mAlive = 0;
-        for (int i = 0; i < 시작웨이브; i++) SpawnMob();
+        if (!CombatHeld)
+        {
+            for (int i = 0; i < 시작웨이브; i++) SpawnMob();
+        }
 
         _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
@@ -1404,6 +1412,11 @@ public class W3Party : MonoBehaviour
         // NextStyle은 Awake에서 도는데 그때 GameMode는 아직 false다(BattleScreen이 AddComponent
         // 뒤에 대입하는 알려진 함정). Awake 시점에 잡으면 _game이 null로 굳어 소환이 조용히 샌다.
         if (GameMode) _game = this;
+        if (CombatHeld)
+        {
+            SyncHeldParty();
+            return;
+        }
 
         if (_hitstop > 0) { _hitstop--; _stepAcc = 0f; return; }
 
@@ -3039,8 +3052,72 @@ public class W3Party : MonoBehaviour
         NextStyle();
     }
 
+    /// <summary>사냥 배치가 끝나면 웨이브를 뽑고 Step을 연다.</summary>
+    public void ReleaseCombat()
+    {
+        if (!CombatHeld) return;
+        CombatHeld = false;
+        _t = 0f;
+        if (_mAlive == 0)
+        {
+            for (int i = 0; i < 시작웨이브; i++) SpawnMob();
+        }
+    }
+
+    public int PartyCount => _party != null ? _party.Length : 0;
+
+    public Vector2 PartyPos(int i)
+    {
+        if (_party == null || i < 0 || i >= _party.Length) return Vector2.zero;
+        return _party[i].Pos;
+    }
+
+    public bool TrySetPartyPos(int i, Vector2 world)
+    {
+        if (!CombatHeld || _party == null || i < 0 || i >= _party.Length) return false;
+        float max = Arena - 1.2f;
+        if (world.sqrMagnitude > max * max) world = world.normalized * max;
+        _party[i].Pos = world;
+        _party[i].Order = null;
+        _party[i].Tr.position = ToScreen(world, -1f);
+        return true;
+    }
+
+    public int HitParty(Vector2 world, float max = 1.6f)
+    {
+        if (_party == null) return -1;
+        int hit = -1;
+        float best = max;
+        for (int i = 0; i < _party.Length; i++)
+        {
+            if (!_party[i].Alive) continue;
+            float d = (_party[i].Pos - world).magnitude;
+            if (d < best) { best = d; hit = i; }
+        }
+        return hit;
+    }
+
+    public Vector2 ScreenToArena(Vector3 screen)
+    {
+        var cam = Camera.main;
+        if (cam == null) return Vector2.zero;
+        Vector3 w3 = cam.ScreenToWorldPoint(screen);
+        return new Vector2(w3.x, w3.y / ISO_Y);
+    }
+
+    void SyncHeldParty()
+    {
+        if (_party == null) return;
+        for (int i = 0; i < _party.Length; i++)
+        {
+            if (_party[i].Tr == null) continue;
+            _party[i].Tr.position = ToScreen(_party[i].Pos, -1f);
+        }
+    }
+
     void OnGUI()
     {
+        if (CombatHeld) return;
         _hud ??= new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Color.white } };
 
         // 스킬 이름 — `GUI.matrix`를 건드리기 **전에** 그린다(여기 좌표는 실제 픽셀이다).

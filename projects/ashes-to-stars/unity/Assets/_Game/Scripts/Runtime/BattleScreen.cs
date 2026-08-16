@@ -100,7 +100,14 @@ namespace AshesToStars
 
             // 게임 모드 설정: 표준 5인 한 판만 실행
             _battle.GameMode = true;
+            HuntStart.SeedQaIfRequested();
+            if (HuntStart.ShouldHold) _battle.CombatHeld = true;
             _battle.ApplyGameParty();
+            if (HuntStart.Deploying)
+            {
+                for (int i = 0; i < _battle.PartyCount; i++)
+                    _battle.TrySetPartyPos(i, HuntStart.PosOf(i));
+            }
             activeBoss?.AttachCombatTargets();
 
             // 필드 전투에 실제로 막히는 엄폐물을 켠다(§10-2). **GameMode 대입 뒤에** 부른다 —
@@ -130,10 +137,49 @@ namespace AshesToStars
 
         protected override void Update()
         {
+            if (HuntStart.Deploying)
+            {
+                HandleDeployInput();
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    HuntStart.Cancel();
+                    GameFlow.Go(GameFlow.Field);
+                }
+                return;
+            }
             // 공통 ESC는 영지로 공짜 이동한다. 전투 귀환은 §4 두루마리 + 6초 캐스트.
             if (Input.GetKeyDown(KeyCode.Escape) && !EmergencyEscape.Casting)
                 EmergencyEscape.TryBegin();
             _t += Time.deltaTime;
+        }
+
+        void HandleDeployInput()
+        {
+            if (_battle == null) return;
+            for (int i = 0; i < _battle.PartyCount && i < 5; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i)) HuntStart.Select(i);
+            if (!Input.GetMouseButtonDown(0) || OverDeployStart(Input.mousePosition)) return;
+            Vector2 world = _battle.ScreenToArena(Input.mousePosition);
+            int hit = _battle.HitParty(world);
+            if (hit >= 0) HuntStart.Select(hit);
+            else if (HuntStart.Selected >= 0
+                     && HuntStart.TryPlace(HuntStart.Selected, world))
+                _battle.TrySetPartyPos(HuntStart.Selected, world);
+        }
+
+        static bool OverDeployStart(Vector3 mouse)
+        {
+            float s = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
+            float x = mouse.x / s;
+            float y = (Screen.height - mouse.y) / s;
+            return new Rect(460f, 608f, 360f, 64f).Contains(new Vector2(x, y));
+        }
+
+        bool TryConfirmDeploy()
+        {
+            if (!HuntStart.ConfirmStart()) return false;
+            _battle?.ReleaseCombat();
+            return true;
         }
 
         void LateUpdate()
@@ -152,6 +198,18 @@ namespace AshesToStars
 
         protected override void Overlay()
         {
+            if (HuntStart.Deploying)
+            {
+                var banner = new Rect(280f, 16f, 720f, 52f);
+                UiAtlas.DrawSliced(banner, "panel", 8f, new Color(1f, 1f, 1f, 0.9f));
+                Hint(banner, HuntStart.DeployTitle);
+                Hint(new Rect(banner.x, banner.yMax + 4f, banner.width, 22f), HuntStart.DeployHint);
+                var start = new Rect(460f, 608f, 360f, 64f);
+                if (DrawCard(start, "스타트", "배치를 끝내고 전투를 시작한다", "field"))
+                    TryConfirmDeploy();
+                return;
+            }
+
             float y = 10f;
             if (BossBattle.IsActive && _bossMaxHp > 0f)
             {
