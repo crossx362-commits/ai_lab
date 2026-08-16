@@ -609,11 +609,10 @@ class GrokUsageTests(unittest.TestCase):
         html = (HERE / "board.html").read_text(encoding="utf-8")
         self.assertIn('id="usage-box"', html)
         self.assertIn("renderGrokUsage", html)
-        self.assertIn("${label} 남음", html)
-        self.assertIn('id="usage-claude"', html)
-        self.assertIn('id="usage-codex"', html)
-        self.assertIn('grokPill(state.claude, "클로드")', html)
-        self.assertIn('grokPill(state.codex, "코덱스")', html)
+        self.assertIn("usageChip", html)
+        self.assertIn('usageChip(state.claude, "클로드")', html)
+        self.assertIn('usageChip(state.codex, "코덱스")', html)
+        self.assertNotIn("usage-row", html)
         self.assertLess(html.find('id="usage-box"'), html.find('class="request-top"'))
 
 
