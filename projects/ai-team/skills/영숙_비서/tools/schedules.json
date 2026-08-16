@@ -204,6 +204,17 @@
    "enabled": true,
    "run": true,
    "priority": "low"
+  },
+  {
+   "id": "game_image_quality",
+   "agent": "별이",
+   "task": "게임 이미지 품질 순찰",
+   "cron": "20 10 * * *",
+   "description": "Resources 그림 누락·마젠타·너무 작음. P0만 알림. 힉스필드 생성 없음",
+   "command": "python3 projects/ai-team/skills/별이_이미지품질/tools/game_image_quality.py --once --send",
+   "enabled": true,
+   "run": true,
+   "priority": "normal"
   }
  ]
 }
