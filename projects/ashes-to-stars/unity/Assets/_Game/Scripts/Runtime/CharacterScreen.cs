@@ -17,7 +17,7 @@ namespace AshesToStars
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Character);
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
-        protected override string Subtitle => "레벨·목숨 관리와 Lv20 1차·Lv50 2차 비살상 전직 시험(§3·§4)";
+        protected override string Subtitle => "왼쪽 목록에서 고르면 오른쪽에서 모습과 장비를 본다(§3·§4)";
         protected override bool ShowRarityPreview => UiAtlas.QaShowRarity;
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
@@ -50,6 +50,7 @@ namespace AshesToStars
         int _listPage;
         int _detailPage;
         int _bagFilter = -1;
+        Vector2 _listScroll;
 
         protected override void Body(Rect r)
         {
@@ -61,21 +62,32 @@ namespace AshesToStars
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
+            SeedCharLookQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
                 return;
             }
-            if (_selectedCharacter >= 0)
+            if (_choosingAdvancement && _selectedCharacter >= 0)
             {
-                // 캐릭터 상세 화면
                 var characters = LifeSystem.GetCharacters();
                 if (_selectedCharacter < characters.Count)
-                {
-                    var ch = characters[_selectedCharacter];
+                    DrawAdvancement(r, characters[_selectedCharacter]);
+                return;
+            }
 
-                    if (_choosingAdvancement)
-                    {
+            _listPage = DrawTabs(r, new[] { "명부", "합성" }, _listPage);
+            var page = UiPages.AfterTabs(r);
+            if (_listPage == 1)
+            {
+                DrawFusionEntry(page);
+                return;
+            }
+            DrawRosterSplit(page);
+        }
+
+        void DrawAdvancement(Rect r, CharacterRecord ch)
+        {
                         var secondTrial = LifeSystem.ActiveSecondTrial;
                         if (secondTrial != null && secondTrial.Character == ch)
                         {
@@ -156,18 +168,10 @@ namespace AshesToStars
                         }
                         if (Row(r, 5, "← 선택 취소", "캐릭터 상세로 돌아간다"))
                             _choosingAdvancement = false;
-                        return;
-                    }
+        }
 
-                    _detailPage = DrawTabs(r, new[] { "장비", "속성" }, _detailPage);
-                    var detailBody = UiPages.AfterTabs(r);
-                    if (_detailPage == 0)
-                    {
-                        DrawEquipStudio(detailBody, ch);
-                        return;
-                    }
-                    r = detailBody;
-
+        void DrawAttributes(Rect r, CharacterRecord ch)
+        {
                     string detail = $"{ch.Name} ({ch.Job}) · {ExpText(ch)}";
                     if (ch.IsRescue) detail += " · 긴급 재건";
                     if (ch.IsSpecialJob) detail += " · 특수 직업";
@@ -295,28 +299,9 @@ namespace AshesToStars
                         Info(r, advancementRow++, $"흡수 {Fusion.AbsorbedSummary(ch)} ({ch.AbsorbedBoons.Count}/{Fusion.SlotCap})");
                     if (!ch.IsDeleted && ch.PendingBoon >= 0)
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
-
-                    if (Row(r, advancementRow, "← 목록으로", "캐릭터 목록으로 돌아간다"))
-                    {
-                        _selectedCharacter = -1;
-                        _choosingAdvancement = false;
-                        _detailPage = 0;
-                    }
-                }
-                return;
-            }
-
-            _listPage = DrawTabs(r, new[] { "명부", "합성" }, _listPage);
-            var page = UiPages.AfterTabs(r);
-            if (_listPage == 1)
-            {
-                DrawFusionEntry(page);
-                return;
-            }
-            DrawRosterPage(page);
         }
 
-        void DrawRosterPage(Rect r)
+        void DrawRosterSplit(Rect r)
         {
             if (FloorRecruit.AwaitingPick)
             {
@@ -341,44 +326,59 @@ namespace AshesToStars
             if (FloorRecruit.PendingSpecialBanner)
                 Hint(new Rect(r.x, r.y, r.width, 22f), FloorRecruit.SpecialHint());
             float top = FloorRecruit.PendingSpecialBanner ? 28f : 0f;
+            var area = new Rect(r.x, r.y + top, r.width, r.height - top);
             var allCharacters = LifeSystem.GetCharacters();
-            var cells = UiPages.Grid(new Rect(r.x, r.y + top, r.width, r.height - 88f - top), 3, 2, 12f);
-            for (int i = 0; i < allCharacters.Count && i < cells.Length; i++)
+            if (allCharacters.Count == 0)
             {
-                var ch = allCharacters[i];
-                string sub = ch.IsDeleted
-                    ? (ch.IsSpecialJob ? "삭제됨 · 특수 직업" : "삭제됨")
-                    : ch.IsSpecialJob
-                        ? $"{ExpText(ch)} · 특수 직업 1목숨"
-                        : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
-                if (DrawRosterCard(cells[i], ch, sub))
+                Hint(area, "명부가 비었다");
+                return;
+            }
+            if (_selectedCharacter < 0 || _selectedCharacter >= allCharacters.Count)
+                _selectedCharacter = 0;
+
+            UiPages.RosterSplit(area, out var list, out var stage);
+            const float partyH = 56f;
+            var listBody = new Rect(list.x, list.y, list.width, Mathf.Max(40f, list.height - partyH - 8f));
+            var partyRect = new Rect(list.x, list.yMax - partyH, list.width, partyH);
+            float contentH = allCharacters.Count * (UiPages.RosterRowH + UiPages.RosterRowGap);
+            var view = new Rect(0f, 0f, Mathf.Max(40f, listBody.width - 16f), Mathf.Max(listBody.height, contentH));
+            _listScroll = GUI.BeginScrollView(listBody, _listScroll, view);
+            for (int i = 0; i < allCharacters.Count; i++)
+            {
+                var row = new Rect(0f, i * (UiPages.RosterRowH + UiPages.RosterRowGap),
+                    view.width, UiPages.RosterRowH);
+                DrawRosterListRow(row, allCharacters[i], i == _selectedCharacter);
+                if (GUI.Button(row, GUIContent.none, GUIStyle.none))
                 {
                     _selectedCharacter = i;
                     _choosingAdvancement = false;
+                    _detailPage = 0;
                 }
             }
-            if (DrawCard(new Rect(r.x, r.yMax - 76f, r.width, 70f),
-                    "파티 편성",
-                    $"최대 5인 · 지금 {PartyState.Slots.Count}명 — 구성이 생존을 가른다",
-                    "tank"))
+            GUI.EndScrollView();
+            if (CompactAction(partyRect, $"파티 {PartyState.Slots.Count}/5", "tank"))
                 GameFlow.Go(GameFlow.Party);
+
+            var ch = allCharacters[_selectedCharacter];
+            _detailPage = DrawTabs(stage, new[] { "장비", "속성" }, _detailPage);
+            var detailBody = UiPages.AfterTabs(stage);
+            if (_detailPage == 0) DrawEquipStudio(detailBody, ch);
+            else DrawAttributes(detailBody, ch);
         }
 
-        bool DrawRosterCard(Rect card, CharacterRecord ch, string sub)
+        void DrawRosterListRow(Rect row, CharacterRecord ch, bool selected)
         {
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : (Color?)null;
-            if (!UiAtlas.DrawSliced(card, "panel", 14f, tint ?? new Color(1f, 1f, 1f, 0.94f)))
-                UiAtlas.Draw(card, "panel", tint);
-            var face = new Rect(card.x + 14f, card.y + 12f, 56f, 56f);
+            UiAtlas.Draw(row, UiAtlas.ButtonKey(false, selected),
+                selected ? (Color?)null : new Color(1f, 1f, 1f, 0.78f));
+            var face = new Rect(row.x + 6f, row.y + 8f, 48f, 48f);
             UiAtlas.DrawRosterFrame(face);
             PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
-            UiAtlas.Draw(new Rect(face.xMax - 10f, face.yMax - 10f, 22f, 22f), UiAtlas.RoleKey(ch.Job));
+            UiAtlas.Draw(new Rect(face.xMax - 8f, face.yMax - 8f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
             string name = ch.IsRescue ? $"{ch.Name} · 재건" : ch.Name;
-            Hint(new Rect(face.xMax + 10f, card.y + 14f, card.width - 90f, 24f), name + " · " + ch.Job);
-            UiAtlas.DrawHearts(new Rect(face.xMax + 10f, card.y + 40f, 80f, 20f),
+            Hint(new Rect(face.xMax + 8f, row.y + 6f, row.width - 70f, 22f), $"{name} · {ch.Job}");
+            UiAtlas.DrawHearts(new Rect(face.xMax + 8f, row.y + 32f, 80f, 18f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
-            Hint(new Rect(card.x + 14f, card.yMax - 28f, card.width - 28f, 22f), sub);
-            return GUI.Button(card, GUIContent.none, GUIStyle.none);
         }
 
         void DrawFusionEntry(Rect r)
@@ -419,28 +419,18 @@ namespace AshesToStars
                 "heart", locked: true);
         }
 
-        void DrawRosterDecor(Rect r, int index, CharacterRecord ch, string sub)
+        void SeedCharLookQaIfRequested()
         {
-            var br = RowButtonRect(r, index);
-            if (br.yMax > r.yMax) return;
-
-            var face = new Rect(br.x + 6, br.y + 5, 48, 48);
-            UiAtlas.Draw(new Rect(face.x - 2, face.y - 2, 52, 52), "portrait_frame");
-            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
-            PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
-            UiAtlas.Draw(new Rect(face.xMax - 8, face.yMax - 8, 20, 20), UiAtlas.RoleKey(ch.Job));
-
-            var desc = RowDescRect(r, index);
-            float heartsW = UiAtlas.DrawHearts(new Rect(desc.x, desc.y + 4, 80, 22),
-                ch.DeathCount, ch.IsDeleted, ch.MaxLives);
-            Hint(new Rect(desc.x + heartsW + 6, desc.y + 6, desc.width - heartsW - 6, 22), sub);
-            if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
-            {
-                float need = LifeSystem.ExpToNext(ch.Level);
-                float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
-                UiAtlas.DrawMeter(new Rect(desc.x, desc.y + 32, Mathf.Min(220f, desc.width), 20),
-                    "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
-            }
+            if (Environment.GetEnvironmentVariable("QA_CHAR_LOOK") != "1") return;
+            FloorRecruit.ResetForTest();
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            Equipment.SeedCraftedLoadoutForQa(roster[0]);
+            _selectedCharacter = 0;
+            _listPage = 0;
+            _detailPage = 0;
+            _fusing = false;
+            _choosingAdvancement = false;
         }
 
         void SeedRarityQaIfRequested()
@@ -643,10 +633,9 @@ namespace AshesToStars
             UiAtlas.DrawHearts(new Rect(stage.xMax - 96f, stage.y + 14f, 80f, 22f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
 
-            var face = new Rect(stage.center.x - 90f, stage.y + 96f, 180f, 216f);
-            UiAtlas.DrawRosterFrame(face);
+            var face = UiPages.LargeLook(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
-            PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
+            DrawIdleLook(face, ch.Job, tint);
             UiAtlas.Draw(new Rect(face.center.x - 16f, face.yMax - 18f, 32f, 32f),
                 UiAtlas.RoleKey(ch.Job));
 
@@ -655,7 +644,7 @@ namespace AshesToStars
             {
                 var slot = RingSlots[i];
                 float deg = UiPages.EquipRingDegrees[i];
-                var slotRect = UiPages.SlotOnRing(center, 210f, 160f, deg, 64f);
+                var slotRect = UiPages.SlotOnRing(center, 140f, 125f, deg, 52f);
                 var worn = Equipment.Worn(ch, slot);
                 ItemAtlas.DrawGear(slotRect, worn);
                 if (worn == null)
@@ -717,17 +706,28 @@ namespace AshesToStars
             }
 
             var bar = new Rect(r.x, r.yMax - 48f, r.width, 44f);
-            var actions = UiPages.Grid(bar, 3, 1, 12f);
+            var actions = UiPages.Grid(bar, 2, 1, 12f);
             if (CompactAction(actions[0], "자동 장착", "sword") && !ch.IsDeleted)
                 AutoEquip(ch);
             CompactAction(actions[1],
                 $"{Economy.FormatCurrency(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
                 "gold", locked: true);
-            if (CompactAction(actions[2], "목록으로", "characters"))
+        }
+
+        static void DrawIdleLook(Rect target, string job, Color? tint)
+        {
+            string dir = UiPages.LookDir(job);
+            var tex = Resources.Load<Texture2D>($"sprites/{dir}/{dir}_idle_00");
+            if (tex == null)
             {
-                _selectedCharacter = -1;
-                _detailPage = 0;
+                UiAtlas.DrawRosterFrame(target);
+                PortraitAtlas.Draw(target, PortraitAtlas.KeyForJob(job), tint);
+                return;
             }
+            var saved = GUI.color;
+            GUI.color = tint ?? Color.white;
+            GUI.DrawTexture(target, tex, ScaleMode.ScaleToFit, true);
+            GUI.color = saved;
         }
 
         void DrawBagFilterTab(Rect tr, string label, int filter)

@@ -62,6 +62,27 @@ namespace AshesToStars
             Debug.Assert(Mathf.Approximately(ring.center.x, 100f) && ring.center.y < 100f,
                 "[UiAtlasSelfCheck] 12시 칸은 초상 위에 있어야 한다");
 
+            UiPages.RosterSplit(new Rect(0, 0, 1000, 400), out var list, out var stage);
+            Debug.Assert(list.x < stage.x && list.xMax <= stage.x + 0.01f,
+                "[UiAtlasSelfCheck] 명부 목록이 왼쪽, 모습이 오른쪽이어야 한다");
+            Debug.Assert(list.width < stage.width,
+                "[UiAtlasSelfCheck] 목록이 모습 영역보다 넓으면 오너 지시와 반대다");
+            Debug.Assert(UiPages.RosterListRatio < 0.5f,
+                "[UiAtlasSelfCheck] 목록 비율이 절반 이상이면 모습이 작아진다");
+            var look = UiPages.LargeLook(stage);
+            Debug.Assert(look.width >= 160f && look.height >= 200f
+                         && look.width > 56f && look.x >= stage.x && look.xMax <= stage.xMax,
+                "[UiAtlasSelfCheck] 대형 모습이 목록 얼굴(56)보다 크고 오른쪽 안에 있어야 한다");
+            var row0 = UiPages.RosterRow(list, 0);
+            var row1 = UiPages.RosterRow(list, 1);
+            Debug.Assert(row0.y < row1.y && Mathf.Approximately(row0.x, list.x),
+                "[UiAtlasSelfCheck] 목록 줄은 왼쪽에서 아래로 쌓인다");
+            Debug.Assert(UiPages.LookDir("탱") == "tank" && UiPages.LookDir("수호기사") == "tank"
+                         && UiPages.LookDir("검사") == "dps" && UiPages.LookDir("마법사") == "mage"
+                         && UiPages.LookDir("사제") == "healer" && UiPages.LookDir("음유시인") == "buffer",
+                "[UiAtlasSelfCheck] 직업→전신 폴더가 어긋난다");
+            _ = nameof(CharacterScreen);
+
             Debug.Assert(UiAtlas.BuildingKey("대장간") == "building_smith",
                 "[UiAtlasSelfCheck] 대장간 건물 키가 어긋난다");
             Debug.Assert(UiAtlas.BuildingKey("경매장") == "building_auction",

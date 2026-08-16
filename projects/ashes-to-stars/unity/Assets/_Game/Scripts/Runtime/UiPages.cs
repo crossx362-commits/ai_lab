@@ -25,6 +25,44 @@ namespace AshesToStars
 
         public static readonly float[] EquipRingDegrees = { -90f, -20f, 50f, 125f, 180f, -145f };
 
+        /// <summary>명부 왼쪽 목록 · 오른쪽 대형 모습. 비율을 뒤집으면 오너 지시와 반대다.</summary>
+        public const float RosterListRatio = 0.30f;
+        public const float RosterRowH = 64f;
+        public const float RosterRowGap = 6f;
+        public const float LargeLookW = 200f;
+        public const float LargeLookH = 240f;
+
+        public static void RosterSplit(Rect r, out Rect list, out Rect stage)
+        {
+            const float gap = 10f;
+            float listW = Mathf.Max(220f, r.width * RosterListRatio);
+            if (listW > r.width - 120f) listW = Mathf.Max(160f, r.width * 0.3f);
+            list = new Rect(r.x, r.y, listW, r.height);
+            stage = new Rect(r.x + listW + gap, r.y, Mathf.Max(80f, r.width - listW - gap), r.height);
+        }
+
+        public static Rect RosterRow(Rect list, int index)
+        {
+            return new Rect(list.x, list.y + index * (RosterRowH + RosterRowGap),
+                list.width, RosterRowH);
+        }
+
+        public static Rect LargeLook(Rect stage)
+        {
+            return new Rect(stage.center.x - LargeLookW * 0.5f, stage.y + 88f,
+                LargeLookW, LargeLookH);
+        }
+
+        /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>
+        public static string LookDir(string job) => job switch
+        {
+            "탱" or "수호기사" or "광전사" => "tank",
+            "힐" or "사제" or "드루이드" => "healer",
+            "버퍼" or "음유시인" or "주술사" or "정령사" => "buffer",
+            "마법사" or "소환사" => "mage",
+            _ => "dps",
+        };
+
         public static Rect[] Grid(Rect r, int cols, int rows, float gap = 16f)
         {
             if (cols < 1) cols = 1;
