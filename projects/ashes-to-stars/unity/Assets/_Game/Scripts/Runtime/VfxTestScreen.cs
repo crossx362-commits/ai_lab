@@ -10,9 +10,13 @@ namespace AshesToStars
         protected override bool ShowBottomBar => false;
         string[] _keys = CombatVfxAtlas.RequiredKeys;
         int _page;
-        bool _auto;
+        // 테스트 씬을 열자마자 무엇을 검수하는지 보여야 한다. 수동 시작이면
+        // 검은 배경만 남아 "이펙트가 안 보인다"로 읽히므로 자동 재생이 기본이다.
+        bool _auto = true;
         float _next;
         int _cursor;
+
+        public bool IsAutoPlaying => _auto;
 
         protected override void Update()
         {
