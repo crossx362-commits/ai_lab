@@ -111,8 +111,11 @@ namespace AshesToStars
             this._gimmickCursor = 0;
             this.summonActive = false;
             this.summonDisabled = System.Environment.GetEnvironmentVariable("BOSS_NO_SUMMON") == "1";
+            this.bossDpsDisabled = System.Environment.GetEnvironmentVariable("BOSS_NO_DPS") == "1";
             if (summonDisabled)
                 Debug.Log("[BossBattle] BOSS_NO_SUMMON=1 — 소환 기믹 비활성(네거티브 컨트롤)");
+            if (bossDpsDisabled)
+                Debug.Log("[BossBattle] BOSS_NO_DPS=1 — 파티의 보스 피해 비활성(네거티브 컨트롤)");
 
             // §18-11: 목표 시간 계산
             // 5층 90초, 10층 180초, 50층+ 300초
@@ -162,6 +165,7 @@ namespace AshesToStars
         /// 참조를 넘기게 하면 그 배선을 잊는 순간 기믹이 조용히 죽는다(실제로 죽어 있었다).
         /// </summary>
         static BossBattle _active;
+        public static bool IsActive => _active != null && _active.isActive;
         public static void ReportHealingToActive(float amount)
         {
             if (_active != null && _active.isActive) _active.ReportPartyHealing(amount);
@@ -180,6 +184,78 @@ namespace AshesToStars
             if (_active != null && _active.isActive) _active.windowDamage += amount;
         }
         float windowDamage;
+
+        /// <summary>현재 보스들의 남은 HP 합. 실행 QA와 HUD가 같은 전투 상태를 읽는다.</summary>
+        public static float ActiveTotalHp
+        {
+            get
+            {
+                if (_active == null || !_active.isActive || _active.bosses == null) return 0f;
+                return _active.bosses.Where(b => b.isActive).Sum(b => Mathf.Max(0f, b.currentHp));
+            }
+        }
+
+        /// <summary>
+        /// W3Party에서 실제로 낸 피해를 현재 보스에 전달한다. 다중 보스는 앞의 생존 보스부터
+        /// 순서대로 받으며 초과 피해는 다음 보스로 넘어간다.
+        /// </summary>
+        public static void ReportPartyDamageToActive(float amount)
+        {
+            if (_active == null || !_active.isActive || _active.bossDpsDisabled || amount <= 0f) return;
+
+            float remaining = amount;
+            foreach (var boss in _active.bosses)
+            {
+                if (!boss.isActive || remaining <= 0f) continue;
+                float dealt = Mathf.Min(boss.currentHp, remaining);
+                boss.currentHp -= dealt;
+                remaining -= dealt;
+                if (boss.currentHp <= 0f)
+                {
+                    _active.UpdatePhase(boss);
+                    boss.currentHp = 0f;
+                    boss.isActive = false;
+                    if (boss.view != null) boss.view.gameObject.SetActive(false);
+                }
+                else
+                {
+                    _active.UpdatePhase(boss);
+                }
+            }
+
+            if (_active.bosses.All(b => !b.isActive)) _active.OnAllBossesDefeated();
+        }
+
+        /// <summary>W3의 보스 타깃 슬롯 하나가 받은 피해만 해당 보스에 반영한다.</summary>
+        public static bool TryReportPartyDamageToActive(int bossIndex, float amount)
+        {
+            if (_active == null || !_active.isActive || _active.bossDpsDisabled || amount <= 0f
+                || bossIndex < 0 || bossIndex >= _active.bosses.Count) return false;
+            var boss = _active.bosses[bossIndex];
+            if (!boss.isActive) return false;
+            boss.currentHp = Mathf.Max(0f, boss.currentHp - amount);
+            _active.UpdatePhase(boss);
+            if (boss.currentHp <= 0f)
+            {
+                boss.isActive = false;
+                if (boss.view != null) boss.view.gameObject.SetActive(false);
+                if (_active.bosses.All(b => !b.isActive)) _active.OnAllBossesDefeated();
+            }
+            return true;
+        }
+
+        /// <summary>BattleScreen이 W3 게임 모드를 초기화한 뒤 실제 공격 타깃을 연결한다.</summary>
+        public void AttachCombatTargets()
+        {
+            global::W3Party.ConfigureBossTargetsToActive(
+                bosses.Select(b => new global::W3Party.BossTarget(b.index, b.maxHp,
+                    new Vector2(b.position.x, b.position.y))).ToArray());
+        }
+
+        private void OnDestroy()
+        {
+            if (_active == this) _active = null;
+        }
 
         /// <summary>회복이 피해의 이만큼은 되어야 통과. 💡 문서 미정 — 실측으로 조정할 값.</summary>
         public const float HealCheckRatio = 0.6f;

@@ -335,6 +335,7 @@ public class W3Party : MonoBehaviour
     // 셈해야 「소환 비활성 → 그 피해가 사라짐」 네거티브 컨트롤이 성립한다(웨이브 몹 피해와 분리).
     // BossBattle 인스턴스를 몰라도 되게 정적 통로를 둔다(회복·피해 보고와 같은 idiom).
     bool[] _mSummoned;
+    int[] _mBossIndex;                       // -1=일반/소환 몹, 0+=BossBattle의 실제 공격 타깃
     int _summonedAlive;                     // 지금 살아 있는 소환 몹 수 — 보스가 슬롯 해제를 판정
     float _summonDmgToParty; int _summonHits;   // 소환 몹이 파티에 준 누적 피해·타격 수
     static W3Party _game;                    // GameMode(실플레이) 판. 보스 기믹이 여기로 소환한다
@@ -661,6 +662,8 @@ public class W3Party : MonoBehaviour
         _mDeadT = new float[MAXM];
         _mChargeT = new float[MAXM]; _mChargePhase = new int[MAXM]; _mChargeDir = new Vector2[MAXM];
         _mSummoned = new bool[MAXM];
+        _mBossIndex = new int[MAXM];
+        for (int i = 0; i < MAXM; i++) _mBossIndex[i] = -1;
         // 개체별 계열색을 **스폰 때 한 번 정해 기억한다.** 예전엔 피격 섬광이 끝날 때마다
         // `FamilyTint()`를 다시 불렀는데, 필드에서는 그 함수가 계열을 무작위로 굴리므로
         // **몹이 맞을 때마다 색이 바뀌어 깜빡였다**(오너 지적 2026-08-15, 내가 낸 버그).
@@ -972,7 +975,7 @@ public class W3Party : MonoBehaviour
                                 m.Role == Role.Tank ? 1.8f : m.Role == Role.Dps ? -0.4f : -2.6f);
             m.Tr.gameObject.SetActive(true);
         }
-        for (int i = 0; i < MAXM; i++) { _mOn[i] = false; _mDeadT[i] = 0f; _mChargePhase[i] = 0; _mTr[i].gameObject.SetActive(false); }
+        for (int i = 0; i < MAXM; i++) { _mOn[i] = false; _mDeadT[i] = 0f; _mChargePhase[i] = 0; _mBossIndex[i] = -1; _mSr[i].enabled = true; _mTr[i].gameObject.SetActive(false); }
         for (int i = 0; i < MAXP; i++) { _pOn[i] = false; _pTr[i].gameObject.SetActive(false); }
         if (_aOn != null) for (int i = 0; i < MAXP; i++) { _aOn[i] = false; _aTr[i].gameObject.SetActive(false); }
         _mAlive = 0;
@@ -1025,6 +1028,8 @@ public class W3Party : MonoBehaviour
                 _mPos[i] = anchor + new Vector2(Random.Range(-0.35f, 0.35f), Random.Range(-0.35f, 0.35f));
             }
             _mSummoned[i] = summoned;
+            _mBossIndex[i] = -1;
+            _mSr[i].enabled = true;
             if (summoned) _summonedAlive++;
             // 소환 몹은 잡몹보다 훨씬 단단하게(220) — 파티 한복판에 떨어지면 순식간에 포커싱되므로,
             // 즉사하면 「달려들어 후열을 문다」는 위협이 성립하지 않는다(실측: 90도 첫 타 전에 죽었다).
@@ -1071,6 +1076,51 @@ public class W3Party : MonoBehaviour
 
     /// <summary>소환 몹이 파티에 준 누적 피해. 네거티브 컨트롤의 측정값(QA 로그로 읽는다).</summary>
     public static float SummonDmgOnActive() => _game != null ? _game._summonDmgToParty : 0f;
+
+    public readonly struct BossTarget
+    {
+        public readonly int Index;
+        public readonly float Hp;
+        public readonly Vector2 Position;
+        public BossTarget(int index, float hp, Vector2 position)
+        { Index = index; Hp = hp; Position = position; }
+    }
+
+    public static void ConfigureBossTargetsToActive(BossTarget[] targets)
+    {
+        if (_game == null || !_game.GameMode || targets == null) return;
+        _game.ConfigureBossTargets(targets);
+    }
+
+    void ConfigureBossTargets(BossTarget[] targets)
+    {
+        for (int i = 0; i < MAXM; i++)
+        {
+            _mOn[i] = false; _mDeadT[i] = 0f; _mBossIndex[i] = -1;
+            _mSr[i].enabled = true; _mTr[i].gameObject.SetActive(false);
+        }
+        _mAlive = 0; _summonedAlive = 0;
+        for (int n = 0; n < targets.Length && n < MAXM; n++)
+        {
+            int i = n;
+            _mBossIndex[i] = targets[n].Index;
+            _mPos[i] = targets[n].Position;
+            _mHp[i] = _mMaxHp[i] = targets[n].Hp;
+            _mKind[i] = 0; _mSummoned[i] = false; _mOn[i] = true; _mAlive++;
+            _mSr[i].enabled = false;                 // BossBattle의 큰 실루엣이 화면 표현을 맡는다
+            _mTr[i].gameObject.SetActive(true);      // 위치·타겟팅 슬롯은 살아 있어야 한다
+        }
+    }
+
+    void DamageMob(int index, float amount)
+    {
+        if (index < 0 || index >= MAXM || !_mOn[index] || amount <= 0f) return;
+        float dealt = Mathf.Min(_mHp[index], amount);
+        if (_mBossIndex[index] >= 0
+            && !AshesToStars.BossBattle.TryReportPartyDamageToActive(_mBossIndex[index], dealt))
+            return;
+        _mHp[index] -= dealt;
+    }
 
     /// <summary>
     /// AI가 이동기를 쓴 횟수. **판이 끝나야 찍히는 로그로는 QA가 못 본다** —
@@ -1299,7 +1349,8 @@ public class W3Party : MonoBehaviour
         // 이래야 모든 구성이 결국 무너지고 "언제 무너지는가"로 비교할 수 있다.
         int 목표 = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         목표 = Mathf.Min(목표, MAXM - 20);
-        if (_mAlive < 목표) for (int i = 0; i < 2 && _mAlive < 목표; i++) SpawnMob();
+        if (!AshesToStars.BossBattle.IsActive && _mAlive < 목표)
+            for (int i = 0; i < 2 && _mAlive < 목표; i++) SpawnMob();
     }
 
     /// <summary>
@@ -1422,6 +1473,12 @@ public class W3Party : MonoBehaviour
             }
 
             if (!_mOn[i]) continue;
+            if (_mBossIndex[i] >= 0)
+            {
+                _mBarBg[i].gameObject.SetActive(false);
+                _mBarFg[i].gameObject.SetActive(false);
+                continue;
+            }
 
             // 몹 애니메이션. 개체마다 시간을 어긋나게 줘야 100마리가 같은 프레임으로
             // 군무를 추지 않는다 — 물량이 많을수록 동기화가 눈에 띈다(§10-2).
@@ -1817,10 +1874,10 @@ public class W3Party : MonoBehaviour
                     _qaAdvSlot2 += 1f; // 아래 공통 공격으로 맞는 주 대상도 대지 가르기 명중이다.
                     for (int j = 0; j < MAXM; j++)
                         if (j != target && _mOn[j] && (_mPos[j] - m.Pos).sqrMagnitude < 6.25f)
-                        { _mHp[j] -= dmg; _qaAdvSlot2 += 1f; if (_mHp[j] <= 0f) KillMob(j); }
+                        { DamageMob(j, dmg); _qaAdvSlot2 += 1f; if (_mHp[j] <= 0f) KillMob(j); }
                     SkillCast(m, "대지 가르기", new Color(1f, 0.5f, 0.25f), 3, 0.25f);
                 }
-                _mHp[target] -= dmg * sp.DmgMul * ChantAtk(); m.Cd = 0.5f / _bAtkSpd;
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk()); m.Cd = 0.5f / _bAtkSpd;
                 AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.궁수 && target >= 0)
@@ -1829,7 +1886,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 2) { m.ForceSkill = 0; m.FocusUntil = _t + 4f; _qaAdvSlot2 += 4f; SkillCast(m, "집중 사격", Color.yellow, 1); }
                 float dmg = m.Atk * (_t < m.FocusUntil ? 1.6f : 1f);
                 if (m.ForceSkill == 1) { m.ForceSkill = 0; dmg *= 2.4f; _qaAdvSlot1 += dmg; SkillCast(m, "관통 사격", Color.white, 2); }
-                _mHp[target] -= dmg * sp.DmgMul * ChantAtk(); m.Cd = 0.55f / _bAtkSpd;
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk()); m.Cd = 0.55f / _bAtkSpd;
                 AttackFx(m, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.소환사 && target >= 0)
@@ -1846,7 +1903,7 @@ public class W3Party : MonoBehaviour
                     if (swap != null) { Vector2 old = m.Pos; m.Pos = swap.Pos; swap.Pos = old; _qaAdvSlot2 += 1f; }
                     m.IFrame = Mathf.Max(m.IFrame, 0.8f); SkillCast(m, "위치 교체", Color.cyan, 1);
                 }
-                _mHp[target] -= summonDmg * sp.DmgMul * ChantAtk(); m.Cd = 0.7f;
+                DamageMob(target, summonDmg * sp.DmgMul * ChantAtk()); m.Cd = 0.7f;
                 FireAlly(m.Pos, _mPos[target]); FlashMob(target); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.드루이드)
@@ -1855,7 +1912,7 @@ public class W3Party : MonoBehaviour
                 Member worst = null;
                 foreach (var o in _party) if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
                 if (worst != null) { float healed = Heal(worst, (m.ForceSkill == 2 ? 28f : 10f) * _bHeal); if (m.ForceSkill == 2) _qaAdvSlot2 += healed; }
-                if (target >= 0) { float dealt = m.Atk * (m.ForceSkill == 1 ? 2f : 1f); _mHp[target] -= dealt; if (m.ForceSkill == 1) _qaAdvSlot1 += dealt; FlashMob(target); if (_mHp[target] <= 0f) KillMob(target); }
+                if (target >= 0) { float dealt = m.Atk * (m.ForceSkill == 1 ? 2f : 1f); DamageMob(target, dealt); if (m.ForceSkill == 1) _qaAdvSlot1 += dealt; FlashMob(target); if (_mHp[target] <= 0f) KillMob(target); }
                 SkillCast(m, m.ForceSkill == 2 ? "재생" : "자연 표식", Color.green, 1); m.ForceSkill = 0; m.Cd = 1.0f;
             }
             else if (m.Job == Job.주술사 && target >= 0)
@@ -1864,7 +1921,7 @@ public class W3Party : MonoBehaviour
                 m.Gauge = Mathf.Min(5f, m.Gauge + 1f); float dmg = m.Atk * (1f + m.Gauge * 0.2f);
                 if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 5f; _qaAdvSlot1 += m.Gauge; SkillCast(m, "저주 중첩", Color.magenta, 1); }
                 if (m.ForceSkill == 2) { m.ForceSkill = 0; _mAtkCd[target] = Mathf.Max(_mAtkCd[target], 2.5f); _qaAdvSlot2 += 2.5f; SkillCast(m, "쇠약 의식", Color.magenta, 1); }
-                _mHp[target] -= dmg; m.Cd = 0.8f; AttackFx(m, _mPos[target]); if (_mHp[target] <= 0f) KillMob(target);
+                DamageMob(target, dmg); m.Cd = 0.8f; AttackFx(m, _mPos[target]); if (_mHp[target] <= 0f) KillMob(target);
             }
             else if (m.Job == Job.정령사)
             {
@@ -1901,14 +1958,14 @@ public class W3Party : MonoBehaviour
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < 10.2f)
                         {
-                            _mHp[j] -= 30f * sp.DmgMul * ChantAtk();
+                            DamageMob(j, 30f * sp.DmgMul * ChantAtk());
                             FlashMob(j);
                             if (_mHp[j] <= 0f) KillMob(j);
                         }
                     FireAlly(m.Pos, c);
                     continue;
                 }
-                _mHp[target] -= m.Atk * sp.DmgMul * ChantAtk();
+                DamageMob(target, m.Atk * sp.DmgMul * ChantAtk());
                 m.Cd = 0.40f;
                 m.Threat += m.Atk * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
@@ -1927,7 +1984,7 @@ public class W3Party : MonoBehaviour
                     m.ForceSkill = 0; dmg *= 2.2f;
                     SkillCast(m, "강타", new Color(1f, 0.65f, 0.35f), hitstop: 2, shake: 0.15f);
                 }
-                _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk());
                 m.Cd = (_t < m.FocusUntil ? 0.22f : 0.40f) / _bAtkSpd;
                 m.Threat += dmg * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
@@ -1945,7 +2002,7 @@ public class W3Party : MonoBehaviour
                 else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target]));
                     SkillCast(m, "일섬", new Color(0.85f, 0.95f, 1f), hitstop: 3, shake: 0.2f);
                     FxPool.Play(FxPool.Kind.Slash, _mPos[target], 1.5f); }
-                _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk());
                 m.Cd = 0.35f / _bAtkSpd;
                 m.Threat += dmg * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
@@ -1953,7 +2010,7 @@ public class W3Party : MonoBehaviour
             }
             else if (target >= 0)
             {
-                _mHp[target] -= m.Atk * sp.DmgMul * ChantAtk();
+                DamageMob(target, m.Atk * sp.DmgMul * ChantAtk());
                 m.Cd = m.Role == Role.Dps ? 0.40f : 0.7f;
                 m.Threat += m.Atk * 0.4f;
                 AttackFx(m, _mPos[target]);          // 근접은 타격만, 원거리는 탄(§3)
@@ -2302,7 +2359,15 @@ public class W3Party : MonoBehaviour
 
     void KillMob(int i)
     {
-        _mOn[i] = false; _mAlive--; _kills++;
+        _mOn[i] = false; _mAlive--;
+        if (_mBossIndex[i] >= 0)
+        {
+            _mBossIndex[i] = -1;
+            _mSr[i].enabled = true;
+            _mTr[i].gameObject.SetActive(false);
+            return;
+        }
+        _kills++;
         PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : "골드 +12   EXP +4",
                    _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
@@ -2343,7 +2408,7 @@ public class W3Party : MonoBehaviour
         int n = MAXM + _party.Length;
         if (_sepPos == null || _sepPos.Length < n) { _sepPos = new Vector2[n]; _sepAlive = new bool[n]; }
 
-        for (int i = 0; i < MAXM; i++) { _sepPos[i] = _mPos[i]; _sepAlive[i] = _mOn[i]; }
+        for (int i = 0; i < MAXM; i++) { _sepPos[i] = _mPos[i]; _sepAlive[i] = _mOn[i] && _mBossIndex[i] < 0; }
         for (int k = 0; k < _party.Length; k++)
         {
             _sepPos[MAXM + k] = _party[k].Pos;
@@ -2353,7 +2418,7 @@ public class W3Party : MonoBehaviour
         UnitSeparation.Resolve(_sepPos, _sepAlive, n, 0.5f);
 
         for (int i = 0; i < MAXM; i++)
-            if (_mOn[i])
+            if (_mOn[i] && _mBossIndex[i] < 0)
             {
                 var p = _sepPos[i];
                 if (ArenaLayout.Any) p = ArenaLayout.Resolve(p, 0.3f);
@@ -2379,6 +2444,7 @@ public class W3Party : MonoBehaviour
         for (int i = 0; i < MAXM; i++)
         {
             if (!_mOn[i]) continue;
+            if (_mBossIndex[i] >= 0) continue;       // 공격은 받되 잡몹 AI로 이동·공격하지 않는다
             Vector2 p = _mPos[i];
 
             // 어그로: 근접은 최근접, 원거리는 **후열(위협 낮은 쪽) 저격**.
@@ -2594,7 +2660,7 @@ public class W3Party : MonoBehaviour
             {
                 if (!_mOn[i]) continue;
                 float dealt = Mathf.Min(_mHp[i], m.Atk * 4f * _bAtk);
-                _mHp[i] -= dealt;
+                DamageMob(i, dealt);
                 effect += dealt;
                 FlashMob(i);
                 if (_mHp[i] <= 0f) KillMob(i);
