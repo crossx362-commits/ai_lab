@@ -15,7 +15,8 @@ namespace AshesToStars
         protected override string Title => "월드맵";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.WorldMap);
         protected override string BackgroundArt => "bg_worldmap";
-        protected override string Subtitle => "우주 성계. 침략은 탑 30층 달성 시 해금(§14·§15)";
+        protected override string Subtitle =>
+            "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor) + " · 침략은 탑 30층(§14·§15)";
 
         /// <summary>침략 해금 층(§15 ✅ "탑 30층 이상 등반 시 해금"). 경매장과 **동시** 해금이다
         /// (SceneStructureBuilder "30층 돌파 → 침략·경매장 동시 해금").</summary>
@@ -35,7 +36,15 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var plate = WorldStar.Plate(r);
+            if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
+                UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
+            var icon = WorldStar.Icon(plate, GameState.TowerFloor);
+            UiAtlas.DrawFit(icon, "worldmap");
+            Hint(WorldStar.Caption(plate, icon),
+                "내 별 · " + WorldStar.SizeLabel(GameState.TowerFloor) + " — 층을 오를수록 커진다(§14)");
+
+            var cards = UiPages.Grid(WorldStar.AfterPlate(r), 2, 2, 16f);
             DrawCard(cards[0], "성계 이동",
                 "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)",
                 "worldmap", locked: true);
