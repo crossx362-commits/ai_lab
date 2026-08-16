@@ -147,7 +147,7 @@ public class W3Party : MonoBehaviour
 
     // HUD는 이 세 안전 영역만 쓴다. 월드 이펙트·전투 콜아웃과 겹치는 좌표를 만들지 않는다.
     public const float CombatHudTopHeight = 72f;
-    public const float CombatHudBottomHeight = 148f;
+    public const float CombatHudBottomHeight = 168f;
     public const int CombatHudRewardMaxEntries = 3;
     public const float CombatHudRewardLifetime = 2.2f;
     public const bool CombatHudUsesFullWidthPanels = false;
@@ -3045,13 +3045,12 @@ public class W3Party : MonoBehaviour
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
         { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
 
-        // ── 파티 목록 (인게임 캐릭터 선택) ──
-        // 이름만 있는 버튼으로는 누가 누군지, 누가 위험한지 한눈에 안 들어온다.
-        // 초상화 + HP + 목숨을 함께 보여야 §5의 "판을 읽고 지휘한다"가 가능해진다.
-        const float CW = 88f, CH = 72f, GAP = 6f;
+        // 초상은 얼굴을 읽을 크기여야 하고, 스킬은 초상 옆에 붙어 있어야 한다.
+        // 88×72 / 초상 36×46 은 깨알이라 누가 누군지 안 읽혔다(오너 2026-08-16).
+        const float PW = 92f, PH = 112f, SK = 40f, CW = 196f, CH = 132f, GAP = 10f;
         float total = _party.Length * CW + (_party.Length - 1) * GAP;
         float x = Mathf.Max(16f, (Screen.width - total) * 0.5f);
-        float y = Screen.height - CH - 18f;
+        float y = Screen.height - CH - 12f;
 
         var bank = SpriteBank.Cached;
         for (int i = 0; i < _party.Length; i++)
@@ -3060,32 +3059,31 @@ public class W3Party : MonoBehaviour
             var card = new Rect(x + i * (CW + GAP), y, CW, CH);
             bool picked = _sel == i;
 
-            // 선택 표시 — 테두리를 밝게
             if (picked) GUI.DrawTexture(new Rect(card.x - 3, card.y - 3, card.width + 6, card.height + 6),
                                         Tint(new Color(1f, 0.82f, 0.35f, 0.95f)));
             GUI.DrawTexture(card, Tint(m.Alive ? new Color(.10f, .11f, .15f, .95f)
                                                : new Color(.22f, .07f, .07f, .95f)));
 
-            // 새 파티 초상화 시트를 우선한다. 리소스가 없을 때만 기존 유닛 스프라이트로 복귀한다.
-            var pr = new Rect(card.x + 5, card.y + 5, 36, 46);
+            var pr = new Rect(card.x + 6, card.y + 6, PW, PH);
+            AshesToStars.UiAtlas.Draw(new Rect(pr.x - 2, pr.y - 2, pr.width + 4, pr.height + 4), "portrait_frame");
             var portraitTint = m.Alive ? Color.white : new Color(1f, .6f, .6f, .55f);
             if (!AshesToStars.PortraitAtlas.Draw(pr, AshesToStars.PortraitAtlas.KeyForJob(m.Job.ToString()), portraitTint))
             {
                 var sp = bank?.Char(ArtOf(m.Job));
                 if (sp != null)
                 {
-                    var uv = PortraitUV(sp);
                     GUI.color = portraitTint;
-                    GUI.DrawTextureWithTexCoords(pr, sp.texture, uv);
+                    GUI.DrawTextureWithTexCoords(pr, sp.texture, PortraitUV(sp));
                     GUI.color = Color.white;
                 }
             }
+            GUI.Label(new Rect(pr.x + 4, pr.y + 2, 24, 20), $"{i + 1}", _cmdLabel);
 
-            GUI.Label(new Rect(card.x + 45, card.y + 6, CW - 48, 20), $"{i + 1}", _cmdLabel);
+            var skills = new Rect(pr.xMax + 8, card.y + 8, SK, SK * 2 + 6);
+            DrawMemberSkills(m, i, skills);
 
-            // HP 바 — 숫자보다 길이가 빨리 읽힌다. 프레임은 UI 아틀라스 소비처다.
             float ratio = m.Alive ? Mathf.Clamp01(m.Hp / m.MaxHp) : 0f;
-            var bar = new Rect(card.x + 44, card.y + 28, CW - 49, 14);
+            var bar = new Rect(pr.x, pr.yMax - 16, pr.width, 12);
             var fill = ratio > .5f ? new Color(.35f, .85f, .4f)
                      : ratio > .25f ? new Color(.95f, .78f, .3f)
                                     : new Color(.9f, .3f, .3f);
@@ -3094,40 +3092,29 @@ public class W3Party : MonoBehaviour
                 GUI.DrawTexture(bar, Tint(new Color(0, 0, 0, .8f)));
                 GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * ratio, bar.height), Tint(fill));
             }
-            GUI.Label(new Rect(card.x + 5, card.y + 53, CW - 10, 16),
+            GUI.Label(new Rect(skills.x, card.yMax - 22, card.xMax - skills.x - 6, 18),
                       m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
-
-            // 명령 상태 — 이동 지시가 걸려 있으면 표시
             if (m.Order.HasValue)
-                GUI.Label(new Rect(card.x + 5, card.y + CH - 18, CW - 10, 16), "▶ 이동", _cmdLabel);
+                GUI.Label(new Rect(skills.x, card.y + SK * 2 + 16, 80, 16), "▶ 이동", _cmdLabel);
 
             GUI.enabled = m.Alive;
-            if (GUI.Button(new Rect(card.x, card.y, card.width, card.height), GUIContent.none, GUIStyle.none))
+            if (GUI.Button(pr, GUIContent.none, GUIStyle.none))
                 _sel = picked ? -1 : i;
             GUI.enabled = true;
         }
 
-        var hint = new Rect(16, Screen.height - 36f, 312f, 24f);
+        var hint = new Rect(16, Screen.height - CH - 38f, 340f, 22f);
         GUI.DrawTexture(hint, Tint(new Color(.02f, .02f, .04f, .62f)));
-        GUI.Label(new Rect(hint.x + 8f, hint.y + 3f, hint.width - 16f, hint.height),
-                  _sel < 0 ? "카드를 클릭하거나 1~5 키로 캐릭터 선택 — 자동 전투 중"
-                           : $"[{_party[_sel].Job}] 선택됨 — 우클릭으로 이동 지시 · 0으로 해제", _cmdLabel);
-
-        if (_sel < 0 || !_party[_sel].Alive) return;
-        SkillButtons(_party[_sel], Screen.height - CombatHudBottomHeight + 36f);
+        GUI.Label(new Rect(hint.x + 8f, hint.y + 2f, hint.width - 16f, hint.height),
+                  _sel < 0 ? "1~5 또는 초상 클릭 · 옆 아이콘이 스킬"
+                           : $"[{_party[_sel].Job}] 우클릭 이동 · 0 해제", _cmdLabel);
     }
 
-    /// <summary>
-    /// 선택한 캐릭터의 고유 스킬 버튼 2개(§3 대표 스킬).
-    /// 버튼은 쿨다운을 0으로 만드는 게 아니라 **강제 발동 슬롯**을 세운다 —
-    /// 쿨만 풀어주면 발동 조건(밀집·부상자 수 등)이 안 맞을 때 눌러도 아무 일이 안 일어나
-    /// "눌렀는데 왜 안 나가지"가 된다. 지휘는 지금 쓰는 것이다(§5).
-    /// </summary>
-    void SkillButtons(Member sel, float y)
+    void DrawMemberSkills(Member m, int index, Rect col)
     {
         string a, b;
-        if (sel.Advancement == AdvancementTier.Basic)
-            (a, b) = sel.Role switch
+        if (m.Advancement == AdvancementTier.Basic)
+            (a, b) = m.Role switch
             {
                 Role.Tank => ("도발", "방패벽"),
                 Role.Dps => ("강타", "집중"),
@@ -3136,34 +3123,41 @@ public class W3Party : MonoBehaviour
             };
         else
         {
-            string[] labels = FirstAdvancementSkillLabels(sel.Job.ToString());
+            string[] labels = FirstAdvancementSkillLabels(m.Job.ToString());
             a = labels[0]; b = labels[1];
         }
 
-        float w = 94f, gap = 6f;
-        int count = sel.Advancement == AdvancementTier.Second ? 3 : 2;
-        float x = Screen.width - (w * count + gap * (count - 1)) - 18f;
-
-        // ⚠️ 예전엔 본문이 `{ }`였다 — 버튼이 눌리는데 **아무 일도 일어나지 않았다.**
-        //    키보드(스페이스/Q)로는 되는데 마우스로는 스킬을 아예 못 쓰는 상태였고,
-        //    §5의 「보스는 수동 지휘」가 마우스 유저에게는 성립하지 않았다.
-        //    미구현보다 나쁘다 — 눌리니까 사용자는 고장으로 읽는다(2026-08-15 감사에서 발견).
-        if (SkillBtn(new Rect(x, y, w, 52), a, IconFor(sel.Role, 1), sel, 1)) sel.ForceSkill = 1;
-        if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 52), b, IconFor(sel.Role, 2), sel, 2)) sel.ForceSkill = 2;
-
-        if (sel.Advancement == AdvancementTier.Second)
+        float s = col.width;
+        if (SkillIcon(new Rect(col.x, col.y, s, s), a, IconFor(m.Role, 1), m, index, 1) && m.Alive)
+        { _sel = index; m.ForceSkill = 1; }
+        if (b != "—" && SkillIcon(new Rect(col.x, col.y + s + 6, s, s), b, IconFor(m.Role, 2), m, index, 2) && m.Alive)
+        { _sel = index; m.ForceSkill = 2; }
+        if (m.Advancement == AdvancementTier.Second)
         {
-            bool ready = CanUseUltimate(sel.Advancement, sel.UltimateGauge, sel.UltimateCd);
-            float ux = x + w * 2 + gap * 2;
-            GUI.enabled = ready;
-            if (GUI.Button(new Rect(ux, y, w, 52),
-                           ready ? "각성 초필 [E]" : $"초필 {Mathf.FloorToInt(sel.UltimateGauge)}% / {Mathf.CeilToInt(Mathf.Max(0f, sel.UltimateCd))}s",
-                           _cmdBtn))
-                sel.ForceUltimate = true;
+            bool ready = CanUseUltimate(m.Advancement, m.UltimateGauge, m.UltimateCd);
+            var ur = new Rect(col.x + s + 6, col.y, s, s);
+            GUI.enabled = m.Alive && ready;
+            if (GUI.Button(ur, ready ? "각" : "쿨", _cmdBtn))
+            { _sel = index; m.ForceUltimate = true; }
             GUI.enabled = true;
         }
+    }
 
-        GUI.Label(new Rect(x, y - 20f, 320, 20), "선택 캐릭터 스킬", _cmdLabel);
+    bool SkillIcon(Rect r, string label, string icon, Member m, int index, int slot)
+    {
+        bool queued = m.ForceSkill == slot;
+        bool hover = r.Contains(Event.current.mousePosition);
+        if (!AshesToStars.UiAtlas.Draw(r, AshesToStars.UiAtlas.ButtonKey(hover, queued)))
+            GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.06f, .12f, .22f, .94f)));
+        CombatIconAtlas.Draw(new Rect(r.x + 4, r.y + 4, r.width - 8, r.height - 8), icon);
+        if (hover) GUI.Label(new Rect(r.x, r.y - 16, 80, 16), label, _cmdLabel);
+        if (m.Alive && GUI.Button(r, GUIContent.none, GUIStyle.none))
+        {
+            _sel = index;
+            m.ForceSkill = slot;
+            return true;
+        }
+        return false;
     }
 
     static string IconFor(Role role, int slot) => role switch
@@ -3173,27 +3167,6 @@ public class W3Party : MonoBehaviour
         Role.Healer => slot == 1 ? "heal_staff" : "cleanse",
         _ => slot == 1 ? "buffer_song" : "buffer_aura",
     };
-
-    bool SkillBtn(Rect r, string label, string icon, Member m, int slot)
-    {
-        bool queued = m.ForceSkill == slot;
-        bool hover = r.Contains(Event.current.mousePosition);
-        bool pressed = hover && Input.GetMouseButton(0);
-        if (!AshesToStars.UiAtlas.Draw(r, AshesToStars.UiAtlas.ButtonKey(hover, pressed || queued)))
-        {
-            GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.06f, .12f, .22f, .94f)));
-            GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2f), Tint(queued ? new Color(1f, .82f, .35f) : new Color(.25f, .55f, .9f)));
-        }
-        CombatIconAtlas.Draw(new Rect(r.x + 6f, r.y + 5f, 28f, 28f), icon);
-        GUI.Label(new Rect(r.x + 38f, r.y + 7f, r.width - 42f, 20f), queued ? label + " ▶" : label, _cmdLabel);
-        GUI.Label(new Rect(r.x + 38f, r.y + 29f, r.width - 42f, 16f), slot == 1 ? "SPACE" : "Q", _cmdLabel);
-        if (GUI.Button(r, GUIContent.none, GUIStyle.none))
-        {
-            m.ForceSkill = slot;
-            return true;
-        }
-        return false;
-    }
 
     void Finish()
     {
