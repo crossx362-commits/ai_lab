@@ -88,6 +88,7 @@ namespace AshesToStars
 
             // 게임 모드 설정: 표준 5인 한 판만 실행
             _battle.GameMode = true;
+            _battle.ApplyGameParty();
 
             // 필드 전투에 실제로 막히는 엄폐물을 켠다(§10-2). **GameMode 대입 뒤에** 부른다 —
             // W3Party.Awake 시점엔 GameMode가 아직 false라 거기서 켜면 조용히 꺼진다.

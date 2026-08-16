@@ -15,6 +15,13 @@ namespace AshesToStars
     /// </summary>
     public static class PartyState
     {
+        public sealed class SortieCombatant
+        {
+            public string Job;
+            public AdvancementTier Advancement;
+            public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
+        }
+
         public const int MaxSlots = 5;      // ✅ §9 최대 5인
         const string K_SLOTS = "ats.party";
 
@@ -91,12 +98,31 @@ namespace AshesToStars
         /// <summary>전투가 읽는 직업 목록. 순서가 곧 슬롯 1~5다(1번이 탱 자리, §10-4 진형).</summary>
         public static List<string> SortieJobs()
         {
+            var jobs = new List<string>();
+            foreach (var combatant in SortieCombatants()) jobs.Add(combatant.Job);
+            return jobs;
+        }
+
+        /// <summary>
+        /// 전투가 읽는 캐릭터 계약. 직업명만 넘기면 기본직업을 1차 아키타입으로 어댑트하는 순간
+        /// 전직 단계가 사라져 기본 2스킬과 1차 4스킬을 가를 수 없다.
+        /// </summary>
+        public static List<SortieCombatant> SortieCombatants()
+        {
             Load(); Prune();
             var roster = LifeSystem.GetCharacters();
-            var jobs = new List<string>();
+            var result = new List<SortieCombatant>();
             foreach (int i in _slots)
-                if (i >= 0 && i < roster.Count) jobs.Add(CombatJob(roster[i]));
-            return jobs;
+            {
+                if (i < 0 || i >= roster.Count) continue;
+                var character = roster[i];
+                result.Add(new SortieCombatant
+                {
+                    Job = CombatJob(character),
+                    Advancement = character.Advancement,
+                });
+            }
+            return result;
         }
 
         // W3Party는 기존 1차 Job enum으로 전투한다. 기본직업 전용 스킬이

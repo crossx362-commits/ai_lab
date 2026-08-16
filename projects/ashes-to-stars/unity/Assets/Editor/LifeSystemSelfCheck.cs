@@ -54,6 +54,11 @@ namespace AshesToStars
                   && sortieJobs[1] == "검사" && sortieJobs[3] == "사제"
                   && sortieJobs[4] == "음유시인",
                   "기본직업 5인이 프로토타입 전투 Job으로 모두 어댑트됨");
+            var basicCombatants = PartyState.SortieCombatants();
+            Check(basicCombatants.Count == 5
+                  && basicCombatants.TrueForAll(c => c.Advancement == AdvancementTier.Basic)
+                  && basicCombatants.TrueForAll(c => c.SkillCount == 2),
+                  "기본직업 전투원은 단계와 기본 스킬 2개를 전투 경계에 전달(§3)");
 
             LifeSystem.ForgetInMemoryForTest();
             roster = LifeSystem.GetCharacters();
@@ -152,6 +157,13 @@ namespace AshesToStars
                   && GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == materialsBeforeTrial - 5
                   && candidate.DeathCount == livesBeforeTrial,
                   "시험 성공 확인 때만 재료 5개 소비·1차 전직·목숨 불변");
+            PartyState.ResetForTest();
+            var advancedCombatants = PartyState.SortieCombatants();
+            Check(advancedCombatants.Count > 0
+                  && advancedCombatants[0].Job == "광전사"
+                  && advancedCombatants[0].Advancement == AdvancementTier.First
+                  && advancedCombatants[0].SkillCount == 4,
+                  "1차 전직 결과가 전투 경계에서 스킬 4개로 확장(§3)");
             Check(!LifeSystem.TryBeginFirstAdvancementTrial(candidate, "수호기사")
                   && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
                   "이미 1차 전직한 캐릭터는 반복 전직 불가");

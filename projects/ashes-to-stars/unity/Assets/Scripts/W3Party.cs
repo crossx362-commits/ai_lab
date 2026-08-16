@@ -93,6 +93,8 @@ public class W3Party : MonoBehaviour
         public SpriteRenderer Sr;
         public Vector2 Pos;
         public Job Job;
+        public AdvancementTier Advancement;
+        public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
         public float Hp, MaxHp, Atk, Range, Cd, SkillCd;
         public float Shield;              // 수호기사 성채 방패
         public bool Flip;                 // 마지막으로 향한 좌우. 미세 흔들림에 안 뒤집히게 유지한다
@@ -104,6 +106,7 @@ public class W3Party : MonoBehaviour
         public float DangerT;             // 위험에 놓인 시간 — AI는 이게 쌓여야 반응한다(서툴게)
         public float AiDashCheck;         // 다음 판단까지 남은 시간
         public float Gauge;               // 고유 자원: 수호게이지 / 연격스택 / 신앙
+        public float FocusUntil;          // 기본 딜 「집중」 지속 종료 시각
         public float FlashT;              // 스킬 발동 섬광 잔여 시간
         public Chant Chant;               // 음유시인 악장
         public float Threat;                 // 어그로 수치
@@ -392,8 +395,14 @@ public class W3Party : MonoBehaviour
     {
         public string Name;
         public Job[] Jobs;
+        public AdvancementTier[] Advancements;
         public bool TauntEnabled;
-        public Setup(string n, Job[] j, bool taunt = true) { Name = n; Jobs = j; TauntEnabled = taunt; }
+        public Setup(string n, Job[] j, bool taunt = true)
+        {
+            Name = n; Jobs = j; TauntEnabled = taunt;
+            Advancements = new AdvancementTier[j.Length];
+            for (int i = 0; i < Advancements.Length; i++) Advancements[i] = AdvancementTier.First;
+        }
     }
 
     static readonly Setup[] SETUPS =
@@ -407,15 +416,22 @@ public class W3Party : MonoBehaviour
     int _qi = -1;
 
     /// <summary>편성 화면이 정한 파티를 W3의 Job 배열로 바꾼다. 편성이 없으면 null(기본 구성 유지).</summary>
-    static Job[] PartySetup()
+    static Setup? PartySetup()
     {
-        var names = PartyState.SortieJobs();
-        if (names == null || names.Count == 0) return null;
+        var combatants = PartyState.SortieCombatants();
+        if (combatants == null || combatants.Count == 0) return null;
         var jobs = new System.Collections.Generic.List<Job>();
-        foreach (var n in names)
-            if (System.Enum.TryParse(n, out Job j)) jobs.Add(j);
+        var advancements = new System.Collections.Generic.List<AdvancementTier>();
+        foreach (var combatant in combatants)
+        {
+            if (System.Enum.TryParse(combatant.Job, out Job j)) jobs.Add(j);
             else jobs.Add(Job.검사);   // 아직 W3에 없는 전직은 근접 딜로 대체 — 조용히 빼면 인원이 줄어든다
-        return jobs.Count == 0 ? null : jobs.ToArray();
+            advancements.Add(combatant.Advancement);
+        }
+        if (jobs.Count == 0) return null;
+        var setup = new Setup("편성 파티", jobs.ToArray());
+        setup.Advancements = advancements.ToArray();
+        return setup;
     }
 
     // ── 재현 가능한 측정 (2026-08-14) ─────────────────────────────
@@ -458,6 +474,17 @@ public class W3Party : MonoBehaviour
         if (DungeonRun.Active) return;              // 던전은 템플릿이 맡는다 — 두 벌이 겹치면 길이 막힌다
         AshesToStars.FieldDecor.Build(SpriteBank.Load(), Arena, 20260813,
                                       AshesToStars.FieldDecor.Biome.Field, 엄폐물: true);
+    }
+
+    /// <summary>
+    /// AddComponent 직후 Awake가 검증 기본 파티를 먼저 세우므로, GameMode 대입 뒤 실제 로스터로
+    /// 한 번 다시 시작한다. 이 호출이 없으면 SortieCombatants는 정의만 있고 전투 소비처가 없다.
+    /// </summary>
+    public void ApplyGameParty()
+    {
+        if (!GameMode) return;
+        _qi = -1;
+        NextStyle();
     }
 
     // 던전 임시 강화 배율(§7). **게임 모드에서만** 적용한다 —
@@ -766,6 +793,11 @@ public class W3Party : MonoBehaviour
         _rep = _qi % _reps;
         _shotThisRun = false;
         _setup = SETUPS[_qi / _reps];
+        if (GameMode)
+        {
+            var partySetup = PartySetup();
+            if (partySetup.HasValue) _setup = partySetup.Value;
+        }
         // **판을 세우기 전에** 시드를 박는다. 스폰 위치·AI 배정이 여기서부터 뽑힌다.
         Random.InitState(RunSeed());
         _tauntEnabled = _setup.TauntEnabled;
@@ -808,6 +840,9 @@ public class W3Party : MonoBehaviour
             var m = _slots[i];
             var job = _setup.Jobs[i];
             m.Job = job;
+            m.Advancement = _setup.Advancements != null && i < _setup.Advancements.Length
+                ? _setup.Advancements[i]
+                : AdvancementTier.First;
             m.Role = RoleOf(job);
             m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Job));
             m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp;
@@ -868,7 +903,8 @@ public class W3Party : MonoBehaviour
         _game = GameMode ? this : null;
         _tauntUntil = -1f; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
-        Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")})");
+        Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")}, "
+                  + $"스킬 [{string.Join(",", System.Array.ConvertAll(_party, m => m.SkillCount))}])");
     }
 
     void SpawnMob(bool summoned = false)
@@ -1522,7 +1558,26 @@ public class W3Party : MonoBehaviour
 
             // 공격 / 치유
             if (m.Cd > 0f) continue;
-            if (m.Job == Job.음유시인)
+            if (m.Advancement == AdvancementTier.Basic && m.Job == Job.음유시인)
+            {
+                // 기본 버퍼 2스킬: 고양은 현재 악장을 공격형으로, 쇠약은 가까운 적의 다음 행동을 늦춘다.
+                if (m.ForceSkill == 1)
+                {
+                    m.ForceSkill = 0; _partyChant = Chant.진군가; m.Cd = 1.0f;
+                    SkillCast(m, "고양", new Color(1f, 0.82f, 0.35f), hitstop: 1);
+                    FlashParty();
+                }
+                else if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0;
+                    int near = NearestMob(m.Pos, 7f);
+                    if (near >= 0) _mAtkCd[near] = Mathf.Max(_mAtkCd[near], 2.0f);
+                    m.Cd = 1.0f;
+                    SkillCast(m, "쇠약", new Color(0.72f, 0.55f, 1f), hitstop: 1);
+                }
+                else m.Cd = 0.7f;
+            }
+            else if (m.Job == Job.음유시인)
             {
                 // 악장 전환 — 위급하면 수호가, 아니면 진군가 (§3 고유 메커니즘)
                 float worstRatio = 1f;
@@ -1537,6 +1592,25 @@ public class W3Party : MonoBehaviour
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
                 FxPool.PlayJob(5, m.Pos, 1.6f);             // 새 음유시인 오라 8프레임
                 m.Cd = 0.8f; m.Threat += 3f;
+            }
+            else if (m.Advancement == AdvancementTier.Basic && m.Job == Job.사제)
+            {
+                Member worst = null;
+                foreach (var o in _party)
+                    if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
+                if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0;
+                    if (worst != null) worst.Shield = Mathf.Max(worst.Shield, 18f * _bShield);
+                    SkillCast(m, "정화", new Color(0.7f, 1f, 0.9f), hitstop: 1);
+                }
+                else if (worst != null && (m.ForceSkill == 1 || worst.Hp < worst.MaxHp))
+                {
+                    m.ForceSkill = 0;
+                    Heal(worst, 22f * _bHeal); _healsCast++;
+                    SkillCast(m, "치유", new Color(0.55f, 1f, 0.65f), hitstop: 1);
+                }
+                m.Cd = 1.0f;
             }
             else if (m.Job == Job.사제)
             {
@@ -1620,6 +1694,25 @@ public class W3Party : MonoBehaviour
                 _mHp[target] -= m.Atk * sp.DmgMul * ChantAtk();
                 m.Cd = 0.40f;
                 m.Threat += m.Atk * 0.4f;
+                AttackFx(m, _mPos[target]); FlashMob(target);
+                if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Advancement == AdvancementTier.Basic && m.Job == Job.검사 && target >= 0)
+            {
+                if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0; m.FocusUntil = _t + 3f;
+                    SkillCast(m, "집중", new Color(1f, 0.85f, 0.4f), hitstop: 1);
+                }
+                float dmg = m.Atk;
+                if (m.ForceSkill == 1)
+                {
+                    m.ForceSkill = 0; dmg *= 2.2f;
+                    SkillCast(m, "강타", new Color(1f, 0.65f, 0.35f), hitstop: 2, shake: 0.15f);
+                }
+                _mHp[target] -= dmg * sp.DmgMul * ChantAtk();
+                m.Cd = (_t < m.FocusUntil ? 0.22f : 0.40f) / _bAtkSpd;
+                m.Threat += dmg * 0.4f;
                 AttackFx(m, _mPos[target]); FlashMob(target);
                 if (_mHp[target] <= 0f) KillMob(target);
             }
@@ -2286,7 +2379,8 @@ public class W3Party : MonoBehaviour
 
         // 최후의 보루(§3 수호기사 3번 스킬) — 3초간 HP가 1 미만으로 안 떨어진다.
         // 자동 전투라 조건 발동으로 둔다: 치명타 한 방에 즉사하는 것을 한 번 막아준다.
-        if (m.Role == Role.Tank && m.Hp <= 0f && _t >= _lastStandCd)
+        if (m.Role == Role.Tank && m.Advancement != AdvancementTier.Basic
+            && m.Hp <= 0f && _t >= _lastStandCd)
         {
             m.Hp = 1f;
             _lastStandUntil = _t + 3.0f;
@@ -2549,7 +2643,15 @@ public class W3Party : MonoBehaviour
     /// </summary>
     void SkillButtons(Member sel, float y)
     {
-        (string a, string b) = sel.Job switch
+        (string a, string b) = sel.Advancement == AdvancementTier.Basic
+            ? sel.Role switch
+            {
+                Role.Tank => ("도발", "방패벽"),
+                Role.Dps => ("강타", "집중"),
+                Role.Healer => ("치유", "정화"),
+                _ => ("고양", "쇠약"),
+            }
+            : sel.Job switch
         {
             Job.수호기사 => ("도발의 함성", "성채 방패"),
             Job.검사 => ("일섬", "—"),
