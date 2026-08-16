@@ -18,6 +18,22 @@ def run(page, base_url):
     4. 심각 콘솔 오류 검증
     5. 초기 탭(마이펫) 렌더링 확인
     """
+    # === 콘솔/미포착 예외 리스너를 goto 이전에 건다 ===
+    # (goto 이후에 걸면 로드 중 발생한 오류를 통째로 놓친다 — 2026 리스너 결함 수리)
+    console_errors = []
+    page_errors = []
+
+    def on_console_message(msg):
+        if msg.type in ("error", "exception"):
+            console_errors.append(msg.text)
+
+    def on_page_error(exc):
+        # 로드 중 미포착 JS 예외 — 콘솔 error로 안 잡히는 경우가 있어 별도로 수집
+        page_errors.append(str(exc))
+
+    page.on("console", on_console_message)
+    page.on("pageerror", on_page_error)
+
     # 페이지 진입 (초기 2.5초 렌더 대기)
     page.goto(base_url)
     page.wait_for_timeout(2500)
@@ -60,17 +76,11 @@ def run(page, base_url):
         nav_buttons = page.locator(".mobile-tab-btn")
         assert nav_buttons.count() > 0, "하단 네비 버튼이 없음"
 
-    # === Step 3: 콘솔 심각 오류 검증 ===
-    # page.console 이벤트를 수집해 error/exception 수준 메시지 확인
-    console_errors = []
-
-    def on_console_message(msg):
-        if msg.type in ("error", "exception"):
-            console_errors.append(msg.text)
-
-    page.on("console", on_console_message)
+    # === Step 3: 콘솔/미포착 예외 검증 ===
+    # 리스너는 goto 이전에 이미 걸려 있어 로드 중 오류까지 수집됐다.
     page.wait_for_timeout(1000)  # 지연 스크립트 완료 대기
     page.remove_listener("console", on_console_message)
+    page.remove_listener("pageerror", on_page_error)
 
     # 허용 목록: 특정 외부 리소스 미로드는 무시
     allowed_errors = [
@@ -86,6 +96,10 @@ def run(page, base_url):
 
     assert len(critical_errors) == 0, \
         f"콘솔 오류 감지됨: {'; '.join(critical_errors[:3])}"
+
+    # 미포착 JS 예외는 로드 실패의 직접 신호 — 허용 목록 없이 전부 실패로 본다.
+    assert len(page_errors) == 0, \
+        f"미포착 페이지 예외 감지됨: {'; '.join(page_errors[:3])}"
 
     # === Step 4: 모바일 헤더 (로그인 상태) 검증 ===
     if not overlay_visible:

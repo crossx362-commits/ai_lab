@@ -50,3 +50,5 @@ This file provides guidance to Codex (and other non-Claude AI tools) when workin
 - 기존 패턴 유지, 성급한 추상화 금지, surgical change만 — 인접 코드 "개선" 금지
 - JS 수정 시 `index.html`의 `?v=` 캐시버전 +1 (안 올리면 재방문 사용자에게 반영 안 됨)
 - 테스트는 맥에서 검증 — Windows 전용 기능 추가 금지
+
+## Imported Claude Cowork project instructions

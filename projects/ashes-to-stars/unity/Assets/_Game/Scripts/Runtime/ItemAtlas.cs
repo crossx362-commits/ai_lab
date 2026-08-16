@@ -1,0 +1,68 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace AshesToStars
+{
+    /// <summary>성장·보상에 쓰는 4x4 아이템 아틀라스 레지스트리.</summary>
+    public static class ItemAtlas
+    {
+        public const int Width = 1254;
+        public const int Height = 1254;
+        const string ResourceKey = "ui/item_atlas";
+        const float Cell = Width / 4f;
+
+        static Texture2D _texture;
+        static bool _tried;
+
+        static readonly Dictionary<string, Rect> Pieces = new Dictionary<string, Rect>
+        {
+            ["sword"] = CellAt(0, 0), ["shield"] = CellAt(1, 0), ["staff"] = CellAt(2, 0), ["bow"] = CellAt(3, 0),
+            ["helmet"] = CellAt(0, 1), ["armor"] = CellAt(1, 1), ["gloves"] = CellAt(2, 1), ["boots"] = CellAt(3, 1),
+            ["ring"] = CellAt(0, 2), ["amulet"] = CellAt(1, 2), ["revival_tea"] = CellAt(2, 2), ["scroll_of_return"] = CellAt(3, 2),
+            ["reborn_stone"] = CellAt(0, 3), ["special_job_token"] = CellAt(1, 3), ["gold"] = CellAt(2, 3), ["advancement_material"] = CellAt(3, 3),
+        };
+
+        public static readonly string[] RequiredKeys =
+        {
+            "sword", "shield", "staff", "bow", "helmet", "armor", "gloves", "boots",
+            "ring", "amulet", "revival_tea", "scroll_of_return", "reborn_stone", "special_job_token", "gold", "advancement_material",
+        };
+
+        static Rect CellAt(int column, int row) => new Rect(column * Cell, row * Cell, Cell, Cell);
+
+        static Texture2D Texture
+        {
+            get
+            {
+                if (!_tried) { _tried = true; _texture = Resources.Load<Texture2D>(ResourceKey); }
+                return _texture;
+            }
+        }
+
+        public static bool IsReady => Texture != null;
+        public static Rect RectFor(string key) => Pieces.TryGetValue(key, out var rect) ? rect : Rect.zero;
+
+        public static bool Draw(Rect target, string key)
+        {
+            var texture = Texture;
+            var source = RectFor(key);
+            if (texture == null || source.width <= 0 || source.height <= 0) return false;
+
+            GUI.DrawTextureWithTexCoords(target, texture, new Rect(
+                source.x / Width,
+                (Height - source.y - source.height) / Height,
+                source.width / Width,
+                source.height / Height), true);
+            return true;
+        }
+
+        public static string KeyFor(Economy.LifeItem item) => item switch
+        {
+            Economy.LifeItem.RevivalTea => "revival_tea",
+            Economy.LifeItem.ScrollOfReturn => "scroll_of_return",
+            Economy.LifeItem.RebornStone => "reborn_stone",
+            Economy.LifeItem.SpecialJobToken => "special_job_token",
+            _ => item.ToString() == "AdvancementMaterial" ? "advancement_material" : null,
+        };
+    }
+}
