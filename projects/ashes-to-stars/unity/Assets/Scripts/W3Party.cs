@@ -663,6 +663,7 @@ public class W3Party : MonoBehaviour
             if (m.Job == Job.수호기사) FxPool.PlayJob(0, targetPos, 0.8f);
             else if (m.Job == Job.검사) FxPool.PlayJob(1, targetPos, 0.8f);
             else if (m.Job == Job.마법사) FxPool.PlayJob(2, targetPos, 0.9f);
+            else if (m.Job == Job.사제) FxPool.PlayJob(3, targetPos, 0.85f);
             else FxPool.Play(IsMelee(m.Job) ? FxPool.Kind.Slash : FxPool.Kind.Hit, targetPos, 0.8f);
         }
     }
@@ -1564,7 +1565,7 @@ public class W3Party : MonoBehaviour
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
                     m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
-                    FxPool.Play(FxPool.Kind.Heal, m.Pos, 2.2f);
+                    FxPool.PlayJob(3, m.Pos, 2.2f);
                     FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f);
                     SkillCast(m, "기적", new Color(1f, 0.95f, 0.6f), hitstop: 5, shake: 0.45f);
                 }
@@ -1578,7 +1579,7 @@ public class W3Party : MonoBehaviour
                     m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
                     SkillCast(m, "치유 파동", new Color(0.55f, 1f, 0.65f), hitstop: 1);
-                    FxPool.Play(FxPool.Kind.Heal, m.Pos, 1.4f);
+                    FxPool.PlayJob(3, m.Pos, 1.4f);
                 }
                 else if (worst != null && worst.Hp / worst.MaxHp < 0.85f)
                 {
