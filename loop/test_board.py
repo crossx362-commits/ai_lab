@@ -114,5 +114,41 @@ class CheckTests(unittest.TestCase):
                 board.CHECKS_PATH = old
 
 
+class CommitAllowTests(unittest.TestCase):
+    def test_allow_game_and_docs(self):
+        self.assertTrue(board.commit_allowed(".gitignore"))
+        self.assertTrue(board.commit_allowed("docs/STATUS.md"))
+        self.assertTrue(board.commit_allowed("loop/board.py"))
+        self.assertTrue(board.commit_allowed("projects/ashes-to-stars/unity/Assets/Scripts/W3Party.cs"))
+
+    def test_deny_secrets_and_cache(self):
+        self.assertFalse(board.commit_allowed(".env"))
+        self.assertFalse(board.commit_allowed("projects/foo/.env.encrypted"))
+        self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity/Library/foo"))
+        self.assertFalse(board.commit_allowed("loop/logs/iter.log"))
+        self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity_meas/Assets/x.cs"))
+
+
+class ResumeTests(unittest.TestCase):
+    def test_resume_clears_hold_and_starts_if_down(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            here = Path(tmp)
+            (here / "HOLD").write_text("")
+            (here / "STOP").write_text("")
+            old = (board.HERE, board.find_loop_pids, board.start_loop)
+            started = []
+            board.HERE = here
+            board.find_loop_pids = lambda: [99] if started else []
+            board.start_loop = lambda: started.append(1) or 99
+            try:
+                r = board.resume_work()
+            finally:
+                board.HERE, board.find_loop_pids, board.start_loop = old
+            self.assertFalse((here / "HOLD").exists())
+            self.assertFalse((here / "STOP").exists())
+            self.assertTrue(r["started"])
+            self.assertEqual(r["pids"], [99])
+
+
 if __name__ == "__main__":
     unittest.main()

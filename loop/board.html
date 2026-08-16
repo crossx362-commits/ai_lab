@@ -79,6 +79,17 @@
   details.inbox:first-of-type { border-top: 0; }
   details.inbox p { color: var(--muted); font-size: 13px; margin: 6px 0 0; white-space: pre-wrap; }
   .empty { color: var(--muted); font-size: 13px; }
+  .banner {
+    display: none; margin: 14px 24px 0; padding: 12px 14px;
+    border: 1px solid var(--hold); background: #2a2010; border-radius: 12px;
+    align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .banner.show { display: flex; }
+  .banner strong { color: var(--hold); }
+  .files { font: 12px/1.45 ui-monospace, Menlo, monospace; max-height: 160px; overflow: auto; }
+  .files div { padding: 2px 0; color: var(--muted); }
+  .files .ok { color: var(--ink); }
+  .files .no { color: var(--stop); text-decoration: line-through; }
 </style>
 </head>
 <body>
@@ -89,6 +100,10 @@
   </div>
   <div class="pills" id="pills"></div>
 </header>
+<div class="banner" id="resume-bar">
+  <div><strong>중단됨</strong> <span class="meta" id="resume-why"></span></div>
+  <button id="btn-continue" type="button">계속 진행</button>
+</div>
 <main>
   <div>
     <section>
@@ -114,11 +129,11 @@
     <section>
       <h2>루프</h2>
       <div class="row" id="loop-btns">
+        <button type="button" id="btn-continue-2">계속 진행</button>
         <button class="ghost" data-act="hold" type="button">HOLD</button>
-        <button class="ghost" data-act="unhold" type="button">HOLD 해제</button>
         <button class="ghost" data-act="stop" type="button">STOP</button>
-        <button class="ghost" data-act="unstop" type="button">STOP 해제</button>
       </div>
+      <span class="msg" id="loop-msg"></span>
       <div class="log" id="log" style="margin-top:12px"></div>
     </section>
     <section style="margin-top:18px">
@@ -128,6 +143,15 @@
     <section style="margin-top:18px">
       <h2>INBOX 대기</h2>
       <div id="inbox"></div>
+    </section>
+    <section style="margin-top:18px">
+      <h2>커밋</h2>
+      <div class="files" id="dirty"></div>
+      <input type="text" id="commit-msg" maxlength="120" placeholder="커밋 메시지 (비우면 자동)" style="margin-top:10px">
+      <div class="row">
+        <button id="btn-commit" type="button">커밋</button>
+        <span class="msg" id="commit-msg-out"></span>
+      </div>
     </section>
     <section style="margin-top:18px">
       <h2>최근 커밋</h2>
@@ -172,13 +196,23 @@ function render(state) {
   const L = state.loop || {};
   $("pills").innerHTML = [
     `<span class="pill on">실행기 ${esc(L.agent || "?")}</span>`,
-    L.hold ? `<span class="pill bad">HOLD</span>` : `<span class="pill ok">가동 가능</span>`,
+    L.running ? `<span class="pill ok">루프 가동</span>` : `<span class="pill bad">루프 꺼짐</span>`,
+    L.hold ? `<span class="pill bad">HOLD</span>` : "",
     L.stop ? `<span class="pill bad">STOP</span>` : "",
     L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
   ].join("");
+  const blocked = L.blocked || [];
+  $("resume-bar").classList.toggle("show", blocked.length > 0);
+  $("resume-why").textContent = blocked.length ? blocked.join(" · ") : "";
   renderItems($("milestones"), state.milestones || [], state);
   renderItems($("queue"), state.queue || [], state);
   $("log").textContent = L.log_tail || "(루프 로그 없음)";
+  const dirty = state.git || [];
+  const allowN = dirty.filter((f) => f.allowed).length;
+  $("dirty").innerHTML = dirty.length ? dirty.map((f) =>
+    `<div class="${f.allowed ? "ok" : "no"}">${esc(f.code)} ${esc(f.path)}</div>`
+  ).join("") + `<div class="ok">${allowN}개 커밋 가능</div>` : '<p class="empty">깨끗한 작업 트리</p>';
+  $("btn-commit").disabled = allowN === 0;
   const results = state.results || [];
   $("results").innerHTML = results.length ? results.map((it) => `
     <div class="item${checked(state, it.id) ? " done" : ""}">
@@ -233,6 +267,21 @@ $("req-send").onclick = async () => {
   }
 };
 
+async function resumeLoop() {
+  const msg = $("loop-msg");
+  msg.className = "msg";
+  try {
+    const r = await api("/api/loop", { action: "continue" });
+    msg.textContent = r.started ? "루프를 다시 켰다" : "중단을 풀고 이어서 돈다";
+    await refresh();
+  } catch (err) {
+    msg.className = "msg err";
+    msg.textContent = err.message;
+  }
+}
+$("btn-continue").onclick = resumeLoop;
+$("btn-continue-2").onclick = resumeLoop;
+
 $("loop-btns").onclick = async (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
@@ -240,6 +289,23 @@ $("loop-btns").onclick = async (e) => {
     await api("/api/loop", { action: btn.dataset.act });
     await refresh();
   } catch (err) { alert(err.message); }
+};
+
+$("btn-commit").onclick = async () => {
+  const out = $("commit-msg-out");
+  out.className = "msg";
+  $("btn-commit").disabled = true;
+  try {
+    const r = await api("/api/commit", { message: $("commit-msg").value.trim() });
+    out.textContent = r.hash + " · " + r.subject;
+    $("commit-msg").value = "";
+    await refresh();
+  } catch (err) {
+    out.className = "msg err";
+    out.textContent = err.message;
+  } finally {
+    $("btn-commit").disabled = false;
+  }
 };
 
 refresh().catch((err) => { $("updated").textContent = "불러오기 실패: " + err.message; });

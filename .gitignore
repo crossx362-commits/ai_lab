@@ -5,6 +5,7 @@ loop/HOLD
 loop/STOP
 loop/agent
 loop/board_checks.json
+loop/loop.pid
 .claude/
 agent-reach/
 .logs/

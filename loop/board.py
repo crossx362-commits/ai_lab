@@ -32,10 +32,36 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 PORT = int(os.getenv("BOARD_PORT", "8766"))
 CHECKS_PATH = HERE / "board_checks.json"
+PID_PATH = HERE / "loop.pid"
 
 STATUS = ROOT / "docs" / "STATUS.md"
 DESIGN = ROOT / "docs" / "DESIGN.md"
 INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
+
+# 보드 커밋이 쓸 수 있는 경로. 시크릿·유니티 캐시·루프 로그는 절대 안 넣는다.
+_COMMIT_ALLOW = (
+    ".gitignore",
+    "docs/",
+    "loop/board.py",
+    "loop/board.html",
+    "loop/test_board.py",
+    "loop/loop.sh",
+    "projects/ashes-to-stars/art/",
+    "projects/ashes-to-stars/unity/Assets/",
+    "projects/ashes-to-stars/unity/ProjectSettings/",
+    "projects/ashes-to-stars/CLAUDE.md",
+    "tools/",
+)
+_COMMIT_DENY = (
+    ".env",
+    ".env.encrypted",
+    "/Library/",
+    "/Temp/",
+    "/Logs/",
+    "loop/logs/",
+    "__pycache__",
+    "unity_meas/",
+)
 
 
 def _read(path: Path) -> str:
@@ -208,13 +234,144 @@ def loop_flags() -> dict:
         iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
         if iters:
             latest_iter = iters[-1].name
+    hold = (HERE / "HOLD").exists()
+    stop = (HERE / "STOP").exists()
+    running = bool(find_loop_pids())
+    blocked = []
+    if stop:
+        blocked.append("STOP")
+    if hold:
+        blocked.append("HOLD")
+    if not running:
+        blocked.append("루프 꺼짐")
     return {
         "agent": agent,
-        "hold": (HERE / "HOLD").exists(),
-        "stop": (HERE / "STOP").exists(),
+        "hold": hold,
+        "stop": stop,
+        "running": running,
+        "blocked": blocked,
         "latest_iter": latest_iter,
         "log_tail": last_log,
     }
+
+
+def find_loop_pids() -> list[int]:
+    """loop.sh 본체만. 'loop.sh' 단독 검색은 래퍼·프롬프트에 걸린다."""
+    try:
+        raw = subprocess.check_output(
+            ["ps", "-ax", "-o", "pid=,command="],
+            text=True,
+            encoding="utf-8",
+            timeout=4,
+        )
+    except (OSError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+        return []
+    pids = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if "board.py" in line or "test_board" in line:
+            continue
+        # argv가 실제로 loop.sh 를 실행하는 줄만
+        if not re.search(r"(?:^|\s)(?:/bin/)?(?:bash|sh)\s+\S*loop(?:/loop)?\.sh(?:\s|$)", line):
+            continue
+        try:
+            pids.append(int(line.split(None, 1)[0]))
+        except ValueError:
+            continue
+    return sorted(set(pids))
+
+
+def start_loop() -> int:
+    if find_loop_pids():
+        return find_loop_pids()[0]
+    log_path = HERE / "loop_main.log"
+    with open(log_path, "a", encoding="utf-8") as log:
+        log.write(f"\n▶ 보드에서 재개 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log.flush()
+        proc = subprocess.Popen(
+            ["bash", str(HERE / "loop.sh")],
+            cwd=str(ROOT),
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    PID_PATH.write_text(str(proc.pid) + "\n", encoding="utf-8")
+    return proc.pid
+
+
+def resume_work() -> dict:
+    """중단(HOLD/STOP/꺼짐)을 풀고 루프를 다시 돌린다."""
+    set_flag("HOLD", False)
+    set_flag("STOP", False)
+    pids = find_loop_pids()
+    started = False
+    if not pids:
+        pid = start_loop()
+        pids = [pid]
+        started = True
+    return {"started": started, "pids": pids, "loop": loop_flags()}
+
+
+def commit_allowed(path: str) -> bool:
+    # lstrip("./")는 '.gitignore'의 앞점까지 깎는다 — removeprefix만 쓴다
+    norm = path.replace("\\", "/").removeprefix("./")
+    if any(bad in norm or norm.endswith(bad) or norm == bad.rstrip("/")
+           for bad in _COMMIT_DENY):
+        return False
+    name = Path(norm).name
+    if name in (".env", ".env.encrypted") or name.endswith(".log"):
+        return False
+    return any(norm == p.rstrip("/") or norm.startswith(p) for p in _COMMIT_ALLOW)
+
+
+def dirty_files() -> list[dict]:
+    try:
+        raw = subprocess.check_output(
+            ["git", "status", "--porcelain", "-u"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            timeout=8,
+        )
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return []
+    out = []
+    for line in raw.splitlines():
+        if len(line) < 4:
+            continue
+        code, rest = line[:2], line[3:]
+        if " -> " in rest:
+            rest = rest.split(" -> ", 1)[1]
+        path = rest.strip().strip('"')
+        out.append({
+            "path": path,
+            "code": code.strip() or "M",
+            "allowed": commit_allowed(path),
+        })
+    return out
+
+
+def commit_work(message: str) -> dict:
+    files = [f["path"] for f in dirty_files() if f["allowed"]]
+    if not files:
+        raise ValueError("커밋할 허용 파일이 없다")
+    msg = re.sub(r"\s+", " ", (message or "").strip())
+    if not msg:
+        msg = f"chore(game): 보드 커밋 ({len(files)}파일)"
+    if len(msg) > 120:
+        msg = msg[:120]
+    # add와 commit을 한 호흡 — 스테이징 방치 금지
+    subprocess.check_call(["git", "add", "--"] + files, cwd=ROOT, timeout=20)
+    try:
+        subprocess.check_call(["git", "commit", "-m", msg], cwd=ROOT, timeout=20)
+    except subprocess.CalledProcessError:
+        subprocess.call(["git", "reset", "HEAD", "--"] + files, cwd=ROOT)
+        raise ValueError("커밋 실패 — 스테이징을 되돌렸다")
+    head = subprocess.check_output(
+        ["git", "log", "-1", "--pretty=format:%h %s"],
+        cwd=ROOT, text=True, encoding="utf-8", timeout=5,
+    ).strip()
+    return {"hash": head.split()[0], "subject": head[len(head.split()[0]) + 1:], "files": files}
 
 
 def recent_commits() -> list[dict]:
@@ -255,6 +412,7 @@ def build_state() -> dict:
         "checks": checks,
         "loop": loop_flags(),
         "commits": recent_commits(),
+        "git": dirty_files(),
     }
 
 
@@ -346,6 +504,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path == "/api/loop":
                 action = str(data.get("action") or "")
+                if action == "continue":
+                    self._json(200, {"ok": True, **resume_work()})
+                    return
                 if action == "hold":
                     set_flag("HOLD", True)
                 elif action == "unhold":
@@ -358,6 +519,10 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(400, {"ok": False, "error": "알 수 없는 action"})
                     return
                 self._json(200, {"ok": True, "loop": loop_flags()})
+                return
+            if path == "/api/commit":
+                result = commit_work(str(data.get("message") or ""))
+                self._json(200, {"ok": True, **result})
                 return
         except ValueError as e:
             self._json(400, {"ok": False, "error": str(e)})
