@@ -56,6 +56,7 @@ namespace AshesToStars
             SeedRarityQaIfRequested();
             SeedFusionQaIfRequested();
             SeedSpecialJobQaIfRequested();
+            SeedTowerEndingQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
@@ -154,11 +155,11 @@ namespace AshesToStars
                         return;
                     }
 
-                    Info(r, 0, ch.IsRescue
-                        ? $"{ch.Name} ({ch.Job}) · {ExpText(ch)} · 긴급 재건"
-                        : ch.IsSpecialJob
-                            ? $"{ch.Name} ({ch.Job}) · {ExpText(ch)} · 특수 직업"
-                            : $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
+                    string detail = $"{ch.Name} ({ch.Job}) · {ExpText(ch)}";
+                    if (ch.IsRescue) detail += " · 긴급 재건";
+                    if (ch.IsSpecialJob) detail += " · 특수 직업";
+                    if (TowerEnding.HasStarLook) detail += $" · {TowerEnding.LookName}";
+                    Info(r, 0, detail);
                     if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
                     {
                         float need = LifeSystem.ExpToNext(ch.Level);
@@ -418,6 +419,13 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable("QA_SPECIAL_JOB") != "1") return;
             LifeSystem.SeedSpecialJobQaIfRequested();
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedTowerEndingQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_TOWER_END") != "1") return;
+            TowerEnding.SeedQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 

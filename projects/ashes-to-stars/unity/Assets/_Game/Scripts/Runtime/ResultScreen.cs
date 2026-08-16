@@ -23,6 +23,26 @@ namespace AshesToStars
         {
             _rowIndex = 0;
             GameFlow.SeedV4WipeQaIfRequested();
+            TowerEnding.SeedQaIfRequested();
+
+            if (TowerEnding.PendingEpilogue)
+            {
+                Info(r, _rowIndex++, $"{TowerEnding.TitleName} — 100층 최초 클리어(§8)");
+                Info(r, _rowIndex++, TowerEnding.EpilogueBody);
+                Info(r, _rowIndex++, $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전 가능");
+                if (Row(r, _rowIndex++, "건너뛰기", "에필로그를 닫고 저장을 유지한다"))
+                {
+                    TowerEnding.SkipEpilogue();
+                    return;
+                }
+                if (Row(r, _rowIndex++, "계속", "영지로 돌아간다"))
+                {
+                    TowerEnding.SkipEpilogue();
+                    GameFlow.Go(GameFlow.Estate);
+                    return;
+                }
+                return;
+            }
 
             // 전투 결과 요약 (§2 코어 루프). 영구 손실은 골드보다 먼저 읽힌다(§16-7).
             Info(r, _rowIndex++, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);

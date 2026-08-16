@@ -115,6 +115,9 @@ namespace AshesToStars
         public static void ApplyTowerBossVictory(int floor)
         {
             GameState.ClearFloor(floor);
+            // 던전 종점 보스는 탑 결말이 아니다. 100층 탑 보스만 칭호를 연다(§8).
+            if (!DungeonRun.Active)
+                TowerEnding.TryGrant(floor);
         }
 
         /// <summary>마지막 PvE 패배 보고. Result 화면이 삭제·재건을 골드보다 먼저 읽는다.</summary>

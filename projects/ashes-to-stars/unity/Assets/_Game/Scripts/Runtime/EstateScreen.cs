@@ -33,7 +33,9 @@ namespace AshesToStars
             Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
             Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
-            _ => "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
+            _ => TowerEnding.HasTitle
+                ? $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)"
+                : "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
         };
 
         /// <summary>
@@ -52,6 +54,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            TowerEnding.SeedQaIfRequested();
             if (!string.IsNullOrEmpty(AutoOpen))
             {
                 if (System.Enum.TryParse(AutoOpen, out Sub want))
@@ -116,9 +119,16 @@ namespace AshesToStars
                         : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            DrawCard(cards[1], Economy.FormatCurrency(GameState.Wallet.Copper),
-                GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
-                "building_auction", locked: true);
+            if (TowerEnding.HasTitle)
+                DrawCard(cards[1], TowerEnding.TitleName,
+                    TowerEnding.HasStarLook
+                        ? $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전(§8)"
+                        : "100층 최초 클리어 · 전투력 변화 없음(§8)",
+                    "tower", locked: true);
+            else
+                DrawCard(cards[1], Economy.FormatCurrency(GameState.Wallet.Copper),
+                    GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
+                    "building_auction", locked: true);
             DrawCard(cards[2], $"파티 {PartyState.Slots.Count}/{PartyState.MaxSlots}",
                 "편성은 캐릭터 탭 · 파티 화면", "characters", locked: true);
             DrawCard(cards[3], $"수비 {DefenseState.Count}/{DefenseState.MaxSlots}",

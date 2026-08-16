@@ -442,7 +442,10 @@ namespace AshesToStars
             Load();
             if (floor < _floor) return;
             int before = UnlockedTier;
-            TowerFloor = floor + 1;
+            // §8: 100층이 본편 결말. 101층·무한층은 열지 않고 재도전만 남긴다.
+            TowerFloor = floor >= TowerEnding.FinaleFloor
+                ? TowerEnding.FinaleFloor
+                : floor + 1;
             if (UnlockedTier > before)
             {
                 _selectedTier = UnlockedTier;
@@ -527,6 +530,7 @@ namespace AshesToStars
             AuctionState.ResetForTest();
             InvasionState.ResetForTest();
             LowHpReturn.ResetForTest();
+            TowerEnding.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
@@ -537,6 +541,7 @@ namespace AshesToStars
             Equipment.ForgetInMemoryForTest();
             AuctionState.ForgetInMemoryForTest();
             InvasionState.ForgetInMemoryForTest();
+            TowerEnding.ForgetInMemoryForTest();
         }
 
         /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만

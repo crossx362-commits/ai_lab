@@ -16,8 +16,9 @@ namespace AshesToStars
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Tower);
         protected override string BackgroundArt => "bg_tower";
         protected override bool ShowBossHpPreview => UiAtlas.QaShowBossHp;
-        protected override string Subtitle =>
-            $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
+        protected override string Subtitle => TowerEnding.HasTitle
+            ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
+            : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
 
         bool _showLastLifeWarning = false;
         // 필드 화면과 같은 규칙 — 값을 세우는 코드만 있고 이 필드·표시 화면이 없어서
@@ -34,6 +35,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            TowerEnding.SeedQaIfRequested();
             if (_showInsufficientGold)
             {
                 // 골드 부족 경고 화면 (§18-2 진입 비용)
