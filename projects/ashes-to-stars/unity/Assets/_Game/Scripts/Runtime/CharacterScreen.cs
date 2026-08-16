@@ -60,7 +60,6 @@ namespace AshesToStars
             SeedSpecialJobQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
-            SeedHuntExpQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
@@ -447,13 +446,6 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable("QA_SOLO_CLEAR") != "1") return;
             SoloRaidClear.SeedQaIfRequested();
-            if (_selectedCharacter < 0) _selectedCharacter = 0;
-        }
-
-        void SeedHuntExpQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_HUNT_EXP") != "1") return;
-            LifeSystem.SeedHuntExpQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 
