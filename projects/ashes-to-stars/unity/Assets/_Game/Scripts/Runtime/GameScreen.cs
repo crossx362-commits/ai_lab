@@ -147,7 +147,10 @@ namespace AshesToStars
             if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);
             GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _line);
             GUI.DrawTexture(new Rect(0, 116, REF_W, 2), _accent);
-            GUI.Label(new Rect(48, 22, REF_W - 96, 56), Title, _h1);
+            // 한 장짜리 UI 아틀라스의 별자리 아이콘을 모든 화면의 공통 문장부호로 쓴다.
+            // 텍스트는 기존 IMGUI가 담당하므로 한국어 글리프가 이미지 품질에 좌우되지 않는다.
+            bool atlas = UiAtlas.Draw(new Rect(24, 18, 78, 78), "worldmap");
+            GUI.Label(new Rect(atlas ? 124 : 48, 22, REF_W - (atlas ? 172 : 96), 56), Title, _h1);
             if (!string.IsNullOrEmpty(Subtitle))
                 GUI.Label(new Rect(50, 78, REF_W - 100, 30), Subtitle, _h2);
 
@@ -180,9 +183,28 @@ namespace AshesToStars
                 var r = new Rect(48 + i * (w + pad), y, w, BarH);
                 if (here) GUI.DrawTexture(new Rect(r.x, r.y - 4, r.width, 4), _accent);
                 GUI.enabled = !here;
-                if (GUI.Button(r, label, _btn)) GameFlow.Go(scene);
+                DrawAtlasButton(r, label);
+                string icon = i switch
+                {
+                    0 => "territory",
+                    1 => "field",
+                    2 => "tower",
+                    3 => "worldmap",
+                    _ => "characters",
+                };
+                UiAtlas.Draw(new Rect(r.center.x - 24, r.y + 3, 48, 48), icon);
+                GUI.Label(new Rect(r.x + 4, r.y + 52, r.width - 8, 20), label, _small);
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
             }
+        }
+
+        /// <summary>텍스트와 클릭 판정은 IMGUI에 남기고, 배경만 새 픽셀아트 아틀라스로 교체한다.</summary>
+        void DrawAtlasButton(Rect r, string label)
+        {
+            if (!UiAtlas.Draw(r, "button_normal"))
+                GUI.Box(r, GUIContent.none);
+            GUI.Label(r, label, _btn);
         }
 
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
@@ -193,7 +215,8 @@ namespace AshesToStars
             var br = new Rect(r.x, r.y + index * (h + gap), bw, h);
             if (br.yMax > r.yMax) return false;              // 영역을 넘으면 그리지 않는다
 
-            bool hit = GUI.Button(br, label, _btn);
+            DrawAtlasButton(br, label);
+            bool hit = GUI.Button(br, GUIContent.none, GUIStyle.none);
             if (!string.IsNullOrEmpty(desc))
                 GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - bw - 24, h - 12), desc, _h2);
             return hit;
@@ -228,6 +251,8 @@ namespace AshesToStars
         {
             Styles();
             const float h = 58f, gap = 14f;
+            var panel = new Rect(r.x - 12, r.y + index * (h + gap), r.width + 24, h);
+            UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
             GUI.Label(new Rect(r.x, r.y + index * (h + gap) + 14, r.width, 30), text, _panel);
         }
     }
