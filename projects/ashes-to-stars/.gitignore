@@ -44,6 +44,7 @@ art/out_p2_charger_b/
 # ── 블렌더 중간 파일 ────────────────────────────────────
 blender/*.blend1
 blender/__pycache__/
+blender/results/
 
 # 측정·빌드 전용 유니티 사본 (unity/에서 rsync로 파생 — 원본 아님).
 # 유니티는 같은 프로젝트 폴더를 두 프로세스가 열면 Library를 동시에 써서 깨진다.

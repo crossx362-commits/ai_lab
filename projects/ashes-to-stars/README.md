@@ -24,6 +24,7 @@
 - **`unity/Assets/_Game/Art/`** — `Resources.Load`가 못 읽는다. 스프라이트를 넣으면 화면은 플레이스홀더.
 - **프로젝트 루트의 `out_*`** — 생성 원본은 `art/out_*`만.
 - **`unity/Assets/Screenshots/`** — 에디터 Play 캡처. 정본은 `output/qa/ashes-to-stars/`.
-- 루트 `_to_delete/` · `My project/` · `qa_vfx_live/` — 저장소 밖 잔재. 게임에 소비처 없음.
+- 루트 `_to_delete/` · `My project/` · `qa_vfx_live/` — 저장소 밖 잔재. 2026-08-16 삭제.
+- `Resources/sprites/ranged/` · `dps_new/` — JOB_DIRS에 없는 미완성 잔재. 2026-08-16 삭제.
 
 검사: `python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py --strict`

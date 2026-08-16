@@ -32,7 +32,7 @@
 3. `SpriteBank.cs`, `FieldDecor.cs`, `FxPool.cs`, `GameScreen.cs`에서 실제 소비 키를 확인한다. 소비처가 없으면 생성하지 않는다.
 4. `higgsfield generate list`에서 같은 작업의 `waiting`·`processing` 여부를 확인한다. 하나라도 있으면 추가 요청하지 않는다.
 5. `aigen.py` 또는 `higgsfield` 실행 프로세스가 있는지 확인한다. 작업 종료를 확인하기 전 같은 spec을 다시 실행하지 않는다.
-6. 기존 후보와 새 결과의 SHA-1이 같으면 새 산출물로 집계하지 않는다. `out_char3/char_dps_A.png`는 `out_char/char_dps_A.png`와 동일하므로 중복 후보에서 제외한다.
+6. 기존 후보와 새 결과의 SHA-1이 같으면 새 산출물로 집계하지 않는다. 같은 시트의 복사본 폴더(`out_char3` 따위)는 만들지 않는다.
 
 애니메이션에서 의도적으로 같은 그림을 여러 프레임 유지하는 것은 제작 중복이 아니라 **홀드 프레임**이다. 예: `buffer_attack_00/01`. 비교·백업 경로(`ref_old_chars`, `_compare`, `_rejected`)도 런타임 산출물 개수에 포함하지 않는다.
 
