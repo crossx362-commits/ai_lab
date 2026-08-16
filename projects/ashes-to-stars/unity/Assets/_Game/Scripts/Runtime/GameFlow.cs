@@ -96,6 +96,17 @@ namespace AshesToStars
             => survived && !inDungeon && returnScene == Tower && kind == BattleKind.잡몹웨이브;
 
         /// <summary>
+        /// 탑 보스 격파가 층을 올리는 생산 경계(§8·§22 V3).
+        /// BattleScreen OnBossDefeated와 종단 SelfCheck가 같은 함수를 쓴다.
+        /// 잡몹웨이브 돌파는 <see cref="IsTowerFloorClear"/> 쪽 ClearFloor를 쓰므로
+        /// 여기서 다시 올리지 않는다(이중 상승 방지).
+        /// </summary>
+        public static void ApplyTowerBossVictory(int floor)
+        {
+            GameState.ClearFloor(floor);
+        }
+
+        /// <summary>
         /// 게임 종료. 에디터에서는 Application.Quit이 아무 일도 하지 않으므로
         /// 플레이 모드를 직접 끈다 — 안 그러면 "종료가 안 된다"고 오진하게 된다.
         /// </summary>

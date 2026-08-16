@@ -56,7 +56,9 @@ namespace AshesToStars
                     CalculateVictoryReward(GameFlow.BossFloor);
                     // 층을 실제로 돌파한다. 진행도가 안 오르면 §8의 "벽 콘텐츠"가 성립하지 않고
                     // §10-6의 티어 상승(10층마다)도 영원히 일어나지 않는다.
-                    GameState.ClearFloor(GameFlow.BossFloor);
+                    // 종단 SelfCheck가 같은 경계를 부른다 — 여기만 ClearFloor를 쓰면
+                    // 검사가 생산 경로를 못 증명한다.
+                    GameFlow.ApplyTowerBossVictory(GameFlow.BossFloor);
                     // 던전 종점 보스는 **런의 끝**이다 — 노드 맵으로 돌아가 클리어를 보여준다.
                     // 탑 레이드는 기존대로 결과 화면으로 간다(§8 벽 콘텐츠는 층 진행이 결과다).
                     if (DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon)
