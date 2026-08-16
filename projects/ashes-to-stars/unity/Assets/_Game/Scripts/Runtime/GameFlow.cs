@@ -133,6 +133,15 @@ namespace AshesToStars
             if (_v4WipeQaSeeded) return;
             if (System.Environment.GetEnvironmentVariable("QA_V4_WIPE") != "1") return;
             _v4WipeQaSeeded = true;
+            string rosterBak = PlayerPrefs.GetString("ats.roster", "");
+            string slotsBak = PlayerPrefs.GetString("ats.party", "");
+            Application.quitting += () =>
+            {
+                if (string.IsNullOrEmpty(rosterBak)) PlayerPrefs.DeleteKey("ats.roster");
+                else PlayerPrefs.SetString("ats.roster", rosterBak);
+                PlayerPrefs.SetString("ats.party", slotsBak);
+                PlayerPrefs.Save();
+            };
             LifeSystem.ResetAll();
             PartyState.ResetForTest();
             var roster = LifeSystem.GetCharacters();
@@ -141,6 +150,23 @@ namespace AshesToStars
             LastDefeatReport = LifeSystem.ApplyWipe(roster);
             LastBattleSummary = FormatDefeatSummary("보스전 패배 — 5층", LastDefeatReport);
             PartyState.Refresh();
+        }
+
+        /// <summary>배치·에디터에서 오염된 V4 QA 로스터를 기본 5인으로 되돌린다.</summary>
+        public static void RestorePlayRoster()
+        {
+            LifeSystem.RestorePlayRoster();
+            int living = 0;
+            foreach (var c in LifeSystem.GetCharacters())
+                if (!c.IsDeleted) living++;
+            Debug.Log($"[GameFlow] RestorePlayRoster living={living} sortie={PartyState.Slots.Count}");
+        }
+
+        /// <summary>실행본과 에디터 PlayerPrefs가 달라서, QA는 프로세스 안에서 되돌려야 한다.</summary>
+        public static void RestorePlayRosterIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable("RESTORE_PLAY_ROSTER") != "1") return;
+            RestorePlayRoster();
         }
 
         public static string FormatDefeatSummary(string head, PveDefeatReport report)

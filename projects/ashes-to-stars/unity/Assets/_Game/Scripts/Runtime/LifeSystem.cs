@@ -276,6 +276,19 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 플레이용 기본 5인(탱·딜·딜·힐·버퍼)으로 되돌린다.
+        /// QA_V4_WIPE가 PlayerPrefs를 전멸+재건1로 남기면 만든 5직업 스프라이트가
+        /// 한 명만 나와 "적용이 안 된다"처럼 읽힌다.
+        /// </summary>
+        public static void RestorePlayRoster()
+        {
+            ResetAll();
+            PartyState.ResetForTest();
+            GetCharacters();
+            _ = PartyState.Slots;
+        }
+
+        /// <summary>
         /// 캐릭터 목록을 반환한다.
         /// </summary>
         public static List<CharacterRecord> GetCharacters()

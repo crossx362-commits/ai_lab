@@ -17,6 +17,7 @@ namespace AshesToStars
             base.Awake();
             // `--auto dungeon`이 붙어 있을 때만 무인 스모크가 붙는다. 평소엔 아무 일도 없다.
             DebugAutoPilot.BootstrapIfRequested();
+            GameFlow.RestorePlayRosterIfRequested();
         }
 
         protected override string Title => "재와 별";

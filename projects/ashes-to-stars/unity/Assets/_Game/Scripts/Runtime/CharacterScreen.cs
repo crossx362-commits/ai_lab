@@ -45,6 +45,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            GameFlow.RestorePlayRosterIfRequested();
             GameFlow.SeedV4WipeQaIfRequested();
             if (_selectedCharacter >= 0)
             {
