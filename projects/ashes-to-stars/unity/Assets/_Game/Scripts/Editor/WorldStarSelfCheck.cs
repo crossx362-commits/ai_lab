@@ -41,6 +41,20 @@ namespace AshesToStars
             Check(!UiPages.LayoutOverlaps(plate, WorldStar.AfterPlate(body)),
                 "별 판과 카드가 겹치지 않는다");
 
+            WorldStar.ResetForTest();
+            Check(WorldStar.Sense(1) == WorldStar.MinSense, "1층 영공은 최소");
+            Check(WorldStar.Sense(1) < WorldStar.Sense(50), "층이 오르면 영공이 넓어진다");
+            Check(Mathf.Abs(WorldStar.Sense(100) - WorldStar.MaxSense) < 0.01f, "100층 영공은 최대");
+            Check(!WorldStar.AllyBuff && !WorldStar.EnemyDebuff, "기본은 영공 꺼짐 — 켠다");
+            long raw = EstateMine.CopperPerHour();
+            Check(EstateMine.CopperPerHourEffective() == raw, "끄면 광산은 기준값");
+            WorldStar.AllyBuff = true;
+            Check(EstateMine.CopperPerHourEffective() > raw, "아군 버프가 광산을 올린다");
+            WorldStar.EnemyDebuff = true;
+            Check(WorldStar.AuraLabel().Contains("디버프"), "적 디버프를 켤 수 있다");
+            WorldStar.ResetForTest();
+            Check(WorldStar.AllyMul == 1f, "리셋하면 배율이 1이다");
+
             Debug.Log("[WorldStarSelfCheck]\n" + _log);
             if (_fail > 0)
                 throw new System.Exception($"WorldStarSelfCheck FAIL {_fail}");

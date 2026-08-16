@@ -40,6 +40,10 @@ namespace AshesToStars
             return have >= cap ? 0 : cap - have;
         }
 
+        /// <summary>영공 아군 버프가 붙은 시간당 생산. 기준 25%는 `CopperPerHour`.</summary>
+        public static long CopperPerHourEffective() =>
+            (long)(CopperPerHour() * WorldStar.AllyMul);
+
         public static long WastedCopper
         {
             get { Load(); Tick(); return _wasted; }
@@ -64,7 +68,7 @@ namespace AshesToStars
 
             long elapsed = now - _lastUnix;
             _lastUnix = now;
-            _owed += CopperPerHour() * elapsed;
+            _owed += CopperPerHourEffective() * elapsed;
             long produced = _owed / 3600;
             _owed %= 3600;
             if (produced <= 0)

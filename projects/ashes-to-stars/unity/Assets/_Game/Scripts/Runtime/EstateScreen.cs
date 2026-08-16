@@ -16,7 +16,7 @@ namespace AshesToStars
     /// </summary>
     public class EstateScreen : GameScreen
     {
-        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성 }
+        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성, 영공 }
         Sub _sub = Sub.없음;
         int _hubPage;
         EstateGrid.Cell _placeKind = EstateGrid.Cell.Wall;
@@ -35,6 +35,7 @@ namespace AshesToStars
             Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
+            Sub.영공 => "층을 오를수록 인식 범위가 넓어진다. 아군 버프·적 디버프를 켠다(§14)",
             _ => TowerEnding.HasTitle
                 ? $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)"
                 : SoloRaidClear.HasAny
@@ -91,6 +92,8 @@ namespace AshesToStars
                 _sub = Sub.본성;
             if (System.Environment.GetEnvironmentVariable("QA_ESTATE_GRID") == "1")
                 _hubPage = 3;
+            if (System.Environment.GetEnvironmentVariable("QA_WORLD_AURA") == "1")
+                _sub = Sub.영공;
             EstateMine.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
@@ -115,6 +118,7 @@ namespace AshesToStars
             if (_sub == Sub.대장간) { Smith(r); return; }
             if (_sub == Sub.수비대) { Barracks(r); return; }
             if (_sub == Sub.월드티어) { WorldTier(r); return; }
+            if (_sub == Sub.영공) { Aura(r); return; }
 
             if (_sub == Sub.경매장) { AuctionHouse(r); return; }
 
@@ -163,7 +167,7 @@ namespace AshesToStars
 
         void DrawEstateStatus(Rect r)
         {
-            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var cards = UiPages.Grid(r, 2, 3, 12f);
             string keepSub = EstateBuild.KeepBusy
                 ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}"
                 : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
@@ -177,7 +181,7 @@ namespace AshesToStars
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
             DrawCard(cards[2], "광산",
-                $"{Economy.FormatCurrency(EstateMine.CopperPerHour())}/h · 창고에 자동 적립(§13)",
+                $"{Economy.FormatCurrency(EstateMine.CopperPerHourEffective())}/h · 창고에 자동 적립(§13)",
                 "field", locked: true);
             DrawCard(cards[3], "창고",
                 $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}"
@@ -185,6 +189,25 @@ namespace AshesToStars
                     ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
                     : " · 넘치면 소멸"),
                 "building_auction", locked: true);
+            if (DrawCard(cards[4], "내 별 영공",
+                    WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel(),
+                    "worldmap"))
+                _sub = Sub.영공;
+        }
+
+        void Aura(Rect r)
+        {
+            Info(r, 0, "내 별 · " + WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel());
+            var cards = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 168f), 2, 1, 16f);
+            if (DrawCard(cards[0], WorldStar.AllyBuff ? "아군 버프 켜짐" : "아군 버프 꺼짐",
+                    "광산 생산 ×" + WorldStar.AllyMul.ToString("0.00") + "(§14)",
+                    "healer"))
+                WorldStar.AllyBuff = !WorldStar.AllyBuff;
+            if (DrawCard(cards[1], WorldStar.EnemyDebuff ? "적 디버프 켜짐" : "적 디버프 꺼짐",
+                    "적 위력 ×" + WorldStar.EnemyMul.ToString("0.00") + " — 침략이 읽기 전엔 표시(§14)",
+                    "damage"))
+                WorldStar.EnemyDebuff = !WorldStar.EnemyDebuff;
+            if (Row(r, 4, "← 영지로", "영공에서 나온다")) _sub = Sub.없음;
         }
 
         void DrawLayout(Rect r)
