@@ -21,6 +21,15 @@
 
 ## 처리됨 — 최신
 
+### ✅ 시작 직업 카드 idle 포즈 (루프, 2026-08-16)
+
+오너 21:52 「처음 기본직업 고를때 포즈는 idle 포즈」.
+타이틀 5종이 `DrawJobLook(..., true)`라 걷고 있었고, `walk=false`는 초상을 먼저 그려
+idle 전신이 가려졌다. `StarterLookWalks=false` + 스프라이트 우선, 초상은 없을 때만.
+SelfCheck 전항 PASS. PNG `starter_idle_shots/qa_go:Title.png` —
+탱크 방패 앞·물리딜러 발 모음. 옛 `starter_pick5_shots` 걷기와 갈림.
+`StarterLookWalks=true`면 SelfCheck FAIL. 코드 `bbd5d31b`.
+
 ### ✅ 프로토 80% 정체 — 집계가 실측을 버렸다 (대화, 2026-08-16)
 
 원인: 보드가 관문 5개 중 **100%인 개수**만 세서 4/5=80%로 고정했다.
@@ -254,6 +263,7 @@ Lv20에서 1차 전직 11종으로 세분화한 뒤 Lv50에서 같은 직업의 
 
 처음 기본직업 고를때 포즈는 idle 포즈
 
+> **처리:** 위로 옮김. 시작 카드 idle_00. 걷기는 전투만.
 
 ### 📌 ui 이미지 (오너, 2026-08-16 21:50)
 
