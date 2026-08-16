@@ -21,6 +21,8 @@ namespace AshesToStars
             _fail = 0;
             _log.Length = 0;
             Environment.SetEnvironmentVariable("QA_LOAN_OVERDUE", null);
+            RaceId oldRace = RacePrefs.Get();
+            RacePrefs.Set(RaceId.엘프);
             GameState.ResetAll();
             LifeSystem.ResetAll();
             AuctionState.ResetForTest();
@@ -101,6 +103,7 @@ namespace AshesToStars
                 "연체 2회면 침략 본게임에 못 들어간다");
             Environment.SetEnvironmentVariable("QA_LOAN_OVERDUE", null);
 
+            RacePrefs.Set(oldRace);
             GameState.ResetAll();
             Check(_fail == 0, $"전항 통과 (실패 {_fail})");
             Debug.Log(_log.ToString());

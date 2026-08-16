@@ -7,6 +7,7 @@ namespace AshesToStars
     /// <summary>
     /// 로컬 경매장(§12·§18-3). 다른 유저 서버가 아니라 이 기기 장이다.
     /// 드랍·제작만 등록. 등록 2%·체결 8%는 소각. 연체·부채면 GameState가 문을 잠근다.
+    /// 계정 종족이 인간이면 총 10%→7%(등록 1.4%·체결 5.6%, §18-9).
     /// </summary>
     public static class AuctionState
     {
@@ -14,7 +15,14 @@ namespace AshesToStars
         public const int ListHours = 24;
         public const double ListFeeRate = 0.02;
         public const double SaleFeeRate = 0.08;
+        public const double DefaultFeePercent = 10;
+        public const double HumanFeePercent = 7;
+        public const string EnvShow = "QA_AUCTION_FEE";
+        public const string EnvNo = "QA_NO_AUCTION_FEE";
         const string K_LOTS = "ats.auction.lots";
+
+        /// <summary>SelfCheck가 수수료를 고정할 때만. 0이면 계정 종족·에셋을 본다.</summary>
+        public static float ForceFeePercent;
 
         public sealed class Lot
         {
@@ -80,8 +88,74 @@ namespace AshesToStars
 
         static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-        public static long ListFee(long price) => Math.Max(1, (long)(price * ListFeeRate));
-        public static long SaleFee(long price) => Math.Max(1, (long)(price * SaleFeeRate));
+        public static bool FeeBlocked =>
+            Environment.GetEnvironmentVariable(EnvNo) == "1";
+
+        /// <summary>§18-9 인간 경매 수수료 10%→7%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static double FeePercent()
+        {
+            if (FeeBlocked) return DefaultFeePercent;
+            if (ForceFeePercent > 0f) return ForceFeePercent;
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].경매수수료 > 0f)
+                        return races[i].경매수수료;
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.인간 ? HumanFeePercent : DefaultFeePercent;
+        }
+
+        public static double ListRate() => FeePercent() * 0.002;
+        public static double SaleRate() => FeePercent() * 0.008;
+        public static long ListFee(long price)
+        {
+            long p = Math.Max(1L, (long)Math.Round(FeePercent()));
+            return Math.Max(1, price * p * 2 / 1000);
+        }
+        public static long SaleFee(long price)
+        {
+            long p = Math.Max(1L, (long)Math.Round(FeePercent()));
+            return Math.Max(1, price * p * 8 / 1000);
+        }
+
+        public static string FeeLine()
+        {
+            string list = FormatPct(ListRate());
+            string sale = FormatPct(SaleRate());
+            if (Math.Abs(FeePercent() - HumanFeePercent) < 1e-9)
+                return $"인간 수수료 7% — 등록 {list}·체결 {sale} 소각(§18-9)";
+            return $"등록 {list}·체결 {sale} 소각(§18-3)";
+        }
+
+        static string FormatPct(double rate)
+        {
+            double pct = rate * 100.0;
+            if (Math.Abs(pct - Math.Round(pct)) < 1e-6)
+                return ((int)Math.Round(pct)).ToString() + "%";
+            return pct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+        }
+
+        /// <summary>시각 QA. QA_AUCTION_FEE=1이면 인간·30층·가죽으로 경매장을 연다.</summary>
+        public static void SeedQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShow) != "1") return;
+            RacePrefs.Set(RaceId.인간);
+            GameState.SetTowerFloorForTest(30);
+            if (GameState.Wallet.Copper < 50_000)
+                GameState.Earn(50_000);
+            if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) < 1)
+                GameState.Gain(Economy.LifeItem.CraftHide, 2);
+            StarterSecond.ResetForTest();
+        }
+
         public static int MineCount
         {
             get

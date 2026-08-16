@@ -99,6 +99,9 @@ namespace AshesToStars
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
+            AuctionState.SeedQaIfRequested();
+            if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1")
+                _sub = Sub.경매장;
             if (StarterSecond.Pending)
             {
                 Hint(new Rect(r.x, r.y, r.width, 24f), StarterSecond.PickTitle);
@@ -152,7 +155,7 @@ namespace AshesToStars
                 _sub = Sub.대장간;
             string auctionLock = AuctionHubLockReason();
             if (DrawCard(cards[1], "경매장",
-                    auctionLock ?? "로컬 장 · 등록 2%·체결 8% 소각",
+                    auctionLock ?? "로컬 장 · " + AuctionState.FeeLine(),
                     UiAtlas.BuildingKey("경매장"), locked: auctionLock != null))
                 _sub = Sub.경매장;
             if (DrawCard(cards[2], "영묘",
@@ -524,7 +527,7 @@ namespace AshesToStars
             }
 
             Info(r, row++,
-                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · 등록 2%·체결 8% 소각. 다른 유저 서버 아님.");
+                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionState.FeeLine()}. 다른 유저 서버 아님.");
             if (!string.IsNullOrEmpty(_msg))
                 Info(r, row++, _msg);
 
