@@ -467,6 +467,7 @@ namespace AshesToStars
             TowerFloor = floor >= TowerEnding.FinaleFloor
                 ? TowerEnding.FinaleFloor
                 : floor + 1;
+            AuctionState.NoteUnlock(TowerFloor);
             if (UnlockedTier > before)
             {
                 _selectedTier = UnlockedTier;

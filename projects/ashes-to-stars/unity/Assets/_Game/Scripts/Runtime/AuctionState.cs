@@ -8,18 +8,27 @@ namespace AshesToStars
     /// 로컬 경매장(§12·§18-3). 다른 유저 서버가 아니라 이 기기 장이다.
     /// 드랍·제작만 등록. 등록 2%·체결 8%는 소각. 연체·부채면 GameState가 문을 잠근다.
     /// 계정 종족이 인간이면 총 10%→7%(등록 1.4%·체결 5.6%, §18-9).
+    /// 해금 후 7일은 판매만·구매 불가(§18-3·§18-14). QA_NO면 구매가 열린다.
     /// </summary>
     public static class AuctionState
     {
         public const int MaxMine = 10;
         public const int ListHours = 24;
+        public const int BuyLockDays = 7;
+        public const long BuyLockSeconds = BuyLockDays * 24 * 3600;
         public const double ListFeeRate = 0.02;
         public const double SaleFeeRate = 0.08;
         public const double DefaultFeePercent = 10;
         public const double HumanFeePercent = 7;
         public const string EnvShow = "QA_AUCTION_FEE";
         public const string EnvNo = "QA_NO_AUCTION_FEE";
+        public const string EnvShowBuyLock = "QA_AUCTION_BUY_LOCK";
+        public const string EnvNoBuyLock = "QA_NO_AUCTION_BUY_LOCK";
         const string K_LOTS = "ats.auction.lots";
+        const string K_OPENED = "ats.auction.openedAt";
+
+        /// <summary>SelfCheck가 7일 창을 밀 때만. 기본은 UTC now.</summary>
+        public static Func<long> NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         /// <summary>SelfCheck가 수수료를 고정할 때만. 0이면 계정 종족·에셋을 본다.</summary>
         public static float ForceFeePercent;
@@ -38,6 +47,9 @@ namespace AshesToStars
 
         static readonly List<Lot> _lots = new List<Lot>();
         static bool _loaded;
+        static bool _openedLoaded;
+        static long _openedAt;
+        static bool _qaBuyLockSeeded;
 
         public static IReadOnlyList<Lot> Lots { get { Load(); return _lots; } }
 
@@ -86,7 +98,78 @@ namespace AshesToStars
             PlayerPrefs.Save();
         }
 
-        static long Now() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        static long Now() => NowUnix();
+
+        public static bool BuyLockBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoBuyLock);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static long OpenedAt { get { LoadOpened(); return _openedAt; } }
+
+        static void LoadOpened()
+        {
+            if (_openedLoaded) return;
+            _openedLoaded = true;
+            long.TryParse(PlayerPrefs.GetString(K_OPENED, "0"), out _openedAt);
+            if (_openedAt < 0) _openedAt = 0;
+        }
+
+        static void SaveOpened()
+        {
+            PlayerPrefs.SetString(K_OPENED, _openedAt.ToString());
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>탑이 30층에 처음 닿으면 7일 시계를 찍는다. 이미 찍혀 있으면 안 덮는다.</summary>
+        public static void NoteUnlock(int floor)
+        {
+            if (floor < EstateScreen.AuctionUnlockFloor) return;
+            LoadOpened();
+            if (_openedAt > 0) return;
+            _openedAt = Now();
+            SaveOpened();
+        }
+
+        public static void SetOpenedAtForTest(long unix)
+        {
+            _openedLoaded = true;
+            _openedAt = Math.Max(0, unix);
+            SaveOpened();
+        }
+
+        public static long BuyLockLeft(long now = 0)
+        {
+            if (BuyLockBlocked) return 0;
+            LoadOpened();
+            if (_openedAt <= 0) return 0;
+            if (now <= 0) now = Now();
+            long left = _openedAt + BuyLockSeconds - now;
+            return left > 0 ? left : 0;
+        }
+
+        public static bool CanBuy(long now = 0) => BuyLockLeft(now) <= 0;
+
+        public static string BuyLockLine(long now = 0)
+        {
+            long left = BuyLockLeft(now);
+            if (left <= 0) return "";
+            long days = left / 86400;
+            long hours = (left % 86400) / 3600;
+            return $"신규 계정 구매 잠금 {days}일 {hours}시간(§18-3) — 판매만 가능";
+        }
+
+        public static string WhyCannotBuy()
+        {
+            string trade = WhyCannotTrade();
+            if (trade != null) return trade;
+            if (!CanBuy()) return BuyLockLine();
+            return null;
+        }
 
         public static bool FeeBlocked =>
             Environment.GetEnvironmentVariable(EnvNo) == "1";
@@ -154,6 +237,25 @@ namespace AshesToStars
             if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) < 1)
                 GameState.Gain(Economy.LifeItem.CraftHide, 2);
             StarterSecond.ResetForTest();
+        }
+
+        /// <summary>시각 QA. QA_AUCTION_BUY_LOCK=1이면 해금 직후라 구매가 잠긴 장을 연다.</summary>
+        public static void SeedBuyLockQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowBuyLock) != "1") return;
+            if (BuyLockBlocked) return;
+            if (_qaBuyLockSeeded) return;
+            _qaBuyLockSeeded = true;
+            RacePrefs.Set(RaceId.인간);
+            GameState.SetTowerFloorForTest(EstateScreen.AuctionUnlockFloor);
+            SetOpenedAtForTest(Now());
+            if (GameState.Wallet.Copper < 50_000)
+                GameState.Grant(50_000);
+            if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) < 1)
+                GameState.Gain(Economy.LifeItem.CraftHide, 2);
+            StarterSecond.ResetForTest();
+            Load();
+            RestockNpc(Now());
         }
 
         public static int MineCount
@@ -266,7 +368,7 @@ namespace AshesToStars
         public static bool TryBuy(string id)
         {
             Load();
-            if (WhyCannotTrade() != null) return false;
+            if (WhyCannotBuy() != null) return false;
             Lot lot = null;
             for (int i = 0; i < _lots.Count; i++)
                 if (_lots[i].Id == id) { lot = _lots[i]; break; }
@@ -311,15 +413,22 @@ namespace AshesToStars
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_LOTS);
+            PlayerPrefs.DeleteKey(K_OPENED);
             PlayerPrefs.Save();
             _lots.Clear();
             _loaded = false;
+            _openedLoaded = false;
+            _openedAt = 0;
+            _qaBuyLockSeeded = false;
+            NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 
         public static void ForgetInMemoryForTest()
         {
             _lots.Clear();
             _loaded = false;
+            _openedLoaded = false;
+            _openedAt = 0;
         }
     }
 }

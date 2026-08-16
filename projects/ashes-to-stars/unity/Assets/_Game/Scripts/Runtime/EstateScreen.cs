@@ -117,7 +117,9 @@ namespace AshesToStars
             EstateGrid.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
-            if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1")
+            AuctionState.SeedBuyLockQaIfRequested();
+            if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1")
                 _sub = Sub.경매장;
             if (StarterSecond.Pending)
             {
@@ -171,8 +173,12 @@ namespace AshesToStars
             if (DrawCard(cards[0], "대장간", "제작·강화. 실패해도 장비는 남는다", UiAtlas.BuildingKey("대장간")))
                 _sub = Sub.대장간;
             string auctionLock = AuctionHubLockReason();
+            string auctionSub = auctionLock
+                ?? (AuctionState.CanBuy()
+                    ? "로컬 장 · " + AuctionState.FeeLine()
+                    : AuctionState.BuyLockLine());
             if (DrawCard(cards[1], "경매장",
-                    auctionLock ?? "로컬 장 · " + AuctionState.FeeLine(),
+                    auctionSub,
                     UiAtlas.BuildingKey("경매장"), locked: auctionLock != null))
                 _sub = Sub.경매장;
             if (DrawCard(cards[2], "영묘",
@@ -557,10 +563,14 @@ namespace AshesToStars
 
             Info(r, row++,
                 $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionState.FeeLine()}. 다른 유저 서버 아님.");
+            string buyLock = AuctionState.BuyLockLine();
+            if (!string.IsNullOrEmpty(buyLock))
+                Info(r, row++, buyLock);
             if (!string.IsNullOrEmpty(_msg))
                 Info(r, row++, _msg);
 
             var lots = AuctionState.Lots;
+            string buyWhy = AuctionState.WhyCannotBuy();
             for (int i = 0; i < lots.Count && row < 7; i++)
             {
                 var lot = lots[i];
@@ -568,12 +578,12 @@ namespace AshesToStars
                 if (lot.Npc)
                 {
                     if (Row(r, row++, $"구매 {lot.Label}",
-                            $"{who} · {Economy.FormatCurrency(lot.Price)}",
+                            buyWhy ?? $"{who} · {Economy.FormatCurrency(lot.Price)}",
                             ItemAtlas.KeyFor(ParseLotItem(lot))))
                     {
                         _msg = AuctionState.TryBuy(lot.Id)
                             ? $"{lot.Label} 구매"
-                            : "구매 실패 — 골드 부족이거나 상한";
+                            : (buyWhy ?? "구매 실패 — 골드 부족이거나 상한");
                     }
                 }
                 else if (Row(r, row++, $"취소 {lot.Label}",
