@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 영묘 추모 기록(§4). 삭제되면 최고 층·마지막 출전·사망 원인·장착 이름을 남긴다.
+    /// 영묘 추모 기록(§4). 삭제되면 최고 층·마지막 출전·사망 원인·장착·마지막 동료를 남긴다.
     /// 건물은 첫 캐릭터 삭제에 열린다(§13-2). 환생해도 다시 잠기지 않는다.
     /// 전투력은 안 돌려준다. QA_NO면 옛 이름·직업만. QA_NO_MAUSOLEUM_UNLOCK면 항상 열림.
     /// </summary>
@@ -94,7 +94,8 @@ namespace AshesToStars
         public static bool HasRecord(CharacterRecord ch) =>
             ch != null && (ch.MemorialFloor > 0
                            || !string.IsNullOrEmpty(ch.MemorialPlace)
-                           || !string.IsNullOrEmpty(ch.MemorialCause));
+                           || !string.IsNullOrEmpty(ch.MemorialCause)
+                           || !string.IsNullOrEmpty(ch.MemorialParty));
 
         /// <summary>삭제 직전. 장착을 지우기 전에 불러야 이름이 남는다.</summary>
         public static void Stamp(CharacterRecord ch)
@@ -105,6 +106,7 @@ namespace AshesToStars
             ch.MemorialPlace = PlaceOf(GameFlow.ReturnTo, GameFlow.Kind);
             ch.MemorialCause = CauseOf(ch, GameFlow.Kind);
             ch.MemorialGear = FormatGear(ch);
+            ch.MemorialParty = FormatParty(ch);
         }
 
         public static void NoteRebirth(CharacterRecord ch)
@@ -168,10 +170,18 @@ namespace AshesToStars
             return "환생 " + ch.MemorialRebirths + "회";
         }
 
+        public static string PartyLine(CharacterRecord ch)
+        {
+            if (Blocked || ch == null) return "";
+            if (!string.IsNullOrEmpty(ch.MemorialParty))
+                return ch.MemorialParty + "(§4)";
+            return HasRecord(ch) ? "혼자 출전(§4)" : "";
+        }
+
         public static string HubLine()
         {
             if (Blocked) return "";
-            return "이름·직업·최고 층·사망 원인을 남긴다(§4)";
+            return "이름·직업·최고 층·사망 원인·마지막 동료를 남긴다(§4)";
         }
 
         public static string ResultLine(CharacterRecord ch)
@@ -198,13 +208,34 @@ namespace AshesToStars
             return sb.Length == 0 ? "장착 없음" : sb.ToString();
         }
 
-        /// <summary>시각 QA. 삭제 + 30층 탑 보스전 + 장착 이름.</summary>
+        /// <summary>죽은 본인을 뺀 출전 이름. 편성이 비면 혼자.</summary>
+        public static string FormatParty(CharacterRecord ch)
+        {
+            if (ch == null) return "혼자 출전";
+            var sortie = PartyState.SortieRecords();
+            var sb = new StringBuilder();
+            for (int i = 0; i < sortie.Count; i++)
+            {
+                var mate = sortie[i];
+                if (mate == null) continue;
+                if (ReferenceEquals(mate, ch)) continue;
+                if (!string.IsNullOrEmpty(ch.Id) && mate.Id == ch.Id) continue;
+                if (string.IsNullOrEmpty(mate.Name)) continue;
+                if (sb.Length > 0) sb.Append(" · ");
+                sb.Append(mate.Name);
+            }
+            return sb.Length == 0 ? "혼자 출전" : "동료 " + sb;
+        }
+
+        /// <summary>시각 QA. 삭제 + 30층 탑 보스전 + 장착 이름 + 동료 힐러.</summary>
         public static void SeedQaIfRequested()
         {
             if (Environment.GetEnvironmentVariable(EnvShow) != "1") return;
             if (Blocked) return;
             if (_qaSeeded) return;
             _qaSeeded = true;
+            HuntSchedule.ResetForTest();
+            DefenseState.ResetForTest();
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             var ch = roster[0];
@@ -216,8 +247,22 @@ namespace AshesToStars
             ch.IsDeleted = false;
             ch.IsSpecialJob = false;
             ch.RecoveryEndTime = 0;
+            if (roster.Count < 2)
+                LifeSystem.AddStarterCompanion("힐");
+            roster = LifeSystem.GetCharacters();
+            if (roster.Count < 2)
+                LifeSystem.AddBasicRecruit("힐");
+            roster = LifeSystem.GetCharacters();
+            if (roster.Count > 1)
+            {
+                roster[1].Name = "힐러";
+                roster[1].IsDeleted = false;
+                roster[1].RecoveryEndTime = 0;
+                roster[1].DeathCount = 0;
+            }
             LifeSystem.PersistRoster();
             Equipment.SeedCraftedLoadoutForQa(ch);
+            PartyState.SetSlotsForTest(0, roster.Count > 1 ? 1 : 0);
             GameState.SetTowerFloorForTest(QaFloor);
             GameFlow.SetReturnForTest(GameFlow.Tower, GameFlow.BattleKind.보스);
             LifeSystem.RegisterDeath(ch);

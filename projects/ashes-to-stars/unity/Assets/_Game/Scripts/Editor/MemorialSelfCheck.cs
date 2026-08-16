@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>삭제되면 영묘가 최고 층·마지막 출전·사망 원인을 읽는다. QA_NO면 기록 없음(§4).</summary>
+    /// <summary>삭제되면 영묘가 최고 층·마지막 출전·사망 원인·마지막 동료를 읽는다. QA_NO면 기록 없음(§4).</summary>
     public static class MemorialSelfCheck
     {
         static int _fail;
@@ -44,8 +44,10 @@ namespace AshesToStars
             ch.Job = "수호기사";
             ch.Advancement = AdvancementTier.First;
             ch.DeathCount = 2;
+            roster[1].Name = "힐러";
             LifeSystem.PersistRoster();
             Equipment.SeedCraftedLoadoutForQa(ch);
+            PartyState.SetSlotsForTest(0, 1);
             GameState.SetTowerFloorForTest(Memorial.QaFloor);
             GameFlow.SetReturnForTest(GameFlow.Tower, GameFlow.BattleKind.보스);
             LifeSystem.RegisterDeath(ch);
@@ -65,6 +67,11 @@ namespace AshesToStars
                   && gear.Contains("가죽 흉갑") && gear.Contains("부품 장갑")
                   && gear.Contains("원소 신발") && gear.Contains("마정 장신구"),
                 $"장착 이름 (실제 {gear})");
+            Check(Memorial.FormatParty(ch).Contains("힐러"),
+                $"FormatParty 힐러 (실제 {Memorial.FormatParty(ch)})");
+            Check(Memorial.PartyLine(ch).Contains("힐러") && Memorial.PartyLine(ch).Contains("§4")
+                  && !Memorial.PartyLine(ch).Contains("추모시험"),
+                $"동료 줄 (실제 {Memorial.PartyLine(ch)})");
             Check(Equipment.WornAll(ch).Count == 0, "장착은 지워진다");
 
             LifeSystem.ForgetInMemoryForTest();
@@ -77,6 +84,8 @@ namespace AshesToStars
                 $"재기동 기록 (실제 {Memorial.Line(ch)})");
             Check(Memorial.GearLine(ch).Contains("송곳니 검"),
                 $"재기동 장착 (실제 {Memorial.GearLine(ch)})");
+            Check(ch.MemorialParty.Contains("힐러") && Memorial.PartyLine(ch).Contains("힐러"),
+                $"재기동 동료 (실제 {Memorial.PartyLine(ch)})");
 
             GameState.Gain(Economy.LifeItem.RebornStone, 1);
             Check(LifeSystem.UseRebornStone(ch), "환생");
@@ -103,14 +112,18 @@ namespace AshesToStars
             LifeSystem.ResetAll();
             Equipment.ResetAll();
             Memorial.ResetForTest();
+            PartyState.ResetForTest();
             roster = LifeSystem.GetCharacters();
             ch = roster[0];
             ch.DeathCount = 2;
+            PartyState.SetSlotsForTest(0);
             GameState.SetTowerFloorForTest(11);
             GameFlow.SetReturnForTest(GameFlow.Field, GameFlow.BattleKind.잡몹웨이브);
             LifeSystem.RegisterDeath(ch);
             Check(ch.MemorialPlace == "필드" && ch.MemorialCause == "필드 전멸",
                 $"필드 (실제 {ch.MemorialPlace} {ch.MemorialCause})");
+            Check(ch.MemorialParty == "혼자 출전" && Memorial.PartyLine(ch).Contains("혼자"),
+                $"1인은 혼자 출전 (실제 {Memorial.PartyLine(ch)})");
 
             GameState.ResetAll();
             LifeSystem.ResetAll();
@@ -157,6 +170,8 @@ namespace AshesToStars
                 $"시드 문구 (실제 {Memorial.Line(roster[0])})");
             Check(Memorial.GearLine(roster[0]).Contains("가죽 흉갑"),
                 $"시드 장착 (실제 {Memorial.GearLine(roster[0])})");
+            Check(Memorial.PartyLine(roster[0]).Contains("힐러"),
+                $"시드 동료 (실제 {Memorial.PartyLine(roster[0])})");
             Environment.SetEnvironmentVariable(Memorial.EnvShow, null);
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
@@ -167,17 +182,23 @@ namespace AshesToStars
             Check(life.Contains("Memorial.Stamp(") && life.Contains("Memorial.NoteRebirth"),
                 "RegisterDeath·환생이 추모를 읽는다");
             Check(estate.Contains("Memorial.Line") && estate.Contains("Memorial.HubLine")
+                  && estate.Contains("Memorial.PartyLine")
                   && estate.Contains("Memorial.SeedQaIfRequested"),
-                "영묘가 자막·문구·시드를 읽는다");
+                "영묘가 자막·문구·동료·시드를 읽는다");
             Check(result.Contains("Memorial.ResultLine"),
                 "결과가 추모를 읽는다");
             Check(character.Contains("Memorial.Line")
+                  && character.Contains("Memorial.PartyLine")
                   && character.Contains("Memorial.SeedQaIfRequested"),
-                "캐릭터가 문구·시드를 읽는다");
+                "캐릭터가 문구·동료·시드를 읽는다");
+            Check(life.Contains("MemorialParty") && life.Contains("SanitizeMemorialParty"),
+                "로스터가 동료 필드를 저장한다");
 
             _ = nameof(Memorial.Stamp);
             _ = nameof(Memorial.SeedQaIfRequested);
             _ = nameof(Memorial.Line);
+            _ = nameof(Memorial.PartyLine);
+            _ = nameof(Memorial.FormatParty);
 
             Environment.SetEnvironmentVariable(Memorial.EnvShow, show);
             Environment.SetEnvironmentVariable(Memorial.EnvNo, no);

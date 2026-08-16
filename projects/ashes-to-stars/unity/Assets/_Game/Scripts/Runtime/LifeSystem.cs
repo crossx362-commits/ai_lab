@@ -130,6 +130,8 @@ namespace AshesToStars
         public string MemorialCause { get; set; }
         public string MemorialGear { get; set; }
         public int MemorialRebirths { get; set; }
+        /// <summary>마지막 출전 동료 이름. 탭 필드라 PackMemorial 밖에 둔다.</summary>
+        public string MemorialParty { get; set; }
 
         public string PackMemorial()
         {
@@ -368,6 +370,8 @@ namespace AshesToStars
                 c.IsSpecialJob = p.Length > 12 && p[12] == "1";
                 // 14번째 필드는 영묘 추모(층|장소|원인|환생횟수|장착). 없던 저장은 빈 기록.
                 c.UnpackMemorial(p.Length > 13 ? p[13] : "");
+                // 15번째 필드는 마지막 파티 동료. 탭을 쓰면 줄이 갈라지므로 저장 때 뺀다.
+                c.MemorialParty = p.Length > 14 ? p[14] : "";
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -379,6 +383,12 @@ namespace AshesToStars
             string key = name + "|" + job + "|" + index;
             for (int i = 0; i < key.Length; i++) { hash ^= key[i]; hash *= 16777619u; }
             return "legacy" + hash.ToString("x8");
+        }
+
+        static string SanitizeMemorialParty(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return "";
+            return raw.Replace('\t', ' ').Replace('\n', ' ').Replace('\r', ' ');
         }
 
         static int SafeInt(string s, int fallback) => int.TryParse(s, out int v) ? v : fallback;
@@ -407,7 +417,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.PackEquipped())
                   .Append('\t').Append(c.PackAbsorbed())
                   .Append('\t').Append(c.IsSpecialJob ? '1' : '0')
-                  .Append('\t').Append(c.PackMemorial()).Append('\n');
+                  .Append('\t').Append(c.PackMemorial())
+                  .Append('\t').Append(SanitizeMemorialParty(c.MemorialParty)).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 

@@ -219,7 +219,11 @@ namespace AshesToStars
                         UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
                             ch.DeathCount, true, ch.MaxLives);
                         if (Memorial.HasRecord(ch))
+                        {
                             Info(r, 2, Memorial.GearLine(ch));
+                            if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
+                                Info(r, 3, Memorial.PartyLine(ch));
+                        }
                     }
                     else
                     {

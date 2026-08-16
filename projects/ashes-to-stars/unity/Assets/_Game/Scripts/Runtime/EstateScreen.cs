@@ -735,7 +735,11 @@ namespace AshesToStars
                                 : Memorial.Line(ch),
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone));
                         if (Memorial.HasRecord(ch))
+                        {
                             Info(r, row++, Memorial.GearLine(ch));
+                            if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
+                                Info(r, row++, Memorial.PartyLine(ch));
+                        }
                         continue;
                     }
                     string desc = Memorial.HasRecord(ch)
@@ -757,6 +761,8 @@ namespace AshesToStars
                     if (Memorial.HasRecord(ch))
                     {
                         Info(r, row++, Memorial.GearLine(ch));
+                        if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
+                            Info(r, row++, Memorial.PartyLine(ch));
                         if (!string.IsNullOrEmpty(Memorial.RebirthLine(ch)))
                             Info(r, row++, Memorial.RebirthLine(ch));
                     }
