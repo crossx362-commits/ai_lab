@@ -42,7 +42,7 @@ namespace AshesToStars
 
             string invasionLock = InvasionHubLockReason();
             if (DrawCard(cards[1], "침략",
-                    invasionLock ?? $"로컬 별 수비대 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§15)",
+                    invasionLock ?? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)",
                     "damage", locked: invasionLock != null)
                 && invasionLock == null)
                 GameFlow.TryGoInvasion();

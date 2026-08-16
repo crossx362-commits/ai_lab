@@ -5,21 +5,24 @@ namespace AshesToStars
     /// <summary>
     /// 침략 본게임 한 슬라이스(§15). 다른 유저 서버가 아니라 로컬 별 수비대와 싸운다.
     /// 출정 비용·승리 약탈·패배 추가 소모·PvP 목숨 예외가 생산 경계다.
-    /// 4면 공성·랭킹·동맹은 여기서 열지 않는다.
+    /// 진입 면은 EstateGrid가 고른 최단 4면이다. 랭킹·동맹·경로 전투는 여기서 열지 않는다.
     /// </summary>
     public static class InvasionState
     {
         const string K_PENDING = "ats.invasion.pending";
         const string K_PAID = "ats.invasion.paid";
         const string K_LAST = "ats.invasion.last_loot";
+        const string K_SIDE = "ats.invasion.side";
 
         static bool _loaded;
         static bool _pending;
         static long _paid;
         static long _lastLoot;
+        static EstateGrid.Side _approach;
 
         public static bool Pending { get { Load(); return _pending; } }
         public static long LastLoot { get { Load(); return _lastLoot; } }
+        public static EstateGrid.Side ApproachSide { get { Load(); return _approach; } }
 
         static void Load()
         {
@@ -28,6 +31,8 @@ namespace AshesToStars
             _pending = PlayerPrefs.GetInt(K_PENDING, 0) == 1;
             long.TryParse(PlayerPrefs.GetString(K_PAID, "0"), out _paid);
             long.TryParse(PlayerPrefs.GetString(K_LAST, "0"), out _lastLoot);
+            int side = PlayerPrefs.GetInt(K_SIDE, (int)EstateGrid.Side.북);
+            _approach = (EstateGrid.Side)Mathf.Clamp(side, 0, 3);
         }
 
         static void Save()
@@ -35,6 +40,7 @@ namespace AshesToStars
             PlayerPrefs.SetInt(K_PENDING, _pending ? 1 : 0);
             PlayerPrefs.SetString(K_PAID, _paid.ToString());
             PlayerPrefs.SetString(K_LAST, _lastLoot.ToString());
+            PlayerPrefs.SetInt(K_SIDE, (int)_approach);
             PlayerPrefs.Save();
         }
 
@@ -63,6 +69,7 @@ namespace AshesToStars
             _pending = true;
             _paid = cost;
             _lastLoot = 0;
+            _approach = EstateGrid.InvaderSide();
             Save();
             return true;
         }
@@ -94,10 +101,12 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey(K_PENDING);
             PlayerPrefs.DeleteKey(K_PAID);
             PlayerPrefs.DeleteKey(K_LAST);
+            PlayerPrefs.DeleteKey(K_SIDE);
             PlayerPrefs.Save();
             _pending = false;
             _paid = 0;
             _lastLoot = 0;
+            _approach = EstateGrid.Side.북;
             _loaded = false;
         }
 
@@ -105,6 +114,7 @@ namespace AshesToStars
         {
             _pending = false;
             _paid = _lastLoot = 0;
+            _approach = EstateGrid.Side.북;
             _loaded = false;
         }
     }

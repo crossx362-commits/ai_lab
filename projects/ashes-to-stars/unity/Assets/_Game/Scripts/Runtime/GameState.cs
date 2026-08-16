@@ -536,6 +536,7 @@ namespace AshesToStars
             EstateBuild.ResetForTest();
             EstateMine.ResetForTest();
             EstateDefense.ResetForTest();
+            EstateGrid.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
@@ -551,6 +552,7 @@ namespace AshesToStars
             FloorRecruit.ForgetInMemoryForTest();
             EstateMine.ForgetInMemoryForTest();
             EstateDefense.ForgetInMemoryForTest();
+            EstateGrid.ForgetInMemoryForTest();
         }
 
         /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만

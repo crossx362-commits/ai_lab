@@ -19,6 +19,7 @@ namespace AshesToStars
         enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성 }
         Sub _sub = Sub.없음;
         int _hubPage;
+        EstateGrid.Cell _placeKind = EstateGrid.Cell.Wall;
 
         /// <summary>경매장 해금 층(§12). 침략과 동시 해금이다.</summary>
         public const int AuctionUnlockFloor = 30;
@@ -65,6 +66,8 @@ namespace AshesToStars
                     _hubPage = 1;
                 else if (AutoOpen == "방어")
                     _hubPage = 2;
+                else if (AutoOpen == "배치")
+                    _hubPage = 3;
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
                     _sub = want;
@@ -86,9 +89,12 @@ namespace AshesToStars
                 _hubPage = 2;
             if (System.Environment.GetEnvironmentVariable("QA_ESTATE_RUSH") == "1")
                 _sub = Sub.본성;
+            if (System.Environment.GetEnvironmentVariable("QA_ESTATE_GRID") == "1")
+                _hubPage = 3;
             EstateMine.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
+            EstateGrid.SeedQaIfRequested();
             if (_sub == Sub.본성) { Keep(r); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
@@ -104,7 +110,7 @@ namespace AshesToStars
                 return;
             }
 
-            _hubPage = DrawTabs(r, new[] { "건물", "현황", "방어" }, _hubPage);
+            _hubPage = DrawTabs(r, new[] { "건물", "현황", "방어", "배치" }, _hubPage);
             var page = UiPages.AfterTabs(r);
             if (_hubPage == 1)
             {
@@ -114,6 +120,11 @@ namespace AshesToStars
             if (_hubPage == 2)
             {
                 DrawDefense(page);
+                return;
+            }
+            if (_hubPage == 3)
+            {
+                DrawLayout(page);
                 return;
             }
 
@@ -159,6 +170,140 @@ namespace AshesToStars
                     ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
                     : " · 넘치면 소멸"),
                 "building_auction", locked: true);
+        }
+
+        void DrawLayout(Rect r)
+        {
+            EstateGrid.SeedQaIfRequested();
+            var side = EstateGrid.InvaderSide();
+            int path = EstateGrid.InvaderPath();
+            Info(r, 0,
+                $"침략 진입 {side} {path}칸 · 북{Len(EstateGrid.Side.북)} 동{Len(EstateGrid.Side.동)} 남{Len(EstateGrid.Side.남)} 서{Len(EstateGrid.Side.서)}(§13-3)");
+            string stock =
+                $"성벽 {EstateGrid.Count(EstateGrid.Cell.Wall)}/{EstateDefense.Level(EstateDefense.Kind.성벽)}"
+                + $" · 함정 {EstateGrid.Count(EstateGrid.Cell.Trap)}/{EstateDefense.Level(EstateDefense.Kind.함정)}"
+                + $" · 화살 {EstateGrid.Count(EstateGrid.Cell.Arrow)}/{EstateDefense.Level(EstateDefense.Kind.화살탑)}"
+                + $" · 마법 {EstateGrid.Count(EstateGrid.Cell.Magic)}/{EstateDefense.Level(EstateDefense.Kind.마법탑)}";
+            Info(r, 1, stock);
+
+            float top = 2 * (RowH + RowGap) + 6f;
+            float bot = 78f;
+            var board = new Rect(r.x, r.y + top, r.width, Mathf.Max(80f, r.height - top - bot));
+            float cell = Mathf.Min(58f, Mathf.Min((board.width - 100f) / EstateGrid.Size,
+                (board.height - 40f) / EstateGrid.Size));
+            if (cell < 28f) cell = 28f;
+            float gridW = cell * EstateGrid.Size;
+            float gridH = cell * EstateGrid.Size;
+            float gx = board.x + (board.width - gridW) * 0.5f;
+            float gy = board.y + 20f;
+            DrawSideTag(new Rect(gx, board.y, gridW, 18f),
+                $"북 {Len(EstateGrid.Side.북)}", EstateGrid.Side.북 == side);
+            DrawSideTag(new Rect(gx, gy + gridH, gridW, 18f),
+                $"남 {Len(EstateGrid.Side.남)}", EstateGrid.Side.남 == side);
+            DrawSideTag(new Rect(gx - 44f, gy, 42f, gridH),
+                $"서\n{Len(EstateGrid.Side.서)}", EstateGrid.Side.서 == side);
+            DrawSideTag(new Rect(gx + gridW + 2f, gy, 42f, gridH),
+                $"동\n{Len(EstateGrid.Side.동)}", EstateGrid.Side.동 == side);
+
+            var mark = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = cell >= 40f ? 16 : 13,
+                fontStyle = FontStyle.Bold,
+                clipping = TextClipping.Clip,
+            };
+            for (int y = 0; y < EstateGrid.Size; y++)
+            for (int x = 0; x < EstateGrid.Size; x++)
+            {
+                var box = new Rect(gx + x * cell, gy + y * cell, cell - 2f, cell - 2f);
+                var c = EstateGrid.At(x, y);
+                bool onPath = EstateGrid.OnInvaderPath(x, y);
+                FillCell(box, CellTint(c, onPath));
+                mark.normal.textColor = CellInk(c, onPath);
+                GUI.Label(box, CellMark(c), mark);
+                if (!GUI.Button(box, GUIContent.none, GUIStyle.none)) continue;
+                if (EstateGrid.IsDefense(c))
+                    EstateGrid.TryPickUp(x, y);
+                else
+                    EstateGrid.TryPlace(x, y, _placeKind);
+            }
+
+            var kinds = EstateDefense.All;
+            float bw = (r.width - 12f) / kinds.Length;
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                var k = kinds[i];
+                var cellKind = EstateGrid.CellOf(k);
+                var b = new Rect(r.x + i * bw, r.yMax - 70f, bw - 8f, 62f);
+                int left = EstateGrid.Unplaced(cellKind);
+                bool on = _placeKind == cellKind;
+                string title = on ? $"선택 {k} · {left}" : $"{k} · {left}";
+                string desc = left > 0 ? "빈 칸에 놓는다" : "레벨만큼만 놓는다";
+                if (DrawCard(b, title, desc, UiAtlas.BuildingKey(k.ToString())))
+                    _placeKind = cellKind;
+            }
+        }
+
+        static string Len(EstateGrid.Side s)
+        {
+            int n = EstateGrid.PathLength(s);
+            return n < 0 ? "막힘" : n + "칸";
+        }
+
+        static void DrawSideTag(Rect box, string text, bool hot)
+        {
+            var st = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 12,
+                fontStyle = hot ? FontStyle.Bold : FontStyle.Normal,
+                clipping = TextClipping.Clip,
+                normal = { textColor = hot
+                    ? new Color(0.92f, 0.42f, 0.22f)
+                    : new Color(0.35f, 0.28f, 0.22f) },
+            };
+            GUI.Label(box, text, st);
+        }
+
+        static string CellMark(EstateGrid.Cell c) => c switch
+        {
+            EstateGrid.Cell.Keep => "본",
+            EstateGrid.Cell.Mine => "광",
+            EstateGrid.Cell.Warehouse => "창",
+            EstateGrid.Cell.Arrow => "화",
+            EstateGrid.Cell.Magic => "마",
+            EstateGrid.Cell.Wall => "벽",
+            EstateGrid.Cell.Trap => "함",
+            _ => "",
+        };
+
+        static Color CellTint(EstateGrid.Cell c, bool onPath) => c switch
+        {
+            EstateGrid.Cell.Keep => new Color(0.93f, 0.74f, 0.22f, 1f),
+            EstateGrid.Cell.Mine => new Color(0.62f, 0.44f, 0.24f, 1f),
+            EstateGrid.Cell.Warehouse => new Color(0.28f, 0.58f, 0.86f, 1f),
+            EstateGrid.Cell.Wall => new Color(0.32f, 0.30f, 0.28f, 1f),
+            EstateGrid.Cell.Arrow => new Color(0.82f, 0.28f, 0.18f, 1f),
+            EstateGrid.Cell.Magic => new Color(0.52f, 0.30f, 0.78f, 1f),
+            EstateGrid.Cell.Trap => new Color(0.62f, 0.16f, 0.16f, 1f),
+            _ => onPath
+                ? new Color(0.96f, 0.62f, 0.22f, 1f)
+                : new Color(0.88f, 0.82f, 0.70f, 1f),
+        };
+
+        static Color CellInk(EstateGrid.Cell c, bool onPath)
+        {
+            if (c == EstateGrid.Cell.Empty)
+                return onPath ? new Color(0.35f, 0.14f, 0.04f) : new Color(0.40f, 0.32f, 0.22f);
+            return Color.white;
+        }
+
+        static void FillCell(Rect box, Color c)
+        {
+            var prev = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(box, Texture2D.whiteTexture);
+            GUI.color = prev;
         }
 
         void DrawDefense(Rect r)

@@ -6,7 +6,7 @@ namespace AshesToStars
     /// <summary>
     /// 수직 슬라이스 셋째 — 방어 건물 4종(§13-2·§18-12).
     /// 화살탑→마법탑→성벽→함정. 20층부터. 비용·시간은 본성의 40%.
-    /// 수비대 0명이면 효율이 절반(§13-5). 단축은 EstateRush. 격자는 다음.
+    /// 수비대 0명이면 효율이 절반(§13-5). 단축은 EstateRush. 칸 배치는 EstateGrid.
     /// </summary>
     public static class EstateDefense
     {

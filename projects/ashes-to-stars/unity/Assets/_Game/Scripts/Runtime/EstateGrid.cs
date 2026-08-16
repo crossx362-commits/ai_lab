@@ -1,0 +1,357 @@
+using System;
+using UnityEngine;
+
+namespace AshesToStars
+{
+    /// <summary>
+    /// 수직 슬라이스 — 격자 8×8(§13-3·§18-12).
+    /// 성벽이 길을 막고, 침략자는 4면 중 가장 짧은 길로 창고에 온다.
+    /// 침략 전투 시뮬은 약탈 %만이라 경로 길이를 약탈 공식에 넣지 않는다.
+    /// 만능 배치(4면 전부 봉쇄)는 마지막 벽을 거부한다.
+    /// </summary>
+    public static class EstateGrid
+    {
+        public const int Size = 8;
+        public const int KeepX = 2, KeepY = 3;
+        public const int StoreX = 3, StoreY = 3;
+        public const int MineX = 5, MineY = 3;
+
+        public enum Cell { Empty, Keep, Mine, Warehouse, Arrow, Magic, Wall, Trap }
+        public enum Side { 북, 동, 남, 서 }
+
+        public static readonly Side[] Sides = { Side.북, Side.동, Side.남, Side.서 };
+
+        const string K_CELLS = "ats.estate.grid";
+
+        static bool _loaded;
+        static bool _qaSeeded;
+        static readonly Cell[] _cells = new Cell[Size * Size];
+
+        public static bool Disabled()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_NO_GRID");
+            return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static Cell At(int x, int y)
+        {
+            Load();
+            if (!InBounds(x, y)) return Cell.Wall;
+            return _cells[y * Size + x];
+        }
+
+        public static bool InBounds(int x, int y) =>
+            x >= 0 && y >= 0 && x < Size && y < Size;
+
+        public static bool IsCore(Cell c) =>
+            c == Cell.Keep || c == Cell.Mine || c == Cell.Warehouse;
+
+        public static bool IsDefense(Cell c) =>
+            c == Cell.Arrow || c == Cell.Magic || c == Cell.Wall || c == Cell.Trap;
+
+        public static bool Walkable(Cell c) => c != Cell.Wall;
+
+        public static EstateDefense.Kind? DefenseKindOf(Cell c) => c switch
+        {
+            Cell.Arrow => EstateDefense.Kind.화살탑,
+            Cell.Magic => EstateDefense.Kind.마법탑,
+            Cell.Wall => EstateDefense.Kind.성벽,
+            Cell.Trap => EstateDefense.Kind.함정,
+            _ => null,
+        };
+
+        public static Cell CellOf(EstateDefense.Kind k) => k switch
+        {
+            EstateDefense.Kind.화살탑 => Cell.Arrow,
+            EstateDefense.Kind.마법탑 => Cell.Magic,
+            EstateDefense.Kind.성벽 => Cell.Wall,
+            EstateDefense.Kind.함정 => Cell.Trap,
+            _ => Cell.Empty,
+        };
+
+        public static int Count(Cell c)
+        {
+            Load();
+            int n = 0;
+            for (int i = 0; i < _cells.Length; i++)
+                if (_cells[i] == c) n++;
+            return n;
+        }
+
+        public static int Unplaced(Cell c)
+        {
+            var kind = DefenseKindOf(c);
+            if (kind == null) return 0;
+            int have = EstateDefense.Level(kind.Value);
+            int used = Count(c);
+            return have > used ? have - used : 0;
+        }
+
+        public static string WhyCannotPlace(int x, int y, Cell c)
+        {
+            Load();
+            if (Disabled()) return "배치가 꺼져 있다";
+            if (!IsDefense(c)) return "방어 건물만 놓는다";
+            if (!InBounds(x, y)) return "격자 밖이다";
+            if (At(x, y) != Cell.Empty) return "빈 칸이 아니다";
+            if (Unplaced(c) <= 0)
+            {
+                var kind = DefenseKindOf(c);
+                return kind == null
+                    ? "놓을 건물이 없다"
+                    : $"{kind} Lv{EstateDefense.Level(kind.Value)}만큼만 놓는다";
+            }
+            if (c == Cell.Wall && WouldSeal(x, y))
+                return "4면을 모두 막으면 만능 배치가 된다(§13-3)";
+            return null;
+        }
+
+        public static bool TryPlace(int x, int y, Cell c)
+        {
+            if (WhyCannotPlace(x, y, c) != null) return false;
+            _cells[y * Size + x] = c;
+            Save();
+            return true;
+        }
+
+        public static bool TryPickUp(int x, int y)
+        {
+            Load();
+            if (Disabled()) return false;
+            if (!InBounds(x, y)) return false;
+            if (!IsDefense(At(x, y))) return false;
+            _cells[y * Size + x] = Cell.Empty;
+            Save();
+            return true;
+        }
+
+        public static int PathLength(Side side)
+        {
+            Load();
+            var seen = new bool[Size * Size];
+            var qx = new int[Size * Size];
+            var qy = new int[Size * Size];
+            var qd = new int[Size * Size];
+            int head = 0, tail = 0;
+
+            void Enq(int x, int y, int d)
+            {
+                if (!InBounds(x, y)) return;
+                int i = y * Size + x;
+                if (seen[i]) return;
+                if (!Walkable(_cells[i])) return;
+                seen[i] = true;
+                qx[tail] = x;
+                qy[tail] = y;
+                qd[tail] = d;
+                tail++;
+            }
+
+            if (side == Side.북)
+                for (int x = 0; x < Size; x++) Enq(x, 0, 0);
+            else if (side == Side.남)
+                for (int x = 0; x < Size; x++) Enq(x, Size - 1, 0);
+            else if (side == Side.서)
+                for (int y = 0; y < Size; y++) Enq(0, y, 0);
+            else
+                for (int y = 0; y < Size; y++) Enq(Size - 1, y, 0);
+
+            int[] dx = { 0, 1, 0, -1 };
+            int[] dy = { -1, 0, 1, 0 };
+            while (head < tail)
+            {
+                int x = qx[head];
+                int y = qy[head];
+                int d = qd[head];
+                head++;
+                if (x == StoreX && y == StoreY) return d;
+                for (int k = 0; k < 4; k++)
+                    Enq(x + dx[k], y + dy[k], d + 1);
+            }
+            return -1;
+        }
+
+        public static Side InvaderSide()
+        {
+            int best = int.MaxValue;
+            var pick = Side.북;
+            for (int i = 0; i < Sides.Length; i++)
+            {
+                int n = PathLength(Sides[i]);
+                if (n < 0 || n >= best) continue;
+                best = n;
+                pick = Sides[i];
+            }
+            return pick;
+        }
+
+        public static int InvaderPath() => PathLength(InvaderSide());
+
+        public static bool OnInvaderPath(int x, int y)
+        {
+            Load();
+            if (!InBounds(x, y) || !Walkable(At(x, y))) return false;
+            int total = InvaderPath();
+            if (total < 0) return false;
+            int fromEdge = DistFromSide(InvaderSide(), x, y);
+            int toStore = DistToStore(x, y);
+            if (fromEdge < 0 || toStore < 0) return false;
+            return fromEdge + toStore == total;
+        }
+
+        static int DistFromSide(Side side, int tx, int ty)
+        {
+            var seen = new bool[Size * Size];
+            var qx = new int[Size * Size];
+            var qy = new int[Size * Size];
+            var qd = new int[Size * Size];
+            int head = 0, tail = 0;
+            void Enq(int x, int y, int d)
+            {
+                if (!InBounds(x, y)) return;
+                int i = y * Size + x;
+                if (seen[i] || !Walkable(_cells[i])) return;
+                seen[i] = true;
+                qx[tail] = x; qy[tail] = y; qd[tail] = d;
+                tail++;
+            }
+            if (side == Side.북)
+                for (int x = 0; x < Size; x++) Enq(x, 0, 0);
+            else if (side == Side.남)
+                for (int x = 0; x < Size; x++) Enq(x, Size - 1, 0);
+            else if (side == Side.서)
+                for (int y = 0; y < Size; y++) Enq(0, y, 0);
+            else
+                for (int y = 0; y < Size; y++) Enq(Size - 1, y, 0);
+            int[] dx = { 0, 1, 0, -1 };
+            int[] dy = { -1, 0, 1, 0 };
+            while (head < tail)
+            {
+                int x = qx[head], y = qy[head], d = qd[head];
+                head++;
+                if (x == tx && y == ty) return d;
+                for (int k = 0; k < 4; k++)
+                    Enq(x + dx[k], y + dy[k], d + 1);
+            }
+            return -1;
+        }
+
+        static int DistToStore(int sx, int sy)
+        {
+            var seen = new bool[Size * Size];
+            var qx = new int[Size * Size];
+            var qy = new int[Size * Size];
+            var qd = new int[Size * Size];
+            int head = 0, tail = 0;
+            void Enq(int x, int y, int d)
+            {
+                if (!InBounds(x, y)) return;
+                int i = y * Size + x;
+                if (seen[i] || !Walkable(_cells[i])) return;
+                seen[i] = true;
+                qx[tail] = x; qy[tail] = y; qd[tail] = d;
+                tail++;
+            }
+            Enq(sx, sy, 0);
+            int[] dx = { 0, 1, 0, -1 };
+            int[] dy = { -1, 0, 1, 0 };
+            while (head < tail)
+            {
+                int x = qx[head], y = qy[head], d = qd[head];
+                head++;
+                if (x == StoreX && y == StoreY) return d;
+                for (int k = 0; k < 4; k++)
+                    Enq(x + dx[k], y + dy[k], d + 1);
+            }
+            return -1;
+        }
+
+        static bool WouldSeal(int x, int y)
+        {
+            var prev = _cells[y * Size + x];
+            _cells[y * Size + x] = Cell.Wall;
+            bool open = false;
+            for (int i = 0; i < Sides.Length; i++)
+            {
+                if (PathLength(Sides[i]) >= 0) { open = true; break; }
+            }
+            _cells[y * Size + x] = prev;
+            return !open;
+        }
+
+        public static void SetCellForTest(int x, int y, Cell c)
+        {
+            Load();
+            if (!InBounds(x, y)) return;
+            _cells[y * Size + x] = c;
+            Save();
+        }
+
+        public static void SeedQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_ESTATE_GRID");
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            if (_qaSeeded) return;
+            ResetForTest();
+            _qaSeeded = true;
+            EstateDefense.ResetForTest();
+            EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 3);
+            _loaded = true;
+            ApplyDefault();
+            _cells[1 * Size + 2] = Cell.Wall;
+            _cells[1 * Size + 3] = Cell.Wall;
+            _cells[1 * Size + 4] = Cell.Wall;
+            Save();
+        }
+
+        static void ApplyDefault()
+        {
+            for (int i = 0; i < _cells.Length; i++) _cells[i] = Cell.Empty;
+            _cells[KeepY * Size + KeepX] = Cell.Keep;
+            _cells[StoreY * Size + StoreX] = Cell.Warehouse;
+            _cells[MineY * Size + MineX] = Cell.Mine;
+        }
+
+        static void Load()
+        {
+            if (_loaded) return;
+            _loaded = true;
+            ApplyDefault();
+            string raw = PlayerPrefs.GetString(K_CELLS, "");
+            if (string.IsNullOrEmpty(raw)) return;
+            var parts = raw.Split(',');
+            if (parts.Length != _cells.Length) return;
+            for (int i = 0; i < _cells.Length; i++)
+            {
+                int n;
+                if (!int.TryParse(parts[i], out n)) continue;
+                if (n < 0 || n > (int)Cell.Trap) continue;
+                _cells[i] = (Cell)n;
+            }
+        }
+
+        static void Save()
+        {
+            var parts = new string[_cells.Length];
+            for (int i = 0; i < _cells.Length; i++)
+                parts[i] = ((int)_cells[i]).ToString();
+            PlayerPrefs.SetString(K_CELLS, string.Join(",", parts));
+            PlayerPrefs.Save();
+        }
+
+        public static void ResetForTest()
+        {
+            PlayerPrefs.DeleteKey(K_CELLS);
+            PlayerPrefs.Save();
+            ApplyDefault();
+            _loaded = false;
+            _qaSeeded = false;
+        }
+
+        public static void ForgetInMemoryForTest()
+        {
+            _loaded = false;
+        }
+    }
+}
