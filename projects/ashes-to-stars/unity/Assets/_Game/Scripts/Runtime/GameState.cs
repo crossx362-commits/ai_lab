@@ -299,7 +299,7 @@ namespace AshesToStars
 
         /// <summary>
         /// 만기가 지난 만큼 연체 횟수를 올린다. 정각은 아직 연체가 아니다(SelfCheck ⑩ 만기 이자).
-        /// 3회에서 파산 1회 — 건물 강등·아이템 30% 압류는 아직 안 한다.
+        /// 3회에서 파산 1회 — 건물 −1·비장착 30%는 BankruptcySeize가 읽는다.
         /// </summary>
         public static void RefreshSanctions(long nowUnix)
         {
@@ -336,6 +336,7 @@ namespace AshesToStars
             long cool = (long)Economy.LoanReloanCooldownDays * 86400L;
             _auctionBanUntil = nowUnix + ban;
             _reloanUntil = nowUnix + cool;
+            BankruptcySeize.Apply();
         }
 
         /// <summary>§12·§18-5: 부채 보유·연체 1회·파산 7일 정지 중이면 경매장 문을 잠근다.</summary>
@@ -602,6 +603,7 @@ namespace AshesToStars
             RaidScale.ResetForTest();
             RaidBossPool.ResetForTest();
             RaidReroll.ResetForTest();
+            BankruptcySeize.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
@@ -622,6 +624,8 @@ namespace AshesToStars
             SoftCap.ForgetInMemoryForTest();
             Honor.ForgetInMemoryForTest();
             DeathTraining.ForgetInMemoryForTest();
+            EstateBuild.ForgetInMemoryForTest();
+            BankruptcySeize.ForgetInMemoryForTest();
         }
 
         /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만

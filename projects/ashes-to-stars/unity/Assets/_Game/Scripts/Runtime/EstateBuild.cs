@@ -246,6 +246,39 @@ namespace AshesToStars
             PlayerPrefs.Save();
         }
 
+        /// <summary>파산 강등(§18-5). 공사 중이면 취소하고, 본성은 1 아래로 안 내린다.</summary>
+        public static bool DowngradeOne()
+        {
+            Load();
+            Tick();
+            if (_to > _level)
+            {
+                _to = 0;
+                _doneUnix = 0;
+                _origSec = 0;
+                _jobCost = 0;
+            }
+            if (_level <= 1)
+            {
+                Save();
+                return false;
+            }
+            _level--;
+            Save();
+            return true;
+        }
+
+        public static void SetLevelForTest(int lv)
+        {
+            Load();
+            _level = Mathf.Clamp(lv, 1, MaxKeep);
+            _to = 0;
+            _doneUnix = 0;
+            _origSec = 0;
+            _jobCost = 0;
+            Save();
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_LV);

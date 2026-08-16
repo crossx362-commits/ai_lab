@@ -41,6 +41,8 @@ namespace AshesToStars
 
         static string SoftCapHubSubtitle()
         {
+            if (BankruptcySeize.ShowOnHub)
+                return BankruptcySeize.Line();
             if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
                 && !SoftCap.Blocked)
                 return SoftCap.HourLine();
@@ -108,6 +110,8 @@ namespace AshesToStars
                 _hubPage = 1;
             if (System.Environment.GetEnvironmentVariable(EstateMine.EnvShowSeize) == "1")
                 _hubPage = 1;
+            if (System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
+                _hubPage = 1;
             if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1")
                 _hubPage = 1;
             WorldStar.SeedRaceSenseQaIfRequested();
@@ -115,6 +119,7 @@ namespace AshesToStars
             EstateMine.SeedQaIfRequested();
             EstateMine.SeedRaceQaIfRequested();
             EstateMine.SeedSeizeQaIfRequested();
+            BankruptcySeize.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
@@ -208,6 +213,9 @@ namespace AshesToStars
             string keepSub = EstateBuild.KeepBusy
                 ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}"
                 : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+            if (BankruptcySeize.DidDowngrade ||
+                System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
+                keepSub += " · " + BankruptcySeize.KeepLine();
             if (DrawCard(cards[0], "본성", keepSub, "territory"))
                 _sub = Sub.본성;
             bool canPick = GameState.UnlockedTier > 0;
@@ -225,7 +233,10 @@ namespace AshesToStars
                 mineSub = mineRate + " · " + EstateMine.RaceLine();
             DrawCard(cards[2], "광산", mineSub, "field", locked: true);
             string warehouse = $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
-            if (!SoftCap.Blocked
+            if (BankruptcySeize.DidSeize ||
+                System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
+                warehouse += " · " + BankruptcySeize.ItemLine();
+            else if (!SoftCap.Blocked
                 && (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
                     || SoftCap.EarnedThisHour > 0))
                 warehouse += " · " + SoftCap.HourLine();

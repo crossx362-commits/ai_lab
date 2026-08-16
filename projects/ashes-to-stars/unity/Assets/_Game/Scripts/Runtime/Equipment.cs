@@ -258,6 +258,27 @@ namespace AshesToStars
             return n;
         }
 
+        /// <summary>파산 압류·자가검사용. 대장간 해금 없이 비장착 장비를 넣는다.</summary>
+        public static GearItem AddUnequippedForTest(string recipeId)
+        {
+            Load();
+            var recipe = RecipeOf(recipeId);
+            if (recipe == null) return null;
+            var gear = new GearItem
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Slot = recipe.Slot,
+                RecipeId = recipe.Id,
+                Name = recipe.Name,
+                HpMul = recipe.BaseHpMul,
+                Enhance = 0,
+                Grade = GearGrade.Common,
+            };
+            _items.Add(gear);
+            Save();
+            return gear;
+        }
+
         public static bool TryCraftLeatherArmor() => TryCraft(LeatherArmorRecipe);
 
         public static bool TryCraft(string recipeId)

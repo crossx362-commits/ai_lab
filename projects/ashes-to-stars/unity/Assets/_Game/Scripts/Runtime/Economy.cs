@@ -614,7 +614,7 @@ namespace AshesToStars
         // GameState.Earn의 수입 50% 자동 상환이다.
         //
         // 연체 제재의 **계산 상수**. 상태·화면 잠금은 GameState / EstateScreen / WorldMapScreen.
-        // 정직한 미완: 파산 건물 -1레벨 · 비장착 아이템 30% 압류. 연체 2회 생산 압류는 EstateMine.
+        // 파산 건물 −1·비장착 30%는 BankruptcySeize. 연체 2회 생산 압류는 EstateMine.
         // 거래서버·침략 본게임은 OUT — 문은 잠그되 그 안은 열지 않는다.
 
         /// <summary>시간당 이자 (§18-5: 0.5%/h = 일 12%).</summary>

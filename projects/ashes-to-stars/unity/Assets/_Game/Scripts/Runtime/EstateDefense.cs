@@ -334,6 +334,30 @@ namespace AshesToStars
             _loaded = false;
         }
 
+        /// <summary>파산 강등(§18-5). 공사 중이면 취소하고, 0 아래는 안 내린다.</summary>
+        public static int DowngradeAll()
+        {
+            Load();
+            Tick();
+            if (_busy >= 0)
+            {
+                _busy = -1;
+                _to = 0;
+                _doneUnix = 0;
+                _origSec = 0;
+                _jobCost = 0;
+            }
+            int n = 0;
+            for (int i = 0; i < _lv.Length; i++)
+            {
+                if (_lv[i] <= 0) continue;
+                _lv[i]--;
+                n++;
+            }
+            Save();
+            return n;
+        }
+
         public static void SetLevelForTest(Kind k, int lv)
         {
             Load();
