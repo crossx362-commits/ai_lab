@@ -29,11 +29,12 @@ namespace AshesToStars
         public const string Dungeon = "Dungeon";   // 던전 노드 맵(§7)
         public const string Battle = "Battle";
         public const string Result = "Result";
+        public const string VfxTest = "VfxTest";
 
         /// <summary>빌드 세팅에 등록할 순서. 0번이 시작 씬이 된다.</summary>
         public static readonly string[] All =
         {
-            Title, Estate, Field, Tower, WorldMap, Character, Party, Style, Dungeon, Battle, Result,
+            Title, Estate, Field, Tower, WorldMap, Character, Party, Style, Dungeon, Battle, Result, VfxTest,
         };
 
         /// <summary>§16 하단 고정바 5칸. 어떤 화면에서도 2번 클릭 안에 이동 가능해야 한다.</summary>
