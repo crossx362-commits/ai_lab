@@ -21,11 +21,14 @@ namespace AshesToStars
             get
             {
                 string train = DeathTraining.Line();
+                string scale = RaidScale.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
                         ? $"{SoloRaidClear.LastTitle} · 홀로 깬 레이드 {SoloRaidClear.Count} · 해금 T{GameState.UnlockedTier + 1}"
                         : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
+                if (!string.IsNullOrEmpty(scale))
+                    rest = scale + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -49,6 +52,7 @@ namespace AshesToStars
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             DeathTraining.SeedQaIfRequested();
+            RaidScale.SeedQaIfRequested();
             if (DeathTraining.QaPromptConsent)
             {
                 _showDeathConsent = true;
@@ -161,9 +165,20 @@ namespace AshesToStars
                 Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
                       GameFlow.BattleKind.보스, raidFloor);
             }
-            DrawCard(cards[2], $"{GameState.TowerFloor}층",
-                $"해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1}",
-                "tower", locked: true);
+            int lower = RaidScale.LowerFloor;
+            if (lower > 0)
+            {
+                if (DrawCard(cards[2], $"하위 레이드 {lower}층",
+                        RaidScale.FormatLine(lower), "damage"))
+                    Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
+                          GameFlow.BattleKind.보스, lower);
+            }
+            else
+            {
+                DrawCard(cards[2], $"{GameState.TowerFloor}층",
+                    $"해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1}",
+                    "tower", locked: true);
+            }
             DrawCard(cards[3], GameState.WalletText,
                 GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
                 "building_auction", locked: true);

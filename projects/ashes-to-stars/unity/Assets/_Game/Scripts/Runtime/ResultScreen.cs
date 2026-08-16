@@ -27,6 +27,7 @@ namespace AshesToStars
             SoloRaidClear.SeedQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             DeathTraining.SeedQaIfRequested();
+            RaidScale.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
@@ -126,6 +127,8 @@ namespace AshesToStars
             {
                 Info(r, _rowIndex++, "");  // 빈 줄
                 RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
+                if (RaidScale.Applies(GameFlow.BossFloor))
+                    Info(r, _rowIndex++, RaidScale.FormatLine(GameFlow.BossFloor));
                 if (Economy.RaceDropPercent() != Economy.HumanDropPercent || showRaceDrop)
                     Info(r, _rowIndex++, Economy.RaceDropLine());
                 if (Economy.RaceAdvMatPercent() != Economy.OtherAdvMatPercent || showAdvMat)

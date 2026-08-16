@@ -88,8 +88,10 @@ namespace AshesToStars
                 // 여기서 다시 1로 고정하면 그 결정이 화면에 도달하지 못한다.
                 bool dungeonBoss = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
                 int bossCount = dungeonBoss ? DungeonRun.Plan.BossCount : 1;
-                // 던전 종점 보스는 몬스터문서 §7의 **75초** 기준이다(탑 층수 스케일이 아니다)
-                boss.Begin(GameFlow.BossFloor, bossCount, dungeonBoss ? 75f : 0f);
+                // 던전 종점 보스는 몬스터문서 §7의 **75초** 기준이다(탑 층수 스케일이 아니다).
+                // 하위 레이드는 §18-10 계수 0.65로 목표 시간만 덮는다. BossBattle은 안 고친다.
+                float raidTime = dungeonBoss ? 75f : RaidScale.TargetSeconds(GameFlow.BossFloor);
+                boss.Begin(GameFlow.BossFloor, bossCount, raidTime);
                 _bossMaxHp = BossBattle.ActiveTotalHp;
             }
 
@@ -256,19 +258,9 @@ namespace AshesToStars
             _reward.Survived = true;
             _reward.BattleDurationSeconds = _t;
 
-            // 티어 결정 (§10-6: 탑 10층 돌파마다 필드 티어 상승)
-            // 프로토타입이므로 단순화: 층수 / 10을 티어로 (1~9층 = T0, 10~19층 = T1 등)
-            int tier = Mathf.Max(0, bossFloor / 10);
-            if (tier >= Economy.TierRevenueMultiplier.Length)
-                tier = Economy.TierRevenueMultiplier.Length - 1;
-
-            // 골드 지급 (§18-1 티어별 수익 곡선)
-            // 기본값: 티어별 1시간 수익 = TierRevenueMultiplier * 10,000 쿠퍼 (1 G/h = 10,000 쿠퍼)
-            // 보스 보상: 기본값의 약 15~20% (한판 15분 기준)
-            float tierRevenue = Economy.TierRevenueMultiplier[tier];
-            long baseGoldPerHour = (long)(tierRevenue * 10000); // 1시간 수익(쿠퍼)
-            float battleRewardRatio = 0.25f; // 보스는 1시간 수익의 25% (15분 기준)
-            _reward.GoldReward = (long)(baseGoldPerHour * battleRewardRatio);
+            // 골드 지급 (§18-1 티어별 수익 곡선). 하위 레이드는 §18-10 계수 0.65.
+            // 첫 클리어는 층/10 레거시를 유지한다.
+            _reward.GoldReward = RaidScale.Gold(bossFloor);
 
             // 드랍 출처 (§10-8). 던전 보스와 탑 보스는 **드랍 테이블이 다르다** —
             // ✅ §7·§10-8: 환생석·전직 증표는 탑 등반의 고유 가치라 던전에서는 나오지 않는다.
@@ -292,7 +284,7 @@ namespace AshesToStars
             // ⚠️ 절대 총량(battleExp)은 프로토타입 기준값이다: §18-6의 육성 소요시간 앵커
             //    (Lv20≈2h 등)에 맞춘 보정은 전투 빈도·시간 데이터가 필요해 유보한다.
             //    ✅ 확정인 것은 "분배가 레벨 비례"(§3)와 "곡선 100×Lv^2.2"(§18-6)이고, 둘 다 정확하다.
-            long battleExp = (long)(tierRevenue * 100f);
+            long battleExp = RaidScale.Exp(bossFloor);
             if (battleExp < 1) battleExp = 1;
             _reward.ExpGains = LifeSystem.AwardBattleExp(battleExp);
 
