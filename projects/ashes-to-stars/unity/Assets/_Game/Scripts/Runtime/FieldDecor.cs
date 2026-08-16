@@ -630,6 +630,11 @@ namespace AshesToStars
                         if (lot % 2 == 0 && !OnAnyRoad(fenceAt, 0.6f) &&
                             place(Idx("village_fence_0"), fenceAt, false)) n++;
 
+                        // 과수원 열매나무 — 반입돼 있었는데 목록에 없어 화면에 안 나왔다.
+                        var treeAt = at + nrm * 4.4f * s + d * 0.4f;
+                        if (lot % 3 == 0 && !OnAnyRoad(treeAt, 2.4f) &&
+                            place(Idx("village_tree_0"), treeAt, false)) n++;
+
                         // 생활 흔적 — 집 옆에 건초·수레. 전부 두면 지저분하다
                         if (lot % 4 == 0)
                         {
@@ -670,12 +675,14 @@ namespace AshesToStars
                 "field_tree_0", "field_tree_1", "field_tree_2", "field_tree_3",
                 "field_shrub_row_0",
                 // 마을 구성물(오너 지시 2026-08-15). 노이즈 산포에는 **섞이지 않는다** —
-                // `NATURE_COUNT`로 앞쪽 자연물만 흩뿌리고, 아래 10종은 `BuildVillage`가
+                // `ScatterCount`로 앞쪽 자연물만 흩뿌리고, 아래 11종은 `BuildVillage`가
                 // 정해진 자리에 세운다. 집이 풀처럼 흩뿌려지면 마을이 아니라 난개발이다.
+                // village_tree_0은 접두가 village_라 산포에 넣으면 여기서 끊긴다 — 집 옆에만.
                 "village_house_0", "village_house_1", "village_house_2",
                 "village_barn_0", "village_well_0",
                 "village_fence_0", "village_fence_1",
                 "village_haystack_0", "village_cart_0", "village_lamp_0",
+                "village_tree_0",
             },
 
             // ── 잿벌 (ash) ────────────────────

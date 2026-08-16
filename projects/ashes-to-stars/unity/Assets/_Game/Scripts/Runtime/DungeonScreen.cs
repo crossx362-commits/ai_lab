@@ -17,6 +17,7 @@ namespace AshesToStars
     {
         protected override string Title => DungeonRun.Active
             ? $"던전 · {DungeonRun.Plan.Family} 계열" : "던전";
+        protected override string BackgroundArt => "bg_dungeon";
 
         protected override string Subtitle => DungeonRun.Active
             ? $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +

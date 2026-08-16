@@ -21,6 +21,7 @@ namespace AshesToStars
 
         protected override string Title => "재와 별";
         protected override string Subtitle => "Ashes to Stars — 죽으면 캐릭터가 진짜 사라진다";
+        protected override string BackgroundArt => "bg_title";
         protected override bool ShowBottomBar => false;
 
         protected override void Body(Rect r)

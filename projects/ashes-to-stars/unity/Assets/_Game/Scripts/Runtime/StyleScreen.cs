@@ -21,6 +21,7 @@ namespace AshesToStars
     public class StyleScreen : GameScreen
     {
         protected override string Title => "전투 스타일";
+        protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
             "직업마다 따로 고른다(§3) · 선택은 저장되며 다음 전투부터 적용된다";
 

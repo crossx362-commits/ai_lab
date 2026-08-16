@@ -14,6 +14,7 @@ namespace AshesToStars
     {
         protected override string Title => "결과";
         protected override string Subtitle => "보상 정산 후 원래 화면으로";
+        protected override string BackgroundArt => "bg_result";
         protected override bool ShowBottomBar => false;
 
         int _rowIndex = 0;
