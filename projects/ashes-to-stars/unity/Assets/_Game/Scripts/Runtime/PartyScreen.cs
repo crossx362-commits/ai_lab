@@ -22,16 +22,24 @@ namespace AshesToStars
             $"1번 자리가 탱 자리다(§10-4 진형) · 부활초 {LifeSystem.GetRevivePotions()}/3";
 
         string _msg = "";
+        int _page;
 
         protected override void Body(Rect r)
         {
+            _page = DrawTabs(r, new[] { "편성", "출전" }, _page);
+            var page = UiPages.AfterTabs(r);
+            if (_page == 1)
+            {
+                DrawSortiePage(page);
+                return;
+            }
+
             var roster = LifeSystem.GetCharacters();
             int row = 0;
 
             if (roster.Count == 0)
             {
-                // 조용히 빈 목록을 그리지 않는다 — 로스터가 비어 있으면 그건 버그다(실제로 그랬다)
-                Info(r, row++, "[주의] 캐릭터가 하나도 없다 — 로스터 생성이 실패했다");
+                Info(page, row++, "[주의] 캐릭터가 하나도 없다 — 로스터 생성이 실패했다");
                 return;
             }
 
@@ -42,7 +50,7 @@ namespace AshesToStars
                 string label = (inParty ? "★ " : "") + $"{ch.Name} · {ch.Job}";
                 string sub = StatusOf(ch, i, inParty);
 
-                if (Row(r, row, label, "", leftPad: 56f))
+                if (Row(page, row, label, "", leftPad: 56f))
                 {
                     if (!PartyState.Toggle(i))
                         _msg = DefenseState.Contains(i)
@@ -52,26 +60,26 @@ namespace AshesToStars
                                 : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
-                DrawSlotChrome(r, row, ch, sub);
+                DrawSlotChrome(page, row, ch, sub);
                 row++;
             }
 
-            if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
+            if (!string.IsNullOrEmpty(_msg)) Info(page, row, _msg);
+        }
 
-            if (Row(r, row++, "출전", PartyState.CanSortie
-                    ? "이 편성으로 전투에 나간다" : "한 명도 편성되지 않았다"))
-            {
-                if (!PartyState.CanSortie) _msg = "최소 한 명은 편성해야 한다";
-                else GameFlow.Go(GameFlow.Field);
-            }
-
-            // ⚠️ 진입점을 여기 두는 이유: 화면을 만들어도 **갈 수 있는 버튼이 없으면**
-            //    그 화면은 없는 것과 같다(이 저장소에 실제 전례가 있다 — 렌더 점검은
-            //    화면 함수를 직접 불러 확인하므로 도달 불가를 영원히 못 잡는다).
-            if (Row(r, row++, "전투 스타일", "직업별로 공격형·방어형 등을 고른다(§3)"))
+        void DrawSortiePage(Rect r)
+        {
+            var cards = UiPages.Grid(r, 2, 2, 16f);
+            if (DrawCard(cards[0], "필드 출전",
+                    PartyState.CanSortie ? "이 편성으로 사냥에 나간다" : "한 명도 편성되지 않았다",
+                    "field", locked: !PartyState.CanSortie))
+                GameFlow.Go(GameFlow.Field);
+            if (DrawCard(cards[1], "전투 스타일", "직업별로 공격·방어·생존을 고른다", "damage"))
                 GameFlow.Go(GameFlow.Style);
-
-            if (Row(r, row, "돌아가기", "영지로")) GameFlow.Go(GameFlow.Estate);
+            DrawCard(cards[2], $"편성 {PartyState.Slots.Count}/{PartyState.MaxSlots}",
+                "1번 자리가 탱 자리다", "tank", locked: true);
+            if (DrawCard(cards[3], "영지로", "허브로 돌아간다", "territory"))
+                GameFlow.Go(GameFlow.Estate);
         }
 
         void DrawSlotChrome(Rect r, int index, CharacterRecord ch, string sub)

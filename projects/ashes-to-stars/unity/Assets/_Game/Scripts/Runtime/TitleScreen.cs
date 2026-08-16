@@ -27,9 +27,18 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            if (Row(r, 0, "게임 시작", "영지에서 시작한다 (§16 허브는 영지)")) GameFlow.Go(GameFlow.Estate);
-            Locked(r, 1, "이어하기", "저장 슬롯 없음 — 자동 저장이라 시작이 곧 이어하기");
-            if (Row(r, 2, "종료", "Application.Quit")) GameFlow.Quit();
+            var copy = new Rect(r.x, r.y + 8f, r.width * 0.54f, r.height - 16f);
+            Hint(new Rect(copy.x, copy.y, copy.width, 36f), "죽으면 캐릭터가 진짜 사라진다");
+            Hint(new Rect(copy.x, copy.y + 44f, copy.width, 90f),
+                 "5인 파티를 키워 탑을 오른다. 목숨 3번이면 캐릭터와 장비가 영구 삭제된다.");
+
+            var cells = UiPages.Grid(new Rect(r.x + r.width * 0.56f, r.y + 8f, r.width * 0.44f, r.height - 16f),
+                1, 3, 14f);
+            if (DrawCard(cells[0], "게임 시작", "영지에서 모든 콘텐츠가 출발한다", "territory"))
+                GameFlow.Go(GameFlow.Estate);
+            DrawCard(cells[1], "이어하기", "저장 슬롯 없음 — 시작이 곧 이어하기", "characters", locked: true);
+            if (DrawCard(cells[2], "종료", "게임을 닫는다"))
+                GameFlow.Quit();
         }
     }
 }

@@ -61,7 +61,7 @@ namespace AshesToStars
         protected const float BarH = 76f;
         protected const float RowH = 58f, RowGap = 14f, RowBtnW = 300f;
 
-        GUIStyle _h1, _h2, _btn, _btnLeft, _small, _navLabel, _panel;
+        GUIStyle _h1, _h2, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
         Texture2D _bg, _line, _accent, _scrim;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
@@ -107,11 +107,17 @@ namespace AshesToStars
         void Styles()
         {
             if (_h1 != null) return;
-            _h1 = new GUIStyle(GUI.skin.label) { fontSize = 46, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
-            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true, normal = { textColor = Dim } };
+            _h1 = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
+            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 17, wordWrap = true, normal = { textColor = Dim } };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
-            _small = new GUIStyle(GUI.skin.label) { fontSize = 15, normal = { textColor = Dim } };
+            _small = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = true, normal = { textColor = Dim } };
+            _cardTitle = new GUIStyle(_h1) { fontSize = 24 };
+            _tab = new GUIStyle(_small)
+            {
+                fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = Ink },
+            };
             // 하단 탭은 아이콘과 이름을 세로로 나눈다. 기본 label은 좌측 정렬이라
             // 아이콘 아래 이름이 제각각 밀려 보이므로, 탭 전용으로 가운데 정렬한다.
             _navLabel = new GUIStyle(_small) { alignment = TextAnchor.UpperCenter };
@@ -119,7 +125,7 @@ namespace AshesToStars
             _bg = Solid(new Color(0.05f, 0.05f, 0.08f));
             _line = Solid(new Color(1f, 1f, 1f, 0.10f));
             _accent = Solid(new Color(0.95f, 0.79f, 0.42f, 0.85f));
-            _scrim = Solid(new Color(0.03f, 0.03f, 0.05f, 0.72f));
+            _scrim = Solid(new Color(0.03f, 0.03f, 0.05f, 0.55f));
         }
 
         Texture2D _bgArt;
@@ -154,6 +160,7 @@ namespace AshesToStars
                     // **글자 가독성을 지킨다** — 배경이 아무리 좋아도 읽히지 않으면 손해다.
                     GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), art, ScaleMode.ScaleAndCrop);
                     GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _scrim);
+                    // 가독성 막은 유지하되 배경 그림이 죽지 않게 한 겹만.
                 }
                 else GUI.DrawTexture(new Rect(0, 0, REF_W, REF_H), _bg);
             }
@@ -368,6 +375,41 @@ namespace AshesToStars
             GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
                       // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
                       "잠김 — " + why, _small);
+        }
+
+        /// <summary>페이지 탭. 선택한 인덱스를 돌려준다.</summary>
+        protected int DrawTabs(Rect r, string[] names, int selected)
+        {
+            Styles();
+            if (names == null || names.Length == 0) return 0;
+            float w = Mathf.Min(140f, (r.width - UiPages.TabGap * (names.Length - 1)) / names.Length);
+            for (int i = 0; i < names.Length; i++)
+            {
+                var t = new Rect(r.x + i * (w + UiPages.TabGap), r.y, w, UiPages.TabH);
+                bool on = i == selected;
+                UiAtlas.Draw(t, UiAtlas.ButtonKey(false, on), on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
+                GUI.Label(t, names[i], _tab);
+                if (GUI.Button(t, GUIContent.none, GUIStyle.none)) selected = i;
+            }
+            return selected;
+        }
+
+        /// <summary>허브 카드. 잠기면 클릭되지 않고 사유를 카드 안에 적는다.</summary>
+        protected bool DrawCard(Rect card, string title, string sub, string iconKey = null, bool locked = false)
+        {
+            Styles();
+            var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.94f);
+            if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
+                UiAtlas.Draw(card, "panel", tint);
+            float icon = 64f;
+            if (!string.IsNullOrEmpty(iconKey))
+                UiAtlas.Draw(new Rect(card.x + 18f, card.y + 16f, icon, icon), iconKey, tint);
+            float textX = string.IsNullOrEmpty(iconKey) ? card.x + 18f : card.x + 18f;
+            GUI.Label(new Rect(textX, card.y + icon + 20f, card.width - 32f, 30f), title, _cardTitle);
+            GUI.Label(new Rect(textX, card.y + icon + 50f, card.width - 32f, 52f),
+                      locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
+            if (locked) return false;
+            return GUI.Button(card, GUIContent.none, GUIStyle.none);
         }
 
         /// <summary>본문 안의 정보 한 줄(버튼 아님).</summary>

@@ -49,6 +49,14 @@ namespace AshesToStars
                          && UiAtlas.RoleKey("정령사") == "buffer",
                 "[UiAtlasSelfCheck] 버퍼 계열 역할 키가 어긋난다");
 
+            var grid = UiPages.Grid(new Rect(0, 0, 400, 200), 2, 2, 16f);
+            Debug.Assert(grid.Length == 4 && Mathf.Approximately(grid[0].width, 192f)
+                         && Mathf.Approximately(grid[3].x, 208f),
+                "[UiAtlasSelfCheck] 2×2 카드 격자가 어긋난다");
+            var after = UiPages.AfterTabs(new Rect(0, 0, 100, 200));
+            Debug.Assert(after.y > 0 && after.height < 200,
+                "[UiAtlasSelfCheck] 탭 아래 본문 영역이 줄지 않는다");
+
             Debug.Assert(UiAtlas.BuildingKey("대장간") == "building_smith",
                 "[UiAtlasSelfCheck] 대장간 건물 키가 어긋난다");
             Debug.Assert(UiAtlas.BuildingKey("경매장") == "building_auction",

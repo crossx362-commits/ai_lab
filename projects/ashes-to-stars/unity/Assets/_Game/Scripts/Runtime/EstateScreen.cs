@@ -18,6 +18,7 @@ namespace AshesToStars
     {
         enum Sub { 없음, 대장간, 경매장, 영묘, 수비대 }
         Sub _sub = Sub.없음;
+        int _hubPage;
 
         /// <summary>경매장 해금 층(§12). 침략과 동시 해금이다.</summary>
         public const int AuctionUnlockFloor = 30;
@@ -77,16 +78,43 @@ namespace AshesToStars
                 return;
             }
 
-            if (Row(r, 0, "대장간", "장비 제작·강화 (§11)", UiAtlas.BuildingKey("대장간"))) _sub = Sub.대장간;
+            _hubPage = DrawTabs(r, new[] { "건물", "현황" }, _hubPage);
+            var page = UiPages.AfterTabs(r);
+            if (_hubPage == 1)
+            {
+                DrawEstateStatus(page);
+                return;
+            }
+
+            var cards = UiPages.Grid(page, 2, 2, 16f);
+            if (DrawCard(cards[0], "대장간", "제작·강화. 실패해도 장비는 남는다", UiAtlas.BuildingKey("대장간")))
+                _sub = Sub.대장간;
             string auctionLock = AuctionHubLockReason();
-            if (auctionLock != null)
-                Locked(r, 1, "경매장", auctionLock, UiAtlas.BuildingKey("경매장"));
-            else if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)", UiAtlas.BuildingKey("경매장")))
+            if (DrawCard(cards[1], "경매장",
+                    auctionLock ?? "로컬 장 · 등록 2%·체결 8% 소각",
+                    UiAtlas.BuildingKey("경매장"), locked: auctionLock != null))
                 _sub = Sub.경매장;
-            if (Row(r, 2, "영묘", $"환생 — 삭제된 캐릭터의 귀환 · 환생석 {LifeSystem.GetRebornStones()}개 (§4)",
+            if (DrawCard(cards[2], "영묘",
+                    $"환생석 {LifeSystem.GetRebornStones()}개 · 삭제된 캐릭터만",
                     UiAtlas.BuildingKey("영묘")))
                 _sub = Sub.영묘;
-            if (Row(r, 3, "수비대 배치", "침략 방어 (§13-5)", UiAtlas.BuildingKey("수비대"))) _sub = Sub.수비대;
+            if (DrawCard(cards[3], "수비대",
+                    $"배치 {DefenseState.Count}/{DefenseState.MaxSlots} · 출전에서 빠진다",
+                    UiAtlas.BuildingKey("수비대")))
+                _sub = Sub.수비대;
+        }
+
+        void DrawEstateStatus(Rect r)
+        {
+            var cards = UiPages.Grid(r, 2, 2, 16f);
+            DrawCard(cards[0], $"탑 {GameState.TowerFloor}층", "10층마다 필드·던전 티어가 오른다", "tower", locked: true);
+            DrawCard(cards[1], Economy.FormatCurrency(GameState.Wallet.Copper),
+                GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
+                "building_auction", locked: true);
+            DrawCard(cards[2], $"파티 {PartyState.Slots.Count}/{PartyState.MaxSlots}",
+                "편성은 캐릭터 탭 · 파티 화면", "characters", locked: true);
+            DrawCard(cards[3], $"수비 {DefenseState.Count}/{DefenseState.MaxSlots}",
+                "비어 있으면 침략 약탈이 늘어난다", "building_barracks", locked: true);
         }
 
         /// <summary>
