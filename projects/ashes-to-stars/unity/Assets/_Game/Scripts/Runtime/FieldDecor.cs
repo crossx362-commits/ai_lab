@@ -628,7 +628,7 @@ namespace AshesToStars
                         // 집 뒤(길 반대쪽) 텃밭 울타리 — 마당이 길 쪽에 있으면 실제와 반대다
                         var fenceAt = at + nrm * 2.6f * s;
                         if (lot % 2 == 0 && !OnAnyRoad(fenceAt, 0.6f) &&
-                            place(Idx("village_fence_0"), fenceAt, false)) n++;
+                            place(Idx(lot % 4 == 0 ? "village_fence_1" : "village_fence_0"), fenceAt, false)) n++;
 
                         // 과수원 열매나무 — 반입돼 있었는데 목록에 없어 화면에 안 나왔다.
                         var treeAt = at + nrm * 4.4f * s + d * 0.4f;

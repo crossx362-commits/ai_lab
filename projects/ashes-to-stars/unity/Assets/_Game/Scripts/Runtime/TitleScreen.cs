@@ -27,7 +27,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             if (Row(r, 0, "게임 시작", "영지에서 시작한다 (§16 허브는 영지)")) GameFlow.Go(GameFlow.Estate);
-            if (Row(r, 1, "이어하기", "저장 슬롯 — 수직 슬라이스에서 구현")) GameFlow.Go(GameFlow.Estate);
+            Locked(r, 1, "이어하기", "저장 슬롯 없음 — 자동 저장이라 시작이 곧 이어하기");
             if (Row(r, 2, "종료", "Application.Quit")) GameFlow.Quit();
         }
     }
