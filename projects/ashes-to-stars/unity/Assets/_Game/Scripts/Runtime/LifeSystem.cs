@@ -457,6 +457,25 @@ namespace AshesToStars
             return recruit;
         }
 
+        /// <summary>
+        /// 레이드 확률 보상. 기본 역할 + 특수 직업 플래그.
+        /// 직업명(사신 등)은 💡라 안 붙인다. 목숨 1·부활초/환생석 불가(§3).
+        /// </summary>
+        public static CharacterRecord AddSpecialRecruit(string job)
+        {
+            if (!IsBasicJob(job)) return null;
+            EnsureLoaded();
+            int n = 0;
+            for (int i = 0; i < _characters.Count; i++)
+                if (_characters[i].Name != null && _characters[i].Name.StartsWith("영입특수"))
+                    n++;
+            var recruit = new CharacterRecord($"영입특수{BasicJobLabel(job)}{n + 1}", job, 1);
+            recruit.IsSpecialJob = true;
+            _characters.Add(recruit);
+            Save();
+            return recruit;
+        }
+
         /// <summary>장착처럼 로스터 필드만 바뀐 뒤 즉시 남길 때 쓴다.</summary>
         public static void PersistRoster()
         {
