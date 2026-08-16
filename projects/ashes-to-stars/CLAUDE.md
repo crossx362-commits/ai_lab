@@ -73,8 +73,9 @@ ls unity/Temp/UnityLockfile
 
 ```bash
 python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py
+# 누락·낡음·생성폴더 잡동사니·Resources 미사용을 코드 소비 목록과 대조한다
 ```
-누락·낡음·잡동사니·meta 불일치를 코드 기준으로 판정한다(문서 기준 아님 — 코드가 실제로
+누락·낡음·잡동사니·미사용·meta 불일치를 코드 기준으로 판정한다(문서 기준 아님 — 코드가 실제로
 찾는 이름을 소스에서 뽑아 대조한다). **생성 사이클(QC 훅 옆)에 물려서 만들 때마다 돌게 할 것.**
 
 반입 후: `read_console`로 `[FieldDecor] 프랍 누락`류 경고 0건 확인 → Play + 스크린샷으로
@@ -105,6 +106,8 @@ python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py
 - **`Assets/_Game/Art`에 스프라이트를 두지 마라.** `Resources.Load`가 못 읽어 화면엔
   플레이스홀더만 나온다(2026-08-13). 런타임 아트는 `Assets/Resources/`만. 빈 함정 폴더는
   2026-08-16에 삭제했고 `game_asset_names.py`가 재발을 막는다.
+- **`Resources`에 코드가 안 읽는 그림을 두지 마라.** 검사기는 누락만 보다가 미사용 FX·아틀라스를
+  놓쳤다(2026-08-16). `game_asset_names.unused_resource_problems()`가 소비 목록과 대조한다.
 - **임시 대체물이 본물을 가리면 결함이 결함으로 안 보인다.** 스킬 이펙트 로딩이 상시 실패했는데
   (`Resources.Load<Sprite>`인데 png가 Texture2D로 임포트된다) 절차 생성 흰 원 폴백이 대신
   떠서, 몇 달 동안 "이펙트는 나온다"로 보였다. 폴백을 넣을 땐 **폴백이 떴다는 사실 자체가

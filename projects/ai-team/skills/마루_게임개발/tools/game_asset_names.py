@@ -15,10 +15,11 @@
 그래서 **이름의 권위는 문서가 아니라 코드**다 — 런타임이 실제로 `Resources.Load`에 넘기는
 문자열을 소스에서 뽑아 그것과 대조한다. 문서에 적어두는 방식은 코드가 바뀌면 조용히 어긋난다.
 
-판정 3종:
+판정 4종:
 1. **누락** — 코드가 찾는데 파일이 없다 (게임에서 안 그려진다)
 2. **낡음** — 반영본과 생성본이 같은 이름인데 내용이 다르다 (가장 안 보이는 사고)
 3. **잡동사니** — 생성 폴더에 자산이 아닌 것이 섞였다 (개수 대조를 망친다)
+4. **미사용** — Resources에 있는데 코드가 안 읽는다 (빌드에 실리고 검사기는 침묵했다)
 
 사용: `python3 game_asset_names.py [--strict]`   (--strict면 문제 발견 시 exit 1)
 """
@@ -64,12 +65,29 @@ def _array(path: Path, name: str) -> list[str]:
 
 
 def _method_literals(path: Path, name: str) -> list[str]:
-    """메서드 **정의** 이후 본문에서 리터럴을 뽑는다(반환 배열이 여러 갈래인 경우)."""
+    """메서드 **정의** 이후 본문에서 리터럴을 뽑는다(반환 배열이 여러 갈래인 경우).
+
+    고정 글자 창은 쓰지 않는다 — `GetPropNames` 주석이 늘자 1600자가 던전 프랍
+    앞에서 잘려, 코드가 읽는 그림을 미사용으로 오탐했다(2026-08-16).
+    """
     src = _src(path)
     m = re.search(r"\b(?:string\[\]|String\[\])\s+" + re.escape(name) + r"\s*\(", src)
     if not m:
         return []
-    return re.findall(r'"([a-z0-9_]+)"', src[m.start():m.start() + 1600])
+    brace = src.find("{", m.start())
+    if brace < 0:
+        return []
+    depth = 0
+    end = brace
+    for i, ch in enumerate(src[brace:], brace):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+    return re.findall(r'"([a-z0-9_]+)"', src[m.start():end])
 
 
 def expected() -> dict[str, list[str]]:
@@ -92,10 +110,97 @@ def expected() -> dict[str, list[str]]:
     if mob_dirs and mob_frames:
         for m in mob_dirs:
             out[f"sprites/{m}"] = [f"{m}_{f}.png" for f in mob_frames]
-    props = _method_literals(fd, "GetPropNames")
+    props = set(_method_literals(fd, "GetPropNames"))
+    # ArenaLayout은 GetPropNames에 없는 접두(cover·wall)로 던전 장애물을 세운다.
+    al = ASSETS / "_Game" / "Scripts" / "Runtime" / "ArenaLayout.cs"
+    for prefix in re.findall(r'"(dungeon_[a-z]+_)"', _src(al)):
+        for i in range(3):
+            props.add(f"{prefix}{i}")
     if props:
         out["props"] = sorted({f"{p}.png" for p in props})
+
+    # SpriteBank 루트 폴백·보스 실루엣 — 폴더가 아니라 sprites/ 바로 아래.
+    roots = _array(sb, "MOB_KEYS") + _array(sb, "BOSS_KEYS")
+    roots += re.findall(r'"(player_knight_0|elite_healer_0|boss_0)"', _src(sb))
+    if roots:
+        out["sprites"] = sorted({f"{n}.png" for n in roots})
+
+    rt = ASSETS / "_Game" / "Scripts" / "Runtime"
+    fx_names = (
+        _array(rt / "FxPool.cs", "FILES")
+        + _array(rt / "JobVfxSheets.cs", "Keys")
+        + _array(rt / "StatusVfxSheets.cs", "Files")
+    )
+    # CombatVfxAtlas.Keys는 아틀라스 *칸* 이름이다. 파일은 combat_vfx_atlas 한 장뿐.
+    if "fx/combat_vfx_atlas" in _src(rt / "CombatVfxAtlas.cs"):
+        fx_names.append("combat_vfx_atlas")
+    fx_folder = "FX" if (RES / "FX").is_dir() else "fx"
+    if fx_names:
+        out[fx_folder] = sorted({f"{n}.png" for n in fx_names})
+
+    bgs: list[str] = []
+    uis: list[str] = []
+    for p in rt.glob("*.cs"):
+        bgs += re.findall(r'BackgroundArt\s*=>\s*"(bg_[a-z]+)"', _src(p))
+        uis += re.findall(r'ResourceKey\s*=\s*"ui/([^"]+)"', _src(p))
+    if bgs:
+        out["bg"] = sorted({f"{n}.png" for n in bgs})
+    if uis:
+        out["ui"] = sorted({f"{n}.png" for n in uis})
+
+    grounds: list[str] = []
+    for p in (
+        ASSETS / "Scripts" / "GroundBuilder.cs",
+        ASSETS / "Scripts" / "W3Party.cs",
+        ASSETS / "Scripts" / "SpriteBank.cs",
+        rt / "NoiseTerrain.cs",
+    ):
+        grounds += re.findall(r'"ground/([a-z0-9_]+)"', _src(p))
+    if grounds:
+        out["ground"] = sorted({f"{n}.png" for n in grounds})
     return out
+
+
+def _norm_res_rel(rel: str) -> str:
+    """Resources 상대경로를 소문자로 정규화. Unity는 fx/FX를 같은 폴더로 본다."""
+    rel = rel.replace("\\", "/").lower()
+    if rel.startswith("fx/"):
+        return rel
+    return rel
+
+
+def consumed_relpaths() -> set[str]:
+    """코드가 읽는 PNG의 Resources 상대경로(소문자, 확장자 포함)."""
+    out: set[str] = set()
+    for folder, names in expected().items():
+        folder_n = _norm_res_rel(folder)
+        for n in names:
+            out.add(f"{folder_n}/{n.lower()}")
+    return out
+
+
+def unused_resource_problems(res: Path | None = None) -> list[str]:
+    """Resources에 있는데 코드가 안 읽는 PNG.
+
+    2026-08-16: 미사용 FX 28장·estate 통·battle_background_atlas가 Resources에
+    남아 있었는데, 검사기는 누락만 봐서 침묵했다. 목록에 있으면 쓰는 줄 안다.
+    """
+    root = res or RES
+    if not root.is_dir():
+        return []
+    consumed = consumed_relpaths()
+    unused: list[str] = []
+    for p in sorted(root.rglob("*.png")):
+        rel = p.relative_to(root).as_posix()
+        if _norm_res_rel(rel) not in consumed:
+            unused.append(rel)
+    if not unused:
+        return []
+    return [
+        f"미사용 Resources {len(unused)}개 — {', '.join(unused[:5])}"
+        + (" …" if len(unused) > 5 else "")
+        + "  → 코드가 안 읽는다. 생성 원본은 art/out_* 에 두고 Resources에 두지 마라"
+    ]
 
 
 def art_trap_problems() -> list[str]:
@@ -271,6 +376,7 @@ def main() -> None:
     problems += scale_table_problems()
     problems += untracked_asset_problems()
     problems += art_trap_problems()
+    problems += unused_resource_problems()
 
     if not problems:
         print("✅ 네이밍·반영 이상 없음")

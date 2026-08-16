@@ -10,6 +10,17 @@
 
 ---
 
+## Resources 소비 대조·미사용 검사 (2026-08-16)
+
+- 검토: `unity/Assets/Resources` 267png / 45.8MB. 코드 `Resources.Load`·`GetPropNames`·
+  `FxPool`/`JobVfx`/`StatusVfx`·아틀라스·`BackgroundArt`와 1:1 — 고아 0, 누락 0.
+- 남긴 것: ash/던전 프랍(GetPropNames에 있음), SpriteBank 폴백 10장, mob01 22장,
+  FX 22장(전부 로드). 생성 원본 `art/out_*`는 게임이 안 읽으므로 그대로.
+- 잔재: `unity_meas`에 이전 정리분 42장이 남아 있었음 → `sync_meas.sh`로 원본과 맞춤
+  (`unity_meas`는 git 추적 밖).
+- 재발 방지: `game_asset_names.unused_resource_problems()` + 회귀
+  `tests/test_game_asset_unused_resources.py`(고의 미사용 PNG 주입 시 FAIL).
+
 ## UI 프레임 소비처 — 버튼 3상태·9-slice·체력바 (2026-08-16)
 
 - 클로드 주간 한도 세션이 배경 6장 반입 직후 「UI 프레임이 다음」에서 끊김.
