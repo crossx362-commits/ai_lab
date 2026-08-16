@@ -71,6 +71,13 @@ namespace AshesToStars
         private const int RecoveryDurationSeconds = 86400;  // 1일 = 24시간 = 86,400초
         private const string K_ROSTER = "ats.roster";
         private const int InitialRevivePotions = 3;
+        private static readonly Dictionary<string, string[]> FirstAdvancementByBasicJob = new()
+        {
+            { "탱", new[] { "수호기사", "광전사" } },
+            { "딜", new[] { "검사", "궁수", "마법사", "소환사" } },
+            { "힐", new[] { "사제", "드루이드" } },
+            { "버퍼", new[] { "음유시인", "주술사", "정령사" } },
+        };
 
         // 테스트용 배속 상수 (기본 1.0 = 실제 시간)
         // Inspector에서 조정 가능하려면 더 큰 구조가 필요하므로, 여기선 고정값 유지
@@ -203,6 +210,41 @@ namespace AshesToStars
         {
             EnsureLoaded();
             return _characters;
+        }
+
+        // ========== 전직 (§3 기본직업 → Lv20 1차) ==========
+
+        /// <summary>현재 기본직업에서 선택 가능한 1차 직업명. 전직 완료·잘못된 입력은 빈 목록.</summary>
+        public static IReadOnlyList<string> FirstAdvancementOptions(CharacterRecord character)
+        {
+            if (character == null || character.IsDeleted || character.Advancement != AdvancementTier.Basic
+                || !FirstAdvancementByBasicJob.TryGetValue(character.Job, out string[] options))
+                return Array.Empty<string>();
+            return options;
+        }
+
+        /// <summary>
+        /// Lv20 기본직업 캐릭터를 역할에 맞는 1차 직업으로 전환한다.
+        /// 재료·시험은 다음 슬라이스에서 성공 확인 시 이 진입점 앞에 연결한다.
+        /// </summary>
+        public static bool TryFirstAdvance(CharacterRecord character, string targetJob)
+        {
+            EnsureLoaded();
+            if (character == null || character.IsDeleted || character.Level < 20
+                || character.Advancement != AdvancementTier.Basic || !_characters.Contains(character))
+                return false;
+
+            var options = FirstAdvancementOptions(character);
+            bool allowed = false;
+            for (int i = 0; i < options.Count; i++)
+                if (options[i] == targetJob) { allowed = true; break; }
+            if (!allowed) return false;
+
+            character.Job = targetJob;
+            character.Advancement = AdvancementTier.First;
+            Save();
+            Debug.Log($"[전직] {character.Name}: {targetJob} 1차 전직 완료");
+            return true;
         }
 
         // ========== 성장 (§3 경험치 분배 · §18-6 레벨 곡선) ==========

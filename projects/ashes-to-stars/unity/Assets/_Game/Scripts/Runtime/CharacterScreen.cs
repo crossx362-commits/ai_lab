@@ -15,8 +15,8 @@ namespace AshesToStars
         protected override string Title => "캐릭터";
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
-        // 전직·합성은 아직 시스템이 없어(전직 재료·패시브 흡수 미구현) 아래 잠김으로 정직하게 남긴다.
-        protected override string Subtitle => "레벨·목숨·부활초 관리(§3·§4). 전직·합성은 준비 중 — 아래 잠김 표시(§3)";
+        // 1차 직업 선택은 연결됐다. 재료·시험과 합성은 후속 슬라이스라 정직하게 구분한다.
+        protected override string Subtitle => "레벨·목숨·부활초 관리(§3·§4). Lv20 1차 직업 선택 가능";
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
         static string ExpText(CharacterRecord ch) =>
@@ -25,6 +25,7 @@ namespace AshesToStars
                 : $"Lv.{ch.Level} · EXP {ch.Exp}/{LifeSystem.ExpToNext(ch.Level)}";
 
         int _selectedCharacter = -1;
+        bool _choosingAdvancement;
 
         protected override void Body(Rect r)
         {
@@ -35,6 +36,24 @@ namespace AshesToStars
                 if (_selectedCharacter < characters.Count)
                 {
                     var ch = characters[_selectedCharacter];
+
+                    if (_choosingAdvancement)
+                    {
+                        var options = LifeSystem.FirstAdvancementOptions(ch);
+                        Info(r, 0, $"{ch.Name} ({ch.Job}) · 1차 전직 선택");
+                        for (int i = 0; i < options.Count; i++)
+                        {
+                            string targetJob = options[i];
+                            if (Row(r, i + 1, targetJob, $"{ch.Job} → {targetJob} · 1차 전직"))
+                            {
+                                LifeSystem.TryFirstAdvance(ch, targetJob);
+                                _choosingAdvancement = false;
+                            }
+                        }
+                        if (Row(r, 5, "← 선택 취소", "캐릭터 상세로 돌아간다"))
+                            _choosingAdvancement = false;
+                        return;
+                    }
 
                     Info(r, 0, $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
 
@@ -70,8 +89,30 @@ namespace AshesToStars
                         Info(r, 3, "부활초 없음 — 던전·레이드에서 획득 가능(§4)");
                     }
 
-                    if (Row(r, 4, "← 목록으로", "캐릭터 목록으로 돌아간다"))
+                    int advancementRow = 4;
+                    if (ch.IsDeleted)
+                    {
+                        Locked(r, advancementRow++, "1차 전직", "삭제된 캐릭터는 전직할 수 없다(§3·§4)");
+                    }
+                    else if (ch.Advancement == AdvancementTier.Basic && ch.Level < 20)
+                    {
+                        Locked(r, advancementRow++, "1차 전직", $"Lv20 필요 — 현재 Lv.{ch.Level}(§3)");
+                    }
+                    else if (ch.Advancement == AdvancementTier.Basic)
+                    {
+                        if (Row(r, advancementRow++, "1차 전직 선택", "역할별 직업 선택 — 재료·시험은 다음 슬라이스"))
+                            _choosingAdvancement = true;
+                    }
+                    else
+                    {
+                        Info(r, advancementRow++, $"전직 단계: {(ch.Advancement == AdvancementTier.First ? "1차" : "2차")}");
+                    }
+
+                    if (Row(r, advancementRow, "← 목록으로", "캐릭터 목록으로 돌아간다"))
+                    {
                         _selectedCharacter = -1;
+                        _choosingAdvancement = false;
+                    }
                 }
                 return;
             }
@@ -87,7 +128,10 @@ namespace AshesToStars
                     ? "삭제됨"
                     : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
                 if (Row(r, i, name, sub))
+                {
                     _selectedCharacter = i;
+                    _choosingAdvancement = false;
+                }
             }
 
             Info(r, allCharacters.Count + 1, "목숨 카운트가 여기서 보인다(§3·§4)");
@@ -96,11 +140,7 @@ namespace AshesToStars
                     $"최대 5인(§9) · 지금 {PartyState.Slots.Count}명 편성됨 — 구성이 생존을 가른다(§21-1i)"))
                 GameFlow.Go(GameFlow.Party);
 
-            // 전직·합성(§3)은 아직 시스템이 없다(레벨업·전직 재료·패시브 전부 미구현).
-            // 부제가 광고하던 기능을 화면에서 조용히 빼면 "고장난 게임"으로 읽히므로,
-            // 영지·월드맵과 같은 잠김 표시로 "준비 중"임을 명시한다(오너 A지침 2026-08-15).
-            Locked(r, allCharacters.Count + 3, "전직",
-                   "준비 중 — 레벨·전직 재료·전직 시험이 필요하다(§3)");
+            Info(r, allCharacters.Count + 3, "전직: 캐릭터를 선택하면 Lv20부터 1차 직업 선택(§3)");
             Locked(r, allCharacters.Count + 4, "합성",
                    "준비 중 — 1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다(§3)");
         }

@@ -69,6 +69,52 @@ namespace AshesToStars
                   && legacy[0].Advancement == AdvancementTier.First && legacy[0].Exp == 25,
                   "기존 1차 직업 7필드 저장을 1차 완료로 하위호환");
 
+            // ①-B Lv20 1차 전직 — 역할에 맞는 선택지만 허용하고 결과가 다음 판에도 남는다.
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            var candidate = LifeSystem.GetCharacters()[0]; // 기본직업 탱
+            Check(LifeSystem.FirstAdvancementOptions(candidate).Count == 2
+                  && LifeSystem.FirstAdvancementOptions(candidate)[0] == "수호기사"
+                  && LifeSystem.FirstAdvancementOptions(candidate)[1] == "광전사",
+                  "탱 1차 선택지는 수호기사·광전사 2종(§3)");
+            var dpsOptions = LifeSystem.FirstAdvancementOptions(LifeSystem.GetCharacters()[1]);
+            Check(dpsOptions.Count == 4 && dpsOptions[0] == "검사" && dpsOptions[1] == "궁수"
+                  && dpsOptions[2] == "마법사" && dpsOptions[3] == "소환사",
+                  "딜 1차 선택지 4종(검사·궁수·마법사·소환사)");
+            var healOptions = LifeSystem.FirstAdvancementOptions(LifeSystem.GetCharacters()[3]);
+            Check(healOptions.Count == 2 && healOptions[0] == "사제" && healOptions[1] == "드루이드",
+                  "힐 1차 선택지 2종(사제·드루이드)");
+            var bufferOptions = LifeSystem.FirstAdvancementOptions(LifeSystem.GetCharacters()[4]);
+            Check(bufferOptions.Count == 3 && bufferOptions[0] == "음유시인"
+                  && bufferOptions[1] == "주술사" && bufferOptions[2] == "정령사",
+                  "버퍼 1차 선택지 3종(음유시인·주술사·정령사)");
+            candidate.Level = 19;
+            Check(!LifeSystem.TryFirstAdvance(candidate, "수호기사")
+                  && candidate.Job == "탱" && candidate.Advancement == AdvancementTier.Basic,
+                  "Lv19는 1차 전직 불가 — 캐릭터 상태 불변");
+            candidate.Level = 20;
+            Check(!LifeSystem.TryFirstAdvance(candidate, "마법사")
+                  && candidate.Job == "탱" && candidate.Advancement == AdvancementTier.Basic,
+                  "기본직업과 다른 계열의 1차 직업 선택 거부");
+            var outsider = new CharacterRecord("외부", "탱", 20);
+            Check(!LifeSystem.TryFirstAdvance(outsider, "수호기사"),
+                  "로스터에 없는 캐릭터는 전직 불가");
+            candidate.IsDeleted = true;
+            Check(LifeSystem.FirstAdvancementOptions(candidate).Count == 0
+                  && !LifeSystem.TryFirstAdvance(candidate, "수호기사"),
+                  "삭제된 캐릭터는 선택지 없음·전직 불가");
+            candidate.IsDeleted = false;
+            Check(LifeSystem.TryFirstAdvance(candidate, "광전사")
+                  && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
+                  "Lv20 탱이 광전사로 1차 전직 — 직업명·단계 함께 전환");
+            Check(!LifeSystem.TryFirstAdvance(candidate, "수호기사")
+                  && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
+                  "이미 1차 전직한 캐릭터는 반복 전직 불가");
+            LifeSystem.ForgetInMemoryForTest();
+            candidate = LifeSystem.GetCharacters()[0];
+            Check(candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
+                  "재기동 후에도 1차 전직 결과 유지");
+
             GameState.ResetAll();
             LifeSystem.ResetAll();
             PartyState.ResetForTest();
