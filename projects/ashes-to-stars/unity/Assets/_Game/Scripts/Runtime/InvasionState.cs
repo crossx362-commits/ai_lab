@@ -19,6 +19,10 @@ namespace AshesToStars
         public const long DefenseRecoverSeconds = GuardSeconds;
         public const string EnvShow = "QA_INVASION_SHIELD";
         public const string EnvNo = "QA_NO_INVASION_SHIELD";
+        public const string EnvShowLoot = "QA_RACE_LOOT";
+        public const string EnvNoLoot = "QA_NO_RACE_LOOT";
+        public const int HumanLootPercent = 100;
+        public const int BeastLootPercent = 120;
 
         const string K_PENDING = "ats.invasion.pending";
         const string K_PAID = "ats.invasion.paid";
@@ -106,13 +110,51 @@ namespace AshesToStars
         public static long DefeatCost() =>
             Economy.GetActionCost("InvasionAttackDefeat", GameState.Tier);
 
-        /// <summary>승자 보상은 상대 영지 레벨(여기선 내 탑 층) 기준. 창고를 비워도 준다(§15 1-b).</summary>
+        /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForceRaceLootMul;
+
+        public static bool LootRaceBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoLoot) == "1";
+
+        /// <summary>§18-9 수인 약탈량 +20%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static int RaceLootPercent()
+        {
+            if (LootRaceBlocked) return HumanLootPercent;
+            if (ForceRaceLootMul > 0f) return Math.Max(1, (int)Math.Round(ForceRaceLootMul * 100f));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].약탈량배율 > 0f)
+                        return Math.Max(1, (int)Math.Round(races[i].약탈량배율 * 100f));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.수인 ? BeastLootPercent : HumanLootPercent;
+        }
+
+        public static long ApplyRaceLoot(long copper) => copper * RaceLootPercent() / 100;
+
+        public static string RaceLootLine()
+        {
+            if (RaceLootPercent() == BeastLootPercent && RacePrefs.Get() == RaceId.수인)
+                return "수인 약탈 +20%(§18-9)";
+            return "종족 약탈 배율 없음";
+        }
+
+        /// <summary>승자 보상은 상대 영지 레벨(여기선 내 탑 층) 기준. 창고를 비워도 준다(§15 1-b).
+        /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.</summary>
         public static long LootCopper()
         {
             long baseLoot = Economy.GetActionCost("InvasionAttack", GameState.Tier) * 3;
             if (baseLoot < 1000) baseLoot = 1000;
             int empty = DefenseState.MaxSlots - DefenseState.Count;
-            return EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10);
+            return ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
         }
 
         public static bool TryBegin()
@@ -170,6 +212,22 @@ namespace AshesToStars
             Save();
         }
 
+        /// <summary>시각 QA. QA_RACE_LOOT=1이면 수인·30층·보호막 없음으로 침략 카드를 연다.</summary>
+        public static void SeedRaceLootQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowLoot) != "1") return;
+            if (LootRaceBlocked) return;
+            Load();
+            RacePrefs.Set(RaceId.수인);
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            if (GameState.Wallet.Copper < SortieCost())
+                GameState.Earn(SortieCost());
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_PENDING);
@@ -179,6 +237,7 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey(K_SHIELD);
             PlayerPrefs.Save();
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            ForceRaceLootMul = 0f;
             _pending = false;
             _paid = 0;
             _lastLoot = 0;

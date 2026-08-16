@@ -24,6 +24,7 @@ namespace AshesToStars
         [Tooltip("PvE 사망 후 회복 시간(시간) — §18-8")] public float 회복시간 = 24f;
         [Tooltip("영지 생산 배율")] public float 영지생산배율 = 1f;
         [Tooltip("몬스터 드랍률 배율")] public float 드랍률배율 = 1f;
+        [Tooltip("침략 약탈량 배율")] public float 약탈량배율 = 1f;
         [Tooltip("경매 수수료(%) — 기본 10")] public float 경매수수료 = 10f;
 
         [Header("고유 메커니즘")]

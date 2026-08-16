@@ -38,6 +38,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             InvasionState.SeedQaIfRequested();
+            InvasionState.SeedRaceLootQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
@@ -52,8 +53,11 @@ namespace AshesToStars
                 "worldmap", locked: true);
 
             string invasionLock = InvasionHubLockReason();
+            string invasionOpen = $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)";
+            if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)
+                invasionOpen = $"{InvasionState.RaceLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
             if (DrawCard(cards[1], "침략",
-                    invasionLock ?? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)",
+                    invasionLock ?? invasionOpen,
                     "damage", locked: invasionLock != null)
                 && invasionLock == null)
                 GameFlow.TryGoInvasion();

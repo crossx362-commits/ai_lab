@@ -262,8 +262,13 @@ namespace AshesToStars
             {
                 long loot = InvasionState.Settle(survived);
                 if (survived)
+                {
+                    string lootLine = InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent
+                        ? " · " + InvasionState.RaceLootLine()
+                        : "";
                     GameFlow.LastBattleSummary =
-                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)} ({_t:F1}초)";
+                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)}{lootLine} ({_t:F1}초)";
+                }
                 else
                     ApplyDefeatOnce($"침략 패배 — {_t:F1}초", isPvp: true);
                 GameFlow.Go(GameFlow.Result);
