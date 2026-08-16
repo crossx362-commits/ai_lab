@@ -84,10 +84,10 @@ namespace AshesToStars
         public static long BaseCost() =>
             Economy.GetActionCost(ActionKey, GameState.UnlockedTier);
 
-        /// <summary>하위면 누진, 아니면 기준값. 종족 80%는 GetActionCost가 먼저 읽는다.</summary>
+        /// <summary>하위면 누진, 아니면 기준값. 10층은 RaidCost가 0.15를 읽는다.</summary>
         public static long Cost(int floor)
         {
-            long raw = BaseCost();
+            long raw = RaidCost.Copper(floor);
             if (!Applies(floor)) return raw;
             return Apply(raw);
         }

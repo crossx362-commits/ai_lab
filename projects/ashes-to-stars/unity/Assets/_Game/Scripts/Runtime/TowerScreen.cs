@@ -24,6 +24,7 @@ namespace AshesToStars
                 string scale = RaidScale.Line();
                 string pool = RaidBossPool.Line();
                 string reroll = RaidReroll.Line();
+                string mega = RaidCost.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
@@ -35,6 +36,8 @@ namespace AshesToStars
                     rest = pool + " · " + rest;
                 if (!string.IsNullOrEmpty(reroll))
                     rest = reroll + " · " + rest;
+                if (!string.IsNullOrEmpty(mega))
+                    rest = mega + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -61,6 +64,7 @@ namespace AshesToStars
             RaidScale.SeedQaIfRequested();
             RaidBossPool.SeedQaIfRequested();
             RaidReroll.SeedQaIfRequested();
+            RaidCost.SeedQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
@@ -175,14 +179,16 @@ namespace AshesToStars
             if (DrawCard(cards[0], "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)", "tower"))
                 Enter(Economy.GetActionCost("TowerNormalFloor", GameState.UnlockedTier),
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
-            if (DrawCard(cards[1], "레이드 (5층 단위)",
-                    DeathTraining.IsTraining
-                        ? DeathTraining.Line()
-                        : "5층마다 보스, 10층 단위는 대보스(§9)", "damage"))
             {
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
-                Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
-                      GameFlow.BattleKind.보스, raidFloor);
+                string mega = RaidCost.FormatLine(raidFloor);
+                string raidOpen = DeathTraining.IsTraining
+                    ? DeathTraining.Line()
+                    : (string.IsNullOrEmpty(mega)
+                        ? "5층마다 보스, 10층 단위는 대보스(§9)"
+                        : mega + " · 5층마다 보스, 10층 단위는 대보스(§9)");
+                if (DrawCard(cards[1], "레이드 (5층 단위)", raidOpen, "damage"))
+                    Enter(RaidCost.Copper(raidFloor), GameFlow.BattleKind.보스, raidFloor);
             }
             int lower = RaidScale.LowerFloor;
             if (lower > 0)

@@ -603,6 +603,7 @@ namespace AshesToStars
             RaidScale.ResetForTest();
             RaidBossPool.ResetForTest();
             RaidReroll.ResetForTest();
+            RaidCost.ResetForTest();
             BankruptcySeize.ResetForTest();
             Rebirth.ResetForTest();
             Memorial.ResetForTest();

@@ -6,15 +6,41 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-17 · 루프(필드 자동사냥 일정)
+최종 갱신: 2026-08-17 · 루프(10층 대보스 입장 0.15 G/h)
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
-1. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모 기록·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정은 닫음. 허브 카드 여백은 다른 세션이 작업 중일 수 있다. 선택 카드 글자가 좁다. 전체 「다른 게임만큼」은 사람 육안.
-2. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`이 최고 층·마지막 출전·사망 원인·장착 이름을 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간·마지막 파티 동료는 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체는 💡/이미 `BossBattle` 상한. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
+1. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모 기록·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h는 닫음. 허브 카드 여백은 다른 세션이 작업 중일 수 있다. 선택 카드 글자가 좁다. 전체 「다른 게임만큼」은 사람 육안.
+2. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`이 최고 층·마지막 출전·사망 원인·장착 이름을 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간·마지막 파티 동료는 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체는 💡/이미 `BossBattle` 상한. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 필드 자동사냥 일정 — 허브에서도 돌고 사망은 없다.**
+> **이번 이터 결과(코드/실행): 10층 대보스 입장 — 0.15 G/h. 5층은 0.10.**
+> - 큐 1번은 사람 육안·다른 세션 가능이라 대기하지 않음. §18-2 ✅
+>   `5층 중간 레이드 0.10` · `10층 대보스 0.15`.
+>   `Tower10Boss` 키는 표에만 있고 `GetActionCost` 호출이 0곳이었다.
+>   탑 레이드 버튼은 항상 `Tower5BossRaid`만 냈다.
+> - **생산 소비처**: `RaidCost.ActionKey`/`Copper`/`IsMega`/`Line`/`FormatLine`/
+>   `SeedQaIfRequested`. `TowerScreen` 레이드 카드가 `Copper`를 낸다.
+>   자막·카드가 `Line`을 읽는다. `RaidReroll.Cost`도 층을 넘긴다.
+>   `QA_NO_RAID_MEGA=1`이면 10층도 5층 요금. `QA_RAID_MEGA=1`은 10층.
+>   `W3Party`는 안 건드렸다.
+> - **통과 기준**: T1 5층=1000 · 10층=1500 · 15층=1000. T2 10층=2400.
+>   드워프 1200. 차단하면 1000. 화면 `대보스 15실버(§18-2)`.
+> - **TDD/실행**: `unity_meas` `RaidCostSelfCheck` 전항 PASS
+>   (`raid_cost_selfcheck.log`). `RaidRerollSelfCheck` 회귀 PASS.
+> - **화면**(직접 열음, 빈 화면 아님, `QA_RAID_MEGA=1`):
+>   `raid_mega_shots/qa_go:Tower.png` 1009243B — 탑 · 10층,
+>   자막 `대보스 15실버(§18-2)`,
+>   카드 `레이드 (5층 단위)` 같은 문구 · `5층마다 보스, 10층 단위는 대보스(§9)`.
+>   옛 5층 요금만 쓰던 카드가 아님.
+> - **네거티브**: `ActionKey`를 항상 5층 키로 되돌리면 FAIL 12
+>   (`raid_cost_negctrl.log` — T1 10층 1000). `QA_NO`면 1000.
+> - **정직한 미완**: 하위 카드는 여전히 5층만(`LowerRaidFloor=5`).
+>   샷 지갑 1168골드는 이전 QA 잔재(대보스 문구는 보임).
+>   원본 에디터 PID 75776은 죽이지 않았고 사본으로 빌드·촬영.
+> - **코드** (커밋 직후 해시). `W3Party`는 안 건드렸다.
+
+> **이전 이터 결과(코드/실행): 필드 자동사냥 일정 — 허브에서도 돌고 사망은 없다.**
 > - 큐 1번은 사람 육안·다른 세션 가능이라 대기하지 않음. §6 ✅
 >   `자동으로 돌아가는 부분(자동사냥 등)은 유저가 스케줄을 정해 지시 가능`.
 >   필드 4칸에는 사냥·던전·레이드·저체력만 있어 일정 소비처가 0곳이었다.
