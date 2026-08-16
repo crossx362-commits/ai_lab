@@ -1,15 +1,40 @@
 # 재와 별 아트 산출물 인덱스
 
-아트 생성 작업물은 생성 원본과 Unity 런타임 반입물을 분리한다. `out_*` 폴더는 재생성·후처리용 원본이며, 게임은 `unity/Assets/Resources/` 아래 파일만 읽는다.
+> 최종 점검: 2026-08-16 · 제작 방식: **힉스필드 2D 픽셀아트**
+
+아트 생성 작업물은 생성 원본과 Unity 런타임 반입물을 분리한다. `out_*` 폴더는 재생성·후처리용 원본이며, 게임은 `unity/Assets/Resources/` 아래 파일만 읽는다. 블렌더 이미지는 과거 플레이스홀더와 네거티브 비교본으로만 유지하며 신규 최종 아트 제작에 사용하지 않는다.
 
 ## 런타임 연결 현황
 
-| 종류 | 생성·후처리 원본 | Unity 반입 경로 | 소비 코드 | 상태 |
+| 종류 | 생성·후처리 원본 | Unity 반입 경로 | 소비 코드 | 점검 상태 |
 |---|---|---|---|---|
-| 몬스터 4종 | `out_p2/frames_*` | `unity/Assets/Resources/sprites/mob_{chaser,charger,ranged,swarmer}/` | `Assets/Scripts/SpriteBank.cs` | 4종 × 22프레임 |
-| 화면 배경 6종 | `out_p8_bg/bg_*.png` | `unity/Assets/Resources/bg/bg_*.png` | `Assets/_Game/Scripts/Runtime/GameScreen.cs` | `Resources.Load("bg/" + key)` |
-| 캐릭터 직업 아트 | `out_char*/` | `unity/Assets/Resources/sprites/` | `SpriteBank.cs` | 기존 연결 유지 |
-| 마을·이펙트·나무 | `out_p3_village/`, `out_p4_fx/`, `out_p5_trees/` | `unity/Assets/Resources/props/`, `fx/` | `FieldDecor.cs` 등 | 기존 반입 경로 유지 |
+| 기본 캐릭터 4종 | `out_char/` | `unity/Assets/Resources/sprites/{tank,dps,healer,buffer}/` | `SpriteBank.cs` | ✅ 4종 × 13프레임 반입·전투 표시 |
+| 마법사 | `out_char_mage/frames/` | `unity/Assets/Resources/sprites/mage/` | `SpriteBank.cs` | ✅ 13프레임 반입·전투 표시 |
+| 몬스터 행동형 4종 | `out_p2/frames_*` | `unity/Assets/Resources/sprites/mob_{chaser,charger,ranged,swarmer}/` | `SpriteBank.cs` | ✅ 4종 × 22프레임 반입·상호 구분 화면 확인 |
+| 보스 실루엣 4종 | `out_p6_boss/` | `unity/Assets/Resources/sprites/boss_{brute,serpent,wraith,construct}.png` | `SpriteBank.cs`, `W3Party.cs` | 🟡 정적 4장 반입·보스전 표시, 방향·상태 애니메이션 미제작 |
+| 화면 배경 6종 | `out_p8_bg/bg_*.png` | `unity/Assets/Resources/bg/bg_*.png` | `GameScreen.cs` | ✅ 6화면 연결 |
+| 마을·나무 16종 | `out_p3_village/`, `out_p5_trees/` | `unity/Assets/Resources/props/` | `FieldDecor.cs` | ✅ 10+6장 반입·전투 배치 |
+| 공용 이펙트 8종 | `out_p4_fx/` | `unity/Assets/Resources/FX/` | `FxPool.cs` | ✅ 정적 8장 반입·코드 애니메이션 |
+
+## 아직 새로 만들어야 하는 것
+
+- **1차 전직 11종 전용 외형**: 현재 별도 완성본은 마법사뿐이다. 기본 딜러 등 기존 그림을 새 전직 완성본으로 중복 집계하지 않는다.
+- **보스 애니메이션**: 4실루엣 정적 1장씩만 있다. 같은 보스를 다시 정적으로 만들지 말고, 필요 시 기존 실루엣을 참조해 상태·방향 시트를 만든다.
+- **영지 기능 건물 7종**: `village_house_*`는 필드 마을 장식이며 본성·광산·창고·수비대·대장간·영묘·방어건물을 대체하지 않는다.
+- **UI·스킬·장비 아이콘**: 기존 범용 아이콘과 완성 목록을 먼저 대조한 뒤 비어 있는 키만 생성한다.
+
+## 중복 생성 방지 게이트
+
+새 힉스필드 요청은 아래 여섯 항목을 모두 확인한 뒤에만 실행한다.
+
+1. 이 표에 같은 대상이 ✅ 또는 🟡로 있는지 확인한다. 🟡은 재생성이 아니라 기존 원본을 이어서 보완한다.
+2. `out_*`와 `unity/Assets/Resources/`에서 대상 이름을 모두 검색한다. 원본과 반입물 중 한쪽만 있어도 새로 생성하지 않는다.
+3. `SpriteBank.cs`, `FieldDecor.cs`, `FxPool.cs`, `GameScreen.cs`에서 실제 소비 키를 확인한다. 소비처가 없으면 생성하지 않는다.
+4. `higgsfield generate list`에서 같은 작업의 `waiting`·`processing` 여부를 확인한다. 하나라도 있으면 추가 요청하지 않는다.
+5. `aigen.py` 또는 `higgsfield` 실행 프로세스가 있는지 확인한다. 작업 종료를 확인하기 전 같은 spec을 다시 실행하지 않는다.
+6. 기존 후보와 새 결과의 SHA-1이 같으면 새 산출물로 집계하지 않는다. `out_char3/char_dps_A.png`는 `out_char/char_dps_A.png`와 동일하므로 중복 후보에서 제외한다.
+
+애니메이션에서 의도적으로 같은 그림을 여러 프레임 유지하는 것은 제작 중복이 아니라 **홀드 프레임**이다. 예: `buffer_attack_00/01`. 비교·백업 경로(`ref_old_chars`, `_compare`, `_rejected`)도 런타임 산출물 개수에 포함하지 않는다.
 
 ## 생성물 보존 규칙
 
@@ -18,6 +43,7 @@
 - Unity에 반입한 PNG에는 반드시 대응 `.meta`를 함께 둔다.
 - 새 아트는 먼저 생성 폴더에 저장하고, 네이밍 검사와 화면 QA를 통과한 뒤 `Assets/Resources/`로 복사한다.
 - Unity 코드에서 참조하지 않는 산출물은 `Resources/`에 두지 않는다.
+- 생성 성공은 완료가 아니다. `원본 존재 → 후처리 → Resources 반입 → 소비 코드 확인 → 실제 창 PNG` 다섯 단계를 모두 통과해야 ✅다.
 
 ## 화면 배경 연결 계약
 
@@ -38,3 +64,5 @@ bg_worldmap   → Resources/bg/bg_worldmap.png
 python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py
 GAME_START=go:Field ./tools/qa_shot.sh --skip-build go:Field 30
 ```
+
+최근 확인 증거(2026-08-15): `qa_boss.png`, `qa_hunt.png`, `qa_estate.png`, `qa_go:WorldMap.png`. 2026-08-16 `game_asset_names.py` 결과는 `✅ 네이밍·반영 이상 없음`이었다.
