@@ -9,11 +9,13 @@ namespace AshesToStars
     /// 드랍·제작만 등록. 등록 2%·체결 8%는 소각. 연체·부채면 GameState가 문을 잠근다.
     /// 계정 종족이 인간이면 총 10%→7%(등록 1.4%·체결 5.6%, §18-9).
     /// 해금 후 7일은 판매만·구매 불가(§18-3·§18-14). QA_NO면 구매가 열린다.
+    /// 등록 24시간 뒤 유찰 — 물건은 돌아오고 수수료는 소각(§18-3). QA_NO면 만료 안 함.
     /// </summary>
     public static class AuctionState
     {
         public const int MaxMine = 10;
         public const int ListHours = 24;
+        public const long ExpireSeconds = ListHours * 3600L;
         public const int BuyLockDays = 7;
         public const long BuyLockSeconds = BuyLockDays * 24 * 3600;
         public const double ListFeeRate = 0.02;
@@ -24,6 +26,8 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_AUCTION_FEE";
         public const string EnvShowBuyLock = "QA_AUCTION_BUY_LOCK";
         public const string EnvNoBuyLock = "QA_NO_AUCTION_BUY_LOCK";
+        public const string EnvShowExpire = "QA_AUCTION_EXPIRE";
+        public const string EnvNoExpire = "QA_NO_AUCTION_EXPIRE";
         const string K_LOTS = "ats.auction.lots";
         const string K_OPENED = "ats.auction.openedAt";
 
@@ -50,8 +54,17 @@ namespace AshesToStars
         static bool _openedLoaded;
         static long _openedAt;
         static bool _qaBuyLockSeeded;
+        static bool _qaExpireSeeded;
 
-        public static IReadOnlyList<Lot> Lots { get { Load(); return _lots; } }
+        public static IReadOnlyList<Lot> Lots
+        {
+            get
+            {
+                Load();
+                SweepExpired();
+                return _lots;
+            }
+        }
 
         static void Load()
         {
@@ -239,6 +252,27 @@ namespace AshesToStars
             StarterSecond.ResetForTest();
         }
 
+        /// <summary>시각 QA. QA_AUCTION_EXPIRE=1이면 가죽 1건이 24시간 등록으로 선다.</summary>
+        public static void SeedExpireQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowExpire) != "1") return;
+            if (ExpireBlocked) return;
+            if (_qaExpireSeeded) return;
+            _qaExpireSeeded = true;
+            RacePrefs.Set(RaceId.인간);
+            GameState.SetTowerFloorForTest(EstateScreen.AuctionUnlockFloor);
+            SetOpenedAtForTest(Now() - BuyLockSeconds - 1);
+            if (GameState.Wallet.Copper < 50_000)
+                GameState.Grant(50_000);
+            if (GameState.Bag.GetCount(Economy.LifeItem.CraftHide) < 1)
+                GameState.Gain(Economy.LifeItem.CraftHide, 2);
+            StarterSecond.ResetForTest();
+            Load();
+            RestockNpc(Now());
+            if (MineCount == 0)
+                TryListItem(Economy.LifeItem.CraftHide, 1, 2_400);
+        }
+
         /// <summary>시각 QA. QA_AUCTION_BUY_LOCK=1이면 해금 직후라 구매가 잠긴 장을 연다.</summary>
         public static void SeedBuyLockQaIfRequested()
         {
@@ -263,6 +297,7 @@ namespace AshesToStars
             get
             {
                 Load();
+                SweepExpired();
                 int n = 0;
                 for (int i = 0; i < _lots.Count; i++)
                     if (!_lots[i].Npc) n++;
@@ -270,9 +305,56 @@ namespace AshesToStars
             }
         }
 
+        public static bool ExpireBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoExpire);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>등록 24시간이 지나면 내 물건은 돌아오고 수수료는 그대로 소각(§18-3).</summary>
+        public static int SweepExpired(long now = 0)
+        {
+            Load();
+            if (now <= 0) now = Now();
+            int n = 0;
+            for (int i = _lots.Count - 1; i >= 0; i--)
+            {
+                var lot = _lots[i];
+                if (lot.Until <= 0 || now <= lot.Until) continue;
+                if (!lot.Npc && ExpireBlocked) continue;
+                if (!lot.Npc && !Grant(lot)) continue;
+                _lots.RemoveAt(i);
+                n++;
+            }
+            if (n > 0) Save();
+            return n;
+        }
+
+        public static string ExpireLine()
+            => $"등록 {ListHours}시간 · 유찰 시 수수료 소각(§18-3)";
+
+        public static string MineLine()
+            => $"내 등록 {MineCount}/{MaxMine} · {ExpireLine()}";
+
+        public static string LotTimeLine(Lot lot, long now = 0)
+        {
+            if (lot == null || lot.Until <= 0) return "";
+            if (now <= 0) now = Now();
+            long left = lot.Until - now;
+            if (left <= 0) return "유찰";
+            long hours = left / 3600;
+            long mins = (left % 3600) / 60;
+            if (hours >= 24 && mins == 0) return $"남은 {hours}시간";
+            if (hours >= 1) return $"남은 {hours}시간 {mins}분";
+            return $"남은 {mins}분";
+        }
+
         static void RestockNpc(long now)
         {
-            _lots.RemoveAll(L => L.Npc && L.Until > 0 && now > L.Until);
+            SweepExpired(now);
             int npc = 0;
             for (int i = 0; i < _lots.Count; i++)
                 if (_lots[i].Npc) npc++;
@@ -288,7 +370,7 @@ namespace AshesToStars
                     Label = label,
                     Qty = qty,
                     Price = price,
-                    Until = now + ListHours * 3600,
+                    Until = now + ExpireSeconds,
                 });
             }
             if (npc == 0)
@@ -311,6 +393,7 @@ namespace AshesToStars
         public static bool TryListGear(string gearId, long price)
         {
             Load();
+            SweepExpired();
             if (WhyCannotTrade() != null || price <= 0) return false;
             if (MineCount >= MaxMine) return false;
             var g = Equipment.Find(gearId);
@@ -331,7 +414,7 @@ namespace AshesToStars
                 Label = g.Name + (g.Enhance > 0 ? " +" + g.Enhance : ""),
                 Qty = 1,
                 Price = price,
-                Until = Now() + ListHours * 3600,
+                Until = Now() + ExpireSeconds,
             });
             Save();
             return true;
@@ -340,6 +423,7 @@ namespace AshesToStars
         public static bool TryListItem(Economy.LifeItem item, int qty, long price)
         {
             Load();
+            SweepExpired();
             if (WhyCannotTrade() != null || qty <= 0 || price <= 0) return false;
             if (MineCount >= MaxMine) return false;
             if (item == Economy.LifeItem.SpecialJobToken) return false;
@@ -359,7 +443,7 @@ namespace AshesToStars
                 Label = GameState.Label(item) + (qty > 1 ? " ×" + qty : ""),
                 Qty = qty,
                 Price = price,
-                Until = Now() + ListHours * 3600,
+                Until = Now() + ExpireSeconds,
             });
             Save();
             return true;
@@ -420,6 +504,7 @@ namespace AshesToStars
             _openedLoaded = false;
             _openedAt = 0;
             _qaBuyLockSeeded = false;
+            _qaExpireSeeded = false;
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 

@@ -118,8 +118,10 @@ namespace AshesToStars
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
+            AuctionState.SeedExpireQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
-                || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1")
+                || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
+                || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1")
                 _sub = Sub.경매장;
             if (StarterSecond.Pending)
             {
@@ -563,6 +565,7 @@ namespace AshesToStars
 
             Info(r, row++,
                 $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionState.FeeLine()}. 다른 유저 서버 아님.");
+            Info(r, row++, AuctionState.MineLine());
             string buyLock = AuctionState.BuyLockLine();
             if (!string.IsNullOrEmpty(buyLock))
                 Info(r, row++, buyLock);
@@ -571,9 +574,9 @@ namespace AshesToStars
 
             var lots = AuctionState.Lots;
             string buyWhy = AuctionState.WhyCannotBuy();
-            for (int i = 0; i < lots.Count && row < 7; i++)
+            void DrawLot(AuctionState.Lot lot)
             {
-                var lot = lots[i];
+                if (row >= 8) return;
                 string who = lot.Npc ? "장" : "내 등록";
                 if (lot.Npc)
                 {
@@ -585,13 +588,16 @@ namespace AshesToStars
                             ? $"{lot.Label} 구매"
                             : (buyWhy ?? "구매 실패 — 골드 부족이거나 상한");
                     }
+                    return;
                 }
-                else if (Row(r, row++, $"취소 {lot.Label}",
-                             $"{who} · {Economy.FormatCurrency(lot.Price)}"))
-                {
+                if (Row(r, row++, $"취소 {lot.Label}",
+                        $"{who} · {Economy.FormatCurrency(lot.Price)} · {AuctionState.LotTimeLine(lot)}"))
                     _msg = AuctionState.TryCancel(lot.Id) ? "등록 취소 · 수수료는 소각" : "취소 실패";
-                }
             }
+            for (int i = 0; i < lots.Count; i++)
+                if (!lots[i].Npc) DrawLot(lots[i]);
+            for (int i = 0; i < lots.Count; i++)
+                if (lots[i].Npc) DrawLot(lots[i]);
 
             var bag = Equipment.Unequipped();
             if (bag.Count > 0 && row < 8)
