@@ -1410,7 +1410,7 @@ public class W3Party : MonoBehaviour
                     FlashParty();
                     _skillLog[1]++;
                     SkillCast(m, "성채 방패", new Color(0.55f, 0.82f, 1f), hitstop: 2);
-                    FxPool.Play(FxPool.Kind.Shield, m.Pos, 1.6f);
+                    FxPool.PlayJob(4, m.Pos, 1.6f);
                     // 보호막은 **파티 전체**에 걸리는데 연출이 시전자에만 있으면
                     // 누가 보호받는지 화면에서 안 읽힌다.
                     foreach (var o in _party)
