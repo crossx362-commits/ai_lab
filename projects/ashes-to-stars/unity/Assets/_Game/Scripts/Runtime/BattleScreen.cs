@@ -39,7 +39,7 @@ namespace AshesToStars
             var cam = Camera.main;
             if (cam != null)
             {
-                cam.orthographicSize = 15f;
+                cam.orthographicSize = 13f;
                 cam.transform.position = new Vector3(0, 0, -10);
             }
 

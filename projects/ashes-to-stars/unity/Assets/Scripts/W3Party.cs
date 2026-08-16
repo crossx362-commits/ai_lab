@@ -150,6 +150,7 @@ public class W3Party : MonoBehaviour
     public const float CombatHudBottomHeight = 148f;
     public const int CombatHudRewardMaxEntries = 3;
     public const float CombatHudRewardLifetime = 2.2f;
+    public const bool CombatHudUsesFullWidthPanels = false;
 
     struct RewardEntry
     {
@@ -2127,6 +2128,7 @@ public class W3Party : MonoBehaviour
 
     void TickAiDash(Member m, int index, float dt)
     {
+        if (!CanDash(m)) return;
         if (!GameMode || !m.Alive) return;
         if (index == _sel) return;                       // 조작 중인 캐릭터는 사람 몫이다
         if (m.DashCd > 0f || m.DashT > 0f) return;
@@ -2201,7 +2203,7 @@ public class W3Party : MonoBehaviour
     /// <summary>이동기 발동. 쿨이 남았거나 죽었으면 아무 일도 안 한다.</summary>
     bool TryDash(Member m, Vector2 dir)
     {
-        if (m == null || !m.Alive || m.DashCd > 0f || m.DashT > 0f) return false;
+        if (!CanDash(m) || !m.Alive || m.DashCd > 0f || m.DashT > 0f) return false;
         if (dir.sqrMagnitude < 1e-4f) dir = new Vector2(m.Flip ? -1f : 1f, 0f);
 
         var (distMul, cdMul) = DashSpec(m.Job);
@@ -2228,6 +2230,8 @@ public class W3Party : MonoBehaviour
         FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 0.8f, new Color(0.8f, 0.9f, 1f));
         return true;
     }
+
+    static bool CanDash(Member m) => m != null && m.Role != Role.Healer && m.Role != Role.Buffer;
 
     /// <summary>진군가면 공격 +15%, 수호가면 공격은 그대로 (방어는 Damage에서 처리)</summary>
     float ChantAtk() => _partyChant == Chant.진군가 ? 1.15f : 1.0f;
@@ -2898,14 +2902,14 @@ public class W3Party : MonoBehaviour
 
     void DrawCombatSummary(int wave)
     {
-        var top = new Rect(0f, 0f, Screen.width, CombatHudTopHeight);
-        GUI.DrawTexture(top, Tint(new Color(.025f, .045f, .085f, .91f)));
-        GUI.DrawTexture(new Rect(0f, CombatHudTopHeight - 2f, Screen.width, 2f),
-                        Tint(new Color(.82f, .61f, .23f, .85f)));
         _cmdLabel ??= new GUIStyle(GUI.skin.label) { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
-        GUI.Label(new Rect(18f, 12f, 480f, 24f), $"{시작웨이브}-{wave}  ·  {_setup.Name}", _cmdLabel);
-        GUI.Label(new Rect(18f, 38f, 540f, 22f), $"처치 {_kills}  ·  경과 {_t:F0}s", _cmdLabel);
-        GUI.Label(new Rect(Screen.width - 188f, 18f, 170f, 28f), "자동 전투  ·  ×2", _cmdLabel);
+        var left = new Rect(14f, 14f, 218f, 50f);
+        var right = new Rect(Screen.width - 144f, 18f, 130f, 34f);
+        GUI.DrawTexture(left, Tint(new Color(.025f, .045f, .085f, .72f)));
+        GUI.DrawTexture(right, Tint(new Color(.025f, .045f, .085f, .72f)));
+        GUI.Label(new Rect(left.x + 9f, left.y + 5f, left.width - 18f, 21f), $"{시작웨이브}-{wave} · {_setup.Name}", _cmdLabel);
+        GUI.Label(new Rect(left.x + 9f, left.y + 27f, left.width - 18f, 20f), $"처치 {_kills} · {_t:F0}s", _cmdLabel);
+        GUI.Label(new Rect(right.x + 10f, right.y + 8f, right.width - 18f, 22f), "자동 · ×2", _cmdLabel);
     }
 
     void PushReward(string text, Color color)
@@ -2960,8 +2964,6 @@ public class W3Party : MonoBehaviour
         float x = Mathf.Max(16f, (Screen.width - total) * 0.5f);
         float y = Screen.height - CH - 18f;
 
-        GUI.DrawTexture(new Rect(0, Screen.height - CombatHudBottomHeight, Screen.width, CombatHudBottomHeight), Scrim());
-
         var bank = SpriteBank.Cached;
         for (int i = 0; i < _party.Length; i++)
         {
@@ -3013,7 +3015,9 @@ public class W3Party : MonoBehaviour
             GUI.enabled = true;
         }
 
-        GUI.Label(new Rect(16, Screen.height - CombatHudBottomHeight + 8f, 640, 22),
+        var hint = new Rect(16, Screen.height - 36f, 312f, 24f);
+        GUI.DrawTexture(hint, Tint(new Color(.02f, .02f, .04f, .62f)));
+        GUI.Label(new Rect(hint.x + 8f, hint.y + 3f, hint.width - 16f, hint.height),
                   _sel < 0 ? "카드를 클릭하거나 1~5 키로 캐릭터 선택 — 자동 전투 중"
                            : $"[{_party[_sel].Job}] 선택됨 — 우클릭으로 이동 지시 · 0으로 해제", _cmdLabel);
 

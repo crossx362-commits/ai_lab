@@ -15,6 +15,8 @@ namespace AshesToStars
                 "[전투 HUD] 보상 레인은 최대 세 항목만 보여야 한다");
             Debug.Assert(Mathf.Approximately(W3Party.CombatHudRewardLifetime, 2.2f),
                 "[전투 HUD] 보상 문구는 오래 남아 전장을 가리면 안 된다");
+            Debug.Assert(!W3Party.CombatHudUsesFullWidthPanels,
+                "[전투 HUD] 상·하단 전체 폭 패널은 전장을 가린다");
             Debug.Log("[CombatHudSelfCheck] PASS");
         }
     }
