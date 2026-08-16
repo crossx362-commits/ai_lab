@@ -79,10 +79,13 @@ namespace AshesToStars
         public bool IsRescue { get; set; }
 
         /// <summary>
-        /// 특수 직업(§3). 1회 사망 즉시 소멸·합성 재료 불가. 이 슬라이스에 전직은 없다 —
-        /// 플래그만 두어 재료 거부가 소비처를 갖게 한다.
+        /// 특수 직업(§3). 1회 사망 즉시 소멸·부활초/환생석 불가·합성 재료 불가.
+        /// 직업명(사신 등)은 💡라 이 슬라이스에 안 넣는다 — 플래그가 규칙의 소비처다.
         /// </summary>
         public bool IsSpecialJob { get; set; }
+
+        /// <summary>일반 3목숨, 특수 직업 1목숨(§3).</summary>
+        public int MaxLives => IsSpecialJob ? 1 : 3;
 
         /// <summary>합성으로 흡수한 패시브(BoonId). 상한 4(§18-7).</summary>
         public readonly System.Collections.Generic.List<int> AbsorbedBoons = new System.Collections.Generic.List<int>();
@@ -320,6 +323,8 @@ namespace AshesToStars
                 c.UnpackEquipped(p.Length > 10 ? p[10] : "");
                 // 12번째 필드는 흡수 패시브(+보류). 없던 저장은 빈 슬롯.
                 c.UnpackAbsorbed(p.Length > 11 ? p[11] : "");
+                // 13번째 필드는 특수 직업. 없던 저장은 일반 직업.
+                c.IsSpecialJob = p.Length > 12 && p[12] == "1";
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -357,7 +362,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement)
                   .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0')
                   .Append('\t').Append(c.PackEquipped())
-                  .Append('\t').Append(c.PackAbsorbed()).Append('\n');
+                  .Append('\t').Append(c.PackAbsorbed())
+                  .Append('\t').Append(c.IsSpecialJob ? '1' : '0').Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -723,17 +729,28 @@ namespace AshesToStars
 
         /// <summary>
         /// 사망을 기록한다.
-        /// isPvp가 true면 사망 카운트를 올리지 않는다(§4).
-        /// 3회 사망 도달 시 캐릭터를 삭제 처리한다.
+        /// isPvp가 true면 사망 카운트를 올리지 않는다(§4). 특수 직업에도 같다(§3).
+        /// 일반은 3회, 특수 직업은 PvE 1회에 즉시 소멸한다.
         /// </summary>
         public static void RegisterDeath(CharacterRecord character, bool isPvp = false)
         {
             if (character == null || character.IsDeleted)
                 return;
 
-            // PvP 사망은 카운트하지 않음 (§4)
+            // PvP 사망은 카운트하지 않음 (§4). 특수 직업도 같다(§3).
             if (isPvp)
                 return;
+
+            if (character.IsSpecialJob)
+            {
+                character.DeathCount = 1;
+                character.IsDeleted = true;
+                character.RecoveryEndTime = 0;
+                Equipment.DestroyEquippedOn(character);
+                Debug.Log($"[목숨] {character.Name} 특수 직업 즉시 소멸(§3)");
+                Save();
+                return;
+            }
 
             // 회복 기간 설정 (1일 = 86,400초)
             long currentTime = GetCurrentUnixTime();
@@ -756,6 +773,41 @@ namespace AshesToStars
             }
 
             Save();
+        }
+
+        /// <summary>살아있는 일반 캐릭터에 증표 1장으로 특수 직업을 붙인다(§3). 직업명은 💡라 안 바꾼다.</summary>
+        public static bool CanBecomeSpecial(CharacterRecord character)
+        {
+            if (character == null || character.IsDeleted || character.IsSpecialJob || character.IsRescue)
+                return false;
+            return GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) > 0;
+        }
+
+        public static bool TryBecomeSpecial(CharacterRecord character)
+        {
+            if (!CanBecomeSpecial(character))
+                return false;
+            if (!GameState.Consume(Economy.LifeItem.SpecialJobToken))
+                return false;
+            character.IsSpecialJob = true;
+            Save();
+            Debug.Log($"[특수직업] {character.Name} 증표 전직 — 1회 사망 시 소멸(§3)");
+            return true;
+        }
+
+        /// <summary>시각 QA. QA_SPECIAL_JOB=1이면 첫 생존 캐릭터를 특수 직업으로 만든다.</summary>
+        public static void SeedSpecialJobQaIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable("QA_SPECIAL_JOB") != "1") return;
+            var roster = GetCharacters();
+            if (roster.Count == 0) return;
+            var ch = roster[0];
+            if (ch.IsDeleted) return;
+            if (ch.IsSpecialJob) return;
+            if (ch.IsRescue) ch.IsRescue = false;
+            if (GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) < 1)
+                GameState.Gain(Economy.LifeItem.SpecialJobToken);
+            TryBecomeSpecial(ch);
         }
 
         /// <summary>
@@ -848,6 +900,9 @@ namespace AshesToStars
             if (character == null || character.IsDeleted)
                 return false;
 
+            if (character.IsSpecialJob)
+                return false;  // 특수 직업은 부활초 불가(§3) — 소비도 안 한다
+
             if (character.DeathCount == 0)
                 return false;  // 사망하지 않았으면 부활초 불필요
 
@@ -881,6 +936,9 @@ namespace AshesToStars
         {
             if (character == null || !character.IsDeleted)
                 return false;                      // 삭제되지 않은 캐릭터엔 쓸 이유가 없다
+
+            if (character.IsSpecialJob)
+                return false;                      // 특수 직업은 영묘 기록만(§3) — 환생석을 안 쓴다
 
             if (!GameState.Consume(Economy.LifeItem.RebornStone))
                 return false;

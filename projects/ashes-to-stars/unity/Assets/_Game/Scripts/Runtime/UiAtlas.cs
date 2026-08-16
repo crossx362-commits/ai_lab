@@ -268,22 +268,24 @@ namespace AshesToStars
         }
 
         /// <summary>slot 0..2. 남은 목숨만 온전한 하트, 삭제·소모분은 깨진 하트.</summary>
-        public static string HeartKey(int slot, int deathCount, bool deleted)
+        public static string HeartKey(int slot, int deathCount, bool deleted, int maxHearts = 3)
         {
-            int lives = deleted ? 0 : Mathf.Max(0, 3 - deathCount);
+            if (maxHearts < 1) maxHearts = 3;
+            int lives = deleted ? 0 : Mathf.Max(0, maxHearts - deathCount);
             return slot < lives ? "heart" : "heart_broken";
         }
 
-        /// <summary>목숨 3칸을 아이콘으로 그린다. 사용한 가로 폭을 돌려준다.</summary>
-        public static float DrawHearts(Rect origin, int deathCount, bool deleted)
+        /// <summary>목숨 칸을 아이콘으로 그린다. 특수 직업은 1칸(§3). 사용한 가로 폭을 돌려준다.</summary>
+        public static float DrawHearts(Rect origin, int deathCount, bool deleted, int maxHearts = 3)
         {
+            if (maxHearts < 1) maxHearts = 3;
             const float size = 22f, gap = 2f;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < maxHearts; i++)
             {
                 var cell = new Rect(origin.x + i * (size + gap), origin.y, size, size);
-                Draw(cell, HeartKey(i, deathCount, deleted));
+                Draw(cell, HeartKey(i, deathCount, deleted, maxHearts));
             }
-            return 3f * (size + gap);
+            return maxHearts * (size + gap);
         }
 
         /// <summary>

@@ -177,8 +177,8 @@ namespace AshesToStars
             { (DropSource.FieldDungeonBoss, LifeItem.AdvancementMaterial), 0.35f },
             { (DropSource.RaidDungeon, LifeItem.AdvancementMaterial), 1.00f },
 
-            // 특수 직업 전직 증표 드랍률 (§18-4)
-            { (DropSource.Tower10Boss, LifeItem.SpecialJobToken), 0.02f },      // 50층 이상 보스 2% (여기선 10층으로 임시)
+            // 특수 직업 전직 증표 드랍률 (§18-4). 층 하한은 RollBattleDrops가 본다.
+            { (DropSource.Tower10Boss, LifeItem.SpecialJobToken), 0.02f },      // 50층 이상 보스 2%
 
             // 사냥 가죽(§11) — 확정 드랍률이 없어 프로토타입 검증값. 희귀 고유템이 아니다.
             { (DropSource.FieldDungeonBoss, LifeItem.CraftHide), 0.50f },
@@ -209,6 +209,12 @@ namespace AshesToStars
         public static bool IsRare(LifeItem it) =>
             it == LifeItem.RebornStone || it == LifeItem.SpecialJobToken;
 
+        /// <summary>특수 직업 증표는 50층 이상 탑 보스만(§3·§10-8). 10층 임시 테이블을 닫는다.</summary>
+        public const int SpecialJobTokenMinFloor = 50;
+
+        public static bool CanDropSpecialJobToken(int towerFloor) =>
+            towerFloor >= SpecialJobTokenMinFloor;
+
         /// <summary>
         /// 한 전투의 드랍을 전부 판정한다 (✅ §10-8 드랍 판정 규칙).
         ///
@@ -222,7 +228,7 @@ namespace AshesToStars
         /// 그리고 딕셔너리를 순회하며 **첫 히트 하나만** 돌려줘, 한 판에 두 종류가 나올 수 없었고
         /// 우선순위가 딕셔너리 순회 순서에 달려 있었다(§3-2 규칙 3이 금지한 것).
         /// </summary>
-        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng)
+        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng, int towerFloor = 0)
         {
             var results = new List<LifeItem>();
             if (bossCount < 1) bossCount = 1;
@@ -230,6 +236,8 @@ namespace AshesToStars
             // 판정 순서를 열거형 순서로 고정한다 — 딕셔너리 순회 순서에 기대지 않는다
             foreach (LifeItem it in System.Enum.GetValues(typeof(LifeItem)))
             {
+                if (it == LifeItem.SpecialJobToken && !CanDropSpecialJobToken(towerFloor))
+                    continue;
                 if (!DropRates.TryGetValue((source, it), out float rate)) continue;
                 int rolls = IsRare(it) ? 1 : bossCount;
                 for (int i = 0; i < rolls; i++)

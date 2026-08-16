@@ -236,6 +236,13 @@ namespace AshesToStars
             {
                 foreach (var ch in dead)
                 {
+                    if (ch.IsSpecialJob)
+                    {
+                        Locked(r, row++, $"{ch.Name} · {ch.Job} · 기록만",
+                            "특수 직업은 환생석으로 되돌릴 수 없다(§3)",
+                            ItemAtlas.KeyFor(Economy.LifeItem.RebornStone));
+                        continue;
+                    }
                     string desc = stones > 0
                         ? "환생석 1개를 써서 되돌린다 — 사망 0에서 다시 시작한다"
                         : "환생석이 없다 — 10층 보스가 떨어뜨린다";

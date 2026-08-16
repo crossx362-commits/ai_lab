@@ -55,6 +55,7 @@ namespace AshesToStars
             GameFlow.SeedV4WipeQaIfRequested();
             SeedRarityQaIfRequested();
             SeedFusionQaIfRequested();
+            SeedSpecialJobQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
@@ -155,7 +156,9 @@ namespace AshesToStars
 
                     Info(r, 0, ch.IsRescue
                         ? $"{ch.Name} ({ch.Job}) · {ExpText(ch)} · 긴급 재건"
-                        : $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
+                        : ch.IsSpecialJob
+                            ? $"{ch.Name} ({ch.Job}) · {ExpText(ch)} · 특수 직업"
+                            : $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
                     if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
                     {
                         float need = LifeSystem.ExpToNext(ch.Level);
@@ -167,16 +170,20 @@ namespace AshesToStars
                     // 목숨 상태 표시 — 유니코드 하트는 □로 나와 아틀라스 조각을 쓴다.
                     if (ch.IsDeleted)
                     {
-                        Info(r, 1, "삭제됨 — 환생석으로만 복구 가능(§4)");
+                        Info(r, 1, ch.IsSpecialJob
+                            ? "삭제됨 — 특수 직업은 환생석으로 되돌릴 수 없다(§3)"
+                            : "삭제됨 — 환생석으로만 복구 가능(§4)");
                         UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
-                            ch.DeathCount, true);
+                            ch.DeathCount, true, ch.MaxLives);
                     }
                     else
                     {
                         string status = LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중";
-                        Info(r, 1, $"목숨 {ch.DeathCount}/3 {status}");
+                        Info(r, 1, ch.IsSpecialJob
+                            ? $"목숨 {ch.DeathCount}/{ch.MaxLives} {status} · 부활초·환생석 불가(§3)"
+                            : $"목숨 {ch.DeathCount}/{ch.MaxLives} {status}");
                         UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
-                            ch.DeathCount, false);
+                            ch.DeathCount, false, ch.MaxLives);
 
                         // 회복 중이면 시간 표시
                         int recoveryTime = LifeSystem.GetRecoveryTimeRemaining(ch);
@@ -186,8 +193,13 @@ namespace AshesToStars
                         }
                     }
 
-                    // 부활초 사용 버튼
-                    if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
+                    // 부활초 사용 버튼 — 특수 직업은 1회 사망이 곧 소멸이라 버튼을 열지 않는다.
+                    if (ch.IsSpecialJob && !ch.IsDeleted)
+                    {
+                        Locked(r, 3, "부활초 사용", "특수 직업은 부활초를 쓸 수 없다(§3)",
+                            ItemAtlas.KeyFor(Economy.LifeItem.RevivalTea));
+                    }
+                    else if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
                     {
                         if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/3)",
                                 ItemAtlas.KeyFor(Economy.LifeItem.RevivalTea)))
@@ -201,7 +213,26 @@ namespace AshesToStars
                     }
 
                     int advancementRow = 4;
-                    if (ch.IsDeleted)
+                    if (ch.IsSpecialJob && !ch.IsDeleted)
+                    {
+                        int tokens = GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken);
+                        Info(r, advancementRow++,
+                            $"특수 직업 · 1목숨 · 일반 전직 경로 밖 · 증표 {tokens}(§3)");
+                    }
+                    else if (!ch.IsDeleted && !ch.IsRescue
+                             && GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) > 0)
+                    {
+                        int tokens = GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken);
+                        if (Row(r, advancementRow++, "특수 직업 전직",
+                                $"증표 1장으로 1목숨이 된다 — 부활초·환생석 불가(보유 {tokens})",
+                                ItemAtlas.KeyFor(Economy.LifeItem.SpecialJobToken)))
+                            LifeSystem.TryBecomeSpecial(ch);
+                    }
+                    if (ch.IsSpecialJob)
+                    {
+                        // 특수 직업은 일반 전직 경로 밖 — 위 줄이 소비처다.
+                    }
+                    else if (ch.IsDeleted)
                     {
                         Locked(r, advancementRow++, "1차 전직", "삭제된 캐릭터는 전직할 수 없다(§3·§4)",
                             ItemAtlas.KeyFor(Economy.LifeItem.AdvancementMaterial));
@@ -278,8 +309,10 @@ namespace AshesToStars
             {
                 var ch = allCharacters[i];
                 string sub = ch.IsDeleted
-                    ? "삭제됨"
-                    : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
+                    ? (ch.IsSpecialJob ? "삭제됨 · 특수 직업" : "삭제됨")
+                    : ch.IsSpecialJob
+                        ? $"{ExpText(ch)} · 특수 직업 1목숨"
+                        : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
                 if (DrawRosterCard(cells[i], ch, sub))
                 {
                     _selectedCharacter = i;
@@ -304,7 +337,8 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(face.xMax - 10f, face.yMax - 10f, 22f, 22f), UiAtlas.RoleKey(ch.Job));
             string name = ch.IsRescue ? $"{ch.Name} · 재건" : ch.Name;
             Hint(new Rect(face.xMax + 10f, card.y + 14f, card.width - 90f, 24f), name + " · " + ch.Job);
-            UiAtlas.DrawHearts(new Rect(face.xMax + 10f, card.y + 40f, 80f, 20f), ch.DeathCount, ch.IsDeleted);
+            UiAtlas.DrawHearts(new Rect(face.xMax + 10f, card.y + 40f, 80f, 20f),
+                ch.DeathCount, ch.IsDeleted, ch.MaxLives);
             Hint(new Rect(card.x + 14f, card.yMax - 28f, card.width - 28f, 22f), sub);
             return GUI.Button(card, GUIContent.none, GUIStyle.none);
         }
@@ -359,7 +393,8 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(face.xMax - 8, face.yMax - 8, 20, 20), UiAtlas.RoleKey(ch.Job));
 
             var desc = RowDescRect(r, index);
-            float heartsW = UiAtlas.DrawHearts(new Rect(desc.x, desc.y + 4, 80, 22), ch.DeathCount, ch.IsDeleted);
+            float heartsW = UiAtlas.DrawHearts(new Rect(desc.x, desc.y + 4, 80, 22),
+                ch.DeathCount, ch.IsDeleted, ch.MaxLives);
             Hint(new Rect(desc.x + heartsW + 6, desc.y + 6, desc.width - heartsW - 6, 22), sub);
             if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
             {
@@ -376,6 +411,13 @@ namespace AshesToStars
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             Equipment.SeedCraftedLoadoutForQa(roster[0]);
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedSpecialJobQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_SPECIAL_JOB") != "1") return;
+            LifeSystem.SeedSpecialJobQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 

@@ -218,7 +218,8 @@ namespace AshesToStars
                 ? DungeonRun.Plan.RunSeed
                 : (uint)(bossFloor * 2654435761u ^ (uint)System.DateTime.UtcNow.Ticks);
             var dropRng = Rng.Stream(dropSeed, bossFloor, SeedChannel.Drop);
-            foreach (var drop in Economy.RollBattleDrops(dropSource, bossCount, ref dropRng))
+            foreach (var drop in Economy.RollBattleDrops(dropSource, bossCount, ref dropRng,
+                         inDungeon ? 0 : bossFloor))
             {
                 // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
                 // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.
