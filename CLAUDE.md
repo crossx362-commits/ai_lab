@@ -134,7 +134,7 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 | 미오 (Mio) | Design — 주 1회(월) 스크린샷 기반 UX·시각 리뷰 → 공유 백로그 적재 | `petnna_design_review.py` (보고서: `output/qa/petnna/design/`) |
 | 나무 (Namu) | PM — 주 1회(화) 웹서치 트렌드·경쟁 조사 → 기능 백로그 적재 | `petnna_product_manager.py` (보고서: `output/qa/petnna/product/`) |
 | 마루 (Maru) | Game Dev — 유니티 빌드·성능·렌더링 검증·밸런스 시뮬. 배치 빌드→플레이어 실행→FPS·화면·수치 검증→리포트·스크린샷 생성 | `game_build_verify.py`, `game_balance_sim.py` (헌장: `skills/마루_게임개발/SKILL.md`, 산출물: `output/qa/ashes-to-stars/`) |
-| 별이 (Byeol) | Game Art QA — 게임에 쓰이는 PNG 누락·마젠타·너무 작음 순찰. 생성하지 않는다 | `game_image_quality.py` (헌장: `skills/별이_이미지품질/SKILL.md`, 산출물: `output/qa/ashes-to-stars/image_quality/`) |
+| 별이 (Byeol) | Game Art QA — 매 실행 딥서치로 기준 확인 → 검수 → 크로마·반투명 수정. 4직업 재생성 없음 | `game_image_quality.py` (헌장: `skills/별이_이미지품질/SKILL.md`, 산출물: `output/qa/ashes-to-stars/image_quality/`) |
 
 **펫나 자동 개발 루프**: 봄이(발견)·백호(DB 계약)·테오(회귀 테스트) → 수리(수정/구현) → 봄이 재검수 → 저위험 P2/P3만 자동 병합. 미오(디자인)·나무(기획)가 `output/qa/petnna/backlog.json`에 과제 적재 → 수리가 QA 이슈 없을 때 브랜치 구현(자동 병합 없음, 사람 검토). 봄이는 순찰 중 앱 자체 오류수집기(AppLogger→localStorage)도 흡수(global_error=P1). 전 에이전트 클로드 세션에 웹서치 허용(모르는 건 검색). 공용 헬퍼: `_shared/cc.py`(claude -p 헤드리스). **반려 피드백 환류(크리틱 루프, 2026-07-15)**: 예원 PR 리뷰의 품질 반려는 시도 한도(MAX_ATTEMPTS) 내라면 `보류`가 아니라 `대기`로 되돌리며 반려 사유를 `review_feedback`에 적재 — 수리가 재시도 프롬프트에 그 사유를 주입받아 같은 실수를 반복하지 않는다(하드 게이트 반려·한도 소진만 보류, 회귀 테스트 `tests/test_review_feedback_loop.py`).
 

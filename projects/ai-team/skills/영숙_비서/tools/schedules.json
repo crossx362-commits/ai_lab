@@ -208,9 +208,9 @@
   {
    "id": "game_image_quality",
    "agent": "별이",
-   "task": "게임 이미지 품질 순찰",
+   "task": "게임 이미지 품질 검수·수정",
    "cron": "20 10 * * *",
-   "description": "Resources 그림 누락·마젠타·너무 작음. P0만 알림. 힉스필드 생성 없음",
+   "description": "딥서치로 기준 확인 후 Resources 크로마·반투명을 고친다. 힉스필드 재생성 없음. 못 고친 P0만 알림",
    "command": "python3 projects/ai-team/skills/별이_이미지품질/tools/game_image_quality.py --once --send",
    "enabled": true,
    "run": true,

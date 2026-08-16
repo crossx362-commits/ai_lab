@@ -312,7 +312,7 @@
     "byeol": {
       "display": "별이",
       "folder": "별이_이미지품질",
-      "role": "Game Art QA — 재와 별 Resources 그림 품질·누락·미사용 순찰. 생성하지 않는다",
+      "role": "Game Art QA — 딥서치로 기준 확인 후 Resources 품질 검수·수정. 4직업은 다시 그리지 않는다",
       "keywords": [
         "별이",
         "byeol",
@@ -323,10 +323,10 @@
       "tools": [
         {
           "name": "image_quality",
-          "desc": "게임에 쓰이는 PNG 품질·누락 순찰",
+          "desc": "딥서치 후 게임에 쓰이는 PNG 검수·수정",
           "script": "skills/별이_이미지품질/tools/game_image_quality.py",
           "args": ["--once"],
-          "timeout": 180
+          "timeout": 600
         }
       ],
       "daemons": {},
