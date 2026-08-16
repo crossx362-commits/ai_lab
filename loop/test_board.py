@@ -491,6 +491,85 @@ class NowWorkTests(unittest.TestCase):
                 board.HERE = old
 
 
+SAMPLE_BILLING = {
+    "config": {
+        "currentPeriod": {
+            "type": "USAGE_PERIOD_TYPE_WEEKLY",
+            "start": "2026-08-16T06:52:40+00:00",
+            "end": "2026-08-23T06:52:40+00:00",
+        },
+        "creditUsagePercent": 44.0,
+        "productUsage": [
+            {"product": "GrokBuild", "usagePercent": 36.0},
+            {"product": "GrokImagine", "usagePercent": 4.0},
+        ],
+    }
+}
+
+
+class GrokUsageTests(unittest.TestCase):
+    def setUp(self):
+        board._usage_mem = None
+        board._usage_at = 0.0
+        self._tmp = tempfile.TemporaryDirectory()
+        self._old_cache = board.GROK_USAGE_CACHE
+        board.GROK_USAGE_CACHE = Path(self._tmp.name) / "grok_usage.cache.json"
+
+    def tearDown(self):
+        board.GROK_USAGE_CACHE = self._old_cache
+        board._usage_mem = None
+        board._usage_at = 0.0
+        self._tmp.cleanup()
+
+    def test_summarize_remaining(self):
+        out = board.summarize_grok_billing(SAMPLE_BILLING, fetched_at="21:00")
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["used_pct"], 44.0)
+        self.assertEqual(out["remain_pct"], 56.0)
+        self.assertEqual(out["period"], "이번 주")
+        self.assertEqual(out["period_end"], "8/23")
+        labels = [p["label"] for p in out["products"]]
+        self.assertEqual(labels, ["빌드", "이미지"])
+
+    def test_cache_skips_second_fetch(self):
+        n = {"c": 0}
+
+        def fetch(_token):
+            n["c"] += 1
+            return SAMPLE_BILLING
+
+        old_tok = board._grok_token
+        board._grok_token = lambda: "tok"
+        try:
+            a = board.grok_usage(now=1000, fetch=fetch)
+            b = board.grok_usage(now=1100, fetch=fetch)
+        finally:
+            board._grok_token = old_tok
+        self.assertEqual(n["c"], 1)
+        self.assertEqual(a["remain_pct"], 56.0)
+        self.assertEqual(b["remain_pct"], 56.0)
+
+    def test_no_token_says_so(self):
+        old_tok = board._grok_token
+        old_disk = board._load_usage_disk
+        board._grok_token = lambda: ""
+        board._load_usage_disk = lambda: None
+        try:
+            out = board.grok_usage(now=1, fetch=lambda t: SAMPLE_BILLING)
+        finally:
+            board._grok_token = old_tok
+            board._load_usage_disk = old_disk
+        self.assertFalse(out["ok"])
+        self.assertIn("로그인", out["error"])
+
+    def test_html_has_usage_box(self):
+        html = (HERE / "board.html").read_text(encoding="utf-8")
+        self.assertIn('id="usage-box"', html)
+        self.assertIn("renderGrokUsage", html)
+        self.assertIn("그록 남음", html)
+        self.assertLess(html.find('id="usage-box"'), html.find('class="request-top"'))
+
+
 class ResumeTests(unittest.TestCase):
     def test_resume_clears_hold_and_starts_if_down(self):
         with tempfile.TemporaryDirectory() as tmp:

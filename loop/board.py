@@ -19,11 +19,14 @@ import re
 import subprocess
 import sys
 import threading
+import urllib.error
+import urllib.request
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
+from zoneinfo import ZoneInfo
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -34,6 +37,19 @@ PORT = int(os.getenv("BOARD_PORT", "8766"))
 CHECKS_PATH = HERE / "board_checks.json"
 DECISIONS_PATH = HERE / "board_decisions.json"
 PID_PATH = HERE / "loop.pid"
+GROK_AUTH = Path.home() / ".grok" / "auth.json"
+GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
+GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=credits"
+_GROK_USAGE_TTL = 300
+_GROK_PRODUCTS = {
+    "GrokBuild": "빌드",
+    "GrokImagine": "이미지",
+    "GrokAppBuilder": "앱빌더",
+    "GrokChat": "채팅",
+}
+_usage_lock = threading.Lock()
+_usage_mem: dict | None = None
+_usage_at = 0.0
 
 CHOICES = {
     "do": "이걸로 진행 — 큐 맨 위에서 이것만 잡아라",
@@ -1257,6 +1273,152 @@ def recent_commits() -> list[dict]:
     return out
 
 
+def _grok_token() -> str:
+    try:
+        raw = json.loads(GROK_AUTH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not isinstance(raw, dict):
+        return ""
+    for rec in raw.values():
+        if isinstance(rec, dict):
+            key = rec.get("key") or rec.get("access_token")
+            if isinstance(key, str) and key:
+                return key
+    return ""
+
+
+def fetch_grok_billing(token: str) -> dict:
+    req = urllib.request.Request(
+        GROK_BILLING_URL,
+        headers={
+            "Authorization": "Bearer " + token,
+            "Accept": "application/json",
+            "x-grok-client-mode": "cli",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=12) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("billing not object")
+    return data
+
+
+def _fmt_period(iso: str) -> str:
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        local = dt.astimezone(ZoneInfo("Asia/Seoul"))
+        return f"{local.month}/{local.day}"
+    except (ValueError, TypeError, OSError):
+        return iso[:10]
+
+
+def summarize_grok_billing(raw: dict, fetched_at: str = "",
+                           error: str | None = None, stale: bool = False) -> dict:
+    cfg = raw.get("config") if isinstance(raw, dict) else None
+    if not isinstance(cfg, dict):
+        cfg = {}
+    used = cfg.get("creditUsagePercent")
+    try:
+        used_pct = float(used)
+    except (TypeError, ValueError):
+        used_pct = None
+    remain_pct = None if used_pct is None else max(0.0, round(100.0 - used_pct, 1))
+    if used_pct is not None:
+        used_pct = round(used_pct, 1)
+    period = cfg.get("currentPeriod") if isinstance(cfg.get("currentPeriod"), dict) else {}
+    ptype = str(period.get("type") or "")
+    period_label = "이번 주" if "WEEKLY" in ptype else ("이번 달" if "MONTH" in ptype else "")
+    products = []
+    for row in cfg.get("productUsage") or []:
+        if not isinstance(row, dict):
+            continue
+        pid = str(row.get("product") or "")
+        try:
+            pct = float(row.get("usagePercent"))
+        except (TypeError, ValueError):
+            continue
+        products.append({
+            "id": pid,
+            "label": _GROK_PRODUCTS.get(pid, pid),
+            "used_pct": round(pct, 1),
+        })
+    return {
+        "ok": used_pct is not None and not error,
+        "used_pct": used_pct,
+        "remain_pct": remain_pct,
+        "period": period_label,
+        "period_start": _fmt_period(str(period.get("start") or cfg.get("billingPeriodStart") or "")),
+        "period_end": _fmt_period(str(period.get("end") or cfg.get("billingPeriodEnd") or "")),
+        "products": products,
+        "fetched_at": fetched_at,
+        "stale": stale,
+        "error": error,
+    }
+
+
+def _load_usage_disk() -> dict | None:
+    try:
+        data = json.loads(GROK_USAGE_CACHE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _save_usage_disk(data: dict) -> None:
+    try:
+        GROK_USAGE_CACHE.write_text(
+            json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def grok_usage(now: float | None = None, fetch=None, force: bool = False) -> dict:
+    """그록 주간 한도. 실패해도 캐시가 있으면 그걸 보여 준다."""
+    global _usage_mem, _usage_at
+    import time
+    now = time.time() if now is None else now
+    fetch = fetch or fetch_grok_billing
+    with _usage_lock:
+        if (not force and _usage_mem is not None
+                and now - _usage_at < _GROK_USAGE_TTL):
+            return _usage_mem
+        token = _grok_token()
+        if not token:
+            cached = _usage_mem or _load_usage_disk()
+            if cached:
+                out = dict(cached)
+                out["stale"] = True
+                out["ok"] = False
+                out["error"] = out.get("error") or "그록 로그인 없음"
+                _usage_mem, _usage_at = out, now
+                return out
+            return summarize_grok_billing({}, error="그록 로그인 없음")
+        try:
+            raw = fetch(token)
+            out = summarize_grok_billing(
+                raw, fetched_at=datetime.now().strftime("%H:%M"))
+            _usage_mem, _usage_at = out, now
+            _save_usage_disk(out)
+            return out
+        except urllib.error.HTTPError as e:
+            err = "그록 로그인 만료" if e.code in (401, 403) else f"사용량 HTTP {e.code}"
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError):
+            err = "사용량을 못 읽음"
+        cached = _usage_mem or _load_usage_disk()
+        if cached:
+            out = dict(cached)
+            out["stale"] = True
+            out["ok"] = False
+            out["error"] = err
+            _usage_mem, _usage_at = out, now
+            return out
+        return summarize_grok_billing({}, error=err)
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -1290,6 +1452,7 @@ def build_state() -> dict:
         "stuck": stuck_items(status, flags),
         "completed": completed_posts(status),
         "playtest": playtest_state(),
+        "grok": grok_usage(),
     }
 
 

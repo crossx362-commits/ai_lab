@@ -117,6 +117,17 @@
     border: 1px solid var(--gold); background: #1f1a12;
   }
   .now-panel.idle { border-color: var(--line); background: var(--panel); }
+  .usage-box {
+    margin: 14px 24px 0; padding: 14px 16px 12px; border-radius: 12px;
+    border: 1px solid var(--gold); background: #1f1a12;
+  }
+  .usage-box.low { border-color: var(--hold); }
+  .usage-box.empty { border-color: var(--stop); background: #2a1612; }
+  .usage-box .remain { font-size: 22px; font-weight: 700; color: var(--ok); }
+  .usage-box.low .remain { color: var(--hold); }
+  .usage-box.empty .remain { color: var(--stop); }
+  .usage-box .remain b { font-variant-numeric: tabular-nums; }
+  .usage-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .now-panel .phase { font-size: 12px; letter-spacing: .08em; color: var(--gold); margin-bottom: 4px; }
   .now-panel.idle .phase { color: var(--muted); }
   .now-panel .t { font-size: 16px; font-weight: 650; }
@@ -194,6 +205,14 @@
   </div>
   <div class="pills" id="pills"></div>
 </header>
+<section class="usage-box" id="usage-box">
+  <div class="usage-head">
+    <h2 style="margin:0">그록 사용량</h2>
+    <div class="remain" id="usage-remain">불러오는 중…</div>
+  </div>
+  <p class="meta" id="usage-meta"></p>
+  <div id="usage-bars"></div>
+</section>
 <div class="banner" id="resume-bar">
   <div><strong>중단됨</strong> <span class="meta" id="resume-why"></span></div>
   <button id="btn-continue" type="button">계속 진행</button>
@@ -401,6 +420,53 @@ function renderStuck(state) {
   if (acts) acts.style.display = items.some((it) => it.kind === "loop") ? "flex" : "none";
 }
 
+function grokTone(remain) {
+  if (remain == null) return "bad";
+  if (remain >= 40) return "ok";
+  if (remain >= 15) return "hold";
+  return "bad";
+}
+
+function grokPill(g) {
+  if (!g) return "";
+  if (g.remain_pct == null) return `<span class="pill bad">그록 사용량 ?</span>`;
+  const tone = grokTone(g.remain_pct);
+  const stale = g.stale ? " · 옛값" : "";
+  return `<span class="pill ${tone}">그록 남음 ${g.remain_pct}%${stale}</span>`;
+}
+
+function renderGrokUsage(g) {
+  const box = $("usage-box");
+  if (!box) return;
+  g = g || {};
+  const remain = g.remain_pct;
+  box.classList.toggle("low", remain != null && remain < 40);
+  box.classList.toggle("empty", remain == null || remain < 15);
+  if (remain == null) {
+    $("usage-remain").innerHTML = "확인 불가";
+    $("usage-meta").textContent = g.error || "그록 로그인이 없다";
+    $("usage-bars").innerHTML = "";
+    return;
+  }
+  $("usage-remain").innerHTML = `남음 <b>${remain}%</b>`;
+  const bits = [
+    g.period || "",
+    g.period_end ? (g.period_end + "까지") : "",
+    g.used_pct != null ? ("씀 " + g.used_pct + "%") : "",
+    g.fetched_at ? ("갱신 " + g.fetched_at) : "",
+    g.stale ? "캐시" : "",
+    g.error || "",
+  ].filter(Boolean);
+  $("usage-meta").textContent = bits.join(" · ");
+  const rows = (g.products || []).map((p) => {
+    const used = p.used_pct == null ? 0 : p.used_pct;
+    return `<div class="bar-row"><div class="lab">${esc(p.label)}</div>
+      <div class="bar-track"><div class="bar-fill hold" style="width:${used}%"></div></div>
+      <div class="n">${used}%</div></div>`;
+  }).join("");
+  $("usage-bars").innerHTML = rows;
+}
+
 function render(state) {
   $("updated").textContent = "STATUS 갱신 · " + (state.updated || "시각 없음");
   const L = state.loop || {};
@@ -410,7 +476,9 @@ function render(state) {
     L.hold ? `<span class="pill bad">HOLD</span>` : "",
     L.stop ? `<span class="pill bad">STOP</span>` : "",
     L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
+    grokPill(state.grok),
   ].join("");
+  renderGrokUsage(state.grok);
   const blocked = L.blocked || [];
   $("resume-bar").classList.toggle("show", blocked.length > 0);
   $("resume-why").textContent = blocked.length ? blocked.join(" · ") : "";
