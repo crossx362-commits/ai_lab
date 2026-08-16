@@ -21,8 +21,12 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_INVASION_SHIELD";
         public const string EnvShowLoot = "QA_RACE_LOOT";
         public const string EnvNoLoot = "QA_NO_RACE_LOOT";
+        public const string EnvShowCap = "QA_LOOT_CAP";
+        public const string EnvNoCap = "QA_NO_LOOT_CAP";
         public const int HumanLootPercent = 100;
         public const int BeastLootPercent = 120;
+        /// <summary>§18-13 약탈 상한. 티어 1시간 수익의 6시간치.</summary>
+        public const int LootCapHours = 6;
 
         const string K_PENDING = "ats.invasion.pending";
         const string K_PAID = "ats.invasion.paid";
@@ -113,8 +117,14 @@ namespace AshesToStars
         /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
         public static float ForceRaceLootMul;
 
+        /// <summary>SelfCheck가 상한 앞 금액을 고정할 때만. 0이면 출정×3 공식.</summary>
+        public static long ForceLootBeforeCap;
+
         public static bool LootRaceBlocked =>
             Environment.GetEnvironmentVariable(EnvNoLoot) == "1";
+
+        public static bool LootCapBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoCap) == "1";
 
         /// <summary>§18-9 수인 약탈량 +20%. 에셋이 없으면 표로 폴백한다.</summary>
         public static int RaceLootPercent()
@@ -147,16 +157,52 @@ namespace AshesToStars
             return "종족 약탈 배율 없음";
         }
 
+        /// <summary>§18-13 같은 티어 6시간치. T1=60000.</summary>
+        public static long CapCopper(int tier)
+        {
+            var mul = Economy.TierRevenueMultiplier;
+            if (mul == null || mul.Length == 0) return LootCapHours * Economy.COPPER_PER_GOLD;
+            if (tier < 0) tier = 0;
+            if (tier >= mul.Length) tier = mul.Length - 1;
+            return (long)(LootCapHours * mul[tier] * Economy.COPPER_PER_GOLD);
+        }
+
+        public static long CapCopper() => CapCopper(GameState.Tier);
+
+        public static long ApplyLootCap(long copper)
+        {
+            if (LootCapBlocked) return copper;
+            if (copper < 0) return 0;
+            long cap = CapCopper();
+            return copper > cap ? cap : copper;
+        }
+
+        public static string LootCapLine()
+        {
+            if (LootCapBlocked) return "약탈 상한 없음";
+            return $"약탈 상한 6 G/h(§18-13) · {Economy.FormatCurrency(CapCopper())}";
+        }
+
         /// <summary>승자 보상은 상대 영지 레벨(여기선 내 탑 층) 기준. 창고를 비워도 준다(§15 1-b).
         /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.
-        /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).</summary>
+        /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).
+        /// 마지막에 같은 티어 6 G/h로 자른다(§18-13). QA_NO_LOOT_CAP=1이면 안 자른다.</summary>
         public static long LootCopper()
         {
-            long baseLoot = Economy.GetActionCostBase("InvasionAttack", GameState.Tier) * 3;
-            if (baseLoot < 1000) baseLoot = 1000;
-            int empty = DefenseState.MaxSlots - DefenseState.Count;
-            long afterRace = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
-            return WorldStar.ApplyEnemy(afterRace);
+            long raw;
+            if (ForceLootBeforeCap > 0)
+            {
+                raw = ForceLootBeforeCap;
+            }
+            else
+            {
+                long baseLoot = Economy.GetActionCostBase("InvasionAttack", GameState.Tier) * 3;
+                if (baseLoot < 1000) baseLoot = 1000;
+                int empty = DefenseState.MaxSlots - DefenseState.Count;
+                raw = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
+                raw = WorldStar.ApplyEnemy(raw);
+            }
+            return ApplyLootCap(raw);
         }
 
         public static bool TryBegin()
@@ -265,6 +311,26 @@ namespace AshesToStars
             WorldStar.SeedAuraDebuffQaIfRequested();
         }
 
+        /// <summary>시각 QA. QA_LOOT_CAP=1이면 T10·보호막 없음·디버프 꺼짐으로 침략 카드를 연다.
+        /// 이전 QA가 고른 티어·영공을 남기면 상한이 T1(6골드)로 보이므로 여기서 고친다.</summary>
+        public static void SeedLootCapQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowCap) != "1") return;
+            if (LootCapBlocked) return;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.EnemyDebuff = false;
+            WorldStar.AllyBuff = false;
+            if (GameState.TowerFloor < 100)
+                GameState.SetTowerFloorForTest(100);
+            GameState.TrySelectTier(9);
+            if (GameState.Wallet.Copper < SortieCost())
+                GameState.Earn(SortieCost());
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_PENDING);
@@ -275,6 +341,7 @@ namespace AshesToStars
             PlayerPrefs.Save();
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             ForceRaceLootMul = 0f;
+            ForceLootBeforeCap = 0;
             _pending = false;
             _paid = 0;
             _lastLoot = 0;
