@@ -15,7 +15,7 @@ namespace AshesToStars
         protected override string Title => "캐릭터";
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
-        protected override string Subtitle => "레벨·목숨 관리와 Lv20 비살상 1차 전직 시험(§3·§4)";
+        protected override string Subtitle => "레벨·목숨 관리와 Lv20 1차·Lv50 2차 비살상 전직 시험(§3·§4)";
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
         static string ExpText(CharacterRecord ch) =>
@@ -54,6 +54,39 @@ namespace AshesToStars
 
                     if (_choosingAdvancement)
                     {
+                        var secondTrial = LifeSystem.ActiveSecondTrial;
+                        if (secondTrial != null && secondTrial.Character == ch)
+                        {
+                            Info(r, 0, $"{ch.Name} ({ch.Job}) · 2차 각성 시험 패턴 {secondTrial.Pattern + 1}");
+                            Info(r, 1, $"역할 목표: {secondTrial.Objective} {secondTrial.Progress}/{secondTrial.Required}");
+                            if (!secondTrial.ObjectiveMet)
+                            {
+                                for (int i = 0; i < secondTrial.Actions.Count; i++)
+                                {
+                                    var action = secondTrial.Actions[i];
+                                    if (Row(r, i + 2, TrialActionText(action), "각성 시험 상황에 맞는 행동을 선택한다"))
+                                    {
+                                        if (!LifeSystem.ReportSecondTrialProgress(action))
+                                        {
+                                            LifeSystem.CancelSecondAdvancementTrial();
+                                            _choosingAdvancement = false;
+                                        }
+                                    }
+                                }
+                            }
+                            else if (Row(r, 3, "각성 성공 확인", $"전직 재료 {LifeSystem.SecondAdvancementMaterialCost}개 소비 후 같은 직업 각성"))
+                            {
+                                LifeSystem.ConfirmSecondAdvancementTrial();
+                                _choosingAdvancement = false;
+                            }
+                            if (Row(r, 5, "← 시험 중단", "재료를 소비하지 않고 상세로 돌아간다"))
+                            {
+                                LifeSystem.CancelSecondAdvancementTrial();
+                                _choosingAdvancement = false;
+                            }
+                            return;
+                        }
+
                         var trial = LifeSystem.ActiveFirstTrial;
                         if (trial != null && trial.Character == ch)
                         {
@@ -156,9 +189,24 @@ namespace AshesToStars
                         else if (Row(r, advancementRow++, "1차 전직 시험", "역할별 직업 선택 후 비살상 훈련"))
                             _choosingAdvancement = true;
                     }
+                    else if (ch.Advancement == AdvancementTier.First && ch.Level < 50)
+                    {
+                        Locked(r, advancementRow++, "2차 각성", $"Lv50 필요 — 현재 Lv.{ch.Level}(§3)");
+                    }
+                    else if (ch.Advancement == AdvancementTier.First)
+                    {
+                        int materials = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
+                        if (materials < LifeSystem.SecondAdvancementMaterialCost)
+                            Locked(r, advancementRow++, "2차 각성 시험",
+                                $"전직 재료 {LifeSystem.SecondAdvancementMaterialCost}개 필요 — 현재 {materials}개(던전 파밍)");
+                        else if (Row(r, advancementRow++, "2차 각성 시험", $"{ch.Job} 심화 · 초필살기 해금 준비"))
+                        {
+                            if (LifeSystem.TryBeginSecondAdvancementTrial(ch)) _choosingAdvancement = true;
+                        }
+                    }
                     else
                     {
-                        Info(r, advancementRow++, $"전직 단계: {(ch.Advancement == AdvancementTier.First ? "1차" : "2차")}");
+                        Info(r, advancementRow++, "전직 단계: 2차 · 초필살기 전투 배선 대기");
                     }
 
                     if (Row(r, advancementRow, "← 목록으로", "캐릭터 목록으로 돌아간다"))

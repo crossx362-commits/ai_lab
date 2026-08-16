@@ -173,6 +173,48 @@ namespace AshesToStars
                   && candidate.Id == stableId,
                   "재기동 후에도 1차 전직 결과·영속 캐릭터 ID 유지");
 
+            // ①-C Lv50 2차 각성 — 1차 직업을 바꾸지 않고 재료20+시험 성공 때만 단계가 오른다.
+            candidate.Level = 49;
+            Check(!LifeSystem.TryBeginSecondAdvancementTrial(candidate)
+                  && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
+                  "Lv49는 2차 각성 불가 — 직업·단계 불변");
+            candidate.Level = 50;
+            Check(!LifeSystem.TryBeginSecondAdvancementTrial(candidate), "재료 20개 미만이면 2차 시험 시작 불가");
+            Check(GameState.Gain(Economy.LifeItem.AdvancementMaterial, 20), "2차 각성 재료 20개 추가 획득");
+            int secondMaterials = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
+            Check(LifeSystem.TryBeginSecondAdvancementTrial(candidate), "Lv50·1차·재료20이면 2차 비살상 시험 시작");
+            Check(LifeSystem.ActiveSecondTrial.TargetJob == "광전사", "2차는 분기 없이 같은 1차 직업을 유지");
+            LifeSystem.CancelSecondAdvancementTrial();
+            Check(GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == secondMaterials
+                  && candidate.Advancement == AdvancementTier.First,
+                  "2차 시험 중단은 재료 0소비·단계 불변");
+            Check(LifeSystem.TryBeginSecondAdvancementTrial(candidate), "2차 시험 재도전 가능");
+            while (!LifeSystem.ActiveSecondTrial.ObjectiveMet)
+                LifeSystem.ReportSecondTrialProgress(LifeSystem.ActiveSecondTrial.RequiredAction);
+            GameState.FailNextAtomicStageForTest();
+            atomicFailureCaught = false;
+            try { LifeSystem.ConfirmSecondAdvancementTrial(); }
+            catch (InvalidOperationException) { atomicFailureCaught = true; }
+            LifeSystem.ForgetInMemoryForTest();
+            GameState.ForgetInMemoryForTest();
+            candidate = LifeSystem.GetCharacters()[0];
+            Check(atomicFailureCaught && candidate.Job == "광전사"
+                  && candidate.Advancement == AdvancementTier.First
+                  && GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == secondMaterials,
+                  "2차 원자 저장 실패 후 재기동: 같은 직업·1차 단계·재료 모두 원상복구");
+            Check(LifeSystem.TryBeginSecondAdvancementTrial(candidate), "2차 저장 실패 뒤 시험 재시작 가능");
+            while (!LifeSystem.ActiveSecondTrial.ObjectiveMet)
+                LifeSystem.ReportSecondTrialProgress(LifeSystem.ActiveSecondTrial.RequiredAction);
+            Check(LifeSystem.ConfirmSecondAdvancementTrial()
+                  && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.Second
+                  && GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == secondMaterials - 20,
+                  "2차 시험 성공 확인 때만 재료20 소비·같은 직업 각성(§3·§18-6)");
+            Check(!LifeSystem.TryBeginSecondAdvancementTrial(candidate), "이미 2차인 캐릭터는 반복 각성 불가");
+            LifeSystem.ForgetInMemoryForTest();
+            candidate = LifeSystem.GetCharacters()[0];
+            Check(candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.Second,
+                  "재기동 후에도 같은 직업의 2차 각성 단계 유지");
+
             // W3가 지원하던 5직업 외 6종도 검사 폴백이 아니라 자기 전투 계약을 가져야 한다.
             string[] distinctJobs = { "광전사", "궁수", "소환사", "드루이드", "주술사", "정령사" };
             string[] expectedRoles = { "Tank", "Dps", "Dps", "Healer", "Buffer", "Buffer" };

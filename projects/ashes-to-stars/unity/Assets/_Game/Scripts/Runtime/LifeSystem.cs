@@ -100,7 +100,9 @@ namespace AshesToStars
         private const string K_ROSTER = "ats.roster";
         private const int InitialRevivePotions = 3;
         public const int FirstAdvancementMaterialCost = 5;
+        public const int SecondAdvancementMaterialCost = 20;
         public static FirstAdvancementTrial ActiveFirstTrial { get; private set; }
+        public static FirstAdvancementTrial ActiveSecondTrial { get; private set; }
         private static readonly Dictionary<string, string[]> FirstAdvancementByBasicJob = new()
         {
             { "탱", new[] { "수호기사", "광전사" } },
@@ -251,6 +253,7 @@ namespace AshesToStars
             _characters.Clear();
             _loaded = false;
             ActiveFirstTrial = null;
+            ActiveSecondTrial = null;
         }
 
         /// <summary>
@@ -360,6 +363,86 @@ namespace AshesToStars
             }
             Debug.Log($"[전직] {trial.Character.Name}: {trial.TargetJob} 1차 전직 완료");
             ActiveFirstTrial = null;
+            return true;
+        }
+
+        // ========== 2차 각성 (§3·§18-6 Lv50, 같은 직업 심화) ==========
+
+        static bool CanSecondAdvance(CharacterRecord character)
+        {
+            EnsureLoaded();
+            return character != null && !character.IsDeleted && character.Level >= 50
+                && character.Advancement == AdvancementTier.First && _characters.Contains(character)
+                && IsFirstAdvancementJob(character.Job);
+        }
+
+        /// <summary>Lv50·재료20 조건을 확인하고 현재 1차 직업의 비살상 각성 시험을 시작한다.</summary>
+        public static bool TryBeginSecondAdvancementTrial(CharacterRecord character)
+        {
+            if (!CanSecondAdvance(character)
+                || GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) < SecondAdvancementMaterialCost)
+                return false;
+
+            FirstTrialAction[] actions;
+            string objective;
+            if (character.Job == "수호기사" || character.Job == "광전사")
+            {
+                objective = "극한 피해를 막고 후열을 보호";
+                actions = new[] { FirstTrialAction.Guard, FirstTrialAction.Taunt, FirstTrialAction.Brace };
+            }
+            else if (character.Job == "검사" || character.Job == "궁수" || character.Job == "마법사" || character.Job == "소환사")
+            {
+                objective = "각성 표적을 순서대로 제압";
+                actions = new[] { FirstTrialAction.Mark, FirstTrialAction.Strike, FirstTrialAction.Execute };
+            }
+            else if (character.Job == "사제" || character.Job == "드루이드")
+            {
+                objective = "치명 상황의 아군을 안정화";
+                actions = new[] { FirstTrialAction.Heal, FirstTrialAction.Cleanse, FirstTrialAction.Stabilize };
+            }
+            else
+            {
+                objective = "각성 강화·약화를 끊김 없이 유지";
+                actions = new[] { FirstTrialAction.Inspire, FirstTrialAction.Weaken, FirstTrialAction.Sustain };
+            }
+
+            ActiveSecondTrial = new FirstAdvancementTrial(character, character.Job,
+                StableTrialPattern(character.Id, AdvancementTier.Second), 3, objective, actions);
+            return true;
+        }
+
+        public static bool ReportSecondTrialProgress(FirstTrialAction action)
+        {
+            if (ActiveSecondTrial == null || ActiveSecondTrial.ObjectiveMet
+                || action != ActiveSecondTrial.RequiredAction) return false;
+            ActiveSecondTrial.Progress++;
+            return true;
+        }
+
+        public static void CancelSecondAdvancementTrial() => ActiveSecondTrial = null;
+
+        /// <summary>시험 성공 확인 때만 재료20을 소비하고 직업명은 유지한 채 2차 단계로 저장한다.</summary>
+        public static bool ConfirmSecondAdvancementTrial()
+        {
+            var trial = ActiveSecondTrial;
+            if (trial == null || !trial.ObjectiveMet || !CanSecondAdvance(trial.Character)
+                || trial.TargetJob != trial.Character.Job
+                || GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) < SecondAdvancementMaterialCost)
+                return false;
+            if (!GameState.TryConsumeDeferred(Economy.LifeItem.AdvancementMaterial, SecondAdvancementMaterialCost))
+                return false;
+
+            trial.Character.Advancement = AdvancementTier.Second;
+            try { Save(includeStagedBag: true); }
+            catch
+            {
+                trial.Character.Advancement = AdvancementTier.First;
+                StageRosterForSave();
+                GameState.Gain(Economy.LifeItem.AdvancementMaterial, SecondAdvancementMaterialCost);
+                throw;
+            }
+            Debug.Log($"[전직] {trial.Character.Name}: {trial.TargetJob} 2차 각성 완료");
+            ActiveSecondTrial = null;
             return true;
         }
 
