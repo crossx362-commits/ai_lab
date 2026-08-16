@@ -143,7 +143,7 @@ namespace AshesToStars
             if (!EmergencyEscape.Casting) return;
             float p = EmergencyEscape.Progress;
             var box = new Rect(340f, 36f, 600f, 28f);
-            GUI.Box(box, $"귀환 시전 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 취소");
+            GUI.Box(box, $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
             GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
         }
 

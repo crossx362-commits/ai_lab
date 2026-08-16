@@ -62,6 +62,9 @@ PROMPT='너는 재와 별(Ashes to Stars) 유니티 게임을 개발하는 자�
 2. docs/STATUS.md          — 지금 위치·다음 할 일 큐·완료 기록
 3. docs/DESIGN.md          — 무엇을 만드는가(헌법). 원장은 docs/GAME_DESIGN_ASHES_TO_STARS.md
 4. projects/ashes-to-stars/CLAUDE.md — 이 프로젝트의 함정 목록
+5. `python3 loop/ollama_split.py classify` — 카피·분류는 로컬 올라마. owner=ollama면
+   `copy --kind`로 문구를 받아 소비처에만 넣고, Unity 전투/게이트 코드는 네가 한다.
+   `:cloud` 모델·유료 API는 쓰지 마라.
 
 ## 오너의 자동 실행 승인
 오너는 "기획서 반영해서 개발 가능한 부분 개발 루프 시작"을 명시적으로 지시했고,
