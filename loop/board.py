@@ -285,7 +285,7 @@ def _v3_closed(design: str) -> bool:
 
 
 def _v4_human_passed(status: str, decisions: dict | None) -> bool:
-    """사람 70%만 100이다. skip·실측 세션은 통과가 아니다."""
+    """테스터 70% 통과. skip·실측 세션은 통과가 아니다."""
     if re.search(r"V4.{0,24}70%.{0,24}→\s*통과", status or ""):
         return True
     for v in (decisions or {}).values():
@@ -295,13 +295,29 @@ def _v4_human_passed(status: str, decisions: dict | None) -> bool:
     return False
 
 
+def _v4_owner_skipped(status: str, decisions: dict | None) -> bool:
+    """오너가 사람 70%를 넘김. 옛 보류(skip)와 다르다."""
+    if re.search(r"V4.{0,24}70%.{0,24}→\s*넘김", status or ""):
+        return True
+    for v in (decisions or {}).values():
+        title = str(v.get("title") or "")
+        note = str(v.get("note") or "")
+        if "V4" in title and "70%" in title and "넘김" in note:
+            return True
+    return False
+
+
+def v4_released(status: str = "", decisions: dict | None = None) -> bool:
+    return _v4_human_passed(status, decisions) or _v4_owner_skipped(status, decisions)
+
+
 def v4_gate_pct(st: dict | None = None, decisions: dict | None = None,
                 status: str = "") -> int:
     """V4b 진행. 키트·세션은 숫자를 올리고, 사람 70% 전에는 90이 상한이다.
 
-    예전엔 항상 0이라 10세션 삭제 실측이 있어도 프로토가 4/5=80%에 묶였다.
+    오너가 「넘어가」면 100이지만 테스터 통과로 기록하지 않는다.
     """
-    if _v4_human_passed(status, decisions):
+    if v4_released(status, decisions):
         return 100
     st = st if st is not None else playtest_state()
     target = 10
@@ -381,8 +397,14 @@ def progress_charts(status: str | None = None, design: str | None = None,
         elif w["id"] == "W4" and v3:
             w.update(state="done", pct=100, note="V3 한 판 종단")
         elif w["id"] == "W6":
-            w.update(state="open", pct=0, note="V4 70% 사람 관문")
+            if v4_released(status, decisions):
+                w.update(state="done", pct=100,
+                         note="오너 넘김" if _v4_owner_skipped(status, decisions) else "사람 70% 통과")
+            else:
+                w.update(state="open", pct=0, note="V4 70% 사람 관문")
 
+    v4b_pct = v4_gate_pct(decisions=decisions, status=status)
+    v4b_note = v4_playtest_note(status=status, decisions=decisions)
     gates = [
         {"id": "V1", "label": "V1 성능", "pct": 100, "note": "W1 통과 · DOTS 불필요"},
         {"id": "V2", "label": "V2 조작감", "pct": 100 if v2 else 0,
@@ -390,17 +412,22 @@ def progress_charts(status: str | None = None, design: str | None = None,
         {"id": "V3", "label": "V3 보스 한 판", "pct": 100 if v3 else 0,
          "note": "HP·페이즈·처치·층" if v3 else "한 판 미연결"},
         {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
-        {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": v4_gate_pct(decisions=decisions, status=status),
-         "note": v4_playtest_note()},
+        {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": v4b_pct, "note": v4b_note},
     ]
     proto_pct = round(sum(g["pct"] for g in gates) / max(len(gates), 1))
     proto_closed = sum(1 for g in gates if g["pct"] >= 100)
     if any(g["pct"] < 100 for g in gates):
         proto_pct = min(proto_pct, 90)
+    if _v4_owner_skipped(status, decisions):
+        proto_note = "오너가 사람 70%를 넘김 · 측정 안 함"
+    elif proto_pct >= 100:
+        proto_note = f"관문 {proto_closed}/{len(gates)} 닫힘"
+    else:
+        proto_note = f"관문 평균 · {proto_closed}/{len(gates)}닫힘 · 사람 70% 전 상한 90"
     roadmap = [
         {"id": "0", "label": "0. 프로토타입",
          "pct": proto_pct,
-         "note": f"관문 평균 · {proto_closed}/{len(gates)}닫힘 · 사람 70% 전 상한 90"},
+         "note": proto_note},
         {"id": "1", "label": "1. 수직 슬라이스", "pct": 0, "note": "V4 이후"},
         {"id": "2", "label": "2. 온라인 기반", "pct": 0, "note": "V4 이후"},
         {"id": "3", "label": "3. 콘텐츠 확장", "pct": 0, "note": "V4 이후"},
@@ -739,9 +766,14 @@ def load_playtest_script() -> dict:
     }
 
 
-def v4_playtest_note(st: dict | None = None) -> str:
+def v4_playtest_note(st: dict | None = None, status: str = "",
+                    decisions: dict | None = None) -> str:
+    if _v4_owner_skipped(status, decisions):
+        return "오너가 사람 70%를 넘김 · 측정 안 함"
+    if _v4_human_passed(status, decisions):
+        return "사람 70% 통과"
     st = st if st is not None else playtest_state()
-    pct = v4_gate_pct(st)
+    pct = v4_gate_pct(st, decisions=decisions, status=status)
     if st["ran"] >= 10 and st["deleted"] >= 10:
         return f"10세션 삭제 실측 {pct}% · 사람 70% 대기"
     if st["n"] == 10:

@@ -128,6 +128,9 @@ class KitTests(unittest.TestCase):
         self.assertEqual(board.v4_gate_pct(st, decisions={
             "x": {"title": "V4 외부 테스터 70%", "choice": "pass"},
         }), 100)
+        self.assertEqual(board.v4_gate_pct(st, status="V4 70% → 넘김"), 100)
+        self.assertTrue(board._v4_owner_skipped("V4 외부 테스터 70% → 넘김", None))
+        self.assertFalse(board._v4_human_passed("V4 외부 테스터 70% → 넘김", None))
 
     def test_proto_average_leaves_80_when_sessions_exist(self):
         old = board.ROOT
@@ -158,6 +161,30 @@ class KitTests(unittest.TestCase):
         self.assertGreater(proto, 80)
         self.assertLessEqual(proto, 90)
         self.assertLess(proto, 100)
+
+    def test_owner_skip_closes_proto_without_claiming_pass(self):
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "output/qa/ashes-to-stars/v4_playtest").mkdir(parents=True)
+            board.ROOT = tmp
+            try:
+                charts = board.progress_charts(
+                    "V2 사람 판정 → 통과\nV4 외부 테스터 70% → 넘김\n",
+                    "### 현재 핵심 미완 (원장 §22)\n\n"
+                    "- **V3 한 판 종단**(원장 1순위) ✅ 실행 증거 닫힘\n",
+                    "### 21-4. 주차별 진행\n| ~~W1~~ | x | ✅ 완료 |\n| **W6** | 외부 | V4 |\n",
+                    {"x": {"title": "V2 사람 판정", "choice": "pass"}},
+                )
+            finally:
+                board.ROOT = old
+        v4b = next(g for g in charts["gates"] if g["id"] == "V4b")
+        proto = next(r for r in charts["roadmap"] if r["id"] == "0")
+        self.assertEqual(v4b["pct"], 100)
+        self.assertIn("넘김", v4b["note"])
+        self.assertNotIn("통과", v4b["note"])
+        self.assertEqual(proto["pct"], 100)
+        self.assertIn("넘김", proto["note"])
 
 
 if __name__ == "__main__":
