@@ -144,6 +144,8 @@ namespace AshesToStars
                          && UiPages.NavIcon("Party") == null,
                 "[UiAtlasSelfCheck] 하단 도크 아이콘 키가 화면과 어긋난다");
             _ = nameof(UiPages.NavDock);
+            Debug.Assert(UiPages.TabH >= 48f,
+                "[UiAtlasSelfCheck] 탭이 48보다 작으면 메뉴가 안 읽힌다");
             Debug.Assert(UiPages.CardMinIcon >= 72f,
                 "[UiAtlasSelfCheck] 카드 아이콘이 72보다 작으면 허브가 비어 보인다");
             var tight = new Rect(0f, 0f, 200f, 150f);
@@ -152,6 +154,8 @@ namespace AshesToStars
                 "[UiAtlasSelfCheck] 카드 아이콘과 글자가 겹치면 잘린다");
             Debug.Assert(tTitle.xMax <= tight.xMax + 0.01f && tSub.yMax <= tight.yMax + 0.01f,
                 "[UiAtlasSelfCheck] 카드 글자가 칸 밖으로 나가면 잘린다");
+            Debug.Assert(tTitle.height >= UiPages.CardTitleH - 0.01f,
+                "[UiAtlasSelfCheck] 제목 칸이 36보다 작으면 한글이 잘린다");
             _ = nameof(UiPages.LabelClip);
             var stretchBox = new Rect(0f, 0f, 400f, 180f);
             var fitIcon = UiAtlas.FitInside(stretchBox, 120f, 122f);

@@ -718,14 +718,14 @@ namespace AshesToStars
                     ItemAtlas.DrawHud(new Rect(slotRect.x + inset, slotRect.y + inset,
                             slotRect.width - inset * 2f, slotRect.height - inset * 2f),
                         ItemAtlas.KeyForSlot(slot), new Color(1f, 1f, 1f, 0.28f));
-                    var cap = new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f, 16f);
-                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 16f;
+                    var cap = new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f, 20f);
+                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 20f;
                     Hint(cap, Equipment.SlotName(slot));
                 }
                 else if (worn.Enhance > 0)
                 {
-                    var cap = new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, 16f);
-                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 16f;
+                    var cap = new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, 20f);
+                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 20f;
                     Hint(cap, $"+{worn.Enhance}");
                 }
                 if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)

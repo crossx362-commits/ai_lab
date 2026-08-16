@@ -7,7 +7,7 @@ namespace AshesToStars
     /// </summary>
     public static class UiPages
     {
-        public const float TabH = 42f;
+        public const float TabH = 50f;
         public const float TabGap = 10f;
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace AshesToStars
         /// <summary>명부 왼쪽 바둑판 · 오른쪽 대형 모습. 비율을 뒤집으면 오너 지시와 반대다.</summary>
         public const float RosterListRatio = 0.36f;
         public const int RosterCols = 3;
-        public const float RosterCellH = 118f;
+        public const float RosterCellH = 132f;
         public const float RosterRowH = 64f;
         public const float RosterRowGap = 8f;
         public const float LargeLookW = 240f;
@@ -91,7 +91,7 @@ namespace AshesToStars
         /// 명부 칸. 초상·이름·직업·목숨이 한 칸 안에서 서로 겹치지 않는다.
         /// 초상을 72로 고정하면 118칸에서 직업과 하트가 겹친다.
         /// </summary>
-        public const float RosterPlate = 50f;
+        public const float RosterPlate = 58f;
 
         public static void RosterCellLayout(Rect cell, out Rect face, out Rect name, out Rect job,
                                             out Rect hearts)
@@ -99,8 +99,8 @@ namespace AshesToStars
             float faceW = Mathf.Min(72f, cell.width - 12f,
                 Mathf.Max(32f, cell.height - RosterPlate - 8f));
             face = new Rect(cell.center.x - faceW * 0.5f, cell.y + 6f, faceW, faceW);
-            name = new Rect(cell.x + 4f, face.yMax + 1f, cell.width - 8f, 14f);
-            job = new Rect(cell.x + 4f, face.yMax + 15f, cell.width - 8f, 12f);
+            name = new Rect(cell.x + 4f, face.yMax + 2f, cell.width - 8f, 18f);
+            job = new Rect(cell.x + 4f, face.yMax + 20f, cell.width - 8f, 16f);
             hearts = new Rect(cell.center.x - 36f, cell.yMax - 22f, 72f, 22f);
         }
 
@@ -239,22 +239,24 @@ namespace AshesToStars
         /// 넓은 카드는 왼쪽에 붙는다 — 64px 아이콘을 위에만 두면 카드가 비어 보인다.
         /// </summary>
         public const float CardMinIcon = 72f;
+        /// <summary>한글 제목은 fontSize보다 칸이 커야 획이 안 잘린다.</summary>
+        public const float CardTitleH = 36f;
 
         public static void CardLayout(Rect card, bool hasIcon, out Rect icon, out Rect title, out Rect sub)
         {
             icon = default;
-            bool tall = hasIcon && card.height >= 150f;
+            bool tall = hasIcon && card.height >= 168f;
             if (tall)
             {
-                float plateH = Mathf.Clamp(card.height * 0.34f, 56f, 108f);
+                float plateH = Mathf.Clamp(card.height * 0.38f, 80f, 120f);
                 float maxIcon = Mathf.Max(24f, Mathf.Min(card.width - 28f, card.height - plateH - 16f));
                 float size = Mathf.Min(Mathf.Max(CardMinIcon, maxIcon), maxIcon);
                 icon = new Rect(card.center.x - size * 0.5f, card.y + 8f, size, size);
                 if (icon.yMax > card.yMax - plateH)
                     icon.height = Mathf.Max(24f, card.yMax - plateH - icon.y);
-                title = new Rect(card.x + 14f, card.yMax - plateH + 6f, card.width - 28f, 26f);
-                sub = new Rect(card.x + 14f, card.yMax - plateH + 32f, card.width - 28f,
-                    Mathf.Max(16f, plateH - 40f));
+                title = new Rect(card.x + 14f, card.yMax - plateH + 8f, card.width - 28f, CardTitleH);
+                sub = new Rect(card.x + 14f, card.yMax - plateH + 8f + CardTitleH,
+                    card.width - 28f, Mathf.Max(20f, plateH - CardTitleH - 16f));
                 return;
             }
 
@@ -265,8 +267,9 @@ namespace AshesToStars
                 icon = new Rect(card.x + 12f, card.y + (card.height - side) * 0.5f, side, side);
             float tx = card.x + (hasIcon ? side + 22f : 16f);
             float tw = card.xMax - tx - 14f;
-            title = new Rect(tx, card.y + 10f, tw, 30f);
-            sub = new Rect(tx, card.y + 42f, tw, Mathf.Max(20f, card.height - 54f));
+            title = new Rect(tx, card.y + 10f, tw, CardTitleH);
+            sub = new Rect(tx, card.y + 12f + CardTitleH, tw,
+                Mathf.Max(20f, card.height - CardTitleH - 22f));
         }
 
         /// <summary>칸 밖으로 글자가 새거나 옆 카드와 겹치지 않게 자른다.</summary>

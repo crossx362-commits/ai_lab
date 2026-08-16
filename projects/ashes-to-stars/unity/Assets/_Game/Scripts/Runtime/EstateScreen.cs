@@ -176,7 +176,13 @@ namespace AshesToStars
 
         void DrawEstateStatus(Rect r)
         {
-            var cards = UiPages.Grid(r, 2, 3, 12f);
+            string auraSub = WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel();
+            if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
+                auraSub = WorldStar.RaceSenseLine() + " · " + auraSub;
+            var aura = new Rect(r.x, r.y, r.width, 80f);
+            if (DrawCard(aura, "내 별 영공", auraSub, "worldmap"))
+                _sub = Sub.영공;
+            var cards = UiPages.Grid(new Rect(r.x, r.y + 92f, r.width, r.height - 92f), 2, 2, 16f);
             string keepSub = EstateBuild.KeepBusy
                 ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}"
                 : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
@@ -200,11 +206,6 @@ namespace AshesToStars
                     ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
                     : " · 넘치면 소멸"),
                 "building_auction", locked: true);
-            string auraSub = WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel();
-            if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
-                auraSub = WorldStar.RaceSenseLine() + " · " + auraSub;
-            if (DrawCard(cards[4], "내 별 영공", auraSub, "worldmap"))
-                _sub = Sub.영공;
         }
 
         void Aura(Rect r)

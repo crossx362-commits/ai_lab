@@ -14,7 +14,7 @@ namespace AshesToStars
         public const int MaxFloor = 100;
         public const float MinPx = 40f;
         public const float MaxPx = 112f;
-        public const float PlateH = 100f;
+        public const float PlateH = 72f;
         public const float MinSense = 4f;
         public const float MaxSense = 16f;
         public const float AllyBuffMul = 1.05f;

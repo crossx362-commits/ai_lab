@@ -112,14 +112,14 @@ namespace AshesToStars
         {
             if (_h1 != null) return;
             _h1 = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
-            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
+            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true, normal = { textColor = Dim } };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
-            _small = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = true, normal = { textColor = Dim } };
-            _cardTitle = new GUIStyle(_h1) { fontSize = 26 };
+            _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
+            _cardTitle = new GUIStyle(_h1) { fontSize = 22 };
             _tab = new GUIStyle(_small)
             {
-                fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
+                fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
                 normal = { textColor = Ink },
             };
             // 하단 탭은 아이콘과 이름을 세로로 나눈다. 기본 label은 좌측 정렬이라
