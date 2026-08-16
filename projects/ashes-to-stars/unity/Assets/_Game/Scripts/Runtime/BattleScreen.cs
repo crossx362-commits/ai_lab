@@ -42,10 +42,6 @@ namespace AshesToStars
                 cam.transform.position = new Vector3(0, 0, -10);
             }
 
-            string backdrop = GameFlow.Kind == GameFlow.BattleKind.보스
-                ? "infernal_arena" : "ashen_field";
-            BattleBackgroundAtlas.CreateWorldBackdrop(backdrop);
-
             // 보스전이면 기믹 3종이 도는 판을 얹는다(§9·§10-5).
             // 잡몹 웨이브와 달리 §5가 "보스는 수동 지휘"라 한 구간이다.
             if (GameFlow.Kind == GameFlow.BattleKind.보스)
