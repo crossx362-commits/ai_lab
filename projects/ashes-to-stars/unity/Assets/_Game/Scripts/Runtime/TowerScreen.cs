@@ -23,6 +23,7 @@ namespace AshesToStars
                 string train = DeathTraining.Line();
                 string scale = RaidScale.Line();
                 string pool = RaidBossPool.Line();
+                string reroll = RaidReroll.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
@@ -32,6 +33,8 @@ namespace AshesToStars
                     rest = scale + " · " + rest;
                 if (!string.IsNullOrEmpty(pool))
                     rest = pool + " · " + rest;
+                if (!string.IsNullOrEmpty(reroll))
+                    rest = reroll + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -57,6 +60,7 @@ namespace AshesToStars
             DeathTraining.SeedQaIfRequested();
             RaidScale.SeedQaIfRequested();
             RaidBossPool.SeedQaIfRequested();
+            RaidReroll.SeedQaIfRequested();
             if (DeathTraining.QaPromptConsent)
             {
                 _showDeathConsent = true;
@@ -82,6 +86,7 @@ namespace AshesToStars
                     var k = _pendingKind;
                     _pendingCost = 0;
                     _pendingFloor = 0;
+                    RaidReroll.Record(f);
                     GameFlow.GoBattle(GameFlow.Tower, k, f);
                 }
                 else if (decline)
@@ -114,6 +119,7 @@ namespace AshesToStars
                             _showInsufficientGold = false;
                             var k = _pendingKind; int f = _pendingFloor;
                             _pendingCost = 0;
+                            RaidReroll.Record(f);
                             GameFlow.GoBattle(GameFlow.Tower, k, f);
                             return;
                         }
@@ -146,6 +152,7 @@ namespace AshesToStars
                         return;
                     }
                     _pendingCost = 0;
+                    RaidReroll.Record(_pendingFloor);
                     GameFlow.GoBattle(GameFlow.Tower, _pendingKind, _pendingFloor);
                 }
                 else if (cancel)
@@ -173,9 +180,9 @@ namespace AshesToStars
             if (lower > 0)
             {
                 if (DrawCard(cards[2], $"하위 레이드 {lower}층",
-                        RaidBossPool.Line() + " · " + RaidScale.FormatLine(lower), "damage"))
-                    Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
-                          GameFlow.BattleKind.보스, lower);
+                        RaidReroll.FormatLine(lower) + " · " + RaidBossPool.Line()
+                        + " · " + RaidScale.FormatLine(lower), "damage"))
+                    Enter(RaidReroll.Cost(lower), GameFlow.BattleKind.보스, lower);
             }
             else
             {
@@ -227,6 +234,7 @@ namespace AshesToStars
                 _showInsufficientGold = true;
                 return;
             }
+            RaidReroll.Record(floor);
             GameFlow.GoBattle(GameFlow.Tower, kind, floor);
         }
 
