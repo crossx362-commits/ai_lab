@@ -58,6 +58,40 @@ class ParseTests(unittest.TestCase):
         self.assertTrue(q[0]["human"])
         self.assertFalse(q[1]["human"])
 
+    def test_queue_allows_parenthetical_after_title(self):
+        text = STATUS.replace(
+            "1. **V2 사람 판정** — ",
+            "1. **UI 호버/눌림 육안** (오너 UI 지시) — ",
+        )
+        q = board.parse_queue(text)
+        self.assertEqual(q[0]["title"], "UI 호버/눌림 육안")
+
+    def test_queue_table_skips_done_rows(self):
+        table = """
+## 다음 할 일 큐 (맨 위부터 하나씩)
+
+| # | 항목 | 통과 기준 | 네거티브 |
+|---|---|---|---|
+| 1 | **몹 AI 재생성** 남은 확인 | 매트릭스 | 옛 mob01 |
+| ~~2~~ | ~~보스~~ ✅ | 끝 | 끝 |
+| 4 | **영지 건물 3종** | 소비처 | 거짓말 UI |
+"""
+        rows = board.parse_queue_table(table)
+        self.assertEqual([r["title"] for r in rows], ["몹 AI 재생성", "영지 건물 3종"])
+
+    def test_now_list_from_design(self):
+        doc = """
+### 지금 당장 할 일 (우선순위 순)
+
+1. **V3 보스 전투를 끝까지 연결** — 한 판에서 성립
+2. **V2 사람 판정** — 창에서 피했는지
+
+## 23. 다음
+"""
+        rows = board.parse_now_list(doc)
+        self.assertEqual([r["title"] for r in rows],
+                         ["V3 보스 전투를 끝까지 연결", "V2 사람 판정"])
+
     def test_results_take_commit(self):
         r = board.parse_results(STATUS)
         self.assertEqual(r[0]["commit"], "ec927cbe")

@@ -129,7 +129,7 @@
   <div>
     <section>
       <h2>내 선택</h2>
-      <p class="meta" id="choice-hint">사람 판정이 필요한 항목만 모았다. 고르면 INBOX에 적히고 루프가 그다음을 집는다.</p>
+      <p class="meta" id="choice-hint">기획서·STATUS 큐에서 고른다. 「이걸로 진행」이 다음 할 일이 된다.</p>
       <div id="choices"></div>
       <span class="msg" id="choice-msg"></span>
     </section>
@@ -249,9 +249,9 @@ function render(state) {
       <div class="d">${esc(it.detail)}</div>
       <input type="text" class="choice-note" placeholder="메모 (선택)" style="margin-top:8px">
       <div class="acts">
-        <button type="button" class="pass" data-choice="pass">통과하고 다음</button>
-        <button type="button" class="retry" data-choice="retry">부족, 다시</button>
-        <button type="button" class="skip" data-choice="skip">건너뛰고 다른 일</button>
+        <button type="button" class="pass" data-choice="do">이걸로 진행</button>
+        <button type="button" class="retry" data-choice="pass">완료</button>
+        <button type="button" class="skip" data-choice="skip">보류</button>
       </div>
     </div>`).join("") : '<p class="empty">지금 고를 사람 판정은 없다</p>';
   renderItems($("milestones"), state.milestones || [], state);
@@ -327,7 +327,7 @@ $("choices").onclick = async (e) => {
   btn.disabled = true;
   try {
     const r = await api("/api/decide", { id: card.dataset.id, choice: btn.dataset.choice, note, resume: true });
-    msg.textContent = r.title + " → " + ({ pass: "통과", retry: "다시", skip: "건너뛰기" }[r.choice] || r.choice);
+    msg.textContent = r.title + " → " + ({ do: "이걸로 진행", pass: "완료", retry: "다시", skip: "보류" }[r.choice] || r.choice);
     await refresh();
   } catch (err) {
     msg.className = "msg err";

@@ -36,6 +36,7 @@ DECISIONS_PATH = HERE / "board_decisions.json"
 PID_PATH = HERE / "loop.pid"
 
 CHOICES = {
+    "do": "이걸로 진행 — 큐 맨 위에서 이것만 잡아라",
     "pass": "통과 — 완료로 내리고 다음으로 진행",
     "retry": "부족 — 이 항목을 다시 고쳐라",
     "skip": "건너뛰기 — 완료로 내리지 말고 다음 실행 가능 항목",
@@ -43,6 +44,7 @@ CHOICES = {
 
 STATUS = ROOT / "docs" / "STATUS.md"
 DESIGN = ROOT / "docs" / "DESIGN.md"
+GAME_DESIGN = ROOT / "docs" / "GAME_DESIGN_ASHES_TO_STARS.md"
 INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
 
 # 보드 커밋이 쓸 수 있는 경로. 시크릿·유니티 캐시·루프 로그는 절대 안 넣는다.
@@ -92,17 +94,76 @@ def parse_queue(status: str) -> list[dict]:
     block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
-        hit = re.match(r"^(\d+)\.\s+\*\*(.+?)\*\*\s*[—–-]\s*(.+)$", line.strip())
-        if not hit:
+        parsed = parse_numbered_item(line)
+        if parsed:
+            out.append(parsed)
+    return out
+
+
+def parse_numbered_item(line: str) -> dict | None:
+    """`1. **제목** (메모) — 설명` 또는 대시 없는 한 줄."""
+    hit = re.match(
+        r"^(\d+)\.\s+\*\*(.+?)\*\*(?:\s*\([^)]*\))?\s*(?:[—–-]\s*(.*))?$",
+        line.strip(),
+    )
+    if not hit:
+        return None
+    title = hit.group(2).strip()
+    detail = (hit.group(3) or "").strip()
+    return {
+        "n": int(hit.group(1)),
+        "id": item_id(title),
+        "title": title,
+        "detail": detail,
+        "human": needs_human(title, detail),
+    }
+
+
+def parse_queue_table(status: str) -> list[dict]:
+    """STATUS 하단 「다음 할 일 큐」 표. 취소선(완료) 행은 뺀다."""
+    m = re.search(r"^## 다음 할 일 큐[^\n]*\n", status, re.M)
+    if not m:
+        return []
+    rest = status[m.end():]
+    end = re.search(r"^## |\n### ", rest)
+    block = rest[: end.start()] if end else rest
+    out = []
+    for line in block.splitlines():
+        if "| ~~" in line or not line.startswith("|"):
             continue
-        title, detail = hit.group(2).strip(), hit.group(3).strip()
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 2 or not cells[0].isdigit():
+            continue
+        body = cells[1]
+        th = re.search(r"\*\*(.+?)\*\*", body)
+        title = (th.group(1) if th else body).strip()
+        if not title or title in ("항목", "#"):
+            continue
+        detail = cells[2] if len(cells) > 2 else body
         out.append({
-            "n": int(hit.group(1)),
-            "id": item_id(title),
-            "title": title,
-            "detail": detail,
+            "n": int(cells[0]),
+            "id": item_id("table:" + title),
+            "title": title[:160],
+            "detail": re.sub(r"<[^>]+>", "", detail)[:240],
             "human": needs_human(title, detail),
         })
+    return out
+
+
+def parse_now_list(design: str) -> list[dict]:
+    """원장 「지금 당장 할 일」 번호 목록."""
+    m = re.search(r"^### 지금 당장 할 일[^\n]*\n", design, re.M)
+    if not m:
+        return []
+    rest = design[m.end():]
+    end = re.search(r"^## ", rest, re.M)
+    block = rest[: end.start()] if end else rest
+    out = []
+    for line in block.splitlines():
+        parsed = parse_numbered_item(line)
+        if parsed:
+            parsed["id"] = item_id("now:" + parsed["title"])
+            out.append(parsed)
     return out
 
 
@@ -216,27 +277,27 @@ def save_decisions(data: dict) -> None:
 
 
 def pending_choices(queue: list[dict], milestones: list[dict],
-                    decisions: dict) -> list[dict]:
-    seen = set()
+                    decisions: dict, extra: list[dict] | None = None) -> list[dict]:
+    seen_titles = set()
     out = []
-    for src, kind in ((queue, "queue"), (milestones, "milestone")):
+    sources = [(queue, "queue"), (extra or [], "plan"), (milestones, "milestone")]
+    for src, kind in sources:
         for it in src:
             if it.get("done"):
                 continue
-            if not it.get("human"):
-                continue
             prev = decisions.get(it["id"]) or {}
-            # 큐에 다시 올라온 사람 판정은 예전 통과로 숨기지 않는다
             if kind != "queue" and prev.get("choice") in ("pass", "skip"):
                 continue
-            if it["id"] in seen:
+            key = re.sub(r"\s+", "", it["title"])
+            if key in seen_titles:
                 continue
-            seen.add(it["id"])
+            seen_titles.add(key)
             out.append({
                 "id": it["id"],
                 "title": it["title"],
                 "detail": it.get("detail") or "",
                 "kind": kind,
+                "human": bool(it.get("human")),
                 "last": prev.get("choice") or "",
             })
     return out
@@ -267,14 +328,16 @@ def rewrite_queue(status: str, items: list[dict], note: str = "") -> str:
 
 def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
     if choice not in CHOICES:
-        raise ValueError("통과/다시/건너뛰기 중에서 고르라")
-    queue = parse_queue(_read(STATUS))
+        raise ValueError("이걸로 진행/완료/다시/보류 중에서 고르라")
+    status = _read(STATUS)
+    queue = parse_queue(status)
     miles = parse_milestones(_read(DESIGN))
-    item = next((x for x in queue + miles if x["id"] == item_id), None)
+    catalog = queue + parse_queue_table(status) + parse_now_list(_read(GAME_DESIGN)) + miles
+    item = next((x for x in catalog if x["id"] == item_id), None)
     if not item:
         raise ValueError("그 항목을 찾지 못했다")
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    label = {"pass": "통과", "retry": "부족·다시", "skip": "건너뛰기"}[choice]
+    label = {"do": "이걸로 진행", "pass": "통과", "retry": "부족·다시", "skip": "보류"}[choice]
     body = (
         f"오너가 보드에서 **{label}**를 골랐다.\n"
         f"대상: {item['title']}\n"
@@ -282,7 +345,9 @@ def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
     )
     if note.strip():
         body += f"메모: {note.strip()[:400]}\n"
-    if choice == "pass":
+    if choice == "do":
+        body += "큐 맨 위에서 이 항목만 잡아라. 다른 일을 먼저 하지 마라."
+    elif choice == "pass":
         body += "이 항목을 완료로 내리고 큐의 다음 항목으로 진행하라. 자동검사로 통과를 선언한 것이 아니다."
     elif choice == "retry":
         body += "완료로 내리지 마라. 같은 항목을 고쳐서 다시 올려라."
@@ -290,7 +355,12 @@ def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
         body += "완료로 내리지 마라. 이 항목은 보류하고 다음 실행 가능 항목을 잡아라."
     write_request(f"오너 판정 — {item['title']} ({label})", body)
 
-    if choice in ("pass", "skip"):
+    if choice == "do":
+        remain = [q for q in queue if q["id"] != item_id]
+        remain.insert(0, item)
+        marker = f"> **오너 선택({stamp}): {item['title']} → 다음 할 일.**"
+        STATUS.write_text(rewrite_queue(_read(STATUS), remain, marker), encoding="utf-8")
+    elif choice in ("pass", "skip"):
         remain = [q for q in queue if q["id"] != item_id]
         marker = (
             f"> **오너 선택({stamp}): {item['title']} → {label}.**"
@@ -606,6 +676,14 @@ def build_state() -> dict:
     decisions = load_decisions()
     queue = parse_queue(status)
     miles = parse_milestones(design)
+    table = parse_queue_table(status)
+    now_list = parse_now_list(_read(GAME_DESIGN))
+    for it in now_list:
+        for m in miles:
+            if m.get("done") and (m["title"][:2] == it["title"][:2] or
+                                  m["title"] in it["title"] or it["title"] in m["title"]):
+                it["done"] = True
+    extra = table + now_list
     return {
         "updated": parse_updated(status),
         "queue": queue,
@@ -614,7 +692,7 @@ def build_state() -> dict:
         "inbox": parse_inbox(inbox),
         "checks": checks,
         "decisions": decisions,
-        "choices": pending_choices(queue, miles, decisions),
+        "choices": pending_choices(queue, miles, decisions, extra),
         "loop": loop_flags(),
         "commits": recent_commits(),
         "git": dirty_files(),
