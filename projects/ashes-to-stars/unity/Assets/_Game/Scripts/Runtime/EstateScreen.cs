@@ -128,7 +128,9 @@ namespace AshesToStars
             AuctionState.SeedBuyLockQaIfRequested();
             AuctionState.SeedExpireQaIfRequested();
             Rebirth.SeedQaIfRequested();
-            if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1")
+            Memorial.SeedQaIfRequested();
+            if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 _sub = Sub.영묘;
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
@@ -673,6 +675,8 @@ namespace AshesToStars
             int row = 0;
 
             Info(r, row++, $"환생석 {stones}개 · 잠든 캐릭터 {dead.Count}명");
+            if (!string.IsNullOrEmpty(Memorial.HubLine()))
+                Info(r, row++, Memorial.HubLine());
             if (!string.IsNullOrEmpty(Rebirth.Line()))
                 Info(r, row++, Rebirth.Line());
 
@@ -688,11 +692,17 @@ namespace AshesToStars
                     if (ch.IsSpecialJob)
                     {
                         Locked(r, row++, $"{ch.Name} · {ch.Job} · 기록만",
-                            "특수 직업은 환생석으로 되돌릴 수 없다(§3)",
+                            string.IsNullOrEmpty(Memorial.Line(ch))
+                                ? "특수 직업은 환생석으로 되돌릴 수 없다(§3)"
+                                : Memorial.Line(ch),
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone));
+                        if (Memorial.HasRecord(ch))
+                            Info(r, row++, Memorial.GearLine(ch));
                         continue;
                     }
-                    string desc = Rebirth.RowDesc(ch, stones);
+                    string desc = Memorial.HasRecord(ch)
+                        ? Memorial.Line(ch)
+                        : Rebirth.RowDesc(ch, stones);
                     if (Row(r, row++, $"{ch.Name} · {ch.Job} Lv{ch.Level}", desc,
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
                     {
@@ -705,6 +715,12 @@ namespace AshesToStars
                             return;                     // 목록이 바뀌었으니 이번 프레임은 여기서 끝
                         }
                         else _msg = "환생에 실패했다 — 환생석 소모를 확인할 것";
+                    }
+                    if (Memorial.HasRecord(ch))
+                    {
+                        Info(r, row++, Memorial.GearLine(ch));
+                        if (!string.IsNullOrEmpty(Memorial.RebirthLine(ch)))
+                            Info(r, row++, Memorial.RebirthLine(ch));
                     }
                 }
             }

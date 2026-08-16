@@ -124,6 +124,35 @@ namespace AshesToStars
             return false;
         }
 
+        /// <summary>영묘 추모(§4). 삭제 순간에 찍고, 환생해도 횟수만 남긴다.</summary>
+        public int MemorialFloor { get; set; }
+        public string MemorialPlace { get; set; }
+        public string MemorialCause { get; set; }
+        public string MemorialGear { get; set; }
+        public int MemorialRebirths { get; set; }
+
+        public string PackMemorial()
+        {
+            return MemorialFloor + "|" + (MemorialPlace ?? "") + "|" + (MemorialCause ?? "")
+                   + "|" + MemorialRebirths + "|" + (MemorialGear ?? "");
+        }
+
+        public void UnpackMemorial(string raw)
+        {
+            MemorialFloor = 0;
+            MemorialPlace = "";
+            MemorialCause = "";
+            MemorialRebirths = 0;
+            MemorialGear = "";
+            if (string.IsNullOrEmpty(raw)) return;
+            var p = raw.Split('|');
+            if (p.Length > 0 && int.TryParse(p[0], out int floor)) MemorialFloor = floor;
+            if (p.Length > 1) MemorialPlace = p[1] ?? "";
+            if (p.Length > 2) MemorialCause = p[2] ?? "";
+            if (p.Length > 3 && int.TryParse(p[3], out int n)) MemorialRebirths = n;
+            if (p.Length > 4) MemorialGear = string.Join("|", p, 4, p.Length - 4);
+        }
+
         public void ClearEquipped()
         {
             for (int i = 0; i < EquippedIds.Length; i++) EquippedIds[i] = null;
@@ -337,6 +366,8 @@ namespace AshesToStars
                 c.UnpackAbsorbed(p.Length > 11 ? p[11] : "");
                 // 13번째 필드는 특수 직업. 없던 저장은 일반 직업.
                 c.IsSpecialJob = p.Length > 12 && p[12] == "1";
+                // 14번째 필드는 영묘 추모(층|장소|원인|환생횟수|장착). 없던 저장은 빈 기록.
+                c.UnpackMemorial(p.Length > 13 ? p[13] : "");
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -375,7 +406,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0')
                   .Append('\t').Append(c.PackEquipped())
                   .Append('\t').Append(c.PackAbsorbed())
-                  .Append('\t').Append(c.IsSpecialJob ? '1' : '0').Append('\n');
+                  .Append('\t').Append(c.IsSpecialJob ? '1' : '0')
+                  .Append('\t').Append(c.PackMemorial()).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -944,6 +976,7 @@ namespace AshesToStars
                 character.DeathCount = 1;
                 character.IsDeleted = true;
                 character.RecoveryEndTime = 0;
+                Memorial.Stamp(character);
                 Equipment.DestroyEquippedOn(character);
                 Debug.Log($"[목숨] {character.Name} 특수 직업 즉시 소멸(§3)");
                 Save();
@@ -962,6 +995,7 @@ namespace AshesToStars
             {
                 character.IsDeleted = true;
                 character.DeathCount = 3;  // 상한 유지
+                Memorial.Stamp(character);
                 Equipment.DestroyEquippedOn(character);
                 Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. (3회 사망)");
             }
@@ -1170,6 +1204,7 @@ namespace AshesToStars
             character.ClearEquipped();
             Fusion.ClearAbsorbed(character);
             Rebirth.Apply(character);
+            Memorial.NoteRebirth(character);
             Save();
 
             Debug.Log($"[환생석] {character.Name} 복구 — 사망 0 · Lv{character.Level} " +

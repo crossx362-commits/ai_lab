@@ -68,7 +68,9 @@ namespace AshesToStars
             SeedDefenseRecoverQaIfRequested();
             SeedRaceRecoverQaIfRequested();
             Rebirth.SeedQaIfRequested();
-            if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "2"
+            Memorial.SeedQaIfRequested();
+            if ((System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "2"
+                 || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 && _selectedCharacter < 0)
                 _selectedCharacter = 0;
             if (StarterSecond.Pending)
@@ -209,11 +211,15 @@ namespace AshesToStars
                     // 목숨 상태 표시 — 유니코드 하트는 □로 나와 아틀라스 조각을 쓴다.
                     if (ch.IsDeleted)
                     {
-                        Info(r, 1, ch.IsSpecialJob
-                            ? "삭제됨 — 특수 직업은 환생석으로 되돌릴 수 없다(§3)"
-                            : "삭제됨 — 환생석으로만 복구 가능(§4)");
+                        Info(r, 1, Memorial.HasRecord(ch)
+                            ? Memorial.Line(ch)
+                            : (ch.IsSpecialJob
+                                ? "삭제됨 — 특수 직업은 환생석으로 되돌릴 수 없다(§3)"
+                                : "삭제됨 — 환생석으로만 복구 가능(§4)"));
                         UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
                             ch.DeathCount, true, ch.MaxLives);
+                        if (Memorial.HasRecord(ch))
+                            Info(r, 2, Memorial.GearLine(ch));
                     }
                     else
                     {

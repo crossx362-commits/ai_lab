@@ -46,6 +46,13 @@ namespace AshesToStars
         /// <summary>직전 화면 — 전투·결과에서 돌아갈 곳을 기억한다.</summary>
         public static string ReturnTo { get; private set; } = Estate;
 
+        /// <summary>SelfCheck·추모 시드가 씬을 안 열고 마지막 출전을 심을 때.</summary>
+        public static void SetReturnForTest(string scene, BattleKind kind = BattleKind.잡몹웨이브)
+        {
+            ReturnTo = string.IsNullOrEmpty(scene) ? Estate : scene;
+            Kind = kind;
+        }
+
         /// <summary>마지막 전투 결과. Result 화면이 읽는다.</summary>
         public static string LastBattleSummary = "";
 

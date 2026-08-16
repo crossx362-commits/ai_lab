@@ -119,7 +119,15 @@ namespace AshesToStars
             if (defeat != null && defeat.FallenNames.Count > 0)
                 Info(r, _rowIndex++, $"[사망] {string.Join(", ", defeat.FallenNames)}");
             if (defeat != null && defeat.DeletedNames.Count > 0)
+            {
                 Info(r, _rowIndex++, $"[삭제] {string.Join(", ", defeat.DeletedNames)} — 재가 되어 영묘에 기록됩니다(§16-6)");
+                var dead = LifeSystem.GetDeletedCharacters();
+                for (int i = 0; i < dead.Count; i++)
+                {
+                    string mem = Memorial.ResultLine(dead[i]);
+                    if (!string.IsNullOrEmpty(mem)) Info(r, _rowIndex++, mem);
+                }
+            }
             if (defeat != null && defeat.RescueGranted)
                 Info(r, _rowIndex++, $"계속 플레이: {defeat.RescueName} (딜 Lv1)이 명부에 있습니다");
 
