@@ -517,11 +517,57 @@ namespace AshesToStars
             { "Fusion", 2.0f }                  // 합성: 2 G/h (§18-7)
         };
 
+        public const string EnvShowCost = "QA_RACE_COST";
+        public const string EnvNoCost = "QA_NO_RACE_COST";
+        public const int HumanCostPercent = 100;
+        public const int DwarfCostPercent = 80;
+
+        /// <summary>SelfCheck가 종족 비용 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForceRaceCostMul;
+
+        public static bool CostRaceBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoCost) == "1";
+
+        /// <summary>§18-9 드워프 골드 소모 80%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static int RaceCostPercent()
+        {
+            if (CostRaceBlocked) return HumanCostPercent;
+            if (ForceRaceCostMul > 0f) return Math.Max(1, (int)Math.Round(ForceRaceCostMul * 100.0));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].골드소비배율 > 0f)
+                        return Math.Max(1, (int)Math.Round(races[i].골드소비배율 * 100.0));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.드워프 ? DwarfCostPercent : HumanCostPercent;
+        }
+
+        public static long ApplyRaceCost(long copper)
+        {
+            if (copper <= 0) return 0;
+            return copper * RaceCostPercent() / 100;
+        }
+
+        public static string RaceCostLine()
+        {
+            if (RaceCostPercent() == DwarfCostPercent && RacePrefs.Get() == RaceId.드워프)
+                return "드워프 골드 소모 −20%(§18-9)";
+            return "종족 골드 소모 배율 없음";
+        }
+
         /// <summary>
-        /// 행위 비용을 계산한다 (T1 기준 쿠퍼로 반환)
-        /// 예: 5층 레이드, T5 = 0.10 × 6.5536 G/h = 0.65536 G = 65,536 쿠퍼
+        /// 티어 상수만. 약탈 기준은 종족 비용과 갈라야 한다 — 드워프 출정이 싸다고
+        /// 약탈까지 20% 깎이면 §15와 §18-9가 한 줄에서 싸운다.
         /// </summary>
-        public static long GetActionCost(string actionKey, int tier)
+        public static long GetActionCostBase(string actionKey, int tier)
         {
             if (!ActionCostMultiplier.TryGetValue(actionKey, out var multiplier))
                 return 0;
@@ -536,6 +582,16 @@ namespace AshesToStars
             long cost = (long)(multiplier * tierMultiplier * copperPerGoldPerHour);
 
             return cost;
+        }
+
+        /// <summary>
+        /// 행위 비용을 계산한다 (T1 기준 쿠퍼로 반환)
+        /// 예: 5층 레이드, T5 = 0.10 × 6.5536 G/h = 0.65536 G = 65,536 쿠퍼
+        /// 드워프는 그 금액의 80%(§3·§18-9).
+        /// </summary>
+        public static long GetActionCost(string actionKey, int tier)
+        {
+            return ApplyRaceCost(GetActionCostBase(actionKey, tier));
         }
 
         // ========== 하위 레이드 리롤 누진 비용 (§18-2) ==========

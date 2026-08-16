@@ -152,7 +152,7 @@ namespace AshesToStars
         /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).</summary>
         public static long LootCopper()
         {
-            long baseLoot = Economy.GetActionCost("InvasionAttack", GameState.Tier) * 3;
+            long baseLoot = Economy.GetActionCostBase("InvasionAttack", GameState.Tier) * 3;
             if (baseLoot < 1000) baseLoot = 1000;
             int empty = DefenseState.MaxSlots - DefenseState.Count;
             long afterRace = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
@@ -223,6 +223,22 @@ namespace AshesToStars
             if (LootRaceBlocked) return;
             Load();
             RacePrefs.Set(RaceId.수인);
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            if (GameState.Wallet.Copper < SortieCost())
+                GameState.Earn(SortieCost());
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+        }
+
+        /// <summary>시각 QA. QA_RACE_COST=1이면 드워프·30층·보호막 없음으로 침략 카드를 연다.</summary>
+        public static void SeedRaceCostQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(Economy.EnvShowCost) != "1") return;
+            if (Economy.CostRaceBlocked) return;
+            Load();
+            RacePrefs.Set(RaceId.드워프);
             if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
                 GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
             if (GameState.Wallet.Copper < SortieCost())
