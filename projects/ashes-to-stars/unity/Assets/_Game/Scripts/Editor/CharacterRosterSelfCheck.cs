@@ -35,10 +35,14 @@ namespace AshesToStars
             Check(look.width > 56f, "대형 모습이 목록 얼굴(56)보다 크다");
             Check(look.x >= stage.x && look.xMax <= stage.xMax, "대형 모습은 오른쪽 안에 있다");
 
-            var row0 = UiPages.RosterRow(list, 0);
-            var row1 = UiPages.RosterRow(list, 1);
-            Check(row0.y < row1.y && Mathf.Approximately(row0.x, list.x),
-                "목록 줄은 왼쪽에서 아래로 쌓인다");
+            var c0 = UiPages.RosterCell(list, 0);
+            var c1 = UiPages.RosterCell(list, 1);
+            var c3 = UiPages.RosterCell(list, 3);
+            Check(Mathf.Approximately(c0.y, c1.y) && c0.x < c1.x,
+                "바둑판 같은 줄은 왼→오");
+            Check(c3.y > c0.y && Mathf.Approximately(c3.x, c0.x),
+                "바둑판 다음 줄은 아래·같은 열");
+            Check(UiPages.RosterCols == 3, "명부 바둑판은 3열");
 
             Check(UiPages.LookDir("탱") == "tank" && UiPages.LookDir("수호기사") == "tank",
                 "탱 계열은 tank idle");

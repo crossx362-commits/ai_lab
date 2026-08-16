@@ -25,32 +25,40 @@ namespace AshesToStars
 
         public static readonly float[] EquipRingDegrees = { -90f, -20f, 50f, 125f, 180f, -145f };
 
-        /// <summary>명부 왼쪽 목록 · 오른쪽 대형 모습. 비율을 뒤집으면 오너 지시와 반대다.</summary>
-        public const float RosterListRatio = 0.30f;
+        /// <summary>명부 왼쪽 바둑판 · 오른쪽 대형 모습. 비율을 뒤집으면 오너 지시와 반대다.</summary>
+        public const float RosterListRatio = 0.36f;
+        public const int RosterCols = 3;
+        public const float RosterCellH = 118f;
         public const float RosterRowH = 64f;
-        public const float RosterRowGap = 6f;
-        public const float LargeLookW = 200f;
-        public const float LargeLookH = 240f;
+        public const float RosterRowGap = 8f;
+        public const float LargeLookW = 240f;
+        public const float LargeLookH = 300f;
 
         public static void RosterSplit(Rect r, out Rect list, out Rect stage)
         {
             const float gap = 10f;
-            float listW = Mathf.Max(220f, r.width * RosterListRatio);
-            if (listW > r.width - 120f) listW = Mathf.Max(160f, r.width * 0.3f);
+            float listW = Mathf.Max(240f, r.width * RosterListRatio);
+            if (listW > r.width - 140f) listW = Mathf.Max(180f, r.width * 0.34f);
             list = new Rect(r.x, r.y, listW, r.height);
             stage = new Rect(r.x + listW + gap, r.y, Mathf.Max(80f, r.width - listW - gap), r.height);
         }
 
-        public static Rect RosterRow(Rect list, int index)
+        public static Rect RosterCell(Rect list, int index, int cols = RosterCols)
         {
-            return new Rect(list.x, list.y + index * (RosterRowH + RosterRowGap),
-                list.width, RosterRowH);
+            if (cols < 1) cols = 1;
+            float gap = RosterRowGap;
+            float cw = (list.width - gap * (cols - 1)) / cols;
+            int x = index % cols;
+            int y = index / cols;
+            return new Rect(list.x + x * (cw + gap), list.y + y * (RosterCellH + gap),
+                cw, RosterCellH);
         }
+
+        public static Rect RosterRow(Rect list, int index) => RosterCell(list, index, 1);
 
         public static Rect LargeLook(Rect stage)
         {
-            return new Rect(stage.center.x - LargeLookW * 0.5f, stage.y + 88f,
-                LargeLookW, LargeLookH);
+            return new Rect(stage.x + 16f, stage.y + 88f, LargeLookW, LargeLookH);
         }
 
         /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>

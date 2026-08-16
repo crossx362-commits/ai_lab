@@ -73,10 +73,13 @@ namespace AshesToStars
             Debug.Assert(look.width >= 160f && look.height >= 200f
                          && look.width > 56f && look.x >= stage.x && look.xMax <= stage.xMax,
                 "[UiAtlasSelfCheck] 대형 모습이 목록 얼굴(56)보다 크고 오른쪽 안에 있어야 한다");
-            var row0 = UiPages.RosterRow(list, 0);
-            var row1 = UiPages.RosterRow(list, 1);
-            Debug.Assert(row0.y < row1.y && Mathf.Approximately(row0.x, list.x),
-                "[UiAtlasSelfCheck] 목록 줄은 왼쪽에서 아래로 쌓인다");
+            var c0 = UiPages.RosterCell(list, 0);
+            var c1 = UiPages.RosterCell(list, 1);
+            var c3 = UiPages.RosterCell(list, 3);
+            Debug.Assert(Mathf.Approximately(c0.y, c1.y) && c0.x < c1.x,
+                "[UiAtlasSelfCheck] 명부 바둑판 같은 줄은 왼→오");
+            Debug.Assert(c3.y > c0.y && Mathf.Approximately(c3.x, c0.x),
+                "[UiAtlasSelfCheck] 명부 바둑판 다음 줄은 아래");
             Debug.Assert(UiPages.LookDir("탱") == "tank" && UiPages.LookDir("수호기사") == "tank"
                          && UiPages.LookDir("검사") == "dps" && UiPages.LookDir("마법사") == "mage"
                          && UiPages.LookDir("사제") == "healer" && UiPages.LookDir("음유시인") == "buffer",

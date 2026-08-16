@@ -17,7 +17,7 @@ namespace AshesToStars
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Character);
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
-        protected override string Subtitle => "왼쪽 목록에서 고르면 오른쪽에서 모습과 장비를 본다(§3·§4)";
+        protected override string Subtitle => "왼쪽 바둑판에서 고르면 오른쪽에 모습과 정보가 나온다(§3·§4)";
         protected override bool ShowRarityPreview => UiAtlas.QaShowRarity;
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
@@ -340,15 +340,18 @@ namespace AshesToStars
             const float partyH = 56f;
             var listBody = new Rect(list.x, list.y, list.width, Mathf.Max(40f, list.height - partyH - 8f));
             var partyRect = new Rect(list.x, list.yMax - partyH, list.width, partyH);
-            float contentH = allCharacters.Count * (UiPages.RosterRowH + UiPages.RosterRowGap);
-            var view = new Rect(0f, 0f, Mathf.Max(40f, listBody.width - 16f), Mathf.Max(listBody.height, contentH));
+            int cols = UiPages.RosterCols;
+            int rows = (allCharacters.Count + cols - 1) / cols;
+            float contentH = Mathf.Max(listBody.height,
+                rows * (UiPages.RosterCellH + UiPages.RosterRowGap));
+            var view = new Rect(0f, 0f, Mathf.Max(40f, listBody.width - 16f), contentH);
             _listScroll = GUI.BeginScrollView(listBody, _listScroll, view);
+            var board = new Rect(0f, 0f, view.width, contentH);
             for (int i = 0; i < allCharacters.Count; i++)
             {
-                var row = new Rect(0f, i * (UiPages.RosterRowH + UiPages.RosterRowGap),
-                    view.width, UiPages.RosterRowH);
-                DrawRosterListRow(row, allCharacters[i], i == _selectedCharacter);
-                if (GUI.Button(row, GUIContent.none, GUIStyle.none))
+                var cell = UiPages.RosterCell(board, i);
+                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter);
+                if (GUI.Button(cell, GUIContent.none, GUIStyle.none))
                 {
                     _selectedCharacter = i;
                     _choosingAdvancement = false;
@@ -366,18 +369,20 @@ namespace AshesToStars
             else DrawAttributes(detailBody, ch);
         }
 
-        void DrawRosterListRow(Rect row, CharacterRecord ch, bool selected)
+        void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected)
         {
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : (Color?)null;
-            UiAtlas.Draw(row, UiAtlas.ButtonKey(false, selected),
+            UiAtlas.Draw(cell, UiAtlas.ButtonKey(false, selected),
                 selected ? (Color?)null : new Color(1f, 1f, 1f, 0.78f));
-            var face = new Rect(row.x + 6f, row.y + 8f, 48f, 48f);
+            float faceW = Mathf.Min(72f, cell.width - 12f);
+            var face = new Rect(cell.center.x - faceW * 0.5f, cell.y + 6f, faceW, faceW);
             UiAtlas.DrawRosterFrame(face);
             PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
-            UiAtlas.Draw(new Rect(face.xMax - 8f, face.yMax - 8f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
-            string name = ch.IsRescue ? $"{ch.Name} · 재건" : ch.Name;
-            Hint(new Rect(face.xMax + 8f, row.y + 6f, row.width - 70f, 22f), $"{name} · {ch.Job}");
-            UiAtlas.DrawHearts(new Rect(face.xMax + 8f, row.y + 32f, 80f, 18f),
+            UiAtlas.Draw(new Rect(face.xMax - 14f, face.yMax - 14f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
+            string name = ch.IsRescue ? $"{ch.Name}·재건" : ch.Name;
+            Hint(new Rect(cell.x + 4f, face.yMax + 2f, cell.width - 8f, 18f), name);
+            Hint(new Rect(cell.x + 4f, face.yMax + 18f, cell.width - 8f, 16f), ch.Job);
+            UiAtlas.DrawHearts(new Rect(cell.center.x - 36f, cell.yMax - 16f, 72f, 14f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
         }
 
@@ -615,21 +620,20 @@ namespace AshesToStars
             EquipSlot.Boots, EquipSlot.Armor, EquipSlot.Gloves,
         };
 
-        /// <summary>참고작처럼 초상 둘레에 6칸, 오른쪽에 가방 격자.</summary>
+        /// <summary>오른쪽: 큰 모습 + 정보. 장비 6칸은 둘레, 가방은 정보 아래.</summary>
         void DrawEquipStudio(Rect r, CharacterRecord ch)
         {
-            float leftW = r.width * 0.56f;
-            var stage = new Rect(r.x, r.y, leftW - 10f, r.height - 56f);
+            var stage = new Rect(r.x, r.y, r.width, r.height - 56f);
             if (!UiAtlas.DrawSliced(stage, "panel", 18f, new Color(1f, 1f, 1f, 0.9f)))
                 UiAtlas.Draw(stage, "panel");
 
-            Hint(new Rect(stage.x + 18f, stage.y + 10f, 280f, 24f),
-                $"{ch.Name} · {ch.Job}");
-            var power = new Rect(stage.x + 18f, stage.y + 36f, 280f, 28f);
-            UiAtlas.Draw(new Rect(power.x, power.y, 26f, 26f), "sword");
-            Hint(new Rect(power.x + 30f, power.y + 2f, 250f, 24f),
+            string title = ch.Name;
+            if (ch.IsRescue) title += " · 재건";
+            if (ch.IsSpecialJob) title += " · 특수";
+            Hint(new Rect(stage.x + 18f, stage.y + 10f, 360f, 24f), $"{title} · {ch.Job}");
+            UiAtlas.Draw(new Rect(stage.x + 18f, stage.y + 36f, 26f, 26f), "sword");
+            Hint(new Rect(stage.x + 48f, stage.y + 38f, 280f, 24f),
                 $"전투력  {CombatPower(ch):N0}");
-            Hint(new Rect(stage.x + 18f, stage.y + 64f, 280f, 20f), ExpText(ch));
             UiAtlas.DrawHearts(new Rect(stage.xMax - 96f, stage.y + 14f, 80f, 22f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
 
@@ -644,7 +648,7 @@ namespace AshesToStars
             {
                 var slot = RingSlots[i];
                 float deg = UiPages.EquipRingDegrees[i];
-                var slotRect = UiPages.SlotOnRing(center, 140f, 125f, deg, 52f);
+                var slotRect = UiPages.SlotOnRing(center, 148f, 158f, deg, 52f);
                 var worn = Equipment.Worn(ch, slot);
                 ItemAtlas.DrawGear(slotRect, worn);
                 if (worn == null)
@@ -668,42 +672,9 @@ namespace AshesToStars
                 }
             }
 
-            var bagPanel = new Rect(r.x + leftW, r.y, r.width - leftW, r.height - 56f);
-            if (!UiAtlas.DrawSliced(bagPanel, "panel", 16f, new Color(1f, 1f, 1f, 0.9f)))
-                UiAtlas.Draw(bagPanel, "panel");
-            int filled = 0;
-            var bag = Equipment.Unequipped();
-            for (int i = 0; i < bag.Count; i++)
-                if (_bagFilter < 0 || (int)bag[i].Slot == _bagFilter) filled++;
-            Hint(new Rect(bagPanel.x + 12f, bagPanel.y + 8f, bagPanel.width - 24f, 20f),
-                $"가방  {filled}/{bag.Count}");
-
-            float tabY = bagPanel.y + 32f;
-            float tabW = (bagPanel.width - 24f) / 7f;
-            DrawBagFilterTab(new Rect(bagPanel.x + 10f, tabY, tabW, 26f), "전체", -1);
-            for (int s = 0; s < Equipment.SlotCount; s++)
-            {
-                var tr = new Rect(bagPanel.x + 10f + (s + 1) * tabW, tabY, tabW, 26f);
-                DrawBagFilterTab(tr, Equipment.SlotName((EquipSlot)s), s);
-            }
-
-            const float cell = 56f, gap = 8f;
-            float gx = bagPanel.x + 14f, gy = tabY + 36f;
-            int col = 0, shown = 0;
-            for (int i = 0; i < bag.Count && shown < 16; i++)
-            {
-                if (_bagFilter >= 0 && (int)bag[i].Slot != _bagFilter) continue;
-                var gcell = new Rect(gx + col * (cell + gap), gy, cell, cell);
-                if (gcell.yMax > bagPanel.yMax - 10f) break;
-                ItemAtlas.DrawGear(gcell, bag[i]);
-                if (bag[i].Enhance > 0)
-                    Hint(new Rect(gcell.x, gcell.yMax - 14f, gcell.width, 14f), $"+{bag[i].Enhance}");
-                if (GUI.Button(gcell, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
-                    Equipment.TryEquip(ch, bag[i].Id);
-                col++;
-                if (col >= 4) { col = 0; gy += cell + gap; }
-                shown++;
-            }
+            float infoX = Mathf.Max(face.xMax + 36f, stage.x + 300f);
+            var info = new Rect(infoX, stage.y + 36f, stage.xMax - infoX - 14f, stage.height - 48f);
+            DrawInspectInfo(info, ch);
 
             var bar = new Rect(r.x, r.yMax - 48f, r.width, 44f);
             var actions = UiPages.Grid(bar, 2, 1, 12f);
@@ -712,6 +683,79 @@ namespace AshesToStars
             CompactAction(actions[1],
                 $"{Economy.FormatCurrency(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
                 "gold", locked: true);
+        }
+
+        void DrawInspectInfo(Rect r, CharacterRecord ch)
+        {
+            float y = r.y;
+            void Line(string text)
+            {
+                if (y + 20f > r.yMax) return;
+                Hint(new Rect(r.x, y, r.width, 20f), text);
+                y += 22f;
+            }
+
+            Line(ExpText(ch));
+            if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
+            {
+                float need = LifeSystem.ExpToNext(ch.Level);
+                float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
+                UiAtlas.DrawMeter(new Rect(r.x, y, Mathf.Min(220f, r.width), 16f),
+                    "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
+                y += 22f;
+            }
+            if (ch.IsDeleted)
+                Line(ch.IsSpecialJob ? "삭제됨 · 환생 불가" : "삭제됨 · 환생석만");
+            else
+                Line(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중");
+            Line(ch.Advancement switch
+            {
+                AdvancementTier.Second => "전직 2차 · 초필 해금",
+                AdvancementTier.First => "전직 1차",
+                _ => "전직 기본",
+            });
+            if (ch.IsSpecialJob) Line($"특수 직업 · 목숨 {ch.MaxLives}");
+            if (ch.IsRescue) Line("긴급 재건");
+            if (PartyState.Contains(_selectedCharacter)) Line("지금 출전 편성");
+            if (DefenseState.Contains(_selectedCharacter)) Line("수비 배치 중");
+            if (TowerEnding.HasStarLook) Line(TowerEnding.LookName);
+            if (SoloRaidClear.HasLook) Line(SoloRaidClear.LookName);
+            if (!ch.IsDeleted && ch.AbsorbedBoons.Count > 0)
+                Line($"흡수 {Fusion.AbsorbedSummary(ch)} ({ch.AbsorbedBoons.Count}/{Fusion.SlotCap})");
+            if (!ch.IsDeleted && ch.PendingBoon >= 0)
+                Line($"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)}");
+
+            Line("장착");
+            for (int s = 0; s < Equipment.SlotCount; s++)
+            {
+                var worn = Equipment.Worn(ch, (EquipSlot)s);
+                string slot = Equipment.SlotName((EquipSlot)s);
+                Line(worn == null
+                    ? $"{slot}  ·  없음"
+                    : $"{slot}  ·  {worn.Name}" + (worn.Enhance > 0 ? $" +{worn.Enhance}" : ""));
+            }
+
+            y += 6f;
+            var bag = Equipment.Unequipped();
+            int filled = 0;
+            for (int i = 0; i < bag.Count; i++)
+                if (_bagFilter < 0 || (int)bag[i].Slot == _bagFilter) filled++;
+            Line($"가방  {filled}/{bag.Count}");
+            const float cell = 44f, gap = 6f;
+            int col = 0;
+            int shown = 0;
+            for (int i = 0; i < bag.Count && shown < 8; i++)
+            {
+                if (_bagFilter >= 0 && (int)bag[i].Slot != _bagFilter) continue;
+                var gcell = new Rect(r.x + col * (cell + gap), y, cell, cell);
+                if (gcell.yMax > r.yMax) break;
+                ItemAtlas.DrawGear(gcell, bag[i]);
+                if (GUI.Button(gcell, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
+                    Equipment.TryEquip(ch, bag[i].Id);
+                col++;
+                if (col >= 4) { col = 0; y += cell + gap; }
+                shown++;
+            }
         }
 
         static void DrawIdleLook(Rect target, string job, Color? tint)
