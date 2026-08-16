@@ -61,7 +61,9 @@ namespace AshesToStars
             SoloRaidClear.SeedQaIfRequested();
             if (!string.IsNullOrEmpty(AutoOpen))
             {
-                if (System.Enum.TryParse(AutoOpen, out Sub want))
+                if (AutoOpen == "현황")
+                    _hubPage = 1;
+                else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
                     _sub = want;
                     if (want == Sub.대장간)
@@ -74,6 +76,10 @@ namespace AshesToStars
             }
 
             EstateBuild.Tick();
+            EstateMine.Tick();
+            if (System.Environment.GetEnvironmentVariable("QA_ESTATE_MINE") == "1")
+                _hubPage = 1;
+            EstateMine.SeedQaIfRequested();
             if (_sub == Sub.본성) { Keep(r); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
@@ -130,11 +136,15 @@ namespace AshesToStars
                         : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            DrawCard(cards[2], Economy.FormatCurrency(GameState.Wallet.Copper),
-                GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
+            DrawCard(cards[2], "광산",
+                $"{Economy.FormatCurrency(EstateMine.CopperPerHour())}/h · 창고에 자동 적립(§13)",
+                "field", locked: true);
+            DrawCard(cards[3], "창고",
+                $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}"
+                + (EstateMine.WastedCopper > 0
+                    ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
+                    : " · 넘치면 소멸"),
                 "building_auction", locked: true);
-            DrawCard(cards[3], $"수비 {DefenseState.Count}/{DefenseState.MaxSlots}",
-                "비어 있으면 침략 약탈이 늘어난다", "building_barracks", locked: true);
         }
 
         void Keep(Rect r)

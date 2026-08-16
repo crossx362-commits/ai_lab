@@ -288,6 +288,8 @@ namespace AshesToStars
                 case "경매장": return "building_auction";
                 case "영묘": return "building_mausoleum";
                 case "수비대": return "building_barracks";
+                case "광산": return "field";
+                case "창고": return "building_auction";
                 default: return null;
             }
         }
