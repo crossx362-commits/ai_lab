@@ -40,6 +40,7 @@ namespace AshesToStars
             }
 
             Locked(r, 2, "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)");
+            Info(r, 3, $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots} — 침략 전투는 아직 없다(§13-5)");
         }
     }
 }

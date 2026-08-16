@@ -128,7 +128,10 @@ namespace AshesToStars
             AdvancementMaterial = 4,
 
             /// <summary>특수 직업 전직 증표 - 50층 이상 보스 드랍</summary>
-            SpecialJobToken = 3
+            SpecialJobToken = 3,
+
+            /// <summary>사냥 가죽 — 대장간 제작 재료(§11). 별도 채집 없음.</summary>
+            CraftHide = 5
         }
 
         /// <summary>
@@ -158,6 +161,12 @@ namespace AshesToStars
 
             // 특수 직업 전직 증표 드랍률 (§18-4)
             { (DropSource.Tower10Boss, LifeItem.SpecialJobToken), 0.02f },      // 50층 이상 보스 2% (여기선 10층으로 임시)
+
+            // 사냥 가죽(§11) — 확정 드랍률이 없어 프로토타입 검증값. 희귀 고유템이 아니다.
+            { (DropSource.FieldDungeonBoss, LifeItem.CraftHide), 0.50f },
+            { (DropSource.Tower5Boss, LifeItem.CraftHide), 0.50f },
+            { (DropSource.Tower10Boss, LifeItem.CraftHide), 0.80f },
+            { (DropSource.RaidDungeon, LifeItem.CraftHide), 1.00f },
         };
 
         /// <summary>희귀 고유템 — ⚠️ §10-8 "전투당 1회만 판정".</summary>
@@ -193,6 +202,13 @@ namespace AshesToStars
             return results;
         }
 
+        /// <summary>
+        /// 필드 사냥(보스 테이블이 아닌 잡몹 웨이브)에서 가죽만 판정한다.
+        /// 보스 테이블을 그대로 쓰면 필드에서 부활초가 나와 목숨 경제가 풀린다.
+        /// 프로토타입 검증값: 생존 1회에 가죽 1장 — 대장간 루프가 화면에 보여야 한다.
+        /// </summary>
+        public static int FieldHuntHideCount() => 1;
+
         // ========== 소지 상한 (§4, §18-4) ==========
 
         /// <summary>
@@ -204,7 +220,8 @@ namespace AshesToStars
             { LifeItem.ScrollOfReturn, 5 },             // 귀환의 두루마리 5개 (§18-4)
             { LifeItem.RebornStone, int.MaxValue },     // 환생석 무제한 (§18-4)
             { LifeItem.AdvancementMaterial, int.MaxValue }, // 전직 요구량 누적 파밍
-            { LifeItem.SpecialJobToken, int.MaxValue }  // 특수 직업 증표 무제한 (§18-4)
+            { LifeItem.SpecialJobToken, int.MaxValue },  // 특수 직업 증표 무제한 (§18-4)
+            { LifeItem.CraftHide, int.MaxValue }           // 제작 재료 — 상한 없음
         };
 
         /// <summary>
@@ -218,7 +235,8 @@ namespace AshesToStars
                 { LifeItem.ScrollOfReturn, 0 },
                 { LifeItem.RebornStone, 0 },
                 { LifeItem.AdvancementMaterial, 0 },
-                { LifeItem.SpecialJobToken, 0 }
+                { LifeItem.SpecialJobToken, 0 },
+                { LifeItem.CraftHide, 0 }
             };
 
             /// <summary>

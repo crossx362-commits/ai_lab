@@ -421,14 +421,17 @@ public class W3Party : MonoBehaviour
         public Job[] Jobs;
         public AdvancementTier[] Advancements;
         public int[] Levels;
+        public float[] HpMuls;
         public bool TauntEnabled;
         public Setup(string n, Job[] j, bool taunt = true)
         {
             Name = n; Jobs = j; TauntEnabled = taunt;
             Advancements = new AdvancementTier[j.Length];
             Levels = new int[j.Length];
+            HpMuls = new float[j.Length];
             for (int i = 0; i < Advancements.Length; i++) Advancements[i] = AdvancementTier.First;
             for (int i = 0; i < Levels.Length; i++) Levels[i] = 1;
+            for (int i = 0; i < HpMuls.Length; i++) HpMuls[i] = 1f;
         }
     }
 
@@ -450,17 +453,20 @@ public class W3Party : MonoBehaviour
         var jobs = new System.Collections.Generic.List<Job>();
         var advancements = new System.Collections.Generic.List<AdvancementTier>();
         var levels = new System.Collections.Generic.List<int>();
+        var hpMuls = new System.Collections.Generic.List<float>();
         foreach (var combatant in combatants)
         {
             if (System.Enum.TryParse(combatant.Job, out Job j)) jobs.Add(j);
             else jobs.Add(Job.검사);   // 손상된/미래 직업 저장만 안전 폴백 — 확정 1차 11종은 모두 enum에 있어야 한다
             advancements.Add(combatant.Advancement);
             levels.Add(combatant.Level);
+            hpMuls.Add(combatant.HpMul);
         }
         if (jobs.Count == 0) return null;
         var setup = new Setup("편성 파티", jobs.ToArray());
         setup.Advancements = advancements.ToArray();
         setup.Levels = levels.ToArray();
+        setup.HpMuls = hpMuls.ToArray();
         return setup;
     }
 
@@ -472,6 +478,13 @@ public class W3Party : MonoBehaviour
     {
         if (System.Environment.GetEnvironmentVariable("QA_NO_LEVEL_GROWTH") == "1") return 1f;
         return 1f + 0.02f * (Mathf.Clamp(level, 1, AshesToStars.LifeSystem.MaxLevel) - 1);
+    }
+
+    /// <summary>대장간 갑옷 배율. QA_NO_GEAR=1이면 1 — 네거티브 컨트롤.</summary>
+    public static float GearHpMultiplier(float gearHpMul)
+    {
+        if (System.Environment.GetEnvironmentVariable("QA_NO_GEAR") == "1") return 1f;
+        return gearHpMul > 0f ? gearHpMul : 1f;
     }
 
     // ── 재현 가능한 측정 (2026-08-14) ─────────────────────────────
@@ -962,7 +975,9 @@ public class W3Party : MonoBehaviour
             m.Sr.sprite = SpriteBank.Cached.Char(ArtOf(m.Job));
             int level = _setup.Levels != null && i < _setup.Levels.Length ? _setup.Levels[i] : 1;
             float levelMul = LevelStatMultiplier(level);
-            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp * levelMul;
+            float gearMul = GearHpMultiplier(
+                _setup.HpMuls != null && i < _setup.HpMuls.Length ? _setup.HpMuls[i] : 1f);
+            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp * levelMul * gearMul;
             m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f) * _bAtk * levelMul;
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어

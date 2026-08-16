@@ -260,6 +260,7 @@ namespace AshesToStars
             Economy.LifeItem.ScrollOfReturn => "귀환의 두루마리",
             Economy.LifeItem.RebornStone => "환생석",
             Economy.LifeItem.AdvancementMaterial => "전직 재료",
+            Economy.LifeItem.CraftHide => "사냥 가죽",
             _ => "특수 직업 증표",
         };
 
@@ -276,11 +277,16 @@ namespace AshesToStars
             PlayerPrefs.Save();
             _debt = _loanAccruedAt = _loanDueAt = 0;
             _loaded = false;
+            Equipment.ResetAll();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
         /// (LifeSystem.ForgetInMemoryForTest와 같은 목적: 저장→재기동 유지를 자가검사가 확인)</summary>
-        public static void ForgetInMemoryForTest() => _loaded = false;
+        public static void ForgetInMemoryForTest()
+        {
+            _loaded = false;
+            Equipment.ForgetInMemoryForTest();
+        }
 
         /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만
         /// 오른다)라 자가검사가 원래 층을 복원할 수단이 없으므로, 검사 전후로 층을 세팅/복원하는 데 쓴다.</summary>

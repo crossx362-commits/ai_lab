@@ -78,6 +78,9 @@ namespace AshesToStars
         /// </summary>
         public bool IsRescue { get; set; }
 
+        /// <summary>장착 갑옷 id. 빈 값이면 미장착. 나머지 5부위는 다음 슬라이스.</summary>
+        public string EquippedArmorId { get; set; }
+
         public CharacterRecord(string name, string job, int level = 1,
                                AdvancementTier advancement = AdvancementTier.Basic)
         {
@@ -91,6 +94,7 @@ namespace AshesToStars
             RecoveryEndTime = 0;
             IsDeleted = false;
             IsRescue = false;
+            EquippedArmorId = null;
         }
     }
 
@@ -207,6 +211,8 @@ namespace AshesToStars
                         ? p[8] : LegacyCharacterId(p[0], p[1], legacyIndex),
                     // 10번째 필드는 긴급 재건 표시. 없던 저장은 일반 캐릭터다.
                     IsRescue = p.Length > 9 && p[9] == "1",
+                    // 11번째 필드는 장착 갑옷. 없던 저장은 미장착.
+                    EquippedArmorId = p.Length > 10 && !string.IsNullOrEmpty(p[10]) ? p[10] : null,
                 };
                 _characters.Add(c);
                 legacyIndex++;
@@ -243,7 +249,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.DeathCount).Append('\t').Append(c.RecoveryEndTime)
                   .Append('\t').Append(c.IsDeleted ? '1' : '0')
                   .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement)
-                  .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0').Append('\n');
+                  .Append('\t').Append(c.Id).Append('\t').Append(c.IsRescue ? '1' : '0')
+                  .Append('\t').Append(c.EquippedArmorId ?? "").Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -273,6 +280,8 @@ namespace AshesToStars
             _loaded = false;
             ActiveFirstTrial = null;
             ActiveSecondTrial = null;
+            Equipment.ResetAll();
+            DefenseState.ResetForTest();
         }
 
         /// <summary>
@@ -295,6 +304,13 @@ namespace AshesToStars
         {
             EnsureLoaded();
             return _characters;
+        }
+
+        /// <summary>장착처럼 로스터 필드만 바뀐 뒤 즉시 남길 때 쓴다.</summary>
+        public static void PersistRoster()
+        {
+            EnsureLoaded();
+            Save();
         }
 
         // ========== 전직 (§3 기본직업 → Lv20 1차) ==========
@@ -604,7 +620,7 @@ namespace AshesToStars
             {
                 character.IsDeleted = true;
                 character.DeathCount = 3;  // 상한 유지
-                // 장비·소지품은 캐릭터와 함께 소멸 (별도 인벤토리 시스템에서 처리)
+                Equipment.DestroyEquippedOn(character);
                 Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. (3회 사망)");
             }
             else
@@ -731,8 +747,8 @@ namespace AshesToStars
         /// 환생 한 번으로 사라지면 목숨 시스템(§4)이 성립하지 않으므로, **환생석 자체가
         /// 희소한 것**(10층 보스 드랍)으로 균형을 잡는다.
         ///
-        /// ⚠️ 기획서 §4는 "장비는 함께 돌아오지 않는다"고 정했다. 지금은 장비 시스템이
-        ///    없어 그 조항이 구현할 것이 없다 — 장비가 생기면 **여기서 장비를 비워야 한다.**
+        /// §4: 장비는 함께 돌아오지 않는다. 삭제가 장착 장비를 이미 지웠으므로
+        /// 환생 슬롯은 비어 있는 채로 시작한다.
         /// </summary>
         public static bool UseRebornStone(CharacterRecord character)
         {
@@ -745,6 +761,7 @@ namespace AshesToStars
             character.IsDeleted = false;
             character.DeathCount = 0;
             character.RecoveryEndTime = 0;
+            character.EquippedArmorId = null;
             Save();
 
             Debug.Log($"[환생석] {character.Name} 복구 — 사망 카운트 0으로 재시작 " +

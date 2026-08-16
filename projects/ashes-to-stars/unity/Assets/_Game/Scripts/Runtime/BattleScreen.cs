@@ -230,8 +230,22 @@ namespace AshesToStars
                 }
                 else
                 {
-                    // 보스전이 아닌 일반 전투(필드 사냥 등)는 보상을 계산하지 않았으므로 최소한의 정보만 표시
-                    GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
+                    // 필드 사냥은 보스 테이블을 안 굴린다. 가죽은 여기서만 준다(§11).
+                    if (GameFlow.ReturnTo == GameFlow.Field)
+                    {
+                        _reward.Clear();
+                        _reward.Survived = true;
+                        _reward.BattleDurationSeconds = _t;
+                        int hides = Economy.FieldHuntHideCount();
+                        if (hides > 0 && GameState.Gain(Economy.LifeItem.CraftHide, hides))
+                        {
+                            for (int i = 0; i < hides; i++)
+                                _reward.DroppedItems.Add(Economy.LifeItem.CraftHide);
+                        }
+                        GameFlow.LastBattleSummary = $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장";
+                    }
+                    else
+                        GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
                 }
             }
             else

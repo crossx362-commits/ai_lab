@@ -20,6 +20,7 @@ namespace AshesToStars
             public string Job;
             public AdvancementTier Advancement;
             public int Level;
+            public float HpMul = 1f;
             public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
             public bool HasUltimate => Advancement == AdvancementTier.Second;
             public int CommandCount => SkillCount + (HasUltimate ? 1 : 0);
@@ -63,7 +64,8 @@ namespace AshesToStars
             for (int i = _slots.Count - 1; i >= 0; i--)
             {
                 int idx = _slots[i];
-                if (idx < 0 || idx >= roster.Count || !LifeSystem.IsAvailable(roster[idx]))
+                if (idx < 0 || idx >= roster.Count || !LifeSystem.IsAvailable(roster[idx])
+                    || DefenseState.Contains(idx))
                     _slots.RemoveAt(i);
             }
         }
@@ -73,7 +75,7 @@ namespace AshesToStars
         {
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count && _slots.Count < MaxSlots; i++)
-                if (LifeSystem.IsAvailable(roster[i])) _slots.Add(i);
+                if (LifeSystem.IsAvailable(roster[i]) && !DefenseState.Contains(i)) _slots.Add(i);
             Save();
         }
 
@@ -88,6 +90,7 @@ namespace AshesToStars
             var roster = LifeSystem.GetCharacters();
             if (rosterIndex < 0 || rosterIndex >= roster.Count) return false;
             if (!LifeSystem.IsAvailable(roster[rosterIndex])) return false;   // 회복 중·삭제는 못 넣는다
+            if (DefenseState.Contains(rosterIndex)) return false;             // 수비 배치는 출전 불가(§13-5)
             if (_slots.Count >= MaxSlots) return false;
 
             _slots.Add(rosterIndex);
@@ -138,6 +141,7 @@ namespace AshesToStars
                     Job = CombatJob(character),
                     Advancement = character.Advancement,
                     Level = character.Level,
+                    HpMul = Equipment.HpMulOf(character),
                 });
             }
             return result;

@@ -40,14 +40,16 @@ namespace AshesToStars
                 var ch = roster[i];
                 bool inParty = PartyState.Contains(i);
                 string label = (inParty ? "★ " : "") + $"{ch.Name} · {ch.Job}";
-                string sub = StatusOf(ch, inParty);
+                string sub = StatusOf(ch, i, inParty);
 
                 if (Row(r, row, label, "", leftPad: 56f))
                 {
                     if (!PartyState.Toggle(i))
-                        _msg = LifeSystem.IsAvailable(ch)
-                            ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
-                            : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
+                        _msg = DefenseState.Contains(i)
+                            ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다(§13-5)"
+                            : LifeSystem.IsAvailable(ch)
+                                ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
+                                : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
                 DrawSlotChrome(r, row, ch, sub);
@@ -86,9 +88,11 @@ namespace AshesToStars
             Hint(new Rect(desc.x + heartsW + 6, desc.y + 6, desc.width - heartsW - 6, 22), sub);
         }
 
-        static string StatusOf(CharacterRecord ch, bool inParty)
+        static string StatusOf(CharacterRecord ch, int rosterIndex, bool inParty)
         {
             if (ch.IsDeleted) return "삭제됨 — 환생석으로만 복구(§4)";
+            if (DefenseState.Contains(rosterIndex))
+                return "수비 배치 — 출전 불가(§13-5)";
 
             int left = LifeSystem.GetRecoveryTimeRemaining(ch);
             if (left > 0) return $"회복 중 {LifeSystem.FormatRecoveryTime(left)} — 출전 불가(§4)";

@@ -62,6 +62,7 @@ namespace AshesToStars
             Economy.LifeItem.ScrollOfReturn => "scroll_of_return",
             Economy.LifeItem.RebornStone => "reborn_stone",
             Economy.LifeItem.SpecialJobToken => "special_job_token",
+            Economy.LifeItem.CraftHide => "gloves",
             _ => item.ToString() == "AdvancementMaterial" ? "advancement_material" : null,
         };
     }

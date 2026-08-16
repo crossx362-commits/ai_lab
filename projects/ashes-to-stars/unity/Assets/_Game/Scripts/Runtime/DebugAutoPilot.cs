@@ -161,6 +161,7 @@ namespace AshesToStars
                     EstateScreen.AutoOpen = scene.Substring(slash + 1);
                     scene = scene.Substring(0, slash);
                 }
+                if (EstateScreen.AutoOpen == "대장간") SeedSmithQa();
                 GameFlow.Go(scene);
                 return;
             }
@@ -398,6 +399,25 @@ namespace AshesToStars
                 n++;
             }
             Debug.Log($"[거대] 폭 10유닛 초과 스프라이트 {n}개 / 전체 {all.Length}개");
+        }
+
+        static void SeedSmithQa()
+        {
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            var smith = roster[0];
+            if (smith.Advancement == AdvancementTier.Basic)
+            {
+                smith.Advancement = AdvancementTier.First;
+                smith.Job = "수호기사";
+                LifeSystem.PersistRoster();
+            }
+            int need = Equipment.LeatherArmorHideCost * 2;
+            int have = GameState.Bag.GetCount(Economy.LifeItem.CraftHide);
+            if (have < need) GameState.Gain(Economy.LifeItem.CraftHide, need - have);
+            if (Equipment.All.Count == 0) Equipment.TryCraftLeatherArmor();
+            if (string.IsNullOrEmpty(smith.EquippedArmorId) && Equipment.Unequipped().Count > 0)
+                Equipment.TryEquip(smith, Equipment.Unequipped()[0].Id);
         }
 
         void Shot(string name)

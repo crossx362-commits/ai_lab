@@ -27,7 +27,7 @@ namespace AshesToStars
             Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
             Sub.영묘 => "환생석으로 삭제된 캐릭터를 되돌린다. 장비는 함께 돌아오지 않는다(§4)",
-            Sub.수비대 => "침략에 맞설 캐릭터를 세운다. 수비대도 죽으면 사라진다(§13-5)",
+            Sub.수비대 => "최대 5명. 전멸해도 사망 카운트는 없다. 침략 전투는 아직 없다(§13-5)",
             _ => "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
         };
 
@@ -54,6 +54,8 @@ namespace AshesToStars
             }
 
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
+            if (_sub == Sub.대장간) { Smith(r); return; }
+            if (_sub == Sub.수비대) { Barracks(r); return; }
 
             if (_sub != Sub.없음)
             {
@@ -63,12 +65,8 @@ namespace AshesToStars
                 // 채우면서도 소비처가 없으면 그 순간 또 "눌러도 아무 일 없는" 거짓말이 된다.
                 string why = _sub switch
                 {
-                    Sub.대장간 => "장비·재료 시스템이 아직 없다 — 사냥 전리품으로 제작·강화하는 " +
-                                  "구조를 먼저 만들어야 채워진다(§11)",
                     Sub.경매장 => $"탑 30층을 달성해야 열린다(현재 {GameState.TowerFloor}층) — " +
                                   "골드가 곧 목숨이라 거래가 성립한다. 온라인 거래 서버가 필요하다(§12)",
-                    Sub.수비대 => "침략(월드맵)이 아직 수비 배치를 소비하지 않는다 — 배치를 세워도 " +
-                                  "방어에 반영되지 않아, 아무 일 없는 척하지 않고 비워 둔다(§13-5)",
                     _ => "아직 내용이 없다 — 수직 슬라이스에서 채운다(§21-2)",
                 };
                 Info(r, 0, why);
@@ -93,7 +91,7 @@ namespace AshesToStars
         /// 삭제된 캐릭터(`IsDeleted`)도, 환생석(`Economy.LifeItem.RebornStone`)도,
         /// 소모 API(`GameState.Consume`)도 전부 있었는데 **화면만 없었다** — 이 저장소가
         /// 반복해서 겪는 「정의는 있고 부르는 곳이 없다」의 또 한 사례다.
-        /// 대장간(§11)은 장비·재료 시스템이 통째로 없어 한 이터레이션에 끝나지 않는다.
+        /// 대장간 첫 슬라이스(가죽→흉갑→장착)는 Smith()가 맡는다.
         ///
         /// 삭제가 **되돌릴 수 있는 것**이 되면 목숨 시스템(§4)의 무게가 사라지므로,
         /// 되돌아온 캐릭터는 사망 0에서 다시 시작하고 환생석 자체를 희소하게 둔다.
@@ -128,6 +126,111 @@ namespace AshesToStars
                         }
                         else _msg = "환생에 실패했다 — 환생석 소모를 확인할 것";
                     }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+        }
+
+        /// <summary>
+        /// 수비대 — 로스터를 최대 5명 세운다(§13-5).
+        /// 소비처는 출전 제외다. 침략 본게임(적 별·약탈)은 여기서 열지 않는다.
+        /// </summary>
+        void Barracks(Rect r)
+        {
+            var roster = LifeSystem.GetCharacters();
+            int row = 0;
+            Info(r, row++,
+                $"수비 {DefenseState.Count}/{DefenseState.MaxSlots} · 배치된 캐릭터는 출전하지 않는다. 침략 전투는 아직 없다(§13-5)");
+
+            if (roster.Count == 0)
+                Info(r, row++, "[주의] 캐릭터가 하나도 없다 — 로스터 생성이 실패했다");
+            else
+            {
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    var ch = roster[i];
+                    if (ch.IsDeleted) continue;
+                    bool posted = DefenseState.Contains(i);
+                    string label = (posted ? "★ " : "") + $"{ch.Name} · {ch.Job}";
+                    string desc = posted
+                        ? "배치됨 — 눌러 해임. 출전 편성에서 빠져 있다"
+                        : LifeSystem.IsAvailable(ch)
+                            ? "대기 — 눌러 배치. 배치하면 출전에서 빠진다"
+                            : "회복 중 — 배치할 수 없다(§4)";
+                    if (Row(r, row++, label, desc))
+                    {
+                        if (!DefenseState.Toggle(i))
+                            _msg = LifeSystem.IsAvailable(ch)
+                                ? $"자리가 없다 — {DefenseState.MaxSlots}명이 상한이다(§13-5)"
+                                : "회복 중이거나 삭제된 캐릭터는 세울 수 없다";
+                        else _msg = "";
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+        }
+
+        /// <summary>
+        /// 대장간 — 사냥 가죽 5장으로 가죽 흉갑을 만들고 입힌다(§11).
+        /// 강화 +15·나머지 5부위·계열 재료는 다음 슬라이스. 해금은 1차 전직 시점(§13-2).
+        /// </summary>
+        void Smith(Rect r)
+        {
+            int hides = GameState.Bag.GetCount(Economy.LifeItem.CraftHide);
+            int row = 0;
+            Info(r, row++, $"사냥 가죽 {hides}장 · 가죽 흉갑은 체력 ×{Equipment.LeatherArmorHpMul:0.00} (§11)");
+
+            if (!Equipment.SmithUnlocked())
+            {
+                Locked(r, row++, "가죽 흉갑 제작",
+                    "1차 전직을 한 캐릭터가 있어야 대장간이 열린다(§13-2)");
+            }
+            else if (hides < Equipment.LeatherArmorHideCost)
+            {
+                Locked(r, row++, "가죽 흉갑 제작",
+                    $"가죽 {Equipment.LeatherArmorHideCost}장 필요 — 현재 {hides}장(필드 사냥)");
+            }
+            else if (Row(r, row++, "가죽 흉갑 제작",
+                         $"가죽 {Equipment.LeatherArmorHideCost}장 소비 · 갑옷 1개",
+                         "building_smith"))
+            {
+                _msg = Equipment.TryCraftLeatherArmor()
+                    ? "가죽 흉갑을 만들었다 — 아래에서 입힌다"
+                    : "제작에 실패했다 — 가죽 수와 전직 해금을 확인할 것";
+            }
+
+            var roster = LifeSystem.GetCharacters();
+            for (int i = 0; i < roster.Count; i++)
+            {
+                var ch = roster[i];
+                if (ch.IsDeleted) continue;
+                var worn = Equipment.Find(ch.EquippedArmorId);
+                if (worn != null)
+                {
+                    if (Row(r, row++, $"{ch.Name} · {worn.Name} 착용 중", "벗긴다"))
+                    {
+                        Equipment.TryUnequip(ch);
+                        _msg = $"{ch.Name}의 갑옷을 벗겼다";
+                    }
+                    continue;
+                }
+
+                var bag = Equipment.Unequipped();
+                if (bag.Count == 0)
+                {
+                    Info(r, row++, $"{ch.Name} · 미착용 — 만들 갑옷이 없다");
+                    continue;
+                }
+                if (Row(r, row++, $"{ch.Name}에게 {bag[0].Name} 입히기",
+                        $"체력 ×{bag[0].HpMul:0.00}"))
+                {
+                    _msg = Equipment.TryEquip(ch, bag[0].Id)
+                        ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"
+                        : "장착에 실패했다";
                 }
             }
 

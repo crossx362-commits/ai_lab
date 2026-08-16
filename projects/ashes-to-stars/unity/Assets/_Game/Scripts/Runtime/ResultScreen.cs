@@ -86,6 +86,7 @@ namespace AshesToStars
                 Economy.LifeItem.RebornStone => "환생석 — 삭제된 캐릭터 복구 (§4)",
                 Economy.LifeItem.AdvancementMaterial => "전직 재료 — 1차 전직에 5개 필요 (§3)",
                 Economy.LifeItem.SpecialJobToken => "특수 직업 전직 증표 — 50층 이상 보상 (§3)",
+                Economy.LifeItem.CraftHide => "사냥 가죽 — 대장간 제작 재료 (§11)",
                 _ => "알 수 없는 아이템"
             };
         }
