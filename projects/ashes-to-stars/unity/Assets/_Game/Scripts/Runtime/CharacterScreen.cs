@@ -703,13 +703,13 @@ namespace AshesToStars
                 UiAtlas.RoleKey(ch.Job));
 
             var center = face.center;
-            float ringX = face.width * 0.58f + 24f;
-            float ringY = face.height * 0.50f + 24f;
+            UiPages.EquipRingFit(stage, face, out float ringX, out float ringY);
             for (int i = 0; i < RingSlots.Length; i++)
             {
                 var slot = RingSlots[i];
                 float deg = UiPages.EquipRingDegrees[i];
-                var slotRect = UiPages.SlotOnRing(center, ringX, ringY, deg, 48f);
+                var slotRect = UiPages.ClampIn(stage,
+                    UiPages.SlotOnRing(center, ringX, ringY, deg, UiPages.EquipSlotSize));
                 var worn = Equipment.Worn(ch, slot);
                 ItemAtlas.DrawGear(slotRect, worn);
                 if (worn == null)
@@ -718,14 +718,15 @@ namespace AshesToStars
                     ItemAtlas.DrawHud(new Rect(slotRect.x + inset, slotRect.y + inset,
                             slotRect.width - inset * 2f, slotRect.height - inset * 2f),
                         ItemAtlas.KeyForSlot(slot), new Color(1f, 1f, 1f, 0.28f));
-                    var cap = new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f, 20f);
-                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 20f;
+                    var cap = UiPages.ClampIn(stage,
+                        new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f,
+                            UiPages.EquipLabelH));
                     Hint(cap, Equipment.SlotName(slot));
                 }
                 else if (worn.Enhance > 0)
                 {
-                    var cap = new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, 20f);
-                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 20f;
+                    var cap = UiPages.ClampIn(stage,
+                        new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, UiPages.EquipLabelH));
                     Hint(cap, $"+{worn.Enhance}");
                 }
                 if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)

@@ -57,6 +57,35 @@ namespace AshesToStars
         }
 
         public static readonly float[] EquipRingDegrees = { -90f, -20f, 50f, 125f, 180f, -145f };
+        public const float EquipSlotSize = 48f;
+        public const float EquipLabelH = 20f;
+        public const float EquipLookPad = 64f;
+
+        /// <summary>링 반지름을 패널 안에 맞게 줄인다. 안 줄이면 왼쪽 칸이 박스 밖으로 나간다.</summary>
+        public static void EquipRingFit(Rect stage, Rect face, out float ringX, out float ringY)
+        {
+            float half = EquipSlotSize * 0.5f;
+            const float pad = 8f;
+            float cx = face.center.x;
+            float cy = face.center.y;
+            ringX = Mathf.Min(face.width * 0.50f + 16f,
+                cx - stage.x - half - pad,
+                stage.xMax - cx - half - pad);
+            ringY = Mathf.Min(face.height * 0.42f + 16f,
+                cy - stage.y - half - pad - 52f,
+                stage.yMax - cy - half - pad - EquipLabelH);
+            ringX = Mathf.Max(24f, ringX);
+            ringY = Mathf.Max(24f, ringY);
+        }
+
+        public static Rect ClampIn(Rect box, Rect inner)
+        {
+            if (inner.width > box.width) inner.width = box.width;
+            if (inner.height > box.height) inner.height = box.height;
+            float x = Mathf.Clamp(inner.x, box.x, box.xMax - inner.width);
+            float y = Mathf.Clamp(inner.y, box.y, box.yMax - inner.height);
+            return new Rect(x, y, inner.width, inner.height);
+        }
 
         /// <summary>명부 왼쪽 바둑판 · 오른쪽 대형 모습. 비율을 뒤집으면 오너 지시와 반대다.</summary>
         public const float RosterListRatio = 0.36f;
@@ -125,7 +154,7 @@ namespace AshesToStars
             h = Mathf.Min(h, w / 0.72f);
             float y = stage.y + 70f;
             if (y + h > stage.yMax - 8f) y = Mathf.Max(stage.y + 64f, stage.yMax - h - 8f);
-            return new Rect(stage.x + 16f, y, w, h);
+            return new Rect(stage.x + EquipLookPad, y, w, h);
         }
 
         /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>

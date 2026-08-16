@@ -61,6 +61,17 @@ namespace AshesToStars
             var ring = UiPages.SlotOnRing(new Vector2(100, 100), 80f, 80f, -90f, 20f);
             Debug.Assert(Mathf.Approximately(ring.center.x, 100f) && ring.center.y < 100f,
                 "[UiAtlasSelfCheck] 12시 칸은 초상 위에 있어야 한다");
+            var box = new Rect(400f, 80f, 760f, 470f);
+            var faceIn = UiPages.LargeLook(box);
+            UiPages.EquipRingFit(box, faceIn, out var fitX, out var fitY);
+            for (int i = 0; i < UiPages.EquipRingDegrees.Length; i++)
+            {
+                var sl = UiPages.ClampIn(box, UiPages.SlotOnRing(faceIn.center, fitX, fitY,
+                    UiPages.EquipRingDegrees[i], UiPages.EquipSlotSize));
+                Debug.Assert(sl.x >= box.x - 0.01f && sl.xMax <= box.xMax + 0.01f
+                             && sl.y >= box.y - 0.01f && sl.yMax <= box.yMax + 0.01f,
+                    $"[UiAtlasSelfCheck] 장비 칸 {i}가 패널 밖으로 나간다 {sl}");
+            }
 
             UiPages.RosterSplit(new Rect(0, 0, 1000, 400), out var list, out var stage);
             Debug.Assert(list.x < stage.x && list.xMax <= stage.x + 0.01f,
