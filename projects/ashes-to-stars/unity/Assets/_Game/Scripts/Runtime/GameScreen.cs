@@ -184,9 +184,12 @@ namespace AshesToStars
             if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
             GUI.Label(new Rect(48, REF_H - 28, 900, 22),
                       ShowBottomBar ? "ESC — 영지로" : "ESC — 뒤로", _small);
+            Overlay();
 
             GUI.matrix = saved;
         }
+
+        protected virtual void Overlay() { }
 
         protected abstract void Body(Rect r);
 

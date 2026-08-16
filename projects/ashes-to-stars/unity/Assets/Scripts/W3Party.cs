@@ -506,6 +506,8 @@ public class W3Party : MonoBehaviour
     // 고쳐 쓰면 나중에 측정값이 왜 달라졌는지 아무도 모르게 된다.
     [Header("게임 모드 (Battle 씬에서 켠다)")]
     public bool GameMode;
+    /// <summary>파티가 실제 HP를 잃은 시각. 긴급 탈출 캐스트 취소에 쓴다.</summary>
+    public static float LastPartyDamageAt { get; private set; }
 
     /// <summary>QA에서 1차 전직 하나의 두 조작 슬롯을 실전투에 강제하는 직업명.</summary>
     public static string QaFirstAdvancementJob;
@@ -2811,6 +2813,7 @@ public class W3Party : MonoBehaviour
 
         float hpBefore = m.Hp;
         m.Hp -= dmg;
+        if (hpBefore > m.Hp) LastPartyDamageAt = Time.time;
 
         // 최후의 보루(§3 수호기사 3번 스킬) — 3초간 HP가 1 미만으로 안 떨어진다.
         // 자동 전투라 조건 발동으로 둔다: 치명타 한 방에 즉사하는 것을 한 번 막아준다.

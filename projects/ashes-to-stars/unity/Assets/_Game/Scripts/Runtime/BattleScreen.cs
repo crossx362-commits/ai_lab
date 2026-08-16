@@ -124,15 +124,27 @@ namespace AshesToStars
 
         protected override void Update()
         {
-            // 공통 ESC는 영지로 공짜 이동한다. 전투 귀환은 §4 두루마리 1개.
-            // 6초 캐스트·피격 취소는 W3Party 타이밍이라 이번엔 즉시 소모형만.
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                if (GameState.Consume(Economy.LifeItem.ScrollOfReturn))
-                    GameFlow.Go(GameFlow.Estate);
-                return;
-            }
+            // 공통 ESC는 영지로 공짜 이동한다. 전투 귀환은 §4 두루마리 + 6초 캐스트.
+            if (Input.GetKeyDown(KeyCode.Escape) && !EmergencyEscape.Casting)
+                EmergencyEscape.TryBegin();
             _t += Time.deltaTime;
+        }
+
+        void LateUpdate()
+        {
+            bool hit = Time.time - global::W3Party.LastPartyDamageAt < 0.08f;
+            var phase = EmergencyEscape.Tick(Time.deltaTime, hit);
+            if (phase == EmergencyEscape.Phase.Escaped)
+                GameFlow.Go(GameFlow.Estate);
+        }
+
+        protected override void Overlay()
+        {
+            if (!EmergencyEscape.Casting) return;
+            float p = EmergencyEscape.Progress;
+            var box = new Rect(340f, 36f, 600f, 28f);
+            GUI.Box(box, $"귀환 시전 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 취소");
+            GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
         }
 
         /// <summary>
