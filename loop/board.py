@@ -373,6 +373,85 @@ def loop_flags() -> dict:
         "blocked": blocked,
         "latest_iter": latest_iter,
         "log_tail": last_log,
+        "now": current_work(running=running, hold=hold, stop=stop,
+                            latest_iter=latest_iter, main_log=last_log),
+    }
+
+
+def _latest_iter_path() -> Path | None:
+    log_dir = HERE / "logs"
+    if not log_dir.is_dir():
+        return None
+    iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
+    return iters[-1] if iters else None
+
+
+def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict]) -> str:
+    lines = [ln.strip() for ln in log_text.splitlines() if ln.strip()]
+    keys = ("잡습", "잡고", "구현", "슬라이스", "고칩", "검증", "생성", "RED", "PASS", "커밋")
+    for ln in reversed(lines):
+        if any(k in ln for k in keys) and not ln.startswith("ERROR"):
+            return ln[:180]
+    if queue:
+        return "큐 · " + queue[0]["title"]
+    if inbox_waiting:
+        title = inbox_waiting[0]["title"]
+        title = re.sub(r"^[📌⭐✅]\s*", "", title)
+        return "INBOX · " + title[:80]
+    return "이터레이션 진행 중"
+
+
+def current_work(running: bool, hold: bool, stop: bool,
+                 latest_iter: str, main_log: str) -> dict:
+    """지금 루프가 손에 든 일. 끝난 이터는 작업 중으로 안 속인다."""
+    full_main = _read(HERE / "loop_main.log")
+    latest = _latest_iter_path()
+    iter_text = _read(latest) if latest else ""
+    number, started = "", ""
+    finished = False
+    if latest:
+        last = None
+        for m in re.finditer(
+            r"▶ 이터레이션 #(\d+)\s+(\d{2}:\d{2}:\d{2})\s+→\s+(\S+)",
+            full_main,
+        ):
+            if m.group(3).endswith(latest.name):
+                last = m
+        if last:
+            number, started = last.group(1), last.group(2)
+            after = full_main[last.end():]
+            finished = bool(re.search(
+                rf"(?:✅|❌|⚠️|⏸)\s+#{{0,1}}{number}\b", after
+            ))
+    generating = _read(ROOT / "projects" / "ashes-to-stars" / "art" / ".generating").strip()
+    queue = parse_queue(_read(STATUS))
+    inbox = parse_inbox(_read(INBOX)).get("waiting") or []
+    if stop:
+        phase = "STOP"
+        title = "정지됨 — 계속 진행을 누르면 다시 돈다"
+    elif hold:
+        phase = "HOLD"
+        title = "HOLD — 다른 세션이 끝나는 중"
+    elif running and latest and not finished:
+        phase = "작업 중"
+        title = infer_now_title(iter_text, queue, inbox)
+    elif running:
+        phase = "대기"
+        title = "다음 이터를 기다리는 중"
+    else:
+        phase = "꺼짐"
+        title = "루프가 꺼져 있다"
+    if generating and phase == "작업 중":
+        title = "아트 생성 · " + generating.splitlines()[0][:80]
+    activity = iter_text.strip().splitlines()[-10:] if (phase == "작업 중" and iter_text) else []
+    return {
+        "phase": phase,
+        "title": title,
+        "iter": latest.name if latest else "",
+        "number": number,
+        "started": started,
+        "generating": generating,
+        "activity": activity,
     }
 
 

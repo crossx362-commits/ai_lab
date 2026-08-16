@@ -96,6 +96,15 @@
   .choice button.retry { background: transparent; color: var(--hold); border: 1px solid var(--hold); }
   .choice button.skip { background: transparent; color: var(--muted); border: 1px solid var(--line); }
   .badge { font-size: 11px; color: var(--hold); border: 1px solid var(--hold); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+  .now-panel {
+    margin: 14px 24px 0; padding: 14px 16px; border-radius: 12px;
+    border: 1px solid var(--gold); background: #1f1a12;
+  }
+  .now-panel.idle { border-color: var(--line); background: var(--panel); }
+  .now-panel .phase { font-size: 12px; letter-spacing: .08em; color: var(--gold); margin-bottom: 4px; }
+  .now-panel.idle .phase { color: var(--muted); }
+  .now-panel .t { font-size: 16px; font-weight: 650; }
+  .now-panel .log { margin-top: 10px; max-height: 160px; }
 </style>
 </head>
 <body>
@@ -110,6 +119,12 @@
   <div><strong>중단됨</strong> <span class="meta" id="resume-why"></span></div>
   <button id="btn-continue" type="button">계속 진행</button>
 </div>
+<section class="now-panel" id="now-box">
+  <div class="phase" id="now-phase">지금</div>
+  <div class="t" id="now-title">불러오는 중…</div>
+  <div class="meta" id="now-meta"></div>
+  <div class="log" id="now-log" style="display:none"></div>
+</section>
 <main>
   <div>
     <section>
@@ -216,6 +231,16 @@ function render(state) {
   const blocked = L.blocked || [];
   $("resume-bar").classList.toggle("show", blocked.length > 0);
   $("resume-why").textContent = blocked.length ? blocked.join(" · ") : "";
+  const now = L.now || {};
+  $("now-box").classList.toggle("idle", now.phase !== "작업 중");
+  $("now-phase").textContent = now.phase === "작업 중"
+    ? ("지금 작업 중" + (now.number ? " · #" + now.number : ""))
+    : (now.phase || "지금");
+  $("now-title").textContent = now.title || "상태 없음";
+  $("now-meta").textContent = [now.started && ("시작 " + now.started), now.iter].filter(Boolean).join(" · ");
+  const act = (now.activity || []).join("\n");
+  $("now-log").style.display = act ? "block" : "none";
+  $("now-log").textContent = act;
   const pending = state.choices || [];
   $("choice-hint").style.display = pending.length ? "block" : "none";
   $("choices").innerHTML = pending.length ? pending.map((it) => `

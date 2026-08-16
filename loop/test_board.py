@@ -202,6 +202,48 @@ class DecisionTests(unittest.TestCase):
                 board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH = old
 
 
+class NowWorkTests(unittest.TestCase):
+    def test_infer_prefers_last_action_line(self):
+        log = "읽기만 함\nV4 삭제 루프의 코드 갭부터 확인합니다.\nRED 17건을 확인했습니다. 생산 경계를 구현합니다.\n"
+        title = board.infer_now_title(log, [{"title": "큐항목"}], [])
+        self.assertIn("구현", title)
+
+    def test_infer_falls_back_to_queue(self):
+        self.assertEqual(
+            board.infer_now_title("ok\n", [{"title": "V2 사람 판정"}], []),
+            "큐 · V2 사람 판정",
+        )
+
+    def test_current_work_active_until_done_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            here = Path(tmp)
+            logs = here / "logs"
+            logs.mkdir()
+            (logs / "iter_20260816_164158.log").write_text(
+                "V4 경계를 구현합니다.\n사본에서 SelfCheck를 실행합니다.\n",
+                encoding="utf-8",
+            )
+            (here / "loop_main.log").write_text(
+                "▶ 이터레이션 #2  16:41:58  → /x/loop/logs/iter_20260816_164158.log\n",
+                encoding="utf-8",
+            )
+            old = board.HERE
+            board.HERE = here
+            try:
+                now = board.current_work(True, False, False, "iter_20260816_164158.log", "")
+                self.assertEqual(now["phase"], "작업 중")
+                self.assertEqual(now["number"], "2")
+                self.assertIn("SelfCheck", "\n".join(now["activity"]))
+                (here / "loop_main.log").write_text(
+                    "▶ 이터레이션 #2  16:41:58  → /x/loop/logs/iter_20260816_164158.log\n✅ #2 완료\n",
+                    encoding="utf-8",
+                )
+                done = board.current_work(True, False, False, "iter_20260816_164158.log", "")
+                self.assertEqual(done["phase"], "대기")
+            finally:
+                board.HERE = old
+
+
 class ResumeTests(unittest.TestCase):
     def test_resume_clears_hold_and_starts_if_down(self):
         with tempfile.TemporaryDirectory() as tmp:
