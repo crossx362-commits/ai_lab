@@ -1534,6 +1534,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill != 0) m.ForceSkill = 0;
                 if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; m.SkillT = 0.5f; }
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
+                FxPool.PlayJob(5, m.Pos, 1.6f);             // 새 음유시인 오라 8프레임
                 m.Cd = 0.8f; m.Threat += 3f;
             }
             else if (m.Job == Job.사제)
