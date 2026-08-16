@@ -22,7 +22,12 @@ namespace AshesToStars
             _log.Length = 0;
             Environment.SetEnvironmentVariable("QA_NO_MINE", null);
             Environment.SetEnvironmentVariable("QA_ESTATE_MINE", null);
+            Environment.SetEnvironmentVariable(EstateMine.EnvShowRace, null);
+            Environment.SetEnvironmentVariable(EstateMine.EnvNoRace, null);
             GameState.ResetAll();
+            WorldStar.ResetForTest();
+            RacePrefs.Set(RaceId.인간);
+            EstateMine.ForceRaceMul = 0f;
 
             long t1 = (long)(0.25 * Economy.COPPER_PER_GOLD);
             Check(EstateMine.CopperPerHour() == t1,

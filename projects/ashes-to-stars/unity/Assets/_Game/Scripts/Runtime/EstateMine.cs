@@ -11,6 +11,11 @@ namespace AshesToStars
     public static class EstateMine
     {
         public const double FieldShare = 0.25;
+        public const string EnvShowRace = "QA_RACE_MINE";
+        public const string EnvNoRace = "QA_NO_RACE_MINE";
+        public const int HumanPercent = 100;
+        public const int DwarfPercent = 120;
+        public const int BeastPercent = 80;
 
         const string K_LAST = "ats.estate.mine_last";
         const string K_WASTE = "ats.estate.mine_waste";
@@ -18,11 +23,15 @@ namespace AshesToStars
 
         static bool _loaded;
         static bool _qaSeeded;
+        static bool _raceQaSeeded;
         static long _lastUnix;
         static long _wasted;
         static long _owed;
 
         public static Func<long> NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForceRaceMul;
 
         public static long CopperPerHour()
         {
@@ -33,6 +42,44 @@ namespace AshesToStars
             return (long)(FieldShare * mul[t] * Economy.COPPER_PER_GOLD);
         }
 
+        public static bool RaceBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoRace) == "1";
+
+        /// <summary>§18-9 드워프 영지 생산 +20% · 수인 −20%. 에셋이 없으면 표로 폴백한다.</summary>
+        public static int RacePercent()
+        {
+            if (RaceBlocked) return HumanPercent;
+            if (ForceRaceMul > 0f) return Math.Max(1, (int)Math.Round(ForceRaceMul * 100f));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].영지생산배율 > 0f)
+                        return Math.Max(1, (int)Math.Round(races[i].영지생산배율 * 100f));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            RaceId fallback = RacePrefs.Get();
+            if (fallback == RaceId.드워프) return DwarfPercent;
+            if (fallback == RaceId.수인) return BeastPercent;
+            return HumanPercent;
+        }
+
+        public static long ApplyRace(long copper) => copper * RacePercent() / 100;
+
+        public static string RaceLine()
+        {
+            int p = RacePercent();
+            if (p == DwarfPercent) return "드워프 생산 +20%(§18-9)";
+            if (p == BeastPercent) return "수인 생산 −20%(§18-9)";
+            return "종족 생산 배율 없음";
+        }
+
         public static long RoomCopper()
         {
             long cap = EstateBuild.WarehouseCapCopper();
@@ -40,9 +87,9 @@ namespace AshesToStars
             return have >= cap ? 0 : cap - have;
         }
 
-        /// <summary>영공 아군 버프가 붙은 시간당 생산. 기준 25%는 `CopperPerHour`.</summary>
+        /// <summary>종족 생산 배율 × 영공 아군 버프가 붙은 시간당 생산. 기준 25%는 `CopperPerHour`.</summary>
         public static long CopperPerHourEffective() =>
-            (long)(CopperPerHour() * WorldStar.AllyMul);
+            (long)(ApplyRace(CopperPerHour()) * WorldStar.AllyMul);
 
         public static long WastedCopper
         {
@@ -103,6 +150,24 @@ namespace AshesToStars
             Tick();
         }
 
+        /// <summary>시각 QA. QA_RACE_MINE=1이면 드워프·1시간분으로 현황을 연다.</summary>
+        public static void SeedRaceQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowRace) != "1") return;
+            if (_raceQaSeeded) return;
+            RacePrefs.Set(RaceId.드워프);
+            WorldStar.ResetForTest();
+            ResetForTest();
+            _raceQaSeeded = true;
+            NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long have = GameState.Wallet.Copper;
+            if (have > 0) GameState.Pay(have);
+            _loaded = true;
+            _lastUnix = NowUnix() - 3600;
+            Save();
+            Tick();
+        }
+
         static bool Disabled()
         {
             string raw = Environment.GetEnvironmentVariable("QA_NO_MINE");
@@ -137,6 +202,8 @@ namespace AshesToStars
             _owed = 0;
             _loaded = false;
             _qaSeeded = false;
+            _raceQaSeeded = false;
+            ForceRaceMul = 0f;
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 

@@ -94,7 +94,10 @@ namespace AshesToStars
                 _hubPage = 3;
             if (System.Environment.GetEnvironmentVariable("QA_WORLD_AURA") == "1")
                 _sub = Sub.영공;
+            if (System.Environment.GetEnvironmentVariable(EstateMine.EnvShowRace) == "1")
+                _hubPage = 1;
             EstateMine.SeedQaIfRequested();
+            EstateMine.SeedRaceQaIfRequested();
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
@@ -183,9 +186,11 @@ namespace AshesToStars
                         : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            DrawCard(cards[2], "광산",
-                $"{Economy.FormatCurrency(EstateMine.CopperPerHourEffective())}/h · 창고에 자동 적립(§13)",
-                "field", locked: true);
+            string mineRate = Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h";
+            string mineSub = EstateMine.RacePercent() != EstateMine.HumanPercent
+                ? mineRate + " · " + EstateMine.RaceLine()
+                : mineRate + " · 창고에 자동 적립(§13)";
+            DrawCard(cards[2], "광산", mineSub, "field", locked: true);
             DrawCard(cards[3], "창고",
                 $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}"
                 + (EstateMine.WastedCopper > 0
