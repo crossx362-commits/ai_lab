@@ -13,6 +13,7 @@ namespace AshesToStars
     public class CharacterScreen : GameScreen
     {
         protected override string Title => "캐릭터";
+        protected override string HeaderIcon => "characters";
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
         protected override string Subtitle => "레벨·목숨 관리와 Lv20 1차·Lv50 2차 비살상 전직 시험(§3·§4)";
@@ -141,17 +142,27 @@ namespace AshesToStars
                     Info(r, 0, ch.IsRescue
                         ? $"{ch.Name} ({ch.Job}) · {ExpText(ch)} · 긴급 재건"
                         : $"{ch.Name} ({ch.Job}) · {ExpText(ch)}");
+                    if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
+                    {
+                        float need = LifeSystem.ExpToNext(ch.Level);
+                        float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
+                        UiAtlas.DrawMeter(new Rect(r.xMax - 230, r.y + 18, 210, 22),
+                            "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
+                    }
 
-                    // 목숨 상태 표시
+                    // 목숨 상태 표시 — 유니코드 하트는 □로 나와 아틀라스 조각을 쓴다.
                     if (ch.IsDeleted)
                     {
-                        Info(r, 1, "❌ 삭제됨 — 환생석으로만 복구 가능(§4)");
+                        Info(r, 1, "삭제됨 — 환생석으로만 복구 가능(§4)");
+                        UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
+                            ch.DeathCount, true);
                     }
                     else
                     {
-                        string hearts = new string('❤', 3 - ch.DeathCount);
                         string status = LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중";
-                        Info(r, 1, $"목숨: {hearts}({ch.DeathCount}/3) {status}");
+                        Info(r, 1, $"목숨 {ch.DeathCount}/3 {status}");
+                        UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
+                            ch.DeathCount, false);
 
                         // 회복 중이면 시간 표시
                         int recoveryTime = LifeSystem.GetRecoveryTimeRemaining(ch);
@@ -221,23 +232,23 @@ namespace AshesToStars
                 return;
             }
 
-            // 캐릭터 목록
+            // 캐릭터 목록 — 초상+역할+목숨 아이콘. 이모지는 기본 폰트에서 □다.
             var allCharacters = LifeSystem.GetCharacters();
             for (int i = 0; i < allCharacters.Count; i++)
             {
                 var ch = allCharacters[i];
-                string heartsStr = ch.IsDeleted ? "❌" : new string('❤', 3 - ch.DeathCount);
                 string name = ch.IsRescue
-                    ? $"{ch.Name} ({ch.Job}) - {heartsStr} · 재건"
-                    : $"{ch.Name} ({ch.Job}) - {heartsStr}";
+                    ? $"{ch.Name} ({ch.Job}) · 재건"
+                    : $"{ch.Name} ({ch.Job})";
                 string sub = ch.IsDeleted
                     ? "삭제됨"
                     : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
-                if (Row(r, i, name, sub))
+                if (Row(r, i, name, "", leftPad: 56f))
                 {
                     _selectedCharacter = i;
                     _choosingAdvancement = false;
                 }
+                DrawRosterDecor(r, i, ch, sub);
             }
 
             Info(r, allCharacters.Count + 1, "목숨 카운트가 여기서 보인다(§3·§4)");
@@ -248,6 +259,29 @@ namespace AshesToStars
 
             Locked(r, allCharacters.Count + 4, "합성",
                    "준비 중 — 1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다(§3)");
+        }
+
+        void DrawRosterDecor(Rect r, int index, CharacterRecord ch, string sub)
+        {
+            var br = RowButtonRect(r, index);
+            if (br.yMax > r.yMax) return;
+
+            var face = new Rect(br.x + 6, br.y + 5, 48, 48);
+            UiAtlas.Draw(new Rect(face.x - 2, face.y - 2, 52, 52), "portrait_frame");
+            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
+            PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
+            UiAtlas.Draw(new Rect(face.xMax - 8, face.yMax - 8, 20, 20), UiAtlas.RoleKey(ch.Job));
+
+            var desc = RowDescRect(r, index);
+            float heartsW = UiAtlas.DrawHearts(new Rect(desc.x, desc.y + 4, 80, 22), ch.DeathCount, ch.IsDeleted);
+            Hint(new Rect(desc.x + heartsW + 6, desc.y + 6, desc.width - heartsW - 6, 22), sub);
+            if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
+            {
+                float need = LifeSystem.ExpToNext(ch.Level);
+                float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
+                UiAtlas.DrawMeter(new Rect(desc.x, desc.y + 32, Mathf.Min(220f, desc.width), 20),
+                    "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
+            }
         }
     }
 }

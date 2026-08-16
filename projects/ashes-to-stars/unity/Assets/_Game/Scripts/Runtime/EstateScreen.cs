@@ -20,6 +20,7 @@ namespace AshesToStars
         Sub _sub = Sub.없음;
 
         protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
+        protected override string HeaderIcon => "territory";
         protected override string BackgroundArt => "bg_estate";
         protected override string Subtitle => _sub switch
         {
@@ -75,11 +76,12 @@ namespace AshesToStars
                 return;
             }
 
-            if (Row(r, 0, "대장간", "장비 제작·강화 (§11)")) _sub = Sub.대장간;
-            if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)")) _sub = Sub.경매장;
-            if (Row(r, 2, "영묘", $"환생 — 삭제된 캐릭터의 귀환 · 환생석 {LifeSystem.GetRebornStones()}개 (§4)"))
+            if (Row(r, 0, "대장간", "장비 제작·강화 (§11)", UiAtlas.BuildingKey("대장간"))) _sub = Sub.대장간;
+            if (Row(r, 1, "경매장", "탑 30층 달성 시 오픈 (§12)", UiAtlas.BuildingKey("경매장"))) _sub = Sub.경매장;
+            if (Row(r, 2, "영묘", $"환생 — 삭제된 캐릭터의 귀환 · 환생석 {LifeSystem.GetRebornStones()}개 (§4)",
+                    UiAtlas.BuildingKey("영묘")))
                 _sub = Sub.영묘;
-            if (Row(r, 3, "수비대 배치", "침략 방어 (§13-5)")) _sub = Sub.수비대;
+            if (Row(r, 3, "수비대 배치", "침략 방어 (§13-5)", UiAtlas.BuildingKey("수비대"))) _sub = Sub.수비대;
         }
 
         string _msg = "";

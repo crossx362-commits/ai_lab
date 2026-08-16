@@ -39,6 +39,12 @@ namespace AshesToStars
         protected virtual bool OpaqueBackground => true;
 
         /// <summary>
+        /// 제목 옆 아이콘. 기본은 나침반이라 모든 화면이 월드맵처럼 읽혔다.
+        /// 화면이 어디인지 아이콘이 말해야 허브 UI가 성립한다.
+        /// </summary>
+        protected virtual string HeaderIcon => "worldmap";
+
+        /// <summary>
         /// 이 화면의 배경 그림(`Resources/bg/<이름>`). null이면 예전처럼 단색으로 칠한다.
         ///
         /// 전투 밖 화면 6종이 전부 **검은 배경에 글자 버튼**이었다(오너 질문 2026-08-15
@@ -51,8 +57,9 @@ namespace AshesToStars
         // 기준 해상도 — 모든 좌표는 이 안에서 계산한다
         protected const float REF_W = 1280f, REF_H = 720f;
         protected const float BarH = 76f;
+        protected const float RowH = 58f, RowGap = 14f, RowBtnW = 300f;
 
-        GUIStyle _h1, _h2, _btn, _small, _navLabel, _panel;
+        GUIStyle _h1, _h2, _btn, _btnLeft, _small, _navLabel, _panel;
         Texture2D _bg, _line, _accent, _scrim;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
@@ -101,6 +108,7 @@ namespace AshesToStars
             _h1 = new GUIStyle(GUI.skin.label) { fontSize = 46, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
             _h2 = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true, normal = { textColor = Dim } };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
+            _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 15, normal = { textColor = Dim } };
             // 하단 탭은 아이콘과 이름을 세로로 나눈다. 기본 label은 좌측 정렬이라
             // 아이콘 아래 이름이 제각각 밀려 보이므로, 탭 전용으로 가운데 정렬한다.
@@ -154,7 +162,8 @@ namespace AshesToStars
                 if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);
                 GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _line);
                 GUI.DrawTexture(new Rect(0, 116, REF_W, 2), _accent);
-                bool atlas = UiAtlas.Draw(new Rect(24, 18, 78, 78), "worldmap");
+                bool atlas = !string.IsNullOrEmpty(HeaderIcon)
+                    && UiAtlas.Draw(new Rect(24, 18, 78, 78), HeaderIcon);
                 GUI.Label(new Rect(atlas ? 124 : 48, 22, REF_W - (atlas ? 172 : 96), 56), Title, _h1);
                 if (!string.IsNullOrEmpty(Subtitle))
                     GUI.Label(new Rect(50, 78, REF_W - 100, 30), Subtitle, _h2);
@@ -208,34 +217,49 @@ namespace AshesToStars
         }
 
         /// <summary>텍스트와 클릭 판정은 IMGUI에 남기고, 배경만 새 픽셀아트 아틀라스로 교체한다.</summary>
-        void DrawAtlasButton(Rect r, string label, bool locked = false)
+        void DrawAtlasButton(Rect r, string label, bool locked = false, string iconKey = null, float leftPad = 0f)
         {
             bool hover = !locked && r.Contains(Event.current.mousePosition);
             bool pressed = hover && Input.GetMouseButton(0);
             Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
             if (!UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
                 GUI.Box(r, GUIContent.none);
+            bool hasIcon = !string.IsNullOrEmpty(iconKey)
+                && UiAtlas.Draw(new Rect(r.x + 8, r.y + 7, 44, 44), iconKey, tint);
+            float pad = hasIcon ? 56f : leftPad;
             if (!string.IsNullOrEmpty(label))
             {
                 var prev = GUI.color;
                 if (locked) GUI.color = new Color(1f, 1f, 1f, 0.55f);
-                GUI.Label(r, label, _btn);
+                var lr = pad > 0f ? new Rect(r.x + pad, r.y, r.width - pad - 8f, r.height) : r;
+                GUI.Label(lr, label, pad > 0f ? _btnLeft : _btn);
                 GUI.color = prev;
             }
         }
 
-        /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
-        protected bool Row(Rect r, int index, string label, string desc = "")
+        protected Rect RowButtonRect(Rect r, int index) =>
+            new Rect(r.x, r.y + index * (RowH + RowGap), RowBtnW, RowH);
+
+        protected Rect RowDescRect(Rect r, int index) =>
+            new Rect(r.x + RowBtnW + 24, r.y + index * (RowH + RowGap), r.width - RowBtnW - 24, RowH);
+
+        protected void Hint(Rect r, string text)
         {
             Styles();
-            const float h = 58f, gap = 14f, bw = 300f;
-            var br = new Rect(r.x, r.y + index * (h + gap), bw, h);
+            GUI.Label(r, text, _h2);
+        }
+
+        /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
+        protected bool Row(Rect r, int index, string label, string desc = "", string iconKey = null, float leftPad = 0f)
+        {
+            Styles();
+            var br = RowButtonRect(r, index);
             if (br.yMax > r.yMax) return false;              // 영역을 넘으면 그리지 않는다
 
-            DrawAtlasButton(br, label);
+            DrawAtlasButton(br, label, iconKey: iconKey, leftPad: leftPad);
             bool hit = GUI.Button(br, GUIContent.none, GUIStyle.none);
             if (!string.IsNullOrEmpty(desc))
-                GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - bw - 24, h - 12), desc, _h2);
+                GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12), desc, _h2);
             return hit;
         }
 
@@ -250,12 +274,11 @@ namespace AshesToStars
         protected void Locked(Rect r, int index, string label, string why)
         {
             Styles();
-            const float h = 58f, gap = 14f, bw = 300f;
-            var br = new Rect(r.x, r.y + index * (h + gap), bw, h);
+            var br = RowButtonRect(r, index);
             if (br.yMax > r.yMax) return;
 
             DrawAtlasButton(br, label, locked: true);       // 회색 기본 스킨이 아니라 아틀라스 버튼을 흐리게
-            GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - bw - 24, h - 12),
+            GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
                       // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
                       "잠김 — " + why, _small);
         }
@@ -264,11 +287,10 @@ namespace AshesToStars
         protected void Info(Rect r, int index, string text)
         {
             Styles();
-            const float h = 58f, gap = 14f;
-            var panel = new Rect(r.x - 12, r.y + index * (h + gap), r.width + 24, h);
+            var panel = new Rect(r.x - 12, r.y + index * (RowH + RowGap), r.width + 24, RowH);
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
-            GUI.Label(new Rect(r.x, r.y + index * (h + gap) + 14, r.width, 30), text, _panel);
+            GUI.Label(new Rect(r.x, r.y + index * (RowH + RowGap) + 14, r.width, 30), text, _panel);
         }
     }
 }

@@ -31,6 +31,16 @@ namespace AshesToStars
             ["healer"] = new Rect(278, 122, 142, 135),
             ["buffer"] = new Rect(426, 122, 145, 130),
 
+            // 역할 아래: 목숨 파이프. 유니코드 하트는 기본 폰트에서 □로 나온다.
+            ["heart"] = new Rect(21, 262, 61, 62),
+            ["heart_broken"] = new Rect(108, 262, 65, 62),
+
+            // 건물 줄: 영지 허브 목적지. 좌표는 아틀라스 실측.
+            ["building_smith"] = new Rect(638, 570, 122, 124),
+            ["building_auction"] = new Rect(329, 572, 130, 121),
+            ["building_mausoleum"] = new Rect(793, 570, 121, 124),
+            ["building_barracks"] = new Rect(483, 571, 123, 119),
+
             // 아틀라스 하단: 슬롯, 게이지, 패널, 버튼
             ["rarity_common"] = new Rect(8, 800, 80, 92),
             ["rarity_uncommon"] = new Rect(93, 800, 88, 92),
@@ -50,7 +60,11 @@ namespace AshesToStars
         public static readonly string[] RequiredKeys =
         {
             "territory", "field", "tower", "worldmap", "characters",
+            "tank", "damage", "healer", "buffer",
+            "heart", "heart_broken",
+            "building_smith", "building_auction", "building_mausoleum", "building_barracks",
             "button_normal", "button_hover", "button_pressed", "panel", "hp_frame",
+            "xp_frame", "portrait_frame",
             "rarity_common", "rarity_uncommon", "rarity_rare", "rarity_heroic", "rarity_legendary",
         };
 
@@ -93,6 +107,61 @@ namespace AshesToStars
             if (pressed) return "button_pressed";
             if (hover) return "button_hover";
             return "button_normal";
+        }
+
+        /// <summary>기본·1차 직업명을 역할 아이콘 키로 접는다. 모르는 이름은 딜.</summary>
+        public static string RoleKey(string job)
+        {
+            switch (job)
+            {
+                case "탱":
+                case "수호기사":
+                case "광전사":
+                    return "tank";
+                case "힐":
+                case "사제":
+                case "드루이드":
+                    return "healer";
+                case "버퍼":
+                case "음유시인":
+                case "주술사":
+                case "정령사":
+                    return "buffer";
+                default:
+                    return "damage";
+            }
+        }
+
+        /// <summary>영지 건물 라벨 → 아틀라스 건물 실루엣. 없으면 null.</summary>
+        public static string BuildingKey(string building)
+        {
+            switch (building)
+            {
+                case "대장간": return "building_smith";
+                case "경매장": return "building_auction";
+                case "영묘": return "building_mausoleum";
+                case "수비대": return "building_barracks";
+                default: return null;
+            }
+        }
+
+        /// <summary>slot 0..2. 남은 목숨만 온전한 하트, 삭제·소모분은 깨진 하트.</summary>
+        public static string HeartKey(int slot, int deathCount, bool deleted)
+        {
+            int lives = deleted ? 0 : Mathf.Max(0, 3 - deathCount);
+            return slot < lives ? "heart" : "heart_broken";
+        }
+
+        /// <summary>목숨 3칸을 아이콘으로 그린다. 사용한 가로 폭을 돌려준다.</summary>
+        public static float DrawHearts(Rect origin, int deathCount, bool deleted)
+        {
+            const float size = 22f, gap = 2f;
+            for (int i = 0; i < 3; i++)
+            {
+                var cell = new Rect(origin.x + i * (size + gap), origin.y, size, size);
+                Draw(cell, HeartKey(i, deathCount, deleted));
+            }
+            return 3f * (size + gap);
         }
 
         /// <summary>패널처럼 늘어나는 조각은 가장자리만 남기고 가운데를 늘린다.</summary>
