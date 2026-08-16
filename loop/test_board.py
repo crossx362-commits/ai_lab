@@ -454,12 +454,45 @@ class NowWorkTests(unittest.TestCase):
         log = "읽기만 함\nV4 삭제 루프의 코드 갭부터 확인합니다.\nRED 17건을 확인했습니다. 생산 경계를 구현합니다.\n"
         title = board.infer_now_title(log, [{"title": "큐항목"}], [])
         self.assertIn("구현", title)
+        self.assertLess(len(title), 80)
 
     def test_infer_falls_back_to_queue(self):
         self.assertEqual(
             board.infer_now_title("ok\n", [{"title": "V2 사람 판정"}], []),
-            "큐 · V2 사람 판정",
+            "V2 사람 판정 하는 중",
         )
+
+    def test_infer_reading_is_not_current_work(self):
+        title = board.infer_now_title(
+            "이터레이션을 시작합니다.INBOX 최신 지시는 80% 정체 분석입니다.",
+            [{"title": "UI 퀄리티"}],
+            [{"title": "80%에서 멈춤"}],
+        )
+        self.assertEqual(title, "80%에서 멈춤 하는 중")
+
+    def test_infer_skips_reading_blob(self):
+        log = (
+            "이터레이션을 시작합니다.지시대로 인박스·상태·설계부터 읽습니다."
+            "인박스 캐릭터창은 목록만 있고 오른쪽이 비어 있습니다."
+            "목록은 왼쪽, 대형 모습·장비는 오른쪽에 한 화면으로 붙이겠습니다."
+            "사본에 동기화한 뒤 SelfCheck를 돌리겠습니다."
+        )
+        title = board.infer_now_title(log, [{"title": "UI 퀄리티"}], [])
+        self.assertNotIn("이터레이션을 시작", title)
+        self.assertNotIn("지시대로", title)
+        self.assertTrue("SelfCheck" in title or "붙이" in title or "동기화" in title)
+        self.assertLess(len(title), 60)
+
+    def test_infer_skips_wrapup_report(self):
+        log = (
+            "목록은 왼쪽, 모습·장비는 오른쪽에 붙이겠습니다."
+            "**한 일** - 명부 탭: 왼쪽 줄 목록 + 오른쪽 전신 idle · 전체 화면 그대로."
+            "다음 세션은 80%에서 멈춤부터 잡으면 됩니다."
+        )
+        title = board.infer_now_title(log, [], [])
+        self.assertNotIn("한 일", title)
+        self.assertNotIn("다음 세션", title)
+        self.assertIn("붙이", title)
 
     def test_current_work_active_until_done_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -480,7 +513,8 @@ class NowWorkTests(unittest.TestCase):
                 now = board.current_work(True, False, False, "iter_20260816_164158.log", "")
                 self.assertEqual(now["phase"], "작업 중")
                 self.assertEqual(now["number"], "2")
-                self.assertIn("SelfCheck", "\n".join(now["activity"]))
+                self.assertTrue("SelfCheck" in now["title"] or "구현" in now["title"])
+                self.assertEqual(now["activity"], [])
                 (here / "loop_main.log").write_text(
                     "▶ 이터레이션 #2  16:41:58  → /x/loop/logs/iter_20260816_164158.log\n✅ #2 완료\n",
                     encoding="utf-8",

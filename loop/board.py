@@ -1061,19 +1061,58 @@ def _latest_iter_path() -> Path | None:
     return iters[-1] if iters else None
 
 
+_NOW_SKIP = re.compile(
+    r"이터레이션을 시작|지시대로|STATUS\.md|인수인계|함정 목록|DIRECTIVES|"
+    r"먼저 읽|대조합|큐 1|사람 육안|오너 보류|대기하지|최근 커밋|"
+    r"한 일|남긴 것|다음 세션|큐에만 올리|\*\*코드\*\*|증거"
+)
+_NOW_WORK = re.compile(
+    r"구현|넣겠|고치|고칩|붙이|나누|찍|검증|커밋|배치|"
+    r"SelfCheck|만듭|바꿉|나눕|검사기|동기화"
+)
+
+
+def _now_sentences(text: str) -> list[str]:
+    blob = re.sub(r"\s+", " ", text or "").strip()
+    parts = re.split(r"(?<=[다요])\.\s*|(?<=니다)\.\s*|(?<=까)\.\s*", blob)
+    out = []
+    for part in parts:
+        part = part.strip(" .")
+        if len(part) >= 8:
+            out.append(part)
+    return out
+
+
+def _now_ing(text: str) -> str:
+    text = re.sub(r"하겠습니다$", "는 중", text)
+    text = re.sub(r"합니다$", "하는 중", text)
+    return text
+
+
+def _now_short(text: str, limit: int = 52) -> str:
+    text = re.sub(r"\s+", " ", text).strip(" .")
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    for sep in (" · ", " — ", ", ", " "):
+        i = cut.rfind(sep)
+        if i >= 16:
+            return cut[:i].rstrip(" ·,—")
+    return cut.rstrip()
+
+
 def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict]) -> str:
-    lines = [ln.strip() for ln in log_text.splitlines() if ln.strip()]
-    keys = ("잡습", "잡고", "구현", "슬라이스", "고칩", "검증", "생성", "RED", "PASS", "커밋")
-    for ln in reversed(lines):
-        if any(k in ln for k in keys) and not ln.startswith("ERROR"):
-            return ln[:180]
-    if queue:
-        return "큐 · " + queue[0]["title"]
+    """지금 손에 든 일 한 줄. 읽기·계획 로그는 제목으로 안 쓴다."""
+    sents = _now_sentences(log_text)
+    work = [s for s in sents if _NOW_WORK.search(s) and not _NOW_SKIP.search(s)]
+    if work:
+        return _now_short(_now_ing(work[-1]))
     if inbox_waiting:
-        title = inbox_waiting[0]["title"]
-        title = re.sub(r"^[📌⭐✅]\s*", "", title)
-        return "INBOX · " + title[:80]
-    return "이터레이션 진행 중"
+        title = re.sub(r"^[📌⭐✅]\s*", "", inbox_waiting[0]["title"])
+        return _now_short(title) + " 하는 중"
+    if queue:
+        return _now_short(queue[0]["title"]) + " 하는 중"
+    return "다음 일을 고르는 중"
 
 
 def current_work(running: bool, hold: bool, stop: bool,
@@ -1117,8 +1156,7 @@ def current_work(running: bool, hold: bool, stop: bool,
         phase = "꺼짐"
         title = "루프가 꺼져 있다"
     if generating and phase == "작업 중":
-        title = "아트 생성 · " + generating.splitlines()[0][:80]
-    activity = iter_text.strip().splitlines()[-10:] if (phase == "작업 중" and iter_text) else []
+        title = "그림 만드는 중 · " + generating.splitlines()[0][:40]
     return {
         "phase": phase,
         "title": title,
@@ -1126,7 +1164,7 @@ def current_work(running: bool, hold: bool, stop: bool,
         "number": number,
         "started": started,
         "generating": generating,
-        "activity": activity,
+        "activity": [],
     }
 
 

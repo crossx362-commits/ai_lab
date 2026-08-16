@@ -488,10 +488,9 @@ function render(state) {
     ? ("지금 작업 중" + (now.number ? " · #" + now.number : ""))
     : (now.phase || "지금");
   $("now-title").textContent = now.title || "상태 없음";
-  $("now-meta").textContent = [now.started && ("시작 " + now.started), now.iter].filter(Boolean).join(" · ");
-  const act = (now.activity || []).join("\n");
-  $("now-log").style.display = act ? "block" : "none";
-  $("now-log").textContent = act;
+  $("now-meta").textContent = now.started ? ("시작 " + now.started) : "";
+  $("now-log").style.display = "none";
+  $("now-log").textContent = "";
   const pending = state.choices || [];
   $("choice-hint").style.display = pending.length ? "block" : "none";
   $("choices").innerHTML = pending.length ? pending.map((it) => `
