@@ -27,7 +27,7 @@
 탑 층 최초 클리어만. 결과·캐릭터 2×2에서 탱/딜/힐/버퍼. 레이드 20%로 증표 2장.
 직업명은 💡라 없음. SelfCheck 전항 PASS.
 PNG `floor_recruit_shots/qa_go:{Result,Character.png}` 4종 카드.
-코드는 STATUS 이번 이터 줄.
+코드 `5b157014`.
 
 ### ✅ 테스터 레벨 정체 — 필드 생존 경험치 (루프, 2026-08-16)
 
