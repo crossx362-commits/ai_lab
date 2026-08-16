@@ -162,8 +162,35 @@ namespace AshesToStars
             Check(advancedCombatants.Count > 0
                   && advancedCombatants[0].Job == "광전사"
                   && advancedCombatants[0].Advancement == AdvancementTier.First
-                  && advancedCombatants[0].SkillCount == 4,
+                  && advancedCombatants[0].SkillCount == 4
+                  && !advancedCombatants[0].HasUltimate,
                   "1차 전직 결과가 전투 경계에서 스킬 4개로 확장(§3)");
+            candidate.Advancement = AdvancementTier.Second;
+            PartyState.ResetForTest();
+            var secondCombatants = PartyState.SortieCombatants();
+            Check(secondCombatants.Count > 0
+                  && secondCombatants[0].SkillCount == 4
+                  && secondCombatants[0].HasUltimate
+                  && secondCombatants[0].CommandCount == 5,
+                  "2차 각성 결과가 전투 경계에서 4스킬+초필 1개로 확장(§3)");
+            Check(global::W3Party.CanUseUltimate(AdvancementTier.Second, 100f, 0f)
+                  && !global::W3Party.CanUseUltimate(AdvancementTier.First, 100f, 0f)
+                  && !global::W3Party.CanUseUltimate(AdvancementTier.Second, 99f, 0f)
+                  && !global::W3Party.CanUseUltimate(AdvancementTier.Second, 100f, 0.1f),
+                  "초필살기는 2차·게이지100%·쿨다운0 종료를 모두 요구(§18-6)");
+            Check(global::W3Party.SupportsAdvancementJob("광전사")
+                  && global::W3Party.SupportsAdvancementJob("수호기사")
+                  && !global::W3Party.SupportsAdvancementJob("미지원직업"),
+                  "2차 QA는 실전 아키타입 11종만 허용");
+            Check(global::W3Party.UltimateProbePassed(0, 1f)
+                  && !global::W3Party.UltimateProbePassed(0, 0f)
+                  && global::W3Party.UltimateProbePassed(1, 0f)
+                  && global::W3Party.UltimateProbePassed(2, 0f)
+                  && global::W3Party.UltimateProbePassed(3, 0f)
+                  && !global::W3Party.UltimateProbePassed(1, 1f),
+                  "초필 QA는 정상=효과>0, 차단=효과0을 PASS로 판정");
+            candidate.Advancement = AdvancementTier.First;
+            PartyState.ResetForTest();
             Check(!LifeSystem.TryBeginFirstAdvancementTrial(candidate, "수호기사")
                   && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
                   "이미 1차 전직한 캐릭터는 반복 전직 불가");

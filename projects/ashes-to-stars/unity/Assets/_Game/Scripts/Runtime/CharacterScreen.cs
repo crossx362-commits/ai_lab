@@ -206,7 +206,7 @@ namespace AshesToStars
                     }
                     else
                     {
-                        Info(r, advancementRow++, "전직 단계: 2차 · 초필살기 전투 배선 대기");
+                        Info(r, advancementRow++, "전직 단계: 2차 · 4스킬+초필 1개 해금");
                     }
 
                     if (Row(r, advancementRow, "← 목록으로", "캐릭터 목록으로 돌아간다"))

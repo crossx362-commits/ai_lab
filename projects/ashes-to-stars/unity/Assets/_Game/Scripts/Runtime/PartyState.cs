@@ -20,6 +20,8 @@ namespace AshesToStars
             public string Job;
             public AdvancementTier Advancement;
             public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
+            public bool HasUltimate => Advancement == AdvancementTier.Second;
+            public int CommandCount => SkillCount + (HasUltimate ? 1 : 0);
         }
 
         public const int MaxSlots = 5;      // ✅ §9 최대 5인

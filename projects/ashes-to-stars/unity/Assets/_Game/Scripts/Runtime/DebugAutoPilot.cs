@@ -104,6 +104,26 @@ namespace AshesToStars
                 return;
             }
 
+            if (_mode == "second_advancement")
+            {
+                if (!global::W3Party.SupportsAdvancementJob(_advancementJob))
+                    throw new System.InvalidOperationException($"QA_ADV_JOB 미지정: {_advancementJob}");
+                LifeSystem.ResetAll();
+                LifeSystem.Initialize();
+                PartyState.ResetForTest();
+                var roster = LifeSystem.GetCharacters();
+                if (roster.Count == 0) throw new System.InvalidOperationException("2차 각성 QA 로스터가 비어 있음");
+                roster[0].Job = _advancementJob;
+                int.TryParse(System.Environment.GetEnvironmentVariable("QA_ULT_BLOCK"),
+                             out global::W3Party.QaUltimateBlock);
+                roster[0].Advancement = global::W3Party.QaUltimateBlock == 1
+                    ? AdvancementTier.First : AdvancementTier.Second;
+                PartyState.Refresh();
+                global::W3Party.QaSecondAdvancementJob = _advancementJob;
+                GameFlow.GoBattle(GameFlow.Field);
+                return;
+            }
+
             if (_mode == "hunt")
             {
                 // 던전 **밖** 경로 — 던전이 아닐 때도 전투가 정상인지 본다.
@@ -260,6 +280,24 @@ namespace AshesToStars
                               $"{metricNames[1]}={measured.slot2:F1} 판정={(pass ? "PASS" : "FAIL")}");
                     Shot("qa_advancement"); _step = 1; _t = 0f;
                     if (!pass) Debug.LogError($"[QA-전직] {_advancementJob} 슬롯 계측 0 감지");
+                }
+                else if (_step == 1 && _t > 0.5f) Finish();
+                return;
+            }
+
+
+            if (_mode == "second_advancement")
+            {
+                if (_step == 0 && _t > 4f)
+                {
+                    float measured = global::W3Party.UltimateProbeOnActive();
+                    int blocked = global::W3Party.QaUltimateBlock;
+                    bool pass = global::W3Party.UltimateProbePassed(blocked, measured);
+                    Debug.Log($"[QA-2차] {_advancementJob} 초필효과={measured:F1} " +
+                              $"차단={blocked} 판정={(pass ? "PASS" : "FAIL")}");
+                    Shot("qa_second_advancement");
+                    _step = 1; _t = 0f;
+                    if (!pass) Debug.LogError($"[QA-2차] {_advancementJob} 초필 게이트 회귀 감지(차단={blocked}, 효과={measured:F1})");
                 }
                 else if (_step == 1 && _t > 0.5f) Finish();
                 return;

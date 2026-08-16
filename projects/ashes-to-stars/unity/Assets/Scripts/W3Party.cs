@@ -97,6 +97,8 @@ public class W3Party : MonoBehaviour
         public int SkillCount => Advancement == AdvancementTier.Basic ? 2 : 4;
         public float Hp, MaxHp, Atk, Range, Cd, SkillCd;
         public float Shield;              // 수호기사 성채 방패
+        public float UltimateGauge;       // 2차 초필 전용 자원(직업 Gauge와 분리)
+        public float UltimateCd;          // §18-6: 180초 재사용 대기
         public bool Flip;                 // 마지막으로 향한 좌우. 미세 흔들림에 안 뒤집히게 유지한다
         // ── 이동기(§5 ✅ 대시·구르기) ──
         public float DashT;               // 이동기 진행 잔여 시간(>0이면 미끄러지는 중)
@@ -134,6 +136,7 @@ public class W3Party : MonoBehaviour
         /// 지휘가 성립하려면 "눌렀는데 왜 안 나가지"가 없어야 한다(§5).
         /// </summary>
         public int ForceSkill;
+        public bool ForceUltimate;
         /// <summary>명령 지점 표시(땅에 찍히는 점)</summary>
         public SpriteRenderer Marker;
     }
@@ -474,6 +477,26 @@ public class W3Party : MonoBehaviour
 
     public static (float slot1, float slot2) FirstAdvancementProbeOnActive() =>
         _game != null ? (_game._qaAdvSlot1, _game._qaAdvSlot2) : (-1f, -1f);
+
+    // ── 2차 각성 초필 계측(§3·§18-6) ──
+    public const float UltimateCooldownSeconds = 180f;
+    public static string QaSecondAdvancementJob;
+    /// <summary>1=단계 차단, 2=게이지 차단, 3=쿨다운 차단.</summary>
+    public static int QaUltimateBlock;
+    float _qaUltimateEffect;
+    bool _qaUltimateForced;
+
+    public static bool CanUseUltimate(AdvancementTier tier, float gauge, float cooldown) =>
+        tier == AdvancementTier.Second && gauge >= 100f && cooldown <= 0f;
+
+    public static bool SupportsAdvancementJob(string job) =>
+        !string.IsNullOrEmpty(job) && System.Enum.TryParse(job, out Job _);
+
+    public static bool UltimateProbePassed(int blockedCondition, float measuredEffect) =>
+        blockedCondition == 0 ? measuredEffect > 0f : measuredEffect <= 0f;
+
+    public static float UltimateProbeOnActive() =>
+        _game != null ? _game._qaUltimateEffect : -1f;
 
     /// <summary>
     /// 계열 색조를 끈다. W1~W3 검증 하네스가 켜서 **구성 대조 실험에 색이 끼지 않게** 한다.
@@ -928,6 +951,7 @@ public class W3Party : MonoBehaviour
             m.Hp = m.MaxHp;
             m.Threat = 0f; m.DeadT = 0f;
             m.Shield = 0f; m.Gauge = 0f; m.SkillCd = 0f; m.Chant = Chant.진군가;
+            m.UltimateGauge = 0f; m.UltimateCd = 0f; m.ForceUltimate = false;
             // 진형 초기 배치: 탱 앞, 딜 중간, 힐 뒤 (§10-4가 이 진형을 유지시키는지 본다)
             // 진형: 탱 최전방 → 딜 중간 → 힐·버퍼 후열 (§10-4가 이 진형을 유지시키는지 관찰)
             m.Pos = new Vector2(i == 2 ? 1.2f : i == 4 ? -1.2f : 0f,
@@ -950,6 +974,7 @@ public class W3Party : MonoBehaviour
         _game = GameMode ? this : null;
         _tauntUntil = -1f; _tauntMember = null; _lastStandUntil = -1f; _lastStandCd = -1f; _partyChant = Chant.진군가;
         _qaAdvSlot1 = 0f; _qaAdvSlot2 = 0f; _qaAdvForced1 = false; _qaAdvForced2 = false;
+        _qaUltimateEffect = 0f; _qaUltimateForced = false;
         for (int k = 0; k < _skillLog.Length; k++) _skillLog[k] = 0;
         Debug.Log($"[W3] 구성 {_setup.Name} 시작 ({_party.Length}인, 도발 {(_tauntEnabled ? "ON" : "OFF")}, "
                   + $"스킬 [{string.Join(",", System.Array.ConvertAll(_party, m => m.SkillCount))}])");
@@ -1218,6 +1243,19 @@ public class W3Party : MonoBehaviour
                 break;
             }
         }
+        if (GameMode && !string.IsNullOrEmpty(QaSecondAdvancementJob) && !_qaUltimateForced && _t >= 1f)
+        {
+            foreach (var member in _party)
+            {
+                if (!member.Alive || member.Job.ToString() != QaSecondAdvancementJob) continue;
+                member.UltimateGauge = QaUltimateBlock == 2 ? 99f : 100f;
+                member.UltimateCd = QaUltimateBlock == 3 ? 10f : 0f;
+                member.ForceUltimate = true;
+                _sel = System.Array.IndexOf(_party, member); // 캡처에 초필 버튼·게이지를 남긴다
+                _qaUltimateForced = true;
+                break;
+            }
+        }
         TickDashProbe(dt);
         UpdateCallouts(dt);
         TickParty(dt);
@@ -1396,6 +1434,7 @@ public class W3Party : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Space)) _party[_sel].ForceSkill = 1;
             if (Input.GetKeyDown(KeyCode.Q)) _party[_sel].ForceSkill = 2;
+            if (Input.GetKeyDown(KeyCode.E)) _party[_sel].ForceUltimate = true;
             // 이동기(§5) — Shift. 방향은 이동 입력, 없으면 가장 가까운 위협의 **반대쪽**으로.
             // "피하려고 쓰는 것"이 기본 용도라 아무 방향도 안 주면 도망 방향이 맞다.
             if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift))
@@ -1447,7 +1486,15 @@ public class W3Party : MonoBehaviour
         foreach (var m in _party)
         {
             if (!m.Alive) continue;
-            m.Cd -= dt; m.SkillCd -= dt;
+            m.Cd -= dt; m.SkillCd -= dt; m.UltimateCd -= dt;
+            if (m.Advancement == AdvancementTier.Second)
+                m.UltimateGauge = Mathf.Min(100f, m.UltimateGauge + dt);
+            if (m.ForceUltimate)
+            {
+                m.ForceUltimate = false;
+                if (CanUseUltimate(m.Advancement, m.UltimateGauge, m.UltimateCd))
+                    CastUltimate(m);
+            }
             // 위협 감쇠는 **비율**이어야 한다. 선형 −2/s인데 검사의 생성률이 40/s 이상이라
             // 위협이 발산했다 — 100초면 4,000, 거리 환산 480유닛인데 아레나 반경은 14다.
             // 즉 10초쯤부터 모든 근접 몹이 위치와 무관하게 딜러에게 갔고,
@@ -2492,6 +2539,69 @@ public class W3Party : MonoBehaviour
         return best;
     }
 
+    /// <summary>2차 각성의 4스킬+초필 1개. 초필 자원은 직업 고유 Gauge와 분리한다.</summary>
+    void CastUltimate(Member m)
+    {
+        m.UltimateGauge = 0f;
+        m.UltimateCd = UltimateCooldownSeconds;
+        float effect = 0f;
+
+        if (m.Role == Role.Tank)
+        {
+            foreach (var ally in _party)
+            {
+                if (!ally.Alive) continue;
+                float before = ally.Shield;
+                ally.Shield = Mathf.Max(ally.Shield, 80f * _bShield);
+                ally.IFrame = Mathf.Max(ally.IFrame, 3f);
+                effect += ally.Shield - before;
+                FxParticles.Play(FxKind.무적, ToScreen(ally.Pos), 1.1f);
+            }
+        }
+        else if (m.Role == Role.Dps)
+        {
+            for (int i = 0; i < MAXM; i++)
+            {
+                if (!_mOn[i]) continue;
+                float dealt = Mathf.Min(_mHp[i], m.Atk * 4f * _bAtk);
+                _mHp[i] -= dealt;
+                effect += dealt;
+                FlashMob(i);
+                if (_mHp[i] <= 0f) KillMob(i);
+            }
+        }
+        else if (m.Role == Role.Healer)
+        {
+            foreach (var ally in _party)
+            {
+                if (!ally.Alive) continue;
+                effect += Heal(ally, 100f * _bHeal);
+                float before = ally.Shield;
+                ally.Shield = Mathf.Max(ally.Shield, 30f * _bShield);
+                effect += ally.Shield - before;
+            }
+        }
+        else
+        {
+            foreach (var ally in _party)
+            {
+                if (!ally.Alive) continue;
+                ally.Cd = Mathf.Min(ally.Cd, 0f);
+                ally.SkillCd = Mathf.Min(ally.SkillCd, 0f);
+                float before = ally.Shield;
+                ally.Shield = Mathf.Max(ally.Shield, 40f * _bShield);
+                effect += (ally.Shield - before) + 1f;
+            }
+        }
+
+        _qaUltimateEffect += effect;
+        m.SkillT = 0.9f;
+        FlashParty();
+        SkillCast(m, $"{m.Job} 각성 초필", new Color(0.65f, 0.85f, 1f), hitstop: 6, shake: 0.55f);
+        FxParticles.Play(FxKind.쇼크웨이브, ToScreen(m.Pos), 3.2f, new Color(0.65f, 0.85f, 1f));
+        Debug.Log($"[W3-초필] {m.Job} 발동 효과={effect:F1} 쿨={m.UltimateCd:F0}초");
+    }
+
     void Damage(Member m, float dmg, bool front)
     {
         if (!m.Alive) return;
@@ -2810,6 +2920,18 @@ public class W3Party : MonoBehaviour
         //    미구현보다 나쁘다 — 눌리니까 사용자는 고장으로 읽는다(2026-08-15 감사에서 발견).
         if (SkillBtn(new Rect(x, y, w, 34), a, sel, 1)) sel.ForceSkill = 1;
         if (b != "—" && SkillBtn(new Rect(x + w + gap, y, w, 34), b, sel, 2)) sel.ForceSkill = 2;
+
+        if (sel.Advancement == AdvancementTier.Second)
+        {
+            bool ready = CanUseUltimate(sel.Advancement, sel.UltimateGauge, sel.UltimateCd);
+            float ux = x + w * 2 + gap * 2;
+            GUI.enabled = ready;
+            if (GUI.Button(new Rect(ux, y, w, 34),
+                           ready ? "각성 초필 [E]" : $"초필 {Mathf.FloorToInt(sel.UltimateGauge)}% / {Mathf.CeilToInt(Mathf.Max(0f, sel.UltimateCd))}s",
+                           _cmdBtn))
+                sel.ForceUltimate = true;
+            GUI.enabled = true;
+        }
 
         GUI.Label(new Rect(x, y - 20f, 520, 20),
                   b != "—" ? $"스킬 — 스페이스/클릭: {a} · Q/클릭: {b}"
