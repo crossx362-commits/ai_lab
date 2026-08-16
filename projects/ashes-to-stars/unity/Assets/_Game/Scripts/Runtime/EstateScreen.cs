@@ -29,7 +29,9 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_estate";
         protected override string Subtitle => _sub switch
         {
-            Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
+            Sub.대장간 => Equipment.SmithUnlocked()
+                ? "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)"
+                : Equipment.LockLine(),
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
             Sub.영묘 => Memorial.Unlocked
                 ? Rebirth.MausoleumSubtitle()
@@ -51,6 +53,9 @@ namespace AshesToStars
             if (System.Environment.GetEnvironmentVariable(DefenseState.EnvShowUnlock) == "1"
                 && !DefenseState.UnlockBlocked)
                 return DefenseState.LockLine();
+            if (System.Environment.GetEnvironmentVariable(Equipment.EnvShowUnlock) == "1"
+                && !Equipment.UnlockBlocked)
+                return Equipment.LockLine();
             if (BankruptcySeize.ShowOnHub)
                 return BankruptcySeize.Line();
             if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
@@ -141,6 +146,7 @@ namespace AshesToStars
             Memorial.SeedQaIfRequested();
             Memorial.SeedUnlockQaIfRequested();
             DefenseState.SeedUnlockQaIfRequested();
+            Equipment.SeedUnlockQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 _sub = Sub.영묘;
@@ -197,7 +203,10 @@ namespace AshesToStars
             }
 
             var cards = UiPages.Grid(page, 2, 2, 16f);
-            if (DrawCard(cards[0], "대장간", "제작·강화. 실패해도 장비는 남는다", UiAtlas.BuildingKey("대장간")))
+            string smithLock = Equipment.LockReason();
+            if (DrawCard(cards[0], "대장간",
+                    smithLock ?? "제작·강화. 실패해도 장비는 남는다",
+                    UiAtlas.BuildingKey("대장간"), locked: smithLock != null))
                 _sub = Sub.대장간;
             string auctionLock = AuctionHubLockReason();
             string auctionSub = auctionLock
@@ -811,11 +820,10 @@ namespace AshesToStars
             int row = 0;
             DrawSmithMaterials(r, row++);
 
-            if (!Equipment.SmithUnlocked())
+            string lockReason = Equipment.LockReason();
+            if (lockReason != null)
             {
-                Locked(r, row++, "제작·강화",
-                    "1차 전직을 한 캐릭터가 있어야 대장간이 열린다(§13-2)",
-                    "building_smith");
+                Locked(r, row++, "제작·강화", lockReason, "building_smith");
             }
             else
             {

@@ -67,9 +67,12 @@ namespace AshesToStars
         };
 
         const string K_GEAR = "ats.gear";
+        public const string EnvShowUnlock = "QA_SMITH_UNLOCK";
+        public const string EnvNoUnlock = "QA_NO_SMITH_UNLOCK";
 
         static List<GearItem> _items;
         static bool _loaded;
+        static bool _unlockQaSeeded;
 
         public static IReadOnlyList<GearItem> All { get { Load(); return _items; } }
 
@@ -147,9 +150,19 @@ namespace AshesToStars
             PlayerPrefs.Save();
         }
 
-        /// <summary>대장간 해금 = 1차 전직 시점(§13-2). 기본직업만 있으면 제작하지 않는다.</summary>
+        public static bool UnlockBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoUnlock);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>대장간 해금 = 1차 전직 시점(§13-2). 기본직업만 있으면 제작하지 않는다. QA_NO면 항상 연다.</summary>
         public static bool SmithUnlocked()
         {
+            if (UnlockBlocked) return true;
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)
             {
@@ -158,6 +171,38 @@ namespace AshesToStars
                     return true;
             }
             return false;
+        }
+
+        public static string LockReason()
+        {
+            if (SmithUnlocked()) return null;
+            return "1차 전직 시 해금 — 기본직업만 있으면 제작하지 않는다(§13-2)";
+        }
+
+        public static string LockLine()
+        {
+            string why = LockReason();
+            return string.IsNullOrEmpty(why) ? "대장간 해금(§13-2)" : why;
+        }
+
+        /// <summary>시각 QA. QA_SMITH_UNLOCK=1이면 기본직업만 남겨 잠긴 허브를 보여 준다.</summary>
+        public static void SeedUnlockQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable(EnvShowUnlock);
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            if (UnlockBlocked) return;
+            if (_unlockQaSeeded) return;
+            _unlockQaSeeded = true;
+            var roster = LifeSystem.GetCharacters();
+            for (int i = 0; i < roster.Count; i++)
+            {
+                var ch = roster[i];
+                if (ch == null || ch.IsDeleted) continue;
+                if (ch.Advancement == AdvancementTier.Basic) continue;
+                ch.Advancement = AdvancementTier.Basic;
+            }
+            LifeSystem.PersistRoster();
         }
 
         public static GearItem Find(string id)
@@ -466,6 +511,7 @@ namespace AshesToStars
         {
             PlayerPrefs.DeleteKey(K_GEAR);
             PlayerPrefs.Save();
+            _unlockQaSeeded = false;
             ForgetInMemoryForTest();
         }
     }
