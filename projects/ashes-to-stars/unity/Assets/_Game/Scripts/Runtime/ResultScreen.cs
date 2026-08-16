@@ -25,7 +25,29 @@ namespace AshesToStars
             GameFlow.SeedV4WipeQaIfRequested();
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
+            FloorRecruit.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
+
+            // 층 보상 선택이 남아 있으면 에필로그보다 먼저 4종을 한 화면에 보여 준다.
+            // 예전엔 줄 목록이라 100층 자막이 있으면 힐·버퍼가 잘렸다.
+            if (FloorRecruit.PendingJob)
+            {
+                Hint(new Rect(r.x, r.y, r.width, 24f),
+                    $"{FloorRecruit.PendingFloor}층 돌파 — 기본 직업 1종을 고른다");
+                if (FloorRecruit.PendingSpecialBanner)
+                    Hint(new Rect(r.x, r.y + 26f, r.width, 22f),
+                        $"특수 직업 증표 {FloorRecruit.LastSpecialTokensGot}장 — 레이드 확률(§3)");
+                float top = FloorRecruit.PendingSpecialBanner ? 52f : 28f;
+                var picks = UiPages.Grid(new Rect(r.x, r.y + top, r.width, r.height - top - 80f), 2, 2, 12f);
+                for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
+                {
+                    string job = LifeSystem.BasicJobs[i];
+                    if (DrawCard(picks[i], LifeSystem.BasicJobLabel(job),
+                            "Lv1 기본직업 · 명부에 들어온다"))
+                        FloorRecruit.TryClaim(job);
+                }
+                return;
+            }
 
             if (TowerEnding.PendingEpilogue)
             {
@@ -34,16 +56,21 @@ namespace AshesToStars
                 Info(r, _rowIndex++, $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전 가능");
                 if (SoloRaidClear.PendingBanner)
                     Info(r, _rowIndex++, $"{SoloRaidClear.BannerText} · {SoloRaidClear.LookName}");
+                if (FloorRecruit.PendingSpecialBanner)
+                    Info(r, _rowIndex++,
+                        $"특수 직업 증표 {FloorRecruit.LastSpecialTokensGot}장 — 레이드 확률(§3)");
                 if (Row(r, _rowIndex++, "건너뛰기", "에필로그를 닫고 저장을 유지한다"))
                 {
                     TowerEnding.SkipEpilogue();
                     SoloRaidClear.AckBanner();
+                    FloorRecruit.AckSpecialBanner();
                     return;
                 }
                 if (Row(r, _rowIndex++, "계속", "영지로 돌아간다"))
                 {
                     TowerEnding.SkipEpilogue();
                     SoloRaidClear.AckBanner();
+                    FloorRecruit.AckSpecialBanner();
                     GameFlow.Go(GameFlow.Estate);
                     return;
                 }
@@ -55,6 +82,26 @@ namespace AshesToStars
                 Info(r, _rowIndex++, SoloRaidClear.BannerText);
                 Info(r, _rowIndex++, $"{SoloRaidClear.LookName} · 전투력 변화 없음 · 같은 보스는 다시 안 준다");
             }
+
+            if (FloorRecruit.PendingJob)
+            {
+                Info(r, _rowIndex++, $"{FloorRecruit.PendingFloor}층 돌파 — 기본 직업 1종을 고른다");
+                for (int i = 0; i < LifeSystem.BasicJobs.Length; i++)
+                {
+                    string job = LifeSystem.BasicJobs[i];
+                    if (Row(r, _rowIndex++, LifeSystem.BasicJobLabel(job),
+                            "Lv1 기본직업 · 명부에 들어온다"))
+                        FloorRecruit.TryClaim(job);
+                }
+            }
+            else if (!string.IsNullOrEmpty(FloorRecruit.LastGrantedName))
+            {
+                Info(r, _rowIndex++,
+                    $"영입 {FloorRecruit.LastGrantedName} ({LifeSystem.BasicJobLabel(FloorRecruit.LastGrantedJob)})");
+            }
+            if (FloorRecruit.PendingSpecialBanner)
+                Info(r, _rowIndex++,
+                    $"특수 직업 증표 {FloorRecruit.LastSpecialTokensGot}장 — 레이드 확률(§3)");
 
             // 전투 결과 요약 (§2 코어 루프). 영구 손실은 골드보다 먼저 읽힌다(§16-7).
             Info(r, _rowIndex++, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
@@ -108,11 +155,13 @@ namespace AshesToStars
             if (Row(r, _rowIndex++, "계속", "들어온 화면으로 복귀"))
             {
                 SoloRaidClear.AckBanner();
+                FloorRecruit.AckSpecialBanner();
                 GameFlow.Go(GameFlow.ReturnTo);
             }
             if (Row(r, _rowIndex++, "영지로", "허브 복귀(§16)"))
             {
                 SoloRaidClear.AckBanner();
+                FloorRecruit.AckSpecialBanner();
                 GameFlow.Go(GameFlow.Estate);
             }
         }

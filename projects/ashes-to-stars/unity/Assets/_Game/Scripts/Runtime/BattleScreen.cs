@@ -293,6 +293,7 @@ namespace AshesToStars
                 if (GameFlow.IsTowerFloorClear(survived, inDungeon, GameFlow.ReturnTo, GameFlow.Kind))
                 {
                     GameState.ClearFloor(GameFlow.BossFloor);
+                    FloorRecruit.OnCleared(GameFlow.BossFloor);
                     long floorExp = Economy.WaveHuntExp(GameState.Tier, _t);
                     _reward.Clear();
                     _reward.Survived = true;

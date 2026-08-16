@@ -121,6 +121,7 @@ namespace AshesToStars
             {
                 TowerEnding.TryGrant(floor);
                 SoloRaidClear.TryGrant(floor, PartyState.SortieRecords().Count);
+                FloorRecruit.OnCleared(floor);
             }
         }
 

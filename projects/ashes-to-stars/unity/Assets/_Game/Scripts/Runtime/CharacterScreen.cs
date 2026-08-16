@@ -60,6 +60,7 @@ namespace AshesToStars
             SeedSpecialJobQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
+            FloorRecruit.SeedQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
@@ -317,8 +318,26 @@ namespace AshesToStars
 
         void DrawRosterPage(Rect r)
         {
+            if (FloorRecruit.PendingJob)
+            {
+                Hint(new Rect(r.x, r.y, r.width, 24f),
+                    $"{FloorRecruit.PendingFloor}층 돌파 — 기본 직업 1종을 고른다");
+                var picks = UiPages.Grid(new Rect(r.x, r.y + 28f, r.width, r.height - 28f), 2, 2, 12f);
+                for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
+                {
+                    string job = LifeSystem.BasicJobs[i];
+                    if (DrawCard(picks[i], LifeSystem.BasicJobLabel(job),
+                            "Lv1 기본직업 · 명부에 들어온다"))
+                        FloorRecruit.TryClaim(job);
+                }
+                return;
+            }
+            if (FloorRecruit.PendingSpecialBanner)
+                Hint(new Rect(r.x, r.y, r.width, 22f),
+                    $"특수 직업 증표 {FloorRecruit.LastSpecialTokensGot}장 — 레이드 확률");
+            float top = FloorRecruit.PendingSpecialBanner ? 28f : 0f;
             var allCharacters = LifeSystem.GetCharacters();
-            var cells = UiPages.Grid(new Rect(r.x, r.y, r.width, r.height - 88f), 3, 2, 12f);
+            var cells = UiPages.Grid(new Rect(r.x, r.y + top, r.width, r.height - 88f - top), 3, 2, 12f);
             for (int i = 0; i < allCharacters.Count && i < cells.Length; i++)
             {
                 var ch = allCharacters[i];

@@ -419,6 +419,44 @@ namespace AshesToStars
             return _characters;
         }
 
+        /// <summary>기본직업 4종. 층 클리어 보상·시작 로스터가 같은 이름을 쓴다(§3).</summary>
+        public static readonly string[] BasicJobs = { "탱", "딜", "힐", "버퍼" };
+
+        public static bool IsBasicJob(string job)
+        {
+            if (string.IsNullOrEmpty(job)) return false;
+            for (int i = 0; i < BasicJobs.Length; i++)
+                if (BasicJobs[i] == job) return true;
+            return false;
+        }
+
+        public static string BasicJobLabel(string job) => job switch
+        {
+            "탱" => "탱크",
+            "딜" => "딜러",
+            "힐" => "힐러",
+            "버퍼" => "버퍼",
+            _ => job ?? "",
+        };
+
+        /// <summary>
+        /// 층 클리어 보상으로 기본직업 Lv1 1명을 명부에 넣는다.
+        /// 1차 직업명·빈 값은 거부. 합성 재료가 되지 않는다(§3).
+        /// </summary>
+        public static CharacterRecord AddBasicRecruit(string job)
+        {
+            if (!IsBasicJob(job)) return null;
+            EnsureLoaded();
+            int n = 0;
+            for (int i = 0; i < _characters.Count; i++)
+                if (_characters[i].Name != null && _characters[i].Name.StartsWith("영입"))
+                    n++;
+            var recruit = new CharacterRecord($"영입{BasicJobLabel(job)}{n + 1}", job, 1);
+            _characters.Add(recruit);
+            Save();
+            return recruit;
+        }
+
         /// <summary>장착처럼 로스터 필드만 바뀐 뒤 즉시 남길 때 쓴다.</summary>
         public static void PersistRoster()
         {
