@@ -41,8 +41,8 @@ namespace AshesToStars
             if (GUI.Button(new Rect(x, r.y + 192, 220, 42), "이전 페이지")) _page = (_page + 2) % 3;
             if (GUI.Button(new Rect(x, r.y + 244, 220, 42), "직업 이펙트 6종"))
                 for (int i = 0; i < 6; i++) FxPool.PlayJob(i, new Vector2((i - 2.5f) * 2f, 0f), 1.1f);
-            if (GUI.Button(new Rect(x, r.y + 296, 220, 42), "상태 이펙트 3종"))
-                for (int i = 0; i < 3; i++) FxPool.PlayStatus(i, new Vector2((i - 1) * 3.5f, 0f), 1.25f);
+            if (GUI.Button(new Rect(x, r.y + 296, 220, 42), "상태·보스 이펙트 7종"))
+                for (int i = 0; i < 7; i++) FxPool.PlayStatus(i, new Vector2((i - 3) * 2f, 0f), 1.1f);
             if (GUI.Button(new Rect(x, r.y + 348, 220, 42), "영지로 돌아가기")) GameFlow.Go(GameFlow.Estate);
         }
 

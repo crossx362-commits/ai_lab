@@ -443,7 +443,7 @@ namespace AshesToStars
             // (2026-08-15 발견). 실제 W3Party 전투에 쫄을 밀어넣어 「§10-5 분리 소환」이
             // 파티 피해로 성립하게 한다. W3Party가 도는 판이 아니면(예: 검증 하네스) 조용히 무시된다.
             global::W3Party.SummonMobsToActive(mobCount);
-            FxPool.PlayAtlas("boss_portal", Vector2.zero, 2.0f);
+            FxPool.PlayStatus(4, Vector2.zero, 2.0f);
 
             Debug.Log($"[BossBattle] Triggered mob summon x{mobCount} → W3Party, active danger mechanics: {activeDangerMechanicsCount}");
         }
@@ -464,6 +464,7 @@ namespace AshesToStars
             healCheckElapsed = 0f;
             actualPartyHealing = 0f;
             windowDamage = 0f;          // 이 창에서 들어온 피해만 센다
+            FxPool.PlayStatus(6, Vector2.zero, 2.0f);
 
             Debug.Log($"[BossBattle] Triggered Heal Check - 회복이 이 창의 피해 × {HealCheckRatio:P0} 이상이어야 한다, {healCheckDuration}s");
         }

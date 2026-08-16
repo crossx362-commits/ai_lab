@@ -5,7 +5,11 @@ namespace AshesToStars
     /// <summary>독·빙결과 보스 장판 예고의 4x2, 8프레임 시트를 읽는다.</summary>
     public static class StatusVfxSheets
     {
-        static readonly string[] Files = { "boss_aoe_warning_sheet", "poison_status_sheet", "freeze_status_sheet" };
+        static readonly string[] Files =
+        {
+            "boss_aoe_warning_sheet", "poison_status_sheet", "freeze_status_sheet",
+            "boss_charge_warning_sheet", "boss_summon_portal_sheet", "boss_cone_warning_sheet", "boss_interrupt_sheet",
+        };
         static readonly Texture2D[] Textures = new Texture2D[Files.Length];
         static bool _loaded;
 
