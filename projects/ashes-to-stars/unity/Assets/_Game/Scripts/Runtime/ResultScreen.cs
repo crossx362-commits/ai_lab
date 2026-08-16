@@ -30,6 +30,7 @@ namespace AshesToStars
             RaidScale.SeedQaIfRequested();
             RaidBossPool.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
+            BattleScreen.SeedHuntGoldRewardQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
 
@@ -128,6 +129,9 @@ namespace AshesToStars
             {
                 Info(r, _rowIndex++, "");  // 빈 줄
                 RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
+                bool showHuntGold = System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) == "1";
+                if (showHuntGold || GameFlow.ReturnTo == GameFlow.Field)
+                    Info(r, _rowIndex++, Economy.HuntGoldLine(reward.GoldReward));
                 if (RaidScale.Applies(GameFlow.BossFloor))
                     Info(r, _rowIndex++, RaidScale.FormatLine(GameFlow.BossFloor));
                 if (!string.IsNullOrEmpty(RaidBossPool.PickedLine()))

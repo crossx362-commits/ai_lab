@@ -21,7 +21,7 @@ namespace AshesToStars
             {
                 string train = DeathTraining.Line();
                 string rest =
-                    $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText} · {GameState.BagText()}";
+                    $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -50,6 +50,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             HuntStart.SeedQaIfRequested();
+            Economy.SeedHuntGoldQaIfRequested();
 
             if (_showInsufficientGold)
             {

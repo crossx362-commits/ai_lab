@@ -398,6 +398,61 @@ namespace AshesToStars
             return exp < 1 ? 1 : exp;
         }
 
+        public const string EnvShowHuntGold = "QA_HUNT_GOLD";
+        public const string EnvNoHuntGold = "QA_NO_HUNT_GOLD";
+        public const long HuntGoldHourSeconds = 3600;
+
+        public static bool HuntGoldBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoHuntGold);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// 필드 잡몹 생존 골드(§18-1). T1 1시간 = 1골드 = 10,000쿠퍼.
+        /// G/h 앵커의 생산 소비처. 던전·탑 일반층은 안 탄다(필드만).
+        /// 초가 0이하거나 QA_NO면 0. 저체력 귀환·전멸은 호출부가 안 부른다.
+        /// </summary>
+        public static long WaveHuntGold(int tier, float seconds)
+        {
+            if (seconds <= 0f) return 0;
+            if (HuntGoldBlocked) return 0;
+            int t = tier;
+            if (t < 0) t = 0;
+            if (t >= TierRevenueMultiplier.Length) t = TierRevenueMultiplier.Length - 1;
+            double raw = COPPER_PER_GOLD * (double)seconds * TierRevenueMultiplier[t]
+                / HuntGoldHourSeconds;
+            long gold = (long)raw;
+            return gold < 1 ? 1 : gold;
+        }
+
+        public static string HuntGoldHourLine()
+        {
+            if (HuntGoldBlocked) return "필드 골드 없음";
+            long hour = WaveHuntGold(GameState.Tier, HuntGoldHourSeconds);
+            return $"필드 {FormatCurrency(hour)}/h(§18-1)";
+        }
+
+        public static string HuntGoldLine(long copper)
+        {
+            if (HuntGoldBlocked) return "필드 골드 없음";
+            return $"필드 사냥 {FormatCurrency(copper)}(§18-1)";
+        }
+
+        /// <summary>QA_HUNT_GOLD=1이면 티어를 T1로 맞춰 1골드/h가 화면에 보이게 한다.</summary>
+        public static void SeedHuntGoldQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable(EnvShowHuntGold);
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            GameState.SetTowerFloorForTest(1);
+            GameState.TrySelectTier(0);
+            SoftCap.ResetForTest();
+        }
+
         // ========== 소지 상한 (§4, §18-4) ==========
 
         /// <summary>

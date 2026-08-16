@@ -387,10 +387,12 @@ namespace AshesToStars
                             for (int i = 0; i < hides; i++)
                                 _reward.DroppedItems.Add(Economy.LifeItem.CraftHide);
                         }
+                        long huntGold = Economy.WaveHuntGold(GameState.Tier, _t);
+                        _reward.GoldReward = GameState.Earn(huntGold);
                         long huntExp = Economy.WaveHuntExp(GameState.Tier, _t);
                         _reward.ExpGains = LifeSystem.AwardWaveHunt(_t);
                         GameFlow.LastBattleSummary =
-                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · EXP {huntExp}";
+                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {Economy.FormatCurrency(_reward.GoldReward)} · EXP {huntExp}";
                     }
                     else
                         GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
@@ -475,6 +477,20 @@ namespace AshesToStars
             _reward.ExpGains.Add($"{roster[0].Name} +{exp} EXP → Lv.{roster[0].Level}");
             if (string.IsNullOrEmpty(GameFlow.LastBattleSummary))
                 GameFlow.LastBattleSummary = $"생존 — 274.0초 · 사냥 가죽 1장 · EXP {exp}";
+        }
+
+        /// <summary>QA_HUNT_GOLD=1이면 결과 화면에 T1 1시간 = 1골드를 심는다.</summary>
+        public static void SeedHuntGoldRewardQaIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) != "1") return;
+            Economy.SeedHuntGoldQaIfRequested();
+            long gold = Economy.WaveHuntGold(GameState.Tier, Economy.HuntGoldHourSeconds);
+            gold = GameState.Earn(gold);
+            _reward.Clear();
+            _reward.Survived = true;
+            _reward.BattleDurationSeconds = Economy.HuntGoldHourSeconds;
+            _reward.GoldReward = gold;
+            GameFlow.LastBattleSummary = "생존 — " + Economy.HuntGoldLine(gold);
         }
     }
 }
