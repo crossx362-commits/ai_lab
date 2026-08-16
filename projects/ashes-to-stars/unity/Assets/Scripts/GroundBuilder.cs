@@ -30,6 +30,7 @@ public static class GroundBuilder
         if (tex != null)
         {
             tex.wrapMode = TextureWrapMode.Repeat;
+            tex.filterMode = FilterMode.Point;
             mat.mainTexture = tex;
             mat.mainTextureScale = new Vector2(size / 5f, size / 5f);  // 5m마다 반복 — 눌린 세로에 맞춰 무늬가 늘어지지 않게
         }

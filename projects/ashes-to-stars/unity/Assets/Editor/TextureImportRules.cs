@@ -46,7 +46,7 @@ public class TextureImportRules : AssetPostprocessor
         }
         else if (assetPath.Contains("/ground/") || assetPath.Contains("/Ground/"))
         {
-            ti.filterMode = FilterMode.Bilinear;   // 지형은 절차 생성 그라데이션 — 도트 유지 불필요
+            ti.filterMode = FilterMode.Point;      // 바닥도 픽셀아트 타일 — Bilinear면 도트가 뭉개진다
             ti.textureType = TextureImporterType.Default;
             ti.wrapMode = TextureWrapMode.Repeat;   // 타일링 필수
             ti.alphaSource = TextureImporterAlphaSource.None;
