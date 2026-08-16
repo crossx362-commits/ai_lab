@@ -325,8 +325,9 @@ namespace AshesToStars
                     string lootLine = InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent
                         ? " · " + InvasionState.RaceLootLine()
                         : "";
+                    string honorLine = Honor.Blocked ? "" : " · " + Honor.WinLine();
                     GameFlow.LastBattleSummary =
-                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)}{lootLine} ({_t:F1}초)";
+                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)}{lootLine}{honorLine} ({_t:F1}초)";
                 }
                 else
                     ApplyDefeatOnce($"침략 패배 — {_t:F1}초", isPvp: true);

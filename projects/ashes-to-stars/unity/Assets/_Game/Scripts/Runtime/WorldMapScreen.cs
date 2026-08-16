@@ -36,6 +36,9 @@ namespace AshesToStars
                 if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
                     && !InvasionState.LootWarehouseBlocked)
                     s += " · " + InvasionState.WarehouseLootLine();
+                if (Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
+                    && !Honor.Blocked)
+                    s += " · " + Honor.WinLine();
                 return s + " · 침략은 탑 30층(§14·§15)";
             }
         }
@@ -66,6 +69,7 @@ namespace AshesToStars
             InvasionState.SeedLootCapQaIfRequested();
             InvasionState.SeedLootFloorQaIfRequested();
             InvasionState.SeedWarehouseLootQaIfRequested();
+            Honor.SeedQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
             var plate = WorldStar.Plate(r);
@@ -101,6 +105,9 @@ namespace AshesToStars
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
                      && !InvasionState.LootWarehouseBlocked)
                 invasionOpen = $"{InvasionState.WarehouseLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
+            else if (Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
+                     && !Honor.Blocked)
+                invasionOpen = $"{Honor.WinLine()} · " + invasionOpen;
             if (DrawCard(cards[1], "침략",
                     invasionLock ?? invasionOpen,
                     "damage", locked: invasionLock != null)

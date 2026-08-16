@@ -27,6 +27,8 @@ namespace AshesToStars
         public const string EnvNoFloor = "QA_NO_LOOT_FLOOR";
         public const string EnvShowWarehouse = "QA_WAREHOUSE_LOOT";
         public const string EnvNoWarehouse = "QA_NO_WAREHOUSE_LOOT";
+        public const string EnvShowHonor = Honor.EnvShow;
+        public const string EnvNoHonor = Honor.EnvNo;
         public const int HumanLootPercent = 100;
         public const int BeastLootPercent = 120;
         /// <summary>§18-13 패자 손실. 창고 자원의 20%. 미수령 50%는 자동적립이라 별도 풀이 없다.</summary>
@@ -325,12 +327,14 @@ namespace AshesToStars
                 loot = LootCopper();
                 _pending = false;
                 _lastLoot = GameState.Earn(loot);
+                Honor.ApplyInvasion(true);
             }
             else
             {
                 _pending = false;
                 GameState.Pay(DefeatCost());
                 _lastLoot = 0;
+                Honor.ApplyInvasion(false);
             }
             _paid = 0;
             ArmShield();
@@ -464,6 +468,15 @@ namespace AshesToStars
                 GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
             SetWarehouseCopper(QaWarehouseCopper);
             ForceLootBeforeCap = 0;
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+        }
+
+        /// <summary>명예 QA가 보호막·대기 잔재를 지울 때. 약탈 시드와 같은 자리.</summary>
+        public static void ResetPendingForHonorQa()
+        {
+            Load();
             _pending = false;
             _shieldUntil = 0;
             Save();
