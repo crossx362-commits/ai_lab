@@ -54,9 +54,9 @@ namespace AshesToStars
                 "탱 계열은 tank idle");
             Check(UiPages.LookDir("검사") == "dps" && UiPages.LookDir("딜") == "dps",
                 "딜 계열은 dps idle");
-            Check(UiPages.LookDir("마법사") == "mage" && UiPages.LookDir("사제") == "healer"
-                  && UiPages.LookDir("음유시인") == "buffer",
-                "마법·힐·버퍼 폴더");
+            Check(UiPages.LookDir("마딜") == "mage" && UiPages.LookDir("마법사") == "mage"
+                  && UiPages.LookDir("사제") == "healer" && UiPages.LookDir("음유시인") == "buffer",
+                "마딜·마법·힐·버퍼 폴더");
 
             // 네거티브: 좌우를 손으로 뒤집으면 같은 단언이 실패해야 한다.
             var flippedList = stage;

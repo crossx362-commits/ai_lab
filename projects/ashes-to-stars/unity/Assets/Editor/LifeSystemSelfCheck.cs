@@ -40,9 +40,9 @@ namespace AshesToStars
             // ① 로스터가 저절로 선다 — Initialize를 아무도 안 불러도
             var roster = LifeSystem.GetCharacters();
             Check(roster.Count == 5, $"로스터 자동 생성 (기대 5, 실제 {roster.Count})");
-            Check(roster[0].Job == "탱" && roster[1].Job == "딜" && roster[2].Job == "딜"
+            Check(roster[0].Job == "탱" && roster[1].Job == "딜" && roster[2].Job == "마딜"
                   && roster[3].Job == "힐" && roster[4].Job == "버퍼",
-                  "신규 로스터는 기본직업 4종(탱·딜·힐·버퍼)으로 시작(§3)");
+                  "신규 로스터는 기본직업 5종(탱·딜·마딜·힐·버퍼)으로 시작(오너 21:38)");
             Check(roster.TrueForAll(c => c.Advancement == AdvancementTier.Basic),
                   "신규 로스터 전원은 미전직(Basic) 단계");
 
@@ -51,8 +51,8 @@ namespace AshesToStars
             PartyState.ResetForTest();
             var sortieJobs = PartyState.SortieJobs();
             Check(sortieJobs.Count == 5 && sortieJobs[0] == "수호기사"
-                  && sortieJobs[1] == "검사" && sortieJobs[3] == "사제"
-                  && sortieJobs[4] == "음유시인",
+                  && sortieJobs[1] == "검사" && sortieJobs[2] == "마법사"
+                  && sortieJobs[3] == "사제" && sortieJobs[4] == "음유시인",
                   "기본직업 5인이 프로토타입 전투 Job으로 모두 어댑트됨");
             var basicCombatants = PartyState.SortieCombatants();
             Check(basicCombatants.Count == 5
@@ -83,9 +83,11 @@ namespace AshesToStars
                   && LifeSystem.FirstAdvancementOptions(candidate)[1] == "광전사",
                   "탱 1차 선택지는 수호기사·광전사 2종(§3)");
             var dpsOptions = LifeSystem.FirstAdvancementOptions(LifeSystem.GetCharacters()[1]);
-            Check(dpsOptions.Count == 4 && dpsOptions[0] == "검사" && dpsOptions[1] == "궁수"
-                  && dpsOptions[2] == "마법사" && dpsOptions[3] == "소환사",
-                  "딜 1차 선택지 4종(검사·궁수·마법사·소환사)");
+            Check(dpsOptions.Count == 2 && dpsOptions[0] == "검사" && dpsOptions[1] == "궁수",
+                  "딜 1차 선택지 2종(검사·궁수)");
+            var mageOptions = LifeSystem.FirstAdvancementOptions(LifeSystem.GetCharacters()[2]);
+            Check(mageOptions.Count == 2 && mageOptions[0] == "마법사" && mageOptions[1] == "소환사",
+                  "마딜 1차 선택지 2종(마법사·소환사)");
             var healOptions = LifeSystem.FirstAdvancementOptions(LifeSystem.GetCharacters()[3]);
             Check(healOptions.Count == 2 && healOptions[0] == "사제" && healOptions[1] == "드루이드",
                   "힐 1차 선택지 2종(사제·드루이드)");
@@ -487,7 +489,8 @@ namespace AshesToStars
                   $"전원 삭제 뒤 긴급 재건 1명 (재건={lastWipe.RescueGranted}, 생존={lastWipe.LivingCount}, 이름={lastWipe.RescueName})");
             var rescue = LifeSystem.ActiveRescue();
             Check(rescue != null && rescue.IsRescue && rescue.Level == 1 && rescue.Advancement == AdvancementTier.Basic
-                  && (rescue.Job == "탱" || rescue.Job == "딜" || rescue.Job == "힐" || rescue.Job == "버퍼")
+                  && (rescue.Job == "탱" || rescue.Job == "딜" || rescue.Job == "마딜"
+                      || rescue.Job == "힐" || rescue.Job == "버퍼")
                   && !rescue.IsDeleted,
                   $"재건은 기본직업 Lv1·무장비 (job={rescue?.Job}, lv={rescue?.Level}, rescue={rescue?.IsRescue})");
 

@@ -73,7 +73,7 @@ namespace AshesToStars
             "탱" or "수호기사" or "광전사" => "tank",
             "힐" or "사제" or "드루이드" => "healer",
             "버퍼" or "음유시인" or "주술사" or "정령사" => "buffer",
-            "마법사" or "소환사" => "mage",
+            "마딜" or "마법사" or "소환사" => "mage",
             _ => "dps",
         };
 

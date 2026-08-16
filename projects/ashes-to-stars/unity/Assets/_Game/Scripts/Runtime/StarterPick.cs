@@ -4,8 +4,8 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 타이틀에서 기본직업 4종을 전신으로 고른다(오너 21:25·§3).
-    /// 그림은 이미 Resources/sprites/{tank,dps,healer,buffer}에 있다 — 여기서는 소비처만 연다.
+    /// 타이틀에서 기본직업 5종을 전신으로 고른다(오너 21:38).
+    /// 그림은 이미 Resources/sprites/{tank,dps,mage,healer,buffer}에 있다 — 여기서는 소비처만 연다.
     /// </summary>
     public static class StarterPick
     {
@@ -22,6 +22,7 @@ namespace AshesToStars
         {
             "탱" => "앞에서 막고 도발한다",
             "딜" => "가장 가까운 적을 벤다",
+            "마딜" => "멀리서 마법으로 지른다",
             "힐" => "쓰러지기 전에 고친다",
             "버퍼" => "파티를 강화한다",
             _ => "",

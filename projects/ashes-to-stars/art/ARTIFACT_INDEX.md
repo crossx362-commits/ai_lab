@@ -9,7 +9,7 @@
 | 종류 | 생성·후처리 원본 | Unity 반입 경로 | 소비 코드 | 점검 상태 |
 |---|---|---|---|---|
 | 기본 캐릭터 4종 | `out_char/` | `unity/Assets/Resources/sprites/{tank,dps,healer,buffer}/` | `SpriteBank.cs` | ✅ 4종 × 13프레임 반입·전투 표시 |
-| 마법사 | `out_char_mage/frames/` | `unity/Assets/Resources/sprites/mage/` | `SpriteBank.cs` | ✅ 13프레임 반입·전투 표시 |
+| 마법사 | `out_char_mage/frames/` | `unity/Assets/Resources/sprites/mage/` | `SpriteBank.cs`, `StarterPick` | ✅ 13프레임 반입·전투·시작 마딜 카드 |
 | 몬스터 행동형 4종 | `out_p2/frames_*` | `unity/Assets/Resources/sprites/mob_{chaser,charger,ranged,swarmer}/` | `SpriteBank.cs` | ✅ 4종 × 22프레임 반입·상호 구분 화면 확인 |
 | 보스 실루엣 4종 | `out_p6_boss/` | `unity/Assets/Resources/sprites/boss_{brute,serpent,wraith,construct}.png` | `SpriteBank.cs`, `W3Party.cs` | 🟡 정적 4장 반입·보스전 표시, 방향·상태 애니메이션 미제작 |
 | 화면 배경 9종 | `out_p8_bg/bg_*.png` | `unity/Assets/Resources/bg/bg_*.png` | `GameScreen.cs` | ✅ 허브 6 + 타이틀·결과·던전. 스타일은 `bg_party` 재사용. 전투는 카메라라 배경 없음 |

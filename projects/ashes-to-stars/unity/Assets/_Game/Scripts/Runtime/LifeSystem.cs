@@ -233,7 +233,8 @@ namespace AshesToStars
         private static readonly Dictionary<string, string[]> FirstAdvancementByBasicJob = new()
         {
             { "탱", new[] { "수호기사", "광전사" } },
-            { "딜", new[] { "검사", "궁수", "마법사", "소환사" } },
+            { "딜", new[] { "검사", "궁수" } },
+            { "마딜", new[] { "마법사", "소환사" } },
             { "힐", new[] { "사제", "드루이드" } },
             { "버퍼", new[] { "음유시인", "주술사", "정령사" } },
         };
@@ -261,11 +262,11 @@ namespace AshesToStars
             // 1~5인 조합의 사망 시나리오를 테스트하려면 충분한 캐릭터가 필요.
             // (결정: 프로토타입에는 5명이 합리적)
 
-            _characters.Add(new CharacterRecord("탱크", "탱", level: 10));
-            _characters.Add(new CharacterRecord("딜러1", "딜", level: 10));
-            _characters.Add(new CharacterRecord("딜러2", "딜", level: 10));
-            _characters.Add(new CharacterRecord("힐러", "힐", level: 10));
-            _characters.Add(new CharacterRecord("버퍼", "버퍼", level: 10));
+            _characters.Add(new CharacterRecord(BasicJobLabel("탱"), "탱", level: 10));
+            _characters.Add(new CharacterRecord(BasicJobLabel("딜"), "딜", level: 10));
+            _characters.Add(new CharacterRecord(BasicJobLabel("마딜"), "마딜", level: 10));
+            _characters.Add(new CharacterRecord(BasicJobLabel("힐"), "힐", level: 10));
+            _characters.Add(new CharacterRecord(BasicJobLabel("버퍼"), "버퍼", level: 10));
             Save();
         }
 
@@ -398,7 +399,7 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 플레이용 기본 5인(탱·딜·딜·힐·버퍼)으로 되돌린다.
+        /// 플레이용 기본 5인(탱·딜·마딜·힐·버퍼)으로 되돌린다.
         /// QA_V4_WIPE가 PlayerPrefs를 전멸+재건1로 남기면 만든 5직업 스프라이트가
         /// 한 명만 나와 "적용이 안 된다"처럼 읽힌다.
         /// </summary>
@@ -425,7 +426,7 @@ namespace AshesToStars
 
         /// <summary>
         /// 타이틀에서 고른 기본직업을 첫 캐릭터로 새 여정을 연다(§3).
-        /// 프로토타입 레이드는 5인이라 나머지 역할+여분 딜을 같이 넣는다.
+        /// 프로토타입 레이드는 5인이라 나머지 기본직업을 같이 넣는다.
         /// Initialize()의 고정 5인과 달리 0번이 고른 직업이다.
         /// </summary>
         public static CharacterRecord BeginNewGame(string starterJob)
@@ -439,19 +440,16 @@ namespace AshesToStars
             {
                 string job = BasicJobs[i];
                 if (job == starterJob) continue;
-                string name = job == "딜" ? "딜러1" : BasicJobLabel(job);
-                _characters.Add(new CharacterRecord(name, job, 10));
+                _characters.Add(new CharacterRecord(BasicJobLabel(job), job, 10));
             }
-            if (_characters.Count < 5)
-                _characters.Add(new CharacterRecord("딜러2", "딜", 10));
             Save();
             PartyState.ResetForTest();
             _ = PartyState.Slots;
             return _characters[0];
         }
 
-        /// <summary>기본직업 4종. 층 클리어 보상·시작 로스터가 같은 이름을 쓴다(§3).</summary>
-        public static readonly string[] BasicJobs = { "탱", "딜", "힐", "버퍼" };
+        /// <summary>기본직업 5종. 층 클리어 보상·시작 로스터가 같은 이름을 쓴다(오너 21:38·§3).</summary>
+        public static readonly string[] BasicJobs = { "탱", "딜", "마딜", "힐", "버퍼" };
 
         public static bool IsBasicJob(string job)
         {
@@ -463,10 +461,11 @@ namespace AshesToStars
 
         public static string BasicJobLabel(string job) => job switch
         {
-            "탱" => "탱크",
-            "딜" => "딜러",
+            "탱" => "탱커",
+            "딜" => "물리딜러",
+            "마딜" => "마법딜러",
             "힐" => "힐러",
-            "버퍼" => "버퍼",
+            "버퍼" => "서포터",
             _ => job ?? "",
         };
 
@@ -574,7 +573,8 @@ namespace AshesToStars
             {
                 case "탱": required = 3; objective = "훈련 인형 보호·후열 공격 차단";
                     actions = new[] { FirstTrialAction.Guard, FirstTrialAction.Taunt, FirstTrialAction.Brace }; break;
-                case "딜": required = 3; objective = "우선 표적 순서대로 처치";
+                case "딜":
+                case "마딜": required = 3; objective = "우선 표적 순서대로 처치";
                     actions = new[] { FirstTrialAction.Mark, FirstTrialAction.Strike, FirstTrialAction.Execute }; break;
                 case "힐": required = 3; objective = "아군 생존·해로운 효과 2회 정화";
                     actions = new[] { FirstTrialAction.Heal, FirstTrialAction.Cleanse, FirstTrialAction.Stabilize }; break;

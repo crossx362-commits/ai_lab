@@ -7,8 +7,8 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 시작 기본직업 4종 — 전신 폴더가 서로 다르고, 고르면 0번이 그 직업이다.
-    /// 힉스필드 재생성 없이 기존 sprites/{tank,dps,healer,buffer}를 소비한다.
+    /// 시작 기본직업 5종 — 전신 폴더가 서로 다르고, 고르면 0번이 그 직업이다.
+    /// 힉스필드 재생성 없이 기존 sprites/{tank,dps,mage,healer,buffer}를 소비한다.
     /// </summary>
     public static class StarterPickSelfCheck
     {
@@ -38,12 +38,19 @@ namespace AshesToStars
             PartyState.ResetForTest();
             StarterPick.ResetForTest();
 
-            Check(StarterPick.Jobs.Length == 4, "기본직업 4종");
+            Check(StarterPick.Jobs.Length == 5, "기본직업 5종");
             Check(UiPages.LookDir("탱") == "tank" && UiPages.LookDir("딜") == "dps"
-                  && UiPages.LookDir("힐") == "healer" && UiPages.LookDir("버퍼") == "buffer",
-                "4종이 서로 다른 전신 폴더");
+                  && UiPages.LookDir("마딜") == "mage" && UiPages.LookDir("힐") == "healer"
+                  && UiPages.LookDir("버퍼") == "buffer",
+                "5종이 서로 다른 전신 폴더");
+            Check(UiPages.LookDir("딜") != UiPages.LookDir("마딜"),
+                "물리딜과 마법딜은 같은 딜러 그림을 쓰지 않는다");
             Check(UiPages.LookDir("수호기사") == "tank" && UiPages.LookDir("탱") == "tank",
                 "1차 수호기사는 탱 폴더를 빌린다 — 기본 탱이 따로 있다");
+            Check(UiPages.LookDir("마법사") == "mage" && UiPages.LookDir("마딜") == "mage",
+                "1차 마법사는 마딜 폴더를 빌린다");
+            Check(UiPages.LookPath("마딜", "idle_00") == "sprites/mage/mage_idle_00",
+                "마딜 전신은 mage 폴더 — 빼면 dps로 폴백한다");
 
             string root = Path.Combine(Application.dataPath, "Resources", "sprites");
             string[] frames = { "idle_00", "walk_00", "walk_01" };
@@ -67,22 +74,33 @@ namespace AshesToStars
             Check(StarterPick.Open, "거부 뒤에도 선택 화면");
             Check(!LifeSystem.HasSavedRoster(), "거부 뒤 로스터는 비어 있다");
 
-            Check(StarterPick.TryChoose("힐"), "힐을 고르면 여정이 열린다");
+            Check(StarterPick.TryChoose("마딜"), "마딜을 고르면 여정이 열린다");
             Check(!StarterPick.Open, "고른 뒤 선택 화면을 닫는다");
             var roster = LifeSystem.GetCharacters();
             Check(roster.Count == 5, $"고른 뒤 5인 (실제 {roster.Count})");
-            Check(roster[0].Job == "힐" && roster[0].Advancement == AdvancementTier.Basic
-                  && roster[0].Name == "힐러",
-                $"0번은 힐 기본직업 (실제 {roster[0].Name} {roster[0].Job} {roster[0].Advancement})");
-            Check(roster[0].Job != "사제" && roster[0].Job != "수호기사",
+            Check(roster[0].Job == "마딜" && roster[0].Advancement == AdvancementTier.Basic
+                  && roster[0].Name == "마법딜러",
+                $"0번은 마딜 기본직업 (실제 {roster[0].Name} {roster[0].Job} {roster[0].Advancement})");
+            Check(roster[0].Job != "마법사" && roster[0].Job != "수호기사",
                 "고른 기본직업을 1차 이름으로 바꾸지 않는다");
+            bool hasEach = true;
+            for (int i = 0; i < LifeSystem.BasicJobs.Length; i++)
+            {
+                string job = LifeSystem.BasicJobs[i];
+                bool found = false;
+                for (int c = 0; c < roster.Count; c++)
+                    if (roster[c].Job == job) { found = true; break; }
+                if (!found) hasEach = false;
+            }
+            Check(hasEach, "5인 로스터에 기본직업이 한 명씩 있다");
             Check(LifeSystem.HasSavedRoster(), "고른 뒤 저장이 있다");
             Check(!StarterPick.ShouldOffer(), "저장이 있으면 다시 고르지 않는다");
 
             Check(StarterPick.TryChoose("딜"), "딜로 다시 고르면 덮어쓴다");
             roster = LifeSystem.GetCharacters();
-            Check(roster[0].Job == "딜" && roster[0].Advancement == AdvancementTier.Basic,
-                $"0번은 딜 (실제 {roster[0].Job})");
+            Check(roster[0].Job == "딜" && roster[0].Advancement == AdvancementTier.Basic
+                  && roster[0].Name == "물리딜러",
+                $"0번은 딜 (실제 {roster[0].Job} {roster[0].Name})");
 
             Environment.SetEnvironmentVariable(StarterPick.EnvNo, "1");
             StarterPick.ResetForTest();

@@ -58,7 +58,7 @@ namespace AshesToStars
                 "광전사" => "dwarf_guardian",
                 "딜" or "검사" => "rogue",
                 "궁수" => "ranger",
-                "마법사" => "fire_mage",
+                "마딜" or "마법사" => "fire_mage",
                 "소환사" => "strategist",
                 "힐" or "사제" => "priest",
                 "드루이드" => "druid",

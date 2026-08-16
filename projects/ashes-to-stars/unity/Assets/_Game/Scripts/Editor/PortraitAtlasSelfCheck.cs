@@ -26,6 +26,8 @@ namespace AshesToStars
                 "[PortraitAtlasSelfCheck] 검사는 후드 도적 칸이어야 한다");
             Debug.Assert(PortraitAtlas.KeyForJob("딜") == "rogue",
                 "[PortraitAtlasSelfCheck] 기본 딜도 같은 칸");
+            Debug.Assert(PortraitAtlas.KeyForJob("마딜") == "fire_mage",
+                "[PortraitAtlasSelfCheck] 기본 마딜은 마법사 칸");
             Debug.Assert(PortraitAtlas.KeyForJob("광전사") == "dwarf_guardian",
                 "[PortraitAtlasSelfCheck] 광전사는 망치 드워프 칸");
             Debug.Assert(PortraitAtlas.KeyForJob("궁수") == "ranger",
@@ -34,7 +36,7 @@ namespace AshesToStars
                 "[PortraitAtlasSelfCheck] 드루이드는 뿔 칸");
             string[] jobs =
             {
-                "탱", "딜", "힐", "버퍼",
+                "탱", "딜", "마딜", "힐", "버퍼",
                 "수호기사", "광전사", "검사", "궁수", "마법사", "소환사",
                 "사제", "드루이드", "음유시인", "주술사", "정령사",
             };

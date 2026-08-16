@@ -314,7 +314,7 @@ namespace AshesToStars
                     Hint(new Rect(r.x, r.y + 26f, r.width, 22f), special);
                     pickTop = 52f;
                 }
-                var picks = UiPages.Grid(new Rect(r.x, r.y + pickTop, r.width, r.height - pickTop), 2, 2, 12f);
+                var picks = UiPages.Grid(new Rect(r.x, r.y + pickTop, r.width, r.height - pickTop), 3, 2, 12f);
                 for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
                 {
                     string job = LifeSystem.BasicJobs[i];

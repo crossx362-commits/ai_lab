@@ -28,7 +28,7 @@ namespace AshesToStars
             FloorRecruit.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
 
-            // 층 보상 선택이 남아 있으면 에필로그보다 먼저 4종을 한 화면에 보여 준다.
+            // 층 보상 선택이 남아 있으면 에필로그보다 먼저 5종을 한 화면에 보여 준다.
             // 예전엔 줄 목록이라 100층 자막이 있으면 힐·버퍼가 잘렸다.
             if (FloorRecruit.AwaitingPick)
             {
@@ -37,7 +37,7 @@ namespace AshesToStars
                 if (!string.IsNullOrEmpty(special))
                     Hint(new Rect(r.x, r.y + 26f, r.width, 22f), special);
                 float top = string.IsNullOrEmpty(special) ? 28f : 52f;
-                var picks = UiPages.Grid(new Rect(r.x, r.y + top, r.width, r.height - top - 80f), 2, 2, 12f);
+                var picks = UiPages.Grid(new Rect(r.x, r.y + top, r.width, r.height - top - 80f), 3, 2, 12f);
                 for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
                 {
                     string job = LifeSystem.BasicJobs[i];

@@ -52,7 +52,7 @@ namespace AshesToStars
                 1, 3, 14f);
             if (DrawCard(cells[0], "게임 시작",
                     StarterPick.ShouldOffer()
-                        ? "기본직업 4종 중 첫 캐릭터를 고른다(§3)"
+                        ? "기본직업 5종 중 첫 캐릭터를 고른다(오너 21:38)"
                         : "영지에서 모든 콘텐츠가 출발한다",
                     "territory"))
             {
@@ -72,8 +72,8 @@ namespace AshesToStars
         void DrawStarterPick(Rect r)
         {
             Hint(new Rect(r.x, r.y, r.width, 28f),
-                "첫 캐릭터 — 기본직업 4종. 전신과 걷기가 서로 다르다(§3)");
-            var cells = UiPages.Grid(new Rect(r.x, r.y + 36f, r.width, r.height - 36f), 2, 2, 14f);
+                "첫 캐릭터 — 기본직업 5종. 전신과 걷기가 서로 다르다(오너 21:38)");
+            var cells = UiPages.Grid(new Rect(r.x, r.y + 36f, r.width, r.height - 36f), 3, 2, 14f);
             var jobs = StarterPick.Jobs;
             for (int i = 0; i < jobs.Length && i < cells.Length; i++)
             {

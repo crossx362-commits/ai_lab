@@ -81,7 +81,8 @@ namespace AshesToStars
             Debug.Assert(c3.y > c0.y && Mathf.Approximately(c3.x, c0.x),
                 "[UiAtlasSelfCheck] 명부 바둑판 다음 줄은 아래");
             Debug.Assert(UiPages.LookDir("탱") == "tank" && UiPages.LookDir("수호기사") == "tank"
-                         && UiPages.LookDir("검사") == "dps" && UiPages.LookDir("마법사") == "mage"
+                         && UiPages.LookDir("검사") == "dps" && UiPages.LookDir("마딜") == "mage"
+                         && UiPages.LookDir("마법사") == "mage"
                          && UiPages.LookDir("사제") == "healer" && UiPages.LookDir("음유시인") == "buffer",
                 "[UiAtlasSelfCheck] 직업→전신 폴더가 어긋난다");
             _ = nameof(CharacterScreen);
