@@ -703,9 +703,8 @@ namespace AshesToStars
         /// 대출 한도(쿠퍼). §18-5: **순자산의 30%**와 **20 G/h**(티어 비례) 중 **작은 값**.
         /// "무자산 대출 방지"가 핵심 — 순자산 0이면 한도 0이라 못 빌린다.
         ///
-        /// ⚠️ 순자산 근사(정직): 장비·영지 평가액 시스템이 아직 없어 순자산을 보유 골드로
-        ///    근사한다. 그래도 ✅ 원칙("무자산이면 못 빌린다")은 그대로 성립한다(잔고 0 → 한도 0).
-        ///    평가액 시스템이 생기면 netWorthCopper 인자만 실제 순자산으로 바꾸면 된다.
+        /// 순자산은 <see cref="NetWorth.Assets"/>가 지갑+장비+영지를 넘긴다.
+        /// 무자산이면 한도 0. 빌린 돈은 호출부가 부채를 빼서 한도를 안 올린다.
         /// </summary>
         public static long LoanLimitCopper(long netWorthCopper, int tier, int bankruptcyCount = 0)
         {

@@ -129,12 +129,15 @@ namespace AshesToStars
                 _hubPage = 1;
             if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1")
                 _hubPage = 1;
+            if (System.Environment.GetEnvironmentVariable(NetWorth.EnvShow) == "1")
+                _hubPage = 1;
             WorldStar.SeedRaceSenseQaIfRequested();
             SoftCap.SeedQaIfRequested();
             EstateMine.SeedQaIfRequested();
             EstateMine.SeedRaceQaIfRequested();
             EstateMine.SeedSeizeQaIfRequested();
             BankruptcySeize.SeedQaIfRequested();
+            NetWorth.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
@@ -250,6 +253,8 @@ namespace AshesToStars
             if (BankruptcySeize.DidDowngrade ||
                 System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
                 keepSub += " · " + BankruptcySeize.KeepLine();
+            if (NetWorth.ShowOnHub)
+                keepSub += " · " + NetWorth.Line();
             if (DrawCard(cards[0], "본성", keepSub, "territory"))
                 _sub = Sub.본성;
             bool canPick = GameState.UnlockedTier > 0;

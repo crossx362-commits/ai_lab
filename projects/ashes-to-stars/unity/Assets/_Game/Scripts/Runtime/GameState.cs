@@ -205,10 +205,10 @@ namespace AshesToStars
 
         /// <summary>
         /// 대출 총 한도(쿠퍼). 순자산 30%와 20G/h·티어 중 작은 값(§18-5).
-        /// 순자산 = 지갑 − 부채. **빌린 돈은 순자산을 늘리지 않는다**(안 그러면 대출→한도↑→
+        /// 순자산 = 지갑+장비+영지 − 부채. **빌린 돈은 순자산을 늘리지 않는다**(안 그러면 대출→한도↑→
         /// 대출의 무한 피드백 루프가 생긴다 — 자가검사 ⑩이 이 경계를 지킨다).
         /// </summary>
-        public static long LoanLimit { get { Load(); return Economy.LoanLimitCopper(_wallet.Copper - _debt, Tier, _bankruptcyCount); } }
+        public static long LoanLimit { get { Load(); return Economy.LoanLimitCopper(NetWorth.Assets() - _debt, Tier, _bankruptcyCount); } }
 
         /// <summary>이번 대출의 연체 횟수. 전액 상환하면 0. 파산 누적과 별개다.</summary>
         public static int OverdueCount { get { Load(); return _overdueCount; } }
@@ -608,6 +608,7 @@ namespace AshesToStars
             Rebirth.ResetForTest();
             Memorial.ResetForTest();
             HuntSchedule.ResetForTest();
+            NetWorth.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
@@ -632,6 +633,7 @@ namespace AshesToStars
             BankruptcySeize.ForgetInMemoryForTest();
             Memorial.ForgetInMemoryForTest();
             HuntSchedule.ForgetInMemoryForTest();
+            NetWorth.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 탑 층을 임의 값으로 되돌린다. `TowerFloor`는 단조 증가(ClearFloor로만

@@ -111,7 +111,7 @@ namespace AshesToStars
                 Info(r, 0, "[주의] 골드가 부족합니다");
                 Info(r, 1, $"필요 {Economy.FormatCurrency(_pendingCost)} · 보유 {GameState.WalletText}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
                 long shortfall = _pendingCost - GameState.Wallet.Copper;
-                Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 부채 {Economy.FormatCurrency(GameState.Debt)} · 이자 0.5%/h(§18-5)");
+                Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 부채 {Economy.FormatCurrency(GameState.Debt)} · {NetWorth.Line()} · 이자 0.5%/h(§18-5)");
                 if (shortfall > 0 && GameState.LoanBorrowable < shortfall)
                     Info(r, 3, "대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)");
 
