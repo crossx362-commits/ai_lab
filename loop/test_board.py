@@ -181,6 +181,52 @@ class ParseTests(unittest.TestCase):
         self.assertTrue(box["waiting"][0]["title"].startswith("📌"))
         self.assertIn("확정", box["done"][0]["title"])
 
+    def test_stuck_items_blocked_not_done(self):
+        table = """
+## 다음 할 일 큐 (맨 위부터 하나씩)
+
+| # | 항목 | 통과 기준 | 네거티브 |
+|---|---|---|---|
+| 1 | **몹 AI 재생성** 남은 확인 | 매트릭스 | 옛 mob01 |
+| ~~2~~ | ~~보스~~ ✅ | 끝 | 끝 |
+| 4 | **영지 건물 3종** | 소비 시스템이 없어 잠금 | 거짓말 UI |
+"""
+        stuck = board.stuck_items(table, {}, log_text="")
+        titles = [s["title"] for s in stuck]
+        self.assertIn("영지 건물 3종", titles)
+        self.assertNotIn("보스", titles)
+        self.assertNotIn("몹 AI 재생성", titles)
+        self.assertTrue(all(s["kind"] == "blocked" for s in stuck))
+
+    def test_stuck_items_hold_and_latest_fail_only(self):
+        status = """
+## 다음 할 일 (원장 §22 — 위에서부터 하나만)
+
+1. **거래서버 경매** — 유보. 완료로 내리지 말고.
+2. **V4 외부 테스터 70%** — 오너 보류.
+"""
+        stuck = board.stuck_items(
+            status, {"blocked": ["HOLD 파일"]},
+            log_text="❌ #7 실패\n✅ #8 완료\n❌ #9 타임아웃",
+        )
+        titles = [s["title"] for s in stuck]
+        kinds = [s["kind"] for s in stuck]
+        self.assertEqual(kinds[0], "loop")
+        self.assertEqual(stuck[0]["title"], "HOLD 파일")
+        self.assertIn("이터 #9 실패", titles)
+        self.assertNotIn("이터 #7 실패", titles)
+        self.assertIn("거래서버 경매", titles)
+        self.assertNotIn("V4 외부 테스터 70%", titles)
+
+    def test_stuck_items_success_clears_fail(self):
+        stuck = board.stuck_items("", {}, log_text="❌ #7 실패\n✅ #8 완료")
+        self.assertFalse(any(s["kind"] == "fail" for s in stuck))
+
+    def test_board_html_stuck_after_request(self):
+        html = (HERE / "board.html").read_text(encoding="utf-8")
+        self.assertLess(html.find('class="request-top"'), html.find('id="stuck-box"'))
+        self.assertIn("renderStuck", html)
+
 
 class WriteTests(unittest.TestCase):
     def test_request_lands_under_waiting(self):

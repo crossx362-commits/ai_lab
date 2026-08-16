@@ -698,6 +698,65 @@ def write_request(title: str, body: str) -> str:
     return stamp
 
 
+def stuck_items(status: str, loop: dict | None = None,
+                log_text: str | None = None) -> list[dict]:
+    """루프가 멈췄거나, 선행이 없어 큐가 막힌 것만. 끝난 행은 안 올린다.
+
+    오너가 일부러 밀어둔 것(외부 테스터·V4 70%)은 내 선택과 같이 빼 둔다.
+    실패는 마지막 결과가 ❌일 때만 — 그 뒤 ✅가 있으면 이미 지나간 자리.
+    """
+    out: list[dict] = []
+    flags = loop or {}
+    for reason in flags.get("blocked") or []:
+        out.append({
+            "kind": "loop",
+            "title": reason,
+            "detail": "루프가 안 돈다. 계속 진행으로 푼다.",
+        })
+    main = log_text if log_text is not None else _read(HERE / "loop_main.log")
+    last_fail = None
+    last_fail_at = -1
+    last_ok_at = -1
+    for m in re.finditer(r"❌ #(\d+)", main):
+        last_fail, last_fail_at = m.group(1), m.start()
+    for m in re.finditer(r"✅ #(\d+)", main):
+        last_ok_at = m.start()
+    if last_fail is not None and last_fail_at > last_ok_at:
+        out.append({
+            "kind": "fail",
+            "title": f"이터 #{last_fail} 실패",
+            "detail": "루프 로그 마지막 실패. 원인 고치기 전에는 같은 자리를 반복한다.",
+        })
+    seen = set()
+    for row in parse_queue_table_all(status):
+        if not row.get("blocked"):
+            continue
+        key = row["title"]
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "kind": "blocked",
+            "title": row["title"],
+            "detail": row.get("detail") or "선행 시스템이 없다",
+        })
+    for it in parse_queue(status):
+        blob = f"{it['title']} {it.get('detail') or ''}"
+        if any(k in blob for k in ("외부 테스터", "외부 판정", "70%")):
+            continue
+        if not any(k in blob for k in ("보류", "막힘", "거래서버", "유보", "완료로 내리지")):
+            continue
+        if it["title"] in seen:
+            continue
+        seen.add(it["title"])
+        out.append({
+            "kind": "parked",
+            "title": it["title"],
+            "detail": it.get("detail") or "",
+        })
+    return out
+
+
 def loop_flags() -> dict:
     agent = _read(HERE / "agent").strip() or os.getenv("LOOP_AGENT", "grok")
     last_log = ""
@@ -970,6 +1029,7 @@ def build_state() -> dict:
                                   m["title"] in it["title"] or it["title"] in m["title"]):
                 it["done"] = True
     extra = table + now_list
+    flags = loop_flags()
     return {
         "updated": parse_updated(status),
         "queue": queue,
@@ -979,10 +1039,11 @@ def build_state() -> dict:
         "checks": checks,
         "decisions": decisions,
         "choices": pending_choices(queue, miles, decisions, extra),
-        "loop": loop_flags(),
+        "loop": flags,
         "commits": recent_commits(),
         "git": dirty_files(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
+        "stuck": stuck_items(status, flags),
     }
 
 

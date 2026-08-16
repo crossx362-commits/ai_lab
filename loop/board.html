@@ -101,6 +101,17 @@
     border: 1px solid var(--gold); background: #221c14;
   }
   .request-top h2 { margin-bottom: 8px; }
+  .stuck-box {
+    display: none; margin: 14px 24px 0; padding: 16px 16px 12px; border-radius: 12px;
+    border: 1px solid var(--stop); background: #2a1612;
+  }
+  .stuck-box.show { display: block; }
+  .stuck-box h2 { color: var(--stop); }
+  .stuck-box .item { align-items: flex-start; }
+  .stuck-box .badge.loop { color: var(--stop); border-color: var(--stop); }
+  .stuck-box .badge.fail { color: var(--stop); border-color: var(--stop); }
+  .stuck-box .badge.blocked { color: var(--hold); border-color: var(--hold); }
+  .stuck-box .badge.parked { color: var(--muted); border-color: var(--line); }
   .now-panel {
     margin: 14px 24px 0; padding: 14px 16px; border-radius: 12px;
     border: 1px solid var(--gold); background: #1f1a12;
@@ -151,6 +162,15 @@
     <label class="meta"><input type="checkbox" id="req-resume"> HOLD 풀고 다음 이터에서 집게</label>
     <button id="req-send" type="button">INBOX에 넣기</button>
     <span class="msg" id="req-msg"></span>
+  </div>
+</section>
+<section class="stuck-box" id="stuck-box">
+  <h2>막힘 · 멈춤</h2>
+  <p class="meta">루프가 안 돌거나 선행이 없어 선 것만. 끝난 행은 안 올린다.</p>
+  <div id="stuck-list"></div>
+  <div class="row" id="stuck-acts" style="display:none">
+    <button type="button" id="btn-stuck-continue">계속 진행</button>
+    <span class="msg" id="stuck-msg"></span>
   </div>
 </section>
 <section class="now-panel" id="now-box">
@@ -243,6 +263,27 @@ function esc(s) {
   return String(s || "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }
 
+function renderStuck(state) {
+  const box = $("stuck-box");
+  const list = $("stuck-list");
+  const acts = $("stuck-acts");
+  if (!box || !list) return;
+  const items = state.stuck || [];
+  box.classList.toggle("show", items.length > 0);
+  if (!items.length) {
+    list.innerHTML = "";
+    if (acts) acts.style.display = "none";
+    return;
+  }
+  const kinds = { loop: "루프", fail: "실패", blocked: "선행 막힘", parked: "보류" };
+  list.innerHTML = items.map((it) => `
+    <div class="item">
+      <span class="badge ${esc(it.kind || "")}">${esc(kinds[it.kind] || it.kind || "")}</span>
+      <div><div class="t">${esc(it.title)}</div><div class="d">${esc(it.detail || "")}</div></div>
+    </div>`).join("");
+  if (acts) acts.style.display = items.some((it) => it.kind === "loop") ? "flex" : "none";
+}
+
 function render(state) {
   $("updated").textContent = "STATUS 갱신 · " + (state.updated || "시각 없음");
   const L = state.loop || {};
@@ -279,6 +320,7 @@ function render(state) {
         <button type="button" class="skip" data-choice="skip">보류</button>
       </div>
     </div>`).join("") : '<p class="empty">지금 고를 사람 판정은 없다</p>';
+  renderStuck(state);
   renderItems($("milestones"), state.milestones || [], state);
   renderItems($("queue"), state.queue || [], state);
   $("log").textContent = L.log_tail || "(루프 로그 없음)";
@@ -439,6 +481,7 @@ async function resumeLoop() {
 }
 $("btn-continue").onclick = resumeLoop;
 $("btn-continue-2").onclick = resumeLoop;
+$("btn-stuck-continue").onclick = resumeLoop;
 
 $("loop-btns").onclick = async (e) => {
   const btn = e.target.closest("button[data-act]");
