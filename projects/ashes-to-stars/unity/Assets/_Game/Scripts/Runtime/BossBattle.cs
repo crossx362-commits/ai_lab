@@ -51,11 +51,15 @@ namespace AshesToStars
         // 이걸 끄면 보스 HP가 안 줄어 OnBossDefeated가 안 떠 층이 안 돌파되는지로 배선을 검증한다.
         private bool bossDpsDisabled;
 
+        // 네거티브 컨트롤: 장판의 실제 파티 피해와 힐체크 피해 보고를 함께 끈다.
+        private bool floorAoeDisabled;
+
         // 힐 체크 (지속 광역딜 기믹)
         private float healCheckDuration;
         private float healCheckElapsed;
         private float requiredPartyHealing;      // 문서에 없음, 임시
         private float actualPartyHealing;
+        private bool healCheckActive;
 
         // 격노 타이머 (§18-11: 목표 시간 × 2)
         private float rageTimer;
@@ -82,6 +86,7 @@ namespace AshesToStars
             elapsedTime += Time.deltaTime;
             UpdateRageTimer();
             UpdateHealCheckDuration();
+            UpdateFloorAOEs(Time.deltaTime);
             UpdateBosses();
         }
 
@@ -104,6 +109,7 @@ namespace AshesToStars
             this.isActive = true;
             this.elapsedTime = 0f;
             this.activeDangerMechanicsCount = 0;
+            this.activeFloorAOEs.Clear();
             this.actualPartyHealing = 0f;
             // 첫 기믹은 곧바로 터뜨리지 않는다 — 진입 직후 즉사는 학습 기회가 없다.
             // 파티가 자리를 잡을 시간을 주고 시작한다.
@@ -112,10 +118,13 @@ namespace AshesToStars
             this.summonActive = false;
             this.summonDisabled = System.Environment.GetEnvironmentVariable("BOSS_NO_SUMMON") == "1";
             this.bossDpsDisabled = System.Environment.GetEnvironmentVariable("BOSS_NO_DPS") == "1";
+            this.floorAoeDisabled = System.Environment.GetEnvironmentVariable("BOSS_NO_AOE") == "1";
             if (summonDisabled)
                 Debug.Log("[BossBattle] BOSS_NO_SUMMON=1 — 소환 기믹 비활성(네거티브 컨트롤)");
             if (bossDpsDisabled)
                 Debug.Log("[BossBattle] BOSS_NO_DPS=1 — 파티의 보스 피해 비활성(네거티브 컨트롤)");
+            if (floorAoeDisabled)
+                Debug.Log("[BossBattle] BOSS_NO_AOE=1 — 장판 피해 비활성(네거티브 컨트롤)");
 
             // §18-11: 목표 시간 계산
             // 5층 90초, 10층 180초, 50층+ 300초
@@ -140,6 +149,7 @@ namespace AshesToStars
             // 힐 체크 (기믹 3)
             healCheckDuration = 15f;  // 문서에 없음, 임시 15초
             healCheckElapsed = 0f;
+            healCheckActive = false;
             // 💡 힐 체크 요구량 — 문서에 수치가 없어 **실측 처리량**에서 유도한다.
             // 사제 치유의 파동은 5인에게 14씩(쿨 1.4초) → 약 50/초. 15초면 750이 상한이다.
             // 그 70%인 525를 요구선으로 둔다 — 힐러가 제 일을 하면 통과하고, 놀거나 죽으면 실패한다.
@@ -181,9 +191,14 @@ namespace AshesToStars
         /// </summary>
         public static void ReportDamageToActive(float amount)
         {
-            if (_active != null && _active.isActive) _active.windowDamage += amount;
+            if (_active != null && _active.isActive && _active.healCheckActive && amount > 0f)
+                _active.windowDamage += amount;
         }
         float windowDamage;
+
+        /// <summary>활성 힐체크 창에 실제 보고된 피해. HUD와 실행 QA가 같은 값을 읽는다.</summary>
+        public static float ActiveHealCheckWindowDamage =>
+            _active != null && _active.isActive && _active.healCheckActive ? _active.windowDamage : 0f;
 
         /// <summary>현재 보스들의 남은 HP 합. 실행 QA와 HUD가 같은 전투 상태를 읽는다.</summary>
         public static float ActiveTotalHp
@@ -328,8 +343,7 @@ namespace AshesToStars
 
         private void UpdateHealCheckDuration()
         {
-            if (healCheckElapsed > healCheckDuration)
-                return;  // 이미 종료
+            if (!healCheckActive) return;
 
             healCheckElapsed += Time.deltaTime;
 
@@ -467,6 +481,8 @@ namespace AshesToStars
         /// </summary>
         private void TriggerFloorAOE(int count = 2)
         {
+            if (floorAoeDisabled) return;
+
             if (activeDangerMechanicsCount >= MAX_SIMULTANEOUS_DANGER_MECHANICS)
             {
                 Debug.Log("[BossBattle] Floor AoE blocked - danger mechanics at limit");
@@ -475,26 +491,44 @@ namespace AshesToStars
 
             activeDangerMechanicsCount++;
 
+            var partyTargets = global::W3Party.FloorAoeTargetsToActive(count);
             for (int i = 0; i < count; i++)
             {
+                Vector2 target = i < partyTargets.Length
+                    ? partyTargets[i]
+                    : new Vector2(UnityEngine.Random.Range(-5f, 5f), UnityEngine.Random.Range(-5f, 5f));
                 var aoe = new FloorAOE
                 {
-                    // 임시: 화면상 임의의 위치
-                    position = new Vector3(
-                        UnityEngine.Random.Range(-5f, 5f),
-                        0f,
-                        UnityEngine.Random.Range(-5f, 5f)
-                    ),
+                    position = new Vector3(target.x, 0f, target.y),
                     warningDuration = 1f,    // 예고 시간 (§10-5: 예고 표식 필수)
                     damageRadius = 2f,
                     damage = 30f              // 임시
                 };
                 aoe.elapsedTime = 0f;
                 activeFloorAOEs.Add(aoe);
-                FxPool.PlayStatus(0, new Vector2(aoe.position.x, aoe.position.y), 1.8f);
+                FxPool.PlayStatus(0, new Vector2(aoe.position.x, aoe.position.z), 1.8f);
             }
 
             Debug.Log($"[BossBattle] Triggered Floor AoE x{count}, active danger mechanics: {activeDangerMechanicsCount}");
+        }
+
+        private void UpdateFloorAOEs(float dt)
+        {
+            bool resolvedAny = false;
+            for (int i = activeFloorAOEs.Count - 1; i >= 0; i--)
+            {
+                var aoe = activeFloorAOEs[i];
+                aoe.elapsedTime += dt;
+                if (aoe.elapsedTime < aoe.warningDuration) continue;
+
+                float applied = global::W3Party.ApplyPartyAreaDamageToActive(
+                    new Vector2(aoe.position.x, aoe.position.z), aoe.damageRadius, aoe.damage);
+                activeFloorAOEs.RemoveAt(i);
+                resolvedAny = true;
+                Debug.Log($"[BossBattle] Floor AoE resolved - party HP damage {applied:F1}");
+            }
+            if (resolvedAny && activeFloorAOEs.Count == 0)
+                activeDangerMechanicsCount = Mathf.Max(0, activeDangerMechanicsCount - 1);
         }
 
         /// <summary>
@@ -540,6 +574,7 @@ namespace AshesToStars
             healCheckElapsed = 0f;
             actualPartyHealing = 0f;
             windowDamage = 0f;          // 이 창에서 들어온 피해만 센다
+            healCheckActive = true;
             FxPool.PlayStatus(6, Vector2.zero, 2.0f);
 
             Debug.Log($"[BossBattle] Triggered Heal Check - 회복이 이 창의 피해 × {HealCheckRatio:P0} 이상이어야 한다, {healCheckDuration}s");
@@ -573,6 +608,7 @@ namespace AshesToStars
             }
 
             activeDangerMechanicsCount = Mathf.Max(0, activeDangerMechanicsCount - 1);
+            healCheckActive = false;
         }
 
         private void OnAllBossesDefeated()

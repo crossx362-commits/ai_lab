@@ -1078,6 +1078,50 @@ public class W3Party : MonoBehaviour
     /// <summary>소환 몹이 파티에 준 누적 피해. 네거티브 컨트롤의 측정값(QA 로그로 읽는다).</summary>
     public static float SummonDmgOnActive() => _game != null ? _game._summonDmgToParty : 0f;
 
+    /// <summary>현재 실플레이 파티의 생존 HP 합. 보스 기믹 HUD와 실행 QA가 같은 상태를 읽는다.</summary>
+    public static float ActivePartyHp
+    {
+        get
+        {
+            if (_game == null || !_game.GameMode) return 0f;
+            float total = 0f;
+            foreach (var member in _game._party) total += Mathf.Max(0f, member.Hp);
+            return total;
+        }
+    }
+
+    /// <summary>장판 중심을 실제 파티 위치에서 고른다. 실플레이가 없으면 호출자가 폴백한다.</summary>
+    public static Vector2[] FloorAoeTargetsToActive(int count)
+    {
+        if (_game == null || !_game.GameMode || count <= 0) return System.Array.Empty<Vector2>();
+        var alive = new List<Vector2>();
+        foreach (var member in _game._party) if (member.Alive) alive.Add(member.Pos);
+        if (alive.Count == 0) return System.Array.Empty<Vector2>();
+        var targets = new Vector2[Mathf.Min(count, alive.Count)];
+        for (int i = 0; i < targets.Length; i++)
+        {
+            int index = targets.Length == 1 ? 0 : Mathf.RoundToInt(i * (alive.Count - 1f) / (targets.Length - 1f));
+            targets[i] = alive[index];
+        }
+        return targets;
+    }
+
+    /// <summary>장판 범위 안 파티원에게 공용 피해 경계를 적용하고 실제 HP 감소량을 반환한다.</summary>
+    public static float ApplyPartyAreaDamageToActive(Vector2 center, float radius, float damage)
+    {
+        if (_game == null || !_game.GameMode || radius <= 0f || damage <= 0f) return 0f;
+        float applied = 0f;
+        float radiusSq = radius * radius;
+        foreach (var member in _game._party)
+        {
+            if (!member.Alive || (member.Pos - center).sqrMagnitude > radiusSq) continue;
+            float before = member.Hp;
+            _game.Damage(member, damage, member.Role == Role.Tank);
+            applied += Mathf.Max(0f, before - member.Hp);
+        }
+        return applied;
+    }
+
     public readonly struct BossTarget
     {
         public readonly int Index;
@@ -2728,6 +2772,7 @@ public class W3Party : MonoBehaviour
             guardian.Gauge = Mathf.Min(100f, guardian.Gauge + (m == guardian ? incoming * 0.5f : incoming * 0.12f));
         }
 
+        float hpBefore = m.Hp;
         m.Hp -= dmg;
 
         // 최후의 보루(§3 수호기사 3번 스킬) — 3초간 HP가 1 미만으로 안 떨어진다.
@@ -2743,6 +2788,10 @@ public class W3Party : MonoBehaviour
             Debug.Log($"[W3] 최후의 보루 발동 @ {_t:F1}s");
         }
         if (m.Job == Job.수호기사 && _t < _lastStandUntil && m.Hp < 1f) m.Hp = 1f;
+        // 힐체크는 특정 공격 종류가 아니라 이 공용 피해 경계에서 **실제 HP 감소량**을 읽는다.
+        // 장판만 따로 보고하면 쫄/평타 피해가 빠지고, 보호막 흡수 전 수치를 보고하면 회복 불가능한
+        // 요구량이 생긴다. 치명 피해도 HP 0 아래 초과분은 세지 않는다.
+        AshesToStars.BossBattle.ReportDamageToActive(hpBefore - Mathf.Max(0f, m.Hp));
         FxParticles.Play(FxKind.피격, ToScreen(m.Pos));
         if (front) _frontlineHits++; else _backlineHits++;
         if (m.Role == Role.Healer || m.Role == Role.Buffer) _supportHits++;
