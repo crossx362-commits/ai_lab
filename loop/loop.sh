@@ -2,6 +2,7 @@
 # 재와 별 — 자동 개발 루프
 #
 #   ./loop/loop.sh              # 무한 반복
+#   LOOP_AGENT=codex ./loop/loop.sh  # Codex 새 세션으로 반복
 #   touch loop/STOP             # 다음 이터레이션 시작 전에 멈춘다
 #   rm loop/STOP                # 다시 시작
 #
@@ -29,6 +30,7 @@ HOLD="$ROOT/loop/HOLD"
 LOG_DIR="$ROOT/loop/logs"
 MAX_FAILS="${LOOP_MAX_FAILS:-3}"
 COOLDOWN="${LOOP_COOLDOWN:-20}"
+AGENT="${LOOP_AGENT:-claude}"
 
 mkdir -p "$LOG_DIR"
 
@@ -40,6 +42,14 @@ PROMPT='너는 재와 별(Ashes to Stars) 유니티 게임을 개발하는 자�
 2. docs/STATUS.md          — 지금 위치·다음 할 일 큐·완료 기록
 3. docs/DESIGN.md          — 무엇을 만드는가(헌법). 원장은 docs/GAME_DESIGN_ASHES_TO_STARS.md
 4. projects/ashes-to-stars/CLAUDE.md — 이 프로젝트의 함정 목록
+
+## 오너의 자동 실행 승인
+오너는 "기획서 반영해서 개발 가능한 부분 개발 루프 시작"을 명시적으로 지시했고,
+확정 문서 안의 세부 구현 판단도 이 무인 루프에 위임했다. 이것이 이번 이터레이션의 사용자 승인이다.
+문서에 확정된 안전한 저장소 내부 작업은 짧은 설계를 로그에 남긴 뒤 **별도 승인 질문 없이 구현**하고,
+테스트·시각 QA·STATUS 인계·관련 파일 커밋까지 끝내라.
+외부 결제·계정 권한·되돌리기 어려운 삭제처럼 새 권한이 정말 필요한 일만 막힘으로 기록하고,
+그 경우에는 질문으로 이터레이션을 끝내지 말고 다음으로 실행 가능한 안전한 항목을 잡아라.
 
 ## 이번 이터레이션에 할 일
 STATUS.md의 「다음 할 일」 큐에서 **맨 위 한 항목만** 잡는다. 여러 개를 벌이지 마라.
@@ -109,7 +119,7 @@ INBOX.md에 지시가 있으면 그것이 큐보다 앞선다.
 - 한 이터레이션에 여러 항목을 벌이지 마라
 - 검증 없이 "완료"라고 STATUS.md에 적지 마라'
 
-echo "🔁 재와 별 자동 루프 시작 — 멈추려면: touch loop/STOP"
+echo "🔁 재와 별 자동 루프 시작 ($AGENT) — 멈추려면: touch loop/STOP"
 ITER=0
 FAILS=0
 INFRA=0
@@ -145,6 +155,7 @@ while true; do
   ITER=$((ITER + 1))
   TS=$(date +%Y%m%d_%H%M%S)
   LOG="$LOG_DIR/iter_${TS}.log"
+  STATUS_BEFORE=$(cksum < "$ROOT/docs/STATUS.md")
   echo "─────────────────────────────────────────"
   echo "▶ 이터레이션 #$ITER  $(date '+%H:%M:%S')  → $LOG"
 
@@ -158,17 +169,37 @@ while true; do
   #    그게 막히면 루프가 완료 판정을 스스로 못 한다.
   #    `settings.local.json`의 allow 목록만으로는 안 됐다 — 실측으로 확인했고,
   #    `--allowedTools`로 넘긴 패턴은 통과했다(878KB 캡처 생성 확인).
-  if claude -p "$PROMPT" --permission-mode acceptEdits \
-       --allowedTools \
-         "Bash(./tools/qa_shot.sh:*)" \
-         "Bash(tools/qa_shot.sh:*)" \
-         "Bash(GAME_SHOT_SEC=*)" \
-         "Bash(GAME_START=*)" \
-         "Bash(GAME_SHOT_DIR=*)" \
-         "Bash(/Applications/Unity/Hub/Editor/*)" \
-         "Bash(python3:*)" \
-         "Bash(git:*)" \
-       >"$LOG" 2>&1 < /dev/null; then
+  if [ "$AGENT" = "codex" ]; then
+    # `codex exec`는 호출마다 새 세션이다. --ephemeral로 세션 파일도 남기지 않는다.
+    # 실제 창 QA의 UPM IPC와 지정 파일 커밋은 workspace-write에서 차단됐다(2026-08-16 실측).
+    # 이 저장소 전용 자동 개발 승인 범위에서 danger-full-access를 사용한다.
+    printf '%s\n' "$PROMPT" | codex exec --ephemeral --sandbox danger-full-access \
+      --cd "$ROOT" --color never - >"$LOG" 2>&1
+    RESULT=$?
+  else
+    printf '%s\n' "$PROMPT" | claude -p --permission-mode acceptEdits \
+         --allowedTools \
+           "Bash(./tools/qa_shot.sh:*)" \
+           "Bash(tools/qa_shot.sh:*)" \
+           "Bash(GAME_SHOT_SEC=*)" \
+           "Bash(GAME_START=*)" \
+           "Bash(GAME_SHOT_DIR=*)" \
+           "Bash(/Applications/Unity/Hub/Editor/*)" \
+           "Bash(python3:*)" \
+           "Bash(git:*)" \
+         >"$LOG" 2>&1
+    RESULT=$?
+  fi
+
+  # 종료 코드 0만으로 완료라 하지 않는다. 실제 재현(2026-08-16): 에이전트가 설계 승인만
+  # 질문하고 정상 종료해 같은 질문을 반복했다. 인수인계 파일 갱신이 완료의 최소 증거다.
+  STATUS_AFTER=$(cksum < "$ROOT/docs/STATUS.md")
+  if [ "$RESULT" -eq 0 ] && [ "$STATUS_BEFORE" = "$STATUS_AFTER" ]; then
+    echo "[loop-guard] STATUS.md 갱신 없음 — 구현 없는 정상 종료를 실패로 분류" >> "$LOG"
+    RESULT=86
+  fi
+
+  if [ "$RESULT" -eq 0 ]; then
     FAILS=0
     INFRA=0
     echo "✅ #$ITER 완료"
@@ -209,13 +240,12 @@ while true; do
     echo "⏸  #$ITER 인프라 장애 (${INFRA}회) — ${WAIT}초 뒤 재시도. 실패로 세지 않는다"
     grep -iE 'not logged in|api error|rate.?limit|overloaded|credit|network' "$LOG" | head -2 | sed 's/^/   /'
     if [ "$INFRA" -ge "${LOOP_MAX_INFRA:-12}" ]; then
-      echo "❌ 인프라 장애가 ${INFRA}회 연속 — 사람이 봐야 한다(구독 토큰 만료 의심: claude auth login)"
+      echo "❌ $AGENT 실행기 인프라 장애가 ${INFRA}회 연속 — 사람이 봐야 한다"
       {
         echo ""
         echo "## ⚠️ 루프 정지 — 인프라 장애 지속 ($(date '+%Y-%m-%d %H:%M'))"
-        echo "\`claude -p\`가 ${INFRA}회 연속 실패했다. 마지막 로그: \`$LOG\`"
-        echo "1순위 의심: **구독 토큰 만료**. \`echo ok | claude -p\`로 직접 찔러 확인하고,"
-        echo "만료면 \`claude auth login\`(브라우저 OAuth라 사람만 가능) 후 \`rm loop/STOP\`."
+        echo "\`$AGENT\` 실행기가 ${INFRA}회 연속 실패했다. 마지막 로그: \`$LOG\`"
+        echo "구독 한도·로그인·네트워크 상태를 확인한 뒤 \`rm loop/STOP\`으로 재개할 것."
       } >> "$ROOT/docs/STATUS.md"
       touch "$STOP"
       exit 1
