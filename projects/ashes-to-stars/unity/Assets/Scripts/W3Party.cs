@@ -2672,8 +2672,10 @@ public class W3Party : MonoBehaviour
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
 
             Vector2 prev = _mPos[i];
-            p += want * spd * dt;
-            if (ArenaLayout.Any) p = ArenaLayout.Resolve(p, 0.3f);
+            Vector2 step = want * spd * dt;
+            if (ArenaLayout.Any) step = ArenaLayout.Around(p, step, 0.35f);
+            p += step;
+            if (ArenaLayout.Any) p = ArenaLayout.Resolve(p, 0.35f);
             _mPos[i] = p;
             _mTr[i].position = ToScreen(p);
             // 좌우 이동을 스프라이트 반전으로 표현한다(방향별 그림이 아직 없다 — 아트문서 §0-A).

@@ -43,11 +43,15 @@ namespace AshesToStars
         const float COVER_RADIUS = 0.9f;
 
         /// <summary>
-        /// 건물의 충돌 반경. 덤불과 같은 값을 쓰면 **집이 덤불만큼만 막아** 유닛이 벽을
-        /// 스치듯 지나간다 — 화면에는 큰 건물이 서 있는데 길막이 안 되니 오히려 더 이상하다.
-        /// 오너 지적 2026-08-15 「유저가 건물 전략적으로 활용할 수 있어야 된다」.
+        /// 집·헛간 충돌. 그림 높이의 절반보다 작으면 유닛이 지붕·처마를 가로지른다
+        /// (오너 지적 「몬스터 집 위로 못다니게」).
         /// </summary>
-        const float BUILDING_RADIUS = 1.9f;
+        public static float ObstacleRadius(string name)
+        {
+            if (name != null && (name.StartsWith("village_house_") || name == "village_barn_0"))
+                return Mathf.Max(2.6f, TargetUnits(name) * 0.65f);
+            return COVER_RADIUS;
+        }
 
         static GameObject _root;
 
@@ -287,9 +291,7 @@ namespace AshesToStars
                 {
                     // 건물은 크게, 자연물은 기존대로. 이름으로 가른다 — 크기표(prop_scale)를
                     // 다시 읽는 것보다 단순하고, 마을 구성물은 이미 접두로 구분돼 있다.
-                    bool building = propNames[propIdx].StartsWith("village_house_")
-                                 || propNames[propIdx] == "village_barn_0";
-                    _cover.Add((worldPos, building ? BUILDING_RADIUS : COVER_RADIUS));
+                    _cover.Add((worldPos, ObstacleRadius(propNames[propIdx])));
                     blockers++;
                 }
                 return true;

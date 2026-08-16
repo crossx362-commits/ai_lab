@@ -147,5 +147,50 @@ namespace AshesToStars
             }
             return pos;
         }
+
+        /// <summary>
+        /// 한 걸음이 집을 관통하면 접선으로 비켜 간다. 막고 나서 밀어내기만 하면
+        /// 목표 쪽으로 계속 들이받아 지붕 위를 가로지른다.
+        /// </summary>
+        public static Vector2 Around(Vector2 from, Vector2 delta, float unitRadius = 0.35f)
+        {
+            if (_obstacles.Count == 0 || delta.sqrMagnitude < 1e-8f) return delta;
+            Vector2 raw = from + delta;
+            int hit = Blocking(from, raw, unitRadius);
+            if (hit < 0) return Resolve(raw, unitRadius) - from;
+
+            var o = _obstacles[hit];
+            Vector2 away = from - o.Pos;
+            if (away.sqrMagnitude < 1e-6f) away = Vector2.up;
+            Vector2 tan = new Vector2(-away.y, away.x);
+            if (Vector2.Dot(tan, delta) < 0f) tan = -tan;
+            Vector2 slide = tan.normalized * delta.magnitude;
+            return Resolve(from + slide, unitRadius) - from;
+        }
+
+        static int Blocking(Vector2 from, Vector2 to, float unitRadius)
+        {
+            int hit = -1;
+            float best = float.MaxValue;
+            for (int i = 0; i < _obstacles.Count; i++)
+            {
+                var o = _obstacles[i];
+                float need = o.Radius + unitRadius;
+                if (!SegmentHits(from, to, o.Pos, need)
+                    && (to - o.Pos).sqrMagnitude >= need * need)
+                    continue;
+                float d = (from - o.Pos).sqrMagnitude;
+                if (d < best) { best = d; hit = i; }
+            }
+            return hit;
+        }
+
+        static bool SegmentHits(Vector2 a, Vector2 b, Vector2 c, float radius)
+        {
+            Vector2 ab = b - a;
+            float len2 = ab.sqrMagnitude;
+            float t = len2 < 1e-8f ? 0f : Mathf.Clamp01(Vector2.Dot(c - a, ab) / len2);
+            return (a + ab * t - c).sqrMagnitude < radius * radius;
+        }
     }
 }
