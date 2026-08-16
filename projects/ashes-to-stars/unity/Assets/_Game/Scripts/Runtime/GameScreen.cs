@@ -176,9 +176,9 @@ namespace AshesToStars
                 GUI.DrawTexture(new Rect(0, HeaderH - 2, REF_W, 2), _accent);
                 bool atlas = !string.IsNullOrEmpty(HeaderIcon)
                     && UiAtlas.DrawFit(new Rect(18, 14, 60, 60), HeaderIcon);
-                GUI.Label(new Rect(atlas ? 90 : 28, 10, REF_W - (atlas ? 120 : 56), 42), Title, _h1);
+                UiPages.LabelClip(new Rect(atlas ? 90 : 28, 10, REF_W - (atlas ? 120 : 56), 42), Title, _h1);
                 if (!string.IsNullOrEmpty(Subtitle))
-                    GUI.Label(new Rect(atlas ? 90 : 28, 52, REF_W - 80, 30), Subtitle, _h2);
+                    UiPages.LabelClip(new Rect(atlas ? 90 : 28, 52, REF_W - 80, 30), Subtitle, _h2);
             }
 
             float bottom = ShowBottomBar ? UiPages.NavReserve : 36f;
@@ -238,7 +238,7 @@ namespace AshesToStars
                 GUI.DrawTexture(new Rect(0, tiles[0].y - 8f, REF_W, 1), _line);
 
             // ESC는 도크 왼쪽 빈 칸. 아래에 한 줄을 더 깔면 본문이 28px 죽는다.
-            GUI.Label(new Rect(16f, tiles[0].y + 24f, tiles[0].x - 24f, 22f),
+            UiPages.LabelClip(new Rect(16f, tiles[0].y + 24f, Mathf.Max(40f, tiles[0].x - 24f), 22f),
                 "ESC — 영지로", _small);
 
             for (int i = 0; i < n; i++)
@@ -251,7 +251,7 @@ namespace AshesToStars
                 DrawAtlasButton(r, null);
                 string icon = UiPages.NavIcon(scene);
                 UiAtlas.DrawFit(new Rect(r.center.x - 18f, r.y + 4f, 36f, 36f), icon);
-                GUI.Label(new Rect(r.x + 2f, r.y + 42f, r.width - 4f, 24f), label, _navLabel);
+                UiPages.LabelClip(new Rect(r.x + 2f, r.y + 42f, r.width - 4f, 24f), label, _navLabel);
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
             }
@@ -278,7 +278,7 @@ namespace AshesToStars
                 var prev = GUI.color;
                 if (locked) GUI.color = new Color(1f, 1f, 1f, 0.55f);
                 var lr = pad > 0f ? new Rect(r.x + pad, r.y, r.width - pad - 8f, r.height) : r;
-                GUI.Label(lr, label, pad > 0f ? _btnLeft : _btn);
+                UiPages.LabelClip(lr, label, pad > 0f ? _btnLeft : _btn);
                 GUI.color = prev;
             }
         }
@@ -340,7 +340,7 @@ namespace AshesToStars
         protected void Hint(Rect r, string text)
         {
             Styles();
-            GUI.Label(r, text, _h2);
+            UiPages.LabelClip(r, text, _h2);
         }
 
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
@@ -354,7 +354,7 @@ namespace AshesToStars
             DrawAtlasButton(br, label, iconKey: iconKey, leftPad: leftPad, rarity: rarity);
             bool hit = GUI.Button(br, GUIContent.none, GUIStyle.none);
             if (!string.IsNullOrEmpty(desc))
-                GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12), desc, _h2);
+                UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12), desc, _h2);
             return hit;
         }
 
@@ -374,8 +374,7 @@ namespace AshesToStars
             if (br.yMax > r.yMax) return;
 
             DrawAtlasButton(br, label, locked: true, iconKey: iconKey, rarity: rarity);
-            GUI.Label(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
-                      // 이모지를 쓰지 않는다 — 기본 폰트에 자물쇠 글리프가 없어 □로 나온다(실측).
+            UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
                       "잠김 — " + why, _small);
         }
 
@@ -391,7 +390,7 @@ namespace AshesToStars
                 bool on = i == selected;
                 UiAtlas.DrawSliced(t, UiAtlas.ButtonKey(false, on), 8f,
                     on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
-                GUI.Label(t, names[i], _tab);
+                UiPages.LabelClip(t, names[i], _tab);
                 if (GUI.Button(t, GUIContent.none, GUIStyle.none)) selected = i;
             }
             return selected;
@@ -407,8 +406,8 @@ namespace AshesToStars
             bool hasIcon = !string.IsNullOrEmpty(iconKey);
             UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
             if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);
-            GUI.Label(titleR, title, _cardTitle);
-            GUI.Label(subR, locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
+            UiPages.LabelClip(titleR, title, _cardTitle);
+            UiPages.LabelClip(subR, locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
             if (locked) return false;
             return GUI.Button(card, GUIContent.none, GUIStyle.none);
         }
@@ -430,9 +429,11 @@ namespace AshesToStars
         {
             Styles();
             var panel = new Rect(r.x - 12, r.y + index * (RowH + RowGap), r.width + 24, RowH);
+            if (panel.yMax > r.yMax) return;
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
-            GUI.Label(new Rect(r.x, r.y + index * (RowH + RowGap) + 14, r.width, 30), text, _panel);
+            UiPages.LabelClip(new Rect(r.x, r.y + index * (RowH + RowGap) + 10, r.width, RowH - 16),
+                text, _panel);
         }
     }
 }

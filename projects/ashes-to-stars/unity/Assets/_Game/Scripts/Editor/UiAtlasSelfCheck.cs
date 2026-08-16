@@ -146,6 +146,13 @@ namespace AshesToStars
             _ = nameof(UiPages.NavDock);
             Debug.Assert(UiPages.CardMinIcon >= 72f,
                 "[UiAtlasSelfCheck] 카드 아이콘이 72보다 작으면 허브가 비어 보인다");
+            var tight = new Rect(0f, 0f, 200f, 150f);
+            UiPages.CardLayout(tight, true, out var tIcon, out var tTitle, out var tSub);
+            Debug.Assert(!UiPages.LayoutOverlaps(tIcon, tTitle) && !UiPages.LayoutOverlaps(tIcon, tSub),
+                "[UiAtlasSelfCheck] 카드 아이콘과 글자가 겹치면 잘린다");
+            Debug.Assert(tTitle.xMax <= tight.xMax + 0.01f && tSub.yMax <= tight.yMax + 0.01f,
+                "[UiAtlasSelfCheck] 카드 글자가 칸 밖으로 나가면 잘린다");
+            _ = nameof(UiPages.LabelClip);
             var stretchBox = new Rect(0f, 0f, 400f, 180f);
             var fitIcon = UiAtlas.FitInside(stretchBox, 120f, 122f);
             Debug.Assert(Mathf.Abs(fitIcon.width / fitIcon.height - 120f / 122f) < 0.02f

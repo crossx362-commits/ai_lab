@@ -218,12 +218,15 @@ namespace AshesToStars
             bool tall = hasIcon && card.height >= 150f;
             if (tall)
             {
-                float plateH = Mathf.Clamp(card.height * 0.34f, 72f, 108f);
-                float maxIcon = Mathf.Min(card.width - 28f, card.height - plateH - 14f);
-                float size = Mathf.Max(CardMinIcon, maxIcon);
-                icon = new Rect(card.center.x - size * 0.5f, card.y + 10f, size, size);
-                title = new Rect(card.x + 16f, card.yMax - plateH + 8f, card.width - 32f, 30f);
-                sub = new Rect(card.x + 16f, card.yMax - plateH + 38f, card.width - 32f, plateH - 46f);
+                float plateH = Mathf.Clamp(card.height * 0.34f, 56f, 108f);
+                float maxIcon = Mathf.Max(24f, Mathf.Min(card.width - 28f, card.height - plateH - 16f));
+                float size = Mathf.Min(Mathf.Max(CardMinIcon, maxIcon), maxIcon);
+                icon = new Rect(card.center.x - size * 0.5f, card.y + 8f, size, size);
+                if (icon.yMax > card.yMax - plateH)
+                    icon.height = Mathf.Max(24f, card.yMax - plateH - icon.y);
+                title = new Rect(card.x + 14f, card.yMax - plateH + 6f, card.width - 28f, 26f);
+                sub = new Rect(card.x + 14f, card.yMax - plateH + 32f, card.width - 28f,
+                    Mathf.Max(16f, plateH - 40f));
                 return;
             }
 
@@ -237,5 +240,19 @@ namespace AshesToStars
             title = new Rect(tx, card.y + 10f, tw, 30f);
             sub = new Rect(tx, card.y + 42f, tw, Mathf.Max(20f, card.height - 54f));
         }
+
+        /// <summary>칸 밖으로 글자가 새거나 옆 카드와 겹치지 않게 자른다.</summary>
+        public static void LabelClip(Rect r, string text, GUIStyle style)
+        {
+            if (string.IsNullOrEmpty(text) || r.width < 2f || r.height < 2f || style == null)
+                return;
+            var clip = new GUIStyle(style) { clipping = TextClipping.Clip };
+            GUI.BeginGroup(r);
+            GUI.Label(new Rect(0f, 0f, r.width, r.height), text, clip);
+            GUI.EndGroup();
+        }
+
+        public static bool LayoutOverlaps(Rect a, Rect b) =>
+            a.width > 1f && b.width > 1f && a.Overlaps(b);
     }
 }
