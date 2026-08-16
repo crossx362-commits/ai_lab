@@ -41,11 +41,6 @@
   "dungeon_cover_1": 1.20,
   "dungeon_cover_2": 1.30,
 
-  "estate_crate_0": 0.80,
-  "estate_crate_1": 1.10,
-  "estate_barrel_0": 0.90,
-  "estate_barrel_1": 0.60,
-
   "_note_tree": "나무(오너 지시 2026-08-15 '나무도 배치'). 캐릭터 2유닛·집 3.6~4.6유닛 사이에서 나무가 집보다 크거나 비슷해야 시골 마을로 읽힌다. 묘목만 작다.",
   "field_tree_0": 5.20,
   "field_tree_1": 6.00,

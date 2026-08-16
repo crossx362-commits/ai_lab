@@ -25,7 +25,7 @@ import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SPR = os.path.abspath(os.path.join(HERE, "..", "unity", "Assets", "Resources", "sprites"))
+SPR = os.path.abspath(os.path.join(HERE, "source_sheets"))
 PREVIEW = os.path.abspath(os.path.join(HERE, "..", "results"))
 
 PAD = 3

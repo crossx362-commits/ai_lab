@@ -42,8 +42,6 @@ REQUIRED_PROPS = [
     *(f"dungeon_rubble_{i}" for i in range(3)),
     *(f"dungeon_wall_{i}" for i in range(3)),
     *(f"dungeon_cover_{i}" for i in range(3)),
-    *(f"estate_crate_{i}" for i in range(2)),
-    *(f"estate_barrel_{i}" for i in range(2)),
 ]
 
 MAGENTA_TOL = 25      # min(R,B) - G 가 이보다 크면 마젠타로 물든 픽셀

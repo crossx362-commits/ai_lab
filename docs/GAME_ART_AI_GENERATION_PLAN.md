@@ -55,7 +55,7 @@
 | Ash | `ash_bone_0~1` · `ash_charred_0~2` | 5 |
 | Dungeon | `dungeon_crystal_0~2` · `dungeon_pillar_0~2` · `dungeon_rubble_0~2` | 9 |
 | 아레나 템플릿 | `dungeon_wall_0~2`(choke) · `dungeon_cover_0~2`(pockets) | 6 |
-| (estate) | `estate_crate_0~1` · `estate_barrel_0~1` — 코드 미참조, 향후 확장 | 4 |
+| (estate) | `estate_crate`·`estate_barrel` — 소비처 0. 2026-08-16 Resources에서 삭제 | 0 |
 | | **합계** | **28 (+4)** |
 
 ---

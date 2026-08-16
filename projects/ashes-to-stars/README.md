@@ -26,5 +26,6 @@
 - **`unity/Assets/Screenshots/`** — 에디터 Play 캡처. 정본은 `output/qa/ashes-to-stars/`.
 - 루트 `_to_delete/` · `My project/` · `qa_vfx_live/` — 저장소 밖 잔재. 2026-08-16 삭제.
 - `Resources/sprites/ranged/` · `dps_new/` — JOB_DIRS에 없는 미완성 잔재. 2026-08-16 삭제.
+- `Resources` 안의 소비처 0곳(estate 통·상자, 옛 FX 장수, `normal/skill` 원본 시트, 안 까는 전투 배경 아틀라스). 2026-08-16 삭제. 오너 시트는 `blender/source_sheets/`.
 
 검사: `python3 projects/ai-team/skills/마루_게임개발/tools/game_asset_names.py --strict`
