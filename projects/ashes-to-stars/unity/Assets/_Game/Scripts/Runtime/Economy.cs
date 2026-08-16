@@ -116,16 +116,19 @@ namespace AshesToStars
         public enum LifeItem
         {
             /// <summary>부활초 - 사망 카운트 차감</summary>
-            RevivalTea,
+            RevivalTea = 0,
 
             /// <summary>귀환의 두루마리 - 긴급 탈출 아이템</summary>
-            ScrollOfReturn,
+            ScrollOfReturn = 1,
 
             /// <summary>환생석 - 삭제된 캐릭터 복구</summary>
-            RebornStone,
+            RebornStone = 2,
+
+            /// <summary>전직 재료 - 던전에서 파밍, 1차 전직 성공 확인 시 5개 소비</summary>
+            AdvancementMaterial = 4,
 
             /// <summary>특수 직업 전직 증표 - 50층 이상 보스 드랍</summary>
-            SpecialJobToken
+            SpecialJobToken = 3
         }
 
         /// <summary>
@@ -147,6 +150,11 @@ namespace AshesToStars
 
             // 환생석 드랍률 (§18-4)
             { (DropSource.Tower10Boss, LifeItem.RebornStone), 0.01f },          // 10층 대보스만 1%
+
+            // 전직 재료(§3·§6·§18-6) — 일반 던전 파밍이 주 공급처다.
+            // 확정 절대 드랍률은 아직 없어 프로토타입 검증값으로 둔다.
+            { (DropSource.FieldDungeonBoss, LifeItem.AdvancementMaterial), 0.35f },
+            { (DropSource.RaidDungeon, LifeItem.AdvancementMaterial), 1.00f },
 
             // 특수 직업 전직 증표 드랍률 (§18-4)
             { (DropSource.Tower10Boss, LifeItem.SpecialJobToken), 0.02f },      // 50층 이상 보스 2% (여기선 10층으로 임시)
@@ -195,6 +203,7 @@ namespace AshesToStars
             { LifeItem.RevivalTea, 3 },                 // 부활초 3개 (§4, §18-4)
             { LifeItem.ScrollOfReturn, 5 },             // 귀환의 두루마리 5개 (§18-4)
             { LifeItem.RebornStone, int.MaxValue },     // 환생석 무제한 (§18-4)
+            { LifeItem.AdvancementMaterial, int.MaxValue }, // 전직 요구량 누적 파밍
             { LifeItem.SpecialJobToken, int.MaxValue }  // 특수 직업 증표 무제한 (§18-4)
         };
 
@@ -208,6 +217,7 @@ namespace AshesToStars
                 { LifeItem.RevivalTea, 0 },
                 { LifeItem.ScrollOfReturn, 0 },
                 { LifeItem.RebornStone, 0 },
+                { LifeItem.AdvancementMaterial, 0 },
                 { LifeItem.SpecialJobToken, 0 }
             };
 

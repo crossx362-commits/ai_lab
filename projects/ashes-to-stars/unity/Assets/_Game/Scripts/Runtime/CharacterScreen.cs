@@ -15,14 +15,29 @@ namespace AshesToStars
         protected override string Title => "캐릭터";
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
-        // 1차 직업 선택은 연결됐다. 재료·시험과 합성은 후속 슬라이스라 정직하게 구분한다.
-        protected override string Subtitle => "레벨·목숨·부활초 관리(§3·§4). Lv20 1차 직업 선택 가능";
+        protected override string Subtitle => "레벨·목숨 관리와 Lv20 비살상 1차 전직 시험(§3·§4)";
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
         static string ExpText(CharacterRecord ch) =>
             ch.Level >= LifeSystem.MaxLevel
                 ? $"Lv.{ch.Level} · EXP MAX"
                 : $"Lv.{ch.Level} · EXP {ch.Exp}/{LifeSystem.ExpToNext(ch.Level)}";
+
+        static string TrialActionText(FirstTrialAction action) => action switch
+        {
+            FirstTrialAction.Guard => "인형 앞을 지킨다",
+            FirstTrialAction.Taunt => "도발로 후열 공격을 끊는다",
+            FirstTrialAction.Brace => "방패벽으로 충격을 버틴다",
+            FirstTrialAction.Mark => "우선 표적을 지정한다",
+            FirstTrialAction.Strike => "지정 표적을 집중 공격한다",
+            FirstTrialAction.Execute => "마지막 표적을 처치한다",
+            FirstTrialAction.Heal => "위급한 아군을 치유한다",
+            FirstTrialAction.Cleanse => "해로운 효과를 정화한다",
+            FirstTrialAction.Stabilize => "세 아군의 생존을 안정시킨다",
+            FirstTrialAction.Inspire => "파티 공격을 강화한다",
+            FirstTrialAction.Weaken => "훈련 적의 공격을 약화한다",
+            _ => "강화·약화를 유지한다",
+        };
 
         int _selectedCharacter = -1;
         bool _choosingAdvancement;
@@ -39,15 +54,49 @@ namespace AshesToStars
 
                     if (_choosingAdvancement)
                     {
+                        var trial = LifeSystem.ActiveFirstTrial;
+                        if (trial != null && trial.Character == ch)
+                        {
+                            Info(r, 0, $"{ch.Name} → {trial.TargetJob} · 시험 패턴 {trial.Pattern + 1}");
+                            Info(r, 1, $"역할 목표: {trial.Objective} {trial.Progress}/{trial.Required}");
+                            if (!trial.ObjectiveMet)
+                            {
+                                for (int i = 0; i < trial.Actions.Count; i++)
+                                {
+                                    var action = trial.Actions[i];
+                                    if (Row(r, i + 2, TrialActionText(action), "훈련 상황에 맞는 행동을 선택한다"))
+                                    {
+                                        // 정답을 화면이 대신 넣지 않는다. 패턴과 다른 행동은 즉시 시험 실패.
+                                        if (!LifeSystem.ReportFirstTrialProgress(action))
+                                        {
+                                            LifeSystem.CancelFirstAdvancementTrial();
+                                            _choosingAdvancement = false;
+                                        }
+                                    }
+                                }
+                            }
+                            else if (Row(r, 3, "시험 성공 확인", $"전직 재료 {LifeSystem.FirstAdvancementMaterialCost}개 소비 후 전직"))
+                            {
+                                LifeSystem.ConfirmFirstAdvancementTrial();
+                                _choosingAdvancement = false;
+                            }
+                            if (Row(r, 5, "← 시험 중단", "재료를 소비하지 않고 상세로 돌아간다"))
+                            {
+                                LifeSystem.CancelFirstAdvancementTrial();
+                                _choosingAdvancement = false;
+                            }
+                            return;
+                        }
+
                         var options = LifeSystem.FirstAdvancementOptions(ch);
-                        Info(r, 0, $"{ch.Name} ({ch.Job}) · 1차 전직 선택");
+                        int materials = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
+                        Info(r, 0, $"{ch.Name} ({ch.Job}) · 1차 전직 선택 · 재료 {materials}/{LifeSystem.FirstAdvancementMaterialCost}");
                         for (int i = 0; i < options.Count; i++)
                         {
                             string targetJob = options[i];
                             if (Row(r, i + 1, targetJob, $"{ch.Job} → {targetJob} · 1차 전직"))
                             {
-                                LifeSystem.TryFirstAdvance(ch, targetJob);
-                                _choosingAdvancement = false;
+                                LifeSystem.TryBeginFirstAdvancementTrial(ch, targetJob);
                             }
                         }
                         if (Row(r, 5, "← 선택 취소", "캐릭터 상세로 돌아간다"))
@@ -100,7 +149,11 @@ namespace AshesToStars
                     }
                     else if (ch.Advancement == AdvancementTier.Basic)
                     {
-                        if (Row(r, advancementRow++, "1차 전직 선택", "역할별 직업 선택 — 재료·시험은 다음 슬라이스"))
+                        int materials = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
+                        if (materials < LifeSystem.FirstAdvancementMaterialCost)
+                            Locked(r, advancementRow++, "1차 전직 시험",
+                                $"전직 재료 {LifeSystem.FirstAdvancementMaterialCost}개 필요 — 현재 {materials}개(던전 파밍)");
+                        else if (Row(r, advancementRow++, "1차 전직 시험", "역할별 직업 선택 후 비살상 훈련"))
                             _choosingAdvancement = true;
                     }
                     else
@@ -140,7 +193,6 @@ namespace AshesToStars
                     $"최대 5인(§9) · 지금 {PartyState.Slots.Count}명 편성됨 — 구성이 생존을 가른다(§21-1i)"))
                 GameFlow.Go(GameFlow.Party);
 
-            Info(r, allCharacters.Count + 3, "전직: 캐릭터를 선택하면 Lv20부터 1차 직업 선택(§3)");
             Locked(r, allCharacters.Count + 4, "합성",
                    "준비 중 — 1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다(§3)");
         }

@@ -30,14 +30,14 @@ namespace AshesToStars
             if (reward != null && reward.Survived)
             {
                 Info(r, _rowIndex++, "");  // 빈 줄
-                Info(r, _rowIndex++, $"💰 획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
+                RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
 
                 // 드랍 아이템 표시 (§10-8)
                 if (reward.DroppedItems.Count > 0)
                 {
                     foreach (var item in reward.DroppedItems)
                     {
-                        Info(r, _rowIndex++, $"  ✓ {FormatLifeItem(item)}");
+                        RewardInfo(r, _rowIndex++, ItemAtlas.KeyFor(item), $"획득: {FormatLifeItem(item)}");
                     }
                 }
 
@@ -46,7 +46,7 @@ namespace AshesToStars
                 {
                     foreach (var item in reward.RejectedItems)
                     {
-                        Info(r, _rowIndex++, $"  ⚠️ {FormatLifeItem(item)} — 소지 상한에 도달해 획득할 수 없습니다");
+                        RewardInfo(r, _rowIndex++, ItemAtlas.KeyFor(item), $"획득 불가: {FormatLifeItem(item)} — 소지 상한에 도달했습니다");
                     }
                 }
 
@@ -75,9 +75,20 @@ namespace AshesToStars
                 Economy.LifeItem.RevivalTea => "부활초 — 사망 카운트 1 차감 (§4)",
                 Economy.LifeItem.ScrollOfReturn => "귀환의 두루마리 — 긴급 탈출 아이템 (§4)",
                 Economy.LifeItem.RebornStone => "환생석 — 삭제된 캐릭터 복구 (§4)",
+                Economy.LifeItem.AdvancementMaterial => "전직 재료 — 1차 전직에 5개 필요 (§3)",
                 Economy.LifeItem.SpecialJobToken => "특수 직업 전직 증표 — 50층 이상 보상 (§3)",
                 _ => "알 수 없는 아이템"
             };
+        }
+
+        void RewardInfo(Rect r, int index, string iconKey, string text)
+        {
+            Info(r, index, "       " + text);
+            if (!string.IsNullOrEmpty(iconKey))
+            {
+                const float h = 58f, gap = 14f;
+                ItemAtlas.Draw(new Rect(r.x + 4, r.y + index * (h + gap) + 5, 48, 48), iconKey);
+            }
         }
     }
 }

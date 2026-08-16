@@ -89,31 +89,77 @@ namespace AshesToStars
                   && bufferOptions[1] == "주술사" && bufferOptions[2] == "정령사",
                   "버퍼 1차 선택지 3종(음유시인·주술사·정령사)");
             candidate.Level = 19;
-            Check(!LifeSystem.TryFirstAdvance(candidate, "수호기사")
+            Check(!LifeSystem.TryBeginFirstAdvancementTrial(candidate, "수호기사")
                   && candidate.Job == "탱" && candidate.Advancement == AdvancementTier.Basic,
                   "Lv19는 1차 전직 불가 — 캐릭터 상태 불변");
             candidate.Level = 20;
-            Check(!LifeSystem.TryFirstAdvance(candidate, "마법사")
+            Check(!LifeSystem.TryBeginFirstAdvancementTrial(candidate, "마법사")
                   && candidate.Job == "탱" && candidate.Advancement == AdvancementTier.Basic,
                   "기본직업과 다른 계열의 1차 직업 선택 거부");
             var outsider = new CharacterRecord("외부", "탱", 20);
-            Check(!LifeSystem.TryFirstAdvance(outsider, "수호기사"),
+            Check(!LifeSystem.TryBeginFirstAdvancementTrial(outsider, "수호기사"),
                   "로스터에 없는 캐릭터는 전직 불가");
             candidate.IsDeleted = true;
             Check(LifeSystem.FirstAdvancementOptions(candidate).Count == 0
-                  && !LifeSystem.TryFirstAdvance(candidate, "수호기사"),
+                  && !LifeSystem.TryBeginFirstAdvancementTrial(candidate, "수호기사"),
                   "삭제된 캐릭터는 선택지 없음·전직 불가");
             candidate.IsDeleted = false;
-            Check(LifeSystem.TryFirstAdvance(candidate, "광전사")
-                  && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
-                  "Lv20 탱이 광전사로 1차 전직 — 직업명·단계 함께 전환");
-            Check(!LifeSystem.TryFirstAdvance(candidate, "수호기사")
+            Check(!LifeSystem.TryBeginFirstAdvancementTrial(candidate, "광전사"),
+                  "전직 재료가 없으면 시험 시작 불가");
+            Check(GameState.Gain(Economy.LifeItem.AdvancementMaterial, 10), "전직 재료 10개 획득");
+            Check(LifeSystem.TryBeginFirstAdvancementTrial(candidate, "광전사"), "재료 보유 시 비살상 시험 시작");
+            int trialPattern = LifeSystem.ActiveFirstTrial.Pattern;
+            int livesBeforeTrial = candidate.DeathCount;
+            int materialsBeforeTrial = GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial);
+            Check(!LifeSystem.ConfirmFirstAdvancementTrial()
+                  && GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == materialsBeforeTrial
+                  && candidate.Job == "탱" && candidate.DeathCount == livesBeforeTrial,
+                  "역할 목표 미달은 전직·재료·목숨 상태 불변");
+            LifeSystem.CancelFirstAdvancementTrial();
+            Check(GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == materialsBeforeTrial
+                  && candidate.DeathCount == livesBeforeTrial,
+                  "시험 중단은 재료 0소비·사망 카운트 0증가");
+            Check(LifeSystem.TryBeginFirstAdvancementTrial(candidate, "광전사")
+                  && LifeSystem.ActiveFirstTrial.Pattern == trialPattern,
+                  "같은 캐릭터 재입장 시 시험 패턴 고정(리롤 불가)");
+            string stableId = candidate.Id;
+            var requiredAction = LifeSystem.ActiveFirstTrial.RequiredAction;
+            var wrongAction = requiredAction == FirstTrialAction.Guard ? FirstTrialAction.Mark : FirstTrialAction.Guard;
+            Check(!LifeSystem.ReportFirstTrialProgress(wrongAction)
+                  && LifeSystem.ActiveFirstTrial.Progress == 0,
+                  "현재 패턴이 요구하지 않은 역할 행동은 진행도에 반영하지 않음");
+            LifeSystem.CancelFirstAdvancementTrial();
+            Check(GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == materialsBeforeTrial,
+                  "잘못된 역할 행동으로 시험 실패해도 재료 0소비");
+            Check(LifeSystem.TryBeginFirstAdvancementTrial(candidate, "광전사"), "역할 시험 재도전 횟수 제한 없음");
+            while (!LifeSystem.ActiveFirstTrial.ObjectiveMet)
+                LifeSystem.ReportFirstTrialProgress(LifeSystem.ActiveFirstTrial.RequiredAction);
+            GameState.FailNextAtomicStageForTest();
+            bool atomicFailureCaught = false;
+            try { LifeSystem.ConfirmFirstAdvancementTrial(); }
+            catch (InvalidOperationException) { atomicFailureCaught = true; }
+            LifeSystem.ForgetInMemoryForTest();
+            GameState.ForgetInMemoryForTest();
+            candidate = LifeSystem.GetCharacters()[0];
+            Check(atomicFailureCaught && candidate.Job == "탱" && candidate.Advancement == AdvancementTier.Basic
+                  && GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == materialsBeforeTrial,
+                  "원자 저장 실패 주입 후 재기동: 직업·재료 모두 원상복구");
+            Check(LifeSystem.TryBeginFirstAdvancementTrial(candidate, "광전사"), "저장 실패 뒤 시험 재시작 가능");
+            while (!LifeSystem.ActiveFirstTrial.ObjectiveMet)
+                LifeSystem.ReportFirstTrialProgress(LifeSystem.ActiveFirstTrial.RequiredAction);
+            Check(LifeSystem.ConfirmFirstAdvancementTrial()
+                  && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First
+                  && GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) == materialsBeforeTrial - 5
+                  && candidate.DeathCount == livesBeforeTrial,
+                  "시험 성공 확인 때만 재료 5개 소비·1차 전직·목숨 불변");
+            Check(!LifeSystem.TryBeginFirstAdvancementTrial(candidate, "수호기사")
                   && candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
                   "이미 1차 전직한 캐릭터는 반복 전직 불가");
             LifeSystem.ForgetInMemoryForTest();
             candidate = LifeSystem.GetCharacters()[0];
-            Check(candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First,
-                  "재기동 후에도 1차 전직 결과 유지");
+            Check(candidate.Job == "광전사" && candidate.Advancement == AdvancementTier.First
+                  && candidate.Id == stableId,
+                  "재기동 후에도 1차 전직 결과·영속 캐릭터 ID 유지");
 
             GameState.ResetAll();
             LifeSystem.ResetAll();

@@ -208,6 +208,28 @@ namespace AshesToStars
             return ok;
         }
 
+        /// <summary>전직 원자 커밋 전용: 메모리에서만 차감하고 PlayerPrefs.Save는 호출하지 않는다.</summary>
+        internal static bool TryConsumeDeferred(Economy.LifeItem item, int amount)
+        {
+            Load();
+            return _bag.TryConsume(item, amount);
+        }
+
+        /// <summary>전직 로스터와 같은 PlayerPrefs.Save에 묶기 위해 가방 키만 스테이징한다.</summary>
+        internal static void StageBagForAtomicSave()
+        {
+            Load();
+            if (_failNextAtomicStageForTest)
+            {
+                _failNextAtomicStageForTest = false;
+                throw new System.InvalidOperationException("전직 원자 저장 실패 주입");
+            }
+            foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
+                PlayerPrefs.SetInt(K_ITEM + it, _bag.GetCount(it));
+        }
+        static bool _failNextAtomicStageForTest;
+        public static void FailNextAtomicStageForTest() => _failNextAtomicStageForTest = true;
+
         /// <summary>탑 층 돌파. 최고 기록만 올라간다(재도전으로 내려가지 않는다).</summary>
         public static void ClearFloor(int floor)
         {
@@ -237,6 +259,7 @@ namespace AshesToStars
             Economy.LifeItem.RevivalTea => "부활초",
             Economy.LifeItem.ScrollOfReturn => "귀환의 두루마리",
             Economy.LifeItem.RebornStone => "환생석",
+            Economy.LifeItem.AdvancementMaterial => "전직 재료",
             _ => "특수 직업 증표",
         };
 

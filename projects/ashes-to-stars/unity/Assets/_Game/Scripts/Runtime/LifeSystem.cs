@@ -5,6 +5,32 @@ using UnityEngine;
 namespace AshesToStars
 {
     public enum AdvancementTier { Basic = 0, First = 1, Second = 2 }
+    public enum FirstTrialAction { Guard, Taunt, Brace, Mark, Strike, Execute, Heal, Cleanse, Stabilize, Inspire, Weaken, Sustain }
+
+    public sealed class FirstAdvancementTrial
+    {
+        public CharacterRecord Character { get; }
+        public string TargetJob { get; }
+        public int Pattern { get; }
+        public int Progress { get; internal set; }
+        public int Required { get; }
+        public string Objective { get; }
+        public bool ObjectiveMet => Progress >= Required;
+        readonly FirstTrialAction[] _actions;
+        public IReadOnlyList<FirstTrialAction> Actions => _actions;
+        public FirstTrialAction RequiredAction => _actions[(Progress + Pattern) % _actions.Length];
+
+        internal FirstAdvancementTrial(CharacterRecord character, string targetJob, int pattern,
+                                       int required, string objective, FirstTrialAction[] actions)
+        {
+            Character = character;
+            TargetJob = targetJob;
+            Pattern = pattern;
+            Required = required;
+            Objective = objective;
+            _actions = actions;
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     // 목숨 시스템 (§4 사망·환생·목숨 경제)
@@ -25,6 +51,7 @@ namespace AshesToStars
     public class CharacterRecord
     {
         public string Name { get; set; }
+        public string Id { get; set; }
         public string Job { get; set; }  // 현재 직업명(기본: 탱·딜·힐·버퍼, 1차: 수호기사 등)
         public AdvancementTier Advancement { get; set; }
         public int Level { get; set; }
@@ -49,6 +76,7 @@ namespace AshesToStars
                                AdvancementTier advancement = AdvancementTier.Basic)
         {
             Name = name;
+            Id = System.Guid.NewGuid().ToString("N");
             Job = job;
             Advancement = advancement;
             Level = level;
@@ -71,6 +99,8 @@ namespace AshesToStars
         private const int RecoveryDurationSeconds = 86400;  // 1일 = 24시간 = 86,400초
         private const string K_ROSTER = "ats.roster";
         private const int InitialRevivePotions = 3;
+        public const int FirstAdvancementMaterialCost = 5;
+        public static FirstAdvancementTrial ActiveFirstTrial { get; private set; }
         private static readonly Dictionary<string, string[]> FirstAdvancementByBasicJob = new()
         {
             { "탱", new[] { "수호기사", "광전사" } },
@@ -136,6 +166,7 @@ namespace AshesToStars
             }
 
             _characters.Clear();
+            int legacyIndex = 0;
             foreach (string line in raw.Split('\n'))
             {
                 if (string.IsNullOrEmpty(line)) continue;
@@ -153,9 +184,20 @@ namespace AshesToStars
                     Advancement = p.Length > 7
                         ? SafeAdvancement(p[7])
                         : (IsFirstAdvancementJob(p[1]) ? AdvancementTier.First : AdvancementTier.Basic),
+                    Id = p.Length > 8 && !string.IsNullOrEmpty(p[8])
+                        ? p[8] : LegacyCharacterId(p[0], p[1], legacyIndex),
                 };
                 _characters.Add(c);
+                legacyIndex++;
             }
+        }
+
+        static string LegacyCharacterId(string name, string job, int index)
+        {
+            uint hash = 2166136261u;
+            string key = name + "|" + job + "|" + index;
+            for (int i = 0; i < key.Length; i++) { hash ^= key[i]; hash *= 16777619u; }
+            return "legacy" + hash.ToString("x8");
         }
 
         static int SafeInt(string s, int fallback) => int.TryParse(s, out int v) ? v : fallback;
@@ -172,15 +214,22 @@ namespace AshesToStars
             || job == "정령사";
 
         /// <summary>로스터를 저장한다. 사망·삭제는 즉시 남아야 한다(§4).</summary>
-        private static void Save()
+        static void StageRosterForSave()
         {
             var sb = new System.Text.StringBuilder();
             foreach (var c in _characters)
                 sb.Append(c.Name).Append('\t').Append(c.Job).Append('\t').Append(c.Level)
                   .Append('\t').Append(c.DeathCount).Append('\t').Append(c.RecoveryEndTime)
                   .Append('\t').Append(c.IsDeleted ? '1' : '0')
-                  .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement).Append('\n');
+                  .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement)
+                  .Append('\t').Append(c.Id).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
+        }
+
+        private static void Save(bool includeStagedBag = false)
+        {
+            StageRosterForSave();
+            if (includeStagedBag) GameState.StageBagForAtomicSave();
             PlayerPrefs.Save();
         }
 
@@ -201,6 +250,7 @@ namespace AshesToStars
             PlayerPrefs.Save();
             _characters.Clear();
             _loaded = false;
+            ActiveFirstTrial = null;
         }
 
         /// <summary>
@@ -223,11 +273,7 @@ namespace AshesToStars
             return options;
         }
 
-        /// <summary>
-        /// Lv20 기본직업 캐릭터를 역할에 맞는 1차 직업으로 전환한다.
-        /// 재료·시험은 다음 슬라이스에서 성공 확인 시 이 진입점 앞에 연결한다.
-        /// </summary>
-        public static bool TryFirstAdvance(CharacterRecord character, string targetJob)
+        static bool CanFirstAdvance(CharacterRecord character, string targetJob)
         {
             EnsureLoaded();
             if (character == null || character.IsDeleted || character.Level < 20
@@ -238,12 +284,82 @@ namespace AshesToStars
             bool allowed = false;
             for (int i = 0; i < options.Count; i++)
                 if (options[i] == targetJob) { allowed = true; break; }
-            if (!allowed) return false;
+            return allowed;
+        }
 
-            character.Job = targetJob;
-            character.Advancement = AdvancementTier.First;
-            Save();
-            Debug.Log($"[전직] {character.Name}: {targetJob} 1차 전직 완료");
+        /// <summary>Lv20·재료5개 조건을 확인하고 비살상 역할 시험을 시작한다.</summary>
+        public static bool TryBeginFirstAdvancementTrial(CharacterRecord character, string targetJob)
+        {
+            if (!CanFirstAdvance(character, targetJob)
+                || GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) < FirstAdvancementMaterialCost)
+                return false;
+
+            int pattern = StableTrialPattern(character.Id, AdvancementTier.First);
+            int required;
+            string objective;
+            FirstTrialAction[] actions;
+            switch (character.Job)
+            {
+                case "탱": required = 3; objective = "훈련 인형 보호·후열 공격 차단";
+                    actions = new[] { FirstTrialAction.Guard, FirstTrialAction.Taunt, FirstTrialAction.Brace }; break;
+                case "딜": required = 3; objective = "우선 표적 순서대로 처치";
+                    actions = new[] { FirstTrialAction.Mark, FirstTrialAction.Strike, FirstTrialAction.Execute }; break;
+                case "힐": required = 3; objective = "아군 생존·해로운 효과 2회 정화";
+                    actions = new[] { FirstTrialAction.Heal, FirstTrialAction.Cleanse, FirstTrialAction.Stabilize }; break;
+                default: required = 3; objective = "강화·약화 유지로 목표 DPS 달성";
+                    actions = new[] { FirstTrialAction.Inspire, FirstTrialAction.Weaken, FirstTrialAction.Sustain }; break;
+            }
+            ActiveFirstTrial = new FirstAdvancementTrial(character, targetJob, pattern, required, objective, actions);
+            return true;
+        }
+
+        static int StableTrialPattern(string characterId, AdvancementTier tier)
+        {
+            uint hash = 2166136261u;
+            string key = characterId + "|" + (int)tier;
+            for (int i = 0; i < key.Length; i++) { hash ^= key[i]; hash *= 16777619u; }
+            return (int)(hash % 3u);
+        }
+
+        /// <summary>역할 목표 1회를 기록한다. 추후 전투 이벤트가 이 진입점을 호출한다.</summary>
+        public static bool ReportFirstTrialProgress(FirstTrialAction action)
+        {
+            if (ActiveFirstTrial == null || ActiveFirstTrial.ObjectiveMet
+                || action != ActiveFirstTrial.RequiredAction) return false;
+            ActiveFirstTrial.Progress++;
+            return true;
+        }
+
+        /// <summary>시험 중단/실패. 비살상이라 재료·목숨·직업을 전혀 건드리지 않는다.</summary>
+        public static void CancelFirstAdvancementTrial() => ActiveFirstTrial = null;
+
+        /// <summary>역할 목표 성공을 확인하는 단일 커밋 지점. 여기서만 재료 5개를 소비한다.</summary>
+        public static bool ConfirmFirstAdvancementTrial()
+        {
+            var trial = ActiveFirstTrial;
+            if (trial == null || !trial.ObjectiveMet || !CanFirstAdvance(trial.Character, trial.TargetJob)
+                || GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) < FirstAdvancementMaterialCost)
+                return false;
+            if (!GameState.TryConsumeDeferred(Economy.LifeItem.AdvancementMaterial, FirstAdvancementMaterialCost))
+                return false;
+
+            string oldJob = trial.Character.Job;
+            AdvancementTier oldTier = trial.Character.Advancement;
+            trial.Character.Job = trial.TargetJob;
+            trial.Character.Advancement = AdvancementTier.First;
+            try { Save(includeStagedBag: true); }
+            catch
+            {
+                trial.Character.Job = oldJob;
+                trial.Character.Advancement = oldTier;
+                // Save가 던지기 전에 전직 roster가 PlayerPrefs 캐시에 스테이징됐을 수 있다.
+                // 메모리만 되돌리고 Gain이 저장하면 그 낡은 스테이징이 살아나므로 먼저 덮는다.
+                StageRosterForSave();
+                GameState.Gain(Economy.LifeItem.AdvancementMaterial, FirstAdvancementMaterialCost);
+                throw;
+            }
+            Debug.Log($"[전직] {trial.Character.Name}: {trial.TargetJob} 1차 전직 완료");
+            ActiveFirstTrial = null;
             return true;
         }
 
