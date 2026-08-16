@@ -257,6 +257,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             Info(r, 0, $"경과 {_t:F1}s");
+            DrawCombatHud(r);
 
             // 긴급 탈출은 **귀환의 두루마리를 실제로 소모**한다(§4 — 희귀·고가 아이템).
             // 예전엔 이 버튼이 아이템을 무시하고 공짜로 나갔다: 라벨은 "긴급 탈출 아이템"인데
@@ -276,6 +277,34 @@ namespace AshesToStars
             }
             else
                 Locked(r, 1, "후퇴", "귀환의 두루마리가 없다 — 긴급 탈출엔 이 희귀 아이템이 필요하다(§4)");
+        }
+
+        /// <summary>전투 장면의 하단 HUD. 조작 규칙은 바꾸지 않고 스킬·기믹의 시각 언어만 표시한다.</summary>
+        void DrawCombatHud(Rect r)
+        {
+            string[] skills = { "tank_charge", "damage_slash", "heal_staff", "buffer_aura" };
+            float iconSize = 58f;
+            float skillY = r.yMax - iconSize - 16f;
+            float skillX = r.center.x - (skills.Length * (iconSize + 10f) - 10f) * 0.5f;
+
+            GUI.Label(new Rect(skillX, skillY - 22f, 300f, 20f), "파티 전술", GUI.skin.label);
+            for (int i = 0; i < skills.Length; i++)
+            {
+                var icon = new Rect(skillX + i * (iconSize + 10f), skillY, iconSize, iconSize);
+                CombatIconAtlas.Draw(icon, skills[i]);
+                GUI.Label(new Rect(icon.x, icon.yMax - 16f, icon.width, 16f), (i + 1).ToString(), GUI.skin.label);
+            }
+
+            string[] mechanics = GameFlow.Kind == GameFlow.BattleKind.보스
+                ? new[] { "warn_circle", "warn_summon", "warn_heal_check" }
+                : new[] { "selected", "shielded", "low_health" };
+            float mechanicSize = 44f;
+            float mechanicX = r.xMax - mechanics.Length * (mechanicSize + 6f);
+            GUI.Label(new Rect(mechanicX, r.y + 68f, 180f, 20f),
+                GameFlow.Kind == GameFlow.BattleKind.보스 ? "보스 기믹" : "파티 상태", GUI.skin.label);
+            for (int i = 0; i < mechanics.Length; i++)
+                CombatIconAtlas.Draw(new Rect(mechanicX + i * (mechanicSize + 6f), r.y + 88f,
+                    mechanicSize, mechanicSize), mechanics[i]);
         }
 
         /// <summary>
