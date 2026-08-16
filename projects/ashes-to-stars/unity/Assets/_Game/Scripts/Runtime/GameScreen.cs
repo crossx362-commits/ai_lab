@@ -211,7 +211,7 @@ namespace AshesToStars
             {
                 // 도크가 없는 화면만 바닥에 ESC를 둔다. 허브는 도크 왼쪽 빈 칸이 소비처다.
                 if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
-                GUI.Label(new Rect(48, REF_H - 28, 900, 22), "ESC — 뒤로", _small);
+                UiPages.LabelClip(new Rect(48, REF_H - 28, 280, 22), "ESC — 뒤로", _small);
             }
             Overlay();
 
@@ -311,7 +311,7 @@ namespace AshesToStars
                 var (current, max, phases, label) = samples[i];
                 var bar = new Rect(origin.x, origin.y + i * (h + gap), origin.width - 160f, h);
                 UiAtlas.DrawBossHp(bar, current, max, phases);
-                GUI.Label(new Rect(bar.xMax + 10f, bar.y + 4f, 150f, 22f), label, _small);
+                UiPages.LabelClip(new Rect(bar.xMax + 10f, bar.y + 4f, 150f, 22f), label, _small);
             }
         }
 
@@ -327,7 +327,7 @@ namespace AshesToStars
                 var frame = new Rect(origin.x + i * cell, origin.y, 56f, 56f);
                 UiAtlas.DrawRarity(frame, grade);
                 ItemAtlas.DrawHud(new Rect(frame.x + 10f, frame.y + 10f, 36f, 36f), "sword");
-                GUI.Label(new Rect(frame.x, frame.yMax - 2f, cell - 8f, 18f), label, _small);
+                UiPages.LabelClip(new Rect(frame.x, frame.yMax - 2f, cell - 8f, 18f), label, _small);
             }
         }
 

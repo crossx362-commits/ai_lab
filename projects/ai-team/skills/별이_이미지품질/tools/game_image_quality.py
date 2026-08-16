@@ -33,7 +33,7 @@ RES = GAME / "unity" / "Assets" / "Resources"
 OUT = ROOT / "output" / "qa" / "ashes-to-stars" / "image_quality"
 NAMES = HERE.parents[2] / "마루_게임개발" / "tools" / "game_asset_names.py"
 QC = GAME / "art" / "qc.py"
-SCAN = ("sprites", "FX", "props")
+SCAN = ("sprites", "FX", "props", "ui")
 TINY = 24
 
 

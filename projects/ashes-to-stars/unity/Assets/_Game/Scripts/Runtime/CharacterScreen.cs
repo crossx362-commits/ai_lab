@@ -376,16 +376,14 @@ namespace AshesToStars
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : (Color?)null;
             UiAtlas.DrawSliced(cell, UiAtlas.ButtonKey(false, selected), 10f,
                 selected ? (Color?)null : new Color(1f, 1f, 1f, 0.78f));
-            float faceW = Mathf.Min(72f, cell.width - 12f);
-            var face = new Rect(cell.center.x - faceW * 0.5f, cell.y + 6f, faceW, faceW);
+            UiPages.RosterCellLayout(cell, out var face, out var nameR, out var jobR, out var hearts);
             UiAtlas.DrawRosterFrame(face);
             PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
             UiAtlas.Draw(new Rect(face.xMax - 14f, face.yMax - 14f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
             string name = ch.IsRescue ? $"{ch.Name}·재건" : ch.Name;
-            Hint(new Rect(cell.x + 4f, face.yMax + 2f, cell.width - 8f, 18f), name);
-            Hint(new Rect(cell.x + 4f, face.yMax + 18f, cell.width - 8f, 16f), ch.Job);
-            UiAtlas.DrawHearts(new Rect(cell.center.x - 36f, cell.yMax - 16f, 72f, 14f),
-                ch.DeathCount, ch.IsDeleted, ch.MaxLives);
+            Hint(nameR, name);
+            Hint(jobR, ch.Job);
+            UiAtlas.DrawHearts(hearts, ch.DeathCount, ch.IsDeleted, ch.MaxLives);
         }
 
         void DrawFusionEntry(Rect r)
@@ -661,13 +659,15 @@ namespace AshesToStars
                     ItemAtlas.DrawHud(new Rect(slotRect.x + inset, slotRect.y + inset,
                             slotRect.width - inset * 2f, slotRect.height - inset * 2f),
                         ItemAtlas.KeyForSlot(slot), new Color(1f, 1f, 1f, 0.28f));
-                    Hint(new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f, 16f),
-                        Equipment.SlotName(slot));
+                    var cap = new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f, 16f);
+                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 16f;
+                    Hint(cap, Equipment.SlotName(slot));
                 }
                 else if (worn.Enhance > 0)
                 {
-                    Hint(new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, 16f),
-                        $"+{worn.Enhance}");
+                    var cap = new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, 16f);
+                    if (cap.yMax > stage.yMax) cap.y = stage.yMax - 16f;
+                    Hint(cap, $"+{worn.Enhance}");
                 }
                 if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
                 {

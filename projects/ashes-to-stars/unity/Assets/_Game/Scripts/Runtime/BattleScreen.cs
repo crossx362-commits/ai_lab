@@ -158,14 +158,15 @@ namespace AshesToStars
                 var bar = new Rect(360f, y, 560f, 36f);
                 int phases = UiAtlas.PhaseCountForFloor(GameFlow.BossFloor);
                 UiAtlas.DrawBossHp(bar, BossBattle.ActiveTotalHp, _bossMaxHp, phases);
-                GUI.Box(new Rect(bar.x, bar.yMax + 2f, bar.width, 20f),
+                Hint(new Rect(bar.x, bar.yMax + 2f, bar.width, 20f),
                     $"{GameFlow.BossFloor}층 보스  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
                 y = bar.yMax + 26f;
             }
             if (LowHpReturn.Leaving)
             {
                 var leave = new Rect(340f, y + 8f, 600f, 28f);
-                GUI.Box(leave,
+                UiAtlas.DrawSliced(leave, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
+                Hint(leave,
                     $"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)");
                 float fill = 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
                 GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
@@ -174,7 +175,8 @@ namespace AshesToStars
             if (!EmergencyEscape.Casting) return;
             float p = EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);
-            GUI.Box(box, $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
+            UiAtlas.DrawSliced(box, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
+            Hint(box, $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
             GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
         }
 

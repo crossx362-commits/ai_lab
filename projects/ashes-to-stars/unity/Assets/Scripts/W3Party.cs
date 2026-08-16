@@ -1371,9 +1371,9 @@ public class W3Party : MonoBehaviour
             float a = u < 0.55f ? 1f : 1f - (u - 0.55f) / 0.45f;
 
             _calloutStyle.normal.textColor = new Color(0f, 0f, 0f, a * 0.8f);
-            GUI.Label(new Rect(r.x + 2f, r.y + 2f, r.width, r.height), c.Text, _calloutStyle);  // 그림자
+            AshesToStars.UiPages.LabelClip(new Rect(r.x + 2f, r.y + 2f, r.width, r.height), c.Text, _calloutStyle);
             _calloutStyle.normal.textColor = new Color(c.C.r, c.C.g, c.C.b, a);
-            GUI.Label(r, c.Text, _calloutStyle);
+            AshesToStars.UiPages.LabelClip(r, c.Text, _calloutStyle);
         }
     }
 
@@ -3067,8 +3067,10 @@ public class W3Party : MonoBehaviour
         GUI.DrawTexture(left, Tint(new Color(.025f, .045f, .085f, .72f)));
         if (!AshesToStars.UiAtlas.DrawSliced(right, "panel", 8f, new Color(1f, 1f, 1f, 0.35f)))
             GUI.DrawTexture(right, Tint(new Color(.025f, .045f, .085f, .72f)));
-        GUI.Label(new Rect(left.x + 9f, left.y + 5f, left.width - 18f, 21f), $"{시작웨이브}-{wave} · {_setup.Name}", _cmdLabel);
-        GUI.Label(new Rect(left.x + 9f, left.y + 27f, left.width - 18f, 20f), $"처치 {_kills} · {_t:F0}s", _cmdLabel);
+        AshesToStars.UiPages.LabelClip(new Rect(left.x + 9f, left.y + 5f, left.width - 18f, 21f),
+            $"{시작웨이브}-{wave} · {_setup.Name}", _cmdLabel);
+        AshesToStars.UiPages.LabelClip(new Rect(left.x + 9f, left.y + 27f, left.width - 18f, 20f),
+            $"처치 {_kills} · {_t:F0}s", _cmdLabel);
         _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
         if (GUI.Button(right, AshesToStars.SkillUse.HudLabel, _cmdBtn))
             AshesToStars.SkillUse.IsAuto = !AshesToStars.SkillUse.IsAuto;
@@ -3100,11 +3102,14 @@ public class W3Party : MonoBehaviour
             var r = new Rect(x, y + i * 34f, 162f, 28f);
             GUI.DrawTexture(r, Tint(new Color(.04f, .08f, .14f, .78f * a)));
             _cmdLabel.normal.textColor = new Color(entry.Color.r, entry.Color.g, entry.Color.b, a);
-            GUI.Label(new Rect(r.x + 8f, r.y + 5f, r.width - 12f, r.height), entry.Text, _cmdLabel);
+            AshesToStars.UiPages.LabelClip(new Rect(r.x + 8f, r.y + 5f, r.width - 12f, r.height),
+                entry.Text, _cmdLabel);
         }
         _cmdLabel.normal.textColor = new Color(.95f, .96f, 1f);
-        GUI.Label(new Rect(x, y + 108f, 162f, 20f), $"KILL STREAK  ×{Mathf.Max(1, _kills % 25)}", _cmdLabel);
-        GUI.Label(new Rect(x, y + 130f, 162f, 20f), $"획득 속도  +{Mathf.Max(1, _kills / Mathf.Max(1f, _t))} / min", _cmdLabel);
+        AshesToStars.UiPages.LabelClip(new Rect(x, y + 108f, 162f, 20f),
+            $"KILL STREAK  ×{Mathf.Max(1, _kills % 25)}", _cmdLabel);
+        AshesToStars.UiPages.LabelClip(new Rect(x, y + 130f, 162f, 20f),
+            $"획득 속도  +{Mathf.Max(1, _kills / Mathf.Max(1f, _t))} / min", _cmdLabel);
     }
 
     /// <summary>
@@ -3160,7 +3165,7 @@ public class W3Party : MonoBehaviour
                     GUI.color = Color.white;
                 }
             }
-            GUI.Label(new Rect(pr.x + 3, pr.y + 1, 22, 18), $"{i + 1}", _cmdLabel);
+            AshesToStars.UiPages.LabelClip(new Rect(pr.x + 3, pr.y + 1, 22, 18), $"{i + 1}", _cmdLabel);
 
             DrawMemberSkills(m, i, skills);
 
@@ -3173,7 +3178,7 @@ public class W3Party : MonoBehaviour
                 GUI.DrawTexture(bar, Tint(new Color(0.08f, 0.08f, 0.08f, .55f)));
                 GUI.DrawTexture(new Rect(bar.x + 1, bar.y + 2, (bar.width - 2) * ratio, bar.height - 4), Tint(fill));
             }
-            GUI.Label(bar, m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
+            AshesToStars.UiPages.LabelClip(bar, m.Alive ? $"{m.Hp:F0}/{m.MaxHp:F0}" : "사망", _cmdLabel);
 
             var statuses = AshesToStars.StatusIconAtlas.QaShowAll
                 ? new System.Collections.Generic.List<string>(AshesToStars.StatusIconAtlas.RequiredKeys)
@@ -3234,7 +3239,10 @@ public class W3Party : MonoBehaviour
         if (!AshesToStars.UiAtlas.Draw(r, AshesToStars.UiAtlas.ButtonKey(hover, queued)))
             GUI.DrawTexture(r, Tint(queued ? new Color(.42f, .27f, .08f, .96f) : new Color(.16f, .18f, .22f, .55f)));
         CombatIconAtlas.Draw(new Rect(r.x + 2, r.y + 2, r.width - 4, r.height - 4), icon);
-        if (hover) GUI.Label(new Rect(r.x, r.y - 16, 80, 16), label, _cmdLabel);
+        if (hover)
+            AshesToStars.UiPages.LabelClip(
+                new Rect(r.x, Mathf.Max(0f, r.y - 16f), Mathf.Min(96f, Screen.width - r.x), 16f),
+                label, _cmdLabel);
         if (m.Alive && GUI.Button(r, GUIContent.none, GUIStyle.none))
         {
             _sel = index;

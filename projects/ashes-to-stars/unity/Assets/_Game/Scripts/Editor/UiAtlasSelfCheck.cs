@@ -171,6 +171,16 @@ namespace AshesToStars
             UiPages.CardLayout(wideCard, true, out var wideIcon, out var wideTitle, out _);
             Debug.Assert(wideIcon.x < wideTitle.x && wideIcon.height >= 56f,
                 "[UiAtlasSelfCheck] 넓은 카드는 아이콘이 왼쪽에 붙어야 한다");
+            var roster = new Rect(0f, 0f, 120f, UiPages.RosterCellH);
+            UiPages.RosterCellLayout(roster, out var rf, out var rn, out var rj, out var rh);
+            Debug.Assert(!UiPages.LayoutOverlaps(rf, rn) && !UiPages.LayoutOverlaps(rn, rj)
+                         && !UiPages.LayoutOverlaps(rj, rh) && rh.yMax <= roster.yMax + 0.01f,
+                "[UiAtlasSelfCheck] 명부 칸에서 초상·이름·직업·목숨이 겹친다");
+            var party = new Rect(0f, 0f, 160f, 140f);
+            UiPages.PartyCardLayout(party, out var pf, out var pn, out var pm);
+            Debug.Assert(!UiPages.LayoutOverlaps(pf, pn) && !UiPages.LayoutOverlaps(pn, pm)
+                         && pn.yMax <= pm.y + 0.01f,
+                "[UiAtlasSelfCheck] 편성 카드에서 이름과 목숨이 겹친다");
 
             // 편성 화면이 목숨·역할을 글자로만 쓰면 캐릭터 화면과 같은 조각이 소비처 0곳이다.
             var tankFull = UiAtlas.SlotChrome("탱", 0, false);

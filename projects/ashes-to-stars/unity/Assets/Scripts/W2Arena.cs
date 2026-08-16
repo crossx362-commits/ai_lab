@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using AshesToStars;
 
 /// <summary>
 /// 재와 별 — W2 조작감 검증 (§21 프로토타입 V2)
@@ -438,10 +439,12 @@ public class W2Arena : MonoBehaviour
     {
         _hud ??= new GUIStyle(GUI.skin.label) { fontSize = 18, normal = { textColor = Color.white } };
         float cd = Mathf.Max(0f, _dashCd);
-        GUI.Label(new Rect(16, 12, 700, 26),
+        float hudW = Mathf.Max(80f, Screen.width - 32f);
+        UiPages.LabelClip(new Rect(16, 12, hudW, 26),
             $"HP {_hp}/{MaxHp}   대시 {(cd <= 0 ? "준비" : cd.ToString("F1") + "s")}   " +
             $"회피성공(absorb) {_absorbs}   피격 {_hits}   대시 {_dashes}   {(_bot ? "[BOT]" : "[수동: WASD 이동 / Space 대시]")}", _hud);
-        GUI.Label(new Rect(16, 38, 700, 26), $"남은 시간 {Mathf.Max(0, RunSeconds - _t):F0}s", _hud);
+        UiPages.LabelClip(new Rect(16, 38, hudW, 26),
+            $"남은 시간 {Mathf.Max(0, RunSeconds - _t):F0}s", _hud);
     }
 
     void Finish()

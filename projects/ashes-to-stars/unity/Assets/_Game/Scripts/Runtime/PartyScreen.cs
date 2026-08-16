@@ -68,15 +68,13 @@ namespace AshesToStars
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
             if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
                 UiAtlas.Draw(cell, "panel", tint);
-            float face = Mathf.Min(cell.width - 16f, cell.height - 40f);
-            var faceR = new Rect(cell.center.x - face * 0.5f, cell.y + 6f, face, face);
+            UiPages.PartyCardLayout(cell, out var faceR, out var nameR, out var marks);
             UiAtlas.DrawRosterFrame(faceR);
             PortraitAtlas.Draw(faceR, PortraitAtlas.KeyForJob(ch.Job),
                 ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null);
-            UiAtlas.DrawRosterMarks(faceR, new Rect(cell.x + 6f, cell.yMax - 32f, cell.width - 12f, 28f),
-                ch.Job, ch.DeathCount, ch.IsDeleted);
-            Hint(new Rect(cell.x + 6f, cell.yMax - 22f, cell.width - 12f, 20f),
-                (inParty ? "★ " : "") + ch.Name + " · " + status);
+            UiAtlas.Draw(new Rect(faceR.xMax - 8f, faceR.yMax - 8f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
+            UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
+            Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
             return GUI.Button(cell, GUIContent.none, GUIStyle.none);
         }
 

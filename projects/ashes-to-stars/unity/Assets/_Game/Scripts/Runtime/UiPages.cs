@@ -87,6 +87,34 @@ namespace AshesToStars
                 cw, RosterCellH);
         }
 
+        /// <summary>
+        /// 명부 칸. 초상·이름·직업·목숨이 한 칸 안에서 서로 겹치지 않는다.
+        /// 초상을 72로 고정하면 118칸에서 직업과 하트가 겹친다.
+        /// </summary>
+        public const float RosterPlate = 50f;
+
+        public static void RosterCellLayout(Rect cell, out Rect face, out Rect name, out Rect job,
+                                            out Rect hearts)
+        {
+            float faceW = Mathf.Min(72f, cell.width - 12f,
+                Mathf.Max(32f, cell.height - RosterPlate - 8f));
+            face = new Rect(cell.center.x - faceW * 0.5f, cell.y + 6f, faceW, faceW);
+            name = new Rect(cell.x + 4f, face.yMax + 1f, cell.width - 8f, 14f);
+            job = new Rect(cell.x + 4f, face.yMax + 15f, cell.width - 8f, 12f);
+            hearts = new Rect(cell.center.x - 36f, cell.yMax - 22f, 72f, 22f);
+        }
+
+        /// <summary>편성 카드. 초상 아래 이름, 맨 아래 목숨 — 두 줄이 겹치면 이름이 잘린다.</summary>
+        public static void PartyCardLayout(Rect cell, out Rect face, out Rect name, out Rect marks)
+        {
+            float faceS = Mathf.Min(cell.width - 16f, Mathf.Max(32f, cell.height - 52f));
+            face = new Rect(cell.center.x - faceS * 0.5f, cell.y + 6f, faceS, faceS);
+            name = new Rect(cell.x + 6f, face.yMax + 2f, cell.width - 12f, 18f);
+            marks = new Rect(cell.center.x - 40f, cell.yMax - 22f, 80f, 22f);
+            if (name.yMax > marks.y)
+                name.height = Mathf.Max(0f, marks.y - name.y);
+        }
+
         public static Rect RosterRow(Rect list, int index) => RosterCell(list, index, 1);
 
         public static Rect LargeLook(Rect stage)
