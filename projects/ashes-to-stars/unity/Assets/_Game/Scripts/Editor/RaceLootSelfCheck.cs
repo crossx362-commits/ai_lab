@@ -36,6 +36,7 @@ namespace AshesToStars
             InvasionState.ResetForTest();
             DefenseState.ResetForTest();
             EstateDefense.ResetForTest();
+            WorldStar.ResetForTest();
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
             GameState.Earn(200_000);
 

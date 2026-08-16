@@ -22,6 +22,8 @@ namespace AshesToStars
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
                 if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
                     s += " · " + WorldStar.RaceSenseLine();
+                if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
+                    s += " · " + WorldStar.EnemyLine();
                 return s + " · 침략은 탑 30층(§14·§15)";
             }
         }
@@ -47,7 +49,9 @@ namespace AshesToStars
         {
             InvasionState.SeedQaIfRequested();
             InvasionState.SeedRaceLootQaIfRequested();
+            InvasionState.SeedAuraDebuffQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
+            WorldStar.SeedAuraDebuffQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
@@ -68,6 +72,8 @@ namespace AshesToStars
             string invasionOpen = $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)";
             if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)
                 invasionOpen = $"{InvasionState.RaceLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
+            else if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
+                invasionOpen = $"{WorldStar.EnemyLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
             if (DrawCard(cards[1], "침략",
                     invasionLock ?? invasionOpen,
                     "damage", locked: invasionLock != null)

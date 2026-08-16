@@ -28,6 +28,7 @@ namespace AshesToStars
             AuctionState.ResetForTest();
             InvasionState.ResetForTest();
             DefenseState.ResetForTest();
+            WorldStar.ResetForTest();
 
             Check(EstateScreen.AuctionHubLockReason() != null,
                 "1층이면 경매장이 층으로 잠긴다");

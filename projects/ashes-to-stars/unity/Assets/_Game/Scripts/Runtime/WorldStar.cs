@@ -7,6 +7,7 @@ namespace AshesToStars
     /// 월드맵 내 별(§14 ✅). 크기는 층에 따라 커지고, 인식 범위도 같이 넓어진다.
     /// 영공 버프/디버프는 영지에서 켠다. 10층 모양 연출은 💡라 안 넣는다.
     /// 엘프는 같은 층에서 영공이 120%(§18-9). 탐험 범위 +30%는 안개 시스템이 없어 안 넣는다.
+    /// 적 디버프는 침략 약탈이 95%로 읽는다(§14). 아군 버프는 광산이 이미 읽는다.
     /// </summary>
     public static class WorldStar
     {
@@ -18,8 +19,11 @@ namespace AshesToStars
         public const float MaxSense = 16f;
         public const float AllyBuffMul = 1.05f;
         public const float EnemyDebuffMul = 0.95f;
+        public const int EnemyDebuffPercent = 95;
         public const string EnvShowSense = "QA_RACE_SENSE";
         public const string EnvNoSense = "QA_NO_RACE_SENSE";
+        public const string EnvShowDebuff = "QA_AURA_DEBUFF";
+        public const string EnvNoDebuff = "QA_NO_AURA_DEBUFF";
         public const int HumanSensePercent = 100;
         public const int ElfSensePercent = 120;
 
@@ -30,6 +34,7 @@ namespace AshesToStars
         static bool _ally;
         static bool _enemy;
         static bool _senseQaSeeded;
+        static bool _debuffQaSeeded;
 
         public static int ClampFloor(int floor) => Mathf.Clamp(floor, 1, MaxFloor);
 
@@ -103,7 +108,27 @@ namespace AshesToStars
         }
 
         public static float AllyMul => AllyBuff ? AllyBuffMul : 1f;
-        public static float EnemyMul => EnemyDebuff ? EnemyDebuffMul : 1f;
+
+        public static bool AuraDebuffBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoDebuff) == "1";
+
+        /// <summary>§14 적 디버프. 켜면 침략 약탈이 95%. QA_NO_AURA_DEBUFF면 100.</summary>
+        public static int EnemyPercent()
+        {
+            if (AuraDebuffBlocked) return 100;
+            return EnemyDebuff ? EnemyDebuffPercent : 100;
+        }
+
+        public static float EnemyMul => EnemyPercent() / 100f;
+
+        public static long ApplyEnemy(long copper) => copper * EnemyPercent() / 100;
+
+        public static string EnemyLine()
+        {
+            if (EnemyPercent() == EnemyDebuffPercent && EnemyDebuff)
+                return "적 디버프 −5%(§14)";
+            return "영공 디버프 없음";
+        }
 
         public static string AuraLabel()
         {
@@ -139,6 +164,21 @@ namespace AshesToStars
                 GameState.SetTowerFloorForTest(30);
         }
 
+        /// <summary>시각 QA. QA_AURA_DEBUFF=1이면 적 디버프·30층·보호막 없음.</summary>
+        public static void SeedAuraDebuffQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowDebuff) != "1") return;
+            if (AuraDebuffBlocked) return;
+            if (_debuffQaSeeded) return;
+            _debuffQaSeeded = true;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            _enemy = true;
+            Save();
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_ALLY);
@@ -147,6 +187,7 @@ namespace AshesToStars
             _ally = false;
             _enemy = false;
             _senseQaSeeded = false;
+            _debuffQaSeeded = false;
             ForceRaceSenseMul = 0f;
         }
 

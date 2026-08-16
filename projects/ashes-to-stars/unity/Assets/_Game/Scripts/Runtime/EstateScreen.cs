@@ -220,7 +220,7 @@ namespace AshesToStars
                     "healer"))
                 WorldStar.AllyBuff = !WorldStar.AllyBuff;
             if (DrawCard(cards[1], WorldStar.EnemyDebuff ? "적 디버프 켜짐" : "적 디버프 꺼짐",
-                    "적 위력 ×" + WorldStar.EnemyMul.ToString("0.00") + " — 침략이 읽기 전엔 표시(§14)",
+                    WorldStar.EnemyLine() + " · 침략 약탈 ×" + WorldStar.EnemyMul.ToString("0.00") + "(§14)",
                     "damage"))
                 WorldStar.EnemyDebuff = !WorldStar.EnemyDebuff;
             if (Row(r, 4, "← 영지로", "영공에서 나온다")) _sub = Sub.없음;

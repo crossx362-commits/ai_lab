@@ -54,8 +54,11 @@ namespace AshesToStars
             Check(EstateMine.CopperPerHourEffective() > raw, "아군 버프가 광산을 올린다");
             WorldStar.EnemyDebuff = true;
             Check(WorldStar.AuraLabel().Contains("디버프"), "적 디버프를 켤 수 있다");
+            Check(Mathf.Abs(WorldStar.EnemyMul - WorldStar.EnemyDebuffMul) < 0.001f,
+                "적 디버프는 ×0.95");
             WorldStar.ResetForTest();
             Check(WorldStar.AllyMul == 1f, "리셋하면 배율이 1이다");
+            Check(WorldStar.EnemyMul == 1f, "리셋하면 적 배율도 1이다");
 
             Debug.Log("[WorldStarSelfCheck]\n" + _log);
             if (_fail > 0)

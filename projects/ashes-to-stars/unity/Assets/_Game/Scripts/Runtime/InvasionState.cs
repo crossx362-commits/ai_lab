@@ -148,13 +148,15 @@ namespace AshesToStars
         }
 
         /// <summary>승자 보상은 상대 영지 레벨(여기선 내 탑 층) 기준. 창고를 비워도 준다(§15 1-b).
-        /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.</summary>
+        /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.
+        /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).</summary>
         public static long LootCopper()
         {
             long baseLoot = Economy.GetActionCost("InvasionAttack", GameState.Tier) * 3;
             if (baseLoot < 1000) baseLoot = 1000;
             int empty = DefenseState.MaxSlots - DefenseState.Count;
-            return ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
+            long afterRace = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
+            return WorldStar.ApplyEnemy(afterRace);
         }
 
         public static bool TryBegin()
@@ -163,6 +165,8 @@ namespace AshesToStars
             if (_pending) return false;
             if (ShieldActive) return false;
             if (!GameState.CanInvade()) return false;
+            // 출정 순간에도 영공을 읽는다. 약탈 공식은 LootCopper가 EnemyMul을 쓴다.
+            _ = WorldStar.EnemyMul;
             long cost = SortieCost();
             if (!GameState.Pay(cost)) return false;
             _pending = true;
@@ -226,6 +230,23 @@ namespace AshesToStars
             _pending = false;
             _shieldUntil = 0;
             Save();
+        }
+
+        /// <summary>시각 QA. QA_AURA_DEBUFF=1이면 30층·보호막 없음으로 침략 카드를 연다.</summary>
+        public static void SeedAuraDebuffQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(WorldStar.EnvShowDebuff) != "1") return;
+            if (WorldStar.AuraDebuffBlocked) return;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            if (GameState.Wallet.Copper < SortieCost())
+                GameState.Earn(SortieCost());
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+            WorldStar.SeedAuraDebuffQaIfRequested();
         }
 
         public static void ResetForTest()

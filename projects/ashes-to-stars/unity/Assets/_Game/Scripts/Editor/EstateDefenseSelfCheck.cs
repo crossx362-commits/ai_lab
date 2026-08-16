@@ -26,6 +26,7 @@ namespace AshesToStars
             EstateDefense.ResetForTest();
             EstateBuild.ResetForTest();
             DefenseState.ResetForTest();
+            WorldStar.ResetForTest();
             GameState.ResetAll();
 
             Check(Math.Abs(EstateDefense.UpgradeSeconds(1) - 120.0) < 0.01,
