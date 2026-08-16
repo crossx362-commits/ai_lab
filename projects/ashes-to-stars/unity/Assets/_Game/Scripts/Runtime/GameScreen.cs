@@ -50,7 +50,7 @@ namespace AshesToStars
         protected const float REF_W = 1280f, REF_H = 720f;
         protected const float BarH = 76f;
 
-        GUIStyle _h1, _h2, _btn, _small, _panel;
+        GUIStyle _h1, _h2, _btn, _small, _navLabel, _panel;
         Texture2D _bg, _line, _accent, _scrim;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
@@ -100,6 +100,9 @@ namespace AshesToStars
             _h2 = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true, normal = { textColor = Dim } };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 15, normal = { textColor = Dim } };
+            // 하단 탭은 아이콘과 이름을 세로로 나눈다. 기본 label은 좌측 정렬이라
+            // 아이콘 아래 이름이 제각각 밀려 보이므로, 탭 전용으로 가운데 정렬한다.
+            _navLabel = new GUIStyle(_small) { alignment = TextAnchor.UpperCenter };
             _panel = new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Gold } };
             _bg = Solid(new Color(0.05f, 0.05f, 0.08f));
             _line = Solid(new Color(1f, 1f, 1f, 0.10f));
@@ -183,7 +186,9 @@ namespace AshesToStars
                 var r = new Rect(48 + i * (w + pad), y, w, BarH);
                 if (here) GUI.DrawTexture(new Rect(r.x, r.y - 4, r.width, 4), _accent);
                 GUI.enabled = !here;
-                DrawAtlasButton(r, label);
+                // 탭 배경에는 이름을 그리지 않는다. 기존에는 버튼 중앙의 이름 위에
+                // 아이콘을 덮어 그려서 "월드맵"처럼 글자가 반쯤 가려졌다.
+                DrawAtlasButton(r, null);
                 string icon = i switch
                 {
                     0 => "territory",
@@ -192,8 +197,8 @@ namespace AshesToStars
                     3 => "worldmap",
                     _ => "characters",
                 };
-                UiAtlas.Draw(new Rect(r.center.x - 24, r.y + 3, 48, 48), icon);
-                GUI.Label(new Rect(r.x + 4, r.y + 52, r.width - 8, 20), label, _small);
+                UiAtlas.Draw(new Rect(r.center.x - 22, r.y + 4, 44, 44), icon);
+                GUI.Label(new Rect(r.x + 4, r.y + 53, r.width - 8, 19), label, _navLabel);
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
             }
@@ -204,7 +209,7 @@ namespace AshesToStars
         {
             if (!UiAtlas.Draw(r, "button_normal"))
                 GUI.Box(r, GUIContent.none);
-            GUI.Label(r, label, _btn);
+            if (!string.IsNullOrEmpty(label)) GUI.Label(r, label, _btn);
         }
 
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
