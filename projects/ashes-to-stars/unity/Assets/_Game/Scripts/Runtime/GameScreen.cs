@@ -117,7 +117,7 @@ namespace AshesToStars
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
-            _cardTitle = new GUIStyle(_h1) { fontSize = 22 };
+            _cardTitle = new GUIStyle(_h1) { fontSize = 22, alignment = TextAnchor.MiddleLeft };
             _tab = new GUIStyle(_small)
             {
                 fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,

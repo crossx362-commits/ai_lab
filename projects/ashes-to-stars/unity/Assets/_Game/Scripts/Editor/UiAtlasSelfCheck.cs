@@ -186,6 +186,16 @@ namespace AshesToStars
             UiPages.CardLayout(wideCard, true, out var wideIcon, out var wideTitle, out _);
             Debug.Assert(wideIcon.x < wideTitle.x && wideIcon.height >= 56f,
                 "[UiAtlasSelfCheck] 넓은 카드는 아이콘이 왼쪽에 붙어야 한다");
+            var hubWide = new Rect(0f, 0f, 596f, 169f);
+            UiPages.CardLayout(hubWide, true, out var hubIcon, out var hubTitle, out var hubSub);
+            Debug.Assert(UiPages.IsWideCard(hubWide),
+                "[UiAtlasSelfCheck] 필드 2×3(596×169)은 가로 카드다");
+            Debug.Assert(hubIcon.x < hubTitle.x && !UiPages.LayoutOverlaps(hubIcon, hubTitle)
+                         && !UiPages.LayoutOverlaps(hubIcon, hubSub),
+                "[UiAtlasSelfCheck] 가로 허브 카드는 아이콘 왼쪽·글씨 오른쪽");
+            Debug.Assert(hubTitle.center.y < hubWide.center.y + 24f
+                         && hubTitle.y > hubWide.y + 20f,
+                "[UiAtlasSelfCheck] 가로 허브 제목은 아래 테두리가 아니라 세로 가운데");
             var roster = new Rect(0f, 0f, 120f, UiPages.RosterCellH);
             UiPages.RosterCellLayout(roster, out var rf, out var rn, out var rj, out var rh);
             Debug.Assert(!UiPages.LayoutOverlaps(rf, rn) && !UiPages.LayoutOverlaps(rn, rj)
@@ -196,6 +206,13 @@ namespace AshesToStars
             Debug.Assert(!UiPages.LayoutOverlaps(pf, pn) && !UiPages.LayoutOverlaps(pn, pm)
                          && pn.yMax <= pm.y + 0.01f,
                 "[UiAtlasSelfCheck] 편성 카드에서 이름과 목숨이 겹친다");
+            var huntPick = new Rect(0f, 0f, 397f, 132f);
+            UiPages.PartyCardLayout(huntPick, out var hf, out var hn, out var hm);
+            Debug.Assert(UiPages.IsWideCard(huntPick, 1.35f) && hf.x < hn.x && hn.x < hm.x,
+                "[UiAtlasSelfCheck] 사냥 선택 카드는 초상 왼쪽·글씨 가운데");
+            Debug.Assert(!UiPages.LayoutOverlaps(hf, hn) && !UiPages.LayoutOverlaps(hn, hm)
+                         && !UiPages.LayoutOverlaps(hf, hm),
+                "[UiAtlasSelfCheck] 사냥 선택 초상·이름·목숨이 겹치면 글씨가 초상 한가운데로 들어간다");
 
             // 편성 화면이 목숨·역할을 글자로만 쓰면 캐릭터 화면과 같은 조각이 소비처 0곳이다.
             var tankFull = UiAtlas.SlotChrome("탱", 0, false);

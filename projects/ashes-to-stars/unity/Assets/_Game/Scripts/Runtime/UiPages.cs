@@ -133,13 +133,38 @@ namespace AshesToStars
             hearts = new Rect(cell.center.x - 36f, cell.yMax - 22f, 72f, 22f);
         }
 
-        /// <summary>편성 카드. 초상 아래 이름, 맨 아래 목숨 — 두 줄이 겹치면 이름이 잘린다.</summary>
+        /// <summary>
+        /// 편성·사냥 선택 카드. 가로로 넓은 칸에 초상을 가운데 두면
+        /// 이름이 초상 한가운데로 들어간다(오너 08:37).
+        /// </summary>
         public static void PartyCardLayout(Rect cell, out Rect face, out Rect name, out Rect marks)
         {
-            float faceS = Mathf.Min(cell.width - 16f, Mathf.Max(32f, cell.height - 52f));
-            face = new Rect(cell.center.x - faceS * 0.5f, cell.y + 6f, faceS, faceS);
+            const float pad = 10f;
+            const float markW = 80f;
+            if (IsWideCard(cell, 1.35f))
+            {
+                float faceS = Mathf.Min(cell.height - pad * 2f, 88f);
+                face = new Rect(cell.x + pad, cell.y + (cell.height - faceS) * 0.5f, faceS, faceS);
+                marks = new Rect(cell.xMax - pad - markW,
+                    cell.y + (cell.height - 22f) * 0.5f, markW, 22f);
+                float tx = face.xMax + 10f;
+                float tw = marks.x - tx - 8f;
+                float nameH = Mathf.Min(44f, cell.height - pad * 2f);
+                if (tw < 48f)
+                {
+                    marks = new Rect(tx, cell.yMax - pad - 20f, cell.xMax - tx - pad, 20f);
+                    name = new Rect(tx, cell.y + pad, cell.xMax - tx - pad,
+                        Mathf.Max(16f, marks.y - cell.y - pad - 2f));
+                    return;
+                }
+                name = new Rect(tx, cell.y + (cell.height - nameH) * 0.5f, tw, nameH);
+                return;
+            }
+
+            float faceS2 = Mathf.Min(cell.width - 16f, Mathf.Max(32f, cell.height - 52f));
+            face = new Rect(cell.center.x - faceS2 * 0.5f, cell.y + 6f, faceS2, faceS2);
             name = new Rect(cell.x + 6f, face.yMax + 2f, cell.width - 12f, 18f);
-            marks = new Rect(cell.center.x - 40f, cell.yMax - 22f, 80f, 22f);
+            marks = new Rect(cell.center.x - 40f, cell.yMax - 22f, markW, 22f);
             if (name.yMax > marks.y)
                 name.height = Mathf.Max(0f, marks.y - name.y);
         }
@@ -264,17 +289,24 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 허브 카드 안 아이콘·제목 좌표. 높은 카드는 아이콘이 위를 채우고,
-        /// 넓은 카드는 왼쪽에 붙는다 — 64px 아이콘을 위에만 두면 카드가 비어 보인다.
+        /// 허브 카드 안 아이콘·제목 좌표. 높은(세로) 카드는 아이콘이 위를 채우고,
+        /// 넓은 카드는 왼쪽에 붙인 뒤 글씨를 세로 가운데에 둔다.
+        /// 높이만 보면 필드 2×3(≈596×169)이 세로로 분류돼 제목이 아래 테두리에 붙었다(오너 08:37).
         /// </summary>
         public const float CardMinIcon = 72f;
         /// <summary>한글 제목은 fontSize보다 칸이 커야 획이 안 잘린다.</summary>
         public const float CardTitleH = 36f;
+        /// <summary>이 비율 이상이면 가로 카드 — 높이 168을 넘어도 세로 배치하지 않는다.</summary>
+        public const float CardWideAspect = 1.45f;
+
+        public static bool IsWideCard(Rect card, float aspect = CardWideAspect) =>
+            card.height > 1f && card.width >= card.height * aspect;
 
         public static void CardLayout(Rect card, bool hasIcon, out Rect icon, out Rect title, out Rect sub)
         {
             icon = default;
-            bool tall = hasIcon && card.height >= 168f;
+            bool wide = IsWideCard(card);
+            bool tall = hasIcon && !wide && card.height >= 168f;
             if (tall)
             {
                 float plateH = Mathf.Clamp(card.height * 0.38f, 80f, 120f);
@@ -289,16 +321,24 @@ namespace AshesToStars
                 return;
             }
 
+            float pad = Mathf.Min(18f, Mathf.Max(10f, card.height * 0.12f));
             float side = hasIcon
-                ? Mathf.Min(card.height - 16f, 96f, Mathf.Max(CardMinIcon, card.width * 0.22f))
+                ? Mathf.Min(card.height - pad * 2f, 96f, Mathf.Max(CardMinIcon, card.width * 0.22f))
                 : 0f;
             if (hasIcon)
-                icon = new Rect(card.x + 12f, card.y + (card.height - side) * 0.5f, side, side);
-            float tx = card.x + (hasIcon ? side + 22f : 16f);
-            float tw = card.xMax - tx - 14f;
-            title = new Rect(tx, card.y + 10f, tw, CardTitleH);
-            sub = new Rect(tx, card.y + 12f + CardTitleH, tw,
-                Mathf.Max(20f, card.height - CardTitleH - 22f));
+                icon = new Rect(card.x + pad, card.y + (card.height - side) * 0.5f, side, side);
+            float tx = card.x + (hasIcon ? side + pad + 10f : pad);
+            float tw = Mathf.Max(12f, card.xMax - tx - pad);
+            float subH = Mathf.Min(48f, Mathf.Max(20f, card.height - CardTitleH - 20f));
+            float blockH = CardTitleH + 2f + subH;
+            if (blockH > card.height - 8f)
+            {
+                subH = Mathf.Max(16f, card.height - CardTitleH - 16f);
+                blockH = CardTitleH + 2f + subH;
+            }
+            float ty = card.y + (card.height - blockH) * 0.5f;
+            title = new Rect(tx, ty, tw, CardTitleH);
+            sub = new Rect(tx, ty + CardTitleH + 2f, tw, subH);
         }
 
         /// <summary>칸 밖으로 글자가 새거나 옆 카드와 겹치지 않게 자른다.</summary>
