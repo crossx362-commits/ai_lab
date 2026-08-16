@@ -26,7 +26,7 @@
 큐 1번 UI는 사람 육안, V4 70%는 보류. 「대기하지 마라」로 §3 합성을 닫음.
 `CharacterScreen` Locked만 있던 버튼을 `Fusion`이 소비. 재료 소멸·강골 HpMul·슬롯4.
 SelfCheck 전항 PASS. PNG `fusion_shots/qa_go:Character.png` 「흡수 강골 (1/4)」.
-비-HP 패시브 전투 소비처·골드 2 G/h는 다음. 코드는 이 이터 커밋.
+비-HP 패시브 전투 소비처·골드 2 G/h는 다음. 코드 `b0c85e52`.
 
 ### ✅ 혀결해 — 대출 연체·파산 제재 (루프, 2026-08-16)
 
