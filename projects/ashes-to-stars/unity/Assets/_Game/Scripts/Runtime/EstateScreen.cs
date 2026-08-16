@@ -95,6 +95,21 @@ namespace AshesToStars
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
+            StarterSecond.SeedQaIfRequested();
+            if (StarterSecond.Pending)
+            {
+                Hint(new Rect(r.x, r.y, r.width, 24f), StarterSecond.PickTitle);
+                var picks = UiPages.JobPickCards(new Rect(r.x, r.y + 28f, r.width, r.height - 28f),
+                    LifeSystem.BasicJobs.Length);
+                for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
+                {
+                    string job = LifeSystem.BasicJobs[i];
+                    if (DrawCard(picks[i], LifeSystem.BasicJobLabel(job),
+                            StarterSecond.PickSubtitle))
+                        StarterSecond.TryClaim(job);
+                }
+                return;
+            }
             if (_sub == Sub.본성) { Keep(r); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }

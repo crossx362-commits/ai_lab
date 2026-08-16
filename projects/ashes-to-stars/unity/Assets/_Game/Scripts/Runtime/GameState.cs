@@ -533,6 +533,7 @@ namespace AshesToStars
             TowerEnding.ResetForTest();
             SoloRaidClear.ResetForTest();
             FloorRecruit.ResetForTest();
+            StarterSecond.ResetForTest();
             EstateBuild.ResetForTest();
             EstateMine.ResetForTest();
             EstateDefense.ResetForTest();
@@ -550,6 +551,7 @@ namespace AshesToStars
             TowerEnding.ForgetInMemoryForTest();
             SoloRaidClear.ForgetInMemoryForTest();
             FloorRecruit.ForgetInMemoryForTest();
+            StarterSecond.ForgetInMemoryForTest();
             EstateMine.ForgetInMemoryForTest();
             EstateDefense.ForgetInMemoryForTest();
             EstateGrid.ForgetInMemoryForTest();

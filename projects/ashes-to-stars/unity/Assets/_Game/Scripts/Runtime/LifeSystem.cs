@@ -396,6 +396,7 @@ namespace AshesToStars
             ActiveSecondTrial = null;
             Equipment.ResetAll();
             DefenseState.ResetForTest();
+            StarterSecond.ResetForTest();
         }
 
         /// <summary>
@@ -426,8 +427,8 @@ namespace AshesToStars
 
         /// <summary>
         /// 타이틀에서 고른 기본직업을 첫 캐릭터로 새 여정을 연다(§3).
-        /// 프로토타입 레이드는 5인이라 나머지 기본직업을 같이 넣는다.
-        /// Initialize()의 고정 5인과 달리 0번이 고른 직업이다.
+        /// 시작 로스터는 2명 — 두 번째는 5분 뒤 StarterSecond가 고르게 한다.
+        /// Initialize()의 고정 5인은 저장 없는 폴백이다.
         /// </summary>
         public static CharacterRecord BeginNewGame(string starterJob)
         {
@@ -436,15 +437,10 @@ namespace AshesToStars
             _loaded = true;
             _characters.Clear();
             _characters.Add(new CharacterRecord(BasicJobLabel(starterJob), starterJob, 10));
-            for (int i = 0; i < BasicJobs.Length; i++)
-            {
-                string job = BasicJobs[i];
-                if (job == starterJob) continue;
-                _characters.Add(new CharacterRecord(BasicJobLabel(job), job, 10));
-            }
             Save();
             PartyState.ResetForTest();
             _ = PartyState.Slots;
+            StarterSecond.OnNewGame();
             return _characters[0];
         }
 
@@ -468,6 +464,25 @@ namespace AshesToStars
             "버퍼" => "서포터",
             _ => job ?? "",
         };
+
+        /// <summary>
+        /// 시작 로스터의 두 번째(§3). Lv10 기본직업. 같은 역할이면 이름에 숫자를 붙인다.
+        /// 층 클리어 영입(Lv1)과 갈라 둔다.
+        /// </summary>
+        public static CharacterRecord AddStarterCompanion(string job)
+        {
+            if (!IsBasicJob(job)) return null;
+            EnsureLoaded();
+            string name = BasicJobLabel(job);
+            int same = 0;
+            for (int i = 0; i < _characters.Count; i++)
+                if (_characters[i].Job == job && !_characters[i].IsDeleted) same++;
+            if (same > 0) name = name + (same + 1);
+            var recruit = new CharacterRecord(name, job, 10);
+            _characters.Add(recruit);
+            Save();
+            return recruit;
+        }
 
         /// <summary>
         /// 층 클리어 보상으로 기본직업 Lv1 1명을 명부에 넣는다.

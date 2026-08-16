@@ -107,30 +107,21 @@ namespace AshesToStars
             Check(StarterPick.TryChoose("마딜"), "마딜을 고르면 여정이 열린다");
             Check(!StarterPick.Open, "고른 뒤 선택 화면을 닫는다");
             var roster = LifeSystem.GetCharacters();
-            Check(roster.Count == 5, $"고른 뒤 5인 (실제 {roster.Count})");
+            Check(roster.Count == 1, $"고른 뒤 1명 (실제 {roster.Count}) — 5인은 FAIL");
             Check(roster[0].Job == "마딜" && roster[0].Advancement == AdvancementTier.Basic
                   && roster[0].Name == "마법딜러",
                 $"0번은 마딜 기본직업 (실제 {roster[0].Name} {roster[0].Job} {roster[0].Advancement})");
             Check(roster[0].Job != "마법사" && roster[0].Job != "수호기사",
                 "고른 기본직업을 1차 이름으로 바꾸지 않는다");
-            bool hasEach = true;
-            for (int i = 0; i < LifeSystem.BasicJobs.Length; i++)
-            {
-                string job = LifeSystem.BasicJobs[i];
-                bool found = false;
-                for (int c = 0; c < roster.Count; c++)
-                    if (roster[c].Job == job) { found = true; break; }
-                if (!found) hasEach = false;
-            }
-            Check(hasEach, "5인 로스터에 기본직업이 한 명씩 있다");
             Check(LifeSystem.HasSavedRoster(), "고른 뒤 저장이 있다");
             Check(!StarterPick.ShouldOffer(), "저장이 있으면 다시 고르지 않는다");
 
             Check(StarterPick.TryChoose("딜"), "딜로 다시 고르면 덮어쓴다");
             roster = LifeSystem.GetCharacters();
-            Check(roster[0].Job == "딜" && roster[0].Advancement == AdvancementTier.Basic
+            Check(roster.Count == 1 && roster[0].Job == "딜"
+                  && roster[0].Advancement == AdvancementTier.Basic
                   && roster[0].Name == "물리딜러",
-                $"0번은 딜 (실제 {roster[0].Job} {roster[0].Name})");
+                $"0번은 딜 1명 (실제 {roster.Count} {roster[0].Job} {roster[0].Name})");
 
             Environment.SetEnvironmentVariable(StarterPick.EnvNo, "1");
             StarterPick.ResetForTest();

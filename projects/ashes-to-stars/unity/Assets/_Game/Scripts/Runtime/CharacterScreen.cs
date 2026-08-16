@@ -64,6 +64,12 @@ namespace AshesToStars
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
             StarterPick.SeedQaIfRequested();
+            StarterSecond.SeedQaIfRequested();
+            if (StarterSecond.Pending)
+            {
+                DrawStarterSecond(r);
+                return;
+            }
             if (_fusing)
             {
                 DrawFusion(r);
@@ -302,6 +308,20 @@ namespace AshesToStars
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
         }
 
+        void DrawStarterSecond(Rect r)
+        {
+            Hint(new Rect(r.x, r.y, r.width, 24f), StarterSecond.PickTitle);
+            var picks = UiPages.JobPickCards(new Rect(r.x, r.y + 28f, r.width, r.height - 28f),
+                LifeSystem.BasicJobs.Length);
+            for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
+            {
+                string job = LifeSystem.BasicJobs[i];
+                if (DrawCard(picks[i], LifeSystem.BasicJobLabel(job),
+                        StarterSecond.PickSubtitle))
+                    StarterSecond.TryClaim(job);
+            }
+        }
+
         void DrawRosterSplit(Rect r)
         {
             if (FloorRecruit.AwaitingPick)
@@ -323,6 +343,11 @@ namespace AshesToStars
                             FloorRecruit.PickSubtitle()))
                         FloorRecruit.TryClaim(job);
                 }
+                return;
+            }
+            if (StarterSecond.Pending)
+            {
+                DrawStarterSecond(r);
                 return;
             }
             if (FloorRecruit.PendingSpecialBanner)
