@@ -84,8 +84,11 @@ namespace AshesToStars
                 _hubPage = 1;
             if (System.Environment.GetEnvironmentVariable("QA_ESTATE_DEFENSE") == "1")
                 _hubPage = 2;
+            if (System.Environment.GetEnvironmentVariable("QA_ESTATE_RUSH") == "1")
+                _sub = Sub.본성;
             EstateMine.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
+            EstateBuild.SeedRushQaIfRequested();
             if (_sub == Sub.본성) { Keep(r); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
@@ -165,7 +168,14 @@ namespace AshesToStars
                 ? $"탑 {EstateDefense.UnlockFloor}층부터 순차 해금(현재 {GameState.TowerFloor}층)"
                 : $"수비 {DefenseState.Count}명 · 효율 {EstateDefense.EfficiencyPercent()}% · 약탈 -{EstateDefense.CutPercent()}%(§13-5)";
             Info(r, 0, eff);
-            var cards = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 88f), 2, 2, 16f);
+            float top = 80f;
+            if (EstateDefense.Busy)
+            {
+                int row = 1;
+                DrawDefenseRush(r, ref row);
+                top = row * (RowH + RowGap);
+            }
+            var cards = UiPages.Grid(new Rect(r.x, r.y + top, r.width, r.height - top - 8f), 2, 2, 16f);
             var kinds = EstateDefense.All;
             for (int i = 0; i < kinds.Length && i < cards.Length; i++)
             {
@@ -194,10 +204,12 @@ namespace AshesToStars
             EstateBuild.Tick();
             int lv = EstateBuild.KeepLevel;
             Info(r, 0, $"본성 Lv{lv} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}(§18-12)");
+            int row = 1;
             if (EstateBuild.KeepBusy)
             {
-                Info(r, 1, $"공사 중 Lv{lv} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}");
-                Info(r, 2, "끝나면 자동 적용 — 수령할 필요 없다(§13-2)");
+                Info(r, row++, $"공사 중 Lv{lv} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}");
+                Info(r, row++, "끝나면 자동 적용 — 수령할 필요 없다. 단축은 남은 50%까지(§13-2)");
+                DrawKeepRush(r, ref row);
             }
             else
             {
@@ -205,11 +217,68 @@ namespace AshesToStars
                 string label = $"Lv{lv} → {lv + 1}";
                 string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(lv))} · {FormatWait(EstateBuild.UpgradeSeconds(lv))}";
                 if (why != null)
-                    Locked(r, 1, label, why, "territory");
-                else if (Row(r, 1, label, desc, "territory"))
+                    Locked(r, row++, label, why, "territory");
+                else if (Row(r, row++, label, desc, "territory"))
                     EstateBuild.TryStartKeep();
             }
-            if (Row(r, 3, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+        }
+
+        void DrawKeepRush(Rect r, ref int row)
+        {
+            long cut = EstateBuild.RushableSeconds();
+            string goldWhy = EstateBuild.WhyCannotRushGold();
+            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor())}";
+            string goldDesc = cut > 0
+                ? $"남은 {cut}초를 당긴다. 바닥은 원 소요의 50%(§13-2)"
+                : "남은 시간의 50%가 바닥이다 — 완전 스킵 불가";
+            if (goldWhy != null)
+                Locked(r, row++, goldLabel, goldWhy, "gold");
+            else if (Row(r, row++, goldLabel, goldDesc, "gold"))
+                EstateBuild.TryRushGold();
+
+            var mat = EstateRush.FirstOwnedFamilyMaterial();
+            if (mat == null)
+            {
+                Locked(r, row++, "재료 단축",
+                    "계열 재료 1개 = 남은 시간의 2%. 부활초·환생석·두루마리는 안 된다",
+                    ItemAtlas.KeyFor(Economy.LifeItem.CraftHide));
+                return;
+            }
+            var item = mat.Value;
+            string matWhy = EstateBuild.WhyCannotRushMaterial(item);
+            string matLabel = $"{GameState.Label(item)} 1장 단축";
+            string matDesc = $"남은 시간의 2% · {GameState.Bag.GetCount(item)}장";
+            if (matWhy != null)
+                Locked(r, row++, matLabel, matWhy, ItemAtlas.KeyFor(item));
+            else if (Row(r, row++, matLabel, matDesc, ItemAtlas.KeyFor(item)))
+                EstateBuild.TryRushMaterial(item, 1);
+        }
+
+        void DrawDefenseRush(Rect r, ref int row)
+        {
+            long cut = EstateDefense.RushableSeconds();
+            string goldWhy = EstateDefense.WhyCannotRushGold();
+            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateDefense.GoldCostToFloor())}";
+            if (goldWhy != null)
+                Locked(r, row++, goldLabel, goldWhy, "gold");
+            else if (Row(r, row++, goldLabel,
+                    cut > 0 ? $"방어 공사 {cut}초 · 상한 50%" : "바닥", "gold"))
+                EstateDefense.TryRushGold();
+
+            var mat = EstateRush.FirstOwnedFamilyMaterial();
+            if (mat == null)
+            {
+                Locked(r, row++, "재료 단축", "계열 재료가 없다", ItemAtlas.KeyFor(Economy.LifeItem.CraftHide));
+                return;
+            }
+            var item = mat.Value;
+            string matWhy = EstateDefense.WhyCannotRushMaterial(item);
+            if (matWhy != null)
+                Locked(r, row++, $"{GameState.Label(item)} 1장 단축", matWhy, ItemAtlas.KeyFor(item));
+            else if (Row(r, row++, $"{GameState.Label(item)} 1장 단축",
+                    "남은 시간의 2%", ItemAtlas.KeyFor(item)))
+                EstateDefense.TryRushMaterial(item, 1);
         }
 
         static string FormatWait(double seconds)

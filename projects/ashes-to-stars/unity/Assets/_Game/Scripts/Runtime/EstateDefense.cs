@@ -6,7 +6,7 @@ namespace AshesToStars
     /// <summary>
     /// 수직 슬라이스 셋째 — 방어 건물 4종(§13-2·§18-12).
     /// 화살탑→마법탑→성벽→함정. 20층부터. 비용·시간은 본성의 40%.
-    /// 수비대 0명이면 효율이 절반(§13-5). 격자와 단축 50%는 다음 슬라이스.
+    /// 수비대 0명이면 효율이 절반(§13-5). 단축은 EstateRush. 격자는 다음.
     /// </summary>
     public static class EstateDefense
     {
@@ -27,6 +27,8 @@ namespace AshesToStars
         const string K_BUSY = "ats.estate.def.busy";
         const string K_TO = "ats.estate.def.to";
         const string K_DONE = "ats.estate.def.done";
+        const string K_ORIG = "ats.estate.def.orig";
+        const string K_JOB = "ats.estate.def.job";
 
         static bool _loaded;
         static bool _qaSeeded;
@@ -34,6 +36,8 @@ namespace AshesToStars
         static int _busy = -1;
         static int _to;
         static long _doneUnix;
+        static long _origSec;
+        static long _jobCost;
 
         public static Func<long> NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         public static Func<int> GarrisonCount = () => DefenseState.Count;
@@ -147,7 +151,76 @@ namespace AshesToStars
             _to = lv + 1;
             double wait = UpgradeSeconds(lv);
             if (FastQa()) wait = 1;
-            _doneUnix = NowUnix() + (long)Math.Ceiling(wait);
+            _origSec = (long)Math.Ceiling(wait);
+            _jobCost = cost;
+            _doneUnix = NowUnix() + _origSec;
+            Save();
+            return true;
+        }
+
+        public static long RushableSeconds()
+        {
+            Load();
+            Tick();
+            return EstateRush.Rushable(RemainingSeconds(), OriginalSeconds());
+        }
+
+        public static long GoldCostToFloor()
+        {
+            return EstateRush.GoldCost(RushableSeconds(), JobCost());
+        }
+
+        public static string WhyCannotRushGold()
+        {
+            Load();
+            Tick();
+            if (EstateRush.Disabled()) return "단축이 꺼져 있다";
+            if (_busy < 0) return "공사가 없다";
+            if (RushableSeconds() <= 0) return "남은 시간의 50%가 바닥이다(§13-2)";
+            long pay = GoldCostToFloor();
+            if (GameState.Wallet.Copper < pay)
+                return $"골드가 부족하다 — {Economy.FormatCurrency(pay)}";
+            return null;
+        }
+
+        public static string WhyCannotRushMaterial(Economy.LifeItem item)
+        {
+            Load();
+            Tick();
+            if (EstateRush.Disabled()) return "단축이 꺼져 있다";
+            if (_busy < 0) return "공사가 없다";
+            if (RushableSeconds() <= 0) return "남은 시간의 50%가 바닥이다(§13-2)";
+            if (EstateRush.IsForbidden(item)) return "목숨 아이템·강화석은 단축에 못 쓴다(§13-2)";
+            if (GameState.Bag.GetCount(item) < 1) return $"{GameState.Label(item)}이(가) 없다";
+            return null;
+        }
+
+        public static bool TryRushGold()
+        {
+            Load();
+            Tick();
+            if (WhyCannotRushGold() != null) return false;
+            long cut = RushableSeconds();
+            long pay = EstateRush.GoldCost(cut, JobCost());
+            if (!GameState.Pay(pay)) return false;
+            _doneUnix -= cut;
+            Save();
+            return true;
+        }
+
+        public static bool TryRushMaterial(Economy.LifeItem item, int count)
+        {
+            Load();
+            Tick();
+            if (count <= 0) return false;
+            if (WhyCannotRushMaterial(item) != null) return false;
+            long rem = RemainingSeconds();
+            long cut = EstateRush.MaterialCut(rem, count);
+            long cap = RushableSeconds();
+            if (cut > cap) cut = cap;
+            if (cut <= 0) return false;
+            if (!GameState.Consume(item, count)) return false;
+            _doneUnix -= cut;
             Save();
             return true;
         }
@@ -161,7 +234,25 @@ namespace AshesToStars
             _busy = -1;
             _to = 0;
             _doneUnix = 0;
+            _origSec = 0;
+            _jobCost = 0;
             Save();
+        }
+
+        static long OriginalSeconds()
+        {
+            Load();
+            if (_origSec > 0) return _origSec;
+            if (_busy < 0) return 0;
+            return RemainingSeconds();
+        }
+
+        static long JobCost()
+        {
+            Load();
+            if (_jobCost > 0) return _jobCost;
+            int lv = _busy >= 0 ? _lv[_busy] : 0;
+            return UpgradeCost(lv);
         }
 
         public static void SeedQaIfRequested()
@@ -200,6 +291,8 @@ namespace AshesToStars
             _busy = PlayerPrefs.GetInt(K_BUSY, -1);
             _to = PlayerPrefs.GetInt(K_TO, 0);
             long.TryParse(PlayerPrefs.GetString(K_DONE, "0"), out _doneUnix);
+            long.TryParse(PlayerPrefs.GetString(K_ORIG, "0"), out _origSec);
+            long.TryParse(PlayerPrefs.GetString(K_JOB, "0"), out _jobCost);
         }
 
         static void Save()
@@ -209,6 +302,8 @@ namespace AshesToStars
             PlayerPrefs.SetInt(K_BUSY, _busy);
             PlayerPrefs.SetInt(K_TO, _to);
             PlayerPrefs.SetString(K_DONE, _doneUnix.ToString());
+            PlayerPrefs.SetString(K_ORIG, _origSec.ToString());
+            PlayerPrefs.SetString(K_JOB, _jobCost.ToString());
             PlayerPrefs.Save();
         }
 
@@ -219,11 +314,15 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey(K_BUSY);
             PlayerPrefs.DeleteKey(K_TO);
             PlayerPrefs.DeleteKey(K_DONE);
+            PlayerPrefs.DeleteKey(K_ORIG);
+            PlayerPrefs.DeleteKey(K_JOB);
             PlayerPrefs.Save();
             for (int i = 0; i < _lv.Length; i++) _lv[i] = 0;
             _busy = -1;
             _to = 0;
             _doneUnix = 0;
+            _origSec = 0;
+            _jobCost = 0;
             _loaded = false;
             _qaSeeded = false;
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
