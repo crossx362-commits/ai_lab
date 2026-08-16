@@ -176,7 +176,7 @@ namespace AshesToStars
                 GUI.DrawTexture(new Rect(0, 0, REF_W, HeaderH), _line);
                 GUI.DrawTexture(new Rect(0, HeaderH - 2, REF_W, 2), _accent);
                 bool atlas = !string.IsNullOrEmpty(HeaderIcon)
-                    && UiAtlas.Draw(new Rect(18, 14, 60, 60), HeaderIcon);
+                    && UiAtlas.DrawFit(new Rect(18, 14, 60, 60), HeaderIcon);
                 GUI.Label(new Rect(atlas ? 90 : 28, 10, REF_W - (atlas ? 120 : 56), 42), Title, _h1);
                 if (!string.IsNullOrEmpty(Subtitle))
                     GUI.Label(new Rect(atlas ? 90 : 28, 52, REF_W - 80, 30), Subtitle, _h2);
@@ -253,7 +253,7 @@ namespace AshesToStars
                     3 => "worldmap",
                     _ => "characters",
                 };
-                UiAtlas.Draw(new Rect(r.center.x - 22, r.y + 4, 44, 44), icon);
+                UiAtlas.DrawFit(new Rect(r.center.x - 22, r.y + 4, 44, 44), icon);
                 GUI.Label(new Rect(r.x + 4, r.y + 53, r.width - 8, 19), label, _navLabel);
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
@@ -267,7 +267,8 @@ namespace AshesToStars
             bool hover = forceHover ?? (!locked && r.Contains(Event.current.mousePosition));
             bool pressed = forcePressed ?? (hover && Input.GetMouseButton(0));
             Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
-            if (!UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
+            if (!UiAtlas.DrawSliced(r, UiAtlas.ButtonKey(hover, pressed), 12f, tint)
+                && !UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
                 GUI.Box(r, GUIContent.none);
             var iconRect = new Rect(r.x + 8, r.y + 7, 44, 44);
             if (rarity.HasValue)
@@ -391,7 +392,8 @@ namespace AshesToStars
             {
                 var t = new Rect(r.x + i * (w + UiPages.TabGap), r.y, w, UiPages.TabH);
                 bool on = i == selected;
-                UiAtlas.Draw(t, UiAtlas.ButtonKey(false, on), on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
+                UiAtlas.DrawSliced(t, UiAtlas.ButtonKey(false, on), 8f,
+                    on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
                 GUI.Label(t, names[i], _tab);
                 if (GUI.Button(t, GUIContent.none, GUIStyle.none)) selected = i;
             }
@@ -407,7 +409,7 @@ namespace AshesToStars
                 UiAtlas.Draw(card, "panel", tint);
             bool hasIcon = !string.IsNullOrEmpty(iconKey);
             UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
-            if (hasIcon) UiAtlas.Draw(icon, iconKey, tint);
+            if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);
             GUI.Label(titleR, title, _cardTitle);
             GUI.Label(subR, locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
             if (locked) return false;

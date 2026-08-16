@@ -71,9 +71,9 @@ namespace AshesToStars
 
         void DrawStarterPick(Rect r)
         {
-            Hint(new Rect(r.x, r.y, r.width, 28f),
-                "첫 캐릭터 — 기본직업 5종. idle 포즈로 고른다(오너 21:52)");
-            var cells = UiPages.Grid(new Rect(r.x, r.y + 36f, r.width, r.height - 36f), 3, 2, 14f);
+            Hint(new Rect(r.x, r.y, r.width, 24f),
+                "첫 캐릭터 — 기본직업 5종. idle · 늘어남 없이 고른다");
+            var cells = UiPages.StarterPickCards(new Rect(r.x, r.y + 28f, r.width, r.height - 28f));
             var jobs = StarterPick.Jobs;
             for (int i = 0; i < jobs.Length && i < cells.Length; i++)
             {
@@ -82,13 +82,12 @@ namespace AshesToStars
                 var tint = new Color(1f, 1f, 1f, 0.94f);
                 if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
                     UiAtlas.Draw(card, "panel", tint);
-                float lookH = Mathf.Max(80f, card.height - 88f);
-                UiPages.DrawJobLook(new Rect(card.x + 16f, card.y + 10f, card.width - 32f, lookH),
-                    job, UiPages.StarterLookWalks);
-                Hint(new Rect(card.x + 12f, card.yMax - 70f, card.width - 24f, 28f),
+                var look = new Rect(card.x + 8f, card.y + 8f,
+                    card.width - 16f, card.height - UiPages.StarterLabelH - 10f);
+                UiPages.DrawJobLook(look, job, UiPages.StarterLookWalks);
+                Hint(new Rect(card.x + 8f, card.yMax - UiPages.StarterLabelH,
+                        card.width - 16f, UiPages.StarterLabelH - 4f),
                     LifeSystem.BasicJobLabel(job));
-                Hint(new Rect(card.x + 12f, card.yMax - 42f, card.width - 24f, 28f),
-                    StarterPick.Blurb(job));
                 if (GUI.Button(card, GUIContent.none, GUIStyle.none)
                     && StarterPick.TryChoose(job))
                     GameFlow.Go(GameFlow.Estate);

@@ -125,6 +125,16 @@ namespace AshesToStars
                 "[UiAtlasSelfCheck] 제목판이 다시 커지면 720p 본문이 카드 한 줄을 못 채운다");
             Debug.Assert(UiPages.CardMinIcon >= 72f,
                 "[UiAtlasSelfCheck] 카드 아이콘이 72보다 작으면 허브가 비어 보인다");
+            var stretchBox = new Rect(0f, 0f, 400f, 180f);
+            var fitIcon = UiAtlas.FitInside(stretchBox, 120f, 122f);
+            Debug.Assert(Mathf.Abs(fitIcon.width / fitIcon.height - 120f / 122f) < 0.02f
+                         && fitIcon.width < stretchBox.width - 8f,
+                "[UiAtlasSelfCheck] FitInside가 가로 칸에서 아이콘을 늘리면 오너 21:50 위반");
+            var five = UiPages.JobPickCards(new Rect(0f, 0f, 900f, 400f), 5);
+            Debug.Assert(five.Length == 5 && five[3].x > five[0].x,
+                "[UiAtlasSelfCheck] 직업 5장은 3×2 빈 칸이 아니라 Packed여야 한다");
+            _ = nameof(UiAtlas.DrawFit);
+            _ = nameof(UiPages.PackedCards);
             var tallCard = new Rect(0f, 0f, 280f, 220f);
             UiPages.CardLayout(tallCard, true, out var tallIcon, out var tallTitle, out _);
             Debug.Assert(tallIcon.width >= 72f && tallIcon.height >= 72f && tallIcon.y < tallTitle.y,

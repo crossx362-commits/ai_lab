@@ -314,7 +314,8 @@ namespace AshesToStars
                     Hint(new Rect(r.x, r.y + 26f, r.width, 22f), special);
                     pickTop = 52f;
                 }
-                var picks = UiPages.Grid(new Rect(r.x, r.y + pickTop, r.width, r.height - pickTop), 3, 2, 12f);
+                var picks = UiPages.JobPickCards(new Rect(r.x, r.y + pickTop, r.width, r.height - pickTop),
+                    LifeSystem.BasicJobs.Length);
                 for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
                 {
                     string job = LifeSystem.BasicJobs[i];
@@ -373,7 +374,7 @@ namespace AshesToStars
         void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected)
         {
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : (Color?)null;
-            UiAtlas.Draw(cell, UiAtlas.ButtonKey(false, selected),
+            UiAtlas.DrawSliced(cell, UiAtlas.ButtonKey(false, selected), 10f,
                 selected ? (Color?)null : new Color(1f, 1f, 1f, 0.78f));
             float faceW = Mathf.Min(72f, cell.width - 12f);
             var face = new Rect(cell.center.x - faceW * 0.5f, cell.y + 6f, faceW, faceW);
@@ -767,7 +768,8 @@ namespace AshesToStars
         void DrawBagFilterTab(Rect tr, string label, int filter)
         {
             bool on = _bagFilter == filter;
-            UiAtlas.Draw(tr, UiAtlas.ButtonKey(false, on), on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
+            UiAtlas.DrawSliced(tr, UiAtlas.ButtonKey(false, on), 8f,
+                on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
             Hint(tr, label);
             if (GUI.Button(tr, GUIContent.none, GUIStyle.none))
                 _bagFilter = filter;
@@ -776,7 +778,7 @@ namespace AshesToStars
         bool CompactAction(Rect r, string label, string icon, bool locked = false)
         {
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : (Color?)null;
-            UiAtlas.Draw(r, UiAtlas.ButtonKey(false, false), tint);
+            UiAtlas.DrawSliced(r, UiAtlas.ButtonKey(false, false), 10f, tint);
             ItemAtlas.DrawHud(new Rect(r.x + 8f, r.y + 6f, 32f, 32f), icon, tint);
             Hint(new Rect(r.x + 44f, r.y + 10f, r.width - 52f, 24f), label);
             if (locked) return false;

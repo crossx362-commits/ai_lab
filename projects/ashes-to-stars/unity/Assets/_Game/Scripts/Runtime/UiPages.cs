@@ -92,20 +92,33 @@ namespace AshesToStars
 
         public static string JobLookFrame(bool walk) => walk ? WalkFrame() : IdleFrame;
 
-        /// <summary>전신. 스프라이트가 있으면 그걸 그린다. 없을 때만 초상 폴백.</summary>
+        /// <summary>idle 시트 실측(tank 142×128). 칸이 가로로 넓어도 이 비율을 지킨다.</summary>
+        public const float LookSrcW = 142f;
+        public const float LookSrcH = 128f;
+        public const float StarterLabelH = 36f;
+
+        /// <summary>모습 칸. 가로로 넓은 카드에 프레임을 늘리지 않는다(오너 21:50).</summary>
+        public static Rect LookDest(Rect target, float srcW = 0f, float srcH = 0f)
+        {
+            float w = srcW > 0f ? srcW : LookSrcW;
+            float h = srcH > 0f ? srcH : LookSrcH;
+            var inner = new Rect(target.x + 4f, target.y + 4f, target.width - 8f, target.height - 8f);
+            return UiAtlas.FitInside(inner, w, h);
+        }
+
+        /// <summary>전신. 스프라이트 비율로만 그린다. 빈 베이지 판을 넓게 깔지 않는다.</summary>
         public static void DrawJobLook(Rect target, string job, bool walk, Color? tint = null)
         {
             var saved = GUI.color;
-            GUI.color = new Color(0.86f, 0.82f, 0.74f, 1f);
-            if (Texture2D.whiteTexture != null)
-                GUI.DrawTexture(target, Texture2D.whiteTexture);
-            GUI.color = saved;
-            UiAtlas.DrawRosterFrame(target);
-            var inner = new Rect(target.x + 6f, target.y + 6f, target.width - 12f, target.height - 12f);
             string frame = JobLookFrame(walk);
             var tex = Resources.Load<Texture2D>(LookPath(job, frame));
             if (tex == null && walk)
                 tex = Resources.Load<Texture2D>(LookPath(job, IdleFrame));
+            float sw = tex != null ? tex.width : LookSrcW;
+            float sh = tex != null ? tex.height : LookSrcH;
+            var dest = LookDest(target, sw, sh);
+            UiAtlas.DrawRosterFrame(dest);
+            var inner = new Rect(dest.x + 4f, dest.y + 4f, dest.width - 8f, dest.height - 8f);
             if (tex != null)
             {
                 GUI.color = tint ?? Color.white;
@@ -115,6 +128,34 @@ namespace AshesToStars
             }
             PortraitAtlas.Draw(inner, PortraitAtlas.KeyForJob(job), tint);
         }
+
+        /// <summary>
+        /// 같은 크기 카드를 앞에서부터 채운다. 마지막 줄이 모자라면 가운데.
+        /// 3×2에 5장을 넣으면 빈 6번째 칸이 생긴다(오너 21:45).
+        /// </summary>
+        public static Rect[] PackedCards(Rect r, int count, int cols = 3, float gap = 12f)
+        {
+            if (count < 1) count = 1;
+            if (cols < 1) cols = 1;
+            int rows = (count + cols - 1) / cols;
+            float ch = (r.height - gap * (rows - 1)) / rows;
+            float cw = (r.width - gap * (cols - 1)) / cols;
+            var cells = new Rect[count];
+            int i = 0;
+            for (int y = 0; y < rows; y++)
+            {
+                int n = Mathf.Min(cols, count - i);
+                float used = n * cw + (n - 1) * gap;
+                float x0 = r.x + (r.width - used) * 0.5f;
+                for (int x = 0; x < n; x++, i++)
+                    cells[i] = new Rect(x0 + x * (cw + gap), r.y + y * (ch + gap), cw, ch);
+            }
+            return cells;
+        }
+
+        public static Rect[] JobPickCards(Rect r, int count) => PackedCards(r, count, 3, 12f);
+
+        public static Rect[] StarterPickCards(Rect r) => JobPickCards(r, 5);
 
         public static Rect[] Grid(Rect r, int cols, int rows, float gap = 16f)
         {

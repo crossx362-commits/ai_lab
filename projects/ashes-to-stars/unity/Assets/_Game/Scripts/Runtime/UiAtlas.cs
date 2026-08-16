@@ -102,6 +102,31 @@ namespace AshesToStars
             return true;
         }
 
+        /// <summary>
+        /// 상자 안에서 원본 비율을 지킨 가장 큰 칸. 가로로 넓은 칸에 초상 프레임을
+        /// 그대로 넣으면 늘어나 보인다(오너 21:50).
+        /// </summary>
+        public static Rect FitInside(Rect box, float srcW, float srcH)
+        {
+            if (box.width <= 0f || box.height <= 0f) return box;
+            if (srcW <= 0f || srcH <= 0f) return box;
+            float scale = Mathf.Min(box.width / srcW, box.height / srcH);
+            float w = srcW * scale;
+            float h = srcH * scale;
+            return new Rect(
+                box.x + (box.width - w) * 0.5f,
+                box.y + (box.height - h) * 0.5f,
+                w, h);
+        }
+
+        /// <summary>아이콘·초상. 칸이 길어도 조각을 늘리지 않는다.</summary>
+        public static bool DrawFit(Rect box, string key, Color? tint = null)
+        {
+            var source = RectFor(key);
+            if (source.width <= 0f || source.height <= 0f) return false;
+            return Draw(FitInside(box, source.width, source.height), key, tint);
+        }
+
         /// <summary>호버·눌림을 아틀라스 3상태에 대응한다. 눌림이 호버보다 앞선다.</summary>
         public static string ButtonKey(bool hover, bool pressed)
         {
@@ -303,11 +328,11 @@ namespace AshesToStars
                 HeartKey(2, deathCount, deleted));
         }
 
-        /// <summary>초상 뒤에 프레임만. 초상은 호출부가 이어서 그린다.</summary>
+        /// <summary>초상 뒤에 프레임만. 초상은 호출부가 이어서 그린다. 9-slice라 넓은 칸에서 안 늘어난다.</summary>
         public static bool DrawRosterFrame(Rect face)
         {
-            return Draw(new Rect(face.x - 2, face.y - 2, face.width + 4, face.height + 4),
-                "portrait_frame");
+            return DrawSliced(new Rect(face.x - 2, face.y - 2, face.width + 4, face.height + 4),
+                "portrait_frame", 16f);
         }
 
         /// <summary>초상 위 역할 뱃지 + 오른쪽 목숨. 초상을 그린 뒤에 부른다.</summary>

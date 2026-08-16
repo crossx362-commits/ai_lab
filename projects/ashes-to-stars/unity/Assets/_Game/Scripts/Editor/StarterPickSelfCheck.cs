@@ -52,6 +52,28 @@ namespace AshesToStars
             Check(UiPages.LookPath("마딜", "idle_00") == "sprites/mage/mage_idle_00",
                 "마딜 전신은 mage 폴더 — 빼면 dps로 폴백한다");
             Check(!UiPages.StarterLookWalks, "시작 카드는 idle — 걷기로 바꾸면 FAIL");
+            var wide = new Rect(0f, 0f, 400f, 180f);
+            var fit = UiAtlas.FitInside(wide, UiPages.LookSrcW, UiPages.LookSrcH);
+            Check(Mathf.Abs(fit.width / fit.height - UiPages.LookSrcW / UiPages.LookSrcH) < 0.02f,
+                $"FitInside는 원본 비율 (실제 {fit.width / fit.height:0.00})");
+            Check(fit.height <= wide.height + 0.01f && fit.width < wide.width - 8f,
+                "가로로 넓은 칸은 세로를 채우고 옆에 여백을 남긴다 — 프레임을 늘리지 않는다");
+            var dest = UiPages.LookDest(wide, UiPages.LookSrcW, UiPages.LookSrcH);
+            Check(dest.width / dest.height < 1.25f,
+                $"모습 칸이 가로로 늘어나면 FAIL (실제 {dest.width / dest.height:0.00})");
+            var packed = UiPages.StarterPickCards(new Rect(0f, 0f, 900f, 400f));
+            Check(packed.Length == 5, $"시작 카드 5장 (실제 {packed.Length}) — 빈 6번째 칸 없음");
+            Check(packed[3].x > packed[0].x + 1f, "둘째 줄 2장은 가운데");
+            Check(Mathf.Abs(packed[0].width - packed[3].width) < 0.01f, "5장 같은 폭");
+            var oldGrid = UiPages.Grid(new Rect(0f, 0f, 900f, 400f), 3, 2, 14f);
+            Check(oldGrid.Length == 6 && packed.Length < oldGrid.Length,
+                "옛 3×2는 6칸 — 되돌리면 빈 칸이 다시 생긴다");
+            string titleSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/TitleScreen.cs"));
+            Check(titleSrc.Contains("StarterPickCards"),
+                "타이틀이 StarterPickCards를 쓴다 — Grid 3×2로 되돌리면 FAIL");
+            Check(!titleSrc.Contains("card.height - 88f"),
+                "카드 안 가로 여백을 다시 88px 라벨로 열면 FAIL");
             Check(UiPages.JobLookFrame(false) == UiPages.IdleFrame
                   && UiPages.IdleFrame == "idle_00",
                 "walk=false는 idle_00");
@@ -129,6 +151,10 @@ namespace AshesToStars
             _ = nameof(UiPages.DrawJobLook);
             _ = nameof(UiPages.StarterLookWalks);
             _ = nameof(UiPages.JobLookFrame);
+            _ = nameof(UiPages.LookDest);
+            _ = nameof(UiPages.StarterPickCards);
+            _ = nameof(UiAtlas.FitInside);
+            _ = nameof(UiAtlas.DrawFit);
             _ = nameof(TitleScreen);
 
             Environment.SetEnvironmentVariable(StarterPick.EnvShow, show);
