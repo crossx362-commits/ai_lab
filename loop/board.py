@@ -277,6 +277,109 @@ def parse_weeks(game_design: str) -> list[dict]:
     return out
 
 
+def parse_roadmap_table(game_design: str) -> list[dict]:
+    """원장 §22 「개발 로드맵 — 프로토타입 이후」."""
+    m = re.search(
+        r"개발 로드맵[^\n]*\n.*?\n\| 단계 \|[^\n]*\n\|[-| :]+\|\n(.*?)(?=\n\n|\n- |\n### |\Z)",
+        game_design,
+        re.S,
+    )
+    if not m:
+        return []
+    out = []
+    for line in m.group(1).splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        label = re.sub(r"[*]+", "", cells[0]).strip()
+        num = re.match(r"(\d+)", label)
+        if not num:
+            continue
+        out.append({
+            "id": num.group(1),
+            "label": label[:24],
+            "pct": 0,
+            "note": re.sub(r"<[^>]+>", "", cells[-1])[:80],
+        })
+    return out
+
+
+# 원장 §22-1 범위 + §13-2 건물 7종 + 확정 단축/격자. 근거 없는 완료는 올리지 않는다.
+_SLICE_ITEMS = (
+    ("keep", "본성 레벨", ("본성 레벨", "본성 건설", "EstateBuild")),
+    ("mine", "광산 생산", ("광산 적립", "광산 생산", "EstateMine")),
+    ("warehouse", "창고 적립·용량", ("창고 용량", "창고 적립", "창고")),
+    ("smith", "대장간·제작", ("대장간",)),
+    ("mausoleum", "영묘", ("영묘",)),
+    ("barracks", "수비대", ("수비 배치", "수비대")),
+    ("defense", "방어 건물 4종", ("방어 건물", "EstateDefense")),
+    ("timer", "건설 시간", ("건설 시간",)),
+    ("first_job", "전직 1차", ("전직 1차", "전직 시스템")),
+    ("gear", "장비·제작", ("장비 제작", "가죽", "흉갑")),
+    ("t1t3", "티어 1~3", ("티어 1~3", "T1~T3")),
+    ("tower30", "탑 30층", ("탑 30층까지", "30층까지 성장", "티어 1~3 전체")),
+    ("grid", "격자 8×8", ("8×8", "격자 배치")),
+    ("shorten", "단축 50%", ("단축 50%", "단축 50")),
+)
+
+_SLICE_OPEN = ("다음", "미완", "안 넣음", "아직", "측정 안", "해금 게이트", "해금」")
+
+
+def _sentence_closed(blob: str, needles: tuple[str, ...]) -> bool:
+    for sent in re.split(r"(?<!\d)\.|\n", blob):
+        if not any(n in sent for n in needles):
+            continue
+        if any(w in sent for w in _SLICE_OPEN):
+            continue
+        title = re.search(r"^\s*\d+\.\s+\*\*(.+?)\*\*", sent)
+        if title and "✅" not in sent and "~~" not in sent:
+            if any(n in title.group(1) for n in needles):
+                continue
+        if any(w in sent for w in ("✅", "닫힘", "닫음", "완료", "PASS", "적립", "이터 결과")):
+            return True
+    return False
+
+
+def slice_checks(status: str, design: str, game_design: str = "") -> list[dict]:
+    """기획서 수직 슬라이스 범위를 STATUS·DESIGN 근거로 체크한다."""
+    blob = f"{status}\n{design}"
+    out = []
+    for sid, label, needles in _SLICE_ITEMS:
+        done = _sentence_closed(blob, needles)
+        out.append({
+            "id": item_id("slice:" + sid),
+            "title": label,
+            "detail": "원장 §22·§13" + (" · 근거 있음" if done else " · 아직"),
+            "done": done,
+            "human": False,
+        })
+    return out
+
+
+def mark_now_closed(now_list: list[dict], design: str, status: str,
+                    decisions: dict) -> list[dict]:
+    """기획서 「지금 당장」이 이미 닫힌 관문을 다시 열지 않게 한다."""
+    v2 = _v2_passed(status, decisions)
+    v3 = _v3_closed(design)
+    v4 = v4_released(status, decisions)
+    miles = parse_milestones(design)
+    for it in now_list:
+        title = it.get("title") or ""
+        if v2 and title.startswith("V2"):
+            it["done"] = True
+        if v3 and title.startswith("V3"):
+            it["done"] = True
+        if v4 and title.startswith("V4"):
+            it["done"] = True
+        for m in miles:
+            if m.get("done") and (m["title"][:2] == title[:2]
+                                  or m["title"] in title or title in m["title"]):
+                it["done"] = True
+    return now_list
+
+
 def _v2_passed(status: str, decisions: dict) -> bool:
     if "V2 사람 판정 → 통과" in status:
         return True
@@ -402,6 +505,8 @@ def progress_charts(status: str | None = None, design: str | None = None,
             w.update(state="done", pct=100, note="오너 통과")
         elif w["id"] == "W4" and v3:
             w.update(state="done", pct=100, note="V3 한 판 종단")
+        elif w["id"] == "W5" and v4_released(status, decisions):
+            w.update(state="done", pct=100, note="V4 관문 열림")
         elif w["id"] == "W6":
             if v4_released(status, decisions):
                 w.update(state="done", pct=100,
@@ -430,23 +535,51 @@ def progress_charts(status: str | None = None, design: str | None = None,
         proto_note = f"관문 {proto_closed}/{len(gates)} 닫힘"
     else:
         proto_note = f"관문 평균 · {proto_closed}/{len(gates)}닫힘 · 사람 70% 전 상한 90"
-    roadmap = [
-        {"id": "0", "label": "0. 프로토타입",
-         "pct": proto_pct,
-         "note": proto_note},
-        {"id": "1", "label": "1. 수직 슬라이스", "pct": 0, "note": "V4 이후"},
-        {"id": "2", "label": "2. 온라인 기반", "pct": 0, "note": "V4 이후"},
-        {"id": "3", "label": "3. 콘텐츠 확장", "pct": 0, "note": "V4 이후"},
-        {"id": "4", "label": "4. 폴리시·베타", "pct": 0, "note": "V4 이후"},
-        {"id": "5", "label": "5. 출시 준비", "pct": 0, "note": "V4 이후"},
+    slice_rows = slice_checks(status, design, game_design)
+    slice_done = sum(1 for r in slice_rows if r["done"])
+    slice_n = max(len(slice_rows), 1)
+    slice_pct = round(100 * slice_done / slice_n) if slice_rows else 0
+    opened = v4_released(status, decisions)
+    roadmap = parse_roadmap_table(game_design) or [
+        {"id": "0", "label": "0. 프로토타입", "pct": 0, "note": "§21"},
+        {"id": "1", "label": "1. 수직 슬라이스", "pct": 0, "note": "§22"},
+        {"id": "2", "label": "2. 온라인 기반", "pct": 0, "note": "§22"},
+        {"id": "3", "label": "3. 콘텐츠 확장", "pct": 0, "note": "§22"},
+        {"id": "4", "label": "4. 폴리시·베타", "pct": 0, "note": "§22"},
+        {"id": "5", "label": "5. 출시 준비", "pct": 0, "note": "§22"},
     ]
+    for stage in roadmap:
+        if stage["id"] == "0":
+            stage.update(pct=proto_pct, note=proto_note)
+        elif stage["id"] == "1":
+            if opened:
+                stage.update(
+                    pct=slice_pct,
+                    note=f"원장 범위 {slice_done}/{len(slice_rows)} 닫힘",
+                )
+            else:
+                stage.update(pct=0, note="V4 관문 후")
+        elif not opened:
+            stage.update(pct=0, note=stage.get("note") or "V4 관문 후")
+    live = parse_queue(status)
+    if live:
+        live_blocked = sum(1 for q in live if any(
+            k in (q.get("detail") or "") for k in ("소비 시스템이 없어", "유보", "지금 넣으면 오펀")))
+        queue_stat = {
+            "done": 0, "open": max(0, len(live) - live_blocked),
+            "blocked": live_blocked, "total": len(live),
+        }
+    else:
+        queue_stat = {"done": done_n, "open": open_n, "blocked": blocked_n, "total": len(rows)}
     return {
         "gates": gates,
         "weeks": weeks,
-        "queue": {"done": done_n, "open": open_n, "blocked": blocked_n, "total": len(rows)},
+        "queue": queue_stat,
         "art": resource_bars(),
         "commits": commit_spark(),
         "roadmap": roadmap,
+        "slice": slice_rows,
+        "slice_pct": slice_pct,
     }
 
 
@@ -1844,12 +1977,8 @@ def build_state() -> dict:
     queue = parse_queue(status)
     miles = parse_milestones(design)
     table = parse_queue_table(status)
-    now_list = parse_now_list(_read(GAME_DESIGN))
-    for it in now_list:
-        for m in miles:
-            if m.get("done") and (m["title"][:2] == it["title"][:2] or
-                                  m["title"] in it["title"] or it["title"] in m["title"]):
-                it["done"] = True
+    now_list = mark_now_closed(
+        parse_now_list(_read(GAME_DESIGN)), design, status, decisions)
     extra = table + now_list
     flags = loop_flags()
     return {
@@ -1865,6 +1994,7 @@ def build_state() -> dict:
         "commits": recent_commits(),
         "git": dirty_files(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
+        "slice": slice_checks(status, design, _read(GAME_DESIGN)),
         "stuck": stuck_items(status, flags),
         "completed": completed_posts(status),
         "playtest": playtest_state(),

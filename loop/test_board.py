@@ -149,8 +149,8 @@ class ParseTests(unittest.TestCase):
                 })
             finally:
                 board.ROOT = old
-        self.assertEqual(charts["queue"]["done"], 1)
-        self.assertEqual(charts["queue"]["blocked"], 1)
+        self.assertEqual(charts["queue"]["total"], 2)
+        self.assertEqual(charts["queue"]["open"], 2)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V2")["pct"], 100)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V3")["pct"], 100)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 20)
@@ -330,6 +330,7 @@ class ParseTests(unittest.TestCase):
         html = (HERE / "board.html").read_text(encoding="utf-8")
         self.assertLess(html.find('id="charts"'), html.find('id="done-gallery"'))
         self.assertIn("renderCompleted", html)
+        self.assertIn('id="slice"', html)
 
 
 class WriteTests(unittest.TestCase):
@@ -706,6 +707,83 @@ class CliUsageTests(unittest.TestCase):
         self.assertEqual(n["c"], 1)
         self.assertEqual(a["remain_pct"], 60.0)
         self.assertEqual(b["remain_pct"], 60.0)
+
+
+class SliceBoardTests(unittest.TestCase):
+    def test_roadmap_from_spec(self):
+        rows = board.parse_roadmap_table("""
+### 개발 로드맵 — 프로토타입 이후
+
+| 단계 | 기간 | 범위 | 관문 |
+|---|---|---|---|
+| **0. 프로토타입** | 4주 | §21 | **V4** |
+| **1. 수직 슬라이스** | 8주 | 영지 7종 | 5시간 |
+""")
+        self.assertEqual([r["id"] for r in rows], ["0", "1"])
+        self.assertIn("수직", rows[1]["label"])
+
+    def test_slice_checks_need_evidence(self):
+        design = """
+- **수직 슬라이스** — 본성 레벨·광산 적립·창고 용량·방어 건물 4종은 닫힘. 격자·단축 50%는 다음.
+"""
+        status = """
+> 영묘✅ · 대장간 첫 슬라이스✅ · 수비 배치✅
+> ~~**§3 전직 시스템**~~ ✅ **완료**
+"""
+        rows = {r["title"]: r["done"] for r in board.slice_checks(status, design)}
+        self.assertTrue(rows["본성 레벨"])
+        self.assertTrue(rows["광산 생산"])
+        self.assertTrue(rows["방어 건물 4종"])
+        self.assertTrue(rows["영묘"])
+        self.assertTrue(rows["전직 1차"])
+        self.assertFalse(rows["격자 8×8"])
+        self.assertFalse(rows["단축 50%"])
+        self.assertFalse(rows["탑 30층"])
+
+    def test_queue_title_is_not_closed(self):
+        status = (
+            "1. **수직 슬라이스 — 격자 8×8** — 본성·단축 50%는 닫음.\n"
+            "> **이번 이터 결과: 건설 단축 50%.**\n"
+        )
+        rows = {r["title"]: r["done"] for r in board.slice_checks(status, "")}
+        self.assertFalse(rows["격자 8×8"])
+        self.assertTrue(rows["단축 50%"])
+        self.assertFalse(rows["탑 30층"])
+
+    def test_slice_pct_after_v4_skip(self):
+        status = STATUS + "\nV4 외부 테스터 70% → 넘김\n"
+        design = DESIGN + "\n- **수직 슬라이스** — 본성 레벨은 닫힘. 격자·단축 50%는 다음.\n"
+        game = """
+개발 로드맵 — 프로토타입 이후
+
+| 단계 | 기간 | 범위 | 관문 |
+|---|---|---|---|
+| **0. 프로토타입** | 4주 | §21 | V4 |
+| **1. 수직 슬라이스** | 8주 | 영지 | 5시간 |
+"""
+        charts = board.progress_charts(status, design, game, {})
+        stage = next(r for r in charts["roadmap"] if r["id"] == "1")
+        self.assertGreater(stage["pct"], 0)
+        self.assertLess(stage["pct"], 100)
+        self.assertIn("원장 범위", stage["note"])
+
+    def test_now_list_closed_after_gates(self):
+        now = board.parse_now_list("""
+### 지금 당장 할 일 (우선순위 순)
+
+1. **V3 보스 전투를 끝까지 연결** — 한 판
+2. **V2 사람 판정** — 창
+3. **V4 외부 판정 후 확장** — 영지
+
+## 23. 다음
+""")
+        design = """### 현재 핵심 미완
+
+- **V3 한 판 종단** ✅ 닫힘
+- **V2 사람 판정** ✅ 통과
+"""
+        board.mark_now_closed(now, design, "V4 70% → 넘김", {})
+        self.assertTrue(all(it.get("done") for it in now))
 
 
 class ResumeTests(unittest.TestCase):
