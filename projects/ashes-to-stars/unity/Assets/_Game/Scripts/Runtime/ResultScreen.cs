@@ -33,6 +33,7 @@ namespace AshesToStars
             BattleScreen.SeedHuntGoldRewardQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
+            EscapeForfeit.SeedQaIfRequested();
 
             // 층 보상 선택이 남아 있으면 에필로그보다 먼저 5종을 한 화면에 보여 준다.
             // 예전엔 줄 목록이라 100층 자막이 있으면 힐·버퍼가 잘렸다.
@@ -113,6 +114,8 @@ namespace AshesToStars
 
             // 전투 결과 요약 (§2 코어 루프). 영구 손실은 골드보다 먼저 읽힌다(§16-7).
             Info(r, _rowIndex++, string.IsNullOrEmpty(GameFlow.LastBattleSummary) ? "전투 기록 없음" : GameFlow.LastBattleSummary);
+            if (EscapeForfeit.Active)
+                Info(r, _rowIndex++, EscapeForfeit.Body());
             var defeat = GameFlow.LastDefeatReport;
             if (defeat != null && defeat.TrainingReturn)
                 Info(r, _rowIndex++, DeathTraining.ReturnLine());

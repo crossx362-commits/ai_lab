@@ -409,6 +409,21 @@ namespace AshesToStars
             return loot;
         }
 
+        /// <summary>
+        /// 긴급 탈출(§3·§4). 패배가 아니라 포기라 추가 소모·명예·보호막을 안 건다.
+        /// 출정비는 이미 낸 채로 남는다 — 그 판의 손해.
+        /// </summary>
+        public static bool AbortPending()
+        {
+            Load();
+            if (!_pending) return false;
+            _pending = false;
+            _paid = 0;
+            _lastLoot = 0;
+            Save();
+            return true;
+        }
+
         public static void SeedQaIfRequested()
         {
             string raw = Environment.GetEnvironmentVariable(EnvShow);

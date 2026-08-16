@@ -208,7 +208,7 @@ namespace AshesToStars
             bool hit = Time.time - global::W3Party.LastPartyDamageAt < 0.08f;
             var phase = EmergencyEscape.Tick(Time.deltaTime, hit);
             if (phase == EmergencyEscape.Phase.Escaped)
-                GameFlow.Go(GameFlow.Estate);
+                LeaveByEscape();
 
             if (_leftForSafety || _defeatApplied) return;
             bool watch = LowHpReturn.ShouldWatch(GameFlow.Kind, GameFlow.ReturnTo);
@@ -266,6 +266,15 @@ namespace AshesToStars
             _reward.Clear();
             GameFlow.LastBattleSummary = "저체력 귀환 — 이번 판 보상 없음(§4)";
             GameFlow.Go(GameFlow.Estate);
+        }
+
+        void LeaveByEscape()
+        {
+            if (_leftForSafety || _defeatApplied) return;
+            _leftForSafety = true;
+            EscapeForfeit.Apply(_reward);
+            // QA_NO·옛 경로는 결과 없이 영지. 소비처가 있을 때만 포기를 보여 준다.
+            GameFlow.Go(EscapeForfeit.Blocked ? GameFlow.Estate : GameFlow.Result);
         }
 
         /// <summary>
