@@ -144,26 +144,28 @@ namespace AshesToStars
 
         void WorldTier(Rect r)
         {
-            int row = 0;
-            Info(r, row++,
+            Info(r, 0,
                 $"해금 T{GameState.UnlockedTier + 1} · 탑 {GameState.TowerFloor}층 · 최고 기록은 안 내려간다(§6)");
             int unlocked = GameState.UnlockedTier;
-            int last = Mathf.Min(9, unlocked + 1);
-            for (int i = 0; i <= last && row < 8; i++)
+            var cells = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 180f), 5, 2, 10f);
+            for (int i = 0; i < cells.Length; i++)
             {
                 string pay = Economy.FormatCurrency((long)(Economy.TierRevenueMultiplier[i] * 10000f)) + "/h";
                 if (i > unlocked)
                 {
-                    Locked(r, row++, $"T{i + 1}", $"탑 {i * 10 + 1}층에서 해금 — 현재 {GameState.TowerFloor}층");
+                    DrawCard(cells[i], $"T{i + 1}",
+                        $"탑 {i * 10 + 1}층에서 해금 — 현재 {GameState.TowerFloor}층",
+                        "tower", locked: true);
                     continue;
                 }
                 bool current = i == GameState.Tier;
-                if (Row(r, row++, $"T{i + 1} · {pay}",
+                if (DrawCard(cells[i], $"T{i + 1} · {pay}",
                         current ? "현재 세계 — 필드·던전·하위 레이드" : "이 티어로 세계를 맞춘다",
                         "tower"))
                     GameState.TrySelectTier(i);
             }
-            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+            var back = UiPages.Grid(new Rect(r.x, r.yMax - 88f, r.width, 80f), 1, 1, 10f);
+            if (DrawCard(back[0], "영지로", "건물에서 나온다", "territory")) _sub = Sub.없음;
         }
 
         /// <summary>

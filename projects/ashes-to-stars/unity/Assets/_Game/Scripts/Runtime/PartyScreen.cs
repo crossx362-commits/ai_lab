@@ -35,11 +35,9 @@ namespace AshesToStars
             }
 
             var roster = LifeSystem.GetCharacters();
-            int row = 0;
-
             if (roster.Count == 0)
             {
-                Info(page, row++, "[주의] 캐릭터가 하나도 없다 — 로스터 생성이 실패했다");
+                Info(page, 0, "[주의] 캐릭터가 하나도 없다 — 로스터 생성이 실패했다");
                 return;
             }
 
@@ -47,10 +45,9 @@ namespace AshesToStars
             {
                 var ch = roster[i];
                 bool inParty = PartyState.Contains(i);
-                string label = (inParty ? "★ " : "") + $"{ch.Name} · {ch.Job}";
-                string sub = StatusOf(ch, i, inParty);
-
-                if (Row(page, row, label, "", leftPad: 56f))
+                var cell = UiPages.RosterCell(page, i);
+                if (cell.yMax > page.yMax) break;
+                if (DrawPartyCard(cell, ch, inParty, StatusOf(ch, i, inParty)))
                 {
                     if (!PartyState.Toggle(i))
                         _msg = DefenseState.Contains(i)
@@ -60,11 +57,27 @@ namespace AshesToStars
                                 : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
-                DrawSlotChrome(page, row, ch, sub);
-                row++;
             }
 
-            if (!string.IsNullOrEmpty(_msg)) Info(page, row, _msg);
+            if (!string.IsNullOrEmpty(_msg))
+                Info(new Rect(page.x, page.yMax - RowH, page.width, RowH), 0, _msg);
+        }
+
+        bool DrawPartyCard(Rect cell, CharacterRecord ch, bool inParty, string status)
+        {
+            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
+            if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
+                UiAtlas.Draw(cell, "panel", tint);
+            float face = Mathf.Min(cell.width - 16f, cell.height - 40f);
+            var faceR = new Rect(cell.center.x - face * 0.5f, cell.y + 6f, face, face);
+            UiAtlas.DrawRosterFrame(faceR);
+            PortraitAtlas.Draw(faceR, PortraitAtlas.KeyForJob(ch.Job),
+                ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null);
+            UiAtlas.DrawRosterMarks(faceR, new Rect(cell.x + 6f, cell.yMax - 32f, cell.width - 12f, 28f),
+                ch.Job, ch.DeathCount, ch.IsDeleted);
+            Hint(new Rect(cell.x + 6f, cell.yMax - 22f, cell.width - 12f, 20f),
+                (inParty ? "★ " : "") + ch.Name + " · " + status);
+            return GUI.Button(cell, GUIContent.none, GUIStyle.none);
         }
 
         void DrawSortiePage(Rect r)
@@ -80,20 +93,6 @@ namespace AshesToStars
                 "1번 자리가 탱 자리다", "tank", locked: true);
             if (DrawCard(cards[3], "영지로", "허브로 돌아간다", "territory"))
                 GameFlow.Go(GameFlow.Estate);
-        }
-
-        void DrawSlotChrome(Rect r, int index, CharacterRecord ch, string sub)
-        {
-            var br = RowButtonRect(r, index);
-            if (br.yMax > r.yMax) return;
-
-            var face = new Rect(br.x + 6, br.y + 5, 48, 48);
-            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
-            UiAtlas.DrawRosterFrame(face);
-            PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
-            var desc = RowDescRect(r, index);
-            float heartsW = UiAtlas.DrawRosterMarks(face, desc, ch.Job, ch.DeathCount, ch.IsDeleted);
-            Hint(new Rect(desc.x + heartsW + 6, desc.y + 6, desc.width - heartsW - 6, 22), sub);
         }
 
         static string StatusOf(CharacterRecord ch, int rosterIndex, bool inParty)

@@ -130,5 +130,37 @@ namespace AshesToStars
             }
             return cells;
         }
+
+        /// <summary>
+        /// 허브 카드 안 아이콘·제목 좌표. 높은 카드는 아이콘이 위를 채우고,
+        /// 넓은 카드는 왼쪽에 붙는다 — 64px 아이콘을 위에만 두면 카드가 비어 보인다.
+        /// </summary>
+        public const float CardMinIcon = 72f;
+
+        public static void CardLayout(Rect card, bool hasIcon, out Rect icon, out Rect title, out Rect sub)
+        {
+            icon = default;
+            bool tall = hasIcon && card.height >= 150f;
+            if (tall)
+            {
+                float plateH = Mathf.Clamp(card.height * 0.34f, 72f, 108f);
+                float maxIcon = Mathf.Min(card.width - 28f, card.height - plateH - 14f);
+                float size = Mathf.Max(CardMinIcon, maxIcon);
+                icon = new Rect(card.center.x - size * 0.5f, card.y + 10f, size, size);
+                title = new Rect(card.x + 16f, card.yMax - plateH + 8f, card.width - 32f, 30f);
+                sub = new Rect(card.x + 16f, card.yMax - plateH + 38f, card.width - 32f, plateH - 46f);
+                return;
+            }
+
+            float side = hasIcon
+                ? Mathf.Min(card.height - 16f, 96f, Mathf.Max(CardMinIcon, card.width * 0.22f))
+                : 0f;
+            if (hasIcon)
+                icon = new Rect(card.x + 12f, card.y + (card.height - side) * 0.5f, side, side);
+            float tx = card.x + (hasIcon ? side + 22f : 16f);
+            float tw = card.xMax - tx - 14f;
+            title = new Rect(tx, card.y + 10f, tw, 30f);
+            sub = new Rect(tx, card.y + 42f, tw, Mathf.Max(20f, card.height - 54f));
+        }
     }
 }

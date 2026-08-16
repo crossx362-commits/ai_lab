@@ -42,22 +42,24 @@ namespace AshesToStars
         {
             if (_showInsufficientGold)
             {
-                // 골드 부족 경고 화면 (§18-2 진입 비용)
                 Info(r, 0, "[주의] 골드가 부족합니다");
                 Info(r, 1, "던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)");
-
-                if (Row(r, 2, "확인", "돌아간다"))
+                if (DrawChoice(r, "확인", "돌아간다", "field",
+                               "영지로", "허브로 간다", "territory", out bool home)
+                    || home)
+                {
                     _showInsufficientGold = false;
+                    if (home) GameFlow.Go(GameFlow.Estate);
+                }
                 return;
             }
 
             if (_showLastLifeWarning)
             {
-                // 마지막 목숨 경고 화면
                 Info(r, 0, "[주의] 마지막 목숨 캐릭터가 파티에 있습니다");
                 Info(r, 1, "사망 시 캐릭터가 영구 삭제되며\n장착 장비도 함께 사라집니다(§4)");
-
-                if (Row(r, 2, "계속 진행", "입장한다"))
+                if (DrawChoice(r, "계속 진행", "입장한다", "field",
+                               "취소", "파티를 다시 편성한다", "characters", out bool cancel))
                 {
                     _showLastLifeWarning = false;
                     if (_pendingCost > 0 && !GameState.Pay(_pendingCost))
@@ -66,60 +68,53 @@ namespace AshesToStars
                         _showInsufficientGold = true;
                         return;
                     }
-                    bool dungeon = _pendingCost > 0;     // 비용이 붙은 것은 던전뿐이다(필드 사냥은 무료)
+                    bool dungeon = _pendingCost > 0;
                     bool raid = _pendingRaid;
                     _pendingCost = 0; _pendingRaid = false;
                     if (raid) EnterRaid();
                     else if (dungeon) EnterDungeon();
                     else GameFlow.GoBattle(GameFlow.Field);
                 }
-                if (Row(r, 3, "취소", "파티를 다시 편성한다"))
+                else if (cancel)
                 {
                     _showLastLifeWarning = false;
-                    _pendingCost = 0; _pendingRaid = false;   // 입장하지 않았으니 아무것도 내지 않는다
+                    _pendingCost = 0; _pendingRaid = false;
                 }
                 return;
             }
 
-            if (Row(r, 0, "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)"))
+            var cards = UiPages.Grid(r, 2, 2, 16f);
+            if (DrawCard(cards[0], "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)", "field"))
             {
-                // 필드 사냥은 무료 (§18-2 절대 원칙)
                 if (HasLastLifeCharacter())
                     _showLastLifeWarning = true;
                 else
                     GameFlow.GoBattle(GameFlow.Field);
             }
-            if (Row(r, 1, "던전 입장", "랜덤 생성 + 종점 보스 1체(§7)"))
+            long dungeonCost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
+            if (DrawCard(cards[1], "던전 입장",
+                    $"랜덤 생성 + 종점 보스 · {Economy.FormatCurrency(dungeonCost)}(§7)",
+                    "tower"))
             {
-                // 던전 입장에는 골드 비용 필요 (§18-2).
-                // 모자라면 들어가지 못한다. 부분 차감은 하지 않는다.
-                // **차감은 되돌릴 수 없는 마지막 단계에서만** 한다(경고에서 취소할 수 있다).
-                long dungeonCost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
                 if (GameState.Wallet.Copper < dungeonCost)
-                {
                     _showInsufficientGold = true;
-                }
                 else if (HasLastLifeCharacter())
                 {
-                    _pendingCost = dungeonCost;     // 아직 내지 않는다
+                    _pendingCost = dungeonCost;
                     _showLastLifeWarning = true;
                 }
                 else if (!GameState.Pay(dungeonCost))
-                {
                     _showInsufficientGold = true;
-                }
                 else
-                {
                     EnterDungeon();
-                }
             }
-            // ✅ §7 레이드급 던전 — 떴을 때만 보이고, 시간이 지나면 사라진다
+
             if (RaidSpawn.Active)
             {
                 long raidCost = Economy.GetActionCost("RaidDungeon", GameState.Tier);
-                if (Row(r, 2, $"레이드급 던전 {RaidSpawn.RemainingText()}",
-                        $"5인 전제·1인 거의 불가(§9) · 입장 {Economy.FormatCurrency(raidCost)} · " +
-                        "환생석·증표는 안 나온다(§10-8)"))
+                if (DrawCard(cards[2], $"레이드급 {RaidSpawn.RemainingText()}",
+                        $"5인 전제 · {Economy.FormatCurrency(raidCost)} · 환생석·증표 없음(§10-8)",
+                        "tower"))
                 {
                     if (GameState.Wallet.Copper < raidCost) _showInsufficientGold = true;
                     else if (HasLastLifeCharacter())
@@ -129,9 +124,18 @@ namespace AshesToStars
                     else if (!GameState.Pay(raidCost)) _showInsufficientGold = true;
                     else EnterRaid();
                 }
-                DrawLowHpReturnRow(r, 3);
             }
-            else DrawLowHpReturnRow(r, 2);
+            else
+            {
+                DrawCard(cards[2], GameState.WalletText,
+                    $"{GameState.BagText()} · 필드 사냥은 무료", "building_auction", locked: true);
+            }
+
+            bool on = LowHpReturn.Enabled;
+            if (DrawCard(cards[3], on ? "저체력 귀환 켜짐" : "저체력 귀환 꺼짐",
+                    "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)",
+                    on ? "heart" : "heart_broken"))
+                LowHpReturn.Enabled = !on;
         }
 
         /// <summary>
@@ -158,15 +162,6 @@ namespace AshesToStars
             RaidSpawn.Consume();
             DungeonRun.Begin(seed, GameState.Tier, DungeonKind.레이드급, GameFlow.Field);
             GameFlow.Go(GameFlow.Dungeon);
-        }
-
-        void DrawLowHpReturnRow(Rect r, int index)
-        {
-            bool on = LowHpReturn.Enabled;
-            if (Row(r, index, on ? "저체력 귀환 켜짐" : "저체력 귀환 꺼짐",
-                    "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)",
-                    on ? "heart" : "heart_broken"))
-                LowHpReturn.Enabled = !on;
         }
 
         bool HasLastLifeCharacter()

@@ -32,7 +32,8 @@ namespace AshesToStars
             if (!DungeonRun.Active)
             {
                 Info(r, 0, "진행 중인 던전이 없다. 필드에서 던전에 입장할 수 있다(§7).");
-                if (Row(r, 1, "필드로", "돌아간다")) GameFlow.Go(GameFlow.Field);
+                var empty = UiPages.Grid(new Rect(r.x, r.y + 88f, r.width, Mathf.Min(180f, r.height - 96f)), 1, 1, 12f);
+                if (DrawCard(empty[0], "필드로", "돌아간다", "field")) GameFlow.Go(GameFlow.Field);
                 return;
             }
 
@@ -41,7 +42,8 @@ namespace AshesToStars
             {
                 Info(r, 0, "종점 보스를 처치했다 — 던전 클리어");
                 Info(r, 1, "임시 강화는 여기서 사라진다(§7). 재화·드랍은 이미 지갑에 들어갔다.");
-                if (Row(r, 2, "던전 나가기", "필드로 돌아간다"))
+                var done = UiPages.Grid(new Rect(r.x, r.y + 160f, r.width, Mathf.Min(180f, r.height - 168f)), 1, 1, 12f);
+                if (DrawCard(done[0], "던전 나가기", "필드로 돌아간다", "field"))
                 {
                     DungeonRun.End();
                     GameFlow.Go(DungeonRun.ReturnScene);
@@ -62,28 +64,33 @@ namespace AshesToStars
             {
                 var picks = DungeonRun.DrawBoons(DungeonRun.PendingNode);
                 Info(r, 0, $"임시 강화 3택 — 던전을 나가면 사라진다(§7). 보유 {state.Boons.Count}개");
+                var pickArea = new Rect(r.x, r.y + 80f, r.width, r.height - 80f);
                 if (picks.Count == 0)
                 {
-                    // 8종을 전부 가져간 경우. 없는 걸 지어내지 않고 그대로 통과시킨다.
                     Info(r, 1, "더 가져갈 강화가 없다 — 이미 전부 보유했다(§18-7 중복 제외)");
-                    if (Row(r, 2, "통과", "다음 노드로")) DungeonRun.TakeBoonSkip();
+                    var skip = UiPages.Grid(pickArea, 1, 1, 12f);
+                    if (DrawCard(skip[0], "통과", "다음 노드로", "field")) DungeonRun.TakeBoonSkip();
                     return;
                 }
-                for (int i = 0; i < picks.Count; i++)
+                var cells = UiPages.Grid(pickArea, Mathf.Max(1, picks.Count), 1, 12f);
+                for (int i = 0; i < picks.Count && i < cells.Length; i++)
                 {
                     var d = Boons.Def(picks[i]);
-                    if (Row(r, i + 1, d.Name, d.Desc)) { DungeonRun.TakeBoon(picks[i]); return; }
+                    if (DrawCard(cells[i], d.Name, d.Desc, "heart"))
+                    {
+                        DungeonRun.TakeBoon(picks[i]);
+                        return;
+                    }
                 }
                 return;
             }
 
             var next = DungeonRun.NextNodes();
-            int row = 1;
             if (next.Count == 0)
             {
-                // 구성으로 완주를 보장하므로(G2) 여기 오는 것은 막다른 보상 분기를 다 턴 경우뿐이다.
-                Info(r, row++, "이 방향은 끝났다 — 돌아 나간다");
-                if (Row(r, row++, "던전 나가기", "재화는 유지, 강화는 초기화(§7)"))
+                Info(r, 1, "이 방향은 끝났다 — 돌아 나간다");
+                var leave = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 80f), 1, 1, 12f);
+                if (DrawCard(leave[0], "던전 나가기", "재화는 유지, 강화는 초기화(§7)", "field"))
                 {
                     DungeonRun.End();
                     GameFlow.Go(DungeonRun.ReturnScene);
@@ -91,18 +98,20 @@ namespace AshesToStars
                 return;
             }
 
-            foreach (int n in next)
+            int cols = Mathf.Min(2, next.Count + 1);
+            int rows = Mathf.CeilToInt((next.Count + 1) / (float)cols);
+            var nodes = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 80f), cols, rows, 12f);
+            for (int i = 0; i < next.Count && i < nodes.Length; i++)
             {
-                var node = plan.Nodes[n];
-                if (Row(r, row++, Label(n), Desc(node)))
+                int n = next[i];
+                if (DrawCard(nodes[i], Label(n), Desc(plan.Nodes[n]), "tower"))
                 {
                     DungeonRun.Enter(n);
-                    // 전투가 없는 노드는 Enter가 그 자리에서 통과시키므로 화면만 다시 그리면 된다
                     return;
                 }
             }
-
-            if (Row(r, row, "던전 포기", "여기서 나간다 — 강화는 사라진다(§7)"))
+            int last = Mathf.Min(next.Count, nodes.Length - 1);
+            if (last >= 0 && DrawCard(nodes[last], "던전 포기", "여기서 나간다 — 강화는 사라진다(§7)", "heart_broken"))
             {
                 DungeonRun.End();
                 GameFlow.Go(DungeonRun.ReturnScene);

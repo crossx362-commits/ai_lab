@@ -41,18 +41,21 @@ namespace AshesToStars
             SoloRaidClear.SeedQaIfRequested();
             if (_showInsufficientGold)
             {
-                // 골드 부족 경고 화면 (§18-2 진입 비용)
                 Info(r, 0, "[주의] 골드가 부족합니다");
                 Info(r, 1, $"필요 {Economy.FormatCurrency(_pendingCost)} · 보유 {GameState.WalletText}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
-
-                // §12 "골드가 없을 때 대출" — 빚을 내서라도 다음 판에. 골드는 곧 목숨이다.
-                // 무자산이면 한도 0이라 이 버튼이 안 뜬다(§18-5 무자산 대출 방지) → 필드 사냥으로 복구.
                 long shortfall = _pendingCost - GameState.Wallet.Copper;
-                Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 현재 부채 {Economy.FormatCurrency(GameState.Debt)} · 이자 시간당 0.5%(§18-5)");
-                int row = 3;
-                if (shortfall > 0 && GameState.LoanBorrowable >= shortfall)
+                Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 부채 {Economy.FormatCurrency(GameState.Debt)} · 이자 0.5%/h(§18-5)");
+                if (shortfall > 0 && GameState.LoanBorrowable < shortfall)
+                    Info(r, 3, "대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)");
+
+                string okTitle = shortfall > 0 && GameState.LoanBorrowable >= shortfall
+                    ? "대출받고 입장" : "확인";
+                string okSub = shortfall > 0 && GameState.LoanBorrowable >= shortfall
+                    ? "빚을 내서라도 다음 판에 — 골드는 곧 목숨이다(§12)" : "돌아간다";
+                if (DrawChoice(r, okTitle, okSub, "tower",
+                               "취소", "입장하지 않는다", "territory", out bool cancel))
                 {
-                    if (Row(r, row++, "대출받고 입장", "빚을 내서라도 다음 판에 — 골드는 곧 목숨이다(§12)"))
+                    if (shortfall > 0 && GameState.LoanBorrowable >= shortfall)
                     {
                         if (GameState.Borrow(shortfall) && GameState.Pay(_pendingCost))
                         {
@@ -63,13 +66,13 @@ namespace AshesToStars
                             return;
                         }
                     }
+                    else
+                    {
+                        _showInsufficientGold = false;
+                        _pendingCost = 0;
+                    }
                 }
-                else if (shortfall > 0)
-                {
-                    Info(r, row++, "대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)");
-                }
-
-                if (Row(r, row, "확인", "돌아간다"))
+                else if (cancel)
                 {
                     _showInsufficientGold = false;
                     _pendingCost = 0;
@@ -79,14 +82,12 @@ namespace AshesToStars
 
             if (_showLastLifeWarning)
             {
-                // 마지막 목숨 경고 화면
                 Info(r, 0, "[주의] 마지막 목숨 캐릭터가 파티에 있습니다");
                 Info(r, 1, "사망 시 캐릭터가 영구 삭제되며\n장착 장비도 함께 사라집니다(§4)");
-
-                if (Row(r, 2, "계속 진행", "입장한다"))
+                if (DrawChoice(r, "계속 진행", "입장한다", "tower",
+                               "취소", "파티를 다시 편성한다", "characters", out bool cancel))
                 {
                     _showLastLifeWarning = false;
-                    // 대출 화면이 _pendingCost/Kind/Floor를 읽으므로 여기서 지우지 않는다.
                     if (_pendingCost > 0 && !GameState.Pay(_pendingCost))
                     {
                         _showInsufficientGold = true;
@@ -95,26 +96,30 @@ namespace AshesToStars
                     _pendingCost = 0;
                     GameFlow.GoBattle(GameFlow.Tower, _pendingKind, _pendingFloor);
                 }
-                if (Row(r, 3, "취소", "파티를 다시 편성한다"))
+                else if (cancel)
                 {
                     _showLastLifeWarning = false;
-                    _pendingCost = 0;   // 입장하지 않았으니 아무것도 내지 않는다
+                    _pendingCost = 0;
                 }
                 return;
             }
 
-            if (Row(r, 0, "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)"))
+            var cards = UiPages.Grid(r, 2, 2, 16f);
+            if (DrawCard(cards[0], "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)", "tower"))
                 Enter(Economy.GetActionCost("TowerNormalFloor", GameState.UnlockedTier),
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
-            // 레이드는 **보스전**이다 — 잡몹 웨이브가 아니라 기믹 3종이 도는 판(§9·§10-5).
-            // §5가 "보스는 수동 지휘"라 했으므로 여기서 V3 검증이 이뤄진다.
-            if (Row(r, 1, "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)"))
+            if (DrawCard(cards[1], "레이드 (5층 단위)", "5층마다 보스, 10층 단위는 대보스(§9)", "damage"))
             {
-                // 레이드 층은 현재 진행도에서 가장 가까운 5층 배수(§9 "5층 단위")
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
                 Enter(Economy.GetActionCost("Tower5BossRaid", GameState.UnlockedTier),
                       GameFlow.BattleKind.보스, raidFloor);
             }
+            DrawCard(cards[2], $"{GameState.TowerFloor}층",
+                $"해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1}",
+                "tower", locked: true);
+            DrawCard(cards[3], GameState.WalletText,
+                GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
+                "building_auction", locked: true);
         }
 
         /// <summary>

@@ -121,6 +121,19 @@ namespace AshesToStars
             Debug.Assert(UiAtlas.HeaderKey("Party") == null,
                 "[UiAtlasSelfCheck] 매핑 없는 화면을 worldmap으로 숨기면 안 된다");
 
+            Debug.Assert(GameScreen.HeaderH <= 92f && GameScreen.BodyTop <= 108f,
+                "[UiAtlasSelfCheck] 제목판이 다시 커지면 720p 본문이 카드 한 줄을 못 채운다");
+            Debug.Assert(UiPages.CardMinIcon >= 72f,
+                "[UiAtlasSelfCheck] 카드 아이콘이 72보다 작으면 허브가 비어 보인다");
+            var tallCard = new Rect(0f, 0f, 280f, 220f);
+            UiPages.CardLayout(tallCard, true, out var tallIcon, out var tallTitle, out _);
+            Debug.Assert(tallIcon.width >= 72f && tallIcon.height >= 72f && tallIcon.y < tallTitle.y,
+                "[UiAtlasSelfCheck] 높은 카드는 아이콘이 위를 채워야 한다");
+            var wideCard = new Rect(0f, 0f, 400f, 88f);
+            UiPages.CardLayout(wideCard, true, out var wideIcon, out var wideTitle, out _);
+            Debug.Assert(wideIcon.x < wideTitle.x && wideIcon.height >= 56f,
+                "[UiAtlasSelfCheck] 넓은 카드는 아이콘이 왼쪽에 붙어야 한다");
+
             // 편성 화면이 목숨·역할을 글자로만 쓰면 캐릭터 화면과 같은 조각이 소비처 0곳이다.
             var tankFull = UiAtlas.SlotChrome("탱", 0, false);
             Debug.Assert(tankFull.frame == "portrait_frame" && tankFull.role == "tank"

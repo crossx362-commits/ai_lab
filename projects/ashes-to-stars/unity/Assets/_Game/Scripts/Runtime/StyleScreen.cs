@@ -37,36 +37,39 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            int row = 0;
-
+            var jobCells = UiPages.Grid(new Rect(r.x, r.y, r.width, 108f), Jobs.Length, 1, 10f);
             for (int i = 0; i < Jobs.Length; i++)
             {
                 string job = Jobs[i];
                 var cur = CombatStylePrefs.Get(job);
                 bool open = _sel == i;
-
-                if (Row(r, row++, (open ? "▼ " : "▶ ") + job,
-                        $"{cur} — {CombatStylePrefs.Describe(cur)}"))
+                if (DrawCard(jobCells[i], job, $"{cur}", UiAtlas.RoleKey(job)))
                     _sel = open ? -1 : i;
+            }
 
-                if (!open) continue;
-
-                // 펼친 직업만 4가지 선택지를 보여준다. 고른 것에는 ● 를 붙여
-                // **지금 무엇이 켜져 있는지**가 목록 안에서 바로 읽히게 한다.
-                for (int s = 0; s < Styles.Length; s++)
+            if (_sel >= 0 && _sel < Jobs.Length)
+            {
+                string job = Jobs[_sel];
+                var cur = CombatStylePrefs.Get(job);
+                var styleCells = UiPages.Grid(new Rect(r.x, r.y + 122f, r.width, r.height - 240f), 2, 2, 12f);
+                for (int s = 0; s < Styles.Length && s < styleCells.Length; s++)
                 {
                     var id = Styles[s];
                     bool on = id == cur;
-                    if (Row(r, row++, (on ? "      ● " : "      ○ ") + id, StatLine(id)))
+                    if (DrawCard(styleCells[s], (on ? "● " : "") + id.ToString(), StatLine(id),
+                            on ? "heart" : "damage"))
                     {
                         CombatStylePrefs.Set(job, id);
-                        _sel = -1;      // 고르면 접는다 — 목록이 길어지면 아래 버튼이 밀린다
+                        _sel = -1;
                     }
                 }
             }
 
-            if (Row(r, row++, "이펙트 테스트", "생성한 전투 이펙트를 한 화면에서 확인")) GameFlow.Go(GameFlow.VfxTest);
-            if (Row(r, row, "돌아가기", "파티 편성으로")) GameFlow.Go(GameFlow.Party);
+            if (DrawChoice(r, "이펙트 테스트", "생성한 전투 이펙트를 한 화면에서 확인", "damage",
+                           "돌아가기", "파티 편성으로", "characters", out bool back))
+                GameFlow.Go(GameFlow.VfxTest);
+            else if (back)
+                GameFlow.Go(GameFlow.Party);
         }
 
         /// <summary>

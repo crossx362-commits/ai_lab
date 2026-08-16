@@ -35,19 +35,22 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
-            Locked(r, 0, "성계 이동", "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)");
+            var cards = UiPages.Grid(r, 2, 2, 16f);
+            DrawCard(cards[0], "성계 이동",
+                "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)",
+                "worldmap", locked: true);
 
-            // §15 ✅ 침략은 탑 30층 달성 시 해금. 연체 2회면 그 위에서도 잠근다(§18-5).
-            // 침략 본게임(적 별·약탈)은 열지 않는다 — 문은 잠글 수 있어도 장은 없다.
             string invasionLock = InvasionHubLockReason();
-            if (invasionLock != null)
-                Locked(r, 1, "침략", invasionLock);
-            else if (Row(r, 1, "침략",
-                         $"로컬 별 수비대 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§15)"))
+            if (DrawCard(cards[1], "침략",
+                    invasionLock ?? $"로컬 별 수비대 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§15)",
+                    "damage", locked: invasionLock != null)
+                && invasionLock == null)
                 GameFlow.TryGoInvasion();
 
-            Locked(r, 2, "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)");
-            Info(r, 3, $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots} — 침략 전투는 아직 없다(§13-5)");
+            DrawCard(cards[2], "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)",
+                "characters", locked: true);
+            DrawCard(cards[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
+                "침략 전투는 아직 없다(§13-5)", "building_barracks", locked: true);
         }
     }
 }

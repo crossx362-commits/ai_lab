@@ -57,20 +57,21 @@ namespace AshesToStars
                     Info(r, _rowIndex++, $"{SoloRaidClear.BannerText} · {SoloRaidClear.LookName}");
                 if (FloorRecruit.PendingSpecialBanner)
                     Info(r, _rowIndex++, FloorRecruit.SpecialHint());
-                if (Row(r, _rowIndex++, "건너뛰기", "에필로그를 닫고 저장을 유지한다"))
-                {
-                    TowerEnding.SkipEpilogue();
-                    SoloRaidClear.AckBanner();
-                    FloorRecruit.AckSpecialBanner();
-                    return;
-                }
-                if (Row(r, _rowIndex++, "계속", "영지로 돌아간다"))
+                if (DrawChoice(r, "계속", "영지로 돌아간다", "territory",
+                               "건너뛰기", "에필로그를 닫고 저장을 유지한다", "field",
+                               out bool skip))
                 {
                     TowerEnding.SkipEpilogue();
                     SoloRaidClear.AckBanner();
                     FloorRecruit.AckSpecialBanner();
                     GameFlow.Go(GameFlow.Estate);
                     return;
+                }
+                if (skip)
+                {
+                    TowerEnding.SkipEpilogue();
+                    SoloRaidClear.AckBanner();
+                    FloorRecruit.AckSpecialBanner();
                 }
                 return;
             }
@@ -147,15 +148,14 @@ namespace AshesToStars
                 }
             }
 
-            Info(r, _rowIndex++, "");  // 빈 줄
-
-            if (Row(r, _rowIndex++, "계속", "들어온 화면으로 복귀"))
+            if (DrawChoice(r, "계속", "들어온 화면으로 복귀", "field",
+                           "영지로", "허브 복귀(§16)", "territory", out bool home))
             {
                 SoloRaidClear.AckBanner();
                 FloorRecruit.AckSpecialBanner();
                 GameFlow.Go(GameFlow.ReturnTo);
             }
-            if (Row(r, _rowIndex++, "영지로", "허브 복귀(§16)"))
+            else if (home)
             {
                 SoloRaidClear.AckBanner();
                 FloorRecruit.AckSpecialBanner();

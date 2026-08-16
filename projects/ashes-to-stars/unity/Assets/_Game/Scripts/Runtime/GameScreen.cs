@@ -58,8 +58,12 @@ namespace AshesToStars
 
         // 기준 해상도 — 모든 좌표는 이 안에서 계산한다
         protected const float REF_W = 1280f, REF_H = 720f;
-        protected const float BarH = 76f;
-        protected const float RowH = 58f, RowGap = 14f, RowBtnW = 300f;
+        /// <summary>제목판. 118px면 720p 본문이 카드 한 줄도 못 채운다.</summary>
+        public const float HeaderH = 88f;
+        public const float BodyTop = 100f;
+        public const float BodyPadX = 36f;
+        protected const float BarH = 72f;
+        protected const float RowH = 64f, RowGap = 12f, RowBtnW = 360f;
 
         GUIStyle _h1, _h2, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
         Texture2D _bg, _line, _accent, _scrim;
@@ -107,12 +111,12 @@ namespace AshesToStars
         void Styles()
         {
             if (_h1 != null) return;
-            _h1 = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
-            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 17, wordWrap = true, normal = { textColor = Dim } };
+            _h1 = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
+            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = true, normal = { textColor = Dim } };
-            _cardTitle = new GUIStyle(_h1) { fontSize = 24 };
+            _cardTitle = new GUIStyle(_h1) { fontSize = 26 };
             _tab = new GUIStyle(_small)
             {
                 fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
@@ -121,11 +125,11 @@ namespace AshesToStars
             // 하단 탭은 아이콘과 이름을 세로로 나눈다. 기본 label은 좌측 정렬이라
             // 아이콘 아래 이름이 제각각 밀려 보이므로, 탭 전용으로 가운데 정렬한다.
             _navLabel = new GUIStyle(_small) { alignment = TextAnchor.UpperCenter };
-            _panel = new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Gold } };
+            _panel = new GUIStyle(GUI.skin.label) { fontSize = 17, wordWrap = true, normal = { textColor = Gold } };
             _bg = Solid(new Color(0.05f, 0.05f, 0.08f));
             _line = Solid(new Color(1f, 1f, 1f, 0.10f));
             _accent = Solid(new Color(0.95f, 0.79f, 0.42f, 0.85f));
-            _scrim = Solid(new Color(0.03f, 0.03f, 0.05f, 0.55f));
+            _scrim = Solid(new Color(0.04f, 0.04f, 0.06f, 0.38f));
         }
 
         Texture2D _bgArt;
@@ -168,17 +172,17 @@ namespace AshesToStars
             if (ShowHeader)
             {
                 // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
-                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _scrim);
-                GUI.DrawTexture(new Rect(0, 0, REF_W, 118), _line);
-                GUI.DrawTexture(new Rect(0, 116, REF_W, 2), _accent);
+                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, HeaderH), _scrim);
+                GUI.DrawTexture(new Rect(0, 0, REF_W, HeaderH), _line);
+                GUI.DrawTexture(new Rect(0, HeaderH - 2, REF_W, 2), _accent);
                 bool atlas = !string.IsNullOrEmpty(HeaderIcon)
-                    && UiAtlas.Draw(new Rect(24, 18, 78, 78), HeaderIcon);
-                GUI.Label(new Rect(atlas ? 124 : 48, 22, REF_W - (atlas ? 172 : 96), 56), Title, _h1);
+                    && UiAtlas.Draw(new Rect(18, 14, 60, 60), HeaderIcon);
+                GUI.Label(new Rect(atlas ? 90 : 28, 10, REF_W - (atlas ? 120 : 56), 42), Title, _h1);
                 if (!string.IsNullOrEmpty(Subtitle))
-                    GUI.Label(new Rect(50, 78, REF_W - 100, 30), Subtitle, _h2);
+                    GUI.Label(new Rect(atlas ? 90 : 28, 52, REF_W - 80, 30), Subtitle, _h2);
             }
 
-            float bottom = ShowBottomBar ? BarH + 34f : 44f;
+            float bottom = ShowBottomBar ? BarH + 28f : 36f;
             bool buttonPreview = UiAtlas.QaShowButtonStates && ShowHeader;
             bool rarityPreview = ShowRarityPreview;
             bool bossHpPreview = ShowBossHpPreview;
@@ -186,7 +190,7 @@ namespace AshesToStars
             if (buttonPreview) previewH += RowH + 12f;
             if (rarityPreview) previewH += 80f;
             if (bossHpPreview) previewH += 132f;
-            Body(new Rect(48, 152, REF_W - 96, REF_H - 152 - bottom - previewH));
+            Body(new Rect(BodyPadX, BodyTop, REF_W - BodyPadX * 2f, REF_H - BodyTop - bottom - previewH));
             float previewY = REF_H - bottom;
             if (bossHpPreview)
             {
@@ -401,15 +405,25 @@ namespace AshesToStars
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.94f);
             if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
                 UiAtlas.Draw(card, "panel", tint);
-            float icon = 64f;
-            if (!string.IsNullOrEmpty(iconKey))
-                UiAtlas.Draw(new Rect(card.x + 18f, card.y + 16f, icon, icon), iconKey, tint);
-            float textX = string.IsNullOrEmpty(iconKey) ? card.x + 18f : card.x + 18f;
-            GUI.Label(new Rect(textX, card.y + icon + 20f, card.width - 32f, 30f), title, _cardTitle);
-            GUI.Label(new Rect(textX, card.y + icon + 50f, card.width - 32f, 52f),
-                      locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
+            bool hasIcon = !string.IsNullOrEmpty(iconKey);
+            UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
+            if (hasIcon) UiAtlas.Draw(icon, iconKey, tint);
+            GUI.Label(titleR, title, _cardTitle);
+            GUI.Label(subR, locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
             if (locked) return false;
             return GUI.Button(card, GUIContent.none, GUIStyle.none);
+        }
+
+        /// <summary>경고·결과처럼 아래 두 장을 고르는 줄. 본문 Info는 위에 그대로 둔다.</summary>
+        protected bool DrawChoice(Rect r, string okTitle, string okSub, string okIcon,
+                                  string noTitle, string noSub, string noIcon, out bool cancelled)
+        {
+            cancelled = false;
+            float h = Mathf.Min(168f, Mathf.Max(100f, r.height * 0.42f));
+            var cells = UiPages.Grid(new Rect(r.x, r.yMax - h, r.width, h), 2, 1, 16f);
+            bool ok = DrawCard(cells[0], okTitle, okSub, okIcon);
+            if (DrawCard(cells[1], noTitle, noSub, noIcon)) cancelled = true;
+            return ok;
         }
 
         /// <summary>본문 안의 정보 한 줄(버튼 아님).</summary>
