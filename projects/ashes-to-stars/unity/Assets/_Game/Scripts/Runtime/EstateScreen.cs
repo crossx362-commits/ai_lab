@@ -63,6 +63,8 @@ namespace AshesToStars
             {
                 if (AutoOpen == "현황")
                     _hubPage = 1;
+                else if (AutoOpen == "방어")
+                    _hubPage = 2;
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
                     _sub = want;
@@ -77,9 +79,13 @@ namespace AshesToStars
 
             EstateBuild.Tick();
             EstateMine.Tick();
+            EstateDefense.Tick();
             if (System.Environment.GetEnvironmentVariable("QA_ESTATE_MINE") == "1")
                 _hubPage = 1;
+            if (System.Environment.GetEnvironmentVariable("QA_ESTATE_DEFENSE") == "1")
+                _hubPage = 2;
             EstateMine.SeedQaIfRequested();
+            EstateDefense.SeedQaIfRequested();
             if (_sub == Sub.본성) { Keep(r); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
@@ -95,11 +101,16 @@ namespace AshesToStars
                 return;
             }
 
-            _hubPage = DrawTabs(r, new[] { "건물", "현황" }, _hubPage);
+            _hubPage = DrawTabs(r, new[] { "건물", "현황", "방어" }, _hubPage);
             var page = UiPages.AfterTabs(r);
             if (_hubPage == 1)
             {
                 DrawEstateStatus(page);
+                return;
+            }
+            if (_hubPage == 2)
+            {
+                DrawDefense(page);
                 return;
             }
 
@@ -145,6 +156,37 @@ namespace AshesToStars
                     ? $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸"
                     : " · 넘치면 소멸"),
                 "building_auction", locked: true);
+        }
+
+        void DrawDefense(Rect r)
+        {
+            EstateDefense.Tick();
+            string eff = GameState.TowerFloor < EstateDefense.UnlockFloor
+                ? $"탑 {EstateDefense.UnlockFloor}층부터 순차 해금(현재 {GameState.TowerFloor}층)"
+                : $"수비 {DefenseState.Count}명 · 효율 {EstateDefense.EfficiencyPercent()}% · 약탈 -{EstateDefense.CutPercent()}%(§13-5)";
+            Info(r, 0, eff);
+            var cards = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 88f), 2, 2, 16f);
+            var kinds = EstateDefense.All;
+            for (int i = 0; i < kinds.Length && i < cards.Length; i++)
+            {
+                var k = kinds[i];
+                int lv = EstateDefense.Level(k);
+                string title = $"{k} · Lv{lv}";
+                string icon = UiAtlas.BuildingKey(k.ToString());
+                if (EstateDefense.BusyKind == k)
+                {
+                    DrawCard(cards[i], title,
+                        $"공사 중 → Lv{lv + 1} · 남은 {EstateDefense.RemainingText()}",
+                        icon, locked: true);
+                    continue;
+                }
+                string why = EstateDefense.WhyCannotStart(k);
+                string desc = $"{Economy.FormatCurrency(EstateDefense.UpgradeCost(lv))} · {FormatWait(EstateDefense.UpgradeSeconds(lv))}";
+                if (why != null)
+                    DrawCard(cards[i], title, why, icon, locked: true);
+                else if (DrawCard(cards[i], title, desc, icon))
+                    EstateDefense.TryStart(k);
+            }
         }
 
         void Keep(Rect r)
@@ -503,9 +545,10 @@ namespace AshesToStars
             {
                 float x = r.x + 4f + i * cell;
                 ItemAtlas.Draw(new Rect(x, panel.y + 6f, 40f, 40f), ItemAtlas.KeyFor(items[i]));
-                GUI.Label(new Rect(x + 42f, panel.y + 16f, cell - 46f, 26f),
+                UiPages.LabelClip(new Rect(x + 42f, panel.y + 16f, Mathf.Max(12f, cell - 46f), 26f),
                     GameState.Bag.GetCount(items[i]).ToString(),
-                    new GUIStyle(GUI.skin.label) { fontSize = 18, normal = { textColor = new Color(0.95f, 0.79f, 0.42f) } });
+                    new GUIStyle(GUI.skin.label) { fontSize = 18, clipping = TextClipping.Clip,
+                        normal = { textColor = new Color(0.95f, 0.79f, 0.42f) } });
             }
         }
     }

@@ -290,6 +290,11 @@ namespace AshesToStars
                 case "수비대": return "building_barracks";
                 case "광산": return "field";
                 case "창고": return "building_auction";
+                case "화살탑": return "tower";
+                case "마법탑": return "field";
+                case "성벽": return "territory";
+                case "함정": return "building_barracks";
+                case "방어": return "tower";
                 default: return null;
             }
         }

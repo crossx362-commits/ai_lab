@@ -50,7 +50,7 @@ namespace AshesToStars
             long baseLoot = Economy.GetActionCost("InvasionAttack", GameState.Tier) * 3;
             if (baseLoot < 1000) baseLoot = 1000;
             int empty = DefenseState.MaxSlots - DefenseState.Count;
-            return baseLoot + baseLoot * empty / 10;
+            return EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10);
         }
 
         public static bool TryBegin()
