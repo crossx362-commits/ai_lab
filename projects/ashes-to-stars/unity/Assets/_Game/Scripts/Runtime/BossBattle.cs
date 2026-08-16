@@ -415,7 +415,7 @@ namespace AshesToStars
                 };
                 aoe.elapsedTime = 0f;
                 activeFloorAOEs.Add(aoe);
-                FxPool.PlayAtlas("boss_circle", new Vector2(aoe.position.x, aoe.position.y), 1.8f);
+                FxPool.PlayStatus(0, new Vector2(aoe.position.x, aoe.position.y), 1.8f);
             }
 
             Debug.Log($"[BossBattle] Triggered Floor AoE x{count}, active danger mechanics: {activeDangerMechanicsCount}");

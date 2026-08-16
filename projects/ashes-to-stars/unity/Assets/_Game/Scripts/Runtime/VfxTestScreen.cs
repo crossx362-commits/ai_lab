@@ -29,7 +29,7 @@ namespace AshesToStars
             int row = 1;
             int start = _page * perPage;
             for (int i = start; i < Mathf.Min(start + perPage, _keys.Length); i++)
-                if (Row(r, row++, _keys[i], "정적 스프라이트 아틀라스")) Play(_keys[i]);
+                if (Row(r, row++, _keys[i])) Play(_keys[i]);
 
             float x = r.x + 350f;
             if (GUI.Button(new Rect(x, r.y + 88, 220, 42), _auto ? "자동 재생 중지" : "전체 자동 재생")) _auto = !_auto;
@@ -37,7 +37,9 @@ namespace AshesToStars
             if (GUI.Button(new Rect(x, r.y + 192, 220, 42), "이전 페이지")) _page = (_page + 2) % 3;
             if (GUI.Button(new Rect(x, r.y + 244, 220, 42), "직업 이펙트 6종"))
                 for (int i = 0; i < 6; i++) FxPool.PlayJob(i, new Vector2((i - 2.5f) * 2f, 0f), 1.1f);
-            if (GUI.Button(new Rect(x, r.y + 296, 220, 42), "영지로 돌아가기")) GameFlow.Go(GameFlow.Estate);
+            if (GUI.Button(new Rect(x, r.y + 296, 220, 42), "상태 이펙트 3종"))
+                for (int i = 0; i < 3; i++) FxPool.PlayStatus(i, new Vector2((i - 1) * 3.5f, 0f), 1.25f);
+            if (GUI.Button(new Rect(x, r.y + 348, 220, 42), "영지로 돌아가기")) GameFlow.Go(GameFlow.Estate);
         }
 
         static void Play(string key) => FxPool.PlayAtlas(key, Vector2.zero, 2f);

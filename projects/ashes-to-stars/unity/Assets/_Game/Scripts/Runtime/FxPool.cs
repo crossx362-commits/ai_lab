@@ -152,6 +152,22 @@ namespace AshesToStars
             p._sr[i].sprite = first; p._sr[i].color = Color.white; p._sr[i].gameObject.SetActive(true);
         }
 
+        /// <summary>독·빙결·보스 장판처럼 역할과 무관한 상태 이펙트 8프레임을 재생한다.</summary>
+        public static void PlayStatus(int style, Vector2 worldPos, float scale = 1f)
+        {
+            var p = Instance;
+            if (p == null || p._sr == null) return;
+            var first = StatusVfxSheets.Frame(style, 0);
+            if (first == null) return;
+            int i = p._cursor; p._cursor = (p._cursor + 1) % CAP;
+            p._t[i] = 0f; p._life[i] = style == 0 ? 1f : .70f;
+            p._from[i] = .65f * scale; p._to[i] = 1.15f * scale;
+            p._spin[i] = 0f; p._tint[i] = Color.white; p._jobStyle[i] = 7 + style;
+            var tr = p._sr[i].transform;
+            tr.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, -.2f); tr.localRotation = Quaternion.identity;
+            p._sr[i].sprite = first; p._sr[i].color = Color.white; p._sr[i].gameObject.SetActive(true);
+        }
+
         public static void PlayAtlas(string key, Vector2 worldPos, float scale = 1f)
         {
             var sprite = CombatVfxAtlas.SpriteFor(key); if (sprite == null) return;
@@ -172,7 +188,12 @@ namespace AshesToStars
                 if (u >= 1f) { _jobStyle[i] = 0; _sr[i].gameObject.SetActive(false); continue; }
 
                 if (_jobStyle[i] > 0)
-                    _sr[i].sprite = JobVfxSheets.Frame(_jobStyle[i] - 1, Mathf.Min(7, (int)(u * 8f)));
+                {
+                    int frame = Mathf.Min(7, (int)(u * 8f));
+                    _sr[i].sprite = _jobStyle[i] <= 6
+                        ? JobVfxSheets.Frame(_jobStyle[i] - 1, frame)
+                        : StatusVfxSheets.Frame(_jobStyle[i] - 7, frame);
+                }
 
                 // 크기는 처음에 빠르게 벌어지고 끝에서 느려진다 — 등속이면 밋밋하다.
                 float e = 1f - (1f - u) * (1f - u);
