@@ -152,6 +152,14 @@ namespace AshesToStars
             p._sr[i].sprite = first; p._sr[i].color = Color.white; p._sr[i].gameObject.SetActive(true);
         }
 
+        public static void PlayAtlas(string key, Vector2 worldPos, float scale = 1f)
+        {
+            var sprite = CombatVfxAtlas.SpriteFor(key); if (sprite == null) return;
+            var p = Instance; int i = p._cursor; p._cursor = (p._cursor + 1) % CAP;
+            p._t[i] = 0f; p._life[i] = .65f; p._from[i] = .75f * scale; p._to[i] = 1.25f * scale; p._spin[i] = 0f; p._tint[i] = Color.white; p._jobStyle[i] = 0;
+            p._sr[i].sprite = sprite; p._sr[i].color = Color.white; p._sr[i].transform.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, -.2f); p._sr[i].gameObject.SetActive(true);
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;

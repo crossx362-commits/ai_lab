@@ -664,6 +664,7 @@ public class W3Party : MonoBehaviour
             else if (m.Job == Job.검사) FxPool.PlayJob(1, targetPos, 0.8f);
             else if (m.Job == Job.마법사) FxPool.PlayJob(2, targetPos, 0.9f);
             else if (m.Job == Job.사제) FxPool.PlayJob(3, targetPos, 0.85f);
+            else if (m.Job == Job.음유시인) FxPool.PlayAtlas("bard_note", targetPos, 0.8f);
             else FxPool.Play(IsMelee(m.Job) ? FxPool.Kind.Slash : FxPool.Kind.Hit, targetPos, 0.8f);
         }
     }
