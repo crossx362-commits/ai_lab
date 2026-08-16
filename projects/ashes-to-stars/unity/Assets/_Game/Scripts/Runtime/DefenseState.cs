@@ -6,6 +6,7 @@ namespace AshesToStars
 {
     /// <summary>
     /// 영지 수비대 배치(§13-5). 로스터 인덱스 최대 5.
+    /// 주둔지는 탑 30층(침략과 같다)에 열린다(§13-2). QA_NO면 층과 무관.
     ///
     /// 침략 본게임(비동기 공성)은 열지 않는다. 이 목록의 소비처는
     /// 「출전 파티에서 빠진다」와 「전멸 뒤 12시간 출전 불가」와
@@ -15,14 +16,43 @@ namespace AshesToStars
     public static class DefenseState
     {
         public const int MaxSlots = 5;
+        public const int UnlockFloor = 30;
         public const string EnvShow = "QA_DEFENSE_RECOVER";
+        public const string EnvShowUnlock = "QA_DEFENSE_UNLOCK";
+        public const string EnvNoUnlock = "QA_NO_DEFENSE_UNLOCK";
         const string K_SLOTS = "ats.defense";
+        static bool _unlockQaSeeded;
 
         static readonly List<int> _slots = new List<int>();
         static bool _loaded;
 
         public static IReadOnlyList<int> Slots { get { Load(); return _slots; } }
         public static int Count { get { Load(); Prune(); return _slots.Count; } }
+
+        public static bool UnlockBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoUnlock);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>탑 30층부터 연다. QA_NO면 옛 항상 열림.</summary>
+        public static bool Unlocked =>
+            UnlockBlocked || GameState.TowerFloor >= UnlockFloor;
+
+        public static string LockReason()
+        {
+            if (Unlocked) return null;
+            return $"탑 {UnlockFloor}층 달성 시 해금(현재 {GameState.TowerFloor}층) — 침략과 같다(§13-2)";
+        }
+
+        public static string LockLine()
+        {
+            string why = LockReason();
+            return string.IsNullOrEmpty(why) ? "수비대 해금(§13-2)" : why;
+        }
 
         static void Load()
         {
@@ -89,10 +119,24 @@ namespace AshesToStars
                 if (roster[i] != null && !roster[i].IsDeleted) { idx = i; break; }
             }
             if (idx < 0) return;
+            if (GameState.TowerFloor < UnlockFloor)
+                GameState.SetTowerFloorForTest(UnlockFloor);
             if (Contains(idx) && LifeSystem.GetRecoveryTimeRemaining(roster[idx]) > 0)
                 return;
             if (!Contains(idx)) Toggle(idx);
             ApplyPvpRecover();
+        }
+
+        /// <summary>시각 QA. QA_DEFENSE_UNLOCK=1이면 29층으로 잠긴 주둔지를 보여 준다.</summary>
+        public static void SeedUnlockQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable(EnvShowUnlock);
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            if (UnlockBlocked) return;
+            if (_unlockQaSeeded) return;
+            _unlockQaSeeded = true;
+            GameState.SetTowerFloorForTest(UnlockFloor - 1);
         }
 
         /// <summary>로스터에서 한 명을 지운 뒤 인덱스를 당긴다. 파티와 같은 유령 슬롯을 막는다.</summary>
@@ -126,6 +170,8 @@ namespace AshesToStars
                 return true;
             }
 
+            if (!Unlocked) return false;
+
             var roster = LifeSystem.GetCharacters();
             if (rosterIndex < 0 || rosterIndex >= roster.Count) return false;
             if (!LifeSystem.IsAvailable(roster[rosterIndex])) return false;
@@ -143,6 +189,7 @@ namespace AshesToStars
         {
             _slots.Clear();
             _loaded = false;
+            _unlockQaSeeded = false;
             PlayerPrefs.DeleteKey(K_SLOTS);
         }
 

@@ -10,6 +10,7 @@ namespace AshesToStars
         {
             DefenseState.ResetForTest();
             PartyState.ResetForTest();
+            GameState.SetTowerFloorForTest(DefenseState.UnlockFloor);
 
             var roster = LifeSystem.GetCharacters();
             Debug.Assert(roster.Count >= 2,

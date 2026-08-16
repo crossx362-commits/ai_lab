@@ -32,7 +32,9 @@ namespace AshesToStars
             Sub.대장간 => "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)",
             Sub.경매장 => "탑 30층 달성 시 오픈. 골드는 곧 목숨이라 거래가 성립한다(§12)",
             Sub.영묘 => Rebirth.MausoleumSubtitle(),
-            Sub.수비대 => "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)",
+            Sub.수비대 => DefenseState.Unlocked
+                ? "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)"
+                : DefenseState.LockLine(),
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
             Sub.영공 => "층을 오를수록 인식 범위가 넓어진다. 아군 버프·적 디버프를 켠다(§14)",
@@ -41,6 +43,9 @@ namespace AshesToStars
 
         static string SoftCapHubSubtitle()
         {
+            if (System.Environment.GetEnvironmentVariable(DefenseState.EnvShowUnlock) == "1"
+                && !DefenseState.UnlockBlocked)
+                return DefenseState.LockLine();
             if (BankruptcySeize.ShowOnHub)
                 return BankruptcySeize.Line();
             if (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
@@ -129,6 +134,7 @@ namespace AshesToStars
             AuctionState.SeedExpireQaIfRequested();
             Rebirth.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
+            DefenseState.SeedUnlockQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 _sub = Sub.영묘;
@@ -200,9 +206,11 @@ namespace AshesToStars
                     $"환생석 {LifeSystem.GetRebornStones()}개 · 삭제된 캐릭터만",
                     UiAtlas.BuildingKey("영묘")))
                 _sub = Sub.영묘;
+            string barracksLock = DefenseState.LockReason();
             if (DrawCard(cards[3], "수비대",
-                    $"배치 {DefenseState.Count}/{DefenseState.MaxSlots} · 출전에서 빠진다",
-                    UiAtlas.BuildingKey("수비대")))
+                    barracksLock
+                        ?? $"배치 {DefenseState.Count}/{DefenseState.MaxSlots} · 출전에서 빠진다",
+                    UiAtlas.BuildingKey("수비대"), locked: barracksLock != null))
                 _sub = Sub.수비대;
         }
 
@@ -735,8 +743,16 @@ namespace AshesToStars
         /// </summary>
         void Barracks(Rect r)
         {
-            var roster = LifeSystem.GetCharacters();
             int row = 0;
+            string lockReason = DefenseState.LockReason();
+            if (lockReason != null)
+            {
+                Info(r, row++, lockReason);
+                if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+                return;
+            }
+
+            var roster = LifeSystem.GetCharacters();
             Info(r, row++,
                 $"수비 {DefenseState.Count}/{DefenseState.MaxSlots} · 배치된 캐릭터는 출전하지 않는다. 침략 전투는 아직 없다(§13-5)");
 

@@ -31,6 +31,7 @@ namespace AshesToStars
             InvasionState.ResetForTest();
             DefenseState.ResetForTest();
             PartyState.ResetForTest();
+            GameState.SetTowerFloorForTest(DefenseState.UnlockFloor);
 
             Check(LifeSystem.PvpRecoverSeconds() == InvasionState.GuardSeconds,
                 "수비대 회복 초 = 보호막 초 — 한쪽만 바꾸지 않는다");
@@ -88,6 +89,7 @@ namespace AshesToStars
             LifeSystem.ResetAll();
             DefenseState.ResetForTest();
             PartyState.ResetForTest();
+            GameState.SetTowerFloorForTest(DefenseState.UnlockFloor);
             roster = LifeSystem.GetCharacters();
             Check(DefenseState.Toggle(0), "시드 전 수비 배치");
             Environment.SetEnvironmentVariable(LifeSystem.EnvNoRecover, "1");
