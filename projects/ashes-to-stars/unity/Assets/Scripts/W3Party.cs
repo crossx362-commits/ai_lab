@@ -138,9 +138,20 @@ public class W3Party : MonoBehaviour
         /// </summary>
         public int ForceSkill;
         public bool ForceUltimate;
+        /// <summary>자동 사용이 다음에 고를 슬롯(1·2). 누르면 그 슬롯은 건너뛴다.</summary>
+        public int AutoNext = 1;
+        /// <summary>자동으로 세워 두고 아직 나가지 않은 슬롯. 나가면 기본 쿨을 건다.</summary>
+        public int AutoArmed;
         /// <summary>명령 지점 표시(땅에 찍히는 점)</summary>
         public SpriteRenderer Marker;
     }
+
+    /// <summary>
+    /// 전투가 자동/수동 큐를 실제로 소비하는지 SelfCheck가 보는 자리.
+    /// 정의만 있고 호출이 없으면 버튼을 눌러도 자동이 안 돈다.
+    /// </summary>
+    public static int ApplySkillUse(ref int forceSkill, ref float skillCd, ref int nextSlot) =>
+        AshesToStars.SkillUse.Apply(ref forceSkill, ref skillCd, ref nextSlot);
 
     // ── 수동 지휘 상태 (§5 "보스는 수동 지휘") ──
     int _sel = -1;                     // 선택된 파티 슬롯. -1이면 선택 없음
@@ -1703,6 +1714,14 @@ public class W3Party : MonoBehaviour
         {
             if (!m.Alive) continue;
             m.Cd -= dt; m.SkillCd -= dt; m.UltimateCd -= dt;
+            if (m.AutoArmed != 0 && m.ForceSkill == 0)
+            {
+                AshesToStars.SkillUse.SettleAuto(ref m.SkillCd, ref m.AutoNext, m.AutoArmed);
+                m.AutoArmed = 0;
+            }
+            int pressedSkill = m.ForceSkill;
+            ApplySkillUse(ref m.ForceSkill, ref m.SkillCd, ref m.AutoNext);
+            if (pressedSkill == 0 && m.ForceSkill != 0) m.AutoArmed = m.ForceSkill;
             if (m.Advancement == AdvancementTier.Second)
                 m.UltimateGauge = Mathf.Min(100f, m.UltimateGauge + dt);
             if (m.ForceUltimate)
@@ -1749,7 +1768,7 @@ public class W3Party : MonoBehaviour
 
                 // 강제 발동(버튼)이면 조건을 건너뛴다 — 지휘는 "지금" 쓰는 것이다
                 bool force1 = m.ForceSkill == 1, force2 = m.ForceSkill == 2;
-                if (_tauntEnabled && (force1 || (m.SkillCd <= 0f && CountMobsNear(m.Pos, 4.5f) >= 3)))
+                if (_tauntEnabled && (force1 || (AshesToStars.SkillUse.IsAuto && m.SkillCd <= 0f && CountMobsNear(m.Pos, 4.5f) >= 3)))
                 {
                     if (force1) m.ForceSkill = 0;
                     // ① 도발의 함성 — 광역 어그로. 원거리 몹까지 끌어야 후열이 산다(§10-4 대응)
@@ -1762,7 +1781,7 @@ public class W3Party : MonoBehaviour
                     FlashParty();                                 // 발동 순간을 눈에 띄게
                     FxParticles.Play(FxKind.도발, ToScreen(m.Pos), 1.2f);
                 }
-                if (force2 || m.Gauge >= 60f)
+                if (force2 || (AshesToStars.SkillUse.IsAuto && m.Gauge >= 60f))
                 {
                     // ② 성채 방패 — 게이지를 소모해 파티 전체에 보호막
                     if (force2) m.ForceSkill = 0;
@@ -1915,7 +1934,8 @@ public class W3Party : MonoBehaviour
                 // 자동 판단만 두면 버퍼의 조작 여지가 사라진다.
                 var wantChant = m.ForceSkill == 1 ? Chant.진군가
                               : m.ForceSkill == 2 ? Chant.수호가
-                              : (worstRatio < 0.45f ? Chant.수호가 : Chant.진군가);
+                              : (AshesToStars.SkillUse.IsAuto && worstRatio < 0.45f ? Chant.수호가
+                                 : AshesToStars.SkillUse.IsAuto ? Chant.진군가 : m.Chant);
                 if (m.ForceSkill != 0) m.ForceSkill = 0;
                 if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; m.SkillT = 0.5f; }
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
@@ -1933,7 +1953,7 @@ public class W3Party : MonoBehaviour
                     if (worst != null) worst.Shield = Mathf.Max(worst.Shield, 18f * ShieldOf(m));
                     SkillCast(m, "정화", new Color(0.7f, 1f, 0.9f), hitstop: 1);
                 }
-                else if (worst != null && (m.ForceSkill == 1 || worst.Hp < worst.MaxHp))
+                else if (worst != null && (m.ForceSkill == 1 || (AshesToStars.SkillUse.IsAuto && worst.Hp < worst.MaxHp)))
                 {
                     m.ForceSkill = 0;
                     Heal(worst, 22f * HealOf(m)); _healsCast++;
@@ -1963,7 +1983,7 @@ public class W3Party : MonoBehaviour
                 //   ② 신앙을 행동 횟수(+6/회)로 쌓고 있었다. 기획서 §3은 "**회복량 누적**"이다.
                 //      → 실제 회복시킨 양을 그대로 신앙으로 환산한다(코드가 기획서를 따르게).
                 // 기적: 버튼(슬롯2)이면 신앙만 있으면 바로 쓴다
-                if ((m.ForceSkill == 2 && m.Gauge >= 40f) || (m.Gauge >= 100f && (wounded >= 3 || worstRatio2 < 0.35f)))
+                if ((m.ForceSkill == 2 && m.Gauge >= 40f) || (AshesToStars.SkillUse.IsAuto && m.Gauge >= 100f && (wounded >= 3 || worstRatio2 < 0.35f)))
                 {
                     if (m.ForceSkill == 2) m.ForceSkill = 0;
                     // ③ 기적 — 신앙 전량 소모, 파티 전체 완전 회복(§3)
@@ -1974,7 +1994,7 @@ public class W3Party : MonoBehaviour
                     FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f);
                     SkillCast(m, "기적", new Color(1f, 0.95f, 0.6f), hitstop: 5, shake: 0.45f);
                 }
-                else if (m.ForceSkill == 1 || wounded >= 2)
+                else if (m.ForceSkill == 1 || (AshesToStars.SkillUse.IsAuto && wounded >= 2))
                 {
                     // ② 치유의 파동 — 광역 힐. 회복시킨 만큼 신앙이 쌓인다(§3)
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
@@ -2074,7 +2094,7 @@ public class W3Party : MonoBehaviour
             else if (m.Job == Job.마법사 && target >= 0)
             {
                 // ① 화염폭풍 — 광역 장판. 밀도가 높을수록 이득(§10-2와 정합)
-                if (m.ForceSkill == 1 || (m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
+                if (m.ForceSkill == 1 || (AshesToStars.SkillUse.IsAuto && m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
                 {
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
                     m.SkillCd = 5f * CdOf(m); m.Cd = 0.9f / AtkSpdOf(m); _skillLog[5]++; m.SkillT = 0.6f;
@@ -2131,7 +2151,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 1) { m.ForceSkill = 0; m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target]));
                     SkillCast(m, "일섬", new Color(0.85f, 0.95f, 1f), hitstop: 3, shake: 0.2f);
                     FxPool.Play(FxPool.Kind.Slash, _mPos[target], 1.5f); }
-                else if (m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target]));
+                else if (AshesToStars.SkillUse.IsAuto && m.Gauge >= 5f) { m.Gauge = 0f; dmg = m.Atk * 3.2f; _skillLog[6]++; FxParticles.Play(FxKind.일섬, ToScreen(_mPos[target]));
                     SkillCast(m, "일섬", new Color(0.85f, 0.95f, 1f), hitstop: 3, shake: 0.2f);
                     FxPool.Play(FxPool.Kind.Slash, _mPos[target], 1.5f); }
                 DamageMob(target, dmg * sp.DmgMul * ChantAtk());
@@ -3043,12 +3063,15 @@ public class W3Party : MonoBehaviour
     {
         _cmdLabel ??= new GUIStyle(GUI.skin.label) { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
         var left = new Rect(14f, 14f, 218f, 50f);
-        var right = new Rect(Screen.width - 144f, 18f, 130f, 34f);
+        var right = new Rect(Screen.width - 168f, 14f, 154f, 50f);
         GUI.DrawTexture(left, Tint(new Color(.025f, .045f, .085f, .72f)));
-        GUI.DrawTexture(right, Tint(new Color(.025f, .045f, .085f, .72f)));
+        if (!AshesToStars.UiAtlas.DrawSliced(right, "panel", 8f, new Color(1f, 1f, 1f, 0.35f)))
+            GUI.DrawTexture(right, Tint(new Color(.025f, .045f, .085f, .72f)));
         GUI.Label(new Rect(left.x + 9f, left.y + 5f, left.width - 18f, 21f), $"{시작웨이브}-{wave} · {_setup.Name}", _cmdLabel);
         GUI.Label(new Rect(left.x + 9f, left.y + 27f, left.width - 18f, 20f), $"처치 {_kills} · {_t:F0}s", _cmdLabel);
-        GUI.Label(new Rect(right.x + 10f, right.y + 8f, right.width - 18f, 22f), "자동 · ×2", _cmdLabel);
+        _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
+        if (GUI.Button(right, AshesToStars.SkillUse.HudLabel, _cmdBtn))
+            AshesToStars.SkillUse.IsAuto = !AshesToStars.SkillUse.IsAuto;
     }
 
     void PushReward(string text, Color color)
