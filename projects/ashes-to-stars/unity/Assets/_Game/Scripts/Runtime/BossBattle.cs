@@ -415,6 +415,7 @@ namespace AshesToStars
                 };
                 aoe.elapsedTime = 0f;
                 activeFloorAOEs.Add(aoe);
+                FxPool.PlayAtlas("boss_circle", new Vector2(aoe.position.x, aoe.position.y), 1.8f);
             }
 
             Debug.Log($"[BossBattle] Triggered Floor AoE x{count}, active danger mechanics: {activeDangerMechanicsCount}");
@@ -442,6 +443,7 @@ namespace AshesToStars
             // (2026-08-15 발견). 실제 W3Party 전투에 쫄을 밀어넣어 「§10-5 분리 소환」이
             // 파티 피해로 성립하게 한다. W3Party가 도는 판이 아니면(예: 검증 하네스) 조용히 무시된다.
             global::W3Party.SummonMobsToActive(mobCount);
+            FxPool.PlayAtlas("boss_portal", Vector2.zero, 2.0f);
 
             Debug.Log($"[BossBattle] Triggered mob summon x{mobCount} → W3Party, active danger mechanics: {activeDangerMechanicsCount}");
         }
