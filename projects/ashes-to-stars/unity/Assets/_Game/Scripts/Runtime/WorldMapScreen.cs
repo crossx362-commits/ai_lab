@@ -13,6 +13,7 @@ namespace AshesToStars
     public class WorldMapScreen : GameScreen
     {
         protected override string Title => "월드맵";
+        protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.WorldMap);
         protected override string BackgroundArt => "bg_worldmap";
         protected override string Subtitle => "우주 성계. 침략은 탑 30층 달성 시 해금(§14·§15)";
 

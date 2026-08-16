@@ -66,6 +66,13 @@ class ParseTests(unittest.TestCase):
         q = board.parse_queue(text)
         self.assertEqual(q[0]["title"], "UI 호버/눌림 육안")
 
+    def test_simple_wiring_is_not_owner_gate(self):
+        self.assertFalse(board.needs_human("UI 호버/눌림 육안", "필드·탑 제목 아이콘"))
+        self.assertFalse(board.needs_human("1차 전직 선택지", "역할별 2/4/2/3"))
+        self.assertTrue(board.needs_human("V2 사람 판정", "자동검사로 통과 선언 금지"))
+        self.assertTrue(board.needs_human("V4 외부 테스터 70%", "사람 판정"))
+        self.assertTrue(board.needs_human("전직 분기", "오너 선택 A/B/C"))
+
     def test_queue_table_skips_done_rows(self):
         table = """
 ## 다음 할 일 큐 (맨 위부터 하나씩)

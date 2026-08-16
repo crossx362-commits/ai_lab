@@ -13,7 +13,7 @@ namespace AshesToStars
     public class CharacterScreen : GameScreen
     {
         protected override string Title => "캐릭터";
-        protected override string HeaderIcon => "characters";
+        protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Character);
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
         protected override string Subtitle => "레벨·목숨 관리와 Lv20 1차·Lv50 2차 비살상 전직 시험(§3·§4)";

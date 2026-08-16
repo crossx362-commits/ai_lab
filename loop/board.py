@@ -168,8 +168,14 @@ def parse_now_list(design: str) -> list[dict]:
 
 
 def needs_human(title: str, detail: str = "") -> bool:
+    """오너가 창을 열거나 범위를 고를 때만 사람 관문.
+
+    오너 2026-08-16 「간단한건 알아서」: 호버 육안·헤더 아이콘처럼
+    qa_shot으로 닫는 배선은 체크를 기다리지 않는다. 맨낱말 '선택'은
+    전직 선택지까지 막아 버리므로 '오너 선택'만 본다.
+    """
     text = f"{title} {detail}"
-    return any(k in text for k in ("사람", "자동검사로", "육안", "오너 판정", "선택"))
+    return any(k in text for k in ("사람", "자동검사로", "오너 판정", "오너 선택"))
 
 
 def parse_results(status: str, limit: int = 8) -> list[dict]:

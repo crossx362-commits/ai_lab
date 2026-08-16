@@ -20,7 +20,7 @@ namespace AshesToStars
         Sub _sub = Sub.없음;
 
         protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
-        protected override string HeaderIcon => "territory";
+        protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Estate);
         protected override string BackgroundArt => "bg_estate";
         protected override string Subtitle => _sub switch
         {
