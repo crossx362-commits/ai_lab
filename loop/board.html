@@ -90,6 +90,12 @@
   .files div { padding: 2px 0; color: var(--muted); }
   .files .ok { color: var(--ink); }
   .files .no { color: var(--stop); text-decoration: line-through; }
+  .choice { border: 1px solid var(--gold); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: #221c14; }
+  .choice .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .choice button.pass { background: var(--ok); color: #102214; }
+  .choice button.retry { background: transparent; color: var(--hold); border: 1px solid var(--hold); }
+  .choice button.skip { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .badge { font-size: 11px; color: var(--hold); border: 1px solid var(--hold); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
 </style>
 </head>
 <body>
@@ -107,6 +113,12 @@
 <main>
   <div>
     <section>
+      <h2>내 선택</h2>
+      <p class="meta" id="choice-hint">사람 판정이 필요한 항목만 모았다. 고르면 INBOX에 적히고 루프가 그다음을 집는다.</p>
+      <div id="choices"></div>
+      <span class="msg" id="choice-msg"></span>
+    </section>
+    <section style="margin-top:18px">
       <h2>원장 관문</h2>
       <div id="milestones"></div>
     </section>
@@ -180,7 +192,7 @@ function renderItems(el, items, state, extra) {
       ${it.n ? `<span class="n">${it.n}</span>` : ""}
       <label>
         <input type="checkbox" data-id="${it.id}" ${on && !it.done ? "checked" : ""} ${it.done ? "checked disabled" : ""}>
-        <div><div class="t">${esc(it.title)}</div><div class="d">${esc(it.detail || "")}</div></div>
+        <div><div class="t">${esc(it.title)}${it.human && !it.done ? '<span class="badge">내 선택</span>' : ""}</div><div class="d">${esc(it.detail || "")}</div></div>
       </label>
     </div>`;
   }).join("");
@@ -204,6 +216,19 @@ function render(state) {
   const blocked = L.blocked || [];
   $("resume-bar").classList.toggle("show", blocked.length > 0);
   $("resume-why").textContent = blocked.length ? blocked.join(" · ") : "";
+  const pending = state.choices || [];
+  $("choice-hint").style.display = pending.length ? "block" : "none";
+  $("choices").innerHTML = pending.length ? pending.map((it) => `
+    <div class="choice" data-id="${it.id}">
+      <div class="t">${esc(it.title)}</div>
+      <div class="d">${esc(it.detail)}</div>
+      <input type="text" class="choice-note" placeholder="메모 (선택)" style="margin-top:8px">
+      <div class="acts">
+        <button type="button" class="pass" data-choice="pass">통과하고 다음</button>
+        <button type="button" class="retry" data-choice="retry">부족, 다시</button>
+        <button type="button" class="skip" data-choice="skip">건너뛰고 다른 일</button>
+      </div>
+    </div>`).join("") : '<p class="empty">지금 고를 사람 판정은 없다</p>';
   renderItems($("milestones"), state.milestones || [], state);
   renderItems($("queue"), state.queue || [], state);
   $("log").textContent = L.log_tail || "(루프 로그 없음)";
@@ -264,6 +289,26 @@ $("req-send").onclick = async () => {
     msg.textContent = err.message;
   } finally {
     $("req-send").disabled = false;
+  }
+};
+
+$("choices").onclick = async (e) => {
+  const btn = e.target.closest("button[data-choice]");
+  if (!btn) return;
+  const card = btn.closest(".choice");
+  const note = card.querySelector(".choice-note").value.trim();
+  const msg = $("choice-msg");
+  msg.className = "msg";
+  btn.disabled = true;
+  try {
+    const r = await api("/api/decide", { id: card.dataset.id, choice: btn.dataset.choice, note, resume: true });
+    msg.textContent = r.title + " → " + ({ pass: "통과", retry: "다시", skip: "건너뛰기" }[r.choice] || r.choice);
+    await refresh();
+  } catch (err) {
+    msg.className = "msg err";
+    msg.textContent = err.message;
+  } finally {
+    btn.disabled = false;
   }
 };
 

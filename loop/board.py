@@ -32,7 +32,14 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 PORT = int(os.getenv("BOARD_PORT", "8766"))
 CHECKS_PATH = HERE / "board_checks.json"
+DECISIONS_PATH = HERE / "board_decisions.json"
 PID_PATH = HERE / "loop.pid"
+
+CHOICES = {
+    "pass": "통과 — 완료로 내리고 다음으로 진행",
+    "retry": "부족 — 이 항목을 다시 고쳐라",
+    "skip": "건너뛰기 — 완료로 내리지 말고 다음 실행 가능 항목",
+}
 
 STATUS = ROOT / "docs" / "STATUS.md"
 DESIGN = ROOT / "docs" / "DESIGN.md"
@@ -94,9 +101,14 @@ def parse_queue(status: str) -> list[dict]:
             "id": item_id(title),
             "title": title,
             "detail": detail,
-            "human": "사람" in detail or "자동검사로" in detail,
+            "human": needs_human(title, detail),
         })
     return out
+
+
+def needs_human(title: str, detail: str = "") -> bool:
+    text = f"{title} {detail}"
+    return any(k in text for k in ("사람", "자동검사로", "육안", "오너 판정", "선택"))
 
 
 def parse_results(status: str, limit: int = 8) -> list[dict]:
@@ -141,6 +153,7 @@ def parse_milestones(design: str) -> list[dict]:
             "title": title,
             "detail": rest,
             "done": "✅" in line,
+            "human": (not ("✅" in line)) and needs_human(title, rest),
         })
     return out
 
@@ -186,6 +199,113 @@ def load_checks() -> dict:
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def load_decisions() -> dict:
+    try:
+        data = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_decisions(data: dict) -> None:
+    DECISIONS_PATH.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def pending_choices(queue: list[dict], milestones: list[dict],
+                    decisions: dict) -> list[dict]:
+    seen = set()
+    out = []
+    for src, kind in ((queue, "queue"), (milestones, "milestone")):
+        for it in src:
+            if it.get("done"):
+                continue
+            if not it.get("human"):
+                continue
+            prev = decisions.get(it["id"]) or {}
+            if prev.get("choice") in ("pass", "skip"):
+                continue
+            if it["id"] in seen:
+                continue
+            seen.add(it["id"])
+            out.append({
+                "id": it["id"],
+                "title": it["title"],
+                "detail": it.get("detail") or "",
+                "kind": kind,
+                "last": prev.get("choice") or "",
+            })
+    return out
+
+
+def rewrite_queue(status: str, items: list[dict], note: str = "") -> str:
+    m = re.search(r"^## 다음 할 일[^\n]*\n", status, re.M)
+    if not m:
+        return status
+    rest = status[m.end():]
+    end = re.search(r"^## |\n최종 갱신:", rest)
+    cut = end.start() if end else len(rest)
+    block = rest[:cut]
+    prose = []
+    for line in block.splitlines():
+        if re.match(r"^\d+\.\s+\*\*", line.strip()):
+            continue
+        if line.startswith("> **오너 선택"):
+            continue
+        prose.append(line)
+    lines = [f"{i}. **{it['title']}** — {it['detail']}" for i, it in enumerate(items, 1)]
+    body = "\n".join(lines)
+    extra = "\n".join(prose).strip()
+    note_line = f"\n{note.strip()}\n" if note.strip() else ""
+    new_block = (body + "\n\n" + extra + "\n" + note_line).rstrip() + "\n\n"
+    return status[: m.end()] + new_block + rest[cut:]
+
+
+def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
+    if choice not in CHOICES:
+        raise ValueError("통과/다시/건너뛰기 중에서 고르라")
+    queue = parse_queue(_read(STATUS))
+    miles = parse_milestones(_read(DESIGN))
+    item = next((x for x in queue + miles if x["id"] == item_id), None)
+    if not item:
+        raise ValueError("그 항목을 찾지 못했다")
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    label = {"pass": "통과", "retry": "부족·다시", "skip": "건너뛰기"}[choice]
+    body = (
+        f"오너가 보드에서 **{label}**를 골랐다.\n"
+        f"대상: {item['title']}\n"
+        f"{CHOICES[choice]}.\n"
+    )
+    if note.strip():
+        body += f"메모: {note.strip()[:400]}\n"
+    if choice == "pass":
+        body += "이 항목을 완료로 내리고 큐의 다음 항목으로 진행하라. 자동검사로 통과를 선언한 것이 아니다."
+    elif choice == "retry":
+        body += "완료로 내리지 마라. 같은 항목을 고쳐서 다시 올려라."
+    else:
+        body += "완료로 내리지 마라. 이 항목은 보류하고 다음 실행 가능 항목을 잡아라."
+    write_request(f"오너 판정 — {item['title']} ({label})", body)
+
+    if choice in ("pass", "skip"):
+        remain = [q for q in queue if q["id"] != item_id]
+        marker = (
+            f"> **오너 선택({stamp}): {item['title']} → {label}.**"
+            + (f" {note.strip()[:80]}" if note.strip() else "")
+        )
+        STATUS.write_text(rewrite_queue(_read(STATUS), remain, marker), encoding="utf-8")
+
+    rec = load_decisions()
+    rec[item_id] = {
+        "title": item["title"],
+        "choice": choice,
+        "at": stamp,
+        "note": note.strip()[:200],
+    }
+    save_decisions(rec)
+    return {"id": item_id, "title": item["title"], "choice": choice, "at": stamp}
 
 
 def save_checks(data: dict) -> None:
@@ -403,13 +523,18 @@ def build_state() -> dict:
     design = _read(DESIGN)
     inbox = _read(INBOX)
     checks = load_checks()
+    decisions = load_decisions()
+    queue = parse_queue(status)
+    miles = parse_milestones(design)
     return {
         "updated": parse_updated(status),
-        "queue": parse_queue(status),
+        "queue": queue,
         "results": parse_results(status),
-        "milestones": parse_milestones(design),
+        "milestones": miles,
         "inbox": parse_inbox(inbox),
         "checks": checks,
+        "decisions": decisions,
+        "choices": pending_choices(queue, miles, decisions),
         "loop": loop_flags(),
         "commits": recent_commits(),
         "git": dirty_files(),
@@ -477,6 +602,17 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         data = self._read_json()
         try:
+            if path == "/api/decide":
+                decided = apply_decision(
+                    str(data.get("id") or "").strip(),
+                    str(data.get("choice") or "").strip(),
+                    str(data.get("note") or ""),
+                )
+                resumed = None
+                if data.get("resume", True):
+                    resumed = resume_work()
+                self._json(200, {"ok": True, **decided, "resume": resumed})
+                return
             if path == "/api/request":
                 stamp = write_request(
                     str(data.get("title") or ""),

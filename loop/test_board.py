@@ -129,6 +129,72 @@ class CommitAllowTests(unittest.TestCase):
         self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity_meas/Assets/x.cs"))
 
 
+class DecisionTests(unittest.TestCase):
+    def test_rewrite_queue_removes_and_renumbers(self):
+        q = board.parse_queue(STATUS)
+        remain = [x for x in q if x["title"] != "V2 사람 판정"]
+        out = board.rewrite_queue(STATUS, remain, "> **오너 선택: V2 → 통과.**")
+        nq = board.parse_queue(out)
+        self.assertEqual([x["title"] for x in nq], ["V4 삭제 루프 준비"])
+        self.assertEqual(nq[0]["n"], 1)
+        self.assertIn("오너 선택: V2 → 통과", out)
+
+    def test_apply_pass_writes_inbox_and_drops_queue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            status_p = tmp / "STATUS.md"
+            inbox_p = tmp / "INBOX.md"
+            dec_p = tmp / "dec.json"
+            status_p.write_text(STATUS, encoding="utf-8")
+            inbox_p.write_text(INBOX, encoding="utf-8")
+            old = (board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH)
+            board.STATUS, board.INBOX, board.DECISIONS_PATH = status_p, inbox_p, dec_p
+            board.DESIGN = tmp / "DESIGN.md"
+            board.DESIGN.write_text(DESIGN, encoding="utf-8")
+            try:
+                q = board.parse_queue(STATUS)
+                v2 = next(x for x in q if x["title"] == "V2 사람 판정")
+                r = board.apply_decision(v2["id"], "pass", "창에서 피한 느낌 있음")
+                self.assertEqual(r["choice"], "pass")
+                self.assertEqual([x["title"] for x in board.parse_queue(status_p.read_text(encoding="utf-8"))],
+                                 ["V4 삭제 루프 준비"])
+                inbox = inbox_p.read_text(encoding="utf-8")
+                wait = inbox.split("## 대기 중", 1)[1]
+                self.assertIn("오너 판정 — V2 사람 판정", wait)
+                self.assertIn("통과", wait)
+                self.assertIn("창에서 피한 느낌 있음", wait)
+                pending = board.pending_choices(
+                    board.parse_queue(status_p.read_text(encoding="utf-8")),
+                    board.parse_milestones(DESIGN),
+                    board.load_decisions(),
+                )
+                self.assertFalse(any(p["title"] == "V2 사람 판정" for p in pending))
+            finally:
+                board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH = old
+
+    def test_retry_keeps_queue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            status_p = tmp / "STATUS.md"
+            inbox_p = tmp / "INBOX.md"
+            status_p.write_text(STATUS, encoding="utf-8")
+            inbox_p.write_text(INBOX, encoding="utf-8")
+            old = (board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH)
+            board.STATUS, board.INBOX = status_p, inbox_p
+            board.DESIGN = tmp / "DESIGN.md"
+            board.DESIGN.write_text(DESIGN, encoding="utf-8")
+            board.DECISIONS_PATH = tmp / "dec.json"
+            try:
+                v2 = next(x for x in board.parse_queue(STATUS) if x["title"] == "V2 사람 판정")
+                board.apply_decision(v2["id"], "retry", "")
+                self.assertEqual(
+                    [x["title"] for x in board.parse_queue(status_p.read_text(encoding="utf-8"))],
+                    ["V2 사람 판정", "V4 삭제 루프 준비"],
+                )
+            finally:
+                board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH = old
+
+
 class ResumeTests(unittest.TestCase):
     def test_resume_clears_hold_and_starts_if_down(self):
         with tempfile.TemporaryDirectory() as tmp:
