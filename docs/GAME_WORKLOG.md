@@ -10,6 +10,19 @@
 
 ---
 
+## V3 보스 HP — 파티 공격 배선, 실행 QA 대기 (2026-08-16)
+
+- 짧은 설계: `BossBattle`의 보스별 HP를 단일 권위로 유지하고, W3에는 화면을 중복해서 그리지 않는
+  공격 타깃 슬롯만 둔다. 보스전 일반 웨이브를 멈추고 실제 보스 슬롯 피해만 HP·페이즈·처치로 전달한다.
+- TDD: 신규 계약 부재 10건 RED. SelfCheck는 실제 `W3Party.DamageMob` 경계로
+  `9000→4500→0`, 페이즈1·처치1과 `BOSS_NO_DPS=1` Boss/W3 `9000→9000`을 단언한다.
+- 리뷰 수리: 처음 구현의 쫄/잡몹 피해 복제, 처치 시 페이즈 누락, 차단 모드 프록시 교착,
+  프록시 AI·보상 혼입, 실패 시 테스트 오브젝트 누수를 제거했다. 최종 Critical/Important 0.
+- 검증: 정적 컴파일 82소스 오류0, 검사기 고의 오류1 탐지, diff check 통과. 코드 `e48aee09`.
+- 미완: 원본 manifest의 `com.unity.modules.physicscore2d@1.0.0` 미해결 의존성 때문에 Unity 실행
+  SelfCheck·보스 PNG는 미확인. `output/qa/ashes-to-stars/boss_dps_*`와
+  `mob_family_hunt_attempt_20260816.log`에 증거를 남겼다. 장판·힐체크는 다음 독립 슬라이스다.
+
 ## 2차 각성 초필살기 — 실전 배선·계측 완료 (2026-08-16)
 
 - 짧은 설계: 기존 4스킬/조작 2슬롯은 유지하고, `Second`에만 직업 고유 Gauge와 별개인
