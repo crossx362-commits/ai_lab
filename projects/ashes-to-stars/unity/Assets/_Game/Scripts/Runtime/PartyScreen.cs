@@ -104,7 +104,7 @@ namespace AshesToStars
                 return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§15)";
             if (DefenseState.Contains(rosterIndex))
                 return "수비 배치 — 출전 불가(§13-5)";
-            if (left > 0) return $"회복 중 {LifeSystem.FormatRecoveryTime(left)} — 출전 불가(§4)";
+            if (left > 0) return $"회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§4·§18-8)";
 
             string mark = inParty ? "편성됨" : "대기";
             if (ch.DeathCount >= 2) return $"{mark} · [주의] 마지막 목숨 — 죽으면 영구 삭제(§4)";

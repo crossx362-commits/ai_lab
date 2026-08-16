@@ -37,7 +37,7 @@ namespace AshesToStars
     //
     // 기획서 핵심:
     // - 사망은 PvE 전체(필드·던전·탑·레이드)에서 카운트, PvP는 카운트 안 함
-    // - 사망 시 1일 회복 기간 → 그 동안 출전 불가
+    // - 사망 시 종족 회복 기간(인간 18h / 나머지 24h) → 그 동안 출전 불가
     // - 누적 3회 사망 = 캐릭터 삭제 (장비·소지품 함께 소멸)
     // - 부활초(소지 상한 3개) = 사망 카운트 1 차감
     // - 환생석 = 10층 보스 드랍으로 삭제된 캐릭터 부활
@@ -225,7 +225,11 @@ namespace AshesToStars
     {
         private static List<CharacterRecord> _characters = new();
         private static bool _loaded;
-        private const int RecoveryDurationSeconds = 86400;  // 1일 = 24시간 = 86,400초
+        /// <summary>종족 표가 비었을 때의 PvE 기본(§18-8). 인간은 18시간.</summary>
+        public const long DefaultPveRecoverSeconds = 86400;
+        public const long HumanPveRecoverSeconds = 64800;
+        /// <summary>SelfCheck가 종족 시계를 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
+        public static float ForcePveRecoverHours;
         private const string K_ROSTER = "ats.roster";
         private const int InitialRevivePotions = 3;
         public const int FirstAdvancementMaterialCost = 5;
@@ -244,6 +248,8 @@ namespace AshesToStars
         /// <summary>보호막과 같은 시계. SelfCheck가 12시간 ±1초를 주입한다.</summary>
         public static Func<long> NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         public const string EnvNoRecover = "QA_NO_DEFENSE_RECOVER";
+        public const string EnvShowRaceRecover = "QA_RACE_RECOVER";
+        public const string EnvNoRaceRecover = "QA_NO_RACE_RECOVER";
 
         /// <summary>
         /// 시스템 초기화. 프로토타입에서는 테스트용 캐릭터 5명을 만든다.
@@ -858,6 +864,43 @@ namespace AshesToStars
         /// <summary>침략 보호막과 같은 12시간(§15). 한쪽만 바꾸면 무방비 창이 생긴다.</summary>
         public static long PvpRecoverSeconds() => InvasionState.DefenseRecoverSeconds;
 
+        /// <summary>
+        /// PvE 사망 회복 초(§3·§18-8). RaceDef.회복시간을 읽는다.
+        /// 인간은 18시간, 나머지 24시간. PvP 9시간은 보호막 12시간과 어긋나 안 넣는다.
+        /// </summary>
+        public static long PveRecoverSeconds()
+        {
+            if (RaceRecoverBlocked) return DefaultPveRecoverSeconds;
+            if (ForcePveRecoverHours > 0f)
+                return Math.Max(1L, (long)(ForcePveRecoverHours * 3600f));
+            try
+            {
+                var races = Resources.LoadAll<RaceDef>("races");
+                RaceId id = RacePrefs.Get();
+                for (int i = 0; i < races.Length; i++)
+                {
+                    if (races[i] != null && races[i].Id == id && races[i].회복시간 > 0f)
+                        return Math.Max(1L, (long)(races[i].회복시간 * 3600f));
+                }
+            }
+            catch
+            {
+                // 배치 검사 중 에셋 DB가 비면 표로 간다.
+            }
+            return RacePrefs.Get() == RaceId.인간
+                ? HumanPveRecoverSeconds
+                : DefaultPveRecoverSeconds;
+        }
+
+        public static bool RaceRecoverBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoRaceRecover);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         public static bool RecoverBlocked
         {
             get
@@ -904,9 +947,9 @@ namespace AshesToStars
                 return;
             }
 
-            // 회복 기간 설정 (1일 = 86,400초)
+            // 회복 기간 — RaceDef.회복시간(인간 18h, 나머지 24h, §18-8)
             long currentTime = GetCurrentUnixTime();
-            character.RecoveryEndTime = currentTime + RecoveryDurationSeconds;
+            character.RecoveryEndTime = currentTime + PveRecoverSeconds();
 
             // 사망 카운트 증가
             character.DeathCount++;
@@ -945,6 +988,21 @@ namespace AshesToStars
             Save();
             Debug.Log($"[특수직업] {character.Name} 증표 전직 — 1회 사망 시 소멸(§3)");
             return true;
+        }
+
+        /// <summary>시각 QA. QA_RACE_RECOVER=1이면 인간을 PvE 사망 1회로 18시간 회복에 넣는다.</summary>
+        public static void SeedRaceRecoverQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowRaceRecover) != "1") return;
+            RacePrefs.Set(RaceId.인간);
+            DefenseState.ResetForTest();
+            var roster = GetCharacters();
+            if (roster.Count == 0) return;
+            var ch = roster[0];
+            if (ch.IsDeleted) return;
+            ch.DeathCount = Math.Max(1, ch.DeathCount);
+            ch.RecoveryEndTime = GetCurrentUnixTime() + PveRecoverSeconds();
+            Save();
         }
 
         /// <summary>시각 QA. QA_SPECIAL_JOB=1이면 첫 생존 캐릭터를 특수 직업으로 만든다.</summary>
@@ -1177,7 +1235,7 @@ namespace AshesToStars
             return $"{hours:D2}:{minutes:D2}:{secs:D2}";
         }
 
-        /// <summary>보호막과 같은 말("12시간 0분"). 화면이 24시간 PvE 회복과 갈리게 한다.</summary>
+        /// <summary>보호막과 같은 말("12시간 0분"). 인간 PvE는 "18시간 0분"으로 갈린다.</summary>
         public static string FormatRecoveryPhrase(int seconds)
         {
             if (seconds <= 0) return "";

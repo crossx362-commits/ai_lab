@@ -66,6 +66,7 @@ namespace AshesToStars
             StarterPick.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             SeedDefenseRecoverQaIfRequested();
+            SeedRaceRecoverQaIfRequested();
             if (StarterSecond.Pending)
             {
                 DrawStarterSecond(r);
@@ -219,7 +220,7 @@ namespace AshesToStars
                             bool posted = DefenseState.Contains(_selectedCharacter);
                             Info(r, 2, posted
                                 ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(recoveryTime)} — 출전 불가(§15)"
-                                : $"회복 시간: {LifeSystem.FormatRecoveryTime(recoveryTime)}");
+                                : $"회복 {LifeSystem.FormatRecoveryPhrase(recoveryTime)} — 출전 불가(§4·§18-8)");
                         }
                     }
 
@@ -400,7 +401,7 @@ namespace AshesToStars
                 Hint(new Rect(stage.x, stage.y, stage.width, 22f),
                     DefenseState.Contains(_selectedCharacter)
                         ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(recoverLeft)} — 출전 불가(§15)"
-                        : $"회복 시간: {LifeSystem.FormatRecoveryTime(recoverLeft)}");
+                        : $"회복 {LifeSystem.FormatRecoveryPhrase(recoverLeft)} — 출전 불가(§4·§18-8)");
                 stage = new Rect(stage.x, stage.y + 24f, stage.width, Mathf.Max(40f, stage.height - 24f));
             }
             _detailPage = DrawTabs(stage, new[] { "장비", "속성" }, _detailPage);
@@ -425,7 +426,7 @@ namespace AshesToStars
             if (cellLeft > 0 && DefenseState.Contains(rosterIndex))
                 job = $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(cellLeft)}";
             else if (cellLeft > 0)
-                job = LifeSystem.FormatRecoveryTime(cellLeft);
+                job = $"회복 {LifeSystem.FormatRecoveryPhrase(cellLeft)}";
             Hint(jobR, job);
             UiAtlas.DrawHearts(hearts, ch.DeathCount, ch.IsDeleted, ch.MaxLives);
         }
@@ -495,6 +496,13 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable(DefenseState.EnvShow) != "1") return;
             DefenseState.SeedQaIfRequested();
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedRaceRecoverQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(LifeSystem.EnvShowRaceRecover) != "1") return;
+            LifeSystem.SeedRaceRecoverQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 
