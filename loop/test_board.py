@@ -169,6 +169,13 @@ class DecisionTests(unittest.TestCase):
                     board.load_decisions(),
                 )
                 self.assertFalse(any(p["title"] == "V2 사람 판정" for p in pending))
+                # 큐에 같은 제목이 다시 있으면 예전 통과로 숨기지 않는다
+                again = board.pending_choices(
+                    [{"id": v2["id"], "title": "V2 사람 판정", "detail": "사람", "human": True}],
+                    [],
+                    board.load_decisions(),
+                )
+                self.assertTrue(any(p["title"] == "V2 사람 판정" for p in again))
             finally:
                 board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH = old
 

@@ -226,7 +226,8 @@ def pending_choices(queue: list[dict], milestones: list[dict],
             if not it.get("human"):
                 continue
             prev = decisions.get(it["id"]) or {}
-            if prev.get("choice") in ("pass", "skip"):
+            # 큐에 다시 올라온 사람 판정은 예전 통과로 숨기지 않는다
+            if kind != "queue" and prev.get("choice") in ("pass", "skip"):
                 continue
             if it["id"] in seen:
                 continue
