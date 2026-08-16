@@ -23,10 +23,14 @@ namespace AshesToStars
         public const string EnvNoLoot = "QA_NO_RACE_LOOT";
         public const string EnvShowCap = "QA_LOOT_CAP";
         public const string EnvNoCap = "QA_NO_LOOT_CAP";
+        public const string EnvShowFloor = "QA_LOOT_FLOOR";
+        public const string EnvNoFloor = "QA_NO_LOOT_FLOOR";
         public const int HumanLootPercent = 100;
         public const int BeastLootPercent = 120;
         /// <summary>§18-13 약탈 상한. 티어 1시간 수익의 6시간치.</summary>
         public const int LootCapHours = 6;
+        /// <summary>§18-13 승자 최소. 본성 1레벨당 0.5 G/h. Keep1=5000.</summary>
+        public const long FloorCopperPerKeep = Economy.COPPER_PER_GOLD / 2;
 
         const string K_PENDING = "ats.invasion.pending";
         const string K_PAID = "ats.invasion.paid";
@@ -35,6 +39,7 @@ namespace AshesToStars
         const string K_SHIELD = "ats.invasion.shield_until";
 
         static bool _loaded;
+        static bool _qaFloorSeeded;
         static bool _pending;
         static long _paid;
         static long _lastLoot;
@@ -126,6 +131,9 @@ namespace AshesToStars
         public static bool LootCapBlocked =>
             Environment.GetEnvironmentVariable(EnvNoCap) == "1";
 
+        public static bool LootFloorBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoFloor) == "1";
+
         /// <summary>§18-9 수인 약탈량 +20%. 에셋이 없으면 표로 폴백한다.</summary>
         public static int RaceLootPercent()
         {
@@ -183,9 +191,35 @@ namespace AshesToStars
             return $"약탈 상한 6 G/h(§18-13) · {Economy.FormatCurrency(CapCopper())}";
         }
 
+        /// <summary>§18-13 승자 최소. 상대 본성 레벨 × 0.5 G/h. 로컬 별은 내 본성.
+        /// Keep1=5000. 창고를 비워도 이 밑으로 안 내려간다. QA_NO면 안 올린다.</summary>
+        public static long FloorCopper(int keep)
+        {
+            if (keep < 1) keep = 1;
+            if (keep > EstateBuild.MaxKeep) keep = EstateBuild.MaxKeep;
+            return keep * FloorCopperPerKeep;
+        }
+
+        public static long FloorCopper() => FloorCopper(EstateBuild.KeepLevel);
+
+        public static long ApplyLootFloor(long copper)
+        {
+            if (LootFloorBlocked) return copper;
+            if (copper < 0) copper = 0;
+            long floor = FloorCopper();
+            return copper < floor ? floor : copper;
+        }
+
+        public static string LootFloorLine()
+        {
+            if (LootFloorBlocked) return "승자 최소 없음";
+            return $"승자 최소 0.5 G/h(§18-13) · {Economy.FormatCurrency(FloorCopper())}";
+        }
+
         /// <summary>승자 보상은 상대 영지 레벨(여기선 내 탑 층) 기준. 창고를 비워도 준다(§15 1-b).
         /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.
         /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).
+        /// 방어로 작아져도 본성×0.5 G/h 밑으로 안 내려간다(§18-13).
         /// 마지막에 같은 티어 6 G/h로 자른다(§18-13). QA_NO_LOOT_CAP=1이면 안 자른다.</summary>
         public static long LootCopper()
         {
@@ -202,7 +236,7 @@ namespace AshesToStars
                 raw = ApplyRaceLoot(EstateDefense.ApplyToLoot(baseLoot + baseLoot * empty / 10));
                 raw = WorldStar.ApplyEnemy(raw);
             }
-            return ApplyLootCap(raw);
+            return ApplyLootCap(ApplyLootFloor(raw));
         }
 
         public static bool TryBegin()
@@ -330,6 +364,29 @@ namespace AshesToStars
             Save();
         }
 
+        /// <summary>시각 QA. QA_LOOT_FLOOR=1이면 30층·본성1·공식 3000으로 바닥 5000을 보여 준다.
+        /// 침략 카드가 30층 미만이면 잠기므로 해금만 올리고, 본성·디버프 잔재는 여기서 고친다.</summary>
+        public static void SeedLootFloorQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowFloor) != "1") return;
+            if (LootFloorBlocked) return;
+            if (_qaFloorSeeded) return;
+            _qaFloorSeeded = true;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.EnemyDebuff = false;
+            WorldStar.AllyBuff = false;
+            EstateBuild.ResetForTest();
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            if (GameState.Wallet.Copper < SortieCost())
+                GameState.Earn(SortieCost());
+            ForceLootBeforeCap = 3_000;
+            _pending = false;
+            _shieldUntil = 0;
+            Save();
+        }
+
         public static void ResetForTest()
         {
             PlayerPrefs.DeleteKey(K_PENDING);
@@ -341,6 +398,7 @@ namespace AshesToStars
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             ForceRaceLootMul = 0f;
             ForceLootBeforeCap = 0;
+            _qaFloorSeeded = false;
             _pending = false;
             _paid = 0;
             _lastLoot = 0;
