@@ -61,6 +61,12 @@ namespace AshesToStars
             RaidScale.SeedQaIfRequested();
             RaidBossPool.SeedQaIfRequested();
             RaidReroll.SeedQaIfRequested();
+            LastLifeWarn.SeedQaIfRequested();
+            if (LastLifeWarn.QaPrompt)
+            {
+                _showLastLifeWarning = true;
+                LastLifeWarn.AckQaPrompt();
+            }
             if (DeathTraining.QaPromptConsent)
             {
                 _showDeathConsent = true;
@@ -140,8 +146,10 @@ namespace AshesToStars
 
             if (_showLastLifeWarning)
             {
-                Info(r, 0, "[주의] 마지막 목숨 캐릭터가 파티에 있습니다");
-                Info(r, 1, "사망 시 캐릭터가 영구 삭제되며\n장착 장비도 함께 사라집니다(§4)");
+                Info(r, 0, LastLifeWarn.Title());
+                Info(r, 1, LastLifeWarn.Body());
+                Info(r, 2, LastLifeWarn.GearLine());
+                Info(r, 3, LastLifeWarn.GearRest());
                 if (DrawChoice(r, "계속 진행", "입장한다", "tower",
                                "취소", "파티를 다시 편성한다", "characters", out bool cancel))
                 {
@@ -238,15 +246,6 @@ namespace AshesToStars
             GameFlow.GoBattle(GameFlow.Tower, kind, floor);
         }
 
-        bool HasLastLifeCharacter()
-        {
-            var characters = LifeSystem.GetCharacters();
-            foreach (var ch in characters)
-            {
-                if (!ch.IsDeleted && ch.DeathCount == 2)  // 2회 사망 = 마지막 목숨
-                    return true;
-            }
-            return false;
-        }
+        bool HasLastLifeCharacter() => LastLifeWarn.HasAny();
     }
 }
