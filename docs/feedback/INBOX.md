@@ -28,7 +28,7 @@
 `SkillUse` + `W3Party.ApplySkillUse`. 누르면 이김. 자동은 쿨0일 때 1↔2.
 HUD `스킬 자동`/`스킬 수동`. SelfCheck 전항 PASS.
 PNG `skill_use_shots/qa_hunt_{auto,manual}.png` — 자동에 도발·고양, 수동은 콜아웃 없음.
-코드 (커밋 직후 해시).
+코드 `89622247`.
 
 ### ✅ 시작 기본직업 5종 — 마법딜러 분리 (루프, 2026-08-16)
 
