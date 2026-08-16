@@ -29,6 +29,7 @@
 무료 영입 3회는 💡라 안 넣음. SelfCheck 전항 PASS.
 PNG `starter_second_shots/qa_go:{Character,Estate}.png` 5장 카드.
 `starter_second_claimed_shots/qa_go:Character.png` 힐러+탱커 · 파티 2/5.
+코드 `102a48ca`.
 
 ### ✅ ui 이미지 늘어남 금지 (루프, 2026-08-16)
 
