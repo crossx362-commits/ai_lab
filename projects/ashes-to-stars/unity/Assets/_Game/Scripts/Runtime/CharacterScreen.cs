@@ -47,6 +47,7 @@ namespace AshesToStars
         bool _fusing;
         int _fusionHost = -1;
         int _fusionMaterial = -1;
+        int _listPage;
 
         protected override void Body(Rect r)
         {
@@ -259,39 +260,68 @@ namespace AshesToStars
                 return;
             }
 
-            // 캐릭터 목록 — 초상+역할+목숨 아이콘. 이모지는 기본 폰트에서 □다.
+            _listPage = DrawTabs(r, new[] { "명부", "합성" }, _listPage);
+            var page = UiPages.AfterTabs(r);
+            if (_listPage == 1)
+            {
+                DrawFusionEntry(page);
+                return;
+            }
+            DrawRosterPage(page);
+        }
+
+        void DrawRosterPage(Rect r)
+        {
             var allCharacters = LifeSystem.GetCharacters();
-            for (int i = 0; i < allCharacters.Count; i++)
+            var cells = UiPages.Grid(new Rect(r.x, r.y, r.width, r.height - 88f), 3, 2, 12f);
+            for (int i = 0; i < allCharacters.Count && i < cells.Length; i++)
             {
                 var ch = allCharacters[i];
-                string name = ch.IsRescue
-                    ? $"{ch.Name} ({ch.Job}) · 재건"
-                    : $"{ch.Name} ({ch.Job})";
                 string sub = ch.IsDeleted
                     ? "삭제됨"
                     : $"{ExpText(ch)} · {(LifeSystem.IsAvailable(ch) ? "출전 가능" : "회복 중")}";
-                if (Row(r, i, name, "", leftPad: 56f))
+                if (DrawRosterCard(cells[i], ch, sub))
                 {
                     _selectedCharacter = i;
                     _choosingAdvancement = false;
                 }
-                DrawRosterDecor(r, i, ch, sub);
             }
-
-            Info(r, allCharacters.Count + 1, "목숨 카운트가 여기서 보인다(§3·§4)");
-            // 빈 버튼이었다 — 눌러도 아무 일이 없으면 그건 없는 기능이다.
-            if (Row(r, allCharacters.Count + 2, "파티 편성",
-                    $"최대 5인(§9) · 지금 {PartyState.Slots.Count}명 편성됨 — 구성이 생존을 가른다(§21-1i)"))
+            if (DrawCard(new Rect(r.x, r.yMax - 76f, r.width, 70f),
+                    "파티 편성",
+                    $"최대 5인 · 지금 {PartyState.Slots.Count}명 — 구성이 생존을 가른다",
+                    "tank"))
                 GameFlow.Go(GameFlow.Party);
+        }
 
-            int fusionRow = allCharacters.Count + 4;
+        bool DrawRosterCard(Rect card, CharacterRecord ch, string sub)
+        {
+            var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : (Color?)null;
+            if (!UiAtlas.DrawSliced(card, "panel", 14f, tint ?? new Color(1f, 1f, 1f, 0.94f)))
+                UiAtlas.Draw(card, "panel", tint);
+            var face = new Rect(card.x + 14f, card.y + 12f, 56f, 56f);
+            UiAtlas.DrawRosterFrame(face);
+            PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
+            UiAtlas.Draw(new Rect(face.xMax - 10f, face.yMax - 10f, 22f, 22f), UiAtlas.RoleKey(ch.Job));
+            string name = ch.IsRescue ? $"{ch.Name} · 재건" : ch.Name;
+            Hint(new Rect(face.xMax + 10f, card.y + 14f, card.width - 90f, 24f), name + " · " + ch.Job);
+            UiAtlas.DrawHearts(new Rect(face.xMax + 10f, card.y + 40f, 80f, 20f), ch.DeathCount, ch.IsDeleted);
+            Hint(new Rect(card.x + 14f, card.yMax - 28f, card.width - 28f, 22f), sub);
+            return GUI.Button(card, GUIContent.none, GUIStyle.none);
+        }
+
+        void DrawFusionEntry(Rect r)
+        {
+            var allCharacters = LifeSystem.GetCharacters();
             CharacterRecord pendingHost = null;
             for (int i = 0; i < allCharacters.Count; i++)
                 if (allCharacters[i].PendingBoon >= 0) { pendingHost = allCharacters[i]; break; }
+
+            var cards = UiPages.Grid(r, 2, 2, 16f);
             if (pendingHost != null)
             {
-                if (Row(r, fusionRow, "합성 결과 확인",
-                        $"{pendingHost.Name} · {Fusion.LabelOf((BoonId)pendingHost.PendingBoon)} — 교체하거나 버린다(§18-7)"))
+                if (DrawCard(cards[0], "합성 결과 확인",
+                        $"{pendingHost.Name} · {Fusion.LabelOf((BoonId)pendingHost.PendingBoon)}",
+                        "buffer"))
                 {
                     _fusing = true;
                     _fusionHost = allCharacters.IndexOf(pendingHost);
@@ -300,16 +330,21 @@ namespace AshesToStars
             }
             else if (!Fusion.HasMaterial())
             {
-                Locked(r, fusionRow, "합성",
-                       "1차 전직 이상 재료가 없다 — 기본직업은 갈 수 없다(§3·§18-7)");
+                DrawCard(cards[0], "합성",
+                    "1차 전직 이상 재료가 없다 — 기본직업은 갈 수 없다",
+                    "buffer", locked: true);
             }
-            else if (Row(r, fusionRow, "합성",
-                         "1차 전직 이상 캐릭터를 소멸시켜 패시브를 흡수한다. 되돌릴 수 없다(§3)"))
+            else if (DrawCard(cards[0], "합성 시작",
+                         "1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. 되돌릴 수 없다",
+                         "buffer"))
             {
                 _fusing = true;
                 _fusionHost = -1;
                 _fusionMaterial = -1;
             }
+            DrawCard(cards[1], "규칙",
+                "슬롯 4 · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
+                "heart", locked: true);
         }
 
         void DrawRosterDecor(Rect r, int index, CharacterRecord ch, string sub)
