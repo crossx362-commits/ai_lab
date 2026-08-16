@@ -57,6 +57,7 @@ namespace AshesToStars
             SeedFusionQaIfRequested();
             SeedSpecialJobQaIfRequested();
             SeedTowerEndingQaIfRequested();
+            SeedSoloRaidQaIfRequested();
             if (_fusing)
             {
                 DrawFusion(r);
@@ -159,6 +160,7 @@ namespace AshesToStars
                     if (ch.IsRescue) detail += " · 긴급 재건";
                     if (ch.IsSpecialJob) detail += " · 특수 직업";
                     if (TowerEnding.HasStarLook) detail += $" · {TowerEnding.LookName}";
+                    if (SoloRaidClear.HasLook) detail += $" · {SoloRaidClear.LookName}";
                     Info(r, 0, detail);
                     if (!ch.IsDeleted && ch.Level < LifeSystem.MaxLevel)
                     {
@@ -426,6 +428,13 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable("QA_TOWER_END") != "1") return;
             TowerEnding.SeedQaIfRequested();
+            if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedSoloRaidQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_SOLO_CLEAR") != "1") return;
+            SoloRaidClear.SeedQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 

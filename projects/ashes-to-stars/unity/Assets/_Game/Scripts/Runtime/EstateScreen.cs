@@ -35,7 +35,9 @@ namespace AshesToStars
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             _ => TowerEnding.HasTitle
                 ? $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)"
-                : "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
+                : SoloRaidClear.HasAny
+                    ? $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)"
+                    : "모든 콘텐츠의 출발점. 건물을 눌러 들어간다 — 메뉴를 늘리지 않는다(§13·§16)",
         };
 
         /// <summary>
@@ -55,6 +57,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             TowerEnding.SeedQaIfRequested();
+            SoloRaidClear.SeedQaIfRequested();
             if (!string.IsNullOrEmpty(AutoOpen))
             {
                 if (System.Enum.TryParse(AutoOpen, out Sub want))
@@ -124,6 +127,10 @@ namespace AshesToStars
                     TowerEnding.HasStarLook
                         ? $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전(§8)"
                         : "100층 최초 클리어 · 전투력 변화 없음(§8)",
+                    "tower", locked: true);
+            else if (SoloRaidClear.HasAny)
+                DrawCard(cards[1], SoloRaidClear.LastTitle,
+                    $"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력 변화 없음(§8)",
                     "tower", locked: true);
             else
                 DrawCard(cards[1], Economy.FormatCurrency(GameState.Wallet.Copper),

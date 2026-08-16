@@ -29,12 +29,17 @@ namespace AshesToStars
         {
             var copy = new Rect(r.x, r.y + 8f, r.width * 0.54f, r.height - 16f);
             TowerEnding.SeedQaIfRequested();
+            SoloRaidClear.SeedQaIfRequested();
             Hint(new Rect(copy.x, copy.y, copy.width, 36f),
-                 TowerEnding.HasTitle ? TowerEnding.TitleName : "죽으면 캐릭터가 진짜 사라진다");
+                 TowerEnding.HasTitle ? TowerEnding.TitleName
+                 : SoloRaidClear.HasAny ? SoloRaidClear.LastTitle
+                 : "죽으면 캐릭터가 진짜 사라진다");
             Hint(new Rect(copy.x, copy.y + 44f, copy.width, 90f),
                  TowerEnding.HasTitle
                      ? $"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)"
-                     : "5인 파티를 키워 탑을 오른다. 목숨 3번이면 캐릭터와 장비가 영구 삭제된다.");
+                     : SoloRaidClear.HasAny
+                         ? $"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력은 그대로(§8)"
+                         : "5인 파티를 키워 탑을 오른다. 목숨 3번이면 캐릭터와 장비가 영구 삭제된다.");
 
             var cells = UiPages.Grid(new Rect(r.x + r.width * 0.56f, r.y + 8f, r.width * 0.44f, r.height - 16f),
                 1, 3, 14f);

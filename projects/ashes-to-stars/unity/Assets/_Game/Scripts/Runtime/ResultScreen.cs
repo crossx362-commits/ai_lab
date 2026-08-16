@@ -24,24 +24,35 @@ namespace AshesToStars
             _rowIndex = 0;
             GameFlow.SeedV4WipeQaIfRequested();
             TowerEnding.SeedQaIfRequested();
+            SoloRaidClear.SeedQaIfRequested();
 
             if (TowerEnding.PendingEpilogue)
             {
                 Info(r, _rowIndex++, $"{TowerEnding.TitleName} — 100층 최초 클리어(§8)");
                 Info(r, _rowIndex++, TowerEnding.EpilogueBody);
                 Info(r, _rowIndex++, $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전 가능");
+                if (SoloRaidClear.PendingBanner)
+                    Info(r, _rowIndex++, $"{SoloRaidClear.BannerText} · {SoloRaidClear.LookName}");
                 if (Row(r, _rowIndex++, "건너뛰기", "에필로그를 닫고 저장을 유지한다"))
                 {
                     TowerEnding.SkipEpilogue();
+                    SoloRaidClear.AckBanner();
                     return;
                 }
                 if (Row(r, _rowIndex++, "계속", "영지로 돌아간다"))
                 {
                     TowerEnding.SkipEpilogue();
+                    SoloRaidClear.AckBanner();
                     GameFlow.Go(GameFlow.Estate);
                     return;
                 }
                 return;
+            }
+
+            if (SoloRaidClear.PendingBanner)
+            {
+                Info(r, _rowIndex++, SoloRaidClear.BannerText);
+                Info(r, _rowIndex++, $"{SoloRaidClear.LookName} · 전투력 변화 없음 · 같은 보스는 다시 안 준다");
             }
 
             // 전투 결과 요약 (§2 코어 루프). 영구 손실은 골드보다 먼저 읽힌다(§16-7).
@@ -93,8 +104,16 @@ namespace AshesToStars
 
             Info(r, _rowIndex++, "");  // 빈 줄
 
-            if (Row(r, _rowIndex++, "계속", "들어온 화면으로 복귀")) GameFlow.Go(GameFlow.ReturnTo);
-            if (Row(r, _rowIndex++, "영지로", "허브 복귀(§16)")) GameFlow.Go(GameFlow.Estate);
+            if (Row(r, _rowIndex++, "계속", "들어온 화면으로 복귀"))
+            {
+                SoloRaidClear.AckBanner();
+                GameFlow.Go(GameFlow.ReturnTo);
+            }
+            if (Row(r, _rowIndex++, "영지로", "허브 복귀(§16)"))
+            {
+                SoloRaidClear.AckBanner();
+                GameFlow.Go(GameFlow.Estate);
+            }
         }
 
         string FormatLifeItem(Economy.LifeItem item)

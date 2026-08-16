@@ -184,5 +184,18 @@ namespace AshesToStars
             _slots.Clear(); _loaded = false;
             PlayerPrefs.DeleteKey(K_SLOTS);
         }
+
+        /// <summary>
+        /// 출전 인원을 고정한다. Load()의 AutoFill이 빈 파티를 5명으로 채우므로
+        /// 1인 클리어 검사가 그 경로를 타면 항상 5인이 된다.
+        /// </summary>
+        public static void SetSlotsForTest(params int[] indexes)
+        {
+            _slots.Clear();
+            _loaded = true;
+            if (indexes != null)
+                foreach (int i in indexes) _slots.Add(i);
+            Save();
+        }
     }
 }
