@@ -6,15 +6,41 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-17 · 루프(필드 배회 보스)
+최종 갱신: 2026-08-17 · 루프(긴급 탈출 보상 포기)
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
-1. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스는 닫음. 허브 카드 여백은 다른 세션이 작업 중일 수 있다. 선택 카드 글자가 좁다. 전체 「다른 게임만큼」은 사람 육안.
-2. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`이 최고 층·마지막 출전·사망 원인·장착·동료를 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간은 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
+1. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스·긴급 탈출 보상 포기는 닫음. 허브 카드 여백은 다른 세션이 작업 중일 수 있다. 선택 카드 글자가 좁다. 전체 「다른 게임만큼」은 사람 육안.
+2. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `EscapeForfeit.Apply`/`Line`/`Body`가 긴급 탈출 포기를 읽음. `InvasionState.AbortPending`이 패배 추가 소모 없이 대기를 취소. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`이 최고 층·마지막 출전·사망 원인·장착·동료를 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간은 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 생존형 HP 50% 이탈은 W3Party. 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 필드 배회 보스 — 허브 출현 · 보스전 · FieldDungeonBoss.**
+> **이번 이터 결과(코드/실행): 긴급 탈출 보상 포기 — 목숨 그대로 · 골드·경험 0.**
+> - 큐 1번은 사람 육안·다른 세션 가능이라 대기하지 않음. §3 ✅
+>   `전투 중 이탈은 그 판의 손해` · §4 ✅ `해당 런의 보상은 포기`.
+>   `EmergencyEscape`는 6초 캐스트만 있고 결과 소비처가 0곳이었다.
+>   옛 경로는 `Go(Estate)`라 줄이 없고 던전·침략 대기가 남을 수 있었다.
+> - **생산 소비처**: `EscapeForfeit.Apply`/`Line`/`Body`/`SeedQaIfRequested`.
+>   `BattleScreen.LeaveByEscape`가 Escaped에서 읽는다. `ResultScreen`이 줄을 읽는다.
+>   `DungeonRun.End`. `InvasionState.AbortPending`은 패배 추가 소모·명예·보호막 없음.
+>   출정비는 이미 낸 채로 남는다. `QA_NO_ESCAPE_FORFEIT=1`이면 옛 Estate 직행.
+>   `QA_ESCAPE_FORFEIT=1`은 결과 화면. `W3Party`는 안 건드렸다.
+> - **통과 기준**: Apply 뒤 골드·경험·목숨 불변. 보상 비움. 던전 Active 해제.
+>   침략 대기 취소·약탈 0·패배 추가 0. 차단하면 줄 없음.
+>   화면 `긴급 탈출 — 이번 판 보상 포기(§4)` · `목숨은 그대로. 전리품·경험치는 없다(§3·§4)`.
+> - **TDD/실행**: `unity_meas` `EscapeForfeitSelfCheck` 전항 PASS
+>   (`escape_forfeit_selfcheck.log`). `EmergencyEscapeSelfCheck` 회귀 PASS.
+> - **화면**(직접 열음, 빈 화면 아님, `QA_ESCAPE_FORFEIT=1`):
+>   `escape_forfeit_shots/qa_go:Result.png` 714023B — 결과,
+>   `긴급 탈출 — 이번 판 보상 포기(§4)`,
+>   `목숨은 그대로. 전리품·경험치는 없다(§3·§4)`.
+>   획득 골드 줄 없음. 옛 영지 직행이 아님.
+> - **네거티브**: `BattleScreen`에서 `EscapeForfeit.Apply`를 빼면 FAIL 1
+>   (`escape_forfeit_negctrl.log` — 전투가 Apply를 읽는다). `QA_NO`면 줄 없음.
+> - **정직한 미완**: 생존형 HP 50% 자동 이탈은 W3Party라 안 넣음. 저체력 귀환은
+>   기존 Estate 직행 유지. 원본 에디터 PID 75776은 죽이지 않았고 사본으로 빌드·촬영.
+> - **코드** `bd4ab945`. `W3Party`는 안 건드렸다.
+
+> **이전 이터 결과(코드/실행): 필드 배회 보스 — 허브 출현 · 보스전 · FieldDungeonBoss.**
 > - 큐 1번은 사람 육안·다른 세션 가능이라 대기하지 않음. §10-1 ✅
 >   `필드 보스 | 오픈월드 배회`. 표와 §5 지휘 규칙만 있고 필드 소비처가 0곳이었다.
 > - **생산 소비처**: `FieldBoss.Tick`/`SpawnNow`/`Consume`/`BeginFight`/`EndFight`/
