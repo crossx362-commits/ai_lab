@@ -51,7 +51,7 @@ namespace AshesToStars
             PlayerPrefs.Save();
         }
 
-        /// <summary>승리 +30, 패배 0. QA_NO면 0을 주고 잔액은 안 바꾼다.</summary>
+        /// <summary>승리 +30 × 반복 배율, 패배 0. QA_NO면 0을 주고 잔액은 안 바꾼다.</summary>
         public static int ApplyInvasion(bool won)
         {
             Load();
@@ -61,7 +61,7 @@ namespace AshesToStars
                 Save();
                 return 0;
             }
-            int add = won ? Win : Lose;
+            int add = won ? Win * InvasionState.RepeatPercent() / 100 : Lose;
             _points += add;
             _last = add;
             Save();

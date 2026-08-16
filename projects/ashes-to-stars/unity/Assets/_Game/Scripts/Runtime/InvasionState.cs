@@ -29,6 +29,8 @@ namespace AshesToStars
         public const string EnvNoWarehouse = "QA_NO_WAREHOUSE_LOOT";
         public const string EnvShowHonor = Honor.EnvShow;
         public const string EnvNoHonor = Honor.EnvNo;
+        public const string EnvShowRepeat = "QA_REPEAT_LOOT";
+        public const string EnvNoRepeat = "QA_NO_REPEAT_LOOT";
         public const int HumanLootPercent = 100;
         public const int BeastLootPercent = 120;
         /// <summary>§18-13 패자 손실. 창고 자원의 20%. 미수령 50%는 자동적립이라 별도 풀이 없다.</summary>
@@ -39,20 +41,30 @@ namespace AshesToStars
         public const int LootCapHours = 6;
         /// <summary>§18-13 승자 최소. 본성 1레벨당 0.5 G/h. Keep1=5000.</summary>
         public const long FloorCopperPerKeep = Economy.COPPER_PER_GOLD / 2;
+        /// <summary>§18-13 동일 상대 24시간 창. 직전 침략 시각이 기준이다.</summary>
+        public const long RepeatWindowSeconds = 24 * 3600;
+        public const int RepeatFirstPercent = 100;
+        public const int RepeatSecondPercent = 20;
+        public const int RepeatThirdPercent = 0;
 
         const string K_PENDING = "ats.invasion.pending";
         const string K_PAID = "ats.invasion.paid";
         const string K_LAST = "ats.invasion.last_loot";
         const string K_SIDE = "ats.invasion.side";
         const string K_SHIELD = "ats.invasion.shield_until";
+        const string K_HITS = "ats.invasion.repeat_hits";
+        const string K_HIT_AT = "ats.invasion.repeat_last";
 
         static bool _loaded;
         static bool _qaFloorSeeded;
         static bool _qaWarehouseSeeded;
+        static bool _qaRepeatSeeded;
         static bool _pending;
         static long _paid;
         static long _lastLoot;
         static long _shieldUntil;
+        static int _hits;
+        static long _lastHit;
         static EstateGrid.Side _approach;
 
         public static Func<long> NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -80,6 +92,9 @@ namespace AshesToStars
             long.TryParse(PlayerPrefs.GetString(K_PAID, "0"), out _paid);
             long.TryParse(PlayerPrefs.GetString(K_LAST, "0"), out _lastLoot);
             long.TryParse(PlayerPrefs.GetString(K_SHIELD, "0"), out _shieldUntil);
+            int.TryParse(PlayerPrefs.GetString(K_HITS, "0"), out _hits);
+            long.TryParse(PlayerPrefs.GetString(K_HIT_AT, "0"), out _lastHit);
+            if (_hits < 0) _hits = 0;
             int side = PlayerPrefs.GetInt(K_SIDE, (int)EstateGrid.Side.북);
             _approach = (EstateGrid.Side)Mathf.Clamp(side, 0, 3);
         }
@@ -90,6 +105,8 @@ namespace AshesToStars
             PlayerPrefs.SetString(K_PAID, _paid.ToString());
             PlayerPrefs.SetString(K_LAST, _lastLoot.ToString());
             PlayerPrefs.SetString(K_SHIELD, _shieldUntil.ToString());
+            PlayerPrefs.SetString(K_HITS, _hits.ToString());
+            PlayerPrefs.SetString(K_HIT_AT, _lastHit.ToString());
             PlayerPrefs.SetInt(K_SIDE, (int)_approach);
             PlayerPrefs.Save();
         }
@@ -145,6 +162,9 @@ namespace AshesToStars
 
         public static bool LootWarehouseBlocked =>
             Environment.GetEnvironmentVariable(EnvNoWarehouse) == "1";
+
+        public static bool RepeatLootBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoRepeat) == "1";
 
         /// <summary>§18-9 수인 약탈량 +20%. 에셋이 없으면 표로 폴백한다.</summary>
         public static int RaceLootPercent()
@@ -251,6 +271,51 @@ namespace AshesToStars
             return $"창고 20%(§18-13) · {Economy.FormatCurrency(ApplyWarehouseLoot(WarehouseCopper()))}";
         }
 
+        /// <summary>§18-13 동일 상대 24h. 직전 침략이 창 밖이면 1회차. 정산 전에 다음 회차를 본다.</summary>
+        public static int NextAttempt()
+        {
+            if (RepeatLootBlocked) return 1;
+            Load();
+            if (_lastHit > 0 && NowUnix() - _lastHit > RepeatWindowSeconds) return 1;
+            return _hits + 1;
+        }
+
+        /// <summary>1회 100 · 2회 20 · 3회부터 0. QA_NO면 매번 100.</summary>
+        public static int RepeatPercent()
+        {
+            int n = NextAttempt();
+            if (n <= 1) return RepeatFirstPercent;
+            if (n == 2) return RepeatSecondPercent;
+            return RepeatThirdPercent;
+        }
+
+        public static long ApplyRepeatLoot(long copper)
+        {
+            if (RepeatLootBlocked) return copper;
+            if (copper < 0) return 0;
+            return copper * RepeatPercent() / 100;
+        }
+
+        public static string RepeatLootLine()
+        {
+            if (RepeatLootBlocked) return "반복 침략 없음";
+            int n = NextAttempt();
+            if (n <= 1) return "반복 침략 1회차";
+            if (n == 2) return "반복 침략 −80%(§18-13)";
+            return "반복 침략 보상 없음(§18-13)";
+        }
+
+        /// <summary>정산 뒤에만 부른다. 미리보기·명예는 그 전의 NextAttempt를 본다.</summary>
+        public static void RecordStrike()
+        {
+            if (RepeatLootBlocked) return;
+            Load();
+            if (_lastHit > 0 && NowUnix() - _lastHit > RepeatWindowSeconds)
+                _hits = 0;
+            _hits++;
+            _lastHit = NowUnix();
+        }
+
         public static void SetWarehouseCopper(long copper)
         {
             if (copper < 0) copper = 0;
@@ -279,7 +344,8 @@ namespace AshesToStars
         /// 창고를 비워도 본성×0.5 G/h는 준다(§15 1-b). QA_NO_WAREHOUSE_LOOT=1이면 옛 출정×3.
         /// 수인은 그 금액의 120%(§18-9). 방어 감소 뒤에 곱한다.
         /// 영공 적 디버프가 켜져 있으면 그 위에 95%(§14).
-        /// 마지막에 같은 티어 6 G/h로 자른다(§18-13). QA_NO_LOOT_CAP=1이면 안 자른다.</summary>
+        /// 마지막에 같은 티어 6 G/h로 자른다(§18-13). QA_NO_LOOT_CAP=1이면 안 자른다.
+        /// 반복 침략 배율은 바닥·상한 뒤에 곱한다. 앞에 곱하면 2회차가 다시 바닥으로 올라간다.</summary>
         public static long LootCopper()
         {
             long raw;
@@ -295,7 +361,7 @@ namespace AshesToStars
             {
                 raw = WarehouseFormulaCopper();
             }
-            return ApplyLootCap(ApplyLootFloor(raw));
+            return ApplyRepeatLoot(ApplyLootCap(ApplyLootFloor(raw)));
         }
 
         public static bool TryBegin()
@@ -336,6 +402,7 @@ namespace AshesToStars
                 _lastLoot = 0;
                 Honor.ApplyInvasion(false);
             }
+            RecordStrike();
             _paid = 0;
             ArmShield();
             Save();
@@ -473,6 +540,30 @@ namespace AshesToStars
             Save();
         }
 
+        /// <summary>시각 QA. QA_REPEAT_LOOT=1이면 2회차(−80%)·30층·창고 25000으로 침략 카드를 연다.</summary>
+        public static void SeedRepeatLootQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowRepeat) != "1") return;
+            if (RepeatLootBlocked) return;
+            if (_qaRepeatSeeded) return;
+            _qaRepeatSeeded = true;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.EnemyDebuff = false;
+            WorldStar.AllyBuff = false;
+            EstateBuild.ResetForTest();
+            EstateDefense.ResetForTest();
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            SetWarehouseCopper(QaWarehouseCopper);
+            ForceLootBeforeCap = 0;
+            _pending = false;
+            _shieldUntil = 0;
+            _hits = 1;
+            _lastHit = NowUnix();
+            Save();
+        }
+
         /// <summary>명예 QA가 보호막·대기 잔재를 지울 때. 약탈 시드와 같은 자리.</summary>
         public static void ResetPendingForHonorQa()
         {
@@ -489,16 +580,21 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey(K_LAST);
             PlayerPrefs.DeleteKey(K_SIDE);
             PlayerPrefs.DeleteKey(K_SHIELD);
+            PlayerPrefs.DeleteKey(K_HITS);
+            PlayerPrefs.DeleteKey(K_HIT_AT);
             PlayerPrefs.Save();
             NowUnix = () => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             ForceRaceLootMul = 0f;
             ForceLootBeforeCap = 0;
             _qaFloorSeeded = false;
             _qaWarehouseSeeded = false;
+            _qaRepeatSeeded = false;
             _pending = false;
             _paid = 0;
             _lastLoot = 0;
             _shieldUntil = 0;
+            _hits = 0;
+            _lastHit = 0;
             _approach = EstateGrid.Side.북;
             _loaded = false;
         }
@@ -506,7 +602,8 @@ namespace AshesToStars
         public static void ForgetInMemoryForTest()
         {
             _pending = false;
-            _paid = _lastLoot = _shieldUntil = 0;
+            _paid = _lastLoot = _shieldUntil = _lastHit = 0;
+            _hits = 0;
             _approach = EstateGrid.Side.북;
             _loaded = false;
         }

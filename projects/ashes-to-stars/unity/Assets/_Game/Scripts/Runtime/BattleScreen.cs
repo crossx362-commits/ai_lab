@@ -319,12 +319,16 @@ namespace AshesToStars
             if (_leftForSafety) return;
             if (GameFlow.Kind == GameFlow.BattleKind.침략)
             {
+                string repeatLine = InvasionState.RepeatLootLine();
+                int repeatPct = InvasionState.RepeatPercent();
                 long loot = InvasionState.Settle(survived);
                 if (survived)
                 {
                     string lootLine = InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent
                         ? " · " + InvasionState.RaceLootLine()
                         : "";
+                    if (repeatPct != InvasionState.RepeatFirstPercent)
+                        lootLine += " · " + repeatLine;
                     string honorLine = Honor.Blocked ? "" : " · " + Honor.WinLine();
                     GameFlow.LastBattleSummary =
                         $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)}{lootLine}{honorLine} ({_t:F1}초)";
