@@ -744,7 +744,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 | 항목 | 근거 | 커밋 |
 |---|---|---|
-| **UI 아이콘 소비처(영지 건물·캐릭터 초상/목숨)** | 아틀라스에 있던 건물4·하트2·역할4·xp/초상 프레임을 Estate/Character가 소비. 헤더가 화면과 일치. SelfCheck PASS. PNG: 영지 성+4건물, 캐릭터 파티아이콘+초상6+하트/XP. 정적 85소스 0오류 | 이 커밋 |
+| **UI 아이콘 소비처(영지 건물·캐릭터 초상/목숨)** | 아틀라스에 있던 건물4·하트2·역할4·xp/초상 프레임을 Estate/Character가 소비. 헤더가 화면과 일치. SelfCheck PASS. PNG: 영지 성+4건물, 캐릭터 파티아이콘+초상6+하트/XP. 정적 85소스 0오류 | `f690e210` |
 | **V4 패배→삭제→재건 자동 경계** | 출전만 사망·벤치 불변·3회 삭제·생존0=재건1·PvP 목숨0·재기동 유지. SelfCheck ⑫ PASS. PNG: 결과(영묘+재건1)·캐릭터(5인 삭제됨+재건1 출전가능). API 제거 시 컴파일 RED 17건 | `3b9563af` + 이 커밋 |
 | **V3 한 판 종단** | 파티 공격→HP 9000→4500(페이즈1)→0·장판/힐보고·소환·처치·층 5→6이 **같은 실행**. `ApplyTowerBossVictory`를 BattleScreen OnBossDefeated가 소비. Unity SelfCheck PASS, `qa_boss.png` 육안 확인. `BOSS_NO_DPS=1`이면 층 불변 | `ec927cbe` |
 | **§8 탑 등반 층 진행 배선** | "다음 층 도전"(잡몹웨이브)을 이겨도 층이 안 올랐다 — `ClearFloor`가 보스 격파에서만 불려 일반 층은 진행도에 반영 안 됨. `OnBattleEnd` 생존 분기에 `IsTowerFloorClear`(잡몹웨이브만·보스 제외 이중상승 방지)로 `ClearFloor(BossFloor)` 배선. 새 시스템 0(기존 ClearFloor·TowerFloor 재사용). `game_compile_check` PASS·`game_asset_names` ✅·SelfCheck ⑪(잡몹웨이브→참/보스→거짓/필드·전멸·던전→거짓·단조증가·재기동유지). ⚠️배치SelfCheck·인게임 GUI세션 대기 | `feeb9f96` |
