@@ -51,6 +51,10 @@ namespace AshesToStars
         {
             return job switch
             {
+                "탱" => "tank_knight",
+                "딜" => "dark_knight",
+                "힐" => "priest",
+                "버퍼" => "bard",
                 "수호기사" => "tank_knight",
                 "검사" => "dark_knight",
                 "마법사" => "fire_mage",

@@ -40,6 +40,39 @@ namespace AshesToStars
             // ① 로스터가 저절로 선다 — Initialize를 아무도 안 불러도
             var roster = LifeSystem.GetCharacters();
             Check(roster.Count == 5, $"로스터 자동 생성 (기대 5, 실제 {roster.Count})");
+            Check(roster[0].Job == "탱" && roster[1].Job == "딜" && roster[2].Job == "딜"
+                  && roster[3].Job == "힐" && roster[4].Job == "버퍼",
+                  "신규 로스터는 기본직업 4종(탱·딜·힐·버퍼)으로 시작(§3)");
+            Check(roster.TrueForAll(c => c.Advancement == AdvancementTier.Basic),
+                  "신규 로스터 전원은 미전직(Basic) 단계");
+
+            // 기본직업은 아직 전용 전투 Job enum이 없다. 프로토타입 전투는
+            // 기존 1차 아키타입으로 어댑트해 파티가 0명이 되는 회귀를 막는다.
+            PartyState.ResetForTest();
+            var sortieJobs = PartyState.SortieJobs();
+            Check(sortieJobs.Count == 5 && sortieJobs[0] == "수호기사"
+                  && sortieJobs[1] == "검사" && sortieJobs[3] == "사제"
+                  && sortieJobs[4] == "음유시인",
+                  "기본직업 5인이 프로토타입 전투 Job으로 모두 어댑트됨");
+
+            LifeSystem.ForgetInMemoryForTest();
+            roster = LifeSystem.GetCharacters();
+            Check(roster.TrueForAll(c => c.Advancement == AdvancementTier.Basic),
+                  "재기동 후에도 기본직업 전직 단계 유지");
+
+            // 예전 7필드 저장에는 전직 단계가 없다. 기존 직업명은 1차 완료로 보존한다.
+            PlayerPrefs.SetString("ats.roster", "예전탱크\t수호기사\t10\t0\t0\t0\t25\n");
+            PlayerPrefs.Save();
+            LifeSystem.ForgetInMemoryForTest();
+            var legacy = LifeSystem.GetCharacters();
+            Check(legacy.Count == 1 && legacy[0].Job == "수호기사"
+                  && legacy[0].Advancement == AdvancementTier.First && legacy[0].Exp == 25,
+                  "기존 1차 직업 7필드 저장을 1차 완료로 하위호환");
+
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            PartyState.ResetForTest();
+            roster = LifeSystem.GetCharacters();
 
             // ② 부활초 단일 소스 — LifeSystem과 소지품이 같은 숫자를 본다
             Check(LifeSystem.GetRevivePotions() == GameState.Bag.GetCount(Economy.LifeItem.RevivalTea),

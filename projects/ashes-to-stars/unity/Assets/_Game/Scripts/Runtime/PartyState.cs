@@ -95,9 +95,22 @@ namespace AshesToStars
             var roster = LifeSystem.GetCharacters();
             var jobs = new List<string>();
             foreach (int i in _slots)
-                if (i >= 0 && i < roster.Count) jobs.Add(roster[i].Job);
+                if (i >= 0 && i < roster.Count) jobs.Add(CombatJob(roster[i]));
             return jobs;
         }
+
+        // W3Party는 기존 1차 Job enum으로 전투한다. 기본직업 전용 스킬이
+        // 들어오기 전까지는 같은 역할의 프로토타입 아키타입을 사용한다.
+        static string CombatJob(CharacterRecord character) => character.Advancement != AdvancementTier.Basic
+            ? character.Job
+            : character.Job switch
+            {
+                "탱" => "수호기사",
+                "딜" => "검사",
+                "힐" => "사제",
+                "버퍼" => "음유시인",
+                _ => character.Job,
+            };
 
         /// <summary>전투 결과를 로스터에 반영한 뒤 호출 — 죽은 캐릭터가 슬롯에 남지 않게.</summary>
         public static void Refresh() { Load(); Prune(); Save(); }

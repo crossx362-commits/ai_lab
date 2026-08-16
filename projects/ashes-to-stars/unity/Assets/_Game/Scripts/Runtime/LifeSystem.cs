@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace AshesToStars
 {
+    public enum AdvancementTier { Basic = 0, First = 1, Second = 2 }
+
     // ─────────────────────────────────────────────────────────────
     // 목숨 시스템 (§4 사망·환생·목숨 경제)
     //
@@ -23,7 +25,8 @@ namespace AshesToStars
     public class CharacterRecord
     {
         public string Name { get; set; }
-        public string Job { get; set; }  // 기본 직업명 (예: "수호기사", "마법사")
+        public string Job { get; set; }  // 현재 직업명(기본: 탱·딜·힐·버퍼, 1차: 수호기사 등)
+        public AdvancementTier Advancement { get; set; }
         public int Level { get; set; }
 
         /// <summary>
@@ -42,10 +45,12 @@ namespace AshesToStars
         /// <summary>삭제됨 여부.</summary>
         public bool IsDeleted { get; set; }
 
-        public CharacterRecord(string name, string job, int level = 1)
+        public CharacterRecord(string name, string job, int level = 1,
+                               AdvancementTier advancement = AdvancementTier.Basic)
         {
             Name = name;
             Job = job;
+            Advancement = advancement;
             Level = level;
             Exp = 0;
             DeathCount = 0;
@@ -90,11 +95,11 @@ namespace AshesToStars
             // 1~5인 조합의 사망 시나리오를 테스트하려면 충분한 캐릭터가 필요.
             // (결정: 프로토타입에는 5명이 합리적)
 
-            _characters.Add(new CharacterRecord("탱크", "수호기사", level: 10));
-            _characters.Add(new CharacterRecord("딜러1", "마법사", level: 10));
-            _characters.Add(new CharacterRecord("딜러2", "검사", level: 10));
-            _characters.Add(new CharacterRecord("힐러", "사제", level: 10));
-            _characters.Add(new CharacterRecord("버퍼", "음유시인", level: 10));
+            _characters.Add(new CharacterRecord("탱크", "탱", level: 10));
+            _characters.Add(new CharacterRecord("딜러1", "딜", level: 10));
+            _characters.Add(new CharacterRecord("딜러2", "딜", level: 10));
+            _characters.Add(new CharacterRecord("힐러", "힐", level: 10));
+            _characters.Add(new CharacterRecord("버퍼", "버퍼", level: 10));
             Save();
         }
 
@@ -136,6 +141,11 @@ namespace AshesToStars
                     IsDeleted = p[5] == "1",
                     // 7번째 필드(경험치)는 나중에 추가됐다 — 옛 6필드 저장은 0으로 읽어 하위호환.
                     Exp = p.Length > 6 ? SafeLong(p[6], 0) : 0,
+                    // 8번째 필드는 전직 단계. 이 필드가 없던 기존 저장의
+                    // 11종 직업명은 이미 1차 완료한 캐릭터로 보존한다.
+                    Advancement = p.Length > 7
+                        ? SafeAdvancement(p[7])
+                        : (IsFirstAdvancementJob(p[1]) ? AdvancementTier.First : AdvancementTier.Basic),
                 };
                 _characters.Add(c);
             }
@@ -143,6 +153,16 @@ namespace AshesToStars
 
         static int SafeInt(string s, int fallback) => int.TryParse(s, out int v) ? v : fallback;
         static long SafeLong(string s, long fallback) => long.TryParse(s, out long v) ? v : fallback;
+        static AdvancementTier SafeAdvancement(string s)
+        {
+            int value = SafeInt(s, 0);
+            return value >= 0 && value <= 2 ? (AdvancementTier)value : AdvancementTier.Basic;
+        }
+
+        static bool IsFirstAdvancementJob(string job) => job == "수호기사" || job == "광전사"
+            || job == "검사" || job == "궁수" || job == "마법사" || job == "소환사"
+            || job == "사제" || job == "드루이드" || job == "음유시인" || job == "주술사"
+            || job == "정령사";
 
         /// <summary>로스터를 저장한다. 사망·삭제는 즉시 남아야 한다(§4).</summary>
         private static void Save()
@@ -152,7 +172,7 @@ namespace AshesToStars
                 sb.Append(c.Name).Append('\t').Append(c.Job).Append('\t').Append(c.Level)
                   .Append('\t').Append(c.DeathCount).Append('\t').Append(c.RecoveryEndTime)
                   .Append('\t').Append(c.IsDeleted ? '1' : '0')
-                  .Append('\t').Append(c.Exp).Append('\n');
+                  .Append('\t').Append(c.Exp).Append('\t').Append((int)c.Advancement).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
             PlayerPrefs.Save();
         }
