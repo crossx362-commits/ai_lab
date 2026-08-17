@@ -1,0 +1,81 @@
+{
+  "_note": "기획서 §3 1차 전직 10종(마법사 제외) idle + 남은 배경 3장. 기본 5직업·몹·보스 재생성 금지. 전직은 기본 몸통 파츠 변주(§0-B).",
+  "refs": [],
+  "rulesets": {
+    "adv": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions with a large pale mask-like head and small body, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. THREE-QUARTER FRONT view, FULL BODY, a SINGLE centered figure — one cell only. Common baseline at the bottom. No text, no labels, no borders, no grid. Background: completely flat solid pure magenta #FF00FF.",
+    "bg": "Hollow Knight inspired hand-drawn 2D background art: clean dark linework, muted desaturated palette with deep blues and greys, soft painterly shading, melancholic fairy-tale atmosphere, subtle fog layers. NOT pixel art, NOT photorealistic, NOT 3D. A WIDE 16:9 SCENE. This is a BACKGROUND that light UI text and buttons will be drawn on top of — keep the left half and center calm and dark, put detail toward the upper right and edges. Overall value MUTED and DARK. No characters, no creatures, no text, no UI, no frames, no borders."
+  },
+  "assets": [
+    {
+      "name": "guardian_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A rotund moss-covered beetle knight advanced into a holy guardian: even LARGER round shield covering the whole body, heavier layered carapace, two curved horns, skull-white mask, NO axe — both arms on the shield. Immovable fortress stance."
+    },
+    {
+      "name": "berserker_idle_00",
+      "rules_ref": "adv",
+      "prompt": "The same moss beetle knight gone feral: NO large shield, TWO heavy bone axes, cracked carapace with red rage scratches, leaning forward ready to charge. Same mask and horns, much more aggressive silhouette."
+    },
+    {
+      "name": "swordsman_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A slender wasp duelist with ONE long thin bone-white saber held in a high ready stance, the other hand empty. Dark navy chitin, two horn-antennae, short crimson half-cape. Faster, narrower than a dual-wield fencer."
+    },
+    {
+      "name": "archer_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A slender wasp archer: long dark bow held in both hands, a small quiver of pale bolts on the hip, same navy chitin and horn-antennae, no sabers. Alert aiming-ready stance, still three-quarter front full body."
+    },
+    {
+      "name": "summoner_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A void moth summoner: ragged dark hood, glowing cyan eyes, holding a cracked summoning stone instead of a tall staff. A tiny stone golem silhouette sits at its feet. Same moth-wing cloak, quieter stance."
+    },
+    {
+      "name": "priest_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A luminous light fairy priest: ivory body, closed-eye white mask, holding a bright holy chalice instead of a spiral staff. Stronger golden halo, calmer hovering pose. Same small wings."
+    },
+    {
+      "name": "druid_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A light fairy gone wild: same ivory body and white mask, staff wrapped in living vines and leaves, tiny moss on the wings, a sprout at the feet. Nature, not gold relic."
+    },
+    {
+      "name": "bard_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A spider-silk weaver as a bard: pale multi-eye mask, plum robes, holding a small lute-like instrument of silk and bone instead of loose threads. Two arms play, other thin arms trail faint sound-rings."
+    },
+    {
+      "name": "shaman_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A spider-silk weaver as a hexer: darker mauve-black robes, holding a small cursed totem, threads now smoky and black-green. Same multi-eye mask, more hunched, ominous."
+    },
+    {
+      "name": "elemental_idle_00",
+      "rules_ref": "adv",
+      "prompt": "A spider-silk weaver as a spirit binder: same pale mask, three tiny orbs (ember, water drop, wind swirl) floating on silk threads instead of spiderlings. Open welcoming stance."
+    },
+    {
+      "name": "bg_title",
+      "rules_ref": "bg",
+      "aspect": "16:9",
+      "keep_bg": true,
+      "prompt": "A ruined hillside at late dusk looking toward a distant dark tower under ash-grey stars. Broken stone steps and a dead tree on the far right, dim ember-orange glow on the horizon. Quiet, mournful. Left and center stay dark and simple."
+    },
+    {
+      "name": "bg_result",
+      "rules_ref": "bg",
+      "aspect": "16:9",
+      "keep_bg": true,
+      "prompt": "A dim camp just after battle: a low dying campfire on the right, stacked shields and a torn banner, ash drifting, packed dirt and a few crates. Aftermath, not glory. Warm light only at the edges."
+    },
+    {
+      "name": "bg_dungeon",
+      "rules_ref": "bg",
+      "aspect": "16:9",
+      "keep_bg": true,
+      "prompt": "A branching stone dungeon hall from above-front: dark flagstone, two archways on the right leading deeper, faint cold-blue torchlight, moss on cracked pillars. Center and left stay dark and uncluttered."
+    }
+  ]
+}

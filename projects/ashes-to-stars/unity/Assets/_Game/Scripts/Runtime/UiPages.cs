@@ -188,8 +188,24 @@ namespace AshesToStars
             return new Rect(stage.x + EquipLookPad, y, w, h);
         }
 
-        /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>
-        public static string LookDir(string job) => job switch
+        /// <summary>1차 전직 전용 폴더. 파일이 없으면 기본 5직업으로 돌아간다.</summary>
+        public static string DedicatedLookDir(string job) => job switch
+        {
+            "수호기사" => "guardian",
+            "광전사" => "berserker",
+            "검사" => "swordsman",
+            "궁수" => "archer",
+            "소환사" => "summoner",
+            "사제" => "priest",
+            "드루이드" => "druid",
+            "음유시인" => "bard",
+            "주술사" => "shaman",
+            "정령사" => "elemental",
+            _ => null,
+        };
+
+        /// <summary>기본 5직업 폴더. 전직 그림이 오기 전·전투 SpriteBank와 같다.</summary>
+        public static string BaseLookDir(string job) => job switch
         {
             "탱" or "수호기사" or "광전사" => "tank",
             "힐" or "사제" or "드루이드" => "healer",
@@ -197,6 +213,16 @@ namespace AshesToStars
             "마딜" or "마법사" or "소환사" => "mage",
             _ => "dps",
         };
+
+        /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>
+        public static string LookDir(string job)
+        {
+            string dedicated = DedicatedLookDir(job);
+            if (!string.IsNullOrEmpty(dedicated)
+                && Resources.Load<Texture2D>($"sprites/{dedicated}/{dedicated}_{IdleFrame}") != null)
+                return dedicated;
+            return BaseLookDir(job);
+        }
 
         public static string LookPath(string job, string frame)
         {
