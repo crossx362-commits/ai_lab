@@ -26,9 +26,11 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(EstateYard.EnvShowPan);
             string noPan = Environment.GetEnvironmentVariable(EstateYard.EnvNoPan);
             string noFill = Environment.GetEnvironmentVariable(EstateYard.EnvNo);
+            string noZoom = Environment.GetEnvironmentVariable(EstateYard.EnvNoZoom);
             Environment.SetEnvironmentVariable(EstateYard.EnvShowPan, null);
             Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, null);
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, null);
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoZoom, "1");
             EstateYard.ResetForTest();
 
             var body = new Rect(GameScreen.BodyPadX, GameScreen.BodyTop,
@@ -88,6 +90,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateYard.EnvShowPan, show);
             Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, noPan);
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, noFill);
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoZoom, noZoom);
             EstateYard.ResetForTest();
             if (_fail == 0) Debug.Log("[EstateYardCamSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateYardCamSelfCheck] FAIL {_fail}건\n" + _log);

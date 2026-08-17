@@ -9,6 +9,7 @@ namespace AshesToStars
     /// 클래시 오브 클랜·쿠키런 킹덤처럼 마을이 화면을 채우고 HUD는 위에 얹는다.
     /// 칸 상한 88과 하단 카드 여백은 마름모를 작게 만든다 — QA_NO_YARD_FILL 이면 그 옛 길.
     /// 끌어 보기는 마을을 옮긴다 — QA_NO_YARD_PAN 이면 옛 고정 시점.
+    /// 굴려 확대는 칸을 키운다 — QA_NO_YARD_ZOOM 이면 옛 배율 1.
     /// </summary>
     public static class EstateYard
     {
@@ -22,8 +23,14 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_YARD_FILL";
         public const string EnvShowPan = "QA_YARD_PAN";
         public const string EnvNoPan = "QA_NO_YARD_PAN";
+        public const string EnvShowZoom = "QA_YARD_ZOOM";
+        public const string EnvNoZoom = "QA_NO_YARD_ZOOM";
         public const float QaPanX = 180f;
         public const float QaPanY = 48f;
+        public const float QaZoom = 1.50f;
+        public const float ZoomMin = 0.70f;
+        public const float ZoomMax = 1.55f;
+        public const float ZoomStep = 0.08f;
         public const float DragSlop = 8f;
         public const float PanShare = 0.40f;
 
@@ -39,18 +46,32 @@ namespace AshesToStars
             }
         }
 
-        public static bool ShowQa
+        public static bool ZoomBlocked
         {
             get
             {
-                string raw = Environment.GetEnvironmentVariable(EnvShowPan);
+                string raw = Environment.GetEnvironmentVariable(EnvNoZoom);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }
 
+        public static bool ShowQa
+        {
+            get
+            {
+                string pan = Environment.GetEnvironmentVariable(EnvShowPan);
+                string zoom = Environment.GetEnvironmentVariable(EnvShowZoom);
+                return On(pan) || On(zoom);
+            }
+        }
+
+        static bool On(string raw) =>
+            raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+
         static Texture2D _grass, _path, _plot, _sel;
         static readonly Dictionary<string, Texture2D> Props = new Dictionary<string, Texture2D>();
         static Vector2 _pan;
+        static float _zoom = 1f;
         static Vector2 _dragFrom;
         static Vector2 _panAtDrag;
         static bool _down;
@@ -97,15 +118,23 @@ namespace AshesToStars
 
         public static Vector2 Pan => PanEnabled ? _pan : Vector2.zero;
 
+        public static float Zoom => ZoomEnabled ? _zoom : 1f;
+
         public static bool PanEnabled => !FillBlocked && !PanBlocked;
+
+        public static bool ZoomEnabled => !FillBlocked && !ZoomBlocked;
 
         public static string Line()
         {
             if (FillBlocked)
                 return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)";
-            if (!PanEnabled)
-                return "마을이 화면을 채운다. 집을 누르면 들어간다(§16)";
-            return "마을을 끌어 본다. 집을 누르면 들어간다(§16)";
+            if (PanEnabled && ZoomEnabled)
+                return "마을을 끌어 보고 굴려 확대한다. 집을 누르면 들어간다(§16)";
+            if (PanEnabled)
+                return "마을을 끌어 본다. 집을 누르면 들어간다(§16)";
+            if (ZoomEnabled)
+                return "마을을 굴려 확대한다. 집을 누르면 들어간다(§16)";
+            return "마을이 화면을 채운다. 집을 누르면 들어간다(§16)";
         }
 
         /// <summary>
@@ -128,9 +157,12 @@ namespace AshesToStars
         public static float TileW(Rect area)
         {
             int n = Mathf.Max(1, EstateGrid.Size);
+            float tw;
             if (FillBlocked)
-                return Mathf.Min(OldTileCap, area.width / (n + 0.6f));
-            return Mathf.Min(area.width / n, area.height / (n * TileAspect + RoofHead));
+                tw = Mathf.Min(OldTileCap, area.width / (n + 0.6f));
+            else
+                tw = Mathf.Min(area.width / n, area.height / (n * TileAspect + RoofHead));
+            return tw * Zoom;
         }
 
         /// <summary>칸 크기. 끌어 보기 상한과 Origin이 같은 값을 쓴다.</summary>
@@ -167,6 +199,14 @@ namespace AshesToStars
             _pan = PanEnabled ? ClampPan(area, pan) : Vector2.zero;
         }
 
+        public static float ClampZoom(float zoom) =>
+            Mathf.Clamp(zoom, ZoomMin, ZoomMax);
+
+        public static void SetZoom(float zoom)
+        {
+            _zoom = ZoomEnabled ? ClampZoom(zoom) : 1f;
+        }
+
         /// <summary>칸 왼쪽 위. 끌어 보기가 켜지면 Pan만큼 옮긴다.</summary>
         public static Vector2 TileOrigin(Rect area, int x, int y)
         {
@@ -182,15 +222,19 @@ namespace AshesToStars
 
         public static void SeedQaIfRequested()
         {
-            if (!ShowQa || !PanEnabled) return;
             if (_qaSeeded) return;
+            bool pan = On(Environment.GetEnvironmentVariable(EnvShowPan)) && PanEnabled;
+            bool zoom = On(Environment.GetEnvironmentVariable(EnvShowZoom)) && ZoomEnabled;
+            if (!pan && !zoom) return;
             _qaSeeded = true;
-            _pan = new Vector2(QaPanX, QaPanY);
+            if (pan) _pan = new Vector2(QaPanX, QaPanY);
+            if (zoom) _zoom = QaZoom;
         }
 
         public static void ResetForTest()
         {
             _pan = Vector2.zero;
+            _zoom = 1f;
             _down = false;
             _dragging = false;
             _qaSeeded = false;
@@ -206,6 +250,7 @@ namespace AshesToStars
             int n = EstateGrid.Size;
             TileSize(area, out float tw, out float th);
             HandlePan(area);
+            HandleZoom(area);
 
             Vector2 Origin(int x, int y) => TileOrigin(area, x, y);
 
@@ -311,6 +356,17 @@ namespace AshesToStars
                 if (_dragging) ev.Use();
                 _down = false;
             }
+        }
+
+        static void HandleZoom(Rect area)
+        {
+            if (!ZoomEnabled) return;
+            var ev = Event.current;
+            if (ev == null || ev.type != EventType.ScrollWheel) return;
+            if (!area.Contains(ev.mousePosition)) return;
+            SetZoom(_zoom - ev.delta.y * ZoomStep);
+            SetPan(area, _pan);
+            ev.Use();
         }
 
         static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
