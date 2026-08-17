@@ -19,6 +19,7 @@ namespace AshesToStars
         {
             get
             {
+                if (FieldHud.ShowQa) return FieldHud.Line();
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
@@ -58,6 +59,7 @@ namespace AshesToStars
             LastLifeWarn.SeedQaIfRequested();
             HuntSchedule.SeedQaIfRequested();
             FieldBoss.SeedQaIfRequested();
+            FieldHud.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
@@ -119,7 +121,7 @@ namespace AshesToStars
                 return;
             }
 
-            var cards = UiPages.Grid(r, 2, 3, 16f);
+            var cards = FieldHud.Cards(r);
             if (DrawCard(cards[0], "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)", "field"))
             {
                 if (HuntStart.Blocked)
