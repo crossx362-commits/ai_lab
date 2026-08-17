@@ -339,6 +339,8 @@ class ParseTests(unittest.TestCase):
         self.assertLess(html.find('id="queue"'), html.find('id="choices"'))
         self.assertIn("renderCommands", html)
         self.assertIn("내가 시킨 일", html)
+        self.assertIn("proto_done", html)
+        self.assertIn("지금 ·", html)
         self.assertEqual(html.count('id="queue"'), 1)
 
 
@@ -875,7 +877,7 @@ class SliceBoardTests(unittest.TestCase):
         self.assertFalse(rows["탑 30층"])
 
     def test_slice_pct_after_v4_skip(self):
-        status = STATUS + "\nV4 외부 테스터 70% → 넘김\n"
+        status = STATUS + "\nV2 사람 판정 → 통과\nV4 외부 테스터 70% → 넘김\n"
         design = DESIGN + "\n- **수직 슬라이스** — 본성 레벨은 닫힘. 격자·단축 50%는 다음.\n"
         game = """
 개발 로드맵 — 프로토타입 이후
@@ -890,6 +892,18 @@ class SliceBoardTests(unittest.TestCase):
         self.assertGreater(stage["pct"], 0)
         self.assertLess(stage["pct"], 100)
         self.assertIn("원장 범위", stage["note"])
+        self.assertEqual(charts["current"]["id"], "1")
+        self.assertTrue(charts["current"]["proto_done"])
+        self.assertEqual(charts["current"]["label"], "마을·탑·장비")
+        self.assertFalse(any(f["id"] == "V4b" for f in charts["focus"]))
+        self.assertTrue(any("격자" in (f.get("label") or "") or f["id"] == "slice-done"
+                            for f in charts["focus"]))
+
+    def test_current_stays_proto_until_v4_done(self):
+        charts = board.progress_charts(STATUS, DESIGN, "", {})
+        self.assertEqual(charts["current"]["id"], "0")
+        self.assertFalse(charts["current"]["proto_done"])
+        self.assertTrue(any(f["id"] == "V4b" for f in charts["focus"]))
 
     def test_now_list_closed_after_gates(self):
         now = board.parse_now_list("""

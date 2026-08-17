@@ -653,8 +653,12 @@ def progress_charts(status: str | None = None, design: str | None = None,
         }
     else:
         queue_stat = {"done": done_n, "open": open_n, "blocked": blocked_n, "total": len(rows)}
+    current = pick_current_stage(roadmap)
+    focus = focus_bars(current, gates, slice_rows)
     return {
         "gates": gates,
+        "focus": focus,
+        "current": current,
         "weeks": weeks,
         "queue": queue_stat,
         "art": resource_bars(),
@@ -663,6 +667,76 @@ def progress_charts(status: str | None = None, design: str | None = None,
         "slice": slice_rows,
         "slice_pct": slice_pct,
     }
+
+
+_STAGE_LABELS = {
+    "0": "프로토타입",
+    "1": "마을·탑·장비",
+    "2": "온라인",
+    "3": "직업·층 확장",
+    "4": "다듬기",
+    "5": "출시",
+}
+
+
+def pick_current_stage(roadmap: list[dict]) -> dict:
+    """끝난 단계는 건너뛰고, 아직 안 끝난 첫 단계를 지금으로 둔다."""
+    empty = {"id": "0", "label": "프로토타입", "pct": 0, "note": "", "proto_done": False}
+    if not roadmap:
+        return empty
+    proto = next((s for s in roadmap if str(s.get("id")) == "0"), roadmap[0])
+    proto_done = (proto.get("pct") or 0) >= 100
+    for s in roadmap:
+        if (s.get("pct") or 0) < 100:
+            return {
+                "id": str(s.get("id") or "0"),
+                "label": _STAGE_LABELS.get(str(s.get("id")), _bare_stage(s.get("label"))),
+                "pct": int(s.get("pct") or 0),
+                "note": s.get("note") or "",
+                "proto_done": proto_done,
+            }
+    last = roadmap[-1]
+    return {
+        "id": str(last.get("id") or "5"),
+        "label": _STAGE_LABELS.get(str(last.get("id")), _bare_stage(last.get("label"))),
+        "pct": int(last.get("pct") or 0),
+        "note": last.get("note") or "끝",
+        "proto_done": True,
+    }
+
+
+def _bare_stage(label: str | None) -> str:
+    return re.sub(r"^\d+\.\s*", "", label or "").strip() or "다음 단계"
+
+
+def focus_bars(current: dict, gates: list[dict], slice_rows: list[dict]) -> list[dict]:
+    """지금 단계의 막대. 프로토가 끝나면 V1~V4 대신 다음 단계 항목을 보여 준다."""
+    if not current.get("proto_done") or str(current.get("id")) == "0":
+        return list(gates)
+    if str(current.get("id")) == "1":
+        done_n = sum(1 for r in slice_rows if r.get("done"))
+        bars = [{
+            "id": "slice-done",
+            "label": f"끝낸 것 {done_n}/{len(slice_rows)}",
+            "pct": 100 if slice_rows else 0,
+            "note": "끝",
+        }]
+        for r in slice_rows:
+            if r.get("done"):
+                continue
+            bars.append({
+                "id": str(r.get("id") or r.get("title") or "open"),
+                "label": r.get("title") or "남음",
+                "pct": 0,
+                "note": "남음",
+            })
+        return bars
+    return [{
+        "id": str(current.get("id") or "next"),
+        "label": current.get("label") or "다음",
+        "pct": int(current.get("pct") or 0),
+        "note": current.get("note") or "",
+    }]
 
 
 def write_progress_png(path: Path, charts: dict | None = None) -> Path:
@@ -693,8 +767,9 @@ def write_progress_png(path: Path, charts: dict | None = None) -> Path:
             spine.set_color("#2e2922")
 
     ax = axes[0, 0]
-    style(ax, "프로토타입 관문")
-    gates = charts["gates"]
+    cur = charts.get("current") or {}
+    style(ax, "지금 · " + (cur.get("label") or "프로토타입"))
+    gates = charts.get("focus") or charts["gates"]
     colors = [ok if g["pct"] >= 100 else hold if g["pct"] > 0 else "#3a342c" for g in gates]
     ax.barh([g["label"] for g in gates][::-1], [g["pct"] for g in gates][::-1], color=colors[::-1], height=0.55)
     ax.set_xlim(0, 100)

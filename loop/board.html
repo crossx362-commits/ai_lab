@@ -359,7 +359,8 @@ function renderPlaytest(state) {
   if (!box || !grid) return;
   const P = state.playtest || {};
   const rows = P.sessions || [];
-  box.style.display = rows.length ? "block" : "none";
+  const protoDone = Boolean((state.charts || {}).current && (state.charts.current.proto_done));
+  box.style.display = (!protoDone && rows.length) ? "block" : "none";
   if (!rows.length) return;
   meta.textContent = P.ran
     ? `세션 ${P.ran}/10 · 삭제 ${P.deleted} · 계속 경로 ${P.continued} · 사람 70%는 아직 (${P.ran_at || ""})`
@@ -490,6 +491,8 @@ function render(state) {
     L.hold ? `<span class="pill bad">HOLD</span>` : "",
     L.stop ? `<span class="pill bad">STOP</span>` : "",
     L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
+    (state.charts && state.charts.current)
+      ? `<span class="pill on">지금 ${esc(state.charts.current.label)}</span>` : "",
   ].join("");
   renderGrokUsage(state);
   const blocked = L.blocked || [];
@@ -560,7 +563,8 @@ function barClass(pct) {
 function renderCharts(c) {
   const el = $("charts");
   if (!el) return;
-  const gates = c.gates || [];
+  const cur = c.current || {};
+  const gates = c.focus || c.gates || [];
   const weeks = c.weeks || [];
   const q = c.queue || { done: 0, open: 0, blocked: 0, total: 0 };
   const art = c.art || [];
@@ -577,9 +581,9 @@ function renderCharts(c) {
   }).join("");
   el.innerHTML = `
     <section class="chart">
-      <h2>큰 관문</h2>
+      <h2>지금 · ${esc(cur.label || "프로토타입")}</h2>
       ${bars(gates)}
-      <div class="legend" style="margin-top:8px">끝난 단계만 채워진다.</div>
+      <div class="legend" style="margin-top:8px">${esc(cur.note || (cur.proto_done ? "프로토는 끝났고 다음 단계다" : "끝난 단계만 채워진다."))}</div>
     </section>
     <section class="chart">
       <h2>앞으로의 일정</h2>
