@@ -17,7 +17,9 @@ namespace AshesToStars
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Character);
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
-        protected override string Subtitle => "왼쪽 바둑판에서 고르면 오른쪽에 모습과 정보가 나온다(§3·§4)";
+        protected override string Subtitle => CharHud.ShowQa
+            ? CharHud.Line()
+            : "왼쪽 바둑판에서 고르면 오른쪽에 모습과 정보가 나온다(§3·§4)";
         protected override bool ShowRarityPreview => UiAtlas.QaShowRarity;
 
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
@@ -63,6 +65,7 @@ namespace AshesToStars
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
+            CharHud.SeedQaIfRequested();
             StarterPick.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             SeedDefenseRecoverQaIfRequested();
@@ -391,20 +394,20 @@ namespace AshesToStars
             if (_selectedCharacter < 0 || _selectedCharacter >= allCharacters.Count)
                 _selectedCharacter = 0;
 
-            UiPages.RosterSplit(area, out var list, out var stage);
+            CharHud.RosterSplit(area, out var list, out var stage);
             const float partyH = 56f;
             var listBody = new Rect(list.x, list.y, list.width, Mathf.Max(40f, list.height - partyH - 8f));
             var partyRect = new Rect(list.x, list.yMax - partyH, list.width, partyH);
-            int cols = UiPages.RosterCols;
+            int cols = CharHud.Cols;
             int rows = (allCharacters.Count + cols - 1) / cols;
             float contentH = Mathf.Max(listBody.height,
-                rows * (UiPages.RosterCellH + UiPages.RosterRowGap));
+                rows * (CharHud.CellH + UiPages.RosterRowGap));
             var view = new Rect(0f, 0f, Mathf.Max(40f, listBody.width - 16f), contentH);
             _listScroll = GUI.BeginScrollView(listBody, _listScroll, view);
             var board = new Rect(0f, 0f, view.width, contentH);
             for (int i = 0; i < allCharacters.Count; i++)
             {
-                var cell = UiPages.RosterCell(board, i);
+                var cell = CharHud.RosterCell(board, i);
                 DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
                 if (GUI.Button(cell, GUIContent.none, GUIStyle.none))
                 {
@@ -727,7 +730,7 @@ namespace AshesToStars
                 UiAtlas.RoleKey(ch.Job));
 
             var center = face.center;
-            UiPages.EquipRingFit(stage, face, out float ringX, out float ringY);
+            CharHud.EquipRingFit(stage, face, out float ringX, out float ringY);
             for (int i = 0; i < RingSlots.Length; i++)
             {
                 var slot = RingSlots[i];
@@ -742,17 +745,9 @@ namespace AshesToStars
                     ItemAtlas.DrawHud(new Rect(slotRect.x + inset, slotRect.y + inset,
                             slotRect.width - inset * 2f, slotRect.height - inset * 2f),
                         ItemAtlas.KeyForSlot(slot), new Color(1f, 1f, 1f, 0.28f));
-                    var cap = UiPages.ClampIn(stage,
-                        new Rect(slotRect.x - 4f, slotRect.yMax - 2f, slotRect.width + 8f,
-                            UiPages.EquipLabelH));
-                    Hint(cap, Equipment.SlotName(slot));
                 }
-                else if (worn.Enhance > 0)
-                {
-                    var cap = UiPages.ClampIn(stage,
-                        new Rect(slotRect.x, slotRect.yMax - 2f, slotRect.width, UiPages.EquipLabelH));
-                    Hint(cap, $"+{worn.Enhance}");
-                }
+                var cap = CharHud.EquipLabel(stage, slotRect);
+                Hint(cap, CharHud.SlotLabel(slot, worn));
                 if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
                 {
                     if (worn != null) Equipment.TryUnequip(ch, slot);

@@ -40,6 +40,7 @@ namespace AshesToStars
                 One("스킬 자동/수동", SkillUseSelfCheck.Run, rows, errors);
                 One("시작 직업 선택", StarterPickSelfCheck.Run, rows, errors);
                 One("캐릭터 명부", CharacterRosterSelfCheck.Run, rows, errors);
+                One("캐릭터 3열·장비 라벨", CharHudSelfCheck.Run, rows, errors);
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
                 One("아이템 아틀라스", ItemAtlasSelfCheck.Run, rows, errors);
                 One("영지 격자", EstateGridSelfCheck.Run, rows, errors);
