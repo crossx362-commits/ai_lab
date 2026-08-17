@@ -1,0 +1,39 @@
+{
+ "_note": "P10 화면 배경 6장 할로우 나이트 풍 재생성(오너 지시 2026-08-18 「배경도 다 교체해」). 장면 구성은 P8과 동일, 화풍만 교체. 새 화풍 단일 소스는 spec_p9_hollow_chars.json의 STYLE.",
+ "refs": [],
+ "rulesets": {
+  "bg": "Hollow Knight inspired hand-drawn 2D background art: clean dark linework, muted desaturated palette with deep blues and greys, soft painterly shading, melancholic fairy-tale atmosphere, subtle fog layers. NOT pixel art, NOT photorealistic, NOT 3D.  A WIDE 16:9 SCENE. This is a BACKGROUND that light UI text and buttons will be drawn on top of — keep the left half and center calm and dark, put detail toward the upper right and edges. Overall value MUTED and DARK. No characters, no creatures, no text, no UI, no frames, no borders."
+ },
+ "assets": [
+  {
+   "name": "bg_estate",
+   "rules_ref": "bg",
+   "prompt": "A lord's estate courtyard at dusk seen from the main gate: a stone keep with warm lit windows on the right, low outbuildings and a smithy chimney trailing smoke, a packed-earth yard, banners on poles. Quiet, settled, the place you come home to."
+  },
+  {
+   "name": "bg_field",
+   "rules_ref": "bg",
+   "prompt": "Rolling grassland at overcast midday seen from a rise: wind-bent grass, scattered boulders and lone trees, a dirt track winding toward distant hills, a broken fence line. Open and exposed — the hunting ground."
+  },
+  {
+   "name": "bg_tower",
+   "rules_ref": "bg",
+   "prompt": "An immense dark tower seen from its base looking up and away: weathered black stone tiers vanishing into low cloud, a long stair climbing the right side, faint blue light leaking from arrow slits. Oppressive, vertical, the thing you climb."
+  },
+  {
+   "name": "bg_worldmap",
+   "rules_ref": "bg",
+   "prompt": "A star chart of a dark planetary system: a deep indigo void with scattered stars, three or four muted planet discs of different sizes, thin orbital arcs, faint nebula haze toward the upper right. Cold and vast."
+  },
+  {
+   "name": "bg_character",
+   "rules_ref": "bg",
+   "prompt": "The inside of a barracks hall at night: stone walls, a rack of spears and shields on the right, bedrolls along the left wall, a low fire in a brazier casting warm light, an open ledger on a table. Lived-in and dim."
+  },
+  {
+   "name": "bg_party",
+   "rules_ref": "bg",
+   "prompt": "A war room seen over the table: a large map spread across weathered wood with carved markers and a compass, lantern light from the upper right, chairs pushed back, a hanging banner behind. Planning before departure."
+  }
+ ]
+}

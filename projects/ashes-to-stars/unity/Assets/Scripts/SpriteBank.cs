@@ -282,7 +282,9 @@ public class SpriteBank
         var rects = atlas.PackTextures(texes, 2, 4096, false);
         // ✅ 픽셀아트라 Point — Bilinear면 도트가 뭉개진다(§17 아트 방향).
         //    아틀라스 한도를 2048로 올린 것은 캐릭터 16프레임이 추가됐기 때문이다.
-        atlas.filterMode = FilterMode.Point;
+        // 화풍 전환(2026-08-18, 오너 지시): 픽셀아트 → 할로우 나이트 손그림.
+        // Point는 도트 보존용이었다 — 손그림을 비정수 배율로 Point에 그리면 계단이 생긴다.
+        atlas.filterMode = FilterMode.Bilinear;
         atlas.Apply(false, false);
 
         // 아틀라스가 정말로 채워졌는지 확인 — 실패 시 전부 투명이라 화면이 텅 빈다

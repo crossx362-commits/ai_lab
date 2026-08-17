@@ -1,0 +1,88 @@
+{
+ "_note": "P11 직업 애니메이션 6프레임 사이클(오너 지적 2026-08-18 「스프라이트 애니메이션인데」). 참고 시트는 동작당 6프레임인데 기존 계약은 걷기 2·공격 2뿐이라 소재를 버리고 있었다. idle·walk·attack 사이클을 6프레임으로 올린다. hurt·death·dash·invuln·special은 P9 그대로.",
+ "refs": [],
+ "rulesets": {
+  "tank": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions with a large pale mask-like head and small body, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. The character is a rotund moss-covered beetle knight ('철갑의 용사'): dark green-grey carapace overgrown with moss, an ENORMOUS round shield as big as its whole body, two curved dark horns, a small skull-white mask face with hollow dark eyes, wielding a long-hafted battle axe. Heavy, immovable presence. THREE-QUARTER FRONT view, the FULL BODY visible. LAYOUT: EXACTLY SIX CELLS TOTAL — a 3-column by 2-row grid (3 across, 2 down). Do not draw five, seven or nine cells. Clear empty pure-magenta gaps between cells. The SAME character, SAME scale, SAME camera angle in every cell, resting on a common baseline. The six poses MUST differ dramatically. Do NOT draw any text, labels, frame numbers, grid lines, borders or captions of any kind. Background: completely flat solid pure magenta #FF00FF.",
+  "dps": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions with a large pale mask-like head and small body, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. The character is a slender wasp duelist ('칼날무희'): dark navy chitin armor, two long pointed horn-antennae, a tattered crimson half-skirt cape, TWO curved bone-white sabers held low, elegant lethal fencer stance, thin sharp limbs. THREE-QUARTER FRONT view, the FULL BODY visible. LAYOUT: EXACTLY SIX CELLS TOTAL — a 3-column by 2-row grid (3 across, 2 down). Do not draw five, seven or nine cells. Clear empty pure-magenta gaps between cells. The SAME character, SAME scale, SAME camera angle in every cell, resting on a common baseline. The six poses MUST differ dramatically. Do NOT draw any text, labels, frame numbers, grid lines, borders or captions of any kind. Background: completely flat solid pure magenta #FF00FF.",
+  "mage": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions with a large pale mask-like head and small body, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. The character is a void moth sorcerer ('심연의 마법사'): a ragged dark-grey hooded cloak with tattered moth wings, a pitch-black void face with two glowing pale-cyan eyes, holding a twisted dark staff whose head curls into black void tendrils. THREE-QUARTER FRONT view, the FULL BODY visible. LAYOUT: EXACTLY SIX CELLS TOTAL — a 3-column by 2-row grid (3 across, 2 down). Do not draw five, seven or nine cells. Clear empty pure-magenta gaps between cells. The SAME character, SAME scale, SAME camera angle in every cell, resting on a common baseline. The six poses MUST differ dramatically. Do NOT draw any text, labels, frame numbers, grid lines, borders or captions of any kind. Background: completely flat solid pure magenta #FF00FF.",
+  "healer": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions with a large pale mask-like head and small body, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. The character is a small luminous light fairy ('빛의 수호자'): ivory-cream body, translucent softly glowing wings, a serene white mask face with gently closed eyes, holding a golden staff with a glowing spiral head that radiates warm light, hovering just above the ground. THREE-QUARTER FRONT view, the FULL BODY visible. LAYOUT: EXACTLY SIX CELLS TOTAL — a 3-column by 2-row grid (3 across, 2 down). Do not draw five, seven or nine cells. Clear empty pure-magenta gaps between cells. The SAME character, SAME scale, SAME camera angle in every cell, resting on a common baseline. The six poses MUST differ dramatically. Do NOT draw any text, labels, frame numbers, grid lines, borders or captions of any kind. Background: completely flat solid pure magenta #FF00FF.",
+  "buffer": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions with a large pale mask-like head and small body, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. The character is a spider-silk weaver ('인과의 직공'): a pale mask with several small dark eye dots, plum-and-mauve layered robes, SIX thin arms trailing glowing threads of red, green and blue with tiny spiderlings at the ends, floating with quiet grace. THREE-QUARTER FRONT view, the FULL BODY visible. LAYOUT: EXACTLY SIX CELLS TOTAL — a 3-column by 2-row grid (3 across, 2 down). Do not draw five, seven or nine cells. Clear empty pure-magenta gaps between cells. The SAME character, SAME scale, SAME camera angle in every cell, resting on a common baseline. The six poses MUST differ dramatically. Do NOT draw any text, labels, frame numbers, grid lines, borders or captions of any kind. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "anim_tank_idle",
+   "rules_ref": "tank",
+   "prompt": "A 6-cell sprite sheet: ONE character's IDLE animation cycle. Six frames of the same standing pose breathing: weight settling, chest rising, tiny sway left, back to center, tiny sway right, returning to the first frame so it LOOPS. Differences between frames are SUBTLE — this is a breathing loop, not action."
+  },
+  {
+   "name": "anim_tank_walk",
+   "rules_ref": "tank",
+   "prompt": "A 6-cell sprite sheet: ONE character's RUN animation cycle. Six frames of one full stride that LOOPS: contact, down, push-off, opposite contact, opposite down, opposite push-off. Strong lean into the motion, limbs clearly readable."
+  },
+  {
+   "name": "anim_tank_attack",
+   "rules_ref": "tank",
+   "prompt": "A 6-cell sprite sheet: ONE character's ATTACK animation. Six frames: ready, anticipation wind-up, the strike at maximum extension with a motion arc, follow-through, recoil, recovery back toward ready."
+  },
+  {
+   "name": "anim_dps_idle",
+   "rules_ref": "dps",
+   "prompt": "A 6-cell sprite sheet: ONE character's IDLE animation cycle. Six frames of the same standing pose breathing: weight settling, chest rising, tiny sway left, back to center, tiny sway right, returning to the first frame so it LOOPS. Differences between frames are SUBTLE — this is a breathing loop, not action."
+  },
+  {
+   "name": "anim_dps_walk",
+   "rules_ref": "dps",
+   "prompt": "A 6-cell sprite sheet: ONE character's RUN animation cycle. Six frames of one full stride that LOOPS: contact, down, push-off, opposite contact, opposite down, opposite push-off. Strong lean into the motion, limbs clearly readable."
+  },
+  {
+   "name": "anim_dps_attack",
+   "rules_ref": "dps",
+   "prompt": "A 6-cell sprite sheet: ONE character's ATTACK animation. Six frames: ready, anticipation wind-up, the strike at maximum extension with a motion arc, follow-through, recoil, recovery back toward ready."
+  },
+  {
+   "name": "anim_mage_idle",
+   "rules_ref": "mage",
+   "prompt": "A 6-cell sprite sheet: ONE character's IDLE animation cycle. Six frames of the same standing pose breathing: weight settling, chest rising, tiny sway left, back to center, tiny sway right, returning to the first frame so it LOOPS. Differences between frames are SUBTLE — this is a breathing loop, not action."
+  },
+  {
+   "name": "anim_mage_walk",
+   "rules_ref": "mage",
+   "prompt": "A 6-cell sprite sheet: ONE character's RUN animation cycle. Six frames of one full stride that LOOPS: contact, down, push-off, opposite contact, opposite down, opposite push-off. Strong lean into the motion, limbs clearly readable."
+  },
+  {
+   "name": "anim_mage_attack",
+   "rules_ref": "mage",
+   "prompt": "A 6-cell sprite sheet: ONE character's ATTACK animation. Six frames: ready, anticipation wind-up, the strike at maximum extension with a motion arc, follow-through, recoil, recovery back toward ready."
+  },
+  {
+   "name": "anim_healer_idle",
+   "rules_ref": "healer",
+   "prompt": "A 6-cell sprite sheet: ONE character's IDLE animation cycle. Six frames of the same standing pose breathing: weight settling, chest rising, tiny sway left, back to center, tiny sway right, returning to the first frame so it LOOPS. Differences between frames are SUBTLE — this is a breathing loop, not action."
+  },
+  {
+   "name": "anim_healer_walk",
+   "rules_ref": "healer",
+   "prompt": "A 6-cell sprite sheet: ONE character's RUN animation cycle. Six frames of one full stride that LOOPS: contact, down, push-off, opposite contact, opposite down, opposite push-off. Strong lean into the motion, limbs clearly readable."
+  },
+  {
+   "name": "anim_healer_attack",
+   "rules_ref": "healer",
+   "prompt": "A 6-cell sprite sheet: ONE character's ATTACK animation. Six frames: ready, anticipation wind-up, the strike at maximum extension with a motion arc, follow-through, recoil, recovery back toward ready."
+  },
+  {
+   "name": "anim_buffer_idle",
+   "rules_ref": "buffer",
+   "prompt": "A 6-cell sprite sheet: ONE character's IDLE animation cycle. Six frames of the same standing pose breathing: weight settling, chest rising, tiny sway left, back to center, tiny sway right, returning to the first frame so it LOOPS. Differences between frames are SUBTLE — this is a breathing loop, not action."
+  },
+  {
+   "name": "anim_buffer_walk",
+   "rules_ref": "buffer",
+   "prompt": "A 6-cell sprite sheet: ONE character's RUN animation cycle. Six frames of one full stride that LOOPS: contact, down, push-off, opposite contact, opposite down, opposite push-off. Strong lean into the motion, limbs clearly readable."
+  },
+  {
+   "name": "anim_buffer_attack",
+   "rules_ref": "buffer",
+   "prompt": "A 6-cell sprite sheet: ONE character's ATTACK animation. Six frames: ready, anticipation wind-up, the strike at maximum extension with a motion arc, follow-through, recoil, recovery back toward ready."
+  }
+ ]
+}

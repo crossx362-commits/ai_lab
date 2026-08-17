@@ -21,7 +21,7 @@ public class TextureImportRules : AssetPostprocessor
         ti.mipmapEnabled = false;
         ti.textureCompression = TextureImporterCompression.Uncompressed;
         // ✅ 아트 방향이 픽셀아트로 확정(2026-08-13) — Bilinear면 도트가 뭉개진다
-        ti.filterMode = FilterMode.Point;
+        ti.filterMode = FilterMode.Bilinear   /* 화풍 전환 2026-08-18: HK 손그림, Point면 계단 */;
         // 오너 픽셀아트 도입 — 캐릭터 416×297급 + 런타임 아틀라스(캐릭터 52장 + 몹 22장 + 플레이스홀더) 수용
         ti.maxTextureSize = 4096;
 
@@ -46,7 +46,7 @@ public class TextureImportRules : AssetPostprocessor
         }
         else if (assetPath.Contains("/ground/") || assetPath.Contains("/Ground/"))
         {
-            ti.filterMode = FilterMode.Point;      // 바닥도 픽셀아트 타일 — Bilinear면 도트가 뭉개진다
+            ti.filterMode = FilterMode.Bilinear   /* 화풍 전환 2026-08-18: HK 손그림, Point면 계단 */;      // 바닥도 픽셀아트 타일 — Bilinear면 도트가 뭉개진다
             ti.textureType = TextureImporterType.Default;
             ti.wrapMode = TextureWrapMode.Repeat;   // 타일링 필수
             ti.alphaSource = TextureImporterAlphaSource.None;
