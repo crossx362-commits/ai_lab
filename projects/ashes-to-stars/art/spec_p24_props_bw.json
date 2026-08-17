@@ -1,0 +1,269 @@
+{
+ "_note": "프랍 52장 흑백 할로우 전면 교체",
+ "refs": [],
+ "rulesets": {
+  "p": "Hollow Knight environment PROP: a SINGLE object, 3/4 view, full silhouette readable. Near-monochrome — charcoal stone, bone-white rims, void-black hollows. Painterly ink-and-wash, thick dark outline. NOT pixel art, NOT isometric cottage, NOT bright thatch, NOT saturated green leaves. Cut off at its own base. NO ground, grass patch, or drop-shadow plate. Magenta #FF00FF background. No text."
+ },
+ "assets": [
+  {
+   "name": "village_house_0",
+   "rules_ref": "p",
+   "prompt": "A single a small Hallownest stone hovel, dark masonry, pale bone door frame."
+  },
+  {
+   "name": "village_house_1",
+   "rules_ref": "p",
+   "prompt": "A single a taller ruined bug-village house, cracked charcoal walls, pale window slits."
+  },
+  {
+   "name": "village_house_2",
+   "rules_ref": "p",
+   "prompt": "A single a collapsed Hallownest hut, broken dark roof beams, bone fragments."
+  },
+  {
+   "name": "village_barn_0",
+   "rules_ref": "p",
+   "prompt": "A single a low dark storehouse of chitin-plank and stone."
+  },
+  {
+   "name": "village_cart_0",
+   "rules_ref": "p",
+   "prompt": "A single an empty bone-and-wood cart, charcoal, pale rims."
+  },
+  {
+   "name": "village_fence_0",
+   "rules_ref": "p",
+   "prompt": "A single a short broken bone-stake fence."
+  },
+  {
+   "name": "village_fence_1",
+   "rules_ref": "p",
+   "prompt": "A single a longer leaning dark fence of chitin stakes."
+  },
+  {
+   "name": "village_haystack_0",
+   "rules_ref": "p",
+   "prompt": "A single a pale-grey silk-cocoon stack, not yellow hay."
+  },
+  {
+   "name": "village_lamp_0",
+   "rules_ref": "p",
+   "prompt": "A single a stone lamp post with ONE pale soul-lantern."
+  },
+  {
+   "name": "village_well_0",
+   "rules_ref": "p",
+   "prompt": "A single a dark stone well, bone crank, black water."
+  },
+  {
+   "name": "village_tree_0",
+   "rules_ref": "p",
+   "prompt": "A single a dead pale Hallownest tree, white bark, no green leaves."
+  },
+  {
+   "name": "field_tree_0",
+   "rules_ref": "p",
+   "prompt": "A single a tall dead ash tree, bone-white branches, charcoal trunk."
+  },
+  {
+   "name": "field_tree_1",
+   "rules_ref": "p",
+   "prompt": "A single a wind-bent pale dead tree."
+  },
+  {
+   "name": "field_tree_2",
+   "rules_ref": "p",
+   "prompt": "A single a split lightning-struck charcoal tree."
+  },
+  {
+   "name": "field_tree_3",
+   "rules_ref": "p",
+   "prompt": "A single a squat leafless pale tree."
+  },
+  {
+   "name": "field_rock_0",
+   "rules_ref": "p",
+   "prompt": "A single a single dark boulder, pale rim light."
+  },
+  {
+   "name": "field_rock_1",
+   "rules_ref": "p",
+   "prompt": "A single two smaller charcoal rocks."
+  },
+  {
+   "name": "field_rock_2",
+   "rules_ref": "p",
+   "prompt": "A single a flat dark slab."
+  },
+  {
+   "name": "field_bush_0",
+   "rules_ref": "p",
+   "prompt": "A single a dark thorny bramble, no green."
+  },
+  {
+   "name": "field_bush_1",
+   "rules_ref": "p",
+   "prompt": "A single a round charcoal thorn bush."
+  },
+  {
+   "name": "field_bush_2",
+   "rules_ref": "p",
+   "prompt": "A single a sparse dry grey bush."
+  },
+  {
+   "name": "field_stump_0",
+   "rules_ref": "p",
+   "prompt": "A single a pale cut stump."
+  },
+  {
+   "name": "field_stump_1",
+   "rules_ref": "p",
+   "prompt": "A single a rotting charcoal stump."
+  },
+  {
+   "name": "field_shrub_row_0",
+   "rules_ref": "p",
+   "prompt": "A single a short row of dead grey shrubs."
+  },
+  {
+   "name": "dungeon_pillar_0",
+   "rules_ref": "p",
+   "prompt": "A single a cracked Hallownest stone pillar, pale carvings."
+  },
+  {
+   "name": "dungeon_pillar_1",
+   "rules_ref": "p",
+   "prompt": "A single a dark pillar with bone bands."
+  },
+  {
+   "name": "dungeon_pillar_2",
+   "rules_ref": "p",
+   "prompt": "A single a broken half pillar."
+  },
+  {
+   "name": "dungeon_wall_0",
+   "rules_ref": "p",
+   "prompt": "A single a short dark dungeon wall segment."
+  },
+  {
+   "name": "dungeon_wall_1",
+   "rules_ref": "p",
+   "prompt": "A single a wall with a pale arch scar."
+  },
+  {
+   "name": "dungeon_wall_2",
+   "rules_ref": "p",
+   "prompt": "A single a crumbled masonry chunk."
+  },
+  {
+   "name": "dungeon_crystal_0",
+   "rules_ref": "p",
+   "prompt": "A single a pale soul-crystal, almost white, tiny glow."
+  },
+  {
+   "name": "dungeon_crystal_1",
+   "rules_ref": "p",
+   "prompt": "A single a cluster of smaller pale crystals."
+  },
+  {
+   "name": "dungeon_crystal_2",
+   "rules_ref": "p",
+   "prompt": "A single a dim cracked crystal."
+  },
+  {
+   "name": "dungeon_rubble_0",
+   "rules_ref": "p",
+   "prompt": "A single a pile of dark stone rubble."
+  },
+  {
+   "name": "dungeon_rubble_1",
+   "rules_ref": "p",
+   "prompt": "A single scattered broken bricks, charcoal."
+  },
+  {
+   "name": "dungeon_rubble_2",
+   "rules_ref": "p",
+   "prompt": "A single a single fallen block."
+  },
+  {
+   "name": "dungeon_cover_0",
+   "rules_ref": "p",
+   "prompt": "A single a stone barricade."
+  },
+  {
+   "name": "dungeon_cover_1",
+   "rules_ref": "p",
+   "prompt": "A single an overturned dark bench."
+  },
+  {
+   "name": "dungeon_cover_2",
+   "rules_ref": "p",
+   "prompt": "A single a low broken wall for cover."
+  },
+  {
+   "name": "ash_bone_0",
+   "rules_ref": "p",
+   "prompt": "A single a large bleached bone."
+  },
+  {
+   "name": "ash_bone_1",
+   "rules_ref": "p",
+   "prompt": "A single a rib-like bone."
+  },
+  {
+   "name": "ash_charred_0",
+   "rules_ref": "p",
+   "prompt": "A single a charred timber, black."
+  },
+  {
+   "name": "ash_charred_1",
+   "rules_ref": "p",
+   "prompt": "A single a burnt cart wheel, charcoal."
+  },
+  {
+   "name": "ash_charred_2",
+   "rules_ref": "p",
+   "prompt": "A single a blackened plank."
+  },
+  {
+   "name": "estate_keep_0",
+   "rules_ref": "p",
+   "prompt": "A single a small dark Hallownest keep, bone-white slits, no colorful flag."
+  },
+  {
+   "name": "estate_mine_0",
+   "rules_ref": "p",
+   "prompt": "A single a mine mouth of dark timber and stone."
+  },
+  {
+   "name": "estate_warehouse_0",
+   "rules_ref": "p",
+   "prompt": "A single a wide dark warehouse door in masonry."
+  },
+  {
+   "name": "estate_barracks_0",
+   "rules_ref": "p",
+   "prompt": "A single a long dark barracks hall."
+  },
+  {
+   "name": "estate_smith_0",
+   "rules_ref": "p",
+   "prompt": "A single a smithy, dark stone, ONE pale forge glow."
+  },
+  {
+   "name": "estate_mausoleum_0",
+   "rules_ref": "p",
+   "prompt": "A single a small bone-and-stone mausoleum."
+  },
+  {
+   "name": "estate_tower_0",
+   "rules_ref": "p",
+   "prompt": "A single a dark watchtower, pale window."
+  },
+  {
+   "name": "estate_auction_0",
+   "rules_ref": "p",
+   "prompt": "A single a dark wooden stall with a bone counter."
+  }
+ ]
+}
