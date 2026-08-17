@@ -5,6 +5,7 @@ namespace AshesToStars
     /// <summary>
     /// 경매 등록 품목(§12). 드랍·제작만 팔고 칭호·스킨·명예는 귀속.
     /// 옛 코드는 증표만 막아서 드랍 품목을 거절했다. QA_NO면 그 옛 거절로 돌아간다.
+    /// 목숨 아이템 등록가는 LifePrice 하한(§4·§18-4).
     /// </summary>
     public static class AuctionTrade
     {
@@ -55,26 +56,31 @@ namespace AshesToStars
 
         public static string TradeLine()
         {
+            if (LifePrice.ShowQa && !LifePrice.Blocked) return LifePrice.Line();
             if (Blocked) return "증표 등록 잠김 — 옛 거절";
             return "드랍·제작만 거래 · 칭호·명예는 귀속(§12)";
         }
 
-        public static long ListPrice(Economy.LifeItem item) => item switch
+        public static long ListPrice(Economy.LifeItem item)
         {
-            Economy.LifeItem.RevivalTea => 40_000,
-            Economy.LifeItem.ScrollOfReturn => 25_000,
-            Economy.LifeItem.RebornStone => 200_000,
-            Economy.LifeItem.SpecialJobToken => TokenPrice,
-            Economy.LifeItem.AdvancementMaterial => 5_000,
-            Economy.LifeItem.EnhanceStone => 8_000,
-            Economy.LifeItem.CraftHide => 2_400,
-            Economy.LifeItem.CraftFang => 3_600,
-            Economy.LifeItem.CraftBone => 3_000,
-            Economy.LifeItem.CraftPart => 3_000,
-            Economy.LifeItem.CraftCrystal => 3_000,
-            Economy.LifeItem.CraftDemonite => 3_000,
-            _ => 2_400,
-        };
+            if (LifePrice.Hours(item) > 0f) return LifePrice.Floor(item);
+            return item switch
+            {
+                Economy.LifeItem.RevivalTea => LifePrice.OldTea,
+                Economy.LifeItem.ScrollOfReturn => LifePrice.OldScroll,
+                Economy.LifeItem.RebornStone => LifePrice.OldStone,
+                Economy.LifeItem.SpecialJobToken => TokenPrice,
+                Economy.LifeItem.AdvancementMaterial => 5_000,
+                Economy.LifeItem.EnhanceStone => 8_000,
+                Economy.LifeItem.CraftHide => 2_400,
+                Economy.LifeItem.CraftFang => 3_600,
+                Economy.LifeItem.CraftBone => 3_000,
+                Economy.LifeItem.CraftPart => 3_000,
+                Economy.LifeItem.CraftCrystal => 3_000,
+                Economy.LifeItem.CraftDemonite => 3_000,
+                _ => 2_400,
+            };
+        }
 
         static readonly Economy.LifeItem[] BagOrder =
         {
@@ -110,11 +116,13 @@ namespace AshesToStars
             return false;
         }
 
-        /// <summary>시각 QA. QA_AUCTION_TRADE=1이면 30층·증표로 등록 줄을 연다.</summary>
+        /// <summary>시각 QA. QA_AUCTION_TRADE=1이면 30층·증표. QA_LIFE_PRICE면 환생석·T1 하한.</summary>
         public static void SeedQaIfRequested()
         {
+            LifePrice.SeedQaIfRequested();
             if (Environment.GetEnvironmentVariable(EnvShow) != "1") return;
             if (Blocked) return;
+            if (LifePrice.ShowQa && !LifePrice.Blocked) return;
             if (_qaSeeded) return;
             _qaSeeded = true;
             RacePrefs.Set(RaceId.인간);
@@ -131,6 +139,7 @@ namespace AshesToStars
         public static void ResetForTest()
         {
             _qaSeeded = false;
+            LifePrice.ResetForTest();
         }
     }
 }

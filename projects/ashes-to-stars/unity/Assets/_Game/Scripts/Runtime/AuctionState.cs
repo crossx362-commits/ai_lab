@@ -377,7 +377,7 @@ namespace AshesToStars
             {
                 Add("EnhanceStone", "강화석", false, 1, 8_000);
                 Add("CraftHide", "사냥 가죽", false, 3, 2_400);
-                Add("RevivalTea", "부활초", false, 1, 40_000);
+                Add("RevivalTea", "부활초", false, 1, LifePrice.Floor(Economy.LifeItem.RevivalTea));
                 Add("CraftFang", "송곳니", false, 5, 18_000);
             }
             Save();
@@ -427,6 +427,7 @@ namespace AshesToStars
             if (WhyCannotTrade() != null || qty <= 0 || price <= 0) return false;
             if (MineCount >= MaxMine) return false;
             if (!AuctionTrade.CanList(item)) return false;
+            if (LifePrice.BelowFloor(item, price)) return false;
             long fee = ListFee(price);
             if (!GameState.Pay(fee)) return false;
             if (!GameState.Consume(item, qty))

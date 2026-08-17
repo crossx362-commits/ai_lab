@@ -28,11 +28,15 @@ namespace AshesToStars
             string fee = Environment.GetEnvironmentVariable(AuctionState.EnvShow);
             string buy = Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock);
             string expire = Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire);
+            string life = Environment.GetEnvironmentVariable(LifePrice.EnvShow);
+            string lifeNo = Environment.GetEnvironmentVariable(LifePrice.EnvNo);
             Environment.SetEnvironmentVariable(AuctionTrade.EnvShow, null);
             Environment.SetEnvironmentVariable(AuctionTrade.EnvNo, null);
             Environment.SetEnvironmentVariable(AuctionState.EnvShow, null);
             Environment.SetEnvironmentVariable(AuctionState.EnvShowBuyLock, null);
             Environment.SetEnvironmentVariable(AuctionState.EnvShowExpire, null);
+            Environment.SetEnvironmentVariable(LifePrice.EnvShow, null);
+            Environment.SetEnvironmentVariable(LifePrice.EnvNo, null);
             Environment.SetEnvironmentVariable("QA_LOAN_OVERDUE", null);
 
             GameState.ResetAll();
@@ -79,10 +83,11 @@ namespace AshesToStars
                 $"다음 가방은 가죽 (실제 {first} ×{qty})");
 
             Check(GameState.Bag.GetCount(Economy.LifeItem.RevivalTea) == 0, "부활초 없음");
-            Check(!AuctionState.TryListItem(Economy.LifeItem.RevivalTea, 1, 40_000),
+            Check(!AuctionState.TryListItem(Economy.LifeItem.RevivalTea, 1, AuctionTrade.ListPrice(Economy.LifeItem.RevivalTea)),
                 "없는 부활초는 등록 실패");
             GameState.Gain(Economy.LifeItem.RevivalTea, 1);
-            Check(AuctionState.TryListItem(Economy.LifeItem.RevivalTea, 1, 40_000), "부활초 등록");
+            Check(AuctionState.TryListItem(Economy.LifeItem.RevivalTea, 1,
+                    AuctionTrade.ListPrice(Economy.LifeItem.RevivalTea)), "부활초 등록");
             Check(AuctionState.MineCount == 2, "증표+부활초 2건");
 
             AuctionState.ForgetInMemoryForTest();
@@ -150,6 +155,8 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(AuctionState.EnvShow, fee);
             Environment.SetEnvironmentVariable(AuctionState.EnvShowBuyLock, buy);
             Environment.SetEnvironmentVariable(AuctionState.EnvShowExpire, expire);
+            Environment.SetEnvironmentVariable(LifePrice.EnvShow, life);
+            Environment.SetEnvironmentVariable(LifePrice.EnvNo, lifeNo);
             AuctionTrade.ResetForTest();
             AuctionState.ResetForTest();
             GameState.ResetAll();
