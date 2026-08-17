@@ -17,14 +17,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_tank_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "healer_idle_00",
@@ -36,14 +36,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_healer_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "guardian_idle_00",
@@ -55,14 +55,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: same beetle as tank but shield even larger, both arms on shield, no axe, void black. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: same beetle as tank but shield even larger, both arms on shield, no axe, void black. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_guardian_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: same beetle as tank but shield even larger, both arms on shield, no axe, void black. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: same beetle as tank but shield even larger, both arms on shield, no axe, void black. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "berserker_idle_00",
@@ -74,14 +74,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_berserker_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "swordsman_idle_00",
@@ -93,14 +93,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_swordsman_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "archer_idle_00",
@@ -112,14 +112,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_archer_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "summoner_idle_00",
@@ -131,14 +131,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_summoner_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "priest_idle_00",
@@ -150,14 +150,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_priest_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "druid_idle_00",
@@ -169,14 +169,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_druid_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "bard_idle_00",
@@ -188,14 +188,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_bard_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "shaman_idle_00",
@@ -207,14 +207,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_shaman_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "elemental_idle_00",
@@ -226,14 +226,14 @@
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell walk/dash sheet of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell walk/dash sheet of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes. Top-left cell shows the character walk L. Top-middle cell shows the character walk R. Top-right cell shows the character walk stretch. Bottom-left cell shows the character dash lean. Bottom-middle cell shows the character dash mid. Bottom-right cell shows the character dash recover. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "sheet_elemental_act",
    "rules_ref": "six",
    "aspect": "3:2",
    "keep_bg": true,
-   "prompt": "6-cell action sheet of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+   "prompt": "6-cell action sheet of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes. Top-left cell shows the character attack wind-up. Top-middle cell shows the character attack strike. Top-right cell shows the character special. Bottom-left cell shows the character hurt. Bottom-middle cell shows the character death. Bottom-right cell shows the character invuln flash. These pose descriptions are directions for you to draw — they must NEVER appear as written words in the image. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
   },
   {
    "name": "portrait_tank",

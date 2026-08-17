@@ -10,7 +10,7 @@
   "_reference": { "character_units": 2.0, "comment": "캐릭터 키 = 2유닛. 모든 값은 이 기준의 상대 크기다." },
 
   "_units_note": "유닛 크기도 여기서 정한다(2026-08-18). SpriteBank의 C# 상수는 폴백일 뿐이다 — 프랍 53종이 character_units 기준의 상대 크기라, 캐릭터만 코드에서 바꾸면 마을 전체의 비율이 조용히 어긋난다.",
-  "unit_char": 2.0,
+  "unit_char": 2.8,
   "unit_mob": 1.5,
   "unit_elite": 1.9,
   "unit_boss": 3.4,

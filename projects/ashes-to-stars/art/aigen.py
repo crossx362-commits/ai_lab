@@ -112,6 +112,27 @@ HOLLOW_STYLE = (
     "or ground shadow under the feet. NOT pixel art, NOT photoreal, NOT 3D, NOT chibi-cute. "
     "Read as a dark silhouette first, then a pale mask."
 )
+
+# 파이프라인 계약 — 화풍이 아니라 **후처리가 성립하기 위한 조건**이다. 그래서 프롬프트
+# 맨 끝(모델이 가장 무겁게 읽는 자리)에 붙이고, 어떤 spec의 ruleset도 이걸 못 덮는다.
+#
+# ⚠️ 왜 생겼나(2026-08-18 실측): spec_p22_bw_remake의 `six` 룰셋은 이미
+#    "empty magenta gaps, NO text, NO labels"를 적고 있었는데도, 뽑힌 6장의 배경이
+#    흰색(255,255,255)·남색(50,53,62)·회색(170,170,171)으로 나왔고 프레임 안에
+#    "WALK L"·"WALK LEFT FOOT FORWARD" 라벨이 그려져 들어왔다. 원인은 지시가
+#    없어서가 아니라 **앞에 선 HOLLOW_STYLE이 화면 전체를 흑백으로 몰아** 마젠타가
+#    밀린 것. 흰 배경은 특히 치명적이다 — 가면이 뼈색 흰색이라 크로마키가 가면을 판다.
+#    그래서 "gaps"가 아니라 "background", "no text"가 아니라 열거형 금지로 못 박는다.
+OUTPUT_CONTRACT = (
+    "OUTPUT CONTRACT (overrides any styling above — the pipeline breaks without it): "
+    "The ENTIRE background, including every gap between cells, MUST be flat pure "
+    "magenta #FF00FF. Never white, never grey, never dark blue, never a painted scene — "
+    "this background is chroma-keyed away, and a white background destroys the "
+    "bone-white mask. Absolutely NO text anywhere in the image: no labels, no captions, "
+    "no frame titles, no numbers, no watermarks, no arrows, no panel borders or grid "
+    "lines drawn over the art. Nothing but the character on flat magenta."
+)
+
 _HF_ALIAS_TO_BANANA2 = {"nano_banana_2", "nano_banana_pro", "nano_banana"}
 
 
@@ -137,7 +158,7 @@ def generate_hf(prompt: str, refs: list[str], model: str = HF_MODEL,
     print(f"   Higgsfield Nano Banana 2 ({model}) {resolution} — CLI는 언리미티드 불가, 웹은 토글 ON")
     cmd = [cli, "generate", "create", model, "--resolution", resolution,
            "--aspect-ratio", aspect,
-           "--prompt", f"{HOLLOW_STYLE}\n\n{prompt}\n\n{rules or STYLE_RULES}",
+           "--prompt", f"{HOLLOW_STYLE}\n\n{prompt}\n\n{rules or STYLE_RULES}\n\n{OUTPUT_CONTRACT}",
            "--wait", "--wait-timeout", "10m"]
     for r in refs:
         cmd += ["--image-references", r]
