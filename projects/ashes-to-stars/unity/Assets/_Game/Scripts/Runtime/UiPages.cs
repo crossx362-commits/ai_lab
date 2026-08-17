@@ -302,18 +302,33 @@ namespace AshesToStars
         public const float CardMinIcon = 72f;
         /// <summary>한글 제목은 fontSize보다 칸이 커야 획이 안 잘린다.</summary>
         public const float CardTitleH = 36f;
+        /// <summary>현황·필드 도크처럼 높이 110 미만인 가로 칸. 제목 36이면 부제가 0이 된다.</summary>
+        public const float SlimCardH = 110f;
+        public const float SlimTitleH = 22f;
+        public const float SlimSubMin = 18f;
         /// <summary>이 비율 이상이면 가로 카드 — 높이 168을 넘어도 세로 배치하지 않는다.</summary>
         public const float CardWideAspect = 1.45f;
 
         public static bool IsWideCard(Rect card, float aspect = CardWideAspect) =>
             card.height > 1f && card.width >= card.height * aspect;
 
+        public static bool IsSlimCard(Rect card) =>
+            IsWideCard(card) && card.height < SlimCardH;
+
+        public static float TitleHOf(Rect card) =>
+            IsSlimCard(card) ? SlimTitleH : CardTitleH;
+
+        /// <summary>슬림 도크는 두꺼운 panel 금테가 본문을 먹는다. 버튼 크롬이 더 얇다.</summary>
+        public static string CardChrome(Rect card) =>
+            IsSlimCard(card) ? "button_normal" : "panel";
+
         public static void CardLayout(Rect card, bool hasIcon, out Rect icon, out Rect title, out Rect sub)
         {
             icon = default;
-            var inner = UiAtlas.ContentRect(card, "panel");
+            var inner = UiAtlas.ContentRect(card, CardChrome(card));
             bool wide = IsWideCard(card);
             bool tall = hasIcon && !wide && card.height >= 168f;
+            float titleH = TitleHOf(card);
             if (tall)
             {
                 float plateH = Mathf.Clamp(inner.height * 0.36f, 56f, 110f);
@@ -343,18 +358,19 @@ namespace AshesToStars
             }
             float tx = inner.x + (hasIcon ? side + 10f : 0f);
             float tw = Mathf.Max(12f, inner.xMax - tx);
-            float subH = Mathf.Min(48f, Mathf.Max(16f, inner.height - CardTitleH - 4f));
-            float blockH = CardTitleH + 2f + subH;
+            float minSub = IsSlimCard(card) ? SlimSubMin : 16f;
+            float subH = Mathf.Min(48f, Mathf.Max(minSub, inner.height - titleH - 4f));
+            float blockH = titleH + 2f + subH;
             if (blockH > inner.height)
             {
-                float th = Mathf.Min(CardTitleH, Mathf.Max(18f, inner.height * 0.55f));
+                float th = Mathf.Min(titleH, Mathf.Max(18f, inner.height * 0.55f));
                 title = new Rect(tx, inner.y, tw, th);
                 sub = new Rect(tx, title.yMax, tw, Mathf.Max(0f, inner.yMax - title.yMax));
                 return;
             }
             float ty = inner.y + (inner.height - blockH) * 0.5f;
-            title = new Rect(tx, ty, tw, CardTitleH);
-            sub = new Rect(tx, ty + CardTitleH + 2f, tw, subH);
+            title = new Rect(tx, ty, tw, titleH);
+            sub = new Rect(tx, ty + titleH + 2f, tw, subH);
         }
 
         /// <summary>칸 밖으로 글자가 새거나 옆 카드와 겹치지 않게 자른다.</summary>

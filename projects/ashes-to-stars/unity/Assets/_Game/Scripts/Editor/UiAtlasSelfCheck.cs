@@ -192,11 +192,17 @@ namespace AshesToStars
                          && UiAtlas.FitsInContent(tallCard, tallSub),
                 "[UiAtlasSelfCheck] 높은 카드 글씨·아이콘이 금테 밖으로 나간다");
             var wideCard = new Rect(0f, 0f, 400f, 88f);
-            UiPages.CardLayout(wideCard, true, out var wideIcon, out var wideTitle, out _);
+            UiPages.CardLayout(wideCard, true, out var wideIcon, out var wideTitle, out var wideSub);
             Debug.Assert(wideIcon.x < wideTitle.x && wideIcon.height >= 24f,
                 "[UiAtlasSelfCheck] 넓은 카드는 아이콘이 왼쪽에 붙어야 한다");
-            Debug.Assert(UiAtlas.FitsInContent(wideCard, wideIcon)
-                         && UiAtlas.FitsInContent(wideCard, wideTitle),
+            Debug.Assert(UiPages.IsSlimCard(wideCard)
+                         && UiPages.TitleHOf(wideCard) == UiPages.SlimTitleH
+                         && wideSub.height + 0.01f >= UiPages.SlimSubMin,
+                "[UiAtlasSelfCheck] 높이 88 도크는 슬림 제목·부제 칸이 있어야 한다");
+            string slimChrome = UiPages.CardChrome(wideCard);
+            Debug.Assert(UiAtlas.FitsInContent(wideCard, wideIcon, slimChrome)
+                         && UiAtlas.FitsInContent(wideCard, wideTitle, slimChrome)
+                         && UiAtlas.FitsInContent(wideCard, wideSub, slimChrome),
                 "[UiAtlasSelfCheck] 넓은 카드 글씨가 금테 밖으로 나간다");
             var hubWide = new Rect(0f, 0f, 596f, 169f);
             UiPages.CardLayout(hubWide, true, out var hubIcon, out var hubTitle, out var hubSub);

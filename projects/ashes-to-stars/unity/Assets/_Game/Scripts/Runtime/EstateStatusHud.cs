@@ -48,7 +48,53 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "카드가 마을을 가린다"
-            : "현황은 마을을 가리지 않는다(§16)";
+            : "현황 도크 부제가 잘리지 않는다(§16)";
+
+        /// <summary>도크 한 칸에 들어가는 짧은 부제. 긴 순자산·압류 줄은 건물 안에서 본다.</summary>
+        public const int CaptionMaxRunes = 16;
+
+        public static string AuraCaption()
+        {
+            int floor = GameState.TowerFloor;
+            return $"{floor}층 · 영공 {WorldStar.Sense(floor):0.0}";
+        }
+
+        public static string KeepCaption()
+        {
+            if (EstateBuild.KeepBusy)
+                return $"Lv{EstateBuild.KeepLevel} · {EstateBuild.RemainingText()}";
+            return $"Lv{EstateBuild.KeepLevel} · {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+        }
+
+        public static string WorldCaption() =>
+            $"해금 T{GameState.UnlockedTier + 1} · {GameState.TowerFloor}층";
+
+        public static string MineCaption()
+        {
+            if (EstateMine.Seized) return "생산 압류";
+            return Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h";
+        }
+
+        public static string StoreCaption() =>
+            $"{ShortCopper(GameState.Wallet.Copper)} / {ShortCopper(EstateBuild.WarehouseCapCopper())}";
+
+        static string ShortCopper(long n)
+        {
+            if (n >= 10000) return $"{n / 10000}골드";
+            if (n >= 100) return $"{n / 100}실버";
+            return $"{n}쿠퍼";
+        }
+
+        public static bool CaptionFits(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return true;
+            int n = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (!char.IsLowSurrogate(text[i])) n++;
+            }
+            return n <= CaptionMaxRunes;
+        }
 
         /// <summary>
         /// 영공·본성·세계·광산·창고 순서.

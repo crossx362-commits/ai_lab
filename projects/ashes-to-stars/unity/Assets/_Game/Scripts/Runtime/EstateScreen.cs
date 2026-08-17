@@ -455,48 +455,17 @@ namespace AshesToStars
         void DrawEstateStatus(Rect r)
         {
             var cards = EstateStatusHud.Cards(r);
-            string auraSub = WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel();
-            if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
-                auraSub = WorldStar.RaceSenseLine() + " · " + auraSub;
-            if (DrawCard(cards[0], "내 별 영공", auraSub, "worldmap"))
+            if (DrawCard(cards[0], "내 별 영공", EstateStatusHud.AuraCaption(), "worldmap"))
                 _sub = Sub.영공;
-            string keepSub = EstateBuild.KeepBusy
-                ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}"
-                : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
-            if (BankruptcySeize.DidDowngrade ||
-                System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
-                keepSub += " · " + BankruptcySeize.KeepLine();
-            if (NetWorth.ShowOnHub)
-                keepSub += " · " + NetWorth.Line();
-            if (DrawCard(cards[1], "본성", keepSub, "territory"))
+            if (DrawCard(cards[1], "본성", EstateStatusHud.KeepCaption(), "territory"))
                 _sub = Sub.본성;
             bool canPick = GameState.UnlockedTier > 0;
             if (DrawCard(cards[2], $"세계 T{GameState.Tier + 1}",
-                    canPick
-                        ? $"해금 T{GameState.UnlockedTier + 1} · 탑 {GameState.TowerFloor}층 — 눌러 고른다"
-                        : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
+                    EstateStatusHud.WorldCaption(),
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            string mineRate = Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h";
-            string mineSub = mineRate + " · 창고에 자동 적립(§13)";
-            if (EstateMine.Seized)
-                mineSub = mineRate + " · " + EstateMine.SeizeLine();
-            else if (EstateMine.RacePercent() != EstateMine.HumanPercent)
-                mineSub = mineRate + " · " + EstateMine.RaceLine();
-            DrawCard(cards[3], "광산", mineSub, "field", locked: true);
-            string warehouse = $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
-            if (BankruptcySeize.DidSeize ||
-                System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
-                warehouse += " · " + BankruptcySeize.ItemLine();
-            else if (!SoftCap.Blocked
-                && (System.Environment.GetEnvironmentVariable(SoftCap.EnvShow) == "1"
-                    || SoftCap.EarnedThisHour > 0))
-                warehouse += " · " + SoftCap.HourLine();
-            else if (EstateMine.WastedCopper > 0)
-                warehouse += $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸";
-            else
-                warehouse += " · 넘치면 소멸";
-            DrawCard(cards[4], "창고", warehouse, "building_auction", locked: true);
+            DrawCard(cards[3], "광산", EstateStatusHud.MineCaption(), "field");
+            DrawCard(cards[4], "창고", EstateStatusHud.StoreCaption(), "building_auction");
         }
 
         void Aura(Rect r)

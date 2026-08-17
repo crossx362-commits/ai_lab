@@ -419,13 +419,16 @@ namespace AshesToStars
         {
             Styles();
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.94f);
-            if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
-                UiAtlas.Draw(card, "panel", tint);
+            string chrome = UiPages.CardChrome(card);
+            if (!UiAtlas.DrawSliced(card, chrome, 16f, tint))
+                UiAtlas.Draw(card, chrome, tint);
             bool hasIcon = !string.IsNullOrEmpty(iconKey);
             UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
             if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);
-            UiPages.LabelClip(titleR, title, _cardTitle);
-            UiPages.LabelClip(subR, locked ? "잠김 — " + sub : sub, locked ? _small : _h2);
+            bool slim = UiPages.IsSlimCard(card);
+            UiPages.LabelClip(titleR, title, slim ? _h1Slim : _cardTitle);
+            UiPages.LabelClip(subR, locked ? "잠김 — " + sub : sub,
+                slim ? _h2Slim : locked ? _small : _h2);
             if (locked) return false;
             return GUI.Button(card, GUIContent.none, GUIStyle.none);
         }

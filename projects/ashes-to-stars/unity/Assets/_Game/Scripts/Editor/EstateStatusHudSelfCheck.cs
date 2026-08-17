@@ -46,7 +46,31 @@ namespace AshesToStars
                 $"도크 칸 높이 {slim[0].height:0} < 90");
             Check(slim[0].width > 180f,
                 $"도크 칸 폭 {slim[0].width:0} 가로 카드");
-            Check(EstateStatusHud.Line().Contains("가리지 않는다"),
+            Check(UiPages.IsSlimCard(slim[0]), "도크 칸은 슬림 가로");
+            Check(UiPages.TitleHOf(slim[0]) == UiPages.SlimTitleH,
+                $"도크 제목 {UiPages.TitleHOf(slim[0]):0} = {UiPages.SlimTitleH:0}");
+            Check(UiPages.CardChrome(slim[0]) == "button_normal",
+                "도크 크롬은 얇은 버튼");
+            UiPages.CardLayout(slim[0], true, out _, out var dockTitle, out var dockSub);
+            Check(dockTitle.height + 0.01f >= UiPages.SlimTitleH,
+                $"도크 제목 칸 {dockTitle.height:0} ≥ {UiPages.SlimTitleH:0}");
+            Check(dockSub.height + 0.01f >= UiPages.SlimSubMin,
+                $"도크 부제 칸 {dockSub.height:0} ≥ {UiPages.SlimSubMin:0}");
+            float oldSub = UiAtlas.ContentRect(slim[0], "button_normal").height
+                - UiPages.CardTitleH - 4f;
+            Check(oldSub < UiPages.SlimSubMin,
+                $"옛 제목 36이면 부제 {oldSub:0.0} < {UiPages.SlimSubMin:0} (네거티브)");
+            Check(EstateStatusHud.CaptionFits(EstateStatusHud.AuraCaption()),
+                $"영공 부제 (실제 {EstateStatusHud.AuraCaption()})");
+            Check(EstateStatusHud.CaptionFits(EstateStatusHud.KeepCaption()),
+                $"본성 부제 (실제 {EstateStatusHud.KeepCaption()})");
+            Check(EstateStatusHud.CaptionFits(EstateStatusHud.WorldCaption()),
+                $"세계 부제 (실제 {EstateStatusHud.WorldCaption()})");
+            Check(EstateStatusHud.CaptionFits(EstateStatusHud.MineCaption()),
+                $"광산 부제 (실제 {EstateStatusHud.MineCaption()})");
+            Check(EstateStatusHud.CaptionFits(EstateStatusHud.StoreCaption()),
+                $"창고 부제 (실제 {EstateStatusHud.StoreCaption()})");
+            Check(EstateStatusHud.Line().Contains("부제"),
                 $"줄 (실제 {EstateStatusHud.Line()})");
 
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvNo, "1");
@@ -65,7 +89,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvShow, "1");
             EstateStatusHud.SeedQaIfRequested();
             Check(EstateStatusHud.ShowQa, "시드 켜짐");
-            Check(EstateStatusHud.Line().Contains("가리지 않는다"), "시드 줄");
+            Check(EstateStatusHud.Line().Contains("부제"), "시드 줄");
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvShow, null);
             EstateStatusHud.ResetForTest();
 
@@ -73,9 +97,21 @@ namespace AshesToStars
             string estate = File.ReadAllText(Path.Combine(runtime, "EstateScreen.cs"));
             Check(estate.Contains("EstateStatusHud.Cards"), "영지가 Cards를 읽는다");
             Check(estate.Contains("EstateStatusHud.Line"), "자막이 Line을 읽는다");
+            Check(estate.Contains("EstateStatusHud.KeepCaption"), "본성이 KeepCaption을 읽는다");
+            Check(estate.Contains("EstateStatusHud.MineCaption"), "광산이 MineCaption을 읽는다");
+            Check(estate.Contains("EstateStatusHud.StoreCaption"), "창고가 StoreCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.SeedQaIfRequested"), "시드를 읽는다");
+            Check(!estate.Contains("NetWorth.Line()"),
+                "도크가 긴 순자산 줄을 안 붙인다");
             Check(!estate.Contains("UiPages.Grid(new Rect(r.x, r.y + 92f"),
                 "옛 2×2 전폭 Grid를 안 쓴다");
+
+            string pages = File.ReadAllText(Path.Combine(runtime, "UiPages.cs"));
+            Check(pages.Contains("SlimTitleH"), "슬림 제목 상수가 있다");
+            Check(pages.Contains("IsSlimCard"), "IsSlimCard가 있다");
+            string screen = File.ReadAllText(Path.Combine(runtime, "GameScreen.cs"));
+            Check(screen.Contains("CardChrome"), "DrawCard가 CardChrome을 읽는다");
+            Check(screen.Contains("_h2Slim"), "슬림 부제 글씨체를 읽는다");
 
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvNo, no);
