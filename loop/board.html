@@ -257,7 +257,7 @@
 </section>
 <div class="charts" id="charts"></div>
 <section class="playtest-wrap" id="playtest-box">
-  <h2>V4 외부 테스터 10</h2>
+  <h2>테스트 하는 사람</h2>
   <p class="meta" id="playtest-meta">키트를 불러오는 중…</p>
   <div class="playtest-grid" id="playtest-grid"></div>
   <div id="playtest-script"></div>
@@ -360,26 +360,30 @@ function renderPlaytest(state) {
   const P = state.playtest || {};
   const rows = P.sessions || [];
   const protoDone = Boolean((state.charts || {}).current && (state.charts.current.proto_done));
-  box.style.display = (!protoDone && rows.length) ? "block" : "none";
+  box.style.display = rows.length ? "block" : "none";
   if (!rows.length) return;
-  meta.textContent = P.ran
-    ? `세션 ${P.ran}/10 · 삭제 ${P.deleted} · 계속 경로 ${P.continued} · 사람 70%는 아직 (${P.ran_at || ""})`
-    : "10명 키트. 각자 이름을 붙인 캐릭터를 키운 뒤 삭제한다. 70%는 사람 응답.";
+  meta.textContent = protoDone
+    ? "끝난 외부 테스터는 지웠다. 지금 하는 사람만."
+    : (P.ran
+      ? `세션 ${P.ran} · 삭제 ${P.deleted} · 계속 ${P.continued}`
+      : "지금 테스트하는 사람.");
   grid.innerHTML = rows.map((t) => `
     <article class="tester-card${t.deleted ? " ok" : ""}">
       <div class="who">${esc(t.tester)} · ${esc(t.favorite)}</div>
       <div class="d">${esc(t.job)}${t.first ? " → " + esc(t.first) : ""} · ${t.minutes || "?"}분
         ${t.level != null ? " · Lv" + t.level : ""}
         ${t.gear ? " · 장비" : ""}</div>
-      <div class="d">${t.ran
-        ? (t.deleted ? "삭제됨" : "삭제안됨") + " · 생존 " + (t.living ?? "?") + (t.continued ? " · 남은 파티로 계속" : "")
-        : "세션 대기"}</div>
+      <div class="d">${t.ongoing
+        ? "테스트 중"
+        : (t.ran
+          ? (t.deleted ? "삭제됨" : "삭제안됨") + (t.continued ? " · 계속" : "")
+          : "대기")}</div>
     </article>`).join("");
   const scriptEl = $("playtest-script");
   const script = P.script || {};
   const gates = script.gates || [];
   if (scriptEl) {
-    scriptEl.innerHTML = gates.length ? gates.map((g) => `
+    scriptEl.innerHTML = (!protoDone && gates.length) ? gates.map((g) => `
       <div class="script-gate">
         <div class="t">${esc(g.id)} · ${esc(g.title)}</div>
         <div class="d">통과: ${esc(g.pass)} · ${ (g.testers || []).length }명</div>

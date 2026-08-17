@@ -1014,14 +1014,17 @@ def playtest_state() -> dict:
             "gear": bool(s.get("gear")) if "gear" in s else bool(t.get("gear")),
             "path": s.get("continue_path") or "",
             "ran": bool(s),
+            "ongoing": bool(t.get("ongoing")),
         })
-    deleted = sum(1 for r in rows if r["deleted"])
+    hist_n = len(sessions)
+    hist_del = sum(1 for s in sessions if s.get("deleted"))
+    hist_cont = sum(1 for s in sessions if s.get("continued"))
     script = load_playtest_script()
     return {
-        "n": len(rows),
-        "ran": sum(1 for r in rows if r["ran"]),
-        "deleted": deleted,
-        "continued": sum(1 for r in rows if r["continued"]),
+        "n": max(len(rows), hist_n),
+        "ran": hist_n if hist_n else sum(1 for r in rows if r["ran"]),
+        "deleted": hist_del if hist_n else sum(1 for r in rows if r["deleted"]),
+        "continued": hist_cont if hist_n else sum(1 for r in rows if r["continued"]),
         "human_70": "pending",
         "ran_at": ran_at,
         "sessions": rows,

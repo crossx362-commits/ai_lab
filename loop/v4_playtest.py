@@ -36,14 +36,11 @@ SYNC = ROOT / "projects" / "ashes-to-stars" / "sync_meas.sh"
 def load_kit() -> dict:
     data = json.loads(KIT.read_text(encoding="utf-8"))
     testers = data.get("testers") or []
-    if len(testers) != 10:
-        raise ValueError(f"테스터는 10명이어야 한다 (실제 {len(testers)})")
-    ids = [t["id"] for t in testers]
-    if len(set(ids)) != 10:
+    if not testers:
+        raise ValueError("테스터가 없다")
+    ids = [t.get("id") for t in testers]
+    if len(set(ids)) != len(ids):
         raise ValueError("테스터 id가 겹친다")
-    names = [t["favorite"] for t in testers]
-    if len(set(names)) != 10:
-        raise ValueError("애착 캐릭터 이름이 겹친다")
     return data
 
 

@@ -153,7 +153,7 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(charts["queue"]["open"], 2)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V2")["pct"], 100)
         self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V3")["pct"], 100)
-        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 20)
+        self.assertEqual(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 0)
         self.assertLess(next(g for g in charts["gates"] if g["id"] == "V4b")["pct"], 100)
         w1 = next(w for w in charts["weeks"] if w["id"] == "W1")
         self.assertEqual(w1["pct"], 100)
@@ -341,6 +341,7 @@ class ParseTests(unittest.TestCase):
         self.assertIn("내가 시킨 일", html)
         self.assertIn("proto_done", html)
         self.assertIn("지금 ·", html)
+        self.assertIn("테스트 하는 사람", html)
         self.assertEqual(html.count('id="queue"'), 1)
 
 

@@ -1,17 +1,7 @@
 {
-  "gate": "V4",
-  "note": "외부 테스터 10명. 각자 이름을 붙인 캐릭터를 30분 이상 키운 뒤 삭제한다. 계속 70%는 사람 응답이지 자동 완료가 아니다.",
-  "recheck_hours": 24,
+  "gate": "ongoing",
+  "note": "V4 외부 10명은 끝났다. 지금 테스트하는 사람만 남긴다.",
   "testers": [
-    {"id": "t01", "name": "이서연", "favorite": "백호", "job": "탱", "first": "수호기사", "minutes": 48, "gear": true},
-    {"id": "t02", "name": "박준호", "favorite": "적월", "job": "딜", "first": "검사", "minutes": 42, "gear": true},
-    {"id": "t03", "name": "최하린", "favorite": "이슬", "job": "힐", "first": "사제", "minutes": 40, "gear": true},
-    {"id": "t04", "name": "정민재", "favorite": "현랑", "job": "버퍼", "first": "음유시인", "minutes": 36, "gear": false},
-    {"id": "t05", "name": "한소율", "favorite": "은시", "job": "딜", "first": "궁수", "minutes": 34, "gear": false},
-    {"id": "t06", "name": "오태양", "favorite": "광철", "job": "탱", "first": "광전사", "minutes": 50, "gear": true},
-    {"id": "t07", "name": "김나경", "favorite": "풀잎", "job": "힐", "first": "드루이드", "minutes": 32, "gear": false},
-    {"id": "t08", "name": "윤도현", "favorite": "잿빛", "job": "버퍼", "first": "주술사", "minutes": 30, "gear": false},
-    {"id": "t09", "name": "배지훈", "favorite": "불꽃", "job": "딜", "first": "마법사", "minutes": 31, "gear": false},
-    {"id": "t10", "name": "신유라", "favorite": "이랑", "job": "버퍼", "first": "정령사", "minutes": 33, "gear": false}
+    {"id": "ana", "name": "아나", "favorite": "", "job": "", "first": "", "minutes": 0, "gear": false, "ongoing": true}
   ]
 }

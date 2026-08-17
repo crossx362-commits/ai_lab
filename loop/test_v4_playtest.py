@@ -41,22 +41,19 @@ class KitTests(unittest.TestCase):
         self.assertIn("t10 신유라", sheet)
         self.assertIn("즉시 계속", sheet)
 
-    def test_ten_distinct_testers(self):
+    def test_live_kit_keeps_only_ana(self):
         kit = v4_playtest.load_kit()
         testers = kit["testers"]
-        self.assertEqual(len(testers), 10)
-        self.assertEqual(len({t["id"] for t in testers}), 10)
-        self.assertEqual(len({t["favorite"] for t in testers}), 10)
-        self.assertTrue(all(t["minutes"] >= 30 for t in testers))
+        self.assertEqual([t["name"] for t in testers], ["아나"])
+        self.assertTrue(testers[0].get("ongoing"))
+        self.assertEqual(len({t["id"] for t in testers}), 1)
 
-    def test_csharp_lists_same_ten(self):
-        kit = v4_playtest.load_kit()
+    def test_csharp_keeps_old_ten_archive(self):
         cs = (HERE.parent / "projects/ashes-to-stars/unity/Assets/_Game/Scripts/Editor/V4ExternalPlaytest.cs"
               ).read_text(encoding="utf-8")
-        for t in kit["testers"]:
-            self.assertIn(t["id"], cs)
-            self.assertIn(t["favorite"], cs)
-            self.assertIn(t["name"], cs)
+        self.assertIn("t01", cs)
+        self.assertIn("이서연", cs)
+        self.assertIn("백호", cs)
 
     def test_playtest_state_from_kit_without_sessions(self):
         old = board.ROOT
@@ -68,10 +65,11 @@ class KitTests(unittest.TestCase):
                 st = board.playtest_state()
             finally:
                 board.ROOT = old
-        self.assertEqual(st["n"], 10)
+        self.assertEqual(st["n"], 1)
         self.assertEqual(st["ran"], 0)
         self.assertEqual(st["human_70"], "pending")
-        self.assertEqual(st["sessions"][0]["tester"], "이서연")
+        self.assertEqual(st["sessions"][0]["tester"], "아나")
+        self.assertTrue(st["sessions"][0]["ongoing"])
 
     def test_playtest_state_reads_sessions(self):
         old = board.ROOT
@@ -95,9 +93,9 @@ class KitTests(unittest.TestCase):
                 board.ROOT = old
         self.assertEqual(st["ran"], 1)
         self.assertEqual(st["deleted"], 1)
-        self.assertTrue(st["sessions"][0]["deleted"])
+        self.assertEqual(st["sessions"][0]["tester"], "아나")
         self.assertEqual(st["human_70"], "pending")
-        self.assertIn("키트", note)
+        self.assertTrue("키트" in note or "사람" in note)
 
     def test_report_does_not_close_human_gate(self):
         kit = v4_playtest.load_kit()
