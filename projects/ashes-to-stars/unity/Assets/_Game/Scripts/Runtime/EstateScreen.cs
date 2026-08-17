@@ -66,7 +66,7 @@ namespace AshesToStars
                 return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
             if (SoloRaidClear.HasAny)
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
-            return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)";
+            return EstateYard.Line();
         }
 
         /// <summary>
@@ -190,6 +190,12 @@ namespace AshesToStars
                 return;
             }
 
+            if (_hubPage == 0 && !EstateYard.FillBlocked)
+            {
+                DrawVillage(r);
+                _hubPage = DrawTabs(r, new[] { "마을", "현황", "방어" }, _hubPage);
+                return;
+            }
             _hubPage = DrawTabs(r, new[] { "마을", "현황", "방어" }, _hubPage);
             var page = UiPages.AfterTabs(r);
             if (_hubPage == 1)
@@ -211,20 +217,32 @@ namespace AshesToStars
             EstateGrid.EnsureHubBuildings();
             var side = EstateGrid.InvaderSide();
             int path = EstateGrid.InvaderPath();
-            Info(r, 0,
+            string hud =
                 $"침략 {side} {path}칸 · 성벽 {EstateGrid.Count(EstateGrid.Cell.Wall)}/{EstateDefense.Level(EstateDefense.Kind.성벽)}"
-                + $" · 함정 {EstateGrid.Count(EstateGrid.Cell.Trap)}/{EstateDefense.Level(EstateDefense.Kind.함정)}");
+                + $" · 함정 {EstateGrid.Count(EstateGrid.Cell.Trap)}/{EstateDefense.Level(EstateDefense.Kind.함정)}";
+            var yard = EstateYard.VillageRect(r);
+            if (EstateYard.FillBlocked)
+                Info(r, 0, hud);
 
-            float top = RowH + RowGap + 4f;
-            float bottom = EstateYard.InspectorH + EstateYard.PaletteH + 10f;
-            var yard = new Rect(r.x, r.y + top, r.width, Mathf.Max(120f, r.height - top - bottom));
             if (EstateYard.Draw(yard, _selX, _selY, out int hx, out int hy))
                 OnYardClick(hx, hy);
 
-            var inspect = new Rect(r.x, r.yMax - bottom, r.width, EstateYard.InspectorH);
-            DrawVillageInspect(inspect);
-            var palette = new Rect(r.x, r.yMax - EstateYard.PaletteH, r.width, EstateYard.PaletteH);
-            DrawVillagePalette(palette);
+            if (EstateYard.FillBlocked)
+            {
+                float bottom = EstateYard.InspectorH + EstateYard.PaletteH + 10f;
+                var inspect = new Rect(r.x, r.yMax - bottom, r.width, EstateYard.InspectorH);
+                DrawVillageInspect(inspect);
+                var palette = new Rect(r.x, r.yMax - EstateYard.PaletteH, r.width, EstateYard.PaletteH);
+                DrawVillagePalette(palette);
+                return;
+            }
+
+            if (_selX < 0)
+                Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f), hud);
+            var paletteOn = new Rect(r.x, r.yMax - EstateYard.PaletteH, r.width, EstateYard.PaletteH);
+            var inspectOn = new Rect(r.x, paletteOn.y - EstateYard.InspectorH, r.width, EstateYard.InspectorH);
+            DrawVillageInspect(inspectOn);
+            DrawVillagePalette(paletteOn);
         }
 
         void OnYardClick(int x, int y)
