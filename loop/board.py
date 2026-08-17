@@ -897,6 +897,40 @@ _SHOT_MIME = {
 }
 
 
+def shot_is_black(path: Path, mean_max: float = 14.0, dark_min: float = 0.90) -> bool:
+    """거의 검은 화면은 끝난 일 증거로 쓰지 않는다."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return False
+    try:
+        im = Image.open(path).convert("RGB")
+    except (OSError, ValueError):
+        return False
+    im = im.resize((80, 45))
+    pix = im.load()
+    w, h = im.size
+    n = w * h
+    if n <= 0:
+        return True
+    total = 0
+    dark = 0
+    for y in range(h):
+        for x in range(w):
+            r, g, b = pix[x, y][:3]
+            s = r + g + b
+            total += s
+            if s <= 24:
+                dark += 1
+    mean = total / (3 * n)
+    return mean < mean_max and (dark / n) >= dark_min
+
+
+def usable_shot(rel: str) -> bool:
+    full = shot_file(rel)
+    return full is not None and not shot_is_black(full)
+
+
 def shot_file(rel: str) -> Path | None:
     rel = (rel or "").replace("\\", "/").lstrip("/")
     if not rel or ".." in rel.split("/"):
@@ -936,7 +970,7 @@ def mentioned_shots(text: str) -> list[str]:
             continue
         if "legacy" in rel.lower():
             continue
-        if rel in seen or shot_file(rel) is None:
+        if rel in seen or not usable_shot(rel):
             continue
         seen.add(rel)
         out.append(rel)
@@ -948,7 +982,7 @@ def hinted_shots(title: str, detail: str = "") -> list[str]:
     blob = title or ""
     out: list[str] = []
     for keys, rel in _SHOT_HINTS:
-        if any(k in blob for k in keys) and shot_file(rel) is not None:
+        if any(k in blob for k in keys) and usable_shot(rel):
             if rel not in out:
                 out.append(rel)
             break
@@ -1089,7 +1123,8 @@ def completed_posts(status: str, limit: int = 12) -> list[dict]:
         title = (title or "").strip()
         if not title or _title_seen(title, seen):
             return
-        shots = mentioned_shots(detail + " " + extra) or hinted_shots(title, detail)
+        shots = [rel for rel in (mentioned_shots(detail + " " + extra)
+                                 or hinted_shots(title, detail)) if usable_shot(rel)]
         posts.append({
             "id": item_id("done:" + title + commit),
             "title": title[:160],

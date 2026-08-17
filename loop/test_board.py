@@ -272,6 +272,40 @@ class ParseTests(unittest.TestCase):
         self.assertIn("보스 쫄 소환", titles)
         self.assertNotIn("영지 건물 3종", titles)
 
+    def test_black_screenshot_is_rejected(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("PIL 없음")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            black = root / "black.png"
+            gold = root / "gold.png"
+            Image.new("RGB", (128, 72), (0, 0, 0)).save(black)
+            Image.new("RGB", (128, 72), (212, 162, 76)).save(gold)
+            self.assertTrue(board.shot_is_black(black))
+            self.assertFalse(board.shot_is_black(gold))
+            (root / "done").mkdir()
+            black2 = root / "done" / "black.png"
+            gold2 = root / "done" / "ok.png"
+            Image.new("RGB", (128, 72), (2, 2, 2)).save(black2)
+            Image.new("RGB", (128, 72), (40, 80, 120)).save(gold2)
+            old = board.QA_ROOT
+            board.QA_ROOT = root
+            try:
+                status = (
+                    STATUS
+                    + "\n> **이번 이터 결과(코드/실행): 검은 화면 금지.**\n"
+                    + "> - **화면**: `done/black.png` 그리고 `done/ok.png`.\n"
+                )
+                posts = board.completed_posts(status)
+            finally:
+                board.QA_ROOT = old
+        item = next(p for p in posts if "검은 화면" in p["title"])
+        paths = [s["path"] for s in item["shots"]]
+        self.assertEqual(paths, ["done/ok.png"])
+        self.assertNotIn("done/black.png", paths)
+
     def test_hinted_shots_ignore_body_non_work(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
