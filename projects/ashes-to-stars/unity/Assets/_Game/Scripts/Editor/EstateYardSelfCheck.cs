@@ -26,7 +26,10 @@ namespace AshesToStars
             _fail = 0;
             _log.Length = 0;
             string no = Environment.GetEnvironmentVariable(EstateYard.EnvNo);
+            string noPan = Environment.GetEnvironmentVariable(EstateYard.EnvNoPan);
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, null);
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, null);
+            EstateYard.ResetForTest();
 
             var body = new Rect(GameScreen.BodyPadX, GameScreen.BodyTop,
                 1280f - GameScreen.BodyPadX * 2f,
@@ -37,7 +40,7 @@ namespace AshesToStars
             Check(yard.height >= 500f, $"전면 높이 {yard.height:0}");
             Check(tw > 100f, $"칸 {tw:0.0} > 100 (옛 상한 88)");
             Check(diamond >= 900f, $"마름모 폭 {diamond:0}");
-            Check(EstateYard.Line().Contains("화면을 채운다"),
+            Check(EstateYard.Line().Contains("끌어 본다"),
                 $"줄 (실제 {EstateYard.Line()})");
 
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep, "본성=전용");
@@ -71,8 +74,11 @@ namespace AshesToStars
                 "마을이 집 프랍을 그린다");
             Check(estate.Contains("DrawVillage(r)") && estate.Contains("FillBlocked"),
                 "마을 탭이 본문을 채운다");
+            Check(estate.Contains("EstateYard.SeedQaIfRequested"), "영지가 끌어 보기 시드를 읽는다");
 
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, no);
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, noPan);
+            EstateYard.ResetForTest();
             if (_fail == 0) Debug.Log("[EstateYardSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateYardSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EstateYardSelfCheck] FAIL {_fail}건");

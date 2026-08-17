@@ -68,6 +68,8 @@ namespace AshesToStars
                 return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
             if (SoloRaidClear.HasAny)
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
+            if (EstateYard.ShowQa)
+                return EstateYard.Line();
             if (EstateBuildings.ShowQa)
                 return EstateBuildings.Line();
             if (EstateStatusHud.ShowQa)
@@ -118,6 +120,7 @@ namespace AshesToStars
             EstateBuild.Tick();
             EstateMine.Tick();
             EstateDefense.Tick();
+            EstateYard.SeedQaIfRequested();
             EstateStatusHud.SeedQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(EstateStatusHud.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable("QA_ESTATE_MINE") == "1")

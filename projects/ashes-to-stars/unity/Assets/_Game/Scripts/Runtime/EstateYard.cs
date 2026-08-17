@@ -8,6 +8,7 @@ namespace AshesToStars
     /// 영지 마을 전경. 카드 목록이 아니라 격자 위 건물을 눌러 관리한다.
     /// 클래시 오브 클랜·쿠키런 킹덤처럼 마을이 화면을 채우고 HUD는 위에 얹는다.
     /// 칸 상한 88과 하단 카드 여백은 마름모를 작게 만든다 — QA_NO_YARD_FILL 이면 그 옛 길.
+    /// 끌어 보기는 마을을 옮긴다 — QA_NO_YARD_PAN 이면 옛 고정 시점.
     /// </summary>
     public static class EstateYard
     {
@@ -19,12 +20,42 @@ namespace AshesToStars
         public const float RoofHead = 1.15f;
         public const float OldTileCap = 88f;
         public const string EnvNo = "QA_NO_YARD_FILL";
+        public const string EnvShowPan = "QA_YARD_PAN";
+        public const string EnvNoPan = "QA_NO_YARD_PAN";
+        public const float QaPanX = 180f;
+        public const float QaPanY = 48f;
+        public const float DragSlop = 8f;
+        public const float PanShare = 0.40f;
 
         public static bool FillBlocked =>
             Environment.GetEnvironmentVariable(EnvNo) == "1";
 
+        public static bool PanBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoPan);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool ShowQa
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvShowPan);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         static Texture2D _grass, _path, _plot, _sel;
         static readonly Dictionary<string, Texture2D> Props = new Dictionary<string, Texture2D>();
+        static Vector2 _pan;
+        static Vector2 _dragFrom;
+        static Vector2 _panAtDrag;
+        static bool _down;
+        static bool _dragging;
+        static bool _qaSeeded;
 
         public static string IconOf(EstateGrid.Cell c) => c switch
         {
@@ -64,9 +95,18 @@ namespace AshesToStars
             _ => "빈 칸",
         };
 
-        public static string Line() => FillBlocked
-            ? "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)"
-            : "마을이 화면을 채운다. 집을 누르면 들어간다(§16)";
+        public static Vector2 Pan => PanEnabled ? _pan : Vector2.zero;
+
+        public static bool PanEnabled => !FillBlocked && !PanBlocked;
+
+        public static string Line()
+        {
+            if (FillBlocked)
+                return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)";
+            if (!PanEnabled)
+                return "마을이 화면을 채운다. 집을 누르면 들어간다(§16)";
+            return "마을을 끌어 본다. 집을 누르면 들어간다(§16)";
+        }
 
         /// <summary>
         /// 마을이 차지하는 칸. 막히면 정보·팔레트 여백을 빼고, 아니면 화면 아래까지 채운다.
@@ -93,6 +133,69 @@ namespace AshesToStars
             return Mathf.Min(area.width / n, area.height / (n * TileAspect + RoofHead));
         }
 
+        /// <summary>칸 크기. 끌어 보기 상한과 Origin이 같은 값을 쓴다.</summary>
+        public static void TileSize(Rect area, out float tw, out float th)
+        {
+            int n = Mathf.Max(1, EstateGrid.Size);
+            tw = TileW(area);
+            th = tw * TileAspect;
+            if (!FillBlocked) return;
+            float totalW = n * tw;
+            float totalH = n * th;
+            float fit = Mathf.Min(1f, Mathf.Min(area.width / totalW, area.height / (totalH + th)));
+            tw *= fit;
+            th *= fit;
+        }
+
+        public static Vector2 MaxPan(Rect area)
+        {
+            TileSize(area, out float tw, out float th);
+            int n = Mathf.Max(1, EstateGrid.Size);
+            return new Vector2(n * tw * PanShare, n * th * PanShare);
+        }
+
+        public static Vector2 ClampPan(Rect area, Vector2 pan)
+        {
+            var max = MaxPan(area);
+            return new Vector2(
+                Mathf.Clamp(pan.x, -max.x, max.x),
+                Mathf.Clamp(pan.y, -max.y, max.y));
+        }
+
+        public static void SetPan(Rect area, Vector2 pan)
+        {
+            _pan = PanEnabled ? ClampPan(area, pan) : Vector2.zero;
+        }
+
+        /// <summary>칸 왼쪽 위. 끌어 보기가 켜지면 Pan만큼 옮긴다.</summary>
+        public static Vector2 TileOrigin(Rect area, int x, int y)
+        {
+            TileSize(area, out float tw, out float th);
+            int n = Mathf.Max(1, EstateGrid.Size);
+            Vector2 pan = Pan;
+            float ox = area.center.x + pan.x;
+            float oy = area.y + Mathf.Max(6f, (area.height - n * th) * 0.16f) + pan.y;
+            return new Vector2(
+                ox + (x - y) * tw * 0.5f - tw * 0.5f,
+                oy + (x + y) * th * 0.5f);
+        }
+
+        public static void SeedQaIfRequested()
+        {
+            if (!ShowQa || !PanEnabled) return;
+            if (_qaSeeded) return;
+            _qaSeeded = true;
+            _pan = new Vector2(QaPanX, QaPanY);
+        }
+
+        public static void ResetForTest()
+        {
+            _pan = Vector2.zero;
+            _down = false;
+            _dragging = false;
+            _qaSeeded = false;
+        }
+
         /// <summary>마을을 그리고 클릭한 칸을 돌려준다. 클릭 없으면 (-1,-1).</summary>
         public static bool Draw(Rect area, int selX, int selY, out int hitX, out int hitY)
         {
@@ -101,25 +204,10 @@ namespace AshesToStars
             EstateGrid.EnsureHubBuildings();
             EnsureTex();
             int n = EstateGrid.Size;
-            float tw = TileW(area);
-            float th = tw * TileAspect;
-            if (FillBlocked)
-            {
-                float totalW = n * tw;
-                float totalH = n * th;
-                float fit = Mathf.Min(1f, Mathf.Min(area.width / totalW, area.height / (totalH + th)));
-                tw *= fit;
-                th *= fit;
-            }
-            float ox = area.center.x;
-            float oy = area.y + Mathf.Max(6f, (area.height - n * th) * 0.16f);
+            TileSize(area, out float tw, out float th);
+            HandlePan(area);
 
-            Vector2 Origin(int x, int y)
-            {
-                return new Vector2(
-                    ox + (x - y) * tw * 0.5f - tw * 0.5f,
-                    oy + (x + y) * th * 0.5f);
-            }
+            Vector2 Origin(int x, int y) => TileOrigin(area, x, y);
 
             var mouse = Event.current.mousePosition;
             int best = -1;
@@ -173,17 +261,56 @@ namespace AshesToStars
                 }
             }
 
-            if (Event.current.type == EventType.MouseDown
-                && Event.current.button == 0
-                && area.Contains(mouse)
-                && best >= 0)
+            var ev = Event.current;
+            bool click = PanEnabled
+                ? ev.type == EventType.MouseUp && ev.button == 0 && !_dragging
+                : ev.type == EventType.MouseDown && ev.button == 0;
+            if (click && area.Contains(mouse) && best >= 0)
             {
-                Event.current.Use();
+                ev.Use();
                 return true;
             }
             hitX = -1;
             hitY = -1;
             return false;
+        }
+
+        static void HandlePan(Rect area)
+        {
+            if (!PanEnabled)
+            {
+                _down = false;
+                _dragging = false;
+                return;
+            }
+            var ev = Event.current;
+            if (ev == null) return;
+            var mouse = ev.mousePosition;
+            if (ev.type == EventType.MouseDown && ev.button == 0 && area.Contains(mouse))
+            {
+                _down = true;
+                _dragging = false;
+                _dragFrom = mouse;
+                _panAtDrag = _pan;
+                return;
+            }
+            if (!_down) return;
+            if (ev.type == EventType.MouseDrag && ev.button == 0)
+            {
+                Vector2 d = mouse - _dragFrom;
+                if (d.sqrMagnitude >= DragSlop * DragSlop)
+                {
+                    _dragging = true;
+                    SetPan(area, _panAtDrag + d);
+                    ev.Use();
+                }
+                return;
+            }
+            if (ev.type == EventType.MouseUp && ev.button == 0)
+            {
+                if (_dragging) ev.Use();
+                _down = false;
+            }
         }
 
         static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
