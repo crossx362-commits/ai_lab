@@ -46,6 +46,7 @@ CHECKS_PATH = HERE / "board_checks.json"
 DECISIONS_PATH = HERE / "board_decisions.json"
 COMMANDS_PATH = HERE / "owner_commands.json"
 COMMANDS_MAX = 80
+TEST_REPORT_PATH = HERE / "last_test_report.json"
 PID_PATH = HERE / "loop.pid"
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
 GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
@@ -108,6 +109,7 @@ _COMMIT_ALLOW = (
     "loop/board.py",
     "loop/board.html",
     "loop/test_board.py",
+    "loop/last_test_report.json",
     "loop/v4_playtest.py",
     "loop/v4_testers.json",
     "loop/v4_test_script.json",
@@ -1341,6 +1343,36 @@ def save_checks(data: dict) -> None:
     )
 
 
+def load_test_report() -> dict:
+    """마지막 검증 묶음. 파일이 없거나 깨지면 칸을 비운다."""
+    try:
+        data = json.loads(TEST_REPORT_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    items = []
+    for raw in data.get("items") or []:
+        if not isinstance(raw, dict):
+            continue
+        name = str(raw.get("name") or "").strip()
+        if not name:
+            continue
+        items.append({
+            "name": name[:80],
+            "ok": bool(raw.get("ok")),
+            "note": str(raw.get("note") or "").strip()[:200],
+        })
+    if not items and not data.get("summary"):
+        return {}
+    return {
+        "at": str(data.get("at") or "")[:24],
+        "ok": bool(data.get("ok")),
+        "summary": str(data.get("summary") or "").strip()[:120],
+        "items": items[:24],
+    }
+
+
 def load_commands() -> list[dict]:
     try:
         data = json.loads(COMMANDS_PATH.read_text(encoding="utf-8"))
@@ -2255,6 +2287,7 @@ def build_state() -> dict:
         "claude": claude_usage(),
         "codex": codex_usage(),
         "commands": _plain_list(load_commands()[:24], "body"),
+        "tests": load_test_report(),
     }
 
 

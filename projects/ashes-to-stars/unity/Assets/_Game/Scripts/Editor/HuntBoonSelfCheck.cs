@@ -63,6 +63,28 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(HuntBoon.EnvNo, null);
             HuntBoon.End();
 
+            HuntBoon.BeginField(11);
+            int stacked = HuntBoon.Need(0) + HuntBoon.Need(1);
+            for (int i = 0; i < stacked; i++) HuntBoon.NoteKill();
+            Check(HuntBoon.Waiting && HuntBoon.Pending >= 1, "두 단계가 쌓이면 목록이 열린다");
+            HuntBoon.Take(HuntBoon.Offered[0]);
+            Check(HuntBoon.Waiting, "하나 골라도 다음 단계가 남는다");
+            HuntBoon.Take(HuntBoon.Offered[0]);
+            Check(!HuntBoon.Waiting, "두 번 고르면 닫힌다");
+
+            HuntBoon.End();
+            HuntBoon.BeginField(13);
+            int guard = 0;
+            while (HuntBoon.Owned.Count < 8 && guard++ < 400)
+            {
+                if (HuntBoon.Waiting) HuntBoon.Take(HuntBoon.Offered[0]);
+                else HuntBoon.NoteKill();
+            }
+            Check(HuntBoon.Owned.Count == 8, "강화는 8개까지");
+            for (int i = 0; i < 30; i++) HuntBoon.NoteKill();
+            Check(!HuntBoon.Waiting, "8개를 다 먹으면 더 안 뜬다");
+            HuntBoon.End();
+
             if (fail == 0) Debug.Log("[HuntBoonSelfCheck] PASS");
             else Debug.LogError($"[HuntBoonSelfCheck] FAIL {fail}");
         }

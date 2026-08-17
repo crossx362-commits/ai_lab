@@ -21,6 +21,11 @@
 - 끝난 일 검은 화면 PNG 금지 (`shot_is_black`)
 - 회귀: `python3 -m unittest loop.test_board loop.test_v4_playtest`
 
+## 검증을 보드에 올림 (2026-08-17)
+
+오너 「테스트는 철저하게, 결과를 보드에 작성」. `ChatWorkBatchSelfCheck` 7종 +
+보드 회귀 74. 화면 「검증 결과」가 `last_test_report.json`을 읽는다.
+
 ## 사냥 중 강화 3택 (2026-08-17)
 
 오너 「뱀서류처럼 사냥중 강화 목록 안뜨는데」→「니가 정해서」.

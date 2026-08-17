@@ -1,0 +1,47 @@
+{
+  "at": "2026-08-17 10:46",
+  "ok": true,
+  "summary": "8개 전부 통과",
+  "items": [
+    {
+      "name": "사냥 강화 3택",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "캐릭터 겹침",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "집·나무 겹침",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "집 돌아나가기",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "길 한가운데 금지",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "로컬 테스트 시드",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "사냥 경험치",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "보드 회귀 74개",
+      "ok": true,
+      "note": "loop.test_board + test_v4_playtest"
+    }
+  ]
+}

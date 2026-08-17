@@ -378,6 +378,11 @@ class ParseTests(unittest.TestCase):
         self.assertIn("지금 ·", html)
         self.assertIn("테스트 하는 사람", html)
         self.assertEqual(html.count('id="queue"'), 1)
+        self.assertIn('id="tests"', html)
+        self.assertIn("검증 결과", html)
+        self.assertIn("renderTests", html)
+        self.assertLess(html.find('id="commands"'), html.find('id="tests"'))
+        self.assertLess(html.find('id="tests"'), html.find('id="queue"'))
 
 
 class WriteTests(unittest.TestCase):
@@ -505,6 +510,44 @@ class CheckTests(unittest.TestCase):
                 board.CHECKS_PATH = old
 
 
+class TestReportTests(unittest.TestCase):
+    def test_missing_report_is_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = board.TEST_REPORT_PATH
+            try:
+                board.TEST_REPORT_PATH = Path(tmp) / "none.json"
+                self.assertEqual(board.load_test_report(), {})
+            finally:
+                board.TEST_REPORT_PATH = old
+
+    def test_reads_pass_and_fail_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "last_test_report.json"
+            path.write_text(
+                json.dumps({
+                    "at": "2026-08-17 11:00",
+                    "ok": False,
+                    "summary": "1개 실패 / 2",
+                    "items": [
+                        {"name": "사냥 강화 3택", "ok": True, "note": "통과"},
+                        {"name": "캐릭터 겹침", "ok": False, "note": "같은 점"},
+                    ],
+                }, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            old = board.TEST_REPORT_PATH
+            try:
+                board.TEST_REPORT_PATH = path
+                data = board.load_test_report()
+            finally:
+                board.TEST_REPORT_PATH = old
+            self.assertFalse(data["ok"])
+            self.assertEqual(data["summary"], "1개 실패 / 2")
+            self.assertEqual(data["items"][0]["name"], "사냥 강화 3택")
+            self.assertTrue(data["items"][0]["ok"])
+            self.assertFalse(data["items"][1]["ok"])
+
+
 class BoardManageTests(unittest.TestCase):
     """오너 2026-08-17: 보드 규칙을 되돌리면 이 테스트가 먼저 깨진다."""
 
@@ -518,6 +561,8 @@ class BoardManageTests(unittest.TestCase):
         self.assertIn("할 일 적기", html)
         self.assertIn("내가 시킨 일", html)
         self.assertIn("테스트 하는 사람", html)
+        self.assertIn("검증 결과", html)
+        self.assertTrue(callable(board.load_test_report))
         self.assertTrue(callable(board.record_command))
         self.assertTrue(callable(board.humanize_title))
         self.assertTrue(callable(board.shot_is_black))

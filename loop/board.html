@@ -235,6 +235,11 @@
   <p class="meta">채팅이든 여기든, 시킨 일은 여기에 남는다. 끝나도 지우지 않는다.</p>
   <div class="cmd-list" id="commands"></div>
 </section>
+<section class="request-top" id="tests-box">
+  <h2>검증 결과</h2>
+  <p class="meta" id="tests-meta">아직 돌린 검사가 없다.</p>
+  <div class="cmd-list" id="tests"></div>
+</section>
 <section class="stuck-box" id="stuck-box">
   <h2>지금 막힌 것</h2>
   <p class="meta">자동 작업이 멈췄거나, 먼저 해야 할 일이 없는 것만.</p>
@@ -417,6 +422,35 @@ function renderCompleted(state) {
   }).join("");
 }
 
+function renderTests(state) {
+  const el = $("tests");
+  const meta = $("tests-meta");
+  const box = $("tests-box");
+  if (!el) return;
+  const report = state.tests || {};
+  const items = report.items || [];
+  if (!items.length && !report.summary) {
+    if (box) box.style.display = "none";
+    el.innerHTML = "";
+    if (meta) meta.textContent = "아직 돌린 검사가 없다.";
+    return;
+  }
+  if (box) box.style.display = "block";
+  if (meta) {
+    const stamp = report.at ? report.at + " · " : "";
+    meta.textContent = stamp + (report.summary || (report.ok ? "통과" : "실패"));
+    meta.style.color = report.ok ? "var(--ok)" : "var(--stop)";
+  }
+  el.innerHTML = items.map((it) => `
+    <div class="cmd${it.ok ? " done" : ""}">
+      <span class="src">${it.ok ? "통과" : "실패"}</span>
+      <div>
+        <div class="t">${esc(it.name)}</div>
+        ${it.note ? `<div class="d">${esc(it.note)}</div>` : ""}
+      </div>
+    </div>`).join("");
+}
+
 function renderCommands(state) {
   const el = $("commands");
   if (!el) return;
@@ -526,6 +560,7 @@ function render(state) {
     </div>`).join("") : '<p class="empty">지금 고를 일 없음</p>';
   renderStuck(state);
   renderCommands(state);
+  renderTests(state);
   renderPlaytest(state);
   renderCompleted(state);
   renderItems($("slice"), state.slice || (state.charts && state.charts.slice) || [], state);
