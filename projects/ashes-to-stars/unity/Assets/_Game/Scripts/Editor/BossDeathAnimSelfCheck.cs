@@ -24,7 +24,7 @@ namespace AshesToStars
 
             var bank = SpriteBank.Load();
             Check(bank != null, "SpriteBank를 못 읽었다");
-            string[] dirs = { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
+            string[] dirs = { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct", "boss_saint" };
             string[] frames = { "death_00", "death_01", "death_02", "death_03" };
             for (int k = 0; k < dirs.Length; k++)
             {

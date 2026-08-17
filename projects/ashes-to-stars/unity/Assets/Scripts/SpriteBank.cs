@@ -197,9 +197,9 @@ public class SpriteBank
 
     /// <summary>보스 실루엣 4종. 층·계열로 골라 쓴다(§0-B 변주 원칙).</summary>
     public static readonly string[] BOSS_KEYS =
-        { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
+        { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct", "boss_saint" };
     static readonly string[] BOSS_DIRS =
-        { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct" };
+        { "boss_brute", "boss_serpent", "boss_wraith", "boss_construct", "boss_saint" };
     static readonly string[] BOSS_FRAMES =
     {
         "idle_00", "idle_01", "idle_02", "idle_03",
@@ -256,7 +256,7 @@ public class SpriteBank
             "elite_healer_0", "boss_0",
             // 보스 실루엣 4종(§0-B: 보스 20종에 전용 모델을 만들지 않고 **실루엣 4종을
             // 크기·색·장식으로 변주**). 예전엔 `boss_0` 한 장뿐이라 모든 보스가 같은 그림이었다.
-            "boss_brute", "boss_serpent", "boss_wraith", "boss_construct"
+            "boss_brute", "boss_serpent", "boss_wraith", "boss_construct", "boss_saint"
         };
 
         // 캐릭터 픽셀아트를 같은 아틀라스에 싣는다 — 배칭이 깨지면 W1 성능 전제가 무너진다

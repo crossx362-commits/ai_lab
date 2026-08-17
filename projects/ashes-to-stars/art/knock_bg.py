@@ -208,9 +208,8 @@ def apply(img: Image.Image, crop: bool = False) -> Image.Image:
         return im
 
     mag = _chroma_mask(rgb)
-    chk = _checker_mask(rgb)
-    if _corner_is_checker(rgb) or float(chk.mean()) > 0.12:
-        chk = chk | _harsh_checker_mask(rgb)
+    # 바둑판은 모서리가 바둑판일 때만. 가면(뼈색 큰 원)을 회색 바둑판으로 지우면 안 된다.
+    chk = _checker_mask(rgb) | _harsh_checker_mask(rgb) if _corner_is_checker(rgb) else np.zeros(alpha.shape, dtype=bool)
     alpha = np.where(mag | chk, 0, alpha)
     rgb = _despill(rgb.astype(np.int16), alpha > 0)
 
