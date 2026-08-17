@@ -5,7 +5,7 @@ namespace AshesToStars
 {
     /// <summary>
     /// 영지 기능 건물 전용 프랍(§16). village_house_* 는 필드 장식이다.
-    /// 본성·광산·창고·수비대·대장간·영묘·탑. QA_NO면 옛 집·헛간·우물·등불.
+    /// 본성·광산·창고·수비대·대장간·영묘·탑·경매장. QA_NO면 옛 집·헛간·우물·등불·수레.
     /// </summary>
     public static class EstateBuildings
     {
@@ -18,6 +18,7 @@ namespace AshesToStars
         public const string Smith = "estate_smith_0";
         public const string Mausoleum = "estate_mausoleum_0";
         public const string Tower = "estate_tower_0";
+        public const string Auction = "estate_auction_0";
 
         static bool _qaSeeded;
 
@@ -47,6 +48,7 @@ namespace AshesToStars
             EstateGrid.Cell.Barracks => Barracks,
             EstateGrid.Cell.Smith => Smith,
             EstateGrid.Cell.Mausoleum => Mausoleum,
+            EstateGrid.Cell.Auction => Auction,
             EstateGrid.Cell.Arrow => Tower,
             EstateGrid.Cell.Magic => Tower,
             _ => null,
@@ -84,8 +86,8 @@ namespace AshesToStars
         }
 
         public static string Line() => Blocked
-            ? "본성·광산·창고·수비대가 집·헛간이다"
-            : "본성·광산·창고·수비대는 전용 그림이다(§16)";
+            ? "경매장이 수레다"
+            : "경매장은 전용 그림이다(§16)";
 
         public static void ResetForTest()
         {

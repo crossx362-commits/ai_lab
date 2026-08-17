@@ -15,14 +15,14 @@
 | 화면 배경 9종 | `out_p8_bg/bg_*.png` · 타이틀은 Imagine `11.jpg` | `unity/Assets/Resources/bg/bg_*.png` | `GameScreen.cs` | 🟡 허브 6 + 결과·던전 유지. `bg_title`만 2026-08-17 Imagine 교체 |
 | UI 크롬 8종 | `art/out_ui_chrome/` | `unity/Assets/Resources/ui/chrome/{panel,button_*,portrait_frame,hp_frame,xp_frame,boss_hp_frame}.png` | `UiAtlas.cs` | 🟡 솔로 텍스처 우선, 아틀라스 아이콘은 유지. 화면 QA 전 |
 | 마을·나무 16종 | `out_p3_village/`, `out_p5_trees/` | `unity/Assets/Resources/props/` | `FieldDecor.cs` | ✅ `village_tree_0`을 집 옆에만 세움(`qa_hunt.png` 열매나무). 길에 안 올라감 |
-| 영지 기능 건물 7종 | `out_estate_buildings/` | `unity/Assets/Resources/props/estate_{keep,mine,warehouse,barracks,smith,mausoleum,tower}_0.png` | `EstateBuildings.cs` | ✅ 본성·광산·창고·수비대·대장간·영묘·탑 반입. `village_house_*`는 필드 장식 |
+| 영지 기능 건물 8종 | `out_estate_buildings/` | `unity/Assets/Resources/props/estate_{keep,mine,warehouse,barracks,smith,mausoleum,tower,auction}_0.png` | `EstateBuildings.cs` | ✅ 본성·광산·창고·수비대·대장간·영묘·탑·경매장 반입. `village_house_*`는 필드 장식 |
 | 공용 이펙트 8종 | `out_p4_fx/` | `unity/Assets/Resources/FX/` | `FxPool.cs` | ✅ 정적 8장 반입·코드 애니메이션 |
 
 ## 아직 새로 만들어야 하는 것
 
 - **1차 전직 11종 전용 외형**: 현재 별도 완성본은 마법사뿐이다. 기본 딜러 등 기존 그림을 새 전직 완성본으로 중복 집계하지 않는다.
 - **보스 애니메이션**: 4실루엣 정적 1장씩만 있다. 같은 보스를 다시 정적으로 만들지 말고, 필요 시 기존 실루엣을 참조해 상태·방향 시트를 만든다.
-- **영지 기능 건물 7종**: 본성·광산·창고·수비대·대장간·영묘·탑은 `estate_*_0`. `village_house_*`는 필드 장식이다.
+- **영지 기능 건물 8종**: 본성·광산·창고·수비대·대장간·영묘·탑·경매장은 `estate_*_0`. `village_house_*`는 필드 장식이다.
 - **UI·스킬·장비 아이콘**: 기존 범용 아이콘과 완성 목록을 먼저 대조한 뒤 비어 있는 키만 생성한다.
 
 ## 중복 생성 방지 게이트

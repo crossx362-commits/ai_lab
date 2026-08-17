@@ -1,5 +1,5 @@
 {
- "_note": "영지 기능 건물 3종(대장간·영묘·탑). village_house_* 는 필드 장식이며 이 셋을 대체하지 않는다(ARTIFACT_INDEX). EstateBuildings.DedicatedOf 가 읽는 이름과 같다.",
+ "_note": "영지 기능 건물(대장간·영묘·탑·경매장). village_house_* 는 필드 장식이며 이 셋을 대체하지 않는다(ARTIFACT_INDEX). EstateBuildings.DedicatedOf 가 읽는 이름과 같다.",
  "refs": [
   "out_p3_village/village_house_1.png",
   "out_p3_village/village_barn_0.png"
@@ -22,6 +22,11 @@
    "name": "estate_tower_0",
    "rules_ref": "prop",
    "prompt": "A squat defensive stone watchtower seen from a 3/4 elevated angle so both the front wall and one side wall are visible. Grey block walls, crenellated top, a single dark arrow slit, a small wooden door at the base, taller and narrower than a house. Clearly a tower, not a lamp post, not a cottage."
+  },
+  {
+   "name": "estate_auction_0",
+   "rules_ref": "prop",
+   "prompt": "A village auction house and market hall seen from a 3/4 elevated angle so both the front wall and one side wall are visible. Timber framing on a stone foundation, a steep brown shingle roof, a hanging wooden sign with stacked gold coins and a small gold star, a wide open front with cloth-draped stalls and crates of goods. Clearly an auction hall, not a cart, not a cottage, not a smithy."
   }
  ]
 }

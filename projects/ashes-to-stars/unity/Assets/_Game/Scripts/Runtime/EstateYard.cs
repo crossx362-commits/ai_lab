@@ -96,7 +96,7 @@ namespace AshesToStars
 
         /// <summary>
         /// 허브 칸이 쓰는 마을 프랍. FieldDecor 전용으로만 있으면 영지는 UI 아이콘 체스판이 된다.
-        /// 본성·광산·창고·수비대·대장간·영묘·탑은 EstateBuildings 전용 그림(§16).
+        /// 본성·광산·창고·수비대·대장간·영묘·탑·경매장은 EstateBuildings 전용 그림(§16).
         /// </summary>
         public static string PropOf(EstateGrid.Cell c) => EstateBuildings.PropOf(c);
 
