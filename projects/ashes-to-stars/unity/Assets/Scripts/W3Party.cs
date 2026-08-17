@@ -354,6 +354,15 @@ public class W3Party : MonoBehaviour
     // 대시(§5)의 무적 0.3초가 이 돌진을 통과하는 「정확히 쓰면 한 번 산다」의 대상이다.
     float[] _mChargeT; int[] _mChargePhase; Vector2[] _mChargeDir;
     const float CHG_TELL = 0.8f, CHG_RUSH = 1.2f, CHG_STUN = 1.0f;
+    /// <summary>
+    /// 정예 확대 배율. **여기서 숫자를 정하지 않는다** — 크기표(`prop_scale.json`)의
+    /// `unit_elite / unit_mob`을 역산한다. 옛 하드코딩 1.4는 잡몹 1.5u를 2.1u로 만들어
+    /// 정예가 캐릭터(2.0u)보다 커져 있었고, 그 곱셈이 표에도 SpriteBank에도 없어서
+    /// 크기를 아무리 표에서 맞춰도 화면은 안 맞았다(2026-08-18).
+    /// </summary>
+    static float EliteScale =>
+        AshesToStars.FieldDecor.Units("unit_elite", 1.9f) /
+        Mathf.Max(0.01f, AshesToStars.FieldDecor.Units("unit_mob", 1.5f));
     const float CHG_RANGE = 7.5f;      // 이 거리 안에 들어오면 예고를 시작한다
     const float CHG_SPEED = 3.2f;      // 기본 이동 대비 배율 — 걸어서는 못 피한다
     /// <summary>예고·돌진 횟수. 0이면 배선했는데 안 도는 것이다 — QA가 캡처 시점에 읽는다.</summary>
@@ -1188,7 +1197,11 @@ public class W3Party : MonoBehaviour
             _mTint[i] = FamilyTint(_mKind[i]);
             _mSr[i].color = _mTint[i];
             // 정예만 조금 크게. 기본 크기는 SpriteBank가 실측 PPU로 맞춰 둔다.
-            _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? 1.4f : 1.0f);
+            // ⚠️ 여기 1.4가 **세 번째 크기 소스**였다(2026-08-18). 잡몹 1.5u × 1.4 = 2.1u로
+            //    정예가 캐릭터(2.0u)보다 커져 "주인공이 안 보인다"의 실제 원인이 됐는데,
+            //    크기표에도 SpriteBank에도 이 곱셈은 안 적혀 있어 누구도 못 봤다.
+            //    이제 배율을 표에서 역산한다 — 비율을 바꾸려면 `prop_scale.json`만 고친다.
+            _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? EliteScale : 1.0f);
             _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
             _mBarFg[i].gameObject.SetActive(false);
             _mTr[i].gameObject.SetActive(true);
@@ -1330,6 +1343,45 @@ public class W3Party : MonoBehaviour
     /// 그래서 캡처 시점에 밖에서 읽어갈 수 있게 연다.
     /// </summary>
     public static int AiDashUsesOnActive() => _game != null ? _game._aiDashUses : -1;
+
+    /// <summary>캡처 시점의 실측 크기 — "안 보인다"는 감각을 수치로 바꾼다.</summary>
+    public static string SizeReportOnActive()
+    {
+        var g = _game;
+        if (g == null || g._party == null || g._party.Length == 0) return "전투 없음";
+        var sb = new System.Text.StringBuilder();
+        var cam = Camera.main;
+        sb.Append($"ortho={ (cam != null ? cam.orthographicSize : -1f):F1} ");
+        var m0 = g._party[0];
+        if (m0.Sr != null && m0.Sr.sprite != null)
+            sb.Append($"탱높이={m0.Sr.bounds.size.y:F2}u 스케일={m0.Tr.localScale.y:F2} " +
+                      $"모션={m0.Mo} 무적={m0.IFrame:F2} ");
+        for (int i = 0; i < MAXM; i++)
+            if (g._mOn[i] && g._mSr[i].sprite != null)
+            { sb.Append($"몹k{g._mKind[i]}높이={g._mSr[i].bounds.size.y:F2}u "); break; }
+        // 겹침 덤프 — 탱을 덮는 렌더러의 정체를 이름·정렬값으로 밝힌다(추측 금지).
+        if (m0.Tr != null)
+        {
+            var all = Object.FindObjectsByType<SpriteRenderer>(FindObjectsSortMode.None);
+            int myOrder = m0.Sr != null ? m0.Sr.sortingOrder : 0;
+            int shown = 0;
+            foreach (var r in all)
+            {
+                if (r == null || !r.gameObject.activeInHierarchy || r.sprite == null) continue;
+                if ((r.transform.position - m0.Tr.position).sqrMagnitude > 2.25f) continue;
+                if (r.sortingOrder < myOrder && r.transform != m0.Tr) continue;
+                sb.Append($" [{r.gameObject.name}|ord={r.sortingOrder}|h={r.bounds.size.y:F1}]");
+                if (++shown >= 8) break;
+            }
+        }
+        // 화면 좌표 — "어디 있는지"를 확대해 볼 수 있게. 픽셀 원점은 좌하단이다.
+        if (cam != null && m0.Tr != null)
+        {
+            var sp = cam.WorldToScreenPoint(m0.Tr.position);
+            sb.Append($"탱화면=({sp.x:F0},{Screen.height - sp.y:F0}/상단기준) 탱월드={m0.Tr.position}");
+        }
+        return sb.ToString();
+    }
 
     void SummonMobs(int n)
     {
@@ -1624,7 +1676,11 @@ public class W3Party : MonoBehaviour
             // 「정확히 쓰면 한 번 산다」(§5)가 성립하려면 **무적이 켜져 있다는 것이 보여야** 한다.
             if (m.IFrame > 0f && m.DashT <= 0f)
                 m.Sr.sprite = bank.CharDir(artDir, SpriteBank.Frame.Invuln);
-            m.Sr.sortingOrder = Depth(m.Pos.y);
+            // 파티는 잡몹보다 **항상 앞**에 그린다(+600). 순수 y정렬만 쓰면 도발로 몰린
+            // 몹 무리가 파티를 통째로 덮는다 — 실측 2026-08-18: 탱이 좌표대로 그려지는데
+            // (해골 가면 확인) 붉은 몹 무더기에 묻혀 "캐릭터가 안 보인다"가 됐다.
+            // 몹끼리·파티끼리는 y정렬 유지, 파티↔몹 사이만 파티 우선 — 뱀서류 관례다.
+            m.Sr.sortingOrder = Depth(m.Pos.y) + 600;
 
             // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
             bool picked = _sel >= 0 && _sel < _party.Length && _party[_sel] == m;
@@ -2791,10 +2847,14 @@ public class W3Party : MonoBehaviour
                             _mChargePhase[i] = 1; _mChargeT[i] = CHG_TELL;
                             _chargeTells++;
                             // 예고 표식 — 이게 보이지 않으면 §10-2가 성립하지 않는다.
-                            // 바닥 마법진(예고는 바닥에 깔려야 진행 방향이 읽힌다) + 심볼을 겹친다.
-                            FxParticles.Play(FxKind.마법진, ToScreen(p), 1.6f,
+                            // ⛔ `fx_taunt`(선명한 주황 고리)를 여기 깔면 **오너가 네 번 지운 "스킬링"이
+                            //    그대로 다시 나온다**(2026-08-18 실측: qa_hunt.png 바닥의 주황 원환이 이것).
+                            //    절차 링을 지웠는데도 링이 남았던 이유가 이 아트 한 줄이었다.
+                            //    돌진은 "어디로 오는가"가 정보다 → 고리 대신 **진행 방향 앞쪽의 베기 섬광**.
+                            FxParticles.Play(FxKind.먼지, ToScreen(p), 1.2f,
                                              new Color(1f, 0.78f, 0.25f));
-                            FxPool.Play(FxPool.Kind.Taunt, p, 1.5f, new Color(1f, 0.75f, 0.2f, 0.9f));
+                            FxPool.Play(FxPool.Kind.Slash, p + dir * 1.6f, 1.4f,
+                                        new Color(1f, 0.72f, 0.2f, 0.95f));
                         }
                         break;
                 }

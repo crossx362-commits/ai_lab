@@ -582,6 +582,19 @@ namespace AshesToStars
         static System.Collections.Generic.Dictionary<string, float> _scale;
         const float DEFAULT_UNITS = 1.0f;
 
+        /// <summary>
+        /// 크기표를 **프랍 밖에서도** 읽는다. 유닛(캐릭터·잡몹·정예·보스) 크기가
+        /// `SpriteBank`의 C# 상수로 따로 살아 있어서, 크기표가 `_reference.character_units`로
+        /// 선언한 기준과 코드가 서로 모르는 두 개의 진실이 됐다 — 실제로 2026-08-18에
+        /// 코드 쪽 캐릭터만 2.0→2.6으로 올려 프랍 53종의 상대비를 통째로 무효화할 뻔했다.
+        /// 이제 유닛도 같은 표에서 읽는다(§1-6: 같은 값을 두 곳에 두지 마라).
+        /// </summary>
+        public static float Units(string key, float fallback)
+        {
+            float v = TargetUnits(key);
+            return v == DEFAULT_UNITS && !_scale.ContainsKey(key) ? fallback : v;
+        }
+
         static float TargetUnits(string name)
         {
             if (_scale == null)

@@ -60,7 +60,18 @@ namespace AshesToStars
             var cam = Camera.main;
             if (cam != null)
             {
-                cam.orthographicSize = 13f;
+                // 기본 13(c77b782f: 아레나가 다 들어와야 물량이 보인다) ↔ 캐릭터 가독성이
+                // 충돌한다(오너 2026-08-18 「캐릭터 안 보인다」). QA_ORTHO로 값을 바꿔
+                // **실측 비교**한 뒤 기본값을 정한다 — 감으로 정하지 않는다.
+                // 실측으로 정했다: 화면 높이 720px, 캐릭터 2.0u.
+                //   ortho 13 → 720/26×2 = 55px = 화면 높이의 7.7%
+                //   ortho 10 → 720/20×2 = 72px = 10.0%
+                // 주인공이 화면 높이의 10% 아래로 내려가면 실루엣이 잡몹 무리에 묻힌다.
+                // 물량 가시성(c77b782f)은 아레나 반경이 결정하지 ortho가 결정하지 않는다.
+                float ortho = 10f;
+                var envOrtho = System.Environment.GetEnvironmentVariable("QA_ORTHO");
+                if (!string.IsNullOrEmpty(envOrtho) && float.TryParse(envOrtho, out float eo)) ortho = eo;
+                cam.orthographicSize = ortho;
                 cam.transform.position = new Vector3(0, 0, -10);
             }
 

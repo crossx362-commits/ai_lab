@@ -1,0 +1,209 @@
+{
+ "_note": "P13 전투 아이콘 41종 — 기존 combat_icon_atlas는 채도 높은 가챠풍이라 할로우 나이트 화풍과 어긋난다(2026-08-18 오너 지적). 이름은 CombatIconAtlas.Pieces 키와 1:1. 남은 7칸은 P12 아이콘을 재사용한다.",
+ "refs": [],
+ "rulesets": {
+  "icon": "Hollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. "
+ },
+ "assets": [
+  {
+   "name": "tank_charge",
+   "rules_ref": "icon",
+   "prompt": "an armored beetle knight lunging forward behind a round shield, motion streaks"
+  },
+  {
+   "name": "tank_slam",
+   "rules_ref": "icon",
+   "prompt": "a huge round shield smashing down into cracked ground, impact shards"
+  },
+  {
+   "name": "tank_last_stand",
+   "rules_ref": "icon",
+   "prompt": "a cracked shield standing upright before a single dim flame"
+  },
+  {
+   "name": "aggro",
+   "rules_ref": "icon",
+   "prompt": "an angry hollow-eyed mask radiating jagged attention lines"
+  },
+  {
+   "name": "damage_reduce",
+   "rules_ref": "icon",
+   "prompt": "a downward arrow deflected off a curved plate of chitin"
+  },
+  {
+   "name": "damage_critical",
+   "rules_ref": "icon",
+   "prompt": "a nail piercing a glowing weak point, sharp starburst"
+  },
+  {
+   "name": "damage_spin",
+   "rules_ref": "icon",
+   "prompt": "a whirling circular blade trail, spiral of pale slashes"
+  },
+  {
+   "name": "damage_arrow_volley",
+   "rules_ref": "icon",
+   "prompt": "three bone arrows falling in a tight arc"
+  },
+  {
+   "name": "damage_blink",
+   "rules_ref": "icon",
+   "prompt": "a hooded figure dissolving into pale dashes and reappearing"
+  },
+  {
+   "name": "damage_weakpoint",
+   "rules_ref": "icon",
+   "prompt": "a glowing orange crosshair over a cracked carapace"
+  },
+  {
+   "name": "damage_execute",
+   "rules_ref": "icon",
+   "prompt": "a nail driven straight down through a shattered mask"
+  },
+  {
+   "name": "cleanse",
+   "rules_ref": "icon",
+   "prompt": "a pale droplet washing away black tendrils of corruption"
+  },
+  {
+   "name": "revive",
+   "rules_ref": "icon",
+   "prompt": "a small mask lifted by rising white motes of light"
+  },
+  {
+   "name": "heal_halo",
+   "rules_ref": "icon",
+   "prompt": "a pale ring of soft light above a bowed hooded head"
+  },
+  {
+   "name": "heal_party",
+   "rules_ref": "icon",
+   "prompt": "three small masks linked by a soft green glow"
+  },
+  {
+   "name": "regeneration",
+   "rules_ref": "icon",
+   "prompt": "a curled fern frond unfurling with green motes"
+  },
+  {
+   "name": "heal_beacon",
+   "rules_ref": "icon",
+   "prompt": "a slender lantern on a pole casting a warm pool of light"
+  },
+  {
+   "name": "buffer_aura",
+   "rules_ref": "icon",
+   "prompt": "concentric soft rings of pale light rising from a small figure"
+  },
+  {
+   "name": "buffer_scroll",
+   "rules_ref": "icon",
+   "prompt": "an old rolled parchment bound with a bone clasp, faint glow"
+  },
+  {
+   "name": "buffer_haste",
+   "rules_ref": "icon",
+   "prompt": "a winged insect leg mid-stride with pale speed streaks"
+  },
+  {
+   "name": "buffer_defense",
+   "rules_ref": "icon",
+   "prompt": "an ornate crest plate with a soft blue sheen"
+  },
+  {
+   "name": "buffer_speed",
+   "rules_ref": "icon",
+   "prompt": "a small feathered boot trailing pale wind lines"
+  },
+  {
+   "name": "buffer_cooldown",
+   "rules_ref": "icon",
+   "prompt": "an hourglass of dark chitin with glowing pale sand"
+  },
+  {
+   "name": "buffer_link",
+   "rules_ref": "icon",
+   "prompt": "three pale nodes joined by thin luminous threads"
+  },
+  {
+   "name": "warn_circle",
+   "rules_ref": "icon",
+   "prompt": "a glowing orange danger circle marked on dark ground, top-down"
+  },
+  {
+   "name": "warn_cone",
+   "rules_ref": "icon",
+   "prompt": "a glowing orange danger cone spreading outward, top-down"
+  },
+  {
+   "name": "warn_charge",
+   "rules_ref": "icon",
+   "prompt": "a straight orange danger lane with forward chevrons, top-down"
+  },
+  {
+   "name": "warn_beam",
+   "rules_ref": "icon",
+   "prompt": "a narrow orange beam line crossing dark ground, top-down"
+  },
+  {
+   "name": "warn_summon",
+   "rules_ref": "icon",
+   "prompt": "a dark ritual sigil with pale eyes opening around it"
+  },
+  {
+   "name": "warn_heal_check",
+   "rules_ref": "icon",
+   "prompt": "a cracked heart shape with an urgent pale pulse line"
+  },
+  {
+   "name": "warn_enrage",
+   "rules_ref": "icon",
+   "prompt": "a snarling horned mask wreathed in red-orange heat"
+  },
+  {
+   "name": "warn_phase",
+   "rules_ref": "icon",
+   "prompt": "a mask splitting in two along a jagged seam of light"
+  },
+  {
+   "name": "selected",
+   "rules_ref": "icon",
+   "prompt": "a simple pale bracket frame marking a chosen target"
+  },
+  {
+   "name": "stunned",
+   "rules_ref": "icon",
+   "prompt": "a small mask with pale spiral motes circling above it"
+  },
+  {
+   "name": "silenced",
+   "rules_ref": "icon",
+   "prompt": "an open mouth crossed out by a single pale slash"
+  },
+  {
+   "name": "rooted",
+   "rules_ref": "icon",
+   "prompt": "dark thorny vines coiling around two small legs"
+  },
+  {
+   "name": "knockback",
+   "rules_ref": "icon",
+   "prompt": "a small figure hurled backward with pale impact lines"
+  },
+  {
+   "name": "interrupted",
+   "rules_ref": "icon",
+   "prompt": "a snapped casting sigil breaking apart mid-air"
+  },
+  {
+   "name": "shielded",
+   "rules_ref": "icon",
+   "prompt": "a translucent pale bubble around a small hooded figure"
+  },
+  {
+   "name": "low_health",
+   "rules_ref": "icon",
+   "prompt": "a dim flickering flame almost guttering out"
+  }
+ ]
+}
