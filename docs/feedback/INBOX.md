@@ -21,6 +21,14 @@
 
 ## 처리됨 — 최신
 
+### ✅ 긴급 탈출 수동 한정 (루프, 2026-08-17)
+
+큐 1번 캐릭터/몹 화질은 재생성 금지라 「대기하지 마라」로 §4 ✅를 닫음.
+잡몹·던전은 거부. 보스·침략만 캐스트. `QA_NO`면 옛 항상 허용.
+SelfCheck 전항 PASS. FAIL 6은 TryBegin이 Allowed를 무시.
+PNG `escape_manual_shots/qa_go:Field.png` — 자막 `두루마리는 보스전 지휘 중에만(§4)`.
+코드 `4d2d759d`.
+
 ### ✅ 영지 마을 굴려 확대 (루프, 2026-08-17)
 
 큐 1번 캐릭터/몹 화질은 재생성 금지라 「대기하지 마라」로 INBOX 09:18·09:42 확대를 닫음.
@@ -910,7 +918,12 @@ ui 이미지 늘어나 보이는거 절대 금지 ui이는 최대한 간결 심�
 
 진행이 막힌부분이 있으면 찾아서 해결진행
 
-> **진행(2026-08-17 자동 루프):** INBOX 09:18 마을 굴려 확대를 닫음.
+> **진행(2026-08-17 자동 루프):** §4 긴급 탈출 수동 한정을 닫음.
+> `EscapeManual.Allowed`를 `TryBegin`·전투가 읽는다. 잡몹 캐스트는 FAIL.
+> PNG `escape_manual_shots/qa_go:Field.png`. 사람 육안 UI·V4 70%는 그대로 보류.
+> 전체 「막힌부분」은 여기 유지.
+>
+> **이전:** INBOX 09:18 마을 굴려 확대를 닫음.
 > `EstateYard.SetZoom`/`HandleZoom`을 마을이 읽는다. TileW가 Zoom을 무시하면 FAIL.
 > PNG `estate_yard_zoom_shots/qa_go:Estate.png`. 사람 육안 UI·V4 70%는 그대로 보류.
 > 전체 「막힌부분」은 여기 유지.
