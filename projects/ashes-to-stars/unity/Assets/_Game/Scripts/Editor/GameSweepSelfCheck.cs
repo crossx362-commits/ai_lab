@@ -35,6 +35,7 @@ namespace AshesToStars
                 One("UI 아틀라스·카드 여백", UiAtlasSelfCheck.Run, rows, errors);
                 One("필드 허브 HUD", FieldHudSelfCheck.Run, rows, errors);
                 One("영지 마을 HUD", EstateHudSelfCheck.Run, rows, errors);
+                One("영지 현황 HUD", EstateStatusHudSelfCheck.Run, rows, errors);
                 One("허브 제목판", HubHeaderSelfCheck.Run, rows, errors);
                 One("사냥 시작 두 단계", HuntStartSelfCheck.Run, rows, errors);
                 One("스킬 자동/수동", SkillUseSelfCheck.Run, rows, errors);

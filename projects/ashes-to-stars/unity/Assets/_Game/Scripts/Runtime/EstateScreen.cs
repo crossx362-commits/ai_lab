@@ -70,6 +70,8 @@ namespace AshesToStars
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
             if (EstateBuildings.ShowQa)
                 return EstateBuildings.Line();
+            if (EstateStatusHud.ShowQa)
+                return EstateStatusHud.Line();
             if (EstateHud.ShowQa)
                 return EstateHud.Line();
             return EstateYard.Line();
@@ -116,7 +118,9 @@ namespace AshesToStars
             EstateBuild.Tick();
             EstateMine.Tick();
             EstateDefense.Tick();
-            if (System.Environment.GetEnvironmentVariable("QA_ESTATE_MINE") == "1")
+            EstateStatusHud.SeedQaIfRequested();
+            if (System.Environment.GetEnvironmentVariable(EstateStatusHud.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable("QA_ESTATE_MINE") == "1")
                 _hubPage = 1;
             if (System.Environment.GetEnvironmentVariable("QA_ESTATE_DEFENSE") == "1")
                 _hubPage = 2;
@@ -212,6 +216,8 @@ namespace AshesToStars
             var page = UiPages.AfterTabs(r);
             if (_hubPage == 1)
             {
+                if (!EstateYard.FillBlocked && !EstateStatusHud.Blocked)
+                    DrawVillageBackdrop(r);
                 DrawEstateStatus(page);
                 return;
             }
@@ -221,6 +227,13 @@ namespace AshesToStars
                 return;
             }
             DrawVillage(page);
+        }
+
+        void DrawVillageBackdrop(Rect r)
+        {
+            EstateGrid.EnsureHubBuildings();
+            var yard = EstateYard.VillageRect(r);
+            EstateYard.Draw(yard, -1, -1, out _, out _);
         }
 
         void DrawVillage(Rect r)
@@ -441,13 +454,12 @@ namespace AshesToStars
 
         void DrawEstateStatus(Rect r)
         {
+            var cards = EstateStatusHud.Cards(r);
             string auraSub = WorldStar.SizeLabel(GameState.TowerFloor) + " · " + WorldStar.AuraLabel();
             if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
                 auraSub = WorldStar.RaceSenseLine() + " · " + auraSub;
-            var aura = new Rect(r.x, r.y, r.width, 80f);
-            if (DrawCard(aura, "내 별 영공", auraSub, "worldmap"))
+            if (DrawCard(cards[0], "내 별 영공", auraSub, "worldmap"))
                 _sub = Sub.영공;
-            var cards = UiPages.Grid(new Rect(r.x, r.y + 92f, r.width, r.height - 92f), 2, 2, 16f);
             string keepSub = EstateBuild.KeepBusy
                 ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}"
                 : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
@@ -456,10 +468,10 @@ namespace AshesToStars
                 keepSub += " · " + BankruptcySeize.KeepLine();
             if (NetWorth.ShowOnHub)
                 keepSub += " · " + NetWorth.Line();
-            if (DrawCard(cards[0], "본성", keepSub, "territory"))
+            if (DrawCard(cards[1], "본성", keepSub, "territory"))
                 _sub = Sub.본성;
             bool canPick = GameState.UnlockedTier > 0;
-            if (DrawCard(cards[1], $"세계 T{GameState.Tier + 1}",
+            if (DrawCard(cards[2], $"세계 T{GameState.Tier + 1}",
                     canPick
                         ? $"해금 T{GameState.UnlockedTier + 1} · 탑 {GameState.TowerFloor}층 — 눌러 고른다"
                         : $"해금 T1 · 탑 {GameState.TowerFloor}층 — 10층 돌파 시 T2",
@@ -471,7 +483,7 @@ namespace AshesToStars
                 mineSub = mineRate + " · " + EstateMine.SeizeLine();
             else if (EstateMine.RacePercent() != EstateMine.HumanPercent)
                 mineSub = mineRate + " · " + EstateMine.RaceLine();
-            DrawCard(cards[2], "광산", mineSub, "field", locked: true);
+            DrawCard(cards[3], "광산", mineSub, "field", locked: true);
             string warehouse = $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
             if (BankruptcySeize.DidSeize ||
                 System.Environment.GetEnvironmentVariable(BankruptcySeize.EnvShow) == "1")
@@ -484,7 +496,7 @@ namespace AshesToStars
                 warehouse += $" · 넘친 {Economy.FormatCurrency(EstateMine.WastedCopper)} 소멸";
             else
                 warehouse += " · 넘치면 소멸";
-            DrawCard(cards[3], "창고", warehouse, "building_auction", locked: true);
+            DrawCard(cards[4], "창고", warehouse, "building_auction", locked: true);
         }
 
         void Aura(Rect r)
