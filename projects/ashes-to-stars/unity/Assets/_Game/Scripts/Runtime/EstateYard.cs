@@ -10,6 +10,7 @@ namespace AshesToStars
     /// 칸 상한 88과 하단 카드 여백은 마름모를 작게 만든다 — QA_NO_YARD_FILL 이면 그 옛 길.
     /// 끌어 보기는 마을을 옮긴다 — QA_NO_YARD_PAN 이면 옛 고정 시점.
     /// 굴려 확대는 칸을 키운다 — QA_NO_YARD_ZOOM 이면 옛 배율 1.
+    /// 두 손가락으로 벌려 확대한다 — 휠과 같은 SetZoom. QA_YARD_PINCH 는 ApplyPinch 시드.
     /// </summary>
     public static class EstateYard
     {
@@ -25,9 +26,12 @@ namespace AshesToStars
         public const string EnvNoPan = "QA_NO_YARD_PAN";
         public const string EnvShowZoom = "QA_YARD_ZOOM";
         public const string EnvNoZoom = "QA_NO_YARD_ZOOM";
+        public const string EnvShowPinch = "QA_YARD_PINCH";
         public const float QaPanX = 180f;
         public const float QaPanY = 48f;
         public const float QaZoom = 1.50f;
+        public const float QaPinchFrom = 100f;
+        public const float QaPinchTo = 150f;
         public const float ZoomMin = 0.70f;
         public const float ZoomMax = 1.55f;
         public const float ZoomStep = 0.08f;
@@ -61,9 +65,12 @@ namespace AshesToStars
             {
                 string pan = Environment.GetEnvironmentVariable(EnvShowPan);
                 string zoom = Environment.GetEnvironmentVariable(EnvShowZoom);
-                return On(pan) || On(zoom);
+                return On(pan) || On(zoom) || ShowPinchQa;
             }
         }
+
+        public static bool ShowPinchQa =>
+            On(Environment.GetEnvironmentVariable(EnvShowPinch));
 
         static bool On(string raw) =>
             raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
@@ -77,6 +84,7 @@ namespace AshesToStars
         static bool _down;
         static bool _dragging;
         static bool _qaSeeded;
+        static float _pinch0;
 
         public static string IconOf(EstateGrid.Cell c) => c switch
         {
@@ -128,6 +136,8 @@ namespace AshesToStars
         {
             if (FillBlocked)
                 return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)";
+            if (ShowPinchQa && ZoomEnabled)
+                return "마을을 두 손가락으로 벌려 확대한다. 집을 누르면 들어간다(§16)";
             if (PanEnabled && ZoomEnabled)
                 return "마을을 끌어 보고 굴려 확대한다. 집을 누르면 들어간다(§16)";
             if (PanEnabled)
@@ -207,6 +217,15 @@ namespace AshesToStars
             _zoom = ZoomEnabled ? ClampZoom(zoom) : 1f;
         }
 
+        /// <summary>두 손가락 거리 비로 칸을 키운다. 휠 HandleZoom 과 같은 SetZoom.</summary>
+        public static float ApplyPinch(float fromDist, float toDist)
+        {
+            if (!ZoomEnabled) return Zoom;
+            if (fromDist <= 1f) return Zoom;
+            SetZoom(_zoom * (toDist / fromDist));
+            return Zoom;
+        }
+
         /// <summary>칸 왼쪽 위. 끌어 보기가 켜지면 Pan만큼 옮긴다.</summary>
         public static Vector2 TileOrigin(Rect area, int x, int y)
         {
@@ -225,10 +244,12 @@ namespace AshesToStars
             if (_qaSeeded) return;
             bool pan = On(Environment.GetEnvironmentVariable(EnvShowPan)) && PanEnabled;
             bool zoom = On(Environment.GetEnvironmentVariable(EnvShowZoom)) && ZoomEnabled;
-            if (!pan && !zoom) return;
+            bool pinch = ShowPinchQa && ZoomEnabled;
+            if (!pan && !zoom && !pinch) return;
             _qaSeeded = true;
             if (pan) _pan = new Vector2(QaPanX, QaPanY);
             if (zoom) _zoom = QaZoom;
+            if (pinch) ApplyPinch(QaPinchFrom, QaPinchTo);
         }
 
         public static void ResetForTest()
@@ -238,6 +259,7 @@ namespace AshesToStars
             _down = false;
             _dragging = false;
             _qaSeeded = false;
+            _pinch0 = 0f;
         }
 
         /// <summary>마을을 그리고 클릭한 칸을 돌려준다. 클릭 없으면 (-1,-1).</summary>
@@ -251,6 +273,7 @@ namespace AshesToStars
             TileSize(area, out float tw, out float th);
             HandlePan(area);
             HandleZoom(area);
+            HandlePinch(area);
 
             Vector2 Origin(int x, int y) => TileOrigin(area, x, y);
 
@@ -367,6 +390,33 @@ namespace AshesToStars
             SetZoom(_zoom - ev.delta.y * ZoomStep);
             SetPan(area, _pan);
             ev.Use();
+        }
+
+        static void HandlePinch(Rect area)
+        {
+            if (!ZoomEnabled) return;
+            if (Input.touchCount != 2)
+            {
+                _pinch0 = 0f;
+                return;
+            }
+            var a = Input.GetTouch(0).position;
+            var b = Input.GetTouch(1).position;
+            var mid = new Vector2((a.x + b.x) * 0.5f, Screen.height - (a.y + b.y) * 0.5f);
+            if (!area.Contains(mid))
+            {
+                _pinch0 = 0f;
+                return;
+            }
+            float d = Vector2.Distance(a, b);
+            if (_pinch0 <= 1f)
+            {
+                _pinch0 = d;
+                return;
+            }
+            ApplyPinch(_pinch0, d);
+            SetPan(area, _pan);
+            _pinch0 = d;
         }
 
         static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
