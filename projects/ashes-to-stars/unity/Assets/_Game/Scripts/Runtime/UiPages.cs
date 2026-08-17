@@ -125,12 +125,18 @@ namespace AshesToStars
         public static void RosterCellLayout(Rect cell, out Rect face, out Rect name, out Rect job,
                                             out Rect hearts)
         {
-            float faceW = Mathf.Min(72f, cell.width - 12f,
-                Mathf.Max(32f, cell.height - RosterPlate - 8f));
-            face = new Rect(cell.center.x - faceW * 0.5f, cell.y + 6f, faceW, faceW);
-            name = new Rect(cell.x + 4f, face.yMax + 2f, cell.width - 8f, 18f);
-            job = new Rect(cell.x + 4f, face.yMax + 20f, cell.width - 8f, 16f);
-            hearts = new Rect(cell.center.x - 36f, cell.yMax - 22f, 72f, 22f);
+            var inner = UiAtlas.ContentRect(cell, "panel", 2f);
+            float plate = Mathf.Min(RosterPlate, Mathf.Max(44f, inner.height * 0.48f));
+            float faceW = Mathf.Min(72f, inner.width,
+                Mathf.Max(28f, inner.height - plate));
+            face = new Rect(inner.center.x - faceW * 0.5f, inner.y, faceW, faceW);
+            name = new Rect(inner.x, face.yMax + 2f, inner.width, 18f);
+            job = new Rect(inner.x, face.yMax + 20f, inner.width, 16f);
+            hearts = new Rect(inner.center.x - 36f, inner.yMax - 20f, 72f, 20f);
+            if (job.yMax > hearts.y)
+                job.height = Mathf.Max(0f, hearts.y - job.y);
+            if (name.yMax > job.y && job.height > 1f)
+                name.height = Mathf.Max(0f, job.y - name.y);
         }
 
         /// <summary>
@@ -139,32 +145,32 @@ namespace AshesToStars
         /// </summary>
         public static void PartyCardLayout(Rect cell, out Rect face, out Rect name, out Rect marks)
         {
-            const float pad = 10f;
             const float markW = 80f;
+            var inner = UiAtlas.ContentRect(cell, "panel", 2f);
             if (IsWideCard(cell, 1.35f))
             {
-                float faceS = Mathf.Min(cell.height - pad * 2f, 88f);
-                face = new Rect(cell.x + pad, cell.y + (cell.height - faceS) * 0.5f, faceS, faceS);
-                marks = new Rect(cell.xMax - pad - markW,
-                    cell.y + (cell.height - 22f) * 0.5f, markW, 22f);
+                float faceS = Mathf.Min(inner.height, 88f);
+                face = new Rect(inner.x, inner.y + (inner.height - faceS) * 0.5f, faceS, faceS);
+                marks = new Rect(inner.xMax - markW,
+                    inner.y + (inner.height - 22f) * 0.5f, markW, 22f);
                 float tx = face.xMax + 10f;
                 float tw = marks.x - tx - 8f;
-                float nameH = Mathf.Min(44f, cell.height - pad * 2f);
+                float nameH = Mathf.Min(44f, inner.height);
                 if (tw < 48f)
                 {
-                    marks = new Rect(tx, cell.yMax - pad - 20f, cell.xMax - tx - pad, 20f);
-                    name = new Rect(tx, cell.y + pad, cell.xMax - tx - pad,
-                        Mathf.Max(16f, marks.y - cell.y - pad - 2f));
+                    marks = new Rect(tx, inner.yMax - 20f, inner.xMax - tx, 20f);
+                    name = new Rect(tx, inner.y, inner.xMax - tx,
+                        Mathf.Max(16f, marks.y - inner.y - 2f));
                     return;
                 }
-                name = new Rect(tx, cell.y + (cell.height - nameH) * 0.5f, tw, nameH);
+                name = new Rect(tx, inner.y + (inner.height - nameH) * 0.5f, tw, nameH);
                 return;
             }
 
-            float faceS2 = Mathf.Min(cell.width - 16f, Mathf.Max(32f, cell.height - 52f));
-            face = new Rect(cell.center.x - faceS2 * 0.5f, cell.y + 6f, faceS2, faceS2);
-            name = new Rect(cell.x + 6f, face.yMax + 2f, cell.width - 12f, 18f);
-            marks = new Rect(cell.center.x - 40f, cell.yMax - 22f, markW, 22f);
+            float faceS2 = Mathf.Min(inner.width, Mathf.Max(28f, inner.height - 48f));
+            face = new Rect(inner.center.x - faceS2 * 0.5f, inner.y, faceS2, faceS2);
+            name = new Rect(inner.x, face.yMax + 2f, inner.width, 18f);
+            marks = new Rect(inner.center.x - 40f, inner.yMax - 20f, markW, 20f);
             if (name.yMax > marks.y)
                 name.height = Mathf.Max(0f, marks.y - name.y);
         }
@@ -305,38 +311,48 @@ namespace AshesToStars
         public static void CardLayout(Rect card, bool hasIcon, out Rect icon, out Rect title, out Rect sub)
         {
             icon = default;
+            var inner = UiAtlas.ContentRect(card, "panel");
             bool wide = IsWideCard(card);
             bool tall = hasIcon && !wide && card.height >= 168f;
             if (tall)
             {
-                float plateH = Mathf.Clamp(card.height * 0.38f, 80f, 120f);
-                float maxIcon = Mathf.Max(24f, Mathf.Min(card.width - 28f, card.height - plateH - 16f));
-                float size = Mathf.Min(Mathf.Max(CardMinIcon, maxIcon), maxIcon);
-                icon = new Rect(card.center.x - size * 0.5f, card.y + 8f, size, size);
-                if (icon.yMax > card.yMax - plateH)
-                    icon.height = Mathf.Max(24f, card.yMax - plateH - icon.y);
-                title = new Rect(card.x + 14f, card.yMax - plateH + 8f, card.width - 28f, CardTitleH);
-                sub = new Rect(card.x + 14f, card.yMax - plateH + 8f + CardTitleH,
-                    card.width - 28f, Mathf.Max(20f, plateH - CardTitleH - 16f));
+                float plateH = Mathf.Clamp(inner.height * 0.36f, 56f, 110f);
+                float maxIcon = Mathf.Max(24f, Mathf.Min(inner.width, inner.height - plateH - 6f));
+                float size = Mathf.Min(Mathf.Max(Mathf.Min(CardMinIcon, maxIcon), 24f), maxIcon);
+                float gap = 4f;
+                float subMin = 16f;
+                float stackH = size + gap + CardTitleH + subMin;
+                if (stackH > inner.height)
+                    stackH = inner.height;
+                float y0 = inner.y + Mathf.Max(0f, (inner.height - stackH) * 0.5f);
+                icon = new Rect(inner.center.x - size * 0.5f, y0, size, size);
+                title = new Rect(inner.x, icon.yMax + gap, inner.width, CardTitleH);
+                if (title.yMax > inner.yMax)
+                    title.height = Mathf.Max(18f, inner.yMax - title.y);
+                sub = new Rect(inner.x, title.yMax, inner.width,
+                    Mathf.Max(0f, inner.yMax - title.yMax));
                 return;
             }
 
-            float pad = Mathf.Min(18f, Mathf.Max(10f, card.height * 0.12f));
-            float side = hasIcon
-                ? Mathf.Min(card.height - pad * 2f, 96f, Mathf.Max(CardMinIcon, card.width * 0.22f))
-                : 0f;
+            float side = 0f;
             if (hasIcon)
-                icon = new Rect(card.x + pad, card.y + (card.height - side) * 0.5f, side, side);
-            float tx = card.x + (hasIcon ? side + pad + 10f : pad);
-            float tw = Mathf.Max(12f, card.xMax - tx - pad);
-            float subH = Mathf.Min(48f, Mathf.Max(20f, card.height - CardTitleH - 20f));
-            float blockH = CardTitleH + 2f + subH;
-            if (blockH > card.height - 8f)
             {
-                subH = Mathf.Max(16f, card.height - CardTitleH - 16f);
-                blockH = CardTitleH + 2f + subH;
+                side = Mathf.Min(inner.height, 96f,
+                    Mathf.Max(Mathf.Min(CardMinIcon, inner.height), inner.width * 0.18f));
+                icon = new Rect(inner.x, inner.y + (inner.height - side) * 0.5f, side, side);
             }
-            float ty = card.y + (card.height - blockH) * 0.5f;
+            float tx = inner.x + (hasIcon ? side + 10f : 0f);
+            float tw = Mathf.Max(12f, inner.xMax - tx);
+            float subH = Mathf.Min(48f, Mathf.Max(16f, inner.height - CardTitleH - 4f));
+            float blockH = CardTitleH + 2f + subH;
+            if (blockH > inner.height)
+            {
+                float th = Mathf.Min(CardTitleH, Mathf.Max(18f, inner.height * 0.55f));
+                title = new Rect(tx, inner.y, tw, th);
+                sub = new Rect(tx, title.yMax, tw, Mathf.Max(0f, inner.yMax - title.yMax));
+                return;
+            }
+            float ty = inner.y + (inner.height - blockH) * 0.5f;
             title = new Rect(tx, ty, tw, CardTitleH);
             sub = new Rect(tx, ty + CardTitleH + 2f, tw, subH);
         }

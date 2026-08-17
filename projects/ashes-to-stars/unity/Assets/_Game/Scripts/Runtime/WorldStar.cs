@@ -196,13 +196,17 @@ namespace AshesToStars
 
         public static Rect Icon(Rect plate, int floor)
         {
+            var inner = UiAtlas.ContentRect(plate, "panel", 2f);
             float s = SizePx(floor);
-            return new Rect(plate.x + 16f, plate.y + (plate.height - s) * 0.5f, s, s);
+            return new Rect(inner.x, plate.y + (plate.height - s) * 0.5f, s, s);
         }
 
-        public static Rect Caption(Rect plate, Rect icon) =>
-            new Rect(icon.xMax + 16f, plate.y + 28f,
-                Mathf.Max(40f, plate.xMax - icon.xMax - 28f), 44f);
+        public static Rect Caption(Rect plate, Rect icon)
+        {
+            var inner = UiAtlas.ContentRect(plate, "panel", 2f);
+            float x = Mathf.Max(inner.x, icon.xMax + 12f);
+            return new Rect(x, inner.y, Mathf.Max(40f, inner.xMax - x), inner.height);
+        }
 
         public static Rect AfterPlate(Rect body) =>
             new Rect(body.x, body.y + PlateH + 12f, body.width,

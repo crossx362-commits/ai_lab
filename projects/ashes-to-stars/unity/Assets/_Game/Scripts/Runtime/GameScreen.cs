@@ -266,20 +266,25 @@ namespace AshesToStars
             bool hover = forceHover ?? (!locked && r.Contains(Event.current.mousePosition));
             bool pressed = forcePressed ?? (hover && Input.GetMouseButton(0));
             Color? tint = locked ? new Color(1f, 1f, 1f, 0.42f) : null;
-            if (!UiAtlas.DrawSliced(r, UiAtlas.ButtonKey(hover, pressed), 12f, tint)
-                && !UiAtlas.Draw(r, UiAtlas.ButtonKey(hover, pressed), tint))
+            string btnKey = UiAtlas.ButtonKey(hover, pressed);
+            if (!UiAtlas.DrawSliced(r, btnKey, 12f, tint)
+                && !UiAtlas.Draw(r, btnKey, tint))
                 GUI.Box(r, GUIContent.none);
-            var iconRect = new Rect(r.x + 8, r.y + 7, 44, 44);
+            var inner = UiAtlas.ContentRect(r, btnKey, 2f);
+            float ih = Mathf.Min(44f, inner.height);
+            var iconRect = new Rect(inner.x, inner.y + (inner.height - ih) * 0.5f, ih, ih);
             if (rarity.HasValue)
-                UiAtlas.DrawRarity(new Rect(iconRect.x - 6, iconRect.y - 6, 56f, 56f),
+                UiAtlas.DrawRarity(new Rect(iconRect.x - 4, iconRect.y - 4, ih + 8f, ih + 8f),
                     rarity.Value, tint);
             bool hasIcon = ItemAtlas.DrawHud(iconRect, iconKey, tint);
-            float pad = hasIcon ? 56f : leftPad;
+            float pad = hasIcon ? ih + 8f : leftPad;
             if (!string.IsNullOrEmpty(label))
             {
                 var prev = GUI.color;
                 if (locked) GUI.color = new Color(1f, 1f, 1f, 0.55f);
-                var lr = pad > 0f ? new Rect(r.x + pad, r.y, r.width - pad - 8f, r.height) : r;
+                var lr = pad > 0f
+                    ? new Rect(inner.x + pad, inner.y, Mathf.Max(8f, inner.width - pad), inner.height)
+                    : inner;
                 UiPages.LabelClip(lr, label, pad > 0f ? _btnLeft : _btn);
                 GUI.color = prev;
             }
@@ -390,9 +395,10 @@ namespace AshesToStars
             {
                 var t = new Rect(r.x + i * (w + UiPages.TabGap), r.y, w, UiPages.TabH);
                 bool on = i == selected;
-                UiAtlas.DrawSliced(t, UiAtlas.ButtonKey(false, on), 8f,
+                string tabKey = UiAtlas.ButtonKey(false, on);
+                UiAtlas.DrawSliced(t, tabKey, 8f,
                     on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
-                UiPages.LabelClip(t, names[i], _tab);
+                UiPages.LabelClip(UiAtlas.ContentRect(t, tabKey, 2f), names[i], _tab);
                 if (GUI.Button(t, GUIContent.none, GUIStyle.none)) selected = i;
             }
             return selected;
@@ -434,8 +440,7 @@ namespace AshesToStars
             if (panel.yMax > r.yMax) return;
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
-            UiPages.LabelClip(new Rect(r.x, r.y + index * (RowH + RowGap) + 10, r.width, RowH - 16),
-                text, _panel);
+            UiPages.LabelClip(UiAtlas.ContentRect(panel, "panel", 2f), text, _panel);
         }
     }
 }

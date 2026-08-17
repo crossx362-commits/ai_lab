@@ -167,6 +167,11 @@ namespace AshesToStars
                 "[UiAtlasSelfCheck] 카드 글자가 칸 밖으로 나가면 잘린다");
             Debug.Assert(tTitle.height >= UiPages.CardTitleH - 0.01f,
                 "[UiAtlasSelfCheck] 제목 칸이 36보다 작으면 한글이 잘린다");
+            Debug.Assert(UiAtlas.FitsInContent(tight, tIcon) && UiAtlas.FitsInContent(tight, tTitle),
+                "[UiAtlasSelfCheck] 작은 카드 글씨가 금테 밖으로 나간다");
+            Debug.Assert(UiAtlas.SlicePad(new Rect(0f, 0f, 532f, 180f), "panel")
+                         > UiAtlas.ContentExtra,
+                "[UiAtlasSelfCheck] 타이틀 카드 금테 여백이 ContentExtra보다 작으면 글씨가 장식에 겹친다");
             _ = nameof(UiPages.LabelClip);
             var stretchBox = new Rect(0f, 0f, 400f, 180f);
             var fitIcon = UiAtlas.FitInside(stretchBox, 120f, 122f);
@@ -179,13 +184,20 @@ namespace AshesToStars
             _ = nameof(UiAtlas.DrawFit);
             _ = nameof(UiPages.PackedCards);
             var tallCard = new Rect(0f, 0f, 280f, 220f);
-            UiPages.CardLayout(tallCard, true, out var tallIcon, out var tallTitle, out _);
-            Debug.Assert(tallIcon.width >= 72f && tallIcon.height >= 72f && tallIcon.y < tallTitle.y,
+            UiPages.CardLayout(tallCard, true, out var tallIcon, out var tallTitle, out var tallSub);
+            Debug.Assert(tallIcon.y < tallTitle.y && tallIcon.height >= 24f,
                 "[UiAtlasSelfCheck] 높은 카드는 아이콘이 위를 채워야 한다");
+            Debug.Assert(UiAtlas.FitsInContent(tallCard, tallIcon)
+                         && UiAtlas.FitsInContent(tallCard, tallTitle)
+                         && UiAtlas.FitsInContent(tallCard, tallSub),
+                "[UiAtlasSelfCheck] 높은 카드 글씨·아이콘이 금테 밖으로 나간다");
             var wideCard = new Rect(0f, 0f, 400f, 88f);
             UiPages.CardLayout(wideCard, true, out var wideIcon, out var wideTitle, out _);
-            Debug.Assert(wideIcon.x < wideTitle.x && wideIcon.height >= 56f,
+            Debug.Assert(wideIcon.x < wideTitle.x && wideIcon.height >= 24f,
                 "[UiAtlasSelfCheck] 넓은 카드는 아이콘이 왼쪽에 붙어야 한다");
+            Debug.Assert(UiAtlas.FitsInContent(wideCard, wideIcon)
+                         && UiAtlas.FitsInContent(wideCard, wideTitle),
+                "[UiAtlasSelfCheck] 넓은 카드 글씨가 금테 밖으로 나간다");
             var hubWide = new Rect(0f, 0f, 596f, 169f);
             UiPages.CardLayout(hubWide, true, out var hubIcon, out var hubTitle, out var hubSub);
             Debug.Assert(UiPages.IsWideCard(hubWide),
@@ -196,6 +208,24 @@ namespace AshesToStars
             Debug.Assert(hubTitle.center.y < hubWide.center.y + 24f
                          && hubTitle.y > hubWide.y + 20f,
                 "[UiAtlasSelfCheck] 가로 허브 제목은 아래 테두리가 아니라 세로 가운데");
+            Debug.Assert(UiAtlas.FitsInContent(hubWide, hubIcon)
+                         && UiAtlas.FitsInContent(hubWide, hubTitle)
+                         && UiAtlas.FitsInContent(hubWide, hubSub),
+                "[UiAtlasSelfCheck] 가로 허브 글씨가 금테 밖으로 나간다");
+            var menuCard = new Rect(0f, 0f, 532f, 180f);
+            UiPages.CardLayout(menuCard, true, out var menuIcon, out var menuTitle, out var menuSub);
+            Debug.Assert(UiPages.IsWideCard(menuCard) && menuIcon.x < menuTitle.x,
+                "[UiAtlasSelfCheck] 타이틀 1×3(532×180)은 가로 카드다");
+            Debug.Assert(UiAtlas.FitsInContent(menuCard, menuIcon)
+                         && UiAtlas.FitsInContent(menuCard, menuTitle)
+                         && UiAtlas.FitsInContent(menuCard, menuSub),
+                "[UiAtlasSelfCheck] 타이틀 카드 글씨가 금테에 겹친다");
+            var menuQuit = new Rect(0f, 0f, 532f, 180f);
+            UiPages.CardLayout(menuQuit, false, out _, out var quitTitle, out var quitSub);
+            Debug.Assert(UiAtlas.FitsInContent(menuQuit, quitTitle)
+                         && UiAtlas.FitsInContent(menuQuit, quitSub)
+                         && Mathf.Abs(quitTitle.center.y - menuQuit.center.y) < 40f,
+                "[UiAtlasSelfCheck] 아이콘 없는 타이틀 카드 제목이 금테·빈 가운데에 뜬다");
             var roster = new Rect(0f, 0f, 120f, UiPages.RosterCellH);
             UiPages.RosterCellLayout(roster, out var rf, out var rn, out var rj, out var rh);
             Debug.Assert(!UiPages.LayoutOverlaps(rf, rn) && !UiPages.LayoutOverlaps(rn, rj)

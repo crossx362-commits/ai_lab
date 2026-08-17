@@ -82,11 +82,12 @@ namespace AshesToStars
                 var tint = new Color(1f, 1f, 1f, 0.94f);
                 if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
                     UiAtlas.Draw(card, "panel", tint);
-                var look = new Rect(card.x + 8f, card.y + 8f,
-                    card.width - 16f, card.height - UiPages.StarterLabelH - 10f);
+                var inner = UiAtlas.ContentRect(card, "panel", 2f);
+                var look = new Rect(inner.x, inner.y,
+                    inner.width, Mathf.Max(24f, inner.height - UiPages.StarterLabelH));
                 UiPages.DrawJobLook(look, job, UiPages.StarterLookWalks);
-                Hint(new Rect(card.x + 8f, card.yMax - UiPages.StarterLabelH,
-                        card.width - 16f, UiPages.StarterLabelH - 4f),
+                Hint(new Rect(inner.x, inner.yMax - UiPages.StarterLabelH + 4f,
+                        inner.width, UiPages.StarterLabelH - 4f),
                     LifeSystem.BasicJobLabel(job));
                 if (GUI.Button(card, GUIContent.none, GUIStyle.none)
                     && StarterPick.TryChoose(job))

@@ -23,6 +23,7 @@ namespace AshesToStars
         /// Imagine 솔로 크롬. 값이 소스에서 코너로 남길 비율.
         /// 옛 아틀라스 조각(수십 px)과 새 그림(수백 px)이 같은 픽셀 border를 쓰면
         /// 장식이 늘어나 버린다.
+        /// dest 두께는 <see cref="SlicePad"/> — 글씨 여백과 같은 값을 쓴다.
         /// </summary>
         static readonly Dictionary<string, float> ChromeSlice = new Dictionary<string, float>
         {
@@ -35,6 +36,43 @@ namespace AshesToStars
             ["xp_frame"] = 0.16f,
             ["boss_hp_frame"] = 0.18f,
         };
+
+        /// <summary>글씨가 금테 안쪽 선에 붙지 않게 SlicePad 위에 더하는 여백.</summary>
+        public const float ContentExtra = 4f;
+
+        /// <summary>
+        /// 9-slice dest 두께. DrawSliced와 글씨 레이아웃이 이 값 하나를 본다.
+        /// 카드마다 다른 숫자를 쓰면 타이틀은 테두리에 겹치고 허브는 가운데가 빈다.
+        /// </summary>
+        public static float SlicePad(Rect target, string key, float fallback = 12f)
+        {
+            float minSide = Mathf.Min(target.width, target.height);
+            if (minSide <= 2f) return 0f;
+            if (!string.IsNullOrEmpty(key) && ChromeSlice.TryGetValue(key, out var frac))
+                return Mathf.Min(minSide * frac, minSide * 0.45f);
+            return Mathf.Min(fallback, minSide * 0.45f);
+        }
+
+        /// <summary>크롬 장식 안의 안전한 글씨·아이콘 칸.</summary>
+        public static Rect ContentRect(Rect target, string key, float extra = ContentExtra)
+        {
+            float p = SlicePad(target, key) + Mathf.Max(0f, extra);
+            float w = Mathf.Max(4f, target.width - p * 2f);
+            float h = Mathf.Max(4f, target.height - p * 2f);
+            return new Rect(
+                target.x + (target.width - w) * 0.5f,
+                target.y + (target.height - h) * 0.5f,
+                w, h);
+        }
+
+        public static bool FitsInContent(Rect target, Rect inner, string key = "panel")
+        {
+            if (inner.width < 1f || inner.height < 1f) return true;
+            var well = ContentRect(target, key);
+            const float e = 0.6f;
+            return inner.xMin + e >= well.xMin && inner.xMax - e <= well.xMax
+                && inner.yMin + e >= well.yMin && inner.yMax - e <= well.yMax;
+        }
 
         static readonly Dictionary<string, Rect> Pieces = new Dictionary<string, Rect>
         {
@@ -422,9 +460,8 @@ namespace AshesToStars
             if (Chrome.ContainsKey(key) && ChromeSlice.TryGetValue(key, out var frac))
             {
                 srcB = Mathf.Min(source.width, source.height) * frac;
-                dstB = Mathf.Min(target.width, target.height) * frac;
                 srcB = Mathf.Min(srcB, source.width * 0.45f, source.height * 0.45f);
-                dstB = Mathf.Min(dstB, target.width * 0.45f, target.height * 0.45f);
+                dstB = SlicePad(target, key);
             }
             else
             {
@@ -458,8 +495,9 @@ namespace AshesToStars
             bool framed = Chrome.ContainsKey(frameKey)
                 ? DrawSliced(target, frameKey, 10f)
                 : Draw(target, frameKey);
-            float padX = framed ? 10f : 0f;
-            float padY = framed ? 6f : 0f;
+            float pad = framed ? SlicePad(target, frameKey, 10f) : 0f;
+            float padX = pad;
+            float padY = framed ? Mathf.Max(3f, pad * 0.55f) : 0f;
             float w = Mathf.Max(0f, (target.width - padX * 2f) * Mathf.Clamp01(fill01));
             if (w > 0f)
             {

@@ -1055,12 +1055,15 @@ namespace AshesToStars
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
 
             var items = ItemAtlas.SmithMaterials;
-            float cell = Mathf.Min(96f, (r.width - 8f) / items.Length);
+            var well = UiAtlas.ContentRect(panel, "panel", 2f);
+            float cell = Mathf.Min(96f, well.width / items.Length);
             for (int i = 0; i < items.Length; i++)
             {
-                float x = r.x + 4f + i * cell;
-                ItemAtlas.Draw(new Rect(x, panel.y + 6f, 40f, 40f), ItemAtlas.KeyFor(items[i]));
-                UiPages.LabelClip(new Rect(x + 42f, panel.y + 16f, Mathf.Max(12f, cell - 46f), 26f),
+                float x = well.x + i * cell;
+                float ih = Mathf.Min(40f, well.height);
+                ItemAtlas.Draw(new Rect(x, well.y + (well.height - ih) * 0.5f, ih, ih),
+                    ItemAtlas.KeyFor(items[i]));
+                UiPages.LabelClip(new Rect(x + ih + 4f, well.y, Mathf.Max(12f, cell - ih - 6f), well.height),
                     GameState.Bag.GetCount(items[i]).ToString(),
                     new GUIStyle(GUI.skin.label) { fontSize = 18, clipping = TextClipping.Clip,
                         normal = { textColor = new Color(0.95f, 0.79f, 0.42f) } });

@@ -223,7 +223,7 @@ namespace AshesToStars
             {
                 var banner = new Rect(280f, 16f, 720f, 52f);
                 UiAtlas.DrawSliced(banner, "panel", 8f, new Color(1f, 1f, 1f, 0.9f));
-                Hint(banner, HuntStart.DeployTitle);
+                Hint(UiAtlas.ContentRect(banner, "panel", 2f), HuntStart.DeployTitle);
                 Hint(new Rect(banner.x, banner.yMax + 4f, banner.width, 22f), HuntStart.DeployHint);
                 var start = new Rect(460f, 608f, 360f, 64f);
                 if (DrawCard(start, "스타트", "배치를 끝내고 전투를 시작한다", "field"))
@@ -245,7 +245,7 @@ namespace AshesToStars
             {
                 var leave = new Rect(340f, y + 8f, 600f, 28f);
                 UiAtlas.DrawSliced(leave, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
-                Hint(leave,
+                Hint(UiAtlas.ContentRect(leave, "panel", 2f),
                     $"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)");
                 float fill = 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
                 GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
@@ -255,7 +255,8 @@ namespace AshesToStars
             float p = EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);
             UiAtlas.DrawSliced(box, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
-            Hint(box, $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
+            Hint(UiAtlas.ContentRect(box, "panel", 2f),
+                $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
             GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
         }
 

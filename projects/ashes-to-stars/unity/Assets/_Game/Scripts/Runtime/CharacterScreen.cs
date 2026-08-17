@@ -710,11 +710,12 @@ namespace AshesToStars
             string title = ch.Name;
             if (ch.IsRescue) title += " · 재건";
             if (ch.IsSpecialJob) title += " · 특수";
-            Hint(new Rect(stage.x + 18f, stage.y + 10f, 360f, 24f), $"{title} · {ch.Job}");
-            UiAtlas.Draw(new Rect(stage.x + 18f, stage.y + 36f, 26f, 26f), "sword");
-            Hint(new Rect(stage.x + 48f, stage.y + 38f, 280f, 24f),
+            var chrome = UiAtlas.ContentRect(stage, "panel", 2f);
+            Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {ch.Job}");
+            UiAtlas.Draw(new Rect(chrome.x, chrome.y + 26f, 26f, 26f), "sword");
+            Hint(new Rect(chrome.x + 30f, chrome.y + 28f, 280f, 24f),
                 $"전투력  {CombatPower(ch):N0}");
-            UiAtlas.DrawHearts(new Rect(stage.xMax - 96f, stage.y + 14f, 80f, 22f),
+            UiAtlas.DrawHearts(new Rect(chrome.xMax - 80f, chrome.y, 80f, 22f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
 
             var face = UiPages.LargeLook(stage);

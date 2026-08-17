@@ -10,6 +10,13 @@
 
 ---
 
+## 크롬 글씨 여백 (2026-08-17)
+
+오너 타이틀 스크린샷: 「게임 시작」이 금테에 겹침. 9-slice dest(패널 짧은 변 24%)와
+CardLayout 8–18px가 어긋난 게 원인. `UiAtlas.SlicePad`/`ContentRect` 하나로 DrawSliced와
+카드·탭·버튼·명부·편성·스타터·장비 스튜디오·배너·월드맵 캡션이 같은 안쪽 칸을 쓴다.
+`UiAtlasSelfCheck` 타이틀 532×180 금테 안 단언. meas PASS. Play 재시작 필요.
+
 ## 보스 HP 프레임 소비처 (2026-08-16)
 
 큐 UI 남은 것. `boss_hp_frame`은 아틀라스에만 있었다. `DrawBossHp` + BattleScreen Overlay.
