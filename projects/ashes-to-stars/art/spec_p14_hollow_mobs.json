@@ -1,0 +1,79 @@
+{
+ "_note": "할로우 전면 교체 — 몹 5계열×2시트. 계열 색은 런타임 곱셈. 실루엣만.",
+ "refs": [],
+ "rulesets": {
+  "m": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. A hostile creature seen THREE-QUARTER FRONT, FULL BODY, common baseline. NEUTRAL DESATURATED GRAY-WHITE only so a later tint can color it. LAYOUT: EXACTLY SIX CELLS, 3 columns by 2 rows, clear magenta gaps. Same creature, scale, camera in every cell. Poses MUST differ. Background: completely flat solid pure magenta #FF00FF. No text, no labels, no borders."
+ },
+ "assets": [
+  {
+   "name": "sheet_mob01_A",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a small ash grub-beetle, round armored back, short legs, generic fodder. Cells L-R then top-bottom: idle rest; idle weight shift; idle head turn; idle coiled; walk left foot forward; walk right foot forward."
+  },
+  {
+   "name": "sheet_mob01_B",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a small ash grub-beetle, round armored back, short legs, generic fodder. Cells: walk stretch; attack wind-up; attack strike; hurt recoil; death crumple start; death fallen."
+  },
+  {
+   "name": "sheet_mob_chaser_A",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a lean ash hound, forward-leaning, fangs, long legs built to chase. Cells L-R then top-bottom: idle rest; idle weight shift; idle head turn; idle coiled; walk left foot forward; walk right foot forward."
+  },
+  {
+   "name": "sheet_mob_chaser_B",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a lean ash hound, forward-leaning, fangs, long legs built to chase. Cells: walk stretch; attack wind-up; attack strike; hurt recoil; death crumple start; death fallen."
+  },
+  {
+   "name": "sheet_mob_charger_A",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a heavy ram-beetle, oversized forward horn, thick braced legs. Cells L-R then top-bottom: idle rest; idle weight shift; idle head turn; idle coiled; walk left foot forward; walk right foot forward."
+  },
+  {
+   "name": "sheet_mob_charger_B",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a heavy ram-beetle, oversized forward horn, thick braced legs. Cells: walk stretch; attack wind-up; attack strike; hurt recoil; death crumple start; death fallen."
+  },
+  {
+   "name": "sheet_mob_ranged_A",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a slender upright quill-caster, thin limbs, raised spines as projectiles. Cells L-R then top-bottom: idle rest; idle weight shift; idle head turn; idle coiled; walk left foot forward; walk right foot forward."
+  },
+  {
+   "name": "sheet_mob_ranged_B",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a slender upright quill-caster, thin limbs, raised spines as projectiles. Cells: walk stretch; attack wind-up; attack strike; hurt recoil; death crumple start; death fallen."
+  },
+  {
+   "name": "sheet_mob_swarmer_A",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a wide low mite with MANY short legs, hugging the ground. Cells L-R then top-bottom: idle rest; idle weight shift; idle head turn; idle coiled; walk left foot forward; walk right foot forward."
+  },
+  {
+   "name": "sheet_mob_swarmer_B",
+   "rules_ref": "m",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell sprite sheet of ONE creature: a wide low mite with MANY short legs, hugging the ground. Cells: walk stretch; attack wind-up; attack strike; hurt recoil; death crumple start; death fallen."
+  }
+ ]
+}

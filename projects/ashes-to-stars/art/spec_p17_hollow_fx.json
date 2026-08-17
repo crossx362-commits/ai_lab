@@ -1,0 +1,49 @@
+{
+ "_note": "할로우 전면 교체 — 공용 FX 8. 스킬 55종 전용 금지.",
+ "refs": [],
+ "rulesets": {
+  "f": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. A single combat VFX symbol, centered, radially readable, no character, no ground. Background: completely flat solid pure magenta #FF00FF. No text, no labels, no borders."
+ },
+ "assets": [
+  {
+   "name": "fx_hit",
+   "rules_ref": "f",
+   "prompt": "a sharp white impact burst"
+  },
+  {
+   "name": "fx_slash",
+   "rules_ref": "f",
+   "prompt": "a curved blade-slash arc"
+  },
+  {
+   "name": "fx_heal",
+   "rules_ref": "f",
+   "prompt": "a soft rising petal of light"
+  },
+  {
+   "name": "fx_fire",
+   "rules_ref": "f",
+   "prompt": "a compact flame bloom"
+  },
+  {
+   "name": "fx_shield",
+   "rules_ref": "f",
+   "prompt": "a round barrier ring"
+  },
+  {
+   "name": "fx_taunt",
+   "rules_ref": "f",
+   "prompt": "a golden shout shockwave ring"
+  },
+  {
+   "name": "fx_summon",
+   "rules_ref": "f",
+   "prompt": "a small magic circle"
+  },
+  {
+   "name": "fx_death",
+   "rules_ref": "f",
+   "prompt": "a dissolving ash puff"
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+{
+ "_note": "할로우 전면 교체 — 필드 바닥 타일 1장. 이어 붙여야 한다.",
+ "refs": [],
+ "rulesets": {
+  "g": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. A SEAMLESS TILEABLE ground texture, dark packed earth and dull stone, muted, no characters, no UI."
+ },
+ "assets": [
+  {
+   "name": "field_plain_albedo",
+   "rules_ref": "g",
+   "keep_bg": true,
+   "aspect": "1:1",
+   "prompt": "seamless dark earth and cracked stone ground tile, tileable on all edges"
+  }
+ ]
+}

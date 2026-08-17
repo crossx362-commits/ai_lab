@@ -74,6 +74,7 @@ ls unity/Temp/UnityLockfile
 **이미지 생성(오너 2026-08-18):** 힉스필드 **Nano Banana 2** (`nano_banana_flash`) + 해상도 **2k**.
 웹에서는 Unlimited 토글 ON. CLI 별칭 `nano_banana_2`는 Pro다 — 쓰지 마라.
 Gemini·Grok Imagine·Nano Banana Pro 금지. 생성은 `art/aigen.py`만.
+**화풍은 할로우 나이트 손그림 전면.** 픽셀아트로 남은 몹·보스·프랍·FX·크롬·바닥은 `hollow_pipeline.sh`가 교체한다. 직업 5×13은 클로드가 넣는 중 — 다시 그리지 마라.
 
 `Resources.Load`는 문자열로 찾는다. **이름이 같아도 내용이 낡으면 조용히 낡은 채로 남는다**
 — 파일 목록만 봐서는 안 보인다(실측 사고: `Resources/props` 32장이 전부 어제 버전인데

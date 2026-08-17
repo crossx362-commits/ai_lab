@@ -1,0 +1,57 @@
+{
+ "_note": "할로우 전면 교체 — UI 크롬 8. keep_bg, 크로마키 금지.",
+ "refs": [],
+ "rulesets": {
+  "c": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. A GAME UI FRAME only, dark decorative Hollow Knight style, ornate but quiet, muted gold-on-charcoal filigree, empty center so text can sit inside. No letters, no numbers. Opaque artwork, NOT magenta."
+ },
+ "assets": [
+  {
+   "name": "panel",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "a rectangular dark panel with inner filigree border"
+  },
+  {
+   "name": "button_normal",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "a wide dark stone button, idle"
+  },
+  {
+   "name": "button_hover",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "the same button slightly brighter edges"
+  },
+  {
+   "name": "button_pressed",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "the same button inset as if pressed"
+  },
+  {
+   "name": "hp_frame",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "a long thin HP bar frame, empty inside"
+  },
+  {
+   "name": "xp_frame",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "a long thin XP bar frame, empty inside"
+  },
+  {
+   "name": "portrait_frame",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "a square portrait frame, empty inside"
+  },
+  {
+   "name": "boss_hp_frame",
+   "rules_ref": "c",
+   "keep_bg": true,
+   "prompt": "a wider ornate boss HP frame, empty inside"
+  }
+ ]
+}

@@ -16,6 +16,21 @@ namespace AshesToStars
 
         static Texture2D _texture;
         static bool _tried;
+        static readonly Dictionary<string, string> SoloName = new Dictionary<string, string>
+        {
+            ["tank_knight"] = "tank", ["paladin"] = "tank", ["dwarf_guardian"] = "tank",
+            ["rogue"] = "dps", ["ranger"] = "dps",
+            ["fire_mage"] = "mage", ["strategist"] = "mage",
+            ["priest"] = "healer", ["druid"] = "healer",
+            ["bard"] = "buffer", ["monk"] = "buffer",
+        };
+
+        static Texture2D SoloOf(string key)
+        {
+            if (string.IsNullOrEmpty(key) || !SoloName.TryGetValue(key, out var name))
+                return null;
+            return Resources.Load<Texture2D>("ui/portraits/" + name);
+        }
 
         static readonly Dictionary<string, Rect> Pieces = new Dictionary<string, Rect>
         {
@@ -48,7 +63,7 @@ namespace AshesToStars
             }
         }
 
-        public static bool IsReady => Texture != null;
+        public static bool IsReady => Texture != null || SoloOf("tank_knight") != null;
 
         public static string KeyForJob(string job)
         {
@@ -76,12 +91,22 @@ namespace AshesToStars
 
         public static bool Draw(Rect target, string key, Color? tint = null)
         {
-            var texture = Texture;
-            var source = RectFor(key);
-            if (texture == null || source.width <= 0 || source.height <= 0) return false;
-
             var saved = GUI.color;
             GUI.color = tint ?? Color.white;
+            var solo = SoloOf(key);
+            if (solo != null)
+            {
+                GUI.DrawTexture(target, solo, ScaleMode.ScaleToFit, true);
+                GUI.color = saved;
+                return true;
+            }
+            var texture = Texture;
+            var source = RectFor(key);
+            if (texture == null || source.width <= 0 || source.height <= 0)
+            {
+                GUI.color = saved;
+                return false;
+            }
             GUI.DrawTextureWithTexCoords(target, texture, TextureCoords(source), true);
             GUI.color = saved;
             return true;

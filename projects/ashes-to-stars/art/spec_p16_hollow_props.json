@@ -1,0 +1,269 @@
+{
+ "_note": "할로우 전면 교체 — 프랍·영지 건물. 한 장에 물체 하나.",
+ "refs": [],
+ "rulesets": {
+  "p": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. A SINGLE object centered, 3/4 top-down quarter view. Cut off cleanly at its own base. NO ground, floor, grass, shadow. Background: completely flat solid pure magenta #FF00FF. No text, no labels, no borders."
+ },
+ "assets": [
+  {
+   "name": "village_house_0",
+   "rules_ref": "p",
+   "prompt": "A single a small stone cottage with a dark tiled roof."
+  },
+  {
+   "name": "village_house_1",
+   "rules_ref": "p",
+   "prompt": "A single a slightly larger cottage with a chimney."
+  },
+  {
+   "name": "village_house_2",
+   "rules_ref": "p",
+   "prompt": "A single a ruined cottage with a collapsed corner."
+  },
+  {
+   "name": "village_barn_0",
+   "rules_ref": "p",
+   "prompt": "A single a low wooden barn."
+  },
+  {
+   "name": "village_cart_0",
+   "rules_ref": "p",
+   "prompt": "A single an empty wooden cart."
+  },
+  {
+   "name": "village_fence_0",
+   "rules_ref": "p",
+   "prompt": "A single a short broken wooden fence segment."
+  },
+  {
+   "name": "village_fence_1",
+   "rules_ref": "p",
+   "prompt": "A single a longer leaning fence segment."
+  },
+  {
+   "name": "village_haystack_0",
+   "rules_ref": "p",
+   "prompt": "A single a small haystack."
+  },
+  {
+   "name": "village_lamp_0",
+   "rules_ref": "p",
+   "prompt": "A single a stone lamp post with a dim lantern."
+  },
+  {
+   "name": "village_well_0",
+   "rules_ref": "p",
+   "prompt": "A single a stone well with a wooden crank."
+  },
+  {
+   "name": "village_tree_0",
+   "rules_ref": "p",
+   "prompt": "A single a dark fruit tree, no ground."
+  },
+  {
+   "name": "field_tree_0",
+   "rules_ref": "p",
+   "prompt": "A single a tall dead tree."
+  },
+  {
+   "name": "field_tree_1",
+   "rules_ref": "p",
+   "prompt": "A single a wind-bent living tree."
+  },
+  {
+   "name": "field_tree_2",
+   "rules_ref": "p",
+   "prompt": "A single a split lightning-struck tree."
+  },
+  {
+   "name": "field_tree_3",
+   "rules_ref": "p",
+   "prompt": "A single a squat leafy tree."
+  },
+  {
+   "name": "field_rock_0",
+   "rules_ref": "p",
+   "prompt": "A single a single gray boulder."
+  },
+  {
+   "name": "field_rock_1",
+   "rules_ref": "p",
+   "prompt": "A single a cluster of two smaller rocks."
+  },
+  {
+   "name": "field_rock_2",
+   "rules_ref": "p",
+   "prompt": "A single a flat slab rock."
+  },
+  {
+   "name": "field_bush_0",
+   "rules_ref": "p",
+   "prompt": "A single a dark thorny bush."
+  },
+  {
+   "name": "field_bush_1",
+   "rules_ref": "p",
+   "prompt": "A single a rounder mossy bush."
+  },
+  {
+   "name": "field_bush_2",
+   "rules_ref": "p",
+   "prompt": "A single a sparse dry bush."
+  },
+  {
+   "name": "field_stump_0",
+   "rules_ref": "p",
+   "prompt": "A single a cut tree stump."
+  },
+  {
+   "name": "field_stump_1",
+   "rules_ref": "p",
+   "prompt": "A single a rotting stump."
+  },
+  {
+   "name": "field_shrub_row_0",
+   "rules_ref": "p",
+   "prompt": "A single a short row of shrubs."
+  },
+  {
+   "name": "dungeon_pillar_0",
+   "rules_ref": "p",
+   "prompt": "A single a cracked stone pillar."
+  },
+  {
+   "name": "dungeon_pillar_1",
+   "rules_ref": "p",
+   "prompt": "A single a mossy pillar."
+  },
+  {
+   "name": "dungeon_pillar_2",
+   "rules_ref": "p",
+   "prompt": "A single a broken half pillar."
+  },
+  {
+   "name": "dungeon_wall_0",
+   "rules_ref": "p",
+   "prompt": "A single a short dungeon wall segment."
+  },
+  {
+   "name": "dungeon_wall_1",
+   "rules_ref": "p",
+   "prompt": "A single a wall with an arch scar."
+  },
+  {
+   "name": "dungeon_wall_2",
+   "rules_ref": "p",
+   "prompt": "A single a crumbled wall chunk."
+  },
+  {
+   "name": "dungeon_crystal_0",
+   "rules_ref": "p",
+   "prompt": "A single a teal glowing crystal."
+  },
+  {
+   "name": "dungeon_crystal_1",
+   "rules_ref": "p",
+   "prompt": "A single a cluster of smaller crystals."
+  },
+  {
+   "name": "dungeon_crystal_2",
+   "rules_ref": "p",
+   "prompt": "A single a dim cracked crystal."
+  },
+  {
+   "name": "dungeon_rubble_0",
+   "rules_ref": "p",
+   "prompt": "A single a pile of stone rubble."
+  },
+  {
+   "name": "dungeon_rubble_1",
+   "rules_ref": "p",
+   "prompt": "A single scattered broken bricks."
+  },
+  {
+   "name": "dungeon_rubble_2",
+   "rules_ref": "p",
+   "prompt": "A single a single fallen block."
+  },
+  {
+   "name": "dungeon_cover_0",
+   "rules_ref": "p",
+   "prompt": "A single a stone barricade."
+  },
+  {
+   "name": "dungeon_cover_1",
+   "rules_ref": "p",
+   "prompt": "A single an overturned stone bench."
+  },
+  {
+   "name": "dungeon_cover_2",
+   "rules_ref": "p",
+   "prompt": "A single a low broken wall for cover."
+  },
+  {
+   "name": "ash_bone_0",
+   "rules_ref": "p",
+   "prompt": "A single a large bleached bone."
+  },
+  {
+   "name": "ash_bone_1",
+   "rules_ref": "p",
+   "prompt": "A single a rib-like bone."
+  },
+  {
+   "name": "ash_charred_0",
+   "rules_ref": "p",
+   "prompt": "A single a charred timber."
+  },
+  {
+   "name": "ash_charred_1",
+   "rules_ref": "p",
+   "prompt": "A single a burnt cart wheel."
+  },
+  {
+   "name": "ash_charred_2",
+   "rules_ref": "p",
+   "prompt": "A single a blackened plank."
+  },
+  {
+   "name": "estate_keep_0",
+   "rules_ref": "p",
+   "prompt": "A single a small stone keep tower."
+  },
+  {
+   "name": "estate_mine_0",
+   "rules_ref": "p",
+   "prompt": "A single a mine entrance with timber frame."
+  },
+  {
+   "name": "estate_warehouse_0",
+   "rules_ref": "p",
+   "prompt": "A single a warehouse with a wide door."
+  },
+  {
+   "name": "estate_barracks_0",
+   "rules_ref": "p",
+   "prompt": "A single a barracks longhouse."
+  },
+  {
+   "name": "estate_smith_0",
+   "rules_ref": "p",
+   "prompt": "A single a smithy with a chimney."
+  },
+  {
+   "name": "estate_mausoleum_0",
+   "rules_ref": "p",
+   "prompt": "A single a small stone mausoleum."
+  },
+  {
+   "name": "estate_tower_0",
+   "rules_ref": "p",
+   "prompt": "A single a watchtower."
+  },
+  {
+   "name": "estate_auction_0",
+   "rules_ref": "p",
+   "prompt": "A single a wooden auction stall with a counter."
+  }
+ ]
+}

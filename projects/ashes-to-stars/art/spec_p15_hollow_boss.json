@@ -1,0 +1,65 @@
+{
+ "_note": "할로우 전면 교체 — 보스 4실루엣 애니 시트. 20종 전용 모델 금지.",
+ "refs": [],
+ "rulesets": {
+  "b": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. A BOSS, much larger presence than a common monster. THREE-QUARTER FRONT, FULL BODY. LAYOUT: EXACTLY SIX CELLS, 3x2, magenta gaps, common baseline. Background: completely flat solid pure magenta #FF00FF. No text, no labels, no borders."
+ },
+ "assets": [
+  {
+   "name": "sheet_boss_brute_A",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: hulking armored brute, massive shoulders, short horns, knuckles near the ground. Cells: idle; idle breathe; idle shift; idle roar coil; attack wind-up; attack slam."
+  },
+  {
+   "name": "sheet_boss_brute_B",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: hulking armored brute, massive shoulders, short horns, knuckles near the ground. Cells: attack follow-through; hurt; hurt stagger; death start; death collapse; death down."
+  },
+  {
+   "name": "sheet_boss_serpent_A",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: coiled serpent reared up, flared hood, fanged head, long body spiral. Cells: idle; idle breathe; idle shift; idle roar coil; attack wind-up; attack slam."
+  },
+  {
+   "name": "sheet_boss_serpent_B",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: coiled serpent reared up, flared hood, fanged head, long body spiral. Cells: attack follow-through; hurt; hurt stagger; death start; death collapse; death down."
+  },
+  {
+   "name": "sheet_boss_wraith_A",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: floating tattered wraith, hollow hood, two pale burning eyes, dissolving hem. Cells: idle; idle breathe; idle shift; idle roar coil; attack wind-up; attack slam."
+  },
+  {
+   "name": "sheet_boss_wraith_B",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: floating tattered wraith, hollow hood, two pale burning eyes, dissolving hem. Cells: attack follow-through; hurt; hurt stagger; death start; death collapse; death down."
+  },
+  {
+   "name": "sheet_boss_construct_A",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: stone masonry golem, glowing cracks, oversized fists, featureless head. Cells: idle; idle breathe; idle shift; idle roar coil; attack wind-up; attack slam."
+  },
+  {
+   "name": "sheet_boss_construct_B",
+   "rules_ref": "b",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell sheet of ONE boss: stone masonry golem, glowing cracks, oversized fists, featureless head. Cells: attack follow-through; hurt; hurt stagger; death start; death collapse; death down."
+  }
+ ]
+}
