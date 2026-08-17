@@ -94,26 +94,37 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
     raise SystemExit(f"이미지 없음: {json.dumps(res)[:400]}")
 
 
-# 오너 지시(2026-08-15): **이미지 생성은 전부 힉스필드 nano_banana_2로 통일한다.**
-# 모델이 섞이면 같은 프롬프트·같은 앵커를 줘도 화풍이 갈려서, 이 프로젝트가 계속
-# 싸우고 있는 "몹만 따로 논다"류의 문제가 생성 단계에서부터 들어온다.
-# `--model`로 덮어쓸 수는 있지만, 기본값을 바꾸지 마라.
-HF_MODEL = "nano_banana_2"
+# 오너 지시(2026-08-18): **모든 이미지는 힉스필드 Nano Banana 2 + 언리미티드.**
+# CLI job_type 은 `nano_banana_flash` 다. 별칭 `nano_banana_2` 는 Pro 로 붙는다
+# (`higgsfield model get nano_banana_2` → nano_banana_pro, 실측 2026-08-18).
+# 언리미티드 토글은 higgsfield.ai 웹에서만 동작한다(공식: CLI·MCP는 크레딧).
+# 웹에서 만들 때: 모델 Nano Banana 2, Unlimited ON, 해상도 2K(언리미티드 한도).
+# `--model`로 덮어쓰지 마라. Pro·Gemini·Imagine 금지.
+HF_MODEL = "nano_banana_flash"
+HF_RESOLUTION = "2k"
+_HF_ALIAS_TO_BANANA2 = {"nano_banana_2", "nano_banana_pro", "nano_banana"}
+
+
+def resolve_hf_model(name: str | None) -> str:
+    n = (name or HF_MODEL).strip() or HF_MODEL
+    if n in _HF_ALIAS_TO_BANANA2:
+        print(f"⚠️ {n} 은 Nano Banana 2가 아니다(CLI에서 Pro). {HF_MODEL} 로 보낸다.")
+        return HF_MODEL
+    return n
 
 
 def generate_hf(prompt: str, refs: list[str], model: str = HF_MODEL,
-                resolution: str = "1k", aspect: str = "1:1",
+                resolution: str = HF_RESOLUTION, aspect: str = "1:1",
                 rules: str = None) -> Image.Image:
-    """Higgsfield CLI 경로.
-
-    Gemini API(종량제)와 같은 프롬프트·같은 앵커를 쓰되 구독 크레딧으로 돈다.
-    같은 Nano Banana Pro 모델이라 결과물은 동등하고, 크레딧 환산 단가가 더 싸다.
-    """
+    """Higgsfield Nano Banana 2 (`nano_banana_flash`) 경로. Pro·Gemini로 보내지 않는다."""
     import shutil
     import subprocess
     import tempfile
 
     cli = shutil.which("higgsfield") or "/opt/homebrew/bin/higgsfield"
+    model = resolve_hf_model(model)
+    resolution = resolution or HF_RESOLUTION
+    print(f"   Higgsfield Nano Banana 2 ({model}) {resolution} — CLI는 언리미티드 불가, 웹은 토글 ON")
     cmd = [cli, "generate", "create", model, "--resolution", resolution,
            "--aspect-ratio", aspect,
            "--prompt", f"{prompt}\n\n{rules or STYLE_RULES}",
@@ -182,8 +193,11 @@ def main(argv=None):
     ap.add_argument("--only", help="이름에 이 문자열이 든 항목만")
     ap.add_argument("--model", default="")
     ap.add_argument("--backend", choices=["gemini", "higgsfield"], default="higgsfield")
+    ap.add_argument("--resolution", default=HF_RESOLUTION, help="Nano Banana 2 기본 2k")
     ap.add_argument("--height", type=int, default=0, help="0이면 원본 크기 유지")
     ns = ap.parse_args(argv)
+    if ns.backend == "gemini":
+        raise SystemExit("오너 지시(2026-08-18): Gemini 금지. 힉스필드 Nano Banana 2만.")
 
     with open(ns.spec, encoding="utf-8") as f:
         spec = json.load(f)
@@ -212,7 +226,7 @@ def main(argv=None):
             raw = generate(item["prompt"], refs, key, ns.model or MODEL)
         else:
             raw = generate_hf(item["prompt"], refs, ns.model or HF_MODEL,
-                              aspect=aspect, rules=rules)
+                              resolution=ns.resolution, aspect=aspect, rules=rules)
         img = chroma_key(raw) if not item.get("keep_bg") else raw.convert("RGBA")
         if ns.height and img.height > ns.height:
             w = max(1, round(img.width * ns.height / img.height))

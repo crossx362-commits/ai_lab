@@ -144,9 +144,11 @@ Unity Hub 자체는 에디터가 아니므로 락으로 세지 않는다.
 
 | 항목 | 값 |
 |---|---|
-| 백엔드 | **higgsfield 고정**. `--backend gemini` 금지(종량제 + 화풍 갈림) |
-| 모델 | **`nano_banana_2` 고정** (오너 지시 2026-08-15 「이미지 생성은 앞으로 모두 힉스필드의 나노바나나2 이용」). `aigen.py`의 `HF_MODEL`이 단일 소스다 — 여기 값을 바꾸려면 그 상수를 바꿔라, 문서만 고치면 어긋난다 |
-| 비용 | **1생성 = 2크레딧** (`hf generate cost <model> --prompt "x"`로 확인) |
+| 백엔드 | **higgsfield 고정**. `--backend gemini` 금지. Grok Imagine 금지 |
+| 모델 | **`nano_banana_flash`** = Nano Banana 2 (오너 2026-08-18 언리미티드). CLI 별칭 `nano_banana_2`는 **Pro**다 — 쓰지 마라. 단일 소스는 `aigen.py`의 `HF_MODEL` |
+| 해상도 | **2k** (언리미티드 한도). 4k는 크레딧 |
+| 언리미티드 | 웹 higgsfield.ai 에서 토글 ON. CLI·MCP는 공식상 크레딧 |
+| 비용 | CLI는 크레딧. `higgsfield generate cost nano_banana_flash --prompt x --resolution 2k` |
 | 잔액 확인 | `higgsfield account status` |
 | 실패 시 | 폴백하지 말고 **3회 재시도**(`aigen.py`가 이미 함). 실패 잡은 크레딧 미차감 |
 

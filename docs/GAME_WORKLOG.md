@@ -10,6 +10,16 @@
 
 ---
 
+## 이미지 생성 = Nano Banana 2 + 언리미티드 (2026-08-18)
+
+오너 「앞으로 모든 이미지는 힉스필드 나노바나나 2 언리미티드 옵션 켜서」.
+- 모델: `nano_banana_flash` (Nano Banana 2). **`nano_banana_2` 별칭은 Pro** — 금지.
+- 해상도 2k. Gemini·Imagine·Pro 금지. `aigen.py`가 별칭을 flash로 되돌린다.
+- 언리미티드 토글은 **higgsfield.ai 웹에서만**. CLI는 공식상 크레딧(Plus 847).
+- 웹에서 그릴 때: Nano Banana 2 + Unlimited ON + 2K.
+
+---
+
 ## 클로드 협업 분담 (2026-08-18, 오너 「클로드랑 협업 진행」)
 
 세션 `8349a8d2` (Desktop opus-5). 보드 http://127.0.0.1:8766/ . 루프 `STOP`. Unity `unity/` PID는 죽이지 마라.

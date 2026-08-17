@@ -1,6 +1,7 @@
 # 재와 별 아트 산출물 인덱스
 
-> 최종 점검: 2026-08-17 · 제작 방식: **힉스필드 2D 픽셀아트** · UI 크롬은 **Grok Imagine**
+> 최종 점검: 2026-08-18 · 제작 방식: **힉스필드 Nano Banana 2** (`nano_banana_flash`, 2k).
+> 웹은 Unlimited ON. CLI 별칭 `nano_banana_2`=Pro 금지. Gemini·Grok Imagine 금지.
 
 아트 생성 작업물은 생성 원본과 Unity 런타임 반입물을 분리한다. `out_*` 폴더는 재생성·후처리용 원본이며, 게임은 `unity/Assets/Resources/` 아래 파일만 읽는다. 블렌더 이미지는 과거 플레이스홀더와 네거티브 비교본으로만 유지하며 신규 최종 아트 제작에 사용하지 않는다.
 
