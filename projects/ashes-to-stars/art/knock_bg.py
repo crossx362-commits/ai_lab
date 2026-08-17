@@ -230,6 +230,7 @@ def apply(img: Image.Image, crop: bool = False) -> Image.Image:
 
     keep = alpha > 0
     if keep.any():
+        keep = _drop_paper_blobs(rgb, keep)
         keep = _drop_small(keep)
         alpha = np.where(keep, alpha, 0)
 
@@ -240,6 +241,73 @@ def apply(img: Image.Image, crop: bool = False) -> Image.Image:
         if len(xs):
             im = im.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
     return im
+
+
+def _drop_paper_blobs(rgb: np.ndarray, keep: np.ndarray) -> np.ndarray:
+    """남은 흰 카드·바둑판 덩어리를 지운다. 초승달 베기(속이 빈 흰 덩어리)는 남긴다.
+
+    2026-08-18 사고: 적용만 하고 화면을 안 보니 딜러 대시가 흰 사각형으로 떴다.
+    """
+    r = rgb[..., 0].astype(np.int16)
+    g = rgb[..., 1].astype(np.int16)
+    b = rgb[..., 2].astype(np.int16)
+    sat = np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)
+    L = 0.299 * r + 0.587 * g + 0.114 * b
+    paper = keep & (sat < 28) & ((L > 200) | (L < 80))
+    if not paper.any():
+        return keep
+    lab, n = _labels(paper)
+    if n == 0:
+        return keep
+    counts = np.bincount(lab.ravel())
+    out = keep.copy()
+    for i in range(1, n + 1):
+        if counts[i] < 20:
+            out[lab == i] = False
+            continue
+        ys, xs = np.where(lab == i)
+        bw = int(xs.max()) - int(xs.min()) + 1
+        bh = int(ys.max()) - int(ys.min()) + 1
+        area = int(counts[i])
+        solid = area / max(1, bw * bh)
+        ll = L[lab == i]
+        mix = float(ll.std()) > 35
+        paper = float(ll.mean()) > 210 and float(ll.std()) < 20 and solid > 0.72
+        edge = (int(xs.min()) <= 2 or int(ys.min()) <= 2
+                or int(xs.max()) >= keep.shape[1] - 3
+                or int(ys.max()) >= keep.shape[0] - 3)
+        if edge and (mix or paper):
+            out[lab == i] = False
+    return out
+
+
+def strip_gray_checker(img: Image.Image) -> Image.Image:
+    """뼈색 가면이 없는 장(딜러) 전용. 회색 바둑판만 지운다."""
+    im = img.convert("RGBA")
+    a = np.asarray(im).copy()
+    rgb, al = a[..., :3].astype(np.int16), a[..., 3]
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    gray = (np.abs(r - g) < 25) & (np.abs(g - b) < 25) & (np.abs(r - b) < 25)
+    L = 0.299 * r + 0.587 * g + 0.114 * b
+    kill = gray & ((L > 175) | (L < 110))
+    al = np.where(kill, 0, al)
+    return Image.fromarray(np.dstack([a[..., :3], al]), "RGBA")
+
+
+def leftover_white_pct(img: Image.Image) -> float:
+    """불투명 흰 종이(채도 낮고 밝음) 비율. 초승달 베기는 모양이 달라 거의 안 잡힌다."""
+    a = np.asarray(img.convert("RGBA"))
+    rgb, al = a[..., :3].astype(np.int16), a[..., 3]
+    op = al > 40
+    if not op.any():
+        return 0.0
+    sat = rgb.max(2) - rgb.min(2)
+    L = 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
+    gray = (np.abs(rgb[..., 0] - rgb[..., 1]) < 18) & (np.abs(rgb[..., 1] - rgb[..., 2]) < 18)
+    # 크림색 힐러 옷(채도 있음)은 종이로 세지 않는다.
+    paper = op & gray & (sat < 18) & (L > 210)
+    chk = op & gray & (L > 140) & (L < 236)
+    return float((paper | chk).mean() * 100)
 
 
 def apply_path(src, dst=None, crop: bool = True) -> None:

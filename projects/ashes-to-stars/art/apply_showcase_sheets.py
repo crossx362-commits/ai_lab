@@ -274,8 +274,17 @@ def main() -> int:
         print(f"{job} ({spec['note']}): " + " ".join(str(len(r)) for r in grid) + "칸")
         raw = {name: at(grid, rc) for name, rc in spec["map"].items()}
         frames = align(raw)
+        if job == "dps":
+            frames = {k: knock_bg.strip_gray_checker(v) for k, v in frames.items()}
         preview(job, grid, frames)
         n = write_job(job, frames)
+        dirty = []
+        for name, im in frames.items():
+            pct = knock_bg.leftover_white_pct(im)
+            if pct > 2.0 and name not in ("invuln_00", "special_00", "attack_01"):
+                dirty.append(f"{name} {pct:.1f}%")
+        if dirty:
+            print(f"  ⚠️ 흰 잔재 {len(dirty)}: " + ", ".join(dirty))
         print(f"  → sprites/{job}/ {n}장")
     return 0
 

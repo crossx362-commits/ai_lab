@@ -2879,10 +2879,10 @@ public class W3Party : MonoBehaviour
                             //    그대로 다시 나온다**(2026-08-18 실측: qa_hunt.png 바닥의 주황 원환이 이것).
                             //    절차 링을 지웠는데도 링이 남았던 이유가 이 아트 한 줄이었다.
                             //    돌진은 "어디로 오는가"가 정보다 → 고리 대신 **진행 방향 앞쪽의 베기 섬광**.
+                            // 먼지뿐. Slash(fx_slash)는 **흰 초승달**이라 바닥에 깔면
+                            // 금색 고리로 읽힌다(2026-08-18 오너 스크린샷). 고리·초승달은 예고가 아니다.
                             FxParticles.Play(FxKind.먼지, ToScreen(p), 1.2f,
-                                             new Color(1f, 0.78f, 0.25f));
-                            FxPool.Play(FxPool.Kind.Slash, p + dir * 1.6f, 1.4f,
-                                        new Color(1f, 0.72f, 0.2f, 0.95f));
+                                             new Color(0.85f, 0.85f, 0.82f));
                         }
                         break;
                 }

@@ -78,6 +78,32 @@ class KnockBgTests(unittest.TestCase):
         out = knock_bg.apply(raw)
         self.assertTrue(_bg_gone(out, (255, 255, 255)))
 
+    def test_white_card_dropped_crescent_kept(self):
+        im = _bug((0, 0, 0, 0), size=96)
+        # 투명 캔버스 + 가면 벌레 + 왼쪽 흰 카드(사고) + 오른쪽 초승달(공격 FX)
+        d = ImageDraw.Draw(im)
+        for y in range(20, 70):
+            for x in range(0, 22):
+                d.point((x, y), fill=(230, 230, 230, 255) if (x // 6 + y // 6) % 2 == 0 else (50, 50, 50, 255))
+        d.pieslice((70, 20, 94, 70), 200, 340, fill=(240, 240, 240, 255))
+        out = knock_bg.apply(im)
+        a = np.asarray(out)
+        left = a[20:70, 2:22, 3] > 128
+        right = a[20:70, 70:94, 3] > 128
+        self.assertLess(int(left.sum()), 30, "흰 카드가 남았다")
+        self.assertGreater(int(right.sum()), 40, "초승달 베기를 같이 지우면 안 된다")
+        self.assertTrue(_face_alive(out))
+
+    def test_strip_gray_checker_keeps_blue(self):
+        im = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
+        d = ImageDraw.Draw(im)
+        d.rectangle((0, 0, 12, 39), fill=(230, 230, 230, 255))
+        d.ellipse((18, 8, 36, 32), fill=(40, 60, 140, 255))
+        out = knock_bg.strip_gray_checker(im)
+        a = np.asarray(out)
+        self.assertLess(int((a[:, :12, 3] > 128).sum()), 10)
+        self.assertGreater(int((a[8:32, 18:36, 3] > 128).sum()), 80)
+
     def test_checkerboard_bg(self):
         im = _bug((204, 204, 204, 255), size=96)
         px = im.load()
