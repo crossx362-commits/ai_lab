@@ -445,12 +445,23 @@ namespace AshesToStars
         /// <summary>본문 안의 정보 한 줄(버튼 아님).</summary>
         protected void Info(Rect r, int index, string text)
         {
-            Styles();
             var panel = new Rect(r.x - 12, r.y + index * (RowH + RowGap), r.width + 24, RowH);
             if (panel.yMax > r.yMax) return;
+            InfoAt(panel, text);
+        }
+
+        /// <summary>이미 계산된 칸에 안내만 그린다. 경매 슬림 도크가 읽는다.</summary>
+        protected void InfoAt(Rect panel, string text)
+        {
+            Styles();
+            if (panel.yMax > REF_H) return;
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
-            UiPages.LabelClip(UiAtlas.ContentRect(panel, "panel", 2f), text, _panel);
+            // 36px 슬림 칸은 SlicePad가 높이를 먹어 글씨가 잘린다. 전폭 64 Info는 예전 칸.
+            var inner = panel.height < 48f
+                ? new Rect(panel.x + 16f, panel.y + 8f, panel.width - 32f, 20f)
+                : UiAtlas.ContentRect(panel, "panel", 2f);
+            UiPages.LabelClip(inner, text, _panel);
         }
     }
 }

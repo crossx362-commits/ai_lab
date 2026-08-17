@@ -33,7 +33,9 @@ namespace AshesToStars
             Sub.대장간 => Equipment.SmithUnlocked()
                 ? "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)"
                 : Equipment.LockLine(),
-            Sub.경매장 => AuctionHubLockReason() ?? AuctionTrade.TradeLine(),
+            Sub.경매장 => AuctionHud.ShowQa
+                ? AuctionHud.Line()
+                : AuctionHubLockReason() ?? AuctionTrade.TradeLine(),
             Sub.영묘 => Memorial.Unlocked
                 ? Rebirth.MausoleumSubtitle()
                 : Memorial.LockLine(),
@@ -153,6 +155,7 @@ namespace AshesToStars
             AuctionState.SeedBuyLockQaIfRequested();
             AuctionState.SeedExpireQaIfRequested();
             AuctionTrade.SeedQaIfRequested();
+            AuctionHud.SeedQaIfRequested();
             Rebirth.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
             Memorial.SeedUnlockQaIfRequested();
@@ -166,7 +169,8 @@ namespace AshesToStars
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionTrade.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(LifePrice.EnvShow) == "1"
-                || System.Environment.GetEnvironmentVariable(TokenPrice.EnvShow) == "1")
+                || System.Environment.GetEnvironmentVariable(TokenPrice.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable(AuctionHud.EnvShow) == "1")
                 _sub = Sub.경매장;
             if (StarterSecond.Pending)
             {
@@ -806,6 +810,35 @@ namespace AshesToStars
 
         void AuctionHouse(Rect r)
         {
+            if (AuctionHud.Blocked)
+            {
+                AuctionHouseOld(r);
+                return;
+            }
+
+            int info = 0;
+            string lockReason = AuctionHubLockReason();
+            if (lockReason != null)
+            {
+                InfoAt(AuctionHud.BarRect(r, info++), lockReason);
+                var back = AuctionHud.LotsBody(r, info);
+                if (Row(back, 0, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+                return;
+            }
+
+            InfoAt(AuctionHud.BarRect(r, info++), AuctionHud.StatusLine());
+            string buyLock = AuctionState.BuyLockLine();
+            if (!string.IsNullOrEmpty(buyLock))
+                InfoAt(AuctionHud.BarRect(r, info++), buyLock);
+            if (!string.IsNullOrEmpty(_msg))
+                InfoAt(AuctionHud.BarRect(r, info++), _msg);
+
+            var lotsR = AuctionHud.LotsBody(r, info);
+            DrawAuctionLots(lotsR);
+        }
+
+        void AuctionHouseOld(Rect r)
+        {
             int row = 0;
             string lockReason = AuctionHubLockReason();
             if (lockReason != null)
@@ -824,6 +857,11 @@ namespace AshesToStars
             if (!string.IsNullOrEmpty(_msg))
                 Info(r, row++, _msg);
 
+            DrawAuctionLots(r, row);
+        }
+
+        void DrawAuctionLots(Rect r, int row = 0)
+        {
             var lots = AuctionState.Lots;
             string buyWhy = AuctionState.WhyCannotBuy();
             void DrawLot(AuctionState.Lot lot)
