@@ -60,19 +60,21 @@ namespace AshesToStars
                 $"칭호 사유 (실제 {AuctionTrade.WhyCannotListBound(AuctionTrade.TitleKind)})");
             Check(AuctionTrade.TradeLine().Contains("드랍") && AuctionTrade.TradeLine().Contains("귀속"),
                 $"문구 드랍·귀속 (실제 {AuctionTrade.TradeLine()})");
-            Check(AuctionTrade.ListPrice(Economy.LifeItem.SpecialJobToken) == AuctionTrade.TokenPrice,
-                $"증표 등록가 {AuctionTrade.TokenPrice}");
+            long tokenFloor = TokenPrice.Floor(Economy.LifeItem.SpecialJobToken);
+            Check(AuctionTrade.ListPrice(Economy.LifeItem.SpecialJobToken) == tokenFloor,
+                $"증표 등록가 {tokenFloor}");
 
             GameState.Gain(Economy.LifeItem.SpecialJobToken, 1);
             GameState.Gain(Economy.LifeItem.CraftHide, 2);
+            GameState.Grant(tokenFloor);
             long gold = GameState.Wallet.Copper;
             int tokens = GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken);
-            Check(AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, AuctionTrade.TokenPrice),
+            Check(AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, tokenFloor),
                 "증표 등록 성공");
             Check(GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) == tokens - 1,
                 "등록이 증표를 뺀다");
             long feePaid = gold - GameState.Wallet.Copper;
-            Check(feePaid == AuctionState.ListFee(AuctionTrade.TokenPrice) && feePaid > 0,
+            Check(feePaid == AuctionState.ListFee(tokenFloor) && feePaid > 0,
                 $"증표 수수료 (실제 {feePaid})");
             Check(AuctionState.MineCount == 1, "내 등록 1건");
             Check(FirstMine() != null && FirstMine().Key == "SpecialJobToken",
@@ -109,7 +111,7 @@ namespace AshesToStars
             Check(AuctionTrade.Blocked, "QA_NO면 차단");
             Check(!AuctionTrade.CanList(Economy.LifeItem.SpecialJobToken), "차단하면 증표 거부");
             Check(AuctionTrade.CanList(Economy.LifeItem.CraftHide), "차단해도 가죽은 등록");
-            Check(!AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, AuctionTrade.TokenPrice),
+            Check(!AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, AuctionTrade.OldTokenPrice),
                 "차단하면 증표 등록 실패");
             Check(GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) == 1, "차단은 증표를 안 뺀다");
             Check(AuctionState.TryListItem(Economy.LifeItem.CraftHide, 1, 2_400), "차단해도 가죽 등록");

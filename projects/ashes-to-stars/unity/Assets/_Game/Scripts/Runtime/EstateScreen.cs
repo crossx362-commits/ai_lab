@@ -158,7 +158,9 @@ namespace AshesToStars
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1"
-                || System.Environment.GetEnvironmentVariable(AuctionTrade.EnvShow) == "1")
+                || System.Environment.GetEnvironmentVariable(AuctionTrade.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable(LifePrice.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable(TokenPrice.EnvShow) == "1")
                 _sub = Sub.경매장;
             if (StarterSecond.Pending)
             {

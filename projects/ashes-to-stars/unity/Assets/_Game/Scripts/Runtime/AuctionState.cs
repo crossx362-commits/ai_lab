@@ -428,6 +428,7 @@ namespace AshesToStars
             if (MineCount >= MaxMine) return false;
             if (!AuctionTrade.CanList(item)) return false;
             if (LifePrice.BelowFloor(item, price)) return false;
+            if (TokenPrice.BelowFloor(item, price)) return false;
             long fee = ListFee(price);
             if (!GameState.Pay(fee)) return false;
             if (!GameState.Consume(item, qty))

@@ -6,6 +6,7 @@ namespace AshesToStars
     /// 경매 등록 품목(§12). 드랍·제작만 팔고 칭호·스킨·명예는 귀속.
     /// 옛 코드는 증표만 막아서 드랍 품목을 거절했다. QA_NO면 그 옛 거절로 돌아간다.
     /// 목숨 아이템 등록가는 LifePrice 하한(§4·§18-4).
+    /// 증표 등록가는 TokenPrice 하한 200 G/h(§18-4).
     /// </summary>
     public static class AuctionTrade
     {
@@ -14,7 +15,7 @@ namespace AshesToStars
         public const string TitleKind = "title";
         public const string SkinKind = "skin";
         public const string HonorKind = "honor";
-        public const long TokenPrice = 250_000;
+        public const long OldTokenPrice = 250_000;
 
         static bool _qaSeeded;
 
@@ -57,6 +58,7 @@ namespace AshesToStars
         public static string TradeLine()
         {
             if (LifePrice.ShowQa && !LifePrice.Blocked) return LifePrice.Line();
+            if (TokenPrice.ShowQa && !TokenPrice.Blocked) return TokenPrice.Line();
             if (Blocked) return "증표 등록 잠김 — 옛 거절";
             return "드랍·제작만 거래 · 칭호·명예는 귀속(§12)";
         }
@@ -64,12 +66,13 @@ namespace AshesToStars
         public static long ListPrice(Economy.LifeItem item)
         {
             if (LifePrice.Hours(item) > 0f) return LifePrice.Floor(item);
+            if (item == Economy.LifeItem.SpecialJobToken) return TokenPrice.Floor(item);
             return item switch
             {
                 Economy.LifeItem.RevivalTea => LifePrice.OldTea,
                 Economy.LifeItem.ScrollOfReturn => LifePrice.OldScroll,
                 Economy.LifeItem.RebornStone => LifePrice.OldStone,
-                Economy.LifeItem.SpecialJobToken => TokenPrice,
+                Economy.LifeItem.SpecialJobToken => OldTokenPrice,
                 Economy.LifeItem.AdvancementMaterial => 5_000,
                 Economy.LifeItem.EnhanceStone => 8_000,
                 Economy.LifeItem.CraftHide => 2_400,
@@ -116,13 +119,15 @@ namespace AshesToStars
             return false;
         }
 
-        /// <summary>시각 QA. QA_AUCTION_TRADE=1이면 30층·증표. QA_LIFE_PRICE면 환생석·T1 하한.</summary>
+        /// <summary>시각 QA. QA_AUCTION_TRADE=1이면 30층·증표. QA_LIFE_PRICE면 환생석. QA_TOKEN_PRICE면 증표 200골드.</summary>
         public static void SeedQaIfRequested()
         {
             LifePrice.SeedQaIfRequested();
+            TokenPrice.SeedQaIfRequested();
             if (Environment.GetEnvironmentVariable(EnvShow) != "1") return;
             if (Blocked) return;
             if (LifePrice.ShowQa && !LifePrice.Blocked) return;
+            if (TokenPrice.ShowQa && !TokenPrice.Blocked) return;
             if (_qaSeeded) return;
             _qaSeeded = true;
             RacePrefs.Set(RaceId.인간);
@@ -140,6 +145,7 @@ namespace AshesToStars
         {
             _qaSeeded = false;
             LifePrice.ResetForTest();
+            TokenPrice.ResetForTest();
         }
     }
 }
