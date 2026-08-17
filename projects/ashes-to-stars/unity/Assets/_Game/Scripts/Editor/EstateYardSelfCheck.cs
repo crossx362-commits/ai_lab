@@ -40,9 +40,9 @@ namespace AshesToStars
             Check(EstateYard.Line().Contains("화면을 채운다"),
                 $"줄 (실제 {EstateYard.Line()})");
 
-            Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == "village_house_1", "본성=큰 집");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == "village_house_0", "창고=집");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == "village_barn_0", "광산=헛간");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep, "본성=전용");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == EstateBuildings.Warehouse, "창고=전용");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine, "광산=전용");
             Check(EstateYard.PropOf(EstateGrid.Cell.Smith) == EstateBuildings.PropOf(EstateGrid.Cell.Smith),
                 "대장간=EstateBuildings");
             Check(EstateYard.PropOf(EstateGrid.Cell.Wall) == "village_fence_0", "성벽=울타리");

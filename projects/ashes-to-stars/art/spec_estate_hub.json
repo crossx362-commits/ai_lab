@@ -1,0 +1,33 @@
+{
+ "_note": "영지 허브 4종(본성·광산·창고·수비대). village_house_* / barn 은 필드 장식이며 이 넷을 대체하지 않는다(ARTIFACT_INDEX). EstateBuildings.DedicatedOf 가 읽는 이름과 같다.",
+ "refs": [
+  "out_estate_buildings/estate_smith_0.png",
+  "out_estate_buildings/estate_tower_0.png",
+  "out_p3_village/village_house_1.png"
+ ],
+ "rulesets": {
+  "prop": "Match the art style of the reference images EXACTLY: hand-drawn pixel art, same dot size, same limited earthy palette, thin dark outlines, soft cel shading, 3/4 top-down quarter view with a ~30 degree downward camera. Not photorealistic, not 3D-rendered, no smooth gradients. A single object centered in frame, no text, no border, no extra props. The object stands alone with nothing drawn beneath it — no ground, no grass patch, no shadow of any kind. Background: completely flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "estate_keep_0",
+   "rules_ref": "prop",
+   "prompt": "A small stone castle keep, the largest building in a village, seen from a 3/4 elevated angle so both the front wall and one side wall are visible. Grey ashlar walls, a steep dark shingle roof, a gold-star banner on a short pole, a heavy wooden gate with iron bands. Wider and taller than a timber cottage. Clearly a keep, not a narrow watchtower, not a cottage, not a barn."
+  },
+  {
+   "name": "estate_mine_0",
+   "rules_ref": "prop",
+   "prompt": "A hillside mine entrance seen from a 3/4 elevated angle so both the front and one side are visible. Heavy timber frame around a dark tunnel mouth, a small wooden ore cart on short rails, a hanging lantern, stacked ore sacks. No barn roof, no cottage windows, no hay. Clearly a mine, not a barn, not a house."
+  },
+  {
+   "name": "estate_warehouse_0",
+   "rules_ref": "prop",
+   "prompt": "A long wooden storehouse seen from a 3/4 elevated angle so both the front wall and one side wall are visible. Shallow gable roof, large double cargo doors with iron hinges, crates stacked just inside the open doors. Wider than a cottage, lower than a keep. Clearly a warehouse, not a dwelling, not an animal barn (no hay, no stalls)."
+  },
+  {
+   "name": "estate_barracks_0",
+   "rules_ref": "prop",
+   "prompt": "A military barracks hall seen from a 3/4 elevated angle so both the front wall and one side wall are visible. Timber and stone walls, a row of small high windows, a simple star banner by the door, a weapon rack with two spears, a small wooden training dummy. Clearly a barracks, not a barn, not a cottage."
+  }
+ ]
+}

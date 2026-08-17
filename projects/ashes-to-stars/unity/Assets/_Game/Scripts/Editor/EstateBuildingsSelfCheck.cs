@@ -7,7 +7,7 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 영지 대장간·영묘·탑이 전용 프랍을 읽는다. QA_NO면 옛 집·우물·등불(§16).
+    /// 영지 본성·광산·창고·수비대가 전용 프랍을 읽는다. QA_NO면 옛 집·헛간(§16).
     /// </summary>
     public static class EstateBuildingsSelfCheck
     {
@@ -31,6 +31,14 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, null);
             EstateBuildings.ResetForTest();
 
+            Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
+                "본성 전용 이름");
+            Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
+                "광산 전용 이름");
+            Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Warehouse) == EstateBuildings.Warehouse,
+                "창고 전용 이름");
+            Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Barracks) == EstateBuildings.Barracks,
+                "수비대 전용 이름");
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Smith) == EstateBuildings.Smith,
                 "대장간 전용 이름");
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Mausoleum) == EstateBuildings.Mausoleum,
@@ -39,34 +47,40 @@ namespace AshesToStars
                 "화살탑 전용 이름");
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Magic) == EstateBuildings.Tower,
                 "마법탑 전용 이름");
-            Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Keep) == null, "본성은 전용 칸 아님");
-            Check(EstateBuildings.OldOf(EstateGrid.Cell.Smith) == "village_house_2", "옛 대장간=작은 집");
-            Check(EstateBuildings.OldOf(EstateGrid.Cell.Mausoleum) == "village_well_0", "옛 영묘=우물");
-            Check(EstateBuildings.OldOf(EstateGrid.Cell.Arrow) == "village_lamp_0", "옛 탑=등불");
+            Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Auction) == null, "경매장은 전용 칸 아님");
+            Check(EstateBuildings.OldOf(EstateGrid.Cell.Keep) == "village_house_1", "옛 본성=큰 집");
+            Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
+            Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
+            Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
 
-            Check(EstateBuildings.HasDedicated(EstateBuildings.Smith), "대장간 PNG");
-            Check(EstateBuildings.HasDedicated(EstateBuildings.Mausoleum), "영묘 PNG");
-            Check(EstateBuildings.HasDedicated(EstateBuildings.Tower), "탑 PNG");
+            Check(EstateBuildings.HasDedicated(EstateBuildings.Keep), "본성 PNG");
+            Check(EstateBuildings.HasDedicated(EstateBuildings.Mine), "광산 PNG");
+            Check(EstateBuildings.HasDedicated(EstateBuildings.Warehouse), "창고 PNG");
+            Check(EstateBuildings.HasDedicated(EstateBuildings.Barracks), "수비대 PNG");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
+                "마을이 본성 전용을 읽는다");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
+                "마을이 광산 전용을 읽는다");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == EstateBuildings.Warehouse,
+                "마을이 창고 전용을 읽는다");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Barracks) == EstateBuildings.Barracks,
+                "마을이 수비대 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Smith) == EstateBuildings.Smith,
                 "마을이 대장간 전용을 읽는다");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Mausoleum) == EstateBuildings.Mausoleum,
-                "마을이 영묘 전용을 읽는다");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Arrow) == EstateBuildings.Tower,
-                "마을이 탑 전용을 읽는다");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == "village_house_1",
-                "본성은 큰 집 유지");
             Check(EstateBuildings.Line().Contains("전용 그림"),
                 $"줄 (실제 {EstateBuildings.Line()})");
 
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, "1");
             Check(EstateBuildings.Blocked, "QA_NO면 차단");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Smith) == "village_house_2",
-                "차단 대장간=작은 집");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Mausoleum) == "village_well_0",
-                "차단 영묘=우물");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Arrow) == "village_lamp_0",
-                "차단 탑=등불");
-            Check(EstateBuildings.Line().Contains("집·우물·등불"),
+            Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == "village_house_1",
+                "차단 본성=큰 집");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == "village_barn_0",
+                "차단 광산=헛간");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == "village_house_0",
+                "차단 창고=집");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Barracks) == "village_barn_0",
+                "차단 수비대=헛간");
+            Check(EstateBuildings.Line().Contains("집·헛간"),
                 $"차단 줄 (실제 {EstateBuildings.Line()})");
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, null);
 

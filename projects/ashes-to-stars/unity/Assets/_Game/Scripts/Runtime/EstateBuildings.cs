@@ -5,12 +5,16 @@ namespace AshesToStars
 {
     /// <summary>
     /// 영지 기능 건물 전용 프랍(§16). village_house_* 는 필드 장식이다.
-    /// 대장간·영묘·탑만 이 칸. QA_NO면 옛 집·우물·등불.
+    /// 본성·광산·창고·수비대·대장간·영묘·탑. QA_NO면 옛 집·헛간·우물·등불.
     /// </summary>
     public static class EstateBuildings
     {
         public const string EnvShow = "QA_ESTATE_BUILDINGS";
         public const string EnvNo = "QA_NO_ESTATE_BUILDINGS";
+        public const string Keep = "estate_keep_0";
+        public const string Mine = "estate_mine_0";
+        public const string Warehouse = "estate_warehouse_0";
+        public const string Barracks = "estate_barracks_0";
         public const string Smith = "estate_smith_0";
         public const string Mausoleum = "estate_mausoleum_0";
         public const string Tower = "estate_tower_0";
@@ -37,6 +41,10 @@ namespace AshesToStars
 
         public static string DedicatedOf(EstateGrid.Cell c) => c switch
         {
+            EstateGrid.Cell.Keep => Keep,
+            EstateGrid.Cell.Mine => Mine,
+            EstateGrid.Cell.Warehouse => Warehouse,
+            EstateGrid.Cell.Barracks => Barracks,
             EstateGrid.Cell.Smith => Smith,
             EstateGrid.Cell.Mausoleum => Mausoleum,
             EstateGrid.Cell.Arrow => Tower,
@@ -76,8 +84,8 @@ namespace AshesToStars
         }
 
         public static string Line() => Blocked
-            ? "대장간·영묘·탑이 집·우물·등불이다"
-            : "대장간·영묘·탑은 전용 그림이다(§16)";
+            ? "본성·광산·창고·수비대가 집·헛간이다"
+            : "본성·광산·창고·수비대는 전용 그림이다(§16)";
 
         public static void ResetForTest()
         {

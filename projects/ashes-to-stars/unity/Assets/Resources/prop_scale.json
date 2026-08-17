@@ -61,7 +61,11 @@
   "village_cart_0": 1.30,
   "village_lamp_0": 2.60,
 
-  "_note_estate": "영지 기능 건물(§16). 대장간은 헛간만 하고, 영묘는 집보다 낮고, 탑은 집보다 높다.",
+  "_note_estate": "영지 기능 건물(§16). 본성이 가장 크고, 창고는 집만, 광산·수비대는 헛간만, 탑은 집보다 높다.",
+  "estate_keep_0": 5.20,
+  "estate_mine_0": 4.00,
+  "estate_warehouse_0": 3.80,
+  "estate_barracks_0": 3.70,
   "estate_smith_0": 3.80,
   "estate_mausoleum_0": 3.20,
   "estate_tower_0": 4.80
