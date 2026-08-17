@@ -165,14 +165,32 @@ public class W3Party : MonoBehaviour
     public const float CombatHudBottomHeight = 176f;
     public const int CombatHudRewardMaxEntries = 3;
     public const float CombatHudRewardLifetime = 2.2f;
+    public const float CombatHudRailW = 228f;
+    public const float CombatHudRailMargin = 14f;
     public const bool CombatHudUsesFullWidthPanels = false;
     public const float CombatSkillFxScale = 1.4f;
+
+    public static string CombatHudStreakLine(int kills) =>
+        $"연속 {Mathf.Max(1, kills % 25)}";
+
+    public static string CombatHudRateLine(int kills, float seconds)
+    {
+        float perMin = kills / Mathf.Max(1f, seconds) * 60f;
+        return $"분당 {Mathf.Max(0, Mathf.RoundToInt(perMin))}";
+    }
+
+    public static string CombatHudRewardLine(int gold, int exp, int count)
+    {
+        string one = $"골드 +{gold}  경험 +{exp}";
+        return count > 1 ? $"{one}  ×{count}" : one;
+    }
 
     struct RewardEntry
     {
         public string Text;
         public Color Color;
         public float Age;
+        public int Count;
     }
     readonly List<RewardEntry> _rewardEntries = new();
 
@@ -2579,7 +2597,7 @@ public class W3Party : MonoBehaviour
         }
         _kills++;
         if (GameMode) AshesToStars.HuntBoon.NoteKill();
-        PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : "골드 +12   EXP +4",
+        PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : CombatHudRewardLine(12, 4, 1),
                    _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
@@ -3247,32 +3265,60 @@ public class W3Party : MonoBehaviour
 
     void DrawCombatSummary(int wave)
     {
-        _cmdLabel ??= new GUIStyle(GUI.skin.label) { fontSize = 16, normal = { textColor = new Color(.95f, .96f, 1f) } };
+        _cmdLabel ??= new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 16, alignment = TextAnchor.MiddleLeft,
+            clipping = TextClipping.Clip,
+            normal = { textColor = new Color(.95f, .96f, 1f) },
+        };
         var left = new Rect(14f, 14f, 218f, 50f);
-        var right = new Rect(Screen.width - 168f, 14f, 154f, 50f);
-        GUI.DrawTexture(left, Tint(new Color(.025f, .045f, .085f, .72f)));
-        if (!AshesToStars.UiAtlas.DrawSliced(right, "panel", 8f, new Color(1f, 1f, 1f, 0.35f)))
+        var right = new Rect(Screen.width - CombatHudRailMargin - CombatHudRailW, 14f,
+                             CombatHudRailW, 44f);
+        if (!AshesToStars.UiAtlas.DrawSliced(left, "panel", 8f, new Color(1f, 1f, 1f, 0.55f)))
+            GUI.DrawTexture(left, Tint(new Color(.025f, .045f, .085f, .72f)));
+        if (!AshesToStars.UiAtlas.DrawSliced(right, "panel", 8f, new Color(1f, 1f, 1f, 0.55f)))
             GUI.DrawTexture(right, Tint(new Color(.025f, .045f, .085f, .72f)));
-        AshesToStars.UiPages.LabelClip(new Rect(left.x + 9f, left.y + 5f, left.width - 18f, 21f),
+        var leftIn = AshesToStars.UiAtlas.ContentRect(left, "panel", 2f);
+        AshesToStars.UiPages.LabelClip(new Rect(leftIn.x, leftIn.y, leftIn.width, leftIn.height * 0.5f),
             $"{시작웨이브}-{wave} · {_setup.Name}", _cmdLabel);
-        AshesToStars.UiPages.LabelClip(new Rect(left.x + 9f, left.y + 27f, left.width - 18f, 20f),
+        AshesToStars.UiPages.LabelClip(new Rect(leftIn.x, leftIn.y + leftIn.height * 0.5f, leftIn.width, leftIn.height * 0.5f),
             $"처치 {_kills} · {_t:F0}s", _cmdLabel);
-        _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
-        if (GUI.Button(right, AshesToStars.SkillUse.HudLabel, _cmdBtn))
+        AshesToStars.UiPages.LabelClip(AshesToStars.UiAtlas.ContentRect(right, "panel", 2f),
+            AshesToStars.SkillUse.HudLabel, _cmdLabel);
+        if (GUI.Button(right, GUIContent.none, GUIStyle.none))
             AshesToStars.SkillUse.IsAuto = !AshesToStars.SkillUse.IsAuto;
     }
 
     void PushReward(string text, Color color)
     {
-        _rewardEntries.Insert(0, new RewardEntry { Text = text, Color = color, Age = 0f });
+        if (_rewardEntries.Count > 0 && _rewardEntries[0].Text == text)
+        {
+            var top = _rewardEntries[0];
+            top.Age = 0f;
+            top.Count = Mathf.Max(1, top.Count) + 1;
+            top.Color = color;
+            _rewardEntries[0] = top;
+            return;
+        }
+        _rewardEntries.Insert(0, new RewardEntry { Text = text, Color = color, Age = 0f, Count = 1 });
         if (_rewardEntries.Count > CombatHudRewardMaxEntries)
             _rewardEntries.RemoveRange(CombatHudRewardMaxEntries, _rewardEntries.Count - CombatHudRewardMaxEntries);
     }
 
+    void DrawHudChip(Rect r, string text, Color tint)
+    {
+        var chrome = new Color(1f, 1f, 1f, 0.50f * tint.a);
+        if (!AshesToStars.UiAtlas.DrawSliced(r, "panel", 8f, chrome))
+            GUI.DrawTexture(r, Tint(new Color(.04f, .08f, .14f, .78f * tint.a)));
+        _cmdLabel.normal.textColor = tint;
+        AshesToStars.UiPages.LabelClip(AshesToStars.UiAtlas.ContentRect(r, "panel", 2f), text, _cmdLabel);
+        _cmdLabel.normal.textColor = new Color(.95f, .96f, 1f);
+    }
+
     void DrawRewardRail()
     {
-        float x = Screen.width - 178f;
-        float y = CombatHudTopHeight + 32f;
+        float x = Screen.width - CombatHudRailMargin - CombatHudRailW;
+        float y = CombatHudTopHeight + 8f;
         for (int i = _rewardEntries.Count - 1; i >= 0; i--)
         {
             var entry = _rewardEntries[i];
@@ -3285,17 +3331,16 @@ public class W3Party : MonoBehaviour
         {
             var entry = _rewardEntries[i];
             float a = Mathf.Clamp01(1f - entry.Age / CombatHudRewardLifetime);
-            var r = new Rect(x, y + i * 34f, 162f, 28f);
-            GUI.DrawTexture(r, Tint(new Color(.04f, .08f, .14f, .78f * a)));
-            _cmdLabel.normal.textColor = new Color(entry.Color.r, entry.Color.g, entry.Color.b, a);
-            AshesToStars.UiPages.LabelClip(new Rect(r.x + 8f, r.y + 5f, r.width - 12f, r.height),
-                entry.Text, _cmdLabel);
+            var r = new Rect(x, y + i * 34f, CombatHudRailW, 30f);
+            string line = entry.Count > 1 ? $"{entry.Text}  ×{entry.Count}" : entry.Text;
+            DrawHudChip(r, line, new Color(entry.Color.r, entry.Color.g, entry.Color.b, a));
         }
-        _cmdLabel.normal.textColor = new Color(.95f, .96f, 1f);
-        AshesToStars.UiPages.LabelClip(new Rect(x, y + 108f, 162f, 20f),
-            $"KILL STREAK  ×{Mathf.Max(1, _kills % 25)}", _cmdLabel);
-        AshesToStars.UiPages.LabelClip(new Rect(x, y + 130f, 162f, 20f),
-            $"획득 속도  +{Mathf.Max(1, _kills / Mathf.Max(1f, _t))} / min", _cmdLabel);
+        int shown = _rewardEntries.Count;
+        float foot = y + shown * 34f + 4f;
+        DrawHudChip(new Rect(x, foot, CombatHudRailW, 28f),
+            CombatHudStreakLine(_kills), new Color(.95f, .96f, 1f, 0.92f));
+        DrawHudChip(new Rect(x, foot + 32f, CombatHudRailW, 28f),
+            CombatHudRateLine(_kills, _t), new Color(.95f, .96f, 1f, 0.92f));
     }
 
     /// <summary>
