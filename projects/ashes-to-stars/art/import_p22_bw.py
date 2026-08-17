@@ -2,6 +2,8 @@
 from pathlib import Path
 import shutil, subprocess, sys
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import knock_bg
 RES = HERE.parent / "unity" / "Assets" / "Resources"
 SRC = HERE / "out_p22_bw"
 SPLIT = HERE / "split_ai_sheet.py"
@@ -13,7 +15,9 @@ HOLD_M = {"walk_03":"walk_01","walk_04":"walk_00","walk_05":"walk_02",
           "attack_02":"attack_00","attack_03":"attack_01",
           "hurt_01":"hurt_00","hurt_02":"hurt_00","hurt_03":"hurt_00",
           "death_02":"death_01","death_03":"death_01"}
-CHARS = "tank healer guardian berserker swordsman archer summoner priest druid bard shaman elemental".split()
+# 기본 5직업은 오너 전시 시트(apply_showcase_sheets)가 붙인 13장이다.
+# p22가 끝나면 전직·몹만 덮는다 — 탱·힐을 다시 덮으면 방금 적용이 사라진다.
+CHARS = "guardian berserker swordsman archer summoner priest druid bard shaman elemental".split()
 MOBS = "mob01 mob_chaser mob_charger mob_ranged mob_swarmer".split()
 
 def split(sheet, names, dest, prefix):
@@ -29,7 +33,7 @@ def main():
         dest.mkdir(parents=True, exist_ok=True)
         idle = SRC / f"{j}_idle_00.png"
         if idle.exists():
-            shutil.copy2(idle, dest / f"{j}_idle_00.png")
+            knock_bg.apply_path(idle, dest / f"{j}_idle_00.png", crop=True)
         split(SRC / f"sheet_{j}_walk.png", WALK, dest, j)
         split(SRC / f"sheet_{j}_act.png", ACT, dest, j)
         print(j, len(list(dest.glob("*.png"))))
@@ -38,7 +42,7 @@ def main():
         if p.exists():
             d = RES / "ui" / "portraits"
             d.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(p, d / f"{n}.png")
+            knock_bg.apply_path(p, d / f"{n}.png", crop=True)
             print("portrait", n)
     for m in MOBS:
         dest = RES / "sprites" / m

@@ -90,19 +90,9 @@ def auto_cell_boxes(img: Image.Image, tol: int = 120, min_gap_frac: float = 0.01
 
 
 def keyed(cell: Image.Image, tol: int = 120) -> Image.Image:
-    """마젠타 제거 + 디스필. aigen.chroma_key와 같은 규칙을 쓴다."""
-    a = np.asarray(cell.convert("RGB")).astype(np.int16)
-    d = np.sqrt(((a - np.array(CHROMA)) ** 2).sum(axis=2))
-    alpha = np.where(d < tol, 0, 255).astype(np.uint8)
-    r, g, b = a[..., 0], a[..., 1], a[..., 2]
-    spill = np.minimum(r, b) - g
-    hit = (alpha == 255) & (spill > 0)
-    cap = g + np.maximum(0, (spill * 0.25).astype(np.int16))
-    rgb = a.copy()
-    rgb[..., 0] = np.where(hit, np.minimum(r, cap), r)
-    rgb[..., 2] = np.where(hit, np.minimum(b, cap), b)
-    return Image.fromarray(
-        np.dstack([np.clip(rgb, 0, 255).astype(np.uint8), alpha]), "RGBA")
+    """마젠타·흰·회색·바둑판 배경 제거. 마젠타만 믿으면 칸 안이 흰 장에서 실패한다."""
+    from knock_bg import apply
+    return apply(cell, crop=False)
 
 
 def bbox_of(im: Image.Image):

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import shutil
+import sys
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import knock_bg
 SRC = HERE / "out_p23_fx"
 RES = HERE.parent / "unity" / "Assets" / "Resources"
 SINGLES = "fx_hit fx_slash fx_heal fx_fire fx_shield fx_taunt fx_summon fx_death".split()
@@ -22,7 +24,7 @@ def cp(name, dest):
     if not src.exists():
         print("없음", name); return
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dest)
+    knock_bg.apply_path(src, dest, crop=True)
     print("→", dest)
 
 def main():
