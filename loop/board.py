@@ -135,6 +135,83 @@ def item_id(text: str) -> str:
     return hashlib.sha1(text.strip().encode("utf-8")).hexdigest()[:12]
 
 
+_TITLE_HINTS = (
+    (re.compile(r"지금 문제점"), "캐릭터·몹 움직임과 겹침"),
+    (re.compile(r"^UI 퀄리티"), "화면이 아직 어색한 곳"),
+    (re.compile(r"소비처 0곳|기획서\s*✅"), "기획만 있고 안 만든 기능"),
+    (re.compile(r"글씨"), "글씨를 테두리 안에"),
+    (re.compile(r"사용량"), "보드에 사용량 보이기"),
+    (re.compile(r"보스.*애니|스프라이트 애니"), "보스 움직임 그림"),
+    (re.compile(r"클래시오브클랜|영지.*건물"), "영지에서 건물 관리"),
+    (re.compile(r"보스.*공격|공격을 안"), "보스가 때리게"),
+    (re.compile(r"명령.*기록|할일 상위|할 일 상위"), "시킨 일을 보드에 남기기"),
+)
+
+
+def humanize_title(title: str, detail: str = "") -> str:
+    """보드에 올리는 한 줄. INBOX 시각·조문·코드 이름은 뺀다."""
+    t = re.sub(r"\s+", " ", title or "").strip()
+    t = re.sub(r"^[📌⭐✅⚠]\s*", "", t)
+    t = re.sub(r"^INBOX\s+\d{1,2}:\d{2}\s+", "", t)
+    t = re.sub(r"\s*\(오너[^)]*\)\s*$", "", t)
+    t = re.sub(r"\s*§[0-9.\-]+", "", t)
+    for pat, label in _TITLE_HINTS:
+        if pat.search(t):
+            t = label
+            break
+    t = re.sub(r"`[^`]+`", "", t)
+    t = re.sub(r"\s+", " ", t).strip(" ·,;—-")
+    return _now_short(t, 36) if t else "할 일"
+
+
+def humanize_detail(text: str, limit: int = 88) -> str:
+    """설명은 한 줄. 코드·조문·로그 문장은 잘라 낸다."""
+    t = text or ""
+    t = re.sub(r"^>\s?", "", t, flags=re.M)
+    leftover = re.findall(r"[^.。\n]{8,70}남음", t)
+    t = re.sub(r"대기하지 말[고다요]?\s*", "", t)
+    t = re.sub(r"큐\s*\d+번은[^.]*\.?\s*", "", t)
+    t = re.sub(r"INBOX\s+\d{1,2}:\d{2}\s*", "", t)
+    t = re.split(r"`|라 대화|사람 육안|루프는|생산 소비처|TDD/실행|네거티브", t, maxsplit=1)[0]
+    t = re.sub(r"§[0-9.\-]+", "", t)
+    t = re.sub(r"\*\*([^*]+)\*\*", r"\1", t)
+    t = re.sub(r"\[[^\]]+\.png[^\]]*\]", "", t)
+    t = re.sub(r"\bqa_[^\s]+\.png\b", "", t, flags=re.I)
+    t = re.sub(r"`?[0-9a-f]{8,40}`?", "", t)
+    t = re.sub(r"\b[A-Za-z][A-Za-z0-9_./-]*[A-Za-z0-9]\b", "", t)
+    t = re.sub(r"/[A-Za-z][A-Za-z0-9_]*", "", t)
+    t = re.sub(r"\d+-슬라이스\s*", "", t)
+    t = re.sub(r"원장\s*§[^\n·]*", "", t)
+    t = re.sub(r"근거 있음", "기획과 코드가 있다", t)
+    t = re.sub(r"^원장\s*[·,]\s*", "", t)
+    t = re.sub(r"\s+", " ", t).strip(" ·,;—-\n")
+    if leftover and (len(t) > limit or "닫음" in (text or "") or "·" in t[:20]):
+        t = leftover[-1].strip()
+    for sep in (". ", " · "):
+        if sep in t:
+            first = t.split(sep, 1)[0].strip()
+            if len(first) >= 8:
+                t = first
+                break
+    return _now_short(t, limit) if t else ""
+
+
+def _plain_item(it: dict, detail_key: str = "detail") -> dict:
+    out = dict(it)
+    raw_t = str(out.get("title") or "")
+    raw_d = str(out.get(detail_key) or out.get("body") or "")
+    out["title"] = humanize_title(raw_t, raw_d)
+    if detail_key in out:
+        out[detail_key] = humanize_detail(raw_d)
+    if "body" in out:
+        out["body"] = humanize_detail(str(it.get("body") or ""), 120)
+    return out
+
+
+def _plain_list(items: list, detail_key: str = "detail") -> list:
+    return [_plain_item(it, detail_key) for it in (items or [])]
+
+
 def parse_queue(status: str) -> list[dict]:
     """STATUS 「다음 할 일」 번호 목록."""
     m = re.search(r"^## 다음 할 일[^\n]*\n", status, re.M)
@@ -2027,27 +2104,35 @@ def build_state() -> dict:
         parse_now_list(_read(GAME_DESIGN)), design, status, decisions)
     extra = table + now_list
     flags = loop_flags()
+    now = dict(flags.get("now") or {})
+    if now.get("title"):
+        now["title"] = humanize_title(now["title"])
+        flags = dict(flags)
+        flags["now"] = now
+    inbox_box = parse_inbox(inbox)
+    inbox_box["waiting"] = _plain_list(inbox_box.get("waiting") or [], "body")
+    inbox_box["done"] = _plain_list(inbox_box.get("done") or [], "body")
     return {
         "updated": parse_updated(status),
-        "queue": queue,
-        "results": parse_results(status),
-        "milestones": miles,
-        "inbox": parse_inbox(inbox),
+        "queue": _plain_list(queue),
+        "results": _plain_list(parse_results(status), "body"),
+        "milestones": _plain_list(miles),
+        "inbox": inbox_box,
         "checks": checks,
         "decisions": decisions,
-        "choices": pending_choices(queue, miles, decisions, extra),
+        "choices": _plain_list(pending_choices(queue, miles, decisions, extra)),
         "loop": flags,
         "commits": recent_commits(),
         "git": dirty_files(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
-        "slice": slice_checks(status, design, _read(GAME_DESIGN)),
-        "stuck": stuck_items(status, flags),
-        "completed": completed_posts(status),
+        "slice": _plain_list(slice_checks(status, design, _read(GAME_DESIGN))),
+        "stuck": _plain_list(stuck_items(status, flags)),
+        "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
         "grok": grok_usage(),
         "claude": claude_usage(),
         "codex": codex_usage(),
-        "commands": load_commands()[:24],
+        "commands": _plain_list(load_commands()[:24], "body"),
     }
 
 

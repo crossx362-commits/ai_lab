@@ -338,7 +338,7 @@ class ParseTests(unittest.TestCase):
         self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
         self.assertLess(html.find('id="queue"'), html.find('id="choices"'))
         self.assertIn("renderCommands", html)
-        self.assertIn("오너 명령", html)
+        self.assertIn("내가 시킨 일", html)
         self.assertEqual(html.count('id="queue"'), 1)
 
 
@@ -369,6 +369,48 @@ class WriteTests(unittest.TestCase):
     def test_empty_title_rejected(self):
         with self.assertRaises(ValueError):
             board.write_request("  ", "본문")
+
+
+class PlainCopyTests(unittest.TestCase):
+    def test_inbox_stamp_and_code_leave_the_title(self):
+        t = board.humanize_title(
+            "INBOX 08:47 지금 문제점",
+            "캐릭터·몹 움직임, 겹치지 않게. `W3Party`라 대화 세션.",
+        )
+        self.assertNotIn("INBOX", t)
+        self.assertNotIn("08:47", t)
+        self.assertNotIn("W3Party", t)
+        self.assertTrue("움직임" in t or "겹침" in t)
+
+    def test_detail_drops_code_and_keeps_one_line(self):
+        d = board.humanize_detail(
+            "캐릭터·몹 움직임, 겹치지 않게. 움직임은 `W3Party`라 대화 세션. 사람 육안."
+        )
+        self.assertNotIn("W3Party", d)
+        self.assertNotIn("`", d)
+        self.assertIn("움직임", d)
+        self.assertLess(len(d), 90)
+
+    def test_hint_reads_title_not_body(self):
+        t = board.humanize_title(
+            "긴급 탈출 보상 포기",
+            "움직임·겹침은 W3Party라 대화 세션.",
+        )
+        self.assertIn("탈출", t)
+        self.assertNotIn("움직임", t)
+
+    def test_loop_meta_is_not_a_description(self):
+        d = board.humanize_detail("큐 1번은 움직임·겹침이 W3Party/FieldDecor라 대기하지 않음.")
+        self.assertNotIn("큐 1번", d)
+        self.assertNotIn("FieldDecor", d)
+
+    def test_leftover_sentence_beats_closed_list(self):
+        d = board.humanize_detail(
+            "하단 도크·격자 8×8는 닫음. 캐릭터창 3열 명부·장비 둘레 라벨 잘림은 남음. "
+            "`UiPages` 근거."
+        )
+        self.assertIn("남음", d)
+        self.assertNotIn("UiPages", d)
 
 
 class CommandLogTests(unittest.TestCase):
