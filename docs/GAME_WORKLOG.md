@@ -10,6 +10,17 @@
 
 ---
 
+## 개발 보드 운영 (2026-08-17, 오너 「항상 잘 관리해」)
+
+8766 보드. 원장은 `loop/board.py` 머리말. 세션이 보드를 만지면 아래를 유지한다.
+
+- 채팅 지시 → `python3 loop/board.py command "제목" "본문"` (`owner_commands.json`)
+- 다음 할 일은 위. 프로토가 끝나면 지금 단계(마을·탑·장비)로 바꾼다.
+- 글은 짧은 한국어. `humanize_title`/`humanize_detail`
+- 외부 테스터는 아나만. V4 10명은 키트에서 뺀 상태
+- 끝난 일 검은 화면 PNG 금지 (`shot_is_black`)
+- 회귀: `python3 -m unittest loop.test_board loop.test_v4_playtest`
+
 ## 크롬 글씨 여백 (2026-08-17)
 
 오너 타이틀 스크린샷: 「게임 시작」이 금테에 겹침. 9-slice dest(패널 짧은 변 24%)와

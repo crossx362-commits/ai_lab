@@ -9,7 +9,14 @@
 함대 FleetView(8765)와 별개다. 이 화면은 루프가 읽는 파일만 다룬다:
 STATUS.md · DESIGN.md · feedback/INBOX.md · loop/HOLD·STOP·agent.
 요청은 INBOX 「대기 중」에 붙고, 다음 이터레이션이 큐보다 먼저 읽는다.
-채팅으로 받은 오너 명령은 `python3 loop/board.py command "제목" "본문"` 으로 남긴다.
+
+오너 지시(2026-08-17) — 보드는 항상 이렇게 관리한다:
+1. 채팅 지시도 남긴다. `python3 loop/board.py command "제목" "본문"`
+2. 다음 할 일은 화면 위쪽. 끝난 프로토(V1~V4)는 접고 지금 단계를 보여 준다.
+3. 칸·제목·설명은 짧은 한국어. INBOX 시각·조문·코드 이름을 그대로 올리지 않는다.
+4. 끝난 외부 테스터는 두지 않는다. 지금 하는 사람(아나)만.
+5. 끝난 일 갤러리에 검은 화면 PNG를 올리지 않는다.
+규칙을 바꾸려면 오너가 다시 말하기 전에는 되돌리지 마라.
 """
 from __future__ import annotations
 

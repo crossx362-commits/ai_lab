@@ -3,6 +3,7 @@
 """개발 보드 파서·INBOX 기록 회귀."""
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -502,6 +503,27 @@ class CheckTests(unittest.TestCase):
                 self.assertEqual(board.load_checks()["abc"]["at"], "now")
             finally:
                 board.CHECKS_PATH = old
+
+
+class BoardManageTests(unittest.TestCase):
+    """오너 2026-08-17: 보드 규칙을 되돌리면 이 테스트가 먼저 깨진다."""
+
+    def test_standing_rules_are_still_in_force(self):
+        doc = (HERE / "board.py").read_text(encoding="utf-8")
+        html = (HERE / "board.html").read_text(encoding="utf-8")
+        self.assertIn("board.py command", doc)
+        self.assertIn("아나", doc + (HERE / "v4_testers.json").read_text(encoding="utf-8"))
+        self.assertIn("검은 화면", doc)
+        self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
+        self.assertIn("할 일 적기", html)
+        self.assertIn("내가 시킨 일", html)
+        self.assertIn("테스트 하는 사람", html)
+        self.assertTrue(callable(board.record_command))
+        self.assertTrue(callable(board.humanize_title))
+        self.assertTrue(callable(board.shot_is_black))
+        self.assertTrue(callable(board.pick_current_stage))
+        kit = json.loads((HERE / "v4_testers.json").read_text(encoding="utf-8"))
+        self.assertEqual([t["name"] for t in kit["testers"]], ["아나"])
 
 
 class CommitAllowTests(unittest.TestCase):
