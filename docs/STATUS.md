@@ -6,16 +6,41 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-17 · 루프(목숨 시세 하한)
+최종 갱신: 2026-08-17 · 루프(누적 출전 시간)
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
 1. **INBOX 08:47 지금 문제점** — 캐릭터·몹 움직임, 맵 전투에서 캐릭터/몹/배경 비율, 캐릭터·몹·집이 겹치지 않게. 움직임·겹침은 `W3Party`/`FieldDecor`라 대화 세션. UI 퀄리티 전체는 사람 육안. 금테·글씨 여백은 대화 세션 `0d8e50da`. 루프는 전투 밖만.
 2. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45 · 08:37 글씨 위치는 닫음) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스·긴급 탈출 보상 포기·넓은 카드 글씨 가운데·목숨 시세 하한은 닫음. 캐릭터창 3열 명부·장비 둘레 라벨 잘림은 남음. 허브 마을 전경은 `9f4336f8`. 금테 여백은 `0d8e50da`. 전체 「다른 게임만큼」은 사람 육안.
-3. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `LifePrice.Floor`/`BelowFloor`/`Copper`를 `ListPrice`·`TryListItem`·NPC가 읽음. `EscapeForfeit.Apply`/`Line`/`Body`가 긴급 탈출 포기를 읽음. `InvasionState.AbortPending`이 패배 추가 소모 없이 대기를 취소. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`이 최고 층·마지막 출전·사망 원인·장착·동료를 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전 시간은 시계가 없어 안 넣음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 생존형 HP 50% 이탈은 W3Party. 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
+3. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `SortieTime.Apply`/`AddToIndexes`/`Line`을 전투·일정·영묘가 읽음. `LifePrice.Floor`/`BelowFloor`/`Copper`를 `ListPrice`·`TryListItem`·NPC가 읽음. `EscapeForfeit.Apply`/`Line`/`Body`가 긴급 탈출 포기를 읽음. `InvasionState.AbortPending`이 패배 추가 소모 없이 대기를 취소. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`/`TimeLine`이 최고 층·마지막 출전·사망 원인·장착·동료·누적 출전을 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전은 `SortieTime`이 닫음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 생존형 HP 50% 이탈은 W3Party. 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 목숨 아이템 경매 시세 하한 — 환생석 150 G/h.**
+> **이번 이터 결과(코드/실행): 영묘 누적 출전 시간 — 전투·일정이 초를 남긴다.**
+> - 큐 1번은 움직임·겹침이 W3Party/FieldDecor라 대기하지 않음. §4 ✅ 영묘 기록의
+>   `누적 출전 시간`만 소비처 0곳이었다. 전투 `_t`와 일정 `Tick`이 이미 시계다.
+> - **생산 소비처**: `SortieTime.Apply`/`AddToIndexes`/`Seconds`/`Line`/`Format`/
+>   `SeedQaIfRequested`. `BattleScreen.RecordSortie`가 한 판의 초를 편성에 더한다.
+>   `HuntSchedule.Tick`이 흐른 초를 일정 명부에 더한다. `Memorial.TimeLine`이 줄을 읽는다.
+>   영묘·캐릭터가 삭제 칸에서 읽는다. `QA_NO_SORTIE_TIME=1`이면 0. `QA_MEMORIAL=1`은
+>   추모시험+1시간. `W3Party`는 안 건드렸다.
+> - **통과 기준**: Apply 3600 → 출전 1시간 0분. 1초 미만 0. 일정 Tick 3600=3600.
+>   재기동 유지. 차단하면 0. 화면 `출전 1시간 0분(§4)` ·
+>   `이름·직업·최고 층·사망 원인·마지막 동료·누적 출전을 남긴다(§4)`.
+> - **TDD/실행**: `unity_meas` `SortieTimeSelfCheck` 전항 PASS
+>   (`sortie_time_selfcheck.log`). `MemorialSelfCheck` 회귀 PASS.
+> - **화면**(직접 열음, 빈 화면 아님, `QA_MEMORIAL=1`):
+>   `sortie_time_shots/qa_go:Estate.png` 728838B — 영지·영묘,
+>   자막 `이름·직업·최고 층·사망 원인·마지막 동료·누적 출전을 남긴다(§4)`,
+>   `추모시험 · 수호기사 Lv50` · `30층 · 탑 · 보스전 전멸(§4)` ·
+>   `동료 힐러(§4)` · `출전 1시간 0분(§4)`.
+>   옛 층·동료만 있던 영묘가 아님.
+> - **네거티브**: `BattleScreen`에서 `SortieTime.Apply`를 빼면 FAIL 1
+>   (`sortie_time_negctrl.log` — 전투가 Apply를 읽는다). `QA_NO`면 0.
+> - **정직한 미완**: 생전 스킬 목록·환생 스킬 1개 선택은 안 넣음.
+>   원본 에디터 PID 75776은 죽이지 않았고 사본으로 빌드·촬영.
+> - **코드** `e769f877`. `W3Party`는 안 건드렸다.
+
+> **이전 이터 결과(코드/실행): 목숨 아이템 경매 시세 하한 — 환생석 150 G/h.**
 > - 큐 1번은 움직임·겹침이 W3Party/FieldDecor라 대기하지 않음. 같은 시각 대화 세션이
 >   UI 파일을 고치고 있어(`0d8e50da`) 그 트랙은 안 건드렸다. §4 ✅ `경매장에서도 싸지 않다`
 >   · §18-4 ✅ 두루마리 2 / 부활초 3 / 환생석 150 G/h. `ListPrice`는 T1 환생석을 20골드로
