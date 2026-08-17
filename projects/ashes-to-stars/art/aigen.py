@@ -102,6 +102,16 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
 # `--model`로 덮어쓰지 마라. Pro·Gemini·Imagine 금지.
 HF_MODEL = "nano_banana_flash"
 HF_RESOLUTION = "2k"
+# 오너 2026-08-18: 할로우 나이트면 흑백 느낌. 상세는 STYLE_HOLLOW.md.
+HOLLOW_STYLE = (
+    "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: "
+    "Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask "
+    "with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). "
+    "Thick smooth dark outlines + soft painterly shading inside. One accent color at most, "
+    "used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shine, NO grass "
+    "or ground shadow under the feet. NOT pixel art, NOT photoreal, NOT 3D, NOT chibi-cute. "
+    "Read as a dark silhouette first, then a pale mask."
+)
 _HF_ALIAS_TO_BANANA2 = {"nano_banana_2", "nano_banana_pro", "nano_banana"}
 
 
@@ -127,7 +137,7 @@ def generate_hf(prompt: str, refs: list[str], model: str = HF_MODEL,
     print(f"   Higgsfield Nano Banana 2 ({model}) {resolution} — CLI는 언리미티드 불가, 웹은 토글 ON")
     cmd = [cli, "generate", "create", model, "--resolution", resolution,
            "--aspect-ratio", aspect,
-           "--prompt", f"{prompt}\n\n{rules or STYLE_RULES}",
+           "--prompt", f"{HOLLOW_STYLE}\n\n{prompt}\n\n{rules or STYLE_RULES}",
            "--wait", "--wait-timeout", "10m"]
     for r in refs:
         cmd += ["--image-references", r]
