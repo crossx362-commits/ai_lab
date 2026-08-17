@@ -66,6 +66,8 @@ namespace AshesToStars
                 return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
             if (SoloRaidClear.HasAny)
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
+            if (EstateBuildings.ShowQa)
+                return EstateBuildings.Line();
             if (EstateHud.ShowQa)
                 return EstateHud.Line();
             return EstateYard.Line();
@@ -145,6 +147,7 @@ namespace AshesToStars
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
+            EstateBuildings.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();

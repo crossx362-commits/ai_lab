@@ -59,5 +59,10 @@
   "village_fence_1": 0.95,
   "village_haystack_0": 2.20,
   "village_cart_0": 1.30,
-  "village_lamp_0": 2.60
+  "village_lamp_0": 2.60,
+
+  "_note_estate": "영지 기능 건물(§16). 대장간은 헛간만 하고, 영묘는 집보다 낮고, 탑은 집보다 높다.",
+  "estate_smith_0": 3.80,
+  "estate_mausoleum_0": 3.20,
+  "estate_tower_0": 4.80
 }

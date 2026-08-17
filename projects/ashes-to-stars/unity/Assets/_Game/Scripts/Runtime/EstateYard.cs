@@ -44,22 +44,9 @@ namespace AshesToStars
 
         /// <summary>
         /// 허브 칸이 쓰는 마을 프랍. FieldDecor 전용으로만 있으면 영지는 UI 아이콘 체스판이 된다.
+        /// 대장간·영묘·탑은 EstateBuildings 전용 그림(§16).
         /// </summary>
-        public static string PropOf(EstateGrid.Cell c) => c switch
-        {
-            EstateGrid.Cell.Keep => "village_house_1",
-            EstateGrid.Cell.Mine => "village_barn_0",
-            EstateGrid.Cell.Warehouse => "village_house_0",
-            EstateGrid.Cell.Smith => "village_house_2",
-            EstateGrid.Cell.Auction => "village_cart_0",
-            EstateGrid.Cell.Mausoleum => "village_well_0",
-            EstateGrid.Cell.Barracks => "village_barn_0",
-            EstateGrid.Cell.Arrow => "village_lamp_0",
-            EstateGrid.Cell.Magic => "village_lamp_0",
-            EstateGrid.Cell.Wall => "village_fence_0",
-            EstateGrid.Cell.Trap => "village_haystack_0",
-            _ => null,
-        };
+        public static string PropOf(EstateGrid.Cell c) => EstateBuildings.PropOf(c);
 
         public static string LabelOf(EstateGrid.Cell c) => c switch
         {

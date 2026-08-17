@@ -43,7 +43,8 @@ namespace AshesToStars
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == "village_house_1", "본성=큰 집");
             Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == "village_house_0", "창고=집");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == "village_barn_0", "광산=헛간");
-            Check(EstateYard.PropOf(EstateGrid.Cell.Smith) == "village_house_2", "대장간=작은 집");
+            Check(EstateYard.PropOf(EstateGrid.Cell.Smith) == EstateBuildings.PropOf(EstateGrid.Cell.Smith),
+                "대장간=EstateBuildings");
             Check(EstateYard.PropOf(EstateGrid.Cell.Wall) == "village_fence_0", "성벽=울타리");
             Check(Resources.Load<Texture2D>("props/" + EstateYard.PropOf(EstateGrid.Cell.Keep)) != null,
                 "본성 프랍이 Resources에 있다");

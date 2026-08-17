@@ -116,6 +116,10 @@ def expected() -> dict[str, list[str]]:
         for d in boss_dirs:
             out[f"sprites/{d}"] = [f"{d}_{f}.png" for f in boss_frames]
     props = set(_method_literals(fd, "GetPropNames"))
+    # 영지 전용 건물(대장간·영묘·탑)은 필드 산포에 안 넣는다 — EstateBuildings가 읽는다.
+    eb = ASSETS / "_Game" / "Scripts" / "Runtime" / "EstateBuildings.cs"
+    if eb.exists():
+        props.update(re.findall(r'"(estate_[a-z0-9_]+|village_[a-z0-9_]+)"', _src(eb)))
     # ArenaLayout은 GetPropNames에 없는 접두(cover·wall)로 던전 장애물을 세운다.
     al = ASSETS / "_Game" / "Scripts" / "Runtime" / "ArenaLayout.cs"
     for prefix in re.findall(r'"(dungeon_[a-z]+_)"', _src(al)):
