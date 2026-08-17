@@ -25,6 +25,7 @@ namespace AshesToStars
         public static bool TryBegin()
         {
             if (_casting || !HasScroll()) return false;
+            if (!EscapeManual.Allowed()) return false;
             _casting = true;
             _elapsed = 0f;
             return true;

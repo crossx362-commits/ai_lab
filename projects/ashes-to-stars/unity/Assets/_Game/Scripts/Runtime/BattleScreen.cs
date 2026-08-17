@@ -29,7 +29,7 @@ namespace AshesToStars
                 : RaidBossPool.PickedLine() + " · 기믹은 출현 보스(§9)")
             : GameFlow.Kind == GameFlow.BattleKind.침략
                 ? "로컬 별 수비대. PvP 사망은 목숨을 깎지 않는다(§15)"
-                : "잡몹은 자동. 1~5로 선택하고 우클릭으로 이동 지시(§5)";
+                : "잡몹은 자동. " + EscapeManual.Line();
         protected override bool ShowBottomBar => false;
         protected override bool ShowHeader => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
@@ -42,6 +42,7 @@ namespace AshesToStars
         bool _leftForSafety;
         bool _sortieRecorded;
         float _bossMaxHp;
+        bool _escapeReject;
 
         void RecordSortie()
         {
@@ -186,7 +187,12 @@ namespace AshesToStars
             }
             // 공통 ESC는 영지로 공짜 이동한다. 전투 귀환은 §4 두루마리 + 6초 캐스트.
             if (Input.GetKeyDown(KeyCode.Escape) && !EmergencyEscape.Casting)
-                EmergencyEscape.TryBegin();
+            {
+                if (EscapeManual.Allowed() && EmergencyEscape.TryBegin())
+                    _escapeReject = false;
+                else
+                    _escapeReject = !EscapeManual.Allowed();
+            }
             _t += Time.deltaTime;
         }
 
@@ -268,6 +274,13 @@ namespace AshesToStars
                 y = leave.yMax + 8f;
             }
             if (DrawHuntBoonPick()) return;
+            if (_escapeReject && !EmergencyEscape.Casting && !EscapeManual.Allowed())
+            {
+                var deny = new Rect(340f, y + 8f, 600f, 28f);
+                UiAtlas.DrawSliced(deny, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
+                Hint(UiAtlas.ContentRect(deny, "panel", 2f), EscapeManual.WhyNot());
+                y = deny.yMax + 8f;
+            }
             if (!EmergencyEscape.Casting) return;
             float p = EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);

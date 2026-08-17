@@ -10,6 +10,8 @@ namespace AshesToStars
         {
             EmergencyEscape.ResetForTest();
             GameState.ResetAll();
+            var oldKind = GameFlow.Kind;
+            GameFlow.Kind = GameFlow.BattleKind.보스;
 
             Debug.Assert(!EmergencyEscape.TryBegin(),
                 "[EmergencyEscapeSelfCheck] 두루마리 0개인데 캐스트가 시작됐다");
@@ -41,6 +43,7 @@ namespace AshesToStars
                 "[EmergencyEscapeSelfCheck] 다 쓴 뒤에도 캐스트가 시작된다");
 
             EmergencyEscape.ResetForTest();
+            GameFlow.Kind = oldKind;
             Debug.Log("[EmergencyEscapeSelfCheck] PASS");
         }
     }
