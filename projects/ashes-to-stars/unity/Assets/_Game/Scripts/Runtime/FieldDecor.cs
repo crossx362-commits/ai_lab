@@ -39,18 +39,76 @@ namespace AshesToStars
         static readonly System.Collections.Generic.List<(Vector2 pos, float radius)> _cover =
             new System.Collections.Generic.List<(Vector2, float)>();
 
+        /// <summary>이미 선 프랍의 그림 반경. 겹치면 다음 후보는 버린다.</summary>
+        static readonly System.Collections.Generic.List<(Vector2 pos, float r)> _placed =
+            new System.Collections.Generic.List<(Vector2, float)>();
+
         /// <summary>안쪽 프랍의 충돌 반경 — 그림 크기가 아니라 "돌아가야 하는 정도"다.</summary>
         const float COVER_RADIUS = 0.9f;
+        /// <summary>그림끼리 맞닿아도 겹쳐 보이게 하지 않으려고 한 칸 더 띄운다.</summary>
+        const float PROP_GAP = 0.12f;
+
+        static bool IsHouse(string name) =>
+            name != null && (name.StartsWith("village_house_") || name == "village_barn_0");
+
+        static bool IsTree(string name) =>
+            name != null && (name.StartsWith("field_tree_") || name.Contains("_tree_"));
 
         /// <summary>
-        /// 집·헛간 충돌. 그림 높이의 절반보다 작으면 유닛이 지붕·처마를 가로지른다
-        /// (오너 지적 「몬스터 집 위로 못다니게」).
+        /// 유닛이 뚫고 가면 안 되는 물건. 덤불·울타리·가로등은 장식이라 통과한다.
+        /// </summary>
+        public static bool IsSolidObstacle(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            if (IsHouse(name) || IsTree(name)) return true;
+            if (name.StartsWith("field_rock_") || name.StartsWith("field_stump_")) return true;
+            if (name == "village_well_0" || name == "village_haystack_0" || name == "village_cart_0")
+                return true;
+            if (name.StartsWith("dungeon_pillar_") || name.StartsWith("dungeon_crystal_")) return true;
+            if (name.StartsWith("ash_charred_")) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 집·나무·바위 충돌. 그림보다 작으면 유닛이 지붕·수관을 가로지른다
+        /// (오너 지적 「몬스터 집 배경 오브젝트 안겹치게」).
         /// </summary>
         public static float ObstacleRadius(string name)
         {
-            if (name != null && (name.StartsWith("village_house_") || name == "village_barn_0"))
+            if (IsHouse(name))
                 return Mathf.Max(2.6f, TargetUnits(name) * 0.65f);
+            if (IsTree(name))
+                return Footprint(name);
+            if (IsSolidObstacle(name))
+                return Mathf.Max(COVER_RADIUS, TargetUnits(name) * 0.42f);
             return COVER_RADIUS;
+        }
+
+        /// <summary>화면에 차지하는 원 반경. 배치 겹침은 이 값으로 본다.</summary>
+        public static float Footprint(string name)
+        {
+            if (IsHouse(name)) return ObstacleRadius(name);
+            float h = TargetUnits(name);
+            if (IsTree(name)) return Mathf.Max(1.1f, h * 0.38f);
+            if (IsSolidObstacle(name)) return Mathf.Max(0.55f, h * 0.42f);
+            return Mathf.Max(0.35f, h * 0.36f);
+        }
+
+        /// <summary>두 프랍을 그 자리에 세우면 그림이 겹치는가.</summary>
+        public static bool WouldOverlap(string a, Vector2 pa, string b, Vector2 pb)
+        {
+            float need = Footprint(a) + Footprint(b) + PROP_GAP;
+            return (pa - pb).sqrMagnitude < need * need;
+        }
+
+        static bool Occupied(Vector2 pos, float r)
+        {
+            for (int i = 0; i < _placed.Count; i++)
+            {
+                float need = r + _placed[i].r + PROP_GAP;
+                if ((pos - _placed[i].pos).sqrMagnitude < need * need) return true;
+            }
+            return false;
         }
 
         static GameObject _root;
@@ -92,6 +150,7 @@ namespace AshesToStars
             // 이전 프랍을 안 지우면 두 벌이 겹쳐 화면이 두 배로 지저분해진다.
             if (_root != null) Object.Destroy(_root);
             _cover.Clear();
+            _placed.Clear();
 
             // ── 바이옴별 프랍 목록 ────────────────
             string[] propNames = GetPropNames(biome);
@@ -177,6 +236,12 @@ namespace AshesToStars
             float step = Mathf.Max(0.8f, arenaRadius * 0.09f);
             int placed = 0, blockers = 0;
 
+            // 집을 먼저 세운다. 나무를 먼저 뿌리면 집 자리가 막혀 마을이 빠지고,
+            // 집을 나중에 세우면 나무가 지붕 위에 선다(오너 「안겹치게」).
+            int villageCount = 0;
+            if (biome == Biome.Field)
+                villageCount = BuildVillage(arenaRadius, propNames, Place, 엄폐물, roads, roadPts);
+
             // ⚠️ 상한을 루프 조건에 걸지 마라. `placed < PROP_CAP`을 for에 두면 맵을
             //    아래(-outer)부터 훑다가 상한에 닿는 순간 멈춰서 **프랍이 전부 아래쪽
             //    몇 줄에만 몰리고 그 위는 0개**가 된다. 임계를 낮춰 후보가 늘수록 더 심해진다
@@ -233,15 +298,6 @@ namespace AshesToStars
                     placed++;
                 }
 
-            // ── 마을 (오너 지시 2026-08-15 「지형을 마을처럼 구성해」) ────────────────
-            // 아레나를 **마을 광장**으로 삼는다. 집을 광장 둘레에 세우고 사이를 울타리로
-            // 잇고 길가에 가로등을 놓으면, 전투 공간은 그대로 비어 있는 채로 화면이
-            // 마을로 읽힌다. 집을 노이즈로 흩뿌리지 않는 이유가 이것이다 — 마을은
-            // **간격이 일정하고 정면이 광장을 향할 때** 마을로 보인다.
-            int villageCount = 0;
-            if (biome == Biome.Field)
-                villageCount = BuildVillage(arenaRadius, propNames, Place, 엄폐물, roads, roadPts);
-
             if (엄폐물) RegisterCover();
             Debug.Log($"[FieldDecor] {biome} 프랍 {placed}개 노이즈 배치" +
                       (villageCount > 0 ? $" + 마을 구성물 {villageCount}개" : "") +
@@ -254,7 +310,11 @@ namespace AshesToStars
                 if (propIdx < 0 || propIdx >= texes.Length) return false;
                 if (texes[propIdx] == null) return false;    // 로드 실패분은 건너뛴다
 
-                var go = new GameObject("prop_" + propNames[propIdx], typeof(SpriteRenderer));
+                string pname = propNames[propIdx];
+                float foot = Footprint(pname);
+                if (Occupied(worldPos, foot)) return false;
+
+                var go = new GameObject("prop_" + pname, typeof(SpriteRenderer));
                 go.transform.SetParent(decorRoot.transform, false);
                 go.transform.position = new Vector3(worldPos.x, worldPos.y * ISO_Y, 0.1f);
                 go.transform.localScale = Vector3.one;   // 프랍은 PPU로 크기 조정
@@ -273,7 +333,7 @@ namespace AshesToStars
                 var uv = rects[propIdx];
                 var pxRect = new Rect(uv.x * atlas.width, uv.y * atlas.height,
                                       uv.width * atlas.width, uv.height * atlas.height);
-                float ppu = pxRect.height / Mathf.Max(0.05f, TargetUnits(propNames[propIdx]));
+                float ppu = pxRect.height / Mathf.Max(0.05f, TargetUnits(pname));
                 sr.sprite = Sprite.Create(atlas, pxRect, Vector2.one * 0.5f, ppu, 0,
                                          SpriteMeshType.FullRect);
                 sr.sharedMaterial = mat;
@@ -285,13 +345,13 @@ namespace AshesToStars
                 //    공식은 W3Party.Depth와 동일하게 유지할 것 — 한쪽만 바꾸면 다시 어긋난다.
                 sr.sortingOrder = 1000 - Mathf.RoundToInt(worldPos.y * 10f);
 
+                _placed.Add((worldPos, foot));
                 // 아레나 안에 선 프랍은 **보이기만 하면 안 된다** — 지나갈 수 있으면
                 // 엄폐가 성립하지 않고, 그림만 있는 장애물은 오히려 유저를 속인다.
-                if (asCover)
+                // 집 옆 나무·건초는 asCover=false 로 오지만 고체면 몬스터가 뚫으면 안 된다.
+                if (asCover || (엄폐물 && IsSolidObstacle(pname)))
                 {
-                    // 건물은 크게, 자연물은 기존대로. 이름으로 가른다 — 크기표(prop_scale)를
-                    // 다시 읽는 것보다 단순하고, 마을 구성물은 이미 접두로 구분돼 있다.
-                    _cover.Add((worldPos, ObstacleRadius(propNames[propIdx])));
+                    _cover.Add((worldPos, ObstacleRadius(pname)));
                     blockers++;
                 }
                 return true;

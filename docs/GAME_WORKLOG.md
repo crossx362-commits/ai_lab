@@ -21,6 +21,13 @@
 - 끝난 일 검은 화면 PNG 금지 (`shot_is_black`)
 - 회귀: `python3 -m unittest loop.test_board loop.test_v4_playtest`
 
+## 몬스터·집·배경 안 겹치게 (2026-08-17)
+
+오너 「몬스터 집 배경 오브젝트 안겹치게해」. `FieldDecor.Place`가 이미 선 프랍을
+안 봐서 나무·바위가 지붕 위에 앉고, 집 옆 나무는 `asCover=false`라 몹이 뚫었다.
+고침: 집을 먼저 세우고 `_placed` 원으로 겹치면 버린다. 집·나무·바위·건초는
+엄폐 모드에서 `ArenaLayout` 장애물. `FieldDecorOverlapSelfCheck`.
+
 ## 크롬 글씨 여백 (2026-08-17)
 
 오너 타이틀 스크린샷: 「게임 시작」이 금테에 겹침. 9-slice dest(패널 짧은 변 24%)와

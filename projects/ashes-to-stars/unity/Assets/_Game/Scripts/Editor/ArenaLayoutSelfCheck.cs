@@ -12,10 +12,13 @@ namespace AshesToStars
         {
             float house = FieldDecor.ObstacleRadius("village_house_1");
             float bush = FieldDecor.ObstacleRadius("field_bush_0");
+            float tree = FieldDecor.ObstacleRadius("field_tree_1");
             Debug.Assert(house > bush + 1f,
                 "[ArenaLayoutSelfCheck] 집 반경이 덤불과 비슷하면 지붕을 가로지른다");
             Debug.Assert(house >= 2.6f,
                 "[ArenaLayoutSelfCheck] 집 반경이 그림 절반보다 작다");
+            Debug.Assert(tree > bush,
+                "[ArenaLayoutSelfCheck] 나무 반경이 덤불과 같으면 수관을 가로지른다");
 
             ArenaLayout.Clear();
             ArenaLayout.AddObstacle(Vector2.zero, 2.6f);
