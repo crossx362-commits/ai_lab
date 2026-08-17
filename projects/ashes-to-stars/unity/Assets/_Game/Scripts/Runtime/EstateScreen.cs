@@ -66,6 +66,8 @@ namespace AshesToStars
                 return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
             if (SoloRaidClear.HasAny)
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
+            if (EstateHud.ShowQa)
+                return EstateHud.Line();
             return EstateYard.Line();
         }
 
@@ -142,6 +144,7 @@ namespace AshesToStars
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
+            EstateHud.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
@@ -241,9 +244,15 @@ namespace AshesToStars
 
             if (_selX < 0)
                 Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f), hud);
-            var paletteOn = new Rect(r.x, r.yMax - EstateYard.PaletteH, r.width, EstateYard.PaletteH);
-            var inspectOn = new Rect(r.x, paletteOn.y - EstateYard.InspectorH, r.width, EstateYard.InspectorH);
-            DrawVillageInspect(inspectOn);
+            bool selected = _selX >= 0;
+            float palH = EstateHud.PaletteH;
+            float insH = EstateHud.InspectH(selected);
+            var paletteOn = new Rect(r.x, r.yMax - palH, r.width, palH);
+            if (EstateHud.ShowInspectBar(selected) && insH > 1f)
+            {
+                var inspectOn = new Rect(r.x, paletteOn.y - insH, r.width, insH);
+                DrawVillageInspect(inspectOn);
+            }
             DrawVillagePalette(paletteOn);
         }
 
@@ -294,15 +303,43 @@ namespace AshesToStars
 
         void DrawVillageInspect(Rect r)
         {
+            if (!EstateHud.ShowInspectBar(_selX >= 0) && !EstateYard.FillBlocked)
+                return;
             if (_selX < 0 || !EstateGrid.InBounds(_selX, _selY))
             {
-                Info(r, 0, "건물을 누르면 들어간다. 빈 칸은 아래 선택한 방어를 놓는다.");
+                if (EstateHud.Blocked || EstateYard.FillBlocked)
+                    Info(r, 0, "건물을 누르면 들어간다. 빈 칸은 아래 선택한 방어를 놓는다.");
                 return;
             }
             var cell = EstateGrid.At(_selX, _selY);
             string title = EstateYard.LabelOf(cell);
             string sub = YardInspectLine(cell);
             string icon = EstateYard.IconOf(cell);
+            bool fat = EstateHud.Blocked || EstateYard.FillBlocked;
+            if (!fat)
+            {
+                if (EstateGrid.IsDefense(cell))
+                {
+                    Hint(new Rect(r.x, r.y, Mathf.Max(40f, r.width - 140f), r.height),
+                        title + " · 한 번 더 누르면 거둔다");
+                    var btn = new Rect(r.xMax - 128f, r.y, 128f, r.height);
+                    UiAtlas.DrawSliced(btn, UiAtlas.ButtonKey(false, false), 8f);
+                    if (!string.IsNullOrEmpty(icon))
+                        UiAtlas.DrawFit(new Rect(btn.x + 6f, btn.y + 4f, 28f, 28f), icon);
+                    Hint(new Rect(btn.x + 36f, btn.y, btn.width - 40f, btn.height), "회수");
+                    if (GUI.Button(btn, GUIContent.none, GUIStyle.none))
+                    {
+                        EstateGrid.TryPickUp(_selX, _selY);
+                        _selX = -1;
+                        _selY = -1;
+                    }
+                    return;
+                }
+                Hint(r, title + " · " + sub);
+                if (EstateGrid.IsHub(cell) && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                    OpenHub(cell);
+                return;
+            }
             if (EstateGrid.IsDefense(cell))
             {
                 if (DrawCard(r, title + " · 회수", "한 번 더 누르면 거둔다 · " + sub, icon))
@@ -364,18 +401,33 @@ namespace AshesToStars
         void DrawVillagePalette(Rect r)
         {
             var kinds = EstateDefense.All;
-            float bw = (r.width - 8f) / kinds.Length;
+            var tiles = EstateHud.PaletteTiles(r, kinds.Length);
             for (int i = 0; i < kinds.Length; i++)
             {
                 var k = kinds[i];
                 var cellKind = EstateGrid.CellOf(k);
-                var b = new Rect(r.x + i * bw, r.y + 4f, bw - 6f, r.height - 6f);
+                var b = tiles[i];
                 int left = EstateGrid.Unplaced(cellKind);
                 bool on = _placeKind == cellKind;
                 string title = on ? $"선택 {k}" : $"{k}";
-                if (DrawCard(b, $"{title} · {left}",
-                        left > 0 ? "빈 칸에 놓는다" : "레벨만큼만",
-                        UiAtlas.BuildingKey(k.ToString())))
+                string icon = UiAtlas.BuildingKey(k.ToString());
+                if (EstateHud.Blocked || EstateYard.FillBlocked)
+                {
+                    if (DrawCard(b, $"{title} · {left}",
+                            left > 0 ? "빈 칸에 놓는다" : "레벨만큼만", icon))
+                        _placeKind = cellKind;
+                    continue;
+                }
+
+                string btnKey = UiAtlas.ButtonKey(false, on);
+                UiAtlas.DrawSliced(b, btnKey, 8f,
+                    on ? (Color?)null : new Color(1f, 1f, 1f, 0.72f));
+                var inner = UiAtlas.ContentRect(b, btnKey, 2f);
+                float ih = Mathf.Min(22f, inner.height - 12f);
+                if (ih > 8f && !string.IsNullOrEmpty(icon))
+                    UiAtlas.DrawFit(new Rect(inner.center.x - ih * 0.5f, inner.y, ih, ih), icon);
+                Hint(new Rect(inner.x, inner.yMax - 14f, inner.width, 14f), $"{k} {left}");
+                if (GUI.Button(b, GUIContent.none, GUIStyle.none))
                     _placeKind = cellKind;
             }
         }
