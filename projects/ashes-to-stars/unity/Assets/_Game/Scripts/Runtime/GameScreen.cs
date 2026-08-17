@@ -58,13 +58,13 @@ namespace AshesToStars
 
         // 기준 해상도 — 모든 좌표는 이 안에서 계산한다
         protected const float REF_W = 1280f, REF_H = 720f;
-        /// <summary>제목판. 118px면 720p 본문이 카드 한 줄도 못 채운다.</summary>
-        public const float HeaderH = 88f;
-        public const float BodyTop = 100f;
+        /// <summary>제목판. 118px면 720p 본문이 카드 한 줄도 못 채운다. 슬림은 HubHeader.</summary>
+        public static float HeaderH => HubHeader.H;
+        public static float BodyTop => HubHeader.BodyTop;
         public const float BodyPadX = 36f;
         protected const float RowH = 64f, RowGap = 12f, RowBtnW = 360f;
 
-        GUIStyle _h1, _h2, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
+        GUIStyle _h1, _h2, _h1Slim, _h2Slim, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
         Texture2D _bg, _line, _accent, _scrim;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
@@ -116,6 +116,8 @@ namespace AshesToStars
             if (_h1 != null) return;
             _h1 = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
             _h2 = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true, normal = { textColor = Dim } };
+            _h1Slim = new GUIStyle(_h1) { fontSize = 20 };
+            _h2Slim = new GUIStyle(_h2) { fontSize = 14 };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
@@ -174,15 +176,21 @@ namespace AshesToStars
 
             if (ShowHeader)
             {
+                HubHeader.SeedQaIfRequested();
+                float h = HeaderH;
                 // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
-                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, HeaderH), _scrim);
-                GUI.DrawTexture(new Rect(0, 0, REF_W, HeaderH), _line);
-                GUI.DrawTexture(new Rect(0, HeaderH - 2, REF_W, 2), _accent);
+                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, h), _scrim);
+                GUI.DrawTexture(new Rect(0, 0, REF_W, h), _line);
+                GUI.DrawTexture(new Rect(0, h - 2, REF_W, 2), _accent);
+                var icon = HubHeader.IconRect();
                 bool atlas = !string.IsNullOrEmpty(HeaderIcon)
-                    && UiAtlas.DrawFit(new Rect(18, 14, 60, 60), HeaderIcon);
-                UiPages.LabelClip(new Rect(atlas ? 90 : 28, 10, REF_W - (atlas ? 120 : 56), 42), Title, _h1);
-                if (!string.IsNullOrEmpty(Subtitle))
-                    UiPages.LabelClip(new Rect(atlas ? 90 : 28, 52, REF_W - 80, 30), Subtitle, _h2);
+                    && UiAtlas.DrawFit(icon, HeaderIcon);
+                var titleStyle = HubHeader.Blocked ? _h1 : _h1Slim;
+                var subStyle = HubHeader.Blocked ? _h2 : _h2Slim;
+                string shownSub = HubHeader.ShowQa ? HubHeader.Line() : Subtitle;
+                UiPages.LabelClip(HubHeader.TitleRect(atlas), Title, titleStyle);
+                if (!string.IsNullOrEmpty(shownSub))
+                    UiPages.LabelClip(HubHeader.SubtitleRect(atlas), shownSub, subStyle);
             }
 
             float bottom = ShowBottomBar ? UiPages.NavReserve : 36f;
