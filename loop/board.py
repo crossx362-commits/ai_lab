@@ -183,6 +183,8 @@ def humanize_detail(text: str, limit: int = 88) -> str:
     t = re.sub(r"\d+-슬라이스\s*", "", t)
     t = re.sub(r"원장\s*§[^\n·]*", "", t)
     t = re.sub(r"근거 있음", "기획과 코드가 있다", t)
+    t = re.sub(r"원장을 훑어 다음 구멍을 큐에 올린다",
+               "기획서에서 아직 안 만든 기능을 찾는다", t)
     t = re.sub(r"^원장\s*[·,]\s*", "", t)
     t = re.sub(r"\s+", " ", t).strip(" ·,;—-\n")
     if leftover and (len(t) > limit or "닫음" in (text or "") or "·" in t[:20]):
