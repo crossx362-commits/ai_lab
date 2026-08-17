@@ -662,6 +662,39 @@ public class W3Party : MonoBehaviour
     /// 에셋(Resources/races)을 읽는 유일한 런타임 소비처다. 전투에 걸리는 것은 체력·이속뿐 —
     /// 방어/경험치/드랍/영지는 전투 밖 계량이라 W3에 없다. 실패해도(에셋 없음 등) 인간=1로
     /// 조용히 넘어간다. `_forcedRace`(하네스 `--race`)가 있으면 그것, 없으면 계정 선택.</summary>
+    void LoadRunBoons()
+    {
+        _bAtk = _bHp = _bSpd = _bCd = _bHeal = _bShield = _bRange = _bAtkSpd = 1f;
+        if (AshesToStars.HuntBoon.Active)
+            AshesToStars.Boons.Multipliers(AshesToStars.HuntBoon.Owned, out _bAtk, out _bHp, out _bSpd,
+                                           out _bCd, out _bHeal, out _bShield, out _bRange, out _bAtkSpd);
+        else if (DungeonRun.Active)
+            AshesToStars.Boons.Multipliers(DungeonRun.State.Boons, out _bAtk, out _bHp, out _bSpd,
+                                           out _bCd, out _bHeal, out _bShield, out _bRange, out _bAtkSpd);
+    }
+
+    /// <summary>3택을 고른 뒤 배율을 다시 얹는다. NextStyle을 부르면 판이 리셋된다.</summary>
+    public void RefreshHuntBoons()
+    {
+        float oldHp = _bHp, oldAtk = _bAtk, oldRange = _bRange;
+        LoadRunBoons();
+        ApplyRaceModifiers();
+        if (_party == null) return;
+        float hpR = _bHp / Mathf.Max(0.01f, oldHp);
+        float atkR = _bAtk / Mathf.Max(0.01f, oldAtk);
+        float rngR = _bRange / Mathf.Max(0.01f, oldRange);
+        for (int i = 0; i < _party.Length; i++)
+        {
+            var m = _party[i];
+            if (!m.Alive) continue;
+            float next = m.MaxHp * hpR;
+            m.Hp += next - m.MaxHp;
+            m.MaxHp = next;
+            m.Atk *= atkR;
+            m.Range *= rngR;
+        }
+    }
+
     void ApplyRaceModifiers()
     {
         RaceId id = AshesToStars.RacePrefs.Default;
@@ -985,10 +1018,7 @@ public class W3Party : MonoBehaviour
         // 이 저장소가 반복해서 겪은 「계산은 되는데 반영이 안 됨」의 거울상이다.
         AshesToStars.FieldDecor.RegisterCover();
 
-        // 던전 강화를 배율로 환산한다. 던전 밖(필드 사냥·검증)에서는 전부 1이다.
-        if (DungeonRun.Active)
-            Boons.Multipliers(DungeonRun.State.Boons, out _bAtk, out _bHp, out _bSpd,
-                              out _bCd, out _bHeal, out _bShield, out _bRange, out _bAtkSpd);
+        LoadRunBoons();
 
         // 종족 기울기(§3·§18-9)를 파티 전체 배율 버스에 접는다. `RaceDef`(Resources/races)를
         // 실제로 읽는 **유일한 런타임 소비처** — 이게 없으면 종족은 전투에 영향 0이다
@@ -1419,6 +1449,8 @@ public class W3Party : MonoBehaviour
             SyncHeldParty();
             return;
         }
+        if (GameMode && AshesToStars.HuntBoon.Waiting)
+            return;
 
         if (_hitstop > 0) { _hitstop--; _stepAcc = 0f; return; }
 
@@ -2546,6 +2578,7 @@ public class W3Party : MonoBehaviour
             return;
         }
         _kills++;
+        if (GameMode) AshesToStars.HuntBoon.NoteKill();
         PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : "골드 +12   EXP +4",
                    _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
@@ -3208,6 +3241,7 @@ public class W3Party : MonoBehaviour
         int wave = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         DrawCombatSummary(wave);
         DrawRewardRail();
+        if (AshesToStars.HuntBoon.Waiting) return;
         CommandBar();
     }
 

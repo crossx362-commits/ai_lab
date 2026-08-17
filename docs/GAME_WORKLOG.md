@@ -21,6 +21,13 @@
 - 끝난 일 검은 화면 PNG 금지 (`shot_is_black`)
 - 회귀: `python3 -m unittest loop.test_board loop.test_v4_playtest`
 
+## 사냥 중 강화 3택 (2026-08-17)
+
+오너 「뱀서류처럼 사냥중 강화 목록 안뜨는데」→「니가 정해서」.
+정함: 접속 중 사냥만, 처치 8마리부터 전투 정지 3택. 임시·나가면 삭제.
+영구 레벨에 안 건다(판 끝난 뒤 정산·시드 만렙이면 영원히 안 뜸). 보스전·W1~W3·방치는 안 뜸.
+`HuntBoon` + Overlay. `HuntBoonSelfCheck`.
+
 ## 캐릭터도 안 겹치게 (2026-08-17)
 
 오너 「캐릭터도 안겹치게해」. 파티는 집 `Resolve`만 하고 `Around`가 없어 지붕을

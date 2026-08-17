@@ -88,6 +88,7 @@ namespace AshesToStars
         public static void End()
         {
             Plan = null; State = null; PendingNode = -1;
+            HuntBoon.End();
         }
 
         /// <summary>지금 위치에서 갈 수 있는 노드들. 이미 클리어한 곳은 다시 안 간다.</summary>

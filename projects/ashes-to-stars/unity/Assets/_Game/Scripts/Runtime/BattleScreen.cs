@@ -147,6 +147,11 @@ namespace AshesToStars
             // 검증(W1~W3)은 BattleScreen을 타지 않으므로 빈 판이 그대로 유지된다.
             _battle.EnableFieldCover();
 
+            if (DungeonRun.Active && DungeonRun.State != null)
+                HuntBoon.BindDungeon(DungeonRun.State.Boons, DungeonRun.Plan.RunSeed);
+            else
+                HuntBoon.BeginField((uint)(20260817 ^ GameState.Tier * 2654435761u));
+
             // 던전 노드는 **편성이 계획에서 온다**(§3-5 밀도 곡선). 여기서 꽂지 않으면
             // 어느 노드를 들어가든 같은 판이 돌아 "던전이 매번 바뀐다"가 거짓말이 된다.
             var wave = DungeonRun.PendingWave();
@@ -262,6 +267,7 @@ namespace AshesToStars
                 GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
                 y = leave.yMax + 8f;
             }
+            if (DrawHuntBoonPick()) return;
             if (!EmergencyEscape.Casting) return;
             float p = EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);
@@ -269,6 +275,37 @@ namespace AshesToStars
             Hint(UiAtlas.ContentRect(box, "panel", 2f),
                 $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
             GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
+        }
+
+        bool DrawHuntBoonPick()
+        {
+            if (!HuntBoon.Waiting) return false;
+            var dim = new Rect(0f, 0f, 1280f, 720f);
+            GUI.color = new Color(0f, 0f, 0f, 0.55f);
+            GUI.DrawTexture(dim, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            var banner = new Rect(200f, 72f, 880f, 52f);
+            UiAtlas.DrawSliced(banner, "panel", 8f, new Color(1f, 1f, 1f, 0.92f));
+            Hint(UiAtlas.ContentRect(banner, "panel", 2f),
+                $"이 판 강화 {HuntBoon.Owned.Count}/8 — 나가면 사라진다. 고를 때까지 전투가 멈춘다");
+            var picks = HuntBoon.Offered;
+            var area = new Rect(80f, 160f, 1120f, 360f);
+            var cells = UiPages.Grid(area, Mathf.Max(1, picks.Count), 1, 16f);
+            for (int i = 0; i < picks.Count && i < cells.Length; i++)
+            {
+                var d = Boons.Def(picks[i]);
+                if (DrawCard(cells[i], d.Name, d.Desc, "heart"))
+                {
+                    HuntBoon.Take(picks[i]);
+                    _battle?.RefreshHuntBoons();
+                }
+            }
+            return true;
+        }
+
+        void OnDisable()
+        {
+            HuntBoon.LeaveBattle();
         }
 
         void LeaveForLowHp()
