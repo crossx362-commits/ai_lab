@@ -6,17 +6,44 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-17 · 루프(영지 전용 대장간·영묘·탑)
+최종 갱신: 2026-08-17 · 루프(영지 전용 본성·광산·창고·수비대)
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
-1. **INBOX 09:57 전체 그래픽 남은 것** — 필드 허브 HUD·전용 대장간·영묘·탑은 닫음. 4직업·몹 실루엣 재생성 금지. 본성·광산·창고·수비대 전용 그림, 캐릭터/몹 화질. 새 생성 전 `ARTIFACT_INDEX`·대기 작업 확인.
-2. **INBOX 08:47 지금 문제점** — 캐릭터·몹 움직임, 맵 전투에서 캐릭터/몹/배경 비율. 겹침은 대화 세션이 `fe2eb9c8`(필드 프랍)·`95886088`(파티 겹침)로 닫음. 움직임·비율은 `W3Party`라 대화 세션. UI 퀄리티 전체는 사람 육안. 금테·글씨 여백은 대화 세션 `0d8e50da`. 루프는 전투 밖만. 영지 전면 마을·영지 마을 HUD·필드 허브 HUD·전용 대장간·영묘·탑은 닫음.
-3. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45 · 08:37 글씨 위치는 닫음 · 09:18 영지 전면은 닫음 · 09:45 마을 HUD는 닫음 · 필드 6장 카드는 닫음) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스·긴급 탈출 보상 포기·넓은 카드 글씨 가운데·목숨 시세 하한·누적 출전·영지 전면 마을·증표 시세 200 G/h·영지 마을 HUD·필드 허브 HUD·전용 대장간·영묘·탑은 닫음. 헤더 88·경매 전폭 막대는 남음. 캐릭터창 3열 명부·장비 둘레 라벨 잘림은 남음. 허브 마을 전경은 `9f4336f8`. 금테 여백은 `0d8e50da`. 본성·광산·창고·수비대는 기존 집·헛간. 전체 「다른 게임만큼」은 사람 육안.
-4. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `EstateBuildings.DedicatedOf`/`PropOf`/`Line`을 영지 마을이 읽음. `FieldHud.Cards`/`OverlayH`/`OpenH`/`Line`을 필드 허브가 읽음. `EstateHud.OverlayH`/`PaletteTiles`/`ShowInspectBar`/`Line`을 영지 마을이 읽음. `TokenPrice.Floor`/`BelowFloor`/`Line`을 `ListPrice`·`TryListItem`이 읽음. `SortieTime.Apply`/`AddToIndexes`/`Line`을 전투·일정·영묘가 읽음. `LifePrice.Floor`/`BelowFloor`/`Copper`를 `ListPrice`·`TryListItem`·NPC가 읽음. `EscapeForfeit.Apply`/`Line`/`Body`가 긴급 탈출 포기를 읽음. `InvasionState.AbortPending`이 패배 추가 소모 없이 대기를 취소. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`/`TimeLine`이 최고 층·마지막 출전·사망 원인·장착·동료·누적 출전을 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전은 `SortieTime`이 닫음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 생존형 HP 50% 이탈은 W3Party. 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
+1. **INBOX 09:57 전체 그래픽 남은 것** — 필드 허브 HUD·전용 7건물(본성·광산·창고·수비대·대장간·영묘·탑)은 닫음. 4직업·몹 실루엣 재생성 금지. 캐릭터/몹 화질. 새 생성 전 `ARTIFACT_INDEX`·대기 작업 확인.
+2. **INBOX 08:47 지금 문제점** — 캐릭터·몹 움직임, 맵 전투에서 캐릭터/몹/배경 비율. 겹침은 대화 세션이 `fe2eb9c8`(필드 프랍)·`95886088`(파티 겹침)로 닫음. 움직임·비율은 `W3Party`라 대화 세션. UI 퀄리티 전체는 사람 육안. 금테·글씨 여백은 대화 세션 `0d8e50da`. 루프는 전투 밖만. 영지 전면 마을·영지 마을 HUD·필드 허브 HUD·전용 7건물은 닫음.
+3. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45 · 08:37 글씨 위치는 닫음 · 09:18 영지 전면은 닫음 · 09:45 마을 HUD는 닫음 · 필드 6장 카드는 닫음) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스·긴급 탈출 보상 포기·넓은 카드 글씨 가운데·목숨 시세 하한·누적 출전·영지 전면 마을·증표 시세 200 G/h·영지 마을 HUD·필드 허브 HUD·전용 7건물은 닫음. 헤더 88·경매 전폭 막대는 남음. 캐릭터창 3열 명부·장비 둘레 라벨 잘림은 남음. 허브 마을 전경은 `9f4336f8`. 금테 여백은 `0d8e50da`. 전체 「다른 게임만큼」은 사람 육안.
+4. **기획서 ✅ · 소비처 0곳** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `EstateBuildings.DedicatedOf`/`PropOf`/`Line`이 본성·광산·창고·수비대·대장간·영묘·탑을 읽음. `FieldHud.Cards`/`OverlayH`/`OpenH`/`Line`을 필드 허브가 읽음. `EstateHud.OverlayH`/`PaletteTiles`/`ShowInspectBar`/`Line`을 영지 마을이 읽음. `TokenPrice.Floor`/`BelowFloor`/`Line`을 `ListPrice`·`TryListItem`이 읽음. `SortieTime.Apply`/`AddToIndexes`/`Line`을 전투·일정·영묘가 읽음. `LifePrice.Floor`/`BelowFloor`/`Copper`를 `ListPrice`·`TryListItem`·NPC가 읽음. `EscapeForfeit.Apply`/`Line`/`Body`가 긴급 탈출 포기를 읽음. `InvasionState.AbortPending`이 패배 추가 소모 없이 대기를 취소. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`/`TimeLine`이 최고 층·마지막 출전·사망 원인·장착·동료·누적 출전을 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전은 `SortieTime`이 닫음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20·방어력 비례 ±50%는 시뮬 없음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 생존형 HP 50% 이탈은 W3Party. 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 영지 전용 대장간·영묘·탑.**
+> **이번 이터 결과(코드/실행): 영지 전용 본성·광산·창고·수비대.**
+> - INBOX 09:57이 큐보다 앞선다. ARTIFACT_INDEX: `village_house_*`/`barn`은 필드 장식.
+>   옛 PropOf는 본성=큰 집·광산=헛간·창고=집·수비대=헛간이었다.
+> - **생산 소비처**: `EstateBuildings.DedicatedOf`에 Keep/Mine/Warehouse/Barracks.
+>   `EstateYard.PropOf`가 읽는다. `QA_NO`면 옛 집·헛간. `QA_ESTATE_BUILDINGS=1`은 자막.
+>   힉스필드 nano_banana_2 · `out_estate_buildings/` ·
+>   `props/estate_{keep,mine,warehouse,barracks}_0`.
+>   `W3Party`/`FieldDecor`/`HuntBoon`은 안 건드렸다(대화 세션 전투 WIP).
+> - **통과 기준**: PropOf 본성=`estate_keep_0` · 광산=`estate_mine_0` ·
+>   창고=`estate_warehouse_0` · 수비대=`estate_barracks_0`. Resources 4장.
+>   차단하면 집·헛간. 화면 `본성·광산·창고·수비대는 전용 그림이다(§16)` +
+>   석조 본성(금별 깃발)·광산 입구(수레)·창고(상자)·수비대(허수아비·창)가
+>   집·헛간이 아님.
+> - **TDD/실행**: `unity_meas` `EstateBuildingsSelfCheck` 전항 PASS
+>   (`estate_hub_selfcheck.log`). `EstateYardSelfCheck` 회귀 PASS.
+> - **화면**(직접 열음, 빈 화면 아님, `QA_ESTATE_BUILDINGS=1`):
+>   `estate_hub_shots/qa_go:Estate.png` 813786B — 영지 마을,
+>   자막 `본성·광산·창고·수비대는 전용 그림이다(§16)`,
+>   별 깃발 본성·광산 수레·창고 상자·수비대 허수아비. 옛 초가·헛간이 아님.
+> - **네거티브**: `PropOf`를 항상 `OldOf`로 되돌리면 FAIL 5
+>   (`estate_hub_negctrl.log` — 본성·광산·창고·수비대·대장간이 옛 이름).
+>   `QA_NO`면 옛 집·헛간.
+> - **정직한 미완**: 캐릭터/몹 화질·카메라 이동은 안 넣음. 경매장은 수레 유지.
+>   원본 에디터 PID 75776은 죽이지 않았고 사본으로 빌드·촬영.
+>   대화 세션 `W3Party`/`HuntBoon` WIP는 안 커밋했다.
+> - **코드** `2d4c52e8`. `W3Party`는 안 건드렸다.
+
+> **이전 이터 결과(코드/실행): 영지 전용 대장간·영묘·탑.**
 > - INBOX 09:57이 큐보다 앞선다. ARTIFACT_INDEX: `village_house_*`는 필드 장식이며
 >   기능 건물을 대체하지 않는다. 옛 PropOf는 대장간=작은 집·영묘=우물·탑=등불이었다.
 > - **생산 소비처**: `EstateBuildings.DedicatedOf`/`PropOf`/`HasDedicated`/`Line`/
