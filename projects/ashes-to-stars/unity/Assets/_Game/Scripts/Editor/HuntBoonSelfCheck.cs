@@ -22,6 +22,24 @@ namespace AshesToStars
             }
 
             HuntBoon.End();
+            Check(HuntBoon.IconOf(BoonId.치유의손) == "healer"
+                  && HuntBoon.IconOf(BoonId.예리함) == "damage"
+                  && HuntBoon.IconOf(BoonId.강골) == "tank"
+                  && HuntBoon.IconOf(BoonId.발놀림) == "buffer",
+                "강화 아이콘은 목숨 하트가 아니라 역할 조각");
+            Check(HuntBoon.IconOf(BoonId.분노) != "heart",
+                "큰 카드에 목숨 하트를 쓰면 잘린다");
+            var band = HuntBoon.PickBand(new Rect(0f, 160f, 1280f, 400f));
+            var cells = UiPages.Grid(band, 3, 1, HuntBoon.CardGap);
+            Check(cells.Length == 3 && UiPages.IsWideCard(cells[0]),
+                "3택 카드는 가로여야 금테가 안 늘어난다");
+            UiPages.CardLayout(cells[0], true, out var ic, out var tt, out var sb);
+            Check(UiAtlas.FitsInContent(cells[0], ic)
+                  && UiAtlas.FitsInContent(cells[0], tt)
+                  && UiAtlas.FitsInContent(cells[0], sb)
+                  && ic.x < tt.x,
+                "가로 카드 아이콘·글씨가 금테 안에 있어야 한다");
+
             Check(HuntBoon.Need(0) == HuntBoon.FirstKills, "첫 강화는 8처치");
             Check(HuntBoon.Need(1) > HuntBoon.Need(0), "다음 강화가 더 비싸다");
 

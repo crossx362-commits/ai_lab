@@ -21,6 +21,29 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_HUNT_BOON";
         public const int FirstKills = 8;
         public const float Growth = 1.4f;
+        /// <summary>뱀서식 가로 카드. 정사각에 panel 9-slice를 올리면 금테가 늘어 더러워진다.</summary>
+        public const float CardW = 328f;
+        public const float CardH = 152f;
+        public const float CardGap = 16f;
+
+        public static Rect PickBand(Rect host)
+        {
+            float totalW = CardW * 3f + CardGap * 2f;
+            float w = Mathf.Min(totalW, Mathf.Max(120f, host.width));
+            float h = CardH;
+            return new Rect(
+                host.x + (host.width - w) * 0.5f,
+                host.y + Mathf.Max(0f, (host.height - h) * 0.5f),
+                w, h);
+        }
+
+        public static string IconOf(BoonId id) => id switch
+        {
+            BoonId.예리함 or BoonId.분노 => "damage",
+            BoonId.강골 or BoonId.방벽 => "tank",
+            BoonId.치유의손 => "healer",
+            _ => "buffer",
+        };
 
         static List<int> _owned;
         static bool _ownsList;

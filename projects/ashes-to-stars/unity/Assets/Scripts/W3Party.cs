@@ -3226,6 +3226,7 @@ public class W3Party : MonoBehaviour
     void OnGUI()
     {
         if (CombatHeld) return;
+        if (AshesToStars.HuntBoon.Waiting) return;
         _hud ??= new GUIStyle(GUI.skin.label) { fontSize = 17, normal = { textColor = Color.white } };
 
         // 스킬 이름 — `GUI.matrix`를 건드리기 **전에** 그린다(여기 좌표는 실제 픽셀이다).
@@ -3241,7 +3242,6 @@ public class W3Party : MonoBehaviour
         int wave = 시작웨이브 + (int)(_t / 점증간격) * 단계당증가;
         DrawCombatSummary(wave);
         DrawRewardRail();
-        if (AshesToStars.HuntBoon.Waiting) return;
         CommandBar();
     }
 

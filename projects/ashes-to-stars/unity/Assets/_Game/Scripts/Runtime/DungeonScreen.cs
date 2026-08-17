@@ -64,7 +64,7 @@ namespace AshesToStars
             {
                 var picks = DungeonRun.DrawBoons(DungeonRun.PendingNode);
                 Info(r, 0, $"임시 강화 3택 — 던전을 나가면 사라진다(§7). 보유 {state.Boons.Count}개");
-                var pickArea = new Rect(r.x, r.y + 80f, r.width, r.height - 80f);
+                var pickArea = HuntBoon.PickBand(new Rect(r.x, r.y + 80f, r.width, r.height - 80f));
                 if (picks.Count == 0)
                 {
                     Info(r, 1, "더 가져갈 강화가 없다 — 이미 전부 보유했다(§18-7 중복 제외)");
@@ -72,11 +72,11 @@ namespace AshesToStars
                     if (DrawCard(skip[0], "통과", "다음 노드로", "field")) DungeonRun.TakeBoonSkip();
                     return;
                 }
-                var cells = UiPages.Grid(pickArea, Mathf.Max(1, picks.Count), 1, 12f);
+                var cells = UiPages.Grid(pickArea, Mathf.Max(1, picks.Count), 1, HuntBoon.CardGap);
                 for (int i = 0; i < picks.Count && i < cells.Length; i++)
                 {
                     var d = Boons.Def(picks[i]);
-                    if (DrawCard(cells[i], d.Name, d.Desc, "heart"))
+                    if (DrawCard(cells[i], d.Name, d.Desc, HuntBoon.IconOf(picks[i])))
                     {
                         DungeonRun.TakeBoon(picks[i]);
                         return;

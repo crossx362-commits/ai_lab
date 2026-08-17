@@ -284,17 +284,17 @@ namespace AshesToStars
             GUI.color = new Color(0f, 0f, 0f, 0.55f);
             GUI.DrawTexture(dim, Texture2D.whiteTexture);
             GUI.color = Color.white;
-            var banner = new Rect(200f, 72f, 880f, 52f);
+            var banner = new Rect(240f, 88f, 800f, 48f);
             UiAtlas.DrawSliced(banner, "panel", 8f, new Color(1f, 1f, 1f, 0.92f));
             Hint(UiAtlas.ContentRect(banner, "panel", 2f),
                 $"이 판 강화 {HuntBoon.Owned.Count}/8 — 나가면 사라진다. 고를 때까지 전투가 멈춘다");
             var picks = HuntBoon.Offered;
-            var area = new Rect(80f, 160f, 1120f, 360f);
-            var cells = UiPages.Grid(area, Mathf.Max(1, picks.Count), 1, 16f);
+            var area = HuntBoon.PickBand(new Rect(0f, 160f, 1280f, 400f));
+            var cells = UiPages.Grid(area, Mathf.Max(1, picks.Count), 1, HuntBoon.CardGap);
             for (int i = 0; i < picks.Count && i < cells.Length; i++)
             {
                 var d = Boons.Def(picks[i]);
-                if (DrawCard(cells[i], d.Name, d.Desc, "heart"))
+                if (DrawCard(cells[i], d.Name, d.Desc, HuntBoon.IconOf(picks[i])))
                 {
                     HuntBoon.Take(picks[i]);
                     _battle?.RefreshHuntBoons();
