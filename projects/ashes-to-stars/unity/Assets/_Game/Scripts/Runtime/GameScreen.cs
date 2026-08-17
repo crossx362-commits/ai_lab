@@ -75,6 +75,8 @@ namespace AshesToStars
         {
             Application.runInBackground = true;
             EnsureCamera();
+            DebugAutoPilot.BootstrapIfRequested();
+            LocalPlayKit.ApplyIfNeeded();
         }
 
         void EnsureCamera()

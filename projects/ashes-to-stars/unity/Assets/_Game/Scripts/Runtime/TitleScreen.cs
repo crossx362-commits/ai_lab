@@ -30,6 +30,8 @@ namespace AshesToStars
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             StarterPick.SeedQaIfRequested();
+            if (!string.IsNullOrEmpty(LocalPlayKit.Line))
+                Hint(new Rect(r.x, r.y + r.height - 22f, r.width, 20f), LocalPlayKit.Line);
             if (StarterPick.Open)
             {
                 DrawStarterPick(r);
