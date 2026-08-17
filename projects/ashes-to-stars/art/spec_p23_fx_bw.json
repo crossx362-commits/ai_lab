@@ -1,0 +1,222 @@
+{
+ "_note": "이펙트·스킬 흑백 할로우",
+ "refs": [],
+ "rulesets": {
+  "one": "Hollow Knight SOUL/NAIL VFX: near-monochrome ink. Pale white or charcoal only. Thin readable symbol, centered, magenta #FF00FF background. NO neon green, NO gold, NO cyan laser, NO text. Soft painterly edges, thick dark outline if needed.",
+  "sheet": "Hollow Knight 8-frame VFX sprite sheet: EXACTLY 4 columns by 2 rows, even cells, black empty background. Near-monochrome pale-white / charcoal soul energy. NO text, NO labels, NO numbers. Frames progress: small spark to arc to peak to fade. NOT anime laser, NOT gold fire, NOT neon.",
+  "icon": "Hollow Knight skill ICON: single bold pale-white/charcoal symbol on dark void, 1:1, no text, no frame, one accent at most."
+ },
+ "assets": [
+  {
+   "name": "fx_hit",
+   "rules_ref": "one",
+   "prompt": "a small pale impact burst, ink splash"
+  },
+  {
+   "name": "fx_slash",
+   "rules_ref": "one",
+   "prompt": "a thin bone-white nail slash crescent"
+  },
+  {
+   "name": "fx_heal",
+   "rules_ref": "one",
+   "prompt": "a pale rising soul-wisp, not a green ring"
+  },
+  {
+   "name": "fx_fire",
+   "rules_ref": "one",
+   "prompt": "a compact white-grey ember bloom, not orange fireball"
+  },
+  {
+   "name": "fx_shield",
+   "rules_ref": "one",
+   "prompt": "a faint charcoal barrier ring"
+  },
+  {
+   "name": "fx_taunt",
+   "rules_ref": "one",
+   "prompt": "a pale shout ripple, thin ring, not gold"
+  },
+  {
+   "name": "fx_summon",
+   "rules_ref": "one",
+   "prompt": "a small pale magic circle, thin lines"
+  },
+  {
+   "name": "fx_death",
+   "rules_ref": "one",
+   "prompt": "dissolving charcoal ash puff"
+  },
+  {
+   "name": "tank_slash_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "heavy shield-bash / nail slashes, pale white arcs, 8 frames"
+  },
+  {
+   "name": "dps_slash_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "thin saber nail slashes, pale white, 8 frames"
+  },
+  {
+   "name": "mage_fire_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "void-soul bursts, pale white-grey, 8 frames"
+  },
+  {
+   "name": "priest_heal_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "soft soul-heal wisps, pale, 8 frames"
+  },
+  {
+   "name": "tank_barrier_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "expanding pale barrier rings, 8 frames"
+  },
+  {
+   "name": "bard_aura_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "faint sound-rings in grey-white, 8 frames"
+  },
+  {
+   "name": "poison_status_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "dripping pale-grey blight motes, 8 frames"
+  },
+  {
+   "name": "freeze_status_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "pale frost shards almost white, 8 frames"
+  },
+  {
+   "name": "boss_aoe_warning_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "floor circle tell, pale thin ring growing, 8 frames"
+  },
+  {
+   "name": "boss_charge_warning_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "directional dash marks, pale, 8 frames"
+  },
+  {
+   "name": "boss_cone_warning_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "cone tell lines, pale, 8 frames"
+  },
+  {
+   "name": "boss_interrupt_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "stun burst, pale shards, 8 frames"
+  },
+  {
+   "name": "boss_summon_portal_sheet",
+   "rules_ref": "sheet",
+   "aspect": "2:1",
+   "keep_bg": true,
+   "prompt": "small void portal, pale rim, 8 frames"
+  },
+  {
+   "name": "rogue_dash",
+   "rules_ref": "icon",
+   "prompt": "afterimage dash streaks"
+  },
+  {
+   "name": "ranger_arrow",
+   "rules_ref": "icon",
+   "prompt": "a pale bolt"
+  },
+  {
+   "name": "druid_thorns",
+   "rules_ref": "icon",
+   "prompt": "charcoal thorn burst"
+  },
+  {
+   "name": "bard_note",
+   "rules_ref": "icon",
+   "prompt": "a pale music mote"
+  },
+  {
+   "name": "bard_aura",
+   "rules_ref": "icon",
+   "prompt": "thin grey ring"
+  },
+  {
+   "name": "druid_regen",
+   "rules_ref": "icon",
+   "prompt": "rising pale mote"
+  },
+  {
+   "name": "revive",
+   "rules_ref": "icon",
+   "prompt": "pale soul rising"
+  },
+  {
+   "name": "cleanse",
+   "rules_ref": "icon",
+   "prompt": "pale wash burst"
+  },
+  {
+   "name": "boss_circle",
+   "rules_ref": "icon",
+   "prompt": "warning circle"
+  },
+  {
+   "name": "boss_cone",
+   "rules_ref": "icon",
+   "prompt": "warning cone"
+  },
+  {
+   "name": "boss_portal",
+   "rules_ref": "icon",
+   "prompt": "void portal rim"
+  },
+  {
+   "name": "boss_charge",
+   "rules_ref": "icon",
+   "prompt": "charge arrow"
+  },
+  {
+   "name": "critical",
+   "rules_ref": "icon",
+   "prompt": "white flash star"
+  },
+  {
+   "name": "dodge",
+   "rules_ref": "icon",
+   "prompt": "pale miss streak"
+  },
+  {
+   "name": "damage_reduce",
+   "rules_ref": "icon",
+   "prompt": "small shield pip"
+  },
+  {
+   "name": "loot",
+   "rules_ref": "icon",
+   "prompt": "tiny pale spark"
+  }
+ ]
+}

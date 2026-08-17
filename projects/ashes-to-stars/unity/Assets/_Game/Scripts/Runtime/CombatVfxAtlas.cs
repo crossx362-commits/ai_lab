@@ -12,10 +12,18 @@ namespace AshesToStars
         static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
         public static readonly string[] RequiredKeys = Keys;
         static Texture2D Texture => _texture ??= Resources.Load<Texture2D>("fx/combat_vfx_atlas");
-        public static bool IsReady => Texture != null;
+        public static bool IsReady => Texture != null || Resources.Load<Texture2D>("fx/icons/bard_note") != null;
         public static Sprite SpriteFor(string key)
         {
             if (Cache.TryGetValue(key, out var sprite)) return sprite;
+            var solo = Resources.Load<Texture2D>("fx/icons/" + key);
+            if (solo != null)
+            {
+                sprite = Sprite.Create(solo, new Rect(0, 0, solo.width, solo.height),
+                    Vector2.one * .5f, Mathf.Max(8, solo.height) / 2f);
+                Cache[key] = sprite;
+                return sprite;
+            }
             int i = System.Array.IndexOf(Keys, key); if (i < 0 || Texture == null) return null;
             float cell = Width / 4f; int col = i % 4, row = i / 4;
             sprite = Sprite.Create(Texture, new Rect(col * cell, Height - (row + 1) * cell, cell, cell), Vector2.one * .5f, cell / 2f);

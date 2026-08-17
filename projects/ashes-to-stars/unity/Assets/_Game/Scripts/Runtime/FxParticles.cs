@@ -159,7 +159,7 @@ namespace AshesToStars
                     count = 28; shape.radius = 0.6f * scale;
                     main.startLifetime = 0.55f; main.startSpeed = 3.2f * scale;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.14f, 0.24f);
-                    main.startColor = Grad(new Color(1f, 0.85f, 0.35f), new Color(1f, 0.6f, 0.15f));
+                    main.startColor = Grad(new Color(0.92f, 0.92f, 0.95f), new Color(0.45f, 0.45f, 0.5f));
                     break;
                 case FxKind.화염폭풍:
                     // 불티는 위로 솟았다 꺼진다. 중력을 음수로 줘 떠오르게 한다
@@ -167,14 +167,14 @@ namespace AshesToStars
                     main.startLifetime = 0.7f; main.startSpeed = 0.6f;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.3f);
                     main.gravityModifier = -0.9f;
-                    main.startColor = Grad(new Color(1f, 0.72f, 0.2f), new Color(1f, 0.28f, 0.1f));
+                    main.startColor = Grad(new Color(0.95f, 0.95f, 1f), new Color(0.55f, 0.55f, 0.6f));
                     break;
                 case FxKind.치유파동:
                     count = 22; shape.radius = 0.9f * scale;
                     main.startLifetime = 0.8f; main.startSpeed = 0.4f;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.2f);
                     main.gravityModifier = -1.4f;      // 회복은 위로 — 관례를 따르는 편이 읽기 쉽다
-                    main.startColor = Grad(new Color(0.6f, 1f, 0.7f), new Color(1f, 1f, 0.85f));
+                    main.startColor = Grad(new Color(0.85f, 0.88f, 0.92f), new Color(1f, 1f, 1f));
                     break;
                 case FxKind.기적:
                     // 판을 뒤집는 순간(§3 사제). 가장 크고 가장 오래 남는다 — 놓치면 안 되는 사건이다
@@ -182,7 +182,7 @@ namespace AshesToStars
                     main.startLifetime = 0.95f; main.startSpeed = 4.5f;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.16f, 0.34f);
                     main.gravityModifier = -1.8f;
-                    main.startColor = Grad(new Color(1f, 0.95f, 0.6f), new Color(1f, 1f, 1f));
+                    main.startColor = Grad(new Color(1f, 1f, 1f), new Color(0.75f, 0.75f, 0.8f));
                     break;
                 case FxKind.일섬:
                     count = 14; shape.radius = 0.2f;
@@ -195,7 +195,7 @@ namespace AshesToStars
                     main.startLifetime = 0.3f; main.startSpeed = 2.4f;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.07f, 0.13f);
                     main.gravityModifier = 1.2f;
-                    main.startColor = Grad(new Color(1f, 0.35f, 0.3f), new Color(0.7f, 0.1f, 0.1f));
+                    main.startColor = Grad(new Color(1f, 1f, 1f), new Color(0.35f, 0.35f, 0.38f));
                     break;
                 case FxKind.사망:
                     count = 16; shape.radius = 0.35f;
@@ -210,7 +210,7 @@ namespace AshesToStars
                     count = 1; shape.radius = 0.01f;
                     main.startLifetime = 0.6f; main.startSpeed = 0f;
                     main.startSize = new ParticleSystem.MinMaxCurve(2.6f * scale);
-                    main.startColor = Grad(new Color(1f, 0.92f, 0.6f, 0.30f), new Color(1f, 0.8f, 0.4f, 0.22f));
+                    main.startColor = Grad(new Color(1f, 1f, 1f, 0.28f), new Color(0.7f, 0.7f, 0.75f, 0.18f));
                     break;
                 case FxKind.쇼크웨이브:
                     // 고리 — 가장자리에서만 나오게 해 링으로 읽히게 한다(radiusThickness 0)
@@ -232,13 +232,13 @@ namespace AshesToStars
                     count = 46; shape.radius = 1f * scale; shape.radiusThickness = 0f;
                     main.startLifetime = 1.1f; main.startSpeed = 0f;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.16f, 0.26f);
-                    main.startColor = Grad(new Color(1f, 0.5f, 0.35f, 0.75f), new Color(1f, 0.25f, 0.2f, 0.45f));
+                    main.startColor = Grad(new Color(0.9f, 0.9f, 0.95f, 0.7f), new Color(0.5f, 0.5f, 0.55f, 0.35f));
                     break;
                 default:   // 무적 — §5의 핵심 기술이 눈에 보이게 하는 표시
                     count = 18; shape.radius = 0.5f * scale;
                     main.startLifetime = 0.35f; main.startSpeed = 1.2f;
                     main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.18f);
-                    main.startColor = Grad(new Color(1f, 0.9f, 0.4f), new Color(0.6f, 1f, 1f));
+                    main.startColor = Grad(new Color(1f, 1f, 1f), new Color(0.65f, 0.65f, 0.7f));
                     break;
             }
 
