@@ -78,6 +78,16 @@
   details.inbox { padding: 8px 0; border-top: 1px solid var(--line); }
   details.inbox:first-of-type { border-top: 0; }
   details.inbox p { color: var(--muted); font-size: 13px; margin: 6px 0 0; white-space: pre-wrap; }
+  .cmd-list { display: flex; flex-direction: column; gap: 0; }
+  .cmd {
+    display: grid; grid-template-columns: 92px 52px 1fr; gap: 8px;
+    padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .cmd:first-of-type { border-top: 0; padding-top: 0; }
+  .cmd .when { min-width: 0; }
+  .cmd .src { color: var(--gold); font-size: 12px; }
+  .cmd.done .t { color: var(--ok); }
+  .queue-top { margin: 14px 24px 0; }
   .empty { color: var(--muted); font-size: 13px; }
   .banner {
     display: none; margin: 14px 24px 0; padding: 12px 14px;
@@ -220,6 +230,11 @@
     <span class="msg" id="req-msg"></span>
   </div>
 </section>
+<section class="request-top" id="commands-box">
+  <h2>오너 명령</h2>
+  <p class="meta">채팅·보드에서 받은 지시를 시간순으로 남긴다. 처리돼도 여기서 안 지운다.</p>
+  <div class="cmd-list" id="commands"></div>
+</section>
 <section class="stuck-box" id="stuck-box">
   <h2>막힘 · 멈춤</h2>
   <p class="meta">루프가 안 돌거나 선행이 없어 선 것만. 끝난 행은 안 올린다.</p>
@@ -234,6 +249,11 @@
   <div class="t" id="now-title">불러오는 중…</div>
   <div class="meta" id="now-meta"></div>
   <div class="log" id="now-log" style="display:none"></div>
+</section>
+<section class="queue-top">
+  <h2>다음 할 일</h2>
+  <p class="meta">STATUS 큐. 위에서부터 하나만.</p>
+  <div id="queue"></div>
 </section>
 <div class="charts" id="charts"></div>
 <section class="playtest-wrap" id="playtest-box">
@@ -264,10 +284,6 @@
     <section style="margin-top:18px">
       <h2>원장 관문</h2>
       <div id="milestones"></div>
-    </section>
-    <section style="margin-top:18px">
-      <h2>다음 할 일</h2>
-      <div id="queue"></div>
     </section>
   </div>
   <div>
@@ -396,6 +412,26 @@ function renderCompleted(state) {
   }).join("");
 }
 
+function renderCommands(state) {
+  const el = $("commands");
+  if (!el) return;
+  const rows = state.commands || [];
+  if (!rows.length) {
+    el.innerHTML = '<p class="empty">아직 기록 없음 — 채팅 지시도 여기 남는다</p>';
+    return;
+  }
+  const src = { chat: "채팅", board: "보드", decide: "판정" };
+  el.innerHTML = rows.map((c) => `
+    <div class="cmd${c.status === "done" ? " done" : ""}">
+      <span class="when">${esc(c.at || "")}</span>
+      <span class="src">${esc(src[c.source] || c.source || "")}</span>
+      <div>
+        <div class="t">${esc(c.title)}</div>
+        ${c.body ? `<div class="d">${esc(c.body)}</div>` : ""}
+      </div>
+    </div>`).join("");
+}
+
 function renderStuck(state) {
   const box = $("stuck-box");
   const list = $("stuck-list");
@@ -482,6 +518,7 @@ function render(state) {
       </div>
     </div>`).join("") : '<p class="empty">지금 고를 사람 판정은 없다</p>';
   renderStuck(state);
+  renderCommands(state);
   renderPlaytest(state);
   renderCompleted(state);
   renderItems($("slice"), state.slice || (state.charts && state.charts.slice) || [], state);

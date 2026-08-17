@@ -332,18 +332,31 @@ class ParseTests(unittest.TestCase):
         self.assertIn("renderCompleted", html)
         self.assertIn('id="slice"', html)
 
+    def test_board_html_queue_above_charts_and_commands_log(self):
+        html = (HERE / "board.html").read_text(encoding="utf-8")
+        self.assertLess(html.find('id="commands"'), html.find('id="queue"'))
+        self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
+        self.assertLess(html.find('id="queue"'), html.find('id="choices"'))
+        self.assertIn("renderCommands", html)
+        self.assertIn("오너 명령", html)
+        self.assertEqual(html.count('id="queue"'), 1)
+
 
 class WriteTests(unittest.TestCase):
     def test_request_lands_under_waiting(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "INBOX.md"
             path.write_text(INBOX, encoding="utf-8")
-            old = board.INBOX
+            old = (board.INBOX, board.COMMANDS_PATH)
             try:
                 board.INBOX = path
+                board.COMMANDS_PATH = Path(tmp) / "cmds.json"
                 stamp = board.write_request("스프라이트 확인", "버퍼 걷기부터.")
+                logged = board.load_commands()
+                self.assertEqual(logged[0]["title"], "스프라이트 확인")
+                self.assertEqual(logged[0]["source"], "board")
             finally:
-                board.INBOX = old
+                board.INBOX, board.COMMANDS_PATH = old
             text = path.read_text(encoding="utf-8")
             wait = text.split("## 대기 중", 1)[1]
             done = text.split("## 처리됨", 1)[1].split("## 대기 중", 1)[0]
@@ -356,6 +369,47 @@ class WriteTests(unittest.TestCase):
     def test_empty_title_rejected(self):
         with self.assertRaises(ValueError):
             board.write_request("  ", "본문")
+
+
+class CommandLogTests(unittest.TestCase):
+    def test_record_command_newest_first_and_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = board.COMMANDS_PATH
+            board.COMMANDS_PATH = Path(tmp) / "cmds.json"
+            try:
+                board.record_command("첫번째", "a", source="chat", status="done")
+                board.record_command("두번째", "b", source="chat", status="done")
+                rows = board.load_commands()
+                self.assertEqual([r["title"] for r in rows], ["두번째", "첫번째"])
+                self.assertEqual(rows[0]["source"], "chat")
+                self.assertEqual(rows[0]["status"], "done")
+                old_max = board.COMMANDS_MAX
+                board.COMMANDS_MAX = 2
+                try:
+                    board.record_command("세번째", "", source="chat", status="done")
+                    self.assertEqual([r["title"] for r in board.load_commands()],
+                                     ["세번째", "두번째"])
+                finally:
+                    board.COMMANDS_MAX = old_max
+            finally:
+                board.COMMANDS_PATH = old
+
+    def test_cli_done_does_not_touch_inbox(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            inbox = Path(tmp) / "INBOX.md"
+            inbox.write_text(INBOX, encoding="utf-8")
+            old = (board.INBOX, board.COMMANDS_PATH)
+            try:
+                board.INBOX = inbox
+                board.COMMANDS_PATH = Path(tmp) / "cmds.json"
+                rc = board.cli_command(
+                    ["board.py", "command", "글씨 위치", "금테 안",
+                     "--source", "chat", "--status", "done"])
+                self.assertEqual(rc, 0)
+                self.assertNotIn("글씨 위치", inbox.read_text(encoding="utf-8"))
+                self.assertEqual(board.load_commands()[0]["title"], "글씨 위치")
+            finally:
+                board.INBOX, board.COMMANDS_PATH = old
 
 
 class CheckTests(unittest.TestCase):
@@ -404,8 +458,10 @@ class DecisionTests(unittest.TestCase):
             dec_p = tmp / "dec.json"
             status_p.write_text(STATUS, encoding="utf-8")
             inbox_p.write_text(INBOX, encoding="utf-8")
-            old = (board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH)
+            old = (board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH,
+                   board.COMMANDS_PATH)
             board.STATUS, board.INBOX, board.DECISIONS_PATH = status_p, inbox_p, dec_p
+            board.COMMANDS_PATH = tmp / "cmds.json"
             board.DESIGN = tmp / "DESIGN.md"
             board.DESIGN.write_text(DESIGN, encoding="utf-8")
             try:
@@ -433,8 +489,9 @@ class DecisionTests(unittest.TestCase):
                     board.load_decisions(),
                 )
                 self.assertTrue(any(p["title"] == "V2 사람 판정" for p in again))
+                self.assertEqual(board.load_commands()[0]["source"], "decide")
             finally:
-                board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH = old
+                board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH, board.COMMANDS_PATH = old
 
     def test_retry_keeps_queue(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -443,11 +500,13 @@ class DecisionTests(unittest.TestCase):
             inbox_p = tmp / "INBOX.md"
             status_p.write_text(STATUS, encoding="utf-8")
             inbox_p.write_text(INBOX, encoding="utf-8")
-            old = (board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH)
+            old = (board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH,
+                   board.COMMANDS_PATH)
             board.STATUS, board.INBOX = status_p, inbox_p
             board.DESIGN = tmp / "DESIGN.md"
             board.DESIGN.write_text(DESIGN, encoding="utf-8")
             board.DECISIONS_PATH = tmp / "dec.json"
+            board.COMMANDS_PATH = tmp / "cmds.json"
             try:
                 v2 = next(x for x in board.parse_queue(STATUS) if x["title"] == "V2 사람 판정")
                 board.apply_decision(v2["id"], "retry", "")
@@ -456,7 +515,7 @@ class DecisionTests(unittest.TestCase):
                     ["V2 사람 판정", "V4 삭제 루프 준비"],
                 )
             finally:
-                board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH = old
+                board.STATUS, board.INBOX, board.DESIGN, board.DECISIONS_PATH, board.COMMANDS_PATH = old
 
 
 class NowWorkTests(unittest.TestCase):

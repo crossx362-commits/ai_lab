@@ -9,6 +9,7 @@
 함대 FleetView(8765)와 별개다. 이 화면은 루프가 읽는 파일만 다룬다:
 STATUS.md · DESIGN.md · feedback/INBOX.md · loop/HOLD·STOP·agent.
 요청은 INBOX 「대기 중」에 붙고, 다음 이터레이션이 큐보다 먼저 읽는다.
+채팅으로 받은 오너 명령은 `python3 loop/board.py command "제목" "본문"` 으로 남긴다.
 """
 from __future__ import annotations
 
@@ -36,6 +37,8 @@ ROOT = HERE.parent
 PORT = int(os.getenv("BOARD_PORT", "8766"))
 CHECKS_PATH = HERE / "board_checks.json"
 DECISIONS_PATH = HERE / "board_decisions.json"
+COMMANDS_PATH = HERE / "owner_commands.json"
+COMMANDS_MAX = 80
 PID_PATH = HERE / "loop.pid"
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
 GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
@@ -1107,7 +1110,7 @@ def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
         body += "완료로 내리지 마라. 같은 항목을 고쳐서 다시 올려라."
     else:
         body += "완료로 내리지 마라. 이 항목은 보류하고 다음 실행 가능 항목을 잡아라."
-    write_request(f"오너 판정 — {item['title']} ({label})", body)
+    write_request(f"오너 판정 — {item['title']} ({label})", body, source="decide")
 
     if choice == "do":
         remain = [q for q in queue if q["id"] != item_id]
@@ -1139,7 +1142,43 @@ def save_checks(data: dict) -> None:
     )
 
 
-def write_request(title: str, body: str) -> str:
+def load_commands() -> list[dict]:
+    try:
+        data = json.loads(COMMANDS_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
+def record_command(title: str, body: str = "", source: str = "board",
+                   status: str = "open") -> dict:
+    """오너 명령을 보드 기록에 남긴다. INBOX와 별개 — 처리돼도 목록에서 안 사라진다."""
+    title = re.sub(r"\s+", " ", title).strip()
+    if not title:
+        raise ValueError("제목이 비어 있다")
+    if len(title) > 80:
+        title = title[:80]
+    body = (body or "").strip()[:400]
+    if source not in ("board", "chat", "decide"):
+        source = "board"
+    if status not in ("open", "done"):
+        status = "open"
+    rec = {
+        "at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "title": title,
+        "body": body,
+        "source": source,
+        "status": status,
+    }
+    rows = [rec] + [r for r in load_commands() if isinstance(r, dict)]
+    COMMANDS_PATH.write_text(
+        json.dumps(rows[:COMMANDS_MAX], ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return rec
+
+
+def write_request(title: str, body: str, source: str = "board") -> str:
     title = re.sub(r"\s+", " ", title).strip()
     body = body.strip()
     if not title:
@@ -1152,6 +1191,7 @@ def write_request(title: str, body: str) -> str:
         "# 오너 지시함 (INBOX) — 최우선\n\n## 대기 중\n"
     )
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    record_command(title, body, source=source, status="open")
     block = f"\n### 📌 {title} (오너, {stamp})\n\n{body or '(본문 없음)'}\n\n"
     marker = "## 대기 중"
     idx = text.find(marker)
@@ -2007,6 +2047,7 @@ def build_state() -> dict:
         "grok": grok_usage(),
         "claude": claude_usage(),
         "codex": codex_usage(),
+        "commands": load_commands()[:24],
     }
 
 
@@ -2178,5 +2219,46 @@ def main() -> None:
         srv.shutdown()
 
 
+def cli_command(argv: list[str]) -> int:
+    """python3 loop/board.py command 제목 [본문] [--source chat] [--status done] [--inbox]"""
+    args = argv[2:]
+    source = "chat"
+    status = "done"
+    inbox = False
+    positional: list[str] = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--source" and i + 1 < len(args):
+            source = args[i + 1]
+            i += 2
+            continue
+        if a == "--status" and i + 1 < len(args):
+            status = args[i + 1]
+            i += 2
+            continue
+        if a == "--inbox":
+            inbox = True
+            i += 1
+            continue
+        positional.append(a)
+        i += 1
+    if not positional:
+        print("제목이 비어 있다", file=sys.stderr)
+        return 2
+    title = positional[0]
+    body = positional[1] if len(positional) > 1 else ""
+    if inbox or status == "open":
+        stamp = write_request(title, body, source=source)
+        rec = {"at": stamp, "title": title[:80], "body": body[:400],
+               "source": source, "status": "open", "inbox": True}
+    else:
+        rec = record_command(title, body, source=source, status=status)
+    print(json.dumps(rec, ensure_ascii=False))
+    return 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "command":
+        raise SystemExit(cli_command(sys.argv))
     main()

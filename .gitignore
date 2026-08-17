@@ -6,6 +6,7 @@ loop/STOP
 loop/agent
 loop/board_checks.json
 loop/board_decisions.json
+loop/owner_commands.json
 loop/loop.pid
 loop/grok_usage.cache.json
 loop/claude_usage.cache.json
