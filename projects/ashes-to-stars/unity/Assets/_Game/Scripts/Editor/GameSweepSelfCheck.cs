@@ -52,6 +52,8 @@ namespace AshesToStars
                 One("길 한가운데 금지", FieldDecorRoadSelfCheck.Run, rows, errors);
                 One("로컬 테스트 시드", LocalPlayKitSelfCheck.Run, rows, errors);
                 One("사냥 경험치", HuntExpSelfCheck.Run, rows, errors);
+                One("보스 사망 애니", BossDeathAnimSelfCheck.Run, rows, errors);
+                One("직업 애니 13장", JobAnimSelfCheck.Run, rows, errors);
             }
             finally
             {

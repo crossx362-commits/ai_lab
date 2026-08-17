@@ -10,6 +10,27 @@
 
 ---
 
+## 클로드 협업 분담 (2026-08-18, 오너 「클로드랑 협업 진행」)
+
+세션 `8349a8d2` (Desktop opus-5). 보드 http://127.0.0.1:8766/ . 루프 `STOP`. Unity `unity/` PID는 죽이지 마라.
+
+**클로드 = 그림.** 손대지 마라.
+- 보스 `boss_*_death_01/02.png` 와 death 4장
+- 직업 5×13 PNG (`tank`·`dps`·`healer`·`buffer`·`mage`) — 할로우 나이트 풍 반입
+- `ui/chrome/*.meta` 필터(Point→Bilinear)
+- `art/out_p9_hollow` · `out_p10_bg` · `out_p11_anim` · spec JSON
+- `git add -A` 금지. 클로드 dirty PNG를 그록 커밋에 섞지 마라
+
+**그록 = 소비·검사.**
+- `BossDeathAnimSelfCheck` — 보스 death 4장이 `BossAnim`에 붙는지
+- `JobAnimSelfCheck` — 직업 13장이 `CharAnim`에 붙는지
+- 이미 닫은 전투·HUD는 다시 안 연다. `W3Party` 안 건드림
+- 루프 재개 금지. 4직업 실루엣을 그록이 다시 그리지 마라(클로드 몫)
+
+`unity_meas` GameSweep **24/24 PASS** (보스 사망·직업 13장 포함). 클로드 PNG는 스테이징하지 않음.
+
+---
+
 ## 클로드와 공유 (2026-08-18, 오너 「보드를 돌아가는 클로드와 같이 공유」)
 
 개발 보드: http://127.0.0.1:8766/  (같은 맥, 지금 켜져 있음)
