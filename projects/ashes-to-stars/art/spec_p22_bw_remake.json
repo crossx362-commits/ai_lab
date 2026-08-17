@@ -1,0 +1,319 @@
+{
+ "_note": "화풍 불합격 재생성. 흑백 가면. 글자 없는 6칸 시트.",
+ "refs": [],
+ "rulesets": {
+  "one": "Hollow Knight sprite: SINGLE figure, 3/4 front, full body, magenta #FF00FF background. Void-black body, bone-white mask, EMPTY black eye sockets. No ground. No text.",
+  "six": "Hollow Knight sprite sheet. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate.",
+  "port": "Hollow Knight bust: bone-white mask, empty black sockets, void-black body, dark grey vignette, no text."
+ },
+ "assets": [
+  {
+   "name": "tank_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss."
+  },
+  {
+   "name": "sheet_tank_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_tank_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "healer_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute."
+  },
+  {
+   "name": "sheet_healer_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_healer_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "guardian_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: same beetle as tank but shield even larger, both arms on shield, no axe, void black."
+  },
+  {
+   "name": "sheet_guardian_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: same beetle as tank but shield even larger, both arms on shield, no axe, void black. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_guardian_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: same beetle as tank but shield even larger, both arms on shield, no axe, void black. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "berserker_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets."
+  },
+  {
+   "name": "sheet_berserker_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_berserker_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: beetle with TWO bone-white axes, no big shield, void black, NO red cracks, empty sockets. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "swordsman_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal."
+  },
+  {
+   "name": "sheet_swordsman_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_swordsman_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: slender wasp, ONE bone-white saber, void-black chitin, pale mask, empty sockets, no crimson cape color — cape is charcoal. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "archer_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets."
+  },
+  {
+   "name": "sheet_archer_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_archer_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: slender wasp with a dark bow, pale bolts, void-black body, pale mask, empty sockets. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "summoner_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only."
+  },
+  {
+   "name": "sheet_summoner_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_summoner_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: void moth, black hood, pale mask, empty sockets, dark stone in hands, tiny charcoal golem, ONE pale-cyan pinpoint allowed in the stone only. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "priest_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body."
+  },
+  {
+   "name": "sheet_priest_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_priest_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: small dark moth-fairy priest, pale mask empty sockets, chalice with ONE pale glow, charcoal body. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "druid_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal."
+  },
+  {
+   "name": "sheet_druid_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_druid_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: dark moth-fairy, pale mask, vine-wrapped dark staff, NO saturated green — vines are charcoal. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "bard_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB."
+  },
+  {
+   "name": "sheet_bard_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_bard_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: spider weaver, pale mask with several empty pits, charcoal robes, dark lute, threads are grey not RGB. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "shaman_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green."
+  },
+  {
+   "name": "sheet_shaman_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_shaman_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: spider weaver hexer, pale mask, dark totem, grey smoke threads, no green. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "elemental_idle_00",
+   "rules_ref": "one",
+   "prompt": "SINGLE centered full-body idle of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes."
+  },
+  {
+   "name": "sheet_elemental_walk",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell walk/dash sheet of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes. Cells: walk L, walk R, walk stretch, dash lean, dash mid, dash recover. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "sheet_elemental_act",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell action sheet of: spider weaver, pale mask, three tiny grey-white orbs on threads, charcoal robes. Cells: attack wind-up, attack strike, special, hurt, death, invuln flash. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate."
+  },
+  {
+   "name": "portrait_tank",
+   "rules_ref": "port",
+   "prompt": "Bust portrait of: rotund beetle knight, huge round dark shield, short horns, bone-white mask, dark carapace with NO green moss. Dark grey vignette, near-monochrome."
+  },
+  {
+   "name": "portrait_healer",
+   "rules_ref": "port",
+   "prompt": "Bust portrait of: tiny dark moth-fairy, bone-white mask with empty sockets (not a smile), thin charcoal body, small tattered wings, staff with ONE pale-white glow, NOT gold, NOT cream-cute. Dark grey vignette, near-monochrome."
+  },
+  {
+   "name": "sheet_mob01_A",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell idle/walk sheet of ONE creature: small charcoal beetle-grub, pale mask scrap, many short legs, void black. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob01_B",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell attack/hurt/death sheet of ONE creature: small charcoal beetle-grub, pale mask scrap, many short legs, void black. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_chaser_A",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell idle/walk sheet of ONE creature: lean ash-hound INSECT, chitin not fur, pale mask face, empty sockets, NOT a real dog, NOT a greyhound. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_chaser_B",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell attack/hurt/death sheet of ONE creature: lean ash-hound INSECT, chitin not fur, pale mask face, empty sockets, NOT a real dog, NOT a greyhound. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_charger_A",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell idle/walk sheet of ONE creature: heavy ram-beetle, forward horn, void black, pale mask, empty sockets. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_charger_B",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell attack/hurt/death sheet of ONE creature: heavy ram-beetle, forward horn, void black, pale mask, empty sockets. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_ranged_A",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell idle/walk sheet of ONE creature: thin upright quill-bug, void black, pale mask, empty sockets. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_ranged_B",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell attack/hurt/death sheet of ONE creature: thin upright quill-bug, void black, pale mask, empty sockets. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_swarmer_A",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell idle/walk sheet of ONE creature: wide low mite, many legs, void black, pale fleck of a mask. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  },
+  {
+   "name": "sheet_mob_swarmer_B",
+   "rules_ref": "six",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "6-cell attack/hurt/death sheet of ONE creature: wide low mite, many legs, void black, pale fleck of a mask. LAYOUT: EXACTLY SIX CELLS, 3x2, empty magenta gaps, NO text, NO labels, NO captions, NO numbers, NO grid titles. Same character, scale, camera, common baseline. EMPTY black eye-sockets — no pupils, no glow-dots in the eyes. Body VOID BLACK/charcoal, bone-white mask. One pale accent glow at most. NO grass, NO ground patch, NO drop-shadow plate. Neutral grey-black only."
+  }
+ ]
+}
