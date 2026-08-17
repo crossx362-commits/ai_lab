@@ -1,0 +1,29 @@
+{
+ "_note": "P25 영지 바닥 4종. 웹조사 반영(2026-08-18): 2:1 다이아몬드로 스큐할 정사각 심리스 원본, 값 범위 좁게(건물이 읽혀야 한다), 반복 티 안 나게 4변형.",
+ "refs": [],
+ "rulesets": {
+  "ground": "Seamless TOP-DOWN square ground texture for an isometric strategy game, to be skewed into 2:1 diamond tiles. FLAT overhead view — no perspective, no horizon, no objects casting long shadows, no buildings, no characters. The four edges must tile seamlessly against copies of themselves. Detail spread evenly across the whole square, no single focal point, no vignette, no border. Narrow value range and low saturation so that buildings placed on top read clearly (the ground must stay quiet). Hand-painted ink-and-wash, soft painterly shading, muted desaturated palette. NOT pixel art, NOT photoreal, NOT 3D render."
+ },
+ "assets": [
+  {
+   "name": "estate_ground_grass",
+   "rules_ref": "ground",
+   "prompt": "dark mossy turf of a dead kingdom: deep blue-green grass, faint pale lichen patches, a few bone-white pebbles"
+  },
+  {
+   "name": "estate_ground_dirt",
+   "rules_ref": "ground",
+   "prompt": "packed grey-brown earth of a courtyard: fine cracks, scattered small stones, faint old cart ruts"
+  },
+  {
+   "name": "estate_ground_stone",
+   "rules_ref": "ground",
+   "prompt": "weathered flagstone paving: irregular slabs, mossy joints, chipped corners"
+  },
+  {
+   "name": "estate_ground_ash",
+   "rules_ref": "ground",
+   "prompt": "ashen scorched ground: pale grey ash over dark soil, faint ember cracks barely glowing"
+  }
+ ]
+}

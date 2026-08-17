@@ -20,6 +20,8 @@ namespace AshesToStars
         public const float ScreenH = 720f;
         public const float TileAspect = 0.52f;
         public const float RoofHead = 1.15f;
+        /// <summary>세로 맞춤에만 쓰는 지붕 여유. RoofHead(1.15)는 배치 계산용으로 남긴다.</summary>
+        public const float FitHead = 0.35f;
         public const float OldTileCap = 88f;
         public const string EnvNo = "QA_NO_YARD_FILL";
         public const string EnvShowPan = "QA_YARD_PAN";
@@ -171,7 +173,12 @@ namespace AshesToStars
             if (FillBlocked)
                 tw = Mathf.Min(OldTileCap, area.width / (n + 0.6f));
             else
-                tw = Mathf.Min(area.width / n, area.height / (n * TileAspect + RoofHead));
+                // 클래시 오브 클랜처럼 **마을이 화면을 채워야 한다**(오너 2026-08-18).
+                // 옛 식은 지붕 여유를 1.15칸이나 세로 맞춤에 넣어, 8칸 기준 판이 화면 폭의
+                // 72%에서 멈췄다(실측: tw=86.6px, 판 693px / 화면 960px). 지붕은 판 위쪽
+                // 헤더 영역으로 넘어가도 되는 장식이라 맞춤 계산에서 뺀다 — 넘치는 만큼은
+                // 이미 있는 끌어 보기(Pan)가 담당한다.
+                tw = Mathf.Min(area.width / n, area.height / (n * TileAspect + FitHead));
             return tw * Zoom;
         }
 
