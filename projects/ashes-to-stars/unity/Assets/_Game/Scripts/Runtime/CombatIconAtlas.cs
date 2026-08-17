@@ -80,14 +80,41 @@ namespace AshesToStars
             return Pieces.TryGetValue(key, out var rect) ? rect : Rect.zero;
         }
 
+        // ── 힉스필드 단품 아이콘(2026-08-18) ──────────────────────────────────
+        // 옛 아틀라스는 채도 높은 가챠풍이라 할로우 나이트 화풍과 어긋난다(오너 지적).
+        // 48칸을 한 장으로 다시 뽑는 대신, 이미 생성해 두고 안 쓰던 단품 이미지
+        // 49장(P12 9 + P13 40)을 `art/style_check.py`로 골라 그대로 쓴다 — "버리지 말고
+        // 활용"(오너 지시). `PortraitAtlas.SoloOf`와 같은 패턴: solo가 있으면 우선,
+        // 없으면 옛 아틀라스로 폴백해서 화면이 비지 않는다.
+        static readonly Dictionary<string, bool> _soloMissing = new Dictionary<string, bool>();
+
+        static Texture2D SoloOf(string key)
+        {
+            if (_soloMissing.TryGetValue(key, out bool missing) && missing) return null;
+            var t = Resources.Load<Texture2D>("ui/icons/" + key);
+            _soloMissing[key] = t == null;
+            return t;
+        }
+
         public static bool Draw(Rect target, string key, Color? tint = null)
         {
-            var texture = Texture;
-            var source = RectFor(key);
-            if (texture == null || source.width <= 0 || source.height <= 0) return false;
-
+            var solo = SoloOf(key);
             var saved = GUI.color;
             GUI.color = tint ?? Color.white;
+            if (solo != null)
+            {
+                GUI.DrawTexture(target, solo, ScaleMode.ScaleToFit, true);
+                GUI.color = saved;
+                return true;
+            }
+
+            var texture = Texture;
+            var source = RectFor(key);
+            if (texture == null || source.width <= 0 || source.height <= 0)
+            {
+                GUI.color = saved;
+                return false;
+            }
             GUI.DrawTextureWithTexCoords(target, texture, TextureCoords(source), true);
             GUI.color = saved;
             return true;

@@ -509,6 +509,14 @@ namespace AshesToStars
         static void EnsureTex()
         {
             if (_grass != null) return;
+            // ⛔ 텍스처 다이아몬드 시도는 되돌렸다(2026-08-18) — `art/ground/estate/*.png`
+            //    (힉스필드 등각 바닥, 오너 지시 "바닥좀 퀄 있게")를 여기 연결했더니 화면에서
+            //    타일마다 위쪽 삼각형만 그려지고 아래쪽 절반이 검게 비었다. PNG 단독 검사
+            //    (알파 채널 크롭)로는 완전한 마름모였고 세로 반전도 재현에 안 통했다 —
+            //    즉 파일이 아니라 **유니티 임포트·GUI 렌더 경로 어딘가**의 문제인데, 배치
+            //    스크린샷만으로는 원인을 못 좁혔다. 자산은 `unity/Assets/Resources/ground/estate/`에
+            //    남겨 뒀다 — 에디터(Unity MCP)로 직접 텍스처 임포트 설정(Wrap·Mip·Alpha Is
+            //    Transparency)을 확인할 수 있을 때 재시도할 것. 절차 생성 단색으로 복귀.
             _grass = Diamond(new Color(0.36f, 0.52f, 0.28f, 0.92f), new Color(0.22f, 0.34f, 0.16f, 0.95f));
             _path = Diamond(new Color(0.72f, 0.52f, 0.28f, 0.95f), new Color(0.48f, 0.30f, 0.12f, 1f));
             _plot = Diamond(new Color(0.42f, 0.36f, 0.26f, 0.95f), new Color(0.28f, 0.22f, 0.14f, 1f));
