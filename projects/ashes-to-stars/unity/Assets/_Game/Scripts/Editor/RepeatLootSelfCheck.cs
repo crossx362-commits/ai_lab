@@ -61,7 +61,7 @@ namespace AshesToStars
             Check(InvasionState.RepeatPercent() == 100, "1회차 100");
             Check(InvasionState.LootCopper() == 5_000,
                 $"1회차 약탈 5000 (실제 {InvasionState.LootCopper()})");
-            Check(Honor.ApplyInvasion(true) == 30, "1회차 명예 30");
+            Check(Honor.ApplyInvasion(true) == 15, "1회차 명예 15");
             Honor.ResetForTest();
 
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
@@ -69,8 +69,8 @@ namespace AshesToStars
             Check(InvasionState.TryBegin(), "1회 출정");
             long first = InvasionState.Settle(true);
             Check(first == 5_000, $"1회 정산 5000 (실제 {first})");
-            Check(Honor.Points == 30, $"1회 정산 명예 30 (실제 {Honor.Points})");
-            Check(Honor.LastGain == 30, "1회 LastGain 30");
+            Check(Honor.Points == 15, $"1회 정산 명예 15 (실제 {Honor.Points})");
+            Check(Honor.LastGain == 15, "1회 LastGain 15");
             Check(InvasionState.NextAttempt() == 2, "정산 뒤 다음 2회차");
             Check(InvasionState.RepeatLootLine().Contains("−80%"),
                 $"2회차 문구 −80% (실제 {InvasionState.RepeatLootLine()})");
@@ -83,13 +83,13 @@ namespace AshesToStars
             InvasionState.NowUnix = () => t0 + InvasionState.GuardSeconds + 1;
             Check(InvasionState.LootCopper() == 1_000,
                 $"12h+1초 2회차 약탈 1000 (실제 {InvasionState.LootCopper()})");
-            Check(Honor.ApplyInvasion(true) == 6, "2회차 명예 6");
+            Check(Honor.ApplyInvasion(true) == 3, "2회차 명예 3");
             Honor.ResetForTest();
             Check(InvasionState.TryBegin(), "2회 출정");
             long second = InvasionState.Settle(true);
             Check(second == 1_000, $"2회 정산 1000 (실제 {second})");
-            Check(Honor.Points == 6, $"2회 정산 명예 6 (실제 {Honor.Points})");
-            Check(Honor.LastGain == 6, "2회 LastGain 6");
+            Check(Honor.Points == 3, $"2회 정산 명예 3 (실제 {Honor.Points})");
+            Check(Honor.LastGain == 3, "2회 LastGain 3");
             Check(InvasionState.NextAttempt() == 3, "정산 뒤 다음 3회차");
             Check(InvasionState.RepeatPercent() == 0, "3회차 0");
             Check(InvasionState.LootCopper() == 0,
@@ -128,7 +128,7 @@ namespace AshesToStars
                 $"차단하면 두 번째도 전액 (실제 {InvasionState.LootCopper()})");
             Check(InvasionState.RepeatLootLine().Contains("없음"),
                 $"차단 문구 없음 (실제 {InvasionState.RepeatLootLine()})");
-            Check(Honor.ApplyInvasion(true) == 30, "차단하면 명예도 30");
+            Check(Honor.ApplyInvasion(true) == 15, "반복 차단이면 명예는 방어 0의 15");
             Environment.SetEnvironmentVariable(InvasionState.EnvNoRepeat, null);
 
             ResetWorld();

@@ -36,7 +36,8 @@ namespace AshesToStars
                 if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
                     && !InvasionState.LootWarehouseBlocked)
                     s += " · " + InvasionState.WarehouseLootLine();
-                if (Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
+                if ((Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
+                     || Environment.GetEnvironmentVariable(Honor.EnvShowDefense) == "1")
                     && !Honor.Blocked)
                     s += " · " + Honor.WinLine();
                 if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"
@@ -74,6 +75,7 @@ namespace AshesToStars
             InvasionState.SeedWarehouseLootQaIfRequested();
             InvasionState.SeedRepeatLootQaIfRequested();
             Honor.SeedQaIfRequested();
+            Honor.SeedDefenseQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
             var plate = WorldStar.Plate(r);
@@ -109,7 +111,8 @@ namespace AshesToStars
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
                      && !InvasionState.LootWarehouseBlocked)
                 invasionOpen = $"{InvasionState.WarehouseLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
-            else if (Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
+            else if ((Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
+                      || Environment.GetEnvironmentVariable(Honor.EnvShowDefense) == "1")
                      && !Honor.Blocked)
                 invasionOpen = $"{Honor.WinLine()} · " + invasionOpen;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"

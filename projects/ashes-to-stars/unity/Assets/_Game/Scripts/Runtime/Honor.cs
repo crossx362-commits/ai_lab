@@ -5,15 +5,19 @@ namespace AshesToStars
 {
     /// <summary>
     /// 침략 명예(§18-13). 거래 불가 통화. 승리 +30 / 패배 0.
-    /// 방어력 비례 ±50%는 침략 전투 시뮬이 없어 고정 +30만.
-    /// 수비 성공 +20은 수비 시뮬이 없어 안 넣는다. QA_NO면 불변.
+    /// 상대 방어(EstateDefense.CutPercent)에 ±50% — Cut 0=15 · 20=30 · 40=45.
+    /// 수비 성공 +20은 들어오는 침략이 없어 안 넣는다.
+    /// QA_NO_HONOR면 불변. QA_NO_HONOR_DEFENSE면 옛 고정 +30.
     /// </summary>
     public static class Honor
     {
         public const int Win = 30;
         public const int Lose = 0;
+        public const int ScaleFloor = 50;
         public const string EnvShow = "QA_HONOR";
         public const string EnvNo = "QA_NO_HONOR";
+        public const string EnvShowDefense = "QA_HONOR_DEFENSE";
+        public const string EnvNoDefense = "QA_NO_HONOR_DEFENSE";
 
         const string K_POINTS = "ats.honor.points";
         const string K_LAST = "ats.honor.last";
@@ -32,8 +36,29 @@ namespace AshesToStars
             }
         }
 
+        public static bool ScaleBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoDefense);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         public static int Points { get { Load(); return _points; } }
         public static int LastGain { get { Load(); return _last; } }
+
+        /// <summary>Cut 0=15 · 20=30 · 40=45. QA_NO_HONOR_DEFENSE면 30.</summary>
+        public static int WinForCut(int cut)
+        {
+            if (ScaleBlocked) return Win;
+            if (cut < 0) cut = 0;
+            if (cut > EstateDefense.CutCap) cut = EstateDefense.CutCap;
+            int scale = ScaleFloor + cut * 100 / EstateDefense.CutCap;
+            return Win * scale / 100;
+        }
+
+        public static int WinNow() => WinForCut(EstateDefense.CutPercent());
 
         static void Load()
         {
@@ -51,7 +76,7 @@ namespace AshesToStars
             PlayerPrefs.Save();
         }
 
-        /// <summary>승리 +30 × 반복 배율, 패배 0. QA_NO면 0을 주고 잔액은 안 바꾼다.</summary>
+        /// <summary>승리 WinNow × 반복 배율, 패배 0. QA_NO면 0을 주고 잔액은 안 바꾼다.</summary>
         public static int ApplyInvasion(bool won)
         {
             Load();
@@ -61,7 +86,7 @@ namespace AshesToStars
                 Save();
                 return 0;
             }
-            int add = won ? Win * InvasionState.RepeatPercent() / 100 : Lose;
+            int add = won ? WinNow() * InvasionState.RepeatPercent() / 100 : Lose;
             _points += add;
             _last = add;
             Save();
@@ -71,7 +96,8 @@ namespace AshesToStars
         public static string WinLine()
         {
             if (Blocked) return "명예 없음";
-            return $"명예 +{Win}(§18-13)";
+            if (ScaleBlocked) return $"명예 +{Win}(§18-13)";
+            return $"명예 +{WinNow()}(방어 비례 §18-13)";
         }
 
         public static string BalanceLine()
@@ -91,6 +117,26 @@ namespace AshesToStars
             RacePrefs.Set(RaceId.인간);
             WorldStar.EnemyDebuff = false;
             WorldStar.AllyBuff = false;
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            if (GameState.Wallet.Copper < InvasionState.SortieCost())
+                GameState.Earn(InvasionState.SortieCost());
+            InvasionState.ResetPendingForHonorQa();
+        }
+
+        /// <summary>시각 QA. QA_HONOR_DEFENSE=1이면 방어 Cut 40 · 명예 +45.</summary>
+        public static void SeedDefenseQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowDefense) != "1") return;
+            if (Blocked) return;
+            if (_qaSeeded) return;
+            _qaSeeded = true;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.EnemyDebuff = false;
+            WorldStar.AllyBuff = false;
+            EstateDefense.ResetForTest();
+            EstateDefense.SetLevelForTest(EstateDefense.Kind.화살탑, 16);
             if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
                 GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
             if (GameState.Wallet.Copper < InvasionState.SortieCost())
