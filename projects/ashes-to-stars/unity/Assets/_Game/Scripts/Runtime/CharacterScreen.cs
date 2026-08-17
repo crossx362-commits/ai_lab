@@ -23,8 +23,8 @@ namespace AshesToStars
         /// <summary>레벨·경험치 진척 표기(§18-6). 만렙은 MAX로.</summary>
         static string ExpText(CharacterRecord ch) =>
             ch.Level >= LifeSystem.MaxLevel
-                ? $"Lv.{ch.Level} · EXP MAX"
-                : $"Lv.{ch.Level} · EXP {ch.Exp}/{LifeSystem.ExpToNext(ch.Level)}";
+                ? $"Lv.{ch.Level} · 경험 최대"
+                : $"Lv.{ch.Level} · 경험 {ch.Exp}/{LifeSystem.ExpToNext(ch.Level)}";
 
         static string TrialActionText(FirstTrialAction action) => action switch
         {

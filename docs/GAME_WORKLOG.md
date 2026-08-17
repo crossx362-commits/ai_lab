@@ -21,6 +21,11 @@
 - 끝난 일 검은 화면 PNG 금지 (`shot_is_black`)
 - 회귀: `python3 -m unittest loop.test_board loop.test_v4_playtest`
 
+## 게임 전체 점검 (2026-08-17)
+
+오너 「게임 전체 부분 체크」. `GameSweepSelfCheck` 20종 + 보드 회귀.
+캐릭터창 경험치 표기 `EXP`→`경험`. 보드 검증 칸에 기록.
+
 ## 검증을 보드에 올림 (2026-08-17)
 
 오너 「테스트는 철저하게, 결과를 보드에 작성」. `ChatWorkBatchSelfCheck` 7종 +

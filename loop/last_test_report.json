@@ -1,10 +1,75 @@
 {
-  "at": "2026-08-17 10:46",
+  "at": "2026-08-17 10:59",
   "ok": true,
-  "summary": "8개 전부 통과",
+  "summary": "21개 전부 통과",
   "items": [
     {
       "name": "사냥 강화 3택",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "전투 HUD",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "UI 아틀라스·카드 여백",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "필드 허브 HUD",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "영지 마을 HUD",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "허브 제목판",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "사냥 시작 두 단계",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "스킬 자동/수동",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "시작 직업 선택",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "캐릭터 명부",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "초상 아틀라스",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "아이템 아틀라스",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "영지 격자",
+      "ok": true,
+      "note": "통과"
+    },
+    {
+      "name": "영지 마당",
       "ok": true,
       "note": "통과"
     },
@@ -39,9 +104,9 @@
       "note": "통과"
     },
     {
-      "name": "보드 회귀 74개",
+      "name": "보드 회귀",
       "ok": true,
-      "note": "loop.test_board + test_v4_playtest"
+      "note": "loop.test_board 통과"
     }
   ]
 }
