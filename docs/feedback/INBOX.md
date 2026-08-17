@@ -26,7 +26,7 @@
 큐 1번 캐릭터/몹 화질은 재생성 금지라 「대기하지 마라」로 INBOX 21:45·08:37 부제 잘림을 닫음.
 슬림 제목 22·얇은 버튼 크롬. `QA_NO`면 옛 전폭. SelfCheck 전항 PASS. FAIL 1은 `TitleH=36`.
 PNG `estate_status_shots/qa_go:Estate.png` — `Lv3 · 36골드`·`25실버/h`가 칸 안에 있다.
-코드 (커밋 직후).
+코드 `dc3c3004`.
 
 ### ✅ 영지 현황 도크 (루프, 2026-08-17)
 
@@ -709,7 +709,7 @@ Lv20에서 1차 전직 11종으로 세분화한 뒤 Lv50에서 같은 직업의 
 
 > **진행(2026-08-17 루프):** 현황 도크 부제. `TitleHOf`/`Caption`을 현황 탭이 읽는다.
 > `QA_NO`면 옛 540. PNG `estate_status_shots/qa_go:Estate.png`.
-> 코드 (커밋 직후). 캐릭터/몹 화질은 여기 유지.
+> 코드 `dc3c3004`. 캐릭터/몹 화질은 여기 유지.
 >
 > **이전:** 현황 도크. `EstateStatusHud`를 현황 탭이 읽는다.
 > `QA_NO`면 옛 540. PNG `estate_status_shots/qa_go:Estate.png`.
