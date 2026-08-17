@@ -1352,6 +1352,20 @@ public class W3Party : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         var cam = Camera.main;
         sb.Append($"ortho={ (cam != null ? cam.orthographicSize : -1f):F1} ");
+        // 파티 5명 전원 덤프 — "한 명만 보인다"·"몸과 가면이 따로 논다"를 수치로 가른다.
+        // 아틀라스 rect가 같은 두 명이 있으면 그림이 겹쳐 배정된 것이고,
+        // 화면 좌표가 화면 밖이면 안 보이는 게 아니라 거기 없는 것이다.
+        for (int k = 0; k < g._party.Length; k++)
+        {
+            var p = g._party[k];
+            if (p == null) { sb.Append($"[{k}:없음]"); continue; }
+            if (!p.Alive) { sb.Append($"[{k}:{p.Job} 사망]"); continue; }
+            var spr = p.Sr != null ? p.Sr.sprite : null;
+            var scr = cam != null ? cam.WorldToScreenPoint(p.Tr.position) : Vector3.zero;
+            sb.Append($"[{k}:{p.Job} rect={(spr != null ? spr.rect.ToString("F0") : "null")} " +
+                      $"h={(p.Sr != null ? p.Sr.bounds.size.y : 0f):F2}u " +
+                      $"화면=({scr.x:F0},{Screen.height - scr.y:F0}) ord={(p.Sr != null ? p.Sr.sortingOrder : 0)}]");
+        }
         var m0 = g._party[0];
         if (m0.Sr != null && m0.Sr.sprite != null)
             sb.Append($"탱높이={m0.Sr.bounds.size.y:F2}u 스케일={m0.Tr.localScale.y:F2} " +
@@ -2613,14 +2627,28 @@ public class W3Party : MonoBehaviour
         // ⚠️ 여기 번호는 **행동 종류**(`_mKind`)다. 실루엣은 `MobSpriteKind`가 1:1로
         //    갈라주므로 종류마다 그림도 색도 하나씩 대응한다 — 그래서 같은 모양은 같은 색이 된다.
         //    (실루엣 이름과 행동 이름이 어긋나 있다는 별개 문제는 STATUS.md에 적어 뒀다)
+        // ⚠️ 원색으로 곱하면 **손그림이 죽는다**(2026-08-18 실측). 몹 원본 아트의 채도는
+        //    0.07~0.10으로 캐릭터(0.10)와 같은 할로우 나이트 계열인데, 여기서 (1,0.62,0.38)
+        //    같은 원색을 곱해 화면에서만 쨍한 금색·적색이 됐다. 그 결과 **화면에서 채도가
+        //    높은 것이 전부 잡몹**이 되어 주인공이 묻혔다 — "캐릭터가 안 보인다"의 실제 원인.
+        //    계열 구분(오너 지시)은 색조로 남기고 강도만 낮춘다. 등급(정예)은 조금 더 진하게.
+        //    ⚠️ 흰색으로 Lerp하면 안 된다(1차 시도 실패, 실측). 곱셈 틴트의 밝기가 1에 가까워져
+        //    몹이 크림색으로 **떠 버리고** 손그림의 어두운 값이 날아간다 — 채도만 낮추고
+        //    명도는 오히려 살짝 낮춰야 배경에 가라앉고, 캐릭터의 흰 가면이 화면에서 가장
+        //    밝은 것이 된다(할로우 나이트가 주인공을 읽히게 하는 방식).
+        Color Muted(Color c, float sat, float val)
+        {
+            Color.RGBToHSV(c, out float h, out _, out _);
+            return Color.HSVToRGB(h, sat, val);
+        }
         return kind switch
         {
-            0 => TintOf(MobFamily.야수),      // 추적형 — 주황
-            1 => TintOf(MobFamily.기계),      // 포위형 — 강청
-            2 => TintOf(MobFamily.언데드),    // 원거리형 — 독초록
-            5 => new Color(1f, 0.82f, 0.30f), // 돌진형 — 황색. 예고를 봐야 하는 몹이라 눈에 띄어야 한다
-            3 => new Color(1f, 0.30f, 0.30f), // 치유 정예 — 적색(잡몹에 없는 색)
-            _ => new Color(0.78f, 0.40f, 1f), // 소환 정예 — 보라(잡몹에 없는 색)
+            0 => Muted(TintOf(MobFamily.야수), 0.22f, 0.80f),   // 추적형 — 주황기
+            1 => Muted(TintOf(MobFamily.기계), 0.22f, 0.80f),   // 포위형 — 청기
+            2 => Muted(TintOf(MobFamily.언데드), 0.22f, 0.80f), // 원거리형 — 초록기
+            5 => Muted(new Color(1f, 0.82f, 0.30f), 0.30f, 0.86f), // 돌진형 — 예고를 봐야 하니 조금 진하게
+            3 => Muted(new Color(1f, 0.30f, 0.30f), 0.34f, 0.84f), // 치유 정예 — 붉은기
+            _ => Muted(new Color(0.78f, 0.40f, 1f), 0.34f, 0.84f), // 소환 정예 — 보랏기
         };
     }
 
