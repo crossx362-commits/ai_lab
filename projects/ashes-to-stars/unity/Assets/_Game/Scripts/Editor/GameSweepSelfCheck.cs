@@ -54,6 +54,7 @@ namespace AshesToStars
                 One("사냥 경험치", HuntExpSelfCheck.Run, rows, errors);
                 One("보스 사망 애니", BossDeathAnimSelfCheck.Run, rows, errors);
                 One("직업 애니 13장", JobAnimSelfCheck.Run, rows, errors);
+                One("할로우 배경 6장", HollowBgSelfCheck.Run, rows, errors);
             }
             finally
             {

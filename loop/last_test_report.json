@@ -1,7 +1,7 @@
 ﻿{
-  "at": "2026-08-18 01:49",
+  "at": "2026-08-18 01:57",
   "ok": true,
-  "summary": "24개 전부 통과",
+  "summary": "25개 전부 통과",
   "items": [
     {"name":"사냥 강화 3택","ok":true,"note":"통과"},
     {"name":"전투 HUD","ok":true,"note":"통과"},
@@ -26,6 +26,7 @@
     {"name":"로컬 테스트 시드","ok":true,"note":"통과"},
     {"name":"사냥 경험치","ok":true,"note":"통과"},
     {"name":"보스 사망 애니","ok":true,"note":"통과"},
-    {"name":"직업 애니 13장","ok":true,"note":"통과"}
+    {"name":"직업 애니 13장","ok":true,"note":"통과"},
+    {"name":"할로우 배경 6장","ok":true,"note":"통과"}
   ]
 }

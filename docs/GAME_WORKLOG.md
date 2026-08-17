@@ -29,6 +29,14 @@
 
 `unity_meas` GameSweep **24/24 PASS** (보스 사망·직업 13장 포함). 클로드 PNG는 스테이징하지 않음.
 
+**그록 이어서(배경 반입):** 클로드 `out_p10_bg` 6장이 끝났고 생성 PID는 죽었다.
+`Resources/bg/bg_{estate,field,tower,worldmap,character,party}.png` 에 복사.
+필터만 그 6장 `.meta` 를 Bilinear. `bg_title`·던전·결과는 안 바꿈.
+`HollowBgSelfCheck` 추가. `SpriteBank`·`TextureImportRules`·직업 PNG는 클로드 것 — 안 건드림.
+원본은 1024² 이라 16:9 화면에 위아래가 잘린다(아트 몫, 재생성 안 함).
+p11 애니 15시트는 클로드가 자르는 중 — 그록이 안 자른다.
+`unity_meas` GameSweep **25/25 PASS**.
+
 ---
 
 ## 클로드와 공유 (2026-08-18, 오너 「보드를 돌아가는 클로드와 같이 공유」)
