@@ -87,6 +87,13 @@ public class SpriteBank
     }
 
     static readonly string[] JOB_DIRS = { "tank", "dps", "healer", "buffer", "mage" };
+    /// <summary>1차 전직 전용 폴더. 아틀라스 밖 솔로 텍스처 — 장수가 많아  squish 방지.</summary>
+    public static readonly string[] ExtraDirs =
+    {
+        "guardian", "berserker", "swordsman", "archer", "summoner",
+        "priest", "druid", "bard", "shaman", "elemental",
+    };
+    Sprite[][] _extra;
     static readonly string[] JOB_FRAMES =
     {
         "idle_00", "walk_00", "walk_01", "attack_00", "attack_01",
@@ -135,6 +142,53 @@ public class SpriteBank
             case Motion.Hurt: return Char(j, Frame.Hurt);
             case Motion.Death: return Char(j, Frame.Death);
             default: return Char(j, Frame.Idle);
+        }
+    }
+
+    static Job JobFromDir(string dir) => dir switch
+    {
+        "guardian" or "berserker" or "tank" => Job.Tank,
+        "priest" or "druid" or "healer" => Job.Healer,
+        "bard" or "shaman" or "elemental" or "buffer" => Job.Buffer,
+        "summoner" or "mage" => Job.Mage,
+        _ => Job.Dps,
+    };
+
+    int ExtraIndex(string dir)
+    {
+        if (string.IsNullOrEmpty(dir) || _extra == null) return -1;
+        for (int i = 0; i < ExtraDirs.Length; i++)
+            if (ExtraDirs[i] == dir) return i;
+        return -1;
+    }
+
+    /// <summary>전직 폴더 애니. 걷기 장이 없으면 기본 5직업으로 돌아간다.</summary>
+    public Sprite CharDir(string dir, Frame f = Frame.Idle)
+    {
+        int e = ExtraIndex(dir);
+        if (e < 0 || _extra[e] == null)
+            return Char(JobFromDir(dir), f);
+        var row = _extra[e];
+        return row[(int)f] ?? row[0] ?? Char(JobFromDir(dir), f);
+    }
+
+    public Sprite CharAnimDir(string dir, Motion m, float t)
+    {
+        int e = ExtraIndex(dir);
+        if (e < 0 || _extra[e] == null || _extra[e][(int)Frame.WalkA] == null)
+            return CharAnim(JobFromDir(dir), m, t);
+        switch (m)
+        {
+            case Motion.Walk:
+                return CharDir(dir, (t % 0.36f) < 0.18f ? Frame.WalkA : Frame.WalkB);
+            case Motion.Attack:
+                return CharDir(dir, (t % 0.24f) < 0.12f ? Frame.AttackA : Frame.AttackB);
+            case Motion.Dash:
+                return CharDir(dir, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
+            case Motion.Special: return CharDir(dir, Frame.Special);
+            case Motion.Hurt: return CharDir(dir, Frame.Hurt);
+            case Motion.Death: return CharDir(dir, Frame.Death);
+            default: return CharDir(dir, Frame.Idle);
         }
     }
 
@@ -359,11 +413,19 @@ public class SpriteBank
             => Sprite.Create(atlas, PxRect(i), pivot, ppu, 0, SpriteMeshType.FullRect);
 
         // 화면상 목표 크기(유닛). 여기 숫자만 고치면 전체 비율이 바뀐다.
-        const float U_CHAR = 2.0f;    // 파티원·플레이어
-        const float U_MOB = 1.5f;     // 잡몹 — 캐릭터보다 작아야 물량이 위협으로 읽힌다
-        const float U_ELITE = 2.2f;   // 정예
-        const float U_BOSS = 3.4f;    // 보스
-        const float U_PROJ = 0.4f;
+        // ⚠️ 이 숫자들은 **여기서 정하지 않는다.** 단일 소스는 `art/prop_scale.json`이다.
+        //    그 표는 첫 줄에 `_reference.character_units`를 선언하고 프랍 53종의 값을
+        //    전부 그 기준의 상대 크기로 적어 뒀는데, 정작 캐릭터 크기는 여기 C# 상수로
+        //    따로 살아 있었다 — 두 개의 진실. 2026-08-18에 "캐릭터가 작다"는 지적을
+        //    여기 상수만 2.0→2.6으로 올려 막으려다, 프랍 53종의 상대비를 통째로
+        //    무효화한다는 걸 발견했다(집이 캐릭터의 1.8배 → 1.4배로 조용히 찌그러진다).
+        //    아래 값은 표를 못 읽었을 때의 **폴백일 뿐**이다. 크기를 바꾸려면 표를 고쳐라.
+        float U(string key, float fallback) => AshesToStars.FieldDecor.Units(key, fallback);
+        float U_CHAR = U("unit_char", 2.0f);    // 파티원·플레이어 — 크기표의 기준값
+        float U_MOB = U("unit_mob", 1.5f);      // 잡몹 — 캐릭터보다 작아야 물량이 위협으로 읽힌다
+        float U_ELITE = U("unit_elite", 1.9f);  // 정예 — 캐릭터보다 **작아야** 주인공이 읽힌다
+        float U_BOSS = U("unit_boss", 3.4f);    // 보스 — 여기서만 캐릭터를 넘는다
+        float U_PROJ = U("unit_proj", 0.4f);
 
         b.Player = MakeAt(0, U_CHAR);
         b._mobs = new[] { MakeAt(1, U_MOB), MakeAt(2, U_MOB), MakeAt(3, U_MOB) };
@@ -451,6 +513,26 @@ public class SpriteBank
         //    화면 한복판에 떴다 — 내가 boss 커밋에서 낸 회귀다).
         //    같은 아틀라스 칸을 **투사체 크기(U_PROJ)로 다시 만든다.**
         b.Projectile = MakeAt(DOT, U_PROJ);
+
+        // 1차 전직 폴더는 아틀라스 밖. idle만 있으면 메뉴용, walk가 오면 전투 애니.
+        b._extra = new Sprite[ExtraDirs.Length][];
+        for (int e = 0; e < ExtraDirs.Length; e++)
+        {
+            string d = ExtraDirs[e];
+            var idleTex = Resources.Load<Texture2D>($"sprites/{d}/{d}_idle_00");
+            if (idleTex == null) continue;
+            float ppu = Mathf.Max(8, idleTex.height) / U_CHAR;
+            var pivot = new Vector2(0.5f, 0.06f);
+            b._extra[e] = new Sprite[JOB_FRAMES.Length];
+            for (int f = 0; f < JOB_FRAMES.Length; f++)
+            {
+                var tex = Resources.Load<Texture2D>($"sprites/{d}/{d}_{JOB_FRAMES[f]}");
+                if (tex == null) continue;
+                b._extra[e][f] = Sprite.Create(
+                    tex, new Rect(0, 0, tex.width, tex.height),
+                    pivot, ppu, 0, SpriteMeshType.FullRect);
+            }
+        }
 
         // 조작 캐릭터도 플레이스홀더가 아니라 실제 아트로 — W2도 이 한 줄로 같이 반영된다
         b.Player = b.Char(Job.Tank);

@@ -1,0 +1,149 @@
+{
+ "_note": "전직 10종 할로우 걷기·공격 시트. idle은 p13에 있음. 전투 CharAnimDir이 읽는다.",
+ "refs": [],
+ "rulesets": {
+  "s": "Hollow Knight inspired hand-drawn 2D game art: clean smooth dark linework, muted desaturated palette, soft painterly cel shading, bug-like chibi proportions, melancholic fairy-tale tone. NOT pixel art, NOT photorealistic, NOT 3D-rendered. THREE-QUARTER FRONT, FULL BODY. LAYOUT: EXACTLY SIX CELLS, 3 columns by 2 rows, clear empty pure-magenta gaps, SAME character scale and camera, common baseline. No text, no labels, no borders. Background: flat solid pure magenta #FF00FF."
+ },
+ "assets": [
+  {
+   "name": "sheet_guardian_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: rotund moss beetle HOLY GUARDIAN: enormous round shield covering the body, no axe, both arms on the shield, skull-white mask, curved horns, heavy carapace. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_guardian_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: rotund moss beetle HOLY GUARDIAN: enormous round shield covering the body, no axe, both arms on the shield, skull-white mask, curved horns, heavy carapace. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_berserker_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: moss beetle BERSERKER: NO large shield, TWO heavy bone axes, cracked carapace with red rage scratches, aggressive lean. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_berserker_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: moss beetle BERSERKER: NO large shield, TWO heavy bone axes, cracked carapace with red rage scratches, aggressive lean. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_swordsman_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: slender wasp SWORDSMAN: ONE long thin bone-white saber in a high guard, other hand empty, navy chitin, two horn-antennae, short crimson cape. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_swordsman_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: slender wasp SWORDSMAN: ONE long thin bone-white saber in a high guard, other hand empty, navy chitin, two horn-antennae, short crimson cape. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_archer_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: slender wasp ARCHER: long dark bow in both hands, quiver of pale bolts on the hip, navy chitin, horn-antennae, no sabers. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_archer_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: slender wasp ARCHER: long dark bow in both hands, quiver of pale bolts on the hip, navy chitin, horn-antennae, no sabers. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_summoner_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: void moth SUMMONER: ragged dark hood, glowing cyan eyes, cracked summoning stone, tiny stone golem at the feet, moth-wing cloak. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_summoner_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: void moth SUMMONER: ragged dark hood, glowing cyan eyes, cracked summoning stone, tiny stone golem at the feet, moth-wing cloak. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_priest_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: light fairy PRIEST: ivory body, closed-eye white mask, bright holy chalice, golden halo, small glowing wings. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_priest_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: light fairy PRIEST: ivory body, closed-eye white mask, bright holy chalice, golden halo, small glowing wings. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_druid_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: light fairy DRUID: ivory body, white mask, staff wrapped in living vines and leaves, moss on wings, a sprout at the feet. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_druid_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: light fairy DRUID: ivory body, white mask, staff wrapped in living vines and leaves, moss on wings, a sprout at the feet. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_bard_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: spider-silk BARD: pale multi-eye mask, plum robes, silk-and-bone lute, extra thin arms trailing faint sound-rings. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_bard_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: spider-silk BARD: pale multi-eye mask, plum robes, silk-and-bone lute, extra thin arms trailing faint sound-rings. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_shaman_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: spider-silk HEXER: darker mauve-black robes, small cursed totem, smoky black-green threads, hunched, same multi-eye mask. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_shaman_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: spider-silk HEXER: darker mauve-black robes, small cursed totem, smoky black-green threads, hunched, same multi-eye mask. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  },
+  {
+   "name": "sheet_elemental_walk",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell WALK/DASH sprite sheet of ONE character: spider-silk SPIRIT BINDER: pale mask, three tiny orbs (ember, water, wind) on silk threads, open welcoming stance. Cells L-R then top-bottom: walk left foot forward; walk right foot forward; walk stretch; dash start lean; dash mid-blur; dash recover. Poses MUST differ."
+  },
+  {
+   "name": "sheet_elemental_act",
+   "rules_ref": "s",
+   "aspect": "3:2",
+   "keep_bg": true,
+   "prompt": "A 6-cell ACTION sprite sheet of ONE character: spider-silk SPIRIT BINDER: pale mask, three tiny orbs (ember, water, wind) on silk threads, open welcoming stance. Cells: attack wind-up; attack strike; special cast; hurt recoil; death crumple; invulnerable flash pose. Poses MUST differ."
+  }
+ ]
+}

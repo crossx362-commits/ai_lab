@@ -1618,11 +1618,12 @@ public class W3Party : MonoBehaviour
             if (want != m.Mo) { m.Mo = want; m.AnimT = 0f; }
             else m.AnimT += dt;
 
-            m.Sr.sprite = bank.CharAnim(ArtOf(m.Job), m.Mo, m.AnimT);
+            string artDir = AshesToStars.UiPages.LookDir(m.Job.ToString());
+            m.Sr.sprite = bank.CharAnimDir(artDir, m.Mo, m.AnimT);
             // 무적 구간 표시 — 대시가 끝나고도 0.12초쯤 남는 무적을 화면에서 알 수 있게.
             // 「정확히 쓰면 한 번 산다」(§5)가 성립하려면 **무적이 켜져 있다는 것이 보여야** 한다.
             if (m.IFrame > 0f && m.DashT <= 0f)
-                m.Sr.sprite = bank.Char(ArtOf(m.Job), SpriteBank.Frame.Invuln);
+                m.Sr.sprite = bank.CharDir(artDir, SpriteBank.Frame.Invuln);
             m.Sr.sortingOrder = Depth(m.Pos.y);
 
             // 선택된 캐릭터를 눈에 띄게 — 누구에게 명령하는지 보이지 않으면 지휘가 성립하지 않는다(§5)
