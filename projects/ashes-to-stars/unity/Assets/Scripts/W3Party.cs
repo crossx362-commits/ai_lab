@@ -1053,8 +1053,8 @@ public class W3Party : MonoBehaviour
             m.Shield = 0f; m.Gauge = 0f; m.SkillCd = 0f; m.Chant = Chant.진군가;
             m.UltimateGauge = 0f; m.UltimateCd = 0f; m.ForceUltimate = false;
             // 진형 초기 배치: 탱 앞, 딜 중간, 힐 뒤 (§10-4가 이 진형을 유지시키는지 본다)
-            // 진형: 탱 최전방 → 딜 중간 → 힐·버퍼 후열 (§10-4가 이 진형을 유지시키는지 관찰)
-            m.Pos = new Vector2(i == 2 ? 1.2f : i == 4 ? -1.2f : 0f,
+            // X는 슬롯마다 다르게 — 같은 역할이 (0, y)에 겹쳐 서는 것을 막는다.
+            m.Pos = new Vector2((i - 2) * 1.1f,
                                 m.Role == Role.Tank ? 1.8f : m.Role == Role.Dps ? -0.4f : -2.6f);
             m.Tr.gameObject.SetActive(true);
         }
@@ -1542,8 +1542,10 @@ public class W3Party : MonoBehaviour
             {
                 m.DashT -= dt;
                 // 거리 = 기본 이동 3초분(기획서). `DASH_TIME` 동안 그만큼을 나눠 간다.
-                m.Pos += m.DashDir * (PlayerSpeed * 3f / DASH_TIME) * dt;
-                if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
+                Vector2 dashStep = m.DashDir * (PlayerSpeed * 3f / DASH_TIME) * dt;
+                if (ArenaLayout.Any) dashStep = ArenaLayout.Around(m.Pos, dashStep, UnitSeparation.AllyRadius);
+                m.Pos += dashStep;
+                if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos, UnitSeparation.AllyRadius);
                 m.Pos = Vector2.ClampMagnitude(m.Pos, Arena);   // 아레나 밖으로 못 빠져나간다
             }
 
@@ -1914,8 +1916,13 @@ public class W3Party : MonoBehaviour
             if (sep.sqrMagnitude > 1e-4f)
                 want = (want + sep * 1.4f).normalized;
 
-            m.Pos += want * PlayerSpeed * 0.85f * SpdOf(m) * dt;   // 강화는 아군에게만 — 몹 속도에 걸지 마라
-            if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
+            if (m.DashT <= 0f)
+            {
+                Vector2 step = want * PlayerSpeed * 0.85f * SpdOf(m) * dt;
+                if (ArenaLayout.Any) step = ArenaLayout.Around(m.Pos, step, UnitSeparation.AllyRadius);
+                m.Pos += step;
+                if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos, UnitSeparation.AllyRadius);
+            }
             m.Pos = Vector2.ClampMagnitude(m.Pos, Arena + 3f);
             m.Tr.position = ToScreen(m.Pos, -1f);
             m.Sr.color = m.Hp / m.MaxHp < 0.3f ? new Color(1f, 0.55f, 0.55f) : Color.white;
@@ -2613,6 +2620,7 @@ public class W3Party : MonoBehaviour
     // ── 몹 AI + 어그로 규칙 (§10-4) ───────────────────────
     // 겹침 해소용 임시 버퍼 — 매 프레임 할당하면 GC가 튄다
     Vector2[] _sepPos; bool[] _sepAlive;
+    Vector2[] _allyPos; bool[] _allyOn;
 
     /// <summary>
     /// 몹과 파티를 한 배열에 모아 겹침을 푼다. 파티끼리·몹끼리·서로 전부 대상이다 —
@@ -2631,7 +2639,7 @@ public class W3Party : MonoBehaviour
             _sepAlive[MAXM + k] = _party[k].Alive;
         }
 
-        UnitSeparation.Resolve(_sepPos, _sepAlive, n, 0.5f);
+        UnitSeparation.Resolve(_sepPos, _sepAlive, n, 0.55f);
 
         for (int i = 0; i < MAXM; i++)
             if (_mOn[i] && _mBossIndex[i] < 0)
@@ -2643,13 +2651,32 @@ public class W3Party : MonoBehaviour
                 _mSr[i].sortingOrder = Depth(p.y);
             }
 
-        for (int k = 0; k < _party.Length; k++)
+        int pn = _party.Length;
+        if (_allyPos == null || _allyPos.Length < pn)
+        { _allyPos = new Vector2[pn]; _allyOn = new bool[pn]; }
+        for (int k = 0; k < pn; k++)
+        {
+            _allyPos[k] = _sepPos[MAXM + k];
+            _allyOn[k] = _party[k].Alive;
+        }
+        UnitSeparation.Unstick(_allyPos, _allyOn, pn, UnitSeparation.AllyRadius);
+        UnitSeparation.UnstickFrom(_allyPos, _allyOn, pn, _mPos, _mOn, MAXM,
+                                   UnitSeparation.AllyRadius + UnitSeparation.Radius);
+
+        for (int k = 0; k < pn; k++)
         {
             var m = _party[k];
             if (!m.Alive) continue;
-            // 아군은 명령 위치를 지켜야 하므로 밀린 양의 일부만 반영한다
-            m.Pos = Vector2.Lerp(m.Pos, _sepPos[MAXM + k], 0.7f);
-            if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos);
+            m.Pos = _allyPos[k];
+            if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos, UnitSeparation.AllyRadius);
+            _allyPos[k] = m.Pos;
+        }
+        UnitSeparation.Unstick(_allyPos, _allyOn, pn, UnitSeparation.AllyRadius);
+        for (int k = 0; k < pn; k++)
+        {
+            var m = _party[k];
+            if (!m.Alive) continue;
+            m.Pos = _allyPos[k];
             m.Tr.position = ToScreen(m.Pos);
         }
     }

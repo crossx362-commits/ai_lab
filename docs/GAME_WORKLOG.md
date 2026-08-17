@@ -21,6 +21,13 @@
 - 끝난 일 검은 화면 PNG 금지 (`shot_is_black`)
 - 회귀: `python3 -m unittest loop.test_board loop.test_v4_playtest`
 
+## 캐릭터도 안 겹치게 (2026-08-17)
+
+오너 「캐릭터도 안겹치게해」. 파티는 집 `Resolve`만 하고 `Around`가 없어 지붕을
+가로질렀고, 겹침 해소는 70%만 받아 서로·몹 위에 남았다. 같은 역할은 스폰이
+한 점. 고침: 이동·대시는 몹과 같이 비키고, 파티는 `Unstick`으로 몸 너비만큼
+완전 분리. `UnitSeparationSelfCheck`.
+
 ## 몬스터·집·배경 안 겹치게 (2026-08-17)
 
 오너 「몬스터 집 배경 오브젝트 안겹치게해」. `FieldDecor.Place`가 이미 선 프랍을
