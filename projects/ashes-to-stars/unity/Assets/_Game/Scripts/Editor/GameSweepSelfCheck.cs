@@ -56,6 +56,7 @@ namespace AshesToStars
                 One("직업 애니 13장", JobAnimSelfCheck.Run, rows, errors);
                 One("할로우 배경 6장", HollowBgSelfCheck.Run, rows, errors);
                 One("전직 11종 모습", AdvLookSelfCheck.Run, rows, errors);
+                One("필드·던전 바닥", GroundHollowSelfCheck.Run, rows, errors);
             }
             finally
             {

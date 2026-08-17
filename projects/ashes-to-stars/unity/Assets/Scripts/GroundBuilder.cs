@@ -30,7 +30,8 @@ public static class GroundBuilder
         if (tex != null)
         {
             tex.wrapMode = TextureWrapMode.Repeat;
-            tex.filterMode = FilterMode.Point;
+            // 할로우 손그림. Point면 타일이 다시 픽셀 덩어리가 된다.
+            tex.filterMode = FilterMode.Bilinear;
             mat.mainTexture = tex;
             mat.mainTextureScale = new Vector2(size / 5f, size / 5f);  // 5m마다 반복 — 눌린 세로에 맞춰 무늬가 늘어지지 않게
         }

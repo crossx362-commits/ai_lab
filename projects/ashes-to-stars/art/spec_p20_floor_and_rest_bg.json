@@ -1,0 +1,45 @@
+{
+  "_note": "오너 2026-08-18 「필드 바닥이랑 배경도 다 바꿔」. 전투 바닥 2장 + 아직 픽셀인 배경 3장.",
+  "refs": [],
+  "rulesets": {
+    "floor": "Hollow Knight inspired hand-drawn 2D SEAMLESS TILEABLE ground texture: painterly dirt and stone, muted desaturated dark palette, soft shading, subtle cracks and grit, NO visible grid, NO characters, NO UI, NO text. Must tile cleanly on all four edges. NOT pixel art, NOT photorealistic, NOT 3D.",
+    "bg": "Hollow Knight inspired hand-drawn 2D background: clean dark linework, muted desaturated deep blues and greys, soft painterly shading, melancholic fog. NOT pixel art, NOT photorealistic, NOT 3D. A WIDE 16:9 SCENE used under UI — left half and center calm and dark, detail toward upper right and edges. No characters, no creatures, no text, no UI, no frames."
+  },
+  "assets": [
+    {
+      "name": "field_plain_albedo",
+      "rules_ref": "floor",
+      "keep_bg": true,
+      "aspect": "1:1",
+      "prompt": "seamless packed ash-earth hunting ground tile, dull olive-grey soil, small pebbles and dry grass flecks, tileable"
+    },
+    {
+      "name": "dungeon_rock_albedo",
+      "rules_ref": "floor",
+      "keep_bg": true,
+      "aspect": "1:1",
+      "prompt": "seamless dark dungeon flagstone tile, cracked black-grey masonry, faint cold moss in seams, tileable"
+    },
+    {
+      "name": "bg_title",
+      "rules_ref": "bg",
+      "keep_bg": true,
+      "aspect": "16:9",
+      "prompt": "A ruined hillside at late dusk looking toward a distant dark tower under ash-grey stars. Broken stone steps and a dead tree on the far right, dim ember glow on the horizon. Left and center stay dark."
+    },
+    {
+      "name": "bg_result",
+      "rules_ref": "bg",
+      "keep_bg": true,
+      "aspect": "16:9",
+      "prompt": "A dim camp just after battle: dying campfire on the right, stacked shields and a torn banner, drifting ash. Aftermath, not glory. Left-center stays dark for a results list."
+    },
+    {
+      "name": "bg_dungeon",
+      "rules_ref": "bg",
+      "keep_bg": true,
+      "aspect": "16:9",
+      "prompt": "A branching stone dungeon hall from above-front: dark flagstone, two archways on the right, faint cold-blue torchlight, moss on pillars. Left-center uncluttered for a room graph."
+    }
+  ]
+}

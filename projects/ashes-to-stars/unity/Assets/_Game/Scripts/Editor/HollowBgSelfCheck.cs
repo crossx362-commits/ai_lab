@@ -13,6 +13,7 @@ namespace AshesToStars
         {
             "bg_estate", "bg_field", "bg_tower",
             "bg_worldmap", "bg_character", "bg_party",
+            "bg_title", "bg_dungeon", "bg_result",
         };
 
         [MenuItem("Ashes to Stars/QA/Hollow Bg Self Check")]
