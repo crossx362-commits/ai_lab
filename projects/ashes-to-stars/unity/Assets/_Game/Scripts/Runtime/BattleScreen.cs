@@ -40,7 +40,15 @@ namespace AshesToStars
         static BattleRewardInfo _reward = new BattleRewardInfo();
         bool _defeatApplied;
         bool _leftForSafety;
+        bool _sortieRecorded;
         float _bossMaxHp;
+
+        void RecordSortie()
+        {
+            if (_sortieRecorded) return;
+            _sortieRecorded = true;
+            SortieTime.Apply(_t);
+        }
 
         protected override void Awake()
         {
@@ -83,11 +91,13 @@ namespace AshesToStars
                     // 탑 레이드는 기존대로 결과 화면으로 간다(§8 벽 콘텐츠는 층 진행이 결과다).
                     if (DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon)
                     {
+                        RecordSortie();
                         DungeonRun.Complete(true);
                         GameFlow.LastBattleSummary = $"던전 보스 격파 ({_t:F1}초)";
                         GameFlow.Go(GameFlow.Dungeon);
                         return;
                     }
+                    RecordSortie();
                     GameFlow.LastBattleSummary = FieldBoss.Fighting
                         ? $"필드 배회 보스 격파 — {FieldBoss.Name()}(§10-1)"
                         : $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
@@ -95,6 +105,7 @@ namespace AshesToStars
                 };
                 boss.OnPartyWiped += () =>
                 {
+                    RecordSortie();
                     ApplyDefeatOnce($"보스전 패배 — {GameFlow.BossFloor}층");
                     if (DungeonRun.Active) DungeonRun.End();   // ✅ §7 나가면 초기화
                     GameFlow.Go(GameFlow.Result);
@@ -264,6 +275,7 @@ namespace AshesToStars
         {
             if (_leftForSafety || _defeatApplied) return;
             _leftForSafety = true;
+            RecordSortie();
             _reward.Clear();
             GameFlow.LastBattleSummary = "저체력 귀환 — 이번 판 보상 없음(§4)";
             GameFlow.Go(GameFlow.Estate);
@@ -273,6 +285,7 @@ namespace AshesToStars
         {
             if (_leftForSafety || _defeatApplied) return;
             _leftForSafety = true;
+            RecordSortie();
             EscapeForfeit.Apply(_reward);
             // QA_NO·옛 경로는 결과 없이 영지. 소비처가 있을 때만 포기를 보여 준다.
             GameFlow.Go(EscapeForfeit.Blocked ? GameFlow.Estate : GameFlow.Result);
@@ -340,6 +353,7 @@ namespace AshesToStars
         void OnBattleEnd(bool survived)
         {
             if (_leftForSafety) return;
+            RecordSortie();
             if (GameFlow.Kind == GameFlow.BattleKind.침략)
             {
                 string repeatLine = InvasionState.RepeatLootLine();

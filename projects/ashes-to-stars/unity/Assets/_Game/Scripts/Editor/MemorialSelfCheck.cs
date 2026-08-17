@@ -183,14 +183,16 @@ namespace AshesToStars
                 "RegisterDeath·환생이 추모를 읽는다");
             Check(estate.Contains("Memorial.Line") && estate.Contains("Memorial.HubLine")
                   && estate.Contains("Memorial.PartyLine")
+                  && estate.Contains("Memorial.TimeLine")
                   && estate.Contains("Memorial.SeedQaIfRequested"),
-                "영묘가 자막·문구·동료·시드를 읽는다");
+                "영묘가 자막·문구·동료·출전·시드를 읽는다");
             Check(result.Contains("Memorial.ResultLine"),
                 "결과가 추모를 읽는다");
             Check(character.Contains("Memorial.Line")
                   && character.Contains("Memorial.PartyLine")
+                  && character.Contains("Memorial.TimeLine")
                   && character.Contains("Memorial.SeedQaIfRequested"),
-                "캐릭터가 문구·동료·시드를 읽는다");
+                "캐릭터가 문구·동료·출전·시드를 읽는다");
             Check(life.Contains("MemorialParty") && life.Contains("SanitizeMemorialParty"),
                 "로스터가 동료 필드를 저장한다");
 

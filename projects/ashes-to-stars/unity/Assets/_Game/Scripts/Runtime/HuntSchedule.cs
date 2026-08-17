@@ -82,7 +82,12 @@ namespace AshesToStars
             int before = (int)_sec;
             _sec += dt;
             if (_sec > CapSeconds) _sec = CapSeconds;
-            if ((int)_sec != before) Save();
+            int gained = (int)_sec - before;
+            if (gained > 0)
+            {
+                SortieTime.AddToIndexes(_who, gained);
+                Save();
+            }
         }
 
         public static long PendingGold()

@@ -223,6 +223,8 @@ namespace AshesToStars
                             Info(r, 2, Memorial.GearLine(ch));
                             if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
                                 Info(r, 3, Memorial.PartyLine(ch));
+                            if (!string.IsNullOrEmpty(Memorial.TimeLine(ch)))
+                                Info(r, 4, Memorial.TimeLine(ch));
                         }
                     }
                     else

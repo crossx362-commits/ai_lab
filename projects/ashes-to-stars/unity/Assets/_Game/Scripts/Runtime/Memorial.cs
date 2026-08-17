@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 영묘 추모 기록(§4). 삭제되면 최고 층·마지막 출전·사망 원인·장착·마지막 동료를 남긴다.
+    /// 영묘 추모 기록(§4). 삭제되면 최고 층·마지막 출전·사망 원인·장착·마지막 동료·누적 출전을 남긴다.
     /// 건물은 첫 캐릭터 삭제에 열린다(§13-2). 환생해도 다시 잠기지 않는다.
     /// 전투력은 안 돌려준다. QA_NO면 옛 이름·직업만. QA_NO_MAUSOLEUM_UNLOCK면 항상 열림.
     /// </summary>
@@ -178,10 +178,12 @@ namespace AshesToStars
             return HasRecord(ch) ? "혼자 출전(§4)" : "";
         }
 
+        public static string TimeLine(CharacterRecord ch) => SortieTime.Line(ch);
+
         public static string HubLine()
         {
             if (Blocked) return "";
-            return "이름·직업·최고 층·사망 원인·마지막 동료를 남긴다(§4)";
+            return "이름·직업·최고 층·사망 원인·마지막 동료·누적 출전을 남긴다(§4)";
         }
 
         public static string ResultLine(CharacterRecord ch)
@@ -263,6 +265,7 @@ namespace AshesToStars
             LifeSystem.PersistRoster();
             Equipment.SeedCraftedLoadoutForQa(ch);
             PartyState.SetSlotsForTest(0, roster.Count > 1 ? 1 : 0);
+            SortieTime.SeedQaIfRequested();
             GameState.SetTowerFloorForTest(QaFloor);
             GameFlow.SetReturnForTest(GameFlow.Tower, GameFlow.BattleKind.보스);
             LifeSystem.RegisterDeath(ch);
@@ -293,6 +296,7 @@ namespace AshesToStars
         {
             _qaSeeded = false;
             _unlockQaSeeded = false;
+            SortieTime.ResetForTest();
             _unlockLoaded = false;
             _everDeleted = false;
             PlayerPrefs.DeleteKey(K_UNLOCKED);

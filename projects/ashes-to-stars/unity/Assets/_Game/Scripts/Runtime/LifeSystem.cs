@@ -133,6 +133,9 @@ namespace AshesToStars
         /// <summary>마지막 출전 동료 이름. 탭 필드라 PackMemorial 밖에 둔다.</summary>
         public string MemorialParty { get; set; }
 
+        /// <summary>누적 출전 초(§4). 전투·일정 사냥이 더한다. 옛 저장은 0.</summary>
+        public long SortieSeconds { get; set; }
+
         public string PackMemorial()
         {
             return MemorialFloor + "|" + (MemorialPlace ?? "") + "|" + (MemorialCause ?? "")
@@ -232,6 +235,7 @@ namespace AshesToStars
             RecoveryEndTime = 0;
             IsDeleted = false;
             IsRescue = false;
+            SortieSeconds = 0;
         }
     }
 
@@ -372,6 +376,8 @@ namespace AshesToStars
                 c.UnpackMemorial(p.Length > 13 ? p[13] : "");
                 // 15번째 필드는 마지막 파티 동료. 탭을 쓰면 줄이 갈라지므로 저장 때 뺀다.
                 c.MemorialParty = p.Length > 14 ? p[14] : "";
+                // 16번째 필드는 누적 출전 초. 없던 저장은 0.
+                c.SortieSeconds = p.Length > 15 ? SafeLong(p[15], 0) : 0;
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -418,7 +424,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.PackAbsorbed())
                   .Append('\t').Append(c.IsSpecialJob ? '1' : '0')
                   .Append('\t').Append(c.PackMemorial())
-                  .Append('\t').Append(SanitizeMemorialParty(c.MemorialParty)).Append('\n');
+                  .Append('\t').Append(SanitizeMemorialParty(c.MemorialParty))
+                  .Append('\t').Append(c.SortieSeconds).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 

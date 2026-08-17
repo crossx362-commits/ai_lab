@@ -866,6 +866,8 @@ namespace AshesToStars
                             Info(r, row++, Memorial.GearLine(ch));
                             if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
                                 Info(r, row++, Memorial.PartyLine(ch));
+                            if (!string.IsNullOrEmpty(Memorial.TimeLine(ch)))
+                                Info(r, row++, Memorial.TimeLine(ch));
                         }
                         continue;
                     }
@@ -890,6 +892,8 @@ namespace AshesToStars
                         Info(r, row++, Memorial.GearLine(ch));
                         if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
                             Info(r, row++, Memorial.PartyLine(ch));
+                        if (!string.IsNullOrEmpty(Memorial.TimeLine(ch)))
+                            Info(r, row++, Memorial.TimeLine(ch));
                         if (!string.IsNullOrEmpty(Memorial.RebirthLine(ch)))
                             Info(r, row++, Memorial.RebirthLine(ch));
                     }
