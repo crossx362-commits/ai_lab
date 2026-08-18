@@ -146,7 +146,12 @@ namespace AshesToStars
             {
                 State.Cleared.Add(PendingNode);
                 State.CurrentNode = PendingNode;
-                if (Plan.Nodes[PendingNode].Kind == NodeKind.정예) State.ElitesKilled++;
+                if (Plan.Nodes[PendingNode].Kind == NodeKind.정예)
+                {
+                    var rng = Rng.Stream(Plan.RunSeed, State.ElitesKilled + 1, SeedChannel.Drop);
+                    EliteDrop.Apply(NodeKind.정예, ref rng);
+                    State.ElitesKilled++;
+                }
             }
             PendingNode = -1;
         }

@@ -21,6 +21,14 @@
 
 ## 처리됨 — 최신
 
+### ✅ 정예 일반 장비·강화석 (루프, 2026-08-18)
+
+큐 1번. §10-8 `정예 = 강화석·일반 장비`. 옛 Complete는 처치만 세고 장비·석이 0이었다.
+`EliteDrop.Apply`를 `DungeonRun.Complete`·전투·던전 지도·캐릭터창이 읽음.
+`QA_NO`면 옛 0. SelfCheck 전항 PASS. FAIL 3은 Apply를 뺌.
+PNG `elite_drop_shots/qa_go:Character.png` — `정예 일반 장비(§10-8)` · 석 1.
+필드 정예는 W3Party라 안 넣음.
+
 ### ✅ 보스 고급 장비 드랍 (루프, 2026-08-18)
 
 큐 1번. §10-8 `보스 = 고급 장비`. 옛 보상은 장비를 안 줬다.

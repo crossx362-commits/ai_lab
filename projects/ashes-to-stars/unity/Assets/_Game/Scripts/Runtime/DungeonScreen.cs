@@ -55,7 +55,9 @@ namespace AshesToStars
             var state = DungeonRun.State;
 
             Info(r, 0, "현재 위치: " + Label(state.CurrentNode) +
-                       (state.ElitesKilled > 0 ? $"   (정예 처치 {state.ElitesKilled})" : ""));
+                       (state.ElitesKilled > 0 ? $"   (정예 처치 {state.ElitesKilled})" : "") +
+                       (EliteDrop.ShowQa || !string.IsNullOrEmpty(EliteDrop.LastLine)
+                           ? " · " + EliteDrop.Line() : ""));
 
             // 강화 노드에 들어와 있으면 3택을 고르기 전에는 다른 걸 못 한다 —
             // 고르지 않고 지나갈 수 있으면 그건 선택이 아니라 장식이다.

@@ -449,7 +449,9 @@ namespace AshesToStars
                 DungeonRun.Complete(true);
                 long nodeExp = Economy.WaveHuntExp(GameState.Tier, _t);
                 LifeSystem.AwardWaveHunt(_t);
-                GameFlow.LastBattleSummary = $"노드 통과 — {_t:F1}초 · EXP {nodeExp}";
+                string elite = string.IsNullOrEmpty(EliteDrop.LastLine)
+                    ? "" : " · " + EliteDrop.Line();
+                GameFlow.LastBattleSummary = $"노드 통과 — {_t:F1}초 · EXP {nodeExp}{elite}";
                 GameFlow.Go(GameFlow.Dungeon);
                 return;
             }

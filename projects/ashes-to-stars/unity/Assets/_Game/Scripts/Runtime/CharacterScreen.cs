@@ -20,6 +20,7 @@ namespace AshesToStars
         protected override string Subtitle =>
             BagSlots.ShowQa ? BagSlots.Line()
             : EquipJob.ShowQa ? EquipJob.Line()
+            : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
             : "왼쪽 바둑판에서 고르면 오른쪽에 모습과 정보가 나온다(§3·§4)";
@@ -72,6 +73,7 @@ namespace AshesToStars
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
             BagSlots.SeedQaIfRequested();
+            EliteDrop.SeedQaIfRequested();
             GearDrop.SeedQaIfRequested();
             if (EquipJob.ShowQa && _selectedCharacter < 0)
                 _selectedCharacter = EquipJob.QaHealerIndex();

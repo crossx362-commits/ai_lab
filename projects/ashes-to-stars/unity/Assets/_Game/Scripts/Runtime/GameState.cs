@@ -614,6 +614,7 @@ namespace AshesToStars
             NetWorth.ResetForTest();
             BagSlots.ResetForTest();
             GearDrop.ResetForTest();
+            EliteDrop.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.
