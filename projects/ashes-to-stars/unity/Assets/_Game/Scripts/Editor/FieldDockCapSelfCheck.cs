@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>필드 도크 일정·저체력·레이드급 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
+    /// <summary>필드 도크 일정·저체력·레이드급·던전 입장 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
     public static class FieldDockCapSelfCheck
     {
         static int _fail;
@@ -26,10 +26,12 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(FieldDockCap.EnvShow);
             string boss = Environment.GetEnvironmentVariable(FieldDockCap.EnvBoss);
             string raid = Environment.GetEnvironmentVariable(FieldDockCap.EnvRaid);
+            string dungeon = Environment.GetEnvironmentVariable(FieldDockCap.EnvDungeon);
             string no = Environment.GetEnvironmentVariable(FieldDockCap.EnvNo);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvShow, null);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvBoss, null);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvRaid, null);
+            Environment.SetEnvironmentVariable(FieldDockCap.EnvDungeon, null);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvNo, null);
 
             GameState.ResetAll();
@@ -88,6 +90,19 @@ namespace AshesToStars
             Check(FieldDockCap.RaidLine().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
                 $"레이드급 줄 (실제 {FieldDockCap.RaidLine()})");
 
+            GameState.ResetAll();
+            GameState.TrySelectTier(0);
+            Check(FieldDockCap.Dungeon() == FieldDockCap.DungeonShort,
+                $"던전 입장 (실제 {FieldDockCap.Dungeon()})");
+            Check(FieldDockCap.CaptionFits(FieldDockCap.Dungeon()),
+                $"던전 입장 길이 {FieldDockCap.RuneCount(FieldDockCap.Dungeon())} ≤ {FieldDockCap.CaptionMaxRunes}");
+            Check(FieldDockCap.OldDungeon().IndexOf("랜덤 생성", StringComparison.Ordinal) >= 0
+                  && FieldDockCap.OldDungeon().IndexOf("종점 보스", StringComparison.Ordinal) >= 0
+                  && !FieldDockCap.CaptionFits(FieldDockCap.OldDungeon()),
+                $"옛 던전 입장은 긴 줄 (실제 {FieldDockCap.OldDungeon()})");
+            Check(FieldDockCap.DungeonLine().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
+                $"던전 입장 줄 (실제 {FieldDockCap.DungeonLine()})");
+
             GameState.SetTowerFloorForTest(1);
             GameState.TrySelectTier(0);
             _ = LifeSystem.GetCharacters();
@@ -126,12 +141,17 @@ namespace AshesToStars
             Check(FieldDockCap.Raid() == FieldDockCap.OldRaid()
                   && !FieldDockCap.CaptionFits(FieldDockCap.Raid()),
                 $"QA_NO 레이드급 옛 긴 줄 (실제 {FieldDockCap.Raid()})");
+            Check(FieldDockCap.Dungeon() == FieldDockCap.OldDungeon()
+                  && !FieldDockCap.CaptionFits(FieldDockCap.Dungeon()),
+                $"QA_NO 던전 입장 옛 긴 줄 (실제 {FieldDockCap.Dungeon()})");
             Check(FieldDockCap.Line().IndexOf("두 줄", StringComparison.Ordinal) >= 0,
                 $"QA_NO 줄 (실제 {FieldDockCap.Line()})");
             Check(FieldDockCap.BossLine().IndexOf("두 줄", StringComparison.Ordinal) >= 0,
                 $"QA_NO 배회 줄 (실제 {FieldDockCap.BossLine()})");
             Check(FieldDockCap.RaidLine().IndexOf("두 줄", StringComparison.Ordinal) >= 0,
                 $"QA_NO 레이드급 줄 (실제 {FieldDockCap.RaidLine()})");
+            Check(FieldDockCap.DungeonLine().IndexOf("두 줄", StringComparison.Ordinal) >= 0,
+                $"QA_NO 던전 입장 줄 (실제 {FieldDockCap.DungeonLine()})");
             Environment.SetEnvironmentVariable(FieldDockCap.EnvNo, null);
 
             FieldDockCap.ResetForTest();
@@ -171,6 +191,16 @@ namespace AshesToStars
             RaidSpawn.Consume();
             Environment.SetEnvironmentVariable(FieldDockCap.EnvRaid, null);
 
+            FieldDockCap.ResetForTest();
+            Environment.SetEnvironmentVariable(FieldDockCap.EnvDungeon, "1");
+            Check(FieldDockCap.ShowDungeonQa, "던전 시드 ShowDungeonQa");
+            FieldDockCap.SeedDungeonQaIfRequested();
+            Check(FieldDockCap.Dungeon() == FieldDockCap.DungeonShort,
+                $"던전 시드 부제 (실제 {FieldDockCap.Dungeon()})");
+            Check(FieldDockCap.DungeonLine().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
+                $"던전 시드 자막 (실제 {FieldDockCap.DungeonLine()})");
+            Environment.SetEnvironmentVariable(FieldDockCap.EnvDungeon, null);
+
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
             string fieldSrc = File.ReadAllText(Path.Combine(runtime, "FieldScreen.cs"));
             Check(fieldSrc.IndexOf("FieldDockCap.SeedQaIfRequested", StringComparison.Ordinal) >= 0
@@ -187,6 +217,10 @@ namespace AshesToStars
                   && fieldSrc.IndexOf("FieldDockCap.RaidLine", StringComparison.Ordinal) >= 0
                   && fieldSrc.IndexOf("FieldDockCap.SeedRaidQaIfRequested", StringComparison.Ordinal) >= 0,
                 "필드가 Raid·RaidLine·시드를 읽는다");
+            Check(fieldSrc.IndexOf("FieldDockCap.Dungeon", StringComparison.Ordinal) >= 0
+                  && fieldSrc.IndexOf("FieldDockCap.DungeonLine", StringComparison.Ordinal) >= 0
+                  && fieldSrc.IndexOf("FieldDockCap.SeedDungeonQaIfRequested", StringComparison.Ordinal) >= 0,
+                "필드가 Dungeon·DungeonLine·시드를 읽는다");
             Check(fieldSrc.IndexOf(FieldDockCap.OldLowHp, StringComparison.Ordinal) < 0
                   && fieldSrc.IndexOf("편성을 보내 두면", StringComparison.Ordinal) < 0
                   && fieldSrc.IndexOf("카운트를 안 올린다", StringComparison.Ordinal) < 0,
@@ -199,22 +233,29 @@ namespace AshesToStars
                   && fieldSrc.IndexOf("환생석·증표 없음", StringComparison.Ordinal) < 0
                   && fieldSrc.IndexOf("FieldDockCap.OldRaid", StringComparison.Ordinal) < 0,
                 "도크가 긴 레이드급 줄을 안 붙인다");
+            Check(fieldSrc.IndexOf("랜덤 생성 + 종점 보스", StringComparison.Ordinal) < 0
+                  && fieldSrc.IndexOf("FieldDockCap.OldDungeon", StringComparison.Ordinal) < 0,
+                "도크가 긴 던전 입장 줄을 안 붙인다");
 
             _ = nameof(FieldDockCap.LowHp);
             _ = nameof(FieldDockCap.Schedule);
             _ = nameof(FieldDockCap.Death);
             _ = nameof(FieldDockCap.Boss);
             _ = nameof(FieldDockCap.Raid);
+            _ = nameof(FieldDockCap.Dungeon);
             _ = nameof(FieldDockCap.Line);
             _ = nameof(FieldDockCap.BossLine);
             _ = nameof(FieldDockCap.RaidLine);
+            _ = nameof(FieldDockCap.DungeonLine);
             _ = nameof(FieldDockCap.SeedQaIfRequested);
             _ = nameof(FieldDockCap.SeedBossQaIfRequested);
             _ = nameof(FieldDockCap.SeedRaidQaIfRequested);
+            _ = nameof(FieldDockCap.SeedDungeonQaIfRequested);
 
             Environment.SetEnvironmentVariable(FieldDockCap.EnvShow, show);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvBoss, boss);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvRaid, raid);
+            Environment.SetEnvironmentVariable(FieldDockCap.EnvDungeon, dungeon);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvNo, no);
             FieldDockCap.ResetForTest();
             HuntSchedule.ResetForTest();

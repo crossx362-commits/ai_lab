@@ -26,6 +26,7 @@ namespace AshesToStars
                 if (FieldDockCap.ShowQa) return FieldDockCap.Line();
                 if (FieldDockCap.ShowBossQa) return FieldDockCap.BossLine();
                 if (FieldDockCap.ShowRaidQa) return FieldDockCap.RaidLine();
+                if (FieldDockCap.ShowDungeonQa) return FieldDockCap.DungeonLine();
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
@@ -72,6 +73,7 @@ namespace AshesToStars
             FieldDockCap.SeedQaIfRequested();
             FieldDockCap.SeedBossQaIfRequested();
             FieldDockCap.SeedRaidQaIfRequested();
+            FieldDockCap.SeedDungeonQaIfRequested();
             UiAtlas.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
@@ -149,7 +151,7 @@ namespace AshesToStars
             }
             long dungeonCost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
             if (DrawCard(cards[1], "던전 입장",
-                    $"랜덤 생성 + 종점 보스 · {Economy.FormatCurrency(dungeonCost)}(§7)",
+                    FieldDockCap.Dungeon(),
                     "tower"))
             {
                 if (GameState.Wallet.Copper < dungeonCost)
