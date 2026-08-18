@@ -11,6 +11,13 @@
 ---
 
 
+## 지금 (2026-08-18) — 월드맵 HUD 아래 도크
+
+직전 트랙 코드 → 월드맵 화면 한 결함. INBOX 이펙트는 FX 미커밋이라 안 겹침.
+`WorldMapHud.Cards`를 `WorldMapScreen`이 읽는다. 겹침 200. `QA_NO`면 옛 AfterPlate 2×2.
+샷 `worldmap_hud_shots/qa_go:WorldMap.png` — 별·궤도, 아래 4칸.
+코드 `27436bf0`. 폴리싱 다음은 HuntBoon.
+
 ## 지금 (2026-08-18) — 경매 복원 등급·옵션
 
 직전 트랙 아트 → 코드 칸. INBOX 이펙트는 FX 미커밋이라 안 겹침.
