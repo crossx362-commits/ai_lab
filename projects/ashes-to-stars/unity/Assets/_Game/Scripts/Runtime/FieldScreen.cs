@@ -21,6 +21,7 @@ namespace AshesToStars
             {
                 if (FieldHud.ShowQa) return FieldHud.Line();
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
+                if (BagTextFmt.ShowQa) return BagTextFmt.Line();
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
@@ -63,6 +64,7 @@ namespace AshesToStars
             FieldBoss.SeedQaIfRequested();
             FieldHud.SeedQaIfRequested();
             EscapeManual.SeedQaIfRequested();
+            BagTextFmt.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;

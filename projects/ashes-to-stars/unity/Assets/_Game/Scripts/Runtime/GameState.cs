@@ -540,8 +540,8 @@ namespace AshesToStars
             var parts = new List<string>();
             foreach (Economy.LifeItem it in System.Enum.GetValues(typeof(Economy.LifeItem)))
             {
-                int n = _bag.GetCount(it);
-                if (n > 0) parts.Add($"{Label(it)} {n}/{Economy.ItemCapacity[it]}");
+                string part = BagTextFmt.Format(it, _bag.GetCount(it));
+                if (part.Length > 0) parts.Add(part);
             }
             return parts.Count == 0 ? "소지품 없음" : string.Join(" · ", parts);
         }
