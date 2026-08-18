@@ -5,6 +5,8 @@ namespace AshesToStars
 {
     /// <summary>
     /// 월드맵 내 별(§14 ✅). 크기는 층에 따라 커지고, 인식 범위도 같이 넓어진다.
+    /// 크기 배율은 §18-13 `1 + 돌파층 × 0.02`(100층 = 3배). SizePx가 SizeMul을 읽는다.
+    /// 옛 길은 40~112 선형이라 공식이 소비처 0곳이었다. QA_NO면 옛 선형.
     /// 영공 버프/디버프는 영지에서 켠다. 10층 모양 연출은 💡라 안 넣는다.
     /// 엘프는 같은 층에서 영공이 120%(§18-9). 탐험 범위 +30%는 안개 시스템이 없어 안 넣는다.
     /// 적 디버프는 침략 약탈이 95%로 읽는다(§14). 아군 버프는 광산이 이미 읽는다.
@@ -14,12 +16,15 @@ namespace AshesToStars
         public const int MaxFloor = 100;
         public const float MinPx = 40f;
         public const float MaxPx = 112f;
+        public const float SizePerFloor = 0.02f;
         public const float PlateH = 72f;
         public const float MinSense = 4f;
         public const float MaxSense = 16f;
         public const float AllyBuffMul = 1.05f;
         public const float EnemyDebuffMul = 0.95f;
         public const int EnemyDebuffPercent = 95;
+        public const string EnvShow = "QA_STAR_SIZE";
+        public const string EnvNo = "QA_NO_STAR_SIZE";
         public const string EnvShowSense = "QA_RACE_SENSE";
         public const string EnvNoSense = "QA_NO_RACE_SENSE";
         public const string EnvShowDebuff = "QA_AURA_DEBUFF";
@@ -35,14 +40,54 @@ namespace AshesToStars
         static bool _enemy;
         static bool _senseQaSeeded;
         static bool _debuffQaSeeded;
+        static bool _sizeQaSeeded;
+
+        public static bool Blocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNo);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool ShowQa
+        {
+            get
+            {
+                if (Blocked) return false;
+                string raw = Environment.GetEnvironmentVariable(EnvShow);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
 
         public static int ClampFloor(int floor) => Mathf.Clamp(floor, 1, MaxFloor);
 
-        public static float SizePx(int floor)
+        /// <summary>옛 40~112 선형. QA_NO SizePx가 이 길을 쓴다.</summary>
+        public static float OldSizePx(int floor)
         {
             int f = ClampFloor(floor);
             return MinPx + (MaxPx - MinPx) * (f - 1) / (MaxFloor - 1);
         }
+
+        /// <summary>§18-13 `1 + 돌파층 × 0.02`. 100층 = 3. QA_NO면 옛 선형 비.</summary>
+        public static float SizeMul(int floor)
+        {
+            int f = ClampFloor(floor);
+            if (Blocked) return OldSizePx(f) / MinPx;
+            return 1f + f * SizePerFloor;
+        }
+
+        /// <summary>표시 픽셀. SizeMul을 읽는다. 1층 ≈40.8 · 100층 = 120.</summary>
+        public static float SizePx(int floor) => MinPx * SizeMul(floor);
+
+        public static string SizeLine(int floor)
+        {
+            if (Blocked) return "별 크기는 옛 선형";
+            return $"별 크기 ×{SizeMul(floor):0.00}(§18-13)";
+        }
+
+        public static string SizeLine() => SizeLine(Mathf.Max(1, GameState.TowerFloor));
 
         /// <summary>층만 본 기준 영공. 종족 배율은 `Sense`가 곱한다.</summary>
         public static float SenseBase(int floor)
@@ -92,8 +137,12 @@ namespace AshesToStars
             return "종족 인식 배율 없음";
         }
 
-        public static string SizeLabel(int floor) =>
-            $"{ClampFloor(floor)}층 · 별 {SizePx(floor):0}px · 영공 {Sense(floor):0.0}";
+        public static string SizeLabel(int floor)
+        {
+            if (Blocked)
+                return $"{ClampFloor(floor)}층 · 별 {SizePx(floor):0}px · 영공 {Sense(floor):0.0}";
+            return $"{ClampFloor(floor)}층 · 별 ×{SizeMul(floor):0.00} · 영공 {Sense(floor):0.0}";
+        }
 
         public static bool AllyBuff
         {
@@ -152,6 +201,15 @@ namespace AshesToStars
             PlayerPrefs.SetInt(K_ENEMY, _enemy ? 1 : 0);
         }
 
+        /// <summary>시각 QA. QA_STAR_SIZE=1이면 100층+자막.</summary>
+        public static void SeedQaIfRequested()
+        {
+            if (!ShowQa) return;
+            if (_sizeQaSeeded) return;
+            _sizeQaSeeded = true;
+            GameState.SetTowerFloorForTest(MaxFloor);
+        }
+
         /// <summary>시각 QA. QA_RACE_SENSE=1이면 엘프·30층으로 영공을 연다.</summary>
         public static void SeedRaceSenseQaIfRequested()
         {
@@ -188,6 +246,7 @@ namespace AshesToStars
             _enemy = false;
             _senseQaSeeded = false;
             _debuffQaSeeded = false;
+            _sizeQaSeeded = false;
             ForceRaceSenseMul = 0f;
         }
 

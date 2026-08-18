@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (WorldStar.ShowQa) return WorldStar.SizeLine();
                 if (WorldMapDockCap.ShowQa) return WorldMapDockCap.Line();
                 if (WorldMapHud.ShowQa) return WorldMapHud.Line();
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
@@ -82,6 +83,7 @@ namespace AshesToStars
             InvasionState.SeedRepeatLootQaIfRequested();
             Honor.SeedQaIfRequested();
             Honor.SeedDefenseQaIfRequested();
+            WorldStar.SeedQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
             InvasionApproach.SeedQaIfRequested();
