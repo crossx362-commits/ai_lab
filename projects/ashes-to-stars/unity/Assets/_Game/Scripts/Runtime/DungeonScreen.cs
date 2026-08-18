@@ -20,7 +20,8 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_dungeon";
 
         protected override string Subtitle => DungeonRun.Active
-            ? $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +
+            ? (EliteKinds.ShowQa ? EliteKinds.Line() + " · " : "") +
+              $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +
               $"노드 {DungeonRun.State.Cleared.Count}/{DungeonRun.Plan.Nodes.Length} · " +
               $"{DungeonRun.Plan.Kind} · 보유 {GameState.WalletText}"
             : "진행 중인 던전이 없다";
@@ -29,6 +30,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            EliteKinds.SeedQaIfRequested();
             if (!DungeonRun.Active)
             {
                 Info(r, 0, "진행 중인 던전이 없다. 필드에서 던전에 입장할 수 있다(§7).");
@@ -140,8 +142,7 @@ namespace AshesToStars
                 case NodeKind.보상분기:
                     return $"막다른 보상 · 동시 {n.Wave?.TargetCount ?? 0}체 · {n.Template}";
                 case NodeKind.정예:
-                    return $"정예 아레나 · 동시 {n.Wave?.TargetCount ?? 0}체 · " +
-                           $"정예 {n.Wave?.ElitePercent ?? 0:F0}% · {n.Template}";
+                    return EliteKinds.Caption(n);
                 default:
                     return $"동시 {n.Wave?.TargetCount ?? 0}체 · 원거리 {n.Wave?.RangedPercent ?? 0:F0}% · {n.Template}";
             }
