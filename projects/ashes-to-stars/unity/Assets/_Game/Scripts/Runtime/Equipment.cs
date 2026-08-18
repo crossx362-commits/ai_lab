@@ -255,7 +255,9 @@ namespace AshesToStars
         public static float EffectiveHpMul(GearItem gear)
         {
             if (gear == null || gear.HpMul <= 0f) return 1f;
-            return gear.HpMul * (1f + Mathf.Clamp(gear.Enhance, 0, MaxEnhance) * EnhanceHpPerLevel);
+            return gear.HpMul
+                * (1f + Mathf.Clamp(gear.Enhance, 0, MaxEnhance) * EnhanceHpPerLevel)
+                * GearOpt.HpMul(gear);
         }
 
         public static int StoneCost(int enhance) => 1 + Mathf.Clamp(enhance, 0, MaxEnhance - 1);

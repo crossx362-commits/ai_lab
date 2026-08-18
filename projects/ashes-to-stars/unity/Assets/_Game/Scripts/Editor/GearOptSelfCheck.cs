@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>드랍 옵션은 등급별 1~4, 전설만 4. 제작품은 0. QA_NO면 옛 0(§11).</summary>
+    /// <summary>드랍 옵션은 등급별 1~4, 전설만 4. 체력은 강화와 같은 2%/개. QA_NO면 옛 0(§11).</summary>
     public static class GearOptSelfCheck
     {
         static int _fail;
@@ -71,7 +71,22 @@ namespace AshesToStars
             }
             Check(unique && seen.Count == 4, "전설 옵션이 서로 다르다");
 
+            Check(Mathf.Approximately(GearOpt.HpPerAffix, Equipment.EnhanceHpPerLevel),
+                "옵션 체력은 강화와 같은 칸");
             legend.Affixes = new[] { 0, 1, 2, 3 };
+            Check(Mathf.Approximately(GearOpt.HpMul(legend), 1f + 4f * Equipment.EnhanceHpPerLevel),
+                $"전설 4옵션 ×1.08 (실제 {GearOpt.HpMul(legend)})");
+            Check(GearOpt.CombatLine(legend).IndexOf("1.08", StringComparison.Ordinal) >= 0
+                  && GearOpt.CombatLine(legend).IndexOf("§11", StringComparison.Ordinal) >= 0,
+                $"전설 체력 줄 (실제 {GearOpt.CombatLine(legend)})");
+            float withOpt = Equipment.EffectiveHpMul(legend);
+            float baseOnly = legend.HpMul
+                * (1f + Mathf.Clamp(legend.Enhance, 0, Equipment.MaxEnhance)
+                    * Equipment.EnhanceHpPerLevel);
+            Check(Mathf.Approximately(withOpt, baseOnly * GearOpt.HpMul(legend))
+                  && withOpt > baseOnly,
+                $"EffectiveHpMul이 옵션을 곱한다 (실제 {withOpt} / 옛 {baseOnly})");
+
             Equipment.Flush();
             Equipment.ForgetInMemoryForTest();
             GearOpt.ResetForTest();
@@ -98,6 +113,10 @@ namespace AshesToStars
             Check(Equipment.All.Count == 1 && GearOpt.CountOf(Equipment.All[0]) == 0,
                 $"제작품은 0 (실제 {GearOpt.CountOf(Equipment.All[0])})");
             Check(string.IsNullOrEmpty(GearOpt.Format(Equipment.All[0])), "제작품 줄 없음");
+            Check(Mathf.Approximately(GearOpt.HpMul(Equipment.All[0]), 1f)
+                  && Mathf.Approximately(Equipment.EffectiveHpMul(Equipment.All[0]),
+                      Equipment.LeatherArmorHpMul),
+                "제작품 체력은 옵션 없음");
 
             GameState.ResetAll();
             LifeSystem.ResetAll();
@@ -109,8 +128,11 @@ namespace AshesToStars
             Check(GearOpt.CountOf(GearGrade.Legendary) == 0, "QA_NO면 전설도 0");
             var blocked = Equipment.TryGrantDrop(Equipment.LeatherArmorRecipe, GearGrade.Legendary);
             Check(blocked != null && GearOpt.CountOf(blocked) == 0, "QA_NO 드랍 0");
+            Check(Mathf.Approximately(GearOpt.HpMul(blocked), 1f), "QA_NO 체력 ×1");
             Check(GearOpt.Line().IndexOf("없음", StringComparison.Ordinal) >= 0,
                 $"QA_NO 줄 (실제 {GearOpt.Line()})");
+            Check(GearOpt.CombatLine().IndexOf("없음", StringComparison.Ordinal) >= 0,
+                $"QA_NO 체력 줄 (실제 {GearOpt.CombatLine()})");
             Environment.SetEnvironmentVariable(GearOpt.EnvNo, null);
 
             GameState.ResetAll();
@@ -141,15 +163,20 @@ namespace AshesToStars
             string charSrc = File.ReadAllText(Path.Combine(runtime, "CharacterScreen.cs"));
             Check(equipSrc.IndexOf("GearOpt.Apply", StringComparison.Ordinal) >= 0,
                 "드랍이 Apply를 읽는다");
+            Check(equipSrc.IndexOf("GearOpt.HpMul", StringComparison.Ordinal) >= 0,
+                "EffectiveHpMul이 HpMul을 읽는다");
             Check(charSrc.IndexOf("GearOpt.SeedQaIfRequested", StringComparison.Ordinal) >= 0
                   && charSrc.IndexOf("GearOpt.Format", StringComparison.Ordinal) >= 0
-                  && charSrc.IndexOf("GearOpt.Line", StringComparison.Ordinal) >= 0,
-                "캐릭터창이 시드·줄·표시를 읽는다");
+                  && charSrc.IndexOf("GearOpt.Line", StringComparison.Ordinal) >= 0
+                  && charSrc.IndexOf("GearOpt.CombatLine", StringComparison.Ordinal) >= 0,
+                "캐릭터창이 시드·줄·표시·체력을 읽는다");
 
             _ = nameof(GearOpt.Apply);
             _ = nameof(GearOpt.CountOf);
             _ = nameof(GearOpt.Format);
             _ = nameof(GearOpt.Line);
+            _ = nameof(GearOpt.HpMul);
+            _ = nameof(GearOpt.CombatLine);
             _ = nameof(GearOpt.SeedQaIfRequested);
 
             Environment.SetEnvironmentVariable(GearOpt.EnvShow, show);

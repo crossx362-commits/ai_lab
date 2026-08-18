@@ -830,8 +830,15 @@ namespace AshesToStars
             if (GearOpt.ShowQa || GearOpt.ShowListQa)
             {
                 if (GearOpt.ShowListQa) Line(GearOpt.ListLine());
-                if (GearOpt.ShowQa) Line(GearOpt.Line());
+                if (GearOpt.ShowQa)
+                {
+                    Line(GearOpt.Line());
+                    Line(GearOpt.CombatLine());
+                }
                 if (!string.IsNullOrEmpty(GearOpt.LastLine)) Line(GearOpt.LastLine);
+                var armor = Equipment.Worn(ch, EquipSlot.Armor);
+                if (armor != null && GearOpt.CountOf(armor) > 0)
+                    Line(GearOpt.CombatLine(armor));
             }
             if (!string.IsNullOrEmpty(_equipMsg)) Line(_equipMsg);
 

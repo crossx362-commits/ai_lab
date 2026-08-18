@@ -6,7 +6,8 @@ namespace AshesToStars
     /// <summary>
     /// 드랍 장비 랜덤 옵션(§11). 등급별 1~4개, 전설만 4.
     /// 제작품은 0 — 드랍은 운, 제작은 계획. QA_NO면 옛 0.
-    /// 경매 등록·복원은 Pack/Parse를 읽는다. 전투 수치는 이 칸 아님.
+    /// 경매 등록·복원은 Pack/Parse를 읽는다.
+    /// 체력은 강화와 같은 EnhanceHpPerLevel을 옵션 1개당 곱한다. 새 수치 없음.
     /// </summary>
     public static class GearOpt
     {
@@ -56,6 +57,28 @@ namespace AshesToStars
         }
 
         public static string LastLine => _lastLine ?? "";
+
+        /// <summary>강화 +1과 같은 칸. 옵션 전용 숫자를 새로 만들지 않는다.</summary>
+        public static float HpPerAffix => Equipment.EnhanceHpPerLevel;
+
+        /// <summary>옵션 n개 → ×(1+n×2%). 막히거나 0개면 1.</summary>
+        public static float HpMul(GearItem gear)
+        {
+            if (gear == null || Blocked) return 1f;
+            int n = CountOf(gear);
+            if (n <= 0) return 1f;
+            return 1f + n * HpPerAffix;
+        }
+
+        public static string CombatLine(GearItem gear)
+        {
+            if (gear == null || Blocked || CountOf(gear) <= 0)
+                return "옵션 체력 없음";
+            return $"옵션 체력 ×{HpMul(gear):0.00}(§11)";
+        }
+
+        public static string CombatLine() =>
+            Blocked ? "옵션 체력 없음" : "옵션이 체력을 올린다(§11)";
 
         public static int CountOf(GearGrade grade)
         {
@@ -182,20 +205,24 @@ namespace AshesToStars
             if (_qaSeeded) return;
             _qaSeeded = true;
             var all = Equipment.All;
+            GearItem gear = null;
             for (int i = 0; i < all.Count; i++)
             {
                 if (all[i].Grade == GearGrade.Legendary
                     && all[i].RecipeId == Equipment.LeatherArmorRecipe
                     && CountOf(all[i]) == LegendaryCount)
                 {
-                    _lastLine = Format(all[i]);
-                    return;
+                    gear = all[i];
+                    break;
                 }
             }
-            var gear = Equipment.TryGrantDrop(Equipment.LeatherArmorRecipe, GearGrade.Legendary);
-            if (gear == null) return;
-            gear.Affixes = new[] { 0, 1, 2, 3 };
-            Equipment.Flush();
+            if (gear == null)
+            {
+                gear = Equipment.TryGrantDrop(Equipment.LeatherArmorRecipe, GearGrade.Legendary);
+                if (gear == null) return;
+                gear.Affixes = new[] { 0, 1, 2, 3 };
+                Equipment.Flush();
+            }
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)
             {
