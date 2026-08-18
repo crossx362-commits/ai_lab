@@ -24,6 +24,7 @@ namespace AshesToStars
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
                 if (FieldDockCap.ShowQa) return FieldDockCap.Line();
+                if (FieldDockCap.ShowBossQa) return FieldDockCap.BossLine();
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
@@ -68,6 +69,7 @@ namespace AshesToStars
             EscapeManual.SeedQaIfRequested();
             BagTextFmt.SeedQaIfRequested();
             FieldDockCap.SeedQaIfRequested();
+            FieldDockCap.SeedBossQaIfRequested();
             UiAtlas.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
@@ -198,7 +200,7 @@ namespace AshesToStars
             }
             if (FieldBoss.Active)
             {
-                if (DrawCard(cards[5], FieldBoss.CardTitle(), FieldBoss.CardBody(), "tower"))
+                if (DrawCard(cards[5], FieldBoss.CardTitle(), FieldDockCap.Boss(), "tower"))
                 {
                     if (HasLastLifeCharacter())
                     {

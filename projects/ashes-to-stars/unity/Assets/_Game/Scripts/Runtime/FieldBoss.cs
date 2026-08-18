@@ -131,6 +131,12 @@ namespace AshesToStars
             PlayerPrefs.Save();
         }
 
+        /// <summary>점검·도크 QA. Tick 주사위 없이 지금 칸에 띄운다.</summary>
+        public static void ForceSpawnForTest(int tier)
+        {
+            SpawnNow(tier);
+        }
+
         public static void BeginFight()
         {
             _fighting = !Blocked;

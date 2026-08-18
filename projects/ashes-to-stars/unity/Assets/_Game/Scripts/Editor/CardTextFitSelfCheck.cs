@@ -120,6 +120,10 @@ namespace AshesToStars
             Fits(dock[4], "일정 사냥", FieldDockCap.Schedule(), "도크[4]");
             Fits(dock[5], "사망 없음",
                 "잠김 — " + FieldDockCap.Death(), "도크[5]");
+            FieldBoss.ResetForTest();
+            FieldBoss.ForceSpawnForTest(0);
+            Fits(dock[5], FieldBoss.CardTitle(), FieldDockCap.Boss(), "도크[5]배회");
+            FieldBoss.ResetForTest();
 
             string towerNo = Environment.GetEnvironmentVariable(TowerDockCap.EnvNo);
             Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, null);
