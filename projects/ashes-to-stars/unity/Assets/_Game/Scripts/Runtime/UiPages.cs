@@ -235,15 +235,16 @@ namespace AshesToStars
         /// </summary>
         public static string LookDir(string job) => BaseLookDir(job);
 
-        public static string LookDir(string job, AdvancementTier tier)
-        {
-            if (BaseLookForced || tier == AdvancementTier.Basic) return BaseLookDir(job);
-            string dedicated = DedicatedLookDir(job);
-            if (!string.IsNullOrEmpty(dedicated)
-                && Resources.Load<Texture2D>($"sprites/{dedicated}/{dedicated}_{IdleFrame}") != null)
-                return dedicated;
-            return BaseLookDir(job);
-        }
+        /// <summary>
+        /// ⚠️ 티어를 받지만 **지금은 항상 기본 그림**이다(2026-08-18).
+        ///
+        /// 전직 폴더(guardian·priest…)의 그림은 오너 지시로 **몹 계열로 돌렸다**
+        /// (`mob_guardian` 등). 그걸 캐릭터가 계속 쓰면 화면에 "옛 캐릭터 이미지"가
+        /// 그대로 나온다 — 오너가 전직한 캐릭터를 보고 반복해서 지적한 것이 이것이다.
+        /// 캐릭터 아트는 오너가 준 기본 5직업 픽셀아트뿐이므로 전직도 그걸 쓴다.
+        /// 전직 전용 그림이 새로 생기면 이 분기를 되살릴 것 — 인자는 그래서 남겨 둔다.
+        /// </summary>
+        public static string LookDir(string job, AdvancementTier tier) => BaseLookDir(job);
 
         public static string LookPath(string job, string frame)
         {
