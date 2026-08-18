@@ -6,12 +6,15 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 광산 연체 압류 문구를 영지 현황에 배선(full_check ②, `ae8f4056`)
-마지막 트랙: 코드
-폴리싱 다음: **필드·캐릭터·파티·월드맵·결과는 이번 이터가 샷으로 훑어 결함 0(전부 깨끗)**. 사냥 시작
-부제는 안 잘림(field 허브 샷 확인). 파티 삭제 카드 줄바꿈은 「환생석」이 쪼개지지만 전문이 다 보여
-결함 아님 — 한 줄 강제하면 오히려 잘려 되돌림. **아직 안 본 화면부터 볼 것: 던전 → 전투HUD → 타이틀 →
-영지**(영지는 `docs/GAME_SPEC_ESTATE_BUILD.md`대로, 클로드 EstateBuild와 겹치지 말 것).
+최종 갱신: 2026-08-19 · 던전 노드 부제 배치 템플릿 enum 누출(pockets 등)을 한글로(폴리싱, `8b6912f2`)
+마지막 트랙: 폴리싱
+폴리싱 다음: **전투HUD**(아직 안 본 화면). 이어 타이틀 → 영지. 던전은 이번 이터가 닫음 —
+노드 부제 `동시 64체 · 원거리 0% · pockets`처럼 `ArenaTemplate` enum(open_ring/pillars/choke/
+pockets/arena_wide)이 한글 UI에 그대로 새던 것을 `TemplateKo`로 매핑. **⚠️ 이 세션 환경에서는
+`ScreenCapture`가 저장 실패해(앱이 foreground 아님, Player.log `Failed to store screen shot` 3회)
+확인 샷을 못 찍음** — 다음 세션이 `go:Dungeon` 샷으로 최종 육안 확인할 것.
+필드·캐릭터·파티·월드맵·결과는 직전 이터가 훑어 결함 0. 영지는 `docs/GAME_SPEC_ESTATE_BUILD.md`대로
+(클로드 EstateBuild와 겹치지 말 것).
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
 1. **영지 §4** — 클로드가 `EstateBuild.cs` 건물별 업그레이드 창. 그록은 그 파일을 안 만진다. StoreX 경로 소비처는 닫음(`EstateStore.Reached`). 남은 §5는 마우스 드래그 UX(TryMove는 있음). §6 아트는 그 다음.
@@ -36,7 +39,27 @@
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(폴리싱→코드/실행): 광산 연체 압류 문구를 영지 현황에 배선(full_check ②).**
+> **이번 이터 결과(폴리싱): 던전 노드 부제 배치 템플릿 enum 누출을 한글로.**
+> - 직전 트랙이 코드라 폴리싱 칸. `폴리싱 다음`이 「던전 → 전투HUD → 타이틀」이라 던전을 봤다.
+>   기존 최신 샷 `family_adv_shots/qa_go:Dungeon.png`(08-19 02:33)을 열어 결함 확인:
+>   「1. 전투」노드 부제가 `동시 64체 · 원거리 0% · pockets` — **`ArenaTemplate` enum 이름
+>   (pockets)이 한글 UI에 그대로 노출**. 안 읽히는 글씨(폴리싱 대상).
+> - **생산 소비처**: `DungeonScreen.Desc`가 보상분기·일반 노드 두 곳에서 `{n.Template}`를 그대로
+>   찍던 것을 `TemplateKo(n.Template)`로 교체 — 엄폐·열린 고리·병목·기둥·넓은 무대.
+>   내부 서명 `DungeonPlan.Signature`(96행)의 enum은 UI가 아니라 그대로 둠.
+>   `W3Party`/`EstateBuild`/`EliteKinds`/`Resources`는 안 건드림.
+> - **컴파일 검증**: `unity_meas` 사본 배치 빌드(`-batchmode -nographics`) 성공 —
+>   `/tmp/meas_build.log` 「Exiting batchmode successfully now!」, `error CS` 0건.
+>   빌더가 출력 경로를 하드코딩(`build_game`)해 실행본도 새 코드로 갱신됨.
+> - **⚠️ 확인 샷 미완(정직한 미완)**: 이 헤드리스 세션 환경에서 `ScreenCapture`가 저장 실패한다 —
+>   앱은 실제로 렌더됐고(Player.log Metal 1280×720, `[던전] 계획: …open_ring/choke/pillars/
+>   arena_wide` 확인) 스모크 캡처 요청까지 갔으나 `Failed to store screen shot`(foreground 앱이
+>   아니라 drawable 없음, 3회 재시도 동일). qa_shot.sh·앱 직접 실행은 승인 게이트로 막힘.
+>   **다음 세션이 GUI 가능 환경에서 `go:Dungeon` 샷으로 최종 확인할 것.**
+> - **네거티브(구성상)**: `TemplateKo(n.Template)`를 `n.Template`로 되돌리면 옛 enum 원문이 다시 샌다.
+> - **코드** `8b6912f2`. `W3Party`는 안 건드렸다.
+>
+> **직전 이터 결과(폴리싱→코드/실행): 광산 연체 압류 문구를 영지 현황에 배선(full_check ②).**
 > - 직전 트랙이 코드라 폴리싱 칸으로 시작. `폴리싱 다음`(필드/사냥 시작 부제)을 샷으로 확인 →
 >   **부제 안 잘림**(field 허브 샷 `field_dungeon_cap_shots/qa_go:Field.png`, 새 샷도 동일). 규정대로
 >   회전을 이어 **필드·캐릭터·파티·월드맵·결과를 전부 샷으로 훑음 — 결함 0**(전부 이미 폴리시됨).
