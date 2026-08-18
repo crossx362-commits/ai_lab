@@ -44,11 +44,12 @@ public class SpriteBank
     /// </summary>
     public enum Frame
     {
-        Idle = 0,
-        Walk0 = 1, Walk1 = 2, Walk2 = 3, Walk3 = 4, Walk4 = 5, Walk5 = 6,
-        Atk0 = 7, Atk1 = 8, Atk2 = 9, Atk3 = 10, Atk4 = 11, Atk5 = 12,
-        Special = 13, Hurt = 14, Death = 15,
-        DashA = 16, DashB = 17, DashC = 18, DashD = 19, Invuln = 20,
+        Idle0 = 0, Idle1 = 1, Idle2 = 2, Idle3 = 3, Idle4 = 4, Idle5 = 5,
+        Walk0 = 6, Walk1 = 7, Walk2 = 8, Walk3 = 9, Walk4 = 10, Walk5 = 11,
+        Atk0 = 12, Atk1 = 13, Atk2 = 14, Atk3 = 15, Atk4 = 16, Atk5 = 17,
+        Special = 18, Hurt = 19, Death = 20,
+        DashA = 21, DashB = 22, DashC = 23, DashD = 24, Invuln = 25,
+        Idle = Idle0,
         // 옛 이름 — 호출부가 아직 쓴다. 6프레임의 첫 두 장을 가리킨다.
         WalkA = Walk0, WalkB = Walk1, AttackA = Atk0, AttackB = Atk1,
     }
@@ -121,7 +122,7 @@ public class SpriteBank
     Sprite[][] _extra;
     static readonly string[] JOB_FRAMES =
     {
-        "idle_00",
+        "idle_00", "idle_01", "idle_02", "idle_03", "idle_04", "idle_05",
         "walk_00", "walk_01", "walk_02", "walk_03", "walk_04", "walk_05",
         "attack_00", "attack_01", "attack_02", "attack_03", "attack_04", "attack_05",
         "special_00", "hurt_00", "death_00",
@@ -192,7 +193,11 @@ public class SpriteBank
             case Motion.Special: return Char(j, Frame.Special);
             case Motion.Hurt: return Char(j, Frame.Hurt);
             case Motion.Death: return Char(j, Frame.Death);
-            default: return Char(j, Frame.Idle);
+            default:
+            {
+                int n = Have(j, Frame.Idle0, 6);
+                return Char(j, (Frame)((int)Frame.Idle0 + (int)(t / (0.90f / n)) % n));
+            }
         }
     }
 
@@ -261,7 +266,11 @@ public class SpriteBank
             case Motion.Special: return CharDir(dir, Frame.Special);
             case Motion.Hurt: return CharDir(dir, Frame.Hurt);
             case Motion.Death: return CharDir(dir, Frame.Death);
-            default: return CharDir(dir, Frame.Idle);
+            default:
+            {
+                int n = HaveDir(e, Frame.Idle0, 6);
+                return CharDir(dir, (Frame)((int)Frame.Idle0 + (int)(t / (0.90f / n)) % n));
+            }
         }
     }
 

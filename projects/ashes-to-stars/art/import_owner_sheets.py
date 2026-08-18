@@ -36,7 +36,15 @@ SHEET_JOBS = {
 # 가까운 행에서 빌린다. 대시 4장은 Move에서 뽑아 이동감을 유지한다.
 ROW_IDLE, ROW_MOVE, ROW_ATTACK, ROW_SKILL1, ROW_SKILL2, ROW_SKILL3, ROW_DEATH = range(7)
 FRAME_PLAN = [
+    # 대기도 6프레임이다. 1장만 쓰면 서 있는 캐릭터가 **완전히 정지**해서
+    # "애니메이션이 안 나온다"로 읽힌다(오너 재지적 2026-08-18) — 걷기·공격이
+    # 도는 것과 별개로, 화면에서 가장 오래 보이는 상태가 대기다.
     ("idle_00", ROW_IDLE, 0),
+    ("idle_01", ROW_IDLE, 1),
+    ("idle_02", ROW_IDLE, 2),
+    ("idle_03", ROW_IDLE, 3),
+    ("idle_04", ROW_IDLE, 4),
+    ("idle_05", ROW_IDLE, 5),
     # 원본은 동작마다 6프레임이다. 계약이 2장이던 시절엔 4장을 버렸다
     # (오너 지적 2026-08-18 "애니메이션 제대로 적용 안 된 거 같음") — 전부 쓴다.
     ("walk_00", ROW_MOVE, 0),
@@ -90,7 +98,7 @@ def label_bands(a: np.ndarray) -> list[tuple[int, int]]:
     return bands
 
 
-def cut_background(cell: np.ndarray) -> np.ndarray:
+def cut_background(cell: np.ndarray, prune: bool = True) -> np.ndarray:
     """체커보드 배경만 투명하게. 가장자리에서 연결된 것만 지운다."""
     h, w, _ = cell.shape
     neutral = (cell.max(axis=2) - cell.min(axis=2)) < 30
@@ -133,11 +141,12 @@ def cut_background(cell: np.ndarray) -> np.ndarray:
     bg[:, -BORDER:] = True
 
     alpha = np.where(bg, 0, 255).astype(np.uint8)
-    alpha = keep_main_body(alpha)
+    if prune:
+        alpha = keep_main_body(alpha)
     return np.dstack([cell.astype(np.uint8), alpha])
 
 
-def keep_main_body(alpha: np.ndarray, ratio: float = 0.15) -> np.ndarray:
+def keep_main_body(alpha: np.ndarray, ratio: float = 0.30) -> np.ndarray:
     """본체에서 떨어진 조각을 버린다.
 
     칸 경계가 옆 프레임의 캐릭터를 조금 물고 들어온다(실측: dps idle 오른쪽 끝에
@@ -175,6 +184,53 @@ def keep_main_body(alpha: np.ndarray, ratio: float = 0.15) -> np.ndarray:
     return out
 
 
+def split_row(row: np.ndarray) -> list[np.ndarray]:
+    """한 행을 **캐릭터가 실제로 있는 자리**로 쪼갠다.
+
+    ⚠️ 처음엔 행 폭을 6등분했다. 그런데 시트마다 행마다 프레임 수가 다르다 —
+    실측: 물리딜러(dps)의 Move 행은 **8프레임**이었다(중심 105·318·551·769·985·
+    1212·1435·1658). 6등분하면 한 칸에 기사가 둘 들어가고, 그러면 프레임마다
+    실루엣이 300%씩 널뛰어 "애니메이션이 안 나온다"가 된다.
+    그래서 개수를 가정하지 않고 덩어리를 찾아 그 사이 빈 곳에서 자른다.
+    """
+    rgba = cut_background(row, prune=False)     # 행 단위에선 덩어리를 지우면 안 된다
+    col = (rgba[..., 3] > 40).sum(axis=0)
+    runs, start = [], None
+    for x, on in enumerate(col > 2):
+        if on and start is None:
+            start = x
+        elif not on and start is not None:
+            if x - start > 15:                  # 아주 가는 것은 잔재로 본다
+                runs.append((start, x))
+            start = None
+    if start is not None and len(col) - start > 15:
+        runs.append((start, len(col)))
+    if not runs:
+        return []
+
+    # 이펙트(지팡이 빛 등)가 닿아 이웃 둘이 한 덩어리로 붙는다(실측: mage Move 5번 칸에
+    # 마법사 둘). 다른 덩어리 폭의 중앙값보다 크게 넓으면 그 배수만큼 균등 분할한다.
+    widths = sorted(e - s for s, e in runs)
+    med = widths[len(widths) // 2]
+    split: list[tuple[int, int]] = []
+    for s, e in runs:
+        n = max(1, round((e - s) / max(1, med)))
+        if n == 1:
+            split.append((s, e))
+            continue
+        step = (e - s) / n
+        for k in range(n):
+            split.append((int(s + k * step), int(s + (k + 1) * step)))
+    runs = split
+
+    cells = []
+    for i, (s, e) in enumerate(runs):
+        left = 0 if i == 0 else (runs[i - 1][1] + s) // 2
+        right = rgba.shape[1] if i == len(runs) - 1 else (e + runs[i + 1][0]) // 2
+        cells.append(cut_background(row[:, left:right]))
+    return cells
+
+
 def center_on_canvas(frames: list[np.ndarray], pad: int = 6) -> list[Image.Image]:
     """공통 캔버스에 가로 중앙·세로 바닥 정렬.
 
@@ -210,14 +266,11 @@ def process(path: str, job: str, dest_root: str, dry: bool) -> int:
         print(f"   ⚠️ {job}: 행을 {len(bands)}개만 찾았다(7 기대) — 건너뜀")
         return 0
 
-    w = a.shape[1]
-    colw = w / COLS
     cells: dict[tuple[int, int], np.ndarray] = {}
     for r in range(7):
         top, bot = bands[r]
-        for c in range(COLS):
-            x0, x1 = int(c * colw), int((c + 1) * colw)
-            cells[(r, c)] = cut_background(a[top:bot, x0:x1])
+        for c, cell in enumerate(split_row(a[top:bot])):
+            cells[(r, c)] = cell
 
     frames, names = [], []
     for name, row, col in FRAME_PLAN:
