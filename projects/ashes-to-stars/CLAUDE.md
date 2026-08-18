@@ -78,8 +78,9 @@ ls unity/Temp/UnityLockfile
 **이미지 생성(오너 2026-08-18):** 힉스필드 **Nano Banana 2** (`nano_banana_flash`) + 해상도 **2k**.
 웹에서는 Unlimited 토글 ON. CLI 별칭 `nano_banana_2`는 Pro다 — 쓰지 마라.
 Gemini·Grok Imagine·Nano Banana Pro 금지. 생성은 `art/aigen.py`만.
-**화풍은 할로우 나이트 + 흑백 느낌.** 원장은 `art/STYLE_HOLLOW.md`. 몸은 검정, 얼굴은 빈 눈 가면, 액센트는 한 점.
-이끼 초록·분노 빨강·땅바닥이 있으면 그 장은 버린다. `aigen.py`가 `HOLLOW_STYLE`을 모든 프롬프트 앞에 붙인다.
+**화풍 강제(할로우 나이트)는 오너 2026-08-18 취소.** 이미 만든 장을 화풍 맞추려 다시 뽑지 마라. 있는 리소스를 반입·연결한다.
+**중복 리소스 재생성 금지.** `ARTIFACT_INDEX`·Resources·out_*에 같은 대상이 있으면 새로 걸지 않는다.
+**UI·아트는 상시 폴리싱**(오너 2026-08-18). 루프는 코드 구멍 다음 이터에 화면 하나·결함 하나를 고친다. 「다른 게임만큼」완료 금지.
 
 `Resources.Load`는 문자열로 찾는다. **이름이 같아도 내용이 낡으면 조용히 낡은 채로 남는다**
 — 파일 목록만 봐서는 안 보인다(실측 사고: `Resources/props` 32장이 전부 어제 버전인데

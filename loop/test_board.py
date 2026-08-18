@@ -673,6 +673,14 @@ class LiveLogTests(unittest.TestCase):
         self.assertIn("한 화면이 철칙", doc)
         self.assertIn('"log_age_sec"', doc)
 
+    def test_loop_standing_polish_uses_existing_art(self):
+        """오너 2026-08-18: 상시 폴리싱. 중복 재생성이 금지이지 5직업·몹 금지가 아니다. 할로우 강제는 취소."""
+        sh = (HERE / "loop.sh").read_text(encoding="utf-8")
+        self.assertIn("상시 폴리싱", sh)
+        self.assertIn("중복 리소스 재생성 금지", sh)
+        self.assertIn("할로우 나이트 화풍 강제는 취소", sh)
+        self.assertNotIn("기본 5직업·몹 실루엣은 다시 뽑지 않는다", sh)
+
     def test_loop_sh_writes_main_log_itself(self):
         """띄우는 쪽에 로그를 맡기지 마라 — loop.sh가 직접 tee 한다."""
         sh = (HERE / "loop.sh").read_text(encoding="utf-8")
