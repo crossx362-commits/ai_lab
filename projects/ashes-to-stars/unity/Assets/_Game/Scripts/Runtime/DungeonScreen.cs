@@ -131,6 +131,19 @@ namespace AshesToStars
             return $"{i}. {n.Kind}{mark}";
         }
 
+        /// <summary>격투장 배치 템플릿을 한글로 읽어준다 — enum 이름(pockets 등)이 화면에 새는 것을 막는다.</summary>
+        static string TemplateKo(ArenaTemplate t)
+        {
+            switch (t)
+            {
+                case ArenaTemplate.pillars:    return "기둥";
+                case ArenaTemplate.choke:      return "병목";
+                case ArenaTemplate.pockets:    return "엄폐";
+                case ArenaTemplate.arena_wide: return "넓은 무대";
+                default:                       return "열린 고리";
+            }
+        }
+
         /// <summary>노드를 고르기 전에 무엇이 기다리는지 보여준다 — 고를 근거가 없으면 선택이 아니다.</summary>
         static string Desc(DungeonNode n)
         {
@@ -141,11 +154,11 @@ namespace AshesToStars
                 case NodeKind.강화:
                     return "임시 강화 3택 — 던전을 나가면 사라진다(§7)";
                 case NodeKind.보상분기:
-                    return $"막다른 보상 · 동시 {n.Wave?.TargetCount ?? 0}체 · {n.Template}";
+                    return $"막다른 보상 · 동시 {n.Wave?.TargetCount ?? 0}체 · {TemplateKo(n.Template)}";
                 case NodeKind.정예:
                     return EliteKinds.Caption(n);
                 default:
-                    return $"동시 {n.Wave?.TargetCount ?? 0}체 · 원거리 {n.Wave?.RangedPercent ?? 0:F0}% · {n.Template}";
+                    return $"동시 {n.Wave?.TargetCount ?? 0}체 · 원거리 {n.Wave?.RangedPercent ?? 0:F0}% · {TemplateKo(n.Template)}";
             }
         }
     }
