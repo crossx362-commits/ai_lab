@@ -178,7 +178,7 @@ namespace AshesToStars
             else
             {
                 DrawCard(cards[2], GameState.WalletText,
-                    $"{GameState.BagText()} · 필드 사냥은 무료", "building_auction", locked: true);
+                    BagTextFmt.Caption(), "building_auction", locked: true);
             }
 
             bool on = LowHpReturn.Enabled;
