@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>탑 도크 하위 레이드 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
+    /// <summary>탑 도크 레이드·하위 레이드 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
     public static class TowerDockCapSelfCheck
     {
         static int _fail;
@@ -29,6 +29,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, null);
 
             GameState.ResetAll();
+            DeathTraining.ResetForTest();
             RaidReroll.ResetForTest();
             RaidScale.ResetForTest();
             RaidBossPool.ResetForTest();
@@ -36,6 +37,30 @@ namespace AshesToStars
             RaidScale.ForceScalePercent = 65;
 
             Check(!TowerDockCap.Blocked, "기본은 켜짐");
+            Check(DeathTraining.IsTraining, "1층은 훈련");
+            Check(TowerDockCap.Raid(5) == TowerDockCap.RaidTrain,
+                $"훈련 부제 (실제 {TowerDockCap.Raid(5)})");
+            Check(TowerDockCap.CaptionFits(TowerDockCap.Raid(5)),
+                $"훈련 길이 {TowerDockCap.RuneCount(TowerDockCap.Raid(5))} ≤ {TowerDockCap.CaptionMaxRunes}");
+            Check(!TowerDockCap.CaptionFits(TowerDockCap.OldRaid(5)),
+                $"옛 훈련 줄은 안 맞음 (길이 {TowerDockCap.RuneCount(TowerDockCap.OldRaid(5))})");
+
+            DeathTraining.Consent();
+            GameState.SetTowerFloorForTest(6);
+            Check(TowerDockCap.Raid(5) == TowerDockCap.RaidMid,
+                $"5층 부제 (실제 {TowerDockCap.Raid(5)})");
+            Check(TowerDockCap.Raid(10) == TowerDockCap.RaidMega,
+                $"대보스 부제 (실제 {TowerDockCap.Raid(10)})");
+            Check(TowerDockCap.CaptionFits(TowerDockCap.Raid(5))
+                  && TowerDockCap.CaptionFits(TowerDockCap.Raid(10)),
+                "5층·대보스 길이");
+            Check(!TowerDockCap.CaptionFits(TowerDockCap.OldRaid(5))
+                  && !TowerDockCap.CaptionFits(TowerDockCap.OldRaid(10)),
+                $"옛 레이드 줄은 안 맞음 (5={TowerDockCap.RuneCount(TowerDockCap.OldRaid(5))} 10={TowerDockCap.RuneCount(TowerDockCap.OldRaid(10))})");
+
+            GameState.SetTowerFloorForTest(1);
+            RaidReroll.ResetForTest();
+            RaidBossPool.ResetForTest();
             Check(TowerDockCap.Lower(5) == "×1 · 0.65",
                 $"1층대 풀 없음 (실제 {TowerDockCap.Lower(5)})");
 
@@ -57,6 +82,9 @@ namespace AshesToStars
             string old = TowerDockCap.Lower(5);
             Check(old == TowerDockCap.OldLower(5) && !TowerDockCap.CaptionFits(old),
                 $"QA_NO 옛 긴 줄 (실제 {old})");
+            string oldRaid = TowerDockCap.Raid(10);
+            Check(oldRaid == TowerDockCap.OldRaid(10) && !TowerDockCap.CaptionFits(oldRaid),
+                $"QA_NO 옛 레이드 줄 (실제 {oldRaid})");
             Check(TowerDockCap.Line().IndexOf("두 줄", StringComparison.Ordinal) >= 0,
                 $"QA_NO 줄 (실제 {TowerDockCap.Line()})");
             Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, null);
@@ -79,14 +107,17 @@ namespace AshesToStars
             string towerSrc = File.ReadAllText(Path.Combine(runtime, "TowerScreen.cs"));
             Check(towerSrc.IndexOf("TowerDockCap.SeedQaIfRequested", StringComparison.Ordinal) >= 0
                   && towerSrc.IndexOf("TowerDockCap.Line", StringComparison.Ordinal) >= 0
-                  && towerSrc.IndexOf("TowerDockCap.Lower", StringComparison.Ordinal) >= 0,
-                "탑이 시드·줄·Lower를 읽는다");
+                  && towerSrc.IndexOf("TowerDockCap.Lower", StringComparison.Ordinal) >= 0
+                  && towerSrc.IndexOf("TowerDockCap.Raid", StringComparison.Ordinal) >= 0,
+                "탑이 시드·줄·Lower·Raid를 읽는다");
             Check(towerSrc.IndexOf("RaidReroll.FormatLine(lower) + \" · \" + RaidBossPool.Line()",
                       StringComparison.Ordinal) < 0
-                  && towerSrc.IndexOf("RaidScale.FormatLine(lower)", StringComparison.Ordinal) < 0,
+                  && towerSrc.IndexOf("RaidScale.FormatLine(lower)", StringComparison.Ordinal) < 0
+                  && towerSrc.IndexOf("5층마다 보스, 10층 단위는 대보스", StringComparison.Ordinal) < 0,
                 "도크가 옛 긴 줄을 안 붙인다");
 
             _ = nameof(TowerDockCap.Lower);
+            _ = nameof(TowerDockCap.Raid);
             _ = nameof(TowerDockCap.Line);
             _ = nameof(TowerDockCap.SeedQaIfRequested);
 
@@ -97,6 +128,7 @@ namespace AshesToStars
             RaidReroll.ResetForTest();
             RaidScale.ResetForTest();
             RaidBossPool.ResetForTest();
+            DeathTraining.ResetForTest();
             GameState.ResetAll();
 
             if (_fail == 0) Debug.Log("[TowerDockCapSelfCheck] PASS\n" + _log);

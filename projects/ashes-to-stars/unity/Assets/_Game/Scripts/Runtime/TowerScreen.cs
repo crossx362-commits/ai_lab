@@ -193,13 +193,8 @@ namespace AshesToStars
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
             {
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
-                string mega = RaidCost.FormatLine(raidFloor);
-                string raidOpen = DeathTraining.IsTraining
-                    ? DeathTraining.Line()
-                    : (string.IsNullOrEmpty(mega)
-                        ? "5층마다 보스, 10층 단위는 대보스(§9)"
-                        : mega + " · 5층마다 보스, 10층 단위는 대보스(§9)");
-                if (DrawCard(cards[1], "레이드 (5층 단위)", raidOpen, "damage"))
+                if (DrawCard(cards[1], "레이드 (5층 단위)",
+                        TowerDockCap.Raid(raidFloor), "damage"))
                     Enter(RaidCost.Copper(raidFloor), GameFlow.BattleKind.보스, raidFloor);
             }
             int lower = RaidScale.LowerFloor;

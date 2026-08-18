@@ -134,6 +134,7 @@ namespace AshesToStars
             RaidReroll.Record(RaidScale.LowerRaidFloor);
             var tower = TowerHud.Cards(body);
             Check(tower.Length == 4, $"탑 도크 4칸 (실제 {tower.Length})");
+            Fits(tower[1], "레이드 (5층 단위)", TowerDockCap.Raid(50), "탑도크[1]");
             Fits(tower[2], "하위 레이드 5층", TowerDockCap.Lower(5), "탑도크[2]");
             RaidScale.ForceScalePercent = -1;
             RaidReroll.ResetForTest();
