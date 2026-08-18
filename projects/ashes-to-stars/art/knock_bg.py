@@ -229,7 +229,10 @@ def apply(img: Image.Image, crop: bool = False) -> Image.Image:
 
     keep = alpha > 0
     if keep.any():
-        keep = _drop_paper_blobs(rgb, keep)
+        # 마젠타를 이미 지운 칸에서 종이 카드 휴리스틱을 돌리면
+        # 어두운 몹 몸이 가장자리에 닿아 통째로 뚫린다(오너 22:03).
+        if mag_frac < 0.15:
+            keep = _drop_paper_blobs(rgb, keep)
         keep = _drop_small(keep)
         alpha = np.where(keep, alpha, 0)
 

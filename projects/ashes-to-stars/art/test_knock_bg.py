@@ -104,6 +104,22 @@ class KnockBgTests(unittest.TestCase):
         self.assertLess(int((a[:, :12, 3] > 128).sum()), 10)
         self.assertGreater(int((a[8:32, 18:36, 3] > 128).sum()), 80)
 
+    def test_dark_body_on_magenta_kept(self):
+        """마젠타 칸 + 어두운 몸 + 밝은 판. 몸이 가장자리에 닿아도 뚫리면 안 된다."""
+        im = Image.new("RGBA", (80, 80), (255, 0, 255, 255))
+        d = ImageDraw.Draw(im)
+        d.ellipse((2, 12, 78, 78), fill=(28, 28, 30, 255), outline=(8, 8, 8, 255), width=3)
+        d.polygon([(16, 24), (64, 22), (70, 50), (12, 54)], fill=(78, 78, 82, 255))
+        d.ellipse((30, 22, 52, 46), fill=(245, 245, 240, 255))
+        d.ellipse((34, 28, 38, 34), fill=(5, 5, 5, 255))
+        d.ellipse((42, 28, 46, 34), fill=(5, 5, 5, 255))
+        out = knock_bg.apply(im)
+        a = np.asarray(out)
+        body = (a[..., 3] > 200) & (a[..., 0] < 100)
+        self.assertGreater(int(body.sum()), 800, "어두운 몸을 알파로 파면 안 된다")
+        self.assertTrue(_face_alive(out), "가면이 살아야 한다")
+        self.assertTrue(_bg_gone(out, (255, 0, 255)))
+
     def test_checkerboard_bg(self):
         im = _bug((204, 204, 204, 255), size=96)
         px = im.load()

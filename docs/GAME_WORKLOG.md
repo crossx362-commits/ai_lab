@@ -11,6 +11,15 @@
 ---
 
 
+## 지금 (2026-08-18) — 필드 몹 5계열 알파 구멍
+
+INBOX 22:03. p22 시트는 몸 있음 · Resources만 외곽선.
+`repair_mob_alpha.py`가 5계열 22장을 다시 나눔. 재생성 없음.
+`knock_bg`는 마젠타 칸에서 `_drop_paper_blobs`를 안 돈다.
+unittest `test_mob_alpha`+`test_knock_bg` 11 OK.
+샷 `mob_alpha_shots/qa_hunt.png` — 채워진 몸.
+서포터·이펙트는 다음. 영지 `EstateBuild`는 클로드.
+
 ## 지금 (2026-08-18) — 영지 §1·§2·§3 (자리·앵커·팔레트)
 
 설계 `docs/GAME_SPEC_ESTATE_BUILD.md`. 분담 §4-B: 그록이 자리·앵커·팔레트,
