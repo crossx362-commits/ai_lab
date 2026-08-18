@@ -29,6 +29,7 @@
 | 2 | **30층 성장 곡선** | 닫음. `BossHp` + 재측정 PASS |
 | 3 | **영지 §5 드래그 UX** | `EstateStore.TryMove`·경로 재계산은 닫음. 마우스 드래그 미리보기는 EstateScreen(클로드 창 훅과 겹침) |
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | 선행이 없어 지금 넣으면 오펀 |
+7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — `BankruptcySeize.KeepLine()` 소비처 0곳(영지 현황 개편 때 떨어져 나감. EstateScreen은 Line()만 읽음) ②`MineSeizeSelfCheck` — `SeizeLine`/`EnvShowSeize`를 EstateScreen이 안 읽음 ③`NetWorthSelfCheck` — `NetWorth.Line`은 TowerScreen:134가 읽는데 검사가 EstateScreen만 훑음. **셋 다 「강등·압류·순자산 문구를 영지 현황(현재는 EstateStatusHud 도크)에 노출」이 원래 의도** — 문구를 현황 도크에 실제로 배선하고 SelfCheck의 grep 대상 파일도 실제 소비처로 갱신하라(검사만 고쳐서 초록불 만들기 금지 — 배선 먼저). ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
@@ -4057,3 +4058,7 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 `claude -p`가 12회 연속 실패했다. 마지막 로그: `/Users/junholee/ai_lab/loop/logs/iter_20260816_022155.log`
 1순위 의심: **구독 토큰 만료**. `echo ok | claude -p`로 직접 찔러 확인하고,
 만료면 `claude auth login`(브라우저 OAuth라 사람만 가능) 후 `rm loop/STOP`.
+
+## ⚠️ 루프 정지 — 인프라 장애 지속 (2026-08-19 05:23)
+`grok` 실행기가 12회 연속 실패했다. 마지막 로그: `/Users/junholee/ai_lab/loop/logs/iter_20260819_052356.log`
+구독 한도·로그인·네트워크 상태를 확인한 뒤 `rm loop/STOP`으로 재개할 것.
