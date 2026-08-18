@@ -25,6 +25,7 @@ namespace AshesToStars
                 string pool = RaidBossPool.Line();
                 string reroll = RaidReroll.Line();
                 string mega = RaidCost.Line();
+                string curve = BossHp.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
@@ -38,6 +39,8 @@ namespace AshesToStars
                     rest = reroll + " · " + rest;
                 if (!string.IsNullOrEmpty(mega))
                     rest = mega + " · " + rest;
+                if (!string.IsNullOrEmpty(curve))
+                    rest = curve + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -65,6 +68,7 @@ namespace AshesToStars
             RaidBossPool.SeedQaIfRequested();
             RaidReroll.SeedQaIfRequested();
             RaidCost.SeedQaIfRequested();
+            BossHp.SeedQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {

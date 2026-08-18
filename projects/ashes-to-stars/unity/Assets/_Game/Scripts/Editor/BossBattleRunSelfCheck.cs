@@ -45,8 +45,9 @@ namespace AshesToStars
                 };
                 liveBoss.OnBossPhaseChange += _ => phases++;
 
-                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, 9000f),
-                    $"5층 초기 HP가 9000이어야 한다: {BossBattle.ActiveTotalHp}");
+                float startHp = BossHp.Hp(5, 90f);
+                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, startHp),
+                    $"5층 초기 HP가 {startHp:0}이어야 한다: {BossBattle.ActiveTotalHp}");
                 Require(GameState.TowerFloor == 5, $"시작 층이 5여야 한다: {GameState.TowerFloor}");
 
                 Invoke(liveBoss, "TriggerHealCheck");
@@ -66,12 +67,13 @@ namespace AshesToStars
                 int summoned = global::W3Party.SummonedAliveOnActive();
                 Require(summoned > 0, $"소환 쫄이 실판에 있어야 한다: {summoned}");
 
-                DamageFirstW3Target(liveParty, 4500f);
-                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, 4500f),
-                    $"피해 4500이 HP에 반영돼야 한다: {BossBattle.ActiveTotalHp}");
+                float half = startHp * 0.5f;
+                DamageFirstW3Target(liveParty, half);
+                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, half),
+                    $"피해 {half:0}이 HP에 반영돼야 한다: {BossBattle.ActiveTotalHp}");
                 Require(phases == 1, $"1/2 HP에서 페이즈가 1회 전환돼야 한다: {phases}");
 
-                DamageFirstW3Target(liveParty, 4500f);
+                DamageFirstW3Target(liveParty, half);
                 Require(defeated == 1 && Mathf.Approximately(BossBattle.ActiveTotalHp, 0f),
                     $"HP 0에서 처치가 1회여야 한다: defeated={defeated} hp={BossBattle.ActiveTotalHp}");
                 Require(GameState.TowerFloor == 6,
@@ -89,14 +91,14 @@ namespace AshesToStars
                     blockedDefeated++;
                     GameFlow.ApplyTowerBossVictory(GameFlow.BossFloor);
                 };
-                DamageFirstW3Target(blockedParty, 9000f);
-                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, 9000f),
+                DamageFirstW3Target(blockedParty, startHp);
+                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, startHp),
                     $"BOSS_NO_DPS에서 HP가 줄면 안 된다: {BossBattle.ActiveTotalHp}");
                 Require(blockedDefeated == 0, "BOSS_NO_DPS에서 처치 이벤트가 뜨면 안 된다");
                 Require(GameState.TowerFloor == 5,
                     $"BOSS_NO_DPS에서 층이 오르면 안 된다: {GameState.TowerFloor}");
 
-                Debug.Log("[BossBattleRunSelfCheck] PASS hp=9000→4500→0 phase=1 aoe>0 heal_report=aoe summon>0 floor=5→6 negative_floor=5");
+                Debug.Log($"[BossBattleRunSelfCheck] PASS hp={startHp:0}→{half:0}→0 phase=1 aoe>0 heal_report=aoe summon>0 floor=5→6 negative_floor=5");
             }
             finally
             {

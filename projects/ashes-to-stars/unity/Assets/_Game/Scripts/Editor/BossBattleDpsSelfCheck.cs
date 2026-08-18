@@ -28,13 +28,15 @@ namespace AshesToStars
                 live.Begin(5, 1);
                 live.AttachCombatTargets();
 
-                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, 9000f),
-                    $"5층 초기 HP가 9000이어야 한다: {BossBattle.ActiveTotalHp}");
-                DamageFirstW3Target(liveParty, 4500f);
-                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, 4500f),
-                    $"피해 4500이 HP에 반영돼야 한다: {BossBattle.ActiveTotalHp}");
+                float startHp = BossHp.Hp(5, 90f);
+                float half = startHp * 0.5f;
+                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, startHp),
+                    $"5층 초기 HP가 {startHp:0}이어야 한다: {BossBattle.ActiveTotalHp}");
+                DamageFirstW3Target(liveParty, half);
+                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, half),
+                    $"피해 {half:0}이 HP에 반영돼야 한다: {BossBattle.ActiveTotalHp}");
                 Require(phases == 1, $"1/2 HP에서 페이즈가 1회 전환돼야 한다: {phases}");
-                DamageFirstW3Target(liveParty, 4500f);
+                DamageFirstW3Target(liveParty, half);
                 Require(defeated == 1 && Mathf.Approximately(BossBattle.ActiveTotalHp, 0f),
                     $"HP 0에서 처치 이벤트가 정확히 1회여야 한다: defeated={defeated}");
                 UnityEngine.Object.DestroyImmediate(liveGo);
@@ -48,15 +50,15 @@ namespace AshesToStars
                 var blocked = blockedGo.AddComponent<BossBattle>();
                 blocked.Begin(5, 1);
                 blocked.AttachCombatTargets();
-                DamageFirstW3Target(blockedParty, 9000f);
-                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, 9000f),
+                DamageFirstW3Target(blockedParty, startHp);
+                Require(Mathf.Approximately(BossBattle.ActiveTotalHp, startHp),
                     $"BOSS_NO_DPS에서 HP가 줄면 안 된다: {BossBattle.ActiveTotalHp}");
-                Require(FirstTargetHp(blockedParty) == 9000f,
+                Require(Mathf.Approximately(FirstTargetHp(blockedParty), startHp),
                     "BOSS_NO_DPS에서 W3 보스 타깃 HP도 줄면 안 된다");
                 UnityEngine.Object.DestroyImmediate(blockedGo);
                 blockedGo = null;
 
-                Debug.Log("[BossBattleDpsSelfCheck] PASS normal=9000→4500→0 phase=1 defeated=1 negative=9000→9000");
+                Debug.Log($"[BossBattleDpsSelfCheck] PASS normal={startHp:0}→{half:0}→0 phase=1 defeated=1 negative={startHp:0}→{startHp:0}");
             }
             finally
             {

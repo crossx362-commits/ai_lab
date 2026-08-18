@@ -6,7 +6,7 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-18 · UI·아트 상시 폴리싱 트랙
+최종 갱신: 2026-08-18 · §18-11 보스 HP 기대 파티 DPS (30층 곡선 PASS)
 마지막 트랙: 코드
 폴리싱 다음: 영지
 
@@ -17,19 +17,42 @@
 4. **INBOX 08:47 지금 문제점** — 캐릭터·몹 움직임, 맵 전투에서 캐릭터/몹/배경 비율. 겹침은 대화 세션이 `fe2eb9c8`(필드 프랍)·`95886088`(파티 겹침)로 닫음. 움직임·비율은 `W3Party`라 대화 세션. UI 퀄리티 전체는 사람 육안. 금테·글씨 여백은 대화 세션 `0d8e50da`. 루프는 전투 밖만. 영지 전면 마을·영지 마을 HUD·필드 허브 HUD·전용 7건물·경매장 전용 그림·제목판 52·경매 전폭 막대·캐릭터창 3열·장비 라벨·현황 도크·도크 부제·마을 끌어 보기·굴려 확대는 닫음.
 5. **UI 퀄리티 남은 것**(INBOX 16:46 · 21:45 · 08:37 글씨 위치는 닫음 · 09:18 영지 전면·끌어 보기·굴려 확대는 닫음 · 09:45 마을 HUD는 닫음 · 필드 6장 카드는 닫음 · 제목판 52는 닫음 · 경매 전폭 막대는 닫음 · 캐릭터창 3열·장비 라벨은 닫음 · 현황 도크는 닫음 · 도크 부제는 닫음) — 하단 도크·격자 8×8·시작 2명·침략 보호막·수비대 회복·인간 PvE 18h·경매 수수료 7%·영지생산·드랍률·전직재료배율·약탈량·엘프 인식·영공 적 디버프·드워프 골드 소모·약탈 상한·사냥 시작 두 단계·시간당 수익 소프트캡·승자 최소 0.5 G/h·창고 20% 약탈·명예 +30·반복 침략 −80%·신규 계정 7일 구매 잠금·5층 전 비살상 훈련·하위 레이드 스케일 0.65·하위 레이드 보스 풀 10종·재입장 누진 ×1·×2·×4·×8·경매 등록 24시간 유찰·연체 2회 생산 압류·파산 건물 −1·비장착 30%·환생 Lv1·필드 사냥 골드·마지막 목숨 장착 6부위·영묘 추모(층·출전·원인·장착·마지막 동료)·수비대 30층 해금·영묘 첫 삭제 해금·대장간 1차 전직 해금·경매 드랍·제작만 거래·필드 자동사냥 일정·10층 대보스 0.15 G/h·대출 순자산(장비·영지)·필드 배회 보스·긴급 탈출 보상 포기·넓은 카드 글씨 가운데·목숨 시세 하한·누적 출전·영지 전면 마을·증표 시세 200 G/h·영지 마을 HUD·필드 허브 HUD·전용 7건물·경매장 전용 그림·제목판 52·경매 전폭 막대·캐릭터창 3열·장비 라벨·현황 도크·도크 부제·마을 끌어 보기·굴려 확대·긴급 탈출 수동 한정·명예 승리 방어력 비례·침략 진입 면 선택·무기 직업 계열·가방 60칸은 닫음. 허브 마을 전경은 `9f4336f8`. 금테 여백은 `0d8e50da`. 전체 「다른 게임만큼」은 사람 육안.
 6. **이미 닫은 소비처 목록** — 대기하지 말고 원장을 훑어 다음 구멍을 큐에 올린다. `GearOpt.Apply`/`CountOf`/`Format`/`Line`을 `TryGrantDrop`·캐릭터창이 읽음. `QA_NO`면 옛 0. 제작품은 0. 일반1·고급2·희귀3·영웅3·전설4. 전투 수치는 안 넣음. `EliteDrop.Apply`/`Applies`/`Format`/`Line`을 `DungeonRun.Complete`·전투·던전 지도·캐릭터창이 읽음. `QA_NO`면 옛 0. 필드 정예는 W3Party라 안 넣음. `GearDrop.Apply`/`GradeOf`/`Format`/`Line`을 `CalculateVictoryReward`·결과·캐릭터창이 읽음. `QA_NO`면 옛 0. 제작품은 일반. 정예 일반·랜덤 옵션은 안 넣음. `BagSlots.Used`/`CanGain`/`CanAddGear`/`Line`을 `Gain`·제작·벗기기·복원·캐릭터창·대장간이 읽음. `QA_NO`면 옛 무한. 목숨 아이템은 종류당 1칸, 비장착 장비는 1개 1칸. 골드 확장은 안 넣음. `EquipJob.CanWear`/`WhyNot`/`Line`을 `TryEquip`·캐릭터창·대장간이 읽음. `QA_NO`면 옛 항상 허용. 송곳니 검은 물리(탱·딜). 레벨 제한·다른 무기 레시피는 안 넣음. `InvasionApproach.Pick`/`Side`/`Path`/`Line`을 `TryBegin`·월드맵이 읽음. `QA_NO`면 옛 최단 자동. 경로 전투 시뮬은 💡라 안 넣음. `EstateBuildings.DedicatedOf`가 경매장=`estate_auction_0`을 읽고 `PropOf`가 마을에 그린다. `Honor.WinForCut`/`WinNow`를 `ApplyInvasion`·정산·월드맵이 읽음. `EscapeManual.Allowed`/`WhyNot`/`Line`을 `TryBegin`·전투·필드가 읽음. `EstateYard.SetZoom`/`HandleZoom`/`Zoom`/`Line`을 마을이 읽음. `EstateYard.TileOrigin`/`SetPan`/`HandlePan`/`Line`을 마을이 읽음. `EstateStatusHud.AuraCaption`/`KeepCaption`/`WorldCaption`/`MineCaption`/`StoreCaption`을 현황 도크가 읽음. `UiPages.IsSlimCard`/`TitleHOf`/`CardChrome`을 `CardLayout`·`DrawCard`가 읽음. `EstateStatusHud.Cards`/`OverlayH`/`OpenH`/`Line`을 영지 현황이 읽음. `CharHud.RosterSplit`/`RosterCell`/`EquipLabel`/`EquipRingFit`/`SlotLabel`/`Line`을 캐릭터창이 읽음. `AuctionHud.BarRect`/`LotsBody`/`StatusLine`/`Line`을 경매장이 읽음. `HubHeader.H`/`BodyTop`/`IconRect`/`TitleRect`/`Line`을 `GameScreen`이 읽음. `EstateBuildings.DedicatedOf`/`PropOf`/`Line`이 본성·광산·창고·수비대·대장간·영묘·탑·경매장을 읽음. `FieldHud.Cards`/`OverlayH`/`OpenH`/`Line`을 필드 허브가 읽음. `EstateHud.OverlayH`/`PaletteTiles`/`ShowInspectBar`/`Line`을 영지 마을이 읽음. `TokenPrice.Floor`/`BelowFloor`/`Line`을 `ListPrice`·`TryListItem`이 읽음. `SortieTime.Apply`/`AddToIndexes`/`Line`을 전투·일정·영묘가 읽음. `LifePrice.Floor`/`BelowFloor`/`Copper`를 `ListPrice`·`TryListItem`·NPC가 읽음. `EscapeForfeit.Apply`/`Line`/`Body`가 긴급 탈출 포기를 읽음. `InvasionState.AbortPending`이 패배 추가 소모 없이 대기를 취소. `FieldBoss.Tick`/`BeginFight`/`DropSource`가 필드 배회 보스를 읽음. `NetWorth.Assets`/`KeepCopper`/`GearCopper`가 대출 한도의 장비·영지를 읽음. `Memorial.FormatParty`/`PartyLine`이 마지막 출전 동료를 읽음. `RaidCost.ActionKey`/`Copper`/`Line`이 10층 대보스 0.15 G/h를 읽음. `HuntSchedule.TryStart`/`Tick`/`Stop`/`PendingGold`가 필드 일정을 읽음. `AuctionTrade.CanList`/`CanListBound`/`TryFirstBag`가 드랍·제작을 읽고 칭호·스킨·명예는 거절. `TryListItem`이 `CanList`를 읽음. `Equipment.LockReason`/`LockLine`/`SeedUnlockQaIfRequested`가 1차 전직을 읽음. `Memorial.Unlocked`/`LockReason`/`Open`이 첫 삭제를 읽음. `DefenseState.Unlocked`/`LockReason`이 탑 30층을 읽음. `Memorial.Stamp`/`Line`/`GearLine`/`PartyLine`/`TimeLine`이 최고 층·마지막 출전·사망 원인·장착·동료·누적 출전을 읽음. `LastLifeWarn.GearLine`/`GearRest`가 장착 6부위를 읽음. `BattleScreen`이 `WaveHuntGold`를 Earn한다(T1 3600초=1골드). `UseRebornStone`이 `Rebirth.Apply`를 읽음. `ApplyBankruptcy`가 `BankruptcySeize`를 읽음. `EstateMine.Tick`이 `RepayFromIncome`을 읽음. `AuctionState.SweepExpired`가 `ListHours`를 읽음. `Honor.WinForCut`은 Cut 0=15·20=30·40=45. 수비 성공 +20은 들어오는 침략이 없어 안 넣음. `RaidReroll`/`RaidBossPool`/`RaidScale`/`DeathTraining`/`Earn`/`LootCopper`/`Honor.ApplyInvasion`은 닫힘. `RaceDef` 비전투 칸은 골드 소모까지 닫힘. 환생 스킬 1개 선택·생전 스킬 목록은 안 넣음(직업 스킬이 Job+단계라 칸이 없음). 누적 출전은 `SortieTime`이 닫음. 16-6 별자리 카드는 💡. 이속·체력은 W3Party가 이미 읽고, 방어배율·불굴·야성·이동회피·소환수 재소환은 W3Party라 대화 세션. 탐험 범위 +30%는 안개 시스템이 없어 안 넣음. 드워프 방어 내구는 건물 HP가 없어 안 넣음. 강화 성공 +10%p는 `SuccessPercent`가 이미 읽음. 오프라인 정산 60%·일과표 타임라인·조건부 지시는 💡라 안 넣음. 매칭 ±5층·디버프 중첩 2별은 로컬 별이 1개라 안 넣음. 수비 성공 명예 +20은 들어오는 침략이 없어 안 넣음. 16×16 부지·배치 프리셋·경로 전투 시뮬·무료 영입 3회·동시 건설 2슬롯·본성 유료 영입·명예 상점은 💡라 안 연다. 변종 패턴 1개·다중 3체·필드 보스 배회 스프라이트는 💡/W3Party. 잡몹 1마리 3~10쿠퍼는 시간당 공식으로 흡수했다. 16-10 전투 오디오·G17 접근성은 프로토 OUT(§21-3 사운드). 생존형 HP 50% 이탈은 W3Party. 다음 비전투 구멍은 원장 ✅를 다시 훑어 소비처 0곳인 것을 올린다.
-7. **단계 1 관문 ① — 측정 끝, 판정 FAIL(2026-08-18)** — `TowerClimbCurveMeasure`를 `unity_meas` 배치로 돌렸다. 1~30층 **필요 DPS가 상수 100**이고 30층 요구 레벨이 **Lv1**이다(보스 HP를 고정 `basePartyDps 100 × 목표시간`으로 정의한 탓). 증거 `output/qa/ashes-to-stars/curve/tower_climb_30.csv`. **다음은 §18-11 기준선을 파티 상태에서 유도하도록 바꾸는 것인데 앵커 변경이라 오너 확인이 먼저다.** 수치부터 만지지 마라. 상세 원장 §22-1.
+7. **단계 1 관문 ① — 재측정 PASS(2026-08-18)** — `BossHp`가 §18-10 권장 전투력(1층=100, +5.5%/층)을 DPS로 읽고 `BossBattle`이 HP를 만든다. 재측정 G1 100→472 · 변화 29회 · G2 5h Lv36≥요구 30. CSV `output/qa/ashes-to-stars/curve/tower_climb_30.csv`. `QA_NO`면 옛 100. 장비 칸은 권장 전투력에 흡수(별도 시뮬 없음). 관문 ②(5시간 지루함)는 아직.
 
 ## 다음 할 일 큐 (루프가 못 닫은 것)
 
 | # | 항목 | 이유 |
 |---|---|---|
-| 1 | **30층 성장 곡선** | 측정 FAIL. 기준 변경은 오너 확인. 유보 |
-| 2 | **필드 정예·전투 보정** | 전투 코드라 루프가 못 넣음. 소비 시스템이 없어 |
+| 1 | **필드 정예·전투 보정** | INBOX 21:47이 다음 이터 우선. W3Party라 이 이터는 안 넣음 |
+| 2 | **30층 성장 곡선** | 닫음. `BossHp` + 재측정 PASS |
 | 3 | **환생·탐험·내구·수비명예·착용레벨** | 선행이 없어 지금 넣으면 오펀 |
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 드랍 장비 랜덤 옵션.**
+> **이번 이터 결과(코드/실행): 보스 HP는 기대 파티 DPS(§18-11).**
+> - INBOX 21:43 승인 + 21:47 막힌 30층 곡선. 옛 `basePartyDps` 고정 100이라
+>   1~30층 필요 DPS가 상수였고 요구 레벨이 Lv1이었다.
+> - **생산 소비처**: `BossHp.PartyDps`/`Hp`/`FloorMul`/`ExpectedLevel`/`Line`/`SeedQaIfRequested`.
+>   `BossBattle.CreateBosses`가 Hp를 읽는다. 탑 자막이 Line을 읽는다.
+>   §18-10 1층=100 · +5.5%/층 → 30층 DPS 472. `QA_NO`면 옛 100.
+>   `QA_BOSS_HP=1`은 탑 30층+자막. `W3Party`/`HuntBoon`/`FieldDecor`는 안 건드렸다.
+> - **통과 기준**: 30층 DPS > 1층 ×1.5 · 변화 ≥10회 · 5h 사냥 레벨 ≥ 기대 30.
+>   차단하면 30층도 100. 화면 `보스 HP는 기대 파티 472 DPS(§18-11)`.
+> - **TDD/실행**: `unity_meas` `BossHpSelfCheck` 전항 PASS
+>   (`boss_hp_selfcheck.log`). `TowerClimbCurveMeasure` G1·G2 PASS
+>   (100→472 · 29회 · Lv36≥30). V3 `BossBattleRunSelfCheck` 11149→5575→0 PASS.
+> - **화면**(직접 열음, 빈 화면 아님, `QA_BOSS_HP=1`):
+>   `boss_hp_shots/qa_go:Tower.png` 858902B — 탑 · 30층,
+>   자막 `보스 HP는 기대 파티 472 DPS(§18-11)`.
+> - **네거티브**: `CreateBosses`에서 `BossHp.Hp`를 빼면 FAIL 1
+>   (`boss_hp_negctrl.log` — 보스가 Hp를 안 읽음). `QA_NO`면 옛 100.
+> - **정직한 미완**: 장비·전직 칸은 §18-10 권장 전투력에 흡수했다(별도 시뮬 없음).
+>   관문 ② 5시간 지루함은 안 쟀다. 필드 정예는 W3Party라 다음 INBOX.
+>   원본 에디터 PID 25198은 죽이지 않았고 사본으로 SelfCheck·촬영.
+>   HuntBoon 도크는 대화 세션이 같은 파일을 잡고 있어 안 넣음.
+> - **코드** (이 커밋). `W3Party`는 안 건드렸다.
+
+> **이전 이터 결과(코드/실행): 드랍 장비 랜덤 옵션.**
 > - 큐 1번. 원장 §11 위임 `랜덤 옵션 | 등급별 1~4개 (전설만 4개)`.
 >   `GearItem`에 칸이 없었고 드랍·제작이 등급만 붙였다.
 > - **생산 소비처**: `GearOpt.Apply`/`CountOf`/`Format`/`Line`/`SeedQaIfRequested`.

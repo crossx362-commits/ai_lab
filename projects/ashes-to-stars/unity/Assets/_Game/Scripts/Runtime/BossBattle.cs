@@ -318,10 +318,11 @@ namespace AshesToStars
         {
             bosses.Clear();
 
-            // §18-11: HP 계산
-            // 보스 HP = 5인 파티 총 DPS × 목표 시간
-            float totalPartyDps = basePartyDps;
-            float singleBossHp = totalPartyDps * targetClearTime;
+            // §18-11: HP = 그 층 기대 파티 DPS × 목표 시간.
+            // 옛 길은 basePartyDps(고정 100)라 1층과 30층 필요 DPS가 같았다.
+            float singleBossHp = BossHp.Blocked
+                ? basePartyDps * targetClearTime
+                : BossHp.Hp(currentFloor, targetClearTime, 1);
 
             // §10-7: 다중 등장 HP 보정
             // 1체 100% / 2체 65% / 3체 45%

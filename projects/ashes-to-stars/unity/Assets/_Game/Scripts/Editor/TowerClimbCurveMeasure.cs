@@ -120,7 +120,7 @@ namespace AshesToStars
             float hp = BossBattle.ActiveTotalHp;
 
             int tier = Mathf.Clamp((floor - 1) / 10, 0, Economy.TierRevenueMultiplier.Length - 1);
-            int level = RequiredLevel(boss, hp, targetSec);
+            int level = BossHp.ExpectedLevel(floor);
             return new Row
             {
                 Floor = floor,
@@ -133,33 +133,6 @@ namespace AshesToStars
                 LevelMul = global::W3Party.LevelStatMultiplier(level),
                 HuntHoursToLevel = HuntHoursForLevel(level, tier),
             };
-        }
-
-        /// <summary>
-        /// 이 층을 목표 시간 안에 잡으려면 몇 레벨이어야 하는가.
-        /// 파티 DPS는 레벨 배수에 비례한다(<see cref="W3Party.LevelStatMultiplier"/>) —
-        /// Lv1 파티가 BossBattle의 기준 DPS를 낸다고 두고 역산한다. 그 기준값은 여기서
-        /// 다시 적지 않고 BossBattle 필드에서 그대로 읽는다(공식 이중 정의 금지).
-        /// </summary>
-        static int RequiredLevel(BossBattle boss, float bossHp, float targetSec)
-        {
-            if (targetSec <= 0f) return 1;
-            float baseline = BaselineDps(boss);
-            if (baseline <= 0f) return 1;
-            float need = bossHp / targetSec;                 // 필요 DPS
-            for (int lv = 1; lv <= LifeSystem.MaxLevel; lv++)
-                if (baseline * global::W3Party.LevelStatMultiplier(lv) >= need)
-                    return lv;
-            return LifeSystem.MaxLevel;
-        }
-
-        static float BaselineDps(BossBattle boss)
-        {
-            var f = typeof(BossBattle).GetField("basePartyDps",
-                System.Reflection.BindingFlags.Instance
-                | System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Public);
-            return f == null ? 0f : Convert.ToSingle(f.GetValue(boss));
         }
 
         /// <summary>레벨 L까지 필요한 누적 경험치를 그 티어 사냥 속도로 나눈 시간(시간 단위).</summary>
