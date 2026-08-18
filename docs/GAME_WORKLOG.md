@@ -17,7 +17,7 @@
 `EstateStore.Reached`를 `PathLength`가 읽는다. StoreX는 기본 스폰만.
 TryMove (3,6) → 북 6·남 1. `QA_NO`면 옛 (3,3).
 샷 `estate_store_shots/qa_go:{Estate,WorldMap}.png` — `창고 (3,6) · 남 1칸`.
-드래그 UX·EstateBuild는 다음. 폴리싱 다음은 탑.
+코드 `b150d8a7`. 드래그 UX·EstateBuild는 다음. 폴리싱 다음은 탑.
 
 ## 지금 (2026-08-18) — 서포터 공격 프레임 반쪽
 
