@@ -21,7 +21,7 @@ namespace AshesToStars
         public const float TileAspect = 0.52f;
         public const float RoofHead = 1.15f;
         /// <summary>세로 맞춤에만 쓰는 지붕 여유. RoofHead(1.15)는 배치 계산용으로 남긴다.</summary>
-        public const float FitHead = 0.35f;
+        public const float FitHead = 0.05f;
         public const float OldTileCap = 88f;
         public const string EnvNo = "QA_NO_YARD_FILL";
         public const string EnvShowPan = "QA_YARD_PAN";
@@ -178,6 +178,8 @@ namespace AshesToStars
                 // 72%에서 멈췄다(실측: tw=86.6px, 판 693px / 화면 960px). 지붕은 판 위쪽
                 // 헤더 영역으로 넘어가도 되는 장식이라 맞춤 계산에서 뺀다 — 넘치는 만큼은
                 // 이미 있는 끌어 보기(Pan)가 담당한다.
+                // 오너 지시(2026-08-18) "바닥은 최대한 넓게" — 세로 여유를 더 줄여
+                // 가로 폭이 맞춤을 지배하게 한다. 넘치는 세로는 끌어 보기가 담당한다.
                 tw = Mathf.Min(area.width / n, area.height / (n * TileAspect + FitHead));
             return tw * Zoom;
         }
@@ -426,26 +428,47 @@ namespace AshesToStars
             _pinch0 = d;
         }
 
+        /// <summary>칸 하나가 담는 지면 폭(유닛). 크기표 값을 화면 픽셀로 바꾸는 환산 기준이다.</summary>
+        const float TileUnits = 4.2f;
+
         static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
         {
-            float wide = cell switch
-            {
-                EstateGrid.Cell.Keep => 1.12f,
-                EstateGrid.Cell.Wall => 0.92f,
-                EstateGrid.Cell.Trap => 0.72f,
-                EstateGrid.Cell.Arrow => 0.58f,
-                EstateGrid.Cell.Magic => 0.58f,
-                EstateGrid.Cell.Auction => 0.78f,
-                EstateGrid.Cell.Mausoleum => 0.70f,
-                _ => 0.96f,
-            };
-            float bw = tw * wide;
+            // ⚠️ 옛 식은 **칸 너비 × 손으로 맞춘 배율**(Keep 1.12·Arrow 0.58…)로 크기를 정하고
+            //    높이는 텍스처 종횡비에서 끌어왔다. 크기표(`art/prop_scale.json`)를 아예 안 봤다 —
+            //    오늘 전투 유닛에서 고친 것과 **같은 계열의 버그**(크기 진실이 여러 곳에 갈라짐).
+            //    그 결과 실측: 탑은 종횡비 0.66(높고 좁음)인데 배율 0.58까지 겹쳐 난쟁이가 됐고,
+            //    경매장은 종횡비 1.02라 같은 배율에서도 훨씬 커 보였다. 건물끼리 키가 안 맞았다.
+            //    크기표는 **목표 높이(유닛)**를 정의하므로 높이를 표에서 받고 너비는 종횡비로 낸다
+            //    (SpriteBank·FieldDecor가 쓰는 방식과 같다). 표에 없으면 옛 배율로 폴백.
             var tex = PropTex(PropOf(cell));
-            float bh;
-            if (tex != null && tex.width > 0)
-                bh = bw * ((float)tex.height / tex.width);
+            string prop = PropOf(cell);
+            float units = string.IsNullOrEmpty(prop) ? 0f : FieldDecor.Units(prop, 0f);
+
+            float bw, bh;
+            if (units > 0f && tex != null && tex.height > 0)
+            {
+                bh = units * (tw / TileUnits);
+                bw = bh * ((float)tex.width / tex.height);
+            }
             else
-                bh = cell == EstateGrid.Cell.Keep ? th * 2.55f : th * 2.05f;
+            {
+                float wide = cell switch
+                {
+                    EstateGrid.Cell.Keep => 1.12f,
+                    EstateGrid.Cell.Wall => 0.92f,
+                    EstateGrid.Cell.Trap => 0.72f,
+                    EstateGrid.Cell.Arrow => 0.58f,
+                    EstateGrid.Cell.Magic => 0.58f,
+                    EstateGrid.Cell.Auction => 0.78f,
+                    EstateGrid.Cell.Mausoleum => 0.70f,
+                    _ => 0.96f,
+                };
+                bw = tw * wide;
+                bh = tex != null && tex.width > 0
+                    ? bw * ((float)tex.height / tex.width)
+                    : (cell == EstateGrid.Cell.Keep ? th * 2.55f : th * 2.05f);
+            }
+
             float sit = cell == EstateGrid.Cell.Wall ? 0.55f : 0.42f;
             return new Rect(p.x + (tw - bw) * 0.5f, p.y + th * sit - bh, bw, bh);
         }
@@ -509,18 +532,25 @@ namespace AshesToStars
         static void EnsureTex()
         {
             if (_grass != null) return;
-            // ⛔ 텍스처 다이아몬드 시도는 되돌렸다(2026-08-18) — `art/ground/estate/*.png`
-            //    (힉스필드 등각 바닥, 오너 지시 "바닥좀 퀄 있게")를 여기 연결했더니 화면에서
-            //    타일마다 위쪽 삼각형만 그려지고 아래쪽 절반이 검게 비었다. PNG 단독 검사
-            //    (알파 채널 크롭)로는 완전한 마름모였고 세로 반전도 재현에 안 통했다 —
-            //    즉 파일이 아니라 **유니티 임포트·GUI 렌더 경로 어딘가**의 문제인데, 배치
-            //    스크린샷만으로는 원인을 못 좁혔다. 자산은 `unity/Assets/Resources/ground/estate/`에
-            //    남겨 뒀다 — 에디터(Unity MCP)로 직접 텍스처 임포트 설정(Wrap·Mip·Alpha Is
-            //    Transparency)을 확인할 수 있을 때 재시도할 것. 절차 생성 단색으로 복귀.
-            _grass = Diamond(new Color(0.36f, 0.52f, 0.28f, 0.92f), new Color(0.22f, 0.34f, 0.16f, 0.95f));
-            _path = Diamond(new Color(0.72f, 0.52f, 0.28f, 0.95f), new Color(0.48f, 0.30f, 0.12f, 1f));
-            _plot = Diamond(new Color(0.42f, 0.36f, 0.26f, 0.95f), new Color(0.28f, 0.22f, 0.14f, 1f));
+            _grass = LoadGroundTex("estate_grass", new Color(0.36f, 0.52f, 0.28f, 0.92f), new Color(0.22f, 0.34f, 0.16f, 0.95f));
+            _path = LoadGroundTex("estate_path", new Color(0.72f, 0.52f, 0.28f, 0.95f), new Color(0.48f, 0.30f, 0.12f, 1f));
+            _plot = LoadGroundTex("estate_plot", new Color(0.42f, 0.36f, 0.26f, 0.95f), new Color(0.28f, 0.22f, 0.14f, 1f));
             _sel = Diamond(new Color(0.95f, 0.82f, 0.28f, 0.35f), new Color(1f, 0.86f, 0.30f, 0.95f));
+        }
+
+        static Texture2D LoadGroundTex(string name, Color fill, Color edge)
+        {
+            // 2026-08-18: `Assets/Editor/TextureImportRules.cs`가 "/ground/" 아래 전체에
+            // seamless 타일링 바닥 규칙(alphaSource=None, wrapMode=Repeat)을 일괄 적용하고
+            // 있었다 — 이 다이아몬드 타일은 알파로 마름모 실루엣을 자르는 컷아웃 텍스처라
+            // 알파가 통째로 버려지면 타일 바깥(투명해야 할 영역)이 불투명 검정으로 렌더된다
+            // (PNG 자체의 알파·RGB는 정상이었다). `ground/estate/` 하위만 alphaSource=
+            // FromInput·wrapMode=Clamp로 예외 처리해 해결 — 원인이 EstateYard.cs가 아니라
+            // 임포트 규칙 쪽이었다는 점에 주의.
+            var tex = Resources.Load<Texture2D>("ground/estate/" + name);
+            if (tex != null) return tex;
+            Debug.LogWarning("[영지] 바닥 텍스처 누락: ground/estate/" + name + " — 절차 생성 단색으로 대체");
+            return Diamond(fill, edge);
         }
 
         static Texture2D Diamond(Color fill, Color edge)
