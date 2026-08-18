@@ -28,7 +28,7 @@
 송곳니 검=물리(탱·딜). `QA_NO`면 옛 항상 허용. SelfCheck 전항 PASS.
 FAIL 3은 TryEquip이 CanWear를 뺌.
 PNG `equip_job_shots/qa_go:Character.png` — `무기는 직업 계열만(§11)`.
-레벨 제한·다른 무기 레시피는 안 넣음. 코드 이번 커밋.
+레벨 제한·다른 무기 레시피는 안 넣음. 코드 `a8a531be`.
 
 ### ✅ 침략 진입 면 선택 (루프, 2026-08-18)
 
