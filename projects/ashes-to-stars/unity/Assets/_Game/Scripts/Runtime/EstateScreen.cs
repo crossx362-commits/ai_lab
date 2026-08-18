@@ -465,13 +465,18 @@ namespace AshesToStars
 
         void DrawEstateStatus(Rect r)
         {
-            // 파산 강등·압류 결과를 현황 안에서 노출한다(§18-5). 도크 카드는 아래에 붙으므로
-            // 위 두 줄과 겹치지 않는다. SeedQaIfRequested·EnvShow는 Body()가 이미 켠다.
+            // 파산 강등·압류 결과를 현황 안에서 노출한다(§18-5). 도크 카드는 아래(DockH)에 붙으므로
+            // 위 줄들과 겹치지 않는다. SeedQaIfRequested·EnvShow는 Body()가 이미 켠다.
+            int statusRow = 0;
             if (BankruptcySeize.ShowOnHub)
             {
-                Info(r, 0, BankruptcySeize.KeepLine());
-                Info(r, 1, BankruptcySeize.ItemLine());
+                Info(r, statusRow++, BankruptcySeize.KeepLine());
+                Info(r, statusRow++, BankruptcySeize.ItemLine());
             }
+            // 대출 연체 2회 → 광산 생산 100%가 빚으로 간다(§18-5). 파산과 별개 트리거라
+            // 각자 판정해 스택으로 쌓는다. 압류 중일 때만 광산 문구를 현황에 노출한다.
+            if (EstateMine.Seized)
+                Info(r, statusRow++, "광산 " + EstateMine.SeizeLine());
             var cards = EstateStatusHud.Cards(r);
             if (DrawCard(cards[0], "내 별 영공", EstateStatusHud.AuraCaption(), "worldmap"))
                 _sub = Sub.영공;
