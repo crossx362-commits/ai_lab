@@ -679,6 +679,7 @@ class LiveLogTests(unittest.TestCase):
         self.assertIn("상시 폴리싱", sh)
         self.assertIn("중복 리소스 재생성 금지", sh)
         self.assertIn("할로우 나이트 화풍 강제는 취소", sh)
+        self.assertIn("영지 화면·EstateYard", sh)
         self.assertNotIn("기본 5직업·몹 실루엣은 다시 뽑지 않는다", sh)
 
     def test_loop_sh_writes_main_log_itself(self):
