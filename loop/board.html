@@ -238,6 +238,8 @@
     color: #cfc4b0; background: #100e0c; border-radius: 8px; padding: 8px 10px;
     max-height: 132px; overflow: auto;
   }
+  .g-stuck { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .g-stuck .g-row .t { color: var(--stop); }
   .g-list { display: flex; flex-direction: column; gap: 8px; }
   .g-row { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; }
   .g-row .n { color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -294,6 +296,7 @@
   <section class="g-card">
     <h3>다음 할 일</h3>
     <div class="g-list" id="g-queue"></div>
+    <div class="g-list g-stuck" id="g-stuck"></div>
     <div class="g-mini" id="g-flags"></div>
   </section>
   <section class="g-card g-bars">
@@ -341,7 +344,7 @@
   <p class="meta" id="tests-meta">아직 돌린 검사가 없다.</p>
   <div class="cmd-list" id="tests"></div>
 </section>
-<section class="stuck-box" id="stuck-box">
+<section class="stuck-box hide-compact" id="stuck-box">
   <h2>지금 막힌 것</h2>
   <p class="meta">자동 작업이 멈췄거나, 먼저 해야 할 일이 없는 것만.</p>
   <div id="stuck-list"></div>
@@ -651,12 +654,22 @@ function renderGlance(state) {
   $("g-log").textContent = (L.log_tail || "(로그 없음)").split("\n").slice(-8).join("\n");
   $("g-log").scrollTop = $("g-log").scrollHeight;
 
-  const q = (state.queue || []).slice(0, 4);
+  const q = (state.queue || []).slice(0, 3);
   $("g-queue").innerHTML = q.length ? q.map((it, i) => `
     <div class="g-row${i ? " dim" : ""}"><span class="n">${it.n || i + 1}</span>
     <span class="t">${esc(it.title)}</span></div>`).join("")
     : '<p class="empty">큐 비었음</p>';
-  const stuck = (state.stuck || []).length;
+  const stuckItems = state.stuck || [];
+  const shownStuck = stuckItems.slice(0, 3);
+  const stuckMore = stuckItems.length - shownStuck.length;
+  const stuckEl = $("g-stuck");
+  if (stuckEl) {
+    stuckEl.style.display = shownStuck.length ? "" : "none";
+    stuckEl.innerHTML = shownStuck.map((it) =>
+      `<div class="g-row"><span class="t">${esc(it.title)}</span></div>`).join("")
+      + (stuckMore > 0 ? `<div class="g-row dim"><span class="t">외 ${stuckMore}개</span></div>` : "");
+  }
+  const stuck = stuckItems.length;
   const waiting = ((state.inbox || {}).waiting || []).length;
   $("g-flags").innerHTML = [
     L.running ? '<span class="pill ok">자동 작업 켜짐</span>' : '<span class="pill bad">자동 작업 꺼짐</span>',

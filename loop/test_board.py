@@ -665,9 +665,12 @@ class LiveLogTests(unittest.TestCase):
     def test_glance_shows_live_freshness(self):
         """한 화면(한눈에)이 '지금'을 말하려면 로그 신선도가 화면에 나와야 한다."""
         html = (HERE / "board.html").read_text(encoding="utf-8")
-        for hook in ('id="glance"', "log_age_sec", "hide-compact", "body.compact"):
+        for hook in ('id="glance"', "log_age_sec", "hide-compact", "body.compact",
+                     'id="g-stuck"'):
             self.assertIn(hook, html)
+        self.assertIn("stuck-box hide-compact", html)
         doc = (HERE / "board.py").read_text(encoding="utf-8")
+        self.assertIn("한 화면이 철칙", doc)
         self.assertIn('"log_age_sec"', doc)
 
     def test_loop_sh_writes_main_log_itself(self):
@@ -686,6 +689,7 @@ class BoardManageTests(unittest.TestCase):
         doc = (HERE / "board.py").read_text(encoding="utf-8")
         html = (HERE / "board.html").read_text(encoding="utf-8")
         self.assertIn("board.py command", doc)
+        self.assertIn("한 화면이 철칙", doc)
         self.assertIn("아나", doc + (HERE / "v4_testers.json").read_text(encoding="utf-8"))
         self.assertIn("검은 화면", doc)
         self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
