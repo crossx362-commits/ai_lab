@@ -2041,6 +2041,12 @@ public class W3Party : MonoBehaviour
             if (sep.sqrMagnitude > 1e-4f)
                 want = (want + sep * 1.4f).normalized;
 
+            // 스킬은 **제자리에서** 쓴다(오너 지시 2026-08-18). 큰 동작을 재생하는 중에도
+            // 걷기 이동이 계속 들어가 캐릭터가 시전하며 미끄러졌다 — 발이 땅에 안 붙으면
+            // 시전 동작이 동작으로 안 읽힌다. 대시는 그 자체가 이동기라 예외다(DashT).
+            if (m.SkillT > 0f && m.DashT <= 0f)
+                want = Vector2.zero;
+
             if (m.DashT <= 0f)
             {
                 Vector2 step = want * PlayerSpeed * 0.85f * SpdOf(m) * dt;
