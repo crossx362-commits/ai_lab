@@ -15,12 +15,12 @@ namespace AshesToStars
     /// </summary>
     public class DungeonScreen : GameScreen
     {
-        protected override string Title => DungeonRun.Active
-            ? $"던전 · {DungeonRun.Plan.Family} 계열" : "던전";
+        protected override string Title => FamilyAdv.Title();
         protected override string BackgroundArt => "bg_dungeon";
 
         protected override string Subtitle => DungeonRun.Active
-            ? (EliteKinds.ShowQa ? EliteKinds.Line() + " · " : "") +
+            ? (FamilyAdv.ShowQa ? FamilyAdv.Line() + " · " : "") +
+              (EliteKinds.ShowQa ? EliteKinds.Line() + " · " : "") +
               $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +
               $"노드 {DungeonRun.State.Cleared.Count}/{DungeonRun.Plan.Nodes.Length} · " +
               $"{DungeonRun.Plan.Kind} · 보유 {GameState.WalletText}"
@@ -30,6 +30,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            FamilyAdv.SeedQaIfRequested();
             EliteKinds.SeedQaIfRequested();
             if (!DungeonRun.Active)
             {
