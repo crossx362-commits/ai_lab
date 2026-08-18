@@ -133,7 +133,46 @@ def cut_background(cell: np.ndarray) -> np.ndarray:
     bg[:, -BORDER:] = True
 
     alpha = np.where(bg, 0, 255).astype(np.uint8)
+    alpha = keep_main_body(alpha)
     return np.dstack([cell.astype(np.uint8), alpha])
+
+
+def keep_main_body(alpha: np.ndarray, ratio: float = 0.15) -> np.ndarray:
+    """본체에서 떨어진 조각을 버린다.
+
+    칸 경계가 옆 프레임의 캐릭터를 조금 물고 들어온다(실측: dps idle 오른쪽 끝에
+    옆 칸 조각이 붙어 bbox 폭이 226px로 부풀었다). 그러면 공통 캔버스가 통째로
+    넓어지고, 그 폭이 배율을 지배해 초상화에서 캐릭터가 콩알만 해진다.
+    가장 큰 덩어리 대비 `ratio` 미만인 덩어리는 잘라낸다.
+    """
+    h, w = alpha.shape
+    seen = np.zeros((h, w), dtype=bool)
+    comps = []
+    for sy in range(h):
+        for sx in range(w):
+            if alpha[sy, sx] == 0 or seen[sy, sx]:
+                continue
+            q = deque([(sy, sx)])
+            seen[sy, sx] = True
+            cells = []
+            while q:
+                y, x = q.popleft()
+                cells.append((y, x))
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ny, nx = y + dy, x + dx
+                    if 0 <= ny < h and 0 <= nx < w and alpha[ny, nx] > 0 and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        q.append((ny, nx))
+            comps.append(cells)
+    if not comps:
+        return alpha
+    biggest = max(len(c) for c in comps)
+    out = np.zeros_like(alpha)
+    for c in comps:
+        if len(c) >= biggest * ratio:
+            for y, x in c:
+                out[y, x] = alpha[y, x]
+    return out
 
 
 def center_on_canvas(frames: list[np.ndarray], pad: int = 6) -> list[Image.Image]:
