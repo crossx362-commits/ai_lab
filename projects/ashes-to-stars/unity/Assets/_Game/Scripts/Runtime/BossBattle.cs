@@ -319,6 +319,7 @@ namespace AshesToStars
             bosses.Clear();
 
             // §18-11: HP = 그 층 기대 파티 DPS × 목표 시간.
+            // §18-10: 5층 벽 ×1.5 · 10층 대보스 ×2.2 는 Hp가 WallMul을 읽는다.
             // 옛 길은 basePartyDps(고정 100)라 1층과 30층 필요 DPS가 같았다.
             float singleBossHp = BossHp.Blocked
                 ? basePartyDps * targetClearTime

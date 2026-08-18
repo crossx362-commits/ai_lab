@@ -7,7 +7,8 @@ namespace AshesToStars
     /// §18-11 보스 HP 기준선. 5인 파티 총 DPS × 목표 시간.
     /// 옛 길은 T1 Lv1 고정 100이라 1층과 30층 필요 DPS가 같았다.
     /// 기대 파티는 §18-10 권장 전투력(1층=100, 1~49 +5.5%/층).
-    /// 장비 칸은 이 슬라이스에서 권장 전투력에 흡수한다. QA_NO면 옛 100.
+    /// 5층 중간 레이드는 ×1.5, 10층 대보스는 ×2.2(§18-10 벽). 던전·배회는 1.
+    /// 장비 칸은 권장 전투력에 흡수한다. QA_NO면 옛 100·벽 없음.
     /// W3Party는 안 읽는다.
     /// </summary>
     public static class BossHp
@@ -20,6 +21,8 @@ namespace AshesToStars
         public const int RiseSplit = 49;
         public const float TwoMul = 0.65f;
         public const float ThreeMul = 0.45f;
+        public const float WallMid = 1.5f;
+        public const float WallMega = 2.2f;
 
         static bool _qaSeeded;
 
@@ -68,16 +71,35 @@ namespace AshesToStars
             return 1f;
         }
 
+        /// <summary>
+        /// §18-10 레이드 벽. 5·15·…=중간 ×1.5, 10·20·…=대보스 ×2.2.
+        /// 던전 종점·배회는 탑 벽이 아니다. QA_NO면 1.
+        /// </summary>
+        public static float WallMul(int floor)
+        {
+            if (Blocked) return 1f;
+            if (FieldBoss.Fighting) return 1f;
+            if (DungeonRun.Active) return 1f;
+            if (!RaidScale.IsRaidFloor(floor)) return 1f;
+            return floor % 10 == 0 ? WallMega : WallMid;
+        }
+
         public static float Hp(int floor, float targetSec, int bossCount = 1)
         {
             float t = Mathf.Max(0f, targetSec);
-            return PartyDps(floor) * t * CountMul(bossCount);
+            return PartyDps(floor) * t * CountMul(bossCount) * WallMul(floor);
         }
 
         public static string Line(int floor)
         {
             if (Blocked) return "보스 HP는 고정 DPS 100";
-            return $"보스 HP는 기대 파티 {PartyDps(floor):0} DPS(§18-11)";
+            float wall = WallMul(floor);
+            string curve = $"보스 HP는 기대 파티 {PartyDps(floor):0} DPS(§18-11)";
+            if (Mathf.Approximately(wall, WallMega))
+                return curve + " · 대보스 ×2.2(§18-10)";
+            if (Mathf.Approximately(wall, WallMid))
+                return curve + " · 중간 벽 ×1.5(§18-10)";
+            return curve;
         }
 
         public static string Line() => Line(Mathf.Max(1, GameState.TowerFloor));
