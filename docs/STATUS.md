@@ -6,9 +6,12 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 파산 강등·압류 문구를 영지 현황에 배선(full_check ①)
+최종 갱신: 2026-08-19 · 광산 연체 압류 문구를 영지 현황에 배선(full_check ②, `ae8f4056`)
 마지막 트랙: 코드
-폴리싱 다음: 직전 트랙이 코드라 다음은 UI·아트 상시 폴리싱. 사냥 시작 카드 부제가 길면 그 한 결함.
+폴리싱 다음: **필드·캐릭터·파티·월드맵·결과는 이번 이터가 샷으로 훑어 결함 0(전부 깨끗)**. 사냥 시작
+부제는 안 잘림(field 허브 샷 확인). 파티 삭제 카드 줄바꿈은 「환생석」이 쪼개지지만 전문이 다 보여
+결함 아님 — 한 줄 강제하면 오히려 잘려 되돌림. **아직 안 본 화면부터 볼 것: 던전 → 전투HUD → 타이틀 →
+영지**(영지는 `docs/GAME_SPEC_ESTATE_BUILD.md`대로, 클로드 EstateBuild와 겹치지 말 것).
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
 1. **영지 §4** — 클로드가 `EstateBuild.cs` 건물별 업그레이드 창. 그록은 그 파일을 안 만진다. StoreX 경로 소비처는 닫음(`EstateStore.Reached`). 남은 §5는 마우스 드래그 UX(TryMove는 있음). §6 아트는 그 다음.
@@ -29,34 +32,39 @@
 | 2 | **30층 성장 곡선** | 닫음. `BossHp` + 재측정 PASS |
 | 3 | **영지 §5 드래그 UX** | `EstateStore.TryMove`·경로 재계산은 닫음. 마우스 드래그 미리보기는 EstateScreen(클로드 창 훅과 겹침) |
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | 선행이 없어 지금 넣으면 오펀 |
-7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — `SeizeLine`/`EnvShowSeize`를 EstateScreen이 안 읽음 ③`NetWorthSelfCheck` — `NetWorth.Line`은 TowerScreen:134가 읽는데 검사가 EstateScreen만 훑음. **셋 다 「강등·압류·순자산 문구를 영지 현황(현재는 EstateStatusHud 도크)에 노출」이 원래 의도** — 문구를 현황 도크에 실제로 배선하고 SelfCheck의 grep 대상 파일도 실제 소비처로 갱신하라(검사만 고쳐서 초록불 만들기 금지 — 배선 먼저). ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
+7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — **닫음(2026-08-19, `ae8f4056`)**: `DrawEstateStatus`가 `statusRow` 스택으로 파산 두 줄 아래에 `EstateMine.Seized`일 때 `EstateMine.SeizeLine()`(「광산 생산 압류 100%(§18-5)」)을 그린다. 도크 5칸은 DockH(하단)이라 3줄과 안 겹침(QA_MINE_SEIZE=1 화면 확인). SelfCheck `영지 현황이 압류 문구·시드를 읽는다` PASS, SeizeLine 소비 제거 시 FAIL. ③`NetWorthSelfCheck` — `NetWorth.Line`은 TowerScreen:134가 읽는데 검사가 EstateScreen만 훑음. **셋 다 「강등·압류·순자산 문구를 영지 현황(현재는 EstateStatusHud 도크)에 노출」이 원래 의도** — 문구를 현황 도크에 실제로 배선하고 SelfCheck의 grep 대상 파일도 실제 소비처로 갱신하라(검사만 고쳐서 초록불 만들기 금지 — 배선 먼저). ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드/실행): 파산 강등·압류 문구를 영지 현황 도크에 배선(full_check ①).**
-> - 직전 트랙이 UI라 코드 칸. full_check 5 FAIL 중 ① BankruptcySeize를 닫았다.
->   `BankruptcySeize.KeepLine()`이 소비처 0곳이었다(영지 현황 개편 때 떨어져 나가 EstateScreen은
->   `Line()`만 읽고 있었다). SelfCheck는 EstateScreen이 `KeepLine`·`EnvShow`·`SeedQaIfRequested`를
->   다 읽는지 grep한다.
-> - **생산 소비처**: `EstateScreen.DrawEstateStatus`가 `BankruptcySeize.ShowOnHub`일 때
->   `Info(r,0,BankruptcySeize.KeepLine())`(강등)·`Info(r,1,BankruptcySeize.ItemLine())`(압류)를
->   현황 도크 상단에 그린다. 도크 5칸 카드는 하단(DockH)이라 안 겹친다. EnvShow(_hubPage=1)·
->   SeedQaIfRequested는 Body()가 이미 켠다 — 검사만 고쳐 초록불 만든 게 아니라 실제 소비 추가.
->   `W3Party`/`EstateBuild`/`EstateStatusHud`/`Resources`는 안 건드렸다.
-> - **통과 기준**: `unity_meas` 배치 `AshesToStars.BankruptcySeizeSelfCheck.Run` PASS
->   (`/tmp/bank_selfcheck.log:408 [BankruptcySeizeSelfCheck] PASS`). 특히 검사줄
->   `영지 현황이 강등·압류 문구·시드를 읽는다` PASS.
-> - **네거티브**: EstateScreen에서 `Info(r,0,BankruptcySeize.KeepLine())`를 빼면 FAIL 1
->   (`/tmp/bank_negctrl2.log:385 FAIL 영지 현황이 강등·압류 문구·시드를 읽는다`).
->   (⚠️ 주석에 "KeepLine" 글자를 남기면 grep이 그걸 물어 오탐 — 첫 네거티브가 그래서 PASS로 샜다.)
-> - **화면**(직접 열음, 빈 화면 아님, `GAME_START=go:Estate QA_BANKRUPT_SEIZE=1`):
->   `output/qa/ashes-to-stars/bank_seize_shots/qa_go:Estate.png` 1010257B — 영지 현황,
->   상단 두 줄 `파산 강등 −1(§18-5)` · `비장착 30% 압류 · 4골드 32실버 상환(§18-5)`,
->   본성 카드 `Lv2 · 24골드`(3→2 강등), 하단 도크 5칸. 마을 배경.
-> - **정직한 미완**: full_check ②MineSeize ③NetWorth ④RaceDrop ⑤BossBattleDps NRE는 남았다.
->   ②③은 ①과 같은 「현황 도크에 문구 배선」 계열이라 다음 코드 칸에 이어서. ⑤는 W3Party 의존
->   NRE라 대화 세션과 상의 필요. 오너 에디터 PID 25198(원본)은 안 죽였고 unity_meas 사본으로 측정.
-> - **코드** `3fcde35a`. `W3Party`는 안 건드렸다.
+> **이번 이터 결과(폴리싱→코드/실행): 광산 연체 압류 문구를 영지 현황에 배선(full_check ②).**
+> - 직전 트랙이 코드라 폴리싱 칸으로 시작. `폴리싱 다음`(필드/사냥 시작 부제)을 샷으로 확인 →
+>   **부제 안 잘림**(field 허브 샷 `field_dungeon_cap_shots/qa_go:Field.png`, 새 샷도 동일). 규정대로
+>   회전을 이어 **필드·캐릭터·파티·월드맵·결과를 전부 샷으로 훑음 — 결함 0**(전부 이미 폴리시됨).
+>   파티 삭제 카드가 「환생석」을 줄바꿈으로 쪼개지만 전문이 다 보여 결함 아님. 한 줄 강제(단일라인
+>   rect)를 시도했다가 오히려 「환생석으」로 **잘려서** 정보 손실 → **되돌림**(PartyScreen 무변경).
+> - 깨끗한 UI를 억지로 바꾸면 회귀라, 오너 「대기하지 마라 / 잡을 것 없으면 코드 구멍」 지침대로
+>   full_check ②(문서화된 다음 코드 과제)로 전환. ①과 같은 「현황 도크에 문구 배선」 계열이다.
+> - **생산 소비처**: `EstateScreen.DrawEstateStatus`가 `statusRow` 스택으로 파산 강등·압류 두 줄
+>   아래에 `EstateMine.Seized`일 때 `Info(r, statusRow++, "광산 " + EstateMine.SeizeLine())` =
+>   「광산 생산 압류 100%(§18-5)」를 그린다. `EstateMine.SeizeLine()`이 소비처 0곳이었다(EstateScreen은
+>   `EnvShowSeize`·`SeedSeizeQaIfRequested`만 읽고 문구는 안 읽음). 도크 5칸은 DockH(하단)이라
+>   3줄 스택과 안 겹침. `W3Party`/`EstateBuild`/`EstateStatusHud`/`Resources`는 안 건드림.
+> - **통과 기준**: `AshesToStars.MineSeizeSelfCheck.Run` PASS
+>   (`/tmp/mineseize_selfcheck.log [MineSeizeSelfCheck] PASS`), 검사줄
+>   `영지 현황이 압류 문구·시드를 읽는다` PASS.
+> - **네거티브**: unity_meas에서 `EstateMine.SeizeLine()` 소비를 빼면(「광산 압류중」 리터럴로 교체)
+>   FAIL 1 (`/tmp/mineseize_neg.log FAIL 영지 현황이 압류 문구·시드를 읽는다`). ⚠️ 주석에 그 함수명
+>   글자를 안 남겨야 grep 오탐 없음(①의 교훈 반영 — 주석 회피 확인).
+> - **화면**(직접 열음, 빈 화면 아님, `QA_MINE_SEIZE=1 go:Estate`):
+>   `output/qa/ashes-to-stars/mine_seize_shots/qa_go:Estate.png` 991676B — 영지 현황 상단 3줄 스택
+>   `파산 강등 −1(§18-5)` · `비장착 30% 압류 · 4골드 32실버 상환(§18-5)` · `광산 생산 압류 100%(§18-5)`,
+>   하단 도크 5칸(광산=`생산 압류`). 겹침 없음. 마을 배경.
+> - **정직한 미완**: full_check ③NetWorth ④RaceDrop ⑤BossBattleDps NRE는 남았다. ③은 ①②와 같은
+>   계열(NetWorth.Line은 TowerScreen:134가 읽는데 검사는 EstateScreen만 훑음 — 현황 도크에 순자산
+>   배선 필요)이라 다음 코드 칸. ⑤는 W3Party 의존 NRE라 대화 세션과 상의. 오너 에디터 PID 25198(원본)은
+>   안 죽였고 unity_meas 사본으로 빌드·측정. ⚠️ qa_shot에 positional 인자를 주면 GAME_PROJ보다 우선해
+>   자동파일럿 모드로 샌다 — 허브는 `qa_shot.sh --skip-build "go:Field" N` 형태로 부를 것.
+> - **코드** `ae8f4056`. `W3Party`는 안 건드렸다.
 
 > **직전 이터 결과(UI/실행): 던전 입장 카드 부제는 한 줄.**
 > - 직전 트랙이 코드라 필드 화면 한 결함. 레이드급은 `7b61d1bb`로 줄었는데
