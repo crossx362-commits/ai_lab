@@ -47,8 +47,10 @@ public class SpriteBank
         Idle0 = 0, Idle1 = 1, Idle2 = 2, Idle3 = 3, Idle4 = 4, Idle5 = 5,
         Walk0 = 6, Walk1 = 7, Walk2 = 8, Walk3 = 9, Walk4 = 10, Walk5 = 11,
         Atk0 = 12, Atk1 = 13, Atk2 = 14, Atk3 = 15, Atk4 = 16, Atk5 = 17,
-        Special = 18, Hurt = 19, Death = 20,
-        DashA = 21, DashB = 22, DashC = 23, DashD = 24, Invuln = 25,
+        Sp0 = 18, Sp1 = 19, Sp2 = 20, Sp3 = 21, Sp4 = 22, Sp5 = 23,
+        Hurt = 24, Death = 25,
+        DashA = 26, DashB = 27, DashC = 28, DashD = 29, Invuln = 30,
+        Special = Sp0,
         Idle = Idle0,
         // 옛 이름 — 호출부가 아직 쓴다. 6프레임의 첫 두 장을 가리킨다.
         WalkA = Walk0, WalkB = Walk1, AttackA = Atk0, AttackB = Atk1,
@@ -125,7 +127,8 @@ public class SpriteBank
         "idle_00", "idle_01", "idle_02", "idle_03", "idle_04", "idle_05",
         "walk_00", "walk_01", "walk_02", "walk_03", "walk_04", "walk_05",
         "attack_00", "attack_01", "attack_02", "attack_03", "attack_04", "attack_05",
-        "special_00", "hurt_00", "death_00",
+        "special_00", "special_01", "special_02", "special_03", "special_04", "special_05",
+        "hurt_00", "death_00",
         "dash_00", "dash_01", "dash_02", "dash_03", "invuln_00",
     };
 
@@ -190,7 +193,11 @@ public class SpriteBank
             }
             case Motion.Dash:
                 return Char(j, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
-            case Motion.Special: return Char(j, Frame.Special);
+            case Motion.Special:
+            {
+                int n = Have(j, Frame.Sp0, 6);
+                return Char(j, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / 0.09f), 0, n - 1)));
+            }
             case Motion.Hurt: return Char(j, Frame.Hurt);
             case Motion.Death: return Char(j, Frame.Death);
             default:
@@ -263,7 +270,11 @@ public class SpriteBank
             }
             case Motion.Dash:
                 return CharDir(dir, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
-            case Motion.Special: return CharDir(dir, Frame.Special);
+            case Motion.Special:
+            {
+                int n = HaveDir(e, Frame.Sp0, 6);
+                return CharDir(dir, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / 0.09f), 0, n - 1)));
+            }
             case Motion.Hurt: return CharDir(dir, Frame.Hurt);
             case Motion.Death: return CharDir(dir, Frame.Death);
             default:

@@ -1579,6 +1579,7 @@ public class W3Party : MonoBehaviour
 
         TickBossAttacks(dt);
         TickCommand();
+        TickQaSkillSpam();
         if (GameMode && !string.IsNullOrEmpty(QaFirstAdvancementJob))
         {
             foreach (var member in _party)
@@ -2603,6 +2604,32 @@ public class W3Party : MonoBehaviour
     /// ⚠️ 정예(4)는 추적형(0)과 실루엣을 공유한다 — §0-B가 「정예는 신규 아트 0장,
     ///    색조·크기로만 변주」로 확정했기 때문이다. 크기 1.4배와 전용 색으로 갈린다.
     /// </summary>
+    /// <summary>
+    /// QA 전용: 파티 전원이 스킬을 쉬지 않고 쓴다(`QA_SKILL_SPAM=1`).
+    ///
+    /// 스킬 동작은 쿨타임 때문에 몇 초에 한 번만 나와서, 시각 QA가 지정 초에 한 장
+    /// 찍는 방식으로는 **거의 안 잡힌다**. 오너가 "스킬도 다 나오게 해서 테스트"라고
+    /// 한 이유다. 쿨타임을 0으로 눌러 시전 동작이 항상 화면에 있게 만든다.
+    /// 게임 밸런스와 무관 — 이 스위치가 꺼져 있으면 코드 경로 자체가 안 돈다.
+    /// </summary>
+    static bool QaSkillSpam =>
+        System.Environment.GetEnvironmentVariable("QA_SKILL_SPAM") == "1";
+
+    int _qaSpamSlot;
+
+    void TickQaSkillSpam()
+    {
+        if (!QaSkillSpam || _party == null) return;
+        foreach (var m in _party)
+        {
+            if (m == null || !m.Alive) continue;
+            m.SkillCd = 0f;
+            m.Cd = 0f;
+            m.Gauge = Mathf.Max(m.Gauge, 5f);
+            if (m.SkillT <= 0f) m.ForceSkill = (_qaSpamSlot++ % 2) + 1;
+        }
+    }
+
     static int MobSpriteKind(int kind) => kind switch
     {
         1 => SpriteBank.MobKindSwarmer,    // 포위형 — 낮고 넓게 벌어진 군집형

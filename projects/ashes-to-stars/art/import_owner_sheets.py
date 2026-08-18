@@ -59,7 +59,14 @@ FRAME_PLAN = [
     ("attack_03", ROW_ATTACK, 3),
     ("attack_04", ROW_ATTACK, 4),
     ("attack_05", ROW_ATTACK, 5),
-    ("special_00", ROW_SKILL3, 2),
+    # 스킬도 6프레임 — 1장만 쓰면 시전 중 캐릭터가 얼어붙는다(실측: 모션=Special인데
+    # 아틀라스 칸 y:434 고정).
+    ("special_00", ROW_SKILL3, 0),
+    ("special_01", ROW_SKILL3, 1),
+    ("special_02", ROW_SKILL3, 2),
+    ("special_03", ROW_SKILL3, 3),
+    ("special_04", ROW_SKILL3, 4),
+    ("special_05", ROW_SKILL3, 5),
     ("hurt_00", ROW_DEATH, 0),
     ("death_00", ROW_DEATH, 4),
     ("dash_00", ROW_MOVE, 1),
