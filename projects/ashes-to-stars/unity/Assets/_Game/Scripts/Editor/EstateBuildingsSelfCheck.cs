@@ -71,6 +71,8 @@ namespace AshesToStars
                 "마을이 대장간 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Auction) == EstateBuildings.Auction,
                 "마을이 경매장 전용을 읽는다");
+            Check(string.IsNullOrEmpty(EstateBuildings.LastFallback),
+                "전용 그림이 있으면 폴백하지 않는다");
             Check(EstateBuildings.Line().Contains("경매장") && EstateBuildings.Line().Contains("전용 그림"),
                 $"줄 (실제 {EstateBuildings.Line()})");
 
@@ -108,6 +110,8 @@ namespace AshesToStars
             string buildings = File.ReadAllText(Path.Combine(runtime, "EstateBuildings.cs"));
             Check(buildings.Contains("Cell.Auction => Auction"),
                 "DedicatedOf가 경매장을 읽는다");
+            Check(buildings.Contains("LogWarning") && buildings.Contains("전용 그림 없음"),
+                "폴백이면 경고를 찍는다");
 
             Environment.SetEnvironmentVariable(EstateBuildings.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, no);

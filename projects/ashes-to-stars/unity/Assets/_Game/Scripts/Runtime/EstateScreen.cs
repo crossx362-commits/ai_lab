@@ -268,9 +268,8 @@ namespace AshesToStars
             if (_selX < 0)
                 Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f), hud);
             bool selected = _selX >= 0;
-            float palH = EstateHud.PaletteH;
             float insH = EstateHud.InspectH(selected);
-            var paletteOn = new Rect(r.x, r.yMax - palH, r.width, palH);
+            var paletteOn = EstateHud.PaletteBar(r);
             if (EstateHud.ShowInspectBar(selected) && insH > 1f)
             {
                 var inspectOn = new Rect(r.x, paletteOn.y - insH, r.width, insH);
@@ -281,6 +280,12 @@ namespace AshesToStars
 
         void OnYardClick(int x, int y)
         {
+            if (EstateGrid.At(x, y) == EstateGrid.Cell.Empty
+                && EstateGrid.TryOwner(x, y, out int ox, out int oy))
+            {
+                x = ox;
+                y = oy;
+            }
             var cell = EstateGrid.At(x, y);
             if (EstateGrid.IsHub(cell))
             {

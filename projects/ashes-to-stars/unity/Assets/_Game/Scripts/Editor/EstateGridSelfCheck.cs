@@ -26,7 +26,17 @@ namespace AshesToStars
 
             Check(EstateGrid.Size == 8, "초기 격자는 8×8(§18-12)");
             Check(EstateGrid.At(EstateGrid.KeepX, EstateGrid.KeepY) == EstateGrid.Cell.Keep,
-                "본성은 (2,3)");
+                "본성은 (1,2)");
+            Check(EstateGrid.FootprintOf(EstateGrid.Cell.Keep) == new UnityEngine.Vector2Int(2, 2),
+                "본성 자리 2×2");
+            Check(EstateGrid.CoveredByCore(2, 3), "본성 2×2가 (2,3)을 덮는다");
+            Check(!EstateGrid.Covers(EstateGrid.KeepX, EstateGrid.KeepY,
+                    EstateGrid.StoreX, EstateGrid.StoreY),
+                "본성이 창고를 안 덮는다");
+            Check(EstateGrid.At(EstateGrid.BarracksX, EstateGrid.BarracksY) == EstateGrid.Cell.Barracks,
+                "수비대는 (6,4)");
+            Check(EstateGrid.Fits(EstateGrid.BarracksX, EstateGrid.BarracksY, EstateGrid.Cell.Barracks),
+                "수비대 2×1이 격자 안에 있다");
             Check(EstateGrid.At(EstateGrid.StoreX, EstateGrid.StoreY) == EstateGrid.Cell.Warehouse,
                 "창고는 중앙 (3,3)");
             Check(EstateGrid.At(EstateGrid.MineX, EstateGrid.MineY) == EstateGrid.Cell.Mine,
@@ -172,6 +182,11 @@ namespace AshesToStars
                 if (EstateGrid.At(6, y) == EstateGrid.Cell.Empty)
                     EstateGrid.SetCellForTest(6, y, EstateGrid.Cell.Wall);
             }
+            // 본성 (1,2)이 x=1 벽을 뚫는다. 여분 칸을 막아 서로 못 나간다.
+            if (EstateGrid.At(2, 2) == EstateGrid.Cell.Empty)
+                EstateGrid.SetCellForTest(2, 2, EstateGrid.Cell.Wall);
+            if (EstateGrid.At(2, 3) == EstateGrid.Cell.Empty)
+                EstateGrid.SetCellForTest(2, 3, EstateGrid.Cell.Wall);
             // 남은 남쪽을 폭 1(x=3)로 좁혀, (3,5) 한 칸이 마지막 문이 되게 한다.
             for (int y = 4; y < EstateGrid.Size; y++)
             {

@@ -46,6 +46,22 @@ namespace AshesToStars
 
         public static float OverlayH(bool selected) => InspectH(selected) + PaletteH;
 
+        /// <summary>내비 플레이트 윗변. 팔레트 아랫변이 이보다 아래면 글씨가 가린다(§16).</summary>
+        public static float NavPlateTop(float screenH = 720f)
+        {
+            var tiles = UiPages.NavDock(GameFlow.BottomBar.Length, 1280f, screenH);
+            return tiles[0].y - 6f;
+        }
+
+        /// <summary>막히면 본문 바닥에 붙고, 아니면 내비 플레이트 위에 둔다.</summary>
+        public static Rect PaletteBar(Rect body, float screenH = 720f)
+        {
+            float yMax = body.yMax;
+            if (!Blocked)
+                yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - 2f);
+            return new Rect(body.x, yMax - PaletteH, body.width, PaletteH);
+        }
+
         public static bool ShowInspectBar(bool selected) => Blocked || selected;
 
         public static string Line() => Blocked

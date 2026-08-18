@@ -12,13 +12,15 @@ namespace AshesToStars
     public static class EstateGrid
     {
         public const int Size = 8;
-        public const int KeepX = 2, KeepY = 3;
+        // 2×2 본성이 (2,3)이면 창고 (3,3)을 덮는다. 자리는 (1,2)에서 연다.
+        public const int KeepX = 1, KeepY = 2;
         public const int StoreX = 3, StoreY = 3;
         public const int MineX = 5, MineY = 3;
         public const int SmithX = 0, SmithY = 6;
         public const int AuctionX = 7, AuctionY = 6;
         public const int MausoleumX = 0, MausoleumY = 4;
-        public const int BarracksX = 7, BarracksY = 4;
+        // 2×1 수비대가 (7,4)면 한 칸이 격자 밖이다. 자리는 (6,4)에서 연다.
+        public const int BarracksX = 6, BarracksY = 4;
 
         // 뒤에만 붙인다. 저장이 int라 가운데 끼우면 옛 세이브가 벽을 대장간으로 읽는다.
         public enum Cell
@@ -66,6 +68,75 @@ namespace AshesToStars
 
         public static bool Walkable(Cell c) => c != Cell.Wall;
 
+        /// <summary>칸 단위 자리. 화면 크기는 여기서만 낸다(GAME_SPEC_ESTATE_BUILD §2-1).</summary>
+        public static Vector2Int FootprintOf(Cell c) => c switch
+        {
+            Cell.Keep => new Vector2Int(2, 2),
+            Cell.Warehouse => new Vector2Int(2, 1),
+            Cell.Mine => new Vector2Int(2, 1),
+            Cell.Barracks => new Vector2Int(2, 1),
+            _ => new Vector2Int(1, 1),
+        };
+
+        public static bool Covers(int ox, int oy, int x, int y)
+        {
+            if (!InBounds(ox, oy) || !InBounds(x, y)) return false;
+            var c = At(ox, oy);
+            if (c == Cell.Empty) return false;
+            var f = FootprintOf(c);
+            return x >= ox && y >= oy && x < ox + f.x && y < oy + f.y;
+        }
+
+        /// <summary>허브·생산 건물이 덮는 칸. 방어 건물을 그 위에 못 놓는다.</summary>
+        public static bool CoveredByCore(int x, int y)
+        {
+            Load();
+            if (!InBounds(x, y)) return false;
+            for (int oy = 0; oy < Size; oy++)
+            for (int ox = 0; ox < Size; ox++)
+            {
+                var c = _cells[oy * Size + ox];
+                if (!IsCore(c)) continue;
+                if (Covers(ox, oy, x, y)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>자리 크기를 포함해 (x,y)를 덮는 건물 원점. 없으면 false.</summary>
+        public static bool TryOwner(int x, int y, out int ox, out int oy)
+        {
+            Load();
+            ox = -1;
+            oy = -1;
+            if (!InBounds(x, y)) return false;
+            for (int iy = 0; iy < Size; iy++)
+            for (int ix = 0; ix < Size; ix++)
+            {
+                if (_cells[iy * Size + ix] == Cell.Empty) continue;
+                if (!Covers(ix, iy, x, y)) continue;
+                ox = ix;
+                oy = iy;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>원점 (ox,oy)의 자리 칸이 격자 안에 있고 다른 건물과 안 겹친다.</summary>
+        public static bool Fits(int ox, int oy, Cell c)
+        {
+            Load();
+            if (!InBounds(ox, oy)) return false;
+            var f = FootprintOf(c);
+            if (ox + f.x > Size || oy + f.y > Size) return false;
+            for (int y = oy; y < oy + f.y; y++)
+            for (int x = ox; x < ox + f.x; x++)
+            {
+                if (TryOwner(x, y, out int px, out int py) && (px != ox || py != oy))
+                    return false;
+            }
+            return true;
+        }
+
         public static EstateDefense.Kind? DefenseKindOf(Cell c) => c switch
         {
             Cell.Arrow => EstateDefense.Kind.화살탑,
@@ -109,6 +180,7 @@ namespace AshesToStars
             if (!IsDefense(c)) return "방어 건물만 놓는다";
             if (!InBounds(x, y)) return "격자 밖이다";
             if (At(x, y) != Cell.Empty) return "빈 칸이 아니다";
+            if (CoveredByCore(x, y)) return "자리 크기가 겹친다";
             if (Unplaced(c) <= 0)
             {
                 var kind = DefenseKindOf(c);

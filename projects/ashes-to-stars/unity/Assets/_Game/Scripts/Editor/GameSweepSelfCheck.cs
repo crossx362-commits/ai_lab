@@ -45,6 +45,7 @@ namespace AshesToStars
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
                 One("아이템 아틀라스", ItemAtlasSelfCheck.Run, rows, errors);
                 One("영지 격자", EstateGridSelfCheck.Run, rows, errors);
+                One("영지 자리", EstateFootprintSelfCheck.Run, rows, errors);
                 One("영지 마당", EstateYardSelfCheck.Run, rows, errors);
                 One("캐릭터 겹침", UnitSeparationSelfCheck.Run, rows, errors);
                 One("집·나무 겹침", FieldDecorOverlapSelfCheck.Run, rows, errors);

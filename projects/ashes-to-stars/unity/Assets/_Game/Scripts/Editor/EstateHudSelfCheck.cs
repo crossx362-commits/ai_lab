@@ -52,6 +52,11 @@ namespace AshesToStars
                 $"도크 폭 {used:0} < 전폭의 40%");
             Check(slim[0].x > bar.x + 200f, "도크는 가운데");
 
+            var body = new Rect(36f, 52f, 1208f, 720f - 52f - UiPages.NavReserve);
+            var pal = EstateHud.PaletteBar(body);
+            Check(pal.yMax < EstateHud.NavPlateTop(),
+                $"팔레트 아랫변 {pal.yMax:0} < 내비 {EstateHud.NavPlateTop():0}");
+
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, "1");
             Check(EstateHud.Blocked, "QA_NO면 차단");
             Check(Mathf.Approximately(EstateHud.OverlayH(false),
@@ -73,8 +78,10 @@ namespace AshesToStars
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
             string estate = File.ReadAllText(Path.Combine(runtime, "EstateScreen.cs"));
-            Check(estate.Contains("EstateHud.OverlayH") || estate.Contains("EstateHud.PaletteH"),
+            Check(estate.Contains("EstateHud.OverlayH") || estate.Contains("EstateHud.PaletteH")
+                  || estate.Contains("EstateHud.PaletteBar"),
                 "영지가 Overlay/PaletteH를 읽는다");
+            Check(estate.Contains("EstateHud.PaletteBar"), "팔레트가 PaletteBar를 읽는다");
             Check(estate.Contains("EstateHud.PaletteTiles"), "팔레트가 PaletteTiles를 읽는다");
             Check(estate.Contains("EstateHud.ShowInspectBar"), "안내가 ShowInspectBar를 읽는다");
             Check(estate.Contains("EstateHud.Line"), "자막이 Line을 읽는다");

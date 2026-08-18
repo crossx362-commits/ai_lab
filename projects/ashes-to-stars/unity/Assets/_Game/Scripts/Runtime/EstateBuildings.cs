@@ -21,6 +21,7 @@ namespace AshesToStars
         public const string Auction = "estate_auction_0";
 
         static bool _qaSeeded;
+        static string _lastFallback;
 
         public static bool Blocked
         {
@@ -76,12 +77,20 @@ namespace AshesToStars
             return Resources.Load<Texture2D>("props/" + name) != null;
         }
 
+        /// <summary>전용 그림을 못 찾아 옛 집으로 간 이름. 없으면 null.</summary>
+        public static string LastFallback => _lastFallback;
+
         /// <summary>막히면 옛 집. 아니면 전용 그림이 있을 때만 그 이름.</summary>
         public static string PropOf(EstateGrid.Cell c)
         {
             if (Blocked) return OldOf(c);
             string d = DedicatedOf(c);
             if (d != null && HasDedicated(d)) return d;
+            if (d != null)
+            {
+                _lastFallback = d;
+                Debug.LogWarning("[EstateBuildings] 전용 그림 없음 → " + OldOf(c) + " (" + d + ")");
+            }
             return OldOf(c);
         }
 
@@ -92,6 +101,7 @@ namespace AshesToStars
         public static void ResetForTest()
         {
             _qaSeeded = false;
+            _lastFallback = null;
         }
 
         /// <summary>시각 QA. 화살탑 한 칸을 앞에 세워 전용 탑이 보이게 한다.</summary>

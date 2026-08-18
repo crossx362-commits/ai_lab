@@ -29,6 +29,7 @@ namespace AshesToStars
         public const string EnvShowZoom = "QA_YARD_ZOOM";
         public const string EnvNoZoom = "QA_NO_YARD_ZOOM";
         public const string EnvShowPinch = "QA_YARD_PINCH";
+        public const string EnvNoFootprint = "QA_NO_ESTATE_FOOTPRINT";
         public const float QaPanX = 180f;
         public const float QaPanY = 48f;
         public const float QaZoom = 1.50f;
@@ -297,11 +298,14 @@ namespace AshesToStars
                 var tile = new Rect(p.x, p.y, tw, th);
                 var cell = EstateGrid.At(x, y);
                 bool onPath = EstateGrid.OnInvaderPath(x, y);
-                var ground = cell == EstateGrid.Cell.Empty
-                    ? (onPath ? _path : _grass)
-                    : _plot;
+                bool occupied = cell != EstateGrid.Cell.Empty
+                    || EstateGrid.CoveredByCore(x, y);
+                var ground = occupied
+                    ? _plot
+                    : (onPath ? _path : _grass);
                 GUI.DrawTexture(tile, ground);
-                if (selX == x && selY == y) GUI.DrawTexture(tile, _sel);
+                if (selX >= 0 && EstateGrid.Covers(selX, selY, x, y))
+                    GUI.DrawTexture(tile, _sel);
                 if (InDiamond(mouse, tile) && x + y >= best)
                 {
                     best = x + y;
@@ -428,22 +432,38 @@ namespace AshesToStars
             _pinch0 = d;
         }
 
-        /// <summary>칸 하나가 담는 지면 폭(유닛). 크기표 값을 화면 픽셀로 바꾸는 환산 기준이다.</summary>
+        /// <summary>칸 하나가 담는 지면 폭(유닛). 크기표 폴백(QA_NO_ESTATE_FOOTPRINT)에만 쓴다.</summary>
         const float TileUnits = 4.2f;
 
-        static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
+        public static bool FootprintBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoFootprint) == "1";
+
+        /// <summary>자리 크기에서 화면 상자. 밑동은 자리 마름모 중심(GAME_SPEC_ESTATE_BUILD §2-1).</summary>
+        public static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
         {
-            // ⚠️ 옛 식은 **칸 너비 × 손으로 맞춘 배율**(Keep 1.12·Arrow 0.58…)로 크기를 정하고
-            //    높이는 텍스처 종횡비에서 끌어왔다. 크기표(`art/prop_scale.json`)를 아예 안 봤다 —
-            //    오늘 전투 유닛에서 고친 것과 **같은 계열의 버그**(크기 진실이 여러 곳에 갈라짐).
-            //    그 결과 실측: 탑은 종횡비 0.66(높고 좁음)인데 배율 0.58까지 겹쳐 난쟁이가 됐고,
-            //    경매장은 종횡비 1.02라 같은 배율에서도 훨씬 커 보였다. 건물끼리 키가 안 맞았다.
-            //    크기표는 **목표 높이(유닛)**를 정의하므로 높이를 표에서 받고 너비는 종횡비로 낸다
-            //    (SpriteBank·FieldDecor가 쓰는 방식과 같다). 표에 없으면 옛 배율로 폴백.
             var tex = PropTex(PropOf(cell));
+            var f = EstateGrid.FootprintOf(cell);
+            if (FootprintBlocked)
+                return OldBuildingBox(p, tw, th, cell, tex);
+
+            float bw = tw * f.x;
+            float bh;
+            if (tex != null && tex.width > 0)
+                bh = bw * ((float)tex.height / tex.width);
+            else
+                bh = th * f.y * 2f;
+
+            float mx = (f.x - 1) * 0.5f;
+            float my = (f.y - 1) * 0.5f;
+            float cx = p.x + tw * 0.5f + (mx - my) * tw * 0.5f;
+            float cy = p.y + th * 0.5f + (mx + my) * th * 0.5f;
+            return new Rect(cx - bw * 0.5f, cy - bh, bw, bh);
+        }
+
+        static Rect OldBuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell, Texture2D tex)
+        {
             string prop = PropOf(cell);
             float units = string.IsNullOrEmpty(prop) ? 0f : FieldDecor.Units(prop, 0f);
-
             float bw, bh;
             if (units > 0f && tex != null && tex.height > 0)
             {
@@ -452,23 +472,12 @@ namespace AshesToStars
             }
             else
             {
-                float wide = cell switch
-                {
-                    EstateGrid.Cell.Keep => 1.12f,
-                    EstateGrid.Cell.Wall => 0.92f,
-                    EstateGrid.Cell.Trap => 0.72f,
-                    EstateGrid.Cell.Arrow => 0.58f,
-                    EstateGrid.Cell.Magic => 0.58f,
-                    EstateGrid.Cell.Auction => 0.78f,
-                    EstateGrid.Cell.Mausoleum => 0.70f,
-                    _ => 0.96f,
-                };
+                float wide = cell == EstateGrid.Cell.Keep ? 1.12f : 0.96f;
                 bw = tw * wide;
                 bh = tex != null && tex.width > 0
                     ? bw * ((float)tex.height / tex.width)
-                    : (cell == EstateGrid.Cell.Keep ? th * 2.55f : th * 2.05f);
+                    : th * 2.05f;
             }
-
             float sit = cell == EstateGrid.Cell.Wall ? 0.55f : 0.42f;
             return new Rect(p.x + (tw - bw) * 0.5f, p.y + th * sit - bh, bw, bh);
         }
