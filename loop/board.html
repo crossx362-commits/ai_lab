@@ -54,7 +54,7 @@
     width: 100%; background: #100e0c; color: var(--ink); border: 1px solid var(--line);
     border-radius: 8px; padding: 10px 12px; font: inherit;
   }
-  textarea { min-height: 110px; resize: vertical; }
+  textarea { min-height: 56px; resize: vertical; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center; }
   button {
     background: var(--gold); color: #1a1408; border: 0; border-radius: 8px;
@@ -107,10 +107,14 @@
   .choice button.skip { background: transparent; color: var(--muted); border: 1px solid var(--line); }
   .badge { font-size: 11px; color: var(--hold); border: 1px solid var(--hold); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
   .request-top {
-    margin: 14px 24px 0; padding: 16px 16px 14px; border-radius: 12px;
+    margin: 12px 24px 0; padding: 12px 14px 10px; border-radius: 12px;
     border: 1px solid var(--gold); background: #221c14;
   }
-  .request-top h2 { margin-bottom: 8px; }
+  .request-top h2 { margin-bottom: 6px; }
+  /* 할 일 적기는 한 줄짜리 입력이다 — 화면을 먹지 않게 낮게. */
+  #req-title, #req-body { padding: 7px 10px; }
+  #req-body { min-height: 46px; }
+  .request-top .row { margin-top: 8px; }
   .stuck-box {
     display: none; margin: 14px 24px 0; padding: 16px 16px 12px; border-radius: 12px;
     border: 1px solid var(--stop); background: #2a1612;
@@ -248,6 +252,24 @@
   .g-kv b.ok { color: var(--ok); }
   .g-kv b.bad { color: var(--stop); }
   .g-kv b.warn { color: var(--hold); }
+  .g-road { grid-column: 1 / -1; }
+  .road-steps { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+  .road-step { min-width: 0; }
+  .road-step .lab {
+    font-size: 12px; color: var(--muted); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .road-step.on .lab { color: var(--gold); font-weight: 650; }
+  .road-step.done .lab { color: var(--ok); }
+  .road-step .bar-track { margin-top: 5px; }
+  .road-step .pc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .weeks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .wk {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); background: var(--chip);
+  }
+  .wk.done { border-color: var(--ok); color: var(--ok); }
+  .wk.now { border-color: var(--gold); color: var(--gold); font-weight: 700; }
   .view-bar { margin: 12px 24px 0; display: flex; gap: 8px; align-items: center; }
   @media (max-width: 1100px) { .view-bar { margin: 12px 14px 0; } }
   body.compact .hide-compact { display: none !important; }
@@ -281,6 +303,11 @@
     <div class="legend" id="g-stack-legend"></div>
     <div class="g-kv" id="g-kv"></div>
   </section>
+  <section class="g-card g-road">
+    <h3>전체 로드맵</h3>
+    <div class="road-steps" id="g-road"></div>
+    <div class="weeks" id="g-weeks"></div>
+  </section>
 </div>
 <div class="view-bar">
   <button class="ghost" id="btn-view" type="button">자세히 보기</button>
@@ -292,7 +319,6 @@
 </div>
 <section class="request-top">
   <h2>할 일 적기</h2>
-  <p class="meta">다음에 할 일을 한 줄로. 자동 작업이 제일 먼저 본다.</p>
   <input type="text" id="req-title" maxlength="80" placeholder="예: 보스가 안 때려요">
   <textarea id="req-body" placeholder="원하는 모습. 예: 가까이 오면 때리게"></textarea>
   <div class="row">
@@ -655,6 +681,23 @@ function renderGlance(state) {
     `<span><i style="background:var(--ok)"></i>완료 ${qs.done}</span>` +
     `<span><i style="background:var(--gold)"></i>열림 ${qs.open}</span>` +
     `<span><i style="background:var(--hold)"></i>막힘 ${qs.blocked}</span>`;
+
+  const road = c.roadmap || [];
+  $("g-road").innerHTML = road.map((r) => {
+    const pct = r.pct == null ? 0 : r.pct;
+    const cls = pct >= 100 ? "done" : (r.id === (cur.id || "") ? "on" : "");
+    return `<div class="road-step ${cls}" title="${esc(r.note || "")}">
+      <div class="lab">${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
+      <div class="pc">${pct}%</div></div>`;
+  }).join("");
+  const weeks = c.weeks || [];
+  $("g-weeks").innerHTML = weeks.map((w) => {
+    const pct = w.pct == null ? 0 : w.pct;
+    const cls = pct >= 100 ? "done" : (pct > 0 ? "now" : "");
+    return `<span class="wk ${cls}" title="${esc(w.goal || "")}">${esc(w.label || w.id)}${
+      pct >= 100 ? " ✓" : (pct > 0 ? " " + pct + "%" : "")}</span>`;
+  }).join("");
 
   const t = state.tests || {};
   const items = t.items || [];
