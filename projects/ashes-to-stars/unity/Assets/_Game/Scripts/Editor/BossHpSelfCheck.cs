@@ -84,6 +84,18 @@ namespace AshesToStars
             Check(Mathf.Approximately(BossHp.CountMul(2), 0.65f)
                   && Mathf.Approximately(BossHp.CountMul(3), 0.45f),
                 "2체 65% · 3체 45%");
+            Check(Mathf.Approximately(BossHp.Hp(10, 180f, 2),
+                    BossHp.PartyDps(10) * 180f * BossHp.WallMega * BossHp.TwoMul),
+                $"10층 2체 HP는 ×2.2 ×0.65 (실제 {BossHp.Hp(10, 180f, 2):0})");
+            Check(Mathf.Approximately(BossHp.Hp(10, 180f, 3),
+                    BossHp.PartyDps(10) * 180f * BossHp.WallMega * BossHp.ThreeMul),
+                $"10층 3체 HP는 ×2.2 ×0.45 (실제 {BossHp.Hp(10, 180f, 3):0})");
+            Check(Mathf.Approximately(BossHp.Hp(10, 180f, 1), BossHp.Hp(10, 180f)),
+                "1체는 기본 Hp와 같다");
+            Check(BossHp.CountLine(2).IndexOf("65%", StringComparison.Ordinal) >= 0
+                  && BossHp.CountLine(3).IndexOf("45%", StringComparison.Ordinal) >= 0
+                  && string.IsNullOrEmpty(BossHp.CountLine(1)),
+                $"마릿수 줄 (실제 {BossHp.CountLine(2)} / {BossHp.CountLine(3)})");
 
             Environment.SetEnvironmentVariable(BossHp.EnvNo, "1");
             Check(BossHp.Blocked, "QA_NO면 차단");
@@ -114,15 +126,27 @@ namespace AshesToStars
             string tower = File.ReadAllText(Path.Combine(runtime, "TowerScreen.cs"));
             Check(battle.Contains("BossHp.Hp"), "보스가 Hp를 읽는다");
             Check(battle.Contains("WallMul"), "보스가 벽 배율을 안다");
+            Check(battle.IndexOf("BossHp.Hp(currentFloor, targetClearTime, bossCount)",
+                    StringComparison.Ordinal) >= 0,
+                "보스가 Hp에 마릿수를 넘긴다");
+            Check(battle.Contains("BossHp.CountMul"), "차단 길도 CountMul을 읽는다");
+            Check(battle.IndexOf("singleBossHp * 0.65f", StringComparison.Ordinal) < 0
+                  && battle.IndexOf("singleBossHp * 0.45f", StringComparison.Ordinal) < 0,
+                "옛 로컬 65/45를 안 쓴다");
             Check(!battle.Contains("totalPartyDps = basePartyDps"),
                 "옛 고정 basePartyDps 대입을 안 쓴다");
             Check(tower.Contains("BossHp.Line"), "탑이 Line을 읽는다");
+            Check(tower.Contains("BossHp.CountLine"), "탑이 CountLine을 읽는다");
             Check(tower.Contains("BossHp.SeedQaIfRequested"), "탑이 시드를 읽는다");
             string hpSrc = File.ReadAllText(Path.Combine(runtime, "BossHp.cs"));
             Check(hpSrc.IndexOf("WallMul(floor)", StringComparison.Ordinal) >= 0
                   && hpSrc.IndexOf("* WallMul", StringComparison.Ordinal) >= 0,
                 "Hp가 WallMul을 곱한다");
+            Check(hpSrc.IndexOf("* CountMul", StringComparison.Ordinal) >= 0,
+                "Hp가 CountMul을 곱한다");
             _ = nameof(BossHp.WallMul);
+            _ = nameof(BossHp.CountMul);
+            _ = nameof(BossHp.CountLine);
 
             Environment.SetEnvironmentVariable(BossHp.EnvShow, show);
             Environment.SetEnvironmentVariable(BossHp.EnvNo, no);

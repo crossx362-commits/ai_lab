@@ -28,6 +28,7 @@ namespace AshesToStars
                 string reroll = RaidReroll.Line();
                 string mega = RaidCost.Line();
                 string curve = BossHp.Line();
+                string countMul = BossHp.CountLine();
                 string count = BossCount.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
@@ -44,6 +45,8 @@ namespace AshesToStars
                     rest = mega + " · " + rest;
                 if (!string.IsNullOrEmpty(curve))
                     rest = curve + " · " + rest;
+                if (!string.IsNullOrEmpty(countMul))
+                    rest = countMul + " · " + rest;
                 if (!string.IsNullOrEmpty(count))
                     rest = count + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;

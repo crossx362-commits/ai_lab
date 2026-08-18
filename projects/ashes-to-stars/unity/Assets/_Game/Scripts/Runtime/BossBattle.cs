@@ -318,20 +318,13 @@ namespace AshesToStars
         {
             bosses.Clear();
 
-            // §18-11: HP = 그 층 기대 파티 DPS × 목표 시간.
+            // §18-11: HP = 그 층 기대 파티 DPS × 목표 시간 × 마릿수 보정.
             // §18-10: 5층 벽 ×1.5 · 10층 대보스 ×2.2 는 Hp가 WallMul을 읽는다.
-            // 옛 길은 basePartyDps(고정 100)라 1층과 30층 필요 DPS가 같았다.
-            float singleBossHp = BossHp.Blocked
-                ? basePartyDps * targetClearTime
-                : BossHp.Hp(currentFloor, targetClearTime, 1);
-
-            // §10-7: 다중 등장 HP 보정
-            // 1체 100% / 2체 65% / 3체 45%
-            float hpPerBoss = singleBossHp;
-            if (bossCount == 2)
-                hpPerBoss = singleBossHp * 0.65f;
-            else if (bossCount == 3)
-                hpPerBoss = singleBossHp * 0.45f;
+            // 2체 각 65% · 3체 각 45% 는 Hp가 CountMul을 읽는다.
+            // 옛 길은 Hp(..., 1) 뒤에 로컬 0.65/0.45라 CountMul 소비처가 0곳이었다.
+            float hpPerBoss = BossHp.Blocked
+                ? basePartyDps * targetClearTime * BossHp.CountMul(bossCount)
+                : BossHp.Hp(currentFloor, targetClearTime, bossCount);
 
             // §10-5: 스킬 수 변화
             // 5층: 2→3 (총 3)

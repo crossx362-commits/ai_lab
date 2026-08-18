@@ -8,6 +8,7 @@ namespace AshesToStars
     /// 옛 길은 T1 Lv1 고정 100이라 1층과 30층 필요 DPS가 같았다.
     /// 기대 파티는 §18-10 권장 전투력(1층=100, 1~49 +5.5%/층).
     /// 5층 중간 레이드는 ×1.5, 10층 대보스는 ×2.2(§18-10 벽). 던전·배회는 1.
+    /// 2체 각 65% · 3체 각 45% 는 CountMul. CreateBosses가 Hp에 마릿수를 넘긴다.
     /// 장비 칸은 권장 전투력에 흡수한다. QA_NO면 옛 100·벽 없음.
     /// W3Party는 안 읽는다.
     /// </summary>
@@ -70,6 +71,18 @@ namespace AshesToStars
             if (bossCount >= 3) return ThreeMul;
             return 1f;
         }
+
+        /// <summary>2체 65% · 3체 45%(§18-11). 1체·차단은 빈 줄.</summary>
+        public static string CountLine(int bossCount)
+        {
+            if (Blocked) return "";
+            if (bossCount == 2) return "2체 각 65%(§18-11)";
+            if (bossCount >= 3) return "3체 각 45%(§18-11)";
+            return "";
+        }
+
+        public static string CountLine() =>
+            CountLine(BossCount.Of(Mathf.Max(1, GameState.TowerFloor)));
 
         /// <summary>
         /// §18-10 레이드 벽. 5·15·…=중간 ×1.5, 10·20·…=대보스 ×2.2.
