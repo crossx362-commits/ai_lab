@@ -43,20 +43,29 @@ namespace AshesToStars
         /// <summary>
         /// 9-slice dest 두께. DrawSliced와 글씨 레이아웃이 이 값 하나를 본다.
         /// 카드마다 다른 숫자를 쓰면 타이틀은 테두리에 겹치고 허브는 가운데가 빈다.
+        ///
+        /// <para><b>maxPad</b>(0이면 무제한) — 비율(minSide × frac)은 **짧은 축이 짧을수록
+        /// 본문을 굶긴다.** 필드 도크 카드 396×95는 금테가 15.2px씩 위아래로 들어와
+        /// 높이의 40%를 먹었고, 그래서 제목 20px 글꼴이 22px 칸에 갇혀 잘렸다.
+        /// 여기서 상한을 두면 **금테와 글씨 칸이 같이** 얇아진다 — 한쪽만 줄이면
+        /// 글씨가 금테 위에 올라탄다(그래서 DrawSliced·ContentRect가 같은 인자를 받는다).
+        /// 기본값 0이라 이 인자를 안 넘기는 기존 호출부의 그림은 한 픽셀도 안 바뀐다.</para>
         /// </summary>
-        public static float SlicePad(Rect target, string key, float fallback = 12f)
+        public static float SlicePad(Rect target, string key, float fallback = 12f, float maxPad = 0f)
         {
             float minSide = Mathf.Min(target.width, target.height);
             if (minSide <= 2f) return 0f;
-            if (!string.IsNullOrEmpty(key) && ChromeSlice.TryGetValue(key, out var frac))
-                return Mathf.Min(minSide * frac, minSide * 0.45f);
-            return Mathf.Min(fallback, minSide * 0.45f);
+            float p = !string.IsNullOrEmpty(key) && ChromeSlice.TryGetValue(key, out var frac)
+                ? Mathf.Min(minSide * frac, minSide * 0.45f)
+                : Mathf.Min(fallback, minSide * 0.45f);
+            if (maxPad > 0f) p = Mathf.Min(p, maxPad);
+            return p;
         }
 
         /// <summary>크롬 장식 안의 안전한 글씨·아이콘 칸.</summary>
-        public static Rect ContentRect(Rect target, string key, float extra = ContentExtra)
+        public static Rect ContentRect(Rect target, string key, float extra = ContentExtra, float maxPad = 0f)
         {
-            float p = SlicePad(target, key) + Mathf.Max(0f, extra);
+            float p = SlicePad(target, key, 12f, maxPad) + Mathf.Max(0f, extra);
             float w = Mathf.Max(4f, target.width - p * 2f);
             float h = Mathf.Max(4f, target.height - p * 2f);
             return new Rect(
@@ -451,7 +460,8 @@ namespace AshesToStars
         }
 
         /// <summary>패널처럼 늘어나는 조각은 가장자리만 남기고 가운데를 늘린다.</summary>
-        public static bool DrawSliced(Rect target, string key, float border = 12f, Color? tint = null)
+        public static bool DrawSliced(Rect target, string key, float border = 12f, Color? tint = null,
+                                      float maxPad = 0f)
         {
             var texture = TextureFor(key, out var source);
             if (texture == null || source.width <= 0 || source.height <= 0) return false;
@@ -461,7 +471,7 @@ namespace AshesToStars
             {
                 srcB = Mathf.Min(source.width, source.height) * frac;
                 srcB = Mathf.Min(srcB, source.width * 0.45f, source.height * 0.45f);
-                dstB = SlicePad(target, key);
+                dstB = SlicePad(target, key, 12f, maxPad);
             }
             else
             {

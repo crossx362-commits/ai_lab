@@ -352,8 +352,36 @@ namespace AshesToStars
         public const float CardTitleH = 36f;
         /// <summary>현황·필드 도크처럼 높이 110 미만인 가로 칸. 제목 36이면 부제가 0이 된다.</summary>
         public const float SlimCardH = 110f;
-        public const float SlimTitleH = 22f;
-        public const float SlimSubMin = 18f;
+        /// <summary>
+        /// 실측(LegacyRuntime.ttf, CardTextFitSelfCheck): 20px 글꼴 「사냥 시작」의 줄 높이는
+        /// **26.79px**다. 옛 값 22는 글꼴보다 작아 받침이 통째로 잘렸다 — 26으로 올려도
+        /// 0.79 모자란다. 글꼴을 바꾸면 이 숫자도 다시 재라.
+        /// </summary>
+        public const float SlimTitleH = 28f;
+        public const float SlimSubMin = 20f;
+
+        /// <summary>
+        /// 카드 금테(9-slice) 두께 상한. 비율만 쓰면 짧은 축이 짧은 카드에서 본문이 굶는다.
+        /// 슬림 도크(396×95)는 15.2 → 9, 큰 카드(328×152)는 36.5 → 18.
+        /// <b>DrawSliced와 CardLayout이 같은 값을 받아야 한다</b> — 한쪽만 얇게 하면
+        /// 글씨가 금테 위로 올라간다.
+        /// </summary>
+        public const float SlimCardPad = 9f;
+        public const float BigCardPad = 18f;
+
+        /// <summary>부제가 가져갈 수 있는 최대 높이. 18px 글꼴 세 줄(54.2)이 들어가야 한다.</summary>
+        public const float SubMaxH = 56f;
+
+        public static float CardPad(Rect card) => IsSlimCard(card) ? SlimCardPad : BigCardPad;
+
+        /// <summary>
+        /// 카드 글꼴 크기. **칸 높이와 같은 곳에서 읽어야** 점검이 진짜를 잰다 —
+        /// GameScreen이 숫자를 따로 들고 있으면 CardTextFitSelfCheck가 다른 글꼴을 재게 된다.
+        /// </summary>
+        public const int CardTitleFont = 22;
+        public const int CardSubFont = 18;
+        public const int SlimTitleFont = 20;
+        public const int SlimSubFont = 14;
         /// <summary>이 비율 이상이면 가로 카드 — 높이 168을 넘어도 세로 배치하지 않는다.</summary>
         public const float CardWideAspect = 1.45f;
 
@@ -373,7 +401,7 @@ namespace AshesToStars
         public static void CardLayout(Rect card, bool hasIcon, out Rect icon, out Rect title, out Rect sub)
         {
             icon = default;
-            var inner = UiAtlas.ContentRect(card, CardChrome(card));
+            var inner = UiAtlas.ContentRect(card, CardChrome(card), UiAtlas.ContentExtra, CardPad(card));
             bool wide = IsWideCard(card);
             bool tall = hasIcon && !wide && card.height >= 168f;
             float titleH = TitleHOf(card);
@@ -407,7 +435,9 @@ namespace AshesToStars
             float tx = inner.x + (hasIcon ? side + 10f : 0f);
             float tw = Mathf.Max(12f, inner.xMax - tx);
             float minSub = IsSlimCard(card) ? SlimSubMin : 16f;
-            float subH = Mathf.Min(48f, Mathf.Max(minSub, inner.height - titleH - 4f));
+            // 남는 높이는 전부 부제에 준다. 옛 식은 -4를 떼고 48에서 잘라, 실측상 두 줄
+            // 34.8px가 필요한 슬림 부제에 30.6px만 줬다(§4·§6 같은 꼬리가 잘린 이유).
+            float subH = Mathf.Min(SubMaxH, Mathf.Max(minSub, inner.height - titleH - 2f));
             float blockH = titleH + 2f + subH;
             if (blockH > inner.height)
             {
@@ -419,6 +449,49 @@ namespace AshesToStars
             float ty = inner.y + (inner.height - blockH) * 0.5f;
             title = new Rect(tx, ty, tw, titleH);
             sub = new Rect(tx, ty + titleH + 2f, tw, subH);
+        }
+
+        /// <summary>글꼴을 줄여서라도 칸에 넣는다. 이 밑으로는 안 줄인다(읽을 수 없어진다).</summary>
+        public const int LabelMinFont = 11;
+
+        /// <summary>
+        /// 칸에 안 들어가면 **자르는 대신 글꼴을 줄인다**(§16).
+        ///
+        /// 왜 자르면 안 되나: 도크 카드는 높이가 95로 고정인데 넣는 문구 길이는 상황마다
+        /// 다르다 — 잠긴 카드는 런타임에 「잠김 — 」이 앞에 붙어 두 줄이 세 줄이 된다.
+        /// 칸을 세 줄에 맞춰 키우면 도크가 필드를 더 가리고(§16 위반), 칸을 두 줄로 두면
+        /// 세 번째 줄이 반쯤 잘린 채 남는다(오너가 지적한 그 화면). 글꼴을 줄이면
+        /// **문구가 무엇이든** 잘리지 않는다 — 카피를 점검이 못 박지 않아도 된다.
+        /// </summary>
+        public static void LabelFit(Rect r, string text, GUIStyle style, int minFont = LabelMinFont)
+        {
+            if (string.IsNullOrEmpty(text) || r.width < 2f || r.height < 2f || style == null)
+                return;
+            var fit = new GUIStyle(style) { clipping = TextClipping.Clip };
+            for (int f = style.fontSize; f > minFont; f--)
+            {
+                fit.fontSize = f;
+                if (fit.CalcHeight(new GUIContent(text), r.width) <= r.height) break;
+            }
+            GUI.BeginGroup(r);
+            GUI.Label(new Rect(0f, 0f, r.width, r.height), text, fit);
+            GUI.EndGroup();
+        }
+
+        /// <summary>
+        /// 주어진 칸에 들어가는 가장 큰 글꼴. LabelFit이 고르는 값과 같다 —
+        /// 점검이 이 함수로 「minFont까지 줄여도 안 들어가는 문구」를 잡는다.
+        /// </summary>
+        public static int FittedFont(Rect r, string text, GUIStyle style, int minFont = LabelMinFont)
+        {
+            if (string.IsNullOrEmpty(text) || style == null) return style?.fontSize ?? 0;
+            var fit = new GUIStyle(style);
+            for (int f = style.fontSize; f > minFont; f--)
+            {
+                fit.fontSize = f;
+                if (fit.CalcHeight(new GUIContent(text), Mathf.Max(4f, r.width)) <= r.height) return f;
+            }
+            return minFont;
         }
 
         /// <summary>칸 밖으로 글자가 새거나 옆 카드와 겹치지 않게 자른다.</summary>

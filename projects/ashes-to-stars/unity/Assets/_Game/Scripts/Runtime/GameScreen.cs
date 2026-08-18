@@ -115,13 +115,13 @@ namespace AshesToStars
         {
             if (_h1 != null) return;
             _h1 = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
-            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 18, wordWrap = true, normal = { textColor = Dim } };
-            _h1Slim = new GUIStyle(_h1) { fontSize = 20 };
-            _h2Slim = new GUIStyle(_h2) { fontSize = 14 };
+            _h2 = new GUIStyle(GUI.skin.label) { fontSize = UiPages.CardSubFont, wordWrap = true, normal = { textColor = Dim } };
+            _h1Slim = new GUIStyle(_h1) { fontSize = UiPages.SlimTitleFont };
+            _h2Slim = new GUIStyle(_h2) { fontSize = UiPages.SlimSubFont };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
-            _cardTitle = new GUIStyle(_h1) { fontSize = 22, alignment = TextAnchor.MiddleLeft };
+            _cardTitle = new GUIStyle(_h1) { fontSize = UiPages.CardTitleFont, alignment = TextAnchor.MiddleLeft };
             _tab = new GUIStyle(_small)
             {
                 fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
@@ -420,14 +420,16 @@ namespace AshesToStars
             Styles();
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.94f);
             string chrome = UiPages.CardChrome(card);
-            if (!UiAtlas.DrawSliced(card, chrome, 16f, tint))
+            // 금테 두께는 CardLayout이 글씨 칸을 낼 때 쓰는 값과 **같아야** 한다(UiPages.CardPad).
+            if (!UiAtlas.DrawSliced(card, chrome, 16f, tint, UiPages.CardPad(card)))
                 UiAtlas.Draw(card, chrome, tint);
             bool hasIcon = !string.IsNullOrEmpty(iconKey);
             UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
             if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);
             bool slim = UiPages.IsSlimCard(card);
-            UiPages.LabelClip(titleR, title, slim ? _h1Slim : _cardTitle);
-            UiPages.LabelClip(subR, locked ? "잠김 — " + sub : sub,
+            // 자르지 말고 줄여서 넣는다 — 잠긴 카드는 「잠김 — 」이 붙어 한 줄이 더 는다.
+            UiPages.LabelFit(titleR, title, slim ? _h1Slim : _cardTitle);
+            UiPages.LabelFit(subR, locked ? "잠김 — " + sub : sub,
                 slim ? _h2Slim : locked ? _small : _h2);
             if (locked) return false;
             return GUI.Button(card, GUIContent.none, GUIStyle.none);
