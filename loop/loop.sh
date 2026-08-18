@@ -27,6 +27,11 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 ROOT="$PWD"
+MAIN_LOG="$ROOT/loop/loop_main.log"
+# 메인 로그는 루프가 직접 쓴다(2026-08-18 사고: 터미널에서 파이프로 띄운 루프의
+# 출력이 loop_main.log에 안 들어가 보드의 "지금 하는 일"이 하루 전에 멈췄다).
+# 띄우는 쪽이 리다이렉트해 주기를 기대하지 마라 — 보드는 이제 리다이렉트하지 않는다.
+exec > >(tee -a "$MAIN_LOG") 2>&1
 STOP="$ROOT/loop/STOP"
 HOLD="$ROOT/loop/HOLD"
 LOG_DIR="$ROOT/loop/logs"

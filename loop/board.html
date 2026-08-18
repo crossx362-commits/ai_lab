@@ -204,6 +204,53 @@
   .script-gate { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
   .script-gate .t { margin-bottom: 4px; }
   .script-gate ol { margin: 6px 0 0 1.2em; padding: 0; color: var(--muted); font-size: 13px; }
+  /* ── 한눈에: 스크롤 없이 한 화면 ── */
+  .glance {
+    margin: 12px 24px 0; display: grid; gap: 14px;
+    grid-template-columns: 1.35fr .95fr 1fr;
+  }
+  @media (max-width: 1100px) { .glance { grid-template-columns: 1fr; margin: 12px 14px 0; } }
+  .g-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px 12px; min-width: 0;
+  }
+  .g-card.live { border-color: var(--gold); background: #1f1a12; }
+  .g-card h3 {
+    margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; color: var(--gold);
+    text-transform: uppercase; display: flex; align-items: center; gap: 8px;
+  }
+  .g-card.idle h3 { color: var(--muted); }
+  .g-now { font-size: 19px; font-weight: 700; line-height: 1.35; }
+  .g-sub { color: var(--muted); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .dot.warn { background: var(--hold); animation: none; }
+  .dot.off { background: var(--stop); animation: none; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+  .g-log {
+    margin-top: 10px; white-space: pre-wrap; font: 11.5px/1.5 ui-monospace, Menlo, monospace;
+    color: #cfc4b0; background: #100e0c; border-radius: 8px; padding: 8px 10px;
+    max-height: 132px; overflow: auto;
+  }
+  .g-list { display: flex; flex-direction: column; gap: 8px; }
+  .g-row { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; }
+  .g-row .n { color: var(--gold); font-variant-numeric: tabular-nums; }
+  .g-row .t { flex: 1; min-width: 0; }
+  .g-row.dim .t { color: var(--muted); }
+  .g-mini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .g-mini .pill { font-size: 11.5px; }
+  .g-bars .bar-row { grid-template-columns: 92px 1fr 34px; margin: 5px 0; }
+  .g-kv { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; margin-top: 8px; }
+  .g-kv span { color: var(--muted); }
+  .g-kv b { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .g-kv b.ok { color: var(--ok); }
+  .g-kv b.bad { color: var(--stop); }
+  .g-kv b.warn { color: var(--hold); }
+  .view-bar { margin: 12px 24px 0; display: flex; gap: 8px; align-items: center; }
+  @media (max-width: 1100px) { .view-bar { margin: 12px 14px 0; } }
+  body.compact .hide-compact { display: none !important; }
 </style>
 </head>
 <body>
@@ -215,6 +262,30 @@
   <div class="pills" id="pills"></div>
 </header>
 <div class="usage-line" id="usage-box">불러오는 중…</div>
+<div class="glance" id="glance">
+  <section class="g-card live" id="g-now">
+    <h3><span class="dot" id="g-dot"></span><span id="g-phase">지금</span></h3>
+    <div class="g-now" id="g-title">불러오는 중…</div>
+    <div class="g-sub" id="g-sub"></div>
+    <div class="g-log" id="g-log"></div>
+  </section>
+  <section class="g-card">
+    <h3>다음 할 일</h3>
+    <div class="g-list" id="g-queue"></div>
+    <div class="g-mini" id="g-flags"></div>
+  </section>
+  <section class="g-card g-bars">
+    <h3 id="g-stage-title">진행</h3>
+    <div id="g-stage"></div>
+    <div class="stack" id="g-stack"></div>
+    <div class="legend" id="g-stack-legend"></div>
+    <div class="g-kv" id="g-kv"></div>
+  </section>
+</div>
+<div class="view-bar">
+  <button class="ghost" id="btn-view" type="button">자세히 보기</button>
+  <span class="meta" id="view-hint">한 화면만 본다. 나머지는 접혀 있다.</span>
+</div>
 <div class="banner" id="resume-bar">
   <div><strong>중단됨</strong> <span class="meta" id="resume-why"></span></div>
   <button id="btn-continue" type="button">계속 진행</button>
@@ -230,12 +301,12 @@
     <span class="msg" id="req-msg"></span>
   </div>
 </section>
-<section class="request-top" id="commands-box">
+<section class="request-top hide-compact" id="commands-box">
   <h2>내가 시킨 일</h2>
   <p class="meta">채팅이든 여기든, 시킨 일은 여기에 남는다. 끝나도 지우지 않는다.</p>
   <div class="cmd-list" id="commands"></div>
 </section>
-<section class="request-top" id="tests-box">
+<section class="request-top hide-compact" id="tests-box">
   <h2>검증 결과</h2>
   <p class="meta" id="tests-meta">아직 돌린 검사가 없다.</p>
   <div class="cmd-list" id="tests"></div>
@@ -249,31 +320,31 @@
     <span class="msg" id="stuck-msg"></span>
   </div>
 </section>
-<section class="now-panel" id="now-box">
+<section class="now-panel hide-compact" id="now-box">
   <div class="phase" id="now-phase">지금</div>
   <div class="t" id="now-title">불러오는 중…</div>
   <div class="meta" id="now-meta"></div>
   <div class="log" id="now-log" style="display:none"></div>
 </section>
-<section class="queue-top">
+<section class="queue-top hide-compact">
   <h2>다음 할 일</h2>
   <p class="meta">위에서부터 하나만 한다.</p>
   <div id="queue"></div>
 </section>
-<div class="charts" id="charts"></div>
-<section class="playtest-wrap" id="playtest-box">
+<div class="charts hide-compact" id="charts"></div>
+<section class="playtest-wrap hide-compact" id="playtest-box">
   <h2>테스트 하는 사람</h2>
   <p class="meta" id="playtest-meta">키트를 불러오는 중…</p>
   <div class="playtest-grid" id="playtest-grid"></div>
   <div id="playtest-script"></div>
 </section>
-<section class="done-wrap" id="done-wrap">
+<section class="done-wrap hide-compact" id="done-wrap">
   <h2>끝난 일</h2>
   <p class="meta">끝난 것만. 사진은 실제로 찍은 화면이다.</p>
   <div class="done-gallery" id="done-gallery"></div>
 </section>
 <div class="lightbox" id="lightbox"><img id="lightbox-img" alt=""></div>
-<main>
+<main class="hide-compact">
   <div>
     <section>
       <h2>내가 고를 일</h2>
@@ -520,6 +591,85 @@ function renderGrokUsage(state) {
   ].join("");
 }
 
+function ago(sec) {
+  if (sec == null) return "";
+  if (sec < 60) return sec + "초 전";
+  if (sec < 3600) return Math.floor(sec / 60) + "분 전";
+  return Math.floor(sec / 3600) + "시간 전";
+}
+
+function renderGlance(state) {
+  const L = state.loop || {};
+  const now = L.now || {};
+  const c = state.charts || {};
+  const working = now.phase === "작업 중";
+  const fresh = (L.log_age_sec != null) && L.log_age_sec < 900;
+  $("g-now").classList.toggle("live", working);
+  $("g-now").classList.toggle("idle", !working);
+  const dot = $("g-dot");
+  dot.className = "dot" + (working && fresh ? "" : (L.running ? " warn" : " off"));
+  $("g-phase").textContent = working
+    ? ("작업 중" + (now.number ? " · #" + now.number : ""))
+    : (now.phase || "지금");
+  $("g-title").textContent = now.title || "상태 없음";
+  $("g-sub").textContent = [
+    now.started ? "시작 " + now.started : "",
+    L.log_at ? "로그 " + L.log_at + " (" + ago(L.log_age_sec) + ")" : "",
+    L.latest_iter || "",
+  ].filter(Boolean).join(" · ");
+  $("g-log").textContent = (L.log_tail || "(로그 없음)").split("\n").slice(-8).join("\n");
+  $("g-log").scrollTop = $("g-log").scrollHeight;
+
+  const q = (state.queue || []).slice(0, 4);
+  $("g-queue").innerHTML = q.length ? q.map((it, i) => `
+    <div class="g-row${i ? " dim" : ""}"><span class="n">${it.n || i + 1}</span>
+    <span class="t">${esc(it.title)}</span></div>`).join("")
+    : '<p class="empty">큐 비었음</p>';
+  const stuck = (state.stuck || []).length;
+  const waiting = ((state.inbox || {}).waiting || []).length;
+  $("g-flags").innerHTML = [
+    L.running ? '<span class="pill ok">자동 작업 켜짐</span>' : '<span class="pill bad">자동 작업 꺼짐</span>',
+    L.hold ? '<span class="pill bad">HOLD</span>' : "",
+    L.stop ? '<span class="pill bad">STOP</span>' : "",
+    stuck ? `<span class="pill bad">막힌 것 ${stuck}</span>` : "",
+    waiting ? `<span class="pill on">대기 지시 ${waiting}</span>` : "",
+    `<span class="pill">작업자 ${esc(L.agent || "?")}</span>`,
+  ].filter(Boolean).join("");
+
+  const cur = c.current || {};
+  $("g-stage-title").textContent = "진행 · " + (cur.label || "프로토타입");
+  const gates = (c.focus || c.gates || []).slice(0, 4);
+  $("g-stage").innerHTML = gates.map((r) => {
+    const pct = r.pct == null ? 0 : r.pct;
+    return `<div class="bar-row"><div class="lab">${esc(r.label)}</div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
+      <div class="n">${pct}%</div></div>`;
+  }).join("");
+  const qs = c.queue || { done: 0, open: 0, blocked: 0, total: 0 };
+  const tot = qs.total || 1;
+  $("g-stack").innerHTML = `
+    <span style="width:${100 * qs.done / tot}%;background:var(--ok)"></span>
+    <span style="width:${100 * qs.open / tot}%;background:var(--gold)"></span>
+    <span style="width:${100 * qs.blocked / tot}%;background:var(--hold)"></span>`;
+  $("g-stack-legend").innerHTML =
+    `<span><i style="background:var(--ok)"></i>완료 ${qs.done}</span>` +
+    `<span><i style="background:var(--gold)"></i>열림 ${qs.open}</span>` +
+    `<span><i style="background:var(--hold)"></i>막힘 ${qs.blocked}</span>`;
+
+  const t = state.tests || {};
+  const items = t.items || [];
+  const passN = items.filter((x) => x.ok).length;
+  const dirty = (state.git || []).filter((f) => f.allowed).length;
+  const lastCommit = (state.commits || [])[0];
+  $("g-kv").innerHTML = [
+    items.length
+      ? `<span>검증 ${esc(t.at || "")}</span><b class="${t.ok ? "ok" : "bad"}">${passN}/${items.length} 통과</b>`
+      : `<span>검증</span><b class="warn">기록 없음</b>`,
+    `<span>저장 안 한 파일</span><b class="${dirty ? "warn" : "ok"}">${dirty}개</b>`,
+    lastCommit ? `<span>최근 저장</span><b>${esc(lastCommit.when)}</b>` : "",
+  ].filter(Boolean).join("");
+}
+
 function render(state) {
   $("updated").textContent = "마지막 갱신 · " + (state.updated || "시각 없음");
   const L = state.loop || {};
@@ -591,7 +741,21 @@ function render(state) {
     <div class="commit"><span class="hash">${esc(c.hash)}</span><span class="when">${esc(c.when)}</span><span>${esc(c.subject)}</span></div>
   `).join("") : '<p class="empty">최근 저장 없음</p>';
   renderCharts(state.charts || {});
+  renderGlance(state);
 }
+
+function setCompact(on) {
+  document.body.classList.toggle("compact", on);
+  $("btn-view").textContent = on ? "자세히 보기" : "한 화면만 보기";
+  $("view-hint").textContent = on
+    ? "한 화면만 본다. 나머지는 접혀 있다."
+    : "전부 펼쳤다.";
+  try { localStorage.setItem("board-compact", on ? "1" : "0"); } catch (e) {}
+}
+$("btn-view").onclick = () => setCompact(!document.body.classList.contains("compact"));
+setCompact((() => {
+  try { return localStorage.getItem("board-compact") !== "0"; } catch (e) { return true; }
+})());
 
 function barClass(pct) {
   if (pct >= 100) return "ok";

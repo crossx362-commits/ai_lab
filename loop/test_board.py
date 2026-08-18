@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -546,6 +547,84 @@ class TestReportTests(unittest.TestCase):
             self.assertEqual(data["items"][0]["name"], "사냥 강화 3택")
             self.assertTrue(data["items"][0]["ok"])
             self.assertFalse(data["items"][1]["ok"])
+
+
+    def test_bom_report_still_parses(self):
+        """2026-08-18: 다른 세션이 BOM을 붙여 저장해 검증 칸이 통째로 비었다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "last_test_report.json"
+            path.write_bytes(
+                b"\xef\xbb\xbf" + json.dumps({
+                    "at": "2026-08-18 01:57",
+                    "ok": True,
+                    "summary": "25개 전부 통과",
+                    "items": [{"name": "전투 HUD", "ok": True, "note": "통과"}],
+                }, ensure_ascii=False).encode("utf-8")
+            )
+            old = board.TEST_REPORT_PATH
+            try:
+                board.TEST_REPORT_PATH = path
+                data = board.load_test_report()
+            finally:
+                board.TEST_REPORT_PATH = old
+            self.assertEqual(data["summary"], "25개 전부 통과")
+            self.assertEqual(len(data["items"]), 1)
+
+
+class LiveLogTests(unittest.TestCase):
+    """2026-08-18 사고: 파이프로 띄운 루프의 출력이 loop_main.log에 안 들어가
+    보드의 '지금'이 하루 전에 멈췄다. 메인 로그가 낡으면 이터 로그를 본다."""
+
+    def _flags(self, tmp: Path) -> dict:
+        old_here, old_root = board.HERE, board.ROOT
+        try:
+            board.HERE = tmp
+            board.ROOT = tmp.parent
+            return board.loop_flags()
+        finally:
+            board.HERE, board.ROOT = old_here, old_root
+
+    def test_stale_main_log_falls_back_to_iter_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            here = Path(tmp) / "loop"
+            (here / "logs").mkdir(parents=True)
+            main = here / "loop_main.log"
+            main.write_text("▶ 이터레이션 #94  12:52:14  → 어제것\n", encoding="utf-8")
+            os.utime(main, (1_700_000_000, 1_700_000_000))
+            it = here / "logs" / "iter_20260818_202138.log"
+            it.write_text("지금 돌고 있는 줄\n", encoding="utf-8")
+            flags = self._flags(here)
+            self.assertEqual(flags["log_from"], "iter_20260818_202138.log")
+            self.assertIn("지금 돌고 있는 줄", flags["log_tail"])
+            self.assertEqual(flags["now"]["started"], "20:21:38")
+
+    def test_fresh_main_log_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            here = Path(tmp) / "loop"
+            (here / "logs").mkdir(parents=True)
+            it = here / "logs" / "iter_20260818_202138.log"
+            it.write_text("옛 이터\n", encoding="utf-8")
+            os.utime(it, (1_700_000_000, 1_700_000_000))
+            (here / "loop_main.log").write_text("메인이 최신\n", encoding="utf-8")
+            flags = self._flags(here)
+            self.assertEqual(flags["log_from"], "loop_main.log")
+            self.assertIn("메인이 최신", flags["log_tail"])
+
+    def test_glance_shows_live_freshness(self):
+        """한 화면(한눈에)이 '지금'을 말하려면 로그 신선도가 화면에 나와야 한다."""
+        html = (HERE / "board.html").read_text(encoding="utf-8")
+        for hook in ('id="glance"', "log_age_sec", "hide-compact", "body.compact"):
+            self.assertIn(hook, html)
+        doc = (HERE / "board.py").read_text(encoding="utf-8")
+        self.assertIn('"log_age_sec"', doc)
+
+    def test_loop_sh_writes_main_log_itself(self):
+        """띄우는 쪽에 로그를 맡기지 마라 — loop.sh가 직접 tee 한다."""
+        sh = (HERE / "loop.sh").read_text(encoding="utf-8")
+        self.assertIn('tee -a "$MAIN_LOG"', sh)
+        doc = (HERE / "board.py").read_text(encoding="utf-8")
+        start = doc[doc.index("def start_loop"):doc.index("def resume_work")]
+        self.assertIn("stdout=subprocess.DEVNULL", start)
 
 
 class BoardManageTests(unittest.TestCase):

@@ -135,7 +135,8 @@ _COMMIT_DENY = (
 
 def _read(path: Path) -> str:
     try:
-        return path.read_text(encoding="utf-8")
+        # utf-8-sig: 다른 세션이 BOM을 붙여 저장해도 칸이 통째로 비지 않는다.
+        return path.read_text(encoding="utf-8-sig")
     except OSError:
         return ""
 
@@ -1212,7 +1213,7 @@ def parse_updated(status: str) -> str:
 
 def load_checks() -> dict:
     try:
-        data = json.loads(CHECKS_PATH.read_text(encoding="utf-8"))
+        data = json.loads(CHECKS_PATH.read_text(encoding="utf-8-sig"))
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
@@ -1220,7 +1221,7 @@ def load_checks() -> dict:
 
 def load_decisions() -> dict:
     try:
-        data = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
+        data = json.loads(DECISIONS_PATH.read_text(encoding="utf-8-sig"))
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
@@ -1346,7 +1347,7 @@ def save_checks(data: dict) -> None:
 def load_test_report() -> dict:
     """마지막 검증 묶음. 파일이 없거나 깨지면 칸을 비운다."""
     try:
-        data = json.loads(TEST_REPORT_PATH.read_text(encoding="utf-8"))
+        data = json.loads(TEST_REPORT_PATH.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return {}
     if not isinstance(data, dict):
@@ -1375,7 +1376,7 @@ def load_test_report() -> dict:
 
 def load_commands() -> list[dict]:
     try:
-        data = json.loads(COMMANDS_PATH.read_text(encoding="utf-8"))
+        data = json.loads(COMMANDS_PATH.read_text(encoding="utf-8-sig"))
         return data if isinstance(data, list) else []
     except (OSError, json.JSONDecodeError):
         return []
@@ -1496,19 +1497,26 @@ def stuck_items(status: str, loop: dict | None = None,
     return out
 
 
+def _hhmm(ts: float) -> str:
+    if not ts:
+        return ""
+    return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
+
+
 def loop_flags() -> dict:
     agent = _read(HERE / "agent").strip() or os.getenv("LOOP_AGENT", "grok")
-    last_log = ""
     main = ROOT / "loop" / "loop_main.log"
-    if main.is_file():
-        lines = main.read_text(encoding="utf-8", errors="replace").splitlines()
+    latest = _latest_iter_path()
+    latest_iter = latest.name if latest else ""
+    main_at = main.stat().st_mtime if main.is_file() else 0.0
+    iter_at = latest.stat().st_mtime if latest else 0.0
+    # 메인 로그가 이터 로그보다 낡으면(파이프로 띄운 루프 등) 이터 로그를 보여 준다.
+    # 그래야 화면이 "지금"을 말한다 — 낡은 메인 로그를 그대로 걸어 두지 않는다.
+    tail_src = latest if (latest and iter_at > main_at) else (main if main.is_file() else None)
+    last_log = ""
+    if tail_src is not None:
+        lines = tail_src.read_text(encoding="utf-8", errors="replace").splitlines()
         last_log = "\n".join(lines[-16:])
-    latest_iter = ""
-    log_dir = HERE / "logs"
-    if log_dir.is_dir():
-        iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
-        if iters:
-            latest_iter = iters[-1].name
     hold = (HERE / "HOLD").exists()
     stop = (HERE / "STOP").exists()
     running = bool(find_loop_pids())
@@ -1527,6 +1535,9 @@ def loop_flags() -> dict:
         "blocked": blocked,
         "latest_iter": latest_iter,
         "log_tail": last_log,
+        "log_from": tail_src.name if tail_src is not None else "",
+        "log_at": _hhmm(max(main_at, iter_at)),
+        "log_age_sec": int(max(0.0, datetime.now().timestamp() - max(main_at, iter_at))),
         "now": current_work(running=running, hold=hold, stop=stop,
                             latest_iter=latest_iter, main_log=last_log),
     }
@@ -1617,6 +1628,11 @@ def current_work(running: bool, hold: bool, stop: bool,
             finished = bool(re.search(
                 rf"(?:✅|❌|⚠️|⏸)\s+#{{0,1}}{number}\b", after
             ))
+    if latest and not started:
+        # 메인 로그가 낡아도 시작 시각은 이터 로그 이름에 있다(iter_YYYYmmdd_HHMMSS.log).
+        m = re.search(r"iter_\d{8}_(\d{2})(\d{2})(\d{2})", latest.name)
+        if m:
+            started = ":".join(m.groups())
     generating = _read(ROOT / "projects" / "ashes-to-stars" / "art" / ".generating").strip()
     queue = parse_queue(_read(STATUS))
     inbox = parse_inbox(_read(INBOX)).get("waiting") or []
@@ -1681,13 +1697,14 @@ def start_loop() -> int:
     with open(log_path, "a", encoding="utf-8") as log:
         log.write(f"\n▶ 보드에서 재개 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         log.flush()
-        proc = subprocess.Popen(
-            ["bash", str(HERE / "loop.sh")],
-            cwd=str(ROOT),
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
+    # 로그는 loop.sh가 직접 tee 한다 — 여기서 또 리다이렉트하면 두 벌로 쌓인다.
+    proc = subprocess.Popen(
+        ["bash", str(HERE / "loop.sh")],
+        cwd=str(ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
     PID_PATH.write_text(str(proc.pid) + "\n", encoding="utf-8")
     return proc.pid
 
@@ -1880,7 +1897,7 @@ def summarize_grok_billing(raw: dict, fetched_at: str = "",
 
 def _load_usage_disk() -> dict | None:
     try:
-        data = json.loads(GROK_USAGE_CACHE.read_text(encoding="utf-8"))
+        data = json.loads(GROK_USAGE_CACHE.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return None
     return data if isinstance(data, dict) else None
@@ -2187,7 +2204,7 @@ _codex_lock = threading.Lock()
 
 def _load_named_usage(path: Path) -> dict | None:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError):
         return None
     return data if isinstance(data, dict) else None
