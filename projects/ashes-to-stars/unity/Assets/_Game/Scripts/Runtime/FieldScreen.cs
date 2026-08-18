@@ -23,6 +23,7 @@ namespace AshesToStars
                 if (FieldHud.ShowQa) return FieldHud.Line();
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
+                if (FieldDockCap.ShowQa) return FieldDockCap.Line();
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
@@ -66,6 +67,7 @@ namespace AshesToStars
             FieldHud.SeedQaIfRequested();
             EscapeManual.SeedQaIfRequested();
             BagTextFmt.SeedQaIfRequested();
+            FieldDockCap.SeedQaIfRequested();
             UiAtlas.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
@@ -183,11 +185,11 @@ namespace AshesToStars
 
             bool on = LowHpReturn.Enabled;
             if (DrawCard(cards[3], on ? "저체력 귀환 켜짐" : "저체력 귀환 꺼짐",
-                    "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)",
+                    FieldDockCap.LowHp(),
                     on ? "heart" : "heart_broken"))
                 LowHpReturn.Enabled = !on;
 
-            if (DrawCard(cards[4], HuntSchedule.CardTitle(), HuntSchedule.CardBody(),
+            if (DrawCard(cards[4], HuntSchedule.CardTitle(), FieldDockCap.Schedule(),
                     HuntSchedule.Running ? "field" : "heart"))
             {
                 if (HuntSchedule.Running) HuntSchedule.Stop();
@@ -210,7 +212,7 @@ namespace AshesToStars
             else
             {
                 DrawCard(cards[5], "사망 없음",
-                    "일정 사냥은 카운트를 안 올린다. 상한 12시간(§6)",
+                    FieldDockCap.Death(),
                     "heart_broken", locked: true);
             }
         }

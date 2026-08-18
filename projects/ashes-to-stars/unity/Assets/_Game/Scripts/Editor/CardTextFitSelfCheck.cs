@@ -95,7 +95,9 @@ namespace AshesToStars
             _log.Length = 0;
 
             string no = Environment.GetEnvironmentVariable(FieldHud.EnvNo);
+            string dockNo = Environment.GetEnvironmentVariable(FieldDockCap.EnvNo);
             Environment.SetEnvironmentVariable(FieldHud.EnvNo, null);
+            Environment.SetEnvironmentVariable(FieldDockCap.EnvNo, null);
             FieldHud.ResetForTest();
 
             // 실제 본문 칸 — GameScreen.Body(BodyPadX 36, BodyTop 56, NavReserve 80).
@@ -112,10 +114,12 @@ namespace AshesToStars
             Fits(dock[1], "던전 입장", "랜덤 생성 + 종점 보스 · 1실버 99쿠퍼(§7)", "도크[1]");
             Fits(dock[2], "9150골드 7실버 50쿠퍼",
                 "잠김 — 부활초 3/3 · 환생석 3", "도크[2]");
-            Fits(dock[3], "저체력 귀환 켜짐", "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)", "도크[3]");
-            Fits(dock[4], "일정 사냥", "편성을 보내 두면 영지에서도 돈다. 사망 없음 · 상한 12시간(§6)", "도크[4]");
+            HuntSchedule.ResetForTest();
+            FieldDockCap.ResetForTest();
+            Fits(dock[3], "저체력 귀환 켜짐", FieldDockCap.LowHp(), "도크[3]");
+            Fits(dock[4], "일정 사냥", FieldDockCap.Schedule(), "도크[4]");
             Fits(dock[5], "사망 없음",
-                "잠김 — 일정 사냥은 카운트를 안 올린다. 상한 12시간(§6)", "도크[5]");
+                "잠김 — " + FieldDockCap.Death(), "도크[5]");
 
             // 슬림이 아닌 큰 카드도 같은 규칙을 지켜야 한다(직업 선택·보너스 카드 계열).
             var wide = new Rect(0f, 0f, 328f, 152f);
@@ -123,7 +127,9 @@ namespace AshesToStars
             Fits(wide, "예리함", "공격력이 오른다. 나가면 사라진다(§7)", "보너스");
 
             Environment.SetEnvironmentVariable(FieldHud.EnvNo, no);
+            Environment.SetEnvironmentVariable(FieldDockCap.EnvNo, dockNo);
             FieldHud.ResetForTest();
+            FieldDockCap.ResetForTest();
 
             if (_fail == 0) Debug.Log("[CardTextFitSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CardTextFitSelfCheck] FAIL {_fail}건\n" + _log);
