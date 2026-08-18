@@ -17,7 +17,7 @@
 `TokenPrice.Ceil`/`AboveCeil`을 `TryListItem`이 읽는다. T1 400골드.
 `QA_NO`면 옛 상한 없음.
 샷 `token_ceil_shots/qa_go:Estate.png` — `하한 200골드 · 상한 400골드`.
-다음은 UI 한 결함(지갑 부제 줄바꿈). 이펙트는 FX 미커밋.
+코드 `2c66efc1`. 다음은 UI 한 결함(지갑 부제 줄바꿈). 이펙트는 FX 미커밋.
 
 ## 지금 (2026-08-18) — 아틀라스 UV가 이웃을 물지 않는다
 
