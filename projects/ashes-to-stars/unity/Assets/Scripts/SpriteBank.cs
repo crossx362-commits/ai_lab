@@ -484,6 +484,12 @@ public class SpriteBank
             b._job[j] = new Sprite[JOB_FRAMES.Length];
             for (int f = 0; f < JOB_FRAMES.Length; f++)
                 b._job[j][f] = MakeWith(CHAR0 + j * JOB_FRAMES.Length + f, ppu, pivot);
+            // Sprite.Create는 rect가 텍스처 밖이거나 pivot이 NaN이면 **null을 돌려준다**.
+            // 그러면 Char()가 조용히 placeholder(player_knight_0)로 폴백해 "새 그림을
+            // 넣었는데 옛 그림이 나온다"가 된다 — 경고가 없어 원인을 못 찾는다(2026-08-18).
+            if (b._job[j][0] == null)
+                Debug.LogError($"[SpriteBank] {JOB_DIRS[j]} 스프라이트 생성 실패 — " +
+                               $"칸={rc} ppu={ppu:F1} pivot={pivot} 내용높이={by1 - by0 + 1}");
         }
 
         // 몹도 종별로 idle 한 장으로 배율을 정한다 — 캐릭터와 같은 이유(프레임마다 재면 튄다)
@@ -521,6 +527,13 @@ public class SpriteBank
             string d = ExtraDirs[e];
             var idleTex = Resources.Load<Texture2D>($"sprites/{d}/{d}_idle_00");
             if (idleTex == null) continue;
+            // ⚠️ PPU를 idle **한 장의 캔버스 높이**로 정하고 나머지 프레임에 그대로 쓴다.
+            //    그래서 idle만 캔버스가 다르면 **전 프레임이 통째로 어긋난다**. 실제로
+            //    2026-08-18에 전직 10종 전부 idle만 원본 생성물(1400~1900px)이고 나머지는
+            //    128px이라, ppu=1734/2.8=619가 128px 프레임에 걸려 캐릭터가 0.21유닛
+            //    (거의 안 보임)으로 그려지고 있었다. 경고가 없어 아무도 몰랐다.
+            //    이제 캔버스가 어긋나면 **소리를 지른다** — 조용한 실패가 이 프로젝트에서
+            //    가장 비싼 실패 방식이다(§21-1b 계열).
             float ppu = Mathf.Max(8, idleTex.height) / U_CHAR;
             var pivot = new Vector2(0.5f, 0.06f);
             b._extra[e] = new Sprite[JOB_FRAMES.Length];
@@ -528,6 +541,11 @@ public class SpriteBank
             {
                 var tex = Resources.Load<Texture2D>($"sprites/{d}/{d}_{JOB_FRAMES[f]}");
                 if (tex == null) continue;
+                if (tex.height != idleTex.height)
+                    Debug.LogError($"[SpriteBank] {d}: 캔버스 높이 불일치 — " +
+                                   $"idle {idleTex.height}px vs {JOB_FRAMES[f]} {tex.height}px. " +
+                                   "한 직업의 프레임은 같은 캔버스여야 배율이 맞는다 " +
+                                   "(art/align_frames.py로 정렬할 것)");
                 b._extra[e][f] = Sprite.Create(
                     tex, new Rect(0, 0, tex.width, tex.height),
                     pivot, ppu, 0, SpriteMeshType.FullRect);

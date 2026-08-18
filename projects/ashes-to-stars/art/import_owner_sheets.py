@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""오너가 준 기본 5직업 스프라이트 시트를 게임 프레임으로 반입한다.
+
+원본(`캐릭터스프라이트.zip`)의 구조:
+  - 한 장 1792×1008, 세로로 7개 행 = Idle / Move / Attack / Skill1 / Skill2 / Skill3 / Death
+  - 각 행 위에 검은 라벨 띠("Idle (쉼하기)")가 붙어 있고, 그 아래가 프레임 영역
+  - 프레임 영역의 배경은 **투명 체커보드가 픽셀로 구워진** 상태(밝은 회색 241 / 197 격자)
+  - 가로로 6프레임
+
+배경 제거를 색만으로 하면 안 된다 — 힐러의 흰 로브·탱커의 회색 갑옷이 체커보드와 같은
+무채색이라 몸이 뚫린다. 그래서 **테두리에서 연결된 영역만** 지운다(flood fill):
+체커 색이면서 프레임 가장자리와 이어져 있어야 배경이다. 캐릭터 안쪽의 흰 픽셀은
+바깥과 끊겨 있으므로 살아남는다.
+
+    python3 import_owner_sheets.py <zip을 푼 폴더> [--dry-run]
+"""
+import argparse
+import os
+import sys
+from collections import deque
+
+import numpy as np
+from PIL import Image
+
+# 시트 파일명이 UUID라 어떤 직업인지 알 수 없다. 시트 맨 아래 한글 라벨을 사람이 읽어
+# 확정한 순서다(정렬한 파일명 기준). 새 zip을 받으면 여기부터 다시 확인할 것.
+SHEET_JOBS = {
+    "13601aad": "healer",   # 힐러
+    "b6a5b853": "mage",     # 마법딜러
+    "b871e406": "buffer",   # 서포터
+    "e05ab71e": "dps",      # 물리딜러
+    "f7177c1e": "tank",     # 탱커
+}
+
+# 원본 행 → 게임의 13프레임 계약(SpriteBank.JOB_FRAMES). 원본에 없는 것은 가장
+# 가까운 행에서 빌린다. 대시 4장은 Move에서 뽑아 이동감을 유지한다.
+ROW_IDLE, ROW_MOVE, ROW_ATTACK, ROW_SKILL1, ROW_SKILL2, ROW_SKILL3, ROW_DEATH = range(7)
+FRAME_PLAN = [
+    ("idle_00", ROW_IDLE, 0),
+    ("walk_00", ROW_MOVE, 0),
+    ("walk_01", ROW_MOVE, 3),
+    ("attack_00", ROW_ATTACK, 1),
+    ("attack_01", ROW_ATTACK, 3),
+    ("special_00", ROW_SKILL3, 2),
+    ("hurt_00", ROW_DEATH, 0),
+    ("death_00", ROW_DEATH, 4),
+    ("dash_00", ROW_MOVE, 1),
+    ("dash_01", ROW_MOVE, 2),
+    ("dash_02", ROW_MOVE, 4),
+    ("dash_03", ROW_MOVE, 5),
+    ("invuln_00", ROW_SKILL1, 2),
+]
+
+COLS = 6
+CHECKER = (241.0, 197.0)
+# 프레임 칸을 두르는 검은 테두리 선 두께(실측 3px 내외). 이 안쪽에서 flood를 시작한다.
+BORDER = 3
+
+
+def label_bands(a: np.ndarray) -> list[tuple[int, int]]:
+    """검은 라벨 띠 사이의 프레임 영역을 찾는다."""
+    dark = (a.max(axis=2) < 60).mean(axis=1)
+    runs, start = [], None
+    for y, v in enumerate(dark):
+        if v > 0.80 and start is None:
+            start = y
+        elif v <= 0.80 and start is not None:
+            if y - start >= 8:
+                runs.append((start, y))
+            start = None
+    if start is not None and len(dark) - start >= 8:
+        runs.append((start, len(dark)))
+
+    bands = []
+    for i, (_, end) in enumerate(runs):
+        top = end
+        bot = runs[i + 1][0] if i + 1 < len(runs) else a.shape[0]
+        if bot - top > 60:
+            bands.append((top, bot))
+    return bands
+
+
+def cut_background(cell: np.ndarray) -> np.ndarray:
+    """체커보드 배경만 투명하게. 가장자리에서 연결된 것만 지운다."""
+    h, w, _ = cell.shape
+    neutral = (cell.max(axis=2) - cell.min(axis=2)) < 30
+    grey = cell.mean(axis=2)
+    checker = neutral & (
+        (np.abs(grey - CHECKER[0]) < 34) | (np.abs(grey - CHECKER[1]) < 34)
+    )
+
+    # 가장자리에서 시작하는 flood fill — 캐릭터 안쪽 흰 픽셀은 바깥과 끊겨 살아남는다.
+    # ⚠️ 시트의 각 프레임 칸은 **검은 테두리 선**으로 둘러싸여 있다(실측: 가장자리 픽셀
+    #    밝기 3~90). 그래서 맨 바깥 줄에서 seed를 잡으면 체커 판정을 하나도 통과하지 못해
+    #    flood가 시작조차 안 된다(1차 시도: 배경이 그대로 남았다). 테두리 안쪽에서 seed를
+    #    잡고, 테두리 자체는 배경으로 확정한다 — 어차피 오너가 "검은 부분 잘라내라"고 한 것.
+    bg = np.zeros((h, w), dtype=bool)
+    q = deque()
+    inset = BORDER
+
+    def seed(y: int, x: int) -> None:
+        if 0 <= y < h and 0 <= x < w and checker[y, x] and not bg[y, x]:
+            bg[y, x] = True
+            q.append((y, x))
+
+    for x in range(w):
+        seed(inset, x)
+        seed(h - 1 - inset, x)
+    for y in range(h):
+        seed(y, inset)
+        seed(y, w - 1 - inset)
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and checker[ny, nx] and not bg[ny, nx]:
+                bg[ny, nx] = True
+                q.append((ny, nx))
+
+    bg[:BORDER, :] = True
+    bg[-BORDER:, :] = True
+    bg[:, :BORDER] = True
+    bg[:, -BORDER:] = True
+
+    alpha = np.where(bg, 0, 255).astype(np.uint8)
+    return np.dstack([cell.astype(np.uint8), alpha])
+
+
+def center_on_canvas(frames: list[np.ndarray], pad: int = 6) -> list[Image.Image]:
+    """공통 캔버스에 가로 중앙·세로 바닥 정렬.
+
+    시트마다 따로 crop하면 같은 직업 안에서도 프레임마다 캔버스가 달라져 걷기가 튄다
+    (2026-08-15 P2 몹 사고와 같은 계열) — 한 직업의 모든 프레임을 **하나의 캔버스**로 묶는다.
+    """
+    boxes = []
+    for f in frames:
+        ys, xs = np.where(f[..., 3] > 40)
+        boxes.append((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1) if len(xs) else None)
+
+    valid = [b for b in boxes if b]
+    cw = max(b[2] - b[0] for b in valid) + pad * 2
+    ch = max(b[3] - b[1] for b in valid) + pad * 2
+
+    out = []
+    for f, b in zip(frames, boxes):
+        canvas = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+        if b:
+            crop = Image.fromarray(f[b[1]:b[3], b[0]:b[2]], "RGBA")
+            x = (cw - crop.width) // 2                 # 가로 중앙
+            y = ch - pad - crop.height                 # 세로 바닥 (발이 같은 선에)
+            canvas.paste(crop, (x, y), crop)
+        out.append(canvas)
+    return out
+
+
+def process(path: str, job: str, dest_root: str, dry: bool) -> int:
+    im = Image.open(path).convert("RGB")
+    a = np.asarray(im).astype(np.float32)
+    bands = label_bands(a)
+    if len(bands) < 7:
+        print(f"   ⚠️ {job}: 행을 {len(bands)}개만 찾았다(7 기대) — 건너뜀")
+        return 0
+
+    w = a.shape[1]
+    colw = w / COLS
+    cells: dict[tuple[int, int], np.ndarray] = {}
+    for r in range(7):
+        top, bot = bands[r]
+        for c in range(COLS):
+            x0, x1 = int(c * colw), int((c + 1) * colw)
+            cells[(r, c)] = cut_background(a[top:bot, x0:x1])
+
+    frames, names = [], []
+    for name, row, col in FRAME_PLAN:
+        cell = cells.get((row, col))
+        if cell is None or (cell[..., 3] > 40).sum() < 50:
+            cell = cells[(ROW_IDLE, 0)]          # 빈 칸이면 idle로 대체
+        frames.append(cell)
+        names.append(name)
+
+    images = center_on_canvas(frames)
+    dest = os.path.join(dest_root, job)
+    if dry:
+        print(f"   {job}: 캔버스 {images[0].width}×{images[0].height}, {len(images)}장 (dry-run)")
+        return len(images)
+
+    os.makedirs(dest, exist_ok=True)
+    for name, img in zip(names, images):
+        img.save(os.path.join(dest, f"{job}_{name}.png"))
+    print(f"   {job}: 캔버스 {images[0].width}×{images[0].height}, {len(images)}장 → {dest}")
+    return len(images)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("src", help="zip을 푼 폴더")
+    ap.add_argument("--dest", default=os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "unity", "Assets", "Resources", "sprites"))
+    ap.add_argument("--dry-run", action="store_true")
+    ns = ap.parse_args()
+
+    total = 0
+    for f in sorted(os.listdir(ns.src)):
+        if not f.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+        job = SHEET_JOBS.get(f[:8])
+        if not job:
+            print(f"   ❔ {f}: 직업 매핑 없음 — SHEET_JOBS 확인 필요")
+            continue
+        total += process(os.path.join(ns.src, f), job, ns.dest, ns.dry_run)
+    print(f"\n총 {total}장")
+    return 0 if total else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
