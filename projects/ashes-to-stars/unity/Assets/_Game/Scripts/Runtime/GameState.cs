@@ -453,10 +453,12 @@ namespace AshesToStars
             return true;
         }
 
-        /// <summary>드랍 획득. 상한(§18-4)에 걸리면 false — **소실이 아니라 획득 거부**다.</summary>
+        /// <summary>드랍 획득. 상한(§18-4)에 걸리면 false — **소실이 아니라 획득 거부**다.
+        /// 새 종류는 가방 60칸(§11)도 본다.</summary>
         public static bool Gain(Economy.LifeItem item, int amount = 1)
         {
             Load();
+            if (!BagSlots.CanGain(item, amount)) return false;
             bool ok = _bag.TryAdd(item, amount);
             if (ok) Save();
             return ok;
@@ -610,6 +612,7 @@ namespace AshesToStars
             Memorial.ResetForTest();
             HuntSchedule.ResetForTest();
             NetWorth.ResetForTest();
+            BagSlots.ResetForTest();
         }
 
         /// <summary>테스트 전용 — 메모리 캐시를 버려 다음 접근이 PlayerPrefs에서 다시 읽게 한다.

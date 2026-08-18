@@ -312,6 +312,7 @@ namespace AshesToStars
             Load();
             var recipe = RecipeOf(recipeId);
             if (recipe == null) return null;
+            if (!BagSlots.CanAddGear()) return null;
             var gear = new GearItem
             {
                 Id = Guid.NewGuid().ToString("N"),
@@ -336,6 +337,7 @@ namespace AshesToStars
             var recipe = RecipeOf(recipeId);
             if (recipe == null) return false;
             if (GameState.Bag.GetCount(recipe.Material) < recipe.Cost) return false;
+            if (!BagSlots.CanAddGear()) return false;
             if (!GameState.Consume(recipe.Material, recipe.Cost)) return false;
 
             _items.Add(new GearItem
@@ -415,6 +417,7 @@ namespace AshesToStars
         public static bool TryUnequip(CharacterRecord character, EquipSlot slot)
         {
             if (character == null || string.IsNullOrEmpty(character.GetEquipped(slot))) return false;
+            if (!BagSlots.CanAddGear()) return false;
             character.SetEquipped(slot, null);
             LifeSystem.PersistRoster();
             return true;
@@ -435,6 +438,7 @@ namespace AshesToStars
         {
             Load();
             if (string.IsNullOrEmpty(packed)) return false;
+            if (!BagSlots.CanAddGear()) return false;
             var parts = packed.Split('|');
             var rec = RecipeOf(parts[0]);
             if (rec == null) return false;

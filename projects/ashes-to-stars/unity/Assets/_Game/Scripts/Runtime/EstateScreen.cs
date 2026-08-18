@@ -1099,6 +1099,8 @@ namespace AshesToStars
                     string craftIcon = ItemAtlas.KeyForSlot(rec.Slot);
                     if (have < rec.Cost)
                         Locked(r, row++, $"{rec.Name} 제작", $"{need} — 현재 {have}", craftIcon, GearGrade.Common);
+                    else if (!BagSlots.CanAddGear())
+                        Locked(r, row++, $"{rec.Name} 제작", BagSlots.WhyFull(), craftIcon, GearGrade.Common);
                     else if (Row(r, row++, $"{rec.Name} 제작", need, craftIcon, rarity: GearGrade.Common))
                     {
                         _msg = Equipment.TryCraft(rec.Id)
@@ -1122,8 +1124,9 @@ namespace AshesToStars
                             $"체력 ×{Equipment.HpMulOf(ch):0.00} — 눌러 벗긴다",
                             ItemAtlas.KeyForGear(worn[0]), rarity: worn[0].Grade))
                     {
-                        Equipment.TryUnequip(ch);
-                        _msg = $"{ch.Name}의 장비를 벗겼다";
+                        _msg = Equipment.TryUnequip(ch)
+                            ? $"{ch.Name}의 장비를 벗겼다"
+                            : BagSlots.WhyFull();
                     }
                     continue;
                 }

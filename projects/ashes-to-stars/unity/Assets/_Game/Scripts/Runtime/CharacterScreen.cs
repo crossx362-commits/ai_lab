@@ -18,7 +18,8 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
         protected override string Subtitle =>
-            EquipJob.ShowQa ? EquipJob.Line()
+            BagSlots.ShowQa ? BagSlots.Line()
+            : EquipJob.ShowQa ? EquipJob.Line()
             : CharHud.ShowQa ? CharHud.Line()
             : "왼쪽 바둑판에서 고르면 오른쪽에 모습과 정보가 나온다(§3·§4)";
         protected override bool ShowRarityPreview => UiAtlas.QaShowRarity;
@@ -69,6 +70,7 @@ namespace AshesToStars
             SeedCharLookQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
+            BagSlots.SeedQaIfRequested();
             if (EquipJob.ShowQa && _selectedCharacter < 0)
                 _selectedCharacter = EquipJob.QaHealerIndex();
             StarterPick.SeedQaIfRequested();
@@ -814,6 +816,7 @@ namespace AshesToStars
             if (!ch.IsDeleted && ch.PendingBoon >= 0)
                 Line($"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)}");
             if (EquipJob.ShowQa) Line(EquipJob.Line());
+            if (BagSlots.ShowQa) Line(BagSlots.Line());
             if (!string.IsNullOrEmpty(_equipMsg)) Line(_equipMsg);
 
             Line("장착");
@@ -831,7 +834,7 @@ namespace AshesToStars
             int filled = 0;
             for (int i = 0; i < bag.Count; i++)
                 if (_bagFilter < 0 || (int)bag[i].Slot == _bagFilter) filled++;
-            Line($"가방  {filled}/{bag.Count}");
+            Line(BagSlots.Line() + (filled != bag.Count ? $" · 이 칸 {filled}" : ""));
             const float cell = 44f, gap = 6f;
             int col = 0;
             int shown = 0;
