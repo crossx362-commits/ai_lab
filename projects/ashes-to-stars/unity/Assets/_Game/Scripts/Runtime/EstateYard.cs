@@ -432,27 +432,38 @@ namespace AshesToStars
             _pinch0 = d;
         }
 
-        /// <summary>칸 하나가 담는 지면 폭(유닛). 크기표 폴백(QA_NO_ESTATE_FOOTPRINT)에만 쓴다.</summary>
-        const float TileUnits = 4.2f;
+        /// <summary>
+        /// 칸 하나가 담는 지면 폭(유닛). 크기표 값을 화면 픽셀로 바꾸는 환산 기준이다.
+        /// 검사기가 같은 값을 읽어야 하므로 공개한다 — 양쪽이 따로 들면 조용히 어긋난다.
+        /// </summary>
+        public const float TileUnits = 4.2f;
 
         public static bool FootprintBlocked =>
             Environment.GetEnvironmentVariable(EnvNoFootprint) == "1";
 
-        /// <summary>자리 크기에서 화면 상자. 밑동은 자리 마름모 중심(GAME_SPEC_ESTATE_BUILD §2-1).</summary>
+        /// <summary>
+        /// 화면 상자. **자리 크기는 점유·앵커만 정하고 그림 크기는 크기표가 정한다**
+        /// (GAME_SPEC_ESTATE_BUILD §2-1 「⚠️ 정정」, 2026-08-19).
+        ///
+        /// ⚠️ 한 번 틀렸던 자리다. 설계문서 초안이 `bw = 자리칸수 × tw`로 크기까지 자리에서
+        /// 내라고 했고 그대로 구현했더니 **건물이 화면을 덮는 거인**이 됐다(실측: 창고
+        /// 120×143 → 316×376, 축마다 2.6배·면적 6배). 이유 둘 —
+        /// ① **스프라이트 폭 ≠ 밑동 폭**이다. 지금 8동은 작은 밑동 위 높은 탑 구도라
+        ///    스프라이트 폭에 칸수를 곱하면 밑동이 아니라 그림 전체가 커진다.
+        /// ② 등각 밑변은 `fx × tw`가 아니라 `(fx + fy) × tw / 2`다.
+        /// 크기까지 자리에서 내는 것은 §2-4 새 아트(밑동이 자리 마름모를 채우는 계약)가
+        /// 들어온 뒤다. **그 전에 되돌리지 마라 — 화면으로 확인하고 되돌린 것이다.**
+        /// </summary>
         public static Rect BuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell)
         {
             var tex = PropTex(PropOf(cell));
-            var f = EstateGrid.FootprintOf(cell);
             if (FootprintBlocked)
                 return OldBuildingBox(p, tw, th, cell, tex);
 
-            float bw = tw * f.x;
-            float bh;
-            if (tex != null && tex.width > 0)
-                bh = bw * ((float)tex.height / tex.width);
-            else
-                bh = th * f.y * 2f;
+            SpriteSize(tw, th, cell, tex, out float bw, out float bh);
 
+            // 자리 마름모들을 합친 중심 — 밑동이 여기 앉는다(옛 sit 0.42는 중심보다 위였다).
+            var f = EstateGrid.FootprintOf(cell);
             float mx = (f.x - 1) * 0.5f;
             float my = (f.y - 1) * 0.5f;
             float cx = p.x + tw * 0.5f + (mx - my) * tw * 0.5f;
@@ -460,24 +471,28 @@ namespace AshesToStars
             return new Rect(cx - bw * 0.5f, cy - bh, bw, bh);
         }
 
-        static Rect OldBuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell, Texture2D tex)
+        /// <summary>그림 크기의 단일 소스. 앵커가 어디든 이 값을 쓴다.</summary>
+        static void SpriteSize(float tw, float th, EstateGrid.Cell cell, Texture2D tex,
+                               out float bw, out float bh)
         {
             string prop = PropOf(cell);
             float units = string.IsNullOrEmpty(prop) ? 0f : FieldDecor.Units(prop, 0f);
-            float bw, bh;
             if (units > 0f && tex != null && tex.height > 0)
             {
                 bh = units * (tw / TileUnits);
                 bw = bh * ((float)tex.width / tex.height);
+                return;
             }
-            else
-            {
-                float wide = cell == EstateGrid.Cell.Keep ? 1.12f : 0.96f;
-                bw = tw * wide;
-                bh = tex != null && tex.width > 0
-                    ? bw * ((float)tex.height / tex.width)
-                    : th * 2.05f;
-            }
+            float wide = cell == EstateGrid.Cell.Keep ? 1.12f : 0.96f;
+            bw = tw * wide;
+            bh = tex != null && tex.width > 0
+                ? bw * ((float)tex.height / tex.width)
+                : th * 2.05f;
+        }
+
+        static Rect OldBuildingBox(Vector2 p, float tw, float th, EstateGrid.Cell cell, Texture2D tex)
+        {
+            SpriteSize(tw, th, cell, tex, out float bw, out float bh);
             float sit = cell == EstateGrid.Cell.Wall ? 0.55f : 0.42f;
             return new Rect(p.x + (tw - bw) * 0.5f, p.y + th * sit - bh, bw, bh);
         }

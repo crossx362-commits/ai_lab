@@ -100,7 +100,17 @@ namespace AshesToStars
                 $"2×2 밑동 x {keep.center.x:0.0} = 네 칸 중심");
             Check(Mathf.Abs(keep.yMax - (p.y + th)) < 0.05f,
                 $"2×2 밑동 y {keep.yMax:0.0} = 네 칸 중심");
-            Check(Mathf.Abs(keep.width - tw * 2f) < 0.05f, $"본성 폭 {keep.width:0} = 2칸");
+            // ⚠️ 여기는 원래 `keep.width == tw × 2`(자리 칸수로 크기를 냄)를 단언했다.
+            //    그 사양이 **틀렸다** — 그대로 구현했더니 건물이 화면을 덮는 거인이 됐다
+            //    (실측: 창고 120×143 → 316×376). 스프라이트 폭은 밑동 폭이 아니기 때문이다.
+            //    정정된 사양(GAME_SPEC_ESTATE_BUILD §2-1 「⚠️ 정정」): 자리 크기는 **점유와
+            //    앵커만** 정하고 **그림 크기는 크기표**가 정한다. 그 단일 소스를 여기서 굳힌다.
+            float keepUnits = FieldDecor.Units(EstateBuildings.Keep, 0f);
+            Check(keepUnits > 0f, $"크기표에 {EstateBuildings.Keep} 가 있다 ({keepUnits})");
+            Check(Mathf.Abs(keep.height - keepUnits * (tw / EstateYard.TileUnits)) < 0.5f,
+                $"본성 높이 {keep.height:0.0} = 크기표 {keepUnits} × 칸/{EstateYard.TileUnits}");
+            Check(keep.width < tw * 2f - 0.5f,
+                $"본성 폭 {keep.width:0} < 2칸 — 자리 크기로 그림을 키우지 않는다");
 
             var store = EstateYard.BuildingBox(p, tw, th, EstateGrid.Cell.Warehouse);
             Check(Mathf.Abs(store.center.x - (p.x + tw * 0.75f)) < 0.05f,
