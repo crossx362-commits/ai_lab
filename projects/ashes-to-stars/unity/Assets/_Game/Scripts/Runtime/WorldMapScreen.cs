@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (WorldMapDockCap.ShowQa) return WorldMapDockCap.Line();
                 if (WorldMapHud.ShowQa) return WorldMapHud.Line();
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
                 if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
@@ -86,6 +87,7 @@ namespace AshesToStars
             InvasionApproach.SeedQaIfRequested();
             EstateStore.SeedQaIfRequested();
             WorldMapHud.SeedQaIfRequested();
+            WorldMapDockCap.SeedQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
@@ -108,38 +110,10 @@ namespace AshesToStars
                 "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)",
                 "worldmap", locked: true);
 
-            string invasionLock = InvasionHubLockReason();
-            string invasionOpen = InvasionApproach.Blocked
-                ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)"
-                : $"{InvasionApproach.Line()} · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())}";
-            if (EstateStore.ShowQa)
-                invasionOpen = EstateStore.Line() + " · " + invasionOpen;
-            if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
-                invasionOpen = $"{Economy.RaceCostLine()} · " + invasionOpen;
-            else if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)
-                invasionOpen = $"{InvasionState.RaceLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
-            else if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
-                invasionOpen = $"{WorldStar.EnemyLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
-            else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowCap) == "1"
-                     && !InvasionState.LootCapBlocked)
-                invasionOpen = $"{InvasionState.LootCapLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
-            else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowFloor) == "1"
-                     && !InvasionState.LootFloorBlocked)
-                invasionOpen = $"{InvasionState.LootFloorLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
-            else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
-                     && !InvasionState.LootWarehouseBlocked)
-                invasionOpen = $"{InvasionState.WarehouseLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
-            else if ((Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
-                      || Environment.GetEnvironmentVariable(Honor.EnvShowDefense) == "1")
-                     && !Honor.Blocked)
-                invasionOpen = $"{Honor.WinLine()} · " + invasionOpen;
-            else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"
-                     && !InvasionState.RepeatLootBlocked)
-                invasionOpen = $"{InvasionState.RepeatLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + invasionOpen;
             if (DrawCard(cards[1], "침략",
-                    invasionLock ?? invasionOpen,
-                    "damage", locked: invasionLock != null)
-                && invasionLock == null)
+                    WorldMapDockCap.Caption(),
+                    "damage", locked: WorldMapDockCap.IsLocked)
+                && !WorldMapDockCap.IsLocked)
             {
                 if (InvasionApproach.Blocked) GameFlow.TryGoInvasion();
                 else InvasionApproach.Picking = true;

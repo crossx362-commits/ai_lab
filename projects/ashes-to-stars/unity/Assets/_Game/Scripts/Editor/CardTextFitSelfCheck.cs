@@ -144,6 +144,24 @@ namespace AshesToStars
             GameState.ResetAll();
             Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, towerNo);
 
+            string worldNo = Environment.GetEnvironmentVariable(WorldMapDockCap.EnvNo);
+            Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, null);
+            InvasionApproach.ResetForTest();
+            InvasionState.ResetForTest();
+            WorldMapDockCap.ResetForTest();
+            GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            var world = WorldMapHud.Cards(body);
+            Check(world.Length == 4, $"월드맵 도크 4칸 (실제 {world.Length})");
+            Fits(world[1], "침략", WorldMapDockCap.Caption(), "월드맵도크[1]");
+            GameState.SetTowerFloorForTest(1);
+            Fits(world[1], "침략",
+                "잠김 — " + WorldMapDockCap.Caption(), "월드맵도크잠김");
+            WorldMapDockCap.ResetForTest();
+            InvasionApproach.ResetForTest();
+            InvasionState.ResetForTest();
+            GameState.ResetAll();
+            Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, worldNo);
+
             // 슬림이 아닌 큰 카드도 같은 규칙을 지켜야 한다(직업 선택·보너스 카드 계열).
             var wide = new Rect(0f, 0f, 328f, 152f);
             Check(!UiPages.IsSlimCard(wide), $"보너스 카드 {wide.width:0}×{wide.height:0} 는 슬림 아님");
