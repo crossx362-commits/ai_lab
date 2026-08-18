@@ -102,16 +102,31 @@ def generate(prompt: str, refs: list[str], key: str, model: str = MODEL) -> Imag
 # `--model`로 덮어쓰지 마라. Pro·Gemini·Imagine 금지.
 HF_MODEL = "nano_banana_flash"
 HF_RESOLUTION = "2k"
-# 오너 2026-08-18: 할로우 나이트면 흑백 느낌. 상세는 STYLE_HOLLOW.md.
-HOLLOW_STYLE = (
-    "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: "
-    "Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask "
-    "with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). "
-    "Thick smooth dark outlines + soft painterly shading inside. One accent color at most, "
-    "used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shine, NO grass "
-    "or ground shadow under the feet. NOT pixel art, NOT photoreal, NOT 3D, NOT chibi-cute. "
-    "Read as a dark silhouette first, then a pale mask."
+# 오너 2026-08-18(2차): **할로우 나이트 화풍 강제를 전체에서 제거한다.**
+#
+# 왜 없앴나: 옛 `HOLLOW_STYLE`은 "몸은 VOID BLACK, 얼굴은 뼈색 가면, 액센트 한 점,
+# 채도 있는 색 금지"를 **모든 프롬프트 앞에 강제로** 붙였다. 그 잠금이 있는 한
+# 「클래시 오브 클랜보다 나은 영지 건물」(오너 지시)은 성립하지 않는다 — 클래시의
+# 품질은 재질이 구분되는 색·부드러운 명암·접지 그림자에서 나오는데 그게 전부
+# 금지어였다. 실제로 영지 8동이 검은 덩어리로 보이던 원인이 이것이다.
+# 부작용도 있었다: 흑백 강제가 화면 전체를 흑백으로 몰아 **크로마키 배경 마젠타까지
+# 밀어냈다**(아래 OUTPUT_CONTRACT 주석의 2026-08-18 실측 사고).
+#
+# ⚠️ **이미 만든 장은 그대로 쓴다**(오너: "제작된 애들은 그냥 사용").
+#    이 변경은 **앞으로 뽑는 장**에만 적용된다. 기존 에셋 일괄 재생성 금지 —
+#    중복 재생성은 이 저장소가 반복해서 낭비한 항목이다.
+#
+# 화풍은 이제 **spec의 ruleset이 정한다**. 아래는 그 ruleset이 아무 말도 안 할 때의
+# 기본값일 뿐이고, 잠금이 아니다 — spec이 `rules`를 주면 이 문장은 안 나간다.
+GAME_STYLE = (
+    "Dark-fantasy hand-painted game art. Low-saturation palette on dark values, "
+    "readable material separation (wood vs stone vs metal vs cloth), thick clean "
+    "outlines with soft painterly shading inside. Strong silhouette first — the shape "
+    "must read at thumbnail size. NOT pixel art, NOT photoreal, NOT 3D render, NOT chibi."
 )
+
+# 옛 이름을 부르는 spec·도구가 있으면 조용히 깨지지 않게 남긴다(내용은 새 기본값).
+HOLLOW_STYLE = GAME_STYLE
 
 # 파이프라인 계약 — 화풍이 아니라 **후처리가 성립하기 위한 조건**이다. 그래서 프롬프트
 # 맨 끝(모델이 가장 무겁게 읽는 자리)에 붙이고, 어떤 spec의 ruleset도 이걸 못 덮는다.
@@ -146,7 +161,7 @@ def resolve_hf_model(name: str | None) -> str:
 
 def generate_hf(prompt: str, refs: list[str], model: str = HF_MODEL,
                 resolution: str = HF_RESOLUTION, aspect: str = "1:1",
-                rules: str = None) -> Image.Image:
+                rules: str = None, style: str = GAME_STYLE) -> Image.Image:
     """Higgsfield Nano Banana 2 (`nano_banana_flash`) 경로. Pro·Gemini로 보내지 않는다."""
     import shutil
     import subprocess
@@ -158,7 +173,9 @@ def generate_hf(prompt: str, refs: list[str], model: str = HF_MODEL,
     print(f"   Higgsfield Nano Banana 2 ({model}) {resolution} — CLI는 언리미티드 불가, 웹은 토글 ON")
     cmd = [cli, "generate", "create", model, "--resolution", resolution,
            "--aspect-ratio", aspect,
-           "--prompt", f"{HOLLOW_STYLE}\n\n{prompt}\n\n{rules or STYLE_RULES}\n\n{OUTPUT_CONTRACT}",
+           # style=None 이면 화풍 문장을 아예 안 보낸다 — spec이 제 화풍을 통째로 쥔다.
+           "--prompt", "\n\n".join(x for x in
+                                   (style, prompt, rules or STYLE_RULES, OUTPUT_CONTRACT) if x),
            "--wait", "--wait-timeout", "10m"]
     for r in refs:
         cmd += ["--image-references", r]
@@ -256,8 +273,12 @@ def main(argv=None):
         if ns.backend == "gemini":
             raw = generate(item["prompt"], refs, key, ns.model or MODEL)
         else:
+            # spec이 "style"을 적으면 그 화풍을 쓴다. null 로 적으면 화풍 문장을 안 보낸다
+            # (ruleset이 통째로 화풍을 쥐는 경우). 안 적으면 GAME_STYLE 기본값.
+            style = spec["style"] if "style" in spec else GAME_STYLE
             raw = generate_hf(item["prompt"], refs, ns.model or HF_MODEL,
-                              resolution=ns.resolution, aspect=aspect, rules=rules)
+                              resolution=ns.resolution, aspect=aspect, rules=rules,
+                              style=style)
         img = chroma_key(raw) if not item.get("keep_bg") else raw.convert("RGBA")
         if ns.height and img.height > ns.height:
             w = max(1, round(img.width * ns.height / img.height))
