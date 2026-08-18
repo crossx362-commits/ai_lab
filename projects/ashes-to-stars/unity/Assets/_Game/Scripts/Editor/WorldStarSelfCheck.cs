@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>월드맵 별 크기는 §18-13 `1 + 층×0.02`. QA_NO면 옛 40~112 선형.</summary>
+    /// <summary>월드맵 별 크기는 §18-13 `1 + 층×0.02`. 영공은 `1 + 층/10`. QA_NO면 옛 선형.</summary>
     public static class WorldStarSelfCheck
     {
         static int _fail;
@@ -25,8 +25,12 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(WorldStar.EnvShow);
             string no = Environment.GetEnvironmentVariable(WorldStar.EnvNo);
+            string showRange = Environment.GetEnvironmentVariable(WorldStar.EnvShowRange);
+            string noRange = Environment.GetEnvironmentVariable(WorldStar.EnvNoRange);
             Environment.SetEnvironmentVariable(WorldStar.EnvShow, null);
             Environment.SetEnvironmentVariable(WorldStar.EnvNo, null);
+            Environment.SetEnvironmentVariable(WorldStar.EnvShowRange, null);
+            Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, null);
             WorldStar.ResetForTest();
 
             Check(!WorldStar.Blocked, "기본은 켜짐");
@@ -88,10 +92,47 @@ namespace AshesToStars
 
             WorldStar.ResetForTest();
             RacePrefs.Set(RaceId.인간);
-            Check(WorldStar.SenseBase(1) == WorldStar.MinSense, "1층 영공은 최소");
+            Check(!WorldStar.RangeBlocked, "영공 기본은 켜짐");
+            Check(Mathf.Approximately(WorldStar.SenseMul(1), 1f + WorldStar.SensePerFloor),
+                $"1층 영공 {WorldStar.SenseMul(1):0.00} = 1.10");
+            Check(Mathf.Approximately(WorldStar.SenseMul(10), 2f),
+                $"10층 영공 {WorldStar.SenseMul(10):0.00} = 2");
+            Check(Mathf.Approximately(WorldStar.SenseMul(50), 6f),
+                $"50층 영공 {WorldStar.SenseMul(50):0.00} = 6");
+            Check(Mathf.Approximately(WorldStar.SenseMul(100), 11f),
+                $"100층 영공 {WorldStar.SenseMul(100):0.00} = 11");
+            Check(Mathf.Approximately(WorldStar.SenseBase(100), WorldStar.SenseMul(100)),
+                "SenseBase가 SenseMul을 읽는다");
+            Check(WorldStar.SenseMul(100) < WorldStar.MaxSense,
+                $"100층 {WorldStar.SenseMul(100):0} < 옛 선형 {WorldStar.MaxSense:0}");
             Check(WorldStar.SenseBase(1) < WorldStar.SenseBase(50), "층이 오르면 영공이 넓어진다");
-            Check(Mathf.Abs(WorldStar.SenseBase(100) - WorldStar.MaxSense) < 0.01f, "100층 영공은 최대");
+            Check(WorldStar.SenseBase(0) == WorldStar.SenseBase(1), "0층은 1층으로 본다");
+            Check(WorldStar.SenseBase(200) == WorldStar.SenseBase(100), "100층 이상은 안 넓어진다");
+            Check(WorldStar.SenseLine(100).IndexOf("11.00", StringComparison.Ordinal) >= 0
+                  && WorldStar.SenseLine(100).IndexOf("§18-13", StringComparison.Ordinal) >= 0,
+                $"영공 줄 (실제 {WorldStar.SenseLine(100)})");
             Check(Mathf.Abs(WorldStar.Sense(1) - WorldStar.SenseBase(1)) < 0.01f, "인간은 기준 영공");
+
+            Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, "1");
+            Check(WorldStar.RangeBlocked, "QA_NO_STAR_SENSE면 차단");
+            Check(Mathf.Approximately(WorldStar.SenseBase(1), WorldStar.MinSense),
+                $"차단 1층 {WorldStar.SenseBase(1):0} = 옛 {WorldStar.MinSense:0}");
+            Check(Mathf.Approximately(WorldStar.SenseBase(100), WorldStar.MaxSense),
+                $"차단 100층 {WorldStar.SenseBase(100):0} = 옛 {WorldStar.MaxSense:0}");
+            Check(WorldStar.SenseLine().IndexOf("옛 선형", StringComparison.Ordinal) >= 0,
+                $"차단 영공 줄 (실제 {WorldStar.SenseLine()})");
+            Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, null);
+
+            Environment.SetEnvironmentVariable(WorldStar.EnvShowRange, "1");
+            WorldStar.SeedRangeQaIfRequested();
+            Check(WorldStar.ShowRangeQa, "영공 시드 켜짐");
+            Check(GameState.TowerFloor == WorldStar.MaxFloor,
+                $"영공 시드 100층 (실제 {GameState.TowerFloor})");
+            Check(WorldStar.SenseLine().IndexOf("11.00", StringComparison.Ordinal) >= 0,
+                $"영공 시드 줄 (실제 {WorldStar.SenseLine()})");
+            Environment.SetEnvironmentVariable(WorldStar.EnvShowRange, null);
+            WorldStar.ResetForTest();
+            RacePrefs.Set(RaceId.인간);
             Check(!WorldStar.AllyBuff && !WorldStar.EnemyDebuff, "기본은 영공 꺼짐 — 켠다");
             long raw = EstateMine.CopperPerHour();
             Check(EstateMine.CopperPerHourEffective() == raw, "끄면 광산은 기준값");
@@ -112,16 +153,29 @@ namespace AshesToStars
                 "SizePx가 SizeMul을 읽는다");
             Check(star.IndexOf("1f + f * SizePerFloor", StringComparison.Ordinal) >= 0,
                 "SizeMul이 1+층×0.02를 쓴다");
+            Check(star.IndexOf("1f + f * SensePerFloor", StringComparison.Ordinal) >= 0,
+                "SenseMul이 1+층/10을 쓴다");
+            Check(star.IndexOf("SenseBase(int floor) => SenseMul", StringComparison.Ordinal) >= 0,
+                "SenseBase가 SenseMul을 읽는다");
             Check(map.IndexOf("WorldStar.SizeLine", StringComparison.Ordinal) >= 0,
                 "지도가 SizeLine을 읽는다");
+            Check(map.IndexOf("WorldStar.SenseLine", StringComparison.Ordinal) >= 0,
+                "지도가 SenseLine을 읽는다");
             Check(map.IndexOf("WorldStar.SeedQaIfRequested", StringComparison.Ordinal) >= 0,
                 "지도가 시드를 읽는다");
+            Check(map.IndexOf("WorldStar.SeedRangeQaIfRequested", StringComparison.Ordinal) >= 0,
+                "지도가 영공 시드를 읽는다");
             _ = nameof(WorldStar.SizeMul);
             _ = nameof(WorldStar.SizeLine);
             _ = nameof(WorldStar.OldSizePx);
+            _ = nameof(WorldStar.SenseMul);
+            _ = nameof(WorldStar.SenseLine);
+            _ = nameof(WorldStar.OldSenseBase);
 
             Environment.SetEnvironmentVariable(WorldStar.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldStar.EnvNo, no);
+            Environment.SetEnvironmentVariable(WorldStar.EnvShowRange, showRange);
+            Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, noRange);
             if (_fail == 0) Debug.Log("[WorldStarSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[WorldStarSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[WorldStarSelfCheck] FAIL {_fail}건");

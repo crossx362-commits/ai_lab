@@ -6,7 +6,8 @@ namespace AshesToStars
     /// <summary>
     /// 월드맵 내 별(§14 ✅). 크기는 층에 따라 커지고, 인식 범위도 같이 넓어진다.
     /// 크기 배율은 §18-13 `1 + 돌파층 × 0.02`(100층 = 3배). SizePx가 SizeMul을 읽는다.
-    /// 옛 길은 40~112 선형이라 공식이 소비처 0곳이었다. QA_NO면 옛 선형.
+    /// 영공 반경은 §18-13 `1 + 돌파층/10`(100층 = 11). SenseBase가 SenseMul을 읽는다.
+    /// 옛 길은 40~112·4~16 선형이라 공식이 소비처 0곳이었다. QA_NO면 옛 선형.
     /// 영공 버프/디버프는 영지에서 켠다. 10층 모양 연출은 💡라 안 넣는다.
     /// 엘프는 같은 층에서 영공이 120%(§18-9). 탐험 범위 +30%는 안개 시스템이 없어 안 넣는다.
     /// 적 디버프는 침략 약탈이 95%로 읽는다(§14). 아군 버프는 광산이 이미 읽는다.
@@ -17,6 +18,7 @@ namespace AshesToStars
         public const float MinPx = 40f;
         public const float MaxPx = 112f;
         public const float SizePerFloor = 0.02f;
+        public const float SensePerFloor = 0.1f;
         public const float PlateH = 72f;
         public const float MinSense = 4f;
         public const float MaxSense = 16f;
@@ -25,6 +27,8 @@ namespace AshesToStars
         public const int EnemyDebuffPercent = 95;
         public const string EnvShow = "QA_STAR_SIZE";
         public const string EnvNo = "QA_NO_STAR_SIZE";
+        public const string EnvShowRange = "QA_STAR_SENSE";
+        public const string EnvNoRange = "QA_NO_STAR_SENSE";
         public const string EnvShowSense = "QA_RACE_SENSE";
         public const string EnvNoSense = "QA_NO_RACE_SENSE";
         public const string EnvShowDebuff = "QA_AURA_DEBUFF";
@@ -39,6 +43,7 @@ namespace AshesToStars
         static bool _ally;
         static bool _enemy;
         static bool _senseQaSeeded;
+        static bool _rangeQaSeeded;
         static bool _debuffQaSeeded;
         static bool _sizeQaSeeded;
 
@@ -57,6 +62,25 @@ namespace AshesToStars
             {
                 if (Blocked) return false;
                 string raw = Environment.GetEnvironmentVariable(EnvShow);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool RangeBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoRange);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool ShowRangeQa
+        {
+            get
+            {
+                if (RangeBlocked) return false;
+                string raw = Environment.GetEnvironmentVariable(EnvShowRange);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }
@@ -89,12 +113,31 @@ namespace AshesToStars
 
         public static string SizeLine() => SizeLine(Mathf.Max(1, GameState.TowerFloor));
 
-        /// <summary>층만 본 기준 영공. 종족 배율은 `Sense`가 곱한다.</summary>
-        public static float SenseBase(int floor)
+        /// <summary>옛 4~16 선형. QA_NO SenseBase가 이 길을 쓴다.</summary>
+        public static float OldSenseBase(int floor)
         {
             int f = ClampFloor(floor);
             return MinSense + (MaxSense - MinSense) * (f - 1) / (MaxFloor - 1);
         }
+
+        /// <summary>§18-13 `1 + 돌파층/10`. 100층 = 11. QA_NO면 옛 선형.</summary>
+        public static float SenseMul(int floor)
+        {
+            int f = ClampFloor(floor);
+            if (RangeBlocked) return OldSenseBase(f);
+            return 1f + f * SensePerFloor;
+        }
+
+        /// <summary>층만 본 기준 영공. SenseMul을 읽는다. 종족 배율은 `Sense`가 곱한다.</summary>
+        public static float SenseBase(int floor) => SenseMul(floor);
+
+        public static string SenseLine(int floor)
+        {
+            if (RangeBlocked) return "영공은 옛 선형";
+            return $"영공 {SenseMul(floor):0.00}(§18-13)";
+        }
+
+        public static string SenseLine() => SenseLine(Mathf.Max(1, GameState.TowerFloor));
 
         /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
         public static float ForceRaceSenseMul;
@@ -210,6 +253,15 @@ namespace AshesToStars
             GameState.SetTowerFloorForTest(MaxFloor);
         }
 
+        /// <summary>시각 QA. QA_STAR_SENSE=1이면 100층+영공 자막.</summary>
+        public static void SeedRangeQaIfRequested()
+        {
+            if (!ShowRangeQa) return;
+            if (_rangeQaSeeded) return;
+            _rangeQaSeeded = true;
+            GameState.SetTowerFloorForTest(MaxFloor);
+        }
+
         /// <summary>시각 QA. QA_RACE_SENSE=1이면 엘프·30층으로 영공을 연다.</summary>
         public static void SeedRaceSenseQaIfRequested()
         {
@@ -245,6 +297,7 @@ namespace AshesToStars
             _ally = false;
             _enemy = false;
             _senseQaSeeded = false;
+            _rangeQaSeeded = false;
             _debuffQaSeeded = false;
             _sizeQaSeeded = false;
             ForceRaceSenseMul = 0f;

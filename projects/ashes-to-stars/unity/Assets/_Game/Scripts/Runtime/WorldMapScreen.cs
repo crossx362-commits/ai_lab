@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (WorldStar.ShowRangeQa) return WorldStar.SenseLine();
                 if (WorldStar.ShowQa) return WorldStar.SizeLine();
                 if (WorldMapDockCap.ShowQa) return WorldMapDockCap.Line();
                 if (WorldMapHud.ShowQa) return WorldMapHud.Line();
@@ -84,6 +85,7 @@ namespace AshesToStars
             Honor.SeedQaIfRequested();
             Honor.SeedDefenseQaIfRequested();
             WorldStar.SeedQaIfRequested();
+            WorldStar.SeedRangeQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
             InvasionApproach.SeedQaIfRequested();

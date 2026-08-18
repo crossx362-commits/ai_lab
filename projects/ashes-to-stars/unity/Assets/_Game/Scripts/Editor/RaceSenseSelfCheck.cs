@@ -26,11 +26,13 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(WorldStar.EnvShowSense);
             string no = Environment.GetEnvironmentVariable(WorldStar.EnvNoSense);
+            string noRange = Environment.GetEnvironmentVariable(WorldStar.EnvNoRange);
             RaceId oldRace = RacePrefs.Get();
             float oldForce = WorldStar.ForceRaceSenseMul;
             int oldFloor = GameState.TowerFloor;
             Environment.SetEnvironmentVariable(WorldStar.EnvShowSense, null);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoSense, null);
+            Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, null);
             WorldStar.ForceRaceSenseMul = 0f;
 
             GameState.ResetAll();
@@ -38,7 +40,9 @@ namespace AshesToStars
             GameState.SetTowerFloorForTest(30);
 
             float base30 = WorldStar.SenseBase(30);
-            Check(base30 > WorldStar.MinSense && base30 < WorldStar.MaxSense,
+            Check(Mathf.Approximately(base30, WorldStar.SenseMul(30)),
+                $"30층 기준은 SenseMul ({base30:0.000})");
+            Check(base30 > WorldStar.SenseMul(1) && base30 < WorldStar.SenseMul(100),
                 $"30층 기준 영공은 중간 ({base30:0.000})");
 
             RacePrefs.Set(RaceId.인간);
@@ -49,8 +53,8 @@ namespace AshesToStars
             Check(Near(WorldStar.ApplyRaceSense(10f), 10f), "인간 10 유지");
             Check(WorldStar.RaceSenseLine().Contains("없음"),
                 $"인간 문구는 배율 없음 (실제 {WorldStar.RaceSenseLine()})");
-            Check(WorldStar.SizeLabel(30).Contains("7.5"),
-                $"인간 라벨 영공 7.5 (실제 {WorldStar.SizeLabel(30)})");
+            Check(WorldStar.SizeLabel(30).Contains("4.0"),
+                $"인간 라벨 영공 4.0 (실제 {WorldStar.SizeLabel(30)})");
 
             RacePrefs.Set(RaceId.드워프);
             Check(WorldStar.RaceSensePercent() == WorldStar.HumanSensePercent
@@ -71,12 +75,12 @@ namespace AshesToStars
             Check(Near(WorldStar.ApplyRaceSense(10f), 12f), "엘프 10→12");
             Check(WorldStar.RaceSenseLine().Contains("+20%"),
                 $"엘프 문구 +20% (실제 {WorldStar.RaceSenseLine()})");
-            Check(WorldStar.SizeLabel(30).Contains("9.0"),
-                $"엘프 라벨 영공 9.0 (실제 {WorldStar.SizeLabel(30)})");
-            Check(Near(WorldStar.Sense(1), WorldStar.MinSense * 1.2f),
-                $"1층 엘프 {WorldStar.Sense(1):0.0} = 4.8");
-            Check(Near(WorldStar.Sense(100), WorldStar.MaxSense * 1.2f),
-                $"100층 엘프 {WorldStar.Sense(100):0.0} = 19.2");
+            Check(WorldStar.SizeLabel(30).Contains("4.8"),
+                $"엘프 라벨 영공 4.8 (실제 {WorldStar.SizeLabel(30)})");
+            Check(Near(WorldStar.Sense(1), WorldStar.SenseMul(1) * 1.2f),
+                $"1층 엘프 {WorldStar.Sense(1):0.00} = {WorldStar.SenseMul(1) * 1.2f:0.00}");
+            Check(Near(WorldStar.Sense(100), WorldStar.SenseMul(100) * 1.2f),
+                $"100층 엘프 {WorldStar.Sense(100):0.00} = {WorldStar.SenseMul(100) * 1.2f:0.00}");
 
             RacePrefs.Set(RaceId.엘프);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoSense, "1");
@@ -94,8 +98,8 @@ namespace AshesToStars
             Check(RacePrefs.Get() == RaceId.엘프, "시드는 엘프를 고른다");
             Check(GameState.TowerFloor >= 30, $"시드는 30층 (실제 {GameState.TowerFloor})");
             Check(WorldStar.RaceSenseLine().Contains("+20%"), "시드 화면 문구 +20%");
-            Check(WorldStar.SizeLabel(GameState.TowerFloor).Contains("9.0"),
-                $"시드 라벨 영공 9.0 (실제 {WorldStar.SizeLabel(GameState.TowerFloor)})");
+            Check(WorldStar.SizeLabel(GameState.TowerFloor).Contains("4.8"),
+                $"시드 라벨 영공 4.8 (실제 {WorldStar.SizeLabel(GameState.TowerFloor)})");
             Environment.SetEnvironmentVariable(WorldStar.EnvShowSense, null);
 
             _ = nameof(WorldStar.RaceSensePercent);
@@ -107,6 +111,7 @@ namespace AshesToStars
 
             Environment.SetEnvironmentVariable(WorldStar.EnvShowSense, show);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoSense, no);
+            Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, noRange);
             WorldStar.ForceRaceSenseMul = oldForce;
             RacePrefs.Set(oldRace);
             WorldStar.ResetForTest();
