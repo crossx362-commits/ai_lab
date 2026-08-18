@@ -25,6 +25,7 @@ namespace AshesToStars
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
                 if (FieldDockCap.ShowQa) return FieldDockCap.Line();
                 if (FieldDockCap.ShowBossQa) return FieldDockCap.BossLine();
+                if (FieldDockCap.ShowRaidQa) return FieldDockCap.RaidLine();
                 string train = DeathTraining.Line();
                 string rest =
                     $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
@@ -70,6 +71,7 @@ namespace AshesToStars
             BagTextFmt.SeedQaIfRequested();
             FieldDockCap.SeedQaIfRequested();
             FieldDockCap.SeedBossQaIfRequested();
+            FieldDockCap.SeedRaidQaIfRequested();
             UiAtlas.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
@@ -167,7 +169,7 @@ namespace AshesToStars
             {
                 long raidCost = Economy.GetActionCost("RaidDungeon", GameState.Tier);
                 if (DrawCard(cards[2], $"레이드급 {RaidSpawn.RemainingText()}",
-                        $"5인 전제 · {Economy.FormatCurrency(raidCost)} · 환생석·증표 없음(§10-8)",
+                        FieldDockCap.Raid(),
                         "tower"))
                 {
                     if (GameState.Wallet.Copper < raidCost) _showInsufficientGold = true;

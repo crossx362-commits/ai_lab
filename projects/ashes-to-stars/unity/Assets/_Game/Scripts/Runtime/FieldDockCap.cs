@@ -3,16 +3,18 @@ using System;
 namespace AshesToStars
 {
     /// <summary>
-    /// 필드 도크 일정·저체력·사망없음·배회 보스 부제. 옛 줄은 한 칸에 두 줄로 잘렸다.
+    /// 필드 도크 일정·저체력·사망없음·배회 보스·레이드급 부제. 옛 줄은 한 칸에 두 줄로 잘렸다.
     /// QA_NO면 옛 긴 줄. FieldScreen이 읽는다.
     /// </summary>
     public static class FieldDockCap
     {
         public const string EnvShow = "QA_FIELD_DOCK";
         public const string EnvBoss = "QA_FIELD_BOSS_CAP";
+        public const string EnvRaid = "QA_FIELD_RAID_CAP";
         public const string EnvNo = "QA_NO_FIELD_DOCK";
         /// <summary>필드 도크 한 칸. 「잠김 — 」을 붙여도 한 줄.</summary>
         public const int CaptionMaxRunes = 18;
+        public const string RaidShort = "5인 · 환생석 없음";
 
         public const string OldLowHp = "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)";
         public const string OldSchedule = "편성을 보내 두면 영지에서도 돈다. 사망 없음 · 상한 12시간(§6)";
@@ -22,6 +24,7 @@ namespace AshesToStars
 
         static bool _qaSeeded;
         static bool _bossSeeded;
+        static bool _raidSeeded;
 
         public static bool Blocked
         {
@@ -52,6 +55,16 @@ namespace AshesToStars
             }
         }
 
+        public static bool ShowRaidQa
+        {
+            get
+            {
+                if (Blocked) return false;
+                string raw = Environment.GetEnvironmentVariable(EnvRaid);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         public static string Line() => Blocked
             ? "부제가 두 줄이다"
             : "일정·저체력 부제는 한 줄이다(§16)";
@@ -59,6 +72,10 @@ namespace AshesToStars
         public static string BossLine() => Blocked
             ? "부제가 두 줄이다"
             : "배회 보스 부제는 한 줄이다(§16)";
+
+        public static string RaidLine() => Blocked
+            ? "부제가 두 줄이다"
+            : "레이드급 부제는 한 줄이다(§16)";
 
         public static int RuneCount(string text)
         {
@@ -103,6 +120,15 @@ namespace AshesToStars
             ? OldBoss()
             : ShortBossName() + BossTail;
 
+        /// <summary>옛 줄은 인원·비용·드랍금지를 이어 붙여 슬림 칸에서 잘렸다.</summary>
+        public static string OldRaid()
+        {
+            long cost = Economy.GetActionCost("RaidDungeon", GameState.Tier);
+            return $"5인 전제 · {Economy.FormatCurrency(cost)} · 환생석·증표 없음(§10-8)";
+        }
+
+        public static string Raid() => Blocked ? OldRaid() : RaidShort;
+
         /// <summary>시각 QA. 레이드·배회 보스를 걷어 일정·저체력 칸을 연다.</summary>
         public static void SeedQaIfRequested()
         {
@@ -125,10 +151,21 @@ namespace AshesToStars
             FieldBoss.ForceSpawnForTest(0);
         }
 
+        /// <summary>시각 QA. 레이드급을 띄워 짧은 부제를 보여 준다.</summary>
+        public static void SeedRaidQaIfRequested()
+        {
+            if (!ShowRaidQa) return;
+            if (_raidSeeded) return;
+            _raidSeeded = true;
+            GameState.TrySelectTier(0);
+            RaidSpawn.ForceSpawnForTest(1);
+        }
+
         public static void ResetForTest()
         {
             _qaSeeded = false;
             _bossSeeded = false;
+            _raidSeeded = false;
         }
     }
 }

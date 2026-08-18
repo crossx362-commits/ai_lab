@@ -124,6 +124,9 @@ namespace AshesToStars
             FieldBoss.ForceSpawnForTest(0);
             Fits(dock[5], FieldBoss.CardTitle(), FieldDockCap.Boss(), "도크[5]배회");
             FieldBoss.ResetForTest();
+            RaidSpawn.ForceSpawnForTest(1);
+            Fits(dock[2], "레이드급 20:00", FieldDockCap.Raid(), "도크[2]레이드급");
+            RaidSpawn.Consume();
 
             string towerNo = Environment.GetEnvironmentVariable(TowerDockCap.EnvNo);
             Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, null);
