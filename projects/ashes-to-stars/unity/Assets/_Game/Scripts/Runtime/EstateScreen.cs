@@ -465,6 +465,13 @@ namespace AshesToStars
 
         void DrawEstateStatus(Rect r)
         {
+            // 파산 강등·압류 결과를 현황 안에서 노출한다(§18-5). 도크 카드는 아래에 붙으므로
+            // 위 두 줄과 겹치지 않는다. SeedQaIfRequested·EnvShow는 Body()가 이미 켠다.
+            if (BankruptcySeize.ShowOnHub)
+            {
+                Info(r, 0, BankruptcySeize.KeepLine());
+                Info(r, 1, BankruptcySeize.ItemLine());
+            }
             var cards = EstateStatusHud.Cards(r);
             if (DrawCard(cards[0], "내 별 영공", EstateStatusHud.AuraCaption(), "worldmap"))
                 _sub = Sub.영공;

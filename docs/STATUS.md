@@ -6,9 +6,9 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 던전 입장 카드 부제
-마지막 트랙: UI
-폴리싱 다음: 직전 트랙이 UI라 다음은 원장 ✅ 소비처 0곳. 사냥 시작 카드 부제가 길면 그다음 UI.
+최종 갱신: 2026-08-19 · 파산 강등·압류 문구를 영지 현황에 배선(full_check ①)
+마지막 트랙: 코드
+폴리싱 다음: 직전 트랙이 코드라 다음은 UI·아트 상시 폴리싱. 사냥 시작 카드 부제가 길면 그 한 결함.
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
 1. **영지 §4** — 클로드가 `EstateBuild.cs` 건물별 업그레이드 창. 그록은 그 파일을 안 만진다. StoreX 경로 소비처는 닫음(`EstateStore.Reached`). 남은 §5는 마우스 드래그 UX(TryMove는 있음). §6 아트는 그 다음.
@@ -29,11 +29,36 @@
 | 2 | **30층 성장 곡선** | 닫음. `BossHp` + 재측정 PASS |
 | 3 | **영지 §5 드래그 UX** | `EstateStore.TryMove`·경로 재계산은 닫음. 마우스 드래그 미리보기는 EstateScreen(클로드 창 훅과 겹침) |
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | 선행이 없어 지금 넣으면 오펀 |
-7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — `BankruptcySeize.KeepLine()` 소비처 0곳(영지 현황 개편 때 떨어져 나감. EstateScreen은 Line()만 읽음) ②`MineSeizeSelfCheck` — `SeizeLine`/`EnvShowSeize`를 EstateScreen이 안 읽음 ③`NetWorthSelfCheck` — `NetWorth.Line`은 TowerScreen:134가 읽는데 검사가 EstateScreen만 훑음. **셋 다 「강등·압류·순자산 문구를 영지 현황(현재는 EstateStatusHud 도크)에 노출」이 원래 의도** — 문구를 현황 도크에 실제로 배선하고 SelfCheck의 grep 대상 파일도 실제 소비처로 갱신하라(검사만 고쳐서 초록불 만들기 금지 — 배선 먼저). ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
+7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — `SeizeLine`/`EnvShowSeize`를 EstateScreen이 안 읽음 ③`NetWorthSelfCheck` — `NetWorth.Line`은 TowerScreen:134가 읽는데 검사가 EstateScreen만 훑음. **셋 다 「강등·압류·순자산 문구를 영지 현황(현재는 EstateStatusHud 도크)에 노출」이 원래 의도** — 문구를 현황 도크에 실제로 배선하고 SelfCheck의 grep 대상 파일도 실제 소비처로 갱신하라(검사만 고쳐서 초록불 만들기 금지 — 배선 먼저). ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(UI/실행): 던전 입장 카드 부제는 한 줄.**
+> **이번 이터 결과(코드/실행): 파산 강등·압류 문구를 영지 현황 도크에 배선(full_check ①).**
+> - 직전 트랙이 UI라 코드 칸. full_check 5 FAIL 중 ① BankruptcySeize를 닫았다.
+>   `BankruptcySeize.KeepLine()`이 소비처 0곳이었다(영지 현황 개편 때 떨어져 나가 EstateScreen은
+>   `Line()`만 읽고 있었다). SelfCheck는 EstateScreen이 `KeepLine`·`EnvShow`·`SeedQaIfRequested`를
+>   다 읽는지 grep한다.
+> - **생산 소비처**: `EstateScreen.DrawEstateStatus`가 `BankruptcySeize.ShowOnHub`일 때
+>   `Info(r,0,BankruptcySeize.KeepLine())`(강등)·`Info(r,1,BankruptcySeize.ItemLine())`(압류)를
+>   현황 도크 상단에 그린다. 도크 5칸 카드는 하단(DockH)이라 안 겹친다. EnvShow(_hubPage=1)·
+>   SeedQaIfRequested는 Body()가 이미 켠다 — 검사만 고쳐 초록불 만든 게 아니라 실제 소비 추가.
+>   `W3Party`/`EstateBuild`/`EstateStatusHud`/`Resources`는 안 건드렸다.
+> - **통과 기준**: `unity_meas` 배치 `AshesToStars.BankruptcySeizeSelfCheck.Run` PASS
+>   (`/tmp/bank_selfcheck.log:408 [BankruptcySeizeSelfCheck] PASS`). 특히 검사줄
+>   `영지 현황이 강등·압류 문구·시드를 읽는다` PASS.
+> - **네거티브**: EstateScreen에서 `Info(r,0,BankruptcySeize.KeepLine())`를 빼면 FAIL 1
+>   (`/tmp/bank_negctrl2.log:385 FAIL 영지 현황이 강등·압류 문구·시드를 읽는다`).
+>   (⚠️ 주석에 "KeepLine" 글자를 남기면 grep이 그걸 물어 오탐 — 첫 네거티브가 그래서 PASS로 샜다.)
+> - **화면**(직접 열음, 빈 화면 아님, `GAME_START=go:Estate QA_BANKRUPT_SEIZE=1`):
+>   `output/qa/ashes-to-stars/bank_seize_shots/qa_go:Estate.png` 1010257B — 영지 현황,
+>   상단 두 줄 `파산 강등 −1(§18-5)` · `비장착 30% 압류 · 4골드 32실버 상환(§18-5)`,
+>   본성 카드 `Lv2 · 24골드`(3→2 강등), 하단 도크 5칸. 마을 배경.
+> - **정직한 미완**: full_check ②MineSeize ③NetWorth ④RaceDrop ⑤BossBattleDps NRE는 남았다.
+>   ②③은 ①과 같은 「현황 도크에 문구 배선」 계열이라 다음 코드 칸에 이어서. ⑤는 W3Party 의존
+>   NRE라 대화 세션과 상의 필요. 오너 에디터 PID 25198(원본)은 안 죽였고 unity_meas 사본으로 측정.
+> - **코드** `<이번 커밋>`. `W3Party`는 안 건드렸다.
+
+> **직전 이터 결과(UI/실행): 던전 입장 카드 부제는 한 줄.**
 > - 직전 트랙이 코드라 필드 화면 한 결함. 레이드급은 `7b61d1bb`로 줄었는데
 >   던전 입장만 옛 `랜덤 생성 + 종점 보스 · 1실버 99쿠퍼(§7)`를 붙여 잘렸다.
 >   INBOX 이펙트는 FX 미커밋이라 안 겹침. 영지 §4는 클로드. 필드 정예는 W3Party.
