@@ -215,8 +215,29 @@ namespace AshesToStars
         };
 
         /// <summary>전투 idle 스프라이트 폴더. 초상이 아니라 전신 모습을 그릴 때 쓴다.</summary>
-        public static string LookDir(string job)
+        /// <summary>
+        /// QA 전용: 기본 5직업 그림을 강제로 본다.
+        /// 전투 파티는 기본값이 1차 전직(`AdvancementTier.First`)이라 **기본직업 그림이
+        /// 화면에 설 일이 없다** — 오너가 준 기본 5직업 스프라이트가 실제로 어떻게
+        /// 그려지는지 눈으로 확인할 방법이 없었다(2026-08-18). 파일·이름·캔버스가
+        /// 계약에 맞는 것과 화면에 제대로 나오는 것은 다르다.
+        /// </summary>
+        public static bool BaseLookForced =>
+            System.Environment.GetEnvironmentVariable("QA_BASE_LOOK") == "1";
+
+        /// <summary>
+        /// 그림 폴더. **기본은 전직 전**이다(오너 지시 2026-08-18 "앞으로 기본을 전직 전으로 바꿔").
+        ///
+        /// 예전엔 전직 폴더(`guardian` 등)가 존재하기만 하면 무조건 그쪽을 썼다. `Job` enum이
+        /// 전직명(수호기사·검사…)뿐이라 **모든 캐릭터가 항상 전직 그림**으로 그려졌고,
+        /// 오너가 준 기본 5직업 스프라이트는 화면에 설 자리가 없었다. 전직 그림은 실제로
+        /// 전직한 캐릭터만 쓴다 — 티어를 아는 호출부가 `LookDir(job, tier)`로 알려준다.
+        /// </summary>
+        public static string LookDir(string job) => BaseLookDir(job);
+
+        public static string LookDir(string job, AdvancementTier tier)
         {
+            if (BaseLookForced || tier == AdvancementTier.Basic) return BaseLookDir(job);
             string dedicated = DedicatedLookDir(job);
             if (!string.IsNullOrEmpty(dedicated)
                 && Resources.Load<Texture2D>($"sprites/{dedicated}/{dedicated}_{IdleFrame}") != null)

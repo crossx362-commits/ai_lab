@@ -473,7 +473,11 @@ public class W3Party : MonoBehaviour
             Levels = new int[j.Length];
             HpMuls = new float[j.Length];
             Fuse = new Fusion.CombatMuls[j.Length];
-            for (int i = 0; i < Advancements.Length; i++) Advancements[i] = AdvancementTier.First;
+            // 오너 지시(2026-08-18) "앞으로 기본을 전직 전으로 바꿔" — 기본값은 **전직 전**이다.
+            // 예전 기본값이 First라 QA 전투 파티가 항상 1차 전직으로 서서, 오너가 준
+            // 기본 5직업 스프라이트가 화면에 설 일이 아예 없었다(전직 폴더가 있으면
+            // `UiPages.LookDir`이 그쪽을 우선한다). 전직은 실제로 전직한 뒤에 붙어야 한다.
+            for (int i = 0; i < Advancements.Length; i++) Advancements[i] = AdvancementTier.Basic;
             for (int i = 0; i < Levels.Length; i++) Levels[i] = 1;
             for (int i = 0; i < HpMuls.Length; i++) HpMuls[i] = 1f;
             for (int i = 0; i < Fuse.Length; i++) Fuse[i] = Fusion.CombatMuls.Identity;
@@ -1684,7 +1688,7 @@ public class W3Party : MonoBehaviour
             if (want != m.Mo) { m.Mo = want; m.AnimT = 0f; }
             else m.AnimT += dt;
 
-            string artDir = AshesToStars.UiPages.LookDir(m.Job.ToString());
+            string artDir = AshesToStars.UiPages.LookDir(m.Job.ToString(), m.Advancement);
             m.Sr.sprite = bank.CharAnimDir(artDir, m.Mo, m.AnimT);
             // 무적 구간 표시 — 대시가 끝나고도 0.12초쯤 남는 무적을 화면에서 알 수 있게.
             // 「정확히 쓰면 한 번 산다」(§5)가 성립하려면 **무적이 켜져 있다는 것이 보여야** 한다.
