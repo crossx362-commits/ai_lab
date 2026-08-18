@@ -18,7 +18,8 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_character";
         // 성장(레벨·경험치)은 이제 실제로 된다 — 전투 보상이 출전 파티에 레벨 비례로 쌓인다(§3·§18-6).
         protected override string Subtitle =>
-            BagSlots.ShowQa ? BagSlots.Line()
+            GearOpt.ShowQa ? GearOpt.Line()
+            : BagSlots.ShowQa ? BagSlots.Line()
             : EquipJob.ShowQa ? EquipJob.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
@@ -75,6 +76,9 @@ namespace AshesToStars
             BagSlots.SeedQaIfRequested();
             EliteDrop.SeedQaIfRequested();
             GearDrop.SeedQaIfRequested();
+            GearOpt.SeedQaIfRequested();
+            if (GearOpt.ShowQa && _selectedCharacter < 0)
+                _selectedCharacter = 0;
             if (EquipJob.ShowQa && _selectedCharacter < 0)
                 _selectedCharacter = EquipJob.QaHealerIndex();
             StarterPick.SeedQaIfRequested();
@@ -821,6 +825,11 @@ namespace AshesToStars
                 Line($"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)}");
             if (EquipJob.ShowQa) Line(EquipJob.Line());
             if (BagSlots.ShowQa) Line(BagSlots.Line());
+            if (GearOpt.ShowQa)
+            {
+                Line(GearOpt.Line());
+                if (!string.IsNullOrEmpty(GearOpt.LastLine)) Line(GearOpt.LastLine);
+            }
             if (!string.IsNullOrEmpty(_equipMsg)) Line(_equipMsg);
 
             Line("장착");
@@ -828,9 +837,12 @@ namespace AshesToStars
             {
                 var worn = Equipment.Worn(ch, (EquipSlot)s);
                 string slot = Equipment.SlotName((EquipSlot)s);
+                string opt = worn == null ? "" : GearOpt.Format(worn);
                 Line(worn == null
                     ? $"{slot}  ·  없음"
-                    : $"{slot}  ·  {Equipment.DisplayName(worn)}" + (worn.Enhance > 0 ? $" +{worn.Enhance}" : ""));
+                    : $"{slot}  ·  {Equipment.DisplayName(worn)}"
+                      + (worn.Enhance > 0 ? $" +{worn.Enhance}" : "")
+                      + (string.IsNullOrEmpty(opt) ? "" : " · " + opt));
             }
 
             y += 6f;

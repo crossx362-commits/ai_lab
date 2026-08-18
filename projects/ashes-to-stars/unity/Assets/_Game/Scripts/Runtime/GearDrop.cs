@@ -5,7 +5,7 @@ namespace AshesToStars
     /// <summary>
     /// 보스 주 드랍은 고급 장비(§10-8·§11). 제작품은 일반.
     /// 옛 보상은 가죽·목숨 아이템만 주고 장비 칸이 0이었다.
-    /// QA_NO면 옛 0. 정예 일반·랜덤 옵션은 이 칸 아님.
+    /// QA_NO면 옛 0. 정예 일반은 이 칸 아님. 랜덤 옵션은 GearOpt.
     /// </summary>
     public static class GearDrop
     {

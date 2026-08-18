@@ -26,6 +26,7 @@ namespace AshesToStars
         public float HpMul = 1f;
         public int Enhance;
         public GearGrade Grade = GearGrade.Common;
+        public int[] Affixes = System.Array.Empty<int>();
     }
 
     public sealed class CraftRecipe
@@ -135,6 +136,7 @@ namespace AshesToStars
                         System.Globalization.CultureInfo.InvariantCulture, out float hp) ? hp : 1f,
                     Enhance = p.Length > 5 && int.TryParse(p[5], out int en) ? Mathf.Clamp(en, 0, MaxEnhance) : 0,
                     Grade = p.Length > 6 && Enum.TryParse(p[6], out GearGrade gd) ? gd : GearGrade.Common,
+                    Affixes = p.Length > 7 ? ParseAffixes(p[7]) : System.Array.Empty<int>(),
                 };
                 _items.Add(item);
             }
@@ -142,6 +144,31 @@ namespace AshesToStars
 
         static EquipSlot ParseSlot(string raw) =>
             Enum.TryParse(raw, out EquipSlot slot) ? slot : EquipSlot.Armor;
+
+        static int[] ParseAffixes(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return System.Array.Empty<int>();
+            var parts = raw.Split(',');
+            var list = new List<int>(parts.Length);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (int.TryParse(parts[i], out int id) && id >= 0)
+                    list.Add(id);
+            }
+            return list.Count == 0 ? System.Array.Empty<int>() : list.ToArray();
+        }
+
+        static string PackAffixes(int[] affixes)
+        {
+            if (affixes == null || affixes.Length == 0) return "";
+            var sb = new StringBuilder();
+            for (int i = 0; i < affixes.Length; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append(affixes[i]);
+            }
+            return sb.ToString();
+        }
 
         static void Save()
         {
@@ -154,7 +181,8 @@ namespace AshesToStars
                 sb.Append(g.Id).Append('\t').Append(g.Slot).Append('\t').Append(g.RecipeId)
                   .Append('\t').Append(g.Name).Append('\t')
                   .Append(g.HpMul.ToString(inv)).Append('\t').Append(g.Enhance)
-                  .Append('\t').Append(g.Grade).Append('\n');
+                  .Append('\t').Append(g.Grade).Append('\t')
+                  .Append(PackAffixes(g.Affixes)).Append('\n');
             }
             PlayerPrefs.SetString(K_GEAR, sb.ToString());
             PlayerPrefs.Save();
@@ -335,7 +363,9 @@ namespace AshesToStars
                 HpMul = recipe.BaseHpMul,
                 Enhance = 0,
                 Grade = grade,
+                Affixes = System.Array.Empty<int>(),
             };
+            GearOpt.Apply(gear);
             _items.Add(gear);
             Save();
             return gear;
@@ -362,6 +392,7 @@ namespace AshesToStars
                 HpMul = recipe.BaseHpMul,
                 Enhance = 0,
                 Grade = GearGrade.Common,
+                Affixes = System.Array.Empty<int>(),
             });
             Save();
             return true;
