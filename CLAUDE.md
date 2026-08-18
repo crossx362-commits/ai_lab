@@ -136,6 +136,26 @@ python projects/ai-team/skills/영숙_비서/tools/agent_controller.py 영숙 re
 | 마루 (Maru) | Game Dev — 유니티 빌드·성능·렌더링 검증·밸런스 시뮬. 배치 빌드→플레이어 실행→FPS·화면·수치 검증→리포트·스크린샷 생성 | `game_build_verify.py`, `game_balance_sim.py` (헌장: `skills/마루_게임개발/SKILL.md`, 산출물: `output/qa/ashes-to-stars/`) |
 | 별이 (Byeol) | Game Art QA — 매 실행 딥서치로 기준 확인 → 검수 → 크로마·반투명 수정. 4직업 재생성 없음 | `game_image_quality.py` (헌장: `skills/별이_이미지품질/SKILL.md`, 산출물: `output/qa/ashes-to-stars/image_quality/`) |
 
+
+**⚡ 전원 재와 별 투입 (오너 지시 2026-08-18)** — 펫나 6인이 게임 개발 역할로 이동했다.
+배정 단일 소스는 `_shared/fleet_assignment.json`(평문·git 추적)이고, `_shared/assignment.py`의
+`assignment_guard()`가 **코드로 강제**한다 — 배정이 `ashes-to-stars`인 동안 펫나 도구는
+`--once`든 `--daemon`이든 정시 잡이든 첫 줄에서 사유를 찍고 종료한다(문서 규칙이 아니라 가드).
+
+| 사람 | 게임 역할 | 무엇을 보나 | 주기 |
+|---|---|---|---|
+| 봄이 | 정합성 | 기획서 ✅ 확정 중 코드에서 성립 안 하는 것 | 07:10 · 19:10 |
+| 수리 | 구현 | 죽은 데이터·읽는 코드 0곳인 설정/에셋 | 07:40 · 19:40 |
+| 백호 | 밸런스 | 수치가 §18 앵커에서 유도됐는지 코드와 대조 | 08:10 · 20:10 |
+| 미오 | 연출 | 500체 화면에서 규칙이 눈에 읽히는지 | 08:40 · 20:40 |
+| 테오 | 검증 | 네거티브 컨트롤 없는 통과 찾기 | 10:10 · 22:10 |
+| 나무 | 우선순위 | ORDERS·백로그 순서 역전 (로컬 모델 1순위) | 20분 |
+
+전원 **읽기 전용**(Read/Grep/Glob·plan 모드)이라 유니티 락을 잡지 않는다 — 개발 세션 빌드를
+죽이지 않기 위한 원칙이며 되돌리지 마라(`game_agents.py` 머리말). 발견은 보고서
+`output/qa/ashes-to-stars/agents/<역할>_<ts>.md` + 백로그(`owner_agent`에 사람 이름).
+펫나로 되돌리려면 `fleet_assignment.json`의 `project`를 `petnna`로 고치면 된다 — 코드는 그대로다.
+
 **펫나 자동 개발 루프**: 봄이(발견)·백호(DB 계약)·테오(회귀 테스트) → 수리(수정/구현) → 봄이 재검수 → 저위험 P2/P3만 자동 병합. 미오(디자인)·나무(기획)가 `output/qa/petnna/backlog.json`에 과제 적재 → 수리가 QA 이슈 없을 때 브랜치 구현(자동 병합 없음, 사람 검토). 봄이는 순찰 중 앱 자체 오류수집기(AppLogger→localStorage)도 흡수(global_error=P1). 전 에이전트 클로드 세션에 웹서치 허용(모르는 건 검색). 공용 헬퍼: `_shared/cc.py`(claude -p 헤드리스). **반려 피드백 환류(크리틱 루프, 2026-07-15)**: 예원 PR 리뷰의 품질 반려는 시도 한도(MAX_ATTEMPTS) 내라면 `보류`가 아니라 `대기`로 되돌리며 반려 사유를 `review_feedback`에 적재 — 수리가 재시도 프롬프트에 그 사유를 주입받아 같은 실수를 반복하지 않는다(하드 게이트 반려·한도 소진만 보류, 회귀 테스트 `tests/test_review_feedback_loop.py`).
 
 **펫나 가드레일 (주식 모의거래 교훈 이식, 2026-07-08)**:

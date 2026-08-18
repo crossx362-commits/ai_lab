@@ -40,6 +40,7 @@ from _shared.telegram import send       # noqa: E402
 from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import ollama  # noqa: E402
+from _shared.assignment import people_for, current_project  # noqa: E402
 
 import importlib.util as _u             # noqa: E402
 _spec = _u.spec_from_file_location("game_council", SCRIPT_DIR / "game_council.py")
@@ -103,8 +104,10 @@ def _beat(lens: str, focus: str, situation: str) -> tuple[str, str, list]:
         except Exception as e:
             print(f"[역할감사] 우선순위 로컬 실패({e}) — 클로드로 승격")
 
+    who = people_for(lens)
     prompt = (
-        f"너는 '재와 별(Ashes to Stars)' 개발팀의 **{lens}** 담당이다.\n"
+        f"너는 '재와 별(Ashes to Stars)' 개발팀의 **{lens}** 담당"
+        + (f"({who})" if who else "") + "이다.\n"
         f"너의 렌즈: {focus}\n\n[이번 점검 과제]\n{BEATS[lens]}\n\n"
         f"[현재 상태 — 이미 수집됨]\n{situation}\n\n"
         "[읽을 것]\n"
@@ -163,16 +166,23 @@ def main() -> None:
         for lens, report, items in results:
             if report == _gc.FAIL:
                 continue
+            who = people_for(lens)
             (OUT_DIR / f"{lens}_{ts}.md").write_text(
-                f"# {lens} 점검 — {ts}\n\n{report}\n", encoding="utf-8")
+                f"# {lens} 점검 — {ts}" + (f" · {who}" if who else "")
+                + f"\n\n{report}\n", encoding="utf-8")
             for i in items:
                 i["role"] = lens
+                if who:
+                    i["owner_agent"] = who
             new_items += items
 
         if new_items:
             _gc._append_backlog(new_items, ts)
 
-        head = "\n".join(f"- [{i.get('role')}] {i.get('title','')}" for i in new_items[:6])
+        head = "\n".join(
+            f"- [{i.get('role')}"
+            + (f"·{i['owner_agent']}" if i.get("owner_agent") else "")
+            + f"] {i.get('title','')}" for i in new_items[:6])
         print(f"[역할감사] 완료 — 역할 {len(results)}개, 신규 과제 {len(new_items)}건")
         if new_items:
             send(f"🔍 재와 별 역할별 점검 — 신규 과제 {len(new_items)}건\n\n{head}")

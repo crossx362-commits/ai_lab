@@ -35,6 +35,7 @@ sys.path.insert(0, str(AI_TEAM_ROOT))
 from _shared.env import load_env  # noqa: E402
 from _shared.telegram import send  # noqa: E402
 from _shared.process import ProcessLock, advisory_lock, petnna_single_machine_guard  # noqa: E402
+from _shared.assignment import assignment_guard  # noqa: E402
 from _shared.utils import due_slot  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
 from _shared.llm import text as llm_text  # noqa: E402
@@ -401,6 +402,9 @@ def daemon() -> None:
 
 
 def main() -> None:
+    # 함대 배정이 펫나가 아니면 어떤 경로(--once·--daemon·정시 잡)로도 돌지 않는다.
+    if assignment_guard("미오", "petnna"):
+        return
     ap = argparse.ArgumentParser(description="미오 — 펫나 디자인 리뷰어")
     ap.add_argument("--once", action="store_true", help="리뷰 1회(요일 무관)")
     ap.add_argument("--send", action="store_true")
