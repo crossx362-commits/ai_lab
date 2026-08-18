@@ -6,7 +6,7 @@ namespace AshesToStars
     /// 경매 등록 품목(§12). 드랍·제작만 팔고 칭호·스킨·명예는 귀속.
     /// 옛 코드는 증표만 막아서 드랍 품목을 거절했다. QA_NO면 그 옛 거절로 돌아간다.
     /// 목숨 아이템 등록가는 LifePrice 하한(§4·§18-4).
-    /// 증표 등록가는 TokenPrice 하한 200 G/h(§18-4).
+    /// 증표 등록가는 TokenPrice 하한 200 · 상한 400 G/h(§18-4).
     /// </summary>
     public static class AuctionTrade
     {

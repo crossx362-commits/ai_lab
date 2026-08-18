@@ -43,10 +43,16 @@ namespace AshesToStars
             GameState.Grant(3_000_000);
 
             Check(Mathf.Approximately(TokenPrice.Hours, 200f), "증표 200 G/h");
+            Check(Mathf.Approximately(TokenPrice.CeilHours, 400f), "증표 상한 400 G/h");
             Check(TokenPrice.Floor(Economy.LifeItem.CraftHide) == 0, "가죽은 이 칸 아님");
+            Check(TokenPrice.Ceil(Economy.LifeItem.CraftHide) == 0, "가죽 상한 없음");
             Check(TokenPrice.Floor(Economy.LifeItem.RebornStone) == 0, "환생석은 LifePrice 칸");
+            Check(TokenPrice.Ceil(Economy.LifeItem.RebornStone) == 0, "환생석 상한은 LifePrice");
             Check(TokenPrice.Floor(Economy.LifeItem.SpecialJobToken) == 2_000_000,
                 $"T1 증표 200골드 (실제 {TokenPrice.Floor(Economy.LifeItem.SpecialJobToken)})");
+            Check(TokenPrice.Ceil(Economy.LifeItem.SpecialJobToken) == 4_000_000,
+                $"T1 증표 상한 400골드 (실제 {TokenPrice.Ceil(Economy.LifeItem.SpecialJobToken)})");
+            Check(LifePrice.Copper(400f, 0) == 4_000_000, "T1 400 G/h = 400골드");
             Check(LifePrice.Copper(200f, 0) == 2_000_000, "T1 200 G/h = 200골드");
             long t5 = LifePrice.Copper(200f, 4);
             Check(t5 >= 13_100_000 && t5 <= 13_110_000,
@@ -69,8 +75,21 @@ namespace AshesToStars
             Check(AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, 2_000_000),
                 "하한 정각은 등록");
             Check(AuctionState.MineCount == 1, "내 등록 1건");
-            Check(TokenPrice.Line().Contains("200골드") && TokenPrice.Line().Contains("§18-4"),
-                $"줄 200골드 (실제 {TokenPrice.Line()})");
+            Check(TokenPrice.Line().Contains("200골드") && TokenPrice.Line().Contains("400골드")
+                  && TokenPrice.Line().Contains("§18-4"),
+                $"줄 200~400골드 (실제 {TokenPrice.Line()})");
+            Check(TokenPrice.AboveCeil(Economy.LifeItem.SpecialJobToken, 4_000_001),
+                "상한 +1은 AboveCeil");
+            Check(!TokenPrice.AboveCeil(Economy.LifeItem.SpecialJobToken, 4_000_000),
+                "상한 정각은 허용");
+
+            GameState.Gain(Economy.LifeItem.SpecialJobToken, 1);
+            Check(!AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, 4_000_001),
+                "상한 +1은 거절");
+            Check(GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) == 1, "상한 거절은 가방을 안 뺀다");
+            Check(AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, 4_000_000),
+                "상한 정각은 등록");
+            Check(AuctionState.MineCount == 2, "하한+상한 2건");
 
             GameState.ResetAll();
             AuctionState.ResetForTest();
@@ -102,6 +121,13 @@ namespace AshesToStars
             GameState.Gain(Economy.LifeItem.SpecialJobToken, 1);
             Check(AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, TokenPrice.OldCopper),
                 "차단하면 옛 가로 등록");
+            Check(TokenPrice.Ceil(Economy.LifeItem.SpecialJobToken) == long.MaxValue,
+                "차단하면 상한 없음");
+            Check(!TokenPrice.AboveCeil(Economy.LifeItem.SpecialJobToken, 4_000_001),
+                "차단하면 상한 +1도 허용");
+            GameState.Gain(Economy.LifeItem.SpecialJobToken, 1);
+            Check(AuctionState.TryListItem(Economy.LifeItem.SpecialJobToken, 1, 4_000_001),
+                "차단하면 상한 위도 등록");
             Check(TokenPrice.Line().Contains("옛"),
                 $"차단 문구 (실제 {TokenPrice.Line()})");
             Environment.SetEnvironmentVariable(TokenPrice.EnvNo, null);
@@ -132,11 +158,15 @@ namespace AshesToStars
             string tradeSrc = File.ReadAllText(Path.Combine(runtime, "AuctionTrade.cs"));
             Check(auctionSrc.Contains("TokenPrice.BelowFloor"),
                 "TryListItem이 TokenPrice.BelowFloor를 읽는다");
+            Check(auctionSrc.Contains("TokenPrice.AboveCeil"),
+                "TryListItem이 TokenPrice.AboveCeil을 읽는다");
             Check(tradeSrc.Contains("TokenPrice.Floor") && tradeSrc.Contains("TokenPrice.SeedQaIfRequested"),
                 "ListPrice·시드가 TokenPrice를 읽는다");
 
             _ = nameof(TokenPrice.Floor);
+            _ = nameof(TokenPrice.Ceil);
             _ = nameof(TokenPrice.BelowFloor);
+            _ = nameof(TokenPrice.AboveCeil);
             _ = nameof(TokenPrice.Line);
             _ = nameof(AuctionTrade.ListPrice);
             _ = nameof(AuctionState.TryListItem);
