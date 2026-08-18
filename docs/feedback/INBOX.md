@@ -27,7 +27,7 @@
 옛 InvaderSide 최단 자동만 있었다. `InvasionApproach.Side`를 TryBegin·월드맵이 읽음.
 `QA_NO`면 옛 최단. SelfCheck 전항 PASS. FAIL 3은 TryBegin이 InvaderSide.
 PNG `invasion_approach_shots/qa_go:WorldMap.png` — 북 3·동 4·남 4·서 3.
-경로 전투는 💡라 안 넣음.
+경로 전투는 💡라 안 넣음. 코드 `0d3e9408`.
 
 ### ✅ 경매장 전용 그림 (루프, 2026-08-17)
 
