@@ -59,14 +59,17 @@ FRAME_PLAN = [
     ("attack_03", ROW_ATTACK, 3),
     ("attack_04", ROW_ATTACK, 4),
     ("attack_05", ROW_ATTACK, 5),
-    # 스킬도 6프레임 — 1장만 쓰면 시전 중 캐릭터가 얼어붙는다(실측: 모션=Special인데
-    # 아틀라스 칸 y:434 고정).
-    ("special_00", ROW_SKILL3, 0),
-    ("special_01", ROW_SKILL3, 1),
-    ("special_02", ROW_SKILL3, 2),
-    ("special_03", ROW_SKILL3, 3),
-    ("special_04", ROW_SKILL3, 4),
-    ("special_05", ROW_SKILL3, 5),
+    # 시전 6프레임. ⚠️ **스킬 행(SKILL1~3)에서 뽑지 않는다** — 그 행들은 이펙트가
+    # 캐릭터에 통째로 덧그려져 있어(탱커 빛기둥·마법사 보라 화염) 스프라이트가
+    # 이펙트를 달고 다니게 된다(오너 지시 2026-08-18 "캐릭터에 붙어있는 이펙트 지우자").
+    # 이펙트는 FxPool·FxParticles가 따로 그린다 — 캐릭터는 몸만 있어야 한다.
+    # 대신 공격 행을 시전 동작으로 쓴다(무기를 휘두르는 깨끗한 포즈).
+    ("special_00", ROW_ATTACK, 0),
+    ("special_01", ROW_ATTACK, 1),
+    ("special_02", ROW_ATTACK, 2),
+    ("special_03", ROW_ATTACK, 3),
+    ("special_04", ROW_ATTACK, 4),
+    ("special_05", ROW_ATTACK, 5),
     ("hurt_00", ROW_DEATH, 0),
     ("death_00", ROW_DEATH, 4),
     ("dash_00", ROW_MOVE, 1),
@@ -286,6 +289,22 @@ def process(path: str, job: str, dest_root: str, dry: bool) -> int:
             cell = cells[(ROW_IDLE, 0)]          # 빈 칸이면 idle로 대체
         frames.append(cell)
         names.append(name)
+
+    # 캐릭터가 빠진 칸을 걷어낸다. 공격 행 뒷쪽에는 **투사체만 남은 프레임**이 있어
+    # (마법사 보라 탄환) 그대로 쓰면 시전 중 캐릭터가 사라진다. 내용 높이가 idle의
+    # 60% 미만이면 캐릭터가 없다고 보고 직전 유효 프레임으로 대체한다.
+    idle_h = 0
+    ys, _ = np.where(frames[0][..., 3] > 40)
+    if len(ys):
+        idle_h = ys.max() - ys.min() + 1
+    last_ok = frames[0]
+    for i, f in enumerate(frames):
+        ys, _ = np.where(f[..., 3] > 40)
+        h = (ys.max() - ys.min() + 1) if len(ys) else 0
+        if idle_h and h < idle_h * 0.60:
+            frames[i] = last_ok
+        else:
+            last_ok = f
 
     images = center_on_canvas(frames)
     dest = os.path.join(dest_root, job)
