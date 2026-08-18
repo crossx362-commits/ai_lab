@@ -251,7 +251,7 @@ namespace AshesToStars
                 int y = qy[head];
                 int d = qd[head];
                 head++;
-                if (x == StoreX && y == StoreY) return d;
+                if (EstateStore.Reached(x, y)) return d;
                 for (int k = 0; k < 4; k++)
                     Enq(x + dx[k], y + dy[k], d + 1);
             }
@@ -346,7 +346,7 @@ namespace AshesToStars
             {
                 int x = qx[head], y = qy[head], d = qd[head];
                 head++;
-                if (x == StoreX && y == StoreY) return d;
+                if (EstateStore.Reached(x, y)) return d;
                 for (int k = 0; k < 4; k++)
                     Enq(x + dx[k], y + dy[k], d + 1);
             }

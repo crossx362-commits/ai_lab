@@ -76,6 +76,8 @@ namespace AshesToStars
                 return EstateStatusHud.Line();
             if (EstateHud.ShowQa)
                 return EstateHud.Line();
+            if (EstateStore.ShowQa)
+                return EstateStore.Line();
             return EstateYard.Line();
         }
 
@@ -155,6 +157,7 @@ namespace AshesToStars
             EstateDefense.SeedQaIfRequested();
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
+            EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();

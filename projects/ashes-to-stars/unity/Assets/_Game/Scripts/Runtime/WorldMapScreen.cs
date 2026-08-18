@@ -45,6 +45,8 @@ namespace AshesToStars
                     s += " · " + InvasionState.RepeatLootLine();
                 if (InvasionApproach.ShowQa || InvasionApproach.HasPick || InvasionApproach.Picking)
                     s += " · " + InvasionApproach.Line();
+                if (EstateStore.ShowQa)
+                    s += " · " + EstateStore.Line();
                 return s + " · 침략은 탑 30층(§14·§15)";
             }
         }
@@ -81,6 +83,7 @@ namespace AshesToStars
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
             InvasionApproach.SeedQaIfRequested();
+            EstateStore.SeedQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
@@ -107,6 +110,8 @@ namespace AshesToStars
             string invasionOpen = InvasionApproach.Blocked
                 ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)"
                 : $"{InvasionApproach.Line()} · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())}";
+            if (EstateStore.ShowQa)
+                invasionOpen = EstateStore.Line() + " · " + invasionOpen;
             if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
                 invasionOpen = $"{Economy.RaceCostLine()} · " + invasionOpen;
             else if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)

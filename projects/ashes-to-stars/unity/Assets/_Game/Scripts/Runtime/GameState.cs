@@ -600,6 +600,7 @@ namespace AshesToStars
             EstateMine.ResetForTest();
             EstateDefense.ResetForTest();
             EstateGrid.ResetForTest();
+            EstateStore.ResetForTest();
             SoftCap.ResetForTest();
             Honor.ResetForTest();
             DeathTraining.ResetForTest();

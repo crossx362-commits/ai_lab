@@ -11,6 +11,14 @@
 ---
 
 
+## 지금 (2026-08-18) — 창고 현재 칸이 침략 경로
+
+직전 트랙 아트 → 코드 칸. INBOX 이펙트는 FX 미커밋이라 안 겹침.
+`EstateStore.Reached`를 `PathLength`가 읽는다. StoreX는 기본 스폰만.
+TryMove (3,6) → 북 6·남 1. `QA_NO`면 옛 (3,3).
+샷 `estate_store_shots/qa_go:{Estate,WorldMap}.png` — `창고 (3,6) · 남 1칸`.
+드래그 UX·EstateBuild는 다음. 폴리싱 다음은 탑.
+
 ## 지금 (2026-08-18) — 서포터 공격 프레임 반쪽
 
 INBOX 22:03. 오너 시트는 몸 있음 · 반입만 슬래시 조각을 칸으로 썼다.
