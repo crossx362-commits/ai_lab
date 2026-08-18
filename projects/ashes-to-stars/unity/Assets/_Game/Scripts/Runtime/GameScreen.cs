@@ -28,6 +28,13 @@ namespace AshesToStars
         protected virtual bool ShowBottomBar => true;
         /// <summary>전투처럼 자체 HUD가 상단을 소유하는 화면은 공통 제목판을 숨긴다.</summary>
         protected virtual bool ShowHeader => true;
+        /// <summary>
+        /// 도크 없는 화면이 바닥 왼쪽에 그리는 「ESC — 뒤로」 힌트를 표시할지.
+        /// ⚠️ 전투는 W3Party 파티 카드가 바닥 전체를 소유해 이 힌트가 1번 카드 체력바와
+        ///    겹쳐 회색 글씨가 흰 체력 수치를 뭉갠다(2026-08-19 실측 qa_boss.png). ESC 키
+        ///    자체는 입력 처리라 그대로 살아 있으니, 전투에서는 힌트만 끈다.
+        /// </summary>
+        protected virtual bool ShowEscHint => true;
 
         /// <summary>
         /// 화면 전체를 불투명 배경으로 덮을지.
@@ -222,8 +229,12 @@ namespace AshesToStars
             else
             {
                 // 도크가 없는 화면만 바닥에 ESC를 둔다. 허브는 도크 왼쪽 빈 칸이 소비처다.
-                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
-                UiPages.LabelClip(new Rect(48, REF_H - 28, 280, 22), "ESC — 뒤로", _small);
+                // 전투는 파티 카드가 바닥을 소유하므로 힌트를 끈다(ShowEscHint=false).
+                if (ShowEscHint)
+                {
+                    if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
+                    UiPages.LabelClip(new Rect(48, REF_H - 28, 280, 22), "ESC — 뒤로", _small);
+                }
             }
             Overlay();
 

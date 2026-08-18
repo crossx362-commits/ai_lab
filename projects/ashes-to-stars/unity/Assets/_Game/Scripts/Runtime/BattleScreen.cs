@@ -34,6 +34,9 @@ namespace AshesToStars
         protected override bool ShowHeader => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
         protected override bool OpaqueBackground => false;
+        // W3Party 파티 카드가 바닥 전체를 소유한다. 공통 「ESC — 뒤로」 힌트를 그리면
+        // 1번 카드 체력바와 겹쳐 회색 글씨가 흰 수치를 뭉갠다(2026-08-19 qa_boss.png). ESC 키는 유효.
+        protected override bool ShowEscHint => false;
 
         float _t;
         global::W3Party _battle;

@@ -6,9 +6,17 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · full_check ③ 순자산 문구를 영지 현황 도크에 배선(코드, SelfCheck 33항 PASS·네거티브 FAIL 실측)
-마지막 트랙: 코드
-폴리싱 다음: **전투HUD**(아직 안 본 화면). 이어 타이틀 → 영지. 던전은 이번 이터가 닫음 —
+최종 갱신: 2026-08-19 · 폴리싱 전투HUD — 「ESC — 뒤로」힌트가 1번 카드 체력바를 뭉갬(육안 확인, qa_boss.png)
+마지막 트랙: 폴리싱
+폴리싱 다음: **타이틀**(전투HUD는 이번 이터가 봄). 이어 영지 → 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과.
+전투HUD 이번 이터 결과: `BattleScreen`은 `ShowBottomBar=false`라 베이스 `GameScreen.OnGUI`가 바닥 왼쪽에
+「ESC — 뒤로」+scrim(Rect(0,REF_H-34,360,34))을 그렸는데, W3Party 파티 카드가 바닥을 소유해 **1번 카드
+체력바와 겹쳐 회색 글씨가 흰 수치("278/347")를 뭉갰다**(qa_boss.png 실측). `GameScreen`에 `ShowEscHint`
+virtual(기본 true) 추가 → `BattleScreen`만 false로 override. ESC 키 입력은 그대로. **육안 확인**: 재캡처
+qa_boss.png에서 회색 힌트 사라지고 1번 카드 "378/378" 깨끗. 증거 `output/qa/ashes-to-stars/hud_shots/
+qa_boss_esc_hint_fix_20260819.png`. meas 빌드 error CS 0(qa_shot 컴파일 게이트 통과). 네거티브: `ShowEscHint`
+override 제거하면 겹침 재발(before 크롭이 회색 오버랩 보임). W3Party 전투 수치·AI는 안 건드림. 코드 대기 커밋.
+폴리싱 다음(과거 기록): 이어 타이틀 → 영지. 던전은 이전 이터가 닫음 —
 노드 부제 `동시 64체 · 원거리 0% · pockets`처럼 `ArenaTemplate` enum(open_ring/pillars/choke/
 pockets/arena_wide)이 한글 UI에 그대로 새던 것을 `TemplateKo`로 매핑. **⚠️ 이 세션 환경에서는
 `ScreenCapture`가 저장 실패해(앱이 foreground 아님, Player.log `Failed to store screen shot` 3회)
