@@ -157,6 +157,8 @@ namespace AshesToStars
             Fits(world[1], "침략", WorldMapDockCap.Caption(), "월드맵도크[1]");
             Fits(world[2], "랭킹",
                 "잠김 — " + WorldMapDockCap.Rank(), "월드맵도크[2]");
+            Fits(world[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
+                "잠김 — " + WorldMapDockCap.Defense(), "월드맵도크[3]");
             GameState.SetTowerFloorForTest(1);
             Fits(world[1], "침략",
                 "잠김 — " + WorldMapDockCap.Caption(), "월드맵도크잠김");

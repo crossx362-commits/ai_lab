@@ -3,7 +3,7 @@ using System;
 namespace AshesToStars
 {
     /// <summary>
-    /// 월드맵 도크 부제. 침략은 면·출정, 성계·랭킹은 미구현 설명을 줄인다.
+    /// 월드맵 도크 부제. 침략은 면·출정, 성계·랭킹·수비대는 미구현 설명을 줄인다.
     /// QA_NO면 옛 긴 줄. WorldMapScreen이 읽는다.
     /// </summary>
     public static class WorldMapDockCap
@@ -18,8 +18,10 @@ namespace AshesToStars
         public const string OpenTail = "칸 · 출정";
         public const string OldStar = "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)";
         public const string OldRank = "랭킹 서버 없음 — 온라인 기능이다(§15)";
+        public const string OldDefense = "침략 전투는 아직 없다(§13-5)";
         public const string StarCap = "로컬 허브만";
         public const string RankCap = "서버 없음";
+        public const string DefenseCap = "침략 없음";
 
         static bool _qaSeeded;
 
@@ -47,7 +49,7 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "부제가 두 줄이다"
-            : "성계·랭킹 부제는 한 줄이다(§16)";
+            : "수비대 부제는 한 줄이다(§16)";
 
         public static int RuneCount(string text)
         {
@@ -126,6 +128,9 @@ namespace AshesToStars
 
         /// <summary>옛 소비처 — 서버 부재 설명을 통째로 붙였다.</summary>
         public static string Rank() => Blocked ? OldRank : RankCap;
+
+        /// <summary>옛 소비처 — 침략 본게임이 없다는 문장을 통째로 붙였다.</summary>
+        public static string Defense() => Blocked ? OldDefense : DefenseCap;
 
         /// <summary>시각 QA. 30층이라 카드가 열리고 최단 면 부제가 한 줄.</summary>
         public static void SeedQaIfRequested()

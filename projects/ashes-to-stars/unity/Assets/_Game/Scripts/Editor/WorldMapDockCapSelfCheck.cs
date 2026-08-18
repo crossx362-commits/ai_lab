@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>월드맵 성계·랭킹·침략 도크 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
+    /// <summary>월드맵 성계·랭킹·침략·수비대 도크 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
     public static class WorldMapDockCapSelfCheck
     {
         static int _fail;
@@ -67,15 +67,21 @@ namespace AshesToStars
                 $"성계 부제 (실제 {WorldMapDockCap.Star()})");
             Check(WorldMapDockCap.Rank() == WorldMapDockCap.RankCap,
                 $"랭킹 부제 (실제 {WorldMapDockCap.Rank()})");
+            Check(WorldMapDockCap.Defense() == WorldMapDockCap.DefenseCap,
+                $"수비대 부제 (실제 {WorldMapDockCap.Defense()})");
             string starLocked = "잠김 — " + WorldMapDockCap.Star();
             string rankLocked = "잠김 — " + WorldMapDockCap.Rank();
+            string defLocked = "잠김 — " + WorldMapDockCap.Defense();
             Check(WorldMapDockCap.CaptionFits(starLocked),
                 $"성계 접두 {WorldMapDockCap.RuneCount(starLocked)} ≤ {WorldMapDockCap.CaptionMaxRunes}");
             Check(WorldMapDockCap.CaptionFits(rankLocked),
                 $"랭킹 접두 {WorldMapDockCap.RuneCount(rankLocked)} ≤ {WorldMapDockCap.CaptionMaxRunes}");
+            Check(WorldMapDockCap.CaptionFits(defLocked),
+                $"수비대 접두 {WorldMapDockCap.RuneCount(defLocked)} ≤ {WorldMapDockCap.CaptionMaxRunes}");
             Check(!WorldMapDockCap.CaptionFits(WorldMapDockCap.OldStar)
-                  && !WorldMapDockCap.CaptionFits(WorldMapDockCap.OldRank),
-                $"옛 성계·랭킹 줄은 안 맞음 (성계 {WorldMapDockCap.RuneCount(WorldMapDockCap.OldStar)} 랭킹 {WorldMapDockCap.RuneCount(WorldMapDockCap.OldRank)})");
+                  && !WorldMapDockCap.CaptionFits(WorldMapDockCap.OldRank)
+                  && !WorldMapDockCap.CaptionFits(WorldMapDockCap.OldDefense),
+                $"옛 성계·랭킹·수비대 줄은 안 맞음 (성계 {WorldMapDockCap.RuneCount(WorldMapDockCap.OldStar)} 랭킹 {WorldMapDockCap.RuneCount(WorldMapDockCap.OldRank)} 수비대 {WorldMapDockCap.RuneCount(WorldMapDockCap.OldDefense)})");
 
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, "1");
             Check(WorldMapDockCap.Blocked, "QA_NO");
@@ -83,8 +89,9 @@ namespace AshesToStars
                   && !WorldMapDockCap.CaptionFits(WorldMapDockCap.Caption()),
                 $"QA_NO 옛 긴 줄 (실제 {WorldMapDockCap.Caption()})");
             Check(WorldMapDockCap.Star() == WorldMapDockCap.OldStar
-                  && WorldMapDockCap.Rank() == WorldMapDockCap.OldRank,
-                $"QA_NO 옛 성계·랭킹 (성계 {WorldMapDockCap.Star()})");
+                  && WorldMapDockCap.Rank() == WorldMapDockCap.OldRank
+                  && WorldMapDockCap.Defense() == WorldMapDockCap.OldDefense,
+                $"QA_NO 옛 성계·랭킹·수비대 (수비대 {WorldMapDockCap.Defense()})");
             Check(WorldMapDockCap.Line().IndexOf("두 줄", StringComparison.Ordinal) >= 0,
                 $"QA_NO 줄 (실제 {WorldMapDockCap.Line()})");
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, null);
@@ -112,12 +119,14 @@ namespace AshesToStars
                   && mapSrc.IndexOf("WorldMapDockCap.Caption", StringComparison.Ordinal) >= 0
                   && mapSrc.IndexOf("WorldMapDockCap.IsLocked", StringComparison.Ordinal) >= 0
                   && mapSrc.IndexOf("WorldMapDockCap.Star", StringComparison.Ordinal) >= 0
-                  && mapSrc.IndexOf("WorldMapDockCap.Rank", StringComparison.Ordinal) >= 0,
-                "월드맵이 시드·줄·Caption·IsLocked·Star·Rank를 읽는다");
+                  && mapSrc.IndexOf("WorldMapDockCap.Rank", StringComparison.Ordinal) >= 0
+                  && mapSrc.IndexOf("WorldMapDockCap.Defense", StringComparison.Ordinal) >= 0,
+                "월드맵이 시드·줄·Caption·IsLocked·Star·Rank·Defense를 읽는다");
             Check(mapSrc.IndexOf("InvasionApproach.Line()} · 출정", StringComparison.Ordinal) < 0
                   && mapSrc.IndexOf("진입 {EstateGrid.InvaderSide()}", StringComparison.Ordinal) < 0
                   && mapSrc.IndexOf("성계 시스템 미구현", StringComparison.Ordinal) < 0
-                  && mapSrc.IndexOf("랭킹 서버 없음", StringComparison.Ordinal) < 0,
+                  && mapSrc.IndexOf("랭킹 서버 없음", StringComparison.Ordinal) < 0
+                  && mapSrc.IndexOf("침략 전투는 아직 없다", StringComparison.Ordinal) < 0,
                 "도크가 옛 긴 줄을 안 붙인다");
 
             _ = nameof(WorldMapDockCap.Caption);
@@ -125,6 +134,7 @@ namespace AshesToStars
             _ = nameof(WorldMapDockCap.Lock);
             _ = nameof(WorldMapDockCap.Star);
             _ = nameof(WorldMapDockCap.Rank);
+            _ = nameof(WorldMapDockCap.Defense);
             _ = nameof(WorldMapDockCap.Line);
             _ = nameof(WorldMapDockCap.SeedQaIfRequested);
 

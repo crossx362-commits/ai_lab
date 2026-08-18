@@ -124,7 +124,7 @@ namespace AshesToStars
             DrawCard(cards[2], "랭킹", WorldMapDockCap.Rank(),
                 "characters", locked: true);
             DrawCard(cards[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
-                "침략 전투는 아직 없다(§13-5)", "building_barracks", locked: true);
+                WorldMapDockCap.Defense(), "building_barracks", locked: true);
         }
 
         void DrawApproachPick(Rect r)
