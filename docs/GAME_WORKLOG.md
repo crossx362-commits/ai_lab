@@ -11,6 +11,14 @@
 ---
 
 
+## 지금 (2026-08-18) — 서포터 공격 프레임 반쪽
+
+INBOX 22:03. 오너 시트는 몸 있음 · 반입만 슬래시 조각을 칸으로 썼다.
+`tidy_row_cells`가 폭 < 중앙값 65%를 버린다. 재생성 없음.
+unittest `test_import_owner_sheets` 3 OK.
+샷 `buffer_sprite_shots/qa_go:Title.png` — 서포터 온전한 몸.
+이펙트는 다음. 영지 `EstateBuild`는 클로드.
+
 ## 지금 (2026-08-18) — 필드 몹 5계열 알파 구멍
 
 INBOX 22:03. p22 시트는 몸 있음 · Resources만 외곽선.
