@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (TowerHud.ShowQa) return TowerHud.Line();
                 string train = DeathTraining.Line();
                 string scale = RaidScale.Line();
                 string pool = RaidBossPool.Line();
@@ -61,6 +62,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            TowerHud.SeedQaIfRequested();
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             DeathTraining.SeedQaIfRequested();
@@ -179,7 +181,7 @@ namespace AshesToStars
                 return;
             }
 
-            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var cards = TowerHud.Cards(r);
             if (DrawCard(cards[0], "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)", "tower"))
                 Enter(Economy.GetActionCost("TowerNormalFloor", GameState.UnlockedTier),
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
