@@ -296,13 +296,9 @@ namespace AshesToStars
         public static bool QaShowBossHp =>
             Environment.GetEnvironmentVariable("QA_BOSS_HP") == "1";
 
-        /// <summary>§10-5 페이즈 수. BossBattle.CreateBosses와 같은 층 구간.</summary>
-        public static int PhaseCountForFloor(int floor)
-        {
-            if (floor <= 5) return 2;
-            if (floor <= 10) return 3;
-            return 4;
-        }
+        /// <summary>§10-5 페이즈 수. BossSkills.PhaseCount를 읽는다.</summary>
+        public static int PhaseCountForFloor(int floor) =>
+            BossSkills.PhaseCount(floor);
 
         public static readonly (float current, float max, int phases, string label)[] BossHpSamples =
         {

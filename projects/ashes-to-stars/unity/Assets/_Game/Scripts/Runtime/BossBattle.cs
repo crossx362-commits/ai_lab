@@ -326,17 +326,9 @@ namespace AshesToStars
                 ? basePartyDps * targetClearTime * BossHp.CountMul(bossCount)
                 : BossHp.Hp(currentFloor, targetClearTime, bossCount);
 
-            // §10-5: 스킬 수 변화
-            // 5층: 2→3 (총 3)
-            // 10층: 2→3→4 (총 4)  + 격노
-            // 50층+: 2→3→4→5 (총 5) + 격노
-            int phaseCount;
-            if (currentFloor <= 5)
-                phaseCount = 2;  // 페이즈 1개 추가 (2→3)
-            else if (currentFloor <= 10)
-                phaseCount = 3;  // 페이즈 2개 추가 (2→3→4)
-            else
-                phaseCount = 4;  // 페이즈 3개 추가 (2→3→4→5)
+            // §10-5: 중간 2→3 · 대보스 2→3→4 · 50층+ 2→3→4→5.
+            // 옛 길은 ≤5/≤10이라 15층이 4페이즈였다. PhaseCount가 표를 읽는다.
+            int phaseCount = BossSkills.PhaseCount(currentFloor);
 
             for (int i = 0; i < bossCount; i++)
             {
@@ -353,7 +345,7 @@ namespace AshesToStars
                 bosses.Add(boss);
             }
 
-            remainingSkillCount = 2;  // 기본 스킬 2개 (§10-5)
+            remainingSkillCount = BossSkills.StartSkills;
 
             Debug.Log($"[BossBattle] Created {bossCount} bosses, HP {hpPerBoss:F0} each, " +
                 $"Phase count {phaseCount}, Total skills (phase 0): {remainingSkillCount}");
@@ -699,14 +691,9 @@ namespace AshesToStars
             public int silo;
             public float atkUntil, atkT0, hurtUntil, hurtT0, deadT;
 
-            /// <summary>
-            /// 페이즈별 활성 스킬 개수
-            /// 기본 2개 + 페이즈당 1개 추가 (§10-5)
-            /// </summary>
-            public int GetSkillCountForPhase()
-            {
-                return 2 + currentPhase;
-            }
+            /// <summary>페이즈별 활성 스킬 개수. BossSkills.SkillsAt을 읽는다(§10-5).</summary>
+            public int GetSkillCountForPhase() =>
+                BossSkills.SkillsAt(currentPhase);
         }
 
         private class FloorAOE

@@ -305,6 +305,7 @@ namespace AshesToStars
             Debug.Assert(UiAtlas.PhaseCountForFloor(1) == 2
                          && UiAtlas.PhaseCountForFloor(5) == 2
                          && UiAtlas.PhaseCountForFloor(10) == 3
+                         && UiAtlas.PhaseCountForFloor(15) == 2
                          && UiAtlas.PhaseCountForFloor(50) == 4,
                 "[UiAtlasSelfCheck] 층별 페이즈 수가 §10-5와 어긋난다");
             Debug.Assert(UiAtlas.BossHpSamples.Length == 3,

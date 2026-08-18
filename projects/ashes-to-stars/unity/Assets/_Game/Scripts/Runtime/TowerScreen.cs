@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (BossSkills.ShowQa) return BossSkills.Line();
                 if (TowerDockCap.ShowQa) return TowerDockCap.Line();
                 if (TowerHud.ShowQa) return TowerHud.Line();
                 string train = DeathTraining.Line();
@@ -30,6 +31,7 @@ namespace AshesToStars
                 string curve = BossHp.Line();
                 string countMul = BossHp.CountLine();
                 string count = BossCount.Line();
+                string skills = BossSkills.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
@@ -49,6 +51,8 @@ namespace AshesToStars
                     rest = countMul + " · " + rest;
                 if (!string.IsNullOrEmpty(count))
                     rest = count + " · " + rest;
+                if (!string.IsNullOrEmpty(skills))
+                    rest = skills + " · " + rest;
                 return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
             }
         }
@@ -80,6 +84,7 @@ namespace AshesToStars
             RaidCost.SeedQaIfRequested();
             BossHp.SeedQaIfRequested();
             BossCount.SeedQaIfRequested();
+            BossSkills.SeedQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
