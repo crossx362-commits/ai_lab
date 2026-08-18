@@ -121,6 +121,28 @@ namespace AshesToStars
             Fits(dock[5], "사망 없음",
                 "잠김 — " + FieldDockCap.Death(), "도크[5]");
 
+            string towerNo = Environment.GetEnvironmentVariable(TowerDockCap.EnvNo);
+            Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, null);
+            GameState.ResetAll();
+            RaidReroll.ResetForTest();
+            RaidScale.ResetForTest();
+            RaidBossPool.ResetForTest();
+            TowerDockCap.ResetForTest();
+            RaidScale.ForceScalePercent = 65;
+            GameState.SetTowerFloorForTest(51);
+            GameState.TrySelectTier(4);
+            RaidReroll.Record(RaidScale.LowerRaidFloor);
+            var tower = TowerHud.Cards(body);
+            Check(tower.Length == 4, $"탑 도크 4칸 (실제 {tower.Length})");
+            Fits(tower[2], "하위 레이드 5층", TowerDockCap.Lower(5), "탑도크[2]");
+            RaidScale.ForceScalePercent = -1;
+            RaidReroll.ResetForTest();
+            RaidScale.ResetForTest();
+            RaidBossPool.ResetForTest();
+            TowerDockCap.ResetForTest();
+            GameState.ResetAll();
+            Environment.SetEnvironmentVariable(TowerDockCap.EnvNo, towerNo);
+
             // 슬림이 아닌 큰 카드도 같은 규칙을 지켜야 한다(직업 선택·보너스 카드 계열).
             var wide = new Rect(0f, 0f, 328f, 152f);
             Check(!UiPages.IsSlimCard(wide), $"보너스 카드 {wide.width:0}×{wide.height:0} 는 슬림 아님");

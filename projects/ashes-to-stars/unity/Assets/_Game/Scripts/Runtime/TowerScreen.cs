@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (TowerDockCap.ShowQa) return TowerDockCap.Line();
                 if (TowerHud.ShowQa) return TowerHud.Line();
                 string train = DeathTraining.Line();
                 string scale = RaidScale.Line();
@@ -63,6 +64,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             TowerHud.SeedQaIfRequested();
+            TowerDockCap.SeedQaIfRequested();
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             DeathTraining.SeedQaIfRequested();
@@ -200,8 +202,7 @@ namespace AshesToStars
             if (lower > 0)
             {
                 if (DrawCard(cards[2], $"하위 레이드 {lower}층",
-                        RaidReroll.FormatLine(lower) + " · " + RaidBossPool.Line()
-                        + " · " + RaidScale.FormatLine(lower), "damage"))
+                        TowerDockCap.Lower(lower), "damage"))
                     Enter(RaidReroll.Cost(lower), GameFlow.BattleKind.보스, lower);
             }
             else
