@@ -4,9 +4,10 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 목숨 아이템 경매 시세 하한(§4·§18-4). 두루마리 2 / 부활초 3 / 환생석 150 G/h.
+    /// 목숨 아이템 경매 시세 하한·상한(§4·§18-4).
+    /// 두루마리 2~4 / 부활초 3~8 / 환생석 150~300 G/h.
     /// 옛 ListPrice는 T1 환생석을 20골드로 팔아 "경매장에서도 싸지 않다"가 거짓이었다.
-    /// QA_NO면 옛 고정가. ListPrice·TryListItem·NPC가 읽는다.
+    /// QA_NO면 옛 고정가·상한 없음. ListPrice·TryListItem·NPC가 읽는다.
     /// </summary>
     public static class LifePrice
     {
@@ -15,6 +16,9 @@ namespace AshesToStars
         public const float ScrollHours = 2f;
         public const float TeaHours = 3f;
         public const float StoneHours = 150f;
+        public const float ScrollCeilHours = 4f;
+        public const float TeaCeilHours = 8f;
+        public const float StoneCeilHours = 300f;
         public const long OldTea = 40_000;
         public const long OldScroll = 25_000;
         public const long OldStone = 200_000;
@@ -83,11 +87,36 @@ namespace AshesToStars
             return floor > 0 && price < floor;
         }
 
+        /// <summary>표의 G/h 상한. 재료·증표는 0 — 이 칸이 아니다.</summary>
+        public static float CeilHoursOf(Economy.LifeItem item) => item switch
+        {
+            Economy.LifeItem.ScrollOfReturn => ScrollCeilHours,
+            Economy.LifeItem.RevivalTea => TeaCeilHours,
+            Economy.LifeItem.RebornStone => StoneCeilHours,
+            _ => 0f,
+        };
+
+        /// <summary>선택 티어의 상한. QA_NO면 상한 없음(옛).</summary>
+        public static long Ceil(Economy.LifeItem item)
+        {
+            float h = CeilHoursOf(item);
+            if (h <= 0f) return 0;
+            if (Blocked) return long.MaxValue;
+            return Copper(h, GameState.Tier);
+        }
+
+        public static bool AboveCeil(Economy.LifeItem item, long price)
+        {
+            long ceil = Ceil(item);
+            return ceil > 0 && ceil < long.MaxValue && price > ceil;
+        }
+
         public static string Line()
         {
             if (Blocked) return "목숨 시세 옛 고정가";
             long stone = Floor(Economy.LifeItem.RebornStone);
-            return $"목숨 시세 하한 · 환생석 {Economy.FormatCurrency(stone)}(§18-4)";
+            long hi = Ceil(Economy.LifeItem.RebornStone);
+            return $"목숨 시세 하한 · 환생석 {Economy.FormatCurrency(stone)} · 상한 {Economy.FormatCurrency(hi)}(§18-4)";
         }
 
         /// <summary>시각 QA. 30층으로 장을 열고 T1을 골라 150골드가 보이게 한다.</summary>

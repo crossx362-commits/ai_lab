@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>목숨 아이템 경매 시세 하한. QA_NO면 옛 고정가(§4·§18-4).</summary>
+    /// <summary>목숨 아이템 경매 시세 하한·상한. QA_NO면 옛 고정가·상한 없음(§4·§18-4).</summary>
     public static class LifePriceSelfCheck
     {
         static int _fail;
@@ -45,13 +45,29 @@ namespace AshesToStars
                 "부활초 3 G/h");
             Check(Mathf.Approximately(LifePrice.Hours(Economy.LifeItem.RebornStone), 150f),
                 "환생석 150 G/h");
+            Check(Mathf.Approximately(LifePrice.CeilHoursOf(Economy.LifeItem.ScrollOfReturn), 4f),
+                "두루마리 상한 4 G/h");
+            Check(Mathf.Approximately(LifePrice.CeilHoursOf(Economy.LifeItem.RevivalTea), 8f),
+                "부활초 상한 8 G/h");
+            Check(Mathf.Approximately(LifePrice.CeilHoursOf(Economy.LifeItem.RebornStone), 300f),
+                "환생석 상한 300 G/h");
             Check(LifePrice.Hours(Economy.LifeItem.CraftHide) == 0f, "가죽은 하한 없음");
+            Check(LifePrice.CeilHoursOf(Economy.LifeItem.CraftHide) == 0f, "가죽 상한 없음");
+            Check(LifePrice.Ceil(Economy.LifeItem.CraftHide) == 0, "가죽 Ceil 0");
             Check(LifePrice.Copper(150f, 0) == 1_500_000,
                 $"T1 환생석 150골드 (실제 {LifePrice.Copper(150f, 0)})");
+            Check(LifePrice.Copper(300f, 0) == 3_000_000,
+                $"T1 환생석 상한 300골드 (실제 {LifePrice.Copper(300f, 0)})");
             Check(LifePrice.Copper(3f, 0) == 30_000,
                 $"T1 부활초 3골드 (실제 {LifePrice.Copper(3f, 0)})");
+            Check(LifePrice.Copper(8f, 0) == 80_000,
+                $"T1 부활초 상한 8골드 (실제 {LifePrice.Copper(8f, 0)})");
             Check(LifePrice.Copper(2f, 0) == 20_000,
                 $"T1 두루마리 2골드 (실제 {LifePrice.Copper(2f, 0)})");
+            Check(LifePrice.Copper(4f, 0) == 40_000,
+                $"T1 두루마리 상한 4골드 (실제 {LifePrice.Copper(4f, 0)})");
+            Check(LifePrice.Ceil(Economy.LifeItem.RebornStone) == 3_000_000,
+                $"T1 Ceil 300골드 (실제 {LifePrice.Ceil(Economy.LifeItem.RebornStone)})");
             long t5 = LifePrice.Copper(150f, 4);
             Check(t5 >= 9_830_000 && t5 <= 9_831_000,
                 $"T5 환생석 ≈983골드 (실제 {t5})");
@@ -68,8 +84,24 @@ namespace AshesToStars
             Check(AuctionState.TryListItem(Economy.LifeItem.RebornStone, 1, 1_500_000),
                 "하한 정각은 등록");
             Check(AuctionState.MineCount == 1, "내 등록 1건");
-            Check(LifePrice.Line().Contains("150골드") && LifePrice.Line().Contains("§18-4"),
-                $"줄 150골드 (실제 {LifePrice.Line()})");
+            Check(LifePrice.Line().Contains("150골드") && LifePrice.Line().Contains("300골드")
+                  && LifePrice.Line().Contains("§18-4"),
+                $"줄 150~300골드 (실제 {LifePrice.Line()})");
+            Check(LifePrice.AboveCeil(Economy.LifeItem.RebornStone, 3_000_001),
+                "상한 +1은 AboveCeil");
+            Check(!LifePrice.AboveCeil(Economy.LifeItem.RebornStone, 3_000_000),
+                "상한 정각은 허용");
+            Check(LifePrice.AboveCeil(Economy.LifeItem.RevivalTea, 80_001),
+                "부활초 상한 +1은 AboveCeil");
+            Check(LifePrice.AboveCeil(Economy.LifeItem.ScrollOfReturn, 40_001),
+                "두루마리 상한 +1은 AboveCeil");
+            GameState.Gain(Economy.LifeItem.RebornStone, 1);
+            Check(!AuctionState.TryListItem(Economy.LifeItem.RebornStone, 1, 3_000_001),
+                "상한 +1은 거절");
+            Check(GameState.Bag.GetCount(Economy.LifeItem.RebornStone) == 1, "상한 거절은 가방을 안 뺀다");
+            Check(AuctionState.TryListItem(Economy.LifeItem.RebornStone, 1, 3_000_000),
+                "상한 정각은 등록");
+            Check(AuctionState.MineCount == 2, "하한+상한 2건");
 
             GameState.ResetAll();
             AuctionState.ResetForTest();
@@ -100,6 +132,13 @@ namespace AshesToStars
             GameState.Gain(Economy.LifeItem.RebornStone, 1);
             Check(AuctionState.TryListItem(Economy.LifeItem.RebornStone, 1, LifePrice.OldStone),
                 "차단하면 옛 가로 등록");
+            Check(LifePrice.Ceil(Economy.LifeItem.RebornStone) == long.MaxValue,
+                "차단하면 상한 없음");
+            Check(!LifePrice.AboveCeil(Economy.LifeItem.RebornStone, 3_000_001),
+                "차단하면 상한 +1도 허용");
+            GameState.Gain(Economy.LifeItem.RebornStone, 1);
+            Check(AuctionState.TryListItem(Economy.LifeItem.RebornStone, 1, 3_000_001),
+                "차단하면 상한 위도 등록");
             Check(LifePrice.Line().Contains("옛"),
                 $"차단 문구 (실제 {LifePrice.Line()})");
             Environment.SetEnvironmentVariable(LifePrice.EnvNo, null);
@@ -129,13 +168,17 @@ namespace AshesToStars
             string tradeSrc = File.ReadAllText(Path.Combine(runtime, "AuctionTrade.cs"));
             Check(auctionSrc.Contains("LifePrice.BelowFloor"),
                 "TryListItem이 BelowFloor를 읽는다");
+            Check(auctionSrc.Contains("LifePrice.AboveCeil"),
+                "TryListItem이 AboveCeil을 읽는다");
             Check(auctionSrc.Contains("LifePrice.Floor"),
                 "NPC가 Floor를 읽는다");
             Check(tradeSrc.Contains("LifePrice.Floor") && tradeSrc.Contains("LifePrice.SeedQaIfRequested"),
                 "ListPrice·시드가 LifePrice를 읽는다");
 
             _ = nameof(LifePrice.Floor);
+            _ = nameof(LifePrice.Ceil);
             _ = nameof(LifePrice.BelowFloor);
+            _ = nameof(LifePrice.AboveCeil);
             _ = nameof(LifePrice.Line);
             _ = nameof(AuctionTrade.ListPrice);
             _ = nameof(AuctionState.TryListItem);
