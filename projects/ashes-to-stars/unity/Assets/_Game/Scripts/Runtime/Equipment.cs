@@ -13,7 +13,7 @@ namespace AshesToStars
     /// </summary>
     public enum EquipSlot { Weapon, Helm, Armor, Gloves, Boots, Accessory }
 
-    /// <summary>§11 위임 5단계. 제작품은 일반. 드랍 등급·랜덤 옵션은 이 슬라이스에 안 넣는다.</summary>
+    /// <summary>§11 위임 5단계. 제작품은 일반. 보스 드랍 등급은 GearDrop.</summary>
     public enum GearGrade { Common, Uncommon, Rare, Heroic, Legendary }
 
     [Serializable]
@@ -87,6 +87,13 @@ namespace AshesToStars
             GearGrade.Legendary => "전설",
             _ => "일반",
         };
+
+        public static string DisplayName(GearItem gear)
+        {
+            if (gear == null) return "";
+            if (gear.Grade == GearGrade.Common) return gear.Name;
+            return GradeLabel(gear.Grade) + " " + gear.Name;
+        }
 
         public static string SlotName(EquipSlot slot) => slot switch
         {
@@ -309,6 +316,12 @@ namespace AshesToStars
         /// <summary>파산 압류·자가검사용. 대장간 해금 없이 비장착 장비를 넣는다.</summary>
         public static GearItem AddUnequippedForTest(string recipeId)
         {
+            return TryGrantDrop(recipeId, GearGrade.Common);
+        }
+
+        /// <summary>보스 드랍·시드. 대장간 해금 없이 등급을 붙인다. 가방이 가득이면 null.</summary>
+        public static GearItem TryGrantDrop(string recipeId, GearGrade grade)
+        {
             Load();
             var recipe = RecipeOf(recipeId);
             if (recipe == null) return null;
@@ -321,7 +334,7 @@ namespace AshesToStars
                 Name = recipe.Name,
                 HpMul = recipe.BaseHpMul,
                 Enhance = 0,
-                Grade = GearGrade.Common,
+                Grade = grade,
             };
             _items.Add(gear);
             Save();

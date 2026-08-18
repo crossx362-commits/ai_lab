@@ -20,6 +20,7 @@ namespace AshesToStars
         protected override string Subtitle =>
             BagSlots.ShowQa ? BagSlots.Line()
             : EquipJob.ShowQa ? EquipJob.Line()
+            : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
             : "왼쪽 바둑판에서 고르면 오른쪽에 모습과 정보가 나온다(§3·§4)";
         protected override bool ShowRarityPreview => UiAtlas.QaShowRarity;
@@ -71,6 +72,7 @@ namespace AshesToStars
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
             BagSlots.SeedQaIfRequested();
+            GearDrop.SeedQaIfRequested();
             if (EquipJob.ShowQa && _selectedCharacter < 0)
                 _selectedCharacter = EquipJob.QaHealerIndex();
             StarterPick.SeedQaIfRequested();
@@ -826,7 +828,7 @@ namespace AshesToStars
                 string slot = Equipment.SlotName((EquipSlot)s);
                 Line(worn == null
                     ? $"{slot}  ·  없음"
-                    : $"{slot}  ·  {worn.Name}" + (worn.Enhance > 0 ? $" +{worn.Enhance}" : ""));
+                    : $"{slot}  ·  {Equipment.DisplayName(worn)}" + (worn.Enhance > 0 ? $" +{worn.Enhance}" : ""));
             }
 
             y += 6f;

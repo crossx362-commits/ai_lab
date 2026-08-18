@@ -409,6 +409,10 @@ namespace AshesToStars
                 if (GameState.Gain(drop)) _reward.DroppedItems.Add(drop);
                 else _reward.RejectedItems.Add(drop);   // 소실이 아니라 획득 거부
             }
+
+            // §10-8 보스 주 드랍 = 고급 장비. 잡몹 생존 경로는 안 탄다.
+            var gear = GearDrop.Apply(dropSource, ref dropRng);
+            if (gear != null) _reward.DroppedGear.Add(GearDrop.Format(gear));
         }
 
         void OnBattleEnd(bool survived)
@@ -576,6 +580,33 @@ namespace AshesToStars
             _reward.ExpGains.Add($"{roster[0].Name} +{exp} EXP → Lv.{roster[0].Level}");
             if (string.IsNullOrEmpty(GameFlow.LastBattleSummary))
                 GameFlow.LastBattleSummary = $"생존 — 274.0초 · 사냥 가죽 1장 · EXP {exp}";
+        }
+
+        /// <summary>QA_GEAR_DROP=1이면 결과 화면에 고급 흉갑 줄을 심는다.</summary>
+        public static void SeedGearDropRewardQaIfRequested()
+        {
+            GearDrop.SeedQaIfRequested();
+            if (!GearDrop.ShowQa) return;
+            if (_reward.DroppedGear != null && _reward.DroppedGear.Count > 0) return;
+            string line = GearDrop.LastLine;
+            if (string.IsNullOrEmpty(line))
+            {
+                var bag = Equipment.Unequipped();
+                for (int i = 0; i < bag.Count; i++)
+                {
+                    if (bag[i].Grade == GearDrop.BossGrade)
+                    {
+                        line = GearDrop.Format(bag[i]);
+                        break;
+                    }
+                }
+            }
+            if (string.IsNullOrEmpty(line)) return;
+            _reward.Survived = true;
+            _reward.DroppedGear.Add(line);
+            if (string.IsNullOrEmpty(GameFlow.LastBattleSummary)
+                || !GameFlow.LastBattleSummary.Contains("고급"))
+                GameFlow.LastBattleSummary = "생존 — " + GearDrop.Line();
         }
 
         /// <summary>QA_HUNT_GOLD=1이면 결과 화면에 T1 1시간 = 1골드를 심는다.</summary>

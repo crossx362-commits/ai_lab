@@ -29,6 +29,9 @@ namespace AshesToStars
         /// <summary>소지 상한에 걸려 획득 거부된 아이템 (§18-4)</summary>
         public List<Economy.LifeItem> RejectedItems { get; set; } = new List<Economy.LifeItem>();
 
+        /// <summary>보스 고급 장비 드랍 줄(§10-8). BattleScreen이 채운다.</summary>
+        public List<string> DroppedGear { get; set; } = new List<string>();
+
         /// <summary>이 전투에서 삭제된 캐릭터 목록 (사망 카운트 3회 도달, §4)</summary>
         public List<string> DeletedCharacters { get; set; } = new List<string>();
 
@@ -47,6 +50,7 @@ namespace AshesToStars
             ExpGains.Clear();
             DroppedItems.Clear();
             RejectedItems.Clear();
+            DroppedGear.Clear();
             DeletedCharacters.Clear();
             RecoveredCharacters.Clear();
             BattleDurationSeconds = 0;

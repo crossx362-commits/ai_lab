@@ -13,7 +13,8 @@ namespace AshesToStars
     public class ResultScreen : GameScreen
     {
         protected override string Title => "결과";
-        protected override string Subtitle => "보상 정산 후 원래 화면으로";
+        protected override string Subtitle =>
+            GearDrop.ShowQa ? GearDrop.Line() : "보상 정산 후 원래 화면으로";
         protected override string BackgroundArt => "bg_result";
         protected override bool ShowBottomBar => false;
 
@@ -33,6 +34,7 @@ namespace AshesToStars
             BattleScreen.SeedHuntGoldRewardQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
+            BattleScreen.SeedGearDropRewardQaIfRequested();
             EscapeForfeit.SeedQaIfRequested();
 
             // 층 보상 선택이 남아 있으면 에필로그보다 먼저 5종을 한 화면에 보여 준다.
@@ -159,6 +161,14 @@ namespace AshesToStars
                     {
                         RewardInfo(r, _rowIndex++, ItemAtlas.KeyFor(item), $"획득: {FormatLifeItem(item)}");
                     }
+                }
+
+                if (GearDrop.ShowQa || (reward.DroppedGear != null && reward.DroppedGear.Count > 0))
+                    Info(r, _rowIndex++, GearDrop.Line());
+                if (reward.DroppedGear != null)
+                {
+                    foreach (var line in reward.DroppedGear)
+                        RewardInfo(r, _rowIndex++, "armor", "획득: " + line);
                 }
 
                 // 소지 상한 초과로 거절된 아이템 (§18-4 "획득 거부로 처리")
