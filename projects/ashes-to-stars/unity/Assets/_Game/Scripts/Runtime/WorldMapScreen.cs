@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (WorldMapHud.ShowQa) return WorldMapHud.Line();
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
                 if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
                     s += " · " + WorldStar.RaceSenseLine();
@@ -84,6 +85,7 @@ namespace AshesToStars
             WorldStar.SeedAuraDebuffQaIfRequested();
             InvasionApproach.SeedQaIfRequested();
             EstateStore.SeedQaIfRequested();
+            WorldMapHud.SeedQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
@@ -97,11 +99,11 @@ namespace AshesToStars
 
             if (InvasionApproach.Picking && InvasionHubLockReason() == null)
             {
-                DrawApproachPick(WorldStar.AfterPlate(r));
+                DrawApproachPick(r);
                 return;
             }
 
-            var cards = UiPages.Grid(WorldStar.AfterPlate(r), 2, 2, 16f);
+            var cards = WorldMapHud.Cards(r);
             DrawCard(cards[0], "성계 이동",
                 "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)",
                 "worldmap", locked: true);
@@ -151,7 +153,7 @@ namespace AshesToStars
 
         void DrawApproachPick(Rect r)
         {
-            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var cards = WorldMapHud.Cards(r);
             var sides = EstateGrid.Sides;
             for (int i = 0; i < sides.Length && i < cards.Length; i++)
             {
