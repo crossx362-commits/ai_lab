@@ -239,6 +239,13 @@
     max-height: 132px; overflow: auto;
   }
   .g-stuck { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .fixbtn {
+    background: transparent; color: var(--hold); border: 1px solid var(--hold);
+    border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 650;
+    cursor: pointer; flex: none;
+  }
+  .fixbtn:disabled { opacity: .45; }
+  .fixbtn.done { color: var(--ok); border-color: var(--ok); }
   .g-stuck .g-row .t { color: var(--stop); }
   .g-list { display: flex; flex-direction: column; gap: 8px; }
   .g-row { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; }
@@ -592,7 +599,8 @@ function renderStuck(state) {
   list.innerHTML = items.map((it) => `
     <div class="item">
       <span class="badge ${esc(it.kind || "")}">${esc(kinds[it.kind] || it.kind || "")}</span>
-      <div><div class="t">${esc(it.title)}</div><div class="d">${esc(it.detail || "")}</div></div>
+      <div style="flex:1"><div class="t">${esc(it.title)}</div><div class="d">${esc(it.detail || "")}</div></div>
+      <button class="fixbtn" data-fix="${esc(it.title)}" data-why="${esc(it.detail || "")}">해결 요청</button>
     </div>`).join("");
   if (acts) acts.style.display = items.some((it) => it.kind === "loop") ? "flex" : "none";
 }
@@ -666,7 +674,9 @@ function renderGlance(state) {
   if (stuckEl) {
     stuckEl.style.display = shownStuck.length ? "" : "none";
     stuckEl.innerHTML = shownStuck.map((it) =>
-      `<div class="g-row"><span class="t">${esc(it.title)}</span></div>`).join("")
+      `<div class="g-row"><span class="t">${esc(it.title)}</span>`
+      + `<button class="fixbtn" data-fix="${esc(it.title)}"`
+      + ` data-why="${esc(it.detail || "")}">해결 요청</button></div>`).join("")
       + (stuckMore > 0 ? `<div class="g-row dim"><span class="t">외 ${stuckMore}개</span></div>` : "");
   }
   const stuck = stuckItems.length;
@@ -892,6 +902,35 @@ function renderCharts(c) {
       <div class="legend">아래 막대는 최근 14일 게임 커밋 수</div>
     </section>`;
 }
+
+// 막힌 것 → 바로 요청. 버튼 하나로 INBOX 「대기 중」에 올리고 멈춰 있으면 깨운다.
+// 다음 이터레이션이 큐보다 INBOX를 먼저 읽으므로 이게 곧 '지금 이것부터'가 된다.
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-fix]");
+  if (!btn) return;
+  const title = btn.dataset.fix || "";
+  const why = btn.dataset.why || "";
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "보내는 중…";
+  try {
+    await api("/api/request", {
+      title: `막힌 것 풀기 — ${title}`.slice(0, 80),
+      body: (why ? `막힌 사유: ${why}\n` : "")
+        + "보드에서 오너가 바로 요청했다. 이 항목을 다음 이터레이션에서 먼저 잡아라. "
+        + "정말 못 여는 것(선행 시스템 부재)이면 왜 못 여는지와 무엇이 먼저 필요한지를 "
+        + "STATUS에 한 줄로 남겨라 — 조용히 넘기지 마라.",
+      resume: true,
+    });
+    btn.textContent = "요청함";
+    btn.classList.add("done");
+    setTimeout(() => refresh().catch(() => {}), 600);
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = label;
+    alert("요청 실패: " + err.message);
+  }
+});
 
 async function refresh() {
   const state = await api("/api/state");
