@@ -477,6 +477,10 @@ namespace AshesToStars
             // 각자 판정해 스택으로 쌓는다. 압류 중일 때만 광산 문구를 현황에 노출한다.
             if (EstateMine.Seized)
                 Info(r, statusRow++, "광산 " + EstateMine.SeizeLine());
+            // 대출 한도의 순자산(지갑+장비+영지 평가)을 현황에 노출한다(§18-5). 탑 대출 화면과
+            // 같은 NetWorth.Line()을 쓴다. ShowOnHub는 파산·압류와 동형 게이트(QA_NET_WORTH).
+            if (NetWorth.ShowOnHub)
+                Info(r, statusRow++, NetWorth.Line());
             var cards = EstateStatusHud.Cards(r);
             if (DrawCard(cards[0], "내 별 영공", EstateStatusHud.AuraCaption(), "worldmap"))
                 _sub = Sub.영공;

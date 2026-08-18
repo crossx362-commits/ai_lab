@@ -6,8 +6,8 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 던전 노드 부제 배치 템플릿 enum 누출(pockets 등)을 한글로(폴리싱, `8b6912f2`)
-마지막 트랙: 폴리싱
+최종 갱신: 2026-08-19 · full_check ③ 순자산 문구를 영지 현황 도크에 배선(코드, SelfCheck 33항 PASS·네거티브 FAIL 실측)
+마지막 트랙: 코드
 폴리싱 다음: **전투HUD**(아직 안 본 화면). 이어 타이틀 → 영지. 던전은 이번 이터가 닫음 —
 노드 부제 `동시 64체 · 원거리 0% · pockets`처럼 `ArenaTemplate` enum(open_ring/pillars/choke/
 pockets/arena_wide)이 한글 UI에 그대로 새던 것을 `TemplateKo`로 매핑. **⚠️ 이 세션 환경에서는
@@ -35,11 +35,28 @@ pockets/arena_wide)이 한글 UI에 그대로 새던 것을 `TemplateKo`로 매�
 | 2 | **30층 성장 곡선** | 닫음. `BossHp` + 재측정 PASS |
 | 3 | **영지 §5 드래그 UX** | `EstateStore.TryMove`·경로 재계산은 닫음. 마우스 드래그 미리보기는 EstateScreen(클로드 창 훅과 겹침) |
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | 선행이 없어 지금 넣으면 오펀 |
-7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — **닫음(2026-08-19, `ae8f4056`)**: `DrawEstateStatus`가 `statusRow` 스택으로 파산 두 줄 아래에 `EstateMine.Seized`일 때 `EstateMine.SeizeLine()`(「광산 생산 압류 100%(§18-5)」)을 그린다. 도크 5칸은 DockH(하단)이라 3줄과 안 겹침(QA_MINE_SEIZE=1 화면 확인). SelfCheck `영지 현황이 압류 문구·시드를 읽는다` PASS, SeizeLine 소비 제거 시 FAIL. ③`NetWorthSelfCheck` — `NetWorth.Line`은 TowerScreen:134가 읽는데 검사가 EstateScreen만 훑음. **셋 다 「강등·압류·순자산 문구를 영지 현황(현재는 EstateStatusHud 도크)에 노출」이 원래 의도** — 문구를 현황 도크에 실제로 배선하고 SelfCheck의 grep 대상 파일도 실제 소비처로 갱신하라(검사만 고쳐서 초록불 만들기 금지 — 배선 먼저). ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
+7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — **닫음(2026-08-19, `ae8f4056`)**: `DrawEstateStatus`가 `statusRow` 스택으로 파산 두 줄 아래에 `EstateMine.Seized`일 때 `EstateMine.SeizeLine()`(「광산 생산 압류 100%(§18-5)」)을 그린다. 도크 5칸은 DockH(하단)이라 3줄과 안 겹침(QA_MINE_SEIZE=1 화면 확인). SelfCheck `영지 현황이 압류 문구·시드를 읽는다` PASS, SeizeLine 소비 제거 시 FAIL. ③`NetWorthSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 파산·광산 압류 두 줄 아래 `statusRow` 스택에 `NetWorth.ShowOnHub`일 때 `NetWorth.Line()`(순자산·한도 §18-5)을 그린다(①②와 동형, 검사만 고친 게 아니라 실제 소비 추가). SelfCheck 33항 전부 PASS(「영지 현황이 Line·Seed를 읽는다」 포함), error CS 0. 네거티브 실측: meas 사본에서 그 줄+코멘트를 지우면 FAIL 1건 exit 1. 증거 `output/qa/ashes-to-stars/full_check/net_worth_selfcheck_20260819.log`. ④`RaceDropSelfCheck` — QA 시드 보상에 가죽(CraftHide)이 안 들어옴 ⑤`BossBattleDpsSelfCheck` — NRE(Object reference not set). 각각 통과 기준+네거티브 유지, 한 이터에 하나씩.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(폴리싱): 던전 노드 부제 배치 템플릿 enum 누출을 한글로.**
+> **이번 이터 결과(코드): full_check ③ 순자산 문구를 영지 현황 도크에 배선.**
+> - 직전 트랙이 폴리싱이라 코드 칸. full_check FAIL 5개 중 ①②는 이미 닫힘 → 같은 「현황 도크
+>   문구 배선」 계열인 ③ NetWorth를 잡음. 소비처: `NetWorth.Line()`이 TowerScreen만 읽고
+>   EstateScreen은 Seed·EnvShow만 읽어 SelfCheck의 「영지 현황이 Line·Seed를 읽는다」가 FAIL이었다.
+> - **생산 소비처**: `EstateScreen.DrawEstateStatus`가 파산 강등·광산 압류 두 줄 아래 statusRow
+>   스택에 `NetWorth.ShowOnHub`(QA_NET_WORTH·파산과 동형 게이트)일 때 `NetWorth.Line()`
+>   =「순자산 … · 한도 …(§18-5)」를 그린다. 도크 5칸은 DockH(하단)이라 스택과 안 겹침.
+>   `W3Party`/`EstateBuild`/`EstateStatusHud`/`TowerScreen`/`Resources`는 안 건드림.
+> - **통과 기준**: `NetWorthSelfCheck.Run` 33항 전부 PASS(이전 FAIL이던 「영지 현황이 Line·Seed를
+>   읽는다」 포함), `error CS` 0. meas 사본 배치(`unity_meas`, 원본 Unity는 오너가 -useHub로 열어둠).
+> - **네거티브(실측)**: meas 사본에서 `NetWorth.Line()` 줄+코멘트를 지우면 `NetWorthSelfCheck`
+>   FAIL 1건 「영지 현황이 Line·Seed를 읽는다」 exit 1. 코멘트만 남기면 grep 기반 검사가 오탐하므로
+>   코멘트까지 제거해야 진짜 FAIL이 뜬다(검사가 소스 텍스트 grep임을 확인).
+> - **증거** `output/qa/ashes-to-stars/full_check/net_worth_selfcheck_20260819.log`.
+> - 남은 full_check FAIL: ④`RaceDropSelfCheck`(QA 시드 보상에 가죽 없음) ⑤`BossBattleDpsSelfCheck`(NRE).
+>   다음 코드 이터가 하나씩.
+>
+> **직전 이터 결과(폴리싱): 던전 노드 부제 배치 템플릿 enum 누출을 한글로.**
 > - 직전 트랙이 코드라 폴리싱 칸. `폴리싱 다음`이 「던전 → 전투HUD → 타이틀」이라 던전을 봤다.
 >   기존 최신 샷 `family_adv_shots/qa_go:Dungeon.png`(08-19 02:33)을 열어 결함 확인:
 >   「1. 전투」노드 부제가 `동시 64체 · 원거리 0% · pockets` — **`ArenaTemplate` enum 이름
