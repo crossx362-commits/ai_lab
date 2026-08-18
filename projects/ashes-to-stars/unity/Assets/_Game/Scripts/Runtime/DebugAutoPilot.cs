@@ -70,6 +70,42 @@ namespace AshesToStars
             go.AddComponent<DebugAutoPilot>();
         }
 
+        /// <summary>
+        /// QA 전용: 파티를 최대 5인으로 채운다(`QA_PARTY5=1`).
+        ///
+        /// 기본 세이브는 편성이 1명이라 전투 화면에 캐릭터가 하나만 선다 —
+        /// 오너 지적 "탱커 말고 다른 애들은 안 보이는데". 그림·애니메이션 문제가
+        /// 아니라 **편성 상태**다. 다섯 직업의 그림을 한 화면에서 보려면 이 스위치를 쓴다.
+        /// </summary>
+        static void MaybeFillParty()
+        {
+            if (System.Environment.GetEnvironmentVariable("QA_PARTY5") != "1") return;
+            // 전직 QA 모드처럼 로스터를 먼저 초기화한다 — 안 하면 AddBasicRecruit가
+            // 저장된 상태에 막혀 로스터가 2명 그대로다(실측).
+            LifeSystem.ResetAll();
+            LifeSystem.Initialize();
+            PartyState.ResetForTest();
+            // 기본 세이브 로스터는 1~2명(그중 하나는 삭제됨)이라 편성만으로는 5인이 안 된다.
+            // 기본 5직업이 **한 화면에** 서야 그림·애니메이션을 비교할 수 있다.
+            var roster = LifeSystem.GetCharacters();
+            foreach (var job in new[] { "수호기사", "검사", "마법사", "사제", "음유시인" })
+            {
+                if (roster.Count >= 5) break;
+                bool has = false;
+                foreach (var c in roster) if (!c.IsDeleted && c.Job == job) { has = true; break; }
+                if (!has) LifeSystem.AddBasicRecruit(job);
+                roster = LifeSystem.GetCharacters();
+            }
+            if (roster == null || roster.Count == 0) return;
+            int n = Mathf.Min(5, roster.Count);
+            var idx = new int[n];
+            for (int i = 0; i < n; i++) idx[i] = i;
+            PartyState.SetSlotsForTest(idx);
+            PartyState.Refresh();
+            Debug.Log($"[QA] 파티 {n}인 편성 — 로스터 {roster.Count}명");
+        }
+
+
         void Start()
         {
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
@@ -128,6 +164,7 @@ namespace AshesToStars
             {
                 // 던전 **밖** 경로 — 던전이 아닐 때도 전투가 정상인지 본다.
                 // 지금까지 스모크가 전부 던전이라 DungeonRun이 꺼진 경로는 한 번도 안 밟았다.
+                MaybeFillParty();
                 GameFlow.GoBattle(GameFlow.Field);
                 return;
             }
@@ -256,6 +293,8 @@ namespace AshesToStars
                     //    (`error CS0103: The name 'global' does not exist`). 이 파일은
                     //    `AshesToStars` 네임스페이스 안이고 `W3Party`는 전역이라 한정자가
                     //    필요한데, 반드시 **밖에서 지역변수로 받아** 넣을 것.
+                    // 크기 검증(오너 2026-08-18 「캐릭터 안 보이는 거 같은데」) — 목표: 캐릭터 2.0 > 몹 1.5
+                    Debug.Log("[QA-크기] " + global::W3Party.SizeReportOnActive());
                     int aiDash = global::W3Party.AiDashUsesOnActive();
                     var chg = global::W3Party.ChargeStatsOnActive();
                     Debug.Log($"[QA] AI 이동기 사용 {aiDash}회 · 돌진형 예고 {chg.tell}회 → 돌진 {chg.rush}회 " +
