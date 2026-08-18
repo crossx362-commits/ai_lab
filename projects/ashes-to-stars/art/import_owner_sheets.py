@@ -194,7 +194,7 @@ def keep_main_body(alpha: np.ndarray, ratio: float = 0.30) -> np.ndarray:
     return out
 
 
-def split_row(row: np.ndarray) -> list[np.ndarray]:
+def split_row(row: np.ndarray, tidy: bool = True) -> list[np.ndarray]:
     """한 행을 **캐릭터가 실제로 있는 자리**로 쪼갠다.
 
     ⚠️ 처음엔 행 폭을 6등분했다. 그런데 시트마다 행마다 프레임 수가 다르다 —
@@ -238,7 +238,22 @@ def split_row(row: np.ndarray) -> list[np.ndarray]:
         left = 0 if i == 0 else (runs[i - 1][1] + s) // 2
         right = rgba.shape[1] if i == len(runs) - 1 else (e + runs[i + 1][0]) // 2
         cells.append(cut_background(row[:, left:right]))
-    return cells
+    return tidy_row_cells(cells) if tidy else cells
+
+
+def tidy_row_cells(cells: list[np.ndarray], min_frac: float = 0.65) -> list[np.ndarray]:
+    """이펙트 조각·잘린 반쪽을 버린다.
+
+    공격 행의 슬래시가 칸을 더 쪼개 폭 60~125 조각을 만든다(실측: 서포터 attack
+    10칸, 그중 3칸이 몸 없는 궤적). 그걸 그대로 쓰면 attack_04/05가 반쪽이다.
+    행 중앙값 폭의 `min_frac` 미만은 캐릭터가 아니다.
+    """
+    if len(cells) < 2:
+        return cells
+    widths = sorted(c.shape[1] for c in cells)
+    med = widths[len(widths) // 2]
+    kept = [c for c in cells if c.shape[1] >= med * min_frac]
+    return kept if kept else cells
 
 
 def center_on_canvas(frames: list[np.ndarray], pad: int = 6) -> list[Image.Image]:
@@ -293,15 +308,21 @@ def process(path: str, job: str, dest_root: str, dry: bool) -> int:
     # 캐릭터가 빠진 칸을 걷어낸다. 공격 행 뒷쪽에는 **투사체만 남은 프레임**이 있어
     # (마법사 보라 탄환) 그대로 쓰면 시전 중 캐릭터가 사라진다. 내용 높이가 idle의
     # 60% 미만이면 캐릭터가 없다고 보고 직전 유효 프레임으로 대체한다.
+    # 높이만 보면 서포터 슬래시 조각이 통과한다(실측 attack_04 높이 100 ≥ idle 60%)
+    # — 불투명 면적이 idle의 72% 미만이면 몸 없는 궤적으로 본다.
     idle_h = 0
+    idle_area = int((frames[0][..., 3] > 40).sum())
     ys, _ = np.where(frames[0][..., 3] > 40)
     if len(ys):
         idle_h = ys.max() - ys.min() + 1
     last_ok = frames[0]
     for i, f in enumerate(frames):
-        ys, _ = np.where(f[..., 3] > 40)
+        ys, xs = np.where(f[..., 3] > 40)
         h = (ys.max() - ys.min() + 1) if len(ys) else 0
-        if idle_h and h < idle_h * 0.60:
+        area = int(len(ys))
+        thin = idle_h and h < idle_h * 0.60
+        scrap = idle_area and area < idle_area * 0.72
+        if thin or scrap:
             frames[i] = last_ok
         else:
             last_ok = f
