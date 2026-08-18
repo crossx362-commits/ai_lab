@@ -26,6 +26,20 @@ namespace AshesToStars
         public const float CardH = 152f;
         public const float CardGap = 16f;
 
+        /// <summary>
+        /// 카드가 뜬 동안 전장을 가리지 않게 아래에 붙이는 도크(§16). 필드 허브와 같은 방식이다.
+        /// 옛 길은 화면 전체를 55% 검정으로 덮고 카드를 한가운데(y 160~560)에 띄워
+        /// **파티가 안 보였다** — 오너가 「사냥 시작하면 캐릭터가 안 보인다」로 신고한 그 화면.
+        /// </summary>
+        public const float DockH = CardH + 16f;
+
+        /// <summary>카드를 반투명하게 — 뒤 전장이 비쳐야 가린 게 아니다.</summary>
+        public const float CardAlpha = 0.82f;
+
+        /// <summary>화면 아래에 붙인 카드 도크. 배너는 이 위에 얹는다.</summary>
+        public static Rect Dock(Rect screen) =>
+            new Rect(screen.x, screen.yMax - DockH, screen.width, DockH);
+
         public static Rect PickBand(Rect host)
         {
             float totalW = CardW * 3f + CardGap * 2f;

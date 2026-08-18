@@ -304,21 +304,22 @@ namespace AshesToStars
         bool DrawHuntBoonPick()
         {
             if (!HuntBoon.Waiting) return false;
-            var dim = new Rect(0f, 0f, 1280f, 720f);
-            GUI.color = new Color(0f, 0f, 0f, 0.55f);
-            GUI.DrawTexture(dim, Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            var banner = new Rect(240f, 88f, 800f, 48f);
-            UiAtlas.DrawSliced(banner, "panel", 8f, new Color(1f, 1f, 1f, 0.92f));
+            // 전체 화면 dim은 쓰지 않는다 — 카드가 뜬 동안에도 전장이 보여야 한다(§16).
+            // 대신 카드를 아래 도크에 붙이고 반투명하게 그린다.
+            var dock = HuntBoon.Dock(new Rect(0f, 0f, 1280f, 720f));
+            // 높이 48 미만으로 줄이지 마라 — panel 금테(0.24)가 안쪽을 먹어 18px 글씨가 반토막 난다.
+            var banner = new Rect(240f, dock.y - 56f, 800f, 48f);
+            UiAtlas.DrawSliced(banner, "panel", 8f, new Color(1f, 1f, 1f, 0.92f * HuntBoon.CardAlpha));
             Hint(UiAtlas.ContentRect(banner, "panel", 2f),
                 $"이 판 강화 {HuntBoon.Owned.Count}/8 — 나가면 사라진다. 고를 때까지 전투가 멈춘다");
             var picks = HuntBoon.Offered;
-            var area = HuntBoon.PickBand(new Rect(0f, 160f, 1280f, 400f));
+            var area = HuntBoon.PickBand(dock);
             var cells = UiPages.Grid(area, Mathf.Max(1, picks.Count), 1, HuntBoon.CardGap);
             for (int i = 0; i < picks.Count && i < cells.Length; i++)
             {
                 var d = Boons.Def(picks[i]);
-                if (DrawCard(cells[i], d.Name, d.Desc, HuntBoon.IconOf(picks[i])))
+                if (DrawCard(cells[i], d.Name, d.Desc, HuntBoon.IconOf(picks[i]),
+                             alpha: HuntBoon.CardAlpha))
                 {
                     HuntBoon.Take(picks[i]);
                     _battle?.RefreshHuntBoons();

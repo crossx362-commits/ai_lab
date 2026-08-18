@@ -357,7 +357,8 @@ namespace AshesToStars
         protected void Hint(Rect r, string text)
         {
             Styles();
-            UiPages.LabelClip(r, text, _h2);
+            // 자르지 말고 줄여서 넣는다 — 배너 높이를 줄이면 18px 글꼴이 바로 반토막 난다.
+            UiPages.LabelFit(r, text, _h2);
         }
 
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
@@ -415,10 +416,13 @@ namespace AshesToStars
         }
 
         /// <summary>허브 카드. 잠기면 클릭되지 않고 사유를 카드 안에 적는다.</summary>
-        protected bool DrawCard(Rect card, string title, string sub, string iconKey = null, bool locked = false)
+        /// <param name="alpha">1 미만이면 카드가 반투명해져 뒤가 비친다(전투 중 보너스 선택).</param>
+        protected bool DrawCard(Rect card, string title, string sub, string iconKey = null, bool locked = false,
+                                float alpha = 1f)
         {
             Styles();
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.94f);
+            if (alpha < 1f) tint.a *= alpha;
             string chrome = UiPages.CardChrome(card);
             // 금테 두께는 CardLayout이 글씨 칸을 낼 때 쓰는 값과 **같아야** 한다(UiPages.CardPad).
             if (!UiAtlas.DrawSliced(card, chrome, 16f, tint, UiPages.CardPad(card)))
@@ -428,9 +432,12 @@ namespace AshesToStars
             if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);
             bool slim = UiPages.IsSlimCard(card);
             // 자르지 말고 줄여서 넣는다 — 잠긴 카드는 「잠김 — 」이 붙어 한 줄이 더 는다.
+            var savedColor = GUI.color;
+            if (alpha < 1f) GUI.color = new Color(1f, 1f, 1f, alpha);
             UiPages.LabelFit(titleR, title, slim ? _h1Slim : _cardTitle);
             UiPages.LabelFit(subR, locked ? "잠김 — " + sub : sub,
                 slim ? _h2Slim : locked ? _small : _h2);
+            GUI.color = savedColor;
             if (locked) return false;
             return GUI.Button(card, GUIContent.none, GUIStyle.none);
         }
