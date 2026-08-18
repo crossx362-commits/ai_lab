@@ -52,7 +52,7 @@ V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정�
 > - **네거티브(실측)**: meas 사본에서 `NetWorth.Line()` 줄+코멘트를 지우면 `NetWorthSelfCheck`
 >   FAIL 1건 「영지 현황이 Line·Seed를 읽는다」 exit 1. 코멘트만 남기면 grep 기반 검사가 오탐하므로
 >   코멘트까지 제거해야 진짜 FAIL이 뜬다(검사가 소스 텍스트 grep임을 확인).
-> - **증거** `output/qa/ashes-to-stars/full_check/net_worth_selfcheck_20260819.log`.
+> - **증거** `output/qa/ashes-to-stars/full_check/net_worth_selfcheck_20260819.log`. 코드 `530cf54b`.
 > - 남은 full_check FAIL: ④`RaceDropSelfCheck`(QA 시드 보상에 가죽 없음) ⑤`BossBattleDpsSelfCheck`(NRE).
 >   다음 코드 이터가 하나씩.
 >
