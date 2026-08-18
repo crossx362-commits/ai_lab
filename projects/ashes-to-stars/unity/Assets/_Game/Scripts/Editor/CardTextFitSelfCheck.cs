@@ -152,7 +152,11 @@ namespace AshesToStars
             GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
             var world = WorldMapHud.Cards(body);
             Check(world.Length == 4, $"월드맵 도크 4칸 (실제 {world.Length})");
+            Fits(world[0], "성계 이동",
+                "잠김 — " + WorldMapDockCap.Star(), "월드맵도크[0]");
             Fits(world[1], "침략", WorldMapDockCap.Caption(), "월드맵도크[1]");
+            Fits(world[2], "랭킹",
+                "잠김 — " + WorldMapDockCap.Rank(), "월드맵도크[2]");
             GameState.SetTowerFloorForTest(1);
             Fits(world[1], "침략",
                 "잠김 — " + WorldMapDockCap.Caption(), "월드맵도크잠김");

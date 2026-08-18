@@ -3,7 +3,7 @@ using System;
 namespace AshesToStars
 {
     /// <summary>
-    /// 월드맵 침략 카드 부제. 옛 줄은 면·출정·약탈을 이어 붙여 두 줄로 잘렸다.
+    /// 월드맵 도크 부제. 침략은 면·출정, 성계·랭킹은 미구현 설명을 줄인다.
     /// QA_NO면 옛 긴 줄. WorldMapScreen이 읽는다.
     /// </summary>
     public static class WorldMapDockCap
@@ -16,6 +16,10 @@ namespace AshesToStars
         public const string LockOverdue = "연체 불가";
         public const string LockShield = "보호막";
         public const string OpenTail = "칸 · 출정";
+        public const string OldStar = "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)";
+        public const string OldRank = "랭킹 서버 없음 — 온라인 기능이다(§15)";
+        public const string StarCap = "로컬 허브만";
+        public const string RankCap = "서버 없음";
 
         static bool _qaSeeded;
 
@@ -43,7 +47,7 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "부제가 두 줄이다"
-            : "침략 부제는 한 줄이다(§16)";
+            : "성계·랭킹 부제는 한 줄이다(§16)";
 
         public static int RuneCount(string text)
         {
@@ -116,6 +120,12 @@ namespace AshesToStars
 
         /// <summary>잠기면 Lock, 아니면 Open. DrawCard가 잠김 접두를 붙인다.</summary>
         public static string Caption() => IsLocked ? Lock() : Open();
+
+        /// <summary>옛 소비처 — 미구현 설명을 통째로 붙였다.</summary>
+        public static string Star() => Blocked ? OldStar : StarCap;
+
+        /// <summary>옛 소비처 — 서버 부재 설명을 통째로 붙였다.</summary>
+        public static string Rank() => Blocked ? OldRank : RankCap;
 
         /// <summary>시각 QA. 30층이라 카드가 열리고 최단 면 부제가 한 줄.</summary>
         public static void SeedQaIfRequested()

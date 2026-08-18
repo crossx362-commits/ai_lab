@@ -107,7 +107,7 @@ namespace AshesToStars
 
             var cards = WorldMapHud.Cards(r);
             DrawCard(cards[0], "성계 이동",
-                "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)",
+                WorldMapDockCap.Star(),
                 "worldmap", locked: true);
 
             if (DrawCard(cards[1], "침략",
@@ -119,7 +119,7 @@ namespace AshesToStars
                 else InvasionApproach.Picking = true;
             }
 
-            DrawCard(cards[2], "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)",
+            DrawCard(cards[2], "랭킹", WorldMapDockCap.Rank(),
                 "characters", locked: true);
             DrawCard(cards[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
                 "침략 전투는 아직 없다(§13-5)", "building_barracks", locked: true);
