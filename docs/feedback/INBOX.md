@@ -27,7 +27,7 @@
 `EliteDrop.Apply`를 `DungeonRun.Complete`·전투·던전 지도·캐릭터창이 읽음.
 `QA_NO`면 옛 0. SelfCheck 전항 PASS. FAIL 3은 Apply를 뺌.
 PNG `elite_drop_shots/qa_go:Character.png` — `정예 일반 장비(§10-8)` · 석 1.
-필드 정예는 W3Party라 안 넣음.
+필드 정예는 W3Party라 안 넣음. 코드 `dd71b6c7`.
 
 ### ✅ 보스 고급 장비 드랍 (루프, 2026-08-18)
 
