@@ -30,7 +30,7 @@ INBOX 21:43 「승인하니까 해결해」+ 21:47 「막힌 것 풀기 — 30�
 SelfCheck 전항 PASS. FAIL 1은 CreateBosses에서 `BossHp.Hp`를 뺌.
 재측정 G1 100→472 · 변화 29회 · G2 5h Lv36≥30. V3 배선 11149→5575→0 PASS.
 PNG `boss_hp_shots/qa_go:Tower.png` — `보스 HP는 기대 파티 472 DPS(§18-11)` · 탑 30층.
-장비 칸은 권장 전투력에 흡수. `W3Party`는 안 건드렸다.
+장비 칸은 권장 전투력에 흡수. `W3Party`는 안 건드렸다. 코드 `cb050f29`.
 
 ### ✅ UI·아트 상시 폴리싱 + 화풍·재생성 정정 (대화, 2026-08-18)
 
