@@ -19,6 +19,7 @@ namespace AshesToStars
         {
             get
             {
+                if (UiAtlas.ShowQa) return UiAtlas.Line();
                 if (FieldHud.ShowQa) return FieldHud.Line();
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
@@ -65,6 +66,7 @@ namespace AshesToStars
             FieldHud.SeedQaIfRequested();
             EscapeManual.SeedQaIfRequested();
             BagTextFmt.SeedQaIfRequested();
+            UiAtlas.SeedQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;

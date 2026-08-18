@@ -541,16 +541,57 @@ namespace AshesToStars
             GUI.DrawTextureWithTexCoords(dest, texture, TextureCoords(source, texture), true);
         }
 
+        /// <summary>
+        /// Pieces 좌표는 원본 PNG 픽셀(<see cref="Width"/>×<see cref="Height"/>)이다.
+        /// 임포터가 NPOT를 1024로 줄이면 texture.width≠Width가 되고,
+        /// 그때 텍스처 크기로 나누면 tower가 지구본·heart가 깨진 하트를 문다
+        /// (필드 도크 실측). 아틀라스는 설계 크기로만 나눈다.
+        /// 크롬 솔로는 자기 텍스처가 곧 원본이라 texture 크기를 쓴다.
+        /// </summary>
         static Rect TextureCoords(Rect source, Texture2D texture)
         {
-            float w = texture != null ? texture.width : Width;
-            float h = texture != null ? texture.height : Height;
+            bool atlas = texture != null && Texture != null && ReferenceEquals(texture, Texture);
+            float w = atlas || texture == null ? Width : texture.width;
+            float h = atlas || texture == null ? Height : texture.height;
             if (w <= 0f || h <= 0f) return Rect.zero;
             return new Rect(
                 source.x / w,
                 (h - source.y - source.height) / h,
                 source.width / w,
                 source.height / h);
+        }
+
+        public const string EnvShow = "QA_ATLAS_UV";
+
+        static bool _qaSeeded;
+
+        public static bool ShowQa
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvShow);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static string Line() => "아이콘은 이웃을 물지 않는다(§16)";
+
+        /// <summary>조각 UV. 점검이 texture.width로 나눈 옛 값과 가른다.</summary>
+        public static Rect UvOf(string key)
+        {
+            var tex = TextureFor(key, out var source);
+            return TextureCoords(source, tex);
+        }
+
+        public static void SeedQaIfRequested()
+        {
+            if (!ShowQa) return;
+            _qaSeeded = true;
+        }
+
+        public static void ResetForTest()
+        {
+            _qaSeeded = false;
         }
     }
 }
