@@ -27,7 +27,7 @@
 `GearDrop.Apply`를 `CalculateVictoryReward`·결과·캐릭터창이 읽음.
 제작품은 일반. `QA_NO`면 옛 0. SelfCheck 전항 PASS. FAIL 1은 Apply를 뺌.
 PNG `gear_drop_shots/qa_go:{Character,Result}.png` — `보스 고급 장비(§10-8)`.
-정예 일반·랜덤 옵션은 안 넣음.
+정예 일반·랜덤 옵션은 안 넣음. 코드 `e87fed1b`.
 
 ### ✅ 가방 60칸 (루프, 2026-08-18)
 
