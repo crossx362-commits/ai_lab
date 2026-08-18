@@ -2601,9 +2601,14 @@ public class W3Party : MonoBehaviour
     {
         1 => SpriteBank.MobKindSwarmer,    // 포위형 — 낮고 넓게 벌어진 군집형
         2 => SpriteBank.MobKindRanged,     // 원거리형 — 직립·긴 팔
-        3 => SpriteBank.MobKindChaser,     // 치유 정예
+        // 정예 2종은 **인간형**으로 간다(2026-08-18). 잡몹 실루엣을 색·크기만 바꿔
+        // 재활용하던 자리라, 멀리서 보면 잡몹인지 정예인지 모양으로는 안 갈렸다.
+        // 힉스필드 인간형 그림이 마침 역할과 정확히 맞는다 — 치유 정예=사제,
+        // 소환 정예=소환사. 색·크기에 더해 **실루엣**이 등급을 말하게 된다(§10-3).
+        3 => SpriteBank.MobKindPriest,     // 치유 정예 — 사제
+        4 => SpriteBank.MobKindSummoner,   // 소환 정예 — 소환사
         5 => SpriteBank.MobKindCharger,    // 돌진형 — 뿔·덩치·앞으로 쏠린 무게중심
-        _ => SpriteBank.MobKindBasic,      // 0 추적형 · 4 소환 정예(크기·색으로 갈린다)
+        _ => SpriteBank.MobKindBasic,      // 0 추적형
     };
 
     /// <summary>

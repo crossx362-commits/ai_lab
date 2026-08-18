@@ -56,8 +56,20 @@ public class SpriteBank
     // 0번(mob01)은 기존 기본형이라 자리를 지킨다. 1~4는 §10-2 계열 구분용 P2 아트.
     public const int MobKindBasic = 0, MobKindChaser = 1, MobKindCharger = 2,
                      MobKindRanged = 3, MobKindSwarmer = 4;
+    // 5번부터는 힉스필드로 만든 인간형 할로우 나이트 그림이다(오너 지시 2026-08-18
+    // "지금까지 힉스필드에서 만들어진 캐릭터는 몬스터에 활용하자"). 오너가 준 픽셀아트가
+    // 기본 5직업을 맡으면서 이 10종이 갈 곳을 잃었는데, 버리지 않고 몹 계열로 돌린다.
+    // ⚠️ **뒤에만 덧붙인다.** 0~4는 기존 인덱스라 하나라도 밀면 화면의 몹이 통째로 어긋난다.
+    public const int MobKindGuardian = 5, MobKindBerserker = 6, MobKindSwordsman = 7,
+                     MobKindArcher = 8, MobKindSummoner = 9, MobKindPriest = 10,
+                     MobKindDruid = 11, MobKindBard = 12, MobKindShaman = 13,
+                     MobKindElemental = 14;
     static readonly string[] MOB_DIRS =
-        { "mob01", "mob_chaser", "mob_charger", "mob_ranged", "mob_swarmer" };
+    {
+        "mob01", "mob_chaser", "mob_charger", "mob_ranged", "mob_swarmer",
+        "mob_guardian", "mob_berserker", "mob_swordsman", "mob_archer", "mob_summoner",
+        "mob_priest", "mob_druid", "mob_bard", "mob_shaman", "mob_elemental",
+    };
     static readonly string[] MOB_FRAMES =
     {
         "idle_00", "idle_01", "idle_02", "idle_03",
