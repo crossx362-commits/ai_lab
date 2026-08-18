@@ -105,11 +105,11 @@ public class SpriteBank
         int i;
         switch (m)
         {
-            case Motion.Walk: i = (int)MobFrame.Walk0 + (int)(t / 0.11f) % 6; break;
-            case Motion.Attack: i = (int)MobFrame.Atk0 + Mathf.Clamp((int)(t / 0.09f), 0, 3); break;
+            case Motion.Walk: i = (int)MobFrame.Walk0 + (int)(t / (WalkCycle / 6f)) % 6; break;
+            case Motion.Attack: i = (int)MobFrame.Atk0 + Mathf.Clamp((int)(t / (0.50f / 4f)), 0, 3); break;
             case Motion.Hurt: i = (int)MobFrame.Hurt1; break;   // 붉게 물든 프레임이 피격 표시다
             case Motion.Death: i = (int)MobFrame.Death0 + Mathf.Clamp((int)(t / 0.1f), 0, 3); break;
-            default: i = (int)MobFrame.Idle0 + (int)(t / 0.16f) % 4; break;
+            default: i = (int)MobFrame.Idle0 + (int)(t / (IdleCycle / 4f)) % 4; break;
         }
         return row[Mathf.Clamp(i, 0, row.Length - 1)] ?? Mob(kind);
     }
@@ -174,6 +174,16 @@ public class SpriteBank
         return Mathf.Max(1, n);
     }
 
+    // 한 동작이 도는 데 걸리는 시간(초). 오너 지적 2026-08-18 "스프라이트 애니 너무
+    // 빨라서 안 보인다" — 걷기 0.72s(6장이면 8fps)·공격 0.06s/장(16fps)은 눈이 못 따라간다.
+    // ⚠️ 공격은 **동작 길이(W3Party.AttackT)보다 짧아야** 전 프레임이 보인다.
+    //    옛 값은 6×0.06=0.36s인데 AttackT가 0.26s라 뒤 2장이 화면에 뜨지도 못했다.
+    public const float WalkCycle = 1.10f;   // 6장 → 0.18s/장
+    public const float IdleCycle = 1.50f;   // 6장 → 0.25s/장
+    public const float AtkFrame = 0.0833f;  // 6장 → 0.50s (오너 지정)
+    public const float SpFrame = 0.1667f;   // 6장 → 1.00s (오너 지정)
+    public const float DashFrame = 0.06f;   // 대시는 짧아야 이동기로 읽힌다 — 유지
+
     public Sprite CharAnim(Job j, Motion m, float t)
     {
         switch (m)
@@ -183,27 +193,27 @@ public class SpriteBank
             case Motion.Walk:
             {
                 int n = Have(j, Frame.Walk0, 6);
-                return Char(j, (Frame)((int)Frame.Walk0 + (int)(t / (0.72f / n)) % n));
+                return Char(j, (Frame)((int)Frame.Walk0 + (int)(t / (WalkCycle / n)) % n));
             }
             case Motion.Attack:
             {
                 int n = Have(j, Frame.Atk0, 6);
                 // 공격은 한 번 재생하고 마지막 장에서 멈춘다(루프하면 계속 휘두른다)
-                return Char(j, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / 0.06f), 0, n - 1)));
+                return Char(j, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / AtkFrame), 0, n - 1)));
             }
             case Motion.Dash:
-                return Char(j, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
+                return Char(j, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / DashFrame), 0, 3)));
             case Motion.Special:
             {
                 int n = Have(j, Frame.Sp0, 6);
-                return Char(j, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / 0.09f), 0, n - 1)));
+                return Char(j, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / SpFrame), 0, n - 1)));
             }
             case Motion.Hurt: return Char(j, Frame.Hurt);
             case Motion.Death: return Char(j, Frame.Death);
             default:
             {
                 int n = Have(j, Frame.Idle0, 6);
-                return Char(j, (Frame)((int)Frame.Idle0 + (int)(t / (0.90f / n)) % n));
+                return Char(j, (Frame)((int)Frame.Idle0 + (int)(t / (IdleCycle / n)) % n));
             }
         }
     }
@@ -261,26 +271,26 @@ public class SpriteBank
             case Motion.Walk:
             {
                 int n = HaveDir(e, Frame.Walk0, 6);
-                return CharDir(dir, (Frame)((int)Frame.Walk0 + (int)(t / (0.72f / n)) % n));
+                return CharDir(dir, (Frame)((int)Frame.Walk0 + (int)(t / (WalkCycle / n)) % n));
             }
             case Motion.Attack:
             {
                 int n = HaveDir(e, Frame.Atk0, 6);
-                return CharDir(dir, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / 0.06f), 0, n - 1)));
+                return CharDir(dir, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / AtkFrame), 0, n - 1)));
             }
             case Motion.Dash:
-                return CharDir(dir, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
+                return CharDir(dir, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / DashFrame), 0, 3)));
             case Motion.Special:
             {
                 int n = HaveDir(e, Frame.Sp0, 6);
-                return CharDir(dir, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / 0.09f), 0, n - 1)));
+                return CharDir(dir, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / SpFrame), 0, n - 1)));
             }
             case Motion.Hurt: return CharDir(dir, Frame.Hurt);
             case Motion.Death: return CharDir(dir, Frame.Death);
             default:
             {
                 int n = HaveDir(e, Frame.Idle0, 6);
-                return CharDir(dir, (Frame)((int)Frame.Idle0 + (int)(t / (0.90f / n)) % n));
+                return CharDir(dir, (Frame)((int)Frame.Idle0 + (int)(t / (IdleCycle / n)) % n));
             }
         }
     }

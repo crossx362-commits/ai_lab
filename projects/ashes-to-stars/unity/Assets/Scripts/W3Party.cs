@@ -907,7 +907,9 @@ public class W3Party : MonoBehaviour
     /// <summary>공격 연출. 근접은 타격만, 원거리는 탄을 날린다.</summary>
     void AttackFx(Member m, Vector2 targetPos)
     {
-        m.AttackT = 0.26f;                       // 공격 애니메이션 재생 구간
+        // 0.26 → 0.50. 공격 6프레임이 0.45초 걸리는데 0.26초에서 동작이 끝나
+        // 뒤 2장이 화면에 뜨지 못했다(오너 "애니 너무 빨라서 안 보인다").
+        m.AttackT = 0.52f;                       // 공격 애니메이션 재생 구간
         if (!IsMelee(m.Job)) FireAlly(m.Pos, targetPos);
 
         // 타격 이펙트 — 맞은 자리에 터진다. **초당 수십 번** 일어나므로 전부 뿌리면
@@ -1447,7 +1449,7 @@ public class W3Party : MonoBehaviour
     /// <summary>스킬 이름을 시전자 머리 위에 띄운다. 색으로 계열을 구분한다.</summary>
     void SkillCast(Member m, string name, Color tint, int hitstop = 0, float shake = 0f)
     {
-        m.SkillT = Mathf.Max(m.SkillT, 0.5f);          // 큰 동작을 확실히 재생
+        m.SkillT = Mathf.Max(m.SkillT, 1.05f);         // 시전 6프레임(1.00s)이 다 보이게
         m.FlashT = Mathf.Max(m.FlashT, 0.14f);         // 시전자 자신을 번쩍
         if (GameMode && _callouts.Count < 12)          // 난전에 12개 넘게 뜨면 글자밭이 된다
             _callouts.Add(new Callout { Text = name, At = m.Pos, T = 0f, C = tint });
@@ -2092,7 +2094,7 @@ public class W3Party : MonoBehaviour
                               : (AshesToStars.SkillUse.IsAuto && worstRatio < 0.45f ? Chant.수호가
                                  : AshesToStars.SkillUse.IsAuto ? Chant.진군가 : m.Chant);
                 if (m.ForceSkill != 0) m.ForceSkill = 0;
-                if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; m.SkillT = 0.5f; }
+                if (wantChant != m.Chant) { m.Chant = wantChant; _skillLog[4]++; m.SkillT = 1.05f; }
                 _partyChant = m.Chant;                      // 파티 전체에 적용되는 오라
                 PlayJobFx(5, m.Pos, 1.6f);             // 새 음유시인 오라 8프레임
                 m.Cd = 0.8f; m.Threat += 3f;
@@ -2144,7 +2146,7 @@ public class W3Party : MonoBehaviour
                     // ③ 기적 — 신앙 전량 소모, 파티 전체 완전 회복(§3)
                     m.Gauge = 0f;
                     foreach (var o in _party) if (o.Alive) o.Hp = o.MaxHp;
-                    m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 0.7f; FlashParty();
+                    m.Cd = 2.0f; _healsCast++; _skillLog[3]++; m.SkillT = 1.05f; FlashParty();
                     PlayJobFx(3, m.Pos, 2.2f);
                     FxParticles.Play(FxKind.기적, ToScreen(m.Pos), 1.5f); FxParticles.Play(FxKind.광륜, ToScreen(m.Pos), 1.6f);
                     SkillCast(m, "기적", new Color(1f, 0.95f, 0.6f), hitstop: 5, shake: 0.45f);
@@ -2156,7 +2158,7 @@ public class W3Party : MonoBehaviour
                     foreach (var o in _party)
                         if (o.Alive && (o.Pos - m.Pos).sqrMagnitude < 49f)
                             m.Gauge += Heal(o, 14f * sp.DmgMul * HealOf(m));
-                    m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 0.45f;
+                    m.Cd = 1.4f; m.Threat += 10f; _healsCast++; _skillLog[2]++; m.SkillT = 1.05f;
                     FxParticles.Play(FxKind.치유파동, ToScreen(m.Pos), 1.1f);
                     SkillCast(m, "치유 파동", new Color(0.55f, 1f, 0.65f), hitstop: 1);
                     PlayJobFx(3, m.Pos, 1.4f);
@@ -2252,7 +2254,7 @@ public class W3Party : MonoBehaviour
                 if (m.ForceSkill == 1 || (AshesToStars.SkillUse.IsAuto && m.SkillCd <= 0f && CountMobsNear(_mPos[target], 3.2f) >= 4))
                 {
                     if (m.ForceSkill == 1) m.ForceSkill = 0;
-                    m.SkillCd = 5f * CdOf(m); m.Cd = 0.9f / AtkSpdOf(m); _skillLog[5]++; m.SkillT = 0.6f;
+                    m.SkillCd = 5f * CdOf(m); m.Cd = 0.9f / AtkSpdOf(m); _skillLog[5]++; m.SkillT = 1.05f;
                     Vector2 c = _mPos[target];
                     // 장판 범위를 잠깐 띄운다 — 어디를 태웠는지 보여야 밀집 노림이 읽힌다
                     _stormAt = c; _stormR = Mathf.Sqrt(10.2f); _stormUntil = _t + 0.45f;
@@ -3118,7 +3120,7 @@ public class W3Party : MonoBehaviour
         }
 
         _qaUltimateEffect += effect;
-        m.SkillT = 0.9f;
+        m.SkillT = 1.05f;
         FlashParty();
         SkillCast(m, $"{m.Job} 각성 초필", new Color(0.65f, 0.85f, 1f), hitstop: 6, shake: 0.55f);
         FxParticles.Play(FxKind.쇼크웨이브, ToScreen(m.Pos), 3.2f, new Color(0.65f, 0.85f, 1f));
