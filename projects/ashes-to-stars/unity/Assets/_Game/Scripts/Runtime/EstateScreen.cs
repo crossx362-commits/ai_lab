@@ -1138,9 +1138,12 @@ namespace AshesToStars
                         $"체력 ×{Equipment.EffectiveHpMul(bag[0]):0.00}",
                         ItemAtlas.KeyForGear(bag[0]), rarity: bag[0].Grade))
                 {
-                    _msg = Equipment.TryEquip(ch, bag[0].Id)
-                        ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"
-                        : "장착에 실패했다";
+                    if (!EquipJob.CanWear(ch, bag[0]))
+                        _msg = EquipJob.WhyNot(ch, bag[0]);
+                    else
+                        _msg = Equipment.TryEquip(ch, bag[0].Id)
+                            ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"
+                            : "장착에 실패했다";
                 }
             }
 

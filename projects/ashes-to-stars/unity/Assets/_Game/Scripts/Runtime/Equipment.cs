@@ -36,6 +36,8 @@ namespace AshesToStars
         public Economy.LifeItem Material;
         public int Cost;
         public float BaseHpMul;
+        /// <summary>무기만. 빈 칸=공용. 물리=탱·딜(§11).</summary>
+        public string JobLine = "";
     }
 
     public static class Equipment
@@ -53,7 +55,8 @@ namespace AshesToStars
         public static readonly CraftRecipe[] Recipes =
         {
             new CraftRecipe { Id = "fang_sword", Name = "송곳니 검", Slot = EquipSlot.Weapon,
-                Material = Economy.LifeItem.CraftFang, Cost = 5, BaseHpMul = 1.05f },
+                Material = Economy.LifeItem.CraftFang, Cost = 5, BaseHpMul = 1.05f,
+                JobLine = EquipJob.Physical },
             new CraftRecipe { Id = "bone_helm", Name = "유골 투구", Slot = EquipSlot.Helm,
                 Material = Economy.LifeItem.CraftBone, Cost = 5, BaseHpMul = 1.04f },
             new CraftRecipe { Id = LeatherArmorRecipe, Name = LeatherArmorName, Slot = EquipSlot.Armor,
@@ -383,6 +386,7 @@ namespace AshesToStars
             if (character == null || character.IsDeleted) return false;
             var gear = Find(gearId);
             if (gear == null) return false;
+            if (!EquipJob.CanWear(character, gear)) return false;
 
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)
