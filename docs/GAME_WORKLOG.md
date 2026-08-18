@@ -11,6 +11,14 @@
 ---
 
 
+## 지금 (2026-08-18) — 경매 복원 등급·옵션
+
+직전 트랙 아트 → 코드 칸. INBOX 이펙트는 FX 미커밋이라 안 겹침.
+`GearOpt.Pack`/`Parse`를 `TryListGear`·`RestoreListed`가 읽는다.
+전설+옵션4 등록→취소 뒤 그대로. `QA_NO`면 옛 recipe|enhance.
+샷 `gear_list_shots/qa_go:Character.png` — `경매도 옵션을 싣는다(§11)`.
+코드 `cf5b27da`. 폴리싱 다음은 월드맵.
+
 ## 지금 (2026-08-18) — 탑 HUD 아래 도크
 
 직전 트랙 코드 → 탑 화면 한 결함. INBOX 이펙트는 FX 미커밋이라 안 겹침.
