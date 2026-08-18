@@ -302,6 +302,10 @@
     <div class="stack" id="g-stack"></div>
     <div class="legend" id="g-stack-legend"></div>
     <div class="g-kv" id="g-kv"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="ghost" id="btn-push-top" type="button">푸시</button>
+      <span class="msg" id="push-msg-top"></span>
+    </div>
   </section>
   <section class="g-card g-road">
     <h3>전체 로드맵</h3>
@@ -413,6 +417,7 @@
       <input type="text" id="commit-msg" maxlength="120" placeholder="커밋 메시지 (비우면 자동)" style="margin-top:10px">
       <div class="row">
         <button id="btn-commit" type="button">커밋</button>
+        <button class="ghost" id="btn-push" type="button">푸시</button>
         <span class="msg" id="commit-msg-out"></span>
       </div>
     </section>
@@ -710,6 +715,9 @@ function renderGlance(state) {
       : `<span>검증</span><b class="warn">기록 없음</b>`,
     `<span>저장 안 한 파일</span><b class="${dirty ? "warn" : "ok"}">${dirty}개</b>`,
     lastCommit ? `<span>최근 저장</span><b>${esc(lastCommit.when)}</b>` : "",
+    (state.push && state.push.ahead > 0)
+      ? `<span>안 올린 커밋</span><b class="warn">${state.push.ahead}개</b>`
+      : `<span>안 올린 커밋</span><b class="ok">없음</b>`,
   ].filter(Boolean).join("");
 }
 
@@ -766,6 +774,15 @@ function render(state) {
     `<div class="${f.allowed ? "ok" : "no"}">${esc(f.code)} ${esc(f.path)}</div>`
   ).join("") + `<div class="ok">${allowN}개 저장 가능</div>` : '<p class="empty">저장할 변경 없음</p>';
   $("btn-commit").disabled = allowN === 0;
+  const push = state.push || {};
+  const pushBtn = $("btn-push");
+  for (const id of ["btn-push", "btn-push-top"]) {
+    const b = $(id);
+    if (!b) continue;
+    b.disabled = !(push.ahead > 0);
+    b.textContent = push.ahead > 0 ? `푸시 ${push.ahead}개` : "푸시";
+    b.title = push.branch ? `origin/${push.branch}로 올린다` : "올릴 커밋 없음";
+  }
   const results = state.results || [];
   $("results").innerHTML = results.length ? results.map((it) => `
     <div class="item${checked(state, it.id) ? " done" : ""}">
@@ -959,6 +976,24 @@ $("btn-commit").onclick = async () => {
     $("btn-commit").disabled = false;
   }
 };
+
+async function pushNow(outId) {
+  const out = $(outId);
+  out.className = "msg";
+  out.textContent = "올리는 중…";
+  $("btn-push").disabled = true;
+  $("btn-push-top").disabled = true;
+  try {
+    const r = await api("/api/push", {});
+    out.textContent = `origin/${r.branch}로 ${r.pushed}개 올림`;
+  } catch (err) {
+    out.className = "msg err";
+    out.textContent = err.message;
+  }
+  await refresh().catch(() => {});
+}
+$("btn-push").onclick = () => pushNow("commit-msg-out");
+$("btn-push-top").onclick = () => pushNow("push-msg-top");
 
 $("done-gallery").onclick = (e) => {
   const img = e.target.closest("img[data-full]");

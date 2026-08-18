@@ -1784,6 +1784,50 @@ def commit_work(message: str) -> dict:
     return {"hash": head.split()[0], "subject": head[len(head.split()[0]) + 1:], "files": files}
 
 
+def push_state() -> dict:
+    """origin보다 몇 커밋 앞서 있나. origin이 없거나 못 읽으면 조용히 0."""
+    try:
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=5).strip()
+        raw = subprocess.check_output(
+            ["git", "rev-list", "--count", f"origin/{branch}..HEAD"],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=8,
+            stderr=subprocess.DEVNULL).strip()
+        ahead = int(raw or 0)
+    except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired, ValueError):
+        return {"branch": "", "ahead": 0}
+    return {"branch": branch, "ahead": ahead}
+
+
+def push_work() -> dict:
+    """지금 브랜치를 origin으로 올린다. **강제 푸시는 하지 않는다** — 남의 커밋을 지운다.
+
+    보드 버튼 전용(오너 지시 2026-08-18). 사람이 눌렀을 때만 돈다 — 자동 루프는 이걸 안 부른다.
+    거절(non-fast-forward)이면 그대로 사유를 돌려준다. 여기서 pull·rebase를 대신 하지 않는다:
+    작업트리에 다른 세션의 변경이 있는 상태에서 자동 rebase는 사고가 된다.
+    """
+    state = push_state()
+    branch = state.get("branch") or ""
+    if not branch or branch == "HEAD":
+        raise ValueError("브랜치가 없다(detached HEAD) — 푸시하지 않는다")
+    if state.get("ahead", 0) <= 0:
+        raise ValueError("올릴 커밋이 없다")
+    try:
+        out = subprocess.run(
+            ["git", "push", "origin", branch],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=180,
+            capture_output=True)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise ValueError(f"푸시 실패 — {e}") from e
+    if out.returncode != 0:
+        tail = (out.stderr or out.stdout or "").strip().splitlines()
+        why = tail[-1] if tail else f"exit {out.returncode}"
+        raise ValueError(f"푸시 거절 — {why[:160]}")
+    after = push_state()
+    return {"branch": branch, "pushed": state["ahead"], "ahead": after.get("ahead", 0)}
+
+
 def recent_commits() -> list[dict]:
     try:
         raw = subprocess.check_output(
@@ -2294,6 +2338,7 @@ def build_state() -> dict:
         "choices": _plain_list(pending_choices(queue, miles, decisions, extra)),
         "loop": flags,
         "commits": recent_commits(),
+        "push": push_state(),
         "git": dirty_files(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "slice": _plain_list(slice_checks(status, design, _read(GAME_DESIGN))),
@@ -2440,6 +2485,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/commit":
                 result = commit_work(str(data.get("message") or ""))
                 self._json(200, {"ok": True, **result})
+                return
+            if path == "/api/push":
+                self._json(200, {"ok": True, **push_work()})
                 return
         except ValueError as e:
             self._json(400, {"ok": False, "error": str(e)})

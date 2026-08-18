@@ -571,6 +571,58 @@ class TestReportTests(unittest.TestCase):
             self.assertEqual(len(data["items"]), 1)
 
 
+class PushTests(unittest.TestCase):
+    """보드 푸시 버튼(오너 지시 2026-08-18) — 진짜 git 저장소로 확인한다.
+
+    모킹하면 '올릴 게 없을 때'와 '거절될 때'를 못 잡는다(2026-07-12 교훈: Popen 성공이
+    스크립트 성공이 아니었다). 임시 bare 원격을 만들어 실제로 밀어본다."""
+
+    def _repo(self, tmp):
+        import subprocess
+        root = Path(tmp) / "work"
+        bare = Path(tmp) / "origin.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
+        env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", **os.environ}
+        (root / "a.txt").write_text("1", encoding="utf-8")
+        subprocess.run(["git", "-C", str(root), "add", "a.txt"], check=True)
+        subprocess.run(["git", "-C", str(root), "commit", "-qm", "one"], check=True, env=env)
+        subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(bare)], check=True)
+        subprocess.run(["git", "-C", str(root), "push", "-q", "origin", "master"], check=True)
+        return root, env
+
+    def test_push_sends_only_when_ahead(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, env = self._repo(tmp)
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                self.assertEqual(board.push_state()["ahead"], 0)
+                with self.assertRaises(ValueError):
+                    board.push_work()              # 올릴 게 없으면 밀지 않는다
+
+                (root / "a.txt").write_text("2", encoding="utf-8")
+                subprocess.run(["git", "-C", str(root), "commit", "-qam", "two"],
+                               check=True, env=env)
+                self.assertEqual(board.push_state()["ahead"], 1)
+                result = board.push_work()
+                self.assertEqual(result["pushed"], 1)
+                self.assertEqual(result["ahead"], 0)
+                self.assertEqual(board.push_state()["ahead"], 0)
+            finally:
+                board.ROOT = old
+
+    def test_push_never_forces(self):
+        """강제 푸시 금지 — 남의 커밋을 지운다. 소스에 --force가 없어야 한다."""
+        src = (HERE / "board.py").read_text(encoding="utf-8")
+        body = src[src.index("def push_work"):src.index("def recent_commits")]
+        self.assertIn('"git", "push", "origin", branch', body)
+        for bad in ('"--force"', '"-f"', '"--force-with-lease"', '"+HEAD"'):
+            self.assertNotIn(bad, body)
+
+
 class LiveLogTests(unittest.TestCase):
     """2026-08-18 사고: 파이프로 띄운 루프의 출력이 loop_main.log에 안 들어가
     보드의 '지금'이 하루 전에 멈췄다. 메인 로그가 낡으면 이터 로그를 본다."""
