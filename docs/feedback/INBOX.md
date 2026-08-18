@@ -28,7 +28,7 @@
 목숨 아이템은 종류당 1칸. 비장착 장비는 1개 1칸. `QA_NO`면 옛 무한.
 SelfCheck 전항 PASS. FAIL 3은 Gain이 CanGain을 뺌.
 PNG `bag_slots_shots/qa_go:Character.png` — `가방 60/60(§11)`.
-골드 확장은 안 넣음.
+골드 확장은 안 넣음. 코드 `02c0d658`. 코드 `02c0d658`.
 
 ### ✅ 무기 직업 계열 (루프, 2026-08-18)
 
