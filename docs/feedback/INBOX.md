@@ -871,9 +871,13 @@ Lv20에서 1차 전직 11종으로 세분화한 뒤 Lv50에서 같은 직업의 
 
 2. 필드 허브 카드 글씨 잘림 — FieldHud.DockH를 200→250으로 올리는 건 하지 마라(시도했고 더 나빠져 되돌림). UiPages.CardChrome/DrawCard의 본문 영역 계산을 볼 것.
 
-> **진행(2026-08-19 루프):** 레이드급 카드 부제. `FieldDockCap.Raid`를 허브가 읽는다.
+> **진행(2026-08-19 루프):** 던전 입장 카드 부제. `FieldDockCap.Dungeon`을 허브가 읽는다.
+> `랜덤 · 종점 보스`. `QA_NO`면 옛 긴 줄. PNG `field_dungeon_cap_shots/qa_go:Field.png`.
+> DockH는 안 올렸다. 이펙트는 여기 유지. 코드 `595a0e08`.
+>
+> **이전:** 레이드급 카드 부제. `FieldDockCap.Raid`를 허브가 읽는다.
 > `5인 · 환생석 없음`. `QA_NO`면 옛 긴 줄. PNG `field_raid_cap_shots/qa_go:Field.png`.
-> DockH는 안 올렸다. 던전 입장 부제·이펙트는 여기 유지. 코드 `7b61d1bb`.
+> DockH는 안 올렸다. 던전 입장 부제·이펙트는 그때 유지. 코드 `7b61d1bb`.
 >
 > **이전:** 남은 배회 보스 카드. 일정·저체력은 `c10357b9`.
 > `FieldDockCap.Boss`를 허브가 읽는다. `재의 야수 · 환생석 없음`.
