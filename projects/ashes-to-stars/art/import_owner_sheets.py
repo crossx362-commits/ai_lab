@@ -37,10 +37,20 @@ SHEET_JOBS = {
 ROW_IDLE, ROW_MOVE, ROW_ATTACK, ROW_SKILL1, ROW_SKILL2, ROW_SKILL3, ROW_DEATH = range(7)
 FRAME_PLAN = [
     ("idle_00", ROW_IDLE, 0),
+    # 원본은 동작마다 6프레임이다. 계약이 2장이던 시절엔 4장을 버렸다
+    # (오너 지적 2026-08-18 "애니메이션 제대로 적용 안 된 거 같음") — 전부 쓴다.
     ("walk_00", ROW_MOVE, 0),
-    ("walk_01", ROW_MOVE, 3),
-    ("attack_00", ROW_ATTACK, 1),
-    ("attack_01", ROW_ATTACK, 3),
+    ("walk_01", ROW_MOVE, 1),
+    ("walk_02", ROW_MOVE, 2),
+    ("walk_03", ROW_MOVE, 3),
+    ("walk_04", ROW_MOVE, 4),
+    ("walk_05", ROW_MOVE, 5),
+    ("attack_00", ROW_ATTACK, 0),
+    ("attack_01", ROW_ATTACK, 1),
+    ("attack_02", ROW_ATTACK, 2),
+    ("attack_03", ROW_ATTACK, 3),
+    ("attack_04", ROW_ATTACK, 4),
+    ("attack_05", ROW_ATTACK, 5),
     ("special_00", ROW_SKILL3, 2),
     ("hurt_00", ROW_DEATH, 0),
     ("death_00", ROW_DEATH, 4),

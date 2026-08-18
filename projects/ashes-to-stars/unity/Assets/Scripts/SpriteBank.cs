@@ -33,11 +33,24 @@ public class SpriteBank
     /// 프레임 순서는 JOB_FRAMES와 **반드시 같아야 한다** — 인덱스로 짝지어 로드한다.
     /// 대시 4프레임은 §5 이동기(무적 0.3초)용이고, Invuln은 무적 구간 표시다.
     /// </summary>
+    /// <summary>
+    /// ⚠️ 순서는 `JOB_FRAMES`와 **반드시 같다** — 인덱스로 짝지어 로드한다.
+    ///
+    /// 걷기·공격이 2장뿐이었다(WalkA/B, AttackA/B). 오너가 준 원본 시트는 동작마다
+    /// **6프레임**인데 계약이 2장이라 나머지 4장을 통째로 버리고 있었다
+    /// (오너 지적 2026-08-18 "캐릭터 스프라이트 애니메이션 제대로 적용 안 된 거 같음").
+    /// 6장으로 늘린다. 옛 자산처럼 뒤 프레임이 없으면 로더가 건너뛰고 `CharAnim`이
+    /// 있는 장 안에서만 돈다 — 그래서 전직 13장 자산도 그대로 동작한다.
+    /// </summary>
     public enum Frame
     {
-        Idle = 0, WalkA = 1, WalkB = 2, AttackA = 3, AttackB = 4,
-        Special = 5, Hurt = 6, Death = 7,
-        DashA = 8, DashB = 9, DashC = 10, DashD = 11, Invuln = 12,
+        Idle = 0,
+        Walk0 = 1, Walk1 = 2, Walk2 = 3, Walk3 = 4, Walk4 = 5, Walk5 = 6,
+        Atk0 = 7, Atk1 = 8, Atk2 = 9, Atk3 = 10, Atk4 = 11, Atk5 = 12,
+        Special = 13, Hurt = 14, Death = 15,
+        DashA = 16, DashB = 17, DashC = 18, DashD = 19, Invuln = 20,
+        // 옛 이름 — 호출부가 아직 쓴다. 6프레임의 첫 두 장을 가리킨다.
+        WalkA = Walk0, WalkB = Walk1, AttackA = Atk0, AttackB = Atk1,
     }
 
     // ── 오너 몬스터 아트 (2026-08-13) ────────────────────
@@ -108,7 +121,9 @@ public class SpriteBank
     Sprite[][] _extra;
     static readonly string[] JOB_FRAMES =
     {
-        "idle_00", "walk_00", "walk_01", "attack_00", "attack_01",
+        "idle_00",
+        "walk_00", "walk_01", "walk_02", "walk_03", "walk_04", "walk_05",
+        "attack_00", "attack_01", "attack_02", "attack_03", "attack_04", "attack_05",
         "special_00", "hurt_00", "death_00",
         "dash_00", "dash_01", "dash_02", "dash_03", "invuln_00",
     };
@@ -139,15 +154,39 @@ public class SpriteBank
     /// 호출부는 "지금 무엇을 하는가"만 알면 되고 프레임 번호를 몰라도 된다 —
     /// 프레임 구성이 바뀌어도 호출부를 안 고치게 하려는 것이다.
     /// </summary>
+    /// <summary>이 직업이 실제로 가진 연속 프레임 수를 센다(뒤가 비면 거기서 끊는다).</summary>
+    int Have(Job j, Frame first, int max)
+    {
+        int idx = (int)j;
+        if (_jobMissing != null && idx < _jobMissing.Length && _jobMissing[idx]) idx = (int)Job.Dps;
+        var row = _job[idx];
+        int n = 0;
+        for (int k = 0; k < max; k++)
+        {
+            int f = (int)first + k;
+            if (f >= row.Length || row[f] == null) break;
+            n++;
+        }
+        return Mathf.Max(1, n);
+    }
+
     public Sprite CharAnim(Job j, Motion m, float t)
     {
         switch (m)
         {
+            // 걷기·공격은 **가진 만큼** 돈다. 6장이면 6장, 옛 자산처럼 2장이면 2장 —
+            // 프레임 수를 코드에 못 박으면 자산이 바뀔 때마다 여기도 고쳐야 한다.
             case Motion.Walk:
-                return Char(j, (t % 0.36f) < 0.18f ? Frame.WalkA : Frame.WalkB);
+            {
+                int n = Have(j, Frame.Walk0, 6);
+                return Char(j, (Frame)((int)Frame.Walk0 + (int)(t / (0.72f / n)) % n));
+            }
             case Motion.Attack:
-                // 앞 절반은 준비, 뒷 절반은 타격 — 짧아도 두 장이면 동작으로 읽힌다
-                return Char(j, (t % 0.24f) < 0.12f ? Frame.AttackA : Frame.AttackB);
+            {
+                int n = Have(j, Frame.Atk0, 6);
+                // 공격은 한 번 재생하고 마지막 장에서 멈춘다(루프하면 계속 휘두른다)
+                return Char(j, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / 0.06f), 0, n - 1)));
+            }
             case Motion.Dash:
                 return Char(j, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
             case Motion.Special: return Char(j, Frame.Special);
@@ -184,6 +223,20 @@ public class SpriteBank
         return row[(int)f] ?? row[0] ?? Char(JobFromDir(dir), f);
     }
 
+    /// <summary>전직 폴더가 실제로 가진 연속 프레임 수.</summary>
+    int HaveDir(int e, Frame first, int max)
+    {
+        var row = _extra[e];
+        int n = 0;
+        for (int k = 0; k < max; k++)
+        {
+            int f = (int)first + k;
+            if (f >= row.Length || row[f] == null) break;
+            n++;
+        }
+        return Mathf.Max(1, n);
+    }
+
     public Sprite CharAnimDir(string dir, Motion m, float t)
     {
         int e = ExtraIndex(dir);
@@ -191,10 +244,18 @@ public class SpriteBank
             return CharAnim(JobFromDir(dir), m, t);
         switch (m)
         {
+            // 전직 폴더도 가진 만큼 돈다 — 지금 자산은 걷기 2장뿐이라 2장으로 돌지만,
+            // 6장짜리가 들어오면 코드를 안 고쳐도 6장으로 돈다.
             case Motion.Walk:
-                return CharDir(dir, (t % 0.36f) < 0.18f ? Frame.WalkA : Frame.WalkB);
+            {
+                int n = HaveDir(e, Frame.Walk0, 6);
+                return CharDir(dir, (Frame)((int)Frame.Walk0 + (int)(t / (0.72f / n)) % n));
+            }
             case Motion.Attack:
-                return CharDir(dir, (t % 0.24f) < 0.12f ? Frame.AttackA : Frame.AttackB);
+            {
+                int n = HaveDir(e, Frame.Atk0, 6);
+                return CharDir(dir, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / 0.06f), 0, n - 1)));
+            }
             case Motion.Dash:
                 return CharDir(dir, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / 0.06f), 0, 3)));
             case Motion.Special: return CharDir(dir, Frame.Special);
