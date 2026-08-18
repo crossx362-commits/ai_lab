@@ -588,6 +588,7 @@ namespace AshesToStars
             Equipment.ResetAll();
             AuctionState.ResetForTest();
             InvasionState.ResetForTest();
+            InvasionApproach.ResetForTest();
             LowHpReturn.ResetForTest();
             TowerEnding.ResetForTest();
             SoloRaidClear.ResetForTest();

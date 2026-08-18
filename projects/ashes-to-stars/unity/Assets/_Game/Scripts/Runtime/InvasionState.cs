@@ -6,7 +6,7 @@ namespace AshesToStars
     /// <summary>
     /// 침략 본게임 한 슬라이스(§15). 다른 유저 서버가 아니라 로컬 별 수비대와 싸운다.
     /// 출정 비용·승리 약탈·패배 추가 소모·PvP 목숨 예외가 생산 경계다.
-    /// 진입 면은 EstateGrid가 고른 최단 4면이다. 랭킹·동맹·경로 전투는 여기서 열지 않는다.
+    /// 진입 면은 InvasionApproach가 고른 4면이다. 안 고르면 옛 최단. 랭킹·동맹·경로 전투는 여기서 열지 않는다.
     /// </summary>
     public static class InvasionState
     {
@@ -377,7 +377,7 @@ namespace AshesToStars
             _pending = true;
             _paid = cost;
             _lastLoot = 0;
-            _approach = EstateGrid.InvaderSide();
+            _approach = InvasionApproach.Side;
             Save();
             return true;
         }

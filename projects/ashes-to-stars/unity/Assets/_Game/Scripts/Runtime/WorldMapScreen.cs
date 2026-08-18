@@ -43,6 +43,8 @@ namespace AshesToStars
                 if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"
                     && !InvasionState.RepeatLootBlocked)
                     s += " · " + InvasionState.RepeatLootLine();
+                if (InvasionApproach.ShowQa || InvasionApproach.HasPick || InvasionApproach.Picking)
+                    s += " · " + InvasionApproach.Line();
                 return s + " · 침략은 탑 30층(§14·§15)";
             }
         }
@@ -78,6 +80,7 @@ namespace AshesToStars
             Honor.SeedDefenseQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
+            InvasionApproach.SeedQaIfRequested();
             var plate = WorldStar.Plate(r);
             if (!UiAtlas.DrawSliced(plate, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
@@ -89,13 +92,21 @@ namespace AshesToStars
                 starCap = WorldStar.RaceSenseLine() + " · " + starCap;
             Hint(WorldStar.Caption(plate, icon), starCap);
 
+            if (InvasionApproach.Picking && InvasionHubLockReason() == null)
+            {
+                DrawApproachPick(WorldStar.AfterPlate(r));
+                return;
+            }
+
             var cards = UiPages.Grid(WorldStar.AfterPlate(r), 2, 2, 16f);
             DrawCard(cards[0], "성계 이동",
                 "성계 시스템 미구현 — 지금은 영지·필드·탑만 오간다(§13-6)",
                 "worldmap", locked: true);
 
             string invasionLock = InvasionHubLockReason();
-            string invasionOpen = $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)";
+            string invasionOpen = InvasionApproach.Blocked
+                ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)"
+                : $"{InvasionApproach.Line()} · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())}";
             if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
                 invasionOpen = $"{Economy.RaceCostLine()} · " + invasionOpen;
             else if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)
@@ -122,12 +133,33 @@ namespace AshesToStars
                     invasionLock ?? invasionOpen,
                     "damage", locked: invasionLock != null)
                 && invasionLock == null)
-                GameFlow.TryGoInvasion();
+            {
+                if (InvasionApproach.Blocked) GameFlow.TryGoInvasion();
+                else InvasionApproach.Picking = true;
+            }
 
             DrawCard(cards[2], "랭킹", "랭킹 서버 없음 — 온라인 기능이다(§15)",
                 "characters", locked: true);
             DrawCard(cards[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
                 "침략 전투는 아직 없다(§13-5)", "building_barracks", locked: true);
+        }
+
+        void DrawApproachPick(Rect r)
+        {
+            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var sides = EstateGrid.Sides;
+            for (int i = 0; i < sides.Length && i < cards.Length; i++)
+            {
+                var side = sides[i];
+                bool open = InvasionApproach.CanPick(side);
+                if (DrawCard(cards[i], InvasionApproach.CardTitle(side),
+                        InvasionApproach.CardBody(side), "damage", locked: !open)
+                    && open)
+                {
+                    InvasionApproach.Pick(side);
+                    GameFlow.TryGoInvasion();
+                }
+            }
         }
     }
 }

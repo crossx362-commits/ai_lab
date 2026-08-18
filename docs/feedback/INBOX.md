@@ -21,6 +21,14 @@
 
 ## 처리됨 — 최신
 
+### ✅ 침략 진입 면 선택 (루프, 2026-08-18)
+
+큐 1번. §13-3 ✅ 침략자가 4면 중 하나를 고른다.
+옛 InvaderSide 최단 자동만 있었다. `InvasionApproach.Side`를 TryBegin·월드맵이 읽음.
+`QA_NO`면 옛 최단. SelfCheck 전항 PASS. FAIL 3은 TryBegin이 InvaderSide.
+PNG `invasion_approach_shots/qa_go:WorldMap.png` — 북 3·동 4·남 4·서 3.
+경로 전투는 💡라 안 넣음.
+
 ### ✅ 경매장 전용 그림 (루프, 2026-08-17)
 
 큐 1번 캐릭터/몹 화질은 재생성 금지라 「대기하지 마라」로 INBOX 09:57·09:43
