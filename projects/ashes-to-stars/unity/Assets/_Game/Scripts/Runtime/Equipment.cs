@@ -477,17 +477,16 @@ namespace AshesToStars
             return n > 0;
         }
 
-        /// <summary>경매 취소·구매로 가방에 장비를 되돌린다. packed = recipeId|enhance.</summary>
+        /// <summary>경매 취소·유찰로 가방에 장비를 되돌린다. GearOpt.Parse가 등급·옵션을 읽는다.</summary>
         public static bool RestoreListed(string packed, string label)
         {
             Load();
             if (string.IsNullOrEmpty(packed)) return false;
             if (!BagSlots.CanAddGear()) return false;
-            var parts = packed.Split('|');
-            var rec = RecipeOf(parts[0]);
+            if (!GearOpt.Parse(packed, out string recipeId, out int enh, out GearGrade grade, out int[] affixes))
+                return false;
+            var rec = RecipeOf(recipeId);
             if (rec == null) return false;
-            int enh = 0;
-            if (parts.Length > 1) int.TryParse(parts[1], out enh);
             _items.Add(new GearItem
             {
                 Id = Guid.NewGuid().ToString("N"),
@@ -496,6 +495,8 @@ namespace AshesToStars
                 Name = rec.Name,
                 HpMul = rec.BaseHpMul,
                 Enhance = Mathf.Clamp(enh, 0, MaxEnhance),
+                Grade = grade,
+                Affixes = affixes ?? System.Array.Empty<int>(),
             });
             Save();
             return true;

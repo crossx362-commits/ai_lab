@@ -410,7 +410,7 @@ namespace AshesToStars
                 Id = Guid.NewGuid().ToString("N"),
                 Npc = false,
                 Gear = true,
-                Key = g.RecipeId + "|" + g.Enhance,
+                Key = GearOpt.Pack(g),
                 Label = g.Name + (g.Enhance > 0 ? " +" + g.Enhance : ""),
                 Qty = 1,
                 Price = price,
