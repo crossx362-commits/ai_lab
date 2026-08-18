@@ -122,10 +122,9 @@ namespace AshesToStars
                     if (DungeonRun.Active) DungeonRun.End();   // ✅ §7 나가면 초기화
                     GameFlow.Go(GameFlow.Result);
                 };
-                // 마릿수는 던전 계획이 §10-7 확률(60/30/10)로 이미 뽑아뒀다 —
-                // 여기서 다시 1로 고정하면 그 결정이 화면에 도달하지 못한다.
+                // 마릿수: 던전은 계획이 60/30/10. 탑 대보스는 BossCount(§10-7).
+                // 옛 길은 탑을 1로 고정해 던전만 다중 등장이었다. 배회는 💡라 1.
                 bool dungeonBoss = DungeonRun.Active && GameFlow.ReturnTo == GameFlow.Dungeon;
-                int bossCount = dungeonBoss ? DungeonRun.Plan.BossCount : 1;
                 // 던전 종점 보스는 몬스터문서 §7의 **75초** 기준이다(탑 층수 스케일이 아니다).
                 // 하위 레이드는 §18-10 계수 0.65로 목표 시간만 덮는다. BossBattle은 안 고친다.
                 // 출현 층은 풀 추첨(§9). 골드·경험은 입장 층, HP 시간은 입장 층 스케일.
@@ -133,6 +132,9 @@ namespace AshesToStars
                 int fightFloor = dungeonBoss || FieldBoss.Fighting
                     ? GameFlow.BossFloor
                     : RaidBossPool.FightFloor;
+                int bossCount = dungeonBoss
+                    ? DungeonRun.Plan.BossCount
+                    : BossCount.Begin(fightFloor);
                 boss.Begin(fightFloor, bossCount, raidTime);
                 _bossMaxHp = BossBattle.ActiveTotalHp;
             }
@@ -397,7 +399,7 @@ namespace AshesToStars
             // §10-8 판정 규칙대로 굴린다 — 일반 드랍은 보스 개체별, 희귀 고유템은 전투당 1회.
             // 예전에는 테이블 전체를 3회 굴려 **환생석 기대값이 3배**가 됐다.
             // 그러면 §18-4의 "리롤 노가다는 수지가 안 맞는다" 검산이 통째로 무너진다.
-            int bossCount = inDungeon ? DungeonRun.Plan.BossCount : 1;
+            int bossCount = inDungeon ? DungeonRun.Plan.BossCount : BossCount.Fight;
             uint dropSeed = inDungeon
                 ? DungeonRun.Plan.RunSeed
                 : (uint)(bossFloor * 2654435761u ^ (uint)System.DateTime.UtcNow.Ticks);
