@@ -27,11 +27,17 @@ img{max-width:100%;}
 /* ─── 상단 내비 ─── */
 nav{
   position:fixed; top:0; left:0; right:0; z-index:100;
-  display:flex; align-items:center; gap:6px;
-  padding:14px 22px;
+  padding:14px 20px;
   background:rgba(255,254,250,.88); backdrop-filter:blur(14px);
   border-bottom:1px solid rgba(232,223,200,.9);
   box-shadow:0 1px 12px rgba(110,90,50,.05);
+}
+/* 본문 .wrap(1120px)과 좌우 끝을 맞춘다 — 로고가 페이지 제목보다 왼쪽으로 더 들어가 보이던 정렬 문제 수정.
+   패딩은 (section과 동일하게) nav 쪽에 두고 navwrap은 .wrap과 똑같이 순수 중앙정렬만 한다 —
+   그래야 넓은 화면에서 로고와 본문 제목의 왼쪽 끝이 정확히 겹친다. */
+nav .navwrap{
+  width:100%; max-width:1120px; margin:0 auto;
+  display:flex; align-items:center; gap:6px;
 }
 nav .logo{font-weight:800; font-size:15px; letter-spacing:-.3px; margin-right:auto; display:flex; align-items:center; gap:8px; white-space:nowrap; flex-shrink:0;}
 nav .logo .dot{width:9px; height:9px; border-radius:50%; background:var(--grad); box-shadow:0 0 8px rgba(226,114,91,.6);}
@@ -286,7 +292,7 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .wcard .meta{display:flex; flex-wrap:wrap; gap:4px; margin-top:auto; padding-top:6px; align-items:center;}
-.wtag{font-size:10px; font-weight:800; color:#8a7b62; background:rgba(138,123,98,.09); border:1px solid rgba(138,123,98,.22); padding:2px 7px; border-radius:99px;}
+.wtag{display:inline-flex; align-items:center; vertical-align:middle; font-size:10px; font-weight:800; color:#8a7b62; background:rgba(138,123,98,.09); border:1px solid rgba(138,123,98,.22); padding:2px 7px; border-radius:99px;}
 .wtag.cat-reel{color:#55743c; background:rgba(106,153,78,.1); border-color:rgba(106,153,78,.3);}
 .wtag.cat-ai{color:#a45638; background:rgba(226,114,91,.09); border-color:rgba(226,114,91,.32);}
 .wtag.cat-music{color:#a05070; background:rgba(201,111,136,.11); border-color:rgba(201,111,136,.32);}
@@ -524,7 +530,7 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 .contact-box h2{font-size:clamp(20px,2.8vw,28px); font-weight:800; letter-spacing:-1px; margin-bottom:7px; color:#332b1e;}
 .contact-box p{color:var(--sub); max-width:520px; margin:0 auto 16px; font-size:12.5px;}
 /* 홈 압축용 슬림 연락 박스 */
-.contact-box.slim{margin-top:10px; padding:16px 18px;}
+.contact-box.slim{max-width:600px; margin:10px auto 0; padding:16px 18px;}
 .contact-box.slim h2{font-size:18px; margin-bottom:4px;}
 .contact-box.slim p{margin-bottom:10px;}
 .contact-box.slim .btn{padding:9px 18px; font-size:13px;}

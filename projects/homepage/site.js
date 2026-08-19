@@ -17,12 +17,12 @@ async function sbFetch(path, opts) {
 (async function visitCounter() {
   let el = document.getElementById('visits');
   if (!el) {
-    const nav = document.querySelector('nav');
-    if (!nav) return;
+    const navwrap = document.querySelector('nav .navwrap') || document.querySelector('nav');
+    if (!navwrap) return;
     el = document.createElement('span');
     el.id = 'visits'; el.className = 'visits'; el.hidden = true;
     el.innerHTML = '👀 <b></b>';
-    nav.appendChild(el);
+    navwrap.appendChild(el);
   }
   try {
     let views;

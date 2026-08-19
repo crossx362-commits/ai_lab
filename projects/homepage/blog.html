@@ -8,14 +8,14 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 <style>
   .post{
     background:var(--panel);
     border:1.5px solid var(--line); border-radius:var(--radius);
     padding:20px 22px; margin-bottom:14px; box-shadow:0 4px 14px rgba(120,100,50,.07);
   }
-  .post .pdate{font-size:12.5px; color:var(--dim); font-weight:700; font-variant-numeric:tabular-nums; margin-bottom:6px;}
+  .post .pdate{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--dim); font-weight:700; font-variant-numeric:tabular-nums; margin-bottom:6px;}
   .post h3{font-size:20px; font-weight:800; letter-spacing:-.5px; margin-bottom:12px; color:#43371f;}
   .post .pbody{color:#6b5f49; font-size:14.5px;}
   .post .pbody p{margin-bottom:12px;}
@@ -26,6 +26,7 @@
 <body>
 
 <nav>
+  <div class="navwrap">
   <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
   <div class="links">
     <a href="index.html">홈</a>
@@ -33,6 +34,7 @@
     <a href="works.html">작업물</a>
     <a href="career.html">경력·스킬</a>
     <a href="board.html">방명록</a>
+  </div>
   </div>
 </nav>
 
@@ -57,7 +59,7 @@
 </section>
 
 <!-- site.js가 먼저 와야 한다 — 아래 렌더가 site.js의 renderShots를 즉시 호출한다 -->
-<script src="site.js?v=11"></script>
+<script src="site.js?v=12"></script>
 <script src="posts.js?v=7"></script>
 <script>
 function escT(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
@@ -73,7 +75,7 @@ function renderPosts(cat){
   box.innerHTML = list.map((p, i) => {
     const paras = (p.body||'').split(/\n\s*\n/).map(x => '<p>' + escT(x.trim()).replace(/\n/g,'<br>') + '</p>').join('');
     const tags = (p.tags||[]).map(t => '<span class="wtag">#' + escT(t) + '</span>').join('');
-    const badge = CAT_BADGE[p.cat] ? '<span class="wtag cat-ai" style="margin-left:8px;">' + CAT_BADGE[p.cat] + '</span>' : '';
+    const badge = CAT_BADGE[p.cat] ? '<span class="wtag cat-ai">' + CAT_BADGE[p.cat] + '</span>' : '';
     const shots = (p.shots && p.shots.length) ? '<div class="shots" data-shots="' + i + '"></div>' : '';
     return '<article class="post rv on"><div class="pdate">' + escT(p.date) + badge + '</div><h3>' + escT(p.title) + '</h3>' +
       '<div class="pbody">' + paras + '</div>' + shots + '<div class="ptags">' + tags + '</div></article>';
