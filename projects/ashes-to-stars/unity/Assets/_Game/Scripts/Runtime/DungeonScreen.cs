@@ -109,7 +109,7 @@ namespace AshesToStars
             for (int i = 0; i < next.Count && i < nodes.Length; i++)
             {
                 int n = next[i];
-                if (DrawCard(nodes[i], Label(n), Desc(plan.Nodes[n]), "tower"))
+                if (DrawCard(nodes[i], Label(n), Desc(plan.Nodes[n]), NodeIconKey(plan.Nodes[n].Kind)))
                 {
                     DungeonRun.Enter(n);
                     return;
@@ -129,6 +129,18 @@ namespace AshesToStars
             var n = DungeonRun.Plan.Nodes[i];
             string mark = n.Optional ? " (선택)" : "";
             return $"{i}. {n.Kind}{mark}";
+        }
+
+        /// <summary>노드 종류에 맞는 아이콘 키를 준다 — 전에는 전부 "tower"라 전투 노드에 등대가 떴다.</summary>
+        static string NodeIconKey(NodeKind k)
+        {
+            switch (k)
+            {
+                case NodeKind.강화:     return "buffer";      // 임시 강화 3택 = 버프
+                case NodeKind.보상분기: return "rarity_rare"; // 막다른 보상
+                case NodeKind.보스:     return "tower";       // 종점 보스 = 탑 랜드마크(§5)
+                default:                return "damage";      // 전투·정예 = 교전
+            }
         }
 
         /// <summary>격투장 배치 템플릿을 한글로 읽어준다 — enum 이름(pockets 등)이 화면에 새는 것을 막는다.</summary>
