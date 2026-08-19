@@ -72,6 +72,8 @@ namespace AshesToStars
         protected const float RowH = 64f, RowGap = 12f, RowBtnW = 360f;
 
         GUIStyle _h1, _h2, _h1Slim, _h2Slim, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
+        // 아이콘 없는 카드(예: 타이틀 「종료」)를 형제 카드와 어긋나 보이지 않게 중앙 정렬로 그린다.
+        GUIStyle _cardTitleC, _h2C;
         Texture2D _bg, _line, _accent, _scrim;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
@@ -129,6 +131,8 @@ namespace AshesToStars
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
             _cardTitle = new GUIStyle(_h1) { fontSize = UiPages.CardTitleFont, alignment = TextAnchor.MiddleLeft };
+            _cardTitleC = new GUIStyle(_cardTitle) { alignment = TextAnchor.MiddleCenter };
+            _h2C = new GUIStyle(_h2) { alignment = TextAnchor.MiddleCenter };
             _tab = new GUIStyle(_small)
             {
                 fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
@@ -436,7 +440,7 @@ namespace AshesToStars
         /// <summary>허브 카드. 잠기면 클릭되지 않고 사유를 카드 안에 적는다.</summary>
         /// <param name="alpha">1 미만이면 카드가 반투명해져 뒤가 비친다(전투 중 보너스 선택).</param>
         protected bool DrawCard(Rect card, string title, string sub, string iconKey = null, bool locked = false,
-                                float alpha = 1f)
+                                float alpha = 1f, bool center = false)
         {
             Styles();
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : new Color(1f, 1f, 1f, 0.94f);
@@ -449,12 +453,14 @@ namespace AshesToStars
             UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
             if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);
             bool slim = UiPages.IsSlimCard(card);
+            // 아이콘 없는 카드만 중앙 정렬 허용 — 아이콘 칸이 비어 좌측에 죽은 여백이 생기는 것을 막는다.
+            bool centerText = center && !hasIcon && !slim;
             // 자르지 말고 줄여서 넣는다 — 잠긴 카드는 「잠김 — 」이 붙어 한 줄이 더 는다.
             var savedColor = GUI.color;
             if (alpha < 1f) GUI.color = new Color(1f, 1f, 1f, alpha);
-            UiPages.LabelFit(titleR, title, slim ? _h1Slim : _cardTitle);
+            UiPages.LabelFit(titleR, title, centerText ? _cardTitleC : slim ? _h1Slim : _cardTitle);
             UiPages.LabelFit(subR, locked ? "잠김 — " + sub : sub,
-                slim ? _h2Slim : locked ? _small : _h2);
+                centerText ? _h2C : slim ? _h2Slim : locked ? _small : _h2);
             GUI.color = savedColor;
             if (locked) return false;
             return GUI.Button(card, GUIContent.none, GUIStyle.none);

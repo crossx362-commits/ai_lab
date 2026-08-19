@@ -67,7 +67,9 @@ namespace AshesToStars
                     "characters", locked: !hasSave)
                 && hasSave)
                 GameFlow.Go(GameFlow.Estate);
-            if (DrawCard(cells[2], "종료", "게임을 닫는다"))
+            // 종료는 아이콘이 없는 유틸리티 카드 — 위 두 카드(아이콘+좌측 글씨)와 좌측 여백이
+            // 어긋나 보이지 않게 글씨를 카드 중앙에 둔다(center:true).
+            if (DrawCard(cells[2], "종료", "게임을 닫는다", center: true))
                 GameFlow.Quit();
         }
 
