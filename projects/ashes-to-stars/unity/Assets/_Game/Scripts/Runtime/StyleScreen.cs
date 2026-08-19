@@ -51,7 +51,10 @@ namespace AshesToStars
             {
                 string job = Jobs[_sel];
                 var cur = CombatStylePrefs.Get(job);
-                var styleCells = UiPages.Grid(new Rect(r.x, r.y + 122f, r.width, r.height - 240f), 2, 2, 12f);
+                // 하단 DrawChoice(이펙트 테스트·돌아가기)는 r.yMax-168 부터 그린다. 그리드 바닥이
+                // 그 위로 오도록 높이를 잡는다 — 예전엔 -240이라 2행 카드 바닥 50px이 선택 바에
+                // 깔려, 스타일 수치 한 줄만 있을 땐 안 보이던 겹침이 §3 행동설명 둘째 줄을 잘랐다.
+                var styleCells = UiPages.Grid(new Rect(r.x, r.y + 122f, r.width, r.height - 300f), 2, 2, 12f);
                 for (int s = 0; s < Styles.Length && s < styleCells.Length; s++)
                 {
                     var id = Styles[s];
@@ -76,6 +79,12 @@ namespace AshesToStars
         /// 수치를 에셋에서 읽어 보여준다. 화면이 코드 상수를 따로 들고 있으면
         /// 기획자가 인스펙터에서 값을 고쳤을 때 **화면만 옛 숫자를 말한다** —
         /// 이 저장소가 이미 겪은 「두 곳이 같은 기획을 다르게 구현」 사고다.
+        ///
+        /// §3 스타일 표의 「행동」열(공격형=회피 시도 안 함 … 생존형=HP 50%에 즉시 이탈)은
+        /// `CombatStyleDef.행동설명`에 스타일마다 authored돼 있으나 **읽는 코드가 0곳**이라
+        /// 화면에 한 번도 안 떴다(이 저장소가 반복한 「정의만 있고 부르는 곳 없다」 함정 —
+        /// 컨셉·스킬·사망리스크와 동일 계열). 같은 에셋을 이미 로드하는 이 소비처에서
+        /// 수치 아래 한 줄로 붙인다. 값이 비면 지어내지 않고 붙이지 않는다.
         /// </summary>
         static string StatLine(StyleId id)
         {
@@ -83,8 +92,9 @@ namespace AshesToStars
             foreach (var d in defs)
             {
                 if (d.Id != id) continue;
-                return $"딜 ×{d.딜배율:0.00} · 받는 피해 ×{d.피해배율:0.00} · " +
-                       $"후퇴 {d.후퇴체력 * 100f:0}% · 거리 {d.유지거리:0.0}";
+                string stat = $"딜 ×{d.딜배율:0.00} · 받는 피해 ×{d.피해배율:0.00} · " +
+                              $"후퇴 {d.후퇴체력 * 100f:0}% · 거리 {d.유지거리:0.0}";
+                return string.IsNullOrEmpty(d.행동설명) ? stat : stat + "\n" + d.행동설명;
             }
             // 에셋을 못 읽으면 숫자를 **지어내지 않는다.** 설명만 보여주고 사실을 말한다.
             return CombatStylePrefs.Describe(id) + " (수치 에셋을 못 읽었다)";
