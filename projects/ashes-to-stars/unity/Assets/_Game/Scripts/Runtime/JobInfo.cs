@@ -42,5 +42,22 @@ namespace AshesToStars
             if (concept == "") return $"직업 특성 — {mech}";
             return $"직업 특성 — {concept} · {mech}";
         }
+
+        /// <summary>
+        /// "보유 스킬 — {이름} · {이름} · …". JobDef.스킬(SkillDef[])의 **유일한 런타임 소비처**.
+        /// 이 배열은 ProjectSetup이 직업마다 authored(도발의 함성·성채 방패…)하고도 어떤 코드도
+        /// 읽지 않아 소비처 0곳이었다(ConceptLine이 겪은 함정과 동일 계열). 매칭 직업이 없거나
+        /// 스킬 배열이 비면 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
+        /// </summary>
+        public static string SkillLine(string jobName)
+        {
+            var d = For(jobName);
+            if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
+            var names = new System.Collections.Generic.List<string>();
+            foreach (var s in d.스킬)
+                if (s != null && !string.IsNullOrEmpty(s.이름)) names.Add(s.이름);
+            if (names.Count == 0) return "";
+            return "보유 스킬 — " + string.Join(" · ", names);
+        }
     }
 }

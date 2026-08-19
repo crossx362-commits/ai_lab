@@ -229,6 +229,12 @@ namespace AshesToStars
                             "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
                     }
 
+                    // 목숨/전직 줄이 절대 인덱스로 그려지던 것을 실제 사용된 최상단 행 다음으로
+                    // 붙인다. 회복·부활 슬롯(row 2·3)이 안 쓰이는 건강한 캐릭터에서 빈 행이 생겨
+                    // 직업 특성 줄이 패널 하단으로 밀리고, 보유 스킬 줄은 r.yMax를 넘겨 아예 안
+                    // 그려졌다(Info는 넘치면 조용히 건너뛴다). statusMax는 이 섹션이 실제로 쓴
+                    // 가장 아래 행이며, 전직 블록은 항상 그 다음부터 시작해 겹치지 않는다.
+                    int statusMax = 1;
                     // 목숨 상태 표시 — 유니코드 하트는 □로 나와 아틀라스 조각을 쓴다.
                     if (ch.IsDeleted)
                     {
@@ -241,11 +247,15 @@ namespace AshesToStars
                             ch.DeathCount, true, ch.MaxLives);
                         if (Memorial.HasRecord(ch))
                         {
-                            Info(r, 2, Memorial.GearLine(ch));
+                            Info(r, 2, Memorial.GearLine(ch)); statusMax = 2;
                             if (!string.IsNullOrEmpty(Memorial.PartyLine(ch)))
-                                Info(r, 3, Memorial.PartyLine(ch));
+                            {
+                                Info(r, 3, Memorial.PartyLine(ch)); statusMax = 3;
+                            }
                             if (!string.IsNullOrEmpty(Memorial.TimeLine(ch)))
-                                Info(r, 4, Memorial.TimeLine(ch));
+                            {
+                                Info(r, 4, Memorial.TimeLine(ch)); statusMax = 4;
+                            }
                         }
                     }
                     else
@@ -265,6 +275,7 @@ namespace AshesToStars
                             Info(r, 2, posted
                                 ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(recoveryTime)} — 출전 불가(§15)"
                                 : $"회복 {LifeSystem.FormatRecoveryPhrase(recoveryTime)} — 출전 불가(§4·§18-8)");
+                            statusMax = 2;
                         }
                     }
 
@@ -273,6 +284,7 @@ namespace AshesToStars
                     {
                         Locked(r, 3, "부활초 사용", "특수 직업은 부활초를 쓸 수 없다(§3)",
                             ItemAtlas.KeyFor(Economy.LifeItem.RevivalTea));
+                        statusMax = Math.Max(statusMax, 3);
                     }
                     else if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
                     {
@@ -281,13 +293,15 @@ namespace AshesToStars
                         {
                             LifeSystem.UseRevivePotion(ch);
                         }
+                        statusMax = Math.Max(statusMax, 3);
                     }
                     else if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() == 0)
                     {
                         Info(r, 3, "부활초 없음 — 던전·레이드에서 획득 가능(§4)");
+                        statusMax = Math.Max(statusMax, 3);
                     }
 
-                    int advancementRow = 4;
+                    int advancementRow = statusMax + 1;
                     if (ch.IsSpecialJob && !ch.IsDeleted)
                     {
                         int tokens = GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken);
@@ -362,6 +376,8 @@ namespace AshesToStars
                     {
                         string trait = JobInfo.ConceptLine(ch.Job);
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
+                        string skills = JobInfo.SkillLine(ch.Job);
+                        if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
                     }
         }
 
