@@ -651,6 +651,9 @@ public class W3Party : MonoBehaviour
     // 던전 임시 강화 배율(§7). **게임 모드에서만** 적용한다 —
     // 검증(W1~W3)은 강화 없는 기준선이어야 구성 비교가 성립한다.
     float _bAtk = 1f, _bHp = 1f, _bSpd = 1f, _bCd = 1f, _bHeal = 1f, _bShield = 1f, _bRange = 1f, _bAtkSpd = 1f;
+    // 종족 방어배율(§18-9)을 받는 피해 배율로 환산한 값. 방어배율 0.80(엘프 방어 -20%) → 1.20(받는 피해 +20%).
+    // 인간·드워프·수인=1.0 → 종족 도입 전과 동일. RaceDef.방어배율의 유일한 런타임 소비처(ApplyRaceModifiers가 채운다).
+    float _raceDmgTakenMul = 1f;
     /// <summary>판이 끝났을 때 호출. true=생존(상한 도달) / false=전멸</summary>
     public System.Action<bool> OnBattleEnd;
 
@@ -690,8 +693,8 @@ public class W3Party : MonoBehaviour
     }
 
     /// <summary>선택된 종족(§3·§18-9)의 기울기를 파티 배율 버스에 곱해 넣는다. `RaceDef`
-    /// 에셋(Resources/races)을 읽는 유일한 런타임 소비처다. 전투에 걸리는 것은 체력·이속뿐 —
-    /// 방어/경험치/드랍/영지는 전투 밖 계량이라 W3에 없다. 실패해도(에셋 없음 등) 인간=1로
+    /// 에셋(Resources/races)을 읽는 유일한 런타임 소비처다. 전투에 걸리는 것은 체력·이속·방어(받는 피해) —
+    /// 경험치/드랍/영지는 전투 밖 계량이라 W3에 없다. 실패해도(에셋 없음 등) 인간=1로
     /// 조용히 넘어간다. `_forcedRace`(하네스 `--race`)가 있으면 그것, 없으면 계정 선택.</summary>
     void LoadRunBoons()
     {
@@ -739,12 +742,16 @@ public class W3Party : MonoBehaviour
         foreach (var r in races) if (r != null && r.Id == id) { def = r; break; }
         if (def == null)
         {
+            _raceDmgTakenMul = 1f;
             Debug.LogWarning($"[W3] 종족 에셋을 못 찾음(id={id}, Resources/races {races.Length}종) — 배율 1로 진행");
             return;
         }
         _bHp *= def.체력배율;
         _bSpd *= def.이속배율;
-        Debug.Log($"[W3] 종족={id} 체력×{def.체력배율:F2} 이속×{def.이속배율:F2} (누적 _bHp={_bHp:F2} _bSpd={_bSpd:F2})");
+        // 방어배율 → 받는 피해 배율. 선형 (2 - 방어배율)로 「방어 -20% ⟺ 받는 피해 +20%」(§18-9)를 정확히 맞춘다.
+        // 1/방어배율은 +25%가 되어 라인 160의 「10~20% 기울기·곱연산 폭주 금지」를 넘으므로 쓰지 않는다.
+        _raceDmgTakenMul = Mathf.Clamp(2f - def.방어배율, 0.1f, 2f);
+        Debug.Log($"[W3] 종족={id} 체력×{def.체력배율:F2} 이속×{def.이속배율:F2} 방어배율{def.방어배율:F2}→받는피해×{_raceDmgTakenMul:F2} (누적 _bHp={_bHp:F2} _bSpd={_bSpd:F2})");
     }
 
     void BuildWorld()
@@ -1056,7 +1063,7 @@ public class W3Party : MonoBehaviour
         // 종족 기울기(§3·§18-9)를 파티 전체 배율 버스에 접는다. `RaceDef`(Resources/races)를
         // 실제로 읽는 **유일한 런타임 소비처** — 이게 없으면 종족은 전투에 영향 0이다
         // (「정의는 있고 부르는 곳이 0곳」을 CombatStyleDef와 같은 방식으로 닫는다).
-        // 전투에 걸리는 것은 체력·이속뿐이다(방어/경험치/드랍/영지는 전투 밖 계량이라 W3에 없다).
+        // 전투에 걸리는 것은 체력·이속·방어(받는 피해)다(경험치/드랍/영지는 전투 밖 계량이라 W3에 없다).
         // 인간=모든 배율 1 → 종족 도입 전과 완전히 동일하게 돌아 기존 측정을 깨지 않는다.
         ApplyRaceModifiers();
 
@@ -3134,6 +3141,7 @@ public class W3Party : MonoBehaviour
         // 장판·투사체·근접이 각자 판정을 갖고 있었다면 어딘가는 반드시 새어나갔을 것이다.
         if (m.IFrame > 0f) return;
         float incoming = dmg;
+        dmg *= _raceDmgTakenMul;                             // 종족 방어배율(§18-9) — 파티 전체 받는 피해 배율(엘프 ×1.20)
         if (_partyChant == Chant.수호가) dmg *= 0.82f;      // 음유시인 수호가 오라
         if (m.Shield > 0f)                                   // 수호기사 성채 방패가 먼저 깎인다
         {
