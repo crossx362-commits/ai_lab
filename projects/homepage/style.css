@@ -529,11 +529,24 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 }
 .contact-box h2{font-size:clamp(20px,2.8vw,28px); font-weight:800; letter-spacing:-1px; margin-bottom:7px; color:#332b1e;}
 .contact-box p{color:var(--sub); max-width:520px; margin:0 auto 16px; font-size:12.5px;}
-/* 홈 압축용 슬림 연락 박스 */
-.contact-box.slim{margin-top:10px; padding:16px 18px;}
+/* 홈 압축용 슬림 연락 박스 — 좌(제목·설명)/우(칩·버튼) 2단으로 펼쳐
+   넓은 화면에서 가운데만 채우고 좌우가 텅 비어 보이던 것을 해소한다 */
+.contact-box.slim{
+  margin-top:10px; padding:18px 26px; text-align:left;
+  display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap;
+}
 .contact-box.slim h2{font-size:18px; margin-bottom:4px;}
-.contact-box.slim p{margin-bottom:10px;}
+.contact-box.slim p{margin:0; max-width:none;}
 .contact-box.slim .btn{padding:9px 18px; font-size:13px;}
+.contact-box.slim .cb-left{position:relative; flex:1 1 240px; min-width:0;}
+.contact-box.slim .cb-right{position:relative; display:flex; flex-direction:column; align-items:flex-end; gap:10px;}
+.contact-box.slim .cb-right .chips{justify-content:flex-end;}
+.contact-box.slim .contact-links{justify-content:flex-end;}
+@media (max-width:720px){
+  .contact-box.slim{flex-direction:column; align-items:stretch; text-align:center; padding:16px 18px;}
+  .contact-box.slim .cb-right{align-items:stretch;}
+  .contact-box.slim .cb-right .chips, .contact-box.slim .contact-links{justify-content:center;}
+}
 .contact-links{display:flex; flex-wrap:wrap; justify-content:center; gap:9px; position:relative;}
 footer{padding:16px; text-align:center; color:var(--dim); font-size:11.5px;}
 footer a{color:var(--sub); font-weight:700;}
