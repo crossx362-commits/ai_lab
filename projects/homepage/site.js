@@ -55,7 +55,7 @@ const cio = new IntersectionObserver((es) => {
     const el = e.target, target = +el.dataset.count, t0 = performance.now();
     const tick = (t) => {
       const p = Math.min((t - t0) / 900, 1);
-      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + (el.dataset.suffix || '');
       if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
