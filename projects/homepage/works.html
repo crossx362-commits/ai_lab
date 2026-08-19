@@ -4,11 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>작업물 · 프로젝트 — 백수장인</title>
-<meta name="description" content="백수장인의 작업물과 개인 프로젝트 — 애니메이션 릴 아카이브(2017→2026), AI 활용 영상, AI 음악·자동 포스팅 실험, 그리고 펫과나·재와 별·GeoGuard·셀러 장부.">
+<meta name="description" content="백수장인의 개인 프로젝트(펫과나·재와 별·GeoGuard·셀러 장부)와 회사에서 만든 애니메이션 작업물.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="style.css">
+<style>
+  .grp-toggle{display:flex; gap:10px; margin-bottom:22px;}
+  .grp-btn{
+    flex:1; max-width:260px; display:flex; align-items:center; gap:10px;
+    padding:14px 18px; border-radius:16px; border:1.5px solid var(--line);
+    background:var(--panel); cursor:pointer; font-family:inherit; text-align:left;
+    transition:all .15s; box-shadow:0 3px 10px rgba(110,90,50,.06);
+  }
+  .grp-btn .gic{font-size:20px;}
+  .grp-btn .gt{font-size:14px; font-weight:800; color:#332b1e;}
+  .grp-btn .gs{font-size:11.5px; color:var(--sub);}
+  .grp-btn.on{border-color:rgba(106,153,78,.55); background:rgba(106,153,78,.09); box-shadow:0 6px 16px rgba(110,90,50,.1);}
+  .grp-btn:hover{transform:translateY(-2px);}
+  .sub-h{font-size:14px; font-weight:800; color:#332b1e; margin:22px 0 12px; display:flex; align-items:center; gap:7px;}
+  .panel-view{display:none;}
+  .panel-view.on{display:block;}
+  @media (max-width:600px){ .grp-toggle{flex-direction:column;} .grp-btn{max-width:none;} }
+</style>
 </head>
 <body>
 
@@ -27,79 +45,85 @@
   <div class="wrap wide">
     <div class="kicker rv">Works</div>
     <h2 class="title rv">작업물 · 프로젝트</h2>
-    <p class="lead rv d1">애니메이션 릴부터 개인 프로젝트까지 — <b>계속 추가하고 있어요.</b></p>
+    <p class="lead rv d1">개인으로 만든 것과 회사에서 만든 것, 두 갈래로 나눠 봤어요.</p>
   </div>
 </div>
 
-<!-- 개인 프로젝트 -->
-<section id="projects" style="padding-top:6px; padding-bottom:20px;">
+<section id="projects" style="padding-top:6px;">
   <div class="wrap wide">
-    <div class="kicker rv">Personal Projects</div>
-    <h2 class="title rv" style="font-size:20px;">개인 프로젝트</h2>
-    <p class="lead rv d1" style="margin-bottom:16px;">거창한 계획 없이, <b>생각나는 대로 AI와 함께 만들어보고 있는 것들</b>입니다.
-    타일을 클릭하면 자세한 이야기를 볼 수 있어요.</p>
-    <div class="tile-grid">
-      <a class="tile rv d1" href="project-petnna.html">
-        <div class="thead" style="background:linear-gradient(130deg,#f6ded2,#f3ead3 55%,#dde8ce);">
-          <span class="tstatus dev">개발 중</span><span class="big">🐾</span>
-        </div>
-        <div class="tbody">
-          <h3>펫과나</h3>
-          <div class="tone">반려동물 올인원 케어 웹앱</div>
-          <div class="tmore">자세히 보기 →</div>
-        </div>
-      </a>
-
-      <a class="tile rv d1" href="project-ashes.html">
-        <div class="thead" style="background:repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px), linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);">
-          <span class="tstatus dev">개발 중</span><span class="big">⚔️</span>
-        </div>
-        <div class="tbody">
-          <h3>재와 별</h3>
-          <div class="tone">Steam · 2D 픽셀아트 RPG</div>
-          <div class="tmore">자세히 보기 →</div>
-        </div>
-      </a>
-
-      <a class="tile rv d2" href="project-geoguard.html">
-        <div class="thead" style="background:linear-gradient(130deg,#d8e4da,#dde9e2 55%,#ece4d0);">
-          <span class="tstatus done">완성 · 무료</span><span class="big">🛡️</span>
-        </div>
-        <div class="tbody">
-          <h3>GeoGuard</h3>
-          <div class="tone">국가 단위 IP 차단 보안 앱</div>
-          <div class="tmore">자세히 보기 →</div>
-        </div>
-      </a>
-
-      <a class="tile rv d2" href="project-ledger.html">
-        <div class="thead" style="background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);">
-          <span class="tstatus done">완성 · 무료</span><span class="big">📒</span>
-        </div>
-        <div class="tbody">
-          <h3>셀러 장부</h3>
-          <div class="tone">재고·판매 관리 웹앱</div>
-          <div class="tmore">자세히 보기 →</div>
-        </div>
-      </a>
+    <div class="grp-toggle rv" id="groupToggle">
+      <button class="grp-btn on" data-group="personal">
+        <span class="gic">🙋</span>
+        <span><span class="gt">개인 프로젝트</span><br><span class="gs">생각나는 대로 만들어보는 것들</span></span>
+      </button>
+      <button class="grp-btn" data-group="company">
+        <span class="gic">🏢</span>
+        <span><span class="gt">회사 프로젝트</span><br><span class="gs">재직하며 만든 애니메이션 작업물</span></span>
+      </button>
     </div>
-  </div>
-</section>
 
-<!-- 작업물 -->
-<section id="gallery" style="padding-top:6px;">
-  <div class="wrap wide">
-    <div class="kicker rv">Works</div>
-    <h2 class="title rv" style="font-size:20px;">작업물</h2>
-    <p class="lead rv d1" style="margin-bottom:16px;">2017년부터 지금까지의 애니메이션 릴, 그리고 AI로 해본 실험들.</p>
-    <div class="filters rv" id="filters">
-      <button class="fbtn on" data-cat="all">전체</button>
-      <button class="fbtn" data-cat="reel">🎬 애니메이션 릴</button>
-      <button class="fbtn" data-cat="ai">🤖 AI 활용</button>
-      <button class="fbtn" data-cat="music">🎵 음악</button>
-      <button class="fbtn" data-cat="plan">📐 기획·컨셉</button>
+    <!-- 개인 프로젝트 -->
+    <div class="panel-view on" id="panelPersonal">
+      <div class="sub-h">🛠️ 만든 앱들</div>
+      <div class="tile-grid">
+        <a class="tile rv d1" href="project-petnna.html">
+          <div class="thead" style="background:linear-gradient(130deg,#f6ded2,#f3ead3 55%,#dde8ce);">
+            <span class="tstatus dev">개발 중</span><span class="big">🐾</span>
+          </div>
+          <div class="tbody">
+            <h3>펫과나</h3>
+            <div class="tone">반려동물 올인원 케어 웹앱</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+
+        <a class="tile rv d1" href="project-ashes.html">
+          <div class="thead" style="background:repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px), linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);">
+            <span class="tstatus dev">개발 중</span><span class="big">⚔️</span>
+          </div>
+          <div class="tbody">
+            <h3>재와 별</h3>
+            <div class="tone">Steam · 2D 픽셀아트 RPG</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+
+        <a class="tile rv d2" href="project-geoguard.html">
+          <div class="thead" style="background:linear-gradient(130deg,#d8e4da,#dde9e2 55%,#ece4d0);">
+            <span class="tstatus done">완성 · 무료</span><span class="big">🛡️</span>
+          </div>
+          <div class="tbody">
+            <h3>GeoGuard</h3>
+            <div class="tone">국가 단위 IP 차단 보안 앱</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+
+        <a class="tile rv d2" href="project-ledger.html">
+          <div class="thead" style="background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);">
+            <span class="tstatus done">완성 · 무료</span><span class="big">📒</span>
+          </div>
+          <div class="tbody">
+            <h3>셀러 장부</h3>
+            <div class="tone">재고·판매 관리 웹앱</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="sub-h">📐 기획 · 컨셉</div>
+      <div class="wgrid" id="wgridPersonal"></div>
     </div>
-    <div class="wgrid" id="wgrid"></div>
+
+    <!-- 회사 프로젝트 -->
+    <div class="panel-view" id="panelCompany">
+      <div class="filters rv" id="filters">
+        <button class="fbtn on" data-cat="all">전체</button>
+        <button class="fbtn" data-cat="reel">🎬 애니메이션 릴</button>
+        <button class="fbtn" data-cat="ai">🤖 AI 활용</button>
+      </div>
+      <div class="wgrid" id="wgridCompany"></div>
+    </div>
   </div>
   <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
 </section>
@@ -118,10 +142,9 @@
   </div>
 </div>
 
-<script src="works.js"></script>
+<script src="works.js?v=2"></script>
 <script>
-const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', music:'음악', plan:'기획·컨셉' };
-const grid = document.getElementById('wgrid');
+const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', plan:'기획·컨셉' };
 let shown = [];
 
 function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
@@ -141,21 +164,37 @@ function cardHtml(w, i){
     '<span class="ext">자세히 보기 →</span></div></div></div>';
 }
 
-function render(cat){
+// 개인 — 기획·컨셉 (필터 없이 전체 표시)
+const personalWorks = WORKS.filter(w => w.group === 'personal');
+document.getElementById('wgridPersonal').innerHTML = personalWorks.map(cardHtml).join('');
+document.getElementById('wgridPersonal').querySelectorAll('.rv').forEach(el => el.classList.add('on'));
+
+// 회사 — 필터 가능
+function renderCompany(cat){
   shown = WORKS
-    .filter(w => cat === 'all' || w.cat === cat)
+    .filter(w => w.group === 'company' && (cat === 'all' || w.cat === cat))
     .sort((a,b) => (b.featured?1:0) - (a.featured?1:0));
+  const grid = document.getElementById('wgridCompany');
   grid.innerHTML = shown.map(cardHtml).join('');
   grid.querySelectorAll('.rv').forEach(el => el.classList.add('on'));
 }
+renderCompany('all');
 
 document.getElementById('filters').addEventListener('click', e => {
   const b = e.target.closest('.fbtn'); if(!b) return;
-  document.querySelectorAll('.fbtn').forEach(x => x.classList.toggle('on', x === b));
-  render(b.dataset.cat);
+  document.querySelectorAll('#filters .fbtn').forEach(x => x.classList.toggle('on', x === b));
+  renderCompany(b.dataset.cat);
 });
 
-// ─── 팝업(라이트박스) ───
+// 최상위 토글: 개인 / 회사
+document.getElementById('groupToggle').addEventListener('click', e => {
+  const b = e.target.closest('.grp-btn'); if(!b) return;
+  document.querySelectorAll('.grp-btn').forEach(x => x.classList.toggle('on', x === b));
+  document.getElementById('panelPersonal').classList.toggle('on', b.dataset.group === 'personal');
+  document.getElementById('panelCompany').classList.toggle('on', b.dataset.group === 'company');
+});
+
+// ─── 팝업(라이트박스) — 개인·회사 그리드 공용, 클릭 시 WORKS 원본에서 매칭 ───
 const overlay = document.getElementById('lbOverlay');
 const lbMedia = document.getElementById('lbMedia');
 
@@ -186,15 +225,16 @@ function closeModal(){
   document.body.style.overflow = '';
 }
 
-grid.addEventListener('click', e => {
+document.addEventListener('click', e => {
   const card = e.target.closest('.wcard'); if(!card) return;
-  openModal(shown[+card.dataset.idx]);
+  const idx = +card.dataset.idx;
+  const grid = card.closest('#wgridPersonal') ? personalWorks : shown;
+  openModal(grid[idx]);
 });
 document.getElementById('lbClose').addEventListener('click', closeModal);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
 </script>
 <script src="site.js"></script>
-<script>render('all');</script>
 </body>
 </html>
