@@ -11,30 +11,30 @@
 <link rel="stylesheet" href="style.css">
 <style>
   .gb-form{
-    background:linear-gradient(160deg,var(--panel),var(--bg2));
-    border:1px solid var(--line); border-radius:var(--radius);
-    padding:24px; margin-bottom:26px;
+    background:var(--panel);
+    border:1.5px solid var(--line); border-radius:var(--radius);
+    padding:24px; margin-bottom:26px; box-shadow:0 4px 14px rgba(120,100,50,.07);
   }
   .gb-form .row{display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
   .gb-form input[type=text], .gb-form textarea{
-    background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+    background:#fff; border:1.5px solid var(--line); border-radius:12px;
     color:var(--text); font-family:inherit; font-size:14px; padding:11px 13px;
   }
   .gb-form input[type=text]{flex:0 0 180px;}
   .gb-form textarea{flex:1 1 100%; min-height:84px; resize:vertical; width:100%;}
-  .gb-form input:focus, .gb-form textarea:focus{outline:2px solid rgba(108,140,255,.5); outline-offset:-1px;}
+  .gb-form input:focus, .gb-form textarea:focus{outline:2px solid rgba(79,174,92,.55); outline-offset:-1px;}
   .gb-form .hint{font-size:12px; color:var(--dim); margin-top:8px;}
   .gb-hp{position:absolute; left:-9999px; opacity:0;}
   .gb-item{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:16px 20px; margin-bottom:12px;
+    background:var(--panel); border:1.5px solid var(--line); border-radius:16px;
+    padding:16px 20px; margin-bottom:12px; box-shadow:0 3px 10px rgba(120,100,50,.06);
   }
   .gb-item .gh{display:flex; align-items:baseline; gap:10px; margin-bottom:5px;}
-  .gb-item .gn{font-weight:800; font-size:14.5px;}
+  .gb-item .gn{font-weight:800; font-size:14.5px; color:#43371f;}
   .gb-item .gd{font-size:11.5px; color:var(--dim); font-variant-numeric:tabular-nums;}
-  .gb-item .gm{font-size:13.5px; color:#b8c1dd; white-space:pre-wrap; word-break:break-word;}
+  .gb-item .gm{font-size:13.5px; color:#6b5f49; white-space:pre-wrap; word-break:break-word;}
   .gb-note{color:var(--dim); text-align:center; padding:34px 0; font-size:13.5px;}
-  .gb-err{color:#ff9b9b; font-size:13px; margin-top:8px; display:none;}
+  .gb-err{color:#c0392b; font-size:13px; margin-top:8px; display:none;}
 </style>
 </head>
 <body>
