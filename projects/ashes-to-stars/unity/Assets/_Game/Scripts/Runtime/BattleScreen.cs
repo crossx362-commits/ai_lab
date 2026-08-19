@@ -545,7 +545,11 @@ namespace AshesToStars
         {
             if (System.Environment.GetEnvironmentVariable(Economy.EnvShowDrop) != "1") return;
             RacePrefs.Set(RaceId.수인);
-            if (_reward.Survived && _reward.DroppedItems != null && _reward.DroppedItems.Count > 0
+            // 앞선 SelfCheck가 _reward에 가죽이 아닌 드랍을 남긴 채 승리·수인 상태로 두면
+            // Count>0만 보던 옛 가드가 재시드를 건너뛰어 「시드 가죽 1장」이 FAIL이었다
+            // (형제 SeedRaceAdvMatRewardQaIfRequested는 특정 아이템 Contains를 본다 — 그와 맞춘다).
+            if (_reward.Survived && _reward.DroppedItems != null
+                && _reward.DroppedItems.Contains(Economy.LifeItem.CraftHide)
                 && Economy.RaceDropLine().Contains("+15%"))
                 return;
             _reward.Clear();
