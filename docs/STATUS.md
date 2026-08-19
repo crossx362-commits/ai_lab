@@ -6,10 +6,21 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 코드 full_check 회귀 — EstateStatusHudSelfCheck가 NetWorth 배선(530cf54b)과 모순되던 단언을 게이트 확인으로
-마지막 트랙: 코드
-폴리싱 다음: **영지**(타이틀은 이번 이터가 봄). 이어 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD.
+최종 갱신: 2026-08-19 · 폴리싱(영지) — 영지 허브에서 「ESC — 영지로」 힌트가 제자리 이동을 「어딘가 간다」로 오해시킴, 그 화면만 힌트 숨김
+마지막 트랙: 폴리싱
+폴리싱 다음: **필드**. 이어 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD → 타이틀 → 영지.
 ⚠️ 영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md`대로만 — 문서 없이 영지 재설계 금지(오너 2026-08-18). 문서는 있으니 그걸 읽고 한 결함만.
+
+폴리싱(영지) 이번 이터 결과: `qa_go:Estate` 샷에서 바닥 왼쪽 힌트가 「ESC — 영지로」였는데, 영지는 허브 루트라
+`GameScreen.Update`의 ESC가 (도크 있는 화면이면) `GameFlow.Go(GameFlow.Estate)` = **제자리 재로드**다(갈 곳이 없다).
+그 화면에서 「ESC — 영지로」라 적으면 눌러서 어딘가 이동한다고 오해한다(타이틀 「ESC — 종료」 폴리싱 313892f2와 동형).
+`GameScreen.BottomBar`의 힌트 그리기를 `SceneManager.GetActiveScene().name != GameFlow.Estate`일 때로 조건부:
+영지에선 숨기고, 실제로 영지로 가는 다른 허브(필드·탑·월드맵·캐릭터)에선 유지. ESC 키 입력·다른 화면 크롬은 안 건드림.
+**육안 확인**: meas 배치 빌드 후 재캡처. 영지 `qa_go:Estate.png` 바닥 왼쪽 힌트 사라짐(증거
+`output/qa/ashes-to-stars/hud_shots/qa_estate_esc_hint_removed_20260819.png`), 필드 `qa_go:Field.png`엔 「ESC — 영지로」 유지
+(증거 `qa_field_esc_hint_kept_20260819.png`). 네거티브: 씬 조건 제거하면 영지에도 힌트 재등장 = 제자리 이동을 「간다」로 오표기.
+두 빌드 모두 error CS 0(qa_shot 컴파일 게이트 통과). `W3Party`/Resources/`EstateScreen.cs`·`EstateBuild.cs`는 안 건드림 —
+`GameScreen.cs` 한 파일. 커밋 대기.
 
 폴리싱(타이틀) 이번 이터 결과: `qa_go:Title` 샷에서 바닥 왼쪽 힌트가 「ESC — 뒤로」인데, 타이틀은 루트라
 `GameScreen.Update`의 ESC가 `!ShowBottomBar && Title=="재와 별"`이면 **`GameFlow.Quit()`**(뒤가 없어 종료)이다.

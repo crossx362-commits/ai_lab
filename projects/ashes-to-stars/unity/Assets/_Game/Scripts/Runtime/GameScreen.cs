@@ -264,8 +264,12 @@ namespace AshesToStars
                 GUI.DrawTexture(new Rect(0, tiles[0].y - 8f, REF_W, 1), _line);
 
             // ESC는 도크 왼쪽 빈 칸. 아래에 한 줄을 더 깔면 본문이 28px 죽는다.
-            UiPages.LabelClip(new Rect(16f, tiles[0].y + 24f, Mathf.Max(40f, tiles[0].x - 24f), 22f),
-                "ESC — 영지로", _small);
+            // ⚠️ 영지(허브 루트)에서 ESC는 GameFlow.Go(Estate) = 제자리라 갈 곳이 없다(Update 참조).
+            //    그 화면에서 「ESC — 영지로」라 적으면 눌러서 어딘가 간다고 오해한다(타이틀 「ESC — 종료」와 동형).
+            //    실제로 영지로 이동하는 다른 허브(필드·탑·월드맵·캐릭터)에서만 표시한다.
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != GameFlow.Estate)
+                UiPages.LabelClip(new Rect(16f, tiles[0].y + 24f, Mathf.Max(40f, tiles[0].x - 24f), 22f),
+                    "ESC — 영지로", _small);
 
             for (int i = 0; i < n; i++)
             {
