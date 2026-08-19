@@ -196,7 +196,7 @@ namespace AshesToStars
                 LowHpReturn.Enabled = !on;
 
             if (DrawCard(cards[4], HuntSchedule.CardTitle(), FieldDockCap.Schedule(),
-                    HuntSchedule.Running ? "field" : "heart"))
+                    "field"))
             {
                 if (HuntSchedule.Running) HuntSchedule.Stop();
                 else if (!HuntSchedule.TryStart())
