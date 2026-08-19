@@ -68,6 +68,7 @@ namespace AshesToStars
             SeedRarityQaIfRequested();
             SeedFusionQaIfRequested();
             SeedSpecialJobQaIfRequested();
+            SeedJobTraitQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -354,6 +355,14 @@ namespace AshesToStars
                         Info(r, advancementRow++, $"흡수 {Fusion.AbsorbedSummary(ch)} ({ch.AbsorbedBoons.Count}/{Fusion.SlotCap})");
                     if (!ch.IsDeleted && ch.PendingBoon >= 0)
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
+
+                    // §4 직업 특성 상세 — 1차+ 직업(수호기사 등)의 컨셉·고유메커니즘을 에셋에서 읽어 보여준다.
+                    // 기본직(탱/딜/…)이나 에셋 미로드면 빈 문자열이라 줄을 그리지 않는다(지어내지 않음).
+                    if (!ch.IsDeleted)
+                    {
+                        string trait = JobInfo.ConceptLine(ch.Job);
+                        if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
+                    }
         }
 
         void DrawStarterSecond(Rect r)
@@ -554,6 +563,20 @@ namespace AshesToStars
             if (Environment.GetEnvironmentVariable("QA_SPECIAL_JOB") != "1") return;
             LifeSystem.SeedSpecialJobQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        // QA — 1차 직업(수호기사) 캐릭터를 선택해 §4 직업 특성 줄(JobDef 소비처)이
+        // 실제 렌더되는지 눈으로 확인한다. 기본 로스터는 전부 기본직이라 이 시드 없이는
+        // 특성 줄이 뜰 상황을 화면에서 못 만든다. env 게이트라 일반 플레이엔 영향 없음.
+        void SeedJobTraitQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_JOB_TRAIT") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            roster[0].Job = "수호기사";
+            roster[0].Advancement = AdvancementTier.First;
+            _selectedCharacter = 0;
+            _detailPage = 1; // 속성 탭 — DrawAttributes에 직업 특성 줄이 있다
         }
 
         void SeedTowerEndingQaIfRequested()

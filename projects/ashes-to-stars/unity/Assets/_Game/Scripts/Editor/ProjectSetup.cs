@@ -25,9 +25,10 @@ public static class ProjectSetup
     static readonly string[] FOLDERS =
     {
         ROOT, ROOT + "/Art", ROOT + "/Art/Sprites", ROOT + "/Art/Ground", ROOT + "/Art/FX",
-        ROOT + "/Data", ROOT + "/Data/Races", ROOT + "/Data/Jobs", ROOT + "/Data/Mobs",
+        ROOT + "/Data", ROOT + "/Data/Races", ROOT + "/Data/Mobs",
         "Assets/Resources/styles",   // 전투 스타일은 런타임이 읽어야 하므로 Resources 아래
         "Assets/Resources/races",    // 종족도 런타임(W3Party.ApplyRaceModifiers)이 읽는다 — 같은 이유
+        "Assets/Resources/jobs",     // 직업 특성(컨셉·고유메커니즘·스킬)도 런타임(CharacterScreen)이 읽는다 — 같은 이유
         ROOT + "/Prefabs", ROOT + "/Prefabs/Characters", ROOT + "/Prefabs/Mobs", ROOT + "/Prefabs/FX",
         ROOT + "/Scenes", ROOT + "/Materials",
         ROOT + "/Scripts", ROOT + "/Scripts/Runtime", ROOT + "/Scripts/Editor",
@@ -206,7 +207,9 @@ public static class ProjectSetup
                 skills.Add(sk);
             }
             a.스킬 = skills.ToArray();
-            list.Add(Save(a, $"{ROOT}/Data/Jobs/Job_{r.Item2}.asset"));
+            // ⚠️ Resources 아래에 쓴다 — 예전 races/styles처럼 런타임이 Resources 밖을 못 읽어
+            //    직업 특성 데이터가 소비처 0곳이 됐던 함정을 닫는다(CharacterScreen이 LoadAll<JobDef>("jobs")).
+            list.Add(Save(a, $"Assets/Resources/jobs/Job_{r.Item2}.asset"));
         }
         return list;
     }

@@ -18,7 +18,7 @@ public class SandboxNote : MonoBehaviour
         "  Ground     블렌더에서 베이크한 seamless 노이즈 바닥\n\n" +
         "수치를 고치려면 (플레이 없이 인스펙터에서):\n" +
         "  Assets/_Game/Data/GameBalance.asset  — 경제 앵커·성능 예산\n" +
-        "  Assets/_Game/Data/Jobs/              — 직업 11종 스탯·스킬\n" +
+        "  Assets/Resources/jobs/               — 직업 11종 스탯·스킬(런타임이 읽는다)\n" +
         "  Assets/_Game/Data/Mobs/              — 몬스터 속도·체력\n" +
         "  Assets/Resources/races/              — 종족 4종 기울기(런타임이 읽는다)\n" +
         "  Assets/Resources/styles/             — 전투 스타일 4종(런타임이 읽는다)\n\n" +
