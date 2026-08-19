@@ -101,8 +101,11 @@ namespace AshesToStars
             Check(estate.Contains("EstateStatusHud.MineCaption"), "광산이 MineCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.StoreCaption"), "창고가 StoreCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.SeedQaIfRequested"), "시드를 읽는다");
-            Check(!estate.Contains("NetWorth.Line()"),
-                "도크가 긴 순자산 줄을 안 붙인다");
+            // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
+            // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
+            // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.
+            Check(estate.Contains("if (NetWorth.ShowOnHub)"),
+                "긴 순자산 줄은 ShowOnHub 게이트 뒤에서만 (도크 상시 슬림)");
             Check(!estate.Contains("UiPages.Grid(new Rect(r.x, r.y + 92f"),
                 "옛 2×2 전폭 Grid를 안 쓴다");
 

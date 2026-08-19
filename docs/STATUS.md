@@ -6,8 +6,8 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 폴리싱(타이틀) 「ESC — 뒤로」가 루트에서 실제로는 게임 종료라 오해 → 타이틀만 「ESC — 종료」
-마지막 트랙: 폴리싱
+최종 갱신: 2026-08-19 · 코드 full_check 회귀 — EstateStatusHudSelfCheck가 NetWorth 배선(530cf54b)과 모순되던 단언을 게이트 확인으로
+마지막 트랙: 코드
 폴리싱 다음: **영지**(타이틀은 이번 이터가 봄). 이어 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD.
 ⚠️ 영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md`대로만 — 문서 없이 영지 재설계 금지(오너 2026-08-18). 문서는 있으니 그걸 읽고 한 결함만.
 
@@ -54,11 +54,33 @@ pockets/arena_wide)이 한글 UI에 그대로 새던 것을 `TemplateKo`로 매�
 | 2 | **30층 성장 곡선** | 닫음. `BossHp` + 재측정 PASS |
 | 3 | **영지 §5 드래그 UX** | `EstateStore.TryMove`·경로 재계산은 닫음. 마우스 드래그 미리보기는 EstateScreen(클로드 창 훅과 겹침) |
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | 선행이 없어 지금 넣으면 오펀 |
-7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — **닫음(2026-08-19, `ae8f4056`)**: `DrawEstateStatus`가 `statusRow` 스택으로 파산 두 줄 아래에 `EstateMine.Seized`일 때 `EstateMine.SeizeLine()`(「광산 생산 압류 100%(§18-5)」)을 그린다. 도크 5칸은 DockH(하단)이라 3줄과 안 겹침(QA_MINE_SEIZE=1 화면 확인). SelfCheck `영지 현황이 압류 문구·시드를 읽는다` PASS, SeizeLine 소비 제거 시 FAIL. ③`NetWorthSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 파산·광산 압류 두 줄 아래 `statusRow` 스택에 `NetWorth.ShowOnHub`일 때 `NetWorth.Line()`(순자산·한도 §18-5)을 그린다(①②와 동형, 검사만 고친 게 아니라 실제 소비 추가). SelfCheck 33항 전부 PASS(「영지 현황이 Line·Seed를 읽는다」 포함), error CS 0. 네거티브 실측: meas 사본에서 그 줄+코멘트를 지우면 FAIL 1건 exit 1. 증거 `output/qa/ashes-to-stars/full_check/net_worth_selfcheck_20260819.log`. ④`RaceDropSelfCheck` — **닫음(2026-08-19)**: 전수 스윕에서만 FAIL·단독 실행은 PASS였다(전형적 전역 상태 오염). `BattleScreen.SeedRaceDropRewardQaIfRequested`의 조기반환 가드가 `DroppedItems.Count>0`만 봐서, 앞선 SelfCheck가 `_reward`에 가죽 아닌 드랍을 남긴 채 승리·수인 상태로 두면 재시드를 건너뛰어 「시드 가죽 1장」이 FAIL이었다. 형제 `SeedRaceAdvMatRewardQaIfRequested`처럼 `DroppedItems.Contains(CraftHide)`를 특정 확인하도록 수정(근본 수리 — 형제와 불일치하던 가드를 맞춤). 통과: 전수 스윕 fail 3→2, RaceDrop 3항 PASS(`racedrop_after_20260819.log`). 네거티브: 옛 가드(스윕)는 「시드 가죽 1장」 FAIL(`racedrop_before_20260819.log`). ⑤`BossBattleDpsSelfCheck` — NRE(W3Party 의존, 대화 세션). **신규 FAIL: `EstateStatusHudSelfCheck` 「도크가 긴 순자산 줄을 안 붙인다」** — ③ NetWorth 배선(530cf54b)이 현황 도크에 순자산 줄을 넣으며 생긴 회귀로 보임(EstateStatusHud 영역). 다음 코드 이터가 하나씩.
+7. **전체 점검(2026-08-18 22:5x) SelfCheck 전수 129개 중 5개 FAIL — 하나씩 수리** — 실행기 `GameFullCheck`(전수 러너, unity_meas 배치). 증거 `output/qa/ashes-to-stars/full_check/full_check_20260819_0758.log`. ①`BankruptcySeizeSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 `BankruptcySeize.KeepLine()`(강등)·`ItemLine()`(압류) 두 줄을 `ShowOnHub`일 때 현황 도크 상단에 그린다. EnvShow·SeedQaIfRequested는 Body()가 이미 켜므로 grep 대상 파일은 EstateScreen 그대로(검사만 고친 게 아니라 실제 소비 추가). ②`MineSeizeSelfCheck` — **닫음(2026-08-19, `ae8f4056`)**: `DrawEstateStatus`가 `statusRow` 스택으로 파산 두 줄 아래에 `EstateMine.Seized`일 때 `EstateMine.SeizeLine()`(「광산 생산 압류 100%(§18-5)」)을 그린다. 도크 5칸은 DockH(하단)이라 3줄과 안 겹침(QA_MINE_SEIZE=1 화면 확인). SelfCheck `영지 현황이 압류 문구·시드를 읽는다` PASS, SeizeLine 소비 제거 시 FAIL. ③`NetWorthSelfCheck` — **닫음(2026-08-19)**: `DrawEstateStatus`가 파산·광산 압류 두 줄 아래 `statusRow` 스택에 `NetWorth.ShowOnHub`일 때 `NetWorth.Line()`(순자산·한도 §18-5)을 그린다(①②와 동형, 검사만 고친 게 아니라 실제 소비 추가). SelfCheck 33항 전부 PASS(「영지 현황이 Line·Seed를 읽는다」 포함), error CS 0. 네거티브 실측: meas 사본에서 그 줄+코멘트를 지우면 FAIL 1건 exit 1. 증거 `output/qa/ashes-to-stars/full_check/net_worth_selfcheck_20260819.log`. ④`RaceDropSelfCheck` — **닫음(2026-08-19)**: 전수 스윕에서만 FAIL·단독 실행은 PASS였다(전형적 전역 상태 오염). `BattleScreen.SeedRaceDropRewardQaIfRequested`의 조기반환 가드가 `DroppedItems.Count>0`만 봐서, 앞선 SelfCheck가 `_reward`에 가죽 아닌 드랍을 남긴 채 승리·수인 상태로 두면 재시드를 건너뛰어 「시드 가죽 1장」이 FAIL이었다. 형제 `SeedRaceAdvMatRewardQaIfRequested`처럼 `DroppedItems.Contains(CraftHide)`를 특정 확인하도록 수정(근본 수리 — 형제와 불일치하던 가드를 맞춤). 통과: 전수 스윕 fail 3→2, RaceDrop 3항 PASS(`racedrop_after_20260819.log`). 네거티브: 옛 가드(스윕)는 「시드 가죽 1장」 FAIL(`racedrop_before_20260819.log`). ⑤`BossBattleDpsSelfCheck` — NRE(W3Party 의존, 대화 세션). **신규 FAIL: `EstateStatusHudSelfCheck` 「도크가 긴 순자산 줄을 안 붙인다」** — **닫음(2026-08-19)**: NetWorthSelfCheck는 배선을 요구하고 이 검사는 부재를 요구하던 모순. 단언을 `if (NetWorth.ShowOnHub)` 게이트 확인으로 교체(형제 파산·광산 패턴과 일치). 전수 스윕 FAIL 1/129(BossBattleDps NRE만) PASS. ⑤`BossBattleDpsSelfCheck`(NRE·W3Party)만 남음 — 대화 세션.
 
 V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정하지 않았다. 테스터 통과가 아니다.
 
-> **이번 이터 결과(코드): full_check ④ RaceDropSelfCheck — 시드 가드를 CraftHide 특정 확인으로.**
+> **이번 이터 결과(코드): full_check 회귀 — EstateStatusHudSelfCheck의 모순 단언을 게이트 확인으로.**
+> - 직전 트랙이 폴리싱이라 코드 칸. STATUS가 지목한 신규 FAIL `EstateStatusHudSelfCheck`
+>   「도크가 긴 순자산 줄을 안 붙인다」를 잡음.
+> - **근본 원인(두 SelfCheck 모순)**: `NetWorthSelfCheck:132`는 `EstateScreen.cs`가
+>   `NetWorth.Line`을 **포함**하라고 요구(530cf54b 배선), 반면 `EstateStatusHudSelfCheck:104`는
+>   `!estate.Contains("NetWorth.Line()")`로 **부재**를 요구 — 둘이 동시 통과 불가. NetWorth 배선은
+>   검증된 의도 기능이므로 후자의 `!contains` 단언이 낡은 것.
+> - 실제 레이아웃 확인: `NetWorth.Line()`은 `if (NetWorth.ShowOnHub)` 게이트 뒤 statusRow
+>   스택에서만 그림(파산 `KeepLine`/`ItemLine`·광산 `SeizeLine`과 동형·동일 게이트 패턴).
+>   도크 5칸은 DockH(하단)이라 상시 슬림 — 단언의 원래 의도(도크에 긴 줄을 상시 안 붙임)는 유지됨.
+> - **수정**(`EstateStatusHudSelfCheck.cs:104`): 단언을 `estate.Contains("if (NetWorth.ShowOnHub)")`로
+>   교체 — 긴 순자산 줄이 게이트 뒤에서만 그려지는지(=도크 상시 슬림) 확인. 검사만 고친 게 아니라
+>   기존 형제(파산·광산) 패턴과 일치시킨 것. `W3Party`/Resources/`EstateScreen.cs`는 안 건드림.
+> - **통과 기준**: `GameFullCheck` 전수 4165 PASS · FAIL 1/129(=`BossBattleDpsSelfCheck` NRE만),
+>   `EstateStatusHudSelfCheck`·`NetWorthSelfCheck` 둘 다 PASS, error CS 0.
+>   증거 `output/qa/ashes-to-stars/full_check/full_check_estatehud_fix_20260819.log`.
+> - **네거티브(실측)**: meas 사본에서 옛 `!estate.Contains("NetWorth.Line()")`로 되돌리면
+>   `EstateStatusHudSelfCheck` FAIL 1건 exit 1 —
+>   `output/qa/ashes-to-stars/full_check/estatehud_negctrl_20260819.log`.
+> - **남은 full_check FAIL**: `BossBattleDpsSelfCheck`(NRE·W3Party 의존)만 — 대화 세션 몫.
+>   full_check FAIL 목록이 이제 하나로 줄었다. 코드 대기 커밋.
+>
+> **직전 이터 결과(코드): full_check ④ RaceDropSelfCheck — 시드 가드를 CraftHide 특정 확인으로.**
 > - 직전 트랙이 폴리싱이라 코드 칸. 남은 full_check FAIL ④를 잡음(⑤ BossBattleDps는 W3Party 의존 NRE라 대화 세션).
 > - **근본 원인**: RaceDrop은 **단독 실행은 PASS인데 전수 스윕(`GameFullCheck`)에서만 FAIL**이었다
 >   — 전형적 전역 상태 오염. `SeedRaceDropRewardQaIfRequested`의 조기반환 가드가
