@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=10">
 <style>
   .grp-toggle{display:flex; gap:8px; margin-bottom:12px;}
   .grp-btn{
@@ -36,7 +36,7 @@
   <div class="links">
     <a href="index.html">홈</a>
     <a href="blog.html">블로그</a>
-    <a href="works.html" class="active">작업물</a>
+    <a href="works.html" class="active" aria-current="page">작업물</a>
     <a href="career.html">경력·스킬</a>
     <a href="board.html">방명록</a>
   </div>
@@ -143,7 +143,7 @@
   </div>
 </div>
 
-<script src="works.js?v=4"></script>
+<script src="works.js?v=10"></script>
 <script>
 const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', plan:'기획·컨셉' };
 let shown = [];
@@ -156,11 +156,15 @@ function cardHtml(w, i){
     media = '<div class="media" data-mounted="1"><img loading="lazy" src="https://i.ytimg.com/vi/' + esc(w.yt) + '/hqdefault.jpg" alt="">' +
       '<div class="play"><span>▶</span></div></div>';
   } else if (w.shots && w.shots.length) {
-    media = '<div class="media"><img loading="lazy" src="' + esc(w.shots[0].src) + '" alt="' + esc(w.title) + '"></div>';
+    // 카드에는 축소본(thumb)만 — 원본은 팝업에서만 받는다
+    media = '<div class="media"><img loading="lazy" src="' + esc(w.shots[0].thumb || w.shots[0].src) +
+      '" alt="' + esc(w.title) + '"></div>';
   } else {
     media = '<div class="media note"><div class="noteface">' + (w.icon||'📄') + '</div></div>';
   }
-  return '<div class="wcard rv" data-cat="' + esc(w.cat) + '" data-idx="' + i + '">' + media +
+  // div지만 클릭으로 팝업을 여는 요소라 키보드에서도 도달·실행 가능해야 한다
+  return '<div class="wcard rv" tabindex="0" role="button" aria-label="' + esc(w.title) + ' 자세히 보기"' +
+    ' data-cat="' + esc(w.cat) + '" data-idx="' + i + '">' + media +
     '<div class="body"><h3>' + esc(w.title) + '</h3><p>' + esc(w.desc) + '</p>' +
     '<div class="meta"><span class="wtag cat-' + esc(w.cat) + '">' + (CAT_LABEL[w.cat]||w.cat) + '</span>' +
     (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '') +
@@ -190,12 +194,17 @@ document.getElementById('filters').addEventListener('click', e => {
 });
 
 // 최상위 토글: 개인 / 회사
+function showGroup(g){
+  document.querySelectorAll('.grp-btn').forEach(x => x.classList.toggle('on', x.dataset.group === g));
+  document.getElementById('panelPersonal').classList.toggle('on', g === 'personal');
+  document.getElementById('panelCompany').classList.toggle('on', g === 'company');
+}
 document.getElementById('groupToggle').addEventListener('click', e => {
   const b = e.target.closest('.grp-btn'); if(!b) return;
-  document.querySelectorAll('.grp-btn').forEach(x => x.classList.toggle('on', x === b));
-  document.getElementById('panelPersonal').classList.toggle('on', b.dataset.group === 'personal');
-  document.getElementById('panelCompany').classList.toggle('on', b.dataset.group === 'company');
+  showGroup(b.dataset.group);
 });
+// #company / #personal 로 들어오면 그 탭을 바로 연다 (홈의 '애니메이션 릴 보기' 링크용)
+if (location.hash === '#company' || location.hash === '#personal') showGroup(location.hash.slice(1));
 
 // ─── 팝업(라이트박스) — 개인·회사 그리드 공용, 클릭 시 WORKS 원본에서 매칭 ───
 const overlay = document.getElementById('lbOverlay');
@@ -210,7 +219,8 @@ function openModal(w){
   } else if (w.shots && w.shots.length) {
     lbMedia.className = 'lb-media shots';
     lbMedia.innerHTML = w.shots.map(s =>
-      '<figure><img src="' + esc(s.src) + '" alt="' + esc(s.cap || w.title) + '">' +
+      '<figure><img src="' + esc(s.src) + '" alt="' + esc(s.cap || w.title) + '"' +
+      (s.w ? ' width="' + s.w + '" height="' + s.h + '"' : '') + '>' +
       (s.cap ? '<figcaption>' + esc(s.cap) + '</figcaption>' : '') + '</figure>').join('');
   } else {
     lbMedia.className = 'lb-media note';
@@ -225,24 +235,49 @@ function openModal(w){
     ? '<a class="btn primary" href="' + esc(w.link) + '" target="_blank" rel="noopener">🔗 바로가기</a>' : '';
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  lastFocus = document.activeElement;          // 닫을 때 돌아갈 자리
+  document.getElementById('lbClose').focus();
 }
+
+let lastFocus = null;
 
 function closeModal(){
   overlay.classList.remove('open');
   lbMedia.innerHTML = '';   // 영상 정지
   document.body.style.overflow = '';
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+  lastFocus = null;
 }
 
-document.addEventListener('click', e => {
-  const card = e.target.closest('.wcard'); if(!card) return;
+// 포커스 트랩 — 모달이 열려 있는 동안 Tab이 뒤 배경으로 새지 않게
+overlay.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const f = overlay.querySelectorAll('button, a[href], iframe');
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
+function openFromCard(card){
   const idx = +card.dataset.idx;
   const grid = card.closest('#wgridPersonal') ? personalWorks : shown;
   openModal(grid[idx]);
+}
+document.addEventListener('click', e => {
+  const card = e.target.closest('.wcard'); if(!card) return;
+  openFromCard(card);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest && e.target.closest('.wcard'); if(!card) return;
+  e.preventDefault();
+  openFromCard(card);
 });
 document.getElementById('lbClose').addEventListener('click', closeModal);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
 </script>
-<script src="site.js?v=6"></script>
+<script src="site.js?v=9"></script>
 </body>
 </html>

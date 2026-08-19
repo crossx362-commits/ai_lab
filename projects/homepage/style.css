@@ -3,13 +3,17 @@
    (2026 웹 컬러 트렌드: warm paper off-white, espresso text, sage/terracotta accents) */
 :root{
   --bg:#faf5ea; --bg2:#f2ebd9; --panel:#fffefa; --panel2:#faf5e9;
-  --line:#e8dfc8; --text:#3a3226; --sub:#87795c; --dim:#b5a88c;
+  /* --sub/--dim은 11~13px 작은 글씨에 쓰이므로 WCAG AA(4.5:1)를 넘겨야 한다.
+     이전 값 #87795c(3.93:1)·#b5a88c(2.16:1)는 미달이라 어둡게 조정했다. */
+  --line:#e8dfc8; --text:#3a3226; --sub:#6f6248; --dim:#7d6f57;
   --accent:#6a994e; --accent2:#e0704f; --amber:#d9a552; --green:#6a994e;
   --pink:#c96f88;
   --grad:linear-gradient(120deg,#79a457,#d9a552 48%,#e0704f);
   --radius:18px;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
+/* 키보드 사용자가 지금 어디에 있는지 보이게 (마우스 클릭 때는 안 뜬다) */
+:focus-visible{outline:3px solid var(--accent2); outline-offset:2px; border-radius:6px;}
 html{scroll-behavior:smooth;}
 body{
   background:var(--bg); color:var(--text);
@@ -96,9 +100,9 @@ p.lead b{color:#5e8140;}
 }
 .hero-badge{
   display:inline-flex; align-items:center; gap:8px;
-  background:rgba(255,253,248,.92); border:1.5px solid rgba(106,153,78,.4);
-  padding:7px 15px; border-radius:99px; font-size:13px; font-weight:800; color:#4c7a34;
-  margin-bottom:16px; box-shadow:0 3px 10px rgba(110,90,50,.08);
+  padding:0 0 0 12px; border-left:3px solid var(--accent2);
+  font-size:12.5px; font-weight:800; color:var(--sub); letter-spacing:.2px;
+  margin-bottom:14px;
 }
 .hero-badge .pulse{width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(106,153,78,.5);} 50%{box-shadow:0 0 0 6px rgba(106,153,78,0);}}
@@ -108,8 +112,28 @@ h1.hero-name{
 }
 h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
 .hero-tag{font-size:clamp(15px,2vw,20px); font-weight:800; color:#6f6047; letter-spacing:-.5px; margin-bottom:10px;}
-.hero-desc{color:var(--sub); font-size:clamp(13px,1.5vw,15px); max-width:620px; margin-bottom:18px;}
-.hero-desc b{color:#5e8140; font-weight:700;}
+.hero-desc{color:var(--sub); font-size:clamp(13px,1.5vw,15px); line-height:1.75; max-width:640px; margin-bottom:12px;}
+.hero-desc + .hero-desc{margin-bottom:18px;}
+.hero-desc b{color:#4c7a34; font-weight:800;}
+/* 히어로 사실 한 줄 — 카운트업 통계 카드 4장을 대체한다(과한 강조 제거) */
+.factline{
+  display:flex; flex-wrap:wrap; gap:7px 18px; margin-bottom:18px;
+  font-size:12.5px; color:var(--sub);
+}
+.factline span{display:inline-flex; align-items:baseline; gap:4px;}
+.factline b{font-size:16px; font-weight:800; color:#4c7a34; letter-spacing:-.4px;}
+
+/* 퇴근 후 하는 일 — 이모지 카드 6장을 대체한 서술형 목록 */
+.doing{list-style:none; display:grid; gap:7px; max-width:760px;}
+.doing li{
+  position:relative; padding-left:15px; font-size:13px; line-height:1.6; color:var(--sub);
+}
+.doing li::before{
+  content:""; position:absolute; left:0; top:9px;
+  width:5px; height:5px; border-radius:50%; background:var(--accent);
+}
+.doing li b{color:var(--text); font-weight:800;}
+
 .stats{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
 .stat{
   background:var(--panel); border:1.5px solid var(--line); border-radius:13px;
@@ -323,53 +347,6 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 }
 .tool i{font-style:normal; font-size:15px;}
 
-/* ─── 프로젝트 ─── */
-.proj-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
-@media (max-width:860px){ .proj-grid{grid-template-columns:1fr;} }
-.proj{
-  background:var(--panel); border:1.5px solid var(--line); border-radius:var(--radius);
-  overflow:hidden; display:flex; flex-direction:column;
-  transition:transform .2s, border-color .2s, box-shadow .2s;
-  box-shadow:0 4px 14px rgba(110,90,50,.07);
-}
-.proj:hover{transform:translateY(-4px); border-color:rgba(106,153,78,.5); box-shadow:0 14px 30px rgba(110,90,50,.14);}
-.proj .head{height:88px; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;}
-.proj .head .big{font-size:38px; filter:drop-shadow(0 5px 12px rgba(90,65,30,.3)); z-index:1;}
-.proj .head.petnna{background:linear-gradient(130deg,#f6ded2,#f3ead3 55%,#dde8ce);}
-.proj .head.game{background:
-    repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px),
-    linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);}
-.proj .head.geo{background:linear-gradient(130deg,#d8e4da,#dde9e2 55%,#ece4d0);}
-.proj .head.ledger{background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);}
-.proj .head::after{
-  content:""; position:absolute; inset:0;
-  background-image:radial-gradient(rgba(255,255,255,.55) 1.5px, transparent 1.6px);
-  background-size:22px 22px;
-}
-.status{
-  position:absolute; top:12px; right:12px; z-index:2;
-  font-size:11px; font-weight:800; letter-spacing:.5px;
-  padding:4px 11px; border-radius:99px; backdrop-filter:blur(4px);
-}
-.status.live{background:rgba(255,253,248,.88); border:1.5px solid rgba(106,153,78,.6); color:#436c2e;}
-.status.dev{background:rgba(255,253,248,.88); border:1.5px solid rgba(217,165,82,.7); color:#96702a;}
-.status.done{background:rgba(255,253,248,.88); border:1.5px solid rgba(226,114,91,.6); color:#a45638;}
-.proj .body{padding:16px 18px; display:flex; flex-direction:column; gap:7px; flex:1;}
-.proj h3{font-size:18.5px; font-weight:800; letter-spacing:-.4px; color:#332b1e;}
-.proj .one{font-size:13px; color:#5e8140; font-weight:800;}
-.proj p{font-size:13.5px; color:var(--sub);}
-.proj p b{color:#5e8140; font-weight:700;}
-.proj .tags{display:flex; flex-wrap:wrap; gap:7px; margin-top:auto; padding-top:8px;}
-.tag{font-size:11.5px; font-weight:800; color:#8a7b62; background:rgba(138,123,98,.09); border:1px solid rgba(138,123,98,.22); padding:4px 10px; border-radius:99px;}
-.proj .links{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
-.plink{
-  font-size:13px; font-weight:800; color:#436c2e;
-  display:inline-flex; align-items:center; gap:6px;
-  padding:8px 14px; border-radius:99px; background:rgba(106,153,78,.11); border:1.5px solid rgba(106,153,78,.32);
-  transition:background .15s;
-}
-.plink:hover{background:rgba(106,153,78,.2);}
-
 /* ─── 프로젝트 타일 (개인 프로젝트 목록, 4열 바둑판) ─── */
 .tile-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(186px,1fr)); gap:10px;}
 @media (max-width:640px){ .tile-grid{grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:8px;} }
@@ -404,7 +381,6 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 .tile .tmore{font-size:10.5px; font-weight:800; color:#5e8140; margin-top:auto; padding-top:6px;}
 
 /* ─── 프로젝트 상세 페이지 ─── */
-.proj[data-href]{cursor:pointer;}
 .pd-banner{
   border-radius:var(--radius); border:1.5px solid var(--line); overflow:hidden;
   height:150px; position:relative; display:flex; align-items:center; justify-content:center;

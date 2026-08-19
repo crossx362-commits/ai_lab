@@ -7,7 +7,7 @@
    yt    : 유튜브 영상 ID (예: https://youtu.be/Zffl7MgPnJU → 'Zffl7MgPnJU')
    link  : 외부 링크 (yt 없이 링크만 있는 카드)
    icon  : yt/link/shots 모두 없을 때 카드 상단에 표시할 이모지
-   shots : 이미지 목록 [{src, cap}] — 카드 썸네일은 첫 장, 팝업에선 전부 표시
+   shots : 이미지 목록 [{src, thumb, cap}] — 카드에는 thumb(축소본), 팝업에는 src(원본)
    title : 카드 제목
    desc  : 한 줄 설명
    year  : 연도 표기 (선택)
@@ -31,8 +31,10 @@ const WORKS = [
   {
     group: 'personal', cat: 'plan', icon: '🎯',
     shots: [
-      { src: 'images/ashira-character-sheet.jpeg', cap: '캐릭터 시트 — 디자인 / 표정 / 장비·무기 디테일 / 전투 프로필' },
-      { src: 'images/ashira-motion-sheet.jpeg', cap: '모션 시트 — 턴어라운드 / 로코모션 / 컴뱃 / 무기 핸들링 / 헤어·코트 다이내믹스' },
+      { src: 'images/ashira-character-sheet.jpeg', thumb: 'images/ashira-character-sheet-thumb.jpg', w: 900, h: 1271,
+        cap: '캐릭터 시트 — 디자인 / 표정 / 장비·무기 디테일 / 전투 프로필' },
+      { src: 'images/ashira-motion-sheet.jpeg', thumb: 'images/ashira-motion-sheet-thumb.jpg', w: 900, h: 1271,
+        cap: '모션 시트 — 턴어라운드 / 로코모션 / 컴뱃 / 무기 핸들링 / 헤어·코트 다이내믹스' },
     ],
     title: '「아시라 ASHIRA」 TPS 캐릭터 모션 시트 & 제작 기획서',
     desc: '생성형 AI로 캐릭터 디자인·턴어라운드·모션 시트(로코모션/컴뱃/무기 핸들링) 제작 · A-Pose 리깅 기준·본 체인·IK 가이드까지 단독 기획',
@@ -41,7 +43,8 @@ const WORKS = [
   {
     group: 'personal', cat: 'plan', icon: '🏙️',
     shots: [
-      { src: 'images/env-concept.jpeg', cap: '「Factory District_07」(인더스트리얼) & 「Sunbloom Village」(판타지) — 레벨 디자인·머티리얼 시트' },
+      { src: 'images/env-concept.jpeg', thumb: 'images/env-concept-thumb.jpg', w: 1400, h: 491,
+        cap: '「Factory District_07」(인더스트리얼) & 「Sunbloom Village」(판타지) — 레벨 디자인·머티리얼 시트' },
     ],
     title: '환경 컨셉 — Factory District_07 & Sunbloom Village',
     desc: '인더스트리얼·판타지 두 톤의 레벨 디자인·머티리얼 시트를 생성형 AI로 제작',
