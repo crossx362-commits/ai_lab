@@ -378,6 +378,8 @@ namespace AshesToStars
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
+                        string risk = JobInfo.RiskLine(ch.Job);
+                        if (!string.IsNullOrEmpty(risk)) Info(r, advancementRow++, risk);
                     }
         }
 

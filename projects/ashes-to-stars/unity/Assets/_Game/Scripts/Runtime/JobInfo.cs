@@ -59,5 +59,19 @@ namespace AshesToStars
             if (names.Count == 0) return "";
             return "보유 스킬 — " + string.Join(" · ", names);
         }
+
+        /// <summary>
+        /// "사망 리스크 — {최저/낮음/중/중상/높음}". JobDef.사망리스크의 **유일한 런타임 소비처**.
+        /// 이 값은 §4 전직 표(원장 169·176·185·192)의 ✅ 확정 컬럼 「사망 리스크」인데
+        /// ProjectSetup이 직업마다 authored(수호기사 최저·광전사 높음…)하고도 어떤 코드도 읽지
+        /// 않아 소비처 0곳이었다(컨셉·스킬이 겪은 함정과 동일 계열). 매칭 직업이 없거나 값이 비면
+        /// 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
+        /// </summary>
+        public static string RiskLine(string jobName)
+        {
+            var d = For(jobName);
+            if (d == null || string.IsNullOrEmpty(d.사망리스크)) return "";
+            return "사망 리스크 — " + d.사망리스크;
+        }
     }
 }
