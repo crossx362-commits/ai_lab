@@ -39,10 +39,14 @@ namespace AshesToStars
             }
 
             var copy = new Rect(r.x, r.y + 8f, r.width * 0.54f, r.height - 16f);
+            // 이 줄은 획득한 칭호(정상 정복·홀로 레이드)를 보여주는 자리다. 빈 상태
+            // 폴백이 헤더 부제("…죽으면 캐릭터가 진짜 사라진다")와 **같은 문장**이라
+            // 타이틀 화면에 같은 문구가 두 번 떴다(폴리싱 2026-08-20). 아직 칭호가 없다는
+            // 빈 상태 문구로 바꿔 중복을 없앤다.
             Hint(new Rect(copy.x, copy.y, copy.width, 36f),
                  TowerEnding.HasTitle ? TowerEnding.TitleName
                  : SoloRaidClear.HasAny ? SoloRaidClear.LastTitle
-                 : "죽으면 캐릭터가 진짜 사라진다");
+                 : "아직 정상에 오른 파티가 없다");
             Hint(new Rect(copy.x, copy.y + 44f, copy.width, 90f),
                  TowerEnding.HasTitle
                      ? $"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)"
