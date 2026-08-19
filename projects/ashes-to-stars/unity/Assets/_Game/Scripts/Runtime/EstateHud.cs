@@ -16,7 +16,12 @@ namespace AshesToStars
         public const float OldPaletteH = 68f;
         public const float SlimPaletteH = 44f;
         public const float SlimInspectH = 36f;
-        public const float TileW = 56f;
+        // 방어 팔레트 타일 폭. 라벨이 「화살탑 0」처럼 3글자+개수라 폭이 좁으면
+        // LabelFit(wordWrap)이 두 줄로 접고 14px 칸이 둘째 줄을 잘라 「탑·개수」가 사라진다
+        // (실측 2026-08-20 go:Estate 샷: 화살탑→「화살」, 마법탑→「마법」로 잘림). 아이콘은
+        // 정사각이라도 라벨을 담으려면 타일은 세로보다 가로가 넓어야 한다 — 폭을 높이와
+        // 분리해 3글자 라벨이 한 줄에 들어가게 한다.
+        public const float TileW = 68f;
         public const float TileGap = 6f;
 
         static bool _qaSeeded;
@@ -81,7 +86,9 @@ namespace AshesToStars
                 return tiles;
             }
 
-            float tw = Mathf.Min(TileW, Mathf.Max(36f, r.height + 8f));
+            // 폭은 라벨 기준(TileW), 높이만 팔레트 바를 따른다 — 둘을 묶으면(옛 min(TileW,height+8))
+            // 44px 바에서 폭이 52로 눌려 3글자 라벨이 잘렸다.
+            float tw = TileW;
             float th = Mathf.Max(28f, r.height - 4f);
             float used = count * tw + (count - 1) * TileGap;
             float x0 = r.x + (r.width - used) * 0.5f;
