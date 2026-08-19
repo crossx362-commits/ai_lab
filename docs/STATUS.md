@@ -23,7 +23,7 @@ error CS 0. 광산 관련 SelfCheck 전부 PASS(EstateMine·MineSeize·EstateRac
 정산량을 줄인다`(25000<60000), EstateMine.cs에서 `OfflineSettle.EffectiveSeconds` 배선을 지우면 grep 단언 FAIL.
 **주의**: 이번 전수에서 내 변경과 무관한 기존 FAIL이 있었다 — `AdvLookSelfCheck`(10, 전직 스프라이트 look, meas 사본 에셋 의존),
 `HuntBoonSelfCheck`(1, 가로 카드 금테), `BossBattleDpsSelfCheck`(NRE, W3Party), `ChatWorkBatchSelfCheck`(1). 전부 OfflineSettle·광산과
-무관(다른 서브시스템). `W3Party`/Resources/`EstateScreen.cs`는 안 건드림 — `EstateMine.cs` 한 줄 + 신규 2파일. 커밋 대기.
+무관(다른 서브시스템). `W3Party`/Resources/`EstateScreen.cs`는 안 건드림 — `EstateMine.cs` 한 줄 + 신규 2파일. 코드 `e8cb5d78`.
 ⚠️ 영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md`대로만 — 문서 없이 영지 재설계 금지(오너 2026-08-18). 문서는 있으니 그걸 읽고 한 결함만.
 
 폴리싱(영지) 이번 이터 결과: `qa_go:Estate` 샷에서 바닥 왼쪽 힌트가 「ESC — 영지로」였는데, 영지는 허브 루트라
