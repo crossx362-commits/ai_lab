@@ -3396,6 +3396,16 @@ public class W3Party : MonoBehaviour
         CommandBar();
     }
 
+    /// 전투 HUD 패널 크롬(글씨·여백만) — 반투명 프레임만으로는 들판 배경이 비쳐
+    /// 상단 요약·보상 레일 글씨가 안 읽혔다(폴리싱 2026-08-19). 프레임 안쪽에
+    /// 불투명 바탕을 먼저 깔아 배경과 무관하게 대비를 보장한다. 되돌리면(바탕 제거)
+    /// 나무·집 위에서 글씨가 다시 묻힌다.
+    static void DrawHudBacking(Rect r, float alpha)
+    {
+        var inner = AshesToStars.UiAtlas.ContentRect(r, "panel", 0f);
+        GUI.DrawTexture(inner, Tint(new Color(.03f, .05f, .09f, Mathf.Clamp01(0.88f * alpha))));
+    }
+
     void DrawCombatSummary(int wave)
     {
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
@@ -3407,6 +3417,8 @@ public class W3Party : MonoBehaviour
         var left = new Rect(14f, 14f, 218f, 50f);
         var right = new Rect(Screen.width - CombatHudRailMargin - CombatHudRailW, 14f,
                              CombatHudRailW, 44f);
+        DrawHudBacking(left, 1f);
+        DrawHudBacking(right, 1f);
         if (!AshesToStars.UiAtlas.DrawSliced(left, "panel", 8f, new Color(1f, 1f, 1f, 0.55f)))
             GUI.DrawTexture(left, Tint(new Color(.025f, .045f, .085f, .72f)));
         if (!AshesToStars.UiAtlas.DrawSliced(right, "panel", 8f, new Color(1f, 1f, 1f, 0.55f)))
@@ -3441,6 +3453,7 @@ public class W3Party : MonoBehaviour
     void DrawHudChip(Rect r, string text, Color tint)
     {
         var chrome = new Color(1f, 1f, 1f, 0.50f * tint.a);
+        DrawHudBacking(r, tint.a);
         if (!AshesToStars.UiAtlas.DrawSliced(r, "panel", 8f, chrome))
             GUI.DrawTexture(r, Tint(new Color(.04f, .08f, .14f, .78f * tint.a)));
         _cmdLabel.normal.textColor = tint;
