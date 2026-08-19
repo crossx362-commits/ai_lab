@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>방명록 — 백수장인</title>
+<meta name="description" content="백수장인 홈페이지 방명록 — 흔적을 남겨주세요.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+<style>
+  .gb-form{
+    background:linear-gradient(160deg,var(--panel),var(--bg2));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:24px; margin-bottom:26px;
+  }
+  .gb-form .row{display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+  .gb-form input[type=text], .gb-form textarea{
+    background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+    color:var(--text); font-family:inherit; font-size:14px; padding:11px 13px;
+  }
+  .gb-form input[type=text]{flex:0 0 180px;}
+  .gb-form textarea{flex:1 1 100%; min-height:84px; resize:vertical; width:100%;}
+  .gb-form input:focus, .gb-form textarea:focus{outline:2px solid rgba(108,140,255,.5); outline-offset:-1px;}
+  .gb-form .hint{font-size:12px; color:var(--dim); margin-top:8px;}
+  .gb-hp{position:absolute; left:-9999px; opacity:0;}
+  .gb-item{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:16px 20px; margin-bottom:12px;
+  }
+  .gb-item .gh{display:flex; align-items:baseline; gap:10px; margin-bottom:5px;}
+  .gb-item .gn{font-weight:800; font-size:14.5px;}
+  .gb-item .gd{font-size:11.5px; color:var(--dim); font-variant-numeric:tabular-nums;}
+  .gb-item .gm{font-size:13.5px; color:#b8c1dd; white-space:pre-wrap; word-break:break-word;}
+  .gb-note{color:var(--dim); text-align:center; padding:34px 0; font-size:13.5px;}
+  .gb-err{color:#ff9b9b; font-size:13px; margin-top:8px; display:none;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="works.html">작업물</a>
+    <a href="projects.html">프로젝트</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="blog.html">블로그</a>
+    <a href="board.html" class="active">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="kicker rv">Guestbook</div>
+    <h2 class="title rv">방명록</h2>
+    <p class="lead rv d1">지나가는 길에 흔적 한 줄 남겨주세요 — 다 읽습니다.</p>
+  </div>
+</div>
+
+<section style="padding-top:10px;">
+  <div class="wrap" style="max-width:820px;">
+    <form class="gb-form rv" id="gbForm">
+      <div class="row">
+        <input type="text" id="gbName" maxlength="24" placeholder="닉네임" required>
+      </div>
+      <div class="row">
+        <textarea id="gbMsg" maxlength="500" placeholder="메시지 (최대 500자)" required></textarea>
+      </div>
+      <input type="text" class="gb-hp" id="gbHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn primary" type="submit" id="gbSubmit">✍️ 남기기</button>
+      <div class="gb-err" id="gbErr"></div>
+      <div class="hint">욕설·광고는 예고 없이 삭제됩니다.</div>
+    </form>
+    <div id="gbList"><div class="gb-note">불러오는 중…</div></div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a> · <span id="visits" hidden>👀 방문 <b></b></span></footer>
+</section>
+
+<script src="site.js"></script>
+<script>
+const list = document.getElementById('gbList');
+const form = document.getElementById('gbForm');
+const errBox = document.getElementById('gbErr');
+
+function gEsc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+}
+
+async function loadGuestbook(){
+  try{
+    const rows = await sbFetch('/rest/v1/homepage_guestbook?select=created_at,nickname,message&order=created_at.desc&limit=100');
+    if(!rows.length){ list.innerHTML = '<div class="gb-note">아직 아무도 안 다녀갔어요 — 첫 번째가 되어 주세요!</div>'; return; }
+    list.innerHTML = rows.map(r =>
+      '<div class="gb-item"><div class="gh"><span class="gn">' + gEsc(r.nickname) + '</span>' +
+      '<span class="gd">' + fmtDate(r.created_at) + '</span></div>' +
+      '<div class="gm">' + gEsc(r.message) + '</div></div>'
+    ).join('');
+  }catch(e){
+    list.innerHTML = '<div class="gb-note">방명록을 준비 중입니다. 잠시 후 다시 시도해 주세요.</div>';
+  }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errBox.style.display = 'none';
+  if (document.getElementById('gbHp').value) return; // 봇 함정
+  const nickname = document.getElementById('gbName').value.trim();
+  const message = document.getElementById('gbMsg').value.trim();
+  if (!nickname || !message) return;
+  const btn = document.getElementById('gbSubmit');
+  btn.disabled = true; btn.textContent = '남기는 중…';
+  try{
+    await sbFetch('/rest/v1/homepage_guestbook', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Prefer':'return=minimal' },
+      body: JSON.stringify({ nickname, message }),
+    });
+    document.getElementById('gbMsg').value = '';
+    await loadGuestbook();
+    btn.textContent = '✅ 남겼습니다!';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '✍️ 남기기'; }, 3000);
+  }catch(err){
+    errBox.textContent = '전송에 실패했어요. 잠시 후 다시 시도해 주세요.';
+    errBox.style.display = 'block';
+    btn.disabled = false; btn.textContent = '✍️ 남기기';
+  }
+});
+
+loadGuestbook();
+</script>
+</body>
+</html>

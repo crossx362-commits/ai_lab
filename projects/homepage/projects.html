@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프로젝트 — 백수장인</title>
+<meta name="description" content="백수장인이 AI와 함께 단독 제작한 프로덕트 — 펫과나, 재와 별, GeoGuard, 셀러 장부.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="works.html">작업물</a>
+    <a href="projects.html" class="active">프로젝트</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="blog.html">블로그</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="kicker rv">Products</div>
+    <h2 class="title rv">AI와 함께, 혼자서 만든 것들</h2>
+    <p class="lead rv d1">기획 → 디자인 → 코드 → 배포 → 운영까지 전부 단독 제작. <b>AI 에이전트가 팀원입니다.</b></p>
+  </div>
+</div>
+
+<section style="padding-top:10px;">
+  <div class="wrap">
+    <div class="proj-grid">
+      <div class="proj rv d1">
+        <div class="head petnna"><span class="status live">LIVE 운영 중</span><span class="big">🐾</span></div>
+        <div class="body">
+          <h3>펫과나</h3>
+          <div class="one">반려동물 올인원 케어 웹 서비스</div>
+          <p>AI 건강 기록·산책 지도·커뮤니티·조화도 분석까지 담은 반려동물 앱.
+          <b>9개 AI 에이전트(QA·개발·테스트·백엔드·디자인·PM)가 24시간 자동으로 버그를 찾고 고치고 배포</b>하는
+          자동 개발팀을 함께 설계해 운영합니다.</p>
+          <div class="tags"><span class="tag">JavaScript</span><span class="tag">Supabase</span><span class="tag">Vercel</span><span class="tag">AI 에이전트 운영</span></div>
+          <div class="links"><a class="plink" href="https://petnna.vercel.app" target="_blank" rel="noopener">🔗 서비스 바로가기</a></div>
+        </div>
+      </div>
+
+      <div class="proj rv d2">
+        <div class="head game"><span class="status dev">개발 중</span><span class="big">⚔️</span></div>
+        <div class="body">
+          <h3>재와 별 <span style="font-size:12px;color:var(--dim);font-weight:600;">Ashes to Stars</span></h3>
+          <div class="one">Steam PC · 2D 쿼터뷰 픽셀아트 RPG</div>
+          <p>뱀서라이크 전투 + 키우기 + 탑 100층 + 레이드 + 비동기 PvP.
+          핵심은 <b>"죽으면 캐릭터가 진짜 사라진다"</b> — 가챠도 숙제도 없는 하드코어 설계.
+          Blender 헤드리스 에셋 파이프라인과 <b>AI 개발 루프(빌드→검증→밸런스 시뮬)</b>로 1인 개발 중.</p>
+          <div class="tags"><span class="tag">Unity 6</span><span class="tag">C#</span><span class="tag">Blender 자동화</span><span class="tag">픽셀아트</span><span class="tag">AI 개발 루프</span></div>
+        </div>
+      </div>
+
+      <div class="proj rv d3">
+        <div class="head geo"><span class="status done">완성</span><span class="big">🛡️</span></div>
+        <div class="body">
+          <h3>GeoGuard</h3>
+          <div class="one">국가 단위 IP 차단 Windows 보안 프로그램</div>
+          <p>선택한 국가의 IP 통신을 <b>Windows 방화벽 커널(WFP) 레벨에서 차단</b>하는 트레이 상주 앱.
+          차단 시도를 실시간 감지해 어떤 프로세스가 어디로 접속하려 했는지 알려주고,
+          TCP 연결 모니터·차단 이력·자동 재시도(fail-closed)까지 갖췄습니다.</p>
+          <div class="tags"><span class="tag">C# .NET</span><span class="tag">WFP 방화벽</span><span class="tag">보안 이벤트 로그</span><span class="tag">GeoIP</span></div>
+        </div>
+      </div>
+
+      <div class="proj rv d4">
+        <div class="head ledger"><span class="status done">완성</span><span class="big">📒</span></div>
+        <div class="body">
+          <h3>셀러 장부</h3>
+          <div class="one">이커머스 셀러를 위한 재고·판매 관리 웹앱</div>
+          <p>상품·입출고·거래처를 한눈에 — <b>품절 임박·유통기한 경고, 판매 TOP 5, 매출 목표 추적</b>을
+          설치 없이 브라우저 하나로. 서버 없이 로컬에 안전하게 저장되고 CSV 내보내기·백업을 지원합니다.</p>
+          <div class="tags"><span class="tag">HTML·CSS·JS</span><span class="tag">로컬 저장</span><span class="tag">모바일 대응</span><span class="tag">CSV 내보내기</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
+</section>
+
+<script src="site.js"></script>
+</body>
+</html>

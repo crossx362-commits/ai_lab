@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>작업물 — 백수장인</title>
+<meta name="description" content="백수장인의 작업물 — 애니메이션 릴 아카이브(2017→2026), AI 활용 영상, AI 음악·자동 포스팅 실험, 캐릭터·환경 기획.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="works.html" class="active">작업물</a>
+    <a href="projects.html">프로젝트</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="blog.html">블로그</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="kicker rv">Works</div>
+    <h2 class="title rv">작업물</h2>
+    <p class="lead rv d1">2017년부터 지금까지의 애니메이션 릴, 그리고 AI로 벌인 실험들 — <b>계속 추가 중입니다.</b></p>
+  </div>
+</div>
+
+<section style="padding-top:10px;">
+  <div class="wrap">
+    <div class="filters rv" id="filters">
+      <button class="fbtn on" data-cat="all">전체</button>
+      <button class="fbtn" data-cat="reel">🎬 애니메이션 릴</button>
+      <button class="fbtn" data-cat="ai">🤖 AI 활용</button>
+      <button class="fbtn" data-cat="music">🎵 음악</button>
+      <button class="fbtn" data-cat="plan">📐 기획·컨셉</button>
+    </div>
+    <div class="wgrid" id="wgrid"></div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
+</section>
+
+<script src="works.js"></script>
+<script>
+const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', music:'음악', plan:'기획·컨셉' };
+const grid = document.getElementById('wgrid');
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function cardHtml(w){
+  let media;
+  if (w.yt) {
+    media = '<div class="media" data-yt="' + esc(w.yt) + '"></div>';
+  } else if (w.link) {
+    media = '<a class="media note" href="' + esc(w.link) + '" target="_blank" rel="noopener"><div class="noteface">' + (w.icon||'🔗') + '</div></a>';
+  } else {
+    media = '<div class="media note"><div class="noteface">' + (w.icon||'📄') + '</div></div>';
+  }
+  const ext = w.link ? '<a class="ext" href="' + esc(w.link) + '" target="_blank" rel="noopener">바로가기 →</a>' : '';
+  return '<div class="wcard rv" data-cat="' + esc(w.cat) + '">' + media +
+    '<div class="body"><h3>' + esc(w.title) + '</h3><p>' + esc(w.desc) + '</p>' +
+    '<div class="meta"><span class="wtag cat-' + esc(w.cat) + '">' + (CAT_LABEL[w.cat]||w.cat) + '</span>' +
+    (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '') + ext + '</div></div></div>';
+}
+
+function render(cat){
+  const list = WORKS
+    .filter(w => cat === 'all' || w.cat === cat)
+    .sort((a,b) => (b.featured?1:0) - (a.featured?1:0));
+  grid.innerHTML = list.map(cardHtml).join('');
+  grid.querySelectorAll('.rv').forEach(el => el.classList.add('on'));
+  mountLitePlayers(grid);
+}
+
+document.getElementById('filters').addEventListener('click', e => {
+  const b = e.target.closest('.fbtn'); if(!b) return;
+  document.querySelectorAll('.fbtn').forEach(x => x.classList.toggle('on', x === b));
+  render(b.dataset.cat);
+});
+</script>
+<script src="site.js"></script>
+<script>render('all');</script>
+</body>
+</html>

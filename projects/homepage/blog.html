@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>블로그 — 백수장인</title>
+<meta name="description" content="백수장인의 블로그 — 작업 기록과 일상.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+<style>
+  .post{
+    background:linear-gradient(160deg,var(--panel),var(--bg2));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:28px; margin-bottom:20px;
+  }
+  .post .pdate{font-size:12.5px; color:var(--dim); font-weight:700; font-variant-numeric:tabular-nums; margin-bottom:6px;}
+  .post h3{font-size:20px; font-weight:800; letter-spacing:-.5px; margin-bottom:12px;}
+  .post .pbody{color:#b8c1dd; font-size:14.5px;}
+  .post .pbody p{margin-bottom:12px;}
+  .post .ptags{display:flex; gap:7px; flex-wrap:wrap; margin-top:14px;}
+  .empty-note{color:var(--dim); text-align:center; padding:40px 0; font-size:14px;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="works.html">작업물</a>
+    <a href="projects.html">프로젝트</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="blog.html" class="active">블로그</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap">
+    <div class="kicker rv">Blog</div>
+    <h2 class="title rv">블로그</h2>
+    <p class="lead rv d1">만들면서 배운 것들, 그리고 일상.</p>
+  </div>
+</div>
+
+<section style="padding-top:10px;">
+  <div class="wrap" style="max-width:820px;">
+    <div id="posts"></div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a> · <span id="visits" hidden>👀 방문 <b></b></span></footer>
+</section>
+
+<script src="posts.js"></script>
+<script>
+function escT(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+const box = document.getElementById('posts');
+if (!POSTS.length) {
+  box.innerHTML = '<div class="empty-note">아직 글이 없습니다 — 곧 올라옵니다.</div>';
+} else {
+  box.innerHTML = POSTS.map(p => {
+    const paras = (p.body||'').split(/\n\s*\n/).map(x => '<p>' + escT(x.trim()).replace(/\n/g,'<br>') + '</p>').join('');
+    const tags = (p.tags||[]).map(t => '<span class="wtag">#' + escT(t) + '</span>').join('');
+    return '<article class="post rv"><div class="pdate">' + escT(p.date) + '</div><h3>' + escT(p.title) + '</h3>' +
+      '<div class="pbody">' + paras + '</div><div class="ptags">' + tags + '</div></article>';
+  }).join('');
+}
+</script>
+<script src="site.js"></script>
+</body>
+</html>

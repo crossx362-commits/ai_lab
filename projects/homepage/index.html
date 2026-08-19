@@ -4,339 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>백수장인 — 3D 애니메이터 × AI 빌더</title>
-<meta name="description" content="백수장인 — 16년차 게임 3D 애니메이터. 키 애니메이션·리깅·시네마틱부터 생성형 AI·AI 에이전트 파이프라인까지, 제작의 전 공정을 다룹니다.">
+<meta name="description" content="백수장인 — 16년차 게임 3D 애니메이터. 키 애니메이션·리깅·시네마틱부터 생성형 AI·AI 에이전트 파이프라인까지.">
 <meta property="og:title" content="백수장인 — 3D 애니메이터 × AI 빌더">
 <meta property="og:description" content="노는 것처럼 보여도 뭐든 만들어 냅니다. 16년 게임업계 경력 + 생성형 AI·AI 에이전트 활용 — 애니메이션도, 앱도, 게임도.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<style>
-  :root{
-    --bg:#0a0d16; --bg2:#0f1322; --panel:#141a2c; --panel2:#1a2138;
-    --line:#232c47; --text:#e8ecf6; --sub:#8b95b3; --dim:#5a6484;
-    --accent:#6c8cff; --accent2:#9d6cff; --amber:#ffb86b; --green:#4ade80;
-    --grad:linear-gradient(120deg,#6c8cff,#9d6cff 55%,#ff6cab);
-    --radius:16px;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  html{scroll-behavior:smooth;}
-  body{
-    background:var(--bg); color:var(--text);
-    font-family:"Pretendard Variable",Pretendard,-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
-    line-height:1.6; overflow-x:hidden;
-  }
-  ::selection{background:rgba(108,140,255,.35);}
-  a{color:inherit; text-decoration:none;}
-  img{max-width:100%;}
-
-  /* ─── 상단 내비 ─── */
-  nav{
-    position:fixed; top:0; left:0; right:0; z-index:100;
-    display:flex; align-items:center; gap:6px;
-    padding:14px 22px;
-    background:rgba(10,13,22,.72); backdrop-filter:blur(14px);
-    border-bottom:1px solid rgba(35,44,71,.6);
-  }
-  nav .logo{font-weight:800; font-size:15px; letter-spacing:-.3px; margin-right:auto; display:flex; align-items:center; gap:8px; white-space:nowrap; flex-shrink:0;}
-  nav .logo .dot{width:9px; height:9px; border-radius:50%; background:var(--grad); box-shadow:0 0 12px rgba(108,140,255,.8);}
-  nav .links{display:flex; gap:2px;}
-  nav .links a{
-    padding:7px 13px; border-radius:9px; font-size:13.5px; font-weight:600; color:var(--sub);
-    transition:color .15s, background .15s; white-space:nowrap;
-  }
-  nav .links a:hover{color:var(--text); background:rgba(108,140,255,.1);}
-  nav .links a.active{color:#fff; background:rgba(108,140,255,.18);}
-  @media (max-width:760px){
-    nav{padding:10px 14px; overflow-x:auto; -webkit-overflow-scrolling:touch;}
-    nav .links a{padding:6px 10px; font-size:12.5px;}
-  }
-
-  /* ─── 섹션 공통: 데스크톱만 스냅 ─── */
-  main{scroll-snap-type:none;}
-  section{
-    min-height:100vh; min-height:100svh;
-    display:flex; flex-direction:column; justify-content:center;
-    padding:96px 24px 60px; position:relative;
-  }
-  @media (min-width:1024px) and (min-height:700px){
-    main{scroll-snap-type:y proximity;}
-    section{scroll-snap-align:start;}
-  }
-  .wrap{width:100%; max-width:1120px; margin:0 auto;}
-  .kicker{
-    display:inline-flex; align-items:center; gap:8px;
-    font-size:12.5px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;
-    color:var(--accent); margin-bottom:14px;
-  }
-  .kicker::before{content:""; width:26px; height:2px; background:var(--grad); border-radius:2px;}
-  h2.title{font-size:clamp(26px,4vw,40px); font-weight:800; letter-spacing:-1px; margin-bottom:10px;}
-  p.lead{color:var(--sub); font-size:clamp(14px,1.6vw,16.5px); max-width:640px; margin-bottom:36px;}
-
-  /* 등장 애니메이션 */
-  .rv{opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s ease;}
-  .rv.on{opacity:1; transform:none;}
-  .rv.d1{transition-delay:.08s;} .rv.d2{transition-delay:.16s;} .rv.d3{transition-delay:.24s;} .rv.d4{transition-delay:.32s;}
-
-  /* ─── HERO ─── */
-  #home{overflow:hidden;}
-  #home .bg{
-    position:absolute; inset:0; pointer-events:none;
-    background:
-      radial-gradient(700px 420px at 78% 18%, rgba(157,108,255,.16), transparent 65%),
-      radial-gradient(640px 420px at 15% 78%, rgba(108,140,255,.14), transparent 65%),
-      var(--bg);
-  }
-  #home .gridfx{
-    position:absolute; inset:0; pointer-events:none; opacity:.5;
-    background-image:linear-gradient(rgba(108,140,255,.055) 1px, transparent 1px),
-                     linear-gradient(90deg, rgba(108,140,255,.055) 1px, transparent 1px);
-    background-size:44px 44px;
-    mask-image:radial-gradient(ellipse 75% 65% at 50% 42%, #000 35%, transparent 78%);
-    -webkit-mask-image:radial-gradient(ellipse 75% 65% at 50% 42%, #000 35%, transparent 78%);
-  }
-  .hero-badge{
-    display:inline-flex; align-items:center; gap:8px;
-    background:rgba(108,140,255,.1); border:1px solid rgba(108,140,255,.3);
-    padding:7px 15px; border-radius:99px; font-size:13px; font-weight:700; color:#aebcf5;
-    margin-bottom:22px;
-  }
-  .hero-badge .pulse{width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 2s infinite;}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.5);} 50%{box-shadow:0 0 0 6px rgba(74,222,128,0);}}
-  h1.hero-name{
-    font-size:clamp(40px,7vw,76px); font-weight:900; letter-spacing:-2.5px; line-height:1.08;
-    margin-bottom:8px;
-  }
-  h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
-  .hero-tag{font-size:clamp(17px,2.4vw,24px); font-weight:700; color:#c6cee8; letter-spacing:-.5px; margin-bottom:16px;}
-  .hero-desc{color:var(--sub); font-size:clamp(14px,1.7vw,16.5px); max-width:620px; margin-bottom:34px;}
-  .hero-desc b{color:#c9d3f2; font-weight:700;}
-  .stats{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:36px;}
-  .stat{
-    background:rgba(20,26,44,.75); border:1px solid var(--line); border-radius:14px;
-    padding:14px 20px; min-width:128px; backdrop-filter:blur(6px);
-  }
-  .stat .num{font-size:26px; font-weight:800; letter-spacing:-1px; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
-  .stat .lbl{font-size:12px; color:var(--sub); font-weight:600; margin-top:2px;}
-  .cta{display:flex; flex-wrap:wrap; gap:12px;}
-  .btn{
-    display:inline-flex; align-items:center; gap:9px;
-    padding:13px 24px; border-radius:12px; font-size:14.5px; font-weight:700;
-    transition:transform .15s, box-shadow .15s, background .15s; cursor:pointer; border:none;
-  }
-  .btn.primary{background:var(--grad); color:#fff; box-shadow:0 8px 28px rgba(108,140,255,.35);}
-  .btn.primary:hover{transform:translateY(-2px); box-shadow:0 12px 34px rgba(108,140,255,.45);}
-  .btn.ghost{background:rgba(20,26,44,.8); color:#d7def2; border:1px solid var(--line);}
-  .btn.ghost:hover{background:var(--panel2); transform:translateY(-2px);}
-  .scroll-hint{
-    position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
-    color:var(--dim); font-size:12px; letter-spacing:2px; display:flex; flex-direction:column; align-items:center; gap:6px;
-  }
-  .scroll-hint::after{content:"▾"; font-size:16px; animation:bob 1.6s infinite;}
-  @keyframes bob{0%,100%{transform:translateY(0);} 50%{transform:translateY(5px);}}
-  @media (max-width:760px), (max-height:760px){ .scroll-hint{display:none;} }
-
-  /* ─── AI × 애니메이션 ─── */
-  .duo{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px;}
-  @media (max-width:860px){ .duo{grid-template-columns:1fr;} }
-  .panel{
-    background:linear-gradient(160deg, var(--panel), var(--bg2));
-    border:1px solid var(--line); border-radius:var(--radius); padding:26px;
-    position:relative; overflow:hidden;
-  }
-  .panel::before{content:""; position:absolute; top:0; left:0; right:0; height:3px; background:var(--grad); opacity:.85;}
-  .panel.alt::before{background:linear-gradient(90deg,var(--amber),#ff6cab);}
-  .panel h3{font-size:18px; font-weight:800; margin-bottom:6px; display:flex; align-items:center; gap:9px;}
-  .panel .sub{color:var(--sub); font-size:13.5px; margin-bottom:16px;}
-  .chips{display:flex; flex-wrap:wrap; gap:8px;}
-  .chip{
-    background:rgba(108,140,255,.09); border:1px solid rgba(108,140,255,.22);
-    color:#b9c5ee; padding:6px 12px; border-radius:99px; font-size:12.5px; font-weight:600;
-  }
-  .panel.alt .chip{background:rgba(255,184,107,.08); border-color:rgba(255,184,107,.25); color:#f2cfa4;}
-  .pipeline{
-    display:flex; align-items:stretch; gap:0; margin:26px 0 8px; flex-wrap:wrap;
-  }
-  .pstep{
-    flex:1; min-width:130px; text-align:center; padding:16px 10px; position:relative;
-    background:var(--panel); border:1px solid var(--line);
-  }
-  .pstep:first-child{border-radius:14px 0 0 14px;}
-  .pstep:last-child{border-radius:0 14px 14px 0;}
-  .pstep + .pstep{border-left:none;}
-  .pstep .ic{font-size:22px; margin-bottom:6px;}
-  .pstep .nm{font-size:13.5px; font-weight:700;}
-  .pstep .ai{
-    margin-top:8px; display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.5px;
-    background:rgba(157,108,255,.15); border:1px solid rgba(157,108,255,.4); color:#c9b2ff;
-    padding:3px 9px; border-radius:99px;
-  }
-  @media (max-width:760px){
-    .pipeline{flex-direction:column;}
-    .pstep{border-radius:0 !important;}
-    .pstep:first-child{border-radius:12px 12px 0 0 !important;}
-    .pstep:last-child{border-radius:0 0 12px 12px !important;}
-    .pstep + .pstep{border-left:1px solid var(--line); border-top:none;}
-  }
-  .videos{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:24px;}
-  @media (max-width:860px){ .videos{grid-template-columns:1fr;} }
-  .video-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
-  .video-card .vt{padding:13px 18px; font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line);}
-  .video-card .vt span{color:var(--sub); font-weight:500; font-size:12px;}
-  .frame{position:relative; padding-top:56.25%; background:#000;}
-  .frame iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
-
-  /* ─── 경력 ─── */
-  .tl{position:relative; margin-top:6px;}
-  .tl::before{content:""; position:absolute; left:86px; top:6px; bottom:6px; width:2px; background:linear-gradient(var(--accent), var(--accent2), transparent);}
-  .trow{
-    display:grid; grid-template-columns:72px 30px 1fr; align-items:baseline;
-    padding:7px 0; position:relative;
-  }
-  .trow .yr{font-size:12.5px; font-weight:700; color:var(--dim); text-align:right; font-variant-numeric:tabular-nums;}
-  .trow .nd{position:relative; height:100%;}
-  .trow .nd::before{
-    content:""; position:absolute; left:11px; top:6px; width:9px; height:9px; border-radius:50%;
-    background:var(--bg); border:2px solid var(--accent);
-  }
-  .trow.hl .nd::before{background:var(--accent); box-shadow:0 0 10px rgba(108,140,255,.8);}
-  .trow .bd{padding-left:6px;}
-  .trow .co{font-size:14.5px; font-weight:700;}
-  .trow .co .role{font-size:12px; color:var(--amber); font-weight:700; margin-left:7px;}
-  .trow .what{font-size:12.5px; color:var(--sub);}
-  .trow .what b{color:#aeb9dc; font-weight:600;}
-  @media (max-width:640px){
-    .tl::before{left:64px;}
-    .trow{grid-template-columns:52px 26px 1fr;}
-    .trow .yr{font-size:11px;}
-    .trow .co{font-size:13.5px;}
-    .trow .what{font-size:11.5px;}
-  }
-  .career-note{
-    margin-top:22px; padding:16px 20px; border-radius:14px;
-    background:rgba(108,140,255,.07); border:1px solid rgba(108,140,255,.2);
-    font-size:13.5px; color:#b9c5ee;
-  }
-
-  /* ─── 스킬 ─── */
-  .skills-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px;}
-  @media (max-width:1000px){ .skills-grid{grid-template-columns:1fr 1fr;} }
-  @media (max-width:560px){ .skills-grid{grid-template-columns:1fr;} }
-  .sk{
-    background:linear-gradient(165deg,var(--panel),var(--bg2));
-    border:1px solid var(--line); border-radius:var(--radius); padding:22px;
-  }
-  .sk .ic{font-size:26px; margin-bottom:10px;}
-  .sk h3{font-size:15.5px; font-weight:800; margin-bottom:4px;}
-  .sk .cap{font-size:12px; color:var(--dim); margin-bottom:14px;}
-  .sk ul{list-style:none;}
-  .sk li{
-    font-size:13px; color:#b8c1dd; padding:5px 0 5px 16px; position:relative;
-  }
-  .sk li::before{content:"◆"; position:absolute; left:0; top:6px; font-size:8px; color:var(--accent);}
-  .sk.a2 li::before{color:var(--accent2);}
-  .sk.a3 li::before{color:var(--amber);}
-  .sk.a4 li::before{color:#ff6cab;}
-  .tools{margin-top:20px; display:flex; flex-wrap:wrap; gap:9px;}
-  .tool{
-    background:var(--panel); border:1px solid var(--line); border-radius:10px;
-    padding:8px 15px; font-size:13px; font-weight:700; color:#cdd6ef;
-    display:inline-flex; align-items:center; gap:7px;
-  }
-  .tool i{font-style:normal; font-size:15px;}
-
-  /* ─── 프로젝트 ─── */
-  .proj-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
-  @media (max-width:860px){ .proj-grid{grid-template-columns:1fr;} }
-  .proj{
-    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-    overflow:hidden; display:flex; flex-direction:column;
-    transition:transform .2s, border-color .2s, box-shadow .2s;
-  }
-  .proj:hover{transform:translateY(-4px); border-color:rgba(108,140,255,.5); box-shadow:0 16px 44px rgba(0,0,0,.45);}
-  .proj .head{height:120px; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden;}
-  .proj .head .big{font-size:44px; filter:drop-shadow(0 6px 18px rgba(0,0,0,.5)); z-index:1;}
-  .proj .head.petnna{background:linear-gradient(130deg,#2a1e3f,#173049 60%,#0f3b33);}
-  .proj .head.game{background:
-      repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 2px, transparent 2px 8px),
-      linear-gradient(130deg,#341b3f,#1b1f4d 55%,#3f1b2a);}
-  .proj .head.geo{background:linear-gradient(130deg,#0e2a44,#122c2c 60%,#25123c);}
-  .proj .head.ledger{background:linear-gradient(130deg,#1c2c50,#173a4d 60%,#12403a);}
-  .proj .head::after{
-    content:""; position:absolute; inset:0;
-    background-image:linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
-                     linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
-    background-size:26px 26px;
-  }
-  .status{
-    position:absolute; top:12px; right:12px; z-index:2;
-    font-size:11px; font-weight:800; letter-spacing:.5px;
-    padding:4px 11px; border-radius:99px; backdrop-filter:blur(4px);
-  }
-  .status.live{background:rgba(74,222,128,.15); border:1px solid rgba(74,222,128,.45); color:#7ce8a2;}
-  .status.dev{background:rgba(255,184,107,.13); border:1px solid rgba(255,184,107,.45); color:#ffcf96;}
-  .status.done{background:rgba(108,140,255,.14); border:1px solid rgba(108,140,255,.45); color:#a8bbff;}
-  .proj .body{padding:22px; display:flex; flex-direction:column; gap:10px; flex:1;}
-  .proj h3{font-size:18.5px; font-weight:800; letter-spacing:-.4px;}
-  .proj .one{font-size:13px; color:var(--accent); font-weight:700;}
-  .proj p{font-size:13.5px; color:var(--sub);}
-  .proj p b{color:#bcc6e4; font-weight:600;}
-  .proj .tags{display:flex; flex-wrap:wrap; gap:7px; margin-top:auto; padding-top:8px;}
-  .tag{font-size:11.5px; font-weight:700; color:#93a0c6; background:rgba(108,140,255,.08); border:1px solid rgba(108,140,255,.18); padding:4px 10px; border-radius:7px;}
-  .proj .links{display:flex; gap:10px; margin-top:12px;}
-  .plink{
-    font-size:13px; font-weight:700; color:#aebcf5;
-    display:inline-flex; align-items:center; gap:6px;
-    padding:8px 14px; border-radius:9px; background:rgba(108,140,255,.1); border:1px solid rgba(108,140,255,.25);
-    transition:background .15s;
-  }
-  .plink:hover{background:rgba(108,140,255,.2);}
-
-  /* ─── 연락 ─── */
-  #contact{min-height:88vh;}
-  .contact-box{
-    text-align:center; padding:54px 26px;
-    background:linear-gradient(160deg,var(--panel),var(--bg2));
-    border:1px solid var(--line); border-radius:22px; position:relative; overflow:hidden;
-  }
-  .contact-box::before{
-    content:""; position:absolute; inset:-40%;
-    background:radial-gradient(420px 260px at 50% 0%, rgba(108,140,255,.14), transparent 70%);
-    pointer-events:none;
-  }
-  .contact-box h2{font-size:clamp(24px,3.6vw,36px); font-weight:800; letter-spacing:-1px; margin-bottom:12px;}
-  .contact-box p{color:var(--sub); max-width:520px; margin:0 auto 30px; font-size:14.5px;}
-  .contact-links{display:flex; flex-wrap:wrap; justify-content:center; gap:12px;}
-  footer{padding:26px; text-align:center; color:var(--dim); font-size:12px;}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <nav>
-  <a class="logo" href="#home"><span class="dot"></span>백수장인</a>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
   <div class="links">
-    <a href="#home" class="active">홈</a>
-    <a href="#ai">AI×애니메이션</a>
-    <a href="#career">경력</a>
-    <a href="#skills">스킬</a>
-    <a href="#projects">프로젝트</a>
-    <a href="#contact">연락</a>
+    <a href="index.html" class="active">홈</a>
+    <a href="works.html">작업물</a>
+    <a href="projects.html">프로젝트</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="blog.html">블로그</a>
+    <a href="board.html">방명록</a>
   </div>
 </nav>
 
-<main>
-
 <!-- ════════ HERO ════════ -->
-<section id="home">
+<section id="home" class="fill">
   <div class="bg"></div><div class="gridfx"></div>
   <div class="wrap" style="position:relative;">
     <div class="hero-badge rv"><span class="pulse"></span>16년차 게임 3D 애니메이터 · 오늘도 뭔가 만드는 중</div>
     <h1 class="hero-name rv d1">백수<span class="grad">장인</span></h1>
     <div class="hero-tag rv d2">노는 것처럼 보여도, 뭐든 만들어 냅니다 — 3D Animator × AI Builder</div>
     <p class="hero-desc rv d2">
-      PC MMORPG부터 모바일·콘솔·캐주얼 액션까지, 16년간 <b>키 애니메이션·리깅·시네마틱·모션캡쳐</b>를
-      두루 다뤄 왔습니다. 지금은 생성형 AI와 <b>AI 에이전트 팀</b>을 직접 구축해
+      쉬는 날에도 뭔가 만들고 있어서 붙은 별명, 백수장인.
+      PC MMORPG부터 글로벌 출시작 「홈런클래시」까지 16년간 <b>키 애니메이션·리깅·시네마틱·모션캡쳐</b>를
+      두루 다뤘고, 지금은 생성형 AI와 <b>AI 에이전트 팀</b>을 직접 구축해
       웹 서비스·보안 프로그램·스팀 게임까지 만들어 배포합니다.
+      <b>애니메이터의 기본기와 AI의 속도</b>를 한 사람이 갖고 있으면, 팀 전체가 빨라집니다.
     </p>
     <div class="stats rv d3">
       <div class="stat"><div class="num" data-count="16">0</div><div class="lbl">년 경력</div></div>
@@ -345,20 +48,19 @@
       <div class="stat"><div class="num" data-count="9">0</div><div class="lbl">운영 중 AI 에이전트</div></div>
     </div>
     <div class="cta rv d4">
-      <a class="btn primary" href="https://youtu.be/Zffl7MgPnJU" target="_blank" rel="noopener">▶ 대표 영상 보기</a>
-      <a class="btn ghost" href="#projects">만든 것들 구경하기</a>
+      <a class="btn primary" href="works.html">🎞️ 작업물 보러가기</a>
+      <a class="btn ghost" href="projects.html">🛠️ 만든 프로덕트</a>
     </div>
   </div>
-  <div class="scroll-hint">SCROLL</div>
 </section>
 
-<!-- ════════ AI × 애니메이션 ════════ -->
-<section id="ai">
+<!-- ════════ 소개: 본업 + AI ════════ -->
+<section>
   <div class="wrap">
     <div class="kicker rv">What I Do</div>
     <h2 class="title rv">애니메이터의 손 + AI의 속도</h2>
-    <p class="lead rv d1">전통 3D 파이프라인의 장인 기술 위에, 반복 작업을 대신할 AI 워크플로우를 직접 설계합니다.
-    일회성 프롬프트가 아니라 <b style="color:#c9d3f2">에이전트·자동화 시스템</b>을 만드는 수준의 활용입니다.</p>
+    <p class="lead rv d1">전통 3D 파이프라인의 기술 위에, 반복 작업을 대신할 AI 워크플로우를 직접 설계합니다.
+    일회성 프롬프트가 아니라 <b>에이전트·자동화 시스템을 만드는 수준</b>의 활용입니다.</p>
 
     <div class="duo">
       <div class="panel rv d1">
@@ -378,6 +80,7 @@
           <span class="chip">컨셉·레퍼런스·모션시트 생성</span><span class="chip">AI 모션 아이데이션</span>
           <span class="chip">자동화 스크립트 제작</span><span class="chip">AI 에이전트 팀 설계·운영</span>
           <span class="chip">웹앱 풀스택 개발</span><span class="chip">Windows 프로그램 개발</span>
+          <span class="chip">AI 음악 자동 생성</span><span class="chip">SNS 자동 포스팅 연구</span>
           <span class="chip">게임 개발 자동 루프</span><span class="chip">QA·배포 자동화</span>
         </div>
       </div>
@@ -390,218 +93,54 @@
       <div class="pstep"><div class="ic">🎮</div><div class="nm">엔진 적용·검수</div><div class="ai">자동화 스크립트</div></div>
       <div class="pstep"><div class="ic">🚀</div><div class="nm">서비스 운영</div><div class="ai">AI 에이전트</div></div>
     </div>
-
-    <div class="videos">
-      <div class="video-card rv d3">
-        <div class="vt">🎥 대표 영상 <span>— 애니메이션·시네마틱 릴</span></div>
-        <div class="frame"><iframe loading="lazy" referrerpolicy="origin" src="https://www.youtube-nocookie.com/embed/Zffl7MgPnJU" title="대표 영상" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
-      </div>
-      <div class="video-card rv d4">
-        <div class="vt">🤖 AI 활용 영상 <span>— 환경 구현·이펙트 연출 과정</span></div>
-        <div class="frame"><iframe loading="lazy" referrerpolicy="origin" src="https://www.youtube-nocookie.com/embed/XjDLAVSJy94" title="AI 활용 영상" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
-      </div>
-    </div>
   </div>
 </section>
 
-<!-- ════════ 경력 ════════ -->
-<section id="career">
+<!-- ════════ 페이지 바로가기 ════════ -->
+<section>
   <div class="wrap">
-    <div class="kicker rv">Career</div>
-    <h2 class="title rv">16년, 12개 프로젝트</h2>
-    <p class="lead rv d1">MMORPG의 기본기에서 시작해 모바일·언리얼·캐주얼 액션까지 — 장르가 바뀌어도 일정과 퀄리티를 지켜온 기록입니다.</p>
-
-    <div class="tl rv d2">
-      <div class="trow hl"><div class="yr">2024 ~</div><div class="nd"></div><div class="bd">
-        <div class="co">Gpun</div>
-        <div class="what">인게임 애니메이션·시네마틱 컷씬 단독 담당 · <b>생성형 AI를 리소스 제작에 접목</b></div></div></div>
-      <div class="trow"><div class="yr">2023</div><div class="nd"></div><div class="bd">
-        <div class="co">그랩 게임즈</div>
-        <div class="what">캐릭터 액션 애니메이션·컷씬 연출 — 이펙트 연동 타격감 구현</div></div></div>
-      <div class="trow"><div class="yr">2023</div><div class="nd"></div><div class="bd">
-        <div class="co">스마트스터디게임즈</div>
-        <div class="what">캐주얼 게임 SD 캐릭터 애니메이션·인게임 연출</div></div></div>
-      <div class="trow"><div class="yr">2021</div><div class="nd"></div><div class="bd">
-        <div class="co">펀크루</div>
-        <div class="what">캐주얼 액션 게임 캐릭터·NPC 애니메이션 전반</div></div></div>
-      <div class="trow"><div class="yr">2020</div><div class="nd"></div><div class="bd">
-        <div class="co">액션스퀘어</div>
-        <div class="what">언리얼 기반 — <b>모캡 후보정 · 피직스/클로스 시뮬레이션 · 외주 검수</b></div></div></div>
-      <div class="trow hl"><div class="yr">2018</div><div class="nd"></div><div class="bd">
-        <div class="co">해긴 <span class="role">과장</span></div>
-        <div class="what">「홈런클래시」 (글로벌 출시) — 핵심 액션 모션·Unity 최적화·파트 일정 관리</div></div></div>
-      <div class="trow"><div class="yr">2017</div><div class="nd"></div><div class="bd">
-        <div class="co">로커스게임즈 <span class="role">과장</span></div>
-        <div class="what">「세븐 드워프 나이츠」 (언리얼4) — IP 톤에 맞춘 유닛 애니메이션</div></div></div>
-      <div class="trow"><div class="yr">2015</div><div class="nd"></div><div class="bd">
-        <div class="co">바이닐랩 · 키스튜디오 <span class="role">파트장</span></div>
-        <div class="what">PC·NPC 애니메이션 전담 · 파이프라인 구축·기술 지원 · 그래픽 리소스 총괄</div></div></div>
-      <div class="trow"><div class="yr">2014</div><div class="nd"></div><div class="bd">
-        <div class="co">매드플레이</div>
-        <div class="what">「신의 탑」 (Unity 카드 배틀 액션) — 인게임 애니메이션·외주 검수</div></div></div>
-      <div class="trow"><div class="yr">2012</div><div class="nd"></div><div class="bd">
-        <div class="co">플레이파이게임즈 <span class="role">대리</span></div>
-        <div class="what">Unity 모바일 MORPG — PC·NPC 애니메이션·리소스 일정 관리</div></div></div>
-      <div class="trow hl"><div class="yr">2010</div><div class="nd"></div><div class="bd">
-        <div class="co">CJ Game Lab <span class="role">대리</span></div>
-        <div class="what">「에볼루션 제로」 (자체 엔진 PC MMORPG) — 애니메이션 기본기 확립</div></div></div>
-    </div>
-
-    <div class="career-note rv d3">
-      💪 파트장·과장으로 팀원 스케줄과 외주 검수를 병행하면서도, <b>주어진 일정을 어긴 적이 없습니다.</b>
-      기획·프로그래밍의 의도를 정확히 반영하는 협업이 강점입니다.
-    </div>
-  </div>
-</section>
-
-<!-- ════════ 스킬 ════════ -->
-<section id="skills">
-  <div class="wrap">
-    <div class="kicker rv">Skills</div>
-    <h2 class="title rv">할 줄 아는 것들</h2>
-    <p class="lead rv d1">애니메이션이 뿌리, AI가 날개 — 아트와 개발 양쪽을 오갑니다.</p>
-
-    <div class="skills-grid">
-      <div class="sk rv d1">
-        <div class="ic">🎬</div><h3>애니메이션</h3><div class="cap">16년의 본업</div>
-        <ul><li>키 애니메이션·액션 타격감</li><li>시네마틱·컷씬 연출</li><li>모션캡쳐 후보정</li><li>리타게팅·모바일 최적화</li></ul>
-      </div>
-      <div class="sk a2 rv d2">
-        <div class="ic">🦴</div><h3>리깅 · 셋업</h3><div class="cap">캐릭터를 움직이게 하는 기술</div>
-        <ul><li>커스텀 리깅·컨트롤러 세팅</li><li>Physique &amp; Skin</li><li>클로스·피직스 시뮬레이션</li><li>본 체인·IK 설계</li></ul>
-      </div>
-      <div class="sk a3 rv d3">
-        <div class="ic">🎮</div><h3>엔진 · 환경</h3><div class="cap">만든 것을 게임에 싣는 일</div>
-        <ul><li>Unity · Unreal 엔진 적용·검수</li><li>쉐이더 정리·라이트 세팅</li><li>머즐 플래시·충격파 연출</li><li>환경 구현</li></ul>
-      </div>
-      <div class="sk a4 rv d4">
-        <div class="ic">🤖</div><h3>AI · 개발</h3><div class="cap">혼자서 팀만큼 일하는 법</div>
-        <ul><li>AI 에이전트 시스템 설계·운영</li><li>생성형 AI 리소스 파이프라인</li><li>웹앱 개발 (JS·Supabase·Vercel)</li><li>Python·C# 자동화 도구</li></ul>
-      </div>
-    </div>
-
-    <div class="tools rv d3">
-      <span class="tool"><i>🧊</i>3ds Max</span><span class="tool"><i>🎯</i>Unity</span>
-      <span class="tool"><i>🔷</i>Unreal Engine</span><span class="tool"><i>🎥</i>MotionBuilder</span>
-      <span class="tool"><i>🌀</i>Blender</span><span class="tool"><i>🤖</i>Claude · GPT · Gemini</span>
-      <span class="tool"><i>🐍</i>Python</span><span class="tool"><i>#</i>C#</span>
-      <span class="tool"><i>🌐</i>JS · Supabase · Vercel</span>
-    </div>
-  </div>
-</section>
-
-<!-- ════════ 프로젝트 ════════ -->
-<section id="projects">
-  <div class="wrap">
-    <div class="kicker rv">Products</div>
-    <h2 class="title rv">AI와 함께, 혼자서 만든 것들</h2>
-    <p class="lead rv d1">기획 → 디자인 → 코드 → 배포 → 운영까지 전부 단독 제작. AI 에이전트가 팀원입니다.</p>
-
-    <div class="proj-grid">
-      <div class="proj rv d1">
-        <div class="head petnna"><span class="status live">LIVE 운영 중</span><span class="big">🐾</span></div>
-        <div class="body">
-          <h3>펫과나</h3>
-          <div class="one">반려동물 올인원 케어 웹 서비스</div>
-          <p>AI 건강 기록·산책 지도·커뮤니티·조화도 분석까지 담은 반려동물 앱.
-          <b>9개 AI 에이전트(QA·개발·테스트·백엔드·디자인·PM)가 24시간 자동으로 버그를 찾고 고치고 배포</b>하는
-          자동 개발팀을 함께 설계해 운영합니다.</p>
-          <div class="tags"><span class="tag">JavaScript</span><span class="tag">Supabase</span><span class="tag">Vercel</span><span class="tag">AI 에이전트 운영</span></div>
-          <div class="links"><a class="plink" href="https://petnna.vercel.app" target="_blank" rel="noopener">🔗 서비스 바로가기</a></div>
-        </div>
-      </div>
-
-      <div class="proj rv d2">
-        <div class="head game"><span class="status dev">개발 중</span><span class="big">⚔️</span></div>
-        <div class="body">
-          <h3>재와 별 <span style="font-size:12px;color:var(--dim);font-weight:600;">Ashes to Stars</span></h3>
-          <div class="one">Steam PC · 2D 쿼터뷰 픽셀아트 RPG</div>
-          <p>뱀서라이크 전투 + 키우기 + 탑 100층 + 레이드 + 비동기 PvP.
-          핵심은 <b>"죽으면 캐릭터가 진짜 사라진다"</b> — 가챠도 숙제도 없는 하드코어 설계.
-          Blender 헤드리스 에셋 파이프라인과 <b>AI 개발 루프(빌드→검증→밸런스 시뮬)</b>로 1인 개발 중.</p>
-          <div class="tags"><span class="tag">Unity 6</span><span class="tag">C#</span><span class="tag">Blender 자동화</span><span class="tag">픽셀아트</span><span class="tag">AI 개발 루프</span></div>
-        </div>
-      </div>
-
-      <div class="proj rv d3">
-        <div class="head geo"><span class="status done">완성</span><span class="big">🛡️</span></div>
-        <div class="body">
-          <h3>GeoGuard</h3>
-          <div class="one">국가 단위 IP 차단 Windows 보안 프로그램</div>
-          <p>선택한 국가의 IP 통신을 <b>Windows 방화벽 커널(WFP) 레벨에서 차단</b>하는 트레이 상주 앱.
-          차단 시도를 실시간 감지해 어떤 프로세스가 어디로 접속하려 했는지 알려주고,
-          TCP 연결 모니터·차단 이력·자동 재시도(fail-closed)까지 갖췄습니다.</p>
-          <div class="tags"><span class="tag">C# .NET</span><span class="tag">WFP 방화벽</span><span class="tag">보안 이벤트 로그</span><span class="tag">GeoIP</span></div>
-        </div>
-      </div>
-
-      <div class="proj rv d4">
-        <div class="head ledger"><span class="status done">완성</span><span class="big">📒</span></div>
-        <div class="body">
-          <h3>셀러 장부</h3>
-          <div class="one">이커머스 셀러를 위한 재고·판매 관리 웹앱</div>
-          <p>상품·입출고·거래처를 한눈에 — <b>품절 임박·유통기한 경고, 판매 TOP 5, 매출 목표 추적</b>을
-          설치 없이 브라우저 하나로. 서버 없이 로컬에 안전하게 저장되고 CSV 내보내기·백업을 지원합니다.</p>
-          <div class="tags"><span class="tag">HTML·CSS·JS</span><span class="tag">로컬 저장</span><span class="tag">모바일 대응</span><span class="tag">CSV 내보내기</span></div>
-        </div>
-      </div>
+    <div class="kicker rv">Explore</div>
+    <h2 class="title rv">구경하기</h2>
+    <p class="lead rv d1">작업물은 계속 추가되고 있습니다.</p>
+    <div class="gate-grid">
+      <a class="gate rv d1" href="works.html">
+        <div class="ic">🎞️</div><h3>작업물</h3>
+        <p>애니메이션 릴 아카이브(2017→2026), AI 활용 영상, AI 음악·자동 포스팅 실험, 캐릭터·환경 기획</p>
+        <span class="go">보러가기 →</span>
+      </a>
+      <a class="gate rv d2" href="projects.html">
+        <div class="ic">🛠️</div><h3>프로젝트</h3>
+        <p>펫과나(운영 중 웹 서비스) · 재와 별(개발 중 스팀 게임) · GeoGuard(보안 앱) · 셀러 장부</p>
+        <span class="go">보러가기 →</span>
+      </a>
+      <a class="gate rv d3" href="career.html">
+        <div class="ic">📜</div><h3>경력 · 스킬</h3>
+        <p>2010년부터 16년, 12개 게임 프로젝트 — MMORPG·모바일·언리얼·캐주얼 액션의 기록</p>
+        <span class="go">보러가기 →</span>
+      </a>
     </div>
   </div>
 </section>
 
 <!-- ════════ 연락 ════════ -->
-<section id="contact">
+<section id="contact" style="padding-top:40px;">
   <div class="wrap">
     <div class="contact-box rv">
       <div class="kicker" style="justify-content:center;">Contact</div>
       <h2>같이 만들어 볼까요?</h2>
-      <p>애니메이션 한 컷부터 서비스 하나까지 — 필요한 건 뭐든 만들어 드립니다.<br>
+      <p>포지션 제안, 협업, 외주 문의 모두 환영합니다.<br>
+      애니메이션 한 컷부터 서비스 하나까지 — 필요한 건 뭐든 만들어 드립니다.<br>
       서울·경기·인천 근무 가능 · 정규직 희망</p>
       <div class="contact-links">
         <a class="btn primary" href="mailto:crossx@naver.com">✉️ crossx@naver.com</a>
         <a class="btn ghost" href="https://youtube.com/channel/UCmgWFBIxREqaFt8--TeqJ6w" target="_blank" rel="noopener">▶ 유튜브 채널</a>
-        <a class="btn ghost" href="https://youtu.be/XjDLAVSJy94" target="_blank" rel="noopener">🤖 AI 활용 영상</a>
+        <a class="btn ghost" href="https://www.instagram.com/crossx36/" target="_blank" rel="noopener">📸 인스타그램</a>
       </div>
     </div>
   </div>
-  <footer>© 2026 백수장인 — 3D Animator × AI Builder. 이 사이트도 AI와 함께 직접 만들었습니다.</footer>
+  <footer>© 2026 백수장인 — 3D Animator × AI Builder. 이 사이트도 AI와 함께 직접 만들었습니다. <span id="visits" hidden>· 👀 방문 <b></b></span></footer>
 </section>
 
-</main>
-
-<script>
-// 등장 애니메이션
-const io = new IntersectionObserver((es)=>{
-  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } });
-},{threshold:.12});
-document.querySelectorAll('.rv').forEach(el=>io.observe(el));
-
-// 숫자 카운트업
-const cio = new IntersectionObserver((es)=>{
-  es.forEach(e=>{
-    if(!e.isIntersecting) return;
-    const el = e.target, target = +el.dataset.count, t0 = performance.now();
-    const tick = (t)=>{
-      const p = Math.min((t-t0)/900, 1);
-      el.textContent = Math.round(target * (1-Math.pow(1-p,3)));
-      if(p<1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-    cio.unobserve(el);
-  });
-},{threshold:.6});
-document.querySelectorAll('[data-count]').forEach(el=>cio.observe(el));
-
-// 내비 활성 표시
-const sections = [...document.querySelectorAll('section')];
-const navLinks = [...document.querySelectorAll('nav .links a')];
-const nio = new IntersectionObserver((es)=>{
-  es.forEach(e=>{
-    if(!e.isIntersecting) return;
-    navLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href') === '#'+e.target.id));
-  });
-},{rootMargin:'-45% 0px -50% 0px'});
-sections.forEach(s=>nio.observe(s));
-</script>
+<script src="site.js"></script>
 </body>
 </html>
