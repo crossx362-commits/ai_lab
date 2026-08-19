@@ -78,7 +78,7 @@ V4 외부 테스터 70% → 넘김. 사람 70% 계속·24h 재실행은 측정�
 >   `EstateStatusHudSelfCheck` FAIL 1건 exit 1 —
 >   `output/qa/ashes-to-stars/full_check/estatehud_negctrl_20260819.log`.
 > - **남은 full_check FAIL**: `BossBattleDpsSelfCheck`(NRE·W3Party 의존)만 — 대화 세션 몫.
->   full_check FAIL 목록이 이제 하나로 줄었다. 코드 대기 커밋.
+>   full_check FAIL 목록이 이제 하나로 줄었다. 코드 `e52b9d8e`.
 >
 > **직전 이터 결과(코드): full_check ④ RaceDropSelfCheck — 시드 가드를 CraftHide 특정 확인으로.**
 > - 직전 트랙이 폴리싱이라 코드 칸. 남은 full_check FAIL ④를 잡음(⑤ BossBattleDps는 W3Party 의존 NRE라 대화 세션).
