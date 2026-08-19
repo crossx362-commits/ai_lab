@@ -142,7 +142,9 @@ namespace AshesToStars
 
             long elapsed = now - _lastUnix;
             _lastUnix = now;
-            _owed += CopperPerHourEffective() * elapsed;
+            // §18-14 오프라인 정산 감쇠: 8h 100% · 8~12h 50% · 12h 초과 버림(실효 상한 10h).
+            // 온라인 틱은 경과가 작아 항등(100%). QA_NO_OFFLINE_DECAY면 옛 전 구간 100%.
+            _owed += CopperPerHourEffective() * OfflineSettle.EffectiveSeconds(elapsed);
             long produced = _owed / 3600;
             _owed %= 3600;
             if (produced <= 0)

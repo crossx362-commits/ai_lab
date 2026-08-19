@@ -6,9 +6,24 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 폴리싱(영지) — 영지 허브에서 「ESC — 영지로」 힌트가 제자리 이동을 「어딘가 간다」로 오해시킴, 그 화면만 힌트 숨김
-마지막 트랙: 폴리싱
+최종 갱신: 2026-08-19 · 코드(기획서 ✅ 소비처 0곳) — §18-14 오프라인 정산 감쇠를 광산 Tick에 배선(8h 100%·8~12h 50%·12h 초과 0, 실효 상한 10h)
+마지막 트랙: 코드
 폴리싱 다음: **필드**. 이어 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD → 타이틀 → 영지.
+
+코드(§18-14 오프라인 정산 감쇠) 이번 이터 결과: 직전 트랙이 폴리싱이라 코드 칸. 원장 §18-14 안전장치·§22 상시관측 #5가
+「오프라인 정산은 기본 기능」이라 명시하는데, `EstateMine.Tick`이 `_lastUnix` 타임스탬프로 오프라인 경과를 **전 구간 100%로**
+정산해 방치 채굴 농장 억제(§19)가 안 되던 소비처 0곳 갭. 신규 `Runtime/OfflineSettle.cs` — `EffectiveSeconds(elapsed)`가
+8h까지 100%·8~12h 50%·12h 초과 버림(실효 상한 10h=36000초). 온라인 틱은 경과가 작아 항등(100%)이라 회귀 없음.
+소비처: `EstateMine.Tick`의 `_owed += rate * OfflineSettle.EffectiveSeconds(elapsed)`. §18-14 값 그대로(수치 튜닝 금지 §21-3).
+**통과 기준**: `GameFullCheck` 전수(unity_meas 배치, 오너가 unity/ 에디터 점유 중이라 사본)에서 `OfflineSettleSelfCheck` PASS —
+순수 곡선(1h→1h·8h→8h·10h→9h·12h→10h·24h→상한 10h) + 광산 Tick 실소비(24h 오프라인→실효 10h=25000쿠퍼) + 소비처 grep.
+error CS 0. 광산 관련 SelfCheck 전부 PASS(EstateMine·MineSeize·EstateRaceMine·NetWorth·SoftCap). 증거
+`output/qa/ashes-to-stars/full_check/offline_settle_selfcheck_20260819.log`.
+**네거티브(SelfCheck 내장·실측 PASS)**: `QA_NO_OFFLINE_DECAY=1`이면 24h를 그대로 정산(60000쿠퍼=옛 100%), `감쇠가 실제로
+정산량을 줄인다`(25000<60000), EstateMine.cs에서 `OfflineSettle.EffectiveSeconds` 배선을 지우면 grep 단언 FAIL.
+**주의**: 이번 전수에서 내 변경과 무관한 기존 FAIL이 있었다 — `AdvLookSelfCheck`(10, 전직 스프라이트 look, meas 사본 에셋 의존),
+`HuntBoonSelfCheck`(1, 가로 카드 금테), `BossBattleDpsSelfCheck`(NRE, W3Party), `ChatWorkBatchSelfCheck`(1). 전부 OfflineSettle·광산과
+무관(다른 서브시스템). `W3Party`/Resources/`EstateScreen.cs`는 안 건드림 — `EstateMine.cs` 한 줄 + 신규 2파일. 커밋 대기.
 ⚠️ 영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md`대로만 — 문서 없이 영지 재설계 금지(오너 2026-08-18). 문서는 있으니 그걸 읽고 한 결함만.
 
 폴리싱(영지) 이번 이터 결과: `qa_go:Estate` 샷에서 바닥 왼쪽 힌트가 「ESC — 영지로」였는데, 영지는 허브 루트라
@@ -4204,4 +4219,8 @@ AI 실루엣 4종(각 22프레임)을 회색으로 재생성 + 색은 런타임*
 
 ## ⚠️ 루프 정지 — 인프라 장애 지속 (2026-08-19 05:23)
 `grok` 실행기가 12회 연속 실패했다. 마지막 로그: `/Users/junholee/ai_lab/loop/logs/iter_20260819_052356.log`
+구독 한도·로그인·네트워크 상태를 확인한 뒤 `rm loop/STOP`으로 재개할 것.
+
+## ⚠️ 루프 정지 — 인프라 장애 지속 (2026-08-19 11:35)
+`grok` 실행기가 12회 연속 실패했다. 마지막 로그: `/Users/junholee/ai_lab/loop/logs/iter_20260819_113538.log`
 구독 한도·로그인·네트워크 상태를 확인한 뒤 `rm loop/STOP`으로 재개할 것.
