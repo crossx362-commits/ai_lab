@@ -233,7 +233,10 @@ namespace AshesToStars
                 if (ShowEscHint)
                 {
                     if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, REF_H - 34, 360, 34), _scrim);
-                    UiPages.LabelClip(new Rect(48, REF_H - 28, 280, 22), "ESC — 뒤로", _small);
+                    // 타이틀(루트)에서 ESC는 뒤가 없어 `GameFlow.Quit()`이다(Update 참조). 그
+                    // 화면에서 「뒤로」라 적으면 ESC로 게임이 닫히는 걸 「돌아간다」로 오해한다.
+                    string escHint = Title == "재와 별" ? "ESC — 종료" : "ESC — 뒤로";
+                    UiPages.LabelClip(new Rect(48, REF_H - 28, 280, 22), escHint, _small);
                 }
             }
             Overlay();

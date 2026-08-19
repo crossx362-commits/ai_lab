@@ -6,10 +6,21 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-19 · 코드 full_check ④ RaceDropSelfCheck — 시드 가드가 CraftHide를 특정 확인하도록 수정(전수 스윕 fail 3→2)
-마지막 트랙: 코드
-폴리싱 다음: **타이틀**(전투HUD는 이번 이터가 봄). 이어 영지 → 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과.
-전투HUD 이번 이터 결과: `BattleScreen`은 `ShowBottomBar=false`라 베이스 `GameScreen.OnGUI`가 바닥 왼쪽에
+최종 갱신: 2026-08-19 · 폴리싱(타이틀) 「ESC — 뒤로」가 루트에서 실제로는 게임 종료라 오해 → 타이틀만 「ESC — 종료」
+마지막 트랙: 폴리싱
+폴리싱 다음: **영지**(타이틀은 이번 이터가 봄). 이어 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD.
+⚠️ 영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md`대로만 — 문서 없이 영지 재설계 금지(오너 2026-08-18). 문서는 있으니 그걸 읽고 한 결함만.
+
+폴리싱(타이틀) 이번 이터 결과: `qa_go:Title` 샷에서 바닥 왼쪽 힌트가 「ESC — 뒤로」인데, 타이틀은 루트라
+`GameScreen.Update`의 ESC가 `!ShowBottomBar && Title=="재와 별"`이면 **`GameFlow.Quit()`**(뒤가 없어 종료)이다.
+「뒤로」라 적으면 ESC로 게임이 닫히는 걸 「돌아간다」로 오해한다. `GameScreen.OnGUI` ESC 힌트 그리는 곳
+한 줄만 조건부로: `Title=="재와 별" ? "ESC — 종료" : "ESC — 뒤로"`. 다른 화면(도크 없는 것)은 여전히 「뒤로」(=영지로) 유지.
+**육안 확인**: unity_meas 배치 빌드 후 재캡처 `qa_go:Title.png` 바닥 왼쪽 「ESC — 종료」. 증거
+`output/qa/ashes-to-stars/hud_shots/qa_title_esc_quit_label_20260819.png`. before(직전 build) 샷은 「ESC — 뒤로」였다(네거티브:
+`Title=="재와 별"` 분기 제거하면 타이틀도 「뒤로」로 회귀 = ESC=종료를 「뒤로」로 잘못 표기). meas 빌드 error CS 0(qa_shot 게이트 통과).
+`W3Party`/Resources/`TitleScreen.cs`는 안 건드림 — `GameScreen.cs` 한 파일. 코드 대기 커밋.
+
+전투HUD 직전 트랙 결과: `BattleScreen`은 `ShowBottomBar=false`라 베이스 `GameScreen.OnGUI`가 바닥 왼쪽에
 「ESC — 뒤로」+scrim(Rect(0,REF_H-34,360,34))을 그렸는데, W3Party 파티 카드가 바닥을 소유해 **1번 카드
 체력바와 겹쳐 회색 글씨가 흰 수치("278/347")를 뭉갰다**(qa_boss.png 실측). `GameScreen`에 `ShowEscHint`
 virtual(기본 true) 추가 → `BattleScreen`만 false로 override. ESC 키 입력은 그대로. **육안 확인**: 재캡처
