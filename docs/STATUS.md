@@ -24,7 +24,7 @@
 **네거티브**: `NodeIconKey(...)`를 `"tower"`로 되돌리면 전투 노드에 등대가 재등장(TemplateKo 이전 상태).
 증거 `output/qa/ashes-to-stars/dungeon_polish_shots/qa_dungeon_node_icon_fix_20260819.png`(after, 교차 검) +
 `qa_go:Dungeon.png`(빈 상태 참고). `W3Party`/Resources/`EstateBuild.cs`는 안 건드림 — `DungeonScreen.cs` 한 파일.
-폴리싱 다음을 결과로 넘김. 코드 `b3301ab3`.
+폴리싱 다음을 결과로 넘김. 코드 `fb7cd614`.
 
 폴리싱(월드맵) 이번 이터 결과: `go:WorldMap` meas 배치 빌드(sync_meas 후, 오너가 unity/ 에디터 점유 중 —
 `Temp/UnityLockfile` 존재 확인)로 재캡처. **결함 0**: 헤더 제목 `월드맵`+부제(`내 별 30층 · 별 ×1.60 ·
