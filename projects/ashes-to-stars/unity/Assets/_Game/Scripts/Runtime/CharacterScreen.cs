@@ -733,10 +733,10 @@ namespace AshesToStars
             if (ch.IsRescue) title += " · 재건";
             if (ch.IsSpecialJob) title += " · 특수";
             var chrome = UiAtlas.ContentRect(stage, "panel", 2f);
+            // 전투력은 오른쪽 정보 패널로 내렸다 — 헤더 둘째 줄(전투력)이 초상 위
+            // 「투구」 링 라벨과 같은 좁은 상단 밴드를 다퉈 겹쳤다(폴리싱, 겹침 결함).
+            // 헤더를 한 줄(제목+목숨)로 두면 투구 라벨이 빈 배경 위에 읽힌다.
             Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {ch.Job}");
-            UiAtlas.Draw(new Rect(chrome.x, chrome.y + 26f, 26f, 26f), "sword");
-            Hint(new Rect(chrome.x + 30f, chrome.y + 28f, 280f, 24f),
-                $"전투력  {CombatPower(ch):N0}");
             UiAtlas.DrawHearts(new Rect(chrome.xMax - 80f, chrome.y, 80f, 22f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
 
@@ -804,6 +804,7 @@ namespace AshesToStars
                     "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
                 y += 22f;
             }
+            Line($"전투력  {CombatPower(ch):N0}");
             if (ch.IsDeleted)
                 Line(ch.IsSpecialJob ? "삭제됨 · 환생 불가" : "삭제됨 · 환생석만");
             else
