@@ -3408,9 +3408,14 @@ public class W3Party : MonoBehaviour
 
     void DrawCombatSummary(int wave)
     {
+        // Bold — 얇은 한글 획은 16px에서 안티에일리어싱만으로 흐릿하게 뭉개져 안 읽혔다
+        // (폴리싱 2026-08-20: 같은 크기 HP 숫자는 숫자라 선명, 필드 위 콜아웃은 Bold+그림자라
+        // 선명 — 지렛대는 대비·크기가 아니라 획 두께다). 이 저장소가 이미 콜아웃에서 쓰는
+        // 방법(Bold)을 전투 HUD 크롬 전체(요약·보상 레일·HP 숫자·카드 번호)에 통일한다.
+        // 되돌리면(Bold 제거) 상단 요약 글씨가 다시 뭉개진다.
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
         {
-            fontSize = 16, alignment = TextAnchor.MiddleLeft,
+            fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft,
             clipping = TextClipping.Clip,
             normal = { textColor = new Color(.95f, .96f, 1f) },
         };
