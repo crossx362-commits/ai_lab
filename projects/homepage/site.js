@@ -40,6 +40,51 @@ async function sbFetch(path, opts) {
   } catch (e) { /* 테이블 미생성/네트워크 실패 — 표시 생략 */ }
 })();
 
+/* ─── 다운로드 횟수 ───
+   쓰는 법: 다운로드 링크에 data-dl="구분자"를 붙이면 끝.
+     <a class="btn primary" href="downloads/x.zip" download data-dl="ppm">⬇ 다운로드</a>
+   같은 data-dl 값을 쓰면 여러 버튼(바로 사용하기 / 다운로드)이 한 숫자로 합산된다.
+   숫자를 보여줄 자리는 <span data-dl-count="ppm"></span>.
+   집계가 실패해도 다운로드 자체는 절대 막지 않는다(링크 기본 동작 유지). */
+function fmtCount(n){ return Number(n).toLocaleString(); }
+
+async function loadDownloadCounts(){
+  const slots = [...document.querySelectorAll('[data-dl-count]')];
+  if (!slots.length) return;
+  try{
+    const slugs = [...new Set(slots.map(s => s.dataset.dlCount))]
+      .map(s => '"' + s.replace(/"/g, '') + '"').join(',');
+    const rows = await sbFetch('/rest/v1/homepage_downloads?select=slug,count&slug=in.(' +
+      encodeURIComponent(slugs) + ')');
+    const n = {};
+    (rows || []).forEach(r => { n[r.slug] = r.count; });
+    slots.forEach(s => {
+      const v = n[s.dataset.dlCount];
+      if (v) { s.textContent = fmtCount(v); s.closest('[data-dl-wrap]')?.removeAttribute('hidden'); }
+    });
+  }catch(e){ /* 테이블 미생성/네트워크 실패 — 숫자만 숨기고 다운로드는 정상 */ }
+}
+
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-dl]');
+  if (!a) return;
+  const slug = a.dataset.dl;
+  // 링크 이동을 막지 않기 위해 응답을 기다리지 않는다. keepalive로 페이지가
+  // 전환돼도 요청이 끊기지 않게 한다.
+  try{
+    fetch(SB_URL + '/rest/v1/rpc/homepage_download_hit', {
+      method: 'POST', keepalive: true,
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug }),
+    }).then(() => {
+      const slot = document.querySelector('[data-dl-count="' + CSS.escape(slug) + '"]');
+      if (slot) loadDownloadCounts();
+    }).catch(() => {});
+  }catch(err){ /* 집계 실패는 무시 — 다운로드가 우선 */ }
+});
+
+loadDownloadCounts();
+
 // 스크롤 등장 애니메이션
 const io = new IntersectionObserver((es) => {
   es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
