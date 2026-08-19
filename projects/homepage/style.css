@@ -172,7 +172,7 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 .gate-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
 .gate{
   background:var(--panel);
-  border:1.5px solid var(--line); border-radius:14px; padding:12px 14px 12px 13px;
+  border:1.5px solid var(--line); border-radius:14px; padding:14px 16px;
   transition:transform .2s, border-color .2s, box-shadow .2s; position:relative; overflow:hidden;
   box-shadow:0 4px 14px rgba(110,90,50,.07);
   display:flex; align-items:center; gap:11px;
@@ -190,11 +190,13 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 }
 
 /* ─── 패널 · 칩 ─── */
-.duo{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+/* 아래 섹션과의 간격은 섹션 패딩이 만든다 — 여기에 margin을 더 주면
+   본업/퇴근후 → 바로가기 카드 사이만 벌어져 리듬이 깨진다 */
+.duo{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
 @media (max-width:860px){ .duo{grid-template-columns:1fr;} }
 .panel{
   background:var(--panel);
-  border:1.5px solid var(--line); border-radius:14px; padding:14px 16px 15px;
+  border:1.5px solid var(--line); border-radius:14px; padding:14px 16px;
   position:relative; overflow:hidden; box-shadow:0 4px 14px rgba(110,90,50,.07);
 }
 .panel::before{content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,#7fa35c,#a8c084); opacity:.95;}
@@ -532,7 +534,10 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 /* 홈 압축용 슬림 연락 박스 — 좌(제목·설명)/우(칩·버튼) 2단으로 펼쳐
    넓은 화면에서 가운데만 채우고 좌우가 텅 비어 보이던 것을 해소한다 */
 .contact-box.slim{
-  margin-top:10px; padding:18px 26px; text-align:left;
+  /* 위 카드(.gate)와 같은 padding·radius — 마지막 박스만 커 보이지 않게.
+     margin-top 18px은 (본업/퇴근후 → 바로가기 카드) 간격과 같은 값 —
+     그룹 사이는 18px, 그룹 안 카드끼리는 10px로 리듬을 맞춘다 */
+  margin-top:18px; padding:14px 16px; border-radius:14px; text-align:left;
   display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap;
 }
 .contact-box.slim h2{font-size:18px; margin-bottom:4px;}
@@ -543,7 +548,7 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 .contact-box.slim .cb-right .chips{justify-content:flex-end;}
 .contact-box.slim .contact-links{justify-content:flex-end;}
 @media (max-width:720px){
-  .contact-box.slim{flex-direction:column; align-items:stretch; text-align:center; padding:16px 18px;}
+  .contact-box.slim{flex-direction:column; align-items:stretch; text-align:center; padding:14px 16px;}
   .contact-box.slim .cb-right{align-items:stretch;}
   .contact-box.slim .cb-right .chips, .contact-box.slim .contact-links{justify-content:center;}
 }
