@@ -31,7 +31,7 @@
 (**편집 전** 동일 env 캡처에서 직접 확인 — 첫 캡처 크롭에서 풀밭·건물 아이콘). 증거
 `output/qa/ashes-to-stars/estate_polish_shots/qa_go:Estate.png`(after 전체) + `qa_palette_icons_after.png`
 (4타일: 탑·지팡이·성벽·붉은검). `W3Party`/Resources/`EstateYard.cs`/`EstateBuild.cs`/아트는 안 건드림 —
-`UiAtlas.cs`(공용 아틀라스 헬퍼) 한 파일. 코드 `PENDING_HASH`. 폴리싱 다음을 필드로 넘김.
+`UiAtlas.cs`(공용 아틀라스 헬퍼) 한 파일. 코드 `e5aa6b05`. 폴리싱 다음을 필드로 넘김.
 
 폴리싱(타이틀) 이번 이터 결과: 직전 트랙 폴리싱이라 폴리싱 칸(코드 ✅ 소비처 0곳 갭은 감사 `a0065493`에서
 소진 확인, 재감사 말고 폴리싱 돌리라는 인계에 따름). `GAME_START=go:Title`을 unity_meas 배치 빌드
