@@ -29,80 +29,61 @@
     <div class="kicker rv">Personal Projects</div>
     <h2 class="title rv">개인 프로젝트</h2>
     <p class="lead rv d1">기획부터 배포·운영까지, 개인으로 AI와 함께 만들어 본 것들입니다.
-    <b>카드를 클릭하면 자세한 이야기</b>를 볼 수 있어요.</p>
+    <b>타일을 클릭하면 자세한 이야기</b>를 볼 수 있어요.</p>
   </div>
 </div>
 
 <section style="padding-top:10px;">
   <div class="wrap">
-    <div class="proj-grid">
-      <div class="proj rv d1" data-href="project-petnna.html">
-        <div class="head petnna"><span class="status dev">개발 중</span><span class="big">🐾</span></div>
-        <div class="body">
+    <div class="tile-grid">
+      <a class="tile rv d1" href="project-petnna.html">
+        <div class="thead" style="background:linear-gradient(130deg,#f6ded2,#f3ead3 55%,#dde8ce);">
+          <span class="tstatus dev">개발 중</span><span class="big">🐾</span>
+        </div>
+        <div class="tbody">
           <h3>펫과나</h3>
-          <div class="one">반려동물 올인원 케어 웹앱</div>
-          <p>AI 건강 기록·산책 지도·커뮤니티·조화도 분석까지 담은 반려동물 앱.
-          <b>9개 AI 에이전트(QA·개발·테스트·백엔드·디자인·PM)가 자동으로 버그를 찾고 고치고 배포</b>하는
-          자동 개발팀을 함께 설계해 굴려보고 있습니다.</p>
-          <div class="tags"><span class="tag">JavaScript</span><span class="tag">Supabase</span><span class="tag">Vercel</span><span class="tag">AI 에이전트 운영</span></div>
-          <div class="links"><a class="plink" href="project-petnna.html">📖 자세히 보기</a><a class="plink" href="https://petnna.vercel.app" target="_blank" rel="noopener">🔗 미리보기</a></div>
+          <div class="tone">반려동물 올인원 케어 웹앱</div>
+          <div class="tmore">자세히 보기 →</div>
         </div>
-      </div>
+      </a>
 
-      <div class="proj rv d2" data-href="project-ashes.html">
-        <div class="head game"><span class="status dev">개발 중</span><span class="big">⚔️</span></div>
-        <div class="body">
-          <h3>재와 별 <span style="font-size:12px;color:var(--dim);font-weight:600;">Ashes to Stars</span></h3>
-          <div class="one">Steam PC · 2D 쿼터뷰 픽셀아트 RPG</div>
-          <p>뱀서라이크 전투 + 키우기 + 탑 100층 + 레이드 + 비동기 PvP.
-          핵심은 <b>"죽으면 캐릭터가 진짜 사라진다"</b> — 가챠도 숙제도 없는 하드코어 설계.
-          Blender 헤드리스 에셋 파이프라인과 <b>AI 개발 루프(빌드→검증→밸런스 시뮬)</b>로 1인 개발 중.</p>
-          <div class="tags"><span class="tag">Unity 6</span><span class="tag">C#</span><span class="tag">Blender 자동화</span><span class="tag">픽셀아트</span><span class="tag">AI 개발 루프</span></div>
-          <div class="links"><a class="plink" href="project-ashes.html">📖 자세히 보기</a></div>
+      <a class="tile rv d1" href="project-ashes.html">
+        <div class="thead" style="background:repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px), linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);">
+          <span class="tstatus dev">개발 중</span><span class="big">⚔️</span>
         </div>
-      </div>
+        <div class="tbody">
+          <h3>재와 별</h3>
+          <div class="tone">Steam · 2D 픽셀아트 RPG</div>
+          <div class="tmore">자세히 보기 →</div>
+        </div>
+      </a>
 
-      <div class="proj rv d3" data-href="project-geoguard.html">
-        <div class="head geo"><span class="status done">완성</span><span class="big">🛡️</span></div>
-        <div class="body">
+      <a class="tile rv d2" href="project-geoguard.html">
+        <div class="thead" style="background:linear-gradient(130deg,#d8e4da,#dde9e2 55%,#ece4d0);">
+          <span class="tstatus done">완성 · 무료</span><span class="big">🛡️</span>
+        </div>
+        <div class="tbody">
           <h3>GeoGuard</h3>
-          <div class="one">국가 단위 IP 차단 Windows 보안 프로그램</div>
-          <p>선택한 국가의 IP 통신을 <b>Windows 방화벽 커널(WFP) 레벨에서 차단</b>하는 트레이 상주 앱.
-          차단 시도를 실시간 감지해 어떤 프로세스가 어디로 접속하려 했는지 알려주고,
-          TCP 연결 모니터·차단 이력·자동 재시도(fail-closed)까지 갖췄습니다.</p>
-          <div class="tags"><span class="tag">C# .NET</span><span class="tag">WFP 방화벽</span><span class="tag">보안 이벤트 로그</span><span class="tag">GeoIP</span><span class="tag">무료 배포 · 재판매 금지</span></div>
-          <div class="links"><a class="plink" href="project-geoguard.html">📖 자세히 보기</a><a class="plink" href="downloads/GeoGuard.zip" download>⬇ 다운로드</a></div>
+          <div class="tone">국가 단위 IP 차단 보안 앱</div>
+          <div class="tmore">자세히 보기 →</div>
         </div>
-      </div>
+      </a>
 
-      <div class="proj rv d4" data-href="project-ledger.html">
-        <div class="head ledger"><span class="status done">완성</span><span class="big">📒</span></div>
-        <div class="body">
-          <h3>셀러 장부</h3>
-          <div class="one">이커머스 셀러를 위한 재고·판매 관리 웹앱</div>
-          <p>상품·입출고·거래처를 한눈에 — <b>품절 임박·유통기한 경고, 판매 TOP 5, 매출 목표 추적</b>을
-          설치 없이 브라우저 하나로. 서버 없이 로컬에 안전하게 저장되고 CSV 내보내기·백업을 지원합니다.</p>
-          <div class="tags"><span class="tag">HTML·CSS·JS</span><span class="tag">로컬 저장</span><span class="tag">모바일 대응</span><span class="tag">무료 배포 · 재판매 금지</span></div>
-          <div class="links">
-            <a class="plink" href="project-ledger.html">📖 자세히 보기</a>
-            <a class="plink" href="downloads/seller-ledger.html" target="_blank" rel="noopener">🔗 바로 사용하기</a>
-          </div>
+      <a class="tile rv d2" href="project-ledger.html">
+        <div class="thead" style="background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);">
+          <span class="tstatus done">완성 · 무료</span><span class="big">📒</span>
         </div>
-      </div>
+        <div class="tbody">
+          <h3>셀러 장부</h3>
+          <div class="tone">재고·판매 관리 웹앱</div>
+          <div class="tmore">자세히 보기 →</div>
+        </div>
+      </a>
     </div>
   </div>
   <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
 </section>
 
 <script src="site.js"></script>
-<script>
-// 카드 아무 곳이나 클릭해도 상세로 이동 (내부 링크 클릭은 그대로 동작)
-document.querySelectorAll('.proj[data-href]').forEach(card => {
-  card.addEventListener('click', e => {
-    if (e.target.closest('a')) return;
-    location.href = card.dataset.href;
-  });
-});
-</script>
 </body>
 </html>
