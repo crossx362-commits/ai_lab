@@ -25,7 +25,7 @@
 둘째 줄로 되돌리면 투구-전투력 겹침 재발(**편집 전** 동일 env 캡처에서 직접 확인). 증거
 `output/qa/ashes-to-stars/char_polish_shots/qa_go:Character.png`(after 전체) + `qa_before_helm_over_power.png`
 (before 겹침) + `qa_after_helm_clear.png`(after 상단 밴드). `CharacterScreen.cs` 한 파일. `W3Party`/Resources/
-`EstateBuild.cs`/링 지오메트리는 안 건드림. 코드 `PENDING_HASH`. 폴리싱 다음을 파티로 넘김.
+`EstateBuild.cs`/링 지오메트리는 안 건드림. 코드 `24adc88f`. 폴리싱 다음을 파티로 넘김.
 
 폴리싱(필드) 이번 이터 결과: 직전 트랙 폴리싱이라 폴리싱 칸(코드 ✅ 소비처 0곳 갭은 감사 `a0065493`에서
 소진 확인, 재감사 말고 폴리싱 돌리라는 인계). `폴리싱 다음`이 「필드」라 필드 화면을 봤다. `go:Field`를
