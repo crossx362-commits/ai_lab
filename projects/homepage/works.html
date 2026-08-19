@@ -46,36 +46,49 @@
   <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
 </section>
 
+<!-- 작업물 상세 팝업 -->
+<div class="lb-overlay" id="lbOverlay">
+  <div class="lb" role="dialog" aria-modal="true">
+    <button class="lb-close" id="lbClose" aria-label="닫기">✕</button>
+    <div id="lbMedia"></div>
+    <div class="lb-body">
+      <h3 id="lbTitle"></h3>
+      <p id="lbDesc"></p>
+      <div class="meta" id="lbMeta"></div>
+      <div class="cta" id="lbCta"></div>
+    </div>
+  </div>
+</div>
+
 <script src="works.js"></script>
 <script>
 const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', music:'음악', plan:'기획·컨셉' };
 const grid = document.getElementById('wgrid');
+let shown = [];
 
 function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
-function cardHtml(w){
+function cardHtml(w, i){
   let media;
   if (w.yt) {
-    media = '<div class="media" data-yt="' + esc(w.yt) + '"></div>';
-  } else if (w.link) {
-    media = '<a class="media note" href="' + esc(w.link) + '" target="_blank" rel="noopener"><div class="noteface">' + (w.icon||'🔗') + '</div></a>';
+    media = '<div class="media" data-mounted="1"><img loading="lazy" src="https://i.ytimg.com/vi/' + esc(w.yt) + '/hqdefault.jpg" alt="">' +
+      '<div class="play"><span>▶</span></div></div>';
   } else {
     media = '<div class="media note"><div class="noteface">' + (w.icon||'📄') + '</div></div>';
   }
-  const ext = w.link ? '<a class="ext" href="' + esc(w.link) + '" target="_blank" rel="noopener">바로가기 →</a>' : '';
-  return '<div class="wcard rv" data-cat="' + esc(w.cat) + '">' + media +
+  return '<div class="wcard rv" data-cat="' + esc(w.cat) + '" data-idx="' + i + '">' + media +
     '<div class="body"><h3>' + esc(w.title) + '</h3><p>' + esc(w.desc) + '</p>' +
     '<div class="meta"><span class="wtag cat-' + esc(w.cat) + '">' + (CAT_LABEL[w.cat]||w.cat) + '</span>' +
-    (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '') + ext + '</div></div></div>';
+    (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '') +
+    '<span class="ext">자세히 보기 →</span></div></div></div>';
 }
 
 function render(cat){
-  const list = WORKS
+  shown = WORKS
     .filter(w => cat === 'all' || w.cat === cat)
     .sort((a,b) => (b.featured?1:0) - (a.featured?1:0));
-  grid.innerHTML = list.map(cardHtml).join('');
+  grid.innerHTML = shown.map(cardHtml).join('');
   grid.querySelectorAll('.rv').forEach(el => el.classList.add('on'));
-  mountLitePlayers(grid);
 }
 
 document.getElementById('filters').addEventListener('click', e => {
@@ -83,6 +96,45 @@ document.getElementById('filters').addEventListener('click', e => {
   document.querySelectorAll('.fbtn').forEach(x => x.classList.toggle('on', x === b));
   render(b.dataset.cat);
 });
+
+// ─── 팝업(라이트박스) ───
+const overlay = document.getElementById('lbOverlay');
+const lbMedia = document.getElementById('lbMedia');
+
+function openModal(w){
+  if (w.yt) {
+    lbMedia.className = 'lb-media';
+    lbMedia.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(w.yt) +
+      '?autoplay=1" title="' + esc(w.title) + '" referrerpolicy="origin" ' +
+      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+  } else {
+    lbMedia.className = 'lb-media note';
+    lbMedia.innerHTML = '<div class="noteface">' + (w.icon||'📄') + '</div>';
+  }
+  document.getElementById('lbTitle').textContent = w.title;
+  document.getElementById('lbDesc').textContent = w.desc;
+  document.getElementById('lbMeta').innerHTML =
+    '<span class="wtag cat-' + esc(w.cat) + '">' + (CAT_LABEL[w.cat]||w.cat) + '</span>' +
+    (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '');
+  document.getElementById('lbCta').innerHTML = w.link
+    ? '<a class="btn primary" href="' + esc(w.link) + '" target="_blank" rel="noopener">🔗 바로가기</a>' : '';
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(){
+  overlay.classList.remove('open');
+  lbMedia.innerHTML = '';   // 영상 정지
+  document.body.style.overflow = '';
+}
+
+grid.addEventListener('click', e => {
+  const card = e.target.closest('.wcard'); if(!card) return;
+  openModal(shown[+card.dataset.idx]);
+});
+document.getElementById('lbClose').addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
 </script>
 <script src="site.js"></script>
 <script>render('all');</script>
