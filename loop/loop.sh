@@ -47,6 +47,20 @@ else
   AGENT=grok
 fi
 [ -n "$AGENT" ] || AGENT=grok
+# 기동 시점의 에이전트를 기억한다. 한도 폴백은 **이 프로세스 안에서만** 유효하고
+# loop/agent에 영구 기록하지 않는다(2026-08-20 사고: 그록 전환이 파일에 박혀
+# 클로드 한도가 풀린 뒤에도 재기동하면 곧장 죽은 그록으로 갔다).
+AGENT_BASE="$AGENT"
+
+# 그록 잔량 소진(402) 표식. 최근이면 폴백 대상에서 제외한다(2026-08-20 사고:
+# 주간 한도가 소진된 그록으로 전환해 402를 12회 태운 뒤에야 멈췄다).
+GROK_DEAD="$ROOT/loop/grok_dead"
+grok_alive() {
+  [ -f "$GROK_DEAD" ] || return 0
+  local age=$(( $(date +%s) - $(stat -f %m "$GROK_DEAD" 2>/dev/null || echo 0) ))
+  if [ "$age" -ge "${LOOP_GROK_DEAD_TTL:-43200}" ]; then rm -f "$GROK_DEAD"; return 0; fi
+  return 1
+}
 
 grok_bin() {
   if [ -n "${GROK_BIN:-}" ] && [ -x "$GROK_BIN" ]; then printf '%s\n' "$GROK_BIN"; return 0; fi
@@ -277,12 +291,21 @@ while true; do
     echo "✅ #$ITER 완료"
     tail -5 "$LOG" | sed 's/^/   /'
   elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|session limit|usage limit|limit .*resets|quota|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
+    # ── 그록 잔량 소진(402) → 표식을 남기고 원래 에이전트로 복귀.
+    #    복귀 후에도 한도면 아래 복구 시각 대기 로직이 처리한다.
+    if [ "$AGENT" = "grok" ] && grep -qiE 'usage balance exhausted|status.? *402|error.? *402' "$LOG"; then
+      touch "$GROK_DEAD"
+      if [ "$AGENT_BASE" != "grok" ]; then
+        echo "🔀 그록 잔량 소진(402) — 표식을 남기고 ${AGENT_BASE}로 복귀"
+        AGENT="$AGENT_BASE"
+      fi
+    fi
     # 클로드·코덱스 한도 → 그록으로 즉시 전환. 복구 시각까지 자면 개발이 멈춘다.
-    if [ "$AGENT" != "grok" ] && grok_bin >/dev/null && \
+    # 전환은 이 프로세스 안에서만 유효하다 — loop/agent에 쓰지 않는다.
+    if [ "$AGENT" != "grok" ] && grok_alive && grok_bin >/dev/null && \
        grep -qiE 'weekly limit|session limit|usage limit|limit .*resets|try again at' "$LOG"; then
-      echo "🔀 $AGENT 한도 — Grok으로 전환하고 바로 재개"
+      echo "🔀 $AGENT 한도 — Grok으로 전환하고 바로 재개(이 프로세스 한정)"
       AGENT=grok
-      printf '%s\n' "$AGENT" > "$ROOT/loop/agent"
       ITER=$((ITER - 1))
       continue
     fi
