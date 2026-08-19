@@ -18,7 +18,7 @@
 **육안 확인**: unity_meas 배치 빌드 후 재캡처 `qa_go:Title.png` 바닥 왼쪽 「ESC — 종료」. 증거
 `output/qa/ashes-to-stars/hud_shots/qa_title_esc_quit_label_20260819.png`. before(직전 build) 샷은 「ESC — 뒤로」였다(네거티브:
 `Title=="재와 별"` 분기 제거하면 타이틀도 「뒤로」로 회귀 = ESC=종료를 「뒤로」로 잘못 표기). meas 빌드 error CS 0(qa_shot 게이트 통과).
-`W3Party`/Resources/`TitleScreen.cs`는 안 건드림 — `GameScreen.cs` 한 파일. 코드 대기 커밋.
+`W3Party`/Resources/`TitleScreen.cs`는 안 건드림 — `GameScreen.cs` 한 파일. 커밋 `313892f2`.
 
 전투HUD 직전 트랙 결과: `BattleScreen`은 `ShowBottomBar=false`라 베이스 `GameScreen.OnGUI`가 바닥 왼쪽에
 「ESC — 뒤로」+scrim(Rect(0,REF_H-34,360,34))을 그렸는데, W3Party 파티 카드가 바닥을 소유해 **1번 카드
