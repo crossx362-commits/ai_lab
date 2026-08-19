@@ -25,7 +25,7 @@
 글씨가 다시 묻힌다(이번 이터 **편집 전** 동일 env 캡처에서 직접 확인 — 크롭에서 줄기 관통·저대비). 증거
 `output/qa/ashes-to-stars/combat_hud_polish_shots/qa_hunt_backing_after.png`(after 전체) +
 `crop_left_after.png`·`crop_right_after.png`(패널 안쪽 어두워짐). 남은 자모 압축은 전 화면 공용 픽셀 폰트
-특성(§21-3, 안 건드림). 전투 수치·AI는 안 건드림 — `W3Party.cs` HUD 크롬만. 코드 `PENDING_HASH`.
+특성(§21-3, 안 건드림). 전투 수치·AI는 안 건드림 — `W3Party.cs` HUD 크롬만. 코드 `da802283`.
 폴리싱 다음을 타이틀로 넘김.
 
 폴리싱(결과) 이번 이터 결과: 직전 트랙 폴리싱이라 폴리싱 칸. `폴리싱 다음`이 「결과」라 결과 화면을 봤다.
