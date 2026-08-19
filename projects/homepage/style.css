@@ -460,6 +460,39 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
     linear-gradient(130deg,#e3ebd3,#f3e6d2 55%,#f6ded2);
   background-size:22px 22px, 100% 100%;
 }
+/* ─── 스크린샷 갤러리 (블로그 개발일기 · 프로젝트 상세 공용) ─── */
+.shots{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; margin:14px 0 4px;}
+.shots figure{margin:0;}
+.shots button.sfig{
+  display:block; width:100%; padding:0; border:1.5px solid var(--line); border-radius:12px;
+  overflow:hidden; background:var(--panel2); cursor:zoom-in; font-family:inherit;
+  box-shadow:0 3px 10px rgba(110,90,50,.07); transition:transform .18s, border-color .18s, box-shadow .18s;
+}
+.shots button.sfig:hover{transform:translateY(-3px); border-color:rgba(106,153,78,.5); box-shadow:0 10px 22px rgba(110,90,50,.14);}
+.shots img{display:block; width:100%; height:132px; object-fit:cover; object-position:top center;}
+/* 픽셀아트는 잘라내지 않는다(스프라이트 시트라 잘리면 뜻이 사라진다).
+   대신 높이는 다른 썸네일과 맞춰 카드 줄이 어긋나지 않게 한다 — 자세히는 클릭해서 본다. */
+.shots .pixel img{object-fit:contain; image-rendering:pixelated; background:#3a3546; padding:6px;}
+.shots figcaption{font-size:11px; line-height:1.45; color:var(--sub); padding:6px 3px 0;}
+@media (max-width:520px){ .shots{grid-template-columns:1fr 1fr; gap:8px;} .shots img{height:104px;} }
+
+/* 실행 로그 — 화면 캡처를 못 넣는 프로그램의 증거로 쓴다 */
+.logbox{
+  background:#2b2418; border:1.5px solid #4a3f2c; border-radius:12px;
+  padding:12px 14px; overflow-x:auto; margin:12px 0 4px;
+}
+.logbox pre{
+  margin:0; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:11.5px; line-height:1.75; color:#d8cbae; white-space:pre;
+}
+.logbox .hl{color:#e8a76b;}
+.logcap{font-size:11px; color:var(--sub); margin-top:6px;}
+
+/* 스크린샷 확대 보기 */
+.lb-media.shots-view{padding-top:0; background:#2b2418; display:flex; align-items:center; justify-content:center;}
+.lb-media.shots-view img{display:block; max-width:100%; max-height:76vh; width:auto; height:auto;}
+.lb-body .scap{font-size:13px; color:var(--sub); margin:0;}
+
 /* 정지 이미지(기획·컨셉 시트) 갤러리 */
 .lb-media.shots{padding-top:0; background:#efe6d6; display:flex; flex-direction:column; gap:2px;}
 .lb-media.shots figure{margin:0; background:#efe6d6;}

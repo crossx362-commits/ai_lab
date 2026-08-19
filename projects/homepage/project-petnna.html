@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -73,6 +73,11 @@
     </div>
 
     <div class="pd-sec rv">
+      <h3>🖥️ 실제 화면</h3>
+      <div class="shots" id="shots"></div>
+    </div>
+
+    <div class="pd-sec rv">
       <h3>🛠️ 기술</h3>
       <div class="chips">
         <span class="chip">Vanilla JS</span><span class="chip">Tailwind CSS</span><span class="chip">Supabase (인증·DB·스토리지)</span>
@@ -93,6 +98,22 @@
   <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
 </section>
 
-<script src="site.js?v=9"></script>
+<script src="site.js?v=11"></script>
+<script>
+renderShots(document.getElementById('shots'), [
+  { src: 'images/shots/petnna-home.jpg',
+    cap: '마이펫 — 오늘 챙길 케어와 우리집 반려동물이 한 화면에. 여러 마리를 키워도 각자 일정이 한눈에 보이게 했습니다.' },
+  { src: 'images/shots/petnna-health.jpg',
+    cap: '건강 — 식사량·음수량은 버튼 하나로, 배변·식욕·활력은 원탭 컨디션으로 기록합니다. 기록이 쌓이면 주간 리포트로 묶어 보여줘요.' },
+  { src: 'images/shots/petnna-walk.jpg',
+    cap: '산책 — 지도를 클릭하면 도로를 따라 루트가 그려집니다. 기온·자외선을 보고 산책 주의도 같이 띄웁니다.' },
+  { src: 'images/shots/petnna-social.jpg',
+    cap: '소셜 — 게시글·댓글·좋아요·DM. AI 이웃 페르소나가 하루 세 번 활동해서 피드가 비어 보이지 않습니다.' },
+  { src: 'images/shots/petnna-harmony.jpg',
+    cap: '조화도 — 보호자와 반려동물의 사주 궁합을 보여주는 재미 콘텐츠. 생년월일을 넣으면 결과가 결정되는 방식입니다.' },
+  { src: 'images/shots/petnna-landing.jpg',
+    cap: '첫 화면 — 가입 없이 바로 둘러볼 수 있게 게스트 진입을 열어 뒀습니다.' },
+]);
+</script>
 </body>
 </html>

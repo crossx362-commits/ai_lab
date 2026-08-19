@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=13">
 <style>
   .post{
     background:var(--panel);
@@ -56,7 +56,9 @@
   <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
 </section>
 
-<script src="posts.js"></script>
+<!-- site.js가 먼저 와야 한다 — 아래 렌더가 site.js의 renderShots를 즉시 호출한다 -->
+<script src="site.js?v=11"></script>
+<script src="posts.js?v=3"></script>
 <script>
 function escT(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 const box = document.getElementById('posts');
@@ -68,13 +70,16 @@ function renderPosts(cat){
     box.innerHTML = '<div class="empty-note">아직 글이 없습니다 — 곧 올라옵니다.</div>';
     return;
   }
-  box.innerHTML = list.map(p => {
+  box.innerHTML = list.map((p, i) => {
     const paras = (p.body||'').split(/\n\s*\n/).map(x => '<p>' + escT(x.trim()).replace(/\n/g,'<br>') + '</p>').join('');
     const tags = (p.tags||[]).map(t => '<span class="wtag">#' + escT(t) + '</span>').join('');
     const badge = CAT_BADGE[p.cat] ? '<span class="wtag cat-ai" style="margin-left:8px;">' + CAT_BADGE[p.cat] + '</span>' : '';
+    const shots = (p.shots && p.shots.length) ? '<div class="shots" data-shots="' + i + '"></div>' : '';
     return '<article class="post rv on"><div class="pdate">' + escT(p.date) + badge + '</div><h3>' + escT(p.title) + '</h3>' +
-      '<div class="pbody">' + paras + '</div><div class="ptags">' + tags + '</div></article>';
+      '<div class="pbody">' + paras + '</div>' + shots + '<div class="ptags">' + tags + '</div></article>';
   }).join('');
+  // 갤러리는 site.js의 공용 renderShots로 채운다 (확대 보기까지 같이 붙는다)
+  box.querySelectorAll('[data-shots]').forEach(el => renderShots(el, list[+el.dataset.shots].shots));
 }
 
 document.getElementById('pfilters').addEventListener('click', e => {
@@ -84,6 +89,5 @@ document.getElementById('pfilters').addEventListener('click', e => {
 });
 renderPosts('all');
 </script>
-<script src="site.js?v=9"></script>
 </body>
 </html>

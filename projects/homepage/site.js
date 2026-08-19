@@ -80,3 +80,60 @@ function mountLitePlayers(root) {
   });
 }
 mountLitePlayers();
+
+/* ─── 스크린샷 갤러리 (개발일기·프로젝트 상세 공용) ───────────────
+   쓰는 법 ①마크업: <div class="shots"><figure>…</figure></div>
+           ②데이터: renderShots(el, [{src, cap, pixel}])
+   클릭하면 원본 크기로 확대해서 보여준다. */
+function renderShots(el, list){
+  if (!el || !list || !list.length) return;
+  const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+  el.className = 'shots';
+  el.innerHTML = list.map(s =>
+    '<figure' + (s.pixel ? ' class="pixel"' : '') + '>' +
+      '<button class="sfig" type="button" data-src="' + esc(s.src) + '" data-cap="' + esc(s.cap) + '">' +
+        '<img loading="lazy" src="' + esc(s.src) + '" alt="' + esc(s.cap) + '">' +
+      '</button>' +
+      (s.cap ? '<figcaption>' + esc(s.cap) + '</figcaption>' : '') +
+    '</figure>').join('');
+}
+
+// 확대 보기 — 페이지마다 따로 만들지 않고 문서에 하나만 둔다
+(function shotViewer(){
+  let ov = null, lastFocus = null;
+  function ensure(){
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.className = 'lb-overlay';
+    ov.innerHTML = '<div class="lb" role="dialog" aria-modal="true" aria-label="스크린샷 확대">' +
+      '<button class="lb-close" type="button" aria-label="닫기">✕</button>' +
+      '<div class="lb-media shots-view"></div>' +
+      '<div class="lb-body"><p class="scap"></p></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('.lb-close').addEventListener('click', close);
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    return ov;
+  }
+  function close(){
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.querySelector('.shots-view').innerHTML = '';
+    document.body.style.overflow = '';
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    lastFocus = null;
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('.sfig'); if (!b) return;
+    const o = ensure();
+    o.querySelector('.shots-view').innerHTML =
+      '<img src="' + b.dataset.src + '" alt="' + (b.dataset.cap || '') + '">';
+    o.querySelector('.scap').textContent = b.dataset.cap || '';
+    o.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    lastFocus = b;
+    o.querySelector('.lb-close').focus();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && ov && ov.classList.contains('open')) close();
+  });
+})();

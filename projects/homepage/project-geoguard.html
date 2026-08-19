@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -59,6 +59,26 @@
     </div>
 
     <div class="pd-sec rv">
+      <h3>📟 실제 동작 기록</h3>
+      <p>트레이에 상주하는 프로그램이라 보여드릴 화면이 크지 않아, 실제 실행 로그를 그대로 옮깁니다.
+      기동할 때 IP 대역을 받아 방화벽에 규칙으로 올리고, 그 뒤로는 차단이 생길 때마다
+      <b>어떤 프로세스가 어디로 나가려 했는지</b>를 기록합니다.</p>
+      <div class="logbox"><pre>[2026-08-11 10:21:54] === GeoGuard 시작 ===
+[2026-08-11 10:21:54] [CN] IP 대역 7540개 로드
+[2026-08-11 10:21:54] 구버전 규칙 38개 정리
+[2026-08-11 10:21:55] [CN] 방화벽 규칙 적용: CIDR 7540개, 규칙 38개
+[2026-08-11 10:21:55] GeoIP DB 로드: 706484개 대역
+[2026-08-11 10:21:56] ASN DB 로드: 474559개 대역
+[2026-08-11 10:21:56] WFP 차단 감사 정책 활성화
+[2026-08-11 10:21:56] 이벤트 감시 시작 (Security 5157)
+<span class="hl">[2026-08-11 10:26:13] 차단[CN]: powershell.exe 아웃바운드 180.101.50.242:80 (TCP)
+[2026-08-11 10:26:13] 차단[CN]: powershell.exe 아웃바운드 1.0.1.1:80 (TCP)</span>
+[2026-08-11 10:40:46] 종료</pre></div>
+      <div class="logcap">주황색 두 줄이 실제로 차단된 순간입니다 — 이 시점에 풍선 알림도 같이 뜹니다.
+      화면은 트레이 아이콘, 국가 선택 창, 연결 모니터, 차단 이력 창 네 개로 이루어져 있습니다.</div>
+    </div>
+
+    <div class="pd-sec rv">
       <h3>🛠️ 기술</h3>
       <div class="chips">
         <span class="chip">C# (.NET Framework 4.8)</span><span class="chip">WFP 방화벽 규칙</span>
@@ -82,6 +102,6 @@
   <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
 </section>
 
-<script src="site.js?v=9"></script>
+<script src="site.js?v=11"></script>
 </body>
 </html>
