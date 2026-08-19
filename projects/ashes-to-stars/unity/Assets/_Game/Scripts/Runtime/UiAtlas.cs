@@ -397,9 +397,9 @@ namespace AshesToStars
                 case "광산": return "field";
                 case "창고": return "building_auction";
                 case "화살탑": return "tower";
-                case "마법탑": return "field";
+                case "마법탑": return "buffer";        // 마법=버퍼(지팡이) 아이콘 — 화살탑 tower와 구분. field(풀밭)는 오배정이었다
                 case "성벽": return "territory";
-                case "함정": return "building_barracks";
+                case "함정": return "damage";          // 함정=위해(교차 검) — building_barracks(수비대 건물)와 중복 오배정이었다
                 case "방어": return "tower";
                 default: return null;
             }
