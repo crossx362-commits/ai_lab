@@ -148,7 +148,7 @@ namespace AshesToStars
             var reward = BattleScreen._GetLastReward();
             if (reward != null && reward.Survived)
             {
-                Info(r, _rowIndex++, "");  // 빈 줄
+                _rowIndex++;  // 빈 줄 — 프레임 없이 세로 간격만(빈 패널 방지)
                 RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
                 bool showHuntGold = System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) == "1";
                 if (showHuntGold || GameFlow.ReturnTo == GameFlow.Field)
@@ -191,7 +191,7 @@ namespace AshesToStars
                 // 경험치 분배 (§3 레벨 비례 · §18-6 성장) — 출전 파티가 나눠 갖는다
                 if (reward.ExpGains != null && reward.ExpGains.Count > 0)
                 {
-                    Info(r, _rowIndex++, "");  // 빈 줄
+                    _rowIndex++;  // 빈 줄 — 프레임 없이 세로 간격만(빈 패널 방지)
                     Info(r, _rowIndex++, "📈 경험치 (출전 레벨 비례 분배, §3)");
                     foreach (var line in reward.ExpGains)
                     {
