@@ -530,7 +530,7 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 .contact-box h2{font-size:clamp(20px,2.8vw,28px); font-weight:800; letter-spacing:-1px; margin-bottom:7px; color:#332b1e;}
 .contact-box p{color:var(--sub); max-width:520px; margin:0 auto 16px; font-size:12.5px;}
 /* 홈 압축용 슬림 연락 박스 */
-.contact-box.slim{max-width:600px; margin:10px auto 0; padding:16px 18px;}
+.contact-box.slim{margin-top:10px; padding:16px 18px;}
 .contact-box.slim h2{font-size:18px; margin-bottom:4px;}
 .contact-box.slim p{margin-bottom:10px;}
 .contact-box.slim .btn{padding:9px 18px; font-size:13px;}

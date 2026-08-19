@@ -21,6 +21,34 @@
   .post .pbody p{margin-bottom:12px;}
   .post .ptags{display:flex; gap:7px; flex-wrap:wrap; margin-top:14px;}
   .empty-note{color:var(--dim); text-align:center; padding:40px 0; font-size:14px;}
+  /* ─── 댓글 ─── */
+  .cmt-wrap{margin-top:14px; padding-top:12px; border-top:1px solid var(--line);}
+  .cmt-toggle{
+    background:none; border:none; padding:0; cursor:pointer; font-family:inherit;
+    font-size:12.5px; font-weight:700; color:#5e8140; display:inline-flex; align-items:center; gap:5px;
+  }
+  .cmt-toggle:hover{text-decoration:underline;}
+  .cmt-box{display:none; margin-top:12px;}
+  .cmt-box.open{display:block;}
+  .cmt-item{padding:9px 0; border-bottom:1px solid rgba(110,90,50,.08);}
+  .cmt-item:last-child{border-bottom:none;}
+  .cmt-item .ch{display:flex; align-items:baseline; gap:8px; margin-bottom:3px;}
+  .cmt-item .cn{font-weight:800; font-size:13px; color:#43371f;}
+  .cmt-item .cd{font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums;}
+  .cmt-item .cm{font-size:13px; color:#6b5f49; white-space:pre-wrap; word-break:break-word;}
+  .cmt-empty{font-size:12.5px; color:var(--dim); padding:4px 0 10px;}
+  .cmt-form{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .cmt-form input[type=text]{
+    flex:0 0 130px; background:#fff; border:1.5px solid var(--line); border-radius:10px;
+    color:var(--text); font-family:inherit; font-size:13px; padding:8px 11px;
+  }
+  .cmt-form textarea{
+    flex:1 1 220px; min-height:38px; resize:vertical; background:#fff; border:1.5px solid var(--line);
+    border-radius:10px; color:var(--text); font-family:inherit; font-size:13px; padding:8px 11px;
+  }
+  .cmt-form input:focus, .cmt-form textarea:focus{outline:2px solid rgba(79,174,92,.55); outline-offset:-1px;}
+  .cmt-form .btn{padding:8px 16px; font-size:13px;}
+  .cmt-hp{position:absolute; left:-9999px; opacity:0;}
 </style>
 </head>
 <body>
@@ -60,11 +88,19 @@
 
 <!-- site.js가 먼저 와야 한다 — 아래 렌더가 site.js의 renderShots를 즉시 호출한다 -->
 <script src="site.js?v=12"></script>
-<script src="posts.js?v=7"></script>
+<script src="posts.js?v=8"></script>
 <script>
-function escT(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function escT(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML.replace(/"/g,'&quot;'); }
 const box = document.getElementById('posts');
 const CAT_BADGE = { '개발일기':'🛠️ 개발일기', '일상':'☕ 일상·잡담' };
+
+// 댓글이 물릴 키. posts.js에 id를 안 적은 옛 글만 제목 기반으로 떨어뜨린다 —
+// 배열 index를 쓰면 새 글을 위에 추가할 때마다 댓글이 통째로 밀린다.
+function postKey(p, i){ return p.id || ('t-' + (p.title || i)); }
+function fmtCmtDate(iso){
+  const d = new Date(iso);
+  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+}
 
 function renderPosts(cat){
   const list = POSTS.filter(p => cat === 'all' || p.cat === cat);
@@ -77,12 +113,97 @@ function renderPosts(cat){
     const tags = (p.tags||[]).map(t => '<span class="wtag">#' + escT(t) + '</span>').join('');
     const badge = CAT_BADGE[p.cat] ? '<span class="wtag cat-ai">' + CAT_BADGE[p.cat] + '</span>' : '';
     const shots = (p.shots && p.shots.length) ? '<div class="shots" data-shots="' + i + '"></div>' : '';
+    const pid = postKey(p, i);
+    const cmt =
+      '<div class="cmt-wrap">' +
+        '<button class="cmt-toggle" type="button" data-cmt="' + escT(pid) + '">💬 댓글 <span class="cc"></span></button>' +
+        '<div class="cmt-box" data-cmtbox="' + escT(pid) + '">' +
+          '<div class="cmt-list"><div class="cmt-empty">불러오는 중…</div></div>' +
+          '<form class="cmt-form">' +
+            '<input type="text" class="cmt-name" maxlength="24" placeholder="닉네임" required>' +
+            '<textarea class="cmt-msg" maxlength="500" placeholder="댓글 (최대 500자)" required></textarea>' +
+            '<input type="text" class="cmt-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
+            '<button class="btn primary" type="submit">남기기</button>' +
+          '</form>' +
+        '</div>' +
+      '</div>';
     return '<article class="post rv on"><div class="pdate">' + escT(p.date) + badge + '</div><h3>' + escT(p.title) + '</h3>' +
-      '<div class="pbody">' + paras + '</div>' + shots + '<div class="ptags">' + tags + '</div></article>';
+      '<div class="pbody">' + paras + '</div>' + shots + '<div class="ptags">' + tags + '</div>' + cmt + '</article>';
   }).join('');
   // 갤러리는 site.js의 공용 renderShots로 채운다 (확대 보기까지 같이 붙는다)
   box.querySelectorAll('[data-shots]').forEach(el => renderShots(el, list[+el.dataset.shots].shots));
+  loadCounts();
 }
+
+// ─── 댓글 ───
+// 화면에 있는 글들의 댓글 수를 한 번의 요청으로 받아 온다(글마다 따로 부르면 요청이 글 수만큼 늘어난다)
+async function loadCounts(){
+  const btns = [...box.querySelectorAll('[data-cmt]')];
+  if (!btns.length) return;
+  try{
+    const ids = btns.map(b => '"' + b.dataset.cmt.replace(/"/g,'') + '"').join(',');
+    const rows = await sbFetch('/rest/v1/homepage_blog_comments?select=post_id&post_id=in.(' + encodeURIComponent(ids) + ')');
+    const n = {};
+    (rows||[]).forEach(r => { n[r.post_id] = (n[r.post_id]||0) + 1; });
+    btns.forEach(b => { b.querySelector('.cc').textContent = n[b.dataset.cmt] ? '(' + n[b.dataset.cmt] + ')' : ''; });
+  }catch(e){ /* 테이블 미생성/네트워크 실패 — 개수 표시만 생략, 글 읽기는 그대로 */ }
+}
+
+async function loadComments(pid, listEl){
+  try{
+    const rows = await sbFetch('/rest/v1/homepage_blog_comments?select=created_at,nickname,message&post_id=eq.' +
+      encodeURIComponent(pid) + '&order=created_at.asc&limit=200');
+    if (!rows || !rows.length){ listEl.innerHTML = '<div class="cmt-empty">아직 댓글이 없어요 — 첫 댓글을 남겨주세요!</div>'; return; }
+    listEl.innerHTML = rows.map(r =>
+      '<div class="cmt-item"><div class="ch"><span class="cn">' + escT(r.nickname) + '</span>' +
+      '<span class="cd">' + fmtCmtDate(r.created_at) + '</span></div>' +
+      '<div class="cm">' + escT(r.message) + '</div></div>').join('');
+  }catch(e){
+    listEl.innerHTML = '<div class="cmt-empty">댓글을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>';
+  }
+}
+
+box.addEventListener('click', e => {
+  const btn = e.target.closest('.cmt-toggle'); if (!btn) return;
+  const pid = btn.dataset.cmt;
+  const boxEl = box.querySelector('[data-cmtbox="' + CSS.escape(pid) + '"]');
+  if (!boxEl) return;
+  const opening = !boxEl.classList.contains('open');
+  boxEl.classList.toggle('open', opening);
+  if (opening && !boxEl.dataset.loaded){
+    boxEl.dataset.loaded = '1';
+    loadComments(pid, boxEl.querySelector('.cmt-list'));
+  }
+});
+
+box.addEventListener('submit', async e => {
+  const form = e.target.closest('.cmt-form'); if (!form) return;
+  e.preventDefault();
+  if (form.querySelector('.cmt-hp').value) return;  // 봇 함정
+  const boxEl = form.closest('.cmt-box');
+  const pid = boxEl.dataset.cmtbox;
+  const nickname = form.querySelector('.cmt-name').value.trim();
+  const message = form.querySelector('.cmt-msg').value.trim();
+  if (!nickname || !message) return;
+  const btn = form.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = '남기는 중…';
+  try{
+    await sbFetch('/rest/v1/homepage_blog_comments', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Prefer':'return=minimal' },
+      body: JSON.stringify({ post_id: pid, nickname, message }),
+    });
+    form.querySelector('.cmt-msg').value = '';
+    await loadComments(pid, boxEl.querySelector('.cmt-list'));
+    await loadCounts();
+    btn.textContent = '✅ 남겼습니다!';
+    setTimeout(() => { btn.disabled = false; btn.textContent = '남기기'; }, 2500);
+  }catch(err){
+    btn.textContent = '실패 — 다시 시도';
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = '남기기'; }, 2500);
+  }
+});
 
 document.getElementById('pfilters').addEventListener('click', e => {
   const b = e.target.closest('.fbtn'); if(!b) return;
