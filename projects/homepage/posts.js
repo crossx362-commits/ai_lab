@@ -36,14 +36,8 @@ const POSTS = [
 개발 방식이 조금 특이합니다. 혼자 만들지만 혼자 만들지 않아요 — Blender를 헤드리스로 돌려 배경·프랍·이펙트 스프라이트를 스크립트로 뽑고, AI 게임 개발 에이전트가 배치 빌드 → 실행 → FPS·렌더링 검증 → 리포트까지 자동으로 돌려줍니다. 경제·성장 수치는 밸런스 시뮬레이터로 검산하고요.
 
 핵심 컨셉은 변하지 않았습니다. 죽으면 캐릭터가 진짜 사라지는 게임, 가챠도 일일 숙제도 없는 게임. 진행 소식은 여기에 계속 남기겠습니다.`,
-    shots: [
-      { src: 'images/shots/ashes-classes.png', pixel: true,
-        cap: '직업 4종 — 탱커·딜러·힐러·버퍼. 이 네 장이 전체 캐릭터 아트의 기준(앵커)이 됩니다.' },
-      { src: 'images/shots/ashes-tank.png', pixel: true,
-        cap: '탱커 단독 컷 — 방패와 갑옷 실루엣만으로 역할이 읽히는지 확인하는 용도.' },
-      { src: 'images/shots/ashes-monster-anim.png', pixel: true,
-        cap: '몬스터 애니메이션 프레임 6장. Blender를 헤드리스로 돌려 스크립트로 뽑아낸 결과물입니다.' },
-    ],
+    // 이미지는 나중에 다시 올린다 (오너 요청 2026-08-19) — 아래 형식으로 shots 배열만 채우면 된다:
+    // shots: [{ src: 'images/shots/파일명.png', pixel: true, cap: '설명' }],
   },
   {
     date: '2026-08-19',

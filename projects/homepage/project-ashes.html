@@ -69,11 +69,6 @@
     </div>
 
     <div class="pd-sec rv">
-      <h3>🎨 만들어진 아트</h3>
-      <div class="shots" id="shots"></div>
-    </div>
-
-    <div class="pd-sec rv">
       <h3>🛠️ 기술</h3>
       <div class="chips">
         <span class="chip">Unity 6</span><span class="chip">C#</span><span class="chip">Blender (헤드리스 자동화)</span>
@@ -94,15 +89,8 @@
 </section>
 
 <script src="site.js?v=11"></script>
-<script>
-renderShots(document.getElementById('shots'), [
-  { src: 'images/shots/ashes-classes.png', pixel: true,
-    cap: '직업 4종 — 탱커·딜러·힐러·버퍼. 이 네 장이 이후 모든 캐릭터 아트의 기준(앵커)이 됩니다. 실루엣만으로 역할이 읽히는지를 기준으로 잡았어요.' },
-  { src: 'images/shots/ashes-tank.png', pixel: true,
-    cap: '탱커 단독 컷 — 방패와 중갑 실루엣. 쿼터뷰에서 작게 보여도 직업이 구분되는지 확인하는 용도입니다.' },
-  { src: 'images/shots/ashes-monster-anim.png', pixel: true,
-    cap: '몬스터 애니메이션 프레임 6장. Blender를 헤드리스로 돌려 스크립트로 뽑아낸 결과물이라, 몬스터가 늘어도 같은 파이프라인으로 찍어냅니다.' },
-]);
-</script>
+<!-- 아트 갤러리는 나중에 다시 올린다 (오너 요청 2026-08-19).
+     되살리려면 위 기술 섹션 앞에 <div class="shots" id="shots"></div> 를 넣고
+     renderShots(document.getElementById('shots'), [{src, pixel, cap}, ...]) 를 호출하면 된다. -->
 </body>
 </html>
