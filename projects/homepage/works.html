@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>작업물 — 백수장인</title>
-<meta name="description" content="백수장인의 작업물 — 애니메이션 릴 아카이브(2017→2026), AI 활용 영상, AI 음악·자동 포스팅 실험, 캐릭터·환경 기획.">
+<title>작업물 · 프로젝트 — 백수장인</title>
+<meta name="description" content="백수장인의 작업물과 개인 프로젝트 — 애니메이션 릴 아카이브(2017→2026), AI 활용 영상, AI 음악·자동 포스팅 실험, 그리고 펫과나·재와 별·GeoGuard·셀러 장부.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -18,7 +18,6 @@
     <a href="index.html">홈</a>
     <a href="blog.html">블로그</a>
     <a href="works.html" class="active">작업물</a>
-    <a href="projects.html">프로젝트</a>
     <a href="career.html">경력·스킬</a>
     <a href="board.html">방명록</a>
   </div>
@@ -27,13 +26,72 @@
 <div class="page-head">
   <div class="wrap wide">
     <div class="kicker rv">Works</div>
-    <h2 class="title rv">작업물</h2>
-    <p class="lead rv d1">2017년부터 지금까지의 애니메이션 릴, 그리고 AI로 해본 실험들 — <b>계속 추가하고 있어요.</b></p>
+    <h2 class="title rv">작업물 · 프로젝트</h2>
+    <p class="lead rv d1">애니메이션 릴부터 개인 프로젝트까지 — <b>계속 추가하고 있어요.</b></p>
   </div>
 </div>
 
-<section style="padding-top:10px;">
+<!-- 개인 프로젝트 -->
+<section id="projects" style="padding-top:6px; padding-bottom:20px;">
   <div class="wrap wide">
+    <div class="kicker rv">Personal Projects</div>
+    <h2 class="title rv" style="font-size:20px;">개인 프로젝트</h2>
+    <p class="lead rv d1" style="margin-bottom:16px;">거창한 계획 없이, <b>생각나는 대로 AI와 함께 만들어보고 있는 것들</b>입니다.
+    타일을 클릭하면 자세한 이야기를 볼 수 있어요.</p>
+    <div class="tile-grid">
+      <a class="tile rv d1" href="project-petnna.html">
+        <div class="thead" style="background:linear-gradient(130deg,#f6ded2,#f3ead3 55%,#dde8ce);">
+          <span class="tstatus dev">개발 중</span><span class="big">🐾</span>
+        </div>
+        <div class="tbody">
+          <h3>펫과나</h3>
+          <div class="tone">반려동물 올인원 케어 웹앱</div>
+          <div class="tmore">자세히 보기 →</div>
+        </div>
+      </a>
+
+      <a class="tile rv d1" href="project-ashes.html">
+        <div class="thead" style="background:repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px), linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);">
+          <span class="tstatus dev">개발 중</span><span class="big">⚔️</span>
+        </div>
+        <div class="tbody">
+          <h3>재와 별</h3>
+          <div class="tone">Steam · 2D 픽셀아트 RPG</div>
+          <div class="tmore">자세히 보기 →</div>
+        </div>
+      </a>
+
+      <a class="tile rv d2" href="project-geoguard.html">
+        <div class="thead" style="background:linear-gradient(130deg,#d8e4da,#dde9e2 55%,#ece4d0);">
+          <span class="tstatus done">완성 · 무료</span><span class="big">🛡️</span>
+        </div>
+        <div class="tbody">
+          <h3>GeoGuard</h3>
+          <div class="tone">국가 단위 IP 차단 보안 앱</div>
+          <div class="tmore">자세히 보기 →</div>
+        </div>
+      </a>
+
+      <a class="tile rv d2" href="project-ledger.html">
+        <div class="thead" style="background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);">
+          <span class="tstatus done">완성 · 무료</span><span class="big">📒</span>
+        </div>
+        <div class="tbody">
+          <h3>셀러 장부</h3>
+          <div class="tone">재고·판매 관리 웹앱</div>
+          <div class="tmore">자세히 보기 →</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- 작업물 -->
+<section id="gallery" style="padding-top:6px;">
+  <div class="wrap wide">
+    <div class="kicker rv">Works</div>
+    <h2 class="title rv" style="font-size:20px;">작업물</h2>
+    <p class="lead rv d1" style="margin-bottom:16px;">2017년부터 지금까지의 애니메이션 릴, 그리고 AI로 해본 실험들.</p>
     <div class="filters rv" id="filters">
       <button class="fbtn on" data-cat="all">전체</button>
       <button class="fbtn" data-cat="reel">🎬 애니메이션 릴</button>
