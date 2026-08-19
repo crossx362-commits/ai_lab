@@ -13,10 +13,17 @@ async function sbFetch(path, opts) {
   return text ? JSON.parse(text) : null;
 }
 
-// ─── 방문자 수: 세션당 1회만 증가, 실패하면 조용히 숨김 ───
+// ─── 방문자 수: 최상단 내비에 배지로 표시. 세션당 1회만 증가, 실패하면 조용히 숨김 ───
 (async function visitCounter() {
-  const el = document.getElementById('visits');
-  if (!el) return;
+  let el = document.getElementById('visits');
+  if (!el) {
+    const nav = document.querySelector('nav');
+    if (!nav) return;
+    el = document.createElement('span');
+    el.id = 'visits'; el.className = 'visits'; el.hidden = true;
+    el.innerHTML = '👀 <b></b>';
+    nav.appendChild(el);
+  }
   try {
     let views;
     if (sessionStorage.getItem('bsj_counted')) {

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoGuard — 개인 프로젝트 | 백수장인</title>
+<meta name="description" content="국가 단위 IP 차단 Windows 보안 프로그램 GeoGuard — 무료 배포 개인 프로젝트.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="blog.html">블로그</a>
+    <a href="works.html">작업물</a>
+    <a href="projects.html" class="active">프로젝트</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap" style="max-width:860px;">
+    <a class="pd-back rv" href="projects.html">← 개인 프로젝트 목록</a>
+    <div class="pd-banner rv" style="background:linear-gradient(130deg,#0e2a44,#122c2c 60%,#25123c);">
+      <span class="status done">완성 · 무료 배포</span><span class="big">🛡️</span>
+    </div>
+    <div class="kicker rv">Personal Project</div>
+    <h2 class="title rv">GeoGuard</h2>
+    <p class="lead rv d1">선택한 국가의 IP 통신을 Windows 방화벽 커널 레벨에서 차단해 주는 트레이 상주 보안 프로그램입니다.
+    <b>누구나 무료로 받아서 쓸 수 있어요.</b></p>
+  </div>
+</div>
+
+<section style="padding-top:0;">
+  <div class="wrap" style="max-width:860px;">
+
+    <div class="pd-sec rv">
+      <h3>💡 왜 만들었나요</h3>
+      <p>PC를 쓰다 보면 해외 특정 지역에서 들어오는 접속 시도나, 내 프로그램이 몰래 해외로 나가는 연결이 신경 쓰일 때가 있죠.
+      그런데 이걸 막아주는 도구는 대부분 유료이거나 설정이 복잡했습니다.
+      그래서 <b>국가만 고르면 끝나는</b> 간단한 차단 도구를 직접 만들었어요.</p>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>⚙️ 어떻게 동작하나요</h3>
+      <div class="feat-grid">
+        <div class="feat"><div class="fn">🚫 커널 레벨 차단</div><div class="fd">국가별 IP 대역(RIR 위임 데이터)을 Windows 방화벽(WFP)에 등록 — 프로그램을 꺼도 차단은 유지</div></div>
+        <div class="feat"><div class="fn">🔔 실시간 알림</div><div class="fd">차단이 발생하면 어떤 프로세스가 어디로 접속하려 했는지 풍선 알림으로 표시</div></div>
+        <div class="feat"><div class="fn">📊 연결 모니터</div><div class="fd">현재 TCP 연결 목록 + 국가·조직(ISP) 표시, 필터·정렬, 프로세스 강제 종료</div></div>
+        <div class="feat"><div class="fn">📜 차단 이력</div><div class="fd">차단된 시도를 시간순으로 확인</div></div>
+        <div class="feat"><div class="fn">🔁 fail-closed 설계</div><div class="fd">IP 목록을 못 받아 차단이 빈 상태가 되면 경고 아이콘 + 지수 백오프 자동 재시도</div></div>
+        <div class="feat"><div class="fn">🪶 가볍게</div><div class="fd">설치 없는 단일 실행 파일(73KB) — .NET Framework 내장 컴파일러로 빌드해 SDK도 불필요</div></div>
+      </div>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>🛠️ 기술</h3>
+      <div class="chips">
+        <span class="chip">C# (.NET Framework 4.8)</span><span class="chip">WFP 방화벽 규칙</span>
+        <span class="chip">보안 감사 이벤트(5157) 구독</span><span class="chip">DB-IP GeoIP/ASN</span>
+        <span class="chip">WinForms 트레이 앱</span>
+      </div>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>📄 라이선스</h3>
+      <div class="pd-note">✅ 개인·회사 어디서든 <b>무료로 사용·공유</b>할 수 있습니다.<br>
+      ❌ 단, 이 프로그램(원본·수정본)을 <b>판매하거나 유료로 재배포하는 것은 금지</b>입니다.<br>
+      ⚠️ 방화벽 규칙을 등록하므로 관리자 권한이 필요하고, 사용 결과는 사용자 책임입니다.</div>
+    </div>
+
+    <div class="cta rv">
+      <a class="btn primary" href="downloads/GeoGuard.zip" download>⬇ 다운로드 (실행파일 + 소스)</a>
+      <a class="btn ghost" href="projects.html">← 목록으로</a>
+    </div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
+</section>
+
+<script src="site.js"></script>
+</body>
+</html>
