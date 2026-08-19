@@ -13,6 +13,7 @@ loop/claude_usage.cache.json
 loop/codex_usage.cache.json
 loop/logs/
 .claude/
+.mcp.json
 agent-reach/
 .logs/
 projects/.logs/
