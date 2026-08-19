@@ -59,6 +59,11 @@
     </div>
 
     <div class="pd-sec rv">
+      <h3>🖥️ 실제 화면</h3>
+      <div class="shots" id="shots"></div>
+    </div>
+
+    <div class="pd-sec rv">
       <h3>🛠️ 기술</h3>
       <div class="chips">
         <span class="chip">Python</span><span class="chip">PySide6 (Qt)</span><span class="chip">psutil</span>
@@ -82,5 +87,11 @@
 </section>
 
 <script src="site.js?v=11"></script>
+<script>
+renderShots(document.getElementById('shots'), [
+  { src: 'images/shots/ppm-main.png',
+    cap: '메인 화면 — 지금 도는 파이썬 프로세스 6개를 표(Table) 뷰로. PID·프로그램 이름 옆에 추정 역할 및 설명이 자연어로 붙고, 위험도·CPU·메모리·부모 프로세스까지 한 줄에 보입니다. 현재 이 관리자 프로그램 자신은 🔒 현재프로그램으로 표시되고 종료 버튼이 막혀 있습니다.' },
+]);
+</script>
 </body>
 </html>

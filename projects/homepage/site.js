@@ -87,7 +87,7 @@ mountLitePlayers();
    클릭하면 원본 크기로 확대해서 보여준다. */
 function renderShots(el, list){
   if (!el || !list || !list.length) return;
-  const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+  const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML.replace(/"/g, '&quot;'); };
   el.className = 'shots';
   el.innerHTML = list.map(s =>
     '<figure' + (s.pixel ? ' class="pixel"' : '') + '>' +
