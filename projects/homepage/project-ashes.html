@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재와 별 — 개인 프로젝트 | 백수장인</title>
+<meta name="description" content="Steam PC 2D 쿼터뷰 픽셀아트 RPG '재와 별' — 1인 개발 중인 개인 프로젝트.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css?v=13">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="blog.html">블로그</a>
+    <a href="works.html" class="active" aria-current="page">작업물</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap" style="max-width:860px;">
+    <a class="pd-back rv" href="works.html#projects">← 개인 프로젝트 목록</a>
+    <div class="pd-banner rv" style="background:repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px), linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);">
+      <span class="status dev">개발 중</span><span class="big">⚔️</span>
+    </div>
+    <div class="kicker rv">Personal Project</div>
+    <h2 class="title rv">재와 별 <span style="font-size:16px;color:var(--dim);font-weight:600;">Ashes to Stars</span></h2>
+    <p class="lead rv d1">Steam PC로 준비 중인 2D 쿼터뷰 픽셀아트 RPG.
+    18년간 남의 게임을 만들었으니, 이번엔 <b>제 게임</b>을 만들어 보고 있습니다.</p>
+  </div>
+</div>
+
+<section style="padding-top:0;">
+  <div class="wrap" style="max-width:860px;">
+
+    <div class="pd-sec rv">
+      <h3>💡 어떤 게임인가요</h3>
+      <p>뱀서라이크 전투에 키우기·탑 등반·레이드·영지·비동기 PvP(침략)를 얹은 게임입니다.
+      핵심 정체성은 <b>"죽으면 캐릭터가 진짜 사라진다"</b> — 3회 사망하면 장비까지 영구 삭제되고,
+      환생석으로만 되살릴 수 있어요. 그 긴장감이 이 게임의 심장입니다.</p>
+      <p>대신 요즘 게임의 피로 요소는 뺐습니다. <b>가챠 없음, 일일 퀘스트 없음, 숙제 없음.</b>
+      플레이한 만큼만 강해지는 정직한 구조를 지향해요.</p>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>✨ 핵심 시스템</h3>
+      <div class="feat-grid">
+        <div class="feat"><div class="fn">⚔️ 뱀서라이크 전투</div><div class="fd">몰려오는 몬스터를 쓸어담는 쾌감 — 직업 4종(탱커·딜러·힐러·버퍼) 파티 운용</div></div>
+        <div class="feat"><div class="fn">💀 영구 죽음</div><div class="fd">3회 사망 시 캐릭터·장비 영구 삭제. 모든 전투가 진짜 선택이 됩니다</div></div>
+        <div class="feat"><div class="fn">🗼 탑 100층</div><div class="fd">층마다 강해지는 적 — 어디까지 올라갈지, 언제 내려올지의 줄다리기</div></div>
+        <div class="feat"><div class="fn">🐉 레이드 & 영지</div><div class="fd">보스 레이드(경고 패턴·시전 차단)와 캐릭터가 쉬어갈 영지 운영</div></div>
+        <div class="feat"><div class="fn">🏴 비동기 PvP</div><div class="fd">다른 플레이어의 영지에 침략 — 실시간 서버 없이 즐기는 경쟁</div></div>
+        <div class="feat"><div class="fn">🎨 픽셀아트</div><div class="fd">직업 4종 × 8프레임 스프라이트를 직접 그리고, 나머지 리소스는 AI 파이프라인으로 생성</div></div>
+      </div>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>🤖 이렇게 만들고 있어요 — 1인 개발 + AI 루프</h3>
+      <p>애니메이터가 코드까지 전부 감당하기 위해 <b>개발 루프 자체를 자동화</b>했습니다.</p>
+      <p>· <b>Blender 헤드리스 파이프라인</b> — 스크립트가 몬스터·이펙트·배경 스프라이트를 자동 생성<br>
+      · <b>AI 게임 개발 에이전트(마루)</b> — 배치 빌드 → 플레이어 실행 → FPS·렌더링 검증 → 리포트·스크린샷까지 자동<br>
+      · <b>밸런스 시뮬레이터</b> — 경제·성장 수치를 코드로 검산해 밸런스 붕괴를 미리 탐지</p>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>🛠️ 기술</h3>
+      <div class="chips">
+        <span class="chip">Unity 6</span><span class="chip">C#</span><span class="chip">Blender (헤드리스 자동화)</span>
+        <span class="chip">Python 파이프라인</span><span class="chip">Steam 타깃</span>
+      </div>
+    </div>
+
+    <div class="pd-sec rv">
+      <div class="pd-note">🚧 한창 개발 중입니다 — 진행 소식은 블로그에 올릴게요.</div>
+    </div>
+
+    <div class="cta rv">
+      <a class="btn primary" href="blog.html">📓 개발 소식 보기</a>
+      <a class="btn ghost" href="works.html#projects">← 목록으로</a>
+    </div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
+</section>
+
+<script src="site.js?v=11"></script>
+<!-- 아트 갤러리는 나중에 다시 올린다 (오너 요청 2026-08-19).
+     되살리려면 위 기술 섹션 앞에 <div class="shots" id="shots"></div> 를 넣고
+     renderShots(document.getElementById('shots'), [{src, pixel, cap}, ...]) 를 호출하면 된다. -->
+</body>
+</html>

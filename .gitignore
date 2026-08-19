@@ -27,6 +27,8 @@ projects/output/
 *.bak
 *.tmp
 *.old
+*.exe
+*.csv
 .temp/
 projects/ai-team/scripts/.manual_stop*
 

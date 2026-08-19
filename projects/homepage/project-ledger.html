@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>셀러 장부 — 개인 프로젝트 | 백수장인</title>
+<meta name="description" content="이커머스 셀러를 위한 재고·판매 관리 웹앱 셀러 장부 — 무료 배포 개인 프로젝트.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📒</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css?v=13">
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="blog.html">블로그</a>
+    <a href="works.html" class="active" aria-current="page">작업물</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap" style="max-width:860px;">
+    <a class="pd-back rv" href="works.html#projects">← 개인 프로젝트 목록</a>
+    <div class="pd-banner rv" style="background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);">
+      <span class="status done">완성 · 무료 배포</span><span class="big">📒</span>
+    </div>
+    <div class="kicker rv">Personal Project</div>
+    <h2 class="title rv">셀러 장부</h2>
+    <p class="lead rv d1">온라인 셀러의 상품·재고·입출고·거래처를 브라우저 하나로 관리하는 웹앱입니다.
+    <b>설치도, 회원가입도, 서버도 없이</b> 바로 쓸 수 있어요.</p>
+  </div>
+</div>
+
+<section style="padding-top:0;">
+  <div class="wrap" style="max-width:860px;">
+
+    <div class="pd-sec rv">
+      <h3>💡 왜 만들었나요</h3>
+      <p>소규모 셀러에게 기존 재고 관리 도구는 너무 무겁거나 유료 구독입니다.
+      엑셀은 스마트폰에서 불편하고요. 그래서 <b>파일 하나로 끝나는 장부</b>를 만들었습니다 —
+      HTML 파일 하나가 앱 전체라서, 받아서 열면 그게 설치의 전부입니다.</p>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>✨ 주요 기능</h3>
+      <div class="feat-grid">
+        <div class="feat"><div class="fn">🏠 한눈에 보기</div><div class="fd">이번 달 매출 목표, 곧 품절될 상품, 유통기한 임박, 잘 팔리는 TOP 5를 대시보드로</div></div>
+        <div class="feat"><div class="fn">📦 상품 관리</div><div class="fd">상품 등록·목록·재고 현황 관리</div></div>
+        <div class="feat"><div class="fn">🔄 입고·판매 기록</div><div class="fd">입출고를 기록하면 재고와 통계가 자동 계산</div></div>
+        <div class="feat"><div class="fn">🏢 거래처 관리</div><div class="fd">거래처별 연락처·메모를 한곳에</div></div>
+        <div class="feat"><div class="fn">💾 백업 · CSV</div><div class="fd">데이터 백업/복원과 CSV 내보내기 지원</div></div>
+        <div class="feat"><div class="fn">🔒 내 데이터는 내 것</div><div class="fd">모든 데이터가 브라우저 로컬에만 저장 — 서버로 아무것도 전송하지 않습니다</div></div>
+      </div>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>🖥️ 실제 화면</h3>
+      <div class="shots" id="shots"></div>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>🛠️ 기술</h3>
+      <div class="chips">
+        <span class="chip">단일 HTML 파일</span><span class="chip">Vanilla JS</span><span class="chip">localStorage</span>
+        <span class="chip">모바일 대응(하단 탭바)</span><span class="chip">오프라인 동작</span>
+      </div>
+    </div>
+
+    <div class="pd-sec rv">
+      <h3>📄 라이선스</h3>
+      <div class="pd-note">✅ 개인·회사 어디서든 <b>무료로 사용·공유</b>할 수 있습니다.<br>
+      ❌ 단, 이 파일(원본·수정본)을 <b>판매하거나 유료로 재배포하는 것은 금지</b>입니다.</div>
+    </div>
+
+    <div class="cta rv">
+      <a class="btn primary" href="downloads/seller-ledger.html" target="_blank" rel="noopener">🔗 바로 사용하기</a>
+      <a class="btn ghost" href="downloads/seller-ledger.html" download="셀러장부.html">⬇ 다운로드</a>
+      <a class="btn ghost" href="works.html#projects">← 목록으로</a>
+    </div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
+</section>
+
+<script src="site.js?v=11"></script>
+<script>
+renderShots(document.getElementById('shots'), [
+  { src: 'images/shots/ledger-dashboard.jpg',
+    cap: '한눈에 보기 — 이번 달 매출 목표, 곧 품절될 상품, 유통기한 임박, 잘 팔리는 상품을 한 화면에. 처음 열면 무엇부터 하면 되는지 3단계로 안내합니다.' },
+  { src: 'images/shots/ledger-products.jpg',
+    cap: '상품 — 상품명·매입가·판매가만 넣으면 마진과 마진율이 자동 계산됩니다. 공급처는 선택 입력이라 급할 땐 건너뛰어도 됩니다.' },
+  { src: 'images/shots/ledger-inout.jpg',
+    cap: '입고·판매 — 기록을 남기면 재고와 이번 달 통계가 함께 갱신됩니다.' },
+]);
+</script>
+</body>
+</html>

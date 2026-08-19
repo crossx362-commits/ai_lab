@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>작업물 · 프로젝트 — 백수장인</title>
+<meta name="description" content="백수장인의 개인 프로젝트(펫과나·재와 별·GeoGuard·셀러 장부)와 회사에서 만든 애니메이션 작업물.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="style.css?v=13">
+<style>
+  .grp-toggle{display:flex; gap:8px; margin-bottom:12px;}
+  .grp-btn{
+    flex:1; max-width:230px; display:flex; align-items:center; gap:9px;
+    padding:9px 14px; border-radius:14px; border:1.5px solid var(--line);
+    background:var(--panel); cursor:pointer; font-family:inherit; text-align:left;
+    transition:all .15s; box-shadow:0 3px 10px rgba(110,90,50,.06);
+  }
+  .grp-btn .gic{font-size:17px;}
+  .grp-btn .gt{font-size:13px; font-weight:800; color:#332b1e;}
+  .grp-btn .gs{font-size:10.5px; color:var(--sub);}
+  .grp-btn.on{border-color:rgba(106,153,78,.55); background:rgba(106,153,78,.09); box-shadow:0 6px 16px rgba(110,90,50,.1);}
+  .grp-btn:hover{transform:translateY(-2px);}
+  .sub-h{font-size:13px; font-weight:800; color:#332b1e; margin:14px 0 8px; display:flex; align-items:center; gap:6px;}
+  .sub-h:first-child{margin-top:0;}
+  .panel-view{display:none;}
+  .panel-view.on{display:block;}
+  @media (max-width:600px){ .grp-toggle{flex-direction:column;} .grp-btn{max-width:none;} }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html"><span class="dot"></span>백수장인</a>
+  <div class="links">
+    <a href="index.html">홈</a>
+    <a href="blog.html">블로그</a>
+    <a href="works.html" class="active" aria-current="page">작업물</a>
+    <a href="career.html">경력·스킬</a>
+    <a href="board.html">방명록</a>
+  </div>
+</nav>
+
+<div class="page-head">
+  <div class="wrap wide">
+    <div class="kicker rv">Works</div>
+    <h2 class="title rv">작업물 · 프로젝트</h2>
+    <p class="lead rv d1">개인으로 만든 것과 회사에서 만든 것, 두 갈래로 나눠 봤어요.</p>
+  </div>
+</div>
+
+<section id="projects" style="padding-top:6px;">
+  <div class="wrap wide">
+    <div class="grp-toggle rv" id="groupToggle">
+      <button class="grp-btn on" data-group="personal">
+        <span class="gic">🙋</span>
+        <span><span class="gt">개인 프로젝트</span><br><span class="gs">생각나는 대로 만들어보는 것들</span></span>
+      </button>
+      <button class="grp-btn" data-group="company">
+        <span class="gic">🏢</span>
+        <span><span class="gt">회사 프로젝트</span><br><span class="gs">재직하며 만든 애니메이션 작업물</span></span>
+      </button>
+    </div>
+
+    <!-- 개인 프로젝트 -->
+    <div class="panel-view on" id="panelPersonal">
+      <div class="sub-h">🛠️ 만든 앱들</div>
+      <div class="tile-grid">
+        <a class="tile rv d1" href="project-petnna.html">
+          <div class="thead" style="background:linear-gradient(130deg,#f6ded2,#f3ead3 55%,#dde8ce);">
+            <span class="tstatus dev">개발 중</span><span class="big">🐾</span>
+          </div>
+          <div class="tbody">
+            <h3>펫과나</h3>
+            <div class="tone">반려동물 올인원 케어 웹앱</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+
+        <a class="tile rv d1" href="project-ashes.html">
+          <div class="thead" style="background:repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 2px, transparent 2px 8px), linear-gradient(130deg,#e8e0d0,#dbe4cd 55%,#f0d8c4);">
+            <span class="tstatus dev">개발 중</span><span class="big">⚔️</span>
+          </div>
+          <div class="tbody">
+            <h3>재와 별</h3>
+            <div class="tone">Steam · 2D 픽셀아트 RPG</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+
+        <a class="tile rv d2" href="project-geoguard.html">
+          <div class="thead" style="background:linear-gradient(130deg,#d8e4da,#dde9e2 55%,#ece4d0);">
+            <span class="tstatus done">완성 · 무료</span><span class="big">🛡️</span>
+          </div>
+          <div class="tbody">
+            <h3>GeoGuard</h3>
+            <div class="tone">국가 단위 IP 차단 보안 앱</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+
+        <a class="tile rv d2" href="project-ledger.html">
+          <div class="thead" style="background:linear-gradient(130deg,#e0e9cf,#dbe7e0 55%,#f3ead3);">
+            <span class="tstatus done">완성 · 무료</span><span class="big">📒</span>
+          </div>
+          <div class="tbody">
+            <h3>셀러 장부</h3>
+            <div class="tone">재고·판매 관리 웹앱</div>
+            <div class="tmore">자세히 보기 →</div>
+          </div>
+        </a>
+      </div>
+
+      <div class="sub-h">📐 기획 · 컨셉</div>
+      <div class="wgrid" id="wgridPersonal"></div>
+    </div>
+
+    <!-- 회사 프로젝트 -->
+    <div class="panel-view" id="panelCompany">
+      <div class="filters rv" id="filters">
+        <button class="fbtn on" data-cat="all">전체</button>
+        <button class="fbtn" data-cat="reel">🎬 애니메이션 릴</button>
+        <button class="fbtn" data-cat="ai">🤖 AI 활용</button>
+      </div>
+      <div class="wgrid" id="wgridCompany"></div>
+    </div>
+  </div>
+  <footer>© 2026 백수장인 · <a href="index.html#contact">연락하기</a></footer>
+</section>
+
+<!-- 작업물 상세 팝업 -->
+<div class="lb-overlay" id="lbOverlay">
+  <div class="lb" role="dialog" aria-modal="true">
+    <button class="lb-close" id="lbClose" aria-label="닫기">✕</button>
+    <div id="lbMedia"></div>
+    <div class="lb-body">
+      <h3 id="lbTitle"></h3>
+      <p id="lbDesc"></p>
+      <div class="meta" id="lbMeta"></div>
+      <div class="cta" id="lbCta"></div>
+    </div>
+  </div>
+</div>
+
+<script src="works.js?v=10"></script>
+<script>
+const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', plan:'기획·컨셉' };
+let shown = [];
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+function cardHtml(w, i){
+  let media;
+  if (w.yt) {
+    media = '<div class="media" data-mounted="1"><img loading="lazy" src="https://i.ytimg.com/vi/' + esc(w.yt) + '/hqdefault.jpg" alt="">' +
+      '<div class="play"><span>▶</span></div></div>';
+  } else if (w.shots && w.shots.length) {
+    // 카드에는 축소본(thumb)만 — 원본은 팝업에서만 받는다
+    media = '<div class="media"><img loading="lazy" src="' + esc(w.shots[0].thumb || w.shots[0].src) +
+      '" alt="' + esc(w.title) + '"></div>';
+  } else {
+    media = '<div class="media note"><div class="noteface">' + (w.icon||'📄') + '</div></div>';
+  }
+  // div지만 클릭으로 팝업을 여는 요소라 키보드에서도 도달·실행 가능해야 한다
+  return '<div class="wcard rv" tabindex="0" role="button" aria-label="' + esc(w.title) + ' 자세히 보기"' +
+    ' data-cat="' + esc(w.cat) + '" data-idx="' + i + '">' + media +
+    '<div class="body"><h3>' + esc(w.title) + '</h3><p>' + esc(w.desc) + '</p>' +
+    '<div class="meta"><span class="wtag cat-' + esc(w.cat) + '">' + (CAT_LABEL[w.cat]||w.cat) + '</span>' +
+    (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '') +
+    '<span class="ext">자세히 보기 →</span></div></div></div>';
+}
+
+// 개인 — 기획·컨셉 (필터 없이 전체 표시)
+const personalWorks = WORKS.filter(w => w.group === 'personal');
+document.getElementById('wgridPersonal').innerHTML = personalWorks.map(cardHtml).join('');
+document.getElementById('wgridPersonal').querySelectorAll('.rv').forEach(el => el.classList.add('on'));
+
+// 회사 — 필터 가능
+function renderCompany(cat){
+  shown = WORKS
+    .filter(w => w.group === 'company' && (cat === 'all' || w.cat === cat))
+    .sort((a,b) => (b.featured?1:0) - (a.featured?1:0));
+  const grid = document.getElementById('wgridCompany');
+  grid.innerHTML = shown.map(cardHtml).join('');
+  grid.querySelectorAll('.rv').forEach(el => el.classList.add('on'));
+}
+renderCompany('all');
+
+document.getElementById('filters').addEventListener('click', e => {
+  const b = e.target.closest('.fbtn'); if(!b) return;
+  document.querySelectorAll('#filters .fbtn').forEach(x => x.classList.toggle('on', x === b));
+  renderCompany(b.dataset.cat);
+});
+
+// 최상위 토글: 개인 / 회사
+function showGroup(g){
+  document.querySelectorAll('.grp-btn').forEach(x => x.classList.toggle('on', x.dataset.group === g));
+  document.getElementById('panelPersonal').classList.toggle('on', g === 'personal');
+  document.getElementById('panelCompany').classList.toggle('on', g === 'company');
+}
+document.getElementById('groupToggle').addEventListener('click', e => {
+  const b = e.target.closest('.grp-btn'); if(!b) return;
+  showGroup(b.dataset.group);
+});
+// #company / #personal 로 들어오면 그 탭을 바로 연다 (홈의 '애니메이션 릴 보기' 링크용)
+if (location.hash === '#company' || location.hash === '#personal') showGroup(location.hash.slice(1));
+
+// ─── 팝업(라이트박스) — 개인·회사 그리드 공용, 클릭 시 WORKS 원본에서 매칭 ───
+const overlay = document.getElementById('lbOverlay');
+const lbMedia = document.getElementById('lbMedia');
+
+function openModal(w){
+  if (w.yt) {
+    lbMedia.className = 'lb-media';
+    lbMedia.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(w.yt) +
+      '?autoplay=1" title="' + esc(w.title) + '" referrerpolicy="origin" ' +
+      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+  } else if (w.shots && w.shots.length) {
+    lbMedia.className = 'lb-media shots';
+    lbMedia.innerHTML = w.shots.map(s =>
+      '<figure><img src="' + esc(s.src) + '" alt="' + esc(s.cap || w.title) + '"' +
+      (s.w ? ' width="' + s.w + '" height="' + s.h + '"' : '') + '>' +
+      (s.cap ? '<figcaption>' + esc(s.cap) + '</figcaption>' : '') + '</figure>').join('');
+  } else {
+    lbMedia.className = 'lb-media note';
+    lbMedia.innerHTML = '<div class="noteface">' + (w.icon||'📄') + '</div>';
+  }
+  document.getElementById('lbTitle').textContent = w.title;
+  document.getElementById('lbDesc').textContent = w.desc;
+  document.getElementById('lbMeta').innerHTML =
+    '<span class="wtag cat-' + esc(w.cat) + '">' + (CAT_LABEL[w.cat]||w.cat) + '</span>' +
+    (w.year ? '<span class="wtag">' + esc(w.year) + '</span>' : '');
+  document.getElementById('lbCta').innerHTML = w.link
+    ? '<a class="btn primary" href="' + esc(w.link) + '" target="_blank" rel="noopener">🔗 바로가기</a>' : '';
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  lastFocus = document.activeElement;          // 닫을 때 돌아갈 자리
+  document.getElementById('lbClose').focus();
+}
+
+let lastFocus = null;
+
+function closeModal(){
+  overlay.classList.remove('open');
+  lbMedia.innerHTML = '';   // 영상 정지
+  document.body.style.overflow = '';
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+  lastFocus = null;
+}
+
+// 포커스 트랩 — 모달이 열려 있는 동안 Tab이 뒤 배경으로 새지 않게
+overlay.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const f = overlay.querySelectorAll('button, a[href], iframe');
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
+function openFromCard(card){
+  const idx = +card.dataset.idx;
+  const grid = card.closest('#wgridPersonal') ? personalWorks : shown;
+  openModal(grid[idx]);
+}
+document.addEventListener('click', e => {
+  const card = e.target.closest('.wcard'); if(!card) return;
+  openFromCard(card);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest && e.target.closest('.wcard'); if(!card) return;
+  e.preventDefault();
+  openFromCard(card);
+});
+document.getElementById('lbClose').addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
+</script>
+<script src="site.js?v=11"></script>
+</body>
+</html>
