@@ -135,21 +135,26 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 @keyframes bob{0%,100%{transform:translateY(0);} 50%{transform:translateY(5px);}}
 @media (max-width:760px), (max-height:760px){ .scroll-hint{display:none;} }
 
-/* 홈 — 페이지 바로가기 카드 */
-.gate-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;}
-@media (max-width:640px){ .gate-grid{grid-template-columns:1fr;} }
+/* 홈 — 페이지 바로가기 카드 (가로 배치: 3장이 항상 한 줄, 카드 안도 아이콘 옆에 글) */
+.gate-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
 .gate{
   background:var(--panel);
-  border:1.5px solid var(--line); border-radius:14px; padding:13px 15px 14px;
+  border:1.5px solid var(--line); border-radius:14px; padding:12px 14px 12px 13px;
   transition:transform .2s, border-color .2s, box-shadow .2s; position:relative; overflow:hidden;
   box-shadow:0 4px 14px rgba(110,90,50,.07);
+  display:flex; align-items:center; gap:11px;
 }
-.gate::before{content:""; position:absolute; top:0; left:0; right:0; height:4px; background:var(--grad); opacity:.9;}
+.gate::before{content:""; position:absolute; top:0; bottom:0; left:0; width:4px; height:auto; background:var(--grad); opacity:.9;}
 .gate:hover{transform:translateY(-4px); border-color:rgba(106,153,78,.5); box-shadow:0 12px 26px rgba(110,90,50,.13);}
-.gate .ic{font-size:20px; margin-bottom:4px;}
-.gate h3{font-size:15px; font-weight:800; margin-bottom:3px; color:#332b1e;}
-.gate p{font-size:11.5px; line-height:1.45; color:var(--sub); margin-bottom:8px;}
-.gate .go{font-size:11.5px; font-weight:800; color:#5e8140;}
+.gate .ic{font-size:22px; margin:0; flex:none;}
+.gate .gtxt{min-width:0;}
+.gate h3{font-size:14px; font-weight:800; margin-bottom:2px; color:#332b1e;}
+.gate p{font-size:11px; line-height:1.4; color:var(--sub); margin-bottom:0;}
+.gate .go{font-size:11.5px; font-weight:800; color:#5e8140; margin-left:auto; flex:none;}
+@media (max-width:760px){
+  .gate-grid{grid-template-columns:1fr; gap:8px;}
+  .gate .go{font-size:11px;}
+}
 
 /* ─── 패널 · 칩 ─── */
 .duo{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
