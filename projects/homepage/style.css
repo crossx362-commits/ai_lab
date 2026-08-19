@@ -391,6 +391,21 @@ h1 .grad{background:var(--grad); -webkit-background-clip:text; background-clip:t
 .pd-back{display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:800; color:var(--sub); margin-bottom:18px;}
 .pd-back:hover{color:#4c7a34;}
 
+/* ─── AI 만능 작업 카드 ─── */
+.cap-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+@media (max-width:1000px){ .cap-grid{grid-template-columns:1fr 1fr;} }
+@media (max-width:600px){ .cap-grid{grid-template-columns:1fr;} }
+.cap-card{
+  background:var(--panel); border:1.5px solid var(--line); border-radius:16px;
+  padding:20px; box-shadow:0 3px 10px rgba(110,90,50,.06);
+  transition:transform .2s, border-color .2s;
+}
+.cap-card:hover{transform:translateY(-3px); border-color:rgba(106,153,78,.45);}
+.cap-card .ic{font-size:26px; margin-bottom:10px;}
+.cap-card h3{font-size:15px; font-weight:800; margin-bottom:5px; color:#332b1e;}
+.cap-card p{font-size:12.5px; color:var(--sub);}
+.cap-card p b{color:#5e8140; font-weight:700;}
+
 /* ─── 라이트박스 (작업물 상세 팝업) ─── */
 .lb-overlay{
   position:fixed; inset:0; z-index:200;
