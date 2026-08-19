@@ -89,6 +89,14 @@ namespace AshesToStars
                 return;
             }
 
+            // 아래 두 장 선택 카드는 r.yMax에 앵커된다(DrawChoice). 보상 줄(Info/RewardInfo)이
+            // 많아지면 그 밴드를 침범해 "획득: …" 줄이 계속 버튼 뒤에 겹쳐 보였다(§16 결과 화면).
+            // 선택 밴드 높이만큼 본문 영역을 미리 줄여 Info의 하단 가드가 겹침을 막게 한다.
+            // DrawChoice와 **같은 공식**으로 예약해야 남거나 모자라지 않는다.
+            Rect full = r;
+            float choiceH = Mathf.Min(168f, Mathf.Max(100f, r.height * 0.42f));
+            r = new Rect(r.x, r.y, r.width, r.height - choiceH - 16f);
+
             if (SoloRaidClear.PendingBanner)
             {
                 Info(r, _rowIndex++, SoloRaidClear.BannerText);
@@ -192,7 +200,7 @@ namespace AshesToStars
                 }
             }
 
-            if (DrawChoice(r, "계속", "들어온 화면으로 복귀", "field",
+            if (DrawChoice(full, "계속", "들어온 화면으로 복귀", "field",
                            "영지로", "허브 복귀(§16)", "territory", out bool home))
             {
                 SoloRaidClear.AckBanner();
@@ -232,6 +240,10 @@ namespace AshesToStars
             Info(r, index, "       " + text);
             if (!string.IsNullOrEmpty(iconKey))
             {
+                // Info는 하단 밖으로 나가는 줄을 스스로 건너뛴다(GameScreen.Info). 아이콘도
+                // 같은 가드를 태워야 텍스트만 잘리고 아이콘만 선택 밴드 위에 떠 있는 고아
+                // 아이콘이 안 생긴다(§16 결과 화면 겹침 수정과 한 쌍).
+                if (r.y + index * (RowH + RowGap) + RowH > r.yMax) return;
                 const float h = 58f, gap = 14f;
                 ItemAtlas.DrawHud(new Rect(r.x + 4, r.y + index * (h + gap) + 5, 48, 48), iconKey);
             }
