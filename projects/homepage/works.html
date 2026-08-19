@@ -8,21 +8,22 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=7">
 <style>
-  .grp-toggle{display:flex; gap:10px; margin-bottom:22px;}
+  .grp-toggle{display:flex; gap:8px; margin-bottom:12px;}
   .grp-btn{
-    flex:1; max-width:260px; display:flex; align-items:center; gap:10px;
-    padding:14px 18px; border-radius:16px; border:1.5px solid var(--line);
+    flex:1; max-width:230px; display:flex; align-items:center; gap:9px;
+    padding:9px 14px; border-radius:14px; border:1.5px solid var(--line);
     background:var(--panel); cursor:pointer; font-family:inherit; text-align:left;
     transition:all .15s; box-shadow:0 3px 10px rgba(110,90,50,.06);
   }
-  .grp-btn .gic{font-size:20px;}
-  .grp-btn .gt{font-size:14px; font-weight:800; color:#332b1e;}
-  .grp-btn .gs{font-size:11.5px; color:var(--sub);}
+  .grp-btn .gic{font-size:17px;}
+  .grp-btn .gt{font-size:13px; font-weight:800; color:#332b1e;}
+  .grp-btn .gs{font-size:10.5px; color:var(--sub);}
   .grp-btn.on{border-color:rgba(106,153,78,.55); background:rgba(106,153,78,.09); box-shadow:0 6px 16px rgba(110,90,50,.1);}
   .grp-btn:hover{transform:translateY(-2px);}
-  .sub-h{font-size:14px; font-weight:800; color:#332b1e; margin:22px 0 12px; display:flex; align-items:center; gap:7px;}
+  .sub-h{font-size:13px; font-weight:800; color:#332b1e; margin:14px 0 8px; display:flex; align-items:center; gap:6px;}
+  .sub-h:first-child{margin-top:0;}
   .panel-view{display:none;}
   .panel-view.on{display:block;}
   @media (max-width:600px){ .grp-toggle{flex-direction:column;} .grp-btn{max-width:none;} }
@@ -142,7 +143,7 @@
   </div>
 </div>
 
-<script src="works.js?v=2"></script>
+<script src="works.js?v=4"></script>
 <script>
 const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', plan:'기획·컨셉' };
 let shown = [];
@@ -154,6 +155,8 @@ function cardHtml(w, i){
   if (w.yt) {
     media = '<div class="media" data-mounted="1"><img loading="lazy" src="https://i.ytimg.com/vi/' + esc(w.yt) + '/hqdefault.jpg" alt="">' +
       '<div class="play"><span>▶</span></div></div>';
+  } else if (w.shots && w.shots.length) {
+    media = '<div class="media"><img loading="lazy" src="' + esc(w.shots[0].src) + '" alt="' + esc(w.title) + '"></div>';
   } else {
     media = '<div class="media note"><div class="noteface">' + (w.icon||'📄') + '</div></div>';
   }
@@ -204,6 +207,11 @@ function openModal(w){
     lbMedia.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + esc(w.yt) +
       '?autoplay=1" title="' + esc(w.title) + '" referrerpolicy="origin" ' +
       'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+  } else if (w.shots && w.shots.length) {
+    lbMedia.className = 'lb-media shots';
+    lbMedia.innerHTML = w.shots.map(s =>
+      '<figure><img src="' + esc(s.src) + '" alt="' + esc(s.cap || w.title) + '">' +
+      (s.cap ? '<figcaption>' + esc(s.cap) + '</figcaption>' : '') + '</figure>').join('');
   } else {
     lbMedia.className = 'lb-media note';
     lbMedia.innerHTML = '<div class="noteface">' + (w.icon||'📄') + '</div>';
@@ -235,6 +243,6 @@ document.getElementById('lbClose').addEventListener('click', closeModal);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
 </script>
-<script src="site.js"></script>
+<script src="site.js?v=6"></script>
 </body>
 </html>
