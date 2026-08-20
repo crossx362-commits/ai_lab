@@ -209,6 +209,10 @@ namespace AshesToStars
 
         void DrawAttributes(Rect r, CharacterRecord ch)
         {
+                    // 속성 탭은 표제·목숨·기본스탯·이동기·전직·직업 특성·보유 스킬·종족 특성·정체성까지
+                    // ✅ 소비처가 10행 가까이 쌓여 76px 기본 그리드로는 하위 줄이 넘쳐 사라졌다(밀도 상한).
+                    // 이 패널만 행 피치를 46/40으로 낮춰 같은 index 그리드로 전부 담는다. 끝에서 되돌린다.
+                    RowPitch = 46f; RowHt = 40f;
                     string detail = $"{ch.Name} ({ch.Job}) · {ExpText(ch)}";
                     if (!ch.IsDeleted && ch.Level == Rebirth.StartLevel
                         && !string.IsNullOrEmpty(Rebirth.LastName)
@@ -244,7 +248,7 @@ namespace AshesToStars
                             : (ch.IsSpecialJob
                                 ? "삭제됨 — 특수 직업은 환생석으로 되돌릴 수 없다(§3)"
                                 : "삭제됨 — 환생석으로만 복구 가능(§4)"));
-                        UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
+                        UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + RowPitch + 18, 80, 22),
                             ch.DeathCount, true, ch.MaxLives);
                         if (Memorial.HasRecord(ch))
                         {
@@ -265,7 +269,7 @@ namespace AshesToStars
                         Info(r, 1, ch.IsSpecialJob
                             ? $"목숨 {ch.DeathCount}/{ch.MaxLives} {status} · 부활초·환생석 불가(§3)"
                             : $"목숨 {ch.DeathCount}/{ch.MaxLives} {status}");
-                        UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + (RowH + RowGap) + 18, 80, 22),
+                        UiAtlas.DrawHearts(new Rect(r.xMax - 90, r.y + RowPitch + 18, 80, 22),
                             ch.DeathCount, false, ch.MaxLives);
 
                         // 회복 중이면 시간 표시
@@ -405,28 +409,27 @@ namespace AshesToStars
                     if (!ch.IsDeleted && ch.PendingBoon >= 0)
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
 
-                    // §4 직업 특성 상세 — 1차+ 직업(수호기사 등)의 컨셉·고유메커니즘을 에셋에서 읽어 보여준다.
-                    // 기본직(탱/딜/…)이나 에셋 미로드면 빈 문자열이라 줄을 그리지 않는다(지어내지 않음).
+                    // §4 직업 특성·§3 보유 스킬·§18-9 종족 특성/정체성 — 전부 **이미 배선된 ✅ 표시
+                    // 소비처**(ConceptLine·SkillLine·MechanicLine·IdentityLine)인데, 76px 기본 그리드에선
+                    // 1차+ 캐릭터에서 표제·전직·이동기 우선존이 행 6을 다 먹어 넘쳐 사라졌다(밀도 상한).
+                    // 이 패널은 위 DrawAttributes 머리에서 RowPitch/RowHt를 컴팩트로 낮춰(공유 헬퍼 필드)
+                    // 같은 인덱스 그리드로 더 많은 행을 담으므로 이 줄들도 한 판에 보인다. 기본직·에셋
+                    // 미로드면 빈 문자열이라 줄을 안 그린다(지어내지 않음).
                     if (!ch.IsDeleted)
                     {
                         string trait = JobInfo.ConceptLine(ch.Job);
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
-                        // §5 이동기 프로필(형태·거리·무적·쿨)·§4 사망 리스크·§6 자동사냥은 위 StatLine 다음
-                        // 우선존으로 **끌어올렸다**(무적=원장 379 「조작의 핵심 기술」). 과거엔 여기(Concept·
-                        // Skill 뒤)라 행 6으로 넘쳐 §5 표시행이 통째로 사라졌다.
-                        // §18-9·§14 종족 고유 메커니즘 — 계정 종족 RaceDef.고유메커니즘의 유일한 소비처.
-                        // 캐릭터별이 아니라 계정 종족(RacePrefs.Get). 에셋 미로드·빈 값이면 빈 문자열이라 줄 안 그림.
+                        // §18-9·§14 종족 고유 메커니즘·정체성 — 계정 종족(RacePrefs.Get) RaceDef의 유일 소비처.
                         string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceTrait)) Info(r, advancementRow++, raceTrait);
-                        // §18-9 종족 정체성(RaceDef.정체성 유일 소비처) — 계정 종족의 한 줄 아키타입.
-                        // MechanicLine **뒤에** 둔다: 새 행이라 넘치면 Info가 건너뛰는데(위 r.yMax 주석),
-                        // 뒤에 두면 잘려도 이미 그린 종족 특성 줄을 밀어내지 않는다(정체성이 더 낮은 우선순위).
-                        // 계정 기본직 캐릭터는 위 직업 줄이 비어 여유가 있어 항상 보인다. 빈 값이면 줄 안 그림.
                         string raceIdent = RaceInfo.IdentityLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceIdent)) Info(r, advancementRow++, raceIdent);
                     }
+                    // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
+                    // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).
+                    RowPitch = RowH + RowGap; RowHt = RowH;
         }
 
         void DrawStarterSecond(Rect r)

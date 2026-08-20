@@ -70,6 +70,13 @@ namespace AshesToStars
         public static float BodyTop => HubHeader.BodyTop;
         public const float BodyPadX = 36f;
         protected const float RowH = 64f, RowGap = 12f, RowBtnW = 360f;
+        // 본문 행 그리드의 세로 피치·행 높이. **기본은 76/64로 기존 화면과 동일**(RowH+RowGap).
+        // 밀도가 높은 패널(캐릭터 속성 탭)만 이 둘을 컴팩트 값으로 낮춰, 같은 index 그리드로
+        // 더 많은 행을 넘침 없이 담는다 — 개별 커스텀 버튼은 private DrawAtlasButton 탓에 못
+        // 만드므로, 공유 Row/Locked/Info가 읽는 이 필드를 조절하는 것이 최소 변경이다. 값을
+        // 바꾼 화면은 반드시 그린 뒤 되돌린다(RowPitch=RowH+RowGap; RowHt=RowH).
+        protected float RowPitch = RowH + RowGap;
+        protected float RowHt = RowH;
 
         GUIStyle _h1, _h2, _h1Slim, _h2Slim, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
         // 아이콘 없는 카드(예: 타이틀 「종료」)를 형제 카드와 어긋나 보이지 않게 중앙 정렬로 그린다.
@@ -371,10 +378,10 @@ namespace AshesToStars
         }
 
         protected Rect RowButtonRect(Rect r, int index) =>
-            new Rect(r.x, r.y + index * (RowH + RowGap), RowBtnW, RowH);
+            new Rect(r.x, r.y + index * RowPitch, RowBtnW, RowHt);
 
         protected Rect RowDescRect(Rect r, int index) =>
-            new Rect(r.x + RowBtnW + 24, r.y + index * (RowH + RowGap), r.width - RowBtnW - 24, RowH);
+            new Rect(r.x + RowBtnW + 24, r.y + index * RowPitch, r.width - RowBtnW - 24, RowHt);
 
         protected void Hint(Rect r, string text)
         {
@@ -394,7 +401,7 @@ namespace AshesToStars
             DrawAtlasButton(br, label, iconKey: iconKey, leftPad: leftPad, rarity: rarity);
             bool hit = GUI.Button(br, GUIContent.none, GUIStyle.none);
             if (!string.IsNullOrEmpty(desc))
-                UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12), desc, _h2);
+                UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowHt - 12), desc, _h2);
             return hit;
         }
 
@@ -414,7 +421,7 @@ namespace AshesToStars
             if (br.yMax > r.yMax) return;
 
             DrawAtlasButton(br, label, locked: true, iconKey: iconKey, rarity: rarity);
-            UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowH - 12),
+            UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowHt - 12),
                       "잠김 — " + why, _small);
         }
 
@@ -481,7 +488,7 @@ namespace AshesToStars
         /// <summary>본문 안의 정보 한 줄(버튼 아님).</summary>
         protected void Info(Rect r, int index, string text)
         {
-            var panel = new Rect(r.x - 12, r.y + index * (RowH + RowGap), r.width + 24, RowH);
+            var panel = new Rect(r.x - 12, r.y + index * RowPitch, r.width + 24, RowHt);
             if (panel.yMax > r.yMax) return;
             InfoAt(panel, text);
         }
