@@ -39,6 +39,16 @@ namespace AshesToStars
             StarterPick.ResetForTest();
 
             Check(StarterPick.Jobs.Length == 5, "기본직업 5종");
+            Check(StarterPick.Blurb("탱") == "앞에서 막고 도발한다"
+                  && StarterPick.Blurb("딜") == "가장 가까운 적을 벤다"
+                  && StarterPick.Blurb("마딜") == "멀리서 마법으로 지른다"
+                  && StarterPick.Blurb("힐") == "쓰러지기 전에 고친다"
+                  && StarterPick.Blurb("버퍼") == "파티를 강화한다",
+                "5종 역할 설명 문구(Blurb)");
+            for (int i = 0; i < StarterPick.Jobs.Length; i++)
+                Check(!string.IsNullOrEmpty(StarterPick.Blurb(StarterPick.Jobs[i])),
+                    $"{StarterPick.Jobs[i]} 역할 설명이 비어 있지 않다");
+            Check(StarterPick.Blurb("없는직업") == "", "모르는 직업은 빈 문구");
             Check(UiPages.LookDir("탱") == "tank" && UiPages.LookDir("딜") == "dps"
                   && UiPages.LookDir("마딜") == "mage" && UiPages.LookDir("힐") == "healer"
                   && UiPages.LookDir("버퍼") == "buffer",
@@ -72,6 +82,8 @@ namespace AshesToStars
                 "_Game/Scripts/Runtime/TitleScreen.cs"));
             Check(titleSrc.Contains("StarterPickCards"),
                 "타이틀이 StarterPickCards를 쓴다 — Grid 3×2로 되돌리면 FAIL");
+            Check(titleSrc.Contains("StarterPick.Blurb(job)"),
+                "타이틀이 StarterPick.Blurb(job)를 카드에 그린다 — 빼면 역할 설명이 사라진다");
             Check(!titleSrc.Contains("card.height - 88f"),
                 "카드 안 가로 여백을 다시 88px 라벨로 열면 FAIL");
             Check(UiPages.JobLookFrame(false) == UiPages.IdleFrame
@@ -136,6 +148,7 @@ namespace AshesToStars
             Check(StarterPick.Open, "QA_START_PICK이면 선택 화면");
             Environment.SetEnvironmentVariable(StarterPick.EnvShow, null);
 
+            _ = nameof(StarterPick.Blurb);
             _ = nameof(StarterPick.TryChoose);
             _ = nameof(StarterPick.SeedQaIfRequested);
             _ = nameof(LifeSystem.BeginNewGame);

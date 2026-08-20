@@ -100,9 +100,13 @@ namespace AshesToStars
                 var look = new Rect(inner.x, inner.y,
                     inner.width, Mathf.Max(24f, inner.height - UiPages.StarterLabelH));
                 UiPages.DrawJobLook(look, job, UiPages.StarterLookWalks);
-                Hint(new Rect(inner.x, inner.yMax - UiPages.StarterLabelH + 4f,
-                        inner.width, UiPages.StarterLabelH - 4f),
+                // 라벨 띠를 반으로 나눠 위엔 직업 이름, 아래엔 역할 한 줄(StarterPick.Blurb).
+                float labelTop = inner.yMax - UiPages.StarterLabelH + 4f;
+                float lineH = (UiPages.StarterLabelH - 4f) / 2f;
+                Hint(new Rect(inner.x, labelTop, inner.width, lineH),
                     LifeSystem.BasicJobLabel(job));
+                Hint(new Rect(inner.x, labelTop + lineH, inner.width, lineH),
+                    StarterPick.Blurb(job));
                 if (GUI.Button(card, GUIContent.none, GUIStyle.none)
                     && StarterPick.TryChoose(job))
                     GameFlow.Go(GameFlow.Estate);
