@@ -378,8 +378,22 @@ namespace AshesToStars
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
+                        // §5 이동기(대시·구르기, 원장 369·381 ✅ JobDef.이동기형태의 유일한 소비처) +
+                        // §4 사망 리스크를 **한 행에** 붙인다. 둘 다 한 토큰짜리 짧은 직업 프로필 컬럼이고,
+                        // Info 행이 76px로 커 패널(≈6행)이 좁다 — 별도 행으로 두면 이동기가 사망 리스크를
+                        // r.yMax 밖으로 밀어 조용히 사라지게 하고(Info는 넘치면 건너뜀, 위 주석 참조) 종족
+                        // 특성 줄까지 잃는다. 합치면 둘 다 보이고 종족 줄 여유도 생긴다. 각각 빈 값이면
+                        // 그 조각만 빠진다(지어내지 않음) — 둘 다 비면 줄 안 그림.
+                        string dash = JobInfo.MovementLine(ch.Job);
                         string risk = JobInfo.RiskLine(ch.Job);
-                        if (!string.IsNullOrEmpty(risk)) Info(r, advancementRow++, risk);
+                        string profile = dash;
+                        if (!string.IsNullOrEmpty(risk))
+                            profile = string.IsNullOrEmpty(profile) ? risk : profile + " · " + risk;
+                        if (!string.IsNullOrEmpty(profile)) Info(r, advancementRow++, profile);
+                        // §18-9·§14 종족 고유 메커니즘 — 계정 종족 RaceDef.고유메커니즘의 유일한 소비처.
+                        // 캐릭터별이 아니라 계정 종족(RacePrefs.Get). 에셋 미로드·빈 값이면 빈 문자열이라 줄 안 그림.
+                        string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
+                        if (!string.IsNullOrEmpty(raceTrait)) Info(r, advancementRow++, raceTrait);
                     }
         }
 

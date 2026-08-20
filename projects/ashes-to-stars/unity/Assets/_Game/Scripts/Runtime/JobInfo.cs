@@ -73,5 +73,19 @@ namespace AshesToStars
             if (d == null || string.IsNullOrEmpty(d.사망리스크)) return "";
             return "사망 리스크 — " + d.사망리스크;
         }
+
+        /// <summary>
+        /// "이동기 — {구르기/방패 돌진/점멸/백스텝/짧은 스텝/위치 교체}". JobDef.이동기형태의
+        /// **유일한 런타임 소비처**. §5 이동기(원장 369·381 「✅ 오너 결정 2026-08-13」)의 계열별
+        /// 형태 컬럼인데 ProjectSetup이 직업마다 authored(수호기사 방패 돌진·궁수 백스텝…)하고도
+        /// 어떤 코드도 읽지 않아 소비처 0곳이었다(컨셉·스킬·사망리스크가 겪은 함정과 동일 계열).
+        /// 매칭 직업이 없거나 값이 비면 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
+        /// </summary>
+        public static string MovementLine(string jobName)
+        {
+            var d = For(jobName);
+            if (d == null || string.IsNullOrEmpty(d.이동기형태)) return "";
+            return "이동기 — " + d.이동기형태;
+        }
     }
 }
