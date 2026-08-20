@@ -82,7 +82,9 @@ p.lead b{color:#5e8140;}
 
 /* 서브페이지 헤더 */
 .page-head{padding:78px 20px 0;}
-.page-head .wrap{max-width:1120px; position:relative;}
+/* min-height는 캐릭터(.mascot.head, 높이 126px)가 제목 영역 안에 들어오도록 보장한다.
+   제목이 짧은 페이지에서 캐릭터가 위로 솟아 내비를 가리던 문제의 근본 수정. */
+.page-head .wrap{max-width:1120px; position:relative; min-height:132px;}
 .page-head .wrap.wide{max-width:1440px;}
 
 /* ─── 장인 캐릭터 ───
@@ -91,8 +93,13 @@ p.lead b{color:#5e8140;}
 .mascot{position:absolute; pointer-events:none; user-select:none; z-index:0;}
 .mascot img{display:block; width:100%; height:auto;}
 
-/* 페이지 제목 오른쪽 */
-.mascot.head{right:0; bottom:-6px; width:132px; opacity:.96;}
+/* 페이지 제목 오른쪽.
+   폭이 아니라 높이를 고정한다 — 캐릭터마다 가로세로 비율이 달라서 width로 잡으면
+   높이가 제각각이 되고, 제목 영역보다 커지면 위쪽 고정 내비를 뚫고 올라간다.
+   아래 min-height와 짝: 78(page-head 상단여백)+132(최소높이)+6-126 = 90px >
+   내비 높이(65px)이므로 어떤 페이지에서도 내비를 침범하지 않는다. */
+.mascot.head{right:0; bottom:-6px; height:126px; opacity:.96;}
+.mascot.head img{height:100%; width:auto;}
 @media (max-width:900px){ .mascot.head{display:none;} }
 
 /* 홈 히어로 오른쪽 — 제목/버튼과 안 겹치게 크게 */
