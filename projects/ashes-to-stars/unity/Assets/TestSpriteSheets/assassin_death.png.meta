@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 66413d944e5434b6ab9e7a2a708a9c80
+guid: 43d0455540af74481bfe5599c5971861
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -110,7 +110,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: healer_run_00
+      name: assassin_death_00
       rect:
         serializedVersion: 2
         x: 0
@@ -118,21 +118,21 @@ TextureImporter:
         width: 444
         height: 443
       alignment: 9
-      pivot: {x: 0.5146396, y: 0.0778781}
+      pivot: {x: 0.5371622, y: 0.0959368}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 2766e3c736e1a4c8c821ccc7ccda6506
-      internalID: 1102630106
+      spriteID: 6f23e542baf0b43efb842b3208612160
+      internalID: -1990931155
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_01
+      name: assassin_death_01
       rect:
         serializedVersion: 2
         x: 444
@@ -140,21 +140,21 @@ TextureImporter:
         width: 443
         height: 443
       alignment: 9
-      pivot: {x: 0.5316027, y: 0.05530474}
+      pivot: {x: 0.5428894, y: 0.06433409}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 76c1cce2a94a64d10b9e82bd13e2d936
-      internalID: -1688310390
+      spriteID: 801d4abacfaad4addbade4d974185b96
+      internalID: 950838002
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_02
+      name: assassin_death_02
       rect:
         serializedVersion: 2
         x: 887
@@ -162,21 +162,21 @@ TextureImporter:
         width: 443
         height: 443
       alignment: 9
-      pivot: {x: 0.52708805, y: 0.06433409}
+      pivot: {x: 0.51580137, y: 0.041760724}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a7a334b30f09b4da895d1c72b68e23b3
-      internalID: 400527348
+      spriteID: 069ea0d8687424c819e1ec19c8e27713
+      internalID: -801738483
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_03
+      name: assassin_death_03
       rect:
         serializedVersion: 2
         x: 1330
@@ -184,21 +184,21 @@ TextureImporter:
         width: 444
         height: 443
       alignment: 9
-      pivot: {x: 0.5146396, y: 0.05530474}
+      pivot: {x: 0.5123874, y: 0.039503384}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 0afc2d8cc2bba4a3daf7e021da9ce12a
-      internalID: 756528576
+      spriteID: 67f187c17a6c54b1694a6929e87d2cab
+      internalID: 1039523533
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_04
+      name: assassin_death_04
       rect:
         serializedVersion: 2
         x: 0
@@ -206,21 +206,21 @@ TextureImporter:
         width: 444
         height: 444
       alignment: 9
-      pivot: {x: 0.5011261, y: 0.097972974}
+      pivot: {x: 0.5349099, y: 0.19256757}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 26e1d86796c2b4521b009c471621ace5
-      internalID: -853106377
+      spriteID: cac10c53cc6e349d9927cf4c060893c0
+      internalID: -1938378337
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_05
+      name: assassin_death_05
       rect:
         serializedVersion: 2
         x: 444
@@ -228,21 +228,21 @@ TextureImporter:
         width: 443
         height: 444
       alignment: 9
-      pivot: {x: 0.52257335, y: 0.093468465}
+      pivot: {x: 0.513544, y: 0.19256757}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d40c05f83eb8e40598b54be0734168dd
-      internalID: -984938396
+      spriteID: 5740364ec238749fd8063af97e4dfb8e
+      internalID: 835751075
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_06
+      name: assassin_death_06
       rect:
         serializedVersion: 2
         x: 887
@@ -250,21 +250,21 @@ TextureImporter:
         width: 443
         height: 444
       alignment: 9
-      pivot: {x: 0.52708805, y: 0.10472973}
+      pivot: {x: 0.506772, y: 0.2195946}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 03429c38971f94306ac5ea3be63ae244
-      internalID: -1236459465
+      spriteID: 2d4ce41db66d54f41b88228926e8f3b0
+      internalID: -1739631223
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_07
+      name: assassin_death_07
       rect:
         serializedVersion: 2
         x: 1330
@@ -272,15 +272,15 @@ TextureImporter:
         width: 444
         height: 444
       alignment: 9
-      pivot: {x: 0.5281532, y: 0.07995495}
+      pivot: {x: 0.48536035, y: 0.18806307}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: fa3227af2bbe64e1c9f86a196cee8df9
-      internalID: 912149159
+      spriteID: 101d05b7a9499456b9b1cf21650d4baf
+      internalID: 622729192
       vertices: []
       indices: 
       edges: []
@@ -289,7 +289,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 69f62074ae0f949ff9fed270c2edc190
+    spriteID: 298d67882e7d24fc69bc4b03fc0a1922
     internalID: 0
     vertices: []
     indices: 
@@ -299,14 +299,14 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      healer_run_00: 1102630106
-      healer_run_01: -1688310390
-      healer_run_02: 400527348
-      healer_run_03: 756528576
-      healer_run_04: -853106377
-      healer_run_05: -984938396
-      healer_run_06: -1236459465
-      healer_run_07: 912149159
+      assassin_death_00: -1990931155
+      assassin_death_01: 950838002
+      assassin_death_02: -801738483
+      assassin_death_03: 1039523533
+      assassin_death_04: -1938378337
+      assassin_death_05: 835751075
+      assassin_death_06: -1739631223
+      assassin_death_07: 622729192
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

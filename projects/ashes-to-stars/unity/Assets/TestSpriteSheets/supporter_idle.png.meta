@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 66413d944e5434b6ab9e7a2a708a9c80
+guid: 4d10a46d07ba946578da4f6bc0cd145c
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -110,7 +110,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: healer_run_00
+      name: supporter_idle_00
       rect:
         serializedVersion: 2
         x: 0
@@ -118,21 +118,21 @@ TextureImporter:
         width: 444
         height: 443
       alignment: 9
-      pivot: {x: 0.5146396, y: 0.0778781}
+      pivot: {x: 0.4966216, y: 0.057562076}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 2766e3c736e1a4c8c821ccc7ccda6506
-      internalID: 1102630106
+      spriteID: 7cd9af980332343ceb3cfaa1640d3546
+      internalID: -1105642276
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_01
+      name: supporter_idle_01
       rect:
         serializedVersion: 2
         x: 444
@@ -140,21 +140,21 @@ TextureImporter:
         width: 443
         height: 443
       alignment: 9
-      pivot: {x: 0.5316027, y: 0.05530474}
+      pivot: {x: 0.506772, y: 0.057562076}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 76c1cce2a94a64d10b9e82bd13e2d936
-      internalID: -1688310390
+      spriteID: 98448cce21b6141ec971c23646be385a
+      internalID: 1089827757
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_02
+      name: supporter_idle_02
       rect:
         serializedVersion: 2
         x: 887
@@ -162,21 +162,21 @@ TextureImporter:
         width: 443
         height: 443
       alignment: 9
-      pivot: {x: 0.52708805, y: 0.06433409}
+      pivot: {x: 0.513544, y: 0.057562076}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a7a334b30f09b4da895d1c72b68e23b3
-      internalID: 400527348
+      spriteID: ceb6efa5ae2784263a782856d9811e42
+      internalID: -1500667530
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_03
+      name: supporter_idle_03
       rect:
         serializedVersion: 2
         x: 1330
@@ -184,21 +184,21 @@ TextureImporter:
         width: 444
         height: 443
       alignment: 9
-      pivot: {x: 0.5146396, y: 0.05530474}
+      pivot: {x: 0.5101351, y: 0.057562076}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 0afc2d8cc2bba4a3daf7e021da9ce12a
-      internalID: 756528576
+      spriteID: 040279f24937d48838fbac63dfa1f5e1
+      internalID: -1413254190
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_04
+      name: supporter_idle_04
       rect:
         serializedVersion: 2
         x: 0
@@ -206,21 +206,21 @@ TextureImporter:
         width: 444
         height: 444
       alignment: 9
-      pivot: {x: 0.5011261, y: 0.097972974}
+      pivot: {x: 0.5033784, y: 0.061936937}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 26e1d86796c2b4521b009c471621ace5
-      internalID: -853106377
+      spriteID: 0af8345f7a1e3490f9d90228e8c1e843
+      internalID: 65670447
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_05
+      name: supporter_idle_05
       rect:
         serializedVersion: 2
         x: 444
@@ -228,21 +228,21 @@ TextureImporter:
         width: 443
         height: 444
       alignment: 9
-      pivot: {x: 0.52257335, y: 0.093468465}
+      pivot: {x: 0.50225735, y: 0.061936937}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d40c05f83eb8e40598b54be0734168dd
-      internalID: -984938396
+      spriteID: e9e75b8b98ed9418d8575271104471b4
+      internalID: -159726893
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_06
+      name: supporter_idle_06
       rect:
         serializedVersion: 2
         x: 887
@@ -250,21 +250,21 @@ TextureImporter:
         width: 443
         height: 444
       alignment: 9
-      pivot: {x: 0.52708805, y: 0.10472973}
+      pivot: {x: 0.5090293, y: 0.061936937}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 03429c38971f94306ac5ea3be63ae244
-      internalID: -1236459465
+      spriteID: 8f0e10d7d706f40b8942a0824d53d2f3
+      internalID: 235128392
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: healer_run_07
+      name: supporter_idle_07
       rect:
         serializedVersion: 2
         x: 1330
@@ -272,15 +272,15 @@ TextureImporter:
         width: 444
         height: 444
       alignment: 9
-      pivot: {x: 0.5281532, y: 0.07995495}
+      pivot: {x: 0.4921171, y: 0.061936937}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: fa3227af2bbe64e1c9f86a196cee8df9
-      internalID: 912149159
+      spriteID: 3ac227254f24f4a349bdc811b26f9cb9
+      internalID: -482254417
       vertices: []
       indices: 
       edges: []
@@ -289,7 +289,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 69f62074ae0f949ff9fed270c2edc190
+    spriteID: ee7558828180d41aaa52b6e1d569b1ec
     internalID: 0
     vertices: []
     indices: 
@@ -299,14 +299,14 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      healer_run_00: 1102630106
-      healer_run_01: -1688310390
-      healer_run_02: 400527348
-      healer_run_03: 756528576
-      healer_run_04: -853106377
-      healer_run_05: -984938396
-      healer_run_06: -1236459465
-      healer_run_07: 912149159
+      supporter_idle_00: -1105642276
+      supporter_idle_01: 1089827757
+      supporter_idle_02: -1500667530
+      supporter_idle_03: -1413254190
+      supporter_idle_04: 65670447
+      supporter_idle_05: -159726893
+      supporter_idle_06: 235128392
+      supporter_idle_07: -482254417
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

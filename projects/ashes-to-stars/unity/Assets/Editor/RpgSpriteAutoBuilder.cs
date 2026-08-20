@@ -58,6 +58,8 @@ public class RpgSpriteAutoBuilder : EditorWindow
     private int maxColumns = 12;
     private int maxRows = 8;
     private int minimumCellSize = 24;
+    private int forceColumns = 0;   // 0 = 자동
+    private int forceRows = 0;      // 0 = 자동
     private GridDetection detection;
 
     // Animation
@@ -218,6 +220,8 @@ public class RpgSpriteAutoBuilder : EditorWindow
         maxColumns = EditorGUILayout.IntSlider("Max Columns", maxColumns, 2, 20);
         maxRows = EditorGUILayout.IntSlider("Max Rows", maxRows, 1, 12);
         minimumCellSize = EditorGUILayout.IntSlider("Min Cell Size", minimumCellSize, 8, 128);
+        forceColumns = EditorGUILayout.IntSlider("Force Columns (0=auto)", forceColumns, 0, 20);
+        forceRows = EditorGUILayout.IntSlider("Force Rows (0=auto)", forceRows, 0, 12);
         EditorGUILayout.EndVertical();
     }
 
@@ -732,6 +736,19 @@ public class RpgSpriteAutoBuilder : EditorWindow
 
     private GridDetection DetectBestGrid(Texture2D tex, Color32[] pixels)
     {
+        // 수동 강제 격자 — 이펙트가 셀 경계를 크게 넘는 시트는 자동 판별이
+        // 빗나갈 수 있다. 그때는 이 값으로 못 박는다.
+        if (forceColumns > 0 && forceRows > 0)
+        {
+            return new GridDetection
+            {
+                columns = forceColumns,
+                rows = forceRows,
+                score = 999f,
+                cells = BuildCells(tex.width, tex.height, forceColumns, forceRows)
+            };
+        }
+
         GridDetection best = null;
 
         int maxC = Mathf.Min(maxColumns, tex.width / Mathf.Max(1, minimumCellSize));
@@ -758,6 +775,12 @@ public class RpgSpriteAutoBuilder : EditorWindow
                 List<RectInt> cells = BuildCells(tex.width, tex.height, cols, rows);
 
                 float score = ScoreGrid(tex, pixels, cells, cols, rows);
+
+                // 애니메이션 프레임 셀은 대체로 정사각형에 가깝다. 이펙트가
+                // 셀 경계를 넘는 시트에서 1x2·4x1 같은 극단적 세장비 격자가
+                // 이기는 오판(실측 5/30)을 종횡비 페널티로 막는다.
+                float cellAspect = avgCellW / Mathf.Max(1f, avgCellH);
+                score -= Mathf.Abs(Mathf.Log(cellAspect, 2f)) * 18f;
 
                 // Small preference for common animation sheet sizes.
                 if (frameCount == 8) score += 7f;
