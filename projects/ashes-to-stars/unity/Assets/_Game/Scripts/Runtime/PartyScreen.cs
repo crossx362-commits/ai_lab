@@ -77,7 +77,9 @@ namespace AshesToStars
             UiAtlas.DrawRosterFrame(faceR);
             PortraitAtlas.Draw(faceR, PortraitAtlas.KeyForJob(ch.Job),
                 ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null);
-            UiAtlas.Draw(new Rect(faceR.xMax - 8f, faceR.yMax - 8f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
+            // 역할 뱃지는 초상 프레임 안쪽 우하단 모서리에 앉힌다. 예전엔 faceR.xMax-8부터
+            // 20px라 프레임(우/하 +2px) 밖으로 ~10px 흘러내려 뱃지가 모서리에 매달린 것처럼 보였다.
+            UiAtlas.Draw(new Rect(faceR.xMax - 22f, faceR.yMax - 22f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
             UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
             Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
             return GUI.Button(cell, GUIContent.none, GUIStyle.none);
