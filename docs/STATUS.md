@@ -27,7 +27,7 @@
 xp 막대가 금테 안, 하트가 Lv 줄 오른쪽 헤더, 장비 6슬롯 + 「가방 3/60(§11)」이 전부 패널 안에 렌더 —
 `polish_char_shots/qa_after_infocol_inframe.png`. **네거티브 컨트롤(실측 스크린샷)**: `infoTop`을 옛 pull-up 식으로
 되돌려 재빌드하면 Lv·경험·하트·xp 막대가 다시 프레임 밖으로 삐져나온다 — `polish_char_shots/qa_negctrl_pullup_spill.png`.
-빌드는 `unity_meas` 사본으로 돌렸다. 코드 커밋 대기(`CharacterScreen.cs`·`STATUS.md`만).
+빌드는 `unity_meas` 사본으로 돌렸다. 코드 `1e4e90d3`(`CharacterScreen.cs`·`STATUS.md`만).
 **다음 이터는 코드칸(마지막 트랙=폴리싱) — 폴리싱 다음이 「파티」.**
 
 
