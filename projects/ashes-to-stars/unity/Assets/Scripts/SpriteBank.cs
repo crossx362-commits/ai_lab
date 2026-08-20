@@ -44,12 +44,17 @@ public class SpriteBank
     /// </summary>
     public enum Frame
     {
-        Idle0 = 0, Idle1 = 1, Idle2 = 2, Idle3 = 3, Idle4 = 4, Idle5 = 5,
-        Walk0 = 6, Walk1 = 7, Walk2 = 8, Walk3 = 9, Walk4 = 10, Walk5 = 11,
-        Atk0 = 12, Atk1 = 13, Atk2 = 14, Atk3 = 15, Atk4 = 16, Atk5 = 17,
-        Sp0 = 18, Sp1 = 19, Sp2 = 20, Sp3 = 21, Sp4 = 22, Sp5 = 23,
-        Hurt = 24, Death = 25,
-        DashA = 26, DashB = 27, DashC = 28, DashD = 29, Invuln = 30,
+        // 2026-08-21 6→8칸 확장(오너 "모션마다 이미지 수가 왜 달라") — 시트가 전
+        // 모션 8장 균일이라 2장씩 버리고 있었다. 값은 JOB_FRAMES 순서와 같아야 한다.
+        Idle0 = 0, Idle1 = 1, Idle2 = 2, Idle3 = 3, Idle4 = 4, Idle5 = 5, Idle6 = 6, Idle7 = 7,
+        Walk0 = 8, Walk1 = 9, Walk2 = 10, Walk3 = 11, Walk4 = 12, Walk5 = 13, Walk6 = 14, Walk7 = 15,
+        Atk0 = 16, Atk1 = 17, Atk2 = 18, Atk3 = 19, Atk4 = 20, Atk5 = 21, Atk6 = 22, Atk7 = 23,
+        Sp0 = 24, Sp1 = 25, Sp2 = 26, Sp3 = 27, Sp4 = 28, Sp5 = 29, Sp6 = 30, Sp7 = 31,
+        Hurt = 32,
+        Death0 = 33, Death1 = 34, Death2 = 35, Death3 = 36,
+        Death4 = 37, Death5 = 38, Death6 = 39, Death7 = 40,
+        DashA = 41, DashB = 42, DashC = 43, DashD = 44, Invuln = 45,
+        Death = Death0,   // 옛 이름 — 단일 장 호출부용(시체는 마지막 장이 아니라 첫 장을 든다)
         Special = Sp0,
         Idle = Idle0,
         // 옛 이름 — 호출부가 아직 쓴다. 6프레임의 첫 두 장을 가리킨다.
@@ -124,11 +129,13 @@ public class SpriteBank
     Sprite[][] _extra;
     static readonly string[] JOB_FRAMES =
     {
-        "idle_00", "idle_01", "idle_02", "idle_03", "idle_04", "idle_05",
-        "walk_00", "walk_01", "walk_02", "walk_03", "walk_04", "walk_05",
-        "attack_00", "attack_01", "attack_02", "attack_03", "attack_04", "attack_05",
-        "special_00", "special_01", "special_02", "special_03", "special_04", "special_05",
-        "hurt_00", "death_00",
+        "idle_00", "idle_01", "idle_02", "idle_03", "idle_04", "idle_05", "idle_06", "idle_07",
+        "walk_00", "walk_01", "walk_02", "walk_03", "walk_04", "walk_05", "walk_06", "walk_07",
+        "attack_00", "attack_01", "attack_02", "attack_03", "attack_04", "attack_05", "attack_06", "attack_07",
+        "special_00", "special_01", "special_02", "special_03", "special_04", "special_05", "special_06", "special_07",
+        "hurt_00",
+        "death_00", "death_01", "death_02", "death_03",
+        "death_04", "death_05", "death_06", "death_07",
         "dash_00", "dash_01", "dash_02", "dash_03", "invuln_00",
     };
 
@@ -178,11 +185,12 @@ public class SpriteBank
     // 빨라서 안 보인다" — 걷기 0.72s(6장이면 8fps)·공격 0.06s/장(16fps)은 눈이 못 따라간다.
     // ⚠️ 공격은 **동작 길이(W3Party.AttackT)보다 짧아야** 전 프레임이 보인다.
     //    옛 값은 6×0.06=0.36s인데 AttackT가 0.26s라 뒤 2장이 화면에 뜨지도 못했다.
-    public const float WalkCycle = 1.10f;   // 6장 → 0.18s/장
-    public const float IdleCycle = 1.50f;   // 6장 → 0.25s/장
-    public const float AtkFrame = 0.0833f;  // 6장 → 0.50s (오너 지정)
-    public const float SpFrame = 0.1667f;   // 6장 → 1.00s (오너 지정)
+    public const float WalkCycle = 1.10f;   // 8장 → 0.14s/장 (사이클 길이는 유지)
+    public const float IdleCycle = 1.50f;   // 8장 → 0.19s/장 (사이클 길이는 유지)
+    public const float AtkFrame = 0.0625f;  // 8장 → 총 0.50s (오너 지정 총길이 유지)
+    public const float SpFrame = 0.125f;    // 8장 → 총 1.00s (오너 지정 총길이 유지)
     public const float DashFrame = 0.06f;   // 대시는 짧아야 이동기로 읽힌다 — 유지
+    public const float DeathFrame = 0.1f;   // 8장 → 0.8s 쓰러진 뒤 마지막 장(시체) 유지 — 몹 death와 같은 박자
 
     public Sprite CharAnim(Job j, Motion m, float t)
     {
@@ -192,12 +200,12 @@ public class SpriteBank
             // 프레임 수를 코드에 못 박으면 자산이 바뀔 때마다 여기도 고쳐야 한다.
             case Motion.Walk:
             {
-                int n = Have(j, Frame.Walk0, 6);
+                int n = Have(j, Frame.Walk0, 8);
                 return Char(j, (Frame)((int)Frame.Walk0 + (int)(t / (WalkCycle / n)) % n));
             }
             case Motion.Attack:
             {
-                int n = Have(j, Frame.Atk0, 6);
+                int n = Have(j, Frame.Atk0, 8);
                 // 공격은 한 번 재생하고 마지막 장에서 멈춘다(루프하면 계속 휘두른다)
                 return Char(j, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / AtkFrame), 0, n - 1)));
             }
@@ -205,14 +213,19 @@ public class SpriteBank
                 return Char(j, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / DashFrame), 0, 3)));
             case Motion.Special:
             {
-                int n = Have(j, Frame.Sp0, 6);
+                int n = Have(j, Frame.Sp0, 8);
                 return Char(j, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / SpFrame), 0, n - 1)));
             }
             case Motion.Hurt: return Char(j, Frame.Hurt);
-            case Motion.Death: return Char(j, Frame.Death);
+            case Motion.Death:
+            {
+                // 쓰러지는 8장을 한 번 재생하고 마지막 장(시체)에서 멈춘다 — 몹 death와 같은 구조.
+                int n = Have(j, Frame.Death0, 8);
+                return Char(j, (Frame)((int)Frame.Death0 + Mathf.Clamp((int)(t / DeathFrame), 0, n - 1)));
+            }
             default:
             {
-                int n = Have(j, Frame.Idle0, 6);
+                int n = Have(j, Frame.Idle0, 8);
                 return Char(j, (Frame)((int)Frame.Idle0 + (int)(t / (IdleCycle / n)) % n));
             }
         }
@@ -270,26 +283,30 @@ public class SpriteBank
             // 6장짜리가 들어오면 코드를 안 고쳐도 6장으로 돈다.
             case Motion.Walk:
             {
-                int n = HaveDir(e, Frame.Walk0, 6);
+                int n = HaveDir(e, Frame.Walk0, 8);
                 return CharDir(dir, (Frame)((int)Frame.Walk0 + (int)(t / (WalkCycle / n)) % n));
             }
             case Motion.Attack:
             {
-                int n = HaveDir(e, Frame.Atk0, 6);
+                int n = HaveDir(e, Frame.Atk0, 8);
                 return CharDir(dir, (Frame)((int)Frame.Atk0 + Mathf.Clamp((int)(t / AtkFrame), 0, n - 1)));
             }
             case Motion.Dash:
                 return CharDir(dir, (Frame)((int)Frame.DashA + Mathf.Clamp((int)(t / DashFrame), 0, 3)));
             case Motion.Special:
             {
-                int n = HaveDir(e, Frame.Sp0, 6);
+                int n = HaveDir(e, Frame.Sp0, 8);
                 return CharDir(dir, (Frame)((int)Frame.Sp0 + Mathf.Clamp((int)(t / SpFrame), 0, n - 1)));
             }
             case Motion.Hurt: return CharDir(dir, Frame.Hurt);
-            case Motion.Death: return CharDir(dir, Frame.Death);
+            case Motion.Death:
+            {
+                int n = HaveDir(e, Frame.Death0, 8);
+                return CharDir(dir, (Frame)((int)Frame.Death0 + Mathf.Clamp((int)(t / DeathFrame), 0, n - 1)));
+            }
             default:
             {
-                int n = HaveDir(e, Frame.Idle0, 6);
+                int n = HaveDir(e, Frame.Idle0, 8);
                 return CharDir(dir, (Frame)((int)Frame.Idle0 + (int)(t / (IdleCycle / n)) % n));
             }
         }
