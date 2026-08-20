@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=c23b311c">
 <style>
   .grp-toggle{display:flex; align-items:flex-end; gap:8px; margin-bottom:12px;}
   /* 匠 깃발 캐릭터 — 이 페이지는 본문 폭이 wide(1440px)라 제목 옆에 절대배치하면
@@ -67,7 +67,7 @@
         <span class="gic">🏢</span>
         <span><span class="gt">회사 프로젝트</span><br><span class="gs">재직하며 만든 애니메이션 작업물</span></span>
       </button>
-      <img class="grp-mascot" src="images/smith/banner.png" alt="" aria-hidden="true">
+      <img class="grp-mascot" loading="lazy" src="images/smith/banner.png" alt="" aria-hidden="true">
     </div>
 
     <!-- 개인 프로젝트 -->
@@ -161,12 +161,14 @@
   </div>
 </div>
 
-<script src="works.js?v=10"></script>
+<!-- site.js가 먼저 와야 한다 — 아래 인라인 렌더가 공용 escHtml을 쓴다 -->
+<script src="site.js?v=0d4892d2"></script>
+<script src="works.js?v=bd22e726"></script>
 <script>
 const CAT_LABEL = { reel:'애니메이션 릴', ai:'AI 활용', plan:'기획·컨셉' };
 let shown = [];
 
-function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+const esc = escHtml;  // site.js 공용 — 속성값에 쓰므로 따옴표까지 이스케이프
 
 function cardHtml(w, i){
   let media;
@@ -301,6 +303,5 @@ document.getElementById('lbClose').addEventListener('click', closeModal);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal(); });
 </script>
-<script src="site.js?v=13"></script>
 </body>
 </html>

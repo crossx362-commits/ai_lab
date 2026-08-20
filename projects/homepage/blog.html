@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=c23b311c">
 <style>
   .post{
     background:var(--panel);
@@ -71,7 +71,7 @@
     <div class="kicker rv">Blog</div>
     <h2 class="title rv">블로그</h2>
     <p class="lead rv d1"><b>개발일기</b>에는 프로젝트별로 무엇이 만들어졌는지, <b>일상·잡담</b>에는 사는 이야기를 씁니다.</p>
-    <div class="mascot head rv d2" aria-hidden="true"><img src="images/smith/desk.png" alt=""></div>
+    <div class="mascot head rv d2" aria-hidden="true"><img loading="lazy" src="images/smith/desk.png" alt=""></div>
   </div>
 </div>
 
@@ -88,20 +88,18 @@
 </section>
 
 <!-- site.js가 먼저 와야 한다 — 아래 렌더가 site.js의 renderShots를 즉시 호출한다 -->
-<script src="site.js?v=13"></script>
-<script src="posts.js?v=9"></script>
+<script src="site.js?v=0d4892d2"></script>
+<script src="posts.js?v=d2c0dd55"></script>
 <script>
-function escT(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML.replace(/"/g,'&quot;'); }
+const escT = escHtml;          // site.js 공용 — 로컬 사본 금지
+const fmtCmtDate = fmtDateDot; // site.js 공용
 const box = document.getElementById('posts');
 const CAT_BADGE = { '개발일기':'🛠️ 개발일기', '일상':'☕ 일상·잡담' };
 
-// 댓글이 물릴 키. posts.js에 id를 안 적은 옛 글만 제목 기반으로 떨어뜨린다 —
+// 댓글이 물릴 키. posts.js에 id를 안 적은 글만 제목 기반으로 떨어뜨린다 —
 // 배열 index를 쓰면 새 글을 위에 추가할 때마다 댓글이 통째로 밀린다.
-function postKey(p, i){ return p.id || ('t-' + (p.title || i)); }
-function fmtCmtDate(iso){
-  const d = new Date(iso);
-  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
-}
+// DB 제약(post_id ≤60자)과 조회 필터가 큰따옴표를 못 담으므로 여기서 걸러 60자 안으로 맞춘다.
+function postKey(p, i){ return p.id || ('t-' + String(p.title || i).replace(/"/g, "'").slice(0, 58)); }
 
 function renderPosts(cat){
   const list = POSTS.filter(p => cat === 'all' || p.cat === cat);
@@ -133,32 +131,54 @@ function renderPosts(cat){
   }).join('');
   // 갤러리는 site.js의 공용 renderShots로 채운다 (확대 보기까지 같이 붙는다)
   box.querySelectorAll('[data-shots]').forEach(el => renderShots(el, list[+el.dataset.shots].shots));
-  loadCounts();
+  // 댓글 수는 캐시에서 즉시 칠하고, 최초 1회만 서버 조회 — 필터를 오갈 때마다
+  // 같은 데이터를 다시 SELECT하던 낭비 제거
+  paintCounts();
+  if (!countsLoaded) loadCounts();
 }
 
 // ─── 댓글 ───
+// 캐시가 재렌더(innerHTML 교체)에도 살아남게 모듈 스코프에 둔다
+const cmtCounts = {};       // post_id -> 댓글 수
+const cmtCache = {};        // post_id -> rows (연 적 있는 글만)
+let countsLoaded = false;
+
+function paintCounts(){
+  box.querySelectorAll('[data-cmt]').forEach(b => {
+    const n = cmtCounts[b.dataset.cmt];
+    b.querySelector('.cc').textContent = n ? '(' + n + ')' : '';
+  });
+}
+
 // 화면에 있는 글들의 댓글 수를 한 번의 요청으로 받아 온다(글마다 따로 부르면 요청이 글 수만큼 늘어난다)
 async function loadCounts(){
   const btns = [...box.querySelectorAll('[data-cmt]')];
   if (!btns.length) return;
   try{
+    // postKey가 큰따옴표를 이미 걸러내므로 여기 strip은 방어용
     const ids = btns.map(b => '"' + b.dataset.cmt.replace(/"/g,'') + '"').join(',');
     const rows = await sbFetch('/rest/v1/homepage_blog_comments?select=post_id&post_id=in.(' + encodeURIComponent(ids) + ')');
-    const n = {};
-    (rows||[]).forEach(r => { n[r.post_id] = (n[r.post_id]||0) + 1; });
-    btns.forEach(b => { b.querySelector('.cc').textContent = n[b.dataset.cmt] ? '(' + n[b.dataset.cmt] + ')' : ''; });
+    (rows||[]).forEach(r => { cmtCounts[r.post_id] = (cmtCounts[r.post_id]||0) + 1; });
+    countsLoaded = true;
+    paintCounts();
   }catch(e){ /* 테이블 미생성/네트워크 실패 — 개수 표시만 생략, 글 읽기는 그대로 */ }
 }
 
+function renderCommentList(listEl, rows){
+  if (!rows || !rows.length){ listEl.innerHTML = '<div class="cmt-empty">아직 댓글이 없어요 — 첫 댓글을 남겨주세요!</div>'; return; }
+  listEl.innerHTML = rows.map(r =>
+    '<div class="cmt-item"><div class="ch"><span class="cn">' + escT(r.nickname) + '</span>' +
+    '<span class="cd">' + fmtCmtDate(r.created_at) + '</span></div>' +
+    '<div class="cm">' + escT(r.message) + '</div></div>').join('');
+}
+
 async function loadComments(pid, listEl){
+  if (cmtCache[pid]){ renderCommentList(listEl, cmtCache[pid]); return; }
   try{
     const rows = await sbFetch('/rest/v1/homepage_blog_comments?select=created_at,nickname,message&post_id=eq.' +
       encodeURIComponent(pid) + '&order=created_at.asc&limit=200');
-    if (!rows || !rows.length){ listEl.innerHTML = '<div class="cmt-empty">아직 댓글이 없어요 — 첫 댓글을 남겨주세요!</div>'; return; }
-    listEl.innerHTML = rows.map(r =>
-      '<div class="cmt-item"><div class="ch"><span class="cn">' + escT(r.nickname) + '</span>' +
-      '<span class="cd">' + fmtCmtDate(r.created_at) + '</span></div>' +
-      '<div class="cm">' + escT(r.message) + '</div></div>').join('');
+    cmtCache[pid] = rows || [];
+    renderCommentList(listEl, cmtCache[pid]);
   }catch(e){
     listEl.innerHTML = '<div class="cmt-empty">댓글을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>';
   }
@@ -171,10 +191,8 @@ box.addEventListener('click', e => {
   if (!boxEl) return;
   const opening = !boxEl.classList.contains('open');
   boxEl.classList.toggle('open', opening);
-  if (opening && !boxEl.dataset.loaded){
-    boxEl.dataset.loaded = '1';
-    loadComments(pid, boxEl.querySelector('.cmt-list'));
-  }
+  // 캐시(cmtCache)가 있으면 loadComments가 요청 없이 즉시 그린다
+  if (opening) loadComments(pid, boxEl.querySelector('.cmt-list'));
 });
 
 box.addEventListener('submit', async e => {
@@ -195,8 +213,11 @@ box.addEventListener('submit', async e => {
       body: JSON.stringify({ post_id: pid, nickname, message }),
     });
     form.querySelector('.cmt-msg').value = '';
-    await loadComments(pid, boxEl.querySelector('.cmt-list'));
-    await loadCounts();
+    // 서버 재조회 없이 캐시에 방금 쓴 댓글을 얹고 그 자리만 갱신
+    (cmtCache[pid] = cmtCache[pid] || []).push({ created_at: new Date().toISOString(), nickname, message });
+    renderCommentList(boxEl.querySelector('.cmt-list'), cmtCache[pid]);
+    cmtCounts[pid] = (cmtCounts[pid] || 0) + 1;
+    paintCounts();
     btn.textContent = '✅ 남겼습니다!';
     setTimeout(() => { btn.disabled = false; btn.textContent = '남기기'; }, 2500);
   }catch(err){

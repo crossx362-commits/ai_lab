@@ -13,6 +13,17 @@ async function sbFetch(path, opts) {
   return text ? JSON.parse(text) : null;
 }
 
+// ─── 공용 헬퍼 ───
+// HTML 이스케이프. 속성값에도 쓰이므로 큰따옴표까지 치환한다 — 페이지마다
+// 사본(escT/gEsc/esc)을 두다가 따옴표 처리가 갈라졌던 전례가 있어 여기로 통합.
+// 새 페이지는 이걸 쓰고, 절대 로컬 사본을 만들지 마라.
+function escHtml(s){ const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML.replace(/"/g, '&quot;'); }
+// YYYY.MM.DD — 방명록·블로그 댓글 공용 날짜 표기
+function fmtDateDot(iso){
+  const d = new Date(iso);
+  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+}
+
 // ─── 방문자 수: 최상단 내비에 배지로 표시. 세션당 1회만 증가, 실패하면 조용히 숨김 ───
 (async function visitCounter() {
   let el = document.getElementById('visits');
@@ -76,9 +87,11 @@ document.addEventListener('click', e => {
       method: 'POST', keepalive: true,
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_slug: slug }),
-    }).then(() => {
+    }).then(r => r.ok ? r.json() : null).then(count => {
+      // RPC가 갱신된 카운트를 그대로 돌려준다 — 전체 재조회 없이 이 슬롯만 갱신
+      if (typeof count !== 'number') return;
       const slot = document.querySelector('[data-dl-count="' + CSS.escape(slug) + '"]');
-      if (slot) loadDownloadCounts();
+      if (slot) { slot.textContent = fmtCount(count); slot.closest('[data-dl-wrap]')?.removeAttribute('hidden'); }
     }).catch(() => {});
   }catch(err){ /* 집계 실패는 무시 — 다운로드가 우선 */ }
 });
@@ -132,7 +145,7 @@ mountLitePlayers();
    클릭하면 원본 크기로 확대해서 보여준다. */
 function renderShots(el, list){
   if (!el || !list || !list.length) return;
-  const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML.replace(/"/g, '&quot;'); };
+  const esc = escHtml;
   el.className = 'shots';
   el.innerHTML = list.map(s =>
     '<figure' + (s.pixel ? ' class="pixel"' : '') + '>' +
