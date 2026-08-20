@@ -39,15 +39,21 @@ namespace AshesToStars
             }
 
             var copy = new Rect(r.x, r.y + 8f, r.width * 0.54f, r.height - 16f);
+            // 소개 두 줄이 헤더 바로 아래에 붙어 좌측 열이 통째로 비어 화면이 위로 쏠려
+            // 보였다(폴리싱 2026-08-20). 오른쪽 3카드는 열 전체 높이를 채우는데 왼쪽만
+            // 상단에 몰려 균형이 깨졌다. 소개 블록을 좌측 열 세로 중앙에 놓아 맞춘다.
+            const float titleH = 36f, gap = 8f, descH = 90f;
+            float blockH = titleH + gap + descH;
+            float by = copy.y + Mathf.Max(0f, (copy.height - blockH) * 0.5f);
             // 이 줄은 획득한 칭호(정상 정복·홀로 레이드)를 보여주는 자리다. 빈 상태
             // 폴백이 헤더 부제("…죽으면 캐릭터가 진짜 사라진다")와 **같은 문장**이라
             // 타이틀 화면에 같은 문구가 두 번 떴다(폴리싱 2026-08-20). 아직 칭호가 없다는
             // 빈 상태 문구로 바꿔 중복을 없앤다.
-            Hint(new Rect(copy.x, copy.y, copy.width, 36f),
+            Hint(new Rect(copy.x, by, copy.width, titleH),
                  TowerEnding.HasTitle ? TowerEnding.TitleName
                  : SoloRaidClear.HasAny ? SoloRaidClear.LastTitle
                  : "아직 정상에 오른 파티가 없다");
-            Hint(new Rect(copy.x, copy.y + 44f, copy.width, 90f),
+            Hint(new Rect(copy.x, by + titleH + gap, copy.width, descH),
                  TowerEnding.HasTitle
                      ? $"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)"
                      : SoloRaidClear.HasAny
