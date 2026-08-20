@@ -63,6 +63,42 @@ namespace AshesToStars
             return parts.Count == 0 ? "" : string.Join(" · ", parts);
         }
 
+        /// <summary>
+        /// §522 ✅(오너 결정 2026-08-13) 정예 = 직업 역할의 거울. 유형별 「대응 직업 · 대응법」.
+        /// 이 표는 기획서에만 있고 코드 소비처가 0곳이었다 — 지도가 이름만 보여
+        /// 「무엇을 먼저 죽일 것인가」가 안 읽혔다. 전투 기믹은 W3Party라 이 칸은 표시뿐이다.
+        /// </summary>
+        public static string RoleTip(EliteKind k)
+        {
+            switch (k)
+            {
+                case EliteKind.수호자:   return "탱 · 오라 밖 유인";
+                case EliteKind.처형자:   return "딜 · 진로 차단";
+                case EliteKind.주술사:   return "힐 · 최우선 처치";
+                case EliteKind.군단장:   return "버퍼 · 2순위 처치";
+                case EliteKind.저주술사: return "디버퍼 · 사거리 밖 이탈";
+                case EliteKind.소환술사: return "소환사 · 본체 끊기";
+                default:                 return "";
+            }
+        }
+
+        /// <summary>이름에 거울 역할을 붙여 「수호자(탱 · 오라 밖 유인)」로 읽어준다.</summary>
+        public static string FormatWithRole(params EliteKind[] kinds)
+        {
+            if (Blocked || kinds == null || kinds.Length == 0) return "";
+            var parts = new List<string>(kinds.Length);
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                if (kinds[i] == EliteKind.없음) continue;
+                string tip = RoleTip(kinds[i]);
+                parts.Add(string.IsNullOrEmpty(tip) ? kinds[i].ToString() : $"{kinds[i]}({tip})");
+            }
+            return parts.Count == 0 ? "" : string.Join(" · ", parts);
+        }
+
+        public static string FormatWithRole(WavePlan wave) =>
+            wave == null ? "" : FormatWithRole(wave.EliteKinds);
+
         public static string Format(WavePlan wave) =>
             wave == null ? "" : Format(wave.EliteKinds);
 
@@ -87,7 +123,7 @@ namespace AshesToStars
         public static string Caption(DungeonNode n)
         {
             if (n == null || Blocked) return OldCaption(n);
-            string kinds = Format(n.Wave);
+            string kinds = FormatWithRole(n.Wave);
             if (string.IsNullOrEmpty(kinds)) return OldCaption(n);
             _lastLine = Line(n.Wave);
             return $"정예 아레나 · {kinds}(§10-2)";

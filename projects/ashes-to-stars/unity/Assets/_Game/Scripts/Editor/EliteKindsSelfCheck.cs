@@ -60,6 +60,15 @@ namespace AshesToStars
                   && cap.IndexOf("§10-2", StringComparison.Ordinal) >= 0
                   && cap.IndexOf("%", StringComparison.Ordinal) < 0,
                 $"Caption 유형 (실제 {cap})");
+            // §522 ✅ 거울 역할이 카드에 읽힌다 — RoleTip을 빼면(빈 문자열) 이름만 남아 FAIL.
+            Check(cap.IndexOf("탱", StringComparison.Ordinal) >= 0
+                  && cap.IndexOf("최우선 처치", StringComparison.Ordinal) >= 0,
+                $"Caption 거울 역할 (실제 {cap})");
+            Check(EliteKinds.RoleTip(EliteKind.소환술사) == "소환사 · 본체 끊기"
+                  && EliteKinds.RoleTip(EliteKind.없음) == "",
+                $"RoleTip 표 (실제 {EliteKinds.RoleTip(EliteKind.소환술사)})");
+            Check(EliteKinds.FormatWithRole(EliteKind.주술사).IndexOf("힐 · 최우선 처치", StringComparison.Ordinal) >= 0,
+                $"FormatWithRole (실제 {EliteKinds.FormatWithRole(EliteKind.주술사)})");
             string old = EliteKinds.OldCaption(dummy);
             Check(old.IndexOf("12%", StringComparison.Ordinal) >= 0
                   && old.IndexOf("80체", StringComparison.Ordinal) >= 0,
