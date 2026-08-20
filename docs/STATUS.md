@@ -33,7 +33,7 @@
 **네거티브 컨트롤**: 셀프체크 「Caption 거울 역할」이 카드에 "탱"·"최우선 처치" 존재를 단언 — `RoleTip`을
 빈 문자열로 되돌리면 `FormatWithRole`가 맨이름으로 폴백해 그 단어가 사라져 FAIL(옛 소비처 0곳 상태). 증거
 `output/qa/ashes-to-stars/shots/{qa_dungeon.png,elite_selfcheck.log}`. `EliteKinds.cs`·`EliteKindsSelfCheck.cs` 두 파일 —
-전투 수치·AI·온라인·영지·W3Party·아트 무접촉, 표시 문자열만. 코드 `<COMMIT>`. **아트 오염 주의**: fx/bg png·
+전투 수치·AI·온라인·영지·W3Party·아트 무접촉, 표시 문자열만. 코드 `1418583f`. **아트 오염 주의**: fx/bg png·
 ui metas·`TextureImportRules.cs`는 다른 세션 미커밋 텍스처 작업 — 건드리지 않았다. **다음 이터는 폴리싱 칸
 (마지막 트랙=코드) — 폴리싱 다음이 「타이틀」.**
 
