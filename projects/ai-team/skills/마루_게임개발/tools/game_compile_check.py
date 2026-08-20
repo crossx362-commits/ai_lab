@@ -15,8 +15,9 @@
 
 무엇을 못 잡는가 (이 도구의 한계를 먼저 적는다):
   - 에셋 참조 깨짐(.meta GUID 고아), 씬·프리팹 연결, 셰이더, 런타임 NullReference
-  - 패키지(com.unity.*)에서 오는 타입 — 참조 어셈블리에 없으면 CS0246이 뜬다.
-    그 경우 --packages 로 Library/ScriptAssemblies 를 참조에 추가한다(임포트 1회 후 생김).
+  - 패키지(com.unity.*)에서 오는 타입 — 에디터 참조 어셈블리에는 없다.
+    Library/ScriptAssemblies 가 있으면(임포트 1회 후 생김) 자동으로 참조에 포함한다.
+    없으면 CS0234/CS0246이 헛경보로 뜰 수 있다(2026-08-20 UnityEditor.U2D.Sprites 실측).
   즉 **통과 = 문법이 맞다**이지 **통과 = 게임이 돈다**가 아니다. 실동작은 여전히 플레이로 본다.
 
 사용:
@@ -154,6 +155,19 @@ def _ref_dlls(contents):
     return refs
 
 
+def _package_refs(unity_project):
+    """패키지(com.unity.*) 타입용 — Library/ScriptAssemblies 의 asmdef 산출물.
+
+    Assembly-CSharp* 는 지금 컴파일하려는 소스 자신이므로 제외한다
+    (포함하면 낡은 빌드가 새 오류를 가리거나 CS0436 중복이 난다).
+    """
+    d = os.path.join(unity_project, "Library", "ScriptAssemblies")
+    if not os.path.isdir(d):
+        return []
+    return [os.path.join(d, f) for f in sorted(os.listdir(d))
+            if f.endswith(".dll") and not f.startswith("Assembly-CSharp")]
+
+
 def source_files(unity_project=UNITY_PROJECT):
     out = []
     for base, _dirs, files in os.walk(os.path.join(unity_project, "Assets")):
@@ -180,7 +194,7 @@ def compile_check(unity_project=UNITY_PROJECT, extra_sources=(), extra_refs=()):
         f.write(f'-out:"{os.path.join(tmp, "check.dll")}"\n')
         # 유니티 자체 규칙과 같은 수준으로 소음을 끈다(미사용 필드 등은 오류가 아니다)
         f.write("-nowarn:0169,0414,0649,0067,0108,0436\n")
-        for r in list(tc["refs"]) + list(extra_refs):
+        for r in list(tc["refs"]) + _package_refs(unity_project) + list(extra_refs):
             f.write(f'-r:"{r}"\n')
         for s in srcs:
             f.write(f'"{s}"\n')

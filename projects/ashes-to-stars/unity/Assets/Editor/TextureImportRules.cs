@@ -28,20 +28,28 @@ public class TextureImportRules : AssetPostprocessor
         if (assetPath.Contains("/sprites/") || assetPath.Contains("/Sprites/"))
         {
             ti.textureType = TextureImporterType.Sprite;
-            ti.spriteImportMode = SpriteImportMode.Single;
             ti.alphaIsTransparency = true;
             ti.wrapMode = TextureWrapMode.Clamp;
-            // 픽셀아트 기본값 — 방향별 스프라이트가 오면 그대로 적용된다
-            ti.spritePixelsPerUnit = 32;
-            ti.spritePivot = new Vector2(0.5f, 0.06f);   // 발밑 피벗 — 쿼터뷰 Y정렬 기준
+            // RpgSpriteAutoBuilder가 슬라이스한 시트(Multiple)는 건드리지 않는다 —
+            // Single로 되돌리면 슬라이스·프레임별 피벗·PPU가 통째로 날아간다.
+            if (ti.spriteImportMode != SpriteImportMode.Multiple)
+            {
+                ti.spriteImportMode = SpriteImportMode.Single;
+                // 픽셀아트 기본값 — 방향별 스프라이트가 오면 그대로 적용된다
+                ti.spritePixelsPerUnit = 32;
+                ti.spritePivot = new Vector2(0.5f, 0.06f);   // 발밑 피벗 — 쿼터뷰 Y정렬 기준
+            }
         }
         else if (assetPath.Contains("/FX/") || assetPath.Contains("/out_effects/"))
         {
             ti.textureType = TextureImporterType.Sprite;
-            ti.spriteImportMode = SpriteImportMode.Single;
             ti.alphaIsTransparency = true;
             ti.wrapMode = TextureWrapMode.Clamp;
-            ti.spritePixelsPerUnit = 32;
+            if (ti.spriteImportMode != SpriteImportMode.Multiple)
+            {
+                ti.spriteImportMode = SpriteImportMode.Single;
+                ti.spritePixelsPerUnit = 32;
+            }
             // 이펙트는 중앙 피벗 — 대상 위에 겹쳐 그린다
         }
         else if (assetPath.Contains("/ground/") || assetPath.Contains("/Ground/"))
