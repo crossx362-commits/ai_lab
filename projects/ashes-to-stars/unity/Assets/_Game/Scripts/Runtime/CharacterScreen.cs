@@ -392,11 +392,20 @@ namespace AshesToStars
                         // 위 주석대로 종족 특성 줄을 r.yMax 밖으로 밀어 조용히 잃는다. 각각 빈 값이면
                         // 그 조각만 빠진다(지어내지 않음).
                         string hunt = JobInfo.AutoHuntLine(ch.Job);
+                        // §5 이동기 무적·쿨 수치(JobDef.무적시간·이동기쿨 유일 소비처, 원장 376·377·379).
+                        // 위 조각들과 같은 한 행에 붙이되 **맨 뒤**에 둔다: InfoAt은 LabelClip(좌측 정렬·
+                        // 우측 잘림, GameScreen.cs:500)이라 행이 넘치면 뒤 조각부터 잘린다 — 무적·쿨은
+                        // 형태·리스크·자동사냥보다 뒤라 여유 없을 때 이것만 잘리고 이미 보이던 앞 조각은
+                        // 안 밀려난다(정체성이 MechanicLine 뒤인 것과 같은 우선순위 원칙). 매칭 직업 없으면
+                        // 빈 값이라 조각만 빠진다(지어내지 않음).
+                        string mobility = JobInfo.MobilityStatLine(ch.Job);
                         string profile = dash;
                         if (!string.IsNullOrEmpty(risk))
                             profile = string.IsNullOrEmpty(profile) ? risk : profile + " · " + risk;
                         if (!string.IsNullOrEmpty(hunt))
                             profile = string.IsNullOrEmpty(profile) ? hunt : profile + " · " + hunt;
+                        if (!string.IsNullOrEmpty(mobility))
+                            profile = string.IsNullOrEmpty(profile) ? mobility : profile + " · " + mobility;
                         if (!string.IsNullOrEmpty(profile)) Info(r, advancementRow++, profile);
                         // §18-9·§14 종족 고유 메커니즘 — 계정 종족 RaceDef.고유메커니즘의 유일한 소비처.
                         // 캐릭터별이 아니라 계정 종족(RacePrefs.Get). 에셋 미로드·빈 값이면 빈 문자열이라 줄 안 그림.
