@@ -69,6 +69,7 @@ namespace AshesToStars
             SeedFusionQaIfRequested();
             SeedSpecialJobQaIfRequested();
             SeedJobTraitQaIfRequested();
+            SeedRaceTraitQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -609,6 +610,19 @@ namespace AshesToStars
             roster[0].Advancement = AdvancementTier.First;
             _selectedCharacter = 0;
             _detailPage = 1; // 속성 탭 — DrawAttributes에 직업 특성 줄이 있다
+        }
+
+        // 시각 QA. QA_RACE_TRAIT=1이면 계정 종족을 드워프로 두고 속성 탭을 연다 —
+        // 기본직 캐릭터라 직업 특성/이동기 줄이 비어 종족 특성 줄이 패널 안에 넉넉히 들어간다.
+        // 종족 특성 줄에 RaceInfo.MechanicLine이 붙이는 「(발동 25%)」(불굴 고유발동확률 0.25)를 육안 확인용.
+        void SeedRaceTraitQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_RACE_TRAIT") != "1") return;
+            RacePrefs.Set(RaceId.드워프);
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
         }
 
         void SeedTowerEndingQaIfRequested()
