@@ -454,10 +454,12 @@ namespace AshesToStars
                 UiAtlas.DrawSliced(b, btnKey, 8f,
                     on ? (Color?)null : new Color(1f, 1f, 1f, 0.72f));
                 var inner = UiAtlas.ContentRect(b, btnKey, 2f);
-                float ih = Mathf.Min(22f, inner.height - 12f);
+                // 14px 글씨 띠에서는 LabelFit이 3글자 이름(화살탑·마법탑)을 12px 밑으로 줄여
+                // 안 읽혔다 — 아이콘을 줄여 글씨 띠를 18px로 넓힌다(폴리싱 2026-08-20, 표시 전용).
+                float ih = Mathf.Min(16f, inner.height - 20f);
                 if (ih > 8f && !string.IsNullOrEmpty(icon))
                     UiAtlas.DrawFit(new Rect(inner.center.x - ih * 0.5f, inner.y, ih, ih), icon);
-                Hint(new Rect(inner.x, inner.yMax - 14f, inner.width, 14f), $"{k} {left}");
+                Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{k} {left}");
                 if (GUI.Button(b, GUIContent.none, GUIStyle.none))
                     _placeKind = cellKind;
             }
