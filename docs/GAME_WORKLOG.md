@@ -51,6 +51,20 @@ rm -f loop/STOP
 원장은 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」을 반드시 읽어라** —
 자리 크기로 그림 크기까지 내면 건물이 화면을 덮는 거인이 된다(실측 후 되돌림 `b414e914`).
 
+## 완료 (2026-08-21) — 5직업 모션 8프레임 통일 (대화 세션)
+
+오너 지적 "모션마다 이미지 수가 왜 달라, 근본적으로 고쳐". 실측: 원본 시트 30장은
+전부 4×2=8프레임 균일인데 **옛 6칸 코드 계약에 맞추느라 반입 때 모션당 2장씩 버리고
+death는 1장만 남긴 것**이 근본 원인. 두 커밋으로 수리:
+1. `164ea882` — SpriteBank 계약 6→8칸(Frame enum 46칸, death 8장 애니, 총길이 유지:
+   Atk 0.50s·Sp 1.00s, DeathFrame 0.1s 신설).
+2. `372bd4fe` — `art/import_p26_8frames.py`로 시트에서 8장 전량 재추출
+   (idle/walk/attack/special/death 각 8장, dash=run[0,2,4,6]·hurt=death[0]·
+   invuln=idle_01[0] 파생 유지 — **이 3종은 원본 시트가 없다**). MotionCycleSelfCheck
+   기대치 6→8 + Death 순환 검사. 에디터 실행 JobAnimSelfCheck·MotionCycleSelfCheck
+   모두 PASS, meta 46/46. 증빙 GIF `output/qa/ashes-to-stars/new_sprites_shots/jobs_8frame_grid.gif`.
+   원격 푸시 완료(c809b786).
+
 ## 완료 (2026-08-20) — 신규 5직업 스프라이트 시트 반입·전투 아트 전면 교체 (대화 세션)
 
 오너가 준 시트 30장(직업 5종 × idle/idle_01/run/attack/skill/death, 4x2/8프레임)을
