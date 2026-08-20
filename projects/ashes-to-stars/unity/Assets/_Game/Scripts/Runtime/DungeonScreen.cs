@@ -105,7 +105,14 @@ namespace AshesToStars
 
             int cols = Mathf.Min(2, next.Count + 1);
             int rows = Mathf.CeilToInt((next.Count + 1) / (float)cols);
-            var nodes = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 80f), cols, rows, 12f);
+            // 노드가 2장뿐이면 전폭 밴드(r.height-80)가 카드를 본문 전체 높이(~560px)로
+            // 늘려, 아이콘·글씨 묶음만 가운데 뜨고 카드 속이 텅 빈 화면이 됐다(폴리싱: 빈 여백).
+            // 행당 상한 300px로 밴드를 잡아 본문 가운데에 놓는다 — 카드가 가로형(아이콘 왼쪽·
+            // 글씨 오른쪽)으로 서서 게임의 나머지 허브 카드와 같은 비율로 읽힌다.
+            float availH = r.height - 80f;
+            float bandH = Mathf.Min(availH, rows * 300f + (rows - 1) * 12f);
+            var band = new Rect(r.x, r.y + 80f + (availH - bandH) * 0.5f, r.width, bandH);
+            var nodes = UiPages.Grid(band, cols, rows, 12f);
             for (int i = 0; i < next.Count && i < nodes.Length; i++)
             {
                 int n = next[i];
