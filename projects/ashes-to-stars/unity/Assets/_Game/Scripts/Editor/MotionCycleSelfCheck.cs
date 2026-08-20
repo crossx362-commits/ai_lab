@@ -35,13 +35,16 @@ namespace AshesToStars
 
             // (모션, 기대 프레임 수). attack/special/dash는 마지막 장 고정이라
             // t 범위 안에서 기대 수만큼 등장한 뒤 멈추는 게 정상이다.
+            // 2026-08-21 8칸 통일: 원본 시트가 전부 4×2=8프레임 — 6은 옛 계약의 잔재다.
+            // Death도 8장 재생 후 시체(마지막 장) 유지.
             var wants = new (SpriteBank.Motion m, int n)[]
             {
-                (SpriteBank.Motion.Idle, 6),
-                (SpriteBank.Motion.Walk, 6),
-                (SpriteBank.Motion.Attack, 6),
-                (SpriteBank.Motion.Special, 6),
+                (SpriteBank.Motion.Idle, 8),
+                (SpriteBank.Motion.Walk, 8),
+                (SpriteBank.Motion.Attack, 8),
+                (SpriteBank.Motion.Special, 8),
                 (SpriteBank.Motion.Dash, 4),
+                (SpriteBank.Motion.Death, 8),
             };
 
             for (int j = 0; j < Dirs.Length; j++)
