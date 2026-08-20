@@ -1493,6 +1493,12 @@ public class W3Party : MonoBehaviour
             alignment = TextAnchor.MiddleCenter,
         };
 
+        // 동시 시전 콜아웃 계단 분리(폴리싱 2026-08-20) — 파티가 화면 중앙에 밀집해
+        // 여럿이 같은 프레임에 스킬을 쓰면 콜아웃 rect가 같은 좌표에 통째로 겹쳐
+        // 「도발의 함성/화염 폭풍/고양/천벌」이 한 줄에 포개져 안 읽혔다. 이미 놓인
+        // rect와 겹치면 아래로 밀어 세로로 흩는다. 되돌리면(placed 검사 제거) 다시 포갠다.
+        _calloutPlaced.Clear();
+        float band = Screen.height - CombatHudBottomHeight - 28f;
         foreach (var c in _callouts)
         {
             float u = c.T / CALLOUT_LIFE;
@@ -1500,9 +1506,18 @@ public class W3Party : MonoBehaviour
             if (sp.z < 0f) continue;                                  // 카메라 뒤
             float y = Screen.height - sp.y - 46f - u * 34f;           // 위로 떠오른다
             // 상단 요약, 우측 보상 레인, 하단 지휘 바는 월드 콜아웃이 침범하지 않는다.
-            y = Mathf.Clamp(y, CombatHudTopHeight + 26f, Screen.height - CombatHudBottomHeight - 28f);
+            y = Mathf.Clamp(y, CombatHudTopHeight + 26f, band);
             float x = Mathf.Clamp(sp.x - 90f, Screen.width * .12f, Screen.width - 180f - 170f);
             var r = new Rect(x, y, 180f, 26f);
+            for (int guard = 0; guard < 12; guard++)
+            {
+                bool bumped = false;
+                foreach (var pr in _calloutPlaced)
+                    if (r.Overlaps(pr)) { r.y = pr.yMax + 2f; bumped = true; break; }
+                if (!bumped) break;
+            }
+            r.y = Mathf.Min(r.y, band);
+            _calloutPlaced.Add(r);
 
             // 알파는 뒤쪽 절반에서만 뺀다 — 처음부터 흐려지면 읽기도 전에 사라진다
             float a = u < 0.55f ? 1f : 1f - (u - 0.55f) / 0.45f;
@@ -1515,6 +1530,7 @@ public class W3Party : MonoBehaviour
     }
 
     GUIStyle _calloutStyle;
+    readonly System.Collections.Generic.List<Rect> _calloutPlaced = new System.Collections.Generic.List<Rect>();
 
     CameraFollow _cam;
 
