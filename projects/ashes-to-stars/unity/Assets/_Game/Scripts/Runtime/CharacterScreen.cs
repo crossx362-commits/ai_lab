@@ -311,6 +311,29 @@ namespace AshesToStars
                     {
                         string stats = JobInfo.StatLine(ch.Job);
                         if (!string.IsNullOrEmpty(stats)) { Info(r, statusMax + 1, stats); statusMax += 1; }
+
+                        // §5 이동기 프로필(형태·거리·무적·쿨) + §4 사망 리스크 + §6 자동사냥을 한 행에.
+                        // 무적은 원장 379 「이 게임 조작의 핵심 기술」이라 ConceptLine(직업 특성)·SkillLine(보유
+                        // 스킬)보다 우선순위가 높다 — StatLine처럼 전직 블록 **앞** 우선존에 둬 패널이 꽉 차도
+                        // 항상 보이게 한다. 과거엔 Concept·Skill 뒤(행 6)라 r.yMax를 넘겨 §5 표시행 전체가
+                        // 조용히 사라졌다(Info는 넘치면 건너뜀 — GameScreen.cs:485). 여유가 없으면 대신 하위
+                        // 우선순위(SkillLine·종족 줄)가 밀린다. 각 조각은 빈 값이면 빠지고(지어내지 않음),
+                        // 넷 다 비면(기본직·에셋 미로드) 행을 안 그려 종족 줄 여유를 뺏지 않는다.
+                        string dash = JobInfo.MovementLine(ch.Job);
+                        string mobility = JobInfo.MobilityStatLine(ch.Job);
+                        string risk = JobInfo.RiskLine(ch.Job);
+                        string hunt = JobInfo.AutoHuntLine(ch.Job);
+                        // 순서 = 우선순위. InfoAt은 LabelClip(좌측 정렬·우측 잘림)이라 행이 넘치면 뒤부터
+                        // 잘린다. 형태·거리·무적·쿨(둘 다 §5 이동기)을 **맨 앞**에 몰아 절대 안 잘리게 하고,
+                        // 리스크(§4)·자동사냥(§6)은 뒤라 여유 없을 때 이것만 잘린다.
+                        string profile = dash;
+                        if (!string.IsNullOrEmpty(mobility))
+                            profile = string.IsNullOrEmpty(profile) ? mobility : profile + " · " + mobility;
+                        if (!string.IsNullOrEmpty(risk))
+                            profile = string.IsNullOrEmpty(profile) ? risk : profile + " · " + risk;
+                        if (!string.IsNullOrEmpty(hunt))
+                            profile = string.IsNullOrEmpty(profile) ? hunt : profile + " · " + hunt;
+                        if (!string.IsNullOrEmpty(profile)) { Info(r, statusMax + 1, profile); statusMax += 1; }
                     }
 
                     int advancementRow = statusMax + 1;
@@ -390,34 +413,9 @@ namespace AshesToStars
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
-                        // §5 이동기(대시·구르기, 원장 369·381 ✅ JobDef.이동기형태의 유일한 소비처) +
-                        // §4 사망 리스크를 **한 행에** 붙인다. 둘 다 한 토큰짜리 짧은 직업 프로필 컬럼이고,
-                        // Info 행이 76px로 커 패널(≈6행)이 좁다 — 별도 행으로 두면 이동기가 사망 리스크를
-                        // r.yMax 밖으로 밀어 조용히 사라지게 하고(Info는 넘치면 건너뜀, 위 주석 참조) 종족
-                        // 특성 줄까지 잃는다. 합치면 둘 다 보이고 종족 줄 여유도 생긴다. 각각 빈 값이면
-                        // 그 조각만 빠진다(지어내지 않음) — 둘 다 비면 줄 안 그림.
-                        string dash = JobInfo.MovementLine(ch.Job);
-                        string risk = JobInfo.RiskLine(ch.Job);
-                        // §6 자동사냥 적합도(JobDef.자동사냥적합도 유일 소비처)도 같은 한 토큰짜리 짧은
-                        // 프로필 조각이라 **별도 행을 늘리지 않고** 이 행에 붙인다 — 새 행을 만들면
-                        // 위 주석대로 종족 특성 줄을 r.yMax 밖으로 밀어 조용히 잃는다. 각각 빈 값이면
-                        // 그 조각만 빠진다(지어내지 않음).
-                        string hunt = JobInfo.AutoHuntLine(ch.Job);
-                        // §5 이동기 무적·쿨 수치(JobDef.무적시간·이동기쿨 유일 소비처, 원장 376·377·379).
-                        // 위 조각들과 같은 한 행에 붙이되 **맨 뒤**에 둔다: InfoAt은 LabelClip(좌측 정렬·
-                        // 우측 잘림, GameScreen.cs:500)이라 행이 넘치면 뒤 조각부터 잘린다 — 무적·쿨은
-                        // 형태·리스크·자동사냥보다 뒤라 여유 없을 때 이것만 잘리고 이미 보이던 앞 조각은
-                        // 안 밀려난다(정체성이 MechanicLine 뒤인 것과 같은 우선순위 원칙). 매칭 직업 없으면
-                        // 빈 값이라 조각만 빠진다(지어내지 않음).
-                        string mobility = JobInfo.MobilityStatLine(ch.Job);
-                        string profile = dash;
-                        if (!string.IsNullOrEmpty(risk))
-                            profile = string.IsNullOrEmpty(profile) ? risk : profile + " · " + risk;
-                        if (!string.IsNullOrEmpty(hunt))
-                            profile = string.IsNullOrEmpty(profile) ? hunt : profile + " · " + hunt;
-                        if (!string.IsNullOrEmpty(mobility))
-                            profile = string.IsNullOrEmpty(profile) ? mobility : profile + " · " + mobility;
-                        if (!string.IsNullOrEmpty(profile)) Info(r, advancementRow++, profile);
+                        // §5 이동기 프로필(형태·거리·무적·쿨)·§4 사망 리스크·§6 자동사냥은 위 StatLine 다음
+                        // 우선존으로 **끌어올렸다**(무적=원장 379 「조작의 핵심 기술」). 과거엔 여기(Concept·
+                        // Skill 뒤)라 행 6으로 넘쳐 §5 표시행이 통째로 사라졌다.
                         // §18-9·§14 종족 고유 메커니즘 — 계정 종족 RaceDef.고유메커니즘의 유일한 소비처.
                         // 캐릭터별이 아니라 계정 종족(RacePrefs.Get). 에셋 미로드·빈 값이면 빈 문자열이라 줄 안 그림.
                         string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
