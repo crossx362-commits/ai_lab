@@ -51,6 +51,23 @@ rm -f loop/STOP
 원장은 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」을 반드시 읽어라** —
 자리 크기로 그림 크기까지 내면 건물이 화면을 덮는 거인이 된다(실측 후 되돌림 `b414e914`).
 
+## 완료 (2026-08-20) — 신규 5직업 스프라이트 시트 반입·전투 아트 전면 교체 (대화 세션)
+
+오너가 준 시트 30장(직업 5종 × idle/idle_01/run/attack/skill/death, 4x2/8프레임)을
+`Assets/TestSpriteSheets/`에 반입하고 두 갈래로 연결했다:
+1. **애니메이션 에셋**: `RpgSpriteAutoBuilder`(신규 에디터 도구, Tools 메뉴) 일괄 빌드로
+   `Assets/GeneratedAnimations/`에 컨트롤러 5개 × 상태 6개 생성 — `acb69886`.
+   격자 오판(이펙트가 셀 경계 넘는 시트 5장) → 셀 종횡비 페널티로 수리, 30/30 정상.
+2. **전투 실사용 프레임 교체**: SpriteBank 계약(직업당 31장)에 맞춰 잘라
+   `Resources/sprites/{tank,dps,mage,buffer,healer}/` 덮어씀(파일명·meta 유지) — `6ce16c74`.
+   매핑 tanker→tank·assassin→dps·magican→mage·supporter→buffer·healer→healer,
+   h=124px 정규화(PPU 32 세계 크기 유지). JobAnimSelfCheck 배치 PASS + 프레임 육안 대조.
+   주의: hurt=death 시트 0번, invuln=idle_01 0번으로 대체(전용 아트 없음) — 전용 컷이
+   생기면 `scratchpad`가 아니라 `swap_sprites.py` 방식으로 다시 뽑을 것(스크립트는 임시라
+   저장 안 함, 커밋 메시지에 매핑 규칙 전부 있음).
+   `all_classes_turnaround.png`(8방향 턴어라운드)는 다운로드에 남아 있고 미반입 —
+   방향별 스프라이트 도입 때 쓸 것.
+
 ## 지금 (2026-08-19) — 던전 입장 카드 부제 한 줄
 
 직전 트랙 코드 → 필드 화면 한 결함. 레이드급은 `7b61d1bb`로 줄었고 던전 입장만 옛 긴 줄.
