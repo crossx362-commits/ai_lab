@@ -6,10 +6,31 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-20 · 폴리싱(캐릭터) — 장비 탭 「가방 0/60」 줄이 패널 금테 위에 올라탄 겹침 수정
-마지막 트랙: 폴리싱
+최종 갱신: 2026-08-20 · 코드칸 §18-9·§14 RaceDef.고유발동확률 배선 (커밋 dfa0eb6b)
+마지막 트랙: 코드
 폴리싱 다음: **파티**. 이어 월드맵 → 던전 → 결과 → 전투HUD → 타이틀 → 영지 → 필드 → 캐릭터.
   (영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md` 문서 있으므로 허용 — 문서 전 금지 풀림, INBOX 처리됨 참조)
+
+코드칸(§18-9·§14 고유발동확률) 이번 이터 결과 — 배선 완료 (루프, 2026-08-20, 커밋 `dfa0eb6b`):
+직전 트랙 폴리싱이라 코드칸(기획서 ✅ · 소비처 0곳). 직전 이터가 남긴 후보 2종
+(JobDef.자동사냥적합도 / RaceDef.고유발동확률) 중 **고유발동확률**을 잡음 — grep 유일 히트가
+RaceDef.cs 정의 + ProjectSetup 쓰기뿐, 읽기 0곳. **이중 갭 없음**: Race_*.asset 4개가
+`고유발동확률`을 이미 authored·committed(드워프 0.25·수인 1.0·엘프 0.15·인간 0, python 디코드 확인).
+**수리**: 형제 필드 고유메커니즘의 유일 소비처인 `RaceInfo.MechanicLine`에 발동확률>0일 때만
+「(발동 N%)」를 append(상시 패시브 적응 0엔 안 붙임, 지어내지 않음). CharacterScreen 소비처는 이미 존재.
+**함정 하나 더 닫음**: `RaceInfo.cs`·.meta가 이전 이터에서 만들어졌으나 **git 미추적**이라,
+이미 추적 중인 CharacterScreen.cs가 `MechanicLine`을 하드 참조해 fresh checkout 컴파일 불가였다
+(CLAUDE.md §6-A 미커밋 심볼) — 이번 커밋으로 함께 추적. **통과 기준·증거**: `unity_meas`
+(오너 `unity/` 6000.5.6f1 `-useHub`+임포트워커 점유 → `sync_meas.sh` 후 `GAME_PROJ=unity_meas`·
+UNITY_BIN 6000.5.6f1) 배치 빌드 error CS 0(exit 0), `GAME_START=go:Character QA_RACE_TRAIT=1`
+(신규 시드 `SeedRaceTraitQaIfRequested` — 드워프 계정·기본직이라 직업/이동기 줄이 비어 종족 줄이
+패널 안에 넉넉) 프레임 200 캡처 — 속성 탭에 「종족 특성 — 불굴 — 치명 피해 시 HP1로 생존
+(전투당 1회) (발동 25%)」가 잘림·겹침 없이 렌더, 드워프 authored 0.25와 일치. **네거티브 컨트롤**:
+append(`if 고유발동확률>0`)를 빼면 「(발동 …)」 조각이 사라져 필드가 다시 소비처 0곳(dead field).
+증거 `output/qa/ashes-to-stars/race_proc_shots/qa_go:Character.png`. `RaceInfo.cs`·`CharacterScreen.cs`
+두 파일 — 전투 수치·AI·온라인·영지·W3Party 무접촉, 표시 문자열·QA 시드만.
+**남은 관찰(다음 코드칸 후보)**: `JobDef.자동사냥적합도`(§6 자동사냥, 11종 authored, 읽기 0곳).
+**다음 이터는 폴리싱 칸(마지막 트랙=코드) — 폴리싱 다음이 「파티」.**
 
 폴리싱(캐릭터) 이번 이터 결과 — 결함 1건 수정 (루프, 2026-08-20): 마지막 트랙 코드라 폴리싱 칸.
 `폴리싱 다음`이 「캐릭터」라 `go:Character`를 `unity_meas`(오너가 `unity/` 6000.5.6f1 `-useHub`+임포트워커
