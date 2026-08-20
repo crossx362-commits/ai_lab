@@ -828,7 +828,13 @@ namespace AshesToStars
             }
 
             float infoX = Mathf.Max(face.xMax + 36f, stage.x + 300f);
-            var info = new Rect(infoX, stage.y + 36f, stage.xMax - infoX - 14f, stage.height - 48f);
+            // 정보 칸의 바닥은 패널 금테(9-slice border)보다 안쪽이어야 한다 — 옛 고정 하단 여백
+            // 12px는 「panel」 금테 두께(≈18~20px)보다 얇아 마지막 줄(가방 0/60·§11)이 금테 위에
+            // 올라탔다(폴리싱, 겹침 결함). chrome.yMax로 바닥을 당기고, 같은 만큼 위로 올려
+            // 창 높이는 그대로 둔다 — 줄 수가 줄지 않아 가방 줄(§11 소비처)이 사라지지 않는다.
+            float infoBottom = chrome.yMax;
+            float infoTop = (stage.y + 36f) - Mathf.Max(0f, (stage.yMax - 12f) - infoBottom);
+            var info = new Rect(infoX, infoTop, stage.xMax - infoX - 14f, infoBottom - infoTop);
             DrawInspectInfo(info, ch);
 
             var bar = new Rect(r.x, r.yMax - 48f, r.width, 44f);
