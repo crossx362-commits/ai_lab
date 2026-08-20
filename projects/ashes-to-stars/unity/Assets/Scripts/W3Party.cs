@@ -3443,7 +3443,13 @@ public class W3Party : MonoBehaviour
             clipping = TextClipping.Clip,
             normal = { textColor = new Color(.95f, .96f, 1f) },
         };
-        var left = new Rect(14f, 14f, 218f, 50f);
+        // 좌측 요약은 두 줄인데 50px 패널은 ContentRect가 짧은 축의 24%(≈14px)를 위아래로
+        // 먹어 본문이 22px밖에 안 남고, 그걸 두 줄로 반 나누면 각 줄이 11px가 돼 16px Bold
+        // 글자의 위아래가 잘려 뭉갰다(폴리싱 2026-08-20 「안 읽히는 글씨」 — 같은 스타일의
+        // 단줄 우측 '스킬 자동'은 22px 칸이라 선명했다). 패널을 84px로 키워 각 줄이 ≈20px가
+        // 되게 한다 — 바탕·금테·본문이 모두 이 rect에서 파생해 함께 커지므로 글씨가 어두운
+        // 바탕 안에 온전히 들어간다. 되돌리면(50f) 두 줄이 다시 11px로 잘려 뭉갠다.
+        var left = new Rect(14f, 14f, 218f, 84f);
         var right = new Rect(Screen.width - CombatHudRailMargin - CombatHudRailW, 14f,
                              CombatHudRailW, 44f);
         DrawHudBacking(left, 1f);
