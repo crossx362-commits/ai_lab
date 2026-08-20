@@ -87,5 +87,24 @@ namespace AshesToStars
             if (d == null || string.IsNullOrEmpty(d.이동기형태)) return "";
             return "이동기 — " + d.이동기형태;
         }
+
+        /// <summary>
+        /// "자동사냥 {최상/상/중/하}". JobDef.자동사냥적합도(float 0~1)의 **유일한 런타임 소비처**.
+        /// 이 값은 §6 필드/자동사냥 적합도(원장 204 💡)의 등급인데 ProjectSetup이 직업마다
+        /// authored(소환사 0.95·마법사 0.90·… 사제 0.20)하고도 어떤 코드도 읽지 않아 소비처 0곳이었다
+        /// (컨셉·스킬·사망리스크·이동기가 겪은 함정과 동일 계열). 밴드 임계값은 원장 204의 명시 등급
+        /// (소환사·마법사 최상 / 검사·광전사 상 / 궁수 중 / 힐·버퍼 하)에 authored 11종이 전부 맞도록 잡았다
+        /// — 지어낸 게 아니라 문서 등급을 authored 값에 되짚은 것: ≥0.85 최상(마법사·소환사),
+        /// ≥0.60 상(검사·광전사), ≥0.50 중(궁수), 그 아래 하(힐·버퍼·탱). 매칭 직업이 없으면 빈 문자열
+        /// — 호출부는 이때 줄을 그리지 않는다(지어내지 않음). 밸런스 수치는 안 건드린다(표시 전용).
+        /// </summary>
+        public static string AutoHuntLine(string jobName)
+        {
+            var d = For(jobName);
+            if (d == null) return "";
+            float f = d.자동사냥적합도;
+            string band = f >= 0.85f ? "최상" : f >= 0.60f ? "상" : f >= 0.50f ? "중" : "하";
+            return "자동사냥 " + band;
+        }
     }
 }

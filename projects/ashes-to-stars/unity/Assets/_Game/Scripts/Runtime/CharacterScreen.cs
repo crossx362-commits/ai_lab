@@ -387,9 +387,16 @@ namespace AshesToStars
                         // 그 조각만 빠진다(지어내지 않음) — 둘 다 비면 줄 안 그림.
                         string dash = JobInfo.MovementLine(ch.Job);
                         string risk = JobInfo.RiskLine(ch.Job);
+                        // §6 자동사냥 적합도(JobDef.자동사냥적합도 유일 소비처)도 같은 한 토큰짜리 짧은
+                        // 프로필 조각이라 **별도 행을 늘리지 않고** 이 행에 붙인다 — 새 행을 만들면
+                        // 위 주석대로 종족 특성 줄을 r.yMax 밖으로 밀어 조용히 잃는다. 각각 빈 값이면
+                        // 그 조각만 빠진다(지어내지 않음).
+                        string hunt = JobInfo.AutoHuntLine(ch.Job);
                         string profile = dash;
                         if (!string.IsNullOrEmpty(risk))
                             profile = string.IsNullOrEmpty(profile) ? risk : profile + " · " + risk;
+                        if (!string.IsNullOrEmpty(hunt))
+                            profile = string.IsNullOrEmpty(profile) ? hunt : profile + " · " + hunt;
                         if (!string.IsNullOrEmpty(profile)) Info(r, advancementRow++, profile);
                         // §18-9·§14 종족 고유 메커니즘 — 계정 종족 RaceDef.고유메커니즘의 유일한 소비처.
                         // 캐릭터별이 아니라 계정 종족(RacePrefs.Get). 에셋 미로드·빈 값이면 빈 문자열이라 줄 안 그림.
