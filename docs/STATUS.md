@@ -6,8 +6,8 @@
 > 갱신 규칙: 완료로 내릴 때 **판정 근거(수치·커밋 해시)를 반드시 같이 적는다.**
 > 근거 없는 완료는 다음 세션이 재검증해야 하므로 완료가 아니다.
 
-최종 갱신: 2026-08-20 · 폴리싱칸(타이틀) — 좌측 소개 copy 세로 중앙 정렬로 상단 쏠림·빈 여백 해소
-마지막 트랙: 폴리싱
+최종 갱신: 2026-08-20 · 코드칸 — §2 시작 직업 역할 설명(StarterPick.Blurb) 소비처 0곳 배선
+마지막 트랙: 코드
 폴리싱 다음: **영지**. 이어 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD → 타이틀.
   (영지 폴리싱은 `docs/GAME_SPEC_ESTATE_BUILD.md` 문서 있으므로 허용 — 문서 전 금지 풀림, INBOX 처리됨 참조)
   ⚠️ 다음 세션 주의: 이번 이터 시점에 다른 세션이 텍스처 아트/임포트를 진행 중이었다 —
@@ -16,7 +16,28 @@
   슬롯 흰 테두리 등은 그 in-flight 아트 하류라 **건드리지 않았다**(클로버 금지). 그 아트가 커밋된 뒤
   전투HUD를 다시 폴리싱하면 깨끗한 상태에서 판정 가능.
 
-폴리싱(타이틀) 이번 이터 결과 — 결함 1건 수정 (루프, 2026-08-20): 마지막 트랙 코드라 폴리싱 칸.
+코드칸(§2 시작 직업 역할 설명) 이번 이터 결과 — 배선 완료 (루프, 2026-08-20): 직전 트랙 폴리싱(타이틀)이라
+코드칸(기획서 ✅ · 소비처 0곳). Explore 서브에이전트 전수 grep 2회 — 1차 후보(경제 앵커 `BalanceConfig.티어배율`/
+`티어1시간당골드`)는 **float 정밀도 지뢰**라 버림: `cfg.티어배율`(float 1.6f→double 1.6000000238)로 `Math.Pow`하면
+2.56→2.5600001로 어긋나 `Economy.TierRevenueMultiplier` 리터럴과 달라져 RaidScale 등 핀 고정 코퍼값이 밀린다
+(exact double 1.6 상수로만 재현되는데 그럼 "필드를 읽는다"는 목적이 무의미). 2차에서 **표시 전용** 구멍을 찾음:
+`StarterPick.Blurb(job)`(§2 확정 기본직업 5종의 역할 한 줄)이 정의만 있고 grep 소비처 0곳 — 타이틀 시작 카드가
+직업 이름(`BasicJobLabel`)만 그리고 역할 설명은 안 그렸다. **수리**: `TitleScreen.DrawStarterPick`이 라벨 띠
+(`StarterLabelH` 36)를 반으로 나눠 위엔 이름, 아래 16px 줄에 `StarterPick.Blurb(job)`을 Hint로 그림. 스프라이트
+`look` 높이·`StarterLabelH` 불변(띠 안에서만 분할). **표시 전용 — 전투·경제·아트·W3Party 무접촉.** **통과 기준·증거**:
+`game_compile_check.py` PASS(273소스 CS 0). unity_meas 배치 `StarterPickSelfCheck.Run` **전항 PASS** — 신규
+「5종 역할 설명 문구(Blurb)」·5종 비어있지않음·모르는직업 빈문구·「타이틀이 StarterPick.Blurb(job)를 카드에 그린다」.
+육안: `output/qa/ashes-to-stars/starter_blurb_shots/qa_go:Title.png`(QA_START_PICK=1, 프레임 220) — 5카드가
+탱커/앞에서 막고 도발한다 · 물리딜러/가장 가까운 적을 벤다 · 마법딜러/멀리서 마법으로 지른다 · 힐러/쓰러지기 전에
+고친다 · 서포터/파티를 강화한다 로 이름 아래 역할 줄이 안 잘리고 렌더. **네거티브 컨트롤(실측)**: 소비처 grep을
+처음 `Contains("StarterPick.Blurb")`로 뒀더니 주석의 「(StarterPick.Blurb)」 때문에 렌더 줄을 지워도 PASS(가짜 통과) —
+`Contains("StarterPick.Blurb(job)")` 호출형으로 조여 meas 사본에서 렌더 줄만 지우면 FAIL 1건 exit 1
+(`starter_blurb_negctrl.log`). 증거 `output/qa/ashes-to-stars/shots/starter_blurb_{selfcheck,negctrl}.log`·
+`starter_blurb_shots/qa_go:Title.png`. `TitleScreen.cs`·`StarterPickSelfCheck.cs` 두 파일. 코드 `3baa4bba`.
+**아트 오염 주의**: fx/bg png·ui metas·`TextureImportRules.cs`는 다른 세션 미커밋 텍스처 작업 — 건드리지 않았다.
+**다음 이터는 폴리싱 칸(마지막 트랙=코드) — 폴리싱 다음이 「영지」(GAME_SPEC_ESTATE_BUILD.md 있어 허용).**
+
+폴리싱(타이틀) 이전 이터 결과 — 결함 1건 수정 (루프, 2026-08-20): 마지막 트랙 코드라 폴리싱 칸.
 `폴리싱 다음`이 「타이틀」. `unity/`는 오너가 6000.5.6f1 `-useHub`+임포트워커(PID 25198/25231/25249)로
 점유 중 → `sync_meas.sh` 후 `GAME_PROJ=unity_meas`·`UNITY_BIN=6000.5.6f1`, `go:Title` 프레임 220 캡처.
 **결함**: 좌측 소개 두 줄(「아직 정상에 오른 파티가 없다」/「5인 파티를 키워…영구 삭제된다」)이 헤더
