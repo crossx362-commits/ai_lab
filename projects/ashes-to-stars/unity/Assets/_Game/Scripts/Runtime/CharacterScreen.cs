@@ -302,6 +302,17 @@ namespace AshesToStars
                         statusMax = Math.Max(statusMax, 3);
                     }
 
+                    // §3·§4 기본 전투 스탯(JobDef 최대체력·공격력·사거리·공격간격의 유일한 소비처).
+                    // **속성** 탭의 표제 데이터라 이동기 프로필·종족 특성보다 우선순위가 높다 — 그래서
+                    // 관례(새 조각은 맨 뒤)와 달리 전직 블록 **앞**(status 바로 뒤)에 두어 패널이 꽉 차도
+                    // 항상 보이게 한다. 매칭 직업이 없으면(기본직 또는 에셋 미로드) 빈 문자열이라 줄을
+                    // 그리지 않고 statusMax도 안 밀어, 종족 줄 여유를 뺏지 않는다(지어내지 않음).
+                    if (!ch.IsDeleted)
+                    {
+                        string stats = JobInfo.StatLine(ch.Job);
+                        if (!string.IsNullOrEmpty(stats)) { Info(r, statusMax + 1, stats); statusMax += 1; }
+                    }
+
                     int advancementRow = statusMax + 1;
                     if (ch.IsSpecialJob && !ch.IsDeleted)
                     {

@@ -125,5 +125,25 @@ namespace AshesToStars
             string band = f >= 0.85f ? "최상" : f >= 0.60f ? "상" : f >= 0.50f ? "중" : "하";
             return "자동사냥 " + band;
         }
+
+        /// <summary>
+        /// "HP {115} · 공격력 {24} · 사거리 {8} · 공격 {0.4}초". JobDef 기본 스탯 블록
+        /// (최대체력·공격력·사거리·공격간격)의 **유일한 런타임 소비처**. §3·§4 직업 표의 직업별
+        /// HP·공격 컬럼인데 ProjectSetup이 직업마다 authored(수호기사 320/10, 검사 130/26,
+        /// 궁수 115/24·사거리 8·간격 0.4…)하고 Resources/jobs/*.asset에 committed까지 됐으면서
+        /// 읽는 코드 0곳이었다(컨셉·스킬·사망리스크·이동기·자동사냥적합도가 겪은 「정의만 있고 부르는
+        /// 곳 0」 함정과 동일 계열 — 전투 W3Party는 자체 상수표를 쓰고 asset 필드를 안 읽는다).
+        /// 매칭 직업이 없으면(기본직 탱/딜/… 또는 에셋 미로드) 빈 문자열 — 호출부는 이때 줄을
+        /// 그리지 않는다(지어내지 않음). 밸런스·전투 수치는 안 건드린다(표시 전용, committed 값 그대로).
+        /// </summary>
+        public static string StatLine(string jobName)
+        {
+            var d = For(jobName);
+            if (d == null) return "";
+            return "HP " + d.최대체력.ToString("0.#")
+                 + " · 공격력 " + d.공격력.ToString("0.#")
+                 + " · 사거리 " + d.사거리.ToString("0.#")
+                 + " · 공격 " + d.공격간격.ToString("0.#") + "초";
+        }
     }
 }
