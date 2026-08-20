@@ -27,7 +27,8 @@ StatLine(2)·전직(3)·ConceptLine(4)·SkillLine(5)로 6행이 꽉 차 §5 이�
 그 행이 화면에서 **사라진다**(HP 스탯과 2차 각성 사이 빈 공백) — `mobility_visible_shots/qa_negctrl_row9_gone.png`.
 빌드는 오너가 `unity/`(6000.5.6f1 `-useHub`+임포트워커 PID 25198/25231/25249) 점유 중이라 `unity_meas` 사본으로 돌렸다.
 **⚠️ 아트 오염 주의(정직 인계)**: `fx_*.png`·`bg_*.png`·`TextureImportRules.cs`·`import_p22_bw.py`·`ui/*` metas는 다른
-세션 미커밋 텍스처 작업 — 건드리지 않았다. **다음 이터는 폴리싱 칸(마지막 트랙=코드) — 폴리싱 다음이 「캐릭터」.**
+세션 미커밋 텍스처 작업 — 건드리지 않았다. 코드 `97b71c04`(`CharacterScreen.cs`·`STATUS.md`만).
+**다음 이터는 폴리싱 칸(마지막 트랙=코드) — 폴리싱 다음이 「캐릭터」.**
 
 
 폴리싱(필드) 이번 이터 결과 — 결함 1건 수정 (루프, 2026-08-20): 마지막 트랙 코드라 폴리싱 칸.
