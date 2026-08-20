@@ -97,8 +97,11 @@ namespace AshesToStars
                 UiAtlas.Draw(plate, "panel", new Color(1f, 1f, 1f, 0.92f));
             var icon = WorldStar.Icon(plate, GameState.TowerFloor);
             UiAtlas.DrawFit(icon, "worldmap");
-            string starCap = "내 별 · " + WorldStar.SizeLabel(GameState.TowerFloor)
-                + " — 층을 오를수록 커진다(§14)";
+            // 별 크기·영공 수치는 헤더 부제(Subtitle)가 이미 「내 별 N층 · 별 ×… · 영공 …」으로
+            // 보여준다 — 배너까지 같은 SizeLabel을 반복하면 그 줄이 화면에 두 번 겹쳐 보인다
+            // (오너 지적 「중복」, 폴리싱 결함). 배너는 옆의 별 아이콘이 층마다 커지는 §14
+            // 규칙 설명만 맡고, 수치는 헤더에 위임한다.
+            string starCap = "층을 오를수록 내 별이 커진다(§14)";
             if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
                 starCap = WorldStar.RaceSenseLine() + " · " + starCap;
             Hint(WorldStar.Caption(plate, icon), starCap);
