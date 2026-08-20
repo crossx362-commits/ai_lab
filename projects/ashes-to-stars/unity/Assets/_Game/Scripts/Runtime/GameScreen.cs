@@ -487,7 +487,13 @@ namespace AshesToStars
         }
 
         /// <summary>이미 계산된 칸에 안내만 그린다. 경매 슬림 도크가 읽는다.</summary>
-        protected void InfoAt(Rect panel, string text)
+        protected void InfoAt(Rect panel, string text) => InfoAt(panel, text, 0f);
+
+        /// <summary>칸에 안내를 그리되, 글씨 시작 x를 <paramref name="absTextLeft"/>로
+        /// **절대 좌표** 고정한다(0이면 기본 content 칸). 결과 화면 보상 줄처럼 왼쪽에
+        /// 아이콘을 겹쳐 그릴 때, 폰트 공백폭에 기대지 않고 아이콘 폭만큼 글씨를 확실히
+        /// 밀어 첫 글자가 아이콘에 먹히지 않게 한다.</summary>
+        protected void InfoAt(Rect panel, string text, float absTextLeft)
         {
             Styles();
             if (panel.yMax > REF_H) return;
@@ -497,6 +503,8 @@ namespace AshesToStars
             var inner = panel.height < 48f
                 ? new Rect(panel.x + 16f, panel.y + 8f, panel.width - 32f, 20f)
                 : UiAtlas.ContentRect(panel, "panel", 2f);
+            if (absTextLeft > inner.x)
+                inner = new Rect(absTextLeft, inner.y, Mathf.Max(4f, inner.xMax - absTextLeft), inner.height);
             UiPages.LabelClip(inner, text, _panel);
         }
     }

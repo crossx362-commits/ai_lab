@@ -237,7 +237,13 @@ namespace AshesToStars
 
         void RewardInfo(Rect r, int index, string iconKey, string text)
         {
-            Info(r, index, "       " + text);
+            // 아이콘은 r.x+4~r.x+52(48px)에 그려진다. 예전엔 "       "(공백 7칸)으로 글씨
+            // 자리를 비웠는데 공백폭이 아이콘 폭보다 좁아 첫 글자("획")가 아이콘에 먹혔다.
+            // 폰트 공백폭에 기대지 말고 글씨 시작 x를 아이콘 오른쪽(r.x+60)으로 절대 고정한다.
+            float textLeft = string.IsNullOrEmpty(iconKey) ? 0f : r.x + 60f;
+            var panel = new Rect(r.x - 12, r.y + index * (RowH + RowGap), r.width + 24, RowH);
+            if (panel.yMax > r.yMax) return;   // Info와 같은 하단 가드 — 선택 밴드 침범 방지
+            InfoAt(panel, text, textLeft);
             if (!string.IsNullOrEmpty(iconKey))
             {
                 // Info는 하단 밖으로 나가는 줄을 스스로 건너뛴다(GameScreen.Info). 아이콘도
