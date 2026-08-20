@@ -82,8 +82,38 @@ p.lead b{color:#5e8140;}
 
 /* 서브페이지 헤더 */
 .page-head{padding:78px 20px 0;}
-.page-head .wrap{max-width:1120px;}
+.page-head .wrap{max-width:1120px; position:relative;}
 .page-head .wrap.wide{max-width:1440px;}
+
+/* ─── 장인 캐릭터 ───
+   본문 흐름에 영향을 주지 않게 전부 절대배치 + pointer-events:none.
+   화면이 좁아지면(내용과 겹치기 시작하면) 숨긴다 — 장식이라 없어도 무방. */
+.mascot{position:absolute; pointer-events:none; user-select:none; z-index:0;}
+.mascot img{display:block; width:100%; height:auto;}
+
+/* 페이지 제목 오른쪽 */
+.mascot.head{right:0; bottom:-6px; width:132px; opacity:.96;}
+@media (max-width:900px){ .mascot.head{display:none;} }
+
+/* 홈 히어로 오른쪽 — 제목/버튼과 안 겹치게 크게 */
+.mascot.hero{right:8px; bottom:-10px; width:236px;}
+@media (max-width:1150px){ .mascot.hero{width:180px; opacity:.5;} }
+@media (max-width:920px){ .mascot.hero{display:none;} }
+
+/* 카드 안쪽 모서리 장식.
+   글자 위에 겹쳐두면 opacity를 낮춰도 지저분해 보인다 — 카드 아래쪽에
+   전용 여백(padding-bottom)을 만들고 그 안에만 세운다. */
+.panel, .contact-box{position:relative;}
+/* 여백(92px)이 캐릭터 높이(72px 폭 → 약 70px)보다 커야 글이 절대 안 겹친다 */
+.panel.has-mascot{padding-bottom:92px;}
+.panel .mascot.corner{right:12px; bottom:8px; width:72px; opacity:.62;}
+@media (max-width:860px){
+  .panel .mascot.corner{display:none;}
+  .panel.has-mascot{padding-bottom:14px;}   /* 캐릭터를 숨겼으면 여백도 되돌린다 */
+}
+/* 카드 본문이 캐릭터 위로 오게 */
+.panel > h3, .panel > .sub, .panel > .chips, .panel > .doing,
+.contact-box > .cb-left, .contact-box > .cb-right{position:relative; z-index:1;}
 
 /* 등장 애니메이션 */
 .rv{opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s ease;}
