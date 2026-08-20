@@ -32,7 +32,7 @@ private라 못 만들므로, 공유 헬퍼(`GameScreen`)에 행 피치/높이 �
 기본 76/64로 되돌려 재빌드하면 하위 3줄(보유 스킬·종족 특성·종족 정체성)이 **다시 사라진다**(ConceptLine 한 줄만 하단에
 닿음) — `panel_density_shots/qa_negctrl_default_pitch.png`. 빌드는 오너가 `unity/`(6000.5.6f1 `-useHub`+임포트워커 PID
 25198/25231/25249) 점유 중이라 `unity_meas` 사본으로 돌렸다. **⚠️ 아트 오염 주의(정직 인계)**: `fx_*.png`·`bg_*.png`·
-`TextureImportRules.cs`·`import_p22_bw.py`·`ui/*` metas는 다른 세션 미커밋 텍스처 작업 — 건드리지 않았다. 코드 `<PENDING>`
+`TextureImportRules.cs`·`import_p22_bw.py`·`ui/*` metas는 다른 세션 미커밋 텍스처 작업 — 건드리지 않았다. 코드 `7e8d3ac3`
 (`CharacterScreen.cs`·`GameScreen.cs`·`STATUS.md`만).
 **다음 이터는 폴리싱 칸(마지막 트랙=코드) — 폴리싱 다음이 「파티」.**
 
