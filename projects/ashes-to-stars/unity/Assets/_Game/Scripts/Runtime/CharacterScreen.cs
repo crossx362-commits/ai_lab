@@ -835,10 +835,8 @@ namespace AshesToStars
             var chrome = UiAtlas.ContentRect(stage, "panel", 2f);
             // 전투력은 오른쪽 정보 패널로 내렸다 — 헤더 둘째 줄(전투력)이 초상 위
             // 「투구」 링 라벨과 같은 좁은 상단 밴드를 다퉈 겹쳤다(폴리싱, 겹침 결함).
-            // 헤더를 한 줄(제목+목숨)로 두면 투구 라벨이 빈 배경 위에 읽힌다.
+            // 제목은 초상 위 좌측에 둔다. 목숨 하트는 정보 칸 Lv 줄 오른쪽으로 내렸다(아래 참조).
             Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {ch.Job}");
-            UiAtlas.DrawHearts(new Rect(chrome.xMax - 80f, chrome.y, 80f, 22f),
-                ch.DeathCount, ch.IsDeleted, ch.MaxLives);
 
             var face = UiPages.LargeLook(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
@@ -873,13 +871,19 @@ namespace AshesToStars
             }
 
             float infoX = Mathf.Max(face.xMax + 36f, stage.x + 300f);
-            // 정보 칸의 바닥은 패널 금테(9-slice border)보다 안쪽이어야 한다 — 옛 고정 하단 여백
-            // 12px는 「panel」 금테 두께(≈18~20px)보다 얇아 마지막 줄(가방 0/60·§11)이 금테 위에
-            // 올라탔다(폴리싱, 겹침 결함). chrome.yMax로 바닥을 당기고, 같은 만큼 위로 올려
-            // 창 높이는 그대로 둔다 — 줄 수가 줄지 않아 가방 줄(§11 소비처)이 사라지지 않는다.
-            float infoBottom = chrome.yMax;
-            float infoTop = (stage.y + 36f) - Mathf.Max(0f, (stage.yMax - 12f) - infoBottom);
+            // 정보 칸은 패널의 **안쪽 얇은 금테 사각형** 안에 가둔다. 「panel」의 ContentRect(chrome)는
+            // 9-slice 테두리를 그대로 빼 위·아래로 ≈50px씩 과하게 안쪽을 잡는다(스프라이트 바깥 스크롤워크
+            // 장식까지 여백으로 셈) — 그래서 정보 줄이 chrome 높이(≈9줄)를 못 넘겨 아래쪽 장비 슬롯·가방(§11)이
+            // 잘렸고, 옛 세션은 이를 피하려 top을 프레임 밖으로 끌어올려(pull-up) 첫 두 줄(Lv·xp)이 탭 옆에
+            // 삐져나가는 넘침 결함을 만들었다. 실제 평평한 내부는 안쪽 금테 선(≈stage와 chrome의 중간)까지다 —
+            // stage↔chrome를 0.5로 보간해 그 선에 맞추면 넘침 없이 ≈13줄을 담아 장비 전부·가방이 보인다.
+            float infoTop = Mathf.Lerp(stage.y, chrome.y, 0.62f);
+            float infoBottom = Mathf.Lerp(stage.yMax, chrome.yMax, 0.45f);
             var info = new Rect(infoX, infoTop, stage.xMax - infoX - 14f, infoBottom - infoTop);
+            // 목숨 하트는 정보 칸 맨 윗줄(Lv·경험)의 오른쪽에 붙여 헤더로 읽힌다 — chrome.xMax 우측 끝에
+            // 두던 옛 위치는 정보 칸 중간(무기·없음 줄)에 떠 라벨 없이 겹쳐 보였다(겹침 결함).
+            UiAtlas.DrawHearts(new Rect(info.xMax - 76f, infoTop, 76f, 22f),
+                ch.DeathCount, ch.IsDeleted, ch.MaxLives);
             DrawInspectInfo(info, ch);
 
             var bar = new Rect(r.x, r.yMax - 48f, r.width, 44f);
@@ -894,11 +898,13 @@ namespace AshesToStars
         void DrawInspectInfo(Rect r, CharacterRecord ch)
         {
             float y = r.y;
+            // 줄 간격 20f — 정보 칸은 안쪽 금테 안 ≈275px에 14줄(Lv·xp·전투력·상태·장착 헤더·
+            // 장비 6슬롯·가방§11)을 담아야 해 22f면 마지막 가방 줄이 넘쳐 잘렸다(폴리싱, 잘림 결함).
             void Line(string text)
             {
-                if (y + 20f > r.yMax) return;
+                if (y + 18f > r.yMax) return;
                 Hint(new Rect(r.x, y, r.width, 20f), text);
-                y += 22f;
+                y += 20f;
             }
 
             Line(ExpText(ch));
@@ -908,7 +914,7 @@ namespace AshesToStars
                 float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
                 UiAtlas.DrawMeter(new Rect(r.x, y, Mathf.Min(220f, r.width), 16f),
                     "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
-                y += 22f;
+                y += 20f;
             }
             Line($"전투력  {CombatPower(ch):N0}");
             if (ch.IsDeleted)
