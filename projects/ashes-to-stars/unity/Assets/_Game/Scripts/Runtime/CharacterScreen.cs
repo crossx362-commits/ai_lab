@@ -402,6 +402,12 @@ namespace AshesToStars
                         // 캐릭터별이 아니라 계정 종족(RacePrefs.Get). 에셋 미로드·빈 값이면 빈 문자열이라 줄 안 그림.
                         string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceTrait)) Info(r, advancementRow++, raceTrait);
+                        // §18-9 종족 정체성(RaceDef.정체성 유일 소비처) — 계정 종족의 한 줄 아키타입.
+                        // MechanicLine **뒤에** 둔다: 새 행이라 넘치면 Info가 건너뛰는데(위 r.yMax 주석),
+                        // 뒤에 두면 잘려도 이미 그린 종족 특성 줄을 밀어내지 않는다(정체성이 더 낮은 우선순위).
+                        // 계정 기본직 캐릭터는 위 직업 줄이 비어 여유가 있어 항상 보인다. 빈 값이면 줄 안 그림.
+                        string raceIdent = RaceInfo.IdentityLine(RacePrefs.Get());
+                        if (!string.IsNullOrEmpty(raceIdent)) Info(r, advancementRow++, raceIdent);
                     }
         }
 
