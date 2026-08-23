@@ -955,8 +955,22 @@ _SHOT_MIME = {
 }
 
 
+_SHOT_BLACK_CACHE: dict[tuple[str, int, int], bool] = {}
+
+
 def shot_is_black(path: Path, mean_max: float = 14.0, dark_min: float = 0.90) -> bool:
-    """거의 검은 화면은 끝난 일 증거로 쓰지 않는다."""
+    """거의 검은 화면은 끝난 일 증거로 쓰지 않는다.
+    같은 파일(mtime·크기 불변) 재판정은 메모 캐시로 건너뛴다 — 상태 1건마다
+    QA 샷 수십 장을 다시 디코딩해 렌더가 수 초로 늘어 서버 테스트 3초
+    타임아웃 flake(테스트스위트:FAIL 재발)의 근본 원인이었다 (2026-08-24)."""
+    try:
+        st = path.stat()
+    except OSError:
+        return False
+    key = (str(path), st.st_mtime_ns, st.st_size)
+    hit = _SHOT_BLACK_CACHE.get(key)
+    if hit is not None:
+        return hit
     try:
         from PIL import Image
     except ImportError:
@@ -981,7 +995,11 @@ def shot_is_black(path: Path, mean_max: float = 14.0, dark_min: float = 0.90) ->
             if s <= 24:
                 dark += 1
     mean = total / (3 * n)
-    return mean < mean_max and (dark / n) >= dark_min
+    result = mean < mean_max and (dark / n) >= dark_min
+    if len(_SHOT_BLACK_CACHE) > 1024:
+        _SHOT_BLACK_CACHE.clear()
+    _SHOT_BLACK_CACHE[key] = result
+    return result
 
 
 def usable_shot(rel: str) -> bool:

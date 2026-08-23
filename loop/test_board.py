@@ -1331,7 +1331,8 @@ class GitApiTests(unittest.TestCase):
             old, server, thread = self._server(root)
             try:
                 url = f"http://127.0.0.1:{server.server_port}/"
-                with urllib.request.urlopen(url, timeout=3) as response:
+                # 페이지 렌더는 QA 샷 검사 등 실제 일을 하므로 기계가 바쁠 때를 위한 여유
+                with urllib.request.urlopen(url, timeout=10) as response:
                     html = response.read().decode("utf-8")
             finally:
                 server.shutdown()
@@ -1363,7 +1364,8 @@ class GitApiTests(unittest.TestCase):
                     content_type = response.headers.get("Content-Type")
                     cache = response.headers.get("Cache-Control")
                 page_url = f"http://127.0.0.1:{server.server_port}/"
-                with urllib.request.urlopen(page_url, timeout=3) as response:
+                # 첫 렌더는 샷 블랙 판정 디코딩을 포함 — 부하 시 3초를 넘긴 flake 원인
+                with urllib.request.urlopen(page_url, timeout=10) as response:
                     html = response.read().decode("utf-8")
             finally:
                 server.shutdown()
