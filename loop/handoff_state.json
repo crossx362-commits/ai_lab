@@ -1,12 +1,13 @@
 {
-  "phase": "pass",
-  "updated": "2026-08-23 16:08",
-  "last_commit": "dbe02f57",
-  "review": "PASS",
-  "task": "소비처0 다음 한 칸",
-  "routed_to": "재와별·개발",
-  "note": "이속배율 PASS · 다음 소비처0",
+  "phase": "review",
+  "updated": "2026-08-23 16:10",
+  "last_commit": "d461fbcb",
+  "review": "pending",
+  "task": "영지 §6 아트",
+  "routed_to": "재와별·루프검수",
+  "note": "아트 완료 → 루프검수 검토 중 · PropOf는 PASS 후 개발",
   "commits": [
-    "dbe02f57"
+    "d461fbcb",
+    "26104ea2"
   ]
 }
