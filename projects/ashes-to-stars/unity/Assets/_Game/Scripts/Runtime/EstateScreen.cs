@@ -117,6 +117,13 @@ namespace AshesToStars
                     _hubPage = 2;
                 else if (AutoOpen == "배치")
                     _hubPage = 0;
+                else if (AutoOpen == "본성칸")
+                {
+                    // QA 샷: 마을 허브에서 본성 선택 → YardInspectLine 부제 노출
+                    _hubPage = 0;
+                    _selX = EstateGrid.KeepX;
+                    _selY = EstateGrid.KeepY;
+                }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
                     _sub = want;
@@ -566,11 +573,15 @@ namespace AshesToStars
                 case EstateGrid.Cell.Keep:
                     return EstateBuild.Busy(EstateGrid.Cell.Keep)
                         ? build
-                        : $"{build} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+                        : $"{build} · 창고 {EstateStatusHud.ShortCopper(EstateBuild.WarehouseCapCopper())}";
                 case EstateGrid.Cell.Mine:
-                    return $"{build} · {Economy.FormatCurrency(EstateMine.CopperPerHourEffective())}/h";
+                    return $"{build} · {EstateStatusHud.ShortCopper(EstateMine.CopperPerHourEffective())}/h";
                 case EstateGrid.Cell.Warehouse:
-                    return $"{build} · {Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+                {
+                    string a = EstateStatusHud.ShortCopper(GameState.Wallet.Copper);
+                    string b = EstateStatusHud.ShortCopper(EstateBuild.WarehouseCapCopper());
+                    return $"{build} · {a}/{b}";
+                }
                 case EstateGrid.Cell.Smith:
                     return build + " · " + (Equipment.LockReason() ?? "제작·강화. 실패해도 장비는 남는다");
                 case EstateGrid.Cell.Auction:
