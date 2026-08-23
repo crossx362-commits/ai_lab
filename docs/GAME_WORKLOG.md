@@ -19,7 +19,7 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 소비처0 다음 한 칸 | §18-9 `f9f195e8` · §3 쿨다운 `92cc2feb` 닫음. `W3Party` 금지 |
+| 개발 직렬 | 소비처0 다음 한 칸 | §3 SkillDef.반경 `e4557f35` 닫음. `W3Party` 금지 |
 | UI 폴리싱 다음 | 본성 골드 단축 FormatCurrency 잘림 | 건물칸·본성상세·업비 ShortCopper 닫음 |
 | launchd 자율 루프 | 살아 있으나 플래너가 task manifest를 못 만듦 | agent=`codex`. Claude 한도 ~08-24 23:00 → Codex/Grok만 |
 | 사람 관문 | 안 닫음 | V2 · V4 70% · W2 FAIL(기준 낮추지 말 것) · 관문② |
@@ -32,6 +32,22 @@
 3. ~~**§2-4/§6 아트**~~ — 닫음. 17장 반입 · `EstateArtTierSelfCheck` PASS · `estate_tier_shots/qa_go:Estate.png`.
 
 원장 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」** — 자리 크기로 그림 크기까지 내면 거인이 된다(`b414e914`).
+
+## 완료 (2026-08-23) — §3 SkillDef.반경 소비처 (Grok)
+
+원장 SkillDef 툴팁 「효과 반경(0이면 단일)」의 `SkillDef.반경`이 ProjectSetup·에셋에 authored돼
+있으면서도 grep 소비처 0곳이었다. 형제 쿨·위력은 SkillLine이 「(N초·×P)」로 읽는데 반경만 죽어
+있던 함정. `JobInfo.SkillLine`이 0&lt;반경&lt;50일 때 「·반경R」을 이어 붙인다(쿨 0은 괄호 없이
+「성채 방패 반경8」). 기적 authored 99는 전역 표식이라 숫자를 안 붙인다. 표시 전용 — W3Party·전투
+무접촉. `QA_NO_SKILL_RAD`면 반경 조각만 빼고 옛 줄.
+
+그록봇 §6 아트(`d461fbcb`)는 이미 닫혀 있어 이 바퀴는 다음 소비처0 한 칸으로 진행했다.
+
+### 검수
+- `game_compile_check.py` PASS (288소스 0).
+- `unity_meas` batch `SkillRadSelfCheck` **PASS** (exit 0).
+- 샷 `skill_rad_shots/qa_go:Character.png` — 수호기사 「도발의 함성(6초·반경4.5) · 성채 방패 반경8 · 최후의 보루(40초)」.
+- 네거티브 `skill_rad_shots/qa_negctrl_no_rad.png` — `QA_NO_SKILL_RAD=1`이면 「도발의 함성(6초) · 성채 방패 · 최후의 보루(40초)」 (반경 없음).
 
 ## ⛔ 이력 — 루프가 멈춰 있던 날 (2026-08-20 01:06)
 
