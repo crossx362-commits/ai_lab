@@ -901,7 +901,7 @@ namespace AshesToStars
             if (CompactAction(actions[0], "자동 장착", "sword") && !ch.IsDeleted)
                 AutoEquip(ch);
             CompactAction(actions[1],
-                $"{Economy.FormatCurrency(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
+                $"{EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
                 "gold", locked: true);
         }
 

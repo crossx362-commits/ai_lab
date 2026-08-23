@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -65,6 +66,14 @@ namespace AshesToStars
                 "좌우를 뒤집으면 통과 단언이 성립하지 않는다");
 
             _ = nameof(CharacterScreen);
+
+            string charSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/CharacterScreen.cs"));
+            Check(charSrc.Contains("ShortCopper(GameState.Wallet.Copper)")
+                  && charSrc.IndexOf("FormatCurrency(GameState.Wallet.Copper)") < 0,
+                "캐릭터 지갑은 ShortCopper만");
+            Check(charSrc.Contains("FormatCurrency(Fusion.CostCopper())"),
+                "Fusion 비용 FormatCurrency 유지");
 
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
