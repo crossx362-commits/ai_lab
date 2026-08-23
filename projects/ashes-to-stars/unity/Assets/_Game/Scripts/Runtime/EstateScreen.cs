@@ -100,6 +100,7 @@ namespace AshesToStars
         bool _pendingDefenseRushShot;
         bool _pendingMineRushShot;
         bool _pendingKeepPoorShot;
+        bool _pendingDefensePoorShot;
 
         protected override void Update()
         {
@@ -153,6 +154,12 @@ namespace AshesToStars
                     // QA 샷: 본성 업비 골드 부족 문구
                     _sub = Sub.본성;
                     _pendingKeepPoorShot = true;
+                }
+                else if (AutoOpen == "방어부족")
+                {
+                    // QA 샷: 방어 업비 골드 부족 문구
+                    _hubPage = 2;
+                    _pendingDefensePoorShot = true;
                 }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
@@ -222,6 +229,14 @@ namespace AshesToStars
             if (_pendingKeepPoorShot)
             {
                 _pendingKeepPoorShot = false;
+                long have = GameState.Wallet.Copper;
+                if (have > 0) GameState.Pay(have);
+            }
+            if (_pendingDefensePoorShot)
+            {
+                _pendingDefensePoorShot = false;
+                EstateDefense.ResetForTest();
+                GameState.SetTowerFloorForTest(EstateDefense.UnlockFloor);
                 long have = GameState.Wallet.Copper;
                 if (have > 0) GameState.Pay(have);
             }
