@@ -1,13 +1,12 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 16:17",
+  "phase": "pass",
+  "updated": "2026-08-23 16:18",
   "last_commit": "d461fbcb",
-  "review": "pending",
-  "task": "영지 §6 아트 FAIL 보완(실루엣)",
-  "routed_to": "재와별·루프검수",
-  "note": "실루엣 스트립 재제출 → 재검토",
+  "review": "PASS",
+  "task": "§6 닫음 · 아트 다음 · PropOf는 개발 큐",
+  "routed_to": "재와별·아트",
+  "note": "§6 PASS · PropOf 후속 개발",
   "commits": [
     "d461fbcb"
-  ],
-  "evidence": "output/qa/ashes-to-stars/estate_tier_silhouette/"
+  ]
 }
