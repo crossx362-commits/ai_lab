@@ -23,6 +23,8 @@
 
 <!-- [정리 검사] 2026-08-23 (proposals-triage 11차, BASE 4e8f1717) — 현행 항목 3건(`^- \` grep: agent_runner 건너뛰기·board.py 더임 판정 표시·PROFILE 키트 이동 각각 상이한 제안): 중복 병합 대상 없음, 전 항목에 우선순위(상/중/하) 태그 존재로 보정 불필요. 기존 내용(마커·제안 전체) 삭제 없음. -->
 
+<!-- [정리 검사] 2026-08-23 (proposals-triage 12차, BASE 023899de) — 현행 항목 3건(`^- \` grep: agent_runner 건너뛰기(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하), 서로 상이한 제안): 중복 병합 대상 없음, 전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요. 기존 내용(마커·제안 전체) 삭제 없음. -->
+
 - [2026-08-23 21:34] proposals-triage가 PROPOSALS.md 항목 0건인데도 반복 배정돼 무변경 검증 랩이 누적됨(정리 `30cf1231` 후 4차 검증까지) → loop/agent_runner가 TASKS.json의 proposals-triage를 `^- \[` 형식 라인 grep 0건이면 건너뛰거나, 검증 랩 1회 후 보드 큐에서 완료 표시로 제외 (우선순위 중)
 
 - [2026-08-23 22:4x] 더임 리허설(v4_dummy_sim) 결과가 output(git 제외)에만 있어 다른 세션·보드가 판정 요약을 볼 수 없음 → board.py가 `v4_playtest_dummy/dummy_report.json`을 읽어 V4 게이트 칸에 "더임 리허설 V2·V3·V4 판정(실측 아님)" 한 줄로 표시 (우선순위 하)
