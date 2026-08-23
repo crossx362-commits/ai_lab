@@ -121,8 +121,8 @@ namespace AshesToStars
             Check(invSrc.Contains("ShortCopper(CapCopper())")
                   && invSrc.IndexOf("FormatCurrency(CapCopper())") < 0,
                 "CapCopper은 ShortCopper만");
-            Check(invSrc.Contains("FormatCurrency(FloorCopper())"),
-                "하한 FormatCurrency 유지(다음 칸)");
+            Check(invSrc.Contains("ShortCopper(FloorCopper())"),
+                "하한도 ShortCopper");
             _ = nameof(InvasionState.SeedLootCapQaIfRequested);
             _ = nameof(InvasionState.ForceLootBeforeCap);
 

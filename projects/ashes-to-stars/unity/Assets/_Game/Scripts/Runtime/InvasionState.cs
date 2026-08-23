@@ -245,7 +245,7 @@ namespace AshesToStars
         public static string LootFloorLine()
         {
             if (LootFloorBlocked) return "승자 최소 없음";
-            return $"승자 최소 0.5 G/h(§18-13) · {Economy.FormatCurrency(FloorCopper())}";
+            return $"승자 최소 0.5 G/h(§18-13) · {EstateStatusHud.ShortCopper(FloorCopper())}";
         }
 
         /// <summary>로컬 별의 창고=지갑. 출정 비용을 뺀 뒤에는 낸 돈을 다시 더해
