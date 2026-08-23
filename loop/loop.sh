@@ -65,12 +65,20 @@ while true; do
   LAP_LOG="$LAP_DIR/lap-$LAP_ID.log"
   mkdir -p "$LAP_DIR"
 
-  echo "바퀴 시작: $LAP_ID"
+  echo "바퀴 시작: $LAP_ID" | tee -a "$MAIN_LOG" "$LAP_LOG"
+  # stdout/stderr를 라인버퍼로 lap 로그에 남긴다 (python -u + PYTHONUNBUFFERED)
   "$PYTHON_BIN" -u "$RUNNER" \
     --repo-root "$TARGET_REPO" \
     --prompt-file "$PROMPT_FILE" \
     > >(tee -a "$MAIN_LOG" "$LAP_LOG") 2>&1
   RESULT=$?
+  echo "바퀴 종료: $LAP_ID code=$RESULT" | tee -a "$MAIN_LOG" "$LAP_LOG"
+  # runner가 role 로그를 logs/날짜/바퀴ID/ 에 남기면 lap 로그에 경로를 적어 둔다
+  WORK_DIR="$(ls -1dt "$LAP_DIR"/*/ 2>/dev/null | head -1 || true)"
+  if [ -n "$WORK_DIR" ]; then
+    echo "상세 로그: $WORK_DIR" | tee -a "$MAIN_LOG" "$LAP_LOG"
+    ls -la "$WORK_DIR" | tee -a "$MAIN_LOG" "$LAP_LOG" >/dev/null || true
+  fi
 
   if [ "$RESULT" -eq 0 ]; then
     COUNT=$((COUNT + 1))
