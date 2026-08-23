@@ -3,8 +3,8 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-23 · proposals-triage 22차 검증(BASE `94b52790`)
-마지막 트랙: 문서(proposals-triage 22차 검증 — PROPOSALS.md 현행 항목 6건(반복 배정 방지 병합 중·board.py 더임 판정 표시 하·PROFILE 키트 이동 하·png 실로드 검사 추가 상·보간 접두 매칭 지원 중·MCP 씬 검증 절차 문서화 하) 서로 상이로 중복 병합 대상 없음 · 전 항목 끝 우선순위(상/중/하) 태그 존재로 보정 불필요 · 정리 마커 추가, 기존 내용 삭제 없음)
+최종 갱신: 2026-08-23 · lane-doc 19차 재검증(BASE `30a3c856`)
+마지막 트랙: 문서(lane-doc 19차 재검증 — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행·STOP_LANE 토글 48~50행) 존속 확인. BASE=HEAD, 두 파일 작업 트리 diff 없음 · 재구현 없음 · 두 파일 무변경)
 폴리싱 다음: **캐릭터 속성 ConceptLine LabelClip** (SkillDesc wrap `6ba0a995` 닫음). 마법사 직업 특성은 이번 샷에서 끝 글자까지 보임 — 수호기사 등 긴 고유메커니즘은 미확인.
 
 ## 관문 부채 (루프 밖 · 사람/대화 세션)
@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | lane-doc 19차 재검증(BASE `30a3c856`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행 · STOP_LANE 토글 48~50행)에 존속 확인(BASE=HEAD, 두 파일 작업 트리 diff 없음). 재구현 없음 · 두 파일 무변경. 같은 지시 19회 반복 배정 — TASKS.json 큐 잔존, 건너뛰기 처방(`a27b3d2b`) 미적용 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 19차 재검증(BASE `30a3c856`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영(HEAD 조상 확인)으로 현재 board.html(922~929행) 존속(`kWarns` 필터·`hold` 클래스 분기·실패 칩 경고 병기). `ops-box`가 `usage-line` 클래스(494행)라 `.usage-line .u.hold`(145행) 노랑(`--hold: #e0a050`) 렌더 경로 확인. BASE=HEAD라 loop/board.html 작업 트리 diff 없음. 재구현 없음 · 무변경 | test_board 102 OK · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 22차 검증(BASE `94b52790`) — PROPOSALS.md 현행 항목 6건(반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하)·png 실로드 검사 추가(상)·보간 접두 매칭 지원(중)·MCP 씬 검증 절차 문서화(하), 서로 상이): 중복 병합 대상 없음·전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요 · 기존 내용 삭제 없이 정리 마커 추가. 같은 지시 반복 배정 누적 — agent_runner 건너뛰기 제안(21:34 항목) 채택 시 해소 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 18차 재검증(BASE `94b52790`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영(HEAD 조상 확인)으로 현재 board.html(922~929행) 존속(`kWarns` 필터·`hold` 클래스 분기·실패 칩 경고 병기). `ops-box`가 `usage-line` 클래스(494행)라 `.usage-line .u.hold`(145행) 노랑 렌더 경로 확인. BASE=HEAD라 loop/board.html 작업 트리 diff 없음. 재구현 없음 · 무변경. 같은 지시 18회 반복 배정 | test_board 102 OK · 문서 검증 · 이 커밋 |
