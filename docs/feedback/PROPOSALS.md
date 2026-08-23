@@ -36,3 +36,4 @@
 - [2026-08-23 22:4x] 더임 리허설(v4_dummy_sim) 결과가 output(git 제외)에만 있어 다른 세션·보드가 판정 요약을 볼 수 없음 → board.py가 `v4_playtest_dummy/dummy_report.json`을 읽어 V4 게이트 칸에 "더임 리허설 V2·V3·V4 판정(실측 아님)" 한 줄로 표시 (우선순위 하)
 
 - [2026-08-23 22:4x] v4_dummy_sim의 성향 프로필이 코드 안 상수라 오너가 성향을 바꾸려면 코드 수정이 필요함 → PROFILE을 `loop/v4_dummy_testers.json` 키트 쪽으로 옮겨 비개발자도 키트만 고쳐 리허설 가능하게 (우선순위 하)
+- [2026-08-23 22:5x] keeper-warn-chip이 `0ec68f11` 선반영 후 10차까지 무변경 재검증 랩으로 누적됨(9차 때 이미 지적) → loop/agent_runner가 보드 작업 배정 전 `git log --grep=<작업 id>`으로 선반영 커밋을 찾아 첫 검증 랩 이후 재배정을 건너뛰거나 TASKS.json 큐에서 제외 (우선순위 중)
