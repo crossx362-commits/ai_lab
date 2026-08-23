@@ -90,10 +90,19 @@ namespace AshesToStars
             return ShortCopper(EstateMine.CopperPerHourEffective()) + "/h";
         }
 
-        public static string StoreCaption() =>
-            $"{ShortCopper(GameState.Wallet.Copper)} / {ShortCopper(EstateBuild.WarehouseCapCopper())}";
+        /// <summary>옛 줄은 FormatCurrency 풀표기 두 칸이라 슬림 도크에서 잘렸다.</summary>
+        public static string OldStoreCaption() =>
+            $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
 
-        static string ShortCopper(long n)
+        public static string StoreCaption()
+        {
+            string a = ShortCopper(GameState.Wallet.Copper);
+            string b = ShortCopper(EstateBuild.WarehouseCapCopper());
+            string compact = $"{a}/{b}";
+            return CaptionFits(compact) ? compact : a;
+        }
+
+        public static string ShortCopper(long n)
         {
             if (n >= 10000) return $"{n / 10000}골드";
             if (n >= 100) return $"{n / 100}실버";

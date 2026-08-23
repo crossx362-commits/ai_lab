@@ -94,6 +94,19 @@ namespace AshesToStars
                 "OldMineCaption이 남아 있다");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.StoreCaption()),
                 $"창고 부제 (실제 {EstateStatusHud.StoreCaption()})");
+            Check(!EstateStatusHud.CaptionFits("9150골드 7실버 50쿠퍼 / 12골드 0실버 0쿠퍼"),
+                "옛 창고 FormatCurrency 풀표기는 안 맞음");
+            string storeSrc = File.ReadAllText(Path.Combine(
+                Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
+            int storeMethod = storeSrc.IndexOf("public static string StoreCaption()", StringComparison.Ordinal);
+            int nextStore = storeSrc.IndexOf("public static string ShortCopper(", StringComparison.Ordinal);
+            if (nextStore < 0) nextStore = storeSrc.IndexOf("public static bool CaptionFits(", StringComparison.Ordinal);
+            Check(storeMethod >= 0 && nextStore > storeMethod
+                  && storeSrc.IndexOf("FormatCurrency", storeMethod, nextStore - storeMethod) < 0
+                  && storeSrc.IndexOf("ShortCopper", storeMethod, nextStore - storeMethod) >= 0,
+                "StoreCaption은 ShortCopper만 쓴다");
+            Check(storeSrc.IndexOf("OldStoreCaption", StringComparison.Ordinal) >= 0,
+                "OldStoreCaption이 남아 있다");
             Check(EstateStatusHud.Line().Contains("부제"),
                 $"줄 (실제 {EstateStatusHud.Line()})");
 
