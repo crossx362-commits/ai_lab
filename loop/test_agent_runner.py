@@ -70,6 +70,11 @@ class ProviderCommandTests(unittest.TestCase):
         self.assertNotIn("danger-full-access", command)
         self.assertNotIn("resume", command)
 
+    def test_codex_planning_and_review_use_medium_reasoning(self) -> None:
+        for role in ("planner", "reviewer"):
+            command = runner.build_provider_command("codex", "prompt", 12, role)
+            self.assertIn('model_reasoning_effort="medium"', command)
+
     def test_codex_worker_can_write_linked_git_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -148,6 +148,8 @@ def build_provider_command(
         ]
     if provider == "codex":
         sandbox = "workspace-write" if role == "worker" else "read-only"
+        reasoning_env = "LOOP_CODEX_REASONING" if role == "worker" else "LOOP_CODEX_PLANNING_REASONING"
+        reasoning_default = "xhigh" if role == "worker" else "medium"
         command = [
             "codex", "exec", "--ephemeral",
             "--ignore-user-config",
@@ -160,7 +162,7 @@ def build_provider_command(
                 command.extend(["--add-dir", str(common_dir)])
         command.extend([
             "--json",
-            "-c", f'model_reasoning_effort="{os.environ.get("LOOP_CODEX_REASONING", "xhigh")}"',
+            "-c", f'model_reasoning_effort="{os.environ.get(reasoning_env, reasoning_default)}"',
             "-",
         ])
         return command
