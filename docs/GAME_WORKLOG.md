@@ -60,6 +60,23 @@ rm -f loop/STOP
 근본 수리를 하려면 `loop.sh`의 전환 조건에 **그록 잔량 확인**을 넣거나(402면 전환 안 함),
 전환을 `loop/agent`에 영구 기록하지 말고 그 이터레이션에만 적용할 것. (2026-08-20에 반영됨.)
 
+## 완료 (2026-08-23) — §18-9 RaceDef.이속배율 소비처 (Grok)
+
+원장 §18-9 드워프 표 「이속 -15%」의 `RaceDef.이속배율`(에셋 0.85)이 ProjectSetup·Race_*.asset에
+authored돼 있으면서도 grep 소비처 0곳이었다. 형제 영지생산·골드소비·드랍률·인식범위는
+Economy/EstateMine/WorldStar가 읽는데 이속만 죽어 있던 함정(전투당발동·쿨다운과 동일 계열).
+`RaceInfo.SpeedLine`이 기준(×1)과 다를 때만 「종족 이속 — ×0.85 (-15%)」를 낸다(×1은 빈 문자열로
+패널 밀도 유지). 표시 전용 — W3Party·전투 이동 수치 무접촉. `QA_NO_RACE_SPEED`면 항상 빈
+문자열(옛 화면 = 이속 줄 없음)로 회귀.
+
+### 검수
+- `unity_meas` sync 후 batch SelfCheck **PASS** (exit 0).
+- MenuItem `Ashes to Stars/QA/Race Speed Self Check`.
+- 로그: `projects/ashes-to-stars/results/race_speed_selfcheck_20260823_160518.log` — `[RaceSpeedSelfCheck] PASS` 전항.
+- 소비처: CharacterScreen 속성 탭 `RaceInfo.SpeedLine` (드워프 「×0.85 (-15%)」).
+
+---
+
 ## 완료 (2026-08-23) — §3 SkillDef.쿨다운 소비처 (Grok)
 
 원장 §3 직업 스킬 표(✅)·SkillDef 툴팁 「마나 없음, 쿨다운 단일 체계」의 `SkillDef.쿨다운`이

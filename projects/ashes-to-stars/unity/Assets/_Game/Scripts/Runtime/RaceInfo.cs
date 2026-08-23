@@ -95,5 +95,38 @@ namespace AshesToStars
             if (d == null || string.IsNullOrEmpty(d.정체성)) return "";
             return "종족 정체성 — " + d.정체성;
         }
+
+        /// <summary>§18-9 종족 이속 배율. QA_NO면 줄을 비운다(옛 화면 = 이속 줄 없음).</summary>
+        public const string EnvNoSpeed = "QA_NO_RACE_SPEED";
+
+        public static bool SpeedBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSpeed);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// "종족 이속 — ×0.85 (−15%)". 계정 종족 RaceDef.이속배율의 **유일한 런타임 소비처**.
+        /// 원장 §18-9 드워프 표 「이속 -15%」·에셋 0.85가 ProjectSetup·Race_*.asset에 authored돼
+        /// 있으면서도 grep 소비처 0곳이었다 — 형제 영지생산·골드소비·드랍률·인식범위는 Economy/
+        /// EstateMine/WorldStar가 읽는데 이속만 죽어 있던 함정(전투당발동·쿨다운과 동일 계열).
+        /// 기준(×1)과 같으면 빈 문자열(줄을 안 그려 패널 밀도를 안 늘린다). QA_NO면 항상 빈
+        /// 문자열로 옛 화면(이속 줄 없음)에 회귀. 표시 전용 — W3Party·전투 이동 수치 무접촉.
+        /// </summary>
+        public static string SpeedLine(RaceId id)
+        {
+            if (SpeedBlocked) return "";
+            var d = For(id);
+            if (d == null) return "";
+            float mul = d.이속배율;
+            if (mul <= 0f) return "";
+            if (Mathf.Abs(mul - 1f) < 0.0001f) return "";
+            int pct = Mathf.RoundToInt((mul - 1f) * 100f);
+            string sign = pct > 0 ? "+" : "";
+            return "종족 이속 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
+        }
     }
 }
