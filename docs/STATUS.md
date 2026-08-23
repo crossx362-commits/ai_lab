@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-24 · UI 폴리싱 — 캐릭터 로스터 카드 이름·하트 겹침 수정(`6464be32` 실측)
-마지막 트랙: UI·아트 폴리싱 — 로스터 카드 CellH 118→164·패널 보더 상한 22·비겹침 방어. 플레이모드 실측: 탱커·마법딜러·힐러·서포터 이름 끝글자 전부 표시 + 소멸했던 직업 라벨(수호기사 등) 부활 + 하트 별도 행. CharHudSelfCheck PASS
-폴리싱 다음: **다음 화면 결함 발굴**(로스터 겹침 닫음 — 같은 방식으로 플레이모드 샷 1장 찍어 결함 1개 찾아 고침)
-§10-5 판정: 보스 스킬 수는 `BossSkills.cs` 선반영 완료 — SelfCheck 25/25 PASS(표·QA_NO 네거티브·소비처 3곳 소스 검증 포함), 재구현 없음. 3번 칸 다음 후보는 §10-3 계열 상성 등 목록 순서대로.
+최종 갱신: 2026-08-24 · UI 폴리싱 — 하단 도크 활성 탭 라벨 회색 결함 수정(`777eacab` 실측) · §10-3 선반영 닫음 판정
+마지막 트랙: UI·아트 폴리싱 — 하단 내비 도크에서 현재 화면 탭 라벨이 `GameScreen.BottomBar()`의 `GUI.enabled = !here` 비활성 알파로 회색 처리돼 활성 탭이 오히려 꺼져 보이던 결함. DrawAtlasButton 뒤 GUI.enabled 복구로 아이콘·라벨 선명 유지, 클릭 금지는 !here 가드 보존. 플레이모드 A/B 실측: 전=필드 라벨 회색 → 후=흰색. 네거티브 QA_NO_DOCK_ACTIVE_BRIGHT=1로 옛 흐림 경로 재현. 콘솔 에러 0
+폴리싱 다음: **다음 화면 결함 발굴**(도크 활성 탭 닫음 — 같은 방식으로 플레이모드 샷 1장 찍어 결함 1개 찾아 고침)
+§10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 
 ## 관문 부채 (루프 밖 · 사람/대화 세션)
 
@@ -14,6 +14,7 @@
 
 | 관문 | 상태 | 담당 | 재개 트리거 |
 |---|---|---|---|
+| — | 2026-08-24 | **UI 폴리싱 — 하단 도크 활성 탭 라벨 회색 결함 수정 + §10-3 선반영 판정** — 플레이모드 순회 실측(영지·탑·필드·월드맵·파티)에서 유일 결함 확정: 현재 화면 탭 라벨이 `GUI.enabled = !here` 비활성 알파로 회색 처리돼 위 금강조선과 정반대로 「막힌 탭」처럼 읽힘(비허브 파티 화면은 전 라벨 밝아 경로 입증). 처방: DrawAtlasButton 뒤 GUI.enabled 복구(아이콘·라벨 선명)·클릭 금지는 !here 가드 보존·네거티브 `QA_NO_DOCK_ACTIVE_BRIGHT`. §10-3 계열 상성은 `a7f82e6a` 선반영(`FamilyAdv` 1.3/0.7·SelfCheck·DungeonScreen 소비처 실측)으로 재구현 없이 닫음 | 컴파일 PASS(에러 0) · 플레이모드 A/B 실측 `output/qa/ashes-to-stars/dock_active_shots/`(before_field 회색 → after_field 흰색 크롭 육안) · 네거티브 neg_field(옛 흐림 재현) · 콘솔 에러 0 · `777eacab` |
 | — | 2026-08-24 | proposals-triage 51차 검증(BASE `cd4b2dda`=HEAD) — PROPOSALS.md 현행 항목 10건(반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하)·png 실로드 검사 추가(상)·보간 접두 매칭 지원(중)·MCP 씬 검증 절차 문서화(하)·낡은 포인터 정리 절차(중)·배정 템플릿 STATUS 문구 단서 명기(하)·UiAtlas SlicePad maxPad 상한 점검·SelfCheck 치수 하한 단언(중)·OnGUI 캡처 ScreenCapture.CaptureScreenshot 통일(중), 서로 상이): BASE=HEAD로 신규 제안 0건·작업 트리 diff 없어 중복 병합 대상 없음(과거 중복쌍은 16차 `a27b3d2b`·25차에서 이미 병합)·실측 grep(`grep -c '^- \['`=10 · `(우선순위 [상중하])` 미부착 0건 · 선두 70자 대조 중복 0건 · 태그 분포 상×1·중×5·하×4)으로 전 항목 끝 우선순위 태그 존재(10/10) — 빠진 것 없음·보정 불필요 · 기존 내용 삭제 없이 정리 마커 1행 추가(+3행·삭제 0행) · 같은 지시 반복 배정 누적 — agent_runner 건너뛰기 제안(병합 항목) 채택 시 해소 · tests 없음(빈 목록) · visual=false 해당 없음 · 배당 지시 PROMPT §④에 따라 docs/STATUS.md 히스토리 행 1행만 포함해 커밋(타 세션 미커밋 편집(GAME_WORKLOG·packages-lock.json 등) 미포함) | tests 없음(빈 목록) · visual=false 해당 없음 · 문서 검증 · 이 커밋 |
 | 단계1 관문② (5h 지루함) | 규격 초안 · 측정 대기 | 사람 세션 · 루프=CSV훅 | 체크리스트 `docs/plans/GATE2_LOOP_CHECKLIST.md` · 설문=일시정지 오버레이 · 구현은 보드 배정 후 |
 | V4 영구삭제 수용성 | §21-6 넘김 · 외부 표본 0 · **더임 리허설 완주**(`b812da86`: V2 PASS·V3 FAIL·V4 PASS, 실측 아님) | 사람 관문 | 데모·EA 전 / 사망 규칙 변경 시. 더임 보고서: `output/qa/ashes-to-stars/v4_playtest_dummy/dummy_report.json` |
