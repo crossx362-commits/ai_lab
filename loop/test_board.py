@@ -1922,5 +1922,39 @@ class ResumeTests(unittest.TestCase):
             self.assertEqual(r["pids"], [99])
 
 
+
+class TestStatusFormatCompat(unittest.TestCase):
+    """2026-08-23 empty template broke the board — parsers must accept both shapes."""
+
+    def test_new_template_checkbox_queue(self):
+        status = (
+            "# status\n"
+            "## 1. 현재 진행 상황 요약\n"
+            "- **현재 상태**: 테스트\n"
+            "## 2. 다음 할 일 큐 (Next Tasks Queue)\n"
+            "- [ ] 1. 영지 EstateBuild 업그레이드 창\n"
+            "- [ ] 2. W2 손맛 재측정\n"
+            "- [ ] 3. \n"
+            "## 3. 최근 완료 내역 (History)\n"
+        )
+        queue = board.parse_queue(status)
+        self.assertEqual([q["title"] for q in queue], [
+            "영지 EstateBuild 업그레이드 창",
+            "W2 손맛 재측정",
+        ])
+
+    def test_legacy_numbered_queue_still_works(self):
+        status = (
+            "# status\n"
+            "## 다음 할 일 (원장 §22 — 위에서부터 하나만)\n"
+            "1. **영지 §4** — 업그레이드 창\n"
+            "2. **이펙트** — 한 결함만\n"
+            "## 다음 할 일 큐 (루프가 못 닫은 것)\n"
+        )
+        queue = board.parse_queue(status)
+        self.assertEqual(queue[0]["title"], "영지 §4")
+        self.assertIn("업그레이드", queue[0]["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()
