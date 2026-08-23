@@ -133,8 +133,8 @@ namespace AshesToStars
             Check(GameState.Tier == 0, $"시드는 T1 (실제 T{GameState.Tier + 1})");
             Check(GameState.Wallet.Copper == 16_500, $"시드 지갑 16500 (실제 {GameState.Wallet.Copper})");
             Check(SoftCap.HourLine().Contains("150%"), "시드 문구 150%");
-            Check(SoftCap.HourLine().Contains("1골드 65실버"),
-                $"시드 이번 시간 1골드 65실버 (실제 {SoftCap.HourLine()})");
+            Check(SoftCap.HourLine().Contains("1골드") && SoftCap.HourLine().Contains("이번 시간"),
+                $"시드 이번 시간 ShortCopper (실제 {SoftCap.HourLine()})");
             Environment.SetEnvironmentVariable(SoftCap.EnvShow, null);
 
             _ = nameof(SoftCap.Apply);
@@ -147,8 +147,9 @@ namespace AshesToStars
             Check(capSrc.Contains("ShortCopper(ThresholdCopper())")
                   && capSrc.IndexOf("FormatCurrency(ThresholdCopper())") < 0,
                 "SoftCap.Line 한도는 ShortCopper만");
-            Check(capSrc.Contains("FormatCurrency(EarnedThisHour)"),
-                "HourLine 이번 시간 FormatCurrency 유지(다음 칸)");
+            Check(capSrc.Contains("ShortCopper(EarnedThisHour)")
+                  && capSrc.IndexOf("FormatCurrency(EarnedThisHour)") < 0,
+                "HourLine 이번 시간은 ShortCopper만");
             _ = nameof(GameState.Earn);
             _ = nameof(GameState.Grant);
 

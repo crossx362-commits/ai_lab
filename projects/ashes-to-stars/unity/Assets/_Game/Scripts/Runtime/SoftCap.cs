@@ -128,7 +128,7 @@ namespace AshesToStars
         public static string HourLine()
         {
             if (Blocked) return Line();
-            return Line() + " · 이번 시간 " + Economy.FormatCurrency(EarnedThisHour);
+            return Line() + " · 이번 시간 " + EstateStatusHud.ShortCopper(EarnedThisHour);
         }
 
         /// <summary>시각 QA. QA_SOFT_CAP=1이면 T1에서 20000을 넣어 16500이 남게 한다.</summary>
