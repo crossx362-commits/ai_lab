@@ -62,3 +62,5 @@
 - [2026-08-23 22:55] PlayFromTitle이 도메인 리로드마다 `playModeStartScene`을 Title로 되돌려, W2 같은 비빌드 씬을 MCP로 검증할 때 매번 씬이 게임 흐름(Character)으로 바뀜(실측: 이번 바퀴 2회) → 「MCP로 W1/W2/W3 씬 검증하는 법」(startScene 재지정→play→원복 순서)을 loop/README 또는 GAME_WORKLOG에 절차로 남김 (우선순위 하)
 
 - [2026-08-23 23:45] STATUS·WORKLOG의 「다음」 포인터가 타 세션 선반영 커밋(초필살기 `24ef7e47`·ConceptLine fold `77cee37a`, 19:5x대)을 반영 못 해 4시간 가까이 낡은 과제를 가리켰고, 이번 바퀴가 재구현 없는 검증 전용으로 소비됐다(실측: 두 커밋 모두 HEAD 조상인데 큐엔 「다음 칸」으로 잔존) → 바퀴 시작 읽기 단계에 WORKLOG 트랙표의 닫음 커밋 해시를 `git merge-base --is-ancestor <해시> HEAD`로 검증해 낡은 포인터를 즉시 정리하는 절차 추가 (우선순위 중)
+
+- [2026-08-23 23:56] lane-doc 같은 문서 과제가 선반영 검증만으로 20바퀴 연속 재배정됐다(실측: 이번 바퀴도 README.md 80~85행·loop/README.md 15·48~50행 존속 확인 후 무변경 종료, TASKS.json엔 과제 잔존) → agent_runner가 배정 전 write_paths 관련 내용을 `git merge-base --is-ancestor` 등으로 검사해 선반영 과제는 세션을 열지 않고 큐에서 소비하는 건너뛰기 처방(`a27b3d2b`·21:34 항목) 조속 채택 (우선순위 중)
