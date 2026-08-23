@@ -16,6 +16,7 @@ loop/logs/
 .mcp.json
 agent-reach/
 .logs/
+logs/
 projects/.logs/
 projects/.daemon_state.json
 projects/output/
