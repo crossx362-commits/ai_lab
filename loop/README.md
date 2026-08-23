@@ -12,6 +12,7 @@
 | `PROMPT.md` | 세션 지시서 5절 (①합격기준 ②읽을문서 ③규칙·근거 ④바퀴순서 ⑤커밋규칙+자가학습) |
 | `council.sh` | 자가학습 정기 회의 — planner·builder·tester **병렬** 새 세션 + 의장 합본 → `docs/meetings/COUNCIL_*.md` |
 | `board_keeper.sh` + `deploy_boardkeeper.sh` | **보드 지킴이 에이전트** — 30분마다 보드 응답·state API·테스트 스위트 검증 → 이상 시 opencode 세션으로 외과 수리·커밋, 건강해도 주기적으로 1씽 개선. 결과는 `loop/board_keeper.json`과 보드 「운영」 줄의 지킴이 칩에 표시 |
+| `speed_lane.sh` + `TASKS.json` · `SPEED_PROMPT.md` | **속도 레인** — agent_runner로 최대 3개 작업을 worktree 격리 worker/reviewer로 동시 처리. 승인 커밋은 `autonomous/integration`에 적립되고 메인 루프 각 바퀴가 `merge_integration.sh`로 master에 흡수한다. 스코프: 문서·보드·아트 스크립트·테스트 (게임플레이 C#·STATUS.md는 메인 루프 전용) |
 | `agent_runner.py` | 병렬 코디네이터 — worktree 격리 worker/reviewer (opencode·claude·codex·grok) |
 | `board.py` / `board.html` | 개발 보드 (http://127.0.0.1:8766) · MCP·러너·회의·개선안 운영 줄 표시 |
 | `deploy_launchd.sh` | 레포 loop/ → Application Support 배포 + launchd 재등록 |
@@ -43,6 +44,10 @@ touch loop/STOP
 # 등록까지 완전히 내린다 (다음 로그인 자동 시작 방지)
 launchctl bootout gui/$(id -u)/com.ailab.autonomous_loop
 rm loop/STOP   # 재시작할 때 STOP은 반드시 지운다
+
+# 속도 레인만 끄기 / 켜기
+touch loop/STOP_LANE                                   # 끔 (현재 작업 마치고 종료)
+rm -f loop/STOP_LANE && bash loop/deploy_launchd.sh    # 다시 켬
 ```
 
 ## 상태 보는 법

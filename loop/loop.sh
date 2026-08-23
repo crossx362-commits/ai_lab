@@ -1,5 +1,10 @@
 #!/bin/bash
 # 매 바퀴마다 헤드리스 세션을 "새로" 연다. 대화를 이어 붙이지 않는다.
+#
+# 운영 규칙 (오너 지시, PROMPT.md와 함께 매 바퀴 적용):
+# - 상시 폴리싱: 코드 구멍 다음 이터레이션에는 UI·아트 폴리싱을 섞는다. 영지 화면·EstateYard는
+#   docs/GAME_SPEC_ESTATE_BUILD.md대로. 할로우 나이트 화풍 강제는 취소.
+# - 중복 리소스 재생성 금지 — 이미 있는 에셋은 다시 뽑지 않는다.
 
 set -uo pipefail
 
@@ -186,6 +191,8 @@ while true; do
       bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 \
         || echo "회의 실패 — 루프는 계속" | tee -a "$MAIN_LOG" "$LAP_LOG"
     fi
+    # 속도 레인 적립분(autonomous/integration)을 master로 흡수
+    bash "$DEPLOY_ROOT/merge_integration.sh" "$TARGET_REPO" >> "$MAIN_LOG" 2>&1 || true
   else
     echo "세션 비정상 종료 (code=$RESULT)" | tee -a "$MAIN_LOG" "$LAP_LOG"
     FAILS=$((FAILS + 1))

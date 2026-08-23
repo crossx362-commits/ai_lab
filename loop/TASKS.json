@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    {
+      "id": "proposals-triage",
+      "goal": "docs/feedback/PROPOSALS.md의 항목을 중복 병합하고 각 줄 끝에 우선순위(상/중/하)가 붙었는지 확인해 빠진 것은 붙인다. 내용은 삭제하지 않는다.",
+      "write_paths": ["docs/feedback/PROPOSALS.md"],
+      "tests": [],
+      "visual": false
+    },
+    {
+      "id": "keeper-warn-chip",
+      "goal": "보드 운영 줄(state.keeper.warns)에 경고가 있으면 노란 hold 톤으로 함께 표시한다. renderOps의 kChip 로직 확장.",
+      "write_paths": ["loop/board.html"],
+      "tests": ["python3 loop/test_board.py"],
+      "visual": false
+    },
+    {
+      "id": "lane-doc",
+      "goal": "README.md의 루프 섹션에 속도 레인(병렬 worker/reviewer, autonomous/integration 적립, 바퀴마다 master 병합) 운영법을 5줄 이내로 추가한다.",
+      "write_paths": ["README.md", "loop/README.md"],
+      "tests": [],
+      "visual": false
+    }
+  ]
+}
