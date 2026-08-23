@@ -133,7 +133,7 @@ namespace AshesToStars
                 Info(r, 0, "[주의] 골드가 부족합니다");
                 Info(r, 1, $"필요 {EstateStatusHud.ShortCopper(_pendingCost)} · 보유 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
                 long shortfall = _pendingCost - GameState.Wallet.Copper;
-                Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 부채 {Economy.FormatCurrency(GameState.Debt)} · {NetWorth.Line()} · 이자 0.5%/h(§18-5)");
+                Info(r, 2, $"대출 한도 {EstateStatusHud.ShortCopper(GameState.LoanBorrowable)} · 부채 {EstateStatusHud.ShortCopper(GameState.Debt)} · {NetWorth.Line()} · 이자 0.5%/h(§18-5)");
                 if (shortfall > 0 && GameState.LoanBorrowable < shortfall)
                     Info(r, 3, "대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)");
 
@@ -220,8 +220,8 @@ namespace AshesToStars
                     $"해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1}",
                     "tower", locked: true);
             }
-            DrawCard(cards[3], GameState.WalletText,
-                GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
+            DrawCard(cards[3], EstateStatusHud.ShortCopper(GameState.Wallet.Copper),
+                GameState.Debt > 0 ? $"부채 {EstateStatusHud.ShortCopper(GameState.Debt)}" : "부채 없음",
                 "building_auction", locked: true);
         }
 

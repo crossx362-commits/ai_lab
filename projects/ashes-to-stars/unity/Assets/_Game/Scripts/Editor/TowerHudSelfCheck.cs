@@ -77,9 +77,11 @@ namespace AshesToStars
                   && tower.Contains("ShortCopper(GameState.Wallet.Copper)")
                   && tower.IndexOf("FormatCurrency(_pendingCost)") < 0,
                 "탑 입장 필요·보유는 ShortCopper만");
-            Check(tower.Contains("FormatCurrency(GameState.LoanBorrowable)")
-                  && tower.Contains("FormatCurrency(GameState.Debt)"),
-                "대출·부채 FormatCurrency 유지(다음 칸)");
+            Check(tower.Contains("ShortCopper(GameState.LoanBorrowable)")
+                  && tower.Contains("ShortCopper(GameState.Debt)")
+                  && tower.IndexOf("FormatCurrency(GameState.LoanBorrowable)") < 0
+                  && tower.IndexOf("FormatCurrency(GameState.Debt)") < 0,
+                "탑 대출·부채는 ShortCopper만");
             Check(!tower.Contains("UiPages.Grid(r, 2, 2"),
                 "옛 2×2 전폭 Grid를 안 쓴다");
 
