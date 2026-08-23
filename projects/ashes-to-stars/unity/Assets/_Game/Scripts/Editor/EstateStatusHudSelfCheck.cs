@@ -281,6 +281,12 @@ namespace AshesToStars
                   && loc0.Contains("Wallet.Copper")
                   && loc0.IndexOf("FormatCurrency") < 0,
                 "경매 로컬 장 지갑은 ShortCopper만");
+
+            // 경매 호가 lot.Price
+            Check(estate.Contains("void DrawAuctionLots"), "DrawAuctionLots가 있다");
+            Check(estate.Contains("EstateStatusHud.ShortCopper(lot.Price)")
+                  && estate.IndexOf("FormatCurrency(lot.Price)") < 0,
+                "경매 호가 lot.Price는 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.

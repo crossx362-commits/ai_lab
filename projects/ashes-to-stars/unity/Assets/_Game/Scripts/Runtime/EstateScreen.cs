@@ -1151,7 +1151,7 @@ namespace AshesToStars
                 if (lot.Npc)
                 {
                     if (Row(r, row++, $"구매 {lot.Label}",
-                            buyWhy ?? $"{who} · {Economy.FormatCurrency(lot.Price)}",
+                            buyWhy ?? $"{who} · {EstateStatusHud.ShortCopper(lot.Price)}",
                             ItemAtlas.KeyFor(ParseLotItem(lot))))
                     {
                         _msg = AuctionState.TryBuy(lot.Id)
@@ -1161,7 +1161,7 @@ namespace AshesToStars
                     return;
                 }
                 if (Row(r, row++, $"취소 {lot.Label}",
-                        $"{who} · {Economy.FormatCurrency(lot.Price)} · {AuctionState.LotTimeLine(lot)}"))
+                        $"{who} · {EstateStatusHud.ShortCopper(lot.Price)} · {AuctionState.LotTimeLine(lot)}"))
                     _msg = AuctionState.TryCancel(lot.Id) ? "등록 취소 · 수수료는 소각" : "취소 실패";
             }
             for (int i = 0; i < lots.Count; i++)
