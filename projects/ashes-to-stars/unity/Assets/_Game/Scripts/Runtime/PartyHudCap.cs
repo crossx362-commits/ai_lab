@@ -15,7 +15,7 @@ namespace AshesToStars
         /// <summary>카드 이름칸. 「이름 · 상태」가 하트 앞에서 한 줄.</summary>
         public const int CardStatusMaxRunes = 12;
         public const string OldDeleted = "삭제됨 — 환생석으로만 복구(§4)";
-        public const string DeletedShort = "삭제 · 환생석";
+        public const string DeletedShort = "삭제됨";
 
         static bool _qaSeeded;
 
