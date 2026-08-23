@@ -898,7 +898,7 @@ namespace AshesToStars
         {
             long cut = EstateBuild.RushableSeconds(c);
             string goldWhy = EstateBuild.WhyCannotRushGold(c);
-            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor(c))}";
+            string goldLabel = $"골드 단축 · {EstateStatusHud.ShortCopper(EstateBuild.GoldCostToFloor(c))}";
             string goldDesc = cut > 0
                 ? $"남은 {cut}초를 당긴다. 바닥은 원 소요의 50%(§13-2)"
                 : "남은 시간의 50%가 바닥이다 — 완전 스킵 불가";
