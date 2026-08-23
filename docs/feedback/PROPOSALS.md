@@ -53,11 +53,11 @@
 
 <!-- [정리 검사] 2026-08-24 (proposals-triage 26차, BASE 1dbabc29=HEAD) — 현행 항목 7건(`^- \` grep: 반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하)·png 실로드 검사 추가(상)·보간 접두 매칭 지원(중)·MCP 씬 검증 절차 문서화(하)·낡은 포인터 정리 절차(중), 서로 상이한 제안 — png 실로드 검사와 보간 접두 매칭은 같은 game_asset_names 검사기를 두고도 결함(로드 실패 차단 vs 미사용 오탐)·처방(실로드 null 차단 vs 보간 접두 추출 매칭)이 달라 병합 아님, 낡은 포인터 정리는 바퀴 시작 읽기 단계의 WORKLOG 닫음 해시 검증 절차라 agent_runner 배정 건너뛰기 병합 항목과 행위자·시점·처방이 달라 병합 아님): BASE 이후 신규 제안 0건으로 중복 병합 대상 없음, 전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요. 기존 내용(마커·제안 관찰·처방 전문) 삭제 없음. -->
 
-- [2026-08-23 21:34] 같은 작업이 무변경인데도 반복 배정돼 검증 랩이 누적됨(21:34 proposals-triage 건 + 22:5x keeper-warn-chip 건 병합 · 이어 23:56 lane-doc 건 병합 — lane-doc 같은 문서 과제가 선반영 검증만으로 20바퀴 연속 재배정됐다. 실측: 이번 바퀴도 README.md 80~85행·loop/README.md 15·48~50행 존속 확인 후 무변경 종료, TASKS.json엔 과제 잔존) — proposals-triage는 정리 `30cf1231` 후 항목 0건 상태로 15차 검증까지, keeper-warn-chip은 `0ec68f11` 선반영 후 11차까지(9차 때 이미 지적) 재검증 랩이 쌓임 → loop/agent_runner가 보드 작업 배정 전 `git log --grep=<작업 id>`과 write_paths 관련 내용의 `git merge-base --is-ancestor` 검사로 선반영 커밋·내용을 찾아 첫 검증 랩 이후 재배정을 건너뛰되 세션을 열지 않고 큐에서 소비하며(`a27b3d2b` 처방 조속 채택), proposals-triage는 `^- \[` 형식 라인 grep 0건이면 건너뛰며, 검증 랩 1회 후에는 TASKS.json 큐에서 완료 표시로 제외 (우선순위 중)
+- [2026-08-23 21:34] 같은 작업이 무변경인데도 반복 배정돼 검증 랩이 누적됨(21:34 proposals-triage 건 + 22:5x keeper-warn-chip 건 병합 · 이어 23:56 lane-doc 건 병합 — lane-doc 같은 문서 과제가 선반영 검증만으로 20바퀴 연속 재배정됐다. 실측: 이번 바퀴도 README.md 80~85행·loop/README.md 15·48~50행 존속 확인 후 무변경 종료, TASKS.json엔 과제 잔존) — proposals-triage는 정리 `30cf1231` 후 항목 0건 상태로 15차 검증까지, keeper-warn-chip은 `0ec68f11` 선반영 후 11차까지(9차 때 이미 지적) 재검증 랩이 쌓임 → loop/agent_runner가 보드 작업 배정 전 `git log --grep=<작업 id>`과 write_paths 관련 내용의 `git merge-base --is-ancestor` 검사로 선반영 커밋·내용을 찾아 첫 검증 랩 이후 재배정을 건너뛰되 세션을 열지 않고 큐에서 소비하며(`a27b3d2b` 처방 조속 채택), proposals-triage는 `^- \[` 형식 라인 grep 0건이면 건너뛰며, 검증 랩 1회 후에는 TASKS.json 큐에서 완료 표시로 제외 (우선순위 중) ✅20260823-235725
 
-- [2026-08-23 22:4x] 더임 리허설(v4_dummy_sim) 결과가 output(git 제외)에만 있어 다른 세션·보드가 판정 요약을 볼 수 없음 → board.py가 `v4_playtest_dummy/dummy_report.json`을 읽어 V4 게이트 칸에 "더임 리허설 V2·V3·V4 판정(실측 아님)" 한 줄로 표시 (우선순위 하)
+- [2026-08-23 22:4x] 더임 리허설(v4_dummy_sim) 결과가 output(git 제외)에만 있어 다른 세션·보드가 판정 요약을 볼 수 없음 → board.py가 `v4_playtest_dummy/dummy_report.json`을 읽어 V4 게이트 칸에 "더임 리허설 V2·V3·V4 판정(실측 아님)" 한 줄로 표시 (우선순위 하) ⏸20260823-235725
 
-- [2026-08-23 22:4x] v4_dummy_sim의 성향 프로필이 코드 안 상수라 오너가 성향을 바꾸려면 코드 수정이 필요함 → PROFILE을 `loop/v4_dummy_testers.json` 키트 쪽으로 옮겨 비개발자도 키트만 고쳐 리허설 가능하게 (우선순위 하)
+- [2026-08-23 22:4x] v4_dummy_sim의 성향 프로필이 코드 안 상수라 오너가 성향을 바꾸려면 코드 수정이 필요함 → PROFILE을 `loop/v4_dummy_testers.json` 키트 쪽으로 옮겨 비개발자도 키트만 고쳐 리허설 가능하게 (우선순위 하) ⏸20260823-235725
 
 - [2026-08-23 22:55] 새 PNG 반입 시 TextureImportRules를 우회해 Multiple+PPU100으로 임포트돼 `Resources.Load<Sprite>`가 null이 됨(실측: fx_dash_trail 3장 — §6-A 「스킬 이펙트 로딩 상시 실패」와 같은 결함이 자동 장치 없이 재발) → game_asset_names에 "Resources 아래 png를 `Resources.Load<Sprite>`로 실로드해 null이면 커밋 전 차단" 검사 추가 (우선순위 상) ✅20260823-235725
 
@@ -65,4 +65,4 @@
 
 - [2026-08-23 22:55] PlayFromTitle이 도메인 리로드마다 `playModeStartScene`을 Title로 되돌려, W2 같은 비빌드 씬을 MCP로 검증할 때 매번 씬이 게임 흐름(Character)으로 바뀜(실측: 이번 바퀴 2회) → 「MCP로 W1/W2/W3 씬 검증하는 법」(startScene 재지정→play→원복 순서)을 loop/README 또는 GAME_WORKLOG에 절차로 남김 (우선순위 하) ⏸20260823-235725
 
-- [2026-08-23 23:45] STATUS·WORKLOG의 「다음」 포인터가 타 세션 선반영 커밋(초필살기 `24ef7e47`·ConceptLine fold `77cee37a`, 19:5x대)을 반영 못 해 4시간 가까이 낡은 과제를 가리켰고, 이번 바퀴가 재구현 없는 검증 전용으로 소비됐다(실측: 두 커밋 모두 HEAD 조상인데 큐엔 「다음 칸」으로 잔존) → 바퀴 시작 읽기 단계에 WORKLOG 트랙표의 닫음 커밋 해시를 `git merge-base --is-ancestor <해시> HEAD`로 검증해 낡은 포인터를 즉시 정리하는 절차 추가 (우선순위 중)
+- [2026-08-23 23:45] STATUS·WORKLOG의 「다음」 포인터가 타 세션 선반영 커밋(초필살기 `24ef7e47`·ConceptLine fold `77cee37a`, 19:5x대)을 반영 못 해 4시간 가까이 낡은 과제를 가리켰고, 이번 바퀴가 재구현 없는 검증 전용으로 소비됐다(실측: 두 커밋 모두 HEAD 조상인데 큐엔 「다음 칸」으로 잔존) → 바퀴 시작 읽기 단계에 WORKLOG 트랙표의 닫음 커밋 해시를 `git merge-base --is-ancestor <해시> HEAD`로 검증해 낡은 포인터를 즉시 정리하는 절차 추가 (우선순위 중) ✅20260823-235725
