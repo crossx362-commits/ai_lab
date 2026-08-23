@@ -71,7 +71,9 @@ namespace AshesToStars
                 if (nextLine < 0) nextLine = charSrc.Length;
                 string block = charSrc.Substring(traitAt, nextLine - traitAt);
                 Check(block.Contains("InfoWrap"),
-                    "직업 특성 줄은 InfoWrap(두 줄 LabelFit) — Info LabelClip이면 「소모해 보」에서 잘린다");
+                    "직업 특성 줄은 InfoWrap(LabelFit) — Info LabelClip이면 「소모해 보」에서 잘린다");
+                Check(block.Contains("RowHt"),
+                    "직업 특성은 한 행 높이(RowHt) — 기본 52면 초필 줄이 밀린다");
                 Check(block.Contains("ConceptWrapBlocked"),
                     "직업 특성 블록이 QA_NO 분기를 갖는다");
             }
@@ -87,10 +89,8 @@ namespace AshesToStars
                 string wrapBody = gameSrc.Substring(wrapAt, wrapEnd - wrapAt);
                 Check(wrapBody.Contains("LabelFit"),
                     "InfoWrap은 LabelFit — LabelClip이면 우측이 다시 잘린다");
-                Check(wrapBody.IndexOf("20f", StringComparison.Ordinal) < 0,
-                    "InfoWrap inner는 20px 한 줄이 아니다");
-                Check(wrapBody.Contains("52f"),
-                    "InfoWrap 최소 높이는 두 줄(52)");
+                Check(wrapBody.Contains("float minH"),
+                    "InfoWrap이 minH를 받는다 — 한 행 접기에 필요");
             }
 
             string jobSrc = File.ReadAllText(Path.Combine(Application.dataPath,

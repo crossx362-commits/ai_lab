@@ -64,7 +64,7 @@ session_id,build,t_utc,screen,floor,lv,deaths,revive_herb,action
 
 ## 5. 사람 부채 (루프 밖 · STATUS 관문부채)
 
-- 의무숙제감 자가진단 1–5 (120분·종료)
+- 의무숙제감 자가진단 1–5 (120분·종료) — **UI: 일시정지 오버레이** 중앙 카드만(도크·YardInspect 위에 올리지 않음, session_end 직전)
 - 중도포기 시 사유 한 줄
 - 최종 「관문② PASS/FAIL」판정은 사람
 

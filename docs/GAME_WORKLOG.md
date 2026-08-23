@@ -19,8 +19,8 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 소비처0 다음 한 칸 | §3 SkillDef.반경 `e4557f35` 닫음. `W3Party` 금지. 직전 트랙=폴리싱이라 다음 바퀴는 이 칸 |
-| UI 폴리싱 다음 | 지갑 WalletText FormatCurrency 잘림 | HuntGoldHourLine `261c8a21` · TokenPrice `70f4a5ba` 닫음. HuntGoldLine은 전투 결과라 루프 밖 |
+| 개발 직렬 | 소비처0 다음 한 칸 | SkillDesc wrap `6ba0a995` 닫음. 다음은 SkillDef.초필살기. `W3Party` 금지. 직전 트랙=폴리싱이라 다음 바퀴는 이 칸 |
+| UI 폴리싱 다음 | 캐릭터 속성 ConceptLine LabelClip | SkillDesc wrap `6ba0a995` 닫음. 마법사 직업 특성은 샷에서 끝 글자까지 보임. 수호기사 등 긴 고유메커니즘은 미확인 |
 | launchd 자율 루프 | 살아 있으나 플래너가 task manifest를 못 만듦 | agent=`codex`. Claude 한도 ~08-24 23:00 → Codex/Grok만 |
 | 사람 관문 | 안 닫음 | V2 · V4 70% · W2 FAIL(기준 낮추지 말 것) · 관문② |
 
@@ -32,6 +32,40 @@
 3. ~~**§2-4/§6 아트**~~ — 닫음. 17장 반입 · `EstateArtTierSelfCheck` PASS · `estate_tier_shots/qa_go:Estate.png`.
 
 원장 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」** — 자리 크기로 그림 크기까지 내면 거인이 된다(`b414e914`).
+
+## 완료 (2026-08-23) — 캐릭터 SkillDescLine 우측 잘림 (Grok)
+
+직전 트랙 코드(SkillDef.설명) → 캐릭터 속성 한 결함. Info LabelClip(inner 20px)이
+마법사 「빙결: 광」에서 잘렸다. `InfoWrap`(LabelFit·최소 52px)으로 접고,
+`QA_NO_SKILL_DESC_WRAP`면 옛 한 줄 Clip. 표시 전용 — W3Party 무접촉.
+
+샷 `skill_desc_wrap_shots/qa_go:Character.png` — 「스킬 설명 — 화염폭풍: 장판 광역 — 4체 이상 밀집 시 · 점멸: 순간이동 회피 · 빙결: 광역 슬로우」(끝 글자까지).
+네거티브 `qa_negctrl_no_wrap.png` — `QA_NO_SKILL_DESC_WRAP=1`이면 다시 「빙결: 광」에서 잘림.
+코드 `6ba0a995`. 다음은 소비처0(직전=폴리싱). 소비처0 다음은 SkillDef.초필살기.
+
+### 검수
+- `game_compile_check.py` PASS (291소스 0).
+- `unity_meas` batch `SkillDescSelfCheck` **PASS** (`results/skill_desc_selfcheck.log`).
+- 샷 `output/qa/ashes-to-stars/skill_desc_wrap_shots/qa_go:Character.png` — 빙결: 광역 슬로우 보임.
+- 네거티브 `qa_negctrl_no_wrap.png` — 빙결: 광에서 잘림.
+
+## 완료 (2026-08-23) — §3 SkillDef.설명 소비처 (Grok)
+
+원장 §3 직업 스킬 표의 설명 열·SkillDef TextArea가 ProjectSetup·에셋에 authored돼
+있으면서도 grep 소비처 0곳이었다. 형제 쿨·위력·반경·자원소모는 SkillLine이 읽는데
+설명만 죽어 있던 함정. `JobInfo.SkillDescLine`이 「이름: 설명」을 별도 한 줄로 낸다
+(SkillLine에 붙이면 LabelClip이 뒷 스킬 이름을 자름). `QA_NO_SKILL_DESC`면 빈 문자열
+(옛 화면 = 설명 행 없음). 표시 전용 — W3Party 무접촉.
+
+샷 `skill_desc_shots/qa_go:Character.png` — 마법사 「스킬 설명 — 화염폭풍: 장판 광역 — 4체 이상 밀집 시 · 점멸: 순간이동 회피 · 빙결: 광」(우측 잘림은 다음 폴리싱).
+네거티브 `skill_desc_shots/qa_negctrl_no_desc.png` — `QA_NO_SKILL_DESC=1`이면 설명 행 없이 종족 특성 줄이 그 자리에 온다.
+코드 `017335fc`. 다음은 폴리싱(직전=코드). 소비처0 다음은 SkillDef.초필살기.
+
+### 검수
+- `game_compile_check.py` PASS (291소스 0).
+- `unity_meas` batch `SkillDescSelfCheck` **PASS** (`results/skill_desc_selfcheck.log`).
+- 샷 `output/qa/ashes-to-stars/skill_desc_shots/qa_go:Character.png` — 화염폭풍 장판 광역 보임.
+- 네거티브 `qa_negctrl_no_desc.png` — 설명 행 없음.
 
 ## 완료 (2026-08-23) — 필드 시간당 HuntGoldHourLine ShortCopper (Grok)
 

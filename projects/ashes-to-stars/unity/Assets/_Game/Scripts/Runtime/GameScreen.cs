@@ -499,14 +499,20 @@ namespace AshesToStars
         /// 높이는 남은 본문과 최소 두 줄(52) 중 작은 쪽. 소비한 행 수를 돌려 다음
         /// index가 겹치지 않게 한다(0이면 그릴 자리 없음).
         /// </summary>
-        protected int InfoWrap(Rect r, int index, string text)
+        protected int InfoWrap(Rect r, int index, string text) => InfoWrap(r, index, text, 52f);
+
+        /// <summary>
+        /// <paramref name="minH"/>로 최소 높이를 줄 수 있다. 속성 탭 컴팩트 피치(46/40)에서
+        /// 기본 52를 쓰면 ceil(52/46)=2칸이 되어 초필 줄이 밀린다 — 한 행이면 RowHt.
+        /// </summary>
+        protected int InfoWrap(Rect r, int index, string text, float minH)
         {
             Styles();
             if (string.IsNullOrEmpty(text)) return 0;
             float y = r.y + index * RowPitch;
             float remain = r.yMax - y;
             if (remain < 24f) return 0;
-            float h = Mathf.Min(remain, Mathf.Max(RowHt, 52f));
+            float h = Mathf.Min(remain, Mathf.Max(RowHt, minH));
             var panel = new Rect(r.x - 12, y, r.width + 24, h);
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
