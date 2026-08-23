@@ -410,7 +410,7 @@ namespace AshesToStars
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
 
                     // §4 직업 특성·§3 보유 스킬·§18-9 종족 특성/정체성/이속 — 전부 **이미 배선된 ✅ 표시
-                    // 소비처**(ConceptLine·SkillLine·MechanicLine·IdentityLine·SpeedLine)인데, 76px 기본 그리드에선
+                    // 소비처**(ConceptLine·SkillLine·MechanicLine·IdentityLine·SpeedLine·HealthLine)인데, 76px 기본 그리드에선
                     // 1차+ 캐릭터에서 표제·전직·이동기 우선존이 행 6을 다 먹어 넘쳐 사라졌다(밀도 상한).
                     // 이 패널은 위 DrawAttributes 머리에서 RowPitch/RowHt를 컴팩트로 낮춰(공유 헬퍼 필드)
                     // 같은 인덱스 그리드로 더 많은 행을 담으므로 이 줄들도 한 판에 보인다. 기본직·에셋
@@ -429,6 +429,9 @@ namespace AshesToStars
                         // §18-9 RaceDef.이속배율 — 드워프 ×0.85 등 기준과 다를 때만 한 줄(SpeedLine).
                         string raceSpeed = RaceInfo.SpeedLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceSpeed)) Info(r, advancementRow++, raceSpeed);
+                        // §18-9 RaceDef.체력배율 — 엘프 ×0.85 등 기준과 다를 때만 한 줄(HealthLine).
+                        string raceHp = RaceInfo.HealthLine(RacePrefs.Get());
+                        if (!string.IsNullOrEmpty(raceHp)) Info(r, advancementRow++, raceHp);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).

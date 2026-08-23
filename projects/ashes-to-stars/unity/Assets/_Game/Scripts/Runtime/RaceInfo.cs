@@ -128,5 +128,38 @@ namespace AshesToStars
             string sign = pct > 0 ? "+" : "";
             return "종족 이속 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
         }
+
+        /// <summary>§18-9 종족 체력 배율. QA_NO면 줄을 비운다(옛 화면 = 체력 줄 없음).</summary>
+        public const string EnvNoHealth = "QA_NO_RACE_HEALTH";
+
+        public static bool HealthBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoHealth);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// "종족 체력 — ×0.85 (−15%)". 계정 종족 RaceDef.체력배율의 **유일한 런타임 소비처**.
+        /// 원장 §18-9 엘프 표 「HP -15%」·에셋 0.85가 ProjectSetup·Race_*.asset에 authored돼
+        /// 있으면서도 grep 소비처 0곳이었다 — 형제 이속배율은 SpeedLine이 읽는데 체력만 죽어
+        /// 있던 함정(이속·전투당발동·쿨다운과 동일 계열). 기준(×1)과 같으면 빈 문자열(줄을
+        /// 안 그려 패널 밀도를 안 늘린다). QA_NO면 항상 빈 문자열로 옛 화면(체력 줄 없음)에
+        /// 회귀. 표시 전용 — W3Party·전투 HP 수치 무접촉.
+        /// </summary>
+        public static string HealthLine(RaceId id)
+        {
+            if (HealthBlocked) return "";
+            var d = For(id);
+            if (d == null) return "";
+            float mul = d.체력배율;
+            if (mul <= 0f) return "";
+            if (Mathf.Abs(mul - 1f) < 0.0001f) return "";
+            int pct = Mathf.RoundToInt((mul - 1f) * 100f);
+            string sign = pct > 0 ? "+" : "";
+            return "종족 체력 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
+        }
     }
 }

@@ -70,6 +70,20 @@ rm -f loop/STOP
 
 ---
 
+## 완료 (2026-08-23) — §18-9 RaceDef.체력배율 소비처 (Grok)
+
+원장 §18-9 엘프 표 「HP -15%」의 `RaceDef.체력배율`(에셋 0.85)이 authored돼 있으면서도
+grep 소비처 0곳이었다. `RaceInfo.HealthLine`이 기준(×1)과 다를 때만 「종족 체력 — ×0.85 (-15%)」.
+표시 전용 — W3Party·전투 HP 무접촉. `QA_NO_RACE_HEALTH`면 옛 화면 회귀.
+
+### 검수
+- `unity_meas` batch SelfCheck **PASS**
+- MenuItem `Ashes to Stars/QA/Race Health Self Check`
+- 로그: `projects/ashes-to-stars/results/race_health_selfcheck_20260823_161144.log` — `[RaceHealthSelfCheck] PASS`
+- 소비처: CharacterScreen 속성 탭 `RaceInfo.HealthLine`
+
+---
+
 ## 완료 (2026-08-23) — §18-9 RaceDef.이속배율 소비처 (Grok)
 
 원장 §18-9 드워프 표 「이속 -15%」의 `RaceDef.이속배율`(에셋 0.85)이 ProjectSetup·Race_*.asset에
