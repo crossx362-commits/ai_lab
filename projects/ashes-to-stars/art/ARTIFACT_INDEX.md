@@ -1,6 +1,6 @@
 # 재와 별 아트 산출물 인덱스
 
-> 최종 점검: 2026-08-18 · 제작 방식: **힉스필드 Nano Banana 2** (`nano_banana_flash`, 2k).
+> 최종 점검: 2026-08-23 · 제작 방식: **힉스필드 Nano Banana 2** (`nano_banana_flash`, 2k).
 > 웹은 Unlimited ON. CLI 별칭 `nano_banana_2`=Pro 금지. Gemini·Grok Imagine 금지.
 
 아트 생성 작업물은 생성 원본과 Unity 런타임 반입물을 분리한다. `out_*` 폴더는 재생성·후처리용 원본이며, 게임은 `unity/Assets/Resources/` 아래 파일만 읽는다. 블렌더 이미지는 과거 플레이스홀더와 네거티브 비교본으로만 유지하며 신규 최종 아트 제작에 사용하지 않는다.
@@ -17,6 +17,7 @@
 | UI 크롬 8종 | `art/out_ui_chrome/` | `unity/Assets/Resources/ui/chrome/{panel,button_*,portrait_frame,hp_frame,xp_frame,boss_hp_frame}.png` | `UiAtlas.cs` | 🟡 솔로 텍스처 우선, 아틀라스 아이콘은 유지. 화면 QA 전 |
 | 마을·나무 16종 | `out_p3_village/`, `out_p5_trees/` | `unity/Assets/Resources/props/` | `FieldDecor.cs` | ✅ `village_tree_0`을 집 옆에만 세움(`qa_hunt.png` 열매나무). 길에 안 올라감 |
 | 영지 기능 건물 8종 | `out_estate_buildings/` | `unity/Assets/Resources/props/estate_{keep,mine,warehouse,barracks,smith,mausoleum,tower,auction}_0.png` | `EstateBuildings.cs` | ✅ 본성·광산·창고·수비대·대장간·영묘·탑·경매장 반입. `village_house_*`는 필드 장식 |
+| 영지 티어·공사판 | `out_estate_tiers/` · `spec_estate_tiers.json` | `unity/Assets/Resources/props/estate_*_{1,2}.png` + `estate_scaffold_0.png` | `EstateBuildings.PropOf` · `EstateYard` scaffold | ✅ `_1/_2` 16장 + 공사판 반입(§6). `_0` 재생성 안 함 |
 | 공용 이펙트 8종 | `out_p4_fx/` | `unity/Assets/Resources/FX/` | `FxPool.cs` | ✅ 정적 8장 반입·코드 애니메이션 |
 
 ## 아직 새로 만들어야 하는 것
@@ -31,7 +32,7 @@
 | 잡몹 5×22 | 픽셀 있음 | 할로우 교체 ⬜ INBOX. 실루엣 재생성 금지, 화풍만 |
 | 정예 6 | 안 만듦 | §0-B 색·크기·오라 |
 | 보스 4×16 | 있음 | death 포함. 할로우 화풍은 클로드 |
-| 영지 건물 8 | 있음 | `estate_*_0` |
+| 영지 건물 8 | 있음 | `estate_*_0/_1/_2` + scaffold |
 | 배경 허브 6 | 할로우 있음 | 오늘 반입 |
 | **배경 타이틀·던전·결과** | **옛 그림** | 화면은 읽음. 할로우 아님 |
 | 초상·스킬 아이콘 | 생성 중 | `out_p12_ui` 클로드. 아직 아틀라스 미연결 |

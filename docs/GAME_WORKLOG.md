@@ -18,7 +18,7 @@
 |---|---|---|
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
-| 영지 §6 아트(_1/_2·공사판) | **그록봇 생성 중** | `aigen.py` · 12/17장 · 배선은 미커밋(`EstateBuildings`/`EstateYard`/`prop_scale`) · `_0` 8동 재생성 금지 |
+| 영지 §6 아트(_1/_2·공사판) | **닫음** | `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
 | 개발 직렬 | 소비처0 다음 한 칸 | §18-9 `f9f195e8` · §3 쿨다운 `92cc2feb` 닫음. `W3Party` 금지 |
 | UI 폴리싱 다음 | 본성 골드 단축 FormatCurrency 잘림 | 건물칸·본성상세·업비 ShortCopper 닫음 |
 | launchd 자율 루프 | 살아 있으나 플래너가 task manifest를 못 만듦 | agent=`codex`. Claude 한도 ~08-24 23:00 → Codex/Grok만 |
@@ -29,7 +29,7 @@
 ### 영지 — 남은 순서 (`GAME_SPEC_ESTATE_BUILD.md`)
 1. ~~§2-3 건물별 레벨·업그레이드 창~~ — 닫음 `25559505`.
 2. ~~§2-2 드래그 + 경로 재계산~~ — 닫음 `6d9b4fae`. (`StoreX/StoreY` 상수 제거는 기본 스폰만 남아 **열지 않음**.)
-3. **§2-4/§6 아트** — 그록봇 생성 중(12/17). 반입·SelfCheck·화면 확인이 끝나면 이 칸을 닫는다.
+3. ~~**§2-4/§6 아트**~~ — 닫음. 17장 반입 · `EstateArtTierSelfCheck` PASS · `estate_tier_shots/qa_go:Estate.png`.
 
 원장 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」** — 자리 크기로 그림 크기까지 내면 거인이 된다(`b414e914`).
 
@@ -59,6 +59,16 @@ rm -f loop/STOP
 ```
 근본 수리를 하려면 `loop.sh`의 전환 조건에 **그록 잔량 확인**을 넣거나(402면 전환 안 함),
 전환을 `loop/agent`에 영구 기록하지 말고 그 이터레이션에만 적용할 것. (2026-08-20에 반영됨.)
+
+## 완료 (2026-08-23) — 영지 §6 건물 티어·공사판 아트 (Grok)
+
+- 생성: `aigen.py` + `spec_estate_tiers.json` → `out_estate_tiers/` 17장(`*_1`/`*_2` 16 + `estate_scaffold_0`). 기존 `estate_*_0` 재생성 안 함.
+- 반입: `import_estate_tiers.py` → `Resources/props` + unique `.meta`. `prop_scale.json` 티어·공사판 스케일.
+- 배선: `EstateBuildings.PropOf` 레벨 구간 티어 폴백 · `EstateYard.DrawScaffoldIfBusy`.
+- 검증: `unity_meas` `EstateArtTierSelfCheck` **PASS** (`results/estate_art_tier_selfcheck.log`).
+- 샷: `output/qa/ashes-to-stars/estate_tier_shots/qa_go:Estate.png`.
+
+---
 
 ## 완료 (2026-08-23) — §18-9 RaceDef.이속배율 소비처 (Grok)
 

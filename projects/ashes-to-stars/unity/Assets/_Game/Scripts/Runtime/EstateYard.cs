@@ -364,6 +364,7 @@ namespace AshesToStars
                     if (!string.IsNullOrEmpty(icon))
                         UiAtlas.DrawFit(box, icon);
                 }
+                DrawScaffoldIfBusy(box, cell);
                 if (selX == x && selY == y)
                     DrawName(box, LabelOf(cell));
                 if (box.Contains(mouse) && x + y >= best)
@@ -637,6 +638,18 @@ namespace AshesToStars
             SpriteSize(tw, th, cell, tex, out float bw, out float bh);
             float sit = cell == EstateGrid.Cell.Wall ? 0.55f : 0.42f;
             return new Rect(p.x + (tw - bw) * 0.5f, p.y + th * sit - bh, bw, bh);
+        }
+
+        /// <summary>공사 중이면 공용 공사판을 반투명으로 겹친다(§6).</summary>
+        static void DrawScaffoldIfBusy(Rect box, EstateGrid.Cell cell)
+        {
+            if (!EstateGrid.IsCore(cell) || !EstateBuild.Busy(cell)) return;
+            var sc = PropTex(EstateBuildings.Scaffold);
+            if (sc == null) return;
+            var prev = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, 0.72f);
+            GUI.DrawTexture(box, sc, ScaleMode.ScaleToFit, true);
+            GUI.color = prev;
         }
 
         static void DrawName(Rect box, string name)
