@@ -1,12 +1,12 @@
 {
   "phase": "review",
-  "updated": "2026-08-23 16:26",
-  "last_commit": "c757f1e6",
+  "updated": "2026-08-23 16:27",
+  "last_commit": "0f7d05ef",
   "review": "pending",
-  "task": "PropOf/scaffold 티어 SelfCheck",
+  "task": "1차 전직 수호기사 전신",
   "routed_to": "재와별·루프검수",
-  "note": "개발 완료 → 루프검수 검토 중",
+  "note": "아트 완료 → 루프검수 · PropOf는 별도 검수 중일 수 있음",
   "commits": [
-    "c757f1e6"
+    "0f7d05ef"
   ]
 }
