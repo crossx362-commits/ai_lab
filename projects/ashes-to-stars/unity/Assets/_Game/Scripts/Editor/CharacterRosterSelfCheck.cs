@@ -72,8 +72,11 @@ namespace AshesToStars
             Check(charSrc.Contains("ShortCopper(GameState.Wallet.Copper)")
                   && charSrc.IndexOf("FormatCurrency(GameState.Wallet.Copper)") < 0,
                 "캐릭터 지갑은 ShortCopper만");
-            Check(charSrc.Contains("FormatCurrency(Fusion.CostCopper())"),
-                "Fusion 비용 FormatCurrency 유지");
+            Check(charSrc.Contains("ShortCopper(Fusion.CostCopper())")
+                  && charSrc.IndexOf("FormatCurrency(Fusion.CostCopper())") < 0,
+                "합성 안내 줄은 ShortCopper만");
+            Check(charSrc.Contains("FormatCurrency(cost)"),
+                "소멸 비용 FormatCurrency 유지");
 
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);

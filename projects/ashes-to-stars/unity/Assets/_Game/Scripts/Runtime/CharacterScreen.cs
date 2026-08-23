@@ -67,6 +67,7 @@ namespace AshesToStars
             GameFlow.SeedV4WipeQaIfRequested();
             SeedRarityQaIfRequested();
             SeedFusionQaIfRequested();
+            SeedFusionEntryQaIfRequested();
             SeedSpecialJobQaIfRequested();
             SeedJobTraitQaIfRequested();
             SeedRaceTraitQaIfRequested();
@@ -583,7 +584,7 @@ namespace AshesToStars
                     "buffer", locked: true);
             }
             else if (DrawCard(cards[0], "합성 시작",
-                         $"1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. {Economy.FormatCurrency(Fusion.CostCopper())}(§18-7)",
+                         $"1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. {EstateStatusHud.ShortCopper(Fusion.CostCopper())}(§18-7)",
                          "buffer"))
             {
                 _fusing = true;
@@ -591,7 +592,7 @@ namespace AshesToStars
                 _fusionMaterial = -1;
             }
             DrawCard(cards[1], "규칙",
-                $"슬롯 4 · {Economy.FormatCurrency(Fusion.CostCopper())} · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
+                $"슬롯 4 · {EstateStatusHud.ShortCopper(Fusion.CostCopper())} · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
                 "heart", locked: true);
         }
 
@@ -678,6 +679,19 @@ namespace AshesToStars
             if (Environment.GetEnvironmentVariable("QA_SOLO_CLEAR") != "1") return;
             SoloRaidClear.SeedQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+
+        void SeedFusionEntryQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_FUSION_ENTRY") != "1") return;
+            // 안내 줄 샷: 합성 탭만. DrawFusion(소멸 확인)으로 들어가지 않는다.
+            Environment.SetEnvironmentVariable("QA_FUSION", "1");
+            Fusion.SeedQaIfRequested();
+            Environment.SetEnvironmentVariable("QA_FUSION", null);
+            _listPage = 1;
+            _fusing = false;
+            _selectedCharacter = -1;
         }
 
         void SeedFusionQaIfRequested()
