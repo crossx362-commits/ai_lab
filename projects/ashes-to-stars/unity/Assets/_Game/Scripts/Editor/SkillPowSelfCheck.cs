@@ -89,8 +89,10 @@ namespace AshesToStars
                 $"검사 발도 8초·×1.2 — 「{sword}」");
 
             string guard = JobInfo.SkillLine("수호기사");
-            Check(guard.Contains("도발의 함성(6초)") && guard.IndexOf("도발의 함성(6초·", StringComparison.Ordinal) < 0,
-                $"수호기사 도발(위력0)은 쿨만 — 「{guard}」");
+            Check(guard.Contains("도발의 함성(6초)"),
+                $"수호기사 도발 6초 보존 — 「{guard}」");
+            Check(guard.IndexOf("도발의 함성(6초·×", StringComparison.Ordinal) < 0,
+                $"수호기사 도발(위력0)은 × 없음 — 「{guard}」");
 
             Check(JobInfo.SkillLine("없는직업") == "", "모르는 직업은 빈 문자열(지어내지 않음)");
 

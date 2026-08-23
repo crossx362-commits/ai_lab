@@ -68,18 +68,32 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>§3·SkillDef.반경. QA_NO면 반경 조각을 뺀다(옛 SkillLine = 이름·쿨·위력).</summary>
+        public const string EnvNoSkillRad = "QA_NO_SKILL_RAD";
+
+        /// <summary>기적 등 authored 99는 전투 반경이 아니라 전역 표식 — 숫자를 붙이지 않는다.</summary>
+        public const float SkillRadDisplayCap = 50f;
+
+        public static bool SkillRadBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSkillRad);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
-        /// "보유 스킬 — {이름}(N초·×P) · …". JobDef.스킬의 이름·쿨다운·**위력배율** 소비처.
-        /// 이름·쿨다운만 읽던 SkillLine(92cc2feb) 옆에, ProjectSetup이 스킬마다 authored한
-        /// <c>SkillDef.위력배율</c>(화염폭풍 1.2·조준 사격 2·일섬 3.2·피날레 1.5…)이 정의·에셋만
-        /// 있고 grep 소비처 0곳이었다 — 형제 쿨다운은 SkillLine이 「(N초)」로 읽는데 같은
-        /// SkillDef 행의 위력만 죽어 있던 함정(쿨다운·이동기거리·전투당발동과 동일 계열).
-        /// 원장 §3 직업 스킬 표(✅) 「기본 공격력 대비 배율」칸. 위력 &gt; 0이고 기준(×1)과
-        /// 다를 때만 「×P」를 붙인다(×1·0은 패널 밀도 유지). 쿨다운과 같이 있으면
-        /// 「(N초·×P)」, 쿨 0·위력만 있으면 「 이름 ×P」(괄호 없음 — 옛 SkillCdSelfCheck의
-        /// 「쿨0엔 이름( 금지」를 깨지 않음). QA_NO_SKILL_POW면 위력 조각만 빼고 이름·쿨
-        /// 옛 줄로 회귀. 매칭 직업이 없거나 스킬 배열이 비면 빈 문자열 — 호출부는 이때
-        /// 줄을 그리지 않는다(지어내지 않음). 표시 전용 — W3Party·전투 수치 무접촉.
+        /// "보유 스킬 — {이름}(N초·×P·반경R) · …". JobDef.스킬의 이름·쿨다운·위력배율·**반경** 소비처.
+        /// 이름·쿨·위력만 읽던 SkillLine(50202ce5) 옆에, ProjectSetup이 스킬마다 authored한
+        /// <c>SkillDef.반경</c>(화염폭풍 3.2·빙결 4·도발 4.5·진군가 8…)이 정의·에셋만 있고
+        /// grep 소비처 0곳이었다 — 형제 위력은 SkillLine이 「×P」로 읽는데 같은 SkillDef 행의
+        /// 반경만 죽어 있던 함정(위력·쿨다운·전투당발동과 동일 계열).
+        /// 원장 SkillDef 툴팁 「효과 반경(0이면 단일)」. 0 &lt; 반경 &lt; 50만 「반경R」
+        /// (기적 authored 99는 전역 표식이라 숫자를 안 붙임). 쿨과 같이 있으면 괄호 안
+        /// 「(N초·×P·반경R)」, 쿨 0이면 괄호 없이 「 이름 ×P 반경R」(SkillCd 「이름( 금지」).
+        /// QA_NO_SKILL_RAD면 반경 조각만 빼고 이름·쿨·위력 옛 줄로 회귀. 표시 전용 —
+        /// W3Party·전투 수치 무접촉.
         /// </summary>
         public static string SkillLine(string jobName)
         {
@@ -93,12 +107,19 @@ namespace AshesToStars
                 bool showCd = !SkillCdBlocked && s.쿨다운 > 0f;
                 bool showPow = !SkillPowBlocked && s.위력배율 > 0f
                     && Mathf.Abs(s.위력배율 - 1f) >= 0.0001f;
-                if (showCd && showPow)
-                    piece += "(" + s.쿨다운.ToString("0.#") + "초·×" + s.위력배율.ToString("0.##") + ")";
-                else if (showCd)
-                    piece += "(" + s.쿨다운.ToString("0.#") + "초)";
-                else if (showPow)
-                    piece += " ×" + s.위력배율.ToString("0.##");
+                bool showRad = !SkillRadBlocked && s.반경 > 0f && s.반경 < SkillRadDisplayCap;
+                if (showCd)
+                {
+                    string inside = s.쿨다운.ToString("0.#") + "초";
+                    if (showPow) inside += "·×" + s.위력배율.ToString("0.##");
+                    if (showRad) inside += "·반경" + s.반경.ToString("0.#");
+                    piece += "(" + inside + ")";
+                }
+                else
+                {
+                    if (showPow) piece += " ×" + s.위력배율.ToString("0.##");
+                    if (showRad) piece += " 반경" + s.반경.ToString("0.#");
+                }
                 parts.Add(piece);
             }
             if (parts.Count == 0) return "";

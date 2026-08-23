@@ -411,7 +411,7 @@ namespace AshesToStars
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
 
                     // §4 직업 특성·§3 보유 스킬·§18-9 종족 특성/정체성/이속 — 전부 **이미 배선된 ✅ 표시
-                    // 소비처**(ConceptLine·SkillLine(쿨·위력)·MechanicLine·IdentityLine·SpeedLine·HealthLine)인데, 76px 기본 그리드에선
+                    // 소비처**(ConceptLine·SkillLine(쿨·위력·반경)·MechanicLine·IdentityLine·SpeedLine·HealthLine)인데, 76px 기본 그리드에선
                     // 1차+ 캐릭터에서 표제·전직·이동기 우선존이 행 6을 다 먹어 넘쳐 사라졌다(밀도 상한).
                     // 이 패널은 위 DrawAttributes 머리에서 RowPitch/RowHt를 컴팩트로 낮춰(공유 헬퍼 필드)
                     // 같은 인덱스 그리드로 더 많은 행을 담으므로 이 줄들도 한 판에 보인다. 기본직·에셋
@@ -420,7 +420,7 @@ namespace AshesToStars
                     {
                         string trait = JobInfo.ConceptLine(ch.Job);
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
-                        // §3 SkillDef.쿨다운·위력배율 — SkillLine이 이름 옆에 (N초·×P) (표시 전용).
+                        // §3 SkillDef.쿨다운·위력배율·반경 — SkillLine이 이름 옆에 (N초·×P·반경R) (표시 전용).
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
                         // §18-9·§14 종족 고유 메커니즘·정체성 — 계정 종족(RacePrefs.Get) RaceDef의 유일 소비처.
