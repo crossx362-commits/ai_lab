@@ -97,7 +97,7 @@ run_session() {
         --permission-mode auto \
         --max-turns "$MAX_TURNS" \
         --no-subagents \
-        --output-format text
+        --output-format plain
       ;;
     codex)
       {
