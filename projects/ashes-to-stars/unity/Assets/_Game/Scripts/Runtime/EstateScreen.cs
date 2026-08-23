@@ -873,7 +873,7 @@ namespace AshesToStars
             var c = EstateGrid.Cell.Keep;
             EstateBuild.Tick();
             int lv = EstateBuild.Level(c);
-            Info(r, 0, $"본성 Lv{lv} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}(§18-12)");
+            Info(r, 0, $"본성 Lv{lv} · 창고 {EstateStatusHud.ShortCopper(EstateBuild.WarehouseCapCopper())}(§18-12)");
             int row = 1;
             if (EstateBuild.Busy(c))
             {
