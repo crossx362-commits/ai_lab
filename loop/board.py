@@ -3188,7 +3188,8 @@ def main() -> None:
     if host != "127.0.0.1":
         print(f"  다른 기기: http://{_lan_ip()}:{PORT}/")
     print("  Ctrl+C 로 종료")
-    threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}/")).start()
+    if os.getenv("BOARD_NO_BROWSER") != "1" and sys.stdin.isatty():
+        threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}/")).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

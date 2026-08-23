@@ -71,7 +71,10 @@ launchctl bootout gui/$(id -u)/com.ailab.autonomous_loop
 launchctl print gui/$(id -u)/com.ailab.autonomous_loop | head
 tail -f logs/loop_main.log
 ls -lt logs/$(date +%Y-%m-%d)/ | head
-python3 loop/board.py    # 개발보드 http://127.0.0.1:8766
+# 개발보드 (8766) — launchd KeepAlive. 터미널에서 켜면 세션 종료와 같이 죽는다.
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ailab.board.plist
+# 끄기: launchctl bootout gui/$(id -u)/com.ailab.board
+# 주소: http://127.0.0.1:8766
 ```
 
 ### 한 바퀴 순서 (PROMPT.md)
