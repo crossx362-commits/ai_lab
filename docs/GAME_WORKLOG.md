@@ -19,9 +19,9 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 소비처0 다음 한 칸 | SkillDesc wrap `6ba0a995` 닫음. 다음은 SkillDef.초필살기. `W3Party` 금지. 직전 트랙=폴리싱이라 다음 바퀴는 이 칸 |
+| 개발 직렬 | 소비처0 다음 한 칸 | SkillDesc wrap `6ba0a995`·초필살기 `24ef7e47`·ConceptLine fold `77cee37a`·§18-9 방어배율 `ead55a1d` 닫음(DefenseLine — RaceDefenseSelfCheck PASS·네거 `QA_NO_RACE_DEFENSE`). `W3Party` 금지 |
 | UI 폴리싱 다음 | 캐릭터 속성 ConceptLine LabelClip | SkillDesc wrap `6ba0a995` 닫음. 마법사 직업 특성은 샷에서 끝 글자까지 보임. 수호기사 등 긴 고유메커니즘은 미확인 |
-| launchd 자율 루프 | 살아 있으나 플래너가 task manifest를 못 만듦 | agent=`codex`. Claude 한도 ~08-24 23:00 → Codex/Grok만 |
+| launchd 자율 루프 | **정지 — 대화 세션이 인수**(오너 2026-08-23) | 그록 루프 STOP으로 정상 종료·bootout. 실행기 grok→opencode 전환 + 유니티·블렌더 MCP 절차는 `5b1bddbd`. 재개법은 `loop/README.md` |
 | 사람 관문 | 안 닫음 | V2 · V4 70% · W2 FAIL(기준 낮추지 말 것) · 관문② |
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md`는 Imagine도 허용하나 재와별 `CLAUDE.md` §5는 Imagine 금지 — **그록봇은 aigen.py를 따른다.**
