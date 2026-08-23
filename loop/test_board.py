@@ -234,10 +234,31 @@ class ParseTests(unittest.TestCase):
         stuck = board.stuck_items("", {}, log_text="❌ #7 실패\n✅ #8 완료")
         self.assertFalse(any(s["kind"] == "fail" for s in stuck))
 
-    def test_board_html_stuck_after_request(self):
+    def test_board_html_ops_after_detail_grid(self):
         html = (HERE / "board.html").read_text(encoding="utf-8")
-        self.assertLess(html.find('class="request-top"'), html.find('id="stuck-box"'))
-        self.assertIn("renderStuck", html)
+        self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
+        self.assertLess(html.find('id="charts"'), html.find('class="request-top"'))
+        self.assertLess(html.find('class="request-top"'), html.find('id="tests-box"'))
+        self.assertIn("renderDetail", html)
+
+
+    def test_completed_posts_reads_history_table(self):
+        status = """# s
+## 최근 완료 내역 (History)
+| 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+|---|---|---|---|
+| 12 | 2026-08-23 | 보드 History 파싱 | PASS `abcdef12` |
+| — | 2026-08-22 | 예전 작업 | 아카이브 |
+## 막힌 것 · 보류
+- 없음
+"""
+        posts = board.completed_posts(status)
+        titles = [p["title"] for p in posts]
+        self.assertIn("보드 History 파싱", titles)
+        first = next(p for p in posts if "History" in p["title"] or "파싱" in p["title"])
+        self.assertEqual(first["commit"], "abcdef12")
+        snip = board.make_status_snip(status)
+        self.assertTrue(snip)
 
     def test_completed_posts_description_and_shot(self):
         status = STATUS + """
@@ -369,22 +390,29 @@ class ParseTests(unittest.TestCase):
         self.assertIn("renderCompleted", html)
         self.assertIn('id="slice"', html)
 
-    def test_board_html_queue_above_charts_and_commands_log(self):
+    def test_board_html_detail_is_primary_ops_panel(self):
         html = (HERE / "board.html").read_text(encoding="utf-8")
-        self.assertLess(html.find('id="commands"'), html.find('id="queue"'))
-        self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
-        self.assertLess(html.find('id="queue"'), html.find('id="choices"'))
-        self.assertIn("renderCommands", html)
-        self.assertIn("내가 시킨 일", html)
+        # detail-grid is the single list source; main keeps interactive controls only
+        self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
+        self.assertLess(html.find('id="charts"'), html.find('id="choices"'))
+        self.assertLess(html.find('id="d-queue"'), html.find('id="d-worklog"'))
+        self.assertLess(html.find('id="d-blockers"'), html.find('id="d-gates"'))
+        self.assertLess(html.find('id="d-completed"'), html.find('id="d-inbox"'))
+        self.assertLess(html.find('id="d-providers"'), html.find('id="d-commits"'))
+        self.assertIn('id="d-commands"', html)
         self.assertIn("proto_done", html)
         self.assertIn("지금 ·", html)
         self.assertIn("테스트 하는 사람", html)
-        self.assertEqual(html.count('id="queue"'), 1)
         self.assertIn('id="tests"', html)
         self.assertIn("검증 결과", html)
         self.assertIn("renderTests", html)
-        self.assertLess(html.find('id="commands"'), html.find('id="tests"'))
-        self.assertLess(html.find('id="tests"'), html.find('id="queue"'))
+        self.assertIn("renderDetail", html)
+        # duplicates removed from main
+        self.assertEqual(html.count('id="queue"'), 0)
+        self.assertNotIn('id="stuck-box"', html)
+        self.assertNotIn('id="now-box"', html)
+        self.assertNotIn('대기 중인 지시', html)
+        self.assertNotIn('내가 시킨 일', html)
 
 
 class WriteTests(unittest.TestCase):
@@ -1404,9 +1432,11 @@ class BoardManageTests(unittest.TestCase):
         self.assertIn("한 화면이 철칙", doc)
         self.assertIn("아나", doc + (HERE / "v4_testers.json").read_text(encoding="utf-8"))
         self.assertIn("검은 화면", doc)
-        self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
+        self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
+        self.assertIn('id="d-queue"', html)
+        self.assertIn('id="d-commands"', html)
         self.assertIn("할 일 적기", html)
-        self.assertIn("내가 시킨 일", html)
+        self.assertIn("오너 명령 기록", html)
         self.assertIn("테스트 하는 사람", html)
         self.assertIn("검증 결과", html)
         self.assertTrue(callable(board.load_test_report))

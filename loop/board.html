@@ -146,36 +146,51 @@
   .now-panel .t { font-size: 16px; font-weight: 650; }
   .now-panel .log { margin-top: 10px; max-height: 160px; }
   .detail-grid {
-  margin: 14px 24px 28px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; margin: 14px; } }
-.d-card {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px 14px 10px;
-  max-height: 340px;
-  overflow: auto;
-}
-.d-card.wide { grid-column: 1 / -1; max-height: 260px; }
-.d-card h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .02em; }
-.d-list .row { display: grid; grid-template-columns: 28px 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
-.d-list .row .n { color: var(--muted); }
-.d-list .row .t { font-weight: 600; }
-.d-list .row .d { grid-column: 2; color: var(--muted); font-size: 12px; line-height: 1.35; }
-.d-list .err { color: var(--stop); font-weight: 700; }
-.d-list .ok { color: var(--ok); }
-.d-list .empty { color: var(--muted); font-size: 13px; }
-.d-list .role-err {
-  display: inline-block; margin-left: 6px; padding: 0 7px;
-  border: 1px solid var(--stop); border-radius: 999px;
-  color: var(--stop); font-size: 11px; font-weight: 700;
-}
-.d-card.tall { max-height: 420px; }
-.charts { margin: 14px 24px 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
+    margin: 14px 24px 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; margin: 14px; } }
+  .d-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px 10px;
+    max-height: 340px;
+    overflow: auto;
+    min-height: 120px;
+  }
+  .d-card.wide { grid-column: 1 / -1; max-height: 260px; }
+  .d-card.tall { max-height: 420px; }
+  .d-card.err-card { border-color: var(--stop); }
+  .d-card h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .02em; color: var(--gold); }
+  .d-card details > summary {
+    list-style: none; cursor: pointer; color: var(--gold);
+    font-size: 13px; letter-spacing: .02em; font-weight: 650; margin-bottom: 8px;
+  }
+  .d-card details > summary::-webkit-details-marker { display: none; }
+  .d-card details > summary::after { content: " ▾"; color: var(--muted); font-weight: 400; }
+  .d-card details[open] > summary::after { content: " ▴"; }
+  .d-list .row { display: grid; grid-template-columns: 28px 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .d-list .row:last-child { border-bottom: 0; }
+  .d-list .row .n { color: var(--muted); }
+  .d-list .row .t { font-weight: 600; }
+  .d-list .row .d { grid-column: 2; color: var(--muted); font-size: 12px; line-height: 1.35; }
+  .d-list .err { color: var(--stop); font-weight: 700; }
+  .d-list .ok { color: var(--ok); }
+  .d-list .empty { color: var(--muted); font-size: 13px; }
+  .d-list .role-err {
+    display: inline-block; margin-left: 6px; padding: 0 7px;
+    border: 1px solid var(--stop); border-radius: 999px;
+    color: var(--stop); font-size: 11px; font-weight: 700;
+  }
+  .ops-wrap { margin: 0 24px 28px; }
+  @media (max-width: 900px) { .ops-wrap { margin: 0 14px 24px; } }
+  .ops-wrap > section, .ops-wrap > .charts { margin-left: 0; margin-right: 0; }
+  .main-ops { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; padding: 18px 0 8px; }
+  @media (max-width: 900px) { .main-ops { grid-template-columns: 1fr; } }
+  .charts { margin: 14px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
   @media (max-width: 900px) { .charts { grid-template-columns: 1fr; margin: 14px; } }
   .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; }
   .bar-row { display: grid; grid-template-columns: 118px 1fr 36px; gap: 8px; align-items: center; margin: 7px 0; }
@@ -447,7 +462,7 @@
 </div>
 
 <div class="detail-grid" id="detail-grid">
-  <section class="d-card">
+  <section class="d-card tall">
     <h3>다음 할 일 · STATUS 큐 전체</h3>
     <div class="d-list" id="d-queue"></div>
   </section>
@@ -455,7 +470,7 @@
     <h3>WORKLOG · 아직 안 한 것</h3>
     <div class="d-list" id="d-worklog"></div>
   </section>
-  <section class="d-card tall">
+  <section class="d-card tall" id="d-lap-card">
     <h3>최신 바퀴 <span class="meta" id="d-lap-meta"></span></h3>
     <div class="d-list" id="d-lap"></div>
   </section>
@@ -484,8 +499,10 @@
     <div class="d-list" id="d-commits"></div>
   </section>
   <section class="d-card wide">
-    <h3>오너 명령 기록</h3>
-    <div class="d-list" id="d-commands"></div>
+    <details>
+      <summary>오너 명령 기록</summary>
+      <div class="d-list" id="d-commands"></div>
+    </details>
   </section>
 </div>
 
@@ -510,6 +527,7 @@
     <div class="git-file-list" id="git-file-list"><p class="empty" style="padding:10px">불러오는 중…</p></div>
   </div>
 </dialog>
+
 <div class="view-bar">
   <button class="ghost" id="btn-view" type="button">자세히 보기</button>
   <span class="meta" id="view-hint">한 화면만 본다. 나머지는 접혀 있다.</span>
@@ -518,6 +536,10 @@
   <div><strong>중단됨</strong> <span class="meta" id="resume-why"></span></div>
   <button id="btn-continue" type="button">계속 진행</button>
 </div>
+
+<div class="ops-wrap">
+<div class="charts hide-compact" id="charts"></div>
+
 <section class="request-top">
   <h2>할 일 적기</h2>
   <input type="text" id="req-title" maxlength="80" placeholder="예: 보스가 안 때려요">
@@ -528,50 +550,29 @@
     <span class="msg" id="req-msg"></span>
   </div>
 </section>
-<section class="request-top hide-compact" id="commands-box">
-  <h2>내가 시킨 일</h2>
-  <p class="meta">채팅이든 여기든, 시킨 일은 여기에 남는다. 끝나도 지우지 않는다.</p>
-  <div class="cmd-list" id="commands"></div>
-</section>
+
 <section class="request-top hide-compact" id="tests-box">
   <h2>검증 결과</h2>
   <p class="meta" id="tests-meta">아직 돌린 검사가 없다.</p>
   <div class="cmd-list" id="tests"></div>
 </section>
-<section class="stuck-box hide-compact" id="stuck-box">
-  <h2>지금 막힌 것</h2>
-  <p class="meta">자동 작업이 멈췄거나, 먼저 해야 할 일이 없는 것만.</p>
-  <div id="stuck-list"></div>
-  <div class="row" id="stuck-acts" style="display:none">
-    <button type="button" id="btn-stuck-continue">계속 진행</button>
-    <span class="msg" id="stuck-msg"></span>
-  </div>
-</section>
-<section class="now-panel hide-compact" id="now-box">
-  <div class="phase" id="now-phase">지금</div>
-  <div class="t" id="now-title">불러오는 중…</div>
-  <div class="meta" id="now-meta"></div>
-  <div class="log" id="now-log" style="display:none"></div>
-</section>
-<section class="queue-top hide-compact">
-  <h2>다음 할 일</h2>
-  <p class="meta">위에서부터 하나만 한다.</p>
-  <div id="queue"></div>
-</section>
-<div class="charts hide-compact" id="charts"></div>
+
 <section class="playtest-wrap hide-compact" id="playtest-box">
   <h2>테스트 하는 사람</h2>
   <p class="meta" id="playtest-meta">키트를 불러오는 중…</p>
   <div class="playtest-grid" id="playtest-grid"></div>
   <div id="playtest-script"></div>
 </section>
+
 <section class="done-wrap hide-compact" id="done-wrap">
-  <h2>끝난 일</h2>
-  <p class="meta">끝난 것만. 사진은 실제로 찍은 화면이다.</p>
+  <h2>끝난 일 · 화면</h2>
+  <p class="meta">끝난 것만. 사진은 실제로 찍은 화면이다. 목록은 위 「최근 완료」.</p>
   <div class="done-gallery" id="done-gallery"></div>
 </section>
+
 <div class="lightbox" id="lightbox"><img id="lightbox-img" alt=""></div>
-<main class="hide-compact">
+
+<main class="main-ops hide-compact">
   <div>
     <section>
       <h2>내가 고를 일</h2>
@@ -601,14 +602,6 @@
       <div class="log" id="log" style="margin-top:12px"></div>
     </section>
     <section style="margin-top:18px">
-      <h2>방금 끝낸 것</h2>
-      <div id="results"></div>
-    </section>
-    <section style="margin-top:18px">
-      <h2>대기 중인 지시</h2>
-      <div id="inbox"></div>
-    </section>
-    <section style="margin-top:18px">
       <h2>저장할 파일</h2>
       <div class="files" id="dirty"></div>
       <input type="text" id="commit-msg" maxlength="120" placeholder="커밋 메시지 (비우면 자동)" style="margin-top:10px">
@@ -618,12 +611,10 @@
         <span class="msg" id="commit-msg-out"></span>
       </div>
     </section>
-    <section style="margin-top:18px">
-      <h2>최근 저장</h2>
-      <div id="commits"></div>
-    </section>
   </div>
 </main>
+</div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 let latestState = null;
@@ -973,6 +964,8 @@ function renderDetail(state) {
     + `<span class="d">${esc(r.tail || "")}</span></div>`
   ).join("") : (lap.id ? '<p class="empty">역할 로그 없음</p>' : '<p class="empty">바퀴 로그 없음</p>');
   $("d-lap").innerHTML = lapHtml;
+  const lapCard = $("d-lap-card");
+  if (lapCard) lapCard.classList.toggle("err-card", Boolean(lap.errors && lap.errors.length));
 
   const bl = (state.blockers || []).concat(state.stuck || []);
   $("d-blockers").innerHTML = bl.length ? bl.map((it) =>
@@ -1082,7 +1075,7 @@ function renderGlance(state) {
   $("g-log").textContent = (L.log_tail || "(로그 없음)").split("\n").slice(-8).join("\n");
   $("g-log").scrollTop = $("g-log").scrollHeight;
 
-  const q = (state.queue || []).slice(0, 12);
+  const q = (state.queue || []).slice(0, 6);
   $("g-queue").innerHTML = q.length ? q.map((it, i) => `
     <div class="g-row${i ? " dim" : ""}"><span class="n">${it.n || i + 1}</span>
     <span class="t">${esc(it.title)}</span></div>`).join("")
@@ -1183,6 +1176,7 @@ function render(state) {
   $("updated").textContent = "마지막 갱신 · " + (state.updated || "시각 없음");
   const L = state.loop || {};
   const lapId = (state.lap && state.lap.id) || "";
+  const lapErrs = (state.lap && state.lap.errors) || [];
   $("pills").innerHTML = [
     L.running ? `<span class="pill ok">running</span>` : `<span class="pill bad">꺼짐</span>`,
     L.stop ? `<span class="pill bad">STOP</span>` : "",
@@ -1190,6 +1184,7 @@ function render(state) {
     `<span class="pill on">agent ${esc(L.agent || "?")}</span>`,
     L.latest_iter ? `<span class="pill">lap ${esc(L.latest_iter)}</span>` : "",
     lapId ? `<span class="pill on">바퀴 ${esc(lapId)}</span>` : "",
+    lapErrs.length ? `<span class="pill bad">바퀴 오류 ${lapErrs.length}</span>` : "",
     (state.charts && state.charts.current)
       ? `<span class="pill on">지금 ${esc(state.charts.current.label)}</span>` : "",
   ].filter(Boolean).join("");
@@ -1197,46 +1192,44 @@ function render(state) {
   const blocked = L.blocked || [];
   $("resume-bar").classList.toggle("show", blocked.length > 0);
   $("resume-why").textContent = blocked.length ? blocked.join(" · ") : "";
-  const now = L.now || {};
-  $("now-box").classList.toggle("idle", now.phase !== "작업 중");
-  $("now-phase").textContent = now.phase === "작업 중"
-    ? ("지금 작업 중" + (now.number ? " · #" + now.number : ""))
-    : (now.phase || "지금");
-  $("now-title").textContent = now.title || "상태 없음";
-  $("now-meta").textContent = now.started ? ("시작 " + now.started) : "";
-  $("now-log").style.display = "none";
-  $("now-log").textContent = "";
   const pending = state.choices || [];
-  $("choice-hint").style.display = pending.length ? "block" : "none";
-  $("choices").innerHTML = pending.length ? pending.map((it) => `
-    <div class="choice" data-id="${it.id}">
-      <div class="t">${esc(it.title)}</div>
-      <div class="d">${esc(it.detail)}</div>
-      <input type="text" class="choice-note" placeholder="메모 (선택)" style="margin-top:8px">
-      <div class="acts">
-        <button type="button" class="pass" data-choice="do">이걸로 진행</button>
-        <button type="button" class="retry" data-choice="pass">완료</button>
-        <button type="button" class="skip" data-choice="skip">보류</button>
-      </div>
-    </div>`).join("") : '<p class="empty">지금 고를 일 없음</p>';
-  renderStuck(state);
-  renderCommands(state);
+  const choiceHint = $("choice-hint");
+  if (choiceHint) choiceHint.style.display = pending.length ? "block" : "none";
+  const choicesEl = $("choices");
+  if (choicesEl) {
+    choicesEl.innerHTML = pending.length ? pending.map((it) => `
+      <div class="choice" data-id="${it.id}">
+        <div class="t">${esc(it.title)}</div>
+        <div class="d">${esc(it.detail)}</div>
+        <input type="text" class="choice-note" placeholder="메모 (선택)" style="margin-top:8px">
+        <div class="acts">
+          <button type="button" class="pass" data-choice="do">이걸로 진행</button>
+          <button type="button" class="retry" data-choice="pass">완료</button>
+          <button type="button" class="skip" data-choice="skip">보류</button>
+        </div>
+      </div>`).join("") : '<p class="empty">지금 고를 일 없음</p>';
+  }
   renderTests(state);
   renderPlaytest(state);
   renderCompleted(state);
-  renderItems($("slice"), state.slice || (state.charts && state.charts.slice) || [], state);
-  renderItems($("milestones"), state.milestones || [], state);
-  renderItems($("queue"), state.queue || [], state);
-  $("log").textContent = L.log_tail || "(루프 로그 없음)";
+  const sliceEl = $("slice");
+  if (sliceEl) renderItems(sliceEl, state.slice || (state.charts && state.charts.slice) || [], state);
+  const milesEl = $("milestones");
+  if (milesEl) renderItems(milesEl, state.milestones || [], state);
+  const logEl = $("log");
+  if (logEl) logEl.textContent = L.log_tail || "(루프 로그 없음)";
   const git = state.git || {};
   const allowN = Number(git.allowed || 0);
-  $("dirty").innerHTML = git.changed
-    ? `<div class="ok">변경 ${git.changed}개 · 저장 가능 ${allowN}개 · 제외 ${git.blocked || 0}개</div>`
-      + '<div>전체 경로는 상단 「Git 상세」에서 필요할 때만 불러온다.</div>'
-    : '<p class="empty">저장할 변경 없음</p>';
-  $("btn-commit").disabled = allowN === 0 || syncInFlight || Boolean((state.sync || {}).busy);
+  const dirtyEl = $("dirty");
+  if (dirtyEl) {
+    dirtyEl.innerHTML = git.changed
+      ? `<div class="ok">변경 ${git.changed}개 · 저장 가능 ${allowN}개 · 제외 ${git.blocked || 0}개</div>`
+        + '<div>전체 경로는 상단 「Git 상세」에서 필요할 때만 불러온다.</div>'
+      : '<p class="empty">저장할 변경 없음</p>';
+  }
+  const commitBtn = $("btn-commit");
+  if (commitBtn) commitBtn.disabled = allowN === 0 || syncInFlight || Boolean((state.sync || {}).busy);
   const push = state.push || {};
-  const pushBtn = $("btn-push");
   for (const id of ["btn-push"]) {
     const b = $(id);
     if (!b) continue;
@@ -1244,23 +1237,6 @@ function render(state) {
     b.textContent = push.ahead > 0 ? `푸시 ${push.ahead}개` : "푸시";
     b.title = push.branch ? `origin/${push.branch}로 올린다` : "올릴 커밋 없음";
   }
-  const results = state.results || [];
-  $("results").innerHTML = results.length ? results.map((it) => `
-    <div class="item${checked(state, it.id) ? " done" : ""}">
-      <label>
-        <input type="checkbox" data-id="${it.id}" ${checked(state, it.id) ? "checked" : ""}>
-        <div><div class="t">${esc(it.title)}</div>
-        <div class="d">${it.commit ? it.commit + " · " : ""}${esc((it.body || "").slice(0, 180))}</div></div>
-      </label>
-    </div>`).join("") : '<p class="empty">기록 없음</p>';
-  const waiting = (state.inbox && state.inbox.waiting) || [];
-  $("inbox").innerHTML = waiting.length ? waiting.map((it) => `
-    <details class="inbox"><summary>${esc(it.title)}</summary><p>${esc(it.body)}</p></details>
-  `).join("") : '<p class="empty">대기 중인 지시 없음</p>';
-  const commits = state.commits || [];
-  $("commits").innerHTML = commits.length ? commits.map((c) => `
-    <div class="commit"><span class="hash">${esc(c.hash)}</span><span class="when">${esc(c.when)}</span><span>${esc(c.subject)}</span></div>
-  `).join("") : '<p class="empty">최근 저장 없음</p>';
   renderCharts(state.charts || {});
   renderGlance(state);
   renderDetail(state);
@@ -1473,7 +1449,7 @@ async function resumeLoop() {
 }
 $("btn-continue").onclick = resumeLoop;
 $("btn-continue-2").onclick = resumeLoop;
-$("btn-stuck-continue").onclick = resumeLoop;
+const stuckBtn = $("btn-stuck-continue"); if (stuckBtn) stuckBtn.onclick = resumeLoop;
 
 $("loop-btns").onclick = async (e) => {
   const btn = e.target.closest("button[data-act]");

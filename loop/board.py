@@ -1167,8 +1167,54 @@ def v4_playtest_note(st: dict | None = None, status: str = "",
     return "사람 관문 · 자동 완료 금지"
 
 
+def parse_history_table(status: str) -> list[dict]:
+    """STATUS 「최근 완료 내역 (History)」 표. 최신이 앞."""
+    block = _heading_block(
+        status,
+        lambda h: ("완료" in h and ("History" in h or "내역" in h))
+        or h.strip().startswith("최근 완료"),
+    )
+    if not block:
+        return []
+    out: list[dict] = []
+    for line in block.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        joined = "".join(cells)
+        if set(joined) <= set("-:| ") or any(
+            k in line for k in ("작업 내용", "검증 결과", "일시")
+        ):
+            continue
+        if len(cells) < 3:
+            continue
+        if len(cells) >= 4:
+            lap, when, title, verify = cells[0], cells[1], cells[2], cells[3]
+        else:
+            when, title, verify = cells[0], cells[1], cells[2]
+            lap = ""
+        title = re.sub(r"\*\*([^*]+)\*\*", r"\1", title).strip()
+        if not title or title in ("—", "-", "…", "..."):
+            continue
+        commit = ""
+        cm = re.search(r"`([0-9a-f]{7,40})`|\b([0-9a-f]{7,40})\b", verify or "")
+        if cm:
+            commit = (cm.group(1) or cm.group(2) or "")[:8]
+        bits = [x for x in (when, verify) if x and x not in ("—", "-")]
+        if lap and lap not in ("—", "-"):
+            bits.append("바퀴 " + lap)
+        out.append({
+            "title": title[:160],
+            "detail": " · ".join(bits)[:300],
+            "commit": commit,
+            "body": (verify or "")[:300],
+        })
+    return out
+
+
 def completed_posts(status: str, limit: int = 12) -> list[dict]:
-    """완료된 개발 — STATUS 근거 + 실측 샷. 끝난 행만."""
+    """완료된 개발 — History 표 + STATUS 결과 + 실측 샷. 끝난 행만."""
     posts: list[dict] = []
     seen: set[str] = set()
 
@@ -1190,6 +1236,8 @@ def completed_posts(status: str, limit: int = 12) -> list[dict]:
         })
         seen.add(title)
 
+    for it in parse_history_table(status):
+        add(it["title"], it.get("detail") or it.get("body") or "", it.get("commit") or "")
     for it in parse_results(status, limit=24):
         add(it["title"], it.get("body") or "", it.get("commit") or "")
     for row in parse_queue_table_all(status):
@@ -1197,7 +1245,6 @@ def completed_posts(status: str, limit: int = 12) -> list[dict]:
             continue
         add(row["title"], row.get("detail") or "")
     return posts[:limit]
-
 
 def parse_milestones(design: str) -> list[dict]:
     m = re.search(r"### 현재 핵심 미완.*?\n\n(.*?)(?=\n## |\Z)", design, re.S)
@@ -2809,6 +2856,26 @@ def provider_health() -> dict:
 
 
 
+
+def make_status_snip(status: str, limit: int = 400) -> str:
+    """보드용 요약 — 큐 맨 위·막힘·History 한 줄을 우선."""
+    bits: list[str] = []
+    q = parse_queue(status)
+    if q:
+        bits.append("다음: " + (q[0].get("title") or ""))
+        if len(q) > 1:
+            bits.append("외 " + str(len(q) - 1) + "건")
+    hist = parse_history_table(status)
+    if hist:
+        bits.append("완료: " + (hist[0].get("title") or ""))
+    blockers = parse_blockers(status)
+    if blockers:
+        bits.append("막힘: " + (blockers[0].get("title") or ""))
+    if bits:
+        return humanize_detail(" · ".join(bits), limit)
+    return humanize_detail(status[:1200], limit)
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -2862,7 +2929,7 @@ def build_state() -> dict:
         "codex": codex_usage(),
         "commands": _plain_list(load_commands()[:40], "body"),
         "tests": load_test_report(),
-        "status_snip": humanize_detail(status[:1200], 400),
+        "status_snip": make_status_snip(status),
     }
 
 
