@@ -73,9 +73,38 @@ namespace AshesToStars
             if (EstateBuildings.HasDedicated("estate_keep_2"))
                 Check(p12 == "estate_keep_2", "Lv12·_2있음→estate_keep_2");
 
+            // Busy + 티어 시드(시각 QA와 동일) → PropOf 구간 + scaffold Resources
+            string artEnv = Environment.GetEnvironmentVariable("QA_ESTATE_ART_TIERS");
+            Environment.SetEnvironmentVariable("QA_ESTATE_ART_TIERS", "1");
+            EstateBuild.ResetForTest();
+            EstateBuild.SeedArtTierQaIfRequested();
+            Check(EstateBuildings.PropOf(EstateGrid.Cell.Keep) == "estate_keep_0",
+                "시드 Keep Lv3→estate_keep_0");
+            string pm = EstateBuildings.PropOf(EstateGrid.Cell.Mine);
+            Check(pm == "estate_mine_1" || pm == "estate_mine_0",
+                $"시드 Mine Lv7→_1 실제={pm}");
+            if (EstateBuildings.HasDedicated("estate_mine_1"))
+                Check(pm == "estate_mine_1", "시드 Mine·_1있음→estate_mine_1");
+            string pw = EstateBuildings.PropOf(EstateGrid.Cell.Warehouse);
+            Check(pw == "estate_warehouse_2" || pw == "estate_warehouse_1" || pw == "estate_warehouse_0",
+                $"시드 Warehouse Lv12→_2 실제={pw}");
+            if (EstateBuildings.HasDedicated("estate_warehouse_2"))
+                Check(pw == "estate_warehouse_2", "시드 Warehouse·_2있음→estate_warehouse_2");
+            Check(EstateBuild.Busy(EstateGrid.Cell.Barracks), "시드 Barracks Busy");
+            Check(EstateBuildings.ScaffoldOf(EstateGrid.Cell.Barracks) == EstateBuildings.Scaffold,
+                "Busy→ScaffoldOf=estate_scaffold_0");
+            string pb = EstateBuildings.PropOf(EstateGrid.Cell.Barracks);
+            Check(pb != null && pb.StartsWith("estate_barracks_", StringComparison.Ordinal),
+                $"Busy 중 PropOf는 티어(오버레이) 실제={pb}");
+            Check(EstateBuildings.ScaffoldOf(EstateGrid.Cell.Keep) == null,
+                "비Busy Keep→ScaffoldOf null");
+            Environment.SetEnvironmentVariable("QA_ESTATE_ART_TIERS", artEnv);
+
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, "1");
             Check(EstateBuildings.PropOf(EstateGrid.Cell.Keep) == "village_house_1",
                 "QA_NO→옛 집");
+            Check(EstateBuildings.ScaffoldOf(EstateGrid.Cell.Barracks) == null,
+                "QA_NO→scaffold 끔");
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, no);
 
             EstateBuild.ResetForTest();

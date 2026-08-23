@@ -109,6 +109,14 @@ namespace AshesToStars
         /// <summary>전용 그림을 못 찾아 옛 집으로 간 이름. 없으면 null.</summary>
         public static string LastFallback => _lastFallback;
 
+        /// <summary>Busy면 공사판 리소스 이름. QA_NO거나 Busy 아니면 null(§6).</summary>
+        public static string ScaffoldOf(EstateGrid.Cell c)
+        {
+            if (Blocked) return null;
+            if (!EstateBuild.Busy(c)) return null;
+            return HasDedicated(Scaffold) ? Scaffold : null;
+        }
+
         /// <summary>
         /// 막히면 옛 집. 아니면 레벨 티어 접미사(_0/_1/_2)를 고르고,
         /// 그 장이 없으면 낮은 티어로 폴백한다(§6).

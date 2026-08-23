@@ -640,11 +640,13 @@ namespace AshesToStars
             return new Rect(p.x + (tw - bw) * 0.5f, p.y + th * sit - bh, bw, bh);
         }
 
-        /// <summary>공사 중이면 공용 공사판을 반투명으로 겹친다(§6).</summary>
+        /// <summary>공사 중이면 공용 공사판을 반투명으로 겹친다(§6). QA_NO면 끈다.</summary>
         static void DrawScaffoldIfBusy(Rect box, EstateGrid.Cell cell)
         {
-            if (!EstateGrid.IsCore(cell) || !EstateBuild.Busy(cell)) return;
-            var sc = PropTex(EstateBuildings.Scaffold);
+            if (!EstateGrid.IsCore(cell)) return;
+            string scName = EstateBuildings.ScaffoldOf(cell);
+            if (scName == null) return;
+            var sc = PropTex(scName);
             if (sc == null) return;
             var prev = GUI.color;
             GUI.color = new Color(1f, 1f, 1f, 0.72f);
