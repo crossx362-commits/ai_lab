@@ -294,6 +294,16 @@ namespace AshesToStars
                   && estate.IndexOf("FormatCurrency(AuctionState.ListFee") < 0
                   && estate.IndexOf("FormatCurrency(price)") < 0,
                 "경매 등록 수수료·가격은 ShortCopper만");
+
+            // 월드티어 /h
+            int wt = estate.IndexOf("void WorldTier(Rect");
+            Check(wt >= 0, "WorldTier가 있다");
+            int wtEnd = estate.IndexOf("허브 경매 버튼 잠금", wt);
+            string wtSrc = wt >= 0 && wtEnd > wt ? estate.Substring(wt, wtEnd - wt) : "";
+            Check(wtSrc.Contains("EstateStatusHud.ShortCopper")
+                  && wtSrc.Contains("TierRevenueMultiplier")
+                  && wtSrc.IndexOf("FormatCurrency") < 0,
+                "월드티어 /h는 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.

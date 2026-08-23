@@ -1053,7 +1053,7 @@ namespace AshesToStars
             var cells = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 180f), 5, 2, 10f);
             for (int i = 0; i < cells.Length; i++)
             {
-                string pay = Economy.FormatCurrency((long)(Economy.TierRevenueMultiplier[i] * 10000f)) + "/h";
+                string pay = EstateStatusHud.ShortCopper((long)(Economy.TierRevenueMultiplier[i] * 10000f)) + "/h";
                 if (i > unlocked)
                 {
                     DrawCard(cells[i], $"T{i + 1}",
