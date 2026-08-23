@@ -56,15 +56,30 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>§3·SkillDef.위력배율. QA_NO면 위력 조각을 뺀다(옛 SkillLine = 이름·쿨만).</summary>
+        public const string EnvNoSkillPow = "QA_NO_SKILL_POW";
+
+        public static bool SkillPowBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSkillPow);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
-        /// "보유 스킬 — {이름}(N초) · …". JobDef.스킬의 이름·**쿨다운** 소비처.
-        /// 이름만 읽던 SkillLine(이전 배선) 옆에, ProjectSetup이 스킬마다 authored한
-        /// <c>SkillDef.쿨다운</c>(도발의 함성 6·화염폭풍 5·최후의 보루 40…)이 정의·에셋만 있고
-        /// grep 소비처 0곳이었다 — 형제 이름 필드는 읽는데 같은 SkillDef 행의 쿨다운만 죽어 있던
-        /// 함정(이동기거리·전투당발동과 동일 계열). 툴팁 「마나 없음, 쿨다운 단일 체계」·원장 §3
-        /// 직업 스킬 표(✅)의 수치 칸. 쿨다운 &gt; 0일 때만 「(N초)」를 이름 뒤에 붙인다(0=패시브/
-        /// 게이지형은 이름만). QA_NO_SKILL_CD면 옛 줄(이름만)로 회귀. 매칭 직업이 없거나 스킬
-        /// 배열이 비면 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
+        /// "보유 스킬 — {이름}(N초·×P) · …". JobDef.스킬의 이름·쿨다운·**위력배율** 소비처.
+        /// 이름·쿨다운만 읽던 SkillLine(92cc2feb) 옆에, ProjectSetup이 스킬마다 authored한
+        /// <c>SkillDef.위력배율</c>(화염폭풍 1.2·조준 사격 2·일섬 3.2·피날레 1.5…)이 정의·에셋만
+        /// 있고 grep 소비처 0곳이었다 — 형제 쿨다운은 SkillLine이 「(N초)」로 읽는데 같은
+        /// SkillDef 행의 위력만 죽어 있던 함정(쿨다운·이동기거리·전투당발동과 동일 계열).
+        /// 원장 §3 직업 스킬 표(✅) 「기본 공격력 대비 배율」칸. 위력 &gt; 0이고 기준(×1)과
+        /// 다를 때만 「×P」를 붙인다(×1·0은 패널 밀도 유지). 쿨다운과 같이 있으면
+        /// 「(N초·×P)」, 쿨 0·위력만 있으면 「 이름 ×P」(괄호 없음 — 옛 SkillCdSelfCheck의
+        /// 「쿨0엔 이름( 금지」를 깨지 않음). QA_NO_SKILL_POW면 위력 조각만 빼고 이름·쿨
+        /// 옛 줄로 회귀. 매칭 직업이 없거나 스킬 배열이 비면 빈 문자열 — 호출부는 이때
+        /// 줄을 그리지 않는다(지어내지 않음). 표시 전용 — W3Party·전투 수치 무접촉.
         /// </summary>
         public static string SkillLine(string jobName)
         {
@@ -75,8 +90,15 @@ namespace AshesToStars
             {
                 if (s == null || string.IsNullOrEmpty(s.이름)) continue;
                 string piece = s.이름;
-                if (!SkillCdBlocked && s.쿨다운 > 0f)
+                bool showCd = !SkillCdBlocked && s.쿨다운 > 0f;
+                bool showPow = !SkillPowBlocked && s.위력배율 > 0f
+                    && Mathf.Abs(s.위력배율 - 1f) >= 0.0001f;
+                if (showCd && showPow)
+                    piece += "(" + s.쿨다운.ToString("0.#") + "초·×" + s.위력배율.ToString("0.##") + ")";
+                else if (showCd)
                     piece += "(" + s.쿨다운.ToString("0.#") + "초)";
+                else if (showPow)
+                    piece += " ×" + s.위력배율.ToString("0.##");
                 parts.Add(piece);
             }
             if (parts.Count == 0) return "";

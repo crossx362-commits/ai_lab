@@ -70,6 +70,24 @@ rm -f loop/STOP
 
 ---
 
+## 완료 (2026-08-23) — §3 SkillDef.위력배율 소비처 (Grok)
+
+원장 §3 직업 스킬 표 「기본 공격력 대비 배율」의 `SkillDef.위력배율`(화염폭풍 1.2·조준 2·일섬 3.2 등)이
+ProjectSetup·Job_*.asset에 authored돼 있으면서도 grep 소비처 0곳이었다. 형제 쿨다운은 SkillLine이
+「(N초)」로 읽는데 위력만 죽어 있던 함정. SkillLine이 기준(×1)·0이 아닐 때만 「×P」를 붙인다
+(쿨과 함께면 `(N초·×P)`, 쿨0이면 `이름 ×P`). 표시 전용 — W3Party 무접촉. `QA_NO_SKILL_POW`면
+위력 조각만 빼고 옛 줄(이름·쿨) 회귀.
+
+RaceDef 후보(방어배율 등)는 grep 결과 W3Party/Economy 소비처가 있어 건너뜀.
+
+### 검수
+- `unity_meas` batch SelfCheck **PASS** (exit 0)
+- MenuItem `Ashes to Stars/QA/Skill Pow Self Check`
+- 로그: `projects/ashes-to-stars/results/skill_pow_selfcheck_20260823_161835.log` — `[SkillPowSelfCheck] PASS`
+- 소비처: CharacterScreen 속성 탭 `JobInfo.SkillLine`
+
+---
+
 ## 완료 (2026-08-23) — §18-9 RaceDef.체력배율 소비처 (Grok)
 
 원장 §18-9 엘프 표 「HP -15%」의 `RaceDef.체력배율`(에셋 0.85)이 authored돼 있으면서도
