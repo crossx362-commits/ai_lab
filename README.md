@@ -77,6 +77,13 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ailab.board.plist
 # 주소: http://127.0.0.1:8766
 ```
 
+### 속도 레인 (병렬 작업)
+
+`loop/speed_lane.sh`가 worktree 격리로 최대 3개 작업을 worker→reviewer 병렬 처리한다 (스코프: 문서·보드·아트 스크립트·테스트).
+승인 커밋은 `autonomous/integration` 브랜치에 적립되고, 메인 루프 각 바퀴가 `loop/merge_integration.sh`로 master에 흡수한다.
+끄기 `touch loop/STOP_LANE` · 다시 켜기 `rm -f loop/STOP_LANE && ./loop/deploy_launchd.sh`.
+게임플레이 C#과 STATUS.md는 속도 레인 금지 — 메인 루프 전용이다.
+
 ### 한 바퀴 순서 (PROMPT.md)
 읽기(INBOX→STATUS) → 하나만 만들기 → 자동검사 → **화면 보기 전 커밋** → 눈으로 확인 → STATUS.md 갱신.
 
