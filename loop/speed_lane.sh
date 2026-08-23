@@ -42,4 +42,12 @@ while true; do
     75) log "홀드(잠금/제공자 없음) — ${IDLE_WAIT}초 대기"; sleep "$IDLE_WAIT" ;;
     *)  log "비정상 종료 rc=$RC — ${IDLE_WAIT}초 대기"; sleep "$IDLE_WAIT" ;;
   esac
+
+  # 워커도 회의를 소집할 수 있다 (오너 2026-08-23)
+  if [ -f "$STOP_FILE" ]; then continue; fi
+  if [ -f "$TARGET_REPO/loop/COUNCIL_NOW" ]; then
+    rm -f "$TARGET_REPO/loop/COUNCIL_NOW"
+    log "즉시 회의 소집 신호 감지"
+    bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$MAIN_LOG" 2>&1 || true
+  fi
 done

@@ -516,7 +516,9 @@ def _run_worker(
             try:
                 validate_changed_paths(
                     list(changed),
-                    [str(path) for path in assignment.task["write_paths"]],  # type: ignore[index]
+                    [str(path) for path in assignment.task["write_paths"]]  # type: ignore[index]
+                    # 자가학습 제출은 모든 워커의 기본 권한이다 (오너 2026-08-23)
+                    + ["docs/feedback/PROPOSALS.md"],
                 )
             except ValueError as exc:
                 return Candidate(

@@ -186,6 +186,12 @@ while true; do
     COUNT=$((COUNT + 1))
     FAILS=0
     # 자가학습 회의 — N바퀴마다 역할별 병렬 회의를 소집한다 (오너 2026-08-23).
+    # 어떤 에이전트든 loop/COUNCIL_NOW 파일을 만들면 다음 바퀴 끝에 즉시 소집된다.
+    if [ -f "$TARGET_REPO/loop/COUNCIL_NOW" ]; then
+      rm -f "$TARGET_REPO/loop/COUNCIL_NOW"
+      echo "즉시 회의 소집 신호 감지" | tee -a "$MAIN_LOG" "$LAP_LOG"
+      bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 || true
+    fi
     if [ "$COUNT" -gt 0 ] && [ "$COUNCIL_EVERY" -gt 0 ] && [ $((COUNT % COUNCIL_EVERY)) -eq 0 ]; then
       echo "회의 소집: ${COUNT}바퀴 완료 — 역할 병렬 회의 시작" | tee -a "$MAIN_LOG" "$LAP_LOG"
       bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 \
