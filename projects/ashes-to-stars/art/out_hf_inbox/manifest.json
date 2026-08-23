@@ -1,0 +1,727 @@
+{
+  "saved_at": "2026-08-18T20:03:12",
+  "api_jobs": 100,
+  "downloaded_ok": 100,
+  "already_had": 0,
+  "download_fail": 0,
+  "from_downloads": [
+    "hf_20260817_070143_088c3ef9-60df-45ad-a6df-ef6642906313.png",
+    "hf_20260817_095922_87886e00-3314-413a-8144-25a4729d2a7a.png",
+    "hf_20260817_071059_1089e416-a170-4eef-ac9b-494b6053da0b.png",
+    "hf_20260817_101101_d0cd11f9-bfcb-40c8-b76c-d453a0f4d61a.png",
+    "hf_20260817_095606_781fbd24-d9c2-4c31-9855-f864469b17c8.png",
+    "hf_20260817_095309_aaaf9874-8a61-4ca4-a806-889a5dd468db.png",
+    "hf_20260817_094918_4790b926-8f39-4ca7-9613-12250da3fa0d.png",
+    "hf_20260817_100338_517724c4-0d77-4b84-9e78-7f3d70bb2000.png"
+  ],
+  "owner_zip": [
+    "13601aad-3ada-479f-9be1-bbaca75be1c5.jpg",
+    "b6a5b853-3f43-4bc4-9a42-cab2a8e0990b.jpg",
+    "b871e406-1908-4747-a9f5-a077d476634a.jpg",
+    "f7177c1e-8b41-4555-9f7b-6199636b2c53.jpg",
+    "e05ab71e-e117-43ca-bfb7-d6a6e956641f.jpg"
+  ],
+  "fails": [],
+  "jobs": [
+    {
+      "id": "5282a5c0-23ee-43f4-bdeb-7b458ff30b45",
+      "created_at": "2026-08-18T02:29:04.778582Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "이 캐릭터의 유니티 엔진용 스트라이프 애니매이션이 필요해 이동과 공격  스킬3종 죽기 숨쉬기 재경 알파처리 공격에 검방이 아니라 쌍검들고 있는거 수정 그리고 스킬 3은 초필살기임 배경은 알파처리 해야됨",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260818_022904_5282a5c0-23ee-43f4-bdeb-7b458ff30b45.png"
+    },
+    {
+      "id": "46ebb664-3ab3-40bf-92c1-29f13307234d",
+      "created_at": "2026-08-18T02:22:47.485518Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "이 캐릭터의 스트라이프 애니매이션이 필요해 이동과 공격  스킬3종 죽기 숨쉬기",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260818_022247_46ebb664-3ab3-40bf-92c1-29f13307234d.png"
+    },
+    {
+      "id": "3bb140dd-5c12-40c0-8be5-5bed4d217a1f",
+      "created_at": "2026-08-18T02:04:11.805393Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "이걸 기준으로 직업 5종 만들거야 전직전 초반 직업이고 목록은 탱커, 물리딜러, 마법딜러, 힐러, 서포터야",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260818_020411_3bb140dd-5c12-40c0-8be5-5bed4d217a1f.png"
+    },
+    {
+      "id": "2a0536b4-c646-4122-902b-d8014ef5fc0c",
+      "created_at": "2026-08-17T18:19:35.668436Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181935_2a0536b4-c646-4122-902b-d8014ef5fc0c.png"
+    },
+    {
+      "id": "b118e0d0-982e-4f8a-99ec-a77231aa405c",
+      "created_at": "2026-08-17T18:19:07.975307Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181907_b118e0d0-982e-4f8a-99ec-a77231aa405c.png"
+    },
+    {
+      "id": "855fe2e1-02fd-4e84-a533-cfaeef8547eb",
+      "created_at": "2026-08-17T18:18:42.832861Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181842_855fe2e1-02fd-4e84-a533-cfaeef8547eb.png"
+    },
+    {
+      "id": "9e39e731-8783-4087-9ad6-dbc8635a02cc",
+      "created_at": "2026-08-17T18:18:13.947944Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181813_9e39e731-8783-4087-9ad6-dbc8635a02cc.png"
+    },
+    {
+      "id": "231f7217-a3d8-44a4-9a12-55f4ea346edf",
+      "created_at": "2026-08-17T18:17:50.459666Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181750_231f7217-a3d8-44a4-9a12-55f4ea346edf.png"
+    },
+    {
+      "id": "cf2d6383-cad4-4ce1-863d-dffeacfe30a7",
+      "created_at": "2026-08-17T18:17:28.095616Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181728_cf2d6383-cad4-4ce1-863d-dffeacfe30a7.png"
+    },
+    {
+      "id": "7bd19898-c87c-4d2c-8c84-b37760ed1660",
+      "created_at": "2026-08-17T18:17:00.34313Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181700_7bd19898-c87c-4d2c-8c84-b37760ed1660.png"
+    },
+    {
+      "id": "05f846e9-0e38-4ae9-9bda-cb80694c0a89",
+      "created_at": "2026-08-17T18:16:53.916139Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181653_05f846e9-0e38-4ae9-9bda-cb80694c0a89.png"
+    },
+    {
+      "id": "58a51583-608f-4f4e-a211-f683020c2841",
+      "created_at": "2026-08-17T18:16:35.275441Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181635_58a51583-608f-4f4e-a211-f683020c2841.png"
+    },
+    {
+      "id": "d96845f6-d4be-43a4-9e83-5ed91b5fb435",
+      "created_at": "2026-08-17T18:16:28.818944Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181628_d96845f6-d4be-43a4-9e83-5ed91b5fb435.png"
+    },
+    {
+      "id": "67043478-e288-46b9-8a0e-17c866de54c7",
+      "created_at": "2026-08-17T18:16:13.122329Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181613_67043478-e288-46b9-8a0e-17c866de54c7.png"
+    },
+    {
+      "id": "1c7fa52b-ec64-4b94-959e-47073617a74e",
+      "created_at": "2026-08-17T18:16:00.316233Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181600_1c7fa52b-ec64-4b94-959e-47073617a74e.png"
+    },
+    {
+      "id": "409ad84b-1c15-4d48-9187-7b82d06b7d7a",
+      "created_at": "2026-08-17T18:15:35.360261Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181535_409ad84b-1c15-4d48-9187-7b82d06b7d7a.png"
+    },
+    {
+      "id": "e049349f-c7f8-454d-a747-a3244c7d244b",
+      "created_at": "2026-08-17T18:15:10.207741Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181510_e049349f-c7f8-454d-a747-a3244c7d244b.png"
+    },
+    {
+      "id": "6cf7c334-19f0-4162-bcc9-694a603092fe",
+      "created_at": "2026-08-17T18:14:48.200092Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181448_6cf7c334-19f0-4162-bcc9-694a603092fe.png"
+    },
+    {
+      "id": "994f60ed-4a74-4bbc-b067-4d1f9a74b170",
+      "created_at": "2026-08-17T18:14:23.580655Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181423_994f60ed-4a74-4bbc-b067-4d1f9a74b170.png"
+    },
+    {
+      "id": "f869de38-ee98-49ec-9cc7-dae0e6aa62ae",
+      "created_at": "2026-08-17T18:14:17.856941Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181417_f869de38-ee98-49ec-9cc7-dae0e6aa62ae.png"
+    },
+    {
+      "id": "788f5ceb-f3cf-4e2d-90c0-4bea0ac82506",
+      "created_at": "2026-08-17T18:14:01.329404Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181401_788f5ceb-f3cf-4e2d-90c0-4bea0ac82506.png"
+    },
+    {
+      "id": "9782772e-e51e-4b05-a21f-659b52485766",
+      "created_at": "2026-08-17T18:13:49.212622Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181349_9782772e-e51e-4b05-a21f-659b52485766.png"
+    },
+    {
+      "id": "83b63251-ceb6-42c2-bdd0-48c17411b2b2",
+      "created_at": "2026-08-17T18:13:36.175329Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181336_83b63251-ceb6-42c2-bdd0-48c17411b2b2.png"
+    },
+    {
+      "id": "2342a4a0-4f36-4831-8f3c-f9c24dad2c7d",
+      "created_at": "2026-08-17T18:13:27.134509Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181327_2342a4a0-4f36-4831-8f3c-f9c24dad2c7d.png"
+    },
+    {
+      "id": "1b785813-b23c-4845-bf37-c07ba1641541",
+      "created_at": "2026-08-17T18:13:10.890682Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181310_1b785813-b23c-4845-bf37-c07ba1641541.png"
+    },
+    {
+      "id": "bac2e1cd-cb46-498e-ac09-25613798b771",
+      "created_at": "2026-08-17T18:13:05.037418Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181305_bac2e1cd-cb46-498e-ac09-25613798b771.png"
+    },
+    {
+      "id": "39f97515-dec3-4b5b-acb8-f275a97ddaf0",
+      "created_at": "2026-08-17T18:12:43.012369Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181243_39f97515-dec3-4b5b-acb8-f275a97ddaf0.png"
+    },
+    {
+      "id": "2523bef8-f70f-49c6-b4db-398b96c3aa2c",
+      "created_at": "2026-08-17T18:12:17.710316Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181217_2523bef8-f70f-49c6-b4db-398b96c3aa2c.png"
+    },
+    {
+      "id": "5602154c-273e-47f6-b33a-654191846a09",
+      "created_at": "2026-08-17T18:11:52.380772Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181152_5602154c-273e-47f6-b33a-654191846a09.png"
+    },
+    {
+      "id": "228432db-f999-4a6c-8c93-f961e8bad27f",
+      "created_at": "2026-08-17T18:11:30.189335Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181130_228432db-f999-4a6c-8c93-f961e8bad27f.png"
+    },
+    {
+      "id": "21931530-2a94-4239-abe2-dc8cd8a447cf",
+      "created_at": "2026-08-17T18:11:12.71588Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181112_21931530-2a94-4239-abe2-dc8cd8a447cf.png"
+    },
+    {
+      "id": "94300255-c875-46b9-896d-b9fc9e3a49f7",
+      "created_at": "2026-08-17T18:11:05.070985Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181105_94300255-c875-46b9-896d-b9fc9e3a49f7.png"
+    },
+    {
+      "id": "795d1536-2e8b-4947-ab2e-8a1d9d859221",
+      "created_at": "2026-08-17T18:10:56.950561Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181056_795d1536-2e8b-4947-ab2e-8a1d9d859221.png"
+    },
+    {
+      "id": "123fc29b-0f58-42b5-ab2d-3510541376bd",
+      "created_at": "2026-08-17T18:10:42.665656Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181042_123fc29b-0f58-42b5-ab2d-3510541376bd.png"
+    },
+    {
+      "id": "3186f275-d791-46ee-902e-a8a4ba456dbf",
+      "created_at": "2026-08-17T18:10:31.314195Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181031_3186f275-d791-46ee-902e-a8a4ba456dbf.png"
+    },
+    {
+      "id": "9560b6ac-f6d0-45b4-98f6-0a5eab0a6f39",
+      "created_at": "2026-08-17T18:10:17.076881Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181017_9560b6ac-f6d0-45b4-98f6-0a5eab0a6f39.png"
+    },
+    {
+      "id": "e4ce8cce-7140-4159-9d77-fc8488166310",
+      "created_at": "2026-08-17T18:10:05.403812Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_181005_e4ce8cce-7140-4159-9d77-fc8488166310.png"
+    },
+    {
+      "id": "1e1f643f-4d83-4c7b-827d-7e5447d77eb6",
+      "created_at": "2026-08-17T18:09:54.318954Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180954_1e1f643f-4d83-4c7b-827d-7e5447d77eb6.png"
+    },
+    {
+      "id": "a53633fa-cf95-4378-a1c6-16c3acb30cc1",
+      "created_at": "2026-08-17T18:09:39.144583Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180939_a53633fa-cf95-4378-a1c6-16c3acb30cc1.png"
+    },
+    {
+      "id": "e1bc97ef-6ae0-4ad1-8b2e-783febe8ff3c",
+      "created_at": "2026-08-17T18:09:32.087603Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180932_e1bc97ef-6ae0-4ad1-8b2e-783febe8ff3c.png"
+    },
+    {
+      "id": "1b345aa4-3a2c-4b93-84a3-a203b45cdb91",
+      "created_at": "2026-08-17T18:08:59.419483Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180859_1b345aa4-3a2c-4b93-84a3-a203b45cdb91.png"
+    },
+    {
+      "id": "779e0ff3-7619-401c-9fca-1b430f2cd044",
+      "created_at": "2026-08-17T18:08:35.52519Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180835_779e0ff3-7619-401c-9fca-1b430f2cd044.png"
+    },
+    {
+      "id": "7f0e0828-5069-4d4e-a61a-8cef6496d490",
+      "created_at": "2026-08-17T18:08:34.383152Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180834_7f0e0828-5069-4d4e-a61a-8cef6496d490.png"
+    },
+    {
+      "id": "49761ca5-3e50-4849-a79d-4f8164d1fc30",
+      "created_at": "2026-08-17T18:08:13.494685Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180813_49761ca5-3e50-4849-a79d-4f8164d1fc30.png"
+    },
+    {
+      "id": "64f2d784-1aff-4f20-a356-7c7452c23468",
+      "created_at": "2026-08-17T18:08:06.371662Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180806_64f2d784-1aff-4f20-a356-7c7452c23468.png"
+    },
+    {
+      "id": "db58556b-ce89-426b-a230-bacd6f478220",
+      "created_at": "2026-08-17T18:07:44.122701Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180744_db58556b-ce89-426b-a230-bacd6f478220.png"
+    },
+    {
+      "id": "a716f52d-e1f4-4f5d-b52c-5a44fb259124",
+      "created_at": "2026-08-17T18:07:19.003659Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180719_a716f52d-e1f4-4f5d-b52c-5a44fb259124.png"
+    },
+    {
+      "id": "9eaedef0-755b-4aa3-9256-b3cd31fd10e8",
+      "created_at": "2026-08-17T18:06:50.902037Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180650_9eaedef0-755b-4aa3-9256-b3cd31fd10e8.png"
+    },
+    {
+      "id": "0c63f8bf-d459-4a9b-8ccf-ca28b837cff3",
+      "created_at": "2026-08-17T18:06:28.856841Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180628_0c63f8bf-d459-4a9b-8ccf-ca28b837cff3.png"
+    },
+    {
+      "id": "173cb195-586c-42db-b925-1ade92a21e32",
+      "created_at": "2026-08-17T18:06:03.624606Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180603_173cb195-586c-42db-b925-1ade92a21e32.png"
+    },
+    {
+      "id": "8e0cb4c0-6371-49af-b25b-9b6fda6f949a",
+      "created_at": "2026-08-17T18:05:48.309689Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180548_8e0cb4c0-6371-49af-b25b-9b6fda6f949a.png"
+    },
+    {
+      "id": "a03a7365-b5a0-4637-a6ed-0de5543c9c75",
+      "created_at": "2026-08-17T18:05:38.410208Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180538_a03a7365-b5a0-4637-a6ed-0de5543c9c75.png"
+    },
+    {
+      "id": "96db0a55-9874-4e28-8743-dfa33eb34aac",
+      "created_at": "2026-08-17T18:05:23.16399Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180523_96db0a55-9874-4e28-8743-dfa33eb34aac.png"
+    },
+    {
+      "id": "5a9c8815-36ee-4c3a-857e-eb2fdabb1766",
+      "created_at": "2026-08-17T18:05:10.730834Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180510_5a9c8815-36ee-4c3a-857e-eb2fdabb1766.png"
+    },
+    {
+      "id": "564c92fb-ecc1-4b57-94c7-2d483610074a",
+      "created_at": "2026-08-17T18:04:58.124621Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180458_564c92fb-ecc1-4b57-94c7-2d483610074a.png"
+    },
+    {
+      "id": "7d070e49-d099-470d-8aa2-bf5192bfec2c",
+      "created_at": "2026-08-17T18:04:45.695327Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180445_7d070e49-d099-470d-8aa2-bf5192bfec2c.png"
+    },
+    {
+      "id": "10f00656-713a-4c81-a670-5e8a875711d9",
+      "created_at": "2026-08-17T18:04:33.071177Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180433_10f00656-713a-4c81-a670-5e8a875711d9.png"
+    },
+    {
+      "id": "2674e94e-4028-48e6-b32f-fd7fac5d489c",
+      "created_at": "2026-08-17T18:04:20.72581Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180420_2674e94e-4028-48e6-b32f-fd7fac5d489c.png"
+    },
+    {
+      "id": "a5389908-7452-4a91-a934-ab842440d341",
+      "created_at": "2026-08-17T18:04:08.213908Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180408_a5389908-7452-4a91-a934-ab842440d341.png"
+    },
+    {
+      "id": "d5c745f7-98e9-45b1-95c8-e09354efddb4",
+      "created_at": "2026-08-17T18:03:46.219474Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180346_d5c745f7-98e9-45b1-95c8-e09354efddb4.png"
+    },
+    {
+      "id": "9d8e7159-dc03-4a67-ad5c-64b113d553a5",
+      "created_at": "2026-08-17T18:03:24.087341Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180324_9d8e7159-dc03-4a67-ad5c-64b113d553a5.png"
+    },
+    {
+      "id": "1e56b659-e228-4c51-a367-33e1c327df1e",
+      "created_at": "2026-08-17T18:02:58.970738Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180258_1e56b659-e228-4c51-a367-33e1c327df1e.png"
+    },
+    {
+      "id": "c3b554a9-121d-4883-8ce8-cce8f50265d2",
+      "created_at": "2026-08-17T18:02:37.449751Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180237_c3b554a9-121d-4883-8ce8-cce8f50265d2.png"
+    },
+    {
+      "id": "d2ab1de0-5c50-48bc-b386-85546dfb6ae7",
+      "created_at": "2026-08-17T18:02:33.955585Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180233_d2ab1de0-5c50-48bc-b386-85546dfb6ae7.png"
+    },
+    {
+      "id": "5c7d945b-1998-47e8-95e7-1fa2a1ad8b70",
+      "created_at": "2026-08-17T18:02:12.508008Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180212_5c7d945b-1998-47e8-95e7-1fa2a1ad8b70.png"
+    },
+    {
+      "id": "46eaacc0-35a2-489f-bff4-ea9f5ff212b9",
+      "created_at": "2026-08-17T18:02:11.751889Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180211_46eaacc0-35a2-489f-bff4-ea9f5ff212b9.png"
+    },
+    {
+      "id": "e09898d2-7489-4707-a921-6d3c9c5d350b",
+      "created_at": "2026-08-17T18:01:46.653467Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180146_e09898d2-7489-4707-a921-6d3c9c5d350b.png"
+    },
+    {
+      "id": "58240038-0af9-4e1b-9f02-fabeea5a1a7e",
+      "created_at": "2026-08-17T18:01:44.169172Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180144_58240038-0af9-4e1b-9f02-fabeea5a1a7e.png"
+    },
+    {
+      "id": "3e79458f-8272-4c12-9498-a4257921d827",
+      "created_at": "2026-08-17T18:01:21.537277Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180121_3e79458f-8272-4c12-9498-a4257921d827.png"
+    },
+    {
+      "id": "be4491e0-ef4b-47eb-95bd-b110ac942db3",
+      "created_at": "2026-08-17T18:01:19.016605Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180119_be4491e0-ef4b-47eb-95bd-b110ac942db3.png"
+    },
+    {
+      "id": "ce8e2cca-e76e-4a25-be0f-8ea408b26c62",
+      "created_at": "2026-08-17T18:00:48.777652Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180048_ce8e2cca-e76e-4a25-be0f-8ea408b26c62.png"
+    },
+    {
+      "id": "b98c285b-56c2-4bb2-9736-984678f443aa",
+      "created_at": "2026-08-17T18:00:46.90387Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "a dim flickering flame almost guttering out\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180046_b98c285b-56c2-4bb2-9736-984678f443aa.png"
+    },
+    {
+      "id": "cbdd2c6e-d592-497e-b4ea-716503b9946d",
+      "created_at": "2026-08-17T18:00:43.313647Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180043_cbdd2c6e-d592-497e-b4ea-716503b9946d.png"
+    },
+    {
+      "id": "a5d8e7b2-23e2-4947-9e87-aed7b9e86589",
+      "created_at": "2026-08-17T18:00:24.724692Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "a translucent pale bubble around a small hooded figure\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180024_a5d8e7b2-23e2-4947-9e87-aed7b9e86589.png"
+    },
+    {
+      "id": "0855c9ef-91fc-4a20-8125-40b13bf5193e",
+      "created_at": "2026-08-17T18:00:15.308713Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180015_0855c9ef-91fc-4a20-8125-40b13bf5193e.png"
+    },
+    {
+      "id": "4e67f66b-2f41-4ddc-824b-793b90031690",
+      "created_at": "2026-08-17T18:00:06.448658Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_180006_4e67f66b-2f41-4ddc-824b-793b90031690.png"
+    },
+    {
+      "id": "69aca259-818f-4306-b42f-40935bc3eee8",
+      "created_at": "2026-08-17T17:59:59.407392Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "a snapped casting sigil breaking apart mid-air\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175959_69aca259-818f-4306-b42f-40935bc3eee8.png"
+    },
+    {
+      "id": "c3dfacdb-70aa-48a2-9176-7b57d9ae051d",
+      "created_at": "2026-08-17T17:59:47.230832Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175947_c3dfacdb-70aa-48a2-9176-7b57d9ae051d.png"
+    },
+    {
+      "id": "53e1e294-80cf-415f-9d03-b9c43bfddea4",
+      "created_at": "2026-08-17T17:59:42.359655Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175942_53e1e294-80cf-415f-9d03-b9c43bfddea4.png"
+    },
+    {
+      "id": "506b83cd-139b-47bc-ba50-62e98a8894aa",
+      "created_at": "2026-08-17T17:59:37.145503Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "a small figure hurled backward with pale impact lines\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175937_506b83cd-139b-47bc-ba50-62e98a8894aa.png"
+    },
+    {
+      "id": "7fc35eb8-b455-4881-87eb-5583a00ef3bb",
+      "created_at": "2026-08-17T17:59:21.909935Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175921_7fc35eb8-b455-4881-87eb-5583a00ef3bb.png"
+    },
+    {
+      "id": "a0727231-9ea0-428b-bc0e-83ccd6c5b54d",
+      "created_at": "2026-08-17T17:59:17.341392Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175917_a0727231-9ea0-428b-bc0e-83ccd6c5b54d.png"
+    },
+    {
+      "id": "f81973db-3dea-49b7-b5db-b5789fad79ac",
+      "created_at": "2026-08-17T17:58:49.238697Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175849_f81973db-3dea-49b7-b5db-b5789fad79ac.png"
+    },
+    {
+      "id": "bd319d8d-2e85-46a0-8cb5-9e827aa2ae3b",
+      "created_at": "2026-08-17T17:58:42.022963Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "dark thorny vines coiling around two small legs\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175842_bd319d8d-2e85-46a0-8cb5-9e827aa2ae3b.png"
+    },
+    {
+      "id": "5cf070f6-f563-4818-a689-359d58b9126e",
+      "created_at": "2026-08-17T17:58:05.794674Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175805_5cf070f6-f563-4818-a689-359d58b9126e.png"
+    },
+    {
+      "id": "59cc3202-e71a-4468-b866-c5719b6463d6",
+      "created_at": "2026-08-17T17:57:40.654987Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175740_59cc3202-e71a-4468-b866-c5719b6463d6.png"
+    },
+    {
+      "id": "8cfdedf6-a1e5-4814-b551-168d893f850b",
+      "created_at": "2026-08-17T17:55:36.325276Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175536_8cfdedf6-a1e5-4814-b551-168d893f850b.png"
+    },
+    {
+      "id": "ab21a8f6-5c9b-4c78-a65f-72a12f581aaf",
+      "created_at": "2026-08-17T17:54:53.278841Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175453_ab21a8f6-5c9b-4c78-a65f-72a12f581aaf.png"
+    },
+    {
+      "id": "bc4b5fdb-b489-463c-a770-2f1d23c10d13",
+      "created_at": "2026-08-17T17:53:43.895885Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175343_bc4b5fdb-b489-463c-a770-2f1d23c10d13.png"
+    },
+    {
+      "id": "5c518bf3-ca54-43ad-9837-6622e4ab0877",
+      "created_at": "2026-08-17T17:53:18.695739Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175318_5c518bf3-ca54-43ad-9837-6622e4ab0877.png"
+    },
+    {
+      "id": "6d5e627b-e213-4ffc-92eb-18d0bfeb99bd",
+      "created_at": "2026-08-17T17:52:57.092619Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175257_6d5e627b-e213-4ffc-92eb-18d0bfeb99bd.png"
+    },
+    {
+      "id": "5447b9f7-fd3f-4c33-a3a1-a7968624734c",
+      "created_at": "2026-08-17T17:52:53.428139Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175253_5447b9f7-fd3f-4c33-a3a1-a7968624734c.png"
+    },
+    {
+      "id": "51660bcd-0468-463e-8e53-2038137eadd7",
+      "created_at": "2026-08-17T17:52:40.738253Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "an open mouth crossed out by a single pale slash\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175240_51660bcd-0468-463e-8e53-2038137eadd7.png"
+    },
+    {
+      "id": "d3b10d90-4be6-4a7a-90a8-085d0d5bb8ef",
+      "created_at": "2026-08-17T17:52:35.011804Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175235_d3b10d90-4be6-4a7a-90a8-085d0d5bb8ef.png"
+    },
+    {
+      "id": "269b908f-cf4b-4dcc-a27e-d7b9f4bd1a67",
+      "created_at": "2026-08-17T17:52:31.307108Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175231_269b908f-cf4b-4dcc-a27e-d7b9f4bd1a67.png"
+    },
+    {
+      "id": "46ab84a7-b69e-4a98-923c-4383186683fa",
+      "created_at": "2026-08-17T17:52:18.412864Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "a small mask with pale spiral motes circling above it\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175218_46ab84a7-b69e-4a98-923c-4383186683fa.png"
+    },
+    {
+      "id": "b9654cb2-1af3-4003-b759-71ac5c119e32",
+      "created_at": "2026-08-17T17:52:12.761334Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175212_b9654cb2-1af3-4003-b759-71ac5c119e32.png"
+    },
+    {
+      "id": "4418769c-8265-4d12-80c4-976ac663d293",
+      "created_at": "2026-08-17T17:52:06.241369Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175206_4418769c-8265-4d12-80c4-976ac663d293.png"
+    },
+    {
+      "id": "4ad614ad-13c4-474d-b2ef-be81bc61627a",
+      "created_at": "2026-08-17T17:51:53.064496Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "a simple pale bracket frame marking a chosen target\n\nHollow Knight inspired hand-drawn SKILL ICON: a single bold symbol centered in a square 1:1 composition, dark muted background vignette, clean dark linework, soft glow around the symbol, readable at small size. No text, no border, no frame. ",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175153_4ad614ad-13c4-474d-b2ef-be81bc61627a.png"
+    },
+    {
+      "id": "33aeab58-acbe-4394-8573-a8256bcfd763",
+      "created_at": "2026-08-17T17:51:47.500512Z",
+      "job_type": "nano_banana_flash",
+      "prompt": "STYLE LOCK — Hollow Knight official sprite language, NOT generic cartoon bugs: Near-monochrome ink-and-wash. Body is VOID BLACK / charcoal. Face is a bone-white mask with EMPTY black eye-sockets (no pupils, no iris, no angry cartoon eyes). Thick smooth dark outlines + soft painterly shading inside. One accent color at most, used as a tiny glow. NO saturated green moss, NO crimson rage, NO gold shi",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3GFmzL8R8w0UkuoXA20lb2Q2wlL/hf_20260817_175147_33aeab58-acbe-4394-8573-a8256bcfd763.png"
+    }
+  ]
+}
