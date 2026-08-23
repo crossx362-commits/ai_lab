@@ -43,13 +43,16 @@ rm -f loop/STOP
 전환을 `loop/agent`에 영구 기록하지 말고 그 이터레이션에만 적용할 것.
 
 ### 영지 — 남은 순서 (지시서 `ORDERS.md` 20260819_0900 1번과 같다)
-1. §2-3 `EstateBuild.cs` 건물별 레벨 일반화 → `EstateScreen` 업그레이드 창 배선.
-   호출부가 25개 API 약 180곳이라 본성 API를 보존한 채 `Cell.Keep`으로 위임한다.
+1. ~~§2-3 `EstateBuild.cs` 건물별 레벨 일반화~~ — 닫음(본성 API→`Cell.Keep` 위임).
 2. §2-2 드래그 이동 + `StoreX/StoreY` 상수 제거(창고가 움직이면 경로 목적지가 바뀐다).
 3. §2-4 아트 8동 + 티어 + 공사판 — **자리 앵커가 앉은 뒤**라야 밑동선이 맞는다(맨 뒤).
 
 원장은 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」을 반드시 읽어라** —
 자리 크기로 그림 크기까지 내면 건물이 화면을 덮는 거인이 된다(실측 후 되돌림 `b414e914`).
+
+## 완료 (2026-08-23) — EstateBuild §2-3 건물별 레벨 (Grok)
+
+`EstateBuild`를 Keep-only에서 IsCore 칸별 레벨·공사로 일반화. prefs `ats.estate.b.{Cell}.lv|to|done|orig|job`, 옛 `ats.estate.keep*` 이주. 본성 API는 Cell.Keep 위임. `EstateScreen` Keep·광산/창고 도크·허브 업그레이드 행 배선. `EstateBuildSelfCheck`에 광산·본성상한·병렬 busy·prefs 이주. 남은 영지: §5 드래그 UX → §6 아트.
 
 ## 완료 (2026-08-21) — 5직업 모션 8프레임 통일 (대화 세션)
 

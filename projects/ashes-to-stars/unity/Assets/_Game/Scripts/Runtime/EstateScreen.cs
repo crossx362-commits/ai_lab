@@ -366,6 +366,11 @@ namespace AshesToStars
                     }
                     return;
                 }
+                if (EstateGrid.IsCore(cell) && !EstateGrid.IsHub(cell))
+                {
+                    DrawCoreBuildDock(r, cell, title, icon);
+                    return;
+                }
                 Hint(r, title + " · " + sub);
                 if (EstateGrid.IsHub(cell) && GUI.Button(r, GUIContent.none, GUIStyle.none))
                     OpenHub(cell);
@@ -387,6 +392,11 @@ namespace AshesToStars
                     OpenHub(cell);
                 return;
             }
+            if (EstateGrid.IsCore(cell))
+            {
+                DrawCoreBuildDock(r, cell, title, icon);
+                return;
+            }
             DrawCard(r, title, sub, icon, locked: true);
         }
 
@@ -401,32 +411,42 @@ namespace AshesToStars
 
         string YardInspectLine(EstateGrid.Cell cell)
         {
+            string build = CoreBuildCaption(cell);
             switch (cell)
             {
                 case EstateGrid.Cell.Keep:
-                    return EstateBuild.KeepBusy
-                        ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · {EstateBuild.RemainingText()}"
-                        : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+                    return EstateBuild.Busy(EstateGrid.Cell.Keep)
+                        ? build
+                        : $"{build} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
                 case EstateGrid.Cell.Mine:
-                    return Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h · 자동 적립";
+                    return $"{build} · {Economy.FormatCurrency(EstateMine.CopperPerHourEffective())}/h";
                 case EstateGrid.Cell.Warehouse:
-                    return $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+                    return $"{build} · {Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
                 case EstateGrid.Cell.Smith:
-                    return Equipment.LockReason() ?? "제작·강화. 실패해도 장비는 남는다";
+                    return build + " · " + (Equipment.LockReason() ?? "제작·강화. 실패해도 장비는 남는다");
                 case EstateGrid.Cell.Auction:
-                    return AuctionHubLockReason() ?? AuctionState.FeeLine();
+                    return build + " · " + (AuctionHubLockReason() ?? AuctionState.FeeLine());
                 case EstateGrid.Cell.Mausoleum:
-                    return Memorial.LockReason()
-                        ?? $"환생석 {LifeSystem.GetRebornStones()}개";
+                    return build + " · " + (Memorial.LockReason()
+                        ?? $"환생석 {LifeSystem.GetRebornStones()}개");
                 case EstateGrid.Cell.Barracks:
-                    return DefenseState.LockReason()
-                        ?? $"배치 {DefenseState.Count}/{DefenseState.MaxSlots}";
+                    return build + " · " + (DefenseState.LockReason()
+                        ?? $"배치 {DefenseState.Count}/{DefenseState.MaxSlots}");
                 case EstateGrid.Cell.Empty:
                     return EstateGrid.WhyCannotPlace(_selX, _selY, _placeKind)
                         ?? $"여기에 {EstateYard.LabelOf(_placeKind)}을(를) 놓는다";
                 default:
                     return "방어 건물";
             }
+        }
+
+        static string CoreBuildCaption(EstateGrid.Cell cell)
+        {
+            if (!EstateGrid.IsCore(cell)) return "";
+            int lv = EstateBuild.Level(cell);
+            if (EstateBuild.Busy(cell))
+                return $"Lv{lv} → {EstateBuild.Target(cell)} · {EstateBuild.RemainingText(cell)}";
+            return $"Lv{lv}";
         }
 
         void DrawVillagePalette(Rect r)
@@ -690,41 +710,42 @@ namespace AshesToStars
 
         void Keep(Rect r)
         {
+            var c = EstateGrid.Cell.Keep;
             EstateBuild.Tick();
-            int lv = EstateBuild.KeepLevel;
+            int lv = EstateBuild.Level(c);
             Info(r, 0, $"본성 Lv{lv} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}(§18-12)");
             int row = 1;
-            if (EstateBuild.KeepBusy)
+            if (EstateBuild.Busy(c))
             {
-                Info(r, row++, $"공사 중 Lv{lv} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}");
+                Info(r, row++, $"공사 중 Lv{lv} → {EstateBuild.Target(c)} · 남은 {EstateBuild.RemainingText(c)}");
                 Info(r, row++, "끝나면 자동 적용 — 수령할 필요 없다. 단축은 남은 50%까지(§13-2)");
-                DrawKeepRush(r, ref row);
+                DrawCoreRush(r, ref row, c);
             }
             else
             {
-                string why = EstateBuild.WhyCannotUpgrade();
+                string why = EstateBuild.WhyCannotUpgrade(c);
                 string label = $"Lv{lv} → {lv + 1}";
-                string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(lv))} · {FormatWait(EstateBuild.UpgradeSeconds(lv))}";
+                string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
                 if (why != null)
                     Locked(r, row++, label, why, "territory");
                 else if (Row(r, row++, label, desc, "territory"))
-                    EstateBuild.TryStartKeep();
+                    EstateBuild.TryStartUpgrade(c);
             }
             if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
         }
 
-        void DrawKeepRush(Rect r, ref int row)
+        void DrawCoreRush(Rect r, ref int row, EstateGrid.Cell c)
         {
-            long cut = EstateBuild.RushableSeconds();
-            string goldWhy = EstateBuild.WhyCannotRushGold();
-            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor())}";
+            long cut = EstateBuild.RushableSeconds(c);
+            string goldWhy = EstateBuild.WhyCannotRushGold(c);
+            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor(c))}";
             string goldDesc = cut > 0
                 ? $"남은 {cut}초를 당긴다. 바닥은 원 소요의 50%(§13-2)"
                 : "남은 시간의 50%가 바닥이다 — 완전 스킵 불가";
             if (goldWhy != null)
                 Locked(r, row++, goldLabel, goldWhy, "gold");
             else if (Row(r, row++, goldLabel, goldDesc, "gold"))
-                EstateBuild.TryRushGold();
+                EstateBuild.TryRushGold(c);
 
             var mat = EstateRush.FirstOwnedFamilyMaterial();
             if (mat == null)
@@ -735,13 +756,60 @@ namespace AshesToStars
                 return;
             }
             var item = mat.Value;
-            string matWhy = EstateBuild.WhyCannotRushMaterial(item);
+            string matWhy = EstateBuild.WhyCannotRushMaterial(c, item);
             string matLabel = $"{GameState.Label(item)} 1장 단축";
             string matDesc = $"남은 시간의 2% · {GameState.Bag.GetCount(item)}장";
             if (matWhy != null)
                 Locked(r, row++, matLabel, matWhy, ItemAtlas.KeyFor(item));
             else if (Row(r, row++, matLabel, matDesc, ItemAtlas.KeyFor(item)))
-                EstateBuild.TryRushMaterial(item, 1);
+                EstateBuild.TryRushMaterial(c, item, 1);
+        }
+
+        /// <summary>허브 화면 상단 — 건물 Lv·업그레이드/단축 한 줄(SPEC §2-3).</summary>
+        void DrawHubUpgradeRow(Rect r, ref int row, EstateGrid.Cell c)
+        {
+            EstateBuild.Tick();
+            int lv = EstateBuild.Level(c);
+            if (EstateBuild.Busy(c))
+            {
+                Info(r, row++, $"건물 Lv{lv} → {EstateBuild.Target(c)} · 남은 {EstateBuild.RemainingText(c)}");
+                DrawCoreRush(r, ref row, c);
+                return;
+            }
+            string why = EstateBuild.WhyCannotUpgrade(c);
+            string label = $"건물 Lv{lv} → {lv + 1}";
+            string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
+            if (why != null)
+                Locked(r, row++, label, why, EstateYard.IconOf(c));
+            else if (Row(r, row++, label, desc, EstateYard.IconOf(c)))
+                EstateBuild.TryStartUpgrade(c);
+        }
+
+        /// <summary>광산·창고 안내 도크 — 업그레이드·골드 단축(SPEC §2-3).</summary>
+        void DrawCoreBuildDock(Rect r, EstateGrid.Cell c, string title, string icon)
+        {
+            EstateBuild.Tick();
+            int lv = EstateBuild.Level(c);
+            if (EstateBuild.Busy(c))
+            {
+                string goldWhy = EstateBuild.WhyCannotRushGold(c);
+                string label = $"{title} Lv{lv}→{EstateBuild.Target(c)} · 골드 단축";
+                string desc = goldWhy
+                    ?? $"{EstateBuild.RemainingText(c)} · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor(c))}";
+                if (goldWhy != null)
+                    DrawCard(r, label, desc, icon, locked: true);
+                else if (DrawCard(r, label, desc, "gold"))
+                    EstateBuild.TryRushGold(c);
+                return;
+            }
+            string why = EstateBuild.WhyCannotUpgrade(c);
+            string upLabel = $"{title} Lv{lv} → {lv + 1}";
+            string upDesc = why
+                ?? $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
+            if (why != null)
+                DrawCard(r, upLabel, upDesc, icon, locked: true);
+            else if (DrawCard(r, upLabel, upDesc, icon))
+                EstateBuild.TryStartUpgrade(c);
         }
 
         void DrawDefenseRush(Rect r, ref int row)
@@ -836,7 +904,8 @@ namespace AshesToStars
                 return;
             }
 
-            InfoAt(AuctionHud.BarRect(r, info++), AuctionHud.StatusLine());
+            InfoAt(AuctionHud.BarRect(r, info++),
+                CoreBuildCaption(EstateGrid.Cell.Auction) + " · " + AuctionHud.StatusLine());
             string buyLock = AuctionState.BuyLockLine();
             if (!string.IsNullOrEmpty(buyLock))
                 InfoAt(AuctionHud.BarRect(r, info++), buyLock);
@@ -850,6 +919,7 @@ namespace AshesToStars
         void AuctionHouseOld(Rect r)
         {
             int row = 0;
+            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Auction);
             string lockReason = AuctionHubLockReason();
             if (lockReason != null)
             {
@@ -951,6 +1021,7 @@ namespace AshesToStars
         void Mausoleum(Rect r)
         {
             int row = 0;
+            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Mausoleum);
             string lockReason = Memorial.LockReason();
             if (lockReason != null)
             {
@@ -1034,6 +1105,7 @@ namespace AshesToStars
         void Barracks(Rect r)
         {
             int row = 0;
+            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Barracks);
             string lockReason = DefenseState.LockReason();
             if (lockReason != null)
             {
@@ -1083,6 +1155,7 @@ namespace AshesToStars
         void Smith(Rect r)
         {
             int row = 0;
+            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Smith);
             DrawSmithMaterials(r, row++);
 
             string lockReason = Equipment.LockReason();
