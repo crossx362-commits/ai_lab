@@ -168,6 +168,14 @@ namespace AshesToStars
             _ = nameof(TokenPrice.BelowFloor);
             _ = nameof(TokenPrice.AboveCeil);
             _ = nameof(TokenPrice.Line);
+
+            string tokenSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/TokenPrice.cs"));
+            Check(tokenSrc.Contains("ShortCopper(lo)")
+                  && tokenSrc.Contains("ShortCopper(hi)")
+                  && tokenSrc.IndexOf("FormatCurrency(lo)") < 0
+                  && tokenSrc.IndexOf("FormatCurrency(hi)") < 0,
+                "증표 시세 하한·상한은 ShortCopper만");
             _ = nameof(AuctionTrade.ListPrice);
             _ = nameof(AuctionState.TryListItem);
 

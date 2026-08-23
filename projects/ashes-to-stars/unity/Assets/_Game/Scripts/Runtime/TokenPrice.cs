@@ -67,7 +67,7 @@ namespace AshesToStars
             if (Blocked) return "증표 시세 옛 25골드";
             long lo = Floor(Economy.LifeItem.SpecialJobToken);
             long hi = Ceil(Economy.LifeItem.SpecialJobToken);
-            return $"증표 시세 하한 {Economy.FormatCurrency(lo)} · 상한 {Economy.FormatCurrency(hi)}(§18-4)";
+            return $"증표 시세 하한 {EstateStatusHud.ShortCopper(lo)} · 상한 {EstateStatusHud.ShortCopper(hi)}(§18-4)";
         }
 
         /// <summary>시각 QA. 30층으로 장을 열고 T1을 골라 200골드가 보이게 한다.</summary>
