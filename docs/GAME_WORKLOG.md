@@ -54,6 +54,12 @@ rm -f loop/STOP
 
 `EstateBuild`를 Keep-only에서 IsCore 칸별 레벨·공사로 일반화. prefs `ats.estate.b.{Cell}.lv|to|done|orig|job`, 옛 `ats.estate.keep*` 이주. 본성 API는 Cell.Keep 위임. `EstateScreen` Keep·광산/창고 도크·허브 업그레이드 행 배선. `EstateBuildSelfCheck`에 광산·본성상한·병렬 busy·prefs 이주. 남은 영지: §5 드래그 UX → §6 아트.
 
+### 검수 게이트 마무리 (세션교체 준호 · 2026-08-23 15:17)
+- 선행 FAIL: worker STATUS 수정 · SelfCheck 증거 없음 → `5fa97195`로 STATUS 되돌림 + MenuItem.
+- `unity_meas` sync 후 batch SelfCheck **PASS** (exit 0).
+- 로그: `projects/ashes-to-stars/results/estate_build_selfcheck_20260823_151727.log` — `[EstateBuildSelfCheck] PASS` 전항.
+- STATUS.md는 보드만 수정. 이 커밋은 WORKLOG만.
+
 ## 완료 (2026-08-21) — 5직업 모션 8프레임 통일 (대화 세션)
 
 오너 지적 "모션마다 이미지 수가 왜 달라, 근본적으로 고쳐". 실측: 원본 시트 30장은
