@@ -95,6 +95,18 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>§3·SkillDef.초필살기. QA_NO면 초필 줄을 비운다(옛 화면 = 초필 행 없음).</summary>
+        public const string EnvNoSkillUlt = "QA_NO_SKILL_ULT";
+
+        public static bool SkillUltBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSkillUlt);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>§3·SkillDef.설명. QA_NO면 설명 줄을 비운다(옛 화면 = 설명 행 없음).</summary>
         public const string EnvNoSkillDesc = "QA_NO_SKILL_DESC";
 
@@ -146,7 +158,7 @@ namespace AshesToStars
             var parts = new System.Collections.Generic.List<string>();
             foreach (var s in d.스킬)
             {
-                if (s == null || string.IsNullOrEmpty(s.이름)) continue;
+                if (s == null || string.IsNullOrEmpty(s.이름) || s.초필살기) continue;
                 string piece = s.이름;
                 bool showCd = !SkillCdBlocked && s.쿨다운 > 0f;
                 bool showPow = !SkillPowBlocked && s.위력배율 > 0f
@@ -192,12 +204,41 @@ namespace AshesToStars
             var parts = new System.Collections.Generic.List<string>();
             foreach (var s in d.스킬)
             {
-                if (s == null || string.IsNullOrEmpty(s.이름) || string.IsNullOrEmpty(s.설명))
+                if (s == null || string.IsNullOrEmpty(s.이름) || string.IsNullOrEmpty(s.설명)
+                    || s.초필살기)
                     continue;
                 parts.Add(s.이름 + ": " + s.설명);
             }
             if (parts.Count == 0) return "";
             return "스킬 설명 — " + string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// "초필살기 — {이름}(N초) · …". JobDef.스킬의 <c>SkillDef.초필살기</c> **유일한 런타임 소비처**.
+        /// 원장 §3 2차 전직 「초필살기 추가(스킬 4개 + 궁극기 1개)」·§18-6 쿨다운 180초.
+        /// 같은 SkillDef 행의 이름·쿨·위력·반경·자원소모·설명은 SkillLine·SkillDescLine이 읽는데
+        /// 초필 bool만 정의·에셋에 있고 grep 소비처 0곳이었다(설명·자원소모와 동일 계열).
+        /// 초필은 2차 슬롯이라 보유 스킬 줄에 붙이면 LabelClip이 뒤부터 자르고, 설명 줄은
+        /// 이미 두 줄이라 초필 이름을 잃는다 — **별도 한 줄**. 값이 false·이름 빈 스킬은
+        /// 건너뛴다(지어내지 않음). 마법사처럼 authored 초필이 없으면 빈 문자열.
+        /// QA_NO_SKILL_ULT면 항상 빈 문자열로 옛 화면(초필 행 없음)에 회귀.
+        /// 표시 전용 — W3Party·전투 게이지 무접촉.
+        /// </summary>
+        public static string SkillUltLine(string jobName)
+        {
+            if (SkillUltBlocked) return "";
+            var d = For(jobName);
+            if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var s in d.스킬)
+            {
+                if (s == null || !s.초필살기 || string.IsNullOrEmpty(s.이름)) continue;
+                string piece = s.이름;
+                if (s.쿨다운 > 0f) piece += "(" + s.쿨다운.ToString("0.#") + "초)";
+                parts.Add(piece);
+            }
+            if (parts.Count == 0) return "";
+            return "초필살기 — " + string.Join(" · ", parts);
         }
 
         /// <summary>

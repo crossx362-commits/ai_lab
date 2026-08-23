@@ -45,7 +45,7 @@ namespace AshesToStars
                         $"{d.직업명}: SkillDescLine 접두 — 「{line}」");
                     foreach (var s in d.스킬)
                     {
-                        if (s == null || string.IsNullOrEmpty(s.이름)) continue;
+                        if (s == null || string.IsNullOrEmpty(s.이름) || s.초필살기) continue;
                         if (string.IsNullOrEmpty(s.설명))
                         {
                             Check(!PieceHasName(line, s.이름),

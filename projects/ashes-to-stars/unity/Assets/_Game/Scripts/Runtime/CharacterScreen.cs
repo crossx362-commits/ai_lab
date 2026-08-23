@@ -72,6 +72,7 @@ namespace AshesToStars
             SeedJobTraitQaIfRequested();
             SeedSkillCostQaIfRequested();
             SeedSkillDescQaIfRequested();
+            SeedSkillUltQaIfRequested();
             SeedRaceTraitQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
@@ -425,6 +426,11 @@ namespace AshesToStars
                         // §3 SkillDef.쿨다운·위력배율·반경·자원소모 — SkillLine이 이름 옆에 (N초·×P·반경R·소모C) (표시 전용).
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
+                        // §3 SkillDef.초필살기 — SkillUltLine이 초필 이름·쿨만 별도 한 줄(표시 전용).
+                        // SkillLine에 붙이면 뒤부터 잘리고, 설명 줄은 이미 두 줄이라 초필을 잃는다.
+                        // QA_NO면 빈 문자열이라 행을 안 그린다.
+                        string skillUlt = JobInfo.SkillUltLine(ch.Job);
+                        if (!string.IsNullOrEmpty(skillUlt)) Info(r, advancementRow++, skillUlt);
                         // §3 SkillDef.설명 — SkillDescLine이 이름:설명 한 줄(표시 전용). SkillLine에 붙이면
                         // 뒷 스킬 이름이 LabelClip에 잘리므로 다음 행. QA_NO면 빈 문자열이라 행을 안 그린다.
                         // Info(LabelClip·inner 20px)면 마법사 「빙결: 광」에서 우측이 잘린다 — 두 줄
@@ -687,6 +693,19 @@ namespace AshesToStars
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             roster[0].Job = "마법사";
+            roster[0].Advancement = AdvancementTier.First;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        // QA — 1차 수호기사. SkillDef.초필살기(파티 전원 무적 180초)가 SkillUltLine에 보이는지
+        // 육안 확인용. 원장 §3 예시 4직업 중 수호기사가 대표 칸. 마법사는 authored 초필이 없다.
+        void SeedSkillUltQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_SKILL_ULT") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            roster[0].Job = "수호기사";
             roster[0].Advancement = AdvancementTier.First;
             _selectedCharacter = 0;
             _detailPage = 1;

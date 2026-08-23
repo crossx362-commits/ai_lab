@@ -47,7 +47,7 @@ namespace AshesToStars
                         $"{d.직업명}: SkillLine 접두 — 「{line}」");
                     foreach (var s in d.스킬)
                     {
-                        if (s == null || string.IsNullOrEmpty(s.이름)) continue;
+                        if (s == null || string.IsNullOrEmpty(s.이름) || s.초필살기) continue;
                         Check(line.Contains(s.이름),
                             $"{d.직업명}: 형제 이름 보존 ({s.이름}) — 「{line}」");
                         bool notable = s.반경 > 0f && s.반경 < JobInfo.SkillRadDisplayCap;
