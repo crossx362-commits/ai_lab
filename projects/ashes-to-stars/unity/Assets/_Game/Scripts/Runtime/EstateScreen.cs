@@ -978,7 +978,7 @@ namespace AshesToStars
             }
             string why = EstateBuild.WhyCannotUpgrade(c);
             string label = $"건물 Lv{lv} → {lv + 1}";
-            string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
+            string desc = $"{EstateStatusHud.ShortCopper(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
             if (why != null)
                 Locked(r, row++, label, why, EstateYard.IconOf(c));
             else if (Row(r, row++, label, desc, EstateYard.IconOf(c)))
