@@ -433,7 +433,7 @@ namespace AshesToStars
         {
             if (HuntGoldBlocked) return "필드 골드 없음";
             long hour = WaveHuntGold(GameState.Tier, HuntGoldHourSeconds);
-            return $"필드 {FormatCurrency(hour)}/h(§18-1)";
+            return $"필드 {EstateStatusHud.ShortCopper(hour)}/h(§18-1)";
         }
 
         public static string HuntGoldLine(long copper)
