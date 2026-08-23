@@ -1,12 +1,12 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 15:46",
+  "phase": "pass",
+  "updated": "2026-08-23 15:47",
   "last_commit": "f9f195e8",
-  "review": "pending",
-  "note": "개발 완료 → 루프검수 검토 중",
+  "review": "PASS",
+  "task": "소비처0 다음 한 칸",
+  "routed_to": "재와별·개발",
+  "note": "§18-9 PASS · 다음 소비처0 배정",
   "commits": [
     "f9f195e8"
-  ],
-  "task": "§18-9 RaceDef.전투당발동 소비처0",
-  "routed_to": "재와별·루프검수"
+  ]
 }
