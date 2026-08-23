@@ -135,7 +135,6 @@ def build_provider_command(provider: str, prompt: str, max_turns: int, role: str
             "codex", "exec", "--ephemeral",
             "--model", os.environ.get("LOOP_CODEX_MODEL", "gpt-5.6-sol"),
             "--sandbox", sandbox,
-            "--approve-for-me",
             "--json",
             "-c", f'model_reasoning_effort="{os.environ.get("LOOP_CODEX_REASONING", "xhigh")}"',
             "-",

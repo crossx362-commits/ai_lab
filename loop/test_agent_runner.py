@@ -61,6 +61,7 @@ class ProviderCommandTests(unittest.TestCase):
         self.assertIn("gpt-5.6-sol", command)
         self.assertIn("workspace-write", command)
         self.assertIn('model_reasoning_effort="xhigh"', command)
+        self.assertNotIn("--approve-for-me", command)
         self.assertNotIn("danger-full-access", command)
         self.assertNotIn("resume", command)
 
