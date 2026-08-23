@@ -80,7 +80,7 @@ namespace AshesToStars
                 $"세계 부제 (실제 {EstateStatusHud.WorldCaption()})");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.MineCaption()),
                 $"광산 부제 (실제 {EstateStatusHud.MineCaption()})");
-            Check(!EstateStatusHud.CaptionFits("11실버 99쿠퍼/h"),
+            Check(!EstateStatusHud.CaptionFits("9150골드 7실버 50쿠퍼/h"),
                 "옛 광산 FormatCurrency+/h 풀표기는 안 맞음");
             string mineSrc = File.ReadAllText(Path.Combine(
                 Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
