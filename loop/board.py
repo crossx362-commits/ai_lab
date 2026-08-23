@@ -234,14 +234,33 @@ def _plain_list(items: list, detail_key: str = "detail") -> list:
     return [_plain_item(it, detail_key) for it in (items or [])]
 
 
+def _heading_block(status: str, pred) -> str:
+    """Return body of the first ## heading for which pred(heading) is true."""
+    for m in re.finditer(r"^##\s+(.+?)\s*$", status, re.M):
+        if not pred(m.group(1)):
+            continue
+        rest = status[m.end():]
+        end = re.search(r"^## ", rest, re.M)
+        return rest[: end.start()] if end else rest
+    return ""
+
+
 def parse_queue(status: str) -> list[dict]:
-    """STATUS 「다음 할 일」 번호 목록."""
-    m = re.search(r"^## 다음 할 일[^\n]*\n", status, re.M)
-    if not m:
+    """STATUS 「다음 할 일」 번호 목록 (구 포맷 + 2026-08-23 템플릿)."""
+    def want(h: str) -> bool:
+        if "다음 할 일" not in h:
+            return False
+        # Prefer numbered-list section over the markdown table section.
+        if "큐" in h and "원장" not in h:
+            return False
+        return True
+
+    block = _heading_block(status, want)
+    if not block:
+        # New template often names the only queue section with 큐.
+        block = _heading_block(status, lambda h: "다음 할 일" in h)
+    if not block:
         return []
-    rest = status[m.end():]
-    end = re.search(r"^## |\n최종 갱신:", rest)
-    block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
         parsed = parse_numbered_item(line)
@@ -251,15 +270,31 @@ def parse_queue(status: str) -> list[dict]:
 
 
 def parse_numbered_item(line: str) -> dict | None:
-    """`1. **제목** (메모) — 설명` 또는 대시 없는 한 줄."""
+    """`1. **제목** (메모) — 설명`, checkbox `- [ ] 1. 제목`, or plain `1. 제목`."""
+    raw = line.strip()
+    # New template: "- [ ] 1. title" / "- [x] 1. title"
+    raw = re.sub(r"^-\s*\[[ xX]\]\s*", "", raw)
     hit = re.match(
         r"^(\d+)\.\s+\*\*(.+?)\*\*(?:\s*\([^)]*\))?\s*(?:[—–-]\s*(.*))?$",
-        line.strip(),
+        raw,
     )
     if not hit:
+        hit = re.match(
+            r"^(\d+)\.\s+(.+?)(?:\s*[—–-]\s*(.*))?$",
+            raw,
+        )
+        if not hit:
+            return None
+        title = hit.group(2).strip()
+        detail = (hit.group(3) or "").strip()
+        # skip empty template placeholders
+        if not title or title in (".", "…", "..."):
+            return None
+    else:
+        title = hit.group(2).strip()
+        detail = (hit.group(3) or "").strip()
+    if not title:
         return None
-    title = hit.group(2).strip()
-    detail = (hit.group(3) or "").strip()
     return {
         "n": int(hit.group(1)),
         "id": item_id(title),
@@ -271,12 +306,9 @@ def parse_numbered_item(line: str) -> dict | None:
 
 def parse_queue_table(status: str) -> list[dict]:
     """STATUS 하단 「다음 할 일 큐」 표. 취소선(완료) 행은 뺀다."""
-    m = re.search(r"^## 다음 할 일 큐[^\n]*\n", status, re.M)
-    if not m:
+    block = _heading_block(status, lambda h: "다음 할 일 큐" in h)
+    if not block:
         return []
-    rest = status[m.end():]
-    end = re.search(r"^## |\n### ", rest)
-    block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
         if "| ~~" in line or not line.startswith("|"):
@@ -302,12 +334,9 @@ def parse_queue_table(status: str) -> list[dict]:
 
 def parse_queue_table_all(status: str) -> list[dict]:
     """큐 표 전체. 취소선 행도 남겨 완료/미완 비율을 센다."""
-    m = re.search(r"^## 다음 할 일 큐[^\n]*\n", status, re.M)
-    if not m:
+    block = _heading_block(status, lambda h: "다음 할 일 큐" in h)
+    if not block:
         return []
-    rest = status[m.end():]
-    end = re.search(r"^## |\n### ", rest)
-    block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
         if not line.startswith("|"):
