@@ -1,11 +1,11 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 16:20",
+  "phase": "pass",
+  "updated": "2026-08-23 16:21",
   "last_commit": "50202ce5",
-  "review": "pending",
-  "task": "§3 SkillDef.위력배율 소비처0",
-  "routed_to": "재와별·루프검수",
-  "note": "검수 중 · PASS 후 PropOf 또는 소비처0",
+  "review": "PASS",
+  "task": "PropOf/scaffold 티어 SelfCheck",
+  "routed_to": "재와별·개발",
+  "note": "위력배율 PASS · PropOf 배정",
   "commits": [
     "50202ce5"
   ]
