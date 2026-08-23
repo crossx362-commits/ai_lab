@@ -50,6 +50,16 @@ rm -f loop/STOP
 원장은 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」을 반드시 읽어라** —
 자리 크기로 그림 크기까지 내면 건물이 화면을 덮는 거인이 된다(실측 후 되돌림 `b414e914`).
 
+## 완료 (2026-08-23) — 영지 §5 건물 드래그 미리보기 (Grok)
+
+`EstateScreen` 마을: 건물 위 프레스=선택, 드래그=반투명 유령+놓을 칸 강조, 드롭 시 `TryDragMove`(창고는 `EstateStore.TryMove`). `EstateYard`는 건물 위 시작만 이동 제스처·Pan 분리(`DragSlop`). `QA_ESTATE_DRAG`/`QA_NO_ESTATE_DRAG`. SelfCheck MenuItem `Ashes to Stars/QA/Estate Drag Self Check`.
+
+### 검수
+- `unity_meas` sync 후 batch SelfCheck **PASS** (exit 0).
+- 로그: `projects/ashes-to-stars/results/estate_drag_selfcheck_20260823_152420.log` — `[EstateDragSelfCheck] PASS` 전항.
+
+---
+
 ## 완료 (2026-08-23) — EstateBuild §2-3 건물별 레벨 (Grok)
 
 `EstateBuild`를 Keep-only에서 IsCore 칸별 레벨·공사로 일반화. prefs `ats.estate.b.{Cell}.lv|to|done|orig|job`, 옛 `ats.estate.keep*` 이주. 본성 API는 Cell.Keep 위임. `EstateScreen` Keep·광산/창고 도크·허브 업그레이드 행 배선. `EstateBuildSelfCheck`에 광산·본성상한·병렬 busy·prefs 이주. 남은 영지: §5 드래그 UX → §6 아트.

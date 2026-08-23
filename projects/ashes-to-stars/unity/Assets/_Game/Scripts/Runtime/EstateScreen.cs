@@ -21,6 +21,14 @@ namespace AshesToStars
         int _hubPage;
         EstateGrid.Cell _placeKind = EstateGrid.Cell.Wall;
         int _selX = -1, _selY = -1;
+        bool _moveDown;
+        bool _moveDragging;
+        bool _suppressClick;
+        int _moveFromX = -1, _moveFromY = -1;
+        int _dropX = -1, _dropY = -1;
+        EstateGrid.Cell _moveCell = EstateGrid.Cell.Empty;
+        string _moveHint;
+        Vector2 _moveFromMouse;
 
         /// <summary>경매장 해금 층(§12). 침략과 동시 해금이다.</summary>
         public const int AuctionUnlockFloor = 30;
@@ -68,6 +76,8 @@ namespace AshesToStars
                 return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
             if (SoloRaidClear.HasAny)
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
+            if (EstateYard.ShowDragQa)
+                return EstateYard.Line();
             if (EstateYard.ShowQa)
                 return EstateYard.Line();
             if (EstateBuildings.ShowQa)
@@ -255,8 +265,18 @@ namespace AshesToStars
             if (EstateYard.FillBlocked)
                 Info(r, 0, hud);
 
+            HandleBuildingDrag(yard);
             if (EstateYard.Draw(yard, _selX, _selY, out int hx, out int hy))
-                OnYardClick(hx, hy);
+            {
+                if (!_suppressClick)
+                    OnYardClick(hx, hy);
+            }
+            _suppressClick = false;
+            if (_moveDragging && EstateGrid.IsCore(_moveCell) && EstateGrid.InBounds(_dropX, _dropY))
+            {
+                bool ok = string.IsNullOrEmpty(_moveHint);
+                EstateYard.DrawMovePreview(yard, _moveCell, _dropX, _dropY, ok);
+            }
 
             if (EstateYard.FillBlocked)
             {
@@ -268,7 +288,10 @@ namespace AshesToStars
                 return;
             }
 
-            if (_selX < 0)
+            if (_moveDragging && !string.IsNullOrEmpty(_moveHint))
+                Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f),
+                    _moveHint);
+            else if (_selX < 0)
                 Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f), hud);
             bool selected = _selX >= 0;
             float insH = EstateHud.InspectH(selected);
@@ -280,6 +303,130 @@ namespace AshesToStars
             }
             DrawVillagePalette(paletteOn);
         }
+
+        void HandleBuildingDrag(Rect yard)
+        {
+            if (!EstateYard.DragEnabled)
+            {
+                ClearMoveDrag();
+                return;
+            }
+            var ev = Event.current;
+            if (ev == null) return;
+            var mouse = ev.mousePosition;
+            if (ev.type == EventType.MouseDown && ev.button == 0 && yard.Contains(mouse)
+                && EstateYard.TryHitCoreOrigin(yard, mouse, out int ox, out int oy))
+            {
+                _moveDown = true;
+                _moveDragging = false;
+                _suppressClick = false;
+                _moveFromX = ox;
+                _moveFromY = oy;
+                _moveCell = EstateGrid.At(ox, oy);
+                _dropX = ox;
+                _dropY = oy;
+                _moveHint = null;
+                _moveFromMouse = mouse;
+                _selX = ox;
+                _selY = oy;
+                return;
+            }
+            if (!_moveDown) return;
+            if (ev.type == EventType.MouseDrag && ev.button == 0)
+            {
+                Vector2 d = mouse - _moveFromMouse;
+                if (!_moveDragging && d.sqrMagnitude >= EstateYard.DragSlop * EstateYard.DragSlop)
+                    _moveDragging = true;
+                if (_moveDragging)
+                {
+                    if (EstateYard.TryHitCell(yard, mouse, out int hx, out int hy))
+                    {
+                        _dropX = hx;
+                        _dropY = hy;
+                    }
+                    _moveHint = WhyCannotDragMove(_moveFromX, _moveFromY, _dropX, _dropY);
+                    ev.Use();
+                }
+                return;
+            }
+            if (ev.type == EventType.MouseUp && ev.button == 0)
+            {
+                if (_moveDragging)
+                {
+                    if (TryDragMove(_moveFromX, _moveFromY, _dropX, _dropY))
+                    {
+                        _selX = _dropX;
+                        _selY = _dropY;
+                        _moveHint = null;
+                    }
+                    _suppressClick = true;
+                    ev.Use();
+                }
+                else
+                    _moveHint = null;
+                ClearMoveDrag();
+            }
+        }
+
+        void ClearMoveDrag()
+        {
+            _moveDown = false;
+            _moveDragging = false;
+            _moveFromX = -1;
+            _moveFromY = -1;
+            _dropX = -1;
+            _dropY = -1;
+            _moveCell = EstateGrid.Cell.Empty;
+            _moveHint = null;
+        }
+
+        /// <summary>핵심 건물 자리 옮김 거부 사유(§2-2). 창고는 EstateStore.</summary>
+        public static string WhyCannotDragMove(int ox, int oy, int nx, int ny)
+        {
+            if (EstateYard.DragBlocked) return "건물 이동이 꺼져 있다";
+            if (!EstateGrid.InBounds(ox, oy)) return "격자 밖이다";
+            var cell = EstateGrid.At(ox, oy);
+            if (!EstateGrid.IsCore(cell)) return "핵심 건물만 옮긴다";
+            if (ox == nx && oy == ny) return null;
+            if (EstateBuild.Busy(cell)) return "건설 중이다";
+            if (cell == EstateGrid.Cell.Warehouse)
+                return EstateStore.WhyCannotMove(nx, ny);
+            if (!EstateGrid.InBounds(nx, ny)) return "격자 밖이다";
+            var f = EstateGrid.FootprintOf(cell);
+            if (nx + f.x > EstateGrid.Size || ny + f.y > EstateGrid.Size)
+                return "격자 밖이다";
+            for (int y = ny; y < ny + f.y; y++)
+            for (int x = nx; x < nx + f.x; x++)
+            {
+                if (!EstateGrid.TryOwner(x, y, out int px, out int py)) continue;
+                if (px == ox && py == oy) continue;
+                return "자리 크기가 겹친다";
+            }
+            return null;
+        }
+
+        /// <summary>핵심 건물 원점 이동. 창고는 EstateStore.TryMove.</summary>
+        public static bool TryDragMove(int ox, int oy, int nx, int ny)
+        {
+            if (WhyCannotDragMove(ox, oy, nx, ny) != null) return false;
+            var cell = EstateGrid.At(ox, oy);
+            if (!EstateGrid.IsCore(cell)) return false;
+            if (ox == nx && oy == ny) return true;
+            if (cell == EstateGrid.Cell.Warehouse)
+                return EstateStore.TryMove(nx, ny);
+            EstateGrid.SetCellForTest(ox, oy, EstateGrid.Cell.Empty);
+            EstateGrid.SetCellForTest(nx, ny, cell);
+            return EstateGrid.At(nx, ny) == cell
+                && EstateGrid.At(ox, oy) == EstateGrid.Cell.Empty;
+        }
+
+        /// <summary>UI·SelfCheck 공용 — 미리보기 거부 사유(§2-2).</summary>
+        public static string PreviewWhy(int ox, int oy, int nx, int ny) =>
+            WhyCannotDragMove(ox, oy, nx, ny);
+
+        /// <summary>UI·SelfCheck 공용 — 놓을 수 있으면 true.</summary>
+        public static bool WouldAccept(int ox, int oy, int nx, int ny) =>
+            WhyCannotDragMove(ox, oy, nx, ny) == null;
 
         void OnYardClick(int x, int y)
         {
@@ -344,7 +491,9 @@ namespace AshesToStars
             }
             var cell = EstateGrid.At(_selX, _selY);
             string title = EstateYard.LabelOf(cell);
-            string sub = YardInspectLine(cell);
+            string sub = _moveDragging && !string.IsNullOrEmpty(_moveHint) && EstateGrid.IsCore(cell)
+                ? _moveHint
+                : YardInspectLine(cell);
             string icon = EstateYard.IconOf(cell);
             bool fat = EstateHud.Blocked || EstateYard.FillBlocked;
             if (!fat)
