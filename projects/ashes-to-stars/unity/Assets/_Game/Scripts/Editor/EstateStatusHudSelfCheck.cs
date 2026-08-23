@@ -64,6 +64,18 @@ namespace AshesToStars
                 $"영공 부제 (실제 {EstateStatusHud.AuraCaption()})");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.KeepCaption()),
                 $"본성 부제 (실제 {EstateStatusHud.KeepCaption()})");
+            Check(!EstateStatusHud.CaptionFits("Lv10 · 915골드 7실버 50쿠퍼"),
+                "옛 본성 FormatCurrency 풀표기는 안 맞음");
+            string keepSrc = File.ReadAllText(Path.Combine(
+                Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
+            int keepMethod = keepSrc.IndexOf("public static string KeepCaption()", StringComparison.Ordinal);
+            int nextMethod = keepSrc.IndexOf("public static string WorldCaption()", StringComparison.Ordinal);
+            Check(keepMethod >= 0 && nextMethod > keepMethod
+                  && keepSrc.IndexOf("ShortCopper(EstateBuild.WarehouseCapCopper())", keepMethod, nextMethod - keepMethod) >= 0
+                  && keepSrc.IndexOf("FormatCurrency", keepMethod, nextMethod - keepMethod) < 0,
+                "KeepCaption은 ShortCopper만 쓴다");
+            Check(keepSrc.IndexOf("OldKeepCaption", StringComparison.Ordinal) >= 0,
+                "OldKeepCaption이 남아 있다");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.WorldCaption()),
                 $"세계 부제 (실제 {EstateStatusHud.WorldCaption()})");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.MineCaption()),

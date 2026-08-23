@@ -59,11 +59,19 @@ namespace AshesToStars
             return $"{floor}층 · 영공 {WorldStar.Sense(floor):0.0}";
         }
 
-        public static string KeepCaption()
+        /// <summary>옛 줄은 FormatCurrency 풀표기라 슬림 도크에서 잘렸다.</summary>
+        public static string OldKeepCaption()
         {
             if (EstateBuild.KeepBusy)
                 return $"Lv{EstateBuild.KeepLevel} · {EstateBuild.RemainingText()}";
             return $"Lv{EstateBuild.KeepLevel} · {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
+        }
+
+        public static string KeepCaption()
+        {
+            if (EstateBuild.KeepBusy)
+                return $"Lv{EstateBuild.KeepLevel} · {EstateBuild.RemainingText()}";
+            return $"Lv{EstateBuild.KeepLevel} · {ShortCopper(EstateBuild.WarehouseCapCopper())}";
         }
 
         public static string WorldCaption() =>
