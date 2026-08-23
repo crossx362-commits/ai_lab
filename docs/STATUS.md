@@ -13,6 +13,7 @@
 
 | 관문 | 상태 | 담당 | 재개 트리거 |
 |---|---|---|---|
+| — | 2026-08-24 01:1x | keeper-warn-chip 31차 재검증(BASE `3d64d971`=HEAD) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영(`git merge-base --is-ancestor HEAD` 조상 실측 확인)으로 현재 board.html(922~929행) 존속(`kWarns` 필터 · `k.ok true`면 `u hold` 클래스+「주의」경고 병기 · `k.ok false` 칩에도 경고 병기, ops-box=`usage-line`(494행)이라 `.usage-line .u.hold`(144·149행 · `--hold #e0a050` 16행) 노랑톤 렌더 경로 실측 확인). BASE=HEAD라 loop/board.html 작업 트리 diff 0행 실측 — 중복 재구현 없음 · write_paths 유일 대상 무변경. 같은 지시 31회 반복 배정 — 건너뛰기 처방(`a27b3d2b` 병합 항목) TASKS.json 큐 적용 요망. 배당 지시 PROMPT §④에 따라 STATUS 히스토리 행만 갱신(직전 바퀴 `3d64d971` 선례 준수). 검증 중 타 세션(lane-doc 32차·proposals-triage 36차) 미커밋 편집 확인 — 내 행만 선택 스테이징 | test_board 102/102 OK(exit 0) · visual=false 해당 없음 · 문서 검증 · 이 커밋 |
 | 단계1 관문② (5h 지루함) | 규격 초안 · 측정 대기 | 사람 세션 · 루프=CSV훅 | 체크리스트 `docs/plans/GATE2_LOOP_CHECKLIST.md` · 설문=일시정지 오버레이 · 구현은 보드 배정 후 |
 | V4 영구삭제 수용성 | §21-6 넘김 · 외부 표본 0 · **더임 리허설 완주**(`b812da86`: V2 PASS·V3 FAIL·V4 PASS, 실측 아님) | 사람 관문 | 데모·EA 전 / 사망 규칙 변경 시. 더임 보고서: `output/qa/ashes-to-stars/v4_playtest_dummy/dummy_report.json` |
 | V2 손맛 · V3 | 사람 관문 | 사람 | 단계4 진입 전 §21-6과 함께 |
