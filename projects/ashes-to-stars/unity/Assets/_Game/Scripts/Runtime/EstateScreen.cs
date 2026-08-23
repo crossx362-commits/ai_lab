@@ -1129,7 +1129,7 @@ namespace AshesToStars
             }
 
             Info(r, row++,
-                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionTrade.TradeLine()}");
+                $"로컬 장 · {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)} · {AuctionTrade.TradeLine()}");
             Info(r, row++, AuctionState.MineLine());
             string buyLock = AuctionState.BuyLockLine();
             if (!string.IsNullOrEmpty(buyLock))
