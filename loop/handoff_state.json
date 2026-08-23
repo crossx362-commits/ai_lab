@@ -1,12 +1,12 @@
 {
-  "phase": "pass",
-  "updated": "2026-08-23 16:18",
-  "last_commit": "d461fbcb",
-  "review": "PASS",
-  "task": "§6 닫음 · 아트 다음 · PropOf는 개발 큐",
-  "routed_to": "재와별·아트",
-  "note": "§6 PASS · PropOf 후속 개발",
+  "phase": "review",
+  "updated": "2026-08-23 16:20",
+  "last_commit": "50202ce5",
+  "review": "pending",
+  "task": "§3 SkillDef.위력배율 소비처0",
+  "routed_to": "재와별·루프검수",
+  "note": "검수 중 · PASS 후 PropOf 또는 소비처0",
   "commits": [
-    "d461fbcb"
+    "50202ce5"
   ]
 }
