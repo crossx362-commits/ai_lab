@@ -150,7 +150,7 @@ namespace AshesToStars
         {
             if (Blocked) return "비장착 압류 없음";
             if (_applied && _copper > 0)
-                return $"비장착 30% 압류 · {Economy.FormatCurrency(_copper)} 상환(§18-5)";
+                return $"비장착 30% 압류 · {EstateStatusHud.ShortCopper(_copper)} 상환(§18-5)";
             return "비장착 30% 압류(§18-5)";
         }
 
@@ -158,7 +158,7 @@ namespace AshesToStars
         {
             if (Blocked) return "파산 압류 없음";
             if (_applied && _copper > 0)
-                return $"건물 −1레벨 · 비장착 30% 압류 · {Economy.FormatCurrency(_copper)} 상환(§18-5)";
+                return $"건물 −1레벨 · 비장착 30% 압류 · {EstateStatusHud.ShortCopper(_copper)} 상환(§18-5)";
             return "건물 −1레벨 · 비장착 30% 압류(§18-5)";
         }
 
