@@ -1,12 +1,12 @@
 {
-  "phase": "pass",
-  "updated": "2026-08-23 15:47",
-  "last_commit": "f9f195e8",
-  "review": "PASS",
-  "task": "소비처0 다음 한 칸",
-  "routed_to": "재와별·개발",
-  "note": "§18-9 PASS · 다음 소비처0 배정",
+  "phase": "review",
+  "updated": "2026-08-23 15:57",
+  "last_commit": "92cc2feb",
+  "review": "pending",
+  "task": "§3 SkillDef.쿨다운 소비처0",
+  "routed_to": "재와별·루프검수",
+  "note": "개발 완료 → 루프검수 검토 중",
   "commits": [
-    "f9f195e8"
+    "92cc2feb"
   ]
 }
