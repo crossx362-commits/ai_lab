@@ -50,6 +50,22 @@ rm -f loop/STOP
 원장은 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」을 반드시 읽어라** —
 자리 크기로 그림 크기까지 내면 건물이 화면을 덮는 거인이 된다(실측 후 되돌림 `b414e914`).
 
+## 완료 (2026-08-23) — §18-9 RaceDef.전투당발동 소비처 (Grok)
+
+원장 §18-9·라인 160 「발동을 전투당 1회로 묶어」의 `RaceDef.전투당발동`(default 1, 에셋 committed)이
+정의만 있고 grep 소비처 0곳이었다. 형제 `고유발동확률`은 MechanicLine이 「(발동 N%)」로 읽는데
+전투당만 죽어 있던 함정. `RaceInfo.MechanicLine`이 발동% 뒤에 「 · 전투당 K회」를 이어 붙이고,
+에셋 문장에 박힌 「 (전투당 K회)」는 벗겨 필드가 단일 출처가 되게 했다. 표시 전용 — W3Party·전투
+무접촉. `QA_NO_RACE_BATTLE_CAP`면 필드 조각을 빼고 옛 줄(문장 속 전투당 + 발동%)로 회귀.
+
+### 검수
+- `unity_meas` sync 후 batch SelfCheck **PASS** (exit 0).
+- MenuItem `Ashes to Stars/QA/Race Battle Cap Self Check`.
+- 로그: `projects/ashes-to-stars/results/race_battle_cap_selfcheck_20260823_064519.log` — `[RaceBattleCapSelfCheck] PASS` 전항.
+- 소비처: CharacterScreen 속성 탭 `RaceInfo.MechanicLine` (드워프 「발동 25% · 전투당 1회」).
+
+---
+
 ## 완료 (2026-08-23) — 영지 §5 건물 드래그 미리보기 (Grok)
 
 `EstateScreen` 마을: 건물 위 프레스=선택, 드래그=반투명 유령+놓을 칸 강조, 드롭 시 `TryDragMove`(창고는 `EstateStore.TryMove`). `EstateYard`는 건물 위 시작만 이동 제스처·Pan 분리(`DragSlop`). `QA_ESTATE_DRAG`/`QA_NO_ESTATE_DRAG`. SelfCheck MenuItem `Ashes to Stars/QA/Estate Drag Self Check`.

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace AshesToStars
@@ -14,9 +15,21 @@ namespace AshesToStars
     /// </summary>
     public static class RaceInfo
     {
+        /// <summary>§18-9 전투당 발동 상한. QA_NO면 필드 조각을 빼고 옛 문장만 남긴다.</summary>
+        public const string EnvNo = "QA_NO_RACE_BATTLE_CAP";
+
         static RaceDef[] _cache;
 
         static RaceDef[] Defs => _cache ??= Resources.LoadAll<RaceDef>("races");
+
+        public static bool Blocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNo);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
 
         /// <summary>계정 종족과 일치하는 RaceDef. 없거나 에셋을 못 읽으면 null.</summary>
         public static RaceDef For(RaceId id)
@@ -29,20 +42,39 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// "종족 특성 — {고유메커니즘} (발동 {N}%)". 계정 종족의 RaceDef.고유메커니즘·고유발동확률의
-        /// **유일한 런타임 소비처**. 고유발동확률(드워프 불굴 0.25·수인 야성감각 1.0·엘프 0.15,
-        /// 인간 적응 0)은 에셋에 authored·committed돼 있으면서도 읽는 코드 0곳이었다 —
-        /// 형제 필드 고유메커니즘은 여기서 읽는데 발동확률만 죽어 있었다. 발동확률 > 0일 때만
-        /// "(발동 N%)"를 붙인다(0인 상시 패시브 적응엔 안 붙임). 에셋을 못 읽거나 값이 비면
-        /// 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
+        /// "종족 특성 — {고유메커니즘} (발동 {N}% · 전투당 {K}회)". 계정 종족의
+        /// RaceDef.고유메커니즘·고유발동확률·전투당발동의 **런타임 소비처**.
+        /// 고유발동확률(드워프 불굴 0.25·수인 야성감각 1.0·엘프 0.15, 인간 적응 0)은
+        /// 08d0de12가 「(발동 N%)」로 이미 읽었고, 같은 표(§18-9)·밸런스 가드(원장 160
+        /// 「발동을 전투당 1회로 묶어」)의 형제 필드 <c>전투당발동</c>만 소비처 0곳이었다
+        /// (정의 RaceDef.cs:35 default 1 · 에셋에 1로 committed · grep 소비처 0곳).
+        /// 발동확률 &gt; 0일 때만 괄호를 붙이고, 그 안에서 전투당발동 &gt; 0이면
+        /// 「 · 전투당 K회」를 이어 붙인다(상시 패시브 적응엔 안 붙임). 에셋 문장에 이미
+        /// 박혀 있던 「 (전투당 K회)」는 필드 값을 보여줄 때 벗겨, 플레이어가 보는 숫자의
+        /// 단일 출처를 Def 필드로 둔다. QA_NO면 벗기·이어붙이기를 모두 건너뛰어 옛 줄
+        /// (문장 속 전투당 + 발동%만)로 돌아간다. 에셋을 못 읽거나 값이 비면 빈 문자열
+        /// — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
         /// </summary>
         public static string MechanicLine(RaceId id)
         {
             var d = For(id);
             if (d == null || string.IsNullOrEmpty(d.고유메커니즘)) return "";
-            string line = "종족 특성 — " + d.고유메커니즘;
+            string mech = d.고유메커니즘;
+            bool showCap = !Blocked && d.고유발동확률 > 0f && d.전투당발동 > 0;
+            if (showCap)
+            {
+                // 에셋 문장에 박힌 「 (전투당 N회)」는 필드 조각과 겹치니 벗긴다.
+                string prose = " (전투당 " + d.전투당발동 + "회)";
+                if (mech.EndsWith(prose, StringComparison.Ordinal))
+                    mech = mech.Substring(0, mech.Length - prose.Length);
+            }
+            string line = "종족 특성 — " + mech;
             if (d.고유발동확률 > 0f)
-                line += " (발동 " + Mathf.RoundToInt(d.고유발동확률 * 100f) + "%)";
+            {
+                string proc = "발동 " + Mathf.RoundToInt(d.고유발동확률 * 100f) + "%";
+                if (showCap) proc += " · 전투당 " + d.전투당발동 + "회";
+                line += " (" + proc + ")";
+            }
             return line;
         }
 
