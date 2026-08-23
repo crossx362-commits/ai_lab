@@ -3,8 +3,8 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-23 · keeper-warn-chip 15차 재검증(BASE `193ef123`)
-마지막 트랙: 문서(keeper-warn-chip 15차 재검증 — kChip warns→hold 톤은 `0ec68f11` 선반영(HEAD 조상 확인)으로 board.html 존속, loop/board.html 무변경·재구현 없음)
+최종 갱신: 2026-08-23 · lane-doc 16차 재검증(BASE `46a333e5`)
+마지막 트랙: 문서(lane-doc 16차 재검증 — 속도 레인 운영법(병렬 worker/reviewer·autonomous/integration 적립·바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)·loop/README.md 존속, 두 파일 무변경·재구현 없음)
 폴리싱 다음: **캐릭터 속성 ConceptLine LabelClip** (SkillDesc wrap `6ba0a995` 닫음). 마법사 직업 특성은 이번 샷에서 끝 글자까지 보임 — 수호기사 등 긴 고유메커니즘은 미확인.
 
 ## 관문 부채 (루프 밖 · 사람/대화 세션)
@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | lane-doc 16차 재검증(BASE `46a333e5`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행 · STOP_LANE 토글 48~50행)에 존속 확인(BASE=HEAD, 두 파일 작업 트리 diff 없음). 재구현 없음 · 두 파일 무변경. 같은 지시 16회 반복 배정 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 15차 재검증(BASE `193ef123`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영(HEAD 조상 확인)으로 현재 board.html(922~929행)에도 존속(`kWarns` 필터·hold 노란 톤(`--hold: #e0a050`)·실패 칩 경고 병기 확인). 재구현 없음 · loop/board.html 무변경. 같은 지시 15회 반복 배정 — 반복 배정 방지 제안은 `a27b3d2b`에서 병합됨, TASKS.json 큐에 여전히 잔존(12행) | test_board 102 OK(초기 2건 GitApi 타임아웃은 격리 재실행 OK로 확인한 환경성 flaky) · 이 커밋 |
 | — | 2026-08-23 | lane-doc 15차 재검증(BASE `193ef123`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행·STOP_LANE 토글 48~50행)에 존속 확인(BASE 이후 두 파일 diff 없음). 재구현 없음 · 두 파일 무변경. 같은 지시 15회 반복 배정 — TASKS.json 큐에 여전히 잔존 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 22:55 | **INBOX 21:59 대시 잔상 연결** — `fx_dash_trail_0~2.png`(blender/out_effects 기존물, 재생성 없음)을 `Resources/FX/`로 반입 + `W2Arena.cs` 트레일 풀 8장(0.04s 간격·알파 0.6→0·수명 0.15s·order 210 유닛 뒤·회전 금지 미러만). 스펙 §6-P1#5 | 컴파일 PASS(에러 0) · 플레이모드 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png`(ON=잔상 4장 활성·OFF=0 소멸) · 네거티브(리소스 차단→풀 미생성+경고 로그) PASS · `2cd07dbe` |
