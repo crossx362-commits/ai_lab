@@ -99,6 +99,7 @@ namespace AshesToStars
         public static string AutoOpen;
         bool _pendingDefenseRushShot;
         bool _pendingMineRushShot;
+        bool _pendingKeepPoorShot;
 
         protected override void Update()
         {
@@ -146,6 +147,12 @@ namespace AshesToStars
                     _selX = EstateGrid.MineX;
                     _selY = EstateGrid.MineY;
                     _pendingMineRushShot = true;
+                }
+                else if (AutoOpen == "본성부족")
+                {
+                    // QA 샷: 본성 업비 골드 부족 문구
+                    _sub = Sub.본성;
+                    _pendingKeepPoorShot = true;
                 }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
@@ -212,6 +219,12 @@ namespace AshesToStars
                 EstateBuild.TryStartUpgrade(EstateGrid.Cell.Mine);
             }
             EstateBuild.SeedRushQaIfRequested();
+            if (_pendingKeepPoorShot)
+            {
+                _pendingKeepPoorShot = false;
+                long have = GameState.Wallet.Copper;
+                if (have > 0) GameState.Pay(have);
+            }
             EstateGrid.SeedQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();

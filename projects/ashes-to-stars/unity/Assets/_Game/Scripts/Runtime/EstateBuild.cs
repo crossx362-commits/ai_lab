@@ -155,7 +155,7 @@ namespace AshesToStars
                 return c == EstateGrid.Cell.Keep ? "본성 공사가 끝나지 않았다" : "공사가 끝나지 않았다";
             long cost = UpgradeCost(c, lv);
             if (GameState.Wallet.Copper < cost)
-                return $"골드가 부족하다 — {Economy.FormatCurrency(cost)}";
+                return $"골드가 부족하다 — {EstateStatusHud.ShortCopper(cost)}";
             return null;
         }
 
@@ -208,7 +208,7 @@ namespace AshesToStars
             if (RushableSeconds(c) <= 0) return "남은 시간의 50%가 바닥이다(§13-2)";
             long pay = GoldCostToFloor(c);
             if (GameState.Wallet.Copper < pay)
-                return $"골드가 부족하다 — {Economy.FormatCurrency(pay)}";
+                return $"골드가 부족하다 — {EstateStatusHud.ShortCopper(pay)}";
             return null;
         }
 

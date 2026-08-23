@@ -304,6 +304,15 @@ namespace AshesToStars
                   && wtSrc.Contains("TierRevenueMultiplier")
                   && wtSrc.IndexOf("FormatCurrency") < 0,
                 "월드티어 /h는 ShortCopper만");
+
+            // EstateBuild 골드 부족 메시지
+            string build = File.ReadAllText(Path.Combine(runtime, "EstateBuild.cs"));
+            Check(build.Contains("WhyCannotUpgrade")
+                  && build.Contains("WhyCannotRushGold"),
+                "EstateBuild 골드 부족 메서드가 있다");
+            Check(build.Contains("골드가 부족하다 — {EstateStatusHud.ShortCopper")
+                  && build.IndexOf("골드가 부족하다 — {Economy.FormatCurrency") < 0,
+                "EstateBuild 골드 부족은 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.
