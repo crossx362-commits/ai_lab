@@ -70,6 +70,7 @@ namespace AshesToStars
             SeedFusionEntryQaIfRequested();
             SeedSpecialJobQaIfRequested();
             SeedJobTraitQaIfRequested();
+            SeedSkillCostQaIfRequested();
             SeedRaceTraitQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
@@ -420,7 +421,7 @@ namespace AshesToStars
                     {
                         string trait = JobInfo.ConceptLine(ch.Job);
                         if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
-                        // §3 SkillDef.쿨다운·위력배율·반경 — SkillLine이 이름 옆에 (N초·×P·반경R) (표시 전용).
+                        // §3 SkillDef.쿨다운·위력배율·반경·자원소모 — SkillLine이 이름 옆에 (N초·×P·반경R·소모C) (표시 전용).
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
                         // §18-9·§14 종족 고유 메커니즘·정체성 — 계정 종족(RacePrefs.Get) RaceDef의 유일 소비처.
@@ -652,6 +653,19 @@ namespace AshesToStars
             roster[0].Advancement = AdvancementTier.First;
             _selectedCharacter = 0;
             _detailPage = 1; // 속성 탭 — DrawAttributes에 직업 특성 줄이 있다
+        }
+
+        // QA — 1차 검사. SkillDef.자원소모(일섬 5)가 SkillLine에 「소모5」로 보이는지
+        // 육안 확인용. 수호기사 성채 방패도 소모60이 있지만 SelfCheck 대표 칸은 일섬이라 검사를 심는다.
+        void SeedSkillCostQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_SKILL_COST") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            roster[0].Job = "검사";
+            roster[0].Advancement = AdvancementTier.First;
+            _selectedCharacter = 0;
+            _detailPage = 1;
         }
 
         // 시각 QA. QA_RACE_TRAIT=1이면 계정 종족을 드워프로 두고 속성 탭을 연다 —

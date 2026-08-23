@@ -83,8 +83,20 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>§3·SkillDef.자원소모. QA_NO면 소모 조각을 뺀다(옛 SkillLine = 이름·쿨·위력·반경).</summary>
+        public const string EnvNoSkillCost = "QA_NO_SKILL_COST";
+
+        public static bool SkillCostBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSkillCost);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
-        /// "보유 스킬 — {이름}(N초·×P·반경R) · …". JobDef.스킬의 이름·쿨다운·위력배율·**반경** 소비처.
+        /// "보유 스킬 — {이름}(N초·×P·반경R·소모C) · …". JobDef.스킬의 이름·쿨다운·위력배율·반경·**자원소모** 소비처.
         /// 이름·쿨·위력만 읽던 SkillLine(50202ce5) 옆에, ProjectSetup이 스킬마다 authored한
         /// <c>SkillDef.반경</c>(화염폭풍 3.2·빙결 4·도발 4.5·진군가 8…)이 정의·에셋만 있고
         /// grep 소비처 0곳이었다 — 형제 위력은 SkillLine이 「×P」로 읽는데 같은 SkillDef 행의
@@ -92,7 +104,12 @@ namespace AshesToStars
         /// 원장 SkillDef 툴팁 「효과 반경(0이면 단일)」. 0 &lt; 반경 &lt; 50만 「반경R」
         /// (기적 authored 99는 전역 표식이라 숫자를 안 붙임). 쿨과 같이 있으면 괄호 안
         /// 「(N초·×P·반경R)」, 쿨 0이면 괄호 없이 「 이름 ×P 반경R」(SkillCd 「이름( 금지」).
-        /// QA_NO_SKILL_RAD면 반경 조각만 빼고 이름·쿨·위력 옛 줄로 회귀. 표시 전용 —
+        /// QA_NO_SKILL_RAD면 반경 조각만 빼고 이름·쿨·위력 옛 줄로 회귀.
+        /// 같은 행의 <c>SkillDef.자원소모</c>(검사 일섬 5·사제 기적 100)는 정의·에셋만 있고
+        /// grep 소비처 0곳이었다 — 형제 반경은 「반경R」로 읽는데 소모만 죽어 있던 함정.
+        /// 원장 툴팁 「고유 자원 소모량(0이면 미사용)」. 0보다 클 때만 「소모C」.
+        /// 쿨과 같이 있으면 괄호 안 「·소모C」, 쿨 0이면 괄호 없이 「 소모C」.
+        /// QA_NO_SKILL_COST면 소모 조각만 빼고 이름·쿨·위력·반경 옛 줄로 회귀. 표시 전용 —
         /// W3Party·전투 수치 무접촉.
         /// </summary>
         public static string SkillLine(string jobName)
@@ -108,17 +125,20 @@ namespace AshesToStars
                 bool showPow = !SkillPowBlocked && s.위력배율 > 0f
                     && Mathf.Abs(s.위력배율 - 1f) >= 0.0001f;
                 bool showRad = !SkillRadBlocked && s.반경 > 0f && s.반경 < SkillRadDisplayCap;
+                bool showCost = !SkillCostBlocked && s.자원소모 > 0f;
                 if (showCd)
                 {
                     string inside = s.쿨다운.ToString("0.#") + "초";
                     if (showPow) inside += "·×" + s.위력배율.ToString("0.##");
                     if (showRad) inside += "·반경" + s.반경.ToString("0.#");
+                    if (showCost) inside += "·소모" + s.자원소모.ToString("0.#");
                     piece += "(" + inside + ")";
                 }
                 else
                 {
                     if (showPow) piece += " ×" + s.위력배율.ToString("0.##");
                     if (showRad) piece += " 반경" + s.반경.ToString("0.#");
+                    if (showCost) piece += " 소모" + s.자원소모.ToString("0.#");
                 }
                 parts.Add(piece);
             }
