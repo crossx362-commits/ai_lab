@@ -11,6 +11,7 @@ cp "$ROOT/loop/loop.sh" "$APP/loop.sh"
 cp "$ROOT/loop/env.sh" "$APP/env.sh"
 cp "$ROOT/loop/PROMPT.md" "$APP/PROMPT.md"
 cp "$ROOT/loop/agent_runner.py" "$APP/agent_runner.py"
+cp "$ROOT/loop/council.sh" "$APP/council.sh"
 chmod +x "$APP/loop.sh"
 cp "$ROOT/loop/com.ailab.autonomous_loop.plist" "$AGENT/$LABEL.plist"
 

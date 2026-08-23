@@ -7,16 +7,21 @@
 
 | 파일 | 역할 |
 |---|---|
-| `loop.sh` | 루프 본체. 무한 반복 · 새 세션 · 날짜별 로그 · STOP 감시 |
-| `env.sh` | 설정 분리 (모델 / 바퀴 최대 턴 수 / 바퀴 사이 대기 / 최대 바퀴 수) |
-| `PROMPT.md` | 세션 지시서 5절 (①합격기준 ②읽을문서 ③규칙·근거 ④바퀴순서 ⑤커밋규칙) |
+| `loop.sh` | 루프 본체. 무한 반복 · 새 세션 · 날짜별 로그 · STOP 감시 · N바퀴마다 회의 소집 |
+| `env.sh` | 설정 분리 (실행기·모델 / 바퀴 최대 턴 수 / 바퀴 사이 대기 / 최대 바퀴 수 / 회의 주기) |
+| `PROMPT.md` | 세션 지시서 5절 (①합격기준 ②읽을문서 ③규칙·근거 ④바퀴순서 ⑤커밋규칙+자가학습) |
+| `council.sh` | 자가학습 정기 회의 — planner·builder·tester **병렬** 새 세션 + 의장 합본 → `docs/meetings/COUNCIL_*.md` |
+| `agent_runner.py` | 병렬 코디네이터 — worktree 격리 worker/reviewer (opencode·claude·codex·grok) |
+| `board.py` / `board.html` | 개발 보드 (http://127.0.0.1:8766) · MCP·러너·회의·개선안 운영 줄 표시 |
 | `deploy_launchd.sh` | 레포 loop/ → Application Support 배포 + launchd 재등록 |
 | `com.ailab.autonomous_loop.plist` | launchd 등록본 (RunAtLoad · 비정상 종료만 재시작 · PATH 명시) |
 | `STOP` | (필요 시 만든다) 존재하면 현재 바퀴만 마치고 정상 종료 |
-| `agent` | 실행기 지정 파일 (비워두면 env.sh의 LOOP_AGENT) |
+| `agent` | 실행기 지정 파일 (비워두면 env.sh의 LOOP_AGENT) — 현재 `opencode` |
 | `logs/../../logs/YYYY-MM-DD/lap-*.log` | 바퀴별 로그 (`ai_lab/logs/날짜/`) |
 
 기억 3종: `docs/DESIGN.md`(무엇을 만드는가) · `docs/STATUS.md`(어디까지 했나) · `docs/feedback/INBOX.md`(오너 지시, 최우선)
+자가학습: 매 바퀴가 개선안을 `docs/feedback/PROPOSALS.md`에 쌓고, 기본 4바퀴(`LOOP_COUNCIL_EVERY`)마다
+역할 병렬 회의가 심의해 채택(✅)·보류(⏸)를 판정한다. 판정문은 `docs/meetings/`에 적립된다.
 
 ## 켜는 법
 

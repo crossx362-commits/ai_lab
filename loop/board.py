@@ -2914,6 +2914,112 @@ def make_status_snip(status: str, limit: int = 400) -> str:
     return humanize_detail(status[:1200], limit)
 
 
+def _tcp_open(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> bool:
+    import socket
+    s = socket.socket()
+    s.settimeout(timeout)
+    try:
+        s.connect((host, port))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
+def _pgrep(pattern: str) -> bool:
+    try:
+        r = subprocess.run(["pgrep", "-f", pattern], capture_output=True, timeout=5)
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def mcp_health() -> dict:
+    """에이전트가 쓰는 MCP 연결 상태 — 유니티(6400)·블렌더(앱+브리지 9876)."""
+    unity = _tcp_open(6400)
+    blender_app = _pgrep(r"Blender\.app/Contents/MacOS/Blender")
+    blender_bridge = _tcp_open(9876) if blender_app else False
+    return {
+        "unity": unity,
+        "blender_app": blender_app,
+        "blender_bridge": blender_bridge,
+        "note": ("유니티 MCP 연결됨" if unity else "유니티 에디터 꺼짐/브리지 없음")
+        + " · "
+        + ("블렌더 브리지 연결됨" if blender_bridge else "블렌더 꺼짐(3D 작업 시 켜라)"),
+    }
+
+
+_ENV_LINE = re.compile(r"^export (LOOP_[A-Z_]+)=")
+
+
+def _env_defaults(path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not path.is_file():
+        return out
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        m = _ENV_LINE.match(line.strip())
+        if not m:
+            continue
+        val = line.split("=", 1)[1].split("#", 1)[0].strip()
+        dm = re.search(r"\$\{[^:}]+:-([^}]*)\}", val)
+        out[m.group(1)] = (dm.group(1) if dm else val).strip("\"'")
+    return out
+
+
+def runner_info() -> dict:
+    """루프 실행기 — 어떤 에이전트·모델로 도는지 + 살아 있는 세션 수."""
+    vals: dict[str, str] = {}
+    for base in (Path.home() / "Library/Application Support/AI Lab Autonomous Loop/env.sh",
+                 HERE / "env.sh"):
+        vals.update(_env_defaults(base))
+    live_opencode = _pgrep(r"opencode run -m")
+    live_grok = _pgrep(r"/grok --model")
+    return {
+        "agent": vals.get("LOOP_AGENT", "?"),
+        "model": vals.get("LOOP_OPENCODE_MODEL", ""),
+        "council_every": vals.get("LOOP_COUNCIL_EVERY", "4"),
+        "live": {"opencode": live_opencode, "grok": live_grok},
+    }
+
+
+def council_info() -> dict:
+    """최근 정기 회의 문서."""
+    meet = ROOT / "docs" / "meetings"
+    files = sorted(meet.glob("COUNCIL_*.md"), key=lambda p: p.stat().st_mtime) if meet.is_dir() else []
+    latest = files[-1] if files else None
+    info: dict = {"count": len(files), "latest": "", "when": "", "title": ""}
+    if latest:
+        info["latest"] = str(latest.relative_to(ROOT))
+        ts = datetime.fromtimestamp(latest.stat().st_mtime, ZoneInfo("Asia/Seoul"))
+        info["when"] = ts.strftime("%m-%d %H:%M")
+        head = latest.read_text(encoding="utf-8", errors="replace").splitlines()
+        for line in head[:6]:
+            if line.startswith("#"):
+                info["title"] = humanize_title(line.lstrip("# ").strip())
+                break
+    return info
+
+
+def proposals_info() -> dict:
+    """자가학습 개선안 수함대 — 미처리(표식 없음) 건수와 최근 1건."""
+    path = ROOT / "docs" / "feedback" / "PROPOSALS.md"
+    total = open_count = 0
+    last = ""
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            t = line.strip()
+            if not t.startswith("- [") and not re.match(r"^- \d{4}-", t):
+                continue
+            if t.startswith("- [시각]") or "없음:" in t:
+                continue
+            total += 1
+            if "✅" not in t and "⏸" not in t:
+                open_count += 1
+                last = t.lstrip("- ")
+    return {"total": total, "open": open_count, "last": humanize_detail(last)}
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -2961,6 +3067,10 @@ def build_state() -> dict:
         "lap": lap,
         "handoff": load_handoff_state(),
         "providers": provider_health(),
+        "mcp": mcp_health(),
+        "runner": runner_info(),
+        "council": council_info(),
+        "proposals": proposals_info(),
         "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
         "grok": grok_usage(),

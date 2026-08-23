@@ -236,9 +236,11 @@ class ParseTests(unittest.TestCase):
 
     def test_board_html_ops_after_detail_grid(self):
         html = (HERE / "board.html").read_text(encoding="utf-8")
+        # 화면 순서(2026-08-23 확정): 할 일 적기 상단 고정(dbca90ba) → detail-grid →
+        # charts → tests.
+        self.assertLess(html.find('class="request-top"'), html.find('id="detail-grid"'))
         self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
-        self.assertLess(html.find('id="charts"'), html.find('class="request-top"'))
-        self.assertLess(html.find('class="request-top"'), html.find('id="tests-box"'))
+        self.assertLess(html.find('id="charts"'), html.find('id="tests-box"'))
         self.assertIn("renderDetail", html)
 
 
@@ -1435,7 +1437,9 @@ class LiveLogTests(unittest.TestCase):
         for hook in ('id="glance"', "log_age_sec", "hide-compact", "body.compact",
                      'id="g-stuck"'):
             self.assertIn(hook, html)
-        self.assertIn("stuck-box hide-compact", html)
+        # aa9ca5a9 단일 ops 패널 정리 이후 막힌 것은 한눈(g-stuck 3줄) + 자세히(detail)만.
+        # 큰 stuck-box 섹션은 부활시키지 않는다(오너 철칙: 자세히에서만 풀기).
+        self.assertNotIn('id="stuck-box"', html)
         doc = (HERE / "board.py").read_text(encoding="utf-8")
         self.assertIn("한 화면이 철칙", doc)
         self.assertIn('"log_age_sec"', doc)

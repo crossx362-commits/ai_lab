@@ -27,13 +27,15 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 
-PROVIDERS = ("claude", "codex", "grok")
+PROVIDERS = ("opencode", "claude", "codex", "grok")
 BIN_ENV = {
+    "opencode": "LOOP_OPENCODE_BIN",
     "claude": "LOOP_CLAUDE_BIN",
     "codex": "LOOP_CODEX_BIN",
     "grok": "LOOP_GROK_BIN",
 }
 BIN_FALLBACKS = {
+    "opencode": (str(Path.home() / ".opencode/bin/opencode"), "/usr/local/bin/opencode"),
     "claude": ("/opt/homebrew/bin/claude", "/usr/local/bin/claude"),
     "codex": ("/opt/homebrew/bin/codex", "/usr/local/bin/codex"),
     "grok": (str(Path.home() / ".grok/bin/grok"), "/usr/local/bin/grok"),
@@ -136,6 +138,13 @@ def build_provider_command(
     role: str,
     cwd: Path | None = None,
 ) -> list[str]:
+    if provider == "opencode":
+        # 권한·MCP는 저장소 opencode.json이 결정한다. reviewer도 같은 실행기다.
+        return [
+            "opencode", "run",
+            "--model", os.environ.get("LOOP_OPENCODE_MODEL", "opencode/x-preview-f-free"),
+            prompt,
+        ]
     if provider == "claude":
         permission = "acceptEdits" if role == "worker" else "plan"
         return [

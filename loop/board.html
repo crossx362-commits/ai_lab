@@ -470,6 +470,7 @@
   <div class="pills" id="pills"></div>
 </header>
 <div class="usage-line" id="usage-box">불러오는 중…</div>
+<div class="usage-line" id="ops-box"></div>
 <section class="request-top" id="req-box">
   <h2>할 일 적기</h2>
   <input type="text" id="req-title" maxlength="80" placeholder="예: 보스가 안 때려요">
@@ -879,6 +880,30 @@ function renderGrokUsage(state) {
     usageChip(state.grok, "그록"),
     usageChip(state.claude, "클로드"),
     usageChip(state.codex, "코덱스"),
+  ].join("");
+  renderOps(state);
+}
+
+function renderOps(state) {
+  const box = $("ops-box");
+  if (!box) return;
+  const m = state.mcp || {};
+  const dot = (ok, label) =>
+    `<span class="u ${ok ? "ok" : "bad"}">${label} ${ok ? "●" : "○"}</span>`;
+  const r = state.runner || {};
+  const live = r.live || {};
+  const runnerLive = live.opencode ? "가동 중" : (live.grok ? "그록 가동 중" : "대기");
+  const c = state.council || {};
+  const p = state.proposals || {};
+  box.innerHTML = [
+    '<span class="cap">운영</span>',
+    dot(m.unity, "유니티MCP"),
+    dot(m.blender_bridge, "블렌더"),
+    `<span class="u">러너 <b>${esc(r.agent || "?")}</b>${r.model ? " · " + esc(r.model) : ""} · ${runnerLive}</span>`,
+    `<span class="u ${p.open > 0 ? "hold" : ""}">개선안 미처리 <b>${p.open ?? 0}</b>/${p.total ?? 0}</span>`,
+    c.latest
+      ? `<span class="u">회의 ${esc(c.when || "")} · ${esc(c.title || "최근 회의")} (${esc(c.latest)})</span>`
+      : '<span class="u bad">회의 기록 없음</span>',
   ].join("");
 }
 
