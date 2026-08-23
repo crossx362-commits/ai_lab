@@ -166,9 +166,15 @@
 .d-list .row .n { color: var(--muted); }
 .d-list .row .t { font-weight: 600; }
 .d-list .row .d { grid-column: 2; color: var(--muted); font-size: 12px; line-height: 1.35; }
-.d-list .err { color: var(--hold); font-weight: 700; }
+.d-list .err { color: var(--stop); font-weight: 700; }
 .d-list .ok { color: var(--ok); }
 .d-list .empty { color: var(--muted); font-size: 13px; }
+.d-list .role-err {
+  display: inline-block; margin-left: 6px; padding: 0 7px;
+  border: 1px solid var(--stop); border-radius: 999px;
+  color: var(--stop); font-size: 11px; font-weight: 700;
+}
+.d-card.tall { max-height: 420px; }
 .charts { margin: 14px 24px 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
   @media (max-width: 900px) { .charts { grid-template-columns: 1fr; margin: 14px; } }
   .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; }
@@ -442,20 +448,28 @@
 
 <div class="detail-grid" id="detail-grid">
   <section class="d-card">
-    <h3>STATUS 큐 전체</h3>
+    <h3>다음 할 일 · STATUS 큐 전체</h3>
     <div class="d-list" id="d-queue"></div>
   </section>
-  <section class="d-card">
-    <h3>WORKLOG 아직 안 한 것</h3>
+  <section class="d-card tall">
+    <h3>WORKLOG · 아직 안 한 것</h3>
     <div class="d-list" id="d-worklog"></div>
   </section>
-  <section class="d-card">
+  <section class="d-card tall">
     <h3>최신 바퀴 <span class="meta" id="d-lap-meta"></span></h3>
     <div class="d-list" id="d-lap"></div>
   </section>
   <section class="d-card">
     <h3>막힘 · 보류</h3>
     <div class="d-list" id="d-blockers"></div>
+  </section>
+  <section class="d-card">
+    <h3>사람 관문</h3>
+    <div class="d-list" id="d-gates"></div>
+  </section>
+  <section class="d-card">
+    <h3>최근 완료</h3>
+    <div class="d-list" id="d-completed"></div>
   </section>
   <section class="d-card">
     <h3>INBOX</h3>
@@ -942,17 +956,22 @@ function renderDetail(state) {
   ).join("") : '<p class="empty">WORKLOG 항목 없음</p>';
 
   const lap = state.lap || {};
-  $("d-lap-meta").textContent = lap.id ? `${lap.day || ""} · ${lap.id} · ${lap.mtime || ""}` : "";
+  const lapPath = lap.path ? ` · ${lap.path}` : "";
+  $("d-lap-meta").textContent = lap.id
+    ? `${lap.day || ""} · ${lap.id}${lap.mtime ? " · " + lap.mtime : ""}${lapPath}`
+    : (lap.error || "");
   const roles = lap.roles || [];
   let lapHtml = "";
   if (lap.errors && lap.errors.length) {
-    lapHtml += `<div class="row"><span class="n">!</span><span class="t err">${esc(lap.errors.join(" · "))}</span></div>`;
+    lapHtml += lap.errors.map((e) =>
+      `<div class="row"><span class="n">!</span><span class="t err">${esc(e)}</span></div>`
+    ).join("");
   }
   lapHtml += roles.length ? roles.map((r) =>
     `<div class="row"><span class="n">${r.bytes > 0 ? "●" : "○"}</span>`
-    + `<span class="t">${esc(r.name)}${r.error ? ` <span class="err">(${esc(r.error)})</span>` : ""}</span>`
+    + `<span class="t">${esc(r.name)}${r.error ? `<span class="role-err">${esc(r.error)}</span>` : ""}</span>`
     + `<span class="d">${esc(r.tail || "")}</span></div>`
-  ).join("") : '<p class="empty">바퀴 로그 없음</p>';
+  ).join("") : (lap.id ? '<p class="empty">역할 로그 없음</p>' : '<p class="empty">바퀴 로그 없음</p>');
   $("d-lap").innerHTML = lapHtml;
 
   const bl = (state.blockers || []).concat(state.stuck || []);
@@ -960,6 +979,45 @@ function renderDetail(state) {
     `<div class="row"><span class="n">⛔</span><span class="t">${esc(it.title)}</span>`
     + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
   ).join("") : '<p class="empty">막힌 것 없음</p>';
+
+  const P = state.playtest || {};
+  const script = P.script || {};
+  const h70 = P.human_70 || script.human_70 || "pending";
+  const h70Cls = /pass|통과|ok/i.test(String(h70)) ? "ok"
+    : /skip|넘김|pending|대기/i.test(String(h70)) ? "" : "err";
+  const chartGates = ((state.charts || {}).focus || (state.charts || {}).gates || []);
+  const scriptGates = script.gates || [];
+  let gatesHtml = `<div class="row"><span class="n">70</span>`
+    + `<span class="t ${h70Cls}">playtest.human_70</span>`
+    + `<span class="d">${esc(h70)}${P.doc ? " · " + esc(P.doc) : ""}</span></div>`;
+  if (chartGates.length) {
+    gatesHtml += chartGates.map((g) => {
+      const pct = g.pct == null ? "?" : g.pct + "%";
+      const cls = g.pct >= 100 ? "ok" : (g.pct > 0 ? "" : "err");
+      return `<div class="row"><span class="n">V</span>`
+        + `<span class="t ${cls}">${esc(g.label || g.id || "관문")}</span>`
+        + `<span class="d">${esc(String(pct))}${g.note ? " · " + esc(g.note) : ""}</span></div>`;
+    }).join("");
+  }
+  if (scriptGates.length) {
+    gatesHtml += scriptGates.map((g) =>
+      `<div class="row"><span class="n">·</span>`
+      + `<span class="t">${esc(g.id || "")} · ${esc(g.title || "")}</span>`
+      + `<span class="d">통과: ${esc(g.pass || "")} · 테스터 ${(g.testers || []).length}명</span></div>`
+    ).join("");
+  }
+  const gatesEl = $("d-gates");
+  if (gatesEl) gatesEl.innerHTML = gatesHtml;
+
+  const donePosts = state.completed || [];
+  const doneEl = $("d-completed");
+  if (doneEl) {
+    doneEl.innerHTML = donePosts.length ? donePosts.slice(0, 12).map((it) =>
+      `<div class="row"><span class="n">${esc((it.commit || "").slice(0, 7) || "·")}</span>`
+      + `<span class="t">${esc(it.title || "")}</span>`
+      + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
+    ).join("") : '<p class="empty">최근 완료 기록 없음</p>';
+  }
 
   const inbox = state.inbox || {};
   const waiting = inbox.waiting || [];
@@ -981,10 +1039,12 @@ function renderDetail(state) {
     const rem = u.remain_pct;
     const cls = rem == null ? "" : (rem < 15 ? "err" : (rem < 40 ? "" : "ok"));
     const line = u.error || (rem != null ? `남음 ${rem}%` : "기록 없음");
-    return `<div class="row"><span class="n">·</span><span class="t ${cls}">${name}</span><span class="d">${esc(line)}${u.period ? " · " + esc(u.period) : ""}</span></div>`;
+    return `<div class="row"><span class="n">·</span><span class="t ${cls}">${name}</span><span class="d">${esc(line)}${u.period ? " · " + esc(u.period) : ""}${u.period_end ? " ~ " + esc(u.period_end) : ""}</span></div>`;
   }).join("");
   $("d-providers").innerHTML =
-    `<div class="row"><span class="n">⚙</span><span class="t">LOOP_PROVIDERS</span><span class="d">${esc(prov.join(", ") || "?")}</span></div>` + chips;
+    `<div class="row"><span class="n">⚙</span><span class="t">LOOP_PROVIDERS</span><span class="d">${esc(prov.join(", ") || "?")}</span></div>`
+    + ((state.providers || {}).note ? `<div class="row"><span class="n">·</span><span class="d">${esc(state.providers.note)}</span></div>` : "")
+    + chips;
 
   const commits = state.commits || [];
   $("d-commits").innerHTML = commits.length ? commits.slice(0, 12).map((c) =>
@@ -999,7 +1059,6 @@ function renderDetail(state) {
     + (c.body ? `<span class="d">${esc(c.body)}</span>` : "") + `</div>`
   ).join("") : '<p class="empty">명령 기록 없음</p>';
 }
-
 
 function renderGlance(state) {
   const L = state.loop || {};
@@ -1042,13 +1101,16 @@ function renderGlance(state) {
   }
   const stuck = stuckItems.length;
   const waiting = ((state.inbox || {}).waiting || []).length;
+  const lapId = (state.lap && state.lap.id) || "";
   $("g-flags").innerHTML = [
-    L.running ? '<span class="pill ok">자동 작업 켜짐</span>' : '<span class="pill bad">자동 작업 꺼짐</span>',
-    L.hold ? '<span class="pill bad">HOLD</span>' : "",
+    L.running ? '<span class="pill ok">running</span>' : '<span class="pill bad">꺼짐</span>',
     L.stop ? '<span class="pill bad">STOP</span>' : "",
+    L.hold ? '<span class="pill bad">HOLD</span>' : "",
+    `<span class="pill">agent ${esc(L.agent || "?")}</span>`,
+    L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
+    lapId ? `<span class="pill on">바퀴 ${esc(lapId)}</span>` : "",
     stuck ? `<span class="pill bad">막힌 것 ${stuck}</span>` : "",
     waiting ? `<span class="pill on">대기 지시 ${waiting}</span>` : "",
-    `<span class="pill">작업자 ${esc(L.agent || "?")}</span>`,
   ].filter(Boolean).join("");
 
   const cur = c.current || {};
@@ -1120,15 +1182,17 @@ function render(state) {
   latestState = state;
   $("updated").textContent = "마지막 갱신 · " + (state.updated || "시각 없음");
   const L = state.loop || {};
+  const lapId = (state.lap && state.lap.id) || "";
   $("pills").innerHTML = [
-    `<span class="pill on">작업자 ${esc(L.agent || "?")}</span>`,
-    L.running ? `<span class="pill ok">자동 작업 켜짐</span>` : `<span class="pill bad">자동 작업 꺼짐</span>`,
-    L.hold ? `<span class="pill bad">HOLD</span>` : "",
+    L.running ? `<span class="pill ok">running</span>` : `<span class="pill bad">꺼짐</span>`,
     L.stop ? `<span class="pill bad">STOP</span>` : "",
-    L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
+    L.hold ? `<span class="pill bad">HOLD</span>` : "",
+    `<span class="pill on">agent ${esc(L.agent || "?")}</span>`,
+    L.latest_iter ? `<span class="pill">lap ${esc(L.latest_iter)}</span>` : "",
+    lapId ? `<span class="pill on">바퀴 ${esc(lapId)}</span>` : "",
     (state.charts && state.charts.current)
       ? `<span class="pill on">지금 ${esc(state.charts.current.label)}</span>` : "",
-  ].join("");
+  ].filter(Boolean).join("");
   renderGrokUsage(state);
   const blocked = L.blocked || [];
   $("resume-bar").classList.toggle("show", blocked.length > 0);
@@ -1199,6 +1263,7 @@ function render(state) {
   `).join("") : '<p class="empty">최근 저장 없음</p>';
   renderCharts(state.charts || {});
   renderGlance(state);
+  renderDetail(state);
 }
 
 function setCompact(on) {

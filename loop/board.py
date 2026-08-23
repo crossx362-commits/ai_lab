@@ -1112,7 +1112,7 @@ def playtest_state() -> dict:
         "ran": hist_n if hist_n else sum(1 for r in rows if r["ran"]),
         "deleted": hist_del if hist_n else sum(1 for r in rows if r["deleted"]),
         "continued": hist_cont if hist_n else sum(1 for r in rows if r["continued"]),
-        "human_70": "pending",
+        "human_70": (script.get("human_70") or "pending"),
         "ran_at": ran_at,
         "sessions": rows,
         "script": script,
@@ -2653,7 +2653,7 @@ def codex_usage(now: float | None = None, fetch=None, force: bool = False) -> di
 
 
 
-def parse_worklog_todos(text: str, limit: int = 20) -> list[dict]:
+def parse_worklog_todos(text: str, limit: int = 80) -> list[dict]:
     """GAME_WORKLOG 「아직 안 한 것」 번호 목록."""
     m = re.search(r"^##\s+아직 안 한 것[^\n]*\n(.*?)(?=^##\s|\Z)", text, re.M | re.S)
     if not m:
@@ -2703,6 +2703,44 @@ def parse_blockers(status: str) -> list[dict]:
     return out
 
 
+def _lap_role_error(stem: str, raw: str) -> str:
+    """역할 로그에서 Claude/API 오류 메시지 추출. JSON result 우선."""
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        result = obj.get("result")
+        status = obj.get("api_error_status")
+        is_err = bool(obj.get("is_error"))
+        terminal = str(obj.get("terminal_reason") or "")
+        if not (is_err or status or terminal == "api_error"):
+            continue
+        msg = result.strip() if isinstance(result, str) and result.strip() else ""
+        if msg:
+            return msg[:220]
+        if status:
+            return f"API {status}"
+        if terminal:
+            return terminal[:120]
+    low = raw.lower()
+    if stem.endswith("claude") and (
+        "weekly limit" in low or "hit your weekly" in low or "주간 한도" in raw
+        or '"api_error_status":429' in raw
+    ):
+        return "Claude 주간 한도"
+    if stem.endswith("claude") and '"is_error":true' in raw and "api_error" in low:
+        return "Claude API 오류"
+    if "traceback (most recent" in low:
+        return "예외"
+    return ""
+
+
 def latest_lap_info() -> dict:
     """logs/YYYY-MM-DD/ 아래 최신 바퀴 폴더와 role 로그 요약."""
     logs = ROOT / "logs"
@@ -2734,17 +2772,7 @@ def latest_lap_info() -> dict:
     for f in sorted(lap.glob("*.log")):
         raw = _read(f)
         tail = "\n".join(raw.strip().splitlines()[-8:]) if raw.strip() else ""
-        err = ""
-        low = raw.lower()
-        if f.stem.endswith("claude") and (
-            "weekly limit" in low or "hit your weekly" in low or "주간 한도" in raw
-            or '"api_error_status":429' in raw
-        ):
-            err = "Claude 주간 한도"
-        elif f.stem.endswith("claude") and '"is_error":true' in raw and "api_error" in low:
-            err = "Claude API 오류"
-        elif "traceback (most recent" in low:
-            err = "예외"
+        err = _lap_role_error(f.stem, raw)
         roles.append({
             "name": f.stem,
             "bytes": f.stat().st_size,
@@ -2762,7 +2790,6 @@ def latest_lap_info() -> dict:
         "errors": errors,
         "mtime": _hhmm(lap.stat().st_mtime),
     }
-
 
 def provider_health() -> dict:
     """env LOOP_PROVIDERS + 간단 바이너리/한도 힌트."""
