@@ -290,10 +290,15 @@ namespace AshesToStars
                 if (here) GUI.DrawTexture(new Rect(r.x + 12f, r.y - 4f, r.width - 24f, 3f), _accent);
                 GUI.enabled = !here;
                 DrawAtlasButton(r, null);
+                // 현재 탭도 아이콘·라벨은 선명하게 — GUI.enabled=false의 비활성 알파가 활성 탭
+                // 글자를 회색으로 지워 위 강조선(「여기가 현재」)과 정반대로 읽혔다(2026-08-24 실측).
+                // 클릭 금지는 아래 !here 가드가 담당한다. QA_NO_DOCK_ACTIVE_BRIGHT=1이면 옛 경로.
+                if (!(here && System.Environment.GetEnvironmentVariable("QA_NO_DOCK_ACTIVE_BRIGHT") == "1"))
+                    GUI.enabled = true;
                 string icon = UiPages.NavIcon(scene);
                 UiAtlas.DrawFit(new Rect(r.center.x - 18f, r.y + 4f, 36f, 36f), icon);
                 UiPages.LabelClip(new Rect(r.x + 2f, r.y + 42f, r.width - 4f, 24f), label, _navLabel);
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
+                if (!here && GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
             }
         }
