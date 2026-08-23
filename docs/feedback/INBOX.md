@@ -11,18 +11,20 @@
 
 ## 대기 중
 
-### 📌 보드·루프 (오너, 2026-08-23 14:22)
+### 📌 보드·루프 (오너, 2026-08-23 14:22) — 한도만 유효
 
-- Claude 주간 한도 — **Codex/Grok만**으로 재와 별 루프 계속
-- 1순위: 영지 `EstateBuild` (레벨·업그레이드 창) — `GAME_SPEC_ESTATE_BUILD.md` §2-3
-- STATUS 큐·WORKLOG 「아직 안 한 것」 따름. 한 바퀴에 하나만.
-- EstateBuild 소유권 (한시): Claude 주간 한도(~2026-08-24 23:00 KST) 동안
-  `EstateBuild.cs`·업그레이드 창(`EstateScreen`)은 **Codex/Grok**이 닫는다.
-  SPEC §4-B 「그록 미접촉」은 한도 해소 또는 이 지시 철회까지 **정지**.
-  HOLD: `touch loop/HOLD` 후 해당 파일만, 커밋 직후 해제. 클로드와 동시 수정 금지.
+- Claude 주간 한도(~2026-08-24 23:00 KST) — **Codex/Grok만**. 한 바퀴에 하나만.
+- STATUS 큐가 다음 칸. EstateBuild 1순위는 **아래 처리 완료**.
 
 
 ## 처리 완료
+
+### 📌 보드·루프 EstateBuild (오너 14:22 1순위)
+
+- 지시: 영지 `EstateBuild` 레벨·업그레이드 창 (`GAME_SPEC_ESTATE_BUILD.md` §2-3)
+- 처리: SelfCheck PASS · `25559505` (+`5fa97195`/`355f4095`). 드래그 §5는 `6d9b4fae`.
+- 한시 소유권(Codex/Grok가 `EstateBuild.cs`·`EstateScreen`을 닫는다)은 **이 칸을 닫으며 소멸**.
+  Claude 한도가 풀리면 SPEC §4-B 분담표로 복귀.
 
 ### 📌 개발루프 (오너, 2026-08-23 14:00)
 
