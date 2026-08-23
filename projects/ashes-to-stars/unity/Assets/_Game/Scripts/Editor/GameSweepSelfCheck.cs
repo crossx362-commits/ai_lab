@@ -31,6 +31,7 @@ namespace AshesToStars
             try
             {
                 One("사냥 강화 3택", HuntBoonSelfCheck.Run, rows, errors);
+                One("전투 오디오 문법", SfxSelfCheck.Run, rows, errors);
                 One("전투 HUD", CombatHudSelfCheck.Run, rows, errors);
                 One("UI 아틀라스·카드 여백", UiAtlasSelfCheck.Run, rows, errors);
                 One("필드 허브 HUD", FieldHudSelfCheck.Run, rows, errors);

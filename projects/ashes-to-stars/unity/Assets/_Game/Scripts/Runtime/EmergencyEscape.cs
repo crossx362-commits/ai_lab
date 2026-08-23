@@ -28,6 +28,7 @@ namespace AshesToStars
             if (!EscapeManual.Allowed()) return false;
             _casting = true;
             _elapsed = 0f;
+            Sfx.Play(Sfx.Signal.EscapeCast);   // §16-10 긴급 탈출 캐스팅은 고유 음색·최우선
             return true;
         }
 

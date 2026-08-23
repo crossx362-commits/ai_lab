@@ -825,6 +825,7 @@ namespace AshesToStars
                 gained++;
             }
             if (c.Level >= MaxLevel) c.Exp = 0;   // 만렙은 경험치를 쌓지 않는다
+            if (gained > 0) Sfx.Play(Sfx.Signal.LevelUp);   // §16-10 레벨업은 짧은 상승 3음
             return gained;
         }
 
@@ -997,6 +998,7 @@ namespace AshesToStars
                 Memorial.Stamp(character);
                 Memorial.Open();
                 Equipment.DestroyEquippedOn(character);
+                Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
                 Debug.Log($"[목숨] {character.Name} 특수 직업 즉시 소멸(§3)");
                 Save();
                 return;
@@ -1017,10 +1019,14 @@ namespace AshesToStars
                 Memorial.Stamp(character);
                 Memorial.Open();
                 Equipment.DestroyEquippedOn(character);
+                Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
                 Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. (3회 사망)");
             }
             else
             {
+                // §16-10: 일반 사망은 저음 1회, 마지막 목숨 진입(2/3)은 위험 경고를 함께 낸다.
+                if (character.DeathCount == 2) Sfx.Play(Sfx.Signal.LastLifeEnter);
+                Sfx.Play(Sfx.Signal.DeathLow);
                 Debug.Log($"[목숨] {character.Name} 사망: {character.DeathCount}/3 회복 기간 시작");
             }
 

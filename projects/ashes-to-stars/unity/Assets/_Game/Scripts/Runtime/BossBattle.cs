@@ -533,6 +533,7 @@ namespace AshesToStars
                 activeFloorAOEs.Add(aoe);
                 FxPool.PlayStatus(0, new Vector2(aoe.position.x, aoe.position.z), 1.8f);
             }
+            Sfx.Play(Sfx.Signal.DangerZone);   // §16-10 위험 장판 발동은 고유 음색·최우선
 
             Debug.Log($"[BossBattle] Triggered Floor AoE x{count}, active danger mechanics: {activeDangerMechanicsCount}");
         }
@@ -610,6 +611,7 @@ namespace AshesToStars
         private void OnRageActivated()
         {
             Debug.Log($"[BossBattle] ENRAGED! Remaining time: {elapsedTime:F1}s / {rageTimerDuration:F1}s");
+            Sfx.Play(Sfx.Signal.BossEnrage);   // §16-10 보스 격노는 고유 음색·최우선
             // 실제 구현: 보스 공격 강화, 이펙트 등
         }
 
