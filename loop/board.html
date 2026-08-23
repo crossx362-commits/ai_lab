@@ -906,10 +906,13 @@ function renderOps(state) {
   const c = state.council || {};
   const p = state.proposals || {};
   const k = state.keeper || {};
+  const kWarns = (Array.isArray(k.warns) ? k.warns : []).filter(Boolean);
   const kChip = k.ok === true
-    ? `<span class="u ok">지킴이 ● ${esc(k.when || "")}</span>`
+    ? `<span class="u ${kWarns.length ? "hold" : "ok"}">지킴이 ${kWarns.length
+        ? `▲ ${esc(kWarns.join(" · "))}`
+        : "●"}${k.when ? " · " + esc(k.when) : ""}</span>`
     : (k.ok === false
-      ? `<span class="u bad">지킴이 ✕ ${esc((k.failed || ["검증 실패"])[0])} · ${esc(k.when || "")}</span>`
+      ? `<span class="u bad">지킴이 ✕ ${esc((k.failed || ["검증 실패"])[0])}${kWarns.length ? ` · ▲ ${esc(kWarns.join(" · "))}` : ""} · ${esc(k.when || "")}</span>`
       : '<span class="u bad">지킴이 미실시</span>');
   box.innerHTML = [
     '<span class="cap">운영</span>',
