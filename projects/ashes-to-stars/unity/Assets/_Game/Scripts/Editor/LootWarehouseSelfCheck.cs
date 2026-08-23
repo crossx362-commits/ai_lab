@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -124,6 +125,12 @@ namespace AshesToStars
             _ = nameof(InvasionState.WarehouseCopper);
             _ = nameof(InvasionState.ApplyWarehouseLoot);
             _ = nameof(InvasionState.WarehouseLootLine);
+
+            string invSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/InvasionState.cs"));
+            Check(invSrc.Contains("ShortCopper(ApplyWarehouseLoot(WarehouseCopper()))")
+                  && invSrc.IndexOf("FormatCurrency(ApplyWarehouseLoot") < 0,
+                "WarehouseLoot는 ShortCopper만");
             _ = nameof(InvasionState.SeedWarehouseLootQaIfRequested);
             _ = nameof(InvasionState.SetWarehouseCopper);
 

@@ -268,7 +268,7 @@ namespace AshesToStars
         public static string WarehouseLootLine()
         {
             if (LootWarehouseBlocked) return "창고 약탈 없음";
-            return $"창고 20%(§18-13) · {Economy.FormatCurrency(ApplyWarehouseLoot(WarehouseCopper()))}";
+            return $"창고 20%(§18-13) · {EstateStatusHud.ShortCopper(ApplyWarehouseLoot(WarehouseCopper()))}";
         }
 
         /// <summary>§18-13 동일 상대 24h. 직전 침략이 창 밖이면 1회차. 정산 전에 다음 회차를 본다.</summary>
