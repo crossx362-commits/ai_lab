@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | keeper-warn-chip 9차 재검증(BASE `bb34dd19`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영으로 현재 board.html(921~929행)에도 존속. 재구현 없음 · loop/board.html 무변경. 같은 지시 9회 반복 배정 — TASKS.json 큐 중복 제거 필요 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 13차 검증(BASE `bb34dd19`) — PROPOSALS.md 현행 항목 3건(agent_runner 건너뛰기(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하), 서로 상이): 중복 병합 대상 없음·우선순위(상/중/하) 태그 전 항목 존재로 보정 불필요 · 기존 내용 삭제 없이 정리 마커 추가. 같은 지시 반복 배정 — agent_runner 건너뛰기 제안(21:34 항목) 채택 시 누적 해소 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 8차 재검증(BASE `023899de`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영으로 현재 board.html(921~929행)에도 존속. 재구현 없음 · loop/board.html 무변경. 같은 지시 8회 반복 배정 — TASKS.json 큐 중복 제거 필요 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | lane-doc 10차 재검증(BASE `bb34dd19`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행·STOP_LANE 토글 48~50행)에 존속 확인. 재구현 없음 · 두 파일 무변경. 같은 지시 10회 반복 배정 — TASKS.json 큐 중복 제거 필요 | tests 없음 · 문서 검증 · 이 커밋 |
