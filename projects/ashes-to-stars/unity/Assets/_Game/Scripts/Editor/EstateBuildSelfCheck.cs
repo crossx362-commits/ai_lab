@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using UnityEngine;
+using UnityEditor;
 
 namespace AshesToStars
 {
@@ -16,6 +17,7 @@ namespace AshesToStars
             _log.AppendLine((cond ? "  PASS  " : "  FAIL  ") + what);
         }
 
+        [MenuItem("Ashes to Stars/QA/Estate Build Self Check")]
         public static void Run()
         {
             _fail = 0;
