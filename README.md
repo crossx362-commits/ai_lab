@@ -31,7 +31,7 @@ ai_lab/
 
 ## 자율 개발 루프 (Autonomous Development Loop)
 
-매 바퀴 Claude·Codex·Grok CLI를 완전히 새 세션으로 실행합니다. 작업이 하나면 Claude(Fable, 사용량 소진 시에만 Opus 5)가 개발하고 Codex가 검토합니다. 독립 작업이 여러 개면 최대 세 개를 별도 Git worktree에서 병렬 개발하며, 다른 제공자가 정확한 후보 커밋을 검토합니다. 통과한 변경만 `autonomous/integration`에 합치므로 `master`와 사용자의 열린 작업트리는 자동 수정하지 않습니다.
+매 바퀴 Claude·Codex·Grok CLI를 완전히 새 세션으로 실행합니다. 작업이 하나면 Claude(Fable, 사용량 소진 시에만 Opus 5)가 개발하고 Codex가 검토합니다. 독립 작업이 여러 개면 최대 세 개를 별도 Git worktree에서 병렬 개발하며, 다른 제공자가 정확한 후보 커밋을 검토합니다. 사용량 제한으로 강한 제공자가 하나만 남으면 대화를 잇지 않은 별도 새 세션이 검토해 루프 정지를 피합니다. 통과한 변경만 `autonomous/integration`에 합치므로 `master`와 사용자의 열린 작업트리는 자동 수정하지 않습니다.
 
 ### 주요 파일
 

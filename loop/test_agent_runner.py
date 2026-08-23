@@ -47,6 +47,10 @@ class SchedulerTests(unittest.TestCase):
         assignment = runner.assign_providers([self.task("a", "a")], ["claude", "codex", "grok"])[0]
         self.assertEqual((assignment.worker, assignment.reviewer), ("claude", "codex"))
 
+    def test_one_available_provider_uses_a_fresh_review_session(self) -> None:
+        assignment = runner.assign_providers([self.task("a", "a")], ["codex"])[0]
+        self.assertEqual((assignment.worker, assignment.reviewer), ("codex", "codex"))
+
 
 class ProviderCommandTests(unittest.TestCase):
     def test_claude_uses_fable_then_only_opus5(self) -> None:
@@ -61,9 +65,19 @@ class ProviderCommandTests(unittest.TestCase):
         self.assertIn("gpt-5.6-sol", command)
         self.assertIn("workspace-write", command)
         self.assertIn('model_reasoning_effort="xhigh"', command)
+        self.assertIn("--ignore-user-config", command)
         self.assertNotIn("--approve-for-me", command)
         self.assertNotIn("danger-full-access", command)
         self.assertNotIn("resume", command)
+
+    def test_codex_worker_can_write_linked_git_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", root], check=True)
+            command = runner.build_provider_command(
+                "codex", "prompt", 12, "worker", cwd=root
+            )
+        self.assertEqual(command[command.index("--add-dir") + 1], str((root / ".git").resolve()))
 
     def test_grok_uses_strong_stateless_contract(self) -> None:
         command = runner.build_provider_command("grok", "prompt", 12, "worker")
@@ -72,6 +86,33 @@ class ProviderCommandTests(unittest.TestCase):
         self.assertIn("--no-subagents", command)
         self.assertIn("auto", command)
         self.assertNotIn("bypassPermissions", command)
+
+
+class ProviderFallbackTests(unittest.TestCase):
+    def test_review_falls_back_to_fresh_worker_provider_session(self) -> None:
+        task = {"id": "a", "goal": "goal", "write_paths": ["a.txt"], "tests": []}
+        assignment = runner.Assignment(task, "codex", "claude")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            candidate = runner.Candidate(
+                assignment, "branch", root, "base", "head", ("a.txt",), True, ""
+            )
+            accepted = json.dumps({
+                "approved": True,
+                "critical": 0,
+                "score": 90,
+                "categories": {"function": 5, "quality": 4},
+                "summary": "ok",
+            })
+            with mock.patch.object(
+                runner, "run_provider", side_effect=[(1, "quota"), (0, accepted)]
+            ) as provider:
+                reviewed = runner._run_review(
+                    root / "PROMPT.md", candidate, root, 3, 30, ["claude", "codex"]
+                )
+        self.assertTrue(reviewed.approved)
+        self.assertEqual(reviewed.candidate.assignment.reviewer, "codex")
+        self.assertEqual([call.args[0] for call in provider.call_args_list], ["claude", "codex"])
 
 
 class ManifestTests(unittest.TestCase):

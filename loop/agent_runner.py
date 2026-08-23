@@ -110,15 +110,32 @@ def assign_providers(
     tasks: list[dict[str, object]], available: list[str]
 ) -> list[Assignment]:
     usable = [provider for provider in PROVIDERS if provider in available]
-    if len(usable) < 2:
-        raise RuntimeError("교차 검토에 강한 provider가 최소 2개 필요하다")
+    if not usable:
+        raise RuntimeError("사용 가능한 강한 provider가 없다")
     return [
         Assignment(task, usable[index % len(usable)], usable[(index + 1) % len(usable)])
         for index, task in enumerate(tasks)
     ]
 
 
-def build_provider_command(provider: str, prompt: str, max_turns: int, role: str) -> list[str]:
+def _git_common_dir(cwd: Path) -> Path | None:
+    result = subprocess.run(
+        ["git", "rev-parse", "--git-common-dir"],
+        cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    path = Path(result.stdout.strip())
+    return path.resolve() if path.is_absolute() else (cwd / path).resolve()
+
+
+def build_provider_command(
+    provider: str,
+    prompt: str,
+    max_turns: int,
+    role: str,
+    cwd: Path | None = None,
+) -> list[str]:
     if provider == "claude":
         permission = "acceptEdits" if role == "worker" else "plan"
         return [
@@ -131,14 +148,22 @@ def build_provider_command(provider: str, prompt: str, max_turns: int, role: str
         ]
     if provider == "codex":
         sandbox = "workspace-write" if role == "worker" else "read-only"
-        return [
+        command = [
             "codex", "exec", "--ephemeral",
+            "--ignore-user-config",
             "--model", os.environ.get("LOOP_CODEX_MODEL", "gpt-5.6-sol"),
             "--sandbox", sandbox,
+        ]
+        if role == "worker" and cwd is not None:
+            common_dir = _git_common_dir(cwd)
+            if common_dir is not None:
+                command.extend(["--add-dir", str(common_dir)])
+        command.extend([
             "--json",
             "-c", f'model_reasoning_effort="{os.environ.get("LOOP_CODEX_REASONING", "xhigh")}"',
             "-",
-        ]
+        ])
+        return command
     if provider == "grok":
         return [
             "grok",
@@ -193,7 +218,7 @@ def run_provider(
     timeout_s: int,
     role: str,
 ) -> tuple[int, str]:
-    command = build_provider_command(provider, prompt, max_turns, role)
+    command = build_provider_command(provider, prompt, max_turns, role, cwd=cwd)
     executable = find_provider_binary(provider)
     if not executable:
         return 127, f"{provider} executable not found"
@@ -342,7 +367,7 @@ def _atomic_json(path: Path, value: object) -> None:
 
 
 def _planner_prompt(prompt_file: Path, repo_root: Path, limit: int) -> str:
-    return f"""You are the planning pass for one autonomous game-development lap.
+    return f"""You are the lean planning pass for one autonomous game-development lap. Do not invoke process skills, spawn subagents, or produce a prose plan; this coordinator already defines the process.
 Read {prompt_file}, docs/feedback/INBOX.md, docs/STATUS.md, docs/DESIGN.md, and relevant nearest AI instructions.
 Inspect existing branches and commits so you do not duplicate work already developed by another AI.
 Choose at most {limit} small tasks whose write paths do not overlap. Do not edit files.
@@ -384,7 +409,7 @@ def plan_tasks(
 
 
 def _worker_prompt(prompt_file: Path, task: dict[str, object], base_sha: str) -> str:
-    return f"""Start a completely new session. Read {prompt_file} first, then repository AI instructions and docs/feedback/INBOX.md, docs/STATUS.md, docs/DESIGN.md.
+    return f"""You are a dispatched worker for one already-approved task in a completely new session. Do not brainstorm, make another plan, invoke process skills, or spawn subagents. Read only {prompt_file}, relevant repository AI instructions, docs/feedback/INBOX.md, docs/STATUS.md, and docs/DESIGN.md, then execute immediately.
 Implement exactly one assigned task and do not duplicate work already present in branches/commits.
 TASK: {json.dumps(task, ensure_ascii=False, sort_keys=True)}
 BASE SHA: {base_sha}
@@ -395,7 +420,7 @@ After automated checks pass, commit the exact changed files before visual inspec
 
 def _review_prompt(prompt_file: Path, candidate: Candidate) -> str:
     task = candidate.assignment.task
-    return f"""Start a new independent review session. Read {prompt_file} and inspect git diff {candidate.base_sha}..{candidate.head_sha} in this worktree. Do not edit or commit.
+    return f"""You are a dispatched reviewer in a new independent session. Do not brainstorm, make another plan, invoke process skills, or spawn subagents. Read {prompt_file} and inspect git diff {candidate.base_sha}..{candidate.head_sha} in this worktree. Do not edit or commit.
 Verify the task outcome, changed-file scope, tests, actual game behavior, and visual quality. Check that existing work from other AIs was not duplicated. For visual work require Higgsfield/Grok Imagine provenance and sprite spacing/center alignment.
 TASK: {json.dumps(task, ensure_ascii=False, sort_keys=True)}
 Approve only when critical defects are 0, every applicable category is at least 4/5, and weighted score is at least 85.
@@ -426,39 +451,62 @@ def _run_worker(
     log_dir: Path,
     max_turns: int,
     timeout_s: int,
+    providers: list[str],
 ) -> Candidate:
     task_id = str(assignment.task["id"])
-    rc, _ = run_provider(
-        assignment.worker,
-        _worker_prompt(prompt_file, assignment.task, base_sha),
-        worktree,
-        log_dir / f"worker-{task_id}-{assignment.worker}.log",
-        max_turns,
-        timeout_s,
-        "worker",
+    attempts = [assignment.worker] + [
+        provider for provider in providers if provider != assignment.worker
+    ]
+    failures: list[str] = []
+    for worker in attempts:
+        rc, _ = run_provider(
+            worker,
+            _worker_prompt(prompt_file, assignment.task, base_sha),
+            worktree,
+            log_dir / f"worker-{task_id}-{worker}.log",
+            max_turns,
+            timeout_s,
+            "worker",
+        )
+        head = _git(worktree, "rev-parse", "HEAD", check=False).stdout.strip()
+        changed = tuple(
+            line for line in _git(
+                worktree, "diff", "--name-only", f"{base_sha}..{head}", check=False
+            ).stdout.splitlines() if line
+        )
+        clean = not _git(worktree, "status", "--porcelain", check=False).stdout.strip()
+        current = Assignment(
+            assignment.task,
+            worker,
+            next((provider for provider in providers if provider != worker), worker),
+        )
+        if rc == 0 and bool(head) and head != base_sha and clean:
+            try:
+                validate_changed_paths(
+                    list(changed),
+                    [str(path) for path in assignment.task["write_paths"]],  # type: ignore[index]
+                )
+            except ValueError as exc:
+                return Candidate(
+                    current, branch, worktree, base_sha, head, changed, False,
+                    f"{worker}: {exc}",
+                )
+            return Candidate(current, branch, worktree, base_sha, head, changed, True, "")
+        if not clean:
+            return Candidate(
+                current, branch, worktree, base_sha, head or None, changed, False,
+                f"{worker}: worker left uncommitted changes",
+            )
+        if head and head != base_sha:
+            return Candidate(
+                current, branch, worktree, base_sha, head, changed, False,
+                f"{worker}: worker failed after making a commit",
+            )
+        failures.append(f"{worker}: worker exit {rc}" if rc else f"{worker}: worker made no commit")
+
+    return Candidate(
+        assignment, branch, worktree, base_sha, base_sha, (), False, "; ".join(failures)
     )
-    head = _git(worktree, "rev-parse", "HEAD", check=False).stdout.strip()
-    changed = tuple(
-        line for line in _git(
-            worktree, "diff", "--name-only", f"{base_sha}..{head}", check=False
-        ).stdout.splitlines() if line
-    )
-    clean = not _git(worktree, "status", "--porcelain", check=False).stdout.strip()
-    ok = rc == 0 and bool(head) and head != base_sha and clean
-    reason = ""
-    if ok:
-        try:
-            validate_changed_paths(list(changed), [str(path) for path in assignment.task["write_paths"]])  # type: ignore[index]
-        except ValueError as exc:
-            ok = False
-            reason = str(exc)
-    elif rc != 0:
-        reason = f"worker exit {rc}"
-    elif not clean:
-        reason = "worker left uncommitted changes"
-    else:
-        reason = "worker made no commit"
-    return Candidate(assignment, branch, worktree, base_sha, head or None, changed, ok, reason)
 
 
 def _run_review(
@@ -467,23 +515,39 @@ def _run_review(
     log_dir: Path,
     max_turns: int,
     timeout_s: int,
+    providers: list[str],
 ) -> ReviewedCandidate:
     task_id = str(candidate.assignment.task["id"])
     if not candidate.worker_ok:
         return ReviewedCandidate(candidate, False, {"summary": candidate.worker_log}, "")
-    rc, output = run_provider(
-        candidate.assignment.reviewer,
-        _review_prompt(prompt_file, candidate),
-        candidate.worktree,
-        log_dir / f"review-{task_id}-{candidate.assignment.reviewer}.log",
-        max_turns,
-        timeout_s,
-        "reviewer",
+    reviewer_order = [candidate.assignment.reviewer]
+    reviewer_order.extend(
+        provider for provider in providers
+        if provider not in reviewer_order and provider != candidate.assignment.worker
     )
-    if rc != 0:
-        return ReviewedCandidate(candidate, False, {"summary": f"reviewer exit {rc}"}, output)
-    try:
-        review = parse_json_payload(output)
+    if candidate.assignment.worker not in reviewer_order:
+        reviewer_order.append(candidate.assignment.worker)
+    failures: list[str] = []
+    last_output = ""
+    for reviewer in reviewer_order:
+        rc, output = run_provider(
+            reviewer,
+            _review_prompt(prompt_file, candidate),
+            candidate.worktree,
+            log_dir / f"review-{task_id}-{reviewer}.log",
+            max_turns,
+            timeout_s,
+            "reviewer",
+        )
+        last_output = output
+        if rc != 0:
+            failures.append(f"{reviewer}: reviewer exit {rc}")
+            continue
+        try:
+            review = parse_json_payload(output)
+        except ValueError as exc:
+            failures.append(f"{reviewer}: {exc}")
+            continue
         categories = review.get("categories")
         category_ok = isinstance(categories, dict) and bool(categories) and all(
             isinstance(value, (int, float)) and value >= 4 for value in categories.values()
@@ -495,9 +559,11 @@ def _run_review(
             and float(review["score"]) >= 85
             and category_ok
         )
-        return ReviewedCandidate(candidate, approved, review, output)
-    except ValueError as exc:
-        return ReviewedCandidate(candidate, False, {"summary": str(exc)}, output)
+        actual = candidate._replace(assignment=Assignment(
+            candidate.assignment.task, candidate.assignment.worker, reviewer
+        ))
+        return ReviewedCandidate(actual, approved, review, output)
+    return ReviewedCandidate(candidate, False, {"summary": "; ".join(failures)}, last_output)
 
 
 def _integration_ref(repo_root: Path) -> str:
@@ -594,9 +660,9 @@ def run_lap(repo_root: Path, prompt_file: Path, task_file: Path | None) -> int:
     worktrees: list[Path] = []
     try:
         providers = available_providers()
-        if len(providers) < 2:
+        if not providers:
             summary["outcome"] = "infrastructure_hold"
-            summary["reason"] = "cross review needs two providers"
+            summary["reason"] = "no strong provider is available"
             _atomic_json(log_dir / "run.json", summary)
             return 75
 
@@ -637,7 +703,7 @@ def run_lap(repo_root: Path, prompt_file: Path, task_file: Path | None) -> int:
             futures = [
                 pool.submit(
                     _run_worker, prompt_file, assignment, branch, worktree,
-                    base_sha, log_dir, max_turns, timeout_s,
+                    base_sha, log_dir, max_turns, timeout_s, providers,
                 )
                 for assignment, branch, worktree in prepared
             ]
@@ -646,7 +712,7 @@ def run_lap(repo_root: Path, prompt_file: Path, task_file: Path | None) -> int:
             futures = [
                 pool.submit(
                     _run_review, prompt_file, candidate, log_dir,
-                    max_turns, timeout_s,
+                    max_turns, timeout_s, providers,
                 )
                 for candidate in candidates
             ]
