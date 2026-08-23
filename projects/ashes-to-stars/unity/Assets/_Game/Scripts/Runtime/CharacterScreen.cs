@@ -427,8 +427,14 @@ namespace AshesToStars
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
                         // §3 SkillDef.설명 — SkillDescLine이 이름:설명 한 줄(표시 전용). SkillLine에 붙이면
                         // 뒷 스킬 이름이 LabelClip에 잘리므로 다음 행. QA_NO면 빈 문자열이라 행을 안 그린다.
+                        // Info(LabelClip·inner 20px)면 마법사 「빙결: 광」에서 우측이 잘린다 — 두 줄
+                        // InfoWrap(LabelFit). QA_NO_SKILL_DESC_WRAP이면 옛 한 줄 Clip.
                         string skillDesc = JobInfo.SkillDescLine(ch.Job);
-                        if (!string.IsNullOrEmpty(skillDesc)) Info(r, advancementRow++, skillDesc);
+                        if (!string.IsNullOrEmpty(skillDesc))
+                        {
+                            if (JobInfo.SkillDescWrapBlocked) Info(r, advancementRow++, skillDesc);
+                            else advancementRow += InfoWrap(r, advancementRow, skillDesc);
+                        }
                         // §18-9·§14 종족 고유 메커니즘·정체성 — 계정 종족(RacePrefs.Get) RaceDef의 유일 소비처.
                         string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceTrait)) Info(r, advancementRow++, raceTrait);

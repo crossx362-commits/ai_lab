@@ -26,7 +26,9 @@ namespace AshesToStars
             _fail = 0;
             _log.Length = 0;
             string noDesc = Environment.GetEnvironmentVariable(JobInfo.EnvNoSkillDesc);
+            string noWrap = Environment.GetEnvironmentVariable(JobInfo.EnvNoSkillDescWrap);
             Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillDesc, null);
+            Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillDescWrap, null);
 
             var defs = Resources.LoadAll<JobDef>("jobs");
             Check(defs != null && defs.Length > 0,
@@ -95,17 +97,50 @@ namespace AshesToStars
                 "CharacterScreen 주석이 설명 소비처를 가리킨다");
             Check(charSrc.Contains("QA_SKILL_DESC"),
                 "CharacterScreen이 검사 시드를 갖는다");
+            Check(charSrc.Contains("InfoWrap"),
+                "설명 줄은 InfoWrap(두 줄 LabelFit) — Info LabelClip이면 「빙결: 광」에서 잘린다");
+            Check(charSrc.Contains("SkillDescWrapBlocked"),
+                "QA_NO_SKILL_DESC_WRAP면 옛 한 줄 Clip");
+
+            string gameSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/GameScreen.cs"));
+            int wrapAt = gameSrc.IndexOf("protected int InfoWrap", StringComparison.Ordinal);
+            Check(wrapAt >= 0, "GameScreen.InfoWrap이 있다");
+            if (wrapAt >= 0)
+            {
+                int wrapEnd = gameSrc.IndexOf("protected void InfoAt", wrapAt, StringComparison.Ordinal);
+                if (wrapEnd < 0) wrapEnd = gameSrc.Length;
+                string wrapBody = gameSrc.Substring(wrapAt, wrapEnd - wrapAt);
+                Check(wrapBody.Contains("LabelFit"),
+                    "InfoWrap은 LabelFit — LabelClip이면 우측이 다시 잘린다");
+                Check(wrapBody.IndexOf("20f", StringComparison.Ordinal) < 0,
+                    "InfoWrap inner는 20px 한 줄이 아니다");
+                Check(wrapBody.Contains("52f"),
+                    "InfoWrap 최소 높이는 두 줄(52)");
+            }
+
+            Check(!JobInfo.SkillDescWrapBlocked, "기본 접기는 켜짐");
+            Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillDescWrap, "1");
+            Check(JobInfo.SkillDescWrapBlocked, "QA_NO_WRAP면 차단");
+            Check(JobInfo.SkillDescLine("마법사").Contains("빙결: 광역 슬로우"),
+                "접기 차단해도 문구는 같다(그리기만 한 줄 Clip)");
+            Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillDescWrap, null);
+            Check(!JobInfo.SkillDescWrapBlocked, "접기 차단을 풀면 다시 두 줄");
 
             string jobSrc = File.ReadAllText(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Runtime/JobInfo.cs"));
             Check(jobSrc.Contains("s.설명"),
                 "JobInfo가 s.설명을 읽는다 — 지우면 소비처 0곳으로 되돌아간다");
+            Check(jobSrc.Contains("EnvNoSkillDescWrap"),
+                "JobInfo가 접기 QA_NO를 갖는다");
 
             _ = nameof(JobInfo.SkillDescLine);
+            _ = nameof(JobInfo.SkillDescWrapBlocked);
             _ = nameof(SkillDef.설명);
             _ = nameof(CharacterScreen);
 
             Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillDesc, noDesc);
+            Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillDescWrap, noWrap);
 
             string dir = Path.Combine(Application.dataPath, "../..", "results");
             Directory.CreateDirectory(dir);

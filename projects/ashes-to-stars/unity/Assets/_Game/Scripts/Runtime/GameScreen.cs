@@ -493,6 +493,29 @@ namespace AshesToStars
             InfoAt(panel, text);
         }
 
+        /// <summary>
+        /// 긴 안내를 칸 안에서 접어 넣는다. Info→InfoAt은 슬림 칸 inner 높이 20px +
+        /// LabelClip이라 마법사 SkillDescLine이 「빙결: 광」에서 우측이 잘렸다.
+        /// 높이는 남은 본문과 최소 두 줄(52) 중 작은 쪽. 소비한 행 수를 돌려 다음
+        /// index가 겹치지 않게 한다(0이면 그릴 자리 없음).
+        /// </summary>
+        protected int InfoWrap(Rect r, int index, string text)
+        {
+            Styles();
+            if (string.IsNullOrEmpty(text)) return 0;
+            float y = r.y + index * RowPitch;
+            float remain = r.yMax - y;
+            if (remain < 24f) return 0;
+            float h = Mathf.Min(remain, Mathf.Max(RowHt, 52f));
+            var panel = new Rect(r.x - 12, y, r.width + 24, h);
+            if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
+                UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
+            var inner = new Rect(panel.x + 16f, panel.y + 6f,
+                panel.width - 32f, Mathf.Max(16f, panel.height - 12f));
+            UiPages.LabelFit(inner, text, _panel);
+            return Mathf.Max(1, Mathf.CeilToInt((h + 0.01f) / RowPitch));
+        }
+
         /// <summary>이미 계산된 칸에 안내만 그린다. 경매 슬림 도크가 읽는다.</summary>
         protected void InfoAt(Rect panel, string text) => InfoAt(panel, text, 0f);
 
