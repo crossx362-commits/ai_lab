@@ -805,14 +805,14 @@ namespace AshesToStars
             var fodder = roster[_fusionMaterial];
             long cost = Fusion.CostCopper();
             Info(r, 0, $"{fodder.Name} ({fodder.Job}) → {chosen.Name}");
-            Info(r, 1, $"이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3) · {Economy.FormatCurrency(cost)}");
+            Info(r, 1, $"이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3) · {EstateStatusHud.ShortCopper(cost)}");
             if (GameState.Wallet.Copper < cost)
             {
                 Locked(r, 2, "소멸시키고 흡수한다",
-                       $"골드 {Economy.FormatCurrency(cost)} 필요 — 지금 {GameState.WalletText}(§18-7)");
+                       $"골드 {EstateStatusHud.ShortCopper(cost)} 필요 — 지금 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}(§18-7)");
             }
             else if (Row(r, 2, "소멸시키고 흡수한다",
-                         $"결과는 랜덤 1개 · {Economy.FormatCurrency(cost)}. 슬롯이 차면 본 뒤에 교체/포기"))
+                         $"결과는 랜덤 1개 · {EstateStatusHud.ShortCopper(cost)}. 슬롯이 차면 본 뒤에 교체/포기"))
             {
                 uint seed = (uint)(Environment.TickCount ^ fodder.Id.GetHashCode());
                 if (Fusion.TryFuse(chosen, fodder, seed, out var picked))

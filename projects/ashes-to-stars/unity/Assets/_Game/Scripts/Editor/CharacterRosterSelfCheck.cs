@@ -75,8 +75,9 @@ namespace AshesToStars
             Check(charSrc.Contains("ShortCopper(Fusion.CostCopper())")
                   && charSrc.IndexOf("FormatCurrency(Fusion.CostCopper())") < 0,
                 "합성 안내 줄은 ShortCopper만");
-            Check(charSrc.Contains("FormatCurrency(cost)"),
-                "소멸 비용 FormatCurrency 유지");
+            Check(charSrc.Contains("ShortCopper(cost)")
+                  && charSrc.IndexOf("FormatCurrency(cost)") < 0,
+                "소멸 비용은 ShortCopper만");
 
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
