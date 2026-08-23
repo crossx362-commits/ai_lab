@@ -111,6 +111,11 @@ namespace AshesToStars
             _ = nameof(RaidCost.Line);
             _ = nameof(RaidCost.SeedQaIfRequested);
 
+            string raidSrc = File.ReadAllText(Path.Combine(runtime, "RaidCost.cs"));
+            Check(raidSrc.Contains("ShortCopper(Copper(floor))")
+                  && raidSrc.IndexOf("FormatCurrency(Copper(floor))") < 0,
+                "대보스 입장 비용은 ShortCopper만");
+
             Environment.SetEnvironmentVariable(RaidCost.EnvShow, show);
             Environment.SetEnvironmentVariable(RaidCost.EnvNo, no);
             RaidCost.ResetForTest();
