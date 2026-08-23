@@ -90,7 +90,7 @@ namespace AshesToStars
             return ShortCopper(EstateMine.CopperPerHourEffective()) + "/h";
         }
 
-        /// <summary>옛 줄은 FormatCurrency 풀표기 두 칸이라 슬림 도크에서 잘렸다.</summary>
+        /// <summary>옛 줄은 통화 풀표기 두 칸이라 슬림 도크에서 잘렸다.</summary>
         public static string OldStoreCaption() =>
             $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
 
