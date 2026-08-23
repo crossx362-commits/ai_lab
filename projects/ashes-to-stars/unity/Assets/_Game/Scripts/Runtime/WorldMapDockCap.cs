@@ -80,25 +80,25 @@ namespace AshesToStars
             if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
                 open = $"{Economy.RaceCostLine()} · " + open;
             else if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)
-                open = $"{InvasionState.RaceLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.RaceLootLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
             else if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
-                open = $"{WorldStar.EnemyLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
+                open = $"{WorldStar.EnemyLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowCap) == "1"
                      && !InvasionState.LootCapBlocked)
-                open = $"{InvasionState.LootCapLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.LootCapLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowFloor) == "1"
                      && !InvasionState.LootFloorBlocked)
-                open = $"{InvasionState.LootFloorLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.LootFloorLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
                      && !InvasionState.LootWarehouseBlocked)
-                open = $"{InvasionState.WarehouseLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.WarehouseLootLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
             else if ((Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
                       || Environment.GetEnvironmentVariable(Honor.EnvShowDefense) == "1")
                      && !Honor.Blocked)
                 open = $"{Honor.WinLine()} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"
                      && !InvasionState.RepeatLootBlocked)
-                open = $"{InvasionState.RepeatLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.RepeatLootLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
             return open;
         }
 
