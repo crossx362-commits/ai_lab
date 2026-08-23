@@ -1,20 +1,13 @@
 {
-  "phase": "fail",
-  "updated": "2026-08-23 15:00",
-  "last_commit": "25559505",
-  "last_files": [
-    "EstateBuild.cs",
-    "EstateBuildSelfCheck.cs",
-    "EstateScreen.cs",
-    "GAME_WORKLOG.md",
-    "STATUS.md"
-  ],
-  "review": "FAIL",
-  "note": "⑤ STATUS worker 수정 · ① SelfCheck PASS 증거 없음 → 기획검증 전달",
+  "phase": "assigned",
+  "updated": "2026-08-23 15:40",
+  "last_commit": "59f13726",
+  "review": "pending",
+  "note": "§6→아트 · 개발은 소비처0 · UI 폴리싱",
   "commits": [
-    "25559505",
-    "167dd8a5"
+    "6d9b4fae",
+    "59f13726"
   ],
-  "task": "EstateBuild §2-3",
-  "routed_to": "기획검증"
+  "task": "영지 §6 아트",
+  "routed_to": "재와별·아트"
 }
