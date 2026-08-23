@@ -161,5 +161,38 @@ namespace AshesToStars
             string sign = pct > 0 ? "+" : "";
             return "종족 체력 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
         }
+
+        /// <summary>§18-9 종족 방어 배율. QA_NO면 줄을 비운다(옛 화면 = 방어 줄 없음).</summary>
+        public const string EnvNoDefense = "QA_NO_RACE_DEFENSE";
+
+        public static bool DefenseBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoDefense);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// "종족 방어 — ×0.8 (−20%)". 계정 종족 RaceDef.방어배율의 **표시 런타임 소비처**.
+        /// 원장 §18-9 엘프 표 「방어 -20%」·에셋 0.8이 ProjectSetup·Race_*.asset에 authored돼
+        /// 있으면서도 속성 화면 grep 소비처 0곳이었다 — 형제 체력배율은 HealthLine이 읽는데
+        /// 방어만 W3Party 전투 경로에만 있고 화면은 죽어 있던 함정(이속·체력과 동일 계열).
+        /// 기준(×1)과 같으면 빈 문자열(줄을 안 그려 패널 밀도를 안 늘린다). QA_NO면 항상 빈
+        /// 문자열로 옛 화면(방어 줄 없음)에 회귀. 표시 전용 — W3Party·전투 피해 수치 무접촉.
+        /// </summary>
+        public static string DefenseLine(RaceId id)
+        {
+            if (DefenseBlocked) return "";
+            var d = For(id);
+            if (d == null) return "";
+            float mul = d.방어배율;
+            if (mul <= 0f) return "";
+            if (Mathf.Abs(mul - 1f) < 0.0001f) return "";
+            int pct = Mathf.RoundToInt((mul - 1f) * 100f);
+            string sign = pct > 0 ? "+" : "";
+            return "종족 방어 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
+        }
     }
 }
