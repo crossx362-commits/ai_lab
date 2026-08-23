@@ -37,10 +37,16 @@
 
 <!-- [정리 검사] 2026-08-23 (proposals-triage 18차, BASE a0623edc) — 현행 항목 3건(`^- \` grep: 반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하), 서로 상이한 제안): 중복 병합 대상 없음, 전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요. 기존 내용(마커·제안 전체) 삭제 없음. -->
 
-<!-- [정리 검사] 2026-08-23 (proposals-triage 19차, BASE 193ef123) — 현행 항목 3건(`^- \` grep: 반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하), 서로 상이한 제안): 중복 병합 대상 없음, 전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요. 기존 내용(마커·제안 전체) 삭제 없음. -->
+<!-- [정리 검사] 2026-08-23 (proposals-triage 19차, BASE 193ef123) — 현행 항목 6건(`^- \` grep: 반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하)·png 실로드 검사 추가(상)·보간 접두 매칭 지원(중)·MCP 씬 검증 절차 문서화(하), 서로 상이한 제안): 중복 병합 대상 없음, 전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요. 기존 내용(마커·제안 전체) 삭제 없음. -->
 
 - [2026-08-23 21:34] 같은 작업이 무변경인데도 반복 배정돼 검증 랩이 누적됨(21:34 proposals-triage 건 + 22:5x keeper-warn-chip 건 병합) — proposals-triage는 정리 `30cf1231` 후 항목 0건 상태로 15차 검증까지, keeper-warn-chip은 `0ec68f11` 선반영 후 11차까지(9차 때 이미 지적) 재검증 랩이 쌓임 → loop/agent_runner가 보드 작업 배정 전 `git log --grep=<작업 id>`으로 선반영 커밋을 찾아 첫 검증 랩 이후 재배정을 건너뛰고, proposals-triage는 `^- \[` 형식 라인 grep 0건이면 건너뛰며, 검증 랩 1회 후에는 TASKS.json 큐에서 완료 표시로 제외 (우선순위 중)
 
 - [2026-08-23 22:4x] 더임 리허설(v4_dummy_sim) 결과가 output(git 제외)에만 있어 다른 세션·보드가 판정 요약을 볼 수 없음 → board.py가 `v4_playtest_dummy/dummy_report.json`을 읽어 V4 게이트 칸에 "더임 리허설 V2·V3·V4 판정(실측 아님)" 한 줄로 표시 (우선순위 하)
 
 - [2026-08-23 22:4x] v4_dummy_sim의 성향 프로필이 코드 안 상수라 오너가 성향을 바꾸려면 코드 수정이 필요함 → PROFILE을 `loop/v4_dummy_testers.json` 키트 쪽으로 옮겨 비개발자도 키트만 고쳐 리허설 가능하게 (우선순위 하)
+
+- [2026-08-23 22:55] 새 PNG 반입 시 TextureImportRules를 우회해 Multiple+PPU100으로 임포트돼 `Resources.Load<Sprite>`가 null이 됨(실측: fx_dash_trail 3장 — §6-A 「스킬 이펙트 로딩 상시 실패」와 같은 결함이 자동 장치 없이 재발) → game_asset_names에 "Resources 아래 png를 `Resources.Load<Sprite>`로 실로드해 null이면 커밋 전 차단" 검사 추가 (우선순위 상)
+
+- [2026-08-23 22:55] `Resources.Load`를 `$"FX/fx_dash_trail_{i}"` 같은 보간 문자열로 부르면 game_asset_names의 코드 소비 목록이 못 잡아 "미사용 Resources 190개" 경고에 실사용 자산이 섞임(실측: 이번 바퀴 fx_dash_trail 3장 오탐) → 검사기가 소스에서 `$"..."` 보간 접두(`FX/fx_dash_trail_`)를 뽑아 접두 매칭 지원 (우선순위 중)
+
+- [2026-08-23 22:55] PlayFromTitle이 도메인 리로드마다 `playModeStartScene`을 Title로 되돌려, W2 같은 비빌드 씬을 MCP로 검증할 때 매번 씬이 게임 흐름(Character)으로 바뀜(실측: 이번 바퀴 2회) → 「MCP로 W1/W2/W3 씬 검증하는 법」(startScene 재지정→play→원복 순서)을 loop/README 또는 GAME_WORKLOG에 절차로 남김 (우선순위 하)
