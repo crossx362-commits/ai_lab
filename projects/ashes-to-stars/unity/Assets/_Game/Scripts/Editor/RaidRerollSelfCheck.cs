@@ -146,6 +146,12 @@ namespace AshesToStars
             _ = nameof(RaidReroll.Record);
             _ = nameof(RaidReroll.Line);
             _ = nameof(RaidReroll.SeedQaIfRequested);
+
+            string rrSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/RaidReroll.cs"));
+            Check(rrSrc.Contains("ShortCopper(Cost(floor))")
+                  && rrSrc.IndexOf("FormatCurrency(Cost(floor))") < 0,
+                "재입장 비용은 ShortCopper만");
             _ = nameof(Economy.GetRerollCostMultiplier);
 
             Environment.SetEnvironmentVariable(RaidReroll.EnvShow, show);

@@ -104,7 +104,7 @@ namespace AshesToStars
             if (Blocked) return "재입장 누진 없음";
             if (!Applies(floor)) return "";
             int mul = Multiplier();
-            return $"재입장 ×{mul}(§18-2) · {Economy.FormatCurrency(Cost(floor))}";
+            return $"재입장 ×{mul}(§18-2) · {EstateStatusHud.ShortCopper(Cost(floor))}";
         }
 
         /// <summary>입장 골드가 빠진 뒤에만. 하위 카드만. 미리보기는 그 전의 NextAttempt를 본다.</summary>
