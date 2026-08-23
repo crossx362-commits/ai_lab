@@ -1,15 +1,12 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 16:12",
+  "phase": "pass",
+  "updated": "2026-08-23 16:14",
   "last_commit": "e4fd1d15",
-  "review": "pending",
-  "task": "§18-9 RaceDef.체력배율 소비처0",
-  "routed_to": "재와별·루프검수",
-  "note": "코드 검수 중 · §6 아트 FAIL은 기획검증→아트 별트랙",
+  "review": "PASS",
+  "task": "소비처0 다음 한 칸",
+  "routed_to": "재와별·개발",
+  "note": "체력배율 PASS · §6 FAIL은 기획검증 트랙",
   "commits": [
     "e4fd1d15"
-  ],
-  "parallel": {
-    "§6": "FAIL→기획검증"
-  }
+  ]
 }
