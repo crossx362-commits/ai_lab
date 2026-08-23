@@ -18,7 +18,7 @@
 |---|---|---|
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
-| 영지 §6 아트(_1/_2·공사판) | **닫음** | `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
+| 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
 | 개발 직렬 | 소비처0 다음 한 칸 | §18-9 `f9f195e8` · §3 쿨다운 `92cc2feb` 닫음. `W3Party` 금지 |
 | UI 폴리싱 다음 | 본성 골드 단축 FormatCurrency 잘림 | 건물칸·본성상세·업비 ShortCopper 닫음 |
 | launchd 자율 루프 | 살아 있으나 플래너가 task manifest를 못 만듦 | agent=`codex`. Claude 한도 ~08-24 23:00 → Codex/Grok만 |
