@@ -3,8 +3,8 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-23 · proposals-triage 16차 검증(BASE `8149db96`)
-마지막 트랙: 피드백 문서(proposals-triage — 반복 배정 방지 제안 2건 병합)
+최종 갱신: 2026-08-23 · keeper-warn-chip 13차 재검증(BASE `c8ee3679`)
+마지막 트랙: 루프도구(keeper-warn-chip 재검증 — 선반영 확인, 무변경)
 폴리싱 다음: **캐릭터 속성 ConceptLine LabelClip** (SkillDesc wrap `6ba0a995` 닫음). 마법사 직업 특성은 이번 샷에서 끝 글자까지 보임 — 수호기사 등 긴 고유메커니즘은 미확인.
 
 ## 관문 부채 (루프 밖 · 사람/대화 세션)
@@ -39,6 +39,8 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | lane-doc 13차 재검증(BASE `c8ee3679`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행·STOP_LANE 토글 48~50행)에 존속 확인. 재구현 없음 · 두 파일 무변경. 같은 지시 13회 반복 배정 — TASKS.json 큐 중복 제거 필요 | tests 없음 · 문서 검증 · 이 커밋 |
+| — | 2026-08-23 | keeper-warn-chip 13차 재검증(BASE `c8ee3679`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영(HEAD 조상 확인)으로 현재 board.html(921~929행)에도 존속(`kWarns` 필터·hold 노란 톤·실패 칩 경고 병기 확인). 재구현 없음 · loop/board.html 무변경. 같은 지시 13회 반복 배정 — 반복 배정 방지 제안은 `a27b3d2b`에서 병합됨 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 16차 검증(BASE `8149db96`) — PROPOSALS.md 현행 항목 4건 중 반복 배정 방지 제안 2건(agent_runner 건너뛰기 21:34(중)·keeper-warn-chip 선반영 감지 22:5x(중))이 동일 문제(무변경 랩 누적)·동일 처방이라 1건으로 병합 — 관찰·처방 전부 병합 항목에 보존. 병합 후 3건 모두 끝에 우선순위 태그 존재 · 기존 내용 삭제 없음 | tests 없음 · 문서 검증 · `a27b3d2b` |
 | — | 2026-08-23 | lane-doc 12차 재검증(BASE `8149db96`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행·STOP_LANE 토글 48~50행)에 존속 확인. 재구현 없음 · 두 파일 무변경. 같은 지시 12회 반복 배정 — TASKS.json 큐 중복 제거 필요 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 12차 재검증(BASE `8149db96`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영으로 현재 board.html(921~929행)에도 존속(`kWarns` 필터·hold 노란 톤 확인). 재구현 없음 · loop/board.html 무변경. 같은 지시 12회 반복 배정 — TASKS.json 큐 중복 제거 필요 | test_board 102 OK · 이 커밋 |
