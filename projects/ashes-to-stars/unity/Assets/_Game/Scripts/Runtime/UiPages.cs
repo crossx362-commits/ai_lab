@@ -125,7 +125,8 @@ namespace AshesToStars
         public static void RosterCellLayout(Rect cell, out Rect face, out Rect name, out Rect job,
                                             out Rect hearts)
         {
-            var inner = UiAtlas.ContentRect(cell, "panel", 2f);
+            // 패널 보더는 칸 높이 비례(0.24)라 칸을 키워도 안쪽이 안 늘어난다 — 상한 22로 묶는다.
+            var inner = UiAtlas.ContentRect(cell, "panel", 2f, 22f);
             float plate = Mathf.Min(RosterPlate, Mathf.Max(44f, inner.height * 0.48f));
             float faceW = Mathf.Min(72f, inner.width,
                 Mathf.Max(28f, inner.height - plate));
@@ -137,6 +138,10 @@ namespace AshesToStars
                 job.height = Mathf.Max(0f, hearts.y - job.y);
             if (name.yMax > job.y && job.height > 1f)
                 name.height = Mathf.Max(0f, job.y - name.y);
+            // 최후 방어: job이 눌려 소멸한 칸에서도 이름이 하트 행을 침범하지 않게 한다.
+            // 하트는 Clip 없이 나중에 그려져 이름 끝글자를 덮는다(실측 2026-08-24).
+            if (name.yMax > hearts.y - 1f)
+                name.height = Mathf.Max(0f, hearts.y - 1f - name.y);
         }
 
         /// <summary>

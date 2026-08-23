@@ -52,8 +52,10 @@ namespace AshesToStars
             Check(Mathf.Approximately(c0.height, CharHud.CellH),
                 $"칸 높이 {c0.height:0} = {CharHud.CellH:0}");
 
-            UiPages.RosterCellLayout(c0, out _, out var nameR, out _, out _);
+            UiPages.RosterCellLayout(c0, out _, out var nameR, out _, out var heartsR);
             Check(nameR.width >= 108f, $"이름 칸 {nameR.width:0} ≥ 108");
+            Check(nameR.yMax <= heartsR.y + 0.01f,
+                $"이름 아래 {nameR.yMax:0.0} ≤ 하트 위 {heartsR.y:0.0} — 끝글자가 하트에 안 덮인다");
 
             var face = UiPages.LargeLook(stage);
             CharHud.EquipRingFit(stage, face, out float ringX, out float ringY);
@@ -89,8 +91,10 @@ namespace AshesToStars
             var oldCell = CharHud.RosterCell(oldList, 0);
             Check(oldCell.width < CharHud.MinCellW,
                 $"차단 칸 {oldCell.width:0} < {CharHud.MinCellW:0}");
-            UiPages.RosterCellLayout(oldCell, out _, out var oldName, out _, out _);
+            UiPages.RosterCellLayout(oldCell, out _, out var oldName, out _, out var oldHearts);
             Check(oldName.width < 100f, $"차단 이름 {oldName.width:0} < 100");
+            Check(oldName.yMax <= oldHearts.y + 0.01f,
+                $"차단 칸에서도 이름 아래 {oldName.yMax:0.0} ≤ 하트 위 {oldHearts.y:0.0}");
             Check(Mathf.Approximately(oldCell.height, CharHud.OldCellH),
                 $"차단 높이 {oldCell.height:0} = 옛 132");
             var oldLab = CharHud.EquipLabel(stage, new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f));

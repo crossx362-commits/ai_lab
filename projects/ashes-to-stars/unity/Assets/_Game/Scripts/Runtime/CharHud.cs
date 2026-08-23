@@ -19,7 +19,9 @@ namespace AshesToStars
         public const float OldMinListW = 240f;
         public const float MinListW = 520f;
         public const float OldCellH = 132f;
-        public const float CellH = 118f;
+        // 118이면 패널 보더(높이 비례 0.24)가 내용을 다 먹어 이름 끝글자가 하트에 덮였다
+        // (실측 2026-08-24). 164이면 초상 62+이름 18+직업 16+하트 20이 전부 성립한다.
+        public const float CellH = 164f;
         public const int Cols = 3;
         public const float MinCellW = 168f;
         public const float OldLabelW = 48f;
