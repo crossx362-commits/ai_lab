@@ -404,16 +404,42 @@ namespace AshesToStars
             return true;
         }
 
-        public static void SetLevelForTest(int lv)
+        public static void SetLevelForTest(int lv) => SetLevelForTest(EstateGrid.Cell.Keep, lv);
+
+        public static void SetLevelForTest(EstateGrid.Cell c, int lv)
         {
             Load();
-            int i = IndexOf(EstateGrid.Cell.Keep);
+            int i = IndexOf(c);
+            if (i < 0) return;
             _level[i] = Mathf.Clamp(lv, 1, MaxKeep);
             _to[i] = 0;
             _doneUnix[i] = 0;
             _origSec[i] = 0;
             _jobCost[i] = 0;
             Save();
+        }
+
+        /// <summary>티어 아트 시각 QA. Keep=3(_0), Mine=7(_1), Warehouse=12(_2), Barracks Busy+scaffold.</summary>
+        public static void SeedArtTierQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_ESTATE_ART_TIERS");
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            EstateGrid.EnsureHubBuildings();
+            SetLevelForTest(EstateGrid.Cell.Keep, 3);
+            SetLevelForTest(EstateGrid.Cell.Mine, 7);
+            SetLevelForTest(EstateGrid.Cell.Warehouse, 12);
+            SetLevelForTest(EstateGrid.Cell.Barracks, 6);
+            // Busy 시드: 수비대 공사 중 → scaffold 겹침
+            int i = IndexOf(EstateGrid.Cell.Barracks);
+            if (i >= 0)
+            {
+                _to[i] = _level[i] + 1;
+                _doneUnix[i] = NowUnix() + 3600;
+                _origSec[i] = 3600;
+                _jobCost[i] = 1;
+                Save();
+            }
         }
 
         public static void ResetForTest()

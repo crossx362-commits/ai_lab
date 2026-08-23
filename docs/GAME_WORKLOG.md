@@ -1059,3 +1059,16 @@ SelfCheck PASS.
 **탱 상시 DR 20%**: 도입 근거가 "E/A 0.67 → 0.60 이하"였는데, 최신 5회 중앙값에서
 **E/A가 이미 0.39**다(`w3_reps5.csv`). 힐러 가치가 이미 충분히 나오고 있어 지금 넣으면
 근거 없이 수치를 만지는 것이 된다. 재개하려면 새 근거가 필요하다.
+
+---
+
+## 완료 — 영지 건물 티어·공사판 (§6) (2026-08-23 16:10 KST)
+
+- **아트**: `art/spec_estate_tiers.json` → Higgsfield `nano_banana_flash` → `art/out_estate_tiers/` 17장
+  (`estate_*_{1,2}` ×8 + `estate_scaffold_0`). **기존 `estate_*_0` 재생성 안 함.**
+- **반입**: `unity/Assets/Resources/props/` + `.meta` · `prop_scale` 티어 키 추가 · `ARTIFACT_INDEX` 행 갱신
+- **코드**: `EstateBuildings.PropOf` 레벨 밴드 1–4→_0 / 5–9→_1 / 10–13→_2 (없으면 낮은 티어 폴백);
+  `EstateYard` Busy 코어에 `estate_scaffold_0` 반투명 겹침; `EstateArtTierSelfCheck` MenuItem
+- **샷**: `output/qa/ashes-to-stars/estate_tier_shots/qa_go:Estate.png` (`QA_ESTATE_ART_TIERS=1`)
+- **SelfCheck**: `results/estate_art_tier_selfcheck.log` PASS
+
