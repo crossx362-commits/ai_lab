@@ -1514,9 +1514,15 @@ def _hhmm(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
 
+def _main_log_path() -> Path:
+    current = ROOT / "logs" / "loop_main.log"
+    legacy = HERE / "loop_main.log"
+    return current if current.exists() or not legacy.exists() else legacy
+
+
 def loop_flags() -> dict:
-    agent = _read(HERE / "agent").strip() or os.getenv("LOOP_AGENT", "grok")
-    main = ROOT / "loop" / "loop_main.log"
+    agent = os.getenv("LOOP_PROVIDERS", "claude · codex · grok").replace(",", " · ")
+    main = _main_log_path()
     latest = _latest_iter_path()
     latest_iter = latest.name if latest else ""
     main_at = main.stat().st_mtime if main.is_file() else 0.0
@@ -1555,10 +1561,12 @@ def loop_flags() -> dict:
 
 
 def _latest_iter_path() -> Path | None:
-    log_dir = HERE / "logs"
-    if not log_dir.is_dir():
-        return None
-    iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
+    logs_root = ROOT / "logs"
+    iters = list(logs_root.glob("*/lap-*.log")) if logs_root.is_dir() else []
+    old_log_dir = HERE / "logs"
+    if not iters and old_log_dir.is_dir():
+        iters = list(old_log_dir.glob("iter_*.log"))
+    iters.sort(key=lambda p: p.stat().st_mtime)
     return iters[-1] if iters else None
 
 
@@ -1620,7 +1628,7 @@ def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict])
 def current_work(running: bool, hold: bool, stop: bool,
                  latest_iter: str, main_log: str) -> dict:
     """지금 루프가 손에 든 일. 끝난 이터는 작업 중으로 안 속인다."""
-    full_main = _read(HERE / "loop_main.log")
+    full_main = _read(_main_log_path())
     latest = _latest_iter_path()
     iter_text = _read(latest) if latest else ""
     number, started = "", ""
@@ -1692,7 +1700,7 @@ def find_loop_pids() -> list[int]:
         if "board.py" in line or "test_board" in line:
             continue
         # argv가 실제로 loop.sh 를 실행하는 줄만
-        if not re.search(r"(?:^|\s)(?:/bin/)?(?:bash|sh)\s+\S*loop(?:/loop)?\.sh(?:\s|$)", line):
+        if not re.search(r"(?:^|\s)(?:/bin/)?(?:bash|sh)\s+.+?loop(?:/loop)?\.sh(?:\s|$)", line):
             continue
         try:
             pids.append(int(line.split(None, 1)[0]))

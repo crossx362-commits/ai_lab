@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1314,6 +1315,30 @@ class LiveLogTests(unittest.TestCase):
         finally:
             board.HERE, board.ROOT = old_here, old_root
 
+    def test_launchd_loop_path_with_spaces_counts_as_running(self):
+        process_table = (
+            "66332 /bin/bash /Users/junholee/Library/Application Support/"
+            "AI Lab Autonomous Loop/loop.sh /Users/junholee/ai_lab\n"
+        )
+        with mock.patch.object(board.subprocess, "check_output", return_value=process_table):
+            self.assertEqual(board.find_loop_pids(), [66332])
+
+    def test_current_loop_reads_root_dated_logs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            here = root / "loop"
+            dated = root / "logs" / "2026-08-23"
+            here.mkdir()
+            dated.mkdir(parents=True)
+            (root / "logs" / "loop_main.log").write_text("현재 메인\n", encoding="utf-8")
+            lap = dated / "lap-20260823-134128-1.log"
+            lap.write_text("현재 작업 중\n", encoding="utf-8")
+            with mock.patch.object(board, "find_loop_pids", return_value=[66332]):
+                flags = self._flags(here)
+        self.assertTrue(flags["running"])
+        self.assertEqual(flags["latest_iter"], "lap-20260823-134128-1.log")
+        self.assertIn(flags["log_from"], {"loop_main.log", "lap-20260823-134128-1.log"})
+
     def test_stale_main_log_falls_back_to_iter_log(self):
         with tempfile.TemporaryDirectory() as tmp:
             here = Path(tmp) / "loop"
@@ -1572,8 +1597,8 @@ class NowWorkTests(unittest.TestCase):
                 "▶ 이터레이션 #2  16:41:58  → /x/loop/logs/iter_20260816_164158.log\n",
                 encoding="utf-8",
             )
-            old = board.HERE
-            board.HERE = here
+            old = (board.HERE, board.ROOT)
+            board.HERE, board.ROOT = here, here.parent
             try:
                 now = board.current_work(True, False, False, "iter_20260816_164158.log", "")
                 self.assertEqual(now["phase"], "작업 중")
@@ -1587,7 +1612,7 @@ class NowWorkTests(unittest.TestCase):
                 done = board.current_work(True, False, False, "iter_20260816_164158.log", "")
                 self.assertEqual(done["phase"], "대기")
             finally:
-                board.HERE = old
+                board.HERE, board.ROOT = old
 
 
 SAMPLE_BILLING = {
