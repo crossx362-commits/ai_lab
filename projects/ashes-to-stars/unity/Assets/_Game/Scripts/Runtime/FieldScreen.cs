@@ -77,6 +77,7 @@ namespace AshesToStars
             FieldDockCap.SeedDungeonQaIfRequested();
             FieldDockCap.SeedHuntQaIfRequested();
             UiAtlas.SeedQaIfRequested();
+            GameState.SeedWalletTextQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
