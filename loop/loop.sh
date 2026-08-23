@@ -22,6 +22,8 @@ AGENT_FILE="$TARGET_REPO/loop/agent"
 STATUS_FILE="$TARGET_REPO/docs/STATUS.md"
 MAIN_LOG="$TARGET_REPO/logs/loop_main.log"
 GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
+OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
+COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
 if [ ! -f "$PROMPT_FILE" ]; then
   PROMPT_FILE="$TARGET_REPO/loop/PROMPT.md"
@@ -50,6 +52,9 @@ find_bin() {
       ;;
     claude)
       if [ -n "${LOOP_CLAUDE_BIN:-}" ] && [ -x "${LOOP_CLAUDE_BIN}" ]; then echo "$LOOP_CLAUDE_BIN"; return; fi
+      ;;
+    opencode)
+      if [ -n "${LOOP_OPENCODE_BIN:-}" ] && [ -x "${LOOP_OPENCODE_BIN}" ]; then echo "$LOOP_OPENCODE_BIN"; return; fi
       ;;
   esac
   command -v "$name" 2>/dev/null || true
@@ -114,6 +119,15 @@ run_session() {
         --no-session-persistence \
         --output-format text
       ;;
+    opencode)
+      # 비대화형 단발 세션. resume 없음. 권한·MCP는 저장소 opencode.json이 결정한다.
+      local prompt
+      prompt="$(printf '%s\n\n' "$header"; [ -f "$PROMPT_FILE" ] && cat "$PROMPT_FILE")"
+      cd "$TARGET_REPO" || return 3
+      "$bin" run \
+        ${OPENCODE_MODEL:+-m "$OPENCODE_MODEL"} \
+        "$prompt"
+      ;;
     *)
       echo "알 수 없는 실행기: $agent" >&2
       return 2
@@ -166,6 +180,12 @@ while true; do
   elif [ "$RESULT" -eq 0 ]; then
     COUNT=$((COUNT + 1))
     FAILS=0
+    # 자가학습 회의 — N바퀴마다 역할별 병렬 회의를 소집한다 (오너 2026-08-23).
+    if [ "$COUNT" -gt 0 ] && [ "$COUNCIL_EVERY" -gt 0 ] && [ $((COUNT % COUNCIL_EVERY)) -eq 0 ]; then
+      echo "회의 소집: ${COUNT}바퀴 완료 — 역할 병렬 회의 시작" | tee -a "$MAIN_LOG" "$LAP_LOG"
+      bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 \
+        || echo "회의 실패 — 루프는 계속" | tee -a "$MAIN_LOG" "$LAP_LOG"
+    fi
   else
     echo "세션 비정상 종료 (code=$RESULT)" | tee -a "$MAIN_LOG" "$LAP_LOG"
     FAILS=$((FAILS + 1))

@@ -1,13 +1,14 @@
 #!/bin/bash
 # launchd는 터미널 PATH를 상속하지 않으므로 절대 경로를 포함한다.
 
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.grok/bin:/Users/junholee/.cargo/bin"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.grok/bin:/Users/junholee/.cargo/bin:/Users/junholee/.opencode/bin"
 
-# session: 매 바퀴 새 그록 세션 (기본, 오너 명세). coordinator: agent_runner 병렬.
+# session: 매 바퀴 새 세션 (기본, 오너 명세). coordinator: agent_runner 병렬.
 export LOOP_MODE="${LOOP_MODE:-session}"
-# 오너 2026-08-23: 개발 루프는 그록만. 코덱스 쓰지 않음.
-export LOOP_AGENT="${LOOP_AGENT:-grok}"
-export LOOP_PROVIDERS="${LOOP_PROVIDERS:-grok}"
+# 오너 2026-08-23: 루프를 이쪽(opencode)으로 가져온다. 유니티·블렌더 MCP 사용.
+# 그록은 백업 실행기로만 남긴다(아트 외주 등 불가피할 때).
+export LOOP_AGENT="${LOOP_AGENT:-opencode}"
+export LOOP_PROVIDERS="${LOOP_PROVIDERS:-opencode}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 
 # 강한 모델 고정. Claude는 Fable 사용량 소진/이용 불가 때만 Opus 5로 전환한다.
@@ -17,6 +18,10 @@ export LOOP_CODEX_MODEL="${LOOP_CODEX_MODEL:-gpt-5.6-sol}"
 export LOOP_CODEX_REASONING="${LOOP_CODEX_REASONING:-xhigh}"
 export LOOP_CODEX_PLANNING_REASONING="${LOOP_CODEX_PLANNING_REASONING:-medium}"
 export LOOP_GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
+export LOOP_OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
+
+# 자가학습 회의 — N바퀴마다 역할(planner·builder·tester) 병렬 회의 소집 (오너 2026-08-23)
+export LOOP_COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
 export LOOP_MAX_TURNS="${LOOP_MAX_TURNS:-30}"
 export LOOP_SESSION_TIMEOUT="${LOOP_SESSION_TIMEOUT:-1800}"
