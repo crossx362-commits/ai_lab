@@ -138,6 +138,13 @@ namespace AshesToStars
             _ = nameof(WorldMapDockCap.Line);
             _ = nameof(WorldMapDockCap.SeedQaIfRequested);
 
+            string dockSrc = File.ReadAllText(Path.Combine(runtime, "WorldMapDockCap.cs"));
+            Check(dockSrc.Contains("ShortCopper(InvasionState.SortieCost())")
+                  && dockSrc.IndexOf("FormatCurrency(InvasionState.SortieCost())") < 0,
+                "출정 비용은 ShortCopper만");
+            Check(dockSrc.Contains("FormatCurrency(InvasionState.LootCopper())"),
+                "예상 약탈 FormatCurrency 유지(다음 칸)");
+
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, no);
             WorldMapDockCap.ResetForTest();

@@ -73,8 +73,8 @@ namespace AshesToStars
         public static string OldOpen()
         {
             string open = InvasionApproach.Blocked
-                ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)"
-                : $"{InvasionApproach.Line()} · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())}";
+                ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {EstateStatusHud.ShortCopper(InvasionState.SortieCost())} (§13-3·§15)"
+                : $"{InvasionApproach.Line()} · 출정 {EstateStatusHud.ShortCopper(InvasionState.SortieCost())}";
             if (EstateStore.ShowQa)
                 open = EstateStore.Line() + " · " + open;
             if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
