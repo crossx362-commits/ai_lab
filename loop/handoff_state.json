@@ -1,11 +1,11 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 16:07",
+  "phase": "pass",
+  "updated": "2026-08-23 16:08",
   "last_commit": "dbe02f57",
-  "review": "pending",
-  "task": "§18-9 RaceDef.이속배율 소비처0",
-  "routed_to": "재와별·루프검수",
-  "note": "개발 완료 → 루프검수 검토 중",
+  "review": "PASS",
+  "task": "소비처0 다음 한 칸",
+  "routed_to": "재와별·개발",
+  "note": "이속배율 PASS · 다음 소비처0",
   "commits": [
     "dbe02f57"
   ]
