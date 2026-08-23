@@ -184,6 +184,7 @@ namespace AshesToStars
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
+            EstateBuild.SeedArtTierQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
@@ -867,7 +868,7 @@ namespace AshesToStars
                     continue;
                 }
                 string why = EstateDefense.WhyCannotStart(k);
-                string desc = $"{Economy.FormatCurrency(EstateDefense.UpgradeCost(lv))} · {FormatWait(EstateDefense.UpgradeSeconds(lv))}";
+                string desc = $"{EstateStatusHud.ShortCopper(EstateDefense.UpgradeCost(lv))} · {FormatWait(EstateDefense.UpgradeSeconds(lv))}";
                 if (why != null)
                     DrawCard(cards[i], title, why, icon, locked: true);
                 else if (DrawCard(cards[i], title, desc, icon))
