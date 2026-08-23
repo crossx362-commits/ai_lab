@@ -135,6 +135,21 @@ namespace AshesToStars
         }
 
         /// <summary>
+        /// 직업 특성 줄을 두 줄로 접지 않고 옛 Info(LabelClip 한 줄)로 그린다.
+        /// 수호기사 「소모해 보」에서 우측이 잘리던 화면. 마법사 짧은 컨셉은 한 줄에 들어간다.
+        /// </summary>
+        public const string EnvNoConceptWrap = "QA_NO_CONCEPT_WRAP";
+
+        public static bool ConceptWrapBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoConceptWrap);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
         /// "보유 스킬 — {이름}(N초·×P·반경R·소모C) · …". JobDef.스킬의 이름·쿨다운·위력배율·반경·**자원소모** 소비처.
         /// 이름·쿨·위력만 읽던 SkillLine(50202ce5) 옆에, ProjectSetup이 스킬마다 authored한
         /// <c>SkillDef.반경</c>(화염폭풍 3.2·빙결 4·도발 4.5·진군가 8…)이 정의·에셋만 있고

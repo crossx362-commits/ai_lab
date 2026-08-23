@@ -422,7 +422,13 @@ namespace AshesToStars
                     if (!ch.IsDeleted)
                     {
                         string trait = JobInfo.ConceptLine(ch.Job);
-                        if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
+                        if (!string.IsNullOrEmpty(trait))
+                        {
+                            // Info(LabelClip·inner 20px)면 수호기사 「소모해 보」에서 우측이 잘린다 —
+                            // 두 줄 InfoWrap(LabelFit). QA_NO_CONCEPT_WRAP이면 옛 한 줄 Clip.
+                            if (JobInfo.ConceptWrapBlocked) Info(r, advancementRow++, trait);
+                            else advancementRow += InfoWrap(r, advancementRow, trait);
+                        }
                         // §3 SkillDef.쿨다운·위력배율·반경·자원소모 — SkillLine이 이름 옆에 (N초·×P·반경R·소모C) (표시 전용).
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
