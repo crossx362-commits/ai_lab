@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | lane-doc 재검증(BASE `eb2b99ea`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md·loop/README.md 무변경 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 중복 확인 — 지정 작업이 기점 `9c31ca2a`에 이미 반영됨(`0ec68f11`: warns 있으면 hold 톤·실패 칩 경고 병기). 재구현 없이 종료 | test_board 102 OK · 코드 무변경 · 이 커밋 |
 | — | 2026-08-23 | lane-doc 재검증 — 속도 레인 운영법은 `55fc2373`(BASE `9c31ca2a` 이전)에서 이미 반영돼 중복 작업 없음 · README.md(속도 레인 절 본문 4줄)·loop/README.md 무변경 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 4차 검증 — PROPOSALS.md 제안 항목 0건(`^- \[` grep 매치 없음), 중복 병합·우선순위 보정 대상 없음 · PROPOSALS.md 무변경(내용 삭제 없음) | tests 없음 · 문서 검증 · 이 커밋 |
