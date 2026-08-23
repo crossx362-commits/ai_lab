@@ -459,6 +459,16 @@
   .view-bar { margin: 12px 24px 0; display: flex; gap: 8px; align-items: center; }
   @media (max-width: 1100px) { .view-bar { margin: 12px 14px 0; } }
   body.compact .hide-compact { display: none !important; }
+  /* 한 화면에서 열고 닫기 — 섹션 머리글 클릭으로 접고 펼친다 */
+  h2.sec-toggle, h3.sec-toggle { cursor: pointer; user-select: none; }
+  h2.sec-toggle::after, h3.sec-toggle::after {
+    content: "▸"; float: right; color: var(--muted);
+    transition: transform .15s ease; font-size: 11px;
+  }
+  section.sec-collapsed > :not(h2):not(h3) { display: none !important; }
+  section:not(.sec-collapsed) > h2.sec-toggle::after,
+  section:not(.sec-collapsed) > h3.sec-toggle::after { transform: rotate(90deg); }
+  section.sec-empty, div.sec-empty { display: none !important; }
 </style>
 </head>
 <body>
@@ -895,12 +905,19 @@ function renderOps(state) {
   const runnerLive = live.opencode ? "가동 중" : (live.grok ? "그록 가동 중" : "대기");
   const c = state.council || {};
   const p = state.proposals || {};
+  const k = state.keeper || {};
+  const kChip = k.ok === true
+    ? `<span class="u ok">지킴이 ● ${esc(k.when || "")}</span>`
+    : (k.ok === false
+      ? `<span class="u bad">지킴이 ✕ ${esc((k.failed || ["검증 실패"])[0])} · ${esc(k.when || "")}</span>`
+      : '<span class="u bad">지킴이 미실시</span>');
   box.innerHTML = [
     '<span class="cap">운영</span>',
     dot(m.unity, "유니티MCP"),
     dot(m.blender_bridge, "블렌더"),
     `<span class="u">러너 <b>${esc(r.agent || "?")}</b>${r.model ? " · " + esc(r.model) : ""} · ${runnerLive}</span>`,
     `<span class="u ${p.open > 0 ? "hold" : ""}">개선안 미처리 <b>${p.open ?? 0}</b>/${p.total ?? 0}</span>`,
+    kChip,
     c.latest
       ? `<span class="u">회의 ${esc(c.when || "")} · ${esc(c.title || "최근 회의")} (${esc(c.latest)})</span>`
       : '<span class="u bad">회의 기록 없음</span>',
@@ -1369,6 +1386,7 @@ function render(state) {
   renderCharts(state.charts || {});
   renderGlance(state);
   renderDetail(state);
+  hideEmptySections();
 }
 
 function setCompact(on) {
@@ -1383,6 +1401,61 @@ $("btn-view").onclick = () => setCompact(!document.body.classList.contains("comp
 setCompact((() => {
   try { return localStorage.getItem("board-compact") !== "0"; } catch (e) { return true; }
 })());
+
+/* 빈 부분 없앰 — 내용 없는 섹션은 통째로 숨긴다 (오너 2026-08-23) */
+function hideEmptySections() {
+  const SECTION_HIDE = [
+    "d-queue", "d-worklog", "d-lap", "d-blockers", "d-gates", "d-completed",
+    "d-inbox", "d-providers", "d-commits", "tests", "playtest-grid", "done-gallery",
+  ];
+  const EL_HIDE = ["g-queue", "g-stuck", "g-flags", "d-handoff"]; // 카드에 다른 내용이 있다 — 요소만 숨긴다
+  const isEmptyList = (el) => {
+    if (!el || el.children.length === 0) return true;
+    return [...el.children].every((c) => c.classList.contains("empty"));
+  };
+  const hideEl = (el) => el.classList.toggle("sec-empty", isEmptyList(el));
+  for (const id of SECTION_HIDE) {
+    const box = $(id);
+    if (!box) continue;
+    const sec = box.closest("section, div.d-card");
+    if (!sec || sec.querySelector("#req-title")) continue;
+    sec.classList.toggle("sec-empty", isEmptyList(box));
+  }
+  for (const id of EL_HIDE) {
+    const box = $(id);
+    if (box) hideEl(box);
+  }
+  const charts = $("charts");
+  if (charts && !charts.innerHTML.trim()) charts.classList.add("sec-empty");
+}
+
+/* 한 화면에서 열고 닫기 — 머리글 클릭으로 접고 펼친다. 상태는 저장한다 */
+function initCollapse() {
+  const ALWAYS_OPEN = new Set(["req-box", "g-now"]);
+  document.querySelectorAll("section").forEach((sec) => {
+    if (sec.closest("dialog") || ALWAYS_OPEN.has(sec.id)) return;
+    const head = sec.querySelector(":scope > h2, :scope > h3");
+    if (!head || head.classList.contains("sec-toggle")) return;
+    head.classList.add("sec-toggle");
+    const key = "board-fold:" + (sec.id || head.textContent.trim().slice(0, 20));
+    let saved = null;
+    try { saved = localStorage.getItem(key); } catch (e) {}
+    if (saved === null) {
+      // 기본값(한 화면 철칙): 지금·큐·바퀴·핸드오프만 펼치고 나머지는 접는다
+      const open = sec.classList.contains("live")
+        || !!sec.querySelector("#d-queue, #d-lap, #d-handoff-flow");
+      try { localStorage.setItem(key, open ? "0" : "1"); } catch (e) {}
+      sec.classList.toggle("sec-collapsed", !open);
+    } else {
+      sec.classList.toggle("sec-collapsed", saved === "1");
+    }
+    head.addEventListener("click", () => {
+      const folded = sec.classList.toggle("sec-collapsed");
+      try { localStorage.setItem(key, folded ? "1" : "0"); } catch (e) {}
+    });
+  });
+}
+initCollapse();
 
 function barClass(pct) {
   if (pct >= 100) return "ok";

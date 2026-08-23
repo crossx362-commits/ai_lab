@@ -11,6 +11,7 @@
 | `env.sh` | 설정 분리 (실행기·모델 / 바퀴 최대 턴 수 / 바퀴 사이 대기 / 최대 바퀴 수 / 회의 주기) |
 | `PROMPT.md` | 세션 지시서 5절 (①합격기준 ②읽을문서 ③규칙·근거 ④바퀴순서 ⑤커밋규칙+자가학습) |
 | `council.sh` | 자가학습 정기 회의 — planner·builder·tester **병렬** 새 세션 + 의장 합본 → `docs/meetings/COUNCIL_*.md` |
+| `board_keeper.sh` + `deploy_boardkeeper.sh` | **보드 지킴이 에이전트** — 30분마다 보드 응답·state API·테스트 스위트 검증 → 이상 시 opencode 세션으로 외과 수리·커밋, 건강해도 주기적으로 1씽 개선. 결과는 `loop/board_keeper.json`과 보드 「운영」 줄의 지킴이 칩에 표시 |
 | `agent_runner.py` | 병렬 코디네이터 — worktree 격리 worker/reviewer (opencode·claude·codex·grok) |
 | `board.py` / `board.html` | 개발 보드 (http://127.0.0.1:8766) · MCP·러너·회의·개선안 운영 줄 표시 |
 | `deploy_launchd.sh` | 레포 loop/ → Application Support 배포 + launchd 재등록 |

@@ -3020,6 +3020,23 @@ def proposals_info() -> dict:
     return {"total": total, "open": open_count, "last": humanize_detail(last)}
 
 
+def keeper_info() -> dict:
+    """보드 지킴이 최근 검증 결과 — loop/board_keeper.json."""
+    path = HERE / "board_keeper.json"
+    if not path.is_file():
+        return {"ok": None, "when": "", "failed": []}
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"ok": None, "when": "", "failed": ["기록 파싱 실패"]}
+    return {
+        "ok": bool(d.get("ok")),
+        "when": str(d.get("at", "")),
+        "failed": [str(x) for x in (d.get("failed") or [])][:4],
+        "warns": [str(x) for x in (d.get("warns") or [])][:2],
+    }
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -3071,6 +3088,7 @@ def build_state() -> dict:
         "runner": runner_info(),
         "council": council_info(),
         "proposals": proposals_info(),
+        "keeper": keeper_info(),
         "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
         "grok": grok_usage(),
