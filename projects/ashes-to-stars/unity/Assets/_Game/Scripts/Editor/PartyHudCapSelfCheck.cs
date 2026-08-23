@@ -68,7 +68,8 @@ namespace AshesToStars
                   && partySrc.IndexOf("PartyHudCap.Line", StringComparison.Ordinal) >= 0
                   && partySrc.IndexOf("PartyHudCap.Caption", StringComparison.Ordinal) >= 0,
                 "파티가 Caption·Line·시드를 읽는다");
-            Check(partySrc.IndexOf("1번 자리가 탱 자리다", StringComparison.Ordinal) < 0
+            Check(partySrc.IndexOf("최대 {PartyState.MaxSlots}인(§9)", StringComparison.Ordinal) < 0
+                  && partySrc.IndexOf("§10-4 진형", StringComparison.Ordinal) < 0
                   && partySrc.IndexOf("PartyHudCap.Old", StringComparison.Ordinal) < 0,
                 "헤더가 긴 옛 줄을 안 붙인다");
 
