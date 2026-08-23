@@ -1,13 +1,12 @@
 {
-  "phase": "assigned",
-  "updated": "2026-08-23 15:40",
-  "last_commit": "59f13726",
+  "phase": "review",
+  "updated": "2026-08-23 15:46",
+  "last_commit": "f9f195e8",
   "review": "pending",
-  "note": "§6→아트 · 개발은 소비처0 · UI 폴리싱",
+  "note": "개발 완료 → 루프검수 검토 중",
   "commits": [
-    "6d9b4fae",
-    "59f13726"
+    "f9f195e8"
   ],
-  "task": "영지 §6 아트",
-  "routed_to": "재와별·아트"
+  "task": "§18-9 RaceDef.전투당발동 소비처0",
+  "routed_to": "재와별·루프검수"
 }
