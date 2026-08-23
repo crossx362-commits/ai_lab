@@ -1,5 +1,7 @@
 # 재와별 자율 병렬 게임 개발 루프 구현 계획
 
+> **2026-08-23 오너 정정:** 기존 루프 수정치고 과도한 신규 플랫폼 계획이므로 실행을 중단했다. 아래 12개 Task는 역사적 검토 기록일 뿐 구현 지시가 아니다. 실제 구현은 기존 `loop.sh`·`env.sh`·`PROMPT.md`·`board.py`에 경량 `agent_runner.py` 하나를 연결하는 방식이며 운영법과 현재 계약은 루트 `README.md`가 정본이다.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 재와별 게임 개발을 Claude·Codex·Grok의 강한 모델로 한 작업 또는 최대 세 작업까지 안전하게 병렬 수행하고, 다른 제공자의 독립 검토와 실제 실행·시각 증거를 통과한 정확한 커밋만 `autonomous/integration`에 원자적으로 통합하는 상시 루프를 완성한다.

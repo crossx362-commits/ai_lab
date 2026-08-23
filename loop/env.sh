@@ -1,22 +1,26 @@
 #!/bin/bash
-# loop/env.sh — 자율 개발 루프 환경 설정
-#
-# 이 파일은 loop.sh 가 실행될 때 자동으로 로드됩니다.
-# 환경변수를 통해 외부에서 오버라이드할 수도 있습니다.
+# launchd는 터미널 PATH를 상속하지 않으므로 절대 경로를 포함한다.
 
-# [1] 실행기 및 모델 설정
-# 옵션: claude, codex, grok
-export LOOP_AGENT="${LOOP_AGENT:-claude}"
-export LOOP_MODEL="${LOOP_MODEL:-claude-3-5-sonnet-20241022}"
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.grok/bin:/Users/junholee/.cargo/bin"
 
-# [2] 한 바퀴 최대 턴 수 (Max Turns per iteration)
-export LOOP_MAX_TURNS="${LOOP_MAX_TURNS:-50}"
+# auto: 독립 작업이면 최대 3개 병렬, single: 한 개, parallel: 가능한 만큼 병렬
+export LOOP_MODE="${LOOP_MODE:-auto}"
+export LOOP_PROVIDERS="${LOOP_PROVIDERS:-claude,codex,grok}"
+export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 
-# [3] 바퀴 사이 대기 시간 (초 단위)
+# 강한 모델 고정. Claude는 Fable 사용량 소진/이용 불가 때만 Opus 5로 전환한다.
+export LOOP_CLAUDE_MODEL="${LOOP_CLAUDE_MODEL:-fable}"
+export LOOP_CLAUDE_FALLBACK_MODEL="${LOOP_CLAUDE_FALLBACK_MODEL:-opus5}"
+export LOOP_CODEX_MODEL="${LOOP_CODEX_MODEL:-gpt-5.6-sol}"
+export LOOP_CODEX_REASONING="${LOOP_CODEX_REASONING:-xhigh}"
+export LOOP_GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
+
+export LOOP_MAX_TURNS="${LOOP_MAX_TURNS:-30}"
+export LOOP_SESSION_TIMEOUT="${LOOP_SESSION_TIMEOUT:-1800}"
 export LOOP_COOLDOWN="${LOOP_COOLDOWN:-10}"
-
-# [4] 최대 바퀴 수 (0 또는 빈 값: 무한 반복, 1 이상의 정수: 해당 횟수 실행 후 종료)
+export LOOP_IDLE_WAIT="${LOOP_IDLE_WAIT:-60}"
 export LOOP_MAX_LOOPS="${LOOP_MAX_LOOPS:-0}"
+export LOOP_PUSH="${LOOP_PUSH:-1}"
 
-# [5] 환경변수 PATH (macOS / Linux 자동 실행 시 누락 방지)
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.grok/bin:$HOME/.cargo/bin:$PATH"
+# off가 기본. clerical은 중복 문장 정리·형식 변환에만 쓰며 게임 판단에는 쓰지 않는다.
+export LOOP_OLLAMA_MODE="${LOOP_OLLAMA_MODE:-off}"

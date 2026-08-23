@@ -1,0 +1,15 @@
+{
+  "tasks": [
+    {
+      "id": "hud-readability",
+      "goal": "전투 HUD의 정보 우선순위와 가독성을 실제 화면에서 개선한다",
+      "write_paths": [
+        "projects/ashes-to-stars/unity/Assets"
+      ],
+      "tests": [
+        "프로젝트의 관련 자동검사와 실제 게임 화면 확인"
+      ],
+      "visual": true
+    }
+  ]
+}

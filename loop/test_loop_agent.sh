@@ -2,157 +2,92 @@
 
 set -euo pipefail
 
-TEST_ROOT="$(mktemp -d)"
-trap 'rm -rf "$TEST_ROOT"' EXIT
+TEST_AREA="$(mktemp -d /tmp/ai-loop-shell-test.XXXXXX)"
+trap 'rm -rf "$TEST_AREA"' EXIT
 
-mkdir -p "$TEST_ROOT/loop/logs" "$TEST_ROOT/docs/feedback" "$TEST_ROOT/projects/ashes-to-stars" "$TEST_ROOT/bin"
-cp "$(dirname "$0")/loop.sh" "$TEST_ROOT/loop/loop.sh"
+DEPLOY_DIR="$TEST_AREA/deploy with space"
+TARGET_REPO="$TEST_AREA/target repo"
+mkdir -p "$DEPLOY_DIR" "$TARGET_REPO/loop"
+cp "$(dirname "$0")/loop.sh" "$DEPLOY_DIR/loop.sh"
+cp "$(dirname "$0")/env.sh" "$DEPLOY_DIR/env.sh"
+cp "$(dirname "$0")/PROMPT.md" "$DEPLOY_DIR/PROMPT.md"
 
-touch "$TEST_ROOT/docs/feedback/INBOX.md" \
-      "$TEST_ROOT/docs/STATUS.md" \
-      "$TEST_ROOT/docs/DESIGN.md" \
-      "$TEST_ROOT/projects/ashes-to-stars/CLAUDE.md"
+cat > "$DEPLOY_DIR/agent_runner.py" <<'PY'
+from __future__ import annotations
 
-cat > "$TEST_ROOT/bin/claude" <<'FAKE_CLAUDE'
-#!/bin/bash
-touch "$TEST_ROOT/claude_called"
-touch "$TEST_ROOT/loop/STOP"
-FAKE_CLAUDE
+import os
+from pathlib import Path
+import sys
 
-cat > "$TEST_ROOT/bin/grok" <<'FAKE_GROK'
-#!/bin/bash
-printf '%s\n' "$@" > "$TEST_ROOT/grok_args"
-if [ "${FAKE_MODE:-}" = "update_status" ]; then
-  echo "fake grok handoff" >> "$TEST_ROOT/docs/STATUS.md"
-fi
-touch "$TEST_ROOT/grok_called"
-touch "$TEST_ROOT/loop/STOP"
-FAKE_GROK
+record = Path(os.environ["FAKE_RECORD"])
+with record.open("a", encoding="utf-8") as handle:
+    handle.write(f"pid={os.getpid()} args={sys.argv[1:]!r}\n")
+print("fake lap complete")
+raise SystemExit(int(os.environ.get("FAKE_EXIT", "0")))
+PY
 
-cat > "$TEST_ROOT/bin/codex" <<'FAKE_CODEX'
-#!/bin/bash
-printf '%s\n' "$@" > "$TEST_ROOT/codex_args"
-cat > "$TEST_ROOT/codex_prompt"
-case "$(cat "$TEST_ROOT/codex_prompt")" in
-  *"별도 승인 질문 없이 구현"*) touch "$TEST_ROOT/autonomous_prompt_seen" ;;
-esac
-if [ "${FAKE_MODE:-}" = "update_status" ]; then
-  echo "fake iteration handoff" >> "$TEST_ROOT/docs/STATUS.md"
-fi
-touch "$TEST_ROOT/codex_called"
-touch "$TEST_ROOT/loop/STOP"
-FAKE_CODEX
+chmod +x "$DEPLOY_DIR/loop.sh"
 
-chmod +x "$TEST_ROOT/bin/claude" "$TEST_ROOT/bin/codex" "$TEST_ROOT/bin/grok" "$TEST_ROOT/loop/loop.sh"
-
-set +e
-PATH="$TEST_ROOT/bin:$PATH" \
-TEST_ROOT="$TEST_ROOT" \
-FAKE_MODE=missing_status \
-LOOP_AGENT=codex \
-LOOP_MAX_FAILS=1 \
+FAKE_RECORD="$TEST_AREA/calls.log" \
+LOOP_MAX_LOOPS=2 \
 LOOP_COOLDOWN=0 \
-bash "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/missing_status.log" 2>&1
-MISSING_STATUS_RESULT=$?
+LOOP_PYTHON="$(command -v python3)" \
+bash "$DEPLOY_DIR/loop.sh" "$TARGET_REPO" > "$TEST_AREA/two-laps.log" 2>&1
+
+if [ "$(wc -l < "$TEST_AREA/calls.log" | tr -d ' ')" -ne 2 ]; then
+  echo "FAIL: 두 바퀴가 각각 새 coordinator 프로세스를 호출하지 않았다"
+  exit 1
+fi
+
+if [ "$(sed -E 's/^pid=([0-9]+).*/\1/' "$TEST_AREA/calls.log" | sort -u | wc -l | tr -d ' ')" -ne 2 ]; then
+  echo "FAIL: 바퀴 간 coordinator PID가 재사용됐다"
+  exit 1
+fi
+
+if ! grep -Fq -- "--repo-root', '$TARGET_REPO'" "$TEST_AREA/calls.log"; then
+  echo "FAIL: 배포 경로와 대상 저장소가 분리되지 않았다"
+  cat "$TEST_AREA/calls.log"
+  exit 1
+fi
+
+if ! grep -Fq -- "--prompt-file', '$DEPLOY_DIR/PROMPT.md'" "$TEST_AREA/calls.log"; then
+  echo "FAIL: 배포본 PROMPT.md가 coordinator에 전달되지 않았다"
+  exit 1
+fi
+
+if [ "$(find "$TARGET_REPO/logs" -type f -name 'lap-*.log' | wc -l | tr -d ' ')" -ne 2 ]; then
+  echo "FAIL: 날짜별 두 바퀴 로그가 생성되지 않았다"
+  find "$TARGET_REPO" -maxdepth 4 -type f -print
+  exit 1
+fi
+
+: > "$TEST_AREA/calls.log"
+touch "$TARGET_REPO/loop/STOP"
+FAKE_RECORD="$TEST_AREA/calls.log" \
+LOOP_MAX_LOOPS=1 \
+LOOP_COOLDOWN=0 \
+LOOP_PYTHON="$(command -v python3)" \
+bash "$DEPLOY_DIR/loop.sh" "$TARGET_REPO" > "$TEST_AREA/stopped.log" 2>&1
+
+if [ -s "$TEST_AREA/calls.log" ]; then
+  echo "FAIL: 시작 전 STOP인데 coordinator를 호출했다"
+  exit 1
+fi
+
+rm "$TARGET_REPO/loop/STOP"
+set +e
+FAKE_RECORD="$TEST_AREA/calls.log" \
+FAKE_EXIT=7 \
+LOOP_MAX_LOOPS=1 \
+LOOP_COOLDOWN=0 \
+LOOP_PYTHON="$(command -v python3)" \
+bash "$DEPLOY_DIR/loop.sh" "$TARGET_REPO" > "$TEST_AREA/fatal.log" 2>&1
+FATAL_RC=$?
 set -e
 
-if [ "$MISSING_STATUS_RESULT" -eq 0 ]; then
-  echo "FAIL: STATUS.md를 갱신하지 않은 정상 종료를 완료로 판정했다"
+if [ "$FATAL_RC" -ne 7 ]; then
+  echo "FAIL: coordinator 치명 오류가 정상 종료로 숨겨졌다 (rc=$FATAL_RC)"
   exit 1
 fi
 
-if ! grep -q 'STATUS.md 갱신 없음' "$TEST_ROOT/missing_status.log"; then
-  echo "FAIL: STATUS.md 미갱신 실패 원인이 로그에 남지 않았다"
-  exit 1
-fi
-
-rm -f "$TEST_ROOT/loop/STOP"
-PATH="$TEST_ROOT/bin:$PATH" \
-TEST_ROOT="$TEST_ROOT" \
-FAKE_MODE=update_status \
-LOOP_AGENT=codex \
-LOOP_MAX_FAILS=1 \
-LOOP_COOLDOWN=0 \
-bash "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/output.log" 2>&1
-
-if [ ! -f "$TEST_ROOT/codex_called" ]; then
-  echo "FAIL: LOOP_AGENT=codex가 Codex 실행기를 호출하지 않았다"
-  sed -n '1,80p' "$TEST_ROOT/output.log"
-  exit 1
-fi
-
-if [ -f "$TEST_ROOT/claude_called" ]; then
-  echo "FAIL: LOOP_AGENT=codex인데 Claude 실행기가 호출됐다"
-  exit 1
-fi
-
-if grep -qxE '(resume|--continue)' "$TEST_ROOT/codex_args"; then
-  echo "FAIL: Codex 루프가 이전 세션을 이어서 실행했다"
-  exit 1
-fi
-
-if ! grep -qx 'danger-full-access' "$TEST_ROOT/codex_args"; then
-  echo "FAIL: Codex 루프가 Git 커밋·Unity 실제 창 실행 권한으로 호출되지 않았다"
-  exit 1
-fi
-
-if [ ! -f "$TEST_ROOT/autonomous_prompt_seen" ]; then
-  echo "FAIL: 무인 루프 프롬프트에 사전 승인된 구현 지시가 없다"
-  exit 1
-fi
-
-rm -f "$TEST_ROOT/loop/STOP" "$TEST_ROOT/codex_called" "$TEST_ROOT/claude_called"
-printf '%s\n' "codex" > "$TEST_ROOT/loop/agent"
-PATH="$TEST_ROOT/bin:$PATH" \
-TEST_ROOT="$TEST_ROOT" \
-FAKE_MODE=update_status \
-LOOP_COOLDOWN=0 \
-env -u LOOP_AGENT \
-bash "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/agentfile.log" 2>&1
-
-if [ ! -f "$TEST_ROOT/codex_called" ]; then
-  echo "FAIL: loop/agent=codex 인데 Codex를 부르지 않았다"
-  sed -n '1,80p' "$TEST_ROOT/agentfile.log"
-  exit 1
-fi
-if [ -f "$TEST_ROOT/claude_called" ]; then
-  echo "FAIL: loop/agent=codex 인데 Claude를 불렀다"
-  exit 1
-fi
-
-echo "PASS: Codex 실행기는 새 세션에서 별도 승인 질문 없이 구현하도록 호출된다"
-echo "PASS: loop/agent 파일이 LOOP_AGENT 미지정 시 실행기를 고른다"
-
-rm -f "$TEST_ROOT/loop/STOP" "$TEST_ROOT/codex_called" "$TEST_ROOT/claude_called" "$TEST_ROOT/grok_called"
-PATH="$TEST_ROOT/bin:$PATH" \
-TEST_ROOT="$TEST_ROOT" \
-FAKE_MODE=update_status \
-LOOP_AGENT=grok \
-LOOP_COOLDOWN=0 \
-bash "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/grok.log" 2>&1
-
-if [ ! -f "$TEST_ROOT/grok_called" ]; then
-  echo "FAIL: LOOP_AGENT=grok 인데 Grok을 부르지 않았다"
-  sed -n '1,80p' "$TEST_ROOT/grok.log"
-  exit 1
-fi
-if [ -f "$TEST_ROOT/codex_called" ] || [ -f "$TEST_ROOT/claude_called" ]; then
-  echo "FAIL: LOOP_AGENT=grok 인데 다른 실행기를 불렀다"
-  exit 1
-fi
-if ! grep -qx -- '--prompt-file' "$TEST_ROOT/grok_args"; then
-  echo "FAIL: Grok 호출에 --prompt-file 이 없다 (stdin은 프롬프트가 아니다)"
-  cat "$TEST_ROOT/grok_args"
-  exit 1
-fi
-if ! grep -qx -- '--always-approve' "$TEST_ROOT/grok_args"; then
-  echo "FAIL: Grok 루프가 도구 자동 승인을 켜지 않았다"
-  cat "$TEST_ROOT/grok_args"
-  exit 1
-fi
-if grep -qxE '(-c|--continue)' "$TEST_ROOT/grok_args"; then
-  echo "FAIL: Grok 루프가 이전 세션을 이었다"
-  exit 1
-fi
-
-echo "PASS: Grok 실행기는 새 세션·prompt-file·always-approve로 호출된다"
+echo "PASS: 새 프로세스 2바퀴, 경로 분리, 날짜 로그, STOP, fatal 전달"
