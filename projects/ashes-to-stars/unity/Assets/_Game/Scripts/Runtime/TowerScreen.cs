@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -86,6 +87,7 @@ namespace AshesToStars
             BossCount.SeedQaIfRequested();
             BossSkills.SeedQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
+            SeedTowerPoorQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
@@ -129,7 +131,7 @@ namespace AshesToStars
             if (_showInsufficientGold)
             {
                 Info(r, 0, "[주의] 골드가 부족합니다");
-                Info(r, 1, $"필요 {Economy.FormatCurrency(_pendingCost)} · 보유 {GameState.WalletText}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
+                Info(r, 1, $"필요 {EstateStatusHud.ShortCopper(_pendingCost)} · 보유 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
                 long shortfall = _pendingCost - GameState.Wallet.Copper;
                 Info(r, 2, $"대출 한도 {Economy.FormatCurrency(GameState.LoanBorrowable)} · 부채 {Economy.FormatCurrency(GameState.Debt)} · {NetWorth.Line()} · 이자 0.5%/h(§18-5)");
                 if (shortfall > 0 && GameState.LoanBorrowable < shortfall)
@@ -221,6 +223,18 @@ namespace AshesToStars
             DrawCard(cards[3], GameState.WalletText,
                 GameState.Debt > 0 ? $"부채 {Economy.FormatCurrency(GameState.Debt)}" : "부채 없음",
                 "building_auction", locked: true);
+        }
+
+
+        void SeedTowerPoorQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_TOWER_POOR") != "1") return;
+            long have = GameState.Wallet.Copper;
+            if (have > 0) GameState.Pay(have);
+            _pendingCost = Math.Max(10_000L, Economy.GetActionCost("Tower10Boss", GameState.Tier));
+            _pendingKind = GameFlow.BattleKind.보스;
+            _pendingFloor = 10;
+            _showInsufficientGold = true;
         }
 
         /// <summary>
