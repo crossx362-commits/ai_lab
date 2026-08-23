@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | proposals-triage 4차 검증 — PROPOSALS.md 제안 항목 0건(`^- \[` grep 매치 없음), 중복 병합·우선순위 보정 대상 없음 · PROPOSALS.md 무변경(내용 삭제 없음) | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 3차 검증 — PROPOSALS.md 형식 라인 grep 0건 재확인(원본 `30a5858b`부터 항목 0), 병합·우선순위 보정 대상 없음 · PROPOSALS.md 무변경(내용 삭제 없음) | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 재점검 — PROPOSALS.md 제안 항목 0건(형식 라인 grep 0)이라 중복 병합·우선순위 보정 대상 없음 · PROPOSALS.md 무변경(선행 정리 `30cf1231` 유효, 내용 삭제 없음) | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | README 루프 섹션에 속도 레인 운영법 추가 (worktree 격리 병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수 · STOP_LANE 토글, 본문 4줄) | 요건 충족(5줄 이내) · loop/README.md는 기존 문서화로 무변경 · `55fc2373` |
