@@ -472,6 +472,7 @@
 </style>
 </head>
 <body>
+<noscript><div style="position:fixed;top:0;left:0;right:0;z-index:1000;background:#d06450;color:#fff;padding:10px 16px">브라우저 자바스크립트가 꺼져 있어 글자가 안 보입니다. 허용한 뒤 새로 고침해 주세요.</div></noscript>
 <div id="js-error-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:#d06450;color:#fff;padding:8px 16px;font-size:13px"></div>
 <script>
 window.addEventListener("error", (e) => {
@@ -1794,6 +1795,20 @@ refresh()
     scheduleRefresh();
     startLiveUpdates();
   });
+
+/* 자가복구 — 25초 뒤에도 아무 글자도 안 찍혔으면 한 번만 새로 고침 (오너 2026-08-24) */
+setTimeout(() => {
+  const p = $("pills");
+  const blank = !p || !p.innerHTML.trim();
+  let seen = "";
+  try { seen = sessionStorage.getItem("board-reloaded") || ""; } catch (e) {}
+  if (blank && !seen) {
+    try { sessionStorage.setItem("board-reloaded", "1"); } catch (e) {}
+    location.reload();
+  } else if (!blank) {
+    try { sessionStorage.removeItem("board-reloaded"); } catch (e) {}
+  }
+}, 25000);
 </script>
 </body>
 </html>
