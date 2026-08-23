@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | keeper-warn-chip 재검증(BASE `47b9e7ca`) — kChip warns→hold 톤 확장은 `0ec68f11` 선반영으로 재구현 없음 · loop/board.html 무변경 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 6차 검증(BASE `47b9e7ca`) — PROPOSALS.md 현행 항목 1건: 중복 병합 대상 없음·우선순위(상/중/하) 태그 전 항목 존재로 보정 불필요 · 기존 내용 삭제 없이 정리 마커 갱신(0건 기준 옛 마커는 유효각주 부여) | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | lane-doc 재검증(BASE `47b9e7ca`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md·loop/README.md 무변경 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 5차 검증(BASE `eb2b99ea`) — PROPOSALS.md 제안 항목 0건 재확인(`^- \[` grep 0), 중복 병합·우선순위(상/중/하) 보정 대상 없음 · 기존 내용 삭제 없음 · §⑤ 자가학습 1건 추가(반복 무변경 랩 방지 제안, 우선순위 중) | tests 없음 · 문서 검증 · 이 커밋 |
